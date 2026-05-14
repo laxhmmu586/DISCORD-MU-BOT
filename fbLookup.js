@@ -1,4 +1,4 @@
-```js id="53g8z0"
+```js
 module.exports = (client) => {
 
   client.on('messageCreate', async (message) => {
@@ -8,23 +8,19 @@ module.exports = (client) => {
       // Ignore bots
       if (message.author.bot) return;
 
-      const content =
-        message.content.trim();
+      const content = message.content.trim();
 
       // ===============================
       // HELP
       // ===============================
 
-      if (
-        content.toLowerCase() === 'help'
-      ) {
+      if (content.toLowerCase() === 'help') {
 
-        await message.reply(`
-Available Commands:
-
-FB 12345
-BT 7811234567
-        `);
+        await message.reply(
+          'Available Commands:\n\n' +
+          'FB 12345\n' +
+          'BT 7811234567'
+        );
 
         return;
       }
@@ -33,24 +29,17 @@ BT 7811234567
       // FB Lookup
       // ===============================
 
-      const fbMatch =
-        content.match(
-          /^FB\s*(\d+)$/i
-        );
+      const fbMatch = content.match(
+        /^FB\s*(\d+)$/i
+      );
 
       if (fbMatch) {
 
-        const fbNumber =
-          fbMatch[1];
+        const fbNumber = fbMatch[1];
 
         await message.reply(
           `🔍 Searching FB: ${fbNumber}`
         );
-
-        // ===================================
-        // TODO:
-        // FB lookup logic
-        // ===================================
 
         return;
       }
@@ -59,24 +48,17 @@ BT 7811234567
       // BT Lookup
       // ===============================
 
-      const btMatch =
-        content.match(
-          /^BT\s*(\d+)$/i
-        );
+      const btMatch = content.match(
+        /^BT\s*(\d+)$/i
+      );
 
       if (btMatch) {
 
-        const btNumber =
-          btMatch[1];
+        const btNumber = btMatch[1];
 
         await message.reply(
           `🧳 Searching Bag Tag: ${btNumber}`
         );
-
-        // ===================================
-        // TODO:
-        // BT lookup logic
-        // ===================================
 
         return;
       }
