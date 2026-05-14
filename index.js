@@ -41,7 +41,7 @@ const client = new Client({
 // Bot Ready
 // ===============================
 
-client.once('ready', () => {
+client.once('clientReady', () => {
 
   console.log(
     'Logged in as ' +
