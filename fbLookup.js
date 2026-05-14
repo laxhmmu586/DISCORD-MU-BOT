@@ -1,14 +1,11 @@
-```js id="m85zqs"
+```js id="8j6y4v"
 module.exports = (client) => {
 
   client.on('messageCreate', async (message) => {
 
     try {
 
-      // ===============================
-      // Ignore Bots
-      // ===============================
-
+      // Ignore bots
       if (message.author.bot) return;
 
       const content =
@@ -46,7 +43,8 @@ module.exports = (client) => {
           fbMatch[1];
 
         await message.reply(
-          `🔍 Searching FB: ${fbNumber}`
+          'Searching FB: ' +
+          fbNumber
         );
 
         // ===================================
@@ -72,7 +70,8 @@ module.exports = (client) => {
           btMatch[1];
 
         await message.reply(
-          `🧳 Searching Bag Tag: ${btNumber}`
+          'Searching Bag Tag: ' +
+          btNumber
         );
 
         // ===================================
