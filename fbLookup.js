@@ -12,29 +12,65 @@ const FILE_NAME =
   'Flight Control.log';
 
 // =====================================
-// Download Latest Flight Log
+// Build Google Auth
 // =====================================
 
-async function downloadLogFile() {
+function getGoogleAuth() {
 
-  const auth = new google.auth.GoogleAuth({
+  // Railway Variable
+  const raw =
+    process.env.GOOGLE_CREDENTIALS;
 
-    credentials: JSON.parse(
-      process.env.GOOGLE_CREDENTIALS
-    ),
+  if (!raw) {
+
+    throw new Error(
+      'GOOGLE_CREDENTIALS variable missing'
+    );
+  }
+
+  let credentials;
+
+  try {
+
+    credentials = JSON.parse(raw);
+
+  } catch (err) {
+
+    console.error(raw);
+
+    throw new Error(
+      'GOOGLE_CREDENTIALS JSON invalid'
+    );
+  }
+
+  return new google.auth.GoogleAuth({
+
+    credentials,
 
     scopes: [
       'https://www.googleapis.com/auth/drive.readonly'
     ]
 
   });
+}
+
+// =====================================
+// Download Latest Flight Log
+// =====================================
+
+async function downloadLogFile() {
+
+  const auth = getGoogleAuth();
 
   const drive = google.drive({
+
     version: 'v3',
+
     auth
+
   });
 
-  // Search latest file
+  // Find latest file
   const res = await drive.files.list({
 
     q:
@@ -76,12 +112,15 @@ async function downloadLogFile() {
     );
 
   fs.writeFileSync(
+
     FILE_NAME,
+
     Buffer.from(response.data)
+
   );
 
   console.log(
-    '✅ Latest Flight Control.log downloaded'
+    '✅ Flight log downloaded'
   );
 }
 
@@ -159,7 +198,7 @@ function getEliteName(elite) {
 
 async function lookupPassenger(bn) {
 
-  // Download latest log
+  // Download latest file
   await downloadLogFile();
 
   // Read file
@@ -179,7 +218,7 @@ async function lookupPassenger(bn) {
   const flightDate =
     flightMatch?.[2] || 'UNKNOWN';
 
-  // Search Passenger Block
+  // Search passenger block
   const regex = new RegExp(
 
     `BN${bn}[\\s\\S]{0,3000}?FF\\/MU[\\s\\S]{0,500}`,
@@ -342,6 +381,7 @@ module.exports = (client) => {
 
 ${statusText}
           `);
+
         }
 
       } catch (err) {
