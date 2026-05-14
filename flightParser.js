@@ -42,6 +42,35 @@ function getCabin(seat) {
 function getLounge(pax) {
 
   // ===========================
+  // Platinum Elite+
+  // ===========================
+  if (
+    pax.ffTier === "V" &&
+    pax.elite === 2
+  ) {
+
+    return {
+      eligible: true,
+      guest: true
+    };
+  }
+
+  // ===========================
+  // Gold Elite+ Business
+  // ===========================
+  if (
+    pax.ffTier === "G" &&
+    pax.elite === 2 &&
+    pax.cabin === "Business"
+  ) {
+
+    return {
+      eligible: true,
+      guest: true
+    };
+  }
+
+  // ===========================
   // First Class
   // ===========================
   if (pax.cabin === "First") {
@@ -57,50 +86,19 @@ function getLounge(pax) {
   // ===========================
   if (pax.cabin === "Business") {
 
-    // Gold Elite+ Business
-    if (
-      pax.ffTier === "G" &&
-      pax.elite === 2
-    ) {
-
-      return {
-        eligible: true,
-        guest: true
-      };
-    }
-
     return {
       eligible: true,
       guest: false
-    };
-  }
-
-  // ===========================
-  // Must be Elite+
-  // ===========================
-  if (pax.elite !== 2) {
-
-    return {
-      eligible: false,
-      guest: false
-    };
-  }
-
-  // ===========================
-  // Platinum Elite+
-  // ===========================
-  if (pax.ffTier === "V") {
-
-    return {
-      eligible: true,
-      guest: true
     };
   }
 
   // ===========================
   // Gold Elite+
   // ===========================
-  if (pax.ffTier === "G") {
+  if (
+    pax.ffTier === "G" &&
+    pax.elite === 2
+  ) {
 
     return {
       eligible: true,
@@ -111,7 +109,10 @@ function getLounge(pax) {
   // ===========================
   // Silver Elite+
   // ===========================
-  if (pax.ffTier === "S") {
+  if (
+    pax.ffTier === "S" &&
+    pax.elite === 2
+  ) {
 
     return {
       eligible: true,
@@ -129,9 +130,6 @@ function getLounge(pax) {
 // Parse Flight Info
 // ===============================
 function parseFlightInfo(line) {
-
-  // Example:
-  // PR: MU586/09MAY26*LAX,BN121
 
   const match = line.match(
     /([A-Z0-9]+)\/(\d{2}[A-Z]{3})\d{2}/
@@ -188,10 +186,6 @@ function parsePassengerLine(line) {
 // ===============================
 function parseFFLine(line) {
 
-  // Example:
-  // FF/MU 613026637487/V/*2
-  // FF/DL 2334262744/S/*1
-
   const ffMatch = line.match(
     /FF\/([A-Z0-9]+)\s+(\d+)\/([VGSC])\/\*(\d)/
   );
@@ -237,17 +231,13 @@ function parseTicketLine(line) {
 // ===============================
 function parseBagtagLine(line) {
 
-  // ONLY parse BAGTAG lines
-
   if (!line.includes('BAGTAG/')) {
     return [];
   }
 
-  // Remove BAGTAG/
   const cleaned =
     line.split('BAGTAG/')[1];
 
-  // Match baggage tags only
   const matches =
     [...cleaned.matchAll(
       /(\d+\/[A-Z]{3})/g
@@ -399,7 +389,7 @@ function parseIncrementalLog(chunk) {
     }
 
     // ===========================
-    // FF Line
+    // FF
     // ===========================
     const ff =
       parseFFLine(line);
@@ -417,11 +407,6 @@ function parseIncrementalLog(chunk) {
 
       currentPassenger.elite =
         ff.elite;
-
-      currentPassenger.lounge =
-        getLounge(
-          currentPassenger
-        );
     }
 
     // ===========================
@@ -467,6 +452,14 @@ function parseIncrementalLog(chunk) {
         ])
       ];
     }
+
+    // ===========================
+    // Refresh Lounge
+    // ===========================
+    currentPassenger.lounge =
+      getLounge(
+        currentPassenger
+      );
   }
 
   console.log(
