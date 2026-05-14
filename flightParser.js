@@ -12,17 +12,14 @@ function getCabin(seat) {
   const row =
     parseInt(seat);
 
-  // First
   if (row >= 1 && row <= 2) {
     return "First";
   }
 
-  // Business
   if (row >= 6 && row <= 20) {
     return "Business";
   }
 
-  // Economy
   if (
     (row >= 31 && row <= 44) ||
     (row >= 61 && row <= 74)
@@ -38,7 +35,6 @@ function getCabin(seat) {
 // ===============================
 function getLounge(pax) {
 
-  // Must be Elite Plus
   if (pax.elite !== 2) {
 
     return {
@@ -47,7 +43,6 @@ function getLounge(pax) {
     };
   }
 
-  // Platinum
   if (pax.ffTier === "V") {
 
     return {
@@ -56,10 +51,8 @@ function getLounge(pax) {
     };
   }
 
-  // Gold
   if (pax.ffTier === "G") {
 
-    // Economy Gold
     if (pax.cabin === "Economy") {
 
       return {
@@ -74,7 +67,6 @@ function getLounge(pax) {
     };
   }
 
-  // Silver
   if (pax.ffTier === "S") {
 
     return {
@@ -90,12 +82,9 @@ function getLounge(pax) {
 }
 
 // ===============================
-// Parse Passenger Line
+// Passenger Line
 // ===============================
 function parsePassengerLine(line) {
-
-  // Example:
-  // 1. YOU/RUOJIE BN121 11D Q PVG
 
   const paxMatch = line.match(
     /([A-Z]+\/[A-Z]+)\s+BN(\d+)\s+\*?(\d+[A-Z])\s+([A-Z])\s+PVG/
@@ -125,13 +114,9 @@ function parsePassengerLine(line) {
 }
 
 // ===============================
-// Parse FF Line
+// FF Line
 // ===============================
 function parseFFLine(line) {
-
-  // Example:
-  // FF/MU 613026637487/V/*2
-  // FF/DL 2334262744/S/*1
 
   const ffMatch = line.match(
     /FF\/([A-Z0-9]+)\s+(\d+)\/([VGSC])\/\*(\d)/
@@ -158,12 +143,9 @@ function parseFFLine(line) {
 }
 
 // ===============================
-// Parse Ticket Number
+// Ticket Number
 // ===============================
 function parseTicketLine(line) {
-
-  // Example:
-  // ET TKNE/7817484489860/1
 
   const match = line.match(
     /TKNE\/(\d+)/
@@ -177,21 +159,25 @@ function parseTicketLine(line) {
 }
 
 // ===============================
-// Parse Bagtag
+// Bagtag
 // ===============================
 function parseBagtagLine(line) {
 
-  // Example:
-  // BAGTAG/3781524525/PVG /3781575569/PVG
+  // ONLY parse BAGTAG lines
 
-  const matches =
-    [...line.matchAll(
-      /(\d+\/[A-Z]{3})/g
-    )];
-
-  if (!matches.length) {
+  if (!line.includes('BAGTAG/')) {
     return [];
   }
+
+  // Remove BAGTAG/
+  const cleaned =
+    line.split('BAGTAG/')[1];
+
+  // Match only baggage tags
+  const matches =
+    [...cleaned.matchAll(
+      /(\d+\/[A-Z]{3})/g
+    )];
 
   return matches.map(
     m => m[1]
@@ -199,7 +185,7 @@ function parseBagtagLine(line) {
 }
 
 // ===============================
-// Parse Special Service
+// Special Services
 // ===============================
 function parseSpecialService(line) {
 
@@ -232,14 +218,14 @@ function parseSpecialService(line) {
 }
 
 // ===============================
-// Incremental Parser
+// Main Parser
 // ===============================
 function parseIncrementalLog(chunk) {
 
   const lines =
-    chunk.split("\n");
+    chunk.split('\n');
 
-  let currentBN = null;
+  let currentPassenger = null;
 
   for (let rawLine of lines) {
 
@@ -247,7 +233,7 @@ function parseIncrementalLog(chunk) {
       rawLine.toUpperCase();
 
     // ===========================
-    // Passenger Line
+    // NEW PASSENGER
     // ===========================
     const pax =
       parsePassengerLine(line);
@@ -298,71 +284,60 @@ function parseIncrementalLog(chunk) {
           null,
 
         specialServices:
-          parseSpecialService(
-            line
-          ),
+          [],
 
         updatedAt:
           new Date()
       };
 
-      currentBN =
-        pax.bn;
+      currentPassenger =
+        passengers[pax.bn];
 
       continue;
     }
 
     // ===========================
-    // FF Line
+    // Ignore until passenger found
+    // ===========================
+    if (!currentPassenger) {
+      continue;
+    }
+
+    // ===========================
+    // FF
     // ===========================
     const ff =
       parseFFLine(line);
 
-    if (
-      ff &&
-      currentBN &&
-      passengers[currentBN]
-    ) {
+    if (ff) {
 
-      passengers[currentBN]
-        .ffCarrier =
+      currentPassenger.ffCarrier =
         ff.ffCarrier;
 
-      passengers[currentBN]
-        .ffNumber =
+      currentPassenger.ffNumber =
         ff.ffNumber;
 
-      passengers[currentBN]
-        .ffTier =
+      currentPassenger.ffTier =
         ff.ffTier;
 
-      passengers[currentBN]
-        .elite =
+      currentPassenger.elite =
         ff.elite;
 
-      passengers[currentBN]
-        .lounge =
+      currentPassenger.lounge =
         getLounge(
-          passengers[currentBN]
+          currentPassenger
         );
-
-      continue;
     }
 
     // ===========================
-    // Ticket Number
+    // Ticket
     // ===========================
     const ticket =
       parseTicketLine(line);
 
-    if (
-      ticket &&
-      currentBN &&
-      passengers[currentBN]
-    ) {
+    if (ticket) {
 
-      passengers[currentBN]
-        .ticketNumber =
+      currentPassenger.ticketNumber =
         ticket;
     }
 
@@ -372,46 +347,30 @@ function parseIncrementalLog(chunk) {
     const bagtags =
       parseBagtagLine(line);
 
-    if (
-      bagtags.length &&
-      currentBN &&
-      passengers[currentBN]
-    ) {
+    if (bagtags.length) {
 
-      passengers[currentBN]
-        .bagtags = bagtags;
+      currentPassenger.bagtags =
+        bagtags;
     }
 
     // ===========================
     // Special Service
     // ===========================
-    if (
-      currentBN &&
-      passengers[currentBN]
-    ) {
+    const services =
+      parseSpecialService(line);
 
-      const services =
-        parseSpecialService(
-          line
-        );
+    if (services.length) {
 
-      if (services.length > 0) {
+      currentPassenger.specialServices = [
 
-        passengers[
-          currentBN
-        ].specialServices = [
+        ...new Set([
 
-          ...new Set([
+          ...currentPassenger.specialServices,
 
-            ...passengers[
-              currentBN
-            ].specialServices,
+          ...services
 
-            ...services
-
-          ])
-        ];
-      }
+        ])
+      ];
     }
   }
 
@@ -431,8 +390,8 @@ function findBySeat(seat) {
 
   return Object.values(
     passengers
-  ).find(p =>
-    p.seat === seat
+  ).find(
+    p => p.seat === seat
   );
 }
 
@@ -446,8 +405,8 @@ function findByName(name) {
 
   return Object.values(
     passengers
-  ).find(p =>
-    p.name.includes(name)
+  ).find(
+    p => p.name.includes(name)
   );
 }
 
