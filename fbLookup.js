@@ -1,14 +1,11 @@
-```js id="0jgjbc"
+```js id="53g8z0"
 module.exports = (client) => {
 
   client.on('messageCreate', async (message) => {
 
     try {
 
-      // ===============================
-      // Ignore Bots
-      // ===============================
-
+      // Ignore bots
       if (message.author.bot) return;
 
       const content =
@@ -26,10 +23,6 @@ module.exports = (client) => {
 Available Commands:
 
 FB 12345
-
-FF MU620500126907
-MU620500126907
-
 BT 7811234567
         `);
 
@@ -83,97 +76,6 @@ BT 7811234567
         // ===================================
         // TODO:
         // BT lookup logic
-        // ===================================
-
-        return;
-      }
-
-      // ===============================
-      // FF Lookup
-      // ===============================
-
-      // Supports:
-      //
-      // FF MU620500126907
-      // FF/MU620500126907
-      // MU620500126907
-      // MU 620500126907
-      //
-      // eTerm:
-      // FF/MU 620500126907/S/*1 PSPT
-      //
-      // Full pasted records
-
-      let ffResult = null;
-
-      // ===================================
-      // 1. eTerm Style Scan
-      // ===================================
-
-      const ffEtermMatch =
-        content.match(
-          /FF\/([A-Z]{2})\s*(\d+)/i
-        );
-
-      if (ffEtermMatch) {
-
-        ffResult = {
-
-          airline:
-            ffEtermMatch[1]
-              .toUpperCase(),
-
-          number:
-            ffEtermMatch[2]
-
-        };
-
-      }
-
-      // ===================================
-      // 2. Simple FF Input
-      // ===================================
-
-      if (!ffResult) {
-
-        const ffSimpleMatch =
-          content.match(
-            /^(?:FF[\/\s]*)?([A-Z]{2})\s*(\d+)$/i
-          );
-
-        if (ffSimpleMatch) {
-
-          ffResult = {
-
-            airline:
-              ffSimpleMatch[1]
-                .toUpperCase(),
-
-            number:
-              ffSimpleMatch[2]
-
-          };
-
-        }
-
-      }
-
-      // ===================================
-      // 3. Process FF
-      // ===================================
-
-      if (ffResult) {
-
-        const ffCommand =
-          `FF/${ffResult.airline}${ffResult.number}`;
-
-        await message.reply(
-          `🛫 Searching Frequent Flyer: ${ffCommand}`
-        );
-
-        // ===================================
-        // TODO:
-        // FF lookup logic
         // ===================================
 
         return;
