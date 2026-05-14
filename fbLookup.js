@@ -8,13 +8,18 @@ try {
   // Ignore bots
   if (message.author.bot) return;
 
+  // Clean input
   const content = message.content.trim();
+
+  console.log('INPUT:', content);
 
   // ===============================
   // HELP
   // ===============================
 
-  if (content.toLowerCase() === 'help') {
+  if (
+    content.toLowerCase() === 'help'
+  ) {
 
     await message.reply(
       'Available Commands:\n\n' +
@@ -27,18 +32,28 @@ try {
 
   // ===============================
   // FB Lookup
+  // Supports:
+  // FB032
+  // FB 032
   // ===============================
 
   const fbMatch = content.match(
-    /^FB\s*(\d+)$/i
+    /^FB\s*([0-9A-Z]+)$/i
   );
 
   if (fbMatch) {
 
-    const fbNumber = fbMatch[1];
+    const fbNumber =
+      fbMatch[1];
+
+    console.log(
+      'FB MATCH:',
+      fbNumber
+    );
 
     await message.reply(
-      'Searching FB: ' + fbNumber
+      'Searching FB: ' +
+      fbNumber
     );
 
     return;
@@ -46,6 +61,9 @@ try {
 
   // ===============================
   // BT Lookup
+  // Supports:
+  // BT7811234567
+  // BT 7811234567
   // ===============================
 
   const btMatch = content.match(
@@ -54,10 +72,17 @@ try {
 
   if (btMatch) {
 
-    const btNumber = btMatch[1];
+    const btNumber =
+      btMatch[1];
+
+    console.log(
+      'BT MATCH:',
+      btNumber
+    );
 
     await message.reply(
-      'Searching Bag Tag: ' + btNumber
+      'Searching Bag Tag: ' +
+      btNumber
     );
 
     return;
@@ -67,7 +92,8 @@ try {
   // Passenger Block Parser
   // ===============================
 
-  const lines = content.split('\n');
+  const lines =
+    content.split('\n');
 
   let passengers = [];
 
@@ -75,7 +101,7 @@ try {
 
   for (const line of lines) {
 
-    // Detect Passenger Start
+    // Detect passenger start
     // Example:
     // 12. 1WEI/WEI
 
@@ -99,7 +125,8 @@ try {
 
       currentPassenger = {
 
-        name: paxMatch[1],
+        name:
+          paxMatch[1],
 
         ff: null,
 
@@ -118,7 +145,8 @@ try {
         line
       );
 
-      // FF belongs only to this passenger
+      // FF belongs only
+      // to this passenger
 
       const ffMatch = line.match(
         /FF\/([A-Z]{2})\s*(\d+)/i
@@ -129,7 +157,8 @@ try {
         currentPassenger.ff = {
 
           airline:
-            ffMatch[1].toUpperCase(),
+            ffMatch[1]
+              .toUpperCase(),
 
           number:
             ffMatch[2]
@@ -154,11 +183,17 @@ try {
 
   // Debug output
 
-  if (passengers.length > 0) {
+  if (
+    passengers.length > 0
+  ) {
 
     console.log(
       'Passenger Blocks:',
-      passengers
+      JSON.stringify(
+        passengers,
+        null,
+        2
+      )
     );
 
   }
