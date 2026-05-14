@@ -142,6 +142,11 @@ function canInviteGuest(
     return false;
   }
 
+  // Common Member
+  if (tier === 'C') {
+    return false;
+  }
+
   // Platinum
   if (tier === 'V') {
     return true;
@@ -175,8 +180,11 @@ function getTierName(tier) {
     case 'S':
       return '银卡';
 
+    case 'C':
+      return '普通会员';
+
     default:
-      return tier || 'Unknown';
+      return null;
   }
 }
 
@@ -185,6 +193,8 @@ function getTierName(tier) {
 // =====================================
 
 function getEliteName(elite) {
+
+  if (!elite) return null;
 
   return elite === 2
     ? 'Elite Plus'
@@ -212,10 +222,10 @@ async function lookupPassenger(bn) {
   );
 
   const flightNo =
-    flightMatch?.[1] || 'UNKNOWN';
+    flightMatch?.[1] || '';
 
   const flightDate =
-    flightMatch?.[2] || 'UNKNOWN';
+    flightMatch?.[2] || '';
 
   // Search passenger block
   const regex = new RegExp(
@@ -244,10 +254,10 @@ async function lookupPassenger(bn) {
   );
 
   const name =
-    nameSeatMatch?.[1] || 'UNKNOWN';
+    nameSeatMatch?.[1] || '';
 
   const seat =
-    nameSeatMatch?.[2] || 'UNKNOWN';
+    nameSeatMatch?.[2] || '';
 
   // =====================================
   // FF Info
@@ -255,7 +265,7 @@ async function lookupPassenger(bn) {
 
   const ffMatch = block.match(
 
-    /FF\/MU\s+(\d+)\/([VGS])\/\*(\d)/i
+    /FF\/MU\s+(\d+)\/([VGSC])\/\*(\d)/i
 
   );
 
@@ -350,14 +360,31 @@ module.exports = (client) => {
           // No FF
           if (result.noFF) {
 
-            return searchingMsg.edit(`
-✈️ ${result.flightNo} / ${result.flightDate}
+            let msg = '';
 
-👤 ${result.name}
-💺 Seat: ${result.seat}
+            if (
+              result.flightNo ||
+              result.flightDate
+            ) {
 
-⚠️ No Frequent Flyer Information
-            `);
+              msg +=
+`✈️ ${result.flightNo} / ${result.flightDate}
+
+`;
+            }
+
+            if (result.name) {
+              msg += `👤 ${result.name}\n`;
+            }
+
+            if (result.seat) {
+              msg += `💺 Seat: ${result.seat}\n`;
+            }
+
+            msg += `
+⚠️ 没有会员号`;
+
+            return searchingMsg.edit(msg);
           }
 
           const tierName =
@@ -373,20 +400,56 @@ module.exports = (client) => {
               ? '🟢 Guest Allowed'
               : '🔴 Guest NOT Allowed';
 
-          await searchingMsg.edit(`
-✈️ ${result.flightNo} / ${result.flightDate}
+          let finalMsg = '';
 
-👤 ${result.name}
-💺 Seat: ${result.seat}
+          // Flight
+          if (
+            result.flightNo ||
+            result.flightDate
+          ) {
 
-🎖 ${tierName}
-⭐ ${eliteName}
+            finalMsg +=
+`✈️ ${result.flightNo} / ${result.flightDate}
 
-🆔 ${result.memberNo}
+`;
+          }
 
-${statusText}
-          `);
+          // Name
+          if (result.name) {
+            finalMsg +=
+              `👤 ${result.name}\n`;
+          }
 
+          // Seat
+          if (result.seat) {
+            finalMsg +=
+              `💺 Seat: ${result.seat}\n`;
+          }
+
+          // Tier
+          if (tierName) {
+            finalMsg +=
+              `🎖 ${tierName}\n`;
+          }
+
+          // Elite
+          if (eliteName) {
+            finalMsg +=
+              `⭐ ${eliteName}\n`;
+          }
+
+          // Member
+          if (result.memberNo) {
+            finalMsg +=
+              `🆔 ${result.memberNo}\n`;
+          }
+
+          finalMsg +=
+`\n${statusText}`;
+
+          await searchingMsg.edit(
+            finalMsg
+          );
         }
 
       } catch (err) {
