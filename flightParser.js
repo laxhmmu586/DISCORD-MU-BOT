@@ -116,8 +116,11 @@ function getLounge(pax) {
 // ===============================
 function parseTimestamp(block) {
 
+  // Example:
+  // 2026 May 10, Sunday, 09:17:59
+
   const match = block.match(
-    /(\d{4}\s+[A-Z][a-z]{2}\s+\d{2},\s+[A-Z][a-z]+,\s+\d{2}:\d{2}:\d{2})/
+    /(\d{4}\s+[A-Z][a-z]{2}\s+\d{1,2},\s+[A-Z][a-z]+,\s+\d{2}:\d{2}:\d{2})/
   );
 
   if (!match) {
@@ -155,13 +158,27 @@ function parseFlightInfo(block) {
 // ===============================
 function parsePassenger(block) {
 
+  // Flexible parser
+
   const match = block.match(
-    /1\.\s+([A-Z]+\/[A-Z]+)\s+BN(\d+)\s+\*?(\d+[A-Z])\s+([A-Z])\s+PVG/
+    /1\.\s+([A-Z]+\/[A-Z]+).*?BN(\d+)/s
   );
 
   if (!match) {
     return null;
   }
+
+  // Seat
+  const seatMatch =
+    block.match(
+      /BN\d+\s+\*?(\d+[A-Z])/
+    );
+
+  // Booking Class
+  const bookingClassMatch =
+    block.match(
+      /BN\d+\s+\*?\d+[A-Z]\s+([A-Z])/
+    );
 
   return {
 
@@ -172,13 +189,17 @@ function parsePassenger(block) {
       match[2],
 
     seat:
-      match[3],
+      seatMatch
+        ? seatMatch[1]
+        : 'NONE',
 
     bookingClass:
-      match[4],
+      bookingClassMatch
+        ? bookingClassMatch[1]
+        : 'UNKNOWN',
 
     boarded:
-      block.includes('*' + match[3])
+      block.includes('*')
   };
 }
 
@@ -327,7 +348,7 @@ function parseIncrementalLog(log) {
   // ===========================
   const blocks =
     log.match(
-      /\d{4}\s+[A-Z][a-z]{2}\s+\d{2},[\s\S]*?(?=\d{4}\s+[A-Z][a-z]{2}\s+\d{2},|$)/g
+      /\d{4}\s+[A-Z][a-z]{2}\s+\d{1,2},\s+[A-Z][a-z]+,\s+\d{2}:\d{2}:\d{2}[\s\S]*?(?=\d{4}\s+[A-Z][a-z]{2}\s+\d{1,2},\s+[A-Z][a-z]+,\s+\d{2}:\d{2}:\d{2}|$)/g
     ) || [];
 
   for (const rawBlock of blocks) {

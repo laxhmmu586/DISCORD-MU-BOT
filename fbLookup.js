@@ -48,43 +48,97 @@ function getFFStatus(pax) {
 }
 
 // ===============================
-// Format Passenger
+// Create Embed
 // ===============================
-function formatPassenger(pax) {
+function createPassengerEmbed(pax) {
 
   if (!pax) {
-    return 'Passenger not found.';
+
+    return {
+
+      title:
+        'Passenger Not Found',
+
+      description:
+        'No matching passenger record found.',
+
+      color:
+        0xff0000
+    };
   }
 
-  return `
-${pax.flight}/${pax.flightDate}
+  return {
 
-${pax.name}
-BN${pax.bn} | ${pax.seat}
+    color:
+      pax.lounge?.eligible
+        ? 0x00cc99
+        : 0xff9900,
 
-FF:
-${pax.ffCarrier || ''} ${pax.ffNumber || 'NONE'}
-${getFFStatus(pax)}
+    title:
+      `${pax.flight}/${pax.flightDate}`,
 
-TKT:
-${pax.ticketNumber || 'NONE'}
+    description:
+      `👤 ${pax.name}\n🎫 BN${pax.bn} | ${pax.seat}`,
 
-BAG:
-${pax.bagtags?.length
-  ? pax.bagtags.join('\n')
-  : 'NONE'
-}
+    fields: [
 
-LOUNGE GUEST:
-${pax.lounge?.eligible
-  ? (
-      pax.lounge?.guest
-      ? '✅ Allowed'
-      : '❌ Not Allowed'
-    )
-  : '❌ Not Allowed'
-}
-`;
+      {
+
+        name: '💳 FF',
+
+        value:
+`${pax.ffCarrier || 'NONE'} ${pax.ffNumber || ''}
+${getFFStatus(pax)}`,
+
+        inline: true
+      },
+
+      {
+
+        name: '🎟 Ticket',
+
+        value:
+          pax.ticketNumber || 'NONE',
+
+        inline: true
+      },
+
+      {
+
+        name: '🧳 Bags',
+
+        value:
+          pax.bagtags?.length
+            ? pax.bagtags.join('\n')
+            : 'NONE',
+
+        inline: false
+      },
+
+      {
+
+        name: '🛋 Lounge Guest',
+
+        value:
+          pax.lounge?.eligible
+            ? (
+                pax.lounge?.guest
+                ? '✅ Allowed'
+                : '❌ Not Allowed'
+              )
+            : '❌ Not Allowed',
+
+        inline: false
+      }
+
+    ],
+
+    footer: {
+
+      text:
+        'China Eastern Flight Control'
+    }
+  };
 }
 
 // ===============================
@@ -133,17 +187,26 @@ module.exports = function(client) {
           text.startsWith('FB')
         ) {
 
-          const bn =
+          const rawBn =
             text
               .replace('FB', '')
               .trim();
 
+          const bn =
+            rawBn.padStart(3, '0');
+
           const pax =
             passengers[bn];
 
-          return message.reply(
-            formatPassenger(pax)
-          );
+          return message.reply({
+
+            embeds: [
+
+              createPassengerEmbed(pax)
+
+            ]
+
+          });
         }
 
         // ===========================
@@ -161,9 +224,15 @@ module.exports = function(client) {
           const pax =
             findBySeat(seat);
 
-          return message.reply(
-            formatPassenger(pax)
-          );
+          return message.reply({
+
+            embeds: [
+
+              createPassengerEmbed(pax)
+
+            ]
+
+          });
         }
 
         // ===========================
@@ -181,9 +250,15 @@ module.exports = function(client) {
           const pax =
             findByName(name);
 
-          return message.reply(
-            formatPassenger(pax)
-          );
+          return message.reply({
+
+            embeds: [
+
+              createPassengerEmbed(pax)
+
+            ]
+
+          });
         }
 
         // ===========================
@@ -214,17 +289,73 @@ module.exports = function(client) {
               p => p.ffTier === 'G'
             ).length;
 
-          return message.reply(`
-${paxList[0]?.flight || 'MU586'}/${paxList[0]?.flightDate || 'UNKNOWN'}
+          return message.reply({
 
-TOTAL: ${total}
+            embeds: [
 
-LOUNGE: ${lounge}
+              {
 
-PLATINUM: ${platinum}
+                color:
+                  0x0099ff,
 
-GOLD: ${gold}
-`);
+                title:
+                  `${paxList[0]?.flight || 'MU586'}/${paxList[0]?.flightDate || 'UNKNOWN'}`,
+
+                fields: [
+
+                  {
+
+                    name: '👥 Total',
+
+                    value:
+                      String(total),
+
+                    inline: true
+                  },
+
+                  {
+
+                    name: '🛋 Lounge',
+
+                    value:
+                      String(lounge),
+
+                    inline: true
+                  },
+
+                  {
+
+                    name: '💎 Platinum',
+
+                    value:
+                      String(platinum),
+
+                    inline: true
+                  },
+
+                  {
+
+                    name: '🥇 Gold',
+
+                    value:
+                      String(gold),
+
+                    inline: true
+                  }
+
+                ],
+
+                footer: {
+
+                  text:
+                    'China Eastern Flight Control'
+                }
+
+              }
+
+            ]
+
+          });
         }
 
       } catch (err) {
