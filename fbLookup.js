@@ -207,15 +207,15 @@ function getEliteName(elite) {
 
 function extractBagTags(block) {
 
-  const bagMatches = [
-    ...block.matchAll(
-      /BAGTAG\/([0-9]+)\/[A-Z]{3}/g
-    )
-  ];
-
-  return bagMatches.map(
-    b => b[1]
+  const bagLineMatch = block.match(
+    /BAGTAG\/([^\n\r]+)/i
   );
+
+  if (!bagLineMatch) {
+    return null;
+  }
+
+  return `BAGTAG/${bagLineMatch[1].trim()}`;
 }
 
 // =====================================
@@ -420,21 +420,11 @@ module.exports = (client) => {
           }
 
           // Bag Tags
-          if (
-            result.bagTags &&
-            result.bagTags.length
-          ) {
+          if (result.bagTags) {
 
-            finalMsg += '\n🧳 Bag Tags:\n';
+            finalMsg +=
+`\n🧳 ${result.bagTags}\n`;
 
-            result.bagTags.forEach(
-              tag => {
-
-                finalMsg +=
-                  `• ${tag}\n`;
-
-              }
-            );
           }
 
           // =====================================
