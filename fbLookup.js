@@ -66,14 +66,14 @@ ${pax.bagtags?.length
   : 'NONE'
 }
 
-LOUNGE:
+LOUNGE GUEST:
 ${pax.lounge?.eligible
   ? (
       pax.lounge?.guest
-      ? '✅ Guest Allowed'
-      : '✅ Eligible'
+      ? '✅ Allowed'
+      : '❌ Not Allowed'
     )
-  : '❌ Not Eligible'
+  : '❌ Not Allowed'
 }
 `;
 }
