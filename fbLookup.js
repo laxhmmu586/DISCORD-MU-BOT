@@ -172,16 +172,16 @@ function getTierName(tier) {
   switch (tier) {
 
     case 'V':
-      return '白金';
+      return 'Platinum';
 
     case 'G':
-      return '金卡';
+      return 'Gold';
 
     case 'S':
-      return '银卡';
+      return 'Silver';
 
     case 'C':
-      return '普通会员';
+      return 'Regular';
 
     default:
       return null;
@@ -494,7 +494,7 @@ module.exports = (client) => {
           if (result.noFF) {
 
             finalMsg +=
-`\n⚠️ 没有会员号`;
+`\n⚠️ No Memebership Number`;
 
             return searchingMsg.edit(
               finalMsg
