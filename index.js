@@ -25,7 +25,7 @@ app.post('/send', async (req, res) => {
 
   try {
 
-    const channel = await client.channels.fetch(process.env.CHANNEL_ID);
+    const channel = await client.channels.fetch(req.body.channelId);
 
     await channel.send(req.body.message);
 
