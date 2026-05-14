@@ -1,4 +1,4 @@
-```js id="8j6y4v"
+
 module.exports = (client) => {
 
   client.on('messageCreate', async (message) => {
