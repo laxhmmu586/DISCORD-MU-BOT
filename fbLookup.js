@@ -1,4 +1,4 @@
-```js
+```js id="0jgjbc"
 module.exports = (client) => {
 
   client.on('messageCreate', async (message) => {
@@ -26,7 +26,10 @@ module.exports = (client) => {
 Available Commands:
 
 FB 12345
+
 FF MU620500126907
+MU620500126907
+
 BT 7811234567
         `);
 
@@ -34,33 +37,13 @@ BT 7811234567
       }
 
       // ===============================
-      // Match Commands
+      // FB Lookup
       // ===============================
 
-      // FB12345
-      // FB 12345
       const fbMatch =
         content.match(
           /^FB\s*(\d+)$/i
         );
-
-      // FF MU620500126907
-      // FF/MU620500126907
-      const ffMatch =
-        content.match(
-          /^FF[\/\s]*([A-Z]{2}\d+)$/i
-        );
-
-      // BT1234567
-      // BT 1234567
-      const btMatch =
-        content.match(
-          /^BT\s*(\d+)$/i
-        );
-
-      // ===============================
-      // FB Lookup
-      // ===============================
 
       if (fbMatch) {
 
@@ -73,34 +56,7 @@ BT 7811234567
 
         // ===================================
         // TODO:
-        // Put FB lookup logic here
-        // ===================================
-
-        return;
-      }
-
-      // ===============================
-      // FF Lookup
-      // ===============================
-
-      if (ffMatch) {
-
-        const ffNumber =
-          ffMatch[1].toUpperCase();
-
-        // Convert to system format
-        const ffCommand =
-          `FF/${ffNumber}`;
-
-        await message.reply(
-          `🛫 Searching Frequent Flyer: ${ffCommand}`
-        );
-
-        // ===================================
-        // TODO:
-        // Put FF lookup logic here
-        // Example:
-        // FF/MU620500126907
+        // FB lookup logic
         // ===================================
 
         return;
@@ -109,6 +65,11 @@ BT 7811234567
       // ===============================
       // BT Lookup
       // ===============================
+
+      const btMatch =
+        content.match(
+          /^BT\s*(\d+)$/i
+        );
 
       if (btMatch) {
 
@@ -121,7 +82,98 @@ BT 7811234567
 
         // ===================================
         // TODO:
-        // Put Bag Tag lookup logic here
+        // BT lookup logic
+        // ===================================
+
+        return;
+      }
+
+      // ===============================
+      // FF Lookup
+      // ===============================
+
+      // Supports:
+      //
+      // FF MU620500126907
+      // FF/MU620500126907
+      // MU620500126907
+      // MU 620500126907
+      //
+      // eTerm:
+      // FF/MU 620500126907/S/*1 PSPT
+      //
+      // Full pasted records
+
+      let ffResult = null;
+
+      // ===================================
+      // 1. eTerm Style Scan
+      // ===================================
+
+      const ffEtermMatch =
+        content.match(
+          /FF\/([A-Z]{2})\s*(\d+)/i
+        );
+
+      if (ffEtermMatch) {
+
+        ffResult = {
+
+          airline:
+            ffEtermMatch[1]
+              .toUpperCase(),
+
+          number:
+            ffEtermMatch[2]
+
+        };
+
+      }
+
+      // ===================================
+      // 2. Simple FF Input
+      // ===================================
+
+      if (!ffResult) {
+
+        const ffSimpleMatch =
+          content.match(
+            /^(?:FF[\/\s]*)?([A-Z]{2})\s*(\d+)$/i
+          );
+
+        if (ffSimpleMatch) {
+
+          ffResult = {
+
+            airline:
+              ffSimpleMatch[1]
+                .toUpperCase(),
+
+            number:
+              ffSimpleMatch[2]
+
+          };
+
+        }
+
+      }
+
+      // ===================================
+      // 3. Process FF
+      // ===================================
+
+      if (ffResult) {
+
+        const ffCommand =
+          `FF/${ffResult.airline}${ffResult.number}`;
+
+        await message.reply(
+          `🛫 Searching Frequent Flyer: ${ffCommand}`
+        );
+
+        // ===================================
+        // TODO:
+        // FF lookup logic
         // ===================================
 
         return;
