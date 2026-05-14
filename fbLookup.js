@@ -1,178 +1,91 @@
-
 module.exports = (client) => {
 
-  client.on('messageCreate', async (message) => {
+client.on('messageCreate', async (message) => {
 
-    try {
+```
+try {
 
-      // Ignore bots
-      if (message.author.bot) return;
+  // Ignore bots
+  if (message.author.bot) return;
 
-      const content =
-        message.content.trim();
+  const content = message.content.trim();
 
-      // ===============================
-      // HELP
-      // ===============================
+  // ===============================
+  // HELP
+  // ===============================
 
-      if (
-        content.toLowerCase() === 'help'
-      ) {
+  if (content.toLowerCase() === 'help') {
 
-        await message.reply(
-          'Available Commands:\n\n' +
-          'FB 032\n' +
-          'BT 7811234567'
-        );
+    await message.reply(
+      'Available Commands:\n\n' +
+      'FB 032\n' +
+      'BT 7811234567'
+    );
 
-        return;
-      }
+    return;
+  }
 
-      // ===============================
-      // FB Lookup
-      // ===============================
+  // ===============================
+  // FB Lookup
+  // ===============================
 
-      const fbMatch =
-        content.match(
-          /^FB\s*(\d+)$/i
-        );
+  const fbMatch = content.match(
+    /^FB\s*(\d+)$/i
+  );
 
-      if (fbMatch) {
+  if (fbMatch) {
 
-        const fbNumber =
-          fbMatch[1];
+    const fbNumber = fbMatch[1];
 
-        await message.reply(
-          'Searching FB: ' +
-          fbNumber
-        );
+    await message.reply(
+      'Searching FB: ' + fbNumber
+    );
 
-        // ===================================
-        // TODO:
-        // FB lookup logic
-        // ===================================
+    return;
+  }
 
-        return;
-      }
+  // ===============================
+  // BT Lookup
+  // ===============================
 
-      // ===============================
-      // BT Lookup
-      // ===============================
+  const btMatch = content.match(
+    /^BT\s*(\d+)$/i
+  );
 
-      const btMatch =
-        content.match(
-          /^BT\s*(\d+)$/i
-        );
+  if (btMatch) {
 
-      if (btMatch) {
+    const btNumber = btMatch[1];
 
-        const btNumber =
-          btMatch[1];
+    await message.reply(
+      'Searching Bag Tag: ' + btNumber
+    );
 
-        await message.reply(
-          'Searching Bag Tag: ' +
-          btNumber
-        );
+    return;
+  }
 
-        // ===================================
-        // TODO:
-        // BT lookup logic
-        // ===================================
+  // ===============================
+  // Passenger Block Parser
+  // ===============================
 
-        return;
-      }
+  const lines = content.split('\n');
 
-      // ===============================
-      // Passenger Block Parser
-      // ===============================
+  let passengers = [];
 
-      const lines =
-        content.split('\n');
+  let currentPassenger = null;
 
-      let passengers = [];
+  for (const line of lines) {
 
-      let currentPassenger = null;
+    // Detect Passenger Start
+    // Example:
+    // 12. 1WEI/WEI
 
-      for (const line of lines) {
+    const paxMatch = line.match(
+      /^\d+\.\s+(\d[A-Z]+\/[A-Z]+)/i
+    );
 
-        // ===================================
-        // Detect Passenger Start
-        // Example:
-        // 12. 1WEI/WEI
-        // ===================================
+    if (paxMatch) {
 
-        const paxMatch =
-          line.match(
-            /^\d+\.\s+(\d[A-Z]+\/[A-Z]+)/i
-          );
-
-        if (paxMatch) {
-
-          // Save previous passenger
-
-          if (currentPassenger) {
-
-            passengers.push(
-              currentPassenger
-            );
-
-          }
-
-          // Create new passenger
-
-          currentPassenger = {
-
-            name:
-              paxMatch[1],
-
-            ff: null,
-
-            lines: [line]
-
-          };
-
-          continue;
-        }
-
-        // ===================================
-        // Append lines
-        // ===================================
-
-        if (currentPassenger) {
-
-          currentPassenger.lines.push(
-            line
-          );
-
-          // ===================================
-          // FF belongs ONLY to this passenger
-          // ===================================
-
-          const ffMatch =
-            line.match(
-              /FF\/([A-Z]{2})\s*(\d+)/i
-            );
-
-          if (ffMatch) {
-
-            currentPassenger.ff = {
-
-              airline:
-                ffMatch[1]
-                  .toUpperCase(),
-
-              number:
-                ffMatch[2]
-
-            };
-
-          }
-
-        }
-
-      }
-
-      // Push last passenger
+      // Save previous passenger
 
       if (currentPassenger) {
 
@@ -182,31 +95,84 @@ module.exports = (client) => {
 
       }
 
-      // ===================================
-      // Debug Output
-      // ===================================
+      // Create new passenger
 
-      if (
-        passengers.length > 0
-      ) {
+      currentPassenger = {
 
-        console.log(
-          'Passenger Blocks:',
-          passengers
-        );
+        name: paxMatch[1],
+
+        ff: null,
+
+        lines: [line]
+
+      };
+
+      continue;
+    }
+
+    // Append lines
+
+    if (currentPassenger) {
+
+      currentPassenger.lines.push(
+        line
+      );
+
+      // FF belongs only to this passenger
+
+      const ffMatch = line.match(
+        /FF\/([A-Z]{2})\s*(\d+)/i
+      );
+
+      if (ffMatch) {
+
+        currentPassenger.ff = {
+
+          airline:
+            ffMatch[1].toUpperCase(),
+
+          number:
+            ffMatch[2]
+
+        };
 
       }
 
-    } catch (err) {
-
-      console.error(
-        'Lookup Error:',
-        err
-      );
-
     }
 
-  });
+  }
+
+  // Push last passenger
+
+  if (currentPassenger) {
+
+    passengers.push(
+      currentPassenger
+    );
+
+  }
+
+  // Debug output
+
+  if (passengers.length > 0) {
+
+    console.log(
+      'Passenger Blocks:',
+      passengers
+    );
+
+  }
+
+} catch (err) {
+
+  console.error(
+    'Lookup Error:',
+    err
+  );
+
+}
+```
+
+});
 
 };
-```
