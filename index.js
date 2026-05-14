@@ -18,7 +18,15 @@ app.use(express.json({
 // ===============================
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds]
+  intents: [
+
+    GatewayIntentBits.Guilds,
+
+    GatewayIntentBits.GuildMessages,
+
+    GatewayIntentBits.MessageContent
+
+  ]
 });
 
 // ===============================
@@ -32,6 +40,12 @@ client.once('clientReady', () => {
   );
 
 });
+
+// ===============================
+// FB Lookup
+// ===============================
+
+require('./fbLookup')(client);
 
 // ===============================
 // Login
