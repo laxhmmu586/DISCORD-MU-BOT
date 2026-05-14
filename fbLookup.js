@@ -17,7 +17,6 @@ const FILE_NAME =
 
 function getGoogleAuth() {
 
-  // Railway Variable
   const raw =
     process.env.GOOGLE_CREDENTIALS;
 
@@ -234,10 +233,13 @@ async function lookupPassenger(bn) {
 
   const block = match[0];
 
+  // =====================================
   // Name + Seat
+  // =====================================
+
   const nameSeatMatch = block.match(
 
-    /1\.\s+([A-Z\/]+).*?BN\d+\s+(\d+[A-Z])/i
+    /1\.\s+([A-Z\/]+)[\s\S]*?BN\d+\s+(\d+[A-Z])/i
 
   );
 
@@ -247,7 +249,10 @@ async function lookupPassenger(bn) {
   const seat =
     nameSeatMatch?.[2] || 'UNKNOWN';
 
+  // =====================================
   // FF Info
+  // =====================================
+
   const ffMatch = block.match(
 
     /FF\/MU\s+(\d+)\/([VGS])\/\*(\d)/i
