@@ -2,11 +2,19 @@ const {
 
   passengers,
 
+  parseIncrementalLog,
+
   findBySeat,
 
   findByName
 
 } = require('./flightParser');
+
+const {
+
+  getLatestFlightLog
+
+} = require('./googleDrive');
 
 // ===============================
 // FF Status
@@ -15,6 +23,11 @@ function getFFStatus(pax) {
 
   if (!pax.ffTier) {
     return 'NONE';
+  }
+
+  // Regular Member
+  if (pax.ffTier === 'C') {
+    return 'Regular / C';
   }
 
   let tier = '';
@@ -29,10 +42,6 @@ function getFFStatus(pax) {
 
   else if (pax.ffTier === 'S') {
     tier = 'Silver';
-  }
-
-  else if (pax.ffTier === 'C') {
-    tier = 'Classic';
   }
 
   return `${tier} /*${pax.elite}`;
@@ -100,10 +109,25 @@ module.exports = function(client) {
             .toUpperCase();
 
         // ===========================
-        // FB QUERY
+        // Download Latest Log
         // ===========================
-        // FB121
-        // FB 121
+        const log =
+          await getLatestFlightLog();
+
+        if (!log) {
+
+          return message.reply(
+            'Unable to load Flight Control.log'
+          );
+        }
+
+        // ===========================
+        // Parse Latest Log
+        // ===========================
+        parseIncrementalLog(log);
+
+        // ===========================
+        // FB QUERY
         // ===========================
         if (
           text.startsWith('FB')
@@ -125,9 +149,6 @@ module.exports = function(client) {
         // ===========================
         // FSN QUERY
         // ===========================
-        // FSN11D
-        // FSN 11D
-        // ===========================
         if (
           text.startsWith('FSN')
         ) {
@@ -147,9 +168,6 @@ module.exports = function(client) {
 
         // ===========================
         // RN QUERY
-        // ===========================
-        // RNYOU/RUOJ
-        // RN YOU/RUOJ
         // ===========================
         if (
           text.startsWith('RN')
