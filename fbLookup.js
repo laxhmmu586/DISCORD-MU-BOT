@@ -202,6 +202,23 @@ function getEliteName(elite) {
 }
 
 // =====================================
+// Extract Bag Tags
+// =====================================
+
+function extractBagTags(block) {
+
+  const bagMatches = [
+    ...block.matchAll(
+      /BAGTAG\/([0-9]+)\/[A-Z]{3}/g
+    )
+  ];
+
+  return bagMatches.map(
+    b => b[1]
+  );
+}
+
+// =====================================
 // Lookup Passenger
 // =====================================
 
@@ -216,8 +233,30 @@ async function lookupPassenger(bn) {
     'utf8'
   );
 
+  // =====================================
+  // Split Records By Timestamp
+  // =====================================
+
+  const records = data.split(
+
+    /\d{4}\s+[A-Z][a-z]{2}\s+\d{1,2},\s+[A-Z][a-z]+,\s+\d{2}:\d{2}:\d{2}/g
+
+  );
+
+  // Find Correct Record
+  const block = records.find(
+    r => r.includes(`BN${bn}`)
+  );
+
+  if (!block) {
+    return null;
+  }
+
+  // =====================================
   // Flight Info
-  const flightMatch = data.match(
+  // =====================================
+
+  const flightMatch = block.match(
     /PR:\s+(MU\d+)\/(\d{2}[A-Z]{3})/i
   );
 
@@ -226,22 +265,6 @@ async function lookupPassenger(bn) {
 
   const flightDate =
     flightMatch?.[2] || '';
-
-  // Search passenger block
-  const regex = new RegExp(
-
-    `BN${bn}[\\s\\S]{0,3000}?FF\\/MU[\\s\\S]{0,500}`,
-
-    'i'
-  );
-
-  const match = data.match(regex);
-
-  if (!match) {
-    return null;
-  }
-
-  const block = match[0];
 
   // =====================================
   // Name + Seat
@@ -258,6 +281,13 @@ async function lookupPassenger(bn) {
 
   const seat =
     nameSeatMatch?.[2] || '';
+
+  // =====================================
+  // Bag Tags
+  // =====================================
+
+  const bagTags =
+    extractBagTags(block);
 
   // =====================================
   // FF Info
@@ -278,6 +308,7 @@ async function lookupPassenger(bn) {
       flightDate,
       name,
       seat,
+      bagTags,
       noFF: true
 
     };
@@ -303,6 +334,7 @@ async function lookupPassenger(bn) {
     flightDate,
     name,
     seat,
+    bagTags,
     memberNo,
     tier,
     elite,
@@ -357,48 +389,9 @@ module.exports = (client) => {
             );
           }
 
-          // No FF
-          if (result.noFF) {
-
-            let msg = '';
-
-            if (
-              result.flightNo ||
-              result.flightDate
-            ) {
-
-              msg +=
-`✈️ ${result.flightNo} / ${result.flightDate}
-
-`;
-            }
-
-            if (result.name) {
-              msg += `👤 ${result.name}\n`;
-            }
-
-            if (result.seat) {
-              msg += `💺 Seat: ${result.seat}\n`;
-            }
-
-            msg += `
-⚠️ 没有会员号`;
-
-            return searchingMsg.edit(msg);
-          }
-
-          const tierName =
-            getTierName(result.tier);
-
-          const eliteName =
-            getEliteName(
-              result.elite
-            );
-
-          const statusText =
-            result.allowed
-              ? '🟢 Guest Allowed'
-              : '🔴 Guest NOT Allowed';
+          // =====================================
+          // Build Message
+          // =====================================
 
           let finalMsg = '';
 
@@ -426,10 +419,55 @@ module.exports = (client) => {
               `💺 Seat: ${result.seat}\n`;
           }
 
+          // Bag Tags
+          if (
+            result.bagTags &&
+            result.bagTags.length
+          ) {
+
+            finalMsg += '\n🧳 Bag Tags:\n';
+
+            result.bagTags.forEach(
+              tag => {
+
+                finalMsg +=
+                  `• ${tag}\n`;
+
+              }
+            );
+          }
+
+          // =====================================
+          // No FF
+          // =====================================
+
+          if (result.noFF) {
+
+            finalMsg +=
+`\n⚠️ 没有会员号`;
+
+            return searchingMsg.edit(
+              finalMsg
+            );
+          }
+
+          const tierName =
+            getTierName(result.tier);
+
+          const eliteName =
+            getEliteName(
+              result.elite
+            );
+
+          const statusText =
+            result.allowed
+              ? '🟢 Guest Allowed'
+              : '🔴 Guest NOT Allowed';
+
           // Tier
           if (tierName) {
             finalMsg +=
-              `🎖 ${tierName}\n`;
+`\n🎖 ${tierName}\n`;
           }
 
           // Elite
@@ -450,6 +488,7 @@ module.exports = (client) => {
           await searchingMsg.edit(
             finalMsg
           );
+
         }
 
       } catch (err) {
