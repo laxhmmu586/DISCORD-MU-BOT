@@ -48,7 +48,7 @@ function formatPassenger(pax) {
   }
 
   return `
-MU586/08MAY
+${pax.flight}/${pax.flightDate}
 
 ${pax.name}
 BN${pax.bn} | ${pax.seat}
@@ -197,7 +197,7 @@ module.exports = function(client) {
             ).length;
 
           return message.reply(`
-MU586 STATS
+${paxList[0]?.flight || 'MU586'}/${paxList[0]?.flightDate || 'UNKNOWN'}
 
 TOTAL: ${total}
 
