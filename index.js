@@ -1,5 +1,7 @@
 require('dotenv').config();
 
+const fs = require('fs');
+
 const express = require('express');
 
 const {
@@ -45,6 +47,32 @@ client.once('ready', () => {
     'Logged in as ' +
     client.user.tag
   );
+
+  // ===========================
+  // Load Flight Control Log
+  // ===========================
+  try {
+
+    const data =
+      fs.readFileSync(
+        './Flight Control.log',
+        'utf8'
+      );
+
+    parseIncrementalLog(data);
+
+    console.log(
+      'Flight control log loaded'
+    );
+
+  } catch (err) {
+
+    console.error(
+      'Failed to load Flight Control.log'
+    );
+
+    console.error(err);
+  }
 
 });
 
@@ -159,7 +187,7 @@ app.post('/send', async (req, res) => {
 });
 
 // ===============================
-// Flight Control Log API
+// Flight Log API
 // ===============================
 
 app.post('/flight-log', async (req, res) => {
