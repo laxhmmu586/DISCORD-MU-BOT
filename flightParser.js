@@ -279,7 +279,11 @@ function parseIncrementalLog(log) {
       /\d{4}\s+[A-Z][a-z]{2}\s+\d{2},/
     );
 
-  for (const block of blocks) {
+  for (const rawBlock of blocks) {
+
+    // Normalize uppercase
+    const block =
+      rawBlock.toUpperCase();
 
     // Must be FB query
     if (
