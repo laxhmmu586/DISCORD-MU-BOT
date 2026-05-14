@@ -18,6 +18,7 @@ limit: '50mb'
 // ===============================
 
 const client = new Client({
+
 intents: [
 
 ```
@@ -29,6 +30,7 @@ GatewayIntentBits.MessageContent
 ```
 
 ]
+
 });
 
 // ===============================
@@ -45,11 +47,11 @@ client.user.tag
 });
 
 // ===============================
-// Load FB Lookup
+// Load fbLookup
 // ===============================
 
 console.log(
-'Loading fbLookup.js...'
+'Loading fbLookup.js'
 );
 
 require('./fbLookup')(client);
@@ -62,7 +64,9 @@ console.log(
 // Login
 // ===============================
 
-client.login(process.env.BOT_TOKEN);
+client.login(
+process.env.BOT_TOKEN
+);
 
 // ===============================
 // Health Check
@@ -70,12 +74,14 @@ client.login(process.env.BOT_TOKEN);
 
 app.get('/', (req, res) => {
 
-res.send('Discord Bot Running');
+res.send(
+'Discord Bot Running'
+);
 
 });
 
 // ===============================
-// Send Discord Message
+// Send Discord Message API
 // ===============================
 
 app.post('/send', async (req, res) => {
@@ -95,7 +101,9 @@ if (!channelId) {
 
   return res
     .status(400)
-    .send('Missing channelId');
+    .send(
+      'Missing channelId'
+    );
 
 }
 
@@ -110,7 +118,9 @@ if (!channel) {
 
   return res
     .status(404)
-    .send('Channel not found');
+    .send(
+      'Channel not found'
+    );
 
 }
 
@@ -118,9 +128,11 @@ if (!channel) {
 
 await channel.send({
 
-  content: message || '',
+  content:
+    message || '',
 
-  embeds: embeds || []
+  embeds:
+    embeds || []
 
 });
 
@@ -139,7 +151,9 @@ console.error(err);
 
 res
   .status(500)
-  .send(err.toString());
+  .send(
+    err.toString()
+  );
 ```
 
 }
