@@ -1,214 +1,503 @@
-const {
+const passengers = {};
+
+// ===============================
+// Cabin Logic
+// ===============================
+function getCabin(seat) {
+
+  if (!seat) {
+    return "Unknown";
+  }
+
+  const row =
+    parseInt(seat);
+
+  // First
+  if (row >= 1 && row <= 2) {
+    return "First";
+  }
+
+  // Business
+  if (row >= 6 && row <= 20) {
+    return "Business";
+  }
+
+  // Economy
+  if (
+    (row >= 31 && row <= 44) ||
+    (row >= 61 && row <= 74)
+  ) {
+    return "Economy";
+  }
+
+  return "Unknown";
+}
+
+// ===============================
+// Lounge Logic
+// ===============================
+function getLounge(pax) {
+
+  // Platinum Elite+
+  if (
+    pax.ffTier === "V" &&
+    pax.elite === 2
+  ) {
+
+    return {
+      eligible: true,
+      guest: true
+    };
+  }
+
+  // Gold Elite+ Business
+  if (
+    pax.ffTier === "G" &&
+    pax.elite === 2 &&
+    pax.cabin === "Business"
+  ) {
+
+    return {
+      eligible: true,
+      guest: true
+    };
+  }
+
+  // First Class
+  if (pax.cabin === "First") {
+
+    return {
+      eligible: true,
+      guest: false
+    };
+  }
+
+  // Business Class
+  if (pax.cabin === "Business") {
+
+    return {
+      eligible: true,
+      guest: false
+    };
+  }
+
+  // Gold Elite+
+  if (
+    pax.ffTier === "G" &&
+    pax.elite === 2
+  ) {
+
+    return {
+      eligible: true,
+      guest: false
+    };
+  }
+
+  // Silver Elite+
+  if (
+    pax.ffTier === "S" &&
+    pax.elite === 2
+  ) {
+
+    return {
+      eligible: true,
+      guest: false
+    };
+  }
+
+  return {
+    eligible: false,
+    guest: false
+  };
+}
+
+// ===============================
+// Parse Timestamp
+// ===============================
+function parseTimestamp(block) {
+
+  // Example:
+  // 2026 May 09, Saturday, 11:51:24
+
+  const match = block.match(
+    /(\d{4}\s+[A-Z][a-z]{2}\s+\d{2},\s+[A-Z][a-z]+,\s+\d{2}:\d{2}:\d{2})/
+  );
+
+  if (!match) {
+    return null;
+  }
+
+  return new Date(match[1]);
+}
+
+// ===============================
+// Parse Flight Info
+// ===============================
+function parseFlightInfo(block) {
+
+  const match = block.match(
+    /PR:\s+([A-Z0-9]+)\/(\d{2}[A-Z]{3})\d{2}/
+  );
+
+  if (!match) {
+    return null;
+  }
+
+  return {
+
+    flight:
+      match[1],
+
+    date:
+      match[2]
+  };
+}
+
+// ===============================
+// Parse Passenger
+// ===============================
+function parsePassenger(block) {
+
+  const match = block.match(
+    /1\.\s+([A-Z]+\/[A-Z]+)\s+BN(\d+)\s+\*?(\d+[A-Z])\s+([A-Z])\s+PVG/
+  );
+
+  if (!match) {
+    return null;
+  }
+
+  return {
+
+    name:
+      match[1],
+
+    bn:
+      match[2],
+
+    seat:
+      match[3],
+
+    bookingClass:
+      match[4],
+
+    boarded:
+      block.includes('*' + match[3])
+  };
+}
+
+// ===============================
+// Parse FF
+// ===============================
+function parseFF(block) {
+
+  // Elite Format
+  let match = block.match(
+    /FF\/([A-Z0-9]+)\s+(\d+)\/([VGSC])\/\*(\d)/
+  );
+
+  if (match) {
+
+    return {
+
+      carrier:
+        match[1],
+
+      number:
+        match[2],
+
+      tier:
+        match[3],
+
+      elite:
+        parseInt(match[4])
+    };
+  }
+
+  // Regular Format
+  match = block.match(
+    /FF\/([A-Z0-9]+)\s+(\d+)\/([VGSC])/
+  );
+
+  if (match) {
+
+    return {
+
+      carrier:
+        match[1],
+
+      number:
+        match[2],
+
+      tier:
+        match[3],
+
+      elite:
+        0
+    };
+  }
+
+  return null;
+}
+
+// ===============================
+// Parse Ticket
+// ===============================
+function parseTicket(block) {
+
+  const match = block.match(
+    /TKNE\/(\d+)/
+  );
+
+  if (!match) {
+    return null;
+  }
+
+  return match[1];
+}
+
+// ===============================
+// Parse Bagtags
+// ===============================
+function parseBags(block) {
+
+  const bagLine =
+    block.match(
+      /BAGTAG\/([^\n\r]+)/
+    );
+
+  if (!bagLine) {
+    return [];
+  }
+
+  const matches =
+    [...bagLine[1].matchAll(
+      /(\d+\/[A-Z]{3})/g
+    )];
+
+  return matches.map(
+    m => m[1]
+  );
+}
+
+// ===============================
+// Parse Services
+// ===============================
+function parseServices(block) {
+
+  const services = [];
+
+  const codes = [
+
+    "VIP",
+    "AVIH",
+    "BLND",
+    "DEAF",
+    "DEP",
+    "INAD",
+    "PETC",
+    "UM",
+    "STCR",
+    "MAAS",
+    "PPOC"
+
+  ];
+
+  for (const code of codes) {
+
+    if (block.includes(code)) {
+      services.push(code);
+    }
+  }
+
+  return services;
+}
+
+// ===============================
+// Main Parser
+// ===============================
+function parseIncrementalLog(log) {
+
+  // ===========================
+  // Split blocks by timestamp
+  // ===========================
+  const blocks =
+    log.match(
+      /\d{4}\s+[A-Z][a-z]{2}\s+\d{2},[\s\S]*?(?=\d{4}\s+[A-Z][a-z]{2}\s+\d{2},|$)/g
+    ) || [];
+
+  for (const rawBlock of blocks) {
+
+    // Normalize uppercase
+    const block =
+      rawBlock.toUpperCase();
+
+    // Parse timestamp
+    const timestamp =
+      parseTimestamp(rawBlock);
+
+    // Must be FB query
+    if (
+      !block.includes('>FB')
+    ) {
+
+      continue;
+    }
+
+    // Passenger not found
+    if (
+      block.includes('PSGR ID')
+    ) {
+
+      continue;
+    }
+
+    // Parse flight
+    const flightInfo =
+      parseFlightInfo(block);
+
+    // Parse passenger
+    const pax =
+      parsePassenger(block);
+
+    if (!pax) {
+      continue;
+    }
+
+    // ===========================
+    // Keep Latest Record Only
+    // ===========================
+    const existing =
+      passengers[pax.bn];
+
+    if (
+      existing &&
+      existing.updatedAt &&
+      timestamp &&
+      existing.updatedAt > timestamp
+    ) {
+
+      continue;
+    }
+
+    // Parse FF
+    const ff =
+      parseFF(block);
+
+    // Parse Ticket
+    const ticket =
+      parseTicket(block);
+
+    // Parse Bags
+    const bags =
+      parseBags(block);
+
+    // Create Passenger
+    passengers[pax.bn] = {
+
+      flight:
+        flightInfo?.flight || 'UNKNOWN',
+
+      flightDate:
+        flightInfo?.date || 'UNKNOWN',
+
+      name:
+        pax.name,
+
+      bn:
+        pax.bn,
+
+      seat:
+        pax.seat,
+
+      bookingClass:
+        pax.bookingClass,
+
+      boarded:
+        pax.boarded,
+
+      cabin:
+        getCabin(
+          pax.seat
+        ),
+
+      ffCarrier:
+        ff?.carrier || null,
+
+      ffNumber:
+        ff?.number || null,
+
+      ffTier:
+        ff?.tier || null,
+
+      elite:
+        ff?.elite || 0,
+
+      ticketNumber:
+        ticket || null,
+
+      bagtags:
+        bags,
+
+      specialServices:
+        parseServices(block),
+
+      updatedAt:
+        timestamp || new Date()
+    };
+
+    // Lounge
+    passengers[pax.bn].lounge =
+      getLounge(
+        passengers[pax.bn]
+      );
+  }
+
+  console.log(
+    'Passenger count:',
+    Object.keys(passengers).length
+  );
+}
+
+// ===============================
+// Find by Seat
+// ===============================
+function findBySeat(seat) {
+
+  seat =
+    seat.toUpperCase();
+
+  return Object.values(
+    passengers
+  ).find(
+    p => p.seat === seat
+  );
+}
+
+// ===============================
+// Find by Name
+// ===============================
+function findByName(name) {
+
+  name =
+    name.toUpperCase();
+
+  return Object.values(
+    passengers
+  ).find(
+    p => p.name.includes(name)
+  );
+}
+
+// ===============================
+// Exports
+// ===============================
+module.exports = {
 
   passengers,
+
+  parseIncrementalLog,
 
   findBySeat,
 
   findByName
-
-} = require('./flightParser');
-
-// ===============================
-// FF Status
-// ===============================
-function getFFStatus(pax) {
-
-  if (!pax.ffTier) {
-    return 'NONE';
-  }
-
-  // Regular Member
-  if (pax.ffTier === 'C') {
-    return 'Regular / C';
-  }
-
-  let tier = '';
-
-  if (pax.ffTier === 'V') {
-    tier = 'Platinum';
-  }
-
-  else if (pax.ffTier === 'G') {
-    tier = 'Gold';
-  }
-
-  else if (pax.ffTier === 'S') {
-    tier = 'Silver';
-  }
-
-  return `${tier} /*${pax.elite}`;
-}
-
-// ===============================
-// Format Passenger
-// ===============================
-function formatPassenger(pax) {
-
-  if (!pax) {
-    return 'Passenger not found.';
-  }
-
-  return `
-${pax.flight}/${pax.flightDate}
-
-${pax.name}
-BN${pax.bn} | ${pax.seat}
-
-FF:
-${pax.ffCarrier || ''} ${pax.ffNumber || 'NONE'}
-${getFFStatus(pax)}
-
-TKT:
-${pax.ticketNumber || 'NONE'}
-
-BAG:
-${pax.bagtags?.length
-  ? pax.bagtags.join('\n')
-  : 'NONE'
-}
-
-LOUNGE GUEST:
-${pax.lounge?.eligible
-  ? (
-      pax.lounge?.guest
-      ? '✅ Allowed'
-      : '❌ Not Allowed'
-    )
-  : '❌ Not Allowed'
-}
-`;
-}
-
-// ===============================
-// Export
-// ===============================
-module.exports = function(client) {
-
-  client.on(
-    'messageCreate',
-    async (message) => {
-
-      try {
-
-        // Ignore bots
-        if (message.author.bot) {
-          return;
-        }
-
-        const text =
-          message.content
-            .trim()
-            .toUpperCase();
-
-        // ===========================
-        // FB QUERY
-        // ===========================
-        if (
-          text.startsWith('FB')
-        ) {
-
-          const bn =
-            text
-              .replace('FB', '')
-              .trim();
-
-          const pax =
-            passengers[bn];
-
-          return message.reply(
-            formatPassenger(pax)
-          );
-        }
-
-        // ===========================
-        // FSN QUERY
-        // ===========================
-        if (
-          text.startsWith('FSN')
-        ) {
-
-          const seat =
-            text
-              .replace('FSN', '')
-              .trim();
-
-          const pax =
-            findBySeat(seat);
-
-          return message.reply(
-            formatPassenger(pax)
-          );
-        }
-
-        // ===========================
-        // RN QUERY
-        // ===========================
-        if (
-          text.startsWith('RN')
-        ) {
-
-          const name =
-            text
-              .replace('RN', '')
-              .trim();
-
-          const pax =
-            findByName(name);
-
-          return message.reply(
-            formatPassenger(pax)
-          );
-        }
-
-        // ===========================
-        // STATS
-        // ===========================
-        if (
-          text === 'STATS'
-        ) {
-
-          const paxList =
-            Object.values(passengers);
-
-          const total =
-            paxList.length;
-
-          const lounge =
-            paxList.filter(
-              p => p.lounge?.eligible
-            ).length;
-
-          const platinum =
-            paxList.filter(
-              p => p.ffTier === 'V'
-            ).length;
-
-          const gold =
-            paxList.filter(
-              p => p.ffTier === 'G'
-            ).length;
-
-          return message.reply(`
-${paxList[0]?.flight || 'MU586'}/${paxList[0]?.flightDate || 'UNKNOWN'}
-
-TOTAL: ${total}
-
-LOUNGE: ${lounge}
-
-PLATINUM: ${platinum}
-
-GOLD: ${gold}
-`);
-        }
-
-      } catch (err) {
-
-        console.error(err);
-
-        message.reply(
-          'ERROR'
-        );
-      }
-    }
-  );
 };
