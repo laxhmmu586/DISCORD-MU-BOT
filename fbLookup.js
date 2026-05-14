@@ -9,6 +9,34 @@ const {
 } = require('./flightParser');
 
 // ===============================
+// FF Status
+// ===============================
+function getFFStatus(pax) {
+
+  if (!pax.ffTier) {
+    return 'NONE';
+  }
+
+  if (pax.ffTier === 'V') {
+    return 'Platinum';
+  }
+
+  if (pax.ffTier === 'G') {
+    return 'Gold';
+  }
+
+  if (pax.ffTier === 'S') {
+    return 'Silver';
+  }
+
+  if (pax.ffTier === 'C') {
+    return 'Classic';
+  }
+
+  return pax.ffTier;
+}
+
+// ===============================
 // Format Passenger
 // ===============================
 function formatPassenger(pax) {
@@ -18,37 +46,41 @@ function formatPassenger(pax) {
   }
 
   return `
+MU586/08MAY
+
+NAME:
 ${pax.name}
 
-BN${pax.bn}
+BN:
+${pax.bn}
 
-Seat:
+SEAT:
 ${pax.seat}
 
-Cabin:
-${pax.cabin}
-
-Booking Class:
-${pax.bookingClass}
-
-Boarded:
-${pax.boarded ? 'YES' : 'NO'}
-
-FF:
-${pax.ffTier || 'N/A'}/*${pax.elite || 0}
-
-Lounge:
-${pax.lounge?.eligible ? '✅ Eligible' : '❌ Not Eligible'}
-${pax.lounge?.guest ? '✅ Guest Allowed' : '❌ No Guest'}
-
-Reason:
-${pax.lounge?.reason || 'N/A'}
-
-Special Service:
-${pax.specialServices?.length
-  ? pax.specialServices.join(', ')
+BAGTAG:
+${pax.bagtags?.length
+  ? pax.bagtags.join('\n')
   : 'NONE'
 }
+
+FF NUMBER:
+${pax.ffNumber || 'NONE'}
+
+FF STATUS:
+${getFFStatus(pax)}
+
+TICKET NUMBER:
+${pax.ticketNumber || 'NONE'}
+
+LOUNGE:
+${pax.lounge?.eligible
+  ? '✅ Eligible'
+  : '❌ Not Eligible'
+}
+
+${pax.lounge?.guest
+  ? '✅ Guest Allowed'
+  : '❌ No Guest'}
 `;
 }
 
@@ -76,9 +108,6 @@ module.exports = function(client) {
         // ===========================
         // FB QUERY
         // ===========================
-        // FB085
-        // FB 085
-        // ===========================
         if (
           text.startsWith('FB')
         ) {
@@ -99,9 +128,6 @@ module.exports = function(client) {
         // ===========================
         // FSN QUERY
         // ===========================
-        // FSN32H
-        // FSN 32H
-        // ===========================
         if (
           text.startsWith('FSN')
         ) {
@@ -121,9 +147,6 @@ module.exports = function(client) {
 
         // ===========================
         // RN QUERY
-        // ===========================
-        // RNLI/WAND
-        // RN LI/WAND
         // ===========================
         if (
           text.startsWith('RN')
@@ -155,45 +178,19 @@ module.exports = function(client) {
           const total =
             paxList.length;
 
-          const boarded =
-            paxList.filter(
-              p => p.boarded
-            ).length;
-
           const lounge =
             paxList.filter(
               p => p.lounge?.eligible
             ).length;
 
-          const vip =
-            paxList.filter(
-              p =>
-                p.specialServices?.includes('VIP')
-            ).length;
-
-          const wchr =
-            paxList.filter(
-              p =>
-                p.specialServices?.includes('WCHR')
-            ).length;
-
           return message.reply(`
-Flight Stats
+MU586 STATS
 
-Passengers:
+TOTAL:
 ${total}
 
-Boarded:
-${boarded}
-
-Lounge Eligible:
+LOUNGE:
 ${lounge}
-
-VIP:
-${vip}
-
-WCHR:
-${wchr}
 `);
         }
 
