@@ -38,13 +38,12 @@ function getCabin(seat) {
 // ===============================
 function getLounge(pax) {
 
-  // Elite only
+  // Must be Elite Plus
   if (pax.elite !== 2) {
 
     return {
       eligible: false,
-      guest: false,
-      reason: "Not Elite Plus"
+      guest: false
     };
   }
 
@@ -53,34 +52,25 @@ function getLounge(pax) {
 
     return {
       eligible: true,
-      guest: true,
-      reason: "Platinum Elite Plus"
+      guest: true
     };
   }
 
   // Gold
   if (pax.ffTier === "G") {
 
-    // Business / First
-    if (
-      pax.cabin === "Business" ||
-      pax.cabin === "First"
-    ) {
+    // Economy Gold
+    if (pax.cabin === "Economy") {
 
       return {
         eligible: true,
-        guest: true,
-        reason:
-          "Gold Elite Plus Business"
+        guest: false
       };
     }
 
-    // Economy
     return {
       eligible: true,
-      guest: false,
-      reason:
-        "Gold Elite Plus Economy"
+      guest: true
     };
   }
 
@@ -89,17 +79,13 @@ function getLounge(pax) {
 
     return {
       eligible: true,
-      guest: false,
-      reason:
-        "Silver Elite Plus"
+      guest: false
     };
   }
 
-  // Others
   return {
     eligible: false,
-    guest: false,
-    reason: "No lounge access"
+    guest: false
   };
 }
 
@@ -109,42 +95,32 @@ function getLounge(pax) {
 function parsePassengerLine(line) {
 
   // Example:
-  // 1HUANG/WEID+ BN014 32H N PVG
+  // 1. YOU/RUOJIE BN121 11D Q PVG
 
   const paxMatch = line.match(
-    /([A-Z]+\/[A-Z]+)\+?.*BN(\d+)\s+\*?(\d+[A-Z])\s+([A-Z])\s+PVG/
+    /([A-Z]+\/[A-Z]+)\s+BN(\d+)\s+\*?(\d+[A-Z])\s+([A-Z])\s+PVG/
   );
 
   if (!paxMatch) {
     return null;
   }
 
-  const name =
-    paxMatch[1];
-
-  const bn =
-    paxMatch[2];
-
-  const seat =
-    paxMatch[3];
-
-  const bookingClass =
-    paxMatch[4];
-
-  const boarded =
-    line.includes("*");
-
   return {
 
-    name,
+    name:
+      paxMatch[1],
 
-    bn,
+    bn:
+      paxMatch[2],
 
-    seat,
+    seat:
+      paxMatch[3],
 
-    bookingClass,
+    bookingClass:
+      paxMatch[4],
 
-    boarded
+    boarded:
+      line.includes("*")
   };
 }
 
@@ -154,10 +130,11 @@ function parsePassengerLine(line) {
 function parseFFLine(line) {
 
   // Example:
-  // FF/MU 620279694660/G/*2
+  // FF/MU 613026637487/V/*2
+  // FF/DL 2334262744/S/*1
 
   const ffMatch = line.match(
-    /FF\/MU\s+(\d+)\/([VGSC])\/\*(\d)/
+    /FF\/([A-Z0-9]+)\s+(\d+)\/([VGSC])\/\*(\d)/
   );
 
   if (!ffMatch) {
@@ -166,15 +143,59 @@ function parseFFLine(line) {
 
   return {
 
-    ffNumber:
+    ffCarrier:
       ffMatch[1],
 
-    ffTier:
+    ffNumber:
       ffMatch[2],
 
+    ffTier:
+      ffMatch[3],
+
     elite:
-      parseInt(ffMatch[3])
+      parseInt(ffMatch[4])
   };
+}
+
+// ===============================
+// Parse Ticket Number
+// ===============================
+function parseTicketLine(line) {
+
+  // Example:
+  // ET TKNE/7817484489860/1
+
+  const match = line.match(
+    /TKNE\/(\d+)/
+  );
+
+  if (!match) {
+    return null;
+  }
+
+  return match[1];
+}
+
+// ===============================
+// Parse Bagtag
+// ===============================
+function parseBagtagLine(line) {
+
+  // Example:
+  // BAGTAG/3781524525/PVG /3781575569/PVG
+
+  const matches =
+    [...line.matchAll(
+      /(\d+\/[A-Z]{3})/g
+    )];
+
+  if (!matches.length) {
+    return [];
+  }
+
+  return matches.map(
+    m => m[1]
+  );
 }
 
 // ===============================
@@ -255,14 +276,23 @@ function parseIncrementalLog(chunk) {
             pax.seat
           ),
 
+        ffCarrier:
+          null,
+
+        ffNumber:
+          null,
+
         ffTier:
           null,
 
         elite:
           0,
 
-        ffNumber:
+        ticketNumber:
           null,
+
+        bagtags:
+          [],
 
         lounge:
           null,
@@ -294,16 +324,24 @@ function parseIncrementalLog(chunk) {
       passengers[currentBN]
     ) {
 
-      passengers[currentBN].ffTier =
-        ff.ffTier;
+      passengers[currentBN]
+        .ffCarrier =
+        ff.ffCarrier;
 
-      passengers[currentBN].elite =
-        ff.elite;
-
-      passengers[currentBN].ffNumber =
+      passengers[currentBN]
+        .ffNumber =
         ff.ffNumber;
 
-      passengers[currentBN].lounge =
+      passengers[currentBN]
+        .ffTier =
+        ff.ffTier;
+
+      passengers[currentBN]
+        .elite =
+        ff.elite;
+
+      passengers[currentBN]
+        .lounge =
         getLounge(
           passengers[currentBN]
         );
@@ -312,7 +350,40 @@ function parseIncrementalLog(chunk) {
     }
 
     // ===========================
-    // Special Service Lines
+    // Ticket Number
+    // ===========================
+    const ticket =
+      parseTicketLine(line);
+
+    if (
+      ticket &&
+      currentBN &&
+      passengers[currentBN]
+    ) {
+
+      passengers[currentBN]
+        .ticketNumber =
+        ticket;
+    }
+
+    // ===========================
+    // Bagtag
+    // ===========================
+    const bagtags =
+      parseBagtagLine(line);
+
+    if (
+      bagtags.length &&
+      currentBN &&
+      passengers[currentBN]
+    ) {
+
+      passengers[currentBN]
+        .bagtags = bagtags;
+    }
+
+    // ===========================
+    // Special Service
     // ===========================
     if (
       currentBN &&

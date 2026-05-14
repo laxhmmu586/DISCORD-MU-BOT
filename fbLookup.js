@@ -17,23 +17,25 @@ function getFFStatus(pax) {
     return 'NONE';
   }
 
+  let tier = '';
+
   if (pax.ffTier === 'V') {
-    return 'Platinum';
+    tier = 'Platinum';
   }
 
-  if (pax.ffTier === 'G') {
-    return 'Gold';
+  else if (pax.ffTier === 'G') {
+    tier = 'Gold';
   }
 
-  if (pax.ffTier === 'S') {
-    return 'Silver';
+  else if (pax.ffTier === 'S') {
+    tier = 'Silver';
   }
 
-  if (pax.ffTier === 'C') {
-    return 'Classic';
+  else if (pax.ffTier === 'C') {
+    tier = 'Classic';
   }
 
-  return pax.ffTier;
+  return `${tier} /*${pax.elite}`;
 }
 
 // ===============================
@@ -48,39 +50,31 @@ function formatPassenger(pax) {
   return `
 MU586/08MAY
 
-NAME:
 ${pax.name}
+BN${pax.bn} | ${pax.seat}
 
-BN:
-${pax.bn}
+FF:
+${pax.ffCarrier || ''} ${pax.ffNumber || 'NONE'}
+${getFFStatus(pax)}
 
-SEAT:
-${pax.seat}
+TKT:
+${pax.ticketNumber || 'NONE'}
 
-BAGTAG:
+BAG:
 ${pax.bagtags?.length
   ? pax.bagtags.join('\n')
   : 'NONE'
 }
 
-FF NUMBER:
-${pax.ffNumber || 'NONE'}
-
-FF STATUS:
-${getFFStatus(pax)}
-
-TICKET NUMBER:
-${pax.ticketNumber || 'NONE'}
-
 LOUNGE:
 ${pax.lounge?.eligible
-  ? '✅ Eligible'
+  ? (
+      pax.lounge?.guest
+      ? '✅ Guest Allowed'
+      : '✅ Eligible'
+    )
   : '❌ Not Eligible'
 }
-
-${pax.lounge?.guest
-  ? '✅ Guest Allowed'
-  : '❌ No Guest'}
 `;
 }
 
@@ -108,6 +102,9 @@ module.exports = function(client) {
         // ===========================
         // FB QUERY
         // ===========================
+        // FB121
+        // FB 121
+        // ===========================
         if (
           text.startsWith('FB')
         ) {
@@ -128,6 +125,9 @@ module.exports = function(client) {
         // ===========================
         // FSN QUERY
         // ===========================
+        // FSN11D
+        // FSN 11D
+        // ===========================
         if (
           text.startsWith('FSN')
         ) {
@@ -147,6 +147,9 @@ module.exports = function(client) {
 
         // ===========================
         // RN QUERY
+        // ===========================
+        // RNYOU/RUOJ
+        // RN YOU/RUOJ
         // ===========================
         if (
           text.startsWith('RN')
@@ -183,14 +186,26 @@ module.exports = function(client) {
               p => p.lounge?.eligible
             ).length;
 
+          const platinum =
+            paxList.filter(
+              p => p.ffTier === 'V'
+            ).length;
+
+          const gold =
+            paxList.filter(
+              p => p.ffTier === 'G'
+            ).length;
+
           return message.reply(`
 MU586 STATS
 
-TOTAL:
-${total}
+TOTAL: ${total}
 
-LOUNGE:
-${lounge}
+LOUNGE: ${lounge}
+
+PLATINUM: ${platinum}
+
+GOLD: ${gold}
 `);
         }
 
