@@ -1,17 +1,11 @@
 require('dotenv').config();
 
-const fs = require('fs');
-
 const express = require('express');
 
 const {
   Client,
   GatewayIntentBits
 } = require('discord.js');
-
-const {
-  parseIncrementalLog
-} = require('./flightParser');
 
 const app = express();
 
@@ -22,7 +16,6 @@ app.use(express.json({
 // ===============================
 // Discord Client
 // ===============================
-
 const client = new Client({
 
   intents: [
@@ -40,7 +33,6 @@ const client = new Client({
 // ===============================
 // Bot Ready
 // ===============================
-
 client.once('clientReady', () => {
 
   console.log(
@@ -48,38 +40,11 @@ client.once('clientReady', () => {
     client.user.tag
   );
 
-  // ===========================
-  // Load Flight Control Log
-  // ===========================
-  try {
-
-    const data =
-      fs.readFileSync(
-        './Flight Control.log',
-        'utf8'
-      );
-
-    parseIncrementalLog(data);
-
-    console.log(
-      'Flight control log loaded'
-    );
-
-  } catch (err) {
-
-    console.error(
-      'Failed to load Flight Control.log'
-    );
-
-    console.error(err);
-  }
-
 });
 
 // ===============================
 // Load fbLookup
 // ===============================
-
 console.log(
   'Loading fbLookup.js'
 );
@@ -93,7 +58,6 @@ console.log(
 // ===============================
 // Login
 // ===============================
-
 client.login(
   process.env.BOT_TOKEN
 );
@@ -101,7 +65,6 @@ client.login(
 // ===============================
 // Health Check
 // ===============================
-
 app.get('/', (req, res) => {
 
   res.send(
@@ -113,7 +76,6 @@ app.get('/', (req, res) => {
 // ===============================
 // Send Discord Message API
 // ===============================
-
 app.post('/send', async (req, res) => {
 
   try {
@@ -125,7 +87,6 @@ app.post('/send', async (req, res) => {
     } = req.body;
 
     // Validation
-
     if (!channelId) {
 
       return res
@@ -133,11 +94,9 @@ app.post('/send', async (req, res) => {
         .send(
           'Missing channelId'
         );
-
     }
 
     // Fetch Channel
-
     const channel =
       await client.channels.fetch(
         channelId
@@ -150,11 +109,9 @@ app.post('/send', async (req, res) => {
         .send(
           'Channel not found'
         );
-
     }
 
     // Send Message
-
     await channel.send({
 
       content:
@@ -181,51 +138,6 @@ app.post('/send', async (req, res) => {
       .send(
         err.toString()
       );
-
-  }
-
-});
-
-// ===============================
-// Flight Log API
-// ===============================
-
-app.post('/flight-log', async (req, res) => {
-
-  try {
-
-    const {
-      log
-    } = req.body;
-
-    if (!log) {
-
-      return res
-        .status(400)
-        .send(
-          'Missing log'
-        );
-
-    }
-
-    parseIncrementalLog(log);
-
-    console.log(
-      'Flight log updated'
-    );
-
-    res.send('OK');
-
-  } catch (err) {
-
-    console.error(err);
-
-    res
-      .status(500)
-      .send(
-        err.toString()
-      );
-
   }
 
 });
@@ -233,7 +145,6 @@ app.post('/flight-log', async (req, res) => {
 // ===============================
 // Railway Port
 // ===============================
-
 const PORT =
   process.env.PORT || 3000;
 
