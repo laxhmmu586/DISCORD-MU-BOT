@@ -290,6 +290,17 @@ async function lookupPassenger(bn) {
     extractBagTags(block);
 
   // =====================================
+  // Ticket Number
+  // =====================================
+
+  const ticketMatch = block.match(
+    /TKNE\/(781\d{10})/i
+  );
+
+  const ticketNumber =
+    ticketMatch?.[1] || null;
+
+  // =====================================
   // FF Info
   // =====================================
 
@@ -299,7 +310,10 @@ async function lookupPassenger(bn) {
 
   );
 
+  // =====================================
   // No FF
+  // =====================================
+
   if (!ffMatch) {
 
     return {
@@ -309,6 +323,7 @@ async function lookupPassenger(bn) {
       name,
       seat,
       bagTags,
+      ticketNumber,
       noFF: true
 
     };
@@ -335,6 +350,7 @@ async function lookupPassenger(bn) {
     name,
     seat,
     bagTags,
+    ticketNumber,
     memberNo,
     tier,
     elite,
@@ -424,6 +440,14 @@ module.exports = (client) => {
 
             finalMsg +=
 `\n🧳 ${result.bagTags}\n`;
+
+          }
+
+          // Ticket Number
+          if (result.ticketNumber) {
+
+            finalMsg +=
+`🎫 Ticket: ${result.ticketNumber}\n`;
 
           }
 
