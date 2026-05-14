@@ -171,28 +171,59 @@ function parsePassenger(block) {
 // ===============================
 function parseFF(block) {
 
-  const match = block.match(
+  // ===========================
+  // Elite Format
+  // FF/MU 630260457023/V/*2
+  // ===========================
+  let match = block.match(
     /FF\/([A-Z0-9]+)\s+(\d+)\/([VGSC])\/\*(\d)/
   );
 
-  if (!match) {
-    return null;
+  if (match) {
+
+    return {
+
+      carrier:
+        match[1],
+
+      number:
+        match[2],
+
+      tier:
+        match[3],
+
+      elite:
+        parseInt(match[4])
+    };
   }
 
-  return {
+  // ===========================
+  // Normal Format
+  // FF/MU 653033973799/C
+  // ===========================
+  match = block.match(
+    /FF\/([A-Z0-9]+)\s+(\d+)\/([VGSC])/
+  );
 
-    carrier:
-      match[1],
+  if (match) {
 
-    number:
-      match[2],
+    return {
 
-    tier:
-      match[3],
+      carrier:
+        match[1],
 
-    elite:
-      parseInt(match[4])
-  };
+      number:
+        match[2],
+
+      tier:
+        match[3],
+
+      elite:
+        0
+    };
+  }
+
+  return null;
 }
 
 // ===============================
