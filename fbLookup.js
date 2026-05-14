@@ -237,20 +237,56 @@ async function lookupPassenger(bn) {
   // Split Records By Timestamp
   // =====================================
 
-  const records = data.split(
+  const timestampRegex =
+    /\d{4}\s+[A-Z][a-z]{2}\s+\d{1,2},\s+[A-Z][a-z]+,\s+\d{2}:\d{2}:\d{2}/g;
 
-    /\d{4}\s+[A-Z][a-z]{2}\s+\d{1,2},\s+[A-Z][a-z]+,\s+\d{2}:\d{2}:\d{2}/g
+  const matches = [
+    ...data.matchAll(timestampRegex)
+  ];
 
+  const records = [];
+
+  for (let i = 0; i < matches.length; i++) {
+
+    const start = matches[i].index;
+
+    const end =
+      i + 1 < matches.length
+        ? matches[i + 1].index
+        : data.length;
+
+    const timestamp =
+      matches[i][0];
+
+    const content =
+      data.slice(start, end);
+
+    records.push({
+      timestamp,
+      content
+    });
+  }
+
+  // =====================================
+  // Find Latest Matching Record
+  // =====================================
+
+  const matchedRecords = records.filter(
+    r => r.content.includes(`BN${bn}`)
   );
 
-  // Find Correct Record
-  const block = records.find(
-    r => r.includes(`BN${bn}`)
-  );
-
-  if (!block) {
+  if (!matchedRecords.length) {
     return null;
   }
+
+  // Use latest record
+  const latestRecord =
+    matchedRecords[
+      matchedRecords.length - 1
+    ];
+
+  const block =
+    latestRecord.content;
 
   // =====================================
   // Flight Info
