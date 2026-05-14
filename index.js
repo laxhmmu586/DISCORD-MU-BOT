@@ -9,7 +9,9 @@ const {
 
 const app = express();
 
-app.use(express.json());
+app.use(express.json({
+  limit: '50mb'
+}));
 
 // ===============================
 // Discord Client
@@ -24,7 +26,11 @@ const client = new Client({
 // ===============================
 
 client.once('clientReady', () => {
-  console.log(`Logged in as ${client.user.tag}`);
+
+  console.log(
+    `Logged in as ${client.user.tag}`
+  );
+
 });
 
 // ===============================
@@ -38,11 +44,13 @@ client.login(process.env.BOT_TOKEN);
 // ===============================
 
 app.get('/', (req, res) => {
+
   res.send('Discord Bot Running');
+
 });
 
 // ===============================
-// Send Message
+// Send Discord Message
 // ===============================
 
 app.post('/send', async (req, res) => {
@@ -51,26 +59,54 @@ app.post('/send', async (req, res) => {
 
     const {
       message,
-      channelId
+      channelId,
+      embeds
     } = req.body;
 
-    if (!message) {
-      return res.status(400).send('Missing message');
-    }
+    // ===============================
+    // Validation
+    // ===============================
 
     if (!channelId) {
-      return res.status(400).send('Missing channelId');
+
+      return res
+        .status(400)
+        .send('Missing channelId');
+
     }
 
-    const channel = await client.channels.fetch(channelId);
+    // ===============================
+    // Fetch Channel
+    // ===============================
+
+    const channel =
+      await client.channels.fetch(
+        channelId
+      );
 
     if (!channel) {
-      return res.status(404).send('Channel not found');
+
+      return res
+        .status(404)
+        .send('Channel not found');
+
     }
 
-    await channel.send(message);
+    // ===============================
+    // Send Message
+    // ===============================
 
-    console.log(`Message sent to ${channelId}`);
+    await channel.send({
+
+      content: message || '',
+
+      embeds: embeds || []
+
+    });
+
+    console.log(
+      `✅ Sent to ${channelId}`
+    );
 
     res.send('OK');
 
@@ -78,7 +114,9 @@ app.post('/send', async (req, res) => {
 
     console.error(err);
 
-    res.status(500).send(err.toString());
+    res
+      .status(500)
+      .send(err.toString());
 
   }
 
@@ -88,8 +126,13 @@ app.post('/send', async (req, res) => {
 // Railway Port
 // ===============================
 
-const PORT = process.env.PORT || 3000;
+const PORT =
+  process.env.PORT || 3000;
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server started on port ${PORT}`);
+
+  console.log(
+    `Server started on port ${PORT}`
+  );
+
 });
