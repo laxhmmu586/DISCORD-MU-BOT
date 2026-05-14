@@ -3,14 +3,14 @@ require('dotenv').config();
 const express = require('express');
 
 const {
-  Client,
-  GatewayIntentBits
+Client,
+GatewayIntentBits
 } = require('discord.js');
 
 const app = express();
 
 app.use(express.json({
-  limit: '50mb'
+limit: '50mb'
 }));
 
 // ===============================
@@ -18,34 +18,45 @@ app.use(express.json({
 // ===============================
 
 const client = new Client({
-  intents: [
+intents: [
 
-    GatewayIntentBits.Guilds,
+```
+GatewayIntentBits.Guilds,
 
-    GatewayIntentBits.GuildMessages,
+GatewayIntentBits.GuildMessages,
 
-    GatewayIntentBits.MessageContent
+GatewayIntentBits.MessageContent
+```
 
-  ]
+]
 });
 
 // ===============================
 // Bot Ready
 // ===============================
 
-client.once('clientReady', () => {
+client.once('ready', () => {
 
-  console.log(
-    `Logged in as ${client.user.tag}`
-  );
+console.log(
+'Logged in as ' +
+client.user.tag
+);
 
 });
 
 // ===============================
-// FB Lookup
+// Load FB Lookup
 // ===============================
 
+console.log(
+'Loading fbLookup.js...'
+);
+
 require('./fbLookup')(client);
+
+console.log(
+'fbLookup.js loaded'
+);
 
 // ===============================
 // Login
@@ -59,7 +70,7 @@ client.login(process.env.BOT_TOKEN);
 
 app.get('/', (req, res) => {
 
-  res.send('Discord Bot Running');
+res.send('Discord Bot Running');
 
 });
 
@@ -69,70 +80,69 @@ app.get('/', (req, res) => {
 
 app.post('/send', async (req, res) => {
 
-  try {
+try {
 
-    const {
-      message,
-      channelId,
-      embeds
-    } = req.body;
+```
+const {
+  message,
+  channelId,
+  embeds
+} = req.body;
 
-    // ===============================
-    // Validation
-    // ===============================
+// Validation
 
-    if (!channelId) {
+if (!channelId) {
 
-      return res
-        .status(400)
-        .send('Missing channelId');
+  return res
+    .status(400)
+    .send('Missing channelId');
 
-    }
+}
 
-    // ===============================
-    // Fetch Channel
-    // ===============================
+// Fetch Channel
 
-    const channel =
-      await client.channels.fetch(
-        channelId
-      );
+const channel =
+  await client.channels.fetch(
+    channelId
+  );
 
-    if (!channel) {
+if (!channel) {
 
-      return res
-        .status(404)
-        .send('Channel not found');
+  return res
+    .status(404)
+    .send('Channel not found');
 
-    }
+}
 
-    // ===============================
-    // Send Message
-    // ===============================
+// Send Message
 
-    await channel.send({
+await channel.send({
 
-      content: message || '',
+  content: message || '',
 
-      embeds: embeds || []
+  embeds: embeds || []
 
-    });
+});
 
-    console.log(
-      `✅ Sent to ${channelId}`
-    );
+console.log(
+  'Sent to channel: ' +
+  channelId
+);
 
-    res.send('OK');
+res.send('OK');
+```
 
-  } catch (err) {
+} catch (err) {
 
-    console.error(err);
+```
+console.error(err);
 
-    res
-      .status(500)
-      .send(err.toString());
+res
+  .status(500)
+  .send(err.toString());
+```
 
-  }
+}
 
 });
 
@@ -141,12 +151,13 @@ app.post('/send', async (req, res) => {
 // ===============================
 
 const PORT =
-  process.env.PORT || 3000;
+process.env.PORT || 3000;
 
 app.listen(PORT, '0.0.0.0', () => {
 
-  console.log(
-    `Server started on port ${PORT}`
-  );
+console.log(
+'Server started on port ' +
+PORT
+);
 
 });
