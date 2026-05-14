@@ -1,8 +1,5 @@
 const passengers = {};
 
-let currentFlight = 'UNKNOWN';
-let currentDate = 'UNKNOWN';
-
 // ===============================
 // Cabin Logic
 // ===============================
@@ -41,9 +38,7 @@ function getCabin(seat) {
 // ===============================
 function getLounge(pax) {
 
-  // ===========================
   // Platinum Elite+
-  // ===========================
   if (
     pax.ffTier === "V" &&
     pax.elite === 2
@@ -55,9 +50,7 @@ function getLounge(pax) {
     };
   }
 
-  // ===========================
   // Gold Elite+ Business
-  // ===========================
   if (
     pax.ffTier === "G" &&
     pax.elite === 2 &&
@@ -70,9 +63,7 @@ function getLounge(pax) {
     };
   }
 
-  // ===========================
   // First Class
-  // ===========================
   if (pax.cabin === "First") {
 
     return {
@@ -81,9 +72,7 @@ function getLounge(pax) {
     };
   }
 
-  // ===========================
   // Business Class
-  // ===========================
   if (pax.cabin === "Business") {
 
     return {
@@ -92,9 +81,7 @@ function getLounge(pax) {
     };
   }
 
-  // ===========================
   // Gold Elite+
-  // ===========================
   if (
     pax.ffTier === "G" &&
     pax.elite === 2
@@ -106,9 +93,7 @@ function getLounge(pax) {
     };
   }
 
-  // ===========================
   // Silver Elite+
-  // ===========================
   if (
     pax.ffTier === "S" &&
     pax.elite === 2
@@ -129,10 +114,10 @@ function getLounge(pax) {
 // ===============================
 // Parse Flight Info
 // ===============================
-function parseFlightInfo(line) {
+function parseFlightInfo(block) {
 
-  const match = line.match(
-    /([A-Z0-9]+)\/(\d{2}[A-Z]{3})\d{2}/
+  const match = block.match(
+    /PR:\s+([A-Z0-9]+)\/(\d{2}[A-Z]{3})\d{2}/
   );
 
   if (!match) {
@@ -150,72 +135,72 @@ function parseFlightInfo(line) {
 }
 
 // ===============================
-// Parse Passenger Line
+// Parse Passenger
 // ===============================
-function parsePassengerLine(line) {
+function parsePassenger(block) {
 
-  const paxMatch = line.match(
-    /([A-Z]+\/[A-Z]+)\s+BN(\d+)\s+\*?(\d+[A-Z])\s+([A-Z])\s+PVG/
+  const match = block.match(
+    /1\.\s+([A-Z]+\/[A-Z]+)\s+BN(\d+)\s+\*?(\d+[A-Z])\s+([A-Z])\s+PVG/
   );
 
-  if (!paxMatch) {
+  if (!match) {
     return null;
   }
 
   return {
 
     name:
-      paxMatch[1],
+      match[1],
 
     bn:
-      paxMatch[2],
+      match[2],
 
     seat:
-      paxMatch[3],
+      match[3],
 
     bookingClass:
-      paxMatch[4],
+      match[4],
 
     boarded:
-      line.includes("*")
+      block.includes('*' + match[3])
   };
 }
 
 // ===============================
-// Parse FF Line
+// Parse FF
 // ===============================
-function parseFFLine(line) {
+function parseFF(block) {
 
-  const ffMatch = line.match(
+  const match = block.match(
     /FF\/([A-Z0-9]+)\s+(\d+)\/([VGSC])\/\*(\d)/
   );
 
-  if (!ffMatch) {
+  if (!match) {
     return null;
   }
 
   return {
 
-    ffCarrier:
-      ffMatch[1],
+    carrier:
+      match[1],
 
-    ffNumber:
-      ffMatch[2],
+    number:
+      match[2],
 
-    ffTier:
-      ffMatch[3],
+    tier:
+      match[3],
 
     elite:
-      parseInt(ffMatch[4])
+      parseInt(match[4])
   };
 }
 
 // ===============================
-// Parse Ticket Number
+// Parse Ticket
 // ===============================
-function parseTicketLine(line) {
+function parseTicket(block) {
 
-  const match = line.match(
+  const match = block.match(
     /TKNE\/(\d+)/
   );
 
@@ -227,19 +212,21 @@ function parseTicketLine(line) {
 }
 
 // ===============================
-// Parse Bagtag
+// Parse Bagtags
 // ===============================
-function parseBagtagLine(line) {
+function parseBags(block) {
 
-  if (!line.includes('BAGTAG/')) {
+  const bagLine =
+    block.match(
+      /BAGTAG\/([^\n\r]+)/
+    );
+
+  if (!bagLine) {
     return [];
   }
 
-  const cleaned =
-    line.split('BAGTAG/')[1];
-
   const matches =
-    [...cleaned.matchAll(
+    [...bagLine[1].matchAll(
       /(\d+\/[A-Z]{3})/g
     )];
 
@@ -249,9 +236,9 @@ function parseBagtagLine(line) {
 }
 
 // ===============================
-// Parse Special Service
+// Parse Services
 // ===============================
-function parseSpecialService(line) {
+function parseServices(block) {
 
   const services = [];
 
@@ -273,7 +260,7 @@ function parseSpecialService(line) {
 
   for (const code of codes) {
 
-    if (line.includes(code)) {
+    if (block.includes(code)) {
       services.push(code);
     }
   }
@@ -284,181 +271,128 @@ function parseSpecialService(line) {
 // ===============================
 // Main Parser
 // ===============================
-function parseIncrementalLog(chunk) {
+function parseIncrementalLog(log) {
 
-  const lines =
-    chunk.split('\n');
+  // Split by timestamp
+  const blocks =
+    log.split(
+      /\d{4}\s+[A-Z][a-z]{2}\s+\d{2},/
+    );
 
-  let currentPassenger = null;
+  for (const block of blocks) {
 
-  for (let rawLine of lines) {
+    // Must be FB query
+    if (
+      !block.includes('>FB')
+    ) {
 
-    const line =
-      rawLine.toUpperCase();
+      continue;
+    }
+
+    // Passenger not found
+    if (
+      block.includes('PSGR ID')
+    ) {
+
+      continue;
+    }
 
     // ===========================
-    // Flight Info
+    // Parse Flight
     // ===========================
     const flightInfo =
-      parseFlightInfo(line);
-
-    if (flightInfo) {
-
-      currentFlight =
-        flightInfo.flight;
-
-      currentDate =
-        flightInfo.date;
-    }
+      parseFlightInfo(block);
 
     // ===========================
-    // Passenger Line
+    // Parse Passenger
     // ===========================
     const pax =
-      parsePassengerLine(line);
+      parsePassenger(block);
 
-    if (pax) {
-
-      passengers[pax.bn] = {
-
-        flight:
-          currentFlight,
-
-        flightDate:
-          currentDate,
-
-        name:
-          pax.name,
-
-        bn:
-          pax.bn,
-
-        seat:
-          pax.seat,
-
-        bookingClass:
-          pax.bookingClass,
-
-        boarded:
-          pax.boarded,
-
-        cabin:
-          getCabin(
-            pax.seat
-          ),
-
-        ffCarrier:
-          null,
-
-        ffNumber:
-          null,
-
-        ffTier:
-          null,
-
-        elite:
-          0,
-
-        ticketNumber:
-          null,
-
-        bagtags:
-          [],
-
-        lounge:
-          null,
-
-        specialServices:
-          [],
-
-        updatedAt:
-          new Date()
-      };
-
-      currentPassenger =
-        passengers[pax.bn];
-
+    if (!pax) {
       continue;
     }
 
     // ===========================
-    // Ignore until passenger found
-    // ===========================
-    if (!currentPassenger) {
-      continue;
-    }
-
-    // ===========================
-    // FF
+    // Parse FF
     // ===========================
     const ff =
-      parseFFLine(line);
-
-    if (ff) {
-
-      currentPassenger.ffCarrier =
-        ff.ffCarrier;
-
-      currentPassenger.ffNumber =
-        ff.ffNumber;
-
-      currentPassenger.ffTier =
-        ff.ffTier;
-
-      currentPassenger.elite =
-        ff.elite;
-    }
+      parseFF(block);
 
     // ===========================
-    // Ticket Number
+    // Parse Ticket
     // ===========================
     const ticket =
-      parseTicketLine(line);
-
-    if (ticket) {
-
-      currentPassenger.ticketNumber =
-        ticket;
-    }
+      parseTicket(block);
 
     // ===========================
-    // Bagtag
+    // Parse Bags
     // ===========================
-    const bagtags =
-      parseBagtagLine(line);
-
-    if (bagtags.length) {
-
-      currentPassenger.bagtags =
-        bagtags;
-    }
+    const bags =
+      parseBags(block);
 
     // ===========================
-    // Special Services
+    // Create Passenger
     // ===========================
-    const services =
-      parseSpecialService(line);
+    passengers[pax.bn] = {
 
-    if (services.length) {
+      flight:
+        flightInfo?.flight || 'UNKNOWN',
 
-      currentPassenger.specialServices = [
+      flightDate:
+        flightInfo?.date || 'UNKNOWN',
 
-        ...new Set([
+      name:
+        pax.name,
 
-          ...currentPassenger.specialServices,
+      bn:
+        pax.bn,
 
-          ...services
+      seat:
+        pax.seat,
 
-        ])
-      ];
-    }
+      bookingClass:
+        pax.bookingClass,
+
+      boarded:
+        pax.boarded,
+
+      cabin:
+        getCabin(
+          pax.seat
+        ),
+
+      ffCarrier:
+        ff?.carrier || null,
+
+      ffNumber:
+        ff?.number || null,
+
+      ffTier:
+        ff?.tier || null,
+
+      elite:
+        ff?.elite || 0,
+
+      ticketNumber:
+        ticket || null,
+
+      bagtags:
+        bags,
+
+      specialServices:
+        parseServices(block),
+
+      updatedAt:
+        new Date()
+    };
 
     // ===========================
-    // Refresh Lounge
+    // Lounge
     // ===========================
-    currentPassenger.lounge =
+    passengers[pax.bn].lounge =
       getLounge(
-        currentPassenger
+        passengers[pax.bn]
       );
   }
 
