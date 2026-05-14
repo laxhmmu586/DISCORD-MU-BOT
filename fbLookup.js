@@ -1,3 +1,4 @@
+```js
 module.exports = (client) => {
 
   client.on('messageCreate', async (message) => {
@@ -5,7 +6,7 @@ module.exports = (client) => {
     try {
 
       // ===============================
-      // Ignore Bot
+      // Ignore Bots
       // ===============================
 
       if (message.author.bot) return;
@@ -14,20 +15,48 @@ module.exports = (client) => {
         message.content.trim();
 
       // ===============================
+      // HELP
+      // ===============================
+
+      if (
+        content.toLowerCase() === 'help'
+      ) {
+
+        await message.reply(`
+Available Commands:
+
+FB 12345
+FF MU620500126907
+BT 7811234567
+        `);
+
+        return;
+      }
+
+      // ===============================
       // Match Commands
       // ===============================
 
+      // FB12345
       // FB 12345
       const fbMatch =
-        content.match(/^FB\s*(\d+)$/i);
+        content.match(
+          /^FB\s*(\d+)$/i
+        );
 
-      // FF 123456789
+      // FF MU620500126907
+      // FF/MU620500126907
       const ffMatch =
-        content.match(/^FF\s*(\d+)$/i);
+        content.match(
+          /^FF[\/\s]*([A-Z]{2}\d+)$/i
+        );
 
+      // BT1234567
       // BT 1234567
       const btMatch =
-        content.match(/^BT\s*(\d+)$/i);
+        content.match(
+          /^BT\s*(\d+)$/i
+        );
 
       // ===============================
       // FB Lookup
@@ -42,8 +71,10 @@ module.exports = (client) => {
           `🔍 Searching FB: ${fbNumber}`
         );
 
+        // ===================================
         // TODO:
-        // FB 查询逻辑
+        // Put FB lookup logic here
+        // ===================================
 
         return;
       }
@@ -55,14 +86,22 @@ module.exports = (client) => {
       if (ffMatch) {
 
         const ffNumber =
-          ffMatch[1];
+          ffMatch[1].toUpperCase();
+
+        // Convert to system format
+        const ffCommand =
+          `FF/${ffNumber}`;
 
         await message.reply(
-          `🛫 Searching Frequent Flyer: ${ffNumber}`
+          `🛫 Searching Frequent Flyer: ${ffCommand}`
         );
 
+        // ===================================
         // TODO:
-        // 会员号查询逻辑
+        // Put FF lookup logic here
+        // Example:
+        // FF/MU620500126907
+        // ===================================
 
         return;
       }
@@ -80,18 +119,24 @@ module.exports = (client) => {
           `🧳 Searching Bag Tag: ${btNumber}`
         );
 
+        // ===================================
         // TODO:
-        // 行李牌查询逻辑
+        // Put Bag Tag lookup logic here
+        // ===================================
 
         return;
       }
 
     } catch (err) {
 
-      console.error(err);
+      console.error(
+        'Lookup Error:',
+        err
+      );
 
     }
 
   });
 
 };
+```
