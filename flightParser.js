@@ -116,9 +116,6 @@ function getLounge(pax) {
 // ===============================
 function parseTimestamp(block) {
 
-  // Example:
-  // 2026 May 09, Saturday, 11:51:24
-
   const match = block.match(
     /(\d{4}\s+[A-Z][a-z]{2}\s+\d{2},\s+[A-Z][a-z]+,\s+\d{2}:\d{2}:\d{2})/
   );
@@ -316,6 +313,14 @@ function parseServices(block) {
 // Main Parser
 // ===============================
 function parseIncrementalLog(log) {
+
+  // ===========================
+  // Reset passengers
+  // ===========================
+  Object.keys(passengers)
+    .forEach(
+      key => delete passengers[key]
+    );
 
   // ===========================
   // Split blocks by timestamp
