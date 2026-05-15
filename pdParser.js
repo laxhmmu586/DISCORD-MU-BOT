@@ -1,39 +1,4 @@
-const pdPassengers = [];
-
-// ===============================
-// Cabin Mapping
-// ===============================
-function getCabin(seat) {
-
-  const row =
-    parseInt(
-      seat.match(/\d+/)?.[0]
-    );
-
-  if (!row) {
-    return 'Economy';
-  }
-
-  // First
-  if (
-    row >= 1 &&
-    row <= 2
-  ) {
-
-    return 'First';
-  }
-
-  // Business
-  if (
-    row >= 10 &&
-    row <= 20
-  ) {
-
-    return 'Business';
-  }
-
-  return 'Economy';
-}
+const pdData = [];
 
 // ===============================
 // Membership Status
@@ -56,58 +21,15 @@ function getMembershipStatus(tier) {
 }
 
 // ===============================
-// Lounge Rules
-// ===============================
-function getLounge(passenger) {
-
-  const cabin =
-    passenger.cabin;
-
-  const ffTier =
-    passenger.ffTier;
-
-  let eligible = false;
-
-  if (
-    cabin === 'First' ||
-    cabin === 'Business'
-  ) {
-
-    eligible = true;
-  }
-
-  if (
-    ['V', 'G', 'S'].includes(ffTier)
-  ) {
-
-    eligible = true;
-  }
-
-  let guest = false;
-
-  if (ffTier === 'V') {
-
-    guest = true;
-  }
-
-  return {
-
-    eligible,
-
-    guest
-  };
-}
-
-// ===============================
 // Parse PD Log
 // ===============================
 function parsePDLog(log) {
 
   // Clear old data
-  pdPassengers.length = 0;
+  pdData.length = 0;
 
   // ===========================
-  // Split by Timestamp
+  // Split Sections
   // ===========================
   const sections =
     log.split(
@@ -117,112 +39,167 @@ function parsePDLog(log) {
   for (const section of sections) {
 
     // =========================
-    // Flight
+    // PD Search Only
     // =========================
+    if (
+      !section.includes('PD:')
+    ) {
+
+      continue;
+    }
+
+    // =========================
+    // Flight
+    // PD: MU586/15MAY26Y*LAX
+    // =========================
+    let flight = '';
+    let flightDate = '';
+
     const flightMatch =
       section.match(
-        /PR:\s+([A-Z0-9]+)\/(\d{2}[A-Z]{3})/i
+        /PD:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i
       );
 
-    const flight =
-      flightMatch?.[1] || '';
+    if (flightMatch) {
 
-    const flightDate =
-      flightMatch?.[2] || '';
+      flight =
+        flightMatch[1];
+
+      flightDate =
+        flightMatch[2]
+          .substring(0, 5);
+    }
 
     // =========================
-    // Passenger Lines
+    // Name
     // =========================
-    const paxLines =
-      [
-        ...section.matchAll(
-          /\d+\.\s+([A-Z0-9\/]+)\s+BN(\d+)\s+(\S+)/gi
-        )
-      ];
+    let name =
+      'PD MEMBER';
 
-    for (const pax of paxLines) {
+    const nameMatch =
+      section.match(
+        /\d+\.\s*([A-Z\/]+)/i
+      );
 
-      const name =
-        pax[1]
+    if (nameMatch) {
+
+      name =
+        nameMatch[1]
           .trim();
+    }
 
-      const bn =
-        pax[2]
+    // =========================
+    // BN
+    // =========================
+    let bn = '---';
+
+    const bnMatch =
+      section.match(
+        /BN(\d{1,3})/i
+      );
+
+    if (bnMatch) {
+
+      bn =
+        bnMatch[1]
           .padStart(3, '0');
+    }
 
-      const seat =
-        pax[3]
-          .trim();
+    // =========================
+    // Seat
+    // =========================
+    let seat = '---';
 
-      // =======================
-      // FF
-      // =======================
-      const ffMatch =
-        section.match(
-          /FF\/([A-Z0-9]+)\s+(\d+)\/([A-Z])/i
-        );
+    const seatMatch =
+      section.match(
+        /BN\d+\s+(\d+[A-Z])/i
+      );
 
-      if (!ffMatch) {
-        continue;
-      }
+    if (seatMatch) {
 
-      const ffCarrier =
+      seat =
+        seatMatch[1];
+    }
+
+    // =========================
+    // Membership
+    // =========================
+    let ffCarrier = 'MU';
+
+    let ffNumber = null;
+
+    let ffTier = null;
+
+    const ffMatch =
+      section.match(
+        /FF\/([A-Z0-9]+)\s+(\d+)\/([A-Z])/i
+      );
+
+    if (ffMatch) {
+
+      ffCarrier =
         ffMatch[1];
 
-      const ffNumber =
+      ffNumber =
         ffMatch[2];
 
-      const ffTier =
+      ffTier =
         ffMatch[3];
-
-      // =======================
-      // Passenger Object
-      // =======================
-      const passenger = {
-
-        name,
-
-        bn,
-
-        seat,
-
-        cabin:
-          getCabin(seat),
-
-        flight,
-
-        flightDate,
-
-        ffCarrier,
-
-        ffNumber,
-
-        ffTier,
-
-        membershipStatus:
-          getMembershipStatus(
-            ffTier
-          ),
-
-        lounge:
-          null,
-
-        pdOnly:
-          true
-      };
-
-      passenger.lounge =
-        getLounge(passenger);
-
-      pdPassengers.push(
-        passenger
-      );
     }
+
+    // =========================
+    // Skip Invalid
+    // =========================
+    if (!ffNumber) {
+      continue;
+    }
+
+    // =========================
+    // Passenger Object
+    // =========================
+    const passenger = {
+
+      pdOnly: true,
+
+      flight,
+
+      flightDate,
+
+      name,
+
+      bn,
+
+      seat,
+
+      cabin:
+        'Elite',
+
+      ffCarrier,
+
+      ffNumber,
+
+      ffTier,
+
+      membershipStatus:
+        getMembershipStatus(
+          ffTier
+        ),
+
+      lounge: {
+
+        eligible: true,
+
+        guest:
+          ffTier === 'V'
+      }
+    };
+
+    pdData.push(passenger);
   }
 
   console.log(
-    'PD Passenger Count:',
-    pdPassengers.length
+    'PD passengers:',
+    pdData.length
   );
 }
 
@@ -236,12 +213,12 @@ function findPDByFFNumber(ff) {
       .replace(/\s/g, '')
       .toUpperCase();
 
-  return pdPassengers.find(p => {
+  return pdData.find(p => {
 
     const paxFF =
       (
-        p.ffCarrier +
-        p.ffNumber
+        (p.ffCarrier || '') +
+        (p.ffNumber || '')
       )
       .replace(/\s/g, '')
       .toUpperCase();
@@ -255,7 +232,7 @@ function findPDByFFNumber(ff) {
 // ===============================
 module.exports = {
 
-  pdPassengers,
+  pdData,
 
   parsePDLog,
 
