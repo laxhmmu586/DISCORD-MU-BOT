@@ -41,6 +41,7 @@ function parseIncrementalLog(log) {
     const seat = seatMatch[1].toUpperCase();
     const name = nameMatch[1].replace(/\s+/g, '').toUpperCase();
 
+    // 初始化乘客对象
     passengers[bn] = {
       bn,
       seat,
@@ -55,7 +56,18 @@ function parseIncrementalLog(log) {
       inbound: inboundMatch ? { flight: inboundMatch[1], date: inboundMatch[2], from: inboundMatch[3] } : null,
       outbound: outboundMatch ? { flight: outboundMatch[1], date: outboundMatch[2] || null, to: outboundMatch[3] } : null,
       loungeAccess: section.includes('FBA') ? true : false,
-      guestAccess: false
+      guestAccess: false,
+      // ===============================
+      // SSR / Special Service 安全添加
+      // ===============================
+      specialServices: (() => {
+        try {
+          const ssrMatch = section.match(/SSR\/([A-Z0-9]+)/gi);
+          return ssrMatch ? ssrMatch.map(s => s.toUpperCase()) : [];
+        } catch (err) {
+          return [];
+        }
+      })()
     };
   });
 }
