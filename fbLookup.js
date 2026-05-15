@@ -65,34 +65,87 @@ module.exports = (client) => {
         message.content
           .trim();
 
-      // =========================
-      // FB Commands
-      // =========================
-      if (
+      const upper =
+        content.toUpperCase();
 
-        !content
-          .toUpperCase()
-          .startsWith('FB ')
+      let query = '';
+      let mode = '';
 
-      ) {
+      // =========================
+      // FB 174
+      // =========================
+      if (upper.startsWith('FB ')) {
+
+        mode = 'BN';
+
+        query =
+          content
+            .substring(3)
+            .trim();
+      }
+
+      // =========================
+      // RN NAME
+      // =========================
+      else if (upper.startsWith('RN ')) {
+
+        mode = 'NAME';
+
+        query =
+          content
+            .substring(3)
+            .trim();
+      }
+
+      // =========================
+      // FSN SEAT
+      // =========================
+      else if (upper.startsWith('FSN ')) {
+
+        mode = 'SEAT';
+
+        query =
+          content
+            .substring(4)
+            .trim();
+      }
+
+      // =========================
+      // ETKD TICKET
+      // =========================
+      else if (upper.startsWith('ETKD ')) {
+
+        mode = 'TICKET';
+
+        query =
+          content
+            .substring(5)
+            .trim();
+      }
+
+      // =========================
+      // FF NUMBER
+      // =========================
+      else if (upper.startsWith('FF ')) {
+
+        mode = 'FF';
+
+        query =
+          content
+            .substring(3)
+            .trim();
+      }
+
+      // =========================
+      // Invalid
+      // =========================
+      else {
 
         return;
       }
 
-      const query =
-        content
-          .substring(3)
-          .trim()
-          .toUpperCase();
-
-      if (!query) {
-
-        await message.reply(
-          'Usage: FB 152'
-        );
-
-        return;
-      }
+      query =
+        query.toUpperCase();
 
       try {
 
@@ -123,7 +176,7 @@ module.exports = (client) => {
         // =====================
         // BN Search
         // =====================
-        if (/^\d{1,3}$/.test(query)) {
+        if (mode === 'BN') {
 
           const bn =
             query.padStart(3, '0');
@@ -135,20 +188,31 @@ module.exports = (client) => {
         // =====================
         // Seat Search
         // =====================
-        else if (
-          /^\d+[A-Z]$/.test(query)
-        ) {
+        else if (mode === 'SEAT') {
 
           pax =
             findBySeat(query);
         }
 
         // =====================
-        // Membership Search
+        // Ticket Search
         // =====================
-        else if (
-          /^[A-Z]{2}\d+$/.test(query)
-        ) {
+        else if (mode === 'TICKET') {
+
+          pax =
+            Object.values(passengers)
+              .find(p => {
+
+                return (
+                  p.ticketNumber === query
+                );
+              });
+        }
+
+        // =====================
+        // FF Search
+        // =====================
+        else if (mode === 'FF') {
 
           pax =
             findByFFNumber(query);
@@ -166,7 +230,7 @@ module.exports = (client) => {
         // =====================
         // Name Search
         // =====================
-        else {
+        else if (mode === 'NAME') {
 
           pax =
             findByName(query);
