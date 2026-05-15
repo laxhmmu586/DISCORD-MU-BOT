@@ -1,5 +1,5 @@
 // ===============================
-// Load ENV
+// Load .env
 // ===============================
 require('dotenv').config();
 
@@ -22,7 +22,7 @@ const {
 if (!process.env.DISCORD_TOKEN) {
 
   console.error(
-    '❌ DISCORD_TOKEN not found in .env'
+    '❌ DISCORD_TOKEN not found'
   );
 
   process.exit(1);
@@ -31,7 +31,7 @@ if (!process.env.DISCORD_TOKEN) {
 if (!process.env.CLIENT_ID) {
 
   console.error(
-    '❌ CLIENT_ID not found in .env'
+    '❌ CLIENT_ID not found'
   );
 
   process.exit(1);
@@ -50,7 +50,7 @@ const commands = [
     .setName('fb')
 
     .setDescription(
-      'Search by BN'
+      'Search Passenger by BN'
     )
 
     .addStringOption(option =>
@@ -74,7 +74,7 @@ const commands = [
     .setName('rn')
 
     .setDescription(
-      'Search by Name'
+      'Search Passenger by Name'
     )
 
     .addStringOption(option =>
@@ -98,7 +98,7 @@ const commands = [
     .setName('fsn')
 
     .setDescription(
-      'Search by Seat'
+      'Search Passenger by Seat'
     )
 
     .addStringOption(option =>
@@ -122,7 +122,7 @@ const commands = [
     .setName('etkd')
 
     .setDescription(
-      'Search by Ticket Number'
+      'Search Passenger by Ticket Number'
     )
 
     .addStringOption(option =>
@@ -146,7 +146,7 @@ const commands = [
     .setName('ff')
 
     .setDescription(
-      'Search by FF Number'
+      'Search Passenger by FF Number'
     )
 
     .addStringOption(option =>
@@ -167,7 +167,7 @@ const commands = [
 );
 
 // ===============================
-// REST
+// REST Client
 // ===============================
 const rest =
   new REST({
