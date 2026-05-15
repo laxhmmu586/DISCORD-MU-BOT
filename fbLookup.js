@@ -244,6 +244,44 @@ module.exports = (client) => {
 
             : []),
 
+          ...(pax.inbound
+
+            ? [
+
+                '',
+
+                'Inbound',
+
+                `${pax.inbound.flight}/${pax.inbound.date} from ${pax.inbound.origin}`
+
+              ]
+
+            : []),
+
+          ...(pax.outbound
+
+            ? [
+
+                '',
+
+                'Outbound',
+
+                `${pax.outbound.flight}/${pax.outbound.date}` +
+
+                (pax.outbound.bn
+                  ? ` BN${pax.outbound.bn}`
+                  : '') +
+
+                (pax.outbound.seat
+                  ? ` ${pax.outbound.seat}`
+                  : '') +
+
+                ` to ${pax.outbound.destination}`
+
+              ]
+
+            : []),
+
           ...(pax.specialServices?.length
 
             ? [

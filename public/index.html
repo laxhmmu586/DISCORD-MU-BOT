@@ -378,6 +378,42 @@
 
         </div>
 
+        <!-- Inbound -->
+        <div
+          class="section"
+          id="inboundSection"
+          style="display:none;"
+        >
+
+          <div class="label">
+            Inbound
+          </div>
+
+          <div
+            id="inbound"
+            class="value"
+          ></div>
+
+        </div>
+
+        <!-- Outbound -->
+        <div
+          class="section"
+          id="outboundSection"
+          style="display:none;"
+        >
+
+          <div class="label">
+            Outbound
+          </div>
+
+          <div
+            id="outbound"
+            class="value"
+          ></div>
+
+        </div>
+
         <!-- Special Service -->
         <div
           class="section"
@@ -643,6 +679,62 @@
             data.bagtags?.length
               ? data.bagtags.join('\n')
               : 'NONE';
+        }
+
+        // Inbound
+        if (data.inbound) {
+
+          document.getElementById(
+            'inboundSection'
+          ).style.display =
+            'block';
+
+          document.getElementById(
+            'inbound'
+          ).innerText =
+
+            `${data.inbound.flight}/${data.inbound.date} from ${data.inbound.origin}`;
+        }
+
+        else {
+
+          document.getElementById(
+            'inboundSection'
+          ).style.display =
+            'none';
+        }
+
+        // Outbound
+        if (data.outbound) {
+
+          document.getElementById(
+            'outboundSection'
+          ).style.display =
+            'block';
+
+          document.getElementById(
+            'outbound'
+          ).innerText =
+
+            `${data.outbound.flight}/${data.outbound.date}` +
+
+            (data.outbound.bn
+              ? ` BN${data.outbound.bn}`
+              : '') +
+
+            (data.outbound.seat
+              ? ` ${data.outbound.seat}`
+              : '') +
+
+            ` to ${data.outbound.destination}`;
+        }
+
+        else {
+
+          document.getElementById(
+            'outboundSection'
+          ).style.display =
+            'none';
         }
 
         // Special Services

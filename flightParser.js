@@ -268,11 +268,66 @@ function parseIncrementalLog(log) {
     }
 
     // =========================
+    // Inbound
+    // =========================
+    let inbound = null;
+
+    const inboundMatch =
+      section.match(
+        /I\/([A-Z0-9]+)\/(\d{2}[A-Z]{3}).*?\s([A-Z]{3})/i
+      );
+
+    if (inboundMatch) {
+
+      inbound = {
+
+        flight:
+          inboundMatch[1],
+
+        date:
+          inboundMatch[2],
+
+        origin:
+          inboundMatch[3]
+      };
+    }
+
+    // =========================
+    // Outbound
+    // =========================
+    let outbound = null;
+
+    const outboundMatch =
+      section.match(
+        /O\/([A-Z0-9]+)\/(\d{2}[A-Z]{3}).*?(BN(\d+))?.*?(\d+[A-Z])?.*?\s([A-Z]{3})/i
+      );
+
+    if (outboundMatch) {
+
+      outbound = {
+
+        flight:
+          outboundMatch[1],
+
+        date:
+          outboundMatch[2],
+
+        bn:
+          outboundMatch[4] || null,
+
+        seat:
+          outboundMatch[5] || null,
+
+        destination:
+          outboundMatch[6]
+      };
+    }
+
+    // =========================
     // Special Services
     // =========================
     const specialServices = [];
 
-    // SSR + Meal Codes
     const ssrCodes = [
 
       // Wheelchair
@@ -349,6 +404,10 @@ function parseIncrementalLog(log) {
       ticketNumber,
 
       bagtags,
+
+      inbound,
+
+      outbound,
 
       specialServices
     };
