@@ -1,22 +1,19 @@
 const { passengers } = require('./flightParser');
+const { EmbedBuilder } = require('discord.js');
 
 module.exports = (client) => {
   client.on('messageCreate', async (message) => {
     try {
-      // 忽略 bot 消息
       if (message.author.bot) return;
 
       const content = message.content.trim();
-
-      // 检查是否 FB 开头
       const fbMatch = content.match(/^fb\s+(.+)/i);
       if (!fbMatch) return;
 
       const query = fbMatch[1].trim().toUpperCase();
-
       let pax = null;
 
-      // 支持 BN / Seat / Name / Ticket / FF 查询
+      // 查询逻辑：支持 BN / Seat / Name / Ticket / FF
       if (/^\d{1,3}$/.test(query)) {
         const bn = query.padStart(3, '0');
         pax = passengers[bn];
@@ -35,42 +32,21 @@ module.exports = (client) => {
         pax = Object.values(passengers).find(p => p.name.toUpperCase().includes(query));
       }
 
-      if (!pax) {
-        return message.channel.send('Passenger not found.');
-      }
+      if (!pax) return message.channel.send('Passenger not found.');
 
-      // 构建 embed
-      const { MessageEmbed } = require('discord.js');
-
-      const embed = new MessageEmbed()
+      // 构建紧凑 embed
+      const embed = new EmbedBuilder()
         .setColor('#1E90FF')
-        .setTitle(`✈️ ${pax.flightDate}`)
-        .setDescription(`👤 ${pax.name}`)
-        .addField('🎫 BN/Seat/Class', `${pax.bn} • ${pax.seat} • ${pax.class}`, true);
-
-      if (pax.membershipNumber) {
-        embed.addField('🎟 Membership', `${pax.membershipNumber} (${pax.membershipStatus})`, true);
-      }
-
-      if (pax.ticketNumber) {
-        embed.addField('🎫 Ticket', pax.ticketNumber, true);
-      }
-
-      if (pax.bags && pax.bags.length > 0) {
-        embed.addField('🧳 Bags', pax.bags.join('\n'), false);
-      }
-
-      if (pax.inbound) {
-        embed.addField('Inbound', `${pax.inbound.flight}/${pax.inbound.date} from ${pax.inbound.origin}`, true);
-      }
-      if (pax.outbound) {
-        embed.addField('Outbound', `${pax.outbound.flight}/${pax.outbound.date} to ${pax.outbound.destination}`, true);
-      }
-
-      embed.addField('🛋 Lounge Access', pax.loungeAccess ? '✅ Eligible' : '❌ Not Eligible', true);
-      embed.addField('👥 Guest Access', pax.guestAccess ? '✅ Allowed' : '❌ Not Allowed', true);
-
-      embed.setFooter({ text: 'MU Lounge Validation' });
+        .setTitle(`✈️ ${pax.flightNumber || pax.flight}/${pax.flightDate}`)
+        .setDescription(`👤 ${pax.name}/${pax.ffStatus || 'A+'}`)
+        .addFields(
+          { name: '🎫 BN/Seat/Class', value: `${pax.bn} • ${pax.seat} • ${pax.class}`, inline: true },
+          { name: '🎟 Membership', value: pax.membershipNumber ? `${pax.membershipNumber} • ${pax.membershipStatus || ''}` : 'N/A', inline: true },
+          { name: '🎫 Ticket', value: pax.ticketNumber || 'N/A', inline: true },
+          { name: '🛋 Lounge Access', value: pax.loungeAccess ? '✅ Eligible' : '❌ Not Allowed', inline: true },
+          { name: '👥 Guest Access', value: pax.guestAccess ? '✅ Allowed' : '❌ Not Allowed', inline: true }
+        )
+        .setFooter({ text: 'MUL system' });
 
       await message.channel.send({ embeds: [embed] });
 
