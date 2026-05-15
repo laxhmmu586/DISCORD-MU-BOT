@@ -68,9 +68,7 @@ function getLounge(passenger) {
   const ffTier =
     passenger.ffTier;
 
-  // ===========================
   // Eligible
-  // ===========================
   let eligible = false;
 
   if (
@@ -88,18 +86,14 @@ function getLounge(passenger) {
     eligible = true;
   }
 
-  // ===========================
-  // Guest Allowed
-  // ===========================
+  // Guest
   let guest = false;
 
-  // Platinum
   if (ffTier === 'V') {
 
     guest = true;
   }
 
-  // Elite+ Airline
   if (
 
     passenger.ffCarrier &&
@@ -111,7 +105,6 @@ function getLounge(passenger) {
     guest = true;
   }
 
-  // Business + Gold
   if (
     cabin === 'Business' &&
     ffTier === 'G'
@@ -148,14 +141,15 @@ function parseIncrementalLog(log) {
   for (const section of sections) {
 
     // =========================
-    // FB Number
+    // Must contain FB/PR/PU
     // =========================
-    const fbMatch =
-      section.match(
-        />FB\s+(\d{1,3})/i
-      );
+    if (
 
-    if (!fbMatch) {
+      !section.includes('PR:') &&
+      !section.includes('PU:')
+
+    ) {
+
       continue;
     }
 
@@ -174,7 +168,7 @@ function parseIncrementalLog(log) {
     // =========================
     const flightMatch =
       section.match(
-        /PR:\s+([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i
+        /(?:PR|PU):\s+([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i
       );
 
     const flight =
@@ -183,16 +177,16 @@ function parseIncrementalLog(log) {
     const rawFlightDate =
       flightMatch?.[2] || '';
 
-    // Display 11MAY only
     const flightDate =
       rawFlightDate.substring(0, 5);
 
     // =========================
     // Passenger Line
+    // FIXED REGEX
     // =========================
     const paxMatch =
       section.match(
-        /\d+\.\s+([A-Z\/]+)\s+.*?BN(\d+)\s+\*?(\d+[A-Z])/i
+        /\d+\.\s+([A-Z\/]+).*?BN(\d+)\s+\*?([0-9]{1,2}[A-Z])/i
       );
 
     if (!paxMatch) {
@@ -212,7 +206,7 @@ function parseIncrementalLog(log) {
         .trim();
 
     // =========================
-    // Cabin by Seat
+    // Cabin
     // =========================
     const cabin =
       getCabin(seat);
@@ -262,31 +256,20 @@ function parseIncrementalLog(log) {
     // =========================
     const bagtags = [];
 
-    const bagLineMatch =
-      section.match(
-        /BAGTAG\/([^\n\r]+)/i
+    const bagMatches =
+      [
+        ...section.matchAll(
+          /BAGTAG\/([A-Z]{0,2}\s?\d+\/[A-Z]{3})/gi
+        )
+      ];
+
+    for (const bag of bagMatches) {
+
+      bagtags.push(
+
+        bag[1]
+          .replace(/\s+/g, '')
       );
-
-    if (bagLineMatch) {
-
-      const line =
-        bagLineMatch[1];
-
-      const bags =
-        [
-          ...line.matchAll(
-            /([A-Z]{0,2}\s?\d+\/[A-Z]{3})/gi
-          )
-        ];
-
-      for (const b of bags) {
-
-        bagtags.push(
-
-          b[1]
-            .replace(/\s+/g, '')
-        );
-      }
     }
 
     // =========================
@@ -352,12 +335,10 @@ function parseIncrementalLog(log) {
 
     const ssrCodes = [
 
-      // Wheelchair
       'WCHR',
       'WCHS',
       'WCHC',
 
-      // Passenger Conditions
       'UMNR',
       'UM',
       'BLND',
@@ -365,11 +346,9 @@ function parseIncrementalLog(log) {
       'MEDA',
       'OXYG',
 
-      // Pets / Animal
       'PETC',
       'AVIH',
 
-      // Passenger Handling
       'MAAS',
       'STCR',
       'INAD',
@@ -377,7 +356,6 @@ function parseIncrementalLog(log) {
       'CIP',
       'PPOC',
 
-      // Meals
       'VGML',
       'AVML',
       'KSML',
@@ -437,9 +415,7 @@ function parseIncrementalLog(log) {
     passenger.lounge =
       getLounge(passenger);
 
-    // =========================
     // Latest Record Wins
-    // =========================
     passengers[bn] =
       passenger;
   }
