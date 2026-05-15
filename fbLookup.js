@@ -6,7 +6,9 @@ const {
 
   findBySeat,
 
-  findByName
+  findByName,
+
+  findByFFNumber
 
 } = require('./flightParser');
 
@@ -78,7 +80,7 @@ function createPassengerEmbed(pax) {
       `${pax.flight}/${pax.flightDate}`,
 
     description:
-      `👤 ${pax.name}\n🎫 BN${pax.bn} | ${pax.seat}`,
+      `👤 ${pax.name}\n🎫 BN${pax.bn} | ${pax.seat} | ${pax.cabin} Class`,
 
     fields: [
 
@@ -182,6 +184,8 @@ module.exports = function(client) {
 
         // ===========================
         // FB QUERY
+        // Example:
+        // FB 123
         // ===========================
         if (
           text.startsWith('FB')
@@ -211,6 +215,8 @@ module.exports = function(client) {
 
         // ===========================
         // FSN QUERY
+        // Example:
+        // FSN 20A
         // ===========================
         if (
           text.startsWith('FSN')
@@ -237,6 +243,8 @@ module.exports = function(client) {
 
         // ===========================
         // RN QUERY
+        // Example:
+        // RN HUANG
         // ===========================
         if (
           text.startsWith('RN')
@@ -249,6 +257,35 @@ module.exports = function(client) {
 
           const pax =
             findByName(name);
+
+          return message.reply({
+
+            embeds: [
+
+              createPassengerEmbed(pax)
+
+            ]
+
+          });
+        }
+
+        // ===========================
+        // FF QUERY
+        // Example:
+        // FF MU650278486253
+        // FF MU 650278486253
+        // ===========================
+        if (
+          text.startsWith('FF')
+        ) {
+
+          const ff =
+            text
+              .replace('FF', '')
+              .trim();
+
+          const pax =
+            findByFFNumber(ff);
 
           return message.reply({
 

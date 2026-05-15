@@ -116,9 +116,6 @@ function getLounge(pax) {
 // ===============================
 function parseTimestamp(block) {
 
-  // Example:
-  // 2026 May 10, Sunday, 09:17:59
-
   const match = block.match(
     /(\d{4}\s+[A-Z][a-z]{2}\s+\d{1,2},\s+[A-Z][a-z]+,\s+\d{2}:\d{2}:\d{2})/
   );
@@ -157,8 +154,6 @@ function parseFlightInfo(block) {
 // Parse Passenger
 // ===============================
 function parsePassenger(block) {
-
-  // Flexible parser
 
   const match = block.match(
     /1\.\s+([A-Z]+\/[A-Z]+).*?BN(\d+)/s
@@ -335,17 +330,13 @@ function parseServices(block) {
 // ===============================
 function parseIncrementalLog(log) {
 
-  // ===========================
   // Reset passengers
-  // ===========================
   Object.keys(passengers)
     .forEach(
       key => delete passengers[key]
     );
 
-  // ===========================
   // Split blocks by timestamp
-  // ===========================
   const blocks =
     log.match(
       /\d{4}\s+[A-Z][a-z]{2}\s+\d{1,2},\s+[A-Z][a-z]+,\s+\d{2}:\d{2}:\d{2}[\s\S]*?(?=\d{4}\s+[A-Z][a-z]{2}\s+\d{1,2},\s+[A-Z][a-z]+,\s+\d{2}:\d{2}:\d{2}|$)/g
@@ -353,11 +344,9 @@ function parseIncrementalLog(log) {
 
   for (const rawBlock of blocks) {
 
-    // Normalize uppercase
     const block =
       rawBlock.toUpperCase();
 
-    // Parse timestamp
     const timestamp =
       parseTimestamp(rawBlock);
 
@@ -389,9 +378,7 @@ function parseIncrementalLog(log) {
       continue;
     }
 
-    // ===========================
     // Keep Latest Record Only
-    // ===========================
     const existing =
       passengers[pax.bn];
 
@@ -515,6 +502,63 @@ function findByName(name) {
 }
 
 // ===============================
+// Find By FF Number
+// ===============================
+function findByFFNumber(input) {
+
+  if (!input) {
+    return null;
+  }
+
+  // Normalize
+  let query =
+    input
+      .toUpperCase()
+      .replace(/\s+/g, '');
+
+  // Remove FF prefix
+  query =
+    query.replace(/^FF/, '');
+
+  // Example:
+  // MU650278486253
+
+  for (const bn in passengers) {
+
+    const pax =
+      passengers[bn];
+
+    if (!pax) {
+      continue;
+    }
+
+    const carrier =
+      (
+        pax.ffCarrier || ''
+      )
+      .toUpperCase();
+
+    const number =
+      (
+        pax.ffNumber || ''
+      )
+      .replace(/\s+/g, '');
+
+    const full =
+      carrier + number;
+
+    if (
+      full === query
+    ) {
+
+      return pax;
+    }
+  }
+
+  return null;
+}
+
+// ===============================
 // Exports
 // ===============================
 module.exports = {
@@ -525,5 +569,7 @@ module.exports = {
 
   findBySeat,
 
-  findByName
+  findByName,
+
+  findByFFNumber
 };

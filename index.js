@@ -15,6 +15,8 @@ const {
 
   findByName,
 
+  findByFFNumber,
+
   parseIncrementalLog
 
 } = require('./flightParser');
@@ -151,6 +153,22 @@ app.get('/search', async (req, res) => {
 
       pax =
         findBySeat(q);
+    }
+
+    // ===========================
+    // FF Number Search
+    // Example:
+    // MU650278486253
+    // MU 650278486253
+    // ===========================
+    else if (
+
+      /^([A-Z]{2})\s?\d{6,}$/.test(q)
+
+    ) {
+
+      pax =
+        findByFFNumber(q);
     }
 
     // ===========================
