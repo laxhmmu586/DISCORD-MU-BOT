@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 
@@ -12,7 +11,7 @@
   >
 
   <title>
-    MU Lounge Validation
+    MU Flight Control
   </title>
 
   <style>
@@ -148,6 +147,8 @@
       color: #cbd5e1;
 
       margin-bottom: 24px;
+
+      font-size: 17px;
     }
 
     .section {
@@ -209,7 +210,7 @@
   <div class="container">
 
     <div class="title">
-      MU Lounge Validation
+      MU Flight Control
     </div>
 
     <div class="subtitle">
@@ -220,7 +221,7 @@
 
       <input
         id="query"
-        placeholder="321 / 20A / HUANG/ZEYANMR"
+        placeholder="321 / 20A / HUANG/ZEYUANMR"
       >
 
       <button onclick="searchPassenger()">
@@ -372,16 +373,19 @@
         ).innerText =
           data.name;
 
-        // Seat
+        // Seat + Cabin
         document.getElementById(
           'seat'
         ).innerText =
           'BN' +
           data.bn +
           ' | ' +
-          data.seat;
+          data.seat +
+          ' | ' +
+          data.cabin +
+          ' Class';
 
-        // FF
+        // Membership
         document.getElementById(
           'ff'
         ).innerText =
@@ -467,4 +471,3 @@
 
 </body>
 </html>
-
