@@ -2,8 +2,6 @@ require('dotenv').config();
 
 const express = require('express');
 
-const path = require('path');
-
 const {
 
   passengers,
@@ -28,7 +26,9 @@ const {
 
 const {
 
-  getLatestFlightLog
+  getLatestFlightLog,
+
+  getFlightLogByDate
 
 } = require('./googleDrive');
 
@@ -44,7 +44,7 @@ const fbLookup =
   require('./fbLookup');
 
 // ===============================
-// Express App
+// Express
 // ===============================
 const app =
   express();
@@ -74,7 +74,7 @@ const client =
   });
 
 // ===============================
-// Load FB Lookup
+// FB Lookup
 // ===============================
 fbLookup(client);
 
@@ -86,6 +86,7 @@ client.login(
 );
 
 client.once(
+
   'ready',
 
   () => {
@@ -124,10 +125,57 @@ app.get(
       }
 
       // =========================
-      // Download Latest Log
+      // Date Search
+      // Example:
+      // 174/11MAY
       // =========================
-      const log =
-        await getLatestFlightLog();
+      let date = null;
+
+      if (q.includes('/')) {
+
+        const parts =
+          q.split('/');
+
+        // Avoid names
+        if (
+
+          parts.length === 2 &&
+
+          /^\d{1,3}$/.test(parts[0])
+
+        ) {
+
+          q =
+            parts[0]
+              .trim();
+
+          date =
+            parts[1]
+              .trim()
+              .toUpperCase();
+        }
+      }
+
+      // =========================
+      // Load Log
+      // =========================
+      let log = null;
+
+      // Archive
+      if (date) {
+
+        log =
+          await getFlightLogByDate(
+            date
+          );
+      }
+
+      // Today
+      else {
+
+        log =
+          await getLatestFlightLog();
+      }
 
       if (!log) {
 
@@ -139,7 +187,7 @@ app.get(
       }
 
       // =========================
-      // Parse Logs
+      // Parse
       // =========================
       parseIncrementalLog(log);
 
