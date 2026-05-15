@@ -1,6 +1,8 @@
+```js id="n5x7pk"
 require('dotenv').config();
 
 const express = require('express');
+const path = require('path');
 
 const {
   Client,
@@ -8,6 +10,15 @@ const {
 } = require('discord.js');
 
 const app = express();
+
+// ===============================
+// Static Website
+// ===============================
+app.use(
+  express.static(
+    path.join(__dirname, 'public')
+  )
+);
 
 app.use(express.json({
   limit: '50mb'
@@ -63,13 +74,150 @@ client.login(
 );
 
 // ===============================
-// Health Check
+// Homepage
 // ===============================
 app.get('/', (req, res) => {
 
-  res.send(
-    'Discord Bot Running'
+  res.sendFile(
+    path.join(
+      __dirname,
+      'public',
+      'index.html'
+    )
   );
+
+});
+
+// ===============================
+// Lounge Lookup API
+// ===============================
+app.get('/lookup', async (req, res) => {
+
+  try {
+
+    const q =
+      (req.query.q || '')
+      .trim()
+      .toUpperCase();
+
+    // ===============================
+    // DEMO DATA
+    // Replace with Google Sheet later
+    // ===============================
+    const records = [
+
+      {
+
+        fb: 'FB008',
+
+        rn: 'RN008',
+
+        ticket: '7819496979113',
+
+        name: 'HUANG/ZEYUANMR',
+
+        bn: 'BN008',
+
+        seat: '32K',
+
+        ffNumber: 'MU 610264716710',
+
+        tier: 'Regular / C',
+
+        guestAllowed: false
+
+      },
+
+      {
+
+        fb: 'FB009',
+
+        rn: 'RN009',
+
+        ticket: '7811234567890',
+
+        name: 'ZHANG/SANMR',
+
+        bn: 'BN009',
+
+        seat: '12A',
+
+        ffNumber: 'MU 610000000001',
+
+        tier: 'Silver / E',
+
+        guestAllowed: true
+
+      }
+
+    ];
+
+    // ===============================
+    // Search Logic
+    // ===============================
+    let result = null;
+
+    // FB
+    if (q.startsWith('FB')) {
+
+      result = records.find(
+        r => r.fb === q
+      );
+
+    }
+
+    // RN
+    else if (q.startsWith('RN')) {
+
+      result = records.find(
+        r => r.rn === q
+      );
+
+    }
+
+    // Ticket
+    else if (q.startsWith('781')) {
+
+      result = records.find(
+        r => r.ticket === q
+      );
+
+    }
+
+    // BN
+    else if (q.startsWith('BN')) {
+
+      result = records.find(
+        r => r.bn === q
+      );
+
+    }
+
+    // Not Found
+    if (!result) {
+
+      return res.json({
+        error: true
+      });
+
+    }
+
+    // Return Result
+    res.json(result);
+
+  } catch (err) {
+
+    console.error(err);
+
+    res.status(500).json({
+
+      error: true,
+
+      message: err.toString()
+
+    });
+
+  }
 
 });
 
@@ -94,6 +242,7 @@ app.post('/send', async (req, res) => {
         .send(
           'Missing channelId'
         );
+
     }
 
     // Fetch Channel
@@ -109,6 +258,7 @@ app.post('/send', async (req, res) => {
         .send(
           'Channel not found'
         );
+
     }
 
     // Send Message
@@ -138,6 +288,7 @@ app.post('/send', async (req, res) => {
       .send(
         err.toString()
       );
+
   }
 
 });
@@ -156,3 +307,4 @@ app.listen(PORT, '0.0.0.0', () => {
   );
 
 });
+```
