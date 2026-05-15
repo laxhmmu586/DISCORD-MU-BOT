@@ -1,198 +1,82 @@
-// ===============================
-// Modules
-// ===============================
-const {
-  passengers,
-  findBySeat,
-  findByName,
-  findByFFNumber,
-  parseIncrementalLog
-} = require('./flightParser');
+const { passengers } = require('./flightParser');
 
-const {
-  parsePDLog,
-  findPDByFFNumber
-} = require('./pdParser');
-
-const {
-  getLatestFlightLog,
-  getFlightLogByDate
-} = require('./googleDrive');
-
-// ===============================
-// Membership Status
-// ===============================
-function getMembershipStatus(tier) {
-  if (tier === 'V') return 'Platinum';
-  if (tier === 'G') return 'Gold';
-  if (tier === 'S') return 'Silver';
-  return '';
-}
-
-// ===============================
-// FB Lookup Command
-// ===============================
 module.exports = (client) => {
   client.on('messageCreate', async (message) => {
-    // Ignore Bots
-    if (message.author.bot) return;
-
-    const content = message.content.trim();
-    const upper = content.toUpperCase();
-    let query = '';
-    let mode = '';
-
-    // =========================
-    // FB
-    // =========================
-    if (upper.startsWith('FB ')) {
-      mode = 'BN';
-      query = content.substring(3).trim();
-    }
-    // =========================
-    // RN
-    // =========================
-    else if (upper.startsWith('RN ')) {
-      mode = 'NAME';
-      query = content.substring(3).trim();
-    }
-    // =========================
-    // FSN
-    // =========================
-    else if (upper.startsWith('FSN ')) {
-      mode = 'SEAT';
-      query = content.substring(4).trim();
-    }
-    // =========================
-    // ETKD
-    // =========================
-    else if (upper.startsWith('ETKD ')) {
-      mode = 'TICKET';
-      query = content.substring(5).trim();
-    }
-    // =========================
-    // FF
-    // =========================
-    else if (upper.startsWith('FF ')) {
-      mode = 'FF';
-      query = content.substring(3).trim();
-    } else {
-      return; // not a recognized command
-    }
-
-    query = query.toUpperCase();
-
-    // =========================
-    // Date Search (optional)
-    // =========================
-    let date = null;
-    const dateMatch = query.match(/(.+)\/(\d{2}[A-Z]{3})$/i);
-    if (dateMatch) {
-      query = dateMatch[1].trim().toUpperCase();
-      date = dateMatch[2].trim().toUpperCase();
-    }
-
     try {
-      // =====================
-      // Load Log
-      // =====================
-      let log = null;
-      if (date) {
-        log = await getFlightLogByDate(date);
-      } else {
-        log = await getLatestFlightLog();
-      }
+      // 忽略 bot 消息
+      if (message.author.bot) return;
 
-      if (!log) return;
+      const content = message.content.trim();
 
-      // =====================
-      // Parse Logs
-      // =====================
-      parseIncrementalLog(log);
-      parsePDLog(log);
+      // 检查是否 FB 开头
+      const fbMatch = content.match(/^fb\s+(.+)/i);
+      if (!fbMatch) return;
+
+      const query = fbMatch[1].trim().toUpperCase();
 
       let pax = null;
 
-      // =====================
-      // BN Search
-      // =====================
-      if (mode === 'BN') {
+      // 支持 BN / Seat / Name / Ticket / FF 查询
+      if (/^\d{1,3}$/.test(query)) {
         const bn = query.padStart(3, '0');
         pax = passengers[bn];
-      }
-      // =====================
-      // Seat Search
-      // =====================
-      else if (mode === 'SEAT') {
-        pax = findBySeat(query);
-      }
-      // =====================
-      // Ticket Search
-      // =====================
-      else if (mode === 'TICKET') {
-        pax = Object.values(passengers).find(p => p.ticketNumber === query);
-      }
-      // =====================
-      // FF Search
-      // =====================
-      else if (mode === 'FF') {
-        pax = findByFFNumber(query);
-        if (!pax) pax = findPDByFFNumber(query);
-      }
-      // =====================
-      // Name Search
-      // =====================
-      else if (mode === 'NAME') {
-        pax = findByName(query);
+      } else if (/^\d+[A-Z]$/.test(query)) {
+        pax = Object.values(passengers).find(p => p.seat.toUpperCase() === query);
+      } else if (/^RN\s+/.test(query)) {
+        const name = query.replace(/^RN\s+/i, '').trim();
+        pax = Object.values(passengers).find(p => p.name.toUpperCase() === name);
+      } else if (/^ETKD\s+/.test(query)) {
+        const ticket = query.replace(/^ETKD\s+/i, '').trim();
+        pax = Object.values(passengers).find(p => p.ticketNumber === ticket);
+      } else if (/^FF\s+/.test(query)) {
+        const ff = query.replace(/^FF\s+/i, '').trim();
+        pax = Object.values(passengers).find(p => p.membershipNumber === ff);
+      } else {
+        pax = Object.values(passengers).find(p => p.name.toUpperCase().includes(query));
       }
 
-      // =====================
-      // Not Found
-      // =====================
       if (!pax) {
-        message.channel.send('Passenger not found.');
-        return;
+        return message.channel.send('Passenger not found.');
       }
 
-      // =====================
-      // Membership
-      // =====================
-      const membershipStatus = pax.membershipStatus || getMembershipStatus(pax.ffTier);
+      // 构建 embed
+      const { MessageEmbed } = require('discord.js');
 
-      // =====================
-      // Compose message
-      // =====================
-      let msg = `✈️ ${pax.flight}/${pax.flightDate}\n👤 ${pax.name}\n🎫 BN${pax.bn} • ${pax.seat} • ${pax.cabin}\n`;
+      const embed = new MessageEmbed()
+        .setColor('#1E90FF')
+        .setTitle(`✈️ ${pax.flightDate}`)
+        .setDescription(`👤 ${pax.name}`)
+        .addField('🎫 BN/Seat/Class', `${pax.bn} • ${pax.seat} • ${pax.class}`, true);
 
-      if (pax.ffNumber) {
-        msg += `💳 Membership: ${pax.ffCarrier} ${pax.ffNumber}`;
-        if (membershipStatus) msg += `\n${membershipStatus}`;
-        msg += '\n';
+      if (pax.membershipNumber) {
+        embed.addField('🎟 Membership', `${pax.membershipNumber} (${pax.membershipStatus})`, true);
       }
 
-      if (pax.ticketNumber) msg += `🎟 Ticket: ${pax.ticketNumber}\n`;
+      if (pax.ticketNumber) {
+        embed.addField('🎫 Ticket', pax.ticketNumber, true);
+      }
 
-      if (pax.bagtags?.length) msg += `🧳 Bags:\n${pax.bagtags.join('\n')}\n`;
+      if (pax.bags && pax.bags.length > 0) {
+        embed.addField('🧳 Bags', pax.bags.join('\n'), false);
+      }
 
-      if (pax.inbound) msg += `⬅ Inbound: ${pax.inbound.flight}/${pax.inbound.date} From ${pax.inbound.origin}\n`;
+      if (pax.inbound) {
+        embed.addField('Inbound', `${pax.inbound.flight}/${pax.inbound.date} from ${pax.inbound.origin}`, true);
+      }
+      if (pax.outbound) {
+        embed.addField('Outbound', `${pax.outbound.flight}/${pax.outbound.date} to ${pax.outbound.destination}`, true);
+      }
 
-      if (pax.outbound)
-        msg += `➡ Outbound: ${pax.outbound.flight}/${pax.outbound.date}${
-          pax.outbound.bn ? ` • BN${pax.outbound.bn}` : ''
-        }${pax.outbound.seat ? ` • ${pax.outbound.seat}` : ''} To ${pax.outbound.destination}\n`;
+      embed.addField('🛋 Lounge Access', pax.loungeAccess ? '✅ Eligible' : '❌ Not Eligible', true);
+      embed.addField('👥 Guest Access', pax.guestAccess ? '✅ Allowed' : '❌ Not Allowed', true);
 
-      if (pax.specialServices?.length) msg += `⚠ Special Service:\n${pax.specialServices.join('\n')}\n`;
+      embed.setFooter({ text: 'MU Lounge Validation' });
 
-      msg += `🛋 Lounge Access: ${pax.lounge?.eligible ? '✅ Eligible' : '❌ Not Eligible'}\n`;
-      msg += `👥 Lounge Guest: ${pax.lounge?.guest ? '✅ Allowed' : '❌ Not Allowed'}`;
+      await message.channel.send({ embeds: [embed] });
 
-      // =====================
-      // Send to channel
-      // =====================
-      message.channel.send(msg);
     } catch (err) {
       console.error(err);
-      message.channel.send('Error processing the request.');
+      message.channel.send('Error processing passenger info.');
     }
   });
 };
