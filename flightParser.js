@@ -238,19 +238,33 @@ function parseIncrementalLog(log) {
     // =========================
     const bagtags = [];
 
-    const bagMatches =
-      [
-        ...section.matchAll(
-          /BAGTAG\/([A-Z]{2}\s?\d+\/[A-Z]{3})/gi
-        )
-      ];
-
-    for (const m of bagMatches) {
-
-      bagtags.push(
-        m[1]
-          .replace(/\s+/g, '')
+    // Find BAGTAG line
+    const bagLineMatch =
+      section.match(
+        /BAGTAG\/([^\n\r]+)/i
       );
+
+    if (bagLineMatch) {
+
+      const line =
+        bagLineMatch[1];
+
+      // Extract all bag tags
+      const bags =
+        [
+          ...line.matchAll(
+            /([A-Z]{2}\s?\d+\/[A-Z]{3})/gi
+          )
+        ];
+
+      for (const b of bags) {
+
+        bagtags.push(
+
+          b[1]
+            .replace(/\s+/g, '')
+        );
+      }
     }
 
     // =========================
