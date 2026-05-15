@@ -242,7 +242,7 @@ module.exports = (client) => {
         if (!pax) {
 
           await message.reply(
-            'Passenger not found.'
+            'Passenger data not updated yet.'
           );
 
           return;
