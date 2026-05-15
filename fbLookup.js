@@ -1,3 +1,6 @@
+// ===============================
+// Modules
+// ===============================
 const {
 
   passengers,
@@ -75,7 +78,7 @@ module.exports = (client) => {
       let mode = '';
 
       // =========================
-      // FB 174
+      // FB
       // =========================
       if (upper.startsWith('FB ')) {
 
@@ -88,7 +91,7 @@ module.exports = (client) => {
       }
 
       // =========================
-      // RN NAME
+      // RN
       // =========================
       else if (upper.startsWith('RN ')) {
 
@@ -101,7 +104,7 @@ module.exports = (client) => {
       }
 
       // =========================
-      // FSN SEAT
+      // FSN
       // =========================
       else if (upper.startsWith('FSN ')) {
 
@@ -114,7 +117,7 @@ module.exports = (client) => {
       }
 
       // =========================
-      // ETKD TICKET
+      // ETKD
       // =========================
       else if (upper.startsWith('ETKD ')) {
 
@@ -127,7 +130,7 @@ module.exports = (client) => {
       }
 
       // =========================
-      // FF NUMBER
+      // FF
       // =========================
       else if (upper.startsWith('FF ')) {
 
@@ -500,12 +503,35 @@ module.exports = (client) => {
         };
 
         // =====================
-        // Send Embed
+        // Send DM
         // =====================
-        await message.reply({
+        try {
 
-          embeds: [embed]
-        });
+          // Send Embed to User DM
+          await message.author.send({
+
+            embeds: [embed]
+          });
+
+          // Public Confirmation
+          await message.reply(
+
+            '📩 Passenger info sent to your DM.'
+
+          );
+
+        }
+
+        catch (err) {
+
+          console.error(err);
+
+          await message.reply(
+
+            '❌ Unable to send DM. Please enable Direct Messages from server members.'
+
+          );
+        }
 
       }
 
