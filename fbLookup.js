@@ -1,3 +1,4 @@
+// fbLookup.js
 const {
   passengers,
   findBySeat,
@@ -131,7 +132,7 @@ module.exports = (client) => {
       const membershipStatus = pax.membershipStatus || getMembershipStatus(pax.ffTier);
 
       // =====================
-      // Embed (without Special Services)
+      // Embed (special services removed)
       // =====================
       const embed = {
         color: 0xf59e0b,
