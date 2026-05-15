@@ -1,9 +1,4 @@
 // flightParser.js
-const fs = require('fs');
-
-// ===============================
-// Data Store
-// ===============================
 const passengers = {};
 
 // ===============================
@@ -24,8 +19,12 @@ function getClassFromSeat(seat) {
 // Parse Flight Log
 // ===============================
 function parseIncrementalLog(log) {
-  passengers.clear; // reset passengers
-  const records = log.split(/(?=^\d+\.)/gm); // 每个旅客record
+  // 清空上次数据
+  Object.keys(passengers).forEach(k => delete passengers[k]);
+
+  // 按每个旅客 record 分割
+  const records = log.split(/(?=^\d+\.)/gm);
+
   records.forEach(section => {
     const bnMatch = section.match(/BN\s?(\d+)/i);
     const seatMatch = section.match(/(\d+[A-Z])/i);
@@ -42,19 +41,17 @@ function parseIncrementalLog(log) {
     const seat = seatMatch[1].toUpperCase();
     const name = nameMatch[1].replace(/\s+/g, '').toUpperCase();
 
-    // 特殊服务 SSR
+    // 精确匹配 SSR，只匹配真实出现的
     const specialServices = [];
-    const passengerTextMatch = section.match(/\d+\.\s+[A-Z\/\+\-]+.*?BN\s?\d+/i);
-    const passengerText = passengerTextMatch ? passengerTextMatch[0] : section;
-    const ssrLines = section.split(/\r?\n/).slice(0, 10).join(' '); // 前10行
-    const ssrCodes = [
+    const ssrList = [
       'WCHR','WCHS','WCHC','UMNR','UM','BLND','DEAF','MEDA','OXYG',
       'PETC','AVIH','MAAS','STCR','INAD','VIP','CIP','PPOC',
       'VGML','AVML','KSML','MOML','CHML','BBML','GFML','NLML','DBML','FPML'
     ];
-    ssrCodes.forEach(code => {
+    const firstLines = section.split(/\r?\n/).slice(0, 10).join(' ');
+    ssrList.forEach(code => {
       const regex = new RegExp(`\\b${code}\\b`, 'i');
-      if (regex.test(ssrLines)) specialServices.push(code);
+      if (regex.test(firstLines)) specialServices.push(code);
     });
 
     passengers[bn] = {
@@ -71,7 +68,7 @@ function parseIncrementalLog(log) {
       inbound: inboundMatch ? { flight: inboundMatch[1], date: inboundMatch[2], from: inboundMatch[3] } : null,
       outbound: outboundMatch ? { flight: outboundMatch[1], date: outboundMatch[2] || null, to: outboundMatch[3] } : null,
       loungeAccess: section.includes('FBA') ? true : false,
-      guestAccess: false, // 逻辑可以在 fbLookup.js里判断
+      guestAccess: false,
       specialServices
     };
   });
