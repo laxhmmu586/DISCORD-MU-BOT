@@ -272,32 +272,55 @@ function parseIncrementalLog(log) {
     // =========================
     const specialServices = [];
 
-    if (section.includes('WCHR')) {
-      specialServices.push('WCHR');
-    }
+    // SSR + Meal Codes
+    const ssrCodes = [
 
-    if (section.includes('WCHS')) {
-      specialServices.push('WCHS');
-    }
+      // Wheelchair
+      'WCHR',
+      'WCHS',
+      'WCHC',
 
-    if (section.includes('WCHC')) {
-      specialServices.push('WCHC');
-    }
+      // Passenger Conditions
+      'UMNR',
+      'UM',
+      'BLND',
+      'DEAF',
+      'MEDA',
+      'OXYG',
 
-    if (section.includes('UMNR')) {
-      specialServices.push('UMNR');
-    }
+      // Pets / Animal
+      'PETC',
+      'AVIH',
 
-    if (section.includes('BLND')) {
-      specialServices.push('BLND');
-    }
+      // Passenger Handling
+      'MAAS',
+      'STCR',
+      'INAD',
+      'VIP',
+      'CIP',
+      'PPOC',
 
-    if (section.includes('DEAF')) {
-      specialServices.push('DEAF');
-    }
+      // Meals
+      'VGML',
+      'AVML',
+      'KSML',
+      'MOML',
+      'CHML',
+      'BBML',
+      'GFML',
+      'NLML',
+      'DBML',
+      'FPML'
+    ];
 
-    if (section.includes('MEDA')) {
-      specialServices.push('MEDA');
+    for (const code of ssrCodes) {
+
+      if (
+        section.includes(code)
+      ) {
+
+        specialServices.push(code);
+      }
     }
 
     // =========================

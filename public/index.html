@@ -378,6 +378,24 @@
 
         </div>
 
+        <!-- Special Service -->
+        <div
+          class="section"
+          id="ssrSection"
+          style="display:none;"
+        >
+
+          <div class="label">
+            Special Service
+          </div>
+
+          <div
+            id="ssr"
+            class="value"
+          ></div>
+
+        </div>
+
         <!-- Lounge -->
         <div class="section">
 
@@ -625,6 +643,34 @@
             data.bagtags?.length
               ? data.bagtags.join('\n')
               : 'NONE';
+        }
+
+        // Special Services
+        if (
+          data.specialServices &&
+          data.specialServices.length
+        ) {
+
+          document.getElementById(
+            'ssrSection'
+          ).style.display =
+            'block';
+
+          document.getElementById(
+            'ssr'
+          ).innerText =
+
+            data.specialServices.join(
+              '\n'
+            );
+        }
+
+        else {
+
+          document.getElementById(
+            'ssrSection'
+          ).style.display =
+            'none';
         }
 
         // Lounge Entitle
