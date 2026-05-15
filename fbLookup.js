@@ -448,7 +448,7 @@ module.exports = (client) => {
           footer: {
 
             text:
-              'MU Lounge Validation'
+              'MUL system'
           }
         };
 
