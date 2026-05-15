@@ -1,32 +1,33 @@
 const passengers = {};
 
 // ===============================
-// Cabin Mapping
+// Cabin Mapping by Seat
 // ===============================
-function getCabin(letter) {
+function getCabin(seat) {
 
-  if (!letter) {
+  const row =
+    parseInt(
+      seat.match(/\d+/)?.[0]
+    );
+
+  if (!row) {
     return 'Economy';
   }
 
-  letter =
-    letter.toUpperCase();
-
   // First
-  if (['P', 'F', 'A'].includes(letter)) {
+  if (
+    row >= 1 &&
+    row <= 2
+  ) {
+
     return 'First';
   }
 
   // Business
-  if ([
-    'J',
-    'C',
-    'D',
-    'I',
-    'O',
-    'Z',
-    'R'
-  ].includes(letter)) {
+  if (
+    row >= 10 &&
+    row <= 20
+  ) {
 
     return 'Business';
   }
@@ -76,17 +77,19 @@ function getLounge(passenger) {
     guest = true;
   }
 
-  // Elite+
+  // Elite+ Airline
   if (
+
     passenger.ffCarrier &&
     passenger.ffCarrier !== 'MU' &&
     ['G', 'V'].includes(ffTier)
+
   ) {
 
     guest = true;
   }
 
-  // Business Gold
+  // Business + Gold
   if (
     cabin === 'Business' &&
     ffTier === 'G'
@@ -108,7 +111,7 @@ function getLounge(passenger) {
 // ===============================
 function parseIncrementalLog(log) {
 
-  // Clear old data
+  // Clear old passengers
   Object.keys(passengers)
     .forEach(k => delete passengers[k]);
 
@@ -123,7 +126,7 @@ function parseIncrementalLog(log) {
   for (const section of sections) {
 
     // =========================
-    // Must contain >FB
+    // FB Number
     // =========================
     const fbMatch =
       section.match(
@@ -134,12 +137,8 @@ function parseIncrementalLog(log) {
       continue;
     }
 
-    const bn =
-      fbMatch[1]
-        .padStart(3, '0');
-
     // =========================
-    // PSGR ID = invalid
+    // PSGR ID = Invalid
     // =========================
     if (
       section.includes('PSGR ID')
@@ -163,11 +162,13 @@ function parseIncrementalLog(log) {
       flightMatch?.[2] || '';
 
     // =========================
-    // Name + Seat + Cabin
+    // Passenger Line
+    // Fix:
+    // BN313 *15L
     // =========================
     const paxMatch =
       section.match(
-        /\d+\.\s+([A-Z\/]+)\s+BN\d+\s+(\S+)\s+([A-Z])/i
+        /\d+\.\s+([A-Z\/]+)\s+.*?BN(\d+)\s+\*?(\d+[A-Z])/i
       );
 
     if (!paxMatch) {
@@ -178,18 +179,19 @@ function parseIncrementalLog(log) {
       paxMatch[1]
         .trim();
 
-    const seat =
+    const bn =
       paxMatch[2]
-        .trim();
+        .padStart(3, '0');
 
-    const bookingClass =
+    const seat =
       paxMatch[3]
         .trim();
 
+    // =========================
+    // Cabin by Seat
+    // =========================
     const cabin =
-      getCabin(
-        bookingClass
-      );
+      getCabin(seat);
 
     // =========================
     // FF
@@ -232,14 +234,14 @@ function parseIncrementalLog(log) {
     }
 
     // =========================
-    // Bagtags
+    // Bags
     // =========================
     const bagtags = [];
 
     const bagMatches =
       [
         ...section.matchAll(
-          /BAGTAG\/([0-9]+\/[A-Z]{3})/gi
+          /BAGTAG\/([A-Z]{2}\s?\d+\/[A-Z]{3})/gi
         )
       ];
 
@@ -247,6 +249,7 @@ function parseIncrementalLog(log) {
 
       bagtags.push(
         m[1]
+          .replace(/\s+/g, '')
       );
     }
 
@@ -260,8 +263,6 @@ function parseIncrementalLog(log) {
       name,
 
       seat,
-
-      bookingClass,
 
       cabin,
 

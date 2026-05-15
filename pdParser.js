@@ -1,224 +1,253 @@
-const pdData = {
-
-  platinum: [],
-
-  gold: [],
-
-  silver: [],
-
-  first: [],
-
-  business: []
-};
+const pdPassengers = [];
 
 // ===============================
-// Normalize FF Number
+// Cabin Mapping
 // ===============================
-function normalizeFF(ff) {
+function getCabin(seat) {
 
-  return String(ff || '')
-    .replace(/\s/g, '')
-    .toUpperCase();
+  const row =
+    parseInt(
+      seat.match(/\d+/)?.[0]
+    );
+
+  if (!row) {
+    return 'Economy';
+  }
+
+  // First
+  if (
+    row >= 1 &&
+    row <= 2
+  ) {
+
+    return 'First';
+  }
+
+  // Business
+  if (
+    row >= 10 &&
+    row <= 20
+  ) {
+
+    return 'Business';
+  }
+
+  return 'Economy';
 }
 
 // ===============================
-// Parse PD Data
+// Membership Status
+// ===============================
+function getMembershipStatus(tier) {
+
+  if (tier === 'V') {
+    return 'Platinum';
+  }
+
+  if (tier === 'G') {
+    return 'Gold';
+  }
+
+  if (tier === 'S') {
+    return 'Silver';
+  }
+
+  return 'Regular';
+}
+
+// ===============================
+// Lounge Rules
+// ===============================
+function getLounge(passenger) {
+
+  const cabin =
+    passenger.cabin;
+
+  const ffTier =
+    passenger.ffTier;
+
+  let eligible = false;
+
+  if (
+    cabin === 'First' ||
+    cabin === 'Business'
+  ) {
+
+    eligible = true;
+  }
+
+  if (
+    ['V', 'G', 'S'].includes(ffTier)
+  ) {
+
+    eligible = true;
+  }
+
+  let guest = false;
+
+  if (ffTier === 'V') {
+
+    guest = true;
+  }
+
+  return {
+
+    eligible,
+
+    guest
+  };
+}
+
+// ===============================
+// Parse PD Log
 // ===============================
 function parsePDLog(log) {
 
   // Clear old data
-  pdData.platinum = [];
-  pdData.gold = [];
-  pdData.silver = [];
-  pdData.first = [];
-  pdData.business = [];
+  pdPassengers.length = 0;
 
   // ===========================
-  // Find FF Records
+  // Split by Timestamp
   // ===========================
-  const ffMatches = [
+  const sections =
+    log.split(
+      /\d{4}\s+\w+\s+\d{2},.*?\d{2}:\d{2}:\d{2}/g
+    );
 
-    ...log.matchAll(
-      /FF\/([A-Z0-9]+)\s+(\d+)\/([A-Z])/gi
-    )
-
-  ];
-
-  for (const match of ffMatches) {
-
-    const carrier =
-      match[1];
-
-    const number =
-      match[2];
-
-    const tier =
-      match[3];
-
-    const entry = {
-
-      ffCarrier:
-        carrier,
-
-      ffNumber:
-        number,
-
-      ffTier:
-        tier
-    };
+  for (const section of sections) {
 
     // =========================
-    // Platinum
+    // Flight
     // =========================
-    if (tier === 'V') {
-
-      pdData.platinum.push(
-        entry
+    const flightMatch =
+      section.match(
+        /PR:\s+([A-Z0-9]+)\/(\d{2}[A-Z]{3})/i
       );
-    }
+
+    const flight =
+      flightMatch?.[1] || '';
+
+    const flightDate =
+      flightMatch?.[2] || '';
 
     // =========================
-    // Gold
+    // Passenger Lines
     // =========================
-    else if (tier === 'G') {
+    const paxLines =
+      [
+        ...section.matchAll(
+          /\d+\.\s+([A-Z0-9\/]+)\s+BN(\d+)\s+(\S+)/gi
+        )
+      ];
 
-      pdData.gold.push(
-        entry
-      );
-    }
+    for (const pax of paxLines) {
 
-    // =========================
-    // Silver
-    // =========================
-    else if (tier === 'S') {
+      const name =
+        pax[1]
+          .trim();
 
-      pdData.silver.push(
-        entry
+      const bn =
+        pax[2]
+          .padStart(3, '0');
+
+      const seat =
+        pax[3]
+          .trim();
+
+      // =======================
+      // FF
+      // =======================
+      const ffMatch =
+        section.match(
+          /FF\/([A-Z0-9]+)\s+(\d+)\/([A-Z])/i
+        );
+
+      if (!ffMatch) {
+        continue;
+      }
+
+      const ffCarrier =
+        ffMatch[1];
+
+      const ffNumber =
+        ffMatch[2];
+
+      const ffTier =
+        ffMatch[3];
+
+      // =======================
+      // Passenger Object
+      // =======================
+      const passenger = {
+
+        name,
+
+        bn,
+
+        seat,
+
+        cabin:
+          getCabin(seat),
+
+        flight,
+
+        flightDate,
+
+        ffCarrier,
+
+        ffNumber,
+
+        ffTier,
+
+        membershipStatus:
+          getMembershipStatus(
+            ffTier
+          ),
+
+        lounge:
+          null,
+
+        pdOnly:
+          true
+      };
+
+      passenger.lounge =
+        getLounge(passenger);
+
+      pdPassengers.push(
+        passenger
       );
     }
   }
 
   console.log(
-    'PD Parsed:',
-    {
-
-      platinum:
-        pdData.platinum.length,
-
-      gold:
-        pdData.gold.length,
-
-      silver:
-        pdData.silver.length
-    }
+    'PD Passenger Count:',
+    pdPassengers.length
   );
 }
 
 // ===============================
-// Find PD by FF Number
+// Find by FF Number
 // ===============================
 function findPDByFFNumber(ff) {
 
   ff =
-    normalizeFF(ff);
+    ff
+      .replace(/\s/g, '')
+      .toUpperCase();
 
-  const all = [
+  return pdPassengers.find(p => {
 
-    ...pdData.platinum,
+    const paxFF =
+      (
+        p.ffCarrier +
+        p.ffNumber
+      )
+      .replace(/\s/g, '')
+      .toUpperCase();
 
-    ...pdData.gold,
-
-    ...pdData.silver
-  ];
-
-  const found =
-    all.find(p => {
-
-      const paxFF =
-        normalizeFF(
-
-          p.ffCarrier +
-          p.ffNumber
-        );
-
-      return paxFF === ff;
-    });
-
-  if (!found) {
-    return null;
-  }
-
-  // ===========================
-  // Membership Status
-  // ===========================
-  let status =
-    'Regular';
-
-  if (found.ffTier === 'V') {
-    status = 'Platinum';
-  }
-
-  else if (found.ffTier === 'G') {
-    status = 'Gold';
-  }
-
-  else if (found.ffTier === 'S') {
-    status = 'Silver';
-  }
-
-  // ===========================
-  // Return PD Result
-  // ===========================
-  return {
-
-    name:
-      'PD MEMBER',
-
-    bn:
-      '---',
-
-    seat:
-      '---',
-
-    cabin:
-      'Elite',
-
-    flight:
-      'PD',
-
-    flightDate:
-      '',
-
-    ffCarrier:
-      found.ffCarrier,
-
-    ffNumber:
-      found.ffNumber,
-
-    ffTier:
-      found.ffTier,
-
-    ticketNumber:
-      null,
-
-    bagtags:
-      [],
-
-    lounge: {
-
-      eligible:
-        true,
-
-      guest:
-        found.ffTier === 'V'
-    },
-
-    pdOnly:
-      true,
-
-    membershipStatus:
-      status
-  };
+    return paxFF === ff;
+  });
 }
 
 // ===============================
@@ -226,7 +255,7 @@ function findPDByFFNumber(ff) {
 // ===============================
 module.exports = {
 
-  pdData,
+  pdPassengers,
 
   parsePDLog,
 

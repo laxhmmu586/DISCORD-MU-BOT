@@ -66,6 +66,24 @@
       line-height: 1.5;
     }
 
+    .login-card,
+    .card {
+
+      background: #111827;
+
+      border-radius: 16px;
+
+      padding: 18px;
+
+      box-shadow:
+        0 0 20px rgba(0,0,0,0.3);
+    }
+
+    .login-card {
+
+      margin-top: 50px;
+    }
+
     .search-box {
 
       display: flex;
@@ -77,7 +95,7 @@
 
     input {
 
-      flex: 1;
+      width: 100%;
 
       padding: 12px;
 
@@ -90,6 +108,10 @@
       background: #1e293b;
 
       color: white;
+
+      margin-bottom: 12px;
+
+      box-sizing: border-box;
     }
 
     button {
@@ -115,15 +137,6 @@
     }
 
     .card {
-
-      background: #111827;
-
-      border-radius: 16px;
-
-      padding: 18px;
-
-      box-shadow:
-        0 0 20px rgba(0,0,0,0.3);
 
       display: none;
     }
@@ -209,6 +222,11 @@
       font-size: 14px;
     }
 
+    #mainApp {
+
+      display: none;
+    }
+
   </style>
 
 </head>
@@ -217,124 +235,175 @@
 
   <div class="container">
 
-    <div class="title">
-      MU Lounge Validation
-    </div>
-
-    <div class="subtitle">
-      Search by BN / Seat / Membership / Name On Boarding Pass
-    </div>
-
-    <div class="search-box">
-
-      <input
-        id="query"
-        placeholder="321 / 20A / MU630601689054 / HUANG/ZEYUANMR"
-      >
-
-      <button onclick="searchPassenger()">
-        Search
-      </button>
-
-    </div>
-
+    <!-- LOGIN -->
     <div
-      id="error"
-      class="error"
-    ></div>
-
-    <div
-      id="card"
-      class="card"
+      id="loginPage"
+      class="login-card"
     >
 
-      <div
-        id="flight"
-        class="flight"
-      ></div>
-
-      <div
-        id="name"
-        class="name"
-      ></div>
-
-      <div
-        id="seat"
-        class="seat"
-      ></div>
-
-      <!-- Membership -->
-      <div class="section">
-
-        <div class="label">
-          Membership
-        </div>
-
-        <div
-          id="ff"
-          class="value"
-        ></div>
-
-        <div
-          id="ffStatus"
-          class="value"
-          style="margin-top:8px;"
-        ></div>
-
+      <div class="title">
+        MU Lounge Validation
       </div>
 
-      <!-- Ticket -->
-      <div class="section">
-
-        <div class="label">
-          Ticket
-        </div>
-
-        <div
-          id="ticket"
-          class="value"
-        ></div>
-
+      <div class="subtitle">
+        Internal Access Only
       </div>
 
-      <!-- Bags -->
-      <div class="section">
+      <input
+        id="username"
+        placeholder="Username"
+      >
 
-        <div class="label">
-          Bags
-        </div>
+      <input
+        id="password"
+        type="password"
+        placeholder="Password"
+      >
 
-        <div
-          id="bags"
-          class="value"
-        ></div>
+      <button
+        onclick="login()"
+        style="width:100%;"
+      >
+        Login
+      </button>
 
+      <div
+        id="loginError"
+        class="error"
+      ></div>
+
+    </div>
+
+    <!-- MAIN APP -->
+    <div id="mainApp">
+
+      <div class="title">
+        MU Lounge Validation
       </div>
 
-      <!-- Lounge -->
-      <div class="section">
+      <div class="subtitle">
+        Search by BN / Seat / Membership / Name On Boarding Pass
+      </div>
 
-        <div class="label">
-          Lounge Entitle
-        </div>
+      <div class="search-box">
 
-        <div
-          id="lounge"
-          class="value"
-        ></div>
-
-        <div
-          class="label"
-          style="margin-top:12px;"
+        <input
+          id="query"
+          placeholder="321 / 20A / MU600285492786 / YAN/JUN"
+          style="margin-bottom:0;"
         >
-          Lounge Guest
-        </div>
+
+        <button onclick="searchPassenger()">
+          Search
+        </button>
+
+      </div>
+
+      <div
+        id="error"
+        class="error"
+      ></div>
+
+      <div
+        id="card"
+        class="card"
+      >
 
         <div
-          id="guest"
-          class="value"
-          style="margin-top:8px;"
+          id="flight"
+          class="flight"
         ></div>
+
+        <div
+          id="name"
+          class="name"
+        ></div>
+
+        <div
+          id="seat"
+          class="seat"
+        ></div>
+
+        <!-- Membership -->
+        <div class="section">
+
+          <div class="label">
+            Membership
+          </div>
+
+          <div
+            id="ff"
+            class="value"
+          ></div>
+
+          <div
+            id="ffStatus"
+            class="value"
+            style="margin-top:8px;"
+          ></div>
+
+        </div>
+
+        <!-- Ticket -->
+        <div
+          class="section"
+          id="ticketSection"
+        >
+
+          <div class="label">
+            Ticket
+          </div>
+
+          <div
+            id="ticket"
+            class="value"
+          ></div>
+
+        </div>
+
+        <!-- Bags -->
+        <div
+          class="section"
+          id="bagsSection"
+        >
+
+          <div class="label">
+            Bags
+          </div>
+
+          <div
+            id="bags"
+            class="value"
+          ></div>
+
+        </div>
+
+        <!-- Lounge -->
+        <div class="section">
+
+          <div class="label">
+            Lounge Entitle
+          </div>
+
+          <div
+            id="lounge"
+            class="value"
+          ></div>
+
+          <div
+            class="label"
+            style="margin-top:12px;"
+          >
+            Lounge Guest
+          </div>
+
+          <div
+            id="guest"
+            class="value"
+            style="margin-top:8px;"
+          ></div>
+
+        </div>
 
       </div>
 
@@ -344,6 +413,78 @@
 
   <script>
 
+    // ===========================
+    // Auto Login Session
+    // ===========================
+    if (
+      localStorage.getItem('mu_logged_in') === 'true'
+    ) {
+
+      document.getElementById(
+        'loginPage'
+      ).style.display = 'none';
+
+      document.getElementById(
+        'mainApp'
+      ).style.display = 'block';
+    }
+
+    // ===========================
+    // Login
+    // ===========================
+    function login() {
+
+      const username =
+        document
+          .getElementById('username')
+          .value
+          .trim();
+
+      const password =
+        document
+          .getElementById('password')
+          .value
+          .trim();
+
+      if (
+
+        username === 'mu586' &&
+        password === 'mulax'
+
+      ) {
+
+        localStorage.setItem(
+          'mu_logged_in',
+          'true'
+        );
+
+        document.getElementById(
+          'loginPage'
+        ).style.display = 'none';
+
+        document.getElementById(
+          'mainApp'
+        ).style.display = 'block';
+      }
+
+      else {
+
+        const err =
+          document.getElementById(
+            'loginError'
+          );
+
+        err.innerText =
+          'Invalid username or password';
+
+        err.style.display =
+          'block';
+      }
+    }
+
+    // ===========================
+    // Search Passenger
+    // ===========================
     async function searchPassenger() {
 
       const q =
@@ -362,11 +503,9 @@
       const error =
         document.getElementById('error');
 
-      card.style.display =
-        'none';
+      card.style.display = 'none';
 
-      error.style.display =
-        'none';
+      error.style.display = 'none';
 
       try {
 
@@ -452,19 +591,41 @@
               : 'NONE'
           );
 
-        // Ticket
-        document.getElementById(
-          'ticket'
-        ).innerText =
-          data.ticketNumber || 'NONE';
+        // PD Passenger
+        if (data.pdOnly) {
 
-        // Bags
-        document.getElementById(
-          'bags'
-        ).innerText =
-          data.bagtags?.length
-            ? data.bagtags.join('\n')
-            : 'NONE';
+          document.getElementById(
+            'ticketSection'
+          ).style.display = 'none';
+
+          document.getElementById(
+            'bagsSection'
+          ).style.display = 'none';
+        }
+
+        // Normal Passenger
+        else {
+
+          document.getElementById(
+            'ticketSection'
+          ).style.display = 'block';
+
+          document.getElementById(
+            'bagsSection'
+          ).style.display = 'block';
+
+          document.getElementById(
+            'ticket'
+          ).innerText =
+            data.ticketNumber || 'NONE';
+
+          document.getElementById(
+            'bags'
+          ).innerText =
+            data.bagtags?.length
+              ? data.bagtags.join('\n')
+              : 'NONE';
+        }
 
         // Lounge Entitle
         const lounge =
