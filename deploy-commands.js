@@ -1,6 +1,11 @@
 // ===============================
 // Discord Slash Commands Deploy
+// Uses Railway Variables:
+// DISCORD_TOKEN
+// CLIENT_ID
 // ===============================
+
+require('dotenv').config();
 
 const {
 
@@ -11,18 +16,6 @@ const {
   SlashCommandBuilder
 
 } = require('discord.js');
-
-// ===============================
-// YOUR BOT TOKEN
-// ===============================
-const TOKEN =
-  'MTI1MjAzODkxNDUwMDQ2MDc1OQ.G-aztd.QZVt7I0zstL97q8aPZH8yoOPRBxWISJui5-7lE';
-
-// ===============================
-// YOUR APPLICATION ID
-// ===============================
-const CLIENT_ID =
-  '1252038914500460759';
 
 // ===============================
 // Commands
@@ -162,7 +155,8 @@ const rest =
     version: '10'
 
   }).setToken(
-    TOKEN
+
+    process.env.DISCORD_TOKEN
   );
 
 // ===============================
@@ -179,7 +173,8 @@ const rest =
     await rest.put(
 
       Routes.applicationCommands(
-        CLIENT_ID
+
+        process.env.CLIENT_ID
       ),
 
       {
