@@ -80,7 +80,6 @@
         'true'
       );
 
-      // Save Login Time
       localStorage.setItem(
         'mu_login_time',
         Date.now()
@@ -121,7 +120,7 @@
       Date.now()
     );
 
-    const q =
+    let q =
       document
         .getElementById('query')
         .value
@@ -129,6 +128,57 @@
 
     if (!q) {
       return;
+    }
+
+    // ===========================
+    // eTerm Search Mode
+    // ===========================
+    const upper =
+      q.toUpperCase();
+
+    // FB 174
+    if (
+      upper.startsWith('FB ')
+    ) {
+
+      q =
+        q.substring(3).trim();
+    }
+
+    // RN CHEN/YUHUI
+    else if (
+      upper.startsWith('RN ')
+    ) {
+
+      q =
+        q.substring(3).trim();
+    }
+
+    // FSN 32A
+    else if (
+      upper.startsWith('FSN ')
+    ) {
+
+      q =
+        q.substring(4).trim();
+    }
+
+    // ETKD 781xxxx
+    else if (
+      upper.startsWith('ETKD ')
+    ) {
+
+      q =
+        q.substring(5).trim();
+    }
+
+    // FF MU600xxxx
+    else if (
+      upper.startsWith('FF ')
+    ) {
+
+      q =
+        q.substring(3).trim();
     }
 
     const card =
