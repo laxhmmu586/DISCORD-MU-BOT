@@ -152,14 +152,18 @@ function parseIncrementalLog(log) {
     // =========================
     const flightMatch =
       section.match(
-        /PR:\s+([A-Z0-9]+)\/(\d{2}[A-Z]{3})/i
+        /PR:\s+([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i
       );
 
     const flight =
       flightMatch?.[1] || '';
 
-    const flightDate =
+    const rawFlightDate =
       flightMatch?.[2] || '';
+
+    // Display 11MAY only
+    const flightDate =
+      rawFlightDate.substring(0, 5);
 
     // =========================
     // Passenger Line
@@ -249,11 +253,13 @@ function parseIncrementalLog(log) {
       const line =
         bagLineMatch[1];
 
-      // Extract all bag tags
+      // Support:
+      // DL 582080/FOC
+      // 3781316616/PVG
       const bags =
         [
           ...line.matchAll(
-            /([A-Z]{2}\s?\d+\/[A-Z]{3})/gi
+            /([A-Z]{0,2}\s?\d+\/[A-Z]{3})/gi
           )
         ];
 
