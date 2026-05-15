@@ -1,24 +1,31 @@
-
 require('dotenv').config();
 
 const express = require('express');
-const path = require('path');
 
 const {
   Client,
   GatewayIntentBits
 } = require('discord.js');
 
-const app = express();
+const {
 
-// ===============================
-// Static Website
-// ===============================
-app.use(
-  express.static(
-    path.join(__dirname, 'public')
-  )
-);
+  passengers,
+
+  findBySeat,
+
+  findByName,
+
+  parseIncrementalLog
+
+} = require('./flightParser');
+
+const {
+
+  getLatestFlightLog
+
+} = require('./googleDrive');
+
+const app = express();
 
 app.use(express.json({
   limit: '50mb'
@@ -74,151 +81,115 @@ client.login(
 );
 
 // ===============================
-// Homepage
+// Health Check
 // ===============================
 app.get('/', (req, res) => {
 
-  res.sendFile(
-    path.join(
-      __dirname,
-      'public',
-      'index.html'
-    )
+  res.send(
+    'Discord Bot Running'
   );
 
 });
 
 // ===============================
-// Lounge Lookup API
+// Search API
 // ===============================
-app.get('/lookup', async (req, res) => {
+app.get('/search', async (req, res) => {
 
   try {
 
     const q =
-      (req.query.q || '')
+      String(
+        req.query.q || ''
+      )
       .trim()
       .toUpperCase();
 
-    // ===============================
-    // DEMO DATA
-    // Replace with Google Sheet later
-    // ===============================
-    const records = [
-
-      {
-
-        fb: 'FB008',
-
-        rn: 'RN008',
-
-        ticket: '7819496979113',
-
-        name: 'HUANG/ZEYUANMR',
-
-        bn: 'BN008',
-
-        seat: '32K',
-
-        ffNumber: 'MU 610264716710',
-
-        tier: 'Regular / C',
-
-        guestAllowed: false
-
-      },
-
-      {
-
-        fb: 'FB009',
-
-        rn: 'RN009',
-
-        ticket: '7811234567890',
-
-        name: 'ZHANG/SANMR',
-
-        bn: 'BN009',
-
-        seat: '12A',
-
-        ffNumber: 'MU 610000000001',
-
-        tier: 'Silver / E',
-
-        guestAllowed: true
-
-      }
-
-    ];
-
-    // ===============================
-    // Search Logic
-    // ===============================
-    let result = null;
-
-    // FB
-    if (q.startsWith('FB')) {
-
-      result = records.find(
-        r => r.fb === q
-      );
-
-    }
-
-    // RN
-    else if (q.startsWith('RN')) {
-
-      result = records.find(
-        r => r.rn === q
-      );
-
-    }
-
-    // Ticket
-    else if (q.startsWith('781')) {
-
-      result = records.find(
-        r => r.ticket === q
-      );
-
-    }
-
-    // BN
-    else if (q.startsWith('BN')) {
-
-      result = records.find(
-        r => r.bn === q
-      );
-
-    }
-
-    // Not Found
-    if (!result) {
+    if (!q) {
 
       return res.json({
-        error: true
-      });
 
+        error:
+          'Missing query'
+      });
     }
 
-    // Return Result
-    res.json(result);
+    // ===========================
+    // Load latest log
+    // ===========================
+    const log =
+      await getLatestFlightLog();
+
+    if (!log) {
+
+      return res.json({
+
+        error:
+          'Unable to load log'
+      });
+    }
+
+    // ===========================
+    // Parse latest log
+    // ===========================
+    parseIncrementalLog(log);
+
+    let pax = null;
+
+    // ===========================
+    // BN Search
+    // ===========================
+    if (/^\d{1,3}$/.test(q)) {
+
+      const bn =
+        q.padStart(3, '0');
+
+      pax =
+        passengers[bn];
+    }
+
+    // ===========================
+    // Seat Search
+    // ===========================
+    else if (/^\d+[A-Z]$/.test(q)) {
+
+      pax =
+        findBySeat(q);
+    }
+
+    // ===========================
+    // Name Search
+    // ===========================
+    else {
+
+      pax =
+        findByName(q);
+    }
+
+    if (!pax) {
+
+      return res.json({
+
+        error:
+          'Passenger not found'
+      });
+    }
+
+    // ===========================
+    // Response
+    // ===========================
+    res.json(pax);
 
   } catch (err) {
 
     console.error(err);
 
-    res.status(500).json({
+    res.json({
 
-      error: true,
-
-      message: err.toString()
-
+      error:
+        err.toString()
     });
-
   }
-
 });
 
 // ===============================
@@ -242,7 +213,6 @@ app.post('/send', async (req, res) => {
         .send(
           'Missing channelId'
         );
-
     }
 
     // Fetch Channel
@@ -258,7 +228,6 @@ app.post('/send', async (req, res) => {
         .send(
           'Channel not found'
         );
-
     }
 
     // Send Message
@@ -288,7 +257,6 @@ app.post('/send', async (req, res) => {
       .send(
         err.toString()
       );
-
   }
 
 });
@@ -307,4 +275,3 @@ app.listen(PORT, '0.0.0.0', () => {
   );
 
 });
-
