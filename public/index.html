@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -11,7 +12,7 @@
   >
 
   <title>
-    MU Flight Control
+    MU Lounge Validation
   </title>
 
   <style>
@@ -153,7 +154,7 @@
 
     .section {
 
-      margin-bottom: 20px;
+      margin-bottom: 22px;
     }
 
     .label {
@@ -210,7 +211,7 @@
   <div class="container">
 
     <div class="title">
-      MU Flight Control
+      MU Lounge Validation
     </div>
 
     <div class="subtitle">
@@ -255,6 +256,7 @@
         class="seat"
       ></div>
 
+      <!-- Membership -->
       <div class="section">
 
         <div class="label">
@@ -266,8 +268,15 @@
           class="value"
         ></div>
 
+        <div
+          id="ffStatus"
+          class="value"
+          style="margin-top:10px;"
+        ></div>
+
       </div>
 
+      <!-- Ticket -->
       <div class="section">
 
         <div class="label">
@@ -281,6 +290,7 @@
 
       </div>
 
+      <!-- Bags -->
       <div class="section">
 
         <div class="label">
@@ -294,15 +304,29 @@
 
       </div>
 
+      <!-- Lounge -->
       <div class="section">
 
         <div class="label">
-          Lounge Guest
+          Lounge Entitle
         </div>
 
         <div
           id="lounge"
           class="value"
+        ></div>
+
+        <div
+          class="label"
+          style="margin-top:14px;"
+        >
+          Lounge Guest
+        </div>
+
+        <div
+          id="guest"
+          class="value"
+          style="margin-top:10px;"
         ></div>
 
       </div>
@@ -397,6 +421,22 @@
             data.ffNumber || ''
           );
 
+        // Membership Status
+        document.getElementById(
+          'ffStatus'
+        ).innerText =
+          data.ffTier
+            ? (
+                data.ffTier === 'V'
+                  ? 'Platinum'
+                  : data.ffTier === 'G'
+                  ? 'Gold'
+                  : data.ffTier === 'S'
+                  ? 'Silver'
+                  : 'Regular'
+              )
+            : 'NONE';
+
         // Ticket
         document.getElementById(
           'ticket'
@@ -411,31 +451,43 @@
             ? data.bagtags.join('\n')
             : 'NONE';
 
-        // Lounge
+        // Lounge Entitle
         const lounge =
           document.getElementById(
             'lounge'
           );
 
         if (
-          data.lounge?.guest
-        ) {
-
-          lounge.innerHTML =
-            '<span class="lounge-yes">✅ Allowed</span>';
-        }
-
-        else if (
           data.lounge?.eligible
         ) {
 
           lounge.innerHTML =
-            '<span class="lounge-no">❌ Not Allowed</span>';
+            '<span class="lounge-yes">✅ Eligible</span>';
         }
 
         else {
 
           lounge.innerHTML =
+            '<span class="lounge-no">❌ Not Eligible</span>';
+        }
+
+        // Lounge Guest
+        const guest =
+          document.getElementById(
+            'guest'
+          );
+
+        if (
+          data.lounge?.guest
+        ) {
+
+          guest.innerHTML =
+            '<span class="lounge-yes">✅ Allowed</span>';
+        }
+
+        else {
+
+          guest.innerHTML =
             '<span class="lounge-no">❌ Not Allowed</span>';
         }
 
@@ -471,3 +523,4 @@
 
 </body>
 </html>
+
