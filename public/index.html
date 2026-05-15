@@ -2,173 +2,281 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>MU Lounge Validator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MUL System</title>
   <style>
+    * { box-sizing: border-box; }
     body {
+      margin: 0; padding: 0;
+      background: #0f172a;
+      color: white;
       font-family: Arial, sans-serif;
-      background-color: #1b1b1b;
-      color: #f5f5f5;
+      min-height: 100vh;
       display: flex;
-      flex-direction: column;
-      align-items: center;
+      justify-content: center;
+    }
+    .container {
+      width: 100%;
+      max-width: 460px;
       padding: 20px;
     }
-    h1 {
-      color: #1E90FF;
+    .title { font-size: 30px; font-weight: bold; margin-bottom: 6px; }
+    .subtitle { color: #94a3b8; font-size: 14px; margin-bottom: 24px; line-height: 1.5; }
+    .card, .login-card {
+      background: #111827;
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: 0 0 25px rgba(0,0,0,0.35);
     }
-    #loginSection, #searchSection, #resultSection {
+    .login-card { margin-top: 60px; }
+    input {
       width: 100%;
-      max-width: 600px;
-      margin-top: 20px;
-    }
-    input, select, button {
-      width: 100%;
-      padding: 8px;
-      margin-top: 5px;
-      margin-bottom: 10px;
-      border-radius: 5px;
+      padding: 14px;
+      margin-bottom: 14px;
       border: none;
-      font-size: 16px;
+      border-radius: 14px;
+      background: #1e293b;
+      color: white;
+      font-size: 15px;
     }
     button {
-      background-color: #1E90FF;
-      color: #fff;
+      border: none;
+      background: #2563eb;
+      color: white;
+      border-radius: 14px;
+      padding: 14px;
+      font-size: 15px;
       cursor: pointer;
     }
-    .card {
-      background-color: #2b2b2b;
-      padding: 15px;
-      border-radius: 8px;
-      margin-top: 10px;
-      line-height: 1.5;
-    }
-    .card h2 {
-      margin: 5px 0;
-    }
-    .section {
-      margin-top: 10px;
-    }
-    .hidden {
-      display: none;
-    }
+    button:hover { background: #1d4ed8; }
+    .search-box { display: flex; gap: 10px; margin-bottom: 20px; }
+    .search-box input { margin-bottom: 0; }
+    .search-box button { min-width: 100px; }
+    #mainApp, #card { display: none; }
+    .flight { font-size: 24px; font-weight: bold; margin-bottom: 18px; }
+    .name { font-size: 28px; font-weight: bold; margin-bottom: 10px; }
+    .seat { color: #cbd5e1; margin-bottom: 22px; font-size: 15px; }
+    .divider { height: 1px; background: rgba(255,255,255,0.08); margin: 18px 0; }
+    .section { margin-bottom: 18px; }
+    .label { color: #60a5fa; text-transform: uppercase; font-size: 12px; letter-spacing: 1px; margin-bottom: 6px; }
+    .value { white-space: pre-line; line-height: 1.6; font-size: 16px; }
+    .yes { color: #22c55e; font-weight: bold; }
+    .no { color: #ef4444; font-weight: bold; }
+    .error { display: none; background: #7f1d1d; border-radius: 12px; padding: 12px; margin-top: 15px; font-size: 14px; }
   </style>
 </head>
 <body>
-
-  <h1>MU Lounge Validator</h1>
-
-  <!-- Login Section -->
-  <div id="loginSection">
-    <input type="text" id="username" placeholder="Username">
-    <input type="password" id="password" placeholder="Password">
-    <button id="loginBtn">Login</button>
+<div class="container">
+  <!-- LOGIN -->
+  <div id="loginPage" class="login-card">
+    <div class="title">MUL</div>
+    <div class="subtitle">Internal Access Only</div>
+    <input id="username" placeholder="Username">
+    <input id="password" type="password" placeholder="Password">
+    <button onclick="login()" style="width:100%;">Login</button>
+    <div id="loginError" class="error"></div>
   </div>
 
-  <!-- Search Section -->
-  <div id="searchSection" class="hidden">
-    <input type="text" id="searchInput" placeholder="Enter BN, Seat, Membership or Name on Boarding Pass">
-    <button id="searchBtn">Search</button>
+  <!-- MAIN -->
+  <div id="mainApp">
+    <div class="title">MUL</div>
+    <div class="subtitle">
+      Supported Search Modes:<br><br>
+      Boarding Number / Seat / Membership / Name On Boarding Pass / Ticket Number / FF Number<br>
+      <small>Use format BN/Date to search historical logs (e.g., 127/27APR)</small>
+    </div>
+
+    <div class="search-box">
+      <input id="query" placeholder="Enter Search">
+      <button onclick="searchPassenger()">Search</button>
+    </div>
+
+    <div id="error" class="error"></div>
+
+    <!-- CARD -->
+    <div id="card" class="card">
+      <div id="flight" class="flight"></div>
+      <div id="name" class="name"></div>
+      <div id="seat" class="seat"></div>
+
+      <!-- Membership -->
+      <div id="membershipSection" class="section" style="display:none;">
+        <div class="divider"></div>
+        <div class="label">Membership</div>
+        <div id="ff" class="value"></div>
+        <div id="ffStatus" class="value"></div>
+      </div>
+
+      <!-- Ticket -->
+      <div id="ticketSection" class="section" style="display:none;">
+        <div class="divider"></div>
+        <div class="label">Ticket</div>
+        <div id="ticket" class="value"></div>
+      </div>
+
+      <!-- Bags -->
+      <div id="bagsSection" class="section" style="display:none;">
+        <div class="divider"></div>
+        <div class="label">Bags</div>
+        <div id="bags" class="value"></div>
+      </div>
+
+      <!-- Inbound -->
+      <div id="inboundSection" class="section" style="display:none;">
+        <div class="divider"></div>
+        <div class="label">Inbound</div>
+        <div id="inbound" class="value"></div>
+      </div>
+
+      <!-- Outbound -->
+      <div id="outboundSection" class="section" style="display:none;">
+        <div class="divider"></div>
+        <div class="label">Outbound</div>
+        <div id="outbound" class="value"></div>
+      </div>
+
+      <!-- Special Services -->
+      <div id="ssrSection" class="section" style="display:none;">
+        <div class="divider"></div>
+        <div class="label">Special Service</div>
+        <div id="ssr" class="value"></div>
+      </div>
+
+      <!-- Lounge -->
+      <div class="section">
+        <div class="divider"></div>
+        <div class="label">Lounge Access</div>
+        <div id="lounge" class="value"></div>
+        <div class="label" style="margin-top:18px;">Guest Access</div>
+        <div id="guest" class="value"></div>
+      </div>
+
+      <div style="margin-top:10px; font-size:12px; text-align:right; color:#94a3b8;">
+        MUL System
+      </div>
+    </div>
   </div>
+</div>
 
-  <!-- Result Section -->
-  <div id="resultSection"></div>
+<script>
+  const LOGIN_TIMEOUT = 30 * 60 * 1000;
 
-  <script>
-    const loginSection = document.getElementById('loginSection');
-    const searchSection = document.getElementById('searchSection');
-    const searchInput = document.getElementById('searchInput');
-    const searchBtn = document.getElementById('searchBtn');
-    const resultSection = document.getElementById('resultSection');
+  const lastLogin = localStorage.getItem('mu_login_time');
+  const now = Date.now();
+  if (localStorage.getItem('mu_logged_in') === 'true' && lastLogin && (now - Number(lastLogin)) < LOGIN_TIMEOUT) {
+    document.getElementById('loginPage').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'block';
+  } else { localStorage.clear(); }
 
-    const USERNAME = 'mu586';
-    const PASSWORD = 'mulax';
-
-    let loginTimer;
-
-    document.getElementById('loginBtn').addEventListener('click', () => {
-      const user = document.getElementById('username').value.trim();
-      const pass = document.getElementById('password').value.trim();
-
-      if(user === USERNAME && pass === PASSWORD){
-        loginSection.classList.add('hidden');
-        searchSection.classList.remove('hidden');
-        startLogoutTimer();
-      } else {
-        alert('Invalid credentials');
-      }
-    });
-
-    function startLogoutTimer() {
-      if(loginTimer) clearTimeout(loginTimer);
-      loginTimer = setTimeout(() => {
-        alert('Session expired. Please login again.');
-        location.reload();
-      }, 30*60*1000); // 30 minutes
+  function login() {
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value.trim();
+    if (username === 'mu586' && password === 'mulax') {
+      localStorage.setItem('mu_logged_in','true');
+      localStorage.setItem('mu_login_time', Date.now());
+      document.getElementById('loginPage').style.display = 'none';
+      document.getElementById('mainApp').style.display = 'block';
+    } else {
+      const err = document.getElementById('loginError');
+      err.innerText = 'Invalid username or password';
+      err.style.display = 'block';
     }
+  }
 
-    // Search button
-    searchBtn.addEventListener('click', () => {
-      startLogoutTimer();
-      const query = searchInput.value.trim();
-      if(!query) return alert('Please enter a search value');
+  async function searchPassenger() {
+    localStorage.setItem('mu_login_time', Date.now());
+    let q = document.getElementById('query').value.trim();
+    if (!q) return;
+    const upper = q.toUpperCase();
+    if (upper.startsWith('FB ')) q = q.substring(3).trim();
+    else if (upper.startsWith('RN ')) q = q.substring(3).trim();
+    else if (upper.startsWith('FSN ')) q = q.substring(4).trim();
+    else if (upper.startsWith('ETKD ')) q = q.substring(5).trim();
+    else if (upper.startsWith('FF ')) q = q.substring(3).trim();
 
-      fetch(`/search?q=${encodeURIComponent(query)}`)
-        .then(res => res.json())
-        .then(data => displayResult(data))
-        .catch(err => console.error(err));
-    });
+    const card = document.getElementById('card');
+    const error = document.getElementById('error');
+    card.style.display = 'none';
+    error.style.display = 'none';
 
-    function displayResult(data){
-      resultSection.innerHTML = '';
-
-      if(data.error){
-        resultSection.innerHTML = `<div class="card">${data.error}</div>`;
+    try {
+      const res = await fetch('/search?q=' + encodeURIComponent(q));
+      const data = await res.json();
+      if (data.error) {
+        error.innerText = data.error;
+        error.style.display = 'block';
         return;
       }
 
-      const card = document.createElement('div');
-      card.className = 'card';
-
-      // Flight + Date
-      const flightDate = data.flightDate ? `/${data.flightDate}` : '';
-      card.innerHTML += `<h2>✈️ ${data.flight}${flightDate}</h2>`;
-
-      // Passenger Name
-      card.innerHTML += `<div class="section">👤 ${data.name}</div>`;
-
-      // BN / Seat / Class
-      card.innerHTML += `<div class="section">🎫 ${data.bn} • ${data.seat} • ${data.class}</div>`;
+      document.getElementById('flight').innerText = `✈️ ${data.flight}/${data.flightDate}`;
+      document.getElementById('name').innerText = data.name;
+      document.getElementById('seat').innerText = `🎫 BN${data.bn} • ${data.seat} • ${data.cabin || data.cabinClass || ''}`;
 
       // Membership
-      if(data.membershipNumber){
-        const status = data.membershipStatus || '';
-        card.innerHTML += `<div class="section">🎟 Membership: ${data.ffCarrier} ${data.membershipNumber} • ${status}</div>`;
+      if (data.ffNumber) {
+        document.getElementById('membershipSection').style.display = 'block';
+        document.getElementById('ff').innerText = `${data.ffCarrier} ${data.ffNumber}`;
+        document.getElementById('ffStatus').innerText = data.membershipStatus || '';
+      } else {
+        document.getElementById('membershipSection').style.display = 'none';
       }
 
       // Ticket
-      if(data.ticketNumber) card.innerHTML += `<div class="section">🎟 Ticket: ${data.ticketNumber}</div>`;
+      if (data.ticketNumber) {
+        document.getElementById('ticketSection').style.display = 'block';
+        document.getElementById('ticket').innerText = data.ticketNumber;
+      } else {
+        document.getElementById('ticketSection').style.display = 'none';
+      }
 
       // Bags
-      if(data.bagtags && data.bagtags.length > 0){
-        card.innerHTML += `<div class="section">🧳 Bags:<br>${data.bagtags.join('<br>')}</div>`;
+      if (data.bagtags && data.bagtags.length) {
+        document.getElementById('bagsSection').style.display = 'block';
+        document.getElementById('bags').innerText = data.bagtags.join('\n');
+      } else {
+        document.getElementById('bagsSection').style.display = 'none';
       }
 
-      // Inbound / Outbound
-      if(data.inbound) card.innerHTML += `<div class="section">Inbound: ${data.inbound}</div>`;
-      if(data.outbound) card.innerHTML += `<div class="section">Outbound: ${data.outbound}</div>`;
+      // Inbound
+      if (data.inbound) {
+        document.getElementById('inboundSection').style.display = 'block';
+        document.getElementById('inbound').innerText = `${data.inbound.flight}/${data.inbound.date}\nFrom ${data.inbound.origin}`;
+      } else { document.getElementById('inboundSection').style.display = 'none'; }
+
+      // Outbound
+      if (data.outbound) {
+        document.getElementById('outboundSection').style.display = 'block';
+        document.getElementById('outbound').innerText =
+          `${data.outbound.flight}/${data.outbound.date}` +
+          (data.outbound.bn ? ` • BN${data.outbound.bn}` : '') +
+          (data.outbound.seat ? ` • ${data.outbound.seat}` : '') +
+          `\nTo ${data.outbound.destination}`;
+      } else { document.getElementById('outboundSection').style.display = 'none'; }
 
       // SSR
-      if(data.ssr && data.ssr.length > 0){
-        card.innerHTML += `<div class="section">SSR: ${data.ssr.join(', ')}</div>`;
-      }
+      if (data.specialServices && data.specialServices.length) {
+        document.getElementById('ssrSection').style.display = 'block';
+        document.getElementById('ssr').innerText = data.specialServices.join('\n');
+      } else { document.getElementById('ssrSection').style.display = 'none'; }
 
-      // Lounge Access
-      card.innerHTML += `<div class="section">🛋 Lounge Access: ${data.loungeAccess ? '✅ Eligible' : '❌ Not Eligible'}</div>`;
-      card.innerHTML += `<div class="section">👥 Guest Access: ${data.guestAccess ? '✅ Allowed' : '❌ Not Allowed'}</div>`;
+      // Lounge
+      document.getElementById('lounge').innerHTML = data.lounge?.eligible
+        ? '<span class="yes">✅ Eligible</span>'
+        : '<span class="no">❌ Not Eligible</span>';
+      document.getElementById('guest').innerHTML = data.lounge?.guest
+        ? '<span class="yes">✅ Allowed</span>'
+        : '<span class="no">❌ Not Allowed</span>';
 
-      resultSection.appendChild(card);
+      card.style.display = 'block';
+    } catch (err) {
+      error.innerText = 'Search failed';
+      error.style.display = 'block';
     }
-  </script>
+  }
 
+  document.getElementById('query').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') searchPassenger();
+  });
+</script>
 </body>
 </html>
