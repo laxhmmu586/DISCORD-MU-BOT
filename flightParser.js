@@ -1,504 +1,450 @@
 const passengers = {};
 
 // ===============================
+// Parse Timestamp
+// Example:
+// 2026 May 10, Sunday, 09:17:59
+// ===============================
+function parseTimestamp(str) {
+
+  if (!str) {
+    return 0;
+  }
+
+  const t =
+    Date.parse(str);
+
+  if (isNaN(t)) {
+    return 0;
+  }
+
+  return t;
+}
+
+// ===============================
 // Cabin Logic
 // ===============================
 function getCabin(seat) {
 
   if (!seat) {
-    return "Unknown";
+    return 'Unknown';
   }
 
   const row =
     parseInt(seat);
 
   // First
-  if (row >= 1 && row <= 2) {
-    return "First";
+  if (row >= 1 && row <= 4) {
+    return 'First';
   }
 
   // Business
-  if (row >= 6 && row <= 20) {
-    return "Business";
+  if (row >= 5 && row <= 15) {
+    return 'Business';
   }
 
-  // Economy
-  if (
-    (row >= 31 && row <= 44) ||
-    (row >= 61 && row <= 74)
-  ) {
-    return "Economy";
-  }
-
-  return "Unknown";
+  return 'Economy';
 }
 
 // ===============================
 // Lounge Logic
 // ===============================
-function getLounge(pax) {
+function getLounge({
 
-  // Platinum Elite+
-  if (
-    pax.ffTier === "V" &&
-    pax.elite === 2
-  ) {
+  ffTier,
 
-    return {
-      eligible: true,
-      guest: true
-    };
+  elite,
+
+  cabin
+
+}) {
+
+  let eligible = false;
+
+  let guest = false;
+
+  // First
+  if (cabin === 'First') {
+
+    eligible = true;
+
+    guest = true;
   }
 
-  // Gold Elite+ Business
-  if (
-    pax.ffTier === "G" &&
-    pax.elite === 2 &&
-    pax.cabin === "Business"
-  ) {
+  // Business
+  else if (cabin === 'Business') {
 
-    return {
-      eligible: true,
-      guest: true
-    };
+    eligible = true;
+
+    guest = false;
   }
 
-  // First Class
-  if (pax.cabin === "First") {
+  // Platinum
+  if (ffTier === 'V') {
 
-    return {
-      eligible: true,
-      guest: false
-    };
+    eligible = true;
+
+    guest = true;
   }
 
-  // Business Class
-  if (pax.cabin === "Business") {
+  // Gold
+  else if (ffTier === 'G') {
 
-    return {
-      eligible: true,
-      guest: false
-    };
+    eligible = true;
+
+    guest = true;
   }
 
-  // Gold Elite+
-  if (
-    pax.ffTier === "G" &&
-    pax.elite === 2
-  ) {
+  // Silver
+  else if (ffTier === 'S') {
 
-    return {
-      eligible: true,
-      guest: false
-    };
-  }
+    eligible = true;
 
-  // Silver Elite+
-  if (
-    pax.ffTier === "S" &&
-    pax.elite === 2
-  ) {
-
-    return {
-      eligible: true,
-      guest: false
-    };
-  }
-
-  return {
-    eligible: false,
-    guest: false
-  };
-}
-
-// ===============================
-// Parse Timestamp
-// ===============================
-function parseTimestamp(block) {
-
-  const match = block.match(
-    /(\d{4}\s+[A-Z][a-z]{2}\s+\d{1,2},\s+[A-Z][a-z]+,\s+\d{2}:\d{2}:\d{2})/
-  );
-
-  if (!match) {
-    return null;
-  }
-
-  return new Date(match[1]);
-}
-
-// ===============================
-// Parse Flight Info
-// ===============================
-function parseFlightInfo(block) {
-
-  const match = block.match(
-    /PR:\s+([A-Z0-9]+)\/(\d{2}[A-Z]{3})\d{2}/
-  );
-
-  if (!match) {
-    return null;
+    guest = false;
   }
 
   return {
 
-    flight:
-      match[1],
+    eligible,
 
-    date:
-      match[2]
+    guest
   };
 }
 
 // ===============================
-// Parse Passenger
+// Reset
 // ===============================
-function parsePassenger(block) {
+function resetPassengers() {
 
-  const match = block.match(
-    /1\.\s+([A-Z]+\/[A-Z]+).*?BN(\d+)/s
-  );
+  for (const key in passengers) {
 
-  if (!match) {
-    return null;
+    delete passengers[key];
   }
-
-  // Seat
-  const seatMatch =
-    block.match(
-      /BN\d+\s+\*?(\d+[A-Z])/
-    );
-
-  // Booking Class
-  const bookingClassMatch =
-    block.match(
-      /BN\d+\s+\*?\d+[A-Z]\s+([A-Z])/
-    );
-
-  return {
-
-    name:
-      match[1],
-
-    bn:
-      match[2],
-
-    seat:
-      seatMatch
-        ? seatMatch[1]
-        : 'NONE',
-
-    bookingClass:
-      bookingClassMatch
-        ? bookingClassMatch[1]
-        : 'UNKNOWN',
-
-    boarded:
-      block.includes('*')
-  };
 }
 
 // ===============================
-// Parse FF
-// ===============================
-function parseFF(block) {
-
-  // Elite Format
-  let match = block.match(
-    /FF\/([A-Z0-9]+)\s+(\d+)\/([VGSC])\/\*(\d)/
-  );
-
-  if (match) {
-
-    return {
-
-      carrier:
-        match[1],
-
-      number:
-        match[2],
-
-      tier:
-        match[3],
-
-      elite:
-        parseInt(match[4])
-    };
-  }
-
-  // Regular Format
-  match = block.match(
-    /FF\/([A-Z0-9]+)\s+(\d+)\/([VGSC])/
-  );
-
-  if (match) {
-
-    return {
-
-      carrier:
-        match[1],
-
-      number:
-        match[2],
-
-      tier:
-        match[3],
-
-      elite:
-        0
-    };
-  }
-
-  return null;
-}
-
-// ===============================
-// Parse Ticket
-// ===============================
-function parseTicket(block) {
-
-  const match = block.match(
-    /TKNE\/(\d+)/
-  );
-
-  if (!match) {
-    return null;
-  }
-
-  return match[1];
-}
-
-// ===============================
-// Parse Bagtags
-// ===============================
-function parseBags(block) {
-
-  const bagLine =
-    block.match(
-      /BAGTAG\/([^\n\r]+)/
-    );
-
-  if (!bagLine) {
-    return [];
-  }
-
-  const matches =
-    [...bagLine[1].matchAll(
-      /(\d+\/[A-Z]{3})/g
-    )];
-
-  return matches.map(
-    m => m[1]
-  );
-}
-
-// ===============================
-// Parse Services
-// ===============================
-function parseServices(block) {
-
-  const services = [];
-
-  const codes = [
-
-    "VIP",
-    "AVIH",
-    "BLND",
-    "DEAF",
-    "DEP",
-    "INAD",
-    "PETC",
-    "UM",
-    "STCR",
-    "MAAS",
-    "PPOC"
-
-  ];
-
-  for (const code of codes) {
-
-    if (block.includes(code)) {
-      services.push(code);
-    }
-  }
-
-  return services;
-}
-
-// ===============================
-// Main Parser
+// Parse Incremental Log
 // ===============================
 function parseIncrementalLog(log) {
 
-  // Reset passengers
-  Object.keys(passengers)
-    .forEach(
-      key => delete passengers[key]
-    );
+  resetPassengers();
 
-  // Split blocks by timestamp
-  const blocks =
-    log.match(
-      /\d{4}\s+[A-Z][a-z]{2}\s+\d{1,2},\s+[A-Z][a-z]+,\s+\d{2}:\d{2}:\d{2}[\s\S]*?(?=\d{4}\s+[A-Z][a-z]{2}\s+\d{1,2},\s+[A-Z][a-z]+,\s+\d{2}:\d{2}:\d{2}|$)/g
-    ) || [];
+  const lines =
+    log.split('\n');
 
-  for (const rawBlock of blocks) {
+  let currentTimestamp = 0;
 
-    const block =
-      rawBlock.toUpperCase();
+  let currentFlight = null;
 
-    const timestamp =
-      parseTimestamp(rawBlock);
+  let currentFlightDate = null;
 
-    // Must be FB query
+  for (let i = 0; i < lines.length; i++) {
+
+    const line =
+      lines[i]
+        .trim();
+
+    // ===========================
+    // Timestamp
+    // ===========================
     if (
-      !block.includes('>FB')
+
+      /^\d{4}\s+[A-Z][a-z]{2}\s+\d{1,2},/.test(line)
+
     ) {
 
+      currentTimestamp =
+        parseTimestamp(line);
+
       continue;
     }
 
-    // Passenger not found
+    // ===========================
+    // Flight Header
+    // Example:
+    // MU586/14MAY
+    // ===========================
+    const flightMatch =
+      line.match(
+        /(MU\d+)\/(\d{2}[A-Z]{3})/
+      );
+
+    if (flightMatch) {
+
+      currentFlight =
+        flightMatch[1];
+
+      currentFlightDate =
+        flightMatch[2];
+    }
+
+    // ===========================
+    // FB Record
+    // ===========================
     if (
-      block.includes('PSGR ID')
+      line.startsWith('FB')
     ) {
 
-      continue;
-    }
+      const bnMatch =
+        line.match(
+          /FB\s*(\d{1,3})/
+        );
 
-    // Parse flight
-    const flightInfo =
-      parseFlightInfo(block);
+      if (!bnMatch) {
+        continue;
+      }
 
-    // Parse passenger
-    const pax =
-      parsePassenger(block);
+      const bn =
+        bnMatch[1]
+          .padStart(3, '0');
 
-    if (!pax) {
-      continue;
-    }
+      // =========================
+      // Existing Record
+      // =========================
+      const existing =
+        passengers[bn];
 
-    // Keep Latest Record Only
-    const existing =
-      passengers[pax.bn];
+      // =========================
+      // Duplicate Protection
+      // =========================
+      if (
 
-    if (
-      existing &&
-      existing.updatedAt &&
-      timestamp &&
-      existing.updatedAt > timestamp
-    ) {
+        existing &&
 
-      continue;
-    }
+        existing.timestamp &&
 
-    // Parse FF
-    const ff =
-      parseFF(block);
+        existing.timestamp >
 
-    // Parse Ticket
-    const ticket =
-      parseTicket(block);
+        currentTimestamp
 
-    // Parse Bags
-    const bags =
-      parseBags(block);
+      ) {
 
-    // Create Passenger
-    passengers[pax.bn] = {
+        continue;
+      }
 
-      flight:
-        flightInfo?.flight || 'UNKNOWN',
+      // =========================
+      // Passenger Object
+      // =========================
+      const pax = {
 
-      flightDate:
-        flightInfo?.date || 'UNKNOWN',
+        bn,
 
-      name:
-        pax.name,
+        flight:
+          currentFlight,
 
-      bn:
-        pax.bn,
+        flightDate:
+          currentFlightDate,
 
-      seat:
-        pax.seat,
+        timestamp:
+          currentTimestamp,
 
-      bookingClass:
-        pax.bookingClass,
+        name: null,
 
-      boarded:
-        pax.boarded,
+        seat: null,
 
-      cabin:
+        cabin: null,
+
+        ffCarrier: null,
+
+        ffNumber: null,
+
+        ffTier: null,
+
+        elite: null,
+
+        ticketNumber: null,
+
+        bagtags: [],
+
+        lounge: {
+
+          eligible: false,
+
+          guest: false
+        }
+      };
+
+      // =========================
+      // Parse Nearby Lines
+      // =========================
+      for (
+
+        let j = i;
+
+        j < i + 25 && j < lines.length;
+
+        j++
+
+      ) {
+
+        const l =
+          lines[j];
+
+        // Name
+        const nameMatch =
+          l.match(
+            /([A-Z]+\/[A-Z]+[A-Z]*)/
+          );
+
+        if (
+          nameMatch &&
+          !pax.name
+        ) {
+
+          pax.name =
+            nameMatch[1];
+        }
+
+        // Seat
+        const seatMatch =
+          l.match(
+            /\b(\d+[A-Z])\b/
+          );
+
+        if (
+          seatMatch &&
+          !pax.seat
+        ) {
+
+          pax.seat =
+            seatMatch[1];
+        }
+
+        // FF
+        const ffMatch =
+          l.match(
+            /FF\/([A-Z0-9]+)\s*(\d+)\/([VGSC])\/\*(\d+)/
+          );
+
+        if (ffMatch) {
+
+          pax.ffCarrier =
+            ffMatch[1];
+
+          pax.ffNumber =
+            ffMatch[2];
+
+          pax.ffTier =
+            ffMatch[3];
+
+          pax.elite =
+            ffMatch[4];
+        }
+
+        // Ticket
+        const ticketMatch =
+          l.match(
+            /(781\d{10})/
+          );
+
+        if (
+          ticketMatch &&
+          !pax.ticketNumber
+        ) {
+
+          pax.ticketNumber =
+            ticketMatch[1];
+        }
+
+        // Bags
+        const bagMatch =
+          l.match(
+            /(\d{10})\/([A-Z]{3})/
+          );
+
+        if (bagMatch) {
+
+          const bag =
+            `${bagMatch[1]}/${bagMatch[2]}`;
+
+          if (
+            !pax.bagtags.includes(bag)
+          ) {
+
+            pax.bagtags.push(bag);
+          }
+        }
+      }
+
+      // =========================
+      // Cabin
+      // =========================
+      pax.cabin =
         getCabin(
           pax.seat
-        ),
+        );
 
-      ffCarrier:
-        ff?.carrier || null,
+      // =========================
+      // Lounge
+      // =========================
+      pax.lounge =
+        getLounge({
 
-      ffNumber:
-        ff?.number || null,
+          ffTier:
+            pax.ffTier,
 
-      ffTier:
-        ff?.tier || null,
+          elite:
+            pax.elite,
 
-      elite:
-        ff?.elite || 0,
+          cabin:
+            pax.cabin
+        });
 
-      ticketNumber:
-        ticket || null,
-
-      bagtags:
-        bags,
-
-      specialServices:
-        parseServices(block),
-
-      updatedAt:
-        timestamp || new Date()
-    };
-
-    // Lounge
-    passengers[pax.bn].lounge =
-      getLounge(
-        passengers[pax.bn]
-      );
+      // =========================
+      // Save
+      // =========================
+      passengers[bn] = pax;
+    }
   }
 
   console.log(
-    'Passenger count:',
+    'Passengers Parsed:',
     Object.keys(passengers).length
   );
 }
 
 // ===============================
-// Find by Seat
+// Find By Seat
 // ===============================
 function findBySeat(seat) {
+
+  if (!seat) {
+    return null;
+  }
 
   seat =
     seat.toUpperCase();
 
-  return Object.values(
-    passengers
-  ).find(
-    p => p.seat === seat
-  );
+  return Object.values(passengers)
+
+    .find(
+
+      p => p.seat === seat
+    );
 }
 
 // ===============================
-// Find by Name
+// Find By Name
 // ===============================
 function findByName(name) {
+
+  if (!name) {
+    return null;
+  }
 
   name =
     name.toUpperCase();
 
-  return Object.values(
-    passengers
-  ).find(
-    p => p.name.includes(name)
-  );
+  return Object.values(passengers)
+
+    .find(
+
+      p =>
+
+        p.name &&
+
+        p.name.includes(name)
+    );
 }
 
 // ===============================
@@ -510,52 +456,28 @@ function findByFFNumber(input) {
     return null;
   }
 
-  // Normalize
   let query =
     input
       .toUpperCase()
       .replace(/\s+/g, '');
 
-  // Remove FF prefix
   query =
     query.replace(/^FF/, '');
 
-  // Example:
-  // MU650278486253
+  return Object.values(passengers)
 
-  for (const bn in passengers) {
+    .find(p => {
 
-    const pax =
-      passengers[bn];
+      const ff =
+        (
+          p.ffCarrier || ''
+        ) +
+        (
+          p.ffNumber || ''
+        );
 
-    if (!pax) {
-      continue;
-    }
-
-    const carrier =
-      (
-        pax.ffCarrier || ''
-      )
-      .toUpperCase();
-
-    const number =
-      (
-        pax.ffNumber || ''
-      )
-      .replace(/\s+/g, '');
-
-    const full =
-      carrier + number;
-
-    if (
-      full === query
-    ) {
-
-      return pax;
-    }
-  }
-
-  return null;
+      return ff === query;
+    });
 }
 
 // ===============================
@@ -573,7 +495,7 @@ module.exports = {
 
   findByFFNumber,
 
-  getLounge,
+  getCabin,
 
-  getCabin
+  getLounge
 };

@@ -53,6 +53,10 @@ function parsePassengerLine(line, category) {
 
     category,
 
+    flight: null,
+
+    flightDate: null,
+
     name: null,
 
     bn: null,
@@ -180,7 +184,12 @@ function addPassenger(category, pax) {
 // ===============================
 // Parse Section
 // ===============================
-function parseSection(lines, category) {
+function parseSection(
+  lines,
+  category,
+  currentFlight,
+  currentFlightDate
+) {
 
   let currentPax = null;
 
@@ -206,6 +215,15 @@ function parseSection(lines, category) {
           line,
           category
         );
+
+      // =======================
+      // Flight Info
+      // =======================
+      currentPax.flight =
+        currentFlight;
+
+      currentPax.flightDate =
+        currentFlightDate;
     }
 
     // ===========================
@@ -276,6 +294,12 @@ function parsePDLog(log) {
   let currentCategory =
     null;
 
+  let currentFlight =
+    null;
+
+  let currentFlightDate =
+    null;
+
   let buffer = [];
 
   function flush() {
@@ -286,8 +310,14 @@ function parsePDLog(log) {
     ) {
 
       parseSection(
+
         buffer,
-        currentCategory
+
+        currentCategory,
+
+        currentFlight,
+
+        currentFlightDate
       );
     }
 
@@ -295,6 +325,25 @@ function parsePDLog(log) {
   }
 
   for (const line of lines) {
+
+    // ===========================
+    // PD Flight Header
+    // Example:
+    // PD: MU586/14MAY26Y
+    // ===========================
+    const flightMatch =
+      line.match(
+        /PD:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3})/
+      );
+
+    if (flightMatch) {
+
+      currentFlight =
+        flightMatch[1];
+
+      currentFlightDate =
+        flightMatch[2];
+    }
 
     // ===========================
     // PDF*

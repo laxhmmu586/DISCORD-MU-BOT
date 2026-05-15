@@ -10,7 +10,7 @@
     content="width=device-width, initial-scale=1.0"
   />
 
-  <title>MU Lounge</title>
+  <title>MU Lounge Validation</title>
 
   <style>
 
@@ -20,120 +20,269 @@
 
       padding: 0;
 
-      background: #111827;
+      background:
+        linear-gradient(
+          135deg,
+          #020617,
+          #0f172a
+        );
 
       font-family:
         Arial,
         sans-serif;
 
       color: white;
+
+      min-height: 100vh;
     }
 
     .container {
 
-      max-width: 500px;
+      max-width: 1400px;
 
-      margin: 40px auto;
+      margin: 20px auto;
 
-      padding: 20px;
+      padding: 20px 40px;
     }
 
-    .login-box,
-    .search-box,
-    .card {
+    .login-box {
 
-      background: #1f2937;
+      width: 420px;
 
-      border-radius: 12px;
+      margin: 120px auto;
 
-      padding: 20px;
+      background:
+        rgba(15,23,42,0.95);
 
-      margin-bottom: 20px;
+      border:
+        1px solid rgba(255,255,255,0.08);
+
+      border-radius: 24px;
+
+      padding: 36px;
+
+      box-shadow:
+        0 20px 50px rgba(0,0,0,0.4);
     }
 
-    h1 {
+    .login-title {
+
+      font-size: 42px;
+
+      font-weight: 800;
+
+      margin-bottom: 30px;
 
       text-align: center;
-
-      margin-bottom: 20px;
     }
 
     input {
 
       width: 100%;
 
-      padding: 12px;
+      box-sizing: border-box;
 
       border: none;
 
-      border-radius: 8px;
-
-      margin-bottom: 12px;
-
-      box-sizing: border-box;
-
-      font-size: 16px;
+      outline: none;
     }
 
-    button {
+    .login-input {
+
+      height: 62px;
+
+      background: #1e293b;
+
+      border-radius: 16px;
+
+      padding: 0 20px;
+
+      color: white;
+
+      font-size: 18px;
+
+      margin-bottom: 18px;
+    }
+
+    .login-button {
 
       width: 100%;
 
-      padding: 12px;
+      height: 62px;
+
+      border: none;
+
+      border-radius: 16px;
 
       background: #2563eb;
 
       color: white;
 
-      border: none;
+      font-size: 20px;
 
-      border-radius: 8px;
-
-      font-size: 16px;
+      font-weight: 700;
 
       cursor: pointer;
     }
 
-    button:hover {
+    .dashboard-title {
 
-      background: #1d4ed8;
+      font-size: 62px;
+
+      font-weight: 900;
+
+      margin-bottom: 10px;
+
+      letter-spacing: -2px;
     }
 
-    .row {
+    .dashboard-subtitle {
 
-      margin-bottom: 16px;
+      color: #94a3b8;
+
+      font-size: 22px;
+
+      margin-bottom: 40px;
+    }
+
+    .search-row {
+
+      display: flex;
+
+      gap: 18px;
+
+      align-items: center;
+    }
+
+    .search-input {
+
+      flex: 1;
+
+      height: 92px;
+
+      background: #1e293b;
+
+      border:
+        2px solid rgba(255,255,255,0.35);
+
+      border-radius: 22px;
+
+      color: white;
+
+      font-size: 44px;
+
+      font-weight: 700;
+
+      padding: 0 30px;
+    }
+
+    .search-button {
+
+      width: 170px;
+
+      height: 92px;
+
+      border: none;
+
+      border-radius: 22px;
+
+      background: #2563eb;
+
+      color: white;
+
+      font-size: 28px;
+
+      font-weight: 700;
+
+      cursor: pointer;
+    }
+
+    .card {
+
+      margin-top: 34px;
+
+      background:
+        rgba(15,23,42,0.95);
+
+      border:
+        1px solid rgba(255,255,255,0.08);
+
+      border-radius: 28px;
+
+      padding: 36px;
+
+      max-width: 680px;
+
+      box-shadow:
+        0 20px 50px rgba(0,0,0,0.4);
+
+      display: none;
+    }
+
+    .flight {
+
+      font-size: 34px;
+
+      font-weight: 900;
+
+      margin-bottom: 28px;
+    }
+
+    .name {
+
+      font-size: 52px;
+
+      font-weight: 900;
+
+      margin-bottom: 10px;
+    }
+
+    .seat {
+
+      font-size: 28px;
+
+      color: #cbd5e1;
+
+      margin-bottom: 34px;
+    }
+
+    .section {
+
+      margin-bottom: 28px;
     }
 
     .label {
 
-      font-size: 13px;
+      color: #60a5fa;
 
-      color: #9ca3af;
+      font-size: 22px;
 
-      margin-bottom: 4px;
+      margin-bottom: 8px;
+
+      text-transform: uppercase;
     }
 
     .value {
 
-      font-size: 17px;
+      font-size: 34px;
 
-      font-weight: bold;
+      font-weight: 700;
 
-      word-break: break-word;
+      line-height: 1.5;
     }
 
     .lounge-yes {
 
       color: #10b981;
 
-      font-weight: bold;
+      font-weight: 800;
     }
 
     .lounge-no {
 
       color: #ef4444;
 
-      font-weight: bold;
+      font-weight: 800;
     }
 
     .error {
@@ -142,7 +291,9 @@
 
       text-align: center;
 
-      margin-top: 10px;
+      margin-top: 14px;
+
+      font-size: 18px;
     }
 
   </style>
@@ -159,21 +310,28 @@
       id="loginBox"
     >
 
-      <h1>MU Login</h1>
+      <div class="login-title">
+        Login
+      </div>
 
       <input
         type="text"
         id="username"
+        class="login-input"
         placeholder="Username"
       />
 
       <input
         type="password"
         id="password"
+        class="login-input"
         placeholder="Password"
       />
 
-      <button onclick="login()">
+      <button
+        class="login-button"
+        onclick="login()"
+      >
         Login
       </button>
 
@@ -190,17 +348,28 @@
       style="display:none;"
     >
 
+      <div class="dashboard-title">
+        MU Lounge Validation
+      </div>
+
+      <div class="dashboard-subtitle">
+        Search by BN / Seat / Name
+      </div>
+
       <!-- SEARCH -->
-      <div class="search-box">
+      <div class="search-row">
 
         <input
           type="text"
           id="query"
-          placeholder="Search by BN / Seat / Full Name on Boarding Pass / Membership"
+          class="search-input"
           onkeydown="if(event.key==='Enter') searchPassenger()"
         />
 
-        <button onclick="searchPassenger()">
+        <button
+          class="search-button"
+          onclick="searchPassenger()"
+        >
           Search
         </button>
 
@@ -210,49 +379,24 @@
       <div
         class="card"
         id="card"
-        style="display:none;"
       >
 
-        <div class="row">
+        <div
+          class="flight"
+          id="flight"
+        ></div>
 
-          <div class="label">
-            Flight
-          </div>
+        <div
+          class="name"
+          id="name"
+        ></div>
 
-          <div
-            class="value"
-            id="flight"
-          ></div>
+        <div
+          class="seat"
+          id="seat"
+        ></div>
 
-        </div>
-
-        <div class="row">
-
-          <div class="label">
-            Passenger
-          </div>
-
-          <div
-            class="value"
-            id="name"
-          ></div>
-
-        </div>
-
-        <div class="row">
-
-          <div class="label">
-            Seat
-          </div>
-
-          <div
-            class="value"
-            id="seat"
-          ></div>
-
-        </div>
-
-        <div class="row">
+        <div class="section">
 
           <div class="label">
             Membership
@@ -265,7 +409,7 @@
 
         </div>
 
-        <div class="row">
+        <div class="section">
 
           <div class="label">
             Membership Status
@@ -279,7 +423,7 @@
         </div>
 
         <div
-          class="row"
+          class="section"
           id="ticketRow"
         >
 
@@ -295,7 +439,7 @@
         </div>
 
         <div
-          class="row"
+          class="section"
           id="bagsRow"
         >
 
@@ -310,7 +454,7 @@
 
         </div>
 
-        <div class="row">
+        <div class="section">
 
           <div class="label">
             Lounge Entitle
@@ -323,7 +467,7 @@
 
         </div>
 
-        <div class="row">
+        <div class="section">
 
           <div class="label">
             Lounge Guest
@@ -403,7 +547,7 @@
     }
 
     // ===========================
-    // Auto Logout
+    // Session Timeout
     // ===========================
     function checkSession() {
 
@@ -423,12 +567,8 @@
           )
         );
 
-      const now =
-        Date.now();
-
-      // 15 mins
       if (
-        now - last >
+        Date.now() - last >
         15 * 60 * 1000
       ) {
 
@@ -440,7 +580,7 @@
       }
     }
 
-    // Activity
+    // Activity tracking
     document.addEventListener(
       'click',
       () => {
@@ -468,7 +608,7 @@
       10000
     );
 
-    // Auto login restore
+    // Restore session
     if (
       localStorage.getItem(
         'loggedIn'
@@ -501,17 +641,17 @@
       const data =
         await res.json();
 
-      const card =
-        document.getElementById(
-          'card'
-        );
-
       if (data.error) {
 
         alert(data.error);
 
         return;
       }
+
+      const card =
+        document.getElementById(
+          'card'
+        );
 
       // =========================
       // PD Passenger
@@ -521,7 +661,7 @@
         document.getElementById(
           'flight'
         ).innerText =
-          'PD Passenger';
+          `${data.flight || 'MU586'}/${data.flightDate || 'UNKNOWN'}`;
 
         document.getElementById(
           'name'
@@ -563,57 +703,32 @@
             ? 'Regular'
             : 'NONE';
 
-        // Hide Ticket
+        // Hide Ticket/Bags
         document.getElementById(
           'ticketRow'
         ).style.display =
           'none';
 
-        // Hide Bags
         document.getElementById(
           'bagsRow'
         ).style.display =
           'none';
 
         // Lounge
-        const lounge =
-          document.getElementById(
-            'lounge'
-          );
-
-        if (
+        document.getElementById(
+          'lounge'
+        ).innerHTML =
           data.lounge?.eligible
-        ) {
-
-          lounge.innerHTML =
-            '<span class="lounge-yes">✅ Eligible</span>';
-        }
-
-        else {
-
-          lounge.innerHTML =
-            '<span class="lounge-no">❌ Not Eligible</span>';
-        }
+            ? '<span class="lounge-yes">✅ Eligible</span>'
+            : '<span class="lounge-no">❌ Not Eligible</span>';
 
         // Guest
-        const guest =
-          document.getElementById(
-            'guest'
-          );
-
-        if (
+        document.getElementById(
+          'guest'
+        ).innerHTML =
           data.lounge?.guest
-        ) {
-
-          guest.innerHTML =
-            '<span class="lounge-yes">✅ Allowed</span>';
-        }
-
-        else {
-
-          guest.innerHTML =
-            '<span class="lounge-no">❌ Not Allowed</span>';
-        }
+            ? '<span class="lounge-yes">✅ Allowed</span>'
+            : '<span class="lounge-no">❌ Not Allowed</span>';
 
         card.style.display =
           'block';
@@ -622,16 +737,14 @@
       }
 
       // =========================
-      // Normal FB Passenger
+      // FB Passenger
       // =========================
 
-      // Show Ticket
       document.getElementById(
         'ticketRow'
       ).style.display =
         'block';
 
-      // Show Bags
       document.getElementById(
         'bagsRow'
       ).style.display =

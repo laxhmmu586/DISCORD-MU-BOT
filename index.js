@@ -15,15 +15,11 @@ const {
 
   findByName,
 
-  findByFFNumber,
-
-  parseIncrementalLog
+  findByFFNumber
 
 } = require('./flightParser');
 
 const {
-
-  parsePDLog,
 
   findPDByFFNumber
 
@@ -31,9 +27,11 @@ const {
 
 const {
 
-  getLatestFlightLog
+  startCache,
 
-} = require('./googleDrive');
+  getCacheStatus
+
+} = require('./cache');
 
 const app = express();
 
@@ -91,11 +89,16 @@ console.log(
 );
 
 // ===============================
-// Login
+// Login Discord Bot
 // ===============================
 client.login(
   process.env.BOT_TOKEN
 );
+
+// ===============================
+// Start Cache System
+// ===============================
+startCache();
 
 // ===============================
 // Search API
@@ -120,35 +123,12 @@ app.get('/search', async (req, res) => {
       });
     }
 
-    // ===========================
-    // Load latest log
-    // ===========================
-    const log =
-      await getLatestFlightLog();
-
-    if (!log) {
-
-      return res.json({
-
-        error:
-          'Unable to load log'
-      });
-    }
-
-    // ===========================
-    // Parse latest FB log
-    // ===========================
-    parseIncrementalLog(log);
-
-    // ===========================
-    // Parse latest PD log
-    // ===========================
-    parsePDLog(log);
-
     let pax = null;
 
     // ===========================
     // BN Search
+    // Example:
+    // 019
     // ===========================
     if (/^\d{1,3}$/.test(q)) {
 
@@ -161,6 +141,8 @@ app.get('/search', async (req, res) => {
 
     // ===========================
     // Seat Search
+    // Example:
+    // 12H
     // ===========================
     else if (/^\d+[A-Z]$/.test(q)) {
 
@@ -169,7 +151,7 @@ app.get('/search', async (req, res) => {
     }
 
     // ===========================
-    // FF Number Search
+    // FF Search
     // Example:
     // MU650278486253
     // MU 650278486253
@@ -194,7 +176,6 @@ app.get('/search', async (req, res) => {
         pax =
           findPDByFFNumber(q);
 
-        // PD only marker
         if (pax) {
 
           pax.pdOnly = true;
@@ -238,6 +219,17 @@ app.get('/search', async (req, res) => {
         err.toString()
     });
   }
+});
+
+// ===============================
+// Cache Status API
+// ===============================
+app.get('/status', (req, res) => {
+
+  res.json(
+    getCacheStatus()
+  );
+
 });
 
 // ===============================
@@ -306,6 +298,16 @@ app.post('/send', async (req, res) => {
         err.toString()
       );
   }
+});
+
+// ===============================
+// Health Check
+// ===============================
+app.get('/', (req, res) => {
+
+  res.send(
+    'MU Lounge Validation Running'
+  );
 
 });
 

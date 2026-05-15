@@ -2,8 +2,6 @@ const {
 
   passengers,
 
-  parseIncrementalLog,
-
   findBySeat,
 
   findByName,
@@ -14,17 +12,9 @@ const {
 
 const {
 
-  parsePDLog,
-
   findPDByFFNumber
 
 } = require('./pdParser');
-
-const {
-
-  getLatestFlightLog
-
-} = require('./googleDrive');
 
 // ===============================
 // FF Status
@@ -35,7 +25,6 @@ function getFFStatus(pax) {
     return 'NONE';
   }
 
-  // Regular Member
   if (pax.ffTier === 'C') {
     return 'Regular / C';
   }
@@ -58,7 +47,7 @@ function getFFStatus(pax) {
 }
 
 // ===============================
-// Create Embed
+// FB Embed
 // ===============================
 function createPassengerEmbed(pax) {
 
@@ -88,57 +77,78 @@ function createPassengerEmbed(pax) {
       `${pax.flight}/${pax.flightDate}`,
 
     description:
-      `👤 ${pax.name}\n🎫 BN${pax.bn} | ${pax.seat} | ${pax.cabin} Class`,
+`${pax.name}
+
+BN${pax.bn} | ${pax.seat} | ${pax.cabin} Class`,
 
     fields: [
 
       {
 
-        name: '💳 Membership',
+        name:
+          '💳 Membership',
 
         value:
 `${pax.ffCarrier || 'NONE'} ${pax.ffNumber || ''}
+
 ${getFFStatus(pax)}`,
 
-        inline: true
+        inline:
+          false
       },
 
       {
 
-        name: '🎟 Ticket',
+        name:
+          '🎟 Ticket',
 
         value:
           pax.ticketNumber || 'NONE',
 
-        inline: true
+        inline:
+          false
       },
 
       {
 
-        name: '🧳 Bags',
+        name:
+          '🧳 Bags',
 
         value:
           pax.bagtags?.length
             ? pax.bagtags.join('\n')
             : 'NONE',
 
-        inline: false
+        inline:
+          false
       },
 
       {
 
-        name: '🛋 Lounge Guest',
+        name:
+          '🛋 Lounge Entitle',
 
         value:
           pax.lounge?.eligible
-            ? (
-                pax.lounge?.guest
-                ? '✅ Allowed'
-                : '❌ Not Allowed'
-              )
+            ? '✅ Eligible'
+            : '❌ Not Eligible',
+
+        inline:
+          true
+      },
+
+      {
+
+        name:
+          '👥 Lounge Guest',
+
+        value:
+          pax.lounge?.guest
+            ? '✅ Allowed'
             : '❌ Not Allowed',
 
-        inline: false
+        inline:
+          true
       }
 
     ],
@@ -152,7 +162,7 @@ ${getFFStatus(pax)}`,
 }
 
 // ===============================
-// Create PD Embed
+// PD Embed
 // ===============================
 function createPDEmbed(pax) {
 
@@ -193,15 +203,17 @@ function createPDEmbed(pax) {
   return {
 
     color:
-      0x0099ff,
+      pax.lounge?.eligible
+        ? 0x00cc99
+        : 0xff9900,
 
     title:
-      'PD Passenger',
+      `${pax.flight || 'MU586'}/${pax.flightDate || 'UNKNOWN'}`,
 
     description:
 `${pax.name || 'UNKNOWN'}
 
-BN${pax.bn || '---'} | ${pax.seat || '---'}`,
+BN${pax.bn || '---'} | ${pax.seat || '---'} | ${pax.cabin || 'Unknown'} Class`,
 
     fields: [
 
@@ -217,6 +229,34 @@ ${tier}`,
 
         inline:
           false
+      },
+
+      {
+
+        name:
+          '🛋 Lounge Entitle',
+
+        value:
+          pax.lounge?.eligible
+            ? '✅ Eligible'
+            : '❌ Not Eligible',
+
+        inline:
+          true
+      },
+
+      {
+
+        name:
+          '👥 Lounge Guest',
+
+        value:
+          pax.lounge?.guest
+            ? '✅ Allowed'
+            : '❌ Not Allowed',
+
+        inline:
+          true
       }
 
     ],
@@ -249,29 +289,6 @@ module.exports = function(client) {
           message.content
             .trim()
             .toUpperCase();
-
-        // ===========================
-        // Download Latest Log
-        // ===========================
-        const log =
-          await getLatestFlightLog();
-
-        if (!log) {
-
-          return message.reply(
-            'Unable to load Flight Control.log'
-          );
-        }
-
-        // ===========================
-        // Parse Latest Log
-        // ===========================
-        parseIncrementalLog(log);
-
-        // ===========================
-        // Parse PD Log
-        // ===========================
-        parsePDLog(log);
 
         // ===========================
         // FB QUERY
@@ -376,13 +393,13 @@ module.exports = function(client) {
               .trim();
 
           // =======================
-          // Search FB Passengers
+          // FB Search
           // =======================
           let pax =
             findByFFNumber(ff);
 
           // =======================
-          // Search PD Passengers
+          // PD Search
           // =======================
           if (!pax) {
 
@@ -395,7 +412,7 @@ module.exports = function(client) {
           // =======================
           if (
             pax &&
-            !pax.flight
+            !pax.ticketNumber
           ) {
 
             return message.reply({
@@ -451,6 +468,11 @@ module.exports = function(client) {
               p => p.ffTier === 'G'
             ).length;
 
+          const silver =
+            paxList.filter(
+              p => p.ffTier === 'S'
+            ).length;
+
           return message.reply({
 
             embeds: [
@@ -467,42 +489,62 @@ module.exports = function(client) {
 
                   {
 
-                    name: '👥 Total',
+                    name:
+                      '👥 Total',
 
                     value:
                       String(total),
 
-                    inline: true
+                    inline:
+                      true
                   },
 
                   {
 
-                    name: '🛋 Lounge',
+                    name:
+                      '🛋 Lounge',
 
                     value:
                       String(lounge),
 
-                    inline: true
+                    inline:
+                      true
                   },
 
                   {
 
-                    name: '💎 Platinum',
+                    name:
+                      '💎 Platinum',
 
                     value:
                       String(platinum),
 
-                    inline: true
+                    inline:
+                      true
                   },
 
                   {
 
-                    name: '🥇 Gold',
+                    name:
+                      '🥇 Gold',
 
                     value:
                       String(gold),
 
-                    inline: true
+                    inline:
+                      true
+                  },
+
+                  {
+
+                    name:
+                      '🥈 Silver',
+
+                    value:
+                      String(silver),
+
+                    inline:
+                      true
                   }
 
                 ],
