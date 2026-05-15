@@ -22,7 +22,9 @@ const {
 
 const {
 
-  getLatestFlightLog
+  getLatestFlightLog,
+
+  getFlightLogByDate
 
 } = require('./googleDrive');
 
@@ -52,6 +54,7 @@ function getMembershipStatus(tier) {
 module.exports = (client) => {
 
   client.on(
+
     'messageCreate',
 
     async (message) => {
@@ -147,13 +150,59 @@ module.exports = (client) => {
       query =
         query.toUpperCase();
 
+      // =========================
+      // Date Search
+      // Example:
+      // FB 174/11MAY
+      // =========================
+      let date = null;
+
+      if (query.includes('/')) {
+
+        const parts =
+          query.split('/');
+
+        if (
+
+          parts.length === 2 &&
+
+          mode === 'BN'
+
+        ) {
+
+          query =
+            parts[0]
+              .trim();
+
+          date =
+            parts[1]
+              .trim()
+              .toUpperCase();
+        }
+      }
+
       try {
 
         // =====================
-        // Download Latest Log
+        // Load Log
         // =====================
-        const log =
-          await getLatestFlightLog();
+        let log = null;
+
+        // Archive
+        if (date) {
+
+          log =
+            await getFlightLogByDate(
+              date
+            );
+        }
+
+        // Today
+        else {
+
+          log =
+            await getLatestFlightLog();
+        }
 
         if (!log) {
 
@@ -267,13 +316,13 @@ module.exports = (client) => {
           color: 0xf59e0b,
 
           title:
-            `${pax.flight}/${pax.flightDate}`,
+            `✈️ ${pax.flight}/${pax.flightDate}`,
 
           description:
 
             `👤 ${pax.name}\n\n` +
 
-            `🎫 BN${pax.bn} | ${pax.seat} | ${pax.cabin} Class`,
+            `🎫 BN${pax.bn} • ${pax.seat} • ${pax.cabin}`,
 
           fields: [
 
@@ -460,7 +509,9 @@ module.exports = (client) => {
           embeds: [embed]
         });
 
-      } catch (err) {
+      }
+
+      catch (err) {
 
         console.error(err);
 
