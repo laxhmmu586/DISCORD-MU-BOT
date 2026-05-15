@@ -152,27 +152,27 @@ module.exports = (client) => {
 
       // =========================
       // Date Search
-      // Example:
       // FB 174/11MAY
       // =========================
       let date = null;
 
-      if (query.includes('/')) {
+      if (
+
+        mode === 'BN' &&
+
+        query.includes('/')
+
+      ) {
 
         const parts =
           query.split('/');
 
-        if (
-
-          parts.length === 2 &&
-
-          mode === 'BN'
-
-        ) {
+        if (parts.length === 2) {
 
           query =
             parts[0]
-              .trim();
+              .trim()
+              .toUpperCase();
 
           date =
             parts[1]
