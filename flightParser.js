@@ -41,18 +41,23 @@ function parseIncrementalLog(log) {
     const seat = seatMatch[1].toUpperCase();
     const name = nameMatch[1].replace(/\s+/g, '').toUpperCase();
 
-    // 精确匹配 SSR，只匹配真实出现的
+    // 精确匹配 SSR，只匹配完整的 SSR 字眼
     const specialServices = [];
     const ssrList = [
       'WCHR','WCHS','WCHC','UMNR','UM','BLND','DEAF','MEDA','OXYG',
       'PETC','AVIH','MAAS','STCR','INAD','VIP','CIP','PPOC',
       'VGML','AVML','KSML','MOML','CHML','BBML','GFML','NLML','DBML','FPML'
-    ];
-    const firstLines = section.split(/\r?\n/).slice(0, 10).join(' ');
-    ssrList.forEach(code => {
-      const regex = new RegExp(`\\b${code}\\b`, 'i');
-      if (regex.test(firstLines)) specialServices.push(code);
-    });
+    ]; 
+    const lines = section.split(/\r?\n/);
+    lines.forEach(line => {
+      ssrList.forEach(code => {
+    // 严格匹配：SSR 前后是行首/行尾、空格或非字母数字字符
+         const regex = new RegExp(`(^|\\s|[^a-zA-Z0-9])${code}($|\\s|[^a-zA-Z0-9])`, 'i');
+        if (regex.test(line) && !specialServices.includes(code)) {
+      specialServices.push(code);
+    }
+  });
+});
 
     passengers[bn] = {
       bn,
