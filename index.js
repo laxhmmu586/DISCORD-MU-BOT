@@ -23,6 +23,14 @@ const {
 
 const {
 
+  parsePDLog,
+
+  findPDByFFNumber
+
+} = require('./pdParser');
+
+const {
+
   getLatestFlightLog
 
 } = require('./googleDrive');
@@ -128,9 +136,14 @@ app.get('/search', async (req, res) => {
     }
 
     // ===========================
-    // Parse latest log
+    // Parse latest FB log
     // ===========================
     parseIncrementalLog(log);
+
+    // ===========================
+    // Parse latest PD log
+    // ===========================
+    parsePDLog(log);
 
     let pax = null;
 
@@ -167,8 +180,26 @@ app.get('/search', async (req, res) => {
 
     ) {
 
+      // =======================
+      // FB Search
+      // =======================
       pax =
         findByFFNumber(q);
+
+      // =======================
+      // PD Search
+      // =======================
+      if (!pax) {
+
+        pax =
+          findPDByFFNumber(q);
+
+        // PD only marker
+        if (pax) {
+
+          pax.pdOnly = true;
+        }
+      }
     }
 
     // ===========================
@@ -180,6 +211,9 @@ app.get('/search', async (req, res) => {
         findByName(q);
     }
 
+    // ===========================
+    // Passenger Not Found
+    // ===========================
     if (!pax) {
 
       return res.json({

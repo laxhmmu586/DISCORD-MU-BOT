@@ -14,6 +14,14 @@ const {
 
 const {
 
+  parsePDLog,
+
+  findPDByFFNumber
+
+} = require('./pdParser');
+
+const {
+
   getLatestFlightLog
 
 } = require('./googleDrive');
@@ -144,6 +152,84 @@ ${getFFStatus(pax)}`,
 }
 
 // ===============================
+// Create PD Embed
+// ===============================
+function createPDEmbed(pax) {
+
+  if (!pax) {
+
+    return {
+
+      title:
+        'Passenger Not Found',
+
+      description:
+        'No matching PD passenger found.',
+
+      color:
+        0xff0000
+    };
+  }
+
+  let tier =
+    pax.ffTier || 'NONE';
+
+  if (tier === 'V') {
+    tier = 'Platinum';
+  }
+
+  else if (tier === 'G') {
+    tier = 'Gold';
+  }
+
+  else if (tier === 'S') {
+    tier = 'Silver';
+  }
+
+  else if (tier === 'C') {
+    tier = 'Regular';
+  }
+
+  return {
+
+    color:
+      0x0099ff,
+
+    title:
+      'PD Passenger',
+
+    description:
+`${pax.name || 'UNKNOWN'}
+
+BN${pax.bn || '---'} | ${pax.seat || '---'}`,
+
+    fields: [
+
+      {
+
+        name:
+          '💳 Membership',
+
+        value:
+`${pax.ffCarrier || 'NONE'} ${pax.ffNumber || 'NONE'}
+
+${tier}`,
+
+        inline:
+          false
+      }
+
+    ],
+
+    footer: {
+
+      text:
+        'China Eastern Flight Control'
+    }
+  };
+}
+
+// ===============================
 // Export
 // ===============================
 module.exports = function(client) {
@@ -181,6 +267,11 @@ module.exports = function(client) {
         // Parse Latest Log
         // ===========================
         parseIncrementalLog(log);
+
+        // ===========================
+        // Parse PD Log
+        // ===========================
+        parsePDLog(log);
 
         // ===========================
         // FB QUERY
@@ -284,9 +375,43 @@ module.exports = function(client) {
               .replace('FF', '')
               .trim();
 
-          const pax =
+          // =======================
+          // Search FB Passengers
+          // =======================
+          let pax =
             findByFFNumber(ff);
 
+          // =======================
+          // Search PD Passengers
+          // =======================
+          if (!pax) {
+
+            pax =
+              findPDByFFNumber(ff);
+          }
+
+          // =======================
+          // PD Passenger
+          // =======================
+          if (
+            pax &&
+            !pax.flight
+          ) {
+
+            return message.reply({
+
+              embeds: [
+
+                createPDEmbed(pax)
+
+              ]
+
+            });
+          }
+
+          // =======================
+          // Normal FB Passenger
+          // =======================
           return message.reply({
 
             embeds: [

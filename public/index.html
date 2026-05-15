@@ -3,275 +3,128 @@
 
 <head>
 
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
 
   <meta
     name="viewport"
     content="width=device-width, initial-scale=1.0"
-  >
+  />
 
-  <title>
-    MU Lounge Validation
-  </title>
+  <title>MU Lounge</title>
 
   <style>
 
     body {
 
       margin: 0;
+
       padding: 0;
 
-      background: #0f172a;
+      background: #111827;
 
       font-family:
         Arial,
         sans-serif;
 
       color: white;
-
-      min-height: 100vh;
-    }
-
-    /* ========================= */
-    /* Login Screen */
-    /* ========================= */
-
-    #loginScreen {
-
-      width: 100%;
-      min-height: 100vh;
-
-      display: flex;
-
-      justify-content: center;
-
-      align-items: center;
-    }
-
-    .login-box {
-
-      width: 320px;
-
-      background: #111827;
-
-      padding: 30px;
-
-      border-radius: 16px;
-
-      box-shadow:
-        0 0 20px rgba(0,0,0,0.3);
-    }
-
-    .login-title {
-
-      font-size: 28px;
-
-      font-weight: bold;
-
-      margin-bottom: 20px;
-    }
-
-    .login-input {
-
-      width: 100%;
-
-      padding: 14px;
-
-      margin-bottom: 14px;
-
-      border: none;
-
-      border-radius: 10px;
-
-      background: #1e293b;
-
-      color: white;
-
-      font-size: 16px;
-
-      box-sizing: border-box;
-    }
-
-    .login-button {
-
-      width: 100%;
-
-      padding: 14px;
-
-      border: none;
-
-      border-radius: 10px;
-
-      background: #2563eb;
-
-      color: white;
-
-      font-size: 16px;
-
-      cursor: pointer;
-    }
-
-    .login-error {
-
-      color: #ef4444;
-
-      margin-top: 14px;
-
-      display: none;
-    }
-
-    /* ========================= */
-    /* Main App */
-    /* ========================= */
-
-    #mainApp {
-
-      display: none;
-
-      justify-content: center;
-
-      padding-top: 20px;
     }
 
     .container {
 
-      width: 100%;
       max-width: 500px;
 
-      padding: 30px;
+      margin: 40px auto;
+
+      padding: 20px;
     }
 
-    .title {
+    .login-box,
+    .search-box,
+    .card {
 
-      font-size: 32px;
+      background: #1f2937;
 
-      font-weight: bold;
+      border-radius: 12px;
 
-      margin-bottom: 10px;
+      padding: 20px;
+
+      margin-bottom: 20px;
     }
 
-    .subtitle {
+    h1 {
 
-      color: #94a3b8;
+      text-align: center;
 
-      margin-bottom: 30px;
+      margin-bottom: 20px;
     }
 
-    .search-box {
+    input {
 
-      display: flex;
+      width: 100%;
 
-      gap: 10px;
-
-      margin-bottom: 25px;
-    }
-
-    .search-input {
-
-      flex: 1;
-
-      padding: 14px;
+      padding: 12px;
 
       border: none;
 
-      border-radius: 10px;
+      border-radius: 8px;
 
-      font-size: 18px;
+      margin-bottom: 12px;
 
-      background: #1e293b;
+      box-sizing: border-box;
 
-      color: white;
+      font-size: 16px;
     }
 
-    .search-button {
+    button {
 
-      padding: 14px 22px;
+      width: 100%;
 
-      border: none;
-
-      border-radius: 10px;
+      padding: 12px;
 
       background: #2563eb;
 
       color: white;
+
+      border: none;
+
+      border-radius: 8px;
 
       font-size: 16px;
 
       cursor: pointer;
     }
 
-    .search-button:hover {
+    button:hover {
 
       background: #1d4ed8;
     }
 
-    .card {
+    .row {
 
-      background: #111827;
-
-      border-radius: 16px;
-
-      padding: 24px;
-
-      box-shadow:
-        0 0 20px rgba(0,0,0,0.3);
-
-      display: none;
-    }
-
-    .flight {
-
-      font-size: 22px;
-
-      font-weight: bold;
-
-      margin-bottom: 20px;
-    }
-
-    .name {
-
-      font-size: 26px;
-
-      font-weight: bold;
-
-      margin-bottom: 8px;
-    }
-
-    .seat {
-
-      color: #cbd5e1;
-
-      margin-bottom: 24px;
-
-      font-size: 17px;
-    }
-
-    .section {
-
-      margin-bottom: 22px;
+      margin-bottom: 16px;
     }
 
     .label {
 
-      color: #60a5fa;
+      font-size: 13px;
 
-      font-size: 14px;
+      color: #9ca3af;
 
-      margin-bottom: 6px;
-
-      text-transform: uppercase;
+      margin-bottom: 4px;
     }
 
     .value {
 
-      font-size: 18px;
+      font-size: 17px;
 
-      white-space: pre-line;
+      font-weight: bold;
+
+      word-break: break-word;
     }
 
     .lounge-yes {
 
-      color: #22c55e;
+      color: #10b981;
 
       font-weight: bold;
     }
@@ -285,15 +138,11 @@
 
     .error {
 
-      background: #7f1d1d;
+      color: #ef4444;
 
-      padding: 14px;
+      text-align: center;
 
-      border-radius: 10px;
-
-      display: none;
-
-      margin-top: 20px;
+      margin-top: 10px;
     }
 
   </style>
@@ -302,178 +151,187 @@
 
 <body>
 
-  <!-- ========================= -->
-  <!-- Login Screen -->
-  <!-- ========================= -->
+  <div class="container">
 
-  <div id="loginScreen">
+    <!-- LOGIN -->
+    <div
+      class="login-box"
+      id="loginBox"
+    >
 
-    <div class="login-box">
-
-      <div class="login-title">
-        Login
-      </div>
+      <h1>MU Login</h1>
 
       <input
+        type="text"
         id="username"
-        class="login-input"
         placeholder="Username"
-      >
+      />
 
       <input
-        id="password"
         type="password"
-        class="login-input"
+        id="password"
         placeholder="Password"
-      >
+      />
 
-      <button
-        class="login-button"
-        onclick="login()"
-      >
+      <button onclick="login()">
         Login
       </button>
 
       <div
+        class="error"
         id="loginError"
-        class="login-error"
-      >
-        Invalid username or password
-      </div>
+      ></div>
 
     </div>
 
-  </div>
+    <!-- APP -->
+    <div
+      id="app"
+      style="display:none;"
+    >
 
-  <!-- ========================= -->
-  <!-- Main App -->
-  <!-- ========================= -->
-
-  <div id="mainApp">
-
-    <div class="container">
-
-      <div class="title">
-        MU Lounge Validation
-      </div>
-
-      <div class="subtitle">
-        Search by BN / Seat / Full Name on Boarding Pass
-      </div>
-
+      <!-- SEARCH -->
       <div class="search-box">
 
         <input
+          type="text"
           id="query"
-          class="search-input"
-          placeholder="321 / 20A / HUANG/ZEYUANMR"
-        >
+          placeholder="Search by BN / Seat / Full Name on Boarding Pass / Membership"
+          onkeydown="if(event.key==='Enter') searchPassenger()"
+        />
 
-        <button
-          class="search-button"
-          onclick="searchPassenger()"
-        >
+        <button onclick="searchPassenger()">
           Search
         </button>
 
       </div>
 
+      <!-- CARD -->
       <div
-        id="error"
-        class="error"
-      ></div>
-
-      <div
-        id="card"
         class="card"
+        id="card"
+        style="display:none;"
       >
 
-        <div
-          id="flight"
-          class="flight"
-        ></div>
+        <div class="row">
 
-        <div
-          id="name"
-          class="name"
-        ></div>
+          <div class="label">
+            Flight
+          </div>
 
-        <div
-          id="seat"
-          class="seat"
-        ></div>
+          <div
+            class="value"
+            id="flight"
+          ></div>
 
-        <!-- Membership -->
-        <div class="section">
+        </div>
+
+        <div class="row">
+
+          <div class="label">
+            Passenger
+          </div>
+
+          <div
+            class="value"
+            id="name"
+          ></div>
+
+        </div>
+
+        <div class="row">
+
+          <div class="label">
+            Seat
+          </div>
+
+          <div
+            class="value"
+            id="seat"
+          ></div>
+
+        </div>
+
+        <div class="row">
 
           <div class="label">
             Membership
           </div>
 
           <div
+            class="value"
             id="ff"
-            class="value"
-          ></div>
-
-          <div
-            id="ffStatus"
-            class="value"
-            style="margin-top:10px;"
           ></div>
 
         </div>
 
-        <!-- Ticket -->
-        <div class="section">
+        <div class="row">
+
+          <div class="label">
+            Membership Status
+          </div>
+
+          <div
+            class="value"
+            id="ffStatus"
+          ></div>
+
+        </div>
+
+        <div
+          class="row"
+          id="ticketRow"
+        >
 
           <div class="label">
             Ticket
           </div>
 
           <div
-            id="ticket"
             class="value"
+            id="ticket"
           ></div>
 
         </div>
 
-        <!-- Bags -->
-        <div class="section">
+        <div
+          class="row"
+          id="bagsRow"
+        >
 
           <div class="label">
             Bags
           </div>
 
           <div
-            id="bags"
             class="value"
+            id="bags"
           ></div>
 
         </div>
 
-        <!-- Lounge -->
-        <div class="section">
+        <div class="row">
 
           <div class="label">
             Lounge Entitle
           </div>
 
           <div
-            id="lounge"
             class="value"
+            id="lounge"
           ></div>
 
-          <div
-            class="label"
-            style="margin-top:14px;"
-          >
+        </div>
+
+        <div class="row">
+
+          <div class="label">
             Lounge Guest
           </div>
 
           <div
-            id="guest"
             class="value"
-            style="margin-top:10px;"
+            id="guest"
           ></div>
 
         </div>
@@ -486,193 +344,201 @@
 
   <script>
 
-    // =========================
-    // Auto Logout Timer
-    // =========================
-    let logoutTimer;
-
-    function resetLogoutTimer() {
-
-      clearTimeout(logoutTimer);
-
-      logoutTimer = setTimeout(() => {
-
-        localStorage.removeItem(
-          'muLoggedIn'
-        );
-
-        location.reload();
-
-      }, 15 * 60 * 1000); // 15 minutes
-    }
-
-    // =========================
+    // ===========================
     // Login
-    // =========================
+    // ===========================
     function login() {
 
-      const username =
-        document
-          .getElementById('username')
-          .value
-          .trim();
+      const user =
+        document.getElementById(
+          'username'
+        ).value;
 
-      const password =
-        document
-          .getElementById('password')
-          .value
-          .trim();
+      const pass =
+        document.getElementById(
+          'password'
+        ).value;
 
       if (
-        username === 'mu586' &&
-        password === 'mulax'
+        user === 'mu586' &&
+        pass === 'mulax'
       ) {
 
         localStorage.setItem(
-          'muLoggedIn',
+          'loggedIn',
           'true'
         );
 
-        document
-          .getElementById('loginScreen')
-          .style.display =
-            'none';
+        localStorage.setItem(
+          'lastActivity',
+          Date.now()
+        );
 
-        document
-          .getElementById('mainApp')
-          .style.display =
-            'flex';
-
-        resetLogoutTimer();
+        showApp();
       }
 
       else {
 
-        document
-          .getElementById('loginError')
-          .style.display =
-            'block';
+        document.getElementById(
+          'loginError'
+        ).innerText =
+          'Invalid username or password';
       }
     }
 
-    // =========================
-    // Auto Login
-    // =========================
-    window.onload = function() {
+    // ===========================
+    // Show App
+    // ===========================
+    function showApp() {
 
-      if (
+      document.getElementById(
+        'loginBox'
+      ).style.display =
+        'none';
+
+      document.getElementById(
+        'app'
+      ).style.display =
+        'block';
+    }
+
+    // ===========================
+    // Auto Logout
+    // ===========================
+    function checkSession() {
+
+      const loggedIn =
         localStorage.getItem(
-          'muLoggedIn'
-        ) === 'true'
+          'loggedIn'
+        );
+
+      if (!loggedIn) {
+        return;
+      }
+
+      const last =
+        Number(
+          localStorage.getItem(
+            'lastActivity'
+          )
+        );
+
+      const now =
+        Date.now();
+
+      // 15 mins
+      if (
+        now - last >
+        15 * 60 * 1000
       ) {
 
-        document
-          .getElementById('loginScreen')
-          .style.display =
-            'none';
+        localStorage.removeItem(
+          'loggedIn'
+        );
 
-        document
-          .getElementById('mainApp')
-          .style.display =
-            'flex';
-
-        resetLogoutTimer();
+        location.reload();
       }
-    };
+    }
 
-    // =========================
-    // User Activity
-    // =========================
-    [
+    // Activity
+    document.addEventListener(
       'click',
-      'mousemove',
-      'keypress',
-      'scroll',
-      'touchstart'
-    ].forEach(event => {
+      () => {
 
-      document.addEventListener(
-        event,
-        resetLogoutTimer
-      );
-    });
+        localStorage.setItem(
+          'lastActivity',
+          Date.now()
+        );
+      }
+    );
 
-    // =========================
-    // Search Passenger
-    // =========================
+    document.addEventListener(
+      'keydown',
+      () => {
+
+        localStorage.setItem(
+          'lastActivity',
+          Date.now()
+        );
+      }
+    );
+
+    setInterval(
+      checkSession,
+      10000
+    );
+
+    // Auto login restore
+    if (
+      localStorage.getItem(
+        'loggedIn'
+      )
+    ) {
+
+      showApp();
+    }
+
+    // ===========================
+    // Search
+    // ===========================
     async function searchPassenger() {
 
       const q =
-        document
-          .getElementById('query')
-          .value
-          .trim();
+        document.getElementById(
+          'query'
+        ).value.trim();
 
       if (!q) {
         return;
       }
 
+      const res =
+        await fetch(
+          '/search?q=' +
+          encodeURIComponent(q)
+        );
+
+      const data =
+        await res.json();
+
       const card =
-        document.getElementById('card');
+        document.getElementById(
+          'card'
+        );
 
-      const error =
-        document.getElementById('error');
+      if (data.error) {
 
-      card.style.display =
-        'none';
+        alert(data.error);
 
-      error.style.display =
-        'none';
+        return;
+      }
 
-      try {
+      // =========================
+      // PD Passenger
+      // =========================
+      if (data.pdOnly) {
 
-        const res =
-          await fetch(
-            '/search?q=' +
-            encodeURIComponent(q)
-          );
-
-        const data =
-          await res.json();
-
-        if (data.error) {
-
-          error.innerText =
-            data.error;
-
-          error.style.display =
-            'block';
-
-          return;
-        }
-
-        // Flight
         document.getElementById(
           'flight'
         ).innerText =
-          data.flight +
-          '/' +
-          data.flightDate;
+          'PD Passenger';
 
-        // Name
         document.getElementById(
           'name'
         ).innerText =
-          data.name;
+          data.name || 'UNKNOWN';
 
-        // Seat + Cabin
         document.getElementById(
           'seat'
         ).innerText =
           'BN' +
-          data.bn +
+          (data.bn || '---') +
           ' | ' +
-          data.seat +
+          (data.seat || '---') +
           ' | ' +
-          data.cabin +
+          (data.cabin || 'Unknown') +
           ' Class';
 
-        // Membership
         document.getElementById(
           'ff'
         ).innerText =
@@ -684,37 +550,32 @@
             data.ffNumber || ''
           );
 
-        // Membership Status
         document.getElementById(
           'ffStatus'
         ).innerText =
-          data.ffTier
-            ? (
-                data.ffTier === 'V'
-                  ? 'Platinum'
-                  : data.ffTier === 'G'
-                  ? 'Gold'
-                  : data.ffTier === 'S'
-                  ? 'Silver'
-                  : 'Regular'
-              )
+          data.ffTier === 'V'
+            ? 'Platinum'
+            : data.ffTier === 'G'
+            ? 'Gold'
+            : data.ffTier === 'S'
+            ? 'Silver'
+            : data.ffTier === 'C'
+            ? 'Regular'
             : 'NONE';
 
-        // Ticket
+        // Hide Ticket
         document.getElementById(
-          'ticket'
-        ).innerText =
-          data.ticketNumber || 'NONE';
+          'ticketRow'
+        ).style.display =
+          'none';
 
-        // Bags
+        // Hide Bags
         document.getElementById(
-          'bags'
-        ).innerText =
-          data.bagtags?.length
-            ? data.bagtags.join('\n')
-            : 'NONE';
+          'bagsRow'
+        ).style.display =
+          'none';
 
-        // Lounge Entitle
+        // Lounge
         const lounge =
           document.getElementById(
             'lounge'
@@ -734,7 +595,7 @@
             '<span class="lounge-no">❌ Not Eligible</span>';
         }
 
-        // Lounge Guest
+        // Guest
         const guest =
           document.getElementById(
             'guest'
@@ -754,46 +615,90 @@
             '<span class="lounge-no">❌ Not Allowed</span>';
         }
 
-        // Show Card
         card.style.display =
           'block';
 
-      } catch (err) {
-
-        error.innerText =
-          'Search failed';
-
-        error.style.display =
-          'block';
+        return;
       }
+
+      // =========================
+      // Normal FB Passenger
+      // =========================
+
+      // Show Ticket
+      document.getElementById(
+        'ticketRow'
+      ).style.display =
+        'block';
+
+      // Show Bags
+      document.getElementById(
+        'bagsRow'
+      ).style.display =
+        'block';
+
+      document.getElementById(
+        'flight'
+      ).innerText =
+        `${data.flight}/${data.flightDate}`;
+
+      document.getElementById(
+        'name'
+      ).innerText =
+        data.name;
+
+      document.getElementById(
+        'seat'
+      ).innerText =
+        `BN${data.bn} | ${data.seat} | ${data.cabin} Class`;
+
+      document.getElementById(
+        'ff'
+      ).innerText =
+        `${data.ffCarrier || 'NONE'} ${data.ffNumber || ''}`;
+
+      document.getElementById(
+        'ffStatus'
+      ).innerText =
+        data.ffTier === 'V'
+          ? 'Platinum'
+          : data.ffTier === 'G'
+          ? 'Gold'
+          : data.ffTier === 'S'
+          ? 'Silver'
+          : data.ffTier === 'C'
+          ? 'Regular'
+          : 'NONE';
+
+      document.getElementById(
+        'ticket'
+      ).innerText =
+        data.ticketNumber || 'NONE';
+
+      document.getElementById(
+        'bags'
+      ).innerText =
+        data.bagtags?.length
+          ? data.bagtags.join('\n')
+          : 'NONE';
+
+      document.getElementById(
+        'lounge'
+      ).innerHTML =
+        data.lounge?.eligible
+          ? '<span class="lounge-yes">✅ Eligible</span>'
+          : '<span class="lounge-no">❌ Not Eligible</span>';
+
+      document.getElementById(
+        'guest'
+      ).innerHTML =
+        data.lounge?.guest
+          ? '<span class="lounge-yes">✅ Allowed</span>'
+          : '<span class="lounge-no">❌ Not Allowed</span>';
+
+      card.style.display =
+        'block';
     }
-
-    // =========================
-    // Enter Key
-    // =========================
-    document
-      .addEventListener(
-        'keypress',
-        function(e) {
-
-          if (e.key === 'Enter') {
-
-            if (
-              document
-                .getElementById('loginScreen')
-                .style.display !== 'none'
-            ) {
-
-              login();
-            }
-
-            else {
-
-              searchPassenger();
-            }
-          }
-        }
-      );
 
   </script>
 

@@ -571,5 +571,9 @@ module.exports = {
 
   findByName,
 
-  findByFFNumber
+  findByFFNumber,
+
+  getLounge,
+
+  getCabin
 };
