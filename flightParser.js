@@ -70,7 +70,7 @@ function getLounge(passenger) {
 
   // Elite
   if (
-    ['V', 'G', 'S']
+    ['V', 'G', 'S', 'D']
       .includes(ffTier)
   ) {
 
@@ -90,7 +90,8 @@ function getLounge(passenger) {
 
     passenger.ffCarrier &&
     passenger.ffCarrier !== 'MU' &&
-    ['G', 'V'].includes(ffTier)
+    ['G', 'V', 'D']
+      .includes(ffTier)
 
   ) {
 
@@ -101,7 +102,8 @@ function getLounge(passenger) {
   if (
 
     cabin === 'Business' &&
-    ffTier === 'G'
+    ['G', 'V', 'D']
+      .includes(ffTier)
 
   ) {
 
@@ -136,15 +138,28 @@ function parseIncrementalLog(log) {
   for (const section of sections) {
 
     // =========================
-    // FB Number
+    // FB / FSN
     // =========================
     const fbMatch =
       section.match(
-        />FB\s+(\d{1,3})/i
+        />(?:FB\s+(\d{1,3})|FSN\s+(\d+[A-Z]))/i
       );
 
     if (!fbMatch) {
       continue;
+    }
+
+    // =========================
+    // FSN Archive Support
+    // =========================
+    let fsnSeat = null;
+
+    if (fbMatch[2]) {
+
+      fsnSeat =
+        fbMatch[2]
+          .trim()
+          .toUpperCase();
     }
 
     // =========================
@@ -176,12 +191,13 @@ function parseIncrementalLog(log) {
 
     // =========================
     // Passenger + BN
-    // Handles:
-    // G2 / FA4 / AA2 etc
+    // Supports:
+    // BN298
+    // BN 298
     // =========================
     const paxMatch =
       section.match(
-        /\d+\.\s+([A-Z\/]+).*?BN(\d+)/i
+        /\d+\.\s+([A-Z\/]+).*?BN\s?(\d+)/i
       );
 
     if (!paxMatch) {
@@ -199,7 +215,8 @@ function parseIncrementalLog(log) {
     // =========================
     // Seat
     // =========================
-    let seat = '---';
+    let seat =
+      fsnSeat || '---';
 
     const seatMatch =
       section.match(
@@ -260,10 +277,6 @@ function parseIncrementalLog(log) {
 
     // =========================
     // Bags
-    // Handles:
-    // 3781640468/PVG
-    // DL 659822/PVG
-    // /3781277263/PVG
     // =========================
     const bagtags = [];
 
@@ -352,30 +365,26 @@ function parseIncrementalLog(log) {
 
     // =========================
     // Special Services
-    // Safe SSR Matching
     // =========================
     const specialServices = [];
 
     const ssrCodes = [
 
-      // Wheelchair
       'WCHR',
       'WCHS',
       'WCHC',
 
-      // Passenger Conditions
       'UMNR',
       'UM',
+
       'BLND',
       'DEAF',
       'MEDA',
       'OXYG',
 
-      // Pets / Animal
       'PETC',
       'AVIH',
 
-      // Passenger Handling
       'MAAS',
       'STCR',
       'INAD',
@@ -383,7 +392,6 @@ function parseIncrementalLog(log) {
       'CIP',
       'PPOC',
 
-      // Meals
       'VGML',
       'AVML',
       'KSML',
@@ -398,7 +406,6 @@ function parseIncrementalLog(log) {
 
     for (const code of ssrCodes) {
 
-      // Safe Match
       const regex =
         new RegExp(
 
