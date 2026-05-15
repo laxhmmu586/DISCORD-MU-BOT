@@ -152,33 +152,31 @@ module.exports = (client) => {
 
       // =========================
       // Date Search
+      // Supports:
       // FB 174/11MAY
+      // RN CHEN/YUHUI/11MAY
+      // FSN 32A/11MAY
+      // ETKD xxx/11MAY
+      // FF MUxxx/11MAY
       // =========================
       let date = null;
 
-      if (
+      const dateMatch =
+        query.match(
+          /(.+)\/(\d{2}[A-Z]{3})$/i
+        );
 
-        mode === 'BN' &&
+      if (dateMatch) {
 
-        query.includes('/')
+        query =
+          dateMatch[1]
+            .trim()
+            .toUpperCase();
 
-      ) {
-
-        const parts =
-          query.split('/');
-
-        if (parts.length === 2) {
-
-          query =
-            parts[0]
-              .trim()
-              .toUpperCase();
-
-          date =
-            parts[1]
-              .trim()
-              .toUpperCase();
-        }
+        date =
+          dateMatch[2]
+            .trim()
+            .toUpperCase();
       }
 
       try {
