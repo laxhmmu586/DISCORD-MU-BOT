@@ -1,25 +1,9 @@
 require('dotenv').config();
 
 const express = require('express');
-
-const {
-  passengers,
-  parseIncrementalLog,
-  findBySeat,
-  findByName,
-  findByFFNumber
-} = require('./flightParser');
-
-const {
-  parsePDLog,
-  findPDByFFNumber
-} = require('./pdParser');
-
-const {
-  getLatestFlightLog,
-  getFlightLogByDate
-} = require('./googleDrive');
-
+const { passengers, parseIncrementalLog, findBySeat, findByName, findByFFNumber } = require('./flightParser');
+const { parsePDLog, findPDByFFNumber } = require('./pdParser');
+const { getLatestFlightLog, getFlightLogByDate } = require('./googleDrive');
 const { Client, GatewayIntentBits } = require('discord.js');
 const fbLookup = require('./fbLookup');
 
@@ -27,7 +11,6 @@ const fbLookup = require('./fbLookup');
 // Express
 // ===============================
 const app = express();
-
 app.use(express.json());
 app.use(express.static('public'));
 
@@ -64,86 +47,80 @@ app.get('/search', async (req, res) => {
     let q = (req.query.q || '').trim().toUpperCase();
     if (!q) return res.json({ error: 'Missing query' });
 
-    // =========================
-    // Check if date is included
-    // Format: BN/Date e.g., 174/11MAY
-    // =========================
     let date = null;
-    if (q.includes('/')) {
-      const parts = q.split('/');
-      if (parts.length === 2 && /^\d{1,3}$/.test(parts[0])) {
-        q = parts[0].trim();
-        date = parts[1].trim().toUpperCase();
-      }
+
+    // ===========================
+    // 判断历史搜索格式: BN/DATE 或 Ticket/DATE 或 FF/DATE
+    // ===========================
+    const matchDate = q.match(/^(.+?)\/(\d{1,2}[A-Z]{3}\d{0,2})$/i);
+    if (matchDate) {
+      q = matchDate[1].trim();
+      date = matchDate[2].trim().toUpperCase();
     }
 
-    // =========================
-    // Load Flight Log
-    // Today or Archive
-    // =========================
+    // ===========================
+    // Load Flight Log: today or archive
+    // ===========================
     let log = null;
-    if (date) {
-      log = await getFlightLogByDate(date);
-    } else {
-      log = await getLatestFlightLog();
-    }
+    if (date) log = await getFlightLogByDate(date);
+    else log = await getLatestFlightLog();
 
     if (!log) return res.json({ error: 'Unable to load Flight Control.log' });
 
-    // =========================
-    // Parse Logs
-    // =========================
+    // ===========================
+    // Parse logs
+    // ===========================
     parseIncrementalLog(log);
     parsePDLog(log);
 
     let pax = null;
 
-    // =========================
-    // BN Search
-    // =========================
+    // ===========================
+    // BN search
+    // ===========================
     if (/^\d{1,3}$/.test(q)) {
       const bn = q.padStart(3, '0');
       pax = passengers[bn];
     }
-    // =========================
-    // Ticket Search
-    // =========================
+    // ===========================
+    // Ticket search
+    // ===========================
     else if (/^\d{13}$/.test(q)) {
       pax = Object.values(passengers).find(p => p.ticketNumber === q);
     }
-    // =========================
-    // Seat Search
-    // =========================
+    // ===========================
+    // Seat search
+    // ===========================
     else if (/^\d+[A-Z]$/i.test(q)) {
       pax = findBySeat(q);
     }
-    // =========================
-    // FF Number Search
-    // =========================
+    // ===========================
+    // FF Number search
+    // ===========================
     else if (/^[A-Z]{2}\d+$/i.test(q)) {
       pax = findByFFNumber(q);
       if (!pax) pax = findPDByFFNumber(q);
     }
-    // =========================
-    // Name Search
-    // =========================
+    // ===========================
+    // Name search
+    // ===========================
     else {
       pax = findByName(q);
     }
 
     if (!pax) return res.json({ error: 'Passenger not found' });
 
-    // =========================
+    // ===========================
     // Membership Status
-    // =========================
+    // ===========================
     let membershipStatus = '';
     if (pax.ffTier === 'V') membershipStatus = 'Platinum';
     else if (pax.ffTier === 'G') membershipStatus = 'Gold';
     else if (pax.ffTier === 'S') membershipStatus = 'Silver';
 
-    // =========================
+    // ===========================
     // Response JSON
-    // =========================
+    // ===========================
     res.json({
       ...pax,
       membershipStatus,
