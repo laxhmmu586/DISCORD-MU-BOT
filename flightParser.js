@@ -121,12 +121,12 @@ function getLounge(passenger) {
 // ===============================
 function parseIncrementalLog(log) {
 
-  // Clear
+  // Clear Old
   Object.keys(passengers)
     .forEach(k => delete passengers[k]);
 
   // ===========================
-  // Split Sections
+  // Split by Timestamp
   // ===========================
   const sections =
     log.split(
@@ -177,7 +177,7 @@ function parseIncrementalLog(log) {
     // =========================
     // Passenger + BN
     // Handles:
-    // G2 / AA2 / FA4 etc
+    // G2 / FA4 / AA2 etc
     // =========================
     const paxMatch =
       section.match(
@@ -352,6 +352,7 @@ function parseIncrementalLog(log) {
 
     // =========================
     // Special Services
+    // Safe SSR Matching
     // =========================
     const specialServices = [];
 
@@ -370,11 +371,11 @@ function parseIncrementalLog(log) {
       'MEDA',
       'OXYG',
 
-      // Pets
+      // Pets / Animal
       'PETC',
       'AVIH',
 
-      // Handling
+      // Passenger Handling
       'MAAS',
       'STCR',
       'INAD',
@@ -397,8 +398,17 @@ function parseIncrementalLog(log) {
 
     for (const code of ssrCodes) {
 
+      // Safe Match
+      const regex =
+        new RegExp(
+
+          `(?:\\s|\\/|^)${code}(?:\\s|\\/|$)`,
+
+          'i'
+        );
+
       if (
-        section.includes(code)
+        regex.test(section)
       ) {
 
         specialServices.push(code);
@@ -442,7 +452,7 @@ function parseIncrementalLog(log) {
     passenger.lounge =
       getLounge(passenger);
 
-    // Latest Wins
+    // Latest Record Wins
     passengers[bn] =
       passenger;
   }
