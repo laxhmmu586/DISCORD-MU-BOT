@@ -260,6 +260,10 @@ function parseIncrementalLog(log) {
 
     // =========================
     // Bags
+    // Handles:
+    // 3781640468/PVG
+    // DL 659822/PVG
+    // /3781277263/PVG
     // =========================
     const bagtags = [];
 
@@ -276,14 +280,16 @@ function parseIncrementalLog(log) {
       const bags =
         [
           ...line.matchAll(
-            /(\d+\/[A-Z]{3})/gi
+            /([A-Z]{0,2}\s?\d+\/[A-Z]{3})/gi
           )
         ];
 
       for (const b of bags) {
 
         bagtags.push(
+
           b[1]
+            .replace(/\s+/g, '')
         );
       }
     }
