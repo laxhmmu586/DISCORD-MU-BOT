@@ -10,7 +10,6 @@ function getCabin(seat) {
       seat.match(/\d+/)?.[0]
     );
 
-  // Invalid Seat
   if (!row) {
 
     return 'Economy';
@@ -69,7 +68,7 @@ function getLounge(passenger) {
     eligible = true;
   }
 
-  // MU Elite
+  // Elite
   if (
     ['V', 'G', 'S']
       .includes(ffTier)
@@ -122,12 +121,12 @@ function getLounge(passenger) {
 // ===============================
 function parseIncrementalLog(log) {
 
-  // Clear old passengers
+  // Clear
   Object.keys(passengers)
     .forEach(k => delete passengers[k]);
 
   // ===========================
-  // Split by Timestamp
+  // Split Sections
   // ===========================
   const sections =
     log.split(
@@ -149,7 +148,7 @@ function parseIncrementalLog(log) {
     }
 
     // =========================
-    // Invalid Record
+    // Skip Invalid
     // =========================
     if (
       section.includes('PSGR ID')
@@ -177,10 +176,12 @@ function parseIncrementalLog(log) {
 
     // =========================
     // Passenger + BN
+    // Handles:
+    // G2 / AA2 / FA4 etc
     // =========================
     const paxMatch =
       section.match(
-        /\d+\.\s+([A-Z\/]+)\s+.*?BN(\d+)/i
+        /\d+\.\s+([A-Z\/]+).*?BN(\d+)/i
       );
 
     if (!paxMatch) {
@@ -350,10 +351,12 @@ function parseIncrementalLog(log) {
 
     const ssrCodes = [
 
+      // Wheelchair
       'WCHR',
       'WCHS',
       'WCHC',
 
+      // Passenger Conditions
       'UMNR',
       'UM',
       'BLND',
@@ -361,9 +364,11 @@ function parseIncrementalLog(log) {
       'MEDA',
       'OXYG',
 
+      // Pets
       'PETC',
       'AVIH',
 
+      // Handling
       'MAAS',
       'STCR',
       'INAD',
@@ -371,6 +376,7 @@ function parseIncrementalLog(log) {
       'CIP',
       'PPOC',
 
+      // Meals
       'VGML',
       'AVML',
       'KSML',
@@ -430,7 +436,7 @@ function parseIncrementalLog(log) {
     passenger.lounge =
       getLounge(passenger);
 
-    // Latest Record Wins
+    // Latest Wins
     passengers[bn] =
       passenger;
   }
@@ -485,7 +491,7 @@ function findByName(name) {
 }
 
 // ===============================
-// Find by FF
+// Find by FF Number
 // ===============================
 function findByFFNumber(ff) {
 

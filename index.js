@@ -2,22 +2,19 @@ require('dotenv').config();
 
 const express = require('express');
 
-const {
-  Client,
-  GatewayIntentBits
-} = require('discord.js');
+const path = require('path');
 
 const {
 
   passengers,
 
+  parseIncrementalLog,
+
   findBySeat,
 
   findByName,
 
-  findByFFNumber,
-
-  parseIncrementalLog
+  findByFFNumber
 
 } = require('./flightParser');
 
@@ -35,272 +32,256 @@ const {
 
 } = require('./googleDrive');
 
-const app = express();
+const {
+
+  Client,
+
+  GatewayIntentBits
+
+} = require('discord.js');
+
+const fbLookup =
+  require('./fbLookup');
 
 // ===============================
-// Static Website
+// Express App
 // ===============================
+const app =
+  express();
+
+app.use(
+  express.json()
+);
+
 app.use(
   express.static('public')
 );
 
-app.use(express.json({
-  limit: '50mb'
-}));
-
 // ===============================
 // Discord Client
 // ===============================
-const client = new Client({
+const client =
+  new Client({
 
-  intents: [
+    intents: [
 
-    GatewayIntentBits.Guilds,
+      GatewayIntentBits.Guilds,
 
-    GatewayIntentBits.GuildMessages,
+      GatewayIntentBits.GuildMessages,
 
-    GatewayIntentBits.MessageContent
-
-  ]
-
-});
-
-// ===============================
-// Bot Ready
-// ===============================
-client.once('clientReady', () => {
-
-  console.log(
-    'Logged in as ' +
-    client.user.tag
-  );
-
-});
+      GatewayIntentBits.MessageContent
+    ]
+  });
 
 // ===============================
 // Load FB Lookup
 // ===============================
-console.log(
-  'Loading fbLookup.js'
-);
-
-require('./fbLookup')(client);
-
-console.log(
-  'fbLookup.js loaded'
-);
+fbLookup(client);
 
 // ===============================
-// Login Discord Bot
+// Discord Login
 // ===============================
 client.login(
-  process.env.BOT_TOKEN
+  process.env.DISCORD_TOKEN
+);
+
+client.once(
+  'ready',
+
+  () => {
+
+    console.log(
+      `Logged in as ${client.user.tag}`
+    );
+  }
 );
 
 // ===============================
 // Search API
 // ===============================
-app.get('/search', async (req, res) => {
+app.get(
 
-  try {
+  '/search',
 
-    const q =
-      String(
-        req.query.q || ''
-      )
-      .trim()
-      .toUpperCase();
+  async (req, res) => {
 
-    // ===========================
-    // Validation
-    // ===========================
-    if (!q) {
+    try {
 
-      return res.json({
+      let q =
+        (
+          req.query.q || ''
+        )
+        .trim()
+        .toUpperCase();
 
-        error:
-          'Missing query'
-      });
-    }
+      if (!q) {
 
-    // ===========================
-    // Download Latest Log
-    // ===========================
-    const log =
-      await getLatestFlightLog();
+        return res.json({
 
-    if (!log) {
+          error:
+            'Missing query'
+        });
+      }
 
-      return res.json({
+      // =========================
+      // Download Latest Log
+      // =========================
+      const log =
+        await getLatestFlightLog();
 
-        error:
-          'Unable to load Flight Control.log'
-      });
-    }
+      if (!log) {
 
-    // ===========================
-    // Parse Logs
-    // ===========================
-    parseIncrementalLog(log);
+        return res.json({
 
-    parsePDLog(log);
+          error:
+            'Unable to load Flight Control.log'
+        });
+      }
 
-    let pax = null;
+      // =========================
+      // Parse Logs
+      // =========================
+      parseIncrementalLog(log);
 
-    // ===========================
-    // BN Search
-    // Example:
-    // 019
-    // ===========================
-    if (/^\d{1,3}$/.test(q)) {
+      parsePDLog(log);
 
-      const bn =
-        q.padStart(3, '0');
+      let pax = null;
 
-      pax =
-        passengers[bn];
-    }
+      // =========================
+      // BN Search
+      // =========================
+      if (
+        /^\d{1,3}$/.test(q)
+      ) {
 
-    // ===========================
-    // Seat Search
-    // Example:
-    // 12H
-    // ===========================
-    else if (/^\d+[A-Z]$/.test(q)) {
-
-      pax =
-        findBySeat(q);
-    }
-
-    // ===========================
-    // Membership Search
-    // Example:
-    // MU630601689054
-    // ===========================
-    else if (
-
-      /^([A-Z]{2})\s?\d{6,}$/.test(q)
-
-    ) {
-
-      pax =
-        findByFFNumber(q);
-
-      // =======================
-      // PD Search Fallback
-      // =======================
-      if (!pax) {
+        const bn =
+          q.padStart(3, '0');
 
         pax =
-          findPDByFFNumber(q);
+          passengers[bn];
       }
+
+      // =========================
+      // Ticket Search
+      // =========================
+      else if (
+        /^\d{13}$/.test(q)
+      ) {
+
+        pax =
+          Object.values(passengers)
+            .find(p => {
+
+              return (
+                p.ticketNumber === q
+              );
+            });
+      }
+
+      // =========================
+      // Seat Search
+      // =========================
+      else if (
+        /^\d+[A-Z]$/i.test(q)
+      ) {
+
+        pax =
+          findBySeat(q);
+      }
+
+      // =========================
+      // FF Search
+      // =========================
+      else if (
+
+        /^[A-Z]{2}\d+$/i
+          .test(q)
+
+      ) {
+
+        pax =
+          findByFFNumber(q);
+
+        // PD fallback
+        if (!pax) {
+
+          pax =
+            findPDByFFNumber(q);
+        }
+      }
+
+      // =========================
+      // Name Search
+      // =========================
+      else {
+
+        pax =
+          findByName(q);
+      }
+
+      // =========================
+      // Not Found
+      // =========================
+      if (!pax) {
+
+        return res.json({
+
+          error:
+            'Passenger not found'
+        });
+      }
+
+      // =========================
+      // Membership Status
+      // =========================
+      let membershipStatus = '';
+
+      if (pax.ffTier === 'V') {
+
+        membershipStatus =
+          'Platinum';
+      }
+
+      else if (
+        pax.ffTier === 'G'
+      ) {
+
+        membershipStatus =
+          'Gold';
+      }
+
+      else if (
+        pax.ffTier === 'S'
+      ) {
+
+        membershipStatus =
+          'Silver';
+      }
+
+      // =========================
+      // Response
+      // =========================
+      res.json({
+
+        ...pax,
+
+        membershipStatus
+      });
+
     }
 
-    // ===========================
-    // Name Search
-    // ===========================
-    else {
+    catch (err) {
 
-      pax =
-        findByName(q);
-    }
+      console.error(err);
 
-    // ===========================
-    // Passenger Not Found
-    // ===========================
-    if (!pax) {
-
-      return res.json({
+      res.json({
 
         error:
-          'Passenger not found'
+          'Search failed'
       });
     }
-
-    // ===========================
-    // Return Passenger
-    // ===========================
-    res.json(pax);
-
-  } catch (err) {
-
-    console.error(err);
-
-    res.json({
-
-      error:
-        err.toString()
-    });
   }
-});
-
-// ===============================
-// Send Discord Message API
-// ===============================
-app.post('/send', async (req, res) => {
-
-  try {
-
-    const {
-      message,
-      channelId,
-      embeds
-    } = req.body;
-
-    // Validation
-    if (!channelId) {
-
-      return res
-        .status(400)
-        .send(
-          'Missing channelId'
-        );
-    }
-
-    // Fetch Channel
-    const channel =
-      await client.channels.fetch(
-        channelId
-      );
-
-    if (!channel) {
-
-      return res
-        .status(404)
-        .send(
-          'Channel not found'
-        );
-    }
-
-    // Send Message
-    await channel.send({
-
-      content:
-        message || '',
-
-      embeds:
-        embeds || []
-
-    });
-
-    console.log(
-      'Sent to channel:',
-      channelId
-    );
-
-    res.send('OK');
-
-  } catch (err) {
-
-    console.error(err);
-
-    res
-      .status(500)
-      .send(
-        err.toString()
-      );
-  }
-});
+);
 
 // ===============================
 // Start Server
@@ -308,11 +289,14 @@ app.post('/send', async (req, res) => {
 const PORT =
   process.env.PORT || 3000;
 
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(
 
-  console.log(
-    'Server started on port',
-    PORT
-  );
+  PORT,
 
-});
+  () => {
+
+    console.log(
+      `Server running on ${PORT}`
+    );
+  }
+);
