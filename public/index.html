@@ -1,89 +1,549 @@
-<script>
+<!DOCTYPE html>
+<html lang="en">
 
-  // ===========================
-  // Auto Login (30 Min Timeout)
-  // ===========================
-  const LOGIN_TIMEOUT =
-    30 * 60 * 1000;
+<head>
 
-  const lastLogin =
-    localStorage.getItem(
-      'mu_login_time'
-    );
+  <meta charset="UTF-8">
 
-  const now =
-    Date.now();
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
 
-  if (
+  <title>
+    MU Lounge Validation
+  </title>
 
-    localStorage.getItem(
-      'mu_logged_in'
-    ) === 'true'
+  <style>
 
-    &&
+    * {
+      box-sizing: border-box;
+    }
 
-    lastLogin
+    body {
 
-    &&
+      margin: 0;
+      padding: 0;
 
-    (now - Number(lastLogin))
-      < LOGIN_TIMEOUT
+      background: #0f172a;
 
-  ) {
+      color: white;
 
-    document.getElementById(
-      'loginPage'
-    ).style.display = 'none';
+      font-family:
+        Arial,
+        sans-serif;
 
-    document.getElementById(
-      'mainApp'
-    ).style.display = 'block';
-  }
+      min-height: 100vh;
 
-  else {
+      display: flex;
 
-    localStorage.removeItem(
-      'mu_logged_in'
-    );
+      justify-content: center;
+    }
 
-    localStorage.removeItem(
-      'mu_login_time'
-    );
-  }
+    .container {
 
-  // ===========================
-  // Login
-  // ===========================
-  function login() {
+      width: 100%;
 
-    const username =
-      document
-        .getElementById('username')
-        .value
-        .trim();
+      max-width: 460px;
 
-    const password =
-      document
-        .getElementById('password')
-        .value
-        .trim();
+      padding: 20px;
+    }
+
+    .title {
+
+      font-size: 30px;
+
+      font-weight: bold;
+
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+
+      color: #94a3b8;
+
+      font-size: 14px;
+
+      margin-bottom: 24px;
+
+      line-height: 1.5;
+    }
+
+    .card,
+    .login-card {
+
+      background: #111827;
+
+      border-radius: 20px;
+
+      padding: 20px;
+
+      box-shadow:
+        0 0 25px rgba(0,0,0,0.35);
+    }
+
+    .login-card {
+
+      margin-top: 60px;
+    }
+
+    input {
+
+      width: 100%;
+
+      padding: 14px;
+
+      margin-bottom: 14px;
+
+      border: none;
+
+      border-radius: 14px;
+
+      background: #1e293b;
+
+      color: white;
+
+      font-size: 15px;
+    }
+
+    button {
+
+      border: none;
+
+      background: #2563eb;
+
+      color: white;
+
+      border-radius: 14px;
+
+      padding: 14px;
+
+      font-size: 15px;
+
+      cursor: pointer;
+    }
+
+    button:hover {
+
+      background: #1d4ed8;
+    }
+
+    .search-box {
+
+      display: flex;
+
+      gap: 10px;
+
+      margin-bottom: 20px;
+    }
+
+    .search-box input {
+
+      margin-bottom: 0;
+    }
+
+    .search-box button {
+
+      min-width: 100px;
+    }
+
+    #mainApp {
+
+      display: none;
+    }
+
+    #card {
+
+      display: none;
+    }
+
+    .flight {
+
+      font-size: 24px;
+
+      font-weight: bold;
+
+      margin-bottom: 18px;
+    }
+
+    .name {
+
+      font-size: 28px;
+
+      font-weight: bold;
+
+      margin-bottom: 10px;
+    }
+
+    .seat {
+
+      color: #cbd5e1;
+
+      margin-bottom: 22px;
+
+      font-size: 15px;
+    }
+
+    .divider {
+
+      height: 1px;
+
+      background: rgba(255,255,255,0.08);
+
+      margin:
+        18px 0;
+    }
+
+    .section {
+
+      margin-bottom: 18px;
+    }
+
+    .label {
+
+      color: #60a5fa;
+
+      text-transform: uppercase;
+
+      font-size: 12px;
+
+      letter-spacing: 1px;
+
+      margin-bottom: 6px;
+    }
+
+    .value {
+
+      white-space: pre-line;
+
+      line-height: 1.6;
+
+      font-size: 16px;
+    }
+
+    .yes {
+
+      color: #22c55e;
+
+      font-weight: bold;
+    }
+
+    .no {
+
+      color: #ef4444;
+
+      font-weight: bold;
+    }
+
+    .error {
+
+      display: none;
+
+      background: #7f1d1d;
+
+      border-radius: 12px;
+
+      padding: 12px;
+
+      margin-top: 15px;
+
+      font-size: 14px;
+    }
+
+  </style>
+
+</head>
+
+<body>
+
+  <div class="container">
+
+    <!-- LOGIN -->
+    <div
+      id="loginPage"
+      class="login-card"
+    >
+
+      <div class="title">
+        MU Lounge Validation
+      </div>
+
+      <div class="subtitle">
+        Internal Access Only
+      </div>
+
+      <input
+        id="username"
+        placeholder="Username"
+      >
+
+      <input
+        id="password"
+        type="password"
+        placeholder="Password"
+      >
+
+      <button
+        onclick="login()"
+        style="width:100%;"
+      >
+        Login
+      </button>
+
+      <div
+        id="loginError"
+        class="error"
+      ></div>
+
+    </div>
+
+    <!-- MAIN -->
+    <div id="mainApp">
+
+      <div class="title">
+        MU Lounge Validation
+      </div>
+
+      <div class="subtitle">
+        Supported Search Modes:<br><br>
+
+        FB 174<br>
+        RN CHEN/YUHUI<br>
+        FSN 32A<br>
+        ETKD 7815001919884<br>
+        FF MU600285492786
+      </div>
+
+      <div class="search-box">
+
+        <input
+          id="query"
+          placeholder="Enter Search"
+        >
+
+        <button onclick="searchPassenger()">
+          Search
+        </button>
+
+      </div>
+
+      <div
+        id="error"
+        class="error"
+      ></div>
+
+      <!-- CARD -->
+      <div
+        id="card"
+        class="card"
+      >
+
+        <div
+          id="flight"
+          class="flight"
+        ></div>
+
+        <div
+          id="name"
+          class="name"
+        ></div>
+
+        <div
+          id="seat"
+          class="seat"
+        ></div>
+
+        <!-- Membership -->
+        <div
+          id="membershipSection"
+          class="section"
+          style="display:none;"
+        >
+
+          <div class="divider"></div>
+
+          <div class="label">
+            Membership
+          </div>
+
+          <div
+            id="ff"
+            class="value"
+          ></div>
+
+          <div
+            id="ffStatus"
+            class="value"
+          ></div>
+
+        </div>
+
+        <!-- Ticket -->
+        <div
+          id="ticketSection"
+          class="section"
+          style="display:none;"
+        >
+
+          <div class="divider"></div>
+
+          <div class="label">
+            Ticket
+          </div>
+
+          <div
+            id="ticket"
+            class="value"
+          ></div>
+
+        </div>
+
+        <!-- Bags -->
+        <div
+          id="bagsSection"
+          class="section"
+          style="display:none;"
+        >
+
+          <div class="divider"></div>
+
+          <div class="label">
+            Bags
+          </div>
+
+          <div
+            id="bags"
+            class="value"
+          ></div>
+
+        </div>
+
+        <!-- Inbound -->
+        <div
+          id="inboundSection"
+          class="section"
+          style="display:none;"
+        >
+
+          <div class="divider"></div>
+
+          <div class="label">
+            Inbound
+          </div>
+
+          <div
+            id="inbound"
+            class="value"
+          ></div>
+
+        </div>
+
+        <!-- Outbound -->
+        <div
+          id="outboundSection"
+          class="section"
+          style="display:none;"
+        >
+
+          <div class="divider"></div>
+
+          <div class="label">
+            Outbound
+          </div>
+
+          <div
+            id="outbound"
+            class="value"
+          ></div>
+
+        </div>
+
+        <!-- SSR -->
+        <div
+          id="ssrSection"
+          class="section"
+          style="display:none;"
+        >
+
+          <div class="divider"></div>
+
+          <div class="label">
+            Special Service
+          </div>
+
+          <div
+            id="ssr"
+            class="value"
+          ></div>
+
+        </div>
+
+        <!-- Lounge -->
+        <div class="section">
+
+          <div class="divider"></div>
+
+          <div class="label">
+            Lounge Access
+          </div>
+
+          <div
+            id="lounge"
+            class="value"
+          ></div>
+
+          <div
+            class="label"
+            style="margin-top:18px;"
+          >
+            Guest Access
+          </div>
+
+          <div
+            id="guest"
+            class="value"
+          ></div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+
+    // ===========================
+    // Session Timeout
+    // ===========================
+    const LOGIN_TIMEOUT =
+      30 * 60 * 1000;
+
+    const lastLogin =
+      localStorage.getItem(
+        'mu_login_time'
+      );
+
+    const now =
+      Date.now();
 
     if (
 
-      username === 'mu586' &&
-      password === 'mulax'
+      localStorage.getItem(
+        'mu_logged_in'
+      ) === 'true'
+
+      &&
+
+      lastLogin
+
+      &&
+
+      (now - Number(lastLogin))
+        < LOGIN_TIMEOUT
 
     ) {
-
-      localStorage.setItem(
-        'mu_logged_in',
-        'true'
-      );
-
-      localStorage.setItem(
-        'mu_login_time',
-        Date.now()
-      );
 
       document.getElementById(
         'loginPage'
@@ -96,368 +556,407 @@
 
     else {
 
-      const err =
+      localStorage.clear();
+    }
+
+    // ===========================
+    // Login
+    // ===========================
+    function login() {
+
+      const username =
+        document
+          .getElementById('username')
+          .value
+          .trim();
+
+      const password =
+        document
+          .getElementById('password')
+          .value
+          .trim();
+
+      if (
+
+        username === 'mu586' &&
+        password === 'mulax'
+
+      ) {
+
+        localStorage.setItem(
+          'mu_logged_in',
+          'true'
+        );
+
+        localStorage.setItem(
+          'mu_login_time',
+          Date.now()
+        );
+
         document.getElementById(
-          'loginError'
-        );
+          'loginPage'
+        ).style.display = 'none';
 
-      err.innerText =
-        'Invalid username or password';
+        document.getElementById(
+          'mainApp'
+        ).style.display = 'block';
+      }
 
-      err.style.display =
-        'block';
-    }
-  }
+      else {
 
-  // ===========================
-  // Search Passenger
-  // ===========================
-  async function searchPassenger() {
+        const err =
+          document.getElementById(
+            'loginError'
+          );
 
-    // Refresh Session Timer
-    localStorage.setItem(
-      'mu_login_time',
-      Date.now()
-    );
+        err.innerText =
+          'Invalid username or password';
 
-    let q =
-      document
-        .getElementById('query')
-        .value
-        .trim();
-
-    if (!q) {
-      return;
-    }
-
-    // ===========================
-    // eTerm Search Mode
-    // ===========================
-    const upper =
-      q.toUpperCase();
-
-    // FB 174
-    if (
-      upper.startsWith('FB ')
-    ) {
-
-      q =
-        q.substring(3).trim();
-    }
-
-    // RN CHEN/YUHUI
-    else if (
-      upper.startsWith('RN ')
-    ) {
-
-      q =
-        q.substring(3).trim();
-    }
-
-    // FSN 32A
-    else if (
-      upper.startsWith('FSN ')
-    ) {
-
-      q =
-        q.substring(4).trim();
-    }
-
-    // ETKD 781xxxx
-    else if (
-      upper.startsWith('ETKD ')
-    ) {
-
-      q =
-        q.substring(5).trim();
-    }
-
-    // FF MU600xxxx
-    else if (
-      upper.startsWith('FF ')
-    ) {
-
-      q =
-        q.substring(3).trim();
-    }
-
-    const card =
-      document.getElementById('card');
-
-    const error =
-      document.getElementById('error');
-
-    card.style.display = 'none';
-
-    error.style.display = 'none';
-
-    try {
-
-      const res =
-        await fetch(
-          '/search?q=' +
-          encodeURIComponent(q)
-        );
-
-      const data =
-        await res.json();
-
-      if (data.error) {
-
-        error.innerText =
-          data.error;
-
-        error.style.display =
+        err.style.display =
           'block';
+      }
+    }
 
+    // ===========================
+    // Search
+    // ===========================
+    async function searchPassenger() {
+
+      localStorage.setItem(
+        'mu_login_time',
+        Date.now()
+      );
+
+      let q =
+        document
+          .getElementById('query')
+          .value
+          .trim();
+
+      if (!q) {
         return;
       }
 
-      // Flight
-      document.getElementById(
-        'flight'
-      ).innerText =
-        `✈️ ${data.flight}/${data.flightDate}`;
+      const upper =
+        q.toUpperCase();
 
-      // Name
-      document.getElementById(
-        'name'
-      ).innerText =
-        data.name;
-
-      // Seat
-      document.getElementById(
-        'seat'
-      ).innerText =
-        `🎫 BN${data.bn} • ${data.seat} • ${data.cabin}`;
-
-      // Membership
-      if (data.ffNumber) {
-
-        document.getElementById(
-          'membershipSection'
-        ).style.display =
-          'block';
-
-        document.getElementById(
-          'ff'
-        ).innerText =
-
-          `${data.ffCarrier} ${data.ffNumber}`;
-
-        document.getElementById(
-          'ffStatus'
-        ).innerText =
-
-          data.membershipStatus ||
-
-          (
-            data.ffTier === 'V'
-              ? 'Platinum'
-              : data.ffTier === 'G'
-              ? 'Gold'
-              : data.ffTier === 'S'
-              ? 'Silver'
-              : ''
-          );
-      }
-
-      else {
-
-        document.getElementById(
-          'membershipSection'
-        ).style.display =
-          'none';
-      }
-
-      // Ticket
-      if (data.ticketNumber) {
-
-        document.getElementById(
-          'ticketSection'
-        ).style.display =
-          'block';
-
-        document.getElementById(
-          'ticket'
-        ).innerText =
-          data.ticketNumber;
-      }
-
-      else {
-
-        document.getElementById(
-          'ticketSection'
-        ).style.display =
-          'none';
-      }
-
-      // Bags
       if (
-        data.bagtags &&
-        data.bagtags.length
+        upper.startsWith('FB ')
       ) {
 
-        document.getElementById(
-          'bagsSection'
-        ).style.display =
-          'block';
-
-        document.getElementById(
-          'bags'
-        ).innerText =
-
-          data.bagtags.join('\n');
+        q =
+          q.substring(3).trim();
       }
 
-      else {
-
-        document.getElementById(
-          'bagsSection'
-        ).style.display =
-          'none';
-      }
-
-      // Inbound
-      if (data.inbound) {
-
-        document.getElementById(
-          'inboundSection'
-        ).style.display =
-          'block';
-
-        document.getElementById(
-          'inbound'
-        ).innerText =
-
-          `${data.inbound.flight}/${data.inbound.date}\nFrom ${data.inbound.origin}`;
-      }
-
-      else {
-
-        document.getElementById(
-          'inboundSection'
-        ).style.display =
-          'none';
-      }
-
-      // Outbound
-      if (data.outbound) {
-
-        document.getElementById(
-          'outboundSection'
-        ).style.display =
-          'block';
-
-        document.getElementById(
-          'outbound'
-        ).innerText =
-
-          `${data.outbound.flight}/${data.outbound.date}` +
-
-          (data.outbound.bn
-            ? ` • BN${data.outbound.bn}`
-            : '') +
-
-          (data.outbound.seat
-            ? ` • ${data.outbound.seat}`
-            : '') +
-
-          `\nTo ${data.outbound.destination}`;
-      }
-
-      else {
-
-        document.getElementById(
-          'outboundSection'
-        ).style.display =
-          'none';
-      }
-
-      // SSR
-      if (
-        data.specialServices &&
-        data.specialServices.length
+      else if (
+        upper.startsWith('RN ')
       ) {
 
-        document.getElementById(
-          'ssrSection'
-        ).style.display =
-          'block';
-
-        document.getElementById(
-          'ssr'
-        ).innerText =
-
-          data.specialServices.join(
-            '\n'
-          );
+        q =
+          q.substring(3).trim();
       }
 
-      else {
+      else if (
+        upper.startsWith('FSN ')
+      ) {
 
-        document.getElementById(
-          'ssrSection'
-        ).style.display =
-          'none';
+        q =
+          q.substring(4).trim();
       }
 
-      // Lounge
-      const lounge =
-        document.getElementById(
-          'lounge'
-        );
+      else if (
+        upper.startsWith('ETKD ')
+      ) {
 
-      lounge.innerHTML =
+        q =
+          q.substring(5).trim();
+      }
 
-        data.lounge?.eligible
+      else if (
+        upper.startsWith('FF ')
+      ) {
 
-          ? '<span class="lounge-yes">✅ Eligible</span>'
+        q =
+          q.substring(3).trim();
+      }
 
-          : '<span class="lounge-no">❌ Not Eligible</span>';
+      const card =
+        document.getElementById('card');
 
-      // Guest
-      const guest =
-        document.getElementById(
-          'guest'
-        );
+      const error =
+        document.getElementById('error');
 
-      guest.innerHTML =
-
-        data.lounge?.guest
-
-          ? '<span class="lounge-yes">✅ Allowed</span>'
-
-          : '<span class="lounge-no">❌ Not Allowed</span>';
-
-      // Show Card
       card.style.display =
-        'block';
-
-    } catch (err) {
-
-      error.innerText =
-        'Search failed';
+        'none';
 
       error.style.display =
-        'block';
-    }
-  }
+        'none';
 
-  // ===========================
-  // Enter Key
-  // ===========================
-  document
-    .getElementById('query')
-    .addEventListener(
-      'keypress',
-      function(e) {
+      try {
 
-        if (e.key === 'Enter') {
+        const res =
+          await fetch(
+            '/search?q=' +
+            encodeURIComponent(q)
+          );
 
-          searchPassenger();
+        const data =
+          await res.json();
+
+        if (data.error) {
+
+          error.innerText =
+            data.error;
+
+          error.style.display =
+            'block';
+
+          return;
         }
-      }
-    );
 
-</script>
+        // Flight
+        document.getElementById(
+          'flight'
+        ).innerText =
+          `✈️ ${data.flight}/${data.flightDate}`;
+
+        // Name
+        document.getElementById(
+          'name'
+        ).innerText =
+          data.name;
+
+        // Seat
+        document.getElementById(
+          'seat'
+        ).innerText =
+          `🎫 BN${data.bn} • ${data.seat} • ${data.cabin}`;
+
+        // Membership
+        if (data.ffNumber) {
+
+          document.getElementById(
+            'membershipSection'
+          ).style.display =
+            'block';
+
+          document.getElementById(
+            'ff'
+          ).innerText =
+
+            `${data.ffCarrier} ${data.ffNumber}`;
+
+          document.getElementById(
+            'ffStatus'
+          ).innerText =
+
+            data.membershipStatus ||
+
+            (
+              data.ffTier === 'V'
+                ? 'Platinum'
+                : data.ffTier === 'G'
+                ? 'Gold'
+                : data.ffTier === 'S'
+                ? 'Silver'
+                : ''
+            );
+        }
+
+        else {
+
+          document.getElementById(
+            'membershipSection'
+          ).style.display =
+            'none';
+        }
+
+        // Ticket
+        if (data.ticketNumber) {
+
+          document.getElementById(
+            'ticketSection'
+          ).style.display =
+            'block';
+
+          document.getElementById(
+            'ticket'
+          ).innerText =
+            data.ticketNumber;
+        }
+
+        else {
+
+          document.getElementById(
+            'ticketSection'
+          ).style.display =
+            'none';
+        }
+
+        // Bags
+        if (
+          data.bagtags &&
+          data.bagtags.length
+        ) {
+
+          document.getElementById(
+            'bagsSection'
+          ).style.display =
+            'block';
+
+          document.getElementById(
+            'bags'
+          ).innerText =
+            data.bagtags.join('\n');
+        }
+
+        else {
+
+          document.getElementById(
+            'bagsSection'
+          ).style.display =
+            'none';
+        }
+
+        // Inbound
+        if (data.inbound) {
+
+          document.getElementById(
+            'inboundSection'
+          ).style.display =
+            'block';
+
+          document.getElementById(
+            'inbound'
+          ).innerText =
+
+            `${data.inbound.flight}/${data.inbound.date}\nFrom ${data.inbound.origin}`;
+        }
+
+        else {
+
+          document.getElementById(
+            'inboundSection'
+          ).style.display =
+            'none';
+        }
+
+        // Outbound
+        if (data.outbound) {
+
+          document.getElementById(
+            'outboundSection'
+          ).style.display =
+            'block';
+
+          document.getElementById(
+            'outbound'
+          ).innerText =
+
+            `${data.outbound.flight}/${data.outbound.date}` +
+
+            (data.outbound.bn
+              ? ` • BN${data.outbound.bn}`
+              : '') +
+
+            (data.outbound.seat
+              ? ` • ${data.outbound.seat}`
+              : '') +
+
+            `\nTo ${data.outbound.destination}`;
+        }
+
+        else {
+
+          document.getElementById(
+            'outboundSection'
+          ).style.display =
+            'none';
+        }
+
+        // SSR
+        if (
+          data.specialServices &&
+          data.specialServices.length
+        ) {
+
+          document.getElementById(
+            'ssrSection'
+          ).style.display =
+            'block';
+
+          document.getElementById(
+            'ssr'
+          ).innerText =
+
+            data.specialServices.join(
+              '\n'
+            );
+        }
+
+        else {
+
+          document.getElementById(
+            'ssrSection'
+          ).style.display =
+            'none';
+        }
+
+        // Lounge
+        document.getElementById(
+          'lounge'
+        ).innerHTML =
+
+          data.lounge?.eligible
+
+            ? '<span class="yes">✅ Eligible</span>'
+
+            : '<span class="no">❌ Not Eligible</span>';
+
+        // Guest
+        document.getElementById(
+          'guest'
+        ).innerHTML =
+
+          data.lounge?.guest
+
+            ? '<span class="yes">✅ Allowed</span>'
+
+            : '<span class="no">❌ Not Allowed</span>';
+
+        // Show
+        card.style.display =
+          'block';
+
+      }
+
+      catch (err) {
+
+        error.innerText =
+          'Search failed';
+
+        error.style.display =
+          'block';
+      }
+    }
+
+    // ===========================
+    // Enter Key
+    // ===========================
+    document
+      .getElementById('query')
+      .addEventListener(
+        'keypress',
+        function(e) {
+
+          if (e.key === 'Enter') {
+
+            searchPassenger();
+          }
+        }
+      );
+
+  </script>
+
+</body>
+</html>
