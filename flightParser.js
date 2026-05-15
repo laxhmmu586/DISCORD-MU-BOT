@@ -128,39 +128,18 @@ function parseIncrementalLog(log) {
     .forEach(k => delete passengers[k]);
 
   // ===========================
-  // Split by Timestamp
+  // Split by PR:
+  // Works for:
+  // >FB
+  // >fb295
+  // >FSN
   // ===========================
   const sections =
     log.split(
-      /\d{4}\s+\w+\s+\d{2},.*?\d{2}:\d{2}:\d{2}/g
+      /(?=PR:\s+[A-Z0-9]+\/\d{2}[A-Z]{3}\d{2})/g
     );
 
   for (const section of sections) {
-
-    // =========================
-    // FB / FSN
-    // =========================
-    const fbMatch =
-      section.match(
-        />(?:FB\s+(\d{1,3})|FSN\s+(\d+[A-Z]))/i
-      );
-
-    if (!fbMatch) {
-      continue;
-    }
-
-    // =========================
-    // FSN Archive Support
-    // =========================
-    let fsnSeat = null;
-
-    if (fbMatch[2]) {
-
-      fsnSeat =
-        fbMatch[2]
-          .trim()
-          .toUpperCase();
-    }
 
     // =========================
     // Skip Invalid
@@ -180,11 +159,15 @@ function parseIncrementalLog(log) {
         /PR:\s+([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i
       );
 
+    if (!flightMatch) {
+      continue;
+    }
+
     const flight =
-      flightMatch?.[1] || '';
+      flightMatch[1];
 
     const rawFlightDate =
-      flightMatch?.[2] || '';
+      flightMatch[2];
 
     const flightDate =
       rawFlightDate.substring(0, 5);
@@ -215,8 +198,7 @@ function parseIncrementalLog(log) {
     // =========================
     // Seat
     // =========================
-    let seat =
-      fsnSeat || '---';
+    let seat = '---';
 
     const seatMatch =
       section.match(
