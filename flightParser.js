@@ -16,10 +16,7 @@ function getCabin(seat) {
     return 'Economy';
   }
 
-  // =========================
-  // First Class
-  // Rows 1-2
-  // =========================
+  // First
   if (
     row >= 1 &&
     row <= 2
@@ -28,10 +25,7 @@ function getCabin(seat) {
     return 'First';
   }
 
-  // =========================
-  // Business Class
-  // Rows 6-20
-  // =========================
+  // Business
   if (
     row >= 6 &&
     row <= 20
@@ -40,10 +34,7 @@ function getCabin(seat) {
     return 'Business';
   }
 
-  // =========================
-  // Economy Class
-  // Rows 30+
-  // =========================
+  // Economy
   if (
     row >= 30
   ) {
@@ -51,9 +42,6 @@ function getCabin(seat) {
     return 'Economy';
   }
 
-  // =========================
-  // Default
-  // =========================
   return 'Economy';
 }
 
@@ -68,29 +56,28 @@ function getLounge(passenger) {
   const ffTier =
     passenger.ffTier;
 
-  // ===========================
-  // Eligible
-  // ===========================
   let eligible = false;
 
+  // Cabin
   if (
+
     cabin === 'First' ||
     cabin === 'Business'
+
   ) {
 
     eligible = true;
   }
 
+  // MU Elite
   if (
-    ['V', 'G', 'S'].includes(ffTier)
+    ['V', 'G', 'S']
+      .includes(ffTier)
   ) {
 
     eligible = true;
   }
 
-  // ===========================
-  // Guest Allowed
-  // ===========================
   let guest = false;
 
   // Platinum
@@ -99,7 +86,7 @@ function getLounge(passenger) {
     guest = true;
   }
 
-  // Elite+ Airline
+  // SkyTeam Elite+
   if (
 
     passenger.ffCarrier &&
@@ -113,8 +100,10 @@ function getLounge(passenger) {
 
   // Business + Gold
   if (
+
     cabin === 'Business' &&
     ffTier === 'G'
+
   ) {
 
     guest = true;
@@ -160,7 +149,7 @@ function parseIncrementalLog(log) {
     }
 
     // =========================
-    // PSGR ID = Invalid
+    // Invalid Record
     // =========================
     if (
       section.includes('PSGR ID')
@@ -183,16 +172,15 @@ function parseIncrementalLog(log) {
     const rawFlightDate =
       flightMatch?.[2] || '';
 
-    // Display 11MAY only
     const flightDate =
       rawFlightDate.substring(0, 5);
 
     // =========================
-    // Passenger Line
+    // Passenger + BN
     // =========================
     const paxMatch =
       section.match(
-        /\d+\.\s+([A-Z\/]+)\s+.*?BN(\d+)\s+\*?(\d+[A-Z])/i
+        /\d+\.\s+([A-Z\/]+)\s+.*?BN(\d+)/i
       );
 
     if (!paxMatch) {
@@ -207,12 +195,24 @@ function parseIncrementalLog(log) {
       paxMatch[2]
         .padStart(3, '0');
 
-    const seat =
-      paxMatch[3]
-        .trim();
+    // =========================
+    // Seat
+    // =========================
+    let seat = '---';
+
+    const seatMatch =
+      section.match(
+        /\b(\d+[A-Z])\b/
+      );
+
+    if (seatMatch) {
+
+      seat =
+        seatMatch[1];
+    }
 
     // =========================
-    // Cabin by Seat
+    // Cabin
     // =========================
     const cabin =
       getCabin(seat);
@@ -350,12 +350,10 @@ function parseIncrementalLog(log) {
 
     const ssrCodes = [
 
-      // Wheelchair
       'WCHR',
       'WCHS',
       'WCHC',
 
-      // Passenger Conditions
       'UMNR',
       'UM',
       'BLND',
@@ -363,11 +361,9 @@ function parseIncrementalLog(log) {
       'MEDA',
       'OXYG',
 
-      // Pets / Animal
       'PETC',
       'AVIH',
 
-      // Passenger Handling
       'MAAS',
       'STCR',
       'INAD',
@@ -375,7 +371,6 @@ function parseIncrementalLog(log) {
       'CIP',
       'PPOC',
 
-      // Meals
       'VGML',
       'AVML',
       'KSML',
@@ -435,9 +430,7 @@ function parseIncrementalLog(log) {
     passenger.lounge =
       getLounge(passenger);
 
-    // =========================
     // Latest Record Wins
-    // =========================
     passengers[bn] =
       passenger;
   }
@@ -484,14 +477,15 @@ function findByName(name) {
   ).find(p => {
 
     return (
-      p.name.toUpperCase()
+      p.name
+        .toUpperCase()
         .includes(name)
     );
   });
 }
 
 // ===============================
-// Find by FF Number
+// Find by FF
 // ===============================
 function findByFFNumber(ff) {
 
