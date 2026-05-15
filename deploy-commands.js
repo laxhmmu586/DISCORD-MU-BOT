@@ -1,12 +1,11 @@
 // ===============================
-// Discord Slash Commands Deploy
-// Uses Railway Variables:
-// DISCORD_TOKEN
-// CLIENT_ID
+// Load ENV
 // ===============================
-
 require('dotenv').config();
 
+// ===============================
+// Discord.js
+// ===============================
 const {
 
   REST,
@@ -18,7 +17,28 @@ const {
 } = require('discord.js');
 
 // ===============================
-// Commands
+// ENV Check
+// ===============================
+if (!process.env.DISCORD_TOKEN) {
+
+  console.error(
+    '❌ DISCORD_TOKEN not found in .env'
+  );
+
+  process.exit(1);
+}
+
+if (!process.env.CLIENT_ID) {
+
+  console.error(
+    '❌ CLIENT_ID not found in .env'
+  );
+
+  process.exit(1);
+}
+
+// ===============================
+// Slash Commands
 // ===============================
 const commands = [
 
@@ -160,14 +180,14 @@ const rest =
   );
 
 // ===============================
-// Deploy
+// Deploy Commands
 // ===============================
 (async () => {
 
   try {
 
     console.log(
-      'Deploying slash commands...'
+      '🚀 Deploying slash commands...'
     );
 
     await rest.put(
