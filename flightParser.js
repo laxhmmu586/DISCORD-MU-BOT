@@ -129,10 +129,6 @@ function parseIncrementalLog(log) {
 
   // ===========================
   // Split by PR:
-  // Works for:
-  // >FB
-  // >fb295
-  // >FSN
   // ===========================
   const sections =
     log.split(
@@ -177,10 +173,11 @@ function parseIncrementalLog(log) {
     // Supports:
     // BN298
     // BN 298
+    // + -
     // =========================
     const paxMatch =
       section.match(
-        /\d+\.\s+([A-Z\/]+).*?BN\s?(\d+)/i
+        /\d+\.\s+([A-Z\/\+\-]+).*?BN\s?(\d+)/i
       );
 
     if (!paxMatch) {
