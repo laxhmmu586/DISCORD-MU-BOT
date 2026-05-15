@@ -43,7 +43,7 @@ function getMembershipStatus(tier) {
     return 'Silver';
   }
 
-  return 'Regular';
+  return '';
 }
 
 // ===============================
@@ -196,159 +196,205 @@ module.exports = (client) => {
           );
 
         // =====================
-        // Build Message
+        // Embed
         // =====================
-        const lines = [
+        const embed = {
 
-          `✈️ ${pax.flight}/${pax.flightDate}`,
+          color: 0xf59e0b,
 
-          '',
+          title:
+            `${pax.flight}/${pax.flightDate}`,
 
-          `# ${pax.name}`,
+          description:
 
-          '',
+            `👤 ${pax.name}\n\n` +
 
-          `🎫 BN${pax.bn} • ${pax.seat} • ${pax.cabin}`,
+            `🎫 BN${pax.bn} | ${pax.seat} | ${pax.cabin} Class`,
 
-          ...(pax.ffNumber
+          fields: [
 
-            ? [
+            ...(pax.ffNumber
 
-                '',
+              ? [
 
-                '━━━━━━━━━━',
+                  {
 
-                '💳 Membership',
+                    name:
+                      '💳 Membership',
 
-                `${pax.ffCarrier} ${pax.ffNumber}`,
+                    value:
 
-                membershipStatus
-              ]
+                      `${pax.ffCarrier} ${pax.ffNumber}` +
 
-            : []),
+                      (
+                        membershipStatus
+                          ? `\n${membershipStatus}`
+                          : ''
+                      ),
 
-          ...(pax.ticketNumber
+                    inline: true
+                  }
 
-            ? [
+                ]
 
-                '',
+              : []),
 
-                '━━━━━━━━━━',
+            ...(pax.ticketNumber
 
-                '🎟️ Ticket',
+              ? [
 
-                pax.ticketNumber
-              ]
+                  {
 
-            : []),
+                    name:
+                      '🎟 Ticket',
 
-          ...(pax.bagtags?.length
+                    value:
+                      pax.ticketNumber,
 
-            ? [
+                    inline: true
+                  }
 
-                '',
+                ]
 
-                '━━━━━━━━━━',
+              : []),
 
-                '🧳 Bags',
+            ...(pax.bagtags?.length
 
-                pax.bagtags.join('\n')
-              ]
+              ? [
 
-            : []),
+                  {
 
-          ...(pax.inbound
+                    name:
+                      '🧳 Bags',
 
-            ? [
+                    value:
 
-                '',
+                      pax.bagtags.join('\n'),
 
-                '━━━━━━━━━━',
+                    inline: false
+                  }
 
-                '⬅️ Inbound',
+                ]
 
-                `${pax.inbound.flight}/${pax.inbound.date}`,
+              : []),
 
-                `From ${pax.inbound.origin}`
+            ...(pax.inbound
 
-              ]
+              ? [
 
-            : []),
+                  {
 
-          ...(pax.outbound
+                    name:
+                      '⬅ Inbound',
 
-            ? [
+                    value:
 
-                '',
+                      `${pax.inbound.flight}/${pax.inbound.date}\nFrom ${pax.inbound.origin}`,
 
-                '━━━━━━━━━━',
+                    inline: true
+                  }
 
-                '➡️ Outbound',
+                ]
 
-                `${pax.outbound.flight}/${pax.outbound.date}` +
+              : []),
 
-                (pax.outbound.bn
-                  ? ` • BN${pax.outbound.bn}`
-                  : '') +
+            ...(pax.outbound
 
-                (pax.outbound.seat
-                  ? ` • ${pax.outbound.seat}`
-                  : ''),
+              ? [
 
-                `To ${pax.outbound.destination}`
+                  {
 
-              ]
+                    name:
+                      '➡ Outbound',
 
-            : []),
+                    value:
 
-          ...(pax.specialServices?.length
+                      `${pax.outbound.flight}/${pax.outbound.date}` +
 
-            ? [
+                      (pax.outbound.bn
+                        ? ` • BN${pax.outbound.bn}`
+                        : '') +
 
-                '',
+                      (pax.outbound.seat
+                        ? ` • ${pax.outbound.seat}`
+                        : '') +
 
-                '━━━━━━━━━━',
+                      `\nTo ${pax.outbound.destination}`,
 
-                '⚠️ Special Service',
+                    inline: true
+                  }
 
-                pax.specialServices.join(
-                  '\n'
-                )
+                ]
 
-              ]
+              : []),
 
-            : []),
+            ...(pax.specialServices?.length
 
-          '',
+              ? [
 
-          '━━━━━━━━━━',
+                  {
 
-          '🛋️ Lounge Access',
+                    name:
+                      '⚠ Special Service',
 
-          pax.lounge?.eligible
+                    value:
 
-            ? '✅ Eligible'
+                      pax.specialServices.join('\n'),
 
-            : '❌ Not Eligible',
+                    inline: false
+                  }
 
-          '',
+                ]
 
-          '👥 Guest Access',
+              : []),
 
-          pax.lounge?.guest
+            {
 
-            ? '✅ Allowed'
+              name:
+                '🛋 Lounge Access',
 
-            : '❌ Not Allowed'
-        ];
+              value:
+
+                pax.lounge?.eligible
+
+                  ? '✅ Eligible'
+
+                  : '❌ Not Eligible',
+
+              inline: true
+            },
+
+            {
+
+              name:
+                '👥 Lounge Guest',
+
+              value:
+
+                pax.lounge?.guest
+
+                  ? '✅ Allowed'
+
+                  : '❌ Not Allowed',
+
+              inline: true
+            }
+          ],
+
+          footer: {
+
+            text:
+              'MU Lounge Validation'
+          }
+        };
 
         // =====================
-        // Send Reply
+        // Send Embed
         // =====================
-        await message.reply(
+        await message.reply({
 
-          lines.join('\n')
-        );
+          embeds: [embed]
+        });
 
       } catch (err) {
 

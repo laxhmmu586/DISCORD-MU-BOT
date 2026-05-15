@@ -10,11 +10,16 @@ function getCabin(seat) {
       seat.match(/\d+/)?.[0]
     );
 
+  // Invalid Seat
   if (!row) {
+
     return 'Economy';
   }
 
-  // First
+  // =========================
+  // First Class
+  // Rows 1-2
+  // =========================
   if (
     row >= 1 &&
     row <= 2
@@ -23,15 +28,32 @@ function getCabin(seat) {
     return 'First';
   }
 
-  // Business
+  // =========================
+  // Business Class
+  // Rows 6-20
+  // =========================
   if (
-    row >= 10 &&
+    row >= 6 &&
     row <= 20
   ) {
 
     return 'Business';
   }
 
+  // =========================
+  // Economy Class
+  // Rows 30+
+  // =========================
+  if (
+    row >= 30
+  ) {
+
+    return 'Economy';
+  }
+
+  // =========================
+  // Default
+  // =========================
   return 'Economy';
 }
 
