@@ -1,124 +1,470 @@
-
+```html id="indexhtml-final-flight-control"
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
+
   <meta charset="UTF-8">
-  <title>Lounge Checker</title>
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>
+    MU Flight Control
+  </title>
 
   <style>
+
     body {
-      background: #111;
+
+      margin: 0;
+      padding: 0;
+
+      background: #0f172a;
+
+      font-family:
+        Arial,
+        sans-serif;
+
       color: white;
-      font-family: Arial;
+
+      display: flex;
+
+      justify-content: center;
+
+      align-items: flex-start;
+
+      min-height: 100vh;
+    }
+
+    .container {
+
+      width: 100%;
+      max-width: 500px;
+
       padding: 30px;
     }
 
-    .box {
-      max-width: 500px;
-      margin: auto;
-      background: #1e1e1e;
-      padding: 25px;
-      border-radius: 10px;
+    .title {
+
+      font-size: 32px;
+
+      font-weight: bold;
+
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+
+      color: #94a3b8;
+
+      margin-bottom: 30px;
+    }
+
+    .search-box {
+
+      display: flex;
+
+      gap: 10px;
+
+      margin-bottom: 25px;
     }
 
     input {
-      width: 100%;
-      padding: 12px;
-      font-size: 18px;
-      margin-top: 10px;
-      border-radius: 6px;
+
+      flex: 1;
+
+      padding: 14px;
+
       border: none;
+
+      border-radius: 10px;
+
+      font-size: 18px;
+
+      background: #1e293b;
+
+      color: white;
     }
 
     button {
-      width: 100%;
-      padding: 12px;
-      margin-top: 15px;
-      font-size: 18px;
-      background: #0066ff;
-      color: white;
+
+      padding: 14px 22px;
+
       border: none;
-      border-radius: 6px;
+
+      border-radius: 10px;
+
+      background: #2563eb;
+
+      color: white;
+
+      font-size: 16px;
+
       cursor: pointer;
     }
 
-    .result {
-      margin-top: 25px;
-      line-height: 1.8;
+    button:hover {
+
+      background: #1d4ed8;
+    }
+
+    .card {
+
+      background: #111827;
+
+      border-radius: 16px;
+
+      padding: 24px;
+
+      box-shadow:
+        0 0 20px rgba(0,0,0,0.3);
+
+      display: none;
+    }
+
+    .flight {
+
+      font-size: 22px;
+
+      font-weight: bold;
+
+      margin-bottom: 20px;
+    }
+
+    .name {
+
+      font-size: 26px;
+
+      font-weight: bold;
+
+      margin-bottom: 8px;
+    }
+
+    .seat {
+
+      color: #cbd5e1;
+
+      margin-bottom: 24px;
+    }
+
+    .section {
+
+      margin-bottom: 20px;
+    }
+
+    .label {
+
+      color: #60a5fa;
+
+      font-size: 14px;
+
+      margin-bottom: 6px;
+
+      text-transform: uppercase;
+    }
+
+    .value {
+
       font-size: 18px;
+
+      white-space: pre-line;
     }
 
-    .good {
-      color: #00ff99;
+    .lounge-yes {
+
+      color: #22c55e;
+
+      font-weight: bold;
     }
 
-    .bad {
-      color: #ff5555;
+    .lounge-no {
+
+      color: #ef4444;
+
+      font-weight: bold;
     }
+
+    .error {
+
+      background: #7f1d1d;
+
+      padding: 14px;
+
+      border-radius: 10px;
+
+      display: none;
+
+      margin-top: 20px;
+    }
+
   </style>
+
 </head>
 
 <body>
 
-<div class="box">
+  <div class="container">
 
-  <h1>🛋 Lounge Checker</h1>
+    <div class="title">
+      MU Flight Control
+    </div>
 
-  <input
-    type="text"
-    id="search"
-    placeholder="Enter FB / RN"
-  />
+    <div class="subtitle">
+      Search by BN / Seat / Name
+    </div>
 
-  <button onclick="lookup()">
-    CHECK
-  </button>
+    <div class="search-box">
 
-  <div class="result" id="result"></div>
+      <input
+        id="query"
+        placeholder="321 / 20A / HUANG"
+      >
 
-</div>
+      <button onclick="searchPassenger()">
+        Search
+      </button>
 
-<script>
+    </div>
 
-async function lookup() {
+    <div
+      id="error"
+      class="error"
+    ></div>
 
-  const q = document.getElementById("search").value;
+    <div
+      id="card"
+      class="card"
+    >
 
-  const res = await fetch(`/lookup?q=${q}`);
+      <div
+        id="flight"
+        class="flight"
+      ></div>
 
-  const data = await res.json();
+      <div
+        id="name"
+        class="name"
+      ></div>
 
-  if (data.error) {
+      <div
+        id="seat"
+        class="seat"
+      ></div>
 
-    document.getElementById("result").innerHTML =
-      "❌ Not Found";
+      <div class="section">
 
-    return;
-  }
+        <div class="label">
+          FF
+        </div>
 
-  document.getElementById("result").innerHTML = `
-    👤 ${data.name}<br><br>
+        <div
+          id="ff"
+          class="value"
+        ></div>
 
-    🎫 ${data.bn} | ${data.seat}<br><br>
+      </div>
 
-    💳 FF<br>
-    ${data.ffNumber}<br>
-    ${data.tier}<br><br>
+      <div class="section">
 
-    🎟 Ticket<br>
-    ${data.ticket}<br><br>
+        <div class="label">
+          Ticket
+        </div>
 
-    🛋 Lounge Guest<br>
-    ${
-      data.guestAllowed
-        ? '<span class="good">✅ Allowed</span>'
-        : '<span class="bad">❌ Not Allowed</span>'
+        <div
+          id="ticket"
+          class="value"
+        ></div>
+
+      </div>
+
+      <div class="section">
+
+        <div class="label">
+          Bags
+        </div>
+
+        <div
+          id="bags"
+          class="value"
+        ></div>
+
+      </div>
+
+      <div class="section">
+
+        <div class="label">
+          Lounge Guest
+        </div>
+
+        <div
+          id="lounge"
+          class="value"
+        ></div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+
+    async function searchPassenger() {
+
+      const q =
+        document
+          .getElementById('query')
+          .value
+          .trim();
+
+      if (!q) {
+        return;
+      }
+
+      const card =
+        document.getElementById('card');
+
+      const error =
+        document.getElementById('error');
+
+      card.style.display =
+        'none';
+
+      error.style.display =
+        'none';
+
+      try {
+
+        const res =
+          await fetch(
+            '/search?q=' +
+            encodeURIComponent(q)
+          );
+
+        const data =
+          await res.json();
+
+        if (data.error) {
+
+          error.innerText =
+            data.error;
+
+          error.style.display =
+            'block';
+
+          return;
+        }
+
+        // Flight
+        document.getElementById(
+          'flight'
+        ).innerText =
+          data.flight +
+          '/' +
+          data.flightDate;
+
+        // Name
+        document.getElementById(
+          'name'
+        ).innerText =
+          data.name;
+
+        // Seat
+        document.getElementById(
+          'seat'
+        ).innerText =
+          'BN' +
+          data.bn +
+          ' | ' +
+          data.seat;
+
+        // FF
+        document.getElementById(
+          'ff'
+        ).innerText =
+          (
+            data.ffCarrier || 'NONE'
+          ) +
+          ' ' +
+          (
+            data.ffNumber || ''
+          );
+
+        // Ticket
+        document.getElementById(
+          'ticket'
+        ).innerText =
+          data.ticketNumber || 'NONE';
+
+        // Bags
+        document.getElementById(
+          'bags'
+        ).innerText =
+          data.bagtags?.length
+            ? data.bagtags.join('\n')
+            : 'NONE';
+
+        // Lounge
+        const lounge =
+          document.getElementById(
+            'lounge'
+          );
+
+        if (
+          data.lounge?.guest
+        ) {
+
+          lounge.innerHTML =
+            '<span class="lounge-yes">✅ Allowed</span>';
+        }
+
+        else if (
+          data.lounge?.eligible
+        ) {
+
+          lounge.innerHTML =
+            '<span class="lounge-no">❌ Not Allowed</span>';
+        }
+
+        else {
+
+          lounge.innerHTML =
+            '<span class="lounge-no">❌ Not Allowed</span>';
+        }
+
+        // Show Card
+        card.style.display =
+          'block';
+
+      } catch (err) {
+
+        error.innerText =
+          'Search failed';
+
+        error.style.display =
+          'block';
+      }
     }
-  `;
-}
 
-</script>
+    // Enter key
+    document
+      .getElementById('query')
+      .addEventListener(
+        'keypress',
+        function(e) {
+
+          if (e.key === 'Enter') {
+
+            searchPassenger();
+          }
+        }
+      );
+
+  </script>
 
 </body>
 </html>
-
+```
