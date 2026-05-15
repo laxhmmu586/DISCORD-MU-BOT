@@ -311,7 +311,7 @@
     <div class="login-box">
 
       <div class="login-title">
-        MU Lounge Login
+        Login
       </div>
 
       <input
@@ -487,6 +487,26 @@
   <script>
 
     // =========================
+    // Auto Logout Timer
+    // =========================
+    let logoutTimer;
+
+    function resetLogoutTimer() {
+
+      clearTimeout(logoutTimer);
+
+      logoutTimer = setTimeout(() => {
+
+        localStorage.removeItem(
+          'muLoggedIn'
+        );
+
+        location.reload();
+
+      }, 15 * 60 * 1000); // 15 minutes
+    }
+
+    // =========================
     // Login
     // =========================
     function login() {
@@ -522,6 +542,8 @@
           .getElementById('mainApp')
           .style.display =
             'flex';
+
+        resetLogoutTimer();
       }
 
       else {
@@ -553,8 +575,27 @@
           .getElementById('mainApp')
           .style.display =
             'flex';
+
+        resetLogoutTimer();
       }
     };
+
+    // =========================
+    // User Activity
+    // =========================
+    [
+      'click',
+      'mousemove',
+      'keypress',
+      'scroll',
+      'touchstart'
+    ].forEach(event => {
+
+      document.addEventListener(
+        event,
+        resetLogoutTimer
+      );
+    });
 
     // =========================
     // Search Passenger
