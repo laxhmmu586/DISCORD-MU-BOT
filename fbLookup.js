@@ -2,6 +2,8 @@ const {
 
   passengers,
 
+  parseIncrementalLog,
+
   findBySeat,
 
   findByName,
@@ -12,42 +14,48 @@ const {
 
 const {
 
+  parsePDLog,
+
   findPDByFFNumber
 
 } = require('./pdParser');
 
+const {
+
+  getLatestFlightLog
+
+} = require('./googleDrive');
+
 // ===============================
-// FF Status
+// Membership Status
 // ===============================
-function getFFStatus(pax) {
+function getMembershipStatus(pax) {
 
   if (!pax.ffTier) {
     return 'NONE';
   }
 
-  if (pax.ffTier === 'C') {
-    return 'Regular / C';
-  }
-
-  let tier = '';
-
   if (pax.ffTier === 'V') {
-    tier = 'Platinum';
+    return 'Platinum';
   }
 
-  else if (pax.ffTier === 'G') {
-    tier = 'Gold';
+  if (pax.ffTier === 'G') {
+    return 'Gold';
   }
 
-  else if (pax.ffTier === 'S') {
-    tier = 'Silver';
+  if (pax.ffTier === 'S') {
+    return 'Silver';
   }
 
-  return `${tier} /*${pax.elite}`;
+  if (pax.ffTier === 'C') {
+    return 'Regular';
+  }
+
+  return pax.ffTier;
 }
 
 // ===============================
-// FB Embed
+// Create Discord Embed
 // ===============================
 function createPassengerEmbed(pax) {
 
@@ -57,9 +65,6 @@ function createPassengerEmbed(pax) {
 
       title:
         'Passenger Not Found',
-
-      description:
-        'No matching passenger record found.',
 
       color:
         0xff0000
@@ -77,9 +82,7 @@ function createPassengerEmbed(pax) {
       `${pax.flight}/${pax.flightDate}`,
 
     description:
-`${pax.name}
-
-BN${pax.bn} | ${pax.seat} | ${pax.cabin} Class`,
+      `👤 ${pax.name}\n🎫 BN${pax.bn} | ${pax.seat} | ${pax.cabin} Class`,
 
     fields: [
 
@@ -90,11 +93,10 @@ BN${pax.bn} | ${pax.seat} | ${pax.cabin} Class`,
 
         value:
 `${pax.ffCarrier || 'NONE'} ${pax.ffNumber || ''}
-
-${getFFStatus(pax)}`,
+${getMembershipStatus(pax)}`,
 
         inline:
-          false
+          true
       },
 
       {
@@ -106,7 +108,7 @@ ${getFFStatus(pax)}`,
           pax.ticketNumber || 'NONE',
 
         inline:
-          false
+          true
       },
 
       {
@@ -156,115 +158,7 @@ ${getFFStatus(pax)}`,
     footer: {
 
       text:
-        'China Eastern Flight Control'
-    }
-  };
-}
-
-// ===============================
-// PD Embed
-// ===============================
-function createPDEmbed(pax) {
-
-  if (!pax) {
-
-    return {
-
-      title:
-        'Passenger Not Found',
-
-      description:
-        'No matching PD passenger found.',
-
-      color:
-        0xff0000
-    };
-  }
-
-  let tier =
-    pax.ffTier || 'NONE';
-
-  if (tier === 'V') {
-    tier = 'Platinum';
-  }
-
-  else if (tier === 'G') {
-    tier = 'Gold';
-  }
-
-  else if (tier === 'S') {
-    tier = 'Silver';
-  }
-
-  else if (tier === 'C') {
-    tier = 'Regular';
-  }
-
-  return {
-
-    color:
-      pax.lounge?.eligible
-        ? 0x00cc99
-        : 0xff9900,
-
-    title:
-      `${pax.flight || 'MU586'}/${pax.flightDate || 'UNKNOWN'}`,
-
-    description:
-`${pax.name || 'UNKNOWN'}
-
-BN${pax.bn || '---'} | ${pax.seat || '---'} | ${pax.cabin || 'Unknown'} Class`,
-
-    fields: [
-
-      {
-
-        name:
-          '💳 Membership',
-
-        value:
-`${pax.ffCarrier || 'NONE'} ${pax.ffNumber || 'NONE'}
-
-${tier}`,
-
-        inline:
-          false
-      },
-
-      {
-
-        name:
-          '🛋 Lounge Entitle',
-
-        value:
-          pax.lounge?.eligible
-            ? '✅ Eligible'
-            : '❌ Not Eligible',
-
-        inline:
-          true
-      },
-
-      {
-
-        name:
-          '👥 Lounge Guest',
-
-        value:
-          pax.lounge?.guest
-            ? '✅ Allowed'
-            : '❌ Not Allowed',
-
-        inline:
-          true
-      }
-
-    ],
-
-    footer: {
-
-      text:
-        'China Eastern Flight Control'
+        'MU Lounge Validation'
     }
   };
 }
@@ -291,9 +185,27 @@ module.exports = function(client) {
             .toUpperCase();
 
         // ===========================
+        // Download Latest Log
+        // ===========================
+        const log =
+          await getLatestFlightLog();
+
+        if (!log) {
+
+          return message.reply(
+            'Unable to load Flight Control.log'
+          );
+        }
+
+        // ===========================
+        // Parse Latest Log
+        // ===========================
+        parseIncrementalLog(log);
+
+        parsePDLog(log);
+
+        // ===========================
         // FB QUERY
-        // Example:
-        // FB 123
         // ===========================
         if (
           text.startsWith('FB')
@@ -322,9 +234,7 @@ module.exports = function(client) {
         }
 
         // ===========================
-        // FSN QUERY
-        // Example:
-        // FSN 20A
+        // Seat Query
         // ===========================
         if (
           text.startsWith('FSN')
@@ -350,9 +260,7 @@ module.exports = function(client) {
         }
 
         // ===========================
-        // RN QUERY
-        // Example:
-        // RN HUANG
+        // Name Query
         // ===========================
         if (
           text.startsWith('RN')
@@ -378,10 +286,7 @@ module.exports = function(client) {
         }
 
         // ===========================
-        // FF QUERY
-        // Example:
-        // FF MU650278486253
-        // FF MU 650278486253
+        // Membership Query
         // ===========================
         if (
           text.startsWith('FF')
@@ -392,170 +297,20 @@ module.exports = function(client) {
               .replace('FF', '')
               .trim();
 
-          // =======================
-          // FB Search
-          // =======================
           let pax =
             findByFFNumber(ff);
 
-          // =======================
-          // PD Search
-          // =======================
           if (!pax) {
 
             pax =
               findPDByFFNumber(ff);
           }
 
-          // =======================
-          // PD Passenger
-          // =======================
-          if (
-            pax &&
-            !pax.ticketNumber
-          ) {
-
-            return message.reply({
-
-              embeds: [
-
-                createPDEmbed(pax)
-
-              ]
-
-            });
-          }
-
-          // =======================
-          // Normal FB Passenger
-          // =======================
           return message.reply({
 
             embeds: [
 
               createPassengerEmbed(pax)
-
-            ]
-
-          });
-        }
-
-        // ===========================
-        // STATS
-        // ===========================
-        if (
-          text === 'STATS'
-        ) {
-
-          const paxList =
-            Object.values(passengers);
-
-          const total =
-            paxList.length;
-
-          const lounge =
-            paxList.filter(
-              p => p.lounge?.eligible
-            ).length;
-
-          const platinum =
-            paxList.filter(
-              p => p.ffTier === 'V'
-            ).length;
-
-          const gold =
-            paxList.filter(
-              p => p.ffTier === 'G'
-            ).length;
-
-          const silver =
-            paxList.filter(
-              p => p.ffTier === 'S'
-            ).length;
-
-          return message.reply({
-
-            embeds: [
-
-              {
-
-                color:
-                  0x0099ff,
-
-                title:
-                  `${paxList[0]?.flight || 'MU586'}/${paxList[0]?.flightDate || 'UNKNOWN'}`,
-
-                fields: [
-
-                  {
-
-                    name:
-                      '👥 Total',
-
-                    value:
-                      String(total),
-
-                    inline:
-                      true
-                  },
-
-                  {
-
-                    name:
-                      '🛋 Lounge',
-
-                    value:
-                      String(lounge),
-
-                    inline:
-                      true
-                  },
-
-                  {
-
-                    name:
-                      '💎 Platinum',
-
-                    value:
-                      String(platinum),
-
-                    inline:
-                      true
-                  },
-
-                  {
-
-                    name:
-                      '🥇 Gold',
-
-                    value:
-                      String(gold),
-
-                    inline:
-                      true
-                  },
-
-                  {
-
-                    name:
-                      '🥈 Silver',
-
-                    value:
-                      String(silver),
-
-                    inline:
-                      true
-                  }
-
-                ],
-
-                footer: {
-
-                  text:
-                    'China Eastern Flight Control'
-                }
-
-              }
 
             ]
 

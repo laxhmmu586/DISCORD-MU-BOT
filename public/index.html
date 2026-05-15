@@ -229,7 +229,7 @@
 
       <input
         id="query"
-        placeholder="321 / 20A / MU650278486253 / HUANG/ZEYUANMR"
+        placeholder="321 / 20A / MU630601689054 / HUANG/ZEYUANMR"
       >
 
       <button onclick="searchPassenger()">
@@ -395,8 +395,11 @@
           'flight'
         ).innerText =
           data.flight +
-          '/' +
-          data.flightDate;
+          (
+            data.flightDate
+              ? '/' + data.flightDate
+              : ''
+          );
 
         // Name
         document.getElementById(
@@ -432,17 +435,22 @@
         document.getElementById(
           'ffStatus'
         ).innerText =
-          data.ffTier
-            ? (
-                data.ffTier === 'V'
-                  ? 'Platinum'
-                  : data.ffTier === 'G'
-                  ? 'Gold'
-                  : data.ffTier === 'S'
-                  ? 'Silver'
-                  : 'Regular'
-              )
-            : 'NONE';
+
+          data.membershipStatus ||
+
+          (
+            data.ffTier
+              ? (
+                  data.ffTier === 'V'
+                    ? 'Platinum'
+                    : data.ffTier === 'G'
+                    ? 'Gold'
+                    : data.ffTier === 'S'
+                    ? 'Silver'
+                    : 'Regular'
+                )
+              : 'NONE'
+          );
 
         // Ticket
         document.getElementById(
@@ -512,7 +520,7 @@
       }
     }
 
-    // Enter key
+    // Enter Key
     document
       .getElementById('query')
       .addEventListener(

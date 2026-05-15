@@ -15,11 +15,15 @@ const {
 
   findByName,
 
-  findByFFNumber
+  findByFFNumber,
+
+  parseIncrementalLog
 
 } = require('./flightParser');
 
 const {
+
+  parsePDLog,
 
   findPDByFFNumber
 
@@ -27,11 +31,9 @@ const {
 
 const {
 
-  startCache,
+  getLatestFlightLog
 
-  getCacheStatus
-
-} = require('./cache');
+} = require('./googleDrive');
 
 const app = express();
 
@@ -76,7 +78,7 @@ client.once('clientReady', () => {
 });
 
 // ===============================
-// Load fbLookup
+// Load FB Lookup
 // ===============================
 console.log(
   'Loading fbLookup.js'
@@ -96,11 +98,6 @@ client.login(
 );
 
 // ===============================
-// Start Cache System
-// ===============================
-startCache();
-
-// ===============================
 // Search API
 // ===============================
 app.get('/search', async (req, res) => {
@@ -114,6 +111,9 @@ app.get('/search', async (req, res) => {
       .trim()
       .toUpperCase();
 
+    // ===========================
+    // Validation
+    // ===========================
     if (!q) {
 
       return res.json({
@@ -122,6 +122,28 @@ app.get('/search', async (req, res) => {
           'Missing query'
       });
     }
+
+    // ===========================
+    // Download Latest Log
+    // ===========================
+    const log =
+      await getLatestFlightLog();
+
+    if (!log) {
+
+      return res.json({
+
+        error:
+          'Unable to load Flight Control.log'
+      });
+    }
+
+    // ===========================
+    // Parse Logs
+    // ===========================
+    parseIncrementalLog(log);
+
+    parsePDLog(log);
 
     let pax = null;
 
@@ -151,10 +173,9 @@ app.get('/search', async (req, res) => {
     }
 
     // ===========================
-    // FF Search
+    // Membership Search
     // Example:
-    // MU650278486253
-    // MU 650278486253
+    // MU630601689054
     // ===========================
     else if (
 
@@ -162,24 +183,16 @@ app.get('/search', async (req, res) => {
 
     ) {
 
-      // =======================
-      // FB Search
-      // =======================
       pax =
         findByFFNumber(q);
 
       // =======================
-      // PD Search
+      // PD Search Fallback
       // =======================
       if (!pax) {
 
         pax =
           findPDByFFNumber(q);
-
-        if (pax) {
-
-          pax.pdOnly = true;
-        }
       }
     }
 
@@ -205,7 +218,7 @@ app.get('/search', async (req, res) => {
     }
 
     // ===========================
-    // Response
+    // Return Passenger
     // ===========================
     res.json(pax);
 
@@ -219,17 +232,6 @@ app.get('/search', async (req, res) => {
         err.toString()
     });
   }
-});
-
-// ===============================
-// Cache Status API
-// ===============================
-app.get('/status', (req, res) => {
-
-  res.json(
-    getCacheStatus()
-  );
-
 });
 
 // ===============================
@@ -282,7 +284,7 @@ app.post('/send', async (req, res) => {
     });
 
     console.log(
-      'Sent to channel: ' +
+      'Sent to channel:',
       channelId
     );
 
@@ -301,18 +303,7 @@ app.post('/send', async (req, res) => {
 });
 
 // ===============================
-// Health Check
-// ===============================
-app.get('/', (req, res) => {
-
-  res.send(
-    'MU Lounge Validation Running'
-  );
-
-});
-
-// ===============================
-// Railway Port
+// Start Server
 // ===============================
 const PORT =
   process.env.PORT || 3000;
@@ -320,7 +311,7 @@ const PORT =
 app.listen(PORT, '0.0.0.0', () => {
 
   console.log(
-    'Server started on port ' +
+    'Server started on port',
     PORT
   );
 

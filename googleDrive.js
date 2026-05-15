@@ -4,72 +4,123 @@ const { google } = require('googleapis');
 // Google Auth
 // ===============================
 const auth = new google.auth.GoogleAuth({
-  credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT),
-  scopes: ['https://www.googleapis.com/auth/drive.readonly']
+
+  credentials: {
+
+    client_email:
+      process.env.GOOGLE_CLIENT_EMAIL,
+
+    private_key:
+      process.env.GOOGLE_PRIVATE_KEY
+        ?.replace(/\\n/g, '\n')
+  },
+
+  scopes: [
+
+    'https://www.googleapis.com/auth/drive.readonly'
+  ]
 });
 
 // ===============================
-// Drive Client
+// Google Drive Client
 // ===============================
-const drive = google.drive({
-  version: 'v3',
-  auth
-});
+const drive =
+  google.drive({
+
+    version: 'v3',
+
+    auth
+  });
 
 // ===============================
-// Helper: Download single file by name
+// Get Latest Flight Control.log
 // ===============================
-async function downloadFileByName(fileName) {
+async function getLatestFlightLog() {
+
   try {
-    const res = await drive.files.list({
-      q: `'${process.env.GOOGLE_DRIVE_FOLDER_ID}' in parents and name='${fileName}' and trashed=false`,
-      pageSize: 1,
-      fields: 'files(id,name,modifiedTime)'
-    });
 
-    const files = res.data.files;
+    const folderId =
+      process.env.GOOGLE_DRIVE_FOLDER_ID;
 
-    if (!files.length) {
-      console.warn(`${fileName} not found`);
-      return '';
+    // ===========================
+    // Find File
+    // ===========================
+    const res =
+      await drive.files.list({
+
+        q:
+          `'${folderId}' in parents and name = 'Flight Control.log' and trashed = false`,
+
+        fields:
+          'files(id,name,modifiedTime)',
+
+        orderBy:
+          'modifiedTime desc',
+
+        pageSize:
+          1
+      });
+
+    const file =
+      res.data.files[0];
+
+    // ===========================
+    // File Not Found
+    // ===========================
+    if (!file) {
+
+      console.log(
+        'Flight Control.log not found'
+      );
+
+      return null;
     }
 
-    const file = files[0];
-
-    console.log(`Using log: ${file.name}`);
-    console.log(`Modified: ${file.modifiedTime}`);
-
-    const response = await drive.files.get(
-      {
-        fileId: file.id,
-        alt: 'media'
-      },
-      { responseType: 'text' }
+    console.log(
+      'Using log:',
+      file.name
     );
 
-    return response.data || '';
+    console.log(
+      'Modified:',
+      file.modifiedTime
+    );
+
+    // ===========================
+    // Download File
+    // ===========================
+    const response =
+      await drive.files.get({
+
+        fileId:
+          file.id,
+
+        alt:
+          'media'
+
+      }, {
+
+        responseType:
+          'text'
+      });
+
+    return response.data;
+
   } catch (err) {
-    console.error(`Google Drive Error (${fileName}):`, err);
-    return '';
+
+    console.error(
+      'Google Drive Error:',
+      err
+    );
+
+    return null;
   }
 }
 
 // ===============================
-// Get Combined Logs
-// ===============================
-async function getCombinedLogs() {
-  // 三个文件依次获取
-  const flightControlLog = await downloadFileByName('Flight Control.log');
-  const lakeLog = await downloadFileByName('Lake.log');
-  const ticketingLog = await downloadFileByName('Ticketing.log');
-
-  // 合并成一个字符串返回
-  return [flightControlLog, lakeLog, ticketingLog].join('\n');
-}
-
-// ===============================
-// Export
+// Exports
 // ===============================
 module.exports = {
-  getCombinedLogs
+
+  getLatestFlightLog
 };
