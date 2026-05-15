@@ -167,8 +167,6 @@ function parseIncrementalLog(log) {
 
     // =========================
     // Passenger Line
-    // Fix:
-    // BN313 *15L
     // =========================
     const paxMatch =
       section.match(
@@ -242,7 +240,6 @@ function parseIncrementalLog(log) {
     // =========================
     const bagtags = [];
 
-    // Find BAGTAG line
     const bagLineMatch =
       section.match(
         /BAGTAG\/([^\n\r]+)/i
@@ -253,9 +250,6 @@ function parseIncrementalLog(log) {
       const line =
         bagLineMatch[1];
 
-      // Support:
-      // DL 582080/FOC
-      // 3781316616/PVG
       const bags =
         [
           ...line.matchAll(
@@ -271,6 +265,39 @@ function parseIncrementalLog(log) {
             .replace(/\s+/g, '')
         );
       }
+    }
+
+    // =========================
+    // Special Services
+    // =========================
+    const specialServices = [];
+
+    if (section.includes('WCHR')) {
+      specialServices.push('WCHR');
+    }
+
+    if (section.includes('WCHS')) {
+      specialServices.push('WCHS');
+    }
+
+    if (section.includes('WCHC')) {
+      specialServices.push('WCHC');
+    }
+
+    if (section.includes('UMNR')) {
+      specialServices.push('UMNR');
+    }
+
+    if (section.includes('BLND')) {
+      specialServices.push('BLND');
+    }
+
+    if (section.includes('DEAF')) {
+      specialServices.push('DEAF');
+    }
+
+    if (section.includes('MEDA')) {
+      specialServices.push('MEDA');
     }
 
     // =========================
@@ -298,7 +325,9 @@ function parseIncrementalLog(log) {
 
       ticketNumber,
 
-      bagtags
+      bagtags,
+
+      specialServices
     };
 
     passenger.lounge =
