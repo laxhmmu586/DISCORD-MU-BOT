@@ -27,6 +27,13 @@ const {
 
 const app = express();
 
+// ===============================
+// Static Website
+// ===============================
+app.use(
+  express.static('public')
+);
+
 app.use(express.json({
   limit: '50mb'
 }));
@@ -79,17 +86,6 @@ console.log(
 client.login(
   process.env.BOT_TOKEN
 );
-
-// ===============================
-// Health Check
-// ===============================
-app.get('/', (req, res) => {
-
-  res.send(
-    'Discord Bot Running'
-  );
-
-});
 
 // ===============================
 // Search API
