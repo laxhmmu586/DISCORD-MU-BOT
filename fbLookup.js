@@ -84,7 +84,7 @@ function createPassengerEmbed(pax) {
 
       {
 
-        name: '💳 FF',
+        name: '💳 Membership',
 
         value:
 `${pax.ffCarrier || 'NONE'} ${pax.ffNumber || ''}
