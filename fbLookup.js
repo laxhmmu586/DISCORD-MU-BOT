@@ -200,23 +200,32 @@ module.exports = (client) => {
         // =====================
         const lines = [
 
-          `${pax.flight}/${pax.flightDate}`,
+          `✈️ ${pax.flight}/${pax.flightDate}`,
 
           '',
 
-          pax.name,
+          `# ${pax.name}`,
 
           '',
 
-          `BN${pax.bn} | ${pax.seat} | ${pax.cabin} Class`,
+          `🎫 BN${pax.bn} • ${pax.seat} • ${pax.cabin}`,
 
-          '',
+          ...(pax.ffNumber
 
-          'Membership',
+            ? [
 
-          `${pax.ffCarrier || 'NONE'} ${pax.ffNumber || ''}`,
+                '',
 
-          membershipStatus,
+                '━━━━━━━━━━',
+
+                '💳 Membership',
+
+                `${pax.ffCarrier} ${pax.ffNumber}`,
+
+                membershipStatus
+              ]
+
+            : []),
 
           ...(pax.ticketNumber
 
@@ -224,7 +233,9 @@ module.exports = (client) => {
 
                 '',
 
-                'Ticket',
+                '━━━━━━━━━━',
+
+                '🎟️ Ticket',
 
                 pax.ticketNumber
               ]
@@ -237,7 +248,9 @@ module.exports = (client) => {
 
                 '',
 
-                'Bags',
+                '━━━━━━━━━━',
+
+                '🧳 Bags',
 
                 pax.bagtags.join('\n')
               ]
@@ -250,9 +263,13 @@ module.exports = (client) => {
 
                 '',
 
-                'Inbound',
+                '━━━━━━━━━━',
 
-                `${pax.inbound.flight}/${pax.inbound.date} from ${pax.inbound.origin}`
+                '⬅️ Inbound',
+
+                `${pax.inbound.flight}/${pax.inbound.date}`,
+
+                `From ${pax.inbound.origin}`
 
               ]
 
@@ -264,19 +281,21 @@ module.exports = (client) => {
 
                 '',
 
-                'Outbound',
+                '━━━━━━━━━━',
+
+                '➡️ Outbound',
 
                 `${pax.outbound.flight}/${pax.outbound.date}` +
 
                 (pax.outbound.bn
-                  ? ` BN${pax.outbound.bn}`
+                  ? ` • BN${pax.outbound.bn}`
                   : '') +
 
                 (pax.outbound.seat
-                  ? ` ${pax.outbound.seat}`
-                  : '') +
+                  ? ` • ${pax.outbound.seat}`
+                  : ''),
 
-                ` to ${pax.outbound.destination}`
+                `To ${pax.outbound.destination}`
 
               ]
 
@@ -288,7 +307,9 @@ module.exports = (client) => {
 
                 '',
 
-                'Special Service',
+                '━━━━━━━━━━',
+
+                '⚠️ Special Service',
 
                 pax.specialServices.join(
                   '\n'
@@ -300,7 +321,9 @@ module.exports = (client) => {
 
           '',
 
-          'Lounge Entitle',
+          '━━━━━━━━━━',
+
+          '🛋️ Lounge Access',
 
           pax.lounge?.eligible
 
@@ -310,7 +333,7 @@ module.exports = (client) => {
 
           '',
 
-          'Lounge Guest',
+          '👥 Guest Access',
 
           pax.lounge?.guest
 

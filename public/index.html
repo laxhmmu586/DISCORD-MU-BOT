@@ -41,18 +41,18 @@
     .container {
 
       width: 100%;
-      max-width: 420px;
+      max-width: 430px;
 
-      padding: 20px;
+      padding: 18px;
     }
 
     .title {
 
-      font-size: 26px;
+      font-size: 28px;
 
       font-weight: bold;
 
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
 
     .subtitle {
@@ -71,12 +71,12 @@
 
       background: #111827;
 
-      border-radius: 16px;
+      border-radius: 18px;
 
       padding: 18px;
 
       box-shadow:
-        0 0 20px rgba(0,0,0,0.3);
+        0 0 24px rgba(0,0,0,0.35);
     }
 
     .login-card {
@@ -90,7 +90,7 @@
 
       gap: 10px;
 
-      margin-bottom: 20px;
+      margin-bottom: 18px;
     }
 
     input {
@@ -101,9 +101,9 @@
 
       border: none;
 
-      border-radius: 10px;
+      border-radius: 12px;
 
-      font-size: 16px;
+      font-size: 15px;
 
       background: #1e293b;
 
@@ -120,15 +120,17 @@
 
       border: none;
 
-      border-radius: 10px;
+      border-radius: 12px;
 
       background: #2563eb;
 
       color: white;
 
-      font-size: 15px;
+      font-size: 14px;
 
       cursor: pointer;
+
+      white-space: nowrap;
     }
 
     button:hover {
@@ -143,29 +145,39 @@
 
     .flight {
 
-      font-size: 20px;
-
-      font-weight: bold;
-
-      margin-bottom: 18px;
-    }
-
-    .name {
-
       font-size: 22px;
 
       font-weight: bold;
 
-      margin-bottom: 6px;
+      margin-bottom: 16px;
+    }
+
+    .name {
+
+      font-size: 24px;
+
+      font-weight: bold;
+
+      margin-bottom: 8px;
     }
 
     .seat {
 
       color: #cbd5e1;
 
-      margin-bottom: 20px;
+      margin-bottom: 22px;
 
       font-size: 15px;
+    }
+
+    .divider {
+
+      height: 1px;
+
+      background: rgba(255,255,255,0.08);
+
+      margin:
+        18px 0;
     }
 
     .section {
@@ -177,20 +189,22 @@
 
       color: #60a5fa;
 
-      font-size: 13px;
+      font-size: 12px;
 
-      margin-bottom: 5px;
+      margin-bottom: 6px;
 
       text-transform: uppercase;
+
+      letter-spacing: 1px;
     }
 
     .value {
 
       font-size: 16px;
 
-      white-space: pre-line;
+      line-height: 1.6;
 
-      line-height: 1.5;
+      white-space: pre-line;
     }
 
     .lounge-yes {
@@ -213,7 +227,7 @@
 
       padding: 12px;
 
-      border-radius: 10px;
+      border-radius: 12px;
 
       display: none;
 
@@ -274,7 +288,7 @@
 
     </div>
 
-    <!-- MAIN APP -->
+    <!-- MAIN -->
     <div id="mainApp">
 
       <div class="title">
@@ -304,6 +318,7 @@
         class="error"
       ></div>
 
+      <!-- RESULT CARD -->
       <div
         id="card"
         class="card"
@@ -325,7 +340,13 @@
         ></div>
 
         <!-- Membership -->
-        <div class="section">
+        <div
+          class="section"
+          id="membershipSection"
+          style="display:none;"
+        >
+
+          <div class="divider"></div>
 
           <div class="label">
             Membership
@@ -339,7 +360,6 @@
           <div
             id="ffStatus"
             class="value"
-            style="margin-top:8px;"
           ></div>
 
         </div>
@@ -348,7 +368,10 @@
         <div
           class="section"
           id="ticketSection"
+          style="display:none;"
         >
+
+          <div class="divider"></div>
 
           <div class="label">
             Ticket
@@ -365,7 +388,10 @@
         <div
           class="section"
           id="bagsSection"
+          style="display:none;"
         >
+
+          <div class="divider"></div>
 
           <div class="label">
             Bags
@@ -385,6 +411,8 @@
           style="display:none;"
         >
 
+          <div class="divider"></div>
+
           <div class="label">
             Inbound
           </div>
@@ -403,6 +431,8 @@
           style="display:none;"
         >
 
+          <div class="divider"></div>
+
           <div class="label">
             Outbound
           </div>
@@ -414,12 +444,14 @@
 
         </div>
 
-        <!-- Special Service -->
+        <!-- SSR -->
         <div
           class="section"
           id="ssrSection"
           style="display:none;"
         >
+
+          <div class="divider"></div>
 
           <div class="label">
             Special Service
@@ -435,8 +467,10 @@
         <!-- Lounge -->
         <div class="section">
 
+          <div class="divider"></div>
+
           <div class="label">
-            Lounge Entitle
+            Lounge Access
           </div>
 
           <div
@@ -446,15 +480,14 @@
 
           <div
             class="label"
-            style="margin-top:12px;"
+            style="margin-top:18px;"
           >
-            Lounge Guest
+            Guest Access
           </div>
 
           <div
             id="guest"
             class="value"
-            style="margin-top:8px;"
           ></div>
 
         </div>
@@ -468,10 +501,12 @@
   <script>
 
     // ===========================
-    // Auto Login Session
+    // Auto Login
     // ===========================
     if (
-      localStorage.getItem('mu_logged_in') === 'true'
+      localStorage.getItem(
+        'mu_logged_in'
+      ) === 'true'
     ) {
 
       document.getElementById(
@@ -587,12 +622,7 @@
         document.getElementById(
           'flight'
         ).innerText =
-          data.flight +
-          (
-            data.flightDate
-              ? '/' + data.flightDate
-              : ''
-          );
+          `✈️ ${data.flight}/${data.flightDate}`;
 
         // Name
         document.getElementById(
@@ -600,85 +630,97 @@
         ).innerText =
           data.name;
 
-        // Seat + Cabin
+        // Seat
         document.getElementById(
           'seat'
         ).innerText =
-          'BN' +
-          data.bn +
-          ' | ' +
-          data.seat +
-          ' | ' +
-          data.cabin +
-          ' Class';
+          `🎫 BN${data.bn} • ${data.seat} • ${data.cabin}`;
 
         // Membership
-        document.getElementById(
-          'ff'
-        ).innerText =
-          (
-            data.ffCarrier || 'NONE'
-          ) +
-          ' ' +
-          (
-            data.ffNumber || ''
-          );
-
-        // Membership Status
-        document.getElementById(
-          'ffStatus'
-        ).innerText =
-
-          data.membershipStatus ||
-
-          (
-            data.ffTier
-              ? (
-                  data.ffTier === 'V'
-                    ? 'Platinum'
-                    : data.ffTier === 'G'
-                    ? 'Gold'
-                    : data.ffTier === 'S'
-                    ? 'Silver'
-                    : 'Regular'
-                )
-              : 'NONE'
-          );
-
-        // PD Passenger
-        if (data.pdOnly) {
+        if (data.ffNumber) {
 
           document.getElementById(
-            'ticketSection'
-          ).style.display = 'none';
+            'membershipSection'
+          ).style.display =
+            'block';
 
           document.getElementById(
-            'bagsSection'
-          ).style.display = 'none';
+            'ff'
+          ).innerText =
+
+            `${data.ffCarrier} ${data.ffNumber}`;
+
+          document.getElementById(
+            'ffStatus'
+          ).innerText =
+
+            data.membershipStatus ||
+
+            (
+              data.ffTier === 'V'
+                ? 'Platinum'
+                : data.ffTier === 'G'
+                ? 'Gold'
+                : data.ffTier === 'S'
+                ? 'Silver'
+                : ''
+            );
         }
 
-        // Normal Passenger
         else {
 
           document.getElementById(
-            'ticketSection'
-          ).style.display = 'block';
+            'membershipSection'
+          ).style.display =
+            'none';
+        }
+
+        // Ticket
+        if (data.ticketNumber) {
 
           document.getElementById(
-            'bagsSection'
-          ).style.display = 'block';
+            'ticketSection'
+          ).style.display =
+            'block';
 
           document.getElementById(
             'ticket'
           ).innerText =
-            data.ticketNumber || 'NONE';
+            data.ticketNumber;
+        }
+
+        else {
+
+          document.getElementById(
+            'ticketSection'
+          ).style.display =
+            'none';
+        }
+
+        // Bags
+        if (
+          data.bagtags &&
+          data.bagtags.length
+        ) {
+
+          document.getElementById(
+            'bagsSection'
+          ).style.display =
+            'block';
 
           document.getElementById(
             'bags'
           ).innerText =
-            data.bagtags?.length
-              ? data.bagtags.join('\n')
-              : 'NONE';
+
+            data.bagtags.join('\n');
+        }
+
+        else {
+
+          document.getElementById(
+            'bagsSection'
+          ).style.display =
+            'none';
         }
 
         // Inbound
@@ -693,7 +735,7 @@
             'inbound'
           ).innerText =
 
-            `${data.inbound.flight}/${data.inbound.date} from ${data.inbound.origin}`;
+            `${data.inbound.flight}/${data.inbound.date}\nFrom ${data.inbound.origin}`;
         }
 
         else {
@@ -719,14 +761,14 @@
             `${data.outbound.flight}/${data.outbound.date}` +
 
             (data.outbound.bn
-              ? ` BN${data.outbound.bn}`
+              ? ` • BN${data.outbound.bn}`
               : '') +
 
             (data.outbound.seat
-              ? ` ${data.outbound.seat}`
+              ? ` • ${data.outbound.seat}`
               : '') +
 
-            ` to ${data.outbound.destination}`;
+            `\nTo ${data.outbound.destination}`;
         }
 
         else {
@@ -737,7 +779,7 @@
             'none';
         }
 
-        // Special Services
+        // SSR
         if (
           data.specialServices &&
           data.specialServices.length
@@ -765,45 +807,33 @@
             'none';
         }
 
-        // Lounge Entitle
+        // Lounge
         const lounge =
           document.getElementById(
             'lounge'
           );
 
-        if (
+        lounge.innerHTML =
+
           data.lounge?.eligible
-        ) {
 
-          lounge.innerHTML =
-            '<span class="lounge-yes">✅ Eligible</span>';
-        }
+            ? '<span class="lounge-yes">✅ Eligible</span>'
 
-        else {
+            : '<span class="lounge-no">❌ Not Eligible</span>';
 
-          lounge.innerHTML =
-            '<span class="lounge-no">❌ Not Eligible</span>';
-        }
-
-        // Lounge Guest
+        // Guest
         const guest =
           document.getElementById(
             'guest'
           );
 
-        if (
+        guest.innerHTML =
+
           data.lounge?.guest
-        ) {
 
-          guest.innerHTML =
-            '<span class="lounge-yes">✅ Allowed</span>';
-        }
+            ? '<span class="lounge-yes">✅ Allowed</span>'
 
-        else {
-
-          guest.innerHTML =
-            '<span class="lounge-no">❌ Not Allowed</span>';
-        }
+            : '<span class="lounge-no">❌ Not Allowed</span>';
 
         // Show Card
         card.style.display =
