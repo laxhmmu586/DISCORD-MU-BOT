@@ -101,13 +101,6 @@
         <div id="outbound" class="value"></div>
       </div>
 
-      <!-- Special Service -->
-      <div id="ssrSection" class="section" style="display:none;">
-        <div class="divider"></div>
-        <div class="label">Special Service</div>
-        <div id="ssr" class="value"></div>
-      </div>
-
       <!-- Lounge -->
       <div class="section">
         <div class="divider"></div>
@@ -191,8 +184,7 @@ async function searchPassenger(){
     if(data.outbound){ document.getElementById('outboundSection').style.display='block'; document.getElementById('outbound').innerText=`${data.outbound.flight}/${data.outbound.date}`+(data.outbound.bn?` • BN${data.outbound.bn}`:'')+(data.outbound.seat?` • ${data.outbound.seat}`:'')+`\nTo ${data.outbound.destination}`; }
     else{ document.getElementById('outboundSection').style.display='none'; }
 
-    if(data.specialServices && data.specialServices.length){ document.getElementById('ssrSection').style.display='block'; document.getElementById('ssr').innerText=data.specialServices.join('\n'); }
-    else{ document.getElementById('ssrSection').style.display='none'; }
+    // Special Services removed
 
     document.getElementById('lounge').innerHTML=data.lounge?.eligible?'<span class="yes">✅ Eligible</span>':'<span class="no">❌ Not Eligible</span>';
     document.getElementById('guest').innerHTML=data.lounge?.guest?'<span class="yes">✅ Allowed</span>':'<span class="no">❌ Not Allowed</span>';
