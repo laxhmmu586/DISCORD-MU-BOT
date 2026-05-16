@@ -179,7 +179,7 @@ app.get(
         return res.json({
 
           error:
-            'Unable to load Flight Control.log'
+            'Unable to load logs (Flight Control.log / Lake.log / Ticketing.log)'
         });
       }
 

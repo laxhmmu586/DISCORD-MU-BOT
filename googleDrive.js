@@ -55,18 +55,23 @@ async function downloadLog(fileId) {
 // ===============================
 // Get Today Log
 // ===============================
-async function getLatestFlightLog() {
+const LOG_NAMES = [
+  'Flight Control.log',
+  'Lake.log',
+  'Ticketing.log'
+];
 
-  try {
+async function downloadLogsInFolder(folderId, label) {
 
-    const folderId =
-      process.env.TODAY_FOLDER_ID;
+  const logs = [];
+
+  for (const logName of LOG_NAMES) {
 
     const res =
       await drive.files.list({
 
         q:
-          `'${folderId}' in parents and name = 'Flight Control.log' and trashed = false`,
+          `'${folderId}' in parents and name = '${logName}' and trashed = false`,
 
         fields:
           'files(id,name,modifiedTime)',
@@ -84,19 +89,40 @@ async function getLatestFlightLog() {
     if (!file) {
 
       console.log(
-        'Today log not found'
+        `${label} ${logName} not found`
       );
 
-      return null;
+      continue;
     }
 
     console.log(
-      'Using TODAY log:',
-      file.modifiedTime
+      `Using ${label} ${logName}:`,
+      file.modifiedTime || ''
     );
 
-    return await downloadLog(
-      file.id
+    const content =
+      await downloadLog(file.id);
+
+    logs.push(content);
+  }
+
+  if (!logs.length) {
+    return null;
+  }
+
+  return logs.join('\n');
+}
+
+async function getLatestFlightLog() {
+
+  try {
+
+    const folderId =
+      process.env.TODAY_FOLDER_ID;
+
+    return await downloadLogsInFolder(
+      folderId,
+      'TODAY'
     );
 
   } catch (err) {
@@ -157,41 +183,14 @@ async function getFlightLogByDate(date) {
       return null;
     }
 
-    // ===========================
-    // Find Flight Control.log
-    // ===========================
-    const fileRes =
-      await drive.files.list({
-
-        q:
-          `'${folder.id}' in parents and name = 'Flight Control.log' and trashed = false`,
-
-        fields:
-          'files(id,name)',
-
-        pageSize:
-          1
-      });
-
-    const file =
-      fileRes.data.files[0];
-
-    if (!file) {
-
-      console.log(
-        'Archive log not found'
-      );
-
-      return null;
-    }
-
     console.log(
       'Using ARCHIVE:',
       folderName
     );
 
-    return await downloadLog(
-      file.id
+    return await downloadLogsInFolder(
+      folder.id,
+      `ARCHIVE ${folderName}`
     );
 
   } catch (err) {
