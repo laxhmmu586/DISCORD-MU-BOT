@@ -145,7 +145,7 @@ async function runLookup(mode, rawQuery) {
   let query = (rawQuery || '').trim().toUpperCase();
 
   if (mode === 'FF') {
-    query = query.replace(/\s+/g, '');
+    query = query.replace(/^FF\//i, '').replace(/\s+/g, '');
   }
 
   if (mode === 'NAME') {
@@ -153,12 +153,10 @@ async function runLookup(mode, rawQuery) {
   }
   let date = null;
 
-  if (query.includes('/')) {
-    const parts = query.split('/');
-    if (parts.length === 2) {
-      query = parts[0].trim().toUpperCase();
-      date = parts[1].trim().toUpperCase();
-    }
+  const dateSuffixMatch = query.match(/^(.*)\/(\d{2}[A-Z]{3})$/i);
+  if (dateSuffixMatch) {
+    query = dateSuffixMatch[1].trim().toUpperCase();
+    date = dateSuffixMatch[2].trim().toUpperCase();
   }
 
   let log = null;
