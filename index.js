@@ -358,22 +358,37 @@ app.get(
       // =========================
       else if (
 
-        /^[A-Z]{2}\s*\d+$/i
+        /^[A-Z]{2}\d+$/i
           .test(q)
 
       ) {
 
-        const normalizedFF =
-          q.replace(/\s+/g, '');
-
         pax =
-          findByFFNumber(normalizedFF);
+          findByFFNumber(q);
 
         // PD fallback
         if (!pax) {
 
           pax =
-            findPDByFFNumber(normalizedFF);
+            findPDByFFNumber(q);
+        }
+
+        // record fallback
+        if (!pax) {
+          pax =
+            findPassengerByFFFromRecord(
+              log,
+              normalizedFF
+            );
+        }
+
+        // record fallback
+        if (!pax) {
+          pax =
+            findPassengerByFFFromRecord(
+              log,
+              normalizedFF
+            );
         }
 
         if (pax && pax.name === 'PD MEMBER') {
