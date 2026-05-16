@@ -407,6 +407,23 @@ app.get(
               normalizedFF
             );
         }
+
+        if (pax && pax.name === 'PD MEMBER') {
+          pax =
+            findPDPassengerByFFFromLog(
+              log,
+              normalizedFF
+            ) || pax;
+        }
+
+        // record fallback
+        if (!pax) {
+          pax =
+            findPassengerByFFFromRecord(
+              log,
+              normalizedFF
+            );
+        }
       }
 
       // =========================
