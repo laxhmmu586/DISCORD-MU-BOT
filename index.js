@@ -127,7 +127,10 @@ app.get(
       // =========================
       // Date Search
       // Example:
-      // 174/11MAY
+      // 230/20APR
+      // 7812545625555/20APR
+      // MU5656565/20APR
+      // 32A/20APR
       // =========================
       let date = null;
 
@@ -136,18 +139,12 @@ app.get(
         const parts =
           q.split('/');
 
-        // Avoid names
-        if (
-
-          parts.length === 2 &&
-
-          /^\d{1,3}$/.test(parts[0])
-
-        ) {
+        if (parts.length === 2) {
 
           q =
             parts[0]
-              .trim();
+              .trim()
+              .toUpperCase();
 
           date =
             parts[1]
