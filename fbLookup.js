@@ -141,6 +141,37 @@ function findPDPassengerByFFFromLog(log, query) {
 
   return null;
 }
+
+function findPassengerByFFFromRecord(log, query) {
+  const ff = query.replace(/\s+/g, '').toUpperCase();
+  const sections = log.split(/\d{4}\s+\w+\s+\d{2},.*?\d{2}:\d{2}:\d{2}/g);
+
+  for (const section of sections) {
+    const ffMatch = section.match(/FF\/([A-Z0-9]+)\s+(\d+)\/([A-Z])/i);
+    if (!ffMatch) continue;
+
+    const currentFF = `${ffMatch[1]}${ffMatch[2]}`.replace(/\s+/g, '').toUpperCase();
+    if (currentFF !== ff) continue;
+
+    const paxMatch = section.match(/\n\s*\d+\.\s+\d?([A-Z\/]+\+?)\s+(?:N\d\s+)?(?:BN(\d{1,3}))?\s*(\d+[A-Z])?/i);
+    const prMatch = section.match(/PR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
+
+    return {
+      name: (paxMatch?.[1] || 'UNKNOWN').replace(/\+$/, ''),
+      bn: (paxMatch?.[2] || '---').padStart(3, '0'),
+      seat: paxMatch?.[3] || '---',
+      cabin: getCabinFromSeat(paxMatch?.[3] || ''),
+      flight: prMatch?.[1] || '',
+      flightDate: (prMatch?.[2] || '').substring(0, 5),
+      ffCarrier: ffMatch[1],
+      ffNumber: ffMatch[2],
+      membershipStatus: getMembershipStatus(ffMatch[3]),
+      lounge: { eligible: true, guest: ffMatch[3] === 'V' }
+    };
+  }
+
+  return null;
+}
 async function runLookup(mode, rawQuery) {
   let query = (rawQuery || '').trim().toUpperCase();
 
@@ -181,6 +212,9 @@ async function runLookup(mode, rawQuery) {
     pax = findByFFNumber(query) || findPDByFFNumber(query);
     if (pax && pax.name === 'PD MEMBER') {
       pax = findPDPassengerByFFFromLog(log, query) || pax;
+    }
+    if (!pax) {
+      pax = findPassengerByFFFromRecord(log, query);
     }
   } else if (mode === 'NAME') {
     pax = findByName(query);
