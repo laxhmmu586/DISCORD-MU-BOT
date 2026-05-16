@@ -43,6 +43,51 @@ const {
 const fbLookup =
   require('./fbLookup');
 
+function findPassengerByFFFromRecord(log, query) {
+  const ff = query.replace(/\s+/g, '').toUpperCase();
+  const sections =
+    log.split(/\d{4}\s+\w+\s+\d{2},.*?\d{2}:\d{2}:\d{2}/g);
+
+  for (const section of sections) {
+
+    const ffMatch =
+      section.match(/FF\/([A-Z0-9]+)\s+(\d+)\/([A-Z])/i);
+
+    if (!ffMatch) continue;
+
+    const currentFF =
+      `${ffMatch[1]}${ffMatch[2]}`
+        .replace(/\s+/g, '')
+        .toUpperCase();
+
+    if (currentFF !== ff) continue;
+
+    const paxMatch =
+      section.match(/\n\s*\d+\.\s+\d?([A-Z\/]+\+?)\s+(?:N\d\s+)?(?:BN(\d{1,3}))?\s*(\d+[A-Z])?/i);
+
+    const prMatch =
+      section.match(/PR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
+
+    return {
+      bn: (paxMatch?.[2] || '---').padStart(3, '0'),
+      name: (paxMatch?.[1] || 'UNKNOWN').replace(/\+$/, ''),
+      seat: paxMatch?.[3] || '---',
+      cabin: /^\d+/.test(paxMatch?.[3] || '') ? 'Economy' : 'Economy',
+      flight: prMatch?.[1] || '',
+      flightDate: (prMatch?.[2] || '').substring(0, 5),
+      ffCarrier: ffMatch[1],
+      ffNumber: ffMatch[2],
+      ffTier: ffMatch[3],
+      lounge: {
+        eligible: true,
+        guest: ffMatch[3] === 'V'
+      }
+    };
+  }
+
+  return null;
+}
+
 // ===============================
 // Express
 // ===============================
@@ -115,6 +160,12 @@ app.get(
         .trim()
         .toUpperCase();
 
+      q =
+        q.replace(
+          /^FF(?:\/|\s+)/i,
+          ''
+        );
+
       if (!q) {
 
         return res.json({
@@ -179,7 +230,7 @@ app.get(
         return res.json({
 
           error:
-            'Unable to load Flight Control.log'
+            'Unable to load logs (Flight Control.log / Lake.log / Ticketing.log)'
         });
       }
 
@@ -255,6 +306,15 @@ app.get(
 
           pax =
             findPDByFFNumber(normalizedFF);
+        }
+
+        // record fallback
+        if (!pax) {
+          pax =
+            findPassengerByFFFromRecord(
+              log,
+              normalizedFF
+            );
         }
       }
 

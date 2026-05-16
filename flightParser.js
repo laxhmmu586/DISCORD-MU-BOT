@@ -265,6 +265,8 @@ function parseIncrementalLog(log) {
     // 3781640468/PVG
     // DL 659822/PVG
     // /3781277263/PVG
+    // AS 216490/CSX
+    // B6 216490/CTU
     // =========================
     const bagtags = [];
 
@@ -278,19 +280,25 @@ function parseIncrementalLog(log) {
       const line =
         bagLineMatch[1];
 
-      const bags =
-        [
-          ...line.matchAll(
-            /([A-Z]{0,2}\s?\d+\/[A-Z]{3})/gi
-          )
-        ];
+      const bags = [
+        ...line.matchAll(
+          /(?:^|\s)\/?\s*((?:[A-Z]{1,2}\s*)?\d{5,12})\s*\/\s*([A-Z]{3})\b/gi
+        )
+      ];
 
       for (const b of bags) {
 
-        bagtags.push(
-
+        const bagNumber =
           b[1]
-            .replace(/\s+/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+        const destination =
+          b[2]
+            .toUpperCase();
+
+        bagtags.push(
+          `${bagNumber}/${destination}`
         );
       }
     }
