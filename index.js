@@ -343,10 +343,10 @@ app.post('/send', async (req, res) => {
       message
     } = req.body;
 
-    if (!channelId || !message) {
+    if (!channelId) {
 
       return res.json({
-        error: 'Missing channelId or message'
+        error: 'Missing channelId'
       });
     }
 
@@ -360,7 +360,16 @@ app.post('/send', async (req, res) => {
       });
     }
 
-    await channel.send(message);
+    if (req.body.embed) {
+
+  await channel.send({
+    embeds: [req.body.embed]
+  });
+
+} else {
+
+  await channel.send(message);
+}
 
     res.json({
       success: true
