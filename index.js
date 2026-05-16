@@ -360,10 +360,11 @@ app.post('/send', async (req, res) => {
       });
     }
 
-    if (req.body.embed) {
+    if (req.body.embeds) {
 
   await channel.send({
-    embeds: [req.body.embed]
+    content: message || "",
+    embeds: req.body.embeds
   });
 
 } else {
