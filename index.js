@@ -330,27 +330,6 @@ app.get(
     }
   }
 );
-      res.json({
-
-        ...pax,
-
-        membershipStatus
-      });
-
-    }
-
-    catch (err) {
-
-      console.error(err);
-
-      res.json({
-
-        error:
-          'Search failed'
-      });
-    }
-  }
-);
 
 // ===============================
 // Send Message API
@@ -387,7 +366,9 @@ app.post('/send', async (req, res) => {
       success: true
     });
 
-  } catch (err) {
+  }
+
+  catch (err) {
 
     console.error(err);
 
@@ -396,7 +377,6 @@ app.post('/send', async (req, res) => {
     });
   }
 });
-
 // ===============================
 // Start Server
 // ===============================
