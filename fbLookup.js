@@ -441,26 +441,6 @@ module.exports = (client) => {
 
               : []),
 
-            ...(pax.specialServices?.length
-
-              ? [
-
-                  {
-
-                    name:
-                      '⚠ Special Service',
-
-                    value:
-
-                      pax.specialServices.join('\n'),
-
-                    inline: false
-                  }
-
-                ]
-
-              : []),
-
             {
 
               name:
@@ -497,7 +477,7 @@ module.exports = (client) => {
           footer: {
 
             text:
-              'MUL system'
+              'MUFTF system'
           }
         };
 
