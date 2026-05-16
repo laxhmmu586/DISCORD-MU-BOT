@@ -11,7 +11,7 @@
   >
 
   <title>
-    MUL System
+    MUFTF System
   </title>
 
   <style>
@@ -265,7 +265,7 @@
     >
 
       <div class="title">
-        MUL
+        MUFTF
       </div>
 
       <div class="subtitle">
@@ -301,7 +301,7 @@
     <div id="mainApp">
 
       <div class="title">
-        MUL
+        MUFTF
       </div>
 
       <div class="subtitle">
@@ -759,7 +759,12 @@
                 ? 'Gold'
                 : data.ffTier === 'S'
                 ? 'Silver'
-                : ''
+                : data.ffTier === 'C'
+                ? 'Regular'
+                : data.ffTier === '1'
+                ? 'Elite'
+                : data.ffTier === '2'
+                ? 'Elite Plus'
             );
         }
 
@@ -870,34 +875,6 @@
 
           document.getElementById(
             'outboundSection'
-          ).style.display =
-            'none';
-        }
-
-        // SSR
-        if (
-          data.specialServices &&
-          data.specialServices.length
-        ) {
-
-          document.getElementById(
-            'ssrSection'
-          ).style.display =
-            'block';
-
-          document.getElementById(
-            'ssr'
-          ).innerText =
-
-            data.specialServices.join(
-              '\n'
-            );
-        }
-
-        else {
-
-          document.getElementById(
-            'ssrSection'
           ).style.display =
             'none';
         }
