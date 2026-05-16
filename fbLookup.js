@@ -152,17 +152,14 @@ module.exports = (client) => {
 
       // =========================
       // Date Search
-      // FB 174/11MAY
+      // FB 174/20APR
+      // ETKD 7812.../20APR
+      // FF MU.../20APR
+      // FSN 32A/20APR
       // =========================
       let date = null;
 
-      if (
-
-        mode === 'BN' &&
-
-        query.includes('/')
-
-      ) {
+      if (query.includes('/')) {
 
         const parts =
           query.split('/');
