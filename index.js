@@ -330,7 +330,52 @@ app.get(
     }
   }
 );
+// ===============================
+// Send Message API
+// ===============================
+app.post('/send', async (req, res) => {
 
+  try {
+
+    const {
+      channelId,
+      message
+    } = req.body;
+
+    if (!channelId || !message) {
+
+      return res.json({
+        error: 'Missing channelId or message'
+      });
+    }
+
+    const channel =
+      await client.channels.fetch(channelId);
+
+    if (!channel) {
+
+      return res.json({
+        error: 'Channel not found'
+      });
+    }
+
+    await channel.send(message);
+
+    res.json({
+      success: true
+    });
+
+  }
+
+  catch (err) {
+
+    console.error(err);
+
+    res.json({
+      error: 'Send failed'
+    });
+  }
+});
 // ===============================
 // Start Server
 // ===============================
