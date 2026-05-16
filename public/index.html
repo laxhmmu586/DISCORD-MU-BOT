@@ -166,11 +166,46 @@ async function searchPassenger(){
     document.getElementById('name').innerText=data.name;
     document.getElementById('seat').innerText=`🎫 BN${data.bn} • ${data.seat} • ${data.cabin}`;
 
-    if(data.ffNumber){
-      document.getElementById('membershipSection').style.display='block';
-      document.getElementById('ff').innerText=`${data.ffCarrier} ${data.ffNumber}`;
-      document.getElementById('ffStatus').innerText=data.membershipStatus||(data.ffTier==='V'?'Platinum':data.ffTier==='G'?'Gold':data.ffTier==='S'?'Silver':'');
-    }else{ document.getElementById('membershipSection').style.display='none'; }
+    if (data.ffNumber) {
+  document.getElementById('membershipSection').style.display = 'block';
+  document.getElementById('ff').innerText = `${data.ffCarrier} ${data.ffNumber}`;
+
+  // ===============================
+  // 新会员逻辑
+  // ===============================
+  let status = '';
+  if (data.ffTier) {
+    switch (data.ffTier.toUpperCase()) {
+      case '*1':
+        status = 'Elite';
+        break;
+      case '*2':
+        status = 'Elite Plus';
+        break;
+      case 'D':
+        status = 'Diamond';
+        break;
+      case 'C':
+        status = 'Regular';
+        break;
+      case 'V':
+        status = 'Platinum';
+        break;
+      case 'G':
+        status = 'Gold';
+        break;
+      case 'S':
+        status = 'Silver';
+        break;
+      default:
+        status = '';
+    }
+  }
+
+  document.getElementById('ffStatus').innerText = status;
+} else {
+  document.getElementById('membershipSection').style.display = 'none';
+}
 
     if(data.ticketNumber){ document.getElementById('ticketSection').style.display='block'; document.getElementById('ticket').innerText=data.ticketNumber; }
     else{ document.getElementById('ticketSection').style.display='none'; }
