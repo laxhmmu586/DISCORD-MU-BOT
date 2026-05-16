@@ -179,7 +179,7 @@ app.get(
         return res.json({
 
           error:
-            'Unable to load Flight Control.log'
+            'Unable to load logs (Flight Control.log / Lake.log / Ticketing.log)'
         });
       }
 
@@ -239,22 +239,19 @@ app.get(
       // =========================
       else if (
 
-        /^[A-Z]{2}\s*\d+$/i
+        /^[A-Z]{2}\d+$/i
           .test(q)
 
       ) {
 
-        const normalizedFF =
-          q.replace(/\s+/g, '');
-
         pax =
-          findByFFNumber(normalizedFF);
+          findByFFNumber(q);
 
         // PD fallback
         if (!pax) {
 
           pax =
-            findPDByFFNumber(normalizedFF);
+            findPDByFFNumber(q);
         }
       }
 
