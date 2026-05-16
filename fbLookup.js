@@ -28,6 +28,14 @@ const {
 
 } = require('./googleDrive');
 
+function getCabinFromSeat(seat) {
+  const row = parseInt((seat || '').match(/\d+/)?.[0]);
+  if (!row) return 'Economy';
+  if (row >= 1 && row <= 2) return 'First';
+  if (row >= 6 && row <= 20) return 'Business';
+  return 'Economy';
+}
+
 function getMembershipStatus(tier) {
   if (tier === 'V') return 'Platinum';
   if (tier === 'G') return 'Gold';
@@ -78,8 +86,71 @@ function findPassengerFromPRRecord(log, mode, query) {
   };
 }
 
+
+function findPDPassengerByFFFromLog(log, query) {
+  const ff = query.replace(/\s+/g, '').toUpperCase();
+  const ffMatch = ff.match(/^([A-Z]{2})(\d+)$/);
+  if (!ffMatch) return null;
+
+  const sections = log.split(/\d{4}\s+\w+\s+\d{2},.*?\d{2}:\d{2}:\d{2}/g);
+
+  for (const section of sections) {
+    if (!section.includes('PD:')) continue;
+
+    const rows = section.split(/\r?\n/);
+    for (let i = 0; i < rows.length; i++) {
+      const line = rows[i];
+      const m = line.match(/FF\/([A-Z0-9]+)\s+(\d+)\/([A-Z])/i);
+      if (!m) continue;
+
+      const current = `${m[1]}${m[2]}`.replace(/\s+/g, '').toUpperCase();
+      if (current !== ff) continue;
+
+      let name = 'PD MEMBER';
+      let bn = '---';
+      let seat = '---';
+
+      for (let j = i - 1; j >= 0; j--) {
+        const pax = rows[j].match(/\s*\d+\.\s+\d?([A-Z\/]+\+?)\s+(?:\S+\s+)?(?:BN(\d{1,3}))?\s*(\d+[A-Z])?/i);
+        if (pax) {
+          name = pax[1]?.replace(/\+$/, '') || name;
+          if (pax[2]) bn = pax[2].padStart(3, '0');
+          if (pax[3]) seat = pax[3];
+          break;
+        }
+      }
+
+      const flightMatch = section.match(/PD:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
+
+      return {
+        pdOnly: true,
+        flight: flightMatch?.[1] || '',
+        flightDate: (flightMatch?.[2] || '').substring(0, 5),
+        name,
+        bn,
+        seat,
+        cabin: 'Elite',
+        ffCarrier: m[1],
+        ffNumber: m[2],
+        ffTier: m[3],
+        membershipStatus: getMembershipStatus(m[3]),
+        lounge: { eligible: true, guest: m[3] === 'V' }
+      };
+    }
+  }
+
+  return null;
+}
 async function runLookup(mode, rawQuery) {
   let query = (rawQuery || '').trim().toUpperCase();
+
+  if (mode === 'FF') {
+    query = query.replace(/\s+/g, '');
+  }
+
+  if (mode === 'NAME') {
+    query = query.replace(/\+$/, '');
+  }
   let date = null;
 
   if (query.includes('/')) {
@@ -110,8 +181,34 @@ async function runLookup(mode, rawQuery) {
     pax = Object.values(passengers).find(p => p.ticketNumber === query);
   } else if (mode === 'FF') {
     pax = findByFFNumber(query) || findPDByFFNumber(query);
+    if (pax && pax.name === 'PD MEMBER') {
+      pax = findPDPassengerByFFFromLog(log, query) || pax;
+    }
   } else if (mode === 'NAME') {
     pax = findByName(query);
+
+    if (!pax) {
+      const sections = log.split(/\d{4}\s+\w+\s+\d{2},.*?\d{2}:\d{2}:\d{2}/g);
+      const nameRegex = new RegExp(`\\b${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\+?\\b`, 'i');
+      for (const section of sections) {
+        if (!section.includes('PR:')) continue;
+        const line = section.split(/\r?\n/).find(r => /\d+\.\s+/.test(r) && nameRegex.test(r));
+        if (!line) continue;
+        const m = line.match(/\s*\d+\.\s+\d?([A-Z\/]+\+?)\s+(?:\S+\s+)?(?:BN(\d{1,3}))?\s*(\d+[A-Z])?/i);
+        const flightMatch = section.match(/PR:\s+([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
+        if (!m) continue;
+        pax = {
+          bn: m[2] ? m[2].padStart(3, '0') : '---',
+          name: (m[1] || query).replace(/\+$/, ''),
+          seat: m[3] || '---',
+          cabin: getCabinFromSeat(m[3] || ''),
+          flight: flightMatch?.[1] || '',
+          flightDate: (flightMatch?.[2] || '').substring(0, 5),
+          lounge: { eligible: false, guest: false }
+        };
+        break;
+      }
+    }
   }
 
   if (!pax) return { error: 'Passenger data not updated yet.' };
@@ -159,7 +256,7 @@ async function runLookup(mode, rawQuery) {
         inline: true
       }
     ],
-    footer: { text: 'MUFTF system' }
+    footer: { text: 'MUFC' }
   };
 
   return { embed };
@@ -175,12 +272,17 @@ module.exports = (client) => {
     let query = '';
     let mode = '';
 
-    if (upper.startsWith('FB ')) { mode = 'BN'; query = content.substring(3).trim(); }
-    else if (upper.startsWith('RN ')) { mode = 'NAME'; query = content.substring(3).trim(); }
-    else if (upper.startsWith('FSN ')) { mode = 'SEAT'; query = content.substring(4).trim(); }
-    else if (upper.startsWith('ETKD ')) { mode = 'TICKET'; query = content.substring(5).trim(); }
-    else if (upper.startsWith('FF ')) { mode = 'FF'; query = content.substring(3).trim(); }
-    else return;
+    const cmdMatch = upper.match(/^(FB|RN|FSN|ETKD|FF)\s*(.+)$/i);
+    if (!cmdMatch) return;
+
+    const command = cmdMatch[1].toUpperCase();
+    query = (cmdMatch[2] || '').trim();
+
+    if (command === 'FB') mode = 'BN';
+    else if (command === 'RN') mode = 'NAME';
+    else if (command === 'FSN') mode = 'SEAT';
+    else if (command === 'ETKD') mode = 'TICKET';
+    else if (command === 'FF') mode = 'FF';
 
     try {
       const result = await runLookup(mode, query);
