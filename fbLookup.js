@@ -40,7 +40,6 @@ module.exports = (client) => {
       else if (pax.ffTier === 'C') membershipStatus = 'Regular';
       else if (pax.ffTier === '*1') membershipStatus = 'Elite';
       else if (pax.ffTier === '*2') membershipStatus = 'Elite Plus';
-      else if (pax.ffTier === '*1') membershipStatus = 'Elite';
       else if (pax.ffTier === 'D') membershipStatus = 'Diamond';
 
       // Discord Embed
