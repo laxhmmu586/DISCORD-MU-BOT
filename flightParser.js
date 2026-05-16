@@ -19,8 +19,7 @@ function getClassFromSeat(seat) {
 // Parse Flight Log
 // ===============================
 function parseIncrementalLog(log) {
-  // 清空上次数据
-  Object.keys(passengers).forEach(k => delete passengers[k]);
+  clearPassengers(); // 每次解析前清空
 
   // 按每个旅客 record 分割
   const records = log.split(/(?=^\d+\.)/gm);
@@ -61,6 +60,13 @@ function parseIncrementalLog(log) {
 }
 
 // ===============================
+// 清空 passengers
+// ===============================
+function clearPassengers() {
+  Object.keys(passengers).forEach(k => delete passengers[k]);
+}
+
+// ===============================
 // Find Functions
 // ===============================
 function findBySeat(seat) {
@@ -85,5 +91,6 @@ module.exports = {
   parseIncrementalLog,
   findBySeat,
   findByName,
-  findByFFNumber
+  findByFFNumber,
+  clearPassengers
 };
