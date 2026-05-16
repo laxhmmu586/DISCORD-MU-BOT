@@ -156,7 +156,51 @@ async function getFlightLogByDate(date) {
 
       return null;
     }
+    // ===========================
+// Find Flight Control.log
+// ===========================
+const fileRes =
+  await drive.files.list({
 
+    q:
+      `'${folder.id}' in parents and name = 'Flight Control.log' and trashed = false`,
+
+    fields:
+      'files(id,name)',
+
+    pageSize:
+      1
+  });
+
+const file =
+  fileRes.data.files[0];
+
+if (!file) {
+
+  console.log(
+    'Flight Control.log not found'
+  );
+
+  return null;
+}
+
+// ===========================
+// Download Log
+// ===========================
+const response =
+  await drive.files.get(
+
+    {
+      fileId: file.id,
+      alt: 'media'
+    },
+
+    {
+      responseType: 'text'
+    }
+  );
+
+return response.data;
     // ===========================
     // Find Flight Control.log
     // ===========================
