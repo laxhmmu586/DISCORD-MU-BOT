@@ -239,19 +239,22 @@ app.get(
       // =========================
       else if (
 
-        /^[A-Z]{2}\d+$/i
+        /^[A-Z]{2}\s*\d+$/i
           .test(q)
 
       ) {
 
+        const normalizedFF =
+          q.replace(/\s+/g, '');
+
         pax =
-          findByFFNumber(q);
+          findByFFNumber(normalizedFF);
 
         // PD fallback
         if (!pax) {
 
           pax =
-            findPDByFFNumber(q);
+            findPDByFFNumber(normalizedFF);
         }
       }
 
