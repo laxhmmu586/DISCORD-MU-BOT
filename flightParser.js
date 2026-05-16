@@ -149,6 +149,7 @@ function parseIncrementalLog(log) {
 
     // =========================
     // Skip Invalid
+    // PSGR ID means no valid passenger in this record
     // =========================
     if (
       section.includes('PSGR ID')
