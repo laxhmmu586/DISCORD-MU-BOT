@@ -4,114 +4,203 @@ const { google } = require('googleapis');
 // Google Auth
 // ===============================
 const auth = new google.auth.GoogleAuth({
+
   credentials: {
-    client_email: process.env.GOOGLE_CLIENT_EMAIL,
-    private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n')
+
+    client_email:
+      process.env.GOOGLE_CLIENT_EMAIL,
+
+    private_key:
+      process.env.GOOGLE_PRIVATE_KEY
+        ?.replace(/\\n/g, '\n')
   },
-  scopes: ['https://www.googleapis.com/auth/drive.readonly']
+
+  scopes: [
+
+    'https://www.googleapis.com/auth/drive.readonly'
+  ]
 });
 
 // ===============================
-// Google Drive Client
+// Drive Client
 // ===============================
-const drive = google.drive({
-  version: 'v3',
-  auth
-});
+const drive =
+  google.drive({
+
+    version: 'v3',
+
+    auth
+  });
 
 // ===============================
-// Download File Content
+// Download File
 // ===============================
 async function downloadLog(fileId) {
-  const response = await drive.files.get(
-    { fileId, alt: 'media' },
-    { responseType: 'text' }
-  );
+
+  const response =
+    await drive.files.get({
+
+      fileId,
+
+      alt: 'media'
+
+    }, {
+
+      responseType: 'text'
+    });
+
   return response.data;
 }
 
 // ===============================
-// Get Today Flight Control.log
+// Get Today Log
 // ===============================
 async function getLatestFlightLog() {
+
   try {
-    const folderId = process.env.TODAY_FOLDER_ID;
 
-    const res = await drive.files.list({
-      q: `'${folderId}' in parents and name = 'Flight Control.log' and trashed = false`,
-      fields: 'files(id,name,modifiedTime)',
-      orderBy: 'modifiedTime desc',
-      pageSize: 1
-    });
+    const folderId =
+      process.env.TODAY_FOLDER_ID;
 
-    const file = res.data.files[0];
+    const res =
+      await drive.files.list({
+
+        q:
+          `'${folderId}' in parents and name = 'Flight Control.log' and trashed = false`,
+
+        fields:
+          'files(id,name,modifiedTime)',
+
+        orderBy:
+          'modifiedTime desc',
+
+        pageSize:
+          1
+      });
+
+    const file =
+      res.data.files[0];
+
     if (!file) {
-      console.log('Today log not found');
+
+      console.log(
+        'Today log not found'
+      );
+
       return null;
     }
 
-    console.log('Using TODAY log:', file.name, file.modifiedTime);
-    return await downloadLog(file.id);
+    console.log(
+      'Using TODAY log:',
+      file.modifiedTime
+    );
+
+    return await downloadLog(
+      file.id
+    );
+
   } catch (err) {
-    console.error('Today Log Error:', err);
+
+    console.error(
+      'Today Log Error:',
+      err
+    );
+
     return null;
   }
 }
 
 // ===============================
-// Get Historical Flight Control.log
-// dateInput examples: '20APR' or '20APR27'
+// Get Archive Log
+// Example:
+// 11MAY
 // ===============================
-async function getFlightLogByDate(dateInput) {
+async function getFlightLogByDate(date) {
+
   try {
-    const archiveRoot = process.env.ARCHIVE_FOLDER_ID;
+
+    const archiveRoot =
+      process.env.ARCHIVE_FOLDER_ID;
 
     // ===========================
-    // Folder query
+    // Folder Name
     // ===========================
-    let folderQuery = '';
-    if (/\d{1,2}[A-Z]{3}\d{2}$/.test(dateInput)) {
-      // 精确年份匹配
-      folderQuery = `name = 'MU586 ${dateInput}'`;
-    } else {
-      // 不固定年份，只要包含日期
-      folderQuery = `name contains 'MU586 ${dateInput}'`;
-    }
+    const folderName =
+      `MU586 ${date}26`;
 
     // ===========================
-    // Find Archive Folder
+    // Find Date Folder
     // ===========================
-    const folderRes = await drive.files.list({
-      q: `'${archiveRoot}' in parents and ${folderQuery} and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
-      fields: 'files(id,name)',
-      pageSize: 1
-    });
+    const folderRes =
+      await drive.files.list({
 
-    const folder = folderRes.data.files[0];
+        q:
+          `'${archiveRoot}' in parents and name = '${folderName}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
+
+        fields:
+          'files(id,name)',
+
+        pageSize:
+          1
+      });
+
+    const folder =
+      folderRes.data.files[0];
+
     if (!folder) {
-      console.log('Archive folder not found for:', dateInput);
+
+      console.log(
+        'Archive folder not found:',
+        folderName
+      );
+
       return null;
     }
 
     // ===========================
-    // Find Flight Control.log in Folder
+    // Find Flight Control.log
     // ===========================
-    const fileRes = await drive.files.list({
-      q: `'${folder.id}' in parents and name = 'Flight Control.log' and trashed = false`,
-      fields: 'files(id,name)',
-      pageSize: 1
-    });
+    const fileRes =
+      await drive.files.list({
 
-    const file = fileRes.data.files[0];
+        q:
+          `'${folder.id}' in parents and name = 'Flight Control.log' and trashed = false`,
+
+        fields:
+          'files(id,name)',
+
+        pageSize:
+          1
+      });
+
+    const file =
+      fileRes.data.files[0];
+
     if (!file) {
-      console.log('Archive log not found in folder:', folder.name);
+
+      console.log(
+        'Archive log not found'
+      );
+
       return null;
     }
 
-    console.log('Using ARCHIVE log:', folder.name);
-    return await downloadLog(file.id);
+    console.log(
+      'Using ARCHIVE:',
+      folderName
+    );
+
+    return await downloadLog(
+      file.id
+    );
+
   } catch (err) {
-    console.error('Archive Error:', err);
+
+    console.error(
+      'Archive Error:',
+      err
+    );
+
     return null;
   }
 }
@@ -120,6 +209,8 @@ async function getFlightLogByDate(dateInput) {
 // Exports
 // ===============================
 module.exports = {
+
   getLatestFlightLog,
+
   getFlightLogByDate
 };

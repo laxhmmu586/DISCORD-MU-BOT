@@ -1,91 +1,524 @@
-// fbLookup.js
-const { passengers, findBySeat, findByName, findByFFNumber } = require('./flightParser');
-const { EmbedBuilder } = require('discord.js');
+const {
 
+  passengers,
+
+  findBySeat,
+
+  findByName,
+
+  findByFFNumber,
+
+  parseIncrementalLog
+
+} = require('./flightParser');
+
+const {
+
+  parsePDLog,
+
+  findPDByFFNumber
+
+} = require('./pdParser');
+
+const {
+
+  getLatestFlightLog,
+
+  getFlightLogByDate
+
+} = require('./googleDrive');
+
+// ===============================
+// Membership Status
+// ===============================
+function getMembershipStatus(tier) {
+
+  if (tier === 'V') {
+    return 'Platinum';
+  }
+
+  if (tier === 'G') {
+    return 'Gold';
+  }
+
+  if (tier === 'S') {
+    return 'Silver';
+  }
+
+  return '';
+}
+
+// ===============================
+// FB Lookup Command
+// ===============================
 module.exports = (client) => {
-  client.on('messageCreate', async (message) => {
-    try {
-      if (message.author.bot) return;
 
-      const content = message.content.trim();
-      const fbMatch = content.match(/^fb\s+(.+)/i);
-      if (!fbMatch) return;
+  client.on(
 
-      const query = fbMatch[1].trim().toUpperCase();
-      let pax = null;
+    'messageCreate',
 
-      // =========================
-      // 查询逻辑：支持 BN / Seat / Name / Ticket / FF
-      // =========================
-      if (/^\d{1,3}$/.test(query)) {
-        const bn = query.padStart(3, '0');
-        pax = passengers[bn];
-      } else if (/^\d+[A-Z]$/i.test(query)) {
-        pax = findBySeat(query);
-      } else if (/^ETKD\s+/.test(query)) {
-        const ticket = query.replace(/^ETKD\s+/i, '').trim();
-        pax = Object.values(passengers).find(p => p.ticketNumber === ticket);
-      } else if (/^FF\s+/.test(query)) {
-        const ff = query.replace(/^FF\s+/i, '').trim();
-        pax = findByFFNumber(ff);
-      } else {
-        pax = findByName(query);
+    async (message) => {
+
+      // Ignore Bots
+      if (message.author.bot) {
+        return;
       }
 
-      if (!pax) {
-        console.log('Passenger not found for query:', query);
-        console.log('Available BNs:', Object.keys(passengers));
-        return message.channel.send('Passenger data not updated yet.');
+      const content =
+        message.content
+          .trim();
+
+      const upper =
+        content.toUpperCase();
+
+      let query = '';
+      let mode = '';
+
+      // =========================
+      // FB 174
+      // =========================
+      if (upper.startsWith('FB ')) {
+
+        mode = 'BN';
+
+        query =
+          content
+            .substring(3)
+            .trim();
       }
 
       // =========================
-      // Membership Status
+      // RN NAME
       // =========================
-      let membershipStatus = '';
+      else if (upper.startsWith('RN ')) {
+
+        mode = 'NAME';
+
+        query =
+          content
+            .substring(3)
+            .trim();
+      }
+
+      // =========================
+      // FSN SEAT
+      // =========================
+      else if (upper.startsWith('FSN ')) {
+
+        mode = 'SEAT';
+
+        query =
+          content
+            .substring(4)
+            .trim();
+      }
+
+      // =========================
+      // ETKD TICKET
+      // =========================
+      else if (upper.startsWith('ETKD ')) {
+
+        mode = 'TICKET';
+
+        query =
+          content
+            .substring(5)
+            .trim();
+      }
+
+      // =========================
+      // FF NUMBER
+      // =========================
+      else if (upper.startsWith('FF ')) {
+
+        mode = 'FF';
+
+        query =
+          content
+            .substring(3)
+            .trim();
+      }
+
+      // =========================
+      // Invalid
+      // =========================
+      else {
+
+        return;
+      }
+
+      query =
+        query.toUpperCase();
+
+      // =========================
+      // Date Search
+      // Example:
+      // FB 174/11MAY
+      // =========================
+      let date = null;
+
+      if (query.includes('/')) {
+
+        const parts =
+          query.split('/');
+
+        if (
+
+          parts.length === 2 &&
+
+          mode === 'BN'
+
+        ) {
+
+          query =
+            parts[0]
+              .trim();
+
+          date =
+            parts[1]
+              .trim()
+              .toUpperCase();
+        }
+      }
+
       try {
-        if (pax.ffTier === 'V') membershipStatus = 'Platinum';
-        else if (pax.ffTier === 'G') membershipStatus = 'Gold';
-        else if (pax.ffTier === 'S') membershipStatus = 'Silver';
-        else if (pax.ffTier === 'C') membershipStatus = 'Regular';
-        else if (pax.ffTier === 'D') membershipStatus = 'Diamond';
-        else if (pax.membershipNumber) {
-          // 解析格式 FF/XXXX/L/*N
-          const tierMatch = pax.membershipNumber.match(/\/([A-Z])\/\*?(\d)/i);
-          if (tierMatch) {
-            const letter = tierMatch[1].toUpperCase();
-            const num = tierMatch[2];
-            if (num === '1') membershipStatus = 'Elite';
-            else if (num === '2') membershipStatus = 'Elite Plus';
-            else if (letter === 'D') membershipStatus = 'Diamond';
-            else if (letter === 'C') membershipStatus = 'Regular';
+
+        // =====================
+        // Load Log
+        // =====================
+        let log = null;
+
+        // Archive
+        if (date) {
+
+          log =
+            await getFlightLogByDate(
+              date
+            );
+        }
+
+        // Today
+        else {
+
+          log =
+            await getLatestFlightLog();
+        }
+
+        if (!log) {
+
+          await message.reply(
+            'Unable to load Flight Control.log'
+          );
+
+          return;
+        }
+
+        // =====================
+        // Parse Logs
+        // =====================
+        parseIncrementalLog(log);
+
+        parsePDLog(log);
+
+        let pax = null;
+
+        // =====================
+        // BN Search
+        // =====================
+        if (mode === 'BN') {
+
+          const bn =
+            query.padStart(3, '0');
+
+          pax =
+            passengers[bn];
+        }
+
+        // =====================
+        // Seat Search
+        // =====================
+        else if (mode === 'SEAT') {
+
+          pax =
+            findBySeat(query);
+        }
+
+        // =====================
+        // Ticket Search
+        // =====================
+        else if (mode === 'TICKET') {
+
+          pax =
+            Object.values(passengers)
+              .find(p => {
+
+                return (
+                  p.ticketNumber === query
+                );
+              });
+        }
+
+        // =====================
+        // FF Search
+        // =====================
+        else if (mode === 'FF') {
+
+          pax =
+            findByFFNumber(query);
+
+          // PD fallback
+          if (!pax) {
+
+            pax =
+              findPDByFFNumber(
+                query
+              );
           }
         }
-      } catch (err) {
-        console.error('Membership parse error:', err, pax.membershipNumber);
+
+        // =====================
+        // Name Search
+        // =====================
+        else if (mode === 'NAME') {
+
+          pax =
+            findByName(query);
+        }
+
+        // =====================
+        // Not Found
+        // =====================
+        if (!pax) {
+
+          await message.reply(
+            'Passenger data not updated yet.'
+          );
+
+          return;
+        }
+
+        // =====================
+        // Membership Status
+        // =====================
+        const membershipStatus =
+
+          pax.membershipStatus ||
+
+          getMembershipStatus(
+            pax.ffTier
+          );
+
+        // =====================
+        // Embed
+        // =====================
+        const embed = {
+
+          color: 0xf59e0b,
+
+          title:
+            `✈️ ${pax.flight}/${pax.flightDate}`,
+
+          description:
+
+            `👤 ${pax.name}\n\n` +
+
+            `🎫 BN${pax.bn} • ${pax.seat} • ${pax.cabin}`,
+
+          fields: [
+
+            ...(pax.ffNumber
+
+              ? [
+
+                  {
+
+                    name:
+                      '💳 Membership',
+
+                    value:
+
+                      `${pax.ffCarrier} ${pax.ffNumber}` +
+
+                      (
+                        membershipStatus
+                          ? `\n${membershipStatus}`
+                          : ''
+                      ),
+
+                    inline: true
+                  }
+
+                ]
+
+              : []),
+
+            ...(pax.ticketNumber
+
+              ? [
+
+                  {
+
+                    name:
+                      '🎟 Ticket',
+
+                    value:
+                      pax.ticketNumber,
+
+                    inline: true
+                  }
+
+                ]
+
+              : []),
+
+            ...(pax.bagtags?.length
+
+              ? [
+
+                  {
+
+                    name:
+                      '🧳 Bags',
+
+                    value:
+
+                      pax.bagtags.join('\n'),
+
+                    inline: false
+                  }
+
+                ]
+
+              : []),
+
+            ...(pax.inbound
+
+              ? [
+
+                  {
+
+                    name:
+                      '⬅ Inbound',
+
+                    value:
+
+                      `${pax.inbound.flight}/${pax.inbound.date}\nFrom ${pax.inbound.origin}`,
+
+                    inline: true
+                  }
+
+                ]
+
+              : []),
+
+            ...(pax.outbound
+
+              ? [
+
+                  {
+
+                    name:
+                      '➡ Outbound',
+
+                    value:
+
+                      `${pax.outbound.flight}/${pax.outbound.date}` +
+
+                      (pax.outbound.bn
+                        ? ` • BN${pax.outbound.bn}`
+                        : '') +
+
+                      (pax.outbound.seat
+                        ? ` • ${pax.outbound.seat}`
+                        : '') +
+
+                      `\nTo ${pax.outbound.destination}`,
+
+                    inline: true
+                  }
+
+                ]
+
+              : []),
+
+            ...(pax.specialServices?.length
+
+              ? [
+
+                  {
+
+                    name:
+                      '⚠ Special Service',
+
+                    value:
+
+                      pax.specialServices.join('\n'),
+
+                    inline: false
+                  }
+
+                ]
+
+              : []),
+
+            {
+
+              name:
+                '🛋 Lounge Access',
+
+              value:
+
+                pax.lounge?.eligible
+
+                  ? '✅ Eligible'
+
+                  : '❌ Not Eligible',
+
+              inline: true
+            },
+
+            {
+
+              name:
+                '👥 Lounge Guest',
+
+              value:
+
+                pax.lounge?.guest
+
+                  ? '✅ Allowed'
+
+                  : '❌ Not Allowed',
+
+              inline: true
+            }
+          ],
+
+          footer: {
+
+            text:
+              'MUL system'
+          }
+        };
+
+        // =====================
+        // Send Embed
+        // =====================
+        await message.reply({
+
+          embeds: [embed]
+        });
+
       }
 
-      // =========================
-      // Discord Embed
-      // =========================
-      const embed = new EmbedBuilder()
-        .setColor('#1E90FF')
-        .setTitle(`✈️ ${pax.flightNumber || pax.flight}/${pax.flightDate}`)
-        .setDescription(`👤 ${pax.name}`)
-        .addFields(
-          { name: '🎫 BN/Seat/Class', value: `${pax.bn} • ${pax.seat} • ${pax.class}`, inline: true },
-          { name: '🎟 Membership', value: pax.membershipNumber ? `${pax.membershipNumber} • ${membershipStatus || ''}` : 'N/A', inline: true },
-          { name: '🎫 Ticket', value: pax.ticketNumber || 'N/A', inline: true },
-          { name: '🧳 Bags', value: pax.bags.length ? pax.bags.join('\n') : 'None', inline: true },
-          { name: '🛋 Lounge Access', value: pax.loungeAccess ? '✅ Eligible' : '❌ Not Allowed', inline: true },
-          { name: '👥 Guest Access', value: pax.guestAccess ? '✅ Allowed' : '❌ Not Allowed', inline: true }
-        )
-        .setFooter({ text: 'MUFTF System' });
+      catch (err) {
 
-      await message.channel.send({ embeds: [embed] });
+        console.error(err);
 
-    } catch (err) {
-      console.error('Error processing passenger info:', err);
-      message.channel.send('Error processing passenger info.');
+        await message.reply(
+          'Lookup failed.'
+        );
+      }
     }
-  });
+  );
 };
