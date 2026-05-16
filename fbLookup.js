@@ -49,6 +49,83 @@ function getMembershipStatus(tier) {
 }
 
 // ===============================
+// Fallback Search by PR Record
+// ===============================
+function findPassengerFromPRRecord(log, mode, query) {
+
+  const sections =
+    log.split(
+      /\d{4}\s+\w+\s+\d{2},.*?\d{2}:\d{2}:\d{2}/g
+    );
+
+  const normalizedBN =
+    query.padStart(3, '0');
+
+  const normalizedSeat =
+    query.toUpperCase();
+
+  const targetSection =
+    sections.find(section => {
+
+      const prLine =
+        section.match(/PR:\s+[^\n\r]+/i)?.[0] || '';
+
+      if (mode === 'BN') {
+        return new RegExp(
+          `,BN0*${normalizedBN}\\b`,
+          'i'
+        ).test(prLine);
+      }
+
+      if (mode === 'SEAT') {
+        return new RegExp(
+          `,SN\\s*${normalizedSeat}\\b`,
+          'i'
+        ).test(prLine);
+      }
+
+      return false;
+    });
+
+  if (!targetSection) {
+    return null;
+  }
+
+  const bnMatch =
+    targetSection.match(/\bBN(\d{1,3})\b/i);
+
+  const pax =
+    targetSection.match(
+      /\d+\.\s+([A-Z\/]+).*?BN(\d{1,3}).*?(\d+[A-Z])?/i
+    );
+
+  const flightMatch =
+    targetSection.match(
+      /PR:\s+([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i
+    );
+
+  if (!bnMatch && !pax) {
+    return null;
+  }
+
+  return {
+    bn:
+      (pax?.[2] || bnMatch?.[1] || '')
+        .padStart(3, '0'),
+    name:
+      pax?.[1] || 'UNKNOWN',
+    seat:
+      pax?.[3] || '---',
+    cabin: 'Economy',
+    flight:
+      flightMatch?.[1] || '',
+    flightDate:
+      (flightMatch?.[2] || '').substring(0, 5),
+    membershipStatus: ''
+  };
+}
+
+// ===============================
 // FB Lookup Command
 // ===============================
 module.exports = (client) => {
@@ -152,17 +229,14 @@ module.exports = (client) => {
 
       // =========================
       // Date Search
-      // FB 174/11MAY
+      // FB 174/20APR
+      // ETKD 7812.../20APR
+      // FF MU.../20APR
+      // FSN 32A/20APR
       // =========================
       let date = null;
 
-      if (
-
-        mode === 'BN' &&
-
-        query.includes('/')
-
-      ) {
+      if (query.includes('/')) {
 
         const parts =
           query.split('/');
@@ -232,6 +306,15 @@ module.exports = (client) => {
 
           pax =
             passengers[bn];
+
+          if (!pax) {
+            pax =
+              findPassengerFromPRRecord(
+                log,
+                mode,
+                query
+              );
+          }
         }
 
         // =====================
@@ -241,6 +324,15 @@ module.exports = (client) => {
 
           pax =
             findBySeat(query);
+
+          if (!pax) {
+            pax =
+              findPassengerFromPRRecord(
+                log,
+                mode,
+                query
+              );
+          }
         }
 
         // =====================
