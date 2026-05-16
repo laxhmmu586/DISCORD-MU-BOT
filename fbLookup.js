@@ -1,6 +1,6 @@
-const { runLookup, buildEmbed } = require('./lookupService');
+const {
 
-const { runLookup, buildEmbed } = require('./lookupService');
+  passengers,
 
   findBySeat,
 
@@ -119,9 +119,6 @@ function findPDPassengerByFFFromLog(log, query) {
           break;
         }
       }
-    ],
-    footer: { text: 'MUFC' }
-  };
 
       const flightMatch = section.match(/PD:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
 
@@ -145,56 +142,43 @@ function findPDPassengerByFFFromLog(log, query) {
   return null;
 }
 
-function findPassengerByPRIndex(log, query) {
-  const normalized = (query || '').trim().toUpperCase();
-  const m = normalized.match(/^(\d{1,3})$/);
-  if (!m) return null;
-
-  const idx = parseInt(m[1], 10);
-  if (!idx) return null;
-
+function findPassengerByFFFromRecord(log, query) {
+  const ff = query.replace(/\s+/g, '').toUpperCase();
   const sections = log.split(/\d{4}\s+\w+\s+\d{2},.*?\d{2}:\d{2}:\d{2}/g);
 
   for (const section of sections) {
-    if (!section.includes('PR:')) continue;
+    const ffMatch = section.match(/FF\/([A-Z0-9]+)\s+(\d+)\/([A-Z])/i);
+    if (!ffMatch) continue;
 
-    const rows = section.split(/\r?\n/);
-    const paxLine = rows.find(r => new RegExp(`^\s*${idx}\.\s+`, 'i').test(r));
-    if (!paxLine) continue;
+    const currentFF = `${ffMatch[1]}${ffMatch[2]}`.replace(/\s+/g, '').toUpperCase();
+    if (currentFF !== ff) continue;
 
-    const pm = paxLine.match(/\s*\d+\.\s+\d?([A-Z\/]+\+?)\s+(?:\S+\s+)?(?:BN(\d{1,3}))?\s*(\d+[A-Z])?/i);
-    if (!pm) continue;
-
-    const flightMatch = section.match(/PR:\s+([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
-
-    let ffCarrier = null; let ffNumber = null; let ffTier = null;
-    const start = rows.indexOf(paxLine);
-    for (let i = start + 1; i < Math.min(start + 8, rows.length); i++) {
-      const fm = rows[i].match(/FF\/([A-Z0-9]+)\s+(\d+)\/([A-Z])/i);
-      if (fm) { ffCarrier = fm[1]; ffNumber = fm[2]; ffTier = fm[3]; break; }
-      if (/^\s*\d+\.\s+/.test(rows[i])) break;
-    }
+    const paxMatch = section.match(/\n\s*\d+\.\s+\d?([A-Z\/]+\+?)\s+(?:N\d\s+)?(?:BN(\d{1,3}))?\s*(\d+[A-Z])?/i);
+    const prMatch = section.match(/PR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
 
     return {
-      bn: pm[2] ? pm[2].padStart(3, '0') : '---',
-      name: (pm[1] || '').replace(/\+$/, ''),
-      seat: pm[3] || '---',
-      cabin: getCabinFromSeat(pm[3] || ''),
-      flight: flightMatch?.[1] || '',
-      flightDate: (flightMatch?.[2] || '').substring(0, 5),
-      ffCarrier, ffNumber, ffTier,
-      lounge: { eligible: false, guest: false }
+      name: (paxMatch?.[1] || 'UNKNOWN').replace(/\+$/, ''),
+      bn: (paxMatch?.[2] || '---').padStart(3, '0'),
+      seat: paxMatch?.[3] || '---',
+      cabin: getCabinFromSeat(paxMatch?.[3] || ''),
+      flight: prMatch?.[1] || '',
+      flightDate: (prMatch?.[2] || '').substring(0, 5),
+      ffCarrier: ffMatch[1],
+      ffNumber: ffMatch[2],
+      membershipStatus: getMembershipStatus(ffMatch[3]),
+      lounge: { eligible: true, guest: ffMatch[3] === 'V' }
     };
   }
 
   return null;
 }
-
 async function runLookup(mode, rawQuery) {
   let query = (rawQuery || '').trim().toUpperCase();
 
   if (mode === 'FF') {
-    query = query.replace(/^FF\//i, '').replace(/\s+/g, '').replace(/^(MU)\/(\d+)$/i, '$1$2');
+    query = query
+      .replace(/^FF(?:\/|\s+)/i, '')
+      .replace(/\s+/g, '');
   }
 
   if (mode === 'NAME') {
@@ -212,7 +196,7 @@ async function runLookup(mode, rawQuery) {
   if (date) log = await getFlightLogByDate(date);
   else log = await getLatestFlightLog();
 
-  if (!log) return { error: 'Unable to load Flight Control.log' };
+  if (!log) return { error: 'Unable to load logs (Flight Control.log / Lake.log / Ticketing.log)' };
 
   parseIncrementalLog(log);
   parsePDLog(log);
@@ -231,8 +215,9 @@ async function runLookup(mode, rawQuery) {
     if (pax && pax.name === 'PD MEMBER') {
       pax = findPDPassengerByFFFromLog(log, query) || pax;
     }
-  } else if (mode === 'PR') {
-    pax = findPassengerByPRIndex(log, query);
+    if (!pax) {
+      pax = findPassengerByFFFromRecord(log, query);
+    }
   } else if (mode === 'NAME') {
     pax = findByName(query);
 
@@ -321,13 +306,10 @@ module.exports = (client) => {
     let query = '';
     let mode = '';
 
-    const cmdMatch = upper.match(/^(FB|RN|FSN|ETKD|FF|PR)\s*(.+)$/i);
+    const cmdMatch = upper.match(/^(FB|RN|FSN|ETKD|FF)\s*(.+)$/i);
     if (!cmdMatch) return;
 
     const command = cmdMatch[1].toUpperCase();
-    const query = (cmdMatch[2] || '').trim();
-
-    let mode = '';
     query = (cmdMatch[2] || '').trim();
 
     if (command === 'FB') mode = 'BN';
@@ -335,12 +317,10 @@ module.exports = (client) => {
     else if (command === 'FSN') mode = 'SEAT';
     else if (command === 'ETKD') mode = 'TICKET';
     else if (command === 'FF') mode = 'FF';
-    else if (command === 'PR') mode = 'PR';
 
     try {
       const result = await runLookup(mode, query);
       if (result.error) return message.reply(result.error);
-      return message.reply({ embeds: [buildEmbed(result.pax, result.membershipStatus)] });
       return message.reply({ embeds: [result.embed] });
     } catch (err) {
       console.error(err);
@@ -351,15 +331,12 @@ module.exports = (client) => {
   client.on('interactionCreate', async (interaction) => {
     if (!interaction.isChatInputCommand()) return;
 
-    const commandMap = { fb: 'BN', rn: 'NAME', fsn: 'SEAT', etkd: 'TICKET', ff: 'FF', pr: 'PR' };
-
     const commandMap = {
       fb: 'BN',
       rn: 'NAME',
       fsn: 'SEAT',
       etkd: 'TICKET',
-      ff: 'FF',
-      pr: 'PR'
+      ff: 'FF'
     };
 
     const mode = commandMap[interaction.commandName.toLowerCase()];
@@ -369,8 +346,6 @@ module.exports = (client) => {
 
     try {
       const result = await runLookup(mode, query);
-      if (result.error) return interaction.reply({ content: result.error, ephemeral: true });
-      return interaction.reply({ embeds: [buildEmbed(result.pax, result.membershipStatus)], ephemeral: true });
       if (result.error) {
         return interaction.reply({ content: result.error, ephemeral: true });
       }
