@@ -1,4 +1,4 @@
-const {
+const { runLookup, buildEmbed } = require('./lookupService');
 
   passengers,
 
@@ -325,6 +325,9 @@ module.exports = (client) => {
     if (!cmdMatch) return;
 
     const command = cmdMatch[1].toUpperCase();
+    const query = (cmdMatch[2] || '').trim();
+
+    let mode = '';
     query = (cmdMatch[2] || '').trim();
 
     if (command === 'FB') mode = 'BN';
@@ -337,6 +340,7 @@ module.exports = (client) => {
     try {
       const result = await runLookup(mode, query);
       if (result.error) return message.reply(result.error);
+      return message.reply({ embeds: [buildEmbed(result.pax, result.membershipStatus)] });
       return message.reply({ embeds: [result.embed] });
     } catch (err) {
       console.error(err);
@@ -346,6 +350,8 @@ module.exports = (client) => {
 
   client.on('interactionCreate', async (interaction) => {
     if (!interaction.isChatInputCommand()) return;
+
+    const commandMap = { fb: 'BN', rn: 'NAME', fsn: 'SEAT', etkd: 'TICKET', ff: 'FF', pr: 'PR' };
 
     const commandMap = {
       fb: 'BN',
@@ -363,6 +369,8 @@ module.exports = (client) => {
 
     try {
       const result = await runLookup(mode, query);
+      if (result.error) return interaction.reply({ content: result.error, ephemeral: true });
+      return interaction.reply({ embeds: [buildEmbed(result.pax, result.membershipStatus)], ephemeral: true });
       if (result.error) {
         return interaction.reply({ content: result.error, ephemeral: true });
       }
