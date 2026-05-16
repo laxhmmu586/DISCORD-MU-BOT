@@ -140,7 +140,7 @@ function parseIncrementalLog(log) {
     // =========================
     const fbMatch =
       section.match(
-        />FB\s+(\d{1,3})/i
+        /(?:^|\s)>?FB\s+(\d{1,3})/i
       );
 
     if (!fbMatch) {
