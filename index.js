@@ -160,6 +160,12 @@ app.get(
         .trim()
         .toUpperCase();
 
+      q =
+        q.replace(
+          /^FF(?:\/|\s+)/i,
+          ''
+        );
+
       if (!q) {
 
         return res.json({
@@ -297,6 +303,15 @@ app.get(
 
           pax =
             findPDByFFNumber(q);
+        }
+
+        // record fallback
+        if (!pax) {
+          pax =
+            findPassengerByFFFromRecord(
+              log,
+              normalizedFF
+            );
         }
 
         // record fallback

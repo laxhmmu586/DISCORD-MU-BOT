@@ -176,7 +176,9 @@ async function runLookup(mode, rawQuery) {
   let query = (rawQuery || '').trim().toUpperCase();
 
   if (mode === 'FF') {
-    query = query.replace(/^FF\//i, '').replace(/\s+/g, '');
+    query = query
+      .replace(/^FF(?:\/|\s+)/i, '')
+      .replace(/\s+/g, '');
   }
 
   if (mode === 'NAME') {
