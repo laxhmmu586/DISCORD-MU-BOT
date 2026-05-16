@@ -6,12 +6,14 @@ const {
   parseIncrementalLog,
   findBySeat,
   findByName,
-  findByFFNumber
+  findByFFNumber,
+  clearPassengers
 } = require('./flightParser');
 
 const {
   parsePDLog,
-  findPDByFFNumber
+  findPDByFFNumber,
+  clearPD
 } = require('./pdParser');
 
 const {
@@ -70,16 +72,22 @@ app.get('/search', async (req, res) => {
     }
 
     // =========================
-    // Load Flight Log
+    // Load Flight Log: today or archive
     // =========================
     let log = null;
-    if (date) log = await getFlightLogByDate(date); // archive search
-    else log = await getLatestFlightLog();           // today search
+    if (date) log = await getFlightLogByDate(date);
+    else log = await getLatestFlightLog();
 
     if (!log) return res.json({ error: 'Unable to load Flight Control.log' });
 
     // =========================
-    // Parse Logs
+    // Clear previous cache
+    // =========================
+    clearPassengers();
+    clearPD();
+
+    // =========================
+    // Parse logs
     // =========================
     parseIncrementalLog(log);
     parsePDLog(log);
@@ -110,7 +118,7 @@ app.get('/search', async (req, res) => {
     // =========================
     else if (/^[A-Z]{2}\d+$/i.test(q)) {
       pax = findByFFNumber(q);
-      if (!pax && date) pax = findPDByFFNumber(q); // check PD only for FF
+      if (!pax && date) pax = findPDByFFNumber(q); // PD check only for FF
     }
     // =========================
     // Name search (only today)
