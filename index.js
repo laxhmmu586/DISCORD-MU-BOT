@@ -44,10 +44,6 @@ const fbLookup =
   require('./fbLookup');
 
 function findPassengerByFFFromRecord(log, query) {
-  if (!log || !query) {
-    return null;
-  }
-
   const ff = query.replace(/\s+/g, '').toUpperCase();
   const sections =
     log.split(/\d{4}\s+\w+\s+\d{2},.*?\d{2}:\d{2}:\d{2}/g);
@@ -72,11 +68,8 @@ function findPassengerByFFFromRecord(log, query) {
     const prMatch =
       section.match(/PR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
 
-    const bnRaw =
-      paxMatch?.[2];
-
     return {
-      bn: bnRaw ? bnRaw.padStart(3, '0') : '---',
+      bn: (paxMatch?.[2] || '---').padStart(3, '0'),
       name: (paxMatch?.[1] || 'UNKNOWN').replace(/\+$/, ''),
       seat: paxMatch?.[3] || '---',
       cabin: /^\d+/.test(paxMatch?.[3] || '') ? 'Economy' : 'Economy',
@@ -96,10 +89,6 @@ function findPassengerByFFFromRecord(log, query) {
 }
 
 function findPDPassengerByFFFromLog(log, query) {
-  if (!log || !query) {
-    return null;
-  }
-
   const ff =
     query.replace(/\s+/g, '').toUpperCase();
 
@@ -136,7 +125,7 @@ function findPDPassengerByFFFromLog(log, query) {
 
         if (pax) {
           name = pax[1]?.replace(/\+$/, '') || name;
-          if (pax[2]) bn = String(pax[2]).padStart(3, '0');
+          if (pax[2]) bn = pax[2].padStart(3, '0');
           if (pax[3]) seat = pax[3];
           break;
         }
@@ -369,22 +358,54 @@ app.get(
       // =========================
       else if (
 
-        /^[A-Z]{2}\s*\d+$/i
+        /^[A-Z]{2}\d+$/i
           .test(q)
 
       ) {
 
-        const normalizedFF =
-          q.replace(/\s+/g, '');
-
         pax =
-          findByFFNumber(normalizedFF);
+          findByFFNumber(q);
 
         // PD fallback
         if (!pax) {
 
           pax =
-            findPDByFFNumber(normalizedFF);
+            findPDByFFNumber(q);
+        }
+
+        // record fallback
+        if (!pax) {
+          pax =
+            findPassengerByFFFromRecord(
+              log,
+              normalizedFF
+            );
+        }
+
+        // record fallback
+        if (!pax) {
+          pax =
+            findPassengerByFFFromRecord(
+              log,
+              normalizedFF
+            );
+        }
+
+        if (pax && pax.name === 'PD MEMBER') {
+          pax =
+            findPDPassengerByFFFromLog(
+              log,
+              normalizedFF
+            ) || pax;
+        }
+
+        // record fallback
+        if (!pax) {
+          pax =
+            findPassengerByFFFromRecord(
+              log,
+              normalizedFF
+            );
         }
 
         if (pax && pax.name === 'PD MEMBER') {
