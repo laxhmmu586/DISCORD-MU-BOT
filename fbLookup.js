@@ -1,6 +1,6 @@
 const { runLookup, buildEmbed } = require('./lookupService');
 
-  passengers,
+const { runLookup, buildEmbed } = require('./lookupService');
 
   findBySeat,
 
