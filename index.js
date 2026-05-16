@@ -1,5 +1,4 @@
-require('dotenv').config();
-
+// index.js
 const express = require('express');
 const {
   passengers,
@@ -48,9 +47,15 @@ const client = new Client({
 fbLookup(client);
 
 // ===============================
-// Discord Login
+// Discord Login using environment variable
 // ===============================
-client.login(process.env.DISCORD_TOKEN);
+const token = process.env.DISCORD_TOKEN;
+if (!token) {
+  console.error('ERROR: DISCORD_TOKEN environment variable not set.');
+  process.exit(1);
+}
+
+client.login(token);
 
 client.once('clientReady', () => {
   console.log(`Logged in as ${client.user.tag}`);
@@ -67,14 +72,14 @@ app.get('/search', async (req, res) => {
     let date = null;
 
     // 判断是否包含日期 (e.g., 174/11APR or 7817428774392/20APR)
-    const matchDate = q.match(/^(.+?)\/(\d{1,2}[A-Z]{3}\d{0,2})$/i);
+    const matchDate = q.match(/^(.+?)\/(\d{1,2}[A-Z]{3}\d{0,4})$/i);
     if (matchDate) {
       q = matchDate[1].trim();
       date = matchDate[2].trim().toUpperCase();
     }
 
     // =========================
-    // Load Flight Log
+    // Load Flight Log: today or archive
     // =========================
     let log = null;
     if (date) log = await getFlightLogByDate(date);  // archive search
