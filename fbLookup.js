@@ -315,6 +315,21 @@ async function runLookup(mode, rawQuery) {
         value: `${pax.outbound.flight}/${pax.outbound.date}${pax.outbound.bn ? ` • BN${pax.outbound.bn}` : ''}${pax.outbound.seat ? ` • ${pax.outbound.seat}` : ''}\nTo ${pax.outbound.destination}`,
         inline: true
       }] : []),
+      ...(pax.specialServices?.length ? [{
+        name: '🧩 Special Service',
+        value: pax.specialServices.join(', '),
+        inline: false
+      }] : []),
+      ...(pax.specialMeals?.length ? [{
+        name: '🍽 Special Meal',
+        value: pax.specialMeals.join(', '),
+        inline: false
+      }] : []),
+      ...(pax.paidProducts?.length ? [{
+        name: '💰 Paid Products',
+        value: pax.paidProducts.join('\n'),
+        inline: false
+      }] : []),
       {
         name: '🛋 Lounge Access',
         value: pax.lounge?.eligible ? '✅ Eligible' : '❌ Not Eligible',

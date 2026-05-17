@@ -413,43 +413,8 @@ function parseIncrementalLog(log) {
     const specialServices = [];
 
     const ssrCodes = [
-
-      // Wheelchair
-      'WCHR',
-      'WCHS',
-      'WCHC',
-
-      // Passenger Conditions
-      'UMNR',
-      'UM',
-      'BLND',
-      'DEAF',
-      'MEDA',
-      'OXYG',
-
-      // Pets / Animal
-      'PETC',
-      'AVIH',
-
-      // Passenger Handling
-      'MAAS',
-      'STCR',
-      'INAD',
-      'VIP',
-      'CIP',
-      'PPOC',
-
-      // Meals
-      'VGML',
-      'AVML',
-      'KSML',
-      'MOML',
-      'CHML',
-      'BBML',
-      'GFML',
-      'NLML',
-      'DBML',
-      'FPML'
+      'VIP', 'AVIH', 'BLND', 'DEAF', 'DEP', 'INAD', 'PETC',
+      'UM', 'STCR', 'MAAS', 'PPOC', 'WCHR', 'WCHS', 'WCHC'
     ];
 
     for (const code of ssrCodes) {
@@ -469,6 +434,32 @@ function parseIncrementalLog(log) {
 
         specialServices.push(code);
       }
+    }
+
+    // UM + number (ex: UM32)
+    const umNumber = section.match(/\bUM(\d{1,2})\b/i)?.[1];
+    if (umNumber && !specialServices.includes('UM')) {
+      specialServices.push('UM');
+    }
+
+    // Wheelchair only one should be shown
+    const wheelchair = ['WCHR', 'WCHS', 'WCHC'].find(code => specialServices.includes(code));
+    const filteredSpecialServices = specialServices.filter(code => !['WCHR', 'WCHS', 'WCHC'].includes(code));
+    if (wheelchair) filteredSpecialServices.push(wheelchair);
+
+    // SPML (special meals): include all 4-letter meal codes
+    const specialMeals = [];
+    const mealMatches = section.matchAll(/\bSPML-([A-Z]{4})\b/gi);
+    for (const m of mealMatches) {
+      const mealCode = m[1].toUpperCase();
+      if (!specialMeals.includes(mealCode)) specialMeals.push(mealCode);
+    }
+
+    // Paid products (ASVC)
+    const paidProducts = [];
+    const asvcLines = section.match(/^ASVC-[^\n\r]+/gim) || [];
+    for (const line of asvcLines) {
+      paidProducts.push(line.replace(/^ASVC-\s*/i, '').trim());
     }
 
     // =========================
@@ -502,7 +493,9 @@ function parseIncrementalLog(log) {
 
       outbound,
 
-      specialServices
+      specialServices: filteredSpecialServices,
+      specialMeals,
+      paidProducts
     };
 
     passenger.lounge =
