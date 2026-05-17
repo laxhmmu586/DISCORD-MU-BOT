@@ -177,12 +177,23 @@ function parseIncrementalLog(log) {
     // =========================
     // FB Number
     // =========================
-    const fbMatch =
-      section.match(
-        /(?:^|\s)>?FB\s*(\d{1,3})/i
-      );
+    if (!section.includes('PR:')) {
+      continue;
+    }
 
-    if (!fbMatch) {
+    if (/\bDELETED\b/i.test(section)) {
+      const deletedBN = section.match(/\bBN(\d{1,3})\b/i)?.[1];
+      if (deletedBN) {
+        delete passengers[deletedBN.padStart(3, '0')];
+      }
+      continue;
+    }
+
+    if (/\bDELETED\b/i.test(section)) {
+      const deletedBN = section.match(/\bBN(\d{1,3})\b/i)?.[1];
+      if (deletedBN) {
+        delete passengers[deletedBN.padStart(3, '0')];
+      }
       continue;
     }
 
