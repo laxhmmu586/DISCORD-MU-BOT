@@ -261,31 +261,44 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 28px;
-      margin-bottom: 14px;
+      gap: 18px;
+      margin-bottom: 10px;
     }
 
     .app-header .title {
       margin-bottom: 0;
     }
 
-    .guide-panel {
+    .help-btn {
+      padding: 7px 11px;
+      font-size: 11px;
+      border-radius: 999px;
+      background: #334155;
+      color: #cbd5e1;
+      white-space: nowrap;
+    }
+
+    .help-btn:hover {
+      background: #475569;
+    }
+
+    .help-panel {
       display: none;
-      background: rgba(30, 41, 59, 0.7);
-      border: 1px solid rgba(148, 163, 184, 0.15);
+      background: #0f172a;
+      border: 1px solid rgba(255,255,255,0.08);
       border-radius: 14px;
       padding: 12px;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
       color: #cbd5e1;
       font-size: 13px;
-      line-height: 1.7;
+      line-height: 1.55;
     }
 
     .flight-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 20px;
+      gap: 16px;
       margin-bottom: 18px;
     }
 
@@ -295,16 +308,37 @@
 
     .doc-icon-btn {
       display: none;
-      padding: 6px 8px;
-      font-size: 20px;
+      padding: 4px 8px;
+      font-size: 22px;
       line-height: 1;
       border-radius: 10px;
       background: transparent;
-      min-width: auto;
     }
 
     .doc-icon-btn:hover {
-      background: rgba(51, 65, 85, 0.75);
+      background: #1e293b;
+    }
+
+    .doc-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 14px;
+      font-size: 14px;
+      line-height: 1.35;
+    }
+
+    .doc-item span {
+      display: block;
+      color: #94a3b8;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      margin-bottom: 2px;
+    }
+
+    .doc-item b {
+      color: white;
+      font-weight: 600;
     }
 
     .mini-btn {
@@ -312,31 +346,9 @@
       font-size: 12px;
       border-radius: 10px;
       background: #334155;
-      white-space: nowrap;
     }
-
     .mini-btn:hover {
       background: #475569;
-    }
-
-    .doc-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px 14px;
-    }
-
-    .doc-item-label {
-      color: #94a3b8;
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-      margin-bottom: 3px;
-    }
-
-    .doc-item-value {
-      font-size: 15px;
-      color: #f8fafc;
-      word-break: break-word;
     }
 
   </style>
@@ -395,24 +407,19 @@
         </div>
 
         <button
-          id="guideToggleBtn"
-          class="mini-btn"
-          onclick="toggleGuidePanel()"
+          class="help-btn"
+          onclick="toggleHelpPanel()"
         >
-          Search Guide
+          Search Help
         </button>
       </div>
 
       <div
-        id="guidePanel"
-        class="guide-panel"
+        id="helpPanel"
+        class="help-panel"
       >
-        <b>Search By:</b><br>
-        Boarding Number<br>
-        Full Name On Boarding Pass<br>
-        Seat Number<br>
-        Ticket Number<br>
-        Membership Number
+        Search by Boarding Number, Name, Seat, Ticket Number, or Membership Number.<br>
+        You can type with or without prefix: FB, RN, FSN, ETKD, FF.
       </div>
 
       <div class="search-box">
@@ -448,8 +455,7 @@
             id="docToggleBtn"
             class="doc-icon-btn"
             onclick="toggleDocPanel()"
-            title="Show Docs"
-            aria-label="Show Docs"
+            title="Travel Docs"
           >
             🪪
           </button>
@@ -678,119 +684,89 @@
 
   <script>
     let docPanelOpen = false;
-    let guidePanelOpen = false;
+    let helpPanelOpen = false;
 
-    function toggleGuidePanel() {
-      const panel = document.getElementById('guidePanel');
-      const btn = document.getElementById('guideToggleBtn');
-      guidePanelOpen = !guidePanelOpen;
-      panel.style.display = guidePanelOpen ? 'block' : 'none';
-      btn.innerText = guidePanelOpen ? 'Hide Guide' : 'Search Guide';
+    function toggleHelpPanel() {
+      const panel = document.getElementById('helpPanel');
+      helpPanelOpen = !helpPanelOpen;
+      panel.style.display = helpPanelOpen ? 'block' : 'none';
     }
 
     function toggleDocPanel() {
       const sec = document.getElementById('docSection');
+      const btn = document.getElementById('docToggleBtn');
       docPanelOpen = !docPanelOpen;
       sec.style.display = docPanelOpen ? 'block' : 'none';
+      btn.innerText = '🪪';
     }
 
-    function cleanDocText(value) {
+    function cleanRawLine(value) {
       return (value || '')
         .toString()
-        .replace(/PAXLST\s*:?[^\n]*/gi, '')
-        .replace(/PAX\s*INFO\s*:/gi, '')
-        .replace(/PASSPORT\s*:/gi, '')
+        .replace(/^\s*[A-Z ]+:/i, '')
         .trim();
     }
 
-    function getDocParts(raw) {
-      const text = cleanDocText(raw)
-        .replace(/\s+/g, ' ')
-        .trim();
+    function firstMatch(text, regex) {
+      const m = (text || '').match(regex);
+      return m ? m[1] : '';
+    }
 
-      if (!text) return [];
+    function buildTravelDocs(data) {
+      const paxInfoRaw = cleanRawLine(data.paxInfoRaw);
+      const passportRaw = cleanRawLine(data.passportRaw);
 
-      const slashParts = text
+      const passportParts = passportRaw
         .split('/')
-        .map(x => x.trim())
-        .filter(Boolean);
+        .map(x => x.trim());
 
-      const docsIndex = slashParts.findIndex(x => x.toUpperCase().includes('DOCS'));
+      const passportNumber =
+        data.passportNumber ||
+        firstMatch(passportRaw, /^([A-Z0-9]+)/i);
 
-      if (docsIndex >= 0) {
-        const first = slashParts[docsIndex].toUpperCase();
-        const normalizedFirst = first === 'DOCS' ? [] : [first.replace(/^.*DOCS/, '')].filter(Boolean);
-        return normalizedFirst.concat(slashParts.slice(docsIndex + 1));
+      const nationality =
+        data.nationality ||
+        firstMatch(paxInfoRaw, /^([A-Z]{3})\//i) ||
+        firstMatch(passportRaw, /\/NAT\/([A-Z]{3})\//i);
+
+      const dob =
+        data.dob ||
+        data.birthDate ||
+        firstMatch(paxInfoRaw, /\/DOB\/(\d{6})/i);
+
+      const gender =
+        data.gender ||
+        firstMatch(paxInfoRaw, /\/GENDER\/([A-Z])/i);
+
+      let expiry =
+        data.passportExpiry ||
+        data.expiryDate ||
+        '';
+
+      if (!expiry) {
+        const natIndex = passportParts.findIndex(x => x.toUpperCase() === 'NAT');
+        if (natIndex >= 0) {
+          expiry = passportParts
+            .slice(natIndex + 2)
+            .find(x => /^\d{6}$/.test(x)) || '';
+        }
       }
 
-      return slashParts;
-    }
+      const items = [
+        ['Passport', passportNumber],
+        ['Nationality', nationality],
+        ['DOB', dob],
+        ['Expiry', expiry],
+        ['Gender', gender]
+      ].filter(item => item[1]);
 
-    function formatDocDate(value) {
-      if (!value) return '';
-      return value.toString().trim().toUpperCase();
-    }
+      if (!items.length) return '';
 
-    function buildDocHtml(data) {
-      const rawSources = [
-        data.paxInfoRaw,
-        data.passportRaw
-      ].filter(Boolean);
-
-      const raw = rawSources.map(cleanDocText).filter(Boolean).join(' / ');
-      const parts = getDocParts(raw);
-
-      let doc = {
-        nationality: '',
-        dob: '',
-        gender: '',
-        passport: '',
-        expiry: ''
-      };
-
-      // Common DOCS format:
-      // DOCS/P/ISSUING COUNTRY/PASSPORT/NATIONALITY/DOB/GENDER/EXPIRY/LAST/FIRST
-      if (parts.length >= 8 && parts[0].toUpperCase() === 'P') {
-        doc.passport = parts[2] || '';
-        doc.nationality = parts[3] || parts[1] || '';
-        doc.dob = formatDocDate(parts[4]);
-        doc.gender = parts[5] || '';
-        doc.expiry = formatDocDate(parts[6]);
-      }
-
-      // Fallback: search useful patterns if the source format is different.
-      if (!doc.passport) {
-        const passMatch = raw.match(/\b[A-Z0-9]{6,12}\b/);
-        doc.passport = passMatch ? passMatch[0] : '';
-      }
-
-      if (!doc.dob || !doc.expiry) {
-        const dateMatches = raw.match(/\b\d{2}[A-Z]{3}\d{2,4}\b/g) || [];
-        doc.dob = doc.dob || dateMatches[0] || '';
-        doc.expiry = doc.expiry || dateMatches[1] || '';
-      }
-
-      if (!doc.gender) {
-        const genderMatch = raw.match(/(?:^|\/)\s*([MF])\s*(?:\/|$)/i);
-        doc.gender = genderMatch ? genderMatch[1].toUpperCase() : '';
-      }
-
-      const rows = [
-        ['Nationality', doc.nationality],
-        ['DOB', doc.dob],
-        ['Gender', doc.gender],
-        ['Passport No.', doc.passport],
-        ['Expiry Date', doc.expiry]
-      ].filter(row => row[1]);
-
-      if (!rows.length) return '';
-
-      return '<div class="doc-grid">' + rows.map(row => `
-        <div>
-          <div class="doc-item-label">${row[0]}</div>
-          <div class="doc-item-value">${row[1]}</div>
-        </div>
-      `).join('') + '</div>';
+      return '<div class="doc-grid">' +
+        items.map(([label, value]) =>
+          `<div class="doc-item"><span>${label}</span><b>${value}</b></div>`
+        ).join('') +
+        '</div>';
     }
 
     // ===========================
@@ -997,7 +973,7 @@
         document.getElementById(
           'flight'
         ).innerText =
-          `✈ ${data.flight}/${data.flightDate}`;
+          `✈️ ${data.flight}/${data.flightDate}`;
 
         // Name
         document.getElementById(
@@ -1015,13 +991,14 @@
         const docBtn = document.getElementById('docToggleBtn');
         const docSec = document.getElementById('docSection');
         const docContent = document.getElementById('docContent');
-        const docHtml = buildDocHtml(data);
+        const docsHtml = buildTravelDocs(data);
 
-        if (docHtml) {
+        if (docsHtml) {
           docBtn.style.display = 'inline-block';
-          docContent.innerHTML = docHtml;
+          docContent.innerHTML = docsHtml;
           docPanelOpen = false;
           docSec.style.display = 'none';
+          docBtn.innerText = '🪪';
         } else {
           docBtn.style.display = 'none';
           docSec.style.display = 'none';
