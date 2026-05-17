@@ -436,7 +436,15 @@
 
     </div>
 
-    <!-- MAIN -->
+    
+<div id="passwordPage" class="login-card" style="display:none; margin-top:20px;">
+<div class="title">Change Password</div>
+<input id="oldPassword" type="password" placeholder="Old Password">
+<input id="newPassword" type="password" placeholder="New Password">
+<button onclick="changePassword()" style="width:100%; margin-bottom:8px;">Save Password</button>
+<button onclick="backToMain()" style="width:100%; background:#334155;">Back</button>
+</div>
+<!-- MAIN -->
     <div id="mainApp">
 
       <div class="app-header">
@@ -444,12 +452,7 @@
           MUFC
         </div>
 
-        <button
-          class="help-btn"
-          onclick="toggleHelpPanel()"
-        >
-          Search Help
-        </button>
+        <div><button class="help-btn" onclick="showPasswordPage()" style="margin-right:6px;">Change Password</button><button class="help-btn" onclick="openAdmin()" id="adminOpenBtn" style="display:none; margin-right:6px;">Admin</button><button class="help-btn" onclick="logout()">Logout</button></div>
       </div>
 
       <div
@@ -460,7 +463,31 @@
         You can type with or without prefix: FB, RN, FSN, ETKD, FF.
       </div>
 
-      <div class="search-box">
+      
+<div id="adminPage" class="card" style="display:none; margin-bottom:14px;">
+<div class="label">Admin: User Levels</div>
+<div id="adminUsers"></div>
+<button onclick="saveAdmin()" style="margin-top:10px;">Save Level</button>
+<div style="margin-top:14px; border-top:1px solid rgba(255,255,255,0.12); padding-top:12px;">
+  <div class="label">Reset User Password</div>
+  <input id="adminResetUsername" placeholder="Username">
+  <input id="adminResetPassword" type="password" placeholder="New Password">
+  <button onclick="adminResetPassword()" style="width:100%;">Reset Password</button>
+</div>
+<div style="margin-top:14px; border-top:1px solid rgba(255,255,255,0.12); padding-top:12px;">
+  <div class="label">Add New User</div>
+  <input id="adminNewUsername" placeholder="Username">
+  <input id="adminNewPassword" type="password" placeholder="Password">
+  <select id="adminNewLevel" style="width:100%;padding:14px;margin-bottom:14px;border:none;border-radius:14px;background:#1e293b;color:white;font-size:15px;">
+    <option value="agent">agent</option>
+    <option value="manager">manager</option>
+    <option value="lounge">lounge</option>
+    <option value="admin">admin</option>
+  </select>
+  <button onclick="adminAddUser()" style="width:100%;">Add User</button>
+</div>
+</div>
+<div class="search-box">
 
         <input
           id="query"
@@ -722,720 +749,185 @@
 
   </div>
 
-  <script>
-    let docPanelOpen = false;
-    let currentPassengerData = null;
-    let checkinPanelOpen = false;
-    let currentUserLevel = localStorage.getItem('mu_user_level') || '';
-    let authToken = localStorage.getItem('mu_auth_token') || '';
-
-    let helpPanelOpen = false;
-
-
-    function escapeHtml(value) {
-      return (value || '')
-        .toString()
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-    }
-
-    function getRawRecordText(data) {
-      const possibleFields = [
-        data?.rawRecord,
-        data?.fullRecord,
-        data?.record,
-        data?.raw,
-        data?.rawText,
-        data?.originalText,
-        data?.passengerRecord,
-        data?.latestRecord,
-        data?.sourceRecord,
-        data?.sourceText,
-        data?.log
-      ];
-
-      return possibleFields
-        .filter(Boolean)
-        .map(x => Array.isArray(x) ? x.join('\n') : x.toString())
-        .join('\n');
-    }
-
-    function normalizeDetailLine(line) {
-      return (line || '')
-        .toString()
-        .replace(/[\u001c-\u001f]/g, '')
-        .trimEnd();
-    }
-
-    function dedupeLines(lines) {
-      return [...new Set((lines || []).filter(Boolean))];
-    }
-
-    function parseCheckinGroups(data) {
-      const rawText = getRawRecordText(data);
-      const flatLines = rawText
-        .split(/\r?\n/)
-        .map(normalizeDetailLine)
-        .filter(Boolean);
-
-      const groups = [];
-      let current = null;
-
-      flatLines.forEach(line => {
-        if (/^\d{4}\s+[A-Z][a-z]{2}\s+\d{1,2},\s+/i.test(line) && />[A-Z0-9]/.test(line)) {
-          current = { header: line.trim(), lines: [] };
-          groups.push(current);
-          return;
-        }
-
-        if (!current) {
-          current = { header: 'Check-in Details', lines: [] };
-          groups.push(current);
-        }
-
-        current.lines.push(line.trim());
-      });
-
-      if (!groups.length) {
-        groups.push({ header: 'Check-in Details', lines: [] });
-      }
-
-      if (Array.isArray(data?.psmLines)) {
-        groups[0].lines.push(...data.psmLines.map(x => normalizeDetailLine(x).trim()));
-      }
-
-      if (Array.isArray(data?.ckinLines)) {
-        groups[0].lines.push(...data.ckinLines.map(x => normalizeDetailLine(x).trim()));
-      }
-
-      return groups
-        .map(group => {
-          const psmLines = [];
-          const ckinLines = [];
-
-          group.lines.forEach(line => {
-            if (/^PSM\b/i.test(line)) psmLines.push(line);
-            if (/^CKIN\b/i.test(line)) ckinLines.push(line);
-          });
-
-          return {
-            header: group.header,
-            detailLines: [
-              ...dedupeLines(psmLines),
-              ...dedupeLines(ckinLines)
-            ]
-          };
-        })
-        .filter(group => group.detailLines.length);
-    }
-
-    function toggleCheckinPanel() {
-      const list = document.getElementById('checkinDetailList');
-
-      if (!currentPassengerData || currentUserLevel !== 'highest') return;
-
-      checkinPanelOpen = !checkinPanelOpen;
-
-      if (!checkinPanelOpen) {
-        list.innerHTML = '';
-        return;
-      }
-
-      const groups = parseCheckinGroups(currentPassengerData);
-      const cards = [];
-
-      if (groups.length) {
-        cards.push(...groups.map(group => `
-        <div class="detail-card" style="display:block;">
-          <div class="detail-title">${escapeHtml(group.header)}</div>
-          <div class="detail-content">${escapeHtml(group.detailLines.join('\n'))}</div>
-        </div>
-      `));
-      }
-
-      const extra = currentPassengerData?.info240;
-      if (extra && Object.values(extra).some(Boolean)) {
-        const extraLines = [
-          extra.passportCountry ? `Passport Country: ${extra.passportCountry}` : '',
-          extra.passportExpiry ? `Passport Expiry: ${extra.passportExpiry}` : '',
-          extra.leaveChinaAt ? `Leave China At: ${extra.leaveChinaAt}` : '',
-          extra.destination ? `Destination: ${extra.destination}` : '',
-          extra.agentSubmitter ? `Agent Submit: ${extra.agentSubmitter}` : ''
-        ].filter(Boolean);
-
-        if (extraLines.length) {
-          cards.push(`
-            <div class="detail-card" style="display:block;">
-              <div class="detail-title">240 info</div>
-              <div class="detail-content">${escapeHtml(extraLines.join('\n'))}</div>
-            </div>
-          `);
-        }
-      }
-
-      if (!cards.length) {
-        list.innerHTML = '';
-        checkinPanelOpen = false;
-        return;
-      }
-
-      list.innerHTML = cards.join('');
-    }
-
-    function toggleHelpPanel() {
-      const panel = document.getElementById('helpPanel');
-      helpPanelOpen = !helpPanelOpen;
-      panel.style.display = helpPanelOpen ? 'block' : 'none';
-    }
-
-    function toggleDocPanel() {
-      if (currentUserLevel !== 'highest') return;
-      const sec = document.getElementById('docSection');
-      const btn = document.getElementById('docToggleBtn');
-      docPanelOpen = !docPanelOpen;
-      sec.style.display = docPanelOpen ? 'block' : 'none';
-      btn.innerText = '🪪';
-    }
-
-    function cleanRawLine(value) {
-      return (value || '')
-        .toString()
-        .replace(/^\s*[A-Z ]+:/i, '')
-        .trim();
-    }
-
-    function firstMatch(text, regex) {
-      const m = (text || '').match(regex);
-      return m ? m[1] : '';
-    }
-
-    function buildTravelDocs(data) {
-      const paxInfoRaw = cleanRawLine(data.paxInfoRaw);
-      const passportRaw = cleanRawLine(data.passportRaw);
-
-      const passportParts = passportRaw
-        .split('/')
-        .map(x => x.trim());
-
-      const passportNumber =
-        data.passportNumber ||
-        firstMatch(passportRaw, /^([A-Z0-9]+)/i);
-
-      const nationality =
-        data.nationality ||
-        firstMatch(paxInfoRaw, /^([A-Z]{3})\//i) ||
-        firstMatch(passportRaw, /\/NAT\/([A-Z]{3})\//i);
-
-      const dob =
-        data.dob ||
-        data.birthDate ||
-        firstMatch(paxInfoRaw, /\/DOB\/(\d{6})/i);
-
-      const gender =
-        data.gender ||
-        firstMatch(paxInfoRaw, /\/GENDER\/([A-Z])/i);
-
-      let expiry =
-        data.passportExpiry ||
-        data.expiryDate ||
-        '';
-
-      if (!expiry) {
-        const natIndex = passportParts.findIndex(x => x.toUpperCase() === 'NAT');
-        if (natIndex >= 0) {
-          expiry = passportParts
-            .slice(natIndex + 2)
-            .find(x => /^\d{6}$/.test(x)) || '';
-        }
-      }
-
-      const items = [
-        ['Passport', passportNumber],
-        ['Nationality', nationality],
-        ['DOB', dob],
-        ['Expiry', expiry],
-        ['Gender', gender]
-      ].filter(item => item[1]);
-
-      if (!items.length) return '';
-
-      return '<div class="doc-grid">' +
-        items.map(([label, value]) =>
-          `<div class="doc-item"><span>${label}</span><b>${value}</b></div>`
-        ).join('') +
-        '</div>';
-    }
-
-    // ===========================
-    // Session Timeout
-    // ===========================
-    const LOGIN_TIMEOUT =
-      30 * 60 * 1000;
-
-    const lastLogin =
-      localStorage.getItem(
-        'mu_login_time'
-      );
-
-    const now =
-      Date.now();
-
-    if (
-
-      localStorage.getItem(
-        'mu_logged_in'
-      ) === 'true'
-
-      &&
-
-      lastLogin
-
-      &&
-
-      (now - Number(lastLogin))
-        < LOGIN_TIMEOUT
-
-    ) {
-
-      document.getElementById(
-        'loginPage'
-      ).style.display = 'none';
-
-      document.getElementById(
-        'mainApp'
-      ).style.display = 'block';
-    }
-
-    else {
-
-      localStorage.clear();
-    }
-
-    // ===========================
-    // Login
-    // ===========================
-    function login() {
-
-      const username =
-        document
-          .getElementById('username')
-          .value
-          .trim();
-
-      const password =
-        document
-          .getElementById('password')
-          .value
-          .trim();
-
-      fetch('/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.error || !data.token) throw new Error(data.error || 'Login failed');
-        localStorage.setItem('mu_logged_in', 'true');
-        localStorage.setItem('mu_login_time', Date.now());
-        localStorage.setItem('mu_auth_token', data.token);
-        localStorage.setItem('mu_user_level', data.level || '');
-        authToken = data.token;
-        currentUserLevel = data.level || '';
-        document.getElementById('loginPage').style.display = 'none';
-        document.getElementById('mainApp').style.display = 'block';
-      })
-      .catch(() => {
-        const err = document.getElementById('loginError');
-        err.innerText = 'Invalid username or password';
-        err.style.display = 'block';
-      });
-    }
-
-    // ===========================
-    // Search
-    // ===========================
-    async function searchPassenger() {
-
-      localStorage.setItem(
-        'mu_login_time',
-        Date.now()
-      );
-
-      let q =
-        document
-          .getElementById('query')
-          .value
-          .trim();
-
-      if (!q) {
-        return;
-      }
-
-      const upper =
-        q.toUpperCase();
-
-      if (
-        upper.startsWith('FB ')
-      ) {
-
-        q =
-          q.substring(3).trim();
-      }
-
-      else if (
-        upper.startsWith('RN ')
-      ) {
-
-        q =
-          q.substring(3).trim();
-      }
-
-      else if (
-        upper.startsWith('FSN ')
-      ) {
-
-        q =
-          q.substring(4).trim();
-      }
-
-      else if (
-        upper.startsWith('ETKD ')
-      ) {
-
-        q =
-          q.substring(5).trim();
-      }
-
-      else if (
-        upper.startsWith('FF ')
-      ) {
-
-        q =
-          q.substring(3).trim();
-      }
-
-      const card =
-        document.getElementById('card');
-
-      const error =
-        document.getElementById('error');
-
-      card.style.display =
-        'none';
-
-      error.style.display =
-        'none';
-
-      checkinPanelOpen = false;
-      document.getElementById('checkinDetailList').innerHTML = '';
-
-      try {
-
-        const res =
-          await fetch(
-            '/search?q=' +
-            encodeURIComponent(q),
-            {
-              headers: {
-                Authorization: `Bearer ${authToken}`
-              }
-            }
-          );
-
-        const data =
-          await res.json();
-
-        if (data.error) {
-
-          error.innerText =
-            data.error;
-
-          error.style.display =
-            'block';
-
-          return;
-        }
-
-        // Flight
-        document.getElementById(
-          'flight'
-        ).innerText =
-          `✈️ ${data.flight}/${data.flightDate}`;
-
-        // Name
-        document.getElementById(
-          'name'
-        ).innerText =
-          data.name;
-
-        currentPassengerData = data;
-        checkinPanelOpen = false;
-        document.getElementById('checkinDetailList').innerHTML = '';
-
-        // Seat / BN clickable detail
-        if (currentUserLevel === 'highest') {
-          document.getElementById('seat').innerHTML =
-            `🎫 <span class="bn-link" onclick="toggleCheckinPanel()">BN${escapeHtml(data.bn)}</span> • ${escapeHtml(data.seat)} • ${escapeHtml(data.cabin)}`;
-        } else {
-          document.getElementById('seat').innerHTML =
-            `🎫 BN${escapeHtml(data.bn || '---')} • ${escapeHtml(data.seat || '---')} • ${escapeHtml(data.cabin || '---')}`;
-        }
-
-        // Docs button/panel
-        const docBtn = document.getElementById('docToggleBtn');
-        const docSec = document.getElementById('docSection');
-        const docContent = document.getElementById('docContent');
-        const docsHtml = buildTravelDocs(data);
-
-        if (docsHtml && currentUserLevel === 'highest') {
-          docBtn.style.display = 'inline-block';
-          docContent.innerHTML = docsHtml;
-          docPanelOpen = false;
-          docSec.style.display = 'none';
-          docBtn.innerText = '🪪';
-        } else {
-          docBtn.style.display = 'none';
-          docSec.style.display = 'none';
-          docContent.innerHTML = '';
-        }
-
-        const isBasic = currentUserLevel === 'basic';
-
-        // Membership
-        if (data.ffNumber) {
-
-          document.getElementById(
-            'membershipSection'
-          ).style.display =
-            'block';
-
-          document.getElementById(
-            'ff'
-          ).innerText =
-
-            `${data.ffCarrier} ${data.ffNumber}`;
-
-          document.getElementById(
-            'ffStatus'
-          ).innerText =
-
-            data.membershipStatus ||
-
-            (
-              data.ffTier === 'V'
-                ? 'Platinum'
-                : data.ffTier === 'G'
-                ? 'Gold'
-                : data.ffTier === 'S'
-                ? 'Silver'
-                : data.ffTier === 'C'
-                ? 'Regular'
-                : data.ffTier === '1'
-                ? 'Elite'
-                : data.ffTier === '2'
-                ? 'Elite Plus'
-                : ''
-            );
-        }
-
-        else {
-
-          document.getElementById(
-            'membershipSection'
-          ).style.display =
-            'none';
-        }
-
-        // Ticket
-        if (data.ticketNumber) {
-
-          document.getElementById(
-            'ticketSection'
-          ).style.display =
-            'block';
-
-          document.getElementById(
-            'ticket'
-          ).innerText =
-            data.ticketNumber;
-        }
-
-        else {
-
-          document.getElementById(
-            'ticketSection'
-          ).style.display =
-            'none';
-        }
-
-        // Bags
-        if (
-          !isBasic &&
-          data.bagtags &&
-          data.bagtags.length
-        ) {
-
-          document.getElementById(
-            'bagsSection'
-          ).style.display =
-            'block';
-
-          document.getElementById(
-            'bags'
-          ).innerText =
-            data.bagtags.join('\n');
-        }
-
-        else {
-
-          document.getElementById(
-            'bagsSection'
-          ).style.display =
-            'none';
-        }
-
-        // Inbound
-        if (!isBasic && data.inbound) {
-
-          document.getElementById(
-            'inboundSection'
-          ).style.display =
-            'block';
-
-          document.getElementById(
-            'inbound'
-          ).innerText =
-
-            `${data.inbound.flight}/${data.inbound.date}\nFrom ${data.inbound.origin}`;
-        }
-
-        else {
-
-          document.getElementById(
-            'inboundSection'
-          ).style.display =
-            'none';
-        }
-
-        // Outbound
-        if (!isBasic && data.outbound) {
-
-          document.getElementById(
-            'outboundSection'
-          ).style.display =
-            'block';
-
-          document.getElementById(
-            'outbound'
-          ).innerText =
-
-            `${data.outbound.flight}/${data.outbound.date}` +
-
-            (data.outbound.bn
-              ? ` • BN${data.outbound.bn}`
-              : '') +
-
-            (data.outbound.seat
-              ? ` • ${data.outbound.seat}`
-              : '') +
-
-            `\nTo ${data.outbound.destination}`;
-        }
-
-        else {
-
-          document.getElementById(
-            'outboundSection'
-          ).style.display =
-            'none';
-        }
-
-        // Special Service
-        if (!isBasic && data.specialServices && data.specialServices.length) {
-          document.getElementById('ssrSection').style.display = 'block';
-          document.getElementById('ssr').innerText = data.specialServices.join(', ');
-        } else {
-          document.getElementById('ssrSection').style.display = 'none';
-        }
-
-        // Special Meal
-        if (!isBasic && data.specialMeals && data.specialMeals.length) {
-          document.getElementById('mealSection').style.display = 'block';
-          document.getElementById('meal').innerText = data.specialMeals.join(', ');
-        } else {
-          document.getElementById('mealSection').style.display = 'none';
-        }
-
-        // Paid Service
-        if (!isBasic && data.paidProductsShort && data.paidProductsShort.length) {
-          document.getElementById('paidSection').style.display = 'block';
-          document.getElementById('paid').innerText = data.paidProductsShort.join('\n');
-        } else if (data.paidProducts && data.paidProducts.length) {
-          document.getElementById('paidSection').style.display = 'block';
-          document.getElementById('paid').innerText = data.paidProducts.join('\n');
-        } else {
-          document.getElementById('paidSection').style.display = 'none';
-        }
-
-        // Lounge
-        document.getElementById(
-          'lounge'
-        ).innerHTML =
-
-          data.lounge?.eligible
-
-            ? '<span class="yes">✅ Eligible</span>'
-
-            : '<span class="no">❌ Not Eligible</span>';
-
-        // Guest
-        document.getElementById(
-          'guest'
-        ).innerHTML =
-
-          data.lounge?.guest
-
-            ? '<span class="yes">✅ Allowed</span>'
-
-            : '<span class="no">❌ Not Allowed</span>';
-
-        // Show
-        card.style.display =
-          'block';
-
-      }
-
-      catch (err) {
-
-        error.innerText =
-          'Search failed';
-
-        error.style.display =
-          'block';
-      }
-    }
-
-    // ===========================
-    // Enter Key
-    // ===========================
-    document
-      .getElementById('query')
-      .addEventListener(
-        'keypress',
-        function(e) {
-
-          if (e.key === 'Enter') {
-
-            searchPassenger();
-          }
-        }
-      );
-
-  </script>
+<script>
+let authToken = '';
+let currentUserLevel = '';
+let idleTimer = null;
+let currentPassengerData = null;
+let docPanelOpen = false;
+const IDLE_TIMEOUT = 15 * 60 * 1000;
+
+function escapeHtml(v=''){ return v.toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c])); }
+function show(id,on){ document.getElementById(id).style.display = on ? 'block' : 'none'; }
+function authHeaders(){ return { 'Content-Type':'application/json', Authorization:`Bearer ${authToken}` }; }
+function canSeeDocs(){ return currentUserLevel === 'admin' || currentUserLevel === 'manager'; }
+function canClickBn(){ return currentUserLevel === 'admin' || currentUserLevel === 'manager'; }
+
+function resetIdle(){
+  if (!authToken) return;
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => logout(true), IDLE_TIMEOUT);
+}
+['click','keydown','mousemove','touchstart'].forEach(evt => document.addEventListener(evt, resetIdle));
+
+async function logout(timeout=false){
+  if(authToken){ try { await fetch('/auth/logout', { method:'POST', headers:{ Authorization:`Bearer ${authToken}` } }); } catch(e) {} }
+  authToken = '';
+  currentUserLevel = '';
+  clearTimeout(idleTimer);
+  document.getElementById('password').value = '';
+  show('card', false);
+  show('mainApp', false);
+  show('adminPage', false);
+  show('passwordPage', false);
+  show('loginPage', true);
+  if(timeout) alert('Session expired after 15 minutes of inactivity. Please login again.');
+}
+
+function showPasswordPage(){
+  show('mainApp', false);
+  show('passwordPage', true);
+}
+
+function backToMain(){
+  show('passwordPage', false);
+  show('mainApp', true);
+}
+
+async function login(){
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value.trim();
+  const r = await fetch('/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ username, password }) });
+  const d = await r.json();
+  if(!r.ok || !d.token){ document.getElementById('loginError').innerText = d.error || 'Login failed'; show('loginError', true); return; }
+  show('loginError', false);
+  authToken = d.token;
+  currentUserLevel = d.level || '';
+  setupRoleUI();
+  show('loginPage', false);
+  if(d.mustChangePassword) show('passwordPage', true); else show('mainApp', true);
+  resetIdle();
+}
+
+function setupRoleUI(){
+  document.getElementById('adminOpenBtn').style.display = currentUserLevel === 'admin' ? 'inline-block' : 'none';
+}
+
+async function changePassword(){
+  const oldPassword = document.getElementById('oldPassword').value;
+  const newPassword = document.getElementById('newPassword').value;
+  const r = await fetch('/auth/change-password', { method:'POST', headers:authHeaders(), body: JSON.stringify({ oldPassword, newPassword }) });
+  const d = await r.json();
+  if(!r.ok){ alert(d.error || 'Failed'); return; }
+  alert('Password updated');
+  document.getElementById('oldPassword').value = '';
+  document.getElementById('newPassword').value = '';
+  backToMain();
+}
+
+async function openAdmin(){
+  const r = await fetch('/admin/users', { headers:{ Authorization:`Bearer ${authToken}` } });
+  const d = await r.json();
+  if(!r.ok){ alert(d.error || 'Forbidden'); return; }
+  const box = document.getElementById('adminUsers');
+  box.innerHTML = d.users.map(u => `<div style="display:flex;justify-content:space-between;margin:6px 0;"><b>${escapeHtml(u.username)}</b><select id="lv_${escapeHtml(u.username)}"><option>admin</option><option>manager</option><option>agent</option><option>lounge</option></select></div>`).join('');
+  d.users.forEach(u => { const el = document.getElementById(`lv_${u.username}`); if (el) el.value = u.level; });
+  show('adminPage', true);
+}
+
+async function saveAdmin(){
+  for (const sel of document.querySelectorAll('#adminUsers select')) {
+    await fetch('/admin/users/level', { method:'POST', headers:authHeaders(), body: JSON.stringify({ username: sel.id.replace('lv_',''), level: sel.value }) });
+  }
+  alert('Saved');
+}
+
+async function adminResetPassword(){
+  const username = document.getElementById('adminResetUsername').value.trim();
+  const newPassword = document.getElementById('adminResetPassword').value.trim();
+  const r = await fetch('/admin/users/reset-password', { method:'POST', headers:authHeaders(), body: JSON.stringify({ username, newPassword }) });
+  const d = await r.json();
+  if(!r.ok){ alert(d.error || 'Reset failed'); return; }
+  alert('Password reset done');
+  document.getElementById('adminResetUsername').value = '';
+  document.getElementById('adminResetPassword').value = '';
+}
+
+async function adminAddUser(){
+  const username = document.getElementById('adminNewUsername').value.trim();
+  const password = document.getElementById('adminNewPassword').value.trim();
+  const level = document.getElementById('adminNewLevel').value;
+  const r = await fetch('/admin/users/add', { method:'POST', headers:authHeaders(), body: JSON.stringify({ username, password, level }) });
+  const d = await r.json();
+  if(!r.ok){ alert(d.error || 'Add user failed'); return; }
+  alert('User added');
+  document.getElementById('adminNewUsername').value = '';
+  document.getElementById('adminNewPassword').value = '';
+  await openAdmin();
+}
+
+function buildTravelDocs(data){
+  const items = [
+    ['Passport', data.passportNumber || ''],
+    ['Nationality', data.nationality || ''],
+    ['DOB', data.dob || data.birthDate || ''],
+    ['Expiry', data.passportExpiry || data.expiryDate || ''],
+    ['Gender', data.gender || '']
+  ].filter(x => x[1]);
+  if(!items.length) return '';
+  return '<div class="doc-grid">' + items.map(([k,v]) => `<div class="doc-item"><span>${k}</span><b>${escapeHtml(v)}</b></div>`).join('') + '</div>';
+}
+
+function toggleDocPanel(){
+  if(!canSeeDocs()) return;
+  docPanelOpen = !docPanelOpen;
+  show('docSection', docPanelOpen);
+}
+
+async function searchPassenger(){
+  resetIdle();
+  const q = document.getElementById('query').value.trim();
+  if(!q) return;
+  const r = await fetch('/search?q=' + encodeURIComponent(q), { headers:{ Authorization:`Bearer ${authToken}` } });
+  const d = await r.json();
+  if(d.error){ document.getElementById('error').innerText = d.error; show('error', true); return; }
+
+  currentPassengerData = d;
+  show('error', false);
+  show('card', true);
+  document.getElementById('flight').innerText = `✈️ ${d.flight || '---'}/${d.flightDate || '---'}`;
+  document.getElementById('name').innerText = d.name || '---';
+
+  const bnText = `BN${escapeHtml(d.bn || '---')}`;
+  if (canClickBn()) {
+    document.getElementById('seat').innerHTML = `🎫 <span class="bn-link">${bnText}</span> • ${escapeHtml(d.seat || '---')} • ${escapeHtml(d.cabin || '---')}`;
+  } else {
+    document.getElementById('seat').innerHTML = `🎫 ${bnText} • ${escapeHtml(d.seat || '---')} • ${escapeHtml(d.cabin || '---')}`;
+  }
+
+  const docsHtml = buildTravelDocs(d);
+  document.getElementById('docToggleBtn').style.display = (canSeeDocs() && docsHtml) ? 'inline-block' : 'none';
+  document.getElementById('docContent').innerHTML = docsHtml;
+  docPanelOpen = false;
+  show('docSection', false);
+
+  const isLounge = currentUserLevel === 'lounge';
+  document.getElementById('membershipSection').style.display = d.ffNumber ? 'block' : 'none';
+  if (d.ffNumber) {
+    document.getElementById('ff').innerText = `${d.ffCarrier || ''} ${d.ffNumber || ''}`.trim();
+    document.getElementById('ffStatus').innerText = d.membershipStatus || '';
+  }
+  document.getElementById('ticketSection').style.display = d.ticketNumber ? 'block' : 'none';
+  if (d.ticketNumber) document.getElementById('ticket').innerText = d.ticketNumber;
+
+  ;['bagsSection','inboundSection','outboundSection','ssrSection','mealSection','paidSection'].forEach(id => {
+    document.getElementById(id).style.display = isLounge ? 'none' : 'block';
+  });
+
+  document.getElementById('lounge').innerHTML = d.lounge?.eligible ? '<span class="yes">✅ Eligible</span>' : '<span class="no">❌ Not Eligible</span>';
+  document.getElementById('guest').innerHTML = d.lounge?.guest ? '<span class="yes">✅ Allowed</span>' : '<span class="no">❌ Not Allowed</span>';
+}
+</script>
 
 </body>
 </html>
