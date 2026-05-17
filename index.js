@@ -201,7 +201,7 @@ client.login(
 
 client.once(
 
-  'ready',
+  'clientReady',
 
   () => {
 

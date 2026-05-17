@@ -42,10 +42,15 @@ const sheets =
 const FULL_SHEET_ID =
   '1FjdIg_b1iIfcAbCsxGBmIMnhFxA70sRo7cs4Vr4OLpc';
 
+const ENABLE_240_SHEET =
+  String(process.env.ENABLE_240_SHEET || 'true').toLowerCase() !== 'false';
+
 let fullSheetCache = {
   loadedAt: 0,
   rows: []
 };
+
+let sheetAccessBlocked = false;
 
 function normalizeBn(value) {
   const digits =
@@ -68,22 +73,43 @@ function normalizeFlightDate(value) {
 }
 
 async function getFullSheetRows() {
+  if (!ENABLE_240_SHEET || sheetAccessBlocked) {
+    return [];
+  }
+
   const ttlMs = 5 * 60 * 1000;
   if (Date.now() - fullSheetCache.loadedAt < ttlMs && fullSheetCache.rows.length) {
     return fullSheetCache.rows;
   }
 
-  const res = await sheets.spreadsheets.values.get({
-    spreadsheetId: FULL_SHEET_ID,
-    range: 'FULL!A:N'
-  });
+  try {
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: FULL_SHEET_ID,
+      range: 'FULL!A:N'
+    });
 
-  const rows = res.data.values || [];
-  fullSheetCache = {
-    loadedAt: Date.now(),
-    rows
-  };
-  return rows;
+    const rows = res.data.values || [];
+    fullSheetCache = {
+      loadedAt: Date.now(),
+      rows
+    };
+    return rows;
+  } catch (err) {
+    const reason =
+      err?.errors?.[0]?.reason ||
+      err?.response?.data?.error?.errors?.[0]?.reason ||
+      '';
+
+    if (reason === 'accessNotConfigured' || err?.code === 403) {
+      sheetAccessBlocked = true;
+      console.warn(
+        '240 info lookup disabled: Google Sheets API unavailable/disabled for current project.'
+      );
+      return [];
+    }
+
+    throw err;
+  }
 }
 
 async function get240InfoByBnAndFlightDate({ bn, flightDate }) {
@@ -112,7 +138,7 @@ async function get240InfoByBnAndFlightDate({ bn, flightDate }) {
 
     return null;
   } catch (err) {
-    console.error('240 info lookup error:', err);
+    console.error('240 info lookup error:', err?.message || err);
     return null;
   }
 }
