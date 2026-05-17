@@ -487,6 +487,16 @@
   <button onclick="adminAddUser()" style="width:100%;">Add User</button>
 </div>
 </div>
+<div style="margin-top:14px; border-top:1px solid rgba(255,255,255,0.12); padding-top:12px;">
+  <div class="label">Delete User</div>
+  <input id="adminDeleteUsername" placeholder="Username">
+  <button onclick="adminDeleteUser()" style="width:100%;background:#b91c1c;">Delete User</button>
+</div>
+<div style="margin-top:14px; border-top:1px solid rgba(255,255,255,0.12); padding-top:12px;">
+  <div class="label">Role Permissions</div>
+  <div id="permissionMatrix"></div>
+  <button onclick="savePermissions()" style="width:100%;">Save Permissions</button>
+</div>
 <div class="search-box">
 
         <input
@@ -755,13 +765,15 @@ let currentUserLevel = '';
 let idleTimer = null;
 let currentPassengerData = null;
 let docPanelOpen = false;
+let currentPermissions = {};
 const IDLE_TIMEOUT = 15 * 60 * 1000;
 
 function escapeHtml(v=''){ return v.toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c])); }
 function show(id,on){ document.getElementById(id).style.display = on ? 'block' : 'none'; }
 function authHeaders(){ return { 'Content-Type':'application/json', Authorization:`Bearer ${authToken}` }; }
-function canSeeDocs(){ return currentUserLevel === 'admin' || currentUserLevel === 'manager'; }
-function canClickBn(){ return currentUserLevel === 'admin' || currentUserLevel === 'manager' || currentUserLevel === 'agent'; }
+function hasPerm(key){ return !!currentPermissions[key]; }
+function canSeeDocs(){ return hasPerm('docs'); }
+function canClickBn(){ return hasPerm('bnDetail'); }
 
 function resetIdle(){
   if (!authToken) return;
@@ -803,6 +815,7 @@ async function login(){
   show('loginError', false);
   authToken = d.token;
   currentUserLevel = d.level || '';
+  currentPermissions = d.permissions || {};
   setupRoleUI();
   show('loginPage', false);
   if(d.mustChangePassword) show('passwordPage', true); else show('mainApp', true);
@@ -834,6 +847,7 @@ async function openAdmin(){
   const box = document.getElementById('adminUsers');
   box.innerHTML = d.users.map(u => `<div style="display:flex;justify-content:space-between;margin:6px 0;"><b>${escapeHtml(u.username)}</b><select id="lv_${escapeHtml(u.username)}"><option>admin</option><option>manager</option><option>agent</option><option>lounge</option></select></div>`).join('');
   d.users.forEach(u => { const el = document.getElementById(`lv_${u.username}`); if (el) el.value = u.level; });
+  await loadPermissions();
   show('adminPage', true);
 }
 
@@ -853,6 +867,41 @@ async function adminResetPassword(){
   alert('Password reset done');
   document.getElementById('adminResetUsername').value = '';
   document.getElementById('adminResetPassword').value = '';
+}
+
+async function adminDeleteUser(){
+  const username = document.getElementById('adminDeleteUsername').value.trim();
+  const r = await fetch('/admin/users/delete', { method:'POST', headers:authHeaders(), body: JSON.stringify({ username }) });
+  const d = await r.json();
+  if(!r.ok){ alert(d.error || 'Delete failed'); return; }
+  alert('User deleted');
+  document.getElementById('adminDeleteUsername').value = '';
+  await openAdmin();
+}
+
+async function loadPermissions(){
+  const r = await fetch('/admin/permissions', { headers:{ Authorization:`Bearer ${authToken}` } });
+  const d = await r.json();
+  if(!r.ok) return;
+  const keys = ['docs','bnDetail','bags','inbound','outbound','ssr','meal','paid','info240'];
+  const roles = ['admin','manager','agent','lounge'];
+  const box = document.getElementById('permissionMatrix');
+  box.innerHTML = roles.map(role => `<div style="margin:8px 0;"><b>${role}</b><div>${keys.map(k => `<label style="display:inline-block;margin:4px 8px 4px 0;"><input type="checkbox" id="perm_${role}_${k}" ${d.permissions?.[role]?.[k] ? 'checked' : ''}> ${k}</label>`).join('')}</div></div>`).join('');
+}
+
+async function savePermissions(){
+  const keys = ['docs','bnDetail','bags','inbound','outbound','ssr','meal','paid','info240'];
+  const roles = ['admin','manager','agent','lounge'];
+  const permissions = {};
+  roles.forEach(role => {
+    permissions[role] = {};
+    keys.forEach(k => { permissions[role][k] = !!document.getElementById(`perm_${role}_${k}`)?.checked; });
+  });
+  const r = await fetch('/admin/permissions', { method:'POST', headers:authHeaders(), body: JSON.stringify({ permissions }) });
+  const d = await r.json();
+  if(!r.ok){ alert(d.error || 'Save failed'); return; }
+  alert('Permissions saved');
+  if (currentUserLevel && d.permissions?.[currentUserLevel]) currentPermissions = d.permissions[currentUserLevel];
 }
 
 async function adminAddUser(){
@@ -915,6 +964,10 @@ function toggleBnDetail(){
     currentPassengerData.raw,
     currentPassengerData.rawText
   ].filter(Boolean).map(x => Array.isArray(x) ? x.join('\n') : String(x));
+  if (hasPerm('info240') && currentPassengerData.info240) {
+    const x = currentPassengerData.info240;
+    lines.push(`240 INFO\nPassport Country: ${x.passportCountry || ''}\nPassport Expiry: ${x.passportExpiry || ''}\nLeave China At: ${x.leaveChinaAt || ''}\nDestination: ${x.destination || ''}\nAgent Submit: ${x.agentSubmitter || ''}`);
+  }
   if (!lines.length) return;
   list.innerHTML = `<div class="detail-card" style="display:block;"><div class="detail-title">BN Detail</div><div class="detail-content">${escapeHtml(lines.join('\n\n'))}</div></div>`;
 }
@@ -964,12 +1017,13 @@ async function searchPassenger(){
   if (isLounge) {
     ['bagsSection','inboundSection','outboundSection','ssrSection','mealSection','paidSection'].forEach(id => document.getElementById(id).style.display = 'none');
   } else {
-    setSection('bags', (d.bagtags || []).join('\n'));
-    setSection('outbound', d.outbound ? `${d.outbound.flight || ''}/${d.outbound.date || ''}${d.outbound.bn ? ` • BN${d.outbound.bn}` : ''}${d.outbound.seat ? ` • ${d.outbound.seat}` : ''}
+    setSection('bags', hasPerm('bags') ? (d.bagtags || []).join('\n') : '');
+    setSection('inbound', hasPerm('inbound') && d.inbound ? `${d.inbound.flight || ''}/${d.inbound.date || ''}\nFrom ${d.inbound.origin || ''}` : '');
+    setSection('outbound', hasPerm('outbound') && d.outbound ? `${d.outbound.flight || ''}/${d.outbound.date || ''}${d.outbound.bn ? ` • BN${d.outbound.bn}` : ''}${d.outbound.seat ? ` • ${d.outbound.seat}` : ''}
 To ${d.outbound.destination || ''}` : '');
-    setSection('ssr', (d.specialServices || []).join(', '));
-    setSection('meal', (d.specialMeals || []).join(', '));
-    setSection('paid', (d.paidProductsShort || d.paidProducts || []).join('\n'));
+    setSection('ssr', hasPerm('ssr') ? (d.specialServices || []).join(', ') : '');
+    setSection('meal', hasPerm('meal') ? (d.specialMeals || []).join(', ') : '');
+    setSection('paid', hasPerm('paid') ? (d.paidProductsShort || d.paidProducts || []).join('\n') : '');
   }
 
   document.getElementById('lounge').innerHTML = d.lounge?.eligible ? '<span class="yes">✅ Eligible</span>' : '<span class="no">❌ Not Eligible</span>';
