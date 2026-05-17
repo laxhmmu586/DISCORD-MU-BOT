@@ -1,89 +1,1436 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Welcome to Firebase Hosting</title>
+<html lang="en">
 
-    <!-- update the version number as needed -->
-    <script defer src="/__/firebase/12.13.0/firebase-app-compat.js"></script>
-    <!-- include only the Firebase features as you need -->
-    <script defer src="/__/firebase/12.13.0/firebase-auth-compat.js"></script>
-    <script defer src="/__/firebase/12.13.0/firebase-database-compat.js"></script>
-    <script defer src="/__/firebase/12.13.0/firebase-firestore-compat.js"></script>
-    <script defer src="/__/firebase/12.13.0/firebase-functions-compat.js"></script>
-    <script defer src="/__/firebase/12.13.0/firebase-messaging-compat.js"></script>
-    <script defer src="/__/firebase/12.13.0/firebase-storage-compat.js"></script>
-    <script defer src="/__/firebase/12.13.0/firebase-analytics-compat.js"></script>
-    <script defer src="/__/firebase/12.13.0/firebase-remote-config-compat.js"></script>
-    <script defer src="/__/firebase/12.13.0/firebase-performance-compat.js"></script>
-    <!-- 
-      initialize the SDK after all desired features are loaded, set useEmulator to false
-      to avoid connecting the SDK to running emulators.
-    -->
-    <script defer src="/__/firebase/init.js?useEmulator=true"></script>
+<head>
 
-    <style media="screen">
-      body { background: #ECEFF1; color: rgba(0,0,0,0.87); font-family: Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; }
-      #message { background: white; max-width: 360px; margin: 100px auto 16px; padding: 32px 24px; border-radius: 3px; }
-      #message h2 { color: #ffa100; font-weight: bold; font-size: 16px; margin: 0 0 8px; }
-      #message h1 { font-size: 22px; font-weight: 300; color: rgba(0,0,0,0.6); margin: 0 0 16px;}
-      #message p { line-height: 140%; margin: 16px 0 24px; font-size: 14px; }
-      #message a { display: block; text-align: center; background: #039be5; text-transform: uppercase; text-decoration: none; color: white; padding: 16px; border-radius: 4px; }
-      #message, #message a { box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24); }
-      #load { color: rgba(0,0,0,0.4); text-align: center; font-size: 13px; }
-      @media (max-width: 600px) {
-        body, #message { margin-top: 0; background: white; box-shadow: none; }
-        body { border-top: 16px solid #ffa100; }
-      }
-    </style>
-  </head>
-  <body>
-    <div id="message">
-      <h2>Welcome</h2>
-      <h1>Firebase Hosting Setup Complete</h1>
-      <p>You're seeing this because you've successfully setup Firebase Hosting. Now it's time to go build something extraordinary!</p>
-      <a target="_blank" href="https://firebase.google.com/docs/hosting/">Open Hosting Documentation</a>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>
+    MUFC System
+  </title>
+
+  <style>
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+
+      margin: 0;
+      padding: 0;
+
+      background: #0f172a;
+
+      color: white;
+
+      font-family:
+        Arial,
+        sans-serif;
+
+      min-height: 100vh;
+
+      display: flex;
+
+      justify-content: center;
+    }
+
+    .container {
+
+      width: 100%;
+
+      max-width: 460px;
+
+      padding: 20px;
+    }
+
+    .title {
+
+      font-size: 30px;
+
+      font-weight: bold;
+
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+
+      color: #94a3b8;
+
+      font-size: 14px;
+
+      margin-bottom: 24px;
+
+      line-height: 1.5;
+    }
+
+    .card,
+    .login-card {
+
+      background: #111827;
+
+      border-radius: 20px;
+
+      padding: 20px;
+
+      box-shadow:
+        0 0 25px rgba(0,0,0,0.35);
+    }
+
+    .login-card {
+
+      margin-top: 60px;
+    }
+
+    input {
+
+      width: 100%;
+
+      padding: 14px;
+
+      margin-bottom: 14px;
+
+      border: none;
+
+      border-radius: 14px;
+
+      background: #1e293b;
+
+      color: white;
+
+      font-size: 15px;
+    }
+
+    button {
+
+      border: none;
+
+      background: #2563eb;
+
+      color: white;
+
+      border-radius: 14px;
+
+      padding: 14px;
+
+      font-size: 15px;
+
+      cursor: pointer;
+    }
+
+    button:hover {
+
+      background: #1d4ed8;
+    }
+
+    .search-box {
+
+      display: flex;
+
+      gap: 10px;
+
+      margin-bottom: 20px;
+    }
+
+    .search-box input {
+
+      margin-bottom: 0;
+    }
+
+    .search-box button {
+
+      min-width: 100px;
+    }
+
+    #mainApp {
+
+      display: none;
+    }
+
+    #card {
+
+      display: none;
+    }
+
+    .flight {
+
+      font-size: 24px;
+
+      font-weight: bold;
+
+      margin-bottom: 18px;
+    }
+
+    .name {
+
+      font-size: 28px;
+
+      font-weight: bold;
+
+      margin-bottom: 10px;
+    }
+
+    .seat {
+
+      color: #cbd5e1;
+
+      margin-bottom: 22px;
+
+      font-size: 15px;
+    }
+
+    .divider {
+
+      height: 1px;
+
+      background: rgba(255,255,255,0.08);
+
+      margin:
+        18px 0;
+    }
+
+    .section {
+
+      margin-bottom: 18px;
+    }
+    .grid-two {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .grid-two .section {
+      margin-bottom: 0;
+    }
+
+    .label {
+
+      color: #60a5fa;
+
+      text-transform: uppercase;
+
+      font-size: 12px;
+
+      letter-spacing: 1px;
+
+      margin-bottom: 6px;
+    }
+
+    .value {
+
+      white-space: pre-line;
+
+      line-height: 1.6;
+
+      font-size: 16px;
+    }
+
+    .yes {
+
+      color: #22c55e;
+
+      font-weight: bold;
+    }
+
+    .no {
+
+      color: #ef4444;
+
+      font-weight: bold;
+    }
+
+    .error {
+
+      display: none;
+
+      background: #7f1d1d;
+
+      border-radius: 12px;
+
+      padding: 12px;
+
+      margin-top: 15px;
+
+      font-size: 14px;
+    }
+    .app-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 10px;
+    }
+
+    .app-header .title {
+      margin-bottom: 0;
+    }
+
+    .help-btn {
+      padding: 7px 11px;
+      font-size: 11px;
+      border-radius: 999px;
+      background: #334155;
+      color: #cbd5e1;
+      white-space: nowrap;
+    }
+
+    .help-btn:hover {
+      background: #475569;
+    }
+
+    .help-panel {
+      display: none;
+      background: #0f172a;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      padding: 12px;
+      margin-bottom: 14px;
+      color: #cbd5e1;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .flight-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .flight-row .flight {
+      margin-bottom: 0;
+    }
+
+    .doc-icon-btn {
+      display: none;
+      padding: 4px 8px;
+      font-size: 22px;
+      line-height: 1;
+      border-radius: 10px;
+      background: transparent;
+    }
+
+    .doc-icon-btn:hover {
+      background: #1e293b;
+    }
+
+    .doc-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 14px;
+      font-size: 14px;
+      line-height: 1.35;
+    }
+
+    .doc-item span {
+      display: block;
+      color: #94a3b8;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      margin-bottom: 2px;
+    }
+
+    .doc-item b {
+      color: white;
+      font-weight: 600;
+    }
+
+
+    .bn-link {
+      color: #ffffff;
+      cursor: pointer;
+      text-decoration: underline;
+      text-decoration-thickness: 1px;
+      text-underline-offset: 3px;
+    }
+
+    .bn-link:hover {
+      color: #93c5fd;
+    }
+
+    .detail-card {
+      display: none;
+      background: #111827;
+      border-radius: 20px;
+      padding: 18px 20px;
+      margin-top: 16px;
+      box-shadow: 0 0 25px rgba(0,0,0,0.35);
+    }
+
+    .detail-title {
+      color: #60a5fa;
+      text-transform: uppercase;
+      font-size: 12px;
+      letter-spacing: 1px;
+      margin-bottom: 10px;
+    }
+
+    .detail-content {
+      white-space: pre-wrap;
+      line-height: 1.55;
+      font-size: 14px;
+      color: #e5e7eb;
+      word-break: break-word;
+    }
+
+    .mini-btn {
+      padding: 8px 12px;
+      font-size: 12px;
+      border-radius: 10px;
+      background: #334155;
+    }
+    .mini-btn:hover {
+      background: #475569;
+    }
+
+  </style>
+
+</head>
+
+<body>
+
+  <div class="container">
+
+    <!-- LOGIN -->
+    <div
+      id="loginPage"
+      class="login-card"
+    >
+
+      <div class="title">
+        MUFC
+      </div>
+
+      <div class="subtitle">
+        Internal Access Only
+      </div>
+
+      <input
+        id="username"
+        placeholder="Username"
+      >
+
+      <input
+        id="password"
+        type="password"
+        placeholder="Password"
+      >
+
+      <button
+        onclick="login()"
+        style="width:100%;"
+      >
+        Login
+      </button>
+
+      <div
+        id="loginError"
+        class="error"
+      ></div>
+
     </div>
-    <p id="load">Firebase SDK Loading&hellip;</p>
 
-    <script>
-      document.addEventListener('DOMContentLoaded', function() {
-        const loadEl = document.querySelector('#load');
-        // // 🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥
-        // // The Firebase SDK is initialized and available here!
-        //
-        // firebase.auth().onAuthStateChanged(user => { });
-        // firebase.database().ref('/path/to/ref').on('value', snapshot => { });
-        // firebase.firestore().doc('/foo/bar').get().then(() => { });
-        // firebase.functions().httpsCallable('yourFunction')().then(() => { });
-        // firebase.messaging().requestPermission().then(() => { });
-        // firebase.storage().ref('/path/to/ref').getDownloadURL().then(() => { });
-        // firebase.analytics(); // call to activate
-        // firebase.analytics().logEvent('tutorial_completed');
-        // firebase.performance(); // call to activate
-        //
-        // // 🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥
+    <!-- MAIN -->
+    <div id="mainApp">
 
-        try {
-          let app = firebase.app();
-          let features = [
-            'auth', 
-            'database', 
-            'firestore',
-            'functions',
-            'messaging', 
-            'storage', 
-            'analytics', 
-            'remoteConfig',
-            'performance',
-          ].filter(feature => typeof app[feature] === 'function');
-          loadEl.textContent = `Firebase SDK loaded with ${features.join(', ')}`;
-        } catch (e) {
-          console.error(e);
-          loadEl.textContent = 'Error loading the Firebase SDK, check the console.';
+      <div class="app-header">
+        <div class="title">
+          MUFC
+        </div>
+
+        <button
+          class="help-btn"
+          onclick="toggleHelpPanel()"
+        >
+          Search Help
+        </button>
+      </div>
+
+      <div
+        id="helpPanel"
+        class="help-panel"
+      >
+        Search by Boarding Number, Name, Seat, Ticket Number, or Membership Number.<br>
+      </div>
+
+      <div class="search-box">
+
+        <input
+          id="query"
+          placeholder="Enter Search"
+        >
+
+        <button onclick="searchPassenger()">
+          Search
+        </button>
+
+      </div>
+
+      <div
+        id="error"
+        class="error"
+      ></div>
+
+      <!-- CARD -->
+      <div
+        id="card"
+        class="card"
+      >
+        <div class="flight-row">
+          <div
+            id="flight"
+            class="flight"
+          ></div>
+
+          <button
+            id="docToggleBtn"
+            class="doc-icon-btn"
+            onclick="toggleDocPanel()"
+            title="Travel Docs"
+          >
+            🪪
+          </button>
+        </div>
+
+        <div
+          id="name"
+          class="name"
+        ></div>
+
+        <div
+          id="seat"
+          class="seat"
+        ></div>
+
+        <div
+          id="docSection"
+          class="section"
+          style="display:none;"
+        >
+          <div class="divider"></div>
+          <div class="label">Travel Docs</div>
+          <div id="docContent" class="value"></div>
+        </div>
+
+        <div class="grid-two">
+        <!-- Membership -->
+        <div
+          id="membershipSection"
+          class="section"
+          style="display:none;"
+        >
+
+          <div class="divider"></div>
+
+          <div class="label">
+            Membership
+          </div>
+
+          <div
+            id="ff"
+            class="value"
+          ></div>
+
+          <div
+            id="ffStatus"
+            class="value"
+          ></div>
+
+        </div>
+
+        <!-- Ticket -->
+        <div
+          id="ticketSection"
+          class="section"
+          style="display:none;"
+        >
+
+          <div class="divider"></div>
+
+          <div class="label">
+            Ticket
+          </div>
+
+          <div
+            id="ticket"
+            class="value"
+          ></div>
+
+        </div>
+
+        <!-- Bags -->
+        <div
+          id="bagsSection"
+          class="section"
+          style="display:none;"
+        >
+
+          <div class="divider"></div>
+
+          <div class="label">
+            Bags
+          </div>
+
+          <div
+            id="bags"
+            class="value"
+          ></div>
+
+        </div>
+
+        <!-- Inbound -->
+        <div
+          id="inboundSection"
+          class="section"
+          style="display:none;"
+        >
+
+          <div class="divider"></div>
+
+          <div class="label">
+            Inbound
+          </div>
+
+          <div
+            id="inbound"
+            class="value"
+          ></div>
+
+        </div>
+
+        <!-- Outbound -->
+        <div
+          id="outboundSection"
+          class="section"
+          style="display:none;"
+        >
+
+          <div class="divider"></div>
+
+          <div class="label">
+            Outbound
+          </div>
+
+          <div
+            id="outbound"
+            class="value"
+          ></div>
+
+        </div>
+
+        <!-- SSR -->
+        <div
+          id="ssrSection"
+          class="section"
+          style="display:none;"
+        >
+
+          <div class="divider"></div>
+
+          <div class="label">
+            Special Service
+          </div>
+
+          <div
+            id="ssr"
+            class="value"
+          ></div>
+
+        </div>
+
+        <!-- Special Meal -->
+        <div
+          id="mealSection"
+          class="section"
+          style="display:none;"
+        >
+
+          <div class="divider"></div>
+
+          <div class="label">
+            Special Meal
+          </div>
+
+          <div
+            id="meal"
+            class="value"
+          ></div>
+
+        </div>
+
+        <!-- Paid Service -->
+        <div
+          id="paidSection"
+          class="section"
+          style="display:none;"
+        >
+
+          <div class="divider"></div>
+
+          <div class="label">
+            Paid Service
+          </div>
+
+          <div
+            id="paid"
+            class="value"
+          ></div>
+
+        </div>
+
+        <!-- Lounge -->
+        <div class="section">
+
+          <div class="divider"></div>
+
+          <div class="label">
+            Lounge Access
+          </div>
+
+          <div
+            id="lounge"
+            class="value"
+          ></div>
+
+          <div
+            class="label"
+            style="margin-top:18px;"
+          >
+            Guest Access
+          </div>
+
+          <div
+            id="guest"
+            class="value"
+          ></div>
+
+        </div>
+        </div>
+
+      </div>
+
+      <div id="checkinDetailList"></div>
+
+    </div>
+
+  </div>
+
+  <script>
+    let docPanelOpen = false;
+    let currentPassengerData = null;
+    let checkinPanelOpen = false;
+
+    let helpPanelOpen = false;
+
+
+    function escapeHtml(value) {
+      return (value || '')
+        .toString()
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function getRawRecordText(data) {
+      const possibleFields = [
+        data?.rawRecord,
+        data?.fullRecord,
+        data?.record,
+        data?.raw,
+        data?.rawText,
+        data?.originalText,
+        data?.passengerRecord,
+        data?.latestRecord,
+        data?.sourceRecord,
+        data?.sourceText,
+        data?.log
+      ];
+
+      return possibleFields
+        .filter(Boolean)
+        .map(x => Array.isArray(x) ? x.join('\n') : x.toString())
+        .join('\n');
+    }
+
+    function normalizeDetailLine(line) {
+      return (line || '')
+        .toString()
+        .replace(/[\u001c-\u001f]/g, '')
+        .trimEnd();
+    }
+
+    function dedupeLines(lines) {
+      return [...new Set((lines || []).filter(Boolean))];
+    }
+
+    function parseCheckinGroups(data) {
+      const psmLines = dedupeLines((data?.psmLines || [])
+        .map(normalizeDetailLine)
+        .filter(line => /^PSM\b/i.test(line)));
+
+      const ckinLines = dedupeLines((data?.ckinLines || [])
+        .map(normalizeDetailLine)
+        .filter(line => /^CKIN\b/i.test(line)));
+
+      const operationHistoryLines = dedupeLines((data?.operationHistoryLines || [])
+        .map(normalizeDetailLine)
+        .filter(line => /^[A-Z]{2,3}\s+[A-Z]{3}\d{5,}\s+AGT\d+\/\d{2}[A-Z]{3}\d{4}/i.test(line)));
+
+      const detailLines = [
+        ...psmLines,
+        ...ckinLines,
+        ...operationHistoryLines
+      ];
+
+      if (!detailLines.length) {
+        return [];
+      }
+
+      return [{
+        header: 'Check-in Details',
+        detailLines
+      }];
+    }
+
+    function toggleCheckinPanel() {
+      const list = document.getElementById('checkinDetailList');
+
+      if (!currentPassengerData) return;
+
+      checkinPanelOpen = !checkinPanelOpen;
+
+      if (!checkinPanelOpen) {
+        list.innerHTML = '';
+        return;
+      }
+
+      const groups = parseCheckinGroups(currentPassengerData);
+      const cards = [];
+
+      if (groups.length) {
+        cards.push(...groups.map(group => `
+        <div class="detail-card" style="display:block;">
+          <div class="detail-title">${escapeHtml(group.header)}</div>
+          <div class="detail-content">${escapeHtml(group.detailLines.join('\n'))}</div>
+        </div>
+      `));
+      }
+
+      const extra = currentPassengerData?.info240;
+      if (extra && Object.values(extra).some(Boolean)) {
+        const extraLines = [
+          extra.passportCountry ? `Passport Country: ${extra.passportCountry}` : '',
+          extra.passportExpiry ? `Passport Expiry: ${extra.passportExpiry}` : '',
+          extra.leaveChinaAt ? `Leave China At: ${extra.leaveChinaAt}` : '',
+          extra.destination ? `Destination: ${extra.destination}` : '',
+          extra.agentSubmitter ? `Agent Submit: ${extra.agentSubmitter}` : ''
+        ].filter(Boolean);
+
+        if (extraLines.length) {
+          cards.push(`
+            <div class="detail-card" style="display:block;">
+              <div class="detail-title">240 info</div>
+              <div class="detail-content">${escapeHtml(extraLines.join('\n'))}</div>
+            </div>
+          `);
         }
-      });
-    </script>
-  </body>
+      }
+
+      if (!cards.length) {
+        list.innerHTML = '';
+        checkinPanelOpen = false;
+        return;
+      }
+
+      list.innerHTML = cards.join('');
+    }
+
+    function toggleHelpPanel() {
+      const panel = document.getElementById('helpPanel');
+      helpPanelOpen = !helpPanelOpen;
+      panel.style.display = helpPanelOpen ? 'block' : 'none';
+    }
+
+    function toggleDocPanel() {
+      const sec = document.getElementById('docSection');
+      const btn = document.getElementById('docToggleBtn');
+      docPanelOpen = !docPanelOpen;
+      sec.style.display = docPanelOpen ? 'block' : 'none';
+      btn.innerText = '🪪';
+    }
+
+    function cleanRawLine(value) {
+      return (value || '')
+        .toString()
+        .replace(/^\s*[A-Z ]+:/i, '')
+        .trim();
+    }
+
+    function firstMatch(text, regex) {
+      const m = (text || '').match(regex);
+      return m ? m[1] : '';
+    }
+
+    function buildTravelDocs(data) {
+      const paxInfoRaw = cleanRawLine(data.paxInfoRaw);
+      const passportRaw = cleanRawLine(data.passportRaw);
+
+      const passportParts = passportRaw
+        .split('/')
+        .map(x => x.trim());
+
+      const passportNumber =
+        data.passportNumber ||
+        firstMatch(passportRaw, /^([A-Z0-9]+)/i);
+
+      const nationality =
+        data.nationality ||
+        firstMatch(paxInfoRaw, /^([A-Z]{3})\//i) ||
+        firstMatch(passportRaw, /\/NAT\/([A-Z]{3})\//i);
+
+      const dob =
+        data.dob ||
+        data.birthDate ||
+        firstMatch(paxInfoRaw, /\/DOB\/(\d{6})/i);
+
+      const gender =
+        data.gender ||
+        firstMatch(paxInfoRaw, /\/GENDER\/([A-Z])/i);
+
+      let expiry =
+        data.passportExpiry ||
+        data.expiryDate ||
+        '';
+
+      if (!expiry) {
+        const natIndex = passportParts.findIndex(x => x.toUpperCase() === 'NAT');
+        if (natIndex >= 0) {
+          expiry = passportParts
+            .slice(natIndex + 2)
+            .find(x => /^\d{6}$/.test(x)) || '';
+        }
+      }
+
+      const items = [
+        ['Passport', passportNumber],
+        ['Nationality', nationality],
+        ['DOB', dob],
+        ['Expiry', expiry],
+        ['Gender', gender]
+      ].filter(item => item[1]);
+
+      if (!items.length) return '';
+
+      return '<div class="doc-grid">' +
+        items.map(([label, value]) =>
+          `<div class="doc-item"><span>${label}</span><b>${value}</b></div>`
+        ).join('') +
+        '</div>';
+    }
+
+    // ===========================
+    // Session Timeout
+    // ===========================
+    const LOGIN_TIMEOUT =
+      30 * 60 * 1000;
+
+    const lastLogin =
+      localStorage.getItem(
+        'mu_login_time'
+      );
+
+    const now =
+      Date.now();
+
+    if (
+
+      localStorage.getItem(
+        'mu_logged_in'
+      ) === 'true'
+
+      &&
+
+      lastLogin
+
+      &&
+
+      (now - Number(lastLogin))
+        < LOGIN_TIMEOUT
+
+    ) {
+
+      document.getElementById(
+        'loginPage'
+      ).style.display = 'none';
+
+      document.getElementById(
+        'mainApp'
+      ).style.display = 'block';
+    }
+
+    else {
+
+      localStorage.clear();
+    }
+
+    // ===========================
+    // Login
+    // ===========================
+    function login() {
+
+      const username =
+        document
+          .getElementById('username')
+          .value
+          .trim();
+
+      const password =
+        document
+          .getElementById('password')
+          .value
+          .trim();
+
+      if (
+
+        username === 'mu586' &&
+        password === 'mulax'
+
+      ) {
+
+        localStorage.setItem(
+          'mu_logged_in',
+          'true'
+        );
+
+        localStorage.setItem(
+          'mu_login_time',
+          Date.now()
+        );
+
+        document.getElementById(
+          'loginPage'
+        ).style.display = 'none';
+
+        document.getElementById(
+          'mainApp'
+        ).style.display = 'block';
+      }
+
+      else {
+
+        const err =
+          document.getElementById(
+            'loginError'
+          );
+
+        err.innerText =
+          'Invalid username or password';
+
+        err.style.display =
+          'block';
+      }
+    }
+
+    // ===========================
+    // Search
+    // ===========================
+    async function searchPassenger() {
+
+      localStorage.setItem(
+        'mu_login_time',
+        Date.now()
+      );
+
+      let q =
+        document
+          .getElementById('query')
+          .value
+          .trim();
+
+      if (!q) {
+        return;
+      }
+
+      const upper =
+        q.toUpperCase();
+
+      if (
+        upper.startsWith('FB ')
+      ) {
+
+        q =
+          q.substring(3).trim();
+      }
+
+      else if (
+        upper.startsWith('RN ')
+      ) {
+
+        q =
+          q.substring(3).trim();
+      }
+
+      else if (
+        upper.startsWith('FSN ')
+      ) {
+
+        q =
+          q.substring(4).trim();
+      }
+
+      else if (
+        upper.startsWith('ETKD ')
+      ) {
+
+        q =
+          q.substring(5).trim();
+      }
+
+      else if (
+        upper.startsWith('FF ')
+      ) {
+
+        q =
+          q.substring(3).trim();
+      }
+
+      const card =
+        document.getElementById('card');
+
+      const error =
+        document.getElementById('error');
+
+      card.style.display =
+        'none';
+
+      error.style.display =
+        'none';
+
+      checkinPanelOpen = false;
+      document.getElementById('checkinDetailList').innerHTML = '';
+
+      try {
+
+        const res =
+          await fetch(
+            '/search?q=' +
+            encodeURIComponent(q)
+          );
+
+        const data =
+          await res.json();
+
+        if (data.error) {
+
+          error.innerText =
+            data.error;
+
+          error.style.display =
+            'block';
+
+          return;
+        }
+
+        // Flight
+        document.getElementById(
+          'flight'
+        ).innerText =
+          `✈️ ${data.flight}/${data.flightDate}`;
+
+        // Name
+        document.getElementById(
+          'name'
+        ).innerText =
+          data.name;
+
+        currentPassengerData = data;
+        checkinPanelOpen = false;
+        document.getElementById('checkinDetailList').innerHTML = '';
+
+        // Seat / BN clickable detail
+        document.getElementById(
+          'seat'
+        ).innerHTML =
+          `🎫 <span class="bn-link" onclick="toggleCheckinPanel()">BN${escapeHtml(data.bn)}</span> • ${escapeHtml(data.seat)} • ${escapeHtml(data.cabin)}`;
+
+        // Docs button/panel
+        const docBtn = document.getElementById('docToggleBtn');
+        const docSec = document.getElementById('docSection');
+        const docContent = document.getElementById('docContent');
+        const docsHtml = buildTravelDocs(data);
+
+        if (docsHtml) {
+          docBtn.style.display = 'inline-block';
+          docContent.innerHTML = docsHtml;
+          docPanelOpen = false;
+          docSec.style.display = 'none';
+          docBtn.innerText = '🪪';
+        } else {
+          docBtn.style.display = 'none';
+          docSec.style.display = 'none';
+          docContent.innerHTML = '';
+        }
+
+        // Membership
+        if (data.ffNumber) {
+
+          document.getElementById(
+            'membershipSection'
+          ).style.display =
+            'block';
+
+          document.getElementById(
+            'ff'
+          ).innerText =
+
+            `${data.ffCarrier} ${data.ffNumber}`;
+
+          document.getElementById(
+            'ffStatus'
+          ).innerText =
+
+            data.membershipStatus ||
+
+            (
+              data.ffTier === 'V'
+                ? 'Platinum'
+                : data.ffTier === 'G'
+                ? 'Gold'
+                : data.ffTier === 'S'
+                ? 'Silver'
+                : data.ffTier === 'C'
+                ? 'Regular'
+                : data.ffTier === '1'
+                ? 'Elite'
+                : data.ffTier === '2'
+                ? 'Elite Plus'
+                : ''
+            );
+        }
+
+        else {
+
+          document.getElementById(
+            'membershipSection'
+          ).style.display =
+            'none';
+        }
+
+        // Ticket
+        if (data.ticketNumber) {
+
+          document.getElementById(
+            'ticketSection'
+          ).style.display =
+            'block';
+
+          document.getElementById(
+            'ticket'
+          ).innerText =
+            data.ticketNumber;
+        }
+
+        else {
+
+          document.getElementById(
+            'ticketSection'
+          ).style.display =
+            'none';
+        }
+
+        // Bags
+        if (
+          data.bagtags &&
+          data.bagtags.length
+        ) {
+
+          document.getElementById(
+            'bagsSection'
+          ).style.display =
+            'block';
+
+          document.getElementById(
+            'bags'
+          ).innerText =
+            data.bagtags.join('\n');
+        }
+
+        else {
+
+          document.getElementById(
+            'bagsSection'
+          ).style.display =
+            'none';
+        }
+
+        // Inbound
+        if (data.inbound) {
+
+          document.getElementById(
+            'inboundSection'
+          ).style.display =
+            'block';
+
+          document.getElementById(
+            'inbound'
+          ).innerText =
+
+            `${data.inbound.flight}/${data.inbound.date}\nFrom ${data.inbound.origin}`;
+        }
+
+        else {
+
+          document.getElementById(
+            'inboundSection'
+          ).style.display =
+            'none';
+        }
+
+        // Outbound
+        if (data.outbound) {
+
+          document.getElementById(
+            'outboundSection'
+          ).style.display =
+            'block';
+
+          document.getElementById(
+            'outbound'
+          ).innerText =
+
+            `${data.outbound.flight}/${data.outbound.date}` +
+
+            (data.outbound.bn
+              ? ` • BN${data.outbound.bn}`
+              : '') +
+
+            (data.outbound.seat
+              ? ` • ${data.outbound.seat}`
+              : '') +
+
+            `\nTo ${data.outbound.destination}`;
+        }
+
+        else {
+
+          document.getElementById(
+            'outboundSection'
+          ).style.display =
+            'none';
+        }
+
+        // Special Service
+        if (data.specialServices && data.specialServices.length) {
+          document.getElementById('ssrSection').style.display = 'block';
+          document.getElementById('ssr').innerText = data.specialServices.join(', ');
+        } else {
+          document.getElementById('ssrSection').style.display = 'none';
+        }
+
+        // Special Meal
+        if (data.specialMeals && data.specialMeals.length) {
+          document.getElementById('mealSection').style.display = 'block';
+          document.getElementById('meal').innerText = data.specialMeals.join(', ');
+        } else {
+          document.getElementById('mealSection').style.display = 'none';
+        }
+
+        // Paid Service
+        if (data.paidProductsShort && data.paidProductsShort.length) {
+          document.getElementById('paidSection').style.display = 'block';
+          document.getElementById('paid').innerText = data.paidProductsShort.join('\n');
+        } else if (data.paidProducts && data.paidProducts.length) {
+          document.getElementById('paidSection').style.display = 'block';
+          document.getElementById('paid').innerText = data.paidProducts.join('\n');
+        } else {
+          document.getElementById('paidSection').style.display = 'none';
+        }
+
+        // Lounge
+        document.getElementById(
+          'lounge'
+        ).innerHTML =
+
+          data.lounge?.eligible
+
+            ? '<span class="yes">✅ Eligible</span>'
+
+            : '<span class="no">❌ Not Eligible</span>';
+
+        // Guest
+        document.getElementById(
+          'guest'
+        ).innerHTML =
+
+          data.lounge?.guest
+
+            ? '<span class="yes">✅ Allowed</span>'
+
+            : '<span class="no">❌ Not Allowed</span>';
+
+        // Show
+        card.style.display =
+          'block';
+
+      }
+
+      catch (err) {
+
+        error.innerText =
+          'Search failed';
+
+        error.style.display =
+          'block';
+      }
+    }
+
+    // ===========================
+    // Enter Key
+    // ===========================
+    document
+      .getElementById('query')
+      .addEventListener(
+        'keypress',
+        function(e) {
+
+          if (e.key === 'Enter') {
+
+            searchPassenger();
+          }
+        }
+      );
+
+  </script>
+<script type="module">
+  // Import the functions you need from the SDKs you need
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-analytics.js";
+  // TODO: Add SDKs for Firebase products that you want to use
+  // https://firebase.google.com/docs/web/setup#available-libraries
+
+  // Your web app's Firebase configuration
+  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+  const firebaseConfig = {
+    apiKey: "AIzaSyAWsXBuQJTBmNKi6gLgnkZUZ4OfK1IRuXo",
+    authDomain: "china-eastern.firebaseapp.com",
+    projectId: "china-eastern",
+    storageBucket: "china-eastern.firebasestorage.app",
+    messagingSenderId: "30017158772",
+    appId: "1:30017158772:web:874a69fdb75b8d3d315b21",
+    measurementId: "G-22T9MHC42Y"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+</script>
+</body>
 </html>
