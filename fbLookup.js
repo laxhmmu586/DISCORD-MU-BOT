@@ -325,8 +325,13 @@ async function runLookup(mode, rawQuery) {
         value: pax.specialMeals.join(', '),
         inline: false
       }] : []),
-      ...(pax.paidProducts?.length ? [{
-        name: '💰 Paid Products',
+      ...(pax.paidProductsShort?.length ? [{
+        name: '💰 Paid Service',
+        value: pax.paidProductsShort.join('\n'),
+        inline: false
+      }] : []),
+      ...(pax.paidProducts?.length && !pax.paidProductsShort?.length ? [{
+        name: '💰 Paid Service',
         value: pax.paidProducts.join('\n'),
         inline: false
       }] : []),

@@ -507,7 +507,7 @@
 
         </div>
 
-        <!-- Paid Products -->
+        <!-- Paid Service -->
         <div
           id="paidSection"
           class="section"
@@ -517,7 +517,7 @@
           <div class="divider"></div>
 
           <div class="label">
-            Paid Products
+            Paid Service
           </div>
 
           <div
@@ -946,8 +946,11 @@
           document.getElementById('mealSection').style.display = 'none';
         }
 
-        // Paid Products
-        if (data.paidProducts && data.paidProducts.length) {
+        // Paid Service
+        if (data.paidProductsShort && data.paidProductsShort.length) {
+          document.getElementById('paidSection').style.display = 'block';
+          document.getElementById('paid').innerText = data.paidProductsShort.join('\n');
+        } else if (data.paidProducts && data.paidProducts.length) {
           document.getElementById('paidSection').style.display = 'block';
           document.getElementById('paid').innerText = data.paidProducts.join('\n');
         } else {
