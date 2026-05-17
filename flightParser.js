@@ -535,7 +535,7 @@ function parseIncrementalLog(log) {
 
     const operationHistoryLines = [
       ...new Set(
-        sectionLines.filter(line => /^[A-Z]{2,3}\s+[A-Z]{3}\d{5,}\s+/i.test(line))
+        sectionLines.filter(line => /^[A-Z]{2,3}\s+[A-Z]{3}\d{5,}\s+AGT\d+\/\d{2}[A-Z]{3}\d{4}/i.test(line))
       )
     ];
 
