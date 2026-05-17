@@ -172,22 +172,23 @@ app.use(
 );
 
 const USERS = {
-  '21470': { password: 'admin', level: 'highest', fixedUsername: true, lastPasswordChange: '2026-05-17' },
-  '23239': { password: 'admin', level: 'highest', fixedUsername: true, lastPasswordChange: '2026-05-17' },
-  '27199': { password: 'admin', level: 'highest', fixedUsername: true, lastPasswordChange: '2026-05-17' },
-  demi: { password: 'mulax', level: 'normal', lastPasswordChange: '2026-05-17' },
-  vicky: { password: 'mulax', level: 'normal', lastPasswordChange: '2026-05-17' },
-  haoran: { password: 'mulax', level: 'normal', lastPasswordChange: '2026-05-17' },
-  cho: { password: 'mulax', level: 'normal', lastPasswordChange: '2026-05-17' },
-  mulounge: { password: 'mulax', level: 'basic', lastPasswordChange: '2026-05-17' }
+  '21470': { password: 'admin', level: 'admin', fixedUsername: true, lastPasswordChange: '2026-05-17' },
+  '23239': { password: 'admin', level: 'manager', fixedUsername: true, lastPasswordChange: '2026-05-17' },
+  '27199': { password: 'admin', level: 'manager', fixedUsername: true, lastPasswordChange: '2026-05-17' },
+  demi: { password: 'mulax', level: 'agent', lastPasswordChange: '2026-05-17' },
+  vicky: { password: 'mulax', level: 'agent', lastPasswordChange: '2026-05-17' },
+  haoran: { password: 'mulax', level: 'agent', lastPasswordChange: '2026-05-17' },
+  cho: { password: 'mulax', level: 'agent', lastPasswordChange: '2026-05-17' },
+  mulounge: { password: 'mulax', level: 'lounge', lastPasswordChange: '2026-05-17' }
 };
 
 const sessions = new Map();
 const PASSWORD_EXPIRE_DAYS = 90;
+const SESSION_IDLE_TIMEOUT_MS = 15 * 60 * 1000;
 
 function createSession(username) {
   const token = `${username}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
-  sessions.set(token, { username, createdAt: Date.now() });
+  sessions.set(token, { username, createdAt: Date.now(), lastActiveAt: Date.now() });
   return token;
 }
 
@@ -196,6 +197,11 @@ function authFromReq(req) {
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
   const session = sessions.get(token);
   if (!session) return null;
+  if (Date.now() - session.lastActiveAt > SESSION_IDLE_TIMEOUT_MS) {
+    sessions.delete(token);
+    return null;
+  }
+  session.lastActiveAt = Date.now();
   return { ...session, token, user: USERS[session.username] };
 }
 
@@ -206,10 +212,10 @@ function needsPasswordReset(user) {
 }
 
 function applyVisibilityRules(pax, level) {
-  if (!pax || level === 'highest') return pax;
+  if (!pax || level === 'admin' || level === 'manager') return pax;
   const clone = { ...pax };
 
-  if (level === 'normal') {
+  if (level === 'agent') {
     delete clone.paxInfoRaw;
     delete clone.passportRaw;
     delete clone.passportNumber;
@@ -222,7 +228,7 @@ function applyVisibilityRules(pax, level) {
     delete clone.info240;
   }
 
-  if (level === 'basic') {
+  if (level === 'lounge') {
     return {
       bn: clone.bn,
       ticketNumber: clone.ticketNumber,
@@ -647,3 +653,36 @@ app.listen(
     );
   }
 );
+
+
+app.post('/auth/logout', (req, res) => {
+  const auth = authFromReq(req);
+  if (auth?.token) sessions.delete(auth.token);
+  res.json({ success: true });
+});
+
+app.get('/auth/me', (req, res) => {
+  const auth = authFromReq(req);
+  if (!auth || !auth.user) return res.status(401).json({ error: 'Unauthorized' });
+  res.json({ username: auth.username, level: auth.user.level, mustChangePassword: needsPasswordReset(auth.user), passwordLastChanged: auth.user.lastPasswordChange });
+});
+
+app.get('/admin/users', (req, res) => {
+  const auth = authFromReq(req);
+  if (!auth || !auth.user) return res.status(401).json({ error: 'Unauthorized' });
+  if (auth.user.level !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+  const users = Object.entries(USERS).map(([username, user]) => ({ username, level: user.level, lastPasswordChange: user.lastPasswordChange }));
+  res.json({ users });
+});
+
+app.post('/admin/users/level', (req, res) => {
+  const auth = authFromReq(req);
+  if (!auth || !auth.user) return res.status(401).json({ error: 'Unauthorized' });
+  if (auth.user.level !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+  const { username, level } = req.body || {};
+  const allow = new Set(['admin', 'manager', 'agent', 'lounge']);
+  if (!USERS[username]) return res.status(404).json({ error: 'User not found' });
+  if (!allow.has(level)) return res.status(400).json({ error: 'Invalid level' });
+  USERS[username].level = level;
+  res.json({ success: true });
+});
