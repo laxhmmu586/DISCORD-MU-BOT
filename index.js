@@ -171,6 +171,71 @@ app.use(
   express.static('public')
 );
 
+const USERS = {
+  '21470': { password: 'admin', level: 'highest', fixedUsername: true, lastPasswordChange: '2026-05-17' },
+  '23239': { password: 'admin', level: 'highest', fixedUsername: true, lastPasswordChange: '2026-05-17' },
+  '27199': { password: 'admin', level: 'highest', fixedUsername: true, lastPasswordChange: '2026-05-17' },
+  demi: { password: 'mulax', level: 'normal', lastPasswordChange: '2026-05-17' },
+  vicky: { password: 'mulax', level: 'normal', lastPasswordChange: '2026-05-17' },
+  haoran: { password: 'mulax', level: 'normal', lastPasswordChange: '2026-05-17' },
+  cho: { password: 'mulax', level: 'normal', lastPasswordChange: '2026-05-17' },
+  mulounge: { password: 'mulax', level: 'basic', lastPasswordChange: '2026-05-17' }
+};
+
+const sessions = new Map();
+const PASSWORD_EXPIRE_DAYS = 90;
+
+function createSession(username) {
+  const token = `${username}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
+  sessions.set(token, { username, createdAt: Date.now() });
+  return token;
+}
+
+function authFromReq(req) {
+  const auth = req.headers.authorization || '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+  const session = sessions.get(token);
+  if (!session) return null;
+  return { ...session, token, user: USERS[session.username] };
+}
+
+function needsPasswordReset(user) {
+  const changedAt = new Date(user.lastPasswordChange || '1970-01-01T00:00:00Z');
+  const elapsedDays = (Date.now() - changedAt.getTime()) / (1000 * 60 * 60 * 24);
+  return elapsedDays >= PASSWORD_EXPIRE_DAYS;
+}
+
+function applyVisibilityRules(pax, level) {
+  if (!pax || level === 'highest') return pax;
+  const clone = { ...pax };
+
+  if (level === 'normal') {
+    delete clone.paxInfoRaw;
+    delete clone.passportRaw;
+    delete clone.passportNumber;
+    delete clone.nationality;
+    delete clone.dob;
+    delete clone.birthDate;
+    delete clone.gender;
+    delete clone.passportExpiry;
+    delete clone.expiryDate;
+    delete clone.info240;
+  }
+
+  if (level === 'basic') {
+    return {
+      bn: clone.bn,
+      ticketNumber: clone.ticketNumber,
+      ffCarrier: clone.ffCarrier,
+      ffNumber: clone.ffNumber,
+      membershipStatus: clone.membershipStatus,
+      lounge: clone.lounge
+    };
+  }
+
+  return clone;
+}
+
 // ===============================
 // Discord Client
 // ===============================
@@ -221,6 +286,11 @@ app.get(
   async (req, res) => {
 
     try {
+
+      const auth = authFromReq(req);
+      if (!auth || !auth.user) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
 
       let q =
         (
@@ -445,7 +515,7 @@ app.get(
       // =========================
       // Response
       // =========================
-      res.json({
+      const fullData = {
 
         ...pax,
         info240:
@@ -455,7 +525,11 @@ app.get(
           }),
 
         membershipStatus
-      });
+      };
+
+      res.json(
+        applyVisibilityRules(fullData, auth.user.level)
+      );
 
     }
 
@@ -471,6 +545,34 @@ app.get(
     }
   }
 );
+
+app.post('/auth/login', (req, res) => {
+  const { username, password } = req.body || {};
+  const user = USERS[username];
+  if (!user || user.password !== password) {
+    return res.status(401).json({ error: 'Invalid username or password' });
+  }
+  const token = createSession(username);
+  return res.json({
+    token,
+    username,
+    level: user.level,
+    mustChangePassword: needsPasswordReset(user),
+    passwordLastChanged: user.lastPasswordChange
+  });
+});
+
+app.post('/auth/change-password', (req, res) => {
+  const auth = authFromReq(req);
+  if (!auth || !auth.user) return res.status(401).json({ error: 'Unauthorized' });
+  const { oldPassword, newPassword } = req.body || {};
+  if (!oldPassword || !newPassword) return res.status(400).json({ error: 'Missing old/new password' });
+  if (auth.user.password !== oldPassword) return res.status(400).json({ error: 'Old password incorrect' });
+  if (newPassword.length < 4) return res.status(400).json({ error: 'New password too short' });
+  auth.user.password = newPassword;
+  auth.user.lastPasswordChange = new Date().toISOString().slice(0, 10);
+  return res.json({ success: true, passwordLastChanged: auth.user.lastPasswordChange });
+});
 
 // ===============================
 // Send Message API

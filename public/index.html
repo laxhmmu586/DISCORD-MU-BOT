@@ -726,6 +726,8 @@
     let docPanelOpen = false;
     let currentPassengerData = null;
     let checkinPanelOpen = false;
+    let currentUserLevel = localStorage.getItem('mu_user_level') || '';
+    let authToken = localStorage.getItem('mu_auth_token') || '';
 
     let helpPanelOpen = false;
 
@@ -833,7 +835,7 @@
     function toggleCheckinPanel() {
       const list = document.getElementById('checkinDetailList');
 
-      if (!currentPassengerData) return;
+      if (!currentPassengerData || currentUserLevel !== 'highest') return;
 
       checkinPanelOpen = !checkinPanelOpen;
 
@@ -890,6 +892,7 @@
     }
 
     function toggleDocPanel() {
+      if (currentUserLevel !== 'highest') return;
       const sec = document.getElementById('docSection');
       const btn = document.getElementById('docToggleBtn');
       docPanelOpen = !docPanelOpen;
@@ -1028,45 +1031,28 @@
           .value
           .trim();
 
-      if (
-
-        username === 'mu586' &&
-        password === 'mulax'
-
-      ) {
-
-        localStorage.setItem(
-          'mu_logged_in',
-          'true'
-        );
-
-        localStorage.setItem(
-          'mu_login_time',
-          Date.now()
-        );
-
-        document.getElementById(
-          'loginPage'
-        ).style.display = 'none';
-
-        document.getElementById(
-          'mainApp'
-        ).style.display = 'block';
-      }
-
-      else {
-
-        const err =
-          document.getElementById(
-            'loginError'
-          );
-
-        err.innerText =
-          'Invalid username or password';
-
-        err.style.display =
-          'block';
-      }
+      fetch('/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.error || !data.token) throw new Error(data.error || 'Login failed');
+        localStorage.setItem('mu_logged_in', 'true');
+        localStorage.setItem('mu_login_time', Date.now());
+        localStorage.setItem('mu_auth_token', data.token);
+        localStorage.setItem('mu_user_level', data.level || '');
+        authToken = data.token;
+        currentUserLevel = data.level || '';
+        document.getElementById('loginPage').style.display = 'none';
+        document.getElementById('mainApp').style.display = 'block';
+      })
+      .catch(() => {
+        const err = document.getElementById('loginError');
+        err.innerText = 'Invalid username or password';
+        err.style.display = 'block';
+      });
     }
 
     // ===========================
@@ -1152,7 +1138,12 @@
         const res =
           await fetch(
             '/search?q=' +
-            encodeURIComponent(q)
+            encodeURIComponent(q),
+            {
+              headers: {
+                Authorization: `Bearer ${authToken}`
+              }
+            }
           );
 
         const data =
@@ -1186,10 +1177,13 @@
         document.getElementById('checkinDetailList').innerHTML = '';
 
         // Seat / BN clickable detail
-        document.getElementById(
-          'seat'
-        ).innerHTML =
-          `🎫 <span class="bn-link" onclick="toggleCheckinPanel()">BN${escapeHtml(data.bn)}</span> • ${escapeHtml(data.seat)} • ${escapeHtml(data.cabin)}`;
+        if (currentUserLevel === 'highest') {
+          document.getElementById('seat').innerHTML =
+            `🎫 <span class="bn-link" onclick="toggleCheckinPanel()">BN${escapeHtml(data.bn)}</span> • ${escapeHtml(data.seat)} • ${escapeHtml(data.cabin)}`;
+        } else {
+          document.getElementById('seat').innerHTML =
+            `🎫 BN${escapeHtml(data.bn || '---')} • ${escapeHtml(data.seat || '---')} • ${escapeHtml(data.cabin || '---')}`;
+        }
 
         // Docs button/panel
         const docBtn = document.getElementById('docToggleBtn');
@@ -1197,7 +1191,7 @@
         const docContent = document.getElementById('docContent');
         const docsHtml = buildTravelDocs(data);
 
-        if (docsHtml) {
+        if (docsHtml && currentUserLevel === 'highest') {
           docBtn.style.display = 'inline-block';
           docContent.innerHTML = docsHtml;
           docPanelOpen = false;
@@ -1208,6 +1202,8 @@
           docSec.style.display = 'none';
           docContent.innerHTML = '';
         }
+
+        const isBasic = currentUserLevel === 'basic';
 
         // Membership
         if (data.ffNumber) {
@@ -1278,6 +1274,7 @@
 
         // Bags
         if (
+          !isBasic &&
           data.bagtags &&
           data.bagtags.length
         ) {
@@ -1302,7 +1299,7 @@
         }
 
         // Inbound
-        if (data.inbound) {
+        if (!isBasic && data.inbound) {
 
           document.getElementById(
             'inboundSection'
@@ -1325,7 +1322,7 @@
         }
 
         // Outbound
-        if (data.outbound) {
+        if (!isBasic && data.outbound) {
 
           document.getElementById(
             'outboundSection'
@@ -1358,7 +1355,7 @@
         }
 
         // Special Service
-        if (data.specialServices && data.specialServices.length) {
+        if (!isBasic && data.specialServices && data.specialServices.length) {
           document.getElementById('ssrSection').style.display = 'block';
           document.getElementById('ssr').innerText = data.specialServices.join(', ');
         } else {
@@ -1366,7 +1363,7 @@
         }
 
         // Special Meal
-        if (data.specialMeals && data.specialMeals.length) {
+        if (!isBasic && data.specialMeals && data.specialMeals.length) {
           document.getElementById('mealSection').style.display = 'block';
           document.getElementById('meal').innerText = data.specialMeals.join(', ');
         } else {
@@ -1374,7 +1371,7 @@
         }
 
         // Paid Service
-        if (data.paidProductsShort && data.paidProductsShort.length) {
+        if (!isBasic && data.paidProductsShort && data.paidProductsShort.length) {
           document.getElementById('paidSection').style.display = 'block';
           document.getElementById('paid').innerText = data.paidProductsShort.join('\n');
         } else if (data.paidProducts && data.paidProducts.length) {
