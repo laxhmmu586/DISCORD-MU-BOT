@@ -951,6 +951,7 @@
           document.getElementById('paidSection').style.display = 'block';
           document.getElementById('paid').innerText = data.paidProductsShort.join('\n');
         } else if (data.paidProducts && data.paidProducts.length) {
+        if (data.paidProducts && data.paidProducts.length) {
           document.getElementById('paidSection').style.display = 'block';
           document.getElementById('paid').innerText = data.paidProducts.join('\n');
         } else {
