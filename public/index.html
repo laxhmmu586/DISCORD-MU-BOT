@@ -716,16 +716,7 @@
 
       </div>
 
-      <div
-        id="checkinDetailCard"
-        class="detail-card"
-      >
-        <div class="detail-title">Check-in Details</div>
-        <div
-          id="checkinDetailContent"
-          class="detail-content"
-        ></div>
-      </div>
+      <div id="checkinDetailList"></div>
 
     </div>
 
@@ -777,59 +768,92 @@
         .trimEnd();
     }
 
-    function buildCheckinDetails(data) {
+    function dedupeLines(lines) {
+      return [...new Set((lines || []).filter(Boolean))];
+    }
+
+    function parseCheckinGroups(data) {
       const rawText = getRawRecordText(data);
-      const rawLines = rawText
+      const flatLines = rawText
         .split(/\r?\n/)
         .map(normalizeDetailLine)
         .filter(Boolean);
 
-      const psmLines = [];
-      const ckinLines = [];
+      const groups = [];
+      let current = null;
 
-      rawLines.forEach(line => {
-        const clean = line.trim();
-        if (/^PSM\b/i.test(clean)) {
-          psmLines.push(clean);
+      flatLines.forEach(line => {
+        if (/^\d{4}\s+[A-Z][a-z]{2}\s+\d{1,2},\s+/i.test(line) && />[A-Z0-9]/.test(line)) {
+          current = { header: line.trim(), lines: [] };
+          groups.push(current);
+          return;
         }
-        else if (/^CKIN\b/i.test(clean)) {
-          ckinLines.push(clean);
+
+        if (!current) {
+          current = { header: 'Check-in Details', lines: [] };
+          groups.push(current);
         }
+
+        current.lines.push(line.trim());
       });
 
+      if (!groups.length) {
+        groups.push({ header: 'Check-in Details', lines: [] });
+      }
+
       if (Array.isArray(data?.psmLines)) {
-        data.psmLines.forEach(x => psmLines.push(normalizeDetailLine(x).trim()));
+        groups[0].lines.push(...data.psmLines.map(x => normalizeDetailLine(x).trim()));
       }
 
       if (Array.isArray(data?.ckinLines)) {
-        data.ckinLines.forEach(x => ckinLines.push(normalizeDetailLine(x).trim()));
+        groups[0].lines.push(...data.ckinLines.map(x => normalizeDetailLine(x).trim()));
       }
 
-      const unique = lines => [...new Set(lines.filter(Boolean))];
-      const finalLines = [
-        ...unique(psmLines),
-        ...unique(ckinLines)
-      ];
+      return groups
+        .map(group => {
+          const psmLines = [];
+          const ckinLines = [];
 
-      return finalLines.join('\n');
+          group.lines.forEach(line => {
+            if (/^PSM\b/i.test(line)) psmLines.push(line);
+            if (/^CKIN\b/i.test(line)) ckinLines.push(line);
+          });
+
+          return {
+            header: group.header,
+            detailLines: [
+              ...dedupeLines(psmLines),
+              ...dedupeLines(ckinLines)
+            ]
+          };
+        })
+        .filter(group => group.detailLines.length);
     }
 
     function toggleCheckinPanel() {
-      const card = document.getElementById('checkinDetailCard');
-      const content = document.getElementById('checkinDetailContent');
+      const list = document.getElementById('checkinDetailList');
 
       if (!currentPassengerData) return;
 
       checkinPanelOpen = !checkinPanelOpen;
 
       if (!checkinPanelOpen) {
-        card.style.display = 'none';
+        list.innerHTML = '';
         return;
       }
 
-      const details = buildCheckinDetails(currentPassengerData);
-      content.innerText = details || 'No information available.';
-      card.style.display = 'block';
+      const groups = parseCheckinGroups(currentPassengerData);
+      if (!groups.length) {
+        list.innerHTML = '<div class="detail-card" style="display:block;"><div class="detail-title">Check-in Details</div><div class="detail-content">No information available.</div></div>';
+        return;
+      }
+
+      list.innerHTML = groups.map(group => `
+        <div class="detail-card" style="display:block;">
+          <div class="detail-title">${escapeHtml(group.header)}</div>
+          <div class="detail-content">${escapeHtml(group.detailLines.join('\n'))}</div>
+        </div>
+      `).join('');
     }
 
     function toggleHelpPanel() {
@@ -1129,7 +1153,7 @@
 
         currentPassengerData = data;
         checkinPanelOpen = false;
-        document.getElementById('checkinDetailCard').style.display = 'none';
+        document.getElementById('checkinDetailList').innerHTML = '';
 
         // Seat / BN clickable detail
         document.getElementById(
