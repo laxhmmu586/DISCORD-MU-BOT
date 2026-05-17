@@ -515,6 +515,22 @@ function parseIncrementalLog(log) {
     // =========================
     // Passenger Object
     // =========================
+    const ckinLines = [
+      ...new Set(
+        [...section.matchAll(/\b(CKIN[^\n\r]*?)(?=\s+\b(?:CKIN|PSM)\b|$)/gi)]
+          .map(match => (match[1] || '').trim())
+          .filter(Boolean)
+      )
+    ];
+
+    const psmLines = [
+      ...new Set(
+        [...section.matchAll(/\b(PSM[^\n\r]*?)(?=\s+\b(?:CKIN|PSM)\b|$)/gi)]
+          .map(match => (match[1] || '').trim())
+          .filter(Boolean)
+      )
+    ];
+
     const passenger = {
 
       bn,
@@ -549,7 +565,10 @@ function parseIncrementalLog(log) {
       specialServices: filteredSpecialServices,
       specialMeals,
       paidProducts,
-      paidProductsShort
+      paidProductsShort,
+      sourceText: section,
+      ckinLines,
+      psmLines
     };
 
     passenger.lounge =
