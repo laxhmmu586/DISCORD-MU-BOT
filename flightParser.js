@@ -589,7 +589,40 @@ function parseIncrementalLog(log) {
     passenger.lounge =
       getLounge(passenger);
 
-    // Latest Record Wins
+    const existingPassenger =
+      passengers[bn];
+
+    if (existingPassenger) {
+      passenger.psmLines = [
+        ...new Set([
+          ...(existingPassenger.psmLines || []),
+          ...(passenger.psmLines || [])
+        ])
+      ];
+
+      passenger.ckinLines = [
+        ...new Set([
+          ...(existingPassenger.ckinLines || []),
+          ...(passenger.ckinLines || [])
+        ])
+      ];
+
+      passenger.operationHistoryLines = [
+        ...new Set([
+          ...(existingPassenger.operationHistoryLines || []),
+          ...(passenger.operationHistoryLines || [])
+        ])
+      ];
+
+      passenger.checkinDetails = [
+        ...new Set([
+          ...(passenger.ckinLines || []),
+          ...(passenger.operationHistoryLines || [])
+        ])
+      ];
+    }
+
+    // Latest Record Wins (with merged check-in continuation lines)
     passengers[bn] =
       passenger;
   }
