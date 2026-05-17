@@ -772,68 +772,32 @@
     }
 
     function parseCheckinGroups(data) {
-      const rawText = getRawRecordText(data);
-      const flatLines = rawText
-        .split(/\r?\n/)
+      const psmLines = dedupeLines((data?.psmLines || [])
         .map(normalizeDetailLine)
-        .filter(Boolean);
+        .filter(line => /^PSM\b/i.test(line)));
 
-      const groups = [];
-      let current = null;
+      const ckinLines = dedupeLines((data?.ckinLines || [])
+        .map(normalizeDetailLine)
+        .filter(line => /^CKIN\b/i.test(line)));
 
-      flatLines.forEach(line => {
-        if (/^\d{4}\s+[A-Z][a-z]{2}\s+\d{1,2},\s+/i.test(line) && />[A-Z0-9]/.test(line)) {
-          current = { header: line.trim(), lines: [] };
-          groups.push(current);
-          return;
-        }
+      const operationHistoryLines = dedupeLines((data?.operationHistoryLines || [])
+        .map(normalizeDetailLine)
+        .filter(line => /^[A-Z]{2,3}\s+[A-Z]{3}\d{5,}\s+/i.test(line)));
 
-        if (!current) {
-          current = { header: 'Check-in Details', lines: [] };
-          groups.push(current);
-        }
+      const detailLines = [
+        ...psmLines,
+        ...ckinLines,
+        ...operationHistoryLines
+      ];
 
-        current.lines.push(line.trim());
-      });
-
-      if (!groups.length) {
-        groups.push({ header: 'Check-in Details', lines: [] });
+      if (!detailLines.length) {
+        return [];
       }
 
-      if (Array.isArray(data?.psmLines)) {
-        groups[0].lines.push(...data.psmLines.map(x => normalizeDetailLine(x).trim()));
-      }
-
-      if (Array.isArray(data?.ckinLines)) {
-        groups[0].lines.push(...data.ckinLines.map(x => normalizeDetailLine(x).trim()));
-      }
-
-      if (Array.isArray(data?.checkinDetails)) {
-        groups[0].lines.push(...data.checkinDetails.map(x => normalizeDetailLine(x).trim()));
-      }
-
-      return groups
-        .map(group => {
-          const psmLines = [];
-          const ckinLines = [];
-          const opHistoryLines = [];
-
-          group.lines.forEach(line => {
-            if (/^PSM\b/i.test(line)) psmLines.push(line);
-            if (/^CKIN\b/i.test(line)) ckinLines.push(line);
-            if (/^(?:[A-Z]{3}|[IO]\/)\b/i.test(line)) opHistoryLines.push(line);
-          });
-
-          return {
-            header: group.header,
-            detailLines: [
-              ...dedupeLines(psmLines),
-              ...dedupeLines(ckinLines),
-              ...dedupeLines(opHistoryLines)
-            ]
-          };
-        })
-        .filter(group => group.detailLines.length);
+      return [{
+        header: 'Check-in Details',
+        detailLines
+      }];
     }
 
     function toggleCheckinPanel() {
