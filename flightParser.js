@@ -515,27 +515,27 @@ function parseIncrementalLog(log) {
     // =========================
     // Passenger Object
     // =========================
+    const sectionLines =
+      section
+        .split(/\r?\n/)
+        .map(line => line.replace(/[\u001c-\u001f]/g, '').trim())
+        .filter(Boolean);
+
     const ckinLines = [
       ...new Set(
-        [...section.matchAll(/\b(CKIN[^\n\r]*?)(?=\s+\b(?:CKIN|PSM)\b|$)/gi)]
-          .map(match => (match[1] || '').trim())
-          .filter(Boolean)
+        sectionLines.filter(line => /^CKIN\b/i.test(line))
       )
     ];
 
     const psmLines = [
       ...new Set(
-        [...section.matchAll(/\b(PSM[^\n\r]*?)(?=\s+\b(?:CKIN|PSM)\b|$)/gi)]
-          .map(match => (match[1] || '').trim())
-          .filter(Boolean)
+        sectionLines.filter(line => /^PSM\b/i.test(line))
       )
     ];
 
     const operationHistoryLines = [
       ...new Set(
-        (section.match(/^\s{2,}(?:[A-Z]{3}|[IO]\/)[^\n\r]*$/gim) || [])
-          .map(line => line.trim())
-          .filter(line => /^(?:[A-Z]{3}|[IO]\/)\b/.test(line))
+        sectionLines.filter(line => /^[A-Z]{2,3}\s+[A-Z]{3}\d{5,}\s+AGT\d+\/\d{2}[A-Z]{3}\d{4}/i.test(line))
       )
     ];
 
@@ -589,7 +589,40 @@ function parseIncrementalLog(log) {
     passenger.lounge =
       getLounge(passenger);
 
-    // Latest Record Wins
+    const existingPassenger =
+      passengers[bn];
+
+    if (existingPassenger) {
+      passenger.psmLines = [
+        ...new Set([
+          ...(existingPassenger.psmLines || []),
+          ...(passenger.psmLines || [])
+        ])
+      ];
+
+      passenger.ckinLines = [
+        ...new Set([
+          ...(existingPassenger.ckinLines || []),
+          ...(passenger.ckinLines || [])
+        ])
+      ];
+
+      passenger.operationHistoryLines = [
+        ...new Set([
+          ...(existingPassenger.operationHistoryLines || []),
+          ...(passenger.operationHistoryLines || [])
+        ])
+      ];
+
+      passenger.checkinDetails = [
+        ...new Set([
+          ...(passenger.ckinLines || []),
+          ...(passenger.operationHistoryLines || [])
+        ])
+      ];
+    }
+
+    // Latest Record Wins (with merged check-in continuation lines)
     passengers[bn] =
       passenger;
   }
