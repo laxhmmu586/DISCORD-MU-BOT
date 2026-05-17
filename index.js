@@ -172,22 +172,31 @@ app.use(
 );
 
 const USERS = {
-  '21470': { password: 'admin', level: 'highest', fixedUsername: true, lastPasswordChange: '2026-05-17' },
-  '23239': { password: 'admin', level: 'highest', fixedUsername: true, lastPasswordChange: '2026-05-17' },
-  '27199': { password: 'admin', level: 'highest', fixedUsername: true, lastPasswordChange: '2026-05-17' },
-  demi: { password: 'mulax', level: 'normal', lastPasswordChange: '2026-05-17' },
-  vicky: { password: 'mulax', level: 'normal', lastPasswordChange: '2026-05-17' },
-  haoran: { password: 'mulax', level: 'normal', lastPasswordChange: '2026-05-17' },
-  cho: { password: 'mulax', level: 'normal', lastPasswordChange: '2026-05-17' },
-  mulounge: { password: 'mulax', level: 'basic', lastPasswordChange: '2026-05-17' }
+  '21470': { password: 'admin', level: 'admin', fixedUsername: true, lastPasswordChange: '2026-05-17' },
+  '23239': { password: 'admin', level: 'manager', fixedUsername: true, lastPasswordChange: '2026-05-17' },
+  '27199': { password: 'admin', level: 'manager', fixedUsername: true, lastPasswordChange: '2026-05-17' },
+  demi: { password: 'mulax', level: 'agent', lastPasswordChange: '2026-05-17' },
+  vicky: { password: 'mulax', level: 'agent', lastPasswordChange: '2026-05-17' },
+  haoran: { password: 'mulax', level: 'agent', lastPasswordChange: '2026-05-17' },
+  cho: { password: 'mulax', level: 'agent', lastPasswordChange: '2026-05-17' },
+  mulounge: { password: 'mulax', level: 'lounge', lastPasswordChange: '2026-05-17' }
 };
 
 const sessions = new Map();
 const PASSWORD_EXPIRE_DAYS = 90;
+const SESSION_IDLE_TIMEOUT_MS = 15 * 60 * 1000;
+
+const ROLE_PERMISSIONS = {
+  admin: { docs: true, bnDetail: true, bags: true, inbound: true, outbound: true, ssr: true, meal: true, paid: true, info240: true },
+  manager: { docs: true, bnDetail: true, bags: true, inbound: true, outbound: true, ssr: true, meal: true, paid: true, info240: true },
+  agent: { docs: false, bnDetail: true, bags: true, inbound: true, outbound: true, ssr: true, meal: true, paid: true, info240: true },
+  lounge: { docs: false, bnDetail: false, bags: false, inbound: false, outbound: false, ssr: false, meal: false, paid: false, info240: false }
+};
+
 
 function createSession(username) {
   const token = `${username}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
-  sessions.set(token, { username, createdAt: Date.now() });
+  sessions.set(token, { username, createdAt: Date.now(), lastActiveAt: Date.now() });
   return token;
 }
 
@@ -196,6 +205,11 @@ function authFromReq(req) {
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
   const session = sessions.get(token);
   if (!session) return null;
+  if (Date.now() - session.lastActiveAt > SESSION_IDLE_TIMEOUT_MS) {
+    sessions.delete(token);
+    return null;
+  }
+  session.lastActiveAt = Date.now();
   return { ...session, token, user: USERS[session.username] };
 }
 
@@ -206,10 +220,10 @@ function needsPasswordReset(user) {
 }
 
 function applyVisibilityRules(pax, level) {
-  if (!pax || level === 'highest') return pax;
+  if (!pax || level === 'admin' || level === 'manager') return pax;
   const clone = { ...pax };
 
-  if (level === 'normal') {
+  if (level === 'agent') {
     delete clone.paxInfoRaw;
     delete clone.passportRaw;
     delete clone.passportNumber;
@@ -222,9 +236,14 @@ function applyVisibilityRules(pax, level) {
     delete clone.info240;
   }
 
-  if (level === 'basic') {
+  if (level === 'lounge') {
     return {
+      flight: clone.flight,
+      flightDate: clone.flightDate,
+      name: clone.name,
       bn: clone.bn,
+      seat: clone.seat,
+      cabin: clone.cabin,
       ticketNumber: clone.ticketNumber,
       ffCarrier: clone.ffCarrier,
       ffNumber: clone.ffNumber,
@@ -647,3 +666,95 @@ app.listen(
     );
   }
 );
+
+
+app.post('/auth/logout', (req, res) => {
+  const auth = authFromReq(req);
+  if (auth?.token) sessions.delete(auth.token);
+  res.json({ success: true });
+});
+
+app.get('/auth/me', (req, res) => {
+  const auth = authFromReq(req);
+  if (!auth || !auth.user) return res.status(401).json({ error: 'Unauthorized' });
+  res.json({ username: auth.username, level: auth.user.level, permissions: ROLE_PERMISSIONS[auth.user.level] || {}, mustChangePassword: needsPasswordReset(auth.user), passwordLastChanged: auth.user.lastPasswordChange });
+});
+
+app.get('/admin/users', (req, res) => {
+  const auth = authFromReq(req);
+  if (!auth || !auth.user) return res.status(401).json({ error: 'Unauthorized' });
+  if (auth.user.level !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+  const users = Object.entries(USERS).map(([username, user]) => ({ username, level: user.level, lastPasswordChange: user.lastPasswordChange }));
+  res.json({ users });
+});
+
+app.post('/admin/users/level', (req, res) => {
+  const auth = authFromReq(req);
+  if (!auth || !auth.user) return res.status(401).json({ error: 'Unauthorized' });
+  if (auth.user.level !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+  const { username, level } = req.body || {};
+  const allow = new Set(['admin', 'manager', 'agent', 'lounge']);
+  if (!USERS[username]) return res.status(404).json({ error: 'User not found' });
+  if (!allow.has(level)) return res.status(400).json({ error: 'Invalid level' });
+  USERS[username].level = level;
+  res.json({ success: true });
+});
+
+
+app.post('/admin/users/reset-password', (req, res) => {
+  const auth = authFromReq(req);
+  if (!auth || !auth.user) return res.status(401).json({ error: 'Unauthorized' });
+  if (auth.user.level !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+  const { username, newPassword } = req.body || {};
+  if (!USERS[username]) return res.status(404).json({ error: 'User not found' });
+  if (!newPassword || String(newPassword).length < 4) return res.status(400).json({ error: 'New password too short' });
+  USERS[username].password = String(newPassword);
+  USERS[username].lastPasswordChange = new Date().toISOString().slice(0, 10);
+  res.json({ success: true });
+});
+
+app.post('/admin/users/add', (req, res) => {
+  const auth = authFromReq(req);
+  if (!auth || !auth.user) return res.status(401).json({ error: 'Unauthorized' });
+  if (auth.user.level !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+  const { username, password, level } = req.body || {};
+  const allow = new Set(['admin', 'manager', 'agent', 'lounge']);
+  if (!username || !password || !level) return res.status(400).json({ error: 'Missing username/password/level' });
+  if (USERS[username]) return res.status(400).json({ error: 'User already exists' });
+  if (!allow.has(level)) return res.status(400).json({ error: 'Invalid level' });
+  USERS[username] = { password: String(password), level, lastPasswordChange: new Date().toISOString().slice(0, 10) };
+  res.json({ success: true });
+});
+
+
+app.post('/admin/users/delete', (req, res) => {
+  const auth = authFromReq(req);
+  if (!auth || !auth.user) return res.status(401).json({ error: 'Unauthorized' });
+  if (auth.user.level !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+  const { username } = req.body || {};
+  if (!username || !USERS[username]) return res.status(404).json({ error: 'User not found' });
+  if (username === auth.username) return res.status(400).json({ error: 'Cannot delete current admin' });
+  delete USERS[username];
+  res.json({ success: true });
+});
+
+app.get('/admin/permissions', (req, res) => {
+  const auth = authFromReq(req);
+  if (!auth || !auth.user) return res.status(401).json({ error: 'Unauthorized' });
+  if (auth.user.level !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+  res.json({ permissions: ROLE_PERMISSIONS });
+});
+
+app.post('/admin/permissions', (req, res) => {
+  const auth = authFromReq(req);
+  if (!auth || !auth.user) return res.status(401).json({ error: 'Unauthorized' });
+  if (auth.user.level !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+  const { permissions } = req.body || {};
+  if (!permissions || typeof permissions !== 'object') return res.status(400).json({ error: 'Invalid permissions' });
+  const roles = ['admin', 'manager', 'agent', 'lounge'];
+  for (const role of roles) {
+    if (!permissions[role] || typeof permissions[role] !== 'object') continue;
+    ROLE_PERMISSIONS[role] = { ...ROLE_PERMISSIONS[role], ...permissions[role] };
+  }
+  res.json({ success: true, permissions: ROLE_PERMISSIONS });
+});
