@@ -69,8 +69,7 @@
       line-height: 1.5;
     }
 
-    .card,
-    .login-card {
+    .card {
 
       background: #111827;
 
@@ -81,12 +80,6 @@
       box-shadow:
         0 0 25px rgba(0,0,0,0.35);
     }
-
-    .login-card {
-
-      margin-top: 60px;
-    }
-
     input {
 
       width: 100%;
@@ -257,6 +250,36 @@
 
       font-size: 14px;
     }
+
+    .auth-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: #1e293b;
+      color: #cbd5e1;
+      font-size: 13px;
+    }
+
+    .auth-bar strong {
+      color: #ffffff;
+      font-weight: 600;
+    }
+
+    .logout-btn {
+      padding: 8px 12px;
+      font-size: 12px;
+      border-radius: 10px;
+      background: #334155;
+    }
+
+    .logout-btn:hover {
+      background: #475569;
+    }
+
     .app-header {
       display: flex;
       align-items: center;
@@ -397,47 +420,22 @@
 
   <div class="container">
 
-    <!-- LOGIN -->
-    <div
-      id="loginPage"
-      class="login-card"
-    >
-
-      <div class="title">
-        MUFC
-      </div>
-
-      <div class="subtitle">
-        Internal Access Only
-      </div>
-
-      <input
-        id="username"
-        placeholder="Username"
-      >
-
-      <input
-        id="password"
-        type="password"
-        placeholder="Password"
-      >
-
-      <button
-        onclick="login()"
-        style="width:100%;"
-      >
-        Login
-      </button>
-
-      <div
-        id="loginError"
-        class="error"
-      ></div>
-
-    </div>
-
     <!-- MAIN -->
     <div id="mainApp">
+
+      <div class="auth-bar">
+        <span>
+          Logged in as:
+          <strong id="userEmail"></strong>
+        </span>
+
+        <button
+          class="logout-btn"
+          onclick="logout()"
+        >
+          Logout
+        </button>
+      </div>
 
       <div class="app-header">
         <div class="title">
@@ -937,118 +935,9 @@
     }
 
     // ===========================
-    // Session Timeout
-    // ===========================
-    const LOGIN_TIMEOUT =
-      30 * 60 * 1000;
-
-    const lastLogin =
-      localStorage.getItem(
-        'mu_login_time'
-      );
-
-    const now =
-      Date.now();
-
-    if (
-
-      localStorage.getItem(
-        'mu_logged_in'
-      ) === 'true'
-
-      &&
-
-      lastLogin
-
-      &&
-
-      (now - Number(lastLogin))
-        < LOGIN_TIMEOUT
-
-    ) {
-
-      document.getElementById(
-        'loginPage'
-      ).style.display = 'none';
-
-      document.getElementById(
-        'mainApp'
-      ).style.display = 'block';
-    }
-
-    else {
-
-      localStorage.clear();
-    }
-
-    // ===========================
-    // Login
-    // ===========================
-    function login() {
-
-      const username =
-        document
-          .getElementById('username')
-          .value
-          .trim();
-
-      const password =
-        document
-          .getElementById('password')
-          .value
-          .trim();
-
-      if (
-
-        username === 'mu586' &&
-        password === 'mulax'
-
-      ) {
-
-        localStorage.setItem(
-          'mu_logged_in',
-          'true'
-        );
-
-        localStorage.setItem(
-          'mu_login_time',
-          Date.now()
-        );
-
-        document.getElementById(
-          'loginPage'
-        ).style.display = 'none';
-
-        document.getElementById(
-          'mainApp'
-        ).style.display = 'block';
-      }
-
-      else {
-
-        const err =
-          document.getElementById(
-            'loginError'
-          );
-
-        err.innerText =
-          'Invalid username or password';
-
-        err.style.display =
-          'block';
-      }
-    }
-
-    // ===========================
     // Search
     // ===========================
     async function searchPassenger() {
-
-      localStorage.setItem(
-        'mu_login_time',
-        Date.now()
-      );
-
       let q =
         document
           .getElementById('query')
@@ -1410,14 +1299,20 @@
 
   </script>
 <script type="module">
-  // Import the functions you need from the SDKs you need
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-analytics.js";
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
 
-  // Your web app's Firebase configuration
-  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+  import { initializeApp }
+  from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+
+  import { getAnalytics }
+  from "https://www.gstatic.com/firebasejs/12.13.0/firebase-analytics.js";
+
+  import {
+    getAuth,
+    onAuthStateChanged,
+    signOut
+  }
+  from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
+
   const firebaseConfig = {
     apiKey: "AIzaSyAWsXBuQJTBmNKi6gLgnkZUZ4OfK1IRuXo",
     authDomain: "china-eastern.firebaseapp.com",
@@ -1428,9 +1323,64 @@
     measurementId: "G-22T9MHC42Y"
   };
 
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
+  const app =
+    initializeApp(firebaseConfig);
+
+  getAnalytics(app);
+
+  const auth =
+    getAuth(app);
+
+  onAuthStateChanged(auth, (user) => {
+
+    if (!user) {
+
+      window.location.href =
+        "login.html";
+
+      return;
+    }
+
+    console.log(
+      "Firebase Logged in:",
+      user.email
+    );
+
+    const userEmailBox =
+      document.getElementById("userEmail");
+
+    if (userEmailBox) {
+
+      userEmailBox.textContent =
+        user.email;
+    }
+
+    document.getElementById("mainApp").style.display =
+      "block";
+  });
+
+  window.logout = async function () {
+
+    await signOut(auth);
+
+    window.location.href =
+      "login.html";
+  };
+
 </script>
+<div style="
+padding:10px;
+background:#f2f2f2;
+text-align:right;
+">
+
+Logged in as:
+<span id="userEmail"></span>
+
+<button onclick="logout()">
+Logout
+</button>
+
+</div>
 </body>
 </html>
