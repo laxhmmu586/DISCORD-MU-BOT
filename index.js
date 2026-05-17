@@ -253,23 +253,22 @@ app.get(
       // =========================
       let date = null;
 
-      if (q.includes('/')) {
+      const dateSuffixMatch =
+        q.match(
+          /^(.*)\/(\d{2}[A-Z]{3})$/i
+        );
 
-        const parts =
-          q.split('/');
+      if (dateSuffixMatch) {
 
-        if (parts.length === 2) {
+        q =
+          dateSuffixMatch[1]
+            .trim()
+            .toUpperCase();
 
-          q =
-            parts[0]
-              .trim()
-              .toUpperCase();
-
-          date =
-            parts[1]
-              .trim()
-              .toUpperCase();
-        }
+        date =
+          dateSuffixMatch[2]
+            .trim()
+            .toUpperCase();
       }
 
       // =========================
@@ -310,6 +309,11 @@ app.get(
       parsePDLog(log);
 
       let pax = null;
+      const normalizedFF =
+        q.replace(
+          /\s+/g,
+          ''
+        );
 
       // =========================
       // BN Search
@@ -358,37 +362,18 @@ app.get(
       // =========================
       else if (
 
-        /^[A-Z]{2}\d+$/i
+        /^[A-Z]{2}\s*\d+$/i
           .test(q)
 
       ) {
 
         pax =
-          findByFFNumber(q);
+          findByFFNumber(normalizedFF);
 
-        // PD fallback
         if (!pax) {
 
           pax =
-            findPDByFFNumber(q);
-        }
-
-        // record fallback
-        if (!pax) {
-          pax =
-            findPassengerByFFFromRecord(
-              log,
-              normalizedFF
-            );
-        }
-
-        // record fallback
-        if (!pax) {
-          pax =
-            findPassengerByFFFromRecord(
-              log,
-              normalizedFF
-            );
+            findPDByFFNumber(normalizedFF);
         }
 
         if (pax && pax.name === 'PD MEMBER') {
@@ -399,24 +384,6 @@ app.get(
             ) || pax;
         }
 
-        // record fallback
-        if (!pax) {
-          pax =
-            findPassengerByFFFromRecord(
-              log,
-              normalizedFF
-            );
-        }
-
-        if (pax && pax.name === 'PD MEMBER') {
-          pax =
-            findPDPassengerByFFFromLog(
-              log,
-              normalizedFF
-            ) || pax;
-        }
-
-        // record fallback
         if (!pax) {
           pax =
             findPassengerByFFFromRecord(

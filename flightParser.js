@@ -1,5 +1,46 @@
 const passengers = {};
 
+function splitLogicalSections(log) {
+  const lines = log.split(/\r?\n/);
+  const tsRe = /^\d{4}\s+\w+\s+\d{2},.*?\d{2}:\d{2}:\d{2}\s*$/;
+  const cmdRe = /^>\s*([A-Z0-9*\/]+)\b/i;
+  const sections = [];
+
+  let current = null;
+  let pendingTimestamp = null;
+
+  for (const line of lines) {
+    if (tsRe.test(line.trim())) {
+      pendingTimestamp = line.trim();
+      continue;
+    }
+
+    const cmd = line.match(cmdRe)?.[1]?.toUpperCase() || null;
+    const isContinuation = cmd ? /^(PN|PN1|PF|PF1)$/.test(cmd) : false;
+
+    if (cmd && !isContinuation) {
+      if (current && current.content.trim()) sections.push(current);
+      current = {
+        timestamp: pendingTimestamp || null,
+        command: cmd,
+        content: line + '\n'
+      };
+      pendingTimestamp = null;
+      continue;
+    }
+
+    if (!current) {
+      current = { timestamp: pendingTimestamp || null, command: null, content: '' };
+      pendingTimestamp = null;
+    }
+
+    current.content += line + '\n';
+  }
+
+  if (current && current.content.trim()) sections.push(current);
+  return sections;
+}
+
 // ===============================
 // Cabin Mapping by Seat
 // ===============================
@@ -128,22 +169,25 @@ function parseIncrementalLog(log) {
   // ===========================
   // Split by Timestamp
   // ===========================
-  const sections =
-    log.split(
-      /\d{4}\s+\w+\s+\d{2},.*?\d{2}:\d{2}:\d{2}/g
-    );
+  const sections = splitLogicalSections(log);
 
-  for (const section of sections) {
+  for (const sectionObj of sections) {
+    const section = sectionObj.content;
 
     // =========================
-    // FB Number
+    // PR Record Only
     // =========================
-    const fbMatch =
-      section.match(
-        /(?:^|\s)>?FB\s*(\d{1,3})/i
-      );
+    if (
+      !section.includes('PR:')
+    ) {
+      continue;
+    }
 
-    if (!fbMatch) {
+    if (/\bDELETED\b/i.test(section)) {
+      const deletedBN = section.match(/\bBN(\d{1,3})\b/i)?.[1];
+      if (deletedBN) {
+        delete passengers[deletedBN.padStart(3, '0')];
+      }
       continue;
     }
 
@@ -260,6 +304,43 @@ function parseIncrementalLog(log) {
     }
 
     // =========================
+    // Passport / PAX Info
+    // =========================
+    let paxListName = null;
+    let paxInfoRaw = null;
+    let passportRaw = null;
+
+    const paxListMatch =
+      section.match(
+        /PAXLST\s*:\s*([A-Z\/]+)\/?/i
+      );
+
+    if (paxListMatch) {
+      paxListName =
+        paxListMatch[1].trim();
+    }
+
+    const paxInfoMatch =
+      section.match(
+        /PAX INFO\s*:\s*([^\n\r]+)/i
+      );
+
+    if (paxInfoMatch) {
+      paxInfoRaw =
+        paxInfoMatch[1].trim();
+    }
+
+    const passportMatch =
+      section.match(
+        /PASSPORT\s*:\s*([^\n\r]+)/i
+      );
+
+    if (passportMatch) {
+      passportRaw =
+        passportMatch[1].trim();
+    }
+
+    // =========================
     // Bags
     // Handles:
     // 3781640468/PVG
@@ -366,43 +447,8 @@ function parseIncrementalLog(log) {
     const specialServices = [];
 
     const ssrCodes = [
-
-      // Wheelchair
-      'WCHR',
-      'WCHS',
-      'WCHC',
-
-      // Passenger Conditions
-      'UMNR',
-      'UM',
-      'BLND',
-      'DEAF',
-      'MEDA',
-      'OXYG',
-
-      // Pets / Animal
-      'PETC',
-      'AVIH',
-
-      // Passenger Handling
-      'MAAS',
-      'STCR',
-      'INAD',
-      'VIP',
-      'CIP',
-      'PPOC',
-
-      // Meals
-      'VGML',
-      'AVML',
-      'KSML',
-      'MOML',
-      'CHML',
-      'BBML',
-      'GFML',
-      'NLML',
-      'DBML',
-      'FPML'
+      'VIP', 'AVIH', 'BLND', 'DEAF', 'DEP', 'INAD', 'PETC',
+      'UM', 'STCR', 'MAAS', 'PPOC', 'WCHR', 'WCHS', 'WCHC'
     ];
 
     for (const code of ssrCodes) {
@@ -421,6 +467,48 @@ function parseIncrementalLog(log) {
       ) {
 
         specialServices.push(code);
+      }
+    }
+
+    // UM + number (ex: UM32)
+    const umNumber = section.match(/\bUM(\d{1,2})\b/i)?.[1];
+    if (umNumber && !specialServices.includes('UM')) {
+      specialServices.push('UM');
+    }
+
+    // Wheelchair only one should be shown
+    const wheelchair = ['WCHR', 'WCHS', 'WCHC'].find(code => specialServices.includes(code));
+    const filteredSpecialServices = specialServices.filter(code => !['WCHR', 'WCHS', 'WCHC'].includes(code));
+    if (wheelchair) filteredSpecialServices.push(wheelchair);
+
+    // SPML (special meals): include all 4-letter meal codes
+    const specialMeals = [];
+    const mealMatches = section.matchAll(/\bSPML-([A-Z]{4})\b/gi);
+    for (const m of mealMatches) {
+      const mealCode = m[1].toUpperCase();
+      if (!specialMeals.includes(mealCode)) specialMeals.push(mealCode);
+    }
+
+    // Paid products (ASVC)
+    const paidProducts = [];
+    const paidProductsShort = [];
+    const asvcLines = section.match(/^ASVC-[^\n\r]+/gim) || [];
+    for (const line of asvcLines) {
+      const fullLine =
+        line.replace(/^ASVC-\s*/i, '').trim();
+
+      paidProducts.push(fullLine);
+
+      const tokenMatch =
+        fullLine.match(/\b(\d+[A-Z]|[0-9]+PC)\b/i);
+
+      const emdaMatch =
+        fullLine.match(/\bEMDA-\d{13}\b/i);
+
+      if (tokenMatch && emdaMatch) {
+        paidProductsShort.push(
+          `${tokenMatch[1].toUpperCase()}/${emdaMatch[0].toUpperCase()}`
+        );
       }
     }
 
@@ -446,6 +534,9 @@ function parseIncrementalLog(log) {
       ffNumber,
 
       ffTier,
+      paxListName,
+      paxInfoRaw,
+      passportRaw,
 
       ticketNumber,
 
@@ -455,7 +546,10 @@ function parseIncrementalLog(log) {
 
       outbound,
 
-      specialServices
+      specialServices: filteredSpecialServices,
+      specialMeals,
+      paidProducts,
+      paidProductsShort
     };
 
     passenger.lounge =

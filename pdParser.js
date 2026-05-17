@@ -1,5 +1,36 @@
 const pdData = [];
 
+function splitLogicalSections(log) {
+  const lines = log.split(/\r?\n/);
+  const tsRe = /^\d{4}\s+\w+\s+\d{2},.*?\d{2}:\d{2}:\d{2}\s*$/;
+  const cmdRe = /^>\s*([A-Z0-9*\/]+)\b/i;
+  const sections = [];
+  let current = null;
+  let pendingTimestamp = null;
+
+  for (const line of lines) {
+    if (tsRe.test(line.trim())) {
+      pendingTimestamp = line.trim();
+      continue;
+    }
+    const cmd = line.match(cmdRe)?.[1]?.toUpperCase() || null;
+    const isContinuation = cmd ? /^(PN|PN1|PF|PF1)$/.test(cmd) : false;
+    if (cmd && !isContinuation) {
+      if (current && current.content.trim()) sections.push(current);
+      current = { timestamp: pendingTimestamp || null, command: cmd, content: line + '\n' };
+      pendingTimestamp = null;
+      continue;
+    }
+    if (!current) {
+      current = { timestamp: pendingTimestamp || null, command: null, content: '' };
+      pendingTimestamp = null;
+    }
+    current.content += line + '\n';
+  }
+  if (current && current.content.trim()) sections.push(current);
+  return sections;
+}
+
 // ===============================
 // Membership Status
 // ===============================
@@ -31,12 +62,10 @@ function parsePDLog(log) {
   // ===========================
   // Split Sections
   // ===========================
-  const sections =
-    log.split(
-      /\d{4}\s+\w+\s+\d{2},.*?\d{2}:\d{2}:\d{2}/g
-    );
+  const sections = splitLogicalSections(log);
 
-  for (const section of sections) {
+  for (const sectionObj of sections) {
+    const section = sectionObj.content;
 
     // =========================
     // PD Search Only
