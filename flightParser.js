@@ -304,6 +304,43 @@ function parseIncrementalLog(log) {
     }
 
     // =========================
+    // Passport / PAX Info
+    // =========================
+    let paxListName = null;
+    let paxInfoRaw = null;
+    let passportRaw = null;
+
+    const paxListMatch =
+      section.match(
+        /PAXLST\s*:\s*([A-Z\/]+)\/?/i
+      );
+
+    if (paxListMatch) {
+      paxListName =
+        paxListMatch[1].trim();
+    }
+
+    const paxInfoMatch =
+      section.match(
+        /PAX INFO\s*:\s*([^\n\r]+)/i
+      );
+
+    if (paxInfoMatch) {
+      paxInfoRaw =
+        paxInfoMatch[1].trim();
+    }
+
+    const passportMatch =
+      section.match(
+        /PASSPORT\s*:\s*([^\n\r]+)/i
+      );
+
+    if (passportMatch) {
+      passportRaw =
+        passportMatch[1].trim();
+    }
+
+    // =========================
     // Bags
     // Handles:
     // 3781640468/PVG
@@ -497,6 +534,9 @@ function parseIncrementalLog(log) {
       ffNumber,
 
       ffTier,
+      paxListName,
+      paxInfoRaw,
+      passportRaw,
 
       ticketNumber,
 

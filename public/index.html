@@ -257,6 +257,20 @@
 
       font-size: 14px;
     }
+    .top-actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 10px;
+    }
+    .mini-btn {
+      padding: 8px 12px;
+      font-size: 12px;
+      border-radius: 10px;
+      background: #334155;
+    }
+    .mini-btn:hover {
+      background: #475569;
+    }
 
   </style>
 
@@ -345,6 +359,16 @@
         id="card"
         class="card"
       >
+        <div class="top-actions">
+          <button
+            id="docToggleBtn"
+            class="mini-btn"
+            onclick="toggleDocPanel()"
+            style="display:none;"
+          >
+            Show Docs
+          </button>
+        </div>
 
         <div
           id="flight"
@@ -360,6 +384,16 @@
           id="seat"
           class="seat"
         ></div>
+
+        <div
+          id="docSection"
+          class="section"
+          style="display:none;"
+        >
+          <div class="divider"></div>
+          <div class="label">Travel Docs</div>
+          <div id="docContent" class="value"></div>
+        </div>
 
         <div class="grid-two">
         <!-- Membership -->
@@ -563,6 +597,15 @@
   </div>
 
   <script>
+    let docPanelOpen = false;
+
+    function toggleDocPanel() {
+      const sec = document.getElementById('docSection');
+      const btn = document.getElementById('docToggleBtn');
+      docPanelOpen = !docPanelOpen;
+      sec.style.display = docPanelOpen ? 'block' : 'none';
+      btn.innerText = docPanelOpen ? 'Hide Docs' : 'Show Docs';
+    }
 
     // ===========================
     // Session Timeout
@@ -781,6 +824,28 @@
           'seat'
         ).innerText =
           `🎫 BN${data.bn} • ${data.seat} • ${data.cabin}`;
+
+        // Docs button/panel
+        const docs = [];
+        if (data.paxListName) docs.push(`PAXLST: ${data.paxListName}`);
+        if (data.paxInfoRaw) docs.push(`PAX INFO: ${data.paxInfoRaw}`);
+        if (data.passportRaw) docs.push(`PASSPORT: ${data.passportRaw}`);
+
+        const docBtn = document.getElementById('docToggleBtn');
+        const docSec = document.getElementById('docSection');
+        const docContent = document.getElementById('docContent');
+
+        if (docs.length) {
+          docBtn.style.display = 'inline-block';
+          docContent.innerText = docs.join('\n');
+          docPanelOpen = false;
+          docSec.style.display = 'none';
+          docBtn.innerText = 'Show Docs';
+        } else {
+          docBtn.style.display = 'none';
+          docSec.style.display = 'none';
+          docContent.innerText = '';
+        }
 
         // Membership
         if (data.ffNumber) {
