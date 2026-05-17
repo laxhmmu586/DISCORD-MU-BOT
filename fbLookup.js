@@ -8,6 +8,8 @@ const {
 
   findByFFNumber,
 
+  findByBagtag,
+
   parseIncrementalLog
 
 } = require('./flightParser');
@@ -217,6 +219,10 @@ async function runLookup(mode, rawQuery) {
       .replace(/\s+/g, '');
   }
 
+  if (mode === 'BAGTAG') {
+    query = query.replace(/\s+/g, '');
+  }
+
   if (mode === 'NAME') {
     query = query.replace(/\+$/, '');
   }
@@ -254,6 +260,8 @@ async function runLookup(mode, rawQuery) {
     if (!pax) {
       pax = findPassengerByFFFromRecord(log, query);
     }
+  } else if (mode === 'BAGTAG') {
+    pax = findByBagtag(query);
   } else if (mode === 'NAME') {
     pax = findByName(query);
 
@@ -361,7 +369,7 @@ module.exports = (client) => {
     let query = '';
     let mode = '';
 
-    const cmdMatch = upper.match(/^(FB|RN|FSN|ETKD|FF)\s*(.+)$/i);
+    const cmdMatch = upper.match(/^(FB|RN|FSN|ETKD|FF|BT)\s*(.+)$/i);
     if (!cmdMatch) return;
 
     const command = cmdMatch[1].toUpperCase();
@@ -372,6 +380,7 @@ module.exports = (client) => {
     else if (command === 'FSN') mode = 'SEAT';
     else if (command === 'ETKD') mode = 'TICKET';
     else if (command === 'FF') mode = 'FF';
+    else if (command === 'BT') mode = 'BAGTAG';
 
     try {
       const result = await runLookup(mode, query);
@@ -391,7 +400,8 @@ module.exports = (client) => {
       rn: 'NAME',
       fsn: 'SEAT',
       etkd: 'TICKET',
-      ff: 'FF'
+      ff: 'FF',
+      bt: 'BAGTAG'
     };
 
     const mode = commandMap[interaction.commandName.toLowerCase()];
