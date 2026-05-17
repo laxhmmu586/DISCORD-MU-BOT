@@ -189,6 +189,14 @@ function parseIncrementalLog(log) {
       continue;
     }
 
+    if (/\bDELETED\b/i.test(section)) {
+      const deletedBN = section.match(/\bBN(\d{1,3})\b/i)?.[1];
+      if (deletedBN) {
+        delete passengers[deletedBN.padStart(3, '0')];
+      }
+      continue;
+    }
+
     // =========================
     // Skip Invalid
     // PSGR ID means no valid passenger in this record
@@ -463,6 +471,9 @@ function parseIncrementalLog(log) {
       if (tokenMatch && emdaMatch) {
         paidProductsShort.push(`${tokenMatch[1].toUpperCase()}/${emdaMatch[0].toUpperCase()}`);
       }
+    const asvcLines = section.match(/^ASVC-[^\n\r]+/gim) || [];
+    for (const line of asvcLines) {
+      paidProducts.push(line.replace(/^ASVC-\s*/i, '').trim());
     }
 
     // =========================
@@ -500,6 +511,7 @@ function parseIncrementalLog(log) {
       specialMeals,
       paidProducts,
       paidProductsShort
+      paidProducts
     };
 
     passenger.lounge =
