@@ -230,7 +230,12 @@ function applyVisibilityRules(pax, level) {
 
   if (level === 'lounge') {
     return {
+      flight: clone.flight,
+      flightDate: clone.flightDate,
+      name: clone.name,
       bn: clone.bn,
+      seat: clone.seat,
+      cabin: clone.cabin,
       ticketNumber: clone.ticketNumber,
       ffCarrier: clone.ffCarrier,
       ffNumber: clone.ffNumber,
@@ -684,5 +689,31 @@ app.post('/admin/users/level', (req, res) => {
   if (!USERS[username]) return res.status(404).json({ error: 'User not found' });
   if (!allow.has(level)) return res.status(400).json({ error: 'Invalid level' });
   USERS[username].level = level;
+  res.json({ success: true });
+});
+
+
+app.post('/admin/users/reset-password', (req, res) => {
+  const auth = authFromReq(req);
+  if (!auth || !auth.user) return res.status(401).json({ error: 'Unauthorized' });
+  if (auth.user.level !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+  const { username, newPassword } = req.body || {};
+  if (!USERS[username]) return res.status(404).json({ error: 'User not found' });
+  if (!newPassword || String(newPassword).length < 4) return res.status(400).json({ error: 'New password too short' });
+  USERS[username].password = String(newPassword);
+  USERS[username].lastPasswordChange = new Date().toISOString().slice(0, 10);
+  res.json({ success: true });
+});
+
+app.post('/admin/users/add', (req, res) => {
+  const auth = authFromReq(req);
+  if (!auth || !auth.user) return res.status(401).json({ error: 'Unauthorized' });
+  if (auth.user.level !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+  const { username, password, level } = req.body || {};
+  const allow = new Set(['admin', 'manager', 'agent', 'lounge']);
+  if (!username || !password || !level) return res.status(400).json({ error: 'Missing username/password/level' });
+  if (USERS[username]) return res.status(400).json({ error: 'User already exists' });
+  if (!allow.has(level)) return res.status(400).json({ error: 'Invalid level' });
+  USERS[username] = { password: String(password), level, lastPasswordChange: new Date().toISOString().slice(0, 10) };
   res.json({ success: true });
 });

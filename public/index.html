@@ -467,7 +467,25 @@
 <div id="adminPage" class="card" style="display:none; margin-bottom:14px;">
 <div class="label">Admin: User Levels</div>
 <div id="adminUsers"></div>
-<button onclick="saveAdmin()" style="margin-top:10px;">Save</button>
+<button onclick="saveAdmin()" style="margin-top:10px;">Save Level</button>
+<div style="margin-top:14px; border-top:1px solid rgba(255,255,255,0.12); padding-top:12px;">
+  <div class="label">Reset User Password</div>
+  <input id="adminResetUsername" placeholder="Username">
+  <input id="adminResetPassword" type="password" placeholder="New Password">
+  <button onclick="adminResetPassword()" style="width:100%;">Reset Password</button>
+</div>
+<div style="margin-top:14px; border-top:1px solid rgba(255,255,255,0.12); padding-top:12px;">
+  <div class="label">Add New User</div>
+  <input id="adminNewUsername" placeholder="Username">
+  <input id="adminNewPassword" type="password" placeholder="Password">
+  <select id="adminNewLevel" style="width:100%;padding:14px;margin-bottom:14px;border:none;border-radius:14px;background:#1e293b;color:white;font-size:15px;">
+    <option value="agent">agent</option>
+    <option value="manager">manager</option>
+    <option value="lounge">lounge</option>
+    <option value="admin">admin</option>
+  </select>
+  <button onclick="adminAddUser()" style="width:100%;">Add User</button>
+</div>
 </div>
 <div class="search-box">
 
@@ -822,6 +840,30 @@ async function saveAdmin(){
     await fetch('/admin/users/level', { method:'POST', headers:authHeaders(), body: JSON.stringify({ username: sel.id.replace('lv_',''), level: sel.value }) });
   }
   alert('Saved');
+}
+
+async function adminResetPassword(){
+  const username = document.getElementById('adminResetUsername').value.trim();
+  const newPassword = document.getElementById('adminResetPassword').value.trim();
+  const r = await fetch('/admin/users/reset-password', { method:'POST', headers:authHeaders(), body: JSON.stringify({ username, newPassword }) });
+  const d = await r.json();
+  if(!r.ok){ alert(d.error || 'Reset failed'); return; }
+  alert('Password reset done');
+  document.getElementById('adminResetUsername').value = '';
+  document.getElementById('adminResetPassword').value = '';
+}
+
+async function adminAddUser(){
+  const username = document.getElementById('adminNewUsername').value.trim();
+  const password = document.getElementById('adminNewPassword').value.trim();
+  const level = document.getElementById('adminNewLevel').value;
+  const r = await fetch('/admin/users/add', { method:'POST', headers:authHeaders(), body: JSON.stringify({ username, password, level }) });
+  const d = await r.json();
+  if(!r.ok){ alert(d.error || 'Add user failed'); return; }
+  alert('User added');
+  document.getElementById('adminNewUsername').value = '';
+  document.getElementById('adminNewPassword').value = '';
+  await openAdmin();
 }
 
 function buildTravelDocs(data){
