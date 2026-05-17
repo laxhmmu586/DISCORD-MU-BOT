@@ -17,7 +17,8 @@ const auth = new google.auth.GoogleAuth({
 
   scopes: [
 
-    'https://www.googleapis.com/auth/drive.readonly'
+    'https://www.googleapis.com/auth/drive.readonly',
+    'https://www.googleapis.com/auth/spreadsheets.readonly'
   ]
 });
 
@@ -31,6 +32,90 @@ const drive =
 
     auth
   });
+
+const sheets =
+  google.sheets({
+    version: 'v4',
+    auth
+  });
+
+const FULL_SHEET_ID =
+  '1FjdIg_b1iIfcAbCsxGBmIMnhFxA70sRo7cs4Vr4OLpc';
+
+let fullSheetCache = {
+  loadedAt: 0,
+  rows: []
+};
+
+function normalizeBn(value) {
+  const digits =
+    String(value || '')
+      .replace(/\D/g, '');
+
+  if (!digits) return '';
+  return digits.padStart(3, '0');
+}
+
+function normalizeFlightDate(value) {
+  const raw = String(value || '').trim();
+  const m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!m) return '';
+  const month = Number(m[1]);
+  const day = Number(m[2]);
+  const mon = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'][month - 1];
+  if (!mon || !day) return '';
+  return `${String(day).padStart(2, '0')}${mon}`;
+}
+
+async function getFullSheetRows() {
+  const ttlMs = 5 * 60 * 1000;
+  if (Date.now() - fullSheetCache.loadedAt < ttlMs && fullSheetCache.rows.length) {
+    return fullSheetCache.rows;
+  }
+
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: FULL_SHEET_ID,
+    range: 'FULL!A:N'
+  });
+
+  const rows = res.data.values || [];
+  fullSheetCache = {
+    loadedAt: Date.now(),
+    rows
+  };
+  return rows;
+}
+
+async function get240InfoByBnAndFlightDate({ bn, flightDate }) {
+  try {
+    const rows = await getFullSheetRows();
+    if (!rows.length) return null;
+
+    const targetBn = normalizeBn(bn);
+    const targetDate = String(flightDate || '').toUpperCase();
+
+    for (let i = rows.length - 1; i >= 1; i--) {
+      const row = rows[i];
+      const rowDate = normalizeFlightDate(row[0]);
+      const rowBn = normalizeBn(row[7]);
+
+      if (rowDate !== targetDate || rowBn !== targetBn) continue;
+
+      return {
+        passportCountry: row[9] || '',
+        passportExpiry: row[10] || '',
+        leaveChinaAt: row[11] || '',
+        destination: row[12] || '',
+        agentSubmitter: row[13] || ''
+      };
+    }
+
+    return null;
+  } catch (err) {
+    console.error('240 info lookup error:', err);
+    return null;
+  }
+}
 
 // ===============================
 // Download File
@@ -211,5 +296,6 @@ module.exports = {
 
   getLatestFlightLog,
 
-  getFlightLogByDate
+  getFlightLogByDate,
+  get240InfoByBnAndFlightDate
 };
