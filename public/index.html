@@ -341,6 +341,44 @@
       font-weight: 600;
     }
 
+
+    .bn-link {
+      color: #ffffff;
+      cursor: pointer;
+      text-decoration: underline;
+      text-decoration-thickness: 1px;
+      text-underline-offset: 3px;
+    }
+
+    .bn-link:hover {
+      color: #93c5fd;
+    }
+
+    .detail-card {
+      display: none;
+      background: #111827;
+      border-radius: 20px;
+      padding: 18px 20px;
+      margin-top: 16px;
+      box-shadow: 0 0 25px rgba(0,0,0,0.35);
+    }
+
+    .detail-title {
+      color: #60a5fa;
+      text-transform: uppercase;
+      font-size: 12px;
+      letter-spacing: 1px;
+      margin-bottom: 10px;
+    }
+
+    .detail-content {
+      white-space: pre-wrap;
+      line-height: 1.55;
+      font-size: 14px;
+      color: #e5e7eb;
+      word-break: break-word;
+    }
+
     .mini-btn {
       padding: 8px 12px;
       font-size: 12px;
@@ -419,7 +457,7 @@
         class="help-panel"
       >
         Search by Boarding Number, Name, Seat, Ticket Number, or Membership Number.<br>
-        
+        You can type with or without prefix: FB, RN, FSN, ETKD, FF.
       </div>
 
       <div class="search-box">
@@ -678,13 +716,121 @@
 
       </div>
 
+      <div
+        id="checkinDetailCard"
+        class="detail-card"
+      >
+        <div class="detail-title">Check-in / PSM</div>
+        <div
+          id="checkinDetailContent"
+          class="detail-content"
+        ></div>
+      </div>
+
     </div>
 
   </div>
 
   <script>
     let docPanelOpen = false;
+    let currentPassengerData = null;
+    let checkinPanelOpen = false;
+
     let helpPanelOpen = false;
+
+
+    function escapeHtml(value) {
+      return (value || '')
+        .toString()
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function getRawRecordText(data) {
+      const possibleFields = [
+        data?.rawRecord,
+        data?.fullRecord,
+        data?.record,
+        data?.raw,
+        data?.rawText,
+        data?.originalText,
+        data?.passengerRecord,
+        data?.latestRecord,
+        data?.sourceRecord,
+        data?.sourceText,
+        data?.log
+      ];
+
+      return possibleFields
+        .filter(Boolean)
+        .map(x => Array.isArray(x) ? x.join('\n') : x.toString())
+        .join('\n');
+    }
+
+    function normalizeDetailLine(line) {
+      return (line || '')
+        .toString()
+        .replace(/[\u001c-\u001f]/g, '')
+        .trimEnd();
+    }
+
+    function buildCheckinDetails(data) {
+      const rawText = getRawRecordText(data);
+      const rawLines = rawText
+        .split(/\r?\n/)
+        .map(normalizeDetailLine)
+        .filter(Boolean);
+
+      const psmLines = [];
+      const ckinLines = [];
+
+      rawLines.forEach(line => {
+        const clean = line.trim();
+        if (/^PSM\b/i.test(clean)) {
+          psmLines.push(clean);
+        }
+        else if (/^CKIN\b/i.test(clean)) {
+          ckinLines.push(clean);
+        }
+      });
+
+      if (Array.isArray(data?.psmLines)) {
+        data.psmLines.forEach(x => psmLines.push(normalizeDetailLine(x).trim()));
+      }
+
+      if (Array.isArray(data?.ckinLines)) {
+        data.ckinLines.forEach(x => ckinLines.push(normalizeDetailLine(x).trim()));
+      }
+
+      const unique = lines => [...new Set(lines.filter(Boolean))];
+      const finalLines = [
+        ...unique(psmLines),
+        ...unique(ckinLines)
+      ];
+
+      return finalLines.join('\n');
+    }
+
+    function toggleCheckinPanel() {
+      const card = document.getElementById('checkinDetailCard');
+      const content = document.getElementById('checkinDetailContent');
+
+      if (!currentPassengerData) return;
+
+      checkinPanelOpen = !checkinPanelOpen;
+
+      if (!checkinPanelOpen) {
+        card.style.display = 'none';
+        return;
+      }
+
+      const details = buildCheckinDetails(currentPassengerData);
+      content.innerText = details || 'No PSM / CKIN information available.';
+      card.style.display = 'block';
+    }
 
     function toggleHelpPanel() {
       const panel = document.getElementById('helpPanel');
@@ -981,11 +1127,15 @@
         ).innerText =
           data.name;
 
-        // Seat
+        currentPassengerData = data;
+        checkinPanelOpen = false;
+        document.getElementById('checkinDetailCard').style.display = 'none';
+
+        // Seat / BN clickable detail
         document.getElementById(
           'seat'
-        ).innerText =
-          `🎫 BN${data.bn} • ${data.seat} • ${data.cabin}`;
+        ).innerHTML =
+          `🎫 <span class="bn-link" onclick="toggleCheckinPanel()">BN${escapeHtml(data.bn)}</span> • ${escapeHtml(data.seat)} • ${escapeHtml(data.cabin)}`;
 
         // Docs button/panel
         const docBtn = document.getElementById('docToggleBtn');
