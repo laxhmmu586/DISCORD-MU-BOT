@@ -284,6 +284,10 @@ async function runLookup(mode, rawQuery) {
   if (!pax) return { error: 'Passenger data not updated yet.' };
 
   const membershipStatus = pax.membershipStatus || getMembershipStatus(pax.ffTier);
+  const checkinDetailsValue =
+    pax.checkinDetails?.length
+      ? pax.checkinDetails.join('\n').slice(0, 1024)
+      : null;
 
   const embed = {
     color: 0xf59e0b,
@@ -303,6 +307,11 @@ async function runLookup(mode, rawQuery) {
       ...(pax.bagtags?.length ? [{
         name: '🧳 Bags',
         value: pax.bagtags.join('\n'),
+        inline: false
+      }] : []),
+      ...(checkinDetailsValue ? [{
+        name: '📝 Check-in Details',
+        value: checkinDetailsValue,
         inline: false
       }] : []),
       ...(pax.inbound ? [{
