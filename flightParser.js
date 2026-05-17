@@ -531,6 +531,19 @@ function parseIncrementalLog(log) {
       )
     ];
 
+    const operationHistoryLines = [
+      ...new Set(
+        (section.match(/^\s{2,}(?:[A-Z]{3}|[IO]\/)[^\n\r]*$/gim) || [])
+          .map(line => line.trim())
+          .filter(line => /^(?:[A-Z]{3}|[IO]\/)\b/.test(line))
+      )
+    ];
+
+    const checkinDetails = [
+      ...ckinLines,
+      ...operationHistoryLines
+    ];
+
     const passenger = {
 
       bn,
@@ -568,7 +581,9 @@ function parseIncrementalLog(log) {
       paidProductsShort,
       sourceText: section,
       ckinLines,
-      psmLines
+      psmLines,
+      operationHistoryLines,
+      checkinDetails
     };
 
     passenger.lounge =
