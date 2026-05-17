@@ -761,7 +761,7 @@ function escapeHtml(v=''){ return v.toString().replace(/[&<>"']/g, c => ({'&':'&
 function show(id,on){ document.getElementById(id).style.display = on ? 'block' : 'none'; }
 function authHeaders(){ return { 'Content-Type':'application/json', Authorization:`Bearer ${authToken}` }; }
 function canSeeDocs(){ return currentUserLevel === 'admin' || currentUserLevel === 'manager'; }
-function canClickBn(){ return currentUserLevel === 'admin' || currentUserLevel === 'manager'; }
+function canClickBn(){ return currentUserLevel === 'admin' || currentUserLevel === 'manager' || currentUserLevel === 'agent'; }
 
 function resetIdle(){
   if (!authToken) return;
@@ -826,6 +826,8 @@ async function changePassword(){
 }
 
 async function openAdmin(){
+  const panel = document.getElementById('adminPage');
+  if (panel.style.display === 'block') { show('adminPage', false); return; }
   const r = await fetch('/admin/users', { headers:{ Authorization:`Bearer ${authToken}` } });
   const d = await r.json();
   if(!r.ok){ alert(d.error || 'Forbidden'); return; }
@@ -884,6 +886,39 @@ function toggleDocPanel(){
   show('docSection', docPanelOpen);
 }
 
+
+function sectionText(value){
+  if (value === undefined || value === null) return '';
+  if (Array.isArray(value)) return value.filter(Boolean).join('\n').trim();
+  return String(value).trim();
+}
+
+function setSection(id, text){
+  const section = document.getElementById(id + 'Section');
+  const node = document.getElementById(id);
+  const t = sectionText(text);
+  if (!section || !node) return;
+  if (!t) { section.style.display = 'none'; node.innerText = ''; return; }
+  section.style.display = 'block';
+  node.innerText = t;
+}
+
+function toggleBnDetail(){
+  const list = document.getElementById('checkinDetailList');
+  if (!currentPassengerData || !canClickBn()) return;
+  const showing = list.innerHTML.trim().length > 0;
+  if (showing) { list.innerHTML = ''; return; }
+  const lines = [
+    currentPassengerData.rawRecord,
+    currentPassengerData.fullRecord,
+    currentPassengerData.record,
+    currentPassengerData.raw,
+    currentPassengerData.rawText
+  ].filter(Boolean).map(x => Array.isArray(x) ? x.join('\n') : String(x));
+  if (!lines.length) return;
+  list.innerHTML = `<div class="detail-card" style="display:block;"><div class="detail-title">BN Detail</div><div class="detail-content">${escapeHtml(lines.join('\n\n'))}</div></div>`;
+}
+
 async function searchPassenger(){
   resetIdle();
   const q = document.getElementById('query').value.trim();
@@ -895,12 +930,14 @@ async function searchPassenger(){
   currentPassengerData = d;
   show('error', false);
   show('card', true);
+  document.getElementById('checkinDetailList').innerHTML = '';
+
   document.getElementById('flight').innerText = `✈️ ${d.flight || '---'}/${d.flightDate || '---'}`;
   document.getElementById('name').innerText = d.name || '---';
 
   const bnText = `BN${escapeHtml(d.bn || '---')}`;
   if (canClickBn()) {
-    document.getElementById('seat').innerHTML = `🎫 <span class="bn-link">${bnText}</span> • ${escapeHtml(d.seat || '---')} • ${escapeHtml(d.cabin || '---')}`;
+    document.getElementById('seat').innerHTML = `🎫 <span class="bn-link" onclick="toggleBnDetail()">${bnText}</span> • ${escapeHtml(d.seat || '---')} • ${escapeHtml(d.cabin || '---')}`;
   } else {
     document.getElementById('seat').innerHTML = `🎫 ${bnText} • ${escapeHtml(d.seat || '---')} • ${escapeHtml(d.cabin || '---')}`;
   }
@@ -911,22 +948,34 @@ async function searchPassenger(){
   docPanelOpen = false;
   show('docSection', false);
 
-  const isLounge = currentUserLevel === 'lounge';
-  document.getElementById('membershipSection').style.display = d.ffNumber ? 'block' : 'none';
+  setSection('ff', d.ffNumber ? `${d.ffCarrier || ''} ${d.ffNumber || ''}`.trim() : '');
   if (d.ffNumber) {
+    document.getElementById('membershipSection').style.display = 'block';
     document.getElementById('ff').innerText = `${d.ffCarrier || ''} ${d.ffNumber || ''}`.trim();
     document.getElementById('ffStatus').innerText = d.membershipStatus || '';
+  } else {
+    document.getElementById('membershipSection').style.display = 'none';
   }
-  document.getElementById('ticketSection').style.display = d.ticketNumber ? 'block' : 'none';
-  if (d.ticketNumber) document.getElementById('ticket').innerText = d.ticketNumber;
 
-  ;['bagsSection','inboundSection','outboundSection','ssrSection','mealSection','paidSection'].forEach(id => {
-    document.getElementById(id).style.display = isLounge ? 'none' : 'block';
-  });
+  document.getElementById('ticketSection').style.display = d.ticketNumber ? 'block' : 'none';
+  document.getElementById('ticket').innerText = d.ticketNumber || '';
+
+  const isLounge = currentUserLevel === 'lounge';
+  if (isLounge) {
+    ['bagsSection','inboundSection','outboundSection','ssrSection','mealSection','paidSection'].forEach(id => document.getElementById(id).style.display = 'none');
+  } else {
+    setSection('bags', (d.bagtags || []).join('\n'));
+    setSection('outbound', d.outbound ? `${d.outbound.flight || ''}/${d.outbound.date || ''}${d.outbound.bn ? ` • BN${d.outbound.bn}` : ''}${d.outbound.seat ? ` • ${d.outbound.seat}` : ''}
+To ${d.outbound.destination || ''}` : '');
+    setSection('ssr', (d.specialServices || []).join(', '));
+    setSection('meal', (d.specialMeals || []).join(', '));
+    setSection('paid', (d.paidProductsShort || d.paidProducts || []).join('\n'));
+  }
 
   document.getElementById('lounge').innerHTML = d.lounge?.eligible ? '<span class="yes">✅ Eligible</span>' : '<span class="no">❌ Not Eligible</span>';
   document.getElementById('guest').innerHTML = d.lounge?.guest ? '<span class="yes">✅ Allowed</span>' : '<span class="no">❌ Not Allowed</span>';
 }
+
 </script>
 
 </body>
