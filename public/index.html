@@ -782,7 +782,7 @@
 
       const operationHistoryLines = dedupeLines((data?.operationHistoryLines || [])
         .map(normalizeDetailLine)
-        .filter(line => /^(?:ASR|API|GOV|ACC|MOD|BAG)\b/i.test(line)));
+        .filter(line => /^[A-Z]{2,3}\s+[A-Z]{3}\d{5,}\s+/i.test(line)));
 
       const detailLines = [
         ...psmLines,
