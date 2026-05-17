@@ -670,6 +670,32 @@ function findByFFNumber(ff) {
 }
 
 // ===============================
+// Find by Bagtag
+// ===============================
+function findByBagtag(bagtagQuery) {
+  const normalizedQuery =
+    (bagtagQuery || '')
+      .replace(/\s+/g, '')
+      .toUpperCase();
+
+  if (!normalizedQuery) return null;
+
+  return Object.values(
+    passengers
+  ).find(p => {
+    const tags = p.bagtags || [];
+    return tags.some(tag => {
+      const bagOnly =
+        (tag || '')
+          .split('/')[0]
+          .replace(/\s+/g, '')
+          .toUpperCase();
+      return bagOnly === normalizedQuery;
+    });
+  });
+}
+
+// ===============================
 // Exports
 // ===============================
 module.exports = {
@@ -682,5 +708,7 @@ module.exports = {
 
   findByName,
 
-  findByFFNumber
+  findByFFNumber,
+
+  findByBagtag
 };

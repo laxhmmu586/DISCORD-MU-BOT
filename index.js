@@ -12,7 +12,9 @@ const {
 
   findByName,
 
-  findByFFNumber
+  findByFFNumber,
+
+  findByBagtag
 
 } = require('./flightParser');
 
@@ -345,6 +347,20 @@ app.get(
                 p.ticketNumber === q
               );
             });
+      }
+
+      // =========================
+      // Bagtag Search
+      // Examples:
+      // 3781829629
+      // DL861161
+      // =========================
+      else if (
+        /^(?:\d{5,12}|[A-Z]{1,3}\s*\d{3,12})$/i.test(q)
+      ) {
+
+        pax =
+          findByBagtag(q);
       }
 
       // =========================
