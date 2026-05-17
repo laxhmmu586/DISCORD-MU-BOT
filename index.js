@@ -28,7 +28,8 @@ const {
 
   getLatestFlightLog,
 
-  getFlightLogByDate
+  getFlightLogByDate,
+  get240InfoByBnAndFlightDate
 
 } = require('./googleDrive');
 
@@ -447,6 +448,11 @@ app.get(
       res.json({
 
         ...pax,
+        info240:
+          await get240InfoByBnAndFlightDate({
+            bn: pax.bn,
+            flightDate: pax.flightDate
+          }),
 
         membershipStatus
       });

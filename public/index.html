@@ -843,17 +843,44 @@
       }
 
       const groups = parseCheckinGroups(currentPassengerData);
-      if (!groups.length) {
-        list.innerHTML = '<div class="detail-card" style="display:block;"><div class="detail-title">Check-in Details</div><div class="detail-content">No information available.</div></div>';
-        return;
-      }
+      const cards = [];
 
-      list.innerHTML = groups.map(group => `
+      if (groups.length) {
+        cards.push(...groups.map(group => `
         <div class="detail-card" style="display:block;">
           <div class="detail-title">${escapeHtml(group.header)}</div>
           <div class="detail-content">${escapeHtml(group.detailLines.join('\n'))}</div>
         </div>
-      `).join('');
+      `));
+      }
+
+      const extra = currentPassengerData?.info240;
+      if (extra && Object.values(extra).some(Boolean)) {
+        const extraLines = [
+          extra.passportCountry ? `Passport Country: ${extra.passportCountry}` : '',
+          extra.passportExpiry ? `Passport Expiry: ${extra.passportExpiry}` : '',
+          extra.leaveChinaAt ? `Leave China At: ${extra.leaveChinaAt}` : '',
+          extra.destination ? `Destination: ${extra.destination}` : '',
+          extra.agentSubmitter ? `Agent Submit: ${extra.agentSubmitter}` : ''
+        ].filter(Boolean);
+
+        if (extraLines.length) {
+          cards.push(`
+            <div class="detail-card" style="display:block;">
+              <div class="detail-title">240 info</div>
+              <div class="detail-content">${escapeHtml(extraLines.join('\n'))}</div>
+            </div>
+          `);
+        }
+      }
+
+      if (!cards.length) {
+        list.innerHTML = '';
+        checkinPanelOpen = false;
+        return;
+      }
+
+      list.innerHTML = cards.join('');
     }
 
     function toggleHelpPanel() {
@@ -1116,6 +1143,9 @@
 
       error.style.display =
         'none';
+
+      checkinPanelOpen = false;
+      document.getElementById('checkinDetailList').innerHTML = '';
 
       try {
 
