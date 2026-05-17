@@ -346,7 +346,7 @@ async function runLookup(mode, rawQuery) {
         inline: true
       }
     ],
-    footer: { text: 'MUFC' }
+    footer: { text: 'MUFC System' }
   };
 
   return { embed };
