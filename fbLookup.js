@@ -325,9 +325,6 @@ async function runLookup(mode, rawQuery) {
         value: pax.specialMeals.join(', '),
         inline: false
       }] : []),
-      ...(pax.paidProductsShort?.length ? [{
-        name: '💰 Paid Products',
-        value: pax.paidProductsShort.join('\n'),
       ...(pax.paidProducts?.length ? [{
         name: '💰 Paid Products',
         value: pax.paidProducts.join('\n'),
