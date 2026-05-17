@@ -36,6 +36,42 @@ function getCabinFromSeat(seat) {
   return 'Economy';
 }
 
+function splitLogicalSections(log) {
+  const lines = log.split(/\r?\n/);
+  const tsRe = /^\d{4}\s+\w+\s+\d{2},.*?\d{2}:\d{2}:\d{2}\s*$/;
+  const cmdRe = /^>\s*([A-Z0-9*\/]+)\b/i;
+  const sections = [];
+  let current = null;
+  let pendingTimestamp = null;
+
+  for (const line of lines) {
+    if (tsRe.test(line.trim())) {
+      pendingTimestamp = line.trim();
+      continue;
+    }
+
+    const cmd = line.match(cmdRe)?.[1]?.toUpperCase() || null;
+    const isContinuation = cmd ? /^(PN|PN1|PF|PF1)$/.test(cmd) : false;
+
+    if (cmd && !isContinuation) {
+      if (current && current.content.trim()) sections.push(current.content);
+      current = { content: line + '\n', timestamp: pendingTimestamp || null };
+      pendingTimestamp = null;
+      continue;
+    }
+
+    if (!current) {
+      current = { content: '' };
+      pendingTimestamp = null;
+    }
+
+    current.content += line + '\n';
+  }
+
+  if (current && current.content.trim()) sections.push(current.content);
+  return sections;
+}
+
 function getMembershipStatus(tier) {
   if (tier === 'V') return 'Platinum';
   if (tier === 'G') return 'Gold';
@@ -45,7 +81,7 @@ function getMembershipStatus(tier) {
 
 function findPassengerFromPRRecord(log, mode, query) {
   const sections =
-    log.split(/\d{4}\s+\w+\s+\d{2},.*?\d{2}:\d{2}:\d{2}/g);
+    splitLogicalSections(log);
 
   const normalizedBN = query.padStart(3, '0');
   const normalizedSeat = query.toUpperCase();
@@ -92,7 +128,7 @@ function findPDPassengerByFFFromLog(log, query) {
   const ffMatch = ff.match(/^([A-Z]{2})(\d+)$/);
   if (!ffMatch) return null;
 
-  const sections = log.split(/\d{4}\s+\w+\s+\d{2},.*?\d{2}:\d{2}:\d{2}/g);
+  const sections = splitLogicalSections(log);
 
   for (const section of sections) {
     if (!section.includes('PD:')) continue;
@@ -144,7 +180,7 @@ function findPDPassengerByFFFromLog(log, query) {
 
 function findPassengerByFFFromRecord(log, query) {
   const ff = query.replace(/\s+/g, '').toUpperCase();
-  const sections = log.split(/\d{4}\s+\w+\s+\d{2},.*?\d{2}:\d{2}:\d{2}/g);
+  const sections = splitLogicalSections(log);
 
   for (const section of sections) {
     const ffMatch = section.match(/FF\/([A-Z0-9]+)\s+(\d+)\/([A-Z])/i);
@@ -222,7 +258,7 @@ async function runLookup(mode, rawQuery) {
     pax = findByName(query);
 
     if (!pax) {
-      const sections = log.split(/\d{4}\s+\w+\s+\d{2},.*?\d{2}:\d{2}:\d{2}/g);
+      const sections = splitLogicalSections(log);
       const nameRegex = new RegExp(`\\b${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\+?\\b`, 'i');
       for (const section of sections) {
         if (!section.includes('PR:')) continue;
@@ -278,6 +314,21 @@ async function runLookup(mode, rawQuery) {
         name: '➡ Outbound',
         value: `${pax.outbound.flight}/${pax.outbound.date}${pax.outbound.bn ? ` • BN${pax.outbound.bn}` : ''}${pax.outbound.seat ? ` • ${pax.outbound.seat}` : ''}\nTo ${pax.outbound.destination}`,
         inline: true
+      }] : []),
+      ...(pax.specialServices?.length ? [{
+        name: '🧩 Special Service',
+        value: pax.specialServices.join(', '),
+        inline: false
+      }] : []),
+      ...(pax.specialMeals?.length ? [{
+        name: '🍽 Special Meal',
+        value: pax.specialMeals.join(', '),
+        inline: false
+      }] : []),
+      ...(pax.paidProductsShort?.length ? [{
+        name: '💰 Paid Products',
+        value: pax.paidProductsShort.join('\n'),
+        inline: false
       }] : []),
       {
         name: '🛋 Lounge Access',

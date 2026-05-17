@@ -198,6 +198,14 @@
 
       margin-bottom: 18px;
     }
+    .grid-two {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .grid-two .section {
+      margin-bottom: 0;
+    }
 
     .label {
 
@@ -353,6 +361,7 @@
           class="seat"
         ></div>
 
+        <div class="grid-two">
         <!-- Membership -->
         <div
           id="membershipSection"
@@ -478,6 +487,46 @@
 
         </div>
 
+        <!-- Special Meal -->
+        <div
+          id="mealSection"
+          class="section"
+          style="display:none;"
+        >
+
+          <div class="divider"></div>
+
+          <div class="label">
+            Special Meal
+          </div>
+
+          <div
+            id="meal"
+            class="value"
+          ></div>
+
+        </div>
+
+        <!-- Paid Products -->
+        <div
+          id="paidSection"
+          class="section"
+          style="display:none;"
+        >
+
+          <div class="divider"></div>
+
+          <div class="label">
+            Paid Products
+          </div>
+
+          <div
+            id="paid"
+            class="value"
+          ></div>
+
+        </div>
+
         <!-- Lounge -->
         <div class="section">
 
@@ -504,6 +553,7 @@
             class="value"
           ></div>
 
+        </div>
         </div>
 
       </div>
@@ -878,6 +928,33 @@
             'outboundSection'
           ).style.display =
             'none';
+        }
+
+        // Special Service
+        if (data.specialServices && data.specialServices.length) {
+          document.getElementById('ssrSection').style.display = 'block';
+          document.getElementById('ssr').innerText = data.specialServices.join(', ');
+        } else {
+          document.getElementById('ssrSection').style.display = 'none';
+        }
+
+        // Special Meal
+        if (data.specialMeals && data.specialMeals.length) {
+          document.getElementById('mealSection').style.display = 'block';
+          document.getElementById('meal').innerText = data.specialMeals.join(', ');
+        } else {
+          document.getElementById('mealSection').style.display = 'none';
+        }
+
+        // Paid Products
+        if (data.paidProductsShort && data.paidProductsShort.length) {
+          document.getElementById('paidSection').style.display = 'block';
+          document.getElementById('paid').innerText = data.paidProductsShort.join('\n');
+        } else if (data.paidProducts && data.paidProducts.length) {
+          document.getElementById('paidSection').style.display = 'block';
+          document.getElementById('paid').innerText = data.paidProducts.join('\n');
+        } else {
+          document.getElementById('paidSection').style.display = 'none';
         }
 
         // Lounge
