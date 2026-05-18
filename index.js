@@ -45,6 +45,111 @@ const {
 
 const fbLookup =
   require('./fbLookup');
+const {
+  getPermissionsForUid,
+  setPermissionsForUid
+} = require('./permissionsStore');
+
+const DEFAULT_PERMISSIONS = {
+  canViewTravelDocs: false,
+  canViewMembership: false,
+  canViewTicket: false,
+  canViewBags: false,
+  canViewInbound: false,
+  canViewOutbound: false,
+  canViewCheckinDetails: false,
+  canView240Info: false,
+  canViewSpecialService: false,
+  canViewSpecialMeals: false,
+  canViewLoungeAccess: false,
+  canViewGuestAccess: false,
+  canViewPaidService: false
+};
+
+async function resolveAuthContextFromRequest(req) {
+  const authHeader = req.headers.authorization || '';
+  const match = authHeader.match(/^Bearer\s+(.+)$/i);
+  if (!match) return { permissions: { ...DEFAULT_PERMISSIONS }, uid: null, claims: {} };
+
+  try {
+    const idToken = match[1];
+    const verifyUrl = `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${process.env.FIREBASE_API_KEY || ''}`;
+
+    if (!process.env.FIREBASE_API_KEY) {
+      return { permissions: { ...DEFAULT_PERMISSIONS }, uid: null, claims: {} };
+    }
+
+    const tokenRes = await fetch(verifyUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken })
+    });
+
+    if (!tokenRes.ok) return { permissions: { ...DEFAULT_PERMISSIONS }, uid: null, claims: {} };
+    const tokenData = await tokenRes.json();
+    const user = tokenData?.users?.[0] || {};
+    const rawClaims = user.customAuth || '{}';
+    const claims = JSON.parse(rawClaims);
+    const uid = user.localId || null;
+    const override = uid ? (getPermissionsForUid(uid) || {}) : {};
+
+    const permissions = {
+      ...DEFAULT_PERMISSIONS,
+      ...Object.fromEntries(
+        Object.keys(DEFAULT_PERMISSIONS).map((k) => [k, Boolean(claims[k])])
+      ),
+      ...override
+    };
+    return { permissions, uid, claims };
+  } catch (err) {
+    console.error('resolvePermissionsFromRequest error:', err?.message || err);
+    return { permissions: { ...DEFAULT_PERMISSIONS }, uid: null, claims: {} };
+  }
+}
+
+function applyPermissionFilter(pax, permissions, info240) {
+  const filtered = {
+    ...pax,
+    permissions
+  };
+
+  if (!permissions.canViewTravelDocs) {
+    filtered.travelDocsRaw = null;
+    filtered.paxInfoRaw = null;
+    filtered.passportNumber = null;
+    filtered.nationality = null;
+    filtered.dob = null;
+    filtered.birthDate = null;
+    filtered.gender = null;
+    filtered.passportExpiry = null;
+    filtered.expiryDate = null;
+  }
+  if (!permissions.canViewMembership) {
+    filtered.ffCarrier = null;
+    filtered.ffNumber = null;
+    filtered.ffTier = null;
+    filtered.membershipStatus = null;
+  }
+  if (!permissions.canViewTicket) filtered.ticketNumber = null;
+  if (!permissions.canViewBags) filtered.bagtags = [];
+  if (!permissions.canViewInbound) filtered.inbound = null;
+  if (!permissions.canViewOutbound) filtered.outbound = null;
+  if (!permissions.canViewSpecialService) filtered.specialServices = [];
+  if (!permissions.canViewSpecialMeals) filtered.specialMeals = [];
+  if (!permissions.canViewPaidService) {
+    filtered.paidProductsShort = [];
+    filtered.paidProducts = [];
+  }
+  if (!permissions.canViewLoungeAccess || !permissions.canViewGuestAccess) {
+    filtered.lounge = filtered.lounge || {};
+    if (!permissions.canViewLoungeAccess) filtered.lounge.eligible = null;
+    if (!permissions.canViewGuestAccess) filtered.lounge.guest = null;
+  }
+  if (!permissions.canViewCheckinDetails) filtered.checkinDetails = [];
+  filtered.info240 = permissions.canView240Info ? info240 : null;
+
+  return filtered;
+}
 
 function findPassengerByFFFromRecord(log, query) {
   const ff = query.replace(/\s+/g, '').toUpperCase();
@@ -483,20 +588,28 @@ app.get(
           'Silver';
       }
 
-      // =========================
-      // Response
-      // =========================
-      res.json({
+      const authContext =
+        await resolveAuthContextFromRequest(req);
+      const permissions = authContext.permissions;
 
-        ...pax,
-        info240:
-          await get240InfoByBnAndFlightDate({
-            bn: pax.bn,
-            flightDate: pax.flightDate
-          }),
+      pax.membershipStatus =
+        permissions.canViewMembership ? membershipStatus : null;
 
-        membershipStatus
-      });
+      const info240 =
+        permissions.canView240Info
+          ? await get240InfoByBnAndFlightDate({
+              bn: pax.bn,
+              flightDate: pax.flightDate
+            })
+          : null;
+
+      res.json(
+        applyPermissionFilter(
+          pax,
+          permissions,
+          info240
+        )
+      );
 
     }
 
@@ -512,6 +625,28 @@ app.get(
     }
   }
 );
+
+app.get('/admin/permissions/:uid', async (req, res) => {
+  const auth = await resolveAuthContextFromRequest(req);
+  const adminUids = String(process.env.ADMIN_UIDS || '').split(',').map(x => x.trim()).filter(Boolean);
+  const isAdmin = Boolean(auth.claims?.isAdmin) || (auth.uid && adminUids.includes(auth.uid));
+  if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
+  const override = getPermissionsForUid(req.params.uid) || {};
+  return res.json({ uid: req.params.uid, override });
+});
+
+app.post('/admin/permissions/:uid', express.json(), async (req, res) => {
+  const auth = await resolveAuthContextFromRequest(req);
+  const adminUids = String(process.env.ADMIN_UIDS || '').split(',').map(x => x.trim()).filter(Boolean);
+  const isAdmin = Boolean(auth.claims?.isAdmin) || (auth.uid && adminUids.includes(auth.uid));
+  if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
+  const patch = req.body || {};
+  const cleaned = Object.fromEntries(
+    Object.keys(DEFAULT_PERMISSIONS).map((k) => [k, Boolean(patch[k])])
+  );
+  setPermissionsForUid(req.params.uid, cleaned);
+  return res.json({ success: true, uid: req.params.uid, override: cleaned });
+});
 
 // ===============================
 // Send Message API
