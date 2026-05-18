@@ -173,6 +173,31 @@ app.use(
   express.static('public')
 );
 
+
+const ALLOWED_ORIGINS = [
+  'https://china-eastern.web.app',
+  'https://china-eastern.firebaseapp.com',
+  process.env.WEB_ORIGIN
+].filter(Boolean);
+
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+
+  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+  }
+
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
+
+  next();
+});
+
 // ===============================
 // Discord Client
 // ===============================
