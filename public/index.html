@@ -846,7 +846,12 @@
 
       const extra =
         canView240
-          ? currentPassengerData?.info240
+          ? (
+            currentPassengerData?.info240 ||
+            currentPassengerData?.info240Data ||
+            currentPassengerData?.extra240 ||
+            null
+          )
           : null;
       if (extra && Object.values(extra).some(Boolean)) {
         const extraLines = [
@@ -922,11 +927,11 @@
       const dob =
         data.dob ||
         data.birthDate ||
-        firstMatch(paxInfoRaw, /\/DOB\/(\d{6})/i);
+        firstMatch(paxInfoRaw, /(?:\/DOB\/|DOB\s*[:\/-]?\s*)(\d{6,8}|\d{2}[A-Z]{3}\d{2,4}|\d{4}-\d{2}-\d{2})/i);
 
       const gender =
         data.gender ||
-        firstMatch(paxInfoRaw, /\/GENDER\/([A-Z])/i);
+        firstMatch(paxInfoRaw, /(?:\/GENDER\/|GENDER\s*[:\/-]?\s*|SEX\s*[:\/-]?\s*)([A-Z])/i);
 
       let expiry =
         data.passportExpiry ||
@@ -950,7 +955,9 @@
         ['Gender', gender]
       ].filter(item => item[1]);
 
-      if (!items.length) return '';
+      if (!items.length) {
+        return '<div class="doc-grid"><div class="doc-item"><span>Travel Docs</span><b>No travel document data</b></div></div>';
+      }
 
       return '<div class="doc-grid">' +
         items.map(([label, value]) =>
@@ -1146,7 +1153,7 @@
         }
 
         // Membership
-        if (data.permissions?.canViewMembership && data.ffNumber) {
+        if (data.permissions?.canViewMembership) {
 
           document.getElementById(
             'membershipSection'
@@ -1157,7 +1164,7 @@
             'ff'
           ).innerText =
 
-            `${data.ffCarrier} ${data.ffNumber}`;
+            `${data.ffCarrier || ''} ${data.ffNumber || ''}`.trim() || 'N/A';
 
           document.getElementById(
             'ffStatus'
@@ -1191,7 +1198,7 @@
         }
 
         // Ticket
-        if (data.permissions?.canViewTicket && data.ticketNumber) {
+        if (data.permissions?.canViewTicket) {
 
           document.getElementById(
             'ticketSection'
@@ -1201,7 +1208,7 @@
           document.getElementById(
             'ticket'
           ).innerText =
-            data.ticketNumber;
+            data.ticketNumber || 'N/A';
         }
 
         else {
@@ -1213,11 +1220,7 @@
         }
 
         // Bags
-        if (
-          data.permissions?.canViewBags &&
-          data.bagtags &&
-          data.bagtags.length
-        ) {
+        if (data.permissions?.canViewBags) {
 
           document.getElementById(
             'bagsSection'
@@ -1227,7 +1230,7 @@
           document.getElementById(
             'bags'
           ).innerText =
-            data.bagtags.join('\n');
+            (data.bagtags && data.bagtags.length) ? data.bagtags.join('\n') : 'N/A';
         }
 
         else {
@@ -1239,7 +1242,7 @@
         }
 
         // Inbound
-        if (data.permissions?.canViewInbound && data.inbound) {
+        if (data.permissions?.canViewInbound) {
 
           document.getElementById(
             'inboundSection'
@@ -1250,7 +1253,7 @@
             'inbound'
           ).innerText =
 
-            `${data.inbound.flight}/${data.inbound.date}\nFrom ${data.inbound.origin}`;
+            data.inbound ? `${data.inbound.flight || '-'} / ${data.inbound.date || '-'}\nFrom ${data.inbound.origin || '-'}` : 'N/A';
         }
 
         else {
@@ -1262,7 +1265,7 @@
         }
 
         // Outbound
-        if (data.permissions?.canViewOutbound && data.outbound) {
+        if (data.permissions?.canViewOutbound) {
 
           document.getElementById(
             'outboundSection'
@@ -1273,17 +1276,10 @@
             'outbound'
           ).innerText =
 
-            `${data.outbound.flight}/${data.outbound.date}` +
-
-            (data.outbound.bn
-              ? ` • BN${data.outbound.bn}`
-              : '') +
-
-            (data.outbound.seat
-              ? ` • ${data.outbound.seat}`
-              : '') +
-
-            `\nTo ${data.outbound.destination}`;
+            data.outbound
+            ? `${data.outbound.flight || '-'} / ${data.outbound.date || '-'}${data.outbound.bn ? ` • BN${data.outbound.bn}` : ''}${data.outbound.seat ? ` • ${data.outbound.seat}` : ''}
+To ${data.outbound.destination || '-'}`
+            : 'N/A';
         }
 
         else {
@@ -1295,28 +1291,31 @@
         }
 
         // Special Service
-        if (data.permissions?.canViewSpecialService && data.specialServices && data.specialServices.length) {
+        if (data.permissions?.canViewSpecialService) {
           document.getElementById('ssrSection').style.display = 'block';
-          document.getElementById('ssr').innerText = data.specialServices.join(', ');
+          document.getElementById('ssr').innerText = (data.specialServices && data.specialServices.length) ? data.specialServices.join(', ') : 'N/A';
         } else {
           document.getElementById('ssrSection').style.display = 'none';
         }
 
         // Special Meal
-        if (data.permissions?.canViewSpecialMeals && data.specialMeals && data.specialMeals.length) {
+        if (data.permissions?.canViewSpecialMeals) {
           document.getElementById('mealSection').style.display = 'block';
-          document.getElementById('meal').innerText = data.specialMeals.join(', ');
+          document.getElementById('meal').innerText = (data.specialMeals && data.specialMeals.length) ? data.specialMeals.join(', ') : 'N/A';
         } else {
           document.getElementById('mealSection').style.display = 'none';
         }
 
         // Paid Service
-        if (data.permissions?.canViewPaidService && data.paidProductsShort && data.paidProductsShort.length) {
+        if (data.permissions?.canViewPaidService) {
           document.getElementById('paidSection').style.display = 'block';
-          document.getElementById('paid').innerText = data.paidProductsShort.join('\n');
-        } else if (data.permissions?.canViewPaidService && data.paidProducts && data.paidProducts.length) {
-          document.getElementById('paidSection').style.display = 'block';
-          document.getElementById('paid').innerText = data.paidProducts.join('\n');
+          if (data.paidProductsShort && data.paidProductsShort.length) {
+            document.getElementById('paid').innerText = data.paidProductsShort.join('\n');
+          } else if (data.paidProducts && data.paidProducts.length) {
+            document.getElementById('paid').innerText = data.paidProducts.join('\n');
+          } else {
+            document.getElementById('paid').innerText = 'N/A';
+          }
         } else {
           document.getElementById('paidSection').style.display = 'none';
         }
