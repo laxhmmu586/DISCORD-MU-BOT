@@ -3,116 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MU Admin Permissions</title>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 24px; max-width: 920px; }
-    .row { margin: 10px 0; }
-    button { margin-right: 8px; }
-    pre { background: #f5f5f5; padding: 10px; border-radius: 8px; }
-    .module { border: 1px solid #e1e1e1; border-radius: 10px; padding: 12px; margin-top: 12px; }
-    .module-title { font-weight: 700; margin-bottom: 8px; }
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 18px; }
-    .perm-label { display: block; }
-    .hint { color: #666; font-size: 12px; margin-top: 4px; }
-  </style>
+  <title>Admin Disabled</title>
+  <style>body{font-family:Arial,sans-serif;margin:32px;background:#0f172a;color:#e2e8f0}a{color:#93c5fd}</style>
 </head>
 <body>
-  <h2>Admin Permission Panel</h2>
-  <div class="row"><input id="uid" placeholder="Target Firebase UID" style="width:360px"/></div>
-  <div class="row"><input id="permSearch" placeholder="Search module or permission" style="width:360px"/></div>
-  <div class="hint">权限已按模块拆分；可用上方搜索框快速筛选模块/权限。</div>
-  <div id="permModules"></div>
-  <div class="row">
-    <button onclick="loadPerms()">Load</button>
-    <button onclick="savePerms()">Save</button>
-  </div>
-  <pre id="result"></pre>
-
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
-    const firebaseConfig = {
-      apiKey: "AIzaSyAWsXBuQJTBmNKi6gLgnkZUZ4OfK1IRuXo",
-      authDomain: "china-eastern.firebaseapp.com",
-      projectId: "china-eastern",
-      storageBucket: "china-eastern.firebasestorage.app",
-      messagingSenderId: "30017158772",
-      appId: "1:30017158772:web:874a69fdb75b8d3d315b21",
-      measurementId: "G-22T9MHC42Y"
-    };
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    let currentUser = null;
-    onAuthStateChanged(auth, (u) => currentUser = u || null);
-
-    const permModules = [
-      { name: '基础旅客信息', keys: ["canViewTravelDocs","canViewMembership","canViewTicket","canViewBags"] },
-      { name: '行程信息', keys: ["canViewInbound","canViewOutbound","canViewCheckinDetails","canView240Info"] },
-      { name: '服务信息', keys: ["canViewSpecialService","canViewSpecialMeals","canViewPaidService"] },
-      { name: '休息室信息', keys: ["canViewLoungeAccess","canViewGuestAccess"] }
-    ];
-    const perms = permModules.flatMap(m => m.keys);
-    const modulesRoot = document.getElementById('permModules');
-    permModules.forEach(mod => {
-      const module = document.createElement('section');
-      module.className = 'module';
-      module.dataset.moduleName = mod.name.toLowerCase();
-      module.innerHTML = `<div class="module-title">${mod.name}</div><div class="grid"></div>`;
-      const grid = module.querySelector('.grid');
-      mod.keys.forEach(k => {
-        const id = `perm_${k}`;
-        const label = document.createElement('label');
-        label.className = 'perm-label';
-        label.dataset.permName = k.toLowerCase();
-        label.innerHTML = `<input type="checkbox" id="${id}" /> ${k}`;
-        grid.appendChild(label);
-      });
-      modulesRoot.appendChild(module);
-    });
-
-    document.getElementById('permSearch').addEventListener('input', (e) => {
-      const q = (e.target.value || '').trim().toLowerCase();
-      document.querySelectorAll('.module').forEach((module) => {
-        let visibleCount = 0;
-        module.querySelectorAll('.perm-label').forEach((label) => {
-          const hit = !q || label.dataset.permName.includes(q) || module.dataset.moduleName.includes(q);
-          label.style.display = hit ? '' : 'none';
-          if (hit) visibleCount += 1;
-        });
-        module.style.display = visibleCount > 0 ? '' : 'none';
-      });
-    });
-
-    const API_BASE = (window.MU_API_BASE || localStorage.getItem('mu_api_base') || '').trim().replace(/\/$/, '');
-    async function authHeader() {
-      if (!currentUser) throw new Error('Please login first.');
-      const token = await currentUser.getIdToken();
-      return { Authorization: `Bearer ${token}` };
-    }
-    function collect() {
-      return Object.fromEntries(perms.map(k => [k, document.getElementById(`perm_${k}`).checked]));
-    }
-    function apply(v) {
-      perms.forEach(k => document.getElementById(`perm_${k}`).checked = Boolean(v?.[k]));
-    }
-    window.loadPerms = async function() {
-      const uid = document.getElementById('uid').value.trim();
-      const headers = await authHeader();
-      const res = await fetch(`${API_BASE}/admin/permissions/${encodeURIComponent(uid)}`, { headers });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Load failed');
-      apply(data.override || {});
-      document.getElementById('result').innerText = JSON.stringify(data, null, 2);
-    };
-    window.savePerms = async function() {
-      const uid = document.getElementById('uid').value.trim();
-      const headers = { ...(await authHeader()), 'Content-Type': 'application/json' };
-      const body = JSON.stringify(collect());
-      const res = await fetch(`${API_BASE}/admin/permissions/${encodeURIComponent(uid)}`, { method: 'POST', headers, body });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Save failed');
-      document.getElementById('result').innerText = JSON.stringify(data, null, 2);
-    };
-  </script>
+  <h2>权限设置已移除</h2>
+  <p>系统已回退到仅使用 Firebase 账号密码登录版本，不再提供权限配置页面。</p>
+  <p><a href="index.html">返回主页</a></p>
 </body>
 </html>

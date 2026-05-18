@@ -45,66 +45,24 @@ const {
 
 const fbLookup =
   require('./fbLookup');
-const {
-  getPermissionsForUid,
-  setPermissionsForUid
-} = require('./permissionsStore');
-
 const DEFAULT_PERMISSIONS = {
-  canViewTravelDocs: false,
-  canViewMembership: false,
-  canViewTicket: false,
-  canViewBags: false,
-  canViewInbound: false,
-  canViewOutbound: false,
-  canViewCheckinDetails: false,
-  canView240Info: false,
-  canViewSpecialService: false,
-  canViewSpecialMeals: false,
-  canViewLoungeAccess: false,
-  canViewGuestAccess: false,
-  canViewPaidService: false
+  canViewTravelDocs: true,
+  canViewMembership: true,
+  canViewTicket: true,
+  canViewBags: true,
+  canViewInbound: true,
+  canViewOutbound: true,
+  canViewCheckinDetails: true,
+  canView240Info: true,
+  canViewSpecialService: true,
+  canViewSpecialMeals: true,
+  canViewLoungeAccess: true,
+  canViewGuestAccess: true,
+  canViewPaidService: true
 };
 
 async function resolveAuthContextFromRequest(req) {
-  const authHeader = req.headers.authorization || '';
-  const match = authHeader.match(/^Bearer\s+(.+)$/i);
-  if (!match) return { permissions: { ...DEFAULT_PERMISSIONS }, uid: null, claims: {} };
-
-  try {
-    const idToken = match[1];
-    const verifyUrl = `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${process.env.FIREBASE_API_KEY || ''}`;
-
-    if (!process.env.FIREBASE_API_KEY) {
-      return { permissions: { ...DEFAULT_PERMISSIONS }, uid: null, claims: {} };
-    }
-
-    const tokenRes = await fetch(verifyUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ idToken })
-    });
-
-    if (!tokenRes.ok) return { permissions: { ...DEFAULT_PERMISSIONS }, uid: null, claims: {} };
-    const tokenData = await tokenRes.json();
-    const user = tokenData?.users?.[0] || {};
-    const rawClaims = user.customAuth || '{}';
-    const claims = JSON.parse(rawClaims);
-    const uid = user.localId || null;
-    const override = uid ? (getPermissionsForUid(uid) || {}) : {};
-
-    const permissions = {
-      ...DEFAULT_PERMISSIONS,
-      ...Object.fromEntries(
-        Object.keys(DEFAULT_PERMISSIONS).map((k) => [k, Boolean(claims[k])])
-      ),
-      ...override
-    };
-    return { permissions, uid, claims };
-  } catch (err) {
-    console.error('resolvePermissionsFromRequest error:', err?.message || err);
-    return { permissions: { ...DEFAULT_PERMISSIONS }, uid: null, claims: {} };
-  }
+  return { permissions: { ...DEFAULT_PERMISSIONS }, uid: null, claims: {} };
 }
 
 function applyPermissionFilter(pax, permissions, info240) {
@@ -113,25 +71,7 @@ function applyPermissionFilter(pax, permissions, info240) {
     permissions
   };
 
-  if (!permissions.canViewMembership) {
-    filtered.ffCarrier = null;
-    filtered.ffNumber = null;
-    filtered.ffTier = null;
-    filtered.membershipStatus = null;
-  }
-  if (!permissions.canViewTicket) filtered.ticketNumber = null;
-  if (!permissions.canViewBags) filtered.bagtags = [];
-  if (!permissions.canViewInbound) filtered.inbound = null;
-  if (!permissions.canViewOutbound) filtered.outbound = null;
-  if (!permissions.canViewSpecialService) filtered.specialServices = [];
-  if (!permissions.canViewSpecialMeals) filtered.specialMeals = [];
-  if (!permissions.canViewPaidService) {
-    filtered.paidProductsShort = [];
-    filtered.paidProducts = [];
-  }
-  if (!permissions.canViewLoungeAccess || !permissions.canViewGuestAccess) filtered.lounge = filtered.lounge || {};
-  if (!permissions.canViewCheckinDetails) filtered.checkinDetails = [];
-  filtered.info240 = permissions.canView240Info ? info240 : null;
+  filtered.info240 = info240;
 
   return filtered;
 }
@@ -611,27 +551,6 @@ app.get(
   }
 );
 
-app.get('/admin/permissions/:uid', async (req, res) => {
-  const auth = await resolveAuthContextFromRequest(req);
-  const adminUids = String(process.env.ADMIN_UIDS || '').split(',').map(x => x.trim()).filter(Boolean);
-  const isAdmin = Boolean(auth.claims?.isAdmin) || (auth.uid && adminUids.includes(auth.uid));
-  if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
-  const override = getPermissionsForUid(req.params.uid) || {};
-  return res.json({ uid: req.params.uid, override });
-});
-
-app.post('/admin/permissions/:uid', express.json(), async (req, res) => {
-  const auth = await resolveAuthContextFromRequest(req);
-  const adminUids = String(process.env.ADMIN_UIDS || '').split(',').map(x => x.trim()).filter(Boolean);
-  const isAdmin = Boolean(auth.claims?.isAdmin) || (auth.uid && adminUids.includes(auth.uid));
-  if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
-  const patch = req.body || {};
-  const cleaned = Object.fromEntries(
-    Object.keys(DEFAULT_PERMISSIONS).map((k) => [k, Boolean(patch[k])])
-  );
-  setPermissionsForUid(req.params.uid, cleaned);
-  return res.json({ success: true, uid: req.params.uid, override: cleaned });
-});
 
 // ===============================
 // Send Message API

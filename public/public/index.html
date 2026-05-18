@@ -1481,25 +1481,6 @@ To ${data.outbound.destination || '-'}`
     window.location.href =
       "login.html";
   };
-  window.goAdmin = function () {
-    window.location.href = "admin.html";
-  };
-
-  function shouldShowAdminButton(user) {
-    return user?.claims?.admin === true || user?.claims?.isAdmin === true;
-  }
-
-  async function syncAdminButton(user) {
-    const adminBtn = document.getElementById('adminBtn');
-    if (!adminBtn || !user) return;
-    try {
-      const tokenResult = await user.getIdTokenResult();
-      adminBtn.style.display = shouldShowAdminButton(tokenResult) ? 'inline-block' : 'none';
-    } catch {
-      adminBtn.style.display = 'none';
-    }
-  }
-
 </script>
 <div style="
 padding:10px;
