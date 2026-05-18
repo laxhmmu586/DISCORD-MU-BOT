@@ -5,17 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MU Admin Permissions</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 24px; max-width: 820px; }
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 18px; margin-top: 12px; }
+    body { font-family: Arial, sans-serif; margin: 24px; max-width: 920px; }
     .row { margin: 10px 0; }
     button { margin-right: 8px; }
     pre { background: #f5f5f5; padding: 10px; border-radius: 8px; }
+    .module { border: 1px solid #e1e1e1; border-radius: 10px; padding: 12px; margin-top: 12px; }
+    .module-title { font-weight: 700; margin-bottom: 8px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 18px; }
+    .perm-label { display: block; }
+    .hint { color: #666; font-size: 12px; margin-top: 4px; }
   </style>
 </head>
 <body>
   <h2>Admin Permission Panel</h2>
   <div class="row"><input id="uid" placeholder="Target Firebase UID" style="width:360px"/></div>
-  <div class="grid" id="permGrid"></div>
+  <div class="row"><input id="permSearch" placeholder="Search module or permission" style="width:360px"/></div>
+  <div class="hint">权限已按模块拆分；可用上方搜索框快速筛选模块/权限。</div>
+  <div id="permModules"></div>
   <div class="row">
     <button onclick="loadPerms()">Load</button>
     <button onclick="savePerms()">Save</button>
@@ -39,17 +45,42 @@
     let currentUser = null;
     onAuthStateChanged(auth, (u) => currentUser = u || null);
 
-    const perms = [
-      "canViewTravelDocs","canViewMembership","canViewTicket","canViewBags","canViewInbound",
-      "canViewOutbound","canViewCheckinDetails","canView240Info","canViewSpecialService",
-      "canViewSpecialMeals","canViewLoungeAccess","canViewGuestAccess","canViewPaidService"
+    const permModules = [
+      { name: '基础旅客信息', keys: ["canViewTravelDocs","canViewMembership","canViewTicket","canViewBags"] },
+      { name: '行程信息', keys: ["canViewInbound","canViewOutbound","canViewCheckinDetails","canView240Info"] },
+      { name: '服务信息', keys: ["canViewSpecialService","canViewSpecialMeals","canViewPaidService"] },
+      { name: '休息室信息', keys: ["canViewLoungeAccess","canViewGuestAccess"] }
     ];
-    const grid = document.getElementById('permGrid');
-    perms.forEach(k => {
-      const id = `perm_${k}`;
-      const label = document.createElement('label');
-      label.innerHTML = `<input type="checkbox" id="${id}" /> ${k}`;
-      grid.appendChild(label);
+    const perms = permModules.flatMap(m => m.keys);
+    const modulesRoot = document.getElementById('permModules');
+    permModules.forEach(mod => {
+      const module = document.createElement('section');
+      module.className = 'module';
+      module.dataset.moduleName = mod.name.toLowerCase();
+      module.innerHTML = `<div class="module-title">${mod.name}</div><div class="grid"></div>`;
+      const grid = module.querySelector('.grid');
+      mod.keys.forEach(k => {
+        const id = `perm_${k}`;
+        const label = document.createElement('label');
+        label.className = 'perm-label';
+        label.dataset.permName = k.toLowerCase();
+        label.innerHTML = `<input type="checkbox" id="${id}" /> ${k}`;
+        grid.appendChild(label);
+      });
+      modulesRoot.appendChild(module);
+    });
+
+    document.getElementById('permSearch').addEventListener('input', (e) => {
+      const q = (e.target.value || '').trim().toLowerCase();
+      document.querySelectorAll('.module').forEach((module) => {
+        let visibleCount = 0;
+        module.querySelectorAll('.perm-label').forEach((label) => {
+          const hit = !q || label.dataset.permName.includes(q) || module.dataset.moduleName.includes(q);
+          label.style.display = hit ? '' : 'none';
+          if (hit) visibleCount += 1;
+        });
+        module.style.display = visibleCount > 0 ? '' : 'none';
+      });
     });
 
     const API_BASE = (window.MU_API_BASE || localStorage.getItem('mu_api_base') || '').trim().replace(/\/$/, '');
