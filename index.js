@@ -113,17 +113,6 @@ function applyPermissionFilter(pax, permissions, info240) {
     permissions
   };
 
-  if (!permissions.canViewTravelDocs) {
-    filtered.travelDocsRaw = null;
-    filtered.paxInfoRaw = null;
-    filtered.passportNumber = null;
-    filtered.nationality = null;
-    filtered.dob = null;
-    filtered.birthDate = null;
-    filtered.gender = null;
-    filtered.passportExpiry = null;
-    filtered.expiryDate = null;
-  }
   if (!permissions.canViewMembership) {
     filtered.ffCarrier = null;
     filtered.ffNumber = null;
@@ -140,11 +129,7 @@ function applyPermissionFilter(pax, permissions, info240) {
     filtered.paidProductsShort = [];
     filtered.paidProducts = [];
   }
-  if (!permissions.canViewLoungeAccess || !permissions.canViewGuestAccess) {
-    filtered.lounge = filtered.lounge || {};
-    if (!permissions.canViewLoungeAccess) filtered.lounge.eligible = null;
-    if (!permissions.canViewGuestAccess) filtered.lounge.guest = null;
-  }
+  if (!permissions.canViewLoungeAccess || !permissions.canViewGuestAccess) filtered.lounge = filtered.lounge || {};
   if (!permissions.canViewCheckinDetails) filtered.checkinDetails = [];
   filtered.info240 = permissions.canView240Info ? info240 : null;
 
