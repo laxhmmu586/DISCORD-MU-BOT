@@ -69,8 +69,7 @@
       line-height: 1.5;
     }
 
-    .card,
-    .login-card {
+    .card {
 
       background: #111827;
 
@@ -80,11 +79,6 @@
 
       box-shadow:
         0 0 25px rgba(0,0,0,0.35);
-    }
-
-    .login-card {
-
-      margin-top: 60px;
     }
 
     input {
@@ -397,45 +391,6 @@
 
   <div class="container">
 
-    <!-- LOGIN -->
-    <div
-      id="loginPage"
-      class="login-card"
-    >
-
-      <div class="title">
-        MUFC
-      </div>
-
-      <div class="subtitle">
-        Internal Access Only
-      </div>
-
-      <input
-        id="username"
-        placeholder="Username"
-      >
-
-      <input
-        id="password"
-        type="password"
-        placeholder="Password"
-      >
-
-      <button
-        onclick="login()"
-        style="width:100%;"
-      >
-        Login
-      </button>
-
-      <div
-        id="loginError"
-        class="error"
-      ></div>
-
-    </div>
-
     <!-- MAIN -->
     <div id="mainApp">
 
@@ -444,12 +399,20 @@
           MUFC
         </div>
 
-        <button
-          class="help-btn"
-          onclick="toggleHelpPanel()"
-        >
-          Search Help
-        </button>
+        <div style="display:flex;gap:8px;">
+          <button
+            class="help-btn"
+            onclick="toggleHelpPanel()"
+          >
+            Search Help
+          </button>
+          <button
+            class="help-btn"
+            onclick="logout()"
+          >
+            Logout
+          </button>
+        </div>
       </div>
 
       <div
@@ -728,6 +691,11 @@
 
     let helpPanelOpen = false;
 
+    const API_BASE =
+      window.location.hostname === 'localhost'
+        ? ''
+        : 'https://discord-mu-bot-production.up.railway.app';
+
 
     function escapeHtml(value) {
       return (value || '')
@@ -937,117 +905,30 @@
     }
 
     // ===========================
-    // Session Timeout
+    // Firebase Auth Guard
     // ===========================
-    const LOGIN_TIMEOUT =
-      30 * 60 * 1000;
-
-    const lastLogin =
-      localStorage.getItem(
-        'mu_login_time'
-      );
-
-    const now =
-      Date.now();
-
-    if (
-
-      localStorage.getItem(
-        'mu_logged_in'
-      ) === 'true'
-
-      &&
-
-      lastLogin
-
-      &&
-
-      (now - Number(lastLogin))
-        < LOGIN_TIMEOUT
-
-    ) {
-
-      document.getElementById(
-        'loginPage'
-      ).style.display = 'none';
-
-      document.getElementById(
-        'mainApp'
-      ).style.display = 'block';
+    function showApp() {
+      document.getElementById('mainApp').style.display = 'block';
     }
 
-    else {
-
-      localStorage.clear();
+    function hideApp() {
+      document.getElementById('mainApp').style.display = 'none';
     }
 
-    // ===========================
-    // Login
-    // ===========================
-    function login() {
+    function redirectToLogin() {
+      window.location.href = 'login.html';
+    }
 
-      const username =
-        document
-          .getElementById('username')
-          .value
-          .trim();
-
-      const password =
-        document
-          .getElementById('password')
-          .value
-          .trim();
-
-      if (
-
-        username === 'mu586' &&
-        password === 'mulax'
-
-      ) {
-
-        localStorage.setItem(
-          'mu_logged_in',
-          'true'
-        );
-
-        localStorage.setItem(
-          'mu_login_time',
-          Date.now()
-        );
-
-        document.getElementById(
-          'loginPage'
-        ).style.display = 'none';
-
-        document.getElementById(
-          'mainApp'
-        ).style.display = 'block';
-      }
-
-      else {
-
-        const err =
-          document.getElementById(
-            'loginError'
-          );
-
-        err.innerText =
-          'Invalid username or password';
-
-        err.style.display =
-          'block';
-      }
+    async function logout() {
+      if (!window.muAuth || !window.muSignOut) return;
+      await window.muSignOut(window.muAuth);
+      redirectToLogin();
     }
 
     // ===========================
     // Search
     // ===========================
     async function searchPassenger() {
-
-      localStorage.setItem(
-        'mu_login_time',
-        Date.now()
-      );
 
       let q =
         document
@@ -1121,9 +1002,30 @@
 
         const res =
           await fetch(
-            '/search?q=' +
+            `${API_BASE}/search?q=` +
             encodeURIComponent(q)
           );
+
+        const contentType =
+          res.headers.get('content-type') || '';
+
+        if (!res.ok) {
+          const failText =
+            await res.text();
+
+          throw new Error(
+            `HTTP ${res.status} ${res.statusText} ${failText.slice(0, 120)}`
+          );
+        }
+
+        if (!contentType.includes('application/json')) {
+          const failText =
+            await res.text();
+
+          throw new Error(
+            `Non-JSON response: ${failText.slice(0, 120)}`
+          );
+        }
 
         const data =
           await res.json();
@@ -1384,8 +1286,10 @@
 
       catch (err) {
 
+        console.error('Search error:', err);
+
         error.innerText =
-          'Search failed';
+          `Search failed: ${err.message || 'Unknown error'}`;
 
         error.style.display =
           'block';
@@ -1410,14 +1314,9 @@
 
   </script>
 <script type="module">
-  // Import the functions you need from the SDKs you need
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-analytics.js";
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
+  import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
 
-  // Your web app's Firebase configuration
-  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
   const firebaseConfig = {
     apiKey: "AIzaSyAWsXBuQJTBmNKi6gLgnkZUZ4OfK1IRuXo",
     authDomain: "china-eastern.firebaseapp.com",
@@ -1428,9 +1327,23 @@
     measurementId: "G-22T9MHC42Y"
   };
 
-  // Initialize Firebase
   const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
+  const auth = getAuth(app);
+
+  window.muAuth = auth;
+  window.muSignOut = signOut;
+
+  hideApp();
+
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      showApp();
+      return;
+    }
+
+    redirectToLogin();
+  });
 </script>
+
 </body>
 </html>

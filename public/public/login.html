@@ -1,36 +1,187 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
+
   <meta charset="UTF-8">
-  <title>Login</title>
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>
+    MUFC Login
+  </title>
+
+  <style>
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+
+      margin: 0;
+      padding: 0;
+
+      background: #0f172a;
+
+      color: white;
+
+      font-family:
+        Arial,
+        sans-serif;
+
+      min-height: 100vh;
+
+      display: flex;
+
+      justify-content: center;
+    }
+
+    .container {
+
+      width: 100%;
+
+      max-width: 460px;
+
+      padding: 20px;
+    }
+
+    .title {
+
+      font-size: 30px;
+
+      font-weight: bold;
+
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+
+      color: #94a3b8;
+
+      font-size: 14px;
+
+      margin-bottom: 24px;
+
+      line-height: 1.5;
+    }
+
+    .login-card {
+
+      background: #111827;
+
+      border-radius: 20px;
+
+      padding: 20px;
+
+      box-shadow:
+        0 0 25px rgba(0,0,0,0.35);
+
+      margin-top: 60px;
+    }
+
+    input {
+
+      width: 100%;
+
+      padding: 14px;
+
+      margin-bottom: 14px;
+
+      border: none;
+
+      border-radius: 14px;
+
+      background: #1e293b;
+
+      color: white;
+
+      font-size: 15px;
+    }
+
+    button {
+
+      border: none;
+
+      background: #2563eb;
+
+      color: white;
+
+      border-radius: 14px;
+
+      padding: 14px;
+
+      font-size: 15px;
+
+      cursor: pointer;
+
+      width: 100%;
+    }
+
+    button:hover {
+
+      background: #1d4ed8;
+    }
+
+    .error {
+
+      display: none;
+
+      background: #7f1d1d;
+
+      border-radius: 12px;
+
+      padding: 12px;
+
+      margin-top: 15px;
+
+      font-size: 14px;
+    }
+
+  </style>
 </head>
 
 <body>
 
-<h2>China Eastern Login</h2>
+  <div class="container">
 
-<input
-  id="email"
-  type="email"
-  placeholder="Email"
->
+    <div class="login-card">
 
-<br><br>
+      <div class="title">
+        MUFC
+      </div>
 
-<input
-  id="password"
-  type="password"
-  placeholder="Password"
->
+      <div class="subtitle">
+        Internal Access Only
+      </div>
 
-<br><br>
+      <input
+        id="email"
+        type="email"
+        placeholder="Email"
+      >
 
-<button onclick="login()">
-Login
-</button>
+      <input
+        id="password"
+        type="password"
+        placeholder="Password"
+      >
 
-<p id="msg"></p>
+      <button onclick="login()">
+        Login
+      </button>
+
+      <div
+        id="msg"
+        class="error"
+      ></div>
+
+    </div>
+
+  </div>
 
 <script type="module">
 
@@ -39,7 +190,8 @@ from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
 
 import {
   getAuth,
-  signInWithEmailAndPassword
+  signInWithEmailAndPassword,
+  onAuthStateChanged
 }
 from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
 
@@ -66,15 +218,26 @@ const app =
 const auth =
   getAuth(app);
 
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    window.location.href = "index.html";
+  }
+});
+
 window.login = async function () {
 
   const email =
-    document.getElementById("email").value;
+    document.getElementById("email").value.trim();
 
   const password =
-    document.getElementById("password").value;
+    document.getElementById("password").value.trim();
+
+  const msg =
+    document.getElementById("msg");
 
   try {
+
+    msg.style.display = "none";
 
     await signInWithEmailAndPassword(
       auth,
@@ -87,8 +250,11 @@ window.login = async function () {
 
   } catch (error) {
 
-    document.getElementById("msg").innerText =
+    msg.innerText =
       error.message;
+
+    msg.style.display =
+      "block";
   }
 };
 
