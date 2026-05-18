@@ -723,6 +723,7 @@
     let docPanelOpen = false;
     let currentPassengerData = null;
     let checkinPanelOpen = false;
+    let currentUser = null;
 
     let helpPanelOpen = false;
 
@@ -823,7 +824,15 @@
         return;
       }
 
-      const groups = parseCheckinGroups(currentPassengerData);
+      const canViewCheckin =
+        currentPassengerData?.permissions?.canViewCheckinDetails;
+      const canView240 =
+        currentPassengerData?.permissions?.canView240Info;
+
+      const groups =
+        canViewCheckin
+          ? parseCheckinGroups(currentPassengerData)
+          : [];
       const cards = [];
 
       if (groups.length) {
@@ -835,7 +844,10 @@
       `));
       }
 
-      const extra = currentPassengerData?.info240;
+      const extra =
+        canView240
+          ? currentPassengerData?.info240
+          : null;
       if (extra && Object.values(extra).some(Boolean)) {
         const extraLines = [
           extra.passportCountry ? `Passport Country: ${extra.passportCountry}` : '',
@@ -1025,8 +1037,14 @@
           `${API_BASE}/search?q=` +
           encodeURIComponent(q);
 
+        const headers = {};
+        if (currentUser) {
+          const token = await currentUser.getIdToken();
+          headers.Authorization = `Bearer ${token}`;
+        }
+
         const res =
-          await fetch(endpoint);
+          await fetch(endpoint, { headers });
 
         const contentType =
           res.headers.get('content-type') || '';
@@ -1110,7 +1128,10 @@
         const docBtn = document.getElementById('docToggleBtn');
         const docSec = document.getElementById('docSection');
         const docContent = document.getElementById('docContent');
-        const docsHtml = buildTravelDocs(data);
+        const docsHtml =
+          data.permissions?.canViewTravelDocs
+            ? buildTravelDocs(data)
+            : '';
 
         if (docsHtml) {
           docBtn.style.display = 'inline-block';
@@ -1125,7 +1146,7 @@
         }
 
         // Membership
-        if (data.ffNumber) {
+        if (data.permissions?.canViewMembership && data.ffNumber) {
 
           document.getElementById(
             'membershipSection'
@@ -1170,7 +1191,7 @@
         }
 
         // Ticket
-        if (data.ticketNumber) {
+        if (data.permissions?.canViewTicket && data.ticketNumber) {
 
           document.getElementById(
             'ticketSection'
@@ -1193,6 +1214,7 @@
 
         // Bags
         if (
+          data.permissions?.canViewBags &&
           data.bagtags &&
           data.bagtags.length
         ) {
@@ -1217,7 +1239,7 @@
         }
 
         // Inbound
-        if (data.inbound) {
+        if (data.permissions?.canViewInbound && data.inbound) {
 
           document.getElementById(
             'inboundSection'
@@ -1240,7 +1262,7 @@
         }
 
         // Outbound
-        if (data.outbound) {
+        if (data.permissions?.canViewOutbound && data.outbound) {
 
           document.getElementById(
             'outboundSection'
@@ -1273,7 +1295,7 @@
         }
 
         // Special Service
-        if (data.specialServices && data.specialServices.length) {
+        if (data.permissions?.canViewSpecialService && data.specialServices && data.specialServices.length) {
           document.getElementById('ssrSection').style.display = 'block';
           document.getElementById('ssr').innerText = data.specialServices.join(', ');
         } else {
@@ -1281,7 +1303,7 @@
         }
 
         // Special Meal
-        if (data.specialMeals && data.specialMeals.length) {
+        if (data.permissions?.canViewSpecialMeals && data.specialMeals && data.specialMeals.length) {
           document.getElementById('mealSection').style.display = 'block';
           document.getElementById('meal').innerText = data.specialMeals.join(', ');
         } else {
@@ -1289,10 +1311,10 @@
         }
 
         // Paid Service
-        if (data.paidProductsShort && data.paidProductsShort.length) {
+        if (data.permissions?.canViewPaidService && data.paidProductsShort && data.paidProductsShort.length) {
           document.getElementById('paidSection').style.display = 'block';
           document.getElementById('paid').innerText = data.paidProductsShort.join('\n');
-        } else if (data.paidProducts && data.paidProducts.length) {
+        } else if (data.permissions?.canViewPaidService && data.paidProducts && data.paidProducts.length) {
           document.getElementById('paidSection').style.display = 'block';
           document.getElementById('paid').innerText = data.paidProducts.join('\n');
         } else {
@@ -1304,7 +1326,7 @@
           'lounge'
         ).innerHTML =
 
-          data.lounge?.eligible
+          (data.permissions?.canViewLoungeAccess && data.lounge?.eligible === true)
 
             ? '<span class="yes">✅ Eligible</span>'
 
@@ -1315,7 +1337,7 @@
           'guest'
         ).innerHTML =
 
-          data.lounge?.guest
+          (data.permissions?.canViewGuestAccess && data.lounge?.guest === true)
 
             ? '<span class="yes">✅ Allowed</span>'
 
@@ -1390,6 +1412,7 @@
     getAuth(app);
 
   onAuthStateChanged(auth, (user) => {
+    currentUser = user || null;
 
     if (!user) {
 
