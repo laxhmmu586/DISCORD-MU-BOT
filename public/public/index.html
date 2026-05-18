@@ -80,7 +80,6 @@
       box-shadow:
         0 0 25px rgba(0,0,0,0.35);
     }
-
     input {
 
       width: 100%;
@@ -251,6 +250,36 @@
 
       font-size: 14px;
     }
+
+    .auth-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: #1e293b;
+      color: #cbd5e1;
+      font-size: 13px;
+    }
+
+    .auth-bar strong {
+      color: #ffffff;
+      font-weight: 600;
+    }
+
+    .logout-btn {
+      padding: 8px 12px;
+      font-size: 12px;
+      border-radius: 10px;
+      background: #334155;
+    }
+
+    .logout-btn:hover {
+      background: #475569;
+    }
+
     .app-header {
       display: flex;
       align-items: center;
@@ -394,25 +423,31 @@
     <!-- MAIN -->
     <div id="mainApp">
 
+      <div class="auth-bar">
+        <span>
+          Logged in as:
+          <strong id="userEmail"></strong>
+        </span>
+
+        <button
+          class="logout-btn"
+          onclick="logout()"
+        >
+          Logout
+        </button>
+      </div>
+
       <div class="app-header">
         <div class="title">
           MUFC
         </div>
 
-        <div style="display:flex;gap:8px;">
-          <button
-            class="help-btn"
-            onclick="toggleHelpPanel()"
-          >
-            Search Help
-          </button>
-          <button
-            class="help-btn"
-            onclick="logout()"
-          >
-            Logout
-          </button>
-        </div>
+        <button
+          class="help-btn"
+          onclick="toggleHelpPanel()"
+        >
+          Search Help
+        </button>
       </div>
 
       <div
@@ -688,6 +723,7 @@
     let docPanelOpen = false;
     let currentPassengerData = null;
     let checkinPanelOpen = false;
+    let currentUser = null;
 
     let helpPanelOpen = false;
 
@@ -788,7 +824,15 @@
         return;
       }
 
-      const groups = parseCheckinGroups(currentPassengerData);
+      const canViewCheckin =
+        currentPassengerData?.permissions?.canViewCheckinDetails;
+      const canView240 =
+        currentPassengerData?.permissions?.canView240Info;
+
+      const groups =
+        canViewCheckin
+          ? parseCheckinGroups(currentPassengerData)
+          : [];
       const cards = [];
 
       if (groups.length) {
@@ -800,7 +844,15 @@
       `));
       }
 
-      const extra = currentPassengerData?.info240;
+      const extra =
+        canView240
+          ? (
+            currentPassengerData?.info240 ||
+            currentPassengerData?.info240Data ||
+            currentPassengerData?.extra240 ||
+            null
+          )
+          : null;
       if (extra && Object.values(extra).some(Boolean)) {
         const extraLines = [
           extra.passportCountry ? `Passport Country: ${extra.passportCountry}` : '',
@@ -875,11 +927,11 @@
       const dob =
         data.dob ||
         data.birthDate ||
-        firstMatch(paxInfoRaw, /\/DOB\/(\d{6})/i);
+        firstMatch(paxInfoRaw, /(?:\/DOB\/|DOB\s*[:\/-]?\s*)(\d{6,8}|\d{2}[A-Z]{3}\d{2,4}|\d{4}-\d{2}-\d{2})/i);
 
       const gender =
         data.gender ||
-        firstMatch(paxInfoRaw, /\/GENDER\/([A-Z])/i);
+        firstMatch(paxInfoRaw, /(?:\/GENDER\/|GENDER\s*[:\/-]?\s*|SEX\s*[:\/-]?\s*)([A-Z])/i);
 
       let expiry =
         data.passportExpiry ||
@@ -903,7 +955,9 @@
         ['Gender', gender]
       ].filter(item => item[1]);
 
-      if (!items.length) return '';
+      if (!items.length) {
+        return '<div class="doc-grid"><div class="doc-item"><span>Travel Docs</span><b>No travel document data</b></div></div>';
+      }
 
       return '<div class="doc-grid">' +
         items.map(([label, value]) =>
@@ -913,31 +967,9 @@
     }
 
     // ===========================
-    // Firebase Auth Guard
-    // ===========================
-    function showApp() {
-      document.getElementById('mainApp').style.display = 'block';
-    }
-
-    function hideApp() {
-      document.getElementById('mainApp').style.display = 'none';
-    }
-
-    function redirectToLogin() {
-      window.location.href = 'login.html';
-    }
-
-    async function logout() {
-      if (!window.muAuth || !window.muSignOut) return;
-      await window.muSignOut(window.muAuth);
-      redirectToLogin();
-    }
-
-    // ===========================
     // Search
     // ===========================
     async function searchPassenger() {
-
       let q =
         document
           .getElementById('query')
@@ -1012,8 +1044,14 @@
           `${API_BASE}/search?q=` +
           encodeURIComponent(q);
 
+        const headers = {};
+        if (currentUser) {
+          const token = await currentUser.getIdToken();
+          headers.Authorization = `Bearer ${token}`;
+        }
+
         const res =
-          await fetch(endpoint);
+          await fetch(endpoint, { headers });
 
         const contentType =
           res.headers.get('content-type') || '';
@@ -1097,7 +1135,10 @@
         const docBtn = document.getElementById('docToggleBtn');
         const docSec = document.getElementById('docSection');
         const docContent = document.getElementById('docContent');
-        const docsHtml = buildTravelDocs(data);
+        const docsHtml =
+          data.permissions?.canViewTravelDocs
+            ? buildTravelDocs(data)
+            : '';
 
         if (docsHtml) {
           docBtn.style.display = 'inline-block';
@@ -1112,7 +1153,7 @@
         }
 
         // Membership
-        if (data.ffNumber) {
+        if (data.permissions?.canViewMembership) {
 
           document.getElementById(
             'membershipSection'
@@ -1123,7 +1164,7 @@
             'ff'
           ).innerText =
 
-            `${data.ffCarrier} ${data.ffNumber}`;
+            `${data.ffCarrier || ''} ${data.ffNumber || ''}`.trim() || 'N/A';
 
           document.getElementById(
             'ffStatus'
@@ -1157,7 +1198,7 @@
         }
 
         // Ticket
-        if (data.ticketNumber) {
+        if (data.permissions?.canViewTicket) {
 
           document.getElementById(
             'ticketSection'
@@ -1167,7 +1208,7 @@
           document.getElementById(
             'ticket'
           ).innerText =
-            data.ticketNumber;
+            data.ticketNumber || 'N/A';
         }
 
         else {
@@ -1179,10 +1220,7 @@
         }
 
         // Bags
-        if (
-          data.bagtags &&
-          data.bagtags.length
-        ) {
+        if (data.permissions?.canViewBags) {
 
           document.getElementById(
             'bagsSection'
@@ -1192,7 +1230,7 @@
           document.getElementById(
             'bags'
           ).innerText =
-            data.bagtags.join('\n');
+            (data.bagtags && data.bagtags.length) ? data.bagtags.join('\n') : 'N/A';
         }
 
         else {
@@ -1204,7 +1242,7 @@
         }
 
         // Inbound
-        if (data.inbound) {
+        if (data.permissions?.canViewInbound) {
 
           document.getElementById(
             'inboundSection'
@@ -1215,7 +1253,7 @@
             'inbound'
           ).innerText =
 
-            `${data.inbound.flight}/${data.inbound.date}\nFrom ${data.inbound.origin}`;
+            data.inbound ? `${data.inbound.flight || '-'} / ${data.inbound.date || '-'}\nFrom ${data.inbound.origin || '-'}` : 'N/A';
         }
 
         else {
@@ -1227,7 +1265,7 @@
         }
 
         // Outbound
-        if (data.outbound) {
+        if (data.permissions?.canViewOutbound) {
 
           document.getElementById(
             'outboundSection'
@@ -1238,17 +1276,10 @@
             'outbound'
           ).innerText =
 
-            `${data.outbound.flight}/${data.outbound.date}` +
-
-            (data.outbound.bn
-              ? ` • BN${data.outbound.bn}`
-              : '') +
-
-            (data.outbound.seat
-              ? ` • ${data.outbound.seat}`
-              : '') +
-
-            `\nTo ${data.outbound.destination}`;
+            data.outbound
+            ? `${data.outbound.flight || '-'} / ${data.outbound.date || '-'}${data.outbound.bn ? ` • BN${data.outbound.bn}` : ''}${data.outbound.seat ? ` • ${data.outbound.seat}` : ''}
+To ${data.outbound.destination || '-'}`
+            : 'N/A';
         }
 
         else {
@@ -1260,28 +1291,31 @@
         }
 
         // Special Service
-        if (data.specialServices && data.specialServices.length) {
+        if (data.permissions?.canViewSpecialService) {
           document.getElementById('ssrSection').style.display = 'block';
-          document.getElementById('ssr').innerText = data.specialServices.join(', ');
+          document.getElementById('ssr').innerText = (data.specialServices && data.specialServices.length) ? data.specialServices.join(', ') : 'N/A';
         } else {
           document.getElementById('ssrSection').style.display = 'none';
         }
 
         // Special Meal
-        if (data.specialMeals && data.specialMeals.length) {
+        if (data.permissions?.canViewSpecialMeals) {
           document.getElementById('mealSection').style.display = 'block';
-          document.getElementById('meal').innerText = data.specialMeals.join(', ');
+          document.getElementById('meal').innerText = (data.specialMeals && data.specialMeals.length) ? data.specialMeals.join(', ') : 'N/A';
         } else {
           document.getElementById('mealSection').style.display = 'none';
         }
 
         // Paid Service
-        if (data.paidProductsShort && data.paidProductsShort.length) {
+        if (data.permissions?.canViewPaidService) {
           document.getElementById('paidSection').style.display = 'block';
-          document.getElementById('paid').innerText = data.paidProductsShort.join('\n');
-        } else if (data.paidProducts && data.paidProducts.length) {
-          document.getElementById('paidSection').style.display = 'block';
-          document.getElementById('paid').innerText = data.paidProducts.join('\n');
+          if (data.paidProductsShort && data.paidProductsShort.length) {
+            document.getElementById('paid').innerText = data.paidProductsShort.join('\n');
+          } else if (data.paidProducts && data.paidProducts.length) {
+            document.getElementById('paid').innerText = data.paidProducts.join('\n');
+          } else {
+            document.getElementById('paid').innerText = 'N/A';
+          }
         } else {
           document.getElementById('paidSection').style.display = 'none';
         }
@@ -1291,7 +1325,7 @@
           'lounge'
         ).innerHTML =
 
-          data.lounge?.eligible
+          (data.permissions?.canViewLoungeAccess && data.lounge?.eligible === true)
 
             ? '<span class="yes">✅ Eligible</span>'
 
@@ -1302,7 +1336,7 @@
           'guest'
         ).innerHTML =
 
-          data.lounge?.guest
+          (data.permissions?.canViewGuestAccess && data.lounge?.guest === true)
 
             ? '<span class="yes">✅ Allowed</span>'
 
@@ -1344,8 +1378,19 @@
 
   </script>
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
-  import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
+
+  import { initializeApp }
+  from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+
+  import { getAnalytics }
+  from "https://www.gstatic.com/firebasejs/12.13.0/firebase-analytics.js";
+
+  import {
+    getAuth,
+    onAuthStateChanged,
+    signOut
+  }
+  from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyAWsXBuQJTBmNKi6gLgnkZUZ4OfK1IRuXo",
@@ -1357,23 +1402,65 @@
     measurementId: "G-22T9MHC42Y"
   };
 
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
+  const app =
+    initializeApp(firebaseConfig);
 
-  window.muAuth = auth;
-  window.muSignOut = signOut;
+  getAnalytics(app);
 
-  hideApp();
+  const auth =
+    getAuth(app);
 
   onAuthStateChanged(auth, (user) => {
-    if (user) {
-      showApp();
+    currentUser = user || null;
+
+    if (!user) {
+
+      window.location.href =
+        "login.html";
+
       return;
     }
 
-    redirectToLogin();
-  });
-</script>
+    console.log(
+      "Firebase Logged in:",
+      user.email
+    );
 
+    const userEmailBox =
+      document.getElementById("userEmail");
+
+    if (userEmailBox) {
+
+      userEmailBox.textContent =
+        user.email;
+    }
+
+    document.getElementById("mainApp").style.display =
+      "block";
+  });
+
+  window.logout = async function () {
+
+    await signOut(auth);
+
+    window.location.href =
+      "login.html";
+  };
+
+</script>
+<div style="
+padding:10px;
+background:#f2f2f2;
+text-align:right;
+">
+
+Logged in as:
+<span id="userEmail"></span>
+
+<button onclick="logout()">
+Logout
+</button>
+
+</div>
 </body>
 </html>
