@@ -411,6 +411,16 @@
     .mini-btn:hover {
       background: #475569;
     }
+    .admin-btn {
+      display: none;
+      padding: 8px 12px;
+      font-size: 12px;
+      border-radius: 10px;
+      background: #7c3aed;
+    }
+    .admin-btn:hover {
+      background: #6d28d9;
+    }
 
   </style>
 
@@ -434,6 +444,13 @@
           onclick="logout()"
         >
           Logout
+        </button>
+        <button
+          id="adminBtn"
+          class="admin-btn"
+          onclick="goAdmin()"
+        >
+          Admin
         </button>
       </div>
 
@@ -1454,6 +1471,7 @@ To ${data.outbound.destination || '-'}`
 
     document.getElementById("mainApp").style.display =
       "block";
+    syncAdminButton(user);
   });
 
   window.logout = async function () {
