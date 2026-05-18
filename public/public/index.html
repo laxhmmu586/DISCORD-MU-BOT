@@ -1036,6 +1036,27 @@
           );
         }
 
+        const contentType =
+          res.headers.get('content-type') || '';
+
+        if (!res.ok) {
+          const failText =
+            await res.text();
+
+          throw new Error(
+            `HTTP ${res.status} ${res.statusText} ${failText.slice(0, 120)}`
+          );
+        }
+
+        if (!contentType.includes('application/json')) {
+          const failText =
+            await res.text();
+
+          throw new Error(
+            `Non-JSON response: ${failText.slice(0, 120)}`
+          );
+        }
+
         const data =
           await res.json();
 
