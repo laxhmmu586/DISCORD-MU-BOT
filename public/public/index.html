@@ -411,6 +411,16 @@
     .mini-btn:hover {
       background: #475569;
     }
+    .admin-btn {
+      display: none;
+      padding: 8px 12px;
+      font-size: 12px;
+      border-radius: 10px;
+      background: #7c3aed;
+    }
+    .admin-btn:hover {
+      background: #6d28d9;
+    }
 
   </style>
 
@@ -434,6 +444,13 @@
           onclick="logout()"
         >
           Logout
+        </button>
+        <button
+          id="adminBtn"
+          class="admin-btn"
+          onclick="goAdmin()"
+        >
+          Admin
         </button>
       </div>
 
@@ -683,11 +700,18 @@
         </div>
 
         <!-- Lounge -->
-        <div class="section">
+        <div
+          id="loungeSection"
+          class="section"
+          style="display:none;"
+        >
 
           <div class="divider"></div>
 
-          <div class="label">
+          <div
+            id="loungeLabel"
+            class="label"
+          >
             Lounge Access
           </div>
 
@@ -697,6 +721,7 @@
           ></div>
 
           <div
+            id="guestLabel"
             class="label"
             style="margin-top:18px;"
           >
@@ -927,11 +952,13 @@
       const dob =
         data.dob ||
         data.birthDate ||
-        firstMatch(paxInfoRaw, /(?:\/DOB\/|DOB\s*[:\/-]?\s*)(\d{6,8}|\d{2}[A-Z]{3}\d{2,4}|\d{4}-\d{2}-\d{2})/i);
+        firstMatch(paxInfoRaw, /(?:\/DOB\/|\bDOB\s*[:\/-]?\s*)(\d{6,8}|\d{2}[A-Z]{3}\d{2,4}|\d{4}-\d{2}-\d{2})/i) ||
+        firstMatch(passportRaw, /(?:\/DOB\/|\bDOB\s*[:\/-]?\s*)(\d{6,8}|\d{2}[A-Z]{3}\d{2,4}|\d{4}-\d{2}-\d{2})/i);
 
       const gender =
         data.gender ||
-        firstMatch(paxInfoRaw, /(?:\/GENDER\/|GENDER\s*[:\/-]?\s*|SEX\s*[:\/-]?\s*)([A-Z])/i);
+        firstMatch(paxInfoRaw, /(?:\/GENDER\/|\bGENDER\s*[:\/-]?\s*|\bSEX\s*[:\/-]?\s*)([A-Z])/i) ||
+        firstMatch(passportRaw, /(?:\/GENDER\/|\bGENDER\s*[:\/-]?\s*|\bSEX\s*[:\/-]?\s*)([A-Z])/i);
 
       let expiry =
         data.passportExpiry ||
@@ -1126,21 +1153,21 @@
         document.getElementById('checkinDetailList').innerHTML = '';
 
         // Seat / BN clickable detail
-        document.getElementById(
-          'seat'
-        ).innerHTML =
-          `🎫 <span class="bn-link" onclick="toggleCheckinPanel()">BN${escapeHtml(data.bn)}</span> • ${escapeHtml(data.seat)} • ${escapeHtml(data.cabin)}`;
+        const canOpenBnDetail =
+          data.permissions?.canViewCheckinDetails ||
+          data.permissions?.canView240Info;
+        document.getElementById('seat').innerHTML =
+          canOpenBnDetail
+            ? `🎫 <span class="bn-link" onclick="toggleCheckinPanel()">BN${escapeHtml(data.bn)}</span> • ${escapeHtml(data.seat)} • ${escapeHtml(data.cabin)}`
+            : `🎫 BN${escapeHtml(data.bn)} • ${escapeHtml(data.seat)} • ${escapeHtml(data.cabin)}`;
 
         // Docs button/panel
         const docBtn = document.getElementById('docToggleBtn');
         const docSec = document.getElementById('docSection');
         const docContent = document.getElementById('docContent');
-        const docsHtml =
-          data.permissions?.canViewTravelDocs
-            ? buildTravelDocs(data)
-            : '';
+        const docsHtml = buildTravelDocs(data);
 
-        if (docsHtml) {
+        if (data.permissions?.canViewTravelDocs && docsHtml) {
           docBtn.style.display = 'inline-block';
           docContent.innerHTML = docsHtml;
           docPanelOpen = false;
@@ -1320,27 +1347,34 @@ To ${data.outbound.destination || '-'}`
           document.getElementById('paidSection').style.display = 'none';
         }
 
-        // Lounge
-        document.getElementById(
-          'lounge'
-        ).innerHTML =
-
-          (data.permissions?.canViewLoungeAccess && data.lounge?.eligible === true)
-
-            ? '<span class="yes">✅ Eligible</span>'
-
-            : '<span class="no">❌ Not Eligible</span>';
-
-        // Guest
-        document.getElementById(
-          'guest'
-        ).innerHTML =
-
-          (data.permissions?.canViewGuestAccess && data.lounge?.guest === true)
-
-            ? '<span class="yes">✅ Allowed</span>'
-
-            : '<span class="no">❌ Not Allowed</span>';
+        const loungeSection = document.getElementById('loungeSection');
+        const loungeLabel = document.getElementById('loungeLabel');
+        const loungeValue = document.getElementById('lounge');
+        const guestLabel = document.getElementById('guestLabel');
+        const guestValue = document.getElementById('guest');
+        const canViewLounge = Boolean(data.permissions?.canViewLoungeAccess);
+        const canViewGuest = Boolean(data.permissions?.canViewGuestAccess);
+        if (canViewLounge || canViewGuest) {
+          loungeSection.style.display = 'block';
+          loungeLabel.style.display = canViewLounge ? 'block' : 'none';
+          loungeValue.style.display = canViewLounge ? 'block' : 'none';
+          guestLabel.style.display = canViewGuest ? 'block' : 'none';
+          guestValue.style.display = canViewGuest ? 'block' : 'none';
+          if (canViewLounge) {
+            loungeValue.innerHTML =
+              data.lounge?.eligible === true
+                ? '<span class="yes">✅ Eligible</span>'
+                : '<span class="no">❌ Not Eligible</span>';
+          }
+          if (canViewGuest) {
+            guestValue.innerHTML =
+              data.lounge?.guest === true
+                ? '<span class="yes">✅ Allowed</span>'
+                : '<span class="no">❌ Not Allowed</span>';
+          }
+        } else {
+          loungeSection.style.display = 'none';
+        }
 
         // Show
         card.style.display =
@@ -1437,6 +1471,7 @@ To ${data.outbound.destination || '-'}`
 
     document.getElementById("mainApp").style.display =
       "block";
+    syncAdminButton(user);
   });
 
   window.logout = async function () {
@@ -1446,6 +1481,24 @@ To ${data.outbound.destination || '-'}`
     window.location.href =
       "login.html";
   };
+  window.goAdmin = function () {
+    window.location.href = "admin.html";
+  };
+
+  function shouldShowAdminButton(user) {
+    return user?.claims?.admin === true || user?.claims?.isAdmin === true;
+  }
+
+  async function syncAdminButton(user) {
+    const adminBtn = document.getElementById('adminBtn');
+    if (!adminBtn || !user) return;
+    try {
+      const tokenResult = await user.getIdTokenResult();
+      adminBtn.style.display = shouldShowAdminButton(tokenResult) ? 'inline-block' : 'none';
+    } catch {
+      adminBtn.style.display = 'none';
+    }
+  }
 
 </script>
 <div style="
