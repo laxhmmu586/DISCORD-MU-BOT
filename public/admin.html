@@ -3,85 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MU Admin Permissions</title>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 24px; max-width: 820px; }
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 18px; margin-top: 12px; }
-    .row { margin: 10px 0; }
-    button { margin-right: 8px; }
-    pre { background: #f5f5f5; padding: 10px; border-radius: 8px; }
-  </style>
+  <title>Admin Disabled</title>
+  <style>body{font-family:Arial,sans-serif;margin:32px;background:#0f172a;color:#e2e8f0}a{color:#93c5fd}</style>
 </head>
 <body>
-  <h2>Admin Permission Panel</h2>
-  <div class="row"><input id="uid" placeholder="Target Firebase UID" style="width:360px"/></div>
-  <div class="grid" id="permGrid"></div>
-  <div class="row">
-    <button onclick="loadPerms()">Load</button>
-    <button onclick="savePerms()">Save</button>
-  </div>
-  <pre id="result"></pre>
-
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
-    const firebaseConfig = {
-      apiKey: "AIzaSyAWsXBuQJTBmNKi6gLgnkZUZ4OfK1IRuXo",
-      authDomain: "china-eastern.firebaseapp.com",
-      projectId: "china-eastern",
-      storageBucket: "china-eastern.firebasestorage.app",
-      messagingSenderId: "30017158772",
-      appId: "1:30017158772:web:874a69fdb75b8d3d315b21",
-      measurementId: "G-22T9MHC42Y"
-    };
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    let currentUser = null;
-    onAuthStateChanged(auth, (u) => currentUser = u || null);
-
-    const perms = [
-      "canViewTravelDocs","canViewMembership","canViewTicket","canViewBags","canViewInbound",
-      "canViewOutbound","canViewCheckinDetails","canView240Info","canViewSpecialService",
-      "canViewSpecialMeals","canViewLoungeAccess","canViewGuestAccess","canViewPaidService"
-    ];
-    const grid = document.getElementById('permGrid');
-    perms.forEach(k => {
-      const id = `perm_${k}`;
-      const label = document.createElement('label');
-      label.innerHTML = `<input type="checkbox" id="${id}" /> ${k}`;
-      grid.appendChild(label);
-    });
-
-    const API_BASE = (window.MU_API_BASE || localStorage.getItem('mu_api_base') || '').trim().replace(/\/$/, '');
-    async function authHeader() {
-      if (!currentUser) throw new Error('Please login first.');
-      const token = await currentUser.getIdToken();
-      return { Authorization: `Bearer ${token}` };
-    }
-    function collect() {
-      return Object.fromEntries(perms.map(k => [k, document.getElementById(`perm_${k}`).checked]));
-    }
-    function apply(v) {
-      perms.forEach(k => document.getElementById(`perm_${k}`).checked = Boolean(v?.[k]));
-    }
-    window.loadPerms = async function() {
-      const uid = document.getElementById('uid').value.trim();
-      const headers = await authHeader();
-      const res = await fetch(`${API_BASE}/admin/permissions/${encodeURIComponent(uid)}`, { headers });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Load failed');
-      apply(data.override || {});
-      document.getElementById('result').innerText = JSON.stringify(data, null, 2);
-    };
-    window.savePerms = async function() {
-      const uid = document.getElementById('uid').value.trim();
-      const headers = { ...(await authHeader()), 'Content-Type': 'application/json' };
-      const body = JSON.stringify(collect());
-      const res = await fetch(`${API_BASE}/admin/permissions/${encodeURIComponent(uid)}`, { method: 'POST', headers, body });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Save failed');
-      document.getElementById('result').innerText = JSON.stringify(data, null, 2);
-    };
-  </script>
+  <h2>权限设置已移除</h2>
+  <p>系统已回退到仅使用 Firebase 账号密码登录版本，不再提供权限配置页面。</p>
+  <p><a href="index.html">返回主页</a></p>
 </body>
 </html>
