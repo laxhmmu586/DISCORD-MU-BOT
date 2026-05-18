@@ -726,10 +726,18 @@
 
     let helpPanelOpen = false;
 
-    const API_BASE =
-      window.location.hostname === 'localhost'
-        ? ''
-        : 'https://discord-mu-bot-production.up.railway.app';
+    const API_BASE = (() => {
+      const fromWindow = window.MU_API_BASE || '';
+      const fromStorage = localStorage.getItem('mu_api_base') || '';
+
+      const normalizedWindow = fromWindow.trim().replace(/\/$/, '');
+      const normalizedStorage = fromStorage.trim().replace(/\/$/, '');
+
+      if (normalizedWindow) return normalizedWindow;
+      if (normalizedStorage) return normalizedStorage;
+
+      return '';
+    })();
 
 
     function escapeHtml(value) {
@@ -1013,11 +1021,33 @@
 
       try {
 
+        const endpoint =
+          `${API_BASE}/search?q=` +
+          encodeURIComponent(q);
+
         const res =
-          await fetch(
-            `${API_BASE}/search?q=` +
-            encodeURIComponent(q)
+          await fetch(endpoint);
+
+        const contentType =
+          res.headers.get('content-type') || '';
+
+        if (!res.ok) {
+          const failText =
+            await res.text();
+
+          throw new Error(
+            `HTTP ${res.status} ${res.statusText} ${failText.slice(0, 120)} (endpoint: ${endpoint})`
           );
+        }
+
+        if (!contentType.includes('application/json')) {
+          const failText =
+            await res.text();
+
+          throw new Error(
+            `Non-JSON response: ${failText.slice(0, 120)} (endpoint: ${endpoint})`
+          );
+        }
 
         const contentType =
           res.headers.get('content-type') || '';
