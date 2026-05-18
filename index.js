@@ -46,6 +46,102 @@ const {
 const fbLookup =
   require('./fbLookup');
 
+const DEFAULT_PERMISSIONS = {
+  canViewTravelDocs: false,
+  canViewMembership: false,
+  canViewTicket: false,
+  canViewBags: false,
+  canViewInbound: false,
+  canViewOutbound: false,
+  canViewCheckinDetails: false,
+  canView240Info: false,
+  canViewSpecialService: false,
+  canViewSpecialMeals: false,
+  canViewLoungeAccess: false,
+  canViewGuestAccess: false,
+  canViewPaidService: false
+};
+
+async function resolvePermissionsFromRequest(req) {
+  const authHeader = req.headers.authorization || '';
+  const match = authHeader.match(/^Bearer\s+(.+)$/i);
+  if (!match) return { ...DEFAULT_PERMISSIONS };
+
+  try {
+    const idToken = match[1];
+    const verifyUrl = `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${process.env.FIREBASE_API_KEY || ''}`;
+
+    if (!process.env.FIREBASE_API_KEY) {
+      return { ...DEFAULT_PERMISSIONS };
+    }
+
+    const tokenRes = await fetch(verifyUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken })
+    });
+
+    if (!tokenRes.ok) return { ...DEFAULT_PERMISSIONS };
+    const tokenData = await tokenRes.json();
+    const rawClaims = tokenData?.users?.[0]?.customAuth || '{}';
+    const claims = JSON.parse(rawClaims);
+
+    return {
+      ...DEFAULT_PERMISSIONS,
+      ...Object.fromEntries(
+        Object.keys(DEFAULT_PERMISSIONS).map((k) => [k, Boolean(claims[k])])
+      )
+    };
+  } catch (err) {
+    console.error('resolvePermissionsFromRequest error:', err?.message || err);
+    return { ...DEFAULT_PERMISSIONS };
+  }
+}
+
+function applyPermissionFilter(pax, permissions, info240) {
+  const filtered = {
+    ...pax,
+    permissions
+  };
+
+  if (!permissions.canViewTravelDocs) {
+    filtered.travelDocsRaw = null;
+    filtered.paxInfoRaw = null;
+    filtered.passportNumber = null;
+    filtered.nationality = null;
+    filtered.dob = null;
+    filtered.birthDate = null;
+    filtered.gender = null;
+    filtered.passportExpiry = null;
+    filtered.expiryDate = null;
+  }
+  if (!permissions.canViewMembership) {
+    filtered.ffCarrier = null;
+    filtered.ffNumber = null;
+    filtered.ffTier = null;
+    filtered.membershipStatus = null;
+  }
+  if (!permissions.canViewTicket) filtered.ticketNumber = null;
+  if (!permissions.canViewBags) filtered.bagtags = [];
+  if (!permissions.canViewInbound) filtered.inbound = null;
+  if (!permissions.canViewOutbound) filtered.outbound = null;
+  if (!permissions.canViewSpecialService) filtered.specialServices = [];
+  if (!permissions.canViewSpecialMeals) filtered.specialMeals = [];
+  if (!permissions.canViewPaidService) {
+    filtered.paidProductsShort = [];
+    filtered.paidProducts = [];
+  }
+  if (!permissions.canViewLoungeAccess || !permissions.canViewGuestAccess) {
+    filtered.lounge = filtered.lounge || {};
+    if (!permissions.canViewLoungeAccess) filtered.lounge.eligible = null;
+    if (!permissions.canViewGuestAccess) filtered.lounge.guest = null;
+  }
+  if (!permissions.canViewCheckinDetails) filtered.checkinDetails = [];
+  filtered.info240 = permissions.canView240Info ? info240 : null;
+
+  return filtered;
+}
+
 function findPassengerByFFFromRecord(log, query) {
   const ff = query.replace(/\s+/g, '').toUpperCase();
   const sections =
@@ -483,20 +579,27 @@ app.get(
           'Silver';
       }
 
-      // =========================
-      // Response
-      // =========================
-      res.json({
+      const permissions =
+        await resolvePermissionsFromRequest(req);
 
-        ...pax,
-        info240:
-          await get240InfoByBnAndFlightDate({
-            bn: pax.bn,
-            flightDate: pax.flightDate
-          }),
+      pax.membershipStatus =
+        permissions.canViewMembership ? membershipStatus : null;
 
-        membershipStatus
-      });
+      const info240 =
+        permissions.canView240Info
+          ? await get240InfoByBnAndFlightDate({
+              bn: pax.bn,
+              flightDate: pax.flightDate
+            })
+          : null;
+
+      res.json(
+        applyPermissionFilter(
+          pax,
+          permissions,
+          info240
+        )
+      );
 
     }
 
