@@ -492,7 +492,7 @@ function parseIncrementalLog(log) {
     // Paid products (ASVC)
     const paidProducts = [];
     const paidProductsShort = [];
-    const asvcLines = section.match(/^ASVC-[^\n\r]+/gim) || [];
+    const asvcLines = section.match(/^\s*ASVC-[^\n\r]+/gim) || [];
     for (const line of asvcLines) {
       const fullLine =
         line.replace(/^ASVC-\s*/i, '').trim();
@@ -624,6 +624,20 @@ function parseIncrementalLog(log) {
         ...new Set([
           ...(passenger.ckinLines || []),
           ...(passenger.operationHistoryLines || [])
+        ])
+      ];
+
+      passenger.paidProducts = [
+        ...new Set([
+          ...(existingPassenger.paidProducts || []),
+          ...(passenger.paidProducts || [])
+        ])
+      ];
+
+      passenger.paidProductsShort = [
+        ...new Set([
+          ...(existingPassenger.paidProductsShort || []),
+          ...(passenger.paidProductsShort || [])
         ])
       ];
     }
