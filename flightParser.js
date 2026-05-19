@@ -226,7 +226,7 @@ function parseIncrementalLog(log) {
     // =========================
     const paxMatch =
       section.match(
-        /\d+\.\s+([A-Z\/]+).*?BN(\d+)/i
+        /\d+\.\s+([A-Z\/]+).*?BN(\d+)(?:\s+(\d+[A-Z]))?/i
       );
 
     if (!paxMatch) {
@@ -246,15 +246,24 @@ function parseIncrementalLog(log) {
     // =========================
     let seat = '---';
 
-    const seatMatch =
-      section.match(
-        /\b(\d+[A-Z])\b/
-      );
-
-    if (seatMatch) {
-
+    if (paxMatch[3]) {
       seat =
-        seatMatch[1];
+        paxMatch[3]
+          .toUpperCase();
+    } else {
+      const seatMatch =
+        section.match(
+          /\bBN\d{1,3}\s+(\d+[A-Z])\b/i
+        ) ||
+        section.match(
+          /\bR(\d+[A-Z])\b/i
+        );
+
+      if (seatMatch) {
+
+        seat =
+          (seatMatch[1] || '').toUpperCase();
+      }
     }
 
     // =========================
