@@ -55,6 +55,17 @@ function splitLogicalSections(log) {
       continue;
     }
 
+    if (cmd && isContinuation && pendingTimestamp) {
+      if (current && current.content.trim()) sections.push(current);
+      current = {
+        timestamp: pendingTimestamp,
+        command: cmd,
+        content: line + '\n'
+      };
+      pendingTimestamp = null;
+      continue;
+    }
+
     if (!current) {
       current = { timestamp: pendingTimestamp || null, command: null, content: '' };
       pendingTimestamp = null;
@@ -211,11 +222,13 @@ function parseIncrementalLog(log) {
       continue;
     }
 
-    if (/\bDELETED\b/i.test(section)) {
-      const deletedBN = section.match(/\bBN(\d{1,3})\b/i)?.[1];
-      if (deletedBN) {
-        delete passengers[deletedBN.padStart(3, '0')];
-      }
+    const deletedPaxMatch =
+      section.match(
+        /^\s*\d+\.\s+[A-Z\/+]+.*?\bBN(\d{1,3})\b.*?\bDELETED\b/im
+      );
+
+    if (deletedPaxMatch) {
+      delete passengers[deletedPaxMatch[1].padStart(3, '0')];
       continue;
     }
 
@@ -254,7 +267,7 @@ function parseIncrementalLog(log) {
     // =========================
     const paxMatch =
       section.match(
-        /\d+\.\s+([A-Z\/]+).*?BN(\d+)(?:\s+(\d+[A-Z]))?/i
+        /\d+\.\s+([A-Z\/]+).*?BN(\d+)(?:\s+\*?(\d+[A-Z]))?/i
       );
 
     if (!paxMatch) {
@@ -281,7 +294,7 @@ function parseIncrementalLog(log) {
     } else {
       const seatMatch =
         section.match(
-          /\bBN\d{1,3}\s+(\d+[A-Z])\b/i
+          /\bBN\d{1,3}\s+\*?(\d+[A-Z])\b/i
         ) ||
         section.match(
           /\bR(\d+[A-Z])\b/i
