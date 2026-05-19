@@ -226,7 +226,7 @@ function parseIncrementalLog(log) {
     // =========================
     const paxMatch =
       section.match(
-        /\d+\.\s+([A-Z\/]+).*?BN(\d+)/i
+        /\d+\.\s+([A-Z\/]+).*?BN(\d+)(?:\s+(\d+[A-Z]))?/i
       );
 
     if (!paxMatch) {
@@ -246,15 +246,24 @@ function parseIncrementalLog(log) {
     // =========================
     let seat = '---';
 
-    const seatMatch =
-      section.match(
-        /\b(\d+[A-Z])\b/
-      );
-
-    if (seatMatch) {
-
+    if (paxMatch[3]) {
       seat =
-        seatMatch[1];
+        paxMatch[3]
+          .toUpperCase();
+    } else {
+      const seatMatch =
+        section.match(
+          /\bBN\d{1,3}\s+(\d+[A-Z])\b/i
+        ) ||
+        section.match(
+          /\bR(\d+[A-Z])\b/i
+        );
+
+      if (seatMatch) {
+
+        seat =
+          (seatMatch[1] || '').toUpperCase();
+      }
     }
 
     // =========================
@@ -492,22 +501,28 @@ function parseIncrementalLog(log) {
     // Paid products (ASVC)
     const paidProducts = [];
     const paidProductsShort = [];
-    const asvcLines = section.match(/^ASVC-[^\n\r]+/gim) || [];
+    const asvcLines = section.match(/^\s*ASVC-[^\n\r]+/gim) || [];
     for (const line of asvcLines) {
       const fullLine =
         line.replace(/^ASVC-\s*/i, '').trim();
 
       paidProducts.push(fullLine);
 
+      const serviceCodeMatch =
+        fullLine.match(/(?:^|\/)\s*([A-Z]{4})\s*(?:\/|\s)/i);
+
       const tokenMatch =
         fullLine.match(/\b(\d+[A-Z]|[0-9]+PC)\b/i);
+
+      const shortCode =
+        (serviceCodeMatch?.[1] || tokenMatch?.[1] || '').toUpperCase();
 
       const emdaMatch =
         fullLine.match(/\bEMDA-\d{13}\b/i);
 
-      if (tokenMatch && emdaMatch) {
+      if (shortCode && emdaMatch) {
         paidProductsShort.push(
-          `${tokenMatch[1].toUpperCase()}/${emdaMatch[0].toUpperCase()}`
+          `${shortCode}/${emdaMatch[0].toUpperCase()}`
         );
       }
     }
@@ -618,6 +633,20 @@ function parseIncrementalLog(log) {
         ...new Set([
           ...(passenger.ckinLines || []),
           ...(passenger.operationHistoryLines || [])
+        ])
+      ];
+
+      passenger.paidProducts = [
+        ...new Set([
+          ...(existingPassenger.paidProducts || []),
+          ...(passenger.paidProducts || [])
+        ])
+      ];
+
+      passenger.paidProductsShort = [
+        ...new Set([
+          ...(existingPassenger.paidProductsShort || []),
+          ...(passenger.paidProductsShort || [])
         ])
       ];
     }
