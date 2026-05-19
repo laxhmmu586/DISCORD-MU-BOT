@@ -222,16 +222,6 @@ function parseIncrementalLog(log) {
       continue;
     }
 
-    const deletedPaxMatch =
-      section.match(
-        /^\s*\d+\.\s+[A-Z\/+]+.*?\bBN(\d{1,3})\b.*?\bDELETED\b/im
-      );
-
-    if (deletedPaxMatch) {
-      delete passengers[deletedPaxMatch[1].padStart(3, '0')];
-      continue;
-    }
-
     // =========================
     // Skip Invalid
     // PSGR ID means no valid passenger in this record
