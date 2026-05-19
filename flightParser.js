@@ -278,12 +278,19 @@ function parseIncrementalLog(log) {
         ? paxMatch[2].padStart(3, '0')
         : '---';
 
+    const isPassengerOffloaded =
+      !!offloadedMatch &&
+      !paxMatch?.[2] &&
+      !paxMatch?.[3];
+
     // =========================
     // Seat
     // =========================
     let seat = '---';
 
-    if (paxMatch?.[3]) {
+    if (isPassengerOffloaded) {
+      seat = '---';
+    } else if (paxMatch?.[3]) {
       seat =
         paxMatch[3]
           .toUpperCase();
@@ -461,12 +468,12 @@ function parseIncrementalLog(log) {
     let outbound = null;
 
     const outboundLine =
-      section.match(/^\s*O\/[^\n\r]+/im)?.[0] || null;
+      section.match(/^\s*X?O\/[^\n\r]+/im)?.[0] || null;
 
     if (outboundLine) {
       const outboundMatch =
         outboundLine.match(
-          /O\/([A-Z0-9]+)\/(\d{2}[A-Z]{3}).*?(?:BN(\d+))?.*?(\d+[A-Z])?.*?\s([A-Z]{3})/i
+          /X?O\/([A-Z0-9]+)\/(\d{2}[A-Z]{3})(?:.*?\bBN(\d+))?(?:.*?\b(\d+[A-Z]))?.*?\b([A-Z]{3})\s*$/i
         );
 
       if (outboundMatch) {
@@ -629,7 +636,7 @@ function parseIncrementalLog(log) {
       specialMeals,
       paidProducts,
       paidProductsShort,
-      offloaded: !!offloadedMatch && !paxMatch,
+      offloaded: isPassengerOffloaded,
       sourceText: section,
       ckinLines,
       psmLines,
