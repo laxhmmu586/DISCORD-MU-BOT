@@ -1,5 +1,31 @@
 const passengers = {};
 
+
+function parseSectionTimestamp(timestamp) {
+  if (!timestamp) return null;
+
+  const m = timestamp.match(/^(\d{4})\s+([A-Z]{3,9})\s+(\d{1,2}),\s*\w+,\s*(\d{2}):(\d{2}):(\d{2})$/i);
+  if (!m) return null;
+
+  const [, year, monthName, day, hh, mm, ss] = m;
+  const monthMap = {
+    JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5,
+    JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11
+  };
+
+  const month = monthMap[monthName.slice(0, 3).toUpperCase()];
+  if (month === undefined) return null;
+
+  return Date.UTC(
+    Number(year),
+    month,
+    Number(day),
+    Number(hh),
+    Number(mm),
+    Number(ss)
+  );
+}
+
 function splitLogicalSections(log) {
   const lines = log.split(/\r?\n/);
   const tsRe = /^\d{4}\s+\w+\s+\d{2},.*?\d{2}:\d{2}:\d{2}\s*$/;
@@ -173,6 +199,8 @@ function parseIncrementalLog(log) {
 
   for (const sectionObj of sections) {
     const section = sectionObj.content;
+    const sectionTimestampMs =
+      parseSectionTimestamp(sectionObj.timestamp);
 
     // =========================
     // PR Record Only
@@ -649,7 +677,20 @@ function parseIncrementalLog(log) {
           ...(passenger.paidProductsShort || [])
         ])
       ];
+
+      const existingTs =
+        existingPassenger.sectionTimestampMs;
+
+      if (
+        existingTs &&
+        sectionTimestampMs &&
+        existingTs > sectionTimestampMs
+      ) {
+        continue;
+      }
     }
+
+    passenger.sectionTimestampMs = sectionTimestampMs || null;
 
     // Latest Record Wins (with merged check-in continuation lines)
     passengers[bn] =
