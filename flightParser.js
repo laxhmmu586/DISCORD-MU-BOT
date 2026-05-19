@@ -499,15 +499,21 @@ function parseIncrementalLog(log) {
 
       paidProducts.push(fullLine);
 
+      const serviceCodeMatch =
+        fullLine.match(/(?:^|\/)\s*([A-Z]{4})\s*(?:\/|\s)/i);
+
       const tokenMatch =
         fullLine.match(/\b(\d+[A-Z]|[0-9]+PC)\b/i);
+
+      const shortCode =
+        (serviceCodeMatch?.[1] || tokenMatch?.[1] || '').toUpperCase();
 
       const emdaMatch =
         fullLine.match(/\bEMDA-\d{13}\b/i);
 
-      if (tokenMatch && emdaMatch) {
+      if (shortCode && emdaMatch) {
         paidProductsShort.push(
-          `${tokenMatch[1].toUpperCase()}/${emdaMatch[0].toUpperCase()}`
+          `${shortCode}/${emdaMatch[0].toUpperCase()}`
         );
       }
     }
