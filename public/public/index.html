@@ -1304,7 +1304,7 @@
           ).innerText =
 
             data.outbound
-            ? `${data.outbound.flight || '-'} / ${data.outbound.date || '-'}${data.outbound.bn ? ` • BN${data.outbound.bn}` : ''}${data.outbound.seat ? ` • ${data.outbound.seat}` : ''}
+            ? `${data.outbound.flight || '-'} / ${data.outbound.date || '-'}${data.outbound.bn ? ` • BN${data.outbound.bn}` : ''}${data.outbound.seat ? ` • ${data.outbound.seat}` : ''}${data.outbound.status === 'DELETED' ? ' • DELETED' : ''}
 To ${data.outbound.destination || '-'}`
             : 'N/A';
         }

@@ -260,24 +260,30 @@ function parseIncrementalLog(log) {
         /\d+\.\s+([A-Z\/]+).*?BN(\d+)(?:\s+\*?(\d+[A-Z]))?/i
       );
 
-    if (!paxMatch) {
+    const offloadedMatch =
+      section.match(
+        /^\s*\d+\.\s+([A-Z\/]+).*?\bDELETED\b/im
+      );
+
+    if (!paxMatch && !offloadedMatch) {
       continue;
     }
 
     const name =
-      paxMatch[1]
+      (paxMatch?.[1] || offloadedMatch?.[1] || '')
         .trim();
 
     const bn =
-      paxMatch[2]
-        .padStart(3, '0');
+      paxMatch?.[2]
+        ? paxMatch[2].padStart(3, '0')
+        : '---';
 
     // =========================
     // Seat
     // =========================
     let seat = '---';
 
-    if (paxMatch[3]) {
+    if (paxMatch?.[3]) {
       seat =
         paxMatch[3]
           .toUpperCase();
@@ -454,30 +460,28 @@ function parseIncrementalLog(log) {
     // =========================
     let outbound = null;
 
-    const outboundMatch =
-      section.match(
-        /O\/([A-Z0-9]+)\/(\d{2}[A-Z]{3}).*?(BN(\d+))?.*?(\d+[A-Z])?.*?\s([A-Z]{3})/i
-      );
+    const outboundLine =
+      section.match(/^\s*O\/[^\n\r]+/im)?.[0] || null;
 
-    if (outboundMatch) {
+    if (outboundLine) {
+      const outboundMatch =
+        outboundLine.match(
+          /O\/([A-Z0-9]+)\/(\d{2}[A-Z]{3}).*?(?:BN(\d+))?.*?(\d+[A-Z])?.*?\s([A-Z]{3})/i
+        );
 
-      outbound = {
+      if (outboundMatch) {
+        outbound = {
+          flight: outboundMatch[1],
+          date: outboundMatch[2],
+          bn: outboundMatch[3] || null,
+          seat: outboundMatch[4] || null,
+          destination: outboundMatch[5]
+        };
 
-        flight:
-          outboundMatch[1],
-
-        date:
-          outboundMatch[2],
-
-        bn:
-          outboundMatch[4] || null,
-
-        seat:
-          outboundMatch[5] || null,
-
-        destination:
-          outboundMatch[6]
-      };
+        if (/\bDELETED\b/i.test(outboundLine)) {
+          outbound.status = 'DELETED';
+        }
+      }
     }
 
     // =========================
@@ -625,6 +629,7 @@ function parseIncrementalLog(log) {
       specialMeals,
       paidProducts,
       paidProductsShort,
+      offloaded: !!offloadedMatch && !paxMatch,
       sourceText: section,
       ckinLines,
       psmLines,
