@@ -295,7 +295,7 @@ async function runLookup(mode, rawQuery) {
   const embed = {
     color: 0xf59e0b,
     title: `✈️ ${pax.flight}/${pax.flightDate}`,
-    description: `👤 ${pax.name}\n\n🎫 BN${pax.bn} • ${pax.seat} • ${pax.cabin}`,
+    description: `👤 ${pax.name}\n\n🎫 BN${pax.bn} • ${pax.seat} • ${pax.cabin}${pax.offloaded ? '\n\n⚠️ Passenger offloaded' : ''}`,
     fields: [
       ...(pax.ffNumber ? [{
         name: '💳 Membership',
@@ -319,7 +319,7 @@ async function runLookup(mode, rawQuery) {
       }] : []),
       ...(pax.outbound ? [{
         name: '➡ Outbound',
-        value: `${pax.outbound.flight}/${pax.outbound.date}${pax.outbound.bn ? ` • BN${pax.outbound.bn}` : ''}${pax.outbound.seat ? ` • ${pax.outbound.seat}` : ''}\nTo ${pax.outbound.destination}`,
+        value: `${pax.outbound.flight}/${pax.outbound.date}${pax.outbound.bn ? ` • BN${pax.outbound.bn}` : ''}${pax.outbound.seat ? ` • ${pax.outbound.seat}` : ''}${pax.outbound.status === 'DELETED' ? ' • DELETED' : ''}\nTo ${pax.outbound.destination}`,
         inline: true
       }] : []),
       ...(pax.specialServices?.length ? [{
