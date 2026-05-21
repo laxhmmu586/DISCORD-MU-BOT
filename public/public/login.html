@@ -191,7 +191,9 @@ from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
 import {
   getAuth,
   signInWithEmailAndPassword,
-  onAuthStateChanged
+  onAuthStateChanged,
+  setPersistence,
+  browserSessionPersistence
 }
 from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
 
@@ -238,6 +240,11 @@ window.login = async function () {
   try {
 
     msg.style.display = "none";
+
+    await setPersistence(
+      auth,
+      browserSessionPersistence
+    );
 
     await signInWithEmailAndPassword(
       auth,
