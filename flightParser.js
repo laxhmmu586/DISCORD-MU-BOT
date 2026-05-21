@@ -498,7 +498,7 @@ function parseIncrementalLog(log) {
     const specialServices = [];
 
     const ssrCodes = [
-      'VIP', 'AVIH', 'BLND', 'DEAF', 'DEP', 'INAD', 'PETC',
+      'VIP', 'AVIH', 'BLND', 'DEAF', 'INAD', 'PETC',
       'UM', 'STCR', 'MAAS', 'PPOC', 'WCHR', 'WCHS', 'WCHC'
     ];
 
