@@ -502,6 +502,11 @@ function parseIncrementalLog(log) {
       'UM', 'STCR', 'MAAS', 'PPOC', 'WCHR', 'WCHS', 'WCHC'
     ];
 
+    const nonPsmSection = section
+      .split(/\r?\n/)
+      .filter(line => !/^\s*PSM\b/i.test(line))
+      .join('\n');
+
     for (const code of ssrCodes) {
 
       // Safe Match
@@ -514,7 +519,7 @@ function parseIncrementalLog(log) {
         );
 
       if (
-        regex.test(section)
+        regex.test(nonPsmSection)
       ) {
 
         specialServices.push(code);
