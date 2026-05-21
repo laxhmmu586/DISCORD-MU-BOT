@@ -1405,7 +1405,9 @@ To ${data.outbound.destination || '-'}`
   import {
     getAuth,
     onAuthStateChanged,
-    signOut
+    signOut,
+    setPersistence,
+    browserSessionPersistence
   }
   from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
 
@@ -1427,10 +1429,46 @@ To ${data.outbound.destination || '-'}`
   const auth =
     getAuth(app);
 
+  const INACTIVITY_TIMEOUT_MS =
+    15 * 60 * 1000;
+
+  let inactivityTimer = null;
+
+  function resetInactivityTimer() {
+    if (!currentUser) return;
+
+    clearTimeout(inactivityTimer);
+
+    inactivityTimer = setTimeout(async () => {
+      try {
+        await signOut(auth);
+      } catch (error) {
+        console.error('Auto logout failed:', error);
+      }
+    }, INACTIVITY_TIMEOUT_MS);
+  }
+
+  function bindInactivityEvents() {
+    const events = ['click', 'keydown', 'mousemove', 'scroll', 'touchstart'];
+
+    events.forEach((eventName) => {
+      window.addEventListener(eventName, resetInactivityTimer, { passive: true });
+    });
+  }
+
+  await setPersistence(
+    auth,
+    browserSessionPersistence
+  );
+
+  bindInactivityEvents();
+
   onAuthStateChanged(auth, (user) => {
     currentUser = user || null;
 
     if (!user) {
+
+      clearTimeout(inactivityTimer);
 
       window.location.href =
         "login.html";
@@ -1454,6 +1492,8 @@ To ${data.outbound.destination || '-'}`
 
     document.getElementById("mainApp").style.display =
       "block";
+
+    resetInactivityTimer();
   });
 
   window.logout = async function () {
