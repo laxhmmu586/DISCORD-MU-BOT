@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lounge Validation</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 0;
+      background: #0f172a;
+      color: white;
+      font-family: Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+    }
+    .container { width: 100%; max-width: 460px; padding: 20px; }
+    .title { font-size: 30px; font-weight: bold; margin-bottom: 6px; }
+    .subtitle { color: #94a3b8; font-size: 14px; margin-bottom: 24px; line-height: 1.5; }
+    .card { background: #111827; border-radius: 20px; padding: 20px; box-shadow: 0 0 25px rgba(0,0,0,0.35); }
+    .auth-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(37,99,235,0.15);
+      color: #bfdbfe;
+      font-size: 13px;
+    }
+    .auth-info { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .logout-btn {
+      border: none;
+      background: #1d4ed8;
+      color: #fff;
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-size: 13px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .logout-btn:hover { background: #1e40af; }
+    .flight { font-size: 24px; font-weight: bold; margin-bottom: 18px; }
+    .name { font-size: 28px; font-weight: bold; margin-bottom: 10px; }
+    .seat { color: #cbd5e1; margin-bottom: 22px; font-size: 15px; }
+    .divider { height: 1px; background: rgba(255,255,255,0.08); margin: 18px 0; }
+    .grid-two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .section { margin-bottom: 18px; }
+    .grid-two .section { margin-bottom: 0; }
+    .label { color: #60a5fa; text-transform: uppercase; font-size: 12px; letter-spacing: 1px; margin-bottom: 6px; }
+    .value { white-space: pre-line; line-height: 1.6; font-size: 16px; }
+    .yes { color: #22c55e; font-weight: bold; }
+    .no { color: #ef4444; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="title">Lounge Validation</div>
+    <div class="subtitle">Authenticated lounge eligibility view.</div>
+
+    <div class="auth-bar">
+      <div class="auth-info" id="authInfo">Checking login...</div>
+      <button class="logout-btn" id="logoutBtn" type="button">Logout</button>
+    </div>
+
+    <div class="card">
+      <div class="flight">✈️ MU586/21MAY</div>
+      <div class="name">XU/FENGJUAN</div>
+      <div class="seat">🎫 BN201 • 8A • Business</div>
+
+      <div class="grid-two">
+        <div class="section">
+          <div class="label">Ticket</div>
+          <div class="value">MU 624015393886</div>
+        </div>
+        <div class="section">
+          <div class="label">Membership</div>
+          <div class="value">Platinum</div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="grid-two">
+        <div class="section">
+          <div class="label">inbound</div>
+          <div class="value">Lounge Access
+<span class="yes">✅ Eligible</span></div>
+        </div>
+        <div class="section">
+          <div class="label">outbound</div>
+          <div class="value">Guest Access
+<span class="no">❌ Not Allowed</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "<SECRET>",
+      authDomain: "china-eastern.firebaseapp.com",
+      projectId: "china-eastern",
+      storageBucket: "china-eastern.firebasestorage.app",
+      messagingSenderId: "1042286496693",
+      appId: "1:1042286496693:web:43f8f817a1232dce76f3f0",
+      measurementId: "G-KLZ4X09KXG"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const authInfo = document.getElementById('authInfo');
+
+    onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        window.location.replace('login.html');
+        return;
+      }
+      authInfo.textContent = `Logged in: ${user.email || user.uid}`;
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await signOut(auth);
+      window.location.replace('login.html');
+    });
+  </script>
+</body>
+</html>
