@@ -745,6 +745,8 @@
   </div>
 
   <script>
+    window.MU_API_BASE = 'https://discord-mu-bot-production.up.railway.app';
+
     let docPanelOpen = false;
     let currentPassengerData = null;
     let checkinPanelOpen = false;
@@ -752,7 +754,7 @@
 
     let helpPanelOpen = false;
 
-    const API_BASE = (() => {
+    function resolveApiBase() {
       const fromWindow = window.MU_API_BASE || '';
       const fromStorage = localStorage.getItem('mu_api_base') || '';
 
@@ -763,7 +765,19 @@
       if (normalizedStorage) return normalizedStorage;
 
       return '';
-    })();
+    }
+
+    function promptAndSaveApiBase() {
+      const input = window.prompt(
+        '未检测到后端地址。请输入机器人后端域名（例如 https://xxx.up.railway.app ）',
+        'https://'
+      );
+      if (!input) return '';
+      const normalized = input.trim().replace(/\/$/, '');
+      if (!/^https?:\/\//i.test(normalized)) return '';
+      localStorage.setItem('mu_api_base', normalized);
+      return normalized;
+    }
 
 
     function escapeHtml(value) {
@@ -1067,8 +1081,9 @@
 
       try {
 
-        const endpoint =
-          `${API_BASE}/search?q=` +
+        let apiBase = resolveApiBase();
+        let endpoint =
+          `${apiBase}/search?q=` +
           encodeURIComponent(q);
 
         const headers = {};
@@ -1077,7 +1092,7 @@
           headers.Authorization = `Bearer ${token}`;
         }
 
-        const res =
+        let res =
           await fetch(endpoint, { headers });
 
         const contentType =
@@ -1088,14 +1103,23 @@
             await res.text();
 
           const maybeWrongApiBase =
-            !API_BASE &&
+            !apiBase &&
             res.status === 404 &&
             failText.toLowerCase().includes('<!doctype html');
 
           if (maybeWrongApiBase) {
-            throw new Error(
-              'API endpoint not found on current site. Please configure MU_API_BASE or localStorage.mu_api_base to your bot backend domain.'
-            );
+            const configuredApiBase = promptAndSaveApiBase();
+            if (configuredApiBase) {
+              apiBase = configuredApiBase;
+              endpoint = `${apiBase}/search?q=` + encodeURIComponent(q);
+              res = await fetch(endpoint, { headers });
+              if (!res.ok) {
+                const retryText = await res.text();
+                throw new Error(`HTTP ${res.status} ${res.statusText} ${retryText.slice(0, 120)} (endpoint: ${endpoint})`);
+              }
+            } else {
+              throw new Error('API endpoint not found on current site, and no backend configured.');
+            }
           }
 
           throw new Error(
@@ -1112,8 +1136,7 @@
           );
         }
 
-        const data =
-          await res.json();
+        const data = await res.json();
         const normalizedQuery =
           String(q || '').trim().toUpperCase().replace(/\s+/g, '');
         const isSYQuery =
@@ -1163,30 +1186,32 @@
           document.getElementById('seat').innerText = `${sy.flightNo || '-'}/${sy.flightDate || '-'}`;
 
           document.getElementById('membershipSection').style.display = 'block';
-          document.getElementById('ff').innerText = '机型/注册号';
-          document.getElementById('ffStatus').innerText = `${sy.aircraftType || '-'} / ${sy.aircraftRegistration || '-'}`;
+          document.getElementById('ff').innerText = '航班';
+          document.getElementById('ffStatus').innerText = `${sy.flightNo || '-'}/${sy.flightDate || '-'}`;
 
           document.getElementById('ticketSection').style.display = 'block';
-          document.getElementById('ticket').innerText = `GATE ${sy.gate || '-'}`;
+          document.getElementById('ticket').innerText = `机型/注册号\n${sy.aircraftType || '-'} / ${sy.aircraftRegistration || '-'}`;
 
           document.getElementById('bagsSection').style.display = 'block';
-          document.getElementById('bags').innerText = `BDT/SD/ED ${sy.bdt || '-'} / ${sy.sd || '-'} / ${sy.ed || '-'}`;
+          document.getElementById('bags').innerText = `GATE\n${sy.gate || '-'}`;
 
           document.getElementById('inboundSection').style.display = 'block';
-          document.getElementById('inbound').innerText = `RK message\n${sy.rkMessage || '-'}`;
+          document.getElementById('inbound').innerText =
+            `BDT/SD/ED\n${sy.bdt || '-'} / ${sy.sd || '-'} / ${sy.ed || '-'}\n\n` +
+            `RK message\n${sy.rkMessage || '-'}`;
 
           document.getElementById('outboundSection').style.display = 'block';
           document.getElementById('outbound').innerText =
-            `Reservation ${sy.reservation?.[0] || '-'}\n` +
-            `Reservation(TKT) ${sy.reservationTicketed?.[0] || '-'}\n` +
-            `Check-in ${sy.checkedIn?.[0] || '-'}\n` +
-            `Check-in(TKT) ${sy.checkedInTicketed?.[0] || '-'}`;
+            `Reservation\n${sy.reservation?.[0] || '-'}\n\n` +
+            `Reservation(TKT)\n${sy.reservationTicketed?.[0] || '-'}\n\n` +
+            `Check-in\n${sy.checkedIn?.[0] || '-'}\n\n` +
+            `Check-in(TKT)\n${sy.checkedInTicketed?.[0] || '-'}`;
 
           document.getElementById('ssrSection').style.display = 'block';
-          document.getElementById('ssr').innerText = `Bags ${sy.bags?.[0] || '-'}`;
+          document.getElementById('ssr').innerText = `Bags\n${sy.bags?.[0] || '-'}`;
 
           document.getElementById('mealSection').style.display = 'block';
-          document.getElementById('meal').innerText = `WCH${sy.wch || '000'} / I${sy.inf || '00'} / CHD${sy.chd || '000'}`;
+          document.getElementById('meal').innerText = `WCH/INF/CHD\nWCH${sy.wch || '000'} / I${sy.inf || '00'} / CHD${sy.chd || '000'}`;
 
           document.getElementById('paidSection').style.display = 'none';
           document.getElementById('loungeSection').style.display = 'none';
