@@ -1087,6 +1087,17 @@
           const failText =
             await res.text();
 
+          const maybeWrongApiBase =
+            !API_BASE &&
+            res.status === 404 &&
+            failText.toLowerCase().includes('<!doctype html');
+
+          if (maybeWrongApiBase) {
+            throw new Error(
+              'API endpoint not found on current site. Please configure MU_API_BASE or localStorage.mu_api_base to your bot backend domain.'
+            );
+          }
+
           throw new Error(
             `HTTP ${res.status} ${res.statusText} ${failText.slice(0, 120)} (endpoint: ${endpoint})`
           );
