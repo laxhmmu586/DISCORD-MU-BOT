@@ -422,6 +422,12 @@
       background: #6d28d9;
     }
 
+  
+    .sy-layout { margin-top: 8px; }
+    .sy-row { display:grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
+    .sy-row-full { grid-template-columns: 1fr; }
+    .sy-cell .label { margin-bottom: 4px; }
+
   </style>
 
 </head>
@@ -522,6 +528,32 @@
           id="seat"
           class="seat"
         ></div>
+
+        <div id="syLayout" class="sy-layout" style="display:none;">
+          <div class="sy-row">
+            <div class="sy-cell"><div class="label">机型/注册号</div><div id="syAircraft" class="value"></div></div>
+            <div class="sy-cell"><div class="label">GATE</div><div id="syGate" class="value"></div></div>
+          </div>
+          <div class="sy-row">
+            <div class="sy-cell"><div class="label">BDT/SD/ED</div><div id="syTimes" class="value"></div></div>
+            <div class="sy-cell"><div class="label">Bags</div><div id="syBags" class="value"></div></div>
+          </div>
+          <div class="sy-row sy-row-full">
+            <div class="sy-cell"><div class="label">RK message</div><div id="syRk" class="value"></div></div>
+          </div>
+          <div class="sy-row">
+            <div class="sy-cell"><div class="label">Reservation</div><div id="syRes" class="value"></div></div>
+            <div class="sy-cell"><div class="label">Reservation(TKT)</div><div id="syResTkt" class="value"></div></div>
+          </div>
+          <div class="sy-row">
+            <div class="sy-cell"><div class="label">Check-in</div><div id="syCi" class="value"></div></div>
+            <div class="sy-cell"><div class="label">Check-in(TKT)</div><div id="syCiTkt" class="value"></div></div>
+          </div>
+          <div class="sy-row">
+            <div class="sy-cell"><div class="label">Bags</div><div id="syBagsLast" class="value"></div></div>
+            <div class="sy-cell"><div class="label">WCH/INF/CHD</div><div id="syWch" class="value"></div></div>
+          </div>
+        </div>
 
         <div
           id="docSection"
@@ -957,6 +989,11 @@
       if (el) el.innerText = value;
     }
 
+    function setDisplayById(id, value) {
+      const el = document.getElementById(id);
+      if (el) el.style.display = value;
+    }
+
     function buildTravelDocs(data) {
       const paxInfoRaw = cleanRawLine(data.paxInfoRaw);
       const passportRaw = cleanRawLine(data.passportRaw);
@@ -1196,50 +1233,22 @@
           setTextById('name', '');
           setTextById('seat', sy.statusDisplay || '');
 
-          setSectionLabel('membershipSection', '机型/注册号');
-          document.getElementById('membershipSection').style.display = 'block';
-          setTextById('ff', `${sy.aircraftType || '-'} / ${sy.aircraftRegistration || '-'}`);
-          setTextById('ffStatus', '');
+          ['membershipSection','ticketSection','bagsSection','inboundSection','outboundSection','ssrSection','mealSection','paidSection','loungeSection','docSection'].forEach((id) => setDisplayById(id, 'none'));
+          setDisplayById('syLayout', 'block');
 
-          document.getElementById('ticketSection').style.display = 'none';
+          setTextById('syAircraft', `${sy.aircraftType || '-'} / ${sy.aircraftRegistration || '-'}`);
+          setTextById('syGate', `${sy.gate || '-'}`);
+          setTextById('syTimes', `${sy.bdt || '-'} / ${sy.sd || '-'} / ${sy.ed || '-'}`);
+          setTextById('syBags', `${sy.bags?.[0] || '-'}`);
+          setTextById('syRk', `${sy.rkMessage || '-'}`);
+          setTextById('syRes', `${sy.reservation?.[0] || '-'}`);
+          setTextById('syResTkt', `${sy.reservationTicketed?.[0] || '-'}`);
+          setTextById('syCi', `${sy.checkedIn?.[0] || '-'}`);
+          setTextById('syCiTkt', `${sy.checkedInTicketed?.[0] || '-'}`);
+          setTextById('syBagsLast', `${sy.bags?.[0] || '-'}`);
+          setTextById('syWch', `WCH${sy.wch || '000'} / I${sy.inf || '00'} / CHD${sy.chd || '000'}`);
 
-          setSectionLabel('bagsSection', 'GATE');
-          document.getElementById('bagsSection').style.display = 'block';
-          setTextById('bags', `${sy.gate || '-'}`);
-
-          setSectionLabel('inboundSection', 'BDT/SD/ED');
-          document.getElementById('inboundSection').style.display = 'block';
-          setTextById('inbound', `${sy.bdt || '-'} / ${sy.sd || '-'} / ${sy.ed || '-'}`);
-
-          setSectionLabel('outboundSection', 'RK message');
-          document.getElementById('outboundSection').style.display = 'block';
-          setTextById('outbound', `${sy.rkMessage || '-'}`);
-
-          setSectionLabel('ssrSection', 'Reservation');
-          document.getElementById('ssrSection').style.display = 'block';
-          setTextById('ssr', `${sy.reservation?.[0] || '-'}`);
-
-          setSectionLabel('mealSection', 'Reservation(TKT)');
-          document.getElementById('mealSection').style.display = 'block';
-          setTextById('meal', `${sy.reservationTicketed?.[0] || '-'}`);
-
-          setSectionLabel('paidSection', 'Check-in');
-          document.getElementById('paidSection').style.display = 'block';
-          setTextById('paid', `${sy.checkedIn?.[0] || '-'}`);
-
-          setSectionLabel('ticketSection', 'Check-in(TKT)');
-          document.getElementById('ticketSection').style.display = 'block';
-          setTextById('ticket', `${sy.checkedInTicketed?.[0] || '-'}`);
-
-          setSectionLabel('loungeSection', 'Bags');
-          setSectionLabel('docSection', 'WCH/INF/CHD');
-          document.getElementById('docSection').style.display = 'block';
-          setTextById('docContent', `WCH${sy.wch || '000'} / I${sy.inf || '00'} / CHD${sy.chd || '000'}`);
-
-          document.getElementById('loungeSection').style.display = 'block';
-          setTextById('lounge', `${sy.bags?.[0] || '-'}`);
-          document.getElementById('docToggleBtn').style.display = 'none';
-
+          setDisplayById('docToggleBtn', 'none');
           card.style.display = 'block';
           return;
         }
@@ -1252,6 +1261,8 @@
             'block';
           return;
         }
+
+        setDisplayById('syLayout', 'none');
 
         if (!data.flight || !data.flightDate || !data.name) {
           error.innerText =
