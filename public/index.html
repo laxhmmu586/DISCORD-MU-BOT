@@ -1378,7 +1378,7 @@
         }
 
         // Inbound
-        if (data.permissions?.canViewInbound) {
+        if (data.permissions?.canViewInbound && data.inbound) {
 
           document.getElementById(
             'inboundSection'
@@ -1389,7 +1389,7 @@
             'inbound'
           ).innerText =
 
-            data.inbound ? `${data.inbound.flight || '-'} / ${data.inbound.date || '-'}\nFrom ${data.inbound.origin || '-'}` : 'N/A';
+            `${data.inbound.flight || '-'} / ${data.inbound.date || '-'}\nFrom ${data.inbound.origin || '-'}`;
         }
 
         else {
@@ -1401,7 +1401,7 @@
         }
 
         // Outbound
-        if (data.permissions?.canViewOutbound) {
+        if (data.permissions?.canViewOutbound && data.outbound) {
 
           document.getElementById(
             'outboundSection'
@@ -1412,10 +1412,8 @@
             'outbound'
           ).innerText =
 
-            data.outbound
-            ? `${data.outbound.flight || '-'} / ${data.outbound.date || '-'}${data.outbound.bn ? ` • BN${data.outbound.bn}` : ''}${data.outbound.seat ? ` • ${data.outbound.seat}` : ''}${data.outbound.status === 'DELETED' ? ' • DELETED' : ''}
+            `${data.outbound.flight || '-'} / ${data.outbound.date || '-'}${data.outbound.bn ? ` • BN${data.outbound.bn}` : ''}${data.outbound.seat ? ` • ${data.outbound.seat}` : ''}${data.outbound.status === 'DELETED' ? ' • DELETED' : ''}
 To ${data.outbound.destination || '-'}`
-            : 'N/A';
         }
 
         else {
@@ -1427,30 +1425,28 @@ To ${data.outbound.destination || '-'}`
         }
 
         // Special Service
-        if (data.permissions?.canViewSpecialService) {
+        if (data.permissions?.canViewSpecialService && data.specialServices && data.specialServices.length) {
           document.getElementById('ssrSection').style.display = 'block';
-          document.getElementById('ssr').innerText = (data.specialServices && data.specialServices.length) ? data.specialServices.join(', ') : 'N/A';
+          document.getElementById('ssr').innerText = data.specialServices.join(', ');
         } else {
           document.getElementById('ssrSection').style.display = 'none';
         }
 
         // Special Meal
-        if (data.permissions?.canViewSpecialMeals) {
+        if (data.permissions?.canViewSpecialMeals && data.specialMeals && data.specialMeals.length) {
           document.getElementById('mealSection').style.display = 'block';
-          document.getElementById('meal').innerText = (data.specialMeals && data.specialMeals.length) ? data.specialMeals.join(', ') : 'N/A';
+          document.getElementById('meal').innerText = data.specialMeals.join(', ');
         } else {
           document.getElementById('mealSection').style.display = 'none';
         }
 
         // Paid Service
-        if (data.permissions?.canViewPaidService) {
+        if (data.permissions?.canViewPaidService && ((data.paidProductsShort && data.paidProductsShort.length) || (data.paidProducts && data.paidProducts.length))) {
           document.getElementById('paidSection').style.display = 'block';
           if (data.paidProductsShort && data.paidProductsShort.length) {
             document.getElementById('paid').innerText = data.paidProductsShort.join('\n');
           } else if (data.paidProducts && data.paidProducts.length) {
             document.getElementById('paid').innerText = data.paidProducts.join('\n');
-          } else {
-            document.getElementById('paid').innerText = 'N/A';
           }
         } else {
           document.getElementById('paidSection').style.display = 'none';
@@ -1461,29 +1457,23 @@ To ${data.outbound.destination || '-'}`
         const loungeValue = document.getElementById('lounge');
         const guestLabel = document.getElementById('guestLabel');
         const guestValue = document.getElementById('guest');
-        const canViewLounge = Boolean(data.permissions?.canViewLoungeAccess);
-        const canViewGuest = Boolean(data.permissions?.canViewGuestAccess);
-        if (canViewLounge || canViewGuest) {
-          loungeSection.style.display = 'block';
-          loungeLabel.style.display = canViewLounge ? 'block' : 'none';
-          loungeValue.style.display = canViewLounge ? 'block' : 'none';
-          guestLabel.style.display = canViewGuest ? 'block' : 'none';
-          guestValue.style.display = canViewGuest ? 'block' : 'none';
-          if (canViewLounge) {
-            loungeValue.innerHTML =
-              data.lounge?.eligible === true
-                ? '<span class="yes">✅ Eligible</span>'
-                : '<span class="no">❌ Not Eligible</span>';
-          }
-          if (canViewGuest) {
-            guestValue.innerHTML =
-              data.lounge?.guest === true
-                ? '<span class="yes">✅ Allowed</span>'
-                : '<span class="no">❌ Not Allowed</span>';
-          }
-        } else {
-          loungeSection.style.display = 'none';
-        }
+        loungeSection.style.display = 'block';
+        loungeLabel.style.display = 'block';
+        loungeValue.style.display = 'block';
+        guestLabel.style.display = 'block';
+        guestValue.style.display = 'block';
+        loungeValue.innerHTML =
+          data.lounge?.eligible === true
+            ? '<span class="yes">✅ Eligible</span>'
+            : data.permissions?.canViewLoungeAccess
+            ? '<span class="no">❌ Not Eligible</span>'
+            : 'N/A';
+        guestValue.innerHTML =
+          data.lounge?.guest === true
+            ? '<span class="yes">✅ Allowed</span>'
+            : data.permissions?.canViewGuestAccess
+            ? '<span class="no">❌ Not Allowed</span>'
+            : 'N/A';
 
         // Show
         card.style.display =
