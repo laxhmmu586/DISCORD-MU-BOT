@@ -229,7 +229,7 @@ function formatSYResponse(info) {
   return {
     embed: {
       color: 0x2563eb,
-      title: `🛫 SY ${info.flightNo}/${info.flightDate}`,
+      title: `🛫 SY ${info.flightNo}/${info.flightDate}${info.statusDisplay ? ` [${info.statusDisplay}]` : ''}`,
       fields,
       footer: { text: 'MUFC System' }
     }
