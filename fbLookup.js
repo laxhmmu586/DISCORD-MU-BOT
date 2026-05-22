@@ -252,15 +252,17 @@ async function runLookup(mode, rawQuery) {
     query = query.replace(/\+$/, '');
   }
   let date = null;
+  let yearSuffix = null;
 
-  const dateSuffixMatch = query.match(/^(.*)\/(\d{2}[A-Z]{3})$/i);
+  const dateSuffixMatch = query.match(/^(.*)\/(\d{2}[A-Z]{3})(\d{2})?$/i);
   if (dateSuffixMatch) {
     query = dateSuffixMatch[1].trim().toUpperCase();
     date = dateSuffixMatch[2].trim().toUpperCase();
+    yearSuffix = (dateSuffixMatch[3] || new Date().getUTCFullYear().toString().slice(-2)).toUpperCase();
   }
 
   let log = null;
-  if (date) log = await getFlightLogByDate(date);
+  if (date) log = await getFlightLogByDate(date, yearSuffix);
   else log = await getLatestFlightLog();
 
   if (!log) return { error: 'Unable to load logs (Flight Control.log / Lake.log / Ticketing.log)' };

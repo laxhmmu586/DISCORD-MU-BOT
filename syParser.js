@@ -106,7 +106,7 @@ function parseSYSection(sectionObj) {
 
 function findSYInfo(log, queryDate) {
   const sections = splitLogicalSections(log);
-  const sySections = sections.filter(s => /^>\s*SY(?:\/\d{2}[A-Z]{3})?/im.test(s.content || '') && /SY:\s*[A-Z0-9]+\/(\d{2}[A-Z]{3}\d{2})/i.test(s.content || ''));
+  const sySections = sections.filter(s => /^>\s*SY(?:\/\d{2}[A-Z]{3}(?:\d{2})?)?/im.test(s.content || '') && /SY:\s*[A-Z0-9]+\/(\d{2}[A-Z]{3}\d{2})/i.test(s.content || ''));
 
   if (!sySections.length) return null;
 
