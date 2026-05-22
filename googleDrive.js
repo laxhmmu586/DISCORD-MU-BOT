@@ -252,7 +252,7 @@ async function getLatestFlightLog() {
 // Example:
 // 11MAY
 // ===============================
-async function getFlightLogByDate(date) {
+async function getFlightLogByDate(date, yearSuffix) {
 
   try {
 
@@ -262,8 +262,12 @@ async function getFlightLogByDate(date) {
     // ===========================
     // Folder Name
     // ===========================
+    const resolvedYearSuffix =
+      String(yearSuffix || new Date().getUTCFullYear().toString().slice(-2))
+        .padStart(2, '0');
+
     const folderName =
-      `MU586 ${date}26`;
+      `MU586 ${date}${resolvedYearSuffix}`;
 
     // ===========================
     // Find Date Folder

@@ -311,10 +311,11 @@ app.get(
       // 32A/20APR
       // =========================
       let date = null;
+      let yearSuffix = null;
 
       const dateSuffixMatch =
         q.match(
-          /^(.*)\/(\d{2}[A-Z]{3})$/i
+          /^(.*)\/(\d{2}[A-Z]{3})(\d{2})?$/i
         );
 
       if (dateSuffixMatch) {
@@ -328,10 +329,15 @@ app.get(
           dateSuffixMatch[2]
             .trim()
             .toUpperCase();
+
+        yearSuffix =
+          (dateSuffixMatch[3] || new Date().getUTCFullYear().toString().slice(-2))
+            .trim()
+            .toUpperCase();
       }
 
       const isSYRawQuery =
-        /^SY(?:\/\d{2}[A-Z]{3})?$/.test(
+        /^SY(?:\/\d{2}[A-Z]{3}(?:\d{2})?)?$/.test(
           rawQuery.replace(/\s+/g, '')
         );
 
@@ -345,7 +351,8 @@ app.get(
 
         log =
           await getFlightLogByDate(
-            date
+            date,
+            yearSuffix
           );
       }
 
@@ -373,7 +380,7 @@ app.get(
       parsePDLog(log);
 
       const normalizedRaw = rawQuery.replace(/\s+/g, '');
-      const syMatch = normalizedRaw.match(/^SY(?:\/(\d{2}[A-Z]{3}))?$/i);
+      const syMatch = normalizedRaw.match(/^SY(?:\/(\d{2}[A-Z]{3})(?:\d{2})?)?$/i);
       if (syMatch) {
         const syDate = syMatch[1] ? syMatch[1].toUpperCase() : date;
         const syInfo = findSYInfo(log, syDate);
