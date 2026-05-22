@@ -107,9 +107,25 @@ function findSYInfo(log, queryDate) {
     if (matched.length) return parseSYSection(matched[0]);
   }
 
-  const latest = sySections
-    .sort((a, b) => parseSectionTimestamp(b.timestamp) - parseSectionTimestamp(a.timestamp))[0];
-  return parseSYSection(latest);
+  const today = new Date();
+  const mon = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'][today.getUTCMonth()];
+  const todayDd = String(today.getUTCDate()).padStart(2, '0');
+  const todayYy = String(today.getUTCFullYear()).slice(-2);
+  const todayFlightDate = `${todayDd}${mon}${todayYy}`;
+
+  const parsed = sySections
+    .map(s => ({ section: s, info: parseSYSection(s) }))
+    .filter(x => x.info);
+
+  const todayMatches = parsed
+    .filter(x => x.info.flightDate === todayFlightDate)
+    .sort((a, b) => parseSectionTimestamp(b.section.timestamp) - parseSectionTimestamp(a.section.timestamp));
+
+  if (todayMatches.length) return todayMatches[0].info;
+
+  const latest = parsed
+    .sort((a, b) => parseSectionTimestamp(b.section.timestamp) - parseSectionTimestamp(a.section.timestamp))[0];
+  return latest ? latest.info : null;
 }
 
 module.exports = { findSYInfo };
