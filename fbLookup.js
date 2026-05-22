@@ -214,6 +214,7 @@ function findPassengerByFFFromRecord(log, query) {
 
 function formatSYResponse(info) {
   const fields = [
+    { name: 'STATUS', value: info.statusDisplay || '-', inline: true },
     { name: '航班', value: `${info.flightNo}/${info.flightDate}`, inline: true },
     { name: '机型/注册号', value: `${info.aircraftType || '-'} / ${info.aircraftRegistration || '-'}`, inline: true },
     { name: 'GATE', value: info.gate || '-', inline: true },
@@ -230,7 +231,7 @@ function formatSYResponse(info) {
   return {
     embed: {
       color: 0x2563eb,
-      title: `🛫 SY ${info.flightNo}/${info.flightDate}`,
+      title: `🛫 SY ${info.flightNo}/${info.flightDate}${info.statusDisplay ? ` [${info.statusDisplay}]` : ''}`,
       fields,
       footer: { text: 'MUFC System' }
     }

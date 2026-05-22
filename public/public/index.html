@@ -1187,9 +1187,9 @@
           checkinPanelOpen = false;
           document.getElementById('checkinDetailList').innerHTML = '';
 
-          document.getElementById('flight').innerText = `🛫 SY ${sy.flightNo || '-'}/${sy.flightDate || '-'}`;
+          document.getElementById('flight').innerText = `🛫 SY ${sy.flightNo || '-'}/${sy.flightDate || '-'}${sy.statusDisplay ? ` [${sy.statusDisplay}]` : ''}`;
           document.getElementById('name').innerText = '';
-          document.getElementById('seat').innerText = '';
+          document.getElementById('seat').innerText = sy.statusDisplay || '';
 
           setSectionLabel('membershipSection', '机型/注册号');
           document.getElementById('membershipSection').style.display = 'block';
@@ -1210,17 +1210,23 @@
           document.getElementById('outboundSection').style.display = 'block';
           document.getElementById('outbound').innerText = `${sy.rkMessage || '-'}`;
 
-          setSectionLabel('ssrSection', 'Reservation / Check-in');
+          setSectionLabel('ssrSection', 'Reservation');
           document.getElementById('ssrSection').style.display = 'block';
           document.getElementById('ssr').innerText =
-            `Reservation\n${sy.reservation?.[0] || '-'}        Reservation(TKT)\n${sy.reservationTicketed?.[0] || '-'}\n\n` +
-            `Check-in\n${sy.checkedIn?.[0] || '-'}        Check-in(TKT)\n${sy.checkedInTicketed?.[0] || '-'}`;
+            `${sy.reservation?.[0] || '-'}        Reservation(TKT)\n${sy.reservationTicketed?.[0] || '-'}`;
 
-          setSectionLabel('mealSection', 'Bags');
+          setSectionLabel('mealSection', 'Check-in');
           document.getElementById('mealSection').style.display = 'block';
-          document.getElementById('meal').innerText = `${sy.bags?.[0] || '-'}`;
+          document.getElementById('meal').innerText = `${sy.checkedIn?.[0] || '-'}        Check-in(TKT)\n${sy.checkedInTicketed?.[0] || '-'}`;
 
-          document.getElementById('paidSection').style.display = 'none';
+          setSectionLabel('paidSection', 'Bags');
+          document.getElementById('paidSection').style.display = 'block';
+          document.getElementById('paid').innerText = `${sy.bags?.[0] || '-'}`;
+
+          setSectionLabel('ticketSection', 'WCH/INF/CHD');
+          document.getElementById('ticketSection').style.display = 'block';
+          document.getElementById('ticket').innerText = `WCH${sy.wch || '000'} / I${sy.inf || '00'} / CHD${sy.chd || '000'}`;
+
           document.getElementById('loungeSection').style.display = 'none';
           document.getElementById('docToggleBtn').style.display = 'none';
           document.getElementById('docSection').style.display = 'none';
