@@ -821,6 +821,12 @@
     function dedupeLines(lines) {
       return [...new Set((lines || []).filter(Boolean))];
     }
+    function setSectionLabel(sectionId, text) {
+      const section = document.getElementById(sectionId);
+      if (!section) return;
+      const label = section.querySelector('.label');
+      if (label) label.innerText = text;
+    }
 
     function parseCheckinGroups(data) {
       const psmLines = dedupeLines((data?.psmLines || [])
@@ -1185,27 +1191,34 @@
           document.getElementById('name').innerText = '';
           document.getElementById('seat').innerText = '';
 
-          document.getElementById('membershipSection').style.display = 'none';
+          setSectionLabel('membershipSection', '机型/注册号');
+          document.getElementById('membershipSection').style.display = 'block';
+          document.getElementById('ff').innerText = `${sy.aircraftType || '-'} / ${sy.aircraftRegistration || '-'}`;
+          document.getElementById('ffStatus').innerText = '';
 
-          document.getElementById('ticketSection').style.display = 'block';
-          document.getElementById('ticket').innerText = `机型/注册号\n${sy.aircraftType || '-'} / ${sy.aircraftRegistration || '-'}`;
+          document.getElementById('ticketSection').style.display = 'none';
 
+          setSectionLabel('bagsSection', 'GATE');
           document.getElementById('bagsSection').style.display = 'block';
-          document.getElementById('bags').innerText = `GATE\n${sy.gate || '-'}`;
+          document.getElementById('bags').innerText = `${sy.gate || '-'}`;
 
+          setSectionLabel('inboundSection', 'BDT/SD/ED');
           document.getElementById('inboundSection').style.display = 'block';
-          document.getElementById('inbound').innerText = `BDT/SD/ED\n${sy.bdt || '-'} / ${sy.sd || '-'} / ${sy.ed || '-'}`;
+          document.getElementById('inbound').innerText = `${sy.bdt || '-'} / ${sy.sd || '-'} / ${sy.ed || '-'}`;
 
+          setSectionLabel('outboundSection', 'RK message');
           document.getElementById('outboundSection').style.display = 'block';
-          document.getElementById('outbound').innerText = `RK message\n${sy.rkMessage || '-'}`;
+          document.getElementById('outbound').innerText = `${sy.rkMessage || '-'}`;
 
+          setSectionLabel('ssrSection', 'Reservation / Check-in');
           document.getElementById('ssrSection').style.display = 'block';
           document.getElementById('ssr').innerText =
             `Reservation\n${sy.reservation?.[0] || '-'}        Reservation(TKT)\n${sy.reservationTicketed?.[0] || '-'}\n\n` +
-            `Check-in\n${sy.checkedIn?.[0] || '-'}        Check-in(TKT)\n${sy.checkedInTicketed?.[0] || '-'}\n\n` +
-            `Bags\n${sy.bags?.[0] || '-'}`;
+            `Check-in\n${sy.checkedIn?.[0] || '-'}        Check-in(TKT)\n${sy.checkedInTicketed?.[0] || '-'}`;
 
-          document.getElementById('mealSection').style.display = 'none';
+          setSectionLabel('mealSection', 'Bags');
+          document.getElementById('mealSection').style.display = 'block';
+          document.getElementById('meal').innerText = `${sy.bags?.[0] || '-'}`;
 
           document.getElementById('paidSection').style.display = 'none';
           document.getElementById('loungeSection').style.display = 'none';
@@ -1277,7 +1290,26 @@
         }
 
         // Membership
-        if (data.permissions?.canViewMembership) {
+        const membershipNumber = `${data.ffCarrier || ''} ${data.ffNumber || ''}`.trim();
+        const membershipStatus =
+          data.membershipStatus ||
+          (
+            data.ffTier === 'V'
+              ? 'Platinum'
+              : data.ffTier === 'G'
+              ? 'Gold'
+              : data.ffTier === 'S'
+              ? 'Silver'
+              : data.ffTier === 'C'
+              ? 'Regular'
+              : data.ffTier === '1'
+              ? 'Elite'
+              : data.ffTier === '2'
+              ? 'Elite Plus'
+              : ''
+          );
+        if (data.permissions?.canViewMembership && (membershipNumber || membershipStatus)) {
+          setSectionLabel('membershipSection', 'Membership');
 
           document.getElementById(
             'membershipSection'
@@ -1288,29 +1320,13 @@
             'ff'
           ).innerText =
 
-            `${data.ffCarrier || ''} ${data.ffNumber || ''}`.trim() || 'N/A';
+            membershipNumber;
 
           document.getElementById(
             'ffStatus'
           ).innerText =
 
-            data.membershipStatus ||
-
-            (
-              data.ffTier === 'V'
-                ? 'Platinum'
-                : data.ffTier === 'G'
-                ? 'Gold'
-                : data.ffTier === 'S'
-                ? 'Silver'
-                : data.ffTier === 'C'
-                ? 'Regular'
-                : data.ffTier === '1'
-                ? 'Elite'
-                : data.ffTier === '2'
-                ? 'Elite Plus'
-                : ''
-            );
+            membershipStatus;
         }
 
         else {
@@ -1345,6 +1361,7 @@
 
         // Bags
         if (data.permissions?.canViewBags) {
+          setSectionLabel('bagsSection', 'Passenger Bags');
 
           document.getElementById(
             'bagsSection'
