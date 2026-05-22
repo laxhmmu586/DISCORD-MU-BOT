@@ -1585,6 +1585,9 @@ To ${data.outbound.destination || '-'}`
 
   let inactivityTimer = null;
 
+  const isPageReload =
+    performance.getEntriesByType('navigation')[0]?.type === 'reload';
+
   function resetInactivityTimer() {
     if (!currentUser) return;
 
@@ -1614,8 +1617,17 @@ To ${data.outbound.destination || '-'}`
 
   bindInactivityEvents();
 
-  onAuthStateChanged(auth, (user) => {
+  onAuthStateChanged(auth, async (user) => {
     currentUser = user || null;
+
+    if (isPageReload && user) {
+      try {
+        await signOut(auth);
+      } catch (error) {
+        console.error('Reload logout failed:', error);
+      }
+      return;
+    }
 
     if (!user) {
 

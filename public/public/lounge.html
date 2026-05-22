@@ -118,12 +118,47 @@
     const auth = getAuth(app);
     const authInfo = document.getElementById('authInfo');
 
-    onAuthStateChanged(auth, (user) => {
+    const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000;
+    let inactivityTimer = null;
+    const isPageReload = performance.getEntriesByType('navigation')[0]?.type === 'reload';
+
+    function resetInactivityTimer() {
+      clearTimeout(inactivityTimer);
+      inactivityTimer = setTimeout(async () => {
+        try {
+          await signOut(auth);
+        } catch (error) {
+          console.error('Auto logout failed:', error);
+        }
+      }, INACTIVITY_TIMEOUT_MS);
+    }
+
+    function bindInactivityEvents() {
+      const events = ['click', 'keydown', 'mousemove', 'scroll', 'touchstart'];
+      events.forEach((eventName) => {
+        window.addEventListener(eventName, resetInactivityTimer, { passive: true });
+      });
+    }
+
+    bindInactivityEvents();
+
+    onAuthStateChanged(auth, async (user) => {
+      if (isPageReload && user) {
+        try {
+          await signOut(auth);
+        } catch (error) {
+          console.error('Reload logout failed:', error);
+        }
+        return;
+      }
+
       if (!user) {
+        clearTimeout(inactivityTimer);
         window.location.replace('login.html');
         return;
       }
       authInfo.textContent = `Logged in: ${user.email || user.uid}`;
+      resetInactivityTimer();
     });
 
     document.getElementById('logoutBtn').addEventListener('click', async () => {
