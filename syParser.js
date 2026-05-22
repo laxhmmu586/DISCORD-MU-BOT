@@ -102,9 +102,11 @@ function findSYInfo(log, queryDate) {
 
   if (queryDate) {
     const matched = sySections
-      .filter(s => new RegExp(`^>\\s*SY\\/${queryDate}\\b`, 'im').test(s.content || ''))
-      .sort((a, b) => parseSectionTimestamp(b.timestamp) - parseSectionTimestamp(a.timestamp));
-    if (matched.length) return parseSYSection(matched[0]);
+      .map(s => ({ section: s, info: parseSYSection(s) }))
+      .filter(x => x.info)
+      .filter(x => x.info.flightDate?.startsWith(queryDate))
+      .sort((a, b) => parseSectionTimestamp(b.section.timestamp) - parseSectionTimestamp(a.section.timestamp));
+    if (matched.length) return matched[0].info;
   }
 
   const today = new Date();
