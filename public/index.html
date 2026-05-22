@@ -1107,6 +1107,8 @@
 
         const data =
           await res.json();
+        const isSYQuery =
+          /^SY(?:\/\d{2}[A-Z]{3})?$/i.test(q);
 
         if (data.error) {
 
@@ -1116,6 +1118,62 @@
           error.style.display =
             'block';
 
+          return;
+        }
+
+        if (isSYQuery) {
+          const sy =
+            data.sy ||
+            (data.flightNo && data.flightDate ? data : null);
+
+          if (!sy) {
+            error.innerText =
+              'No SY payload returned. Please check backend deployment.';
+            error.style.display =
+              'block';
+            return;
+          }
+
+          currentPassengerData = null;
+          checkinPanelOpen = false;
+          document.getElementById('checkinDetailList').innerHTML = '';
+
+          document.getElementById('flight').innerText = `🛫 SY ${sy.flightNo || '-'}/${sy.flightDate || '-'}`;
+          document.getElementById('name').innerText = '航班';
+          document.getElementById('seat').innerText = `${sy.flightNo || '-'}/${sy.flightDate || '-'}`;
+
+          document.getElementById('membershipSection').style.display = 'block';
+          document.getElementById('ff').innerText = '机型/注册号';
+          document.getElementById('ffStatus').innerText = `${sy.aircraftType || '-'} / ${sy.aircraftRegistration || '-'}`;
+
+          document.getElementById('ticketSection').style.display = 'block';
+          document.getElementById('ticket').innerText = `GATE ${sy.gate || '-'}`;
+
+          document.getElementById('bagsSection').style.display = 'block';
+          document.getElementById('bags').innerText = `BDT/SD/ED ${sy.bdt || '-'} / ${sy.sd || '-'} / ${sy.ed || '-'}`;
+
+          document.getElementById('inboundSection').style.display = 'block';
+          document.getElementById('inbound').innerText = `RK message\n${sy.rkMessage || '-'}`;
+
+          document.getElementById('outboundSection').style.display = 'block';
+          document.getElementById('outbound').innerText =
+            `Reservation ${sy.reservation?.[0] || '-'}\n` +
+            `Reservation(TKT) ${sy.reservationTicketed?.[0] || '-'}\n` +
+            `Check-in ${sy.checkedIn?.[0] || '-'}\n` +
+            `Check-in(TKT) ${sy.checkedInTicketed?.[0] || '-'}`;
+
+          document.getElementById('ssrSection').style.display = 'block';
+          document.getElementById('ssr').innerText = `Bags ${sy.bags?.[0] || '-'}`;
+
+          document.getElementById('mealSection').style.display = 'block';
+          document.getElementById('meal').innerText = `WCH${sy.wch || '000'} / I${sy.inf || '00'} / CHD${sy.chd || '000'}`;
+
+          document.getElementById('paidSection').style.display = 'none';
+          document.getElementById('loungeSection').style.display = 'none';
+          document.getElementById('docToggleBtn').style.display = 'none';
+          document.getElementById('docSection').style.display = 'none';
+
+          card.style.display = 'block';
           return;
         }
 
