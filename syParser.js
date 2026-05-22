@@ -71,6 +71,13 @@ function parseSYSection(sectionObj) {
   const chd = section.match(/\bCHD(\d{3})\b/i)?.[1] || null;
   const wch = section.match(/\bWCH(\d{3})\b/i)?.[1] || null;
   const inf = section.match(/\bI(\d{2})\b/i)?.[1] || null;
+  const statusMatch = section.match(/\b(OP|CI\d{4}|CCL\d{4}|CC\d{4})\/NAM\b/i);
+  const statusRaw = statusMatch?.[1]?.toUpperCase() || null;
+  const statusCode = statusRaw
+    ? (statusRaw.startsWith('CCL') ? 'CCL' : statusRaw.startsWith('CC') ? 'CC' : statusRaw.startsWith('CI') ? 'CI' : 'OP')
+    : null;
+  const statusTime = statusRaw && statusCode !== 'OP' ? statusRaw.slice(statusCode.length) : null;
+  const statusDisplay = statusCode ? (statusTime ? `${statusCode}${statusTime}` : statusCode) : null;
 
   return {
     flightNo: flightMatch[1].toUpperCase(),
@@ -90,7 +97,10 @@ function parseSYSection(sectionObj) {
     bags,
     wch,
     inf,
-    chd
+    chd,
+    statusCode,
+    statusTime,
+    statusDisplay
   };
 }
 
