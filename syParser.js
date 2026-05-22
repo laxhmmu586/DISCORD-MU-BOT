@@ -43,11 +43,11 @@ function parseSYSection(section) {
   const catLine = section.match(/\bCAT\/[^\n\r]*/i)?.[0] || '';
   const routeLine = section.match(/\*[^\n\r]*\bR\d{3}\/\d{3}\/\d{3}[^\n\r]*/i)?.[0] || '';
 
-  const reservation = routeLine.match(/\bR(\d{3})\/(\d{3})\/(\d{3})\b/i);
-  const reservationTicketed = routeLine.match(/\bRET(\d{3})\/(\d{3})\/(\d{3})\b/i);
-  const checkedIn = routeLine.match(/\bC(\d{3})\/(\d{3})\/(\d{3})\b/i);
-  const checkedInTicketed = routeLine.match(/\bCET(\d{3})\/(\d{3})\/(\d{3})\b/i);
-  const bags = routeLine.match(/\bB(\d{4})\/(\d{6})\b/i);
+  const reservation = section.match(/\bR(\d{3})\/(\d{3})\/(\d{3})\b/i);
+  const reservationTicketed = section.match(/\bRET(\d{3})\/(\d{3})\/(\d{3})\b/i);
+  const checkedIn = section.match(/\bC(\d{3})\/(\d{3})\/(\d{3})\b/i);
+  const checkedInTicketed = section.match(/\bCET(\d{3})\/(\d{3})\/(\d{3})\b/i);
+  const bags = section.match(/\bB(\d{4})\/(\d{6})\b/i);
 
   const chd = section.match(/\bCHD(\d{3})\b/i)?.[1] || null;
   const wch = section.match(/\bWCH(\d{3})\b/i)?.[1] || null;
