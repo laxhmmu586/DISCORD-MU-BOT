@@ -45,6 +45,7 @@ const {
 
 const fbLookup =
   require('./fbLookup');
+const { findSYInfo } = require('./syParser');
 const DEFAULT_PERMISSIONS = {
   canViewTravelDocs: true,
   canViewMembership: true,
@@ -279,12 +280,12 @@ app.get(
 
     try {
 
-      let q =
-        (
-          req.query.q || ''
-        )
-        .trim()
-        .toUpperCase();
+      const rawQuery =
+        String(req.query.q || '')
+          .trim()
+          .toUpperCase();
+
+      let q = rawQuery;
 
       q =
         q.replace(
@@ -329,6 +330,11 @@ app.get(
             .toUpperCase();
       }
 
+      const isSYRawQuery =
+        /^SY(?:\/\d{2}[A-Z]{3})?$/.test(
+          rawQuery.replace(/\s+/g, '')
+        );
+
       // =========================
       // Load Log
       // =========================
@@ -365,6 +371,21 @@ app.get(
       parseIncrementalLog(log);
 
       parsePDLog(log);
+
+      const normalizedRaw = rawQuery.replace(/\s+/g, '');
+      const syMatch = normalizedRaw.match(/^SY(?:\/(\d{2}[A-Z]{3}))?$/i);
+      if (syMatch) {
+        const syDate = syMatch[1] ? syMatch[1].toUpperCase() : date;
+        const syInfo = findSYInfo(log, syDate);
+        if (!syInfo) {
+          return res.json({ error: 'No SY section found for selected date.' });
+        }
+        return res.json({ sy: syInfo });
+      }
+      if (isSYRawQuery) {
+        return res.json({ error: 'SY query did not return SY payload.' });
+      }
+
 
       let pax = null;
       const normalizedFF =

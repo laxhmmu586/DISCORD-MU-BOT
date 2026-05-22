@@ -1084,29 +1084,13 @@
           );
         }
 
-        const contentType =
-          res.headers.get('content-type') || '';
-
-        if (!res.ok) {
-          const failText =
-            await res.text();
-
-          throw new Error(
-            `HTTP ${res.status} ${res.statusText} ${failText.slice(0, 120)}`
-          );
-        }
-
-        if (!contentType.includes('application/json')) {
-          const failText =
-            await res.text();
-
-          throw new Error(
-            `Non-JSON response: ${failText.slice(0, 120)}`
-          );
-        }
-
         const data =
           await res.json();
+        const normalizedQuery =
+          String(q || '').trim().toUpperCase().replace(/\s+/g, '');
+        const isSYQuery =
+          /^SY(?:\/\d{2}[A-Z]{3})?$/.test(normalizedQuery) ||
+          normalizedQuery.startsWith('SY/');
 
         if (data.error) {
 
@@ -1116,6 +1100,89 @@
           error.style.display =
             'block';
 
+          return;
+        }
+
+        if (isSYQuery || data.sy) {
+          const sy =
+            data.sy ||
+            (data.flightNo && data.flightDate ? data : null);
+
+          if (!sy) {
+            card.style.display = 'none';
+            document.getElementById('loungeSection').style.display = 'none';
+            document.getElementById('membershipSection').style.display = 'none';
+            document.getElementById('ticketSection').style.display = 'none';
+            document.getElementById('bagsSection').style.display = 'none';
+            document.getElementById('inboundSection').style.display = 'none';
+            document.getElementById('outboundSection').style.display = 'none';
+            document.getElementById('ssrSection').style.display = 'none';
+            document.getElementById('mealSection').style.display = 'none';
+            document.getElementById('paidSection').style.display = 'none';
+            error.innerText =
+              'No SY payload returned. Please check backend deployment.';
+            error.style.display =
+              'block';
+            return;
+          }
+
+          currentPassengerData = null;
+          checkinPanelOpen = false;
+          document.getElementById('checkinDetailList').innerHTML = '';
+
+          document.getElementById('flight').innerText = `🛫 SY ${sy.flightNo || '-'}/${sy.flightDate || '-'}`;
+          document.getElementById('name').innerText = '航班';
+          document.getElementById('seat').innerText = `${sy.flightNo || '-'}/${sy.flightDate || '-'}`;
+
+          document.getElementById('membershipSection').style.display = 'block';
+          document.getElementById('ff').innerText = '机型/注册号';
+          document.getElementById('ffStatus').innerText = `${sy.aircraftType || '-'} / ${sy.aircraftRegistration || '-'}`;
+
+          document.getElementById('ticketSection').style.display = 'block';
+          document.getElementById('ticket').innerText = `GATE ${sy.gate || '-'}`;
+
+          document.getElementById('bagsSection').style.display = 'block';
+          document.getElementById('bags').innerText = `BDT/SD/ED ${sy.bdt || '-'} / ${sy.sd || '-'} / ${sy.ed || '-'}`;
+
+          document.getElementById('inboundSection').style.display = 'block';
+          document.getElementById('inbound').innerText = `RK message\n${sy.rkMessage || '-'}`;
+
+          document.getElementById('outboundSection').style.display = 'block';
+          document.getElementById('outbound').innerText =
+            `Reservation ${sy.reservation?.[0] || '-'}\n` +
+            `Reservation(TKT) ${sy.reservationTicketed?.[0] || '-'}\n` +
+            `Check-in ${sy.checkedIn?.[0] || '-'}\n` +
+            `Check-in(TKT) ${sy.checkedInTicketed?.[0] || '-'}`;
+
+          document.getElementById('ssrSection').style.display = 'block';
+          document.getElementById('ssr').innerText = `Bags ${sy.bags?.[0] || '-'}`;
+
+          document.getElementById('mealSection').style.display = 'block';
+          document.getElementById('meal').innerText = `WCH${sy.wch || '000'} / I${sy.inf || '00'} / CHD${sy.chd || '000'}`;
+
+          document.getElementById('paidSection').style.display = 'none';
+          document.getElementById('loungeSection').style.display = 'none';
+          document.getElementById('docToggleBtn').style.display = 'none';
+          document.getElementById('docSection').style.display = 'none';
+
+          card.style.display = 'block';
+          return;
+        }
+
+        if (isSYQuery) {
+          card.style.display = 'none';
+          error.innerText =
+            'SY query did not return SY payload.';
+          error.style.display =
+            'block';
+          return;
+        }
+
+        if (!data.flight || !data.flightDate || !data.name) {
+          error.innerText =
+            'Unexpected response format. Please refresh and retry.';
+          error.style.display =
+            'block';
           return;
         }
 
@@ -1505,19 +1572,5 @@ To ${data.outbound.destination || '-'}`
   };
 
 </script>
-<div style="
-padding:10px;
-background:#f2f2f2;
-text-align:right;
-">
-
-Logged in as:
-<span id="userEmail"></span>
-
-<button onclick="logout()">
-Logout
-</button>
-
-</div>
 </body>
 </html>
