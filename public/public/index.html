@@ -1103,8 +1103,11 @@
 
         const data =
           await res.json();
+        const normalizedQuery =
+          String(q || '').trim().toUpperCase().replace(/\s+/g, '');
         const isSYQuery =
-          /^SY(?:\/\d{2}[A-Z]{3})?$/i.test(q);
+          /^SY(?:\/\d{2}[A-Z]{3})?$/.test(normalizedQuery) ||
+          normalizedQuery.startsWith('SY/');
 
         if (data.error) {
 
@@ -1117,7 +1120,7 @@
           return;
         }
 
-        if (isSYQuery) {
+        if (isSYQuery || data.sy) {
           const sy =
             data.sy ||
             (data.flightNo && data.flightDate ? data : null);
@@ -1170,6 +1173,14 @@
           document.getElementById('docSection').style.display = 'none';
 
           card.style.display = 'block';
+          return;
+        }
+
+        if (!data.flight || !data.flightDate || !data.name) {
+          error.innerText =
+            'Unexpected response format. Please refresh and retry.';
+          error.style.display =
+            'block';
           return;
         }
 
