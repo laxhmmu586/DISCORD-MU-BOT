@@ -728,6 +728,8 @@
   </div>
 
   <script>
+    window.MU_API_BASE = 'https://discord-mu-bot-production.up.railway.app';
+
     let docPanelOpen = false;
     let currentPassengerData = null;
     let checkinPanelOpen = false;
@@ -735,7 +737,7 @@
 
     let helpPanelOpen = false;
 
-    const API_BASE = (() => {
+    function resolveApiBase() {
       const fromWindow = window.MU_API_BASE || '';
       const fromStorage = localStorage.getItem('mu_api_base') || '';
 
@@ -746,7 +748,19 @@
       if (normalizedStorage) return normalizedStorage;
 
       return '';
-    })();
+    }
+
+    function promptAndSaveApiBase() {
+      const input = window.prompt(
+        '未检测到后端地址。请输入机器人后端域名（例如 https://xxx.up.railway.app ）',
+        'https://'
+      );
+      if (!input) return '';
+      const normalized = input.trim().replace(/\/$/, '');
+      if (!/^https?:\/\//i.test(normalized)) return '';
+      localStorage.setItem('mu_api_base', normalized);
+      return normalized;
+    }
 
 
     function escapeHtml(value) {
@@ -1050,8 +1064,9 @@
 
       try {
 
-        const endpoint =
-          `${API_BASE}/search?q=` +
+        let apiBase = resolveApiBase();
+        let endpoint =
+          `${apiBase}/search?q=` +
           encodeURIComponent(q);
 
         const headers = {};
@@ -1071,14 +1086,36 @@
             await res.text();
 
           const maybeWrongApiBase =
-            !API_BASE &&
+            !apiBase &&
             res.status === 404 &&
             failText.toLowerCase().includes('<!doctype html');
 
           if (maybeWrongApiBase) {
-            throw new Error(
-              'API endpoint not found on current site. Please configure MU_API_BASE or localStorage.mu_api_base to your bot backend domain.'
-            );
+            const configuredApiBase = promptAndSaveApiBase();
+            if (configuredApiBase) {
+              apiBase = configuredApiBase;
+              endpoint = `${apiBase}/search?q=` + encodeURIComponent(q);
+              const retryRes = await fetch(endpoint, { headers });
+              if (!retryRes.ok) {
+                const retryText = await retryRes.text();
+                throw new Error(
+                  `HTTP ${retryRes.status} ${retryRes.statusText} ${retryText.slice(0, 120)} (endpoint: ${endpoint})`
+                );
+              }
+              const retryType = retryRes.headers.get('content-type') || '';
+              if (!retryType.includes('application/json')) {
+                const retryText = await retryRes.text();
+                throw new Error(`Non-JSON response: ${retryText.slice(0, 120)} (endpoint: ${endpoint})`);
+              }
+              const retryData = await retryRes.json();
+              if (retryData.error) {
+                error.innerText = retryData.error;
+                error.style.display = 'block';
+                return;
+              }
+              return renderSearchResult(retryData, q);
+            }
+            throw new Error('API endpoint not found on current site, and no backend configured.');
           }
 
           throw new Error(
@@ -1095,8 +1132,17 @@
           );
         }
 
-        const data =
-          await res.json();
+        const data = await res.json();
+        return renderSearchResult(data, q);
+      } catch (err) {
+        error.innerText = err?.message || 'Search failed.';
+        error.style.display = 'block';
+      }
+    }
+
+    function renderSearchResult(data, q) {
+        const card = document.getElementById('card');
+        const error = document.getElementById('error');
         const normalizedQuery =
           String(q || '').trim().toUpperCase().replace(/\s+/g, '');
         const isSYQuery =
@@ -1142,40 +1188,34 @@
           document.getElementById('checkinDetailList').innerHTML = '';
 
           document.getElementById('flight').innerText = `🛫 SY ${sy.flightNo || '-'}/${sy.flightDate || '-'}`;
-          document.getElementById('name').innerText = '航班';
-          document.getElementById('seat').innerText = `${sy.flightNo || '-'}/${sy.flightDate || '-'}`;
+          document.getElementById('name').innerText = '';
+          document.getElementById('seat').innerText = '';
 
-          document.getElementById('membershipSection').style.display = 'block';
-          document.getElementById('ff').innerText = '机型/注册号';
-          document.getElementById('ffStatus').innerText = `${sy.aircraftType || '-'} / ${sy.aircraftRegistration || '-'}`;
+          document.getElementById('membershipSection').style.display = 'none';
 
           document.getElementById('ticketSection').style.display = 'block';
-          document.getElementById('ticket').innerText = `GATE ${sy.gate || '-'}`;
+          document.getElementById('ticket').innerText = `机型/注册号\n${sy.aircraftType || '-'} / ${sy.aircraftRegistration || '-'}`;
 
           document.getElementById('bagsSection').style.display = 'block';
-          document.getElementById('bags').innerText = `BDT/SD/ED ${sy.bdt || '-'} / ${sy.sd || '-'} / ${sy.ed || '-'}`;
+          document.getElementById('bags').innerText = `GATE\n${sy.gate || '-'}`;
 
           document.getElementById('inboundSection').style.display = 'block';
-          document.getElementById('inbound').innerText = `RK message\n${sy.rkMessage || '-'}`;
+          document.getElementById('inbound').innerText = `BDT/SD/ED\n${sy.bdt || '-'} / ${sy.sd || '-'} / ${sy.ed || '-'}`;
 
           document.getElementById('outboundSection').style.display = 'block';
-          document.getElementById('outbound').innerText =
-            `Reservation ${sy.reservation?.[0] || '-'}\n` +
-            `Reservation(TKT) ${sy.reservationTicketed?.[0] || '-'}\n` +
-            `Check-in ${sy.checkedIn?.[0] || '-'}\n` +
-            `Check-in(TKT) ${sy.checkedInTicketed?.[0] || '-'}`;
+          document.getElementById('outbound').innerText = `RK message\n${sy.rkMessage || '-'}`;
 
           document.getElementById('ssrSection').style.display = 'block';
-          document.getElementById('ssr').innerText = `Bags ${sy.bags?.[0] || '-'}`;
+          document.getElementById('ssr').innerText =
+            `Reservation\n${sy.reservation?.[0] || '-'}        Reservation(TKT)\n${sy.reservationTicketed?.[0] || '-'}\n\n` +
+            `Check-in\n${sy.checkedIn?.[0] || '-'}        Check-in(TKT)\n${sy.checkedInTicketed?.[0] || '-'}\n\n` +
+            `Bags\n${sy.bags?.[0] || '-'}`;
 
-          document.getElementById('mealSection').style.display = 'block';
-          document.getElementById('meal').innerText = `WCH${sy.wch || '000'} / I${sy.inf || '00'} / CHD${sy.chd || '000'}`;
-
+          document.getElementById('mealSection').style.display = 'none';
           document.getElementById('paidSection').style.display = 'none';
           document.getElementById('loungeSection').style.display = 'none';
           document.getElementById('docToggleBtn').style.display = 'none';
           document.getElementById('docSection').style.display = 'none';
-
           card.style.display = 'block';
           return;
         }
@@ -1330,7 +1370,7 @@
         }
 
         // Inbound
-        if (data.permissions?.canViewInbound) {
+        if (data.permissions?.canViewInbound && data.inbound) {
 
           document.getElementById(
             'inboundSection'
@@ -1341,7 +1381,7 @@
             'inbound'
           ).innerText =
 
-            data.inbound ? `${data.inbound.flight || '-'} / ${data.inbound.date || '-'}\nFrom ${data.inbound.origin || '-'}` : 'N/A';
+            `${data.inbound.flight || '-'} / ${data.inbound.date || '-'}\nFrom ${data.inbound.origin || '-'}`;
         }
 
         else {
@@ -1353,7 +1393,7 @@
         }
 
         // Outbound
-        if (data.permissions?.canViewOutbound) {
+        if (data.permissions?.canViewOutbound && data.outbound) {
 
           document.getElementById(
             'outboundSection'
@@ -1364,10 +1404,8 @@
             'outbound'
           ).innerText =
 
-            data.outbound
-            ? `${data.outbound.flight || '-'} / ${data.outbound.date || '-'}${data.outbound.bn ? ` • BN${data.outbound.bn}` : ''}${data.outbound.seat ? ` • ${data.outbound.seat}` : ''}${data.outbound.status === 'DELETED' ? ' • DELETED' : ''}
+            `${data.outbound.flight || '-'} / ${data.outbound.date || '-'}${data.outbound.bn ? ` • BN${data.outbound.bn}` : ''}${data.outbound.seat ? ` • ${data.outbound.seat}` : ''}${data.outbound.status === 'DELETED' ? ' • DELETED' : ''}
 To ${data.outbound.destination || '-'}`
-            : 'N/A';
         }
 
         else {
@@ -1379,30 +1417,28 @@ To ${data.outbound.destination || '-'}`
         }
 
         // Special Service
-        if (data.permissions?.canViewSpecialService) {
+        if (data.permissions?.canViewSpecialService && data.specialServices && data.specialServices.length) {
           document.getElementById('ssrSection').style.display = 'block';
-          document.getElementById('ssr').innerText = (data.specialServices && data.specialServices.length) ? data.specialServices.join(', ') : 'N/A';
+          document.getElementById('ssr').innerText = data.specialServices.join(', ');
         } else {
           document.getElementById('ssrSection').style.display = 'none';
         }
 
         // Special Meal
-        if (data.permissions?.canViewSpecialMeals) {
+        if (data.permissions?.canViewSpecialMeals && data.specialMeals && data.specialMeals.length) {
           document.getElementById('mealSection').style.display = 'block';
-          document.getElementById('meal').innerText = (data.specialMeals && data.specialMeals.length) ? data.specialMeals.join(', ') : 'N/A';
+          document.getElementById('meal').innerText = data.specialMeals.join(', ');
         } else {
           document.getElementById('mealSection').style.display = 'none';
         }
 
         // Paid Service
-        if (data.permissions?.canViewPaidService) {
+        if (data.permissions?.canViewPaidService && ((data.paidProductsShort && data.paidProductsShort.length) || (data.paidProducts && data.paidProducts.length))) {
           document.getElementById('paidSection').style.display = 'block';
           if (data.paidProductsShort && data.paidProductsShort.length) {
             document.getElementById('paid').innerText = data.paidProductsShort.join('\n');
           } else if (data.paidProducts && data.paidProducts.length) {
             document.getElementById('paid').innerText = data.paidProducts.join('\n');
-          } else {
-            document.getElementById('paid').innerText = 'N/A';
           }
         } else {
           document.getElementById('paidSection').style.display = 'none';
@@ -1413,29 +1449,23 @@ To ${data.outbound.destination || '-'}`
         const loungeValue = document.getElementById('lounge');
         const guestLabel = document.getElementById('guestLabel');
         const guestValue = document.getElementById('guest');
-        const canViewLounge = Boolean(data.permissions?.canViewLoungeAccess);
-        const canViewGuest = Boolean(data.permissions?.canViewGuestAccess);
-        if (canViewLounge || canViewGuest) {
-          loungeSection.style.display = 'block';
-          loungeLabel.style.display = canViewLounge ? 'block' : 'none';
-          loungeValue.style.display = canViewLounge ? 'block' : 'none';
-          guestLabel.style.display = canViewGuest ? 'block' : 'none';
-          guestValue.style.display = canViewGuest ? 'block' : 'none';
-          if (canViewLounge) {
-            loungeValue.innerHTML =
-              data.lounge?.eligible === true
-                ? '<span class="yes">✅ Eligible</span>'
-                : '<span class="no">❌ Not Eligible</span>';
-          }
-          if (canViewGuest) {
-            guestValue.innerHTML =
-              data.lounge?.guest === true
-                ? '<span class="yes">✅ Allowed</span>'
-                : '<span class="no">❌ Not Allowed</span>';
-          }
-        } else {
-          loungeSection.style.display = 'none';
-        }
+        loungeSection.style.display = 'block';
+        loungeLabel.style.display = 'block';
+        loungeValue.style.display = 'block';
+        guestLabel.style.display = 'block';
+        guestValue.style.display = 'block';
+        loungeValue.innerHTML =
+          data.lounge?.eligible === true
+            ? '<span class="yes">✅ Eligible</span>'
+            : data.permissions?.canViewLoungeAccess
+            ? '<span class="no">❌ Not Eligible</span>'
+            : 'N/A';
+        guestValue.innerHTML =
+          data.lounge?.guest === true
+            ? '<span class="yes">✅ Allowed</span>'
+            : data.permissions?.canViewGuestAccess
+            ? '<span class="no">❌ Not Allowed</span>'
+            : 'N/A';
 
         // Show
         card.style.display =
