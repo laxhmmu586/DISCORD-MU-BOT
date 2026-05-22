@@ -1119,8 +1119,11 @@
           return;
         }
 
-        if (data.sy) {
-          const sy = data.sy;
+        const sy =
+          data.sy ||
+          (data.flightNo && data.flightDate ? data : null);
+
+        if (sy) {
           currentPassengerData = null;
           checkinPanelOpen = false;
           document.getElementById('checkinDetailList').innerHTML = '';
@@ -1161,6 +1164,14 @@
           document.getElementById('docSection').style.display = 'none';
 
           card.style.display = 'block';
+          return;
+        }
+
+        if (/^SY(?:\/\d{2}[A-Z]{3})?$/i.test(q) && !sy) {
+          error.innerText =
+            'SY data format not returned by API. Please deploy latest backend.';
+          error.style.display =
+            'block';
           return;
         }
 
