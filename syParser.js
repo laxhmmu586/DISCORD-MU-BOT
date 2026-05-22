@@ -16,7 +16,7 @@ function splitLogicalSections(log) {
     const isContinuation = cmd ? /^(PN|PN1|PF|PF1)$/.test(cmd) : false;
 
     if (cmd && !isContinuation) {
-      if (current && current.content.trim()) sections.push(current.content);
+      if (current && current.content.trim()) sections.push(current);
       current = { content: line + '\n', timestamp: pendingTimestamp || null };
       pendingTimestamp = null;
       continue;
@@ -30,11 +30,30 @@ function splitLogicalSections(log) {
     current.content += line + '\n';
   }
 
-  if (current && current.content.trim()) sections.push(current.content);
+  if (current && current.content.trim()) sections.push(current);
   return sections;
 }
 
-function parseSYSection(section) {
+function parseSectionTimestamp(timestamp) {
+  if (!timestamp) return 0;
+  const m = timestamp.match(/^(\d{4})\s+([A-Z][a-z]{2})\s+(\d{2}),\s+(\w+),\s+(\d{2}):(\d{2}):(\d{2})$/);
+  if (!m) return 0;
+  const monthMap = {
+    Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
+    Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
+  };
+  const year = Number(m[1]);
+  const month = monthMap[m[2]];
+  const day = Number(m[3]);
+  const hour = Number(m[5]);
+  const min = Number(m[6]);
+  const sec = Number(m[7]);
+  if (Number.isNaN(month)) return 0;
+  return Date.UTC(year, month, day, hour, min, sec);
+}
+
+function parseSYSection(sectionObj) {
+  const section = sectionObj.content || '';
   const flightMatch = section.match(/SY:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
   if (!flightMatch) return null;
 
@@ -77,16 +96,20 @@ function parseSYSection(section) {
 
 function findSYInfo(log, queryDate) {
   const sections = splitLogicalSections(log);
-  const sySections = sections.filter(s => /^>\s*SY(?:\/\d{2}[A-Z]{3})?/im.test(s) && /SY:\s*[A-Z0-9]+\/(\d{2}[A-Z]{3}\d{2})/i.test(s));
+  const sySections = sections.filter(s => /^>\s*SY(?:\/\d{2}[A-Z]{3})?/im.test(s.content || '') && /SY:\s*[A-Z0-9]+\/(\d{2}[A-Z]{3}\d{2})/i.test(s.content || ''));
 
   if (!sySections.length) return null;
 
   if (queryDate) {
-    const matched = sySections.find(s => new RegExp(`^>\\s*SY\\/${queryDate}\\b`, 'im').test(s));
-    if (matched) return parseSYSection(matched);
+    const matched = sySections
+      .filter(s => new RegExp(`^>\\s*SY\\/${queryDate}\\b`, 'im').test(s.content || ''))
+      .sort((a, b) => parseSectionTimestamp(b.timestamp) - parseSectionTimestamp(a.timestamp));
+    if (matched.length) return parseSYSection(matched[0]);
   }
 
-  return parseSYSection(sySections[sySections.length - 1]);
+  const latest = sySections
+    .sort((a, b) => parseSectionTimestamp(b.timestamp) - parseSectionTimestamp(a.timestamp))[0];
+  return parseSYSection(latest);
 }
 
 module.exports = { findSYInfo };

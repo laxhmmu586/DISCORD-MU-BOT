@@ -223,7 +223,7 @@ function formatSYResponse(info) {
     { name: 'Reservation(TKT)', value: info.reservationTicketed ? `${info.reservationTicketed[0]}` : '-', inline: true },
     { name: 'Check-in', value: info.checkedIn ? `${info.checkedIn[0]}` : '-', inline: true },
     { name: 'Check-in(TKT)', value: info.checkedInTicketed ? `${info.checkedInTicketed[0]}` : '-', inline: true },
-    { name: 'Bags', value: info.bags ? `${info.bags[0]} (件数/重量)` : '-', inline: true },
+    { name: 'Bags', value: info.bags ? `${info.bags[0]}` : '-', inline: true },
     { name: 'WCH/INF/CHD', value: `WCH${info.wch || '000'} / I${info.inf || '00'} / CHD${info.chd || '000'}`, inline: true }
   ];
 
