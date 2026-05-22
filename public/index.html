@@ -532,10 +532,6 @@
             <div class="sy-cell"><div class="label">Check-in</div><div id="syCi" class="value"></div></div>
             <div class="sy-cell"><div class="label">Check-in(TKT)</div><div id="syCiTkt" class="value"></div></div>
           </div>
-          <div class="sy-row">
-            <div class="sy-cell"><div class="label">Bags</div><div id="syBagsLast" class="value"></div></div>
-            <div class="sy-cell"><div class="label">WCH/INF/CHD</div><div id="syWch" class="value"></div></div>
-          </div>
         </div>
 
         <div
@@ -1251,8 +1247,6 @@
           setTextById('syResTkt', `${sy.reservationTicketed?.[0] || '-'}`);
           setTextById('syCi', `${sy.checkedIn?.[0] || '-'}`);
           setTextById('syCiTkt', `${sy.checkedInTicketed?.[0] || '-'}`);
-          setTextById('syBagsLast', `${sy.bags?.[0] || '-'}`);
-          setTextById('syWch', `WCH${sy.wch || '000'} / I${sy.inf || '00'} / CHD${sy.chd || '000'}`);
 
           setDisplayById('docToggleBtn', 'none');
           card.style.display = 'block';
