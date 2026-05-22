@@ -214,10 +214,9 @@ function findPassengerByFFFromRecord(log, query) {
 
 function formatSYResponse(info) {
   const fields = [
-    { name: '航班', value: `${info.flightNo}/${info.flightDate}`, inline: true },
     { name: '机型/注册号', value: `${info.aircraftType || '-'} / ${info.aircraftRegistration || '-'}`, inline: true },
     { name: 'GATE', value: info.gate || '-', inline: true },
-    { name: 'BDT/SD/ED', value: `${info.bdt || '-'} / ${info.sd || '-'} / ${info.ed || '-'}`, inline: false },
+    { name: 'BDT/SD/ED', value: `${info.bdt || '-'} / ${info.sd || '-'} / ${info.ed || '-'}`, inline: true },
     { name: 'RK message', value: info.rkMessage || '-', inline: false },
     { name: 'Reservation', value: info.reservation ? `${info.reservation[0]}` : '-', inline: true },
     { name: 'Reservation(TKT)', value: info.reservationTicketed ? `${info.reservationTicketed[0]}` : '-', inline: true },
