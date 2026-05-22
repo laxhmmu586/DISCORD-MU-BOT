@@ -20,30 +20,6 @@
     .title { font-size: 30px; font-weight: bold; margin-bottom: 6px; }
     .subtitle { color: #94a3b8; font-size: 14px; margin-bottom: 24px; line-height: 1.5; }
     .card { background: #111827; border-radius: 20px; padding: 20px; box-shadow: 0 0 25px rgba(0,0,0,0.35); }
-    .auth-bar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 14px;
-      padding: 10px 12px;
-      border-radius: 12px;
-      background: rgba(37,99,235,0.15);
-      color: #bfdbfe;
-      font-size: 13px;
-    }
-    .auth-info { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .logout-btn {
-      border: none;
-      background: #1d4ed8;
-      color: #fff;
-      border-radius: 10px;
-      padding: 8px 12px;
-      font-size: 13px;
-      cursor: pointer;
-      white-space: nowrap;
-    }
-    .logout-btn:hover { background: #1e40af; }
     .flight { font-size: 24px; font-weight: bold; margin-bottom: 18px; }
     .name { font-size: 28px; font-weight: bold; margin-bottom: 10px; }
     .seat { color: #cbd5e1; margin-bottom: 22px; font-size: 15px; }
@@ -60,12 +36,7 @@
 <body>
   <div class="container">
     <div class="title">Lounge Validation</div>
-    <div class="subtitle">Authenticated lounge eligibility view.</div>
-
-    <div class="auth-bar">
-      <div class="auth-info" id="authInfo">Checking login...</div>
-      <button class="logout-btn" id="logoutBtn" type="button">Logout</button>
-    </div>
+    <div class="subtitle">Lounge eligibility view.</div>
 
     <div class="card">
       <div class="flight">✈️ MU586/21MAY</div>
@@ -99,72 +70,5 @@
       </div>
     </div>
   </div>
-
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
-
-    const firebaseConfig = {
-      apiKey: "<SECRET>",
-      authDomain: "china-eastern.firebaseapp.com",
-      projectId: "china-eastern",
-      storageBucket: "china-eastern.firebasestorage.app",
-      messagingSenderId: "1042286496693",
-      appId: "1:1042286496693:web:43f8f817a1232dce76f3f0",
-      measurementId: "G-KLZ4X09KXG"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const authInfo = document.getElementById('authInfo');
-
-    const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000;
-    let inactivityTimer = null;
-    const isPageReload = performance.getEntriesByType('navigation')[0]?.type === 'reload';
-
-    function resetInactivityTimer() {
-      clearTimeout(inactivityTimer);
-      inactivityTimer = setTimeout(async () => {
-        try {
-          await signOut(auth);
-        } catch (error) {
-          console.error('Auto logout failed:', error);
-        }
-      }, INACTIVITY_TIMEOUT_MS);
-    }
-
-    function bindInactivityEvents() {
-      const events = ['click', 'keydown', 'mousemove', 'scroll', 'touchstart'];
-      events.forEach((eventName) => {
-        window.addEventListener(eventName, resetInactivityTimer, { passive: true });
-      });
-    }
-
-    bindInactivityEvents();
-
-    onAuthStateChanged(auth, async (user) => {
-      if (isPageReload && user) {
-        try {
-          await signOut(auth);
-        } catch (error) {
-          console.error('Reload logout failed:', error);
-        }
-        return;
-      }
-
-      if (!user) {
-        clearTimeout(inactivityTimer);
-        window.location.replace('login.html');
-        return;
-      }
-      authInfo.textContent = `Logged in: ${user.email || user.uid}`;
-      resetInactivityTimer();
-    });
-
-    document.getElementById('logoutBtn').addEventListener('click', async () => {
-      await signOut(auth);
-      window.location.replace('login.html');
-    });
-  </script>
 </body>
 </html>
