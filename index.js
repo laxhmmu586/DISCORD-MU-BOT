@@ -280,12 +280,12 @@ app.get(
 
     try {
 
-      let q =
-        (
-          req.query.q || ''
-        )
-        .trim()
-        .toUpperCase();
+      const rawQuery =
+        String(req.query.q || '')
+          .trim()
+          .toUpperCase();
+
+      let q = rawQuery;
 
       q =
         q.replace(
@@ -330,6 +330,11 @@ app.get(
             .toUpperCase();
       }
 
+      const isSYRawQuery =
+        /^SY(?:\/\d{2}[A-Z]{3})?$/.test(
+          rawQuery.replace(/\s+/g, '')
+        );
+
       // =========================
       // Load Log
       // =========================
@@ -367,7 +372,7 @@ app.get(
 
       parsePDLog(log);
 
-      const normalizedRaw = String(q || '').trim().toUpperCase();
+      const normalizedRaw = rawQuery.replace(/\s+/g, '');
       const syMatch = normalizedRaw.match(/^SY(?:\/(\d{2}[A-Z]{3}))?$/i);
       if (syMatch) {
         const syDate = syMatch[1] ? syMatch[1].toUpperCase() : date;
@@ -376,6 +381,9 @@ app.get(
           return res.json({ error: 'No SY section found for selected date.' });
         }
         return res.json({ sy: syInfo });
+      }
+      if (isSYRawQuery) {
+        return res.json({ error: 'SY query did not return SY payload.' });
       }
 
 
