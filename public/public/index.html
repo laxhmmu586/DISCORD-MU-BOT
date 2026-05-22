@@ -1187,7 +1187,7 @@
           checkinPanelOpen = false;
           document.getElementById('checkinDetailList').innerHTML = '';
 
-          document.getElementById('flight').innerText = `🛫 SY ${sy.flightNo || '-'}/${sy.flightDate || '-'}${sy.statusDisplay ? ` [${sy.statusDisplay}]` : ''}`;
+          document.getElementById('flight').innerText = `🛫 SY ${sy.flightNo || '-'}/${sy.flightDate || '-'}`;
           document.getElementById('name').innerText = '';
           document.getElementById('seat').innerText = sy.statusDisplay || '';
 
@@ -1212,24 +1212,28 @@
 
           setSectionLabel('ssrSection', 'Reservation');
           document.getElementById('ssrSection').style.display = 'block';
-          document.getElementById('ssr').innerText =
-            `${sy.reservation?.[0] || '-'}        Reservation(TKT)\n${sy.reservationTicketed?.[0] || '-'}`;
+          document.getElementById('ssr').innerText = `${sy.reservation?.[0] || '-'}`;
 
-          setSectionLabel('mealSection', 'Check-in');
+          setSectionLabel('mealSection', 'Reservation(TKT)');
           document.getElementById('mealSection').style.display = 'block';
-          document.getElementById('meal').innerText = `${sy.checkedIn?.[0] || '-'}        Check-in(TKT)\n${sy.checkedInTicketed?.[0] || '-'}`;
+          document.getElementById('meal').innerText = `${sy.reservationTicketed?.[0] || '-'}`;
 
-          setSectionLabel('paidSection', 'Bags');
+          setSectionLabel('paidSection', 'Check-in');
           document.getElementById('paidSection').style.display = 'block';
-          document.getElementById('paid').innerText = `${sy.bags?.[0] || '-'}`;
+          document.getElementById('paid').innerText = `${sy.checkedIn?.[0] || '-'}`;
 
-          setSectionLabel('ticketSection', 'WCH/INF/CHD');
+          setSectionLabel('ticketSection', 'Check-in(TKT)');
           document.getElementById('ticketSection').style.display = 'block';
-          document.getElementById('ticket').innerText = `WCH${sy.wch || '000'} / I${sy.inf || '00'} / CHD${sy.chd || '000'}`;
+          document.getElementById('ticket').innerText = `${sy.checkedInTicketed?.[0] || '-'}`;
 
-          document.getElementById('loungeSection').style.display = 'none';
+          setSectionLabel('loungeSection', 'Bags');
+          setSectionLabel('docSection', 'WCH/INF/CHD');
+          document.getElementById('docSection').style.display = 'block';
+          document.getElementById('docs').innerText = `WCH${sy.wch || '000'} / I${sy.inf || '00'} / CHD${sy.chd || '000'}`;
+
+          document.getElementById('loungeSection').style.display = 'block';
+          document.getElementById('lounge').innerText = `${sy.bags?.[0] || '-'}`;
           document.getElementById('docToggleBtn').style.display = 'none';
-          document.getElementById('docSection').style.display = 'none';
 
           card.style.display = 'block';
           return;
