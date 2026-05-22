@@ -317,6 +317,11 @@
       line-height: 1.55;
     }
 
+    .password-page { margin-top: 16px; }
+    .password-card { background:#0b1833; border:1px solid rgba(255,255,255,0.1); border-radius:16px; padding:20px; }
+    .password-card input { width:100%; background:#1f2a44; border:1px solid #3b4661; border-radius:10px; color:#fff; padding:10px; margin-bottom:12px; }
+    .password-actions { display:flex; gap:10px; }
+
     .flight-row {
       display: flex;
       align-items: center;
@@ -412,6 +417,12 @@
       background: #475569;
     }
 
+  
+    .sy-layout { margin-top: 8px; }
+    .sy-row { display:grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
+    .sy-row-full { grid-template-columns: 1fr; }
+    .sy-cell .label { margin-bottom: 4px; }
+
   </style>
 
 </head>
@@ -444,18 +455,12 @@
 
         <button
           class="help-btn"
-          onclick="toggleHelpPanel()"
+          onclick="openChangePasswordPage()"
         >
-          Search Help
+          Change Password
         </button>
       </div>
 
-      <div
-        id="helpPanel"
-        class="help-panel"
-      >
-        Search by Boarding Number, Name, Seat, Ticket Number, or Membership Number.<br>
-      </div>
 
       <div class="search-box">
 
@@ -505,6 +510,28 @@
           id="seat"
           class="seat"
         ></div>
+
+        <div id="syLayout" class="sy-layout" style="display:none;">
+          <div class="sy-row">
+            <div class="sy-cell"><div class="label">机型/注册号</div><div id="syAircraft" class="value"></div></div>
+            <div class="sy-cell"><div class="label">GATE</div><div id="syGate" class="value"></div></div>
+          </div>
+          <div class="sy-row">
+            <div class="sy-cell"><div class="label">BDT/SD/ED</div><div id="syTimes" class="value"></div></div>
+            <div class="sy-cell"><div class="label">Bags</div><div id="syBags" class="value"></div></div>
+          </div>
+          <div class="sy-row sy-row-full">
+            <div class="sy-cell"><div class="label">RK message</div><div id="syRk" class="value"></div></div>
+          </div>
+          <div class="sy-row">
+            <div class="sy-cell"><div class="label">Reservation</div><div id="syRes" class="value"></div></div>
+            <div class="sy-cell"><div class="label">Reservation(TKT)</div><div id="syResTkt" class="value"></div></div>
+          </div>
+          <div class="sy-row">
+            <div class="sy-cell"><div class="label">Check-in</div><div id="syCi" class="value"></div></div>
+            <div class="sy-cell"><div class="label">Check-in(TKT)</div><div id="syCiTkt" class="value"></div></div>
+          </div>
+        </div>
 
         <div
           id="docSection"
@@ -723,19 +750,31 @@
 
       <div id="checkinDetailList"></div>
 
+      <div id="changePasswordPage" class="password-page" style="display:none;">
+        <div class="password-card">
+          <div class="title" style="font-size:28px;margin-bottom:8px;">Change Password</div>
+          <div class="seat" style="margin-bottom:18px;">用户已登录，请输入新密码。</div>
+          <input id="changePasswordInput" type="password" placeholder="输入新密码">
+          <div class="password-actions">
+            <button onclick="submitPasswordChange()">修改密码</button>
+            <button class="logout-btn" onclick="closeChangePasswordPage()">取消</button>
+          </div>
+        </div>
+      </div>
+
     </div>
 
   </div>
 
   <script>
+    window.MU_API_BASE = 'https://discord-mu-bot-production.up.railway.app';
+
     let docPanelOpen = false;
     let currentPassengerData = null;
     let checkinPanelOpen = false;
     let currentUser = null;
 
-    let helpPanelOpen = false;
-
-    const API_BASE = (() => {
+        function resolveApiBase() {
       const fromWindow = window.MU_API_BASE || '';
       const fromStorage = localStorage.getItem('mu_api_base') || '';
 
@@ -746,7 +785,19 @@
       if (normalizedStorage) return normalizedStorage;
 
       return '';
-    })();
+    }
+
+    function promptAndSaveApiBase() {
+      const input = window.prompt(
+        '未检测到后端地址。请输入机器人后端域名（例如 https://xxx.up.railway.app ）',
+        'https://'
+      );
+      if (!input) return '';
+      const normalized = input.trim().replace(/\/$/, '');
+      if (!/^https?:\/\//i.test(normalized)) return '';
+      localStorage.setItem('mu_api_base', normalized);
+      return normalized;
+    }
 
 
     function escapeHtml(value) {
@@ -789,6 +840,12 @@
 
     function dedupeLines(lines) {
       return [...new Set((lines || []).filter(Boolean))];
+    }
+    function setSectionLabel(sectionId, text) {
+      const section = document.getElementById(sectionId);
+      if (!section) return;
+      const label = section.querySelector('.label');
+      if (label) label.innerText = text;
     }
 
     function parseCheckinGroups(data) {
@@ -889,12 +946,6 @@
       list.innerHTML = cards.join('');
     }
 
-    function toggleHelpPanel() {
-      const panel = document.getElementById('helpPanel');
-      helpPanelOpen = !helpPanelOpen;
-      panel.style.display = helpPanelOpen ? 'block' : 'none';
-    }
-
     function toggleDocPanel() {
       const sec = document.getElementById('docSection');
       const btn = document.getElementById('docToggleBtn');
@@ -913,6 +964,16 @@
     function firstMatch(text, regex) {
       const m = (text || '').match(regex);
       return m ? m[1] : '';
+    }
+
+    function setTextById(id, value) {
+      const el = document.getElementById(id);
+      if (el) el.innerText = value;
+    }
+
+    function setDisplayById(id, value) {
+      const el = document.getElementById(id);
+      if (el) el.style.display = value;
     }
 
     function buildTravelDocs(data) {
@@ -1050,8 +1111,9 @@
 
       try {
 
-        const endpoint =
-          `${API_BASE}/search?q=` +
+        let apiBase = resolveApiBase();
+        let endpoint =
+          `${apiBase}/search?q=` +
           encodeURIComponent(q);
 
         const headers = {};
@@ -1071,14 +1133,36 @@
             await res.text();
 
           const maybeWrongApiBase =
-            !API_BASE &&
+            !apiBase &&
             res.status === 404 &&
             failText.toLowerCase().includes('<!doctype html');
 
           if (maybeWrongApiBase) {
-            throw new Error(
-              'API endpoint not found on current site. Please configure MU_API_BASE or localStorage.mu_api_base to your bot backend domain.'
-            );
+            const configuredApiBase = promptAndSaveApiBase();
+            if (configuredApiBase) {
+              apiBase = configuredApiBase;
+              endpoint = `${apiBase}/search?q=` + encodeURIComponent(q);
+              const retryRes = await fetch(endpoint, { headers });
+              if (!retryRes.ok) {
+                const retryText = await retryRes.text();
+                throw new Error(
+                  `HTTP ${retryRes.status} ${retryRes.statusText} ${retryText.slice(0, 120)} (endpoint: ${endpoint})`
+                );
+              }
+              const retryType = retryRes.headers.get('content-type') || '';
+              if (!retryType.includes('application/json')) {
+                const retryText = await retryRes.text();
+                throw new Error(`Non-JSON response: ${retryText.slice(0, 120)} (endpoint: ${endpoint})`);
+              }
+              const retryData = await retryRes.json();
+              if (retryData.error) {
+                error.innerText = retryData.error;
+                error.style.display = 'block';
+                return;
+              }
+              return renderSearchResult(retryData, q);
+            }
+            throw new Error('API endpoint not found on current site, and no backend configured.');
           }
 
           throw new Error(
@@ -1095,8 +1179,17 @@
           );
         }
 
-        const data =
-          await res.json();
+        const data = await res.json();
+        return renderSearchResult(data, q);
+      } catch (err) {
+        error.innerText = err?.message || 'Search failed.';
+        error.style.display = 'block';
+      }
+    }
+
+    function renderSearchResult(data, q) {
+        const card = document.getElementById('card');
+        const error = document.getElementById('error');
         const normalizedQuery =
           String(q || '').trim().toUpperCase().replace(/\s+/g, '');
         const isSYQuery =
@@ -1141,41 +1234,24 @@
           checkinPanelOpen = false;
           document.getElementById('checkinDetailList').innerHTML = '';
 
-          document.getElementById('flight').innerText = `🛫 SY ${sy.flightNo || '-'}/${sy.flightDate || '-'}`;
-          document.getElementById('name').innerText = '航班';
-          document.getElementById('seat').innerText = `${sy.flightNo || '-'}/${sy.flightDate || '-'}`;
+          setTextById('flight', `🛫 SY ${sy.flightNo || '-'}/${sy.flightDate || '-'}`);
+          setTextById('name', '');
+          setTextById('seat', sy.statusDisplay || '');
 
-          document.getElementById('membershipSection').style.display = 'block';
-          document.getElementById('ff').innerText = '机型/注册号';
-          document.getElementById('ffStatus').innerText = `${sy.aircraftType || '-'} / ${sy.aircraftRegistration || '-'}`;
+          ['membershipSection','ticketSection','bagsSection','inboundSection','outboundSection','ssrSection','mealSection','paidSection','loungeSection','docSection'].forEach((id) => setDisplayById(id, 'none'));
+          setDisplayById('syLayout', 'block');
 
-          document.getElementById('ticketSection').style.display = 'block';
-          document.getElementById('ticket').innerText = `GATE ${sy.gate || '-'}`;
+          setTextById('syAircraft', `${sy.aircraftType || '-'} / ${sy.aircraftRegistration || '-'}`);
+          setTextById('syGate', `${sy.gate || '-'}`);
+          setTextById('syTimes', `${sy.bdt || '-'} / ${sy.sd || '-'} / ${sy.ed || '-'}`);
+          setTextById('syBags', `${sy.bags?.[0] || '-'}`);
+          setTextById('syRk', `${sy.rkMessage || '-'}`);
+          setTextById('syRes', `${sy.reservation?.[0] || '-'}`);
+          setTextById('syResTkt', `${sy.reservationTicketed?.[0] || '-'}`);
+          setTextById('syCi', `${sy.checkedIn?.[0] || '-'}`);
+          setTextById('syCiTkt', `${sy.checkedInTicketed?.[0] || '-'}`);
 
-          document.getElementById('bagsSection').style.display = 'block';
-          document.getElementById('bags').innerText = `BDT/SD/ED ${sy.bdt || '-'} / ${sy.sd || '-'} / ${sy.ed || '-'}`;
-
-          document.getElementById('inboundSection').style.display = 'block';
-          document.getElementById('inbound').innerText = `RK message\n${sy.rkMessage || '-'}`;
-
-          document.getElementById('outboundSection').style.display = 'block';
-          document.getElementById('outbound').innerText =
-            `Reservation ${sy.reservation?.[0] || '-'}\n` +
-            `Reservation(TKT) ${sy.reservationTicketed?.[0] || '-'}\n` +
-            `Check-in ${sy.checkedIn?.[0] || '-'}\n` +
-            `Check-in(TKT) ${sy.checkedInTicketed?.[0] || '-'}`;
-
-          document.getElementById('ssrSection').style.display = 'block';
-          document.getElementById('ssr').innerText = `Bags ${sy.bags?.[0] || '-'}`;
-
-          document.getElementById('mealSection').style.display = 'block';
-          document.getElementById('meal').innerText = `WCH${sy.wch || '000'} / I${sy.inf || '00'} / CHD${sy.chd || '000'}`;
-
-          document.getElementById('paidSection').style.display = 'none';
-          document.getElementById('loungeSection').style.display = 'none';
-          document.getElementById('docToggleBtn').style.display = 'none';
-          document.getElementById('docSection').style.display = 'none';
-
+          setDisplayById('docToggleBtn', 'none');
           card.style.display = 'block';
           return;
         }
@@ -1188,6 +1264,8 @@
             'block';
           return;
         }
+
+        setDisplayById('syLayout', 'none');
 
         if (!data.flight || !data.flightDate || !data.name) {
           error.innerText =
@@ -1241,7 +1319,26 @@
         }
 
         // Membership
-        if (data.permissions?.canViewMembership) {
+        const membershipNumber = `${data.ffCarrier || ''} ${data.ffNumber || ''}`.trim();
+        const membershipStatus =
+          data.membershipStatus ||
+          (
+            data.ffTier === 'V'
+              ? 'Platinum'
+              : data.ffTier === 'G'
+              ? 'Gold'
+              : data.ffTier === 'S'
+              ? 'Silver'
+              : data.ffTier === 'C'
+              ? 'Regular'
+              : data.ffTier === '1'
+              ? 'Elite'
+              : data.ffTier === '2'
+              ? 'Elite Plus'
+              : ''
+          );
+        if (data.permissions?.canViewMembership && (membershipNumber || membershipStatus)) {
+          setSectionLabel('membershipSection', 'Membership');
 
           document.getElementById(
             'membershipSection'
@@ -1252,29 +1349,13 @@
             'ff'
           ).innerText =
 
-            `${data.ffCarrier || ''} ${data.ffNumber || ''}`.trim() || 'N/A';
+            membershipNumber;
 
           document.getElementById(
             'ffStatus'
           ).innerText =
 
-            data.membershipStatus ||
-
-            (
-              data.ffTier === 'V'
-                ? 'Platinum'
-                : data.ffTier === 'G'
-                ? 'Gold'
-                : data.ffTier === 'S'
-                ? 'Silver'
-                : data.ffTier === 'C'
-                ? 'Regular'
-                : data.ffTier === '1'
-                ? 'Elite'
-                : data.ffTier === '2'
-                ? 'Elite Plus'
-                : ''
-            );
+            membershipStatus;
         }
 
         else {
@@ -1309,6 +1390,7 @@
 
         // Bags
         if (data.permissions?.canViewBags) {
+          setSectionLabel('bagsSection', 'Passenger Bags');
 
           document.getElementById(
             'bagsSection'
@@ -1330,7 +1412,7 @@
         }
 
         // Inbound
-        if (data.permissions?.canViewInbound) {
+        if (data.permissions?.canViewInbound && data.inbound) {
 
           document.getElementById(
             'inboundSection'
@@ -1341,7 +1423,7 @@
             'inbound'
           ).innerText =
 
-            data.inbound ? `${data.inbound.flight || '-'} / ${data.inbound.date || '-'}\nFrom ${data.inbound.origin || '-'}` : 'N/A';
+            `${data.inbound.flight || '-'} / ${data.inbound.date || '-'}\nFrom ${data.inbound.origin || '-'}`;
         }
 
         else {
@@ -1353,7 +1435,7 @@
         }
 
         // Outbound
-        if (data.permissions?.canViewOutbound) {
+        if (data.permissions?.canViewOutbound && data.outbound) {
 
           document.getElementById(
             'outboundSection'
@@ -1364,10 +1446,8 @@
             'outbound'
           ).innerText =
 
-            data.outbound
-            ? `${data.outbound.flight || '-'} / ${data.outbound.date || '-'}${data.outbound.bn ? ` • BN${data.outbound.bn}` : ''}${data.outbound.seat ? ` • ${data.outbound.seat}` : ''}${data.outbound.status === 'DELETED' ? ' • DELETED' : ''}
+            `${data.outbound.flight || '-'} / ${data.outbound.date || '-'}${data.outbound.bn ? ` • BN${data.outbound.bn}` : ''}${data.outbound.seat ? ` • ${data.outbound.seat}` : ''}${data.outbound.status === 'DELETED' ? ' • DELETED' : ''}
 To ${data.outbound.destination || '-'}`
-            : 'N/A';
         }
 
         else {
@@ -1379,30 +1459,28 @@ To ${data.outbound.destination || '-'}`
         }
 
         // Special Service
-        if (data.permissions?.canViewSpecialService) {
+        if (data.permissions?.canViewSpecialService && data.specialServices && data.specialServices.length) {
           document.getElementById('ssrSection').style.display = 'block';
-          document.getElementById('ssr').innerText = (data.specialServices && data.specialServices.length) ? data.specialServices.join(', ') : 'N/A';
+          document.getElementById('ssr').innerText = data.specialServices.join(', ');
         } else {
           document.getElementById('ssrSection').style.display = 'none';
         }
 
         // Special Meal
-        if (data.permissions?.canViewSpecialMeals) {
+        if (data.permissions?.canViewSpecialMeals && data.specialMeals && data.specialMeals.length) {
           document.getElementById('mealSection').style.display = 'block';
-          document.getElementById('meal').innerText = (data.specialMeals && data.specialMeals.length) ? data.specialMeals.join(', ') : 'N/A';
+          document.getElementById('meal').innerText = data.specialMeals.join(', ');
         } else {
           document.getElementById('mealSection').style.display = 'none';
         }
 
         // Paid Service
-        if (data.permissions?.canViewPaidService) {
+        if (data.permissions?.canViewPaidService && ((data.paidProductsShort && data.paidProductsShort.length) || (data.paidProducts && data.paidProducts.length))) {
           document.getElementById('paidSection').style.display = 'block';
           if (data.paidProductsShort && data.paidProductsShort.length) {
             document.getElementById('paid').innerText = data.paidProductsShort.join('\n');
           } else if (data.paidProducts && data.paidProducts.length) {
             document.getElementById('paid').innerText = data.paidProducts.join('\n');
-          } else {
-            document.getElementById('paid').innerText = 'N/A';
           }
         } else {
           document.getElementById('paidSection').style.display = 'none';
@@ -1413,29 +1491,23 @@ To ${data.outbound.destination || '-'}`
         const loungeValue = document.getElementById('lounge');
         const guestLabel = document.getElementById('guestLabel');
         const guestValue = document.getElementById('guest');
-        const canViewLounge = Boolean(data.permissions?.canViewLoungeAccess);
-        const canViewGuest = Boolean(data.permissions?.canViewGuestAccess);
-        if (canViewLounge || canViewGuest) {
-          loungeSection.style.display = 'block';
-          loungeLabel.style.display = canViewLounge ? 'block' : 'none';
-          loungeValue.style.display = canViewLounge ? 'block' : 'none';
-          guestLabel.style.display = canViewGuest ? 'block' : 'none';
-          guestValue.style.display = canViewGuest ? 'block' : 'none';
-          if (canViewLounge) {
-            loungeValue.innerHTML =
-              data.lounge?.eligible === true
-                ? '<span class="yes">✅ Eligible</span>'
-                : '<span class="no">❌ Not Eligible</span>';
-          }
-          if (canViewGuest) {
-            guestValue.innerHTML =
-              data.lounge?.guest === true
-                ? '<span class="yes">✅ Allowed</span>'
-                : '<span class="no">❌ Not Allowed</span>';
-          }
-        } else {
-          loungeSection.style.display = 'none';
-        }
+        loungeSection.style.display = 'block';
+        loungeLabel.style.display = 'block';
+        loungeValue.style.display = 'block';
+        guestLabel.style.display = 'block';
+        guestValue.style.display = 'block';
+        loungeValue.innerHTML =
+          data.lounge?.eligible === true
+            ? '<span class="yes">✅ Eligible</span>'
+            : data.permissions?.canViewLoungeAccess
+            ? '<span class="no">❌ Not Eligible</span>'
+            : 'N/A';
+        guestValue.innerHTML =
+          data.lounge?.guest === true
+            ? '<span class="yes">✅ Allowed</span>'
+            : data.permissions?.canViewGuestAccess
+            ? '<span class="no">❌ Not Allowed</span>'
+            : 'N/A';
 
         // Show
         card.style.display =
@@ -1485,7 +1557,8 @@ To ${data.outbound.destination || '-'}`
     onAuthStateChanged,
     signOut,
     setPersistence,
-    browserSessionPersistence
+    browserSessionPersistence,
+    updatePassword
   }
   from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
 
@@ -1573,6 +1646,47 @@ To ${data.outbound.destination || '-'}`
 
     resetInactivityTimer();
   });
+
+
+  window.openChangePasswordPage = function () {
+    document.getElementById('changePasswordPage').style.display = 'block';
+    document.getElementById('mainApp').querySelector('.search-box').style.display = 'none';
+    document.getElementById('card').style.display = 'none';
+    const errorBox = document.getElementById('error');
+    errorBox.style.display = 'none';
+  };
+
+  window.closeChangePasswordPage = function () {
+    document.getElementById('changePasswordPage').style.display = 'none';
+    document.getElementById('mainApp').querySelector('.search-box').style.display = 'flex';
+  };
+
+  window.submitPasswordChange = async function () {
+    const input = document.getElementById('changePasswordInput');
+    const errorBox = document.getElementById('error');
+    const newPassword = (input?.value || '').trim();
+
+    if (!auth.currentUser) {
+      errorBox.innerText = '用户未登录，无法修改密码。';
+      errorBox.style.display = 'block';
+      return;
+    }
+
+    if (!newPassword) {
+      errorBox.innerText = '请输入新密码。';
+      errorBox.style.display = 'block';
+      return;
+    }
+
+    try {
+      await updatePassword(auth.currentUser, newPassword);
+      await signOut(auth);
+      window.location.href = 'login.html';
+    } catch (err) {
+      errorBox.innerText = err?.message || '密码修改失败。';
+      errorBox.style.display = 'block';
+    }
+  };
 
   window.logout = async function () {
 
