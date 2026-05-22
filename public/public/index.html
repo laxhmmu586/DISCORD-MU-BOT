@@ -952,6 +952,11 @@
       return m ? m[1] : '';
     }
 
+    function setTextById(id, value) {
+      const el = document.getElementById(id);
+      if (el) el.innerText = value;
+    }
+
     function buildTravelDocs(data) {
       const paxInfoRaw = cleanRawLine(data.paxInfoRaw);
       const passportRaw = cleanRawLine(data.passportRaw);
@@ -1187,52 +1192,52 @@
           checkinPanelOpen = false;
           document.getElementById('checkinDetailList').innerHTML = '';
 
-          document.getElementById('flight').innerText = `🛫 SY ${sy.flightNo || '-'}/${sy.flightDate || '-'}`;
-          document.getElementById('name').innerText = '';
-          document.getElementById('seat').innerText = sy.statusDisplay || '';
+          setTextById('flight', `🛫 SY ${sy.flightNo || '-'}/${sy.flightDate || '-'}`);
+          setTextById('name', '');
+          setTextById('seat', sy.statusDisplay || '');
 
           setSectionLabel('membershipSection', '机型/注册号');
           document.getElementById('membershipSection').style.display = 'block';
-          document.getElementById('ff').innerText = `${sy.aircraftType || '-'} / ${sy.aircraftRegistration || '-'}`;
-          document.getElementById('ffStatus').innerText = '';
+          setTextById('ff', `${sy.aircraftType || '-'} / ${sy.aircraftRegistration || '-'}`);
+          setTextById('ffStatus', '');
 
           document.getElementById('ticketSection').style.display = 'none';
 
           setSectionLabel('bagsSection', 'GATE');
           document.getElementById('bagsSection').style.display = 'block';
-          document.getElementById('bags').innerText = `${sy.gate || '-'}`;
+          setTextById('bags', `${sy.gate || '-'}`);
 
           setSectionLabel('inboundSection', 'BDT/SD/ED');
           document.getElementById('inboundSection').style.display = 'block';
-          document.getElementById('inbound').innerText = `${sy.bdt || '-'} / ${sy.sd || '-'} / ${sy.ed || '-'}`;
+          setTextById('inbound', `${sy.bdt || '-'} / ${sy.sd || '-'} / ${sy.ed || '-'}`);
 
           setSectionLabel('outboundSection', 'RK message');
           document.getElementById('outboundSection').style.display = 'block';
-          document.getElementById('outbound').innerText = `${sy.rkMessage || '-'}`;
+          setTextById('outbound', `${sy.rkMessage || '-'}`);
 
           setSectionLabel('ssrSection', 'Reservation');
           document.getElementById('ssrSection').style.display = 'block';
-          document.getElementById('ssr').innerText = `${sy.reservation?.[0] || '-'}`;
+          setTextById('ssr', `${sy.reservation?.[0] || '-'}`);
 
           setSectionLabel('mealSection', 'Reservation(TKT)');
           document.getElementById('mealSection').style.display = 'block';
-          document.getElementById('meal').innerText = `${sy.reservationTicketed?.[0] || '-'}`;
+          setTextById('meal', `${sy.reservationTicketed?.[0] || '-'}`);
 
           setSectionLabel('paidSection', 'Check-in');
           document.getElementById('paidSection').style.display = 'block';
-          document.getElementById('paid').innerText = `${sy.checkedIn?.[0] || '-'}`;
+          setTextById('paid', `${sy.checkedIn?.[0] || '-'}`);
 
           setSectionLabel('ticketSection', 'Check-in(TKT)');
           document.getElementById('ticketSection').style.display = 'block';
-          document.getElementById('ticket').innerText = `${sy.checkedInTicketed?.[0] || '-'}`;
+          setTextById('ticket', `${sy.checkedInTicketed?.[0] || '-'}`);
 
           setSectionLabel('loungeSection', 'Bags');
           setSectionLabel('docSection', 'WCH/INF/CHD');
           document.getElementById('docSection').style.display = 'block';
-          document.getElementById('docs').innerText = `WCH${sy.wch || '000'} / I${sy.inf || '00'} / CHD${sy.chd || '000'}`;
+          setTextById('docContent', `WCH${sy.wch || '000'} / I${sy.inf || '00'} / CHD${sy.chd || '000'}`);
 
           document.getElementById('loungeSection').style.display = 'block';
-          document.getElementById('lounge').innerText = `${sy.bags?.[0] || '-'}`;
+          setTextById('lounge', `${sy.bags?.[0] || '-'}`);
           document.getElementById('docToggleBtn').style.display = 'none';
 
           card.style.display = 'block';
