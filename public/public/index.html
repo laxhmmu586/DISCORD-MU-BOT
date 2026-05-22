@@ -317,6 +317,11 @@
       line-height: 1.55;
     }
 
+    .password-page { margin-top: 16px; }
+    .password-card { background:#0b1833; border:1px solid rgba(255,255,255,0.1); border-radius:16px; padding:20px; }
+    .password-card input { width:100%; background:#1f2a44; border:1px solid #3b4661; border-radius:10px; color:#fff; padding:10px; margin-bottom:12px; }
+    .password-actions { display:flex; gap:10px; }
+
     .flight-row {
       display: flex;
       align-items: center;
@@ -465,19 +470,12 @@
           MUFC
         </div>
 
-        <div class="password-box">
-          <input
-            id="newPassword"
-            type="password"
-            placeholder="输入新密码"
-          >
-          <button
-            class="help-btn"
-            onclick="changePassword()"
-          >
-            修改密码
-          </button>
-        </div>
+        <button
+          class="help-btn"
+          onclick="openChangePasswordPage()"
+        >
+          Change Password
+        </button>
       </div>
 
 
@@ -768,6 +766,18 @@
       </div>
 
       <div id="checkinDetailList"></div>
+
+      <div id="changePasswordPage" class="password-page" style="display:none;">
+        <div class="password-card">
+          <div class="title" style="font-size:28px;margin-bottom:8px;">Change Password</div>
+          <div class="seat" style="margin-bottom:18px;">用户已登录，请输入新密码。</div>
+          <input id="changePasswordInput" type="password" placeholder="输入新密码">
+          <div class="password-actions">
+            <button onclick="submitPasswordChange()">修改密码</button>
+            <button class="logout-btn" onclick="closeChangePasswordPage()">取消</button>
+          </div>
+        </div>
+      </div>
 
     </div>
 
@@ -1633,39 +1643,43 @@ To ${data.outbound.destination || '-'}`
   });
 
 
-  window.changePassword = async function () {
-    const input = document.getElementById('newPassword');
+  window.openChangePasswordPage = function () {
+    document.getElementById('changePasswordPage').style.display = 'block';
+    document.getElementById('mainApp').querySelector('.search-box').style.display = 'none';
+    document.getElementById('card').style.display = 'none';
+    const errorBox = document.getElementById('error');
+    errorBox.style.display = 'none';
+  };
+
+  window.closeChangePasswordPage = function () {
+    document.getElementById('changePasswordPage').style.display = 'none';
+    document.getElementById('mainApp').querySelector('.search-box').style.display = 'flex';
+  };
+
+  window.submitPasswordChange = async function () {
+    const input = document.getElementById('changePasswordInput');
     const errorBox = document.getElementById('error');
     const newPassword = (input?.value || '').trim();
 
     if (!auth.currentUser) {
-      if (errorBox) {
-        errorBox.innerText = '用户未登录，无法修改密码。';
-        errorBox.style.display = 'block';
-      }
+      errorBox.innerText = '用户未登录，无法修改密码。';
+      errorBox.style.display = 'block';
       return;
     }
 
     if (!newPassword) {
-      if (errorBox) {
-        errorBox.innerText = '请输入新密码。';
-        errorBox.style.display = 'block';
-      }
+      errorBox.innerText = '请输入新密码。';
+      errorBox.style.display = 'block';
       return;
     }
 
     try {
       await updatePassword(auth.currentUser, newPassword);
-      if (input) input.value = '';
-      if (errorBox) {
-        errorBox.innerText = '密码修改成功。';
-        errorBox.style.display = 'block';
-      }
+      await signOut(auth);
+      window.location.href = 'login.html';
     } catch (err) {
-      if (errorBox) {
-        errorBox.innerText = err?.message || '密码修改失败。';
-        errorBox.style.display = 'block';
-      }
+      errorBox.innerText = err?.message || '密码修改失败。';
+      errorBox.style.display = 'block';
     }
   };
 
