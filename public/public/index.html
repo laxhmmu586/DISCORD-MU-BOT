@@ -745,6 +745,8 @@
   </div>
 
   <script>
+    window.MU_API_BASE = 'https://discord-mu-bot-production.up.railway.app';
+
     let docPanelOpen = false;
     let currentPassengerData = null;
     let checkinPanelOpen = false;
@@ -752,7 +754,7 @@
 
     let helpPanelOpen = false;
 
-    const API_BASE = (() => {
+    function resolveApiBase() {
       const fromWindow = window.MU_API_BASE || '';
       const fromStorage = localStorage.getItem('mu_api_base') || '';
 
@@ -763,7 +765,19 @@
       if (normalizedStorage) return normalizedStorage;
 
       return '';
-    })();
+    }
+
+    function promptAndSaveApiBase() {
+      const input = window.prompt(
+        '未检测到后端地址。请输入机器人后端域名（例如 https://xxx.up.railway.app ）',
+        'https://'
+      );
+      if (!input) return '';
+      const normalized = input.trim().replace(/\/$/, '');
+      if (!/^https?:\/\//i.test(normalized)) return '';
+      localStorage.setItem('mu_api_base', normalized);
+      return normalized;
+    }
 
 
     function escapeHtml(value) {
@@ -806,6 +820,12 @@
 
     function dedupeLines(lines) {
       return [...new Set((lines || []).filter(Boolean))];
+    }
+    function setSectionLabel(sectionId, text) {
+      const section = document.getElementById(sectionId);
+      if (!section) return;
+      const label = section.querySelector('.label');
+      if (label) label.innerText = text;
     }
 
     function parseCheckinGroups(data) {
@@ -930,6 +950,11 @@
     function firstMatch(text, regex) {
       const m = (text || '').match(regex);
       return m ? m[1] : '';
+    }
+
+    function setTextById(id, value) {
+      const el = document.getElementById(id);
+      if (el) el.innerText = value;
     }
 
     function buildTravelDocs(data) {
@@ -1067,8 +1092,9 @@
 
       try {
 
-        const endpoint =
-          `${API_BASE}/search?q=` +
+        let apiBase = resolveApiBase();
+        let endpoint =
+          `${apiBase}/search?q=` +
           encodeURIComponent(q);
 
         const headers = {};
@@ -1077,7 +1103,7 @@
           headers.Authorization = `Bearer ${token}`;
         }
 
-        const res =
+        let res =
           await fetch(endpoint, { headers });
 
         const contentType =
@@ -1088,14 +1114,23 @@
             await res.text();
 
           const maybeWrongApiBase =
-            !API_BASE &&
+            !apiBase &&
             res.status === 404 &&
             failText.toLowerCase().includes('<!doctype html');
 
           if (maybeWrongApiBase) {
-            throw new Error(
-              'API endpoint not found on current site. Please configure MU_API_BASE or localStorage.mu_api_base to your bot backend domain.'
-            );
+            const configuredApiBase = promptAndSaveApiBase();
+            if (configuredApiBase) {
+              apiBase = configuredApiBase;
+              endpoint = `${apiBase}/search?q=` + encodeURIComponent(q);
+              res = await fetch(endpoint, { headers });
+              if (!res.ok) {
+                const retryText = await res.text();
+                throw new Error(`HTTP ${res.status} ${res.statusText} ${retryText.slice(0, 120)} (endpoint: ${endpoint})`);
+              }
+            } else {
+              throw new Error('API endpoint not found on current site, and no backend configured.');
+            }
           }
 
           throw new Error(
@@ -1112,8 +1147,7 @@
           );
         }
 
-        const data =
-          await res.json();
+        const data = await res.json();
         const normalizedQuery =
           String(q || '').trim().toUpperCase().replace(/\s+/g, '');
         const isSYQuery =
@@ -1158,40 +1192,53 @@
           checkinPanelOpen = false;
           document.getElementById('checkinDetailList').innerHTML = '';
 
-          document.getElementById('flight').innerText = `🛫 SY ${sy.flightNo || '-'}/${sy.flightDate || '-'}`;
-          document.getElementById('name').innerText = '航班';
-          document.getElementById('seat').innerText = `${sy.flightNo || '-'}/${sy.flightDate || '-'}`;
+          setTextById('flight', `🛫 SY ${sy.flightNo || '-'}/${sy.flightDate || '-'}`);
+          setTextById('name', '');
+          setTextById('seat', sy.statusDisplay || '');
 
+          setSectionLabel('membershipSection', '机型/注册号');
           document.getElementById('membershipSection').style.display = 'block';
-          document.getElementById('ff').innerText = '机型/注册号';
-          document.getElementById('ffStatus').innerText = `${sy.aircraftType || '-'} / ${sy.aircraftRegistration || '-'}`;
+          setTextById('ff', `${sy.aircraftType || '-'} / ${sy.aircraftRegistration || '-'}`);
+          setTextById('ffStatus', '');
 
-          document.getElementById('ticketSection').style.display = 'block';
-          document.getElementById('ticket').innerText = `GATE ${sy.gate || '-'}`;
+          document.getElementById('ticketSection').style.display = 'none';
 
+          setSectionLabel('bagsSection', 'GATE');
           document.getElementById('bagsSection').style.display = 'block';
-          document.getElementById('bags').innerText = `BDT/SD/ED ${sy.bdt || '-'} / ${sy.sd || '-'} / ${sy.ed || '-'}`;
+          setTextById('bags', `${sy.gate || '-'}`);
 
+          setSectionLabel('inboundSection', 'BDT/SD/ED');
           document.getElementById('inboundSection').style.display = 'block';
-          document.getElementById('inbound').innerText = `RK message\n${sy.rkMessage || '-'}`;
+          setTextById('inbound', `${sy.bdt || '-'} / ${sy.sd || '-'} / ${sy.ed || '-'}`);
 
+          setSectionLabel('outboundSection', 'RK message');
           document.getElementById('outboundSection').style.display = 'block';
-          document.getElementById('outbound').innerText =
-            `Reservation ${sy.reservation?.[0] || '-'}\n` +
-            `Reservation(TKT) ${sy.reservationTicketed?.[0] || '-'}\n` +
-            `Check-in ${sy.checkedIn?.[0] || '-'}\n` +
-            `Check-in(TKT) ${sy.checkedInTicketed?.[0] || '-'}`;
+          setTextById('outbound', `${sy.rkMessage || '-'}`);
 
+          setSectionLabel('ssrSection', 'Reservation');
           document.getElementById('ssrSection').style.display = 'block';
-          document.getElementById('ssr').innerText = `Bags ${sy.bags?.[0] || '-'}`;
+          setTextById('ssr', `${sy.reservation?.[0] || '-'}`);
 
+          setSectionLabel('mealSection', 'Reservation(TKT)');
           document.getElementById('mealSection').style.display = 'block';
-          document.getElementById('meal').innerText = `WCH${sy.wch || '000'} / I${sy.inf || '00'} / CHD${sy.chd || '000'}`;
+          setTextById('meal', `${sy.reservationTicketed?.[0] || '-'}`);
 
-          document.getElementById('paidSection').style.display = 'none';
-          document.getElementById('loungeSection').style.display = 'none';
+          setSectionLabel('paidSection', 'Check-in');
+          document.getElementById('paidSection').style.display = 'block';
+          setTextById('paid', `${sy.checkedIn?.[0] || '-'}`);
+
+          setSectionLabel('ticketSection', 'Check-in(TKT)');
+          document.getElementById('ticketSection').style.display = 'block';
+          setTextById('ticket', `${sy.checkedInTicketed?.[0] || '-'}`);
+
+          setSectionLabel('loungeSection', 'Bags');
+          setSectionLabel('docSection', 'WCH/INF/CHD');
+          document.getElementById('docSection').style.display = 'block';
+          setTextById('docContent', `WCH${sy.wch || '000'} / I${sy.inf || '00'} / CHD${sy.chd || '000'}`);
+
+          document.getElementById('loungeSection').style.display = 'block';
+          setTextById('lounge', `${sy.bags?.[0] || '-'}`);
           document.getElementById('docToggleBtn').style.display = 'none';
-          document.getElementById('docSection').style.display = 'none';
 
           card.style.display = 'block';
           return;
@@ -1258,7 +1305,26 @@
         }
 
         // Membership
-        if (data.permissions?.canViewMembership) {
+        const membershipNumber = `${data.ffCarrier || ''} ${data.ffNumber || ''}`.trim();
+        const membershipStatus =
+          data.membershipStatus ||
+          (
+            data.ffTier === 'V'
+              ? 'Platinum'
+              : data.ffTier === 'G'
+              ? 'Gold'
+              : data.ffTier === 'S'
+              ? 'Silver'
+              : data.ffTier === 'C'
+              ? 'Regular'
+              : data.ffTier === '1'
+              ? 'Elite'
+              : data.ffTier === '2'
+              ? 'Elite Plus'
+              : ''
+          );
+        if (data.permissions?.canViewMembership && (membershipNumber || membershipStatus)) {
+          setSectionLabel('membershipSection', 'Membership');
 
           document.getElementById(
             'membershipSection'
@@ -1269,29 +1335,13 @@
             'ff'
           ).innerText =
 
-            `${data.ffCarrier || ''} ${data.ffNumber || ''}`.trim() || 'N/A';
+            membershipNumber;
 
           document.getElementById(
             'ffStatus'
           ).innerText =
 
-            data.membershipStatus ||
-
-            (
-              data.ffTier === 'V'
-                ? 'Platinum'
-                : data.ffTier === 'G'
-                ? 'Gold'
-                : data.ffTier === 'S'
-                ? 'Silver'
-                : data.ffTier === 'C'
-                ? 'Regular'
-                : data.ffTier === '1'
-                ? 'Elite'
-                : data.ffTier === '2'
-                ? 'Elite Plus'
-                : ''
-            );
+            membershipStatus;
         }
 
         else {
@@ -1326,6 +1376,7 @@
 
         // Bags
         if (data.permissions?.canViewBags) {
+          setSectionLabel('bagsSection', 'Passenger Bags');
 
           document.getElementById(
             'bagsSection'
@@ -1347,7 +1398,7 @@
         }
 
         // Inbound
-        if (data.permissions?.canViewInbound) {
+        if (data.permissions?.canViewInbound && data.inbound) {
 
           document.getElementById(
             'inboundSection'
@@ -1358,7 +1409,7 @@
             'inbound'
           ).innerText =
 
-            data.inbound ? `${data.inbound.flight || '-'} / ${data.inbound.date || '-'}\nFrom ${data.inbound.origin || '-'}` : 'N/A';
+            `${data.inbound.flight || '-'} / ${data.inbound.date || '-'}\nFrom ${data.inbound.origin || '-'}`;
         }
 
         else {
@@ -1370,7 +1421,7 @@
         }
 
         // Outbound
-        if (data.permissions?.canViewOutbound) {
+        if (data.permissions?.canViewOutbound && data.outbound) {
 
           document.getElementById(
             'outboundSection'
@@ -1381,10 +1432,8 @@
             'outbound'
           ).innerText =
 
-            data.outbound
-            ? `${data.outbound.flight || '-'} / ${data.outbound.date || '-'}${data.outbound.bn ? ` • BN${data.outbound.bn}` : ''}${data.outbound.seat ? ` • ${data.outbound.seat}` : ''}${data.outbound.status === 'DELETED' ? ' • DELETED' : ''}
+            `${data.outbound.flight || '-'} / ${data.outbound.date || '-'}${data.outbound.bn ? ` • BN${data.outbound.bn}` : ''}${data.outbound.seat ? ` • ${data.outbound.seat}` : ''}${data.outbound.status === 'DELETED' ? ' • DELETED' : ''}
 To ${data.outbound.destination || '-'}`
-            : 'N/A';
         }
 
         else {
@@ -1396,30 +1445,28 @@ To ${data.outbound.destination || '-'}`
         }
 
         // Special Service
-        if (data.permissions?.canViewSpecialService) {
+        if (data.permissions?.canViewSpecialService && data.specialServices && data.specialServices.length) {
           document.getElementById('ssrSection').style.display = 'block';
-          document.getElementById('ssr').innerText = (data.specialServices && data.specialServices.length) ? data.specialServices.join(', ') : 'N/A';
+          document.getElementById('ssr').innerText = data.specialServices.join(', ');
         } else {
           document.getElementById('ssrSection').style.display = 'none';
         }
 
         // Special Meal
-        if (data.permissions?.canViewSpecialMeals) {
+        if (data.permissions?.canViewSpecialMeals && data.specialMeals && data.specialMeals.length) {
           document.getElementById('mealSection').style.display = 'block';
-          document.getElementById('meal').innerText = (data.specialMeals && data.specialMeals.length) ? data.specialMeals.join(', ') : 'N/A';
+          document.getElementById('meal').innerText = data.specialMeals.join(', ');
         } else {
           document.getElementById('mealSection').style.display = 'none';
         }
 
         // Paid Service
-        if (data.permissions?.canViewPaidService) {
+        if (data.permissions?.canViewPaidService && ((data.paidProductsShort && data.paidProductsShort.length) || (data.paidProducts && data.paidProducts.length))) {
           document.getElementById('paidSection').style.display = 'block';
           if (data.paidProductsShort && data.paidProductsShort.length) {
             document.getElementById('paid').innerText = data.paidProductsShort.join('\n');
           } else if (data.paidProducts && data.paidProducts.length) {
             document.getElementById('paid').innerText = data.paidProducts.join('\n');
-          } else {
-            document.getElementById('paid').innerText = 'N/A';
           }
         } else {
           document.getElementById('paidSection').style.display = 'none';
@@ -1430,29 +1477,23 @@ To ${data.outbound.destination || '-'}`
         const loungeValue = document.getElementById('lounge');
         const guestLabel = document.getElementById('guestLabel');
         const guestValue = document.getElementById('guest');
-        const canViewLounge = Boolean(data.permissions?.canViewLoungeAccess);
-        const canViewGuest = Boolean(data.permissions?.canViewGuestAccess);
-        if (canViewLounge || canViewGuest) {
-          loungeSection.style.display = 'block';
-          loungeLabel.style.display = canViewLounge ? 'block' : 'none';
-          loungeValue.style.display = canViewLounge ? 'block' : 'none';
-          guestLabel.style.display = canViewGuest ? 'block' : 'none';
-          guestValue.style.display = canViewGuest ? 'block' : 'none';
-          if (canViewLounge) {
-            loungeValue.innerHTML =
-              data.lounge?.eligible === true
-                ? '<span class="yes">✅ Eligible</span>'
-                : '<span class="no">❌ Not Eligible</span>';
-          }
-          if (canViewGuest) {
-            guestValue.innerHTML =
-              data.lounge?.guest === true
-                ? '<span class="yes">✅ Allowed</span>'
-                : '<span class="no">❌ Not Allowed</span>';
-          }
-        } else {
-          loungeSection.style.display = 'none';
-        }
+        loungeSection.style.display = 'block';
+        loungeLabel.style.display = 'block';
+        loungeValue.style.display = 'block';
+        guestLabel.style.display = 'block';
+        guestValue.style.display = 'block';
+        loungeValue.innerHTML =
+          data.lounge?.eligible === true
+            ? '<span class="yes">✅ Eligible</span>'
+            : data.permissions?.canViewLoungeAccess
+            ? '<span class="no">❌ Not Eligible</span>'
+            : 'N/A';
+        guestValue.innerHTML =
+          data.lounge?.guest === true
+            ? '<span class="yes">✅ Allowed</span>'
+            : data.permissions?.canViewGuestAccess
+            ? '<span class="no">❌ Not Allowed</span>'
+            : 'N/A';
 
         // Show
         card.style.display =
