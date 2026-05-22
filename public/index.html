@@ -1235,7 +1235,7 @@
           setSectionLabel('loungeSection', 'Bags');
           setSectionLabel('docSection', 'WCH/INF/CHD');
           document.getElementById('docSection').style.display = 'block';
-          document.getElementById('docs').innerText = `WCH${sy.wch || '000'} / I${sy.inf || '00'} / CHD${sy.chd || '000'}`;
+          document.getElementById('docContent').innerText = `WCH${sy.wch || '000'} / I${sy.inf || '00'} / CHD${sy.chd || '000'}`;
 
           document.getElementById('loungeSection').style.display = 'block';
           document.getElementById('lounge').innerText = `${sy.bags?.[0] || '-'}`;
