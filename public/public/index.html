@@ -1124,6 +1124,8 @@
 
         const data =
           await res.json();
+        const isSYQuery =
+          /^SY(?:\/\d{2}[A-Z]{3})?$/i.test(q);
 
         if (data.error) {
 
@@ -1136,11 +1138,19 @@
           return;
         }
 
-        const sy =
-          data.sy ||
-          (data.flightNo && data.flightDate ? data : null);
+        if (isSYQuery) {
+          const sy =
+            data.sy ||
+            (data.flightNo && data.flightDate ? data : null);
 
-        if (sy) {
+          if (!sy) {
+            error.innerText =
+              'No SY payload returned. Please check backend deployment.';
+            error.style.display =
+              'block';
+            return;
+          }
+
           currentPassengerData = null;
           checkinPanelOpen = false;
           document.getElementById('checkinDetailList').innerHTML = '';
@@ -1170,7 +1180,7 @@
             `Check-in(TKT) ${sy.checkedInTicketed?.[0] || '-'}`;
 
           document.getElementById('ssrSection').style.display = 'block';
-          document.getElementById('ssr').innerText = `Bags ${sy.bags?.[0] || '-'} (件数/重量)`;
+          document.getElementById('ssr').innerText = `Bags ${sy.bags?.[0] || '-'}`;
 
           document.getElementById('mealSection').style.display = 'block';
           document.getElementById('meal').innerText = `WCH${sy.wch || '000'} / I${sy.inf || '00'} / CHD${sy.chd || '000'}`;
@@ -1181,14 +1191,6 @@
           document.getElementById('docSection').style.display = 'none';
 
           card.style.display = 'block';
-          return;
-        }
-
-        if (/^SY(?:\/\d{2}[A-Z]{3})?$/i.test(q) && !sy) {
-          error.innerText =
-            'SY data format not returned by API. Please deploy latest backend.';
-          error.style.display =
-            'block';
           return;
         }
 
