@@ -29,6 +29,7 @@ const {
   getFlightLogByDate
 
 } = require('./googleDrive');
+const { findSYInfo } = require('./syParser');
 
 function getCabinFromSeat(seat) {
   const row = parseInt((seat || '').match(/\d+/)?.[0]);
@@ -210,6 +211,31 @@ function findPassengerByFFFromRecord(log, query) {
 
   return null;
 }
+
+function formatSYResponse(info) {
+  const fields = [
+    { name: '航班', value: `${info.flightNo}/${info.flightDate}`, inline: true },
+    { name: '机型/注册号', value: `${info.aircraftType || '-'} / ${info.aircraftRegistration || '-'}`, inline: true },
+    { name: 'GATE', value: info.gate || '-', inline: true },
+    { name: 'BDT/SD/ED', value: `${info.bdt || '-'} / ${info.sd || '-'} / ${info.ed || '-'}`, inline: false },
+    { name: 'RK message', value: info.rkMessage || '-', inline: false },
+    { name: 'Reservation', value: info.reservation ? `${info.reservation[0]}` : '-', inline: true },
+    { name: 'Reservation(TKT)', value: info.reservationTicketed ? `${info.reservationTicketed[0]}` : '-', inline: true },
+    { name: 'Check-in', value: info.checkedIn ? `${info.checkedIn[0]}` : '-', inline: true },
+    { name: 'Check-in(TKT)', value: info.checkedInTicketed ? `${info.checkedInTicketed[0]}` : '-', inline: true },
+    { name: 'Bags', value: info.bags ? `${info.bags[0]}` : '-', inline: true },
+    { name: 'WCH/INF/CHD', value: `WCH${info.wch || '000'} / I${info.inf || '00'} / CHD${info.chd || '000'}`, inline: true }
+  ];
+
+  return {
+    embed: {
+      color: 0x2563eb,
+      title: `🛫 SY ${info.flightNo}/${info.flightDate}`,
+      fields,
+      footer: { text: 'MUFC System' }
+    }
+  };
+}
 async function runLookup(mode, rawQuery) {
   let query = (rawQuery || '').trim().toUpperCase();
 
@@ -287,6 +313,10 @@ async function runLookup(mode, rawQuery) {
         break;
       }
     }
+  } else if (mode === 'SY') {
+    const syInfo = findSYInfo(log, date);
+    if (!syInfo) return { error: 'No SY section found for selected date.' };
+    return formatSYResponse(syInfo);
   }
 
   if (!pax) return { error: 'Passenger data not updated yet.' };
@@ -369,7 +399,7 @@ module.exports = (client) => {
     let query = '';
     let mode = '';
 
-    const cmdMatch = upper.match(/^(FB|RN|FSN|ETKD|FF|BT)\s*(.+)$/i);
+    const cmdMatch = upper.match(/^(FB|RN|FSN|ETKD|FF|BT|SY)(?:\s*(.*))$/i);
     if (!cmdMatch) return;
 
     const command = cmdMatch[1].toUpperCase();
@@ -381,11 +411,13 @@ module.exports = (client) => {
     else if (command === 'ETKD') mode = 'TICKET';
     else if (command === 'FF') mode = 'FF';
     else if (command === 'BT') mode = 'BAGTAG';
+    else if (command === 'SY') mode = 'SY';
 
     try {
       const result = await runLookup(mode, query);
       if (result.error) return message.reply(result.error);
-      return message.reply({ embeds: [result.embed] });
+      if (result.embed) return message.reply({ embeds: [result.embed] });
+      return message.reply(result.message || 'OK');
     } catch (err) {
       console.error(err);
       return message.reply('Lookup failed.');
@@ -401,7 +433,8 @@ module.exports = (client) => {
       fsn: 'SEAT',
       etkd: 'TICKET',
       ff: 'FF',
-      bt: 'BAGTAG'
+      bt: 'BAGTAG',
+      sy: 'SY'
     };
 
     const mode = commandMap[interaction.commandName.toLowerCase()];
