@@ -765,6 +765,18 @@
       return '';
     })();
 
+    function promptAndSaveApiBase() {
+      const input = window.prompt(
+        '未检测到后端地址。请输入机器人后端域名（例如 https://xxx.up.railway.app ）',
+        'https://'
+      );
+      if (!input) return '';
+      const normalized = input.trim().replace(/\/$/, '');
+      if (!/^https?:\/\//i.test(normalized)) return '';
+      localStorage.setItem('mu_api_base', normalized);
+      return normalized;
+    }
+
 
     function escapeHtml(value) {
       return (value || '')
@@ -1093,9 +1105,29 @@
             failText.toLowerCase().includes('<!doctype html');
 
           if (maybeWrongApiBase) {
-            throw new Error(
-              'API endpoint not found on current site. Please configure MU_API_BASE or localStorage.mu_api_base to your bot backend domain.'
-            );
+            const configuredApiBase = promptAndSaveApiBase();
+            if (configuredApiBase) {
+              const retryEndpoint = `${configuredApiBase}/search?q=` + encodeURIComponent(q);
+              const retryRes = await fetch(retryEndpoint, { headers });
+              if (!retryRes.ok) {
+                const retryText = await retryRes.text();
+                throw new Error(`HTTP ${retryRes.status} ${retryRes.statusText} ${retryText.slice(0, 120)} (endpoint: ${retryEndpoint})`);
+              }
+              const retryType = retryRes.headers.get('content-type') || '';
+              if (!retryType.includes('application/json')) {
+                const retryText = await retryRes.text();
+                throw new Error(`Non-JSON response: ${retryText.slice(0, 120)} (endpoint: ${retryEndpoint})`);
+              }
+              const retryData = await retryRes.json();
+              if (retryData.error) {
+                error.innerText = retryData.error;
+                error.style.display = 'block';
+                return;
+              }
+              location.reload();
+              return;
+            }
+            throw new Error('API endpoint not found on current site, and no backend configured.');
           }
 
           throw new Error(
@@ -1163,30 +1195,32 @@
           document.getElementById('seat').innerText = `${sy.flightNo || '-'}/${sy.flightDate || '-'}`;
 
           document.getElementById('membershipSection').style.display = 'block';
-          document.getElementById('ff').innerText = '机型/注册号';
-          document.getElementById('ffStatus').innerText = `${sy.aircraftType || '-'} / ${sy.aircraftRegistration || '-'}`;
+          document.getElementById('ff').innerText = '航班';
+          document.getElementById('ffStatus').innerText = `${sy.flightNo || '-'}/${sy.flightDate || '-'}`;
 
           document.getElementById('ticketSection').style.display = 'block';
-          document.getElementById('ticket').innerText = `GATE ${sy.gate || '-'}`;
+          document.getElementById('ticket').innerText = `机型/注册号\n${sy.aircraftType || '-'} / ${sy.aircraftRegistration || '-'}`;
 
           document.getElementById('bagsSection').style.display = 'block';
-          document.getElementById('bags').innerText = `BDT/SD/ED ${sy.bdt || '-'} / ${sy.sd || '-'} / ${sy.ed || '-'}`;
+          document.getElementById('bags').innerText = `GATE\n${sy.gate || '-'}`;
 
           document.getElementById('inboundSection').style.display = 'block';
-          document.getElementById('inbound').innerText = `RK message\n${sy.rkMessage || '-'}`;
+          document.getElementById('inbound').innerText =
+            `BDT/SD/ED\n${sy.bdt || '-'} / ${sy.sd || '-'} / ${sy.ed || '-'}\n\n` +
+            `RK message\n${sy.rkMessage || '-'}`;
 
           document.getElementById('outboundSection').style.display = 'block';
           document.getElementById('outbound').innerText =
-            `Reservation ${sy.reservation?.[0] || '-'}\n` +
-            `Reservation(TKT) ${sy.reservationTicketed?.[0] || '-'}\n` +
-            `Check-in ${sy.checkedIn?.[0] || '-'}\n` +
-            `Check-in(TKT) ${sy.checkedInTicketed?.[0] || '-'}`;
+            `Reservation\n${sy.reservation?.[0] || '-'}\n\n` +
+            `Reservation(TKT)\n${sy.reservationTicketed?.[0] || '-'}\n\n` +
+            `Check-in\n${sy.checkedIn?.[0] || '-'}\n\n` +
+            `Check-in(TKT)\n${sy.checkedInTicketed?.[0] || '-'}`;
 
           document.getElementById('ssrSection').style.display = 'block';
-          document.getElementById('ssr').innerText = `Bags ${sy.bags?.[0] || '-'}`;
+          document.getElementById('ssr').innerText = `Bags\n${sy.bags?.[0] || '-'}`;
 
           document.getElementById('mealSection').style.display = 'block';
-          document.getElementById('meal').innerText = `WCH${sy.wch || '000'} / I${sy.inf || '00'} / CHD${sy.chd || '000'}`;
+          document.getElementById('meal').innerText = `WCH/INF/CHD\nWCH${sy.wch || '000'} / I${sy.inf || '00'} / CHD${sy.chd || '000'}`;
 
           document.getElementById('paidSection').style.display = 'none';
           document.getElementById('loungeSection').style.display = 'none';
