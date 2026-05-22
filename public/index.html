@@ -448,20 +448,21 @@
           MUFC
         </div>
 
-        <button
-          class="help-btn"
-          onclick="toggleHelpPanel()"
-        >
-          Search Help
-        </button>
+        <div class="password-box">
+          <input
+            id="newPassword"
+            type="password"
+            placeholder="输入新密码"
+          >
+          <button
+            class="help-btn"
+            onclick="changePassword()"
+          >
+            修改密码
+          </button>
+        </div>
       </div>
 
-      <div
-        id="helpPanel"
-        class="help-panel"
-      >
-        Search by Boarding Number, Name, Seat, Ticket Number, or Membership Number.<br>
-      </div>
 
       <div class="search-box">
 
@@ -763,9 +764,7 @@
     let checkinPanelOpen = false;
     let currentUser = null;
 
-    let helpPanelOpen = false;
-
-    function resolveApiBase() {
+        function resolveApiBase() {
       const fromWindow = window.MU_API_BASE || '';
       const fromStorage = localStorage.getItem('mu_api_base') || '';
 
@@ -935,12 +934,6 @@
       }
 
       list.innerHTML = cards.join('');
-    }
-
-    function toggleHelpPanel() {
-      const panel = document.getElementById('helpPanel');
-      helpPanelOpen = !helpPanelOpen;
-      panel.style.display = helpPanelOpen ? 'block' : 'none';
     }
 
     function toggleDocPanel() {
@@ -1554,7 +1547,8 @@ To ${data.outbound.destination || '-'}`
     onAuthStateChanged,
     signOut,
     setPersistence,
-    browserSessionPersistence
+    browserSessionPersistence,
+    updatePassword
   }
   from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
 
@@ -1642,6 +1636,43 @@ To ${data.outbound.destination || '-'}`
 
     resetInactivityTimer();
   });
+
+
+  window.changePassword = async function () {
+    const input = document.getElementById('newPassword');
+    const errorBox = document.getElementById('error');
+    const newPassword = (input?.value || '').trim();
+
+    if (!auth.currentUser) {
+      if (errorBox) {
+        errorBox.innerText = '用户未登录，无法修改密码。';
+        errorBox.style.display = 'block';
+      }
+      return;
+    }
+
+    if (!newPassword) {
+      if (errorBox) {
+        errorBox.innerText = '请输入新密码。';
+        errorBox.style.display = 'block';
+      }
+      return;
+    }
+
+    try {
+      await updatePassword(auth.currentUser, newPassword);
+      if (input) input.value = '';
+      if (errorBox) {
+        errorBox.innerText = '密码修改成功。';
+        errorBox.style.display = 'block';
+      }
+    } catch (err) {
+      if (errorBox) {
+        errorBox.innerText = err?.message || '密码修改失败。';
+        errorBox.style.display = 'block';
+      }
+    }
+  };
 
   window.logout = async function () {
 
