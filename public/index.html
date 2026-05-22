@@ -1109,6 +1109,16 @@
             (data.flightNo && data.flightDate ? data : null);
 
           if (!sy) {
+            card.style.display = 'none';
+            document.getElementById('loungeSection').style.display = 'none';
+            document.getElementById('membershipSection').style.display = 'none';
+            document.getElementById('ticketSection').style.display = 'none';
+            document.getElementById('bagsSection').style.display = 'none';
+            document.getElementById('inboundSection').style.display = 'none';
+            document.getElementById('outboundSection').style.display = 'none';
+            document.getElementById('ssrSection').style.display = 'none';
+            document.getElementById('mealSection').style.display = 'none';
+            document.getElementById('paidSection').style.display = 'none';
             error.innerText =
               'No SY payload returned. Please check backend deployment.';
             error.style.display =
