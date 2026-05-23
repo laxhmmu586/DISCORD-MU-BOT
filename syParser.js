@@ -114,7 +114,7 @@ function parseSYSection(sectionObj) {
   };
 }
 
-function findSYInfo(log, queryDate) {
+function findSYInfo(log, queryDate, options = {}) {
   const sections = splitLogicalSections(log);
   const sySections = sections.filter(s => /^>\s*SY(?:\/\d{2}[A-Z]{3}(?:\d{2})?)?/im.test(s.content || '') && /SY:\s*[A-Z0-9]+\/(\d{2}[A-Z]{3}\d{2})/i.test(s.content || ''));
 
@@ -144,8 +144,22 @@ function findSYInfo(log, queryDate) {
   const fallbackFlightDate = `${fallbackDd}${fallbackMon}${fallbackYy}`;
 
   const todayFlightDate = getFlightDateFromTimestamp(latestByTimestamp?.section?.timestamp) || fallbackFlightDate;
+
+  const targetFlightDate = options.preferNextDay
+    ? (() => {
+        const m = todayFlightDate.match(/^(\d{2})([A-Z]{3})(\d{2})$/);
+        if (!m) return todayFlightDate;
+        const monthMap = { JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5, JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11 };
+        const monIdx = monthMap[m[2]];
+        if (monIdx === undefined) return todayFlightDate;
+        const d = new Date(Number(`20${m[3]}`), monIdx, Number(m[1]));
+        d.setDate(d.getDate() + 1);
+        const mons = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+        return `${String(d.getDate()).padStart(2, '0')}${mons[d.getMonth()]}${String(d.getFullYear()).slice(-2)}`;
+      })()
+    : todayFlightDate;
   const todayMatches = parsed
-    .filter(x => x.info.flightDate === todayFlightDate)
+    .filter(x => x.info.flightDate === targetFlightDate)
     .sort((a, b) => parseSectionTimestamp(b.section.timestamp) - parseSectionTimestamp(a.section.timestamp));
 
   if (todayMatches.length) return todayMatches[0].info;
