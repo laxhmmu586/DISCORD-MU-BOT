@@ -214,7 +214,7 @@ function findPassengerByFFFromRecord(log, query) {
 
 function formatSYResponse(info) {
   const fields = [
-    { name: '机型/注册号', value: `${info.aircraftType || '-'} / ${info.aircraftRegistration || '-'}`, inline: true },
+    { name: 'Registration', value: `${info.aircraftType || '-'} / ${info.aircraftRegistration || '-'}`, inline: true },
     { name: 'GATE', value: info.gate || '-', inline: true },
     { name: 'BDT/SD/ED', value: `${info.bdt || '-'} / ${info.sd || '-'} / ${info.ed || '-'}`, inline: true },
     { name: 'RK message', value: info.rkMessage || '-', inline: false },
@@ -315,7 +315,7 @@ async function runLookup(mode, rawQuery) {
       }
     }
   } else if (mode === 'SY') {
-    const syInfo = findSYInfo(log, date);
+    const syInfo = findSYInfo(log, date, { preferNextDay: !date && query === '+' });
     if (!syInfo) return { error: 'No SY section found for selected date.' };
     return formatSYResponse(syInfo);
   }
@@ -400,11 +400,13 @@ module.exports = (client) => {
     let query = '';
     let mode = '';
 
-    const cmdMatch = upper.match(/^(FB|RN|FSN|ETKD|FF|BT|SY)(?:\s*(.*))$/i);
+    const cmdMatch = upper.match(/^(FB|RN|FSN|ETKD|FF|BT|SY\+?|SY)(?:\s*(.*))$/i);
     if (!cmdMatch) return;
 
-    const command = cmdMatch[1].toUpperCase();
+    const rawCommand = cmdMatch[1].toUpperCase();
+    const command = rawCommand === 'SY+' ? 'SY' : rawCommand;
     query = (cmdMatch[2] || '').trim();
+    if (rawCommand === 'SY+') query = '+';
 
     if (command === 'FB') mode = 'BN';
     else if (command === 'RN') mode = 'NAME';
