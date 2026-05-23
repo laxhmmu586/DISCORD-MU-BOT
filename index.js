@@ -337,7 +337,7 @@ app.get(
       }
 
       const isSYRawQuery =
-        /^SY(?:\/\d{2}[A-Z]{3}(?:\d{2})?)?$/.test(
+        /^SY\+?(?:\/\d{2}[A-Z]{3}(?:\d{2})?)?$/.test(
           rawQuery.replace(/\s+/g, '')
         );
 
@@ -380,10 +380,11 @@ app.get(
       parsePDLog(log);
 
       const normalizedRaw = rawQuery.replace(/\s+/g, '');
-      const syMatch = normalizedRaw.match(/^SY(?:\/(\d{2}[A-Z]{3})(?:\d{2})?)?$/i);
+      const syMatch = normalizedRaw.match(/^SY(\+)?(?:\/(\d{2}[A-Z]{3})(?:\d{2})?)?$/i);
       if (syMatch) {
-        const syDate = syMatch[1] ? syMatch[1].toUpperCase() : date;
-        const syInfo = findSYInfo(log, syDate);
+        const preferNextDay = Boolean(syMatch[1]) && !date;
+        const syDate = syMatch[2] ? syMatch[2].toUpperCase() : date;
+        const syInfo = findSYInfo(log, syDate, { preferNextDay });
         if (!syInfo) {
           return res.json({ error: 'No SY section found for selected date.' });
         }
