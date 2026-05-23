@@ -135,9 +135,7 @@ function findSYInfo(log, queryDate) {
 
   if (todayMatches.length) return todayMatches[0].info;
 
-  const latest = parsed
-    .sort((a, b) => parseSectionTimestamp(b.section.timestamp) - parseSectionTimestamp(a.section.timestamp))[0];
-  return latest ? latest.info : null;
+  return null;
 }
 
 module.exports = { findSYInfo };
