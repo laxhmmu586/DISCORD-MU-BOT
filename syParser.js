@@ -120,9 +120,9 @@ function findSYInfo(log, queryDate) {
   }
 
   const today = new Date();
-  const mon = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'][today.getUTCMonth()];
-  const todayDd = String(today.getUTCDate()).padStart(2, '0');
-  const todayYy = String(today.getUTCFullYear()).slice(-2);
+  const mon = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'][today.getMonth()];
+  const todayDd = String(today.getDate()).padStart(2, '0');
+  const todayYy = String(today.getFullYear()).slice(-2);
   const todayFlightDate = `${todayDd}${mon}${todayYy}`;
 
   const parsed = sySections
