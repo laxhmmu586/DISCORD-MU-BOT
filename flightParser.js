@@ -208,6 +208,40 @@ function parseIncrementalLog(log) {
   // ===========================
   const sections = splitLogicalSections(log);
   let lastPassengerBn = null;
+  let lineSeq = 0;
+
+  const enrichAndSortHistoryLines = (lines) => {
+    const monthMap = {
+      JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5,
+      JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11
+    };
+
+    const enriched = (lines || []).map((text, idx) => {
+      const m = text.match(/\/(\d{2})([A-Z]{3})(\d{4})(?:\/|$)/i);
+      let orderTs = Number.MAX_SAFE_INTEGER;
+
+      if (m) {
+        const day = Number(m[1]);
+        const mon = monthMap[m[2].toUpperCase()];
+        const hh = Number(m[3].slice(0, 2));
+        const mm = Number(m[3].slice(2, 4));
+
+        if (mon !== undefined) {
+          orderTs = Date.UTC(2000, mon, day, hh, mm, 0);
+        }
+      }
+
+      lineSeq += 1;
+      return { text, orderTs, seq: lineSeq + idx };
+    });
+
+    enriched.sort((a, b) => {
+      if (a.orderTs !== b.orderTs) return a.orderTs - b.orderTs;
+      return a.seq - b.seq;
+    });
+
+    return enriched.map(x => x.text);
+  };
 
   const extractContinuationDetailLines = (text) => {
     const lines = text
@@ -243,11 +277,14 @@ function parseIncrementalLog(log) {
         const continuedDetails = extractContinuationDetailLines(section);
         if (continuedDetails.length) {
           passengers[lastPassengerBn].operationHistoryLines = [
-            ...new Set([
-              ...(passengers[lastPassengerBn].operationHistoryLines || []),
-              ...continuedDetails
-            ])
+            ...(passengers[lastPassengerBn].operationHistoryLines || []),
+            ...continuedDetails
           ];
+
+          passengers[lastPassengerBn].operationHistoryLines =
+            enrichAndSortHistoryLines(
+              passengers[lastPassengerBn].operationHistoryLines
+            );
 
           passengers[lastPassengerBn].checkinDetails = [
             ...new Set([
@@ -716,6 +753,10 @@ function parseIncrementalLog(log) {
         ...(existingPassenger.operationHistoryLines || []),
         ...(passenger.operationHistoryLines || [])
       ];
+      passenger.operationHistoryLines =
+        enrichAndSortHistoryLines(
+          passenger.operationHistoryLines
+        );
 
       passenger.checkinDetails = [
         ...new Set([
@@ -810,6 +851,10 @@ function parseIncrementalLog(log) {
           ...(existingPassenger.operationHistoryLines || []),
           ...(passenger.operationHistoryLines || [])
         ];
+        existingPassenger.operationHistoryLines =
+          enrichAndSortHistoryLines(
+            existingPassenger.operationHistoryLines
+          );
 
         existingPassenger.bagtags =
           mergedBagtags;
