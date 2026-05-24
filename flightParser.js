@@ -207,9 +207,84 @@ function parseIncrementalLog(log) {
   // Split by Timestamp
   // ===========================
   const sections = splitLogicalSections(log);
+  let lastPassengerBn = null;
+  let lineSeq = 0;
+  const normalizeDetailLine = (line) =>
+    (line || '')
+      .replace(/[\u001c-\u001f]/g, '')
+      .replace(/\s+[+-]\s*$/, '')
+      .trimEnd();
+
+  const dedupeExactPreserveOrder = (lines) => {
+    const seen = new Set();
+    const out = [];
+    for (const raw of (lines || [])) {
+      const line = normalizeDetailLine(raw);
+      if (!line) continue;
+      if (seen.has(line)) continue;
+      seen.add(line);
+      out.push(line);
+    }
+    return out;
+  };
+
+  const enrichAndSortHistoryLines = (lines) => {
+    const monthMap = {
+      JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5,
+      JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11
+    };
+
+    const enriched = (lines || []).map((raw, idx) => {
+      const text = normalizeDetailLine(raw);
+      const m = text.match(/\/(\d{2})([A-Z]{3})(\d{4})(?:\/|\s|$)/i);
+      let orderTs = Number.MAX_SAFE_INTEGER;
+
+      if (m) {
+        const day = Number(m[1]);
+        const mon = monthMap[m[2].toUpperCase()];
+        const hh = Number(m[3].slice(0, 2));
+        const mm = Number(m[3].slice(2, 4));
+
+        if (mon !== undefined) {
+          orderTs = Date.UTC(2000, mon, day, hh, mm, 0);
+        }
+      }
+
+      lineSeq += 1;
+      return { text, orderTs, seq: lineSeq + idx };
+    });
+
+    enriched.sort((a, b) => {
+      if (a.orderTs !== b.orderTs) return a.orderTs - b.orderTs;
+      return a.seq - b.seq;
+    });
+
+    return enriched.map(x => x.text);
+  };
+
+  const extractContinuationDetailLines = (text) => {
+    const lines = text
+      .split(/\r?\n/)
+      .map(line => line.replace(/[\u001c-\u001f]/g, '').trim())
+      .filter(Boolean);
+
+    return dedupeExactPreserveOrder(
+      lines.filter(line => /^[A-Z]{2,3}\s+[A-Z]{3}\d{5,}\s+(?:AGT\d+|EDI-[A-Z0-9]+)\/\d{2}[A-Z]{3}\d{4}(?:\/[^\s]+)*(?:\s+[^\s].*)?$/i.test(line))
+    );
+  };
 
   for (const sectionObj of sections) {
-    const section = sectionObj.content;
+    let section = sectionObj.content;
+    const isContinuationCommand =
+      /^(PN|PN1|PF|PF1)$/i.test(sectionObj.command || '');
+
+    if (isContinuationCommand) {
+      section =
+        section.replace(
+          /(?:^|\r?\n)\s*PR:\s+[^\n\r]*(?:\r?\n|$)/i,
+          ''
+        );
+    }
     const sectionTimestampMs =
       parseSectionTimestamp(sectionObj.timestamp);
 
@@ -219,6 +294,29 @@ function parseIncrementalLog(log) {
     if (
       !section.includes('PR:')
     ) {
+      if (isContinuationCommand && lastPassengerBn && passengers[lastPassengerBn]) {
+        const continuedDetails = extractContinuationDetailLines(section);
+        if (continuedDetails.length) {
+          passengers[lastPassengerBn].operationHistoryLines = [
+            ...(passengers[lastPassengerBn].operationHistoryLines || []),
+            ...continuedDetails
+          ];
+
+          passengers[lastPassengerBn].operationHistoryLines =
+            enrichAndSortHistoryLines(
+              dedupeExactPreserveOrder(
+                passengers[lastPassengerBn].operationHistoryLines
+              )
+            );
+
+          passengers[lastPassengerBn].checkinDetails = [
+            ...new Set([
+              ...(passengers[lastPassengerBn].ckinLines || []),
+              ...(passengers[lastPassengerBn].operationHistoryLines || [])
+            ])
+          ];
+        }
+      }
       continue;
     }
 
@@ -259,13 +357,15 @@ function parseIncrementalLog(log) {
       section.match(
         /\d+\.\s+([A-Z\/]+).*?BN(\d+)(?:\s+\*?(\d+[A-Z]))?/i
       );
+    const headerBnMatch =
+      section.match(/\bBN(\d{1,3})\b/i);
 
     const offloadedMatch =
       section.match(
         /^\s*\d+\.\s+([A-Z\/]+).*?\bDELETED\b/im
       );
 
-    if (!paxMatch && !offloadedMatch) {
+    if (!paxMatch && !offloadedMatch && !headerBnMatch) {
       continue;
     }
 
@@ -274,8 +374,8 @@ function parseIncrementalLog(log) {
         .trim();
 
     const bn =
-      paxMatch?.[2]
-        ? paxMatch[2].padStart(3, '0')
+      (paxMatch?.[2] || headerBnMatch?.[1] || '')
+        ? (paxMatch?.[2] || headerBnMatch?.[1] || '').padStart(3, '0')
         : '---';
 
     const isPassengerOffloaded =
@@ -406,7 +506,7 @@ function parseIncrementalLog(log) {
 
     const bagLineMatch =
       section.match(
-        /BAGTAG\/([^\n\r]+)/i
+        /BAGTAG\s*\/([^\n\r]+)/i
       );
 
     if (bagLineMatch) {
@@ -416,7 +516,7 @@ function parseIncrementalLog(log) {
 
       const bags = [
         ...line.matchAll(
-          /(?:^|\s)\/?\s*((?:[A-Z]{1,2}\s*)?\d{5,12})\s*\/\s*([A-Z]{3})\b/gi
+          /(?:^|\s)\/?\s*((?:[A-Z]{1,3}\s*)?\d{5,12})\s*\/\s*([A-Z]{3})\b/gi
         )
       ];
 
@@ -444,7 +544,7 @@ function parseIncrementalLog(log) {
 
     const inboundMatch =
       section.match(
-        /I\/([A-Z0-9]+)\/(\d{2}[A-Z]{3}).*?\s([A-Z]{3})/i
+        /^\s*I\/\s*([A-Z0-9]+)\s*\/\s*(\d{2}[A-Z]{3}(?:\d{2})?).*?\b([A-Z]{3})\s*$/im
       );
 
     if (inboundMatch) {
@@ -473,7 +573,7 @@ function parseIncrementalLog(log) {
     if (outboundLine) {
       const outboundMatch =
         outboundLine.match(
-          /X?O\/([A-Z0-9]+)\/(\d{2}[A-Z]{3})(?:.*?\bBN(\d+))?(?:.*?\b(\d+[A-Z]))?.*?\b([A-Z]{3})\s*$/i
+          /X?O\/\s*([A-Z0-9]+)\s*\/\s*(\d{2}[A-Z]{3}(?:\d{2})?)(?:.*?\bBN\s*(\d+))?(?:.*?\b(\d+[A-Z]))?.*?\b([A-Z]{3})\s*$/i
         );
 
       if (outboundMatch) {
@@ -583,11 +683,9 @@ function parseIncrementalLog(log) {
         .map(line => line.replace(/[\u001c-\u001f]/g, '').trim())
         .filter(Boolean);
 
-    const ckinLines = [
-      ...new Set(
-        sectionLines.filter(line => /^CKIN\b/i.test(line))
-      )
-    ];
+    const ckinLines = dedupeExactPreserveOrder(
+      sectionLines.filter(line => /^CKIN\b/i.test(line))
+    );
 
     const psmLines = [
       ...new Set(
@@ -595,11 +693,12 @@ function parseIncrementalLog(log) {
       )
     ];
 
-    const operationHistoryLines = [
-      ...new Set(
-        sectionLines.filter(line => /^[A-Z]{2,3}\s+[A-Z]{3}\d{5,}\s+AGT\d+\/\d{2}[A-Z]{3}\d{4}/i.test(line))
-      )
-    ];
+    const operationHistoryLines =
+      enrichAndSortHistoryLines(
+        dedupeExactPreserveOrder(
+          sectionLines.filter(line => /^[A-Z]{2,3}\s+[A-Z]{3}\d{5,}\s+(?:AGT\d+|EDI-[A-Z0-9]+)\/\d{2}[A-Z]{3}\d{4}(?:\/[^\s]+)*(?:\s+[^\s].*)?$/i.test(line))
+        )
+      );
 
     const checkinDetails = [
       ...ckinLines,
@@ -656,6 +755,13 @@ function parseIncrementalLog(log) {
       passengers[bn];
 
     if (existingPassenger) {
+      const mergedBagtags = [
+        ...new Set([
+          ...(existingPassenger.bagtags || []),
+          ...(passenger.bagtags || [])
+        ])
+      ];
+
       passenger.psmLines = [
         ...new Set([
           ...(existingPassenger.psmLines || []),
@@ -664,18 +770,20 @@ function parseIncrementalLog(log) {
       ];
 
       passenger.ckinLines = [
-        ...new Set([
-          ...(existingPassenger.ckinLines || []),
-          ...(passenger.ckinLines || [])
-        ])
+        ...(existingPassenger.ckinLines || []),
+        ...(passenger.ckinLines || [])
       ];
+      passenger.ckinLines =
+        dedupeExactPreserveOrder(passenger.ckinLines);
 
       passenger.operationHistoryLines = [
-        ...new Set([
-          ...(existingPassenger.operationHistoryLines || []),
-          ...(passenger.operationHistoryLines || [])
-        ])
+        ...(existingPassenger.operationHistoryLines || []),
+        ...(passenger.operationHistoryLines || [])
       ];
+      passenger.operationHistoryLines =
+        enrichAndSortHistoryLines(
+          dedupeExactPreserveOrder(passenger.operationHistoryLines)
+        );
 
       passenger.checkinDetails = [
         ...new Set([
@@ -698,6 +806,54 @@ function parseIncrementalLog(log) {
         ])
       ];
 
+      passenger.bagtags =
+        mergedBagtags;
+
+      passenger.inbound =
+        passenger.inbound || existingPassenger.inbound || null;
+
+      passenger.outbound =
+        passenger.outbound || existingPassenger.outbound || null;
+
+      passenger.ticketNumber =
+        passenger.ticketNumber || existingPassenger.ticketNumber || null;
+
+      passenger.seat =
+        passenger.seat || existingPassenger.seat || null;
+
+      passenger.ffCarrier =
+        passenger.ffCarrier || existingPassenger.ffCarrier || null;
+
+      passenger.ffNumber =
+        passenger.ffNumber || existingPassenger.ffNumber || null;
+
+      passenger.ffTier =
+        passenger.ffTier || existingPassenger.ffTier || null;
+
+      passenger.specialServices = [
+        ...new Set([
+          ...(existingPassenger.specialServices || []),
+          ...(passenger.specialServices || [])
+        ])
+      ];
+
+      const changeLogLines = [];
+      const sameOrNewer = !existingPassenger.sectionTimestampMs || !sectionTimestampMs || sectionTimestampMs >= existingPassenger.sectionTimestampMs;
+      if (sameOrNewer) {
+        if (existingPassenger.seat && passenger.seat && existingPassenger.seat !== passenger.seat) {
+          changeLogLines.push(`CHG SEAT ${existingPassenger.seat} -> ${passenger.seat}`);
+        }
+        if (existingPassenger.ffNumber && passenger.ffNumber && existingPassenger.ffNumber !== passenger.ffNumber) {
+          changeLogLines.push(`CHG FQTV ${existingPassenger.ffCarrier || ''}${existingPassenger.ffNumber} -> ${(passenger.ffCarrier || '')}${passenger.ffNumber}`.trim());
+        }
+        const oldPaid = existingPassenger.paidProductsShort || [];
+        const newPaid = passenger.paidProductsShort || [];
+        const paidRemoved = oldPaid.filter(x => !newPaid.includes(x));
+        const paidAdded = newPaid.filter(x => !oldPaid.includes(x));
+        paidRemoved.forEach(x => changeLogLines.push(`CHG PAID REMOVED ${x}`));
+        paidAdded.forEach(x => changeLogLines.push(`CHG PAID ADDED ${x}`));
+      }
+
       const existingTs =
         existingPassenger.sectionTimestampMs;
 
@@ -706,8 +862,70 @@ function parseIncrementalLog(log) {
         sectionTimestampMs &&
         existingTs > sectionTimestampMs
       ) {
+        existingPassenger.psmLines = [
+          ...new Set([
+            ...(existingPassenger.psmLines || []),
+            ...(passenger.psmLines || [])
+          ])
+        ];
+
+        existingPassenger.ckinLines = [
+          ...(existingPassenger.ckinLines || []),
+          ...(passenger.ckinLines || [])
+        ];
+        existingPassenger.ckinLines =
+          dedupeExactPreserveOrder(existingPassenger.ckinLines);
+
+        existingPassenger.operationHistoryLines = [
+          ...(existingPassenger.operationHistoryLines || []),
+          ...(passenger.operationHistoryLines || [])
+        ];
+        existingPassenger.operationHistoryLines =
+          enrichAndSortHistoryLines(
+            dedupeExactPreserveOrder(existingPassenger.operationHistoryLines)
+          );
+
+        existingPassenger.bagtags =
+          mergedBagtags;
+
+        if (
+          passenger.inbound &&
+          sectionTimestampMs &&
+          (
+            !existingPassenger.inbound ||
+            !existingTs ||
+            sectionTimestampMs >= existingTs
+          )
+        ) {
+          existingPassenger.inbound =
+            passenger.inbound;
+        }
+
+        if (
+          passenger.outbound &&
+          sectionTimestampMs &&
+          (
+            !existingPassenger.outbound ||
+            !existingTs ||
+            sectionTimestampMs >= existingTs
+          )
+        ) {
+          existingPassenger.outbound =
+            passenger.outbound;
+        }
+
+        existingPassenger.checkinDetails = [
+          ...(existingPassenger.ckinLines || []),
+          ...(existingPassenger.operationHistoryLines || [])
+        ];
         continue;
       }
+
+      passenger.checkinDetails = [
+        ...(passenger.ckinLines || []),
+        ...(passenger.operationHistoryLines || []),
+        ...changeLogLines
+      ];
     }
 
     passenger.sectionTimestampMs = sectionTimestampMs || null;
@@ -715,6 +933,8 @@ function parseIncrementalLog(log) {
     // Latest Record Wins (with merged check-in continuation lines)
     passengers[bn] =
       passenger;
+
+    lastPassengerBn = bn;
   }
 
   console.log(
