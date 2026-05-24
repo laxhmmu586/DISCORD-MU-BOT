@@ -215,11 +215,7 @@ function parseIncrementalLog(log) {
       .map(line => line.replace(/[\u001c-\u001f]/g, '').trim())
       .filter(Boolean);
 
-    return [
-      ...new Set(
-        lines.filter(line => /^[A-Z]{2,3}\s+[A-Z]{3}\d{5,}\s+(?:AGT\d+|EDI-[A-Z0-9]+)\/\d{2}[A-Z]{3}\d{4}(?:\/[^\s]+)*(?:\s+[^\s].*)?$/i.test(line))
-      )
-    ];
+    return lines.filter(line => /^[A-Z]{2,3}\s+[A-Z]{3}\d{5,}\s+(?:AGT\d+|EDI-[A-Z0-9]+)\/\d{2}[A-Z]{3}\d{4}(?:\/[^\s]+)*(?:\s+[^\s].*)?$/i.test(line));
   };
 
   for (const sectionObj of sections) {
@@ -627,11 +623,8 @@ function parseIncrementalLog(log) {
       )
     ];
 
-    const operationHistoryLines = [
-      ...new Set(
-        sectionLines.filter(line => /^[A-Z]{2,3}\s+[A-Z]{3}\d{5,}\s+(?:AGT\d+|EDI-[A-Z0-9]+)\/\d{2}[A-Z]{3}\d{4}(?:\/[^\s]+)*(?:\s+[^\s].*)?$/i.test(line))
-      )
-    ];
+    const operationHistoryLines =
+      sectionLines.filter(line => /^[A-Z]{2,3}\s+[A-Z]{3}\d{5,}\s+(?:AGT\d+|EDI-[A-Z0-9]+)\/\d{2}[A-Z]{3}\d{4}(?:\/[^\s]+)*(?:\s+[^\s].*)?$/i.test(line));
 
     const checkinDetails = [
       ...ckinLines,
@@ -703,17 +696,13 @@ function parseIncrementalLog(log) {
       ];
 
       passenger.ckinLines = [
-        ...new Set([
-          ...(existingPassenger.ckinLines || []),
-          ...(passenger.ckinLines || [])
-        ])
+        ...(existingPassenger.ckinLines || []),
+        ...(passenger.ckinLines || [])
       ];
 
       passenger.operationHistoryLines = [
-        ...new Set([
-          ...(existingPassenger.operationHistoryLines || []),
-          ...(passenger.operationHistoryLines || [])
-        ])
+        ...(existingPassenger.operationHistoryLines || []),
+        ...(passenger.operationHistoryLines || [])
       ];
 
       passenger.checkinDetails = [
@@ -746,6 +735,45 @@ function parseIncrementalLog(log) {
       passenger.outbound =
         passenger.outbound || existingPassenger.outbound || null;
 
+      passenger.ticketNumber =
+        passenger.ticketNumber || existingPassenger.ticketNumber || null;
+
+      passenger.seat =
+        passenger.seat || existingPassenger.seat || null;
+
+      passenger.ffCarrier =
+        passenger.ffCarrier || existingPassenger.ffCarrier || null;
+
+      passenger.ffNumber =
+        passenger.ffNumber || existingPassenger.ffNumber || null;
+
+      passenger.ffTier =
+        passenger.ffTier || existingPassenger.ffTier || null;
+
+      passenger.specialServices = [
+        ...new Set([
+          ...(existingPassenger.specialServices || []),
+          ...(passenger.specialServices || [])
+        ])
+      ];
+
+      const changeLogLines = [];
+      const sameOrNewer = !existingPassenger.sectionTimestampMs || !sectionTimestampMs || sectionTimestampMs >= existingPassenger.sectionTimestampMs;
+      if (sameOrNewer) {
+        if (existingPassenger.seat && passenger.seat && existingPassenger.seat !== passenger.seat) {
+          changeLogLines.push(`CHG SEAT ${existingPassenger.seat} -> ${passenger.seat}`);
+        }
+        if (existingPassenger.ffNumber && passenger.ffNumber && existingPassenger.ffNumber !== passenger.ffNumber) {
+          changeLogLines.push(`CHG FQTV ${existingPassenger.ffCarrier || ''}${existingPassenger.ffNumber} -> ${(passenger.ffCarrier || '')}${passenger.ffNumber}`.trim());
+        }
+        const oldPaid = existingPassenger.paidProductsShort || [];
+        const newPaid = passenger.paidProductsShort || [];
+        const paidRemoved = oldPaid.filter(x => !newPaid.includes(x));
+        const paidAdded = newPaid.filter(x => !oldPaid.includes(x));
+        paidRemoved.forEach(x => changeLogLines.push(`CHG PAID REMOVED ${x}`));
+        paidAdded.forEach(x => changeLogLines.push(`CHG PAID ADDED ${x}`));
+      }
+
       const existingTs =
         existingPassenger.sectionTimestampMs;
 
@@ -762,17 +790,13 @@ function parseIncrementalLog(log) {
         ];
 
         existingPassenger.ckinLines = [
-          ...new Set([
-            ...(existingPassenger.ckinLines || []),
-            ...(passenger.ckinLines || [])
-          ])
+          ...(existingPassenger.ckinLines || []),
+          ...(passenger.ckinLines || [])
         ];
 
         existingPassenger.operationHistoryLines = [
-          ...new Set([
-            ...(existingPassenger.operationHistoryLines || []),
-            ...(passenger.operationHistoryLines || [])
-          ])
+          ...(existingPassenger.operationHistoryLines || []),
+          ...(passenger.operationHistoryLines || [])
         ];
 
         existingPassenger.bagtags =
@@ -805,13 +829,17 @@ function parseIncrementalLog(log) {
         }
 
         existingPassenger.checkinDetails = [
-          ...new Set([
-            ...(existingPassenger.ckinLines || []),
-            ...(existingPassenger.operationHistoryLines || [])
-          ])
+          ...(existingPassenger.ckinLines || []),
+          ...(existingPassenger.operationHistoryLines || [])
         ];
         continue;
       }
+
+      passenger.checkinDetails = [
+        ...(passenger.ckinLines || []),
+        ...(passenger.operationHistoryLines || []),
+        ...changeLogLines
+      ];
     }
 
     passenger.sectionTimestampMs = sectionTimestampMs || null;
