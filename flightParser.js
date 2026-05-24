@@ -688,6 +688,13 @@ function parseIncrementalLog(log) {
       passengers[bn];
 
     if (existingPassenger) {
+      const mergedBagtags = [
+        ...new Set([
+          ...(existingPassenger.bagtags || []),
+          ...(passenger.bagtags || [])
+        ])
+      ];
+
       passenger.psmLines = [
         ...new Set([
           ...(existingPassenger.psmLines || []),
@@ -730,6 +737,15 @@ function parseIncrementalLog(log) {
         ])
       ];
 
+      passenger.bagtags =
+        mergedBagtags;
+
+      passenger.inbound =
+        passenger.inbound || existingPassenger.inbound || null;
+
+      passenger.outbound =
+        passenger.outbound || existingPassenger.outbound || null;
+
       const existingTs =
         existingPassenger.sectionTimestampMs;
 
@@ -758,6 +774,35 @@ function parseIncrementalLog(log) {
             ...(passenger.operationHistoryLines || [])
           ])
         ];
+
+        existingPassenger.bagtags =
+          mergedBagtags;
+
+        if (
+          passenger.inbound &&
+          sectionTimestampMs &&
+          (
+            !existingPassenger.inbound ||
+            !existingTs ||
+            sectionTimestampMs >= existingTs
+          )
+        ) {
+          existingPassenger.inbound =
+            passenger.inbound;
+        }
+
+        if (
+          passenger.outbound &&
+          sectionTimestampMs &&
+          (
+            !existingPassenger.outbound ||
+            !existingTs ||
+            sectionTimestampMs >= existingTs
+          )
+        ) {
+          existingPassenger.outbound =
+            passenger.outbound;
+        }
 
         existingPassenger.checkinDetails = [
           ...new Set([
