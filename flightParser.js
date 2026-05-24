@@ -207,6 +207,20 @@ function parseIncrementalLog(log) {
   // Split by Timestamp
   // ===========================
   const sections = splitLogicalSections(log);
+  let lastPassengerBn = null;
+
+  const extractContinuationDetailLines = (text) => {
+    const lines = text
+      .split(/\r?\n/)
+      .map(line => line.replace(/[\u001c-\u001f]/g, '').trim())
+      .filter(Boolean);
+
+    return [
+      ...new Set(
+        lines.filter(line => /^[A-Z]{2,3}\s+[A-Z]{3}\d{5,}\s+(?:AGT\d+|EDI-[A-Z0-9]+)\/\d{2}[A-Z]{3}\d{4}(?:\/[^\s]+)?(?:\s+[^\s].*)?$/i.test(line))
+      )
+    ];
+  };
 
   for (const sectionObj of sections) {
     const section = sectionObj.content;
@@ -219,6 +233,24 @@ function parseIncrementalLog(log) {
     if (
       !section.includes('PR:')
     ) {
+      if (/^(PN|PN1|PF|PF1)$/i.test(sectionObj.command || '') && lastPassengerBn && passengers[lastPassengerBn]) {
+        const continuedDetails = extractContinuationDetailLines(section);
+        if (continuedDetails.length) {
+          passengers[lastPassengerBn].operationHistoryLines = [
+            ...new Set([
+              ...(passengers[lastPassengerBn].operationHistoryLines || []),
+              ...continuedDetails
+            ])
+          ];
+
+          passengers[lastPassengerBn].checkinDetails = [
+            ...new Set([
+              ...(passengers[lastPassengerBn].ckinLines || []),
+              ...(passengers[lastPassengerBn].operationHistoryLines || [])
+            ])
+          ];
+        }
+      }
       continue;
     }
 
@@ -715,6 +747,8 @@ function parseIncrementalLog(log) {
     // Latest Record Wins (with merged check-in continuation lines)
     passengers[bn] =
       passenger;
+
+    lastPassengerBn = bn;
   }
 
   console.log(
