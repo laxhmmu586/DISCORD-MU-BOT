@@ -406,7 +406,7 @@ function parseIncrementalLog(log) {
 
     const bagLineMatch =
       section.match(
-        /BAGTAG\/([^\n\r]+)/i
+        /BAGTAG\s*\/([^\n\r]+)/i
       );
 
     if (bagLineMatch) {
@@ -416,7 +416,7 @@ function parseIncrementalLog(log) {
 
       const bags = [
         ...line.matchAll(
-          /(?:^|\s)\/?\s*((?:[A-Z]{1,2}\s*)?\d{5,12})\s*\/\s*([A-Z]{3})\b/gi
+          /(?:^|\s)\/?\s*((?:[A-Z]{1,3}\s*)?\d{5,12})\s*\/\s*([A-Z]{3})\b/gi
         )
       ];
 
@@ -444,7 +444,7 @@ function parseIncrementalLog(log) {
 
     const inboundMatch =
       section.match(
-        /I\/([A-Z0-9]+)\/(\d{2}[A-Z]{3}).*?\s([A-Z]{3})/i
+        /^\s*I\/\s*([A-Z0-9]+)\s*\/\s*(\d{2}[A-Z]{3}(?:\d{2})?).*?\b([A-Z]{3})\s*$/im
       );
 
     if (inboundMatch) {
@@ -473,7 +473,7 @@ function parseIncrementalLog(log) {
     if (outboundLine) {
       const outboundMatch =
         outboundLine.match(
-          /X?O\/([A-Z0-9]+)\/(\d{2}[A-Z]{3})(?:.*?\bBN(\d+))?(?:.*?\b(\d+[A-Z]))?.*?\b([A-Z]{3})\s*$/i
+          /X?O\/\s*([A-Z0-9]+)\s*\/\s*(\d{2}[A-Z]{3}(?:\d{2})?)(?:.*?\bBN\s*(\d+))?(?:.*?\b(\d+[A-Z]))?.*?\b([A-Z]{3})\s*$/i
         );
 
       if (outboundMatch) {
@@ -597,7 +597,7 @@ function parseIncrementalLog(log) {
 
     const operationHistoryLines = [
       ...new Set(
-        sectionLines.filter(line => /^[A-Z]{2,3}\s+[A-Z]{3}\d{5,}\s+AGT\d+\/\d{2}[A-Z]{3}\d{4}/i.test(line))
+        sectionLines.filter(line => /^[A-Z]{2,3}\s+[A-Z]{3}\d{5,}\s+(?:AGT\d+|EDI-[A-Z0-9]+)\/\d{2}[A-Z]{3}\d{4}(?:\/[^\s]+)?/i.test(line))
       )
     ];
 
