@@ -219,7 +219,17 @@ function parseIncrementalLog(log) {
   };
 
   for (const sectionObj of sections) {
-    const section = sectionObj.content;
+    let section = sectionObj.content;
+    const isContinuationCommand =
+      /^(PN|PN1|PF|PF1)$/i.test(sectionObj.command || '');
+
+    if (isContinuationCommand) {
+      section =
+        section.replace(
+          /^\s*PR:\s+[^\n\r]*(?:\r?\n|$)/i,
+          ''
+        );
+    }
     const sectionTimestampMs =
       parseSectionTimestamp(sectionObj.timestamp);
 
@@ -229,7 +239,7 @@ function parseIncrementalLog(log) {
     if (
       !section.includes('PR:')
     ) {
-      if (/^(PN|PN1|PF|PF1)$/i.test(sectionObj.command || '') && lastPassengerBn && passengers[lastPassengerBn]) {
+      if (isContinuationCommand && lastPassengerBn && passengers[lastPassengerBn]) {
         const continuedDetails = extractContinuationDetailLines(section);
         if (continuedDetails.length) {
           passengers[lastPassengerBn].operationHistoryLines = [
