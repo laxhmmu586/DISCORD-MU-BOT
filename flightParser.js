@@ -236,7 +236,7 @@ function parseIncrementalLog(log) {
 
     const enriched = (lines || []).map((raw, idx) => {
       const text = normalizeDetailLine(raw);
-      const m = text.match(/\/(\d{2})([A-Z]{3})(\d{4})(?:\/|$)/i);
+      const m = text.match(/\/(\d{2})([A-Z]{3})(\d{4})(?:\/|\s|$)/i);
       let orderTs = Number.MAX_SAFE_INTEGER;
 
       if (m) {
