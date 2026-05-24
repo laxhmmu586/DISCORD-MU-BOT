@@ -226,7 +226,7 @@ function parseIncrementalLog(log) {
     if (isContinuationCommand) {
       section =
         section.replace(
-          /^\s*PR:\s+[^\n\r]*(?:\r?\n|$)/i,
+          /(?:^|\r?\n)\s*PR:\s+[^\n\r]*(?:\r?\n|$)/i,
           ''
         );
     }
