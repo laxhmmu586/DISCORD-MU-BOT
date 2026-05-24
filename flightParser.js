@@ -217,7 +217,7 @@ function parseIncrementalLog(log) {
 
     return [
       ...new Set(
-        lines.filter(line => /^[A-Z]{2,3}\s+[A-Z]{3}\d{5,}\s+(?:AGT\d+|EDI-[A-Z0-9]+)\/\d{2}[A-Z]{3}\d{4}(?:\/[^\s]+)?(?:\s+[^\s].*)?$/i.test(line))
+        lines.filter(line => /^[A-Z]{2,3}\s+[A-Z]{3}\d{5,}\s+(?:AGT\d+|EDI-[A-Z0-9]+)\/\d{2}[A-Z]{3}\d{4}(?:\/[^\s]+)*(?:\s+[^\s].*)?$/i.test(line))
       )
     ];
   };
@@ -629,7 +629,7 @@ function parseIncrementalLog(log) {
 
     const operationHistoryLines = [
       ...new Set(
-        sectionLines.filter(line => /^[A-Z]{2,3}\s+[A-Z]{3}\d{5,}\s+(?:AGT\d+|EDI-[A-Z0-9]+)\/\d{2}[A-Z]{3}\d{4}(?:\/[^\s]+)?/i.test(line))
+        sectionLines.filter(line => /^[A-Z]{2,3}\s+[A-Z]{3}\d{5,}\s+(?:AGT\d+|EDI-[A-Z0-9]+)\/\d{2}[A-Z]{3}\d{4}(?:\/[^\s]+)*(?:\s+[^\s].*)?$/i.test(line))
       )
     ];
 
