@@ -287,13 +287,15 @@ function parseIncrementalLog(log) {
       section.match(
         /\d+\.\s+([A-Z\/]+).*?BN(\d+)(?:\s+\*?(\d+[A-Z]))?/i
       );
+    const headerBnMatch =
+      section.match(/\bBN(\d{1,3})\b/i);
 
     const offloadedMatch =
       section.match(
         /^\s*\d+\.\s+([A-Z\/]+).*?\bDELETED\b/im
       );
 
-    if (!paxMatch && !offloadedMatch) {
+    if (!paxMatch && !offloadedMatch && !headerBnMatch) {
       continue;
     }
 
@@ -302,8 +304,8 @@ function parseIncrementalLog(log) {
         .trim();
 
     const bn =
-      paxMatch?.[2]
-        ? paxMatch[2].padStart(3, '0')
+      (paxMatch?.[2] || headerBnMatch?.[1] || '')
+        ? (paxMatch?.[2] || headerBnMatch?.[1] || '').padStart(3, '0')
         : '---';
 
     const isPassengerOffloaded =
