@@ -738,6 +738,33 @@ function parseIncrementalLog(log) {
         sectionTimestampMs &&
         existingTs > sectionTimestampMs
       ) {
+        existingPassenger.psmLines = [
+          ...new Set([
+            ...(existingPassenger.psmLines || []),
+            ...(passenger.psmLines || [])
+          ])
+        ];
+
+        existingPassenger.ckinLines = [
+          ...new Set([
+            ...(existingPassenger.ckinLines || []),
+            ...(passenger.ckinLines || [])
+          ])
+        ];
+
+        existingPassenger.operationHistoryLines = [
+          ...new Set([
+            ...(existingPassenger.operationHistoryLines || []),
+            ...(passenger.operationHistoryLines || [])
+          ])
+        ];
+
+        existingPassenger.checkinDetails = [
+          ...new Set([
+            ...(existingPassenger.ckinLines || []),
+            ...(existingPassenger.operationHistoryLines || [])
+          ])
+        ];
         continue;
       }
     }
