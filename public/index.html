@@ -1389,7 +1389,7 @@
         }
 
         // Bags
-        if (data.permissions?.canViewBags) {
+        if (data.permissions?.canViewBags && data.bagtags && data.bagtags.length) {
           setSectionLabel('bagsSection', 'Passenger Bags');
 
           document.getElementById(
@@ -1400,7 +1400,7 @@
           document.getElementById(
             'bags'
           ).innerText =
-            (data.bagtags && data.bagtags.length) ? data.bagtags.join('\n') : 'N/A';
+            data.bagtags.join('\n');
         }
 
         else {
