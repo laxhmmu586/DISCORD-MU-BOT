@@ -1019,6 +1019,15 @@
       btn.innerText = '🪪';
     }
 
+
+    function formatChdName(name) {
+      const raw = String(name || '').toUpperCase().trim();
+      const parts = raw.split('/');
+      const last = (parts[0] || '').slice(0, 6);
+      const first = (parts[1] || '').slice(0, 6);
+      return first ? `${last}/${first}` : last;
+    }
+
     function cleanRawLine(value) {
       return (value || '')
         .toString()
@@ -1323,10 +1332,11 @@
           const chdList = Array.isArray(sy.chdList) ? sy.chdList : [];
           const noCodeList = chdList.filter((p) => !p.hasChdCode);
           setTextById('chdSummary', `CHD Total: ${chdList.length} • Missing CHD1/0: ${noCodeList.length}`);
+          const sortedChdList = [...chdList].sort((a, b) => Number(a.bn || 0) - Number(b.bn || 0));
           setTextById(
             'chdList',
-            chdList.length
-              ? chdList.map((p) => `BN${p.bn} ${p.name} • ${p.hasChdCode ? 'CHD1/0 ✅' : 'CHD1/0 ❌'}`).join('\n')
+            sortedChdList.length
+              ? sortedChdList.map((p) => `BN${p.bn} ${formatChdName(p.name)} • ${p.dob || '-'} • ${p.hasChdCode ? 'CHD1/0 ✅' : 'CHD1/0 ❌'}`).join('\n')
               : 'No CHD passenger found by DOB rule (age 2-11).'
           );
           chdPanelOpen = false;
