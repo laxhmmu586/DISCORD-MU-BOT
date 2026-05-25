@@ -110,8 +110,74 @@ function parseSYSection(sectionObj) {
     chd,
     statusCode,
     statusTime,
-    statusDisplay
+    statusDisplay,
+    chdList: []
   };
+}
+
+function parseDobYYMMDD(dobRaw) {
+  if (!/^\d{6}$/.test(dobRaw || '')) return null;
+  const yy = Number(dobRaw.slice(0, 2));
+  const mm = Number(dobRaw.slice(2, 4));
+  const dd = Number(dobRaw.slice(4, 6));
+  if (mm < 1 || mm > 12 || dd < 1 || dd > 31) return null;
+  const fullYear = yy >= 70 ? 1900 + yy : 2000 + yy;
+  return new Date(Date.UTC(fullYear, mm - 1, dd));
+}
+
+function getAgeYearsAtDate(dob, atDateUtc) {
+  if (!dob || !atDateUtc) return null;
+  let age = atDateUtc.getUTCFullYear() - dob.getUTCFullYear();
+  const hasHadBirthday =
+    atDateUtc.getUTCMonth() > dob.getUTCMonth() ||
+    (atDateUtc.getUTCMonth() === dob.getUTCMonth() && atDateUtc.getUTCDate() >= dob.getUTCDate());
+  if (!hasHadBirthday) age -= 1;
+  return age;
+}
+
+function enrichCHDListFromLog(log, syInfo) {
+  if (!log || !syInfo?.flightNo || !syInfo?.flightDate) return [];
+  const sections = splitLogicalSections(log);
+  const chdList = [];
+
+  const flightDateMatch = syInfo.flightDate.match(/^(\d{2})([A-Z]{3})(\d{2})$/);
+  const monthMap = { JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5, JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11 };
+  const atDateUtc = flightDateMatch
+    ? new Date(Date.UTC(Number(`20${flightDateMatch[3]}`), monthMap[flightDateMatch[2]], Number(flightDateMatch[1])))
+    : null;
+
+  for (const sectionObj of sections) {
+    const section = sectionObj.content || '';
+    if (!section.includes('PR:')) continue;
+    const prMatch = section.match(/PR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
+    if (!prMatch) continue;
+    if (prMatch[1].toUpperCase() !== syInfo.flightNo || prMatch[2].toUpperCase() !== syInfo.flightDate) continue;
+
+    const paxMatch = section.match(/\n\s*\d+\.\s*([A-Z\/]+).*?\bBN(\d{1,3})\b.*?(?:\*?(\d+[A-Z]))?/i);
+    if (!paxMatch) continue;
+    const name = (paxMatch[1] || '').trim();
+    const bn = (paxMatch[2] || '').padStart(3, '0');
+    const seat = (paxMatch[3] || '---').toUpperCase();
+
+    const paxInfo = section.match(/PAX INFO\s*:\s*([^\n\r]+)/i)?.[1] || '';
+    const dobRaw = paxInfo.match(/DOB\/(\d{6})/i)?.[1] || null;
+    const dobDate = parseDobYYMMDD(dobRaw);
+    const ageYears = getAgeYearsAtDate(dobDate, atDateUtc);
+    const isChd = Number.isInteger(ageYears) && ageYears >= 2 && ageYears < 12;
+    if (!isChd) continue;
+
+    const hasChdCode = /\bCHD1\/0\b/i.test(section);
+
+    chdList.push({
+      name,
+      bn,
+      seat,
+      dob: dobRaw ? `20${dobRaw.slice(0, 2)}-${dobRaw.slice(2, 4)}-${dobRaw.slice(4, 6)}` : '-',
+      hasChdCode
+    });
+  }
+
+  return chdList.sort((a, b) => a.bn.localeCompare(b.bn));
 }
 
 function findSYInfo(log, queryDate, options = {}) {
@@ -126,7 +192,11 @@ function findSYInfo(log, queryDate, options = {}) {
       .filter(x => x.info)
       .filter(x => x.info.flightDate?.startsWith(queryDate))
       .sort((a, b) => parseSectionTimestamp(b.section.timestamp) - parseSectionTimestamp(a.section.timestamp));
-    if (matched.length) return matched[0].info;
+    if (matched.length) {
+      const info = matched[0].info;
+      info.chdList = enrichCHDListFromLog(log, info);
+      return info;
+    }
   }
 
   const parsed = sySections
@@ -162,7 +232,11 @@ function findSYInfo(log, queryDate, options = {}) {
     .filter(x => x.info.flightDate === targetFlightDate)
     .sort((a, b) => parseSectionTimestamp(b.section.timestamp) - parseSectionTimestamp(a.section.timestamp));
 
-  if (todayMatches.length) return todayMatches[0].info;
+  if (todayMatches.length) {
+    const info = todayMatches[0].info;
+    info.chdList = enrichCHDListFromLog(log, info);
+    return info;
+  }
 
   return null;
 }
