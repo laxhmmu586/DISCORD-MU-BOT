@@ -1599,18 +1599,6 @@ To ${data.outbound.destination || '-'}`
 
       }
 
-      catch (err) {
-
-        console.error('Search error:', err);
-
-        error.innerText =
-          `Search failed: ${err.message || 'Unknown error'}`;
-
-        error.style.display =
-          'block';
-      }
-    }
-
     // ===========================
     // Enter Key
     // ===========================
