@@ -450,11 +450,10 @@
     .back-btn { background:none; border:none; color:#93c5fd; cursor:pointer; padding:0; margin-bottom:8px; }
     .bag-detail-card { margin-top: 12px; border:none; border-radius:0; padding:0; }
     .bag-table { width:100%; border-collapse:collapse; margin-top:6px; table-layout: fixed; }
+    .bag-table th, .bag-table td { width:auto; }
+    .bag-table.rush-table th, .bag-table.rush-table td { width: 20%; }
+    .bag-table.rush-table th { white-space: nowrap; }
     .bag-table th, .bag-table td { border:1px solid #334155; padding:8px 10px; text-align:left; font-size:12px; white-space: normal; word-break: break-word; overflow-wrap:anywhere; vertical-align: top; }
-    .bag-table col.col-to { width: 80px; }
-    .bag-table col.col-ake { width: 120px; }
-    .bag-table col.col-rmk { width: 180px; }
-    .bag-table.rush-table td:nth-child(1), .bag-table.rush-table td:nth-child(2) { white-space: nowrap; }
     .bag-table th { background: #16243b; color: #dbeafe; font-weight: 700; }
     .bag-table td { background: #0f1b31; }
 
@@ -1023,7 +1022,6 @@
         <div class="bag-detail-card">
           <div class="detail-title" style="font-weight:700; letter-spacing:.5px;">${escapeHtml(title)}</div>
           <table class="bag-table ${title === 'RUSH BAGS' ? 'rush-table' : ''}">
-            ${title === 'RUSH BAGS' ? `<colgroup><col><col><col class="col-to"><col class="col-ake"><col class="col-rmk"></colgroup>` : ''}
             <thead>
               <tr>${headerRow}</tr>
             </thead>
