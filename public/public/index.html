@@ -206,7 +206,7 @@
 
       text-transform: uppercase;
 
-      font-size: 12px;
+      font-size: 11px;
 
       letter-spacing: 1px;
 
@@ -253,12 +253,12 @@
     .chd-toggle-btn {
       margin-top: 14px;
       width: auto;
-      min-width: 68px;
       background: #1d4ed8;
-      padding: 6px 10px;
+      padding: 4px 12px;
       border-radius: 999px;
       text-align: center;
       font-size: 12px;
+      display: inline-block;
     }
     .chd-summary {
       margin-top: 10px;
@@ -293,7 +293,7 @@
 
     .logout-btn {
       padding: 8px 12px;
-      font-size: 12px;
+      font-size: 11px;
       border-radius: 10px;
       background: #334155;
     }
@@ -416,7 +416,7 @@
     .detail-title {
       color: #60a5fa;
       text-transform: uppercase;
-      font-size: 12px;
+      font-size: 11px;
       letter-spacing: 1px;
       margin-bottom: 10px;
     }
@@ -431,22 +431,12 @@
 
     .mini-btn {
       padding: 8px 12px;
-      font-size: 12px;
+      font-size: 11px;
       border-radius: 10px;
       background: #334155;
     }
     .mini-btn:hover {
       background: #475569;
-    }
-    .admin-btn {
-      display: none;
-      padding: 8px 12px;
-      font-size: 12px;
-      border-radius: 10px;
-      background: #7c3aed;
-    }
-    .admin-btn:hover {
-      background: #6d28d9;
     }
 
   
@@ -454,6 +444,13 @@
     .sy-row { display:grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
     .sy-row-full { grid-template-columns: 1fr; }
     .sy-cell .label { margin-bottom: 4px; }
+
+
+    .clickable { cursor: pointer; }
+    .back-btn { background:none; border:none; color:#93c5fd; cursor:pointer; padding:0; margin-bottom:8px; }
+    .bag-detail-card { margin-top: 10px; border:1px solid #334155; border-radius:10px; padding:10px; }
+    .bag-table { width:100%; border-collapse:collapse; margin-top:8px; }
+    .bag-table th, .bag-table td { border:1px solid #334155; padding:6px 8px; text-align:left; font-size:12px; }
 
   </style>
 
@@ -477,13 +474,6 @@
           onclick="logout()"
         >
           Logout
-        </button>
-        <button
-          id="adminBtn"
-          class="admin-btn"
-          onclick="goAdmin()"
-        >
-          Admin
         </button>
       </div>
 
@@ -557,7 +547,7 @@
           </div>
           <div class="sy-row">
             <div class="sy-cell"><div class="label">BDT/SD/ED</div><div id="syTimes" class="value"></div></div>
-            <div class="sy-cell"><div class="label">Bags</div><div id="syBags" class="value"></div></div>
+            <div id="syBagsCell" class="sy-cell"><div class="label">BAGS</div><div id="syBags" class="value"></div></div>
           </div>
           <div class="sy-row sy-row-full">
             <div class="sy-cell"><div class="label">RK message</div><div id="syRk" class="value"></div></div>
@@ -570,11 +560,17 @@
             <div class="sy-cell"><div class="label">Check-in</div><div id="syCi" class="value"></div></div>
             <div class="sy-cell"><div class="label">Check-in(TKT)</div><div id="syCiTkt" class="value"></div></div>
           </div>
-          <button id="chdToggleBtn" class="chd-toggle-btn" style="display:none;" onclick="toggleChdPanel()">CHD</button>
+          <button id="chdToggleBtn" class="chd-toggle-btn" style="display:none;" onclick="toggleChdPanel()">CHD List</button>
           <div id="chdSection" style="display:none;">
             <div id="chdSummary" class="chd-summary"></div>
             <div id="chdList" class="chd-list"></div>
           </div>
+        </div>
+
+        <div id="syBagDetailLayout" class="sy-layout" style="display:none;">
+          <button class="back-btn" onclick="showSyFlightCard()">← Back</button>
+          <div class="label">SY Bag Details</div>
+          <div id="syBagDetailContent"></div>
         </div>
 
         <div
@@ -815,6 +811,7 @@
 
     let docPanelOpen = false;
     let currentPassengerData = null;
+    let currentSyBagSheet = null;
     let checkinPanelOpen = false;
     let chdPanelOpen = false;
     let currentUser = null;
@@ -991,6 +988,29 @@
       list.innerHTML = cards.join('');
     }
 
+    
+    function showSyFlightCard() {
+      setDisplayById('syLayout', 'block');
+      setDisplayById('syBagDetailLayout', 'none');
+    }
+
+    function showSyBagDetailCard() {
+      if (!currentSyBagSheet || !currentSyBagSheet.hasData) return;
+      const rush = currentSyBagSheet.rushBags || [];
+      const unload = currentSyBagSheet.unloadBags || [];
+      const rows = [0,1,2,3,4].map(i => `
+<tr><td>${i+1}</td><td>${escapeHtml(rush[i] || '') || '-'}</td><td>${escapeHtml(unload[i] || '') || '-'}</td></tr>`).join('');
+      document.getElementById('syBagDetailContent').innerHTML = `<div class="bag-detail-card"><table class="bag-table"><thead><tr><th>Row</th><th>Rush Bags (O-S)</th><th>Unload Bags (U-W)</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+      setDisplayById('syLayout', 'none');
+      setDisplayById('syBagDetailLayout', 'block');
+    }
+
+    function toggleChdPanel() {
+      chdPanelOpen = !chdPanelOpen;
+      setDisplayById('chdSection', chdPanelOpen ? 'block' : 'none');
+      setTextById('chdToggleBtn', chdPanelOpen ? 'Hide' : 'CHD List');
+    }
+
     function toggleDocPanel() {
       const sec = document.getElementById('docSection');
       const btn = document.getElementById('docToggleBtn');
@@ -999,10 +1019,13 @@
       btn.innerText = '🪪';
     }
 
-    function toggleChdPanel() {
-      chdPanelOpen = !chdPanelOpen;
-      setDisplayById('chdSection', chdPanelOpen ? 'block' : 'none');
-      setTextById('chdToggleBtn', chdPanelOpen ? 'Hide' : 'CHD');
+
+    function formatChdName(name) {
+      const raw = String(name || '').toUpperCase().trim();
+      const parts = raw.split('/');
+      const last = (parts[0] || '').slice(0, 6);
+      const first = (parts[1] || '').slice(0, 6);
+      return first ? `${last}/${first}` : last;
     }
 
     function cleanRawLine(value) {
@@ -1025,14 +1048,6 @@
     function setDisplayById(id, value) {
       const el = document.getElementById(id);
       if (el) el.style.display = value;
-    }
-
-    function formatShortPaxName(name) {
-      const raw = String(name || '').trim().toUpperCase();
-      if (!raw) return '-';
-      const [last = '', first = ''] = raw.split('/');
-      if (!first) return last;
-      return `${last}/${first.slice(0, 6)}`;
     }
 
     function buildTravelDocs(data) {
@@ -1181,7 +1196,7 @@
           headers.Authorization = `Bearer ${token}`;
         }
 
-        let res =
+        const res =
           await fetch(endpoint, { headers });
 
         const contentType =
@@ -1201,14 +1216,27 @@
             if (configuredApiBase) {
               apiBase = configuredApiBase;
               endpoint = `${apiBase}/search?q=` + encodeURIComponent(q);
-              res = await fetch(endpoint, { headers });
-              if (!res.ok) {
-                const retryText = await res.text();
-                throw new Error(`HTTP ${res.status} ${res.statusText} ${retryText.slice(0, 120)} (endpoint: ${endpoint})`);
+              const retryRes = await fetch(endpoint, { headers });
+              if (!retryRes.ok) {
+                const retryText = await retryRes.text();
+                throw new Error(
+                  `HTTP ${retryRes.status} ${retryRes.statusText} ${retryText.slice(0, 120)} (endpoint: ${endpoint})`
+                );
               }
-            } else {
-              throw new Error('API endpoint not found on current site, and no backend configured.');
+              const retryType = retryRes.headers.get('content-type') || '';
+              if (!retryType.includes('application/json')) {
+                const retryText = await retryRes.text();
+                throw new Error(`Non-JSON response: ${retryText.slice(0, 120)} (endpoint: ${endpoint})`);
+              }
+              const retryData = await retryRes.json();
+              if (retryData.error) {
+                error.innerText = retryData.error;
+                error.style.display = 'block';
+                return;
+              }
+              return renderSearchResult(retryData, q);
             }
+            throw new Error('API endpoint not found on current site, and no backend configured.');
           }
 
           throw new Error(
@@ -1226,13 +1254,21 @@
         }
 
         const data = await res.json();
+        return renderSearchResult(data, q);
+      } catch (err) {
+        error.innerText = err?.message || 'Search failed.';
+        error.style.display = 'block';
+      }
+    }
+
+    function renderSearchResult(data, q) {
+        const card = document.getElementById('card');
+        const error = document.getElementById('error');
         const normalizedQuery =
           String(q || '').trim().toUpperCase().replace(/\s+/g, '');
         const isSYQuery =
-          /^SY(?:\/\d{2}[A-Z]{3})?$/.test(normalizedQuery) ||
+          /^SY\+?(?:\/\d{2}[A-Z]{3})?$/.test(normalizedQuery) ||
           normalizedQuery.startsWith('SY/');
-        const isSYPlusQuery =
-          /^SY\+/.test(normalizedQuery);
 
         if (data.error) {
 
@@ -1278,11 +1314,27 @@
 
           ['membershipSection','ticketSection','bagsSection','inboundSection','outboundSection','ssrSection','mealSection','paidSection','loungeSection','docSection'].forEach((id) => setDisplayById(id, 'none'));
           setDisplayById('syLayout', 'block');
+          setDisplayById('syBagDetailLayout', 'none');
 
           setTextById('syAircraft', `${sy.aircraftType || '-'} / ${sy.aircraftRegistration || '-'}`);
           setTextById('syGate', `${sy.gate || '-'}`);
           setTextById('syTimes', `${sy.bdt || '-'} / ${sy.sd || '-'} / ${sy.ed || '-'}`);
-          setTextById('syBags', `${sy.bags?.[0] || '-'}`);
+          currentSyBagSheet = sy.bagSheet || null;
+          const bagIcon = currentSyBagSheet?.hasData ? ' 🧳' : '';
+          setTextById('syBags', `${sy.bags?.[0] || '-'}${bagIcon}`);
+          const syBagsEl = document.getElementById('syBags');
+          const syBagsCellEl = document.getElementById('syBagsCell');
+          if (currentSyBagSheet?.hasData) {
+            syBagsEl.classList.add('clickable');
+            syBagsCellEl.classList.add('clickable');
+            syBagsEl.onclick = showSyBagDetailCard;
+            syBagsCellEl.onclick = showSyBagDetailCard;
+          } else {
+            syBagsEl.classList.remove('clickable');
+            syBagsCellEl.classList.remove('clickable');
+            syBagsEl.onclick = null;
+            syBagsCellEl.onclick = null;
+          }
           setTextById('syRk', `${sy.rkMessage || '-'}`);
           setTextById('syRes', `${sy.reservation?.[0] || '-'}`);
           setTextById('syResTkt', `${sy.reservationTicketed?.[0] || '-'}`);
@@ -1291,20 +1343,17 @@
           const chdList = Array.isArray(sy.chdList) ? sy.chdList : [];
           const noCodeList = chdList.filter((p) => !p.hasChdCode);
           setTextById('chdSummary', `CHD Total: ${chdList.length} • Missing CHD1/0: ${noCodeList.length}`);
+          const sortedChdList = [...chdList].sort((a, b) => Number(a.bn || 0) - Number(b.bn || 0));
           setTextById(
             'chdList',
-            chdList.length
-              ? chdList.map((p) => `BN${p.bn} ${formatShortPaxName(p.name)} • ${p.dob} • ${p.hasChdCode ? 'CHD1/0 ✅' : 'CHD1/0 ❌'}`).join('\n')
+            sortedChdList.length
+              ? sortedChdList.map((p) => `BN${p.bn} ${formatChdName(p.name)} • ${p.dob || '-'} • ${p.hasChdCode ? 'CHD1/0 ✅' : 'CHD1/0 ❌'}`).join('\n')
               : 'No CHD passenger found by DOB rule (age 2-11).'
           );
           chdPanelOpen = false;
           setDisplayById('chdSection', 'none');
-          if (!isSYPlusQuery) {
-            setDisplayById('chdToggleBtn', 'inline-block');
-            setTextById('chdToggleBtn', 'CHD');
-          } else {
-            setDisplayById('chdToggleBtn', 'none');
-          }
+          setDisplayById('chdToggleBtn', 'block');
+          setTextById('chdToggleBtn', 'CHD List');
 
           setDisplayById('docToggleBtn', 'none');
           card.style.display = 'block';
@@ -1572,18 +1621,6 @@ To ${data.outbound.destination || '-'}`
 
       }
 
-      catch (err) {
-
-        console.error('Search error:', err);
-
-        error.innerText =
-          `Search failed: ${err.message || 'Unknown error'}`;
-
-        error.style.display =
-          'block';
-      }
-    }
-
     // ===========================
     // Enter Key
     // ===========================
@@ -1764,6 +1801,7 @@ To ${data.outbound.destination || '-'}`
     window.location.href =
       "login.html";
   };
+
 </script>
 </body>
 </html>
