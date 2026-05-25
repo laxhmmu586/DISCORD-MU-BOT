@@ -138,7 +138,7 @@ function getAgeYearsAtDate(dob, atDateUtc) {
 function enrichCHDListFromLog(log, syInfo) {
   if (!log || !syInfo?.flightNo || !syInfo?.flightDate) return [];
   const sections = splitLogicalSections(log);
-  const chdList = [];
+  const chdByBn = new Map();
 
   const flightDateMatch = syInfo.flightDate.match(/^(\d{2})([A-Z]{3})(\d{2})$/);
   const monthMap = { JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5, JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11 };
@@ -157,8 +157,6 @@ function enrichCHDListFromLog(log, syInfo) {
     if (!paxMatch) continue;
     const name = (paxMatch[1] || '').trim();
     const bn = (paxMatch[2] || '').padStart(3, '0');
-    const seat = (paxMatch[3] || '---').toUpperCase();
-
     const paxInfo = section.match(/PAX INFO\s*:\s*([^\n\r]+)/i)?.[1] || '';
     const dobRaw = paxInfo.match(/DOB\/(\d{6})/i)?.[1] || null;
     const dobDate = parseDobYYMMDD(dobRaw);
@@ -168,16 +166,23 @@ function enrichCHDListFromLog(log, syInfo) {
 
     const hasChdCode = /\bCHD1\/0\b/i.test(section);
 
-    chdList.push({
-      name,
-      bn,
-      seat,
-      dob: dobRaw ? `20${dobRaw.slice(0, 2)}-${dobRaw.slice(2, 4)}-${dobRaw.slice(4, 6)}` : '-',
-      hasChdCode
-    });
+    if (!chdByBn.has(bn)) {
+      chdByBn.set(bn, {
+        name,
+        bn,
+        dob: dobRaw ? `20${dobRaw.slice(0, 2)}-${dobRaw.slice(2, 4)}-${dobRaw.slice(4, 6)}` : '-',
+        hasChdCode
+      });
+      continue;
+    }
+
+    const existing = chdByBn.get(bn);
+    if (hasChdCode && !existing.hasChdCode) {
+      existing.hasChdCode = true;
+    }
   }
 
-  return chdList.sort((a, b) => a.bn.localeCompare(b.bn));
+  return Array.from(chdByBn.values()).sort((a, b) => Number(a.bn) - Number(b.bn));
 }
 
 function findSYInfo(log, queryDate, options = {}) {

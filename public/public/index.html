@@ -252,12 +252,13 @@
     }
     .chd-toggle-btn {
       margin-top: 14px;
-      width: 100%;
+      width: auto;
+      min-width: 68px;
       background: #1d4ed8;
-      padding: 10px 12px;
-      border-radius: 10px;
-      text-align: left;
-      font-size: 14px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      text-align: center;
+      font-size: 12px;
     }
     .chd-summary {
       margin-top: 10px;
@@ -569,7 +570,7 @@
             <div class="sy-cell"><div class="label">Check-in</div><div id="syCi" class="value"></div></div>
             <div class="sy-cell"><div class="label">Check-in(TKT)</div><div id="syCiTkt" class="value"></div></div>
           </div>
-          <button id="chdToggleBtn" class="chd-toggle-btn" style="display:none;" onclick="toggleChdPanel()">CHD List</button>
+          <button id="chdToggleBtn" class="chd-toggle-btn" style="display:none;" onclick="toggleChdPanel()">CHD</button>
           <div id="chdSection" style="display:none;">
             <div id="chdSummary" class="chd-summary"></div>
             <div id="chdList" class="chd-list"></div>
@@ -1001,7 +1002,7 @@
     function toggleChdPanel() {
       chdPanelOpen = !chdPanelOpen;
       setDisplayById('chdSection', chdPanelOpen ? 'block' : 'none');
-      setTextById('chdToggleBtn', chdPanelOpen ? 'Hide CHD List' : 'CHD List');
+      setTextById('chdToggleBtn', chdPanelOpen ? 'Hide' : 'CHD');
     }
 
     function cleanRawLine(value) {
@@ -1283,13 +1284,13 @@
           setTextById(
             'chdList',
             chdList.length
-              ? chdList.map((p) => `BN${p.bn} ${p.name} • Seat ${p.seat} • DOB ${p.dob} • ${p.hasChdCode ? 'CHD1/0 ✅' : 'CHD1/0 ❌'}`).join('\n')
+              ? chdList.map((p) => `BN${p.bn} ${p.name} • DOB ${p.dob} • ${p.hasChdCode ? 'CHD1/0 ✅' : 'CHD1/0 ❌'}`).join('\n')
               : 'No CHD passenger found by DOB rule (age 2-11).'
           );
           chdPanelOpen = false;
           setDisplayById('chdSection', 'none');
           setDisplayById('chdToggleBtn', 'block');
-          setTextById('chdToggleBtn', 'CHD List');
+          setTextById('chdToggleBtn', 'CHD');
 
           setDisplayById('docToggleBtn', 'none');
           card.style.display = 'block';
