@@ -29,7 +29,7 @@ Set in Railway service variables:
 
 ### D. Domain
 - Create/attach Railway public domain.
-- Example: `https://<your-railway-domain>.up.railway.app`
+- Example: `http://146.235.194.151:3000`
 - You will use this as frontend API base.
 
 ---
@@ -74,7 +74,7 @@ For permanent production config, add before app script in hosted page:
 
 ```html
 <script>
-  window.MU_API_BASE = 'https://<your-railway-domain>.up.railway.app';
+  window.MU_API_BASE = 'http://146.235.194.151:3000';
 </script>
 ```
 
@@ -96,7 +96,7 @@ No manual file uploads needed.
 ## 5) Verification checklist
 
 - Railway logs show Discord bot login success.
-- `GET https://<railway-domain>/search?q=test` returns JSON or expected API error JSON.
+- `GET http://146.235.194.151:3000/search?q=test` returns JSON or expected API error JSON.
 - Firebase site loads `login.html` / `index.html`.
 - Browser search no longer shows generic `Search failed`.
 - CORS allowed origin matches your exact Firebase domain.
