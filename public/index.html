@@ -793,7 +793,7 @@
   </div>
 
   <script>
-    window.MU_API_BASE = 'https://discord-mu-bot-production.up.railway.app';
+    window.MU_API_BASE = 'https://api.mufcapp.net';
 
     let docPanelOpen = false;
     let currentPassengerData = null;
@@ -816,7 +816,7 @@
 
     function promptAndSaveApiBase() {
       const input = window.prompt(
-        '未检测到后端地址。请输入机器人后端域名（例如 https://xxx.up.railway.app ）',
+        '未检测到后端地址。请输入机器人后端域名（例如 https://api.mufcapp.net ）',
         'https://'
       );
       if (!input) return '';
