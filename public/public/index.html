@@ -1027,6 +1027,14 @@
       if (el) el.style.display = value;
     }
 
+    function formatShortPaxName(name) {
+      const raw = String(name || '').trim().toUpperCase();
+      if (!raw) return '-';
+      const [last = '', first = ''] = raw.split('/');
+      if (!first) return last;
+      return `${last}/${first.slice(0, 6)}`;
+    }
+
     function isTodaySyFlightDate(flightDate) {
       const m = String(flightDate || '').toUpperCase().match(/^(\d{2})([A-Z]{3})(\d{2})$/);
       if (!m) return false;
@@ -1301,7 +1309,7 @@
           setTextById(
             'chdList',
             chdList.length
-              ? chdList.map((p) => `BN${p.bn} ${p.name} • DOB ${p.dob} • ${p.hasChdCode ? 'CHD1/0 ✅' : 'CHD1/0 ❌'}`).join('\n')
+              ? chdList.map((p) => `BN${p.bn} ${formatShortPaxName(p.name)} • ${p.dob} • ${p.hasChdCode ? 'CHD1/0 ✅' : 'CHD1/0 ❌'}`).join('\n')
               : 'No CHD passenger found by DOB rule (age 2-11).'
           );
           chdPanelOpen = false;
