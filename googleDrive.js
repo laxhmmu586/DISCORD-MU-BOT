@@ -198,34 +198,63 @@ async function getSyBagInfoByDate(isoDate, flightDateRaw = '') {
     const rows = await getSyBagSheetRows();
     if (rows.length <= 1) return null;
 
-    const makePayload = (row) => ({
-      rushBags: [14, 15, 16, 17, 18].map((idx) => row[idx] || ''),
-      unloadBags: [20, 21, 22].map((idx) => row[idx] || ''),
-      hasData: [14, 15, 16, 17, 18, 20, 21, 22].some((idx) => String(row[idx] || '').trim() !== '')
-    });
+    const normalizeReportType = (value) => String(value || '').trim().toUpperCase();
+    const classifyReportType = (value) => {
+      const normalized = normalizeReportType(value).replace(/\s+/g, ' ');
+      if (normalized.includes('RUSH') && normalized.includes('BAG')) return 'RUSH BAGS';
+      if (normalized.includes('NOT') && normalized.includes('LOAD') && normalized.includes('BAG')) return 'NOT LOAD BAGS';
+      return '';
+    };
+    const makeReportPayload = (row, reportType) => {
+      if (reportType === 'RUSH BAGS') {
+        return {
+          type: 'RUSH BAGS',
+          columns: [14, 15, 16, 17, 18].map((idx) => row[idx] || ''),
+          hasData: [14, 15, 16, 17, 18].some((idx) => String(row[idx] || '').trim() !== '')
+        };
+      }
+      if (reportType === 'NOT LOAD BAGS') {
+        return {
+          type: 'NOT LOAD BAGS',
+          columns: [20, 21, 22].map((idx) => row[idx] || ''),
+          hasData: [20, 21, 22].some((idx) => String(row[idx] || '').trim() !== '')
+        };
+      }
+      return null;
+    };
 
-    const pickLatestForMatcher = (matcher) => {
-      let latestMatch = null;
+    const pickLatestForMatcher = (matcher, reportType) => {
       for (let i = rows.length - 1; i >= 1; i--) {
         const row = rows[i];
-        if (!matcher(row)) continue;
-        const payload = makePayload(row);
-        if (payload.hasData) return payload;
-        if (!latestMatch) latestMatch = payload;
+        if (!matcher(row) || classifyReportType(row[1]) !== reportType) continue;
+        const payload = makeReportPayload(row, reportType);
+        if (payload && payload.hasData) return payload;
       }
-      return latestMatch;
+      return null;
+    };
+
+    const buildPayload = (matcher) => {
+      const rushBags = pickLatestForMatcher(matcher, 'RUSH BAGS');
+      const notLoadBags = pickLatestForMatcher(matcher, 'NOT LOAD BAGS');
+      if (!rushBags && !notLoadBags) return null;
+      return {
+        rushBags,
+        notLoadBags,
+        unloadBags: notLoadBags ? notLoadBags.columns : [],
+        hasData: Boolean(rushBags?.hasData || notLoadBags?.hasData)
+      };
     };
 
     // Keep this aligned with 240 date matching logic: compare by flight token (DDMMM)
     // from timestamp, ignoring time and year.
     const targetToken = normalizeFlightToken(flightDateRaw);
     if (targetToken) {
-      const tokenMatch = pickLatestForMatcher((row) => normalizeFlightDate(row[0]) === targetToken);
+      const tokenMatch = buildPayload((row) => normalizeFlightDate(row[0]) === targetToken);
       if (tokenMatch) return tokenMatch;
     }
 
     // Fallback: exact ISO date match when token is unavailable.
-    const isoMatch = pickLatestForMatcher((row) => normalizeTimestampToIsoDate(row[0]) === isoDate);
+    const isoMatch = buildPayload((row) => normalizeTimestampToIsoDate(row[0]) === isoDate);
     if (isoMatch) return isoMatch;
 
     return null;
