@@ -451,6 +451,8 @@
     .bag-detail-card { margin-top: 12px; border:none; border-radius:0; padding:0; }
     .bag-table { width:100%; border-collapse:collapse; margin-top:6px; table-layout: fixed; }
     .bag-table th, .bag-table td { border:1px solid #334155; padding:8px 10px; text-align:left; font-size:12px; white-space: normal; word-break: break-word; overflow-wrap:anywhere; vertical-align: top; }
+    .bag-table th { background: #16243b; color: #dbeafe; font-weight: 700; }
+    .bag-table td { background: #0f1b31; }
 
   </style>
 
@@ -1025,13 +1027,13 @@
       const sections = [];
       if (rushValues.length) {
         sections.push(buildBagSectionHtml('RUSH BAGS', {
-          headers: ['RUSH TAG', 'ORIG TAG', 'RUSH TO', 'AKE', 'REMARK'],
+          headers: ['RUSH #', 'ORIG #', 'TO', 'AKE', 'REMARK'],
           rows: [rushValues]
         }));
       }
       if (notLoadRows.length) {
         sections.push(buildBagSectionHtml('NOT LOAD BAGS', {
-          headers: ['TAG NO.', 'LOAD', 'COMMENT'],
+          headers: ['#', 'STATUS', 'Remark'],
           rows: notLoadRows
         }));
       }
