@@ -199,28 +199,34 @@ async function getSyBagInfoByDate(isoDate, flightDateRaw = '') {
     if (rows.length <= 1) return null;
 
     const makePayload = (row) => ({
-      rushBags: [14, 15, 16, 17, 18].map(idx => row[idx] || ''),
-      unloadBags: [20, 21, 22].map(idx => row[idx] || ''),
-      hasData: [14, 15, 16, 17, 18, 20, 21, 22].some(idx => String(row[idx] || '').trim() !== '')
+      rushBags: [14, 15, 16, 17, 18].map((idx) => row[idx] || ''),
+      unloadBags: [20, 21, 22].map((idx) => row[idx] || ''),
+      hasData: [14, 15, 16, 17, 18, 20, 21, 22].some((idx) => String(row[idx] || '').trim() !== '')
     });
+
+    const pickLatestForMatcher = (matcher) => {
+      let latestMatch = null;
+      for (let i = rows.length - 1; i >= 1; i--) {
+        const row = rows[i];
+        if (!matcher(row)) continue;
+        const payload = makePayload(row);
+        if (payload.hasData) return payload;
+        if (!latestMatch) latestMatch = payload;
+      }
+      return latestMatch;
+    };
 
     // Keep this aligned with 240 date matching logic: compare by flight token (DDMMM)
     // from timestamp, ignoring time and year.
     const targetToken = normalizeFlightToken(flightDateRaw);
     if (targetToken) {
-      for (let i = rows.length - 1; i >= 1; i--) {
-        const row = rows[i];
-        if (normalizeFlightDate(row[0]) !== targetToken) continue;
-        return makePayload(row);
-      }
+      const tokenMatch = pickLatestForMatcher((row) => normalizeFlightDate(row[0]) === targetToken);
+      if (tokenMatch) return tokenMatch;
     }
 
     // Fallback: exact ISO date match when token is unavailable.
-    for (let i = rows.length - 1; i >= 1; i--) {
-      const row = rows[i];
-      if (normalizeTimestampToIsoDate(row[0]) !== isoDate) continue;
-      return makePayload(row);
-    }
+    const isoMatch = pickLatestForMatcher((row) => normalizeTimestampToIsoDate(row[0]) === isoDate);
+    if (isoMatch) return isoMatch;
 
     return null;
   } catch (err) {

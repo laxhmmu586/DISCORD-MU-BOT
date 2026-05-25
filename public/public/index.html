@@ -1320,7 +1320,8 @@
           setTextById('syGate', `${sy.gate || '-'}`);
           setTextById('syTimes', `${sy.bdt || '-'} / ${sy.sd || '-'} / ${sy.ed || '-'}`);
           currentSyBagSheet = sy.bagSheet || null;
-          setTextById('syBags', `${sy.bags?.[0] || '-'}`);
+          const bagIcon = currentSyBagSheet?.hasData ? ' 🧳' : '';
+          setTextById('syBags', `${sy.bags?.[0] || '-'}${bagIcon}`);
           const syBagsEl = document.getElementById('syBags');
           const syBagsCellEl = document.getElementById('syBagsCell');
           if (currentSyBagSheet?.hasData) {
