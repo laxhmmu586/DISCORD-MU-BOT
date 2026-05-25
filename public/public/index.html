@@ -1022,11 +1022,11 @@
     function showSyBagDetailCard() {
       if (!currentSyBagSheet || !currentSyBagSheet.hasData) return;
       const rushValues = currentSyBagSheet.rushBags?.columns || [];
-      const notLoadRows = currentSyBagSheet.notLoadBags?.rows || [];
+      const notLoadRows = currentSyBagSheet.notLoadBags?.rows || (currentSyBagSheet.notLoadBags?.columns ? [currentSyBagSheet.notLoadBags.columns] : []);
       const sections = [];
       if (rushValues.length) {
         sections.push(buildBagSectionHtml('RUSH BAGS', {
-          headers: ['1', '2', '3', '4', '5'],
+          headers: ['Rush Tag Number', 'Original Tag Number', 'Rush To where?', 'AKE NUMBER', 'REMARK'],
           rows: [rushValues]
         }));
       }

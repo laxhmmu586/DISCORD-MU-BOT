@@ -249,7 +249,7 @@ async function getSyBagInfoByDate(isoDate, flightDateRaw = '') {
       return {
         rushBags,
         notLoadBags,
-        unloadBags: notLoadBags ? notLoadBags.columns : [],
+        unloadBags: notLoadBags ? notLoadBags.rows : [],
         hasData: Boolean(rushBags?.hasData || notLoadBags?.hasData)
       };
     };
