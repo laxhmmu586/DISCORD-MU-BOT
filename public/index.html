@@ -444,6 +444,13 @@
     .sy-row-full { grid-template-columns: 1fr; }
     .sy-cell .label { margin-bottom: 4px; }
 
+
+    .clickable { cursor: pointer; }
+    .back-btn { background:none; border:none; color:#93c5fd; cursor:pointer; padding:0; margin-bottom:8px; }
+    .bag-detail-card { margin-top: 10px; border:1px solid #334155; border-radius:10px; padding:10px; }
+    .bag-table { width:100%; border-collapse:collapse; margin-top:8px; }
+    .bag-table th, .bag-table td { border:1px solid #334155; padding:6px 8px; text-align:left; font-size:12px; }
+
   </style>
 
 </head>
@@ -557,6 +564,12 @@
             <div id="chdSummary" class="chd-summary"></div>
             <div id="chdList" class="chd-list"></div>
           </div>
+        </div>
+
+        <div id="syBagDetailLayout" class="sy-layout" style="display:none;">
+          <button class="back-btn" onclick="showSyFlightCard()">← Back</button>
+          <div class="label">SY Bag Details</div>
+          <div id="syBagDetailContent"></div>
         </div>
 
         <div
@@ -797,6 +810,7 @@
 
     let docPanelOpen = false;
     let currentPassengerData = null;
+    let currentSyBagSheet = null;
     let checkinPanelOpen = false;
     let chdPanelOpen = false;
     let currentUser = null;
@@ -971,6 +985,23 @@
       }
 
       list.innerHTML = cards.join('');
+    }
+
+    
+    function showSyFlightCard() {
+      setDisplayById('syLayout', 'block');
+      setDisplayById('syBagDetailLayout', 'none');
+    }
+
+    function showSyBagDetailCard() {
+      if (!currentSyBagSheet || !currentSyBagSheet.hasData) return;
+      const rush = currentSyBagSheet.rushBags || [];
+      const unload = currentSyBagSheet.unloadBags || [];
+      const rows = [0,1,2,3,4].map(i => `
+<tr><td>${i+1}</td><td>${escapeHtml(rush[i] || '') || '-'}</td><td>${escapeHtml(unload[i] || '') || '-'}</td></tr>`).join('');
+      document.getElementById('syBagDetailContent').innerHTML = `<div class="bag-detail-card"><table class="bag-table"><thead><tr><th>Row</th><th>Rush Bags (O-S)</th><th>Unload Bags (U-W)</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+      setDisplayById('syLayout', 'none');
+      setDisplayById('syBagDetailLayout', 'block');
     }
 
     function toggleChdPanel() {
@@ -1273,11 +1304,16 @@
 
           ['membershipSection','ticketSection','bagsSection','inboundSection','outboundSection','ssrSection','mealSection','paidSection','loungeSection','docSection'].forEach((id) => setDisplayById(id, 'none'));
           setDisplayById('syLayout', 'block');
+          setDisplayById('syBagDetailLayout', 'none');
 
           setTextById('syAircraft', `${sy.aircraftType || '-'} / ${sy.aircraftRegistration || '-'}`);
           setTextById('syGate', `${sy.gate || '-'}`);
           setTextById('syTimes', `${sy.bdt || '-'} / ${sy.sd || '-'} / ${sy.ed || '-'}`);
-          setTextById('syBags', `${sy.bags?.[0] || '-'}`);
+          currentSyBagSheet = sy.bagSheet || null;
+          const bagIcon = currentSyBagSheet?.hasData ? ' 🧳' : '';
+          setTextById('syBags', `${sy.bags?.[0] || '-'}${bagIcon}`);
+          const syBagsEl = document.getElementById('syBags');
+          if (currentSyBagSheet?.hasData) { syBagsEl.classList.add('clickable'); syBagsEl.onclick = showSyBagDetailCard; } else { syBagsEl.classList.remove('clickable'); syBagsEl.onclick = null; }
           setTextById('syRk', `${sy.rkMessage || '-'}`);
           setTextById('syRes', `${sy.reservation?.[0] || '-'}`);
           setTextById('syResTkt', `${sy.reservationTicketed?.[0] || '-'}`);
