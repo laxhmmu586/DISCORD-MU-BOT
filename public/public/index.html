@@ -547,7 +547,7 @@
           </div>
           <div class="sy-row">
             <div class="sy-cell"><div class="label">BDT/SD/ED</div><div id="syTimes" class="value"></div></div>
-            <div id="syBagsCell" class="sy-cell"><div class="label">BAGS</div><div id="syBags" class="value"></div></div>
+            <div id="syBagsCell" class="sy-cell"><div id="syBagsLabel" class="label">BAGS</div><div id="syBags" class="value"></div></div>
           </div>
           <div class="sy-row sy-row-full">
             <div class="sy-cell"><div class="label">RK message</div><div id="syRk" class="value"></div></div>
@@ -994,13 +994,37 @@
       setDisplayById('syBagDetailLayout', 'none');
     }
 
+    function buildBagSectionHtml(title, values) {
+      const safeValues = Array.isArray(values) ? values : [];
+      const headerRow = safeValues.map((_, idx) => `<th>${idx + 1}</th>`).join('');
+      const valueRow = safeValues.map((value) => `<td>${escapeHtml(value || '') || '-'}</td>`).join('');
+      return `
+        <div class="bag-detail-card">
+          <div class="detail-title">${escapeHtml(title)}</div>
+          <table class="bag-table">
+            <thead>
+              <tr>${headerRow}</tr>
+            </thead>
+            <tbody>
+              <tr>${valueRow}</tr>
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
     function showSyBagDetailCard() {
       if (!currentSyBagSheet || !currentSyBagSheet.hasData) return;
-      const rush = currentSyBagSheet.rushBags || [];
-      const unload = currentSyBagSheet.unloadBags || [];
-      const rows = [0,1,2,3,4].map(i => `
-<tr><td>${i+1}</td><td>${escapeHtml(rush[i] || '') || '-'}</td><td>${escapeHtml(unload[i] || '') || '-'}</td></tr>`).join('');
-      document.getElementById('syBagDetailContent').innerHTML = `<div class="bag-detail-card"><table class="bag-table"><thead><tr><th>Row</th><th>Rush Bags (O-S)</th><th>Unload Bags (U-W)</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+      const rushValues = currentSyBagSheet.rushBags?.columns || [];
+      const notLoadValues = currentSyBagSheet.notLoadBags?.columns || [];
+      const sections = [];
+      if (rushValues.length) {
+        sections.push(buildBagSectionHtml('RUSH BAGS', rushValues));
+      }
+      if (notLoadValues.length) {
+        sections.push(buildBagSectionHtml('NOT LOAD BAGS', notLoadValues));
+      }
+      document.getElementById('syBagDetailContent').innerHTML = sections.join('');
       setDisplayById('syLayout', 'none');
       setDisplayById('syBagDetailLayout', 'block');
     }
@@ -1321,7 +1345,8 @@
           setTextById('syTimes', `${sy.bdt || '-'} / ${sy.sd || '-'} / ${sy.ed || '-'}`);
           currentSyBagSheet = sy.bagSheet || null;
           const bagIcon = currentSyBagSheet?.hasData ? ' 🧳' : '';
-          setTextById('syBags', `${sy.bags?.[0] || '-'}${bagIcon}`);
+          setTextById('syBagsLabel', `BAGS${bagIcon}`);
+          setTextById('syBags', `${sy.bags?.[0] || '-'}`);
           const syBagsEl = document.getElementById('syBags');
           const syBagsCellEl = document.getElementById('syBagsCell');
           if (currentSyBagSheet?.hasData) {
