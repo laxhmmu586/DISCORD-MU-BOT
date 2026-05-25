@@ -448,9 +448,9 @@
 
     .clickable { cursor: pointer; }
     .back-btn { background:none; border:none; color:#93c5fd; cursor:pointer; padding:0; margin-bottom:8px; }
-    .bag-detail-card { margin-top: 10px; border:1px solid #334155; border-radius:10px; padding:10px; }
-    .bag-table { width:100%; border-collapse:collapse; margin-top:8px; }
-    .bag-table th, .bag-table td { border:1px solid #334155; padding:6px 8px; text-align:left; font-size:12px; }
+    .bag-detail-card { margin-top: 12px; border:none; border-radius:0; padding:0; }
+    .bag-table { width:100%; border-collapse:collapse; margin-top:6px; table-layout: fixed; }
+    .bag-table th, .bag-table td { border:1px solid #334155; padding:8px 10px; text-align:left; font-size:12px; white-space: normal; word-break: break-word; overflow-wrap:anywhere; vertical-align: top; }
 
   </style>
 
@@ -569,7 +569,6 @@
 
         <div id="syBagDetailLayout" class="sy-layout" style="display:none;">
           <button class="back-btn" onclick="showSyFlightCard()">← Back</button>
-          <div class="label">SY Bag Details</div>
           <div id="syBagDetailContent"></div>
         </div>
 
@@ -1026,13 +1025,13 @@
       const sections = [];
       if (rushValues.length) {
         sections.push(buildBagSectionHtml('RUSH BAGS', {
-          headers: ['Rush Tag Number', 'Original Tag Number', 'Rush To where?', 'AKE NUMBER', 'REMARK'],
+          headers: ['RUSH TAG', 'ORIG TAG', 'RUSH TO', 'AKE', 'REMARK'],
           rows: [rushValues]
         }));
       }
       if (notLoadRows.length) {
         sections.push(buildBagSectionHtml('NOT LOAD BAGS', {
-          headers: ['TAG NUMBER', 'LOAD OR NOT', 'COMMENT'],
+          headers: ['TAG NO.', 'LOAD', 'COMMENT'],
           rows: notLoadRows
         }));
       }
