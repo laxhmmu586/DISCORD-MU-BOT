@@ -250,6 +250,27 @@
 
       font-size: 14px;
     }
+    .chd-toggle-btn {
+      margin-top: 14px;
+      width: 100%;
+      background: #1d4ed8;
+      padding: 10px 12px;
+      border-radius: 10px;
+      text-align: left;
+      font-size: 14px;
+    }
+    .chd-summary {
+      margin-top: 10px;
+      color: #fca5a5;
+      font-size: 14px;
+    }
+    .chd-list {
+      margin-top: 8px;
+      white-space: pre-line;
+      font-size: 13px;
+      line-height: 1.5;
+      color: #e2e8f0;
+    }
 
     .auth-bar {
       display: flex;
@@ -531,6 +552,11 @@
             <div class="sy-cell"><div class="label">Check-in</div><div id="syCi" class="value"></div></div>
             <div class="sy-cell"><div class="label">Check-in(TKT)</div><div id="syCiTkt" class="value"></div></div>
           </div>
+          <button id="chdToggleBtn" class="chd-toggle-btn" style="display:none;" onclick="toggleChdPanel()">CHD List</button>
+          <div id="chdSection" style="display:none;">
+            <div id="chdSummary" class="chd-summary"></div>
+            <div id="chdList" class="chd-list"></div>
+          </div>
         </div>
 
         <div
@@ -772,6 +798,7 @@
     let docPanelOpen = false;
     let currentPassengerData = null;
     let checkinPanelOpen = false;
+    let chdPanelOpen = false;
     let currentUser = null;
 
         function resolveApiBase() {
@@ -944,6 +971,12 @@
       }
 
       list.innerHTML = cards.join('');
+    }
+
+    function toggleChdPanel() {
+      chdPanelOpen = !chdPanelOpen;
+      setDisplayById('chdSection', chdPanelOpen ? 'block' : 'none');
+      setTextById('chdToggleBtn', chdPanelOpen ? 'Hide CHD List' : 'CHD List');
     }
 
     function toggleDocPanel() {
@@ -1250,6 +1283,19 @@
           setTextById('syResTkt', `${sy.reservationTicketed?.[0] || '-'}`);
           setTextById('syCi', `${sy.checkedIn?.[0] || '-'}`);
           setTextById('syCiTkt', `${sy.checkedInTicketed?.[0] || '-'}`);
+          const chdList = Array.isArray(sy.chdList) ? sy.chdList : [];
+          const noCodeList = chdList.filter((p) => !p.hasChdCode);
+          setTextById('chdSummary', `CHD Total: ${chdList.length} • Missing CHD1/0: ${noCodeList.length}`);
+          setTextById(
+            'chdList',
+            chdList.length
+              ? chdList.map((p) => `BN${p.bn} ${p.name} • Seat ${p.seat} • DOB ${p.dob} • ${p.hasChdCode ? 'CHD1/0 ✅' : 'CHD1/0 ❌'}`).join('\n')
+              : 'No CHD passenger found by DOB rule (age 2-11).'
+          );
+          chdPanelOpen = false;
+          setDisplayById('chdSection', 'none');
+          setDisplayById('chdToggleBtn', 'block');
+          setTextById('chdToggleBtn', 'CHD List');
 
           setDisplayById('docToggleBtn', 'none');
           card.style.display = 'block';
@@ -1266,6 +1312,8 @@
         }
 
         setDisplayById('syLayout', 'none');
+        setDisplayById('chdSection', 'none');
+        setDisplayById('chdToggleBtn', 'none');
 
         if (!data.flight || !data.flightDate || !data.name) {
           error.innerText =
