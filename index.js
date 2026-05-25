@@ -391,7 +391,7 @@ app.get(
         }
         const year = Number(yearSuffix || new Date().getUTCFullYear().toString().slice(-2));
         const fullYear = year >= 100 ? year : (year >= 70 ? 1900 + year : 2000 + year);
-        const m = String(syInfo.flightDate || '').match(/^(\d{2})([A-Z]{3})(\d{2})?$/);
+        const m = String(syInfo.flightDate || '').toUpperCase().match(/(\d{2})([A-Z]{3})(\d{2})?/);
         const months = { JAN:'01', FEB:'02', MAR:'03', APR:'04', MAY:'05', JUN:'06', JUL:'07', AUG:'08', SEP:'09', OCT:'10', NOV:'11', DEC:'12' };
         const yearFromFlight = m?.[3] ? (2000 + Number(m[3])) : fullYear;
         const isoDate = m ? `${yearFromFlight}-${months[m[2]] || '01'}-${m[1]}` : '';

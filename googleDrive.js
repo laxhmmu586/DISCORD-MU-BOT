@@ -170,7 +170,7 @@ async function resolveSheetTitleByGid(spreadsheetId, gid) {
 
 
 function normalizeFlightToken(value) {
-  const m = String(value || '').toUpperCase().match(/^(\d{2})([A-Z]{3})(\d{2})?$/);
+  const m = String(value || '').toUpperCase().match(/(\d{2})([A-Z]{3})(\d{2})?/);
   if (!m) return '';
   return `${m[1]}${m[2]}`;
 }
