@@ -205,37 +205,46 @@ async function getSyBagInfoByDate(isoDate, flightDateRaw = '') {
       if (normalized.includes('NOT') && normalized.includes('LOAD') && normalized.includes('BAG')) return 'NOT LOAD BAGS';
       return '';
     };
-    const makeReportPayload = (row, reportType) => {
-      if (reportType === 'RUSH BAGS') {
-        return {
-          type: 'RUSH BAGS',
-          columns: [14, 15, 16, 17, 18].map((idx) => row[idx] || ''),
-          hasData: [14, 15, 16, 17, 18].some((idx) => String(row[idx] || '').trim() !== '')
-        };
-      }
-      if (reportType === 'NOT LOAD BAGS') {
-        return {
-          type: 'NOT LOAD BAGS',
-          columns: [20, 21, 22].map((idx) => row[idx] || ''),
-          hasData: [20, 21, 22].some((idx) => String(row[idx] || '').trim() !== '')
-        };
+    const buildRushPayload = (row) => ({
+      type: 'RUSH BAGS',
+      columns: [14, 15, 16, 17, 18].map((idx) => row[idx] || ''),
+      hasData: [14, 15, 16, 17, 18].some((idx) => String(row[idx] || '').trim() !== '')
+    });
+
+    const buildNotLoadRow = (row) => [20, 21, 22].map((idx) => row[idx] || '');
+
+    const pickLatestRushForMatcher = (matcher) => {
+      for (let i = rows.length - 1; i >= 1; i--) {
+        const row = rows[i];
+        if (!matcher(row) || classifyReportType(row[1]) !== 'RUSH BAGS') continue;
+        const payload = buildRushPayload(row);
+        if (payload.hasData) return payload;
       }
       return null;
     };
 
-    const pickLatestForMatcher = (matcher, reportType) => {
-      for (let i = rows.length - 1; i >= 1; i--) {
+    const collectNotLoadRowsForMatcher = (matcher) => {
+      const values = [];
+      for (let i = 1; i < rows.length; i++) {
         const row = rows[i];
-        if (!matcher(row) || classifyReportType(row[1]) !== reportType) continue;
-        const payload = makeReportPayload(row, reportType);
-        if (payload && payload.hasData) return payload;
+        if (!matcher(row) || classifyReportType(row[1]) !== 'NOT LOAD BAGS') continue;
+        const columns = buildNotLoadRow(row);
+        if (columns.some((v) => String(v || '').trim() !== '')) values.push(columns);
       }
-      return null;
+      return values;
     };
 
     const buildPayload = (matcher) => {
-      const rushBags = pickLatestForMatcher(matcher, 'RUSH BAGS');
-      const notLoadBags = pickLatestForMatcher(matcher, 'NOT LOAD BAGS');
+      const rushBags = pickLatestRushForMatcher(matcher);
+      const notLoadRows = collectNotLoadRowsForMatcher(matcher);
+      const notLoadBags = notLoadRows.length
+        ? {
+          type: 'NOT LOAD BAGS',
+          headers: ['TAG NUMBER', 'LOAD OR NOT', 'COMMENT'],
+          rows: notLoadRows,
+          hasData: true
+        }
+        : null;
       if (!rushBags && !notLoadBags) return null;
       return {
         rushBags,
