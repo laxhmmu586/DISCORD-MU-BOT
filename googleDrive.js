@@ -50,6 +50,12 @@ let fullSheetCache = {
   rows: []
 };
 
+let syBagSheetCache = {
+  loadedAt: 0,
+  rows: []
+};
+let syBagSheetTitle = '';
+
 let sheetAccessBlocked = false;
 
 function normalizeBn(value) {
@@ -139,6 +145,84 @@ async function get240InfoByBnAndFlightDate({ bn, flightDate }) {
     return null;
   } catch (err) {
     console.error('240 info lookup error:', err?.message || err);
+    return null;
+  }
+}
+
+
+function normalizeTimestampToIsoDate(value) {
+  const raw = String(value || '').trim();
+  const m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+\d{1,2}:\d{2}(?::\d{2})?$/);
+  if (!m) return '';
+  const mm = String(Number(m[1])).padStart(2, '0');
+  const dd = String(Number(m[2])).padStart(2, '0');
+  return `${m[3]}-${mm}-${dd}`;
+}
+
+async function resolveSheetTitleByGid(spreadsheetId, gid) {
+  const meta = await sheets.spreadsheets.get({
+    spreadsheetId,
+    fields: 'sheets(properties(sheetId,title))'
+  });
+  const sheet = (meta.data.sheets || []).find(s => String(s?.properties?.sheetId) === String(gid));
+  return sheet?.properties?.title || '';
+}
+
+
+function normalizeFlightToken(value) {
+  const m = String(value || '').toUpperCase().match(/^(\d{2})([A-Z]{3})(\d{2})?$/);
+  if (!m) return '';
+  return `${m[1]}${m[2]}`;
+}
+
+async function getSyBagSheetRows() {
+  if (sheetAccessBlocked) return [];
+  const ttlMs = 5 * 60 * 1000;
+  if (Date.now() - syBagSheetCache.loadedAt < ttlMs && syBagSheetCache.rows.length) return syBagSheetCache.rows;
+
+  if (!syBagSheetTitle) syBagSheetTitle = await resolveSheetTitleByGid(FULL_SHEET_ID, 1199056804);
+  if (!syBagSheetTitle) return [];
+
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: FULL_SHEET_ID,
+    range: `${syBagSheetTitle}!A:W`
+  });
+
+  const rows = res.data.values || [];
+  syBagSheetCache = { loadedAt: Date.now(), rows };
+  return rows;
+}
+
+async function getSyBagInfoByDate(isoDate, flightDateRaw = '') {
+  try {
+    const rows = await getSyBagSheetRows();
+    if (rows.length <= 1) return null;
+
+    const makePayload = (row) => ({
+      rushBags: [14, 15, 16, 17, 18].map(idx => row[idx] || ''),
+      unloadBags: [20, 21, 22].map(idx => row[idx] || ''),
+      hasData: [14, 15, 16, 17, 18, 20, 21, 22].some(idx => String(row[idx] || '').trim() !== '')
+    });
+
+    for (let i = rows.length - 1; i >= 1; i--) {
+      const row = rows[i];
+      if (normalizeTimestampToIsoDate(row[0]) !== isoDate) continue;
+      return makePayload(row);
+    }
+
+    const targetToken = normalizeFlightToken(flightDateRaw);
+    if (targetToken) {
+      for (let i = rows.length - 1; i >= 1; i--) {
+        const row = rows[i];
+        const token = normalizeFlightDate(row[0]);
+        if (token !== targetToken) continue;
+        return makePayload(row);
+      }
+    }
+
+    return null;
+  } catch (err) {
+    console.error('SY bag sheet lookup error:', err?.message || err);
     return null;
   }
 }
@@ -327,5 +411,6 @@ module.exports = {
   getLatestFlightLog,
 
   getFlightLogByDate,
-  get240InfoByBnAndFlightDate
+  get240InfoByBnAndFlightDate,
+  getSyBagInfoByDate
 };
