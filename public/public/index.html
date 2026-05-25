@@ -1325,7 +1325,7 @@
           setTextById(
             'chdList',
             chdList.length
-              ? chdList.map((p) => `BN${p.bn} ${p.name} • Seat ${p.seat} • DOB ${p.dob} • ${p.hasChdCode ? 'CHD1/0 ✅' : 'CHD1/0 ❌'}`).join('\n')
+              ? chdList.map((p) => `BN${p.bn} ${p.name} • ${p.hasChdCode ? 'CHD1/0 ✅' : 'CHD1/0 ❌'}`).join('\n')
               : 'No CHD passenger found by DOB rule (age 2-11).'
           );
           chdPanelOpen = false;
