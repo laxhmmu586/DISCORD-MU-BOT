@@ -448,9 +448,11 @@
 
     .clickable { cursor: pointer; }
     .back-btn { background:none; border:none; color:#93c5fd; cursor:pointer; padding:0; margin-bottom:8px; }
-    .bag-detail-card { margin-top: 10px; border:1px solid #334155; border-radius:10px; padding:10px; }
-    .bag-table { width:100%; border-collapse:collapse; margin-top:8px; }
-    .bag-table th, .bag-table td { border:1px solid #334155; padding:6px 8px; text-align:left; font-size:12px; }
+    .bag-detail-card { margin-top: 12px; border:none; border-radius:0; padding:0; }
+    .bag-table { width:100%; border-collapse:collapse; margin-top:6px; table-layout: fixed; }
+    .bag-table th, .bag-table td { border:1px solid #334155; padding:8px 10px; text-align:left; font-size:12px; white-space: normal; word-break: break-word; overflow-wrap:anywhere; vertical-align: top; }
+    .bag-table th { background: #16243b; color: #dbeafe; font-weight: 700; }
+    .bag-table td { background: #0f1b31; }
 
   </style>
 
@@ -569,7 +571,6 @@
 
         <div id="syBagDetailLayout" class="sy-layout" style="display:none;">
           <button class="back-btn" onclick="showSyFlightCard()">← Back</button>
-          <div class="label">SY Bag Details</div>
           <div id="syBagDetailContent"></div>
         </div>
 
@@ -994,19 +995,25 @@
       setDisplayById('syBagDetailLayout', 'none');
     }
 
-    function buildBagSectionHtml(title, values) {
-      const safeValues = Array.isArray(values) ? values : [];
-      const headerRow = safeValues.map((_, idx) => `<th>${idx + 1}</th>`).join('');
-      const valueRow = safeValues.map((value) => `<td>${escapeHtml(value || '') || '-'}</td>`).join('');
+    function buildBagSectionHtml(title, config) {
+      const headers = Array.isArray(config?.headers) ? config.headers : [];
+      const rows = Array.isArray(config?.rows) ? config.rows : [];
+      if (!headers.length || !rows.length) return '';
+
+      const headerRow = headers.map((header) => `<th>${escapeHtml(header)}</th>`).join('');
+      const valueRows = rows.map((row) => `
+        <tr>${row.map((value) => `<td>${escapeHtml(value || '') || '-'}</td>`).join('')}</tr>
+      `).join('');
+
       return `
         <div class="bag-detail-card">
-          <div class="detail-title">${escapeHtml(title)}</div>
+          <div class="detail-title" style="font-weight:700; letter-spacing:.5px;">${escapeHtml(title)}</div>
           <table class="bag-table">
             <thead>
               <tr>${headerRow}</tr>
             </thead>
             <tbody>
-              <tr>${valueRow}</tr>
+              ${valueRows}
             </tbody>
           </table>
         </div>
@@ -1016,13 +1023,19 @@
     function showSyBagDetailCard() {
       if (!currentSyBagSheet || !currentSyBagSheet.hasData) return;
       const rushValues = currentSyBagSheet.rushBags?.columns || [];
-      const notLoadValues = currentSyBagSheet.notLoadBags?.columns || [];
+      const notLoadRows = currentSyBagSheet.notLoadBags?.rows || (currentSyBagSheet.notLoadBags?.columns ? [currentSyBagSheet.notLoadBags.columns] : []);
       const sections = [];
       if (rushValues.length) {
-        sections.push(buildBagSectionHtml('RUSH BAGS', rushValues));
+        sections.push(buildBagSectionHtml('RUSH BAGS', {
+          headers: ['RUSH #', 'ORIG #', 'TO', 'AKE', 'REMARK'],
+          rows: [rushValues]
+        }));
       }
-      if (notLoadValues.length) {
-        sections.push(buildBagSectionHtml('NOT LOAD BAGS', notLoadValues));
+      if (notLoadRows.length) {
+        sections.push(buildBagSectionHtml('NOT LOAD BAGS', {
+          headers: ['#', 'STATUS', 'Remark'],
+          rows: notLoadRows
+        }));
       }
       document.getElementById('syBagDetailContent').innerHTML = sections.join('');
       setDisplayById('syLayout', 'none');
