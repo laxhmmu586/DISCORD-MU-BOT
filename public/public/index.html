@@ -994,19 +994,25 @@
       setDisplayById('syBagDetailLayout', 'none');
     }
 
-    function buildBagSectionHtml(title, values) {
-      const safeValues = Array.isArray(values) ? values : [];
-      const headerRow = safeValues.map((_, idx) => `<th>${idx + 1}</th>`).join('');
-      const valueRow = safeValues.map((value) => `<td>${escapeHtml(value || '') || '-'}</td>`).join('');
+    function buildBagSectionHtml(title, config) {
+      const headers = Array.isArray(config?.headers) ? config.headers : [];
+      const rows = Array.isArray(config?.rows) ? config.rows : [];
+      if (!headers.length || !rows.length) return '';
+
+      const headerRow = headers.map((header) => `<th>${escapeHtml(header)}</th>`).join('');
+      const valueRows = rows.map((row) => `
+        <tr>${row.map((value) => `<td>${escapeHtml(value || '') || '-'}</td>`).join('')}</tr>
+      `).join('');
+
       return `
         <div class="bag-detail-card">
-          <div class="detail-title">${escapeHtml(title)}</div>
+          <div class="detail-title" style="font-weight:700; letter-spacing:.5px;">${escapeHtml(title)}</div>
           <table class="bag-table">
             <thead>
               <tr>${headerRow}</tr>
             </thead>
             <tbody>
-              <tr>${valueRow}</tr>
+              ${valueRows}
             </tbody>
           </table>
         </div>
@@ -1016,13 +1022,19 @@
     function showSyBagDetailCard() {
       if (!currentSyBagSheet || !currentSyBagSheet.hasData) return;
       const rushValues = currentSyBagSheet.rushBags?.columns || [];
-      const notLoadValues = currentSyBagSheet.notLoadBags?.columns || [];
+      const notLoadRows = currentSyBagSheet.notLoadBags?.rows || [];
       const sections = [];
       if (rushValues.length) {
-        sections.push(buildBagSectionHtml('RUSH BAGS', rushValues));
+        sections.push(buildBagSectionHtml('RUSH BAGS', {
+          headers: ['1', '2', '3', '4', '5'],
+          rows: [rushValues]
+        }));
       }
-      if (notLoadValues.length) {
-        sections.push(buildBagSectionHtml('NOT LOAD BAGS', notLoadValues));
+      if (notLoadRows.length) {
+        sections.push(buildBagSectionHtml('NOT LOAD BAGS', {
+          headers: ['TAG NUMBER', 'LOAD OR NOT', 'COMMENT'],
+          rows: notLoadRows
+        }));
       }
       document.getElementById('syBagDetailContent').innerHTML = sections.join('');
       setDisplayById('syLayout', 'none');
