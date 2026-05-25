@@ -547,7 +547,7 @@
           </div>
           <div class="sy-row">
             <div class="sy-cell"><div class="label">BDT/SD/ED</div><div id="syTimes" class="value"></div></div>
-            <div class="sy-cell"><div class="label">Bags</div><div id="syBags" class="value"></div></div>
+            <div id="syBagsCell" class="sy-cell"><div class="label">BAGS</div><div id="syBags" class="value"></div></div>
           </div>
           <div class="sy-row sy-row-full">
             <div class="sy-cell"><div class="label">RK message</div><div id="syRk" class="value"></div></div>
@@ -1320,10 +1320,20 @@
           setTextById('syGate', `${sy.gate || '-'}`);
           setTextById('syTimes', `${sy.bdt || '-'} / ${sy.sd || '-'} / ${sy.ed || '-'}`);
           currentSyBagSheet = sy.bagSheet || null;
-          const bagIcon = currentSyBagSheet?.hasData ? ' 🧳' : '';
-          setTextById('syBags', `${sy.bags?.[0] || '-'}${bagIcon}`);
+          setTextById('syBags', `${sy.bags?.[0] || '-'}`);
           const syBagsEl = document.getElementById('syBags');
-          if (currentSyBagSheet?.hasData) { syBagsEl.classList.add('clickable'); syBagsEl.onclick = showSyBagDetailCard; } else { syBagsEl.classList.remove('clickable'); syBagsEl.onclick = null; }
+          const syBagsCellEl = document.getElementById('syBagsCell');
+          if (currentSyBagSheet?.hasData) {
+            syBagsEl.classList.add('clickable');
+            syBagsCellEl.classList.add('clickable');
+            syBagsEl.onclick = showSyBagDetailCard;
+            syBagsCellEl.onclick = showSyBagDetailCard;
+          } else {
+            syBagsEl.classList.remove('clickable');
+            syBagsCellEl.classList.remove('clickable');
+            syBagsEl.onclick = null;
+            syBagsCellEl.onclick = null;
+          }
           setTextById('syRk', `${sy.rkMessage || '-'}`);
           setTextById('syRes', `${sy.reservation?.[0] || '-'}`);
           setTextById('syResTkt', `${sy.reservationTicketed?.[0] || '-'}`);
