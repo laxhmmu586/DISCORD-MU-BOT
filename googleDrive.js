@@ -199,6 +199,12 @@ async function getSyBagInfoByDate(isoDate, flightDateRaw = '') {
     if (rows.length <= 1) return null;
 
     const normalizeReportType = (value) => String(value || '').trim().toUpperCase();
+    const classifyReportType = (value) => {
+      const normalized = normalizeReportType(value).replace(/\s+/g, ' ');
+      if (normalized.includes('RUSH') && normalized.includes('BAG')) return 'RUSH BAGS';
+      if (normalized.includes('NOT') && normalized.includes('LOAD') && normalized.includes('BAG')) return 'NOT LOAD BAGS';
+      return '';
+    };
     const makeReportPayload = (row, reportType) => {
       if (reportType === 'RUSH BAGS') {
         return {
@@ -220,7 +226,7 @@ async function getSyBagInfoByDate(isoDate, flightDateRaw = '') {
     const pickLatestForMatcher = (matcher, reportType) => {
       for (let i = rows.length - 1; i >= 1; i--) {
         const row = rows[i];
-        if (!matcher(row) || normalizeReportType(row[1]) !== reportType) continue;
+        if (!matcher(row) || classifyReportType(row[1]) !== reportType) continue;
         const payload = makeReportPayload(row, reportType);
         if (payload && payload.hasData) return payload;
       }
@@ -234,6 +240,7 @@ async function getSyBagInfoByDate(isoDate, flightDateRaw = '') {
       return {
         rushBags,
         notLoadBags,
+        unloadBags: notLoadBags ? notLoadBags.columns : [],
         hasData: Boolean(rushBags?.hasData || notLoadBags?.hasData)
       };
     };
