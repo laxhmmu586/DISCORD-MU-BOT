@@ -204,20 +204,22 @@ async function getSyBagInfoByDate(isoDate, flightDateRaw = '') {
       hasData: [14, 15, 16, 17, 18, 20, 21, 22].some(idx => String(row[idx] || '').trim() !== '')
     });
 
-    for (let i = rows.length - 1; i >= 1; i--) {
-      const row = rows[i];
-      if (normalizeTimestampToIsoDate(row[0]) !== isoDate) continue;
-      return makePayload(row);
-    }
-
+    // Keep this aligned with 240 date matching logic: compare by flight token (DDMMM)
+    // from timestamp, ignoring time and year.
     const targetToken = normalizeFlightToken(flightDateRaw);
     if (targetToken) {
       for (let i = rows.length - 1; i >= 1; i--) {
         const row = rows[i];
-        const token = normalizeFlightDate(row[0]);
-        if (token !== targetToken) continue;
+        if (normalizeFlightDate(row[0]) !== targetToken) continue;
         return makePayload(row);
       }
+    }
+
+    // Fallback: exact ISO date match when token is unavailable.
+    for (let i = rows.length - 1; i >= 1; i--) {
+      const row = rows[i];
+      if (normalizeTimestampToIsoDate(row[0]) !== isoDate) continue;
+      return makePayload(row);
     }
 
     return null;
