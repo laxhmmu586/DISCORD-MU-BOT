@@ -62,6 +62,16 @@ function getFlightDateFromTimestamp(timestamp) {
   return `${m[3]}${mon}${yy}`;
 }
 
+function getYmdFromTimestamp(timestamp) {
+  if (!timestamp) return null;
+  const m = timestamp.match(/^(\d{4})\s+([A-Z][a-z]{2})\s+(\d{2}),/);
+  if (!m) return null;
+  const monMap = { Jan: '01', Feb: '02', Mar: '03', Apr: '04', May: '05', Jun: '06', Jul: '07', Aug: '08', Sep: '09', Oct: '10', Nov: '11', Dec: '12' };
+  const mm = monMap[m[2]];
+  if (!mm) return null;
+  return `${m[1]}-${mm}-${m[3]}`;
+}
+
 function parseSYSection(sectionObj) {
   const section = sectionObj.content || '';
   const flightMatch = section.match(/SY:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
@@ -135,7 +145,7 @@ function getAgeYearsAtDate(dob, atDateUtc) {
   return age;
 }
 
-function enrichCHDListFromLog(log, syInfo) {
+function enrichCHDListFromLog(log, syInfo, targetYmd = null) {
   if (!log || !syInfo?.flightNo || !syInfo?.flightDate) return [];
   const sections = splitLogicalSections(log);
   const chdByBn = new Map();
@@ -149,6 +159,10 @@ function enrichCHDListFromLog(log, syInfo) {
   for (const sectionObj of sections) {
     const section = sectionObj.content || '';
     if (!section.includes('PR:')) continue;
+    if (targetYmd) {
+      const sectionYmd = getYmdFromTimestamp(sectionObj.timestamp);
+      if (sectionYmd !== targetYmd) continue;
+    }
     const prMatch = section.match(/PR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
     if (!prMatch) continue;
     if (prMatch[1].toUpperCase() !== syInfo.flightNo || prMatch[2].toUpperCase() !== syInfo.flightDate) continue;
@@ -161,17 +175,18 @@ function enrichCHDListFromLog(log, syInfo) {
     const dobRaw = paxInfo.match(/DOB\/(\d{6})/i)?.[1] || null;
     const dobDate = parseDobYYMMDD(dobRaw);
     const ageYears = getAgeYearsAtDate(dobDate, atDateUtc);
-    const isChd = Number.isInteger(ageYears) && ageYears >= 2 && ageYears < 12;
-    if (!isChd) continue;
-
     const hasChdCode = /\bCHD1\/0\b/i.test(section);
+    const isChdByAge = Number.isInteger(ageYears) && ageYears >= 2 && ageYears < 12;
+    const isChd = isChdByAge || hasChdCode;
+    if (!isChd) continue;
 
     if (!chdByBn.has(bn)) {
       chdByBn.set(bn, {
         name,
         bn,
         dob: dobRaw ? `20${dobRaw.slice(0, 2)}-${dobRaw.slice(2, 4)}-${dobRaw.slice(4, 6)}` : '-',
-        hasChdCode
+        hasChdCode,
+        isChdByAge
       });
       continue;
     }
@@ -179,6 +194,9 @@ function enrichCHDListFromLog(log, syInfo) {
     const existing = chdByBn.get(bn);
     if (hasChdCode && !existing.hasChdCode) {
       existing.hasChdCode = true;
+    }
+    if (isChdByAge && !existing.isChdByAge) {
+      existing.isChdByAge = true;
     }
   }
 
@@ -199,7 +217,8 @@ function findSYInfo(log, queryDate, options = {}) {
       .sort((a, b) => parseSectionTimestamp(b.section.timestamp) - parseSectionTimestamp(a.section.timestamp));
     if (matched.length) {
       const info = matched[0].info;
-      info.chdList = enrichCHDListFromLog(log, info);
+      const targetYmd = getYmdFromTimestamp(matched[0].section.timestamp);
+      info.chdList = enrichCHDListFromLog(log, info, targetYmd);
       return info;
     }
   }
@@ -239,7 +258,8 @@ function findSYInfo(log, queryDate, options = {}) {
 
   if (todayMatches.length) {
     const info = todayMatches[0].info;
-    info.chdList = enrichCHDListFromLog(log, info);
+    const targetYmd = getYmdFromTimestamp(todayMatches[0].section.timestamp);
+    info.chdList = enrichCHDListFromLog(log, info, targetYmd);
     return info;
   }
 
