@@ -206,7 +206,7 @@
 
       text-transform: uppercase;
 
-      font-size: 12px;
+      font-size: 11px;
 
       letter-spacing: 1px;
 
@@ -252,12 +252,13 @@
     }
     .chd-toggle-btn {
       margin-top: 14px;
-      width: 100%;
+      width: auto;
       background: #1d4ed8;
-      padding: 10px 12px;
-      border-radius: 10px;
-      text-align: left;
-      font-size: 14px;
+      padding: 4px 12px;
+      border-radius: 999px;
+      text-align: center;
+      font-size: 12px;
+      display: inline-block;
     }
     .chd-summary {
       margin-top: 10px;
@@ -292,7 +293,7 @@
 
     .logout-btn {
       padding: 8px 12px;
-      font-size: 12px;
+      font-size: 11px;
       border-radius: 10px;
       background: #334155;
     }
@@ -415,7 +416,7 @@
     .detail-title {
       color: #60a5fa;
       text-transform: uppercase;
-      font-size: 12px;
+      font-size: 11px;
       letter-spacing: 1px;
       margin-bottom: 10px;
     }
@@ -430,7 +431,7 @@
 
     .mini-btn {
       padding: 8px 12px;
-      font-size: 12px;
+      font-size: 11px;
       border-radius: 10px;
       background: #334155;
     }
@@ -1007,7 +1008,7 @@
     function toggleChdPanel() {
       chdPanelOpen = !chdPanelOpen;
       setDisplayById('chdSection', chdPanelOpen ? 'block' : 'none');
-      setTextById('chdToggleBtn', chdPanelOpen ? 'Hide CHD List' : 'CHD List');
+      setTextById('chdToggleBtn', chdPanelOpen ? 'Hide' : 'CHD List');
     }
 
     function toggleDocPanel() {

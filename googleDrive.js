@@ -168,6 +168,13 @@ async function resolveSheetTitleByGid(spreadsheetId, gid) {
   return sheet?.properties?.title || '';
 }
 
+
+function normalizeFlightToken(value) {
+  const m = String(value || '').toUpperCase().match(/^(\d{2})([A-Z]{3})(\d{2})?$/);
+  if (!m) return '';
+  return `${m[1]}${m[2]}`;
+}
+
 async function getSyBagSheetRows() {
   if (sheetAccessBlocked) return [];
   const ttlMs = 5 * 60 * 1000;
@@ -186,20 +193,33 @@ async function getSyBagSheetRows() {
   return rows;
 }
 
-async function getSyBagInfoByDate(isoDate) {
+async function getSyBagInfoByDate(isoDate, flightDateRaw = '') {
   try {
     const rows = await getSyBagSheetRows();
     if (rows.length <= 1) return null;
 
+    const makePayload = (row) => ({
+      rushBags: [14, 15, 16, 17, 18].map(idx => row[idx] || ''),
+      unloadBags: [20, 21, 22].map(idx => row[idx] || ''),
+      hasData: [14, 15, 16, 17, 18, 20, 21, 22].some(idx => String(row[idx] || '').trim() !== '')
+    });
+
     for (let i = rows.length - 1; i >= 1; i--) {
       const row = rows[i];
       if (normalizeTimestampToIsoDate(row[0]) !== isoDate) continue;
-      return {
-        rushBags: [14, 15, 16, 17, 18].map(idx => row[idx] || ''),
-        unloadBags: [20, 21, 22].map(idx => row[idx] || ''),
-        hasData: [14, 15, 16, 17, 18, 20, 21, 22].some(idx => String(row[idx] || '').trim() !== '')
-      };
+      return makePayload(row);
     }
+
+    const targetToken = normalizeFlightToken(flightDateRaw);
+    if (targetToken) {
+      for (let i = rows.length - 1; i >= 1; i--) {
+        const row = rows[i];
+        const token = normalizeFlightDate(row[0]);
+        if (token !== targetToken) continue;
+        return makePayload(row);
+      }
+    }
+
     return null;
   } catch (err) {
     console.error('SY bag sheet lookup error:', err?.message || err);
