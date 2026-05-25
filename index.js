@@ -31,7 +31,8 @@ const {
   getLatestFlightLog,
 
   getFlightLogByDate,
-  get240InfoByBnAndFlightDate
+  get240InfoByBnAndFlightDate,
+  getSyBagInfoByDate
 
 } = require('./googleDrive');
 
@@ -388,7 +389,13 @@ app.get(
         if (!syInfo) {
           return res.json({ error: 'No SY section found for selected date.' });
         }
-        return res.json({ sy: syInfo });
+        const year = Number(yearSuffix || new Date().getUTCFullYear().toString().slice(-2));
+        const fullYear = year >= 100 ? year : (year >= 70 ? 1900 + year : 2000 + year);
+        const m = String(syInfo.flightDate || '').match(/^(\d{2})([A-Z]{3})$/);
+        const months = { JAN:'01', FEB:'02', MAR:'03', APR:'04', MAY:'05', JUN:'06', JUL:'07', AUG:'08', SEP:'09', OCT:'10', NOV:'11', DEC:'12' };
+        const isoDate = m ? `${fullYear}-${months[m[2]] || '01'}-${m[1]}` : '';
+        const syBagInfo = isoDate ? await getSyBagInfoByDate(isoDate) : null;
+        return res.json({ sy: { ...syInfo, bagSheet: syBagInfo } });
       }
       if (isSYRawQuery) {
         return res.json({ error: 'SY query did not return SY payload.' });
