@@ -62,6 +62,16 @@ function getFlightDateFromTimestamp(timestamp) {
   return `${m[3]}${mon}${yy}`;
 }
 
+function getYmdFromTimestamp(timestamp) {
+  if (!timestamp) return null;
+  const m = timestamp.match(/^(\d{4})\s+([A-Z][a-z]{2})\s+(\d{2}),/);
+  if (!m) return null;
+  const monMap = { Jan: '01', Feb: '02', Mar: '03', Apr: '04', May: '05', Jun: '06', Jul: '07', Aug: '08', Sep: '09', Oct: '10', Nov: '11', Dec: '12' };
+  const mm = monMap[m[2]];
+  if (!mm) return null;
+  return `${m[1]}-${mm}-${m[3]}`;
+}
+
 function parseSYSection(sectionObj) {
   const section = sectionObj.content || '';
   const flightMatch = section.match(/SY:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
@@ -110,8 +120,87 @@ function parseSYSection(sectionObj) {
     chd,
     statusCode,
     statusTime,
-    statusDisplay
+    statusDisplay,
+    chdList: []
   };
+}
+
+function parseDobYYMMDD(dobRaw) {
+  if (!/^\d{6}$/.test(dobRaw || '')) return null;
+  const yy = Number(dobRaw.slice(0, 2));
+  const mm = Number(dobRaw.slice(2, 4));
+  const dd = Number(dobRaw.slice(4, 6));
+  if (mm < 1 || mm > 12 || dd < 1 || dd > 31) return null;
+  const fullYear = yy >= 70 ? 1900 + yy : 2000 + yy;
+  return new Date(Date.UTC(fullYear, mm - 1, dd));
+}
+
+function getAgeYearsAtDate(dob, atDateUtc) {
+  if (!dob || !atDateUtc) return null;
+  let age = atDateUtc.getUTCFullYear() - dob.getUTCFullYear();
+  const hasHadBirthday =
+    atDateUtc.getUTCMonth() > dob.getUTCMonth() ||
+    (atDateUtc.getUTCMonth() === dob.getUTCMonth() && atDateUtc.getUTCDate() >= dob.getUTCDate());
+  if (!hasHadBirthday) age -= 1;
+  return age;
+}
+
+function enrichCHDListFromLog(log, syInfo, targetYmd = null) {
+  if (!log || !syInfo?.flightNo || !syInfo?.flightDate) return [];
+  const sections = splitLogicalSections(log);
+  const chdByBn = new Map();
+
+  const flightDateMatch = syInfo.flightDate.match(/^(\d{2})([A-Z]{3})(\d{2})$/);
+  const monthMap = { JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5, JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11 };
+  const atDateUtc = flightDateMatch
+    ? new Date(Date.UTC(Number(`20${flightDateMatch[3]}`), monthMap[flightDateMatch[2]], Number(flightDateMatch[1])))
+    : null;
+
+  for (const sectionObj of sections) {
+    const section = sectionObj.content || '';
+    if (!section.includes('PR:')) continue;
+    if (targetYmd) {
+      const sectionYmd = getYmdFromTimestamp(sectionObj.timestamp);
+      if (sectionYmd !== targetYmd) continue;
+    }
+    const prMatch = section.match(/PR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
+    if (!prMatch) continue;
+    if (prMatch[1].toUpperCase() !== syInfo.flightNo || prMatch[2].toUpperCase() !== syInfo.flightDate) continue;
+
+    const paxMatch = section.match(/\n\s*\d+\.\s*([A-Z\/]+).*?\bBN(\d{1,3})\b.*?(?:\*?(\d+[A-Z]))?/i);
+    if (!paxMatch) continue;
+    const name = (paxMatch[1] || '').trim();
+    const bn = (paxMatch[2] || '').padStart(3, '0');
+    const paxInfo = section.match(/PAX INFO\s*:\s*([^\n\r]+)/i)?.[1] || '';
+    const dobRaw = paxInfo.match(/DOB\/(\d{6})/i)?.[1] || null;
+    const dobDate = parseDobYYMMDD(dobRaw);
+    const ageYears = getAgeYearsAtDate(dobDate, atDateUtc);
+    const hasChdCode = /\bCHD1\/0\b/i.test(section);
+    const isChdByAge = Number.isInteger(ageYears) && ageYears >= 2 && ageYears < 12;
+    const isChd = isChdByAge || hasChdCode;
+    if (!isChd) continue;
+
+    if (!chdByBn.has(bn)) {
+      chdByBn.set(bn, {
+        name,
+        bn,
+        dob: dobRaw ? `20${dobRaw.slice(0, 2)}-${dobRaw.slice(2, 4)}-${dobRaw.slice(4, 6)}` : '-',
+        hasChdCode,
+        isChdByAge
+      });
+      continue;
+    }
+
+    const existing = chdByBn.get(bn);
+    if (hasChdCode && !existing.hasChdCode) {
+      existing.hasChdCode = true;
+    }
+    if (isChdByAge && !existing.isChdByAge) {
+      existing.isChdByAge = true;
+    }
+  }
+
+  return Array.from(chdByBn.values()).sort((a, b) => Number(a.bn) - Number(b.bn));
 }
 
 function findSYInfo(log, queryDate, options = {}) {
@@ -126,7 +215,12 @@ function findSYInfo(log, queryDate, options = {}) {
       .filter(x => x.info)
       .filter(x => x.info.flightDate?.startsWith(queryDate))
       .sort((a, b) => parseSectionTimestamp(b.section.timestamp) - parseSectionTimestamp(a.section.timestamp));
-    if (matched.length) return matched[0].info;
+    if (matched.length) {
+      const info = matched[0].info;
+      const targetYmd = getYmdFromTimestamp(matched[0].section.timestamp);
+      info.chdList = enrichCHDListFromLog(log, info, targetYmd);
+      return info;
+    }
   }
 
   const parsed = sySections
@@ -162,7 +256,12 @@ function findSYInfo(log, queryDate, options = {}) {
     .filter(x => x.info.flightDate === targetFlightDate)
     .sort((a, b) => parseSectionTimestamp(b.section.timestamp) - parseSectionTimestamp(a.section.timestamp));
 
-  if (todayMatches.length) return todayMatches[0].info;
+  if (todayMatches.length) {
+    const info = todayMatches[0].info;
+    const targetYmd = getYmdFromTimestamp(todayMatches[0].section.timestamp);
+    info.chdList = enrichCHDListFromLog(log, info, targetYmd);
+    return info;
+  }
 
   return null;
 }
