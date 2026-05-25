@@ -1027,6 +1027,23 @@
       if (el) el.style.display = value;
     }
 
+    function isTodaySyFlightDate(flightDate) {
+      const m = String(flightDate || '').toUpperCase().match(/^(\d{2})([A-Z]{3})(\d{2})$/);
+      if (!m) return false;
+      const monMap = { JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5, JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11 };
+      const mon = monMap[m[2]];
+      if (mon === undefined) return false;
+      const y = Number(`20${m[3]}`);
+      const d = Number(m[1]);
+      const target = new Date(y, mon, d);
+      const now = new Date();
+      return (
+        target.getFullYear() === now.getFullYear() &&
+        target.getMonth() === now.getMonth() &&
+        target.getDate() === now.getDate()
+      );
+    }
+
     function buildTravelDocs(data) {
       const paxInfoRaw = cleanRawLine(data.paxInfoRaw);
       const passportRaw = cleanRawLine(data.passportRaw);
@@ -1289,8 +1306,12 @@
           );
           chdPanelOpen = false;
           setDisplayById('chdSection', 'none');
-          setDisplayById('chdToggleBtn', 'block');
-          setTextById('chdToggleBtn', 'CHD');
+          if (isTodaySyFlightDate(sy.flightDate)) {
+            setDisplayById('chdToggleBtn', 'inline-block');
+            setTextById('chdToggleBtn', 'CHD');
+          } else {
+            setDisplayById('chdToggleBtn', 'none');
+          }
 
           setDisplayById('docToggleBtn', 'none');
           card.style.display = 'block';
