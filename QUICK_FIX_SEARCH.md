@@ -6,7 +6,7 @@ If the page shows `Search failed`, your frontend is likely calling the wrong API
 Open browser DevTools console on your Firebase page and run:
 
 ```js
-localStorage.setItem('mu_api_base', 'https://YOUR-RAILWAY-DOMAIN');
+localStorage.setItem('mu_api_base', 'http://146.235.194.151:3000');
 location.reload();
 ```
 
@@ -22,7 +22,7 @@ Before loading `index.html`, define:
 
 ```html
 <script>
-  window.MU_API_BASE = 'https://YOUR-RAILWAY-DOMAIN';
+  window.MU_API_BASE = 'http://146.235.194.151:3000';
 </script>
 ```
 
