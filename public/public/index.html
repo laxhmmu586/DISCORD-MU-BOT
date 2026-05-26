@@ -1525,10 +1525,10 @@
               lines.push(`${item.passportNo}: BN${item.bns.join('/BN')}`);
             });
           }
-          if (aqqTclBnList.length) lines.push('', `USA TIME OUT: BN${aqqTclBnList.join('/BN')}`);
-          if (govDtaBnList.length) lines.push('', `CHN GOV FAIL: BN${govDtaBnList.join('/BN')}`);
+          if (aqqTclBnList.length) lines.push('', `USA TIME OUT: ${aqqTclBnList.map((bn) => `BN${bn}`).join('   ')}`);
+          if (govDtaBnList.length) lines.push('', `CHN GOV FAIL: ${govDtaBnList.map((bn) => `BN${bn}`).join('   ')}`);
           if (passportCodeIssues.length) {
-            lines.push('', `API RISK: BN${passportCodeIssues.join('/BN')}`);
+            lines.push('', `API RISK: ${passportCodeIssues.map((bn) => `BN${bn}`).join('   ')}`);
             if (passportCodeIssueDetails.length) {
               lines.push('Details:');
               passportCodeIssueDetails.forEach((item) => {
