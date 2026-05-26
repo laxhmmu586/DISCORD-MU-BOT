@@ -1528,7 +1528,7 @@
           if (aqqTclBnList.length) lines.push('', `USA TIME OUT: BN${aqqTclBnList.join('/BN')}`);
           if (govDtaBnList.length) lines.push('', `CHN GOV FAIL: BN${govDtaBnList.join('/BN')}`);
           if (passportCodeIssues.length) {
-            lines.push('', `API RISK: BN${passportCodeIssues.join('/BN')}`);
+            lines.push('', `API RISK: ${passportCodeIssues.map((bn) => `BN${bn}`).join('   ')}`);
             if (passportCodeIssueDetails.length) {
               lines.push('Details:');
               passportCodeIssueDetails.forEach((item) => {
