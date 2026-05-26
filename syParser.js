@@ -234,6 +234,7 @@ function enrichGovAqqFromLog(log, syInfo, targetYmd = null) {
   const sections = splitLogicalSections(log);
   const paxRecords = [];
   const issueByBn = new Map();
+  const latestSectionByBn = new Map();
 
   for (const sectionObj of sections) {
     const section = sectionObj.content || '';
@@ -249,6 +250,14 @@ function enrichGovAqqFromLog(log, syInfo, targetYmd = null) {
     const bnMatch = section.match(/PR:\s*[A-Z0-9]+\/\d{2}[A-Z]{3}\d{2}\*[A-Z]{3},BN(\d{1,3})/i);
     if (!bnMatch) continue;
     const bn = bnMatch[1].padStart(3, '0');
+    const ts = parseSectionTimestamp(sectionObj.timestamp);
+    const prev = latestSectionByBn.get(bn);
+    if (prev && prev.ts > ts) continue;
+    latestSectionByBn.set(bn, { ts, section });
+  }
+
+  for (const [bn, latest] of latestSectionByBn.entries()) {
+    const section = latest.section || '';
     const passportNo = section.match(/PASSPORT\s*:\s*([A-Z0-9]+)/i)?.[1]?.toUpperCase() || '';
     const hasPaxInfoLine = /PAX INFO\s*:/i.test(section);
     const hasPassportLine = /PASSPORT\s*:/i.test(section);
