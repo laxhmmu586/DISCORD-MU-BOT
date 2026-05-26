@@ -1020,6 +1020,9 @@
       if (title === 'RUSH BAGS' && (colIdx === 0 || colIdx === 1)) {
         return formatRushTagValue(text);
       }
+      if (title === 'NOT LOAD BAGS' && colIdx === 0) {
+        return formatRushTagValue(text);
+      }
       if (title === 'NOT LOAD BAGS' && colIdx === 1) {
         const upper = text.trim().toUpperCase();
         if (upper === 'LOADED') return '✅';
