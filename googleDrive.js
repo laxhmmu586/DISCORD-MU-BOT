@@ -205,42 +205,57 @@ async function getSyBagInfoByDate(isoDate, flightDateRaw = '') {
       if (normalized.includes('NOT') && normalized.includes('LOAD') && normalized.includes('BAG')) return 'NOT LOAD BAGS';
       return '';
     };
-    const makeReportPayload = (row, reportType) => {
-      if (reportType === 'RUSH BAGS') {
-        return {
-          type: 'RUSH BAGS',
-          columns: [14, 15, 16, 17, 18].map((idx) => row[idx] || ''),
-          hasData: [14, 15, 16, 17, 18].some((idx) => String(row[idx] || '').trim() !== '')
-        };
+    const buildRushRow = (row) => [14, 15, 16, 17, 18].map((idx) => row[idx] || '');
+
+    const buildNotLoadRow = (row) => [20, 21, 22].map((idx) => row[idx] || '');
+
+    const collectRushRowsForMatcher = (matcher) => {
+      const values = [];
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        if (!matcher(row) || classifyReportType(row[1]) !== 'RUSH BAGS') continue;
+        const columns = buildRushRow(row);
+        if (columns.some((v) => String(v || '').trim() !== '')) values.push(columns);
       }
-      if (reportType === 'NOT LOAD BAGS') {
-        return {
-          type: 'NOT LOAD BAGS',
-          columns: [20, 21, 22].map((idx) => row[idx] || ''),
-          hasData: [20, 21, 22].some((idx) => String(row[idx] || '').trim() !== '')
-        };
-      }
-      return null;
+      return values;
     };
 
-    const pickLatestForMatcher = (matcher, reportType) => {
-      for (let i = rows.length - 1; i >= 1; i--) {
+    const collectNotLoadRowsForMatcher = (matcher) => {
+      const values = [];
+      for (let i = 1; i < rows.length; i++) {
         const row = rows[i];
-        if (!matcher(row) || classifyReportType(row[1]) !== reportType) continue;
-        const payload = makeReportPayload(row, reportType);
-        if (payload && payload.hasData) return payload;
+        if (!matcher(row) || classifyReportType(row[1]) !== 'NOT LOAD BAGS') continue;
+        const columns = buildNotLoadRow(row);
+        if (columns.some((v) => String(v || '').trim() !== '')) values.push(columns);
       }
-      return null;
+      return values;
     };
 
     const buildPayload = (matcher) => {
-      const rushBags = pickLatestForMatcher(matcher, 'RUSH BAGS');
-      const notLoadBags = pickLatestForMatcher(matcher, 'NOT LOAD BAGS');
+      const rushRows = collectRushRowsForMatcher(matcher);
+      const rushBags = rushRows.length
+        ? {
+          type: 'RUSH BAGS',
+          headers: ['RUSH TAG NUMBER', 'ORIGINAL TAG NUMBER', 'RUSH TO WHERE', 'AKE NUMBER', 'REMARK'],
+          rows: rushRows,
+          columns: rushRows[rushRows.length - 1],
+          hasData: true
+        }
+        : null;
+      const notLoadRows = collectNotLoadRowsForMatcher(matcher);
+      const notLoadBags = notLoadRows.length
+        ? {
+          type: 'NOT LOAD BAGS',
+          headers: ['TAG NUMBER', 'LOAD OR NOT', 'COMMENT'],
+          rows: notLoadRows,
+          hasData: true
+        }
+        : null;
       if (!rushBags && !notLoadBags) return null;
       return {
         rushBags,
         notLoadBags,
-        unloadBags: notLoadBags ? notLoadBags.columns : [],
+        unloadBags: notLoadBags ? notLoadBags.rows : [],
         hasData: Boolean(rushBags?.hasData || notLoadBags?.hasData)
       };
     };
