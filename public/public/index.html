@@ -455,12 +455,11 @@
     .bag-table th { background: #16243b; color: #dbeafe; font-weight: 700; white-space: nowrap; word-break: normal; }
     .bag-table td { background: #0f1b31; white-space: normal; word-break: break-word; overflow-wrap:anywhere; }
 
-    .bag-table.rush-table col:nth-child(1) { width: 23%; }
-    .bag-table.rush-table col:nth-child(2) { width: 23%; }
-    .bag-table.rush-table col:nth-child(3) { width: 9%; }
-    .bag-table.rush-table col:nth-child(4) { width: 13%; }
-    .bag-table.rush-table col:nth-child(5) { width: 32%; }
-    .bag-table.rush-table td:nth-child(1), .bag-table.rush-table td:nth-child(2) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .bag-table.rush-table col:nth-child(1) { width: 32%; }
+    .bag-table.rush-table col:nth-child(2) { width: 32%; }
+    .bag-table.rush-table col:nth-child(3) { width: 10%; }
+    .bag-table.rush-table col:nth-child(4) { width: 26%; }
+    .bag-table.rush-table td:nth-child(1), .bag-table.rush-table td:nth-child(2) { white-space: nowrap; }
 
     .bag-table.notload-table col:nth-child(1) { width: 31%; }
     .bag-table.notload-table col:nth-child(2) { width: 10%; }
@@ -1008,8 +1007,19 @@
       setDisplayById('syBagDetailLayout', 'none');
     }
 
+    function formatRushTagValue(value) {
+      const raw = String(value || '').trim().toUpperCase();
+      if (!raw) return '';
+      if (/^\d+$/.test(raw)) return raw.slice(-6);
+      if (/^[A-Z]{2}[A-Z0-9]+$/.test(raw)) return `${raw.slice(0, 2)}${raw.slice(-6)}`;
+      return raw;
+    }
+
     function formatBagCellValue(title, colIdx, value) {
       const text = String(value || '');
+      if (title === 'RUSH BAGS' && (colIdx === 0 || colIdx === 1)) {
+        return formatRushTagValue(text);
+      }
       if (title === 'NOT LOAD BAGS' && colIdx === 1) {
         const upper = text.trim().toUpperCase();
         if (upper === 'LOADED') return '✅';
@@ -1055,8 +1065,8 @@
       const sections = [];
       if (rushValues.length) {
         sections.push(buildBagSectionHtml('RUSH BAGS', {
-          headers: ['RUSH #', 'ORIG #', 'TO', 'AKE', 'RMK'],
-          rows: [rushValues]
+          headers: ['RUSH #', 'ORIG #', 'TO', 'AKE'],
+          rows: [rushValues.slice(0, 4)]
         }));
       }
       if (notLoadRows.length) {
