@@ -260,6 +260,18 @@
       font-size: 12px;
       display: inline-block;
     }
+    .chd-toggle-btn.is-good {
+      background: #16a34a;
+    }
+    .chd-toggle-btn.is-bad {
+      background: #dc2626;
+    }
+    .chd-toggle-btn.is-disabled {
+      background: #16a34a;
+      opacity: 0.55;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
     .chd-summary {
       margin-top: 10px;
       color: #fca5a5;
@@ -575,9 +587,14 @@
             <div class="sy-cell"><div class="label">Check-in(TKT)</div><div id="syCiTkt" class="value"></div></div>
           </div>
           <button id="chdToggleBtn" class="chd-toggle-btn" style="display:none;" onclick="toggleChdPanel()">CHD List</button>
+          <button id="govAqqToggleBtn" class="chd-toggle-btn" style="display:none;margin-left:8px;" onclick="toggleGovAqqPanel()">GOV/AQQ</button>
           <div id="chdSection" style="display:none;">
             <div id="chdSummary" class="chd-summary"></div>
             <div id="chdList" class="chd-list"></div>
+          </div>
+          <div id="govAqqSection" style="display:none;">
+            <div id="govAqqSummary" class="chd-summary"></div>
+            <div id="govAqqList" class="chd-list"></div>
           </div>
         </div>
 
@@ -827,7 +844,9 @@
     let currentSyBagSheet = null;
     let checkinPanelOpen = false;
     let chdPanelOpen = false;
+    let govAqqPanelOpen = false;
     let currentUser = null;
+    let hasAutoLoadedSyToday = false;
 
         function resolveApiBase() {
       const fromWindow = window.MU_API_BASE || '';
@@ -1085,8 +1104,22 @@
 
     function toggleChdPanel() {
       chdPanelOpen = !chdPanelOpen;
+      if (chdPanelOpen) govAqqPanelOpen = false;
       setDisplayById('chdSection', chdPanelOpen ? 'block' : 'none');
+      setDisplayById('govAqqSection', 'none');
       setTextById('chdToggleBtn', chdPanelOpen ? 'Hide' : 'CHD List');
+      setTextById('govAqqToggleBtn', 'GOV/AQQ');
+    }
+
+    function toggleGovAqqPanel() {
+      const btn = document.getElementById('govAqqToggleBtn');
+      if (btn?.classList.contains('is-disabled')) return;
+      govAqqPanelOpen = !govAqqPanelOpen;
+      if (govAqqPanelOpen) chdPanelOpen = false;
+      setDisplayById('govAqqSection', govAqqPanelOpen ? 'block' : 'none');
+      setDisplayById('chdSection', 'none');
+      setTextById('govAqqToggleBtn', govAqqPanelOpen ? 'Hide' : 'GOV/AQQ');
+      setTextById('chdToggleBtn', 'CHD List');
     }
 
     function toggleDocPanel() {
@@ -1126,6 +1159,24 @@
     function setDisplayById(id, value) {
       const el = document.getElementById(id);
       if (el) el.style.display = value;
+    }
+
+    function updateChdToggleAppearance(hasMissingChd) {
+      const btn = document.getElementById('chdToggleBtn');
+      if (!btn) return;
+      btn.classList.remove('is-good', 'is-bad');
+      btn.classList.add(hasMissingChd ? 'is-bad' : 'is-good');
+    }
+
+    function updateGovAqqToggleAppearance(hasRisk) {
+      const btn = document.getElementById('govAqqToggleBtn');
+      if (!btn) return;
+      btn.classList.remove('is-good', 'is-bad', 'is-disabled');
+      if (hasRisk) {
+        btn.classList.add('is-bad');
+      } else {
+        btn.classList.add('is-good', 'is-disabled');
+      }
     }
 
     function buildTravelDocs(data) {
@@ -1422,6 +1473,7 @@
           const chdList = Array.isArray(sy.chdList) ? sy.chdList : [];
           const noCodeList = chdList.filter((p) => !p.hasChdCode);
           setTextById('chdSummary', `CHD Total: ${chdList.length} • Missing CHD1/0: ${noCodeList.length}`);
+          updateChdToggleAppearance(noCodeList.length > 0);
           const sortedChdList = [...chdList].sort((a, b) => Number(a.bn || 0) - Number(b.bn || 0));
           setTextById(
             'chdList',
@@ -1430,9 +1482,44 @@
               : 'No CHD passenger found by DOB rule (age 2-11).'
           );
           chdPanelOpen = false;
+          govAqqPanelOpen = false;
           setDisplayById('chdSection', 'none');
+          setDisplayById('govAqqSection', 'none');
           setDisplayById('chdToggleBtn', 'block');
+          setDisplayById('govAqqToggleBtn', 'inline-block');
           setTextById('chdToggleBtn', 'CHD List');
+          setTextById('govAqqToggleBtn', 'GOV/AQQ');
+
+          const govAqq = sy.govAqq || {};
+          const duplicatePassports = Array.isArray(govAqq.duplicatePassports) ? govAqq.duplicatePassports : [];
+          const aqqTclBnList = Array.isArray(govAqq.aqqTclBnList) ? govAqq.aqqTclBnList : [];
+          const govDtaBnList = Array.isArray(govAqq.govDtaBnList) ? govAqq.govDtaBnList : [];
+          const passportCodeIssues = Array.isArray(govAqq.passportCodeIssues) ? govAqq.passportCodeIssues : [];
+          const hasGovAqqRisk =
+            duplicatePassports.length > 0 ||
+            aqqTclBnList.length > 0 ||
+            govDtaBnList.length > 0 ||
+            passportCodeIssues.length > 0;
+          updateGovAqqToggleAppearance(hasGovAqqRisk);
+
+          const lines = [];
+          lines.push(`Duplicate Passport BN: ${duplicatePassports.length}`);
+          lines.push(`AQQ/TCL/USA BN: ${aqqTclBnList.length}`);
+          lines.push(`GOV/DTA/CHN BN: ${govDtaBnList.length}`);
+          lines.push(`Passport Country Code Issue BN: ${passportCodeIssues.length}`);
+          if (duplicatePassports.length) {
+            lines.push('');
+            lines.push('Duplicate passports:');
+            duplicatePassports.forEach((item) => {
+              lines.push(`${item.passportNo}: BN${item.bns.join('/BN')}`);
+            });
+          }
+          if (aqqTclBnList.length) lines.push('', `AQQ/TCL/USA: BN${aqqTclBnList.join('/BN')}`);
+          if (govDtaBnList.length) lines.push('', `GOV/DTA/CHN: BN${govDtaBnList.join('/BN')}`);
+          if (passportCodeIssues.length) lines.push('', `Passport code issue: BN${passportCodeIssues.join('/BN')}`);
+          if (!hasGovAqqRisk) lines.push('', 'No issue found.');
+          setTextById('govAqqSummary', hasGovAqqRisk ? 'Risk found' : 'All clear');
+          setTextById('govAqqList', lines.join('\n'));
 
           setDisplayById('docToggleBtn', 'none');
           card.style.display = 'block';
@@ -1450,7 +1537,9 @@
 
         setDisplayById('syLayout', 'none');
         setDisplayById('chdSection', 'none');
+        setDisplayById('govAqqSection', 'none');
         setDisplayById('chdToggleBtn', 'none');
+        setDisplayById('govAqqToggleBtn', 'none');
 
         if (!data.flight || !data.flightDate || !data.name) {
           error.innerText =
@@ -1830,6 +1919,15 @@ To ${data.outbound.destination || '-'}`
       "block";
 
     resetInactivityTimer();
+
+    if (!hasAutoLoadedSyToday) {
+      hasAutoLoadedSyToday = true;
+      const queryInput = document.getElementById('query');
+      if (queryInput) {
+        queryInput.value = 'SY';
+        searchPassenger();
+      }
+    }
   });
 
 
