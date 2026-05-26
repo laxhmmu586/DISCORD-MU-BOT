@@ -292,6 +292,12 @@
       line-height: 1.5;
       color: #e2e8f0;
     }
+    .govaqq-details-title {
+      margin-top: 8px;
+      color: #60a5fa;
+      font-size: 14px;
+      font-weight: 700;
+    }
 
     .auth-bar {
       display: flex;
@@ -605,6 +611,8 @@
           <div id="govAqqSection" style="display:none;">
             <div id="govAqqSummary" class="chd-summary"></div>
             <div id="govAqqList" class="chd-list"></div>
+            <div id="govAqqDetailsTitle" class="govaqq-details-title" style="display:none;">Details:</div>
+            <div id="govAqqDetailsList" class="chd-list" style="display:none;"></div>
           </div>
         </div>
 
@@ -1525,20 +1533,35 @@
               lines.push(`${item.passportNo}: BN${item.bns.join('/BN')}`);
             });
           }
-          if (aqqTclBnList.length) lines.push('', `USA TIME OUT: BN${aqqTclBnList.join('/BN')}`);
-          if (govDtaBnList.length) lines.push('', `CHN GOV FAIL: BN${govDtaBnList.join('/BN')}`);
+          if (aqqTclBnList.length) lines.push('', `USA TIME OUT: ${aqqTclBnList.map((bn) => `BN${bn}`).join('   ')}`);
+          if (govDtaBnList.length) lines.push('', `CHN GOV FAIL: ${govDtaBnList.map((bn) => `BN${bn}`).join('   ')}`);
           if (passportCodeIssues.length) {
-            lines.push('', `API RISK: BN${passportCodeIssues.join('/BN')}`);
-            if (passportCodeIssueDetails.length) {
-              lines.push('Details:');
-              passportCodeIssueDetails.forEach((item) => {
-                lines.push(`BN${item.bn}: ${item.reason}`);
-              });
-            }
+            lines.push('', `API RISK: ${passportCodeIssues.map((bn) => `BN${bn}`).join('   ')}`);
           }
           if (!hasGovAqqRisk) lines.push('', 'No issue found.');
           setTextById('govAqqSummary', hasGovAqqRisk ? 'Risk found' : 'All clear');
           setTextById('govAqqList', lines.join('\n'));
+          const detailsTitleEl = document.getElementById('govAqqDetailsTitle');
+          const detailsListEl = document.getElementById('govAqqDetailsList');
+          if (passportCodeIssueDetails.length) {
+            const detailLines = [];
+            passportCodeIssueDetails.forEach((item, idx) => {
+              const chunks = String(item.reason || '')
+                .split(';')
+                .map((x) => x.trim())
+                .filter(Boolean);
+              detailLines.push(`BN${item.bn}: ${chunks[0] ? `${chunks[0]};` : ''}`);
+              chunks.slice(1).forEach((line) => detailLines.push(line));
+              if (idx !== passportCodeIssueDetails.length - 1) detailLines.push('');
+            });
+            detailsTitleEl.style.display = 'block';
+            detailsListEl.style.display = 'block';
+            detailsListEl.innerText = detailLines.join('\n');
+          } else {
+            detailsTitleEl.style.display = 'none';
+            detailsListEl.style.display = 'none';
+            detailsListEl.innerText = '';
+          }
 
           setDisplayById('docToggleBtn', 'none');
           card.style.display = 'block';
@@ -1557,6 +1580,8 @@
         setDisplayById('syLayout', 'none');
         setDisplayById('chdSection', 'none');
         setDisplayById('govAqqSection', 'none');
+        setDisplayById('govAqqDetailsTitle', 'none');
+        setDisplayById('govAqqDetailsList', 'none');
         setDisplayById('syToggleRow', 'none');
         setDisplayById('chdToggleBtn', 'none');
         setDisplayById('govAqqToggleBtn', 'none');
