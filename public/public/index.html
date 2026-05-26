@@ -449,16 +449,23 @@
     .clickable { cursor: pointer; }
     .back-btn { background:none; border:none; color:#93c5fd; cursor:pointer; padding:0; margin-bottom:8px; }
     .bag-detail-card { margin-top: 12px; border:none; border-radius:0; padding:0; }
+    .bag-table-wrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .bag-table { width:100%; border-collapse:collapse; margin-top:6px; table-layout: fixed; }
-    .bag-table th, .bag-table td { width:auto; }
-    .bag-table.rush-table th, .bag-table.rush-table td { width: 20%; }
-    .bag-table.rush-table th, .bag-table.rush-table td { white-space: nowrap !important; word-break: normal !important; overflow-wrap: normal !important; }
-    .bag-table.notload-table th:nth-child(1), .bag-table.notload-table td:nth-child(1) { width: 32%; }
-    .bag-table.notload-table th:nth-child(2), .bag-table.notload-table td:nth-child(2) { width: 14%; text-align:center; }
-    .bag-table.notload-table th:nth-child(3), .bag-table.notload-table td:nth-child(3) { width: 54%; }
-    .bag-table th, .bag-table td { border:1px solid #334155; padding:8px 10px; text-align:left; font-size:12px; white-space: normal; word-break: break-word; overflow-wrap:anywhere; vertical-align: top; }
-    .bag-table th { background: #16243b; color: #dbeafe; font-weight: 700; }
-    .bag-table td { background: #0f1b31; }
+    .bag-table th, .bag-table td { border:1px solid #334155; padding:8px 10px; text-align:left; font-size:12px; vertical-align: top; }
+    .bag-table th { background: #16243b; color: #dbeafe; font-weight: 700; white-space: nowrap; word-break: normal; }
+    .bag-table td { background: #0f1b31; white-space: normal; word-break: break-word; overflow-wrap:anywhere; }
+
+    .bag-table.rush-table col:nth-child(1) { width: 23%; }
+    .bag-table.rush-table col:nth-child(2) { width: 23%; }
+    .bag-table.rush-table col:nth-child(3) { width: 9%; }
+    .bag-table.rush-table col:nth-child(4) { width: 13%; }
+    .bag-table.rush-table col:nth-child(5) { width: 32%; }
+    .bag-table.rush-table td:nth-child(1), .bag-table.rush-table td:nth-child(2) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .bag-table.notload-table col:nth-child(1) { width: 31%; }
+    .bag-table.notload-table col:nth-child(2) { width: 10%; }
+    .bag-table.notload-table col:nth-child(3) { width: 59%; }
+    .bag-table.notload-table th:nth-child(2), .bag-table.notload-table td:nth-child(2) { text-align:center; }
 
   </style>
 
@@ -1024,7 +1031,11 @@
       return `
         <div class="bag-detail-card">
           <div class="detail-title" style="font-weight:700; letter-spacing:.5px;">${escapeHtml(title)}</div>
-          <table class="bag-table ${title === 'RUSH BAGS' ? 'rush-table' : (title === 'NOT LOAD BAGS' ? 'notload-table' : '')}">
+          <div class="bag-table-wrap">
+            <table class="bag-table ${title === 'RUSH BAGS' ? 'rush-table' : (title === 'NOT LOAD BAGS' ? 'notload-table' : '')}">
+              <colgroup>
+                ${headers.map(() => '<col>').join('')}
+              </colgroup>
             <thead>
               <tr>${headerRow}</tr>
             </thead>
@@ -1032,6 +1043,7 @@
               ${valueRows}
             </tbody>
           </table>
+          </div>
         </div>
       `;
     }
@@ -1049,7 +1061,7 @@
       }
       if (notLoadRows.length) {
         sections.push(buildBagSectionHtml('NOT LOAD BAGS', {
-          headers: ['TAG #', 'STATUS', 'RMK'],
+          headers: ['TAG #', 'ST', 'RMK'],
           rows: notLoadRows
         }));
       }
