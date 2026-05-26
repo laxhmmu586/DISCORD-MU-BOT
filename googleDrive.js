@@ -205,22 +205,19 @@ async function getSyBagInfoByDate(isoDate, flightDateRaw = '') {
       if (normalized.includes('NOT') && normalized.includes('LOAD') && normalized.includes('BAG')) return 'NOT LOAD BAGS';
       return '';
     };
-    const buildRushPayload = (row) => ({
-      type: 'RUSH BAGS',
-      columns: [14, 15, 16, 17, 18].map((idx) => row[idx] || ''),
-      hasData: [14, 15, 16, 17, 18].some((idx) => String(row[idx] || '').trim() !== '')
-    });
+    const buildRushRow = (row) => [14, 15, 16, 17, 18].map((idx) => row[idx] || '');
 
     const buildNotLoadRow = (row) => [20, 21, 22].map((idx) => row[idx] || '');
 
-    const pickLatestRushForMatcher = (matcher) => {
-      for (let i = rows.length - 1; i >= 1; i--) {
+    const collectRushRowsForMatcher = (matcher) => {
+      const values = [];
+      for (let i = 1; i < rows.length; i++) {
         const row = rows[i];
         if (!matcher(row) || classifyReportType(row[1]) !== 'RUSH BAGS') continue;
-        const payload = buildRushPayload(row);
-        if (payload.hasData) return payload;
+        const columns = buildRushRow(row);
+        if (columns.some((v) => String(v || '').trim() !== '')) values.push(columns);
       }
-      return null;
+      return values;
     };
 
     const collectNotLoadRowsForMatcher = (matcher) => {
@@ -235,7 +232,16 @@ async function getSyBagInfoByDate(isoDate, flightDateRaw = '') {
     };
 
     const buildPayload = (matcher) => {
-      const rushBags = pickLatestRushForMatcher(matcher);
+      const rushRows = collectRushRowsForMatcher(matcher);
+      const rushBags = rushRows.length
+        ? {
+          type: 'RUSH BAGS',
+          headers: ['RUSH TAG NUMBER', 'ORIGINAL TAG NUMBER', 'RUSH TO WHERE', 'AKE NUMBER', 'REMARK'],
+          rows: rushRows,
+          columns: rushRows[rushRows.length - 1],
+          hasData: true
+        }
+        : null;
       const notLoadRows = collectNotLoadRowsForMatcher(matcher);
       const notLoadBags = notLoadRows.length
         ? {

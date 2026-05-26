@@ -1063,13 +1063,13 @@
 
     function showSyBagDetailCard() {
       if (!currentSyBagSheet || !currentSyBagSheet.hasData) return;
-      const rushValues = currentSyBagSheet.rushBags?.columns || [];
+      const rushRows = currentSyBagSheet.rushBags?.rows || (currentSyBagSheet.rushBags?.columns ? [currentSyBagSheet.rushBags.columns] : []);
       const notLoadRows = currentSyBagSheet.notLoadBags?.rows || (currentSyBagSheet.notLoadBags?.columns ? [currentSyBagSheet.notLoadBags.columns] : []);
       const sections = [];
-      if (rushValues.length) {
+      if (rushRows.length) {
         sections.push(buildBagSectionHtml('RUSH BAGS', {
           headers: ['RUSH #', 'ORIG #', 'TO', 'AKE'],
-          rows: [rushValues.slice(0, 4)]
+          rows: rushRows.map((row) => row.slice(0, 4))
         }));
       }
       if (notLoadRows.length) {
