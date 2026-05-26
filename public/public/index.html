@@ -1505,6 +1505,7 @@
           const aqqTclBnList = Array.isArray(govAqq.aqqTclBnList) ? govAqq.aqqTclBnList : [];
           const govDtaBnList = Array.isArray(govAqq.govDtaBnList) ? govAqq.govDtaBnList : [];
           const passportCodeIssues = Array.isArray(govAqq.passportCodeIssues) ? govAqq.passportCodeIssues : [];
+          const passportCodeIssueDetails = Array.isArray(govAqq.passportCodeIssueDetails) ? govAqq.passportCodeIssueDetails : [];
           const hasGovAqqRisk =
             duplicatePassports.length > 0 ||
             aqqTclBnList.length > 0 ||
@@ -1526,7 +1527,15 @@
           }
           if (aqqTclBnList.length) lines.push('', `USA TIME OUT: BN${aqqTclBnList.join('/BN')}`);
           if (govDtaBnList.length) lines.push('', `CHN GOV FAIL: BN${govDtaBnList.join('/BN')}`);
-          if (passportCodeIssues.length) lines.push('', `Passport sync risk: BN${passportCodeIssues.join('/BN')}`);
+          if (passportCodeIssues.length) {
+            lines.push('', `Passport sync risk: BN${passportCodeIssues.join('/BN')}`);
+            if (passportCodeIssueDetails.length) {
+              lines.push('Details:');
+              passportCodeIssueDetails.forEach((item) => {
+                lines.push(`BN${item.bn}: ${item.reason}`);
+              });
+            }
+          }
           if (!hasGovAqqRisk) lines.push('', 'No issue found.');
           setTextById('govAqqSummary', hasGovAqqRisk ? 'Risk found' : 'All clear');
           setTextById('govAqqList', lines.join('\n'));
