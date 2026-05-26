@@ -455,11 +455,11 @@
     .bag-table th { background: #16243b; color: #dbeafe; font-weight: 700; white-space: nowrap; word-break: normal; }
     .bag-table td { background: #0f1b31; white-space: normal; word-break: break-word; overflow-wrap:anywhere; }
 
-    .bag-table.rush-table col:nth-child(1) { width: 32%; }
-    .bag-table.rush-table col:nth-child(2) { width: 32%; }
-    .bag-table.rush-table col:nth-child(3) { width: 10%; }
-    .bag-table.rush-table col:nth-child(4) { width: 26%; }
-    .bag-table.rush-table td:nth-child(1), .bag-table.rush-table td:nth-child(2) { white-space: nowrap; }
+    .bag-table.rush-table col:nth-child(1),
+    .bag-table.rush-table col:nth-child(2),
+    .bag-table.rush-table col:nth-child(3),
+    .bag-table.rush-table col:nth-child(4) { width: 25%; }
+    .bag-table.rush-table th, .bag-table.rush-table td { white-space: nowrap; word-break: normal; overflow-wrap: normal; }
 
     .bag-table.notload-table col:nth-child(1) { width: 31%; }
     .bag-table.notload-table col:nth-child(2) { width: 10%; }
