@@ -1517,7 +1517,7 @@
           lines.push(`Duplicate Passport : ${duplicatePassports.length}`);
           lines.push(`USA TIME OUT: ${aqqTclBnList.length}`);
           lines.push(`CHN GOV FAIL: ${govDtaBnList.length}`);
-          lines.push(`Passport Sync Risk BN: ${passportCodeIssues.length}`);
+          lines.push(`API RISK BN: ${passportCodeIssues.length}`);
           if (duplicatePassports.length) {
             lines.push('');
             lines.push('Duplicate passports:');
@@ -1528,7 +1528,7 @@
           if (aqqTclBnList.length) lines.push('', `USA TIME OUT: BN${aqqTclBnList.join('/BN')}`);
           if (govDtaBnList.length) lines.push('', `CHN GOV FAIL: BN${govDtaBnList.join('/BN')}`);
           if (passportCodeIssues.length) {
-            lines.push('', `Passport sync risk: BN${passportCodeIssues.join('/BN')}`);
+            lines.push('', `API RISK: BN${passportCodeIssues.join('/BN')}`);
             if (passportCodeIssueDetails.length) {
               lines.push('Details:');
               passportCodeIssueDetails.forEach((item) => {

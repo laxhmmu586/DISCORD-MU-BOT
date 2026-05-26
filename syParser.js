@@ -227,6 +227,12 @@ function extractPassportCountryCodes(section) {
   return codes;
 }
 
+function normalizeCountryCodeForRisk(code) {
+  const raw = String(code || '').toUpperCase();
+  if (raw === 'GBR' || raw === 'GBN') return 'GB';
+  return raw;
+}
+
 function enrichGovAqqFromLog(log, syInfo, targetYmd = null) {
   if (!log || !syInfo?.flightNo || !syInfo?.flightDate) {
     return { duplicatePassports: [], aqqTclBnList: [], govDtaBnList: [], passportCodeIssues: [] };
@@ -272,7 +278,8 @@ function enrichGovAqqFromLog(log, syInfo, targetYmd = null) {
     if (countryCodes.some((c) => c.length !== 3)) {
       issueReasons.push('contains non-3-letter country code');
     }
-    if (countryCodes.length === 3 && new Set(countryCodes).size !== 1) {
+    const normalizedCountryCodes = countryCodes.map(normalizeCountryCodeForRisk);
+    if (countryCodes.length === 3 && new Set(normalizedCountryCodes).size !== 1) {
       issueReasons.push(`country codes not identical: ${countryCodes.join('/')}`);
     }
     const hasCodeIssue = issueReasons.length > 0;
