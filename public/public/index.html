@@ -260,6 +260,12 @@
       font-size: 12px;
       display: inline-block;
     }
+    .chd-toggle-btn.is-good {
+      background: #16a34a;
+    }
+    .chd-toggle-btn.is-bad {
+      background: #dc2626;
+    }
     .chd-summary {
       margin-top: 10px;
       color: #fca5a5;
@@ -828,6 +834,7 @@
     let checkinPanelOpen = false;
     let chdPanelOpen = false;
     let currentUser = null;
+    let hasAutoLoadedSyToday = false;
 
         function resolveApiBase() {
       const fromWindow = window.MU_API_BASE || '';
@@ -1128,6 +1135,13 @@
       if (el) el.style.display = value;
     }
 
+    function updateChdToggleAppearance(hasMissingChd) {
+      const btn = document.getElementById('chdToggleBtn');
+      if (!btn) return;
+      btn.classList.remove('is-good', 'is-bad');
+      btn.classList.add(hasMissingChd ? 'is-bad' : 'is-good');
+    }
+
     function buildTravelDocs(data) {
       const paxInfoRaw = cleanRawLine(data.paxInfoRaw);
       const passportRaw = cleanRawLine(data.passportRaw);
@@ -1422,6 +1436,7 @@
           const chdList = Array.isArray(sy.chdList) ? sy.chdList : [];
           const noCodeList = chdList.filter((p) => !p.hasChdCode);
           setTextById('chdSummary', `CHD Total: ${chdList.length} • Missing CHD1/0: ${noCodeList.length}`);
+          updateChdToggleAppearance(noCodeList.length > 0);
           const sortedChdList = [...chdList].sort((a, b) => Number(a.bn || 0) - Number(b.bn || 0));
           setTextById(
             'chdList',
@@ -1830,6 +1845,15 @@ To ${data.outbound.destination || '-'}`
       "block";
 
     resetInactivityTimer();
+
+    if (!hasAutoLoadedSyToday) {
+      hasAutoLoadedSyToday = true;
+      const queryInput = document.getElementById('query');
+      if (queryInput) {
+        queryInput.value = 'SY';
+        searchPassenger();
+      }
+    }
   });
 
 
