@@ -205,8 +205,8 @@ function enrichCHDListFromLog(log, syInfo, targetYmd = null) {
 
 function extractPassportCountryCodes(section) {
   const codes = [];
-  const paxInfo = section.match(/PAX INFO\s*:\s*([^\n\r]+)/i)?.[1] || '';
-  const paxPassport = section.match(/PASSPORT\s*:\s*([^\n\r]+)/i)?.[1] || '';
+  const paxInfo = (section.match(/PAX INFO\s*:\s*([^\n\r]+)/i)?.[1] || '').trim();
+  const paxPassport = (section.match(/PASSPORT\s*:\s*([^\n\r]+)/i)?.[1] || '').trim();
 
   const paxInfoCode = paxInfo.match(/^([A-Z]{2,3})\//i)?.[1];
   if (paxInfoCode) codes.push(paxInfoCode.toUpperCase());
@@ -214,7 +214,7 @@ function extractPassportCountryCodes(section) {
   const natCode = paxPassport.match(/\/NAT\/([A-Z]{2,3})\b/i)?.[1];
   if (natCode) codes.push(natCode.toUpperCase());
 
-  const countryAfterExpiry = paxPassport.match(/\/\d{6}\/([A-Z]{2,3})\//i)?.[1];
+  const countryAfterExpiry = paxPassport.match(/\/\d{6}\/([A-Z]{2,3})(?:\/|$)/i)?.[1];
   if (countryAfterExpiry) codes.push(countryAfterExpiry.toUpperCase());
 
   return codes;

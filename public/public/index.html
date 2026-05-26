@@ -280,18 +280,6 @@
       align-items: center;
       flex-wrap: wrap;
     }
-    .chd-toggle-btn.is-good {
-      background: #16a34a;
-    }
-    .chd-toggle-btn.is-bad {
-      background: #dc2626;
-    }
-    .chd-toggle-btn.is-disabled {
-      background: #16a34a;
-      opacity: 0.55;
-      cursor: not-allowed;
-      pointer-events: none;
-    }
     .chd-summary {
       margin-top: 10px;
       color: #fca5a5;
@@ -1525,9 +1513,9 @@
           updateGovAqqToggleAppearance(hasGovAqqRisk);
 
           const lines = [];
-          lines.push(`Duplicate Passport BN: ${duplicatePassports.length}`);
-          lines.push(`AQQ/TCL/USA BN: ${aqqTclBnList.length}`);
-          lines.push(`GOV/DTA/CHN BN: ${govDtaBnList.length}`);
+          lines.push(`Duplicate Passport : ${duplicatePassports.length}`);
+          lines.push(`USA TIME OUT: ${aqqTclBnList.length}`);
+          lines.push(`CHN GOV FAIL: ${govDtaBnList.length}`);
           lines.push(`Passport Sync Risk BN: ${passportCodeIssues.length}`);
           if (duplicatePassports.length) {
             lines.push('');
@@ -1536,8 +1524,8 @@
               lines.push(`${item.passportNo}: BN${item.bns.join('/BN')}`);
             });
           }
-          if (aqqTclBnList.length) lines.push('', `AQQ/TCL/USA: BN${aqqTclBnList.join('/BN')}`);
-          if (govDtaBnList.length) lines.push('', `GOV/DTA/CHN: BN${govDtaBnList.join('/BN')}`);
+          if (aqqTclBnList.length) lines.push('', `USA TIME OUT: BN${aqqTclBnList.join('/BN')}`);
+          if (govDtaBnList.length) lines.push('', `CHN GOV FAIL: BN${govDtaBnList.join('/BN')}`);
           if (passportCodeIssues.length) lines.push('', `Passport sync risk: BN${passportCodeIssues.join('/BN')}`);
           if (!hasGovAqqRisk) lines.push('', 'No issue found.');
           setTextById('govAqqSummary', hasGovAqqRisk ? 'Risk found' : 'All clear');
