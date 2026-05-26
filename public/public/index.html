@@ -251,14 +251,34 @@
       font-size: 14px;
     }
     .chd-toggle-btn {
-      margin-top: 14px;
       width: auto;
       background: #1d4ed8;
-      padding: 4px 12px;
+      padding: 6px 14px;
       border-radius: 999px;
       text-align: center;
-      font-size: 12px;
+      font-size: 13px;
+      font-weight: 600;
       display: inline-block;
+      border: none;
+    }
+    .chd-toggle-btn.is-good {
+      background: #16a34a;
+    }
+    .chd-toggle-btn.is-bad {
+      background: #dc2626;
+    }
+    .chd-toggle-btn.is-disabled {
+      background: #16a34a;
+      opacity: 1;
+      cursor: pointer;
+      pointer-events: auto;
+    }
+    .sy-toggle-row {
+      margin-top: 14px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
     }
     .chd-toggle-btn.is-good {
       background: #16a34a;
@@ -586,8 +606,10 @@
             <div class="sy-cell"><div class="label">Check-in</div><div id="syCi" class="value"></div></div>
             <div class="sy-cell"><div class="label">Check-in(TKT)</div><div id="syCiTkt" class="value"></div></div>
           </div>
-          <button id="chdToggleBtn" class="chd-toggle-btn" style="display:none;" onclick="toggleChdPanel()">CHD List</button>
-          <button id="govAqqToggleBtn" class="chd-toggle-btn" style="display:none;margin-left:8px;" onclick="toggleGovAqqPanel()">GOV/AQQ</button>
+          <div id="syToggleRow" class="sy-toggle-row" style="display:none;">
+            <button id="chdToggleBtn" class="chd-toggle-btn" style="display:none;" onclick="toggleChdPanel()">CHD List</button>
+            <button id="govAqqToggleBtn" class="chd-toggle-btn" style="display:none;" onclick="toggleGovAqqPanel()">GOV/AQQ</button>
+          </div>
           <div id="chdSection" style="display:none;">
             <div id="chdSummary" class="chd-summary"></div>
             <div id="chdList" class="chd-list"></div>
@@ -1113,7 +1135,6 @@
 
     function toggleGovAqqPanel() {
       const btn = document.getElementById('govAqqToggleBtn');
-      if (btn?.classList.contains('is-disabled')) return;
       govAqqPanelOpen = !govAqqPanelOpen;
       if (govAqqPanelOpen) chdPanelOpen = false;
       setDisplayById('govAqqSection', govAqqPanelOpen ? 'block' : 'none');
@@ -1485,7 +1506,8 @@
           govAqqPanelOpen = false;
           setDisplayById('chdSection', 'none');
           setDisplayById('govAqqSection', 'none');
-          setDisplayById('chdToggleBtn', 'block');
+          setDisplayById('syToggleRow', 'flex');
+          setDisplayById('chdToggleBtn', 'inline-block');
           setDisplayById('govAqqToggleBtn', 'inline-block');
           setTextById('chdToggleBtn', 'CHD List');
           setTextById('govAqqToggleBtn', 'GOV/AQQ');
@@ -1506,7 +1528,7 @@
           lines.push(`Duplicate Passport BN: ${duplicatePassports.length}`);
           lines.push(`AQQ/TCL/USA BN: ${aqqTclBnList.length}`);
           lines.push(`GOV/DTA/CHN BN: ${govDtaBnList.length}`);
-          lines.push(`Passport Country Code Issue BN: ${passportCodeIssues.length}`);
+          lines.push(`Passport Sync Risk BN: ${passportCodeIssues.length}`);
           if (duplicatePassports.length) {
             lines.push('');
             lines.push('Duplicate passports:');
@@ -1516,7 +1538,7 @@
           }
           if (aqqTclBnList.length) lines.push('', `AQQ/TCL/USA: BN${aqqTclBnList.join('/BN')}`);
           if (govDtaBnList.length) lines.push('', `GOV/DTA/CHN: BN${govDtaBnList.join('/BN')}`);
-          if (passportCodeIssues.length) lines.push('', `Passport code issue: BN${passportCodeIssues.join('/BN')}`);
+          if (passportCodeIssues.length) lines.push('', `Passport sync risk: BN${passportCodeIssues.join('/BN')}`);
           if (!hasGovAqqRisk) lines.push('', 'No issue found.');
           setTextById('govAqqSummary', hasGovAqqRisk ? 'Risk found' : 'All clear');
           setTextById('govAqqList', lines.join('\n'));
@@ -1538,6 +1560,7 @@
         setDisplayById('syLayout', 'none');
         setDisplayById('chdSection', 'none');
         setDisplayById('govAqqSection', 'none');
+        setDisplayById('syToggleRow', 'none');
         setDisplayById('chdToggleBtn', 'none');
         setDisplayById('govAqqToggleBtn', 'none');
 

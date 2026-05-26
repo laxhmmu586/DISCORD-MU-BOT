@@ -238,15 +238,21 @@ function enrichGovAqqFromLog(log, syInfo, targetYmd = null) {
     if (!prMatch) continue;
     if (prMatch[1].toUpperCase() !== syInfo.flightNo || prMatch[2].toUpperCase() !== syInfo.flightDate) continue;
 
-    const bnMatch = section.match(/\bBN(\d{1,3})\b/i);
+    const bnMatch = section.match(/PR:\s*[A-Z0-9]+\/\d{2}[A-Z]{3}\d{2}\*[A-Z]{3},BN(\d{1,3})/i);
     if (!bnMatch) continue;
     const bn = bnMatch[1].padStart(3, '0');
     const passportNo = section.match(/PASSPORT\s*:\s*([A-Z0-9]+)/i)?.[1]?.toUpperCase() || '';
+    const hasPaxInfoLine = /PAX INFO\s*:/i.test(section);
+    const hasPassportLine = /PASSPORT\s*:/i.test(section);
     const countryCodes = extractPassportCountryCodes(section);
     const hasCodeIssue =
-      countryCodes.length !== 3 ||
-      countryCodes.some((c) => c.length !== 3) ||
-      new Set(countryCodes).size !== 1;
+      hasPaxInfoLine && hasPassportLine
+        ? (
+          countryCodes.length !== 3 ||
+          countryCodes.some((c) => c.length !== 3) ||
+          new Set(countryCodes).size !== 1
+        )
+        : false;
 
     paxRecords.push({
       bn,
