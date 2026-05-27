@@ -244,6 +244,19 @@ function isReversedNamePair(a, b) {
   return a.last === b.first && a.first === b.last;
 }
 
+const APPROVED_AGENT_CODES = new Set([
+  '21472', '21470', '21466', '23239', '24110', '24113', '23242', '21440',
+  '23241', '21461', '23299', '21463', '23302', '24103', '21451', '21447',
+  '24102', '23240', '23307', '21450', '24108', '21455', '24109', '23243',
+  '23305', '23244'
+]);
+
+function extractLatestApiAgent(section) {
+  const apiLines = [...String(section || '').matchAll(/^\s*API\s+[^\n\r]*?\bAGT(\d+)\//gim)];
+  if (!apiLines.length) return null;
+  return apiLines[apiLines.length - 1][1];
+}
+
 function enrichGovAqqFromLog(log, syInfo, targetYmd = null) {
   if (!log || !syInfo?.flightNo || !syInfo?.flightDate) {
     return { duplicatePassports: [], aqqTclBnList: [], govDtaBnList: [], passportCodeIssues: [] };
@@ -277,6 +290,8 @@ function enrichGovAqqFromLog(log, syInfo, targetYmd = null) {
     const section = latest.section || '';
     const passportNo = section.match(/PASSPORT\s*:\s*([A-Z0-9]+)/i)?.[1]?.toUpperCase() || '';
     const bookingName = extractBookingName(section);
+    const latestApiAgent = extractLatestApiAgent(section);
+    const needsReswipeByAgent = Boolean(latestApiAgent) && !APPROVED_AGENT_CODES.has(latestApiAgent);
     const hasPaxInfoLine = /PAX INFO\s*:/i.test(section);
     const hasPassportLine = /PASSPORT\s*:/i.test(section);
     const countryCodes = extractPassportCountryCodes(section);
@@ -294,12 +309,17 @@ function enrichGovAqqFromLog(log, syInfo, targetYmd = null) {
     if (countryCodes.length === 3 && new Set(normalizedCountryCodes).size !== 1) {
       issueReasons.push(`country codes not identical: ${countryCodes.join('/')}`);
     }
+    if (needsReswipeByAgent) {
+      issueReasons.push(`latest API by AGT${latestApiAgent} not in approved list (check-in details review)`);
+    }
     const hasCodeIssue = issueReasons.length > 0;
 
     paxRecords.push({
       bn,
       bookingName,
       passportNo,
+      latestApiAgent,
+      needsReswipeByAgent,
       hasAqqTcl: /\bAQQ\/TCL\/USA\b/i.test(section),
       hasGovDta: /\bGOV\/DTA\/CHN\b/i.test(section),
       hasPassportCodeIssue: hasCodeIssue
