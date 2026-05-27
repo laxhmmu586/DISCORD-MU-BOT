@@ -430,7 +430,6 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     const outboundLine = section.match(/^\s*O\/[^\n\r]*/im)?.[0] || '';
     const outboundDest = outboundLine.match(/\b([A-Z]{3})\s*$/i)?.[1]?.toUpperCase() || '';
     const hasOutbound = Boolean(outboundDest);
-    const outboundCheckedIn = hasOutbound && /\bBN\d{1,3}\s+\d{1,2}[A-Z]\b/i.test(outboundLine);
     const hasTimeOut = /\bAQQ\/TCL\/USA\b/i.test(section);
     const hasGovFail = /\bGOV\/DTA\/CHN\b/i.test(section);
     const hasReview = /\bWEB\/EDI\/RESWIPE\b/i.test(section);
@@ -444,7 +443,10 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     const waived = /\bPSM-EXBG0PC/i.test(section);
     const fbaPc = Number(section.match(/\bFBA\/(\d+)PC\b/i)?.[1] || 0);
     const xbagPc = Number(section.match(/\bXBAG\/(\d+)PC\b/i)?.[1] || 0);
-    const purchasedExtra = Math.max(0, xbagPc - fbaPc);
+    const pdbgCount = [...section.matchAll(/\bPDBG\b/gi)].length;
+    const hasExtraBaggageByTier = /\bFF\/MU\s+\d+\/(?:V|G|S)\b/i.test(section) || /\*1|\*2/.test(section);
+    const tierExtraPc = hasExtraBaggageByTier ? 1 : 0;
+    const purchasedExtra = Math.max(0, xbagPc - fbaPc) + pdbgCount + tierExtraPc;
     const bagTagRaw = [...section.matchAll(/BAGTAG\/([^\n\r]+)/gi)]
       .map((m) => m[1] || '')
       .join(' ');
@@ -455,14 +457,16 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     if (hasOutbound && bagDestinations.length > 0) {
       const allMatchOutbound = bagDestinations.every((d) => d === outboundDest.toUpperCase());
       bagStatus = allMatchOutbound ? bagStatus : 'review';
+    } else if (!hasOutbound && bagDestinations.length > 0) {
+      const allToPvg = bagDestinations.every((d) => d === 'PVG');
+      bagStatus = allToPvg ? bagStatus : 'review';
     }
-    const oStatus = hasOutbound ? (outboundCheckedIn ? 'pass' : 'fail') : 'PVG';
 
     if (hasCkinOkOverride) {
-      return { bn, apiStatus: 'pass', tkStatus: 'pass', bagStatus: 'pass', oStatus: 'pass' };
+      return { bn, apiStatus: 'pass', tkStatus: 'pass', bagStatus: 'pass' };
     }
 
-    return { bn, apiStatus, tkStatus, bagStatus, oStatus };
+    return { bn, apiStatus, tkStatus, bagStatus };
   });
 }
 

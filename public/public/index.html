@@ -1112,11 +1112,10 @@
           <td><span class="status-dot">${emojiByStatus(row?.apiStatus)}</span></td>
           <td><span class="status-dot">${emojiByStatus(row?.tkStatus)}</span></td>
           <td><span class="status-dot">${emojiByStatus(row?.bagStatus)}</span></td>
-          <td><span class="status-dot">${row?.oStatus === 'PVG' ? 'PVG' : emojiByStatus(row?.oStatus)}</span></td>
         </tr>`);
       }
       document.getElementById('syAuditContent').innerHTML = `<div class="detail-title">Security Check</div>
-        <div class="audit-sheet"><table><thead><tr><th>BN</th><th>API</th><th>TK</th><th>BAG</th><th>O</th></tr></thead><tbody>${rows.join('')}</tbody></table></div>`;
+        <div class="audit-sheet"><table><thead><tr><th>BN</th><th>API</th><th>TK</th><th>BAG</th></tr></thead><tbody>${rows.join('')}</tbody></table></div>`;
       setDisplayById('syLayout', 'none');
       setDisplayById('syBagDetailLayout', 'none');
       setDisplayById('syAuditLayout', 'block');
