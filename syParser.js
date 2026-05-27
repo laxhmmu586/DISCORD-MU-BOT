@@ -408,13 +408,25 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
   if (!log || !syInfo?.flightNo || !syInfo?.flightDate) return [];
   const sections = splitLogicalSections(log);
   const latestByBn = new Map();
+  const sectionRichnessScore = (text) => {
+    const s = String(text || '');
+    let score = 0;
+    if (/\bET\s+TKNE\//i.test(s)) score += 2;
+    if (/\bFBA\/\d+PC\b/i.test(s)) score += 2;
+    if (/\bBAGTAG\//i.test(s)) score += 3;
+    if (/\bASVC-[^\n\r]*\bXBAG\/\d+PC\b/i.test(s)) score += 2;
+    if (/\bASVC-[^\n\r]*\bPDBG\b/i.test(s)) score += 2;
+    if (/^\s*CKIN\b/im.test(s)) score += 1;
+    if (/^\s*O\/[^\n\r]*/im.test(s)) score += 1;
+    return score;
+  };
 
   for (const sectionObj of sections) {
     const section = sectionObj.content || '';
     if (!section.includes('PR:')) continue;
     if (targetYmd) {
       const sectionYmd = getYmdFromTimestamp(sectionObj.timestamp);
-      if (sectionYmd && sectionYmd !== targetYmd) continue;
+      if (sectionYmd !== targetYmd) continue;
     }
     const prMatch = section.match(/PR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
     if (!prMatch) continue;
@@ -423,9 +435,15 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     if (!bnMatch) continue;
     const bn = bnMatch[1].padStart(3, '0');
     const ts = parseSectionTimestamp(sectionObj.timestamp);
+    const score = sectionRichnessScore(section);
     const prev = latestByBn.get(bn);
-    if (prev && prev.ts > ts) continue;
-    latestByBn.set(bn, { ts, section });
+    if (!prev) {
+      latestByBn.set(bn, { ts, section, score });
+      continue;
+    }
+    if (score > prev.score || (score === prev.score && ts >= prev.ts)) {
+      latestByBn.set(bn, { ts, section, score });
+    }
   }
 
   return [...latestByBn.entries()].sort((a, b) => Number(a[0]) - Number(b[0])).map(([bn, payload]) => {
@@ -446,7 +464,6 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
 
     const waived = /\bPSM-EXBG0PC/i.test(section);
     const fbaPc = Number(section.match(/\bFBA\/(\d+)PC\b/i)?.[1] || 0);
-    const bagPc = Number(section.match(/\bBAG(\d+)\/\d+\/\d+\b/i)?.[1] || 0);
     const xbagPc = Number(section.match(/\bXBAG\/(\d+)PC\b/i)?.[1] || 0);
     const pdbgCount = [...section.matchAll(/\bPDBG\b/gi)].length;
     const hasExtraBaggageByTier = /\bFF\/MU\s+\d+\/(?:V|G|S)\b/i.test(section) || /\*1|\*2/.test(section);
@@ -457,8 +474,7 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
       .join(' ');
     const bagDestinations = [...bagTagRaw.matchAll(/\/([A-Z]{3})\b/gi)].map((m) => (m[1] || '').toUpperCase());
     const bagTagCount = bagDestinations.length;
-    const baseAllowance = Math.max(fbaPc, bagPc);
-    const allowance = baseAllowance + purchasedExtra;
+    const allowance = fbaPc + purchasedExtra;
     let bagStatus = waived ? 'pass' : (bagTagCount > allowance ? 'fail' : 'pass');
     if (!waived) {
       if (hasOutbound && bagDestinations.length > 0) {
