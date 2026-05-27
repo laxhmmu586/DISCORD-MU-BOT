@@ -203,6 +203,182 @@ function enrichCHDListFromLog(log, syInfo, targetYmd = null) {
   return Array.from(chdByBn.values()).sort((a, b) => Number(a.bn) - Number(b.bn));
 }
 
+function extractPassportCountryCodes(section) {
+  const codes = [];
+  const paxInfo = (section.match(/PAX INFO\s*:\s*([^\n\r]+)/i)?.[1] || '').trim().toUpperCase();
+  const paxPassport = (section.match(/PASSPORT\s*:\s*([^\n\r]+)/i)?.[1] || '').trim().toUpperCase();
+
+  const paxInfoCode = paxInfo.match(/^([A-Z]{2,3})\//)?.[1];
+  if (paxInfoCode) codes.push(paxInfoCode);
+
+  if (paxPassport) {
+    const parts = paxPassport.split('/').map((x) => x.trim());
+    const natIndex = parts.indexOf('NAT');
+    if (natIndex >= 0 && /^[A-Z]{2,3}$/.test(parts[natIndex + 1] || '')) {
+      codes.push(parts[natIndex + 1]);
+    }
+
+    const expiryIndex = parts.findIndex((x) => /^\d{6}$/.test(x));
+    if (expiryIndex >= 0 && /^[A-Z]{2,3}$/.test(parts[expiryIndex + 1] || '')) {
+      codes.push(parts[expiryIndex + 1]);
+    }
+  }
+
+  return codes;
+}
+
+function normalizeCountryCodeForRisk(code) {
+  const raw = String(code || '').toUpperCase();
+  if (raw === 'GBR' || raw === 'GBN') return 'GB';
+  return raw;
+}
+
+function extractBookingName(section) {
+  const m = section.match(/\n\s*\d+\.\s*([A-Z]+)\/([A-Z]+)/i);
+  if (!m) return null;
+  return { last: m[1].toUpperCase(), first: m[2].toUpperCase() };
+}
+
+function isReversedNamePair(a, b) {
+  if (!a || !b) return false;
+  return a.last === b.first && a.first === b.last;
+}
+
+const APPROVED_AGENT_CODES = new Set([
+  '21472', '21470', '21466', '23239', '24110', '24113', '23242', '21440',
+  '23241', '21461', '23299', '21463', '23302', '24103', '21451', '21447',
+  '24102', '23240', '23307', '21450', '24108', '21455', '24109', '23243',
+  '23305', '23244', '27199', '24648'
+]);
+
+function extractLatestApiAgent(section) {
+  const apiLines = [...String(section || '').matchAll(/^\s*API\s+[^\n\r]*?\bAGT(\d+)\//gim)];
+  if (!apiLines.length) return null;
+  return apiLines[apiLines.length - 1][1];
+}
+
+function enrichGovAqqFromLog(log, syInfo, targetYmd = null) {
+  if (!log || !syInfo?.flightNo || !syInfo?.flightDate) {
+    return { duplicatePassports: [], aqqTclBnList: [], govDtaBnList: [], passportCodeIssues: [] };
+  }
+  const sections = splitLogicalSections(log);
+  const paxRecords = [];
+  const issueByBn = new Map();
+  const latestSectionByBn = new Map();
+
+  for (const sectionObj of sections) {
+    const section = sectionObj.content || '';
+    if (!section.includes('PR:')) continue;
+    if (targetYmd) {
+      const sectionYmd = getYmdFromTimestamp(sectionObj.timestamp);
+      if (sectionYmd !== targetYmd) continue;
+    }
+    const prMatch = section.match(/PR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
+    if (!prMatch) continue;
+    if (prMatch[1].toUpperCase() !== syInfo.flightNo || prMatch[2].toUpperCase() !== syInfo.flightDate) continue;
+
+    const bnMatch = section.match(/PR:\s*[A-Z0-9]+\/\d{2}[A-Z]{3}\d{2}\*[A-Z]{3},BN(\d{1,3})/i);
+    if (!bnMatch) continue;
+    const bn = bnMatch[1].padStart(3, '0');
+    const ts = parseSectionTimestamp(sectionObj.timestamp);
+    const prev = latestSectionByBn.get(bn);
+    if (prev && prev.ts > ts) continue;
+    latestSectionByBn.set(bn, { ts, section });
+  }
+
+  for (const [bn, latest] of latestSectionByBn.entries()) {
+    const section = latest.section || '';
+    const passportNo = section.match(/PASSPORT\s*:\s*([A-Z0-9]+)/i)?.[1]?.toUpperCase() || '';
+    const bookingName = extractBookingName(section);
+    const latestApiAgent = extractLatestApiAgent(section);
+    const needsReswipeByAgent = Boolean(latestApiAgent) && !APPROVED_AGENT_CODES.has(latestApiAgent);
+    const hasPaxInfoLine = /PAX INFO\s*:/i.test(section);
+    const hasPassportLine = /PASSPORT\s*:/i.test(section);
+    const countryCodes = extractPassportCountryCodes(section);
+    const issueReasons = [];
+    if (!hasPaxInfoLine || !hasPassportLine) {
+      issueReasons.push('missing PAX INFO or PASSPORT line');
+    }
+    if (countryCodes.length !== 3) {
+      issueReasons.push(`country code count is ${countryCodes.length}, expected 3`);
+    }
+    if (countryCodes.some((c) => c.length !== 3)) {
+      issueReasons.push('contains non-3-letter country code');
+    }
+    const normalizedCountryCodes = countryCodes.map(normalizeCountryCodeForRisk);
+    if (countryCodes.length === 3 && new Set(normalizedCountryCodes).size !== 1) {
+      issueReasons.push(`country codes not identical: ${countryCodes.join('/')}`);
+    }
+    const hasCountryCodeRisk =
+      issueReasons.includes('missing PAX INFO or PASSPORT line') ||
+      issueReasons.some((x) => x.startsWith('country code count is')) ||
+      issueReasons.includes('contains non-3-letter country code') ||
+      issueReasons.some((x) => x.startsWith('country codes not identical:'));
+
+    const hasApiSourceRisk = needsReswipeByAgent;
+    if (hasApiSourceRisk) {
+      issueReasons.push(`latest API by AGT${latestApiAgent}`);
+    }
+
+    const hasCodeIssue = hasCountryCodeRisk || hasApiSourceRisk;
+
+    paxRecords.push({
+      bn,
+      bookingName,
+      passportNo,
+      latestApiAgent,
+      needsReswipeByAgent,
+      hasAqqTcl: /\bAQQ\/TCL\/USA\b/i.test(section),
+      hasGovDta: /\bGOV\/DTA\/CHN\b/i.test(section),
+      hasPassportCodeIssue: hasCodeIssue
+    });
+    if (hasCodeIssue) {
+      issueByBn.set(bn, issueReasons.join('; '));
+    }
+  }
+
+  const byPassport = new Map();
+  for (const p of paxRecords) {
+    if (!p.passportNo) continue;
+    const arr = byPassport.get(p.passportNo) || [];
+    arr.push(p.bn);
+    byPassport.set(p.passportNo, arr);
+  }
+  const duplicatePassports = [];
+  const duplicateReviewPairs = [];
+  for (const [passportNo, bns] of byPassport.entries()) {
+    const unique = [...new Set(bns)].sort();
+    if (unique.length > 1) {
+      duplicatePassports.push({ passportNo, bns: unique });
+      for (let i = 0; i < unique.length; i += 1) {
+        for (let j = i + 1; j < unique.length; j += 1) {
+          const p1 = paxRecords.find((p) => p.bn === unique[i] && p.passportNo === passportNo);
+          const p2 = paxRecords.find((p) => p.bn === unique[j] && p.passportNo === passportNo);
+          if (isReversedNamePair(p1?.bookingName, p2?.bookingName)) {
+            duplicateReviewPairs.push({
+              passportNo,
+              bnA: unique[i],
+              bnB: unique[j],
+              reason: 'name reversed / possible name correction'
+            });
+          }
+        }
+      }
+    }
+  }
+
+  return {
+    duplicatePassports: duplicatePassports.sort((a, b) => a.passportNo.localeCompare(b.passportNo)),
+    aqqTclBnList: [...new Set(paxRecords.filter((p) => p.hasAqqTcl).map((p) => p.bn))].sort(),
+    govDtaBnList: [...new Set(paxRecords.filter((p) => p.hasGovDta).map((p) => p.bn))].sort(),
+    passportCodeIssues: [...new Set(paxRecords.filter((p) => p.hasPassportCodeIssue).map((p) => p.bn))].sort(),
+    duplicateReviewPairs,
+    passportCodeIssueDetails: [...issueByBn.entries()]
+      .sort((a, b) => Number(a[0]) - Number(b[0]))
+      .map(([bn, reason]) => ({ bn, reason }))
+  };
+}
+
 function findSYInfo(log, queryDate, options = {}) {
   const sections = splitLogicalSections(log);
   const sySections = sections.filter(s => /^>\s*SY(?:\/\d{2}[A-Z]{3}(?:\d{2})?)?/im.test(s.content || '') && /SY:\s*[A-Z0-9]+\/(\d{2}[A-Z]{3}\d{2})/i.test(s.content || ''));
@@ -219,6 +395,7 @@ function findSYInfo(log, queryDate, options = {}) {
       const info = matched[0].info;
       const targetYmd = getYmdFromTimestamp(matched[0].section.timestamp);
       info.chdList = enrichCHDListFromLog(log, info, targetYmd);
+      info.govAqq = enrichGovAqqFromLog(log, info, targetYmd);
       return info;
     }
   }
@@ -260,6 +437,7 @@ function findSYInfo(log, queryDate, options = {}) {
     const info = todayMatches[0].info;
     const targetYmd = getYmdFromTimestamp(todayMatches[0].section.timestamp);
     info.chdList = enrichCHDListFromLog(log, info, targetYmd);
+    info.govAqq = enrichGovAqqFromLog(log, info, targetYmd);
     return info;
   }
 
