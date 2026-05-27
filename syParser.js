@@ -309,10 +309,18 @@ function enrichGovAqqFromLog(log, syInfo, targetYmd = null) {
     if (countryCodes.length === 3 && new Set(normalizedCountryCodes).size !== 1) {
       issueReasons.push(`country codes not identical: ${countryCodes.join('/')}`);
     }
-    if (needsReswipeByAgent) {
+    const hasCountryCodeRisk =
+      issueReasons.includes('missing PAX INFO or PASSPORT line') ||
+      issueReasons.some((x) => x.startsWith('country code count is')) ||
+      issueReasons.includes('contains non-3-letter country code') ||
+      issueReasons.some((x) => x.startsWith('country codes not identical:'));
+
+    const hasApiSourceRisk = needsReswipeByAgent;
+    if (hasApiSourceRisk) {
       issueReasons.push(`latest API by AGT${latestApiAgent}`);
     }
-    const hasCodeIssue = issueReasons.length > 0;
+
+    const hasCodeIssue = hasCountryCodeRisk || hasApiSourceRisk;
 
     paxRecords.push({
       bn,
