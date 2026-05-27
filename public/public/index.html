@@ -296,6 +296,10 @@
       line-height: 1.5;
       color: #e2e8f0;
     }
+    .bn-highlight {
+      color: #fde047;
+      font-weight: 700;
+    }
     .govaqq-details-title {
       margin-top: 8px;
       color: #60a5fa;
@@ -1182,6 +1186,24 @@
       if (el) el.style.display = value;
     }
 
+    function escapeHtmlText(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function renderBnHighlightedText(el, text) {
+      if (!el) return;
+      const escaped = escapeHtmlText(text);
+      const html = escaped
+        .replace(/(BN\d{3})/g, '<span class="bn-highlight">$1</span>')
+        .replace(/\n/g, '<br>');
+      el.innerHTML = html;
+    }
+
     function updateChdToggleAppearance(hasMissingChd) {
       const btn = document.getElementById('chdToggleBtn');
       if (!btn) return;
@@ -1540,7 +1562,7 @@
           lines.push(`Duplicate Passport : ${duplicatePassports.length}`);
           lines.push(`USA TIME OUT: ${aqqTclBnList.length}`);
           lines.push(`CHN GOV FAIL: ${govDtaBnList.length}`);
-          lines.push(`API RISK BN: ${passportCodeIssues.length}`);
+          lines.push(`WEB/EDI/Reswipe BN: ${passportCodeIssues.length}`);
           if (duplicatePassports.length) {
             lines.push('');
             lines.push('Duplicate passports:');
@@ -1551,14 +1573,14 @@
           if (aqqTclBnList.length) lines.push('', `USA TIME OUT: ${aqqTclBnList.map((bn) => `BN${bn}`).join('   ')}`);
           if (govDtaBnList.length) lines.push('', `CHN GOV FAIL: ${govDtaBnList.map((bn) => `BN${bn}`).join('   ')}`);
           if (passportCodeIssues.length) {
-            lines.push('', `API RISK: ${passportCodeIssues.map((bn) => `BN${bn}`).join('   ')}`);
+            lines.push('', `WEB/EDI/Reswipe: ${passportCodeIssues.map((bn) => `BN${bn}`).join('   ')}`);
           }
           if (duplicateReviewPairs.length) {
             lines.push('', `Need review: ${duplicateReviewPairs.map((p) => `BN${p.bnA}↔BN${p.bnB}`).join('   ')}`);
           }
           if (!hasGovAqqRisk) lines.push('', 'No issue found.');
           setTextById('govAqqSummary', govStatus === 'risk' ? 'Risk found' : (govStatus === 'review' ? 'Need review' : 'All clear'));
-          setTextById('govAqqList', lines.join('\n'));
+          renderBnHighlightedText(document.getElementById('govAqqList'), lines.join('\n'));
           const detailsTitleEl = document.getElementById('govAqqDetailsTitle');
           const detailsListEl = document.getElementById('govAqqDetailsList');
           if (passportCodeIssueDetails.length) {
@@ -1574,7 +1596,7 @@
             });
             detailsTitleEl.style.display = 'block';
             detailsListEl.style.display = 'block';
-            detailsListEl.innerText = detailLines.join('\n');
+            renderBnHighlightedText(detailsListEl, detailLines.join('\n'));
           } else {
             detailsTitleEl.style.display = 'none';
             detailsListEl.style.display = 'none';
