@@ -251,14 +251,38 @@
       font-size: 14px;
     }
     .chd-toggle-btn {
-      margin-top: 14px;
       width: auto;
       background: #1d4ed8;
-      padding: 4px 12px;
+      padding: 6px 14px;
       border-radius: 999px;
       text-align: center;
-      font-size: 12px;
+      font-size: 13px;
+      font-weight: 600;
       display: inline-block;
+      border: none;
+    }
+    .chd-toggle-btn.is-good {
+      background: #16a34a;
+    }
+    .chd-toggle-btn.is-bad {
+      background: #dc2626;
+    }
+    .chd-toggle-btn.is-review {
+      background: #eab308;
+      color: #0f172a;
+    }
+    .chd-toggle-btn.is-disabled {
+      background: #16a34a;
+      opacity: 1;
+      cursor: pointer;
+      pointer-events: auto;
+    }
+    .sy-toggle-row {
+      margin-top: 14px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
     }
     .chd-summary {
       margin-top: 10px;
@@ -271,6 +295,45 @@
       font-size: 13px;
       line-height: 1.5;
       color: #e2e8f0;
+    }
+    .bn-highlight {
+      color: #fde047;
+      font-weight: 700;
+    }
+    .govaqq-details-title {
+      margin-top: 8px;
+      color: #60a5fa;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .govaqq-result-title {
+      margin-top: 4px;
+      color: #60a5fa;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .govaqq-stats {
+      margin-top: 8px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      column-gap: 12px;
+      row-gap: 4px;
+      align-items: baseline;
+      font-size: 13px;
+      line-height: 1.5;
+      color: #e2e8f0;
+    }
+    .govaqq-stats .stat-label {
+      color: #cbd5e1;
+    }
+    .govaqq-stats .stat-value {
+      min-width: 20px;
+      text-align: right;
+      font-weight: 700;
+      color: #ffffff;
+    }
+    .govaqq-stats .stat-value.is-danger {
+      color: #ef4444;
     }
 
     .auth-bar {
@@ -574,10 +637,21 @@
             <div class="sy-cell"><div class="label">Check-in</div><div id="syCi" class="value"></div></div>
             <div class="sy-cell"><div class="label">Check-in(TKT)</div><div id="syCiTkt" class="value"></div></div>
           </div>
-          <button id="chdToggleBtn" class="chd-toggle-btn" style="display:none;" onclick="toggleChdPanel()">CHD List</button>
+          <div id="syToggleRow" class="sy-toggle-row" style="display:none;">
+            <button id="chdToggleBtn" class="chd-toggle-btn" style="display:none;" onclick="toggleChdPanel()">CHD List</button>
+            <button id="govAqqToggleBtn" class="chd-toggle-btn" style="display:none;" onclick="toggleGovAqqPanel()">GOV/AQQ</button>
+          </div>
           <div id="chdSection" style="display:none;">
             <div id="chdSummary" class="chd-summary"></div>
             <div id="chdList" class="chd-list"></div>
+          </div>
+          <div id="govAqqSection" style="display:none;">
+            <div id="govAqqSummary" class="chd-summary"></div>
+            <div id="govAqqStats" class="govaqq-stats"></div>
+            <div id="govAqqResultTitle" class="govaqq-result-title" style="display:none;">Result:</div>
+            <div id="govAqqList" class="chd-list"></div>
+            <div id="govAqqDetailsTitle" class="govaqq-details-title" style="display:none;">Details:</div>
+            <div id="govAqqDetailsList" class="chd-list" style="display:none;"></div>
           </div>
         </div>
 
@@ -827,7 +901,9 @@
     let currentSyBagSheet = null;
     let checkinPanelOpen = false;
     let chdPanelOpen = false;
+    let govAqqPanelOpen = false;
     let currentUser = null;
+    let hasAutoLoadedSyToday = false;
 
         function resolveApiBase() {
       const fromWindow = window.MU_API_BASE || '';
@@ -1085,8 +1161,21 @@
 
     function toggleChdPanel() {
       chdPanelOpen = !chdPanelOpen;
+      if (chdPanelOpen) govAqqPanelOpen = false;
       setDisplayById('chdSection', chdPanelOpen ? 'block' : 'none');
+      setDisplayById('govAqqSection', 'none');
       setTextById('chdToggleBtn', chdPanelOpen ? 'Hide' : 'CHD List');
+      setTextById('govAqqToggleBtn', 'GOV/AQQ');
+    }
+
+    function toggleGovAqqPanel() {
+      const btn = document.getElementById('govAqqToggleBtn');
+      govAqqPanelOpen = !govAqqPanelOpen;
+      if (govAqqPanelOpen) chdPanelOpen = false;
+      setDisplayById('govAqqSection', govAqqPanelOpen ? 'block' : 'none');
+      setDisplayById('chdSection', 'none');
+      setTextById('govAqqToggleBtn', govAqqPanelOpen ? 'Hide' : 'GOV/AQQ');
+      setTextById('chdToggleBtn', 'CHD List');
     }
 
     function toggleDocPanel() {
@@ -1126,6 +1215,55 @@
     function setDisplayById(id, value) {
       const el = document.getElementById(id);
       if (el) el.style.display = value;
+    }
+
+    function escapeHtmlText(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function renderBnHighlightedText(el, text) {
+      if (!el) return;
+      const escaped = escapeHtmlText(text);
+      const html = escaped
+        .replace(/(BN\d{3})/g, '<span class="bn-highlight">$1</span>')
+        .replace(/\n/g, '<br>');
+      el.innerHTML = html;
+    }
+
+    function setGovAqqStats(stats) {
+      const el = document.getElementById('govAqqStats');
+      if (!el) return;
+      el.innerHTML = (stats || []).map((row) => {
+        const label = escapeHtmlText(row.label || '');
+        const value = escapeHtmlText(String(row.value ?? '0'));
+        const dangerCls = Number(row.value || 0) > 0 ? ' is-danger' : '';
+        return `<div class="stat-label">${label}</div><div class="stat-value${dangerCls}">${value}</div>`;
+      }).join('');
+    }
+
+    function updateChdToggleAppearance(hasMissingChd) {
+      const btn = document.getElementById('chdToggleBtn');
+      if (!btn) return;
+      btn.classList.remove('is-good', 'is-bad');
+      btn.classList.add(hasMissingChd ? 'is-bad' : 'is-good');
+    }
+
+    function updateGovAqqToggleAppearance(status) {
+      const btn = document.getElementById('govAqqToggleBtn');
+      if (!btn) return;
+      btn.classList.remove('is-good', 'is-bad', 'is-review', 'is-disabled');
+      if (status === 'risk') {
+        btn.classList.add('is-bad');
+      } else if (status === 'review') {
+        btn.classList.add('is-review');
+      } else {
+        btn.classList.add('is-good', 'is-disabled');
+      }
     }
 
     function buildTravelDocs(data) {
@@ -1422,6 +1560,7 @@
           const chdList = Array.isArray(sy.chdList) ? sy.chdList : [];
           const noCodeList = chdList.filter((p) => !p.hasChdCode);
           setTextById('chdSummary', `CHD Total: ${chdList.length} • Missing CHD1/0: ${noCodeList.length}`);
+          updateChdToggleAppearance(noCodeList.length > 0);
           const sortedChdList = [...chdList].sort((a, b) => Number(a.bn || 0) - Number(b.bn || 0));
           setTextById(
             'chdList',
@@ -1430,9 +1569,90 @@
               : 'No CHD passenger found by DOB rule (age 2-11).'
           );
           chdPanelOpen = false;
+          govAqqPanelOpen = false;
           setDisplayById('chdSection', 'none');
-          setDisplayById('chdToggleBtn', 'block');
+          setDisplayById('govAqqSection', 'none');
+          setDisplayById('syToggleRow', 'flex');
+          setDisplayById('chdToggleBtn', 'inline-block');
+          setDisplayById('govAqqToggleBtn', 'inline-block');
           setTextById('chdToggleBtn', 'CHD List');
+          setTextById('govAqqToggleBtn', 'GOV/AQQ');
+
+          const govAqq = sy.govAqq || {};
+          const duplicatePassports = Array.isArray(govAqq.duplicatePassports) ? govAqq.duplicatePassports : [];
+          const aqqTclBnList = Array.isArray(govAqq.aqqTclBnList) ? govAqq.aqqTclBnList : [];
+          const govDtaBnList = Array.isArray(govAqq.govDtaBnList) ? govAqq.govDtaBnList : [];
+          const passportCodeIssues = Array.isArray(govAqq.passportCodeIssues) ? govAqq.passportCodeIssues : [];
+          const passportCodeIssueDetails = Array.isArray(govAqq.passportCodeIssueDetails) ? govAqq.passportCodeIssueDetails : [];
+          const duplicateReviewPairs = Array.isArray(govAqq.duplicateReviewPairs) ? govAqq.duplicateReviewPairs : [];
+          const hasGovAqqRisk =
+            duplicatePassports.length > 0 ||
+            aqqTclBnList.length > 0 ||
+            govDtaBnList.length > 0 ||
+            passportCodeIssues.length > 0;
+          const reviewBnSet = new Set();
+          duplicateReviewPairs.forEach((p) => { reviewBnSet.add(p.bnA); reviewBnSet.add(p.bnB); });
+          const apiRiskOnlyReview =
+            passportCodeIssues.length > 0 &&
+            passportCodeIssues.every((bn) => reviewBnSet.has(bn)) &&
+            duplicateReviewPairs.length > 0;
+          const hasReviewOnly = apiRiskOnlyReview;
+          const govStatus = hasGovAqqRisk ? (hasReviewOnly ? 'review' : 'risk') : 'ok';
+          updateGovAqqToggleAppearance(govStatus);
+
+          setGovAqqStats([
+            { label: 'Duplicate Passport', value: duplicatePassports.length },
+            { label: 'USA TIME OUT', value: aqqTclBnList.length },
+            { label: 'CHN GOV FAIL', value: govDtaBnList.length },
+            { label: 'WEB/EDI/Reswipe BN', value: passportCodeIssues.length }
+          ]);
+
+          const lines = [];
+          if (duplicatePassports.length) {
+            lines.push('Duplicate passports:');
+            duplicatePassports.forEach((item) => {
+              lines.push(`${item.passportNo}: ${item.bns.map((bn) => `BN${bn}`).join('   ')}`);
+            });
+          }
+          if (aqqTclBnList.length) lines.push('', `USA TIME OUT:\n${aqqTclBnList.map((bn) => `BN${bn}`).join('   ')}`);
+          if (govDtaBnList.length) lines.push('', `CHN GOV FAIL:\n${govDtaBnList.map((bn) => `BN${bn}`).join('   ')}`);
+          if (passportCodeIssues.length) {
+            lines.push('', `WEB/EDI/Reswipe:\n${passportCodeIssues.map((bn) => `BN${bn}`).join('   ')}`);
+          }
+          if (duplicateReviewPairs.length) {
+            lines.push('', `Need review (similar name): ${duplicateReviewPairs.map((p) => `BN${p.bnA}↔BN${p.bnB}`).join('   ')}`);
+          }
+          if (!hasGovAqqRisk) lines.push('No issue found.');
+          setTextById('govAqqSummary', govStatus === 'risk' ? 'Risk found' : (govStatus === 'review' ? 'Need review' : 'All clear'));
+          const resultTitleEl = document.getElementById('govAqqResultTitle');
+          if (lines.length) {
+            resultTitleEl.style.display = 'block';
+            renderBnHighlightedText(document.getElementById('govAqqList'), lines.join('\n'));
+          } else {
+            resultTitleEl.style.display = 'none';
+            document.getElementById('govAqqList').innerText = '';
+          }
+          const detailsTitleEl = document.getElementById('govAqqDetailsTitle');
+          const detailsListEl = document.getElementById('govAqqDetailsList');
+          if (passportCodeIssueDetails.length) {
+            const detailLines = [];
+            passportCodeIssueDetails.forEach((item, idx) => {
+              const chunks = String(item.reason || '')
+                .split(';')
+                .map((x) => x.trim())
+                .filter(Boolean);
+              detailLines.push(`BN${item.bn}: ${chunks[0] ? `${chunks[0]};` : ''}`);
+              chunks.slice(1).forEach((line) => detailLines.push(line));
+              if (idx !== passportCodeIssueDetails.length - 1) detailLines.push('');
+            });
+            detailsTitleEl.style.display = 'block';
+            detailsListEl.style.display = 'block';
+            renderBnHighlightedText(detailsListEl, detailLines.join('\n'));
+          } else {
+            detailsTitleEl.style.display = 'none';
+            detailsListEl.style.display = 'none';
+            detailsListEl.innerText = '';
+          }
 
           setDisplayById('docToggleBtn', 'none');
           card.style.display = 'block';
@@ -1450,7 +1670,12 @@
 
         setDisplayById('syLayout', 'none');
         setDisplayById('chdSection', 'none');
+        setDisplayById('govAqqSection', 'none');
+        setDisplayById('govAqqDetailsTitle', 'none');
+        setDisplayById('govAqqDetailsList', 'none');
+        setDisplayById('syToggleRow', 'none');
         setDisplayById('chdToggleBtn', 'none');
+        setDisplayById('govAqqToggleBtn', 'none');
 
         if (!data.flight || !data.flightDate || !data.name) {
           error.innerText =
@@ -1830,6 +2055,15 @@ To ${data.outbound.destination || '-'}`
       "block";
 
     resetInactivityTimer();
+
+    if (!hasAutoLoadedSyToday) {
+      hasAutoLoadedSyToday = true;
+      const queryInput = document.getElementById('query');
+      if (queryInput) {
+        queryInput.value = 'SY';
+        searchPassenger();
+      }
+    }
   });
 
 
