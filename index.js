@@ -237,6 +237,30 @@ function findPDPassengerByFFFromLog(log, query) {
 const app =
   express();
 
+const allowedOrigins = [
+  "https://china-eastern.web.app",
+  "https://www.mufcapp.net",
+  "https://mufcapp.net"
+];
+
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  }
+
+  res.setHeader("Vary", "Origin");
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+
+  next();
+});
+
 app.use(
   express.json()
 );
