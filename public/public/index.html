@@ -507,6 +507,12 @@
     .sy-row { display:grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
     .sy-row-full { grid-template-columns: 1fr; }
     .sy-cell .label { margin-bottom: 4px; }
+    .sy-label-with-action { display: inline-flex; align-items: center; gap: 6px; }
+    .sales-report-wrap { position: relative; display: inline-flex; align-items: center; }
+    .sales-report-icon { border: none; background: transparent; color: #f5d76e; cursor: pointer; padding: 0; font-size: 14px; line-height: 1; }
+    .sales-report-pop { display:none; position:absolute; top:18px; right:0; min-width:190px; background:#101b34; border:1px solid rgba(160,190,255,.35); border-radius:8px; padding:8px; z-index:20; }
+    .sales-report-wrap:hover .sales-report-pop { display:block; }
+    .sales-save-btn { border:none; border-radius:8px; padding:6px 8px; background:#1d4ed8; color:#fff; cursor:pointer; font-size:12px; }
 
 
     .clickable { cursor: pointer; }
@@ -661,7 +667,20 @@
           </div>
           <div class="sy-row">
             <div class="sy-cell"><div class="label">Check-in</div><div id="syCi" class="value"></div></div>
-            <div class="sy-cell"><div class="label">Check-in(TKT)</div><div id="syCiTkt" class="value"></div></div>
+            <div class="sy-cell">
+              <div class="label">
+                <span class="sy-label-with-action">
+                  <span>Check-in(TKT)</span>
+                  <span id="salesReportWrap" class="sales-report-wrap" style="display:none;">
+                    <button class="sales-report-icon" title="Sales Report">💲</button>
+                    <span class="sales-report-pop">
+                      <button id="salesReportDownloadBtn" class="sales-save-btn" onclick="downloadSalesReport()">💾 Download Sales Report</button>
+                    </span>
+                  </span>
+                </span>
+              </div>
+              <div id="syCiTkt" class="value"></div>
+            </div>
           </div>
           <div id="syToggleRow" class="sy-toggle-row" style="display:none;">
             <button id="chdToggleBtn" class="chd-toggle-btn" style="display:none;" onclick="toggleChdPanel()">CHD List</button>
@@ -935,6 +954,7 @@
     let currentUser = null;
     let hasAutoLoadedSyToday = false;
     let currentBnAudit = [];
+    let currentSalesReportFile = null;
 
         function resolveApiBase() {
       const fromWindow = window.MU_API_BASE || '';
@@ -1332,6 +1352,28 @@
       if (el) el.innerText = value;
     }
 
+    async function refreshSalesReportStatus(sy) {
+      const wrap = document.getElementById('salesReportWrap');
+      currentSalesReportFile = null;
+      setDisplayById('salesReportWrap', 'none');
+      if (!sy?.flightNo || !sy?.flightDate) return;
+      try {
+        const endpoint = `${resolveApiBase()}/sales-report/status?flightNo=${encodeURIComponent(sy.flightNo)}&flightDate=${encodeURIComponent(sy.flightDate)}`;
+        const res = await fetch(endpoint);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data?.available || !data?.fileId) return;
+        currentSalesReportFile = { fileId: data.fileId, fileName: data.fileName || `Sales Report ${sy.flightNo} ${sy.flightDate}` };
+        setDisplayById('salesReportWrap', 'inline-flex');
+      } catch (_) {}
+    }
+
+    function downloadSalesReport() {
+      if (!currentSalesReportFile?.fileId) return;
+      const endpoint = `${resolveApiBase()}/sales-report/download?fileId=${encodeURIComponent(currentSalesReportFile.fileId)}&fileName=${encodeURIComponent(currentSalesReportFile.fileName || 'Sales Report')}`;
+      window.open(endpoint, '_blank');
+    }
+
     function setDisplayById(id, value) {
       const el = document.getElementById(id);
       if (el) el.style.display = value;
@@ -1682,6 +1724,7 @@
           setTextById('syResTkt', `${sy.reservationTicketed?.[0] || '-'}`);
           setTextById('syCi', `${sy.checkedIn?.[0] || '-'}`);
           setTextById('syCiTkt', `${sy.checkedInTicketed?.[0] || '-'}`);
+          refreshSalesReportStatus(sy);
           const chdList = Array.isArray(sy.chdList) ? sy.chdList : [];
           const noCodeList = chdList.filter((p) => !p.hasChdCode);
           setTextById('chdSummary', `CHD Total: ${chdList.length} • Missing CHD1/0: ${noCodeList.length}`);
