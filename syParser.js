@@ -479,7 +479,8 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     const pdbgCount = [...section.matchAll(/\bPDBG\b/gi)].length;
     const hasExtraBaggageByTier = /\bFF\/MU\s+\d+\/(?:V|G|S)\b/i.test(section) || /\*1|\*2/.test(section);
     const tierExtraPc = hasExtraBaggageByTier ? 1 : 0;
-    const purchasedExtra = Math.max(0, xbagPc - fbaPc) + pdbgCount + tierExtraPc;
+    const infExtraPc = hasInfTk ? 1 : 0;
+    const purchasedExtra = Math.max(0, xbagPc - fbaPc) + pdbgCount + tierExtraPc + infExtraPc;
     const bagTagRaw = [...section.matchAll(/BAGTAG\/([^\n\r]+)/gi)]
       .map((m) => m[1] || '')
       .join(' ');
