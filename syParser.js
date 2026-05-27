@@ -426,7 +426,7 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
 
   return [...latestByBn.entries()].sort((a, b) => Number(a[0]) - Number(b[0])).map(([bn, payload]) => {
     const section = payload.section || '';
-    const hasCkinOkOverride = /^\s*CKIN\s+OK(?:\s+BY\s+[A-Z0-9]+)?\b/im.test(section);
+    const hasCkinOkOverride = /^\s*CKIN\s+OK\s*$/im.test(section);
     const outboundLine = section.match(/^\s*O\/[^\n\r]*/im)?.[0] || '';
     const outboundDest = outboundLine.match(/\b([A-Z]{3})\b(?:\s*\+)?\s*$/i)?.[1]?.toUpperCase() || '';
     const hasOutbound = Boolean(outboundDest);
@@ -454,12 +454,14 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     const bagTagCount = bagDestinations.length;
     const allowance = fbaPc + purchasedExtra;
     let bagStatus = waived ? 'pass' : (bagTagCount > allowance ? 'fail' : 'pass');
-    if (hasOutbound && bagDestinations.length > 0) {
-      const allMatchOutbound = bagDestinations.every((d) => d === outboundDest.toUpperCase());
-      bagStatus = allMatchOutbound ? bagStatus : 'review';
-    } else if (!hasOutbound && bagDestinations.length > 0) {
-      const allToPvg = bagDestinations.every((d) => d === 'PVG');
-      bagStatus = allToPvg ? bagStatus : 'review';
+    if (!waived) {
+      if (hasOutbound && bagDestinations.length > 0) {
+        const allMatchOutbound = bagDestinations.every((d) => d === outboundDest.toUpperCase());
+        bagStatus = allMatchOutbound ? bagStatus : 'review';
+      } else if (!hasOutbound && bagDestinations.length > 0) {
+        const allToPvg = bagDestinations.every((d) => d === 'PVG');
+        bagStatus = allToPvg ? bagStatus : 'review';
+      }
     }
 
     if (hasCkinOkOverride) {
