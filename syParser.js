@@ -427,9 +427,10 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
   return [...latestByBn.entries()].sort((a, b) => Number(a[0]) - Number(b[0])).map(([bn, payload]) => {
     const section = payload.section || '';
     const hasCkinOkOverride = /^\s*CKIN\s+OK(?:\s+BY\s+[A-Z0-9]+)?\b/im.test(section);
-    const outboundDest = section.match(/\bO\s+([A-Z]{3})\s+/i)?.[1] || '';
+    const outboundLine = section.match(/^\s*O\/[^\n\r]*/im)?.[0] || '';
+    const outboundDest = outboundLine.match(/\b([A-Z]{3})\s*$/i)?.[1]?.toUpperCase() || '';
     const hasOutbound = Boolean(outboundDest);
-    const outboundCheckedIn = hasOutbound && /\bCI\d{4}\b/i.test(section);
+    const outboundCheckedIn = hasOutbound && /\bBN\d{1,3}\s+\d{1,2}[A-Z]\b/i.test(outboundLine);
     const hasTimeOut = /\bAQQ\/TCL\/USA\b/i.test(section);
     const hasGovFail = /\bGOV\/DTA\/CHN\b/i.test(section);
     const hasReview = /\bWEB\/EDI\/RESWIPE\b/i.test(section);
@@ -444,13 +445,13 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     const fbaPc = Number(section.match(/\bFBA\/(\d+)PC\b/i)?.[1] || 0);
     const xbagPc = Number(section.match(/\bXBAG\/(\d+)PC\b/i)?.[1] || 0);
     const purchasedExtra = Math.max(0, xbagPc - fbaPc);
-    const bagTagCount = [...section.matchAll(/BAGTAG\/([^\n\r]+)/gi)]
+    const bagTagRaw = [...section.matchAll(/BAGTAG\/([^\n\r]+)/gi)]
       .map((m) => m[1] || '')
-      .join(' ')
-      .match(/\/\d{10}\/[A-Z]{3}/g)?.length || 0;
+      .join(' ');
+    const bagDestinations = [...bagTagRaw.matchAll(/\/([A-Z]{3})\b/gi)].map((m) => (m[1] || '').toUpperCase());
+    const bagTagCount = bagDestinations.length;
     const allowance = fbaPc + purchasedExtra;
     let bagStatus = waived ? 'pass' : (bagTagCount > allowance ? 'fail' : 'pass');
-    const bagDestinations = [...section.matchAll(/\/\d{10}\/([A-Z]{3})/g)].map((m) => (m[1] || '').toUpperCase());
     if (hasOutbound && bagDestinations.length > 0) {
       const allMatchOutbound = bagDestinations.every((d) => d === outboundDest.toUpperCase());
       bagStatus = allMatchOutbound ? bagStatus : 'review';
