@@ -379,6 +379,59 @@ function enrichGovAqqFromLog(log, syInfo, targetYmd = null) {
   };
 }
 
+function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
+  if (!log || !syInfo?.flightNo || !syInfo?.flightDate) return [];
+  const sections = splitLogicalSections(log);
+  const latestByBn = new Map();
+
+  for (const sectionObj of sections) {
+    const section = sectionObj.content || '';
+    if (!section.includes('PR:')) continue;
+    if (targetYmd) {
+      const sectionYmd = getYmdFromTimestamp(sectionObj.timestamp);
+      if (sectionYmd !== targetYmd) continue;
+    }
+    const prMatch = section.match(/PR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
+    if (!prMatch) continue;
+    if (prMatch[1].toUpperCase() !== syInfo.flightNo || prMatch[2].toUpperCase() !== syInfo.flightDate) continue;
+    const bnMatch = section.match(/\bBN(\d{1,3})\b/i);
+    if (!bnMatch) continue;
+    const bn = bnMatch[1].padStart(3, '0');
+    const ts = parseSectionTimestamp(sectionObj.timestamp);
+    const prev = latestByBn.get(bn);
+    if (prev && prev.ts > ts) continue;
+    latestByBn.set(bn, { ts, section });
+  }
+
+  return [...latestByBn.entries()].sort((a, b) => Number(a[0]) - Number(b[0])).map(([bn, payload]) => {
+    const section = payload.section || '';
+    const outboundDest = section.match(/\bO\s+([A-Z]{3})\s+/i)?.[1] || '';
+    const destination = outboundDest || 'PVG';
+    const hasTimeOut = /\bAQQ\/TCL\/USA\b/i.test(section);
+    const hasGovFail = /\bGOV\/DTA\/CHN\b/i.test(section);
+    const hasReview = /\bWEB\/EDI\/RESWIPE\b/i.test(section);
+    const apiStatus = hasTimeOut || hasGovFail ? 'red' : (hasReview ? 'yellow' : 'green');
+
+    const hasInfFlag = /\bINF1\/0\b/i.test(section);
+    const hasAdultTk = /\bET\s+TKNE\/(?!INF)\d{10,}\/\d+\b/i.test(section);
+    const hasInfTk = /\bET\s+TKNE\/INF\d{10,}\/\d+\b/i.test(section);
+    const tkStatus = hasInfFlag ? (hasAdultTk && hasInfTk ? 'green' : 'red') : (hasAdultTk ? 'green' : 'red');
+
+    const waived = /\bPSM-EXBG0PC/i.test(section);
+    const fbaPc = Number(section.match(/\bFBA\/(\d+)PC\b/i)?.[1] || 0);
+    const xbagPc = Number(section.match(/\bXBAG\/(\d+)PC\b/i)?.[1] || 0);
+    const purchasedExtra = Math.max(0, xbagPc - fbaPc);
+    const bagTagCount = [...section.matchAll(/BAGTAG\/([^\n\r]+)/gi)]
+      .map((m) => m[1] || '')
+      .join(' ')
+      .match(/\/\d{10}\/[A-Z]{3}/g)?.length || 0;
+    const allowance = fbaPc + purchasedExtra;
+    const bagStatus = waived ? 'green' : (bagTagCount > allowance ? 'red' : 'green');
+
+    return { bn, destination, apiStatus, tkStatus, bagStatus };
+  });
+}
+
 function findSYInfo(log, queryDate, options = {}) {
   const sections = splitLogicalSections(log);
   const sySections = sections.filter(s => /^>\s*SY(?:\/\d{2}[A-Z]{3}(?:\d{2})?)?/im.test(s.content || '') && /SY:\s*[A-Z0-9]+\/(\d{2}[A-Z]{3}\d{2})/i.test(s.content || ''));
@@ -396,6 +449,7 @@ function findSYInfo(log, queryDate, options = {}) {
       const targetYmd = getYmdFromTimestamp(matched[0].section.timestamp);
       info.chdList = enrichCHDListFromLog(log, info, targetYmd);
       info.govAqq = enrichGovAqqFromLog(log, info, targetYmd);
+      info.bnAudit = enrichBnAuditFromLog(log, info, targetYmd);
       return info;
     }
   }
@@ -438,6 +492,7 @@ function findSYInfo(log, queryDate, options = {}) {
     const targetYmd = getYmdFromTimestamp(todayMatches[0].section.timestamp);
     info.chdList = enrichCHDListFromLog(log, info, targetYmd);
     info.govAqq = enrichGovAqqFromLog(log, info, targetYmd);
+    info.bnAudit = enrichBnAuditFromLog(log, info, targetYmd);
     return info;
   }
 
