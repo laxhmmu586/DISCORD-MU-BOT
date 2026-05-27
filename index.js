@@ -123,6 +123,46 @@ function findPassengerByFFFromRecord(log, query) {
   return null;
 }
 
+
+function findPassengerFromPRRecord(log, mode, query) {
+  const normalized = String(query || '').trim().toUpperCase();
+  const normalizedBN = normalized.padStart(3, '0');
+
+  const sections =
+    log.split(/\d{4}\s+\w+\s+\d{2},.*?\d{2}:\d{2}:\d{2}/g);
+
+  const targetSection = sections.find(section => {
+    const prLine = section.split(/\r?\n/).find(line => line.includes('PR:')) || '';
+
+    if (mode === 'BN') {
+      return new RegExp(`,BN0*${normalizedBN}\\b`, 'i').test(prLine);
+    }
+
+    if (mode === 'SEAT') {
+      return new RegExp(`\\b${normalized}\\b`, 'i').test(prLine);
+    }
+
+    return prLine.toUpperCase().includes(normalized);
+  });
+
+  if (!targetSection) return null;
+
+  const bnMatch = targetSection.match(/\bBN(\d{1,3})\b/i);
+  const paxMatch =
+    targetSection.match(/\d+\.\s+\d?([A-Z\/]+\+?).*?BN(\d{1,3}).*?(\d+[A-Z])?/i);
+  const prMatch = targetSection.match(/PR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
+
+  return {
+    bn: (bnMatch?.[1] || paxMatch?.[2] || '---').padStart(3, '0'),
+    name: (paxMatch?.[1] || 'UNKNOWN').replace(/\+$/, ''),
+    seat: paxMatch?.[3] || '---',
+    cabin: 'Economy',
+    flight: prMatch?.[1] || '',
+    flightDate: (prMatch?.[2] || '').substring(0, 5),
+    lounge: { eligible: false, guest: false }
+  };
+}
+
 function findPDPassengerByFFFromLog(log, query) {
   const ff =
     query.replace(/\s+/g, '').toUpperCase();
@@ -421,7 +461,8 @@ app.get(
           q.padStart(3, '0');
 
         pax =
-          passengers[bn];
+          passengers[bn] ||
+          findPassengerFromPRRecord(log, 'BN', bn);
       }
 
       // =========================
@@ -463,7 +504,8 @@ app.get(
       ) {
 
         pax =
-          findBySeat(q);
+          findBySeat(q) ||
+          findPassengerFromPRRecord(log, 'SEAT', q);
       }
 
       // =========================
@@ -508,7 +550,8 @@ app.get(
       else {
 
         pax =
-          findByName(q);
+          findByName(q) ||
+          findPassengerFromPRRecord(log, 'NAME', q);
       }
 
       // =========================
