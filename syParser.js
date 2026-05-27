@@ -447,7 +447,7 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
   }
 
   const chinaDomesticAirports = new Set([
-    'PEK', 'PKX', 'TSN', 'SJW', 'TYN', 'HET', 'SHE', 'DLC', 'HRB', 'CGQ', 'JMU', 'DQA', 'YNZ', 'NKG',
+    'PVG', 'PEK', 'PKX', 'TSN', 'SJW', 'TYN', 'HET', 'SHE', 'DLC', 'HRB', 'CGQ', 'JMU', 'DQA', 'YNZ', 'NKG',
     'HGH', 'NGB', 'WNZ', 'TAO', 'JJN', 'XMN', 'FOC', 'YTY', 'CZX', 'WUX', 'HFE', 'TNA', 'WEH', 'YNT',
     'KHN', 'JDZ', 'SYX', 'WUH', 'CSX', 'CGD', 'ENH', 'ZHA', 'YIH', 'LYG', 'CAN', 'SZX', 'ZUH', 'HAK',
     'KWL', 'NNG', 'BHY', 'CTU', 'CKG', 'KMG', 'LJG', 'DLU', 'XIY', 'TFU', 'GYS', 'XIC', 'KWE', 'ZAT',
