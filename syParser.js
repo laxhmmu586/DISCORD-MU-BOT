@@ -1,5 +1,9 @@
 function splitLogicalSections(log) {
-  const lines = log.split(/\r?\n/);
+  const normalizedLog = String(log || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\\n/g, '\n')
+    .replace(/[\u0000-\u0009\u000B-\u001F\u007F]/g, '');
+  const lines = normalizedLog.split(/\n/);
   const tsRe = /^\d{4}\s+\w+\s+\d{2},.*?\d{2}:\d{2}:\d{2}\s*$/;
   const cmdRe = /^>\s*([A-Z0-9*\/]+)\b/i;
   const sections = [];
@@ -161,7 +165,7 @@ function enrichCHDListFromLog(log, syInfo, targetYmd = null) {
     if (!section.includes('PR:')) continue;
     if (targetYmd) {
       const sectionYmd = getYmdFromTimestamp(sectionObj.timestamp);
-      if (sectionYmd !== targetYmd) continue;
+      if (sectionYmd && sectionYmd !== targetYmd) continue;
     }
     const prMatch = section.match(/PR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
     if (!prMatch) continue;
@@ -274,7 +278,7 @@ function enrichGovAqqFromLog(log, syInfo, targetYmd = null) {
     if (!section.includes('PR:')) continue;
     if (targetYmd) {
       const sectionYmd = getYmdFromTimestamp(sectionObj.timestamp);
-      if (sectionYmd !== targetYmd) continue;
+      if (sectionYmd && sectionYmd !== targetYmd) continue;
     }
     const prMatch = section.match(/PR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
     if (!prMatch) continue;
@@ -410,7 +414,7 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     if (!section.includes('PR:')) continue;
     if (targetYmd) {
       const sectionYmd = getYmdFromTimestamp(sectionObj.timestamp);
-      if (sectionYmd !== targetYmd) continue;
+      if (sectionYmd && sectionYmd !== targetYmd) continue;
     }
     const prMatch = section.match(/PR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
     if (!prMatch) continue;
