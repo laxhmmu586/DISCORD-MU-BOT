@@ -446,6 +446,14 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     }
   }
 
+  const chinaDomesticAirports = new Set([
+    'PEK', 'PKX', 'TSN', 'SJW', 'TYN', 'HET', 'SHE', 'DLC', 'HRB', 'CGQ', 'JMU', 'DQA', 'YNZ', 'NKG',
+    'HGH', 'NGB', 'WNZ', 'TAO', 'JJN', 'XMN', 'FOC', 'YTY', 'CZX', 'WUX', 'HFE', 'TNA', 'WEH', 'YNT',
+    'KHN', 'JDZ', 'SYX', 'WUH', 'CSX', 'CGD', 'ENH', 'ZHA', 'YIH', 'LYG', 'CAN', 'SZX', 'ZUH', 'HAK',
+    'KWL', 'NNG', 'BHY', 'CTU', 'CKG', 'KMG', 'LJG', 'DLU', 'XIY', 'TFU', 'GYS', 'XIC', 'KWE', 'ZAT',
+    'JHG', 'LHW', 'XNN', 'INC', 'URC', 'KRL', 'AAT', 'KHG', 'HTN', 'TCG'
+  ]);
+
   return [...latestByBn.entries()].sort((a, b) => Number(a[0]) - Number(b[0])).map(([bn, payload]) => {
     const section = payload.section || '';
     const hasCkinOkOverride = /^\s*CKIN\s+OK\s*$/im.test(section);
@@ -460,6 +468,31 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
       : hasGovFail ? 'CHN GOV FAIL'
       : hasReview ? 'WEB/EDI/Reswipe'
       : '';
+    const passportRawLine = (section.match(/PASSPORT\s*:\s*([^\n\r]+)/i)?.[1] || '').trim().toUpperCase();
+    const passportNat = passportRawLine.match(/\/NAT\/([A-Z]{3})\//i)?.[1]?.toUpperCase() || '';
+    const ckinLines = section.split(/\r?\n/).filter((line) => /^CKIN\b/i.test(line)).join(' ').toUpperCase();
+    const hasVisaKeyword = /\b(VISA|VS|TRAVEL DOC|V)\b/.test(ckinLines);
+    const hasVisaExpHint = /\b(EXP|240)\b/.test(ckinLines);
+    const hasDateLike = /\b(\d{4}|[0-3]?\d\s*[A-Z]{3}\s*\d{2,4}|\d{6,8})\b/.test(ckinLines);
+    const hasTravelDocOverride = /\b(TBZ|PINK CARD)\b/.test(ckinLines);
+    const toChinaDomestic = chinaDomesticAirports.has(outboundDest);
+    let visaStatus = 'review';
+    let visaReason = 'Not yet implemented';
+    if (toChinaDomestic) {
+      if (passportNat === 'CHN') {
+        visaStatus = 'pass';
+        visaReason = '';
+      } else if (passportNat === 'USA') {
+        if (hasTravelDocOverride || (hasVisaKeyword && hasVisaExpHint && hasDateLike)) {
+          visaStatus = 'pass';
+          visaReason = '';
+        } else {
+          visaReason = 'USA passport to China requires CKIN visa info (V/VISA/VS/TRAVEL DOC + EXP/240 + expiry, or TBZ/PINK CARD)';
+        }
+      } else {
+        visaReason = 'Nationality rule not yet implemented';
+      }
+    }
 
     const hasInfFlag = /\bINF1\/0\b/i.test(section);
     const hasAdultTk = /\bET\s+TKNE\/(?!INF)\d{10,}\/\d+\b/i.test(section);
@@ -528,10 +561,10 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     }
 
     if (hasCkinOkOverride) {
-      return { bn, apiStatus: 'pass', tkStatus: 'pass', bagStatus: 'pass', apiReason: '', tkReason: '', bagReason: '' };
+      return { bn, apiStatus: 'pass', tkStatus: 'pass', visaStatus: 'pass', bagStatus: 'pass', apiReason: '', tkReason: '', visaReason: '', bagReason: '' };
     }
 
-    return { bn, apiStatus, tkStatus, bagStatus, apiReason, tkReason, bagReason };
+    return { bn, apiStatus, tkStatus, visaStatus, bagStatus, apiReason, tkReason, visaReason, bagReason };
   });
 }
 
