@@ -1131,6 +1131,7 @@
       if (!row) return '';
       if (key === 'api') return row.apiReason || '';
       if (key === 'tk') return row.tkReason || '';
+      if (key === 'visa') return row.visaReason || '';
       if (key === 'bag') return row.bagReason || '';
       return '';
     }
@@ -1177,11 +1178,12 @@
           <td><b>${i}</b></td>
           <td>${buildStatusDot(row?.apiStatus, reasonFor(row, 'api'), 'api')}</td>
           <td>${buildStatusDot(row?.tkStatus, reasonFor(row, 'tk'), 'tk')}</td>
+          <td>${buildStatusDot(row?.visaStatus, reasonFor(row, 'visa'), 'visa')}</td>
           <td>${buildStatusDot(row?.bagStatus, reasonFor(row, 'bag'), 'bag')}</td>
         </tr>`);
       }
       document.getElementById('syAuditContent').innerHTML = `<div class="detail-title" style="text-align:right; font-size:16px; font-weight:800; letter-spacing:.4px;">Security Check</div>
-        <div class="audit-sheet"><table><thead><tr><th>BN</th><th>API</th><th>TK</th><th>BAG</th></tr></thead><tbody>${rows.join('')}</tbody></table></div>`;
+        <div class="audit-sheet"><table><thead><tr><th>BN</th><th>API</th><th>TK</th><th>VISA</th><th>BAG</th></tr></thead><tbody>${rows.join('')}</tbody></table></div>`;
       const content = document.getElementById('syAuditContent');
       content.querySelectorAll('.status-dot.has-reason').forEach((el) => {
         el.addEventListener('mouseenter', () => showStatusReason(el, el.dataset.reason || ''));
