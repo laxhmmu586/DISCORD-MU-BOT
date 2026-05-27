@@ -531,9 +531,11 @@
     .audit-icon-btn { border:none; background:transparent; color:#8fb8ff; cursor:pointer; font-size:24px; line-height:1; }
     .audit-sheet { margin-top: 12px; max-height: 520px; overflow:auto; border:1px solid rgba(160,190,255,.3); border-radius:12px; }
     .audit-sheet table { width:100%; border-collapse:collapse; font-size:12px; }
-    .audit-sheet th, .audit-sheet td { border:1px solid rgba(160,190,255,.2); padding:4px 6px; text-align:center; }
+    .audit-sheet th, .audit-sheet td { border:1px solid rgba(160,190,255,.2); padding:3px 4px; text-align:center; }
     .audit-sheet th { position:sticky; top:0; background:#132347; z-index:1; }
-    .audit-sheet .status-dot { font-size:13px; line-height:1; }
+    .audit-sheet .status-dot { font-size:12px; line-height:1; }
+    .audit-sheet th:nth-child(n+2), .audit-sheet td:nth-child(n+2) { width: 20%; }
+    .audit-sheet td:first-child b { color:#ffd84d; font-size:16px; letter-spacing:.3px; }
 
   </style>
 
@@ -1114,7 +1116,7 @@
           <td><span class="status-dot">${emojiByStatus(row?.bagStatus)}</span></td>
         </tr>`);
       }
-      document.getElementById('syAuditContent').innerHTML = `<div class="detail-title">Security Check</div>
+      document.getElementById('syAuditContent').innerHTML = `<div class="detail-title" style="text-align:right;">Security Check</div>
         <div class="audit-sheet"><table><thead><tr><th>BN</th><th>API</th><th>TK</th><th>BAG</th></tr></thead><tbody>${rows.join('')}</tbody></table></div>`;
       setDisplayById('syLayout', 'none');
       setDisplayById('syBagDetailLayout', 'none');
