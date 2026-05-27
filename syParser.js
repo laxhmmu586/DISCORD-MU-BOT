@@ -463,7 +463,8 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     const tkStatus = hasInfFlag ? (hasAdultTk && hasInfTk ? 'pass' : 'fail') : (hasAdultTk ? 'pass' : 'fail');
 
     const waived = /\bPSM-EXBG0PC/i.test(section);
-    const fbaPc = Number(section.match(/\bFBA\/(\d+)PC\b/i)?.[1] || 0);
+    const fbaPcParsed = Number(section.match(/\bFBA\/(\d+)PC\b/i)?.[1] || 0);
+    const fbaPc = fbaPcParsed || 2;
     const xbagPc = Number(section.match(/\bXBAG\/(\d+)PC\b/i)?.[1] || 0);
     const pdbgCount = [...section.matchAll(/\bPDBG\b/gi)].length;
     const hasExtraBaggageByTier = /\bFF\/MU\s+\d+\/(?:V|G|S)\b/i.test(section) || /\*1|\*2/.test(section);
