@@ -1180,7 +1180,7 @@
           <td>${buildStatusDot(row?.bagStatus, reasonFor(row, 'bag'), 'bag')}</td>
         </tr>`);
       }
-      document.getElementById('syAuditContent').innerHTML = `<div class="detail-title" style="text-align:right;">Security Check</div>
+      document.getElementById('syAuditContent').innerHTML = `<div class="detail-title" style="text-align:right; font-size:16px; font-weight:800; letter-spacing:.4px;">Security Check</div>
         <div class="audit-sheet"><table><thead><tr><th>BN</th><th>API</th><th>TK</th><th>BAG</th></tr></thead><tbody>${rows.join('')}</tbody></table></div>`;
       const content = document.getElementById('syAuditContent');
       content.querySelectorAll('.status-dot.has-reason').forEach((el) => {
