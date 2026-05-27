@@ -306,6 +306,32 @@
       font-size: 14px;
       font-weight: 700;
     }
+    .govaqq-result-title {
+      margin-top: 10px;
+      color: #60a5fa;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .govaqq-stats {
+      margin-top: 8px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      column-gap: 12px;
+      row-gap: 4px;
+      align-items: baseline;
+      font-size: 13px;
+      line-height: 1.5;
+      color: #e2e8f0;
+    }
+    .govaqq-stats .stat-label {
+      color: #cbd5e1;
+    }
+    .govaqq-stats .stat-value {
+      min-width: 20px;
+      text-align: right;
+      font-weight: 700;
+      color: #ffffff;
+    }
 
     .auth-bar {
       display: flex;
@@ -618,6 +644,8 @@
           </div>
           <div id="govAqqSection" style="display:none;">
             <div id="govAqqSummary" class="chd-summary"></div>
+            <div id="govAqqStats" class="govaqq-stats"></div>
+            <div id="govAqqResultTitle" class="govaqq-result-title" style="display:none;">Result:</div>
             <div id="govAqqList" class="chd-list"></div>
             <div id="govAqqDetailsTitle" class="govaqq-details-title" style="display:none;">Details:</div>
             <div id="govAqqDetailsList" class="chd-list" style="display:none;"></div>
@@ -1204,6 +1232,16 @@
       el.innerHTML = html;
     }
 
+    function setGovAqqStats(stats) {
+      const el = document.getElementById('govAqqStats');
+      if (!el) return;
+      el.innerHTML = (stats || []).map((row) => {
+        const label = escapeHtmlText(row.label || '');
+        const value = escapeHtmlText(String(row.value ?? '0'));
+        return `<div class="stat-label">${label}</div><div class="stat-value">${value}</div>`;
+      }).join('');
+    }
+
     function updateChdToggleAppearance(hasMissingChd) {
       const btn = document.getElementById('chdToggleBtn');
       if (!btn) return;
@@ -1558,11 +1596,14 @@
           const govStatus = hasGovAqqRisk ? (hasReviewOnly ? 'review' : 'risk') : 'ok';
           updateGovAqqToggleAppearance(govStatus);
 
+          setGovAqqStats([
+            { label: 'Duplicate Passport', value: duplicatePassports.length },
+            { label: 'USA TIME OUT', value: aqqTclBnList.length },
+            { label: 'CHN GOV FAIL', value: govDtaBnList.length },
+            { label: 'WEB/EDI/Reswipe BN', value: passportCodeIssues.length }
+          ]);
+
           const lines = [];
-          lines.push(`Duplicate Passport : ${duplicatePassports.length}`);
-          lines.push(`USA TIME OUT: ${aqqTclBnList.length}`);
-          lines.push(`CHN GOV FAIL: ${govDtaBnList.length}`);
-          lines.push(`WEB/EDI/Reswipe BN: ${passportCodeIssues.length}`);
           if (duplicatePassports.length) {
             lines.push('');
             lines.push('Duplicate passports:');
@@ -1580,7 +1621,14 @@
           }
           if (!hasGovAqqRisk) lines.push('', 'No issue found.');
           setTextById('govAqqSummary', govStatus === 'risk' ? 'Risk found' : (govStatus === 'review' ? 'Need review' : 'All clear'));
-          renderBnHighlightedText(document.getElementById('govAqqList'), lines.join('\n'));
+          const resultTitleEl = document.getElementById('govAqqResultTitle');
+          if (lines.length) {
+            resultTitleEl.style.display = 'block';
+            renderBnHighlightedText(document.getElementById('govAqqList'), lines.join('\n'));
+          } else {
+            resultTitleEl.style.display = 'none';
+            document.getElementById('govAqqList').innerText = '';
+          }
           const detailsTitleEl = document.getElementById('govAqqDetailsTitle');
           const detailsListEl = document.getElementById('govAqqDetailsList');
           if (passportCodeIssueDetails.length) {
