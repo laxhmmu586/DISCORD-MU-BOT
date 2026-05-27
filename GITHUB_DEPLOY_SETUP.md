@@ -37,8 +37,8 @@ Set in Railway service variables:
 ## 2) Firebase Hosting: connect GitHub for web pages
 
 Frontend files are under:
-- `public/public/index.html`
-- `public/public/login.html`
+- `public/index.html`
+- `public/login.html`
 
 Firebase config files are under:
 - `public/firebase.json`
