@@ -248,7 +248,7 @@ const APPROVED_AGENT_CODES = new Set([
   '21472', '21470', '21466', '23239', '24110', '24113', '23242', '21440',
   '23241', '21461', '23299', '21463', '23302', '24103', '21451', '21447',
   '24102', '23240', '23307', '21450', '24108', '21455', '24109', '23243',
-  '23305', '23244'
+  '23305', '23244', '27199', '24648'
 ]);
 
 function extractLatestApiAgent(section) {
@@ -310,7 +310,7 @@ function enrichGovAqqFromLog(log, syInfo, targetYmd = null) {
       issueReasons.push(`country codes not identical: ${countryCodes.join('/')}`);
     }
     if (needsReswipeByAgent) {
-      issueReasons.push(`latest API by AGT${latestApiAgent} not in approved list (check-in details review)`);
+      issueReasons.push(`latest API by AGT${latestApiAgent}`);
     }
     const hasCodeIssue = issueReasons.length > 0;
 
