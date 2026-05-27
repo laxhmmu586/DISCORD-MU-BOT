@@ -1540,7 +1540,7 @@
           lines.push(`Duplicate Passport : ${duplicatePassports.length}`);
           lines.push(`USA TIME OUT: ${aqqTclBnList.length}`);
           lines.push(`CHN GOV FAIL: ${govDtaBnList.length}`);
-          lines.push(`API RISK BN: ${passportCodeIssues.length}`);
+          lines.push(`WEB/EDI/Reswipe BN: ${passportCodeIssues.length}`);
           if (duplicatePassports.length) {
             lines.push('');
             lines.push('Duplicate passports:');
@@ -1551,7 +1551,7 @@
           if (aqqTclBnList.length) lines.push('', `USA TIME OUT: ${aqqTclBnList.map((bn) => `BN${bn}`).join('   ')}`);
           if (govDtaBnList.length) lines.push('', `CHN GOV FAIL: ${govDtaBnList.map((bn) => `BN${bn}`).join('   ')}`);
           if (passportCodeIssues.length) {
-            lines.push('', `API RISK: ${passportCodeIssues.map((bn) => `BN${bn}`).join('   ')}`);
+            lines.push('', `WEB/EDI/Reswipe: ${passportCodeIssues.map((bn) => `BN${bn}`).join('   ')}`);
           }
           if (duplicateReviewPairs.length) {
             lines.push('', `Need review: ${duplicateReviewPairs.map((p) => `BN${p.bnA}↔BN${p.bnB}`).join('   ')}`);
