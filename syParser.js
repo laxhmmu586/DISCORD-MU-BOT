@@ -475,7 +475,8 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     const hasVisaExpHint = /\b(EXP|240)\b/.test(ckinLines);
     const hasDateLike = /\b(\d{4}|[0-3]?\d\s*[A-Z]{3}\s*\d{2,4}|\d{6,8})\b/.test(ckinLines);
     const hasTravelDocOverride = /\b(TBZ|PINK CARD)\b/.test(ckinLines);
-    const toChinaDomestic = chinaDomesticAirports.has(outboundDest);
+    const visaDest = hasOutbound ? outboundDest : 'PVG';
+    const toChinaDomestic = chinaDomesticAirports.has(visaDest);
     let visaStatus = 'review';
     let visaReason = 'Not yet implemented';
     if (toChinaDomestic) {
