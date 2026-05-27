@@ -472,7 +472,17 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     const bagTagRaw = [...section.matchAll(/BAGTAG\/([^\n\r]+)/gi)]
       .map((m) => m[1] || '')
       .join(' ');
-    const bagDestinations = [...bagTagRaw.matchAll(/\/([A-Z]{3})\b/gi)].map((m) => (m[1] || '').toUpperCase());
+    const bagPieceMatches = [...bagTagRaw.matchAll(/([A-Z]{0,2}\s*\d{6,10})\/([A-Z]{3})\b/gi)];
+    const uniqueBagPieces = new Map();
+    for (const m of bagPieceMatches) {
+      const tag = String(m[1] || '').replace(/\s+/g, '').toUpperCase();
+      const dest = String(m[2] || '').toUpperCase();
+      if (!tag || !dest) continue;
+      uniqueBagPieces.set(`${tag}/${dest}`, dest);
+    }
+    const bagDestinations = uniqueBagPieces.size
+      ? [...uniqueBagPieces.values()]
+      : [...bagTagRaw.matchAll(/\/([A-Z]{3})\b/gi)].map((m) => (m[1] || '').toUpperCase());
     const bagTagCount = bagDestinations.length;
     const allowance = fbaPc + purchasedExtra;
     let bagStatus = waived ? 'pass' : (bagTagCount > allowance ? 'fail' : 'pass');
