@@ -319,7 +319,7 @@
       column-gap: 12px;
       row-gap: 4px;
       align-items: baseline;
-      font-size: 13px;
+      font-size: 12px;
       line-height: 1.5;
       color: #e2e8f0;
     }
@@ -528,6 +528,15 @@
     .bag-table.notload-table col:nth-child(2) { width: 10%; }
     .bag-table.notload-table col:nth-child(3) { width: 59%; }
     .bag-table.notload-table th:nth-child(2), .bag-table.notload-table td:nth-child(2) { text-align:center; }
+    .audit-icon-btn { border:none; background:transparent; color:#8fb8ff; cursor:pointer; font-size:18px; line-height:1; padding:2px 4px; }
+    .audit-sheet { margin-top: 12px; max-height: 520px; overflow:auto; border:1px solid rgba(160,190,255,.3); border-radius:12px; }
+    .audit-sheet table { width:100%; border-collapse:collapse; font-size:12px; }
+    .audit-sheet th, .audit-sheet td { border:1px solid rgba(160,190,255,.2); padding:3px 4px; text-align:center; }
+    .audit-sheet th { position:sticky; top:0; background:#132347; z-index:1; }
+    .audit-sheet .status-dot { font-size:12px; line-height:1; }
+    .audit-sheet th:first-child, .audit-sheet td:first-child { width: 16%; }
+    .audit-sheet th:nth-child(n+2), .audit-sheet td:nth-child(n+2) { width: 12%; }
+    .audit-sheet td:first-child b { color:#ffd84d; font-size:16px; letter-spacing:.3px; }
 
   </style>
 
@@ -605,6 +614,7 @@
           >
             🪪
           </button>
+          <button id="auditToggleBtn" class="audit-icon-btn" onclick="showBnAuditPage()" title="BN Audit" style="display:none;">📋</button>
         </div>
 
         <div
@@ -658,6 +668,10 @@
         <div id="syBagDetailLayout" class="sy-layout" style="display:none;">
           <button class="back-btn" onclick="showSyFlightCard()">← Back</button>
           <div id="syBagDetailContent"></div>
+        </div>
+        <div id="syAuditLayout" class="sy-layout" style="display:none;">
+          <button class="back-btn" onclick="showSyFlightCard()">← Back</button>
+          <div id="syAuditContent"></div>
         </div>
 
         <div
@@ -904,6 +918,7 @@
     let govAqqPanelOpen = false;
     let currentUser = null;
     let hasAutoLoadedSyToday = false;
+    let currentBnAudit = [];
 
         function resolveApiBase() {
       const fromWindow = window.MU_API_BASE || '';
@@ -1081,6 +1096,32 @@
     function showSyFlightCard() {
       setDisplayById('syLayout', 'block');
       setDisplayById('syBagDetailLayout', 'none');
+      setDisplayById('syAuditLayout', 'none');
+    }
+    function emojiByStatus(status) {
+      if (status === 'pass') return '✅';
+      if (status === 'review') return '⚠️';
+      if (status === 'fail') return '❌';
+      return '⚪';
+    }
+    function showBnAuditPage() {
+      const byBn = new Map((currentBnAudit || []).map((x) => [x.bn, x]));
+      const rows = [];
+      for (let i = 1; i <= 320; i += 1) {
+        const bn = String(i).padStart(3, '0');
+        const row = byBn.get(bn);
+        rows.push(`<tr>
+          <td><b>${i}</b></td>
+          <td><span class="status-dot">${emojiByStatus(row?.apiStatus)}</span></td>
+          <td><span class="status-dot">${emojiByStatus(row?.tkStatus)}</span></td>
+          <td><span class="status-dot">${emojiByStatus(row?.bagStatus)}</span></td>
+        </tr>`);
+      }
+      document.getElementById('syAuditContent').innerHTML = `<div class="detail-title" style="text-align:right;">Security Check</div>
+        <div class="audit-sheet"><table><thead><tr><th>BN</th><th>API</th><th>TK</th><th>BAG</th></tr></thead><tbody>${rows.join('')}</tbody></table></div>`;
+      setDisplayById('syLayout', 'none');
+      setDisplayById('syBagDetailLayout', 'none');
+      setDisplayById('syAuditLayout', 'block');
     }
 
     function formatRushTagValue(value) {
@@ -1241,8 +1282,10 @@
       el.innerHTML = (stats || []).map((row) => {
         const label = escapeHtmlText(row.label || '');
         const value = escapeHtmlText(String(row.value ?? '0'));
-        const dangerCls = Number(row.value || 0) > 0 ? ' is-danger' : '';
-        return `<div class="stat-label">${label}</div><div class="stat-value${dangerCls}">${value}</div>`;
+        const isDanger = Number(row.value || 0) > 0;
+        const dangerCls = isDanger ? ' is-danger' : '';
+        const badge = isDanger ? '🔴 ' : '🟢 ';
+        return `<div class="stat-label">${badge}${label}</div><div class="stat-value${dangerCls}">${value}</div>`;
       }).join('');
     }
 
@@ -1531,11 +1574,14 @@
           ['membershipSection','ticketSection','bagsSection','inboundSection','outboundSection','ssrSection','mealSection','paidSection','loungeSection','docSection'].forEach((id) => setDisplayById(id, 'none'));
           setDisplayById('syLayout', 'block');
           setDisplayById('syBagDetailLayout', 'none');
+          setDisplayById('syAuditLayout', 'none');
 
           setTextById('syAircraft', `${sy.aircraftType || '-'} / ${sy.aircraftRegistration || '-'}`);
           setTextById('syGate', `${sy.gate || '-'}`);
           setTextById('syTimes', `${sy.bdt || '-'} / ${sy.sd || '-'} / ${sy.ed || '-'}`);
           currentSyBagSheet = sy.bagSheet || null;
+          currentBnAudit = Array.isArray(sy.bnAudit) ? sy.bnAudit : [];
+          setDisplayById('auditToggleBtn', 'inline-block');
           const bagIcon = currentSyBagSheet?.hasData ? ' 🧳' : '';
           setTextById('syBagsLabel', `BAGS${bagIcon}`);
           setTextById('syBags', `${sy.bags?.[0] || '-'}`);
@@ -1582,6 +1628,7 @@
           const duplicatePassports = Array.isArray(govAqq.duplicatePassports) ? govAqq.duplicatePassports : [];
           const aqqTclBnList = Array.isArray(govAqq.aqqTclBnList) ? govAqq.aqqTclBnList : [];
           const govDtaBnList = Array.isArray(govAqq.govDtaBnList) ? govAqq.govDtaBnList : [];
+          const passportExpBnList = Array.isArray(govAqq.passportExpBnList) ? govAqq.passportExpBnList : [];
           const passportCodeIssues = Array.isArray(govAqq.passportCodeIssues) ? govAqq.passportCodeIssues : [];
           const passportCodeIssueDetails = Array.isArray(govAqq.passportCodeIssueDetails) ? govAqq.passportCodeIssueDetails : [];
           const duplicateReviewPairs = Array.isArray(govAqq.duplicateReviewPairs) ? govAqq.duplicateReviewPairs : [];
@@ -1589,6 +1636,7 @@
             duplicatePassports.length > 0 ||
             aqqTclBnList.length > 0 ||
             govDtaBnList.length > 0 ||
+            passportExpBnList.length > 0 ||
             passportCodeIssues.length > 0;
           const reviewBnSet = new Set();
           duplicateReviewPairs.forEach((p) => { reviewBnSet.add(p.bnA); reviewBnSet.add(p.bnB); });
@@ -1604,6 +1652,7 @@
             { label: 'Duplicate Passport', value: duplicatePassports.length },
             { label: 'USA TIME OUT', value: aqqTclBnList.length },
             { label: 'CHN GOV FAIL', value: govDtaBnList.length },
+            { label: 'Passport Exp', value: passportExpBnList.length },
             { label: 'WEB/EDI/Reswipe BN', value: passportCodeIssues.length }
           ]);
 
@@ -1616,6 +1665,7 @@
           }
           if (aqqTclBnList.length) lines.push('', `USA TIME OUT:\n${aqqTclBnList.map((bn) => `BN${bn}`).join('   ')}`);
           if (govDtaBnList.length) lines.push('', `CHN GOV FAIL:\n${govDtaBnList.map((bn) => `BN${bn}`).join('   ')}`);
+          if (passportExpBnList.length) lines.push('', `Passport Exp:\n${passportExpBnList.map((bn) => `BN${bn}`).join('   ')}`);
           if (passportCodeIssues.length) {
             lines.push('', `WEB/EDI/Reswipe:\n${passportCodeIssues.map((bn) => `BN${bn}`).join('   ')}`);
           }
@@ -1676,6 +1726,7 @@
         setDisplayById('syToggleRow', 'none');
         setDisplayById('chdToggleBtn', 'none');
         setDisplayById('govAqqToggleBtn', 'none');
+        setDisplayById('auditToggleBtn', 'none');
 
         if (!data.flight || !data.flightDate || !data.name) {
           error.innerText =
