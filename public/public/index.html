@@ -319,7 +319,7 @@
       column-gap: 12px;
       row-gap: 4px;
       align-items: baseline;
-      font-size: 13px;
+      font-size: 12px;
       line-height: 1.5;
       color: #e2e8f0;
     }
@@ -1281,8 +1281,10 @@
       el.innerHTML = (stats || []).map((row) => {
         const label = escapeHtmlText(row.label || '');
         const value = escapeHtmlText(String(row.value ?? '0'));
-        const dangerCls = Number(row.value || 0) > 0 ? ' is-danger' : '';
-        return `<div class="stat-label">${label}</div><div class="stat-value${dangerCls}">${value}</div>`;
+        const isDanger = Number(row.value || 0) > 0;
+        const dangerCls = isDanger ? ' is-danger' : '';
+        const badge = isDanger ? '🔴 ' : '🟢 ';
+        return `<div class="stat-label">${badge}${label}</div><div class="stat-value${dangerCls}">${value}</div>`;
       }).join('');
     }
 
