@@ -267,6 +267,10 @@
     .chd-toggle-btn.is-bad {
       background: #dc2626;
     }
+    .chd-toggle-btn.is-review {
+      background: #eab308;
+      color: #0f172a;
+    }
     .chd-toggle-btn.is-disabled {
       background: #16a34a;
       opacity: 1;
@@ -1185,12 +1189,14 @@
       btn.classList.add(hasMissingChd ? 'is-bad' : 'is-good');
     }
 
-    function updateGovAqqToggleAppearance(hasRisk) {
+    function updateGovAqqToggleAppearance(status) {
       const btn = document.getElementById('govAqqToggleBtn');
       if (!btn) return;
-      btn.classList.remove('is-good', 'is-bad', 'is-disabled');
-      if (hasRisk) {
+      btn.classList.remove('is-good', 'is-bad', 'is-review', 'is-disabled');
+      if (status === 'risk') {
         btn.classList.add('is-bad');
+      } else if (status === 'review') {
+        btn.classList.add('is-review');
       } else {
         btn.classList.add('is-good', 'is-disabled');
       }
@@ -1514,12 +1520,21 @@
           const govDtaBnList = Array.isArray(govAqq.govDtaBnList) ? govAqq.govDtaBnList : [];
           const passportCodeIssues = Array.isArray(govAqq.passportCodeIssues) ? govAqq.passportCodeIssues : [];
           const passportCodeIssueDetails = Array.isArray(govAqq.passportCodeIssueDetails) ? govAqq.passportCodeIssueDetails : [];
+          const duplicateReviewPairs = Array.isArray(govAqq.duplicateReviewPairs) ? govAqq.duplicateReviewPairs : [];
           const hasGovAqqRisk =
             duplicatePassports.length > 0 ||
             aqqTclBnList.length > 0 ||
             govDtaBnList.length > 0 ||
             passportCodeIssues.length > 0;
-          updateGovAqqToggleAppearance(hasGovAqqRisk);
+          const reviewBnSet = new Set();
+          duplicateReviewPairs.forEach((p) => { reviewBnSet.add(p.bnA); reviewBnSet.add(p.bnB); });
+          const apiRiskOnlyReview =
+            passportCodeIssues.length > 0 &&
+            passportCodeIssues.every((bn) => reviewBnSet.has(bn)) &&
+            duplicateReviewPairs.length > 0;
+          const hasReviewOnly = apiRiskOnlyReview;
+          const govStatus = hasGovAqqRisk ? (hasReviewOnly ? 'review' : 'risk') : 'ok';
+          updateGovAqqToggleAppearance(govStatus);
 
           const lines = [];
           lines.push(`Duplicate Passport : ${duplicatePassports.length}`);
@@ -1538,8 +1553,11 @@
           if (passportCodeIssues.length) {
             lines.push('', `API RISK: ${passportCodeIssues.map((bn) => `BN${bn}`).join('   ')}`);
           }
+          if (duplicateReviewPairs.length) {
+            lines.push('', `Need review: ${duplicateReviewPairs.map((p) => `BN${p.bnA}↔BN${p.bnB}`).join('   ')}`);
+          }
           if (!hasGovAqqRisk) lines.push('', 'No issue found.');
-          setTextById('govAqqSummary', hasGovAqqRisk ? 'Risk found' : 'All clear');
+          setTextById('govAqqSummary', govStatus === 'risk' ? 'Risk found' : (govStatus === 'review' ? 'Need review' : 'All clear'));
           setTextById('govAqqList', lines.join('\n'));
           const detailsTitleEl = document.getElementById('govAqqDetailsTitle');
           const detailsListEl = document.getElementById('govAqqDetailsList');

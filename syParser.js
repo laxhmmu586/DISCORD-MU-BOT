@@ -233,6 +233,17 @@ function normalizeCountryCodeForRisk(code) {
   return raw;
 }
 
+function extractBookingName(section) {
+  const m = section.match(/\n\s*\d+\.\s*([A-Z]+)\/([A-Z]+)/i);
+  if (!m) return null;
+  return { last: m[1].toUpperCase(), first: m[2].toUpperCase() };
+}
+
+function isReversedNamePair(a, b) {
+  if (!a || !b) return false;
+  return a.last === b.first && a.first === b.last;
+}
+
 function enrichGovAqqFromLog(log, syInfo, targetYmd = null) {
   if (!log || !syInfo?.flightNo || !syInfo?.flightDate) {
     return { duplicatePassports: [], aqqTclBnList: [], govDtaBnList: [], passportCodeIssues: [] };
@@ -265,6 +276,7 @@ function enrichGovAqqFromLog(log, syInfo, targetYmd = null) {
   for (const [bn, latest] of latestSectionByBn.entries()) {
     const section = latest.section || '';
     const passportNo = section.match(/PASSPORT\s*:\s*([A-Z0-9]+)/i)?.[1]?.toUpperCase() || '';
+    const bookingName = extractBookingName(section);
     const hasPaxInfoLine = /PAX INFO\s*:/i.test(section);
     const hasPassportLine = /PASSPORT\s*:/i.test(section);
     const countryCodes = extractPassportCountryCodes(section);
@@ -286,6 +298,7 @@ function enrichGovAqqFromLog(log, syInfo, targetYmd = null) {
 
     paxRecords.push({
       bn,
+      bookingName,
       passportNo,
       hasAqqTcl: /\bAQQ\/TCL\/USA\b/i.test(section),
       hasGovDta: /\bGOV\/DTA\/CHN\b/i.test(section),
@@ -304,9 +317,26 @@ function enrichGovAqqFromLog(log, syInfo, targetYmd = null) {
     byPassport.set(p.passportNo, arr);
   }
   const duplicatePassports = [];
+  const duplicateReviewPairs = [];
   for (const [passportNo, bns] of byPassport.entries()) {
     const unique = [...new Set(bns)].sort();
-    if (unique.length > 1) duplicatePassports.push({ passportNo, bns: unique });
+    if (unique.length > 1) {
+      duplicatePassports.push({ passportNo, bns: unique });
+      for (let i = 0; i < unique.length; i += 1) {
+        for (let j = i + 1; j < unique.length; j += 1) {
+          const p1 = paxRecords.find((p) => p.bn === unique[i] && p.passportNo === passportNo);
+          const p2 = paxRecords.find((p) => p.bn === unique[j] && p.passportNo === passportNo);
+          if (isReversedNamePair(p1?.bookingName, p2?.bookingName)) {
+            duplicateReviewPairs.push({
+              passportNo,
+              bnA: unique[i],
+              bnB: unique[j],
+              reason: 'name reversed / possible name correction'
+            });
+          }
+        }
+      }
+    }
   }
 
   return {
@@ -314,6 +344,7 @@ function enrichGovAqqFromLog(log, syInfo, targetYmd = null) {
     aqqTclBnList: [...new Set(paxRecords.filter((p) => p.hasAqqTcl).map((p) => p.bn))].sort(),
     govDtaBnList: [...new Set(paxRecords.filter((p) => p.hasGovDta).map((p) => p.bn))].sort(),
     passportCodeIssues: [...new Set(paxRecords.filter((p) => p.hasPassportCodeIssue).map((p) => p.bn))].sort(),
+    duplicateReviewPairs,
     passportCodeIssueDetails: [...issueByBn.entries()]
       .sort((a, b) => Number(a[0]) - Number(b[0]))
       .map(([bn, reason]) => ({ bn, reason }))
