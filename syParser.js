@@ -265,6 +265,9 @@ function enrichGovAqqFromLog(log, syInfo, targetYmd = null) {
   const paxRecords = [];
   const issueByBn = new Map();
   const latestSectionByBn = new Map();
+  const passportExpBnList = [];
+  const now = new Date();
+  const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
 
   for (const sectionObj of sections) {
     const section = sectionObj.content || '';
@@ -321,6 +324,23 @@ function enrichGovAqqFromLog(log, syInfo, targetYmd = null) {
     }
 
     const hasCodeIssue = hasCountryCodeRisk || hasApiSourceRisk;
+    const passportRawLine = (section.match(/PASSPORT\s*:\s*([^\n\r]+)/i)?.[1] || '').trim().toUpperCase();
+    const passportParts = passportRawLine.split('/').map((x) => x.trim());
+    const expField = passportParts.find((part) => /^\d{6}$/.test(part)) || '';
+    let hasPassportExpired = false;
+    if (expField) {
+      const yy = Number(expField.slice(0, 2));
+      const mm = Number(expField.slice(2, 4));
+      const dd = Number(expField.slice(4, 6));
+      if (mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31) {
+        const expDateUtc = Date.UTC(2000 + yy, mm - 1, dd);
+        hasPassportExpired = expDateUtc < todayUtc;
+      }
+    }
+    if (hasPassportExpired) {
+      issueReasons.push(`passport expired: ${expField}`);
+      passportExpBnList.push(bn);
+    }
 
     paxRecords.push({
       bn,
@@ -330,9 +350,9 @@ function enrichGovAqqFromLog(log, syInfo, targetYmd = null) {
       needsReswipeByAgent,
       hasAqqTcl: /\bAQQ\/TCL\/USA\b/i.test(section),
       hasGovDta: /\bGOV\/DTA\/CHN\b/i.test(section),
-      hasPassportCodeIssue: hasCodeIssue
+      hasPassportCodeIssue: hasCodeIssue || hasPassportExpired
     });
-    if (hasCodeIssue) {
+    if (hasCodeIssue || hasPassportExpired) {
       issueByBn.set(bn, issueReasons.join('; '));
     }
   }
@@ -371,6 +391,7 @@ function enrichGovAqqFromLog(log, syInfo, targetYmd = null) {
     duplicatePassports: duplicatePassports.sort((a, b) => a.passportNo.localeCompare(b.passportNo)),
     aqqTclBnList: [...new Set(paxRecords.filter((p) => p.hasAqqTcl).map((p) => p.bn))].sort(),
     govDtaBnList: [...new Set(paxRecords.filter((p) => p.hasGovDta).map((p) => p.bn))].sort(),
+    passportExpBnList: [...new Set(passportExpBnList)].sort(),
     passportCodeIssues: [...new Set(paxRecords.filter((p) => p.hasPassportCodeIssue).map((p) => p.bn))].sort(),
     duplicateReviewPairs,
     passportCodeIssueDetails: [...issueByBn.entries()]
@@ -405,8 +426,6 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
 
   return [...latestByBn.entries()].sort((a, b) => Number(a[0]) - Number(b[0])).map(([bn, payload]) => {
     const section = payload.section || '';
-    const outboundDest = section.match(/\bO\s+([A-Z]{3})\s+/i)?.[1] || '';
-    const destination = outboundDest || 'PVG';
     const hasTimeOut = /\bAQQ\/TCL\/USA\b/i.test(section);
     const hasGovFail = /\bGOV\/DTA\/CHN\b/i.test(section);
     const hasReview = /\bWEB\/EDI\/RESWIPE\b/i.test(section);
@@ -428,7 +447,7 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     const allowance = fbaPc + purchasedExtra;
     const bagStatus = waived ? 'green' : (bagTagCount > allowance ? 'red' : 'green');
 
-    return { bn, destination, apiStatus, tkStatus, bagStatus };
+    return { bn, apiStatus, tkStatus, bagStatus };
   });
 }
 
