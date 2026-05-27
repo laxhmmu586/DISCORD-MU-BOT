@@ -930,6 +930,7 @@
     let currentPassengerData = null;
     let currentSyBagSheet = null;
     let checkinPanelOpen = false;
+    let currentResultMode = 'NONE';
     let chdPanelOpen = false;
     let govAqqPanelOpen = false;
     let currentUser = null;
@@ -1109,10 +1110,19 @@
     }
 
     
-    function showSyFlightCard() {
-      setDisplayById('syLayout', 'block');
+    function hideSyAuxLayouts() {
       setDisplayById('syBagDetailLayout', 'none');
       setDisplayById('syAuditLayout', 'none');
+    }
+
+    function showSyFlightCard() {
+      if (currentResultMode !== 'SY') {
+        setDisplayById('syLayout', 'none');
+        hideSyAuxLayouts();
+        return;
+      }
+      setDisplayById('syLayout', 'block');
+      hideSyAuxLayouts();
     }
     function escapeAttr(value) {
       return String(value || '')
@@ -1615,6 +1625,7 @@
 
           error.style.display =
             'block';
+          currentResultMode = 'NONE';
 
           return;
         }
@@ -1642,6 +1653,7 @@
             return;
           }
 
+          currentResultMode = 'SY';
           currentPassengerData = null;
           checkinPanelOpen = false;
           document.getElementById('checkinDetailList').innerHTML = '';
@@ -1652,8 +1664,7 @@
 
           ['membershipSection','ticketSection','bagsSection','inboundSection','outboundSection','ssrSection','mealSection','paidSection','loungeSection','docSection'].forEach((id) => setDisplayById(id, 'none'));
           setDisplayById('syLayout', 'block');
-          setDisplayById('syBagDetailLayout', 'none');
-          setDisplayById('syAuditLayout', 'none');
+          hideSyAuxLayouts();
 
           setTextById('syAircraft', `${sy.aircraftType || '-'} / ${sy.aircraftRegistration || '-'}`);
           setTextById('syGate', `${sy.gate || '-'}`);
@@ -1797,7 +1808,9 @@
           return;
         }
 
+        currentResultMode = 'PAX';
         setDisplayById('syLayout', 'none');
+        hideSyAuxLayouts();
         setDisplayById('chdSection', 'none');
         setDisplayById('govAqqSection', 'none');
         setDisplayById('govAqqDetailsTitle', 'none');
