@@ -307,7 +307,7 @@
       font-weight: 700;
     }
     .govaqq-result-title {
-      margin-top: 10px;
+      margin-top: 4px;
       color: #60a5fa;
       font-size: 14px;
       font-weight: 700;
@@ -331,6 +331,9 @@
       text-align: right;
       font-weight: 700;
       color: #ffffff;
+    }
+    .govaqq-stats .stat-value.is-danger {
+      color: #ef4444;
     }
 
     .auth-bar {
@@ -1238,7 +1241,8 @@
       el.innerHTML = (stats || []).map((row) => {
         const label = escapeHtmlText(row.label || '');
         const value = escapeHtmlText(String(row.value ?? '0'));
-        return `<div class="stat-label">${label}</div><div class="stat-value">${value}</div>`;
+        const dangerCls = Number(row.value || 0) > 0 ? ' is-danger' : '';
+        return `<div class="stat-label">${label}</div><div class="stat-value${dangerCls}">${value}</div>`;
       }).join('');
     }
 
@@ -1605,21 +1609,20 @@
 
           const lines = [];
           if (duplicatePassports.length) {
-            lines.push('');
             lines.push('Duplicate passports:');
             duplicatePassports.forEach((item) => {
-              lines.push(`${item.passportNo}: BN${item.bns.join('/BN')}`);
+              lines.push(`${item.passportNo}: ${item.bns.map((bn) => `BN${bn}`).join('   ')}`);
             });
           }
-          if (aqqTclBnList.length) lines.push('', `USA TIME OUT: ${aqqTclBnList.map((bn) => `BN${bn}`).join('   ')}`);
-          if (govDtaBnList.length) lines.push('', `CHN GOV FAIL: ${govDtaBnList.map((bn) => `BN${bn}`).join('   ')}`);
+          if (aqqTclBnList.length) lines.push('', `USA TIME OUT:\n${aqqTclBnList.map((bn) => `BN${bn}`).join('   ')}`);
+          if (govDtaBnList.length) lines.push('', `CHN GOV FAIL:\n${govDtaBnList.map((bn) => `BN${bn}`).join('   ')}`);
           if (passportCodeIssues.length) {
-            lines.push('', `WEB/EDI/Reswipe: ${passportCodeIssues.map((bn) => `BN${bn}`).join('   ')}`);
+            lines.push('', `WEB/EDI/Reswipe:\n${passportCodeIssues.map((bn) => `BN${bn}`).join('   ')}`);
           }
           if (duplicateReviewPairs.length) {
-            lines.push('', `Need review: ${duplicateReviewPairs.map((p) => `BN${p.bnA}↔BN${p.bnB}`).join('   ')}`);
+            lines.push('', `Need review (similar name): ${duplicateReviewPairs.map((p) => `BN${p.bnA}↔BN${p.bnB}`).join('   ')}`);
           }
-          if (!hasGovAqqRisk) lines.push('', 'No issue found.');
+          if (!hasGovAqqRisk) lines.push('No issue found.');
           setTextById('govAqqSummary', govStatus === 'risk' ? 'Risk found' : (govStatus === 'review' ? 'Need review' : 'All clear'));
           const resultTitleEl = document.getElementById('govAqqResultTitle');
           if (lines.length) {
