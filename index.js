@@ -32,7 +32,9 @@ const {
 
   getFlightLogByDate,
   get240InfoByBnAndFlightDate,
-  getSyBagInfoByDate
+  getSyBagInfoByDate,
+  findSalesReportFile,
+  downloadDriveFileAsBuffer
 
 } = require('./googleDrive');
 
@@ -587,6 +589,43 @@ app.get(
     }
   }
 );
+
+app.get('/sales-report/status', async (req, res) => {
+  try {
+    const flightNo = String(req.query.flightNo || '').toUpperCase().trim();
+    const flightDate = String(req.query.flightDate || '').toUpperCase().trim();
+    const m = flightDate.match(/(\d{2})([A-Z]{3})(\d{2})?/);
+    const months = { JAN:'01', FEB:'02', MAR:'03', APR:'04', MAY:'05', JUN:'06', JUL:'07', AUG:'08', SEP:'09', OCT:'10', NOV:'11', DEC:'12' };
+    if (!flightNo || !m) return res.json({ available: false });
+    const year = m[3] ? 2000 + Number(m[3]) : new Date().getUTCFullYear();
+    const isoDate = `${year}-${months[m[2]] || '01'}-${m[1]}`;
+    const file = await findSalesReportFile({ flightNo, isoDate });
+    if (!file) return res.json({ available: false });
+    return res.json({
+      available: true,
+      fileId: file.id,
+      fileName: file.name
+    });
+  } catch (err) {
+    console.error('Sales report status error:', err?.message || err);
+    return res.json({ available: false });
+  }
+});
+
+app.get('/sales-report/download', async (req, res) => {
+  try {
+    const fileId = String(req.query.fileId || '').trim();
+    const fileName = String(req.query.fileName || 'Sales Report').trim();
+    if (!fileId) return res.status(400).send('Missing fileId');
+    const buffer = await downloadDriveFileAsBuffer(fileId);
+    res.setHeader('Content-Type', 'application/octet-stream');
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"`);
+    return res.send(buffer);
+  } catch (err) {
+    console.error('Sales report download error:', err?.message || err);
+    return res.status(500).send('Failed to download sales report');
+  }
+});
 
 
 // ===============================

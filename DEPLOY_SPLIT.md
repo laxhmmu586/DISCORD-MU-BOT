@@ -2,7 +2,7 @@
 
 ## Goal
 - **Railway** runs Node.js backend + Discord bot.
-- **Firebase Hosting** serves website files from `public/public/`.
+- **Firebase Hosting** serves website files from `public/`.
 - Website calls Railway API endpoint `/search` cross-origin.
 
 ## Railway (backend)
@@ -30,8 +30,8 @@ firebase deploy --only hosting
 ```
 
 `firebase.json` hosts folder `public/` (relative to `public/`), i.e. actual site files in:
-- `public/public/index.html`
-- `public/public/login.html`
+- `public/index.html`
+- `public/login.html`
 
 ## Behavior kept unchanged
 - Firebase login flow remains the same.
