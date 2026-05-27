@@ -486,7 +486,12 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     const bagTagCount = bagDestinations.length;
     const allowance = fbaPc + purchasedExtra;
     let bagStatus = waived ? 'pass' : (bagTagCount > allowance ? 'fail' : 'pass');
+    const hasMsgPvgOnly = /\bMSG-[^\n\r]*\bPVG\s+ONLY\b/i.test(section);
+    const allBagsToPvg = bagDestinations.length > 0 && bagDestinations.every((d) => d === 'PVG');
     if (!waived) {
+      if (hasMsgPvgOnly && allBagsToPvg) {
+        bagStatus = 'pass';
+      } else
       if (hasOutbound && bagDestinations.length > 0) {
         const allMatchOutbound = bagDestinations.every((d) => d === outboundDest.toUpperCase());
         bagStatus = allMatchOutbound ? bagStatus : 'review';
