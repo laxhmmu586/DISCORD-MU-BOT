@@ -299,6 +299,31 @@ async function downloadLog(fileId) {
   return response.data;
 }
 
+async function findSalesReportFile({ flightNo, isoDate }) {
+  const salesReportFolderId = process.env.SALES_REPORT_FOLDER_ID || '1-RLbv_BU9rnsaaPy8UUkbN6FkhA5YqGf';
+  const safeFlightNo = String(flightNo || '').toUpperCase().trim();
+  const safeIsoDate = String(isoDate || '').trim();
+  if (!safeFlightNo || !/^\d{4}-\d{2}-\d{2}$/.test(safeIsoDate)) return null;
+
+  const targetName = `Sales Report ${safeFlightNo} ${safeIsoDate}`;
+  const res = await drive.files.list({
+    q: `'${salesReportFolderId}' in parents and name = '${targetName}' and trashed = false`,
+    fields: 'files(id,name,mimeType,modifiedTime)',
+    orderBy: 'modifiedTime desc',
+    pageSize: 1
+  });
+
+  return res?.data?.files?.[0] || null;
+}
+
+async function downloadDriveFileAsBuffer(fileId) {
+  const response = await drive.files.get(
+    { fileId, alt: 'media' },
+    { responseType: 'arraybuffer' }
+  );
+  return Buffer.from(response.data);
+}
+
 // ===============================
 // Get Today Log
 // ===============================
@@ -464,5 +489,7 @@ module.exports = {
 
   getFlightLogByDate,
   get240InfoByBnAndFlightDate,
-  getSyBagInfoByDate
+  getSyBagInfoByDate,
+  findSalesReportFile,
+  downloadDriveFileAsBuffer
 };
