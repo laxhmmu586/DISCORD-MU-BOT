@@ -534,6 +534,22 @@
     .audit-sheet th, .audit-sheet td { border:1px solid rgba(160,190,255,.2); padding:3px 4px; text-align:center; }
     .audit-sheet th { position:sticky; top:0; background:#132347; z-index:1; }
     .audit-sheet .status-dot { font-size:12px; line-height:1; }
+    .audit-sheet .status-dot.has-reason { cursor:pointer; }
+    .status-reason-pop {
+      position: fixed;
+      z-index: 9999;
+      max-width: 220px;
+      background: #101b34;
+      color: #eaf2ff;
+      border: 1px solid rgba(160,190,255,.35);
+      border-radius: 8px;
+      padding: 6px 8px;
+      font-size: 12px;
+      line-height: 1.35;
+      box-shadow: 0 8px 20px rgba(0,0,0,.35);
+      display: none;
+      pointer-events: none;
+    }
     .audit-sheet th:first-child, .audit-sheet td:first-child { width: 16%; }
     .audit-sheet th:nth-child(n+2), .audit-sheet td:nth-child(n+2) { width: 12%; }
     .audit-sheet td:first-child b { color:#ffd84d; font-size:16px; letter-spacing:.3px; }
@@ -1098,12 +1114,59 @@
       setDisplayById('syBagDetailLayout', 'none');
       setDisplayById('syAuditLayout', 'none');
     }
+    function escapeAttr(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
     function emojiByStatus(status) {
       if (status === 'pass') return '✅';
       if (status === 'review') return '⚠️';
       if (status === 'fail') return '❌';
       return '⚪';
     }
+    function reasonFor(row, key) {
+      if (!row) return '';
+      if (key === 'api') return row.apiReason || '';
+      if (key === 'tk') return row.tkReason || '';
+      if (key === 'bag') return row.bagReason || '';
+      return '';
+    }
+    function buildStatusDot(status, reason, key) {
+      const emoji = emojiByStatus(status);
+      if (status === 'pass' || !reason) return `<span class="status-dot">${emoji}</span>`;
+      const safeReason = escapeAttr(reason);
+      return `<span class="status-dot has-reason" data-reason="${safeReason}" data-key="${key}" title="${safeReason}">${emoji}</span>`;
+    }
+    function ensureStatusReasonPop() {
+      let el = document.getElementById('statusReasonPop');
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'statusReasonPop';
+        el.className = 'status-reason-pop';
+        document.body.appendChild(el);
+      }
+      return el;
+    }
+    function showStatusReason(anchor, text) {
+      if (!anchor || !text) return;
+      const pop = ensureStatusReasonPop();
+      pop.textContent = text;
+      pop.style.display = 'block';
+      const rect = anchor.getBoundingClientRect();
+      const popRect = pop.getBoundingClientRect();
+      const top = Math.max(8, rect.top - popRect.height - 8);
+      const left = Math.max(8, Math.min(window.innerWidth - popRect.width - 8, rect.left + (rect.width / 2) - (popRect.width / 2)));
+      pop.style.top = `${top}px`;
+      pop.style.left = `${left}px`;
+    }
+    function hideStatusReason() {
+      const pop = document.getElementById('statusReasonPop');
+      if (pop) pop.style.display = 'none';
+    }
+    document.addEventListener('click', hideStatusReason);
     function showBnAuditPage() {
       const byBn = new Map((currentBnAudit || []).map((x) => [x.bn, x]));
       const rows = [];
@@ -1112,13 +1175,27 @@
         const row = byBn.get(bn);
         rows.push(`<tr>
           <td><b>${i}</b></td>
-          <td><span class="status-dot">${emojiByStatus(row?.apiStatus)}</span></td>
-          <td><span class="status-dot">${emojiByStatus(row?.tkStatus)}</span></td>
-          <td><span class="status-dot">${emojiByStatus(row?.bagStatus)}</span></td>
+          <td>${buildStatusDot(row?.apiStatus, reasonFor(row, 'api'), 'api')}</td>
+          <td>${buildStatusDot(row?.tkStatus, reasonFor(row, 'tk'), 'tk')}</td>
+          <td>${buildStatusDot(row?.bagStatus, reasonFor(row, 'bag'), 'bag')}</td>
         </tr>`);
       }
       document.getElementById('syAuditContent').innerHTML = `<div class="detail-title" style="text-align:right;">Security Check</div>
         <div class="audit-sheet"><table><thead><tr><th>BN</th><th>API</th><th>TK</th><th>BAG</th></tr></thead><tbody>${rows.join('')}</tbody></table></div>`;
+      const content = document.getElementById('syAuditContent');
+      content.querySelectorAll('.status-dot.has-reason').forEach((el) => {
+        el.addEventListener('mouseenter', () => showStatusReason(el, el.dataset.reason || ''));
+        el.addEventListener('mouseleave', hideStatusReason);
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const pop = ensureStatusReasonPop();
+          if (pop.style.display === 'block' && pop.textContent === (el.dataset.reason || '')) {
+            hideStatusReason();
+            return;
+          }
+          showStatusReason(el, el.dataset.reason || '');
+        });
+      });
       setDisplayById('syLayout', 'none');
       setDisplayById('syBagDetailLayout', 'none');
       setDisplayById('syAuditLayout', 'block');

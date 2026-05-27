@@ -456,11 +456,21 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     const hasGovFail = /\bGOV\/DTA\/CHN\b/i.test(section);
     const hasReview = /\bWEB\/EDI\/RESWIPE\b/i.test(section);
     const apiStatus = hasTimeOut || hasGovFail ? 'fail' : (hasReview ? 'review' : 'pass');
+    const apiReason = hasTimeOut ? 'USA TIME OUT'
+      : hasGovFail ? 'CHN GOV FAIL'
+      : hasReview ? 'WEB/EDI/Reswipe'
+      : '';
 
     const hasInfFlag = /\bINF1\/0\b/i.test(section);
     const hasAdultTk = /\bET\s+TKNE\/(?!INF)\d{10,}\/\d+\b/i.test(section);
     const hasInfTk = /\bET\s+TKNE\/INF\d{10,}\/\d+\b/i.test(section);
     const tkStatus = hasInfFlag ? (hasAdultTk && hasInfTk ? 'pass' : 'fail') : (hasAdultTk ? 'pass' : 'fail');
+    const tkReason = hasInfFlag
+      ? (!hasAdultTk && !hasInfTk ? 'INF需要成人票和婴儿票，当前都缺失'
+        : !hasAdultTk ? 'INF需要成人票，当前缺少成人票'
+        : !hasInfTk ? 'INF需要婴儿票，当前缺少INF票'
+        : '')
+      : (!hasAdultTk ? '缺少成人票号 TKNE' : '');
 
     const waived = /\bPSM-EXBG0PC/i.test(section);
     const fbaPcParsed = Number(section.match(/\bFBA\/(\d+)PC\b/i)?.[1] || 0);
@@ -487,26 +497,39 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     const bagTagCount = bagDestinations.length;
     const allowance = fbaPc + purchasedExtra;
     let bagStatus = waived ? 'pass' : (bagTagCount > allowance ? 'fail' : 'pass');
+    let bagReason = '';
+    if (!waived && bagTagCount > allowance) {
+      bagReason = `行李件数 ${bagTagCount}，额度 ${allowance} (FBA ${fbaPc} + Extra ${purchasedExtra})`;
+    }
     const hasMsgPvgOnly = /\bMSG-[^\n\r]*\bPVG\s+ONLY\b/i.test(section);
     const allBagsToPvg = bagDestinations.length > 0 && bagDestinations.every((d) => d === 'PVG');
+    const hasEdi = /\bEDI\b/i.test(section);
+    const hasInbound = /^\s*I\/[^\n\r]*/im.test(section);
+    if (hasEdi && hasInbound) {
+      bagStatus = 'pass';
+      bagReason = '';
+    }
     if (!waived) {
       if (hasMsgPvgOnly && allBagsToPvg) {
         bagStatus = 'pass';
+        bagReason = '';
       } else
       if (hasOutbound && bagDestinations.length > 0) {
         const allMatchOutbound = bagDestinations.every((d) => d === outboundDest.toUpperCase());
         bagStatus = allMatchOutbound ? bagStatus : 'review';
+        if (!allMatchOutbound) bagReason = `行李目的地与outbound不一致 (${outboundDest})`;
       } else if (!hasOutbound && bagDestinations.length > 0) {
         const allToPvg = bagDestinations.every((d) => d === 'PVG');
         bagStatus = allToPvg ? bagStatus : 'review';
+        if (!allToPvg) bagReason = '无outbound时，行李目的地应为PVG';
       }
     }
 
     if (hasCkinOkOverride) {
-      return { bn, apiStatus: 'pass', tkStatus: 'pass', bagStatus: 'pass' };
+      return { bn, apiStatus: 'pass', tkStatus: 'pass', bagStatus: 'pass', apiReason: '', tkReason: '', bagReason: '' };
     }
 
-    return { bn, apiStatus, tkStatus, bagStatus };
+    return { bn, apiStatus, tkStatus, bagStatus, apiReason, tkReason, bagReason };
   });
 }
 
