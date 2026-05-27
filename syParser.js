@@ -426,15 +426,19 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
 
   return [...latestByBn.entries()].sort((a, b) => Number(a[0]) - Number(b[0])).map(([bn, payload]) => {
     const section = payload.section || '';
+    const hasCkinOkOverride = /^\s*CKIN\s+OK(?:\s+BY\s+[A-Z0-9]+)?\b/im.test(section);
+    const outboundDest = section.match(/\bO\s+([A-Z]{3})\s+/i)?.[1] || '';
+    const hasOutbound = Boolean(outboundDest);
+    const outboundCheckedIn = hasOutbound && /\bCI\d{4}\b/i.test(section);
     const hasTimeOut = /\bAQQ\/TCL\/USA\b/i.test(section);
     const hasGovFail = /\bGOV\/DTA\/CHN\b/i.test(section);
     const hasReview = /\bWEB\/EDI\/RESWIPE\b/i.test(section);
-    const apiStatus = hasTimeOut || hasGovFail ? 'red' : (hasReview ? 'yellow' : 'green');
+    const apiStatus = hasTimeOut || hasGovFail ? 'fail' : (hasReview ? 'review' : 'pass');
 
     const hasInfFlag = /\bINF1\/0\b/i.test(section);
     const hasAdultTk = /\bET\s+TKNE\/(?!INF)\d{10,}\/\d+\b/i.test(section);
     const hasInfTk = /\bET\s+TKNE\/INF\d{10,}\/\d+\b/i.test(section);
-    const tkStatus = hasInfFlag ? (hasAdultTk && hasInfTk ? 'green' : 'red') : (hasAdultTk ? 'green' : 'red');
+    const tkStatus = hasInfFlag ? (hasAdultTk && hasInfTk ? 'pass' : 'fail') : (hasAdultTk ? 'pass' : 'fail');
 
     const waived = /\bPSM-EXBG0PC/i.test(section);
     const fbaPc = Number(section.match(/\bFBA\/(\d+)PC\b/i)?.[1] || 0);
@@ -445,9 +449,19 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
       .join(' ')
       .match(/\/\d{10}\/[A-Z]{3}/g)?.length || 0;
     const allowance = fbaPc + purchasedExtra;
-    const bagStatus = waived ? 'green' : (bagTagCount > allowance ? 'red' : 'green');
+    let bagStatus = waived ? 'pass' : (bagTagCount > allowance ? 'fail' : 'pass');
+    const bagDestinations = [...section.matchAll(/\/\d{10}\/([A-Z]{3})/g)].map((m) => (m[1] || '').toUpperCase());
+    if (hasOutbound && bagDestinations.length > 0) {
+      const allMatchOutbound = bagDestinations.every((d) => d === outboundDest.toUpperCase());
+      bagStatus = allMatchOutbound ? bagStatus : 'review';
+    }
+    const oStatus = hasOutbound ? (outboundCheckedIn ? 'pass' : 'fail') : 'PVG';
 
-    return { bn, apiStatus, tkStatus, bagStatus };
+    if (hasCkinOkOverride) {
+      return { bn, apiStatus: 'pass', tkStatus: 'pass', bagStatus: 'pass', oStatus: 'pass' };
+    }
+
+    return { bn, apiStatus, tkStatus, bagStatus, oStatus };
   });
 }
 
