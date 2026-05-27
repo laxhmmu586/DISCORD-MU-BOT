@@ -466,11 +466,11 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     const hasInfTk = /\bET\s+TKNE\/INF\d{10,}\/\d+\b/i.test(section);
     const tkStatus = hasInfFlag ? (hasAdultTk && hasInfTk ? 'pass' : 'fail') : (hasAdultTk ? 'pass' : 'fail');
     const tkReason = hasInfFlag
-      ? (!hasAdultTk && !hasInfTk ? 'INF需要成人票和婴儿票，当前都缺失'
-        : !hasAdultTk ? 'INF需要成人票，当前缺少成人票'
-        : !hasInfTk ? 'INF需要婴儿票，当前缺少INF票'
+      ? (!hasAdultTk && !hasInfTk ? 'INF requires both adult and infant tickets; both are missing'
+        : !hasAdultTk ? 'INF requires an adult ticket; adult ticket is missing'
+        : !hasInfTk ? 'INF requires an infant ticket; INF ticket is missing'
         : '')
-      : (!hasAdultTk ? '缺少成人票号 TKNE' : '');
+      : (!hasAdultTk ? 'Adult TKNE ticket is missing' : '');
 
     const waived = /\bPSM-EXBG0PC/i.test(section);
     const fbaPcParsed = Number(section.match(/\bFBA\/(\d+)PC\b/i)?.[1] || 0);
@@ -500,7 +500,7 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     let bagStatus = waived ? 'pass' : (bagTagCount > allowance ? 'fail' : 'pass');
     let bagReason = '';
     if (!waived && bagTagCount > allowance) {
-      bagReason = `行李件数 ${bagTagCount}，额度 ${allowance} (FBA ${fbaPc} + Extra ${purchasedExtra})`;
+      bagReason = `Bag count ${bagTagCount}, allowance ${allowance} (FBA ${fbaPc} + Extra ${purchasedExtra})`;
     }
     const hasMsgPvgOnly = /\bMSG-[^\n\r]*\bPVG\s+ONLY\b/i.test(section);
     const hasCkinPvgOnly = /\bCKIN[^\n\r]*\bPVG\s+ONLY\b/i.test(section);
@@ -519,11 +519,11 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
       if (hasOutbound && bagDestinations.length > 0) {
         const allMatchOutbound = bagDestinations.every((d) => d === outboundDest.toUpperCase());
         bagStatus = allMatchOutbound ? bagStatus : 'review';
-        if (!allMatchOutbound) bagReason = `行李目的地与outbound不一致 (${outboundDest})`;
+        if (!allMatchOutbound) bagReason = `Bag destination does not match outbound (${outboundDest})`;
       } else if (!hasOutbound && bagDestinations.length > 0) {
         const allToPvg = bagDestinations.every((d) => d === 'PVG');
         bagStatus = allToPvg ? bagStatus : 'review';
-        if (!allToPvg) bagReason = '无outbound时，行李目的地应为PVG';
+        if (!allToPvg) bagReason = 'When no outbound exists, bag destination must be PVG';
       }
     }
 
