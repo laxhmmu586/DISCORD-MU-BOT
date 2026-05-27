@@ -503,6 +503,7 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
       bagReason = `行李件数 ${bagTagCount}，额度 ${allowance} (FBA ${fbaPc} + Extra ${purchasedExtra})`;
     }
     const hasMsgPvgOnly = /\bMSG-[^\n\r]*\bPVG\s+ONLY\b/i.test(section);
+    const hasCkinPvgOnly = /\bCKIN[^\n\r]*\bPVG\s+ONLY\b/i.test(section);
     const allBagsToPvg = bagDestinations.length > 0 && bagDestinations.every((d) => d === 'PVG');
     const hasEdi = /\bEDI\b/i.test(section);
     const hasInbound = /^\s*I\/[^\n\r]*/im.test(section);
@@ -511,7 +512,7 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
       bagReason = '';
     }
     if (!waived) {
-      if (hasMsgPvgOnly && allBagsToPvg) {
+      if ((hasMsgPvgOnly || hasCkinPvgOnly) && allBagsToPvg) {
         bagStatus = 'pass';
         bagReason = '';
       } else
