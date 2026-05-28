@@ -604,10 +604,15 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
       }
     }
     const passportNat = passportRawLine.match(/\/NAT\/([A-Z]{3})\//i)?.[1]?.toUpperCase() || '';
-    const isVisaIrrelevantCkinLine = (line) => /\/CHKLEG\b/i.test(line);
+    const isVisaIrrelevantCkinLine = (line) => {
+      const normalized = String(line || '').trim().toUpperCase().replace(/\s+/g, ' ');
+      return /\/CHKLEG\b/.test(normalized)
+        || /^CKIN\s+HK\d+\s+LKCK\/\d+\/[A-Z]$/.test(normalized)
+        || /^CKIN\s+MTCK\/MAP\/MU\b/.test(normalized);
+    };
     const ckinLineList = section.split(/\r?\n/).filter((line) => /^\s*CKIN\b/i.test(line)).map((line) => line.trim());
     const visaRelevantCkinLineList = ckinLineList.filter((line) => !isVisaIrrelevantCkinLine(line));
-    const ckinLines = ckinLineList.join(' ').toUpperCase();
+    const ckinLines = visaRelevantCkinLineList.join(' ').toUpperCase();
     const hasVisaKeyword = /\b(VISA|VS|TRAVEL\s*DOC(?:UMENT)?|TRAVELDOC(?:UMENT)?|V|PR CARD)\b/.test(ckinLines);
     const hasVisaExpHint = /\b(EXP|DT|TIL|240|APPLY)\b/.test(ckinLines);
     const hasDateLike = /\b(\d{4}|[0-3]?\d\s*[A-Z]{3}\s*\d{2,4}|\d{1,2}[A-Z]{3}\d{2,4}|[A-Z]{3,9}\s*\d{4})\b/.test(ckinLines);
