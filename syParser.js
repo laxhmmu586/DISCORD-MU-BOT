@@ -691,26 +691,30 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     let visaReason = 'Not yet implemented';
     const ckinBestLine = visaRelevantCkinLineList.find((line) => /\b(VISA|VS|TRAVEL\s*DOC|TRAVELDOC|PR CARD|TBZ|PINK CARD|240|EXP|DT|TIL|APPLY)\b/i.test(line)) || visaRelevantCkinLineList[0] || '';
     const visaReviewReason = (prefix) => ckinBestLine ? `${prefix};\n${ckinBestLine}` : prefix;
+    const visaPassReason = (detail = '') => `${passportNat || 'UNK'} passport to ${visaDest}: PASS${detail ? ` (${detail})` : ''}`;
     if (toChinaDomestic) {
       if (passportNat === 'CHN') {
         visaStatus = 'pass';
-        visaReason = '';
+        visaReason = visaPassReason('Chinese passport traveling to China/domestic destination');
       } else if (passportNat === 'USA') {
         if (hasAnyVisaEvidence) {
           visaStatus = 'pass';
-          visaReason = '';
+          visaReason = visaPassReason(ckinBestLine ? `valid visa evidence: ${ckinBestLine}` : 'valid visa evidence found');
         } else {
           visaReason = visaReviewReason(`Need review: USA passport to ${visaDest}`);
         }
       } else if (passportNat === 'CAN' || passportNat === 'RUS' || passportNat === 'ESP') {
         visaStatus = 'pass';
-        visaReason = '';
+        visaReason = visaPassReason('implemented passport/destination rule');
       } else {
         visaReason = visaReviewReason(`Rule not implemented: passport ${passportNat || 'UNK'} to ${visaDest}`);
       }
-    } else if ((passportNat === 'VNM' && visaDest === 'SGN') || (passportNat === 'THA' && visaDest === 'BKK')) {
+    } else if (passportNat === 'VNM' && visaDest === 'SGN') {
       visaStatus = 'pass';
-      visaReason = '';
+      visaReason = visaPassReason('Vietnam passport returning to SGN');
+    } else if (passportNat === 'THA' && visaDest === 'BKK') {
+      visaStatus = 'pass';
+      visaReason = visaPassReason('Thailand passport returning to BKK');
     } else {
       visaReason = visaReviewReason(`Rule not implemented: passport ${passportNat || 'UNK'} to ${visaDest}`);
     }
@@ -736,7 +740,8 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     const hasExtraBaggageByTier = /\bFF\/MU\s+\d+\/(?:V|G|S)\b/i.test(section) || /\*1|\*2/.test(section);
     const tierExtraPc = hasExtraBaggageByTier ? 1 : 0;
     const infExtraPc = hasInfTk ? 1 : 0;
-    const purchasedExtra = Math.max(0, xbagPc - fbaPc) + pdbgCount + tierExtraPc + infExtraPc;
+    const paidExtraPc = Math.max(0, xbagPc - fbaPc) + pdbgCount;
+    const purchasedExtra = paidExtraPc + tierExtraPc + infExtraPc;
     const bagTagRaw = [...section.matchAll(/BAGTAG\/([^\n\r]+)/gi)]
       .map((m) => m[1] || '')
       .join(' ');
@@ -753,10 +758,17 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
       : [...bagTagRaw.matchAll(/\/([A-Z]{3})\b/gi)].map((m) => (m[1] || '').toUpperCase());
     const bagTagCount = bagDestinations.length;
     const allowance = fbaPc + purchasedExtra;
+    const bagTagSummary = uniqueBagPieces.size ? [...uniqueBagPieces.keys()].join(', ') : (bagDestinations.length ? bagDestinations.join(', ') : 'none');
+    const bagDestinationSummary = bagDestinations.length ? [...new Set(bagDestinations)].join('/') : 'none';
+    const bagAllowanceParts = [`FBA ${fbaPc}PC`];
+    if (paidExtraPc > 0) bagAllowanceParts.push(`paid extra ${paidExtraPc}PC`);
+    if (tierExtraPc > 0) bagAllowanceParts.push(`membership extra ${tierExtraPc}PC`);
+    if (infExtraPc > 0) bagAllowanceParts.push(`INF extra ${infExtraPc}PC`);
+    const bagBaseReason = () => `Allowance: ${bagAllowanceParts.join(' + ')} = ${allowance}PC; checked bags: ${bagTagCount}PC (${bagTagSummary}); bag destination: ${bagDestinationSummary}`;
     let bagStatus = waived ? 'pass' : (bagTagCount > allowance ? 'fail' : 'pass');
-    let bagReason = '';
+    let bagReason = waived ? 'Bag check passed: EXBG0PC waiver found' : bagBaseReason();
     if (!waived && bagTagCount > allowance) {
-      bagReason = `Bag count ${bagTagCount}, allowance ${allowance} (FBA ${fbaPc} + Extra ${purchasedExtra})`;
+      bagReason = `${bagBaseReason()}; bag count exceeds allowance`;
     }
     const hasMsgPvgOnly = /\bMSG-[^\n\r]*\bPVG\s+ONLY\b/i.test(section);
     const hasCkinPvgOnly = /\bCKIN[^\n\r]*\bPVG\s+ONLY\b/i.test(section);
@@ -765,21 +777,25 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     const hasInbound = /^\s*I\/[^\n\r]*/im.test(section);
     if (hasEdi && hasInbound) {
       bagStatus = 'pass';
-      bagReason = '';
+      bagReason = `${bagBaseReason()}; passed because EDI with inbound is allowed`;
     }
     if (!waived) {
       if ((hasMsgPvgOnly || hasCkinPvgOnly) && allBagsToPvg) {
         bagStatus = 'pass';
-        bagReason = '';
+        bagReason = `${bagBaseReason()}; destination matches PVG ONLY instruction`;
       } else
       if (hasOutbound && bagDestinations.length > 0) {
         const allMatchOutbound = bagDestinations.every((d) => d === outboundDest.toUpperCase());
-        bagStatus = allMatchOutbound ? bagStatus : 'review';
-        if (!allMatchOutbound) bagReason = `Bag destination does not match outbound (${outboundDest})`;
+        bagStatus = allMatchOutbound ? bagStatus : (bagStatus === 'fail' ? 'fail' : 'review');
+        bagReason = allMatchOutbound
+          ? `${bagBaseReason()}; destination matches outbound ${outboundDest}`
+          : `${bagBaseReason()}; bag destination does not match outbound ${outboundDest}`;
       } else if (!hasOutbound && bagDestinations.length > 0) {
         const allToPvg = bagDestinations.every((d) => d === 'PVG');
-        bagStatus = allToPvg ? bagStatus : 'review';
-        if (!allToPvg) bagReason = 'When no outbound exists, bag destination must be PVG';
+        bagStatus = allToPvg ? bagStatus : (bagStatus === 'fail' ? 'fail' : 'review');
+        bagReason = allToPvg
+          ? `${bagBaseReason()}; no outbound found, all bags go to PVG`
+          : `${bagBaseReason()}; no outbound found, bag destination must be PVG`;
       }
     }
 
@@ -799,7 +815,7 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     }
 
     if (hasCkinOkOverride) {
-      return { bn, apiStatus: 'pass', tkStatus: 'pass', visaStatus: 'pass', bagStatus: 'pass', apiReason: '', tkReason: '', visaReason: '', bagReason: '', passportNo, passengerRecord };
+      return { bn, apiStatus: 'pass', tkStatus: 'pass', visaStatus: 'pass', bagStatus: 'pass', apiReason: '', tkReason: '', visaReason: 'CKIN OK override', bagReason, passportNo, passengerRecord };
     }
 
     return { bn, apiStatus, tkStatus, visaStatus, bagStatus, apiReason: apiReasons.join('; '), tkReason, visaReason, bagReason, passportNo, passengerRecord };
