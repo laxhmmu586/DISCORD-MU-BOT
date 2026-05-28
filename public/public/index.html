@@ -626,7 +626,22 @@
     .audit-icon-btn { border:none; background:transparent; color:#8fb8ff; cursor:pointer; font-size:18px; line-height:1; padding:2px 4px; }
     .audit-summary-bar { display:flex; justify-content:space-between; align-items:flex-end; gap:12px; margin-top:8px; }
     .audit-summary-subtitle { color:#94a3b8; font-size:12px; font-weight:600; }
-    .audit-card-grid { margin-top: 14px; display:grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap:12px; max-height: 620px; overflow:auto; padding:2px 4px 8px 2px; }
+    .audit-workspace { margin-top:14px; display:grid; grid-template-columns:minmax(360px, 1.15fr) minmax(280px, .85fr); gap:14px; align-items:start; }
+    .audit-list { max-height:620px; overflow:auto; display:flex; flex-direction:column; gap:7px; padding:2px 4px 8px 2px; }
+    .audit-list-row { width:100%; border:1px solid rgba(148,163,184,.2); border-radius:12px; padding:9px 10px; background:rgba(15,23,42,.86); color:#dbeafe; display:grid; grid-template-columns:64px 96px minmax(120px, 1fr) 132px; gap:10px; align-items:center; cursor:pointer; text-align:left; transition:background .16s ease, border-color .16s ease, transform .16s ease, box-shadow .16s ease; }
+    .audit-list-row:hover, .audit-list-row.is-selected { transform:translateX(2px); border-color:rgba(96,165,250,.7); background:rgba(30,41,59,.96); box-shadow:0 8px 18px rgba(37,99,235,.16); }
+    .audit-list-row.audit-warning { border-color:rgba(251,191,36,.72); background:rgba(69,44,10,.72); }
+    .audit-list-row.audit-fail { border-color:rgba(248,113,113,.78); background:rgba(69,10,10,.75); }
+    .audit-list-row.audit-empty { opacity:.7; }
+    .audit-list-bn { color:#fde047; font-size:17px; font-weight:900; letter-spacing:.4px; }
+    .audit-list-progress-wrap { min-width:0; }
+    .audit-list-progress-label { display:flex; justify-content:space-between; gap:8px; color:#cbd5e1; font-size:11px; font-weight:800; margin-bottom:5px; }
+    .audit-list-statuses { display:grid; grid-template-columns:repeat(4, 1fr); gap:4px; }
+    .audit-detail-panel { position:sticky; top:8px; }
+    .audit-detail-panel .audit-card { cursor:default; }
+    .audit-detail-panel .audit-card:hover { transform:none; }
+    .audit-detail-panel .audit-details { display:block; }
+    .audit-detail-panel .audit-expand-hint { display:none; }
     .audit-card { border:1px solid rgba(148,163,184,.22); border-radius:16px; padding:12px; background:linear-gradient(145deg, rgba(15,23,42,.96), rgba(30,41,59,.88)); box-shadow:0 10px 24px rgba(0,0,0,.22); cursor:pointer; transition:transform .16s ease, border-color .16s ease, box-shadow .16s ease, background .16s ease; }
     .audit-card:hover { transform:translateY(-2px); border-color:rgba(96,165,250,.55); box-shadow:0 14px 30px rgba(37,99,235,.2); }
     .audit-card.is-expanded { border-color:rgba(96,165,250,.75); }
@@ -643,8 +658,8 @@
     .audit-overall-pill.empty { color:#cbd5e1; background:rgba(100,116,139,.16); }
     .audit-overall-label { color:#cbd5e1; font-size:12px; font-weight:700; margin-top:10px; display:flex; justify-content:space-between; gap:8px; }
     .audit-completion-text { color:#22c55e; font-weight:900; }
-    .audit-progress { height:10px; border-radius:999px; background:rgba(15,23,42,.9); overflow:hidden; margin-top:7px; border:1px solid rgba(148,163,184,.18); box-shadow: inset 0 1px 5px rgba(0,0,0,.35); }
-    .audit-progress-fill { height:100%; width:0; border-radius:999px; background:linear-gradient(90deg, #16a34a, #22c55e, #86efac); box-shadow:0 0 12px rgba(34,197,94,.55); transition:width .24s ease; }
+    .audit-progress { display:block; height:10px; border-radius:999px; background:rgba(15,23,42,.9); overflow:hidden; margin-top:7px; border:1px solid rgba(148,163,184,.18); box-shadow: inset 0 1px 5px rgba(0,0,0,.35); }
+    .audit-progress-fill { display:block; height:100%; width:0; border-radius:999px; background:linear-gradient(90deg, #16a34a, #22c55e, #86efac); box-shadow:0 0 12px rgba(34,197,94,.55); transition:width .24s ease; }
     .audit-mini-statuses { display:grid; grid-template-columns:repeat(4, 1fr); gap:6px; margin-top:10px; }
     .audit-mini-status { border-radius:10px; padding:5px 4px; text-align:center; font-size:11px; font-weight:800; color:#cbd5e1; background:rgba(148,163,184,.1); }
     .audit-mini-status.pass { color:#bbf7d0; background:rgba(34,197,94,.14); }
@@ -675,7 +690,11 @@
       pointer-events: none;
     }
     @media (max-width: 768px) {
-      .audit-card-grid { grid-template-columns:1fr; max-height:none; overflow:visible; }
+      .audit-workspace { grid-template-columns:1fr; }
+      .audit-list { max-height:520px; }
+      .audit-list-row { grid-template-columns:58px 86px 1fr; }
+      .audit-list-statuses { grid-column:1 / -1; }
+      .audit-detail-panel { position:static; }
       .audit-summary-bar { align-items:flex-start; flex-direction:column; }
     }
 
@@ -1326,11 +1345,14 @@
       const passed = items.filter((item) => item.status === 'pass').length;
       return Math.round((passed / items.length) * 100);
     }
-    function buildAuditCard(bn, row) {
+    function auditOverallLabel(overall) {
+      return overall === 'empty' ? 'Pending' : statusText(overall === 'warning' ? 'review' : overall);
+    }
+    function buildAuditCard(bn, row, expanded = false) {
       const items = auditItemsForRow(row);
       const overall = overallAuditStatus(items);
       const completion = auditCompletionPercent(items);
-      const overallLabel = overall === 'empty' ? 'Pending' : statusText(overall === 'warning' ? 'review' : overall);
+      const overallLabel = auditOverallLabel(overall);
       const itemBadges = items.map((item) => `<div class="audit-mini-status ${statusClass(item.status)}">${escapeHtmlText(item.label)} ${emojiByStatus(item.status)}</div>`).join('');
       const details = items.map((item) => {
         const reason = item.reason || (item.status === 'pass' ? 'OK' : 'No data yet');
@@ -1341,7 +1363,7 @@
           <span class="audit-detail-reason${reasonClass}">${escapeHtmlText(reason)}</span>
         </div>`;
       }).join('');
-      return `<div class="audit-card audit-${overall}" data-bn="${escapeAttr(bn)}" role="button" tabindex="0" aria-expanded="false">
+      return `<div class="audit-card audit-${overall}${expanded ? ' is-expanded' : ''}" data-bn="${escapeAttr(bn)}" role="button" tabindex="0" aria-expanded="${expanded ? 'true' : 'false'}">
         <div class="audit-card-top">
           <div class="audit-bn">BN${escapeHtmlText(bn)}</div>
           <div class="audit-overall-pill ${overall}">${escapeHtmlText(overallLabel)}</div>
@@ -1352,6 +1374,22 @@
         <div class="audit-details">${details}</div>
         <div class="audit-expand-hint">Click to expand details</div>
       </div>`;
+    }
+    function buildAuditListRow(bn, row, selected = false) {
+      const items = auditItemsForRow(row);
+      const overall = overallAuditStatus(items);
+      const completion = auditCompletionPercent(items);
+      const overallLabel = auditOverallLabel(overall);
+      const itemBadges = items.map((item) => `<div class="audit-mini-status ${statusClass(item.status)}">${escapeHtmlText(item.label)} ${emojiByStatus(item.status)}</div>`).join('');
+      return `<button type="button" class="audit-list-row audit-${overall}${selected ? ' is-selected' : ''}" data-bn="${escapeAttr(bn)}" aria-pressed="${selected ? 'true' : 'false'}">
+        <span class="audit-list-bn">BN${escapeHtmlText(bn)}</span>
+        <span class="audit-overall-pill ${overall}">${escapeHtmlText(overallLabel)}</span>
+        <span class="audit-list-progress-wrap">
+          <span class="audit-list-progress-label"><span>Completion</span><span class="audit-completion-text">${completion}%</span></span>
+          <span class="audit-progress"><span class="audit-progress-fill" style="width:${completion}%"></span></span>
+        </span>
+        <span class="audit-list-statuses">${itemBadges}</span>
+      </button>`;
     }
     function ensureStatusReasonPop() {
       let el = document.getElementById('statusReasonPop');
@@ -1382,10 +1420,12 @@
     document.addEventListener('click', hideStatusReason);
     function showBnAuditPage() {
       const byBn = new Map((currentBnAudit || []).map((x) => [x.bn, x]));
-      const cards = [];
+      const auditRows = [];
       let warningCount = 0;
       let failCount = 0;
       let completeCount = 0;
+      let firstFailBn = '';
+      let firstWarningBn = '';
       for (let i = 1; i <= 320; i += 1) {
         const bn = String(i).padStart(3, '0');
         const row = byBn.get(bn);
@@ -1394,27 +1434,35 @@
         if (overall === 'warning') warningCount += 1;
         if (overall === 'fail') failCount += 1;
         if (overall === 'pass') completeCount += 1;
-        cards.push(buildAuditCard(bn, row));
+        if (!firstFailBn && overall === 'fail') firstFailBn = bn;
+        if (!firstWarningBn && overall === 'warning') firstWarningBn = bn;
+        auditRows.push({ bn, row, overall });
       }
+      const selectedBn = firstFailBn || firstWarningBn || auditRows.find((item) => item.overall === 'pass')?.bn || '001';
+      const listRows = auditRows.map((item) => buildAuditListRow(item.bn, item.row, item.bn === selectedBn));
+      const selectedRow = byBn.get(selectedBn);
       document.getElementById('syAuditContent').innerHTML = `<div class="audit-summary-bar">
           <div>
             <div class="detail-title" style="text-align:left; font-size:18px; font-weight:900; letter-spacing:.4px;">Security Check</div>
             <div class="audit-summary-subtitle">${completeCount} complete • ${warningCount} warning • ${failCount} fail</div>
           </div>
-          <div class="audit-completion-text">Completion is shown in green</div>
+          <div class="audit-completion-text">Click a BN in the list to open its card</div>
         </div>
-        <div class="audit-card-grid">${cards.join('')}</div>`;
+        <div class="audit-workspace">
+          <div class="audit-list">${listRows.join('')}</div>
+          <div class="audit-detail-panel">${buildAuditCard(selectedBn, selectedRow, true)}</div>
+        </div>`;
       const content = document.getElementById('syAuditContent');
-      content.querySelectorAll('.audit-card').forEach((card) => {
-        const toggleCard = () => {
-          const expanded = card.classList.toggle('is-expanded');
-          card.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-        };
-        card.addEventListener('click', toggleCard);
-        card.addEventListener('keydown', (e) => {
-          if (e.key !== 'Enter' && e.key !== ' ') return;
-          e.preventDefault();
-          toggleCard();
+      const detailPanel = content.querySelector('.audit-detail-panel');
+      content.querySelectorAll('.audit-list-row').forEach((listRow) => {
+        listRow.addEventListener('click', () => {
+          const bn = listRow.dataset.bn || '001';
+          content.querySelectorAll('.audit-list-row').forEach((el) => {
+            const isSelected = el === listRow;
+            el.classList.toggle('is-selected', isSelected);
+            el.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+          });
+          detailPanel.innerHTML = buildAuditCard(bn, byBn.get(bn), true);
         });
       });
       setDisplayById('syLayout', 'none');
