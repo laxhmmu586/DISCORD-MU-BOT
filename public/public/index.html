@@ -1321,7 +1321,7 @@
       setDisplayById('govAqqSection', 'none');
       setDisplayById('wchSection', 'none');
       setTextById('chdToggleBtn', chdPanelOpen ? 'Hide' : 'CHD List');
-      setTextById('govAqqToggleBtn', currentGovAqqStatus === 'risk' ? 'GOV/AQQ 🔴' : (currentGovAqqStatus === 'review' ? 'GOV/AQQ 🟡' : 'GOV/AQQ'));
+      setTextById('govAqqToggleBtn', 'GOV/AQQ');
       setTextById('wchToggleBtn', 'WCH');
     }
 
@@ -1335,7 +1335,7 @@
       setDisplayById('govAqqSection', govAqqPanelOpen ? 'block' : 'none');
       setDisplayById('chdSection', 'none');
       setDisplayById('wchSection', 'none');
-      setTextById('govAqqToggleBtn', govAqqPanelOpen ? 'Hide' : (currentGovAqqStatus === 'risk' ? 'GOV/AQQ 🔴' : (currentGovAqqStatus === 'review' ? 'GOV/AQQ 🟡' : 'GOV/AQQ')));
+      setTextById('govAqqToggleBtn', govAqqPanelOpen ? 'Hide' : 'GOV/AQQ');
       setTextById('chdToggleBtn', 'CHD List');
       setTextById('wchToggleBtn', 'WCH');
     }
@@ -1815,7 +1815,7 @@
           const govStatus = hasCoreRisk ? 'risk' : (hasReviewOnly ? 'review' : 'ok');
           currentGovAqqStatus = govStatus;
           updateGovAqqToggleAppearance(govStatus);
-          setTextById('govAqqToggleBtn', govStatus === 'risk' ? 'GOV/AQQ 🔴' : (govStatus === 'review' ? 'GOV/AQQ 🟡' : 'GOV/AQQ'));
+          setTextById('govAqqToggleBtn', 'GOV/AQQ');
 
           setGovAqqStats([
             { label: 'Duplicate Passport', value: duplicatePassports.length, level: 'risk' },
