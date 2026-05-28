@@ -404,6 +404,62 @@ function enrichGovAqqFromLog(log, syInfo, targetYmd = null) {
   };
 }
 
+function enrichWchListFromLog(log, syInfo, targetYmd = null) {
+  if (!log || !syInfo?.flightNo || !syInfo?.flightDate) return [];
+  const sections = splitLogicalSections(log);
+  const latestByBn = new Map();
+  const wchCodeRegex = /\b(WCHR|WCHS|WCHC)\b/ig;
+
+  for (const sectionObj of sections) {
+    const section = sectionObj.content || '';
+    if (!section.includes('PR:')) continue;
+    if (targetYmd) {
+      const sectionYmd = getYmdFromTimestamp(sectionObj.timestamp);
+      if (sectionYmd && sectionYmd !== targetYmd) continue;
+    }
+    const prMatch = section.match(/PR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
+    if (!prMatch) continue;
+    if (prMatch[1].toUpperCase() !== syInfo.flightNo || prMatch[2].toUpperCase() !== syInfo.flightDate) continue;
+
+    const bnMatch = section.match(/\bBN(\d{1,3})\b/i);
+    if (!bnMatch) continue;
+    const bn = bnMatch[1].padStart(3, '0');
+    const nameMatch = section.match(/\n\s*\d+\.\s*([A-Z]+\/[A-Z]+)/i);
+    const paxLineMatch = section.match(/\n\s*\d+\.\s*[^\n\r]*/i);
+    const paxLine = paxLineMatch?.[0] || '';
+    const seatFromPaxLine =
+      paxLine.match(/\bBN\d{1,3}\b[^\n\r]*\*(\d+[A-Z])\b/i)?.[1] ||
+      paxLine.match(/\bBN\d{1,3}\b[^\n\r]*\s(\d+[A-Z])\b/i)?.[1] ||
+      '';
+    const seatFromSection =
+      section.match(/\bBN\d{1,3}\b[^\n\r]*\*(\d+[A-Z])\b/i)?.[1] ||
+      section.match(/\bBN\d{1,3}\b[^\n\r]*\s(\d+[A-Z])\b/i)?.[1] ||
+      '';
+    const seat = (seatFromPaxLine || seatFromSection || '').toUpperCase();
+    const sectionWithoutPsm = section
+      .split(/\r?\n/)
+      .filter((line) => !/^\s*PSM\b/i.test(line))
+      .join('\n');
+    const codes = [...sectionWithoutPsm.matchAll(wchCodeRegex)].map((m) => m[1].toUpperCase());
+    if (!codes.length) continue;
+    const uniqueCodes = [...new Set(codes)];
+    const ts = parseSectionTimestamp(sectionObj.timestamp);
+    const prev = latestByBn.get(bn);
+    if (prev && prev.ts > ts) continue;
+    latestByBn.set(bn, {
+      bn,
+      name: nameMatch?.[1] || '-',
+      seat: seat || '-',
+      codes: uniqueCodes,
+      ts
+    });
+  }
+
+  return [...latestByBn.values()]
+    .sort((a, b) => Number(a.bn) - Number(b.bn))
+    .map(({ bn, name, seat, codes }) => ({ bn, name, seat, codes }));
+}
+
 function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
   if (!log || !syInfo?.flightNo || !syInfo?.flightDate) return [];
   const sections = splitLogicalSections(log);
@@ -454,7 +510,7 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     'JHG', 'LHW', 'XNN', 'INC', 'URC', 'KRL', 'AAT', 'KHG', 'HTN', 'TCG'
   ]);
 
-  return [...latestByBn.entries()].sort((a, b) => Number(a[0]) - Number(b[0])).map(([bn, payload]) => {
+  const auditRows = [...latestByBn.entries()].sort((a, b) => Number(a[0]) - Number(b[0])).map(([bn, payload]) => {
     const section = payload.section || '';
     const hasCkinOkOverride = /^\s*CKIN\s+OK\s*$/im.test(section);
     const outboundLine = section.match(/^\s*O\/[^\n\r]*/im)?.[0] || '';
@@ -463,14 +519,27 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     const hasTimeOut = /\bAQQ\/TCL\/USA\b/i.test(section);
     const hasGovFail = /\bGOV\/DTA\/CHN\b/i.test(section);
     const hasReview = /\bWEB\/EDI\/RESWIPE\b/i.test(section);
-    const apiStatus = hasTimeOut || hasGovFail ? 'fail' : (hasReview ? 'review' : 'pass');
-    const apiReason = hasTimeOut ? 'USA TIME OUT'
-      : hasGovFail ? 'CHN GOV FAIL'
-      : hasReview ? 'WEB/EDI/Reswipe'
-      : '';
+    const latestApiAgent = extractLatestApiAgent(section);
+    const apiNotWhitelisted = Boolean(latestApiAgent) && !APPROVED_AGENT_CODES.has(latestApiAgent);
+    const countryCodes = extractPassportCountryCodes(section);
+    const countryCodeCountZero = countryCodes.length === 0;
     const passportRawLine = (section.match(/PASSPORT\s*:\s*([^\n\r]+)/i)?.[1] || '').trim().toUpperCase();
+    const passportNo = section.match(/PASSPORT\s*:\s*([A-Z0-9]+)/i)?.[1]?.toUpperCase() || '';
+    const expField = passportRawLine.split('/').map((x) => x.trim()).find((part) => /^\d{6}$/.test(part)) || '';
+    const now = new Date();
+    const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+    let isPassportExpired = false;
+    if (expField) {
+      const yy = Number(expField.slice(0, 2));
+      const mm = Number(expField.slice(2, 4));
+      const dd = Number(expField.slice(4, 6));
+      if (mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31) {
+        isPassportExpired = Date.UTC(2000 + yy, mm - 1, dd) < todayUtc;
+      }
+    }
     const passportNat = passportRawLine.match(/\/NAT\/([A-Z]{3})\//i)?.[1]?.toUpperCase() || '';
-    const ckinLines = section.split(/\r?\n/).filter((line) => /^CKIN\b/i.test(line)).join(' ').toUpperCase();
+    const ckinLineList = section.split(/\r?\n/).filter((line) => /^\s*CKIN\b/i.test(line)).map((line) => line.trim());
+    const ckinLines = ckinLineList.join(' ').toUpperCase();
     const hasVisaKeyword = /\b(VISA|VS|TRAVEL\s*DOC(?:UMENT)?|TRAVELDOC(?:UMENT)?|V|PR CARD)\b/.test(ckinLines);
     const hasVisaExpHint = /\b(EXP|DT|TIL|240|APPLY)\b/.test(ckinLines);
     const hasDateLike = /\b(\d{4}|[0-3]?\d\s*[A-Z]{3}\s*\d{2,4}|\d{1,2}[A-Z]{3}\d{2,4}|[A-Z]{3,9}\s*\d{4})\b/.test(ckinLines);
@@ -481,6 +550,7 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     const toChinaDomestic = chinaDomesticAirports.has(visaDest);
     let visaStatus = 'review';
     let visaReason = 'Not yet implemented';
+    const ckinBestLine = ckinLineList.find((line) => /\b(VISA|VS|TRAVEL\s*DOC|TRAVELDOC|PR CARD|TBZ|PINK CARD|240|EXP|DT|TIL|APPLY)\b/i.test(line)) || ckinLineList[0] || '';
     if (toChinaDomestic) {
       if (passportNat === 'CHN') {
         visaStatus = 'pass';
@@ -490,7 +560,9 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
           visaStatus = 'pass';
           visaReason = '';
         } else {
-          visaReason = 'USA passport to China requires CKIN visa info (e.g. VISA/VS/TRAVEL DOC/PR CARD with date or EXP/DT/TIL/240/APPLY, or TBZ/PINK CARD)';
+          visaReason = ckinBestLine
+            ? `Need review: USA passport to ${visaDest}; CKIN: ${ckinBestLine}`
+            : `Need review: USA passport to ${visaDest}; CKIN not found`;
         }
       } else if (passportNat === 'CAN' || passportNat === 'RUS' || passportNat === 'ESP') {
         visaStatus = 'pass';
@@ -499,8 +571,14 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
         visaStatus = 'pass';
         visaReason = '';
       } else {
-        visaReason = 'Nationality rule not yet implemented';
+        visaReason = ckinBestLine
+          ? `Rule not implemented: passport ${passportNat || 'UNK'} to ${visaDest}; CKIN: ${ckinBestLine}`
+          : `Rule not implemented: passport ${passportNat || 'UNK'} to ${visaDest}`;
       }
+    } else {
+      visaReason = ckinBestLine
+        ? `Rule not implemented: passport ${passportNat || 'UNK'} to ${visaDest}; CKIN: ${ckinBestLine}`
+        : `Rule not implemented: passport ${passportNat || 'UNK'} to ${visaDest}`;
     }
 
     const hasInfFlag = /\bINF1\/0\b/i.test(section);
@@ -569,12 +647,47 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
       }
     }
 
-    if (hasCkinOkOverride) {
-      return { bn, apiStatus: 'pass', tkStatus: 'pass', visaStatus: 'pass', bagStatus: 'pass', apiReason: '', tkReason: '', visaReason: '', bagReason: '' };
+    let apiStatus = 'pass';
+    const apiReasons = [];
+    if (hasTimeOut) { apiStatus = 'fail'; apiReasons.push('USA TIME OUT'); }
+    if (hasGovFail) { apiStatus = 'fail'; apiReasons.push('CHN GOV FAIL'); }
+    if (isPassportExpired) { apiStatus = 'fail'; apiReasons.push(`Passport expired: ${expField}`); }
+    if (hasReview && apiStatus !== 'fail') { apiStatus = 'review'; apiReasons.push('WEB/EDI/Reswipe'); }
+    if (apiNotWhitelisted && apiStatus !== 'fail') {
+      apiStatus = 'review';
+      apiReasons.push(`latest API AGT${latestApiAgent} not in whitelist`);
+    }
+    if (countryCodeCountZero && apiStatus !== 'fail') {
+      apiStatus = 'review';
+      apiReasons.push('country code count is 0, expected 3');
     }
 
-    return { bn, apiStatus, tkStatus, visaStatus, bagStatus, apiReason, tkReason, visaReason, bagReason };
+    if (hasCkinOkOverride) {
+      return { bn, apiStatus: 'pass', tkStatus: 'pass', visaStatus: 'pass', bagStatus: 'pass', apiReason: '', tkReason: '', visaReason: '', bagReason: '', passportNo };
+    }
+
+    return { bn, apiStatus, tkStatus, visaStatus, bagStatus, apiReason: apiReasons.join('; '), tkReason, visaReason, bagReason, passportNo };
   });
+
+  const passportBnMap = new Map();
+  auditRows.forEach((row) => {
+    if (!row.passportNo) return;
+    const arr = passportBnMap.get(row.passportNo) || [];
+    arr.push(row.bn);
+    passportBnMap.set(row.passportNo, arr);
+  });
+  auditRows.forEach((row) => {
+    const dupList = row.passportNo ? (passportBnMap.get(row.passportNo) || []) : [];
+    if (dupList.length > 1 && row.apiStatus !== 'fail') {
+      row.apiStatus = 'review';
+      row.apiReason = row.apiReason ? `${row.apiReason}; Duplicate Passport (${dupList.join(',')})` : `Duplicate Passport (${dupList.join(',')})`;
+    }
+    if (!row.apiReason && row.apiStatus === 'review') {
+      row.apiReason = 'Need review';
+    }
+  });
+
+  return auditRows.map(({ passportNo, ...rest }) => rest);
 }
 
 function findSYInfo(log, queryDate, options = {}) {
@@ -594,6 +707,7 @@ function findSYInfo(log, queryDate, options = {}) {
       const targetYmd = getYmdFromTimestamp(matched[0].section.timestamp);
       info.chdList = enrichCHDListFromLog(log, info, targetYmd);
       info.govAqq = enrichGovAqqFromLog(log, info, targetYmd);
+      info.wchList = enrichWchListFromLog(log, info, targetYmd);
       info.bnAudit = enrichBnAuditFromLog(log, info, targetYmd);
       return info;
     }
@@ -637,6 +751,7 @@ function findSYInfo(log, queryDate, options = {}) {
     const targetYmd = getYmdFromTimestamp(todayMatches[0].section.timestamp);
     info.chdList = enrichCHDListFromLog(log, info, targetYmd);
     info.govAqq = enrichGovAqqFromLog(log, info, targetYmd);
+    info.wchList = enrichWchListFromLog(log, info, targetYmd);
     info.bnAudit = enrichBnAuditFromLog(log, info, targetYmd);
     return info;
   }
