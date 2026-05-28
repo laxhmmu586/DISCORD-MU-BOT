@@ -647,9 +647,9 @@
     .audit-summary-bar { display:flex; justify-content:space-between; align-items:flex-end; gap:12px; margin-top:8px; }
     .audit-summary-subtitle { color:#94a3b8; font-size:12px; font-weight:600; }
     .audit-workspace { margin-top:14px; display:grid; grid-template-columns:minmax(360px, 380px) minmax(340px, 360px); gap:14px; align-items:start; overflow:visible; padding-bottom:4px; }
-    .audit-workspace.no-detail { grid-template-columns:1fr; }
+    .audit-workspace.no-detail { grid-template-columns:minmax(360px, 380px) minmax(340px, 360px); }
     .govaqq-workspace { grid-template-columns:minmax(360px, 380px) minmax(340px, 360px); }
-    .govaqq-workspace.no-detail { grid-template-columns:1fr; }
+    .govaqq-workspace.no-detail { grid-template-columns:minmax(360px, 380px) minmax(340px, 360px); }
     .audit-list { display:grid; grid-template-columns:repeat(4, minmax(78px, 1fr)); grid-template-rows:repeat(100, auto); grid-auto-flow:column; gap:5px; max-height:620px; overflow:auto; padding:2px 4px 8px 2px; align-content:start; }
     .audit-list-row { width:100%; min-width:0; border:1px solid rgba(148,163,184,.2); border-radius:10px; padding:5px 7px; background:rgba(15,23,42,.86); color:#dbeafe; display:flex; align-items:center; justify-content:center; cursor:pointer; text-align:center; overflow:hidden; transition:background .16s ease, border-color .16s ease, transform .16s ease, box-shadow .16s ease; }
     .audit-list-row:hover, .audit-list-row.is-selected { transform:translateY(-1px); border-color:rgba(96,165,250,.7); box-shadow:0 8px 18px rgba(37,99,235,.16); }
