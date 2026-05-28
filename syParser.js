@@ -404,6 +404,62 @@ function enrichGovAqqFromLog(log, syInfo, targetYmd = null) {
   };
 }
 
+function enrichWchListFromLog(log, syInfo, targetYmd = null) {
+  if (!log || !syInfo?.flightNo || !syInfo?.flightDate) return [];
+  const sections = splitLogicalSections(log);
+  const latestByBn = new Map();
+  const wchCodeRegex = /\b(WCHR|WCHS|WCHC)\b/ig;
+
+  for (const sectionObj of sections) {
+    const section = sectionObj.content || '';
+    if (!section.includes('PR:')) continue;
+    if (targetYmd) {
+      const sectionYmd = getYmdFromTimestamp(sectionObj.timestamp);
+      if (sectionYmd && sectionYmd !== targetYmd) continue;
+    }
+    const prMatch = section.match(/PR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
+    if (!prMatch) continue;
+    if (prMatch[1].toUpperCase() !== syInfo.flightNo || prMatch[2].toUpperCase() !== syInfo.flightDate) continue;
+
+    const bnMatch = section.match(/\bBN(\d{1,3})\b/i);
+    if (!bnMatch) continue;
+    const bn = bnMatch[1].padStart(3, '0');
+    const nameMatch = section.match(/\n\s*\d+\.\s*([A-Z]+\/[A-Z]+)/i);
+    const paxLineMatch = section.match(/\n\s*\d+\.\s*[^\n\r]*/i);
+    const paxLine = paxLineMatch?.[0] || '';
+    const seatFromPaxLine =
+      paxLine.match(/\bBN\d{1,3}\b[^\n\r]*\*(\d+[A-Z])\b/i)?.[1] ||
+      paxLine.match(/\bBN\d{1,3}\b[^\n\r]*\s(\d+[A-Z])\b/i)?.[1] ||
+      '';
+    const seatFromSection =
+      section.match(/\bBN\d{1,3}\b[^\n\r]*\*(\d+[A-Z])\b/i)?.[1] ||
+      section.match(/\bBN\d{1,3}\b[^\n\r]*\s(\d+[A-Z])\b/i)?.[1] ||
+      '';
+    const seat = (seatFromPaxLine || seatFromSection || '').toUpperCase();
+    const sectionWithoutPsm = section
+      .split(/\r?\n/)
+      .filter((line) => !/^\s*PSM\b/i.test(line))
+      .join('\n');
+    const codes = [...sectionWithoutPsm.matchAll(wchCodeRegex)].map((m) => m[1].toUpperCase());
+    if (!codes.length) continue;
+    const uniqueCodes = [...new Set(codes)];
+    const ts = parseSectionTimestamp(sectionObj.timestamp);
+    const prev = latestByBn.get(bn);
+    if (prev && prev.ts > ts) continue;
+    latestByBn.set(bn, {
+      bn,
+      name: nameMatch?.[1] || '-',
+      seat: seat || '-',
+      codes: uniqueCodes,
+      ts
+    });
+  }
+
+  return [...latestByBn.values()]
+    .sort((a, b) => Number(a.bn) - Number(b.bn))
+    .map(({ bn, name, seat, codes }) => ({ bn, name, seat, codes }));
+}
+
 function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
   if (!log || !syInfo?.flightNo || !syInfo?.flightDate) return [];
   const sections = splitLogicalSections(log);
@@ -594,6 +650,7 @@ function findSYInfo(log, queryDate, options = {}) {
       const targetYmd = getYmdFromTimestamp(matched[0].section.timestamp);
       info.chdList = enrichCHDListFromLog(log, info, targetYmd);
       info.govAqq = enrichGovAqqFromLog(log, info, targetYmd);
+      info.wchList = enrichWchListFromLog(log, info, targetYmd);
       info.bnAudit = enrichBnAuditFromLog(log, info, targetYmd);
       return info;
     }
@@ -637,6 +694,7 @@ function findSYInfo(log, queryDate, options = {}) {
     const targetYmd = getYmdFromTimestamp(todayMatches[0].section.timestamp);
     info.chdList = enrichCHDListFromLog(log, info, targetYmd);
     info.govAqq = enrichGovAqqFromLog(log, info, targetYmd);
+    info.wchList = enrichWchListFromLog(log, info, targetYmd);
     info.bnAudit = enrichBnAuditFromLog(log, info, targetYmd);
     return info;
   }

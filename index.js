@@ -32,7 +32,9 @@ const {
 
   getFlightLogByDate,
   get240InfoByBnAndFlightDate,
-  getSyBagInfoByDate
+  getSyBagInfoByDate,
+  getSalesReportMeta,
+  downloadSalesReportByFlight
 
 } = require('./googleDrive');
 
@@ -337,6 +339,43 @@ client.once(
 // ===============================
 // Search API
 // ===============================
+app.get(
+  '/sales-report/meta',
+  async (req, res) => {
+    try {
+      const flightNo = String(req.query.flightNo || '').toUpperCase();
+      const flightDate = String(req.query.flightDate || '').toUpperCase();
+      if (!flightNo || !flightDate) {
+        return res.status(400).json({ error: 'Missing flightNo or flightDate' });
+      }
+      const meta = await getSalesReportMeta(flightNo, flightDate);
+      return res.json(meta);
+    } catch (err) {
+      return res.status(500).json({ error: err?.message || 'Sales report lookup failed' });
+    }
+  }
+);
+
+app.get(
+  '/sales-report/download',
+  async (req, res) => {
+    try {
+      const flightNo = String(req.query.flightNo || '').toUpperCase();
+      const flightDate = String(req.query.flightDate || '').toUpperCase();
+      if (!flightNo || !flightDate) {
+        return res.status(400).json({ error: 'Missing flightNo or flightDate' });
+      }
+      const result = await downloadSalesReportByFlight(flightNo, flightDate);
+      if (!result) return res.status(404).json({ error: 'Sales report not found' });
+      res.setHeader('Content-Type', 'application/vnd.ms-excel');
+      res.setHeader('Content-Disposition', `attachment; filename="${result.fileName}"`);
+      return res.send(Buffer.from(result.content));
+    } catch (err) {
+      return res.status(500).json({ error: err?.message || 'Sales report download failed' });
+    }
+  }
+);
+
 app.get(
 
   '/search',
