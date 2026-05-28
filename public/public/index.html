@@ -360,7 +360,7 @@
     #govAqqList.chd-list { border:none; border-radius:0; padding:0; background:transparent; box-shadow:none; }
     .govaqq-issue-groups { display:flex; flex-direction:column; gap:10px; min-width:0; }
     .govaqq-issue-group { width:100%; box-sizing:border-box; border:1px solid rgba(148,163,184,.18); border-radius:12px; padding:8px; background:rgba(15,23,42,.55); }
-    .govaqq-issue-title { color:#93c5fd; font-size:12px; font-weight:900; margin-bottom:7px; display:flex; justify-content:space-between; gap:8px; }
+    .govaqq-issue-title { color:#93c5fd; font-size:15px; font-weight:900; margin-bottom:10px; display:flex; justify-content:space-between; gap:8px; }
     .govaqq-issue-grid { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:6px; }
     .govaqq-issue-detail { display:none; flex-direction:column; gap:10px; }
 
@@ -608,6 +608,7 @@
       width: 100%;
       overflow-x: hidden;
     }
+    #chdList.uniform-list, #wchList.uniform-list { overflow: visible; }
     .uniform-row {
       display: grid;
       width: 100%;
@@ -656,9 +657,11 @@
     .audit-list-row.audit-pass { border-color:rgba(34,197,94,.75); background:rgba(20,83,45,.82); }
     .audit-list-row.audit-warning { border-color:rgba(251,191,36,.85); background:rgba(69,44,10,.86); }
     .audit-list-row.audit-fail { border-color:rgba(248,113,113,.9); background:rgba(69,10,10,.86); }
+    .audit-list-row.audit-wch { border-color:rgba(125,211,252,.85); background:rgba(14,116,144,.24); }
+    .audit-list-row.audit-wch .audit-list-bn { color:#7dd3fc; }
     .audit-list-row.audit-empty { opacity:.7; }
     .audit-list-row.audit-empty .audit-list-bn { color:#94a3b8; }
-    .audit-list-bn { color:#fde047; font-size:13px; font-weight:900; letter-spacing:.2px; white-space:nowrap; }
+    .audit-list-bn { color:#fde047; font-size:16px; font-weight:900; letter-spacing:.2px; white-space:nowrap; }
     .audit-detail-panel { position:sticky; top:8px; display:flex; flex-direction:column; gap:10px; min-width:0; }
     .audit-detail-panel .audit-card { cursor:default; }
     .audit-detail-panel .audit-card:hover { transform:none; }
@@ -1795,6 +1798,51 @@
         </div>`;
       }).join('');
     }
+    function buildPassengerOnlyWorkspace(data, options = {}) {
+      const rows = Array.isArray(data) ? data : [];
+      const buttons = rows.map((p) => {
+        const bn = String(p?.bn || '').replace(/\D/g, '').padStart(3, '0');
+        if (!/^\d{3}$/.test(bn)) return '';
+        const statusClassName = typeof options.statusClass === 'function' ? options.statusClass(p) : (options.statusClass || 'warning');
+        const title = typeof options.title === 'function' ? options.title(p) : '';
+        return `<button type="button" class="audit-list-row audit-${escapeAttr(statusClassName)}" data-bn="${escapeAttr(bn)}" aria-pressed="false"${title ? ` title="${escapeAttr(title)}"` : ''}>
+          <span class="audit-list-bn">${escapeHtmlText(bn)}</span>
+        </button>`;
+      }).join('');
+      return `<div class="audit-workspace no-detail">
+        <div class="audit-list">${buttons}</div>
+        <div class="audit-detail-panel" style="display:none;"></div>
+      </div>`;
+    }
+
+    function wirePassengerOnlyWorkspace(el) {
+      if (!el) return;
+      const byBn = new Map((currentBnAudit || []).map((x) => [x.bn, x]));
+      const workspace = el.querySelector('.audit-workspace');
+      const detailPanel = el.querySelector('.audit-detail-panel');
+      el.querySelectorAll('.audit-list-row').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const wasSelected = btn.classList.contains('is-selected');
+          const bn = btn.dataset.bn || '001';
+          el.querySelectorAll('.audit-list-row').forEach((item) => {
+            item.classList.remove('is-selected');
+            item.setAttribute('aria-pressed', 'false');
+          });
+          if (wasSelected) {
+            detailPanel.style.display = 'none';
+            detailPanel.innerHTML = '';
+            if (workspace) workspace.classList.add('no-detail');
+            return;
+          }
+          btn.classList.add('is-selected');
+          btn.setAttribute('aria-pressed', 'true');
+          detailPanel.innerHTML = buildAuditPassengerCard(bn, byBn.get(bn));
+          detailPanel.style.display = 'flex';
+          if (workspace) workspace.classList.remove('no-detail');
+        });
+      });
+    }
+
     function renderWchPanel(el, rows) {
       if (!el) return;
       const data = Array.isArray(rows) ? rows : [];
@@ -1802,21 +1850,11 @@
         el.innerHTML = '<div class="membership-empty">No WCHR/WCHS/WCHC found.</div>';
         return;
       }
-      el.innerHTML = data.map((p) => `
-        <div class="uniform-row wch">
-          <span class="uniform-bn">BN${escapeHtmlText(p.bn || '---')}</span>
-          <span class="uniform-name">${escapeHtmlText(p.name || '-')}</span>
-          <span class="uniform-seat">${escapeHtmlText(p.seat || '-')}</span>
-          <span class="uniform-codes">${Array.isArray(p.codes)
-            ? p.codes.map((code) => {
-                const safe = escapeHtmlText(code || '');
-                return String(code || '').toUpperCase() === 'WCHC'
-                  ? `<span class="wchc-code">${safe}</span>`
-                  : safe;
-              }).join('/')
-            : 'WCH'}</span>
-        </div>
-      `).join('');
+      el.innerHTML = buildPassengerOnlyWorkspace(data, {
+        statusClass: 'wch',
+        title: (p) => Array.isArray(p.codes) ? p.codes.join('/') : 'WCH'
+      });
+      wirePassengerOnlyWorkspace(el);
     }
     function renderChdPanel(el, rows) {
       if (!el) return;
@@ -1825,14 +1863,11 @@
         el.innerHTML = '<div class="membership-empty">No CHD passenger found by DOB rule (age 2-11).</div>';
         return;
       }
-      el.innerHTML = data.map((p) => `
-        <div class="uniform-row chd">
-          <span class="uniform-bn">BN${escapeHtmlText(p.bn || '---')}</span>
-          <span class="uniform-name">${escapeHtmlText(formatChdName(p.name || '-'))}</span>
-          <span class="uniform-extra">${escapeHtmlText(p.dob || '-')}</span>
-          <span class="uniform-status">${p.hasChdCode ? 'CHD1/0 ✅' : 'CHD1/0 ❌'}</span>
-        </div>
-      `).join('');
+      el.innerHTML = buildPassengerOnlyWorkspace(data, {
+        statusClass: (p) => p.hasChdCode ? 'pass' : 'fail',
+        title: (p) => p.hasChdCode ? 'CHD1/0 ✅' : 'CHD1/0 ❌'
+      });
+      wirePassengerOnlyWorkspace(el);
     }
 
     function setGovAqqStats(stats) {
