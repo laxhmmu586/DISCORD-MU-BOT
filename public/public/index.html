@@ -562,6 +562,20 @@
       text-overflow: ellipsis;
       white-space: nowrap;
     }
+    @media (max-width: 768px) {
+      .membership-row {
+        grid-template-columns: 56px minmax(90px, 1fr) 40px 24px;
+        gap: 6px;
+      }
+      .membership-row .member-name {
+        min-width: 70px;
+      }
+      .membership-row .member-ff {
+        grid-column: 2 / -1;
+        justify-self: start;
+        text-align: left;
+      }
+    }
     .membership-empty { color: #94a3b8; }
     .uniform-list {
       margin-top: 8px;
