@@ -604,7 +604,9 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
       }
     }
     const passportNat = passportRawLine.match(/\/NAT\/([A-Z]{3})\//i)?.[1]?.toUpperCase() || '';
+    const isVisaIrrelevantCkinLine = (line) => /\/CHKLEG\b/i.test(line);
     const ckinLineList = section.split(/\r?\n/).filter((line) => /^\s*CKIN\b/i.test(line)).map((line) => line.trim());
+    const visaRelevantCkinLineList = ckinLineList.filter((line) => !isVisaIrrelevantCkinLine(line));
     const ckinLines = ckinLineList.join(' ').toUpperCase();
     const hasVisaKeyword = /\b(VISA|VS|TRAVEL\s*DOC(?:UMENT)?|TRAVELDOC(?:UMENT)?|V|PR CARD)\b/.test(ckinLines);
     const hasVisaExpHint = /\b(EXP|DT|TIL|240|APPLY)\b/.test(ckinLines);
@@ -616,7 +618,7 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     const toChinaDomestic = chinaDomesticAirports.has(visaDest);
     let visaStatus = 'review';
     let visaReason = 'Not yet implemented';
-    const ckinBestLine = ckinLineList.find((line) => /\b(VISA|VS|TRAVEL\s*DOC|TRAVELDOC|PR CARD|TBZ|PINK CARD|240|EXP|DT|TIL|APPLY)\b/i.test(line)) || ckinLineList[0] || '';
+    const ckinBestLine = visaRelevantCkinLineList.find((line) => /\b(VISA|VS|TRAVEL\s*DOC|TRAVELDOC|PR CARD|TBZ|PINK CARD|240|EXP|DT|TIL|APPLY)\b/i.test(line)) || visaRelevantCkinLineList[0] || '';
     if (toChinaDomestic) {
       if (passportNat === 'CHN') {
         visaStatus = 'pass';

@@ -524,7 +524,7 @@
     .sales-download-btn { background:#1d4ed8; border-radius:9px; padding:6px 10px; font-size:12px; width:100%; }
     .sales-download-btn:disabled { background:#475569; cursor:not-allowed; }
     .wch-btn { background:#16a34a; color:#ffffff; }
-    .membership-btn { background:#22c55e; color:#052e16; }
+    .membership-btn { background:#16a34a; color:#ffffff; }
     .membership-summary { color: #86efac; }
     .membership-list {
       margin-top: 8px;
@@ -561,6 +561,20 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+    @media (max-width: 768px) {
+      .membership-row {
+        grid-template-columns: 56px minmax(90px, 1fr) 40px 24px;
+        gap: 6px;
+      }
+      .membership-row .member-name {
+        min-width: 70px;
+      }
+      .membership-row .member-ff {
+        grid-column: 2 / -1;
+        justify-self: start;
+        text-align: left;
+      }
     }
     .membership-empty { color: #94a3b8; }
     .uniform-list {
