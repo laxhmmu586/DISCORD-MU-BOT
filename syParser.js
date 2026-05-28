@@ -604,8 +604,75 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
       }
     }
     const passportNat = passportRawLine.match(/\/NAT\/([A-Z]{3})\//i)?.[1]?.toUpperCase() || '';
+    const passengerLine = section.split(/\r?\n/).find((line) => /^\s*\d+\.\s*/.test(line)) || '';
+    const passengerName = (passengerLine.match(/^\s*\d+\.\s*\d?([A-Z\/]+\+?)/i)?.[1] || '').replace(/\+$/, '').toUpperCase();
+    const passengerSeat = (
+      passengerLine.match(/\bBN\d{1,3}\b[^\n\r]*\*(\d+[A-Z])\b/i)?.[1] ||
+      passengerLine.match(/\bBN\d{1,3}\b[^\n\r]*\s(\d+[A-Z])\b/i)?.[1] ||
+      section.match(/\bSN\s*(\d+[A-Z])\b/i)?.[1] ||
+      ''
+    ).toUpperCase();
+    const ffMatch = section.match(/\bFF\/([A-Z0-9]+)\s+(\d+)\/([A-Z])\b/i);
+    const ticketNo = section.match(/\bET\s+TKNE\/(?:INF)?(\d{10,})\/\d+\b/i)?.[1] || '';
+    const bagLine = section.match(/BAGTAG\s*\/([^\n\r]+)/i)?.[1] || '';
+    const bagtags = [...bagLine.matchAll(/(?:^|\s)\/?\s*((?:[A-Z]{1,3}\s*)?\d{5,12})\s*\/\s*([A-Z]{3})\b/gi)]
+      .map((m) => `${String(m[1] || '').replace(/\s+/g, ' ').trim()}/${String(m[2] || '').toUpperCase()}`);
+    const inboundMatch = section.match(/^\s*I\/\s*([A-Z0-9]+)\s*\/\s*(\d{2}[A-Z]{3}(?:\d{2})?).*?\b([A-Z]{3})\s*$/im);
+    const inbound = inboundMatch ? { flight: inboundMatch[1], date: inboundMatch[2], origin: inboundMatch[3] } : null;
+    const outboundLineForRecord = section.match(/^\s*X?O\/[^\n\r]+/im)?.[0] || '';
+    const outboundMatch = outboundLineForRecord.match(/X?O\/\s*([A-Z0-9]+)\s*\/\s*(\d{2}[A-Z]{3}(?:\d{2})?)(?:.*?\bBN\s*(\d+))?(?:.*?\b(\d+[A-Z]))?.*?\b([A-Z]{3})\s*$/i);
+    const outbound = outboundMatch ? {
+      flight: outboundMatch[1],
+      date: outboundMatch[2],
+      bn: outboundMatch[3] || null,
+      seat: outboundMatch[4] || null,
+      destination: outboundMatch[5],
+      status: /\bDELETED\b/i.test(outboundLineForRecord) ? 'DELETED' : ''
+    } : null;
+    const ssrCodes = ['VIP', 'AVIH', 'BLND', 'DEAF', 'INAD', 'PETC', 'UM', 'STCR', 'MAAS', 'PPOC', 'WCHR', 'WCHS', 'WCHC'];
+    const nonPsmSection = section.split(/\r?\n/).filter((line) => !/^\s*PSM\b/i.test(line)).join('\n');
+    const specialServices = ssrCodes.filter((code) => new RegExp(`(?:\\s|\\/|^)${code}(?:\\s|\\/|$)`, 'i').test(nonPsmSection));
+    const umNumber = section.match(/\bUM(\d{1,2})\b/i)?.[1];
+    if (umNumber && !specialServices.includes('UM')) specialServices.push('UM');
+    const wheelchair = ['WCHR', 'WCHS', 'WCHC'].find((code) => specialServices.includes(code));
+    const filteredSpecialServices = specialServices.filter((code) => !['WCHR', 'WCHS', 'WCHC'].includes(code));
+    if (wheelchair) filteredSpecialServices.push(wheelchair);
+    const specialMeals = [...section.matchAll(/\bSPML-([A-Z]{4})\b/gi)].map((m) => m[1].toUpperCase());
+    const paidProductsShort = (section.match(/^\s*ASVC-[^\n\r]+/gim) || []).map((line) => {
+      const fullLine = line.replace(/^ASVC-\s*/i, '').trim();
+      const serviceCode = (fullLine.match(/(?:^|\/)\s*([A-Z]{4})\s*(?:\/|\s)/i)?.[1] || fullLine.match(/\b(\d+[A-Z]|[0-9]+PC)\b/i)?.[1] || '').toUpperCase();
+      const emda = fullLine.match(/\bEMDA-\d{13}\b/i)?.[0]?.toUpperCase() || '';
+      return serviceCode && emda ? `${serviceCode}/${emda}` : fullLine;
+    }).filter(Boolean);
+    const passengerRecord = {
+      bn,
+      name: passengerName || 'UNKNOWN',
+      seat: passengerSeat || '---',
+      cabin: 'Economy',
+      flight: syInfo.flightNo || '',
+      flightDate: syInfo.flightDate || '',
+      passportNo,
+      ffCarrier: ffMatch?.[1]?.toUpperCase() || '',
+      ffNumber: ffMatch?.[2] || '',
+      ffTier: ffMatch?.[3]?.toUpperCase() || '',
+      ticketNo,
+      bagtags,
+      inbound,
+      outbound,
+      specialServices: filteredSpecialServices,
+      specialMeals: [...new Set(specialMeals)],
+      paidProductsShort
+    };
+    const isVisaIrrelevantCkinLine = (line) => {
+      const normalized = String(line || '').trim().toUpperCase().replace(/\s+/g, ' ');
+      return /\/CHKLEG\b/.test(normalized)
+        || /^CKIN\s+HK\d+\s+LKCK\/\d+\/[A-Z]$/.test(normalized)
+        || /^CKIN\s+MTCK\/MAP\/MU\b/.test(normalized)
+        || /^CKIN\s+(?:STSP|GE)\b/.test(normalized);
+    };
     const ckinLineList = section.split(/\r?\n/).filter((line) => /^\s*CKIN\b/i.test(line)).map((line) => line.trim());
-    const ckinLines = ckinLineList.join(' ').toUpperCase();
+    const visaRelevantCkinLineList = ckinLineList.filter((line) => !isVisaIrrelevantCkinLine(line));
+    const ckinLines = visaRelevantCkinLineList.join(' ').toUpperCase();
     const hasVisaKeyword = /\b(VISA|VS|TRAVEL\s*DOC(?:UMENT)?|TRAVELDOC(?:UMENT)?|V|PR CARD)\b/.test(ckinLines);
     const hasVisaExpHint = /\b(EXP|DT|TIL|240|APPLY)\b/.test(ckinLines);
     const hasDateLike = /\b(\d{4}|[0-3]?\d\s*[A-Z]{3}\s*\d{2,4}|\d{1,2}[A-Z]{3}\d{2,4}|[A-Z]{3,9}\s*\d{4})\b/.test(ckinLines);
@@ -616,7 +683,7 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     const toChinaDomestic = chinaDomesticAirports.has(visaDest);
     let visaStatus = 'review';
     let visaReason = 'Not yet implemented';
-    const ckinBestLine = ckinLineList.find((line) => /\b(VISA|VS|TRAVEL\s*DOC|TRAVELDOC|PR CARD|TBZ|PINK CARD|240|EXP|DT|TIL|APPLY)\b/i.test(line)) || ckinLineList[0] || '';
+    const ckinBestLine = visaRelevantCkinLineList.find((line) => /\b(VISA|VS|TRAVEL\s*DOC|TRAVELDOC|PR CARD|TBZ|PINK CARD|240|EXP|DT|TIL|APPLY)\b/i.test(line)) || visaRelevantCkinLineList[0] || '';
     if (toChinaDomestic) {
       if (passportNat === 'CHN') {
         visaStatus = 'pass';
@@ -661,7 +728,9 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     const waived = /\bPSM-EXBG0PC/i.test(section);
     const fbaPcParsed = Number(section.match(/\bFBA\/(\d+)PC\b/i)?.[1] || 0);
     const fbaPc = fbaPcParsed || 2;
-    const xbagPc = Number(section.match(/\bXBAG\/(\d+)PC\b/i)?.[1] || 0);
+    const xbagPcValues = [...section.matchAll(/\bXBAG\s*\/\s*(\d+)\s*PC\b/gi)].map((m) => Number(m[1] || 0));
+    const asvcXbagPcValues = [...section.matchAll(/^\s*ASVC-[^\n\r]*\bXBAG\s*\/\s*(\d+)\s*PC\b/gim)].map((m) => Number(m[1] || 0));
+    const xbagPc = Math.max(0, ...xbagPcValues, ...asvcXbagPcValues);
     const pdbgCount = [...section.matchAll(/\bPDBG\b/gi)].length;
     const hasExtraBaggageByTier = /\bFF\/MU\s+\d+\/(?:V|G|S)\b/i.test(section) || /\*1|\*2/.test(section);
     const tierExtraPc = hasExtraBaggageByTier ? 1 : 0;
@@ -729,10 +798,10 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     }
 
     if (hasCkinOkOverride) {
-      return { bn, apiStatus: 'pass', tkStatus: 'pass', visaStatus: 'pass', bagStatus: 'pass', apiReason: '', tkReason: '', visaReason: '', bagReason: '', passportNo };
+      return { bn, apiStatus: 'pass', tkStatus: 'pass', visaStatus: 'pass', bagStatus: 'pass', apiReason: '', tkReason: '', visaReason: '', bagReason: '', passportNo, passengerRecord };
     }
 
-    return { bn, apiStatus, tkStatus, visaStatus, bagStatus, apiReason: apiReasons.join('; '), tkReason, visaReason, bagReason, passportNo };
+    return { bn, apiStatus, tkStatus, visaStatus, bagStatus, apiReason: apiReasons.join('; '), tkReason, visaReason, bagReason, passportNo, passengerRecord };
   });
 
   const passportBnMap = new Map();
