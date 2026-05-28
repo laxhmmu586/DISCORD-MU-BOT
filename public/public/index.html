@@ -520,10 +520,10 @@
 
     .clickable { cursor: pointer; }
     .back-btn { background:none; border:none; color:#93c5fd; cursor:pointer; padding:0; margin-bottom:8px; }
-    .bag-detail-card { margin-top: 12px; border:none; border-radius:0; padding:0; }
+    .bag-detail-card { margin-top: 12px; border:none; border-radius:0; padding:0; display:flex; flex-direction:column; align-items:flex-end; }
     .bag-table-wrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .bag-table { width:100%; border-collapse:collapse; margin-top:6px; table-layout: fixed; }
-    .bag-table th, .bag-table td { border:1px solid #334155; padding:8px 10px; text-align:left; font-size:12px; vertical-align: top; }
+    .bag-table th, .bag-table td { border:1px solid #334155; padding:10px 12px; text-align:left; font-size:15px; vertical-align: top; }
     .bag-table th { background: #16243b; color: #dbeafe; font-weight: 700; white-space: nowrap; word-break: normal; }
     .bag-table td { background: #0f1b31; white-space: normal; word-break: break-word; overflow-wrap:anywhere; }
 
@@ -1312,19 +1312,28 @@
 
     function toggleChdPanel() {
       chdPanelOpen = !chdPanelOpen;
-      if (chdPanelOpen) govAqqPanelOpen = false;
+      if (chdPanelOpen) {
+        govAqqPanelOpen = false;
+        wchPanelOpen = false;
+      }
       setDisplayById('chdSection', chdPanelOpen ? 'block' : 'none');
       setDisplayById('govAqqSection', 'none');
+      setDisplayById('wchSection', 'none');
       setTextById('chdToggleBtn', chdPanelOpen ? 'Hide' : 'CHD List');
       setTextById('govAqqToggleBtn', 'GOV/AQQ');
+      setTextById('wchToggleBtn', 'WCH');
     }
 
     function toggleGovAqqPanel() {
       const btn = document.getElementById('govAqqToggleBtn');
       govAqqPanelOpen = !govAqqPanelOpen;
-      if (govAqqPanelOpen) chdPanelOpen = false;
+      if (govAqqPanelOpen) {
+        chdPanelOpen = false;
+        wchPanelOpen = false;
+      }
       setDisplayById('govAqqSection', govAqqPanelOpen ? 'block' : 'none');
       setDisplayById('chdSection', 'none');
+      setDisplayById('wchSection', 'none');
       setTextById('govAqqToggleBtn', govAqqPanelOpen ? 'Hide' : 'GOV/AQQ');
       setTextById('chdToggleBtn', 'CHD List');
       setTextById('wchToggleBtn', 'WCH');
@@ -1784,7 +1793,8 @@
           setTextById('wchToggleBtn', 'WCH');
           const wchList = Array.isArray(sy.wchList) ? sy.wchList : [];
           setTextById('wchSummary', `WCH total: ${wchList.length}`);
-          setTextById('wchList', wchList.length ? wchList.map((p) => `BN${p.bn} ${p.name} • ${p.seat || '-'} • ${Array.isArray(p.codes) ? p.codes.join('/') : 'WCH'}`).join('\n') : 'No WCHR/WCHS/WCHC found.');
+          const wchText = wchList.length ? wchList.map((p) => `BN${p.bn} ${p.name} • ${p.seat || '-'} • ${Array.isArray(p.codes) ? p.codes.join('/') : 'WCH'}`).join('\n') : 'No WCHR/WCHS/WCHC found.';
+          renderBnHighlightedText(document.getElementById('wchList'), wchText);
 
           const govAqq = sy.govAqq || {};
           const duplicatePassports = Array.isArray(govAqq.duplicatePassports) ? govAqq.duplicatePassports : [];

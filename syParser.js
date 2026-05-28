@@ -426,7 +426,11 @@ function enrichWchListFromLog(log, syInfo, targetYmd = null) {
     const bn = bnMatch[1].padStart(3, '0');
     const nameMatch = section.match(/\n\s*\d+\.\s*([A-Z]+\/[A-Z]+)/i);
     const seatMatch = section.match(/\*(\d+[A-Z])\b/i);
-    const codes = [...section.matchAll(wchCodeRegex)].map((m) => m[1].toUpperCase());
+    const sectionWithoutPsm = section
+      .split(/\r?\n/)
+      .filter((line) => !/^\s*PSM\b/i.test(line))
+      .join('\n');
+    const codes = [...sectionWithoutPsm.matchAll(wchCodeRegex)].map((m) => m[1].toUpperCase());
     if (!codes.length) continue;
     const uniqueCodes = [...new Set(codes)];
     const ts = parseSectionTimestamp(sectionObj.timestamp);
