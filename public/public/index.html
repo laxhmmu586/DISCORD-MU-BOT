@@ -773,6 +773,10 @@
             <div id="membershipSummary" class="chd-summary membership-summary"></div>
             <div id="membershipList" class="membership-list"></div>
           </div>
+          <div id="membershipPanelSection" style="display:none;">
+            <div id="membershipSummary" class="chd-summary membership-summary"></div>
+            <div id="membershipList" class="membership-list"></div>
+          </div>
         </div>
 
         <div id="syBagDetailLayout" class="sy-layout" style="display:none;">
@@ -1961,6 +1965,11 @@
           const wchList = Array.isArray(sy.wchList) ? sy.wchList : [];
           setTextById('wchSummary', `WCH total: ${wchList.length}`);
           renderWchPanel(document.getElementById('wchList'), wchList);
+
+          const m = sy.membershipList || {};
+          const counts = m.counts || {};
+          setTextById('membershipSummary', `白金卡 Platinum: ${counts.platinum || 0} • 金卡 Gold: ${counts.gold || 0} • 银卡 Sliver: ${counts.silver || 0}`);
+          renderMembershipPanel(document.getElementById('membershipList'), m);
 
           const m = sy.membershipList || {};
           const counts = m.counts || {};
