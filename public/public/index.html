@@ -682,7 +682,6 @@
     .audit-overall-pill.warning { color:#fef3c7; background:rgba(245,158,11,.22); }
     .audit-overall-pill.fail { color:#fecaca; background:rgba(239,68,68,.22); }
     .audit-overall-pill.empty { color:#cbd5e1; background:rgba(100,116,139,.16); }
-    .audit-overall-label { color:#cbd5e1; font-size:12px; font-weight:700; margin-top:10px; display:flex; justify-content:space-between; gap:8px; }
     .audit-mini-statuses { display:grid; grid-template-columns:repeat(4, 1fr); gap:6px; margin-top:10px; }
     .audit-mini-status { border-radius:10px; padding:5px 4px; text-align:center; font-size:11px; font-weight:800; color:#cbd5e1; background:rgba(148,163,184,.1); }
     .audit-mini-status.pass { color:#bbf7d0; background:rgba(34,197,94,.14); }
@@ -1370,10 +1369,6 @@
       if (items.every((item) => item.status === 'pass')) return 'pass';
       return 'warning';
     }
-    function auditCompletionPercent(items) {
-      const passed = items.filter((item) => item.status === 'pass').length;
-      return Math.round((passed / items.length) * 100);
-    }
     function auditOverallLabel(overall) {
       return overall === 'empty' ? 'Pending' : statusText(overall === 'warning' ? 'review' : overall);
     }
@@ -1387,7 +1382,6 @@
     function buildAuditCard(bn, row, expanded = false) {
       const items = auditItemsForRow(row);
       const overall = overallAuditStatus(items);
-      const completion = auditCompletionPercent(items);
       const overallLabel = auditOverallLabel(overall);
       const itemBadges = items.map((item) => `<div class="audit-mini-status ${statusClass(item.status)}">${escapeHtmlText(item.label)} ${emojiByStatus(item.status)}</div>`).join('');
       const details = items.map((item) => {
@@ -1404,7 +1398,6 @@
           <div class="audit-bn">BN${escapeHtmlText(bn)}</div>
           <div class="audit-overall-pill ${overall}">${escapeHtmlText(overallLabel)}</div>
         </div>
-        <div class="audit-overall-label"><span>Overall Status</span><span>${completion}% completion</span></div>
         <div class="audit-mini-statuses">${itemBadges}</div>
         <div class="audit-details">${details}</div>
         <div class="audit-expand-hint">Click to expand details</div>
