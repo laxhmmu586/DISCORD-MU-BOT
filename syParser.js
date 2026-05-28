@@ -510,7 +510,7 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     'JHG', 'LHW', 'XNN', 'INC', 'URC', 'KRL', 'AAT', 'KHG', 'HTN', 'TCG'
   ]);
 
-  return [...latestByBn.entries()].sort((a, b) => Number(a[0]) - Number(b[0])).map(([bn, payload]) => {
+  const auditRows = [...latestByBn.entries()].sort((a, b) => Number(a[0]) - Number(b[0])).map(([bn, payload]) => {
     const section = payload.section || '';
     const hasCkinOkOverride = /^\s*CKIN\s+OK\s*$/im.test(section);
     const outboundLine = section.match(/^\s*O\/[^\n\r]*/im)?.[0] || '';
@@ -519,12 +519,24 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     const hasTimeOut = /\bAQQ\/TCL\/USA\b/i.test(section);
     const hasGovFail = /\bGOV\/DTA\/CHN\b/i.test(section);
     const hasReview = /\bWEB\/EDI\/RESWIPE\b/i.test(section);
-    const apiStatus = hasTimeOut || hasGovFail ? 'fail' : (hasReview ? 'review' : 'pass');
-    const apiReason = hasTimeOut ? 'USA TIME OUT'
-      : hasGovFail ? 'CHN GOV FAIL'
-      : hasReview ? 'WEB/EDI/Reswipe'
-      : '';
+    const latestApiAgent = extractLatestApiAgent(section);
+    const apiNotWhitelisted = Boolean(latestApiAgent) && !APPROVED_AGENT_CODES.has(latestApiAgent);
+    const countryCodes = extractPassportCountryCodes(section);
+    const countryCodeCountZero = countryCodes.length === 0;
     const passportRawLine = (section.match(/PASSPORT\s*:\s*([^\n\r]+)/i)?.[1] || '').trim().toUpperCase();
+    const passportNo = section.match(/PASSPORT\s*:\s*([A-Z0-9]+)/i)?.[1]?.toUpperCase() || '';
+    const expField = passportRawLine.split('/').map((x) => x.trim()).find((part) => /^\d{6}$/.test(part)) || '';
+    const now = new Date();
+    const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+    let isPassportExpired = false;
+    if (expField) {
+      const yy = Number(expField.slice(0, 2));
+      const mm = Number(expField.slice(2, 4));
+      const dd = Number(expField.slice(4, 6));
+      if (mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31) {
+        isPassportExpired = Date.UTC(2000 + yy, mm - 1, dd) < todayUtc;
+      }
+    }
     const passportNat = passportRawLine.match(/\/NAT\/([A-Z]{3})\//i)?.[1]?.toUpperCase() || '';
     const ckinLineList = section.split(/\r?\n/).filter((line) => /^\s*CKIN\b/i.test(line)).map((line) => line.trim());
     const ckinLines = ckinLineList.join(' ').toUpperCase();
@@ -635,12 +647,47 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
       }
     }
 
-    if (hasCkinOkOverride) {
-      return { bn, apiStatus: 'pass', tkStatus: 'pass', visaStatus: 'pass', bagStatus: 'pass', apiReason: '', tkReason: '', visaReason: '', bagReason: '' };
+    let apiStatus = 'pass';
+    const apiReasons = [];
+    if (hasTimeOut) { apiStatus = 'fail'; apiReasons.push('USA TIME OUT'); }
+    if (hasGovFail) { apiStatus = 'fail'; apiReasons.push('CHN GOV FAIL'); }
+    if (isPassportExpired) { apiStatus = 'fail'; apiReasons.push(`Passport expired: ${expField}`); }
+    if (hasReview && apiStatus !== 'fail') { apiStatus = 'review'; apiReasons.push('WEB/EDI/Reswipe'); }
+    if (apiNotWhitelisted && apiStatus !== 'fail') {
+      apiStatus = 'review';
+      apiReasons.push(`latest API AGT${latestApiAgent} not in whitelist`);
+    }
+    if (countryCodeCountZero && apiStatus !== 'fail') {
+      apiStatus = 'review';
+      apiReasons.push('country code count is 0, expected 3');
     }
 
-    return { bn, apiStatus, tkStatus, visaStatus, bagStatus, apiReason, tkReason, visaReason, bagReason };
+    if (hasCkinOkOverride) {
+      return { bn, apiStatus: 'pass', tkStatus: 'pass', visaStatus: 'pass', bagStatus: 'pass', apiReason: '', tkReason: '', visaReason: '', bagReason: '', passportNo };
+    }
+
+    return { bn, apiStatus, tkStatus, visaStatus, bagStatus, apiReason: apiReasons.join('; '), tkReason, visaReason, bagReason, passportNo };
   });
+
+  const passportBnMap = new Map();
+  auditRows.forEach((row) => {
+    if (!row.passportNo) return;
+    const arr = passportBnMap.get(row.passportNo) || [];
+    arr.push(row.bn);
+    passportBnMap.set(row.passportNo, arr);
+  });
+  auditRows.forEach((row) => {
+    const dupList = row.passportNo ? (passportBnMap.get(row.passportNo) || []) : [];
+    if (dupList.length > 1 && row.apiStatus !== 'fail') {
+      row.apiStatus = 'review';
+      row.apiReason = row.apiReason ? `${row.apiReason}; Duplicate Passport (${dupList.join(',')})` : `Duplicate Passport (${dupList.join(',')})`;
+    }
+    if (!row.apiReason && row.apiStatus === 'review') {
+      row.apiReason = 'Need review';
+    }
+  });
+
+  return auditRows.map(({ passportNo, ...rest }) => rest);
 }
 
 function findSYInfo(log, queryDate, options = {}) {
