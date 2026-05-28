@@ -587,6 +587,7 @@
     .uniform-name, .uniform-extra, .uniform-status { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .uniform-seat, .uniform-codes { text-align: center; }
     .uniform-codes { color: #93c5fd; font-weight: 700; }
+    .wchc-code { color: #ef4444; font-weight: 800; }
 
 
     .clickable { cursor: pointer; }
@@ -1573,7 +1574,14 @@
           <span class="uniform-bn">BN${escapeHtmlText(p.bn || '---')}</span>
           <span class="uniform-name">${escapeHtmlText(p.name || '-')}</span>
           <span class="uniform-seat">${escapeHtmlText(p.seat || '-')}</span>
-          <span class="uniform-codes">${escapeHtmlText(Array.isArray(p.codes) ? p.codes.join('/') : 'WCH')}</span>
+          <span class="uniform-codes">${Array.isArray(p.codes)
+            ? p.codes.map((code) => {
+                const safe = escapeHtmlText(code || '');
+                return String(code || '').toUpperCase() === 'WCHC'
+                  ? `<span class="wchc-code">${safe}</span>`
+                  : safe;
+              }).join('/')
+            : 'WCH'}</span>
         </div>
       `).join('');
     }
