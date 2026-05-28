@@ -524,6 +524,34 @@
     .sales-download-btn { background:#1d4ed8; border-radius:9px; padding:6px 10px; font-size:12px; width:100%; }
     .sales-download-btn:disabled { background:#475569; cursor:not-allowed; }
     .wch-btn { background:#16a34a; color:#ffffff; }
+    .membership-btn { background:#22c55e; color:#052e16; }
+    .membership-summary { color: #86efac; }
+    .membership-list {
+      margin-top: 8px;
+      font-size: 13px;
+      line-height: 1.5;
+      color: #e2e8f0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .membership-group-title {
+      color: #bbf7d0;
+      font-weight: 700;
+      margin-bottom: 3px;
+    }
+    .membership-row {
+      display: grid;
+      grid-template-columns: 64px minmax(180px, 1.5fr) 52px 34px minmax(140px, 1fr);
+      gap: 10px;
+      align-items: baseline;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+    .membership-row .member-bn { color: #fde047; font-weight: 700; }
+    .membership-row .member-seat { text-align: center; }
+    .membership-row .member-cabin { text-align: center; color: #93c5fd; font-weight: 700; }
+    .membership-row .member-ff { text-align: right; }
+    .membership-empty { color: #94a3b8; }
 
 
     .clickable { cursor: pointer; }
@@ -688,6 +716,7 @@
             <button id="chdToggleBtn" class="chd-toggle-btn" style="display:none;" onclick="toggleChdPanel()">CHD List</button>
             <button id="govAqqToggleBtn" class="chd-toggle-btn" style="display:none;" onclick="toggleGovAqqPanel()">GOV/AQQ</button>
             <button id="wchToggleBtn" class="chd-toggle-btn wch-btn" style="display:none;" onclick="toggleWchPanel()">WCH</button>
+            <button id="membershipToggleBtn" class="chd-toggle-btn membership-btn" style="display:none;" onclick="toggleMembershipPanel()">Membership</button>
           </div>
           <div id="chdSection" style="display:none;">
             <div id="chdSummary" class="chd-summary"></div>
@@ -704,6 +733,10 @@
           <div id="wchSection" style="display:none;">
             <div id="wchSummary" class="chd-summary"></div>
             <div id="wchList" class="chd-list"></div>
+          </div>
+          <div id="membershipPanelSection" style="display:none;">
+            <div id="membershipSummary" class="chd-summary membership-summary"></div>
+            <div id="membershipList" class="membership-list"></div>
           </div>
         </div>
 
@@ -960,6 +993,7 @@
     let chdPanelOpen = false;
     let govAqqPanelOpen = false;
     let wchPanelOpen = false;
+    let membershipPanelOpen = false;
     let currentGovAqqStatus = 'ok';
     let currentSyFlightNo = '';
     let currentSyFlightDate = '';
@@ -1324,13 +1358,16 @@
       if (chdPanelOpen) {
         govAqqPanelOpen = false;
         wchPanelOpen = false;
+        membershipPanelOpen = false;
       }
       setDisplayById('chdSection', chdPanelOpen ? 'block' : 'none');
       setDisplayById('govAqqSection', 'none');
       setDisplayById('wchSection', 'none');
+      setDisplayById('membershipPanelSection', 'none');
       setTextById('chdToggleBtn', chdPanelOpen ? 'Hide' : 'CHD List');
       setTextById('govAqqToggleBtn', 'GOV/AQQ');
       setTextById('wchToggleBtn', 'WCH');
+      setTextById('membershipToggleBtn', 'Membership');
     }
 
     function toggleGovAqqPanel() {
@@ -1339,24 +1376,46 @@
       if (govAqqPanelOpen) {
         chdPanelOpen = false;
         wchPanelOpen = false;
+        membershipPanelOpen = false;
       }
       setDisplayById('govAqqSection', govAqqPanelOpen ? 'block' : 'none');
       setDisplayById('chdSection', 'none');
       setDisplayById('wchSection', 'none');
+      setDisplayById('membershipPanelSection', 'none');
       setTextById('govAqqToggleBtn', govAqqPanelOpen ? 'Hide' : 'GOV/AQQ');
       setTextById('chdToggleBtn', 'CHD List');
       setTextById('wchToggleBtn', 'WCH');
+      setTextById('membershipToggleBtn', 'Membership');
     }
     function toggleWchPanel() {
       wchPanelOpen = !wchPanelOpen;
       if (wchPanelOpen) {
         chdPanelOpen = false;
         govAqqPanelOpen = false;
+        membershipPanelOpen = false;
       }
       setDisplayById('wchSection', wchPanelOpen ? 'block' : 'none');
       setDisplayById('chdSection', 'none');
       setDisplayById('govAqqSection', 'none');
+      setDisplayById('membershipPanelSection', 'none');
       setTextById('wchToggleBtn', wchPanelOpen ? 'Hide' : 'WCH');
+      setTextById('chdToggleBtn', 'CHD List');
+      setTextById('govAqqToggleBtn', 'GOV/AQQ');
+      setTextById('membershipToggleBtn', 'Membership');
+    }
+    function toggleMembershipPanel() {
+      membershipPanelOpen = !membershipPanelOpen;
+      if (membershipPanelOpen) {
+        chdPanelOpen = false;
+        govAqqPanelOpen = false;
+        wchPanelOpen = false;
+      }
+      setDisplayById('membershipPanelSection', membershipPanelOpen ? 'block' : 'none');
+      setDisplayById('wchSection', 'none');
+      setDisplayById('chdSection', 'none');
+      setDisplayById('govAqqSection', 'none');
+      setTextById('membershipToggleBtn', membershipPanelOpen ? 'Hide' : 'Membership');
+      setTextById('wchToggleBtn', 'WCH');
       setTextById('chdToggleBtn', 'CHD List');
       setTextById('govAqqToggleBtn', 'GOV/AQQ');
     }
@@ -1434,6 +1493,38 @@
         .replace(/(BN\d{3})/g, '<span class="bn-highlight">$1</span>')
         .replace(/\n/g, '<br>');
       el.innerHTML = html;
+    }
+    function renderMembershipPanel(el, membershipList) {
+      if (!el) return;
+      const m = membershipList || {};
+      const groups = [
+        { title: '白金卡 Platinum', rows: Array.isArray(m.platinum) ? m.platinum : [] },
+        { title: '金卡 Gold', rows: Array.isArray(m.gold) ? m.gold : [] },
+        { title: '银卡 Sliver', rows: Array.isArray(m.silver) ? m.silver : [] }
+      ];
+      const toRowHtml = (p) => {
+        const bn = escapeHtmlText(`BN${p.bn || '---'}`);
+        const name = escapeHtmlText(p.name || '-');
+        const seat = escapeHtmlText(p.seat || '-');
+        const cabin = escapeHtmlText(p.cabin || '-');
+        const ff = escapeHtmlText(`${p.ffCarrier || ''}${p.ffNumber || ''}` || '-');
+        return `<div class="membership-row">
+          <span class="member-bn">${bn}</span>
+          <span class="member-name">${name}</span>
+          <span class="member-seat">${seat}</span>
+          <span class="member-cabin">${cabin}</span>
+          <span class="member-ff">${ff}</span>
+        </div>`;
+      };
+      el.innerHTML = groups.map((g) => {
+        const body = g.rows.length
+          ? g.rows.map(toRowHtml).join('')
+          : '<div class="membership-empty">None</div>';
+        return `<div class="membership-group">
+          <div class="membership-group-title">${escapeHtmlText(g.title)}</div>
+          ${body}
+        </div>`;
+      }).join('');
     }
 
     function setGovAqqStats(stats) {
@@ -1791,20 +1882,29 @@
           chdPanelOpen = false;
           govAqqPanelOpen = false;
           wchPanelOpen = false;
+          membershipPanelOpen = false;
           setDisplayById('chdSection', 'none');
           setDisplayById('govAqqSection', 'none');
           setDisplayById('wchSection', 'none');
+          setDisplayById('membershipPanelSection', 'none');
           setDisplayById('syToggleRow', 'flex');
           setDisplayById('chdToggleBtn', 'inline-block');
           setDisplayById('govAqqToggleBtn', 'inline-block');
           setDisplayById('wchToggleBtn', 'inline-block');
+          setDisplayById('membershipToggleBtn', 'inline-block');
           setTextById('chdToggleBtn', 'CHD List');
           setTextById('govAqqToggleBtn', 'GOV/AQQ');
           setTextById('wchToggleBtn', 'WCH');
+          setTextById('membershipToggleBtn', 'Membership');
           const wchList = Array.isArray(sy.wchList) ? sy.wchList : [];
           setTextById('wchSummary', `WCH total: ${wchList.length}`);
           const wchText = wchList.length ? wchList.map((p) => `BN${p.bn} ${p.name} • ${p.seat || '-'} • ${Array.isArray(p.codes) ? p.codes.join('/') : 'WCH'}`).join('\n') : 'No WCHR/WCHS/WCHC found.';
           renderBnHighlightedText(document.getElementById('wchList'), wchText);
+
+          const m = sy.membershipList || {};
+          const counts = m.counts || {};
+          setTextById('membershipSummary', `白金卡 Platinum: ${counts.platinum || 0} • 金卡 Gold: ${counts.gold || 0} • 银卡 Sliver: ${counts.silver || 0}`);
+          renderMembershipPanel(document.getElementById('membershipList'), m);
 
           const govAqq = sy.govAqq || {};
           const duplicatePassports = Array.isArray(govAqq.duplicatePassports) ? govAqq.duplicatePassports : [];
