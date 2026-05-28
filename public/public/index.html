@@ -343,6 +343,20 @@
     .govaqq-stats .stat-value.is-danger {
       color: #ef4444;
     }
+    #govAqqSection .chd-list {
+      border:1px solid rgba(148,163,184,.22);
+      border-radius:14px;
+      padding:10px 12px;
+      background:linear-gradient(145deg, rgba(15,23,42,.96), rgba(30,41,59,.88));
+      box-shadow:0 10px 24px rgba(0,0,0,.18);
+      white-space:pre-line;
+    }
+    #govAqqSection .govaqq-stats {
+      border:1px solid rgba(148,163,184,.2);
+      border-radius:14px;
+      padding:10px 12px;
+      background:rgba(15,23,42,.78);
+    }
 
     .auth-bar {
       display: flex;
@@ -628,16 +642,15 @@
     .audit-summary-subtitle { color:#94a3b8; font-size:12px; font-weight:600; }
     .audit-workspace { margin-top:14px; display:grid; grid-template-columns:minmax(360px, 1.15fr) minmax(280px, .85fr); gap:14px; align-items:start; }
     .audit-list { max-height:620px; overflow:auto; display:flex; flex-direction:column; gap:7px; padding:2px 4px 8px 2px; }
-    .audit-list-row { width:100%; border:1px solid rgba(148,163,184,.2); border-radius:12px; padding:9px 10px; background:rgba(15,23,42,.86); color:#dbeafe; display:grid; grid-template-columns:72px 104px minmax(150px, 1fr); gap:10px; align-items:center; cursor:pointer; text-align:left; transition:background .16s ease, border-color .16s ease, transform .16s ease, box-shadow .16s ease; }
+    .audit-list-row { width:100%; min-width:0; border:1px solid rgba(148,163,184,.2); border-radius:12px; padding:9px 10px; background:rgba(15,23,42,.86); color:#dbeafe; display:grid; grid-template-columns:68px 96px minmax(0, 1fr); gap:10px; align-items:center; cursor:pointer; text-align:left; overflow:hidden; transition:background .16s ease, border-color .16s ease, transform .16s ease, box-shadow .16s ease; }
     .audit-list-row:hover, .audit-list-row.is-selected { transform:translateX(2px); border-color:rgba(96,165,250,.7); background:rgba(30,41,59,.96); box-shadow:0 8px 18px rgba(37,99,235,.16); }
     .audit-list-row.audit-warning { border-color:rgba(251,191,36,.72); background:rgba(69,44,10,.72); }
     .audit-list-row.audit-fail { border-color:rgba(248,113,113,.78); background:rgba(69,10,10,.75); }
     .audit-list-row.audit-empty { opacity:.7; }
     .audit-list-bn { color:#fde047; font-size:17px; font-weight:900; letter-spacing:.4px; }
-    .audit-list-progress-wrap { min-width:0; }
-    .audit-list-progress-label { display:flex; justify-content:space-between; gap:8px; color:#cbd5e1; font-size:11px; font-weight:800; margin-bottom:5px; }
-    .audit-detail-panel { position:sticky; top:8px; }
-    .audit-detail-panel { display:flex; flex-direction:column; gap:12px; }
+    .audit-list-progress-wrap { min-width:0; overflow:hidden; }
+    .audit-list-progress-label { display:flex; justify-content:space-between; gap:8px; color:#cbd5e1; font-size:11px; font-weight:800; margin-bottom:5px; min-width:0; }
+    .audit-detail-panel { position:sticky; top:8px; display:flex; flex-direction:column; gap:12px; }
     .audit-detail-panel .audit-card { cursor:default; }
     .audit-detail-panel .audit-card:hover { transform:none; }
     .audit-detail-panel .audit-details { display:block; }
@@ -659,7 +672,9 @@
     .audit-overall-label { color:#cbd5e1; font-size:12px; font-weight:700; margin-top:10px; display:flex; justify-content:space-between; gap:8px; }
     .audit-completion-text { color:#22c55e; font-weight:900; }
     .audit-progress { display:block; height:10px; border-radius:999px; background:rgba(15,23,42,.9); overflow:hidden; margin-top:7px; border:1px solid rgba(148,163,184,.18); box-shadow: inset 0 1px 5px rgba(0,0,0,.35); }
-    .audit-progress-fill { display:block; height:100%; width:0; border-radius:999px; background:linear-gradient(90deg, #16a34a, #22c55e, #86efac); box-shadow:0 0 12px rgba(34,197,94,.55); transition:width .24s ease; }
+    .audit-progress-fill { display:block; height:100%; width:0; border-radius:999px; transition:width .24s ease; }
+    .audit-progress-fill.is-complete { background:linear-gradient(90deg, #16a34a, #22c55e, #86efac); box-shadow:0 0 12px rgba(34,197,94,.55); }
+    .audit-progress-fill.is-incomplete { background:linear-gradient(90deg, #f97316, #facc15, #fb7185); box-shadow:0 0 12px rgba(250,204,21,.5); }
     .audit-mini-statuses { display:grid; grid-template-columns:repeat(4, 1fr); gap:6px; margin-top:10px; }
     .audit-mini-status { border-radius:10px; padding:5px 4px; text-align:center; font-size:11px; font-weight:800; color:#cbd5e1; background:rgba(148,163,184,.1); }
     .audit-mini-status.pass { color:#bbf7d0; background:rgba(34,197,94,.14); }
@@ -674,7 +689,7 @@
     .audit-detail-reason { color:#cbd5e1; line-height:1.35; overflow-wrap:anywhere; }
     .audit-detail-reason.empty { color:#64748b; }
     .audit-record-card .audit-details { display:block; }
-    .audit-record-title { color:#93c5fd; font-size:13px; font-weight:900; margin-top:2px; text-transform:uppercase; letter-spacing:.4px; }
+    .audit-record-heading { color:#fde047; font-size:16px; font-weight:900; letter-spacing:.3px; white-space:nowrap; }
     .audit-record-field { display:grid; grid-template-columns:86px 1fr; gap:8px; padding:7px 0; border-top:1px solid rgba(148,163,184,.12); font-size:12px; }
     .audit-record-field:first-child { border-top:none; }
     .audit-record-label { color:#93c5fd; font-weight:900; }
@@ -698,7 +713,7 @@
     @media (max-width: 768px) {
       .audit-workspace { grid-template-columns:1fr; }
       .audit-list { max-height:520px; }
-      .audit-list-row { grid-template-columns:72px 96px 1fr; }
+      .audit-list-row { grid-template-columns:68px 92px minmax(0, 1fr); }
       .audit-detail-panel { position:static; }
       .audit-summary-bar { align-items:flex-start; flex-direction:column; }
     }
@@ -1374,7 +1389,7 @@
           <div class="audit-overall-pill ${overall}">${escapeHtmlText(overallLabel)}</div>
         </div>
         <div class="audit-overall-label"><span>Overall Status</span><span class="audit-completion-text">${completion}% completion</span></div>
-        <div class="audit-progress" aria-label="Completion ${completion}%"><div class="audit-progress-fill" style="width:${completion}%"></div></div>
+        <div class="audit-progress" aria-label="Completion ${completion}%"><div class="audit-progress-fill ${completion === 100 ? 'is-complete' : 'is-incomplete'}" style="width:${completion}%"></div></div>
         <div class="audit-mini-statuses">${itemBadges}</div>
         <div class="audit-details">${details}</div>
         <div class="audit-expand-hint">Click to expand details</div>
@@ -1390,7 +1405,7 @@
         <span class="audit-overall-pill ${overall}">${escapeHtmlText(overallLabel)}</span>
         <span class="audit-list-progress-wrap">
           <span class="audit-list-progress-label"><span>Completion</span><span class="audit-completion-text">${completion}%</span></span>
-          <span class="audit-progress"><span class="audit-progress-fill" style="width:${completion}%"></span></span>
+          <span class="audit-progress"><span class="audit-progress-fill ${completion === 100 ? 'is-complete' : 'is-incomplete'}" style="width:${completion}%"></span></span>
         </span>
       </button>`;
     }
@@ -1398,6 +1413,17 @@
       const ff = `${record?.ffCarrier || ''}${record?.ffNumber || ''}`.trim();
       const tier = record?.ffTier ? ` / ${record.ffTier}` : '';
       return ff ? `${ff}${tier}` : '-';
+    }
+    function formatAuditInbound(inbound) {
+      if (!inbound) return '';
+      return `${inbound.flight || '-'} / ${inbound.date || '-'} • From ${inbound.origin || '-'}`;
+    }
+    function formatAuditOutbound(outbound) {
+      if (!outbound) return '';
+      return `${outbound.flight || '-'} / ${outbound.date || '-'}${outbound.bn ? ` • BN${outbound.bn}` : ''}${outbound.seat ? ` • ${outbound.seat}` : ''}${outbound.status === 'DELETED' ? ' • DELETED' : ''} • To ${outbound.destination || '-'}`;
+    }
+    function joinAuditValues(values) {
+      return Array.isArray(values) && values.length ? values.join(', ') : '';
     }
     function buildAuditPassengerCard(bn, row) {
       const record = row?.passengerRecord || null;
@@ -1407,11 +1433,16 @@
         ['BN', `BN${record.bn || bn}`],
         ['Seat', record.seat || '-'],
         ['Cabin', record.cabin || '-'],
-        ['Flight', `${record.flight || '-'} / ${record.flightDate || '-'}`],
         ['Passport', record.passportNo || '-'],
         ['Membership', formatAuditMembership(record)],
-        ['Ticket', record.ticketNo || '-']
-      ] : [
+        ['Ticket', record.ticketNo || '-'],
+        ['Bags', joinAuditValues(record.bagtags)],
+        ['Inbound', formatAuditInbound(record.inbound)],
+        ['Outbound', formatAuditOutbound(record.outbound)],
+        ['Special Service', joinAuditValues(record.specialServices)],
+        ['Special Meal', joinAuditValues(record.specialMeals)],
+        ['Paid Service', joinAuditValues(record.paidProductsShort)]
+      ].filter(([, value]) => value) : [
         ['BN', `BN${bn}`],
         ['Record', 'No passenger record found for this BN']
       ];
@@ -1421,10 +1452,9 @@
       </div>`).join('');
       return `<div class="audit-card audit-record-card audit-${overall}">
         <div class="audit-card-top">
-          <div class="audit-bn">Passenger Record</div>
+          <div class="audit-record-heading">Passenger Record</div>
           <div class="audit-overall-pill ${overall}">BN${escapeHtmlText(bn)}</div>
         </div>
-        <div class="audit-record-title">Search result for selected BN</div>
         <div class="audit-details">${body}</div>
       </div>`;
     }
@@ -1486,7 +1516,6 @@
             <div class="detail-title" style="text-align:left; font-size:18px; font-weight:900; letter-spacing:.4px;">Security Check</div>
             <div class="audit-summary-subtitle">${completeCount} complete • ${warningCount} warning • ${failCount} fail</div>
           </div>
-          <div class="audit-completion-text">Click a BN in the list to open its card</div>
         </div>
         <div class="audit-workspace">
           <div class="audit-list">${listRows.join('')}</div>

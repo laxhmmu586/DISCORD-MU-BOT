@@ -614,6 +614,36 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     ).toUpperCase();
     const ffMatch = section.match(/\bFF\/([A-Z0-9]+)\s+(\d+)\/([A-Z])\b/i);
     const ticketNo = section.match(/\bET\s+TKNE\/(?:INF)?(\d{10,})\/\d+\b/i)?.[1] || '';
+    const bagLine = section.match(/BAGTAG\s*\/([^\n\r]+)/i)?.[1] || '';
+    const bagtags = [...bagLine.matchAll(/(?:^|\s)\/?\s*((?:[A-Z]{1,3}\s*)?\d{5,12})\s*\/\s*([A-Z]{3})\b/gi)]
+      .map((m) => `${String(m[1] || '').replace(/\s+/g, ' ').trim()}/${String(m[2] || '').toUpperCase()}`);
+    const inboundMatch = section.match(/^\s*I\/\s*([A-Z0-9]+)\s*\/\s*(\d{2}[A-Z]{3}(?:\d{2})?).*?\b([A-Z]{3})\s*$/im);
+    const inbound = inboundMatch ? { flight: inboundMatch[1], date: inboundMatch[2], origin: inboundMatch[3] } : null;
+    const outboundLineForRecord = section.match(/^\s*X?O\/[^\n\r]+/im)?.[0] || '';
+    const outboundMatch = outboundLineForRecord.match(/X?O\/\s*([A-Z0-9]+)\s*\/\s*(\d{2}[A-Z]{3}(?:\d{2})?)(?:.*?\bBN\s*(\d+))?(?:.*?\b(\d+[A-Z]))?.*?\b([A-Z]{3})\s*$/i);
+    const outbound = outboundMatch ? {
+      flight: outboundMatch[1],
+      date: outboundMatch[2],
+      bn: outboundMatch[3] || null,
+      seat: outboundMatch[4] || null,
+      destination: outboundMatch[5],
+      status: /\bDELETED\b/i.test(outboundLineForRecord) ? 'DELETED' : ''
+    } : null;
+    const ssrCodes = ['VIP', 'AVIH', 'BLND', 'DEAF', 'INAD', 'PETC', 'UM', 'STCR', 'MAAS', 'PPOC', 'WCHR', 'WCHS', 'WCHC'];
+    const nonPsmSection = section.split(/\r?\n/).filter((line) => !/^\s*PSM\b/i.test(line)).join('\n');
+    const specialServices = ssrCodes.filter((code) => new RegExp(`(?:\\s|\\/|^)${code}(?:\\s|\\/|$)`, 'i').test(nonPsmSection));
+    const umNumber = section.match(/\bUM(\d{1,2})\b/i)?.[1];
+    if (umNumber && !specialServices.includes('UM')) specialServices.push('UM');
+    const wheelchair = ['WCHR', 'WCHS', 'WCHC'].find((code) => specialServices.includes(code));
+    const filteredSpecialServices = specialServices.filter((code) => !['WCHR', 'WCHS', 'WCHC'].includes(code));
+    if (wheelchair) filteredSpecialServices.push(wheelchair);
+    const specialMeals = [...section.matchAll(/\bSPML-([A-Z]{4})\b/gi)].map((m) => m[1].toUpperCase());
+    const paidProductsShort = (section.match(/^\s*ASVC-[^\n\r]+/gim) || []).map((line) => {
+      const fullLine = line.replace(/^ASVC-\s*/i, '').trim();
+      const serviceCode = (fullLine.match(/(?:^|\/)\s*([A-Z]{4})\s*(?:\/|\s)/i)?.[1] || fullLine.match(/\b(\d+[A-Z]|[0-9]+PC)\b/i)?.[1] || '').toUpperCase();
+      const emda = fullLine.match(/\bEMDA-\d{13}\b/i)?.[0]?.toUpperCase() || '';
+      return serviceCode && emda ? `${serviceCode}/${emda}` : fullLine;
+    }).filter(Boolean);
     const passengerRecord = {
       bn,
       name: passengerName || 'UNKNOWN',
@@ -625,7 +655,13 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
       ffCarrier: ffMatch?.[1]?.toUpperCase() || '',
       ffNumber: ffMatch?.[2] || '',
       ffTier: ffMatch?.[3]?.toUpperCase() || '',
-      ticketNo
+      ticketNo,
+      bagtags,
+      inbound,
+      outbound,
+      specialServices: filteredSpecialServices,
+      specialMeals: [...new Set(specialMeals)],
+      paidProductsShort
     };
     const isVisaIrrelevantCkinLine = (line) => {
       const normalized = String(line || '').trim().toUpperCase().replace(/\s+/g, ' ');
