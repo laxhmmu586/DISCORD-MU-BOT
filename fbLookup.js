@@ -315,7 +315,7 @@ async function runLookup(mode, rawQuery) {
       }
     }
   } else if (mode === 'SY') {
-    const syInfo = findSYInfo(log, date, { preferNextDay: !date && query === '+' });
+    const syInfo = findSYInfo(log, date, { preferNextDay: !date && query === '+', preferredFlightNo: 'MU586' });
     if (!syInfo) return { error: 'No SY section found for selected date.' };
     return formatSYResponse(syInfo);
   }
