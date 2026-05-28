@@ -667,7 +667,8 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
       const normalized = String(line || '').trim().toUpperCase().replace(/\s+/g, ' ');
       return /\/CHKLEG\b/.test(normalized)
         || /^CKIN\s+HK\d+\s+LKCK\/\d+\/[A-Z]$/.test(normalized)
-        || /^CKIN\s+MTCK\/MAP\/MU\b/.test(normalized);
+        || /^CKIN\s+MTCK\/MAP\/MU\b/.test(normalized)
+        || /^CKIN\s+(?:STSP|GE)\b/.test(normalized);
     };
     const ckinLineList = section.split(/\r?\n/).filter((line) => /^\s*CKIN\b/i.test(line)).map((line) => line.trim());
     const visaRelevantCkinLineList = ckinLineList.filter((line) => !isVisaIrrelevantCkinLine(line));
