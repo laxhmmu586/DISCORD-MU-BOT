@@ -773,10 +773,6 @@
             <div id="membershipSummary" class="chd-summary membership-summary"></div>
             <div id="membershipList" class="membership-list"></div>
           </div>
-          <div id="membershipPanelSection" style="display:none;">
-            <div id="membershipSummary" class="chd-summary membership-summary"></div>
-            <div id="membershipList" class="membership-list"></div>
-          </div>
         </div>
 
         <div id="syBagDetailLayout" class="sy-layout" style="display:none;">
@@ -1036,7 +1032,7 @@
     let currentGovAqqStatus = 'ok';
     let currentSyFlightNo = '';
     let currentSyFlightDate = '';
-    let currentUser = null;
+    window.currentUser = null;
     let hasAutoLoadedSyToday = false;
     let currentBnAudit = [];
 
@@ -1773,8 +1769,8 @@
           encodeURIComponent(q);
 
         const headers = {};
-        if (currentUser) {
-          const token = await currentUser.getIdToken();
+        if (window.currentUser) {
+          const token = await window.currentUser.getIdToken();
           headers.Authorization = `Bearer ${token}`;
         }
 
@@ -1966,15 +1962,10 @@
           setTextById('wchSummary', `WCH total: ${wchList.length}`);
           renderWchPanel(document.getElementById('wchList'), wchList);
 
-          const m = sy.membershipList || {};
-          const counts = m.counts || {};
+          const membershipData = sy.membershipList || {};
+          const counts = membershipData.counts || {};
           setTextById('membershipSummary', `白金卡 Platinum: ${counts.platinum || 0} • 金卡 Gold: ${counts.gold || 0} • 银卡 Sliver: ${counts.silver || 0}`);
-          renderMembershipPanel(document.getElementById('membershipList'), m);
-
-          const m = sy.membershipList || {};
-          const counts = m.counts || {};
-          setTextById('membershipSummary', `白金卡 Platinum: ${counts.platinum || 0} • 金卡 Gold: ${counts.gold || 0} • 银卡 Sliver: ${counts.silver || 0}`);
-          renderMembershipPanel(document.getElementById('membershipList'), m);
+          renderMembershipPanel(document.getElementById('membershipList'), membershipData);
 
           const govAqq = sy.govAqq || {};
           const duplicatePassports = Array.isArray(govAqq.duplicatePassports) ? govAqq.duplicatePassports : [];
@@ -2389,7 +2380,7 @@ To ${data.outbound.destination || '-'}`
     performance.getEntriesByType('navigation')[0]?.type === 'reload';
 
   function resetInactivityTimer() {
-    if (!currentUser) return;
+    if (!window.currentUser) return;
 
     clearTimeout(inactivityTimer);
 
@@ -2418,7 +2409,7 @@ To ${data.outbound.destination || '-'}`
   bindInactivityEvents();
 
   onAuthStateChanged(auth, async (user) => {
-    currentUser = user || null;
+    window.currentUser = user || null;
 
     if (isPageReload && user) {
       try {
