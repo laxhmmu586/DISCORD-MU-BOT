@@ -282,8 +282,16 @@
       display: flex;
       gap: 10px;
       align-items: center;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+      padding-bottom: 4px;
     }
+    .sy-toggle-row::-webkit-scrollbar { height: 6px; }
+    .sy-toggle-row::-webkit-scrollbar-thumb { background: rgba(148,163,184,.55); border-radius: 999px; }
+    .sy-toggle-row .chd-toggle-btn { flex: 0 0 auto; white-space: nowrap; }
     .chd-summary {
       margin-top: 10px;
       color: #fca5a5;
