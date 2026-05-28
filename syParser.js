@@ -460,6 +460,72 @@ function enrichWchListFromLog(log, syInfo, targetYmd = null) {
     .map(({ bn, name, seat, codes }) => ({ bn, name, seat, codes }));
 }
 
+function enrichMembershipListFromLog(log, syInfo, targetYmd = null) {
+  if (!log || !syInfo?.flightNo || !syInfo?.flightDate) return {};
+  const sections = splitLogicalSections(log);
+  const latestByBn = new Map();
+  const cabinRank = 'FAJCDQIOYBMEHKLNRSVTGZX'.split('').reduce((acc, c, i) => {
+    acc[c] = i + 1;
+    return acc;
+  }, {});
+  const tierRank = { V: 1, G: 2, S: 3, E: 4, P: 5 };
+
+  for (const sectionObj of sections) {
+    const section = sectionObj.content || '';
+    if (!section.includes('PR:')) continue;
+    if (targetYmd) {
+      const sectionYmd = getYmdFromTimestamp(sectionObj.timestamp);
+      if (sectionYmd !== targetYmd) continue;
+    }
+    const prMatch = section.match(/PR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
+    if (!prMatch) continue;
+    if (prMatch[1].toUpperCase() !== syInfo.flightNo || prMatch[2].toUpperCase() !== syInfo.flightDate) continue;
+
+    const paxLine = section.match(/\n\s*\d+\.\s*[^\n\r]*/)?.[0] || '';
+    const bn = (paxLine.match(/\bBN(\d{1,3})\b/i)?.[1] || '').padStart(3, '0');
+    if (!bn) continue;
+    const name = paxLine.match(/\n\s*\d+\.\s*([A-Z]+\/[A-Z]+)/i)?.[1] || '-';
+    const seat = (
+      paxLine.match(/\bBN\d{1,3}\b[^\n\r]*\*(\d+[A-Z])\b/i)?.[1] ||
+      paxLine.match(/\bBN\d{1,3}\b[^\n\r]*\s(\d+[A-Z])\b/i)?.[1] ||
+      ''
+    ).toUpperCase();
+    const cabin = (paxLine.match(/\b([FAJCDQIOYBMEHKLNRSVTGZX])\s+PVG\b/i)?.[1] || '').toUpperCase();
+    const ffMatch = section.match(/\bFF\/([A-Z0-9]{2})\s+([A-Z0-9]+)\/([VGSPE])\b/i);
+    if (!ffMatch) continue;
+    const ffCarrier = (ffMatch[1] || '').toUpperCase();
+    const ffNumber = ffMatch[2] || '';
+    const tier = (ffMatch[3] || '').toUpperCase();
+    const ts = parseSectionTimestamp(sectionObj.timestamp);
+    const prev = latestByBn.get(bn);
+    if (prev && prev.ts > ts) continue;
+    latestByBn.set(bn, { bn, name, seat: seat || '-', cabin: cabin || '-', ffCarrier, ffNumber, tier, ts });
+  }
+
+  const groups = { platinum: [], gold: [], silver: [], skyElite: [], skyElitePlus: [] };
+  for (const p of latestByBn.values()) {
+    if (p.tier === 'V') groups.platinum.push(p);
+    else if (p.tier === 'G') groups.gold.push(p);
+    else if (p.tier === 'S') groups.silver.push(p);
+    else if (p.tier === 'E') groups.skyElite.push(p);
+    else if (p.tier === 'P') groups.skyElitePlus.push(p);
+  }
+
+  const sortRows = (arr) => arr.sort((a, b) =>
+    (cabinRank[a.cabin] || 999) - (cabinRank[b.cabin] || 999) ||
+    Number(a.bn) - Number(b.bn)
+  ).map(({ bn, name, seat, cabin, ffCarrier, ffNumber, tier }) => ({ bn, name, seat, cabin, ffCarrier, ffNumber, tier }));
+
+  return {
+    platinum: sortRows(groups.platinum),
+    gold: sortRows(groups.gold),
+    silver: sortRows(groups.silver),
+    skyElite: sortRows(groups.skyElite),
+    skyElitePlus: sortRows(groups.skyElitePlus),
+    counts: Object.fromEntries(Object.entries(groups).map(([k, v]) => [k, v.length]))
+  };
+}
+
 function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
   if (!log || !syInfo?.flightNo || !syInfo?.flightDate) return [];
   const sections = splitLogicalSections(log);
@@ -708,6 +774,7 @@ function findSYInfo(log, queryDate, options = {}) {
       info.chdList = enrichCHDListFromLog(log, info, targetYmd);
       info.govAqq = enrichGovAqqFromLog(log, info, targetYmd);
       info.wchList = enrichWchListFromLog(log, info, targetYmd);
+      info.membershipList = enrichMembershipListFromLog(log, info, targetYmd);
       info.bnAudit = enrichBnAuditFromLog(log, info, targetYmd);
       return info;
     }
@@ -752,6 +819,7 @@ function findSYInfo(log, queryDate, options = {}) {
     info.chdList = enrichCHDListFromLog(log, info, targetYmd);
     info.govAqq = enrichGovAqqFromLog(log, info, targetYmd);
     info.wchList = enrichWchListFromLog(log, info, targetYmd);
+    info.membershipList = enrichMembershipListFromLog(log, info, targetYmd);
     info.bnAudit = enrichBnAuditFromLog(log, info, targetYmd);
     return info;
   }
