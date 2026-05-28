@@ -1819,8 +1819,9 @@
         if (!/^\d{3}$/.test(bn)) return '';
         const statusClassName = typeof options.statusClass === 'function' ? options.statusClass(p) : (options.statusClass || 'warning');
         const title = typeof options.title === 'function' ? options.title(p) : '';
+        const label = typeof options.label === 'function' ? options.label(p, bn) : bn;
         return `<button type="button" class="audit-list-row audit-${escapeAttr(statusClassName)}" data-bn="${escapeAttr(bn)}" aria-pressed="false"${title ? ` title="${escapeAttr(title)}"` : ''}>
-          <span class="audit-list-bn">${escapeHtmlText(bn)}</span>
+          <span class="audit-list-bn">${escapeHtmlText(label || bn)}</span>
         </button>`;
       }).join('');
       return `<div class="audit-workspace passenger-only-workspace no-detail">
@@ -1866,6 +1867,10 @@
       }
       el.innerHTML = buildPassengerOnlyWorkspace(data, {
         statusClass: 'wch',
+        label: (p, bn) => {
+          const seat = String(p?.seat || '').trim();
+          return seat && seat !== '-' ? `${bn}/${seat}` : bn;
+        },
         title: (p) => Array.isArray(p.codes) ? p.codes.join('/') : 'WCH'
       });
       wirePassengerOnlyWorkspace(el);
