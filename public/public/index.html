@@ -628,7 +628,7 @@
     .audit-summary-subtitle { color:#94a3b8; font-size:12px; font-weight:600; }
     .audit-workspace { margin-top:14px; display:grid; grid-template-columns:minmax(360px, 1.15fr) minmax(280px, .85fr); gap:14px; align-items:start; }
     .audit-list { max-height:620px; overflow:auto; display:flex; flex-direction:column; gap:7px; padding:2px 4px 8px 2px; }
-    .audit-list-row { width:100%; border:1px solid rgba(148,163,184,.2); border-radius:12px; padding:9px 10px; background:rgba(15,23,42,.86); color:#dbeafe; display:grid; grid-template-columns:64px 96px minmax(120px, 1fr) 132px; gap:10px; align-items:center; cursor:pointer; text-align:left; transition:background .16s ease, border-color .16s ease, transform .16s ease, box-shadow .16s ease; }
+    .audit-list-row { width:100%; border:1px solid rgba(148,163,184,.2); border-radius:12px; padding:9px 10px; background:rgba(15,23,42,.86); color:#dbeafe; display:grid; grid-template-columns:72px 104px minmax(150px, 1fr); gap:10px; align-items:center; cursor:pointer; text-align:left; transition:background .16s ease, border-color .16s ease, transform .16s ease, box-shadow .16s ease; }
     .audit-list-row:hover, .audit-list-row.is-selected { transform:translateX(2px); border-color:rgba(96,165,250,.7); background:rgba(30,41,59,.96); box-shadow:0 8px 18px rgba(37,99,235,.16); }
     .audit-list-row.audit-warning { border-color:rgba(251,191,36,.72); background:rgba(69,44,10,.72); }
     .audit-list-row.audit-fail { border-color:rgba(248,113,113,.78); background:rgba(69,10,10,.75); }
@@ -636,8 +636,8 @@
     .audit-list-bn { color:#fde047; font-size:17px; font-weight:900; letter-spacing:.4px; }
     .audit-list-progress-wrap { min-width:0; }
     .audit-list-progress-label { display:flex; justify-content:space-between; gap:8px; color:#cbd5e1; font-size:11px; font-weight:800; margin-bottom:5px; }
-    .audit-list-statuses { display:grid; grid-template-columns:repeat(4, 1fr); gap:4px; }
     .audit-detail-panel { position:sticky; top:8px; }
+    .audit-detail-panel { display:flex; flex-direction:column; gap:12px; }
     .audit-detail-panel .audit-card { cursor:default; }
     .audit-detail-panel .audit-card:hover { transform:none; }
     .audit-detail-panel .audit-details { display:block; }
@@ -673,6 +673,12 @@
     .audit-detail-name { font-weight:900; color:#93c5fd; }
     .audit-detail-reason { color:#cbd5e1; line-height:1.35; overflow-wrap:anywhere; }
     .audit-detail-reason.empty { color:#64748b; }
+    .audit-record-card .audit-details { display:block; }
+    .audit-record-title { color:#93c5fd; font-size:13px; font-weight:900; margin-top:2px; text-transform:uppercase; letter-spacing:.4px; }
+    .audit-record-field { display:grid; grid-template-columns:86px 1fr; gap:8px; padding:7px 0; border-top:1px solid rgba(148,163,184,.12); font-size:12px; }
+    .audit-record-field:first-child { border-top:none; }
+    .audit-record-label { color:#93c5fd; font-weight:900; }
+    .audit-record-value { color:#dbeafe; overflow-wrap:anywhere; }
     .audit-expand-hint { margin-top:9px; color:#94a3b8; font-size:11px; text-align:right; }
     .status-reason-pop {
       position: fixed;
@@ -692,8 +698,7 @@
     @media (max-width: 768px) {
       .audit-workspace { grid-template-columns:1fr; }
       .audit-list { max-height:520px; }
-      .audit-list-row { grid-template-columns:58px 86px 1fr; }
-      .audit-list-statuses { grid-column:1 / -1; }
+      .audit-list-row { grid-template-columns:72px 96px 1fr; }
       .audit-detail-panel { position:static; }
       .audit-summary-bar { align-items:flex-start; flex-direction:column; }
     }
@@ -1380,7 +1385,6 @@
       const overall = overallAuditStatus(items);
       const completion = auditCompletionPercent(items);
       const overallLabel = auditOverallLabel(overall);
-      const itemBadges = items.map((item) => `<div class="audit-mini-status ${statusClass(item.status)}">${escapeHtmlText(item.label)} ${emojiByStatus(item.status)}</div>`).join('');
       return `<button type="button" class="audit-list-row audit-${overall}${selected ? ' is-selected' : ''}" data-bn="${escapeAttr(bn)}" aria-pressed="${selected ? 'true' : 'false'}">
         <span class="audit-list-bn">BN${escapeHtmlText(bn)}</span>
         <span class="audit-overall-pill ${overall}">${escapeHtmlText(overallLabel)}</span>
@@ -1388,8 +1392,44 @@
           <span class="audit-list-progress-label"><span>Completion</span><span class="audit-completion-text">${completion}%</span></span>
           <span class="audit-progress"><span class="audit-progress-fill" style="width:${completion}%"></span></span>
         </span>
-        <span class="audit-list-statuses">${itemBadges}</span>
       </button>`;
+    }
+    function formatAuditMembership(record) {
+      const ff = `${record?.ffCarrier || ''}${record?.ffNumber || ''}`.trim();
+      const tier = record?.ffTier ? ` / ${record.ffTier}` : '';
+      return ff ? `${ff}${tier}` : '-';
+    }
+    function buildAuditPassengerCard(bn, row) {
+      const record = row?.passengerRecord || null;
+      const overall = record ? overallAuditStatus(auditItemsForRow(row)) : 'empty';
+      const fields = record ? [
+        ['Name', record.name || '-'],
+        ['BN', `BN${record.bn || bn}`],
+        ['Seat', record.seat || '-'],
+        ['Cabin', record.cabin || '-'],
+        ['Flight', `${record.flight || '-'} / ${record.flightDate || '-'}`],
+        ['Passport', record.passportNo || '-'],
+        ['Membership', formatAuditMembership(record)],
+        ['Ticket', record.ticketNo || '-']
+      ] : [
+        ['BN', `BN${bn}`],
+        ['Record', 'No passenger record found for this BN']
+      ];
+      const body = fields.map(([label, value]) => `<div class="audit-record-field">
+        <span class="audit-record-label">${escapeHtmlText(label)}</span>
+        <span class="audit-record-value">${escapeHtmlText(value)}</span>
+      </div>`).join('');
+      return `<div class="audit-card audit-record-card audit-${overall}">
+        <div class="audit-card-top">
+          <div class="audit-bn">Passenger Record</div>
+          <div class="audit-overall-pill ${overall}">BN${escapeHtmlText(bn)}</div>
+        </div>
+        <div class="audit-record-title">Search result for selected BN</div>
+        <div class="audit-details">${body}</div>
+      </div>`;
+    }
+    function buildAuditDetailPanel(bn, row) {
+      return `${buildAuditCard(bn, row, true)}${buildAuditPassengerCard(bn, row)}`;
     }
     function ensureStatusReasonPop() {
       let el = document.getElementById('statusReasonPop');
@@ -1450,7 +1490,7 @@
         </div>
         <div class="audit-workspace">
           <div class="audit-list">${listRows.join('')}</div>
-          <div class="audit-detail-panel">${buildAuditCard(selectedBn, selectedRow, true)}</div>
+          <div class="audit-detail-panel">${buildAuditDetailPanel(selectedBn, selectedRow)}</div>
         </div>`;
       const content = document.getElementById('syAuditContent');
       const detailPanel = content.querySelector('.audit-detail-panel');
@@ -1462,7 +1502,7 @@
             el.classList.toggle('is-selected', isSelected);
             el.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
           });
-          detailPanel.innerHTML = buildAuditCard(bn, byBn.get(bn), true);
+          detailPanel.innerHTML = buildAuditDetailPanel(bn, byBn.get(bn));
         });
       });
       setDisplayById('syLayout', 'none');

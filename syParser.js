@@ -604,6 +604,29 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
       }
     }
     const passportNat = passportRawLine.match(/\/NAT\/([A-Z]{3})\//i)?.[1]?.toUpperCase() || '';
+    const passengerLine = section.split(/\r?\n/).find((line) => /^\s*\d+\.\s*/.test(line)) || '';
+    const passengerName = (passengerLine.match(/^\s*\d+\.\s*\d?([A-Z\/]+\+?)/i)?.[1] || '').replace(/\+$/, '').toUpperCase();
+    const passengerSeat = (
+      passengerLine.match(/\bBN\d{1,3}\b[^\n\r]*\*(\d+[A-Z])\b/i)?.[1] ||
+      passengerLine.match(/\bBN\d{1,3}\b[^\n\r]*\s(\d+[A-Z])\b/i)?.[1] ||
+      section.match(/\bSN\s*(\d+[A-Z])\b/i)?.[1] ||
+      ''
+    ).toUpperCase();
+    const ffMatch = section.match(/\bFF\/([A-Z0-9]+)\s+(\d+)\/([A-Z])\b/i);
+    const ticketNo = section.match(/\bET\s+TKNE\/(?:INF)?(\d{10,})\/\d+\b/i)?.[1] || '';
+    const passengerRecord = {
+      bn,
+      name: passengerName || 'UNKNOWN',
+      seat: passengerSeat || '---',
+      cabin: 'Economy',
+      flight: syInfo.flightNo || '',
+      flightDate: syInfo.flightDate || '',
+      passportNo,
+      ffCarrier: ffMatch?.[1]?.toUpperCase() || '',
+      ffNumber: ffMatch?.[2] || '',
+      ffTier: ffMatch?.[3]?.toUpperCase() || '',
+      ticketNo
+    };
     const isVisaIrrelevantCkinLine = (line) => {
       const normalized = String(line || '').trim().toUpperCase().replace(/\s+/g, ' ');
       return /\/CHKLEG\b/.test(normalized)
@@ -736,10 +759,10 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     }
 
     if (hasCkinOkOverride) {
-      return { bn, apiStatus: 'pass', tkStatus: 'pass', visaStatus: 'pass', bagStatus: 'pass', apiReason: '', tkReason: '', visaReason: '', bagReason: '', passportNo };
+      return { bn, apiStatus: 'pass', tkStatus: 'pass', visaStatus: 'pass', bagStatus: 'pass', apiReason: '', tkReason: '', visaReason: '', bagReason: '', passportNo, passengerRecord };
     }
 
-    return { bn, apiStatus, tkStatus, visaStatus, bagStatus, apiReason: apiReasons.join('; '), tkReason, visaReason, bagReason, passportNo };
+    return { bn, apiStatus, tkStatus, visaStatus, bagStatus, apiReason: apiReasons.join('; '), tkReason, visaReason, bagReason, passportNo, passengerRecord };
   });
 
   const passportBnMap = new Map();
