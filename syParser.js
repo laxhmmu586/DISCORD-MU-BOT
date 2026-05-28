@@ -825,18 +825,30 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
   return auditRows.map(({ passportNo, ...rest }) => rest);
 }
 
+function sortSYMatches(matches, preferredFlightNo = '') {
+  const preferred = String(preferredFlightNo || '').trim().toUpperCase();
+  return matches.slice().sort((a, b) => {
+    if (preferred) {
+      const aPreferred = a.info?.flightNo === preferred ? 1 : 0;
+      const bPreferred = b.info?.flightNo === preferred ? 1 : 0;
+      if (aPreferred !== bPreferred) return bPreferred - aPreferred;
+    }
+    return parseSectionTimestamp(b.section.timestamp) - parseSectionTimestamp(a.section.timestamp);
+  });
+}
+
 function findSYInfo(log, queryDate, options = {}) {
   const sections = splitLogicalSections(log);
+  const preferredFlightNo = String(options.preferredFlightNo || '').trim().toUpperCase();
   const sySections = sections.filter(s => /^>\s*SY(?:\/\d{2}[A-Z]{3}(?:\d{2})?)?/im.test(s.content || '') && /SY:\s*[A-Z0-9]+\/(\d{2}[A-Z]{3}\d{2})/i.test(s.content || ''));
 
   if (!sySections.length) return null;
 
   if (queryDate) {
-    const matched = sySections
+    const matched = sortSYMatches(sySections
       .map(s => ({ section: s, info: parseSYSection(s) }))
       .filter(x => x.info)
-      .filter(x => x.info.flightDate?.startsWith(queryDate))
-      .sort((a, b) => parseSectionTimestamp(b.section.timestamp) - parseSectionTimestamp(a.section.timestamp));
+      .filter(x => x.info.flightDate?.startsWith(queryDate)), preferredFlightNo);
     if (matched.length) {
       const info = matched[0].info;
       const targetYmd = getYmdFromTimestamp(matched[0].section.timestamp);
@@ -878,9 +890,10 @@ function findSYInfo(log, queryDate, options = {}) {
         return `${String(d.getDate()).padStart(2, '0')}${mons[d.getMonth()]}${String(d.getFullYear()).slice(-2)}`;
       })()
     : todayFlightDate;
-  const todayMatches = parsed
-    .filter(x => x.info.flightDate === targetFlightDate)
-    .sort((a, b) => parseSectionTimestamp(b.section.timestamp) - parseSectionTimestamp(a.section.timestamp));
+  const todayMatches = sortSYMatches(
+    parsed.filter(x => x.info.flightDate === targetFlightDate),
+    preferredFlightNo
+  );
 
   if (todayMatches.length) {
     const info = todayMatches[0].info;

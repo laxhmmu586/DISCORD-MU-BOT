@@ -661,7 +661,8 @@
     .audit-list-row.audit-wch .audit-list-bn { color:#7dd3fc; }
     .audit-list-row.audit-empty { opacity:.7; }
     .audit-list-row.audit-empty .audit-list-bn { color:#94a3b8; }
-    .audit-list-bn { color:#fde047; font-size:16px; font-weight:900; letter-spacing:.2px; white-space:nowrap; }
+    .audit-list-bn { color:#fde047; font-size:17px; font-weight:900; letter-spacing:.2px; white-space:nowrap; }
+    .passenger-only-workspace .audit-list { grid-template-rows:none; grid-auto-flow:row; max-height:none; overflow:visible; }
     .audit-detail-panel { position:sticky; top:8px; display:flex; flex-direction:column; gap:10px; min-width:0; }
     .audit-detail-panel .audit-card { cursor:default; }
     .audit-detail-panel .audit-card:hover { transform:none; }
@@ -720,6 +721,7 @@
     @media (max-width: 768px) {
       .audit-workspace { grid-template-columns:1fr; width:100%; }
       .audit-list { grid-template-columns:repeat(4, minmax(0, 1fr)); grid-template-rows:repeat(100, auto); max-height:520px; }
+      .passenger-only-workspace .audit-list { grid-template-rows:none; grid-auto-flow:row; max-height:none; }
       .audit-detail-panel { position:static; }
       .audit-summary-bar { align-items:flex-start; flex-direction:column; }
     }
@@ -1809,8 +1811,8 @@
           <span class="audit-list-bn">${escapeHtmlText(bn)}</span>
         </button>`;
       }).join('');
-      return `<div class="audit-workspace no-detail">
-        <div class="audit-list">${buttons}</div>
+      return `<div class="audit-workspace passenger-only-workspace no-detail">
+        <div class="audit-list passenger-only-list">${buttons}</div>
         <div class="audit-detail-panel" style="display:none;"></div>
       </div>`;
     }
