@@ -425,7 +425,17 @@ function enrichWchListFromLog(log, syInfo, targetYmd = null) {
     if (!bnMatch) continue;
     const bn = bnMatch[1].padStart(3, '0');
     const nameMatch = section.match(/\n\s*\d+\.\s*([A-Z]+\/[A-Z]+)/i);
-    const seatMatch = section.match(/\*(\d+[A-Z])\b/i);
+    const paxLineMatch = section.match(/\n\s*\d+\.\s*[^\n\r]*/i);
+    const paxLine = paxLineMatch?.[0] || '';
+    const seatFromPaxLine =
+      paxLine.match(/\bBN\d{1,3}\b[^\n\r]*\*(\d+[A-Z])\b/i)?.[1] ||
+      paxLine.match(/\bBN\d{1,3}\b[^\n\r]*\s(\d+[A-Z])\b/i)?.[1] ||
+      '';
+    const seatFromSection =
+      section.match(/\bBN\d{1,3}\b[^\n\r]*\*(\d+[A-Z])\b/i)?.[1] ||
+      section.match(/\bBN\d{1,3}\b[^\n\r]*\s(\d+[A-Z])\b/i)?.[1] ||
+      '';
+    const seat = (seatFromPaxLine || seatFromSection || '').toUpperCase();
     const sectionWithoutPsm = section
       .split(/\r?\n/)
       .filter((line) => !/^\s*PSM\b/i.test(line))
@@ -439,7 +449,7 @@ function enrichWchListFromLog(log, syInfo, targetYmd = null) {
     latestByBn.set(bn, {
       bn,
       name: nameMatch?.[1] || '-',
-      seat: seatMatch?.[1] || '-',
+      seat: seat || '-',
       codes: uniqueCodes,
       ts
     });
