@@ -307,6 +307,52 @@ const LOG_NAMES = [
   'Lake.log',
   'Ticketing.log'
 ];
+const SALES_REPORT_FOLDER_ID = '1-RLbv_BU9rnsaaPy8UUkbN6FkhA5YqGf';
+
+function normalizeFlightCode(flightNo) {
+  return String(flightNo || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+function toIsoDateFromFlightDate(flightDate) {
+  const m = String(flightDate || '').toUpperCase().match(/^(\d{2})([A-Z]{3})(\d{2})$/);
+  if (!m) return '';
+  const months = { JAN: '01', FEB: '02', MAR: '03', APR: '04', MAY: '05', JUN: '06', JUL: '07', AUG: '08', SEP: '09', OCT: '10', NOV: '11', DEC: '12' };
+  const mm = months[m[2]];
+  if (!mm) return '';
+  return `20${m[3]}-${mm}-${m[1]}`;
+}
+
+async function findSalesReportFile(flightNo, flightDate) {
+  const normalizedFlightNo = normalizeFlightCode(flightNo);
+  const isoDate = toIsoDateFromFlightDate(flightDate);
+  if (!normalizedFlightNo || !isoDate) return null;
+  const exactName = `Sales Report ${normalizedFlightNo} ${isoDate}.xls`;
+  const res = await drive.files.list({
+    q: `'${SALES_REPORT_FOLDER_ID}' in parents and trashed = false and name = '${exactName.replace(/'/g, "\\'")}'`,
+    fields: 'files(id,name,mimeType,modifiedTime,size)',
+    pageSize: 1,
+    orderBy: 'modifiedTime desc'
+  });
+  return res.data.files?.[0] || null;
+}
+
+async function getSalesReportMeta(flightNo, flightDate) {
+  try {
+    const file = await findSalesReportFile(flightNo, flightDate);
+    if (!file) return { available: false };
+    return { available: true, fileId: file.id, fileName: file.name };
+  } catch (err) {
+    console.error('Sales report lookup error:', err?.message || err);
+    return { available: false };
+  }
+}
+
+async function downloadSalesReportByFlight(flightNo, flightDate) {
+  const file = await findSalesReportFile(flightNo, flightDate);
+  if (!file) return null;
+  const response = await drive.files.get({ fileId: file.id, alt: 'media' }, { responseType: 'arraybuffer' });
+  return { fileName: file.name, content: response.data };
+}
 
 async function downloadLogsInFolder(folderId, label) {
 
@@ -464,5 +510,7 @@ module.exports = {
 
   getFlightLogByDate,
   get240InfoByBnAndFlightDate,
-  getSyBagInfoByDate
+  getSyBagInfoByDate,
+  getSalesReportMeta,
+  downloadSalesReportByFlight
 };
