@@ -728,7 +728,9 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     const waived = /\bPSM-EXBG0PC/i.test(section);
     const fbaPcParsed = Number(section.match(/\bFBA\/(\d+)PC\b/i)?.[1] || 0);
     const fbaPc = fbaPcParsed || 2;
-    const xbagPc = Number(section.match(/\bXBAG\/(\d+)PC\b/i)?.[1] || 0);
+    const xbagPcValues = [...section.matchAll(/\bXBAG\s*\/\s*(\d+)\s*PC\b/gi)].map((m) => Number(m[1] || 0));
+    const asvcXbagPcValues = [...section.matchAll(/^\s*ASVC-[^\n\r]*\bXBAG\s*\/\s*(\d+)\s*PC\b/gim)].map((m) => Number(m[1] || 0));
+    const xbagPc = Math.max(0, ...xbagPcValues, ...asvcXbagPcValues);
     const pdbgCount = [...section.matchAll(/\bPDBG\b/gi)].length;
     const hasExtraBaggageByTier = /\bFF\/MU\s+\d+\/(?:V|G|S)\b/i.test(section) || /\*1|\*2/.test(section);
     const tierExtraPc = hasExtraBaggageByTier ? 1 : 0;
