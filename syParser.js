@@ -604,8 +604,38 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
       }
     }
     const passportNat = passportRawLine.match(/\/NAT\/([A-Z]{3})\//i)?.[1]?.toUpperCase() || '';
+    const passengerLine = section.split(/\r?\n/).find((line) => /^\s*\d+\.\s*/.test(line)) || '';
+    const passengerName = (passengerLine.match(/^\s*\d+\.\s*\d?([A-Z\/]+\+?)/i)?.[1] || '').replace(/\+$/, '').toUpperCase();
+    const passengerSeat = (
+      passengerLine.match(/\bBN\d{1,3}\b[^\n\r]*\*(\d+[A-Z])\b/i)?.[1] ||
+      passengerLine.match(/\bBN\d{1,3}\b[^\n\r]*\s(\d+[A-Z])\b/i)?.[1] ||
+      section.match(/\bSN\s*(\d+[A-Z])\b/i)?.[1] ||
+      ''
+    ).toUpperCase();
+    const ffMatch = section.match(/\bFF\/([A-Z0-9]+)\s+(\d+)\/([A-Z])\b/i);
+    const ticketNo = section.match(/\bET\s+TKNE\/(?:INF)?(\d{10,})\/\d+\b/i)?.[1] || '';
+    const passengerRecord = {
+      bn,
+      name: passengerName || 'UNKNOWN',
+      seat: passengerSeat || '---',
+      cabin: 'Economy',
+      flight: syInfo.flightNo || '',
+      flightDate: syInfo.flightDate || '',
+      passportNo,
+      ffCarrier: ffMatch?.[1]?.toUpperCase() || '',
+      ffNumber: ffMatch?.[2] || '',
+      ffTier: ffMatch?.[3]?.toUpperCase() || '',
+      ticketNo
+    };
+    const isVisaIrrelevantCkinLine = (line) => {
+      const normalized = String(line || '').trim().toUpperCase().replace(/\s+/g, ' ');
+      return /\/CHKLEG\b/.test(normalized)
+        || /^CKIN\s+HK\d+\s+LKCK\/\d+\/[A-Z]$/.test(normalized)
+        || /^CKIN\s+MTCK\/MAP\/MU\b/.test(normalized);
+    };
     const ckinLineList = section.split(/\r?\n/).filter((line) => /^\s*CKIN\b/i.test(line)).map((line) => line.trim());
-    const ckinLines = ckinLineList.join(' ').toUpperCase();
+    const visaRelevantCkinLineList = ckinLineList.filter((line) => !isVisaIrrelevantCkinLine(line));
+    const ckinLines = visaRelevantCkinLineList.join(' ').toUpperCase();
     const hasVisaKeyword = /\b(VISA|VS|TRAVEL\s*DOC(?:UMENT)?|TRAVELDOC(?:UMENT)?|V|PR CARD)\b/.test(ckinLines);
     const hasVisaExpHint = /\b(EXP|DT|TIL|240|APPLY)\b/.test(ckinLines);
     const hasDateLike = /\b(\d{4}|[0-3]?\d\s*[A-Z]{3}\s*\d{2,4}|\d{1,2}[A-Z]{3}\d{2,4}|[A-Z]{3,9}\s*\d{4})\b/.test(ckinLines);
@@ -616,7 +646,7 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     const toChinaDomestic = chinaDomesticAirports.has(visaDest);
     let visaStatus = 'review';
     let visaReason = 'Not yet implemented';
-    const ckinBestLine = ckinLineList.find((line) => /\b(VISA|VS|TRAVEL\s*DOC|TRAVELDOC|PR CARD|TBZ|PINK CARD|240|EXP|DT|TIL|APPLY)\b/i.test(line)) || ckinLineList[0] || '';
+    const ckinBestLine = visaRelevantCkinLineList.find((line) => /\b(VISA|VS|TRAVEL\s*DOC|TRAVELDOC|PR CARD|TBZ|PINK CARD|240|EXP|DT|TIL|APPLY)\b/i.test(line)) || visaRelevantCkinLineList[0] || '';
     if (toChinaDomestic) {
       if (passportNat === 'CHN') {
         visaStatus = 'pass';
@@ -729,10 +759,10 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     }
 
     if (hasCkinOkOverride) {
-      return { bn, apiStatus: 'pass', tkStatus: 'pass', visaStatus: 'pass', bagStatus: 'pass', apiReason: '', tkReason: '', visaReason: '', bagReason: '', passportNo };
+      return { bn, apiStatus: 'pass', tkStatus: 'pass', visaStatus: 'pass', bagStatus: 'pass', apiReason: '', tkReason: '', visaReason: '', bagReason: '', passportNo, passengerRecord };
     }
 
-    return { bn, apiStatus, tkStatus, visaStatus, bagStatus, apiReason: apiReasons.join('; '), tkReason, visaReason, bagReason, passportNo };
+    return { bn, apiStatus, tkStatus, visaStatus, bagStatus, apiReason: apiReasons.join('; '), tkReason, visaReason, bagReason, passportNo, passengerRecord };
   });
 
   const passportBnMap = new Map();
