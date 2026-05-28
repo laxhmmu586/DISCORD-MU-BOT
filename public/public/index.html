@@ -507,14 +507,23 @@
     .sy-row { display:grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
     .sy-row-full { grid-template-columns: 1fr; }
     .sy-cell .label { margin-bottom: 4px; }
+    .sy-label-row { display:flex; align-items:center; gap:6px; }
+    .sales-report-trigger { display:none; cursor:pointer; font-size:15px; line-height:1; }
+    .sales-report-pop {
+      display:none; position:absolute; z-index:1000; margin-top:6px; background:#102042; border:1px solid rgba(147,197,253,.45);
+      border-radius:10px; padding:8px; min-width:150px; box-shadow:0 8px 18px rgba(0,0,0,.35);
+    }
+    .sales-download-btn { background:#1d4ed8; border-radius:9px; padding:6px 10px; font-size:12px; width:100%; }
+    .sales-download-btn:disabled { background:#475569; cursor:not-allowed; }
+    .wch-btn { background:#16a34a; color:#ffffff; }
 
 
     .clickable { cursor: pointer; }
     .back-btn { background:none; border:none; color:#93c5fd; cursor:pointer; padding:0; margin-bottom:8px; }
-    .bag-detail-card { margin-top: 12px; border:none; border-radius:0; padding:0; }
+    .bag-detail-card { margin-top: 12px; border:none; border-radius:0; padding:0; display:flex; flex-direction:column; align-items:flex-end; }
     .bag-table-wrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .bag-table { width:100%; border-collapse:collapse; margin-top:6px; table-layout: fixed; }
-    .bag-table th, .bag-table td { border:1px solid #334155; padding:8px 10px; text-align:left; font-size:12px; vertical-align: top; }
+    .bag-table th, .bag-table td { border:1px solid #334155; padding:10px 12px; text-align:left; font-size:15px; vertical-align: top; }
     .bag-table th { background: #16243b; color: #dbeafe; font-weight: 700; white-space: nowrap; word-break: normal; }
     .bag-table td { background: #0f1b31; white-space: normal; word-break: break-word; overflow-wrap:anywhere; }
 
@@ -661,11 +670,16 @@
           </div>
           <div class="sy-row">
             <div class="sy-cell"><div class="label">Check-in</div><div id="syCi" class="value"></div></div>
-            <div class="sy-cell"><div class="label">Check-in(TKT)</div><div id="syCiTkt" class="value"></div></div>
+            <div class="sy-cell">
+              <div class="label sy-label-row">Check-in(TKT) <span id="salesReportTrigger" class="sales-report-trigger">💲</span></div>
+              <div id="salesReportPop" class="sales-report-pop"><button id="salesDownloadBtn" class="sales-download-btn" onclick="downloadSalesReport()">💾 Download Sales Report</button></div>
+              <div id="syCiTkt" class="value"></div>
+            </div>
           </div>
           <div id="syToggleRow" class="sy-toggle-row" style="display:none;">
             <button id="chdToggleBtn" class="chd-toggle-btn" style="display:none;" onclick="toggleChdPanel()">CHD List</button>
             <button id="govAqqToggleBtn" class="chd-toggle-btn" style="display:none;" onclick="toggleGovAqqPanel()">GOV/AQQ</button>
+            <button id="wchToggleBtn" class="chd-toggle-btn wch-btn" style="display:none;" onclick="toggleWchPanel()">WCH</button>
           </div>
           <div id="chdSection" style="display:none;">
             <div id="chdSummary" class="chd-summary"></div>
@@ -678,6 +692,10 @@
             <div id="govAqqList" class="chd-list"></div>
             <div id="govAqqDetailsTitle" class="govaqq-details-title" style="display:none;">Details:</div>
             <div id="govAqqDetailsList" class="chd-list" style="display:none;"></div>
+          </div>
+          <div id="wchSection" style="display:none;">
+            <div id="wchSummary" class="chd-summary"></div>
+            <div id="wchList" class="chd-list"></div>
           </div>
         </div>
 
@@ -933,6 +951,10 @@
     let currentResultMode = 'NONE';
     let chdPanelOpen = false;
     let govAqqPanelOpen = false;
+    let wchPanelOpen = false;
+    let currentGovAqqStatus = 'ok';
+    let currentSyFlightNo = '';
+    let currentSyFlightDate = '';
     let currentUser = null;
     let hasAutoLoadedSyToday = false;
     let currentBnAudit = [];
@@ -1291,21 +1313,62 @@
 
     function toggleChdPanel() {
       chdPanelOpen = !chdPanelOpen;
-      if (chdPanelOpen) govAqqPanelOpen = false;
+      if (chdPanelOpen) {
+        govAqqPanelOpen = false;
+        wchPanelOpen = false;
+      }
       setDisplayById('chdSection', chdPanelOpen ? 'block' : 'none');
       setDisplayById('govAqqSection', 'none');
+      setDisplayById('wchSection', 'none');
       setTextById('chdToggleBtn', chdPanelOpen ? 'Hide' : 'CHD List');
-      setTextById('govAqqToggleBtn', 'GOV/AQQ');
+      setTextById('govAqqToggleBtn', currentGovAqqStatus === 'risk' ? 'GOV/AQQ 🔴' : (currentGovAqqStatus === 'review' ? 'GOV/AQQ 🟡' : 'GOV/AQQ'));
+      setTextById('wchToggleBtn', 'WCH');
     }
 
     function toggleGovAqqPanel() {
       const btn = document.getElementById('govAqqToggleBtn');
       govAqqPanelOpen = !govAqqPanelOpen;
-      if (govAqqPanelOpen) chdPanelOpen = false;
+      if (govAqqPanelOpen) {
+        chdPanelOpen = false;
+        wchPanelOpen = false;
+      }
       setDisplayById('govAqqSection', govAqqPanelOpen ? 'block' : 'none');
       setDisplayById('chdSection', 'none');
-      setTextById('govAqqToggleBtn', govAqqPanelOpen ? 'Hide' : 'GOV/AQQ');
+      setDisplayById('wchSection', 'none');
+      setTextById('govAqqToggleBtn', govAqqPanelOpen ? 'Hide' : (currentGovAqqStatus === 'risk' ? 'GOV/AQQ 🔴' : (currentGovAqqStatus === 'review' ? 'GOV/AQQ 🟡' : 'GOV/AQQ')));
       setTextById('chdToggleBtn', 'CHD List');
+      setTextById('wchToggleBtn', 'WCH');
+    }
+    function toggleWchPanel() {
+      wchPanelOpen = !wchPanelOpen;
+      if (wchPanelOpen) {
+        chdPanelOpen = false;
+        govAqqPanelOpen = false;
+      }
+      setDisplayById('wchSection', wchPanelOpen ? 'block' : 'none');
+      setDisplayById('chdSection', 'none');
+      setDisplayById('govAqqSection', 'none');
+      setTextById('wchToggleBtn', wchPanelOpen ? 'Hide' : 'WCH');
+      setTextById('chdToggleBtn', 'CHD List');
+      setTextById('govAqqToggleBtn', 'GOV/AQQ');
+    }
+    async function checkSalesReportAvailability(flightNo, flightDate) {
+      const trigger = document.getElementById('salesReportTrigger');
+      if (!trigger || !flightNo || !flightDate) return;
+      trigger.style.display = 'none';
+      try {
+        const apiBase = resolveApiBase();
+        const res = await fetch(`${apiBase}/sales-report/meta?flightNo=${encodeURIComponent(flightNo)}&flightDate=${encodeURIComponent(flightDate)}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.available) trigger.style.display = 'inline';
+      } catch (e) {}
+    }
+    async function downloadSalesReport() {
+      if (!currentSyFlightNo || !currentSyFlightDate) return;
+      const apiBase = resolveApiBase();
+      const link = `${apiBase}/sales-report/download?flightNo=${encodeURIComponent(currentSyFlightNo)}&flightDate=${encodeURIComponent(currentSyFlightDate)}`;
+      window.open(link, '_blank');
     }
 
     function toggleDocPanel() {
@@ -1371,9 +1434,10 @@
       el.innerHTML = (stats || []).map((row) => {
         const label = escapeHtmlText(row.label || '');
         const value = escapeHtmlText(String(row.value ?? '0'));
-        const isDanger = Number(row.value || 0) > 0;
+        const isDanger = row.level === 'risk' && Number(row.value || 0) > 0;
+        const isReview = row.level === 'review' && Number(row.value || 0) > 0;
         const dangerCls = isDanger ? ' is-danger' : '';
-        const badge = isDanger ? '🔴 ' : '🟢 ';
+        const badge = isDanger ? '🔴 ' : (isReview ? '🟡 ' : '🟢 ');
         return `<div class="stat-label">${badge}${label}</div><div class="stat-value${dangerCls}">${value}</div>`;
       }).join('');
     }
@@ -1693,6 +1757,18 @@
           setTextById('syResTkt', `${sy.reservationTicketed?.[0] || '-'}`);
           setTextById('syCi', `${sy.checkedIn?.[0] || '-'}`);
           setTextById('syCiTkt', `${sy.checkedInTicketed?.[0] || '-'}`);
+          currentSyFlightNo = sy.flightNo || '';
+          currentSyFlightDate = sy.flightDate || '';
+          const salesTrigger = document.getElementById('salesReportTrigger');
+          const salesPop = document.getElementById('salesReportPop');
+          if (salesTrigger && salesPop) {
+            salesTrigger.style.display = 'none';
+            salesPop.style.display = 'none';
+            salesTrigger.onmouseenter = () => { salesPop.style.display = 'block'; };
+            salesTrigger.onmouseleave = () => { setTimeout(() => { if (!salesPop.matches(':hover')) salesPop.style.display = 'none'; }, 120); };
+            salesPop.onmouseleave = () => { salesPop.style.display = 'none'; };
+          }
+          checkSalesReportAvailability(currentSyFlightNo, currentSyFlightDate);
           const chdList = Array.isArray(sy.chdList) ? sy.chdList : [];
           const noCodeList = chdList.filter((p) => !p.hasChdCode);
           setTextById('chdSummary', `CHD Total: ${chdList.length} • Missing CHD1/0: ${noCodeList.length}`);
@@ -1706,13 +1782,21 @@
           );
           chdPanelOpen = false;
           govAqqPanelOpen = false;
+          wchPanelOpen = false;
           setDisplayById('chdSection', 'none');
           setDisplayById('govAqqSection', 'none');
+          setDisplayById('wchSection', 'none');
           setDisplayById('syToggleRow', 'flex');
           setDisplayById('chdToggleBtn', 'inline-block');
           setDisplayById('govAqqToggleBtn', 'inline-block');
+          setDisplayById('wchToggleBtn', 'inline-block');
           setTextById('chdToggleBtn', 'CHD List');
           setTextById('govAqqToggleBtn', 'GOV/AQQ');
+          setTextById('wchToggleBtn', 'WCH');
+          const wchList = Array.isArray(sy.wchList) ? sy.wchList : [];
+          setTextById('wchSummary', `WCH total: ${wchList.length}`);
+          const wchText = wchList.length ? wchList.map((p) => `BN${p.bn} ${p.name} • ${p.seat || '-'} • ${Array.isArray(p.codes) ? p.codes.join('/') : 'WCH'}`).join('\n') : 'No WCHR/WCHS/WCHC found.';
+          renderBnHighlightedText(document.getElementById('wchList'), wchText);
 
           const govAqq = sy.govAqq || {};
           const duplicatePassports = Array.isArray(govAqq.duplicatePassports) ? govAqq.duplicatePassports : [];
@@ -1722,28 +1806,23 @@
           const passportCodeIssues = Array.isArray(govAqq.passportCodeIssues) ? govAqq.passportCodeIssues : [];
           const passportCodeIssueDetails = Array.isArray(govAqq.passportCodeIssueDetails) ? govAqq.passportCodeIssueDetails : [];
           const duplicateReviewPairs = Array.isArray(govAqq.duplicateReviewPairs) ? govAqq.duplicateReviewPairs : [];
-          const hasGovAqqRisk =
+          const hasCoreRisk =
             duplicatePassports.length > 0 ||
             aqqTclBnList.length > 0 ||
             govDtaBnList.length > 0 ||
-            passportExpBnList.length > 0 ||
-            passportCodeIssues.length > 0;
-          const reviewBnSet = new Set();
-          duplicateReviewPairs.forEach((p) => { reviewBnSet.add(p.bnA); reviewBnSet.add(p.bnB); });
-          const apiRiskOnlyReview =
-            passportCodeIssues.length > 0 &&
-            passportCodeIssues.every((bn) => reviewBnSet.has(bn)) &&
-            duplicateReviewPairs.length > 0;
-          const hasReviewOnly = apiRiskOnlyReview;
-          const govStatus = hasGovAqqRisk ? (hasReviewOnly ? 'review' : 'risk') : 'ok';
+            passportExpBnList.length > 0;
+          const hasReviewOnly = passportCodeIssues.length > 0;
+          const govStatus = hasCoreRisk ? 'risk' : (hasReviewOnly ? 'review' : 'ok');
+          currentGovAqqStatus = govStatus;
           updateGovAqqToggleAppearance(govStatus);
+          setTextById('govAqqToggleBtn', govStatus === 'risk' ? 'GOV/AQQ 🔴' : (govStatus === 'review' ? 'GOV/AQQ 🟡' : 'GOV/AQQ'));
 
           setGovAqqStats([
-            { label: 'Duplicate Passport', value: duplicatePassports.length },
-            { label: 'USA TIME OUT', value: aqqTclBnList.length },
-            { label: 'CHN GOV FAIL', value: govDtaBnList.length },
-            { label: 'Passport Exp', value: passportExpBnList.length },
-            { label: 'WEB/EDI/Reswipe BN', value: passportCodeIssues.length }
+            { label: 'Duplicate Passport', value: duplicatePassports.length, level: 'risk' },
+            { label: 'USA TIME OUT', value: aqqTclBnList.length, level: 'risk' },
+            { label: 'CHN GOV FAIL', value: govDtaBnList.length, level: 'risk' },
+            { label: 'Passport Exp', value: passportExpBnList.length, level: 'risk' },
+            { label: 'WEB/EDI/Reswipe BN', value: passportCodeIssues.length, level: 'review' }
           ]);
 
           const lines = [];
@@ -1762,7 +1841,7 @@
           if (duplicateReviewPairs.length) {
             lines.push('', `Need review (similar name): ${duplicateReviewPairs.map((p) => `BN${p.bnA}↔BN${p.bnB}`).join('   ')}`);
           }
-          if (!hasGovAqqRisk) lines.push('No issue found.');
+          if (!hasCoreRisk && !hasReviewOnly) lines.push('No issue found.');
           setTextById('govAqqSummary', govStatus === 'risk' ? 'Risk found' : (govStatus === 'review' ? 'Need review' : 'All clear'));
           const resultTitleEl = document.getElementById('govAqqResultTitle');
           if (lines.length) {
@@ -1818,6 +1897,8 @@
         setDisplayById('syToggleRow', 'none');
         setDisplayById('chdToggleBtn', 'none');
         setDisplayById('govAqqToggleBtn', 'none');
+        setDisplayById('wchToggleBtn', 'none');
+        setDisplayById('wchSection', 'none');
         setDisplayById('auditToggleBtn', 'none');
 
         if (!data.flight || !data.flightDate || !data.name) {
