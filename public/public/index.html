@@ -1374,9 +1374,9 @@
     }
     function auditPassReason(label) {
       if (label === 'API') return 'API cleared: no timeout, GOV fail, expiry, reswipe, or agent review flag';
-      if (label === 'TK') return 'Ticket check passed: required TKNE ticket is present';
-      if (label === 'VISA') return 'Visa check passed by implemented passport/destination rule or valid visa evidence';
-      if (label === 'BAG') return 'Bag check passed: bag count/destination is within allowed rules';
+      if (label === 'TK') return 'Ticket check passed; ticket number detail was not returned for this record';
+      if (label === 'VISA') return 'VISA check passed; passport/destination detail was not returned for this record';
+      if (label === 'BAG') return 'BAG check passed; allowance and destination detail was not returned for this record';
       return 'Check passed by current audit rule';
     }
     function buildAuditCard(bn, row, expanded = false) {

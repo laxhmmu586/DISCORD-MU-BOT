@@ -618,7 +618,9 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
       ''
     ).toUpperCase();
     const ffMatch = section.match(/\bFF\/([A-Z0-9]+)\s+(\d+)\/([A-Z])\b/i);
-    const ticketNo = section.match(/\bET\s+TKNE\/(?:INF)?(\d{10,})\/\d+\b/i)?.[1] || '';
+    const adultTicketNo = section.match(/\bET\s+TKNE\/(?!INF)(\d{10,})\/\d+\b/i)?.[1] || '';
+    const infantTicketNo = section.match(/\bET\s+TKNE\/INF(\d{10,})\/\d+\b/i)?.[1] || '';
+    const ticketNo = adultTicketNo || infantTicketNo || '';
     const bagLine = section.match(/BAGTAG\s*\/([^\n\r]+)/i)?.[1] || '';
     const bagtags = [...bagLine.matchAll(/(?:^|\s)\/?\s*((?:[A-Z]{1,3}\s*)?\d{5,12})\s*\/\s*([A-Z]{3})\b/gi)]
       .map((m) => `${String(m[1] || '').replace(/\s+/g, ' ').trim()}/${String(m[2] || '').toUpperCase()}`);
@@ -679,7 +681,7 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     const ckinLineList = section.split(/\r?\n/).filter((line) => /^\s*CKIN\b/i.test(line)).map((line) => line.trim());
     const visaRelevantCkinLineList = ckinLineList.filter((line) => !isVisaIrrelevantCkinLine(line));
     const ckinLines = visaRelevantCkinLineList.join(' ').toUpperCase();
-    const hasVisaKeyword = /\b(VISA|VS|TRAVEL\s*DOC(?:UMENT)?|TRAVELDOC(?:UMENT)?|V|PR CARD)\b/.test(ckinLines);
+    const hasVisaKeyword = /\b(VISA|VS|TRAVEL\s*DOC(?:UMENT)?\d*|TRAVELDOC(?:UMENT)?\d*|V|PR CARD)\b/.test(ckinLines);
     const hasVisaExpHint = /\b(EXP|DT|TIL|240|APPLY)\b/.test(ckinLines);
     const hasDateLike = /\b(\d{4}|[0-3]?\d\s*[A-Z]{3}\s*\d{2,4}|\d{1,2}[A-Z]{3}\d{2,4}|[A-Z]{3,9}\s*\d{4})\b/.test(ckinLines);
     const hasTravelDocOverride = /\b(TBZ|PINK CARD|PR CARD)\b/.test(ckinLines);
@@ -689,7 +691,7 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     const toChinaDomestic = chinaDomesticAirports.has(visaDest);
     let visaStatus = 'review';
     let visaReason = 'Not yet implemented';
-    const ckinBestLine = visaRelevantCkinLineList.find((line) => /\b(VISA|VS|TRAVEL\s*DOC|TRAVELDOC|PR CARD|TBZ|PINK CARD|240|EXP|DT|TIL|APPLY)\b/i.test(line)) || visaRelevantCkinLineList[0] || '';
+    const ckinBestLine = visaRelevantCkinLineList.find((line) => /\b(VISA|VS|TRAVEL\s*DOC(?:UMENT)?\d*|TRAVELDOC(?:UMENT)?\d*|PR CARD|TBZ|PINK CARD|240|EXP|DT|TIL|APPLY)\b/i.test(line)) || visaRelevantCkinLineList[0] || '';
     const visaReviewReason = (prefix) => ckinBestLine ? `${prefix};\n${ckinBestLine}` : prefix;
     const visaPassReason = (detail = '') => `${passportNat || 'UNK'} passport to ${visaDest}: PASS${detail ? ` (${detail})` : ''}`;
     if (toChinaDomestic) {
@@ -720,15 +722,15 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     }
 
     const hasInfFlag = /\bINF1\/0\b/i.test(section);
-    const hasAdultTk = /\bET\s+TKNE\/(?!INF)\d{10,}\/\d+\b/i.test(section);
-    const hasInfTk = /\bET\s+TKNE\/INF\d{10,}\/\d+\b/i.test(section);
+    const hasAdultTk = Boolean(adultTicketNo);
+    const hasInfTk = Boolean(infantTicketNo);
     const tkStatus = hasInfFlag ? (hasAdultTk && hasInfTk ? 'pass' : 'fail') : (hasAdultTk ? 'pass' : 'fail');
     const tkReason = hasInfFlag
       ? (!hasAdultTk && !hasInfTk ? 'INF requires both adult and infant tickets; both are missing'
-        : !hasAdultTk ? 'INF requires an adult ticket; adult ticket is missing'
-        : !hasInfTk ? 'INF requires an infant ticket; INF ticket is missing'
-        : '')
-      : (!hasAdultTk ? 'Adult TKNE ticket is missing' : '');
+        : !hasAdultTk ? `INF requires an adult ticket; infant ticket ${infantTicketNo} is present`
+        : !hasInfTk ? `INF requires an infant ticket; adult ticket ${adultTicketNo} is present`
+        : `Adult ticket ${adultTicketNo} and infant ticket ${infantTicketNo} are present`)
+      : (!hasAdultTk ? 'Adult TKNE ticket is missing' : `Adult ticket ${adultTicketNo} is present`);
 
     const waived = /\bPSM-EXBG0PC/i.test(section);
     const fbaPcParsed = Number(section.match(/\bFBA\/(\d+)PC\b/i)?.[1] || 0);
