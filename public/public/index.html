@@ -534,6 +534,8 @@
       display: flex;
       flex-direction: column;
       gap: 10px;
+      width: 100%;
+      overflow-x: hidden;
     }
     .membership-group-title {
       color: #bbf7d0;
@@ -542,15 +544,24 @@
     }
     .membership-row {
       display: grid;
-      grid-template-columns: 64px minmax(180px, 1.5fr) 52px 34px minmax(140px, 1fr);
-      gap: 10px;
+      width: 100%;
+      grid-template-columns: 56px minmax(120px, 1fr) 40px 28px minmax(0, 1fr);
+      gap: 8px;
       align-items: baseline;
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
     }
     .membership-row .member-bn { color: #fde047; font-weight: 700; }
+    .membership-row .member-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .membership-row .member-seat { text-align: center; }
     .membership-row .member-cabin { text-align: center; color: #93c5fd; font-weight: 700; }
-    .membership-row .member-ff { text-align: right; }
+    .membership-row .member-ff {
+      min-width: 0;
+      text-align: right;
+      justify-self: end;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
     .membership-empty { color: #94a3b8; }
 
 
