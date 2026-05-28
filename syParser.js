@@ -582,6 +582,11 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     const outboundLine = section.match(/^\s*O\/[^\n\r]*/im)?.[0] || '';
     const outboundDest = outboundLine.match(/\b([A-Z]{3})\b(?:\s*\+)?\s*$/i)?.[1]?.toUpperCase() || '';
     const hasOutbound = Boolean(outboundDest);
+    const hasCheckedOutbound = hasOutbound && (
+      /\bBN\s*\d{1,3}\b/i.test(outboundLine)
+      || /\b(?:SN|SNR)\s*\d{1,3}[A-Z]\b/i.test(outboundLine)
+      || /\b\*?\d{1,3}[A-Z]\b/i.test(outboundLine)
+    );
     const hasTimeOut = /\bAQQ\/TCL\/USA\b/i.test(section);
     const hasGovFail = /\bGOV\/DTA\/CHN\b/i.test(section);
     const hasReview = /\bWEB\/EDI\/RESWIPE\b/i.test(section);
@@ -668,7 +673,8 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
       return /\/CHKLEG\b/.test(normalized)
         || /^CKIN\s+HK\d+\s+LKCK\/\d+\/[A-Z]$/.test(normalized)
         || /^CKIN\s+MTCK\/MAP\/MU\b/.test(normalized)
-        || /^CKIN\s+(?:STSP|GE)\b/.test(normalized);
+        || /^CKIN\s+(?:STSP|GE|KATE|BY\s+YUIKA)\b/.test(normalized)
+        || /^CKIN\s+HK\d+\s+VICO\d+\b/.test(normalized);
     };
     const ckinLineList = section.split(/\r?\n/).filter((line) => /^\s*CKIN\b/i.test(line)).map((line) => line.trim());
     const visaRelevantCkinLineList = ckinLineList.filter((line) => !isVisaIrrelevantCkinLine(line));
@@ -679,11 +685,12 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     const hasTravelDocOverride = /\b(TBZ|PINK CARD|PR CARD)\b/.test(ckinLines);
     const has240Transit = /\b240\b/.test(ckinLines);
     const hasAnyVisaEvidence = hasTravelDocOverride || has240Transit || (hasVisaKeyword && (hasDateLike || hasVisaExpHint));
-    const visaDest = hasOutbound ? outboundDest : 'PVG';
+    const visaDest = hasCheckedOutbound ? outboundDest : 'PVG';
     const toChinaDomestic = chinaDomesticAirports.has(visaDest);
     let visaStatus = 'review';
     let visaReason = 'Not yet implemented';
     const ckinBestLine = visaRelevantCkinLineList.find((line) => /\b(VISA|VS|TRAVEL\s*DOC|TRAVELDOC|PR CARD|TBZ|PINK CARD|240|EXP|DT|TIL|APPLY)\b/i.test(line)) || visaRelevantCkinLineList[0] || '';
+    const visaReviewReason = (prefix) => ckinBestLine ? `${prefix};\n${ckinBestLine}` : prefix;
     if (toChinaDomestic) {
       if (passportNat === 'CHN') {
         visaStatus = 'pass';
@@ -693,25 +700,19 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
           visaStatus = 'pass';
           visaReason = '';
         } else {
-          visaReason = ckinBestLine
-            ? `Need review: USA passport to ${visaDest}; CKIN: ${ckinBestLine}`
-            : `Need review: USA passport to ${visaDest}; CKIN not found`;
+          visaReason = visaReviewReason(`Need review: USA passport to ${visaDest}`);
         }
       } else if (passportNat === 'CAN' || passportNat === 'RUS' || passportNat === 'ESP') {
         visaStatus = 'pass';
         visaReason = '';
-      } else if (passportNat === 'VNM' && visaDest === 'SGN') {
-        visaStatus = 'pass';
-        visaReason = '';
       } else {
-        visaReason = ckinBestLine
-          ? `Rule not implemented: passport ${passportNat || 'UNK'} to ${visaDest}; CKIN: ${ckinBestLine}`
-          : `Rule not implemented: passport ${passportNat || 'UNK'} to ${visaDest}`;
+        visaReason = visaReviewReason(`Rule not implemented: passport ${passportNat || 'UNK'} to ${visaDest}`);
       }
+    } else if ((passportNat === 'VNM' && visaDest === 'SGN') || (passportNat === 'THA' && visaDest === 'BKK')) {
+      visaStatus = 'pass';
+      visaReason = '';
     } else {
-      visaReason = ckinBestLine
-        ? `Rule not implemented: passport ${passportNat || 'UNK'} to ${visaDest}; CKIN: ${ckinBestLine}`
-        : `Rule not implemented: passport ${passportNat || 'UNK'} to ${visaDest}`;
+      visaReason = visaReviewReason(`Rule not implemented: passport ${passportNat || 'UNK'} to ${visaDest}`);
     }
 
     const hasInfFlag = /\bINF1\/0\b/i.test(section);
