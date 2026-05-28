@@ -525,6 +525,33 @@
     .sales-download-btn:disabled { background:#475569; cursor:not-allowed; }
     .wch-btn { background:#16a34a; color:#ffffff; }
     .membership-btn { background:#22c55e; color:#052e16; }
+    .membership-summary { color: #86efac; }
+    .membership-list {
+      margin-top: 8px;
+      font-size: 13px;
+      line-height: 1.5;
+      color: #e2e8f0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .membership-group-title {
+      color: #bbf7d0;
+      font-weight: 700;
+      margin-bottom: 3px;
+    }
+    .membership-row {
+      display: grid;
+      grid-template-columns: 64px minmax(180px, 1.5fr) 52px 34px minmax(140px, 1fr);
+      gap: 10px;
+      align-items: baseline;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+    .membership-row .member-bn { color: #fde047; font-weight: 700; }
+    .membership-row .member-seat { text-align: center; }
+    .membership-row .member-cabin { text-align: center; color: #93c5fd; font-weight: 700; }
+    .membership-row .member-ff { text-align: right; }
+    .membership-empty { color: #94a3b8; }
 
 
     .clickable { cursor: pointer; }
@@ -708,8 +735,8 @@
             <div id="wchList" class="chd-list"></div>
           </div>
           <div id="membershipPanelSection" style="display:none;">
-            <div id="membershipSummary" class="chd-summary"></div>
-            <div id="membershipList" class="chd-list"></div>
+            <div id="membershipSummary" class="chd-summary membership-summary"></div>
+            <div id="membershipList" class="membership-list"></div>
           </div>
         </div>
 
@@ -1467,6 +1494,38 @@
         .replace(/\n/g, '<br>');
       el.innerHTML = html;
     }
+    function renderMembershipPanel(el, membershipList) {
+      if (!el) return;
+      const m = membershipList || {};
+      const groups = [
+        { title: '白金卡 Platinum', rows: Array.isArray(m.platinum) ? m.platinum : [] },
+        { title: '金卡 Gold', rows: Array.isArray(m.gold) ? m.gold : [] },
+        { title: '银卡 Sliver', rows: Array.isArray(m.silver) ? m.silver : [] }
+      ];
+      const toRowHtml = (p) => {
+        const bn = escapeHtmlText(`BN${p.bn || '---'}`);
+        const name = escapeHtmlText(p.name || '-');
+        const seat = escapeHtmlText(p.seat || '-');
+        const cabin = escapeHtmlText(p.cabin || '-');
+        const ff = escapeHtmlText(`${p.ffCarrier || ''}${p.ffNumber || ''}` || '-');
+        return `<div class="membership-row">
+          <span class="member-bn">${bn}</span>
+          <span class="member-name">${name}</span>
+          <span class="member-seat">${seat}</span>
+          <span class="member-cabin">${cabin}</span>
+          <span class="member-ff">${ff}</span>
+        </div>`;
+      };
+      el.innerHTML = groups.map((g) => {
+        const body = g.rows.length
+          ? g.rows.map(toRowHtml).join('')
+          : '<div class="membership-empty">None</div>';
+        return `<div class="membership-group">
+          <div class="membership-group-title">${escapeHtmlText(g.title)}</div>
+          ${body}
+        </div>`;
+      }).join('');
+    }
 
     function setGovAqqStats(stats) {
       const el = document.getElementById('govAqqStats');
@@ -1843,27 +1902,9 @@
           renderBnHighlightedText(document.getElementById('wchList'), wchText);
 
           const m = sy.membershipList || {};
-          const renderGroup = (title, rows) => {
-            const data = Array.isArray(rows) ? rows : [];
-            const body = data.length
-              ? data.map((p) => `BN${p.bn} ${p.name} • ${p.seat || '-'} • ${p.cabin || '-'} • ${(p.ffCarrier || '')}${p.ffNumber || ''}`).join('\n')
-              : 'None';
-            return `${title}\n${body}`;
-          };
-          const membershipText = [
-            renderGroup('白金卡', m.platinum),
-            '',
-            renderGroup('金卡', m.gold),
-            '',
-            renderGroup('银卡', m.silver),
-            '',
-            renderGroup('天合联盟精英', m.skyElite),
-            '',
-            renderGroup('天合联盟超级精英', m.skyElitePlus)
-          ].join('\n');
           const counts = m.counts || {};
-          setTextById('membershipSummary', `Platinum:${counts.platinum || 0} • Gold:${counts.gold || 0} • Silver:${counts.silver || 0} • Elite:${counts.skyElite || 0} • Elite Plus:${counts.skyElitePlus || 0}`);
-          renderBnHighlightedText(document.getElementById('membershipList'), membershipText);
+          setTextById('membershipSummary', `白金卡 Platinum: ${counts.platinum || 0} • 金卡 Gold: ${counts.gold || 0} • 银卡 Sliver: ${counts.silver || 0}`);
+          renderMembershipPanel(document.getElementById('membershipList'), m);
 
           const govAqq = sy.govAqq || {};
           const duplicatePassports = Array.isArray(govAqq.duplicatePassports) ? govAqq.duplicatePassports : [];
