@@ -488,7 +488,7 @@ app.get(
       if (syMatch) {
         const preferNextDay = Boolean(syMatch[1]) && !date;
         const syDate = syMatch[2] ? syMatch[2].toUpperCase() : date;
-        const syInfo = findSYInfo(log, syDate, { preferNextDay });
+        const syInfo = findSYInfo(log, syDate, { preferNextDay, preferredFlightNo: 'MU586' });
         if (!syInfo) {
           return res.json({ error: 'No SY section found for selected date.' });
         }
