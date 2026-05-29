@@ -658,7 +658,9 @@
     .seatmap-legend-dot { width:12px; height:12px; border-radius:4px; border:1px solid rgba(255,255,255,.25); display:inline-block; }
     .seatmap-wrap { margin-top:14px; overflow:auto; max-height:720px; padding:12px 8px 18px; border:1px solid rgba(148,163,184,.16); border-radius:18px; background:linear-gradient(180deg, rgba(15,23,42,.9), rgba(2,6,23,.75)); }
     .seatmap-cabin-title { margin:14px auto 8px; max-width:440px; color:#93c5fd; font-size:12px; font-weight:900; letter-spacing:.8px; text-transform:uppercase; text-align:center; }
-    .seatmap-row { display:grid; grid-template-columns:34px repeat(10, 30px); justify-content:center; gap:4px; margin-bottom:4px; align-items:center; }
+    .seatmap-galley { margin:8px auto; max-width:440px; border:1px dashed rgba(251,146,60,.55); border-radius:10px; padding:6px 10px; color:#fed7aa; background:rgba(154,52,18,.18); font-size:11px; font-weight:900; text-align:center; text-transform:uppercase; letter-spacing:.8px; }
+    .seatmap-row { display:grid; grid-template-columns:34px repeat(12, 30px); justify-content:center; gap:4px; margin-bottom:4px; align-items:center; }
+    .seatmap-row.is-first { grid-template-columns:34px repeat(12, 30px); }
     .seatmap-row-label { color:#94a3b8; font-size:11px; font-weight:800; text-align:right; padding-right:4px; }
     .seatmap-seat { position:relative; width:30px; height:30px; border-radius:8px; border:1px solid rgba(148,163,184,.24); background:rgba(30,41,59,.82); color:#94a3b8; font-size:10px; font-weight:800; display:flex; align-items:center; justify-content:center; cursor:default; }
     .seatmap-seat.is-empty { opacity:.42; }
@@ -669,11 +671,13 @@
     .seatmap-seat.is-crew { background:#16a34a; border-color:#86efac; color:#fff; }
     .seatmap-seat.is-multi { box-shadow:0 0 0 2px #ef4444 inset; }
     .seatmap-seat small { position:absolute; right:2px; bottom:1px; font-size:8px; line-height:1; opacity:.95; }
-    .seatmap-aisle { width:12px; }
+    .seatmap-aisle, .seatmap-space { min-height:1px; }
+    .seatmap-aisle { border-left:1px solid rgba(148,163,184,.16); align-self:stretch; justify-self:center; width:1px; }
+    .seatmap-space.is-wide { grid-column:span 8; }
     .seatmap-detail { margin-top:12px; color:#cbd5e1; font-size:12px; line-height:1.5; text-align:center; }
     @media (max-width: 768px) {
       .action-menu-pop { right:-4px; }
-      .seatmap-row { grid-template-columns:28px repeat(10, 26px); gap:3px; }
+      .seatmap-row, .seatmap-row.is-first { grid-template-columns:28px repeat(12, 26px); gap:3px; }
       .seatmap-seat { width:26px; height:26px; border-radius:7px; font-size:9px; }
     }
     .audit-summary-bar { display:flex; justify-content:space-between; align-items:flex-end; gap:12px; margin-top:8px; }
@@ -1591,15 +1595,39 @@
       return String(value || '').trim().toUpperCase().replace(/[^0-9A-Z]/g, '');
     }
 
-    function seatMapRows777300() {
-      const rows = [];
-      const addRows = (start, end, letters, cabin) => {
-        for (let row = start; row <= end; row += 1) rows.push({ row, letters, cabin });
-      };
-      addRows(1, 6, ['A', 'C', 'D', 'G', 'H', 'K'], 'Business');
-      addRows(11, 18, ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K'], 'Premium / Forward Economy');
-      addRows(31, 72, ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K'], 'Economy');
-      return rows;
+    function seatMapItems777300() {
+      const items = [];
+      const seat = (letter) => ({ type: 'seat', letter });
+      const aisle = () => ({ type: 'aisle' });
+      const space = (wide = false) => ({ type: 'space', wide });
+      const addTitle = (title) => items.push({ type: 'title', title });
+      const addGalley = (label) => items.push({ type: 'galley', label });
+      const addRow = (row, cabin, cells, rowClass = '') => items.push({ type: 'row', row, cabin, cells, rowClass });
+      const firstTwoTwo = [seat('A'), aisle(), seat('D'), seat('H'), aisle(), seat('L')];
+      const businessOneTwoOne = [seat('A'), aisle(), space(), seat('D'), seat('H'), space(), aisle(), seat('L')];
+      const economyFull = [seat('A'), seat('B'), seat('C'), aisle(), seat('D'), seat('E'), seat('F'), seat('G'), aisle(), seat('H'), seat('J'), seat('K')];
+      const economyMiddleOnly = [space(), space(), space(), aisle(), seat('D'), seat('F'), seat('G'), seat('H'), aisle(), space(), space(), space()];
+      const economyTwoLeft = [seat('A'), seat('C'), space(), aisle(), space(), space(), space(), space(), aisle(), space(), space(), space()];
+
+      addTitle('First Class');
+      addRow(1, 'First Class', [seat('A'), space(true), seat('L')], 'is-first');
+      addRow(2, 'First Class', firstTwoTwo, 'is-first');
+
+      addTitle('Business Class');
+      [6, 7].forEach((row) => addRow(row, 'Business Class', businessOneTwoOne));
+      addGalley('Galley after row 7');
+      [8, 9, 10, 11, 12, 15, 16, 17, 18, 19, 20].forEach((row) => addRow(row, 'Business Class', businessOneTwoOne));
+
+      addTitle('Economy Class - Forward');
+      addRow(31, 'Economy Class - Forward', economyMiddleOnly);
+      for (let row = 32; row <= 44; row += 1) addRow(row, 'Economy Class - Forward', economyFull);
+      addGalley('Mid-cabin galley / no passenger seats rows 45-60');
+
+      addTitle('Economy Class - Rear');
+      for (let row = 61; row <= 69; row += 1) addRow(row, 'Economy Class - Rear', economyFull);
+      for (let row = 70; row <= 74; row += 1) addRow(row, 'Economy Class - Rear', economyTwoLeft);
+
+      return items;
     }
 
     function inferSeatMapType(record, row) {
@@ -1660,37 +1688,35 @@
       }).join('\n');
     }
 
-    function renderSeatMapRow(rowDef, bySeat) {
-      const allLetters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K'];
-      const seats = allLetters.map((letter) => {
-        const seat = `${rowDef.row}${letter}`;
-        const exists = rowDef.letters.includes(letter);
-        if (!exists) return '<div class="seatmap-aisle"></div>';
-        const records = bySeat.get(seat) || [];
-        const display = records[0]?.bn || (records.length ? 'SN' : letter);
-        const marker = records[0]?.type === 'wch' ? '♿' : records[0]?.type === 'child' ? 'CH' : records[0]?.type === 'crew' ? 'CR' : records[0]?.type === 'selected' ? 'SN' : '';
-        return `<div class="seatmap-seat ${seatMapCellClass(records)}" title="${escapeAttr(seatMapCellTitle(seat, records))}">${escapeHtmlText(display)}${marker ? `<small>${escapeHtmlText(marker)}</small>` : ''}</div>`;
-      });
-      return `<div class="seatmap-row"><div class="seatmap-row-label">${rowDef.row}</div>${seats.join('')}</div>`;
+    function renderSeatMapCell(row, cell, bySeat) {
+      if (cell.type === 'aisle') return '<div class="seatmap-aisle"></div>';
+      if (cell.type === 'space') return `<div class="seatmap-space${cell.wide ? ' is-wide' : ''}"></div>`;
+      const seat = `${row}${cell.letter}`;
+      const records = bySeat.get(seat) || [];
+      const display = records[0]?.bn || (records.length ? 'SN' : cell.letter);
+      const marker = records[0]?.type === 'wch' ? '♿' : records[0]?.type === 'child' ? 'CH' : records[0]?.type === 'crew' ? 'CR' : records[0]?.type === 'selected' ? 'SN' : '';
+      return `<div class="seatmap-seat ${seatMapCellClass(records)}" title="${escapeAttr(seatMapCellTitle(seat, records))}">${escapeHtmlText(display)}${marker ? `<small>${escapeHtmlText(marker)}</small>` : ''}</div>`;
+    }
+
+    function renderSeatMapItem(item, bySeat) {
+      if (item.type === 'title') return `<div class="seatmap-cabin-title">${escapeHtmlText(item.title)}</div>`;
+      if (item.type === 'galley') return `<div class="seatmap-galley">${escapeHtmlText(item.label || 'Galley')}</div>`;
+      const cells = item.cells.map((cell) => renderSeatMapCell(item.row, cell, bySeat)).join('');
+      return `<div class="seatmap-row ${escapeAttr(item.rowClass || '')}"><div class="seatmap-row-label">${item.row}</div>${cells}</div>`;
     }
 
     function showSeatMapPage() {
       const bySeat = buildSeatMapLookup();
-      const rows = seatMapRows777300();
+      const items = seatMapItems777300();
       const occupied = [...bySeat.values()].filter((list) => list.length).length;
       const selected = [...bySeat.values()].flat().filter((p) => p.type === 'selected').length;
       const wch = [...bySeat.values()].flat().filter((p) => p.type === 'wch').length;
       const child = [...bySeat.values()].flat().filter((p) => p.type === 'child').length;
       const crew = [...bySeat.values()].flat().filter((p) => p.type === 'crew').length;
-      let lastCabin = '';
-      const mapRows = rows.map((row) => {
-        const title = row.cabin !== lastCabin ? `<div class="seatmap-cabin-title">${escapeHtmlText(row.cabin)}</div>` : '';
-        lastCabin = row.cabin;
-        return `${title}${renderSeatMapRow(row, bySeat)}`;
-      }).join('');
+      const mapRows = items.map((item) => renderSeatMapItem(item, bySeat)).join('');
 
       document.getElementById('syAuditContent').innerHTML = `<div class="seatmap-summary">
-          <div class="detail-title" style="text-align:left; font-size:18px; font-weight:900; letter-spacing:.4px;">777-300 Seat Map</div>
+          <div class="detail-title" style="text-align:left; font-size:18px; font-weight:900; letter-spacing:.4px;">777-300ER Seat Map</div>
           <div class="audit-summary-subtitle">${occupied} seats matched • ${selected} selected/no BN • ${wch} WCH • ${child} CHD/UM • ${crew} crew</div>
         </div>
         <div class="seatmap-legend">
