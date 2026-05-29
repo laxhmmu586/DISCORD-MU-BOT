@@ -1154,11 +1154,11 @@
       <div id="changePasswordPage" class="password-page" style="display:none;">
         <div class="password-card">
           <div class="title" style="font-size:28px;margin-bottom:8px;">Change Password</div>
-          <div class="seat" style="margin-bottom:18px;">用户已登录，请输入新密码。</div>
-          <input id="changePasswordInput" type="password" placeholder="输入新密码">
+          <div class="seat" style="margin-bottom:18px;">You are signed in. Please enter a new password.</div>
+          <input id="changePasswordInput" type="password" placeholder="Enter new password">
           <div class="password-actions">
-            <button onclick="submitPasswordChange()">修改密码</button>
-            <button class="logout-btn" onclick="closeChangePasswordPage()">取消</button>
+            <button onclick="submitPasswordChange()">Change Password</button>
+            <button class="logout-btn" onclick="closeChangePasswordPage()">Cancel</button>
           </div>
         </div>
       </div>
@@ -3202,13 +3202,13 @@ To ${data.outbound.destination || '-'}`
     const newPassword = (input?.value || '').trim();
 
     if (!auth.currentUser) {
-      errorBox.innerText = '用户未登录，无法修改密码。';
+      errorBox.innerText = 'You are not signed in. Please sign in before changing your password.';
       errorBox.style.display = 'block';
       return;
     }
 
     if (!newPassword) {
-      errorBox.innerText = '请输入新密码。';
+      errorBox.innerText = 'Please enter a new password.';
       errorBox.style.display = 'block';
       return;
     }
@@ -3218,7 +3218,7 @@ To ${data.outbound.destination || '-'}`
       await signOut(auth);
       window.location.href = 'login.html';
     } catch (err) {
-      errorBox.innerText = err?.message || '密码修改失败。';
+      errorBox.innerText = err?.message || 'Password change failed.';
       errorBox.style.display = 'block';
     }
   };
