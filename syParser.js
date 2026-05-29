@@ -680,7 +680,7 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
       return /\/CHKLEG\b/.test(normalized)
         || /^CKIN\s+HK\d+\s+LKCK\/\d+\/[A-Z]$/.test(normalized)
         || /^CKIN\s+MTCK\/MAP\/MU\b/.test(normalized)
-        || /^CKIN\s+(?:STSP|GE|KATE|BY\s+YUIKA|GLENN|NH)\b/.test(normalized)
+        || /^CKIN\s+(?:STSP|GE|KATE|YUIKA|BY\s+YUIKA|BY\s+NORMA|GLENN|NH|RP|TIAN)\b/.test(normalized)
         || /^CKIN\s+HK\d+\s+VICO\d+\b/.test(normalized);
     };
     const ckinLineList = section.split(/\r?\n/).filter((line) => /^\s*CKIN\b/i.test(line)).map((line) => line.trim());
