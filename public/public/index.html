@@ -1530,26 +1530,31 @@
     function joinAuditValues(values) {
       return Array.isArray(values) && values.length ? values.join(', ') : '';
     }
+    function hasPassengerRecordValue(value) {
+      if (Array.isArray(value)) return value.length > 0;
+      const normalized = String(value ?? '').trim();
+      return Boolean(normalized && normalized !== '-' && normalized !== '---' && normalized.toUpperCase() !== 'UNKNOWN');
+    }
     function buildAuditPassengerCard(bn, row) {
       const record = row?.passengerRecord || null;
       const isDeletedRecord = Boolean(record?.offloaded || record?.status === 'DELETED' || row?.offloaded);
       const overall = record && !isDeletedRecord ? overallAuditStatus(auditItemsForRow(row)) : 'empty';
       const fields = record ? [
-        ['Name', record.name || '-'],
+        ['Name', record.name || ''],
         ['BN', `BN${record.bn || bn}`],
-        ['Seat', record.seat || '-'],
-        ['Cabin', record.cabin || '-'],
-        ['Passport', record.passportNo || '-'],
+        ['Seat', record.seat || ''],
+        ['Cabin', record.cabin || ''],
+        ['Passport', record.passportNo || ''],
         ['Membership', formatAuditMembership(record)],
-        ['Ticket', record.ticketNo || '-'],
-        ['Infant Ticket', record.infantTicketNo || (record.hasInfant ? 'INFANT' : '-')],
+        ['Ticket', record.ticketNo || ''],
+        ['Infant Ticket', record.infantTicketNo || (record.hasInfant ? 'INFANT' : '')],
         ['Bags', joinAuditValues(record.bagtags)],
         ['Inbound', formatAuditInbound(record.inbound)],
         ['Outbound', formatAuditOutbound(record.outbound)],
         ['Special Service', joinAuditValues(record.specialServices)],
         ['Special Meal', joinAuditValues(record.specialMeals)],
         ['Paid Service', joinAuditValues(record.paidProductsShort)]
-      ].filter(([, value]) => value) : [
+      ].filter(([, value]) => hasPassengerRecordValue(value)) : [
         ['BN', `BN${bn}`],
         ['Record', 'No passenger record found for this BN']
       ];
@@ -1786,8 +1791,8 @@
     }
 
     function formatSeatMapValue(value) {
-      if (Array.isArray(value)) return value.length ? value.join(', ') : '-';
-      return value || '-';
+      if (Array.isArray(value)) return value.length ? value.join(', ') : '';
+      return value || '';
     }
 
     function buildSeatMapPassengerCard(seat, records) {
@@ -1795,20 +1800,20 @@
       if (!record) return '';
       const bn = record.bn ? `BN${record.bn}` : 'No BN';
       const fields = [
-        ['Name', record.name || 'UNKNOWN'],
+        ['Name', record.name || ''],
         ['BN', bn],
         ['Seat', seat],
-        ['Cabin', record.cabin || '-'],
-        ['Passport', record.passportNo || '-'],
+        ['Cabin', record.cabin || ''],
+        ['Passport', record.passportNo || ''],
         ['Membership', formatAuditMembership(record)],
-        ['Ticket', record.ticketNo || '-'],
-        ['Infant Ticket', record.infantTicketNo || (record.hasInfant ? 'INFANT' : '-')],
+        ['Ticket', record.ticketNo || ''],
+        ['Infant Ticket', record.infantTicketNo || (record.hasInfant ? 'INFANT' : '')],
         ['Bags', formatSeatMapValue(record.bagtags)],
         ['Inbound', formatAuditInbound(record.inbound)],
         ['Outbound', formatAuditOutbound(record.outbound)],
         ['Special Service', formatSeatMapValue(record.specialServices)],
         ['Special Meal', formatSeatMapValue(record.specialMeals)]
-      ].filter(([, value]) => value);
+      ].filter(([, value]) => hasPassengerRecordValue(value));
       const body = fields.map(([label, value]) => `<div class="audit-record-field">
         <span class="audit-record-label">${escapeHtmlText(label)}</span>
         <span class="audit-record-value">${escapeHtmlText(value)}</span>
