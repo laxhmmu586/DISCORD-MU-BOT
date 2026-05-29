@@ -645,6 +645,37 @@
     .bag-table.notload-table col:nth-child(3) { width: 59%; }
     .bag-table.notload-table th:nth-child(2), .bag-table.notload-table td:nth-child(2) { text-align:center; }
     .audit-icon-btn { border:none; background:transparent; color:#8fb8ff; cursor:pointer; font-size:18px; line-height:1; padding:2px 4px; }
+    .action-menu-wrap { position:relative; display:none; }
+    .action-menu-btn { border:none; background:transparent; color:#cbd5e1; cursor:pointer; font-size:24px; line-height:1; padding:2px 7px; border-radius:10px; }
+    .action-menu-btn:hover, .action-menu-btn.is-open { background:#1e293b; color:#ffffff; }
+    .action-menu-pop { display:none; position:absolute; right:0; top:calc(100% + 8px); z-index:1200; min-width:178px; padding:6px; border:1px solid rgba(148,163,184,.24); border-radius:14px; background:#0f172a; box-shadow:0 18px 40px rgba(0,0,0,.38); }
+    .action-menu-pop.is-open { display:block; }
+    .action-menu-item { width:100%; display:block; padding:10px 12px; border-radius:10px; background:transparent; color:#e2e8f0; text-align:left; font-size:13px; }
+    .action-menu-item:hover { background:#1e293b; color:#ffffff; }
+    .seatmap-summary { display:flex; justify-content:space-between; align-items:flex-end; gap:12px; flex-wrap:wrap; margin-top:8px; }
+    .seatmap-legend { display:flex; flex-wrap:wrap; gap:8px; color:#cbd5e1; font-size:11px; }
+    .seatmap-legend-item { display:inline-flex; align-items:center; gap:5px; }
+    .seatmap-legend-dot { width:12px; height:12px; border-radius:4px; border:1px solid rgba(255,255,255,.25); display:inline-block; }
+    .seatmap-wrap { margin-top:14px; overflow:auto; max-height:720px; padding:12px 8px 18px; border:1px solid rgba(148,163,184,.16); border-radius:18px; background:linear-gradient(180deg, rgba(15,23,42,.9), rgba(2,6,23,.75)); }
+    .seatmap-cabin-title { margin:14px auto 8px; max-width:440px; color:#93c5fd; font-size:12px; font-weight:900; letter-spacing:.8px; text-transform:uppercase; text-align:center; }
+    .seatmap-row { display:grid; grid-template-columns:34px repeat(10, 30px); justify-content:center; gap:4px; margin-bottom:4px; align-items:center; }
+    .seatmap-row-label { color:#94a3b8; font-size:11px; font-weight:800; text-align:right; padding-right:4px; }
+    .seatmap-seat { position:relative; width:30px; height:30px; border-radius:8px; border:1px solid rgba(148,163,184,.24); background:rgba(30,41,59,.82); color:#94a3b8; font-size:10px; font-weight:800; display:flex; align-items:center; justify-content:center; cursor:default; }
+    .seatmap-seat.is-empty { opacity:.42; }
+    .seatmap-seat.is-occupied { background:#1d4ed8; border-color:#60a5fa; color:#fff; }
+    .seatmap-seat.is-selected { background:#f59e0b; border-color:#fde68a; color:#111827; }
+    .seatmap-seat.is-wch { background:#0891b2; border-color:#67e8f9; color:#ecfeff; }
+    .seatmap-seat.is-child { background:#7c3aed; border-color:#c4b5fd; color:#fff; }
+    .seatmap-seat.is-crew { background:#16a34a; border-color:#86efac; color:#fff; }
+    .seatmap-seat.is-multi { box-shadow:0 0 0 2px #ef4444 inset; }
+    .seatmap-seat small { position:absolute; right:2px; bottom:1px; font-size:8px; line-height:1; opacity:.95; }
+    .seatmap-aisle { width:12px; }
+    .seatmap-detail { margin-top:12px; color:#cbd5e1; font-size:12px; line-height:1.5; text-align:center; }
+    @media (max-width: 768px) {
+      .action-menu-pop { right:-4px; }
+      .seatmap-row { grid-template-columns:28px repeat(10, 26px); gap:3px; }
+      .seatmap-seat { width:26px; height:26px; border-radius:7px; font-size:9px; }
+    }
     .audit-summary-bar { display:flex; justify-content:space-between; align-items:flex-end; gap:12px; margin-top:8px; }
     .audit-summary-main { display:flex; align-items:flex-end; justify-content:space-between; gap:12px; width:100%; }
     .audit-summary-subtitle { color:#94a3b8; font-size:12px; font-weight:600; text-align:right; white-space:nowrap; margin-left:auto; }
@@ -809,6 +840,13 @@
           >
             🪪
           </button>
+          <div id="syActionMenuWrap" class="action-menu-wrap">
+            <button id="syActionMenuBtn" class="action-menu-btn" onclick="toggleSyActionMenu(event)" title="More actions" aria-haspopup="true" aria-expanded="false">⋮</button>
+            <div id="syActionMenu" class="action-menu-pop" role="menu">
+              <button type="button" class="action-menu-item" onclick="openSyMenuAction('security')" role="menuitem">Security Check</button>
+              <button type="button" class="action-menu-item" onclick="openSyMenuAction('seatmap')" role="menuitem">Seat Map</button>
+            </div>
+          </div>
           <button id="auditToggleBtn" class="audit-icon-btn" onclick="showBnAuditPage()" title="BN Audit" style="display:none;">📋</button>
         </div>
 
@@ -1134,6 +1172,7 @@
     window.currentUser = null;
     let hasAutoLoadedSyToday = false;
     let currentBnAudit = [];
+    let currentSeatMapRecords = [];
 
         function resolveApiBase() {
       const fromWindow = window.MU_API_BASE || '';
@@ -1308,7 +1347,39 @@
     }
 
     
+    function closeSyActionMenu() {
+      const menu = document.getElementById('syActionMenu');
+      const btn = document.getElementById('syActionMenuBtn');
+      if (menu) menu.classList.remove('is-open');
+      if (btn) {
+        btn.classList.remove('is-open');
+        btn.setAttribute('aria-expanded', 'false');
+      }
+    }
+
+    function toggleSyActionMenu(event) {
+      if (event) event.stopPropagation();
+      const menu = document.getElementById('syActionMenu');
+      const btn = document.getElementById('syActionMenuBtn');
+      if (!menu || !btn) return;
+      const willOpen = !menu.classList.contains('is-open');
+      menu.classList.toggle('is-open', willOpen);
+      btn.classList.toggle('is-open', willOpen);
+      btn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+    }
+
+    function openSyMenuAction(action) {
+      closeSyActionMenu();
+      if (action === 'security') showBnAuditPage();
+      if (action === 'seatmap') showSeatMapPage();
+    }
+
+    document.addEventListener('click', (event) => {
+      if (!event.target.closest?.('#syActionMenuWrap')) closeSyActionMenu();
+    });
+
     function hideSyAuxLayouts() {
+      closeSyActionMenu();
       setDisplayById('syBagDetailLayout', 'none');
       setDisplayById('syAuditLayout', 'none');
     }
@@ -1515,6 +1586,127 @@
       if (pop) pop.style.display = 'none';
     }
     document.addEventListener('click', hideStatusReason);
+
+    function normalizeSeatNo(value) {
+      return String(value || '').trim().toUpperCase().replace(/[^0-9A-Z]/g, '');
+    }
+
+    function seatMapRows777300() {
+      const rows = [];
+      const addRows = (start, end, letters, cabin) => {
+        for (let row = start; row <= end; row += 1) rows.push({ row, letters, cabin });
+      };
+      addRows(1, 6, ['A', 'C', 'D', 'G', 'H', 'K'], 'Business');
+      addRows(11, 18, ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K'], 'Premium / Forward Economy');
+      addRows(31, 72, ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K'], 'Economy');
+      return rows;
+    }
+
+    function inferSeatMapType(record, row) {
+      const services = [
+        ...(record?.specialServices || []),
+        ...(record?.specialMeals || []),
+        ...(row?.codes || [])
+      ].map((x) => String(x || '').toUpperCase());
+      const name = String(record?.name || row?.name || '').toUpperCase();
+      if (services.some((x) => /^WCH/.test(x))) return 'wch';
+      if (services.includes('UM') || services.includes('CHD') || row?.hasChdCode || row?.isChild) return 'child';
+      if (services.includes('CREW') || /\bCREW\b/.test(name)) return 'crew';
+      if (!record?.bn && row?.source === 'seatOnly') return 'selected';
+      return 'occupied';
+    }
+
+    function buildSeatMapLookup() {
+      const bySeat = new Map();
+      const add = (record, sourceRow = {}) => {
+        const seat = normalizeSeatNo(record?.seat || sourceRow?.seat);
+        if (!seat || seat === '---' || seat === '-') return;
+        const bn = String(record?.bn || sourceRow?.bn || '').padStart(record?.bn || sourceRow?.bn ? 3 : 0, '0');
+        const merged = { ...sourceRow, ...(record || {}), bn, seat };
+        const type = inferSeatMapType(merged, sourceRow);
+        const existing = bySeat.get(seat) || [];
+        const sameIdx = existing.findIndex((item) => item.bn && merged.bn && item.bn === merged.bn);
+        if (sameIdx >= 0) {
+          existing[sameIdx] = { ...existing[sameIdx], ...merged, type: type !== 'occupied' ? type : existing[sameIdx].type };
+        } else {
+          existing.push({ ...merged, type });
+        }
+        bySeat.set(seat, existing);
+      };
+
+      (currentBnAudit || []).forEach((row) => add(row?.passengerRecord, row));
+      (currentSeatMapRecords || []).forEach((record) => add(record, { source: record?.bn ? 'record' : 'seatOnly' }));
+
+      return bySeat;
+    }
+
+    function seatMapCellClass(records) {
+      if (!records?.length) return 'is-empty';
+      if (records.length > 1) return `is-${records[0].type || 'occupied'} is-multi`;
+      return `is-${records[0].type || 'occupied'}`;
+    }
+
+    function seatMapCellTitle(seat, records) {
+      if (!records?.length) return `${seat} empty`;
+      return records.map((p) => {
+        const bn = p.bn ? `BN${p.bn}` : 'No BN yet';
+        const name = p.name || 'UNKNOWN';
+        const tags = [];
+        if (p.type === 'selected') tags.push('Selected / not arrived');
+        if (p.type === 'wch') tags.push('Wheelchair');
+        if (p.type === 'child') tags.push('Child');
+        if (p.type === 'crew') tags.push('Crew');
+        return `${seat} • ${bn} • ${name}${tags.length ? ` • ${tags.join(', ')}` : ''}`;
+      }).join('\n');
+    }
+
+    function renderSeatMapRow(rowDef, bySeat) {
+      const allLetters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K'];
+      const seats = allLetters.map((letter) => {
+        const seat = `${rowDef.row}${letter}`;
+        const exists = rowDef.letters.includes(letter);
+        if (!exists) return '<div class="seatmap-aisle"></div>';
+        const records = bySeat.get(seat) || [];
+        const display = records[0]?.bn || (records.length ? 'SN' : letter);
+        const marker = records[0]?.type === 'wch' ? '♿' : records[0]?.type === 'child' ? 'CH' : records[0]?.type === 'crew' ? 'CR' : records[0]?.type === 'selected' ? 'SN' : '';
+        return `<div class="seatmap-seat ${seatMapCellClass(records)}" title="${escapeAttr(seatMapCellTitle(seat, records))}">${escapeHtmlText(display)}${marker ? `<small>${escapeHtmlText(marker)}</small>` : ''}</div>`;
+      });
+      return `<div class="seatmap-row"><div class="seatmap-row-label">${rowDef.row}</div>${seats.join('')}</div>`;
+    }
+
+    function showSeatMapPage() {
+      const bySeat = buildSeatMapLookup();
+      const rows = seatMapRows777300();
+      const occupied = [...bySeat.values()].filter((list) => list.length).length;
+      const selected = [...bySeat.values()].flat().filter((p) => p.type === 'selected').length;
+      const wch = [...bySeat.values()].flat().filter((p) => p.type === 'wch').length;
+      const child = [...bySeat.values()].flat().filter((p) => p.type === 'child').length;
+      const crew = [...bySeat.values()].flat().filter((p) => p.type === 'crew').length;
+      let lastCabin = '';
+      const mapRows = rows.map((row) => {
+        const title = row.cabin !== lastCabin ? `<div class="seatmap-cabin-title">${escapeHtmlText(row.cabin)}</div>` : '';
+        lastCabin = row.cabin;
+        return `${title}${renderSeatMapRow(row, bySeat)}`;
+      }).join('');
+
+      document.getElementById('syAuditContent').innerHTML = `<div class="seatmap-summary">
+          <div class="detail-title" style="text-align:left; font-size:18px; font-weight:900; letter-spacing:.4px;">777-300 Seat Map</div>
+          <div class="audit-summary-subtitle">${occupied} seats matched • ${selected} selected/no BN • ${wch} WCH • ${child} CHD/UM • ${crew} crew</div>
+        </div>
+        <div class="seatmap-legend">
+          <span class="seatmap-legend-item"><span class="seatmap-legend-dot" style="background:#1d4ed8"></span>Checked-in / BN</span>
+          <span class="seatmap-legend-item"><span class="seatmap-legend-dot" style="background:#f59e0b"></span>Seat selected, no BN</span>
+          <span class="seatmap-legend-item"><span class="seatmap-legend-dot" style="background:#0891b2"></span>Wheelchair</span>
+          <span class="seatmap-legend-item"><span class="seatmap-legend-dot" style="background:#7c3aed"></span>Child / UM</span>
+          <span class="seatmap-legend-item"><span class="seatmap-legend-dot" style="background:#16a34a"></span>Crew</span>
+        </div>
+        <div class="seatmap-wrap">${mapRows}</div>
+        <div class="seatmap-detail">Hover a seat to see passenger details. Empty grey seats are not matched to any passenger record.</div>`;
+      setDisplayById('syLayout', 'none');
+      setDisplayById('syBagDetailLayout', 'none');
+      setDisplayById('syAuditLayout', 'block');
+    }
+
     function showBnAuditPage() {
       const byBn = new Map((currentBnAudit || []).map((x) => [x.bn, x]));
       const auditRows = [];
@@ -2278,7 +2470,9 @@
           setTextById('syTimes', `${sy.bdt || '-'} / ${sy.sd || '-'} / ${sy.ed || '-'}`);
           currentSyBagSheet = sy.bagSheet || null;
           currentBnAudit = Array.isArray(sy.bnAudit) ? sy.bnAudit : [];
-          setDisplayById('auditToggleBtn', 'inline-block');
+          currentSeatMapRecords = Array.isArray(sy.seatMapRecords) ? sy.seatMapRecords : [];
+          setDisplayById('syActionMenuWrap', 'block');
+          setDisplayById('auditToggleBtn', 'none');
           const bagIcon = currentSyBagSheet?.hasData ? ' 🧳' : '';
           setTextById('syBagsLabel', `BAGS${bagIcon}`);
           setTextById('syBags', `${sy.bags?.[0] || '-'}`);
@@ -2338,6 +2532,19 @@
           const wchList = Array.isArray(sy.wchList) ? sy.wchList : [];
           setTextById('wchSummary', `WCH total: ${wchList.length}`);
           renderWchPanel(document.getElementById('wchList'), wchList);
+          const chdByBn = new Map(chdList.filter((p) => p.bn).map((p) => [String(p.bn).padStart(3, '0'), p]));
+          const wchByBn = new Map(wchList.filter((p) => p.bn).map((p) => [String(p.bn).padStart(3, '0'), p]));
+          currentSeatMapRecords = currentSeatMapRecords.map((record) => {
+            const bn = record?.bn ? String(record.bn).padStart(3, '0') : '';
+            const chd = bn ? chdByBn.get(bn) : null;
+            const wch = bn ? wchByBn.get(bn) : null;
+            return {
+              ...record,
+              hasChdCode: chd?.hasChdCode || record?.hasChdCode,
+              isChild: Boolean(chd) || record?.isChild,
+              codes: wch?.codes || record?.codes || []
+            };
+          });
 
           const membershipData = sy.membershipList || {};
           const counts = membershipData.counts || {};
@@ -2421,6 +2628,7 @@
         setDisplayById('wchToggleBtn', 'none');
         setDisplayById('wchSection', 'none');
         setDisplayById('auditToggleBtn', 'none');
+        setDisplayById('syActionMenuWrap', 'none');
 
         if (!data.flight || !data.flightDate || !data.name) {
           error.innerText =
