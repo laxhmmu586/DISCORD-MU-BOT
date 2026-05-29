@@ -531,6 +531,7 @@ function enrichSeatMapRecordsFromLog(log, syInfo, targetYmd = null) {
   if (!log || !syInfo?.flightNo || !syInfo?.flightDate) return [];
   const sections = splitLogicalSections(log);
   const latestByKey = new Map();
+  let sectionSeq = 0;
   const flightDateMatch = syInfo.flightDate.match(/^(\d{2})([A-Z]{3})(\d{2})$/);
   const monthMap = { JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5, JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11 };
   const atDateUtc = flightDateMatch
@@ -539,6 +540,8 @@ function enrichSeatMapRecordsFromLog(log, syInfo, targetYmd = null) {
 
   for (const sectionObj of sections) {
     const section = sectionObj.content || '';
+    const seq = sectionSeq;
+    sectionSeq += 1;
     if (!section.includes('PR:')) continue;
     if (targetYmd) {
       const sectionYmd = getYmdFromTimestamp(sectionObj.timestamp);
@@ -566,6 +569,9 @@ function enrichSeatMapRecordsFromLog(log, syInfo, targetYmd = null) {
     const nonPsmSection = section.split(/\r?\n/).filter((line) => !/^\s*PSM\b/i.test(line)).join('\n');
     const specialServices = serviceCodes.filter((code) => new RegExp(`(?:\\s|\\/|^)${code}(?:\\s|\\/|$)`, 'i').test(nonPsmSection));
     const specialMeals = [...section.matchAll(/\bSPML-([A-Z]{4})\b/gi)].map((m) => m[1].toUpperCase());
+    const adultTicketNo = section.match(/\bET\s+TKNE\/(?!INF)(\d{10,})\/\d+\b/i)?.[1] || '';
+    const infantTicketNo = section.match(/\bET\s+TKNE\/INF(\d{10,})\/\d+\b/i)?.[1] || '';
+    const hasInfant = /\bINF1\/0\b/i.test(section) || Boolean(infantTicketNo);
     const paxInfo = section.match(/PAX INFO\s*:\s*([^\n\r]+)/i)?.[1] || '';
     const dobRaw = paxInfo.match(/DOB\/(\d{6})/i)?.[1] || null;
     const dobDate = parseDobYYMMDD(dobRaw);
@@ -584,6 +590,9 @@ function enrichSeatMapRecordsFromLog(log, syInfo, targetYmd = null) {
       name: passengerName || 'UNKNOWN',
       seat,
       passportNo,
+      ticketNo: adultTicketNo || infantTicketNo,
+      infantTicketNo,
+      hasInfant,
       dob: dobRaw ? `20${dobRaw.slice(0, 2)}-${dobRaw.slice(2, 4)}-${dobRaw.slice(4, 6)}` : '',
       ageYears: Number.isInteger(ageYears) ? ageYears : null,
       hasChdCode,
@@ -592,13 +601,21 @@ function enrichSeatMapRecordsFromLog(log, syInfo, targetYmd = null) {
       specialMeals: [...new Set(specialMeals)],
       status: isOffloaded ? 'DELETED' : '',
       offloaded: isOffloaded,
+      recordTimestamp: ts,
+      seq,
       ts
     });
   }
 
-  return [...latestByKey.values()]
+  const latestBySeat = new Map();
+  for (const record of latestByKey.values()) {
+    const prev = latestBySeat.get(record.seat);
+    if (!prev || record.ts > prev.ts || (record.ts === prev.ts && record.seq >= prev.seq)) latestBySeat.set(record.seat, record);
+  }
+
+  return [...latestBySeat.values()]
     .sort((a, b) => Number(a.bn || 9999) - Number(b.bn || 9999) || a.seat.localeCompare(b.seat))
-    .map(({ ts, ...record }) => record);
+    .map(({ ts, seq, ...record }) => record);
 }
 
 function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
@@ -729,6 +746,9 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
       const emda = fullLine.match(/\bEMDA-\d{13}\b/i)?.[0]?.toUpperCase() || '';
       return serviceCode && emda ? `${serviceCode}/${emda}` : fullLine;
     }).filter(Boolean);
+    const hasInfFlag = /\bINF1\/0\b/i.test(section);
+    const hasAdultTk = Boolean(adultTicketNo);
+    const hasInfTk = Boolean(infantTicketNo);
     const passengerRecord = {
       bn,
       name: passengerName || 'UNKNOWN',
@@ -741,6 +761,8 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
       ffNumber: ffMatch?.[2] || '',
       ffTier: ffMatch?.[3]?.toUpperCase() || '',
       ticketNo,
+      infantTicketNo,
+      hasInfant: hasInfFlag || hasInfTk,
       bagtags,
       inbound,
       outbound,
@@ -748,7 +770,8 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
       specialMeals: [...new Set(specialMeals)],
       paidProductsShort,
       status: isOffloaded ? 'DELETED' : '',
-      offloaded: isOffloaded
+      offloaded: isOffloaded,
+      recordTimestamp: ts
     };
     const isVisaIrrelevantCkinLine = (line) => {
       const normalized = String(line || '').trim().toUpperCase().replace(/\s+/g, ' ');
@@ -802,9 +825,6 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
       visaReason = visaReviewReason(`Rule not implemented: passport ${passportNat || 'UNK'} to ${visaDest}`);
     }
 
-    const hasInfFlag = /\bINF1\/0\b/i.test(section);
-    const hasAdultTk = Boolean(adultTicketNo);
-    const hasInfTk = Boolean(infantTicketNo);
     const tkStatus = hasInfFlag ? (hasAdultTk && hasInfTk ? 'pass' : 'fail') : (hasAdultTk ? 'pass' : 'fail');
     const tkReason = hasInfFlag
       ? (!hasAdultTk && !hasInfTk ? 'INF requires both adult and infant tickets; both are missing'
