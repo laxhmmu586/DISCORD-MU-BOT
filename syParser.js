@@ -57,6 +57,23 @@ function parseSectionTimestamp(timestamp) {
 }
 
 
+function getPassengerRecordLine(section) {
+  return String(section || '').split(/\r?\n/).find((line) => /^\s*\d+\.\s*/.test(line)) || '';
+}
+
+function isDeletedPassengerLine(line) {
+  return /\bDELETED\b/i.test(String(line || ''));
+}
+
+function isDeletedPassengerSection(section) {
+  return isDeletedPassengerLine(getPassengerRecordLine(section));
+}
+
+function getActiveOutboundLine(section) {
+  const outboundLines = String(section || '').match(/^\s*X?O\/[^\n\r]*/gim) || [];
+  return outboundLines.find((line) => !/\bDELETED\b/i.test(line)) || '';
+}
+
 function getFlightDateFromTimestamp(timestamp) {
   if (!timestamp) return null;
   const m = timestamp.match(/^(\d{4})\s+([A-Z][a-z]{2})\s+(\d{2}),/);
@@ -576,7 +593,7 @@ function enrichSeatMapRecordsFromLog(log, syInfo, targetYmd = null) {
     if (!prMatch) continue;
     if (prMatch[1].toUpperCase() !== syInfo.flightNo || prMatch[2].toUpperCase() !== syInfo.flightDate) continue;
 
-    const passengerLine = section.split(/\r?\n/).find((line) => /^\s*\d+\.\s*/.test(line)) || '';
+    const passengerLine = getPassengerRecordLine(section);
     const passengerName = (passengerLine.match(/^\s*\d+\.\s*\d?([A-Z\/]+\+?)/i)?.[1] || '').replace(/\+$/, '').toUpperCase();
     const bn = section.match(/\bBN\s*(\d{1,3})\b/i)?.[1]?.padStart(3, '0') || '';
     const seat = (
@@ -604,7 +621,7 @@ function enrichSeatMapRecordsFromLog(log, syInfo, targetYmd = null) {
     const hasChdCode = /\bCHD1\/0\b/i.test(section);
     const isChild = (Number.isInteger(ageYears) && ageYears >= 2 && ageYears < 12) || hasChdCode;
     const passportNo = section.match(/PASSPORT\s*:\s*([A-Z0-9]+)/i)?.[1]?.toUpperCase() || '';
-    const isOffloaded = /\bDELETED\b/i.test(passengerLine) || /^\s*X?O\/[^\n\r]*\bDELETED\b/im.test(section);
+    const isOffloaded = isDeletedPassengerLine(passengerLine);
     const ts = parseSectionTimestamp(sectionObj.timestamp);
     const identity = passportNo || passengerName || `${seat}:UNKNOWN`;
     const key = `PAX:${identity}`;
@@ -683,13 +700,13 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     const bn = bnMatch[1].padStart(3, '0');
     const ts = parseSectionTimestamp(sectionObj.timestamp);
     const score = sectionRichnessScore(section);
-    const isDeletedSection = /\bDELETED\b/i.test(section);
+    const isDeletedSection = isDeletedPassengerSection(section);
     const prev = latestByBn.get(bn);
     if (!prev) {
       latestByBn.set(bn, { ts, section, score });
       continue;
     }
-    const prevIsDeleted = /\bDELETED\b/i.test(prev.section || '');
+    const prevIsDeleted = isDeletedPassengerSection(prev.section || '');
     if ((ts > prev.ts && (isDeletedSection || prevIsDeleted)) || score > prev.score || (score === prev.score && ts >= prev.ts)) {
       latestByBn.set(bn, { ts, section, score });
     }
@@ -706,7 +723,7 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
   const auditRows = [...latestByBn.entries()].sort((a, b) => Number(a[0]) - Number(b[0])).map(([bn, payload]) => {
     const section = payload.section || '';
     const hasCkinOkOverride = /^\s*CKIN\s+OK\s*$/im.test(section);
-    const outboundLine = section.match(/^\s*O\/[^\n\r]*/im)?.[0] || '';
+    const outboundLine = getActiveOutboundLine(section);
     const outboundDest = outboundLine.match(/\b([A-Z]{3})\b(?:\s*\+)?\s*$/i)?.[1]?.toUpperCase() || '';
     const hasOutbound = Boolean(outboundDest);
     const hasCheckedOutbound = hasOutbound && (
@@ -736,7 +753,7 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
       }
     }
     const passportNat = passportRawLine.match(/\/NAT\/([A-Z]{3})\//i)?.[1]?.toUpperCase() || '';
-    const passengerLine = section.split(/\r?\n/).find((line) => /^\s*\d+\.\s*/.test(line)) || '';
+    const passengerLine = getPassengerRecordLine(section);
     const passengerName = (passengerLine.match(/^\s*\d+\.\s*\d?([A-Z\/]+\+?)/i)?.[1] || '').replace(/\+$/, '').toUpperCase();
     const passengerSeat = (
       passengerLine.match(/\bBN\d{1,3}\b[^\n\r]*\*(\d+[A-Z])\b/i)?.[1] ||
@@ -753,9 +770,9 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
       .map((m) => `${String(m[1] || '').replace(/\s+/g, ' ').trim()}/${String(m[2] || '').toUpperCase()}`);
     const inboundMatch = section.match(/^\s*I\/\s*([A-Z0-9]+)\s*\/\s*(\d{2}[A-Z]{3}(?:\d{2})?).*?\b([A-Z]{3})\s*$/im);
     const inbound = inboundMatch ? { flight: inboundMatch[1], date: inboundMatch[2], origin: inboundMatch[3] } : null;
-    const outboundLineForRecord = section.match(/^\s*X?O\/[^\n\r]+/im)?.[0] || '';
+    const outboundLineForRecord = getActiveOutboundLine(section);
     const outboundMatch = outboundLineForRecord.match(/X?O\/\s*([A-Z0-9]+)\s*\/\s*(\d{2}[A-Z]{3}(?:\d{2})?)(?:.*?\bBN\s*(\d+))?(?:.*?\b(\d+[A-Z]))?.*?\b([A-Z]{3})\s*$/i);
-    const isOffloaded = /\bDELETED\b/i.test(passengerLine) || /\bDELETED\b/i.test(outboundLineForRecord);
+    const isOffloaded = isDeletedPassengerLine(passengerLine);
     const outbound = outboundMatch ? {
       flight: outboundMatch[1],
       date: outboundMatch[2],
