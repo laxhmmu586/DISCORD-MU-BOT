@@ -622,6 +622,11 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
   if (!log || !syInfo?.flightNo || !syInfo?.flightDate) return [];
   const sections = splitLogicalSections(log);
   const latestByBn = new Map();
+  const flightDateMatch = syInfo.flightDate.match(/^(\d{2})([A-Z]{3})(\d{2})$/);
+  const monthMap = { JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5, JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11 };
+  const atDateUtc = flightDateMatch
+    ? new Date(Date.UTC(Number(`20${flightDateMatch[3]}`), monthMap[flightDateMatch[2]], Number(flightDateMatch[1])))
+    : null;
   const sectionRichnessScore = (text) => {
     const s = String(text || '');
     let score = 0;
@@ -740,6 +745,12 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     const filteredSpecialServices = specialServices.filter((code) => !['WCHR', 'WCHS', 'WCHC'].includes(code));
     if (wheelchair) filteredSpecialServices.push(wheelchair);
     const specialMeals = [...section.matchAll(/\bSPML-([A-Z]{4})\b/gi)].map((m) => m[1].toUpperCase());
+    const paxInfo = section.match(/PAX INFO\s*:\s*([^\n\r]+)/i)?.[1] || '';
+    const dobRaw = paxInfo.match(/DOB\/(\d{6})/i)?.[1] || null;
+    const dobDate = parseDobYYMMDD(dobRaw);
+    const ageYears = getAgeYearsAtDate(dobDate, atDateUtc);
+    const hasChdCode = /\bCHD1\/0\b/i.test(section);
+    const isChild = (Number.isInteger(ageYears) && ageYears >= 2 && ageYears < 12) || hasChdCode;
     const paidProductsShort = (section.match(/^\s*ASVC-[^\n\r]+/gim) || []).map((line) => {
       const fullLine = line.replace(/^ASVC-\s*/i, '').trim();
       const serviceCode = (fullLine.match(/(?:^|\/)\s*([A-Z]{4})\s*(?:\/|\s)/i)?.[1] || fullLine.match(/\b(\d+[A-Z]|[0-9]+PC)\b/i)?.[1] || '').toUpperCase();
@@ -763,6 +774,10 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
       ticketNo,
       infantTicketNo,
       hasInfant: hasInfFlag || hasInfTk,
+      dob: dobRaw ? `20${dobRaw.slice(0, 2)}-${dobRaw.slice(2, 4)}-${dobRaw.slice(4, 6)}` : '',
+      ageYears: Number.isInteger(ageYears) ? ageYears : null,
+      hasChdCode,
+      isChild,
       bagtags,
       inbound,
       outbound,

@@ -1618,7 +1618,7 @@
       const businessOneTwoOne = [space(), space(), space(), seat('A'), space(), seat('D'), seat('H'), space(), seat('L'), space(), space(), space()];
       const economyFull = [seat('A'), seat('B'), seat('C'), aisle(), seat('D'), seat('F'), seat('G'), seat('H'), aisle(), seat('J'), seat('K'), seat('L')];
       const economyMiddleOnly = [space(), space(), space(), aisle(), seat('D'), seat('F'), seat('G'), seat('H'), aisle(), space(), space(), space()];
-      const economyTwoTwo = [seat('A'), space(), seat('C'), aisle(), space(), space(), space(), space(), aisle(), seat('J'), space(), seat('L')];
+      const economyTwoTwo = [seat('A'), space(), seat('C'), aisle(), seat('D'), seat('F'), seat('G'), seat('H'), aisle(), seat('J'), space(), seat('L')];
       const economyTailAC = [seat('A'), space(), seat('C'), aisle(), space(), space(), space(), space(), aisle(), space(), space(), space()];
 
       addTitle('First Class');
@@ -1648,9 +1648,9 @@
         ...(row?.codes || [])
       ].map((x) => String(x || '').toUpperCase());
       const name = String(record?.name || row?.name || '').toUpperCase();
-      if (services.some((x) => /^WCH/.test(x))) return 'wch';
       if (record?.hasInfant || row?.hasInfant || record?.infantTicketNo || row?.infantTicketNo) return 'infant';
       if (services.includes('UM') || services.includes('CHD') || row?.hasChdCode || row?.isChild) return 'child';
+      if (services.some((x) => /^WCH/.test(x))) return 'wch';
       if (!record?.bn && row?.source === 'seatOnly') return 'selected';
       return 'occupied';
     }
@@ -2653,7 +2653,7 @@
           renderWchPanel(document.getElementById('wchList'), wchList);
           const chdByBn = new Map(chdList.filter((p) => p.bn).map((p) => [String(p.bn).padStart(3, '0'), p]));
           const wchByBn = new Map(wchList.filter((p) => p.bn).map((p) => [String(p.bn).padStart(3, '0'), p]));
-          currentSeatMapRecords = currentSeatMapRecords.map((record) => {
+          const applySeatMapFlags = (record) => {
             const bn = record?.bn ? String(record.bn).padStart(3, '0') : '';
             const chd = bn ? chdByBn.get(bn) : null;
             const wch = bn ? wchByBn.get(bn) : null;
@@ -2663,7 +2663,12 @@
               isChild: Boolean(chd) || record?.isChild,
               codes: wch?.codes || record?.codes || []
             };
-          });
+          };
+          currentSeatMapRecords = currentSeatMapRecords.map((record) => applySeatMapFlags(record));
+          currentBnAudit = currentBnAudit.map((row) => ({
+            ...row,
+            passengerRecord: row?.passengerRecord ? applySeatMapFlags(row.passengerRecord) : row?.passengerRecord
+          }));
 
           const membershipData = sy.membershipList || {};
           const counts = membershipData.counts || {};
