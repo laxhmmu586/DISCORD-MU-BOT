@@ -645,6 +645,53 @@
     .bag-table.notload-table col:nth-child(3) { width: 59%; }
     .bag-table.notload-table th:nth-child(2), .bag-table.notload-table td:nth-child(2) { text-align:center; }
     .audit-icon-btn { border:none; background:transparent; color:#8fb8ff; cursor:pointer; font-size:18px; line-height:1; padding:2px 4px; }
+    .action-menu-wrap { position:relative; display:none; }
+    .action-menu-btn { border:none; background:transparent; color:#cbd5e1; cursor:pointer; font-size:24px; line-height:1; padding:2px 7px; border-radius:10px; }
+    .action-menu-btn:hover, .action-menu-btn.is-open { background:#1e293b; color:#ffffff; }
+    .action-menu-pop { display:none; position:absolute; right:0; top:calc(100% + 8px); z-index:1200; min-width:178px; padding:6px; border:1px solid rgba(148,163,184,.24); border-radius:14px; background:#0f172a; box-shadow:0 18px 40px rgba(0,0,0,.38); }
+    .action-menu-pop.is-open { display:block; }
+    .action-menu-item { width:100%; display:block; padding:10px 12px; border-radius:10px; background:transparent; color:#e2e8f0; text-align:left; font-size:13px; }
+    .action-menu-item:hover { background:#1e293b; color:#ffffff; }
+    .seatmap-summary { display:flex; justify-content:flex-end; align-items:flex-end; gap:12px; flex-wrap:wrap; margin-top:8px; text-align:right; }
+    .seatmap-title { margin-left:auto; text-align:right; }
+    .seatmap-legend { display:flex; flex-wrap:wrap; gap:8px; color:#cbd5e1; font-size:11px; }
+    .seatmap-legend-item { display:inline-flex; align-items:center; gap:5px; }
+    .seatmap-legend-dot { width:12px; height:12px; border-radius:4px; border:1px solid rgba(255,255,255,.25); display:inline-block; }
+    .seatmap-workspace { --seatmap-detail-width:320px; display:grid; grid-template-columns:minmax(0, 1fr) minmax(280px, var(--seatmap-detail-width)); gap:14px; align-items:start; margin-top:14px; width:calc(100% + var(--seatmap-detail-width) + 14px); }
+    .seatmap-workspace.no-detail { grid-template-columns:minmax(0, 1fr); width:100%; }
+    .seatmap-wrap { overflow:auto; max-height:720px; padding:12px 8px 18px; border:1px solid rgba(148,163,184,.16); border-radius:18px; background:linear-gradient(180deg, rgba(15,23,42,.9), rgba(2,6,23,.75)); }
+    .seatmap-cabin-title { margin:14px auto 8px; max-width:440px; color:#93c5fd; font-size:12px; font-weight:900; letter-spacing:.8px; text-transform:uppercase; text-align:center; }
+    .seatmap-section-gap { height:34px; max-width:440px; margin:8px auto; }
+    .seatmap-row { display:grid; grid-template-columns:34px repeat(12, 30px); justify-content:center; gap:4px; margin-bottom:4px; align-items:center; }
+    .seatmap-row.is-first { grid-template-columns:34px repeat(12, 30px); }
+    .seatmap-row-label { color:#94a3b8; font-size:11px; font-weight:800; text-align:right; padding-right:4px; }
+    .seatmap-seat { position:relative; width:30px; height:30px; padding:0; border-radius:8px; border:1px solid rgba(148,163,184,.24); background:rgba(30,41,59,.82); color:#94a3b8; font-size:10px; font-weight:800; display:flex; align-items:center; justify-content:center; cursor:default; }
+    .seatmap-seat.is-empty { opacity:.42; }
+    .seatmap-seat.is-occupied { background:#1d4ed8; border-color:#60a5fa; color:#fff; }
+    .seatmap-seat.is-selected { background:#f59e0b; border-color:#fde68a; color:#111827; }
+    .seatmap-seat.is-wch { background:#0891b2; border-color:#67e8f9; color:#ecfeff; }
+    .seatmap-seat.is-infant { background:#fb7185; border-color:#fecdd3; color:#fff1f2; }
+    .seatmap-seat.is-child { background:rgba(196,181,253,.88); border-color:#ddd6fe; color:#312e81; }
+    .seatmap-seat.is-member-gold { --seatmap-member-ring:#facc15; border-color:#fde68a; box-shadow:0 0 0 2px var(--seatmap-member-ring), 0 0 12px rgba(250,204,21,.45); }
+    .seatmap-seat.is-member-silver { --seatmap-member-ring:#cbd5e1; border-color:#e2e8f0; box-shadow:0 0 0 2px var(--seatmap-member-ring), 0 0 12px rgba(203,213,225,.35); }
+    .seatmap-seat.is-member-platinum { --seatmap-member-ring:#bfdbfe; border-color:#eff6ff; box-shadow:0 0 0 2px var(--seatmap-member-ring), 0 0 12px rgba(191,219,254,.48); }
+    .seatmap-seat.is-multi { box-shadow:0 0 0 2px #ef4444 inset; }
+    .seatmap-seat small { position:absolute; right:2px; bottom:1px; font-size:8px; line-height:1; opacity:.95; }
+    .seatmap-seat.has-record { cursor:pointer; }
+    .seatmap-seat.has-record:hover, .seatmap-seat.is-selected-seat { transform:translateY(-1px); box-shadow:0 0 0 2px var(--seatmap-member-ring, rgba(147,197,253,.55)), 0 0 14px rgba(147,197,253,.38); }
+    .seatmap-aisle, .seatmap-space { min-height:1px; }
+    .seatmap-aisle { border-left:1px solid rgba(148,163,184,.16); align-self:stretch; justify-self:center; width:1px; }
+    .seatmap-detail-panel { position:sticky; top:8px; display:flex; flex-direction:column; gap:10px; min-width:0; }
+    .seatmap-detail-panel .audit-card { cursor:default; }
+    .seatmap-detail-panel .audit-card:hover { transform:none; }
+    .seatmap-detail-panel .audit-details { display:block; }
+    @media (max-width: 768px) {
+      .action-menu-pop { right:-4px; }
+      .seatmap-workspace, .seatmap-workspace.no-detail { grid-template-columns:minmax(0, 1fr); width:100%; }
+      .seatmap-detail-panel { position:static; }
+      .seatmap-row, .seatmap-row.is-first { grid-template-columns:28px repeat(12, 26px); gap:3px; }
+      .seatmap-seat { width:26px; height:26px; border-radius:7px; font-size:9px; }
+    }
     .audit-summary-bar { display:flex; justify-content:space-between; align-items:flex-end; gap:12px; margin-top:8px; }
     .audit-summary-main { display:flex; align-items:flex-end; justify-content:space-between; gap:12px; width:100%; }
     .audit-summary-subtitle { color:#94a3b8; font-size:12px; font-weight:600; text-align:right; white-space:nowrap; margin-left:auto; }
@@ -809,6 +856,13 @@
           >
             🪪
           </button>
+          <div id="syActionMenuWrap" class="action-menu-wrap">
+            <button id="syActionMenuBtn" class="action-menu-btn" onclick="toggleSyActionMenu(event)" title="More actions" aria-haspopup="true" aria-expanded="false">⋮</button>
+            <div id="syActionMenu" class="action-menu-pop" role="menu">
+              <button type="button" class="action-menu-item" onclick="openSyMenuAction('security')" role="menuitem">Security Check</button>
+              <button type="button" class="action-menu-item" onclick="openSyMenuAction('seatmap')" role="menuitem">Seat Map</button>
+            </div>
+          </div>
           <button id="auditToggleBtn" class="audit-icon-btn" onclick="showBnAuditPage()" title="BN Audit" style="display:none;">📋</button>
         </div>
 
@@ -1103,11 +1157,11 @@
       <div id="changePasswordPage" class="password-page" style="display:none;">
         <div class="password-card">
           <div class="title" style="font-size:28px;margin-bottom:8px;">Change Password</div>
-          <div class="seat" style="margin-bottom:18px;">用户已登录，请输入新密码。</div>
-          <input id="changePasswordInput" type="password" placeholder="输入新密码">
+          <div class="seat" style="margin-bottom:18px;">You are signed in. Please enter a new password.</div>
+          <input id="changePasswordInput" type="password" placeholder="Enter new password">
           <div class="password-actions">
-            <button onclick="submitPasswordChange()">修改密码</button>
-            <button class="logout-btn" onclick="closeChangePasswordPage()">取消</button>
+            <button onclick="submitPasswordChange()">Change Password</button>
+            <button class="logout-btn" onclick="closeChangePasswordPage()">Cancel</button>
           </div>
         </div>
       </div>
@@ -1134,6 +1188,7 @@
     window.currentUser = null;
     let hasAutoLoadedSyToday = false;
     let currentBnAudit = [];
+    let currentSeatMapRecords = [];
 
         function resolveApiBase() {
       const fromWindow = window.MU_API_BASE || '';
@@ -1308,7 +1363,39 @@
     }
 
     
+    function closeSyActionMenu() {
+      const menu = document.getElementById('syActionMenu');
+      const btn = document.getElementById('syActionMenuBtn');
+      if (menu) menu.classList.remove('is-open');
+      if (btn) {
+        btn.classList.remove('is-open');
+        btn.setAttribute('aria-expanded', 'false');
+      }
+    }
+
+    function toggleSyActionMenu(event) {
+      if (event) event.stopPropagation();
+      const menu = document.getElementById('syActionMenu');
+      const btn = document.getElementById('syActionMenuBtn');
+      if (!menu || !btn) return;
+      const willOpen = !menu.classList.contains('is-open');
+      menu.classList.toggle('is-open', willOpen);
+      btn.classList.toggle('is-open', willOpen);
+      btn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+    }
+
+    function openSyMenuAction(action) {
+      closeSyActionMenu();
+      if (action === 'security') showBnAuditPage();
+      if (action === 'seatmap') showSeatMapPage();
+    }
+
+    document.addEventListener('click', (event) => {
+      if (!event.target.closest?.('#syActionMenuWrap')) closeSyActionMenu();
+    });
+
     function hideSyAuxLayouts() {
+      closeSyActionMenu();
       setDisplayById('syBagDetailLayout', 'none');
       setDisplayById('syAuditLayout', 'none');
     }
@@ -1446,25 +1533,31 @@
     function joinAuditValues(values) {
       return Array.isArray(values) && values.length ? values.join(', ') : '';
     }
+    function hasPassengerRecordValue(value) {
+      if (Array.isArray(value)) return value.length > 0;
+      const normalized = String(value ?? '').trim();
+      return Boolean(normalized && normalized !== '-' && normalized !== '---' && normalized.toUpperCase() !== 'UNKNOWN');
+    }
     function buildAuditPassengerCard(bn, row) {
       const record = row?.passengerRecord || null;
       const isDeletedRecord = Boolean(record?.offloaded || record?.status === 'DELETED' || row?.offloaded);
       const overall = record && !isDeletedRecord ? overallAuditStatus(auditItemsForRow(row)) : 'empty';
       const fields = record ? [
-        ['Name', record.name || '-'],
+        ['Name', record.name || ''],
         ['BN', `BN${record.bn || bn}`],
-        ['Seat', record.seat || '-'],
-        ['Cabin', record.cabin || '-'],
-        ['Passport', record.passportNo || '-'],
+        ['Seat', record.seat || ''],
+        ['Cabin', record.cabin || ''],
+        ['Passport', record.passportNo || ''],
         ['Membership', formatAuditMembership(record)],
-        ['Ticket', record.ticketNo || '-'],
+        ['Ticket', record.ticketNo || ''],
+        ['Infant Ticket', record.infantTicketNo || (record.hasInfant ? 'INFANT' : '')],
         ['Bags', joinAuditValues(record.bagtags)],
         ['Inbound', formatAuditInbound(record.inbound)],
         ['Outbound', formatAuditOutbound(record.outbound)],
         ['Special Service', joinAuditValues(record.specialServices)],
         ['Special Meal', joinAuditValues(record.specialMeals)],
         ['Paid Service', joinAuditValues(record.paidProductsShort)]
-      ].filter(([, value]) => value) : [
+      ].filter(([, value]) => hasPassengerRecordValue(value)) : [
         ['BN', `BN${bn}`],
         ['Record', 'No passenger record found for this BN']
       ];
@@ -1515,6 +1608,282 @@
       if (pop) pop.style.display = 'none';
     }
     document.addEventListener('click', hideStatusReason);
+
+    function normalizeSeatNo(value) {
+      return String(value || '').trim().toUpperCase().replace(/[^0-9A-Z]/g, '');
+    }
+
+    function seatMapItems777300() {
+      const items = [];
+      const seat = (letter) => ({ type: 'seat', letter });
+      const aisle = () => ({ type: 'aisle' });
+      const space = () => ({ type: 'space' });
+      const addTitle = (title) => items.push({ type: 'title', title });
+      const addGap = () => items.push({ type: 'gap' });
+      const addRow = (row, cabin, cells, rowClass = '') => items.push({ type: 'row', row, cabin, cells, rowClass });
+      const firstOnly = [space(), space(), space(), seat('A'), space(), space(), space(), space(), seat('L'), space(), space(), space()];
+      const firstTwoTwo = [space(), space(), space(), seat('A'), space(), seat('D'), seat('H'), space(), seat('L'), space(), space(), space()];
+      const businessOneTwoOne = [space(), space(), space(), seat('A'), space(), seat('D'), seat('H'), space(), seat('L'), space(), space(), space()];
+      const economyFull = [seat('A'), seat('B'), seat('C'), aisle(), seat('D'), seat('F'), seat('G'), seat('H'), aisle(), seat('J'), seat('K'), seat('L')];
+      const economyMiddleOnly = [space(), space(), space(), aisle(), seat('D'), seat('F'), seat('G'), seat('H'), aisle(), space(), space(), space()];
+      const economyTwoTwo = [seat('A'), space(), seat('C'), aisle(), seat('D'), seat('F'), seat('G'), seat('H'), aisle(), seat('J'), space(), seat('L')];
+      const economyTailAC = [seat('A'), space(), seat('C'), aisle(), space(), space(), space(), space(), aisle(), space(), space(), space()];
+
+      addTitle('First Class');
+      addRow(1, 'First Class', firstOnly, 'is-first');
+      addRow(2, 'First Class', firstTwoTwo, 'is-first');
+
+      addTitle('Business Class');
+      [6, 7].forEach((row) => addRow(row, 'Business Class', businessOneTwoOne));
+      addGap();
+      [8, 9, 10, 11, 12, 15, 16, 17, 18, 19, 20].forEach((row) => addRow(row, 'Business Class', businessOneTwoOne));
+
+      addTitle('Economy Class');
+      addRow(31, 'Economy Class', economyMiddleOnly);
+      for (let row = 32; row <= 44; row += 1) addRow(row, 'Economy Class', economyFull);
+      addGap();
+      for (let row = 61; row <= 69; row += 1) addRow(row, 'Economy Class', economyFull);
+      for (let row = 70; row <= 73; row += 1) addRow(row, 'Economy Class', economyTwoTwo);
+      addRow(74, 'Economy Class', economyTailAC);
+
+      return items;
+    }
+
+    function parseSeatMapDob(value) {
+      const raw = String(value || '').trim().toUpperCase();
+      if (!raw) return null;
+      const monthMap = { JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5, JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11 };
+      let m = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/) || raw.match(/^(\d{4})(\d{2})(\d{2})$/);
+      if (m) return new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+      m = raw.match(/^(\d{2})(\d{2})(\d{2})$/);
+      if (m) {
+        const yy = Number(m[1]);
+        const mm = Number(m[2]);
+        const dd = Number(m[3]);
+        let fullYear = yy >= 70 ? 1900 + yy : 2000 + yy;
+        const now = new Date();
+        if (Date.UTC(fullYear, mm - 1, dd) > Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())) fullYear -= 100;
+        return new Date(Date.UTC(fullYear, mm - 1, dd));
+      }
+      m = raw.match(/^(\d{2})([A-Z]{3})(\d{2}|\d{4})$/);
+      if (m && monthMap[m[2]] !== undefined) {
+        const yy = Number(m[3]);
+        let fullYear = m[3].length === 4 ? yy : (yy >= 70 ? 1900 + yy : 2000 + yy);
+        const now = new Date();
+        if (m[3].length === 2 && Date.UTC(fullYear, monthMap[m[2]], Number(m[1])) > Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())) fullYear -= 100;
+        return new Date(Date.UTC(fullYear, monthMap[m[2]], Number(m[1])));
+      }
+      return null;
+    }
+
+    function isSeatMapChild(record, row) {
+      if (row?.hasChdCode || row?.isChild || record?.hasChdCode || record?.isChild) return true;
+      const age = Number(record?.ageYears ?? row?.ageYears);
+      if (Number.isFinite(age) && age >= 2 && age < 12) return true;
+      const dob = parseSeatMapDob(record?.dob || row?.dob || record?.dobRaw || row?.dobRaw);
+      if (!dob) return false;
+      const now = new Date();
+      let computedAge = now.getUTCFullYear() - dob.getUTCFullYear();
+      const hadBirthday = now.getUTCMonth() > dob.getUTCMonth() || (now.getUTCMonth() === dob.getUTCMonth() && now.getUTCDate() >= dob.getUTCDate());
+      if (!hadBirthday) computedAge -= 1;
+      return computedAge >= 2 && computedAge < 12;
+    }
+
+    function inferSeatMapType(record, row) {
+      const services = [
+        ...(record?.specialServices || []),
+        ...(record?.specialMeals || []),
+        ...(row?.codes || [])
+      ].map((x) => String(x || '').toUpperCase());
+      if (record?.hasInfant || row?.hasInfant || record?.infantTicketNo || row?.infantTicketNo) return 'infant';
+      if (services.includes('UM') || services.includes('CHD') || isSeatMapChild(record, row)) return 'child';
+      if (services.some((x) => /^WCH/.test(x))) return 'wch';
+      if (!record?.bn && row?.source === 'seatOnly') return 'selected';
+      return 'occupied';
+    }
+
+    function buildSeatMapLookup() {
+      const bySeat = new Map();
+      const normalizeName = (value) => String(value || '').trim().toUpperCase().replace(/[^A-Z/]/g, '');
+      const recordTime = (record) => Number(record?.recordTimestamp || record?.ts || record?.timestamp || 0) || 0;
+      const recordSourcePriority = (record) => record?.source === 'audit' ? 2 : 1;
+      const compareSeatMapRecords = (a, b) => {
+        const timeDiff = recordTime(a) - recordTime(b);
+        if (timeDiff) return timeDiff;
+        const sourceDiff = recordSourcePriority(a) - recordSourcePriority(b);
+        if (sourceDiff) return sourceDiff;
+        const bnDiff = Number(Boolean(a?.bn)) - Number(Boolean(b?.bn));
+        if (bnDiff) return bnDiff;
+        return (Number(a?.sourceOrder || 0) || 0) - (Number(b?.sourceOrder || 0) || 0);
+      };
+      const samePassenger = (a, b) => {
+        if (!a || !b) return false;
+        if (a.bn && b.bn && a.bn === b.bn) return true;
+        const aPassport = String(a.passportNo || '').trim().toUpperCase();
+        const bPassport = String(b.passportNo || '').trim().toUpperCase();
+        if (aPassport && bPassport && aPassport === bPassport) return true;
+        const aName = normalizeName(a.name);
+        const bName = normalizeName(b.name);
+        return Boolean(aName && bName && aName === bName && normalizeSeatNo(a.seat) === normalizeSeatNo(b.seat));
+      };
+      const removeOlderPassengerRows = (merged) => {
+        for (const [seatKey, records] of bySeat.entries()) {
+          const kept = records.filter((item) => !samePassenger(item, merged) || compareSeatMapRecords(item, merged) > 0);
+          if (kept.length) bySeat.set(seatKey, kept);
+          else bySeat.delete(seatKey);
+          if (records.some((item) => samePassenger(item, merged) && compareSeatMapRecords(item, merged) > 0)) return false;
+        }
+        return true;
+      };
+      const add = (record, sourceRow = {}, sourceOrder = 0) => {
+        const seat = normalizeSeatNo(record?.seat || sourceRow?.seat);
+        if (!seat || seat === '---' || seat === '-') return;
+        const rawBn = record?.bn || sourceRow?.bn || '';
+        const bn = String(rawBn || '').padStart(rawBn ? 3 : 0, '0');
+        const merged = { ...sourceRow, ...(record || {}), bn, seat, sourceOrder };
+        const type = inferSeatMapType(merged, sourceRow);
+        const next = { ...merged, type };
+        if (!removeOlderPassengerRows(next)) return;
+        const existing = bySeat.get(seat)?.[0] || null;
+        if (!existing || compareSeatMapRecords(next, existing) >= 0) bySeat.set(seat, [next]);
+      };
+
+      (currentSeatMapRecords || []).forEach((record, idx) => add(record, { source: record?.bn ? 'record' : 'seatOnly' }, idx));
+      (currentBnAudit || []).forEach((row, idx) => add(row?.passengerRecord, { ...row, source: 'audit' }, idx));
+
+      return bySeat;
+    }
+
+    function seatMapMembershipClass(record) {
+      const tier = String(record?.ffTier || record?.tier || record?.membershipTier || '').trim().toUpperCase();
+      const status = String(record?.membershipStatus || '').trim().toUpperCase();
+      if (tier === 'V' || status.includes('PLATINUM')) return 'is-member-platinum';
+      if (tier === 'G' || status.includes('GOLD')) return 'is-member-gold';
+      if (tier === 'S' || status.includes('SILVER') || status.includes('SLIVER')) return 'is-member-silver';
+      return '';
+    }
+
+    function seatMapCellClass(records) {
+      if (!records?.length) return 'is-empty';
+      const typeClass = `is-${records[0].type || 'occupied'}`;
+      const memberClass = seatMapMembershipClass(records[0]);
+      const multiClass = records.length > 1 ? 'is-multi' : '';
+      return [typeClass, memberClass, multiClass].filter(Boolean).join(' ');
+    }
+
+    function seatMapCellTitle(seat, records) {
+      if (!records?.length) return `${seat} empty`;
+      return records.map((p) => {
+        const bn = p.bn ? `BN${p.bn}` : 'No BN yet';
+        const name = p.name || 'UNKNOWN';
+        const tags = [];
+        if (p.type === 'selected') tags.push('Selected / not arrived');
+        if (p.type === 'wch') tags.push('Wheelchair');
+        if (p.type === 'infant') tags.push('Infant');
+        if (p.type === 'child') tags.push('Child');
+        return `${seat} • ${bn} • ${name}${tags.length ? ` • ${tags.join(', ')}` : ''}`;
+      }).join('\n');
+    }
+
+    function renderSeatMapCell(row, cell, bySeat) {
+      if (cell.type === 'aisle') return '<div class="seatmap-aisle"></div>';
+      if (cell.type === 'space') return '<div class="seatmap-space"></div>';
+      const seat = `${row}${cell.letter}`;
+      const records = bySeat.get(seat) || [];
+      const display = records[0]?.type === 'selected' ? '' : (records[0]?.bn || (records.length ? 'SN' : cell.letter));
+      const marker = records[0]?.type === 'wch' ? '♿' : records[0]?.type === 'child' ? 'CH' : '';
+      const hasRecordClass = records.length ? ' has-record' : '';
+      const dataSeat = records.length ? ` data-seat="${escapeAttr(seat)}"` : '';
+      return `<button type="button" class="seatmap-seat ${seatMapCellClass(records)}${hasRecordClass}"${dataSeat} title="${escapeAttr(seatMapCellTitle(seat, records))}">${escapeHtmlText(display)}${marker ? `<small>${escapeHtmlText(marker)}</small>` : ''}</button>`;
+    }
+
+    function renderSeatMapItem(item, bySeat) {
+      if (item.type === 'title') return `<div class="seatmap-cabin-title">${escapeHtmlText(item.title)}</div>`;
+      if (item.type === 'gap') return '<div class="seatmap-section-gap"></div>';
+      const cells = item.cells.map((cell) => renderSeatMapCell(item.row, cell, bySeat)).join('');
+      return `<div class="seatmap-row ${escapeAttr(item.rowClass || '')}"><div class="seatmap-row-label">${item.row}</div>${cells}</div>`;
+    }
+
+    function formatSeatMapValue(value) {
+      if (Array.isArray(value)) return value.length ? value.join(', ') : '';
+      return value || '';
+    }
+
+    function buildSeatMapPassengerCard(seat, records) {
+      const record = records?.[0] || null;
+      if (!record) return '';
+      const bn = record.bn ? `BN${record.bn}` : 'No BN';
+      const fields = [
+        ['Name', record.name || ''],
+        ['BN', bn],
+        ['Seat', seat],
+        ['Cabin', record.cabin || ''],
+        ['Passport', record.passportNo || ''],
+        ['Membership', formatAuditMembership(record)],
+        ['Ticket', record.ticketNo || ''],
+        ['Infant Ticket', record.infantTicketNo || (record.hasInfant ? 'INFANT' : '')],
+        ['Bags', formatSeatMapValue(record.bagtags)],
+        ['Inbound', formatAuditInbound(record.inbound)],
+        ['Outbound', formatAuditOutbound(record.outbound)],
+        ['Special Service', formatSeatMapValue(record.specialServices)],
+        ['Special Meal', formatSeatMapValue(record.specialMeals)]
+      ].filter(([, value]) => hasPassengerRecordValue(value));
+      const body = fields.map(([label, value]) => `<div class="audit-record-field">
+        <span class="audit-record-label">${escapeHtmlText(label)}</span>
+        <span class="audit-record-value">${escapeHtmlText(value)}</span>
+      </div>`).join('');
+      const status = record.type || 'occupied';
+      const pill = record.bn ? `BN${record.bn}` : 'NO BN';
+      return `<div class="audit-card audit-record-card audit-${status === 'selected' ? 'warning' : 'pass'}">
+        <div class="audit-card-top">
+          <div class="audit-record-heading">Passenger Record</div>
+          <div class="audit-overall-pill ${status === 'selected' ? 'warning' : 'pass'}">${escapeHtmlText(pill)}</div>
+        </div>
+        <div class="audit-details">${body}</div>
+      </div>`;
+    }
+
+    function attachSeatMapClicks(bySeat) {
+      const content = document.getElementById('syAuditContent');
+      const workspace = content.querySelector('.seatmap-workspace');
+      const detailPanel = content.querySelector('.seatmap-detail-panel');
+      content.querySelectorAll('.seatmap-seat.has-record').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const seat = btn.dataset.seat || '';
+          content.querySelectorAll('.seatmap-seat').forEach((item) => item.classList.remove('is-selected-seat'));
+          btn.classList.add('is-selected-seat');
+          detailPanel.innerHTML = buildSeatMapPassengerCard(seat, bySeat.get(seat));
+          detailPanel.style.display = 'flex';
+          if (workspace) workspace.classList.remove('no-detail');
+        });
+      });
+    }
+
+    function showSeatMapPage() {
+      const bySeat = buildSeatMapLookup();
+      const items = seatMapItems777300();
+      const mapRows = items.map((item) => renderSeatMapItem(item, bySeat)).join('');
+
+      document.getElementById('syAuditContent').innerHTML = `<div class="seatmap-summary">
+          <div class="detail-title seatmap-title" style="font-size:18px; font-weight:900; letter-spacing:.4px;">Seat Map</div>
+        </div>
+        <div class="seatmap-legend">
+          <span class="seatmap-legend-item"><span class="seatmap-legend-dot" style="background:#1d4ed8"></span>Checked-in / BN</span>
+          <span class="seatmap-legend-item"><span class="seatmap-legend-dot" style="background:#f59e0b"></span>Seat selected, no BN</span>
+          <span class="seatmap-legend-item"><span class="seatmap-legend-dot" style="background:#0891b2"></span>Wheelchair</span>
+          <span class="seatmap-legend-item"><span class="seatmap-legend-dot" style="background:#fb7185"></span>Infant</span>
+          <span class="seatmap-legend-item"><span class="seatmap-legend-dot" style="background:#c4b5fd"></span>Child / UM</span>
+        </div>
+        <div class="seatmap-workspace no-detail">
+          <div class="seatmap-wrap">${mapRows}</div>
+          <div class="seatmap-detail-panel" style="display:none;"></div>
+        </div>`;
+      attachSeatMapClicks(bySeat);
+      setDisplayById('syLayout', 'none');
+      setDisplayById('syBagDetailLayout', 'none');
+      setDisplayById('syAuditLayout', 'block');
+    }
+
     function showBnAuditPage() {
       const byBn = new Map((currentBnAudit || []).map((x) => [x.bn, x]));
       const auditRows = [];
@@ -2278,7 +2647,9 @@
           setTextById('syTimes', `${sy.bdt || '-'} / ${sy.sd || '-'} / ${sy.ed || '-'}`);
           currentSyBagSheet = sy.bagSheet || null;
           currentBnAudit = Array.isArray(sy.bnAudit) ? sy.bnAudit : [];
-          setDisplayById('auditToggleBtn', 'inline-block');
+          currentSeatMapRecords = Array.isArray(sy.seatMapRecords) ? sy.seatMapRecords : [];
+          setDisplayById('syActionMenuWrap', 'block');
+          setDisplayById('auditToggleBtn', 'none');
           const bagIcon = currentSyBagSheet?.hasData ? ' 🧳' : '';
           setTextById('syBagsLabel', `BAGS${bagIcon}`);
           setTextById('syBags', `${sy.bags?.[0] || '-'}`);
@@ -2338,8 +2709,33 @@
           const wchList = Array.isArray(sy.wchList) ? sy.wchList : [];
           setTextById('wchSummary', `WCH total: ${wchList.length}`);
           renderWchPanel(document.getElementById('wchList'), wchList);
-
+          const chdByBn = new Map(chdList.filter((p) => p.bn).map((p) => [String(p.bn).padStart(3, '0'), p]));
+          const wchByBn = new Map(wchList.filter((p) => p.bn).map((p) => [String(p.bn).padStart(3, '0'), p]));
           const membershipData = sy.membershipList || {};
+          const membershipByBn = new Map(['platinum', 'gold', 'silver'].flatMap((group) => (
+            Array.isArray(membershipData[group]) ? membershipData[group] : []
+          )).filter((p) => p.bn).map((p) => [String(p.bn).padStart(3, '0'), p]));
+          const applySeatMapFlags = (record) => {
+            const bn = record?.bn ? String(record.bn).padStart(3, '0') : '';
+            const chd = bn ? chdByBn.get(bn) : null;
+            const wch = bn ? wchByBn.get(bn) : null;
+            const member = bn ? membershipByBn.get(bn) : null;
+            return {
+              ...record,
+              hasChdCode: chd?.hasChdCode || record?.hasChdCode,
+              isChild: Boolean(chd) || record?.isChild,
+              codes: wch?.codes || record?.codes || [],
+              ffCarrier: record?.ffCarrier || member?.ffCarrier || '',
+              ffNumber: record?.ffNumber || member?.ffNumber || '',
+              ffTier: record?.ffTier || member?.tier || ''
+            };
+          };
+          currentSeatMapRecords = currentSeatMapRecords.map((record) => applySeatMapFlags(record));
+          currentBnAudit = currentBnAudit.map((row) => ({
+            ...row,
+            passengerRecord: row?.passengerRecord ? applySeatMapFlags(row.passengerRecord) : row?.passengerRecord
+          }));
+
           const counts = membershipData.counts || {};
           setTextById('membershipSummary', `白金卡 Platinum: ${counts.platinum || 0} • 金卡 Gold: ${counts.gold || 0} • 银卡 Sliver: ${counts.silver || 0}`);
           renderMembershipPanel(document.getElementById('membershipList'), membershipData);
@@ -2421,6 +2817,7 @@
         setDisplayById('wchToggleBtn', 'none');
         setDisplayById('wchSection', 'none');
         setDisplayById('auditToggleBtn', 'none');
+        setDisplayById('syActionMenuWrap', 'none');
 
         if (!data.flight || !data.flightDate || !data.name) {
           error.innerText =
@@ -2831,13 +3228,13 @@ To ${data.outbound.destination || '-'}`
     const newPassword = (input?.value || '').trim();
 
     if (!auth.currentUser) {
-      errorBox.innerText = '用户未登录，无法修改密码。';
+      errorBox.innerText = 'You are not signed in. Please sign in before changing your password.';
       errorBox.style.display = 'block';
       return;
     }
 
     if (!newPassword) {
-      errorBox.innerText = '请输入新密码。';
+      errorBox.innerText = 'Please enter a new password.';
       errorBox.style.display = 'block';
       return;
     }
@@ -2847,7 +3244,7 @@ To ${data.outbound.destination || '-'}`
       await signOut(auth);
       window.location.href = 'login.html';
     } catch (err) {
-      errorBox.innerText = err?.message || '密码修改失败。';
+      errorBox.innerText = err?.message || 'Password change failed.';
       errorBox.style.display = 'block';
     }
   };
