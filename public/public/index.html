@@ -672,10 +672,13 @@
     .seatmap-seat.is-wch { background:#0891b2; border-color:#67e8f9; color:#ecfeff; }
     .seatmap-seat.is-infant { background:#fb7185; border-color:#fecdd3; color:#fff1f2; }
     .seatmap-seat.is-child { background:rgba(196,181,253,.88); border-color:#ddd6fe; color:#312e81; }
+    .seatmap-seat.is-member-gold { --seatmap-member-ring:#facc15; border-color:#fde68a; box-shadow:0 0 0 2px var(--seatmap-member-ring), 0 0 12px rgba(250,204,21,.45); }
+    .seatmap-seat.is-member-silver { --seatmap-member-ring:#cbd5e1; border-color:#e2e8f0; box-shadow:0 0 0 2px var(--seatmap-member-ring), 0 0 12px rgba(203,213,225,.35); }
+    .seatmap-seat.is-member-platinum { --seatmap-member-ring:#bfdbfe; border-color:#eff6ff; box-shadow:0 0 0 2px var(--seatmap-member-ring), 0 0 12px rgba(191,219,254,.48); }
     .seatmap-seat.is-multi { box-shadow:0 0 0 2px #ef4444 inset; }
     .seatmap-seat small { position:absolute; right:2px; bottom:1px; font-size:8px; line-height:1; opacity:.95; }
     .seatmap-seat.has-record { cursor:pointer; }
-    .seatmap-seat.has-record:hover, .seatmap-seat.is-selected-seat { transform:translateY(-1px); box-shadow:0 0 0 2px rgba(147,197,253,.55); }
+    .seatmap-seat.has-record:hover, .seatmap-seat.is-selected-seat { transform:translateY(-1px); box-shadow:0 0 0 2px var(--seatmap-member-ring, rgba(147,197,253,.55)), 0 0 14px rgba(147,197,253,.38); }
     .seatmap-aisle, .seatmap-space { min-height:1px; }
     .seatmap-aisle { border-left:1px solid rgba(148,163,184,.16); align-self:stretch; justify-self:center; width:1px; }
     .seatmap-detail-panel { position:sticky; top:8px; display:flex; flex-direction:column; gap:10px; min-width:0; }
@@ -1751,10 +1754,21 @@
       return bySeat;
     }
 
+    function seatMapMembershipClass(record) {
+      const tier = String(record?.ffTier || record?.tier || record?.membershipTier || '').trim().toUpperCase();
+      const status = String(record?.membershipStatus || '').trim().toUpperCase();
+      if (tier === 'V' || status.includes('PLATINUM')) return 'is-member-platinum';
+      if (tier === 'G' || status.includes('GOLD')) return 'is-member-gold';
+      if (tier === 'S' || status.includes('SILVER') || status.includes('SLIVER')) return 'is-member-silver';
+      return '';
+    }
+
     function seatMapCellClass(records) {
       if (!records?.length) return 'is-empty';
-      if (records.length > 1) return `is-${records[0].type || 'occupied'} is-multi`;
-      return `is-${records[0].type || 'occupied'}`;
+      const typeClass = `is-${records[0].type || 'occupied'}`;
+      const memberClass = seatMapMembershipClass(records[0]);
+      const multiClass = records.length > 1 ? 'is-multi' : '';
+      return [typeClass, memberClass, multiClass].filter(Boolean).join(' ');
     }
 
     function seatMapCellTitle(seat, records) {
@@ -2697,15 +2711,23 @@
           renderWchPanel(document.getElementById('wchList'), wchList);
           const chdByBn = new Map(chdList.filter((p) => p.bn).map((p) => [String(p.bn).padStart(3, '0'), p]));
           const wchByBn = new Map(wchList.filter((p) => p.bn).map((p) => [String(p.bn).padStart(3, '0'), p]));
+          const membershipData = sy.membershipList || {};
+          const membershipByBn = new Map(['platinum', 'gold', 'silver'].flatMap((group) => (
+            Array.isArray(membershipData[group]) ? membershipData[group] : []
+          )).filter((p) => p.bn).map((p) => [String(p.bn).padStart(3, '0'), p]));
           const applySeatMapFlags = (record) => {
             const bn = record?.bn ? String(record.bn).padStart(3, '0') : '';
             const chd = bn ? chdByBn.get(bn) : null;
             const wch = bn ? wchByBn.get(bn) : null;
+            const member = bn ? membershipByBn.get(bn) : null;
             return {
               ...record,
               hasChdCode: chd?.hasChdCode || record?.hasChdCode,
               isChild: Boolean(chd) || record?.isChild,
-              codes: wch?.codes || record?.codes || []
+              codes: wch?.codes || record?.codes || [],
+              ffCarrier: record?.ffCarrier || member?.ffCarrier || '',
+              ffNumber: record?.ffNumber || member?.ffNumber || '',
+              ffTier: record?.ffTier || member?.tier || ''
             };
           };
           currentSeatMapRecords = currentSeatMapRecords.map((record) => applySeatMapFlags(record));
@@ -2714,7 +2736,6 @@
             passengerRecord: row?.passengerRecord ? applySeatMapFlags(row.passengerRecord) : row?.passengerRecord
           }));
 
-          const membershipData = sy.membershipList || {};
           const counts = membershipData.counts || {};
           setTextById('membershipSummary', `白金卡 Platinum: ${counts.platinum || 0} • 金卡 Gold: ${counts.gold || 0} • 银卡 Sliver: ${counts.silver || 0}`);
           renderMembershipPanel(document.getElementById('membershipList'), membershipData);

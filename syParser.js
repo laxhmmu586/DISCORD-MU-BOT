@@ -593,6 +593,7 @@ function enrichSeatMapRecordsFromLog(log, syInfo, targetYmd = null) {
     const nonPsmSection = section.split(/\r?\n/).filter((line) => !/^\s*PSM\b/i.test(line)).join('\n');
     const specialServices = serviceCodes.filter((code) => new RegExp(`(?:\\s|\\/|^)${code}(?:\\s|\\/|$)`, 'i').test(nonPsmSection));
     const specialMeals = [...section.matchAll(/\bSPML-([A-Z]{4})\b/gi)].map((m) => m[1].toUpperCase());
+    const ffMatch = section.match(/\bFF\/([A-Z0-9]{2})\s+([A-Z0-9]+)\/([VGSPE])\b/i);
     const adultTicketNo = section.match(/\bET\s+TKNE\/(?!INF)(\d{10,})\/\d+\b/i)?.[1] || '';
     const infantTicketNo = section.match(/\bET\s+TKNE\/INF(\d{10,})\/\d+\b/i)?.[1] || '';
     const hasInfant = /\bINF1\/0\b/i.test(section) || Boolean(infantTicketNo);
@@ -614,6 +615,9 @@ function enrichSeatMapRecordsFromLog(log, syInfo, targetYmd = null) {
       name: passengerName || 'UNKNOWN',
       seat,
       passportNo,
+      ffCarrier: ffMatch?.[1]?.toUpperCase() || '',
+      ffNumber: ffMatch?.[2] || '',
+      ffTier: ffMatch?.[3]?.toUpperCase() || '',
       ticketNo: adultTicketNo || infantTicketNo,
       infantTicketNo,
       hasInfant,
