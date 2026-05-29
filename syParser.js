@@ -680,7 +680,7 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
       return /\/CHKLEG\b/.test(normalized)
         || /^CKIN\s+HK\d+\s+LKCK\/\d+\/[A-Z]$/.test(normalized)
         || /^CKIN\s+MTCK\/MAP\/MU\b/.test(normalized)
-        || /^CKIN\s+(?:STSP|GE|KATE|BY\s+YUIKA)\b/.test(normalized)
+        || /^CKIN\s+(?:STSP|GE|KATE|BY\s+YUIKA|GLENN|NH)\b/.test(normalized)
         || /^CKIN\s+HK\d+\s+VICO\d+\b/.test(normalized);
     };
     const ckinLineList = section.split(/\r?\n/).filter((line) => /^\s*CKIN\b/i.test(line)).map((line) => line.trim());
@@ -823,7 +823,7 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     }
 
     if (isOffloaded) {
-      return { bn, apiStatus: '', tkStatus: '', visaStatus: '', bagStatus: '', apiReason: 'Passenger record is DELETED/offloaded', tkReason: '', visaReason: '', bagReason: '', passportNo, passengerRecord, offloaded: true };
+      return { bn, apiStatus: '', tkStatus: '', visaStatus: '', bagStatus: '', apiReason: 'Passenger record is DELETED/offloaded', tkReason: '', visaReason: '', bagReason: '', passportNo: '', passengerRecord, offloaded: true };
     }
 
     if (hasCkinOkOverride) {
