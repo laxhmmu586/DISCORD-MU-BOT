@@ -771,7 +771,7 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
       paidProductsShort,
       status: isOffloaded ? 'DELETED' : '',
       offloaded: isOffloaded,
-      recordTimestamp: ts
+      recordTimestamp: payload.ts || 0
     };
     const isVisaIrrelevantCkinLine = (line) => {
       const normalized = String(line || '').trim().toUpperCase().replace(/\s+/g, ' ');
