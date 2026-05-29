@@ -706,7 +706,8 @@
     .audit-record-field { display:grid; grid-template-columns:86px 1fr; gap:8px; padding:7px 0; border-top:1px solid rgba(148,163,184,.12); font-size:12px; }
     .audit-record-field:first-child { border-top:none; }
     .audit-record-label { color:#93c5fd; font-weight:900; }
-    .audit-record-value { color:#dbeafe; overflow-wrap:anywhere; }
+    .audit-record-value { color:#dbeafe; overflow-wrap:anywhere; min-width:0; }
+    .audit-record-delete-inline { float:right; margin-left:12px; color:#ff3b3b; font-size:24px; font-weight:900; letter-spacing:1px; line-height:1; }
     .audit-expand-hint { margin-top:9px; color:#94a3b8; font-size:11px; text-align:right; }
     .status-reason-pop {
       position: fixed;
@@ -1447,7 +1448,8 @@
     }
     function buildAuditPassengerCard(bn, row) {
       const record = row?.passengerRecord || null;
-      const overall = record ? overallAuditStatus(auditItemsForRow(row)) : 'empty';
+      const isDeletedRecord = Boolean(record?.offloaded || record?.status === 'DELETED' || row?.offloaded);
+      const overall = record && !isDeletedRecord ? overallAuditStatus(auditItemsForRow(row)) : 'empty';
       const fields = record ? [
         ['Name', record.name || '-'],
         ['BN', `BN${record.bn || bn}`],
@@ -1466,10 +1468,15 @@
         ['BN', `BN${bn}`],
         ['Record', 'No passenger record found for this BN']
       ];
-      const body = fields.map(([label, value]) => `<div class="audit-record-field">
+      const body = fields.map(([label, value]) => {
+        const valueHtml = isDeletedRecord && label === 'BN'
+          ? `${escapeHtmlText(value)}<span class="audit-record-delete-inline">DELETE</span>`
+          : escapeHtmlText(value);
+        return `<div class="audit-record-field">
         <span class="audit-record-label">${escapeHtmlText(label)}</span>
-        <span class="audit-record-value">${escapeHtmlText(value)}</span>
-      </div>`).join('');
+        <span class="audit-record-value">${valueHtml}</span>
+      </div>`;
+      }).join('');
       return `<div class="audit-card audit-record-card audit-${overall}">
         <div class="audit-card-top">
           <div class="audit-record-heading">Passenger Record</div>

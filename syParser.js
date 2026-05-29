@@ -558,12 +558,14 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     const bn = bnMatch[1].padStart(3, '0');
     const ts = parseSectionTimestamp(sectionObj.timestamp);
     const score = sectionRichnessScore(section);
+    const isDeletedSection = /\bDELETED\b/i.test(section);
     const prev = latestByBn.get(bn);
     if (!prev) {
       latestByBn.set(bn, { ts, section, score });
       continue;
     }
-    if (score > prev.score || (score === prev.score && ts >= prev.ts)) {
+    const prevIsDeleted = /\bDELETED\b/i.test(prev.section || '');
+    if ((ts > prev.ts && (isDeletedSection || prevIsDeleted)) || score > prev.score || (score === prev.score && ts >= prev.ts)) {
       latestByBn.set(bn, { ts, section, score });
     }
   }
@@ -628,6 +630,7 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     const inbound = inboundMatch ? { flight: inboundMatch[1], date: inboundMatch[2], origin: inboundMatch[3] } : null;
     const outboundLineForRecord = section.match(/^\s*X?O\/[^\n\r]+/im)?.[0] || '';
     const outboundMatch = outboundLineForRecord.match(/X?O\/\s*([A-Z0-9]+)\s*\/\s*(\d{2}[A-Z]{3}(?:\d{2})?)(?:.*?\bBN\s*(\d+))?(?:.*?\b(\d+[A-Z]))?.*?\b([A-Z]{3})\s*$/i);
+    const isOffloaded = /\bDELETED\b/i.test(passengerLine) || /\bDELETED\b/i.test(outboundLineForRecord);
     const outbound = outboundMatch ? {
       flight: outboundMatch[1],
       date: outboundMatch[2],
@@ -668,7 +671,9 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
       outbound,
       specialServices: filteredSpecialServices,
       specialMeals: [...new Set(specialMeals)],
-      paidProductsShort
+      paidProductsShort,
+      status: isOffloaded ? 'DELETED' : '',
+      offloaded: isOffloaded
     };
     const isVisaIrrelevantCkinLine = (line) => {
       const normalized = String(line || '').trim().toUpperCase().replace(/\s+/g, ' ');
@@ -817,21 +822,26 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
       apiReasons.push('country code count is 0, expected 3');
     }
 
-    if (hasCkinOkOverride) {
-      return { bn, apiStatus: 'pass', tkStatus: 'pass', visaStatus: 'pass', bagStatus: 'pass', apiReason: '', tkReason: '', visaReason: 'CKIN OK override', bagReason, passportNo, passengerRecord };
+    if (isOffloaded) {
+      return { bn, apiStatus: '', tkStatus: '', visaStatus: '', bagStatus: '', apiReason: 'Passenger record is DELETED/offloaded', tkReason: '', visaReason: '', bagReason: '', passportNo, passengerRecord, offloaded: true };
     }
 
-    return { bn, apiStatus, tkStatus, visaStatus, bagStatus, apiReason: apiReasons.join('; '), tkReason, visaReason, bagReason, passportNo, passengerRecord };
+    if (hasCkinOkOverride) {
+      return { bn, apiStatus: 'pass', tkStatus: 'pass', visaStatus: 'pass', bagStatus: 'pass', apiReason: '', tkReason: '', visaReason: 'CKIN OK override', bagReason, passportNo, passengerRecord, offloaded: false };
+    }
+
+    return { bn, apiStatus, tkStatus, visaStatus, bagStatus, apiReason: apiReasons.join('; '), tkReason, visaReason, bagReason, passportNo, passengerRecord, offloaded: false };
   });
 
   const passportBnMap = new Map();
   auditRows.forEach((row) => {
-    if (!row.passportNo) return;
+    if (row.offloaded || !row.passportNo) return;
     const arr = passportBnMap.get(row.passportNo) || [];
     arr.push(row.bn);
     passportBnMap.set(row.passportNo, arr);
   });
   auditRows.forEach((row) => {
+    if (row.offloaded) return;
     const dupList = row.passportNo ? (passportBnMap.get(row.passportNo) || []) : [];
     if (dupList.length > 1 && row.apiStatus !== 'fail') {
       row.apiStatus = 'review';
