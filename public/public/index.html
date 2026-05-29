@@ -657,6 +657,9 @@
     .seatmap-legend { display:flex; flex-wrap:wrap; gap:8px; color:#cbd5e1; font-size:11px; }
     .seatmap-legend-item { display:inline-flex; align-items:center; gap:5px; }
     .seatmap-legend-dot { width:12px; height:12px; border-radius:4px; border:1px solid rgba(255,255,255,.25); display:inline-block; }
+    .seatmap-legend-dot.member-gold { background:#d4af37; border-color:#f8e08e; }
+    .seatmap-legend-dot.member-silver { background:#c0c0c0; border-color:#f1f5f9; }
+    .seatmap-legend-dot.member-platinum { background:#050505; border-color:#c0c0c0; box-shadow:inset 0 0 0 2px #d4af37; }
     .seatmap-workspace { --seatmap-detail-width:320px; display:grid; grid-template-columns:minmax(0, 1fr) minmax(280px, var(--seatmap-detail-width)); gap:14px; align-items:start; margin-top:14px; width:calc(100% + var(--seatmap-detail-width) + 14px); }
     .seatmap-workspace.no-detail { grid-template-columns:minmax(0, 1fr); width:100%; }
     .seatmap-wrap { overflow:auto; max-height:720px; padding:12px 8px 18px; border:1px solid rgba(148,163,184,.16); border-radius:18px; background:linear-gradient(180deg, rgba(15,23,42,.9), rgba(2,6,23,.75)); }
@@ -756,6 +759,7 @@
     .audit-record-field:first-child { border-top:none; }
     .audit-record-label { color:#93c5fd; font-weight:900; }
     .audit-record-value { color:#dbeafe; overflow-wrap:anywhere; min-width:0; }
+    .audit-delete-badge { display:inline-flex; align-items:center; justify-content:center; padding:4px 9px; border-radius:999px; background:#dc2626; color:#ffffff; font-size:11px; font-weight:900; letter-spacing:.5px; box-shadow:0 0 0 1px rgba(254,202,202,.45), 0 8px 18px rgba(220,38,38,.24); }
     .audit-expand-hint { margin-top:9px; color:#94a3b8; font-size:11px; text-align:right; }
     .status-reason-pop {
       position: fixed;
@@ -1545,10 +1549,10 @@
     function buildAuditPassengerCard(bn, row) {
       const record = row?.passengerRecord || null;
       const isDeletedRecord = isDeletedPassengerRecord(record, row);
-      if (isDeletedRecord) return '';
-      const overall = record ? overallAuditStatus(auditItemsForRow(row)) : 'empty';
+      const overall = isDeletedRecord ? 'fail' : (record ? overallAuditStatus(auditItemsForRow(row)) : 'empty');
       const fields = record ? [
         ['Name', record.name || ''],
+        ['Status', isDeletedRecord ? '<span class="audit-delete-badge">DELETE</span>' : ''],
         ['BN', `BN${record.bn || bn}`],
         ['Seat', record.seat || ''],
         ['Cabin', record.cabin || ''],
@@ -1568,7 +1572,7 @@
       ];
       const body = fields.map(([label, value]) => `<div class="audit-record-field">
         <span class="audit-record-label">${escapeHtmlText(label)}</span>
-        <span class="audit-record-value">${escapeHtmlText(value)}</span>
+        <span class="audit-record-value">${label === 'Status' && isDeletedRecord ? value : escapeHtmlText(value)}</span>
       </div>`).join('');
       return `<div class="audit-card audit-record-card audit-${overall}">
         <div class="audit-card-top">
@@ -1874,6 +1878,9 @@
           <span class="seatmap-legend-item"><span class="seatmap-legend-dot" style="background:#0891b2"></span>Wheelchair</span>
           <span class="seatmap-legend-item"><span class="seatmap-legend-dot" style="background:#fb7185"></span>Infant</span>
           <span class="seatmap-legend-item"><span class="seatmap-legend-dot" style="background:#c4b5fd"></span>Child / UM</span>
+          <span class="seatmap-legend-item"><span class="seatmap-legend-dot member-gold"></span>Gold member</span>
+          <span class="seatmap-legend-item"><span class="seatmap-legend-dot member-silver"></span>Silver member</span>
+          <span class="seatmap-legend-item"><span class="seatmap-legend-dot member-platinum"></span>Platinum member</span>
         </div>
         <div class="seatmap-workspace no-detail">
           <div class="seatmap-wrap">${mapRows}</div>
@@ -2288,10 +2295,12 @@
         .sort((a, b) => Number(a) - Number(b));
     }
 
-    function visibleGovAqqIssueBns(values) {
+    function visibleGovAqqIssueBns(values, options = {}) {
       const byBn = new Map((currentBnAudit || []).map((x) => [x.bn, x]));
       return normalizeBnListForGovAqq(values).filter((bn) => {
-        const overall = overallAuditStatus(auditItemsForRow(byBn.get(bn)));
+        const row = byBn.get(bn);
+        if (options.excludeDeleted && isDeletedPassengerRecord(row?.passengerRecord, row)) return false;
+        const overall = overallAuditStatus(auditItemsForRow(row));
         return overall !== 'pass';
       });
     }
@@ -2755,7 +2764,7 @@
           const visibleAqqTclBns = visibleGovAqqIssueBns(aqqTclBnList);
           const visibleGovDtaBns = visibleGovAqqIssueBns(govDtaBnList);
           const visiblePassportExpBns = visibleGovAqqIssueBns(passportExpBnList);
-          const visiblePassportCodeIssues = visibleGovAqqIssueBns(passportCodeIssues);
+          const visiblePassportCodeIssues = visibleGovAqqIssueBns(passportCodeIssues, { excludeDeleted: true });
           const hasCoreRisk =
             visibleDuplicatePassportBns.length > 0 ||
             visibleAqqTclBns.length > 0 ||
@@ -2784,7 +2793,7 @@
             { label: 'USA TIME OUT', bns: aqqTclBnList },
             { label: 'CHN GOV FAIL', bns: govDtaBnList },
             { label: 'Passport Exp', bns: passportExpBnList },
-            { label: 'WEB/EDI/Reswipe', bns: passportCodeIssues },
+            { label: 'WEB/EDI/Reswipe', bns: visiblePassportCodeIssues },
             { label: 'Need review (similar name)', bns: similarNameBns }
           ];
           resultTitleEl.style.display = 'block';
