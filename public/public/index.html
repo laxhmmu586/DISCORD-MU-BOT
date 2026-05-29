@@ -368,25 +368,46 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
+      gap: 16px;
       margin-bottom: 14px;
       padding: 10px 12px;
       border-radius: 14px;
       background: #1e293b;
       color: #cbd5e1;
       font-size: 13px;
+      box-shadow: 0 10px 24px rgba(0,0,0,.18);
+    }
+
+    .auth-user {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      min-width: 0;
+      white-space: nowrap;
     }
 
     .auth-bar strong {
       color: #ffffff;
-      font-weight: 600;
+      font-weight: 700;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .auth-actions {
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-wrap: nowrap;
     }
 
     .logout-btn {
-      padding: 8px 12px;
+      padding: 8px 14px;
       font-size: 11px;
-      border-radius: 10px;
+      border-radius: 999px;
       background: #334155;
+      color: #ffffff;
+      white-space: nowrap;
     }
 
     .logout-btn:hover {
@@ -797,30 +818,32 @@
     <div id="mainApp">
 
       <div class="auth-bar">
-        <span>
+        <span class="auth-user">
           Logged in as:
           <strong id="userEmail"></strong>
         </span>
 
-        <button
-          class="logout-btn"
-          onclick="logout()"
-        >
-          Logout
-        </button>
+        <div class="auth-actions">
+          <button
+            class="help-btn"
+            onclick="openChangePasswordPage()"
+          >
+            Change Password
+          </button>
+
+          <button
+            class="logout-btn"
+            onclick="logout()"
+          >
+            Logout
+          </button>
+        </div>
       </div>
 
       <div class="app-header">
         <div class="title">
           MUFC
         </div>
-
-        <button
-          class="help-btn"
-          onclick="openChangePasswordPage()"
-        >
-          Change Password
-        </button>
       </div>
 
 

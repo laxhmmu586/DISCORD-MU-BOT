@@ -69,9 +69,17 @@ function isDeletedPassengerSection(section) {
   return isDeletedPassengerLine(getPassengerRecordLine(section));
 }
 
+function getOutboundLines(section) {
+  return String(section || '').match(/^\s*X?O\/[^\n\r]*/gim) || [];
+}
+
 function getActiveOutboundLine(section) {
-  const outboundLines = String(section || '').match(/^\s*X?O\/[^\n\r]*/gim) || [];
-  return outboundLines.find((line) => !/\bDELETED\b/i.test(line)) || '';
+  return getOutboundLines(section).find((line) => !/\bDELETED\b/i.test(line)) || '';
+}
+
+function getPassengerRecordOutboundLine(section) {
+  const outboundLines = getOutboundLines(section);
+  return outboundLines.find((line) => !/\bDELETED\b/i.test(line)) || outboundLines[0] || '';
 }
 
 function getFlightDateFromTimestamp(timestamp) {
@@ -770,7 +778,7 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
       .map((m) => `${String(m[1] || '').replace(/\s+/g, ' ').trim()}/${String(m[2] || '').toUpperCase()}`);
     const inboundMatch = section.match(/^\s*I\/\s*([A-Z0-9]+)\s*\/\s*(\d{2}[A-Z]{3}(?:\d{2})?).*?\b([A-Z]{3})\s*$/im);
     const inbound = inboundMatch ? { flight: inboundMatch[1], date: inboundMatch[2], origin: inboundMatch[3] } : null;
-    const outboundLineForRecord = getActiveOutboundLine(section);
+    const outboundLineForRecord = getPassengerRecordOutboundLine(section);
     const outboundMatch = outboundLineForRecord.match(/X?O\/\s*([A-Z0-9]+)\s*\/\s*(\d{2}[A-Z]{3}(?:\d{2})?)(?:.*?\bBN\s*(\d+))?(?:.*?\b(\d+[A-Z]))?.*?\b([A-Z]{3})\s*$/i);
     const isOffloaded = isDeletedPassengerLine(passengerLine);
     const outbound = outboundMatch ? {
