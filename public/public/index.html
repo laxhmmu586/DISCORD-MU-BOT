@@ -670,7 +670,7 @@
     .seatmap-seat.is-occupied { background:#1d4ed8; border-color:#60a5fa; color:#fff; }
     .seatmap-seat.is-selected { background:#f59e0b; border-color:#fde68a; color:#111827; }
     .seatmap-seat.is-wch { background:#0891b2; border-color:#67e8f9; color:#ecfeff; }
-    .seatmap-seat.is-child { background:#7c3aed; border-color:#c4b5fd; color:#fff; }
+    .seatmap-seat.is-child { background:rgba(196,181,253,.88); border-color:#ddd6fe; color:#312e81; }
     .seatmap-seat.is-multi { box-shadow:0 0 0 2px #ef4444 inset; }
     .seatmap-seat small { position:absolute; right:2px; bottom:1px; font-size:8px; line-height:1; opacity:.95; }
     .seatmap-seat.has-record { cursor:pointer; }
@@ -1611,12 +1611,12 @@
       const addTitle = (title) => items.push({ type: 'title', title });
       const addGap = () => items.push({ type: 'gap' });
       const addRow = (row, cabin, cells, rowClass = '') => items.push({ type: 'row', row, cabin, cells, rowClass });
-      const firstOnly = [seat('A'), space(), space(), aisle(), space(), space(), space(), space(), aisle(), space(), space(), seat('L')];
-      const firstTwoTwo = [seat('A'), space(), space(), aisle(), seat('D'), space(), space(), seat('H'), aisle(), space(), space(), seat('L')];
-      const businessOneTwoOne = [seat('A'), space(), space(), aisle(), space(), seat('D'), seat('H'), space(), aisle(), space(), space(), seat('L')];
+      const firstOnly = [space(), space(), seat('A'), aisle(), space(), space(), space(), space(), aisle(), seat('L'), space(), space()];
+      const firstTwoTwo = [space(), space(), seat('A'), aisle(), seat('D'), space(), space(), seat('H'), aisle(), seat('L'), space(), space()];
+      const businessOneTwoOne = [space(), space(), seat('A'), aisle(), seat('D'), space(), space(), seat('H'), aisle(), seat('L'), space(), space()];
       const economyFull = [seat('A'), seat('B'), seat('C'), aisle(), seat('D'), seat('F'), seat('G'), seat('H'), aisle(), seat('J'), seat('K'), seat('L')];
       const economyMiddleOnly = [space(), space(), space(), aisle(), seat('D'), seat('F'), seat('G'), seat('H'), aisle(), space(), space(), space()];
-      const economyTwoTwo = [seat('A'), seat('C'), space(), aisle(), space(), space(), space(), space(), aisle(), seat('J'), space(), seat('L')];
+      const economyTwoTwo = [seat('A'), space(), seat('C'), aisle(), space(), space(), space(), space(), aisle(), seat('J'), space(), seat('L')];
 
       addTitle('First Class');
       addRow(1, 'First Class', firstOnly, 'is-first');
@@ -1652,24 +1652,40 @@
 
     function buildSeatMapLookup() {
       const bySeat = new Map();
+      const normalizeName = (value) => String(value || '').trim().toUpperCase().replace(/[^A-Z/]/g, '');
+      const samePassenger = (a, b) => {
+        if (!a || !b) return false;
+        if (a.bn && b.bn && a.bn === b.bn) return true;
+        const aPassport = String(a.passportNo || '').trim().toUpperCase();
+        const bPassport = String(b.passportNo || '').trim().toUpperCase();
+        if (aPassport && bPassport && aPassport === bPassport) return true;
+        const aName = normalizeName(a.name);
+        const bName = normalizeName(b.name);
+        return Boolean(aName && bName && aName === bName && normalizeSeatNo(a.seat) === normalizeSeatNo(b.seat));
+      };
+      const removeStalePassengerRows = (merged) => {
+        for (const [seatKey, records] of bySeat.entries()) {
+          const kept = records.filter((item) => !samePassenger(item, merged));
+          if (kept.length) bySeat.set(seatKey, kept);
+          else bySeat.delete(seatKey);
+        }
+      };
       const add = (record, sourceRow = {}) => {
         const seat = normalizeSeatNo(record?.seat || sourceRow?.seat);
         if (!seat || seat === '---' || seat === '-') return;
-        const bn = String(record?.bn || sourceRow?.bn || '').padStart(record?.bn || sourceRow?.bn ? 3 : 0, '0');
+        const rawBn = record?.bn || sourceRow?.bn || '';
+        const bn = String(rawBn || '').padStart(rawBn ? 3 : 0, '0');
         const merged = { ...sourceRow, ...(record || {}), bn, seat };
         const type = inferSeatMapType(merged, sourceRow);
+        const next = { ...merged, type };
+        removeStalePassengerRows(next);
         const existing = bySeat.get(seat) || [];
-        const sameIdx = existing.findIndex((item) => item.bn && merged.bn && item.bn === merged.bn);
-        if (sameIdx >= 0) {
-          existing[sameIdx] = { ...existing[sameIdx], ...merged, type: type !== 'occupied' ? type : existing[sameIdx].type };
-        } else {
-          existing.push({ ...merged, type });
-        }
+        existing.push(next);
         bySeat.set(seat, existing);
       };
 
-      (currentBnAudit || []).forEach((row) => add(row?.passengerRecord, row));
       (currentSeatMapRecords || []).forEach((record) => add(record, { source: record?.bn ? 'record' : 'seatOnly' }));
+      (currentBnAudit || []).forEach((row) => add(row?.passengerRecord, row));
 
       return bySeat;
     }
@@ -1778,7 +1794,7 @@
           <span class="seatmap-legend-item"><span class="seatmap-legend-dot" style="background:#1d4ed8"></span>Checked-in / BN</span>
           <span class="seatmap-legend-item"><span class="seatmap-legend-dot" style="background:#f59e0b"></span>Seat selected, no BN</span>
           <span class="seatmap-legend-item"><span class="seatmap-legend-dot" style="background:#0891b2"></span>Wheelchair</span>
-          <span class="seatmap-legend-item"><span class="seatmap-legend-dot" style="background:#7c3aed"></span>Child / UM</span>
+          <span class="seatmap-legend-item"><span class="seatmap-legend-dot" style="background:#c4b5fd"></span>Child / UM</span>
         </div>
         <div class="seatmap-workspace no-detail">
           <div class="seatmap-wrap">${mapRows}</div>

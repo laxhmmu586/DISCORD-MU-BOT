@@ -531,6 +531,11 @@ function enrichSeatMapRecordsFromLog(log, syInfo, targetYmd = null) {
   if (!log || !syInfo?.flightNo || !syInfo?.flightDate) return [];
   const sections = splitLogicalSections(log);
   const latestByKey = new Map();
+  const flightDateMatch = syInfo.flightDate.match(/^(\d{2})([A-Z]{3})(\d{2})$/);
+  const monthMap = { JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5, JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11 };
+  const atDateUtc = flightDateMatch
+    ? new Date(Date.UTC(Number(`20${flightDateMatch[3]}`), monthMap[flightDateMatch[2]], Number(flightDateMatch[1])))
+    : null;
 
   for (const sectionObj of sections) {
     const section = sectionObj.content || '';
@@ -561,15 +566,28 @@ function enrichSeatMapRecordsFromLog(log, syInfo, targetYmd = null) {
     const nonPsmSection = section.split(/\r?\n/).filter((line) => !/^\s*PSM\b/i.test(line)).join('\n');
     const specialServices = serviceCodes.filter((code) => new RegExp(`(?:\\s|\\/|^)${code}(?:\\s|\\/|$)`, 'i').test(nonPsmSection));
     const specialMeals = [...section.matchAll(/\bSPML-([A-Z]{4})\b/gi)].map((m) => m[1].toUpperCase());
+    const paxInfo = section.match(/PAX INFO\s*:\s*([^\n\r]+)/i)?.[1] || '';
+    const dobRaw = paxInfo.match(/DOB\/(\d{6})/i)?.[1] || null;
+    const dobDate = parseDobYYMMDD(dobRaw);
+    const ageYears = getAgeYearsAtDate(dobDate, atDateUtc);
+    const hasChdCode = /\bCHD1\/0\b/i.test(section);
+    const isChild = (Number.isInteger(ageYears) && ageYears >= 2 && ageYears < 12) || hasChdCode;
+    const passportNo = section.match(/PASSPORT\s*:\s*([A-Z0-9]+)/i)?.[1]?.toUpperCase() || '';
     const isOffloaded = /\bDELETED\b/i.test(passengerLine) || /^\s*X?O\/[^\n\r]*\bDELETED\b/im.test(section);
     const ts = parseSectionTimestamp(sectionObj.timestamp);
-    const key = bn ? `BN:${bn}` : `SEAT:${seat}:${passengerName || 'UNKNOWN'}`;
+    const identity = passportNo || passengerName || `${seat}:UNKNOWN`;
+    const key = `PAX:${identity}`;
     const prev = latestByKey.get(key);
     if (prev && prev.ts > ts) continue;
     latestByKey.set(key, {
       bn,
       name: passengerName || 'UNKNOWN',
       seat,
+      passportNo,
+      dob: dobRaw ? `20${dobRaw.slice(0, 2)}-${dobRaw.slice(2, 4)}-${dobRaw.slice(4, 6)}` : '',
+      ageYears: Number.isInteger(ageYears) ? ageYears : null,
+      hasChdCode,
+      isChild,
       specialServices: [...new Set(specialServices)],
       specialMeals: [...new Set(specialMeals)],
       status: isOffloaded ? 'DELETED' : '',
