@@ -666,17 +666,16 @@
     .seatmap-row.is-first { grid-template-columns:34px repeat(12, 30px); }
     .seatmap-row-label { color:#94a3b8; font-size:11px; font-weight:800; text-align:right; padding-right:4px; }
     .seatmap-seat { position:relative; isolation:isolate; width:30px; height:30px; padding:0; border-radius:8px; border:1px solid rgba(148,163,184,.24); background:rgba(30,41,59,.82); color:#94a3b8; font-size:10px; font-weight:800; display:flex; align-items:center; justify-content:center; cursor:default; }
-    .seatmap-seat::before { content:''; position:absolute; inset:-3px; z-index:-1; border-radius:11px; background:var(--seatmap-member-gradient, transparent); opacity:0; transition:opacity .16s ease, filter .16s ease; }
+    .seatmap-seat::before { content:none; }
     .seatmap-seat.is-empty { opacity:.42; }
     .seatmap-seat.is-occupied { background:#1d4ed8; border-color:#60a5fa; color:#fff; }
     .seatmap-seat.is-selected { background:#f59e0b; border-color:#fde68a; color:#111827; }
     .seatmap-seat.is-wch { background:#0891b2; border-color:#67e8f9; color:#ecfeff; }
     .seatmap-seat.is-infant { background:#fb7185; border-color:#fecdd3; color:#fff1f2; }
     .seatmap-seat.is-child { background:rgba(196,181,253,.88); border-color:#ddd6fe; color:#312e81; }
-    .seatmap-seat.is-member-gold { --seatmap-member-ring:#f59e0b; --seatmap-member-glow:rgba(245,158,11,.54); --seatmap-member-gradient:linear-gradient(135deg,#fff7ad 0%,#facc15 28%,#b45309 56%,#fef3c7 78%,#d97706 100%); border-color:#fde68a; box-shadow:0 0 0 2px var(--seatmap-member-ring), 0 0 14px var(--seatmap-member-glow); }
-    .seatmap-seat.is-member-silver { --seatmap-member-ring:#94a3b8; --seatmap-member-glow:rgba(148,163,184,.50); --seatmap-member-gradient:linear-gradient(135deg,#f8fafc 0%,#cbd5e1 30%,#64748b 58%,#e2e8f0 78%,#94a3b8 100%); border-color:#f8fafc; box-shadow:0 0 0 2px var(--seatmap-member-ring), 0 0 14px var(--seatmap-member-glow); }
-    .seatmap-seat.is-member-platinum { --seatmap-member-ring:#eab308; --seatmap-member-glow:rgba(234,179,8,.62); --seatmap-member-gradient:linear-gradient(135deg,#020617 0%,#111827 20%,#f8fafc 42%,#d4af37 62%,#64748b 82%,#020617 100%); border-color:#fef3c7; box-shadow:0 0 0 2px var(--seatmap-member-ring), 0 0 16px var(--seatmap-member-glow); }
-    .seatmap-seat.is-member-gold::before, .seatmap-seat.is-member-silver::before, .seatmap-seat.is-member-platinum::before { opacity:1; }
+    .seatmap-seat.is-member-gold { --seatmap-member-ring:#d4af37; --seatmap-member-glow:rgba(212,175,55,.36); background:#d4af37; border-color:#f8e08e; color:#111827; box-shadow:0 0 0 2px var(--seatmap-member-ring), 0 0 12px var(--seatmap-member-glow); }
+    .seatmap-seat.is-member-silver { --seatmap-member-ring:#c0c0c0; --seatmap-member-glow:rgba(192,192,192,.34); background:#c0c0c0; border-color:#f1f5f9; color:#111827; box-shadow:0 0 0 2px var(--seatmap-member-ring), 0 0 12px var(--seatmap-member-glow); }
+    .seatmap-seat.is-member-platinum { --seatmap-member-ring:#c0c0c0; --seatmap-member-glow:rgba(212,175,55,.38); background:#050505; border-color:#c0c0c0; color:#d4af37; box-shadow:0 0 0 2px var(--seatmap-member-ring), 0 0 12px var(--seatmap-member-glow); }
     .seatmap-seat.is-multi { box-shadow:0 0 0 2px var(--seatmap-member-ring, #ef4444), 0 0 0 2px #ef4444 inset, 0 0 14px var(--seatmap-member-glow, rgba(239,68,68,.42)); }
     .seatmap-seat small { position:absolute; right:2px; bottom:1px; font-size:8px; line-height:1; opacity:.95; }
     .seatmap-seat.has-record { cursor:pointer; }
@@ -757,7 +756,6 @@
     .audit-record-field:first-child { border-top:none; }
     .audit-record-label { color:#93c5fd; font-weight:900; }
     .audit-record-value { color:#dbeafe; overflow-wrap:anywhere; min-width:0; }
-    .audit-record-delete-inline { float:right; margin-left:12px; color:#ff3b3b; font-size:24px; font-weight:900; letter-spacing:1px; line-height:1; }
     .audit-expand-hint { margin-top:9px; color:#94a3b8; font-size:11px; text-align:right; }
     .status-reason-pop {
       position: fixed;
@@ -1541,10 +1539,14 @@
       const normalized = String(value ?? '').trim();
       return Boolean(normalized && normalized !== '-' && normalized !== '---' && normalized.toUpperCase() !== 'UNKNOWN');
     }
+    function isDeletedPassengerRecord(record, row = {}) {
+      return Boolean(record?.offloaded || record?.status === 'DELETED' || row?.offloaded);
+    }
     function buildAuditPassengerCard(bn, row) {
       const record = row?.passengerRecord || null;
-      const isDeletedRecord = Boolean(record?.offloaded || record?.status === 'DELETED' || row?.offloaded);
-      const overall = record && !isDeletedRecord ? overallAuditStatus(auditItemsForRow(row)) : 'empty';
+      const isDeletedRecord = isDeletedPassengerRecord(record, row);
+      if (isDeletedRecord) return '';
+      const overall = record ? overallAuditStatus(auditItemsForRow(row)) : 'empty';
       const fields = record ? [
         ['Name', record.name || ''],
         ['BN', `BN${record.bn || bn}`],
@@ -1564,15 +1566,10 @@
         ['BN', `BN${bn}`],
         ['Record', 'No passenger record found for this BN']
       ];
-      const body = fields.map(([label, value]) => {
-        const valueHtml = isDeletedRecord && label === 'BN'
-          ? `${escapeHtmlText(value)}<span class="audit-record-delete-inline">DELETE</span>`
-          : escapeHtmlText(value);
-        return `<div class="audit-record-field">
+      const body = fields.map(([label, value]) => `<div class="audit-record-field">
         <span class="audit-record-label">${escapeHtmlText(label)}</span>
-        <span class="audit-record-value">${valueHtml}</span>
-      </div>`;
-      }).join('');
+        <span class="audit-record-value">${escapeHtmlText(value)}</span>
+      </div>`).join('');
       return `<div class="audit-card audit-record-card audit-${overall}">
         <div class="audit-card-top">
           <div class="audit-record-heading">Passenger Record</div>
@@ -1739,6 +1736,7 @@
         return true;
       };
       const add = (record, sourceRow = {}, sourceOrder = 0) => {
+        if (isDeletedPassengerRecord(record, sourceRow)) return;
         const seat = normalizeSeatNo(record?.seat || sourceRow?.seat);
         if (!seat || seat === '---' || seat === '-') return;
         const rawBn = record?.bn || sourceRow?.bn || '';
@@ -1814,7 +1812,7 @@
 
     function buildSeatMapPassengerCard(seat, records) {
       const record = records?.[0] || null;
-      if (!record) return '';
+      if (!record || isDeletedPassengerRecord(record)) return '';
       const bn = record.bn ? `BN${record.bn}` : 'No BN';
       const fields = [
         ['Name', record.name || ''],
