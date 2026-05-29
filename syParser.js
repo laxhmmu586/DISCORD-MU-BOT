@@ -129,14 +129,38 @@ function parseSYSection(sectionObj) {
   };
 }
 
-function parseDobYYMMDD(dobRaw) {
+function parseDobYYMMDD(dobRaw, atDateUtc = null) {
   if (!/^\d{6}$/.test(dobRaw || '')) return null;
   const yy = Number(dobRaw.slice(0, 2));
   const mm = Number(dobRaw.slice(2, 4));
   const dd = Number(dobRaw.slice(4, 6));
   if (mm < 1 || mm > 12 || dd < 1 || dd > 31) return null;
-  const fullYear = yy >= 70 ? 1900 + yy : 2000 + yy;
+  let fullYear = yy >= 70 ? 1900 + yy : 2000 + yy;
+  if (atDateUtc && Date.UTC(fullYear, mm - 1, dd) > atDateUtc.getTime()) fullYear -= 100;
   return new Date(Date.UTC(fullYear, mm - 1, dd));
+}
+
+function parseDobRaw(dobRaw, atDateUtc = null) {
+  const raw = String(dobRaw || '').trim().toUpperCase();
+  const monthMap = { JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5, JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11 };
+  if (/^\d{6}$/.test(raw)) return parseDobYYMMDD(raw, atDateUtc);
+  let m = raw.match(/^(\d{4})(\d{2})(\d{2})$/);
+  if (m) return new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+  m = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m) return new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+  m = raw.match(/^(\d{2})([A-Z]{3})(\d{2}|\d{4})$/);
+  if (m && monthMap[m[2]] !== undefined) {
+    const yy = Number(m[3]);
+    let fullYear = m[3].length === 4 ? yy : (yy >= 70 ? 1900 + yy : 2000 + yy);
+    if (m[3].length === 2 && atDateUtc && Date.UTC(fullYear, monthMap[m[2]], Number(m[1])) > atDateUtc.getTime()) fullYear -= 100;
+    return new Date(Date.UTC(fullYear, monthMap[m[2]], Number(m[1])));
+  }
+  return null;
+}
+
+function formatDobDate(dobDate) {
+  if (!dobDate) return '';
+  return `${dobDate.getUTCFullYear()}-${String(dobDate.getUTCMonth() + 1).padStart(2, '0')}-${String(dobDate.getUTCDate()).padStart(2, '0')}`;
 }
 
 function getAgeYearsAtDate(dob, atDateUtc) {
@@ -176,8 +200,8 @@ function enrichCHDListFromLog(log, syInfo, targetYmd = null) {
     const name = (paxMatch[1] || '').trim();
     const bn = (paxMatch[2] || '').padStart(3, '0');
     const paxInfo = section.match(/PAX INFO\s*:\s*([^\n\r]+)/i)?.[1] || '';
-    const dobRaw = paxInfo.match(/DOB\/(\d{6})/i)?.[1] || null;
-    const dobDate = parseDobYYMMDD(dobRaw);
+    const dobRaw = paxInfo.match(/DOB\/?\s*[:\/-]?\s*(\d{6,8}|\d{2}[A-Z]{3}\d{2,4}|\d{4}-\d{2}-\d{2})/i)?.[1] || null;
+    const dobDate = parseDobRaw(dobRaw, atDateUtc);
     const ageYears = getAgeYearsAtDate(dobDate, atDateUtc);
     const hasChdCode = /\bCHD1\/0\b/i.test(section);
     const isChdByAge = Number.isInteger(ageYears) && ageYears >= 2 && ageYears < 12;
@@ -188,7 +212,7 @@ function enrichCHDListFromLog(log, syInfo, targetYmd = null) {
       chdByBn.set(bn, {
         name,
         bn,
-        dob: dobRaw ? `20${dobRaw.slice(0, 2)}-${dobRaw.slice(2, 4)}-${dobRaw.slice(4, 6)}` : '-',
+        dob: formatDobDate(dobDate) || '-',
         hasChdCode,
         isChdByAge
       });
@@ -573,8 +597,8 @@ function enrichSeatMapRecordsFromLog(log, syInfo, targetYmd = null) {
     const infantTicketNo = section.match(/\bET\s+TKNE\/INF(\d{10,})\/\d+\b/i)?.[1] || '';
     const hasInfant = /\bINF1\/0\b/i.test(section) || Boolean(infantTicketNo);
     const paxInfo = section.match(/PAX INFO\s*:\s*([^\n\r]+)/i)?.[1] || '';
-    const dobRaw = paxInfo.match(/DOB\/(\d{6})/i)?.[1] || null;
-    const dobDate = parseDobYYMMDD(dobRaw);
+    const dobRaw = paxInfo.match(/DOB\/?\s*[:\/-]?\s*(\d{6,8}|\d{2}[A-Z]{3}\d{2,4}|\d{4}-\d{2}-\d{2})/i)?.[1] || null;
+    const dobDate = parseDobRaw(dobRaw, atDateUtc);
     const ageYears = getAgeYearsAtDate(dobDate, atDateUtc);
     const hasChdCode = /\bCHD1\/0\b/i.test(section);
     const isChild = (Number.isInteger(ageYears) && ageYears >= 2 && ageYears < 12) || hasChdCode;
@@ -593,7 +617,7 @@ function enrichSeatMapRecordsFromLog(log, syInfo, targetYmd = null) {
       ticketNo: adultTicketNo || infantTicketNo,
       infantTicketNo,
       hasInfant,
-      dob: dobRaw ? `20${dobRaw.slice(0, 2)}-${dobRaw.slice(2, 4)}-${dobRaw.slice(4, 6)}` : '',
+      dob: formatDobDate(dobDate),
       ageYears: Number.isInteger(ageYears) ? ageYears : null,
       hasChdCode,
       isChild,
@@ -746,8 +770,8 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     if (wheelchair) filteredSpecialServices.push(wheelchair);
     const specialMeals = [...section.matchAll(/\bSPML-([A-Z]{4})\b/gi)].map((m) => m[1].toUpperCase());
     const paxInfo = section.match(/PAX INFO\s*:\s*([^\n\r]+)/i)?.[1] || '';
-    const dobRaw = paxInfo.match(/DOB\/(\d{6})/i)?.[1] || null;
-    const dobDate = parseDobYYMMDD(dobRaw);
+    const dobRaw = paxInfo.match(/DOB\/?\s*[:\/-]?\s*(\d{6,8}|\d{2}[A-Z]{3}\d{2,4}|\d{4}-\d{2}-\d{2})/i)?.[1] || null;
+    const dobDate = parseDobRaw(dobRaw, atDateUtc);
     const ageYears = getAgeYearsAtDate(dobDate, atDateUtc);
     const hasChdCode = /\bCHD1\/0\b/i.test(section);
     const isChild = (Number.isInteger(ageYears) && ageYears >= 2 && ageYears < 12) || hasChdCode;
@@ -774,7 +798,7 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
       ticketNo,
       infantTicketNo,
       hasInfant: hasInfFlag || hasInfTk,
-      dob: dobRaw ? `20${dobRaw.slice(0, 2)}-${dobRaw.slice(2, 4)}-${dobRaw.slice(4, 6)}` : '',
+      dob: formatDobDate(dobDate),
       ageYears: Number.isInteger(ageYears) ? ageYears : null,
       hasChdCode,
       isChild,

@@ -1641,15 +1641,54 @@
       return items;
     }
 
+    function parseSeatMapDob(value) {
+      const raw = String(value || '').trim().toUpperCase();
+      if (!raw) return null;
+      const monthMap = { JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5, JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11 };
+      let m = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/) || raw.match(/^(\d{4})(\d{2})(\d{2})$/);
+      if (m) return new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+      m = raw.match(/^(\d{2})(\d{2})(\d{2})$/);
+      if (m) {
+        const yy = Number(m[1]);
+        const mm = Number(m[2]);
+        const dd = Number(m[3]);
+        let fullYear = yy >= 70 ? 1900 + yy : 2000 + yy;
+        const now = new Date();
+        if (Date.UTC(fullYear, mm - 1, dd) > Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())) fullYear -= 100;
+        return new Date(Date.UTC(fullYear, mm - 1, dd));
+      }
+      m = raw.match(/^(\d{2})([A-Z]{3})(\d{2}|\d{4})$/);
+      if (m && monthMap[m[2]] !== undefined) {
+        const yy = Number(m[3]);
+        let fullYear = m[3].length === 4 ? yy : (yy >= 70 ? 1900 + yy : 2000 + yy);
+        const now = new Date();
+        if (m[3].length === 2 && Date.UTC(fullYear, monthMap[m[2]], Number(m[1])) > Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())) fullYear -= 100;
+        return new Date(Date.UTC(fullYear, monthMap[m[2]], Number(m[1])));
+      }
+      return null;
+    }
+
+    function isSeatMapChild(record, row) {
+      if (row?.hasChdCode || row?.isChild || record?.hasChdCode || record?.isChild) return true;
+      const age = Number(record?.ageYears ?? row?.ageYears);
+      if (Number.isFinite(age) && age >= 2 && age < 12) return true;
+      const dob = parseSeatMapDob(record?.dob || row?.dob || record?.dobRaw || row?.dobRaw);
+      if (!dob) return false;
+      const now = new Date();
+      let computedAge = now.getUTCFullYear() - dob.getUTCFullYear();
+      const hadBirthday = now.getUTCMonth() > dob.getUTCMonth() || (now.getUTCMonth() === dob.getUTCMonth() && now.getUTCDate() >= dob.getUTCDate());
+      if (!hadBirthday) computedAge -= 1;
+      return computedAge >= 2 && computedAge < 12;
+    }
+
     function inferSeatMapType(record, row) {
       const services = [
         ...(record?.specialServices || []),
         ...(record?.specialMeals || []),
         ...(row?.codes || [])
       ].map((x) => String(x || '').toUpperCase());
-      const name = String(record?.name || row?.name || '').toUpperCase();
       if (record?.hasInfant || row?.hasInfant || record?.infantTicketNo || row?.infantTicketNo) return 'infant';
-      if (services.includes('UM') || services.includes('CHD') || row?.hasChdCode || row?.isChild) return 'child';
+      if (services.includes('UM') || services.includes('CHD') || isSeatMapChild(record, row)) return 'child';
       if (services.some((x) => /^WCH/.test(x))) return 'wch';
       if (!record?.bn && row?.source === 'seatOnly') return 'selected';
       return 'occupied';
