@@ -681,7 +681,7 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     const ckinLineList = section.split(/\r?\n/).filter((line) => /^\s*CKIN\b/i.test(line)).map((line) => line.trim());
     const visaRelevantCkinLineList = ckinLineList.filter((line) => !isVisaIrrelevantCkinLine(line));
     const ckinLines = visaRelevantCkinLineList.join(' ').toUpperCase();
-    const hasVisaKeyword = /\b(VISA|VS|TRAVEL\s*DOC(?:UMENT)?\d*|TRAVELDOC(?:UMENT)?\d*|V|PR CARD)\b/.test(ckinLines);
+    const hasVisaKeyword = /\b(?:VISA\d*|VS|TRAVEL\s*DOC(?:UMENT)?\d*|TRAVELDOC(?:UMENT)?\d*|V|PR CARD)\b/.test(ckinLines);
     const hasVisaExpHint = /\b(EXP|DT|TIL|240|APPLY)\b/.test(ckinLines);
     const hasDateLike = /\b(\d{4}|[0-3]?\d\s*[A-Z]{3}\s*\d{2,4}|\d{1,2}[A-Z]{3}\d{2,4}|[A-Z]{3,9}\s*\d{4})\b/.test(ckinLines);
     const hasTravelDocOverride = /\b(TBZ|PINK CARD|PR CARD)\b/.test(ckinLines);
@@ -691,20 +691,18 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     const toChinaDomestic = chinaDomesticAirports.has(visaDest);
     let visaStatus = 'review';
     let visaReason = 'Not yet implemented';
-    const ckinBestLine = visaRelevantCkinLineList.find((line) => /\b(VISA|VS|TRAVEL\s*DOC(?:UMENT)?\d*|TRAVELDOC(?:UMENT)?\d*|PR CARD|TBZ|PINK CARD|240|EXP|DT|TIL|APPLY)\b/i.test(line)) || visaRelevantCkinLineList[0] || '';
+    const ckinBestLine = visaRelevantCkinLineList.find((line) => /\b(?:VISA\d*|VS|TRAVEL\s*DOC(?:UMENT)?\d*|TRAVELDOC(?:UMENT)?\d*|V|PR CARD|TBZ|PINK CARD|240|EXP|DT|TIL|APPLY)\b/i.test(line)) || visaRelevantCkinLineList[0] || '';
     const visaReviewReason = (prefix) => ckinBestLine ? `${prefix};\n${ckinBestLine}` : prefix;
     const visaPassReason = (detail = '') => `${passportNat || 'UNK'} passport to ${visaDest}: PASS${detail ? ` (${detail})` : ''}`;
-    if (toChinaDomestic) {
+    if (hasAnyVisaEvidence) {
+      visaStatus = 'pass';
+      visaReason = visaPassReason(ckinBestLine ? `valid visa evidence: ${ckinBestLine}` : 'valid visa evidence found');
+    } else if (toChinaDomestic) {
       if (passportNat === 'CHN') {
         visaStatus = 'pass';
         visaReason = visaPassReason('Chinese passport traveling to China/domestic destination');
       } else if (passportNat === 'USA') {
-        if (hasAnyVisaEvidence) {
-          visaStatus = 'pass';
-          visaReason = visaPassReason(ckinBestLine ? `valid visa evidence: ${ckinBestLine}` : 'valid visa evidence found');
-        } else {
-          visaReason = visaReviewReason(`Need review: USA passport to ${visaDest}`);
-        }
+        visaReason = visaReviewReason(`Need review: USA passport to ${visaDest}`);
       } else if (passportNat === 'CAN' || passportNat === 'RUS' || passportNat === 'ESP') {
         visaStatus = 'pass';
         visaReason = visaPassReason('implemented passport/destination rule');
@@ -717,6 +715,9 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     } else if (passportNat === 'THA' && visaDest === 'BKK') {
       visaStatus = 'pass';
       visaReason = visaPassReason('Thailand passport returning to BKK');
+    } else if (passportNat === 'USA' && visaDest === 'BKK') {
+      visaStatus = 'pass';
+      visaReason = visaPassReason('USA passport traveling to Bangkok');
     } else {
       visaReason = visaReviewReason(`Rule not implemented: passport ${passportNat || 'UNK'} to ${visaDest}`);
     }
