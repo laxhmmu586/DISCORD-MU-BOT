@@ -526,6 +526,63 @@ function enrichMembershipListFromLog(log, syInfo, targetYmd = null) {
   };
 }
 
+
+function enrichSeatMapRecordsFromLog(log, syInfo, targetYmd = null) {
+  if (!log || !syInfo?.flightNo || !syInfo?.flightDate) return [];
+  const sections = splitLogicalSections(log);
+  const latestByKey = new Map();
+
+  for (const sectionObj of sections) {
+    const section = sectionObj.content || '';
+    if (!section.includes('PR:')) continue;
+    if (targetYmd) {
+      const sectionYmd = getYmdFromTimestamp(sectionObj.timestamp);
+      if (sectionYmd !== targetYmd) continue;
+    }
+
+    const prMatch = section.match(/PR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
+    if (!prMatch) continue;
+    if (prMatch[1].toUpperCase() !== syInfo.flightNo || prMatch[2].toUpperCase() !== syInfo.flightDate) continue;
+
+    const passengerLine = section.split(/\r?\n/).find((line) => /^\s*\d+\.\s*/.test(line)) || '';
+    const passengerName = (passengerLine.match(/^\s*\d+\.\s*\d?([A-Z\/]+\+?)/i)?.[1] || '').replace(/\+$/, '').toUpperCase();
+    const bn = section.match(/\bBN\s*(\d{1,3})\b/i)?.[1]?.padStart(3, '0') || '';
+    const seat = (
+      passengerLine.match(/\bBN\d{1,3}\b[^\n\r]*\*(\d+[A-Z])\b/i)?.[1] ||
+      passengerLine.match(/\bBN\d{1,3}\b[^\n\r]*\s(\d+[A-Z])\b/i)?.[1] ||
+      passengerLine.match(/\bSNR?\s*(\d+[A-Z])\b/i)?.[1] ||
+      section.match(/^\s*O\/[^\n\r]*\bSNR?\s*(\d+[A-Z])\b/im)?.[1] ||
+      section.match(/^\s*O\/[^\n\r]*\b(?:BN\s*\d{1,3}\s+)?\*?(\d+[A-Z])\b/im)?.[1] ||
+      ''
+    ).toUpperCase();
+    if (!seat) continue;
+
+    const serviceCodes = ['VIP', 'AVIH', 'BLND', 'DEAF', 'INAD', 'PETC', 'UM', 'STCR', 'MAAS', 'PPOC', 'WCHR', 'WCHS', 'WCHC'];
+    const nonPsmSection = section.split(/\r?\n/).filter((line) => !/^\s*PSM\b/i.test(line)).join('\n');
+    const specialServices = serviceCodes.filter((code) => new RegExp(`(?:\\s|\\/|^)${code}(?:\\s|\\/|$)`, 'i').test(nonPsmSection));
+    const specialMeals = [...section.matchAll(/\bSPML-([A-Z]{4})\b/gi)].map((m) => m[1].toUpperCase());
+    const isOffloaded = /\bDELETED\b/i.test(passengerLine) || /^\s*X?O\/[^\n\r]*\bDELETED\b/im.test(section);
+    const ts = parseSectionTimestamp(sectionObj.timestamp);
+    const key = bn ? `BN:${bn}` : `SEAT:${seat}:${passengerName || 'UNKNOWN'}`;
+    const prev = latestByKey.get(key);
+    if (prev && prev.ts > ts) continue;
+    latestByKey.set(key, {
+      bn,
+      name: passengerName || 'UNKNOWN',
+      seat,
+      specialServices: [...new Set(specialServices)],
+      specialMeals: [...new Set(specialMeals)],
+      status: isOffloaded ? 'DELETED' : '',
+      offloaded: isOffloaded,
+      ts
+    });
+  }
+
+  return [...latestByKey.values()]
+    .sort((a, b) => Number(a.bn || 9999) - Number(b.bn || 9999) || a.seat.localeCompare(b.seat))
+    .map(({ ts, ...record }) => record);
+}
+
 function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
   if (!log || !syInfo?.flightNo || !syInfo?.flightDate) return [];
   const sections = splitLogicalSections(log);
@@ -886,6 +943,7 @@ function findSYInfo(log, queryDate, options = {}) {
       info.govAqq = enrichGovAqqFromLog(log, info, targetYmd);
       info.wchList = enrichWchListFromLog(log, info, targetYmd);
       info.membershipList = enrichMembershipListFromLog(log, info, targetYmd);
+      info.seatMapRecords = enrichSeatMapRecordsFromLog(log, info, targetYmd);
       info.bnAudit = enrichBnAuditFromLog(log, info, targetYmd);
       return info;
     }
@@ -932,6 +990,7 @@ function findSYInfo(log, queryDate, options = {}) {
     info.govAqq = enrichGovAqqFromLog(log, info, targetYmd);
     info.wchList = enrichWchListFromLog(log, info, targetYmd);
     info.membershipList = enrichMembershipListFromLog(log, info, targetYmd);
+    info.seatMapRecords = enrichSeatMapRecordsFromLog(log, info, targetYmd);
     info.bnAudit = enrichBnAuditFromLog(log, info, targetYmd);
     return info;
   }
