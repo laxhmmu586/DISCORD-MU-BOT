@@ -665,20 +665,23 @@
     .seatmap-row { display:grid; grid-template-columns:34px repeat(12, 30px); justify-content:center; gap:4px; margin-bottom:4px; align-items:center; }
     .seatmap-row.is-first { grid-template-columns:34px repeat(12, 30px); }
     .seatmap-row-label { color:#94a3b8; font-size:11px; font-weight:800; text-align:right; padding-right:4px; }
-    .seatmap-seat { position:relative; width:30px; height:30px; padding:0; border-radius:8px; border:1px solid rgba(148,163,184,.24); background:rgba(30,41,59,.82); color:#94a3b8; font-size:10px; font-weight:800; display:flex; align-items:center; justify-content:center; cursor:default; }
+    .seatmap-seat { position:relative; isolation:isolate; width:30px; height:30px; padding:0; border-radius:8px; border:1px solid rgba(148,163,184,.24); background:rgba(30,41,59,.82); color:#94a3b8; font-size:10px; font-weight:800; display:flex; align-items:center; justify-content:center; cursor:default; }
+    .seatmap-seat::before { content:''; position:absolute; inset:-3px; z-index:-1; border-radius:11px; background:var(--seatmap-member-gradient, transparent); opacity:0; transition:opacity .16s ease, filter .16s ease; }
     .seatmap-seat.is-empty { opacity:.42; }
     .seatmap-seat.is-occupied { background:#1d4ed8; border-color:#60a5fa; color:#fff; }
     .seatmap-seat.is-selected { background:#f59e0b; border-color:#fde68a; color:#111827; }
     .seatmap-seat.is-wch { background:#0891b2; border-color:#67e8f9; color:#ecfeff; }
     .seatmap-seat.is-infant { background:#fb7185; border-color:#fecdd3; color:#fff1f2; }
     .seatmap-seat.is-child { background:rgba(196,181,253,.88); border-color:#ddd6fe; color:#312e81; }
-    .seatmap-seat.is-member-gold { --seatmap-member-ring:#facc15; border-color:#fde68a; box-shadow:0 0 0 2px var(--seatmap-member-ring), 0 0 12px rgba(250,204,21,.45); }
-    .seatmap-seat.is-member-silver { --seatmap-member-ring:#cbd5e1; border-color:#e2e8f0; box-shadow:0 0 0 2px var(--seatmap-member-ring), 0 0 12px rgba(203,213,225,.35); }
-    .seatmap-seat.is-member-platinum { --seatmap-member-ring:#bfdbfe; border-color:#eff6ff; box-shadow:0 0 0 2px var(--seatmap-member-ring), 0 0 12px rgba(191,219,254,.48); }
-    .seatmap-seat.is-multi { box-shadow:0 0 0 2px #ef4444 inset; }
+    .seatmap-seat.is-member-gold { --seatmap-member-ring:#f59e0b; --seatmap-member-glow:rgba(245,158,11,.54); --seatmap-member-gradient:linear-gradient(135deg,#fff7ad 0%,#facc15 28%,#b45309 56%,#fef3c7 78%,#d97706 100%); border-color:#fde68a; box-shadow:0 0 0 2px var(--seatmap-member-ring), 0 0 14px var(--seatmap-member-glow); }
+    .seatmap-seat.is-member-silver { --seatmap-member-ring:#94a3b8; --seatmap-member-glow:rgba(148,163,184,.50); --seatmap-member-gradient:linear-gradient(135deg,#f8fafc 0%,#cbd5e1 30%,#64748b 58%,#e2e8f0 78%,#94a3b8 100%); border-color:#f8fafc; box-shadow:0 0 0 2px var(--seatmap-member-ring), 0 0 14px var(--seatmap-member-glow); }
+    .seatmap-seat.is-member-platinum { --seatmap-member-ring:#eab308; --seatmap-member-glow:rgba(234,179,8,.62); --seatmap-member-gradient:linear-gradient(135deg,#020617 0%,#111827 20%,#f8fafc 42%,#d4af37 62%,#64748b 82%,#020617 100%); border-color:#fef3c7; box-shadow:0 0 0 2px var(--seatmap-member-ring), 0 0 16px var(--seatmap-member-glow); }
+    .seatmap-seat.is-member-gold::before, .seatmap-seat.is-member-silver::before, .seatmap-seat.is-member-platinum::before { opacity:1; }
+    .seatmap-seat.is-multi { box-shadow:0 0 0 2px var(--seatmap-member-ring, #ef4444), 0 0 0 2px #ef4444 inset, 0 0 14px var(--seatmap-member-glow, rgba(239,68,68,.42)); }
     .seatmap-seat small { position:absolute; right:2px; bottom:1px; font-size:8px; line-height:1; opacity:.95; }
     .seatmap-seat.has-record { cursor:pointer; }
-    .seatmap-seat.has-record:hover, .seatmap-seat.is-selected-seat { transform:translateY(-1px); box-shadow:0 0 0 2px var(--seatmap-member-ring, rgba(147,197,253,.55)), 0 0 14px rgba(147,197,253,.38); }
+    .seatmap-seat.has-record:hover, .seatmap-seat.is-selected-seat { transform:translateY(-1px); box-shadow:0 0 0 2px var(--seatmap-member-ring, rgba(147,197,253,.55)), 0 0 16px var(--seatmap-member-glow, rgba(147,197,253,.38)); }
+    .seatmap-seat.has-record:hover::before, .seatmap-seat.is-selected-seat::before { filter:saturate(1.18) brightness(1.08); }
     .seatmap-aisle, .seatmap-space { min-height:1px; }
     .seatmap-aisle { border-left:1px solid rgba(148,163,184,.16); align-self:stretch; justify-self:center; width:1px; }
     .seatmap-detail-panel { position:sticky; top:8px; display:flex; flex-direction:column; gap:10px; min-width:0; }
