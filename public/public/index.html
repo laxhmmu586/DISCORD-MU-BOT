@@ -861,9 +861,9 @@
     .action-menu-item { border-radius:10px; }
     .action-menu-item[style*="none"] { display:none !important; }
 
-    .sy-dashboard { display:flex; flex-direction:column; gap:16px; }
+    .sy-dashboard { display:grid; grid-template-columns:1fr; row-gap:18px; }
     .sy-hero-meta { color:var(--ops-muted); font-size:15px; letter-spacing:.6px; margin:0 0 8px; }
-    .sy-top-grid { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:10px; }
+    .sy-top-grid { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); column-gap:10px; row-gap:10px; }
     .sy-stat-card, .sy-panel {
       border:1px solid rgba(74,112,150,.74);
       background:
@@ -882,7 +882,7 @@
     .sy-bags-card { overflow:hidden; }
     .sy-bags-card > div:last-child { min-width:0; }
     .sy-bags-value { font-size:15px; white-space:nowrap; overflow:visible; text-overflow:clip; max-width:100%; letter-spacing:-.3px; }
-    .sy-main-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:14px; align-items:stretch; margin-top:0; }
+    .sy-main-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); column-gap:14px; row-gap:14px; align-items:stretch; margin:0; }
     .sy-stack { display:contents; }
     .sy-panel { padding:14px; }
     .sy-panel-title { display:flex; align-items:center; gap:8px; color:#f3f7fd; font-size:16px; font-weight:900; letter-spacing:.2px; text-transform:uppercase; }
@@ -899,7 +899,7 @@
     .sy-hidden-value { display:none; }
     .sy-sub-count-row { margin-top:10px; padding-top:9px; border-top:1px solid rgba(148,163,184,.18); }
     .sy-sub-count-row:empty { display:none; }
-    .sy-progress-panel { margin-top:0; padding:18px 16px 16px; }
+    .sy-progress-panel { margin:0; padding:18px 16px 16px; }
     .sy-progress-track-wrap { position:relative; padding:8px 16px 0; }
     .sy-progress-plane { position:absolute; top:-7px; left:22px; color:#9bc5ff; font-size:18px; transform:translateX(-50%); transition:left .2s ease; text-shadow:0 0 12px rgba(96,165,250,.55); z-index:2; }
     .sy-progress-steps { position:relative; display:flex; justify-content:space-between; gap:10px; }
@@ -924,7 +924,7 @@
     .sy-rk-panel { padding:16px; margin:0; }
     .sy-rk-value { margin-top:6px; color:#cbd5e1; font-size:14px; line-height:1.35; }
     .sy-rk-value:empty { display:none; }
-    .sy-flight-data-panel { margin-top:0; }
+    .sy-flight-data-panel { margin:0; }
     .sy-toggle-row { margin-top:14px; display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:10px; overflow:visible; padding:0; }
     .sy-data-tile { min-height:54px; width:100%; display:flex; align-items:center; justify-content:center; gap:7px; padding:8px 6px; border-radius:8px; border:1px solid rgba(69,105,141,.86); background:linear-gradient(145deg, rgba(13,34,56,.92), rgba(7,24,39,.92)); color:#f8fafc; font-size:12px; font-weight:900; min-width:0; transition:border-color .15s ease, background .15s ease, box-shadow .15s ease; }
     .sy-data-tile .tile-icon { flex:0 0 auto; font-size:18px; color:#8fb8ff; }
@@ -976,7 +976,7 @@
       .card { padding:14px; }
       .flight { font-size:23px; }
       .seat, .sy-hero-meta { font-size:13px; }
-      .sy-top-grid { gap:10px; }
+      .sy-top-grid { column-gap:10px; row-gap:10px; }
       .sy-stat-card { min-height:64px; padding:8px 4px; gap:3px; flex-direction:column; align-items:center; justify-content:center; }
       .sy-stat-icon { display:none; }
       .sy-stat-card .label { font-size:10px; }
