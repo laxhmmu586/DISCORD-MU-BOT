@@ -972,13 +972,15 @@
     .seatmap-seat { border-radius:9px; }
 
     @media (max-width: 520px) {
-      .container { padding:12px; }
+      body { overflow-x:hidden; }
+      .container { max-width:100%; padding:12px; overflow:hidden; }
       .auth-bar { flex-direction:column; align-items:flex-start; gap:10px; }
-      .auth-actions { width:100%; justify-content:space-between; }
+      .auth-actions { width:auto; justify-content:flex-start; gap:10px; }
       .card { padding:14px; }
       .flight { font-size:23px; }
       .seat, .sy-hero-meta { font-size:13px; }
-      .sy-top-grid { column-gap:10px; row-gap:10px; }
+      .sy-dashboard { row-gap:18px; }
+      .sy-top-grid { grid-template-columns:repeat(4, minmax(0, 1fr)); column-gap:10px; row-gap:10px; }
       .sy-stat-card { min-height:64px; padding:8px 4px; gap:3px; flex-direction:column; align-items:center; justify-content:center; }
       .sy-stat-icon { display:none; }
       .sy-stat-card .label { font-size:10px; }
@@ -994,11 +996,15 @@
       .sy-pax-item:nth-child(even) { border-right:0; }
       .sy-pax-item:nth-child(n) { border-bottom:1px solid rgba(69,105,141,.42); }
       .sy-pax-item:nth-child(n+3) { border-bottom:0; }
-      .sy-main-grid { grid-template-columns:1fr; }
+      .sy-main-grid { grid-template-columns:1fr; row-gap:18px; }
       .sy-stack { display:flex; flex-direction:column; }
-      .sy-progress-panel { padding:14px; }
+      .sy-progress-panel { padding:14px; overflow:hidden; }
       .sy-data-tile { min-height:50px; padding:7px 2px; gap:2px; font-size:8px; }
       .sy-progress-panel { margin-top:0; }
+      .sy-progress-track-wrap { padding:8px 8px 0; }
+      .sy-progress-step { min-width:auto; font-size:9px; }
+      .sy-progress-steps::before { left:24px; right:24px; }
+      .sy-progress-plane { font-size:17px; }
       .sy-data-tile .tile-icon { font-size:14px; }
       .audit-workspace, .seatmap-workspace,
       .audit-workspace.no-detail, .seatmap-workspace.no-detail {
@@ -2514,26 +2520,26 @@
         {
           key: 'chd',
           label: 'CHD',
-          complete: !extras.chdHasIssue,
-          warning: Boolean(extras.chdHasIssue),
-          tooltip: extras.chdHasIssue ? 'Missing CHD1/0 - click to open CHD List' : 'CHD clear',
-          action: extras.chdHasIssue ? 'chd' : ''
+          complete: crewStep.complete && !extras.chdHasIssue,
+          warning: crewStep.complete && Boolean(extras.chdHasIssue),
+          tooltip: !crewStep.complete ? 'Waiting for Crew APIS' : (extras.chdHasIssue ? 'Missing CHD1/0 - click to open CHD List' : 'CHD clear'),
+          action: crewStep.complete && extras.chdHasIssue ? 'chd' : ''
         },
         {
           key: 'gov',
           label: 'GOV',
-          complete: !extras.govHasIssue,
-          warning: Boolean(extras.govHasIssue),
-          tooltip: extras.govHasIssue ? 'GOV/AQQ issue - click to open GOV/AQQ' : 'GOV/AQQ clear',
-          action: extras.govHasIssue ? 'gov' : ''
+          complete: crewStep.complete && !extras.govHasIssue,
+          warning: crewStep.complete && Boolean(extras.govHasIssue),
+          tooltip: !crewStep.complete ? 'Waiting for Crew APIS' : (extras.govHasIssue ? 'GOV/AQQ issue - click to open GOV/AQQ' : 'GOV/AQQ clear'),
+          action: crewStep.complete && extras.govHasIssue ? 'gov' : ''
         },
         {
           key: 'nbrd',
           label: 'NBRD',
-          complete: !extras.nbrdHasIssue,
-          warning: Boolean(extras.nbrdHasIssue),
-          tooltip: extras.nbrdHasIssue ? 'CKIN/NBRD issue - click to open CKIN/NBRD' : 'NBRD clear',
-          action: extras.nbrdHasIssue ? 'nbrd' : ''
+          complete: crewStep.complete && !extras.nbrdHasIssue,
+          warning: crewStep.complete && Boolean(extras.nbrdHasIssue),
+          tooltip: !crewStep.complete ? 'Waiting for Crew APIS' : (extras.nbrdHasIssue ? 'CKIN/NBRD issue - click to open CKIN/NBRD' : 'NBRD clear'),
+          action: crewStep.complete && extras.nbrdHasIssue ? 'nbrd' : ''
         },
         { ...cclStep, key: 'ccl', label: 'CCL' },
         { ...ccStep, key: 'cc', label: 'CC' }
