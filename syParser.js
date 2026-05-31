@@ -27,7 +27,12 @@ function splitLogicalSections(log) {
     }
 
     if (!current) {
-      current = { content: '' };
+      current = { content: '', timestamp: pendingTimestamp || null };
+      pendingTimestamp = null;
+    } else if (cmd && isContinuation && pendingTimestamp) {
+      const currentTs = parseSectionTimestamp(current.timestamp);
+      const pendingTs = parseSectionTimestamp(pendingTimestamp);
+      if (pendingTs >= currentTs) current.timestamp = pendingTimestamp;
       pendingTimestamp = null;
     }
 
@@ -153,11 +158,16 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
     return m?.[1] || '';
   };
   const findAcceptedCommand = (regex) => {
-    const sectionObj = sameDaySections.find((item) => {
+    const matches = sameDaySections.filter((item) => {
       const content = String(item.content || '').toUpperCase();
+      regex.lastIndex = 0;
       return regex.test(content) && /\bACCEPTED\b/.test(content);
     });
-    return sectionObj ? { complete: true, time: formatTime(sectionObj.timestamp) } : { complete: false, time: '' };
+    if (!matches.length) return { complete: false, time: '' };
+    const sectionObj = matches.reduce((latest, item) => (
+      parseSectionTimestamp(item.timestamp) >= parseSectionTimestamp(latest.timestamp) ? item : latest
+    ), matches[0]);
+    return { complete: true, time: formatTime(sectionObj.timestamp) };
   };
   const hasCommand = (regex) => sameDaySections.some((sectionObj) => regex.test(String(sectionObj.content || '').toUpperCase()));
   const lrPrefix = flightNo
@@ -997,7 +1007,7 @@ ${section}`,
       return /\/CHKLEG\b/.test(normalized)
         || /^CKIN\s+HK\d+\s+LKCK\/\d+\/[A-Z]$/.test(normalized)
         || /^CKIN\s+MTCK\/MAP\/MU\b/.test(normalized)
-        || /^CKIN\s+(?:STSP|GE|KATE|YUIKA|BY\s+YUIKA|BY\s+NORMA|GLENN|NH|RP|TIAN)\b/.test(normalized)
+        || /^CKIN\s+(?:STSP|GE|KATE|YUIKA|BY\s+YUIKA|BY\s+NORMA|GLENN|NH|RP|TIAN|TAMSUN)\b/.test(normalized)
         || /^CKIN\s+HK\d+\s+VICO\d+\b/.test(normalized);
     };
     const ckinLineList = section.split(/\r?\n/).filter((line) => /^\s*CKIN\b/i.test(line)).map((line) => line.trim());
