@@ -850,7 +850,7 @@
     .search-box { margin: 16px 0; }
     input { background:rgba(7,24,39,.92); border:1px solid rgba(77,112,148,.46); border-radius:14px; }
     button { font-weight:700; }
-    .card { border-radius:20px; padding:20px; overflow:hidden; }
+    .card { border-radius:20px; padding:20px; overflow:visible; }
     .flight-row { align-items:flex-start; margin-bottom:8px; }
     .flight { font-size:28px; letter-spacing:.4px; }
     .seat { color:var(--ops-muted); font-size:15px; letter-spacing:.5px; margin:0 0 18px; }
@@ -861,33 +861,33 @@
     .action-menu-item { border-radius:10px; }
     .action-menu-item[style*="none"] { display:none !important; }
 
-    .sy-dashboard { display:flex; flex-direction:column; gap:12px; }
+    .sy-dashboard { display:flex; flex-direction:column; gap:14px; }
     .sy-hero-meta { color:var(--ops-muted); font-size:15px; letter-spacing:.6px; margin:0 0 4px; }
-    .sy-top-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:12px; }
+    .sy-top-grid { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:10px; }
     .sy-stat-card, .sy-panel {
       border:1px solid rgba(69,105,141,.78);
       background:linear-gradient(145deg, rgba(13,34,56,.94), rgba(7,24,39,.94));
       border-radius:14px;
       box-shadow: inset 0 1px 0 rgba(255,255,255,.03), 0 12px 24px rgba(0,0,0,.14);
     }
-    .sy-stat-card { min-width:0; min-height:92px; padding:16px; display:flex; align-items:center; gap:12px; }
-    .sy-stat-icon { flex:0 0 auto; width:38px; height:38px; display:grid; place-items:center; color:var(--ops-purple); font-size:29px; font-weight:900; }
+    .sy-stat-card { min-width:0; min-height:82px; padding:12px; display:flex; align-items:center; gap:8px; }
+    .sy-stat-icon { flex:0 0 auto; width:30px; height:30px; display:grid; place-items:center; color:var(--ops-purple); font-size:24px; font-weight:900; }
     .sy-stat-icon.blue { color:var(--ops-blue); }
     .sy-stat-icon.green { color:var(--ops-green); }
     .sy-stat-icon.amber { color:var(--ops-amber); }
-    .sy-stat-card .label, .sy-panel .label { color:#d7e2f1; font-size:13px; font-weight:900; letter-spacing:.3px; }
-    .sy-stat-value { color:var(--ops-text); font-size:25px; font-weight:900; line-height:1.08; }
+    .sy-stat-card .label, .sy-panel .label { color:#d7e2f1; font-size:12px; font-weight:900; letter-spacing:.3px; }
+    .sy-stat-value { color:var(--ops-text); font-size:20px; font-weight:900; line-height:1.08; }
     .sy-bags-card { overflow:hidden; }
     .sy-bags-card > div:last-child { min-width:0; }
-    .sy-bags-value { font-size:21px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
-    .sy-main-grid { display:grid; grid-template-columns:1fr; gap:12px; align-items:stretch; }
+    .sy-bags-value { font-size:18px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+    .sy-main-grid { display:grid; grid-template-columns:minmax(0, .9fr) minmax(0, 1fr); gap:12px; align-items:stretch; margin-top:4px; }
     .sy-stack { display:flex; flex-direction:column; gap:12px; min-width:0; }
-    .sy-panel { padding:16px; }
-    .sy-panel-title { display:flex; align-items:center; gap:9px; color:#f3f7fd; font-size:18px; font-weight:900; letter-spacing:.2px; text-transform:uppercase; }
+    .sy-panel { padding:14px; }
+    .sy-panel-title { display:flex; align-items:center; gap:8px; color:#f3f7fd; font-size:16px; font-weight:900; letter-spacing:.2px; text-transform:uppercase; }
     .sy-panel-icon { color:var(--ops-blue); font-size:18px; }
     .sy-panel-icon.muted { color:#cbd5e1; }
-    .sy-panel-muted { color:var(--ops-muted); font-size:14px; font-weight:700; text-transform:none; }
-    .sy-count-row { display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-top:16px; color:#f8fafc; font-size:22px; font-weight:900; }
+    .sy-panel-muted { color:var(--ops-muted); font-size:12px; font-weight:700; text-transform:none; }
+    .sy-count-row { display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-top:14px; color:#f8fafc; font-size:18px; font-weight:900; }
     .sy-count-row span { min-width:0; padding-right:8px; border-right:1px solid rgba(148,163,184,.28); }
     .sy-count-row span:last-child { border-right:0; }
     .sy-count-row .cabin-f { color:var(--ops-purple); }
@@ -895,8 +895,8 @@
     .sy-count-row .cabin-y { color:var(--ops-green); }
     .sy-hidden-value { display:none; }
     .sy-pax-panel { min-width:0; }
-    .sy-pax-grid { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); margin-top:16px; border:1px solid rgba(69,105,141,.4); border-radius:10px; overflow:hidden; }
-    .sy-pax-item { min-height:82px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; color:#e2e8f0; border-right:1px solid rgba(69,105,141,.42); border-bottom:1px solid rgba(69,105,141,.42); font-size:13px; text-align:center; }
+    .sy-pax-grid { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); margin-top:14px; border:1px solid rgba(69,105,141,.4); border-radius:10px; overflow:hidden; }
+    .sy-pax-item { min-height:76px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; color:#e2e8f0; border-right:1px solid rgba(69,105,141,.42); border-bottom:0; font-size:12px; text-align:center; }
     .sy-pax-item:nth-child(4n) { border-right:0; }
     .sy-pax-item:nth-child(n+5) { border-bottom:0; }
     .sy-pax-icon { font-size:20px; line-height:1; }
@@ -906,15 +906,16 @@
     .sy-pax-icon.purple { color:var(--ops-purple); }
     .sy-pax-icon.silver { color:#b8c2d1; }
     .sy-pax-icon.green { color:var(--ops-green); }
-    .sy-pax-item b { font-size:24px; color:#f8fafc; }
-    .sy-rk-panel { padding:14px 16px; margin-top:0; }
+    .sy-pax-item b { font-size:22px; color:#f8fafc; }
+    .sy-rk-panel { padding:14px 16px; margin:4px 0; }
     .sy-rk-value { margin-top:6px; color:#cbd5e1; font-size:14px; line-height:1.35; }
     .sy-rk-value:empty { display:none; }
-    .sy-flight-data-panel { margin-top:0; }
-    .sy-toggle-row { margin-top:14px; display:grid; grid-template-columns:repeat(auto-fit, minmax(132px, 1fr)); gap:10px; overflow:visible; padding:0; }
-    .sy-data-tile { min-height:68px; width:100%; display:flex; align-items:center; justify-content:center; gap:10px; padding:12px; border-radius:10px; border:1px solid rgba(69,105,141,.86); background:rgba(10,29,49,.72); color:#f8fafc; font-size:16px; font-weight:900; }
-    .sy-data-tile .tile-icon { font-size:22px; color:#8fb8ff; }
-    .sy-data-tile b:not(:empty) { min-width:28px; padding:4px 8px; border-radius:999px; background:rgba(139,92,246,.84); color:white; font-size:14px; }
+    .sy-flight-data-panel { margin-top:4px; }
+    .sy-toggle-row { margin-top:14px; display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:10px; overflow:visible; padding:0; }
+    .sy-data-tile { min-height:64px; width:100%; display:flex; align-items:center; justify-content:center; gap:6px; padding:10px 8px; border-radius:10px; border:1px solid rgba(34,197,94,.72); background:linear-gradient(145deg, rgba(22,163,74,.92), rgba(12,88,48,.9)); color:#f8fafc; font-size:13px; font-weight:900; min-width:0; }
+    .sy-data-tile .tile-icon { flex:0 0 auto; font-size:18px; color:#bbf7d0; }
+    .sy-data-tile span:not(.tile-icon) { min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .sy-data-tile b { display:none; }
     .sy-data-tile.is-good { border-color:rgba(34,197,94,.6); box-shadow:0 0 0 1px rgba(34,197,94,.14) inset; }
     .sy-data-tile.is-good .tile-icon { color:#6ee7b7; }
     .sy-data-tile.is-bad { border-color:rgba(255,77,94,.92); background:linear-gradient(145deg, rgba(76,14,26,.94), rgba(18,30,48,.92)); box-shadow:0 0 24px rgba(255,77,94,.18), inset 0 0 0 1px rgba(255,255,255,.05); }
@@ -925,7 +926,9 @@
     .chd-summary { color:#fda4af; font-weight:800; }
 
     .audit-summary-bar, .seatmap-summary { border:1px solid rgba(69,105,141,.78); border-radius:14px; padding:14px 16px; background:linear-gradient(145deg, rgba(13,34,56,.94), rgba(7,24,39,.94)); }
-    .audit-workspace, .seatmap-workspace { width:100%; max-width:100%; }
+    .audit-workspace { width:calc(100% + var(--audit-detail-width) + 14px); max-width:none; }
+    .seatmap-workspace { width:calc(100% + var(--seatmap-detail-width) + 14px); max-width:none; }
+    .audit-workspace.no-detail, .seatmap-workspace.no-detail { width:100%; max-width:100%; }
     .audit-list-row, .audit-card, .seatmap-wrap { border-color:rgba(69,105,141,.62); background:linear-gradient(145deg, rgba(13,34,56,.96), rgba(7,24,39,.9)); }
     .audit-record-card { border-radius:16px; }
     .audit-record-heading { color:#f8fafc; font-size:18px; font-weight:900; letter-spacing:.2px; }
@@ -941,11 +944,11 @@
       .flight { font-size:23px; }
       .seat, .sy-hero-meta { font-size:13px; }
       .sy-top-grid { gap:10px; }
-      .sy-stat-card { min-height:82px; padding:12px; gap:9px; }
-      .sy-stat-icon { width:30px; height:30px; font-size:24px; }
-      .sy-stat-value { font-size:22px; }
-      .sy-bags-card { grid-column:1 / -1; }
-      .sy-bags-value { font-size:21px; }
+      .sy-stat-card { min-height:64px; padding:8px 5px; gap:3px; flex-direction:column; align-items:flex-start; }
+      .sy-stat-icon { display:none; }
+      .sy-stat-card .label { font-size:10px; }
+      .sy-stat-value { font-size:14px; }
+      .sy-bags-value { font-size:13px; }
       .sy-panel { padding:14px; }
       .sy-panel-title { font-size:16px; }
       .sy-panel-muted { display:block; font-size:12px; }
@@ -955,8 +958,17 @@
       .sy-pax-item:nth-child(odd) { border-right:1px solid rgba(69,105,141,.42); }
       .sy-pax-item:nth-child(even) { border-right:0; }
       .sy-pax-item:nth-child(n) { border-bottom:1px solid rgba(69,105,141,.42); }
-      .sy-pax-item:nth-child(n+7) { border-bottom:0; }
-      .sy-data-tile { min-height:62px; font-size:15px; }
+      .sy-pax-item:nth-child(n+3) { border-bottom:0; }
+      .sy-main-grid { grid-template-columns:1fr; }
+      .sy-data-tile { min-height:56px; padding:8px 4px; gap:3px; font-size:10px; }
+      .sy-data-tile .tile-icon { font-size:14px; }
+      .audit-workspace, .seatmap-workspace,
+      .audit-workspace.no-detail, .seatmap-workspace.no-detail {
+        grid-template-columns:minmax(0, 1fr);
+        width:100%;
+        max-width:100%;
+      }
+      .audit-detail-panel, .seatmap-detail-panel { position:static; }
     }
 
   </style>
@@ -1044,6 +1056,8 @@
               <button id="salesReportMenuItem" type="button" class="action-menu-item" onclick="openSyMenuAction('sales')" role="menuitem" style="display:none;">Sales Report</button>
               <button type="button" class="action-menu-item" onclick="openSyMenuAction('security')" role="menuitem">Security Check</button>
               <button type="button" class="action-menu-item" onclick="openSyMenuAction('seatmap')" role="menuitem">Seat Map</button>
+              <button id="bagReportMenuItem" type="button" class="action-menu-item" onclick="openSyMenuAction('bag')" role="menuitem" style="display:none;">Bag Report</button>
+              <button id="salesReportMenuItem" type="button" class="action-menu-item" onclick="openSyMenuAction('sales')" role="menuitem" style="display:none;">Sales Report Download</button>
             </div>
           </div>
           <button id="auditToggleBtn" class="audit-icon-btn" onclick="showBnAuditPage()" title="BN Audit" style="display:none;">📋</button>
@@ -1114,10 +1128,6 @@
                 <div class="sy-pax-item"><span class="sy-pax-icon amber">♙</span><span>Children</span><b id="syPaxChildren">-</b></div>
                 <div class="sy-pax-item"><span class="sy-pax-icon teal">♧</span><span>INF</span><b id="syPaxInf">-</b></div>
                 <div class="sy-pax-item"><span class="sy-pax-icon purple">♿</span><span>WCH</span><b id="syPaxWch">-</b></div>
-                <div class="sy-pax-item"><span class="sy-pax-icon teal">⬡</span><span>Platinum</span><b id="syPaxPlatinum">-</b></div>
-                <div class="sy-pax-item"><span class="sy-pax-icon amber">★</span><span>Gold</span><b id="syPaxGold">-</b></div>
-                <div class="sy-pax-item"><span class="sy-pax-icon silver">⬟</span><span>Silver</span><b id="syPaxSilver">-</b></div>
-                <div class="sy-pax-item"><span class="sy-pax-icon green">✓</span><span>Total</span><b id="syPaxTotal">-</b></div>
               </div>
             </div>
           </div>
@@ -1130,10 +1140,10 @@
           <div class="sy-panel sy-flight-data-panel">
             <div class="sy-panel-title"><span class="sy-panel-icon blue">ϟ</span> FLIGHT DATA</div>
             <div id="syToggleRow" class="sy-toggle-row" style="display:none;">
-              <button id="chdToggleBtn" class="chd-toggle-btn sy-data-tile" style="display:none;" onclick="toggleChdPanel()"><span class="tile-icon">☼</span><span>CHD List</span><b id="chdTileCount"></b></button>
-              <button id="govAqqToggleBtn" class="chd-toggle-btn sy-data-tile" style="display:none;" onclick="toggleGovAqqPanel()"><span class="tile-icon">▦</span><span>GOV/AQQ</span><b id="govAqqTileCount"></b></button>
-              <button id="wchToggleBtn" class="chd-toggle-btn wch-btn sy-data-tile" style="display:none;" onclick="toggleWchPanel()"><span class="tile-icon">♿</span><span>WCH</span><b id="wchTileCount"></b></button>
-              <button id="membershipToggleBtn" class="chd-toggle-btn membership-btn sy-data-tile" style="display:none;" onclick="toggleMembershipPanel()"><span class="tile-icon">★</span><span>Membership</span><b id="memberTileCount"></b></button>
+              <button id="chdToggleBtn" class="chd-toggle-btn sy-data-tile" style="display:none;" onclick="toggleChdPanel()"><span class="tile-icon">☼</span><span>CHD List</span></button>
+              <button id="govAqqToggleBtn" class="chd-toggle-btn sy-data-tile" style="display:none;" onclick="toggleGovAqqPanel()"><span class="tile-icon">▦</span><span>GOV/AQQ</span></button>
+              <button id="wchToggleBtn" class="chd-toggle-btn wch-btn sy-data-tile" style="display:none;" onclick="toggleWchPanel()"><span class="tile-icon">♿</span><span>WCH</span></button>
+              <button id="membershipToggleBtn" class="chd-toggle-btn membership-btn sy-data-tile" style="display:none;" onclick="toggleMembershipPanel()"><span class="tile-icon">★</span><span>Membership</span></button>
             </div>
           </div>
           <div id="chdSection" class="sy-panel sy-detail-panel" style="display:none;">
@@ -2409,10 +2419,12 @@
     }
 
     function formatSyMeta(sy) {
-      return [sy.aircraftType || '-', sy.aircraftRegistration || '-'].filter(Boolean).join('  |  ');
+      return [sy.statusDisplay || '', sy.aircraftType || '-', sy.aircraftRegistration || '-']
+        .filter((item) => item && item !== '-')
+        .join('  |  ');
     }
 
-    function setPaxSummary(sy, membershipCounts = {}) {
+    function setPaxSummary(sy) {
       const res = sy?.reservation || [];
       const total = numberFromValue(res[1]) + numberFromValue(res[2]) + numberFromValue(res[3]);
       const chd = Number(Array.isArray(sy?.chdList) ? sy.chdList.length : sy?.chd || 0) || 0;
@@ -2422,10 +2434,6 @@
       setTextById('syPaxChildren', chd || '-');
       setTextById('syPaxInf', inf || '-');
       setTextById('syPaxWch', wch || '-');
-      setTextById('syPaxPlatinum', membershipCounts.platinum || 0);
-      setTextById('syPaxGold', membershipCounts.gold || 0);
-      setTextById('syPaxSilver', membershipCounts.silver || 0);
-      setTextById('syPaxTotal', (membershipCounts.platinum || 0) + (membershipCounts.gold || 0) + (membershipCounts.silver || 0));
     }
 
     function escapeHtmlText(value) {
@@ -2926,7 +2934,7 @@
 
           setTextById('flight', `✈ SY  ${sy.flightNo || '-'}/${sy.flightDate || '-'}`);
           setTextById('name', '');
-          setTextById('seat', sy.statusDisplay || '');
+          setTextById('seat', '');
 
           ['membershipSection','ticketSection','bagsSection','inboundSection','outboundSection','ssrSection','mealSection','paidSection','loungeSection','docSection'].forEach((id) => setDisplayById(id, 'none'));
           setDisplayById('syLayout', 'block');
@@ -3015,10 +3023,7 @@
           }));
 
           const counts = membershipData.counts || {};
-          setPaxSummary(sy, counts);
-          setTextById('chdTileCount', chdList.length || '');
-          setTextById('wchTileCount', wchList.length || '');
-          setTextById('memberTileCount', (counts.platinum || 0) + (counts.gold || 0) + (counts.silver || 0) || '');
+          setPaxSummary(sy);
           setTextById('membershipSummary', `白金卡 Platinum: ${counts.platinum || 0} • 金卡 Gold: ${counts.gold || 0} • 银卡 Sliver: ${counts.silver || 0}`);
           renderMembershipPanel(document.getElementById('membershipList'), membershipData);
 
