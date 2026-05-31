@@ -330,6 +330,10 @@ function sanitizeReviewComment(value) {
   return String(value || '').replace(/[\u0000-\u001F\u007F]/g, ' ').trim().slice(0, 500);
 }
 
+function sanitizeReviewer(value) {
+  return String(value || '').replace(/[\u0000-\u001F\u007F]/g, ' ').trim().slice(0, 120);
+}
+
 
 const ALLOWED_ORIGINS = [
   'https://china-eastern.web.app',
@@ -417,13 +421,14 @@ app.post('/security-reviews', async (req, res) => {
     const bn = String(req.body?.bn || '').replace(/\D/g, '').padStart(3, '0');
     const status = sanitizeReviewStatus(req.body?.status);
     const comment = sanitizeReviewComment(req.body?.comment);
+    const reviewer = sanitizeReviewer(req.body?.reviewer);
     if (!flightNo || !flightDate || !/^\d{3}$/.test(bn) || !status) {
       return res.status(400).json({ error: 'Missing flightNo, flightDate, BN, or status' });
     }
     const store = pruneReviewStore(await readReviewStore());
     const key = reviewFlightKey(flightNo, flightDate);
     store.reviews[key] = store.reviews[key] || {};
-    store.reviews[key][bn] = { status, comment, updatedAt: new Date().toISOString() };
+    store.reviews[key][bn] = { status, comment, reviewer, updatedAt: new Date().toISOString() };
     await writeReviewStore(store);
     return res.json({ ok: true, review: store.reviews[key][bn] });
   } catch (err) {

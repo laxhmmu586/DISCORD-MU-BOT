@@ -69,6 +69,26 @@ function isDeletedPassengerSection(section) {
   return isDeletedPassengerLine(getPassengerRecordLine(section));
 }
 
+function getPassengerNameFromSection(section) {
+  const passengerLine = getPassengerRecordLine(section);
+  const lineName = (passengerLine.match(/^\s*\d+\.\s*\d?([A-Z\/]+\+?)/i)?.[1] || '').replace(/\+$/, '').toUpperCase();
+  if (lineName) return lineName;
+  const paxListName = (String(section || '').match(/PAXLST\s*:\s*([A-Z\/]+)\/?/i)?.[1] || '').replace(/\+$/, '').toUpperCase();
+  return paxListName || 'UNKNOWN';
+}
+
+function extractPsmLines(section) {
+  return [...new Set(String(section || '')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => /^PSM(?:\b|-)/i.test(line)))];
+}
+
+function hasTargetPsm(line) {
+  const normalized = String(line || '').toUpperCase().replace(/\s+/g, '');
+  return ['TSXL', 'JMSQ', 'XCSQ', 'TXLK', 'QTQK'].some((code) => normalized.includes(code));
+}
+
 function getOutboundLines(section) {
   return String(section || '').match(/^\s*X?O\/[^\n\r]*/gim) || [];
 }
@@ -745,6 +765,60 @@ function enrichSeatMapRecordsFromLog(log, syInfo, targetYmd = null) {
     .map(({ ts, seq, ...record }) => record);
 }
 
+
+function enrichPsmListFromLog(log, syInfo, targetYmd = null) {
+  if (!log || !syInfo?.flightNo || !syInfo?.flightDate) return [];
+  const sections = splitLogicalSections(log);
+  const latestByBn = new Map();
+
+  for (const sectionObj of sections) {
+    const section = sectionObj.content || '';
+    if (!section.includes('PR:')) continue;
+    if (targetYmd) {
+      const sectionYmd = getYmdFromTimestamp(sectionObj.timestamp);
+      if (sectionYmd !== targetYmd) continue;
+    }
+
+    const prMatch = section.match(/PR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
+    if (!prMatch) continue;
+    if (prMatch[1].toUpperCase() !== syInfo.flightNo || prMatch[2].toUpperCase() !== syInfo.flightDate) continue;
+
+    const psmLines = extractPsmLines(section).filter(hasTargetPsm);
+    if (!psmLines.length) continue;
+
+    const bn = section.match(/\bBN\s*(\d{1,3})\b/i)?.[1]?.padStart(3, '0') || '';
+    if (!bn) continue;
+
+    const passengerLine = getPassengerRecordLine(section);
+    if (isDeletedPassengerLine(passengerLine)) continue;
+
+    const seat = (
+      passengerLine.match(/\bBN\d{1,3}\b[^\n\r]*\*?(\d+[A-Z])\b/i)?.[1] ||
+      section.match(/\bSN\s*(\d+[A-Z])\b/i)?.[1] ||
+      ''
+    ).toUpperCase();
+    const bagLine = section.match(/BAGTAG\s*\/([^\n\r]+)/i)?.[1] || '';
+    const bagtags = [...bagLine.matchAll(/(?:^|\s)\/?\s*((?:[A-Z]{1,3}\s*)?\d{5,12})\s*\/\s*([A-Z]{3})\b/gi)]
+      .map((m) => `${String(m[1] || '').replace(/\s+/g, ' ').trim()}/${String(m[2] || '').toUpperCase()}`);
+    const ts = parseSectionTimestamp(sectionObj.timestamp);
+    const prev = latestByBn.get(bn);
+    if (prev && prev.ts > ts) continue;
+
+    latestByBn.set(bn, {
+      bn,
+      name: getPassengerNameFromSection(section),
+      seat: seat || '---',
+      bagtags,
+      psmLines,
+      ts
+    });
+  }
+
+  return [...latestByBn.values()]
+    .sort((a, b) => Number(a.bn) - Number(b.bn))
+    .map(({ ts, ...row }) => row);
+}
+
 function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
   if (!log || !syInfo?.flightNo || !syInfo?.flightDate) return [];
   const sections = splitLogicalSections(log);
@@ -878,7 +952,7 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     const ageYears = getAgeYearsAtDate(dobDate, atDateUtc);
     const hasChdCode = /\bCHD1\/0\b/i.test(section);
     const isChild = (Number.isInteger(ageYears) && ageYears >= 2 && ageYears < 12) || hasChdCode;
-    const psmLines = [...new Set(section.split(/\r?\n/).map((line) => line.trim()).filter((line) => /^PSM\b/i.test(line)))];
+    const psmLines = extractPsmLines(section);
     const paidProductsShort = (section.match(/^\s*ASVC-[^\n\r]+/gim) || []).map((line) => {
       const fullLine = line.replace(/^ASVC-\s*/i, '').trim();
       const serviceCode = (fullLine.match(/(?:^|\/)\s*([A-Z]{4})\s*(?:\/|\s)/i)?.[1] || fullLine.match(/\b(\d+[A-Z]|[0-9]+PC)\b/i)?.[1] || '').toUpperCase();
@@ -1129,6 +1203,7 @@ function findSYInfo(log, queryDate, options = {}) {
       info.membershipList = enrichMembershipListFromLog(log, info, targetYmd);
       info.seatMapRecords = enrichSeatMapRecordsFromLog(log, info, targetYmd);
       info.bnAudit = enrichBnAuditFromLog(log, info, targetYmd);
+      info.psmList = enrichPsmListFromLog(log, info, targetYmd);
       info.crewApis = enrichCrewApisFromLog(log, info, targetYmd);
       return info;
     }
@@ -1177,6 +1252,7 @@ function findSYInfo(log, queryDate, options = {}) {
     info.membershipList = enrichMembershipListFromLog(log, info, targetYmd);
     info.seatMapRecords = enrichSeatMapRecordsFromLog(log, info, targetYmd);
     info.bnAudit = enrichBnAuditFromLog(log, info, targetYmd);
+    info.psmList = enrichPsmListFromLog(log, info, targetYmd);
     info.crewApis = enrichCrewApisFromLog(log, info, targetYmd);
     return info;
   }

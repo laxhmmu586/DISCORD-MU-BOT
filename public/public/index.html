@@ -970,6 +970,8 @@
     .chd-summary { color:#fda4af; font-weight:800; }
 
     .audit-summary-bar, .seatmap-summary { border:none; border-radius:0; padding:0 0 8px; background:transparent; }
+    .audit-summary-main { justify-content:flex-end; text-align:right; }
+    .audit-summary-main .detail-title { margin-left:auto; text-align:right; }
     .audit-workspace { width:calc(100% + var(--audit-detail-width) + 14px); max-width:none; }
     .seatmap-workspace { width:calc(100% + var(--seatmap-detail-width) + 14px); max-width:none; }
     .audit-workspace.no-detail, .seatmap-workspace.no-detail { width:100%; max-width:100%; }
@@ -992,6 +994,19 @@
     .sy-progress-step.is-arc-step { position:absolute; min-width:70px; gap:5px; transform:translate(-50%, -50%); z-index:2; }
     .sy-progress-step.is-arc-step .sy-progress-dot { width:18px; height:18px; }
     .sy-progress-plane.is-arc-plane { top:auto; left:auto; z-index:3; transform:translate(-50%, -50%); }
+
+
+    .sy-progress-panel { order:-1; min-height:178px; overflow:hidden; background:radial-gradient(circle at 50% 5%, rgba(96,165,250,.13), transparent 14rem), linear-gradient(145deg, rgba(6,22,38,.98), rgba(4,16,29,.96)); }
+    .sy-progress-track-wrap.is-linear { position:relative; min-height:145px; padding:0; overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; scrollbar-color:rgba(203,213,225,.55) rgba(15,23,42,.45); }
+    .sy-progress-track-inner { position:relative; min-width:760px; height:145px; }
+    .sy-progress-line-svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+    .sy-progress-line-svg path { filter:drop-shadow(0 0 5px rgba(255,255,255,.2)); }
+    .sy-progress-step.is-linear-step { position:absolute; min-width:86px; gap:6px; transform:translate(-50%, -50%); z-index:2; color:#dfffee; text-shadow:0 0 8px rgba(15,23,42,.9); }
+    .sy-progress-step.is-linear-step .sy-progress-dot { width:20px; height:20px; border:3px solid rgba(220,255,240,.9); background:#071827; box-shadow:0 0 0 4px rgba(7,24,39,.95), 0 0 18px rgba(255,255,255,.18); }
+    .sy-progress-step.is-linear-step.is-complete .sy-progress-dot { border-color:#7cffae; background:#22c55e; box-shadow:0 0 0 4px rgba(7,24,39,.95), 0 0 18px rgba(34,197,94,.75); }
+    .sy-progress-step.is-linear-step.is-warning .sy-progress-dot { border-color:#fde68a; background:#f59e0b; box-shadow:0 0 0 4px rgba(7,24,39,.95), 0 0 18px rgba(245,158,11,.75); }
+    .sy-progress-step.is-linear-step span:last-child { font-size:11px; font-weight:1000; color:#d7ffea; }
+    .sy-progress-plane.is-linear-plane { position:absolute; top:auto; left:auto; color:#dff6ff; font-size:19px; transform:translate(-50%, -50%); z-index:3; text-shadow:0 0 14px rgba(96,165,250,.7); }
 
     @media (max-width: 520px) {
       body { overflow-x:hidden; }
@@ -1026,6 +1041,8 @@
       .sy-progress-panel { margin-top:0; }
       .sy-progress-track-wrap { padding:8px 8px 0; }
       .sy-progress-track-wrap.is-arc { min-height:140px; }
+      .sy-progress-track-wrap.is-linear { min-height:132px; }
+      .sy-progress-track-inner { min-width:680px; height:132px; }
       .sy-progress-step { min-width:auto; font-size:8px; }
       .sy-progress-step.is-arc-step { min-width:48px; }
       .sy-progress-step.is-arc-step .sy-progress-dot { width:14px; height:14px; }
@@ -1837,7 +1854,8 @@
         </div>`;
       }).join('');
       const review = row?.review || {};
-      const reviewDisplay = review.status ? `<div class="audit-review-display"><b>Review:</b> ${escapeHtmlText(review.status === 'pass' ? 'Approved' : 'Rejected')}${review.comment ? `<br>${escapeHtmlText(review.comment)}` : ''}</div>` : '<div class="audit-review-display">No review comment yet.</div>';
+      const reviewerLine = review.reviewer ? `<br><b>By:</b> ${escapeHtmlText(review.reviewer)}` : '';
+      const reviewDisplay = review.status ? `<div class="audit-review-display"><b>Review:</b> ${escapeHtmlText(review.status === 'pass' ? 'Approved' : 'Rejected')}${reviewerLine}${review.comment ? `<br>${escapeHtmlText(review.comment)}` : ''}</div>` : '<div class="audit-review-display">No review comment yet.</div>';
       const reviewControls = expanded ? `<div class="audit-review-actions">
           <button type="button" class="audit-review-btn pass${review.status === 'pass' ? ' is-active' : ''}" onclick="event.stopPropagation(); saveSecurityReview('${escapeAttr(bn)}', 'pass')">√</button>
           <button type="button" class="audit-review-btn fail${review.status === 'fail' ? ' is-active' : ''}" onclick="event.stopPropagation(); saveSecurityReview('${escapeAttr(bn)}', 'fail')">X</button>
@@ -2276,7 +2294,7 @@
       const listRows = auditRows.map((item) => buildAuditListRow(item.bn, item.row, false));
       document.getElementById('syAuditContent').innerHTML = `<div class="audit-summary-bar">
           <div class="audit-summary-main">
-            <div class="detail-title" style="text-align:left; font-size:18px; font-weight:900; letter-spacing:.4px;">Security Check</div>
+            <div class="detail-title" style="text-align:right; font-size:18px; font-weight:900; letter-spacing:.4px;">Security Check</div>
             <div class="audit-summary-subtitle">${completeCount} complete • ${warningCount} warning • ${failCount} fail</div>
           </div>
         </div>
@@ -2628,31 +2646,36 @@
       const crewCompleteIndex = crewStep.complete ? 0 : -1;
       const latestMilestoneIndex = ccStep.complete ? ccIndex : (cclStep.complete ? cclIndex : crewCompleteIndex);
       const denominator = Math.max(steps.length - 1, 1);
-      const planePercent = Math.min(1, Math.max(0, Math.max(0, latestMilestoneIndex) / denominator));
+      const planeRatio = Math.min(1, Math.max(0, Math.max(0, latestMilestoneIndex) / denominator));
       const points = steps.map((_, idx) => {
         const t = idx / denominator;
-        const x = 8 + (84 * t);
-        const y = 78 - (34 * Math.sin(Math.PI * t));
-        return { x, y };
+        return {
+          x: 7 + (86 * t),
+          y: 70 - (28 * Math.sin(Math.PI * t))
+        };
       });
       const planePoint = {
-        x: 8 + (84 * planePercent),
-        y: 78 - (34 * Math.sin(Math.PI * planePercent))
+        x: 7 + (86 * planeRatio),
+        y: 70 - (28 * Math.sin(Math.PI * planeRatio))
       };
       const stepHtml = steps.map((step, idx) => {
         const point = points[idx];
         const actionAttr = step.action ? ` data-action="${escapeAttr(step.action)}"` : '';
-        return `<div class="sy-progress-step is-arc-step${step.complete ? ' is-complete' : ''}${step.warning ? ' is-warning' : ''}" style="left:${point.x}%; top:${point.y}%;" title="${escapeAttr(step.tooltip || step.label || '')}"${actionAttr}>
+        return `<div class="sy-progress-step is-linear-step${step.complete ? ' is-complete' : ''}${step.warning ? ' is-warning' : ''}" style="left:${point.x}%; top:${point.y}%;" title="${escapeAttr(step.tooltip || step.label || '')}"${actionAttr}>
           <span class="sy-progress-dot"></span>
           <span>${escapeHtmlText(step.label || '')}</span>
         </div>`;
       }).join('');
-      el.classList.add('is-arc');
-      el.innerHTML = `<svg class="sy-progress-arc-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-          <path d="M 4 80 C 24 44, 76 44, 96 80" fill="none" stroke="rgba(203,213,225,.8)" stroke-width="1.8" stroke-dasharray="4 4" />
+      el.classList.remove('is-arc');
+      el.classList.add('is-linear');
+      el.innerHTML = `<div class="sy-progress-track-inner">
+        <svg class="sy-progress-line-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          <path d="M 4 72 C 22 52, 36 42, 50 42 S 78 52, 96 72" fill="none" stroke="rgba(255,255,255,.25)" stroke-width="5" stroke-linecap="round" />
+          <path d="M 4 72 C 22 52, 36 42, 50 42 S 78 52, 96 72" fill="none" stroke="rgba(255,255,255,.92)" stroke-width="1.9" stroke-dasharray="6 5" stroke-linecap="round" />
         </svg>
-        <div class="sy-progress-plane is-arc-plane" style="left:${planePoint.x}%; top:${planePoint.y - 9}% ;">✈</div>
-        ${stepHtml}`;
+        <div class="sy-progress-plane is-linear-plane" style="left:${planePoint.x}%; top:${planePoint.y}% ;">✈</div>
+        ${stepHtml}
+      </div>`;
       el.querySelectorAll('[data-action]').forEach((node) => {
         node.addEventListener('click', () => {
           const action = node.getAttribute('data-action');
@@ -2774,12 +2797,13 @@
       if (!row || !currentSyFlightNo || !currentSyFlightDate) return;
       const input = document.querySelector(`.audit-review-comment[data-bn="${CSS.escape(bn)}"]`);
       const comment = (input?.value || '').trim();
+      const reviewer = window.currentUser?.email || document.getElementById('userEmail')?.innerText || '';
       try {
         const apiBase = resolveApiBase();
         const res = await fetch(`${apiBase}/security-reviews`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ flightNo: currentSyFlightNo, flightDate: currentSyFlightDate, bn, status, comment })
+          body: JSON.stringify({ flightNo: currentSyFlightNo, flightDate: currentSyFlightDate, bn, status, comment, reviewer })
         });
         if (!res.ok) throw new Error(await res.text());
         const data = await res.json();
@@ -2806,7 +2830,7 @@
       const byBn = new Map();
       (records || []).forEach((record) => {
         if (!record || isDeletedPassengerRecord(record)) return;
-        const psmLines = Array.isArray(record.psmLines) ? record.psmLines.filter((line) => keywords.some((code) => new RegExp(`\\b${code}\\b`, 'i').test(line))) : [];
+        const psmLines = Array.isArray(record.psmLines) ? record.psmLines.filter((line) => keywords.some((code) => String(line || '').toUpperCase().replace(/\s+/g, '').includes(code))) : [];
         if (!psmLines.length) return;
         const bn = record.bn ? String(record.bn).padStart(3, '0') : '---';
         byBn.set(bn, {
@@ -3423,7 +3447,7 @@
           renderSyWarnings(allPassengerRecords);
           const ckinNbrdRows = collectGateComments(allPassengerRecords);
           renderCkinNbrdPanel(ckinNbrdRows);
-          currentPsmRows = collectPsmRows(allPassengerRecords);
+          currentPsmRows = Array.isArray(sy.psmList) ? sy.psmList : collectPsmRows(allPassengerRecords);
           renderPsmPanel(document.getElementById('psmList'), currentPsmRows);
           setTextById('psmSummary', `PSM total: ${currentPsmRows.length}`);
           setTextById('psmTileCount', currentPsmRows.length ? String(currentPsmRows.length) : '');
