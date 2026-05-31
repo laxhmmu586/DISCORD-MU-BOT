@@ -1013,6 +1013,39 @@
     .sy-progress-step.is-spacex-step.is-warning .sy-progress-dot { border-color:#fde68a; background:#f59e0b; box-shadow:0 0 0 4px rgba(7,24,39,.95), 0 0 18px rgba(245,158,11,.75); }
     .sy-progress-step.is-spacex-step span:last-child { font-size:10px; font-weight:1000; color:#eafff2; }
     .sy-progress-plane.is-spacex-plane { position:absolute; top:auto; left:auto; color:#e6f5ff; font-size:19px; transform:translate(-50%, -50%); z-index:3; text-shadow:0 0 14px rgba(96,165,250,.75); }
+    .sy-flight-hero { position:relative; min-height:330px; overflow:hidden; border:none !important; box-shadow:none !important; background:
+      radial-gradient(circle at 51% 61%, rgba(255,164,85,.78) 0 10px, rgba(255,164,85,.28) 11px, transparent 32px),
+      radial-gradient(ellipse at 50% 45%, rgba(99,102,241,.16), transparent 17rem),
+      linear-gradient(180deg, rgba(7,24,39,.02), rgba(7,24,39,.18)); }
+    .sy-flight-hero::before { content:""; position:absolute; left:50%; top:40%; width:110px; height:170px; transform:translateX(-50%); background:linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,160,67,.16) 45%, transparent 100%); filter:blur(12px); opacity:.75; }
+    .sy-flight-phase { position:absolute; z-index:1; color:rgba(255,255,255,.88); font-size:13px; font-weight:800; letter-spacing:.7px; text-transform:uppercase; text-shadow:0 0 12px rgba(2,6,23,.95); }
+    .sy-flight-phase.pre { left:7%; top:44%; transform:rotate(-28deg); }
+    .sy-flight-phase.operation { left:34%; top:36%; color:#ffc247; transform:rotate(-9deg); }
+    .sy-flight-phase.post { right:12%; top:36%; transform:rotate(12deg); }
+    .sy-flight-clock { position:absolute; left:50%; top:68%; transform:translate(-50%, -50%); z-index:1; color:#ffffff; font-size:27px; font-weight:400; letter-spacing:1px; text-shadow:0 0 18px rgba(2,6,23,.95); white-space:nowrap; }
+    .sy-flight-caption { position:absolute; left:50%; top:78%; transform:translateX(-50%); z-index:1; color:rgba(226,232,240,.52); font-size:11px; font-weight:900; letter-spacing:.8px; text-transform:uppercase; filter:blur(.2px); }
+    .sy-progress-track-wrap.is-spacex { min-height:330px; }
+    .sy-progress-track-inner { height:330px; }
+    .sy-progress-step.is-spacex-step { min-width:70px; }
+    .sy-progress-step.is-spacex-step span:last-child { font-size:9px; }
+    .sy-progress-line-svg { top:22%; height:56%; }
+    .sy-top-grid { border:1px solid rgba(148,163,184,.45); border-radius:22px; padding:14px 16px; background:rgba(8,28,48,.66); box-shadow:inset 0 1px 0 rgba(255,255,255,.06), 0 18px 36px rgba(0,0,0,.2); }
+    .sy-top-grid .sy-stat-card { min-height:58px; padding:0 10px; border:0; border-radius:0; background:transparent; box-shadow:none; border-right:1px solid rgba(148,163,184,.26); }
+    .sy-top-grid .sy-stat-card:last-child { border-right:0; }
+    .sy-top-grid .sy-stat-icon { display:none; }
+    .sy-top-grid .label { color:#cbd5e1; font-size:12px; letter-spacing:1.2px; font-weight:500; }
+    .sy-top-grid .sy-stat-value { font-size:18px; letter-spacing:.8px; }
+    .sy-main-grid { grid-template-columns:1fr; row-gap:16px; }
+    .sy-count-card { border-radius:18px; padding:18px 22px; }
+    .sy-count-card .sy-panel-title { letter-spacing:1.4px; }
+    .sy-count-row { font-size:22px; letter-spacing:1.2px; }
+    .sy-count-row .cabin-f b, .sy-count-row .cabin-j b, .sy-count-row .cabin-y b { font-size:22px; }
+    .sy-count-row .cabin-f { color:#bf7cff; }
+    .sy-count-row .cabin-j { color:#65a9ff; }
+    .sy-count-row .cabin-y { color:#55d86b; }
+    .sy-rk-panel, .sy-flight-data-panel { border-radius:18px; padding:18px 20px; }
+    .sy-flight-data-panel .sy-toggle-row { grid-template-columns:repeat(4, minmax(0,1fr)); }
+    .sy-flight-data-panel .sy-data-tile { min-height:42px; border-radius:9px; background:rgba(7,24,39,.45); }
 
     @media (max-width: 520px) {
       body { overflow-x:hidden; }
@@ -1048,7 +1081,12 @@
       .sy-progress-track-wrap { padding:8px 8px 0; }
       .sy-progress-track-wrap.is-arc { min-height:140px; }
       .sy-progress-track-wrap.is-spacex { min-height:128px; }
-      .sy-progress-track-inner { height:128px; }
+      .sy-progress-track-inner { height:250px; }
+      .sy-flight-hero { min-height:250px; }
+      .sy-progress-track-wrap.is-spacex { min-height:250px; }
+      .sy-flight-clock { font-size:22px; top:69%; }
+      .sy-flight-caption { top:80%; }
+      .sy-flight-data-panel .sy-toggle-row { grid-template-columns:repeat(2, minmax(0,1fr)); }
       .sy-progress-step { min-width:auto; font-size:8px; }
       .sy-progress-step.is-arc-step { min-width:48px; }
       .sy-progress-step.is-arc-step .sy-progress-dot { width:14px; height:14px; }
@@ -1169,7 +1207,7 @@
         <div id="syLayout" class="sy-layout sy-dashboard" style="display:none;">
           <div class="sy-hero-meta" id="syHeaderMeta"></div>
 
-          <div class="sy-panel sy-progress-panel">
+          <div class="sy-panel sy-progress-panel sy-flight-hero">
             <div id="syProgressTrack" class="sy-progress-track-wrap"></div>
           </div>
 
@@ -2680,6 +2718,11 @@
           <path d="M 3 78 C 24 48, 38 39, 50 39 S 76 48, 97 78" fill="none" stroke="rgba(255,255,255,.96)" stroke-width="1.8" stroke-dasharray="8 6" stroke-linecap="round" />
         </svg>
         <div class="sy-progress-plane is-spacex-plane" style="left:${planePoint.x}%; top:${planePoint.y}% ;">✈</div>
+        <div class="sy-flight-phase pre">PRE FLIGHT</div>
+        <div class="sy-flight-phase operation">OPERATION</div>
+        <div class="sy-flight-phase post">POST FLIGHT</div>
+        <div class="sy-flight-clock">T+00:00:00</div>
+        <div class="sy-flight-caption">CREW 1</div>
         ${stepHtml}
       </div>`;
       el.querySelectorAll('[data-action]').forEach((node) => {
