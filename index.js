@@ -1,6 +1,8 @@
 require('dotenv').config();
 
 const express = require('express');
+const fs = require('fs/promises');
+const path = require('path');
 
 const {
 
@@ -128,7 +130,7 @@ function findPassengerByFFFromRecord(log, query) {
 
 function findPassengerFromPRRecord(log, mode, query) {
   const normalized = String(query || '').trim().toUpperCase();
-  const normalizedBN = normalized.padStart(3, '0');
+  const normalizedBN = normalized.replace(/^0+/, '') || '0';
 
   const sections =
     log.split(/\d{4}\s+\w+\s+\d{2},.*?\d{2}:\d{2}:\d{2}/g);
@@ -141,23 +143,28 @@ function findPassengerFromPRRecord(log, mode, query) {
     }
 
     if (mode === 'SEAT') {
-      return new RegExp(`\\b${normalized}\\b`, 'i').test(prLine);
+      return new RegExp(`\\b${normalized}\\b`, 'i').test(section);
     }
 
-    return prLine.toUpperCase().includes(normalized);
+    return section.toUpperCase().includes(normalized);
   });
 
   if (!targetSection) return null;
 
   const bnMatch = targetSection.match(/\bBN(\d{1,3})\b/i);
+  const passengerLine = targetSection.split(/\r?\n/).find(line => /^\s*\d+\.\s*/.test(line)) || '';
   const paxMatch =
-    targetSection.match(/\d+\.\s+\d?([A-Z\/]+\+?).*?BN(\d{1,3}).*?(\d+[A-Z])?/i);
+    passengerLine.match(/^\s*\d+\.\s+\d?([A-Z\/]+\+?)/i) ||
+    targetSection.match(/\d+\.\s+\d?([A-Z\/]+\+?)/i);
+  const seatMatch =
+    passengerLine.match(/\bBN\d{1,3}\b[^\n\r]*\*?(\d+[A-Z])\b/i) ||
+    targetSection.match(/\bSN\s*(\d+[A-Z])\b/i);
   const prMatch = targetSection.match(/PR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
 
   return {
-    bn: (bnMatch?.[1] || paxMatch?.[2] || '---').padStart(3, '0'),
+    bn: (bnMatch?.[1] || '---').padStart(3, '0'),
     name: (paxMatch?.[1] || 'UNKNOWN').replace(/\+$/, ''),
-    seat: paxMatch?.[3] || '---',
+    seat: seatMatch?.[1] || '---',
     cabin: 'Economy',
     flight: prMatch?.[1] || '',
     flightDate: (prMatch?.[2] || '').substring(0, 5),
@@ -271,6 +278,62 @@ app.use(
   express.static('public')
 );
 
+const REVIEW_STORE_PATH = path.join(__dirname, 'securityReviews.json');
+const REVIEW_RETENTION_MS = 365 * 24 * 60 * 60 * 1000;
+
+function reviewCutoffIso() {
+  return new Date(Date.now() - REVIEW_RETENTION_MS).toISOString();
+}
+
+function reviewFlightKey(flightNo, flightDate) {
+  return `${String(flightNo || '').trim().toUpperCase()}/${String(flightDate || '').trim().toUpperCase()}`;
+}
+
+async function readReviewStore() {
+  try {
+    const raw = await fs.readFile(REVIEW_STORE_PATH, 'utf8');
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : { reviews: {} };
+  } catch (err) {
+    if (err?.code === 'ENOENT') return { reviews: {} };
+    throw err;
+  }
+}
+
+async function writeReviewStore(store) {
+  await fs.writeFile(REVIEW_STORE_PATH, `${JSON.stringify(store, null, 2)}\n`);
+}
+
+function pruneReviewStore(store) {
+  const cutoff = reviewCutoffIso();
+  const reviews = store.reviews && typeof store.reviews === 'object' ? store.reviews : {};
+  Object.entries(reviews).forEach(([flightKey, rows]) => {
+    if (!rows || typeof rows !== 'object') {
+      delete reviews[flightKey];
+      return;
+    }
+    Object.entries(rows).forEach(([bn, review]) => {
+      if (!review?.updatedAt || review.updatedAt < cutoff) delete rows[bn];
+    });
+    if (!Object.keys(rows).length) delete reviews[flightKey];
+  });
+  store.reviews = reviews;
+  return store;
+}
+
+function sanitizeReviewStatus(value) {
+  const normalized = String(value || '').trim().toLowerCase();
+  return ['pass', 'fail'].includes(normalized) ? normalized : '';
+}
+
+function sanitizeReviewComment(value) {
+  return String(value || '').replace(/[\u0000-\u001F\u007F]/g, ' ').trim().slice(0, 500);
+}
+
+function sanitizeReviewer(value) {
+  return String(value || '').replace(/[\u0000-\u001F\u007F]/g, ' ').trim().slice(0, 120);
+}
+
 
 const ALLOWED_ORIGINS = [
   'https://china-eastern.web.app',
@@ -286,7 +349,7 @@ app.use((req, res, next) => {
     res.setHeader('Vary', 'Origin');
   }
 
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') {
@@ -335,6 +398,43 @@ client.once(
     );
   }
 );
+
+
+app.get('/security-reviews', async (req, res) => {
+  try {
+    const flightNo = String(req.query.flightNo || '').toUpperCase();
+    const flightDate = String(req.query.flightDate || '').toUpperCase();
+    if (!flightNo || !flightDate) return res.status(400).json({ error: 'Missing flightNo or flightDate' });
+    const store = pruneReviewStore(await readReviewStore());
+    await writeReviewStore(store);
+    const key = reviewFlightKey(flightNo, flightDate);
+    return res.json({ reviews: store.reviews[key] || {} });
+  } catch (err) {
+    return res.status(500).json({ error: err?.message || 'Security review lookup failed' });
+  }
+});
+
+app.post('/security-reviews', async (req, res) => {
+  try {
+    const flightNo = String(req.body?.flightNo || '').toUpperCase();
+    const flightDate = String(req.body?.flightDate || '').toUpperCase();
+    const bn = String(req.body?.bn || '').replace(/\D/g, '').padStart(3, '0');
+    const status = sanitizeReviewStatus(req.body?.status);
+    const comment = sanitizeReviewComment(req.body?.comment);
+    const reviewer = sanitizeReviewer(req.body?.reviewer);
+    if (!flightNo || !flightDate || !/^\d{3}$/.test(bn) || !status) {
+      return res.status(400).json({ error: 'Missing flightNo, flightDate, BN, or status' });
+    }
+    const store = pruneReviewStore(await readReviewStore());
+    const key = reviewFlightKey(flightNo, flightDate);
+    store.reviews[key] = store.reviews[key] || {};
+    store.reviews[key][bn] = { status, comment, reviewer, updatedAt: new Date().toISOString() };
+    await writeReviewStore(store);
+    return res.json({ ok: true, review: store.reviews[key][bn] });
+  } catch (err) {
+    return res.status(500).json({ error: err?.message || 'Security review save failed' });
+  }
+});
 
 // ===============================
 // Search API
