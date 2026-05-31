@@ -1002,33 +1002,24 @@
     .sy-progress-plane.is-arc-plane { top:auto; left:auto; z-index:3; transform:translate(-50%, -50%); }
 
 
-    .sy-progress-panel { order:-1; min-height:170px; overflow:hidden; border:none !important; box-shadow:none !important; background:transparent !important; padding:8px 0 2px !important; }
-    .sy-progress-track-wrap.is-spacex { position:relative; min-height:160px; padding:0; overflow:hidden; }
-    .sy-progress-track-inner { position:relative; width:100%; min-width:0; height:160px; }
-    .sy-progress-line-svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
-    .sy-progress-line-svg path { filter:drop-shadow(0 0 5px rgba(255,255,255,.28)); }
-    .sy-progress-step.is-spacex-step { position:absolute; min-width:76px; gap:5px; transform:translate(-50%, -50%); z-index:2; color:#eafff2; text-shadow:0 0 8px rgba(2,6,23,.95); }
-    .sy-progress-step.is-spacex-step .sy-progress-dot { width:20px; height:20px; border:3px solid rgba(230,242,255,.96); background:#071827; box-shadow:0 0 0 4px rgba(7,24,39,.95), 0 0 18px rgba(255,255,255,.22); }
-    .sy-progress-step.is-spacex-step.is-complete .sy-progress-dot { border-color:#9affbf; background:#22c55e; box-shadow:0 0 0 4px rgba(7,24,39,.95), 0 0 18px rgba(34,197,94,.82); }
-    .sy-progress-step.is-spacex-step.is-warning .sy-progress-dot { border-color:#fde68a; background:#f59e0b; box-shadow:0 0 0 4px rgba(7,24,39,.95), 0 0 18px rgba(245,158,11,.75); }
-    .sy-progress-step.is-spacex-step span:last-child { font-size:10px; font-weight:1000; color:#eafff2; }
-    .sy-progress-plane.is-spacex-plane { position:absolute; top:auto; left:auto; color:#e6f5ff; font-size:19px; transform:translate(-50%, -50%); z-index:3; text-shadow:0 0 14px rgba(96,165,250,.75); }
-    .sy-flight-hero { position:relative; min-height:330px; overflow:hidden; border:none !important; box-shadow:none !important; background:
-      radial-gradient(circle at 51% 61%, rgba(255,164,85,.78) 0 10px, rgba(255,164,85,.28) 11px, transparent 32px),
-      radial-gradient(ellipse at 50% 45%, rgba(99,102,241,.16), transparent 17rem),
-      linear-gradient(180deg, rgba(7,24,39,.02), rgba(7,24,39,.18)); }
-    .sy-flight-hero::before { content:""; position:absolute; left:50%; top:40%; width:110px; height:170px; transform:translateX(-50%); background:linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,160,67,.16) 45%, transparent 100%); filter:blur(12px); opacity:.75; }
-    .sy-flight-phase { position:absolute; z-index:1; color:rgba(255,255,255,.88); font-size:13px; font-weight:800; letter-spacing:.7px; text-transform:uppercase; text-shadow:0 0 12px rgba(2,6,23,.95); }
-    .sy-flight-phase.pre { left:7%; top:44%; transform:rotate(-28deg); }
-    .sy-flight-phase.operation { left:34%; top:36%; color:#ffc247; transform:rotate(-9deg); }
-    .sy-flight-phase.post { right:12%; top:36%; transform:rotate(12deg); }
-    .sy-flight-clock { position:absolute; left:50%; top:68%; transform:translate(-50%, -50%); z-index:1; color:#ffffff; font-size:27px; font-weight:400; letter-spacing:1px; text-shadow:0 0 18px rgba(2,6,23,.95); white-space:nowrap; }
-    .sy-flight-caption { position:absolute; left:50%; top:78%; transform:translateX(-50%); z-index:1; color:rgba(226,232,240,.52); font-size:11px; font-weight:900; letter-spacing:.8px; text-transform:uppercase; filter:blur(.2px); }
-    .sy-progress-track-wrap.is-spacex { min-height:330px; }
-    .sy-progress-track-inner { height:330px; }
-    .sy-progress-step.is-spacex-step { min-width:70px; }
-    .sy-progress-step.is-spacex-step span:last-child { font-size:9px; }
-    .sy-progress-line-svg { top:22%; height:56%; }
+    .sy-progress-panel { order:-1; min-height:210px; overflow:hidden; border:none !important; box-shadow:none !important; background:transparent !important; padding:0 !important; }
+    .sy-progress-track-wrap.is-spacex { position:relative; min-height:210px; padding:0; overflow:hidden; }
+    .sy-progress-track-inner { position:relative; width:100%; min-width:0; height:210px; }
+    .sy-progress-line-svg { position:absolute; left:0; top:12px; width:100%; height:142px; overflow:visible; }
+    .sy-progress-line-svg path { filter:drop-shadow(0 0 5px rgba(255,255,255,.32)); }
+    .sy-progress-step.is-spacex-step { position:absolute; min-width:68px; gap:4px; transform:translate(-50%, -50%); z-index:2; color:rgba(241,245,249,.94); text-shadow:0 0 8px rgba(2,6,23,.98); cursor:default; }
+    .sy-progress-step.is-spacex-step .sy-progress-dot { width:11px; height:11px; border:1.5px solid rgba(238,246,255,.98); background:#071827; box-shadow:0 0 0 2px rgba(7,24,39,.98), 0 0 9px rgba(255,255,255,.28); }
+    .sy-progress-step.is-spacex-step.is-complete .sy-progress-dot { border-color:#dfffee; background:#22c55e; box-shadow:0 0 0 2px rgba(7,24,39,.98), 0 0 14px rgba(34,197,94,.86); }
+    .sy-progress-step.is-spacex-step.is-warning .sy-progress-dot { border-color:#fff2b5; background:#f59e0b; box-shadow:0 0 0 2px rgba(7,24,39,.98), 0 0 14px rgba(245,158,11,.8); }
+    .sy-progress-step.is-spacex-step span:last-child { font-size:8px; line-height:1.05; font-weight:1000; letter-spacing:.15px; color:rgba(241,245,249,.95); text-transform:uppercase; }
+    .sy-progress-step.is-spacex-step[data-action], .sy-progress-step.is-spacex-step[data-time-label] { cursor:pointer; }
+    .sy-flight-hero { position:relative; min-height:210px; overflow:hidden; border:none !important; box-shadow:none !important; background:
+      radial-gradient(circle at 50% 48%, rgba(255,168,82,.42) 0 8px, rgba(255,168,82,.18) 9px, transparent 46px),
+      radial-gradient(ellipse at 50% 44%, rgba(96,165,250,.18), transparent 15rem),
+      linear-gradient(180deg, rgba(7,24,39,0), rgba(7,24,39,.08)); }
+    .sy-flight-hero::before { content:""; position:absolute; left:50%; top:13%; width:180px; height:178px; transform:translateX(-50%); background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(96,165,250,.07) 45%, transparent 100%); filter:blur(18px); opacity:.7; pointer-events:none; }
+    .sy-flight-clock { position:absolute; left:50%; top:72%; transform:translate(-50%, -50%); z-index:1; color:#f8fafc; font-size:28px; font-weight:300; letter-spacing:1.4px; text-shadow:0 0 18px rgba(2,6,23,.98); white-space:nowrap; }
+    .sy-flight-phase, .sy-flight-caption, .sy-progress-plane.is-spacex-plane { display:none !important; }
     .sy-top-grid { border:1px solid rgba(148,163,184,.45); border-radius:22px; padding:14px 16px; background:rgba(8,28,48,.66); box-shadow:inset 0 1px 0 rgba(255,255,255,.06), 0 18px 36px rgba(0,0,0,.2); }
     .sy-top-grid .sy-stat-card { min-height:58px; padding:0 10px; border:0; border-radius:0; background:transparent; box-shadow:none; border-right:1px solid rgba(148,163,184,.26); }
     .sy-top-grid .sy-stat-card:last-child { border-right:0; }
@@ -1080,12 +1071,14 @@
       .sy-progress-panel { margin-top:0; }
       .sy-progress-track-wrap { padding:8px 8px 0; }
       .sy-progress-track-wrap.is-arc { min-height:140px; }
-      .sy-progress-track-wrap.is-spacex { min-height:128px; }
-      .sy-progress-track-inner { height:250px; }
-      .sy-flight-hero { min-height:250px; }
-      .sy-progress-track-wrap.is-spacex { min-height:250px; }
-      .sy-flight-clock { font-size:22px; top:69%; }
-      .sy-flight-caption { top:80%; }
+      .sy-progress-track-wrap.is-spacex { min-height:170px; }
+      .sy-progress-track-inner { height:170px; }
+      .sy-flight-hero { min-height:170px; }
+      .sy-progress-line-svg { top:4px; height:116px; }
+      .sy-flight-clock { font-size:21px; top:73%; }
+      .sy-progress-step.is-spacex-step { min-width:56px; }
+      .sy-progress-step.is-spacex-step .sy-progress-dot { width:10px; height:10px; }
+      .sy-progress-step.is-spacex-step span:last-child { font-size:7px; }
       .sy-flight-data-panel .sy-toggle-row { grid-template-columns:repeat(2, minmax(0,1fr)); }
       .sy-progress-step { min-width:auto; font-size:8px; }
       .sy-progress-step.is-arc-step { min-width:48px; }
@@ -2682,30 +2675,25 @@
         { key: 'chd', label: 'CHD', complete: crewStep.complete && !extras.chdHasIssue, warning: crewStep.complete && Boolean(extras.chdHasIssue), tooltip: !crewStep.complete ? 'Waiting for Crew APIS' : (extras.chdHasIssue ? 'Missing CHD1/0 - click to open CHD List' : 'CHD clear'), action: crewStep.complete && extras.chdHasIssue ? 'chd' : '' },
         { key: 'gov', label: 'GOV', complete: crewStep.complete && !extras.govHasIssue, warning: crewStep.complete && Boolean(extras.govHasIssue), tooltip: !crewStep.complete ? 'Waiting for Crew APIS' : (extras.govHasIssue ? 'GOV/AQQ issue - click to open GOV/AQQ' : 'GOV/AQQ clear'), action: crewStep.complete && extras.govHasIssue ? 'gov' : '' },
         { key: 'nbrd', label: 'NBRD', complete: crewStep.complete && !extras.nbrdHasIssue, warning: crewStep.complete && Boolean(extras.nbrdHasIssue), tooltip: !crewStep.complete ? 'Waiting for Crew APIS' : (extras.nbrdHasIssue ? 'CKIN/NBRD issue - click to open CKIN/NBRD' : 'NBRD clear'), action: crewStep.complete && extras.nbrdHasIssue ? 'nbrd' : '' },
-        { ...cclStep, key: 'ccl', label: 'CCL' },
-        { ...ccStep, key: 'cc', label: 'CC' }
+        { ...cclStep, key: 'ccl', label: 'CCL', timeAction: true },
+        { ...ccStep, key: 'cc', label: 'CC', timeAction: true }
       ];
-      const ccIndex = steps.findIndex((step) => step.key === 'cc');
-      const cclIndex = steps.findIndex((step) => step.key === 'ccl');
-      const crewCompleteIndex = crewStep.complete ? 0 : -1;
-      const latestMilestoneIndex = ccStep.complete ? ccIndex : (cclStep.complete ? cclIndex : crewCompleteIndex);
       const denominator = Math.max(steps.length - 1, 1);
-      const planeRatio = Math.min(1, Math.max(0, Math.max(0, latestMilestoneIndex) / denominator));
       const points = steps.map((_, idx) => {
         const t = idx / denominator;
         return {
-          x: 10 + (80 * t),
-          y: 74 - (34 * Math.sin(Math.PI * t))
+          x: 7 + (86 * t),
+          y: 63 - (30 * Math.sin(Math.PI * t))
         };
       });
-      const planePoint = {
-        x: 10 + (80 * planeRatio),
-        y: 74 - (34 * Math.sin(Math.PI * planeRatio))
-      };
       const stepHtml = steps.map((step, idx) => {
         const point = points[idx];
         const actionAttr = step.action ? ` data-action="${escapeAttr(step.action)}"` : '';
-        return `<div class="sy-progress-step is-spacex-step${step.complete ? ' is-complete' : ''}${step.warning ? ' is-warning' : ''}" style="left:${point.x}%; top:${point.y}%;" title="${escapeAttr(step.tooltip || step.label || '')}"${actionAttr}>
+        const timeAttr = step.timeAction ? ` data-time-label="${escapeAttr(step.label || '')}" data-time="${escapeAttr(step.time || '')}"` : '';
+        const title = step.timeAction
+          ? (step.time ? `${step.label} ${step.time}` : `${step.label} not entered`)
+          : (step.tooltip || step.label || '');
+        return `<div class="sy-progress-step is-spacex-step${step.complete ? ' is-complete' : ''}${step.warning ? ' is-warning' : ''}" style="left:${point.x}%; top:${point.y}%;" title="${escapeAttr(title)}"${actionAttr}${timeAttr}>
           <span class="sy-progress-dot"></span>
           <span>${escapeHtmlText(step.label || '')}</span>
         </div>`;
@@ -2714,23 +2702,25 @@
       el.classList.add('is-spacex');
       el.innerHTML = `<div class="sy-progress-track-inner">
         <svg class="sy-progress-line-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-          <path d="M 3 78 C 24 48, 38 39, 50 39 S 76 48, 97 78" fill="none" stroke="rgba(255,255,255,.20)" stroke-width="5" stroke-linecap="round" />
-          <path d="M 3 78 C 24 48, 38 39, 50 39 S 76 48, 97 78" fill="none" stroke="rgba(255,255,255,.96)" stroke-width="1.8" stroke-dasharray="8 6" stroke-linecap="round" />
+          <path d="M 7 63 C 24 33, 38 30, 50 30 S 76 33, 93 63" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="5.2" stroke-linecap="round" />
+          <path d="M 7 63 C 24 33, 38 30, 50 30 S 76 33, 93 63" fill="none" stroke="rgba(255,255,255,.96)" stroke-width="1.15" stroke-linecap="round" />
+          <path d="M 7 63 C 24 33, 38 30, 50 30 S 76 33, 93 63" fill="none" stroke="rgba(255,255,255,.55)" stroke-width=".35" stroke-linecap="round" stroke-dasharray="1 5" />
         </svg>
-        <div class="sy-progress-plane is-spacex-plane" style="left:${planePoint.x}%; top:${planePoint.y}% ;">✈</div>
-        <div class="sy-flight-phase pre">PRE FLIGHT</div>
-        <div class="sy-flight-phase operation">OPERATION</div>
-        <div class="sy-flight-phase post">POST FLIGHT</div>
-        <div class="sy-flight-clock">T+00:00:00</div>
-        <div class="sy-flight-caption">CREW 1</div>
+        <div id="syFlightClock" class="sy-flight-clock">T+00:00:00</div>
         ${stepHtml}
       </div>`;
-      el.querySelectorAll('[data-action]').forEach((node) => {
+      el.querySelectorAll('[data-action], [data-time-label]').forEach((node) => {
         node.addEventListener('click', () => {
           const action = node.getAttribute('data-action');
           if (action === 'chd') toggleChdPanel();
           if (action === 'gov') toggleGovAqqPanel();
           if (action === 'nbrd') toggleCkinNbrdPanel();
+          const timeLabel = node.getAttribute('data-time-label');
+          if (timeLabel) {
+            const clock = document.getElementById('syFlightClock');
+            const timeValue = node.getAttribute('data-time') || '--:--:--';
+            if (clock) clock.textContent = `${timeLabel} ${timeValue}`;
+          }
         });
       });
     }
