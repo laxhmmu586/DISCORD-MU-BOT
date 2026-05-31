@@ -903,12 +903,14 @@
     .sy-progress-track-wrap { position:relative; padding:8px 16px 0; }
     .sy-progress-plane { position:absolute; top:-7px; left:22px; color:#9bc5ff; font-size:18px; transform:translateX(-50%); transition:left .2s ease; text-shadow:0 0 12px rgba(96,165,250,.55); z-index:2; }
     .sy-progress-steps { position:relative; display:flex; justify-content:space-between; gap:10px; }
-    .sy-progress-steps::before { content:""; position:absolute; top:9px; left:35px; right:35px; border-top:2px dashed rgba(148,163,184,.55); }
+    .sy-progress-steps::before { content:""; position:absolute; top:7px; left:35px; right:35px; border-top:2px dashed rgba(148,163,184,.55); }
     .sy-progress-step { position:relative; display:flex; flex-direction:column; align-items:center; gap:8px; min-width:70px; color:#94a3b8; font-size:11px; font-weight:900; text-align:center; }
     .sy-progress-step:not(:last-child)::after { display:none; }
-    .sy-progress-dot { width:18px; height:18px; border-radius:999px; border:2px solid rgba(148,163,184,.65); background:#071827; box-shadow:0 0 0 4px #071827; }
+    .sy-progress-step.is-warning { color:#fde68a; cursor:pointer; }
+    .sy-progress-step.is-warning .sy-progress-dot { border-color:#f59e0b; background:#f59e0b; box-shadow:0 0 0 3px #071827, 0 0 14px rgba(245,158,11,.55); }
+    .sy-progress-dot { width:14px; height:14px; border-radius:999px; border:2px solid rgba(148,163,184,.65); background:#071827; box-shadow:0 0 0 3px #071827; }
     .sy-progress-step.is-complete { color:#bbf7d0; }
-    .sy-progress-step.is-complete .sy-progress-dot { border-color:#22c55e; background:#22c55e; box-shadow:0 0 0 4px #071827, 0 0 16px rgba(34,197,94,.55); }
+    .sy-progress-step.is-complete .sy-progress-dot { border-color:#22c55e; background:#22c55e; box-shadow:0 0 0 3px #071827, 0 0 14px rgba(34,197,94,.55); }
     .sy-pax-grid { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); margin-top:14px; border:1px solid rgba(69,105,141,.4); border-radius:10px; overflow:hidden; }
     .sy-pax-item { min-height:76px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; color:#e2e8f0; border-right:1px solid rgba(69,105,141,.42); border-bottom:0; font-size:12px; text-align:center; }
     .sy-pax-item:nth-child(4n) { border-right:0; }
@@ -1687,7 +1689,7 @@
         hideSyAuxLayouts();
         return;
       }
-      setDisplayById('syLayout', 'block');
+      setDisplayById('syLayout', 'grid');
       hideSyAuxLayouts();
     }
     function escapeAttr(value) {
@@ -2497,23 +2499,68 @@
     }
 
 
-    function renderSyProgress(crewApis) {
+    function renderSyProgress(crewApis, extras = {}) {
       const el = document.getElementById('syProgressTrack');
       if (!el) return;
-      const steps = Array.isArray(crewApis?.steps) && crewApis.steps.length
+      const crewSteps = Array.isArray(crewApis?.steps) && crewApis.steps.length
         ? crewApis.steps
         : [{ key: 'crewApis', label: 'Crew APIS', complete: false }];
-      const lastCompleteIndex = Math.max(0, steps.reduce((idx, step, stepIndex) => step.complete ? stepIndex : idx, -1));
+      const baseByKey = new Map(crewSteps.map((step) => [step.key, step]));
+      const crewStep = baseByKey.get('crewApis') || crewSteps[0] || { key: 'crewApis', label: 'Crew APIS', complete: false };
+      const cclStep = baseByKey.get('ccl') || { key: 'ccl', label: 'CCL', complete: false, tooltip: 'CCL not entered' };
+      const ccStep = baseByKey.get('cc') || { key: 'cc', label: 'CC', complete: false, tooltip: 'CC not entered' };
+      const steps = [
+        { ...crewStep, key: 'crewApis', label: 'Crew APIS' },
+        {
+          key: 'chd',
+          label: 'CHD',
+          complete: !extras.chdHasIssue,
+          warning: Boolean(extras.chdHasIssue),
+          tooltip: extras.chdHasIssue ? 'Missing CHD1/0 - click to open CHD List' : 'CHD clear',
+          action: extras.chdHasIssue ? 'chd' : ''
+        },
+        {
+          key: 'gov',
+          label: 'GOV',
+          complete: !extras.govHasIssue,
+          warning: Boolean(extras.govHasIssue),
+          tooltip: extras.govHasIssue ? 'GOV/AQQ issue - click to open GOV/AQQ' : 'GOV/AQQ clear',
+          action: extras.govHasIssue ? 'gov' : ''
+        },
+        {
+          key: 'nbrd',
+          label: 'NBRD',
+          complete: !extras.nbrdHasIssue,
+          warning: Boolean(extras.nbrdHasIssue),
+          tooltip: extras.nbrdHasIssue ? 'CKIN/NBRD issue - click to open CKIN/NBRD' : 'NBRD clear',
+          action: extras.nbrdHasIssue ? 'nbrd' : ''
+        },
+        { ...cclStep, key: 'ccl', label: 'CCL' },
+        { ...ccStep, key: 'cc', label: 'CC' }
+      ];
+      const ccIndex = steps.findIndex((step) => step.key === 'cc');
+      const cclIndex = steps.findIndex((step) => step.key === 'ccl');
+      const crewCompleteIndex = crewStep.complete ? 0 : -1;
+      const latestMilestoneIndex = ccStep.complete ? ccIndex : (cclStep.complete ? cclIndex : crewCompleteIndex);
       const denominator = Math.max(steps.length - 1, 1);
-      const planePercent = steps.length === 1
-        ? (steps[0].complete ? 100 : 0)
-        : Math.min(100, Math.max(0, (lastCompleteIndex / denominator) * 100));
-      const stepHtml = steps.map((step) => `<div class="sy-progress-step${step.complete ? ' is-complete' : ''}" title="${escapeAttr(step.tooltip || step.label || '')}">
-        <span class="sy-progress-dot"></span>
-        <span>${escapeHtmlText(step.label || '')}</span>
-      </div>`).join('');
+      const planePercent = Math.min(100, Math.max(0, (Math.max(0, latestMilestoneIndex) / denominator) * 100));
+      const stepHtml = steps.map((step) => {
+        const actionAttr = step.action ? ` data-action="${escapeAttr(step.action)}"` : '';
+        return `<div class="sy-progress-step${step.complete ? ' is-complete' : ''}${step.warning ? ' is-warning' : ''}" title="${escapeAttr(step.tooltip || step.label || '')}"${actionAttr}>
+          <span class="sy-progress-dot"></span>
+          <span>${escapeHtmlText(step.label || '')}</span>
+        </div>`;
+      }).join('');
       el.innerHTML = `<div class="sy-progress-plane" style="left:calc(22px + (100% - 44px) * ${planePercent / 100});">✈</div>
         <div class="sy-progress-steps">${stepHtml}</div>`;
+      el.querySelectorAll('[data-action]').forEach((node) => {
+        node.addEventListener('click', () => {
+          const action = node.getAttribute('data-action');
+          if (action === 'chd') toggleChdPanel();
+          if (action === 'gov') toggleGovAqqPanel();
+          if (action === 'nbrd') toggleCkinNbrdPanel();
+        });
+      });
     }
 
     function normalizeSeatForWarning(value) {
@@ -3079,7 +3126,7 @@
           setTextById('seat', '');
 
           ['membershipSection','ticketSection','bagsSection','inboundSection','outboundSection','ssrSection','mealSection','paidSection','loungeSection','docSection'].forEach((id) => setDisplayById(id, 'none'));
-          setDisplayById('syLayout', 'block');
+          setDisplayById('syLayout', 'grid');
           hideSyAuxLayouts();
 
           setTextById('syHeaderMeta', formatSyMeta(sy));
@@ -3107,7 +3154,6 @@
           setHtmlById('syResTkt', formatCabinCounts(sy.reservationTicketed, 'ET'));
           setHtmlById('syCi', formatCabinCounts(sy.checkedIn));
           setHtmlById('syCiTkt', formatCabinCounts(sy.checkedInTicketed, 'ET'));
-          renderSyProgress(sy.crewApis || null);
           currentSyFlightNo = sy.flightNo || '';
           currentSyFlightDate = sy.flightDate || '';
           setDisplayById('salesReportMenuItem', 'none');
@@ -3209,6 +3255,11 @@
           updateGovAqqToggleAppearance(govStatus);
           setTextById('govAqqToggleBtn', 'GOV/AQQ');
           setTextById('govAqqTileCount', (visibleDuplicatePassportBns.length + visibleAqqTclBns.length + visibleGovDtaBns.length + visiblePassportExpBns.length + visiblePassportCodeIssues.length) || '');
+          renderSyProgress(sy.crewApis || null, {
+            chdHasIssue: noCodeList.length > 0,
+            govHasIssue: govStatus !== 'ok',
+            nbrdHasIssue: ckinNbrdRows.length > 0
+          });
 
           setGovAqqStats([
             { label: 'Duplicate Passport', value: visibleDuplicatePassportBns.length, level: 'risk' },
