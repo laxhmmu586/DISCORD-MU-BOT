@@ -861,26 +861,28 @@
     .action-menu-item { border-radius:10px; }
     .action-menu-item[style*="none"] { display:none !important; }
 
-    .sy-dashboard { display:flex; flex-direction:column; gap:14px; }
+    .sy-dashboard { display:flex; flex-direction:column; gap:18px; }
     .sy-hero-meta { color:var(--ops-muted); font-size:15px; letter-spacing:.6px; margin:0 0 4px; }
     .sy-top-grid { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:10px; }
     .sy-stat-card, .sy-panel {
-      border:1px solid rgba(69,105,141,.78);
-      background:linear-gradient(145deg, rgba(13,34,56,.94), rgba(7,24,39,.94));
+      border:1px solid rgba(74,112,150,.74);
+      background:
+        radial-gradient(circle at 12% 0%, rgba(96,165,250,.13), transparent 15rem),
+        linear-gradient(145deg, rgba(12,32,53,.96), rgba(5,20,34,.96));
       border-radius:14px;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.03), 0 12px 24px rgba(0,0,0,.14);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.045), 0 16px 34px rgba(0,0,0,.2);
     }
-    .sy-stat-card { min-width:0; min-height:82px; padding:12px; display:flex; align-items:center; gap:8px; }
-    .sy-stat-icon { flex:0 0 auto; width:30px; height:30px; display:grid; place-items:center; color:var(--ops-purple); font-size:24px; font-weight:900; }
+    .sy-stat-card { min-width:0; min-height:82px; padding:10px 8px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:5px; }
+    .sy-stat-icon { flex:0 0 auto; width:24px; height:24px; display:grid; place-items:center; color:var(--ops-purple); font-size:21px; font-weight:900; }
     .sy-stat-icon.blue { color:var(--ops-blue); }
     .sy-stat-icon.green { color:var(--ops-green); }
     .sy-stat-icon.amber { color:var(--ops-amber); }
     .sy-stat-card .label, .sy-panel .label { color:#d7e2f1; font-size:12px; font-weight:900; letter-spacing:.3px; }
-    .sy-stat-value { color:var(--ops-text); font-size:20px; font-weight:900; line-height:1.08; }
+    .sy-stat-value { color:var(--ops-text); font-size:19px; font-weight:900; line-height:1.08; }
     .sy-bags-card { overflow:hidden; }
     .sy-bags-card > div:last-child { min-width:0; }
-    .sy-bags-value { font-size:18px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
-    .sy-main-grid { display:grid; grid-template-columns:minmax(0, .9fr) minmax(0, 1fr); gap:12px; align-items:stretch; margin-top:4px; }
+    .sy-bags-value { font-size:15px; white-space:nowrap; overflow:visible; text-overflow:clip; max-width:100%; letter-spacing:-.3px; }
+    .sy-main-grid { display:grid; grid-template-columns:minmax(0, .9fr) minmax(0, 1fr); gap:14px; align-items:stretch; margin-top:8px; }
     .sy-stack { display:flex; flex-direction:column; gap:12px; min-width:0; }
     .sy-panel { padding:14px; }
     .sy-panel-title { display:flex; align-items:center; gap:8px; color:#f3f7fd; font-size:16px; font-weight:900; letter-spacing:.2px; text-transform:uppercase; }
@@ -894,7 +896,8 @@
     .sy-count-row .cabin-j { color:var(--ops-blue); }
     .sy-count-row .cabin-y { color:var(--ops-green); }
     .sy-hidden-value { display:none; }
-    .sy-pax-panel { min-width:0; }
+    .sy-pax-panel { min-width:0; min-height:100%; }
+    .sy-pax-placeholder { min-height:150px; }
     .sy-pax-grid { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); margin-top:14px; border:1px solid rgba(69,105,141,.4); border-radius:10px; overflow:hidden; }
     .sy-pax-item { min-height:76px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; color:#e2e8f0; border-right:1px solid rgba(69,105,141,.42); border-bottom:0; font-size:12px; text-align:center; }
     .sy-pax-item:nth-child(4n) { border-right:0; }
@@ -907,28 +910,35 @@
     .sy-pax-icon.silver { color:#b8c2d1; }
     .sy-pax-icon.green { color:var(--ops-green); }
     .sy-pax-item b { font-size:22px; color:#f8fafc; }
-    .sy-rk-panel { padding:14px 16px; margin:4px 0; }
+    .sy-rk-panel { padding:16px; margin:8px 0; }
     .sy-rk-value { margin-top:6px; color:#cbd5e1; font-size:14px; line-height:1.35; }
     .sy-rk-value:empty { display:none; }
-    .sy-flight-data-panel { margin-top:4px; }
+    .sy-flight-data-panel { margin-top:8px; }
     .sy-toggle-row { margin-top:14px; display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:10px; overflow:visible; padding:0; }
-    .sy-data-tile { min-height:64px; width:100%; display:flex; align-items:center; justify-content:center; gap:6px; padding:10px 8px; border-radius:10px; border:1px solid rgba(34,197,94,.72); background:linear-gradient(145deg, rgba(22,163,74,.92), rgba(12,88,48,.9)); color:#f8fafc; font-size:13px; font-weight:900; min-width:0; }
-    .sy-data-tile .tile-icon { flex:0 0 auto; font-size:18px; color:#bbf7d0; }
+    .sy-data-tile { min-height:64px; width:100%; display:flex; align-items:center; justify-content:center; gap:8px; padding:10px 8px; border-radius:10px; border:1px solid rgba(69,105,141,.86); background:linear-gradient(145deg, rgba(13,34,56,.92), rgba(7,24,39,.92)); color:#f8fafc; font-size:13px; font-weight:900; min-width:0; }
+    .sy-data-tile .tile-icon { flex:0 0 auto; font-size:18px; color:#8fb8ff; }
     .sy-data-tile span:not(.tile-icon) { min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .sy-data-tile b { display:none; }
-    .sy-data-tile.is-good { border-color:rgba(34,197,94,.6); box-shadow:0 0 0 1px rgba(34,197,94,.14) inset; }
+    .sy-data-tile b { display:none; align-items:center; justify-content:center; min-width:26px; height:24px; padding:0 7px; border-radius:999px; color:#fff; font-size:13px; line-height:1; }
+    .sy-data-tile b:not(:empty) { display:inline-flex; }
+    .sy-data-tile.is-bad b { background:#dc2626; box-shadow:0 0 0 1px rgba(254,202,202,.28); }
+    .sy-data-tile.is-review b { background:#f59e0b; color:#111827; }
+    .sy-data-tile.wch-btn b { background:#2563eb; }
+    .sy-data-tile.is-good { border-color:rgba(34,197,94,.55); box-shadow:0 0 0 1px rgba(34,197,94,.12) inset; }
     .sy-data-tile.is-good .tile-icon { color:#6ee7b7; }
-    .sy-data-tile.is-bad { border-color:rgba(255,77,94,.92); background:linear-gradient(145deg, rgba(76,14,26,.94), rgba(18,30,48,.92)); box-shadow:0 0 24px rgba(255,77,94,.18), inset 0 0 0 1px rgba(255,255,255,.05); }
+    .sy-data-tile.is-bad { border-color:rgba(255,77,94,.92); background:linear-gradient(145deg, rgba(76,14,26,.78), rgba(12,30,50,.92)); box-shadow:0 0 24px rgba(255,77,94,.16), inset 0 0 0 1px rgba(255,255,255,.05); }
     .sy-data-tile.is-bad .tile-icon { color:#ff6b7b; text-shadow:0 0 16px rgba(255,77,94,.75); }
     .sy-data-tile.is-review { border-color:rgba(245,158,11,.95); background:linear-gradient(145deg, rgba(82,55,12,.94), rgba(18,30,48,.92)); }
     .sy-data-tile.is-review .tile-icon { color:#fbbf24; text-shadow:0 0 16px rgba(245,158,11,.65); }
-    .sy-detail-panel { margin-top:0; }
+    .sy-detail-panel { margin-top:10px; }
     .chd-summary { color:#fda4af; font-weight:800; }
 
-    .audit-summary-bar, .seatmap-summary { border:1px solid rgba(69,105,141,.78); border-radius:14px; padding:14px 16px; background:linear-gradient(145deg, rgba(13,34,56,.94), rgba(7,24,39,.94)); }
+    .audit-summary-bar, .seatmap-summary { border:none; border-radius:0; padding:0 0 8px; background:transparent; }
     .audit-workspace { width:calc(100% + var(--audit-detail-width) + 14px); max-width:none; }
     .seatmap-workspace { width:calc(100% + var(--seatmap-detail-width) + 14px); max-width:none; }
     .audit-workspace.no-detail, .seatmap-workspace.no-detail { width:100%; max-width:100%; }
+    .audit-list { grid-template-columns:repeat(5, minmax(0, 1fr)); grid-template-rows:repeat(64, auto); gap:5px; }
+    .audit-list-row { min-height:30px; padding:3px 5px; }
+    .audit-list-bn { font-size:15px; }
     .audit-list-row, .audit-card, .seatmap-wrap { border-color:rgba(69,105,141,.62); background:linear-gradient(145deg, rgba(13,34,56,.96), rgba(7,24,39,.9)); }
     .audit-record-card { border-radius:16px; }
     .audit-record-heading { color:#f8fafc; font-size:18px; font-weight:900; letter-spacing:.2px; }
@@ -944,11 +954,11 @@
       .flight { font-size:23px; }
       .seat, .sy-hero-meta { font-size:13px; }
       .sy-top-grid { gap:10px; }
-      .sy-stat-card { min-height:64px; padding:8px 5px; gap:3px; flex-direction:column; align-items:flex-start; }
+      .sy-stat-card { min-height:64px; padding:8px 4px; gap:3px; flex-direction:column; align-items:center; justify-content:center; }
       .sy-stat-icon { display:none; }
       .sy-stat-card .label { font-size:10px; }
       .sy-stat-value { font-size:14px; }
-      .sy-bags-value { font-size:13px; }
+      .sy-bags-value { font-size:10px; letter-spacing:-.5px; }
       .sy-panel { padding:14px; }
       .sy-panel-title { font-size:16px; }
       .sy-panel-muted { display:block; font-size:12px; }
@@ -960,7 +970,7 @@
       .sy-pax-item:nth-child(n) { border-bottom:1px solid rgba(69,105,141,.42); }
       .sy-pax-item:nth-child(n+3) { border-bottom:0; }
       .sy-main-grid { grid-template-columns:1fr; }
-      .sy-data-tile { min-height:56px; padding:8px 4px; gap:3px; font-size:10px; }
+      .sy-data-tile { min-height:56px; padding:8px 3px; gap:3px; font-size:9px; }
       .sy-data-tile .tile-icon { font-size:14px; }
       .audit-workspace, .seatmap-workspace,
       .audit-workspace.no-detail, .seatmap-workspace.no-detail {
@@ -1122,13 +1132,7 @@
             </div>
 
             <div class="sy-panel sy-pax-panel">
-              <div class="sy-panel-title"><span class="sy-panel-icon">♙</span> PAX SUMMARY</div>
-              <div class="sy-pax-grid">
-                <div class="sy-pax-item"><span class="sy-pax-icon blue">♙</span><span>Adults</span><b id="syPaxAdults">-</b></div>
-                <div class="sy-pax-item"><span class="sy-pax-icon amber">♙</span><span>Children</span><b id="syPaxChildren">-</b></div>
-                <div class="sy-pax-item"><span class="sy-pax-icon teal">♧</span><span>INF</span><b id="syPaxInf">-</b></div>
-                <div class="sy-pax-item"><span class="sy-pax-icon purple">♿</span><span>WCH</span><b id="syPaxWch">-</b></div>
-              </div>
+              <div class="sy-pax-placeholder"></div>
             </div>
           </div>
 
@@ -1140,9 +1144,9 @@
           <div class="sy-panel sy-flight-data-panel">
             <div class="sy-panel-title"><span class="sy-panel-icon blue">ϟ</span> FLIGHT DATA</div>
             <div id="syToggleRow" class="sy-toggle-row" style="display:none;">
-              <button id="chdToggleBtn" class="chd-toggle-btn sy-data-tile" style="display:none;" onclick="toggleChdPanel()"><span class="tile-icon">☼</span><span>CHD List</span></button>
-              <button id="govAqqToggleBtn" class="chd-toggle-btn sy-data-tile" style="display:none;" onclick="toggleGovAqqPanel()"><span class="tile-icon">▦</span><span>GOV/AQQ</span></button>
-              <button id="wchToggleBtn" class="chd-toggle-btn wch-btn sy-data-tile" style="display:none;" onclick="toggleWchPanel()"><span class="tile-icon">♿</span><span>WCH</span></button>
+              <button id="chdToggleBtn" class="chd-toggle-btn sy-data-tile" style="display:none;" onclick="toggleChdPanel()"><span class="tile-icon">☼</span><span>CHD List</span><b id="chdTileCount"></b></button>
+              <button id="govAqqToggleBtn" class="chd-toggle-btn sy-data-tile" style="display:none;" onclick="toggleGovAqqPanel()"><span class="tile-icon">▦</span><span>GOV/AQQ</span><b id="govAqqTileCount"></b></button>
+              <button id="wchToggleBtn" class="chd-toggle-btn wch-btn sy-data-tile" style="display:none;" onclick="toggleWchPanel()"><span class="tile-icon">♿</span><span>WCH</span><b id="wchTileCount"></b></button>
               <button id="membershipToggleBtn" class="chd-toggle-btn membership-btn sy-data-tile" style="display:none;" onclick="toggleMembershipPanel()"><span class="tile-icon">★</span><span>Membership</span></button>
             </div>
           </div>
@@ -3023,7 +3027,8 @@
           }));
 
           const counts = membershipData.counts || {};
-          setPaxSummary(sy);
+          setTextById('chdTileCount', noCodeList.length ? String(noCodeList.length) : '');
+          setTextById('wchTileCount', wchList.length ? String(wchList.length) : '');
           setTextById('membershipSummary', `白金卡 Platinum: ${counts.platinum || 0} • 金卡 Gold: ${counts.gold || 0} • 银卡 Sliver: ${counts.silver || 0}`);
           renderMembershipPanel(document.getElementById('membershipList'), membershipData);
 
