@@ -128,6 +128,11 @@ function findPassengerByFFFromRecord(log, query) {
 }
 
 
+
+function extractSeatAfterBnText(text) {
+  return (String(text || '').match(/\bBN\s*\d{1,3}\b\s+\*?(\d{1,3}[A-Z])\b/i)?.[1] || '').toUpperCase();
+}
+
 function findPassengerFromPRRecord(log, mode, query) {
   const normalized = String(query || '').trim().toUpperCase();
   const normalizedBN = normalized.replace(/^0+/, '') || '0';
@@ -156,15 +161,15 @@ function findPassengerFromPRRecord(log, mode, query) {
   const paxMatch =
     passengerLine.match(/^\s*\d+\.\s+\d?([A-Z\/]+\+?)/i) ||
     targetSection.match(/\d+\.\s+\d?([A-Z\/]+\+?)/i);
-  const seatMatch =
-    passengerLine.match(/\bBN\d{1,3}\b[^\n\r]*\*?(\d+[A-Z])\b/i) ||
-    targetSection.match(/\bSN\s*(\d+[A-Z])\b/i);
+  const seatFromRecord =
+    extractSeatAfterBnText(passengerLine) ||
+    (targetSection.match(/\bSN\s*(\d{1,3}[A-Z])\b/i)?.[1] || '').toUpperCase();
   const prMatch = targetSection.match(/PR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
 
   return {
     bn: (bnMatch?.[1] || '---').padStart(3, '0'),
     name: (paxMatch?.[1] || 'UNKNOWN').replace(/\+$/, ''),
-    seat: seatMatch?.[1] || '---',
+    seat: seatFromRecord || '---',
     cabin: 'Economy',
     flight: prMatch?.[1] || '',
     flightDate: (prMatch?.[2] || '').substring(0, 5),

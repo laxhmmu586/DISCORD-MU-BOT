@@ -89,6 +89,11 @@ function hasTargetPsm(line) {
   return ['TSXL', 'JMSQ', 'XCSQ', 'TXLK', 'QTQK'].some((code) => normalized.includes(code));
 }
 
+
+function extractSeatAfterBn(text) {
+  return (String(text || '').match(/\bBN\s*\d{1,3}\b\s+\*?(\d{1,3}[A-Z])\b/i)?.[1] || '').toUpperCase();
+}
+
 function getOutboundLines(section) {
   return String(section || '').match(/^\s*X?O\/[^\n\r]*/gim) || [];
 }
@@ -570,14 +575,8 @@ function enrichWchListFromLog(log, syInfo, targetYmd = null) {
     const nameMatch = section.match(/\n\s*\d+\.\s*([A-Z]+\/[A-Z]+)/i);
     const paxLineMatch = section.match(/\n\s*\d+\.\s*[^\n\r]*/i);
     const paxLine = paxLineMatch?.[0] || '';
-    const seatFromPaxLine =
-      paxLine.match(/\bBN\d{1,3}\b[^\n\r]*\*(\d+[A-Z])\b/i)?.[1] ||
-      paxLine.match(/\bBN\d{1,3}\b[^\n\r]*\s(\d+[A-Z])\b/i)?.[1] ||
-      '';
-    const seatFromSection =
-      section.match(/\bBN\d{1,3}\b[^\n\r]*\*(\d+[A-Z])\b/i)?.[1] ||
-      section.match(/\bBN\d{1,3}\b[^\n\r]*\s(\d+[A-Z])\b/i)?.[1] ||
-      '';
+    const seatFromPaxLine = extractSeatAfterBn(paxLine);
+    const seatFromSection = extractSeatAfterBn(section);
     const seat = (seatFromPaxLine || seatFromSection || '').toUpperCase();
     const sectionWithoutPsm = section
       .split(/\r?\n/)
@@ -628,11 +627,7 @@ function enrichMembershipListFromLog(log, syInfo, targetYmd = null) {
     const bn = (paxLine.match(/\bBN(\d{1,3})\b/i)?.[1] || '').padStart(3, '0');
     if (!bn) continue;
     const name = paxLine.match(/\n\s*\d+\.\s*([A-Z]+\/[A-Z]+)/i)?.[1] || '-';
-    const seat = (
-      paxLine.match(/\bBN\d{1,3}\b[^\n\r]*\*(\d+[A-Z])\b/i)?.[1] ||
-      paxLine.match(/\bBN\d{1,3}\b[^\n\r]*\s(\d+[A-Z])\b/i)?.[1] ||
-      ''
-    ).toUpperCase();
+    const seat = extractSeatAfterBn(paxLine);
     const cabin = (paxLine.match(/\b([FAJCDQIOYBMEHKLNRSVTGZX])\s+PVG\b/i)?.[1] || '').toUpperCase();
     const ffMatch = section.match(/\bFF\/([A-Z0-9]{2})\s+([A-Z0-9]+)\/([VGSPE])\b/i);
     if (!ffMatch) continue;
@@ -699,11 +694,10 @@ function enrichSeatMapRecordsFromLog(log, syInfo, targetYmd = null) {
     const passengerName = (passengerLine.match(/^\s*\d+\.\s*\d?([A-Z\/]+\+?)/i)?.[1] || '').replace(/\+$/, '').toUpperCase();
     const bn = section.match(/\bBN\s*(\d{1,3})\b/i)?.[1]?.padStart(3, '0') || '';
     const seat = (
-      passengerLine.match(/\bBN\d{1,3}\b[^\n\r]*\*(\d+[A-Z])\b/i)?.[1] ||
-      passengerLine.match(/\bBN\d{1,3}\b[^\n\r]*\s(\d+[A-Z])\b/i)?.[1] ||
-      passengerLine.match(/\bSNR?\s*(\d+[A-Z])\b/i)?.[1] ||
-      section.match(/^\s*O\/[^\n\r]*\bSNR?\s*(\d+[A-Z])\b/im)?.[1] ||
-      section.match(/^\s*O\/[^\n\r]*\b(?:BN\s*\d{1,3}\s+)?\*?(\d+[A-Z])\b/im)?.[1] ||
+      extractSeatAfterBn(passengerLine) ||
+      passengerLine.match(/\bSNR?\s*(\d{1,3}[A-Z])\b/i)?.[1] ||
+      section.match(/^\s*O\/[^\n\r]*\bSNR?\s*(\d{1,3}[A-Z])\b/im)?.[1] ||
+      section.match(/^\s*O\/[^\n\r]*\b(?:BN\s*\d{1,3}\s+)?\*?(\d{1,3}[A-Z])\b/im)?.[1] ||
       ''
     ).toUpperCase();
     if (!seat) continue;
@@ -793,8 +787,8 @@ function enrichPsmListFromLog(log, syInfo, targetYmd = null) {
     if (isDeletedPassengerLine(passengerLine)) continue;
 
     const seat = (
-      passengerLine.match(/\bBN\d{1,3}\b[^\n\r]*\*?(\d+[A-Z])\b/i)?.[1] ||
-      section.match(/\bSN\s*(\d+[A-Z])\b/i)?.[1] ||
+      extractSeatAfterBn(passengerLine) ||
+      section.match(/\bSN\s*(\d{1,3}[A-Z])\b/i)?.[1] ||
       ''
     ).toUpperCase();
     const bagLine = section.match(/BAGTAG\s*\/([^\n\r]+)/i)?.[1] || '';
@@ -862,8 +856,16 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
       latestByBn.set(bn, { ts, section, score });
       continue;
     }
-    const prevIsDeleted = isDeletedPassengerSection(prev.section || '');
-    if ((ts > prev.ts && (isDeletedSection || prevIsDeleted)) || score > prev.score || (score === prev.score && ts >= prev.ts)) {
+
+    const hasPassengerLine = Boolean(getPassengerRecordLine(section));
+    if (ts > prev.ts) {
+      latestByBn.set(bn, {
+        ts,
+        section: isDeletedSection || hasPassengerLine ? section : `${prev.section || ''}
+${section}`,
+        score
+      });
+    } else if (ts === prev.ts && score >= prev.score) {
       latestByBn.set(bn, { ts, section, score });
     }
   }
@@ -912,9 +914,8 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     const passengerLine = getPassengerRecordLine(section);
     const passengerName = (passengerLine.match(/^\s*\d+\.\s*\d?([A-Z\/]+\+?)/i)?.[1] || '').replace(/\+$/, '').toUpperCase();
     const passengerSeat = (
-      passengerLine.match(/\bBN\d{1,3}\b[^\n\r]*\*(\d+[A-Z])\b/i)?.[1] ||
-      passengerLine.match(/\bBN\d{1,3}\b[^\n\r]*\s(\d+[A-Z])\b/i)?.[1] ||
-      section.match(/\bSN\s*(\d+[A-Z])\b/i)?.[1] ||
+      extractSeatAfterBn(passengerLine) ||
+      section.match(/\bSN\s*(\d{1,3}[A-Z])\b/i)?.[1] ||
       ''
     ).toUpperCase();
     const ffMatch = section.match(/\bFF\/([A-Z0-9]+)\s+(\d+)\/([A-Z])\b/i);
