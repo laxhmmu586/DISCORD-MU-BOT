@@ -105,12 +105,23 @@ function escapeRegExp(value) {
   return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+
+function flightDateToYmd(flightDate) {
+  const m = String(flightDate || '').toUpperCase().match(/^(\d{2})([A-Z]{3})(\d{2})$/);
+  if (!m) return null;
+  const monMap = { JAN: '01', FEB: '02', MAR: '03', APR: '04', MAY: '05', JUN: '06', JUL: '07', AUG: '08', SEP: '09', OCT: '10', NOV: '11', DEC: '12' };
+  const mm = monMap[m[2]];
+  if (!mm) return null;
+  return `20${m[3]}-${mm}-${m[1]}`;
+}
+
 function enrichCrewApisFromLog(log, info, targetYmd) {
   const sections = splitLogicalSections(log);
   const flightNo = String(info?.flightNo || '').trim().toUpperCase();
+  const flightYmd = flightDateToYmd(info?.flightDate) || targetYmd || null;
   const sameDaySections = sections.filter((sectionObj) => {
     const ymd = getYmdFromTimestamp(sectionObj.timestamp);
-    return !targetYmd || !ymd || ymd === targetYmd;
+    return Boolean(flightYmd && ymd && ymd === flightYmd);
   });
   const formatTime = (timestamp) => {
     const m = String(timestamp || '').match(/(\d{2}:\d{2}:\d{2})$/);

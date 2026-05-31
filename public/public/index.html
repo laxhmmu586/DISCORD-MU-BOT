@@ -862,7 +862,7 @@
     .action-menu-item[style*="none"] { display:none !important; }
 
     .sy-dashboard { display:flex; flex-direction:column; gap:18px; }
-    .sy-hero-meta { color:var(--ops-muted); font-size:15px; letter-spacing:.6px; margin:0 0 4px; }
+    .sy-hero-meta { color:var(--ops-muted); font-size:15px; letter-spacing:.6px; margin:0 0 8px; }
     .sy-top-grid { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:10px; }
     .sy-stat-card, .sy-panel {
       border:1px solid rgba(74,112,150,.74);
@@ -896,12 +896,13 @@
     .sy-count-row .cabin-j { color:var(--ops-blue); }
     .sy-count-row .cabin-y { color:var(--ops-green); }
     .sy-hidden-value { display:none; }
-    .sy-progress-panel { margin-top:18px; padding:18px 16px 16px; }
+    .sy-progress-panel { margin-top:22px; padding:18px 16px 16px; }
     .sy-progress-track-wrap { position:relative; padding:8px 16px 0; }
     .sy-progress-plane { position:absolute; top:-4px; left:22px; color:#9bc5ff; font-size:18px; transform:translateX(-50%); transition:left .2s ease; text-shadow:0 0 12px rgba(96,165,250,.55); }
     .sy-progress-steps { position:relative; display:flex; justify-content:space-between; gap:10px; }
+    .sy-progress-steps::before { content:""; position:absolute; top:9px; left:35px; right:35px; border-top:2px dashed rgba(148,163,184,.55); }
     .sy-progress-step { position:relative; display:flex; flex-direction:column; align-items:center; gap:8px; min-width:70px; color:#94a3b8; font-size:11px; font-weight:900; text-align:center; }
-    .sy-progress-step:not(:last-child)::after { content:""; position:absolute; top:9px; left:calc(50% + 15px); width:calc(100% - 30px); border-top:2px dashed rgba(148,163,184,.55); }
+    .sy-progress-step:not(:last-child)::after { display:none; }
     .sy-progress-dot { width:18px; height:18px; border-radius:999px; border:2px solid rgba(148,163,184,.65); background:#071827; box-shadow:0 0 0 4px #071827; }
     .sy-progress-step.is-complete { color:#bbf7d0; }
     .sy-progress-step.is-complete .sy-progress-dot { border-color:#22c55e; background:#22c55e; box-shadow:0 0 0 4px #071827, 0 0 16px rgba(34,197,94,.55); }
@@ -921,8 +922,8 @@
     .sy-rk-value { margin-top:6px; color:#cbd5e1; font-size:14px; line-height:1.35; }
     .sy-rk-value:empty { display:none; }
     .sy-flight-data-panel { margin-top:8px; }
-    .sy-toggle-row { margin-top:14px; display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:10px; overflow:visible; padding:0; }
-    .sy-data-tile { min-height:64px; width:100%; display:flex; align-items:center; justify-content:center; gap:8px; padding:10px 8px; border-radius:10px; border:1px solid rgba(69,105,141,.86); background:linear-gradient(145deg, rgba(13,34,56,.92), rgba(7,24,39,.92)); color:#f8fafc; font-size:13px; font-weight:900; min-width:0; }
+    .sy-toggle-row { margin-top:14px; display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:10px; overflow:visible; padding:0; }
+    .sy-data-tile { min-height:54px; width:100%; display:flex; align-items:center; justify-content:center; gap:7px; padding:8px 6px; border-radius:8px; border:1px solid rgba(69,105,141,.86); background:linear-gradient(145deg, rgba(13,34,56,.92), rgba(7,24,39,.92)); color:#f8fafc; font-size:12px; font-weight:900; min-width:0; }
     .sy-data-tile .tile-icon { flex:0 0 auto; font-size:18px; color:#8fb8ff; }
     .sy-data-tile span:not(.tile-icon) { min-width:0; white-space:nowrap; overflow:visible; text-overflow:clip; }
     .sy-data-tile b { display:none; align-items:center; justify-content:center; min-width:26px; height:24px; padding:0 7px; border-radius:999px; color:#fff; font-size:13px; line-height:1; }
@@ -930,7 +931,7 @@
     .sy-data-tile.is-bad b { background:#dc2626; box-shadow:0 0 0 1px rgba(254,202,202,.28); }
     .sy-data-tile.is-review b { background:#f59e0b; color:#111827; }
     .sy-data-tile.wch-btn b { background:#2563eb; }
-    .sy-data-tile.is-good { border-color:rgba(69,105,141,.86); box-shadow:none; }
+    .sy-data-tile.is-good, .sy-data-tile.is-disabled { border-color:rgba(69,105,141,.86); background:linear-gradient(145deg, rgba(13,34,56,.92), rgba(7,24,39,.92)); box-shadow:none; }
     .sy-data-tile.is-good .tile-icon { color:#8fb8ff; }
     .sy-data-tile.is-bad { border-color:rgba(69,105,141,.86); background:linear-gradient(145deg, rgba(13,34,56,.92), rgba(7,24,39,.92)); box-shadow:none; }
     .sy-data-tile.is-bad .tile-icon { color:#8fb8ff; text-shadow:none; }
@@ -989,7 +990,7 @@
       .sy-main-grid { grid-template-columns:1fr; }
       .sy-stack { display:flex; flex-direction:column; }
       .sy-progress-panel { padding:14px; }
-      .sy-data-tile { min-height:52px; padding:8px 2px; gap:2px; font-size:8px; }
+      .sy-data-tile { min-height:50px; padding:7px 2px; gap:2px; font-size:8px; }
       .sy-progress-panel { margin-top:22px; }
       .sy-data-tile .tile-icon { font-size:14px; }
       .audit-workspace, .seatmap-workspace,
@@ -1139,12 +1140,12 @@
 
           <div class="sy-main-grid">
             <div class="sy-panel sy-count-card">
-              <div class="sy-panel-title">RESERVATION <span id="syResRaw" class="sy-panel-muted"></span></div>
+              <div class="sy-panel-title">RESERVATION</div>
               <div id="syRes" class="sy-count-row"></div>
               <div id="syResTkt" class="sy-hidden-value"></div>
             </div>
             <div class="sy-panel sy-count-card">
-              <div class="sy-panel-title"><span class="sy-panel-icon">♙</span> CHECK-IN <span id="syCiRaw" class="sy-panel-muted"></span></div>
+              <div class="sy-panel-title"><span class="sy-panel-icon">♙</span> CHECK-IN</div>
               <div id="syCi" class="sy-count-row"></div>
               <div id="syCiTkt" class="sy-hidden-value"></div>
             </div>
@@ -1169,9 +1170,9 @@
             <div id="syToggleRow" class="sy-toggle-row" style="display:none;">
               <button id="chdToggleBtn" class="chd-toggle-btn sy-data-tile" style="display:none;" onclick="toggleChdPanel()"><span class="tile-icon">☼</span><span>CHD List</span><b id="chdTileCount"></b></button>
               <button id="govAqqToggleBtn" class="chd-toggle-btn sy-data-tile" style="display:none;" onclick="toggleGovAqqPanel()"><span class="tile-icon">▦</span><span>GOV/AQQ</span><b id="govAqqTileCount"></b></button>
+              <button id="ckinNbrdToggleBtn" class="chd-toggle-btn sy-data-tile" style="display:none;" onclick="toggleCkinNbrdPanel()"><span class="tile-icon">✎</span><span>CKIN/NBRD</span><b id="ckinNbrdTileCount"></b></button>
               <button id="wchToggleBtn" class="chd-toggle-btn wch-btn sy-data-tile" style="display:none;" onclick="toggleWchPanel()"><span class="tile-icon">♿</span><span>WCH</span><b id="wchTileCount"></b></button>
               <button id="membershipToggleBtn" class="chd-toggle-btn membership-btn sy-data-tile" style="display:none;" onclick="toggleMembershipPanel()"><span class="tile-icon">★</span><span>Membership</span></button>
-              <button id="ckinNbrdToggleBtn" class="chd-toggle-btn sy-data-tile" style="display:none;" onclick="toggleCkinNbrdPanel()"><span class="tile-icon">✎</span><span>CKIN/NBRD</span><b id="ckinNbrdTileCount"></b></button>
             </div>
           </div>
           <div id="chdSection" class="sy-panel sy-detail-panel" style="display:none;">
@@ -2496,11 +2497,11 @@
       const steps = Array.isArray(crewApis?.steps) && crewApis.steps.length
         ? crewApis.steps
         : [{ key: 'crewApis', label: 'Crew APIS', complete: false }];
-      const completedCount = steps.filter((step) => step.complete).length;
+      const lastCompleteIndex = Math.max(0, steps.reduce((idx, step, stepIndex) => step.complete ? stepIndex : idx, -1));
       const denominator = Math.max(steps.length - 1, 1);
       const planePercent = steps.length === 1
         ? (steps[0].complete ? 100 : 0)
-        : Math.min(100, Math.max(0, ((completedCount - 1) / denominator) * 100));
+        : Math.min(100, Math.max(0, (lastCompleteIndex / denominator) * 100));
       const stepHtml = steps.map((step) => `<div class="sy-progress-step${step.complete ? ' is-complete' : ''}" title="${escapeAttr(step.tooltip || step.label || '')}">
         <span class="sy-progress-dot"></span>
         <span>${escapeHtmlText(step.label || '')}</span>
@@ -2535,15 +2536,16 @@
       (records || []).forEach((record) => {
         if (!record || isDeletedPassengerRecord(record)) return;
         const seat = normalizeSeatForWarning(record.seat);
-        if (!watchSeats.has(seat)) return;
+        const isWatchSeat = watchSeats.has(seat);
         const services = Array.isArray(record.specialServices) ? record.specialServices.map((x) => String(x || '').toUpperCase()) : [];
         const reasons = [];
-        if (isUnderAge(record, 15)) reasons.push('Under 15 by DOB');
-        if (services.some((code) => /^WCH/.test(code))) reasons.push('Wheelchair service');
-        if (record.isChild || record.hasChdCode || isSeatMapChild(record, record)) reasons.push('Child by CHD age rule');
+        if (!String(record.ticketNo || '').trim()) reasons.push('No ticket');
+        if (isWatchSeat && isUnderAge(record, 15)) reasons.push('Under 15 by DOB');
+        if (isWatchSeat && services.some((code) => /^WCH/.test(code))) reasons.push('Wheelchair service');
+        if (isWatchSeat && (record.isChild || record.hasChdCode || isSeatMapChild(record, record))) reasons.push('Child by CHD age rule');
         if (!reasons.length) return;
         const bn = record.bn ? String(record.bn).padStart(3, '0') : '---';
-        byKey.set(`${bn}-${seat}`, { bn, seat, name: record.name || 'UNKNOWN', reasons });
+        byKey.set(`${bn}-${seat || 'NOSEAT'}`, { bn, seat: seat || '-', name: record.name || 'UNKNOWN', reasons });
       });
       const warnings = [...byKey.values()].sort((a, b) => a.seat.localeCompare(b.seat) || a.bn.localeCompare(b.bn));
       panel.style.display = warnings.length ? 'block' : 'none';
@@ -3093,8 +3095,8 @@
           if (syBagsEl) syBagsEl.onclick = null;
           if (syBagsCellEl) syBagsCellEl.onclick = null;
           setTextById('syRk', `${sy.rkMessage || ''}`);
-          setTextById('syResRaw', sy.reservation?.[0] ? `(${sy.reservation[0]})` : '');
-          setTextById('syCiRaw', sy.checkedIn?.[0] ? `(${sy.checkedIn[0]})` : '');
+          setTextById('syResRaw', '');
+          setTextById('syCiRaw', '');
           setHtmlById('syRes', formatCabinCounts(sy.reservation));
           setTextById('syResTkt', `${sy.reservationTicketed?.[0] || '-'}`);
           setHtmlById('syCi', formatCabinCounts(sy.checkedIn));
