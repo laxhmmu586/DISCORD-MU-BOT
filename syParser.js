@@ -878,6 +878,7 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     const ageYears = getAgeYearsAtDate(dobDate, atDateUtc);
     const hasChdCode = /\bCHD1\/0\b/i.test(section);
     const isChild = (Number.isInteger(ageYears) && ageYears >= 2 && ageYears < 12) || hasChdCode;
+    const psmLines = [...new Set(section.split(/\r?\n/).map((line) => line.trim()).filter((line) => /^PSM\b/i.test(line)))];
     const paidProductsShort = (section.match(/^\s*ASVC-[^\n\r]+/gim) || []).map((line) => {
       const fullLine = line.replace(/^ASVC-\s*/i, '').trim();
       const serviceCode = (fullLine.match(/(?:^|\/)\s*([A-Z]{4})\s*(?:\/|\s)/i)?.[1] || fullLine.match(/\b(\d+[A-Z]|[0-9]+PC)\b/i)?.[1] || '').toUpperCase();
@@ -911,6 +912,7 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
       specialServices: filteredSpecialServices,
       specialMeals: [...new Set(specialMeals)],
       paidProductsShort,
+      psmLines,
       status: isOffloaded ? 'DELETED' : '',
       offloaded: isOffloaded,
       recordTimestamp: payload.ts || 0
