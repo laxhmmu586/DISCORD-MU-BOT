@@ -861,7 +861,7 @@
     .action-menu-item { border-radius:10px; }
     .action-menu-item[style*="none"] { display:none !important; }
 
-    .sy-dashboard { display:flex; flex-direction:column; gap:12px; }
+    .sy-dashboard { display:flex; flex-direction:column; gap:16px; }
     .sy-hero-meta { color:var(--ops-muted); font-size:15px; letter-spacing:.6px; margin:0 0 8px; }
     .sy-top-grid { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:10px; }
     .sy-stat-card, .sy-panel {
@@ -895,6 +895,7 @@
     .sy-count-row .cabin-f { color:var(--ops-purple); }
     .sy-count-row .cabin-j { color:var(--ops-blue); }
     .sy-count-row .cabin-y { color:var(--ops-green); }
+    .sy-count-prefix { display:block; margin-bottom:2px; color:#94a3b8; font-size:10px; letter-spacing:.5px; }
     .sy-hidden-value { display:none; }
     .sy-sub-count-row { margin-top:10px; padding-top:9px; border-top:1px solid rgba(148,163,184,.18); }
     .sy-sub-count-row:empty { display:none; }
@@ -2468,14 +2469,15 @@
       if (el) el.style.display = value;
     }
 
-    function formatCabinCounts(matchLike) {
+    function formatCabinCounts(matchLike, prefix = '') {
       const values = matchLike ? [matchLike[1], matchLike[2], matchLike[3]] : [];
+      const prefixHtml = prefix ? `<small class="sy-count-prefix">${escapeHtmlText(prefix)}</small>` : '';
       const cabins = [
         { key: 'F', cls: 'cabin-f', value: values[0] || '000' },
         { key: 'J', cls: 'cabin-j', value: values[1] || '000' },
         { key: 'Y', cls: 'cabin-y', value: values[2] || '000' }
       ];
-      return cabins.map((item) => `<span class="${item.cls}">${item.key} <b>${escapeHtmlText(item.value)}</b></span>`).join('');
+      return cabins.map((item) => `<span class="${item.cls}">${prefixHtml}${item.key} <b>${escapeHtmlText(item.value)}</b></span>`).join('');
     }
 
     function setHtmlById(id, value) {
@@ -3102,9 +3104,9 @@
           setTextById('syResRaw', '');
           setTextById('syCiRaw', '');
           setHtmlById('syRes', formatCabinCounts(sy.reservation));
-          setHtmlById('syResTkt', formatCabinCounts(sy.reservationTicketed));
+          setHtmlById('syResTkt', formatCabinCounts(sy.reservationTicketed, 'ET'));
           setHtmlById('syCi', formatCabinCounts(sy.checkedIn));
-          setHtmlById('syCiTkt', formatCabinCounts(sy.checkedInTicketed));
+          setHtmlById('syCiTkt', formatCabinCounts(sy.checkedInTicketed, 'ET'));
           renderSyProgress(sy.crewApis || null);
           currentSyFlightNo = sy.flightNo || '';
           currentSyFlightDate = sy.flightDate || '';
