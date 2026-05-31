@@ -897,11 +897,11 @@
     .sy-count-row .cabin-y { color:var(--ops-green); }
     .sy-hidden-value { display:none; }
     .sy-progress-panel { padding:18px 16px 16px; }
-    .sy-progress-track-wrap { position:relative; padding:18px 12px 0; }
-    .sy-progress-line { position:absolute; left:22px; right:22px; top:36px; height:2px; background:rgba(148,163,184,.35); border-radius:999px; }
-    .sy-progress-plane { position:absolute; top:17px; left:22px; color:#8fb8ff; font-size:22px; transform:translateX(-50%); transition:left .2s ease; text-shadow:0 0 14px rgba(96,165,250,.55); }
+    .sy-progress-track-wrap { position:relative; padding:8px 16px 0; }
+    .sy-progress-plane { position:absolute; top:-4px; left:22px; color:#9bc5ff; font-size:18px; transform:translateX(-50%); transition:left .2s ease; text-shadow:0 0 12px rgba(96,165,250,.55); }
     .sy-progress-steps { position:relative; display:flex; justify-content:space-between; gap:10px; }
-    .sy-progress-step { display:flex; flex-direction:column; align-items:center; gap:8px; min-width:70px; color:#94a3b8; font-size:11px; font-weight:900; text-align:center; }
+    .sy-progress-step { position:relative; display:flex; flex-direction:column; align-items:center; gap:8px; min-width:70px; color:#94a3b8; font-size:11px; font-weight:900; text-align:center; }
+    .sy-progress-step:not(:last-child)::after { content:""; position:absolute; top:9px; left:calc(50% + 15px); width:calc(100% - 30px); border-top:2px dashed rgba(148,163,184,.55); }
     .sy-progress-dot { width:18px; height:18px; border-radius:999px; border:2px solid rgba(148,163,184,.65); background:#071827; box-shadow:0 0 0 4px #071827; }
     .sy-progress-step.is-complete { color:#bbf7d0; }
     .sy-progress-step.is-complete .sy-progress-dot { border-color:#22c55e; background:#22c55e; box-shadow:0 0 0 4px #071827, 0 0 16px rgba(34,197,94,.55); }
@@ -921,7 +921,7 @@
     .sy-rk-value { margin-top:6px; color:#cbd5e1; font-size:14px; line-height:1.35; }
     .sy-rk-value:empty { display:none; }
     .sy-flight-data-panel { margin-top:8px; }
-    .sy-toggle-row { margin-top:14px; display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:10px; overflow:visible; padding:0; }
+    .sy-toggle-row { margin-top:14px; display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:10px; overflow:visible; padding:0; }
     .sy-data-tile { min-height:64px; width:100%; display:flex; align-items:center; justify-content:center; gap:8px; padding:10px 8px; border-radius:10px; border:1px solid rgba(69,105,141,.86); background:linear-gradient(145deg, rgba(13,34,56,.92), rgba(7,24,39,.92)); color:#f8fafc; font-size:13px; font-weight:900; min-width:0; }
     .sy-data-tile .tile-icon { flex:0 0 auto; font-size:18px; color:#8fb8ff; }
     .sy-data-tile span:not(.tile-icon) { min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -937,6 +937,14 @@
     .sy-data-tile.is-review { border-color:rgba(245,158,11,.95); background:linear-gradient(145deg, rgba(82,55,12,.94), rgba(18,30,48,.92)); }
     .sy-data-tile.is-review .tile-icon { color:#fbbf24; text-shadow:0 0 16px rgba(245,158,11,.65); }
     .sy-detail-panel { margin-top:10px; }
+    .sy-warning-panel { display:none; border-color:rgba(245,158,11,.82); background:linear-gradient(145deg, rgba(72,48,13,.92), rgba(19,29,45,.94)); box-shadow:0 14px 30px rgba(245,158,11,.12); }
+    .sy-warning-title { display:flex; align-items:center; justify-content:space-between; gap:10px; color:#fde68a; font-size:18px; font-weight:900; }
+    .sy-warning-pill { border-radius:999px; padding:5px 10px; background:rgba(245,158,11,.24); color:#fde68a; font-size:12px; }
+    .sy-warning-list { margin-top:12px; display:flex; flex-direction:column; gap:8px; }
+    .sy-warning-item { border:1px solid rgba(245,158,11,.38); border-radius:12px; padding:9px 10px; color:#f8fafc; background:rgba(15,23,42,.35); font-size:13px; line-height:1.35; }
+    .ckin-nbrd-list { display:flex; flex-direction:column; gap:10px; margin-top:10px; }
+    .ckin-nbrd-card { border:1px solid rgba(96,165,250,.35); border-radius:12px; padding:10px 12px; background:rgba(15,23,42,.55); color:#e2e8f0; }
+    .ckin-nbrd-card b { color:#fde047; }
     .chd-summary { color:#fda4af; font-weight:800; }
 
     .audit-summary-bar, .seatmap-summary { border:none; border-radius:0; padding:0 0 8px; background:transparent; }
@@ -981,7 +989,7 @@
       .sy-main-grid { grid-template-columns:1fr; }
       .sy-stack { display:flex; flex-direction:column; }
       .sy-progress-panel { padding:14px; }
-      .sy-data-tile { min-height:56px; padding:8px 3px; gap:3px; font-size:9px; }
+      .sy-data-tile { min-height:52px; padding:8px 2px; gap:2px; font-size:8px; }
       .sy-data-tile .tile-icon { font-size:14px; }
       .audit-workspace, .seatmap-workspace,
       .audit-workspace.no-detail, .seatmap-workspace.no-detail {
@@ -1150,11 +1158,17 @@
             <div id="syRk" class="value sy-rk-value"></div>
           </div>
 
+          <div id="syWarningPanel" class="sy-panel sy-warning-panel">
+            <div class="sy-warning-title">WARNING <span id="syWarningCount" class="sy-warning-pill"></span></div>
+            <div id="syWarningList" class="sy-warning-list"></div>
+          </div>
+
           <div class="sy-panel sy-flight-data-panel">
             <div class="sy-panel-title"><span class="sy-panel-icon blue">ϟ</span> FLIGHT DATA</div>
             <div id="syToggleRow" class="sy-toggle-row" style="display:none;">
               <button id="chdToggleBtn" class="chd-toggle-btn sy-data-tile" style="display:none;" onclick="toggleChdPanel()"><span class="tile-icon">☼</span><span>CHD List</span><b id="chdTileCount"></b></button>
               <button id="govAqqToggleBtn" class="chd-toggle-btn sy-data-tile" style="display:none;" onclick="toggleGovAqqPanel()"><span class="tile-icon">▦</span><span>GOV/AQQ</span><b id="govAqqTileCount"></b></button>
+              <button id="ckinNbrdToggleBtn" class="chd-toggle-btn sy-data-tile" style="display:none;" onclick="toggleCkinNbrdPanel()"><span class="tile-icon">✎</span><span>CKIN/NBRD</span><b id="ckinNbrdTileCount"></b></button>
               <button id="wchToggleBtn" class="chd-toggle-btn wch-btn sy-data-tile" style="display:none;" onclick="toggleWchPanel()"><span class="tile-icon">♿</span><span>WCH</span><b id="wchTileCount"></b></button>
               <button id="membershipToggleBtn" class="chd-toggle-btn membership-btn sy-data-tile" style="display:none;" onclick="toggleMembershipPanel()"><span class="tile-icon">★</span><span>Membership</span></button>
             </div>
@@ -1174,6 +1188,10 @@
           <div id="wchSection" class="sy-panel sy-detail-panel" style="display:none;">
             <div id="wchSummary" class="chd-summary"></div>
             <div id="wchList" class="uniform-list"></div>
+          </div>
+          <div id="ckinNbrdSection" class="sy-panel sy-detail-panel" style="display:none;">
+            <div id="ckinNbrdSummary" class="chd-summary"></div>
+            <div id="ckinNbrdList" class="ckin-nbrd-list"></div>
           </div>
           <div id="membershipPanelSection" class="sy-panel sy-detail-panel" style="display:none;">
             <div id="membershipSummary" class="chd-summary membership-summary"></div>
@@ -1435,6 +1453,7 @@
     let govAqqPanelOpen = false;
     let wchPanelOpen = false;
     let membershipPanelOpen = false;
+    let ckinNbrdPanelOpen = false;
     let currentGovAqqStatus = 'ok';
     let currentSyFlightNo = '';
     let currentSyFlightDate = '';
@@ -2281,13 +2300,16 @@
         govAqqPanelOpen = false;
         wchPanelOpen = false;
         membershipPanelOpen = false;
+        ckinNbrdPanelOpen = false;
       }
       setDisplayById('chdSection', chdPanelOpen ? 'block' : 'none');
       setDisplayById('govAqqSection', 'none');
+      setDisplayById('ckinNbrdSection', 'none');
       setDisplayById('wchSection', 'none');
       setDisplayById('membershipPanelSection', 'none');
       setTextById('chdToggleBtn', chdPanelOpen ? 'Hide' : 'CHD List');
       setTextById('govAqqToggleBtn', 'GOV/AQQ');
+      setTextById('ckinNbrdToggleBtn', 'CKIN/NBRD');
       setTextById('wchToggleBtn', 'WCH');
       setTextById('membershipToggleBtn', 'Membership');
     }
@@ -2299,13 +2321,16 @@
         chdPanelOpen = false;
         wchPanelOpen = false;
         membershipPanelOpen = false;
+        ckinNbrdPanelOpen = false;
       }
       setDisplayById('govAqqSection', govAqqPanelOpen ? 'block' : 'none');
       setDisplayById('chdSection', 'none');
+      setDisplayById('ckinNbrdSection', 'none');
       setDisplayById('wchSection', 'none');
       setDisplayById('membershipPanelSection', 'none');
       setTextById('govAqqToggleBtn', govAqqPanelOpen ? 'Hide' : 'GOV/AQQ');
       setTextById('chdToggleBtn', 'CHD List');
+      setTextById('ckinNbrdToggleBtn', 'CKIN/NBRD');
       setTextById('wchToggleBtn', 'WCH');
       setTextById('membershipToggleBtn', 'Membership');
     }
@@ -2315,12 +2340,34 @@
         chdPanelOpen = false;
         govAqqPanelOpen = false;
         membershipPanelOpen = false;
+        ckinNbrdPanelOpen = false;
       }
       setDisplayById('wchSection', wchPanelOpen ? 'block' : 'none');
       setDisplayById('chdSection', 'none');
       setDisplayById('govAqqSection', 'none');
+      setDisplayById('ckinNbrdSection', 'none');
       setDisplayById('membershipPanelSection', 'none');
       setTextById('wchToggleBtn', wchPanelOpen ? 'Hide' : 'WCH');
+      setTextById('chdToggleBtn', 'CHD List');
+      setTextById('govAqqToggleBtn', 'GOV/AQQ');
+      setTextById('ckinNbrdToggleBtn', 'CKIN/NBRD');
+      setTextById('membershipToggleBtn', 'Membership');
+    }
+    function toggleCkinNbrdPanel() {
+      ckinNbrdPanelOpen = !ckinNbrdPanelOpen;
+      if (ckinNbrdPanelOpen) {
+        chdPanelOpen = false;
+        govAqqPanelOpen = false;
+        wchPanelOpen = false;
+        membershipPanelOpen = false;
+      }
+      setDisplayById('ckinNbrdSection', ckinNbrdPanelOpen ? 'block' : 'none');
+      setDisplayById('wchSection', 'none');
+      setDisplayById('chdSection', 'none');
+      setDisplayById('govAqqSection', 'none');
+      setDisplayById('membershipPanelSection', 'none');
+      setTextById('ckinNbrdToggleBtn', ckinNbrdPanelOpen ? 'Hide' : 'CKIN/NBRD');
+      setTextById('wchToggleBtn', 'WCH');
       setTextById('chdToggleBtn', 'CHD List');
       setTextById('govAqqToggleBtn', 'GOV/AQQ');
       setTextById('membershipToggleBtn', 'Membership');
@@ -2331,15 +2378,18 @@
         chdPanelOpen = false;
         govAqqPanelOpen = false;
         wchPanelOpen = false;
+        ckinNbrdPanelOpen = false;
       }
       setDisplayById('membershipPanelSection', membershipPanelOpen ? 'block' : 'none');
       setDisplayById('wchSection', 'none');
       setDisplayById('chdSection', 'none');
       setDisplayById('govAqqSection', 'none');
+      setDisplayById('ckinNbrdSection', 'none');
       setTextById('membershipToggleBtn', membershipPanelOpen ? 'Hide' : 'Membership');
       setTextById('wchToggleBtn', 'WCH');
       setTextById('chdToggleBtn', 'CHD List');
       setTextById('govAqqToggleBtn', 'GOV/AQQ');
+      setTextById('ckinNbrdToggleBtn', 'CKIN/NBRD');
     }
     async function checkSalesReportAvailability(flightNo, flightDate) {
       const trigger = document.getElementById('salesReportTrigger');
@@ -2459,15 +2509,65 @@
         <div class="sy-progress-steps">${stepHtml}</div>`;
     }
 
-    function setPaxSummary(sy) {      const res = sy?.reservation || [];
-      const total = numberFromValue(res[1]) + numberFromValue(res[2]) + numberFromValue(res[3]);
-      const chd = Number(Array.isArray(sy?.chdList) ? sy.chdList.length : sy?.chd || 0) || 0;
-      const inf = Number(sy?.inf || 0) || 0;
-      const wch = Number(Array.isArray(sy?.wchList) ? sy.wchList.length : sy?.wch || 0) || 0;
-      setTextById('syPaxAdults', Math.max(total - chd, 0) || total || '-');
-      setTextById('syPaxChildren', chd || '-');
-      setTextById('syPaxInf', inf || '-');
-      setTextById('syPaxWch', wch || '-');
+    function normalizeSeatForWarning(value) {
+      return String(value || '').trim().toUpperCase().replace(/[^0-9A-Z]/g, '');
+    }
+
+    function isUnderAge(record, limit) {
+      const age = Number(record?.ageYears);
+      if (Number.isFinite(age)) return age < limit;
+      const dob = parseSeatMapDob(record?.dob || record?.dobRaw);
+      if (!dob) return false;
+      const now = new Date();
+      let computedAge = now.getUTCFullYear() - dob.getUTCFullYear();
+      const hadBirthday = now.getUTCMonth() > dob.getUTCMonth() || (now.getUTCMonth() === dob.getUTCMonth() && now.getUTCDate() >= dob.getUTCDate());
+      if (!hadBirthday) computedAge -= 1;
+      return computedAge < limit;
+    }
+
+    function renderSyWarnings(records) {
+      const panel = document.getElementById('syWarningPanel');
+      const listEl = document.getElementById('syWarningList');
+      const countEl = document.getElementById('syWarningCount');
+      if (!panel || !listEl || !countEl) return;
+      const watchSeats = new Set(['32A','32B','32C','32J','32K','32L','61A','61B','61C','61J','61K','61L']);
+      const byKey = new Map();
+      (records || []).forEach((record) => {
+        if (!record || isDeletedPassengerRecord(record)) return;
+        const seat = normalizeSeatForWarning(record.seat);
+        if (!watchSeats.has(seat)) return;
+        const services = Array.isArray(record.specialServices) ? record.specialServices.map((x) => String(x || '').toUpperCase()) : [];
+        const reasons = [];
+        if (isUnderAge(record, 15)) reasons.push('Under 15 by DOB');
+        if (services.some((code) => /^WCH/.test(code))) reasons.push('Wheelchair service');
+        if (record.isChild || record.hasChdCode || isSeatMapChild(record, record)) reasons.push('Child by CHD age rule');
+        if (!reasons.length) return;
+        const bn = record.bn ? String(record.bn).padStart(3, '0') : '---';
+        byKey.set(`${bn}-${seat}`, { bn, seat, name: record.name || 'UNKNOWN', reasons });
+      });
+      const warnings = [...byKey.values()].sort((a, b) => a.seat.localeCompare(b.seat) || a.bn.localeCompare(b.bn));
+      panel.style.display = warnings.length ? 'block' : 'none';
+      countEl.innerText = warnings.length ? `${warnings.length}` : '';
+      listEl.innerHTML = warnings.map((item) => `<div class="sy-warning-item"><b>BN${escapeHtmlText(item.bn)}</b> / ${escapeHtmlText(item.seat)} / ${escapeHtmlText(item.name)}<br>${escapeHtmlText(item.reasons.join(' • '))}</div>`).join('');
+    }
+
+    function collectGateComments(records) {
+      const byBn = new Map();
+      (records || []).forEach((record) => {
+        if (!record || isDeletedPassengerRecord(record)) return;
+        const comments = Array.isArray(record.gateComments) ? record.gateComments.filter(Boolean) : [];
+        if (!comments.length) return;
+        const bn = record.bn ? String(record.bn).padStart(3, '0') : '---';
+        byBn.set(bn, { bn, seat: record.seat || '-', name: record.name || 'UNKNOWN', comments });
+      });
+      return [...byBn.values()].sort((a, b) => a.bn.localeCompare(b.bn));
+    }
+
+    function renderCkinNbrdPanel(rows) {
+      setTextById('ckinNbrdSummary', `CKIN/NBRD total: ${rows.length}`);
+      const el = document.getElementById('ckinNbrdList');
+      if (!el) return;
+      el.innerHTML = rows.map((row) => `<div class="ckin-nbrd-card"><b>BN${escapeHtmlText(row.bn)}</b> / ${escapeHtmlText(row.seat)} / ${escapeHtmlText(row.name)}<br>${row.comments.map((line) => escapeHtmlText(line)).join('<br>')}</div>`).join('');
     }
 
     function escapeHtmlText(value) {
@@ -3014,8 +3114,10 @@
           govAqqPanelOpen = false;
           wchPanelOpen = false;
           membershipPanelOpen = false;
+          ckinNbrdPanelOpen = false;
           setDisplayById('chdSection', 'none');
           setDisplayById('govAqqSection', 'none');
+          setDisplayById('ckinNbrdSection', 'none');
           setDisplayById('wchSection', 'none');
           setDisplayById('membershipPanelSection', 'none');
           setDisplayById('syToggleRow', 'grid');
@@ -3025,6 +3127,7 @@
           setDisplayById('membershipToggleBtn', 'flex');
           setTextById('chdToggleBtn', 'CHD List');
           setTextById('govAqqToggleBtn', 'GOV/AQQ');
+          setTextById('ckinNbrdToggleBtn', 'CKIN/NBRD');
           setTextById('wchToggleBtn', 'WCH');
           setTextById('membershipToggleBtn', 'Membership');
           const wchList = Array.isArray(sy.wchList) ? sy.wchList : [];
@@ -3056,6 +3159,15 @@
             ...row,
             passengerRecord: row?.passengerRecord ? applySeatMapFlags(row.passengerRecord) : row?.passengerRecord
           }));
+          const allPassengerRecords = [
+            ...currentSeatMapRecords,
+            ...currentBnAudit.map((row) => row?.passengerRecord).filter(Boolean)
+          ];
+          renderSyWarnings(allPassengerRecords);
+          const ckinNbrdRows = collectGateComments(allPassengerRecords);
+          renderCkinNbrdPanel(ckinNbrdRows);
+          setDisplayById('ckinNbrdToggleBtn', ckinNbrdRows.length ? 'flex' : 'none');
+          setTextById('ckinNbrdTileCount', ckinNbrdRows.length ? String(ckinNbrdRows.length) : '');
 
           const counts = membershipData.counts || {};
           setTextById('chdTileCount', noCodeList.length ? String(noCodeList.length) : '');
