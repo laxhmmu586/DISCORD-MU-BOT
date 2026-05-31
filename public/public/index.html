@@ -896,7 +896,7 @@
     .sy-count-row .cabin-j { color:var(--ops-blue); }
     .sy-count-row .cabin-y { color:var(--ops-green); }
     .sy-hidden-value { display:none; }
-    .sy-progress-panel { padding:18px 16px 16px; }
+    .sy-progress-panel { margin-top:18px; padding:18px 16px 16px; }
     .sy-progress-track-wrap { position:relative; padding:8px 16px 0; }
     .sy-progress-plane { position:absolute; top:-4px; left:22px; color:#9bc5ff; font-size:18px; transform:translateX(-50%); transition:left .2s ease; text-shadow:0 0 12px rgba(96,165,250,.55); }
     .sy-progress-steps { position:relative; display:flex; justify-content:space-between; gap:10px; }
@@ -921,10 +921,10 @@
     .sy-rk-value { margin-top:6px; color:#cbd5e1; font-size:14px; line-height:1.35; }
     .sy-rk-value:empty { display:none; }
     .sy-flight-data-panel { margin-top:8px; }
-    .sy-toggle-row { margin-top:14px; display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:10px; overflow:visible; padding:0; }
+    .sy-toggle-row { margin-top:14px; display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:10px; overflow:visible; padding:0; }
     .sy-data-tile { min-height:64px; width:100%; display:flex; align-items:center; justify-content:center; gap:8px; padding:10px 8px; border-radius:10px; border:1px solid rgba(69,105,141,.86); background:linear-gradient(145deg, rgba(13,34,56,.92), rgba(7,24,39,.92)); color:#f8fafc; font-size:13px; font-weight:900; min-width:0; }
     .sy-data-tile .tile-icon { flex:0 0 auto; font-size:18px; color:#8fb8ff; }
-    .sy-data-tile span:not(.tile-icon) { min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .sy-data-tile span:not(.tile-icon) { min-width:0; white-space:nowrap; overflow:visible; text-overflow:clip; }
     .sy-data-tile b { display:none; align-items:center; justify-content:center; min-width:26px; height:24px; padding:0 7px; border-radius:999px; color:#fff; font-size:13px; line-height:1; }
     .sy-data-tile b:not(:empty) { display:inline-flex; }
     .sy-data-tile.is-bad b { background:#dc2626; box-shadow:0 0 0 1px rgba(254,202,202,.28); }
@@ -932,10 +932,10 @@
     .sy-data-tile.wch-btn b { background:#2563eb; }
     .sy-data-tile.is-good { border-color:rgba(69,105,141,.86); box-shadow:none; }
     .sy-data-tile.is-good .tile-icon { color:#8fb8ff; }
-    .sy-data-tile.is-bad { border-color:rgba(255,77,94,.92); background:linear-gradient(145deg, rgba(76,14,26,.78), rgba(12,30,50,.92)); box-shadow:0 0 24px rgba(255,77,94,.16), inset 0 0 0 1px rgba(255,255,255,.05); }
-    .sy-data-tile.is-bad .tile-icon { color:#ff6b7b; text-shadow:0 0 16px rgba(255,77,94,.75); }
-    .sy-data-tile.is-review { border-color:rgba(245,158,11,.95); background:linear-gradient(145deg, rgba(82,55,12,.94), rgba(18,30,48,.92)); }
-    .sy-data-tile.is-review .tile-icon { color:#fbbf24; text-shadow:0 0 16px rgba(245,158,11,.65); }
+    .sy-data-tile.is-bad { border-color:rgba(69,105,141,.86); background:linear-gradient(145deg, rgba(13,34,56,.92), rgba(7,24,39,.92)); box-shadow:none; }
+    .sy-data-tile.is-bad .tile-icon { color:#8fb8ff; text-shadow:none; }
+    .sy-data-tile.is-review { border-color:rgba(69,105,141,.86); background:linear-gradient(145deg, rgba(13,34,56,.92), rgba(7,24,39,.92)); }
+    .sy-data-tile.is-review .tile-icon { color:#8fb8ff; text-shadow:none; }
     .sy-detail-panel { margin-top:10px; }
     .sy-warning-panel { display:none; border-color:rgba(245,158,11,.82); background:linear-gradient(145deg, rgba(72,48,13,.92), rgba(19,29,45,.94)); box-shadow:0 14px 30px rgba(245,158,11,.12); }
     .sy-warning-title { display:flex; align-items:center; justify-content:space-between; gap:10px; color:#fde68a; font-size:18px; font-weight:900; }
@@ -943,7 +943,7 @@
     .sy-warning-list { margin-top:12px; display:flex; flex-direction:column; gap:8px; }
     .sy-warning-item { border:1px solid rgba(245,158,11,.38); border-radius:12px; padding:9px 10px; color:#f8fafc; background:rgba(15,23,42,.35); font-size:13px; line-height:1.35; }
     .ckin-nbrd-list { display:flex; flex-direction:column; gap:10px; margin-top:10px; }
-    .ckin-nbrd-card { border:1px solid rgba(96,165,250,.35); border-radius:12px; padding:10px 12px; background:rgba(15,23,42,.55); color:#e2e8f0; }
+    .ckin-nbrd-card { border:1px solid rgba(245,158,11,.72); border-radius:12px; padding:10px 12px; background:linear-gradient(145deg, rgba(72,48,13,.72), rgba(15,23,42,.74)); color:#e2e8f0; }
     .ckin-nbrd-card b { color:#fde047; }
     .chd-summary { color:#fda4af; font-weight:800; }
 
@@ -990,6 +990,7 @@
       .sy-stack { display:flex; flex-direction:column; }
       .sy-progress-panel { padding:14px; }
       .sy-data-tile { min-height:52px; padding:8px 2px; gap:2px; font-size:8px; }
+      .sy-progress-panel { margin-top:22px; }
       .sy-data-tile .tile-icon { font-size:14px; }
       .audit-workspace, .seatmap-workspace,
       .audit-workspace.no-detail, .seatmap-workspace.no-detail {
@@ -1138,7 +1139,7 @@
 
           <div class="sy-main-grid">
             <div class="sy-panel sy-count-card">
-              <div class="sy-panel-title"><span class="sy-panel-icon">⌁</span> RESERVATION <span id="syResRaw" class="sy-panel-muted"></span></div>
+              <div class="sy-panel-title">RESERVATION <span id="syResRaw" class="sy-panel-muted"></span></div>
               <div id="syRes" class="sy-count-row"></div>
               <div id="syResTkt" class="sy-hidden-value"></div>
             </div>
@@ -1168,9 +1169,9 @@
             <div id="syToggleRow" class="sy-toggle-row" style="display:none;">
               <button id="chdToggleBtn" class="chd-toggle-btn sy-data-tile" style="display:none;" onclick="toggleChdPanel()"><span class="tile-icon">☼</span><span>CHD List</span><b id="chdTileCount"></b></button>
               <button id="govAqqToggleBtn" class="chd-toggle-btn sy-data-tile" style="display:none;" onclick="toggleGovAqqPanel()"><span class="tile-icon">▦</span><span>GOV/AQQ</span><b id="govAqqTileCount"></b></button>
-              <button id="ckinNbrdToggleBtn" class="chd-toggle-btn sy-data-tile" style="display:none;" onclick="toggleCkinNbrdPanel()"><span class="tile-icon">✎</span><span>CKIN/NBRD</span><b id="ckinNbrdTileCount"></b></button>
               <button id="wchToggleBtn" class="chd-toggle-btn wch-btn sy-data-tile" style="display:none;" onclick="toggleWchPanel()"><span class="tile-icon">♿</span><span>WCH</span><b id="wchTileCount"></b></button>
               <button id="membershipToggleBtn" class="chd-toggle-btn membership-btn sy-data-tile" style="display:none;" onclick="toggleMembershipPanel()"><span class="tile-icon">★</span><span>Membership</span></button>
+              <button id="ckinNbrdToggleBtn" class="chd-toggle-btn sy-data-tile" style="display:none;" onclick="toggleCkinNbrdPanel()"><span class="tile-icon">✎</span><span>CKIN/NBRD</span><b id="ckinNbrdTileCount"></b></button>
             </div>
           </div>
           <div id="chdSection" class="sy-panel sy-detail-panel" style="display:none;">
@@ -2500,12 +2501,11 @@
       const planePercent = steps.length === 1
         ? (steps[0].complete ? 100 : 0)
         : Math.min(100, Math.max(0, ((completedCount - 1) / denominator) * 100));
-      const stepHtml = steps.map((step) => `<div class="sy-progress-step${step.complete ? ' is-complete' : ''}" title="${escapeAttr(step.label || '')}">
+      const stepHtml = steps.map((step) => `<div class="sy-progress-step${step.complete ? ' is-complete' : ''}" title="${escapeAttr(step.tooltip || step.label || '')}">
         <span class="sy-progress-dot"></span>
         <span>${escapeHtmlText(step.label || '')}</span>
       </div>`).join('');
-      el.innerHTML = `<div class="sy-progress-line"></div>
-        <div class="sy-progress-plane" style="left:calc(22px + (100% - 44px) * ${planePercent / 100});">✈</div>
+      el.innerHTML = `<div class="sy-progress-plane" style="left:calc(22px + (100% - 44px) * ${planePercent / 100});">✈</div>
         <div class="sy-progress-steps">${stepHtml}</div>`;
     }
 
