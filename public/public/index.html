@@ -861,7 +861,7 @@
     .action-menu-item { border-radius:10px; }
     .action-menu-item[style*="none"] { display:none !important; }
 
-    .sy-dashboard { display:flex; flex-direction:column; gap:18px; }
+    .sy-dashboard { display:flex; flex-direction:column; gap:10px; }
     .sy-hero-meta { color:var(--ops-muted); font-size:15px; letter-spacing:.6px; margin:0 0 8px; }
     .sy-top-grid { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:10px; }
     .sy-stat-card, .sy-panel {
@@ -882,23 +882,24 @@
     .sy-bags-card { overflow:hidden; }
     .sy-bags-card > div:last-child { min-width:0; }
     .sy-bags-value { font-size:15px; white-space:nowrap; overflow:visible; text-overflow:clip; max-width:100%; letter-spacing:-.3px; }
-    .sy-main-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:14px; align-items:stretch; margin-top:8px; }
+    .sy-main-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:14px; align-items:stretch; margin-top:0; }
     .sy-stack { display:contents; }
     .sy-panel { padding:14px; }
     .sy-panel-title { display:flex; align-items:center; gap:8px; color:#f3f7fd; font-size:16px; font-weight:900; letter-spacing:.2px; text-transform:uppercase; }
     .sy-panel-icon { color:var(--ops-blue); font-size:18px; }
     .sy-panel-icon.muted { color:#cbd5e1; }
     .sy-panel-muted { color:var(--ops-muted); font-size:12px; font-weight:700; text-transform:none; }
-    .sy-count-row { display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-top:14px; color:#f8fafc; font-size:18px; font-weight:900; }
-    .sy-count-row span { min-width:0; padding-right:8px; border-right:1px solid rgba(148,163,184,.28); }
+    .sy-count-row { display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-top:14px; color:#f8fafc; font-size:18px; font-weight:900; text-align:center; }
+    .sy-count-row span { min-width:0; padding:0 8px; border-right:1px solid rgba(148,163,184,.28); }
     .sy-count-row span:last-child { border-right:0; }
     .sy-count-row .cabin-f { color:var(--ops-purple); }
     .sy-count-row .cabin-j { color:var(--ops-blue); }
     .sy-count-row .cabin-y { color:var(--ops-green); }
     .sy-hidden-value { display:none; }
-    .sy-progress-panel { margin-top:22px; padding:18px 16px 16px; }
+    .sy-progress-panel { margin-top:0; padding:18px 16px 16px; }
     .sy-progress-track-wrap { position:relative; padding:8px 16px 0; }
-    .sy-progress-plane { position:absolute; top:-4px; left:22px; color:#9bc5ff; font-size:18px; transform:translateX(-50%); transition:left .2s ease; text-shadow:0 0 12px rgba(96,165,250,.55); }
+    .sy-progress-plane { position:absolute; top:-7px; left:22px; width:28px; height:18px; transform:translateX(-50%); transition:left .2s ease; filter:drop-shadow(0 0 10px rgba(147,197,253,.65)); z-index:2; }
+    .sy-progress-plane svg { width:100%; height:100%; display:block; }
     .sy-progress-steps { position:relative; display:flex; justify-content:space-between; gap:10px; }
     .sy-progress-steps::before { content:""; position:absolute; top:9px; left:35px; right:35px; border-top:2px dashed rgba(148,163,184,.55); }
     .sy-progress-step { position:relative; display:flex; flex-direction:column; align-items:center; gap:8px; min-width:70px; color:#94a3b8; font-size:11px; font-weight:900; text-align:center; }
@@ -918,25 +919,27 @@
     .sy-pax-icon.silver { color:#b8c2d1; }
     .sy-pax-icon.green { color:var(--ops-green); }
     .sy-pax-item b { font-size:22px; color:#f8fafc; }
-    .sy-rk-panel { padding:16px; margin:8px 0; }
+    .sy-rk-panel { padding:16px; margin:0; }
     .sy-rk-value { margin-top:6px; color:#cbd5e1; font-size:14px; line-height:1.35; }
     .sy-rk-value:empty { display:none; }
-    .sy-flight-data-panel { margin-top:8px; }
+    .sy-flight-data-panel { margin-top:0; }
     .sy-toggle-row { margin-top:14px; display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:10px; overflow:visible; padding:0; }
-    .sy-data-tile { min-height:54px; width:100%; display:flex; align-items:center; justify-content:center; gap:7px; padding:8px 6px; border-radius:8px; border:1px solid rgba(69,105,141,.86); background:linear-gradient(145deg, rgba(13,34,56,.92), rgba(7,24,39,.92)); color:#f8fafc; font-size:12px; font-weight:900; min-width:0; }
+    .sy-data-tile { min-height:54px; width:100%; display:flex; align-items:center; justify-content:center; gap:7px; padding:8px 6px; border-radius:8px; border:1px solid rgba(69,105,141,.86); background:linear-gradient(145deg, rgba(13,34,56,.92), rgba(7,24,39,.92)); color:#f8fafc; font-size:12px; font-weight:900; min-width:0; transition:border-color .15s ease, background .15s ease, box-shadow .15s ease; }
     .sy-data-tile .tile-icon { flex:0 0 auto; font-size:18px; color:#8fb8ff; }
-    .sy-data-tile span:not(.tile-icon) { min-width:0; white-space:nowrap; overflow:visible; text-overflow:clip; }
+    .sy-data-tile span:not(.tile-icon) { min-width:0; white-space:nowrap; overflow:visible; text-overflow:clip; color:#f8fafc; }
     .sy-data-tile b { display:none; align-items:center; justify-content:center; min-width:26px; height:24px; padding:0 7px; border-radius:999px; color:#fff; font-size:13px; line-height:1; }
     .sy-data-tile b:not(:empty) { display:inline-flex; }
     .sy-data-tile.is-bad b { background:#dc2626; box-shadow:0 0 0 1px rgba(254,202,202,.28); }
     .sy-data-tile.is-review b { background:#f59e0b; color:#111827; }
     .sy-data-tile.wch-btn b { background:#2563eb; }
+    .sy-data-tile.ckin-nbrd-btn b { background:#dc2626; box-shadow:0 0 0 1px rgba(254,202,202,.28); }
     .sy-data-tile.is-good, .sy-data-tile.is-disabled { border-color:rgba(69,105,141,.86); background:linear-gradient(145deg, rgba(13,34,56,.92), rgba(7,24,39,.92)); box-shadow:none; }
     .sy-data-tile.is-good .tile-icon { color:#8fb8ff; }
     .sy-data-tile.is-bad { border-color:rgba(69,105,141,.86); background:linear-gradient(145deg, rgba(13,34,56,.92), rgba(7,24,39,.92)); box-shadow:none; }
     .sy-data-tile.is-bad .tile-icon { color:#8fb8ff; text-shadow:none; }
-    .sy-data-tile.is-review { border-color:rgba(69,105,141,.86); background:linear-gradient(145deg, rgba(13,34,56,.92), rgba(7,24,39,.92)); }
+    .sy-data-tile.is-review { border-color:rgba(69,105,141,.86); background:linear-gradient(145deg, rgba(13,34,56,.92), rgba(7,24,39,.92)); color:#f8fafc; }
     .sy-data-tile.is-review .tile-icon { color:#8fb8ff; text-shadow:none; }
+    .sy-data-tile:hover, .sy-data-tile.is-good:hover, .sy-data-tile.is-disabled:hover, .sy-data-tile.is-bad:hover, .sy-data-tile.is-review:hover { border-color:rgba(96,165,250,.95); background:linear-gradient(145deg, rgba(23,64,108,.94), rgba(7,31,54,.94)); box-shadow:0 0 0 1px rgba(96,165,250,.22), 0 12px 24px rgba(37,99,235,.16); color:#f8fafc; }
     .sy-detail-panel { margin-top:10px; }
     .sy-warning-panel { display:none; border-color:rgba(245,158,11,.82); background:linear-gradient(145deg, rgba(72,48,13,.92), rgba(19,29,45,.94)); box-shadow:0 14px 30px rgba(245,158,11,.12); }
     .sy-warning-title { display:flex; align-items:center; justify-content:space-between; gap:10px; color:#fde68a; font-size:18px; font-weight:900; }
@@ -991,7 +994,7 @@
       .sy-stack { display:flex; flex-direction:column; }
       .sy-progress-panel { padding:14px; }
       .sy-data-tile { min-height:50px; padding:7px 2px; gap:2px; font-size:8px; }
-      .sy-progress-panel { margin-top:22px; }
+      .sy-progress-panel { margin-top:0; }
       .sy-data-tile .tile-icon { font-size:14px; }
       .audit-workspace, .seatmap-workspace,
       .audit-workspace.no-detail, .seatmap-workspace.no-detail {
@@ -1109,7 +1112,7 @@
 
           <div class="sy-top-grid">
             <div class="sy-stat-card sy-gate-card">
-              <div class="sy-stat-icon">⌂</div>
+              <div class="sy-stat-icon gate-icon"><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M10 52h7V19h30v33h7V14H10v38Zm15 0h14V28H25v24Zm4-18h6m-6 9h6" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
               <div>
                 <div class="label">GATE</div>
                 <div id="syGate" class="value sy-stat-value"></div>
@@ -1130,7 +1133,7 @@
               </div>
             </div>
             <div id="syBagsCell" class="sy-stat-card sy-bags-card">
-              <div class="sy-stat-icon amber">▣</div>
+              <div class="sy-stat-icon amber bag-icon"><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M22 18v-3c0-5 4-9 10-9s10 4 10 9v3m-28 0h36v38H14V18Zm8 0v38m20-38v38" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
               <div>
                 <div id="syBagsLabel" class="label">BAGS</div>
                 <div id="syBags" class="value sy-stat-value sy-bags-value"></div>
@@ -1170,7 +1173,7 @@
             <div id="syToggleRow" class="sy-toggle-row" style="display:none;">
               <button id="chdToggleBtn" class="chd-toggle-btn sy-data-tile" style="display:none;" onclick="toggleChdPanel()"><span class="tile-icon">☼</span><span>CHD List</span><b id="chdTileCount"></b></button>
               <button id="govAqqToggleBtn" class="chd-toggle-btn sy-data-tile" style="display:none;" onclick="toggleGovAqqPanel()"><span class="tile-icon">▦</span><span>GOV/AQQ</span><b id="govAqqTileCount"></b></button>
-              <button id="ckinNbrdToggleBtn" class="chd-toggle-btn sy-data-tile" style="display:none;" onclick="toggleCkinNbrdPanel()"><span class="tile-icon">✎</span><span>CKIN/NBRD</span><b id="ckinNbrdTileCount"></b></button>
+              <button id="ckinNbrdToggleBtn" class="chd-toggle-btn sy-data-tile ckin-nbrd-btn" style="display:none;" onclick="toggleCkinNbrdPanel()"><span class="tile-icon">✎</span><span>CKIN/NBRD</span><b id="ckinNbrdTileCount"></b></button>
               <button id="wchToggleBtn" class="chd-toggle-btn wch-btn sy-data-tile" style="display:none;" onclick="toggleWchPanel()"><span class="tile-icon">♿</span><span>WCH</span><b id="wchTileCount"></b></button>
               <button id="membershipToggleBtn" class="chd-toggle-btn membership-btn sy-data-tile" style="display:none;" onclick="toggleMembershipPanel()"><span class="tile-icon">★</span><span>Membership</span></button>
             </div>
@@ -2506,7 +2509,8 @@
         <span class="sy-progress-dot"></span>
         <span>${escapeHtmlText(step.label || '')}</span>
       </div>`).join('');
-      el.innerHTML = `<div class="sy-progress-plane" style="left:calc(22px + (100% - 44px) * ${planePercent / 100});">✈</div>
+      const planeSvg = '<svg viewBox="0 0 96 48" aria-hidden="true"><path d="M92 25c-13 3-26 4-40 2L27 44l-7-2 14-19-23-5-7 8-4-1 5-13 13-3 4 2-7 5 25 1L57 2l8 1-9 17c12 0 24 1 36 5Z" fill="#bfdbfe"/><path d="M92 25c-13 3-26 4-40 2" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round"/></svg>';
+      el.innerHTML = `<div class="sy-progress-plane" style="left:calc(22px + (100% - 44px) * ${planePercent / 100});">${planeSvg}</div>
         <div class="sy-progress-steps">${stepHtml}</div>`;
     }
 
