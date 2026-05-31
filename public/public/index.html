@@ -1002,30 +1002,32 @@
     .sy-progress-plane.is-arc-plane { top:auto; left:auto; z-index:3; transform:translate(-50%, -50%); }
 
 
-    .sy-progress-panel { order:-1; min-height:210px; overflow:hidden; border:none !important; box-shadow:none !important; background:transparent !important; padding:0 !important; }
-    .sy-progress-track-wrap.is-spacex { position:relative; min-height:210px; padding:0; overflow:hidden; }
-    .sy-progress-track-inner { position:relative; width:100%; min-width:0; height:210px; }
-    .sy-progress-line-svg { position:absolute; left:0; top:12px; width:100%; height:142px; overflow:visible; }
+    .sy-progress-panel { order:-1; min-height:190px; overflow:hidden; border:none !important; box-shadow:none !important; background:transparent !important; padding:0 !important; }
+    .sy-progress-track-wrap.is-spacex { position:relative; min-height:190px; padding:0; overflow:hidden; }
+    .sy-progress-track-inner { position:relative; width:100%; min-width:0; height:190px; }
+    .sy-progress-line-svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
     .sy-progress-line-svg path { filter:drop-shadow(0 0 5px rgba(255,255,255,.32)); }
-    .sy-progress-step.is-spacex-step { position:absolute; min-width:68px; gap:4px; transform:translate(-50%, -50%); z-index:2; color:rgba(241,245,249,.94); text-shadow:0 0 8px rgba(2,6,23,.98); cursor:default; }
-    .sy-progress-step.is-spacex-step .sy-progress-dot { width:11px; height:11px; border:1.5px solid rgba(238,246,255,.98); background:#071827; box-shadow:0 0 0 2px rgba(7,24,39,.98), 0 0 9px rgba(255,255,255,.28); }
+    .sy-progress-step.is-spacex-step { position:absolute; min-width:68px; gap:4px; transform:translate(-50%, -4.5px); z-index:2; color:rgba(241,245,249,.94); text-shadow:0 0 8px rgba(2,6,23,.98); cursor:default; }
+    .sy-progress-step.is-spacex-step .sy-progress-dot { width:9px; height:9px; border:1.3px solid rgba(238,246,255,.98); background:#071827; box-shadow:0 0 0 2px rgba(7,24,39,.98), 0 0 9px rgba(255,255,255,.28); }
     .sy-progress-step.is-spacex-step.is-complete .sy-progress-dot { border-color:#dfffee; background:#22c55e; box-shadow:0 0 0 2px rgba(7,24,39,.98), 0 0 14px rgba(34,197,94,.86); }
     .sy-progress-step.is-spacex-step.is-warning .sy-progress-dot { border-color:#fff2b5; background:#f59e0b; box-shadow:0 0 0 2px rgba(7,24,39,.98), 0 0 14px rgba(245,158,11,.8); }
     .sy-progress-step.is-spacex-step span:last-child { font-size:8px; line-height:1.05; font-weight:1000; letter-spacing:.15px; color:rgba(241,245,249,.95); text-transform:uppercase; }
     .sy-progress-step.is-spacex-step[data-action], .sy-progress-step.is-spacex-step[data-time-label] { cursor:pointer; }
-    .sy-flight-hero { position:relative; min-height:210px; overflow:hidden; border:none !important; box-shadow:none !important; background:
-      radial-gradient(circle at 50% 48%, rgba(255,168,82,.42) 0 8px, rgba(255,168,82,.18) 9px, transparent 46px),
-      radial-gradient(ellipse at 50% 44%, rgba(96,165,250,.18), transparent 15rem),
-      linear-gradient(180deg, rgba(7,24,39,0), rgba(7,24,39,.08)); }
-    .sy-flight-hero::before { content:""; position:absolute; left:50%; top:13%; width:180px; height:178px; transform:translateX(-50%); background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(96,165,250,.07) 45%, transparent 100%); filter:blur(18px); opacity:.7; pointer-events:none; }
-    .sy-flight-clock { position:absolute; left:50%; top:72%; transform:translate(-50%, -50%); z-index:1; color:#f8fafc; font-size:28px; font-weight:300; letter-spacing:1.4px; text-shadow:0 0 18px rgba(2,6,23,.98); white-space:nowrap; }
+    .sy-flight-hero { position:relative; min-height:190px; overflow:hidden; border:none !important; box-shadow:none !important; background:
+      radial-gradient(circle at 50% 47%, rgba(255,168,82,.16) 0 7px, rgba(255,168,82,.08) 8px, transparent 42px),
+      radial-gradient(ellipse at 50% 37%, rgba(96,165,250,.14), transparent 14rem),
+      linear-gradient(180deg, rgba(7,24,39,0), rgba(7,24,39,.06)); }
+    .sy-flight-hero::before { content:""; position:absolute; left:50%; top:6%; width:220px; height:150px; transform:translateX(-50%); background:linear-gradient(180deg, rgba(255,255,255,.07), rgba(96,165,250,.055) 48%, transparent 100%); filter:blur(20px); opacity:.66; pointer-events:none; }
+    .sy-flight-clock { position:absolute; left:50%; top:74%; transform:translate(-50%, -50%); z-index:1; color:#f8fafc; font-size:28px; font-weight:300; letter-spacing:1.4px; text-shadow:0 0 18px rgba(2,6,23,.98); white-space:nowrap; opacity:0; visibility:hidden; transition:opacity .18s ease; }
+    .sy-flight-clock.is-visible { opacity:1; visibility:visible; }
     .sy-flight-phase, .sy-flight-caption, .sy-progress-plane.is-spacex-plane { display:none !important; }
-    .sy-top-grid { border:1px solid rgba(148,163,184,.45); border-radius:22px; padding:14px 16px; background:rgba(8,28,48,.66); box-shadow:inset 0 1px 0 rgba(255,255,255,.06), 0 18px 36px rgba(0,0,0,.2); }
+    .sy-top-grid { grid-template-columns:.9fr .9fr .9fr 1.35fr; border:1px solid rgba(148,163,184,.45); border-radius:22px; padding:14px 16px; background:rgba(8,28,48,.66); box-shadow:inset 0 1px 0 rgba(255,255,255,.06), 0 18px 36px rgba(0,0,0,.2); }
     .sy-top-grid .sy-stat-card { min-height:58px; padding:0 10px; border:0; border-radius:0; background:transparent; box-shadow:none; border-right:1px solid rgba(148,163,184,.26); }
     .sy-top-grid .sy-stat-card:last-child { border-right:0; }
     .sy-top-grid .sy-stat-icon { display:none; }
     .sy-top-grid .label { color:#cbd5e1; font-size:12px; letter-spacing:1.2px; font-weight:500; }
     .sy-top-grid .sy-stat-value { font-size:18px; letter-spacing:.8px; }
+    .sy-top-grid .sy-bags-value { font-size:13px; letter-spacing:-.25px; white-space:nowrap; }
     .sy-main-grid { grid-template-columns:1fr; row-gap:16px; }
     .sy-count-card { border-radius:18px; padding:18px 22px; }
     .sy-count-card .sy-panel-title { letter-spacing:1.4px; }
@@ -1071,14 +1073,16 @@
       .sy-progress-panel { margin-top:0; }
       .sy-progress-track-wrap { padding:8px 8px 0; }
       .sy-progress-track-wrap.is-arc { min-height:140px; }
-      .sy-progress-track-wrap.is-spacex { min-height:170px; }
-      .sy-progress-track-inner { height:170px; }
-      .sy-flight-hero { min-height:170px; }
-      .sy-progress-line-svg { top:4px; height:116px; }
-      .sy-flight-clock { font-size:21px; top:73%; }
+      .sy-progress-track-wrap.is-spacex { min-height:150px; }
+      .sy-progress-track-inner { height:150px; }
+      .sy-flight-hero { min-height:150px; }
+      .sy-flight-clock { font-size:21px; top:75%; }
       .sy-progress-step.is-spacex-step { min-width:56px; }
-      .sy-progress-step.is-spacex-step .sy-progress-dot { width:10px; height:10px; }
+      .sy-progress-step.is-spacex-step { transform:translate(-50%, -4px); }
+      .sy-progress-step.is-spacex-step .sy-progress-dot { width:8px; height:8px; }
       .sy-progress-step.is-spacex-step span:last-child { font-size:7px; }
+      .sy-top-grid { grid-template-columns:.8fr .8fr .8fr 1.6fr; padding:12px 10px; }
+      .sy-top-grid .sy-bags-value { font-size:11px; letter-spacing:-.4px; }
       .sy-flight-data-panel .sy-toggle-row { grid-template-columns:repeat(2, minmax(0,1fr)); }
       .sy-progress-step { min-width:auto; font-size:8px; }
       .sy-progress-step.is-arc-step { min-width:48px; }
@@ -2679,13 +2683,19 @@
         { ...ccStep, key: 'cc', label: 'CC', timeAction: true }
       ];
       const denominator = Math.max(steps.length - 1, 1);
-      const points = steps.map((_, idx) => {
-        const t = idx / denominator;
+      const arcPath = 'M 6 51 C 26 18, 74 18, 94 51';
+      const cubicPoint = (t) => {
+        const p0 = { x: 6, y: 51 };
+        const p1 = { x: 26, y: 18 };
+        const p2 = { x: 74, y: 18 };
+        const p3 = { x: 94, y: 51 };
+        const mt = 1 - t;
         return {
-          x: 7 + (86 * t),
-          y: 63 - (30 * Math.sin(Math.PI * t))
+          x: (mt ** 3 * p0.x) + (3 * mt ** 2 * t * p1.x) + (3 * mt * t ** 2 * p2.x) + (t ** 3 * p3.x),
+          y: (mt ** 3 * p0.y) + (3 * mt ** 2 * t * p1.y) + (3 * mt * t ** 2 * p2.y) + (t ** 3 * p3.y)
         };
-      });
+      };
+      const points = steps.map((_, idx) => cubicPoint(idx / denominator));
       const stepHtml = steps.map((step, idx) => {
         const point = points[idx];
         const actionAttr = step.action ? ` data-action="${escapeAttr(step.action)}"` : '';
@@ -2702,11 +2712,11 @@
       el.classList.add('is-spacex');
       el.innerHTML = `<div class="sy-progress-track-inner">
         <svg class="sy-progress-line-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-          <path d="M 7 63 C 24 33, 38 30, 50 30 S 76 33, 93 63" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="5.2" stroke-linecap="round" />
-          <path d="M 7 63 C 24 33, 38 30, 50 30 S 76 33, 93 63" fill="none" stroke="rgba(255,255,255,.96)" stroke-width="1.15" stroke-linecap="round" />
-          <path d="M 7 63 C 24 33, 38 30, 50 30 S 76 33, 93 63" fill="none" stroke="rgba(255,255,255,.55)" stroke-width=".35" stroke-linecap="round" stroke-dasharray="1 5" />
+          <path d="${arcPath}" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="4.8" stroke-linecap="round" />
+          <path d="${arcPath}" fill="none" stroke="rgba(255,255,255,.92)" stroke-width="1.05" stroke-linecap="round" />
+          <path d="${arcPath}" fill="none" stroke="rgba(255,255,255,.38)" stroke-width=".45" stroke-linecap="round" stroke-dasharray=".8 5.2" />
         </svg>
-        <div id="syFlightClock" class="sy-flight-clock">T+00:00:00</div>
+        <div id="syFlightClock" class="sy-flight-clock"></div>
         ${stepHtml}
       </div>`;
       el.querySelectorAll('[data-action], [data-time-label]').forEach((node) => {
@@ -2719,7 +2729,10 @@
           if (timeLabel) {
             const clock = document.getElementById('syFlightClock');
             const timeValue = node.getAttribute('data-time') || '--:--:--';
-            if (clock) clock.textContent = `${timeLabel} ${timeValue}`;
+            if (clock) {
+              clock.textContent = `${timeLabel} ${timeValue}`;
+              clock.classList.add('is-visible');
+            }
           }
         });
       });
