@@ -101,6 +101,45 @@ function getYmdFromTimestamp(timestamp) {
   return `${m[1]}-${mm}-${m[3]}`;
 }
 
+function escapeRegExp(value) {
+  return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function enrichCrewApisFromLog(log, info, targetYmd) {
+  const sections = splitLogicalSections(log);
+  const flightNo = String(info?.flightNo || '').trim().toUpperCase();
+  const sameDaySections = sections.filter((sectionObj) => {
+    const ymd = getYmdFromTimestamp(sectionObj.timestamp);
+    return !targetYmd || !ymd || ymd === targetYmd;
+  });
+  const hasAcceptedCommand = (regex) => sameDaySections.some((sectionObj) => {
+    const content = String(sectionObj.content || '').toUpperCase();
+    return regex.test(content) && /\bACCEPTED\b/.test(content);
+  });
+  const hasCommand = (regex) => sameDaySections.some((sectionObj) => regex.test(String(sectionObj.content || '').toUpperCase()));
+  const lrPrefix = flightNo
+    ? `LR\\s+${escapeRegExp(flightNo)}\\/\\.\\/LAX\\/CWI`
+    : 'LR\\s+[A-Z0-9]+\\/\\.\\/LAX\\/CWI';
+  const checks = [
+    { key: 'ncwl', label: 'NCWL', complete: hasAcceptedCommand(/^>\s*NCWL\s*:/im) },
+    { key: 'cwd', label: 'CWD', complete: hasCommand(/^>\s*CWD\s*:/im) },
+    { key: 'crew1', label: 'LAXAPMU', complete: hasAcceptedCommand(new RegExp(`^>\\s*${lrPrefix}\\/LAXAPMU\\/PEKKN1E`, 'im')) },
+    { key: 'crew2', label: 'CWI/N', complete: hasAcceptedCommand(new RegExp(`^>\\s*${lrPrefix}\\/N`, 'im')) },
+    { key: 'crew3', label: 'BJSCCXH', complete: hasAcceptedCommand(new RegExp(`^>\\s*${lrPrefix}\\/BJSCCXH`, 'im')) }
+  ];
+  return {
+    complete: checks.every((item) => item.complete),
+    steps: [
+      {
+        key: 'crewApis',
+        label: 'Crew APIS',
+        complete: checks.every((item) => item.complete),
+        checks
+      }
+    ]
+  };
+}
+
 function parseSYSection(sectionObj) {
   const section = sectionObj.content || '';
   const flightMatch = section.match(/SY:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
@@ -1051,6 +1090,7 @@ function findSYInfo(log, queryDate, options = {}) {
       info.membershipList = enrichMembershipListFromLog(log, info, targetYmd);
       info.seatMapRecords = enrichSeatMapRecordsFromLog(log, info, targetYmd);
       info.bnAudit = enrichBnAuditFromLog(log, info, targetYmd);
+      info.crewApis = enrichCrewApisFromLog(log, info, targetYmd);
       return info;
     }
   }
@@ -1098,6 +1138,7 @@ function findSYInfo(log, queryDate, options = {}) {
     info.membershipList = enrichMembershipListFromLog(log, info, targetYmd);
     info.seatMapRecords = enrichSeatMapRecordsFromLog(log, info, targetYmd);
     info.bnAudit = enrichBnAuditFromLog(log, info, targetYmd);
+    info.crewApis = enrichCrewApisFromLog(log, info, targetYmd);
     return info;
   }
 
