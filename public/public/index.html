@@ -861,7 +861,7 @@
     .action-menu-item { border-radius:10px; }
     .action-menu-item[style*="none"] { display:none !important; }
 
-    .sy-dashboard { display:flex; flex-direction:column; gap:10px; }
+    .sy-dashboard { display:flex; flex-direction:column; gap:12px; }
     .sy-hero-meta { color:var(--ops-muted); font-size:15px; letter-spacing:.6px; margin:0 0 8px; }
     .sy-top-grid { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:10px; }
     .sy-stat-card, .sy-panel {
@@ -896,10 +896,11 @@
     .sy-count-row .cabin-j { color:var(--ops-blue); }
     .sy-count-row .cabin-y { color:var(--ops-green); }
     .sy-hidden-value { display:none; }
+    .sy-sub-count-row { margin-top:10px; padding-top:9px; border-top:1px solid rgba(148,163,184,.18); }
+    .sy-sub-count-row:empty { display:none; }
     .sy-progress-panel { margin-top:0; padding:18px 16px 16px; }
     .sy-progress-track-wrap { position:relative; padding:8px 16px 0; }
-    .sy-progress-plane { position:absolute; top:-7px; left:22px; width:28px; height:18px; transform:translateX(-50%); transition:left .2s ease; filter:drop-shadow(0 0 10px rgba(147,197,253,.65)); z-index:2; }
-    .sy-progress-plane svg { width:100%; height:100%; display:block; }
+    .sy-progress-plane { position:absolute; top:-7px; left:22px; color:#9bc5ff; font-size:18px; transform:translateX(-50%); transition:left .2s ease; text-shadow:0 0 12px rgba(96,165,250,.55); z-index:2; }
     .sy-progress-steps { position:relative; display:flex; justify-content:space-between; gap:10px; }
     .sy-progress-steps::before { content:""; position:absolute; top:9px; left:35px; right:35px; border-top:2px dashed rgba(148,163,184,.55); }
     .sy-progress-step { position:relative; display:flex; flex-direction:column; align-items:center; gap:8px; min-width:70px; color:#94a3b8; font-size:11px; font-weight:900; text-align:center; }
@@ -1145,12 +1146,12 @@
             <div class="sy-panel sy-count-card">
               <div class="sy-panel-title">RESERVATION</div>
               <div id="syRes" class="sy-count-row"></div>
-              <div id="syResTkt" class="sy-hidden-value"></div>
+              <div id="syResTkt" class="sy-count-row sy-sub-count-row"></div>
             </div>
             <div class="sy-panel sy-count-card">
               <div class="sy-panel-title"><span class="sy-panel-icon">♙</span> CHECK-IN</div>
               <div id="syCi" class="sy-count-row"></div>
-              <div id="syCiTkt" class="sy-hidden-value"></div>
+              <div id="syCiTkt" class="sy-count-row sy-sub-count-row"></div>
             </div>
           </div>
 
@@ -2509,8 +2510,7 @@
         <span class="sy-progress-dot"></span>
         <span>${escapeHtmlText(step.label || '')}</span>
       </div>`).join('');
-      const planeSvg = '<svg viewBox="0 0 96 48" aria-hidden="true"><path d="M92 25c-13 3-26 4-40 2L27 44l-7-2 14-19-23-5-7 8-4-1 5-13 13-3 4 2-7 5 25 1L57 2l8 1-9 17c12 0 24 1 36 5Z" fill="#bfdbfe"/><path d="M92 25c-13 3-26 4-40 2" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round"/></svg>';
-      el.innerHTML = `<div class="sy-progress-plane" style="left:calc(22px + (100% - 44px) * ${planePercent / 100});">${planeSvg}</div>
+      el.innerHTML = `<div class="sy-progress-plane" style="left:calc(22px + (100% - 44px) * ${planePercent / 100});">✈</div>
         <div class="sy-progress-steps">${stepHtml}</div>`;
     }
 
@@ -3102,9 +3102,9 @@
           setTextById('syResRaw', '');
           setTextById('syCiRaw', '');
           setHtmlById('syRes', formatCabinCounts(sy.reservation));
-          setTextById('syResTkt', `${sy.reservationTicketed?.[0] || '-'}`);
+          setHtmlById('syResTkt', formatCabinCounts(sy.reservationTicketed));
           setHtmlById('syCi', formatCabinCounts(sy.checkedIn));
-          setTextById('syCiTkt', `${sy.checkedInTicketed?.[0] || '-'}`);
+          setHtmlById('syCiTkt', formatCabinCounts(sy.checkedInTicketed));
           renderSyProgress(sy.crewApis || null);
           currentSyFlightNo = sy.flightNo || '';
           currentSyFlightDate = sy.flightDate || '';
