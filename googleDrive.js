@@ -431,15 +431,16 @@ async function getLatestFlightLog() {
 }
 
 
-async function hasNextDayInfoEmail(flightNo, flightDate) {
+async function hasNextDayInfoEmail(flightNo, subjectDate, expectedSubject = '') {
   const normalizedFlightNo = String(flightNo || '').trim().toUpperCase();
-  const normalizedFlightDate = String(flightDate || '').trim().toUpperCase();
-  if (!normalizedFlightNo || !normalizedFlightDate) return false;
+  const normalizedSubjectDate = String(subjectDate || '').trim();
+  const subject = String(expectedSubject || `${normalizedFlightNo} ${normalizedSubjectDate} flight information details`).trim();
+  if (!normalizedFlightNo || !normalizedSubjectDate || !subject) return false;
 
   try {
     const gmail = google.gmail({ version: 'v1', auth });
     const userId = process.env.GMAIL_USER || process.env.GMAIL_IMPERSONATE_USER || 'me';
-    const q = `("next day info" OR "next day") ${normalizedFlightNo} ${normalizedFlightDate} newer_than:30d`;
+    const q = `in:sent subject:"${subject.replace(/"/g, '')}" newer_than:30d`;
     const result = await gmail.users.messages.list({
       userId,
       q,
@@ -448,7 +449,7 @@ async function hasNextDayInfoEmail(flightNo, flightDate) {
     });
     return Array.isArray(result.data.messages) && result.data.messages.length > 0;
   } catch (err) {
-    console.error('Gmail next day info search error:', err.message || err);
+    console.error('Gmail next day info sent-mail search error:', err.message || err);
     return false;
   }
 }

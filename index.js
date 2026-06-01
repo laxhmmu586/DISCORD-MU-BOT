@@ -607,13 +607,14 @@ app.get(
         const syBagInfo = isoDate ? await getSyBagInfoByDate(isoDate, syInfo.flightDate) : null;
         const nextDayQuery = syInfo.crewApis?.nextDayInfoQuery || null;
         if (nextDayQuery?.flightNo && nextDayQuery?.flightDate) {
-          const nextDayInfoComplete = await hasNextDayInfoEmail(nextDayQuery.flightNo, nextDayQuery.flightDate);
+          const nextDaySubject = nextDayQuery.emailSubject || `${nextDayQuery.flightNo} ${nextDayQuery.flightDate} flight information details`;
+          const nextDayInfoComplete = await hasNextDayInfoEmail(nextDayQuery.flightNo, nextDayQuery.emailSubjectDate || nextDayQuery.flightDate, nextDaySubject);
           const nextDayStep = syInfo.crewApis?.steps?.find((step) => step.key === 'nextDayInfo');
           if (nextDayStep) {
             nextDayStep.complete = nextDayInfoComplete;
             nextDayStep.tooltip = nextDayInfoComplete
-              ? `NEXT DAY INFO email found for ${nextDayQuery.flightNo}/${nextDayQuery.flightDate}`
-              : `NEXT DAY INFO email not found for ${nextDayQuery.flightNo}/${nextDayQuery.flightDate}`;
+              ? `NEXT DAY INFO sent email found: ${nextDaySubject}`
+              : `NEXT DAY INFO sent email not found: ${nextDaySubject}`;
           }
         }
         return res.json({ sy: { ...syInfo, bagSheet: syBagInfo } });

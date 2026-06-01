@@ -168,6 +168,12 @@ function dateToDdMon(date) {
   return `${String(date.getUTCDate()).padStart(2, '0')}${mons[date.getUTCMonth()]}`;
 }
 
+function dateToEmailSubjectDate(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+  const mons = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${mons[date.getUTCMonth()]}-${String(date.getUTCDate()).padStart(2, '0')}`;
+}
+
 function subtractMinutesFromTime(hhmm, minutes) {
   const m = String(hhmm || '').match(/^(\d{2})(\d{2})$/);
   if (!m) return '';
@@ -215,6 +221,9 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
   const cc = findAcceptedCommand(/^>\s*CC\s*:/im);
   const baseYmd = targetYmd || flightYmd;
   const baseDateUtc = ymdToUtcDate(baseYmd);
+  const nextDayDateUtc = addDaysUtc(baseDateUtc, 1);
+  const nextDayEmailDate = dateToEmailSubjectDate(nextDayDateUtc);
+  const nextDayEmailSubject = flightNo && nextDayEmailDate ? `${flightNo} ${nextDayEmailDate} flight information details` : '';
   const commandDateUtc = addDaysUtc(baseDateUtc, 2);
   const commandDate = dateToDdMon(commandDateUtc);
   const commandFlightDateFull = commandDate && commandDateUtc ? `${commandDate}${String(commandDateUtc.getUTCFullYear()).slice(-2)}` : '';
@@ -241,8 +250,9 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
     complete: crewApisComplete && ccl.complete && cc.complete,
     nextDayInfoQuery: {
       flightNo,
-      flightDate: commandDate,
-      flightDateFull: commandFlightDateFull
+      flightDate: nextDayEmailDate,
+      emailSubjectDate: nextDayEmailDate,
+      emailSubject: nextDayEmailSubject
     },
     steps: [
       {
@@ -255,7 +265,7 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
         key: 'nextDayInfo',
         label: 'NEXT DAY INFO',
         complete: Boolean(info?.nextDayInfoComplete),
-        tooltip: info?.nextDayInfoComplete ? `NEXT DAY INFO email found for ${flightNo}/${commandDate}` : `NEXT DAY INFO email not found for ${flightNo}/${commandDate}`
+        tooltip: info?.nextDayInfoComplete ? `NEXT DAY INFO sent email found: ${nextDayEmailSubject}` : `NEXT DAY INFO sent email not found: ${nextDayEmailSubject}`
       },
       {
         key: 'ccl',
