@@ -876,13 +876,14 @@
     .seat { color:var(--ops-muted); font-size:15px; letter-spacing:.5px; margin:0 0 18px; }
     .name { display:none; }
     .action-menu-wrap { margin-left:auto; }
+    .flight-row .action-menu-wrap { margin-top:14px; }
     .action-menu-btn { color:#a7b4c6; font-size:28px; padding:2px 8px; }
     .action-menu-pop { background:#071827; border-color:rgba(77,112,148,.72); min-width:190px; }
     .action-menu-item { border-radius:10px; }
     .action-menu-item[style*="none"] { display:none !important; }
 
     .sy-dashboard { display:grid; grid-template-columns:1fr; row-gap:18px; }
-    .sy-hero-meta { color:var(--ops-muted); font-size:15px; letter-spacing:.6px; margin:0 0 8px; }
+    .sy-hero-meta { color:var(--ops-muted); font-size:15px; letter-spacing:.6px; margin:0 0 18px; padding-bottom:22px; border-bottom:1px solid rgba(77,112,148,.46); }
     .sy-top-grid { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); column-gap:10px; row-gap:10px; }
     .sy-stat-card, .sy-panel {
       border:1px solid rgba(74,112,150,.74);
@@ -1002,7 +1003,7 @@
     .sy-progress-plane.is-arc-plane { top:auto; left:auto; z-index:3; transform:translate(-50%, -50%); }
 
 
-    .sy-progress-panel { order:-1; min-height:232px; overflow:hidden; border:none !important; border-bottom:1px solid rgba(77,112,148,.46) !important; border-radius:0 !important; box-shadow:none !important; background:transparent !important; padding:0 0 18px !important; }
+    .sy-progress-panel { order:-1; min-height:232px; overflow:hidden; border:none !important; border-radius:0 !important; box-shadow:none !important; background:transparent !important; padding:0 0 18px !important; }
     .sy-progress-track-wrap.is-spacex { position:relative; min-height:214px; padding:0; overflow-x:auto; overflow-y:hidden; scroll-snap-type:x proximity; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
     .sy-progress-track-wrap.is-spacex::-webkit-scrollbar { display:none; }
     .sy-progress-track-inner { position:relative; width:100%; min-width:820px; height:214px; scroll-snap-align:center; }
@@ -1036,7 +1037,10 @@
     .sy-count-card { border-radius:18px; padding:18px 22px; }
     .sy-count-card .sy-panel-title { letter-spacing:1.4px; }
     .sy-count-row { font-size:22px; letter-spacing:1.2px; }
-    .sy-sub-count-row { display:none !important; }
+    .sy-sub-count-row { display:grid !important; }
+    .sy-sub-count-row span { font-size:0; }
+    .sy-sub-count-row .sy-count-prefix { display:block; font-size:11px; line-height:1.1; margin-bottom:4px; }
+    .sy-sub-count-row b { font-size:22px; }
     .sy-count-row .cabin-f b, .sy-count-row .cabin-j b, .sy-count-row .cabin-y b { font-size:22px; }
     .sy-count-row .cabin-f { color:#bf7cff; }
     .sy-count-row .cabin-j { color:#65a9ff; }
@@ -1079,7 +1083,7 @@
       .sy-progress-track-wrap { padding:8px 8px 0; }
       .sy-progress-track-wrap.is-arc { min-height:140px; }
       .sy-progress-track-wrap.is-spacex { min-height:174px; }
-      .sy-progress-track-inner { height:174px; min-width:640px; }
+      .sy-progress-track-inner { height:174px; min-width:760px; }
       .sy-flight-hero { min-height:190px; }
       .sy-flight-clock { font-size:21px; top:75%; }
       .sy-progress-step.is-spacex-step { min-width:56px; }
@@ -1088,6 +1092,7 @@
       .sy-progress-plane-marker { width:32px; height:14px; }
       .sy-progress-swipe { bottom:20px; width:76%; }
       .sy-progress-issue-count { top:-19px; font-size:18px; }
+      .sy-sub-count-row b { font-size:19px; }
       .sy-progress-step.is-spacex-step span:last-child { font-size:7px; }
       .sy-top-grid { grid-template-columns:.8fr .8fr .8fr 1.6fr; padding:12px 10px; }
       .sy-top-grid .sy-bags-value { font-size:11px; letter-spacing:-.4px; }
@@ -2682,13 +2687,17 @@
       const crewStep = baseByKey.get('crewApis') || crewSteps[0] || { key: 'crewApis', label: 'Crew APIS', complete: false };
       const cclStep = baseByKey.get('ccl') || { key: 'ccl', label: 'CCL', complete: false, tooltip: 'CCL not entered' };
       const ccStep = baseByKey.get('cc') || { key: 'cc', label: 'CC', complete: false, tooltip: 'CC not entered' };
+      const initialFlightStep = baseByKey.get('initialFlight') || { key: 'initialFlight', label: 'Initial flight', complete: false, tooltip: 'Initial flight not entered' };
+      const bdtChgStep = baseByKey.get('bdtChg') || { key: 'bdtChg', label: 'BDT CHG', complete: false, tooltip: 'BDT CHG not entered' };
       const steps = [
         { ...crewStep, key: 'crewApis', label: 'CREW APIS' },
         { key: 'chd', label: 'CHD', complete: crewStep.complete && !extras.chdHasIssue, warning: crewStep.complete && Boolean(extras.chdHasIssue), issueCount: numberFromValue(extras.chdIssueCount || 0), tooltip: !crewStep.complete ? 'Waiting for Crew APIS' : (extras.chdHasIssue ? 'Missing CHD1/0 - click to open CHD List' : 'CHD clear'), action: crewStep.complete && extras.chdHasIssue ? 'chd' : '' },
         { key: 'gov', label: 'GOV', complete: crewStep.complete && !extras.govHasIssue, warning: crewStep.complete && Boolean(extras.govHasIssue), issueCount: numberFromValue(extras.govIssueCount || 0), tooltip: !crewStep.complete ? 'Waiting for Crew APIS' : (extras.govHasIssue ? 'GOV/AQQ issue - click to open GOV/AQQ' : 'GOV/AQQ clear'), action: crewStep.complete && extras.govHasIssue ? 'gov' : '' },
         { key: 'nbrd', label: 'NBRD', complete: crewStep.complete && !extras.nbrdHasIssue, warning: crewStep.complete && Boolean(extras.nbrdHasIssue), issueCount: numberFromValue(extras.nbrdIssueCount || 0), tooltip: !crewStep.complete ? 'Waiting for Crew APIS' : (extras.nbrdHasIssue ? 'CKIN/NBRD issue - click to open CKIN/NBRD' : 'NBRD clear'), action: crewStep.complete && extras.nbrdHasIssue ? 'nbrd' : '' },
         { ...cclStep, key: 'ccl', label: 'CCL', timeAction: true },
-        { ...ccStep, key: 'cc', label: 'CC', timeAction: true }
+        { ...ccStep, key: 'cc', label: 'CC', timeAction: true },
+        { ...initialFlightStep, key: 'initialFlight', label: 'Initial flight' },
+        { ...bdtChgStep, key: 'bdtChg', label: 'BDT CHG' }
       ];
       const denominator = Math.max(steps.length - 1, 1);
       const timelinePath = 'M 8 46 H 92';
@@ -2697,10 +2706,7 @@
         y: 46
       }));
       const ccIndex = steps.findIndex((step) => step.key === 'cc');
-      const cclIndex = steps.findIndex((step) => step.key === 'ccl');
-      const crewIndex = steps.findIndex((step) => step.key === 'crewApis');
-      const currentStageIndex = ccStep.complete ? ccIndex : (cclStep.complete ? cclIndex : (crewStep.complete ? crewIndex : -1));
-      const planePoint = currentStageIndex >= 0 ? points[currentStageIndex] : null;
+      const planePoint = ccStep.complete && ccIndex >= 0 ? points[ccIndex] : null;
       const planeHtml = planePoint ? `<div class="sy-progress-plane-marker" style="left:${planePoint.x}%; top:${planePoint.y - 10}%;" aria-hidden="true">
         <svg viewBox="0 0 110 42" role="img" focusable="false"><path d="M105 20.8c-7.2 4.5-16.6 5.2-27.9 2.2L49 15.8 26 31.4c-2.9 2-6.8 1.3-8.9-1.4l16.3-19.2-20.8-5.2-7.4 6.6L0 9.9 8.1.8l90.2 10.6c5.7.7 9.1 4.6 6.7 9.4Z" fill="currentColor"/></svg>
       </div>` : '';

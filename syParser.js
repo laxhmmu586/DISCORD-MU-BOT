@@ -145,6 +145,36 @@ function flightDateToYmd(flightDate) {
   return `20${m[3]}-${mm}-${m[1]}`;
 }
 
+
+function ymdToUtcDate(ymd) {
+  const m = String(ymd || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  return new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+}
+
+function addDaysUtc(date, days) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return null;
+  return new Date(date.getTime() + (days * 86400000));
+}
+
+function dateToYmd(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+}
+
+function dateToDdMon(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+  const mons = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+  return `${String(date.getUTCDate()).padStart(2, '0')}${mons[date.getUTCMonth()]}`;
+}
+
+function subtractMinutesFromTime(hhmm, minutes) {
+  const m = String(hhmm || '').match(/^(\d{2})(\d{2})$/);
+  if (!m) return '';
+  const total = ((Number(m[1]) * 60) + Number(m[2]) - minutes + 1440) % 1440;
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}${String(total % 60).padStart(2, '0')}`;
+}
+
 function enrichCrewApisFromLog(log, info, targetYmd) {
   const sections = splitLogicalSections(log);
   const flightNo = String(info?.flightNo || '').trim().toUpperCase();
@@ -183,6 +213,24 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
   const crewApisComplete = checks.every((item) => item.complete);
   const ccl = findAcceptedCommand(/^>\s*CCL\s*:/im);
   const cc = findAcceptedCommand(/^>\s*CC\s*:/im);
+  const flightDateUtc = ymdToUtcDate(flightYmd);
+  const preInitDate = addDaysUtc(flightDateUtc, -2);
+  const preInitYmd = dateToYmd(preInitDate);
+  const commandDate = dateToDdMon(flightDateUtc);
+  const commandSections = sections.filter((sectionObj) => {
+    const ymd = getYmdFromTimestamp(sectionObj.timestamp);
+    return Boolean(preInitYmd && ymd && ymd === preInitYmd);
+  });
+  const commandHas = (regex) => commandSections.some((sectionObj) => {
+    const content = String(sectionObj.content || '').toUpperCase();
+    regex.lastIndex = 0;
+    return regex.test(content);
+  });
+  const commandFlightNo = escapeRegExp(flightNo);
+  const commandFlightDate = escapeRegExp(commandDate);
+  const initialFlight = Boolean(flightNo && commandDate) && commandHas(new RegExp(`^>\\s*IF\\s+${commandFlightNo}/${commandFlightDate}\\b`, 'im'));
+  const expectedBdt = subtractMinutesFromTime(info?.sd, 45) || String(info?.bdt || '').trim();
+  const bdtChg = Boolean(flightNo && commandDate && expectedBdt) && commandHas(new RegExp(`^>\\s*FU\\s+${commandFlightNo}/${commandFlightDate}/LAX/BDT/${escapeRegExp(expectedBdt)}\\b`, 'im'));
   return {
     complete: crewApisComplete && ccl.complete && cc.complete,
     steps: [
@@ -205,6 +253,18 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
         complete: cc.complete,
         time: cc.time,
         tooltip: cc.time ? `CC ${cc.time}` : 'CC not entered'
+      },
+      {
+        key: 'initialFlight',
+        label: 'Initial flight',
+        complete: initialFlight,
+        tooltip: initialFlight ? `IF ${flightNo}/${commandDate}` : `IF ${flightNo}/${commandDate} not entered`
+      },
+      {
+        key: 'bdtChg',
+        label: 'BDT CHG',
+        complete: bdtChg,
+        tooltip: bdtChg ? `FU ${flightNo}/${commandDate}/LAX/BDT/${expectedBdt}` : `FU ${flightNo}/${commandDate}/LAX/BDT/${expectedBdt || '----'} not entered`
       }
     ]
   };
