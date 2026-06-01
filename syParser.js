@@ -43,21 +43,35 @@ function splitLogicalSections(log) {
   return sections;
 }
 
+const MONTH_INDEX = {
+  JAN: 0, JANUARY: 0, FEB: 1, FEBRUARY: 1, MAR: 2, MARCH: 2,
+  APR: 3, APRIL: 3, MAY: 4, JUN: 5, JUNE: 5, JUL: 6, JULY: 6,
+  AUG: 7, AUGUST: 7, SEP: 8, SEPTEMBER: 8, OCT: 9, OCTOBER: 9,
+  NOV: 10, NOVEMBER: 10, DEC: 11, DECEMBER: 11
+};
+
+const MONTH_NUMBER = {
+  JAN: '01', JANUARY: '01', FEB: '02', FEBRUARY: '02', MAR: '03', MARCH: '03',
+  APR: '04', APRIL: '04', MAY: '05', JUN: '06', JUNE: '06', JUL: '07', JULY: '07',
+  AUG: '08', AUGUST: '08', SEP: '09', SEPTEMBER: '09', OCT: '10', OCTOBER: '10',
+  NOV: '11', NOVEMBER: '11', DEC: '12', DECEMBER: '12'
+};
+
+function normalizeMonthName(monthName) {
+  return String(monthName || '').trim().toUpperCase();
+}
+
 function parseSectionTimestamp(timestamp) {
   if (!timestamp) return 0;
-  const m = timestamp.match(/^(\d{4})\s+([A-Z][a-z]{2})\s+(\d{2}),\s+(\w+),\s+(\d{2}):(\d{2}):(\d{2})$/);
+  const m = timestamp.match(/^(\d{4})\s+([A-Za-z]+)\s+(\d{2}),\s+(\w+),\s+(\d{2}):(\d{2}):(\d{2})$/);
   if (!m) return 0;
-  const monthMap = {
-    Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
-    Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
-  };
   const year = Number(m[1]);
-  const month = monthMap[m[2]];
+  const month = MONTH_INDEX[normalizeMonthName(m[2])];
   const day = Number(m[3]);
   const hour = Number(m[5]);
   const min = Number(m[6]);
   const sec = Number(m[7]);
-  if (Number.isNaN(month)) return 0;
+  if (month === undefined) return 0;
   return Date.UTC(year, month, day, hour, min, sec);
 }
 
@@ -114,19 +128,19 @@ function getPassengerRecordOutboundLine(section) {
 
 function getFlightDateFromTimestamp(timestamp) {
   if (!timestamp) return null;
-  const m = timestamp.match(/^(\d{4})\s+([A-Z][a-z]{2})\s+(\d{2}),/);
+  const m = timestamp.match(/^(\d{4})\s+([A-Za-z]+)\s+(\d{2}),/);
   if (!m) return null;
-  const mon = m[2].toUpperCase();
+  const mon = normalizeMonthName(m[2]).slice(0, 3);
+  if (MONTH_INDEX[mon] === undefined) return null;
   const yy = m[1].slice(-2);
   return `${m[3]}${mon}${yy}`;
 }
 
 function getYmdFromTimestamp(timestamp) {
   if (!timestamp) return null;
-  const m = timestamp.match(/^(\d{4})\s+([A-Z][a-z]{2})\s+(\d{2}),/);
+  const m = timestamp.match(/^(\d{4})\s+([A-Za-z]+)\s+(\d{2}),/);
   if (!m) return null;
-  const monMap = { Jan: '01', Feb: '02', Mar: '03', Apr: '04', May: '05', Jun: '06', Jul: '07', Aug: '08', Sep: '09', Oct: '10', Nov: '11', Dec: '12' };
-  const mm = monMap[m[2]];
+  const mm = MONTH_NUMBER[normalizeMonthName(m[2])];
   if (!mm) return null;
   return `${m[1]}-${mm}-${m[3]}`;
 }
@@ -282,7 +296,7 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
     ? `LR\\s+${escapeRegExp(flightNo)}\\/\\.\\/LAX\\/CWI`
     : 'LR\\s+[A-Z0-9]+\\/\\.\\/LAX\\/CWI';
   const checks = [
-    { key: 'ncwl', label: 'NCWL', ...findAcceptedCommand(/^>\s*NCWL\s*:/im) },
+    { key: 'ncwl', label: 'NCWL', ...findAcceptedCommand(/^>[ \t]*NCWL[ \t]*(?::[ \t]*)?$/im) },
     { key: 'cwd', label: 'CWD', ...hasCommand(/^>\s*CWD\s*:/im) },
     { key: 'crew1', label: 'LAXAPMU', ...findAcceptedCommand(new RegExp(`^>\\s*${lrPrefix}\\/LAXAPMU\\/PEKKN1E`, 'im')) },
     { key: 'crew2', label: 'CWI/N', ...findAcceptedCommand(new RegExp(`^>\\s*${lrPrefix}\\/N`, 'im')) },
