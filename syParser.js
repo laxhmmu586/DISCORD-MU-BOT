@@ -21,13 +21,13 @@ function splitLogicalSections(log) {
 
     if (cmd && !isContinuation) {
       if (current && current.content.trim()) sections.push(current);
-      current = { content: line + '\n', timestamp: pendingTimestamp || null };
+      current = { content: line + '\n', timestamp: pendingTimestamp || null, commandTimestamp: pendingTimestamp || null };
       pendingTimestamp = null;
       continue;
     }
 
     if (!current) {
-      current = { content: '', timestamp: pendingTimestamp || null };
+      current = { content: '', timestamp: pendingTimestamp || null, commandTimestamp: pendingTimestamp || null };
       pendingTimestamp = null;
     } else if (cmd && isContinuation && pendingTimestamp) {
       const currentTs = parseSectionTimestamp(current.timestamp);
@@ -186,6 +186,71 @@ function subtractMinutesFromTime(hhmm, minutes) {
   return `${String(Math.floor(total / 60)).padStart(2, '0')}${String(total % 60).padStart(2, '0')}`;
 }
 
+const JCSY_INTERNATIONAL_DESTS = new Set([
+  'ALA', 'CEB', 'DEL', 'HKG', 'MNL', 'SGN',
+  'BKK', 'CMB', 'DXB', 'HAN', 'MEL', 'SIN',
+  'BKI', 'CJU', 'DPS', 'ICN', 'MLE', 'TPE',
+  'CNX', 'DAC', 'KUL', 'NGO', 'VTE',
+  'CGK', 'KIX', 'OKA', 'KTI', 'PUS'
+]);
+
+function normalizeJcsyFlightNo(flightNo) {
+  const m = String(flightNo || '').trim().toUpperCase().match(/^([A-Z]+)(\d+)$/);
+  if (!m) return String(flightNo || '').trim().toUpperCase();
+  return `${m[1]}${m[2].padStart(4, '0')}`;
+}
+
+function classifyJcsyRow(row) {
+  const flightNo = String(row?.flightNo || '').toUpperCase();
+  const dest = String(row?.dest || '').toUpperCase();
+  if (/\+2\b/.test(String(row?.depart || ''))) return 'overnight';
+  if (!/^(MU|FM)/.test(flightNo) || flightNo === 'MU1113' || dest === 'PVG') return 'pvgOnly';
+  if (JCSY_INTERNATIONAL_DESTS.has(dest)) return 'international';
+  return 'domestic';
+}
+
+function parseJcsyRows(content) {
+  return String(content || '').split(/\r?\n/).map((line) => {
+    const m = line.match(/^\s*([A-Z]{2}\d{3,4})\s+\/([A-Z]{3})\/\s+(\d{4}(?:\+\d)?)/i);
+    if (!m) return null;
+    const row = {
+      flightNo: m[1].toUpperCase(),
+      dest: m[2].toUpperCase(),
+      depart: m[3].toUpperCase()
+    };
+    return { ...row, category: classifyJcsyRow(row) };
+  }).filter(Boolean);
+}
+
+function findJcsyInfo(sections, flightNo, flightYmd, formatTime) {
+  const flightDate = dateToDdMon(ymdToUtcDate(flightYmd));
+  const jcsyFlightNo = normalizeJcsyFlightNo(flightNo);
+  const flightDatePattern = escapeRegExp(flightDate);
+  const flightNoPattern = escapeRegExp(jcsyFlightNo);
+  const matches = Boolean(flightYmd && jcsyFlightNo && flightDate) ? sections.filter((sectionObj) => {
+    const ymd = getYmdFromTimestamp(sectionObj.timestamp);
+    const content = String(sectionObj.content || '').toUpperCase();
+    return ymd === flightYmd
+      && /^>\s*JCSY\s*:/im.test(content)
+      && new RegExp(`\\bJCSY:\\s*${flightNoPattern}/${flightDatePattern}/LAX,O\\b`, 'im').test(content);
+  }) : [];
+  const sectionObj = matches.sort((a, b) => parseSectionTimestamp(b.timestamp) - parseSectionTimestamp(a.timestamp))[0] || null;
+  const rows = parseJcsyRows(sectionObj?.content || '');
+  const groups = {
+    domestic: rows.filter((row) => row.category === 'domestic'),
+    international: rows.filter((row) => row.category === 'international'),
+    overnight: rows.filter((row) => row.category === 'overnight'),
+    pvgOnly: rows.filter((row) => row.category === 'pvgOnly')
+  };
+  return {
+    complete: Boolean(sectionObj),
+    time: formatTime(sectionObj?.commandTimestamp || sectionObj?.timestamp),
+    flightNo: jcsyFlightNo,
+    flightDate,
+    groups
+  };
+}
+
 function enrichCrewApisFromLog(log, info, targetYmd) {
   const sections = splitLogicalSections(log);
   const flightNo = String(info?.flightNo || '').trim().toUpperCase();
@@ -231,6 +296,7 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
     : '';
   const ccl = findAcceptedCommand(/^>\s*CCL\s*:/im);
   const cc = findAcceptedCommand(/^>\s*CC\s*:/im);
+  const jcsy = findJcsyInfo(sections, flightNo, flightYmd, formatTime);
   const baseYmd = targetYmd || flightYmd;
   const baseDateUtc = ymdToUtcDate(baseYmd);
   const netSearchYmd = flightYmd || baseYmd;
