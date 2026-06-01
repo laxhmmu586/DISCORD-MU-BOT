@@ -1003,17 +1003,20 @@
 
 
     .sy-progress-panel { order:-1; min-height:190px; overflow:hidden; border:none !important; box-shadow:none !important; background:transparent !important; padding:0 !important; }
-    .sy-progress-track-wrap.is-spacex { position:relative; min-height:190px; padding:0; overflow:hidden; }
-    .sy-progress-track-inner { position:relative; width:100%; min-width:0; height:190px; }
+    .sy-progress-track-wrap.is-spacex { position:relative; min-height:190px; padding:0; overflow-x:auto; overflow-y:hidden; scroll-snap-type:x proximity; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+    .sy-progress-track-wrap.is-spacex::-webkit-scrollbar { display:none; }
+    .sy-progress-track-inner { position:relative; width:100%; min-width:820px; height:190px; scroll-snap-align:center; }
     .sy-progress-line-svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
     .sy-progress-step.is-spacex-step { position:absolute; min-width:68px; gap:4px; transform:translate(-50%, -4px); z-index:2; color:rgba(241,245,249,.94); cursor:default; }
-    .sy-progress-step.is-spacex-step .sy-progress-dot { width:8px; height:8px; border:1.2px solid rgba(248,250,252,.96); background:#071827; box-shadow:0 0 0 1.5px rgba(7,24,39,.98); }
-    .sy-progress-step.is-spacex-step.is-complete .sy-progress-dot { border-color:#f8fafc; background:#22c55e; }
+    .sy-progress-step.is-spacex-step .sy-progress-dot { width:10px; height:10px; border:2px solid rgba(248,250,252,.96); background:#071827; box-shadow:0 0 0 1.5px rgba(7,24,39,.98); }
+    .sy-progress-step.is-spacex-step.is-complete .sy-progress-dot { border-color:#f8fafc; background:#f8fafc; }
     .sy-progress-step.is-spacex-step.is-warning .sy-progress-dot { border-color:#f8fafc; background:#f59e0b; }
     .sy-progress-step.is-spacex-step span:last-child { font-size:8px; line-height:1.05; font-weight:1000; letter-spacing:.15px; color:rgba(241,245,249,.95); text-transform:uppercase; }
     .sy-progress-step.is-spacex-step[data-action], .sy-progress-step.is-spacex-step[data-time-label] { cursor:pointer; }
-    .sy-progress-plane-marker { position:absolute; width:34px; height:15px; transform:translate(-50%, -50%) rotate(var(--plane-angle, 0deg)); z-index:3; color:#f8fafc; opacity:.95; pointer-events:none; }
+    .sy-progress-plane-marker { position:absolute; width:38px; height:16px; transform:translate(-50%, -50%) rotate(0deg); z-index:3; color:#f8fafc; opacity:.95; pointer-events:none; }
     .sy-progress-plane-marker svg { width:100%; height:100%; display:block; }
+    .sy-progress-swipe { position:absolute; left:50%; bottom:18px; width:min(44%, 360px); height:5px; transform:translateX(-50%); border-radius:999px; background:rgba(248,250,252,.32); overflow:hidden; }
+    .sy-progress-swipe-thumb { position:absolute; left:0; top:0; width:34%; height:100%; border-radius:999px; background:#f8fafc; }
     .sy-flight-hero { position:relative; min-height:190px; overflow:hidden; border:none !important; box-shadow:none !important; background:transparent !important; }
     .sy-flight-hero::before { display:none !important; }
     .sy-flight-clock { position:absolute; left:50%; top:74%; transform:translate(-50%, -50%); z-index:1; color:#f8fafc; font-size:28px; font-weight:300; letter-spacing:1.4px; white-space:nowrap; opacity:0; visibility:hidden; transition:opacity .18s ease; }
@@ -1072,12 +1075,14 @@
       .sy-progress-track-wrap { padding:8px 8px 0; }
       .sy-progress-track-wrap.is-arc { min-height:140px; }
       .sy-progress-track-wrap.is-spacex { min-height:150px; }
-      .sy-progress-track-inner { height:150px; }
+      .sy-progress-track-inner { height:150px; min-width:640px; }
       .sy-flight-hero { min-height:150px; }
       .sy-flight-clock { font-size:21px; top:75%; }
       .sy-progress-step.is-spacex-step { min-width:56px; }
       .sy-progress-step.is-spacex-step { transform:translate(-50%, -4px); }
-      .sy-progress-step.is-spacex-step .sy-progress-dot { width:8px; height:8px; }
+      .sy-progress-step.is-spacex-step .sy-progress-dot { width:9px; height:9px; }
+      .sy-progress-plane-marker { width:32px; height:14px; }
+      .sy-progress-swipe { bottom:13px; width:58%; }
       .sy-progress-step.is-spacex-step span:last-child { font-size:7px; }
       .sy-top-grid { grid-template-columns:.8fr .8fr .8fr 1.6fr; padding:12px 10px; }
       .sy-top-grid .sy-bags-value { font-size:11px; letter-spacing:-.4px; }
@@ -2681,33 +2686,17 @@
         { ...ccStep, key: 'cc', label: 'CC', timeAction: true }
       ];
       const denominator = Math.max(steps.length - 1, 1);
-      const arcPath = 'M 6 51 C 26 18, 74 18, 94 51';
-      const cubicPoint = (t) => {
-        const p0 = { x: 6, y: 51 };
-        const p1 = { x: 26, y: 18 };
-        const p2 = { x: 74, y: 18 };
-        const p3 = { x: 94, y: 51 };
-        const mt = 1 - t;
-        return {
-          x: (mt ** 3 * p0.x) + (3 * mt ** 2 * t * p1.x) + (3 * mt * t ** 2 * p2.x) + (t ** 3 * p3.x),
-          y: (mt ** 3 * p0.y) + (3 * mt ** 2 * t * p1.y) + (3 * mt * t ** 2 * p2.y) + (t ** 3 * p3.y)
-        };
-      };
-      const points = steps.map((_, idx) => cubicPoint(idx / denominator));
+      const timelinePath = 'M 8 46 H 92';
+      const points = steps.map((_, idx) => ({
+        x: 8 + ((84 * idx) / denominator),
+        y: 46
+      }));
       const ccIndex = steps.findIndex((step) => step.key === 'cc');
       const cclIndex = steps.findIndex((step) => step.key === 'ccl');
       const crewIndex = steps.findIndex((step) => step.key === 'crewApis');
       const currentStageIndex = ccStep.complete ? ccIndex : (cclStep.complete ? cclIndex : (crewStep.complete ? crewIndex : -1));
       const planePoint = currentStageIndex >= 0 ? points[currentStageIndex] : null;
-      const planeAngle = currentStageIndex >= 0
-        ? (() => {
-          const t = currentStageIndex / denominator;
-          const before = cubicPoint(Math.max(0, t - 0.01));
-          const after = cubicPoint(Math.min(1, t + 0.01));
-          return Math.atan2(after.y - before.y, after.x - before.x) * 180 / Math.PI;
-        })()
-        : 0;
-      const planeHtml = planePoint ? `<div class="sy-progress-plane-marker" style="left:${planePoint.x}%; top:${planePoint.y}%; --plane-angle:${planeAngle}deg;" aria-hidden="true">
+      const planeHtml = planePoint ? `<div class="sy-progress-plane-marker" style="left:${planePoint.x}%; top:${planePoint.y - 10}%;" aria-hidden="true">
         <svg viewBox="0 0 110 42" role="img" focusable="false"><path d="M105 20.8c-7.2 4.5-16.6 5.2-27.9 2.2L49 15.8 26 31.4c-2.9 2-6.8 1.3-8.9-1.4l16.3-19.2-20.8-5.2-7.4 6.6L0 9.9 8.1.8l90.2 10.6c5.7.7 9.1 4.6 6.7 9.4Z" fill="currentColor"/></svg>
       </div>` : '';
       const stepHtml = steps.map((step, idx) => {
@@ -2726,13 +2715,52 @@
       el.classList.add('is-spacex');
       el.innerHTML = `<div class="sy-progress-track-inner">
         <svg class="sy-progress-line-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-          <path d="${arcPath}" fill="none" stroke="rgba(255,255,255,.92)" stroke-width=".7" stroke-linecap="round" />
-          <path d="${arcPath}" fill="none" stroke="rgba(255,255,255,.86)" stroke-width="1.55" stroke-linecap="round" pathLength="100" stroke-dasharray="58 100" stroke-dashoffset="-21" />
+          <path d="${timelinePath}" fill="none" stroke="rgba(255,255,255,.34)" stroke-width=".8" stroke-linecap="round" />
+          <path d="${timelinePath}" fill="none" stroke="rgba(255,255,255,.94)" stroke-width="1.45" stroke-linecap="round" pathLength="100" stroke-dasharray="46 100" stroke-dashoffset="-27" />
         </svg>
         ${planeHtml}
         <div id="syFlightClock" class="sy-flight-clock"></div>
         ${stepHtml}
+        <div class="sy-progress-swipe" aria-hidden="true"><div class="sy-progress-swipe-thumb"></div></div>
       </div>`;
+      const updateSwipeThumb = () => {
+        const thumb = el.querySelector('.sy-progress-swipe-thumb');
+        if (!thumb) return;
+        const maxScroll = Math.max(0, el.scrollWidth - el.clientWidth);
+        const ratio = maxScroll ? el.scrollLeft / maxScroll : 0;
+        const thumbWidth = maxScroll ? Math.max(24, (el.clientWidth / el.scrollWidth) * 100) : 100;
+        const boundedWidth = Math.min(100, thumbWidth);
+        thumb.style.width = `${boundedWidth}%`;
+        thumb.style.left = `${ratio * (100 - boundedWidth)}%`;
+      };
+      el.onscroll = updateSwipeThumb;
+      const swipeRail = el.querySelector('.sy-progress-swipe');
+      swipeRail?.addEventListener('pointerdown', (event) => {
+        const rect = swipeRail.getBoundingClientRect();
+        const maxScroll = Math.max(0, el.scrollWidth - el.clientWidth);
+        if (!rect.width || !maxScroll) return;
+        const moveTo = (clientX) => {
+          const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+          el.scrollLeft = ratio * maxScroll;
+        };
+        moveTo(event.clientX);
+        swipeRail.setPointerCapture?.(event.pointerId);
+        const onMove = (moveEvent) => moveTo(moveEvent.clientX);
+        const onUp = () => {
+          swipeRail.removeEventListener('pointermove', onMove);
+          swipeRail.removeEventListener('pointerup', onUp);
+          swipeRail.removeEventListener('pointercancel', onUp);
+        };
+        swipeRail.addEventListener('pointermove', onMove);
+        swipeRail.addEventListener('pointerup', onUp);
+        swipeRail.addEventListener('pointercancel', onUp);
+      });
+      requestAnimationFrame(updateSwipeThumb);
+      if (planePoint) requestAnimationFrame(() => {
+        const stageLeft = (planePoint.x / 100) * (el.scrollWidth || 0);
+        el.scrollLeft = Math.max(0, stageLeft - (el.clientWidth * 0.18));
+        updateSwipeThumb();
+      });
       el.querySelectorAll('[data-action], [data-time-label]').forEach((node) => {
         node.addEventListener('click', () => {
           const action = node.getAttribute('data-action');
