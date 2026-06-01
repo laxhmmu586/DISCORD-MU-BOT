@@ -798,6 +798,26 @@
       pointer-events: none;
       white-space: pre-line;
     }
+
+    .audit-review-actions { display:flex; gap:8px; margin-top:10px; align-items:center; flex-wrap:wrap; }
+    .audit-review-btn { min-width:38px; min-height:32px; padding:6px 10px; border-radius:10px; background:rgba(148,163,184,.14); border:1px solid rgba(148,163,184,.35); color:#e5e7eb; }
+    .audit-review-btn.pass.is-active, .audit-review-btn.pass:hover { background:#16a34a; border-color:#86efac; color:#ffffff; }
+    .audit-review-btn.fail.is-active, .audit-review-btn.fail:hover { background:#dc2626; border-color:#fecaca; color:#ffffff; }
+    .audit-review-comment { width:100%; min-height:58px; resize:vertical; margin-top:8px; border-radius:10px; border:1px solid rgba(148,163,184,.35); background:rgba(7,24,39,.86); color:#ffffff; padding:9px 10px; font-family:inherit; }
+    .audit-review-display { margin-top:8px; padding:8px 10px; border-radius:10px; border:1px solid rgba(147,197,253,.24); background:rgba(15,23,42,.55); color:#dbeafe; font-size:12px; line-height:1.4; white-space:pre-wrap; }
+    .audit-card.audit-review-pass, .audit-list-row.audit-review-pass { border-color:rgba(34,197,94,.95); background:linear-gradient(145deg, rgba(20,83,45,.96), rgba(13,34,56,.9)); }
+    .audit-card.audit-review-fail, .audit-list-row.audit-review-fail { border-color:rgba(239,68,68,.95); background:linear-gradient(145deg, rgba(69,10,10,.96), rgba(13,34,56,.9)); }
+    .psm-list { display:flex; flex-direction:column; gap:10px; margin-top:10px; }
+    .psm-card { border:1px solid rgba(96,165,250,.68); border-radius:12px; padding:10px 12px; display:grid; gap:8px; background:linear-gradient(145deg, rgba(13,34,56,.96), rgba(7,24,39,.92)); color:#e2e8f0; font-size:13px; line-height:1.45; box-shadow:0 12px 26px rgba(37,99,235,.16); }
+    .psm-card b { color:#fde047; }
+    .psm-lines { margin-top:6px; white-space:pre-wrap; color:#bfdbfe; }
+    .psm-card-top { display:flex; justify-content:space-between; align-items:center; gap:10px; }
+    .psm-bn { color:#fde047; font-size:19px; font-weight:1000; margin-right:10px; display:inline-block; }
+    .psm-pill { border-radius:999px; padding:4px 9px; background:rgba(96,165,250,.18); color:#bfdbfe; font-size:11px; font-weight:900; }
+    .psm-meta { color:#e5edf8; font-size:14px; font-weight:800; }
+    .psm-field { border-top:1px solid rgba(96,165,250,.18); padding-top:7px; color:#dbeafe; font-size:13px; line-height:1.45; }
+    .psm-field-label { color:#93c5fd; font-weight:900; margin-right:6px; }
+
     @media (max-width: 768px) {
       .audit-workspace { grid-template-columns:1fr; width:100%; }
       .audit-list { grid-template-columns:repeat(4, minmax(0, 1fr)); grid-template-rows:repeat(100, auto); max-height:520px; }
@@ -856,13 +876,14 @@
     .seat { color:var(--ops-muted); font-size:15px; letter-spacing:.5px; margin:0 0 18px; }
     .name { display:none; }
     .action-menu-wrap { margin-left:auto; }
+    .flight-row .action-menu-wrap { margin-top:14px; }
     .action-menu-btn { color:#a7b4c6; font-size:28px; padding:2px 8px; }
     .action-menu-pop { background:#071827; border-color:rgba(77,112,148,.72); min-width:190px; }
     .action-menu-item { border-radius:10px; }
     .action-menu-item[style*="none"] { display:none !important; }
 
     .sy-dashboard { display:grid; grid-template-columns:1fr; row-gap:18px; }
-    .sy-hero-meta { color:var(--ops-muted); font-size:15px; letter-spacing:.6px; margin:0 0 8px; }
+    .sy-hero-meta { color:var(--ops-muted); font-size:15px; letter-spacing:.6px; margin:0 0 18px; padding-bottom:22px; border-bottom:1px solid rgba(77,112,148,.46); }
     .sy-top-grid { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); column-gap:10px; row-gap:10px; }
     .sy-stat-card, .sy-panel {
       border:1px solid rgba(74,112,150,.74);
@@ -956,6 +977,8 @@
     .chd-summary { color:#fda4af; font-weight:800; }
 
     .audit-summary-bar, .seatmap-summary { border:none; border-radius:0; padding:0 0 8px; background:transparent; }
+    .audit-summary-main { justify-content:flex-end; text-align:right; }
+    .audit-summary-main .detail-title { margin-left:auto; text-align:right; }
     .audit-workspace { width:calc(100% + var(--audit-detail-width) + 14px); max-width:none; }
     .seatmap-workspace { width:calc(100% + var(--seatmap-detail-width) + 14px); max-width:none; }
     .audit-workspace.no-detail, .seatmap-workspace.no-detail { width:100%; max-width:100%; }
@@ -971,11 +994,67 @@
     .seatmap-wrap { box-shadow:0 16px 32px rgba(0,0,0,.18); }
     .seatmap-seat { border-radius:9px; }
 
+
+    .sy-progress-panel { order:-1; min-height:190px; background:radial-gradient(circle at 50% 10%, rgba(96,165,250,.16), transparent 14rem), linear-gradient(145deg, rgba(6,22,38,.98), rgba(4,16,29,.96)); }
+    .sy-progress-track-wrap.is-arc { position:relative; min-height:158px; padding:0; overflow:hidden; }
+    .sy-progress-arc-svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+    .sy-progress-step.is-arc-step { position:absolute; min-width:70px; gap:5px; transform:translate(-50%, -50%); z-index:2; }
+    .sy-progress-step.is-arc-step .sy-progress-dot { width:18px; height:18px; }
+    .sy-progress-plane.is-arc-plane { top:auto; left:auto; z-index:3; transform:translate(-50%, -50%); }
+
+
+    .sy-progress-panel { order:-1; min-height:232px; overflow:hidden; border:none !important; border-radius:0 !important; box-shadow:none !important; background:transparent !important; padding:0 0 18px !important; }
+    .sy-progress-track-wrap.is-spacex { position:relative; min-height:214px; padding:0; overflow-x:auto; overflow-y:hidden; scroll-snap-type:x proximity; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+    .sy-progress-track-wrap.is-spacex::-webkit-scrollbar { display:none; }
+    .sy-progress-track-inner { position:relative; width:100%; min-width:820px; height:214px; scroll-snap-align:center; }
+    .sy-progress-line-svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+    .sy-progress-step.is-spacex-step { position:absolute; min-width:68px; gap:4px; transform:translate(-50%, -4px); z-index:2; color:rgba(241,245,249,.94); cursor:default; }
+    .sy-progress-step.is-spacex-step .sy-progress-dot { width:10px; height:10px; border:2px solid rgba(248,250,252,.96); background:#071827; box-shadow:0 0 0 1.5px rgba(7,24,39,.98); }
+    .sy-progress-step.is-spacex-step.is-complete .sy-progress-dot { border-color:#f8fafc; background:#22c55e; }
+    .sy-progress-step.is-spacex-step.is-warning .sy-progress-dot { border-color:#f8fafc; background:#f59e0b; }
+    .sy-progress-step.is-spacex-step span:last-child { font-size:8px; line-height:1.05; font-weight:1000; letter-spacing:.15px; color:rgba(241,245,249,.95); text-transform:uppercase; }
+    .sy-progress-issue-count { position:absolute; left:50%; top:-22px; transform:translateX(-50%); color:#ef4444; font-size:22px; line-height:1; font-weight:1000; letter-spacing:.2px; }
+    .sy-progress-step.is-spacex-step[data-action], .sy-progress-step.is-spacex-step[data-time-label] { cursor:pointer; }
+    .sy-progress-plane-marker { position:absolute; width:38px; height:16px; transform:translate(-50%, -50%) rotate(0deg); z-index:3; color:#f8fafc; opacity:.95; pointer-events:none; }
+    .sy-progress-plane-marker svg { width:100%; height:100%; display:block; transform:scaleY(-1); }
+    .sy-progress-swipe { position:absolute; left:50%; bottom:24px; width:min(62%, 460px); height:22px; transform:translateX(-50%); border-radius:999px; overflow:hidden; cursor:grab; touch-action:none; z-index:4; }
+    .sy-progress-swipe:active { cursor:grabbing; }
+    .sy-progress-swipe::before { content:""; position:absolute; left:0; right:0; top:9px; height:3px; border-radius:999px; background:rgba(248,250,252,.36); }
+    .sy-progress-swipe-thumb { position:absolute; left:0; top:8px; width:24%; height:5px; border-radius:999px; background:#f8fafc; }
+    .sy-flight-hero { position:relative; min-height:190px; overflow:hidden; border:none !important; box-shadow:none !important; background:transparent !important; }
+    .sy-flight-hero::before { display:none !important; }
+    .sy-flight-clock { position:absolute; left:50%; top:74%; transform:translate(-50%, -50%); z-index:1; color:#f8fafc; font-size:28px; font-weight:300; letter-spacing:1.4px; white-space:nowrap; opacity:0; visibility:hidden; transition:opacity .18s ease; }
+    .sy-flight-clock.is-visible { opacity:1; visibility:visible; }
+    .sy-flight-phase, .sy-flight-caption, .sy-progress-plane.is-spacex-plane { display:none !important; }
+    .sy-top-grid { grid-template-columns:.9fr .9fr .9fr 1.35fr; border:1px solid rgba(148,163,184,.45); border-radius:22px; padding:14px 16px; background:rgba(8,28,48,.66); box-shadow:inset 0 1px 0 rgba(255,255,255,.06), 0 18px 36px rgba(0,0,0,.2); }
+    .sy-top-grid .sy-stat-card { min-height:58px; padding:0 10px; border:0; border-radius:0; background:transparent; box-shadow:none; border-right:1px solid rgba(148,163,184,.26); }
+    .sy-top-grid .sy-stat-card:last-child { border-right:0; }
+    .sy-top-grid .sy-stat-icon { display:none; }
+    .sy-top-grid .label { color:#cbd5e1; font-size:12px; letter-spacing:1.2px; font-weight:500; }
+    .sy-top-grid .sy-stat-value { font-size:18px; letter-spacing:.8px; }
+    .sy-top-grid .sy-bags-value { font-size:13px; letter-spacing:-.25px; white-space:nowrap; }
+    .sy-main-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); column-gap:16px; row-gap:16px; }
+    .sy-count-card { border-radius:18px; padding:18px 22px; }
+    .sy-count-card .sy-panel-title { letter-spacing:1.4px; }
+    .sy-count-row { font-size:22px; letter-spacing:1.2px; }
+    .sy-sub-count-row { display:grid !important; }
+    .sy-sub-count-row span { font-size:0; }
+    .sy-sub-count-row .sy-count-prefix { display:block; font-size:11px; line-height:1.1; margin-bottom:4px; }
+    .sy-sub-count-row b { font-size:22px; }
+    .sy-count-row .cabin-f b, .sy-count-row .cabin-j b, .sy-count-row .cabin-y b { font-size:22px; }
+    .sy-count-row .cabin-f { color:#bf7cff; }
+    .sy-count-row .cabin-j { color:#65a9ff; }
+    .sy-count-row .cabin-y { color:#55d86b; }
+    .sy-rk-panel, .sy-flight-data-panel { border-radius:18px; padding:18px 20px; }
+    .sy-flight-data-panel .sy-toggle-row { grid-template-columns:repeat(4, minmax(0,1fr)); }
+    .sy-flight-data-panel .sy-data-tile { min-height:42px; border-radius:9px; background:rgba(7,24,39,.45); }
+
     @media (max-width: 520px) {
       body { overflow-x:hidden; }
       .container { max-width:100%; padding:12px; overflow:hidden; }
-      .auth-bar { flex-direction:column; align-items:flex-start; gap:10px; }
-      .auth-actions { width:auto; justify-content:flex-start; gap:10px; }
+      .auth-bar { flex-direction:row; align-items:flex-start; gap:8px; }
+      .auth-user { flex:1 1 auto; min-width:0; overflow:hidden; white-space:normal; }
+      .auth-actions { margin-left:auto; width:auto; justify-content:flex-end; gap:8px; flex-shrink:0; }
       .card { padding:14px; }
       .flight { font-size:23px; }
       .seat, .sy-hero-meta { font-size:13px; }
@@ -998,11 +1077,29 @@
       .sy-pax-item:nth-child(n+3) { border-bottom:0; }
       .sy-main-grid { grid-template-columns:1fr; row-gap:18px; }
       .sy-stack { display:flex; flex-direction:column; }
-      .sy-progress-panel { padding:14px; overflow:hidden; }
+      .sy-progress-panel { padding:0 0 16px !important; overflow:hidden; min-height:190px; }
       .sy-data-tile { min-height:50px; padding:7px 2px; gap:2px; font-size:8px; }
       .sy-progress-panel { margin-top:0; }
       .sy-progress-track-wrap { padding:8px 8px 0; }
-      .sy-progress-step { min-width:auto; font-size:9px; }
+      .sy-progress-track-wrap.is-arc { min-height:140px; }
+      .sy-progress-track-wrap.is-spacex { min-height:174px; }
+      .sy-progress-track-inner { height:174px; min-width:760px; }
+      .sy-flight-hero { min-height:190px; }
+      .sy-flight-clock { font-size:21px; top:75%; }
+      .sy-progress-step.is-spacex-step { min-width:56px; }
+      .sy-progress-step.is-spacex-step { transform:translate(-50%, -4px); }
+      .sy-progress-step.is-spacex-step .sy-progress-dot { width:9px; height:9px; }
+      .sy-progress-plane-marker { width:32px; height:14px; }
+      .sy-progress-swipe { bottom:20px; width:76%; }
+      .sy-progress-issue-count { top:-19px; font-size:18px; }
+      .sy-sub-count-row b { font-size:19px; }
+      .sy-progress-step.is-spacex-step span:last-child { font-size:7px; }
+      .sy-top-grid { grid-template-columns:.8fr .8fr .8fr 1.6fr; padding:12px 10px; }
+      .sy-top-grid .sy-bags-value { font-size:11px; letter-spacing:-.4px; }
+      .sy-flight-data-panel .sy-toggle-row { grid-template-columns:repeat(2, minmax(0,1fr)); }
+      .sy-progress-step { min-width:auto; font-size:8px; }
+      .sy-progress-step.is-arc-step { min-width:48px; }
+      .sy-progress-step.is-arc-step .sy-progress-dot { width:14px; height:14px; }
       .sy-progress-steps::before { left:24px; right:24px; }
       .sy-progress-plane { font-size:17px; }
       .sy-data-tile .tile-icon { font-size:14px; }
@@ -1120,6 +1217,10 @@
         <div id="syLayout" class="sy-layout sy-dashboard" style="display:none;">
           <div class="sy-hero-meta" id="syHeaderMeta"></div>
 
+          <div class="sy-panel sy-progress-panel sy-flight-hero">
+            <div id="syProgressTrack" class="sy-progress-track-wrap"></div>
+          </div>
+
           <div class="sy-top-grid">
             <div class="sy-stat-card sy-gate-card">
               <div class="sy-stat-icon gate-icon"><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M10 52h7V19h30v33h7V14H10v38Zm15 0h14V28H25v24Zm4-18h6m-6 9h6" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
@@ -1164,10 +1265,6 @@
             </div>
           </div>
 
-          <div class="sy-panel sy-progress-panel">
-            <div id="syProgressTrack" class="sy-progress-track-wrap"></div>
-          </div>
-
           <div class="sy-panel sy-rk-panel">
             <div class="sy-panel-title"><span class="sy-panel-icon muted">▤</span> RK MESSAGE</div>
             <div id="syRk" class="value sy-rk-value"></div>
@@ -1186,6 +1283,7 @@
               <button id="ckinNbrdToggleBtn" class="chd-toggle-btn sy-data-tile ckin-nbrd-btn" style="display:none;" onclick="toggleCkinNbrdPanel()"><span class="tile-icon">✎</span><span>CKIN/NBRD</span><b id="ckinNbrdTileCount"></b></button>
               <button id="wchToggleBtn" class="chd-toggle-btn wch-btn sy-data-tile" style="display:none;" onclick="toggleWchPanel()"><span class="tile-icon">♿</span><span>WCH</span><b id="wchTileCount"></b></button>
               <button id="membershipToggleBtn" class="chd-toggle-btn membership-btn sy-data-tile" style="display:none;" onclick="toggleMembershipPanel()"><span class="tile-icon">★</span><span>Membership</span></button>
+              <button id="psmToggleBtn" class="chd-toggle-btn sy-data-tile" style="display:none;" onclick="togglePsmPanel()"><span class="tile-icon">✉</span><span>PSM</span><b id="psmTileCount"></b></button>
             </div>
           </div>
           <div id="chdSection" class="sy-panel sy-detail-panel" style="display:none;">
@@ -1211,6 +1309,10 @@
           <div id="membershipPanelSection" class="sy-panel sy-detail-panel" style="display:none;">
             <div id="membershipSummary" class="chd-summary membership-summary"></div>
             <div id="membershipList" class="membership-list"></div>
+          </div>
+          <div id="psmSection" class="sy-panel sy-detail-panel" style="display:none;">
+            <div id="psmSummary" class="chd-summary"></div>
+            <div id="psmList" class="psm-list"></div>
           </div>
         </div>
 
@@ -1469,6 +1571,7 @@
     let wchPanelOpen = false;
     let membershipPanelOpen = false;
     let ckinNbrdPanelOpen = false;
+    let psmPanelOpen = false;
     let currentGovAqqStatus = 'ok';
     let currentSyFlightNo = '';
     let currentSyFlightDate = '';
@@ -1476,6 +1579,8 @@
     let hasAutoLoadedSyToday = false;
     let currentBnAudit = [];
     let currentSeatMapRecords = [];
+    let currentSecurityReviews = {};
+    let currentPsmRows = [];
 
         function resolveApiBase() {
       const fromWindow = window.MU_API_BASE || '';
@@ -1775,10 +1880,23 @@
       if (label === 'BAG') return 'BAG check passed; allowance and destination detail was not returned for this record';
       return 'Check passed by current audit rule';
     }
+    function reviewClassForRow(row) {
+      if (row?.review?.status === 'pass') return 'audit-review-pass';
+      if (row?.review?.status === 'fail') return 'audit-review-fail';
+      return '';
+    }
+
+    function reviewedOverall(overall, row) {
+      if (row?.review?.status === 'pass') return 'pass';
+      if (row?.review?.status === 'fail') return 'fail';
+      return overall;
+    }
+
     function buildAuditCard(bn, row, expanded = false) {
       const items = auditItemsForRow(row);
-      const overall = overallAuditStatus(items);
-      const overallLabel = auditOverallLabel(overall);
+      const rawOverall = overallAuditStatus(items);
+      const overall = reviewedOverall(rawOverall, row);
+      const overallLabel = row?.review?.status === 'pass' ? 'Reviewed' : (row?.review?.status === 'fail' ? 'Rejected' : auditOverallLabel(overall));
       const itemBadges = items.map((item) => `<div class="audit-mini-status ${auditDisplayClass(item)}">${escapeHtmlText(item.label)} ${emojiByStatus(item.status)}</div>`).join('');
       const details = items.map((item) => {
         const reason = item.reason || (item.status === 'pass' ? auditPassReason(item.label) : 'No data yet');
@@ -1789,20 +1907,29 @@
           <span class="audit-detail-reason${reasonClass}">${escapeHtmlText(reason)}</span>
         </div>`;
       }).join('');
-      return `<div class="audit-card audit-${overall}${expanded ? ' is-expanded' : ''}" data-bn="${escapeAttr(bn)}" role="button" tabindex="0" aria-expanded="${expanded ? 'true' : 'false'}">
+      const review = row?.review || {};
+      const reviewerLine = review.reviewer ? `<br><b>By:</b> ${escapeHtmlText(review.reviewer)}` : '';
+      const reviewDisplay = review.status ? `<div class="audit-review-display"><b>Review:</b> ${escapeHtmlText(review.status === 'pass' ? 'Approved' : 'Rejected')}${reviewerLine}${review.comment ? `<br>${escapeHtmlText(review.comment)}` : ''}</div>` : '<div class="audit-review-display">No review comment yet.</div>';
+      const reviewControls = expanded ? `<div class="audit-review-actions">
+          <button type="button" class="audit-review-btn pass${review.status === 'pass' ? ' is-active' : ''}" onclick="event.stopPropagation(); saveSecurityReview('${escapeAttr(bn)}', 'pass')">√</button>
+          <button type="button" class="audit-review-btn fail${review.status === 'fail' ? ' is-active' : ''}" onclick="event.stopPropagation(); saveSecurityReview('${escapeAttr(bn)}', 'fail')">X</button>
+        </div>
+        <textarea class="audit-review-comment" data-bn="${escapeAttr(bn)}" onclick="event.stopPropagation()" placeholder="Review comment">${escapeHtmlText(review.comment || '')}</textarea>
+        ${reviewDisplay}` : reviewDisplay;
+      return `<div class="audit-card audit-${overall} ${reviewClassForRow(row)}${expanded ? ' is-expanded' : ''}" data-bn="${escapeAttr(bn)}" role="button" tabindex="0" aria-expanded="${expanded ? 'true' : 'false'}">
         <div class="audit-card-top">
           <div class="audit-bn">BN${escapeHtmlText(bn)}</div>
           <div class="audit-overall-pill ${overall}">${escapeHtmlText(overallLabel)}</div>
         </div>
         <div class="audit-mini-statuses">${itemBadges}</div>
-        <div class="audit-details">${details}</div>
+        <div class="audit-details">${details}${reviewControls}</div>
         <div class="audit-expand-hint">Click to expand details</div>
       </div>`;
     }
     function buildAuditListRow(bn, row, selected = false) {
       const items = auditItemsForRow(row);
-      const overall = overallAuditStatus(items);
-      return `<button type="button" class="audit-list-row audit-${overall}${selected ? ' is-selected' : ''}" data-bn="${escapeAttr(bn)}" aria-pressed="${selected ? 'true' : 'false'}">
+      const overall = reviewedOverall(overallAuditStatus(items), row);
+      return `<button type="button" class="audit-list-row audit-${overall} ${reviewClassForRow(row)}${selected ? ' is-selected' : ''}" data-bn="${escapeAttr(bn)}" aria-pressed="${selected ? 'true' : 'false'}">
         <span class="audit-list-bn">${escapeHtmlText(bn)}</span>
       </button>`;
     }
@@ -1840,8 +1967,8 @@
         ['BN', `BN${record.bn || bn}`],
         ['Seat', record.seat || ''],
         ['Cabin', record.cabin || ''],
-        ['Passport', record.passportNo || ''],
-        ['Membership', formatAuditMembership(record)],
+        ['Passport', maskSensitiveId(record.passportNo || '', 1, 4)],
+        ['Membership', maskMembershipDisplay(formatAuditMembership(record))],
         ['Ticket', record.ticketNo || ''],
         ['Infant Ticket', record.infantTicketNo || (record.hasInfant ? 'INFANT' : '')],
         ['Bags', joinAuditValues(record.bagtags)],
@@ -2107,8 +2234,8 @@
         ['BN', bn],
         ['Seat', seat],
         ['Cabin', record.cabin || ''],
-        ['Passport', record.passportNo || ''],
-        ['Membership', formatAuditMembership(record)],
+        ['Passport', maskSensitiveId(record.passportNo || '', 1, 4)],
+        ['Membership', maskMembershipDisplay(formatAuditMembership(record))],
         ['Ticket', record.ticketNo || ''],
         ['Infant Ticket', record.infantTicketNo || (record.hasInfant ? 'INFANT' : '')],
         ['Bags', formatSeatMapValue(record.bagtags)],
@@ -2176,6 +2303,32 @@
       setDisplayById('syAuditLayout', 'block');
     }
 
+
+    function wireAuditListButton(listRow, content) {
+      const byBn = new Map((currentBnAudit || []).map((x) => [x.bn, x]));
+      const workspace = content.querySelector('.audit-workspace');
+      const detailPanel = content.querySelector('.audit-detail-panel');
+      listRow.addEventListener('click', () => {
+        const wasSelected = listRow.classList.contains('is-selected');
+        const bn = listRow.dataset.bn || '001';
+        content.querySelectorAll('.audit-list-row').forEach((el) => {
+          el.classList.remove('is-selected');
+          el.setAttribute('aria-pressed', 'false');
+        });
+        if (wasSelected) {
+          detailPanel.style.display = 'none';
+          detailPanel.innerHTML = '';
+          if (workspace) workspace.classList.add('no-detail');
+          return;
+        }
+        listRow.classList.add('is-selected');
+        listRow.setAttribute('aria-pressed', 'true');
+        detailPanel.innerHTML = buildAuditDetailPanel(bn, byBn.get(bn));
+        detailPanel.style.display = 'flex';
+        if (workspace) workspace.classList.remove('no-detail');
+      });
+    }
+
     function showBnAuditPage() {
       const byBn = new Map((currentBnAudit || []).map((x) => [x.bn, x]));
       const auditRows = [];
@@ -2186,16 +2339,16 @@
         const bn = String(i).padStart(3, '0');
         const row = byBn.get(bn);
         const items = auditItemsForRow(row);
-        const overall = overallAuditStatus(items);
-        if (overall === 'warning') warningCount += 1;
+        const overall = reviewedOverall(overallAuditStatus(items), row);
+        if (overall === 'warning' || overall === 'bag-review') warningCount += 1;
         if (overall === 'fail') failCount += 1;
         if (overall === 'pass') completeCount += 1;
         auditRows.push({ bn, row, overall });
       }
       const listRows = auditRows.map((item) => buildAuditListRow(item.bn, item.row, false));
       document.getElementById('syAuditContent').innerHTML = `<div class="audit-summary-bar">
-          <div class="audit-summary-main">
-            <div class="detail-title" style="text-align:left; font-size:18px; font-weight:900; letter-spacing:.4px;">Security Check</div>
+          <div class="audit-summary-main" style="align-items:flex-end; flex-direction:column;">
+            <div class="detail-title" style="width:100%; text-align:right; font-size:18px; font-weight:900; letter-spacing:.4px;">SECURITY CHECK</div>
             <div class="audit-summary-subtitle">${completeCount} complete • ${warningCount} warning • ${failCount} fail</div>
           </div>
         </div>
@@ -2206,27 +2359,7 @@
       const content = document.getElementById('syAuditContent');
       const workspace = content.querySelector('.audit-workspace');
       const detailPanel = content.querySelector('.audit-detail-panel');
-      content.querySelectorAll('.audit-list-row').forEach((listRow) => {
-        listRow.addEventListener('click', () => {
-          const wasSelected = listRow.classList.contains('is-selected');
-          const bn = listRow.dataset.bn || '001';
-          content.querySelectorAll('.audit-list-row').forEach((el) => {
-            el.classList.remove('is-selected');
-            el.setAttribute('aria-pressed', 'false');
-          });
-          if (wasSelected) {
-            detailPanel.style.display = 'none';
-            detailPanel.innerHTML = '';
-            if (workspace) workspace.classList.add('no-detail');
-            return;
-          }
-          listRow.classList.add('is-selected');
-          listRow.setAttribute('aria-pressed', 'true');
-          detailPanel.innerHTML = buildAuditDetailPanel(bn, byBn.get(bn));
-          detailPanel.style.display = 'flex';
-          if (workspace) workspace.classList.remove('no-detail');
-        });
-      });
+      content.querySelectorAll('.audit-list-row').forEach((listRow) => wireAuditListButton(listRow, content));
       setDisplayById('syLayout', 'none');
       setDisplayById('syBagDetailLayout', 'none');
       setDisplayById('syAuditLayout', 'block');
@@ -2316,17 +2449,20 @@
         wchPanelOpen = false;
         membershipPanelOpen = false;
         ckinNbrdPanelOpen = false;
+        psmPanelOpen = false;
       }
       setDisplayById('chdSection', chdPanelOpen ? 'block' : 'none');
       setDisplayById('govAqqSection', 'none');
       setDisplayById('ckinNbrdSection', 'none');
       setDisplayById('wchSection', 'none');
       setDisplayById('membershipPanelSection', 'none');
+      setDisplayById('psmSection', 'none');
       setTextById('chdToggleBtn', chdPanelOpen ? 'Hide' : 'CHD List');
       setTextById('govAqqToggleBtn', 'GOV/AQQ');
       setTextById('ckinNbrdToggleBtn', 'CKIN/NBRD');
       setTextById('wchToggleBtn', 'WCH');
       setTextById('membershipToggleBtn', 'Membership');
+      setTextById('psmToggleBtn', 'PSM');
     }
 
     function toggleGovAqqPanel() {
@@ -2337,17 +2473,20 @@
         wchPanelOpen = false;
         membershipPanelOpen = false;
         ckinNbrdPanelOpen = false;
+        psmPanelOpen = false;
       }
       setDisplayById('govAqqSection', govAqqPanelOpen ? 'block' : 'none');
       setDisplayById('chdSection', 'none');
       setDisplayById('ckinNbrdSection', 'none');
       setDisplayById('wchSection', 'none');
       setDisplayById('membershipPanelSection', 'none');
+      setDisplayById('psmSection', 'none');
       setTextById('govAqqToggleBtn', govAqqPanelOpen ? 'Hide' : 'GOV/AQQ');
       setTextById('chdToggleBtn', 'CHD List');
       setTextById('ckinNbrdToggleBtn', 'CKIN/NBRD');
       setTextById('wchToggleBtn', 'WCH');
       setTextById('membershipToggleBtn', 'Membership');
+      setTextById('psmToggleBtn', 'PSM');
     }
     function toggleWchPanel() {
       wchPanelOpen = !wchPanelOpen;
@@ -2356,17 +2495,20 @@
         govAqqPanelOpen = false;
         membershipPanelOpen = false;
         ckinNbrdPanelOpen = false;
+        psmPanelOpen = false;
       }
       setDisplayById('wchSection', wchPanelOpen ? 'block' : 'none');
       setDisplayById('chdSection', 'none');
       setDisplayById('govAqqSection', 'none');
       setDisplayById('ckinNbrdSection', 'none');
       setDisplayById('membershipPanelSection', 'none');
+      setDisplayById('psmSection', 'none');
       setTextById('wchToggleBtn', wchPanelOpen ? 'Hide' : 'WCH');
       setTextById('chdToggleBtn', 'CHD List');
       setTextById('govAqqToggleBtn', 'GOV/AQQ');
       setTextById('ckinNbrdToggleBtn', 'CKIN/NBRD');
       setTextById('membershipToggleBtn', 'Membership');
+      setTextById('psmToggleBtn', 'PSM');
     }
     function toggleCkinNbrdPanel() {
       ckinNbrdPanelOpen = !ckinNbrdPanelOpen;
@@ -2375,18 +2517,45 @@
         govAqqPanelOpen = false;
         wchPanelOpen = false;
         membershipPanelOpen = false;
+        psmPanelOpen = false;
       }
       setDisplayById('ckinNbrdSection', ckinNbrdPanelOpen ? 'block' : 'none');
       setDisplayById('wchSection', 'none');
       setDisplayById('chdSection', 'none');
       setDisplayById('govAqqSection', 'none');
       setDisplayById('membershipPanelSection', 'none');
+      setDisplayById('psmSection', 'none');
       setTextById('ckinNbrdToggleBtn', ckinNbrdPanelOpen ? 'Hide' : 'CKIN/NBRD');
       setTextById('wchToggleBtn', 'WCH');
       setTextById('chdToggleBtn', 'CHD List');
       setTextById('govAqqToggleBtn', 'GOV/AQQ');
       setTextById('membershipToggleBtn', 'Membership');
+      setTextById('psmToggleBtn', 'PSM');
     }
+
+    function togglePsmPanel() {
+      psmPanelOpen = !psmPanelOpen;
+      if (psmPanelOpen) {
+        chdPanelOpen = false;
+        govAqqPanelOpen = false;
+        wchPanelOpen = false;
+        membershipPanelOpen = false;
+        ckinNbrdPanelOpen = false;
+      }
+      setDisplayById('psmSection', psmPanelOpen ? 'block' : 'none');
+      setDisplayById('chdSection', 'none');
+      setDisplayById('govAqqSection', 'none');
+      setDisplayById('ckinNbrdSection', 'none');
+      setDisplayById('wchSection', 'none');
+      setDisplayById('membershipPanelSection', 'none');
+      setTextById('psmToggleBtn', psmPanelOpen ? 'Hide' : 'PSM');
+      setTextById('chdToggleBtn', 'CHD List');
+      setTextById('govAqqToggleBtn', 'GOV/AQQ');
+      setTextById('ckinNbrdToggleBtn', 'CKIN/NBRD');
+      setTextById('wchToggleBtn', 'WCH');
+      setTextById('membershipToggleBtn', 'Membership');
+    }
+
     function toggleMembershipPanel() {
       membershipPanelOpen = !membershipPanelOpen;
       if (membershipPanelOpen) {
@@ -2394,17 +2563,20 @@
         govAqqPanelOpen = false;
         wchPanelOpen = false;
         ckinNbrdPanelOpen = false;
+        psmPanelOpen = false;
       }
       setDisplayById('membershipPanelSection', membershipPanelOpen ? 'block' : 'none');
       setDisplayById('wchSection', 'none');
       setDisplayById('chdSection', 'none');
       setDisplayById('govAqqSection', 'none');
       setDisplayById('ckinNbrdSection', 'none');
+      setDisplayById('psmSection', 'none');
       setTextById('membershipToggleBtn', membershipPanelOpen ? 'Hide' : 'Membership');
       setTextById('wchToggleBtn', 'WCH');
       setTextById('chdToggleBtn', 'CHD List');
       setTextById('govAqqToggleBtn', 'GOV/AQQ');
       setTextById('ckinNbrdToggleBtn', 'CKIN/NBRD');
+      setTextById('psmToggleBtn', 'PSM');
     }
     async function checkSalesReportAvailability(flightNo, flightDate) {
       const trigger = document.getElementById('salesReportTrigger');
@@ -2515,56 +2687,116 @@
       const crewStep = baseByKey.get('crewApis') || crewSteps[0] || { key: 'crewApis', label: 'Crew APIS', complete: false };
       const cclStep = baseByKey.get('ccl') || { key: 'ccl', label: 'CCL', complete: false, tooltip: 'CCL not entered' };
       const ccStep = baseByKey.get('cc') || { key: 'cc', label: 'CC', complete: false, tooltip: 'CC not entered' };
+      const initialFlightStep = baseByKey.get('initialFlight') || { key: 'initialFlight', label: 'Initial flight', complete: false, tooltip: 'Initial flight not entered' };
+      const bdtChgStep = baseByKey.get('bdtChg') || { key: 'bdtChg', label: 'BDT CHG', complete: false, tooltip: 'BDT CHG not entered' };
       const steps = [
-        { ...crewStep, key: 'crewApis', label: 'Crew APIS' },
-        {
-          key: 'chd',
-          label: 'CHD',
-          complete: crewStep.complete && !extras.chdHasIssue,
-          warning: crewStep.complete && Boolean(extras.chdHasIssue),
-          tooltip: !crewStep.complete ? 'Waiting for Crew APIS' : (extras.chdHasIssue ? 'Missing CHD1/0 - click to open CHD List' : 'CHD clear'),
-          action: crewStep.complete && extras.chdHasIssue ? 'chd' : ''
-        },
-        {
-          key: 'gov',
-          label: 'GOV',
-          complete: crewStep.complete && !extras.govHasIssue,
-          warning: crewStep.complete && Boolean(extras.govHasIssue),
-          tooltip: !crewStep.complete ? 'Waiting for Crew APIS' : (extras.govHasIssue ? 'GOV/AQQ issue - click to open GOV/AQQ' : 'GOV/AQQ clear'),
-          action: crewStep.complete && extras.govHasIssue ? 'gov' : ''
-        },
-        {
-          key: 'nbrd',
-          label: 'NBRD',
-          complete: crewStep.complete && !extras.nbrdHasIssue,
-          warning: crewStep.complete && Boolean(extras.nbrdHasIssue),
-          tooltip: !crewStep.complete ? 'Waiting for Crew APIS' : (extras.nbrdHasIssue ? 'CKIN/NBRD issue - click to open CKIN/NBRD' : 'NBRD clear'),
-          action: crewStep.complete && extras.nbrdHasIssue ? 'nbrd' : ''
-        },
-        { ...cclStep, key: 'ccl', label: 'CCL' },
-        { ...ccStep, key: 'cc', label: 'CC' }
+        { ...crewStep, key: 'crewApis', label: 'CREW APIS' },
+        { key: 'chd', label: 'CHD', complete: crewStep.complete && !extras.chdHasIssue, warning: crewStep.complete && Boolean(extras.chdHasIssue), issueCount: numberFromValue(extras.chdIssueCount || 0), tooltip: !crewStep.complete ? 'Waiting for Crew APIS' : (extras.chdHasIssue ? 'Missing CHD1/0 - click to open CHD List' : 'CHD clear'), action: crewStep.complete && extras.chdHasIssue ? 'chd' : '' },
+        { key: 'gov', label: 'GOV', complete: crewStep.complete && !extras.govHasIssue, warning: crewStep.complete && Boolean(extras.govHasIssue), issueCount: numberFromValue(extras.govIssueCount || 0), tooltip: !crewStep.complete ? 'Waiting for Crew APIS' : (extras.govHasIssue ? 'GOV/AQQ issue - click to open GOV/AQQ' : 'GOV/AQQ clear'), action: crewStep.complete && extras.govHasIssue ? 'gov' : '' },
+        { key: 'nbrd', label: 'NBRD', complete: crewStep.complete && !extras.nbrdHasIssue, warning: crewStep.complete && Boolean(extras.nbrdHasIssue), issueCount: numberFromValue(extras.nbrdIssueCount || 0), tooltip: !crewStep.complete ? 'Waiting for Crew APIS' : (extras.nbrdHasIssue ? 'CKIN/NBRD issue - click to open CKIN/NBRD' : 'NBRD clear'), action: crewStep.complete && extras.nbrdHasIssue ? 'nbrd' : '' },
+        { ...cclStep, key: 'ccl', label: 'CCL', timeAction: true },
+        { ...ccStep, key: 'cc', label: 'CC', timeAction: true },
+        { ...initialFlightStep, key: 'initialFlight', label: 'Initial flight' },
+        { ...bdtChgStep, key: 'bdtChg', label: 'BDT CHG' }
       ];
-      const ccIndex = steps.findIndex((step) => step.key === 'cc');
-      const cclIndex = steps.findIndex((step) => step.key === 'ccl');
-      const crewCompleteIndex = crewStep.complete ? 0 : -1;
-      const latestMilestoneIndex = ccStep.complete ? ccIndex : (cclStep.complete ? cclIndex : crewCompleteIndex);
       const denominator = Math.max(steps.length - 1, 1);
-      const planePercent = Math.min(100, Math.max(0, (Math.max(0, latestMilestoneIndex) / denominator) * 100));
-      const stepHtml = steps.map((step) => {
+      const timelinePath = 'M 8 46 H 92';
+      const points = steps.map((_, idx) => ({
+        x: 8 + ((84 * idx) / denominator),
+        y: 46
+      }));
+      const ccIndex = steps.findIndex((step) => step.key === 'cc');
+      const planePoint = ccStep.complete && ccIndex >= 0 ? points[ccIndex] : null;
+      const planeHtml = planePoint ? `<div class="sy-progress-plane-marker" style="left:${planePoint.x}%; top:${planePoint.y - 10}%;" aria-hidden="true">
+        <svg viewBox="0 0 110 42" role="img" focusable="false"><path d="M105 20.8c-7.2 4.5-16.6 5.2-27.9 2.2L49 15.8 26 31.4c-2.9 2-6.8 1.3-8.9-1.4l16.3-19.2-20.8-5.2-7.4 6.6L0 9.9 8.1.8l90.2 10.6c5.7.7 9.1 4.6 6.7 9.4Z" fill="currentColor"/></svg>
+      </div>` : '';
+      const stepHtml = steps.map((step, idx) => {
+        const point = points[idx];
         const actionAttr = step.action ? ` data-action="${escapeAttr(step.action)}"` : '';
-        return `<div class="sy-progress-step${step.complete ? ' is-complete' : ''}${step.warning ? ' is-warning' : ''}" title="${escapeAttr(step.tooltip || step.label || '')}"${actionAttr}>
+        const timeAttr = step.timeAction ? ` data-time-label="${escapeAttr(step.label || '')}" data-time="${escapeAttr(step.time || '')}"` : '';
+        const title = step.timeAction
+          ? (step.time ? `${step.label} ${step.time}` : `${step.label} not entered`)
+          : (step.tooltip || step.label || '');
+        const issueBadge = step.warning && numberFromValue(step.issueCount || 0) > 0
+          ? `<span class="sy-progress-issue-count">${numberFromValue(step.issueCount)}</span>`
+          : '';
+        return `<div class="sy-progress-step is-spacex-step${step.complete ? ' is-complete' : ''}${step.warning ? ' is-warning' : ''}" style="left:${point.x}%; top:${point.y}%;" title="${escapeAttr(title)}"${actionAttr}${timeAttr}>
+          ${issueBadge}
           <span class="sy-progress-dot"></span>
           <span>${escapeHtmlText(step.label || '')}</span>
         </div>`;
       }).join('');
-      el.innerHTML = `<div class="sy-progress-plane" style="left:calc(22px + (100% - 44px) * ${planePercent / 100});">✈</div>
-        <div class="sy-progress-steps">${stepHtml}</div>`;
-      el.querySelectorAll('[data-action]').forEach((node) => {
+      el.classList.remove('is-arc', 'is-linear');
+      el.classList.add('is-spacex');
+      el.innerHTML = `<div class="sy-progress-track-inner">
+        <svg class="sy-progress-line-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          <path d="${timelinePath}" fill="none" stroke="rgba(255,255,255,.78)" stroke-width=".72" stroke-linecap="round" />
+        </svg>
+        ${planeHtml}
+        <div id="syFlightClock" class="sy-flight-clock"></div>
+        ${stepHtml}
+      </div>`;
+      const progressPanel = el.closest('.sy-progress-panel');
+      progressPanel?.querySelector('.sy-progress-swipe')?.remove();
+      progressPanel?.insertAdjacentHTML('beforeend', '<div class="sy-progress-swipe" aria-hidden="true"><div class="sy-progress-swipe-thumb"></div></div>');
+      const updateSwipeThumb = () => {
+        const thumb = progressPanel?.querySelector('.sy-progress-swipe-thumb');
+        if (!thumb) return;
+        const maxScroll = Math.max(0, el.scrollWidth - el.clientWidth);
+        const ratio = maxScroll ? el.scrollLeft / maxScroll : 0;
+        const thumbWidth = maxScroll ? 24 : 100;
+        const boundedWidth = Math.min(100, thumbWidth);
+        thumb.style.width = `${boundedWidth}%`;
+        thumb.style.left = `${ratio * (100 - boundedWidth)}%`;
+      };
+      el.onscroll = updateSwipeThumb;
+      const swipeRail = progressPanel?.querySelector('.sy-progress-swipe');
+      swipeRail?.addEventListener('pointerdown', (event) => {
+        event.preventDefault();
+        const maxScroll = Math.max(0, el.scrollWidth - el.clientWidth);
+        if (!maxScroll) return;
+        const moveTo = (clientX) => {
+          const railRect = swipeRail.getBoundingClientRect();
+          if (!railRect.width) return;
+          const ratio = Math.min(1, Math.max(0, (clientX - railRect.left) / railRect.width));
+          el.scrollLeft = ratio * maxScroll;
+        };
+        moveTo(event.clientX);
+        swipeRail.setPointerCapture?.(event.pointerId);
+        const onMove = (moveEvent) => {
+          moveEvent.preventDefault();
+          moveTo(moveEvent.clientX);
+        };
+        const onUp = () => {
+          window.removeEventListener('pointermove', onMove);
+          window.removeEventListener('pointerup', onUp);
+          window.removeEventListener('pointercancel', onUp);
+        };
+        window.addEventListener('pointermove', onMove, { passive: false });
+        window.addEventListener('pointerup', onUp, { once: true });
+        window.addEventListener('pointercancel', onUp, { once: true });
+      });
+      requestAnimationFrame(updateSwipeThumb);
+      if (planePoint) requestAnimationFrame(() => {
+        const stageLeft = (planePoint.x / 100) * (el.scrollWidth || 0);
+        el.scrollLeft = Math.max(0, stageLeft - (el.clientWidth * 0.18));
+        updateSwipeThumb();
+      });
+      el.querySelectorAll('[data-action], [data-time-label]').forEach((node) => {
         node.addEventListener('click', () => {
           const action = node.getAttribute('data-action');
           if (action === 'chd') toggleChdPanel();
           if (action === 'gov') toggleGovAqqPanel();
           if (action === 'nbrd') toggleCkinNbrdPanel();
+          const timeLabel = node.getAttribute('data-time-label');
+          if (timeLabel) {
+            const clock = document.getElementById('syFlightClock');
+            const timeValue = node.getAttribute('data-time') || '--:--:--';
+            if (clock) {
+              clock.textContent = `${timeLabel} ${timeValue}`;
+              clock.classList.add('is-visible');
+            }
+          }
         });
       });
     }
@@ -2638,6 +2870,107 @@
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
+    }
+
+
+
+    function maskSensitiveId(value, keepStart = 1, keepEnd = 4) {
+      const raw = String(value || '').trim();
+      if (!raw) return '';
+      const compact = raw.replace(/\s+/g, '');
+      if (compact.length <= keepStart + keepEnd) return compact;
+      return `${compact.slice(0, keepStart)}${'*'.repeat(Math.max(3, compact.length - keepStart - keepEnd))}${compact.slice(-keepEnd)}`;
+    }
+
+    function maskMembershipDisplay(value) {
+      const raw = String(value || '').trim();
+      if (!raw || raw === '-') return raw;
+      const tier = raw.match(/\s\/\s[A-Z0-9]$/)?.[0] || '';
+      const withoutTier = tier ? raw.slice(0, -tier.length).trim() : raw;
+      const carrier = withoutTier.match(/^[A-Z0-9]{2}\s*/)?.[0] || '';
+      const numberPart = withoutTier.slice(carrier.length).replace(/\s+/g, '');
+      if (!numberPart) return raw;
+      return `${carrier}${maskSensitiveId(numberPart, 2, 4)}${tier}`;
+    }
+
+    async function fetchSecurityReviews(flightNo, flightDate) {
+      if (!flightNo || !flightDate) return {};
+      try {
+        const apiBase = resolveApiBase();
+        const res = await fetch(`${apiBase}/security-reviews?flightNo=${encodeURIComponent(flightNo)}&flightDate=${encodeURIComponent(flightDate)}`);
+        if (!res.ok) return {};
+        const data = await res.json();
+        return data?.reviews && typeof data.reviews === 'object' ? data.reviews : {};
+      } catch (err) {
+        console.error('Security review load failed:', err);
+        return {};
+      }
+    }
+
+    async function saveSecurityReview(bn, status) {
+      const row = currentBnAudit.find((item) => item.bn === bn);
+      if (!row || !currentSyFlightNo || !currentSyFlightDate) return;
+      const input = document.querySelector(`.audit-review-comment[data-bn="${CSS.escape(bn)}"]`);
+      const comment = (input?.value || '').trim();
+      const reviewer = window.currentUser?.email || document.getElementById('userEmail')?.innerText || '';
+      try {
+        const apiBase = resolveApiBase();
+        const res = await fetch(`${apiBase}/security-reviews`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ flightNo: currentSyFlightNo, flightDate: currentSyFlightDate, bn, status, comment, reviewer })
+        });
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+        currentSecurityReviews[bn] = data.review;
+        row.review = data.review;
+        refreshOpenAuditDetail(bn);
+      } catch (err) {
+        alert(`Review save failed: ${err?.message || err}`);
+      }
+    }
+
+    function refreshOpenAuditDetail(bn) {
+      const detail = document.querySelector('#syAuditContent .audit-detail-panel');
+      if (detail && detail.style.display !== 'none') detail.innerHTML = buildAuditDetailPanel(bn, currentBnAudit.find((item) => item.bn === bn));
+      document.querySelectorAll(`#syAuditContent .audit-list-row[data-bn="${CSS.escape(bn)}"]`).forEach((btn) => {
+        btn.outerHTML = buildAuditListRow(bn, currentBnAudit.find((item) => item.bn === bn), true);
+      });
+      const newBtn = document.querySelector(`#syAuditContent .audit-list-row[data-bn="${CSS.escape(bn)}"]`);
+      if (newBtn) wireAuditListButton(newBtn, document.getElementById('syAuditContent'));
+    }
+
+    function collectPsmRows(records) {
+      const keywords = ['TSXL', 'JMSQ', 'XCSQ', 'TXLK', 'QTQK'];
+      const byBn = new Map();
+      (records || []).forEach((record) => {
+        if (!record || isDeletedPassengerRecord(record)) return;
+        const psmLines = Array.isArray(record.psmLines) ? record.psmLines.filter((line) => keywords.some((code) => String(line || '').toUpperCase().replace(/\s+/g, '').includes(code))) : [];
+        if (!psmLines.length) return;
+        const bn = record.bn ? String(record.bn).padStart(3, '0') : '---';
+        byBn.set(bn, {
+          bn,
+          name: record.name || 'UNKNOWN',
+          seat: record.seat || '-',
+          bagtags: Array.isArray(record.bagtags) ? record.bagtags : [],
+          psmLines
+        });
+      });
+      return [...byBn.values()].sort((a, b) => a.bn.localeCompare(b.bn));
+    }
+
+    function renderPsmPanel(el, rows) {
+      if (!el) return;
+      const data = Array.isArray(rows) ? rows : [];
+      if (!data.length) {
+        el.innerHTML = '<div class="membership-empty">No TSXL/JMSQ/XCSQ/TXLK/QTQK PSM found.</div>';
+        return;
+      }
+      el.innerHTML = data.map((row) => `<div class="psm-card">
+        <div class="psm-card-top"><div><span class="psm-bn">BN${escapeHtmlText(row.bn)}</span> <span class="psm-meta">${escapeHtmlText(row.name)} • ${escapeHtmlText(row.seat)}</span></div><span class="psm-pill">PSM</span></div>
+        <div class="psm-field"><span class="psm-field-label">Bags</span>${escapeHtmlText(row.bagtags.length ? row.bagtags.join(', ') : '-')}</div>
+        <div class="psm-field"><span class="psm-field-label">Detail</span><div class="psm-lines">${escapeHtmlText(row.psmLines.join('\n'))}</div></div>
+      </div>`).join('');
     }
 
     function renderBnHighlightedText(el, text) {
@@ -2782,7 +3115,7 @@
       const byBn = new Map((currentBnAudit || []).map((x) => [x.bn, x]));
       return normalizeBnListForGovAqq(values).filter((bn) => {
         const row = byBn.get(bn);
-        if (options.excludeDeleted && isDeletedPassengerRecord(row?.passengerRecord, row)) return false;
+        if (isDeletedPassengerRecord(row?.passengerRecord, row)) return false;
         const overall = overallAuditStatus(auditItemsForRow(row));
         return overall !== 'pass';
       });
@@ -2910,7 +3243,7 @@
       }
 
       const items = [
-        ['Passport', passportNumber],
+        ['Passport', maskSensitiveId(passportNumber, 1, 4)],
         ['Nationality', nationality],
         ['DOB', dob],
         ['Expiry', expiry],
@@ -2923,7 +3256,7 @@
 
       return '<div class="doc-grid">' +
         items.map(([label, value]) =>
-          `<div class="doc-item"><span>${label}</span><b>${value}</b></div>`
+          `<div class="doc-item"><span>${escapeHtmlText(label)}</span><b>${escapeHtmlText(value)}</b></div>`
         ).join('') +
         '</div>';
     }
@@ -3051,7 +3384,7 @@
                 error.style.display = 'block';
                 return;
               }
-              return renderSearchResult(retryData, q);
+              return await renderSearchResult(retryData, q);
             }
             throw new Error('API endpoint not found on current site, and no backend configured.');
           }
@@ -3071,14 +3404,14 @@
         }
 
         const data = await res.json();
-        return renderSearchResult(data, q);
+        return await renderSearchResult(data, q);
       } catch (err) {
         error.innerText = err?.message || 'Search failed.';
         error.style.display = 'block';
       }
     }
 
-    function renderSearchResult(data, q) {
+    async function renderSearchResult(data, q) {
         const card = document.getElementById('card');
         const error = document.getElementById('error');
         const normalizedQuery =
@@ -3129,6 +3462,7 @@
 
           setTextById('flight', `✈ SY  ${sy.flightNo || '-'}/${sy.flightDate || '-'}`);
           setTextById('name', '');
+          setDisplayById('name', 'none');
           setTextById('seat', '');
 
           ['membershipSection','ticketSection','bagsSection','inboundSection','outboundSection','ssrSection','mealSection','paidSection','loungeSection','docSection'].forEach((id) => setDisplayById(id, 'none'));
@@ -3162,6 +3496,7 @@
           setHtmlById('syCiTkt', formatCabinCounts(sy.checkedInTicketed, 'ET'));
           currentSyFlightNo = sy.flightNo || '';
           currentSyFlightDate = sy.flightDate || '';
+          currentSecurityReviews = await fetchSecurityReviews(currentSyFlightNo, currentSyFlightDate);
           setDisplayById('salesReportMenuItem', 'none');
           checkSalesReportAvailability(currentSyFlightNo, currentSyFlightDate);
           const chdList = Array.isArray(sy.chdList) ? sy.chdList : [];
@@ -3185,11 +3520,13 @@
           setDisplayById('govAqqToggleBtn', 'flex');
           setDisplayById('wchToggleBtn', 'flex');
           setDisplayById('membershipToggleBtn', 'flex');
+          setDisplayById('psmToggleBtn', 'flex');
           setTextById('chdToggleBtn', 'CHD List');
           setTextById('govAqqToggleBtn', 'GOV/AQQ');
           setTextById('ckinNbrdToggleBtn', 'CKIN/NBRD');
           setTextById('wchToggleBtn', 'WCH');
           setTextById('membershipToggleBtn', 'Membership');
+          setTextById('psmToggleBtn', 'PSM');
           const wchList = Array.isArray(sy.wchList) ? sy.wchList : [];
           setTextById('wchSummary', `WCH total: ${wchList.length}`);
           renderWchPanel(document.getElementById('wchList'), wchList);
@@ -3215,17 +3552,25 @@
             };
           };
           currentSeatMapRecords = currentSeatMapRecords.map((record) => applySeatMapFlags(record));
-          currentBnAudit = currentBnAudit.map((row) => ({
-            ...row,
-            passengerRecord: row?.passengerRecord ? applySeatMapFlags(row.passengerRecord) : row?.passengerRecord
-          }));
+          currentBnAudit = currentBnAudit.map((row) => {
+            const bn = String(row?.bn || '').padStart(3, '0');
+            return {
+              ...row,
+              review: currentSecurityReviews[bn] || null,
+              passengerRecord: row?.passengerRecord ? applySeatMapFlags(row.passengerRecord) : row?.passengerRecord
+            };
+          });
           const allPassengerRecords = [
-            ...currentSeatMapRecords,
-            ...currentBnAudit.map((row) => row?.passengerRecord).filter(Boolean)
+            ...currentBnAudit.map((row) => row?.passengerRecord).filter(Boolean),
+            ...currentSeatMapRecords
           ];
           renderSyWarnings(allPassengerRecords);
           const ckinNbrdRows = collectGateComments(allPassengerRecords);
           renderCkinNbrdPanel(ckinNbrdRows);
+          currentPsmRows = Array.isArray(sy.psmList) ? sy.psmList : collectPsmRows(allPassengerRecords);
+          renderPsmPanel(document.getElementById('psmList'), currentPsmRows);
+          setTextById('psmSummary', `PSM total: ${currentPsmRows.length}`);
+          setTextById('psmTileCount', currentPsmRows.length ? String(currentPsmRows.length) : '');
           setDisplayById('ckinNbrdToggleBtn', ckinNbrdRows.length ? 'flex' : 'none');
           setTextById('ckinNbrdTileCount', ckinNbrdRows.length ? String(ckinNbrdRows.length) : '');
 
@@ -3260,11 +3605,15 @@
           currentGovAqqStatus = govStatus;
           updateGovAqqToggleAppearance(govStatus);
           setTextById('govAqqToggleBtn', 'GOV/AQQ');
-          setTextById('govAqqTileCount', (visibleDuplicatePassportBns.length + visibleAqqTclBns.length + visibleGovDtaBns.length + visiblePassportExpBns.length + visiblePassportCodeIssues.length) || '');
+          const govIssueCount = visibleDuplicatePassportBns.length + visibleAqqTclBns.length + visibleGovDtaBns.length + visiblePassportExpBns.length + visiblePassportCodeIssues.length;
+          setTextById('govAqqTileCount', govIssueCount || '');
           renderSyProgress(sy.crewApis || null, {
             chdHasIssue: noCodeList.length > 0,
+            chdIssueCount: noCodeList.length,
             govHasIssue: govStatus !== 'ok',
-            nbrdHasIssue: ckinNbrdRows.length > 0
+            govIssueCount,
+            nbrdHasIssue: ckinNbrdRows.length > 0,
+            nbrdIssueCount: ckinNbrdRows.length
           });
 
           setGovAqqStats([
@@ -3316,7 +3665,13 @@
         setDisplayById('chdToggleBtn', 'none');
         setDisplayById('govAqqToggleBtn', 'none');
         setDisplayById('wchToggleBtn', 'none');
+        setDisplayById('ckinNbrdToggleBtn', 'none');
+        setDisplayById('membershipToggleBtn', 'none');
+        setDisplayById('psmToggleBtn', 'none');
         setDisplayById('wchSection', 'none');
+        setDisplayById('ckinNbrdSection', 'none');
+        setDisplayById('membershipPanelSection', 'none');
+        setDisplayById('psmSection', 'none');
         setDisplayById('auditToggleBtn', 'none');
         setDisplayById('syActionMenuWrap', 'none');
 
@@ -3339,6 +3694,7 @@
           'name'
         ).innerText =
           data.name;
+        setDisplayById('name', 'block');
 
         currentPassengerData = data;
         checkinPanelOpen = false;
@@ -3402,7 +3758,7 @@
             'ff'
           ).innerText =
 
-            membershipNumber;
+            maskSensitiveId(membershipNumber, 2, 4);
 
           document.getElementById(
             'ffStatus'
