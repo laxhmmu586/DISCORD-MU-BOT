@@ -606,16 +606,14 @@ app.get(
         const isoDate = m ? `${yearFromFlight}-${months[m[2]] || '01'}-${m[1]}` : '';
         const syBagInfo = isoDate ? await getSyBagInfoByDate(isoDate, syInfo.flightDate) : null;
         const nextDayQuery = syInfo.crewApis?.nextDayInfoQuery || null;
-        if (nextDayQuery?.flightNo && nextDayQuery?.flightDate) {
+        const nextDayStep = syInfo.crewApis?.steps?.find((step) => step.key === 'nextDayInfo');
+        if (nextDayStep && nextDayQuery?.flightNo && nextDayQuery?.flightDate) {
           const nextDaySubject = nextDayQuery.emailSubject || `${nextDayQuery.flightNo} ${nextDayQuery.flightDate} flight information details`;
           const nextDayInfoComplete = await hasNextDayInfoEmail(nextDayQuery.flightNo, nextDayQuery.emailSubjectDate || nextDayQuery.flightDate, nextDaySubject);
-          const nextDayStep = syInfo.crewApis?.steps?.find((step) => step.key === 'nextDayInfo');
-          if (nextDayStep) {
-            nextDayStep.complete = nextDayInfoComplete;
-            nextDayStep.tooltip = nextDayInfoComplete
-              ? `NEXT DAY INFO sent email found: ${nextDaySubject}`
-              : `NEXT DAY INFO sent email not found: ${nextDaySubject}`;
-          }
+          nextDayStep.complete = nextDayInfoComplete;
+          nextDayStep.tooltip = nextDayInfoComplete
+            ? `NEXT DAY INFO sent email found: ${nextDaySubject}`
+            : `NEXT DAY INFO sent email not found: ${nextDaySubject}`;
         }
         return res.json({ sy: { ...syInfo, bagSheet: syBagInfo } });
       }

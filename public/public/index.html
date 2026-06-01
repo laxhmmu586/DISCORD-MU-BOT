@@ -1009,26 +1009,32 @@
     .sy-progress-plane.is-arc-plane { top:auto; left:auto; z-index:3; transform:translate(-50%, -50%); }
 
 
-    .sy-progress-panel { order:-1; min-height:168px; overflow:hidden; border:none !important; border-radius:0 !important; box-shadow:none !important; background:transparent !important; padding:0 0 6px !important; }
-    .sy-progress-track-wrap.is-spacex { position:relative; min-height:162px; padding:0; overflow-x:auto; overflow-y:hidden; scroll-snap-type:x proximity; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+    .sy-progress-panel { order:-1; min-height:184px; overflow:hidden; border:none !important; border-radius:0 !important; box-shadow:none !important; background:transparent !important; padding:0 0 6px !important; }
+    .sy-progress-track-wrap.is-spacex { position:relative; min-height:180px; padding:0; overflow:hidden; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
     .sy-progress-track-wrap.is-spacex::-webkit-scrollbar { display:none; }
-    .sy-progress-track-inner { position:relative; width:100%; min-width:820px; height:162px; scroll-snap-align:center; }
-    .sy-progress-line-svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
-    .sy-progress-step.is-spacex-step { position:absolute; min-width:68px; gap:4px; transform:translate(-50%, -4px); z-index:2; color:rgba(241,245,249,.94); cursor:default; }
-    .sy-progress-step.is-spacex-step .sy-progress-dot { width:10px; height:10px; border:2px solid rgba(248,250,252,.96); background:#071827; box-shadow:0 0 0 1.5px rgba(7,24,39,.98); }
-    .sy-progress-step.is-spacex-step.is-complete .sy-progress-dot { border-color:#f8fafc; background:#22c55e; }
-    .sy-progress-step.is-spacex-step.is-warning .sy-progress-dot { border-color:#f8fafc; background:#f59e0b; }
+    .sy-progress-track-inner { position:relative; width:100%; min-width:100%; height:180px; scroll-snap-align:center; cursor:grab; touch-action:none; }
+    .sy-progress-track-inner:active { cursor:grabbing; }
+    .sy-progress-line-svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; pointer-events:none; }
+    .sy-progress-step.is-spacex-step { position:absolute; width:78px; height:72px; transform:translate(-50%, -50%); z-index:2; color:rgba(241,245,249,.94); cursor:default; transition:left .18s ease, top .18s ease, opacity .18s ease; }
+    .sy-progress-step.is-spacex-step .sy-progress-dot { position:absolute; left:50%; top:50%; width:10px; height:10px; border-radius:999px; border:2px solid rgba(248,250,252,.98); background:#071827; transform:translate(-50%, -50%); box-shadow:0 0 0 2px rgba(7,24,39,.96), 0 0 12px rgba(248,250,252,.34); }
+    .sy-progress-step.is-spacex-step.is-complete .sy-progress-dot { border-color:#f8fafc; background:#22c55e; box-shadow:0 0 0 2px rgba(7,24,39,.96), 0 0 14px rgba(34,197,94,.75), 0 0 28px rgba(34,197,94,.24); }
+    .sy-progress-step.is-spacex-step.is-warning .sy-progress-dot { border-color:#f8fafc; background:#f59e0b; box-shadow:0 0 0 2px rgba(7,24,39,.96), 0 0 14px rgba(245,158,11,.75), 0 0 28px rgba(245,158,11,.24); }
     .sy-progress-step.is-spacex-step:not(.is-complete) .sy-progress-dot { animation:syProgressBlink .85s ease-in-out infinite; }
-    @keyframes syProgressBlink { 0%, 100% { transform:scale(1); filter:brightness(1); } 50% { transform:scale(1.35); filter:brightness(1.9); box-shadow:0 0 0 1.5px rgba(7,24,39,.98), 0 0 0 7px rgba(248,250,252,.28); } }
-    .sy-progress-step.is-spacex-step span:last-child { font-size:8px; line-height:1.05; font-weight:1000; letter-spacing:.15px; color:rgba(241,245,249,.95); text-transform:uppercase; }
+    @keyframes syProgressBlink { 0%, 100% { transform:translate(-50%, -50%) scale(1); filter:brightness(1); } 50% { transform:translate(-50%, -50%) scale(1.18); filter:brightness(1.9); box-shadow:0 0 0 2px rgba(7,24,39,.96), 0 0 0 6px rgba(248,250,252,.18), 0 0 18px rgba(125,211,252,.52); } }
+    .sy-progress-step.is-spacex-step span:last-child { position:absolute; left:50%; top:calc(50% + 25px); transform:translateX(-50%); font-size:8px; line-height:1.05; font-weight:1000; letter-spacing:.15px; color:rgba(241,245,249,.95); text-transform:uppercase; text-shadow:0 1px 6px rgba(2,6,23,.95); }
     .sy-progress-issue-count { position:absolute; left:50%; top:-22px; transform:translateX(-50%); color:#ef4444; font-size:22px; line-height:1; font-weight:1000; letter-spacing:.2px; }
     .sy-progress-step.is-spacex-step[data-action], .sy-progress-step.is-spacex-step[data-time-label] { cursor:pointer; }
     .sy-progress-plane-marker { position:absolute; width:38px; height:16px; transform:translate(-50%, -50%) rotate(0deg); z-index:3; color:#f8fafc; opacity:.95; pointer-events:none; }
     .sy-progress-plane-marker svg { width:100%; height:100%; display:block; transform:scaleY(-1); }
-    .sy-progress-swipe { position:absolute; left:50%; bottom:10px; width:min(62%, 460px); height:22px; transform:translateX(-50%); border-radius:999px; overflow:hidden; cursor:grab; touch-action:none; z-index:4; }
+    .sy-progress-swipe { display:none; position:absolute; left:50%; bottom:10px; width:min(62%, 460px); height:22px; transform:translateX(-50%); border-radius:999px; overflow:hidden; cursor:grab; touch-action:none; z-index:4; }
     .sy-progress-swipe:active { cursor:grabbing; }
     .sy-progress-swipe::before { content:""; position:absolute; left:0; right:0; top:9px; height:3px; border-radius:999px; background:rgba(248,250,252,.36); }
     .sy-progress-swipe-thumb { position:absolute; left:0; top:8px; width:24%; height:5px; border-radius:999px; background:#f8fafc; }
+    .sy-progress-orbit { stroke:rgba(248,250,252,.72); stroke-width:.62; filter:url(#syOrbitGlow); animation:syOrbitPulse 2.4s ease-in-out infinite; }
+    .sy-progress-orbit-shadow { stroke:rgba(96,165,250,.16); stroke-width:.42; }
+    .sy-progress-orbit-dash { stroke:rgba(125,211,252,.88); stroke-width:.34; stroke-dasharray:1.2 5.2; animation:syOrbitDash 3.2s linear infinite; }
+    @keyframes syOrbitPulse { 0%, 100% { opacity:.7; } 50% { opacity:1; } }
+    @keyframes syOrbitDash { to { stroke-dashoffset:-24; } }
     .sy-flight-hero { position:relative; min-height:150px; overflow:hidden; border:none !important; box-shadow:none !important; background:transparent !important; }
     .sy-flight-hero::before { display:none !important; }
     .sy-flight-clock { position:absolute; left:50%; top:70%; transform:translate(-50%, -50%); z-index:1; color:#f8fafc; font-size:28px; font-weight:300; letter-spacing:1.4px; white-space:nowrap; opacity:0; visibility:hidden; transition:opacity .18s ease; }
@@ -1094,12 +1100,11 @@
       .sy-progress-panel { margin-top:0; }
       .sy-progress-track-wrap { padding:8px 8px 0; }
       .sy-progress-track-wrap.is-arc { min-height:140px; }
-      .sy-progress-track-wrap.is-spacex { min-height:144px; }
-      .sy-progress-track-inner { height:144px; min-width:760px; }
+      .sy-progress-track-wrap.is-spacex { min-height:158px; }
+      .sy-progress-track-inner { height:158px; min-width:100%; }
       .sy-flight-hero { min-height:144px; }
       .sy-flight-clock { font-size:21px; top:70%; }
-      .sy-progress-step.is-spacex-step { min-width:56px; }
-      .sy-progress-step.is-spacex-step { transform:translate(-50%, -4px); }
+      .sy-progress-step.is-spacex-step { width:64px; height:64px; }
       .sy-progress-step.is-spacex-step .sy-progress-dot { width:9px; height:9px; }
       .sy-progress-plane-marker { width:32px; height:14px; }
       .sy-progress-swipe { bottom:8px; width:76%; }
@@ -1596,6 +1601,7 @@
     let currentSeatMapRecords = [];
     let currentSecurityReviews = {};
     let currentPsmRows = [];
+    let syProgressArcOffset = 0;
 
         function resolveApiBase() {
       const fromWindow = window.MU_API_BASE || '';
@@ -2700,35 +2706,60 @@
         : [{ key: 'crewApis', label: 'Crew APIS', complete: false }];
       const baseByKey = new Map(crewSteps.map((step) => [step.key, step]));
       const crewStep = baseByKey.get('crewApis') || crewSteps[0] || { key: 'crewApis', label: 'Crew APIS', complete: false };
+      const netStep = baseByKey.get('net') || { key: 'net', label: 'NET', complete: false, tooltip: 'PD*,NET not found' };
       const cclStep = baseByKey.get('ccl') || { key: 'ccl', label: 'CCL', complete: false, tooltip: 'CCL not entered' };
       const ccStep = baseByKey.get('cc') || { key: 'cc', label: 'CC', complete: false, tooltip: 'CC not entered' };
-      const nextDayInfoStep = baseByKey.get('nextDayInfo') || { key: 'nextDayInfo', label: 'NEXT DAY INFO', complete: false, tooltip: 'NEXT DAY INFO email not found' };
       const initialFlightStep = baseByKey.get('initialFlight') || { key: 'initialFlight', label: 'Initial flight', complete: false, tooltip: 'Initial flight not entered' };
       const bdtChgStep = baseByKey.get('bdtChg') || { key: 'bdtChg', label: 'BDT CHG', complete: false, tooltip: 'BDT CHG not entered' };
       const steps = [
-        { ...crewStep, key: 'crewApis', label: 'CREW APIS' },
-        { ...nextDayInfoStep, key: 'nextDayInfo', label: 'NEXT DAY INFO' },
+        { ...crewStep, key: 'crewApis', label: 'CREW APIS', timeAction: true },
+        { ...netStep, key: 'net', label: 'NET', timeAction: true },
         { key: 'chd', label: 'CHD', complete: crewStep.complete && !extras.chdHasIssue, warning: crewStep.complete && Boolean(extras.chdHasIssue), issueCount: numberFromValue(extras.chdIssueCount || 0), tooltip: !crewStep.complete ? 'Waiting for Crew APIS' : (extras.chdHasIssue ? 'Missing CHD1/0 - click to open CHD List' : 'CHD clear'), action: crewStep.complete && extras.chdHasIssue ? 'chd' : '' },
         { key: 'gov', label: 'GOV', complete: crewStep.complete && !extras.govHasIssue, warning: crewStep.complete && Boolean(extras.govHasIssue), issueCount: numberFromValue(extras.govIssueCount || 0), tooltip: !crewStep.complete ? 'Waiting for Crew APIS' : (extras.govHasIssue ? 'GOV/AQQ issue - click to open GOV/AQQ' : 'GOV/AQQ clear'), action: crewStep.complete && extras.govHasIssue ? 'gov' : '' },
         { key: 'nbrd', label: 'NBRD', complete: crewStep.complete && !extras.nbrdHasIssue, warning: crewStep.complete && Boolean(extras.nbrdHasIssue), issueCount: numberFromValue(extras.nbrdIssueCount || 0), tooltip: !crewStep.complete ? 'Waiting for Crew APIS' : (extras.nbrdHasIssue ? 'CKIN/NBRD issue - click to open CKIN/NBRD' : 'NBRD clear'), action: crewStep.complete && extras.nbrdHasIssue ? 'nbrd' : '' },
         { ...cclStep, key: 'ccl', label: 'CCL', timeAction: true },
         { ...ccStep, key: 'cc', label: 'CC', timeAction: true },
-        { ...initialFlightStep, key: 'initialFlight', label: 'Initial flight' },
-        { ...bdtChgStep, key: 'bdtChg', label: 'BDT CHG' }
+        { ...initialFlightStep, key: 'initialFlight', label: 'Initial flight', timeAction: true },
+        { ...bdtChgStep, key: 'bdtChg', label: 'BDT CHG', timeAction: true }
       ];
       const denominator = Math.max(steps.length - 1, 1);
-      const points = steps.map((_, idx) => ({
-        x: 8 + ((84 * idx) / denominator),
-        y: 46
-      }));
-      const segmentGap = 1.8;
-      const segmentHtml = points.slice(0, -1).map((point, idx) => {
-        const nextPoint = points[idx + 1];
-        return `<path d="M ${point.x + segmentGap} ${point.y} H ${nextPoint.x - segmentGap}" fill="none" stroke="rgba(255,255,255,.78)" stroke-width=".72" stroke-linecap="round" />`;
-      }).join('');
+      const arcCenter = { x: 50, y: 150 };
+      const arcRadius = 124;
+      const arcStartAngle = -122;
+      const arcEndAngle = -58;
+      const clampArcOffset = (value) => Math.max(-32, Math.min(32, Number(value) || 0));
+      const pointFromAngle = (angle, radius = arcRadius) => {
+        const rad = (angle * Math.PI) / 180;
+        return {
+          x: arcCenter.x + (radius * Math.cos(rad)),
+          y: arcCenter.y + (radius * Math.sin(rad)),
+          angle: angle + 90
+        };
+      };
+      const arcPath = (startAngle, endAngle, radius = arcRadius) => {
+        const start = pointFromAngle(startAngle, radius);
+        const end = pointFromAngle(endAngle, radius);
+        const largeArc = Math.abs(endAngle - startAngle) > 180 ? 1 : 0;
+        return `M ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArc} 1 ${end.x} ${end.y}`;
+      };
+      const pointForIndex = (idx, offset = syProgressArcOffset) => {
+        const baseAngle = arcStartAngle + (((arcEndAngle - arcStartAngle) * idx) / denominator);
+        return pointFromAngle(baseAngle + clampArcOffset(offset));
+      };
+      const points = steps.map((_, idx) => pointForIndex(idx));
+      const orbitHtml = `
+          <defs>
+            <filter id="syOrbitGlow" x="-25%" y="-60%" width="150%" height="220%">
+              <feGaussianBlur stdDeviation="1.2" result="blur" />
+              <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+            </filter>
+          </defs>
+          <path class="sy-progress-orbit-shadow" d="${arcPath(-132, -48, arcRadius + 10)}" fill="none" />
+          <path class="sy-progress-orbit" d="${arcPath(-132, -48)}" fill="none" />
+          <path class="sy-progress-orbit-dash" d="${arcPath(-132, -48, arcRadius - 7)}" fill="none" />`;
       const ccIndex = steps.findIndex((step) => step.key === 'cc');
       const planePoint = ccStep.complete && ccIndex >= 0 ? points[ccIndex] : null;
-      const planeHtml = planePoint ? `<div class="sy-progress-plane-marker" style="left:${planePoint.x}%; top:${planePoint.y - 10}%;" aria-hidden="true">
+      const planeHtml = planePoint ? `<div class="sy-progress-plane-marker" data-plane-marker="1" data-step-idx="${ccIndex}" style="left:${planePoint.x}%; top:${planePoint.y - 11}%;" aria-hidden="true">
         <svg viewBox="0 0 110 42" role="img" focusable="false"><path d="M105 20.8c-7.2 4.5-16.6 5.2-27.9 2.2L49 15.8 26 31.4c-2.9 2-6.8 1.3-8.9-1.4l16.3-19.2-20.8-5.2-7.4 6.6L0 9.9 8.1.8l90.2 10.6c5.7.7 9.1 4.6 6.7 9.4Z" fill="currentColor"/></svg>
       </div>` : '';
       const stepHtml = steps.map((step, idx) => {
@@ -2741,7 +2772,7 @@
         const issueBadge = step.warning && numberFromValue(step.issueCount || 0) > 0
           ? `<span class="sy-progress-issue-count">${numberFromValue(step.issueCount)}</span>`
           : '';
-        return `<div class="sy-progress-step is-spacex-step${step.complete ? ' is-complete' : ''}${step.warning ? ' is-warning' : ''}" style="left:${point.x}%; top:${point.y}%;" title="${escapeAttr(title)}"${actionAttr}${timeAttr}>
+        return `<div class="sy-progress-step is-spacex-step${step.complete ? ' is-complete' : ''}${step.warning ? ' is-warning' : ''}" data-step-idx="${idx}" style="left:${point.x}%; top:${point.y}%;" title="${escapeAttr(title)}"${actionAttr}${timeAttr}>
           ${issueBadge}
           <span class="sy-progress-dot"></span>
           <span>${escapeHtmlText(step.label || '')}</span>
@@ -2751,7 +2782,7 @@
       el.classList.add('is-spacex');
       el.innerHTML = `<div class="sy-progress-track-inner">
         <svg class="sy-progress-line-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-          ${segmentHtml}
+          ${orbitHtml}
         </svg>
         ${planeHtml}
         <div id="syFlightClock" class="sy-flight-clock"></div>
@@ -2759,50 +2790,51 @@
       </div>`;
       const progressPanel = el.closest('.sy-progress-panel');
       progressPanel?.querySelector('.sy-progress-swipe')?.remove();
-      progressPanel?.insertAdjacentHTML('beforeend', '<div class="sy-progress-swipe" aria-hidden="true"><div class="sy-progress-swipe-thumb"></div></div>');
-      const updateSwipeThumb = () => {
-        const thumb = progressPanel?.querySelector('.sy-progress-swipe-thumb');
-        if (!thumb) return;
-        const maxScroll = Math.max(0, el.scrollWidth - el.clientWidth);
-        const ratio = maxScroll ? el.scrollLeft / maxScroll : 0;
-        const thumbWidth = maxScroll ? 24 : 100;
-        const boundedWidth = Math.min(100, thumbWidth);
-        thumb.style.width = `${boundedWidth}%`;
-        thumb.style.left = `${ratio * (100 - boundedWidth)}%`;
+      const applyArcOffset = (offset) => {
+        syProgressArcOffset = clampArcOffset(offset);
+        el.querySelectorAll('[data-step-idx]').forEach((node) => {
+          const idx = Number(node.getAttribute('data-step-idx'));
+          if (!Number.isFinite(idx)) return;
+          const point = pointForIndex(idx, syProgressArcOffset);
+          node.style.left = `${point.x}%`;
+          node.style.top = `${point.y + (node.hasAttribute('data-plane-marker') ? -11 : 0)}%`;
+          if (!node.hasAttribute('data-plane-marker')) {
+            const outOfView = point.x < -18 || point.x > 118 || point.y < 0 || point.y > 105;
+            node.style.opacity = outOfView ? '0' : '1';
+          }
+        });
       };
-      el.onscroll = updateSwipeThumb;
-      const swipeRail = progressPanel?.querySelector('.sy-progress-swipe');
-      swipeRail?.addEventListener('pointerdown', (event) => {
+      const trackInner = el.querySelector('.sy-progress-track-inner');
+      let dragStartX = 0;
+      let dragStartOffset = syProgressArcOffset;
+      let didDragArc = false;
+      trackInner?.addEventListener('pointerdown', (event) => {
+        if (event.target.closest('.sy-progress-step')) return;
         event.preventDefault();
-        const maxScroll = Math.max(0, el.scrollWidth - el.clientWidth);
-        if (!maxScroll) return;
-        const moveTo = (clientX) => {
-          const railRect = swipeRail.getBoundingClientRect();
-          if (!railRect.width) return;
-          const ratio = Math.min(1, Math.max(0, (clientX - railRect.left) / railRect.width));
-          el.scrollLeft = ratio * maxScroll;
-        };
-        moveTo(event.clientX);
-        swipeRail.setPointerCapture?.(event.pointerId);
+        dragStartX = event.clientX;
+        dragStartOffset = syProgressArcOffset;
+        didDragArc = false;
+        trackInner.setPointerCapture?.(event.pointerId);
         const onMove = (moveEvent) => {
           moveEvent.preventDefault();
-          moveTo(moveEvent.clientX);
+          const dx = moveEvent.clientX - dragStartX;
+          if (Math.abs(dx) > 2) didDragArc = true;
+          applyArcOffset(dragStartOffset + (dx * 0.16));
         };
         const onUp = () => {
           window.removeEventListener('pointermove', onMove);
           window.removeEventListener('pointerup', onUp);
           window.removeEventListener('pointercancel', onUp);
+          if (didDragArc) {
+            const clock = document.getElementById('syFlightClock');
+            clock?.classList.remove('is-visible');
+          }
         };
         window.addEventListener('pointermove', onMove, { passive: false });
         window.addEventListener('pointerup', onUp, { once: true });
         window.addEventListener('pointercancel', onUp, { once: true });
       });
-      requestAnimationFrame(updateSwipeThumb);
-      if (planePoint) requestAnimationFrame(() => {
-        const stageLeft = (planePoint.x / 100) * (el.scrollWidth || 0);
-        el.scrollLeft = Math.max(0, stageLeft - (el.clientWidth * 0.18));
-        updateSwipeThumb();
-      });
+      applyArcOffset(syProgressArcOffset);
       el.querySelectorAll('[data-action], [data-time-label]').forEach((node) => {
         node.addEventListener('click', () => {
           const action = node.getAttribute('data-action');
@@ -2814,7 +2846,7 @@
             const clock = document.getElementById('syFlightClock');
             const timeValue = node.getAttribute('data-time') || '--:--:--';
             if (clock) {
-              clock.textContent = `${timeLabel} ${timeValue}`;
+              clock.textContent = timeValue;
               clock.classList.add('is-visible');
             }
           }
@@ -3533,6 +3565,7 @@
           wchPanelOpen = false;
           membershipPanelOpen = false;
           ckinNbrdPanelOpen = false;
+          psmPanelOpen = false;
           setDisplayById('chdSection', 'none');
           setDisplayById('govAqqSection', 'none');
           setDisplayById('ckinNbrdSection', 'none');
