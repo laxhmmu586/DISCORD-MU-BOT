@@ -178,10 +178,12 @@ function subtractMinutesFromTime(hhmm, minutes) {
 function enrichCrewApisFromLog(log, info, targetYmd) {
   const sections = splitLogicalSections(log);
   const flightNo = String(info?.flightNo || '').trim().toUpperCase();
-  const flightYmd = flightDateToYmd(info?.flightDate) || targetYmd || null;
+  const flightDateFull = String(info?.flightDate || '').trim().toUpperCase();
+  const flightYmd = flightDateToYmd(flightDateFull) || null;
+  const sectionYmd = targetYmd || flightYmd || null;
   const sameDaySections = sections.filter((sectionObj) => {
     const ymd = getYmdFromTimestamp(sectionObj.timestamp);
-    return Boolean(flightYmd && ymd && ymd === flightYmd);
+    return Boolean(sectionYmd && ymd && ymd === sectionYmd);
   });
   const formatTime = (timestamp) => {
     const m = String(timestamp || '').match(/(\d{2}:\d{2}:\d{2})$/);
@@ -199,11 +201,14 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
     ), matches[0]);
     return { complete: true, time: formatTime(sectionObj.timestamp) };
   };
-  const findLatestCommand = (regex) => {
+  const findLatestCommand = (regex, requiredContentRegex = null) => {
     const matches = sameDaySections.filter((item) => {
       const content = String(item.content || '').toUpperCase();
       regex.lastIndex = 0;
-      return regex.test(content);
+      if (!regex.test(content)) return false;
+      if (!requiredContentRegex) return true;
+      requiredContentRegex.lastIndex = 0;
+      return requiredContentRegex.test(content);
     });
     if (!matches.length) return { complete: false, time: '' };
     const sectionObj = matches.reduce((latest, item) => (
@@ -225,15 +230,18 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
   const crewApisComplete = checks.every((item) => item.complete);
   const ccl = findAcceptedCommand(/^>\s*CCL\s*:/im);
   const cc = findAcceptedCommand(/^>\s*CC\s*:/im);
-  const net = findLatestCommand(/^>\s*PD\*,\s*NET\b/im);
-  const baseYmd = targetYmd || flightYmd;
-  const baseDateUtc = ymdToUtcDate(baseYmd);
+  const netFlightRegex = flightNo && flightDateFull
+    ? new RegExp(`PD:\\s*${escapeRegExp(flightNo)}\\/${escapeRegExp(flightDateFull)}\\*LAX,NET`, 'i')
+    : null;
+  const net = findLatestCommand(/^>\s*PD\*,\s*NET\b/im, netFlightRegex);
+  const commandBaseYmd = flightYmd || sectionYmd;
+  const baseDateUtc = ymdToUtcDate(commandBaseYmd);
   const commandDateUtc = addDaysUtc(baseDateUtc, 2);
   const commandDate = dateToDdMon(commandDateUtc);
   const commandFlightDateFull = commandDate && commandDateUtc ? `${commandDate}${String(commandDateUtc.getUTCFullYear()).slice(-2)}` : '';
   const commandSections = sections.filter((sectionObj) => {
     const ymd = getYmdFromTimestamp(sectionObj.timestamp);
-    return Boolean(baseYmd && ymd && ymd === baseYmd);
+    return Boolean(sectionYmd && ymd && ymd === sectionYmd);
   });
   const commandHas = (regex) => commandSections.some((sectionObj) => {
     const content = String(sectionObj.content || '').toUpperCase();
@@ -241,7 +249,7 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
     return regex.test(content);
   });
   const futureSy = sections
-    .filter((sectionObj) => getYmdFromTimestamp(sectionObj.timestamp) === baseYmd)
+    .filter((sectionObj) => getYmdFromTimestamp(sectionObj.timestamp) === sectionYmd)
     .map((sectionObj) => parseSYSection(sectionObj))
     .filter((item) => item && item.flightNo === flightNo && item.flightDate === commandFlightDateFull)
     .sort((a, b) => String(b.statusDisplay || '').localeCompare(String(a.statusDisplay || '')))[0] || null;
