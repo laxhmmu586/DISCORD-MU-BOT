@@ -1015,16 +1015,13 @@
     .sy-progress-track-inner { position:relative; width:100%; min-width:100%; height:180px; scroll-snap-align:center; cursor:grab; touch-action:none; }
     .sy-progress-track-inner:active { cursor:grabbing; }
     .sy-progress-line-svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; pointer-events:none; }
-    .sy-progress-step.is-spacex-step { position:absolute; min-width:68px; gap:5px; transform:translate(-50%, -10px); z-index:2; color:rgba(241,245,249,.94); cursor:default; transition:left .18s ease, top .18s ease, opacity .18s ease; }
-    .sy-progress-step.is-spacex-step .sy-progress-tick { position:relative; width:5px; height:30px; border-radius:999px; background:rgba(248,250,252,.9); transform:rotate(var(--tick-rotate, 0deg)); transform-origin:50% 50%; box-shadow:0 0 0 1.5px rgba(7,24,39,.98), 0 0 12px rgba(248,250,252,.18); transition:transform .18s ease, box-shadow .18s ease; }
-    .sy-progress-step.is-spacex-step .sy-progress-dot { position:absolute; left:50%; top:50%; width:11px; height:11px; border-radius:999px; border:2px solid rgba(248,250,252,.96); background:#071827; transform:translate(-50%, -50%); box-shadow:0 0 0 1.5px rgba(7,24,39,.98); }
-    .sy-progress-step.is-spacex-step.is-complete .sy-progress-tick { background:#22c55e; box-shadow:0 0 0 1.5px rgba(7,24,39,.98), 0 0 16px rgba(34,197,94,.55); }
-    .sy-progress-step.is-spacex-step.is-complete .sy-progress-dot { border-color:#f8fafc; background:#22c55e; }
-    .sy-progress-step.is-spacex-step.is-warning .sy-progress-tick { background:#f59e0b; box-shadow:0 0 0 1.5px rgba(7,24,39,.98), 0 0 16px rgba(245,158,11,.55); }
-    .sy-progress-step.is-spacex-step.is-warning .sy-progress-dot { border-color:#f8fafc; background:#f59e0b; }
-    .sy-progress-step.is-spacex-step:not(.is-complete) .sy-progress-tick { animation:syProgressBlink .85s ease-in-out infinite; }
-    @keyframes syProgressBlink { 0%, 100% { transform:rotate(var(--tick-rotate, 0deg)) scale(1); filter:brightness(1); } 50% { transform:rotate(var(--tick-rotate, 0deg)) scale(1.18); filter:brightness(1.9); box-shadow:0 0 0 1.5px rgba(7,24,39,.98), 0 0 0 7px rgba(248,250,252,.24); } }
-    .sy-progress-step.is-spacex-step span:last-child { font-size:8px; line-height:1.05; font-weight:1000; letter-spacing:.15px; color:rgba(241,245,249,.95); text-transform:uppercase; }
+    .sy-progress-step.is-spacex-step { position:absolute; width:76px; height:58px; transform:translate(-50%, -50%); z-index:2; color:rgba(241,245,249,.94); cursor:default; transition:left .18s ease, top .18s ease, opacity .18s ease; }
+    .sy-progress-step.is-spacex-step .sy-progress-dot { position:absolute; left:50%; top:50%; width:17px; height:17px; border-radius:999px; border:3px solid rgba(248,250,252,.98); background:#071827; transform:translate(-50%, -50%); box-shadow:0 0 0 4px rgba(7,24,39,.96), 0 0 18px rgba(248,250,252,.38); }
+    .sy-progress-step.is-spacex-step.is-complete .sy-progress-dot { border-color:#f8fafc; background:#22c55e; box-shadow:0 0 0 4px rgba(7,24,39,.96), 0 0 20px rgba(34,197,94,.75), 0 0 36px rgba(34,197,94,.26); }
+    .sy-progress-step.is-spacex-step.is-warning .sy-progress-dot { border-color:#f8fafc; background:#f59e0b; box-shadow:0 0 0 4px rgba(7,24,39,.96), 0 0 20px rgba(245,158,11,.75), 0 0 36px rgba(245,158,11,.26); }
+    .sy-progress-step.is-spacex-step:not(.is-complete) .sy-progress-dot { animation:syProgressBlink .85s ease-in-out infinite; }
+    @keyframes syProgressBlink { 0%, 100% { transform:translate(-50%, -50%) scale(1); filter:brightness(1); } 50% { transform:translate(-50%, -50%) scale(1.24); filter:brightness(1.9); box-shadow:0 0 0 4px rgba(7,24,39,.96), 0 0 0 9px rgba(248,250,252,.22), 0 0 22px rgba(125,211,252,.58); } }
+    .sy-progress-step.is-spacex-step span:last-child { position:absolute; left:50%; top:calc(50% + 22px); transform:translateX(-50%); font-size:8px; line-height:1.05; font-weight:1000; letter-spacing:.15px; color:rgba(241,245,249,.95); text-transform:uppercase; }
     .sy-progress-issue-count { position:absolute; left:50%; top:-22px; transform:translateX(-50%); color:#ef4444; font-size:22px; line-height:1; font-weight:1000; letter-spacing:.2px; }
     .sy-progress-step.is-spacex-step[data-action], .sy-progress-step.is-spacex-step[data-time-label] { cursor:pointer; }
     .sy-progress-plane-marker { position:absolute; width:38px; height:16px; transform:translate(-50%, -50%) rotate(0deg); z-index:3; color:#f8fafc; opacity:.95; pointer-events:none; }
@@ -1115,10 +1112,8 @@
       .sy-progress-track-inner { height:158px; min-width:100%; }
       .sy-flight-hero { min-height:144px; }
       .sy-flight-clock { font-size:21px; top:70%; }
-      .sy-progress-step.is-spacex-step { min-width:56px; }
-      .sy-progress-step.is-spacex-step { transform:translate(-50%, -9px); }
-      .sy-progress-step.is-spacex-step .sy-progress-tick { width:4px; height:24px; }
-      .sy-progress-step.is-spacex-step .sy-progress-dot { width:9px; height:9px; }
+      .sy-progress-step.is-spacex-step { width:60px; height:52px; }
+      .sy-progress-step.is-spacex-step .sy-progress-dot { width:14px; height:14px; }
       .sy-progress-plane-marker { width:32px; height:14px; }
       .sy-progress-swipe { bottom:8px; width:76%; }
       .sy-progress-issue-count { top:-19px; font-size:18px; }
@@ -2831,7 +2826,7 @@
         const issueBadge = step.warning && numberFromValue(step.issueCount || 0) > 0
           ? `<span class="sy-progress-issue-count">${numberFromValue(step.issueCount)}</span>`
           : '';
-        return `<div class="sy-progress-step is-spacex-step${step.complete ? ' is-complete' : ''}${step.warning ? ' is-warning' : ''}" data-step-idx="${idx}" style="left:${point.x}%; top:${point.y}%; --tick-rotate:${point.angle}deg;" title="${escapeAttr(title)}"${actionAttr}${timeAttr}>
+        return `<div class="sy-progress-step is-spacex-step${step.complete ? ' is-complete' : ''}${step.warning ? ' is-warning' : ''}" data-step-idx="${idx}" style="left:${point.x}%; top:${point.y}%;" title="${escapeAttr(title)}"${actionAttr}${timeAttr}>
           ${issueBadge}
           <span class="sy-progress-tick"><span class="sy-progress-dot"></span></span>
           <span>${escapeHtmlText(step.label || '')}</span>
@@ -2857,7 +2852,6 @@
           const point = pointForIndex(idx, syProgressArcOffset);
           node.style.left = `${point.x}%`;
           node.style.top = `${point.y + (node.hasAttribute('data-plane-marker') ? -11 : 0)}%`;
-          node.style.setProperty('--tick-rotate', `${point.angle}deg`);
           if (!node.hasAttribute('data-plane-marker')) {
             const outOfView = point.x < -18 || point.x > 118 || point.y < 0 || point.y > 105;
             node.style.opacity = outOfView ? '0' : '1';
