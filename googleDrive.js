@@ -18,7 +18,8 @@ const auth = new google.auth.GoogleAuth({
   scopes: [
 
     'https://www.googleapis.com/auth/drive.readonly',
-    'https://www.googleapis.com/auth/spreadsheets.readonly'
+    'https://www.googleapis.com/auth/spreadsheets.readonly',
+    'https://www.googleapis.com/auth/gmail.readonly'
   ]
 });
 
@@ -429,6 +430,30 @@ async function getLatestFlightLog() {
   }
 }
 
+
+async function hasNextDayInfoEmail(flightNo, subjectDate, expectedSubject = '') {
+  const normalizedFlightNo = String(flightNo || '').trim().toUpperCase();
+  const normalizedSubjectDate = String(subjectDate || '').trim();
+  const subject = String(expectedSubject || `${normalizedFlightNo} ${normalizedSubjectDate} flight information details`).trim();
+  if (!normalizedFlightNo || !normalizedSubjectDate || !subject) return false;
+
+  try {
+    const gmail = google.gmail({ version: 'v1', auth });
+    const userId = process.env.GMAIL_USER || process.env.GMAIL_IMPERSONATE_USER || 'me';
+    const q = `in:sent subject:"${subject.replace(/"/g, '')}" newer_than:30d`;
+    const result = await gmail.users.messages.list({
+      userId,
+      q,
+      maxResults: 10,
+      fields: 'messages/id'
+    });
+    return Array.isArray(result.data.messages) && result.data.messages.length > 0;
+  } catch (err) {
+    console.error('Gmail next day info sent-mail search error:', err.message || err);
+    return false;
+  }
+}
+
 // ===============================
 // Get Archive Log
 // Example:
@@ -512,5 +537,6 @@ module.exports = {
   get240InfoByBnAndFlightDate,
   getSyBagInfoByDate,
   getSalesReportMeta,
-  downloadSalesReportByFlight
+  downloadSalesReportByFlight,
+  hasNextDayInfoEmail
 };
