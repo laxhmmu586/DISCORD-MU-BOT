@@ -172,12 +172,25 @@
     }
 
     .title::before {
-      content: '✈';
-      color: #8fb8ff;
-      font-size: 34px;
+      content: '';
+      width: 44px;
+      height: 14px;
+      border-radius: 999px 999px 999px 0;
+      background: linear-gradient(90deg, #f8fafc, #7dd3fc);
+      box-shadow: 0 0 24px rgba(125,211,252,.32);
+      transform: skewX(-18deg);
     }
 
-    .subtitle { color:#a7b4c6; margin-bottom:28px; }
+    .eyebrow {
+      color:#7dd3fc;
+      font-size:11px;
+      font-weight:900;
+      letter-spacing:2.8px;
+      text-transform:uppercase;
+      margin-bottom:10px;
+    }
+
+    .subtitle { color:#a7b4c6; margin-bottom:28px; text-transform:uppercase; letter-spacing:.8px; }
 
     input {
       background: rgba(7,24,39,.86);
@@ -221,12 +234,14 @@
 
     <div class="login-card">
 
+      <div class="eyebrow">MUFC OPERATIONS</div>
+
       <div class="title">
-        MUFC
+        SY Search
       </div>
 
       <div class="subtitle">
-        Internal Access Only
+        Internal access for today's SY flight console.
       </div>
 
       <input

@@ -866,10 +866,20 @@
       border-radius:10px;
     }
     .help-btn:hover, .logout-btn:hover, .mini-btn:hover, .back-btn:hover { background:rgba(96,165,250,.14); }
-    .app-header { display:none; }
-    .search-box { margin: 16px 0; }
+    .app-header { display:flex; align-items:flex-end; justify-content:space-between; margin:16px 0 14px; }
+    .app-header .title { margin:0; font-size:38px; line-height:.95; letter-spacing:1.6px; text-transform:uppercase; color:#f8fafc; }
+    .app-header .subtitle { margin:9px 0 0; color:#8ea6bd; font-size:13px; letter-spacing:.8px; text-transform:uppercase; }
+    .eyebrow { color:#7dd3fc; font-size:11px; font-weight:900; letter-spacing:2.8px; text-transform:uppercase; margin-bottom:8px; }
+    .search-panel { margin:16px 0; padding:14px; border:1px solid rgba(77,112,148,.52); border-radius:18px; background:linear-gradient(145deg, rgba(8,30,51,.88), rgba(4,17,31,.88)); box-shadow:0 18px 44px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.05); backdrop-filter:blur(14px); }
+    .search-panel-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px; }
+    .search-kicker { color:#c7d2e0; font-size:11px; font-weight:900; letter-spacing:2px; text-transform:uppercase; }
+    .today-sy-chip { flex:0 0 auto; border:1px solid rgba(125,211,252,.46); border-radius:999px; padding:5px 9px; color:#dff8ff; background:rgba(14,165,233,.12); font-size:10px; font-weight:900; letter-spacing:1px; text-transform:uppercase; }
+    .search-box { margin: 0; }
     input { background:rgba(7,24,39,.92); border:1px solid rgba(77,112,148,.46); border-radius:14px; }
+    .search-box input { min-height:50px; font-size:16px; letter-spacing:.8px; text-transform:uppercase; }
     button { font-weight:700; }
+    .search-box button { min-height:50px; border:1px solid rgba(125,211,252,.5); background:linear-gradient(135deg, #1d4ed8, #0f6fb6); box-shadow:0 14px 30px rgba(29,78,216,.24); text-transform:uppercase; letter-spacing:1px; }
+    .search-box button:hover { background:linear-gradient(135deg, #2563eb, #0284c7); }
     .card { border-radius:20px; padding:20px; overflow:visible; }
     .card.is-sy-card { padding:0 20px 20px; border-color:transparent; background:transparent; box-shadow:none; backdrop-filter:none; }
     .card.is-sy-card .flight-row { padding-top:20px; }
@@ -1080,6 +1090,13 @@
       .auth-bar { flex-direction:row; align-items:flex-start; gap:8px; }
       .auth-user { flex:1 1 auto; min-width:0; overflow:hidden; white-space:normal; }
       .auth-actions { margin-left:auto; width:auto; justify-content:flex-end; gap:8px; flex-shrink:0; }
+      .app-header { margin:12px 0; }
+      .app-header .title { font-size:30px; }
+      .app-header .subtitle { font-size:11px; }
+      .search-panel { padding:12px; border-radius:16px; }
+      .search-box { gap:8px; }
+      .search-box button { min-width:86px; padding:12px 10px; font-size:12px; }
+      .today-sy-chip { font-size:9px; padding:5px 7px; }
       .card { padding:14px; }
       .card.is-sy-card { padding:0 12px 14px; }
       .card.is-sy-card .flight-row { padding-top:14px; }
@@ -1178,23 +1195,33 @@
       </div>
 
       <div class="app-header">
-        <div class="title">
-          MUFC
+        <div>
+          <div class="eyebrow">MUFC OPERATIONS</div>
+          <div class="title">SY Search</div>
+          <div class="subtitle">Default view loads today's SY flight data.</div>
         </div>
       </div>
 
 
-      <div class="search-box">
+      <div class="search-panel" aria-label="SY search console">
+        <div class="search-panel-head">
+          <span class="search-kicker">MISSION CONTROL</span>
+          <span id="todaySyChip" class="today-sy-chip">TODAY · SY</span>
+        </div>
 
-        <input
-          id="query"
-          placeholder="Enter Search"
-        >
+        <div class="search-box">
 
-        <button onclick="searchPassenger()">
-          Search
-        </button>
+          <input
+            id="query"
+            placeholder="SY / BN / Seat / Ticket"
+            autocomplete="off"
+          >
 
+          <button onclick="searchPassenger()">
+            Search
+          </button>
+
+        </div>
       </div>
 
       <div
@@ -1617,7 +1644,23 @@
     let currentPsmRows = [];
     let syProgressArcOffset = 0;
 
-        function resolveApiBase() {
+    function formatSySearchDate(date = new Date()) {
+      const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+      return `${String(date.getDate()).padStart(2, '0')}${months[date.getMonth()]}`;
+    }
+
+    function getTodaySyQuery() {
+      return `SY/${formatSySearchDate()}`;
+    }
+
+    function syncTodaySyChip() {
+      const chip = document.getElementById('todaySyChip');
+      if (chip) {
+        chip.textContent = `TODAY · ${getTodaySyQuery()}`;
+      }
+    }
+
+    function resolveApiBase() {
       const fromWindow = window.MU_API_BASE || '';
       const fromStorage = localStorage.getItem('mu_api_base') || '';
 
@@ -4073,6 +4116,8 @@ To ${data.outbound.destination || '-'}`
     // ===========================
     // Enter Key
     // ===========================
+    syncTodaySyChip();
+
     document
       .getElementById('query')
       .addEventListener(
@@ -4205,7 +4250,7 @@ To ${data.outbound.destination || '-'}`
       hasAutoLoadedSyToday = true;
       const queryInput = document.getElementById('query');
       if (queryInput) {
-        queryInput.value = 'SY';
+        queryInput.value = getTodaySyQuery();
         searchPassenger();
       }
     }
