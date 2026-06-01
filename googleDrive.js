@@ -18,7 +18,8 @@ const auth = new google.auth.GoogleAuth({
   scopes: [
 
     'https://www.googleapis.com/auth/drive.readonly',
-    'https://www.googleapis.com/auth/spreadsheets.readonly'
+    'https://www.googleapis.com/auth/spreadsheets.readonly',
+    'https://www.googleapis.com/auth/gmail.readonly'
   ]
 });
 
@@ -513,5 +514,6 @@ module.exports = {
   get240InfoByBnAndFlightDate,
   getSyBagInfoByDate,
   getSalesReportMeta,
-  downloadSalesReportByFlight
+  downloadSalesReportByFlight,
+  hasNextDayInfoEmail
 };
