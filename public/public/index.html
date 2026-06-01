@@ -2700,14 +2700,14 @@
         : [{ key: 'crewApis', label: 'Crew APIS', complete: false }];
       const baseByKey = new Map(crewSteps.map((step) => [step.key, step]));
       const crewStep = baseByKey.get('crewApis') || crewSteps[0] || { key: 'crewApis', label: 'Crew APIS', complete: false };
+      const netStep = baseByKey.get('net') || { key: 'net', label: 'NET', complete: false, tooltip: 'PD*,NET not found' };
       const cclStep = baseByKey.get('ccl') || { key: 'ccl', label: 'CCL', complete: false, tooltip: 'CCL not entered' };
       const ccStep = baseByKey.get('cc') || { key: 'cc', label: 'CC', complete: false, tooltip: 'CC not entered' };
-      const nextDayInfoStep = baseByKey.get('nextDayInfo') || { key: 'nextDayInfo', label: 'NEXT DAY INFO', complete: false, tooltip: 'NEXT DAY INFO email not found' };
       const initialFlightStep = baseByKey.get('initialFlight') || { key: 'initialFlight', label: 'Initial flight', complete: false, tooltip: 'Initial flight not entered' };
       const bdtChgStep = baseByKey.get('bdtChg') || { key: 'bdtChg', label: 'BDT CHG', complete: false, tooltip: 'BDT CHG not entered' };
       const steps = [
-        { ...crewStep, key: 'crewApis', label: 'CREW APIS' },
-        { ...nextDayInfoStep, key: 'nextDayInfo', label: 'NEXT DAY INFO' },
+        { ...crewStep, key: 'crewApis', label: 'CREW APIS', timeAction: true },
+        { ...netStep, key: 'net', label: 'NET', timeAction: true },
         { key: 'chd', label: 'CHD', complete: crewStep.complete && !extras.chdHasIssue, warning: crewStep.complete && Boolean(extras.chdHasIssue), issueCount: numberFromValue(extras.chdIssueCount || 0), tooltip: !crewStep.complete ? 'Waiting for Crew APIS' : (extras.chdHasIssue ? 'Missing CHD1/0 - click to open CHD List' : 'CHD clear'), action: crewStep.complete && extras.chdHasIssue ? 'chd' : '' },
         { key: 'gov', label: 'GOV', complete: crewStep.complete && !extras.govHasIssue, warning: crewStep.complete && Boolean(extras.govHasIssue), issueCount: numberFromValue(extras.govIssueCount || 0), tooltip: !crewStep.complete ? 'Waiting for Crew APIS' : (extras.govHasIssue ? 'GOV/AQQ issue - click to open GOV/AQQ' : 'GOV/AQQ clear'), action: crewStep.complete && extras.govHasIssue ? 'gov' : '' },
         { key: 'nbrd', label: 'NBRD', complete: crewStep.complete && !extras.nbrdHasIssue, warning: crewStep.complete && Boolean(extras.nbrdHasIssue), issueCount: numberFromValue(extras.nbrdIssueCount || 0), tooltip: !crewStep.complete ? 'Waiting for Crew APIS' : (extras.nbrdHasIssue ? 'CKIN/NBRD issue - click to open CKIN/NBRD' : 'NBRD clear'), action: crewStep.complete && extras.nbrdHasIssue ? 'nbrd' : '' },
@@ -2717,14 +2717,21 @@
         { ...bdtChgStep, key: 'bdtChg', label: 'BDT CHG' }
       ];
       const denominator = Math.max(steps.length - 1, 1);
-      const points = steps.map((_, idx) => ({
-        x: 8 + ((84 * idx) / denominator),
-        y: 46
-      }));
-      const segmentGap = 1.8;
+      const arcY = (x) => {
+        const t = Math.min(1, Math.max(0, (x - 8) / 84));
+        return 56 - (14 * Math.sin(Math.PI * t));
+      };
+      const points = steps.map((_, idx) => {
+        const x = 8 + ((84 * idx) / denominator);
+        return { x, y: arcY(x) };
+      });
+      const segmentGap = 1.15;
       const segmentHtml = points.slice(0, -1).map((point, idx) => {
         const nextPoint = points[idx + 1];
-        return `<path d="M ${point.x + segmentGap} ${point.y} H ${nextPoint.x - segmentGap}" fill="none" stroke="rgba(255,255,255,.78)" stroke-width=".72" stroke-linecap="round" />`;
+        const startX = point.x + segmentGap;
+        const endX = nextPoint.x - segmentGap;
+        const midX = (startX + endX) / 2;
+        return `<path d="M ${startX} ${arcY(startX)} Q ${midX} ${arcY(midX)} ${endX} ${arcY(endX)}" fill="none" stroke="rgba(255,255,255,.78)" stroke-width=".72" stroke-linecap="round" />`;
       }).join('');
       const ccIndex = steps.findIndex((step) => step.key === 'cc');
       const planePoint = ccStep.complete && ccIndex >= 0 ? points[ccIndex] : null;
@@ -2814,7 +2821,7 @@
             const clock = document.getElementById('syFlightClock');
             const timeValue = node.getAttribute('data-time') || '--:--:--';
             if (clock) {
-              clock.textContent = `${timeLabel} ${timeValue}`;
+              clock.textContent = timeValue;
               clock.classList.add('is-visible');
             }
           }

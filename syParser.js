@@ -168,6 +168,11 @@ function dateToDdMon(date) {
   return `${String(date.getUTCDate()).padStart(2, '0')}${mons[date.getUTCMonth()]}`;
 }
 
+function dateToDdMonYy(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+  return `${dateToDdMon(date)}${String(date.getUTCFullYear()).slice(-2)}`;
+}
+
 function dateToEmailSubjectDate(date) {
   if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
   const mons = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -193,38 +198,62 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
     const m = String(timestamp || '').match(/(\d{2}:\d{2}:\d{2})$/);
     return m?.[1] || '';
   };
-  const findAcceptedCommand = (regex) => {
+  const findCommand = (regex, options = {}) => {
+    const { requireAccepted = false } = options;
     const matches = sameDaySections.filter((item) => {
       const content = String(item.content || '').toUpperCase();
       regex.lastIndex = 0;
-      return regex.test(content) && /\bACCEPTED\b/.test(content);
+      return regex.test(content) && (!requireAccepted || /\bACCEPTED\b/.test(content));
     });
-    if (!matches.length) return { complete: false, time: '' };
+    if (!matches.length) return { complete: false, time: '', timestamp: '' };
     const sectionObj = matches.reduce((latest, item) => (
       parseSectionTimestamp(item.timestamp) >= parseSectionTimestamp(latest.timestamp) ? item : latest
     ), matches[0]);
-    return { complete: true, time: formatTime(sectionObj.timestamp) };
+    return { complete: true, time: formatTime(sectionObj.timestamp), timestamp: sectionObj.timestamp || '' };
   };
-  const hasCommand = (regex) => sameDaySections.some((sectionObj) => regex.test(String(sectionObj.content || '').toUpperCase()));
+  const findAcceptedCommand = (regex) => findCommand(regex, { requireAccepted: true });
+  const hasCommand = (regex) => findCommand(regex);
   const lrPrefix = flightNo
     ? `LR\\s+${escapeRegExp(flightNo)}\\/\\.\\/LAX\\/CWI`
     : 'LR\\s+[A-Z0-9]+\\/\\.\\/LAX\\/CWI';
   const checks = [
-    { key: 'ncwl', label: 'NCWL', complete: findAcceptedCommand(/^>\s*NCWL\s*:/im).complete },
-    { key: 'cwd', label: 'CWD', complete: hasCommand(/^>\s*CWD\s*:/im) },
-    { key: 'crew1', label: 'LAXAPMU', complete: findAcceptedCommand(new RegExp(`^>\\s*${lrPrefix}\\/LAXAPMU\\/PEKKN1E`, 'im')).complete },
-    { key: 'crew2', label: 'CWI/N', complete: findAcceptedCommand(new RegExp(`^>\\s*${lrPrefix}\\/N`, 'im')).complete },
-    { key: 'crew3', label: 'BJSCCXH', complete: findAcceptedCommand(new RegExp(`^>\\s*${lrPrefix}\\/BJSCCXH`, 'im')).complete }
+    { key: 'ncwl', label: 'NCWL', ...findAcceptedCommand(/^>\s*NCWL\s*:/im) },
+    { key: 'cwd', label: 'CWD', ...hasCommand(/^>\s*CWD\s*:/im) },
+    { key: 'crew1', label: 'LAXAPMU', ...findAcceptedCommand(new RegExp(`^>\\s*${lrPrefix}\\/LAXAPMU\\/PEKKN1E`, 'im')) },
+    { key: 'crew2', label: 'CWI/N', ...findAcceptedCommand(new RegExp(`^>\\s*${lrPrefix}\\/N`, 'im')) },
+    { key: 'crew3', label: 'BJSCCXH', ...findAcceptedCommand(new RegExp(`^>\\s*${lrPrefix}\\/BJSCCXH`, 'im')) }
   ];
   const crewApisComplete = checks.every((item) => item.complete);
+  const crewApisTime = crewApisComplete
+    ? checks.reduce((latest, item) => (
+      parseSectionTimestamp(item.timestamp) >= parseSectionTimestamp(latest.timestamp) ? item : latest
+    ), checks[0]).time || ''
+    : '';
   const ccl = findAcceptedCommand(/^>\s*CCL\s*:/im);
   const cc = findAcceptedCommand(/^>\s*CC\s*:/im);
   const baseYmd = targetYmd || flightYmd;
   const baseDateUtc = ymdToUtcDate(baseYmd);
+  const netSearchYmd = flightYmd || baseYmd;
+  const netDateUtc = ymdToUtcDate(netSearchYmd);
+  const netFlightDate = dateToDdMonYy(netDateUtc);
+  const netFlightNo = escapeRegExp(flightNo);
+  const netFlightDatePattern = escapeRegExp(netFlightDate);
+  const netMatch = Boolean(flightNo && netFlightDate) ? sections
+    .filter((sectionObj) => {
+      const ymd = getYmdFromTimestamp(sectionObj.timestamp);
+      const content = String(sectionObj.content || '').toUpperCase();
+      return ymd === netSearchYmd
+        && /^>\s*PD\*,NET\b/im.test(content)
+        && new RegExp(`\\bPD:\\s*${netFlightNo}/${netFlightDatePattern}\\*LAX,NET\\b`, 'im').test(content);
+    })
+    .sort((a, b) => parseSectionTimestamp(b.timestamp) - parseSectionTimestamp(a.timestamp))[0] || null : null;
+  const netComplete = Boolean(netMatch);
+  const netTime = formatTime(netMatch?.timestamp);
   const nextDayDateUtc = addDaysUtc(baseDateUtc, 1);
   const nextDayEmailDate = dateToEmailSubjectDate(nextDayDateUtc);
   const nextDayEmailSubject = flightNo && nextDayEmailDate ? `${flightNo} ${nextDayEmailDate} flight information details` : '';
-  const commandDateUtc = addDaysUtc(baseDateUtc, 2);
+  const commandBaseDateUtc = ymdToUtcDate(flightYmd || baseYmd);
+  const commandDateUtc = addDaysUtc(commandBaseDateUtc, 2);
   const commandDate = dateToDdMon(commandDateUtc);
   const commandFlightDateFull = commandDate && commandDateUtc ? `${commandDate}${String(commandDateUtc.getUTCFullYear()).slice(-2)}` : '';
   const commandSections = sections.filter((sectionObj) => {
@@ -259,13 +288,15 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
         key: 'crewApis',
         label: 'Crew APIS',
         complete: crewApisComplete,
+        time: crewApisTime,
         checks
       },
       {
-        key: 'nextDayInfo',
-        label: 'NEXT DAY INFO',
-        complete: Boolean(info?.nextDayInfoComplete),
-        tooltip: info?.nextDayInfoComplete ? `NEXT DAY INFO sent email found: ${nextDayEmailSubject}` : `NEXT DAY INFO sent email not found: ${nextDayEmailSubject}`
+        key: 'net',
+        label: 'NET',
+        complete: netComplete,
+        time: netTime,
+        tooltip: netComplete ? `PD*,NET ${flightNo}/${netFlightDate} ${netTime}` : `PD*,NET ${flightNo}/${netFlightDate || '------'} not found`
       },
       {
         key: 'ccl',
