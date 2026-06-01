@@ -374,14 +374,6 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
         tooltip: netComplete ? `PD*,NET ${flightNo}/${netFlightDate} ${netTime}` : `PD*,NET ${flightNo}/${netFlightDate || '------'} not found`
       },
       {
-        key: 'jcsy',
-        label: 'JCSY',
-        complete: jcsy.complete,
-        time: jcsy.time,
-        tooltip: jcsy.complete ? `JCSY ${jcsy.flightNo}/${jcsy.flightDate} ${jcsy.time}` : `JCSY ${jcsy.flightNo || flightNo}/${jcsy.flightDate || '-----'} not found`,
-        groups: jcsy.groups
-      },
-      {
         key: 'ccl',
         label: 'CCL',
         complete: ccl.complete,

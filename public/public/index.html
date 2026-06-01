@@ -1010,11 +1010,11 @@
 
 
     .sy-progress-panel { order:-1; min-height:168px; overflow:hidden; border:none !important; border-radius:0 !important; box-shadow:none !important; background:transparent !important; padding:0 0 6px !important; }
-    .sy-progress-track-wrap.is-spacex { position:relative; min-height:162px; padding:0; overflow-x:auto; overflow-y:hidden; scroll-snap-type:x proximity; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+    .sy-progress-track-wrap.is-spacex { position:relative; min-height:162px; padding:0; overflow:hidden; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
     .sy-progress-track-wrap.is-spacex::-webkit-scrollbar { display:none; }
-    .sy-progress-track-inner { position:relative; width:100%; min-width:820px; height:162px; scroll-snap-align:center; }
+    .sy-progress-track-inner { position:relative; width:100%; min-width:100%; height:162px; scroll-snap-align:center; }
     .sy-progress-line-svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
-    .sy-progress-step.is-spacex-step { position:absolute; min-width:68px; gap:4px; transform:translate(-50%, -4px); z-index:2; color:rgba(241,245,249,.94); cursor:default; }
+    .sy-progress-step.is-spacex-step { position:absolute; min-width:68px; gap:4px; transform:translate(-50%, -4px) rotate(var(--step-rotate, 0deg)); transform-origin:50% 10px; z-index:2; color:rgba(241,245,249,.94); cursor:default; }
     .sy-progress-step.is-spacex-step .sy-progress-dot { width:10px; height:10px; border:2px solid rgba(248,250,252,.96); background:#071827; box-shadow:0 0 0 1.5px rgba(7,24,39,.98); }
     .sy-progress-step.is-spacex-step.is-complete .sy-progress-dot { border-color:#f8fafc; background:#22c55e; }
     .sy-progress-step.is-spacex-step.is-warning .sy-progress-dot { border-color:#f8fafc; background:#f59e0b; }
@@ -1103,11 +1103,11 @@
       .sy-progress-track-wrap { padding:8px 8px 0; }
       .sy-progress-track-wrap.is-arc { min-height:140px; }
       .sy-progress-track-wrap.is-spacex { min-height:144px; }
-      .sy-progress-track-inner { height:144px; min-width:760px; }
+      .sy-progress-track-inner { height:144px; min-width:100%; }
       .sy-flight-hero { min-height:144px; }
       .sy-flight-clock { font-size:21px; top:70%; }
       .sy-progress-step.is-spacex-step { min-width:56px; }
-      .sy-progress-step.is-spacex-step { transform:translate(-50%, -4px); }
+      .sy-progress-step.is-spacex-step { transform:translate(-50%, -4px) rotate(var(--step-rotate, 0deg)); }
       .sy-progress-step.is-spacex-step .sy-progress-dot { width:9px; height:9px; }
       .sy-progress-plane-marker { width:32px; height:14px; }
       .sy-progress-swipe { bottom:8px; width:76%; }
@@ -2756,8 +2756,6 @@
       const baseByKey = new Map(crewSteps.map((step) => [step.key, step]));
       const crewStep = baseByKey.get('crewApis') || crewSteps[0] || { key: 'crewApis', label: 'Crew APIS', complete: false };
       const netStep = baseByKey.get('net') || { key: 'net', label: 'NET', complete: false, tooltip: 'PD*,NET not found' };
-      const jcsyStep = baseByKey.get('jcsy') || { key: 'jcsy', label: 'JCSY', complete: false, tooltip: 'JCSY not entered', groups: {} };
-      currentJcsyInfo = jcsyStep;
       const cclStep = baseByKey.get('ccl') || { key: 'ccl', label: 'CCL', complete: false, tooltip: 'CCL not entered' };
       const ccStep = baseByKey.get('cc') || { key: 'cc', label: 'CC', complete: false, tooltip: 'CC not entered' };
       const initialFlightStep = baseByKey.get('initialFlight') || { key: 'initialFlight', label: 'Initial flight', complete: false, tooltip: 'Initial flight not entered' };
@@ -2765,7 +2763,6 @@
       const steps = [
         { ...crewStep, key: 'crewApis', label: 'CREW APIS', timeAction: true },
         { ...netStep, key: 'net', label: 'NET', timeAction: true },
-        { ...jcsyStep, key: 'jcsy', label: 'JCSY', timeAction: true, action: 'jcsy' },
         { key: 'chd', label: 'CHD', complete: crewStep.complete && !extras.chdHasIssue, warning: crewStep.complete && Boolean(extras.chdHasIssue), issueCount: numberFromValue(extras.chdIssueCount || 0), tooltip: !crewStep.complete ? 'Waiting for Crew APIS' : (extras.chdHasIssue ? 'Missing CHD1/0 - click to open CHD List' : 'CHD clear'), action: crewStep.complete && extras.chdHasIssue ? 'chd' : '' },
         { key: 'gov', label: 'GOV', complete: crewStep.complete && !extras.govHasIssue, warning: crewStep.complete && Boolean(extras.govHasIssue), issueCount: numberFromValue(extras.govIssueCount || 0), tooltip: !crewStep.complete ? 'Waiting for Crew APIS' : (extras.govHasIssue ? 'GOV/AQQ issue - click to open GOV/AQQ' : 'GOV/AQQ clear'), action: crewStep.complete && extras.govHasIssue ? 'gov' : '' },
         { key: 'nbrd', label: 'NBRD', complete: crewStep.complete && !extras.nbrdHasIssue, warning: crewStep.complete && Boolean(extras.nbrdHasIssue), issueCount: numberFromValue(extras.nbrdIssueCount || 0), tooltip: !crewStep.complete ? 'Waiting for Crew APIS' : (extras.nbrdHasIssue ? 'CKIN/NBRD issue - click to open CKIN/NBRD' : 'NBRD clear'), action: crewStep.complete && extras.nbrdHasIssue ? 'nbrd' : '' },
@@ -2779,9 +2776,14 @@
         const t = Math.min(1, Math.max(0, (x - 8) / 84));
         return 56 - (14 * Math.sin(Math.PI * t));
       };
+      const arcAngle = (x) => {
+        const t = Math.min(1, Math.max(0, (x - 8) / 84));
+        const slope = -((14 * Math.PI) / 84) * Math.cos(Math.PI * t);
+        return (Math.atan(slope) * 180) / Math.PI;
+      };
       const points = steps.map((_, idx) => {
         const x = 8 + ((84 * idx) / denominator);
-        return { x, y: arcY(x) };
+        return { x, y: arcY(x), angle: arcAngle(x) };
       });
       const segmentGap = 1.15;
       const segmentHtml = points.slice(0, -1).map((point, idx) => {
@@ -2806,7 +2808,7 @@
         const issueBadge = step.warning && numberFromValue(step.issueCount || 0) > 0
           ? `<span class="sy-progress-issue-count">${numberFromValue(step.issueCount)}</span>`
           : '';
-        return `<div class="sy-progress-step is-spacex-step${step.complete ? ' is-complete' : ''}${step.warning ? ' is-warning' : ''}" style="left:${point.x}%; top:${point.y}%;" title="${escapeAttr(title)}"${actionAttr}${timeAttr}>
+        return `<div class="sy-progress-step is-spacex-step${step.complete ? ' is-complete' : ''}${step.warning ? ' is-warning' : ''}" style="left:${point.x}%; top:${point.y}%; --step-rotate:${point.angle}deg;" title="${escapeAttr(title)}"${actionAttr}${timeAttr}>
           ${issueBadge}
           <span class="sy-progress-dot"></span>
           <span>${escapeHtmlText(step.label || '')}</span>
@@ -3600,8 +3602,6 @@
           membershipPanelOpen = false;
           ckinNbrdPanelOpen = false;
           psmPanelOpen = false;
-          currentJcsyInfo = sy.crewApis?.steps?.find((step) => step.key === 'jcsy') || null;
-          hideJcsyPanel();
           setDisplayById('chdSection', 'none');
           setDisplayById('govAqqSection', 'none');
           setDisplayById('ckinNbrdSection', 'none');
