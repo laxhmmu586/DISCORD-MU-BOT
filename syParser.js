@@ -224,7 +224,8 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
   const nextDayDateUtc = addDaysUtc(baseDateUtc, 1);
   const nextDayEmailDate = dateToEmailSubjectDate(nextDayDateUtc);
   const nextDayEmailSubject = flightNo && nextDayEmailDate ? `${flightNo} ${nextDayEmailDate} flight information details` : '';
-  const commandDateUtc = addDaysUtc(baseDateUtc, 2);
+  const commandBaseDateUtc = ymdToUtcDate(flightYmd || baseYmd);
+  const commandDateUtc = addDaysUtc(commandBaseDateUtc, 2);
   const commandDate = dateToDdMon(commandDateUtc);
   const commandFlightDateFull = commandDate && commandDateUtc ? `${commandDate}${String(commandDateUtc.getUTCFullYear()).slice(-2)}` : '';
   const commandSections = sections.filter((sectionObj) => {
@@ -260,12 +261,6 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
         label: 'Crew APIS',
         complete: crewApisComplete,
         checks
-      },
-      {
-        key: 'nextDayInfo',
-        label: 'NEXT DAY INFO',
-        complete: Boolean(info?.nextDayInfoComplete),
-        tooltip: info?.nextDayInfoComplete ? `NEXT DAY INFO sent email found: ${nextDayEmailSubject}` : `NEXT DAY INFO sent email not found: ${nextDayEmailSubject}`
       },
       {
         key: 'ccl',
