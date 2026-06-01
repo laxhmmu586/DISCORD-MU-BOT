@@ -440,7 +440,8 @@ async function hasNextDayInfoEmail(flightNo, subjectDate, expectedSubject = '') 
   try {
     const gmail = google.gmail({ version: 'v1', auth });
     const userId = process.env.GMAIL_USER || process.env.GMAIL_IMPERSONATE_USER || 'me';
-    const q = `in:sent subject:"${subject.replace(/"/g, '')}" newer_than:30d`;
+    const exactSubject = subject.replace(/"/g, '');
+    const q = `subject:"${exactSubject}" newer_than:30d`;
     const result = await gmail.users.messages.list({
       userId,
       q,
@@ -449,7 +450,7 @@ async function hasNextDayInfoEmail(flightNo, subjectDate, expectedSubject = '') 
     });
     return Array.isArray(result.data.messages) && result.data.messages.length > 0;
   } catch (err) {
-    console.error('Gmail next day info sent-mail search error:', err.message || err);
+    console.error('Gmail next day info subject search error:', err.message || err);
     return false;
   }
 }
