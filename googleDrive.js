@@ -439,7 +439,7 @@ async function hasNextDayInfoEmail(flightNo, subjectDate, expectedSubject = '') 
 
   try {
     const gmail = google.gmail({ version: 'v1', auth });
-    const userId = process.env.GMAIL_USER || process.env.GMAIL_IMPERSONATE_USER || 'me';
+    const userId = process.env.NEXT_DAY_INFO_GMAIL_USER || 'laxhmmu@gmail.com';
     const exactSubject = subject.replace(/"/g, '');
     const q = `subject:"${exactSubject}" newer_than:30d`;
     const result = await gmail.users.messages.list({
