@@ -96,16 +96,18 @@ function getPassengerNameFromSection(section) {
   return paxListName || 'UNKNOWN';
 }
 
+const TARGET_PSM_MSG_CODES = ['TSXL', 'JMSQ', 'XCSQ', 'TXLK', 'QTQK'];
+
 function extractPsmLines(section) {
   return [...new Set(String(section || '')
     .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter((line) => /^PSM(?:\b|-)/i.test(line)))];
+    .map((line) => line.replace(/[\u001c-\u001f]/g, '').trim())
+    .filter((line) => /^(?:PSM|MSG)(?:\b|-)/i.test(line)))];
 }
 
 function hasTargetPsm(line) {
   const normalized = String(line || '').toUpperCase().replace(/\s+/g, '');
-  return ['TSXL', 'JMSQ', 'XCSQ', 'TXLK', 'QTQK'].some((code) => normalized.includes(code));
+  return TARGET_PSM_MSG_CODES.some((code) => normalized.includes(code));
 }
 
 
@@ -799,7 +801,7 @@ function enrichWchListFromLog(log, syInfo, targetYmd = null) {
     const seat = (seatFromPaxLine || seatFromSection || '').toUpperCase();
     const sectionWithoutPsm = section
       .split(/\r?\n/)
-      .filter((line) => !/^\s*PSM\b/i.test(line))
+      .filter((line) => !/^(?:PSM|MSG)(?:\b|-)/i.test(line.trim()))
       .join('\n');
     const codes = [...sectionWithoutPsm.matchAll(wchCodeRegex)].map((m) => m[1].toUpperCase());
     if (!codes.length) continue;
@@ -922,7 +924,7 @@ function enrichSeatMapRecordsFromLog(log, syInfo, targetYmd = null) {
     if (!seat) continue;
 
     const serviceCodes = ['VIP', 'AVIH', 'BLND', 'DEAF', 'INAD', 'PETC', 'UM', 'STCR', 'MAAS', 'PPOC', 'WCHR', 'WCHS', 'WCHC'];
-    const nonPsmSection = section.split(/\r?\n/).filter((line) => !/^\s*PSM\b/i.test(line)).join('\n');
+    const nonPsmSection = section.split(/\r?\n/).filter((line) => !/^(?:PSM|MSG)(?:\b|-)/i.test(line.trim())).join('\n');
     const specialServices = serviceCodes.filter((code) => new RegExp(`(?:\\s|\\/|^)${code}(?:\\s|\\/|$)`, 'i').test(nonPsmSection));
     const specialMeals = [...section.matchAll(/\bSPML-([A-Z]{4})\b/gi)].map((m) => m[1].toUpperCase());
     const ffMatch = section.match(/\bFF\/([A-Z0-9]{2})\s+([A-Z0-9]+)\/([VGSPE])\b/i);
@@ -1158,7 +1160,7 @@ ${section}`,
       status: /\bDELETED\b/i.test(outboundLineForRecord) ? 'DELETED' : ''
     } : null;
     const ssrCodes = ['VIP', 'AVIH', 'BLND', 'DEAF', 'INAD', 'PETC', 'UM', 'STCR', 'MAAS', 'PPOC', 'WCHR', 'WCHS', 'WCHC'];
-    const nonPsmSection = section.split(/\r?\n/).filter((line) => !/^\s*PSM\b/i.test(line)).join('\n');
+    const nonPsmSection = section.split(/\r?\n/).filter((line) => !/^(?:PSM|MSG)(?:\b|-)/i.test(line.trim())).join('\n');
     const specialServices = ssrCodes.filter((code) => new RegExp(`(?:\\s|\\/|^)${code}(?:\\s|\\/|$)`, 'i').test(nonPsmSection));
     const umNumber = section.match(/\bUM(\d{1,2})\b/i)?.[1];
     if (umNumber && !specialServices.includes('UM')) specialServices.push('UM');

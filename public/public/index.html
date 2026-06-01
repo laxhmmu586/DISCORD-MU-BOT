@@ -1316,7 +1316,7 @@
               <button id="ckinNbrdToggleBtn" class="chd-toggle-btn sy-data-tile ckin-nbrd-btn" style="display:none;" onclick="toggleCkinNbrdPanel()"><span class="tile-icon">✎</span><span>CKIN/NBRD</span><b id="ckinNbrdTileCount"></b></button>
               <button id="wchToggleBtn" class="chd-toggle-btn wch-btn sy-data-tile" style="display:none;" onclick="toggleWchPanel()"><span class="tile-icon">♿</span><span>WCH</span><b id="wchTileCount"></b></button>
               <button id="membershipToggleBtn" class="chd-toggle-btn membership-btn sy-data-tile" style="display:none;" onclick="toggleMembershipPanel()"><span class="tile-icon">★</span><span>Membership</span></button>
-              <button id="psmToggleBtn" class="chd-toggle-btn sy-data-tile" style="display:none;" onclick="togglePsmPanel()"><span class="tile-icon">✉</span><span>PSM</span><b id="psmTileCount"></b></button>
+              <button id="psmToggleBtn" class="chd-toggle-btn sy-data-tile" style="display:none;" onclick="togglePsmPanel()"><span class="tile-icon">✉</span><span>PSM/MSG</span><b id="psmTileCount"></b></button>
             </div>
           </div>
           <div id="chdSection" class="sy-panel sy-detail-panel" style="display:none;">
@@ -1694,7 +1694,7 @@
     function parseCheckinGroups(data) {
       const psmLines = dedupeLines((data?.psmLines || [])
         .map(normalizeDetailLine)
-        .filter(line => /^PSM\b/i.test(line)));
+        .filter(line => /^(?:PSM|MSG)(?:\b|-)/i.test(line)));
 
       const ckinLines = dedupeLines((data?.ckinLines || [])
         .map(normalizeDetailLine)
@@ -2497,7 +2497,7 @@
       setTextById('ckinNbrdToggleBtn', 'CKIN/NBRD');
       setTextById('wchToggleBtn', 'WCH');
       setTextById('membershipToggleBtn', 'Membership');
-      setTextById('psmToggleBtn', 'PSM');
+      setTextById('psmToggleBtn', 'PSM/MSG');
     }
 
     function toggleGovAqqPanel() {
@@ -2521,7 +2521,7 @@
       setTextById('ckinNbrdToggleBtn', 'CKIN/NBRD');
       setTextById('wchToggleBtn', 'WCH');
       setTextById('membershipToggleBtn', 'Membership');
-      setTextById('psmToggleBtn', 'PSM');
+      setTextById('psmToggleBtn', 'PSM/MSG');
     }
     function toggleWchPanel() {
       wchPanelOpen = !wchPanelOpen;
@@ -2543,7 +2543,7 @@
       setTextById('govAqqToggleBtn', 'GOV/AQQ');
       setTextById('ckinNbrdToggleBtn', 'CKIN/NBRD');
       setTextById('membershipToggleBtn', 'Membership');
-      setTextById('psmToggleBtn', 'PSM');
+      setTextById('psmToggleBtn', 'PSM/MSG');
     }
     function toggleCkinNbrdPanel() {
       ckinNbrdPanelOpen = !ckinNbrdPanelOpen;
@@ -2565,7 +2565,7 @@
       setTextById('chdToggleBtn', 'CHD List');
       setTextById('govAqqToggleBtn', 'GOV/AQQ');
       setTextById('membershipToggleBtn', 'Membership');
-      setTextById('psmToggleBtn', 'PSM');
+      setTextById('psmToggleBtn', 'PSM/MSG');
     }
 
     function togglePsmPanel() {
@@ -2583,7 +2583,7 @@
       setDisplayById('ckinNbrdSection', 'none');
       setDisplayById('wchSection', 'none');
       setDisplayById('membershipPanelSection', 'none');
-      setTextById('psmToggleBtn', psmPanelOpen ? 'Hide' : 'PSM');
+      setTextById('psmToggleBtn', psmPanelOpen ? 'Hide' : 'PSM/MSG');
       setTextById('chdToggleBtn', 'CHD List');
       setTextById('govAqqToggleBtn', 'GOV/AQQ');
       setTextById('ckinNbrdToggleBtn', 'CKIN/NBRD');
@@ -2611,7 +2611,7 @@
       setTextById('chdToggleBtn', 'CHD List');
       setTextById('govAqqToggleBtn', 'GOV/AQQ');
       setTextById('ckinNbrdToggleBtn', 'CKIN/NBRD');
-      setTextById('psmToggleBtn', 'PSM');
+      setTextById('psmToggleBtn', 'PSM/MSG');
     }
     async function checkSalesReportAvailability(flightNo, flightDate) {
       const trigger = document.getElementById('salesReportTrigger');
@@ -3054,12 +3054,40 @@
       if (newBtn) wireAuditListButton(newBtn, document.getElementById('syAuditContent'));
     }
 
+    function getPsmMsgSourceTypes(lines) {
+      const sourceTypes = new Set();
+      (lines || []).forEach((line) => {
+        const text = String(line || '').trim().toUpperCase();
+        if (/^PSM(?:\b|-)/.test(text)) sourceTypes.add('PSM');
+        if (/^MSG(?:\b|-)/.test(text)) sourceTypes.add('MSG');
+      });
+      return [...sourceTypes];
+    }
+
+    function getPsmMsgSourceLabel(lines) {
+      const sourceTypes = getPsmMsgSourceTypes(lines);
+      return sourceTypes.length ? sourceTypes.join('/') : 'PSM/MSG';
+    }
+
+    function buildPsmMsgSummary(rows) {
+      const data = Array.isArray(rows) ? rows : [];
+      const counts = data.reduce((acc, row) => {
+        getPsmMsgSourceTypes(row?.psmLines).forEach((type) => { acc[type] += 1; });
+        return acc;
+      }, { PSM: 0, MSG: 0 });
+      return `PSM/MSG total: ${data.length} • PSM: ${counts.PSM} • MSG: ${counts.MSG}`;
+    }
+
     function collectPsmRows(records) {
       const keywords = ['TSXL', 'JMSQ', 'XCSQ', 'TXLK', 'QTQK'];
       const byBn = new Map();
       (records || []).forEach((record) => {
         if (!record || isDeletedPassengerRecord(record)) return;
-        const psmLines = Array.isArray(record.psmLines) ? record.psmLines.filter((line) => keywords.some((code) => String(line || '').toUpperCase().replace(/\s+/g, '').includes(code))) : [];
+        const psmLines = Array.isArray(record.psmLines) ? record.psmLines.filter((line) => {
+          const lineText = String(line || '').trim();
+          const normalized = lineText.toUpperCase().replace(/\s+/g, '');
+          return /^(?:PSM|MSG)(?:\b|-)/i.test(lineText) && keywords.some((code) => normalized.includes(code));
+        }) : [];
         if (!psmLines.length) return;
         const bn = record.bn ? String(record.bn).padStart(3, '0') : '---';
         byBn.set(bn, {
@@ -3077,11 +3105,11 @@
       if (!el) return;
       const data = Array.isArray(rows) ? rows : [];
       if (!data.length) {
-        el.innerHTML = '<div class="membership-empty">No TSXL/JMSQ/XCSQ/TXLK/QTQK PSM found.</div>';
+        el.innerHTML = '<div class="membership-empty">No TSXL/JMSQ/XCSQ/TXLK/QTQK PSM/MSG found.</div>';
         return;
       }
       el.innerHTML = data.map((row) => `<div class="psm-card">
-        <div class="psm-card-top"><div><span class="psm-bn">BN${escapeHtmlText(row.bn)}</span> <span class="psm-meta">${escapeHtmlText(row.name)} • ${escapeHtmlText(row.seat)}</span></div><span class="psm-pill">PSM</span></div>
+        <div class="psm-card-top"><div><span class="psm-bn">BN${escapeHtmlText(row.bn)}</span> <span class="psm-meta">${escapeHtmlText(row.name)} • ${escapeHtmlText(row.seat)}</span></div><span class="psm-pill">${escapeHtmlText(getPsmMsgSourceLabel(row.psmLines))}</span></div>
         <div class="psm-field"><span class="psm-field-label">Bags</span>${escapeHtmlText(row.bagtags.length ? row.bagtags.join(', ') : '-')}</div>
         <div class="psm-field"><span class="psm-field-label">Detail</span><div class="psm-lines">${escapeHtmlText(row.psmLines.join('\n'))}</div></div>
       </div>`).join('');
@@ -3643,7 +3671,7 @@
           setTextById('ckinNbrdToggleBtn', 'CKIN/NBRD');
           setTextById('wchToggleBtn', 'WCH');
           setTextById('membershipToggleBtn', 'Membership');
-          setTextById('psmToggleBtn', 'PSM');
+          setTextById('psmToggleBtn', 'PSM/MSG');
           const wchList = Array.isArray(sy.wchList) ? sy.wchList : [];
           setTextById('wchSummary', `WCH total: ${wchList.length}`);
           renderWchPanel(document.getElementById('wchList'), wchList);
@@ -3686,7 +3714,7 @@
           renderCkinNbrdPanel(ckinNbrdRows);
           currentPsmRows = Array.isArray(sy.psmList) ? sy.psmList : collectPsmRows(allPassengerRecords);
           renderPsmPanel(document.getElementById('psmList'), currentPsmRows);
-          setTextById('psmSummary', `PSM total: ${currentPsmRows.length}`);
+          setTextById('psmSummary', buildPsmMsgSummary(currentPsmRows));
           setTextById('psmTileCount', currentPsmRows.length ? String(currentPsmRows.length) : '');
           setDisplayById('ckinNbrdToggleBtn', ckinNbrdRows.length ? 'flex' : 'none');
           setTextById('ckinNbrdTileCount', ckinNbrdRows.length ? String(ckinNbrdRows.length) : '');
