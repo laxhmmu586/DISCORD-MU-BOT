@@ -213,24 +213,30 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
   const crewApisComplete = checks.every((item) => item.complete);
   const ccl = findAcceptedCommand(/^>\s*CCL\s*:/im);
   const cc = findAcceptedCommand(/^>\s*CC\s*:/im);
-  const flightDateUtc = ymdToUtcDate(flightYmd);
-  const preInitDate = addDaysUtc(flightDateUtc, -2);
-  const preInitYmd = dateToYmd(preInitDate);
-  const commandDate = dateToDdMon(flightDateUtc);
+  const baseYmd = targetYmd || flightYmd;
+  const baseDateUtc = ymdToUtcDate(baseYmd);
+  const commandDateUtc = addDaysUtc(baseDateUtc, 2);
+  const commandDate = dateToDdMon(commandDateUtc);
+  const commandFlightDateFull = commandDate && commandDateUtc ? `${commandDate}${String(commandDateUtc.getUTCFullYear()).slice(-2)}` : '';
   const commandSections = sections.filter((sectionObj) => {
     const ymd = getYmdFromTimestamp(sectionObj.timestamp);
-    return Boolean(preInitYmd && ymd && ymd === preInitYmd);
+    return Boolean(baseYmd && ymd && ymd === baseYmd);
   });
   const commandHas = (regex) => commandSections.some((sectionObj) => {
     const content = String(sectionObj.content || '').toUpperCase();
     regex.lastIndex = 0;
     return regex.test(content);
   });
+  const futureSy = sections
+    .filter((sectionObj) => getYmdFromTimestamp(sectionObj.timestamp) === baseYmd)
+    .map((sectionObj) => parseSYSection(sectionObj))
+    .filter((item) => item && item.flightNo === flightNo && item.flightDate === commandFlightDateFull)
+    .sort((a, b) => String(b.statusDisplay || '').localeCompare(String(a.statusDisplay || '')))[0] || null;
   const commandFlightNo = escapeRegExp(flightNo);
   const commandFlightDate = escapeRegExp(commandDate);
-  const initialFlight = Boolean(flightNo && commandDate) && commandHas(new RegExp(`^>\\s*IF\\s+${commandFlightNo}/${commandFlightDate}\\b`, 'im'));
-  const expectedBdt = subtractMinutesFromTime(info?.sd, 45) || String(info?.bdt || '').trim();
-  const bdtChg = Boolean(flightNo && commandDate && expectedBdt) && commandHas(new RegExp(`^>\\s*FU\\s+${commandFlightNo}/${commandFlightDate}/LAX/BDT/${escapeRegExp(expectedBdt)}\\b`, 'im'));
+  const initialFlight = Boolean(flightNo && commandDate) && commandHas(new RegExp(`^>\\s*IF\\s+${commandFlightNo}/${commandFlightDate}(?:\\s|$)`, 'im'));
+  const expectedBdt = subtractMinutesFromTime(futureSy?.sd, 45) || String(futureSy?.bdt || '').trim() || subtractMinutesFromTime(info?.sd, 45) || String(info?.bdt || '').trim();
+  const bdtChg = Boolean(flightNo && commandDate && expectedBdt) && commandHas(new RegExp(`^>\\s*FU\\s+${commandFlightNo}/${commandFlightDate}/LAX/BDT/${escapeRegExp(expectedBdt)}(?:\\s|$)`, 'im'));
   return {
     complete: crewApisComplete && ccl.complete && cc.complete,
     steps: [
