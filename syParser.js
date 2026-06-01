@@ -168,12 +168,6 @@ function dateToDdMon(date) {
   return `${String(date.getUTCDate()).padStart(2, '0')}${mons[date.getUTCMonth()]}`;
 }
 
-function dateToEmailSubjectDate(date) {
-  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
-  const mons = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  return `${mons[date.getUTCMonth()]}-${String(date.getUTCDate()).padStart(2, '0')}`;
-}
-
 function subtractMinutesFromTime(hhmm, minutes) {
   const m = String(hhmm || '').match(/^(\d{2})(\d{2})$/);
   if (!m) return '';
@@ -205,6 +199,18 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
     ), matches[0]);
     return { complete: true, time: formatTime(sectionObj.timestamp) };
   };
+  const findLatestCommand = (regex) => {
+    const matches = sameDaySections.filter((item) => {
+      const content = String(item.content || '').toUpperCase();
+      regex.lastIndex = 0;
+      return regex.test(content);
+    });
+    if (!matches.length) return { complete: false, time: '' };
+    const sectionObj = matches.reduce((latest, item) => (
+      parseSectionTimestamp(item.timestamp) >= parseSectionTimestamp(latest.timestamp) ? item : latest
+    ), matches[0]);
+    return { complete: true, time: formatTime(sectionObj.timestamp) };
+  };
   const hasCommand = (regex) => sameDaySections.some((sectionObj) => regex.test(String(sectionObj.content || '').toUpperCase()));
   const lrPrefix = flightNo
     ? `LR\\s+${escapeRegExp(flightNo)}\\/\\.\\/LAX\\/CWI`
@@ -219,11 +225,9 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
   const crewApisComplete = checks.every((item) => item.complete);
   const ccl = findAcceptedCommand(/^>\s*CCL\s*:/im);
   const cc = findAcceptedCommand(/^>\s*CC\s*:/im);
+  const net = findLatestCommand(/^>\s*PD\*,\s*NET\b/im);
   const baseYmd = targetYmd || flightYmd;
   const baseDateUtc = ymdToUtcDate(baseYmd);
-  const nextDayDateUtc = addDaysUtc(baseDateUtc, 1);
-  const nextDayEmailDate = dateToEmailSubjectDate(nextDayDateUtc);
-  const nextDayEmailSubject = flightNo && nextDayEmailDate ? `${flightNo} ${nextDayEmailDate} flight information details` : '';
   const commandDateUtc = addDaysUtc(baseDateUtc, 2);
   const commandDate = dateToDdMon(commandDateUtc);
   const commandFlightDateFull = commandDate && commandDateUtc ? `${commandDate}${String(commandDateUtc.getUTCFullYear()).slice(-2)}` : '';
@@ -247,13 +251,7 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
   const expectedBdt = subtractMinutesFromTime(futureSy?.sd, 45) || String(futureSy?.bdt || '').trim() || subtractMinutesFromTime(info?.sd, 45) || String(info?.bdt || '').trim();
   const bdtChg = Boolean(flightNo && commandDate && expectedBdt) && commandHas(new RegExp(`^>\\s*FU\\s+${commandFlightNo}/${commandFlightDate}/LAX/BDT/${escapeRegExp(expectedBdt)}(?:\\s|$)`, 'im'));
   return {
-    complete: crewApisComplete && ccl.complete && cc.complete,
-    nextDayInfoQuery: {
-      flightNo,
-      flightDate: nextDayEmailDate,
-      emailSubjectDate: nextDayEmailDate,
-      emailSubject: nextDayEmailSubject
-    },
+    complete: crewApisComplete && net.complete && ccl.complete && cc.complete,
     steps: [
       {
         key: 'crewApis',
@@ -262,10 +260,11 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
         checks
       },
       {
-        key: 'nextDayInfo',
-        label: 'NEXT DAY INFO',
-        complete: Boolean(info?.nextDayInfoComplete),
-        tooltip: info?.nextDayInfoComplete ? `NEXT DAY INFO sent email found: ${nextDayEmailSubject}` : `NEXT DAY INFO sent email not found: ${nextDayEmailSubject}`
+        key: 'net',
+        label: 'NET',
+        complete: net.complete,
+        time: net.time,
+        tooltip: net.time ? `PD*,NET ${net.time}` : 'PD*,NET not searched'
       },
       {
         key: 'ccl',

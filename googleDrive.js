@@ -431,30 +431,6 @@ async function getLatestFlightLog() {
 }
 
 
-async function hasNextDayInfoEmail(flightNo, subjectDate, expectedSubject = '') {
-  const normalizedFlightNo = String(flightNo || '').trim().toUpperCase();
-  const normalizedSubjectDate = String(subjectDate || '').trim();
-  const subject = String(expectedSubject || `${normalizedFlightNo} ${normalizedSubjectDate} flight information details`).trim();
-  if (!normalizedFlightNo || !normalizedSubjectDate || !subject) return false;
-
-  try {
-    const gmail = google.gmail({ version: 'v1', auth });
-    const userId = process.env.NEXT_DAY_INFO_GMAIL_USER || 'laxhmmu@gmail.com';
-    const exactSubject = subject.replace(/"/g, '');
-    const q = `subject:"${exactSubject}" newer_than:30d`;
-    const result = await gmail.users.messages.list({
-      userId,
-      q,
-      maxResults: 10,
-      fields: 'messages/id'
-    });
-    return Array.isArray(result.data.messages) && result.data.messages.length > 0;
-  } catch (err) {
-    console.error('Gmail next day info subject search error:', err.message || err);
-    return false;
-  }
-}
-
 // ===============================
 // Get Archive Log
 // Example:
