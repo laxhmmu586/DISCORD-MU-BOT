@@ -1039,6 +1039,14 @@
     .sy-flight-hero::before { display:none !important; }
     .sy-flight-clock { position:absolute; left:50%; top:70%; transform:translate(-50%, -50%); z-index:1; color:#f8fafc; font-size:28px; font-weight:300; letter-spacing:1.4px; white-space:nowrap; opacity:0; visibility:hidden; transition:opacity .18s ease; }
     .sy-flight-clock.is-visible { opacity:1; visibility:visible; }
+    .jcsy-float-panel { position:fixed; right:24px; top:112px; width:min(380px, calc(100vw - 32px)); max-height:72vh; overflow:auto; display:none; z-index:60; border:1px solid rgba(96,165,250,.36); border-radius:18px; background:linear-gradient(145deg, rgba(7,24,39,.98), rgba(10,31,52,.96)); box-shadow:0 24px 60px rgba(0,0,0,.42); padding:14px; color:#e2e8f0; }
+    .jcsy-float-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; color:#f8fafc; font-size:16px; font-weight:1000; letter-spacing:.4px; }
+    .jcsy-float-close { border:0; border-radius:999px; width:30px; height:30px; background:rgba(148,163,184,.16); color:#f8fafc; font-size:18px; font-weight:900; cursor:pointer; }
+    .jcsy-group { border:1px solid rgba(148,163,184,.18); border-radius:13px; padding:10px; margin-top:10px; background:rgba(15,23,42,.34); }
+    .jcsy-group-title { display:flex; justify-content:space-between; gap:8px; margin-bottom:7px; color:#93c5fd; font-size:12px; font-weight:1000; text-transform:uppercase; letter-spacing:.5px; }
+    .jcsy-row { display:grid; grid-template-columns:72px 50px 1fr; gap:8px; padding:5px 0; border-top:1px solid rgba(148,163,184,.12); font-size:12px; font-weight:800; color:#f8fafc; }
+    .jcsy-row:first-of-type { border-top:0; }
+    .jcsy-empty { color:#94a3b8; font-size:12px; font-weight:800; }
     .sy-flight-phase, .sy-flight-caption, .sy-progress-plane.is-spacex-plane { display:none !important; }
     .sy-top-grid { grid-template-columns:.9fr .9fr .9fr 1.35fr; border:1px solid rgba(148,163,184,.45); border-radius:22px; padding:14px 16px; background:rgba(8,28,48,.66); box-shadow:inset 0 1px 0 rgba(255,255,255,.06), 0 18px 36px rgba(0,0,0,.2); }
     .sy-top-grid .sy-stat-card { min-height:58px; padding:0 10px; border:0; border-radius:0; background:transparent; box-shadow:none; border-right:1px solid rgba(148,163,184,.26); }
@@ -2691,6 +2699,51 @@
       return Number.isFinite(n) ? n : 0;
     }
 
+    function ensureJcsyPanel() {
+      let panel = document.getElementById('jcsyFloatPanel');
+      if (panel) return panel;
+      panel = document.createElement('div');
+      panel.id = 'jcsyFloatPanel';
+      panel.className = 'jcsy-float-panel';
+      panel.innerHTML = '<div class="jcsy-float-head"><span>JCSY</span><button type="button" class="jcsy-float-close" onclick="hideJcsyPanel()" aria-label="Close JCSY">×</button></div><div id="jcsyFloatContent"></div>';
+      document.body.appendChild(panel);
+      return panel;
+    }
+
+    function hideJcsyPanel() {
+      const panel = document.getElementById('jcsyFloatPanel');
+      if (panel) panel.style.display = 'none';
+    }
+
+    function renderJcsyGroup(title, rows) {
+      const safeRows = Array.isArray(rows) ? rows : [];
+      const body = safeRows.length
+        ? safeRows.map((row) => `<div class="jcsy-row"><span>${escapeHtmlText(row.flightNo || '-')}</span><span>${escapeHtmlText(row.dest || '-')}</span><span>${escapeHtmlText(row.depart || '-')}</span></div>`).join('')
+        : '<div class="jcsy-empty">No flights</div>';
+      return `<div class="jcsy-group"><div class="jcsy-group-title"><span>${escapeHtmlText(title)}</span><span>${safeRows.length}</span></div>${body}</div>`;
+    }
+
+    function toggleJcsyPanel() {
+      const panel = ensureJcsyPanel();
+      if (panel.style.display === 'block') {
+        panel.style.display = 'none';
+        return;
+      }
+      const groups = currentJcsyInfo?.groups || {};
+      const header = currentJcsyInfo?.complete
+        ? `<div class="jcsy-empty">${escapeHtmlText(currentJcsyInfo.time || '--:--:--')}</div>`
+        : '<div class="jcsy-empty">JCSY not found</div>';
+      const html = [
+        header,
+        renderJcsyGroup('Domestic', groups.domestic),
+        renderJcsyGroup('International', groups.international),
+        renderJcsyGroup('Overnight Transfer (+2)', groups.overnight),
+        renderJcsyGroup('PVG Only', groups.pvgOnly)
+      ].join('');
+      setHtmlById('jcsyFloatContent', html);
+      panel.style.display = 'block';
+    }
+
     function formatSyMeta(sy) {
       return [sy.statusDisplay || '', sy.aircraftType || '-', sy.aircraftRegistration || '-']
         .filter((item) => item && item !== '-')
@@ -2775,7 +2828,7 @@
           : '';
         return `<div class="sy-progress-step is-spacex-step${step.complete ? ' is-complete' : ''}${step.warning ? ' is-warning' : ''}" data-step-idx="${idx}" style="left:${point.x}%; top:${point.y + markerYOffset}%;" title="${escapeAttr(title)}"${actionAttr}${timeAttr}>
           ${issueBadge}
-          <span class="sy-progress-dot"></span>
+          <span class="sy-progress-tick"><span class="sy-progress-dot"></span></span>
           <span>${escapeHtmlText(step.label || '')}</span>
         </div>`;
       }).join('');
@@ -2842,6 +2895,7 @@
           if (action === 'chd') toggleChdPanel();
           if (action === 'gov') toggleGovAqqPanel();
           if (action === 'nbrd') toggleCkinNbrdPanel();
+          if (action === 'jcsy') toggleJcsyPanel();
           const timeLabel = node.getAttribute('data-time-label');
           if (timeLabel) {
             const clock = document.getElementById('syFlightClock');
