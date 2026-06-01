@@ -21,13 +21,13 @@ function splitLogicalSections(log) {
 
     if (cmd && !isContinuation) {
       if (current && current.content.trim()) sections.push(current);
-      current = { content: line + '\n', timestamp: pendingTimestamp || null };
+      current = { content: line + '\n', timestamp: pendingTimestamp || null, commandTimestamp: pendingTimestamp || null };
       pendingTimestamp = null;
       continue;
     }
 
     if (!current) {
-      current = { content: '', timestamp: pendingTimestamp || null };
+      current = { content: '', timestamp: pendingTimestamp || null, commandTimestamp: pendingTimestamp || null };
       pendingTimestamp = null;
     } else if (cmd && isContinuation && pendingTimestamp) {
       const currentTs = parseSectionTimestamp(current.timestamp);
@@ -186,6 +186,71 @@ function subtractMinutesFromTime(hhmm, minutes) {
   return `${String(Math.floor(total / 60)).padStart(2, '0')}${String(total % 60).padStart(2, '0')}`;
 }
 
+const JCSY_INTERNATIONAL_DESTS = new Set([
+  'ALA', 'CEB', 'DEL', 'HKG', 'MNL', 'SGN',
+  'BKK', 'CMB', 'DXB', 'HAN', 'MEL', 'SIN',
+  'BKI', 'CJU', 'DPS', 'ICN', 'MLE', 'TPE',
+  'CNX', 'DAC', 'KUL', 'NGO', 'VTE',
+  'CGK', 'KIX', 'OKA', 'KTI', 'PUS'
+]);
+
+function normalizeJcsyFlightNo(flightNo) {
+  const m = String(flightNo || '').trim().toUpperCase().match(/^([A-Z]+)(\d+)$/);
+  if (!m) return String(flightNo || '').trim().toUpperCase();
+  return `${m[1]}${m[2].padStart(4, '0')}`;
+}
+
+function classifyJcsyRow(row) {
+  const flightNo = String(row?.flightNo || '').toUpperCase();
+  const dest = String(row?.dest || '').toUpperCase();
+  if (/\+2\b/.test(String(row?.depart || ''))) return 'overnight';
+  if (!/^(MU|FM)/.test(flightNo) || flightNo === 'MU1113' || dest === 'PVG') return 'pvgOnly';
+  if (JCSY_INTERNATIONAL_DESTS.has(dest)) return 'international';
+  return 'domestic';
+}
+
+function parseJcsyRows(content) {
+  return String(content || '').split(/\r?\n/).map((line) => {
+    const m = line.match(/^\s*([A-Z]{2}\d{3,4})\s+\/([A-Z]{3})\/\s+(\d{4}(?:\+\d)?)/i);
+    if (!m) return null;
+    const row = {
+      flightNo: m[1].toUpperCase(),
+      dest: m[2].toUpperCase(),
+      depart: m[3].toUpperCase()
+    };
+    return { ...row, category: classifyJcsyRow(row) };
+  }).filter(Boolean);
+}
+
+function findJcsyInfo(sections, flightNo, flightYmd, formatTime) {
+  const flightDate = dateToDdMon(ymdToUtcDate(flightYmd));
+  const jcsyFlightNo = normalizeJcsyFlightNo(flightNo);
+  const flightDatePattern = escapeRegExp(flightDate);
+  const flightNoPattern = escapeRegExp(jcsyFlightNo);
+  const matches = Boolean(flightYmd && jcsyFlightNo && flightDate) ? sections.filter((sectionObj) => {
+    const ymd = getYmdFromTimestamp(sectionObj.timestamp);
+    const content = String(sectionObj.content || '').toUpperCase();
+    return ymd === flightYmd
+      && /^>\s*JCSY\s*:/im.test(content)
+      && new RegExp(`\\bJCSY:\\s*${flightNoPattern}/${flightDatePattern}/LAX,O\\b`, 'im').test(content);
+  }) : [];
+  const sectionObj = matches.sort((a, b) => parseSectionTimestamp(b.timestamp) - parseSectionTimestamp(a.timestamp))[0] || null;
+  const rows = parseJcsyRows(sectionObj?.content || '');
+  const groups = {
+    domestic: rows.filter((row) => row.category === 'domestic'),
+    international: rows.filter((row) => row.category === 'international'),
+    overnight: rows.filter((row) => row.category === 'overnight'),
+    pvgOnly: rows.filter((row) => row.category === 'pvgOnly')
+  };
+  return {
+    complete: Boolean(sectionObj),
+    time: formatTime(sectionObj?.commandTimestamp || sectionObj?.timestamp),
+    flightNo: jcsyFlightNo,
+    flightDate,
+    groups
+  };
+}
+
 function enrichCrewApisFromLog(log, info, targetYmd) {
   const sections = splitLogicalSections(log);
   const flightNo = String(info?.flightNo || '').trim().toUpperCase();
@@ -231,6 +296,7 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
     : '';
   const ccl = findAcceptedCommand(/^>\s*CCL\s*:/im);
   const cc = findAcceptedCommand(/^>\s*CC\s*:/im);
+  const jcsy = findJcsyInfo(sections, flightNo, flightYmd, formatTime);
   const baseYmd = targetYmd || flightYmd;
   const baseDateUtc = ymdToUtcDate(baseYmd);
   const netSearchYmd = flightYmd || baseYmd;
@@ -260,11 +326,16 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
     const ymd = getYmdFromTimestamp(sectionObj.timestamp);
     return Boolean(baseYmd && ymd && ymd === baseYmd);
   });
-  const commandHas = (regex) => commandSections.some((sectionObj) => {
-    const content = String(sectionObj.content || '').toUpperCase();
-    regex.lastIndex = 0;
-    return regex.test(content);
-  });
+  const commandFind = (regex) => {
+    const matches = commandSections.filter((sectionObj) => {
+      const content = String(sectionObj.content || '').toUpperCase();
+      regex.lastIndex = 0;
+      return regex.test(content);
+    });
+    if (!matches.length) return { complete: false, time: '', timestamp: '' };
+    const sectionObj = matches.sort((a, b) => parseSectionTimestamp(b.timestamp) - parseSectionTimestamp(a.timestamp))[0];
+    return { complete: true, time: formatTime(sectionObj.timestamp), timestamp: sectionObj.timestamp || '' };
+  };
   const futureSy = sections
     .filter((sectionObj) => getYmdFromTimestamp(sectionObj.timestamp) === baseYmd)
     .map((sectionObj) => parseSYSection(sectionObj))
@@ -272,9 +343,13 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
     .sort((a, b) => String(b.statusDisplay || '').localeCompare(String(a.statusDisplay || '')))[0] || null;
   const commandFlightNo = escapeRegExp(flightNo);
   const commandFlightDate = escapeRegExp(commandDate);
-  const initialFlight = Boolean(flightNo && commandDate) && commandHas(new RegExp(`^>\\s*IF\\s+${commandFlightNo}/${commandFlightDate}(?:\\s|$)`, 'im'));
+  const initialFlight = Boolean(flightNo && commandDate)
+    ? commandFind(new RegExp(`^>\\s*IF\\s+${commandFlightNo}/${commandFlightDate}(?:\\s|$)`, 'im'))
+    : { complete: false, time: '', timestamp: '' };
   const expectedBdt = subtractMinutesFromTime(futureSy?.sd, 45) || String(futureSy?.bdt || '').trim() || subtractMinutesFromTime(info?.sd, 45) || String(info?.bdt || '').trim();
-  const bdtChg = Boolean(flightNo && commandDate && expectedBdt) && commandHas(new RegExp(`^>\\s*FU\\s+${commandFlightNo}/${commandFlightDate}/LAX/BDT/${escapeRegExp(expectedBdt)}(?:\\s|$)`, 'im'));
+  const bdtChg = Boolean(flightNo && commandDate && expectedBdt)
+    ? commandFind(new RegExp(`^>\\s*FU\\s+${commandFlightNo}/${commandFlightDate}/LAX/BDT/${escapeRegExp(expectedBdt)}(?:\\s|$)`, 'im'))
+    : { complete: false, time: '', timestamp: '' };
   return {
     complete: crewApisComplete && ccl.complete && cc.complete,
     nextDayInfoQuery: {
@@ -299,6 +374,14 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
         tooltip: netComplete ? `PD*,NET ${flightNo}/${netFlightDate} ${netTime}` : `PD*,NET ${flightNo}/${netFlightDate || '------'} not found`
       },
       {
+        key: 'jcsy',
+        label: 'JCSY',
+        complete: jcsy.complete,
+        time: jcsy.time,
+        tooltip: jcsy.complete ? `JCSY ${jcsy.flightNo}/${jcsy.flightDate} ${jcsy.time}` : `JCSY ${jcsy.flightNo || flightNo}/${jcsy.flightDate || '-----'} not found`,
+        groups: jcsy.groups
+      },
+      {
         key: 'ccl',
         label: 'CCL',
         complete: ccl.complete,
@@ -315,14 +398,16 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
       {
         key: 'initialFlight',
         label: 'Initial flight',
-        complete: initialFlight,
-        tooltip: initialFlight ? `IF ${flightNo}/${commandDate}` : `IF ${flightNo}/${commandDate} not entered`
+        complete: initialFlight.complete,
+        time: initialFlight.time,
+        tooltip: initialFlight.complete ? `IF ${flightNo}/${commandDate} ${initialFlight.time}` : `IF ${flightNo}/${commandDate} not entered`
       },
       {
         key: 'bdtChg',
         label: 'BDT CHG',
-        complete: bdtChg,
-        tooltip: bdtChg ? `FU ${flightNo}/${commandDate}/LAX/BDT/${expectedBdt}` : `FU ${flightNo}/${commandDate}/LAX/BDT/${expectedBdt || '----'} not entered`
+        complete: bdtChg.complete,
+        time: bdtChg.time,
+        tooltip: bdtChg.complete ? `FU ${flightNo}/${commandDate}/LAX/BDT/${expectedBdt} ${bdtChg.time}` : `FU ${flightNo}/${commandDate}/LAX/BDT/${expectedBdt || '----'} not entered`
       }
     ]
   };
