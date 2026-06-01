@@ -871,6 +871,12 @@
     input { background:rgba(7,24,39,.92); border:1px solid rgba(77,112,148,.46); border-radius:14px; }
     button { font-weight:700; }
     .card { border-radius:20px; padding:20px; overflow:visible; }
+    .card.is-sy-card { padding:0 20px 20px; border-color:transparent; background:transparent; box-shadow:none; backdrop-filter:none; }
+    .card.is-sy-card .flight-row { padding-top:20px; }
+    .card.is-sy-card .sy-info-frame { display:grid; grid-template-columns:1fr; row-gap:18px; border:1px solid rgba(77,112,148,.46); border-radius:20px; padding:20px; background:rgba(7,24,39,.78); box-shadow:0 18px 44px rgba(0,0,0,.26); backdrop-filter:blur(14px); }
+    .card.is-sy-card .sy-info-head { display:flex; align-items:flex-start; gap:14px; margin-bottom:18px; padding-bottom:22px; border-bottom:1px solid rgba(77,112,148,.46); }
+    .card.is-sy-card .sy-info-head .action-menu-wrap { display:block; margin-left:auto; margin-top:-2px; flex:0 0 auto; }
+    .card.is-sy-card .sy-hero-meta { flex:1 1 auto; margin:0; padding-bottom:0; border-bottom:0; }
     .flight-row { align-items:flex-start; margin-bottom:8px; }
     .flight { font-size:28px; letter-spacing:.4px; }
     .seat { color:var(--ops-muted); font-size:15px; letter-spacing:.5px; margin:0 0 18px; }
@@ -1012,8 +1018,8 @@
     .sy-progress-step.is-spacex-step .sy-progress-dot { width:10px; height:10px; border:2px solid rgba(248,250,252,.96); background:#071827; box-shadow:0 0 0 1.5px rgba(7,24,39,.98); }
     .sy-progress-step.is-spacex-step.is-complete .sy-progress-dot { border-color:#f8fafc; background:#22c55e; }
     .sy-progress-step.is-spacex-step.is-warning .sy-progress-dot { border-color:#f8fafc; background:#f59e0b; }
-    .sy-progress-step.is-spacex-step:not(.is-complete) .sy-progress-dot { animation:syProgressBlink 1.05s ease-in-out infinite; }
-    @keyframes syProgressBlink { 0%, 100% { opacity:1; } 50% { opacity:.28; } }
+    .sy-progress-step.is-spacex-step:not(.is-complete) .sy-progress-dot { animation:syProgressBlink .85s ease-in-out infinite; }
+    @keyframes syProgressBlink { 0%, 100% { transform:scale(1); filter:brightness(1); } 50% { transform:scale(1.35); filter:brightness(1.9); box-shadow:0 0 0 1.5px rgba(7,24,39,.98), 0 0 0 7px rgba(248,250,252,.28); } }
     .sy-progress-step.is-spacex-step span:last-child { font-size:8px; line-height:1.05; font-weight:1000; letter-spacing:.15px; color:rgba(241,245,249,.95); text-transform:uppercase; }
     .sy-progress-issue-count { position:absolute; left:50%; top:-22px; transform:translateX(-50%); color:#ef4444; font-size:22px; line-height:1; font-weight:1000; letter-spacing:.2px; }
     .sy-progress-step.is-spacex-step[data-action], .sy-progress-step.is-spacex-step[data-time-label] { cursor:pointer; }
@@ -1058,6 +1064,10 @@
       .auth-user { flex:1 1 auto; min-width:0; overflow:hidden; white-space:normal; }
       .auth-actions { margin-left:auto; width:auto; justify-content:flex-end; gap:8px; flex-shrink:0; }
       .card { padding:14px; }
+      .card.is-sy-card { padding:0 12px 14px; }
+      .card.is-sy-card .flight-row { padding-top:14px; }
+      .card.is-sy-card .sy-info-frame { padding:14px; border-radius:18px; }
+      .card.is-sy-card .sy-info-head { gap:10px; margin-bottom:14px; padding-bottom:16px; }
       .flight { font-size:23px; }
       .seat, .sy-hero-meta { font-size:13px; }
       .sy-dashboard { row-gap:18px; }
@@ -1192,17 +1202,6 @@
           >
             🪪
           </button>
-          <div id="syActionMenuWrap" class="action-menu-wrap">
-            <button id="syActionMenuBtn" class="action-menu-btn" onclick="toggleSyActionMenu(event)" title="More actions" aria-haspopup="true" aria-expanded="false">⋮</button>
-            <div id="syActionMenu" class="action-menu-pop" role="menu">
-              <button id="bagReportMenuItem" type="button" class="action-menu-item" onclick="openSyMenuAction('bag')" role="menuitem" style="display:none;">Bag Report</button>
-              <button id="salesReportMenuItem" type="button" class="action-menu-item" onclick="openSyMenuAction('sales')" role="menuitem" style="display:none;">Sales Report</button>
-              <button type="button" class="action-menu-item" onclick="openSyMenuAction('security')" role="menuitem">Security Check</button>
-              <button type="button" class="action-menu-item" onclick="openSyMenuAction('seatmap')" role="menuitem">Seat Map</button>
-              <button id="bagReportMenuItem" type="button" class="action-menu-item" onclick="openSyMenuAction('bag')" role="menuitem" style="display:none;">Bag Report</button>
-              <button id="salesReportMenuItem" type="button" class="action-menu-item" onclick="openSyMenuAction('sales')" role="menuitem" style="display:none;">Sales Report Download</button>
-            </div>
-          </div>
           <button id="auditToggleBtn" class="audit-icon-btn" onclick="showBnAuditPage()" title="BN Audit" style="display:none;">📋</button>
         </div>
 
@@ -1217,7 +1216,24 @@
         ></div>
 
         <div id="syLayout" class="sy-layout sy-dashboard" style="display:none;">
-          <div class="sy-hero-meta" id="syHeaderMeta"></div>
+          <div class="sy-panel sy-progress-panel sy-flight-hero">
+            <div id="syProgressTrack" class="sy-progress-track-wrap"></div>
+          </div>
+
+          <div class="sy-info-frame">
+            <div class="sy-info-head">
+              <div class="sy-hero-meta" id="syHeaderMeta"></div>
+              <div id="syActionMenuWrap" class="action-menu-wrap">
+                <button id="syActionMenuBtn" class="action-menu-btn" onclick="toggleSyActionMenu(event)" title="More actions" aria-haspopup="true" aria-expanded="false">⋮</button>
+                <div id="syActionMenu" class="action-menu-pop" role="menu">
+                  <button id="bagReportMenuItem" type="button" class="action-menu-item" onclick="openSyMenuAction('bag')" role="menuitem" style="display:none;">Bag Report</button>
+                  <button id="salesReportMenuItem" type="button" class="action-menu-item" onclick="openSyMenuAction('sales')" role="menuitem" style="display:none;">Sales Report Download</button>
+                  <button type="button" class="action-menu-item" onclick="openSyMenuAction('security')" role="menuitem">Security Check</button>
+                  <button type="button" class="action-menu-item" onclick="openSyMenuAction('seatmap')" role="menuitem">Seat Map</button>
+                </div>
+              </div>
+
+            </div>
 
           <div class="sy-panel sy-progress-panel sy-flight-hero">
             <div id="syProgressTrack" class="sy-progress-track-wrap"></div>
@@ -1315,6 +1331,7 @@
           <div id="psmSection" class="sy-panel sy-detail-panel" style="display:none;">
             <div id="psmSummary" class="chd-summary"></div>
             <div id="psmList" class="psm-list"></div>
+          </div>
           </div>
         </div>
 
@@ -2689,10 +2706,12 @@
       const crewStep = baseByKey.get('crewApis') || crewSteps[0] || { key: 'crewApis', label: 'Crew APIS', complete: false };
       const cclStep = baseByKey.get('ccl') || { key: 'ccl', label: 'CCL', complete: false, tooltip: 'CCL not entered' };
       const ccStep = baseByKey.get('cc') || { key: 'cc', label: 'CC', complete: false, tooltip: 'CC not entered' };
+      const nextDayInfoStep = baseByKey.get('nextDayInfo') || { key: 'nextDayInfo', label: 'NEXT DAY INFO', complete: false, tooltip: 'NEXT DAY INFO email not found' };
       const initialFlightStep = baseByKey.get('initialFlight') || { key: 'initialFlight', label: 'Initial flight', complete: false, tooltip: 'Initial flight not entered' };
       const bdtChgStep = baseByKey.get('bdtChg') || { key: 'bdtChg', label: 'BDT CHG', complete: false, tooltip: 'BDT CHG not entered' };
       const steps = [
         { ...crewStep, key: 'crewApis', label: 'CREW APIS' },
+        { ...nextDayInfoStep, key: 'nextDayInfo', label: 'NEXT DAY INFO' },
         { key: 'chd', label: 'CHD', complete: crewStep.complete && !extras.chdHasIssue, warning: crewStep.complete && Boolean(extras.chdHasIssue), issueCount: numberFromValue(extras.chdIssueCount || 0), tooltip: !crewStep.complete ? 'Waiting for Crew APIS' : (extras.chdHasIssue ? 'Missing CHD1/0 - click to open CHD List' : 'CHD clear'), action: crewStep.complete && extras.chdHasIssue ? 'chd' : '' },
         { key: 'gov', label: 'GOV', complete: crewStep.complete && !extras.govHasIssue, warning: crewStep.complete && Boolean(extras.govHasIssue), issueCount: numberFromValue(extras.govIssueCount || 0), tooltip: !crewStep.complete ? 'Waiting for Crew APIS' : (extras.govHasIssue ? 'GOV/AQQ issue - click to open GOV/AQQ' : 'GOV/AQQ clear'), action: crewStep.complete && extras.govHasIssue ? 'gov' : '' },
         { key: 'nbrd', label: 'NBRD', complete: crewStep.complete && !extras.nbrdHasIssue, warning: crewStep.complete && Boolean(extras.nbrdHasIssue), issueCount: numberFromValue(extras.nbrdIssueCount || 0), tooltip: !crewStep.complete ? 'Waiting for Crew APIS' : (extras.nbrdHasIssue ? 'CKIN/NBRD issue - click to open CKIN/NBRD' : 'NBRD clear'), action: crewStep.complete && extras.nbrdHasIssue ? 'nbrd' : '' },
@@ -2702,11 +2721,15 @@
         { ...bdtChgStep, key: 'bdtChg', label: 'BDT CHG' }
       ];
       const denominator = Math.max(steps.length - 1, 1);
-      const timelinePath = 'M 8 46 H 92';
       const points = steps.map((_, idx) => ({
         x: 8 + ((84 * idx) / denominator),
         y: 46
       }));
+      const segmentGap = 1.8;
+      const segmentHtml = points.slice(0, -1).map((point, idx) => {
+        const nextPoint = points[idx + 1];
+        return `<path d="M ${point.x + segmentGap} ${point.y} H ${nextPoint.x - segmentGap}" fill="none" stroke="rgba(255,255,255,.78)" stroke-width=".72" stroke-linecap="round" />`;
+      }).join('');
       const ccIndex = steps.findIndex((step) => step.key === 'cc');
       const planePoint = ccStep.complete && ccIndex >= 0 ? points[ccIndex] : null;
       const planeHtml = planePoint ? `<div class="sy-progress-plane-marker" style="left:${planePoint.x}%; top:${planePoint.y - 10}%;" aria-hidden="true">
@@ -2732,7 +2755,7 @@
       el.classList.add('is-spacex');
       el.innerHTML = `<div class="sy-progress-track-inner">
         <svg class="sy-progress-line-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-          <path d="${timelinePath}" fill="none" stroke="rgba(255,255,255,.78)" stroke-width=".72" stroke-linecap="round" />
+          ${segmentHtml}
         </svg>
         ${planeHtml}
         <div id="syFlightClock" class="sy-flight-clock"></div>
@@ -3430,6 +3453,7 @@
           error.style.display =
             'block';
           currentResultMode = 'NONE';
+          card.classList.remove('is-sy-card');
 
           return;
         }
@@ -3458,6 +3482,7 @@
           }
 
           currentResultMode = 'SY';
+          card.classList.add('is-sy-card');
           currentPassengerData = null;
           checkinPanelOpen = false;
           document.getElementById('checkinDetailList').innerHTML = '';
@@ -3657,6 +3682,7 @@
         }
 
         currentResultMode = 'PAX';
+        card.classList.remove('is-sy-card');
         setDisplayById('syLayout', 'none');
         hideSyAuxLayouts();
         setDisplayById('chdSection', 'none');

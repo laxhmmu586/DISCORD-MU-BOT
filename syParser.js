@@ -239,12 +239,23 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
   const bdtChg = Boolean(flightNo && commandDate && expectedBdt) && commandHas(new RegExp(`^>\\s*FU\\s+${commandFlightNo}/${commandFlightDate}/LAX/BDT/${escapeRegExp(expectedBdt)}(?:\\s|$)`, 'im'));
   return {
     complete: crewApisComplete && ccl.complete && cc.complete,
+    nextDayInfoQuery: {
+      flightNo,
+      flightDate: commandDate,
+      flightDateFull: commandFlightDateFull
+    },
     steps: [
       {
         key: 'crewApis',
         label: 'Crew APIS',
         complete: crewApisComplete,
         checks
+      },
+      {
+        key: 'nextDayInfo',
+        label: 'NEXT DAY INFO',
+        complete: Boolean(info?.nextDayInfoComplete),
+        tooltip: info?.nextDayInfoComplete ? `NEXT DAY INFO email found for ${flightNo}/${commandDate}` : `NEXT DAY INFO email not found for ${flightNo}/${commandDate}`
       },
       {
         key: 'ccl',

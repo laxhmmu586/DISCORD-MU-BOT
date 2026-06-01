@@ -18,7 +18,8 @@ const auth = new google.auth.GoogleAuth({
   scopes: [
 
     'https://www.googleapis.com/auth/drive.readonly',
-    'https://www.googleapis.com/auth/spreadsheets.readonly'
+    'https://www.googleapis.com/auth/spreadsheets.readonly',
+    'https://www.googleapis.com/auth/gmail.readonly'
   ]
 });
 
@@ -429,6 +430,29 @@ async function getLatestFlightLog() {
   }
 }
 
+
+async function hasNextDayInfoEmail(flightNo, flightDate) {
+  const normalizedFlightNo = String(flightNo || '').trim().toUpperCase();
+  const normalizedFlightDate = String(flightDate || '').trim().toUpperCase();
+  if (!normalizedFlightNo || !normalizedFlightDate) return false;
+
+  try {
+    const gmail = google.gmail({ version: 'v1', auth });
+    const userId = process.env.GMAIL_USER || process.env.GMAIL_IMPERSONATE_USER || 'me';
+    const q = `("next day info" OR "next day") ${normalizedFlightNo} ${normalizedFlightDate} newer_than:30d`;
+    const result = await gmail.users.messages.list({
+      userId,
+      q,
+      maxResults: 10,
+      fields: 'messages/id'
+    });
+    return Array.isArray(result.data.messages) && result.data.messages.length > 0;
+  } catch (err) {
+    console.error('Gmail next day info search error:', err.message || err);
+    return false;
+  }
+}
+
 // ===============================
 // Get Archive Log
 // Example:
@@ -512,5 +536,6 @@ module.exports = {
   get240InfoByBnAndFlightDate,
   getSyBagInfoByDate,
   getSalesReportMeta,
-  downloadSalesReportByFlight
+  downloadSalesReportByFlight,
+  hasNextDayInfoEmail
 };

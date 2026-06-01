@@ -36,7 +36,8 @@ const {
   get240InfoByBnAndFlightDate,
   getSyBagInfoByDate,
   getSalesReportMeta,
-  downloadSalesReportByFlight
+  downloadSalesReportByFlight,
+  hasNextDayInfoEmail
 
 } = require('./googleDrive');
 
@@ -604,6 +605,17 @@ app.get(
         const yearFromFlight = m?.[3] ? (2000 + Number(m[3])) : fullYear;
         const isoDate = m ? `${yearFromFlight}-${months[m[2]] || '01'}-${m[1]}` : '';
         const syBagInfo = isoDate ? await getSyBagInfoByDate(isoDate, syInfo.flightDate) : null;
+        const nextDayQuery = syInfo.crewApis?.nextDayInfoQuery || null;
+        if (nextDayQuery?.flightNo && nextDayQuery?.flightDate) {
+          const nextDayInfoComplete = await hasNextDayInfoEmail(nextDayQuery.flightNo, nextDayQuery.flightDate);
+          const nextDayStep = syInfo.crewApis?.steps?.find((step) => step.key === 'nextDayInfo');
+          if (nextDayStep) {
+            nextDayStep.complete = nextDayInfoComplete;
+            nextDayStep.tooltip = nextDayInfoComplete
+              ? `NEXT DAY INFO email found for ${nextDayQuery.flightNo}/${nextDayQuery.flightDate}`
+              : `NEXT DAY INFO email not found for ${nextDayQuery.flightNo}/${nextDayQuery.flightDate}`;
+          }
+        }
         return res.json({ sy: { ...syInfo, bagSheet: syBagInfo } });
       }
       if (isSYRawQuery) {
