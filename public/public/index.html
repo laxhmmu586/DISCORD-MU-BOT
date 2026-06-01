@@ -1012,10 +1012,11 @@
     .sy-progress-panel { order:-1; min-height:184px; overflow:hidden; border:none !important; border-radius:0 !important; box-shadow:none !important; background:transparent !important; padding:0 0 6px !important; }
     .sy-progress-track-wrap.is-spacex { position:relative; min-height:180px; padding:0; overflow:hidden; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
     .sy-progress-track-wrap.is-spacex::-webkit-scrollbar { display:none; }
-    .sy-progress-track-inner { position:relative; width:100%; min-width:100%; height:180px; scroll-snap-align:center; }
-    .sy-progress-line-svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
-    .sy-progress-step.is-spacex-step { position:absolute; min-width:68px; gap:5px; transform:translate(-50%, -10px); z-index:2; color:rgba(241,245,249,.94); cursor:default; }
-    .sy-progress-step.is-spacex-step .sy-progress-tick { position:relative; width:5px; height:30px; border-radius:999px; background:rgba(248,250,252,.9); transform:rotate(var(--tick-rotate, 0deg)); transform-origin:50% 50%; box-shadow:0 0 0 1.5px rgba(7,24,39,.98), 0 0 12px rgba(248,250,252,.18); }
+    .sy-progress-track-inner { position:relative; width:100%; min-width:100%; height:180px; scroll-snap-align:center; cursor:grab; touch-action:none; }
+    .sy-progress-track-inner:active { cursor:grabbing; }
+    .sy-progress-line-svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; pointer-events:none; }
+    .sy-progress-step.is-spacex-step { position:absolute; min-width:68px; gap:5px; transform:translate(-50%, -10px); z-index:2; color:rgba(241,245,249,.94); cursor:default; transition:left .18s ease, top .18s ease, opacity .18s ease; }
+    .sy-progress-step.is-spacex-step .sy-progress-tick { position:relative; width:5px; height:30px; border-radius:999px; background:rgba(248,250,252,.9); transform:rotate(var(--tick-rotate, 0deg)); transform-origin:50% 50%; box-shadow:0 0 0 1.5px rgba(7,24,39,.98), 0 0 12px rgba(248,250,252,.18); transition:transform .18s ease, box-shadow .18s ease; }
     .sy-progress-step.is-spacex-step .sy-progress-dot { position:absolute; left:50%; top:50%; width:11px; height:11px; border-radius:999px; border:2px solid rgba(248,250,252,.96); background:#071827; transform:translate(-50%, -50%); box-shadow:0 0 0 1.5px rgba(7,24,39,.98); }
     .sy-progress-step.is-spacex-step.is-complete .sy-progress-tick { background:#22c55e; box-shadow:0 0 0 1.5px rgba(7,24,39,.98), 0 0 16px rgba(34,197,94,.55); }
     .sy-progress-step.is-spacex-step.is-complete .sy-progress-dot { border-color:#f8fafc; background:#22c55e; }
@@ -1032,6 +1033,11 @@
     .sy-progress-swipe:active { cursor:grabbing; }
     .sy-progress-swipe::before { content:""; position:absolute; left:0; right:0; top:9px; height:3px; border-radius:999px; background:rgba(248,250,252,.36); }
     .sy-progress-swipe-thumb { position:absolute; left:0; top:8px; width:24%; height:5px; border-radius:999px; background:#f8fafc; }
+    .sy-progress-orbit { stroke:rgba(248,250,252,.72); stroke-width:.62; filter:url(#syOrbitGlow); animation:syOrbitPulse 2.4s ease-in-out infinite; }
+    .sy-progress-orbit-shadow { stroke:rgba(96,165,250,.16); stroke-width:.42; }
+    .sy-progress-orbit-dash { stroke:rgba(125,211,252,.88); stroke-width:.34; stroke-dasharray:1.2 5.2; animation:syOrbitDash 3.2s linear infinite; }
+    @keyframes syOrbitPulse { 0%, 100% { opacity:.7; } 50% { opacity:1; } }
+    @keyframes syOrbitDash { to { stroke-dashoffset:-24; } }
     .sy-flight-hero { position:relative; min-height:150px; overflow:hidden; border:none !important; box-shadow:none !important; background:transparent !important; }
     .sy-flight-hero::before { display:none !important; }
     .sy-flight-clock { position:absolute; left:50%; top:70%; transform:translate(-50%, -50%); z-index:1; color:#f8fafc; font-size:28px; font-weight:300; letter-spacing:1.4px; white-space:nowrap; opacity:0; visibility:hidden; transition:opacity .18s ease; }
@@ -1609,7 +1615,7 @@
     let currentSeatMapRecords = [];
     let currentSecurityReviews = {};
     let currentPsmRows = [];
-    let currentJcsyInfo = null;
+    let syProgressArcOffset = 0;
 
         function resolveApiBase() {
       const fromWindow = window.MU_API_BASE || '';
@@ -2776,30 +2782,43 @@
         { ...bdtChgStep, key: 'bdtChg', label: 'BDT CHG', timeAction: true }
       ];
       const denominator = Math.max(steps.length - 1, 1);
-      const arcY = (x) => {
-        const t = Math.min(1, Math.max(0, (x - 8) / 84));
-        return 62 - (24 * Math.sin(Math.PI * t));
+      const arcCenter = { x: 50, y: 150 };
+      const arcRadius = 124;
+      const arcStartAngle = -122;
+      const arcEndAngle = -58;
+      const clampArcOffset = (value) => Math.max(-32, Math.min(32, Number(value) || 0));
+      const pointFromAngle = (angle, radius = arcRadius) => {
+        const rad = (angle * Math.PI) / 180;
+        return {
+          x: arcCenter.x + (radius * Math.cos(rad)),
+          y: arcCenter.y + (radius * Math.sin(rad)),
+          angle: angle + 90
+        };
       };
-      const arcAngle = (x) => {
-        const t = Math.min(1, Math.max(0, (x - 8) / 84));
-        const slope = -((24 * Math.PI) / 84) * Math.cos(Math.PI * t);
-        return (Math.atan(slope) * 180) / Math.PI;
+      const arcPath = (startAngle, endAngle, radius = arcRadius) => {
+        const start = pointFromAngle(startAngle, radius);
+        const end = pointFromAngle(endAngle, radius);
+        const largeArc = Math.abs(endAngle - startAngle) > 180 ? 1 : 0;
+        return `M ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArc} 1 ${end.x} ${end.y}`;
       };
-      const points = steps.map((_, idx) => {
-        const x = 8 + ((84 * idx) / denominator);
-        return { x, y: arcY(x), angle: arcAngle(x) };
-      });
-      const segmentGap = 1.15;
-      const segmentHtml = points.slice(0, -1).map((point, idx) => {
-        const nextPoint = points[idx + 1];
-        const startX = point.x + segmentGap;
-        const endX = nextPoint.x - segmentGap;
-        const midX = (startX + endX) / 2;
-        return `<path d="M ${startX} ${arcY(startX)} Q ${midX} ${arcY(midX)} ${endX} ${arcY(endX)}" fill="none" stroke="rgba(255,255,255,.78)" stroke-width=".72" stroke-linecap="round" />`;
-      }).join('');
+      const pointForIndex = (idx, offset = syProgressArcOffset) => {
+        const baseAngle = arcStartAngle + (((arcEndAngle - arcStartAngle) * idx) / denominator);
+        return pointFromAngle(baseAngle + clampArcOffset(offset));
+      };
+      const points = steps.map((_, idx) => pointForIndex(idx));
+      const orbitHtml = `
+          <defs>
+            <filter id="syOrbitGlow" x="-25%" y="-60%" width="150%" height="220%">
+              <feGaussianBlur stdDeviation="1.2" result="blur" />
+              <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+            </filter>
+          </defs>
+          <path class="sy-progress-orbit-shadow" d="${arcPath(-132, -48, arcRadius + 10)}" fill="none" />
+          <path class="sy-progress-orbit" d="${arcPath(-132, -48)}" fill="none" />
+          <path class="sy-progress-orbit-dash" d="${arcPath(-132, -48, arcRadius - 7)}" fill="none" />`;
       const ccIndex = steps.findIndex((step) => step.key === 'cc');
       const planePoint = ccStep.complete && ccIndex >= 0 ? points[ccIndex] : null;
-      const planeHtml = planePoint ? `<div class="sy-progress-plane-marker" style="left:${planePoint.x}%; top:${planePoint.y - 10}%;" aria-hidden="true">
+      const planeHtml = planePoint ? `<div class="sy-progress-plane-marker" data-plane-marker="1" data-step-idx="${ccIndex}" style="left:${planePoint.x}%; top:${planePoint.y - 11}%;" aria-hidden="true">
         <svg viewBox="0 0 110 42" role="img" focusable="false"><path d="M105 20.8c-7.2 4.5-16.6 5.2-27.9 2.2L49 15.8 26 31.4c-2.9 2-6.8 1.3-8.9-1.4l16.3-19.2-20.8-5.2-7.4 6.6L0 9.9 8.1.8l90.2 10.6c5.7.7 9.1 4.6 6.7 9.4Z" fill="currentColor"/></svg>
       </div>` : '';
       const stepHtml = steps.map((step, idx) => {
@@ -2812,7 +2831,7 @@
         const issueBadge = step.warning && numberFromValue(step.issueCount || 0) > 0
           ? `<span class="sy-progress-issue-count">${numberFromValue(step.issueCount)}</span>`
           : '';
-        return `<div class="sy-progress-step is-spacex-step${step.complete ? ' is-complete' : ''}${step.warning ? ' is-warning' : ''}" style="left:${point.x}%; top:${point.y}%; --tick-rotate:${point.angle}deg;" title="${escapeAttr(title)}"${actionAttr}${timeAttr}>
+        return `<div class="sy-progress-step is-spacex-step${step.complete ? ' is-complete' : ''}${step.warning ? ' is-warning' : ''}" data-step-idx="${idx}" style="left:${point.x}%; top:${point.y}%; --tick-rotate:${point.angle}deg;" title="${escapeAttr(title)}"${actionAttr}${timeAttr}>
           ${issueBadge}
           <span class="sy-progress-tick"><span class="sy-progress-dot"></span></span>
           <span>${escapeHtmlText(step.label || '')}</span>
@@ -2822,7 +2841,7 @@
       el.classList.add('is-spacex');
       el.innerHTML = `<div class="sy-progress-track-inner">
         <svg class="sy-progress-line-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-          ${segmentHtml}
+          ${orbitHtml}
         </svg>
         ${planeHtml}
         <div id="syFlightClock" class="sy-flight-clock"></div>
@@ -2830,50 +2849,52 @@
       </div>`;
       const progressPanel = el.closest('.sy-progress-panel');
       progressPanel?.querySelector('.sy-progress-swipe')?.remove();
-      progressPanel?.insertAdjacentHTML('beforeend', '<div class="sy-progress-swipe" aria-hidden="true"><div class="sy-progress-swipe-thumb"></div></div>');
-      const updateSwipeThumb = () => {
-        const thumb = progressPanel?.querySelector('.sy-progress-swipe-thumb');
-        if (!thumb) return;
-        const maxScroll = Math.max(0, el.scrollWidth - el.clientWidth);
-        const ratio = maxScroll ? el.scrollLeft / maxScroll : 0;
-        const thumbWidth = maxScroll ? 24 : 100;
-        const boundedWidth = Math.min(100, thumbWidth);
-        thumb.style.width = `${boundedWidth}%`;
-        thumb.style.left = `${ratio * (100 - boundedWidth)}%`;
+      const applyArcOffset = (offset) => {
+        syProgressArcOffset = clampArcOffset(offset);
+        el.querySelectorAll('[data-step-idx]').forEach((node) => {
+          const idx = Number(node.getAttribute('data-step-idx'));
+          if (!Number.isFinite(idx)) return;
+          const point = pointForIndex(idx, syProgressArcOffset);
+          node.style.left = `${point.x}%`;
+          node.style.top = `${point.y + (node.hasAttribute('data-plane-marker') ? -11 : 0)}%`;
+          node.style.setProperty('--tick-rotate', `${point.angle}deg`);
+          if (!node.hasAttribute('data-plane-marker')) {
+            const outOfView = point.x < -18 || point.x > 118 || point.y < 0 || point.y > 105;
+            node.style.opacity = outOfView ? '0' : '1';
+          }
+        });
       };
-      el.onscroll = updateSwipeThumb;
-      const swipeRail = progressPanel?.querySelector('.sy-progress-swipe');
-      swipeRail?.addEventListener('pointerdown', (event) => {
+      const trackInner = el.querySelector('.sy-progress-track-inner');
+      let dragStartX = 0;
+      let dragStartOffset = syProgressArcOffset;
+      let didDragArc = false;
+      trackInner?.addEventListener('pointerdown', (event) => {
+        if (event.target.closest('.sy-progress-step')) return;
         event.preventDefault();
-        const maxScroll = Math.max(0, el.scrollWidth - el.clientWidth);
-        if (!maxScroll) return;
-        const moveTo = (clientX) => {
-          const railRect = swipeRail.getBoundingClientRect();
-          if (!railRect.width) return;
-          const ratio = Math.min(1, Math.max(0, (clientX - railRect.left) / railRect.width));
-          el.scrollLeft = ratio * maxScroll;
-        };
-        moveTo(event.clientX);
-        swipeRail.setPointerCapture?.(event.pointerId);
+        dragStartX = event.clientX;
+        dragStartOffset = syProgressArcOffset;
+        didDragArc = false;
+        trackInner.setPointerCapture?.(event.pointerId);
         const onMove = (moveEvent) => {
           moveEvent.preventDefault();
-          moveTo(moveEvent.clientX);
+          const dx = moveEvent.clientX - dragStartX;
+          if (Math.abs(dx) > 2) didDragArc = true;
+          applyArcOffset(dragStartOffset + (dx * 0.16));
         };
         const onUp = () => {
           window.removeEventListener('pointermove', onMove);
           window.removeEventListener('pointerup', onUp);
           window.removeEventListener('pointercancel', onUp);
+          if (didDragArc) {
+            const clock = document.getElementById('syFlightClock');
+            clock?.classList.remove('is-visible');
+          }
         };
         window.addEventListener('pointermove', onMove, { passive: false });
         window.addEventListener('pointerup', onUp, { once: true });
         window.addEventListener('pointercancel', onUp, { once: true });
       });
-      requestAnimationFrame(updateSwipeThumb);
-      if (planePoint) requestAnimationFrame(() => {
-        const stageLeft = (planePoint.x / 100) * (el.scrollWidth || 0);
-        el.scrollLeft = Math.max(0, stageLeft - (el.clientWidth * 0.18));
-        updateSwipeThumb();
-      });
+      applyArcOffset(syProgressArcOffset);
       el.querySelectorAll('[data-action], [data-time-label]').forEach((node) => {
         node.addEventListener('click', () => {
           const action = node.getAttribute('data-action');
