@@ -1009,14 +1009,16 @@
     .sy-progress-line-svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
     .sy-progress-step.is-spacex-step { position:absolute; min-width:68px; gap:4px; transform:translate(-50%, -4px); z-index:2; color:rgba(241,245,249,.94); cursor:default; }
     .sy-progress-step.is-spacex-step .sy-progress-dot { width:10px; height:10px; border:2px solid rgba(248,250,252,.96); background:#071827; box-shadow:0 0 0 1.5px rgba(7,24,39,.98); }
-    .sy-progress-step.is-spacex-step.is-complete .sy-progress-dot { border-color:#f8fafc; background:#f8fafc; }
+    .sy-progress-step.is-spacex-step.is-complete .sy-progress-dot { border-color:#f8fafc; background:#22c55e; }
     .sy-progress-step.is-spacex-step.is-warning .sy-progress-dot { border-color:#f8fafc; background:#f59e0b; }
     .sy-progress-step.is-spacex-step span:last-child { font-size:8px; line-height:1.05; font-weight:1000; letter-spacing:.15px; color:rgba(241,245,249,.95); text-transform:uppercase; }
     .sy-progress-step.is-spacex-step[data-action], .sy-progress-step.is-spacex-step[data-time-label] { cursor:pointer; }
     .sy-progress-plane-marker { position:absolute; width:38px; height:16px; transform:translate(-50%, -50%) rotate(0deg); z-index:3; color:#f8fafc; opacity:.95; pointer-events:none; }
-    .sy-progress-plane-marker svg { width:100%; height:100%; display:block; }
-    .sy-progress-swipe { position:absolute; left:50%; bottom:18px; width:min(44%, 360px); height:5px; transform:translateX(-50%); border-radius:999px; background:rgba(248,250,252,.32); overflow:hidden; }
-    .sy-progress-swipe-thumb { position:absolute; left:0; top:0; width:34%; height:100%; border-radius:999px; background:#f8fafc; }
+    .sy-progress-plane-marker svg { width:100%; height:100%; display:block; transform:scaleY(-1); }
+    .sy-progress-swipe { position:absolute; left:50%; bottom:10px; width:min(56%, 430px); height:22px; transform:translateX(-50%); border-radius:999px; overflow:hidden; cursor:grab; touch-action:none; }
+    .sy-progress-swipe:active { cursor:grabbing; }
+    .sy-progress-swipe::before { content:""; position:absolute; left:0; right:0; top:9px; height:3px; border-radius:999px; background:rgba(248,250,252,.36); }
+    .sy-progress-swipe-thumb { position:absolute; left:0; top:8px; width:34%; height:5px; border-radius:999px; background:#f8fafc; }
     .sy-flight-hero { position:relative; min-height:190px; overflow:hidden; border:none !important; box-shadow:none !important; background:transparent !important; }
     .sy-flight-hero::before { display:none !important; }
     .sy-flight-clock { position:absolute; left:50%; top:74%; transform:translate(-50%, -50%); z-index:1; color:#f8fafc; font-size:28px; font-weight:300; letter-spacing:1.4px; white-space:nowrap; opacity:0; visibility:hidden; transition:opacity .18s ease; }
@@ -1082,7 +1084,7 @@
       .sy-progress-step.is-spacex-step { transform:translate(-50%, -4px); }
       .sy-progress-step.is-spacex-step .sy-progress-dot { width:9px; height:9px; }
       .sy-progress-plane-marker { width:32px; height:14px; }
-      .sy-progress-swipe { bottom:13px; width:58%; }
+      .sy-progress-swipe { bottom:8px; width:70%; }
       .sy-progress-step.is-spacex-step span:last-child { font-size:7px; }
       .sy-top-grid { grid-template-columns:.8fr .8fr .8fr 1.6fr; padding:12px 10px; }
       .sy-top-grid .sy-bags-value { font-size:11px; letter-spacing:-.4px; }
@@ -2715,8 +2717,7 @@
       el.classList.add('is-spacex');
       el.innerHTML = `<div class="sy-progress-track-inner">
         <svg class="sy-progress-line-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-          <path d="${timelinePath}" fill="none" stroke="rgba(255,255,255,.34)" stroke-width=".8" stroke-linecap="round" />
-          <path d="${timelinePath}" fill="none" stroke="rgba(255,255,255,.94)" stroke-width="1.45" stroke-linecap="round" pathLength="100" stroke-dasharray="46 100" stroke-dashoffset="-27" />
+          <path d="${timelinePath}" fill="none" stroke="rgba(255,255,255,.78)" stroke-width=".72" stroke-linecap="round" />
         </svg>
         ${planeHtml}
         <div id="syFlightClock" class="sy-flight-clock"></div>
@@ -2736,24 +2737,29 @@
       el.onscroll = updateSwipeThumb;
       const swipeRail = el.querySelector('.sy-progress-swipe');
       swipeRail?.addEventListener('pointerdown', (event) => {
-        const rect = swipeRail.getBoundingClientRect();
+        event.preventDefault();
         const maxScroll = Math.max(0, el.scrollWidth - el.clientWidth);
-        if (!rect.width || !maxScroll) return;
+        if (!maxScroll) return;
         const moveTo = (clientX) => {
-          const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+          const railRect = swipeRail.getBoundingClientRect();
+          if (!railRect.width) return;
+          const ratio = Math.min(1, Math.max(0, (clientX - railRect.left) / railRect.width));
           el.scrollLeft = ratio * maxScroll;
         };
         moveTo(event.clientX);
         swipeRail.setPointerCapture?.(event.pointerId);
-        const onMove = (moveEvent) => moveTo(moveEvent.clientX);
-        const onUp = () => {
-          swipeRail.removeEventListener('pointermove', onMove);
-          swipeRail.removeEventListener('pointerup', onUp);
-          swipeRail.removeEventListener('pointercancel', onUp);
+        const onMove = (moveEvent) => {
+          moveEvent.preventDefault();
+          moveTo(moveEvent.clientX);
         };
-        swipeRail.addEventListener('pointermove', onMove);
-        swipeRail.addEventListener('pointerup', onUp);
-        swipeRail.addEventListener('pointercancel', onUp);
+        const onUp = () => {
+          window.removeEventListener('pointermove', onMove);
+          window.removeEventListener('pointerup', onUp);
+          window.removeEventListener('pointercancel', onUp);
+        };
+        window.addEventListener('pointermove', onMove, { passive: false });
+        window.addEventListener('pointerup', onUp, { once: true });
+        window.addEventListener('pointercancel', onUp, { once: true });
       });
       requestAnimationFrame(updateSwipeThumb);
       if (planePoint) requestAnimationFrame(() => {
