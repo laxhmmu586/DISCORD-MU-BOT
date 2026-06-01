@@ -27,7 +27,12 @@ function splitLogicalSections(log) {
     }
 
     if (!current) {
-      current = { content: '' };
+      current = { content: '', timestamp: pendingTimestamp || null };
+      pendingTimestamp = null;
+    } else if (cmd && isContinuation && pendingTimestamp) {
+      const currentTs = parseSectionTimestamp(current.timestamp);
+      const pendingTs = parseSectionTimestamp(pendingTimestamp);
+      if (pendingTs >= currentTs) current.timestamp = pendingTimestamp;
       pendingTimestamp = null;
     }
 
@@ -67,6 +72,31 @@ function isDeletedPassengerLine(line) {
 
 function isDeletedPassengerSection(section) {
   return isDeletedPassengerLine(getPassengerRecordLine(section));
+}
+
+function getPassengerNameFromSection(section) {
+  const passengerLine = getPassengerRecordLine(section);
+  const lineName = (passengerLine.match(/^\s*\d+\.\s*\d?([A-Z\/]+\+?)/i)?.[1] || '').replace(/\+$/, '').toUpperCase();
+  if (lineName) return lineName;
+  const paxListName = (String(section || '').match(/PAXLST\s*:\s*([A-Z\/]+)\/?/i)?.[1] || '').replace(/\+$/, '').toUpperCase();
+  return paxListName || 'UNKNOWN';
+}
+
+function extractPsmLines(section) {
+  return [...new Set(String(section || '')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => /^PSM(?:\b|-)/i.test(line)))];
+}
+
+function hasTargetPsm(line) {
+  const normalized = String(line || '').toUpperCase().replace(/\s+/g, '');
+  return ['TSXL', 'JMSQ', 'XCSQ', 'TXLK', 'QTQK'].some((code) => normalized.includes(code));
+}
+
+
+function extractSeatAfterBn(text) {
+  return (String(text || '').match(/\bBN\s*\d{1,3}\b\s+\*?(\d{1,3}[A-Z])\b/i)?.[1] || '').toUpperCase();
 }
 
 function getOutboundLines(section) {
@@ -115,6 +145,42 @@ function flightDateToYmd(flightDate) {
   return `20${m[3]}-${mm}-${m[1]}`;
 }
 
+
+function ymdToUtcDate(ymd) {
+  const m = String(ymd || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  return new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+}
+
+function addDaysUtc(date, days) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return null;
+  return new Date(date.getTime() + (days * 86400000));
+}
+
+function dateToYmd(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+}
+
+function dateToDdMon(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+  const mons = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+  return `${String(date.getUTCDate()).padStart(2, '0')}${mons[date.getUTCMonth()]}`;
+}
+
+function dateToEmailSubjectDate(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+  const mons = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${mons[date.getUTCMonth()]}-${String(date.getUTCDate()).padStart(2, '0')}`;
+}
+
+function subtractMinutesFromTime(hhmm, minutes) {
+  const m = String(hhmm || '').match(/^(\d{2})(\d{2})$/);
+  if (!m) return '';
+  const total = ((Number(m[1]) * 60) + Number(m[2]) - minutes + 1440) % 1440;
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}${String(total % 60).padStart(2, '0')}`;
+}
+
 function enrichCrewApisFromLog(log, info, targetYmd) {
   const sections = splitLogicalSections(log);
   const flightNo = String(info?.flightNo || '').trim().toUpperCase();
@@ -128,11 +194,16 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
     return m?.[1] || '';
   };
   const findAcceptedCommand = (regex) => {
-    const sectionObj = sameDaySections.find((item) => {
+    const matches = sameDaySections.filter((item) => {
       const content = String(item.content || '').toUpperCase();
+      regex.lastIndex = 0;
       return regex.test(content) && /\bACCEPTED\b/.test(content);
     });
-    return sectionObj ? { complete: true, time: formatTime(sectionObj.timestamp) } : { complete: false, time: '' };
+    if (!matches.length) return { complete: false, time: '' };
+    const sectionObj = matches.reduce((latest, item) => (
+      parseSectionTimestamp(item.timestamp) >= parseSectionTimestamp(latest.timestamp) ? item : latest
+    ), matches[0]);
+    return { complete: true, time: formatTime(sectionObj.timestamp) };
   };
   const hasCommand = (regex) => sameDaySections.some((sectionObj) => regex.test(String(sectionObj.content || '').toUpperCase()));
   const lrPrefix = flightNo
@@ -148,14 +219,53 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
   const crewApisComplete = checks.every((item) => item.complete);
   const ccl = findAcceptedCommand(/^>\s*CCL\s*:/im);
   const cc = findAcceptedCommand(/^>\s*CC\s*:/im);
+  const baseYmd = targetYmd || flightYmd;
+  const baseDateUtc = ymdToUtcDate(baseYmd);
+  const nextDayDateUtc = addDaysUtc(baseDateUtc, 1);
+  const nextDayEmailDate = dateToEmailSubjectDate(nextDayDateUtc);
+  const nextDayEmailSubject = flightNo && nextDayEmailDate ? `${flightNo} ${nextDayEmailDate} flight information details` : '';
+  const commandDateUtc = addDaysUtc(baseDateUtc, 2);
+  const commandDate = dateToDdMon(commandDateUtc);
+  const commandFlightDateFull = commandDate && commandDateUtc ? `${commandDate}${String(commandDateUtc.getUTCFullYear()).slice(-2)}` : '';
+  const commandSections = sections.filter((sectionObj) => {
+    const ymd = getYmdFromTimestamp(sectionObj.timestamp);
+    return Boolean(baseYmd && ymd && ymd === baseYmd);
+  });
+  const commandHas = (regex) => commandSections.some((sectionObj) => {
+    const content = String(sectionObj.content || '').toUpperCase();
+    regex.lastIndex = 0;
+    return regex.test(content);
+  });
+  const futureSy = sections
+    .filter((sectionObj) => getYmdFromTimestamp(sectionObj.timestamp) === baseYmd)
+    .map((sectionObj) => parseSYSection(sectionObj))
+    .filter((item) => item && item.flightNo === flightNo && item.flightDate === commandFlightDateFull)
+    .sort((a, b) => String(b.statusDisplay || '').localeCompare(String(a.statusDisplay || '')))[0] || null;
+  const commandFlightNo = escapeRegExp(flightNo);
+  const commandFlightDate = escapeRegExp(commandDate);
+  const initialFlight = Boolean(flightNo && commandDate) && commandHas(new RegExp(`^>\\s*IF\\s+${commandFlightNo}/${commandFlightDate}(?:\\s|$)`, 'im'));
+  const expectedBdt = subtractMinutesFromTime(futureSy?.sd, 45) || String(futureSy?.bdt || '').trim() || subtractMinutesFromTime(info?.sd, 45) || String(info?.bdt || '').trim();
+  const bdtChg = Boolean(flightNo && commandDate && expectedBdt) && commandHas(new RegExp(`^>\\s*FU\\s+${commandFlightNo}/${commandFlightDate}/LAX/BDT/${escapeRegExp(expectedBdt)}(?:\\s|$)`, 'im'));
   return {
     complete: crewApisComplete && ccl.complete && cc.complete,
+    nextDayInfoQuery: {
+      flightNo,
+      flightDate: nextDayEmailDate,
+      emailSubjectDate: nextDayEmailDate,
+      emailSubject: nextDayEmailSubject
+    },
     steps: [
       {
         key: 'crewApis',
         label: 'Crew APIS',
         complete: crewApisComplete,
         checks
+      },
+      {
+        key: 'nextDayInfo',
+        label: 'NEXT DAY INFO',
+        complete: Boolean(info?.nextDayInfoComplete),
+        tooltip: info?.nextDayInfoComplete ? `NEXT DAY INFO sent email found: ${nextDayEmailSubject}` : `NEXT DAY INFO sent email not found: ${nextDayEmailSubject}`
       },
       {
         key: 'ccl',
@@ -170,6 +280,18 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
         complete: cc.complete,
         time: cc.time,
         tooltip: cc.time ? `CC ${cc.time}` : 'CC not entered'
+      },
+      {
+        key: 'initialFlight',
+        label: 'Initial flight',
+        complete: initialFlight,
+        tooltip: initialFlight ? `IF ${flightNo}/${commandDate}` : `IF ${flightNo}/${commandDate} not entered`
+      },
+      {
+        key: 'bdtChg',
+        label: 'BDT CHG',
+        complete: bdtChg,
+        tooltip: bdtChg ? `FU ${flightNo}/${commandDate}/LAX/BDT/${expectedBdt}` : `FU ${flightNo}/${commandDate}/LAX/BDT/${expectedBdt || '----'} not entered`
       }
     ]
   };
@@ -550,14 +672,8 @@ function enrichWchListFromLog(log, syInfo, targetYmd = null) {
     const nameMatch = section.match(/\n\s*\d+\.\s*([A-Z]+\/[A-Z]+)/i);
     const paxLineMatch = section.match(/\n\s*\d+\.\s*[^\n\r]*/i);
     const paxLine = paxLineMatch?.[0] || '';
-    const seatFromPaxLine =
-      paxLine.match(/\bBN\d{1,3}\b[^\n\r]*\*(\d+[A-Z])\b/i)?.[1] ||
-      paxLine.match(/\bBN\d{1,3}\b[^\n\r]*\s(\d+[A-Z])\b/i)?.[1] ||
-      '';
-    const seatFromSection =
-      section.match(/\bBN\d{1,3}\b[^\n\r]*\*(\d+[A-Z])\b/i)?.[1] ||
-      section.match(/\bBN\d{1,3}\b[^\n\r]*\s(\d+[A-Z])\b/i)?.[1] ||
-      '';
+    const seatFromPaxLine = extractSeatAfterBn(paxLine);
+    const seatFromSection = extractSeatAfterBn(section);
     const seat = (seatFromPaxLine || seatFromSection || '').toUpperCase();
     const sectionWithoutPsm = section
       .split(/\r?\n/)
@@ -608,11 +724,7 @@ function enrichMembershipListFromLog(log, syInfo, targetYmd = null) {
     const bn = (paxLine.match(/\bBN(\d{1,3})\b/i)?.[1] || '').padStart(3, '0');
     if (!bn) continue;
     const name = paxLine.match(/\n\s*\d+\.\s*([A-Z]+\/[A-Z]+)/i)?.[1] || '-';
-    const seat = (
-      paxLine.match(/\bBN\d{1,3}\b[^\n\r]*\*(\d+[A-Z])\b/i)?.[1] ||
-      paxLine.match(/\bBN\d{1,3}\b[^\n\r]*\s(\d+[A-Z])\b/i)?.[1] ||
-      ''
-    ).toUpperCase();
+    const seat = extractSeatAfterBn(paxLine);
     const cabin = (paxLine.match(/\b([FAJCDQIOYBMEHKLNRSVTGZX])\s+PVG\b/i)?.[1] || '').toUpperCase();
     const ffMatch = section.match(/\bFF\/([A-Z0-9]{2})\s+([A-Z0-9]+)\/([VGSPE])\b/i);
     if (!ffMatch) continue;
@@ -679,11 +791,10 @@ function enrichSeatMapRecordsFromLog(log, syInfo, targetYmd = null) {
     const passengerName = (passengerLine.match(/^\s*\d+\.\s*\d?([A-Z\/]+\+?)/i)?.[1] || '').replace(/\+$/, '').toUpperCase();
     const bn = section.match(/\bBN\s*(\d{1,3})\b/i)?.[1]?.padStart(3, '0') || '';
     const seat = (
-      passengerLine.match(/\bBN\d{1,3}\b[^\n\r]*\*(\d+[A-Z])\b/i)?.[1] ||
-      passengerLine.match(/\bBN\d{1,3}\b[^\n\r]*\s(\d+[A-Z])\b/i)?.[1] ||
-      passengerLine.match(/\bSNR?\s*(\d+[A-Z])\b/i)?.[1] ||
-      section.match(/^\s*O\/[^\n\r]*\bSNR?\s*(\d+[A-Z])\b/im)?.[1] ||
-      section.match(/^\s*O\/[^\n\r]*\b(?:BN\s*\d{1,3}\s+)?\*?(\d+[A-Z])\b/im)?.[1] ||
+      extractSeatAfterBn(passengerLine) ||
+      passengerLine.match(/\bSNR?\s*(\d{1,3}[A-Z])\b/i)?.[1] ||
+      section.match(/^\s*O\/[^\n\r]*\bSNR?\s*(\d{1,3}[A-Z])\b/im)?.[1] ||
+      section.match(/^\s*O\/[^\n\r]*\b(?:BN\s*\d{1,3}\s+)?\*?(\d{1,3}[A-Z])\b/im)?.[1] ||
       ''
     ).toUpperCase();
     if (!seat) continue;
@@ -745,6 +856,60 @@ function enrichSeatMapRecordsFromLog(log, syInfo, targetYmd = null) {
     .map(({ ts, seq, ...record }) => record);
 }
 
+
+function enrichPsmListFromLog(log, syInfo, targetYmd = null) {
+  if (!log || !syInfo?.flightNo || !syInfo?.flightDate) return [];
+  const sections = splitLogicalSections(log);
+  const latestByBn = new Map();
+
+  for (const sectionObj of sections) {
+    const section = sectionObj.content || '';
+    if (!section.includes('PR:')) continue;
+    if (targetYmd) {
+      const sectionYmd = getYmdFromTimestamp(sectionObj.timestamp);
+      if (sectionYmd !== targetYmd) continue;
+    }
+
+    const prMatch = section.match(/PR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
+    if (!prMatch) continue;
+    if (prMatch[1].toUpperCase() !== syInfo.flightNo || prMatch[2].toUpperCase() !== syInfo.flightDate) continue;
+
+    const psmLines = extractPsmLines(section).filter(hasTargetPsm);
+    if (!psmLines.length) continue;
+
+    const bn = section.match(/\bBN\s*(\d{1,3})\b/i)?.[1]?.padStart(3, '0') || '';
+    if (!bn) continue;
+
+    const passengerLine = getPassengerRecordLine(section);
+    if (isDeletedPassengerLine(passengerLine)) continue;
+
+    const seat = (
+      extractSeatAfterBn(passengerLine) ||
+      section.match(/\bSN\s*(\d{1,3}[A-Z])\b/i)?.[1] ||
+      ''
+    ).toUpperCase();
+    const bagLine = section.match(/BAGTAG\s*\/([^\n\r]+)/i)?.[1] || '';
+    const bagtags = [...bagLine.matchAll(/(?:^|\s)\/?\s*((?:[A-Z]{1,3}\s*)?\d{5,12})\s*\/\s*([A-Z]{3})\b/gi)]
+      .map((m) => `${String(m[1] || '').replace(/\s+/g, ' ').trim()}/${String(m[2] || '').toUpperCase()}`);
+    const ts = parseSectionTimestamp(sectionObj.timestamp);
+    const prev = latestByBn.get(bn);
+    if (prev && prev.ts > ts) continue;
+
+    latestByBn.set(bn, {
+      bn,
+      name: getPassengerNameFromSection(section),
+      seat: seat || '---',
+      bagtags,
+      psmLines,
+      ts
+    });
+  }
+
+  return [...latestByBn.values()]
+    .sort((a, b) => Number(a.bn) - Number(b.bn))
+    .map(({ ts, ...row }) => row);
+}
+
 function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
   if (!log || !syInfo?.flightNo || !syInfo?.flightDate) return [];
   const sections = splitLogicalSections(log);
@@ -788,8 +953,16 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
       latestByBn.set(bn, { ts, section, score });
       continue;
     }
-    const prevIsDeleted = isDeletedPassengerSection(prev.section || '');
-    if ((ts > prev.ts && (isDeletedSection || prevIsDeleted)) || score > prev.score || (score === prev.score && ts >= prev.ts)) {
+
+    const hasPassengerLine = Boolean(getPassengerRecordLine(section));
+    if (ts > prev.ts) {
+      latestByBn.set(bn, {
+        ts,
+        section: isDeletedSection || hasPassengerLine ? section : `${prev.section || ''}
+${section}`,
+        score
+      });
+    } else if (ts === prev.ts && score >= prev.score) {
       latestByBn.set(bn, { ts, section, score });
     }
   }
@@ -838,9 +1011,8 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     const passengerLine = getPassengerRecordLine(section);
     const passengerName = (passengerLine.match(/^\s*\d+\.\s*\d?([A-Z\/]+\+?)/i)?.[1] || '').replace(/\+$/, '').toUpperCase();
     const passengerSeat = (
-      passengerLine.match(/\bBN\d{1,3}\b[^\n\r]*\*(\d+[A-Z])\b/i)?.[1] ||
-      passengerLine.match(/\bBN\d{1,3}\b[^\n\r]*\s(\d+[A-Z])\b/i)?.[1] ||
-      section.match(/\bSN\s*(\d+[A-Z])\b/i)?.[1] ||
+      extractSeatAfterBn(passengerLine) ||
+      section.match(/\bSN\s*(\d{1,3}[A-Z])\b/i)?.[1] ||
       ''
     ).toUpperCase();
     const ffMatch = section.match(/\bFF\/([A-Z0-9]+)\s+(\d+)\/([A-Z])\b/i);
@@ -878,6 +1050,7 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     const ageYears = getAgeYearsAtDate(dobDate, atDateUtc);
     const hasChdCode = /\bCHD1\/0\b/i.test(section);
     const isChild = (Number.isInteger(ageYears) && ageYears >= 2 && ageYears < 12) || hasChdCode;
+    const psmLines = extractPsmLines(section);
     const paidProductsShort = (section.match(/^\s*ASVC-[^\n\r]+/gim) || []).map((line) => {
       const fullLine = line.replace(/^ASVC-\s*/i, '').trim();
       const serviceCode = (fullLine.match(/(?:^|\/)\s*([A-Z]{4})\s*(?:\/|\s)/i)?.[1] || fullLine.match(/\b(\d+[A-Z]|[0-9]+PC)\b/i)?.[1] || '').toUpperCase();
@@ -911,6 +1084,7 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
       specialServices: filteredSpecialServices,
       specialMeals: [...new Set(specialMeals)],
       paidProductsShort,
+      psmLines,
       status: isOffloaded ? 'DELETED' : '',
       offloaded: isOffloaded,
       recordTimestamp: payload.ts || 0
@@ -920,7 +1094,7 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
       return /\/CHKLEG\b/.test(normalized)
         || /^CKIN\s+HK\d+\s+LKCK\/\d+\/[A-Z]$/.test(normalized)
         || /^CKIN\s+MTCK\/MAP\/MU\b/.test(normalized)
-        || /^CKIN\s+(?:STSP|GE|KATE|YUIKA|BY\s+YUIKA|BY\s+NORMA|GLENN|NH|RP|TIAN)\b/.test(normalized)
+        || /^CKIN\s+(?:STSP|GE|KATE|YUIKA|BY\s+YUIKA|BY\s+NORMA|GLENN|NH|RP|TIAN|TAMSUN)\b/.test(normalized)
         || /^CKIN\s+HK\d+\s+VICO\d+\b/.test(normalized);
     };
     const ckinLineList = section.split(/\r?\n/).filter((line) => /^\s*CKIN\b/i.test(line)).map((line) => line.trim());
@@ -1127,6 +1301,7 @@ function findSYInfo(log, queryDate, options = {}) {
       info.membershipList = enrichMembershipListFromLog(log, info, targetYmd);
       info.seatMapRecords = enrichSeatMapRecordsFromLog(log, info, targetYmd);
       info.bnAudit = enrichBnAuditFromLog(log, info, targetYmd);
+      info.psmList = enrichPsmListFromLog(log, info, targetYmd);
       info.crewApis = enrichCrewApisFromLog(log, info, targetYmd);
       return info;
     }
@@ -1175,6 +1350,7 @@ function findSYInfo(log, queryDate, options = {}) {
     info.membershipList = enrichMembershipListFromLog(log, info, targetYmd);
     info.seatMapRecords = enrichSeatMapRecordsFromLog(log, info, targetYmd);
     info.bnAudit = enrichBnAuditFromLog(log, info, targetYmd);
+    info.psmList = enrichPsmListFromLog(log, info, targetYmd);
     info.crewApis = enrichCrewApisFromLog(log, info, targetYmd);
     return info;
   }
