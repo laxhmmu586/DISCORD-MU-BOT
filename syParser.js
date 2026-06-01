@@ -168,6 +168,11 @@ function dateToDdMon(date) {
   return `${String(date.getUTCDate()).padStart(2, '0')}${mons[date.getUTCMonth()]}`;
 }
 
+function dateToDdMonYy(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+  return `${dateToDdMon(date)}${String(date.getUTCFullYear()).slice(-2)}`;
+}
+
 function dateToEmailSubjectDate(date) {
   if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
   const mons = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -221,10 +226,21 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
   const cc = findAcceptedCommand(/^>\s*CC\s*:/im);
   const baseYmd = targetYmd || flightYmd;
   const baseDateUtc = ymdToUtcDate(baseYmd);
+  const netFlightDate = dateToDdMonYy(baseDateUtc);
+  const netFlightNo = escapeRegExp(flightNo);
+  const netFlightDatePattern = escapeRegExp(netFlightDate);
+  const netComplete = Boolean(flightNo && netFlightDate) && sections.some((sectionObj) => {
+    const ymd = getYmdFromTimestamp(sectionObj.timestamp);
+    const content = String(sectionObj.content || '').toUpperCase();
+    return ymd === baseYmd
+      && /^>\s*PD\*,NET\b/im.test(content)
+      && new RegExp(`\\bPD:\\s*${netFlightNo}/${netFlightDatePattern}\\*LAX,NET\\b`, 'im').test(content);
+  });
   const nextDayDateUtc = addDaysUtc(baseDateUtc, 1);
   const nextDayEmailDate = dateToEmailSubjectDate(nextDayDateUtc);
   const nextDayEmailSubject = flightNo && nextDayEmailDate ? `${flightNo} ${nextDayEmailDate} flight information details` : '';
-  const commandDateUtc = addDaysUtc(baseDateUtc, 2);
+  const commandBaseDateUtc = ymdToUtcDate(flightYmd || baseYmd);
+  const commandDateUtc = addDaysUtc(commandBaseDateUtc, 2);
   const commandDate = dateToDdMon(commandDateUtc);
   const commandFlightDateFull = commandDate && commandDateUtc ? `${commandDate}${String(commandDateUtc.getUTCFullYear()).slice(-2)}` : '';
   const commandSections = sections.filter((sectionObj) => {
@@ -262,10 +278,10 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
         checks
       },
       {
-        key: 'nextDayInfo',
-        label: 'NEXT DAY INFO',
-        complete: Boolean(info?.nextDayInfoComplete),
-        tooltip: info?.nextDayInfoComplete ? `NEXT DAY INFO sent email found: ${nextDayEmailSubject}` : `NEXT DAY INFO sent email not found: ${nextDayEmailSubject}`
+        key: 'net',
+        label: 'NET',
+        complete: netComplete,
+        tooltip: netComplete ? `PD*,NET ${flightNo}/${netFlightDate}` : `PD*,NET ${flightNo}/${netFlightDate || '------'} not found`
       },
       {
         key: 'ccl',
