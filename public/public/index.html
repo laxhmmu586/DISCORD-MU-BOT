@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Mission Operations UI</title>
+    <title>MUFC</title>
     <style>
       :root {
         --bg: #020a12;
@@ -164,15 +164,28 @@
         border-color: rgba(255, 255, 255, 0.58);
       }
 
-      .search svg {
+      .search button {
         position: absolute;
-        right: 14px;
-        top: 50%;
+        right: 0;
+        top: 0;
+        width: 42px;
+        height: 38px;
+        border: 0;
+        display: grid;
+        place-items: center;
+        background: transparent;
+        color: white;
+        cursor: pointer;
+        opacity: 0.72;
+      }
+
+      .search button:hover {
+        opacity: 1;
+      }
+
+      .search svg {
         width: 16px;
         height: 16px;
-        transform: translateY(-50%);
-        color: white;
-        opacity: 0.72;
       }
 
       .nav-actions {
@@ -327,6 +340,36 @@
 
       .mobile-panel.is-open {
         transform: translateX(0);
+      }
+
+
+
+      .mobile-search {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 8px;
+        margin-bottom: 14px;
+      }
+
+      .mobile-search input,
+      .mobile-search button {
+        min-height: 42px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+      }
+
+      .mobile-search input {
+        min-width: 0;
+        background: rgba(255, 255, 255, 0.92);
+        color: #071327;
+        padding: 0 12px;
+        text-transform: uppercase;
+      }
+
+      .mobile-search button {
+        background: rgba(88, 167, 255, 0.16);
+        color: white;
+        font-weight: 900;
+        text-transform: uppercase;
       }
 
       .mobile-panel a {
@@ -647,8 +690,8 @@
         height: 17px;
         border: 2px solid white;
         border-radius: 50%;
-        background: var(--green);
-        box-shadow: 0 0 0 5px rgba(53, 212, 137, 0.14), 0 0 22px rgba(53, 212, 137, 0.72);
+        background: #05070d;
+        box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.08), 0 0 18px rgba(0, 0, 0, 0.78);
         transform: translate(-50%, -50%);
         transition:
           left 420ms cubic-bezier(0.2, 0.8, 0.2, 1),
@@ -702,10 +745,21 @@
       .node[data-status="issue"] {
         background: #f2c94c;
         box-shadow: 0 0 0 5px rgba(242, 201, 76, 0.15), 0 0 22px rgba(242, 201, 76, 0.72);
+        animation: nodePulse 1.1s ease-in-out infinite;
       }
 
-      .node[data-status="blink"] {
-        animation: nodePulse 950ms ease-in-out infinite;
+      .node[data-status="pending"] {
+        background: #05070d;
+        box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.08), 0 0 18px rgba(0, 0, 0, 0.78);
+        animation: none;
+      }
+
+      .node[data-status="locked"] {
+        background: #05070d;
+        border-color: rgba(255, 255, 255, 0.38);
+        box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.04), 0 0 14px rgba(0, 0, 0, 0.58);
+        opacity: 0.72;
+        animation: none;
       }
 
       @keyframes nodePulse {
@@ -876,7 +930,7 @@
       .count span {
         display: block;
         color: var(--muted);
-        font-size: 10px;
+        font-size: 12px;
         font-weight: 900;
         letter-spacing: 0.8px;
         text-transform: uppercase;
@@ -890,7 +944,7 @@
 
       .count-row {
         color: rgba(244, 250, 255, 0.95);
-        font-size: 24px;
+        font-size: 27px;
         font-weight: 850;
         letter-spacing: 1px;
         line-height: 1;
@@ -899,6 +953,23 @@
       .count-row strong {
         font: inherit;
         display: inline;
+      }
+
+      .counts-inline .count-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        justify-content: center;
+        gap: 8px;
+      }
+
+      .counts-inline .count-row span {
+        display: inline;
+        margin: 0;
+      }
+
+      .count-wide {
+        width: 100%;
       }
 
       .count:nth-child(1) strong {
@@ -959,6 +1030,547 @@
         color: white;
         font-size: 11px;
         line-height: 1;
+      }
+
+
+
+      .result-panel,
+      .password-page {
+        width: min(100% - 48px, 1120px);
+        margin: 24px auto 0;
+        border: 1px solid rgba(176, 216, 255, 0.22);
+        background: linear-gradient(150deg, rgba(8, 24, 40, 0.76), rgba(2, 12, 22, 0.58));
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.32);
+        backdrop-filter: blur(18px);
+        padding: 18px;
+      }
+
+      .result-panel {
+        position: relative;
+        z-index: 5;
+        margin-top: -820px;
+      }
+
+      .result-panel:empty {
+        display: none;
+      }
+
+      .panel-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 14px;
+        margin-bottom: 14px;
+      }
+
+      .panel-head small,
+      .node-card small {
+        color: var(--blue);
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+      }
+
+      .panel-head h2,
+      .result-panel h3,
+      .password-page h2 {
+        margin: 4px 0 0;
+        color: white;
+        letter-spacing: 0.6px;
+        text-transform: uppercase;
+      }
+
+      .panel-close,
+      .password-form button {
+        border: 1px solid rgba(88, 167, 255, 0.5);
+        background: rgba(88, 167, 255, 0.12);
+        color: white;
+        min-height: 38px;
+        padding: 0 14px;
+        font-weight: 900;
+        text-transform: uppercase;
+        cursor: pointer;
+      }
+
+      .panel-muted {
+        margin: 0 0 14px;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
+      .data-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        gap: 10px;
+      }
+
+      .data-row,
+      .data-card {
+        border: 1px solid rgba(176, 216, 255, 0.16);
+        background: rgba(0, 0, 0, 0.18);
+        padding: 12px;
+        color: rgba(244, 250, 255, 0.9);
+      }
+
+      .data-row b,
+      .data-card b {
+        color: white;
+      }
+
+      .data-row span,
+      .data-card span {
+        display: block;
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        overflow: hidden;
+      }
+
+      .data-table th,
+      .data-table td {
+        border-bottom: 1px solid rgba(176, 216, 255, 0.14);
+        padding: 10px;
+        color: rgba(244, 250, 255, 0.88);
+        text-align: left;
+        vertical-align: top;
+        font-size: 12px;
+      }
+
+      .data-table th {
+        color: var(--blue);
+        font-size: 11px;
+        letter-spacing: 0.8px;
+        text-transform: uppercase;
+      }
+
+
+
+      .bn-button-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .bn-button {
+        min-width: 64px;
+        min-height: 42px;
+        border: 1px solid rgba(88, 167, 255, 0.46);
+        background: rgba(88, 167, 255, 0.12);
+        color: white;
+        font-size: 13px;
+        font-weight: 950;
+        letter-spacing: 0.8px;
+        text-transform: uppercase;
+        cursor: pointer;
+      }
+
+      .bn-button:hover,
+      .bn-button:focus-visible {
+        border-color: rgba(255, 255, 255, 0.74);
+        background: rgba(88, 167, 255, 0.24);
+        outline: none;
+      }
+
+      .bn-button.is-pass,
+      .seat-cell.is-pass {
+        border-color: rgba(0, 213, 116, 0.74);
+        background: rgba(0, 139, 76, 0.52);
+        color: #ffef5c;
+      }
+
+      .seat-cell.is-wheelchair {
+        border-color: rgba(83, 174, 255, 0.84);
+        background: rgba(35, 103, 196, 0.58);
+        color: #e0f1ff;
+      }
+
+      .seat-cell.is-child {
+        border-color: rgba(204, 166, 255, 0.84);
+        background: rgba(117, 78, 170, 0.5);
+        color: #f2e8ff;
+      }
+
+      .seat-cell.is-infant {
+        border-color: rgba(255, 174, 92, 0.86);
+        background: rgba(151, 83, 22, 0.58);
+        color: #fff0df;
+      }
+
+      .bn-button.is-warning,
+      .seat-cell.is-warning {
+        border-color: rgba(255, 199, 44, 0.82);
+        background: rgba(100, 62, 8, 0.76);
+        color: #ffe859;
+      }
+
+      .bn-button.is-fail,
+      .bn-button.is-missing,
+      .seat-cell.is-fail {
+        border-color: rgba(255, 92, 92, 0.82);
+        background: rgba(105, 20, 28, 0.78);
+        color: #ffd3d3;
+      }
+
+      .panel-stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 0 0 14px;
+        color: #9bc8ff;
+        font-size: 13px;
+        font-weight: 850;
+      }
+
+      .panel-stats span {
+        border: 1px solid rgba(176, 216, 255, 0.18);
+        background: rgba(0, 0, 0, 0.18);
+        padding: 7px 10px;
+      }
+
+      .panel-workspace {
+        display: grid;
+        grid-template-columns: minmax(360px, 1fr) minmax(320px, 420px);
+        gap: 18px;
+        align-items: start;
+      }
+
+      .panel-side {
+        display: grid;
+        gap: 12px;
+      }
+
+      .psm-card-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .psm-card {
+        border: 1px solid rgba(86, 169, 255, 0.68);
+        border-radius: 12px;
+        background: rgba(4, 28, 52, 0.76);
+        padding: 13px;
+      }
+
+      .psm-card-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        color: #ffe94f;
+        font-size: 20px;
+        font-weight: 950;
+      }
+
+      .psm-card-head small {
+        color: #dce8f6;
+        font-size: 14px;
+        font-weight: 850;
+      }
+
+      .psm-badge {
+        border-radius: 999px;
+        background: rgba(88, 167, 255, 0.22);
+        color: #dceeff;
+        padding: 6px 10px;
+        font-size: 12px;
+        font-weight: 950;
+      }
+
+      .psm-card-row {
+        border-top: 1px solid rgba(176, 216, 255, 0.16);
+        margin-top: 9px;
+        padding-top: 9px;
+        color: #dceeff;
+        font-size: 14px;
+      }
+
+      .psm-card-row b { color: #9bc8ff; }
+
+      .record-card {
+        border: 1px solid rgba(0, 213, 116, 0.78);
+        border-radius: 16px;
+        background: linear-gradient(150deg, rgba(18, 86, 55, 0.92), rgba(15, 58, 51, 0.9));
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.38), 0 0 26px rgba(0, 213, 116, 0.14);
+        padding: 14px;
+        color: #dcefff;
+      }
+
+      .record-card.is-warning {
+        border-color: rgba(255, 199, 44, 0.86);
+        background: linear-gradient(150deg, rgba(82, 54, 16, 0.94), rgba(32, 41, 53, 0.92));
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.38), 0 0 22px rgba(255, 199, 44, 0.14);
+      }
+
+      .record-card.is-fail {
+        border-color: rgba(255, 92, 92, 0.86);
+        background: linear-gradient(150deg, rgba(92, 24, 34, 0.94), rgba(31, 39, 51, 0.92));
+      }
+
+      .record-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 10px;
+        color: #ffe94f;
+        font-size: 21px;
+        font-weight: 950;
+      }
+
+      .record-badge {
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.12);
+        padding: 6px 10px;
+        color: #eafff2;
+        font-size: 12px;
+        font-weight: 950;
+      }
+
+      .record-row,
+      .security-row {
+        display: grid;
+        grid-template-columns: 96px 1fr;
+        gap: 10px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 9px 0;
+        font-size: 13px;
+        line-height: 1.35;
+      }
+
+      .record-row b,
+      .security-row b {
+        color: #8fc4ff;
+      }
+
+      .security-pill-row {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 8px;
+        margin: 8px 0 12px;
+      }
+
+      .security-pill {
+        border-radius: 999px;
+        background: rgba(0, 139, 76, 0.42);
+        color: #dcffe9;
+        padding: 7px 8px;
+        text-align: center;
+        font-size: 12px;
+        font-weight: 950;
+      }
+
+      .security-pill.is-warning { background: rgba(150, 91, 16, 0.66); color: #ffeb82; }
+      .security-pill.is-fail { background: rgba(132, 29, 39, 0.74); color: #ffd4d4; }
+
+      .review-actions {
+        display: flex;
+        gap: 8px;
+        margin: 10px 0 12px;
+      }
+
+      .review-actions button {
+        flex: 1;
+        min-height: 34px;
+        border: 1px solid rgba(176, 216, 255, 0.24);
+        background: rgba(0, 0, 0, 0.18);
+        color: white;
+        font-size: 12px;
+        font-weight: 950;
+        text-transform: uppercase;
+        cursor: pointer;
+      }
+
+      .review-actions button[data-review-status="pass"] { border-color: rgba(0, 213, 116, 0.72); }
+      .review-actions button[data-review-status="fail"] { border-color: rgba(255, 92, 92, 0.72); }
+
+      .security-grid {
+        max-height: 560px;
+        overflow-y: auto;
+        display: grid;
+        grid-template-columns: repeat(6, minmax(58px, 1fr));
+        grid-auto-flow: column;
+        grid-template-rows: repeat(54, minmax(36px, auto));
+        gap: 8px;
+        padding-right: 8px;
+      }
+
+      .bn-button.is-deleted,
+      .seat-cell.is-deleted {
+        border-color: rgba(180, 190, 203, 0.34);
+        background: rgba(99, 111, 128, 0.25);
+        color: rgba(222, 230, 240, 0.52);
+      }
+
+      .security-check-list {
+        display: grid;
+        gap: 8px;
+        margin: 8px 0 12px;
+      }
+
+      .security-check-line {
+        border: 1px solid rgba(176, 216, 255, 0.14);
+        background: rgba(0, 0, 0, 0.16);
+        padding: 9px 10px;
+        color: #dceeff;
+        font-size: 13px;
+      }
+
+      .security-check-line.is-warning { border-color: rgba(255, 199, 44, 0.62); color: #ffe682; }
+      .security-check-line.is-fail { border-color: rgba(255, 92, 92, 0.68); color: #ffd2d2; }
+
+      .passenger-modal-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 60;
+        display: grid;
+        place-items: center;
+        padding: 20px;
+        background: rgba(1, 8, 14, 0.62);
+        backdrop-filter: blur(10px);
+        animation: modalFade 180ms ease both;
+      }
+
+      .passenger-modal {
+        width: min(520px, 100%);
+        border: 1px solid rgba(176, 216, 255, 0.32);
+        background: linear-gradient(150deg, rgba(8, 24, 40, 0.96), rgba(2, 12, 22, 0.92));
+        box-shadow: 0 32px 110px rgba(0, 0, 0, 0.58);
+        padding: 14px;
+        animation: modalFloat 220ms ease both;
+      }
+
+      .passenger-modal .panel-close {
+        float: right;
+        min-height: 26px;
+        padding: 0 9px;
+        font-size: 14px;
+        line-height: 1;
+      }
+
+      .passenger-modal .data-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      @keyframes modalFade {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+
+      @keyframes modalFloat {
+        from { opacity: 0; transform: translateY(18px) scale(0.98); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+      }
+
+      .seat-map-shell {
+        overflow-x: auto;
+        padding: 10px 4px 4px;
+      }
+
+      .seat-map-plane {
+        width: max-content;
+        min-width: 360px;
+        margin: 0 auto;
+        padding: 28px 18px 22px;
+        border: 1px solid rgba(176, 216, 255, 0.24);
+        border-radius: 44px 44px 24px 24px / 74px 74px 20px 20px;
+        background: linear-gradient(180deg, rgba(235, 246, 255, 0.1), rgba(0, 0, 0, 0.14));
+      }
+
+      .seat-cabin-label {
+        grid-column: 1 / -1;
+        margin: 18px 0 8px;
+        color: #6aadff;
+        font-size: 14px;
+        font-weight: 950;
+        letter-spacing: 1.4px;
+        text-align: center;
+        text-transform: uppercase;
+      }
+
+      .seat-row {
+        display: grid;
+        grid-template-columns: 36px repeat(12, 38px);
+        gap: 5px;
+        align-items: center;
+        margin-bottom: 6px;
+      }
+
+      .seat-row.is-premium {
+        grid-template-columns: 36px repeat(12, 40px);
+      }
+
+      .seat-galley {
+        grid-column: 1 / -1;
+        margin: 10px 0;
+        border: 1px dashed rgba(176, 216, 255, 0.24);
+        color: rgba(220, 238, 255, 0.7);
+        padding: 8px;
+        text-align: center;
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+      }
+
+      .seat-row-number {
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 900;
+        text-align: right;
+      }
+
+      .seat-cell {
+        min-height: 34px;
+        border: 1px solid rgba(176, 216, 255, 0.2);
+        background: rgba(255, 255, 255, 0.05);
+        color: rgba(244, 250, 255, 0.9);
+        font-size: 10px;
+        font-weight: 900;
+        text-align: center;
+      }
+
+      .seat-cell.is-occupied {
+        border-color: rgba(53, 212, 137, 0.56);
+        background: rgba(53, 212, 137, 0.16);
+        cursor: pointer;
+      }
+
+      .seat-cell.has-alert {
+        border-color: rgba(255, 98, 92, 0.72);
+        background: rgba(255, 98, 92, 0.16);
+      }
+
+      .seat-aisle {
+        min-height: 1px;
+      }
+
+      .seat-aisle.is-wide {
+        min-width: 72px;
+      }
+
+      .status-ok { color: var(--green); }
+      .status-warn { color: #ffd166; }
+      .status-fail { color: var(--danger); }
+
+      .password-form {
+        display: flex;
+        gap: 10px;
+      }
+
+      .password-form input {
+        flex: 1;
+        min-height: 42px;
+        border: 1px solid rgba(210, 231, 255, 0.2);
+        background: rgba(227, 237, 251, 0.96);
+        color: #071327;
+        padding: 0 13px;
+        outline: 0;
       }
 
       @media (max-width: 1080px) {
@@ -1112,6 +1724,84 @@
         .count strong {
           font-size: 18px;
         }
+
+        .count-row {
+          font-size: 18px;
+          letter-spacing: 0.15px;
+        }
+
+        .counts-inline .count-row {
+          gap: 5px;
+          justify-content: flex-start;
+        }
+
+        .manifest-section h3,
+        .detail-action {
+          font-size: 11px;
+        }
+
+        .mission-side {
+          display: grid;
+          align-items: stretch;
+        }
+
+        .flight-tools,
+        .flight-menu-button {
+          width: 100%;
+        }
+
+        .flight-menu-button {
+          height: 46px;
+        }
+
+        .flight-menu {
+          left: 0;
+          right: auto;
+          width: 100%;
+        }
+
+        .detail-actions {
+          grid-template-columns: 1fr 1fr;
+        }
+
+        .result-panel,
+        .password-page {
+          width: calc(100% - 24px);
+          padding: 14px;
+        }
+
+        .result-panel {
+          margin-top: -820px;
+        }
+
+        .panel-workspace {
+          grid-template-columns: 1fr;
+        }
+
+        .security-grid {
+          grid-template-columns: repeat(3, minmax(72px, 1fr));
+        }
+
+        .panel-head {
+          display: grid;
+        }
+
+        .data-table {
+          display: block;
+          overflow-x: auto;
+          white-space: nowrap;
+        }
+
+        .passenger-modal .data-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .seat-row,
+        .seat-row.is-premium {
+          grid-template-columns: 30px repeat(12, 32px);
+          gap: 3px;
+        }
+
       }
     </style>
   </head>
@@ -1119,12 +1809,14 @@
     <header class="topbar">
       <a class="brand" href="#" aria-label="MUFC home"><span>MUFC</span></a>
       <div class="nav-row">
-        <label class="search" aria-label="Search mission">
-          <input type="search" value="SY" />
-          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="m21 21-4.35-4.35m1.35-5.15a6.5 6.5 0 1 1-13 0 6.5 6.5 0 0 1 13 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-          </svg>
-        </label>
+        <form class="search" id="mission-search" aria-label="Search mission">
+          <input id="query" type="search" value="SY" autocomplete="off" />
+          <button type="submit" aria-label="Search">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="m21 21-4.35-4.35m1.35-5.15a6.5 6.5 0 1 1-13 0 6.5 6.5 0 0 1 13 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            </svg>
+          </button>
+        </form>
       </div>
       <div class="nav-actions">
         <button class="login-button" type="button" aria-label="Open login menu" aria-expanded="false">
@@ -1136,10 +1828,10 @@
         <div class="login-menu" aria-hidden="true">
           <div class="login-user">
             <span>Logged in as</span>
-            <strong>lake@mu.com</strong>
+            <strong id="current-user">Checking session...</strong>
           </div>
-          <button type="button">Change Password</button>
-          <button type="button">Logout</button>
+          <button id="change-password" type="button">Change Password</button>
+          <button id="logout" type="button">Logout</button>
         </div>
       </div>
       <button class="menu-button" type="button" aria-label="Open menu" aria-expanded="false">
@@ -1150,15 +1842,19 @@
     <button class="mobile-menu-fallback" type="button" aria-label="Open menu" aria-expanded="false">☰</button>
 
     <aside class="mobile-panel" aria-hidden="true">
-      <a href="#">Login</a>
+      <form class="mobile-search" id="mobile-mission-search" aria-label="Mobile search mission">
+        <input id="mobile-query" type="search" value="SY" autocomplete="off" />
+        <button type="submit">Search</button>
+      </form>
+      <a href="#open-login">Login</a>
     </aside>
 
     <main>
       <section class="hero" aria-label="Mission overview">
         <div class="mission-head">
           <div class="mission-title">
-            <p class="kicker">777-773L | B7883</p>
-            <h1 id="active-flight">MU 586 / 01JUN</h1>
+            <p class="kicker" id="flight-kicker">Loading SY...</p>
+            <h1 id="active-flight">SY</h1>
             <button class="time-toggle" type="button" aria-label="Show flight details" aria-expanded="false">
               <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
@@ -1167,17 +1863,19 @@
           </div>
           <div class="mission-side">
             <div class="status-strip" aria-label="Current flight metrics">
-              <div><span>Gate</span><strong>130</strong></div>
-              <div><span>BDT</span><strong>1145</strong></div>
-              <div><span>STD</span><strong>1230</strong></div>
+              <div><span>Gate</span><strong id="metric-gate">---</strong></div>
+              <div><span>BDT</span><strong id="metric-bdt">----</strong></div>
+              <div><span>STD</span><strong id="metric-std">----</strong></div>
             </div>
             <div class="flight-tools" aria-label="Flight data">
               <button class="flight-menu-button" type="button" aria-label="Open flight data menu" aria-expanded="false">
                 <span class="line-menu-icon" aria-hidden="true"><span></span><span></span><span></span></span>
               </button>
               <div class="flight-menu" aria-hidden="true">
-                <button type="button">Bag Report</button>
-                <button type="button">Security Check</button>
+                <button id="bag-report-button" type="button">Bag Report</button>
+                <button id="sales-report-button" type="button">Sales Report</button>
+                <button id="security-check-button" type="button">Security Check</button>
+                <button id="seat-map-button" type="button">Seat Map</button>
               </div>
             </div>
           </div>
@@ -1189,38 +1887,28 @@
               <div class="details-manifest">
                 <div class="manifest-section">
                   <h3>Reservation</h3>
-                  <div class="counts">
-                    <div class="count">
-                      <span>Booked</span>
-                      <div class="count-row"><strong>004</strong> / <strong>052</strong> / <strong>254</strong></div>
-                    </div>
-                    <div class="count">
-                      <span>ET</span>
-                      <div class="count-row">004 / 052 / 251</div>
+                  <div class="counts counts-inline">
+                    <div class="count count-wide">
+                      <div class="count-row"><span>Booked</span> <span id="reservation-booked"><strong>---</strong> / <strong>---</strong> / <strong>---</strong></span> <span>ET</span> <span id="reservation-et">--- / --- / ---</span></div>
                     </div>
                   </div>
                 </div>
                 <div class="manifest-section">
                   <h3>Check-In</h3>
-                  <div class="counts">
-                    <div class="count">
-                      <span>Accepted</span>
-                      <div class="count-row"><strong>004</strong> / <strong>052</strong> / <strong>251</strong></div>
-                    </div>
-                    <div class="count">
-                      <span>ET</span>
-                      <div class="count-row">004 / 052 / 251</div>
+                  <div class="counts counts-inline">
+                    <div class="count count-wide">
+                      <div class="count-row"><span>Accepted</span> <span id="checkin-accepted"><strong>---</strong> / <strong>---</strong> / <strong>---</strong></span> <span>CET</span> <span id="checkin-et">--- / --- / ---</span></div>
                     </div>
                   </div>
                 </div>
               </div>
-              <p class="message">RK MESSAGE · CAT/005/052/255 *** CREW 32J 61C 74C *** SPML 1NL 1CH ***</p>
+              <p class="message" id="rk-message">Search SY to load live flight data.</p>
               <div class="detail-actions" aria-label="Flight detail actions">
-                <button class="detail-action" type="button">CHD List</button>
-                <button class="detail-action" type="button">GOV/AQQ</button>
-                <button class="detail-action" type="button">WCH <span class="detail-action-badge">7</span></button>
-                <button class="detail-action" type="button">Membership</button>
-                <button class="detail-action" type="button">PSM/MS</button>
+                <button class="detail-action" type="button" data-panel="chd">CHD List <span class="detail-action-badge" id="chd-count">0</span></button>
+                <button class="detail-action" type="button" data-panel="gov">GOV/AQQ <span class="detail-action-badge" id="gov-count">0</span></button>
+                <button class="detail-action" type="button" data-panel="wch">WCH <span class="detail-action-badge" id="wch-count">0</span></button>
+                <button class="detail-action" type="button" data-panel="membership">Membership</button>
+                <button class="detail-action" type="button" data-panel="psm">PSM/MSG <span class="detail-action-badge" id="psm-count">0</span></button>
               </div>
             </div>
           </div>
@@ -1228,22 +1916,22 @@
 
         <div class="mission-stage">
           <div class="timeline-shell">
-            <div class="timeline-time" id="node-time">12:08:38</div>
+            <div class="timeline-time" id="node-time">----</div>
             <div class="timeline" aria-label="Mission timeline">
               <svg viewBox="0 0 1200 360" preserveAspectRatio="none" aria-hidden="true">
                 <path id="mission-path" class="orbit-glow" d="M-70 314 C 210 178, 398 146, 600 146 S 990 178, 1270 314" />
                 <path class="orbit-base" d="M-70 314 C 210 178, 398 146, 600 146 S 990 178, 1270 314" />
                 <path class="orbit-dash" d="M-46 292 C 224 164, 410 134, 600 134 S 976 164, 1246 292" />
               </svg>
-              <button class="node" type="button" data-index="0" data-key="CREW_APIS" data-label="CREW APIS" data-status="done" data-time="12:04:12"></button>
-              <button class="node" type="button" data-index="1" data-key="NET" data-label="NET" data-status="issue" data-time="12:16:00"></button>
-              <button class="node" type="button" data-index="2" data-key="CHD" data-label="CHD" data-status="issue" data-alert="6" data-time="12:32:00"></button>
-              <button class="node" type="button" data-index="3" data-key="GOV" data-label="GOV" data-status="blink" data-alert="1" data-time="11:48:00"></button>
-              <button class="node" type="button" data-index="4" data-key="NBRD" data-label="NBRD" data-status="done" data-time="09:30:00"></button>
-              <button class="node" type="button" data-index="5" data-key="CCL" data-label="CCL" data-status="done" data-time="10:30:00"></button>
-              <button class="node" type="button" data-index="6" data-key="CC" data-label="CC" data-status="issue" data-alert="6" data-time="11:30:00"></button>
-              <button class="node" type="button" data-index="7" data-key="INITIAL_FLIGHT" data-label="INITIAL FLIGHT" data-status="blink" data-alert="1" data-time="12:00:00"></button>
-              <button class="node" type="button" data-index="8" data-key="BDT_CHG" data-label="BDT CHG" data-status="done" data-time="12:20:00"></button>
+              <button class="node" type="button" data-index="0" data-key="CREW_APIS" data-label="CREW APIS" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="1" data-key="NET" data-label="NET" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="2" data-key="CHD" data-label="CHD" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="3" data-key="GOV" data-label="GOV" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="4" data-key="NBRD" data-label="NBRD" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="5" data-key="CCL" data-label="CCL" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="6" data-key="CC" data-label="CC" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="7" data-key="INITIAL_FLIGHT" data-label="INITIAL FLIGHT" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="8" data-key="BDT_CHG" data-label="BDT CHG" data-status="pending" data-time="----"></button>
               <article class="node-card" aria-live="polite">
                 <small>Active Node</small>
                 <h2>Crew APIs</h2>
@@ -1252,15 +1940,37 @@
             </div>
           </div>
         </div>
+        <section class="result-panel" id="result-panel" aria-live="polite"></section>
+        <section class="password-page" id="change-password-page" aria-label="Change password" hidden>
+          <div class="panel-head">
+            <div>
+              <small>Account</small>
+              <h2>Change Password</h2>
+            </div>
+            <button class="panel-close" type="button" id="close-password-page">Close</button>
+          </div>
+          <p class="panel-muted">Enter a new password for the signed-in account. After the change succeeds, please sign in again.</p>
+          <form id="change-password-form" class="password-form">
+            <input id="new-password" type="password" autocomplete="new-password" placeholder="New password" minlength="6" required />
+            <button type="submit">Update Password</button>
+          </form>
+          <p id="password-status" class="panel-muted" role="status" aria-live="polite"></p>
+        </section>
       </section>
     </main>
 
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="/__/firebase/init.js"></script>
     <script>
       const menuButton = document.querySelector(".menu-button");
       const fallbackMenuButton = document.querySelector(".mobile-menu-fallback");
       const mobilePanel = document.querySelector(".mobile-panel");
       const loginButton = document.querySelector(".login-button");
       const loginMenu = document.querySelector(".login-menu");
+      const currentUser = document.querySelector("#current-user");
+      const changePasswordButton = document.querySelector("#change-password");
+      const logoutButton = document.querySelector("#logout");
       const flightMenuButton = document.querySelector(".flight-menu-button");
       const flightMenu = document.querySelector(".flight-menu");
       const timeToggle = document.querySelector(".time-toggle");
@@ -1271,23 +1981,164 @@
       const missionPath = document.querySelector("#mission-path");
       const timeline = document.querySelector(".timeline");
       const timelineShell = document.querySelector(".timeline-shell");
+      const resultPanel = document.querySelector("#result-panel");
+      const searchForm = document.querySelector("#mission-search");
+      const mobileSearchForm = document.querySelector("#mobile-mission-search");
+      const queryInput = document.querySelector("#query");
+      const mobileQueryInput = document.querySelector("#mobile-query");
+      const bagReportButton = document.querySelector("#bag-report-button");
+      const salesReportButton = document.querySelector("#sales-report-button");
+      const securityCheckButton = document.querySelector("#security-check-button");
+      const seatMapButton = document.querySelector("#seat-map-button");
+      const passwordPage = document.querySelector("#change-password-page");
+      const closePasswordPageButton = document.querySelector("#close-password-page");
+      const changePasswordForm = document.querySelector("#change-password-form");
+      const newPasswordInput = document.querySelector("#new-password");
+      const passwordStatus = document.querySelector("#password-status");
       const baseProgress = [0.08, 0.19, 0.3, 0.41, 0.52, 0.63, 0.74, 0.85, 0.96];
       const centerProgress = 0.5;
       const minProgress = 0.04;
       const maxProgress = 0.96;
-      const flightState = {
-        std: "1230",
-        currentTime: "1204",
-        currentStage: null,
+      const nodeKeyMap = {
+        CREW_APIS: "crewApis",
+        NET: "net",
+        CCL: "ccl",
+        CC: "cc",
+        INITIAL_FLIGHT: "initialFlight",
+        BDT_CHG: "bdtChg",
       };
+      const auth = window.firebase?.apps?.length && window.firebase?.auth ? firebase.auth() : null;
+      const APP_ENTRY_KEY = "mufc_allow_app_entry";
+      const INACTIVITY_LIMIT_MS = 15 * 60 * 1000;
+      let inactivityTimer = null;
       let selectedIndex = 0;
       let scrollOffset = 0;
       let dragStartX = 0;
       let lastDragX = 0;
       let didDrag = false;
+      let currentSy = null;
+      let latestQuery = "SY";
+
+      function loginUrl() {
+        const url = new URL("login.html", window.location.href);
+        url.searchParams.set("next", `${window.location.pathname}${window.location.search}${window.location.hash}`);
+        return url.href;
+      }
+
+      function consumeAppEntry() {
+        const allowedAt = sessionStorage.getItem(APP_ENTRY_KEY);
+        sessionStorage.removeItem(APP_ENTRY_KEY);
+        return Boolean(allowedAt);
+      }
+
+      const canEnterApp = consumeAppEntry();
+
+      async function returnToLogin() {
+        sessionStorage.removeItem(APP_ENTRY_KEY);
+        if (inactivityTimer) clearTimeout(inactivityTimer);
+        const url = new URL(loginUrl());
+        url.searchParams.set("forceLogin", "1");
+        try {
+          if (auth?.currentUser) await auth.signOut();
+        } catch (error) {
+          console.warn("Unable to sign out before returning to login.", error);
+        }
+        window.location.replace(url.href);
+      }
+
+      function resetInactivityTimer() {
+        if (inactivityTimer) clearTimeout(inactivityTimer);
+        inactivityTimer = setTimeout(() => {
+          returnToLogin();
+        }, INACTIVITY_LIMIT_MS);
+      }
+
+      function startInactivityWatch() {
+        ["click", "keydown", "mousemove", "touchstart", "pointerdown", "scroll"].forEach((eventName) => {
+          window.addEventListener(eventName, resetInactivityTimer, { passive: true });
+        });
+        resetInactivityTimer();
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? "").replace(/[&<>'"]/g, (char) => ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          "'": "&#39;",
+          '"': "&quot;",
+        })[char]);
+      }
+
+      function setText(selector, value) {
+        const el = document.querySelector(selector);
+        if (el) el.textContent = value || "---";
+      }
+
+      function countTriple(matchArray) {
+        if (!Array.isArray(matchArray)) return ["---", "---", "---"];
+        return [matchArray[1], matchArray[2], matchArray[3]].map((value) => value || "---");
+      }
+
+      function tripleHtml(values) {
+        return values.map((value) => `<strong>${escapeHtml(value)}</strong>`).join(" / ");
+      }
+
+      function normalizeStatus(complete, issueCount = 0, locked = false) {
+        if (locked) return "locked";
+        if (complete) return "done";
+        return issueCount > 0 ? "issue" : "pending";
+      }
+
+      function stepByKey(key) {
+        const stepKey = nodeKeyMap[key] || key;
+        const normalized = String(stepKey || key || "").replace(/[_\s-]+/g, "").toLowerCase();
+        return (currentSy?.crewApis?.steps || []).find((step) => {
+          const candidate = String(step?.key || step?.label || "").replace(/[_\s-]+/g, "").toLowerCase();
+          return candidate === normalized;
+        }) || null;
+      }
+
+      function resolveApiBase() {
+        const fromWindow = window.MU_API_BASE || "";
+        return (fromWindow.trim() || "https://api.mufcapp.net").replace(/\/$/, "");
+      }
+
+      async function authHeaders() {
+        const headers = {};
+        if (auth?.currentUser) {
+          headers.Authorization = `Bearer ${await auth.currentUser.getIdToken()}`;
+        }
+        return headers;
+      }
+
+      async function fetchSearch(query) {
+        const apiBase = resolveApiBase();
+        const endpoint = `${apiBase}/search?q=${encodeURIComponent(query)}`;
+        const res = await fetch(endpoint, { headers: await authHeaders() });
+        const type = res.headers.get("content-type") || "";
+        if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+        if (!type.includes("application/json")) throw new Error(`Search API returned non-JSON from ${apiBase}.`);
+        return res.json();
+      }
+
+      async function apiJson(path, options = {}) {
+        const apiBase = resolveApiBase();
+        const res = await fetch(`${apiBase}${path}`, {
+          ...options,
+          headers: {
+            ...(await authHeaders()),
+            ...(options.headers || {}),
+          },
+        });
+        const type = res.headers.get("content-type") || "";
+        if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+        if (!type.includes("application/json")) throw new Error(`API returned non-JSON from ${apiBase}.`);
+        return res.json();
+      }
 
       function timeToMinutes(value) {
-        const digits = value.replace(/\D/g, "").padStart(4, "0");
+        const digits = String(value || "").replace(/\D/g, "").padStart(4, "0");
         return Number(digits.slice(0, 2)) * 60 + Number(digits.slice(2, 4));
       }
 
@@ -1295,31 +2146,14 @@
         const match = Array.from(nodes).find((node) => node.dataset.key === key);
         return match ? Number(match.dataset.index) : 0;
       }
+      window.findNodeIndexByKey = findNodeIndexByKey;
 
       function determineDefaultCenter() {
-        if (flightState.currentStage) {
-          return findNodeIndexByKey(flightState.currentStage);
-        }
-
-        const stdMinutes = timeToMinutes(flightState.std);
-        const currentMinutes = timeToMinutes(flightState.currentTime);
-        if (currentMinutes <= stdMinutes - 180) {
-          return findNodeIndexByKey("NBRD");
-        }
-
+        const stdMinutes = timeToMinutes(currentSy?.sd || "1230");
+        const currentMinutes = new Date().getUTCHours() * 60 + new Date().getUTCMinutes();
+        if (currentMinutes <= stdMinutes - 180) return findNodeIndexByKey("NBRD");
         return findNodeIndexByKey("CREW_APIS");
       }
-
-      let centeredItem = determineDefaultCenter();
-      if (window.location.hash === "#center-crew") {
-        centeredItem = findNodeIndexByKey("CREW_APIS");
-      }
-      if (window.location.hash === "#stage-cc") {
-        flightState.currentStage = "CC";
-        centeredItem = determineDefaultCenter();
-      }
-      selectedIndex = centeredItem;
-      scrollOffset = clampScrollOffset(centerProgress - baseProgress[selectedIndex]);
 
       function clamp(value, min, max) {
         return Math.min(Math.max(value, min), max);
@@ -1329,15 +2163,26 @@
         return clamp(value, minProgress - baseProgress[0], maxProgress - baseProgress[baseProgress.length - 1]);
       }
 
+      function updateNodeCard(index) {
+        const node = nodes[index];
+        if (!node) return;
+        const key = node.dataset.key;
+        const step = stepByKey(key);
+        const label = node.dataset.label || step?.label || key;
+        const time = node.dataset.time || step?.time || "----";
+        nodeCard.querySelector("h2").textContent = label;
+        nodeCard.querySelector("p").textContent = step?.tooltip || `${label} ${time !== "----" ? `entered at ${time}` : "data is not complete yet."}`;
+      }
+
       function updateSelectedNode(index) {
         selectedIndex = index;
         const node = nodes[selectedIndex];
         if (node) {
-          nodeTime.textContent = node.dataset.time;
+          const step = stepByKey(node.dataset.key);
+          nodeTime.textContent = step?.time || node.dataset.time || "----";
         }
-        nodes.forEach((item, itemIndex) => {
-          item.classList.toggle("is-active", itemIndex === selectedIndex);
-        });
+        nodes.forEach((item, itemIndex) => item.classList.toggle("is-active", itemIndex === selectedIndex));
+        updateNodeCard(selectedIndex);
       }
 
       function findNearestCenter() {
@@ -1370,6 +2215,12 @@
         updateSelectedNode(selectedIndex);
       }
 
+      function resetTimelineCenter(key = null) {
+        selectedIndex = key ? findNodeIndexByKey(key) : determineDefaultCenter();
+        scrollOffset = clampScrollOffset(centerProgress - baseProgress[selectedIndex]);
+        placeNodes();
+      }
+
       function renderNodeItems() {
         placeNodes();
       }
@@ -1383,13 +2234,9 @@
       }
 
       function moveTimelineDrag(event) {
-        if (!timeline.classList.contains("is-dragging")) {
-          return;
-        }
+        if (!timeline.classList.contains("is-dragging")) return;
         const delta = event.clientX - lastDragX;
-        if (Math.abs(event.clientX - dragStartX) > 4) {
-          didDrag = true;
-        }
+        if (Math.abs(event.clientX - dragStartX) > 4) didDrag = true;
         lastDragX = event.clientX;
         scrollOffset = clampScrollOffset(scrollOffset + delta / timeline.clientWidth);
         selectedIndex = findNearestCenter();
@@ -1398,9 +2245,502 @@
 
       function endTimelineDrag(event) {
         timeline.classList.remove("is-dragging");
-        if (timeline.hasPointerCapture(event.pointerId)) {
-          timeline.releasePointerCapture(event.pointerId);
+        if (timeline.hasPointerCapture(event.pointerId)) timeline.releasePointerCapture(event.pointerId);
+      }
+
+      function renderPanel(title, eyebrow, body) {
+        resultPanel.innerHTML = `<div class="panel-head"><div><small>${escapeHtml(eyebrow || "Details")}</small><h2>${escapeHtml(title)}</h2></div><button class="panel-close" type="button" data-close-panel>Close</button></div>${body}`;
+        resultPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+
+      function compactValue(value) {
+        if (Array.isArray(value)) return value.filter(Boolean).join(", ");
+        if (value && typeof value === "object") return Object.entries(value)
+          .filter(([, item]) => item !== null && item !== undefined && item !== "" && item !== false)
+          .map(([key, item]) => `${key}: ${Array.isArray(item) ? item.filter(Boolean).join("/") : item}`)
+          .join(", ");
+        return value;
+      }
+
+      function formatFlightSegment(segment) {
+        if (!segment || typeof segment !== "object") return "";
+        return [segment.flight, segment.date, segment.origin, segment.destination, segment.seat, segment.bn ? `BN${segment.bn}` : "", segment.status].filter(Boolean).join(" / ");
+      }
+
+      function formatLounge(lounge) {
+        if (!lounge || typeof lounge !== "object") return "";
+        return lounge.eligible ? "✔️" : "❌";
+      }
+
+      function formatGuestAccess(lounge) {
+        if (!lounge || typeof lounge !== "object") return "";
+        return lounge.guest ? "✔️" : "❌";
+      }
+
+      function maskTail(value, visibleTail = 4) {
+        const raw = String(value || "").trim();
+        if (!raw) return "";
+        if (raw.length <= visibleTail) return raw;
+        return `${"*".repeat(Math.max(3, raw.length - visibleTail))}${raw.slice(-visibleTail)}`;
+      }
+
+      function maskMembershipNumber(value) {
+        const raw = String(value || "").replace(/\s+/g, "").trim();
+        if (!raw) return "";
+        if (raw.length <= 6) return raw;
+        return `${raw.slice(0, 2)}***${raw.slice(-4)}`;
+      }
+
+      function visibleByPermission(data, permissionKey) {
+        const permissions = data?.permissions || currentSy?.permissions || null;
+        return !permissions || permissions[permissionKey] !== false;
+      }
+
+      function membershipDisplay(data) {
+        if (!visibleByPermission(data, "canViewMembership")) return "Hidden";
+        const number = data?.ffNumber ? maskMembershipNumber(`${data?.ffCarrier || ""}${data.ffNumber}`) : "";
+        return [number, data?.membershipStatus || data?.ffTier].filter(Boolean).join(" / ");
+      }
+
+      function passengerFields(data) {
+        return [
+          ["Name", passengerName(data) || data?.name],
+          ["BN", data?.bn],
+          ["Seat", data?.seat],
+          ["Cabin", data?.cabin],
+          ["Passport", visibleByPermission(data, "canViewTravelDocs") ? maskTail(data?.passportNo) : "Hidden"],
+          ["Passport Expiry", visibleByPermission(data, "canViewTravelDocs") ? (data?.passportExpiry || data?.passportExp || data?.passportExpiryDate) : "Hidden"],
+          ["DOB", visibleByPermission(data, "canViewTravelDocs") ? data?.dob : "Hidden"],
+          ["Age", data?.ageYears],
+          ["Membership", membershipDisplay(data)],
+          ["Lounge", visibleByPermission(data, "canViewLoungeAccess") ? formatLounge(data?.lounge) : "Hidden"],
+          ["Guest", visibleByPermission(data, "canViewGuestAccess") ? formatGuestAccess(data?.lounge) : "Hidden"],
+          ["Ticket", visibleByPermission(data, "canViewTicket") ? (data?.ticketNumber || data?.ticketNo) : "Hidden"],
+          ["Infant Ticket", visibleByPermission(data, "canViewTicket") ? data?.infantTicketNo : "Hidden"],
+          ["Bags", visibleByPermission(data, "canViewBags") ? compactValue(data?.bagtags || data?.bagTags || data?.bags) : "Hidden"],
+          ["Inbound", visibleByPermission(data, "canViewInbound") ? formatFlightSegment(data?.inbound) : "Hidden"],
+          ["Outbound", visibleByPermission(data, "canViewOutbound") ? formatFlightSegment(data?.outbound) : "Hidden"],
+          ["SSR", visibleByPermission(data, "canViewSpecialService") ? compactValue(data?.specialServices || data?.codes) : "Hidden"],
+          ["Meal", visibleByPermission(data, "canViewSpecialMeals") ? compactValue(data?.specialMeals) : "Hidden"],
+          ["Paid Service", visibleByPermission(data, "canViewPaidService") ? compactValue(data?.paidProductsShort) : "Hidden"],
+          ["Status", data?.status],
+          ...extraPassengerFields(data),
+        ].filter(([, value]) => value !== null && value !== undefined && value !== "" && value !== false);
+      }
+
+      function labelizeKey(key) {
+        return String(key || "").replace(/([a-z])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+      }
+
+      function extraPassengerFields(data) {
+        const used = new Set(["permissions", "name", "passengerName", "paxName", "bn", "seat", "cabin", "flight", "flightDate", "passportNo", "passportExpiry", "passportExp", "passportExpiryDate", "dob", "ageYears", "ffCarrier", "ffNumber", "membershipStatus", "ffTier", "lounge", "ticketNumber", "ticketNo", "infantTicketNo", "bagtags", "bagTags", "bags", "inbound", "outbound", "specialServices", "codes", "specialMeals", "paidProductsShort", "psmLines", "messages", "status", "passengerRecord", "sourceText", "paxInfoRaw", "passportRaw", "paxListName", "operationHistoryLines", "sectionTimestampMs", "recordTimestamp", "hasChdCode", "hasChildCode", "isChild", "ts", "seq"]);
+        return Object.entries(data || {})
+          .filter(([key, value]) => !used.has(key) && !/raw|source text|history|timestamp|pax list/i.test(labelizeKey(key)) && value !== null && value !== undefined && value !== "" && typeof value !== "function")
+          .map(([key, value]) => [labelizeKey(key), compactValue(value)]);
+      }
+
+      function passengerRecordCard(data, title = "Passenger Record", tone = "pass") {
+        const fields = passengerFields(data || {});
+        const bn = data?.bn ? `BN${data.bn}` : (latestQuery || "PAX");
+        const rows = fields.length
+          ? fields.map(([label, value]) => `<div class="record-row"><b>${escapeHtml(label)}</b><span>${escapeHtml(value)}</span></div>`).join("")
+          : `<p class="panel-muted">No passenger details available.</p>`;
+        return `<article class="record-card ${tone === "warning" ? "is-warning" : tone === "fail" ? "is-fail" : ""}"><div class="record-title"><span>${escapeHtml(title)}</span><span class="record-badge">${escapeHtml(bn)}</span></div>${rows}</article>`;
+      }
+
+      function passengerCards(data) {
+        return passengerRecordCard(data, "Passenger Record");
+      }
+
+      function showPassengerModal(data, title = "Passenger Record", anchor = null) {
+        document.querySelector(".passenger-modal-backdrop")?.remove();
+        const overlay = document.createElement("div");
+        overlay.className = "passenger-modal-backdrop";
+        overlay.innerHTML = `<article class="passenger-modal" role="dialog" aria-modal="true"><button class="panel-close" type="button" data-close-modal>×</button>${passengerRecordCard(data || {}, title)}</article>`;
+        document.body.appendChild(overlay);
+        if (anchor) {
+          const modal = overlay.querySelector(".passenger-modal");
+          const rect = anchor.getBoundingClientRect();
+          overlay.style.placeItems = "start";
+          modal.style.position = "fixed";
+          const modalWidth = Math.min(520, window.innerWidth - 24);
+          const left = Math.min(Math.max(12, rect.left), window.innerWidth - modalWidth - 12);
+          const modalHeight = Math.min(modal.offsetHeight || 360, window.innerHeight - 24);
+          const aboveTop = rect.top - modalHeight - 10;
+          const belowTop = rect.bottom + 10;
+          modal.style.left = `${left}px`;
+          modal.style.top = `${aboveTop >= 12 ? aboveTop : Math.min(belowTop, window.innerHeight - modalHeight - 12)}px`;
         }
+      }
+
+      function closePassengerModal() {
+        document.querySelector(".passenger-modal-backdrop")?.remove();
+      }
+
+      function renderBnButtons(rows, emptyText, reasonFn = null, labelFn = null, classFn = null) {
+        if (!rows.length) return `<p class="panel-muted">${escapeHtml(emptyText || "No data found.")}</p>`;
+        return `<div class="bn-button-list">${rows.map((row, index) => {
+          const label = labelFn ? labelFn(row, index) : (row.bn || row.seat || index + 1);
+          const extraClass = classFn ? classFn(row, index) : "";
+          return `<button class="bn-button ${escapeHtml(extraClass)}" type="button" data-passenger-index="${index}" data-passenger-bn="${escapeHtml(row.bn || "")}" title="${escapeHtml(reasonFn ? reasonFn(row) : passengerName(row) || row.bn || "Passenger")}">${escapeHtml(label)}</button>`;
+        }).join("")}</div>`;
+      }
+
+      function setPanelPassengerRows(rows) {
+        resultPanel._passengerRows = rows;
+      }
+
+      function rowsTable(rows, columns, emptyText) {
+        if (!rows.length) return `<p class="panel-muted">${escapeHtml(emptyText || "No data found.")}</p>`;
+        return `<table class="data-table"><thead><tr>${columns.map((col) => `<th>${escapeHtml(col.label)}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${columns.map((col) => `<td>${escapeHtml(col.value(row) || "-")}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+      }
+
+      function passengerName(row) {
+        return row?.name || row?.passengerName || row?.paxName || "";
+      }
+
+
+      function passengerLookupByBn() {
+        return new Map([...(currentSy?.seatMapRecords || []), ...(currentSy?.bnAudit || [])].map((row) => [String(row.bn || "").padStart(3, "0"), row.passengerRecord || row]));
+      }
+
+      function enrichRowsWithPassengerData(rows) {
+        const lookup = passengerLookupByBn();
+        return (rows || []).map((row) => ({ ...(lookup.get(String(row.bn || "").padStart(3, "0")) || {}), ...row }));
+      }
+
+      function renderPassenger(data) {
+        renderPanel("Passenger Record", data?.bn ? `BN${data.bn}` : latestQuery, passengerRecordCard(data, "Passenger Record"));
+      }
+
+      function updateFlightFromSy(sy) {
+        currentSy = sy;
+        const reg = sy.aircraftRegistration || "---";
+        const type = sy.aircraftType || sy.aircraftTypeRaw || "---";
+        setText("#flight-kicker", `${type} | ${reg}`);
+        setText("#active-flight", `${sy.flightNo || "SY"} / ${sy.flightDate || "TODAY"}`);
+        setText("#metric-gate", sy.gate || "---");
+        setText("#metric-bdt", sy.bdt || "----");
+        setText("#metric-std", sy.sd || "----");
+        document.querySelector("#reservation-booked").innerHTML = tripleHtml(countTriple(sy.reservation));
+        document.querySelector("#reservation-et").textContent = countTriple(sy.reservationTicketed).join(" / ");
+        document.querySelector("#checkin-accepted").innerHTML = tripleHtml(countTriple(sy.checkedIn));
+        document.querySelector("#checkin-et").textContent = countTriple(sy.checkedInTicketed).join(" / ");
+        setText("#rk-message", sy.rkMessage || "No RK message found.");
+        const chdIssues = (sy.chdList || []).filter((row) => row.hasChdCode === false).length;
+        const gov = sy.govAqq || {};
+        const govIssueGroups = [gov.duplicatePassports, gov.aqqTclBnList, gov.govDtaBnList, gov.passportExpBnList, gov.passportCodeIssues];
+        const govCount = govIssueGroups.reduce((sum, value) => sum + (Array.isArray(value) ? value.length : 0), 0);
+        const nbrdCount = (sy.bnAudit || []).filter((row) => /NBRD|CKIN/i.test(row?.apiReason || row?.tkReason || row?.visaReason || row?.bagReason || "")).length;
+        setText("#chd-count", chdIssues || (sy.chdList || []).length || "0");
+        setText("#gov-count", govCount || "0");
+        setText("#wch-count", (sy.wchList || []).length || "0");
+        setText("#psm-count", (sy.psmList || []).length || "0");
+        if (bagReportButton) bagReportButton.hidden = !(sy.bagSheet?.hasData);
+        if (salesReportButton) salesReportButton.hidden = !(sy.salesReport?.found || sy.salesReportFound);
+        let previousStarted = true;
+        nodes.forEach((node) => {
+          const key = node.dataset.key;
+          const step = stepByKey(key);
+          let issueCount = 0;
+          let complete = Boolean(step?.complete);
+          let started = Boolean(step?.complete || step?.time);
+          let time = step?.time || "----";
+          if (key === "CHD") { issueCount = chdIssues; started = (sy.chdList || []).length > 0; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
+          if (key === "GOV") { issueCount = govCount; started = Boolean(sy.govAqq) && previousStarted; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
+          if (key === "NBRD") { issueCount = nbrdCount; started = (sy.bnAudit || []).length > 0 && previousStarted; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
+          const locked = !previousStarted && !["CHD", "GOV", "NBRD"].includes(key);
+          node.dataset.status = normalizeStatus(Boolean(complete), issueCount || (started && !complete ? 1 : 0), locked);
+          node.dataset.time = String(time);
+          if (issueCount) node.dataset.alert = String(issueCount);
+          else node.removeAttribute("data-alert");
+          previousStarted = previousStarted && started;
+        });
+        resetTimelineCenter();
+      }
+
+      function renderSy(data) {
+        if (!data?.sy) throw new Error(data?.error || "No SY payload returned.");
+        updateFlightFromSy(data.sy);
+        resultPanel.innerHTML = "";
+      }
+
+      async function searchPassenger() {
+        const raw = queryInput.value.trim();
+        if (!raw) return;
+        latestQuery = raw;
+        const isSySearch = /^SY\+?(?:\/\d{2}[A-Z]{3}(?:\d{2})?)?$/i.test(raw.replace(/\s+/g, ""));
+        if (!isSySearch) resultPanel.innerHTML = `<p class="panel-muted">Searching ${escapeHtml(raw)}...</p>`;
+        try {
+          const data = await fetchSearch(raw);
+          if (data.error) throw new Error(data.error);
+          if (data.sy || isSySearch) renderSy(data);
+          else renderPassenger(data);
+        } catch (error) {
+          renderPanel("Search Error", raw, `<p class="panel-muted status-fail">${escapeHtml(error?.message || "Search failed.")}</p>`);
+        }
+      }
+
+      function renderChdPanel() {
+        const rows = enrichRowsWithPassengerData(currentSy?.chdList || []);
+        const missing = rows.filter((row) => row.hasChdCode === false).length;
+        const stats = `<div class="panel-stats"><span>Total ${rows.length}</span><span class="status-ok">OK ${rows.length - missing}</span><span class="status-fail">Missing CHD1/0 ${missing}</span></div>`;
+        renderPanel("CHD List", currentSy?.flightNo || "SY", `${stats}${renderBnButtons(rows, "No CHD passenger found.", (row) => `${passengerName(row)} ${row.hasChdCode ? "OK" : "Missing CHD1/0"}`, null, (row) => row.hasChdCode === false ? "is-missing" : "is-pass")}`);
+        setPanelPassengerRows(rows);
+      }
+
+      function renderGovPanel() {
+        const gov = currentSy?.govAqq || {};
+        const groups = [
+          ["Duplicate Passport", gov.duplicatePassports?.flatMap((item) => (item.bns || []).map((bn) => ({ bn, reason: `Duplicate passport ${item.passportNo || ""}` })))],
+          ["USA TIME OUT", (gov.aqqTclBnList || []).map((bn) => ({ bn, reason: "USA TIME OUT" }))],
+          ["CHN GOV FAIL", (gov.govDtaBnList || []).map((bn) => ({ bn, reason: "CHN GOV FAIL" }))],
+          ["Passport Exp", (gov.passportExpBnList || []).map((bn) => ({ bn, reason: "Passport Exp" }))],
+          ["WEB/EDI/Reswipe", (gov.passportCodeIssues || []).map((bn) => ({ bn, reason: "WEB/EDI/Reswipe" }))],
+        ];
+        const passengerByBn = passengerLookupByBn();
+        const rows = groups.flatMap(([group, items]) => (items || []).map((item) => ({ ...(passengerByBn.get(String(item.bn || "").padStart(3, "0")) || {}), ...item, group })));
+        const body = groups.map(([label, items]) => {
+          const groupRows = (items || []).map((item) => ({ ...item, group: label }));
+          return `<div class="data-card"><b>${escapeHtml(label)}</b>${renderBnButtons(groupRows, "Clear", (row) => row.reason)}</div>`;
+        }).join("");
+        renderPanel("GOV/AQQ", currentSy?.flightNo || "SY", `<div class="data-grid">${body}</div>`);
+        setPanelPassengerRows(rows);
+      }
+
+      function renderWchPanel() {
+        const rows = enrichRowsWithPassengerData(currentSy?.wchList || []);
+        renderPanel("WCH", currentSy?.flightNo || "SY", renderBnButtons(rows, "No WCH records found.", (row) => [row.bn ? `BN ${row.bn}` : "", row.seat ? `Seat ${row.seat}` : "", Array.isArray(row.codes) ? row.codes.join("/") : row.code].filter(Boolean).join(" / "), (row, index) => [row.bn || index + 1, row.seat].filter(Boolean).join(" / ")));
+        setPanelPassengerRows(rows);
+      }
+
+      function membershipRank(tier) {
+        return ({ platinum: 0, v: 0, gold: 1, g: 1, silver: 2, s: 2 }[String(tier || "").toLowerCase()] ?? 9);
+      }
+
+      function cabinRank(cabin) {
+        return ({ first: 0, f: 0, business: 1, j: 1, elite: 2, premium: 2, economy: 3, y: 3 }[String(cabin || "").toLowerCase()] ?? 8);
+      }
+
+      function renderMembershipPanel() {
+        const data = currentSy?.membershipList || {};
+        const rows = enrichRowsWithPassengerData(["platinum", "gold", "silver"].flatMap((tier) => (data[tier] || []).map((row) => ({ ...row, tier }))))
+          .sort((a, b) => membershipRank(a.tier || a.ffTier) - membershipRank(b.tier || b.ffTier) || cabinRank(a.cabin) - cabinRank(b.cabin));
+        renderPanel("Membership", currentSy?.flightNo || "SY", rows.length ? `${renderBnButtons(rows, "No membership records found.", (row) => [row.tier || row.ffTier, row.cabin, passengerName(row)].filter(Boolean).join(" / "), (row) => [row.bn, row.seat].filter(Boolean).join(" / "))}${rowsTable(rows, [
+          { label: "Tier", value: (row) => row.tier || row.ffTier },
+          { label: "Cabin", value: (row) => row.cabin },
+          { label: "BN", value: (row) => row.bn },
+          { label: "Name", value: passengerName },
+          { label: "Seat", value: (row) => row.seat },
+          { label: "FF", value: (row) => [row.ffCarrier, row.ffNumber].filter(Boolean).join(" ") },
+        ], "No membership records found.")}` : `<p class="panel-muted">No membership records found.</p>`);
+        setPanelPassengerRows(rows);
+      }
+
+      function renderPsmPanel() {
+        const targetMsgCodes = ["TSXL", "JMSQ", "XCSQ", "TXLK", "QTQK"];
+        const rows = enrichRowsWithPassengerData((currentSy?.psmList || []).filter((row) => {
+          const lines = Array.isArray(row.psmLines) ? row.psmLines : [row.text || row.raw || row.message].filter(Boolean);
+          return lines.some((line) => /^\s*PSM/i.test(line) || (/^\s*MSG/i.test(line) && targetMsgCodes.some((code) => String(line).toUpperCase().replace(/\s+/g, "").includes(code))));
+        }));
+        const body = rows.length ? `<div class="panel-stats"><span class="status-fail">PSM/MSG total: ${rows.length}</span></div><div class="psm-card-list">${rows.map((row, index) => {
+          const lines = Array.isArray(row.psmLines) ? row.psmLines : [row.text || row.raw || row.message].filter(Boolean);
+          const type = lines.some((line) => /^\s*MSG/i.test(line)) ? "MSG" : "PSM";
+          return `<article class="psm-card"><div class="psm-card-head"><span><button class="bn-button is-warning" type="button" data-passenger-index="${index}" data-passenger-bn="${escapeHtml(row.bn || "")}">BN${escapeHtml(row.bn || "---")}</button> <small>${escapeHtml(passengerName(row))} • ${escapeHtml(row.seat || "---")}</small></span><span class="psm-badge">${escapeHtml(type)}</span></div><div class="psm-card-row"><b>Bags</b> ${escapeHtml(compactValue(row.bagtags) || "-")}</div><div class="psm-card-row"><b>Detail</b><br>${lines.map((line) => escapeHtml(line)).join("<br>")}</div></article>`;
+        }).join("")}</div>` : `<p class="panel-muted">No PSM/MSG records found.</p>`;
+        renderPanel("PSM/MSG", currentSy?.flightNo || "SY", body);
+        setPanelPassengerRows(rows);
+      }
+
+      function renderNbrdPanel() {
+        const rows = enrichRowsWithPassengerData((currentSy?.bnAudit || []).filter((row) => /NBRD|CKIN/i.test(row?.apiReason || row?.tkReason || row?.visaReason || row?.bagReason || "")));
+        renderPanel("NBRD / CKIN", currentSy?.flightNo || "SY", renderBnButtons(rows, "No NBRD/CKIN issue found.", (row) => [row.apiReason, row.tkReason, row.visaReason, row.bagReason].filter(Boolean).join("; ")));
+        setPanelPassengerRows(rows);
+      }
+
+      function renderBagReport() {
+        const sheet = currentSy?.bagSheet || {};
+        const sections = [];
+        const addBagSection = (title, bagSection, headers) => {
+          const rows = bagSection?.rows || (bagSection?.columns ? [bagSection.columns] : []);
+          if (!rows.length) return;
+          sections.push(`<h3>${escapeHtml(title)}</h3>${rowsTable(rows, headers.map((label, index) => ({ label, value: (row) => row[index] })), "No rows.")}`);
+        };
+        addBagSection("Rush Bags", sheet.rushBags, ["Rush #", "Orig #", "To", "AKE"]);
+        addBagSection("Not Load Bags", sheet.notLoadBags, ["Tag #", "Status", "Remark"]);
+        renderPanel("Bag Report", currentSy?.flightNo || "SY", sheet.hasData && sections.length ? sections.join("") : `<p class="panel-muted">No Google Sheet bag report found for this SY date.</p>`);
+      }
+
+      async function downloadSalesReport() {
+        if (!currentSy?.flightNo || !currentSy?.flightDate) {
+          renderPanel("Sales Report", "No flight", `<p class="panel-muted status-fail">Search SY before downloading the sales report.</p>`);
+          return;
+        }
+        const flightNo = currentSy.flightNo;
+        const flightDate = currentSy.flightDate;
+        try {
+          const meta = await apiJson(`/sales-report/meta?flightNo=${encodeURIComponent(flightNo)}&flightDate=${encodeURIComponent(flightDate)}`);
+          if (meta?.error || meta?.found === false) throw new Error(meta?.error || "Sales report not found.");
+          const link = `${resolveApiBase()}/sales-report/download?flightNo=${encodeURIComponent(flightNo)}&flightDate=${encodeURIComponent(flightDate)}`;
+          window.open(link, "_blank", "noopener");
+          renderPanel("Sales Report", flightNo, `<p class="panel-muted">Sales report download started for ${escapeHtml(flightNo)} / ${escapeHtml(flightDate)}.</p>`);
+        } catch (error) {
+          renderPanel("Sales Report", flightNo, `<p class="panel-muted status-fail">${escapeHtml(error?.message || "Sales report download failed.")}</p>`);
+        }
+      }
+
+      function reviewPath() {
+        const flightNo = encodeURIComponent(currentSy?.flightNo || "");
+        const flightDate = encodeURIComponent(currentSy?.flightDate || "");
+        return `/security-reviews?flightNo=${flightNo}&flightDate=${flightDate}`;
+      }
+
+      async function loadSecurityReviews(rows) {
+        if (!currentSy?.flightNo || !currentSy?.flightDate || !rows.length) return rows;
+        try {
+          const data = await apiJson(reviewPath());
+          const reviews = data?.reviews || {};
+          rows.forEach((row) => {
+            row.review = reviews[String(row.bn || "").padStart(3, "0")] || null;
+          });
+        } catch (error) {
+          console.warn("Security review lookup failed.", error);
+        }
+        return rows;
+      }
+
+      async function saveSecurityReview(row, status) {
+        if (!row?.bn || !currentSy?.flightNo || !currentSy?.flightDate) return;
+        const data = await apiJson("/security-reviews", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            flightNo: currentSy.flightNo,
+            flightDate: currentSy.flightDate,
+            bn: row.bn,
+            status,
+            reviewer: currentUser.textContent || "MUFC",
+            comment: `Reviewed ${status}`,
+          }),
+        });
+        row.review = data.review;
+      }
+
+      function checkTone(status) {
+        if (status === "fail") return "fail";
+        if (status === "review") return "warning";
+        return "pass";
+      }
+
+      function securityTone(row) {
+        if (row?.review?.status === "pass") return "pass";
+        if (row?.review?.status === "fail") return "fail";
+        const statuses = [row?.apiStatus, row?.tkStatus, row?.visaStatus, row?.bagStatus];
+        if (statuses.includes("fail")) return "fail";
+        if (statuses.includes("review")) return "warning";
+        return "pass";
+      }
+
+      function securityCard(row) {
+        if (!row) return passengerRecordCard({}, "Passenger Record");
+        const tone = securityTone(row);
+        const checks = [
+          ["API", row.apiStatus, row.apiReason],
+          ["TK", row.tkStatus, row.tkReason],
+          ["VISA", row.visaStatus, row.visaReason],
+          ["BAG", row.bagStatus, row.bagReason],
+        ];
+        const rows = checks.map(([label, status, reason]) => `<div class="security-check-line is-${checkTone(status)}"><b>${escapeHtml(label)}</b> ${escapeHtml(reason || (status === "pass" ? `${label} passed` : "No detail"))}</div>`).join("");
+        const reviewLine = row.review ? `<div class="security-row"><b>Review</b><span>${escapeHtml(`${row.review.status || ""} ${row.review.reviewer ? `by ${row.review.reviewer}` : ""} ${row.review.updatedAt || ""}`)}</span></div>` : "";
+        const reviewButtons = `<div class="review-actions"><button type="button" data-review-bn="${escapeHtml(row.bn || "")}" data-review-status="pass">Review Pass</button><button type="button" data-review-bn="${escapeHtml(row.bn || "")}" data-review-status="fail">Review Fail</button></div>`;
+        return `<article class="record-card ${tone === "warning" ? "is-warning" : tone === "fail" ? "is-fail" : ""}"><div class="record-title"><span>BN${escapeHtml(row.bn || "---")}</span><span class="record-badge">${escapeHtml(tone === "pass" ? "PASS" : tone === "fail" ? "FAIL" : "WARNING")}</span></div><div class="security-check-list">${rows}</div>${reviewButtons}${reviewLine}</article>${passengerRecordCard(row.passengerRecord || row, "Passenger Record", tone)}`;
+      }
+
+      async function renderSecurityCheck(selectedBn = null) {
+        const rows = await loadSecurityReviews(currentSy?.bnAudit || []);
+        const passCount = rows.filter((row) => securityTone(row) === "pass").length;
+        const warningCount = rows.filter((row) => securityTone(row) === "warning").length;
+        const failCount = rows.filter((row) => securityTone(row) === "fail").length;
+        const byBn = new Map(rows.map((row) => [String(row.bn || "").padStart(3, "0"), row]));
+        const allRows = Array.from({ length: 320 }, (_, index) => {
+          const bn = String(index + 1).padStart(3, "0");
+          return byBn.get(bn) || { bn, status: "DELETED", offloaded: true, deleted: true };
+        });
+        const buttons = `<div class="security-grid">${allRows.map((row, index) => `<button class="bn-button ${row.deleted || row.offloaded || row.status === "DELETED" ? "is-deleted" : `is-${securityTone(row)}`}" type="button" data-security-index="${index}">${escapeHtml(row.bn)}</button>`).join("")}</div>`;
+        const stats = `<div class="panel-stats"><span class="status-ok">${passCount} pass</span><span class="status-warn">${warningCount} warning</span><span class="status-fail">${failCount} fail</span></div>`;
+        const selectedRow = selectedBn ? allRows.find((row) => String(row.bn || "") === String(selectedBn).padStart(3, "0")) : null;
+        renderPanel("Security Check", currentSy?.flightNo || "SY", `${stats}<div class="panel-workspace"><div>${buttons}</div><div class="panel-side">${selectedRow ? securityCard(selectedRow) : `<p class="panel-muted">Click a BN button to view the passenger record.</p>`}</div></div>`);
+        setPanelPassengerRows(allRows);
+      }
+
+      function seatNumber(value) {
+        const match = String(value || "").match(/^(\d{1,2})([A-Z])$/i);
+        return match ? { row: Number(match[1]), letter: match[2].toUpperCase() } : null;
+      }
+
+      function seatTone(record) {
+        if (!record) return "";
+        const services = [...(record.specialServices || []), ...(record.specialMeals || [])].join("/");
+        if (/INF/i.test(services) || record.hasInfant) return "infant";
+        if (/WCH/i.test(services)) return "wheelchair";
+        if (/CHD/i.test(services) || record.isChild || record.hasChdCode) return "child";
+        return "occupied";
+      }
+
+      function seatLayoutForRow(rowNo) {
+        if (rowNo === 1) return { cabin: "First Class", premium: true, slots: ["A", "wide", "wide", "wide", "wide", "wide", "wide", "wide", "wide", "wide", "wide", "L"] };
+        if (rowNo === 2) return { cabin: "First Class", premium: true, slots: ["A", "aisle", "aisle", "D", "H", "aisle", "aisle", "L"] };
+        if ([6, 7, 8, 9, 10, 11, 12, 15, 16, 17, 18, 19, 20].includes(rowNo)) return { cabin: "Business Class", premium: true, slots: ["A", "aisle", "D", "H", "aisle", "L"] };
+        if (rowNo === 31) return { cabin: "Economy Class", slots: ["aisle", "aisle", "aisle", "D", "F", "G", "H"] };
+        if (rowNo >= 70 && rowNo <= 74) return { cabin: "Economy Class", slots: ["A", "C", "aisle", "D", "F", "G", "H"] };
+        if (rowNo >= 31 && rowNo <= 44) return { cabin: "Economy Class", slots: ["A", "B", "C", "aisle", "D", "F", "G", "H", "aisle", "J", "K", "L"] };
+        if (rowNo >= 61 && rowNo <= 69) return { cabin: "Economy Class", slots: ["A", "B", "C", "aisle", "D", "F", "G", "H", "aisle", "J", "K", "L"] };
+        return null;
+      }
+
+      function configuredSeatRows() {
+        return [1, 2, "galley-first", 6, 7, "galley-business", 8, 9, 10, 11, 12, 15, 16, 17, 18, 19, 20, "galley-economy", ...Array.from({ length: 14 }, (_, i) => 31 + i), "galley-mid", ...Array.from({ length: 14 }, (_, i) => 61 + i)];
+      }
+
+      function renderSeatMap() {
+        const records = currentSy?.seatMapRecords || [];
+        const seats = new Map(records.map((row) => [String(row.seat || "").toUpperCase(), row]));
+        const bodyRows = [];
+        let lastCabin = "";
+        for (const rowNo of configuredSeatRows()) {
+          if (String(rowNo).startsWith("galley")) { bodyRows.push(`<div class="seat-galley">Galley</div>`); continue; }
+          const layout = seatLayoutForRow(rowNo);
+          if (!layout) continue;
+          if (layout.cabin !== lastCabin) { bodyRows.push(`<div class="seat-cabin-label">${escapeHtml(layout.cabin)}</div>`); lastCabin = layout.cabin; }
+          bodyRows.push(`<div class="seat-row ${layout.premium ? "is-premium" : ""}"><div class="seat-row-number">${rowNo}</div>${layout.slots.map((letter) => {
+            if (letter === "wide") return `<div class="seat-aisle is-wide" aria-hidden="true"></div>`;
+            if (letter === "aisle") return `<div class="seat-aisle" aria-hidden="true"></div>`;
+            const seat = `${rowNo}${letter}`;
+            const record = seats.get(seat);
+            const tone = seatTone(record);
+            return `<button class="seat-cell ${record ? "is-occupied" : ""} ${record && tone !== "occupied" ? `is-${tone}` : ""}" type="button" ${record ? `data-seat="${escapeHtml(seat)}"` : "disabled"} title="${escapeHtml(record ? `${seat} BN ${record.bn || ""} ${passengerName(record)}` : seat)}">${escapeHtml(record?.bn || seat)}</button>`;
+          }).join("")}</div>`);
+        }
+        const legend = `<div class="panel-stats"><span style="color:#8fd0ff">Wheelchair</span><span style="color:#d7bdff">Child</span><span style="color:#ffbf86">Infant</span></div>`;
+        renderPanel("Seat Map", currentSy?.flightNo || "SY", `${legend}<div class="seat-map-shell"><div class="seat-map-plane">${bodyRows.join("")}</div></div>`);
+        setPanelPassengerRows(records);
+      }
+
+      function renderStepPanel(key) {
+        if (key === "CHD") return renderChdPanel();
+        if (key === "GOV") return renderGovPanel();
+        if (key === "NBRD") return renderNbrdPanel();
+        const step = stepByKey(key);
+        const inputTime = step?.time || "----";
+        nodeTime.textContent = inputTime;
+        const checkRows = Array.isArray(step?.checks) && step.checks.length
+          ? rowsTable(step.checks, [
+            { label: "Check", value: (row) => row.label || row.key },
+            { label: "Status", value: (row) => row.complete ? "Complete" : "Not complete" },
+            { label: "Input Time", value: (row) => row.time || "Not entered" },
+          ], "No check rows found.")
+          : "";
+        renderPanel(step?.label || key, currentSy?.flightNo || "Timeline", `<div class="data-grid"><div class="data-card"><b>Status</b><span>${escapeHtml(step?.complete ? "Complete" : "Not complete")}</span></div><div class="data-card"><b>Input Time</b><span>${escapeHtml(inputTime === "----" ? "Not entered" : inputTime)}</span></div><div class="data-card"><b>Detail</b><span>${escapeHtml(step?.tooltip || "No detail available")}</span></div></div>${checkRows}`);
       }
 
       function toggleMenu() {
@@ -1421,12 +2761,149 @@
         loginMenu.setAttribute("aria-hidden", String(open));
       });
 
+      changePasswordButton.addEventListener("click", () => {
+        loginButton.setAttribute("aria-expanded", "false");
+        loginMenu.classList.remove("is-open");
+        loginMenu.setAttribute("aria-hidden", "true");
+        passwordPage.hidden = false;
+        passwordStatus.textContent = "";
+        resultPanel.innerHTML = "";
+        newPasswordInput.focus();
+      });
+
+      closePasswordPageButton.addEventListener("click", () => {
+        passwordPage.hidden = true;
+        newPasswordInput.value = "";
+      });
+
+      changePasswordForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        passwordStatus.textContent = "Updating password...";
+        try {
+          if (!auth?.currentUser) throw new Error("You are not signed in.");
+          await auth.currentUser.updatePassword(newPasswordInput.value.trim());
+          passwordStatus.textContent = "Password changed. Please sign in again.";
+          await auth.signOut();
+          window.location.href = "login.html";
+        } catch (error) {
+          passwordStatus.textContent = error?.code === "auth/requires-recent-login"
+            ? "For security, please log out, sign in again, then change your password."
+            : (error?.message || "Password update failed.");
+        }
+      });
+
+      logoutButton.addEventListener("click", async () => {
+        if (auth) await auth.signOut();
+        window.location.href = loginUrl();
+      });
+
       flightMenuButton.addEventListener("click", () => {
         const open = flightMenuButton.getAttribute("aria-expanded") === "true";
         flightMenuButton.setAttribute("aria-expanded", String(!open));
         flightMenu.classList.toggle("is-open", !open);
         flightMenu.setAttribute("aria-hidden", String(open));
       });
+
+      timeToggle.addEventListener("click", () => {
+        const open = detailsPanel.classList.toggle("is-open");
+        timeToggle.classList.toggle("is-open", open);
+        timeToggle.setAttribute("aria-expanded", String(open));
+      });
+
+      nodes.forEach((node) => {
+        node.addEventListener("click", () => {
+          if (didDrag) return;
+          resetTimelineCenter(node.dataset.key);
+          renderStepPanel(node.dataset.key);
+        });
+      });
+
+      document.querySelectorAll(".detail-action[data-panel]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const panel = button.dataset.panel;
+          if (panel === "chd") renderChdPanel();
+          if (panel === "gov") renderGovPanel();
+          if (panel === "wch") renderWchPanel();
+          if (panel === "membership") renderMembershipPanel();
+          if (panel === "psm") renderPsmPanel();
+        });
+      });
+
+      bagReportButton.addEventListener("click", renderBagReport);
+      salesReportButton.addEventListener("click", downloadSalesReport);
+      securityCheckButton.addEventListener("click", renderSecurityCheck);
+      seatMapButton.addEventListener("click", renderSeatMap);
+
+      resultPanel.addEventListener("click", async (event) => {
+        if (event.target.closest("[data-close-panel]")) {
+          resultPanel.innerHTML = "";
+          resultPanel._passengerRows = [];
+          return;
+        }
+        const reviewButton = event.target.closest("[data-review-status]");
+        if (reviewButton) {
+          const rows = resultPanel._passengerRows || [];
+          const bn = reviewButton.dataset.reviewBn;
+          const row = rows.find((item) => String(item.bn || "") === String(bn));
+          if (row) {
+            reviewButton.textContent = "Saving...";
+            await saveSecurityReview(row, reviewButton.dataset.reviewStatus);
+            await renderSecurityCheck(row.bn);
+          }
+          return;
+        }
+        const securityButton = event.target.closest("[data-security-index]");
+        if (securityButton) {
+          const rows = resultPanel._passengerRows || [];
+          const row = rows[Number(securityButton.dataset.securityIndex)];
+          const side = resultPanel.querySelector(".panel-side");
+          if (side) side.innerHTML = securityCard(row);
+          return;
+        }
+        const passengerButton = event.target.closest("[data-passenger-index]");
+        if (passengerButton) {
+          const rows = resultPanel._passengerRows || [];
+          const index = Number(passengerButton.dataset.passengerIndex);
+          const bn = passengerButton.dataset.passengerBn;
+          const row = (bn && rows.find((item) => String(item.bn || "") === bn)) || rows[index] || { bn };
+          showPassengerModal(row.passengerRecord || row, "Passenger Record", passengerButton);
+          return;
+        }
+        const seatButton = event.target.closest("[data-seat]");
+        if (seatButton) {
+          const seat = seatButton.dataset.seat;
+          const rows = resultPanel._passengerRows || [];
+          const row = rows.find((item) => String(item.seat || "").toUpperCase() === seat) || { seat };
+          showPassengerModal(row.passengerRecord || row, "Passenger Record", seatButton);
+        }
+      });
+
+      document.addEventListener("click", (event) => {
+        if (event.target.closest("[data-close-modal]") || event.target.classList.contains("passenger-modal-backdrop")) closePassengerModal();
+      });
+
+      searchForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        passwordPage.hidden = true;
+        mobileQueryInput.value = queryInput.value;
+        searchPassenger();
+      });
+
+      mobileSearchForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        passwordPage.hidden = true;
+        queryInput.value = mobileQueryInput.value;
+        mobilePanel.classList.remove("is-open");
+        mobilePanel.setAttribute("aria-hidden", "true");
+        menuButton.setAttribute("aria-expanded", "false");
+        fallbackMenuButton.setAttribute("aria-expanded", "false");
+        searchPassenger();
+      });
+
+      timeline.addEventListener("pointerdown", beginTimelineDrag);
+      timeline.addEventListener("pointermove", moveTimelineDrag);
+      timeline.addEventListener("pointerup", endTimelineDrag);
+      timeline.addEventListener("pointercancel", endTimelineDrag);
 
       if (window.location.hash === "#open-login") {
         loginButton.setAttribute("aria-expanded", "true");
@@ -1440,32 +2917,26 @@
         flightMenu.setAttribute("aria-hidden", "false");
       }
 
-      timeToggle.addEventListener("click", () => {
-        const open = detailsPanel.classList.toggle("is-open");
-        timeToggle.classList.toggle("is-open", open);
-        timeToggle.setAttribute("aria-expanded", String(open));
-      });
-
-      nodes.forEach((node) => {
-        node.addEventListener("click", () => {
-          if (didDrag) {
+      if (!auth) {
+        window.location.replace(loginUrl());
+      } else if (!canEnterApp) {
+        returnToLogin();
+      } else {
+        auth.onAuthStateChanged((user) => {
+          if (!user) {
+            window.location.replace(loginUrl());
             return;
           }
-          selectedIndex = Number(node.dataset.index);
-          renderNodeItems();
+          currentUser.textContent = user.email || "Authenticated user";
+          startInactivityWatch();
+          queryInput.value = "SY";
+          mobileQueryInput.value = "SY";
+          if (!currentSy) searchPassenger();
         });
-      });
+      }
 
-      timeline.addEventListener("pointerdown", beginTimelineDrag);
-      timeline.addEventListener("pointermove", moveTimelineDrag);
-      timeline.addEventListener("pointerup", endTimelineDrag);
-      timeline.addEventListener("pointercancel", endTimelineDrag);
-
-      placeNodes();
-      renderNodeItems();
-      new ResizeObserver(() => {
-        placeNodes();
-      }).observe(timelineShell);
+      resetTimelineCenter("CREW_APIS");
+      new ResizeObserver(() => placeNodes()).observe(timelineShell);
     </script>
   </body>
 </html>
