@@ -28,5 +28,6 @@ Before loading `index.html`, define:
 
 The app now resolves API base in this order:
 1. `window.MU_API_BASE`
-2. `localStorage.mu_api_base`
-3. `''` (same-origin)
+2. `https://api.mufcapp.net`
+
+Old `localStorage.mu_api_base` values are ignored so stale browser settings cannot break production SY search.

@@ -65,10 +65,11 @@ GitHub Actions deploy should run from `public/` directory so it picks up `public
 
 ## 3) Configure frontend to call Railway API (GitHub-managed files)
 
-This project already supports API base from code/runtime:
+This project resolves API base from code/runtime in this order:
 1. `window.MU_API_BASE`
-2. `localStorage.mu_api_base`
-3. fallback same-origin
+2. `https://api.mufcapp.net`
+
+Old `localStorage.mu_api_base` values are ignored so stale browser settings cannot break production SY search.
 
 For permanent production config, add before app script in hosted page:
 
