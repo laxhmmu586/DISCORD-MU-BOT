@@ -31,23 +31,52 @@
       }
 
       body {
+        position: relative;
+        isolation: isolate;
         min-height: 100vh;
         display: grid;
         place-items: center;
-        background:
-          radial-gradient(circle at 70% 18%, rgba(18, 91, 104, 0.24), transparent 34rem),
-          radial-gradient(circle at 48% 56%, rgba(21, 48, 82, 0.28), transparent 34rem),
-          linear-gradient(115deg, #071327 0%, #04121e 48%, #020b12 100%);
+        overflow: hidden;
+        background: transparent;
+      }
+
+      body::before,
+      body::after {
+        content: "";
+        position: fixed;
+        pointer-events: none;
       }
 
       body::before {
-        content: "";
-        position: fixed;
         inset: 0;
-        pointer-events: none;
         background:
           linear-gradient(180deg, rgba(0, 0, 0, 0.28), transparent 22rem),
           linear-gradient(90deg, rgba(0, 0, 0, 0.24), transparent 34%, transparent 66%, rgba(0, 0, 0, 0.36));
+        z-index: -1;
+      }
+
+      body::after {
+        inset: -6vmax;
+        background: url("assets/space-earth-night-4k.svg") center / cover no-repeat;
+        transform-origin: 50% 82%;
+        animation: slowEarthTurn 96s linear infinite alternate;
+        z-index: -2;
+      }
+
+      @keyframes slowEarthTurn {
+        from {
+          transform: scale(1.04) rotate(-0.75deg) translate3d(-1.2%, 0, 0);
+        }
+        to {
+          transform: scale(1.08) rotate(0.75deg) translate3d(1.2%, -0.6%, 0);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        body::after {
+          animation: none;
+          transform: scale(1.05);
+        }
       }
 
       .login-card {
