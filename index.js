@@ -344,6 +344,9 @@ function sanitizeReviewer(value) {
 const ALLOWED_ORIGINS = [
   'https://china-eastern.web.app',
   'https://china-eastern.firebaseapp.com',
+  'https://mufcapp.net',
+  'https://www.mufcapp.net',
+  'https://api.mufcapp.net',
   process.env.WEB_ORIGIN
 ].filter(Boolean);
 
