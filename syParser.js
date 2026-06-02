@@ -112,6 +112,14 @@ function hasTargetPsm(line) {
   return /^\s*MSG/i.test(raw) && TARGET_PSM_MSG_CODES.some((code) => normalized.includes(code));
 }
 
+function formatPassportExpiryFromSection(section) {
+  const passportRawLine = (String(section || '').match(/PASSPORT\s*:\s*([^\n\r]+)/i)?.[1] || '').trim().toUpperCase();
+  const expField = passportRawLine.split('/').map((x) => x.trim()).find((part, index, parts) => /^\d{6}$/.test(part) && (parts[index - 1] || '').trim() === '');
+  const fallback = passportRawLine.split('/').map((x) => x.trim()).find((part) => /^\d{6}$/.test(part)) || '';
+  const value = expField || fallback;
+  if (!value) return '';
+  return `${value.slice(4, 6)}/${value.slice(2, 4)}/20${value.slice(0, 2)}`;
+}
 
 function extractSeatAfterBn(text) {
   return (String(text || '').match(/\bBN\s*\d{1,3}\b\s+\*?(\d{1,3}[A-Z])\b/i)?.[1] || '').toUpperCase();
@@ -970,6 +978,7 @@ function enrichSeatMapRecordsFromLog(log, syInfo, targetYmd = null) {
       name: passengerName || 'UNKNOWN',
       seat,
       passportNo,
+      passportExpiry: formatPassportExpiryFromSection(section),
       ffCarrier: ffMatch?.[1]?.toUpperCase() || '',
       ffNumber: ffMatch?.[2] || '',
       ffTier: ffMatch?.[3]?.toUpperCase() || '',
@@ -1213,6 +1222,7 @@ ${section}`,
       flight: syInfo.flightNo || '',
       flightDate: syInfo.flightDate || '',
       passportNo,
+      passportExpiry: formatPassportExpiryFromSection(section),
       ffCarrier: ffMatch?.[1]?.toUpperCase() || '',
       ffNumber: ffMatch?.[2] || '',
       ffTier: ffMatch?.[3]?.toUpperCase() || '',
