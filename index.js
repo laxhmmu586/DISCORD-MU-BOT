@@ -344,6 +344,9 @@ function sanitizeReviewer(value) {
 const ALLOWED_ORIGINS = [
   'https://china-eastern.web.app',
   'https://china-eastern.firebaseapp.com',
+  'https://mufcapp.net',
+  'https://www.mufcapp.net',
+  'https://api.mufcapp.net',
   process.env.WEB_ORIGIN
 ].filter(Boolean);
 
@@ -615,7 +618,8 @@ app.get(
             ? `NEXT DAY INFO sent email found: ${nextDaySubject}`
             : `NEXT DAY INFO sent email not found: ${nextDaySubject}`;
         }
-        return res.json({ sy: { ...syInfo, bagSheet: syBagInfo } });
+        const authContext = await resolveAuthContextFromRequest(req);
+        return res.json({ sy: { ...syInfo, bagSheet: syBagInfo, permissions: authContext.permissions } });
       }
       if (isSYRawQuery) {
         return res.json({ error: 'SY query did not return SY payload.' });
