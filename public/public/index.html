@@ -1755,9 +1755,14 @@
         return Number(digits.slice(0, 2)) * 60 + Number(digits.slice(2, 4));
       }
 
-      function findNodeIndexByKey(key) {
-        const match = Array.from(nodes).find((node) => node.dataset.key === key);
-        return match ? Number(match.dataset.index) : 0;
+      function escapeHtml(value) {
+        return String(value ?? "").replace(/[&<>'"]/g, (char) => ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          "'": "&#39;",
+          '"': "&quot;",
+        })[char]);
       }
       window.findNodeIndexByKey = findNodeIndexByKey;
 
@@ -2013,6 +2018,137 @@
         } catch (error) {
           renderPanel("Search Error", raw, `<p class="panel-muted status-fail">${escapeHtml(error?.message || "Search failed.")}</p>`);
         }
+      }
+
+      function renderChdPanel() {
+        const rows = currentSy?.chdList || [];
+        renderPanel("CHD List", currentSy?.flightNo || "SY", renderBnButtons(rows, "No CHD passenger found.", (row) => `${passengerName(row)} ${row.hasChdCode ? "OK" : "Missing CHD1/0"}`));
+        setPanelPassengerRows(rows);
+      }
+
+      function renderGovPanel() {
+        const gov = currentSy?.govAqq || {};
+        const groups = [
+          ["Duplicate Passport", gov.duplicatePassports?.flatMap((item) => (item.bns || []).map((bn) => ({ bn, reason: `Duplicate passport ${item.passportNo || ""}` })))],
+          ["USA TIME OUT", (gov.aqqTclBnList || []).map((bn) => ({ bn, reason: "USA TIME OUT" }))],
+          ["CHN GOV FAIL", (gov.govDtaBnList || []).map((bn) => ({ bn, reason: "CHN GOV FAIL" }))],
+          ["Passport Exp", (gov.passportExpBnList || []).map((bn) => ({ bn, reason: "Passport Exp" }))],
+          ["WEB/EDI/Reswipe", (gov.passportCodeIssues || []).map((bn) => ({ bn, reason: "WEB/EDI/Reswipe" }))],
+        ];
+        const rows = groups.flatMap(([group, items]) => (items || []).map((item) => ({ ...item, group })));
+        const body = groups.map(([label, items]) => {
+          const groupRows = (items || []).map((item) => ({ ...item, group: label }));
+          return `<div class="data-card"><b>${escapeHtml(label)}</b>${renderBnButtons(groupRows, "Clear", (row) => row.reason)}</div>`;
+        }).join("");
+        renderPanel("GOV/AQQ", currentSy?.flightNo || "SY", `<div class="data-grid">${body}</div>`);
+        setPanelPassengerRows(rows);
+      }
+
+      function renderWchPanel() {
+        const rows = currentSy?.wchList || [];
+        renderPanel("WCH", currentSy?.flightNo || "SY", renderBnButtons(rows, "No WCH records found.", (row) => [row.bn ? `BN ${row.bn}` : "", row.seat ? `Seat ${row.seat}` : "", Array.isArray(row.codes) ? row.codes.join("/") : row.code].filter(Boolean).join(" / "), (row, index) => [row.bn || index + 1, row.seat].filter(Boolean).join(" / ")));
+        setPanelPassengerRows(rows);
+      }
+
+      function membershipRank(tier) {
+        return ({ platinum: 0, v: 0, gold: 1, g: 1, silver: 2, s: 2 }[String(tier || "").toLowerCase()] ?? 9);
+      }
+
+      function cabinRank(cabin) {
+        return ({ first: 0, f: 0, business: 1, j: 1, elite: 2, premium: 2, economy: 3, y: 3 }[String(cabin || "").toLowerCase()] ?? 8);
+      }
+
+      function renderMembershipPanel() {
+        const data = currentSy?.membershipList || {};
+        const rows = ["platinum", "gold", "silver"].flatMap((tier) => (data[tier] || []).map((row) => ({ ...row, tier })))
+          .sort((a, b) => membershipRank(a.tier || a.ffTier) - membershipRank(b.tier || b.ffTier) || cabinRank(a.cabin) - cabinRank(b.cabin));
+        renderPanel("Membership", currentSy?.flightNo || "SY", rowsTable(rows, [
+          { label: "Tier", value: (row) => row.tier || row.ffTier },
+          { label: "Cabin", value: (row) => row.cabin },
+          { label: "BN", value: (row) => row.bn },
+          { label: "Name", value: passengerName },
+          { label: "Seat", value: (row) => row.seat },
+          { label: "FF", value: (row) => [row.ffCarrier, row.ffNumber].filter(Boolean).join(" ") },
+        ], "No membership records found."));
+      }
+
+      function renderPsmPanel() {
+        const rows = currentSy?.psmList || [];
+        renderPanel("PSM/MSG", currentSy?.flightNo || "SY", rowsTable(rows, [
+          { label: "BN", value: (row) => row.bn },
+          { label: "Name", value: passengerName },
+          { label: "Seat", value: (row) => row.seat },
+          { label: "Type", value: (row) => Array.isArray(row.codes) ? row.codes.join("/") : row.code },
+          { label: "Input", value: (row) => row.text || row.raw || row.message },
+        ], "No PSM/MSG records found."));
+      }
+
+      function renderNbrdPanel() {
+        const rows = (currentSy?.bnAudit || []).filter((row) => /NBRD|CKIN/i.test(row?.apiReason || row?.tkReason || row?.visaReason || row?.bagReason || ""));
+        renderPanel("NBRD / CKIN", currentSy?.flightNo || "SY", renderBnButtons(rows, "No NBRD/CKIN issue found.", (row) => [row.apiReason, row.tkReason, row.visaReason, row.bagReason].filter(Boolean).join("; ")));
+        setPanelPassengerRows(rows);
+      }
+
+      function renderBagReport() {
+        const sheet = currentSy?.bagSheet || {};
+        const sections = [];
+        const addBagSection = (title, bagSection, headers) => {
+          const rows = bagSection?.rows || (bagSection?.columns ? [bagSection.columns] : []);
+          if (!rows.length) return;
+          sections.push(`<h3>${escapeHtml(title)}</h3>${rowsTable(rows, headers.map((label, index) => ({ label, value: (row) => row[index] })), "No rows.")}`);
+        };
+        addBagSection("Rush Bags", sheet.rushBags, ["Rush #", "Orig #", "To", "AKE"]);
+        addBagSection("Not Load Bags", sheet.notLoadBags, ["Tag #", "Status", "Remark"]);
+        renderPanel("Bag Report", currentSy?.flightNo || "SY", sheet.hasData && sections.length ? sections.join("") : `<p class="panel-muted">No Google Sheet bag report found for this SY date.</p>`);
+      }
+
+      function renderSecurityCheck() {
+        const rows = currentSy?.bnAudit || [];
+        const reviewRows = rows.filter((row) => [row.apiStatus, row.tkStatus, row.visaStatus, row.bagStatus].some((status) => status === "fail" || status === "review"));
+        const passCount = rows.length - reviewRows.length;
+        renderPanel("Security Check", currentSy?.flightNo || "SY", `<div class="data-grid"><div class="data-card"><b>Pass</b><span class="status-ok">${passCount}</span></div><div class="data-card"><b>Review</b><span class="status-fail">${reviewRows.length}</span></div></div>${renderBnButtons(reviewRows, "No security review passenger found.", (row) => [row.apiReason, row.tkReason, row.visaReason, row.bagReason].filter(Boolean).join("; "), (row) => `${row.bn || "---"} REVIEW`)}`);
+        setPanelPassengerRows(reviewRows);
+      }
+
+      function seatNumber(value) {
+        const match = String(value || "").match(/^(\d{1,2})([A-Z])$/i);
+        return match ? { row: Number(match[1]), letter: match[2].toUpperCase() } : null;
+      }
+
+      function renderSeatMap() {
+        const records = currentSy?.seatMapRecords || [];
+        const seats = new Map(records.map((row) => [String(row.seat || "").toUpperCase(), row]));
+        const parsedRows = records.map((row) => seatNumber(row.seat)).filter(Boolean).map((seat) => seat.row);
+        const maxRow = Math.max(30, ...parsedRows);
+        const minRow = Math.max(1, Math.min(1, ...parsedRows));
+        const letters = ["A", "B", "C", "", "D", "E", "F"];
+        const bodyRows = [];
+        for (let rowNo = minRow; rowNo <= maxRow; rowNo += 1) {
+          bodyRows.push(`<div class="seat-row"><div class="seat-row-number">${rowNo}</div>${letters.map((letter) => {
+            if (!letter) return `<div class="seat-aisle" aria-hidden="true"></div>`;
+            const seat = `${rowNo}${letter}`;
+            const record = seats.get(seat);
+            const hasAlert = record && [...(record.specialServices || []), ...(record.specialMeals || [])].length;
+            return `<button class="seat-cell ${record ? "is-occupied" : ""} ${hasAlert ? "has-alert" : ""}" type="button" ${record ? `data-seat="${escapeHtml(seat)}"` : "disabled"} title="${escapeHtml(record ? `${seat} BN ${record.bn || ""} ${passengerName(record)}` : seat)}">${escapeHtml(record?.bn || seat)}</button>`;
+          }).join("")}</div>`);
+        }
+        renderPanel("Seat Map", currentSy?.flightNo || "SY", `<div class="seat-map-shell"><div class="seat-map-plane">${bodyRows.join("")}</div></div>`);
+        setPanelPassengerRows(records);
+      }
+
+      function renderStepPanel(key) {
+        if (key === "CHD") return renderChdPanel();
+        if (key === "GOV") return renderGovPanel();
+        if (key === "NBRD") return renderNbrdPanel();
+        const step = stepByKey(key);
+        const checkRows = Array.isArray(step?.checks) && step.checks.length
+          ? rowsTable(step.checks, [
+            { label: "Check", value: (row) => row.label || row.key },
+            { label: "Status", value: (row) => row.complete ? "Complete" : "Not complete" },
+            { label: "Input Time", value: (row) => row.time || "Not entered" },
+          ], "No check rows found.")
+          : "";
+        renderPanel(step?.label || key, currentSy?.flightNo || "Timeline", `<div class="data-grid"><div class="data-card"><b>Status</b><span>${escapeHtml(step?.complete ? "Complete" : "Not complete")}</span></div><div class="data-card"><b>Input Time</b><span>${escapeHtml(step?.time || "Not entered")}</span></div><div class="data-card"><b>Detail</b><span>${escapeHtml(step?.tooltip || "No detail available")}</span></div></div>${checkRows}`);
       }
 
       function renderChdPanel() {
