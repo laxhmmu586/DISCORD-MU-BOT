@@ -1469,9 +1469,9 @@ function findSYInfo(log, queryDate, options = {}) {
     .map(s => ({ section: s, info: parseSYSection(s) }))
     .filter(x => x.info);
 
-  const latestByTimestamp = parsed
+  const latestLogSection = sections
     .slice()
-    .sort((a, b) => parseSectionTimestamp(b.section.timestamp) - parseSectionTimestamp(a.section.timestamp))[0];
+    .sort((a, b) => parseSectionTimestamp(b.timestamp) - parseSectionTimestamp(a.timestamp))[0];
 
   const fallbackToday = new Date();
   const fallbackMon = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'][fallbackToday.getMonth()];
@@ -1479,7 +1479,7 @@ function findSYInfo(log, queryDate, options = {}) {
   const fallbackYy = String(fallbackToday.getFullYear()).slice(-2);
   const fallbackFlightDate = `${fallbackDd}${fallbackMon}${fallbackYy}`;
 
-  const todayFlightDate = getFlightDateFromTimestamp(latestByTimestamp?.section?.timestamp) || fallbackFlightDate;
+  const todayFlightDate = getFlightDateFromTimestamp(latestLogSection?.timestamp) || fallbackFlightDate;
 
   const targetFlightDate = options.preferNextDay
     ? (() => {
