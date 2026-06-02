@@ -33,15 +33,12 @@
       }
 
       body {
+        position: relative;
+        isolation: isolate;
         margin: 0;
         min-height: 100vh;
         overflow-x: hidden;
-        background:
-          radial-gradient(circle at 67% 15%, rgba(18, 91, 104, 0.24), transparent 34rem),
-          radial-gradient(circle at 47% 56%, rgba(21, 48, 82, 0.28), transparent 34rem),
-          linear-gradient(115deg, #071327 0%, #04121e 48%, #020b12 100%);
-        background-size: cover;
-        background-position: center;
+        background: transparent;
         color: var(--text);
       }
 
@@ -58,15 +55,43 @@
         border: 3px solid #020a12;
       }
 
-      body::before {
+      body::before,
+      body::after {
         content: "";
         position: fixed;
-        inset: 0;
         pointer-events: none;
+      }
+
+      body::before {
+        inset: 0;
         background:
           linear-gradient(180deg, rgba(0, 0, 0, 0.34), transparent 22rem),
           linear-gradient(90deg, rgba(0, 0, 0, 0.28), transparent 34%, transparent 66%, rgba(0, 0, 0, 0.36));
         z-index: -1;
+      }
+
+      body::after {
+        inset: -6vmax;
+        background: url("assets/space-earth-night-4k.svg") center / cover no-repeat;
+        transform-origin: 50% 82%;
+        animation: slowEarthTurn 96s linear infinite alternate;
+        z-index: -2;
+      }
+
+      @keyframes slowEarthTurn {
+        from {
+          transform: scale(1.04) rotate(-0.75deg) translate3d(-1.2%, 0, 0);
+        }
+        to {
+          transform: scale(1.08) rotate(0.75deg) translate3d(1.2%, -0.6%, 0);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        body::after {
+          animation: none;
+          transform: scale(1.05);
+        }
       }
 
       button,
