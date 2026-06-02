@@ -1856,6 +1856,7 @@
         sessionStorage.removeItem(APP_ENTRY_KEY);
         return Boolean(allowedAt);
       }
+      window.findNodeIndexByKey = findNodeIndexByKey;
 
       const canEnterApp = consumeAppEntry();
 
@@ -2217,6 +2218,23 @@
         } catch (error) {
           renderPanel("Search Error", raw, `<p class="panel-muted status-fail">${escapeHtml(error?.message || "Search failed.")}</p>`);
         }
+        renderPanel("Seat Map", currentSy?.flightNo || "SY", `<div class="seat-map-shell"><div class="seat-map-plane">${bodyRows.join("")}</div></div>`);
+        setPanelPassengerRows(records);
+      }
+
+      function renderStepPanel(key) {
+        if (key === "CHD") return renderChdPanel();
+        if (key === "GOV") return renderGovPanel();
+        if (key === "NBRD") return renderNbrdPanel();
+        const step = stepByKey(key);
+        const checkRows = Array.isArray(step?.checks) && step.checks.length
+          ? rowsTable(step.checks, [
+            { label: "Check", value: (row) => row.label || row.key },
+            { label: "Status", value: (row) => row.complete ? "Complete" : "Not complete" },
+            { label: "Input Time", value: (row) => row.time || "Not entered" },
+          ], "No check rows found.")
+          : "";
+        renderPanel(step?.label || key, currentSy?.flightNo || "Timeline", `<div class="data-grid"><div class="data-card"><b>Status</b><span>${escapeHtml(step?.complete ? "Complete" : "Not complete")}</span></div><div class="data-card"><b>Input Time</b><span>${escapeHtml(step?.time || "Not entered")}</span></div><div class="data-card"><b>Detail</b><span>${escapeHtml(step?.tooltip || "No detail available")}</span></div></div>${checkRows}`);
       }
 
       function renderChdPanel() {
