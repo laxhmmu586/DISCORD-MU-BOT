@@ -552,18 +552,15 @@
 
       .details-panel {
         width: min(960px, calc(100% - 48px));
-        display: grid;
-        grid-template-rows: 0fr;
         margin: 22px auto 0;
-        transition: grid-template-rows 240ms ease;
       }
 
-      .details-panel.is-open {
-        grid-template-rows: 1fr;
+      .details-panel[hidden] {
+        display: none;
       }
 
       .details-inner {
-        overflow: hidden;
+        overflow: visible;
       }
 
       .details-surface {
@@ -1926,7 +1923,7 @@
           </div>
         </div>
 
-        <section class="details-panel is-open" aria-label="Expanded flight details">
+        <section class="details-panel" aria-label="Flight details" hidden>
           <div class="details-inner">
             <div class="details-surface">
               <div class="details-manifest">
@@ -2053,7 +2050,10 @@
       const auth = window.firebase?.apps?.length && window.firebase?.auth ? firebase.auth() : null;
       const APP_ENTRY_KEY = "mufc_allow_app_entry";
       const INACTIVITY_LIMIT_MS = 15 * 60 * 1000;
+      const SY_AUTO_REFRESH_MS = 60 * 1000;
       let inactivityTimer = null;
+      let syAutoRefreshTimer = null;
+      let syAutoRefreshInFlight = false;
       let selectedIndex = 0;
       let scrollOffset = 0;
       let dragStartX = 0;
@@ -2061,6 +2061,40 @@
       let didDrag = false;
       let currentSy = null;
       let latestQuery = "SY";
+
+      function setSyDetailsVisible(visible) {
+        const detailsPanel = document.querySelector(".details-panel");
+        if (detailsPanel) detailsPanel.hidden = !visible;
+      }
+
+      function clearSyDashboard() {
+        currentSy = null;
+        setSyDetailsVisible(false);
+        setText("#flight-kicker", "Loading SY...");
+        setText("#active-flight", "SY");
+        setText("#metric-gate", "---");
+        setText("#metric-bdt", "----");
+        setText("#metric-std", "----");
+        document.querySelector("#reservation-booked").innerHTML = tripleHtml(["---", "---", "---"]);
+        document.querySelector("#reservation-et").textContent = "--- / --- / ---";
+        document.querySelector("#checkin-accepted").innerHTML = tripleHtml(["---", "---", "---"]);
+        document.querySelector("#checkin-et").textContent = "--- / --- / ---";
+        setText("#rk-message", "");
+        setBadgeText("#chd-count", 0);
+        setBadgeText("#gov-count", 0);
+        setBadgeText("#nbrd-count", 0);
+        setText("#wch-count", "0");
+        setText("#psm-count", "0");
+        if (bagReportButton) bagReportButton.hidden = true;
+        if (salesReportButton) salesReportButton.hidden = true;
+        nodes.forEach((node) => {
+          node.dataset.status = "pending";
+          node.dataset.time = "----";
+          node.dataset.inputTime = "";
+          node.removeAttribute("data-alert");
+          node.removeAttribute("data-clear-locked");
+        });
+      }
 
       function loginUrl() {
         const url = new URL("login.html", window.location.href);
@@ -2516,6 +2550,7 @@
 
       function updateFlightFromSy(sy) {
         currentSy = sy;
+        setSyDetailsVisible(true);
         const reg = sy.aircraftRegistration || "---";
         const type = sy.aircraftType || sy.aircraftTypeRaw || "---";
         setText("#flight-kicker", `${type} | ${reg}`);
@@ -2570,11 +2605,38 @@
         resultPanel.innerHTML = "";
       }
 
+      function isSyQuery(value) {
+        return /^SY\+?(?:\/\d{2}[A-Z]{3}(?:\d{2})?)?$/i.test(String(value || "").replace(/\s+/g, ""));
+      }
+
+      async function refreshSy({ silent = true } = {}) {
+        if (syAutoRefreshInFlight) return;
+        syAutoRefreshInFlight = true;
+        try {
+          const data = await fetchSearch("SY");
+          if (!data?.sy) throw new Error(data?.error || "No SY payload returned.");
+          updateFlightFromSy(data.sy);
+          resultPanel.innerHTML = "";
+        } catch (error) {
+          clearSyDashboard();
+          resultPanel.innerHTML = "";
+          if (!silent) console.warn("Unable to load today's SY data.", error);
+        } finally {
+          syAutoRefreshInFlight = false;
+        }
+      }
+
+      function startSyAutoRefresh() {
+        if (syAutoRefreshTimer) clearInterval(syAutoRefreshTimer);
+        refreshSy();
+        syAutoRefreshTimer = setInterval(refreshSy, SY_AUTO_REFRESH_MS);
+      }
+
       async function searchPassenger() {
         const raw = queryInput.value.trim();
         if (!raw) return;
         latestQuery = raw;
-        const isSySearch = /^SY\+?(?:\/\d{2}[A-Z]{3}(?:\d{2})?)?$/i.test(raw.replace(/\s+/g, ""));
+        const isSySearch = isSyQuery(raw);
         if (!isSySearch) resultPanel.innerHTML = `<p class="panel-muted">Searching ${escapeHtml(raw)}...</p>`;
         try {
           const data = await fetchSearch(raw);
@@ -2582,6 +2644,11 @@
           if (data.sy || isSySearch) renderSy(data);
           else renderPassenger(data);
         } catch (error) {
+          if (isSySearch) {
+            clearSyDashboard();
+            resultPanel.innerHTML = "";
+            return;
+          }
           renderPanel("Search Error", raw, `<p class="panel-muted status-fail">${escapeHtml(error?.message || "Search failed.")}</p>`);
         }
       }
@@ -3085,7 +3152,7 @@
           startInactivityWatch();
           queryInput.value = "SY";
           mobileQueryInput.value = "SY";
-          if (!currentSy) searchPassenger();
+          startSyAutoRefresh();
         });
       }
 
