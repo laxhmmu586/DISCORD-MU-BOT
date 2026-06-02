@@ -1136,10 +1136,10 @@
         <div class="login-menu" aria-hidden="true">
           <div class="login-user">
             <span>Logged in as</span>
-            <strong>lake@mu.com</strong>
+            <strong id="current-user">Checking session...</strong>
           </div>
-          <button type="button">Change Password</button>
-          <button type="button">Logout</button>
+          <button id="change-password" type="button">Change Password</button>
+          <button id="logout" type="button">Logout</button>
         </div>
       </div>
       <button class="menu-button" type="button" aria-label="Open menu" aria-expanded="false">
@@ -1255,12 +1255,18 @@
       </section>
     </main>
 
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="/__/firebase/init.js"></script>
     <script>
       const menuButton = document.querySelector(".menu-button");
       const fallbackMenuButton = document.querySelector(".mobile-menu-fallback");
       const mobilePanel = document.querySelector(".mobile-panel");
       const loginButton = document.querySelector(".login-button");
       const loginMenu = document.querySelector(".login-menu");
+      const currentUser = document.querySelector("#current-user");
+      const changePasswordButton = document.querySelector("#change-password");
+      const logoutButton = document.querySelector("#logout");
       const flightMenuButton = document.querySelector(".flight-menu-button");
       const flightMenu = document.querySelector(".flight-menu");
       const timeToggle = document.querySelector(".time-toggle");
@@ -1280,11 +1286,30 @@
         currentTime: "1204",
         currentStage: null,
       };
+      const auth = window.firebase?.apps?.length && window.firebase?.auth ? firebase.auth() : null;
       let selectedIndex = 0;
       let scrollOffset = 0;
       let dragStartX = 0;
       let lastDragX = 0;
       let didDrag = false;
+
+      function loginUrl() {
+        const url = new URL("login.html", window.location.href);
+        url.searchParams.set("next", `${window.location.pathname}${window.location.search}${window.location.hash}`);
+        return url.href;
+      }
+
+      if (!auth) {
+        window.location.replace(loginUrl());
+      } else {
+        auth.onAuthStateChanged((user) => {
+          if (!user) {
+            window.location.replace(loginUrl());
+            return;
+          }
+          currentUser.textContent = user.email || "Authenticated user";
+        });
+      }
 
       function timeToMinutes(value) {
         const digits = value.replace(/\D/g, "").padStart(4, "0");
@@ -1419,6 +1444,23 @@
         loginButton.setAttribute("aria-expanded", String(!open));
         loginMenu.classList.toggle("is-open", !open);
         loginMenu.setAttribute("aria-hidden", String(open));
+      });
+
+      changePasswordButton.addEventListener("click", async () => {
+        const email = auth?.currentUser?.email;
+        if (!auth || !email) {
+          window.location.href = loginUrl();
+          return;
+        }
+        await auth.sendPasswordResetEmail(email);
+        changePasswordButton.textContent = "Reset Email Sent";
+      });
+
+      logoutButton.addEventListener("click", async () => {
+        if (auth) {
+          await auth.signOut();
+        }
+        window.location.href = loginUrl();
       });
 
       flightMenuButton.addEventListener("click", () => {
