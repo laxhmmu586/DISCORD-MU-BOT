@@ -1756,9 +1756,14 @@
         return Number(digits.slice(0, 2)) * 60 + Number(digits.slice(2, 4));
       }
 
-      function findNodeIndexByKey(key) {
-        const match = Array.from(nodes).find((node) => node.dataset.key === key);
-        return match ? Number(match.dataset.index) : 0;
+      function escapeHtml(value) {
+        return String(value ?? "").replace(/[&<>'"]/g, (char) => ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          "'": "&#39;",
+          '"': "&quot;",
+        })[char]);
       }
       window.findNodeIndexByKey = findNodeIndexByKey;
 
