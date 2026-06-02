@@ -1744,6 +1744,10 @@
           padding: 13px;
         }
 
+        .details-manifest {
+          grid-template-columns: 1fr;
+        }
+
         .counts {
           gap: 8px;
         }
@@ -1759,9 +1763,11 @@
 
         .counts-inline .count-row {
           display: grid;
-          grid-template-columns: max-content max-content;
-          gap: 8px 10px;
+          grid-template-columns: max-content minmax(0, max-content);
+          gap: 8px 12px;
           justify-content: center;
+          justify-items: start;
+          align-items: baseline;
           overflow: visible;
           white-space: normal;
         }
@@ -2560,7 +2566,8 @@
         const details = groups.map(([label, items]) => {
           const groupRows = (items || []).map((item) => ({ ...(passengerByBn.get(String(item.bn || "").padStart(3, "0")) || {}), ...item, group: label }));
           if (!groupRows.length) return "";
-          return `<article class="data-card"><b>${escapeHtml(label)} Details</b>${renderBnButtons(groupRows, "", (row) => row.reason)}</article>`;
+          const reasonRows = groupRows.map((row, index) => `<div class="security-check-line is-warning"><b>BN${escapeHtml(row.bn || index + 1)}</b><span>${escapeHtml(row.reason || label)}</span></div>`).join("");
+          return `<article class="data-card"><b>${escapeHtml(label)} Details</b><div class="security-check-list">${reasonRows}</div>${renderBnButtons(groupRows, "", (row) => row.reason)}</article>`;
         }).filter(Boolean).join("");
         renderPanel("GOV/AQQ", currentSy?.flightNo || "SY", `<div class="data-grid">${summary}</div>${details ? `<div class="data-grid" style="margin-top:14px">${details}</div><div class="panel-side inline-record-side" style="margin-top:14px"><p class="panel-muted">Click a BN button to view the passenger record.</p></div>` : ""}`);
         setPanelPassengerRows(rows);
@@ -2745,10 +2752,20 @@
 
       function seatTone(record) {
         if (!record) return "";
-        const services = [...(record.specialServices || []), ...(record.specialMeals || [])].join("/");
-        if (/INF/i.test(services) || record.hasInfant) return "infant";
+        const passenger = record.passengerRecord || {};
+        const services = [
+          ...(record.specialServices || []),
+          ...(record.specialMeals || []),
+          ...(record.codes || []),
+          ...(record.psmLines || []),
+          ...(passenger.specialServices || []),
+          ...(passenger.specialMeals || []),
+          ...(passenger.codes || []),
+          ...(passenger.psmLines || []),
+        ].join("/");
+        if (/INF|INFT/i.test(services) || record.hasInfant || passenger.hasInfant) return "infant";
         if (/WCH/i.test(services)) return "wheelchair";
-        if (/CHD/i.test(services) || record.isChild || record.hasChdCode) return "child";
+        if (/CHD|CHLD/i.test(services) || record.isChild || passenger.isChild || record.hasChdCode || passenger.hasChdCode || (Number(record.ageYears ?? passenger.ageYears) >= 2 && Number(record.ageYears ?? passenger.ageYears) < 12)) return "child";
         return "occupied";
       }
 
@@ -2882,10 +2899,7 @@
 
       nodes.forEach((node) => {
         node.addEventListener("click", () => {
-          if (didDrag) {
-            didDrag = false;
-            return;
-          }
+          didDrag = false;
           resetTimelineCenter(node.dataset.key);
           renderStepPanel(node.dataset.key);
         });
