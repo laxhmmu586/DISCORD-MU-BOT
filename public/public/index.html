@@ -1589,22 +1589,22 @@
 
         <div class="mission-stage">
           <div class="timeline-shell">
-            <div class="timeline-time" id="node-time">12:08:38</div>
+            <div class="timeline-time" id="node-time">----</div>
             <div class="timeline" aria-label="Mission timeline">
               <svg viewBox="0 0 1200 360" preserveAspectRatio="none" aria-hidden="true">
                 <path id="mission-path" class="orbit-glow" d="M-70 314 C 210 178, 398 146, 600 146 S 990 178, 1270 314" />
                 <path class="orbit-base" d="M-70 314 C 210 178, 398 146, 600 146 S 990 178, 1270 314" />
                 <path class="orbit-dash" d="M-46 292 C 224 164, 410 134, 600 134 S 976 164, 1246 292" />
               </svg>
-              <button class="node" type="button" data-index="0" data-key="CREW_APIS" data-label="CREW APIS" data-status="done" data-time="12:04:12"></button>
-              <button class="node" type="button" data-index="1" data-key="NET" data-label="NET" data-status="issue" data-time="12:16:00"></button>
-              <button class="node" type="button" data-index="2" data-key="CHD" data-label="CHD" data-status="issue" data-alert="6" data-time="12:32:00"></button>
-              <button class="node" type="button" data-index="3" data-key="GOV" data-label="GOV" data-status="blink" data-alert="1" data-time="11:48:00"></button>
-              <button class="node" type="button" data-index="4" data-key="NBRD" data-label="NBRD" data-status="done" data-time="09:30:00"></button>
-              <button class="node" type="button" data-index="5" data-key="CCL" data-label="CCL" data-status="done" data-time="10:30:00"></button>
-              <button class="node" type="button" data-index="6" data-key="CC" data-label="CC" data-status="issue" data-alert="6" data-time="11:30:00"></button>
-              <button class="node" type="button" data-index="7" data-key="INITIAL_FLIGHT" data-label="INITIAL FLIGHT" data-status="blink" data-alert="1" data-time="12:00:00"></button>
-              <button class="node" type="button" data-index="8" data-key="BDT_CHG" data-label="BDT CHG" data-status="done" data-time="12:20:00"></button>
+              <button class="node" type="button" data-index="0" data-key="CREW_APIS" data-label="CREW APIS" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="1" data-key="NET" data-label="NET" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="2" data-key="CHD" data-label="CHD" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="3" data-key="GOV" data-label="GOV" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="4" data-key="NBRD" data-label="NBRD" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="5" data-key="CCL" data-label="CCL" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="6" data-key="CC" data-label="CC" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="7" data-key="INITIAL_FLIGHT" data-label="INITIAL FLIGHT" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="8" data-key="BDT_CHG" data-label="BDT CHG" data-status="pending" data-time="----"></button>
               <article class="node-card" aria-live="polite">
                 <small>Active Node</small>
                 <h2>Crew APIs</h2>
@@ -1680,6 +1680,9 @@
         BDT_CHG: "bdtChg",
       };
       const auth = window.firebase?.apps?.length && window.firebase?.auth ? firebase.auth() : null;
+      const APP_ENTRY_KEY = "mufc_allow_app_entry";
+      const INACTIVITY_LIMIT_MS = 15 * 60 * 1000;
+      let inactivityTimer = null;
       let selectedIndex = 0;
       let scrollOffset = 0;
       let dragStartX = 0;
@@ -1692,6 +1695,40 @@
         const url = new URL("login.html", window.location.href);
         url.searchParams.set("next", `${window.location.pathname}${window.location.search}${window.location.hash}`);
         return url.href;
+      }
+
+      function consumeAppEntry() {
+        const allowedAt = sessionStorage.getItem(APP_ENTRY_KEY);
+        sessionStorage.removeItem(APP_ENTRY_KEY);
+        return Boolean(allowedAt);
+      }
+      window.findNodeIndexByKey = findNodeIndexByKey;
+
+      const canEnterApp = consumeAppEntry();
+
+      async function returnToLogin() {
+        sessionStorage.removeItem(APP_ENTRY_KEY);
+        if (inactivityTimer) clearTimeout(inactivityTimer);
+        try {
+          if (auth?.currentUser) await auth.signOut();
+        } catch (error) {
+          console.warn("Unable to sign out before returning to login.", error);
+        }
+        window.location.replace(loginUrl());
+      }
+
+      function resetInactivityTimer() {
+        if (inactivityTimer) clearTimeout(inactivityTimer);
+        inactivityTimer = setTimeout(() => {
+          returnToLogin();
+        }, INACTIVITY_LIMIT_MS);
+      }
+
+      function startInactivityWatch() {
+        ["click", "keydown", "mousemove", "touchstart", "pointerdown", "scroll"].forEach((eventName) => {
+          window.addEventListener(eventName, resetInactivityTimer, { passive: true });
+        });
+        resetInactivityTimer();
       }
 
       function escapeHtml(value) {
@@ -2301,6 +2338,8 @@
 
       if (!auth) {
         window.location.replace(loginUrl());
+      } else if (!canEnterApp) {
+        returnToLogin();
       } else {
         auth.onAuthStateChanged((user) => {
           if (!user) {
@@ -2308,6 +2347,9 @@
             return;
           }
           currentUser.textContent = user.email || "Authenticated user";
+          startInactivityWatch();
+          queryInput.value = "SY";
+          mobileQueryInput.value = "SY";
           if (!currentSy) searchPassenger();
         });
       }

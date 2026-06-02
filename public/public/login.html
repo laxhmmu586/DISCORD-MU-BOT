@@ -195,6 +195,12 @@
         statusText.classList.toggle("is-info", !isError);
       }
 
+      const APP_ENTRY_KEY = "mufc_allow_app_entry";
+
+      function allowAppEntry() {
+        sessionStorage.setItem(APP_ENTRY_KEY, String(Date.now()));
+      }
+
       function getRedirectTarget() {
         const params = new URLSearchParams(window.location.search);
         const rawNext = params.get("next") || "index.html";
@@ -238,6 +244,7 @@
         const auth = firebase.auth();
         auth.onAuthStateChanged((user) => {
           if (user) {
+            allowAppEntry();
             window.location.replace(getRedirectTarget());
             return;
           }
