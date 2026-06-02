@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Mission Operations UI</title>
+    <title>MUFC</title>
     <style>
       :root {
         --bg: #020a12;
@@ -340,6 +340,36 @@
 
       .mobile-panel.is-open {
         transform: translateX(0);
+      }
+
+
+
+      .mobile-search {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 8px;
+        margin-bottom: 14px;
+      }
+
+      .mobile-search input,
+      .mobile-search button {
+        min-height: 42px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+      }
+
+      .mobile-search input {
+        min-width: 0;
+        background: rgba(255, 255, 255, 0.92);
+        color: #071327;
+        padding: 0 12px;
+        text-transform: uppercase;
+      }
+
+      .mobile-search button {
+        background: rgba(88, 167, 255, 0.16);
+        color: white;
+        font-weight: 900;
+        text-transform: uppercase;
       }
 
       .mobile-panel a {
@@ -1085,6 +1115,124 @@
         text-transform: uppercase;
       }
 
+
+
+      .bn-button-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .bn-button {
+        min-width: 64px;
+        min-height: 42px;
+        border: 1px solid rgba(88, 167, 255, 0.46);
+        background: rgba(88, 167, 255, 0.12);
+        color: white;
+        font-size: 13px;
+        font-weight: 950;
+        letter-spacing: 0.8px;
+        text-transform: uppercase;
+        cursor: pointer;
+      }
+
+      .bn-button:hover,
+      .bn-button:focus-visible {
+        border-color: rgba(255, 255, 255, 0.74);
+        background: rgba(88, 167, 255, 0.24);
+        outline: none;
+      }
+
+      .passenger-modal-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 60;
+        display: grid;
+        place-items: center;
+        padding: 20px;
+        background: rgba(1, 8, 14, 0.62);
+        backdrop-filter: blur(10px);
+        animation: modalFade 180ms ease both;
+      }
+
+      .passenger-modal {
+        width: min(420px, 100%);
+        border: 1px solid rgba(176, 216, 255, 0.32);
+        background: linear-gradient(150deg, rgba(8, 24, 40, 0.96), rgba(2, 12, 22, 0.92));
+        box-shadow: 0 32px 110px rgba(0, 0, 0, 0.58);
+        padding: 18px;
+        animation: modalFloat 220ms ease both;
+      }
+
+      .passenger-modal .data-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      @keyframes modalFade {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+
+      @keyframes modalFloat {
+        from { opacity: 0; transform: translateY(18px) scale(0.98); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+      }
+
+      .seat-map-shell {
+        overflow-x: auto;
+        padding: 10px 4px 4px;
+      }
+
+      .seat-map-plane {
+        width: max-content;
+        min-width: 360px;
+        margin: 0 auto;
+        padding: 28px 18px 22px;
+        border: 1px solid rgba(176, 216, 255, 0.24);
+        border-radius: 44px 44px 24px 24px / 74px 74px 20px 20px;
+        background: linear-gradient(180deg, rgba(235, 246, 255, 0.1), rgba(0, 0, 0, 0.14));
+      }
+
+      .seat-row {
+        display: grid;
+        grid-template-columns: 36px repeat(3, 42px) 26px repeat(3, 42px);
+        gap: 6px;
+        align-items: center;
+        margin-bottom: 6px;
+      }
+
+      .seat-row-number {
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 900;
+        text-align: right;
+      }
+
+      .seat-cell {
+        min-height: 34px;
+        border: 1px solid rgba(176, 216, 255, 0.2);
+        background: rgba(255, 255, 255, 0.05);
+        color: rgba(244, 250, 255, 0.9);
+        font-size: 10px;
+        font-weight: 900;
+        text-align: center;
+      }
+
+      .seat-cell.is-occupied {
+        border-color: rgba(53, 212, 137, 0.56);
+        background: rgba(53, 212, 137, 0.16);
+        cursor: pointer;
+      }
+
+      .seat-cell.has-alert {
+        border-color: rgba(255, 98, 92, 0.72);
+        background: rgba(255, 98, 92, 0.16);
+      }
+
+      .seat-aisle {
+        min-height: 1px;
+      }
+
       .status-ok { color: var(--green); }
       .status-warn { color: #ffd166; }
       .status-fail { color: var(--danger); }
@@ -1255,6 +1403,56 @@
         .count strong {
           font-size: 18px;
         }
+
+        .mission-side {
+          display: grid;
+          align-items: stretch;
+        }
+
+        .flight-tools,
+        .flight-menu-button {
+          width: 100%;
+        }
+
+        .flight-menu-button {
+          height: 46px;
+        }
+
+        .flight-menu {
+          left: 0;
+          right: auto;
+          width: 100%;
+        }
+
+        .detail-actions {
+          grid-template-columns: 1fr 1fr;
+        }
+
+        .result-panel,
+        .password-page {
+          width: calc(100% - 24px);
+          padding: 14px;
+        }
+
+        .panel-head {
+          display: grid;
+        }
+
+        .data-table {
+          display: block;
+          overflow-x: auto;
+          white-space: nowrap;
+        }
+
+        .passenger-modal .data-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .seat-row {
+          grid-template-columns: 30px repeat(3, 38px) 18px repeat(3, 38px);
+          gap: 4px;
+        }
+
       }
     </style>
   </head>
@@ -1295,7 +1493,11 @@
     <button class="mobile-menu-fallback" type="button" aria-label="Open menu" aria-expanded="false">☰</button>
 
     <aside class="mobile-panel" aria-hidden="true">
-      <a href="#">Login</a>
+      <form class="mobile-search" id="mobile-mission-search" aria-label="Mobile search mission">
+        <input id="mobile-query" type="search" value="SY" autocomplete="off" />
+        <button type="submit">Search</button>
+      </form>
+      <a href="#open-login">Login</a>
     </aside>
 
     <main>
@@ -1441,7 +1643,9 @@
       const timelineShell = document.querySelector(".timeline-shell");
       const resultPanel = document.querySelector("#result-panel");
       const searchForm = document.querySelector("#mission-search");
+      const mobileSearchForm = document.querySelector("#mobile-mission-search");
       const queryInput = document.querySelector("#query");
+      const mobileQueryInput = document.querySelector("#mobile-query");
       const bagReportButton = document.querySelector("#bag-report-button");
       const securityCheckButton = document.querySelector("#security-check-button");
       const seatMapButton = document.querySelector("#seat-map-button");
@@ -1514,16 +1718,7 @@
       function resolveApiBase() {
         const fromWindow = window.MU_API_BASE || "";
         const fromStorage = localStorage.getItem("mu_api_base") || "";
-        return (fromWindow.trim() || fromStorage.trim()).replace(/\/$/, "");
-      }
-
-      function promptAndSaveApiBase() {
-        const input = window.prompt("未检测到后端地址。请输入机器人后端域名（例如 https://api.mufcapp.net ）", "https://");
-        if (!input) return "";
-        const normalized = input.trim().replace(/\/$/, "");
-        if (!/^https?:\/\//i.test(normalized)) return "";
-        localStorage.setItem("mu_api_base", normalized);
-        return normalized;
+        return (fromWindow.trim() || fromStorage.trim() || "https://api.mufcapp.net").replace(/\/$/, "");
       }
 
       async function authHeaders() {
@@ -1534,17 +1729,13 @@
         return headers;
       }
 
-      async function fetchSearch(query, allowPrompt = true) {
-        let apiBase = resolveApiBase();
-        let endpoint = `${apiBase}/search?q=${encodeURIComponent(query)}`;
-        let res = await fetch(endpoint, { headers: await authHeaders() });
+      async function fetchSearch(query) {
+        const apiBase = resolveApiBase();
+        const endpoint = `${apiBase}/search?q=${encodeURIComponent(query)}`;
+        const res = await fetch(endpoint, { headers: await authHeaders() });
         const type = res.headers.get("content-type") || "";
-        if (allowPrompt && !apiBase && res.status === 404 && !type.includes("application/json")) {
-          apiBase = promptAndSaveApiBase();
-          if (apiBase) return fetchSearch(query, false);
-        }
         if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
-        if (!type.includes("application/json")) throw new Error("Search API returned non-JSON. Set backend URL and try again.");
+        if (!type.includes("application/json")) throw new Error(`Search API returned non-JSON from ${apiBase}.`);
         return res.json();
       }
 
@@ -1553,9 +1744,14 @@
         return Number(digits.slice(0, 2)) * 60 + Number(digits.slice(2, 4));
       }
 
-      function findNodeIndexByKey(key) {
-        const match = Array.from(nodes).find((node) => node.dataset.key === key);
-        return match ? Number(match.dataset.index) : 0;
+      function escapeHtml(value) {
+        return String(value ?? "").replace(/[&<>'"]/g, (char) => ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          "'": "&#39;",
+          '"': "&quot;",
+        })[char]);
       }
 
       function determineDefaultCenter() {
@@ -1660,6 +1856,54 @@
         resultPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
       }
 
+      function compactValue(value) {
+        if (Array.isArray(value)) return value.filter(Boolean).join(", ");
+        if (value && typeof value === "object") return "";
+        return value;
+      }
+
+      function passengerFields(data) {
+        return [
+          ["Name", passengerName(data) || data?.name],
+          ["BN", data?.bn],
+          ["Seat", data?.seat],
+          ["Cabin", data?.cabin],
+          ["Membership", [data?.ffCarrier, data?.ffNumber, data?.membershipStatus].filter(Boolean).join(" ")],
+          ["Ticket", data?.ticketNumber],
+          ["Bags", compactValue(data?.bags)],
+          ["SSR", compactValue(data?.specialServices || data?.codes)],
+          ["Meal", compactValue(data?.specialMeals)],
+        ].filter(([, value]) => value !== null && value !== undefined && value !== "");
+      }
+
+      function passengerCards(data) {
+        const fields = passengerFields(data);
+        return fields.length
+          ? `<div class="data-grid">${fields.map(([label, value]) => `<div class="data-card"><b>${escapeHtml(label)}</b><span>${escapeHtml(value)}</span></div>`).join("")}</div>`
+          : `<p class="panel-muted">No passenger details available.</p>`;
+      }
+
+      function showPassengerModal(data, title = "Passenger Record") {
+        document.querySelector(".passenger-modal-backdrop")?.remove();
+        const overlay = document.createElement("div");
+        overlay.className = "passenger-modal-backdrop";
+        overlay.innerHTML = `<article class="passenger-modal" role="dialog" aria-modal="true"><div class="panel-head"><div><small>${escapeHtml(data?.bn ? `BN ${data.bn}` : latestQuery)}</small><h2>${escapeHtml(title)}</h2></div><button class="panel-close" type="button" data-close-modal>Close</button></div>${passengerCards(data || {})}</article>`;
+        document.body.appendChild(overlay);
+      }
+
+      function closePassengerModal() {
+        document.querySelector(".passenger-modal-backdrop")?.remove();
+      }
+
+      function renderBnButtons(rows, emptyText, reasonFn = null) {
+        if (!rows.length) return `<p class="panel-muted">${escapeHtml(emptyText || "No data found.")}</p>`;
+        return `<div class="bn-button-list">${rows.map((row, index) => `<button class="bn-button" type="button" data-passenger-index="${index}" data-passenger-bn="${escapeHtml(row.bn || "")}" title="${escapeHtml(reasonFn ? reasonFn(row) : passengerName(row) || row.bn || "Passenger")}">${escapeHtml(row.bn || row.seat || index + 1)}</button>`).join("")}</div>`;
+      }
+
+      function setPanelPassengerRows(rows) {
+        resultPanel._passengerRows = rows;
+      }
+
       function rowsTable(rows, columns, emptyText) {
         if (!rows.length) return `<p class="panel-muted">${escapeHtml(emptyText || "No data found.")}</p>`;
         return `<table class="data-table"><thead><tr>${columns.map((col) => `<th>${escapeHtml(col.label)}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${columns.map((col) => `<td>${escapeHtml(col.value(row) || "-")}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
@@ -1670,20 +1914,8 @@
       }
 
       function renderPassenger(data) {
-        const preferred = [
-          ["Name", data.name],
-          ["BN", data.bn],
-          ["Seat", data.seat],
-          ["Cabin", data.cabin],
-          ["Membership", [data.ffCarrier, data.ffNumber, data.membershipStatus].filter(Boolean).join(" ")],
-          ["Ticket", data.ticketNumber],
-          ["Bags", Array.isArray(data.bags) ? data.bags.join(", ") : data.bags],
-        ];
-        const extra = Object.entries(data)
-          .filter(([key, value]) => !["permissions", "name", "bn", "seat", "cabin", "ffCarrier", "ffNumber", "membershipStatus", "ticketNumber", "bags"].includes(key) && value !== null && value !== undefined && value !== "")
-          .map(([key, value]) => [key.replace(/([A-Z])/g, " $1").replace(/^./, (char) => char.toUpperCase()), Array.isArray(value) ? value.join(", ") : (typeof value === "object" ? JSON.stringify(value) : value)]);
-        const cards = [...preferred, ...extra].filter(([, value]) => value);
-        renderPanel("Passenger Search", latestQuery, `<div class="data-grid">${cards.map(([label, value]) => `<div class="data-card"><b>${escapeHtml(label)}</b><span>${escapeHtml(value)}</span></div>`).join("")}</div>`);
+        showPassengerModal(data, "Passenger Record");
+        resultPanel.innerHTML = "";
       }
 
       function updateFlightFromSy(sy) {
@@ -1744,6 +1976,131 @@
         } catch (error) {
           renderPanel("Search Error", raw, `<p class="panel-muted status-fail">${escapeHtml(error?.message || "Search failed.")}</p>`);
         }
+      }
+
+      function renderChdPanel() {
+        const rows = currentSy?.chdList || [];
+        renderPanel("CHD List", currentSy?.flightNo || "SY", renderBnButtons(rows, "No CHD passenger found.", (row) => `${passengerName(row)} ${row.hasChdCode ? "OK" : "Missing CHD1/0"}`));
+        setPanelPassengerRows(rows);
+      }
+
+      function renderGovPanel() {
+        const gov = currentSy?.govAqq || {};
+        const groups = [
+          ["Duplicate Passport", gov.duplicatePassports?.flatMap((item) => (item.bns || []).map((bn) => ({ bn, reason: `Duplicate passport ${item.passportNo || ""}` })))],
+          ["USA TIME OUT", (gov.aqqTclBnList || []).map((bn) => ({ bn, reason: "USA TIME OUT" }))],
+          ["CHN GOV FAIL", (gov.govDtaBnList || []).map((bn) => ({ bn, reason: "CHN GOV FAIL" }))],
+          ["Passport Exp", (gov.passportExpBnList || []).map((bn) => ({ bn, reason: "Passport Exp" }))],
+          ["WEB/EDI/Reswipe", (gov.passportCodeIssues || []).map((bn) => ({ bn, reason: "WEB/EDI/Reswipe" }))],
+        ];
+        const rows = groups.flatMap(([group, items]) => (items || []).map((item) => ({ ...item, group })));
+        const body = groups.map(([label, items]) => {
+          const groupRows = (items || []).map((item) => ({ ...item, group: label }));
+          return `<div class="data-card"><b>${escapeHtml(label)}</b>${renderBnButtons(groupRows, "Clear", (row) => row.reason)}</div>`;
+        }).join("");
+        renderPanel("GOV/AQQ", currentSy?.flightNo || "SY", `<div class="data-grid">${body}</div>`);
+        setPanelPassengerRows(rows);
+      }
+
+      function renderWchPanel() {
+        const rows = currentSy?.wchList || [];
+        renderPanel("WCH", currentSy?.flightNo || "SY", rowsTable(rows, [
+          { label: "BN", value: (row) => row.bn },
+          { label: "Name", value: passengerName },
+          { label: "Seat", value: (row) => row.seat },
+          { label: "Codes", value: (row) => Array.isArray(row.codes) ? row.codes.join("/") : row.code },
+        ], "No WCH records found."));
+      }
+
+      function renderMembershipPanel() {
+        const data = currentSy?.membershipList || {};
+        const rows = ["platinum", "gold", "silver"].flatMap((tier) => (data[tier] || []).map((row) => ({ ...row, tier })));
+        renderPanel("Membership", currentSy?.flightNo || "SY", rowsTable(rows, [
+          { label: "Tier", value: (row) => row.tier },
+          { label: "BN", value: (row) => row.bn },
+          { label: "Name", value: passengerName },
+          { label: "Seat", value: (row) => row.seat },
+          { label: "FF", value: (row) => [row.ffCarrier, row.ffNumber].filter(Boolean).join(" ") },
+        ], "No membership records found."));
+      }
+
+      function renderPsmPanel() {
+        const rows = currentSy?.psmList || [];
+        renderPanel("PSM/MS", currentSy?.flightNo || "SY", rowsTable(rows, [
+          { label: "BN", value: (row) => row.bn },
+          { label: "Name", value: passengerName },
+          { label: "Seat", value: (row) => row.seat },
+          { label: "Codes", value: (row) => Array.isArray(row.codes) ? row.codes.join("/") : row.code },
+          { label: "Text", value: (row) => row.text || row.raw || row.message },
+        ], "No PSM/MS records found."));
+      }
+
+      function renderNbrdPanel() {
+        const rows = (currentSy?.bnAudit || []).filter((row) => /NBRD|CKIN/i.test(row?.apiReason || row?.tkReason || row?.visaReason || row?.bagReason || ""));
+        renderPanel("NBRD / CKIN", currentSy?.flightNo || "SY", renderBnButtons(rows, "No NBRD/CKIN issue found.", (row) => [row.apiReason, row.tkReason, row.visaReason, row.bagReason].filter(Boolean).join("; ")));
+        setPanelPassengerRows(rows);
+      }
+
+      function renderBagReport() {
+        const sheet = currentSy?.bagSheet || {};
+        const sections = [];
+        const addBagSection = (title, bagSection, headers) => {
+          const rows = bagSection?.rows || (bagSection?.columns ? [bagSection.columns] : []);
+          if (!rows.length) return;
+          sections.push(`<h3>${escapeHtml(title)}</h3>${rowsTable(rows, headers.map((label, index) => ({ label, value: (row) => row[index] })), "No rows.")}`);
+        };
+        addBagSection("Rush Bags", sheet.rushBags, ["Rush #", "Orig #", "To", "AKE"]);
+        addBagSection("Not Load Bags", sheet.notLoadBags, ["Tag #", "Status", "Remark"]);
+        renderPanel("Bag Report", currentSy?.flightNo || "SY", sheet.hasData && sections.length ? sections.join("") : `<p class="panel-muted">No Google Sheet bag report found for this SY date.</p>`);
+      }
+
+      function renderSecurityCheck() {
+        const rows = currentSy?.bnAudit || [];
+        const reviewRows = rows.filter((row) => [row.apiStatus, row.tkStatus, row.visaStatus, row.bagStatus].some((status) => status === "fail" || status === "review"));
+        const passCount = rows.length - reviewRows.length;
+        renderPanel("Security Check", currentSy?.flightNo || "SY", `<div class="data-grid"><div class="data-card"><b>Pass</b><span class="status-ok">${passCount}</span></div><div class="data-card"><b>Review / Fail</b><span class="status-fail">${reviewRows.length}</span></div></div>${renderBnButtons(reviewRows, "No security review passenger found.", (row) => [row.apiReason, row.tkReason, row.visaReason, row.bagReason].filter(Boolean).join("; "))}`);
+        setPanelPassengerRows(reviewRows);
+      }
+
+      function seatNumber(value) {
+        const match = String(value || "").match(/^(\d{1,2})([A-Z])$/i);
+        return match ? { row: Number(match[1]), letter: match[2].toUpperCase() } : null;
+      }
+
+      function renderSeatMap() {
+        const records = currentSy?.seatMapRecords || [];
+        const seats = new Map(records.map((row) => [String(row.seat || "").toUpperCase(), row]));
+        const parsedRows = records.map((row) => seatNumber(row.seat)).filter(Boolean).map((seat) => seat.row);
+        const maxRow = Math.max(30, ...parsedRows);
+        const minRow = Math.max(1, Math.min(1, ...parsedRows));
+        const letters = ["A", "B", "C", "", "D", "E", "F"];
+        const bodyRows = [];
+        for (let rowNo = minRow; rowNo <= maxRow; rowNo += 1) {
+          bodyRows.push(`<div class="seat-row"><div class="seat-row-number">${rowNo}</div>${letters.map((letter) => {
+            if (!letter) return `<div class="seat-aisle" aria-hidden="true"></div>`;
+            const seat = `${rowNo}${letter}`;
+            const record = seats.get(seat);
+            const hasAlert = record && [...(record.specialServices || []), ...(record.specialMeals || [])].length;
+            return `<button class="seat-cell ${record ? "is-occupied" : ""} ${hasAlert ? "has-alert" : ""}" type="button" ${record ? `data-seat="${escapeHtml(seat)}"` : "disabled"} title="${escapeHtml(record ? `${seat} BN ${record.bn || ""} ${passengerName(record)}` : seat)}">${escapeHtml(record?.bn || seat)}</button>`;
+          }).join("")}</div>`);
+        }
+        renderPanel("Seat Map", currentSy?.flightNo || "SY", `<div class="seat-map-shell"><div class="seat-map-plane">${bodyRows.join("")}</div></div>`);
+        setPanelPassengerRows(records);
+      }
+
+      function renderStepPanel(key) {
+        if (key === "CHD") return renderChdPanel();
+        if (key === "GOV") return renderGovPanel();
+        if (key === "NBRD") return renderNbrdPanel();
+        const step = stepByKey(key);
+        const checkRows = Array.isArray(step?.checks) && step.checks.length
+          ? rowsTable(step.checks, [
+            { label: "Check", value: (row) => row.label || row.key },
+            { label: "Status", value: (row) => row.complete ? "Complete" : "Not complete" },
+            { label: "Input Time", value: (row) => row.time || "Not entered" },
+          ], "No check rows found.")
+          : "";
+        renderPanel(step?.label || key, currentSy?.flightNo || "Timeline", `<div class="data-grid"><div class="data-card"><b>Status</b><span>${escapeHtml(step?.complete ? "Complete" : "Not complete")}</span></div><div class="data-card"><b>Input Time</b><span>${escapeHtml(step?.time || "Not entered")}</span></div><div class="data-card"><b>Detail</b><span>${escapeHtml(step?.tooltip || "No detail available")}</span></div></div>${checkRows}`);
       }
 
       function renderChdPanel() {
@@ -1957,12 +2314,48 @@
       seatMapButton.addEventListener("click", renderSeatMap);
 
       resultPanel.addEventListener("click", (event) => {
-        if (event.target.closest("[data-close-panel]")) resultPanel.innerHTML = "";
+        if (event.target.closest("[data-close-panel]")) {
+          resultPanel.innerHTML = "";
+          resultPanel._passengerRows = [];
+          return;
+        }
+        const passengerButton = event.target.closest("[data-passenger-index]");
+        if (passengerButton) {
+          const rows = resultPanel._passengerRows || [];
+          const index = Number(passengerButton.dataset.passengerIndex);
+          const bn = passengerButton.dataset.passengerBn;
+          const row = (bn && rows.find((item) => String(item.bn || "") === bn)) || rows[index] || { bn };
+          showPassengerModal(row, "Passenger Record");
+          return;
+        }
+        const seatButton = event.target.closest("[data-seat]");
+        if (seatButton) {
+          const seat = seatButton.dataset.seat;
+          const rows = resultPanel._passengerRows || [];
+          const row = rows.find((item) => String(item.seat || "").toUpperCase() === seat) || { seat };
+          showPassengerModal(row, "Seat Record");
+        }
+      });
+
+      document.addEventListener("click", (event) => {
+        if (event.target.closest("[data-close-modal]") || event.target.classList.contains("passenger-modal-backdrop")) closePassengerModal();
       });
 
       searchForm.addEventListener("submit", (event) => {
         event.preventDefault();
         passwordPage.hidden = true;
+        mobileQueryInput.value = queryInput.value;
+        searchPassenger();
+      });
+
+      mobileSearchForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        passwordPage.hidden = true;
+        queryInput.value = mobileQueryInput.value;
+        mobilePanel.classList.remove("is-open");
+        mobilePanel.setAttribute("aria-hidden", "true");
+        menuButton.setAttribute("aria-expanded", "false");
+        fallbackMenuButton.setAttribute("aria-expanded", "false");
         searchPassenger();
       });
 
