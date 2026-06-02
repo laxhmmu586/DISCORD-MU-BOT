@@ -1877,6 +1877,7 @@
         sessionStorage.removeItem(APP_ENTRY_KEY);
         return Boolean(allowedAt);
       }
+      window.findNodeIndexByKey = findNodeIndexByKey;
 
       const canEnterApp = consumeAppEntry();
 
@@ -2285,6 +2286,201 @@
         } catch (error) {
           renderPanel("Search Error", raw, `<p class="panel-muted status-fail">${escapeHtml(error?.message || "Search failed.")}</p>`);
         }
+        renderPanel("Seat Map", currentSy?.flightNo || "SY", `<div class="seat-map-shell"><div class="seat-map-plane">${bodyRows.join("")}</div></div>`);
+        setPanelPassengerRows(records);
+      }
+
+      function renderStepPanel(key) {
+        if (key === "CHD") return renderChdPanel();
+        if (key === "GOV") return renderGovPanel();
+        if (key === "NBRD") return renderNbrdPanel();
+        const step = stepByKey(key);
+        const checkRows = Array.isArray(step?.checks) && step.checks.length
+          ? rowsTable(step.checks, [
+            { label: "Check", value: (row) => row.label || row.key },
+            { label: "Status", value: (row) => row.complete ? "Complete" : "Not complete" },
+            { label: "Input Time", value: (row) => row.time || "Not entered" },
+          ], "No check rows found.")
+          : "";
+        renderPanel(step?.label || key, currentSy?.flightNo || "Timeline", `<div class="data-grid"><div class="data-card"><b>Status</b><span>${escapeHtml(step?.complete ? "Complete" : "Not complete")}</span></div><div class="data-card"><b>Input Time</b><span>${escapeHtml(step?.time || "Not entered")}</span></div><div class="data-card"><b>Detail</b><span>${escapeHtml(step?.tooltip || "No detail available")}</span></div></div>${checkRows}`);
+      }
+
+      function renderChdPanel() {
+        const rows = currentSy?.chdList || [];
+        const missing = rows.filter((row) => row.hasChdCode === false).length;
+        const stats = `<div class="panel-stats"><span>Total ${rows.length}</span><span class="status-ok">OK ${rows.length - missing}</span><span class="status-fail">Missing CHD1/0 ${missing}</span></div>`;
+        renderPanel("CHD List", currentSy?.flightNo || "SY", `${stats}${renderBnButtons(rows, "No CHD passenger found.", (row) => `${passengerName(row)} ${row.hasChdCode ? "OK" : "Missing CHD1/0"}`, null, (row) => row.hasChdCode === false ? "is-missing" : "is-pass")}`);
+        setPanelPassengerRows(rows);
+      }
+
+      function renderGovPanel() {
+        const gov = currentSy?.govAqq || {};
+        const groups = [
+          ["Duplicate Passport", gov.duplicatePassports?.flatMap((item) => (item.bns || []).map((bn) => ({ bn, reason: `Duplicate passport ${item.passportNo || ""}` })))],
+          ["USA TIME OUT", (gov.aqqTclBnList || []).map((bn) => ({ bn, reason: "USA TIME OUT" }))],
+          ["CHN GOV FAIL", (gov.govDtaBnList || []).map((bn) => ({ bn, reason: "CHN GOV FAIL" }))],
+          ["Passport Exp", (gov.passportExpBnList || []).map((bn) => ({ bn, reason: "Passport Exp" }))],
+          ["WEB/EDI/Reswipe", (gov.passportCodeIssues || []).map((bn) => ({ bn, reason: "WEB/EDI/Reswipe" }))],
+        ];
+        const rows = groups.flatMap(([group, items]) => (items || []).map((item) => ({ ...item, group })));
+        const body = groups.map(([label, items]) => {
+          const groupRows = (items || []).map((item) => ({ ...item, group: label }));
+          return `<div class="data-card"><b>${escapeHtml(label)}</b>${renderBnButtons(groupRows, "Clear", (row) => row.reason)}</div>`;
+        }).join("");
+        renderPanel("GOV/AQQ", currentSy?.flightNo || "SY", `<div class="data-grid">${body}</div>`);
+        setPanelPassengerRows(rows);
+      }
+
+      function renderWchPanel() {
+        const rows = currentSy?.wchList || [];
+        renderPanel("WCH", currentSy?.flightNo || "SY", renderBnButtons(rows, "No WCH records found.", (row) => [row.bn ? `BN ${row.bn}` : "", row.seat ? `Seat ${row.seat}` : "", Array.isArray(row.codes) ? row.codes.join("/") : row.code].filter(Boolean).join(" / "), (row, index) => [row.bn || index + 1, row.seat].filter(Boolean).join(" / ")));
+        setPanelPassengerRows(rows);
+      }
+
+      function membershipRank(tier) {
+        return ({ platinum: 0, v: 0, gold: 1, g: 1, silver: 2, s: 2 }[String(tier || "").toLowerCase()] ?? 9);
+      }
+
+      function cabinRank(cabin) {
+        return ({ first: 0, f: 0, business: 1, j: 1, elite: 2, premium: 2, economy: 3, y: 3 }[String(cabin || "").toLowerCase()] ?? 8);
+      }
+
+      function renderMembershipPanel() {
+        const data = currentSy?.membershipList || {};
+        const rows = ["platinum", "gold", "silver"].flatMap((tier) => (data[tier] || []).map((row) => ({ ...row, tier })))
+          .sort((a, b) => membershipRank(a.tier || a.ffTier) - membershipRank(b.tier || b.ffTier) || cabinRank(a.cabin) - cabinRank(b.cabin));
+        renderPanel("Membership", currentSy?.flightNo || "SY", rowsTable(rows, [
+          { label: "Tier", value: (row) => row.tier || row.ffTier },
+          { label: "Cabin", value: (row) => row.cabin },
+          { label: "BN", value: (row) => row.bn },
+          { label: "Name", value: passengerName },
+          { label: "Seat", value: (row) => row.seat },
+          { label: "FF", value: (row) => [row.ffCarrier, row.ffNumber].filter(Boolean).join(" ") },
+        ], "No membership records found."));
+      }
+
+      function renderPsmPanel() {
+        const rows = currentSy?.psmList || [];
+        renderPanel("PSM/MSG", currentSy?.flightNo || "SY", rowsTable(rows, [
+          { label: "BN", value: (row) => row.bn },
+          { label: "Name", value: passengerName },
+          { label: "Seat", value: (row) => row.seat },
+          { label: "Type", value: (row) => Array.isArray(row.codes) ? row.codes.join("/") : row.code },
+          { label: "Input", value: (row) => row.text || row.raw || row.message },
+        ], "No PSM/MSG records found."));
+      }
+
+      function renderNbrdPanel() {
+        const rows = (currentSy?.bnAudit || []).filter((row) => /NBRD|CKIN/i.test(row?.apiReason || row?.tkReason || row?.visaReason || row?.bagReason || ""));
+        renderPanel("NBRD / CKIN", currentSy?.flightNo || "SY", renderBnButtons(rows, "No NBRD/CKIN issue found.", (row) => [row.apiReason, row.tkReason, row.visaReason, row.bagReason].filter(Boolean).join("; ")));
+        setPanelPassengerRows(rows);
+      }
+
+      function renderBagReport() {
+        const sheet = currentSy?.bagSheet || {};
+        const sections = [];
+        const addBagSection = (title, bagSection, headers) => {
+          const rows = bagSection?.rows || (bagSection?.columns ? [bagSection.columns] : []);
+          if (!rows.length) return;
+          sections.push(`<h3>${escapeHtml(title)}</h3>${rowsTable(rows, headers.map((label, index) => ({ label, value: (row) => row[index] })), "No rows.")}`);
+        };
+        addBagSection("Rush Bags", sheet.rushBags, ["Rush #", "Orig #", "To", "AKE"]);
+        addBagSection("Not Load Bags", sheet.notLoadBags, ["Tag #", "Status", "Remark"]);
+        renderPanel("Bag Report", currentSy?.flightNo || "SY", sheet.hasData && sections.length ? sections.join("") : `<p class="panel-muted">No Google Sheet bag report found for this SY date.</p>`);
+      }
+
+      function checkTone(status) {
+        if (status === "fail") return "fail";
+        if (status === "review") return "warning";
+        return "pass";
+      }
+
+      function securityTone(row) {
+        const statuses = [row?.apiStatus, row?.tkStatus, row?.visaStatus, row?.bagStatus];
+        if (statuses.includes("fail")) return "fail";
+        if (statuses.includes("review")) return "warning";
+        return "pass";
+      }
+
+      function securityCard(row) {
+        if (!row) return passengerRecordCard({}, "Passenger Record");
+        const tone = securityTone(row);
+        const checks = [
+          ["API", row.apiStatus, row.apiReason],
+          ["TK", row.tkStatus, row.tkReason],
+          ["VISA", row.visaStatus, row.visaReason],
+          ["BAG", row.bagStatus, row.bagReason],
+        ];
+        const pills = checks.map(([label, status]) => `<span class="security-pill is-${checkTone(status)}">${escapeHtml(label)} ${status === "fail" || status === "review" ? "⚠" : "☑"}</span>`).join("");
+        const rows = checks.map(([label, status, reason]) => `<div class="security-row"><b>${escapeHtml(label)}</b><span>${escapeHtml(reason || (status === "pass" ? `${label} passed` : "No detail"))}</span></div>`).join("");
+        return `<article class="record-card ${tone === "warning" ? "is-warning" : tone === "fail" ? "is-fail" : ""}"><div class="record-title"><span>BN${escapeHtml(row.bn || "---")}</span><span class="record-badge">${escapeHtml(tone === "pass" ? "PASS" : tone === "fail" ? "FAIL" : "WARNING")}</span></div><div class="security-pill-row">${pills}</div>${rows}</article>${passengerRecordCard(row.passengerRecord || row, "Passenger Record", tone)}`;
+      }
+
+      function renderSecurityCheck() {
+        const rows = currentSy?.bnAudit || [];
+        const passCount = rows.filter((row) => securityTone(row) === "pass").length;
+        const warningCount = rows.filter((row) => securityTone(row) === "warning").length;
+        const failCount = rows.filter((row) => securityTone(row) === "fail").length;
+        const buttons = rows.length ? `<div class="security-grid">${rows.map((row, index) => `<button class="bn-button is-${securityTone(row)}" type="button" data-security-index="${index}">${escapeHtml(row.bn || index + 1)}</button>`).join("")}</div>` : `<p class="panel-muted">No security passenger rows found.</p>`;
+        const stats = `<div class="panel-stats"><span class="status-ok">${passCount} pass</span><span class="status-warn">${warningCount} warning</span><span class="status-fail">${failCount} fail</span></div>`;
+        renderPanel("Security Check", currentSy?.flightNo || "SY", `${stats}<div class="panel-workspace"><div>${buttons}</div><div class="panel-side">${securityCard(rows.find((row) => securityTone(row) !== "pass") || rows[0])}</div></div>`);
+        setPanelPassengerRows(rows);
+      }
+
+      function seatNumber(value) {
+        const match = String(value || "").match(/^(\d{1,2})([A-Z])$/i);
+        return match ? { row: Number(match[1]), letter: match[2].toUpperCase() } : null;
+      }
+
+      function seatTone(record) {
+        if (!record) return "";
+        const services = [...(record.specialServices || []), ...(record.specialMeals || [])].join("/");
+        if (/INF/i.test(services) || record.hasInfant) return "fail";
+        if (/WCH/i.test(services)) return "warning";
+        if (record.ffTier === "V" || /platinum/i.test(record.membershipStatus || "")) return "warning";
+        return "pass";
+      }
+
+      function renderSeatMap() {
+        const records = currentSy?.seatMapRecords || [];
+        const seats = new Map(records.map((row) => [String(row.seat || "").toUpperCase(), row]));
+        const parsedRows = records.map((row) => seatNumber(row.seat)).filter(Boolean).map((seat) => seat.row);
+        const maxRow = Math.max(30, ...parsedRows);
+        const minRow = Math.max(1, Math.min(1, ...parsedRows));
+        const letters = ["A", "B", "C", "", "D", "E", "F"];
+        const bodyRows = [];
+        let lastCabin = "";
+        for (let rowNo = minRow; rowNo <= maxRow; rowNo += 1) {
+          const cabin = rowNo <= 2 ? "First Class" : rowNo <= 20 ? "Business Class" : "Economy Class";
+          if (cabin !== lastCabin) {
+            bodyRows.push(`<div class="seat-cabin-label">${escapeHtml(cabin)}</div>`);
+            lastCabin = cabin;
+          }
+          bodyRows.push(`<div class="seat-row"><div class="seat-row-number">${rowNo}</div>${letters.map((letter) => {
+            if (!letter) return `<div class="seat-aisle" aria-hidden="true"></div>`;
+            const seat = `${rowNo}${letter}`;
+            const record = seats.get(seat);
+            return `<button class="seat-cell ${record ? "is-occupied" : ""} ${record ? `is-${seatTone(record)}` : ""}" type="button" ${record ? `data-seat="${escapeHtml(seat)}"` : "disabled"} title="${escapeHtml(record ? `${seat} BN ${record.bn || ""} ${passengerName(record)}` : seat)}">${escapeHtml(record?.bn || seat)}</button>`;
+          }).join("")}</div>`);
+        }
+        const legend = `<div class="panel-stats"><span class="status-ok">Checked-in / BN</span><span class="status-warn">Wheelchair / VIP / Review</span><span class="status-fail">Infant / Alert</span></div>`;
+        renderPanel("Seat Map", currentSy?.flightNo || "SY", `${legend}<div class="panel-workspace"><div class="seat-map-shell"><div class="seat-map-plane">${bodyRows.join("")}</div></div><div class="panel-side">${passengerRecordCard(records[0] || {}, "Passenger Record")}</div></div>`);
+        setPanelPassengerRows(records);
+      }
+
+      function renderStepPanel(key) {
+        if (key === "CHD") return renderChdPanel();
+        if (key === "GOV") return renderGovPanel();
+        if (key === "NBRD") return renderNbrdPanel();
+        const step = stepByKey(key);
+        const checkRows = Array.isArray(step?.checks) && step.checks.length
+          ? rowsTable(step.checks, [
+            { label: "Check", value: (row) => row.label || row.key },
+            { label: "Status", value: (row) => row.complete ? "Complete" : "Not complete" },
+            { label: "Input Time", value: (row) => row.time || "Not entered" },
+          ], "No check rows found.")
+          : "";
+        renderPanel(step?.label || key, currentSy?.flightNo || "Timeline", `<div class="data-grid"><div class="data-card"><b>Status</b><span>${escapeHtml(step?.complete ? "Complete" : "Not complete")}</span></div><div class="data-card"><b>Input Time</b><span>${escapeHtml(step?.time || "Not entered")}</span></div><div class="data-card"><b>Detail</b><span>${escapeHtml(step?.tooltip || "No detail available")}</span></div></div>${checkRows}`);
       }
 
       function renderChdPanel() {
