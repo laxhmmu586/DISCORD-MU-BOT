@@ -618,7 +618,8 @@ app.get(
             ? `NEXT DAY INFO sent email found: ${nextDaySubject}`
             : `NEXT DAY INFO sent email not found: ${nextDaySubject}`;
         }
-        return res.json({ sy: { ...syInfo, bagSheet: syBagInfo } });
+        const authContext = await resolveAuthContextFromRequest(req);
+        return res.json({ sy: { ...syInfo, bagSheet: syBagInfo, permissions: authContext.permissions } });
       }
       if (isSYRawQuery) {
         return res.json({ error: 'SY query did not return SY payload.' });

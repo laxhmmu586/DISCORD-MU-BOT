@@ -1023,7 +1023,7 @@
       .result-panel {
         position: relative;
         z-index: 5;
-        margin-top: -430px;
+        margin-top: -560px;
       }
 
       .result-panel:empty {
@@ -1152,6 +1152,141 @@
         outline: none;
       }
 
+      .bn-button.is-pass,
+      .seat-cell.is-pass {
+        border-color: rgba(0, 213, 116, 0.74);
+        background: rgba(0, 139, 76, 0.52);
+        color: #ffef5c;
+      }
+
+      .bn-button.is-warning,
+      .seat-cell.is-warning {
+        border-color: rgba(255, 199, 44, 0.82);
+        background: rgba(100, 62, 8, 0.76);
+        color: #ffe859;
+      }
+
+      .bn-button.is-fail,
+      .bn-button.is-missing,
+      .seat-cell.is-fail {
+        border-color: rgba(255, 92, 92, 0.82);
+        background: rgba(105, 20, 28, 0.78);
+        color: #ffd3d3;
+      }
+
+      .panel-stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 0 0 14px;
+        color: #9bc8ff;
+        font-size: 13px;
+        font-weight: 850;
+      }
+
+      .panel-stats span {
+        border: 1px solid rgba(176, 216, 255, 0.18);
+        background: rgba(0, 0, 0, 0.18);
+        padding: 7px 10px;
+      }
+
+      .panel-workspace {
+        display: grid;
+        grid-template-columns: minmax(360px, 1fr) minmax(320px, 420px);
+        gap: 18px;
+        align-items: start;
+      }
+
+      .panel-side {
+        display: grid;
+        gap: 12px;
+      }
+
+      .record-card {
+        border: 1px solid rgba(0, 213, 116, 0.78);
+        border-radius: 16px;
+        background: linear-gradient(150deg, rgba(18, 86, 55, 0.92), rgba(15, 58, 51, 0.9));
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.38), 0 0 26px rgba(0, 213, 116, 0.14);
+        padding: 14px;
+        color: #dcefff;
+      }
+
+      .record-card.is-warning {
+        border-color: rgba(255, 199, 44, 0.86);
+        background: linear-gradient(150deg, rgba(82, 54, 16, 0.94), rgba(32, 41, 53, 0.92));
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.38), 0 0 22px rgba(255, 199, 44, 0.14);
+      }
+
+      .record-card.is-fail {
+        border-color: rgba(255, 92, 92, 0.86);
+        background: linear-gradient(150deg, rgba(92, 24, 34, 0.94), rgba(31, 39, 51, 0.92));
+      }
+
+      .record-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 10px;
+        color: #ffe94f;
+        font-size: 21px;
+        font-weight: 950;
+      }
+
+      .record-badge {
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.12);
+        padding: 6px 10px;
+        color: #eafff2;
+        font-size: 12px;
+        font-weight: 950;
+      }
+
+      .record-row,
+      .security-row {
+        display: grid;
+        grid-template-columns: 96px 1fr;
+        gap: 10px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 9px 0;
+        font-size: 13px;
+        line-height: 1.35;
+      }
+
+      .record-row b,
+      .security-row b {
+        color: #8fc4ff;
+      }
+
+      .security-pill-row {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 8px;
+        margin: 8px 0 12px;
+      }
+
+      .security-pill {
+        border-radius: 999px;
+        background: rgba(0, 139, 76, 0.42);
+        color: #dcffe9;
+        padding: 7px 8px;
+        text-align: center;
+        font-size: 12px;
+        font-weight: 950;
+      }
+
+      .security-pill.is-warning { background: rgba(150, 91, 16, 0.66); color: #ffeb82; }
+      .security-pill.is-fail { background: rgba(132, 29, 39, 0.74); color: #ffd4d4; }
+
+      .security-grid {
+        max-height: 560px;
+        overflow-y: auto;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(74px, 1fr));
+        gap: 8px;
+        padding-right: 8px;
+      }
+
       .passenger-modal-backdrop {
         position: fixed;
         inset: 0;
@@ -1200,6 +1335,17 @@
         border: 1px solid rgba(176, 216, 255, 0.24);
         border-radius: 44px 44px 24px 24px / 74px 74px 20px 20px;
         background: linear-gradient(180deg, rgba(235, 246, 255, 0.1), rgba(0, 0, 0, 0.14));
+      }
+
+      .seat-cabin-label {
+        grid-column: 1 / -1;
+        margin: 18px 0 8px;
+        color: #6aadff;
+        font-size: 14px;
+        font-weight: 950;
+        letter-spacing: 1.4px;
+        text-align: center;
+        text-transform: uppercase;
       }
 
       .seat-row {
@@ -1444,7 +1590,15 @@
         }
 
         .result-panel {
-          margin-top: -520px;
+          margin-top: -620px;
+        }
+
+        .panel-workspace {
+          grid-template-columns: 1fr;
+        }
+
+        .security-grid {
+          grid-template-columns: repeat(3, minmax(72px, 1fr));
         }
 
         .panel-head {
@@ -1709,12 +1863,14 @@
       async function returnToLogin() {
         sessionStorage.removeItem(APP_ENTRY_KEY);
         if (inactivityTimer) clearTimeout(inactivityTimer);
+        const url = new URL(loginUrl());
+        url.searchParams.set("forceLogin", "1");
         try {
           if (auth?.currentUser) await auth.signOut();
         } catch (error) {
           console.warn("Unable to sign out before returning to login.", error);
         }
-        window.location.replace(loginUrl());
+        window.location.replace(url.href);
       }
 
       function resetInactivityTimer() {
@@ -1922,6 +2078,11 @@
         return parts.join(" / ");
       }
 
+      function visibleByPermission(data, permissionKey) {
+        const permissions = data?.permissions || currentSy?.permissions || null;
+        return !permissions || permissions[permissionKey] !== false;
+      }
+
       function passengerFields(data) {
         return [
           ["Name", passengerName(data) || data?.name],
@@ -1929,36 +2090,43 @@
           ["Seat", data?.seat],
           ["Cabin", data?.cabin],
           ["Flight", [data?.flight, data?.flightDate].filter(Boolean).join(" / ")],
-          ["Passport", data?.passportNo],
-          ["DOB", data?.dob],
+          ["Passport", visibleByPermission(data, "canViewTravelDocs") ? data?.passportNo : "Hidden"],
+          ["DOB", visibleByPermission(data, "canViewTravelDocs") ? data?.dob : "Hidden"],
           ["Age", data?.ageYears],
-          ["Membership", [data?.ffCarrier, data?.ffNumber, data?.membershipStatus || data?.ffTier].filter(Boolean).join(" ")],
-          ["Lounge", formatLounge(data?.lounge)],
-          ["Ticket", data?.ticketNumber || data?.ticketNo],
-          ["Infant Ticket", data?.infantTicketNo],
-          ["Bagtag", compactValue(data?.bagtags || data?.bagTags || data?.bags)],
-          ["Inbound", formatFlightSegment(data?.inbound)],
-          ["Outbound", formatFlightSegment(data?.outbound)],
-          ["SSR", compactValue(data?.specialServices || data?.codes)],
-          ["Meal", compactValue(data?.specialMeals)],
-          ["Paid", compactValue(data?.paidProductsShort)],
+          ["Membership", visibleByPermission(data, "canViewMembership") ? [data?.ffCarrier, data?.ffNumber, data?.membershipStatus || data?.ffTier].filter(Boolean).join(" ") : "Hidden"],
+          ["Lounge", visibleByPermission(data, "canViewLoungeAccess") ? formatLounge(data?.lounge) : "Hidden"],
+          ["Guest", visibleByPermission(data, "canViewGuestAccess") && data?.lounge?.guest ? "Guest Access" : ""],
+          ["Ticket", visibleByPermission(data, "canViewTicket") ? (data?.ticketNumber || data?.ticketNo) : "Hidden"],
+          ["Infant Ticket", visibleByPermission(data, "canViewTicket") ? data?.infantTicketNo : "Hidden"],
+          ["Bags", visibleByPermission(data, "canViewBags") ? compactValue(data?.bagtags || data?.bagTags || data?.bags) : "Hidden"],
+          ["Inbound", visibleByPermission(data, "canViewInbound") ? formatFlightSegment(data?.inbound) : "Hidden"],
+          ["Outbound", visibleByPermission(data, "canViewOutbound") ? formatFlightSegment(data?.outbound) : "Hidden"],
+          ["SSR", visibleByPermission(data, "canViewSpecialService") ? compactValue(data?.specialServices || data?.codes) : "Hidden"],
+          ["Meal", visibleByPermission(data, "canViewSpecialMeals") ? compactValue(data?.specialMeals) : "Hidden"],
+          ["Paid Service", visibleByPermission(data, "canViewPaidService") ? compactValue(data?.paidProductsShort) : "Hidden"],
           ["PSM/MSG", compactValue(data?.psmLines || data?.messages)],
           ["Status", data?.status],
         ].filter(([, value]) => value !== null && value !== undefined && value !== "" && value !== false);
       }
 
-      function passengerCards(data) {
-        const fields = passengerFields(data);
-        return fields.length
-          ? `<div class="data-grid">${fields.map(([label, value]) => `<div class="data-card"><b>${escapeHtml(label)}</b><span>${escapeHtml(value)}</span></div>`).join("")}</div>`
+      function passengerRecordCard(data, title = "Passenger Record", tone = "pass") {
+        const fields = passengerFields(data || {});
+        const bn = data?.bn ? `BN${data.bn}` : (latestQuery || "PAX");
+        const rows = fields.length
+          ? fields.map(([label, value]) => `<div class="record-row"><b>${escapeHtml(label)}</b><span>${escapeHtml(value)}</span></div>`).join("")
           : `<p class="panel-muted">No passenger details available.</p>`;
+        return `<article class="record-card ${tone === "warning" ? "is-warning" : tone === "fail" ? "is-fail" : ""}"><div class="record-title"><span>${escapeHtml(title)}</span><span class="record-badge">${escapeHtml(bn)}</span></div>${rows}</article>`;
+      }
+
+      function passengerCards(data) {
+        return passengerRecordCard(data, "Passenger Record");
       }
 
       function showPassengerModal(data, title = "Passenger Record") {
         document.querySelector(".passenger-modal-backdrop")?.remove();
         const overlay = document.createElement("div");
         overlay.className = "passenger-modal-backdrop";
-        overlay.innerHTML = `<article class="passenger-modal" role="dialog" aria-modal="true"><div class="panel-head"><div><small>${escapeHtml(data?.bn ? `BN ${data.bn}` : latestQuery)}</small><h2>${escapeHtml(title)}</h2></div><button class="panel-close" type="button" data-close-modal>Close</button></div>${passengerCards(data || {})}</article>`;
+        overlay.innerHTML = `<article class="passenger-modal" role="dialog" aria-modal="true"><button class="panel-close" type="button" data-close-modal>Close</button>${passengerRecordCard(data || {}, title)}</article>`;
         document.body.appendChild(overlay);
       }
 
@@ -1966,11 +2134,12 @@
         document.querySelector(".passenger-modal-backdrop")?.remove();
       }
 
-      function renderBnButtons(rows, emptyText, reasonFn = null, labelFn = null) {
+      function renderBnButtons(rows, emptyText, reasonFn = null, labelFn = null, classFn = null) {
         if (!rows.length) return `<p class="panel-muted">${escapeHtml(emptyText || "No data found.")}</p>`;
         return `<div class="bn-button-list">${rows.map((row, index) => {
           const label = labelFn ? labelFn(row, index) : (row.bn || row.seat || index + 1);
-          return `<button class="bn-button" type="button" data-passenger-index="${index}" data-passenger-bn="${escapeHtml(row.bn || "")}" title="${escapeHtml(reasonFn ? reasonFn(row) : passengerName(row) || row.bn || "Passenger")}">${escapeHtml(label)}</button>`;
+          const extraClass = classFn ? classFn(row, index) : "";
+          return `<button class="bn-button ${escapeHtml(extraClass)}" type="button" data-passenger-index="${index}" data-passenger-bn="${escapeHtml(row.bn || "")}" title="${escapeHtml(reasonFn ? reasonFn(row) : passengerName(row) || row.bn || "Passenger")}">${escapeHtml(label)}</button>`;
         }).join("")}</div>`;
       }
 
@@ -1988,8 +2157,7 @@
       }
 
       function renderPassenger(data) {
-        showPassengerModal(data, "Passenger Record");
-        resultPanel.innerHTML = "";
+        renderPanel("Passenger Record", data?.bn ? `BN${data.bn}` : latestQuery, passengerRecordCard(data, "Passenger Record"));
       }
 
       function updateFlightFromSy(sy) {
@@ -2050,11 +2218,30 @@
         } catch (error) {
           renderPanel("Search Error", raw, `<p class="panel-muted status-fail">${escapeHtml(error?.message || "Search failed.")}</p>`);
         }
+        renderPanel("Seat Map", currentSy?.flightNo || "SY", `<div class="seat-map-shell"><div class="seat-map-plane">${bodyRows.join("")}</div></div>`);
+        setPanelPassengerRows(records);
+      }
+
+      function renderStepPanel(key) {
+        if (key === "CHD") return renderChdPanel();
+        if (key === "GOV") return renderGovPanel();
+        if (key === "NBRD") return renderNbrdPanel();
+        const step = stepByKey(key);
+        const checkRows = Array.isArray(step?.checks) && step.checks.length
+          ? rowsTable(step.checks, [
+            { label: "Check", value: (row) => row.label || row.key },
+            { label: "Status", value: (row) => row.complete ? "Complete" : "Not complete" },
+            { label: "Input Time", value: (row) => row.time || "Not entered" },
+          ], "No check rows found.")
+          : "";
+        renderPanel(step?.label || key, currentSy?.flightNo || "Timeline", `<div class="data-grid"><div class="data-card"><b>Status</b><span>${escapeHtml(step?.complete ? "Complete" : "Not complete")}</span></div><div class="data-card"><b>Input Time</b><span>${escapeHtml(step?.time || "Not entered")}</span></div><div class="data-card"><b>Detail</b><span>${escapeHtml(step?.tooltip || "No detail available")}</span></div></div>${checkRows}`);
       }
 
       function renderChdPanel() {
         const rows = currentSy?.chdList || [];
-        renderPanel("CHD List", currentSy?.flightNo || "SY", renderBnButtons(rows, "No CHD passenger found.", (row) => `${passengerName(row)} ${row.hasChdCode ? "OK" : "Missing CHD1/0"}`));
+        const missing = rows.filter((row) => row.hasChdCode === false).length;
+        const stats = `<div class="panel-stats"><span>Total ${rows.length}</span><span class="status-ok">OK ${rows.length - missing}</span><span class="status-fail">Missing CHD1/0 ${missing}</span></div>`;
+        renderPanel("CHD List", currentSy?.flightNo || "SY", `${stats}${renderBnButtons(rows, "No CHD passenger found.", (row) => `${passengerName(row)} ${row.hasChdCode ? "OK" : "Missing CHD1/0"}`, null, (row) => row.hasChdCode === false ? "is-missing" : "is-pass")}`);
         setPanelPassengerRows(rows);
       }
 
@@ -2134,17 +2321,56 @@
         renderPanel("Bag Report", currentSy?.flightNo || "SY", sheet.hasData && sections.length ? sections.join("") : `<p class="panel-muted">No Google Sheet bag report found for this SY date.</p>`);
       }
 
+      function checkTone(status) {
+        if (status === "fail") return "fail";
+        if (status === "review") return "warning";
+        return "pass";
+      }
+
+      function securityTone(row) {
+        const statuses = [row?.apiStatus, row?.tkStatus, row?.visaStatus, row?.bagStatus];
+        if (statuses.includes("fail")) return "fail";
+        if (statuses.includes("review")) return "warning";
+        return "pass";
+      }
+
+      function securityCard(row) {
+        if (!row) return passengerRecordCard({}, "Passenger Record");
+        const tone = securityTone(row);
+        const checks = [
+          ["API", row.apiStatus, row.apiReason],
+          ["TK", row.tkStatus, row.tkReason],
+          ["VISA", row.visaStatus, row.visaReason],
+          ["BAG", row.bagStatus, row.bagReason],
+        ];
+        const pills = checks.map(([label, status]) => `<span class="security-pill is-${checkTone(status)}">${escapeHtml(label)} ${status === "fail" || status === "review" ? "⚠" : "☑"}</span>`).join("");
+        const rows = checks.map(([label, status, reason]) => `<div class="security-row"><b>${escapeHtml(label)}</b><span>${escapeHtml(reason || (status === "pass" ? `${label} passed` : "No detail"))}</span></div>`).join("");
+        return `<article class="record-card ${tone === "warning" ? "is-warning" : tone === "fail" ? "is-fail" : ""}"><div class="record-title"><span>BN${escapeHtml(row.bn || "---")}</span><span class="record-badge">${escapeHtml(tone === "pass" ? "PASS" : tone === "fail" ? "FAIL" : "WARNING")}</span></div><div class="security-pill-row">${pills}</div>${rows}</article>${passengerRecordCard(row.passengerRecord || row, "Passenger Record", tone)}`;
+      }
+
       function renderSecurityCheck() {
         const rows = currentSy?.bnAudit || [];
-        const reviewRows = rows.filter((row) => [row.apiStatus, row.tkStatus, row.visaStatus, row.bagStatus].some((status) => status === "fail" || status === "review"));
-        const passCount = rows.length - reviewRows.length;
-        renderPanel("Security Check", currentSy?.flightNo || "SY", `<div class="data-grid"><div class="data-card"><b>Pass</b><span class="status-ok">${passCount}</span></div><div class="data-card"><b>Review</b><span class="status-fail">${reviewRows.length}</span></div></div>${renderBnButtons(reviewRows, "No security review passenger found.", (row) => [row.apiReason, row.tkReason, row.visaReason, row.bagReason].filter(Boolean).join("; "), (row) => `${row.bn || "---"} REVIEW`)}`);
-        setPanelPassengerRows(reviewRows);
+        const passCount = rows.filter((row) => securityTone(row) === "pass").length;
+        const warningCount = rows.filter((row) => securityTone(row) === "warning").length;
+        const failCount = rows.filter((row) => securityTone(row) === "fail").length;
+        const buttons = rows.length ? `<div class="security-grid">${rows.map((row, index) => `<button class="bn-button is-${securityTone(row)}" type="button" data-security-index="${index}">${escapeHtml(row.bn || index + 1)}</button>`).join("")}</div>` : `<p class="panel-muted">No security passenger rows found.</p>`;
+        const stats = `<div class="panel-stats"><span class="status-ok">${passCount} pass</span><span class="status-warn">${warningCount} warning</span><span class="status-fail">${failCount} fail</span></div>`;
+        renderPanel("Security Check", currentSy?.flightNo || "SY", `${stats}<div class="panel-workspace"><div>${buttons}</div><div class="panel-side">${securityCard(rows.find((row) => securityTone(row) !== "pass") || rows[0])}</div></div>`);
+        setPanelPassengerRows(rows);
       }
 
       function seatNumber(value) {
         const match = String(value || "").match(/^(\d{1,2})([A-Z])$/i);
         return match ? { row: Number(match[1]), letter: match[2].toUpperCase() } : null;
+      }
+
+      function seatTone(record) {
+        if (!record) return "";
+        const services = [...(record.specialServices || []), ...(record.specialMeals || [])].join("/");
+        if (/INF/i.test(services) || record.hasInfant) return "fail";
+        if (/WCH/i.test(services)) return "warning";
+        if (record.ffTier === "V" || /platinum/i.test(record.membershipStatus || "")) return "warning";
+        return "pass";
       }
 
       function renderSeatMap() {
@@ -2155,16 +2381,22 @@
         const minRow = Math.max(1, Math.min(1, ...parsedRows));
         const letters = ["A", "B", "C", "", "D", "E", "F"];
         const bodyRows = [];
+        let lastCabin = "";
         for (let rowNo = minRow; rowNo <= maxRow; rowNo += 1) {
+          const cabin = rowNo <= 2 ? "First Class" : rowNo <= 20 ? "Business Class" : "Economy Class";
+          if (cabin !== lastCabin) {
+            bodyRows.push(`<div class="seat-cabin-label">${escapeHtml(cabin)}</div>`);
+            lastCabin = cabin;
+          }
           bodyRows.push(`<div class="seat-row"><div class="seat-row-number">${rowNo}</div>${letters.map((letter) => {
             if (!letter) return `<div class="seat-aisle" aria-hidden="true"></div>`;
             const seat = `${rowNo}${letter}`;
             const record = seats.get(seat);
-            const hasAlert = record && [...(record.specialServices || []), ...(record.specialMeals || [])].length;
-            return `<button class="seat-cell ${record ? "is-occupied" : ""} ${hasAlert ? "has-alert" : ""}" type="button" ${record ? `data-seat="${escapeHtml(seat)}"` : "disabled"} title="${escapeHtml(record ? `${seat} BN ${record.bn || ""} ${passengerName(record)}` : seat)}">${escapeHtml(record?.bn || seat)}</button>`;
+            return `<button class="seat-cell ${record ? "is-occupied" : ""} ${record ? `is-${seatTone(record)}` : ""}" type="button" ${record ? `data-seat="${escapeHtml(seat)}"` : "disabled"} title="${escapeHtml(record ? `${seat} BN ${record.bn || ""} ${passengerName(record)}` : seat)}">${escapeHtml(record?.bn || seat)}</button>`;
           }).join("")}</div>`);
         }
-        renderPanel("Seat Map", currentSy?.flightNo || "SY", `<div class="seat-map-shell"><div class="seat-map-plane">${bodyRows.join("")}</div></div>`);
+        const legend = `<div class="panel-stats"><span class="status-ok">Checked-in / BN</span><span class="status-warn">Wheelchair / VIP / Review</span><span class="status-fail">Infant / Alert</span></div>`;
+        renderPanel("Seat Map", currentSy?.flightNo || "SY", `${legend}<div class="panel-workspace"><div class="seat-map-shell"><div class="seat-map-plane">${bodyRows.join("")}</div></div><div class="panel-side">${passengerRecordCard(records[0] || {}, "Passenger Record")}</div></div>`);
         setPanelPassengerRows(records);
       }
 
@@ -2279,13 +2511,21 @@
           resultPanel._passengerRows = [];
           return;
         }
+        const securityButton = event.target.closest("[data-security-index]");
+        if (securityButton) {
+          const rows = resultPanel._passengerRows || [];
+          const row = rows[Number(securityButton.dataset.securityIndex)];
+          const side = resultPanel.querySelector(".panel-side");
+          if (side) side.innerHTML = securityCard(row);
+          return;
+        }
         const passengerButton = event.target.closest("[data-passenger-index]");
         if (passengerButton) {
           const rows = resultPanel._passengerRows || [];
           const index = Number(passengerButton.dataset.passengerIndex);
           const bn = passengerButton.dataset.passengerBn;
           const row = (bn && rows.find((item) => String(item.bn || "") === bn)) || rows[index] || { bn };
-          showPassengerModal(row, "Passenger Record");
+          showPassengerModal(row.passengerRecord || row, "Passenger Record");
           return;
         }
         const seatButton = event.target.closest("[data-seat]");
@@ -2293,7 +2533,9 @@
           const seat = seatButton.dataset.seat;
           const rows = resultPanel._passengerRows || [];
           const row = rows.find((item) => String(item.seat || "").toUpperCase() === seat) || { seat };
-          showPassengerModal(row, "Seat Record");
+          const side = resultPanel.querySelector(".panel-side");
+          if (side) side.innerHTML = passengerRecordCard(row, "Passenger Record");
+          else showPassengerModal(row, "Passenger Record");
         }
       });
 

@@ -242,17 +242,23 @@
         setStatus("Firebase is not connected. Open this page from Firebase Hosting and redeploy if this continues.", true);
       } else {
         const auth = firebase.auth();
-        auth.onAuthStateChanged((user) => {
-          if (user) {
+        let forceLogin = new URLSearchParams(window.location.search).has("forceLogin");
+        auth.onAuthStateChanged(async (user) => {
+          if (user && !forceLogin) {
             allowAppEntry();
             window.location.replace(getRedirectTarget());
             return;
+          }
+          if (user && forceLogin) {
+            forceLogin = false;
+            await auth.signOut();
           }
           enableForm();
         });
 
         form.addEventListener("submit", async (event) => {
           event.preventDefault();
+          forceLogin = false;
           submitButton.disabled = true;
           setStatus("Signing in...");
           try {
