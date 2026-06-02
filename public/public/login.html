@@ -1,347 +1,163 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-
-<head>
-
-  <meta charset="UTF-8">
-
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  >
-
-  <title>
-    MUFC Login
-  </title>
-
-  <style>
-
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-
-      margin: 0;
-      padding: 0;
-
-      background: #0f172a;
-
-      color: white;
-
-      font-family:
-        Arial,
-        sans-serif;
-
-      min-height: 100vh;
-
-      display: flex;
-
-      justify-content: center;
-    }
-
-    .container {
-
-      width: 100%;
-
-      max-width: 460px;
-
-      padding: 20px;
-    }
-
-    .title {
-
-      font-size: 30px;
-
-      font-weight: bold;
-
-      margin-bottom: 6px;
-    }
-
-    .subtitle {
-
-      color: #94a3b8;
-
-      font-size: 14px;
-
-      margin-bottom: 24px;
-
-      line-height: 1.5;
-    }
-
-    .login-card {
-
-      background: #111827;
-
-      border-radius: 20px;
-
-      padding: 20px;
-
-      box-shadow:
-        0 0 25px rgba(0,0,0,0.35);
-
-      margin-top: 60px;
-    }
-
-    input {
-
-      width: 100%;
-
-      padding: 14px;
-
-      margin-bottom: 14px;
-
-      border: none;
-
-      border-radius: 14px;
-
-      background: #1e293b;
-
-      color: white;
-
-      font-size: 15px;
-    }
-
-    button {
-
-      border: none;
-
-      background: #2563eb;
-
-      color: white;
-
-      border-radius: 14px;
-
-      padding: 14px;
-
-      font-size: 15px;
-
-      cursor: pointer;
-
-      width: 100%;
-    }
-
-    button:hover {
-
-      background: #1d4ed8;
-    }
-
-    .error {
-
-      display: none;
-
-      background: #7f1d1d;
-
-      border-radius: 12px;
-
-      padding: 12px;
-
-      margin-top: 15px;
-
-      font-size: 14px;
-    }
-
-
-    body {
-      background:
-        radial-gradient(circle at 12% 6%, rgba(37,99,235,.18), transparent 26rem),
-        radial-gradient(circle at 94% 0%, rgba(20,184,166,.13), transparent 24rem),
-        linear-gradient(135deg, #06101e 0%, #061827 52%, #041320 100%);
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
-      align-items: center;
-    }
-
-    .container { max-width: 500px; }
-
-    .login-card {
-      margin-top: 0;
-      padding: 34px;
-      border: 1px solid rgba(77,112,148,.54);
-      border-radius: 18px;
-      background: linear-gradient(145deg, rgba(13,34,56,.92), rgba(7,24,39,.92));
-      box-shadow: 0 28px 70px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.04);
-      backdrop-filter: blur(14px);
-    }
-
-    .title {
-      font-size: 36px;
-      letter-spacing: .8px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .title::before {
-      content: '✈';
-      color: #8fb8ff;
-      font-size: 34px;
-    }
-
-    .subtitle { color:#a7b4c6; margin-bottom:28px; }
-
-    input {
-      background: rgba(7,24,39,.86);
-      border: 1px solid rgba(77,112,148,.58);
-      border-radius: 12px;
-      padding: 15px 16px;
-      outline: none;
-      transition: border-color .16s ease, box-shadow .16s ease, background .16s ease;
-    }
-
-    input:focus {
-      border-color: rgba(96,165,250,.8);
-      box-shadow: 0 0 0 3px rgba(96,165,250,.16);
-      background: rgba(10,29,49,.98);
-    }
-
-    button {
-      margin-top: 4px;
-      border: 1px solid rgba(96,165,250,.58);
-      border-radius: 12px;
-      background: linear-gradient(135deg, #2563eb, #1d4ed8);
-      font-weight: 900;
-      letter-spacing: .2px;
-      box-shadow: 0 16px 34px rgba(37,99,235,.24);
-    }
-
-    button:hover { background: linear-gradient(135deg, #3b82f6, #2563eb); }
-
-    .error {
-      border: 1px solid rgba(248,113,113,.45);
-      background: rgba(127,29,29,.58);
-      color: #fecaca;
-    }
-
-  </style>
-</head>
-
-<body>
-
-  <div class="container">
-
-    <div class="login-card">
-
-      <div class="title">
-        MUFC
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MUFC Login</title>
+    <style>
+      :root {
+        --bg: #020a12;
+        --panel: rgba(6, 20, 34, 0.72);
+        --line: rgba(176, 216, 255, 0.24);
+        --text: #f3f7fb;
+        --muted: #98a8b8;
+        --blue: #58a7ff;
+        color-scheme: dark;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        min-height: 100%;
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+      }
+
+      body {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background:
+          radial-gradient(circle at 70% 18%, rgba(18, 91, 104, 0.24), transparent 34rem),
+          radial-gradient(circle at 48% 56%, rgba(21, 48, 82, 0.28), transparent 34rem),
+          linear-gradient(115deg, #071327 0%, #04121e 48%, #020b12 100%);
+      }
+
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        background:
+          linear-gradient(180deg, rgba(0, 0, 0, 0.28), transparent 22rem),
+          linear-gradient(90deg, rgba(0, 0, 0, 0.24), transparent 34%, transparent 66%, rgba(0, 0, 0, 0.36));
+      }
+
+      .login-card {
+        position: relative;
+        z-index: 1;
+        width: min(360px, calc(100vw - 40px));
+        padding: 28px;
+        border: 1px solid var(--line);
+        background: linear-gradient(150deg, rgba(9, 28, 48, 0.78), rgba(2, 12, 22, 0.66));
+        box-shadow: 0 30px 110px rgba(0, 0, 0, 0.48);
+        backdrop-filter: blur(18px);
+        animation: fadeUp 560ms ease both;
+      }
+
+      @keyframes fadeUp {
+        from {
+          opacity: 0;
+          transform: translateY(12px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 4px;
+      }
+
+      .brand svg {
+        width: 25px;
+        height: 25px;
+        color: #8bbcff;
+      }
+
+      .brand strong {
+        font-size: 30px;
+        line-height: 1;
+        letter-spacing: 4px;
+      }
+
+      .subhead {
+        margin: 8px 0 22px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.8px;
+      }
+
+      .field {
+        display: block;
+        margin-bottom: 12px;
+      }
+
+      .field input {
+        width: 100%;
+        height: 42px;
+        border: 1px solid rgba(210, 231, 255, 0.2);
+        border-radius: 0;
+        padding: 0 13px;
+        outline: 0;
+        background: rgba(227, 237, 251, 0.96);
+        color: #071327;
+        font: inherit;
+        font-size: 12px;
+      }
+
+      .field input:focus {
+        border-color: rgba(88, 167, 255, 0.9);
+        box-shadow: 0 0 0 3px rgba(88, 167, 255, 0.18);
+      }
+
+      .login-button {
+        width: 100%;
+        height: 44px;
+        margin-top: 4px;
+        border: 1px solid rgba(88, 167, 255, 0.72);
+        border-radius: 0;
+        background: linear-gradient(180deg, #3376ff, #245fe6);
+        color: white;
+        font: inherit;
+        font-size: 13px;
+        font-weight: 900;
+        cursor: pointer;
+      }
+
+      .login-button:hover {
+        background: linear-gradient(180deg, #4382ff, #2d67ee);
+      }
+    </style>
+  </head>
+  <body>
+    <main class="login-card" aria-label="Login">
+      <div class="brand">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M3 13.5h18M10 4l4 9-4 7M5.5 8.5l2.5 5-2.5 4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <strong>MUFC</strong>
       </div>
-
-      <div class="subtitle">
-        Internal Access Only
-      </div>
-
-      <input
-        id="email"
-        type="email"
-        placeholder="Email"
-      >
-
-      <input
-        id="password"
-        type="password"
-        placeholder="Password"
-      >
-
-      <button onclick="login()">
-        Login
-      </button>
-
-      <div
-        id="msg"
-        class="error"
-      ></div>
-
-    </div>
-
-  </div>
-
-<script type="module">
-
-import { initializeApp }
-from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
-
-import {
-  getAuth,
-  signInWithEmailAndPassword,
-  onAuthStateChanged,
-  setPersistence,
-  browserSessionPersistence
-}
-from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
-
-const firebaseConfig = {
-
-  apiKey: "AIzaSyAWsXBuQJTBmNKi6gLgnkZUZ4OfK1IRuXo",
-
-  authDomain: "china-eastern.firebaseapp.com",
-
-  projectId: "china-eastern",
-
-  storageBucket: "china-eastern.firebasestorage.app",
-
-  messagingSenderId: "30017158772",
-
-  appId: "1:30017158772:web:874a69fdb75b8d3d315b21",
-
-  measurementId: "G-22T9MHC42Y"
-};
-
-const app =
-  initializeApp(firebaseConfig);
-
-const auth =
-  getAuth(app);
-
-function getRedirectPage() {
-  return "index.html";
-}
-
-onAuthStateChanged(auth, (user) => {
-  if (user) {
-    window.location.href = getRedirectPage();
-  }
-});
-
-window.login = async function () {
-
-  const email =
-    document.getElementById("email").value.trim();
-
-  const password =
-    document.getElementById("password").value.trim();
-
-  const msg =
-    document.getElementById("msg");
-
-  try {
-
-    msg.style.display = "none";
-
-    await setPersistence(
-      auth,
-      browserSessionPersistence
-    );
-
-    const userCredential =
-      await signInWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
-
-    window.location.href =
-      getRedirectPage();
-
-  } catch (error) {
-
-    msg.innerText =
-      error.message;
-
-    msg.style.display =
-      "block";
-  }
-};
-
-</script>
-
-</body>
+      <p class="subhead">Internal Access Only</p>
+      <label class="field">
+        <input type="email" value="lake@mu.com" aria-label="Email" />
+      </label>
+      <label class="field">
+        <input type="password" value="password" aria-label="Password" />
+      </label>
+      <button class="login-button" type="button">Login</button>
+    </main>
+  </body>
 </html>
