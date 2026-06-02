@@ -552,18 +552,11 @@
 
       .details-panel {
         width: min(960px, calc(100% - 48px));
-        display: grid;
-        grid-template-rows: 0fr;
         margin: 22px auto 0;
-        transition: grid-template-rows 240ms ease;
-      }
-
-      .details-panel.is-open {
-        grid-template-rows: 1fr;
       }
 
       .details-inner {
-        overflow: hidden;
+        overflow: visible;
       }
 
       .details-surface {
@@ -1926,7 +1919,7 @@
           </div>
         </div>
 
-        <section class="details-panel is-open" aria-label="Expanded flight details">
+        <section class="details-panel" aria-label="Flight details">
           <div class="details-inner">
             <div class="details-surface">
               <div class="details-manifest">
