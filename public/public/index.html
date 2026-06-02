@@ -1053,7 +1053,7 @@
       .result-panel {
         position: relative;
         z-index: 5;
-        margin-top: -820px;
+        margin-top: -760px;
       }
 
       .result-panel:empty {
@@ -1399,7 +1399,7 @@
       .review-actions button[data-review-status="fail"] { border-color: rgba(255, 92, 92, 0.72); }
 
       .security-grid {
-        max-height: 560px;
+        max-height: min(78vh, 900px);
         overflow-y: auto;
         display: grid;
         grid-template-columns: repeat(6, minmax(58px, 1fr));
@@ -1802,7 +1802,7 @@
         }
 
         .result-panel {
-          margin-top: -820px;
+          margin-top: -760px;
         }
 
         .panel-workspace {
@@ -2137,6 +2137,12 @@
         }) || null;
       }
 
+      function nodeDisplayTime(nodeOrKey) {
+        const node = typeof nodeOrKey === "string" ? Array.from(nodes).find((item) => item.dataset.key === nodeOrKey) : nodeOrKey;
+        const step = stepByKey(node?.dataset?.key || nodeOrKey);
+        return step?.time || node?.dataset?.inputTime || node?.dataset?.time || "----";
+      }
+
       function resolveApiBase() {
         const fromWindow = window.MU_API_BASE || "";
         return (fromWindow.trim() || "https://api.mufcapp.net").replace(/\/$/, "");
@@ -2207,7 +2213,7 @@
         const key = node.dataset.key;
         const step = stepByKey(key);
         const label = node.dataset.label || step?.label || key;
-        const time = node.dataset.time || step?.time || "----";
+        const time = nodeDisplayTime(node);
         nodeCard.querySelector("h2").textContent = label;
         nodeCard.querySelector("p").textContent = step?.tooltip || `${label} ${time !== "----" ? `entered at ${time}` : "data is not complete yet."}`;
       }
@@ -2216,8 +2222,7 @@
         selectedIndex = index;
         const node = nodes[selectedIndex];
         if (node) {
-          const step = stepByKey(node.dataset.key);
-          nodeTime.textContent = step?.time || node.dataset.time || "----";
+          nodeTime.textContent = nodeDisplayTime(node);
         }
         nodes.forEach((item, itemIndex) => item.classList.toggle("is-active", itemIndex === selectedIndex));
         updateNodeCard(selectedIndex);
@@ -2492,6 +2497,7 @@
           let complete = Boolean(step?.complete);
           let started = Boolean(step?.complete || step?.time);
           let time = step?.time || "----";
+          node.dataset.inputTime = step?.time || "";
           if (key === "CHD") { issueCount = chdIssues; started = (sy.chdList || []).length > 0; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
           if (key === "GOV") { issueCount = govCount; started = Boolean(sy.govAqq) && previousStarted; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
           if (key === "NBRD") { issueCount = nbrdCount; started = (sy.bnAudit || []).length > 0 && previousStarted; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
@@ -2556,7 +2562,7 @@
           if (!groupRows.length) return "";
           return `<article class="data-card"><b>${escapeHtml(label)} Details</b>${renderBnButtons(groupRows, "", (row) => row.reason)}</article>`;
         }).filter(Boolean).join("");
-        renderPanel("GOV/AQQ", currentSy?.flightNo || "SY", `<div class="data-grid">${summary}</div>${details ? `<div class="data-grid" style="margin-top:14px">${details}</div>` : ""}`);
+        renderPanel("GOV/AQQ", currentSy?.flightNo || "SY", `<div class="data-grid">${summary}</div>${details ? `<div class="data-grid" style="margin-top:14px">${details}</div><div class="panel-side inline-record-side" style="margin-top:14px"><p class="panel-muted">Click a BN button to view the passenger record.</p></div>` : ""}`);
         setPanelPassengerRows(rows);
       }
 
@@ -2795,7 +2801,7 @@
         if (key === "GOV") return renderGovPanel();
         if (key === "NBRD") return renderNbrdPanel();
         const step = stepByKey(key);
-        const inputTime = step?.time || "----";
+        const inputTime = nodeDisplayTime(key);
         nodeTime.textContent = inputTime;
         const checkRows = Array.isArray(step?.checks) && step.checks.length
           ? rowsTable(step.checks, [
@@ -2876,7 +2882,10 @@
 
       nodes.forEach((node) => {
         node.addEventListener("click", () => {
-          if (didDrag) return;
+          if (didDrag) {
+            didDrag = false;
+            return;
+          }
           resetTimelineCenter(node.dataset.key);
           renderStepPanel(node.dataset.key);
         });
