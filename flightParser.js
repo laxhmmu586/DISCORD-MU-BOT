@@ -604,7 +604,7 @@ function parseIncrementalLog(log) {
 
     const nonPsmSection = section
       .split(/\r?\n/)
-      .filter(line => !/^\s*PSM\b/i.test(line))
+      .filter(line => !/^(?:PSM|MSG)(?:\b|-)/i.test(line.trim()))
       .join('\n');
 
     for (const code of ssrCodes) {
@@ -689,7 +689,7 @@ function parseIncrementalLog(log) {
 
     const psmLines = [
       ...new Set(
-        sectionLines.filter(line => /^PSM\b/i.test(line))
+        sectionLines.filter(line => /^(?:PSM|MSG)(?:\b|-)/i.test(line))
       )
     ];
 

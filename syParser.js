@@ -21,13 +21,18 @@ function splitLogicalSections(log) {
 
     if (cmd && !isContinuation) {
       if (current && current.content.trim()) sections.push(current);
-      current = { content: line + '\n', timestamp: pendingTimestamp || null };
+      current = { content: line + '\n', timestamp: pendingTimestamp || null, commandTimestamp: pendingTimestamp || null };
       pendingTimestamp = null;
       continue;
     }
 
     if (!current) {
-      current = { content: '' };
+      current = { content: '', timestamp: pendingTimestamp || null, commandTimestamp: pendingTimestamp || null };
+      pendingTimestamp = null;
+    } else if (cmd && isContinuation && pendingTimestamp) {
+      const currentTs = parseSectionTimestamp(current.timestamp);
+      const pendingTs = parseSectionTimestamp(pendingTimestamp);
+      if (pendingTs >= currentTs) current.timestamp = pendingTimestamp;
       pendingTimestamp = null;
     }
 
@@ -38,21 +43,35 @@ function splitLogicalSections(log) {
   return sections;
 }
 
+const MONTH_INDEX = {
+  JAN: 0, JANUARY: 0, FEB: 1, FEBRUARY: 1, MAR: 2, MARCH: 2,
+  APR: 3, APRIL: 3, MAY: 4, JUN: 5, JUNE: 5, JUL: 6, JULY: 6,
+  AUG: 7, AUGUST: 7, SEP: 8, SEPTEMBER: 8, OCT: 9, OCTOBER: 9,
+  NOV: 10, NOVEMBER: 10, DEC: 11, DECEMBER: 11
+};
+
+const MONTH_NUMBER = {
+  JAN: '01', JANUARY: '01', FEB: '02', FEBRUARY: '02', MAR: '03', MARCH: '03',
+  APR: '04', APRIL: '04', MAY: '05', JUN: '06', JUNE: '06', JUL: '07', JULY: '07',
+  AUG: '08', AUGUST: '08', SEP: '09', SEPTEMBER: '09', OCT: '10', OCTOBER: '10',
+  NOV: '11', NOVEMBER: '11', DEC: '12', DECEMBER: '12'
+};
+
+function normalizeMonthName(monthName) {
+  return String(monthName || '').trim().toUpperCase();
+}
+
 function parseSectionTimestamp(timestamp) {
   if (!timestamp) return 0;
-  const m = timestamp.match(/^(\d{4})\s+([A-Z][a-z]{2})\s+(\d{2}),\s+(\w+),\s+(\d{2}):(\d{2}):(\d{2})$/);
+  const m = timestamp.match(/^(\d{4})\s+([A-Za-z]+)\s+(\d{2}),\s+(\w+),\s+(\d{2}):(\d{2}):(\d{2})$/);
   if (!m) return 0;
-  const monthMap = {
-    Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
-    Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
-  };
   const year = Number(m[1]);
-  const month = monthMap[m[2]];
+  const month = MONTH_INDEX[normalizeMonthName(m[2])];
   const day = Number(m[3]);
   const hour = Number(m[5]);
   const min = Number(m[6]);
   const sec = Number(m[7]);
-  if (Number.isNaN(month)) return 0;
+  if (month === undefined) return 0;
   return Date.UTC(year, month, day, hour, min, sec);
 }
 
@@ -67,6 +86,33 @@ function isDeletedPassengerLine(line) {
 
 function isDeletedPassengerSection(section) {
   return isDeletedPassengerLine(getPassengerRecordLine(section));
+}
+
+function getPassengerNameFromSection(section) {
+  const passengerLine = getPassengerRecordLine(section);
+  const lineName = (passengerLine.match(/^\s*\d+\.\s*\d?([A-Z\/]+\+?)/i)?.[1] || '').replace(/\+$/, '').toUpperCase();
+  if (lineName) return lineName;
+  const paxListName = (String(section || '').match(/PAXLST\s*:\s*([A-Z\/]+)\/?/i)?.[1] || '').replace(/\+$/, '').toUpperCase();
+  return paxListName || 'UNKNOWN';
+}
+
+const TARGET_PSM_MSG_CODES = ['TSXL', 'JMSQ', 'XCSQ', 'TXLK', 'QTQK'];
+
+function extractPsmLines(section) {
+  return [...new Set(String(section || '')
+    .split(/\r?\n/)
+    .map((line) => line.replace(/[\u001c-\u001f]/g, '').trim())
+    .filter((line) => /^(?:PSM|MSG)(?:\b|-)/i.test(line)))];
+}
+
+function hasTargetPsm(line) {
+  const normalized = String(line || '').toUpperCase().replace(/\s+/g, '');
+  return TARGET_PSM_MSG_CODES.some((code) => normalized.includes(code));
+}
+
+
+function extractSeatAfterBn(text) {
+  return (String(text || '').match(/\bBN\s*\d{1,3}\b\s+\*?(\d{1,3}[A-Z])\b/i)?.[1] || '').toUpperCase();
 }
 
 function getOutboundLines(section) {
@@ -84,21 +130,295 @@ function getPassengerRecordOutboundLine(section) {
 
 function getFlightDateFromTimestamp(timestamp) {
   if (!timestamp) return null;
-  const m = timestamp.match(/^(\d{4})\s+([A-Z][a-z]{2})\s+(\d{2}),/);
+  const m = timestamp.match(/^(\d{4})\s+([A-Za-z]+)\s+(\d{2}),/);
   if (!m) return null;
-  const mon = m[2].toUpperCase();
+  const mon = normalizeMonthName(m[2]).slice(0, 3);
+  if (MONTH_INDEX[mon] === undefined) return null;
   const yy = m[1].slice(-2);
   return `${m[3]}${mon}${yy}`;
 }
 
 function getYmdFromTimestamp(timestamp) {
   if (!timestamp) return null;
-  const m = timestamp.match(/^(\d{4})\s+([A-Z][a-z]{2})\s+(\d{2}),/);
+  const m = timestamp.match(/^(\d{4})\s+([A-Za-z]+)\s+(\d{2}),/);
   if (!m) return null;
-  const monMap = { Jan: '01', Feb: '02', Mar: '03', Apr: '04', May: '05', Jun: '06', Jul: '07', Aug: '08', Sep: '09', Oct: '10', Nov: '11', Dec: '12' };
-  const mm = monMap[m[2]];
+  const mm = MONTH_NUMBER[normalizeMonthName(m[2])];
   if (!mm) return null;
   return `${m[1]}-${mm}-${m[3]}`;
+}
+
+function escapeRegExp(value) {
+  return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+
+function flightDateToYmd(flightDate) {
+  const m = String(flightDate || '').toUpperCase().match(/^(\d{2})([A-Z]{3})(\d{2})$/);
+  if (!m) return null;
+  const monMap = { JAN: '01', FEB: '02', MAR: '03', APR: '04', MAY: '05', JUN: '06', JUL: '07', AUG: '08', SEP: '09', OCT: '10', NOV: '11', DEC: '12' };
+  const mm = monMap[m[2]];
+  if (!mm) return null;
+  return `20${m[3]}-${mm}-${m[1]}`;
+}
+
+
+function ymdToUtcDate(ymd) {
+  const m = String(ymd || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  return new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+}
+
+function addDaysUtc(date, days) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return null;
+  return new Date(date.getTime() + (days * 86400000));
+}
+
+function dateToYmd(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+}
+
+function dateToDdMon(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+  const mons = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+  return `${String(date.getUTCDate()).padStart(2, '0')}${mons[date.getUTCMonth()]}`;
+}
+
+function dateToDdMonYy(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+  return `${dateToDdMon(date)}${String(date.getUTCFullYear()).slice(-2)}`;
+}
+
+function dateToEmailSubjectDate(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+  const mons = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${mons[date.getUTCMonth()]}-${String(date.getUTCDate()).padStart(2, '0')}`;
+}
+
+function subtractMinutesFromTime(hhmm, minutes) {
+  const m = String(hhmm || '').match(/^(\d{2})(\d{2})$/);
+  if (!m) return '';
+  const total = ((Number(m[1]) * 60) + Number(m[2]) - minutes + 1440) % 1440;
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}${String(total % 60).padStart(2, '0')}`;
+}
+
+const JCSY_INTERNATIONAL_DESTS = new Set([
+  'ALA', 'CEB', 'DEL', 'HKG', 'MNL', 'SGN',
+  'BKK', 'CMB', 'DXB', 'HAN', 'MEL', 'SIN',
+  'BKI', 'CJU', 'DPS', 'ICN', 'MLE', 'TPE',
+  'CNX', 'DAC', 'KUL', 'NGO', 'VTE',
+  'CGK', 'KIX', 'OKA', 'KTI', 'PUS'
+]);
+
+function normalizeJcsyFlightNo(flightNo) {
+  const m = String(flightNo || '').trim().toUpperCase().match(/^([A-Z]+)(\d+)$/);
+  if (!m) return String(flightNo || '').trim().toUpperCase();
+  return `${m[1]}${m[2].padStart(4, '0')}`;
+}
+
+function classifyJcsyRow(row) {
+  const flightNo = String(row?.flightNo || '').toUpperCase();
+  const dest = String(row?.dest || '').toUpperCase();
+  if (/\+2\b/.test(String(row?.depart || ''))) return 'overnight';
+  if (!/^(MU|FM)/.test(flightNo) || flightNo === 'MU1113' || dest === 'PVG') return 'pvgOnly';
+  if (JCSY_INTERNATIONAL_DESTS.has(dest)) return 'international';
+  return 'domestic';
+}
+
+function parseJcsyRows(content) {
+  return String(content || '').split(/\r?\n/).map((line) => {
+    const m = line.match(/^\s*([A-Z]{2}\d{3,4})\s+\/([A-Z]{3})\/\s+(\d{4}(?:\+\d)?)/i);
+    if (!m) return null;
+    const row = {
+      flightNo: m[1].toUpperCase(),
+      dest: m[2].toUpperCase(),
+      depart: m[3].toUpperCase()
+    };
+    return { ...row, category: classifyJcsyRow(row) };
+  }).filter(Boolean);
+}
+
+function findJcsyInfo(sections, flightNo, flightYmd, formatTime) {
+  const flightDate = dateToDdMon(ymdToUtcDate(flightYmd));
+  const jcsyFlightNo = normalizeJcsyFlightNo(flightNo);
+  const flightDatePattern = escapeRegExp(flightDate);
+  const flightNoPattern = escapeRegExp(jcsyFlightNo);
+  const matches = Boolean(flightYmd && jcsyFlightNo && flightDate) ? sections.filter((sectionObj) => {
+    const ymd = getYmdFromTimestamp(sectionObj.timestamp);
+    const content = String(sectionObj.content || '').toUpperCase();
+    return ymd === flightYmd
+      && /^>\s*JCSY\s*:/im.test(content)
+      && new RegExp(`\\bJCSY:\\s*${flightNoPattern}/${flightDatePattern}/LAX,O\\b`, 'im').test(content);
+  }) : [];
+  const sectionObj = matches.sort((a, b) => parseSectionTimestamp(b.timestamp) - parseSectionTimestamp(a.timestamp))[0] || null;
+  const rows = parseJcsyRows(sectionObj?.content || '');
+  const groups = {
+    domestic: rows.filter((row) => row.category === 'domestic'),
+    international: rows.filter((row) => row.category === 'international'),
+    overnight: rows.filter((row) => row.category === 'overnight'),
+    pvgOnly: rows.filter((row) => row.category === 'pvgOnly')
+  };
+  return {
+    complete: Boolean(sectionObj),
+    time: formatTime(sectionObj?.commandTimestamp || sectionObj?.timestamp),
+    flightNo: jcsyFlightNo,
+    flightDate,
+    groups
+  };
+}
+
+function enrichCrewApisFromLog(log, info, targetYmd) {
+  const sections = splitLogicalSections(log);
+  const flightNo = String(info?.flightNo || '').trim().toUpperCase();
+  const flightYmd = flightDateToYmd(info?.flightDate) || targetYmd || null;
+  const sameDaySections = sections.filter((sectionObj) => {
+    const ymd = getYmdFromTimestamp(sectionObj.timestamp);
+    return Boolean(flightYmd && ymd && ymd === flightYmd);
+  });
+  const formatTime = (timestamp) => {
+    const m = String(timestamp || '').match(/(\d{2}:\d{2}:\d{2})$/);
+    return m?.[1] || '';
+  };
+  const findCommand = (regex, options = {}) => {
+    const { requireAccepted = false } = options;
+    const matches = sameDaySections.filter((item) => {
+      const content = String(item.content || '').toUpperCase();
+      regex.lastIndex = 0;
+      return regex.test(content) && (!requireAccepted || /\bACCEPTED\b/.test(content));
+    });
+    if (!matches.length) return { complete: false, time: '', timestamp: '' };
+    const sectionObj = matches.reduce((latest, item) => (
+      parseSectionTimestamp(item.timestamp) >= parseSectionTimestamp(latest.timestamp) ? item : latest
+    ), matches[0]);
+    return { complete: true, time: formatTime(sectionObj.timestamp), timestamp: sectionObj.timestamp || '' };
+  };
+  const findAcceptedCommand = (regex) => findCommand(regex, { requireAccepted: true });
+  const hasCommand = (regex) => findCommand(regex);
+  const lrPrefix = flightNo
+    ? `LR\\s+${escapeRegExp(flightNo)}\\/\\.\\/LAX\\/CWI`
+    : 'LR\\s+[A-Z0-9]+\\/\\.\\/LAX\\/CWI';
+  const checks = [
+    { key: 'ncwl', label: 'NCWL', ...findAcceptedCommand(/^>[ \t]*NCWL[ \t]*(?::[ \t]*)?$/im) },
+    { key: 'cwd', label: 'CWD', ...hasCommand(/^>\s*CWD\s*:/im) },
+    { key: 'crew1', label: 'LAXAPMU', ...findAcceptedCommand(new RegExp(`^>\\s*${lrPrefix}\\/LAXAPMU\\/PEKKN1E`, 'im')) },
+    { key: 'crew2', label: 'CWI/N', ...findAcceptedCommand(new RegExp(`^>\\s*${lrPrefix}\\/N`, 'im')) },
+    { key: 'crew3', label: 'BJSCCXH', ...findAcceptedCommand(new RegExp(`^>\\s*${lrPrefix}\\/BJSCCXH`, 'im')) }
+  ];
+  const crewApisComplete = checks.every((item) => item.complete);
+  const crewApisTime = crewApisComplete
+    ? checks.reduce((latest, item) => (
+      parseSectionTimestamp(item.timestamp) >= parseSectionTimestamp(latest.timestamp) ? item : latest
+    ), checks[0]).time || ''
+    : '';
+  const ccl = findAcceptedCommand(/^>\s*CCL\s*:/im);
+  const cc = findAcceptedCommand(/^>\s*CC\s*:/im);
+  const jcsy = findJcsyInfo(sections, flightNo, flightYmd, formatTime);
+  const baseYmd = targetYmd || flightYmd;
+  const baseDateUtc = ymdToUtcDate(baseYmd);
+  const netSearchYmd = flightYmd || baseYmd;
+  const netDateUtc = ymdToUtcDate(netSearchYmd);
+  const netFlightDate = dateToDdMonYy(netDateUtc);
+  const netFlightNo = escapeRegExp(flightNo);
+  const netFlightDatePattern = escapeRegExp(netFlightDate);
+  const netMatch = Boolean(flightNo && netFlightDate) ? sections
+    .filter((sectionObj) => {
+      const ymd = getYmdFromTimestamp(sectionObj.timestamp);
+      const content = String(sectionObj.content || '').toUpperCase();
+      return ymd === netSearchYmd
+        && /^>\s*PD\*,NET\b/im.test(content)
+        && new RegExp(`\\bPD:\\s*${netFlightNo}/${netFlightDatePattern}\\*LAX,NET\\b`, 'im').test(content);
+    })
+    .sort((a, b) => parseSectionTimestamp(b.timestamp) - parseSectionTimestamp(a.timestamp))[0] || null : null;
+  const netComplete = Boolean(netMatch);
+  const netTime = formatTime(netMatch?.timestamp);
+  const nextDayDateUtc = addDaysUtc(baseDateUtc, 1);
+  const nextDayEmailDate = dateToEmailSubjectDate(nextDayDateUtc);
+  const nextDayEmailSubject = flightNo && nextDayEmailDate ? `${flightNo} ${nextDayEmailDate} flight information details` : '';
+  const commandBaseDateUtc = ymdToUtcDate(flightYmd || baseYmd);
+  const commandDateUtc = addDaysUtc(commandBaseDateUtc, 2);
+  const commandDate = dateToDdMon(commandDateUtc);
+  const commandFlightDateFull = commandDate && commandDateUtc ? `${commandDate}${String(commandDateUtc.getUTCFullYear()).slice(-2)}` : '';
+  const commandSections = sections.filter((sectionObj) => {
+    const ymd = getYmdFromTimestamp(sectionObj.timestamp);
+    return Boolean(baseYmd && ymd && ymd === baseYmd);
+  });
+  const commandFind = (regex) => {
+    const matches = commandSections.filter((sectionObj) => {
+      const content = String(sectionObj.content || '').toUpperCase();
+      regex.lastIndex = 0;
+      return regex.test(content);
+    });
+    if (!matches.length) return { complete: false, time: '', timestamp: '' };
+    const sectionObj = matches.sort((a, b) => parseSectionTimestamp(b.timestamp) - parseSectionTimestamp(a.timestamp))[0];
+    return { complete: true, time: formatTime(sectionObj.timestamp), timestamp: sectionObj.timestamp || '' };
+  };
+  const futureSy = sections
+    .filter((sectionObj) => getYmdFromTimestamp(sectionObj.timestamp) === baseYmd)
+    .map((sectionObj) => parseSYSection(sectionObj))
+    .filter((item) => item && item.flightNo === flightNo && item.flightDate === commandFlightDateFull)
+    .sort((a, b) => String(b.statusDisplay || '').localeCompare(String(a.statusDisplay || '')))[0] || null;
+  const commandFlightNo = escapeRegExp(flightNo);
+  const commandFlightDate = escapeRegExp(commandDate);
+  const initialFlight = Boolean(flightNo && commandDate)
+    ? commandFind(new RegExp(`^>\\s*IF\\s+${commandFlightNo}/${commandFlightDate}(?:\\s|$)`, 'im'))
+    : { complete: false, time: '', timestamp: '' };
+  const expectedBdt = subtractMinutesFromTime(futureSy?.sd, 45) || String(futureSy?.bdt || '').trim() || subtractMinutesFromTime(info?.sd, 45) || String(info?.bdt || '').trim();
+  const bdtChg = Boolean(flightNo && commandDate && expectedBdt)
+    ? commandFind(new RegExp(`^>\\s*FU\\s+${commandFlightNo}/${commandFlightDate}/LAX/BDT/${escapeRegExp(expectedBdt)}(?:\\s|$)`, 'im'))
+    : { complete: false, time: '', timestamp: '' };
+  return {
+    complete: crewApisComplete && ccl.complete && cc.complete,
+    nextDayInfoQuery: {
+      flightNo,
+      flightDate: nextDayEmailDate,
+      emailSubjectDate: nextDayEmailDate,
+      emailSubject: nextDayEmailSubject
+    },
+    steps: [
+      {
+        key: 'crewApis',
+        label: 'Crew APIS',
+        complete: crewApisComplete,
+        time: crewApisTime,
+        checks
+      },
+      {
+        key: 'net',
+        label: 'NET',
+        complete: netComplete,
+        time: netTime,
+        tooltip: netComplete ? `PD*,NET ${flightNo}/${netFlightDate} ${netTime}` : `PD*,NET ${flightNo}/${netFlightDate || '------'} not found`
+      },
+      {
+        key: 'ccl',
+        label: 'CCL',
+        complete: ccl.complete,
+        time: ccl.time,
+        tooltip: ccl.time ? `CCL ${ccl.time}` : 'CCL not entered'
+      },
+      {
+        key: 'cc',
+        label: 'CC',
+        complete: cc.complete,
+        time: cc.time,
+        tooltip: cc.time ? `CC ${cc.time}` : 'CC not entered'
+      },
+      {
+        key: 'initialFlight',
+        label: 'Initial flight',
+        complete: initialFlight.complete,
+        time: initialFlight.time,
+        tooltip: initialFlight.complete ? `IF ${flightNo}/${commandDate} ${initialFlight.time}` : `IF ${flightNo}/${commandDate} not entered`
+      },
+      {
+        key: 'bdtChg',
+        label: 'BDT CHG',
+        complete: bdtChg.complete,
+        time: bdtChg.time,
+        tooltip: bdtChg.complete ? `FU ${flightNo}/${commandDate}/LAX/BDT/${expectedBdt} ${bdtChg.time}` : `FU ${flightNo}/${commandDate}/LAX/BDT/${expectedBdt || '----'} not entered`
+      }
+    ]
+  };
 }
 
 function parseSYSection(sectionObj) {
@@ -476,18 +796,12 @@ function enrichWchListFromLog(log, syInfo, targetYmd = null) {
     const nameMatch = section.match(/\n\s*\d+\.\s*([A-Z]+\/[A-Z]+)/i);
     const paxLineMatch = section.match(/\n\s*\d+\.\s*[^\n\r]*/i);
     const paxLine = paxLineMatch?.[0] || '';
-    const seatFromPaxLine =
-      paxLine.match(/\bBN\d{1,3}\b[^\n\r]*\*(\d+[A-Z])\b/i)?.[1] ||
-      paxLine.match(/\bBN\d{1,3}\b[^\n\r]*\s(\d+[A-Z])\b/i)?.[1] ||
-      '';
-    const seatFromSection =
-      section.match(/\bBN\d{1,3}\b[^\n\r]*\*(\d+[A-Z])\b/i)?.[1] ||
-      section.match(/\bBN\d{1,3}\b[^\n\r]*\s(\d+[A-Z])\b/i)?.[1] ||
-      '';
+    const seatFromPaxLine = extractSeatAfterBn(paxLine);
+    const seatFromSection = extractSeatAfterBn(section);
     const seat = (seatFromPaxLine || seatFromSection || '').toUpperCase();
     const sectionWithoutPsm = section
       .split(/\r?\n/)
-      .filter((line) => !/^\s*PSM\b/i.test(line))
+      .filter((line) => !/^(?:PSM|MSG)(?:\b|-)/i.test(line.trim()))
       .join('\n');
     const codes = [...sectionWithoutPsm.matchAll(wchCodeRegex)].map((m) => m[1].toUpperCase());
     if (!codes.length) continue;
@@ -534,11 +848,7 @@ function enrichMembershipListFromLog(log, syInfo, targetYmd = null) {
     const bn = (paxLine.match(/\bBN(\d{1,3})\b/i)?.[1] || '').padStart(3, '0');
     if (!bn) continue;
     const name = paxLine.match(/\n\s*\d+\.\s*([A-Z]+\/[A-Z]+)/i)?.[1] || '-';
-    const seat = (
-      paxLine.match(/\bBN\d{1,3}\b[^\n\r]*\*(\d+[A-Z])\b/i)?.[1] ||
-      paxLine.match(/\bBN\d{1,3}\b[^\n\r]*\s(\d+[A-Z])\b/i)?.[1] ||
-      ''
-    ).toUpperCase();
+    const seat = extractSeatAfterBn(paxLine);
     const cabin = (paxLine.match(/\b([FAJCDQIOYBMEHKLNRSVTGZX])\s+PVG\b/i)?.[1] || '').toUpperCase();
     const ffMatch = section.match(/\bFF\/([A-Z0-9]{2})\s+([A-Z0-9]+)\/([VGSPE])\b/i);
     if (!ffMatch) continue;
@@ -605,17 +915,16 @@ function enrichSeatMapRecordsFromLog(log, syInfo, targetYmd = null) {
     const passengerName = (passengerLine.match(/^\s*\d+\.\s*\d?([A-Z\/]+\+?)/i)?.[1] || '').replace(/\+$/, '').toUpperCase();
     const bn = section.match(/\bBN\s*(\d{1,3})\b/i)?.[1]?.padStart(3, '0') || '';
     const seat = (
-      passengerLine.match(/\bBN\d{1,3}\b[^\n\r]*\*(\d+[A-Z])\b/i)?.[1] ||
-      passengerLine.match(/\bBN\d{1,3}\b[^\n\r]*\s(\d+[A-Z])\b/i)?.[1] ||
-      passengerLine.match(/\bSNR?\s*(\d+[A-Z])\b/i)?.[1] ||
-      section.match(/^\s*O\/[^\n\r]*\bSNR?\s*(\d+[A-Z])\b/im)?.[1] ||
-      section.match(/^\s*O\/[^\n\r]*\b(?:BN\s*\d{1,3}\s+)?\*?(\d+[A-Z])\b/im)?.[1] ||
+      extractSeatAfterBn(passengerLine) ||
+      passengerLine.match(/\bSNR?\s*(\d{1,3}[A-Z])\b/i)?.[1] ||
+      section.match(/^\s*O\/[^\n\r]*\bSNR?\s*(\d{1,3}[A-Z])\b/im)?.[1] ||
+      section.match(/^\s*O\/[^\n\r]*\b(?:BN\s*\d{1,3}\s+)?\*?(\d{1,3}[A-Z])\b/im)?.[1] ||
       ''
     ).toUpperCase();
     if (!seat) continue;
 
     const serviceCodes = ['VIP', 'AVIH', 'BLND', 'DEAF', 'INAD', 'PETC', 'UM', 'STCR', 'MAAS', 'PPOC', 'WCHR', 'WCHS', 'WCHC'];
-    const nonPsmSection = section.split(/\r?\n/).filter((line) => !/^\s*PSM\b/i.test(line)).join('\n');
+    const nonPsmSection = section.split(/\r?\n/).filter((line) => !/^(?:PSM|MSG)(?:\b|-)/i.test(line.trim())).join('\n');
     const specialServices = serviceCodes.filter((code) => new RegExp(`(?:\\s|\\/|^)${code}(?:\\s|\\/|$)`, 'i').test(nonPsmSection));
     const specialMeals = [...section.matchAll(/\bSPML-([A-Z]{4})\b/gi)].map((m) => m[1].toUpperCase());
     const ffMatch = section.match(/\bFF\/([A-Z0-9]{2})\s+([A-Z0-9]+)\/([VGSPE])\b/i);
@@ -671,6 +980,60 @@ function enrichSeatMapRecordsFromLog(log, syInfo, targetYmd = null) {
     .map(({ ts, seq, ...record }) => record);
 }
 
+
+function enrichPsmListFromLog(log, syInfo, targetYmd = null) {
+  if (!log || !syInfo?.flightNo || !syInfo?.flightDate) return [];
+  const sections = splitLogicalSections(log);
+  const latestByBn = new Map();
+
+  for (const sectionObj of sections) {
+    const section = sectionObj.content || '';
+    if (!section.includes('PR:')) continue;
+    if (targetYmd) {
+      const sectionYmd = getYmdFromTimestamp(sectionObj.timestamp);
+      if (sectionYmd !== targetYmd) continue;
+    }
+
+    const prMatch = section.match(/PR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
+    if (!prMatch) continue;
+    if (prMatch[1].toUpperCase() !== syInfo.flightNo || prMatch[2].toUpperCase() !== syInfo.flightDate) continue;
+
+    const psmLines = extractPsmLines(section).filter(hasTargetPsm);
+    if (!psmLines.length) continue;
+
+    const bn = section.match(/\bBN\s*(\d{1,3})\b/i)?.[1]?.padStart(3, '0') || '';
+    if (!bn) continue;
+
+    const passengerLine = getPassengerRecordLine(section);
+    if (isDeletedPassengerLine(passengerLine)) continue;
+
+    const seat = (
+      extractSeatAfterBn(passengerLine) ||
+      section.match(/\bSN\s*(\d{1,3}[A-Z])\b/i)?.[1] ||
+      ''
+    ).toUpperCase();
+    const bagLine = section.match(/BAGTAG\s*\/([^\n\r]+)/i)?.[1] || '';
+    const bagtags = [...bagLine.matchAll(/(?:^|\s)\/?\s*((?:[A-Z]{1,3}\s*)?\d{5,12})\s*\/\s*([A-Z]{3})\b/gi)]
+      .map((m) => `${String(m[1] || '').replace(/\s+/g, ' ').trim()}/${String(m[2] || '').toUpperCase()}`);
+    const ts = parseSectionTimestamp(sectionObj.timestamp);
+    const prev = latestByBn.get(bn);
+    if (prev && prev.ts > ts) continue;
+
+    latestByBn.set(bn, {
+      bn,
+      name: getPassengerNameFromSection(section),
+      seat: seat || '---',
+      bagtags,
+      psmLines,
+      ts
+    });
+  }
+
+  return [...latestByBn.values()]
+    .sort((a, b) => Number(a.bn) - Number(b.bn))
+    .map(({ ts, ...row }) => row);
+}
+
 function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
   if (!log || !syInfo?.flightNo || !syInfo?.flightDate) return [];
   const sections = splitLogicalSections(log);
@@ -714,8 +1077,16 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
       latestByBn.set(bn, { ts, section, score });
       continue;
     }
-    const prevIsDeleted = isDeletedPassengerSection(prev.section || '');
-    if ((ts > prev.ts && (isDeletedSection || prevIsDeleted)) || score > prev.score || (score === prev.score && ts >= prev.ts)) {
+
+    const hasPassengerLine = Boolean(getPassengerRecordLine(section));
+    if (ts > prev.ts) {
+      latestByBn.set(bn, {
+        ts,
+        section: isDeletedSection || hasPassengerLine ? section : `${prev.section || ''}
+${section}`,
+        score
+      });
+    } else if (ts === prev.ts && score >= prev.score) {
       latestByBn.set(bn, { ts, section, score });
     }
   }
@@ -764,9 +1135,8 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     const passengerLine = getPassengerRecordLine(section);
     const passengerName = (passengerLine.match(/^\s*\d+\.\s*\d?([A-Z\/]+\+?)/i)?.[1] || '').replace(/\+$/, '').toUpperCase();
     const passengerSeat = (
-      passengerLine.match(/\bBN\d{1,3}\b[^\n\r]*\*(\d+[A-Z])\b/i)?.[1] ||
-      passengerLine.match(/\bBN\d{1,3}\b[^\n\r]*\s(\d+[A-Z])\b/i)?.[1] ||
-      section.match(/\bSN\s*(\d+[A-Z])\b/i)?.[1] ||
+      extractSeatAfterBn(passengerLine) ||
+      section.match(/\bSN\s*(\d{1,3}[A-Z])\b/i)?.[1] ||
       ''
     ).toUpperCase();
     const ffMatch = section.match(/\bFF\/([A-Z0-9]+)\s+(\d+)\/([A-Z])\b/i);
@@ -790,7 +1160,7 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
       status: /\bDELETED\b/i.test(outboundLineForRecord) ? 'DELETED' : ''
     } : null;
     const ssrCodes = ['VIP', 'AVIH', 'BLND', 'DEAF', 'INAD', 'PETC', 'UM', 'STCR', 'MAAS', 'PPOC', 'WCHR', 'WCHS', 'WCHC'];
-    const nonPsmSection = section.split(/\r?\n/).filter((line) => !/^\s*PSM\b/i.test(line)).join('\n');
+    const nonPsmSection = section.split(/\r?\n/).filter((line) => !/^(?:PSM|MSG)(?:\b|-)/i.test(line.trim())).join('\n');
     const specialServices = ssrCodes.filter((code) => new RegExp(`(?:\\s|\\/|^)${code}(?:\\s|\\/|$)`, 'i').test(nonPsmSection));
     const umNumber = section.match(/\bUM(\d{1,2})\b/i)?.[1];
     if (umNumber && !specialServices.includes('UM')) specialServices.push('UM');
@@ -804,6 +1174,7 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     const ageYears = getAgeYearsAtDate(dobDate, atDateUtc);
     const hasChdCode = /\bCHD1\/0\b/i.test(section);
     const isChild = (Number.isInteger(ageYears) && ageYears >= 2 && ageYears < 12) || hasChdCode;
+    const psmLines = extractPsmLines(section);
     const paidProductsShort = (section.match(/^\s*ASVC-[^\n\r]+/gim) || []).map((line) => {
       const fullLine = line.replace(/^ASVC-\s*/i, '').trim();
       const serviceCode = (fullLine.match(/(?:^|\/)\s*([A-Z]{4})\s*(?:\/|\s)/i)?.[1] || fullLine.match(/\b(\d+[A-Z]|[0-9]+PC)\b/i)?.[1] || '').toUpperCase();
@@ -837,6 +1208,7 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
       specialServices: filteredSpecialServices,
       specialMeals: [...new Set(specialMeals)],
       paidProductsShort,
+      psmLines,
       status: isOffloaded ? 'DELETED' : '',
       offloaded: isOffloaded,
       recordTimestamp: payload.ts || 0
@@ -846,10 +1218,12 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
       return /\/CHKLEG\b/.test(normalized)
         || /^CKIN\s+HK\d+\s+LKCK\/\d+\/[A-Z]$/.test(normalized)
         || /^CKIN\s+MTCK\/MAP\/MU\b/.test(normalized)
-        || /^CKIN\s+(?:STSP|GE|KATE|YUIKA|BY\s+YUIKA|BY\s+NORMA|GLENN|NH|RP|TIAN)\b/.test(normalized)
+        || /^CKIN\s+(?:STSP|GE|KATE|YUIKA|BY\s+YUIKA|BY\s+NORMA|GLENN|NH|RP|TIAN|TAMSUN)\b/.test(normalized)
         || /^CKIN\s+HK\d+\s+VICO\d+\b/.test(normalized);
     };
     const ckinLineList = section.split(/\r?\n/).filter((line) => /^\s*CKIN\b/i.test(line)).map((line) => line.trim());
+    const gateComments = ckinLineList.filter((item) => /^CKIN\s+NBRD\b/i.test(item));
+    passengerRecord.gateComments = gateComments;
     const visaRelevantCkinLineList = ckinLineList.filter((line) => !isVisaIrrelevantCkinLine(line));
     const ckinLines = visaRelevantCkinLineList.join(' ').toUpperCase();
     const hasVisaKeyword = /\b(?:VISA\d*|VS|TRAVEL\s*DOC(?:UMENT)?\d*|TRAVELDOC(?:UMENT)?\d*|V|PR CARD)\b/.test(ckinLines);
@@ -1051,6 +1425,8 @@ function findSYInfo(log, queryDate, options = {}) {
       info.membershipList = enrichMembershipListFromLog(log, info, targetYmd);
       info.seatMapRecords = enrichSeatMapRecordsFromLog(log, info, targetYmd);
       info.bnAudit = enrichBnAuditFromLog(log, info, targetYmd);
+      info.psmList = enrichPsmListFromLog(log, info, targetYmd);
+      info.crewApis = enrichCrewApisFromLog(log, info, targetYmd);
       return info;
     }
   }
@@ -1098,6 +1474,8 @@ function findSYInfo(log, queryDate, options = {}) {
     info.membershipList = enrichMembershipListFromLog(log, info, targetYmd);
     info.seatMapRecords = enrichSeatMapRecordsFromLog(log, info, targetYmd);
     info.bnAudit = enrichBnAuditFromLog(log, info, targetYmd);
+    info.psmList = enrichPsmListFromLog(log, info, targetYmd);
+    info.crewApis = enrichCrewApisFromLog(log, info, targetYmd);
     return info;
   }
 
