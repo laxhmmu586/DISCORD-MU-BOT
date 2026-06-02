@@ -1563,6 +1563,24 @@
         cursor: pointer;
       }
 
+      .seat-cell.is-occupied.is-wheelchair {
+        border-color: rgba(83, 174, 255, 0.84);
+        background: rgba(35, 103, 196, 0.58);
+        color: #e0f1ff;
+      }
+
+      .seat-cell.is-occupied.is-child {
+        border-color: rgba(204, 166, 255, 0.84);
+        background: rgba(117, 78, 170, 0.5);
+        color: #f2e8ff;
+      }
+
+      .seat-cell.is-occupied.is-infant {
+        border-color: rgba(255, 174, 92, 0.86);
+        background: rgba(151, 83, 22, 0.58);
+        color: #fff0df;
+      }
+
       .seat-cell.has-alert {
         border-color: rgba(255, 98, 92, 0.72);
         background: rgba(255, 98, 92, 0.16);
@@ -2275,6 +2293,7 @@
       }
 
       function beginTimelineDrag(event) {
+        if (event.target.closest(".node")) return;
         didDrag = false;
         dragStartX = event.clientX;
         lastDragX = event.clientX;
@@ -2460,6 +2479,23 @@
         return new Map([...(currentSy?.seatMapRecords || []), ...(currentSy?.bnAudit || [])].map((row) => [String(row.bn || "").padStart(3, "0"), row.passengerRecord || row]));
       }
 
+      function auditLookupByBn() {
+        return new Map((currentSy?.bnAudit || []).map((row) => [String(row.bn || "").padStart(3, "0"), row]));
+      }
+
+      function govIssueCard(row) {
+        const checks = [
+          ["API", row.apiStatus, row.apiReason || row.reason],
+          ["TK", row.tkStatus, row.tkReason],
+          ["VISA", row.visaStatus, row.visaReason || row.reason],
+          ["BAG", row.bagStatus, row.bagReason],
+        ].filter(([, status, reason]) => status || reason);
+        const body = checks.length
+          ? checks.map(([label, status, reason]) => `<div class="security-check-line is-${checkTone(status || "review")}"><b>${escapeHtml(label)}</b><span>${escapeHtml(reason || `${label} needs review`)}</span></div>`).join("")
+          : `<div class="security-check-line is-warning"><b>${escapeHtml(row.group || "GOV")}</b><span>${escapeHtml(row.reason || "Needs review")}</span></div>`;
+        return `<article class="record-card is-warning"><div class="record-title"><span>BN${escapeHtml(row.bn || "---")}</span><span class="record-badge">WARNING</span></div><div class="security-check-list">${body}</div></article>`;
+      }
+
       function enrichRowsWithPassengerData(rows) {
         const lookup = passengerLookupByBn();
         return (rows || []).map((row) => ({ ...(lookup.get(String(row.bn || "").padStart(3, "0")) || {}), ...row }));
@@ -2557,14 +2593,22 @@
           ["WEB/EDI/Reswipe", (gov.passportCodeIssues || []).map((bn) => ({ bn, reason: "WEB/EDI/Reswipe" }))],
         ];
         const passengerByBn = passengerLookupByBn();
-        const rows = groups.flatMap(([group, items]) => (items || []).map((item) => ({ ...(passengerByBn.get(String(item.bn || "").padStart(3, "0")) || {}), ...item, group })));
+        const auditByBn = auditLookupByBn();
+        const enrichGovRow = (item, group) => {
+          const bn = String(item.bn || "").padStart(3, "0");
+          const audit = auditByBn.get(bn) || {};
+          const passenger = passengerByBn.get(bn) || {};
+          const passengerRecord = { ...(passenger || {}), ...(audit.passengerRecord || {}), ...(item.passengerRecord || {}), reason: item.reason, group };
+          return { ...passenger, ...audit, ...item, bn: item.bn || audit.bn || passenger.bn, group, _panelCard: "gov", passengerRecord };
+        };
+        const rows = groups.flatMap(([group, items]) => (items || []).map((item) => enrichGovRow(item, group)));
         const summary = groups.map(([label, items]) => {
-          const groupRows = (items || []).map((item) => ({ ...item, group: label }));
+          const groupRows = (items || []).map((item) => enrichGovRow(item, label));
           const status = groupRows.length ? String(groupRows.length) : "Clear";
           return `<div class="data-card"><b>${escapeHtml(label)}</b><span>${escapeHtml(status)}</span></div>`;
         }).join("");
         const details = groups.map(([label, items]) => {
-          const groupRows = (items || []).map((item) => ({ ...(passengerByBn.get(String(item.bn || "").padStart(3, "0")) || {}), ...item, group: label }));
+          const groupRows = (items || []).map((item) => enrichGovRow(item, label));
           if (!groupRows.length) return "";
           const reasonRows = groupRows.map((row, index) => `<div class="security-check-line is-warning"><b>BN${escapeHtml(row.bn || index + 1)}</b><span>${escapeHtml(row.reason || label)}</span></div>`).join("");
           return `<article class="data-card"><b>${escapeHtml(label)} Details</b><div class="security-check-list">${reasonRows}</div>${renderBnButtons(groupRows, "", (row) => row.reason)}</article>`;
@@ -2777,7 +2821,7 @@
         if ([6, 7, 8, 9, 10, 11, 12, 15, 16, 17, 18, 19, 20].includes(rowNo)) return { cabin: "Business Class", premium: true, slots: alignedPremium };
         if (rowNo === 31) return { cabin: "Economy Class", slots: ["blank", "blank", "blank", "aisle", "D", "F", "G", "H", "aisle", "blank", "blank", "blank"] };
         if (rowNo >= 70 && rowNo <= 73) return { cabin: "Economy Class", slots: ["A", "blank", "C", "aisle", "D", "F", "G", "H", "aisle", "J", "blank", "L"] };
-        if (rowNo === 74) return { cabin: "Economy Class", slots: ["A", "blank", "C", "aisle", "blank", "blank", "blank", "blank", "aisle", "J", "blank", "L"] };
+        if (rowNo === 74) return { cabin: "Economy Class", slots: ["A", "blank", "C", "aisle", "blank", "blank", "blank", "blank", "aisle", "blank", "blank", "blank"] };
         if (rowNo >= 31 && rowNo <= 44) return { cabin: "Economy Class", slots: economyFull };
         if (rowNo >= 61 && rowNo <= 69) return { cabin: "Economy Class", slots: economyFull };
         return null;
@@ -2898,7 +2942,12 @@
       });
 
       nodes.forEach((node) => {
-        node.addEventListener("click", () => {
+        node.addEventListener("pointerdown", (event) => {
+          event.stopPropagation();
+          didDrag = false;
+        });
+        node.addEventListener("click", (event) => {
+          event.preventDefault();
           didDrag = false;
           resetTimelineCenter(node.dataset.key);
           renderStepPanel(node.dataset.key);
@@ -2955,7 +3004,8 @@
           const bn = passengerButton.dataset.passengerBn;
           const row = (bn && rows.find((item) => String(item.bn || "") === bn)) || rows[index] || { bn };
           const inlineSide = resultPanel.querySelector(".inline-record-side");
-          if (inlineSide) inlineSide.innerHTML = passengerRecordCard(row.passengerRecord || row, "Passenger Record");
+          const recordHtml = row._panelCard === "gov" ? `${govIssueCard(row)}${passengerRecordCard(row.passengerRecord || row, "Passenger Record", "warning")}` : passengerRecordCard(row.passengerRecord || row, "Passenger Record");
+          if (inlineSide) inlineSide.innerHTML = recordHtml;
           else showPassengerModal(row.passengerRecord || row, "Passenger Record", passengerButton);
           return;
         }
