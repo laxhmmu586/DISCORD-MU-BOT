@@ -1348,6 +1348,10 @@
         color: #8fc4ff;
       }
 
+      .record-row span {
+        white-space: pre-line;
+      }
+
       .security-pill-row {
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1546,7 +1550,8 @@
         background: rgba(255, 98, 92, 0.16);
       }
 
-      .seat-aisle {
+      .seat-aisle,
+      .seat-blank {
         min-height: 1px;
       }
 
@@ -1906,6 +1911,7 @@
               <div class="detail-actions" aria-label="Flight detail actions">
                 <button class="detail-action" type="button" data-panel="chd">CHD List <span class="detail-action-badge" id="chd-count">0</span></button>
                 <button class="detail-action" type="button" data-panel="gov">GOV/AQQ <span class="detail-action-badge" id="gov-count">0</span></button>
+                <button class="detail-action" type="button" data-panel="nbrd">CKIN/NBRD <span class="detail-action-badge" id="nbrd-count">0</span></button>
                 <button class="detail-action" type="button" data-panel="wch">WCH <span class="detail-action-badge" id="wch-count">0</span></button>
                 <button class="detail-action" type="button" data-panel="membership">Membership</button>
                 <button class="detail-action" type="button" data-panel="psm">PSM/MSG <span class="detail-action-badge" id="psm-count">0</span></button>
@@ -2278,6 +2284,12 @@
         return lounge.guest ? "✔️" : "❌";
       }
 
+
+      function formatCheckinDetails(value) {
+        if (Array.isArray(value)) return value.filter(Boolean).join("\n");
+        return compactValue(value);
+      }
+
       function maskTail(value, visibleTail = 4) {
         const raw = String(value || "").trim();
         if (!raw) return "";
@@ -2324,7 +2336,8 @@
           ["SSR", visibleByPermission(data, "canViewSpecialService") ? compactValue(data?.specialServices || data?.codes) : "Hidden"],
           ["Meal", visibleByPermission(data, "canViewSpecialMeals") ? compactValue(data?.specialMeals) : "Hidden"],
           ["Paid Service", visibleByPermission(data, "canViewPaidService") ? compactValue(data?.paidProductsShort) : "Hidden"],
-          ["Status", data?.status],
+          ["Checkin Details", visibleByPermission(data, "canViewCheckinDetails") ? formatCheckinDetails(data?.checkinDetails || data?.gateComments) : "Hidden"],
+          ["Status", data?.deleted || data?.offloaded || data?.status === "DELETED" ? "DELETED" : data?.status],
           ...extraPassengerFields(data),
         ].filter(([, value]) => value !== null && value !== undefined && value !== "" && value !== false);
       }
@@ -2435,10 +2448,11 @@
         const nbrdCount = (sy.bnAudit || []).filter((row) => /NBRD|CKIN/i.test(row?.apiReason || row?.tkReason || row?.visaReason || row?.bagReason || "")).length;
         setText("#chd-count", chdIssues || (sy.chdList || []).length || "0");
         setText("#gov-count", govCount || "0");
+        setText("#nbrd-count", nbrdCount || "0");
         setText("#wch-count", (sy.wchList || []).length || "0");
         setText("#psm-count", (sy.psmList || []).length || "0");
         if (bagReportButton) bagReportButton.hidden = !(sy.bagSheet?.hasData);
-        if (salesReportButton) salesReportButton.hidden = !(sy.salesReport?.found || sy.salesReportFound);
+        if (salesReportButton) salesReportButton.hidden = sy.salesReport?.found === false || sy.salesReportFound === false;
         let previousStarted = true;
         nodes.forEach((node) => {
           const key = node.dataset.key;
@@ -2503,7 +2517,9 @@
         const rows = groups.flatMap(([group, items]) => (items || []).map((item) => ({ ...(passengerByBn.get(String(item.bn || "").padStart(3, "0")) || {}), ...item, group })));
         const body = groups.map(([label, items]) => {
           const groupRows = (items || []).map((item) => ({ ...item, group: label }));
-          return `<div class="data-card"><b>${escapeHtml(label)}</b>${renderBnButtons(groupRows, "Clear", (row) => row.reason)}</div>`;
+          const status = groupRows.length ? String(groupRows.length) : "Clear";
+          const details = groupRows.length ? `<div class="panel-muted">${renderBnButtons(groupRows, "", (row) => row.reason)}</div>` : "";
+          return `<div class="data-card"><b>${escapeHtml(label)}</b><span>${escapeHtml(status)}</span>${details}</div>`;
         }).join("");
         renderPanel("GOV/AQQ", currentSy?.flightNo || "SY", `<div class="data-grid">${body}</div>`);
         setPanelPassengerRows(rows);
@@ -2539,13 +2555,14 @@
       }
 
       function renderPsmPanel() {
-        const targetMsgCodes = ["TSXL", "JMSQ", "XCSQ", "TXLK", "QTQK"];
+        const targetMsgCodes = ["TSXL", "JMSQ", "XCSQ", "TXLK", "QTQK", "EXBG0KG"];
         const rows = enrichRowsWithPassengerData((currentSy?.psmList || []).filter((row) => {
           const lines = Array.isArray(row.psmLines) ? row.psmLines : [row.text || row.raw || row.message].filter(Boolean);
-          return lines.some((line) => /^\s*PSM/i.test(line) || (/^\s*MSG/i.test(line) && targetMsgCodes.some((code) => String(line).toUpperCase().replace(/\s+/g, "").includes(code))));
+          return lines.some((line) => /^\s*(?:PSM|MSG)/i.test(line) && targetMsgCodes.some((code) => String(line).toUpperCase().replace(/\s+/g, "").includes(code)));
         }));
         const body = rows.length ? `<div class="panel-stats"><span class="status-fail">PSM/MSG total: ${rows.length}</span></div><div class="psm-card-list">${rows.map((row, index) => {
-          const lines = Array.isArray(row.psmLines) ? row.psmLines : [row.text || row.raw || row.message].filter(Boolean);
+          const lines = (Array.isArray(row.psmLines) ? row.psmLines : [row.text || row.raw || row.message].filter(Boolean))
+            .filter((line) => /^\s*(?:PSM|MSG)/i.test(line) && targetMsgCodes.some((code) => String(line).toUpperCase().replace(/\s+/g, "").includes(code)));
           const type = lines.some((line) => /^\s*MSG/i.test(line)) ? "MSG" : "PSM";
           return `<article class="psm-card"><div class="psm-card-head"><span><button class="bn-button is-warning" type="button" data-passenger-index="${index}" data-passenger-bn="${escapeHtml(row.bn || "")}">BN${escapeHtml(row.bn || "---")}</button> <small>${escapeHtml(passengerName(row))} • ${escapeHtml(row.seat || "---")}</small></span><span class="psm-badge">${escapeHtml(type)}</span></div><div class="psm-card-row"><b>Bags</b> ${escapeHtml(compactValue(row.bagtags) || "-")}</div><div class="psm-card-row"><b>Detail</b><br>${lines.map((line) => escapeHtml(line)).join("<br>")}</div></article>`;
         }).join("")}</div>` : `<p class="panel-muted">No PSM/MSG records found.</p>`;
@@ -2555,7 +2572,11 @@
 
       function renderNbrdPanel() {
         const rows = enrichRowsWithPassengerData((currentSy?.bnAudit || []).filter((row) => /NBRD|CKIN/i.test(row?.apiReason || row?.tkReason || row?.visaReason || row?.bagReason || "")));
-        renderPanel("NBRD / CKIN", currentSy?.flightNo || "SY", renderBnButtons(rows, "No NBRD/CKIN issue found.", (row) => [row.apiReason, row.tkReason, row.visaReason, row.bagReason].filter(Boolean).join("; ")));
+        const body = rows.length ? `<div class="panel-stats"><span class="status-fail">CKIN/NBRD total: ${rows.length}</span></div><div class="psm-card-list">${rows.map((row, index) => {
+          const detailLines = [row.apiReason, row.tkReason, row.visaReason, row.bagReason].filter(Boolean);
+          return `<article class="psm-card"><div class="psm-card-head"><span><button class="bn-button is-warning" type="button" data-passenger-index="${index}" data-passenger-bn="${escapeHtml(row.bn || "")}">BN${escapeHtml(row.bn || "---")}</button> <small>${escapeHtml(passengerName(row))} • ${escapeHtml(row.seat || "---")}</small></span><span class="psm-badge">CKIN/NBRD</span></div><div class="psm-card-row"><b>Detail</b><br>${detailLines.map((line) => escapeHtml(line)).join("<br>")}</div></article>`;
+        }).join("")}</div>` : `<p class="panel-muted">No NBRD/CKIN issue found.</p>`;
+        renderPanel("CKIN/NBRD", currentSy?.flightNo || "SY", body);
         setPanelPassengerRows(rows);
       }
 
@@ -2644,6 +2665,7 @@
 
       function securityCard(row) {
         if (!row) return passengerRecordCard({}, "Passenger Record");
+        if (row.missing) return `<article class="record-card is-warning"><div class="record-title"><span>BN${escapeHtml(row.bn || "---")}</span><span class="record-badge">NO RECORD</span></div><p class="panel-muted">No passenger record found for this BN.</p></article>`;
         const tone = securityTone(row);
         const checks = [
           ["API", row.apiStatus, row.apiReason],
@@ -2651,10 +2673,11 @@
           ["VISA", row.visaStatus, row.visaReason],
           ["BAG", row.bagStatus, row.bagReason],
         ];
-        const rows = checks.map(([label, status, reason]) => `<div class="security-check-line is-${checkTone(status)}"><b>${escapeHtml(label)}</b> ${escapeHtml(reason || (status === "pass" ? `${label} passed` : "No detail"))}</div>`).join("");
+        const rows = checks.map(([label, status, reason]) => `<div class="security-check-line is-${checkTone(status)}"><b>${escapeHtml(label)}</b><span>${escapeHtml(reason || (status === "pass" ? `${label} passed` : "No detail"))}</span></div>`).join("");
         const reviewLine = row.review ? `<div class="security-row"><b>Review</b><span>${escapeHtml(`${row.review.status || ""} ${row.review.reviewer ? `by ${row.review.reviewer}` : ""} ${row.review.updatedAt || ""}`)}</span></div>` : "";
         const reviewButtons = `<div class="review-actions"><button type="button" data-review-bn="${escapeHtml(row.bn || "")}" data-review-status="pass">Review Pass</button><button type="button" data-review-bn="${escapeHtml(row.bn || "")}" data-review-status="fail">Review Fail</button></div>`;
-        return `<article class="record-card ${tone === "warning" ? "is-warning" : tone === "fail" ? "is-fail" : ""}"><div class="record-title"><span>BN${escapeHtml(row.bn || "---")}</span><span class="record-badge">${escapeHtml(tone === "pass" ? "PASS" : tone === "fail" ? "FAIL" : "WARNING")}</span></div><div class="security-check-list">${rows}</div>${reviewButtons}${reviewLine}</article>${passengerRecordCard(row.passengerRecord || row, "Passenger Record", tone)}`;
+        const passenger = { ...(row.passengerRecord || row), deleted: row.deleted, offloaded: row.offloaded, status: row.deleted || row.offloaded || row.status === "DELETED" ? "DELETED" : (row.status || row.passengerRecord?.status) };
+        return `<article class="record-card ${tone === "warning" ? "is-warning" : tone === "fail" ? "is-fail" : ""}"><div class="record-title"><span>BN${escapeHtml(row.bn || "---")}</span><span class="record-badge">${escapeHtml(row.deleted || row.offloaded || row.status === "DELETED" ? "DELETED" : tone === "pass" ? "PASS" : tone === "fail" ? "FAIL" : "WARNING")}</span></div><div class="security-check-list">${rows}</div>${reviewButtons}${reviewLine}</article>${passengerRecordCard(passenger, "Passenger Record", tone)}`;
       }
 
       async function renderSecurityCheck(selectedBn = null) {
@@ -2665,9 +2688,9 @@
         const byBn = new Map(rows.map((row) => [String(row.bn || "").padStart(3, "0"), row]));
         const allRows = Array.from({ length: 320 }, (_, index) => {
           const bn = String(index + 1).padStart(3, "0");
-          return byBn.get(bn) || { bn, status: "DELETED", offloaded: true, deleted: true };
+          return byBn.get(bn) || { bn, missing: true };
         });
-        const buttons = `<div class="security-grid">${allRows.map((row, index) => `<button class="bn-button ${row.deleted || row.offloaded || row.status === "DELETED" ? "is-deleted" : `is-${securityTone(row)}`}" type="button" data-security-index="${index}">${escapeHtml(row.bn)}</button>`).join("")}</div>`;
+        const buttons = `<div class="security-grid">${allRows.map((row, index) => `<button class="bn-button ${row.missing || row.deleted || row.offloaded || row.status === "DELETED" ? "is-deleted" : `is-${securityTone(row)}`}" type="button" data-security-index="${index}">${escapeHtml(row.bn)}</button>`).join("")}</div>`;
         const stats = `<div class="panel-stats"><span class="status-ok">${passCount} pass</span><span class="status-warn">${warningCount} warning</span><span class="status-fail">${failCount} fail</span></div>`;
         const selectedRow = selectedBn ? allRows.find((row) => String(row.bn || "") === String(selectedBn).padStart(3, "0")) : null;
         renderPanel("Security Check", currentSy?.flightNo || "SY", `${stats}<div class="panel-workspace"><div>${buttons}</div><div class="panel-side">${selectedRow ? securityCard(selectedRow) : `<p class="panel-muted">Click a BN button to view the passenger record.</p>`}</div></div>`);
@@ -2689,13 +2712,16 @@
       }
 
       function seatLayoutForRow(rowNo) {
+        const alignedPremium = ["A", "blank", "blank", "aisle", "D", "blank", "blank", "H", "aisle", "blank", "blank", "L"];
+        const economyFull = ["A", "B", "C", "aisle", "D", "F", "G", "H", "aisle", "J", "K", "L"];
         if (rowNo === 1) return { cabin: "First Class", premium: true, slots: ["A", "wide", "wide", "wide", "wide", "wide", "wide", "wide", "wide", "wide", "wide", "L"] };
-        if (rowNo === 2) return { cabin: "First Class", premium: true, slots: ["A", "aisle", "aisle", "D", "H", "aisle", "aisle", "L"] };
-        if ([6, 7, 8, 9, 10, 11, 12, 15, 16, 17, 18, 19, 20].includes(rowNo)) return { cabin: "Business Class", premium: true, slots: ["A", "aisle", "D", "H", "aisle", "L"] };
-        if (rowNo === 31) return { cabin: "Economy Class", slots: ["aisle", "aisle", "aisle", "D", "F", "G", "H"] };
-        if (rowNo >= 70 && rowNo <= 74) return { cabin: "Economy Class", slots: ["A", "C", "aisle", "D", "F", "G", "H"] };
-        if (rowNo >= 31 && rowNo <= 44) return { cabin: "Economy Class", slots: ["A", "B", "C", "aisle", "D", "F", "G", "H", "aisle", "J", "K", "L"] };
-        if (rowNo >= 61 && rowNo <= 69) return { cabin: "Economy Class", slots: ["A", "B", "C", "aisle", "D", "F", "G", "H", "aisle", "J", "K", "L"] };
+        if (rowNo === 2) return { cabin: "First Class", premium: true, slots: alignedPremium };
+        if ([6, 7, 8, 9, 10, 11, 12, 15, 16, 17, 18, 19, 20].includes(rowNo)) return { cabin: "Business Class", premium: true, slots: alignedPremium };
+        if (rowNo === 31) return { cabin: "Economy Class", slots: ["blank", "blank", "blank", "aisle", "D", "F", "G", "H", "aisle", "blank", "blank", "blank"] };
+        if (rowNo >= 70 && rowNo <= 73) return { cabin: "Economy Class", slots: ["A", "blank", "C", "aisle", "D", "F", "G", "H", "aisle", "J", "blank", "L"] };
+        if (rowNo === 74) return { cabin: "Economy Class", slots: ["A", "blank", "C", "aisle", "blank", "blank", "blank", "blank", "aisle", "J", "blank", "L"] };
+        if (rowNo >= 31 && rowNo <= 44) return { cabin: "Economy Class", slots: economyFull };
+        if (rowNo >= 61 && rowNo <= 69) return { cabin: "Economy Class", slots: economyFull };
         return null;
       }
 
@@ -2716,6 +2742,7 @@
           bodyRows.push(`<div class="seat-row ${layout.premium ? "is-premium" : ""}"><div class="seat-row-number">${rowNo}</div>${layout.slots.map((letter) => {
             if (letter === "wide") return `<div class="seat-aisle is-wide" aria-hidden="true"></div>`;
             if (letter === "aisle") return `<div class="seat-aisle" aria-hidden="true"></div>`;
+            if (letter === "blank") return `<div class="seat-blank" aria-hidden="true"></div>`;
             const seat = `${rowNo}${letter}`;
             const record = seats.get(seat);
             const tone = seatTone(record);
@@ -2723,7 +2750,7 @@
           }).join("")}</div>`);
         }
         const legend = `<div class="panel-stats"><span style="color:#8fd0ff">Wheelchair</span><span style="color:#d7bdff">Child</span><span style="color:#ffbf86">Infant</span></div>`;
-        renderPanel("Seat Map", currentSy?.flightNo || "SY", `${legend}<div class="seat-map-shell"><div class="seat-map-plane">${bodyRows.join("")}</div></div>`);
+        renderPanel("Seat Map", currentSy?.flightNo || "SY", `${legend}<div class="panel-workspace seat-map-workspace"><div class="seat-map-shell"><div class="seat-map-plane">${bodyRows.join("")}</div></div><div class="panel-side seat-record-side"><p class="panel-muted">Click a seat to view the passenger record.</p></div></div>`);
         setPanelPassengerRows(records);
       }
 
@@ -2824,6 +2851,7 @@
           const panel = button.dataset.panel;
           if (panel === "chd") renderChdPanel();
           if (panel === "gov") renderGovPanel();
+          if (panel === "nbrd") renderNbrdPanel();
           if (panel === "wch") renderWchPanel();
           if (panel === "membership") renderMembershipPanel();
           if (panel === "psm") renderPsmPanel();
@@ -2875,7 +2903,10 @@
           const seat = seatButton.dataset.seat;
           const rows = resultPanel._passengerRows || [];
           const row = rows.find((item) => String(item.seat || "").toUpperCase() === seat) || { seat };
-          showPassengerModal(row.passengerRecord || row, "Passenger Record", seatButton);
+          const enriched = { ...(passengerLookupByBn().get(String(row.bn || "").padStart(3, "0")) || {}), ...(row.passengerRecord || row) };
+          const side = resultPanel.querySelector(".seat-record-side");
+          if (side) side.innerHTML = passengerRecordCard(enriched, "Passenger Record");
+          else showPassengerModal(row.passengerRecord || row, "Passenger Record", seatButton);
         }
       });
 

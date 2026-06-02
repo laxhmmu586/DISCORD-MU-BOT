@@ -96,7 +96,7 @@ function getPassengerNameFromSection(section) {
   return paxListName || 'UNKNOWN';
 }
 
-const TARGET_PSM_MSG_CODES = ['TSXL', 'JMSQ', 'XCSQ', 'TXLK', 'QTQK'];
+const TARGET_PSM_MSG_CODES = ['TSXL', 'JMSQ', 'XCSQ', 'TXLK', 'QTQK', 'EXBG0KG'];
 
 function extractPsmLines(section) {
   return [...new Set(String(section || '')
@@ -107,9 +107,8 @@ function extractPsmLines(section) {
 
 function hasTargetPsm(line) {
   const raw = String(line || '').toUpperCase();
-  if (/^\s*PSM/i.test(raw)) return true;
   const normalized = raw.replace(/\s+/g, '');
-  return /^\s*MSG/i.test(raw) && TARGET_PSM_MSG_CODES.some((code) => normalized.includes(code));
+  return /^\s*(?:PSM|MSG)/i.test(raw) && TARGET_PSM_MSG_CODES.some((code) => normalized.includes(code));
 }
 
 function formatPassportExpiryFromSection(section) {
@@ -314,9 +313,9 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
     { key: 'crew2', label: 'CWI/N', ...findAcceptedCommand(new RegExp(`^>\\s*${lrPrefix}\\/N`, 'im')) },
     { key: 'crew3', label: 'BJSCCXH', ...findAcceptedCommand(new RegExp(`^>\\s*${lrPrefix}\\/BJSCCXH`, 'im')) }
   ];
-  const crewApisComplete = checks.every((item) => item.complete);
   const crewApisPrimaryCheck = checks.find((item) => item.key === 'crew2') || null;
-  const crewApisTime = crewApisComplete ? (crewApisPrimaryCheck?.time || '') : '';
+  const crewApisComplete = Boolean(crewApisPrimaryCheck?.complete);
+  const crewApisTime = crewApisPrimaryCheck?.time || '';
   const ccl = findAcceptedCommand(/^>\s*CCL\s*:/im);
   const cc = findAcceptedCommand(/^>\s*CC\s*:/im);
   const jcsy = findJcsyInfo(sections, flightNo, flightYmd, formatTime);
@@ -752,7 +751,7 @@ ${section}`,
       needsReswipeByAgent,
       hasAqqTcl: /\bAQQ\/TCL\/USA\b/i.test(section),
       hasGovDta: /\bGOV\/DTA\/CHN\b/i.test(section),
-      hasPassportCodeIssue: hasCodeIssue || hasPassportExpired
+      hasPassportCodeIssue: hasCodeIssue
     });
     if (hasCodeIssue || hasPassportExpired) {
       issueByBn.set(bn, issueReasons.join('; '));
@@ -1253,8 +1252,12 @@ ${section}`,
         || /^CKIN\s+HK\d+\s+VICO\d+\b/.test(normalized);
     };
     const ckinLineList = section.split(/\r?\n/).filter((line) => /^\s*CKIN\b/i.test(line)).map((line) => line.trim());
+    const operationLineList = section.split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => /^(?:API|GOV|ACC|MOD|BAG|BC|BAB|RES)\b/i.test(line));
     const gateComments = ckinLineList.filter((item) => /^CKIN\s+NBRD\b/i.test(item));
     passengerRecord.gateComments = gateComments;
+    passengerRecord.checkinDetails = operationLineList;
     const visaRelevantCkinLineList = ckinLineList.filter((line) => !isVisaIrrelevantCkinLine(line));
     const ckinLines = visaRelevantCkinLineList.join(' ').toUpperCase();
     const hasVisaKeyword = /\b(?:VISA\d*|VS|TRAVEL\s*DOC(?:UMENT)?\d*|TRAVELDOC(?:UMENT)?\d*|V|PR CARD)\b/.test(ckinLines);
