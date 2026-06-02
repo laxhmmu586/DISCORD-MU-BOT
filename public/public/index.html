@@ -1023,7 +1023,7 @@
       .result-panel {
         position: relative;
         z-index: 5;
-        margin-top: -560px;
+        margin-top: -650px;
       }
 
       .result-panel:empty {
@@ -1278,11 +1278,32 @@
       .security-pill.is-warning { background: rgba(150, 91, 16, 0.66); color: #ffeb82; }
       .security-pill.is-fail { background: rgba(132, 29, 39, 0.74); color: #ffd4d4; }
 
+      .review-actions {
+        display: flex;
+        gap: 8px;
+        margin: 10px 0 12px;
+      }
+
+      .review-actions button {
+        flex: 1;
+        min-height: 34px;
+        border: 1px solid rgba(176, 216, 255, 0.24);
+        background: rgba(0, 0, 0, 0.18);
+        color: white;
+        font-size: 12px;
+        font-weight: 950;
+        text-transform: uppercase;
+        cursor: pointer;
+      }
+
+      .review-actions button[data-review-status="pass"] { border-color: rgba(0, 213, 116, 0.72); }
+      .review-actions button[data-review-status="fail"] { border-color: rgba(255, 92, 92, 0.72); }
+
       .security-grid {
         max-height: 560px;
         overflow-y: auto;
         display: grid;
-        grid-template-columns: repeat(4, minmax(74px, 1fr));
+        grid-template-columns: repeat(6, minmax(58px, 1fr));
         gap: 8px;
         padding-right: 8px;
       }
@@ -1590,7 +1611,7 @@
         }
 
         .result-panel {
-          margin-top: -620px;
+          margin-top: -720px;
         }
 
         .panel-workspace {
@@ -1776,7 +1797,7 @@
             </div>
             <button class="panel-close" type="button" id="close-password-page">Close</button>
           </div>
-          <p class="panel-muted">Enter a new Firebase password for the signed-in account. After the change succeeds, please sign in again.</p>
+          <p class="panel-muted">Enter a new password for the signed-in account. After the change succeeds, please sign in again.</p>
           <form id="change-password-form" class="password-form">
             <input id="new-password" type="password" autocomplete="new-password" placeholder="New password" minlength="6" required />
             <button type="submit">Update Password</button>
@@ -1943,6 +1964,21 @@
         return res.json();
       }
 
+      async function apiJson(path, options = {}) {
+        const apiBase = resolveApiBase();
+        const res = await fetch(`${apiBase}${path}`, {
+          ...options,
+          headers: {
+            ...(await authHeaders()),
+            ...(options.headers || {}),
+          },
+        });
+        const type = res.headers.get("content-type") || "";
+        if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+        if (!type.includes("application/json")) throw new Error(`API returned non-JSON from ${apiBase}.`);
+        return res.json();
+      }
+
       function timeToMinutes(value) {
         const digits = String(value || "").replace(/\D/g, "").padStart(4, "0");
         return Number(digits.slice(0, 2)) * 60 + Number(digits.slice(2, 4));
@@ -2078,9 +2114,29 @@
         return parts.join(" / ");
       }
 
+      function maskTail(value, visibleTail = 4) {
+        const raw = String(value || "").trim();
+        if (!raw) return "";
+        if (raw.length <= visibleTail) return raw;
+        return `${"*".repeat(Math.max(3, raw.length - visibleTail))}${raw.slice(-visibleTail)}`;
+      }
+
+      function maskMembershipNumber(value) {
+        const raw = String(value || "").replace(/\s+/g, "").trim();
+        if (!raw) return "";
+        if (raw.length <= 6) return raw;
+        return `${raw.slice(0, 2)}***${raw.slice(-4)}`;
+      }
+
       function visibleByPermission(data, permissionKey) {
         const permissions = data?.permissions || currentSy?.permissions || null;
         return !permissions || permissions[permissionKey] !== false;
+      }
+
+      function membershipDisplay(data) {
+        if (!visibleByPermission(data, "canViewMembership")) return "Hidden";
+        const number = data?.ffNumber ? maskMembershipNumber(`${data?.ffCarrier || ""}${data.ffNumber}`) : "";
+        return [number, data?.membershipStatus || data?.ffTier].filter(Boolean).join(" / ");
       }
 
       function passengerFields(data) {
@@ -2090,10 +2146,10 @@
           ["Seat", data?.seat],
           ["Cabin", data?.cabin],
           ["Flight", [data?.flight, data?.flightDate].filter(Boolean).join(" / ")],
-          ["Passport", visibleByPermission(data, "canViewTravelDocs") ? data?.passportNo : "Hidden"],
+          ["Passport", visibleByPermission(data, "canViewTravelDocs") ? maskTail(data?.passportNo) : "Hidden"],
           ["DOB", visibleByPermission(data, "canViewTravelDocs") ? data?.dob : "Hidden"],
           ["Age", data?.ageYears],
-          ["Membership", visibleByPermission(data, "canViewMembership") ? [data?.ffCarrier, data?.ffNumber, data?.membershipStatus || data?.ffTier].filter(Boolean).join(" ") : "Hidden"],
+          ["Membership", membershipDisplay(data)],
           ["Lounge", visibleByPermission(data, "canViewLoungeAccess") ? formatLounge(data?.lounge) : "Hidden"],
           ["Guest", visibleByPermission(data, "canViewGuestAccess") && data?.lounge?.guest ? "Guest Access" : ""],
           ["Ticket", visibleByPermission(data, "canViewTicket") ? (data?.ticketNumber || data?.ticketNo) : "Hidden"],
@@ -2106,7 +2162,19 @@
           ["Paid Service", visibleByPermission(data, "canViewPaidService") ? compactValue(data?.paidProductsShort) : "Hidden"],
           ["PSM/MSG", compactValue(data?.psmLines || data?.messages)],
           ["Status", data?.status],
+          ...extraPassengerFields(data),
         ].filter(([, value]) => value !== null && value !== undefined && value !== "" && value !== false);
+      }
+
+      function labelizeKey(key) {
+        return String(key || "").replace(/([a-z])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+      }
+
+      function extraPassengerFields(data) {
+        const used = new Set(["permissions", "name", "passengerName", "paxName", "bn", "seat", "cabin", "flight", "flightDate", "passportNo", "dob", "ageYears", "ffCarrier", "ffNumber", "membershipStatus", "ffTier", "lounge", "ticketNumber", "ticketNo", "infantTicketNo", "bagtags", "bagTags", "bags", "inbound", "outbound", "specialServices", "codes", "specialMeals", "paidProductsShort", "psmLines", "messages", "status", "passengerRecord"]);
+        return Object.entries(data || {})
+          .filter(([key, value]) => !used.has(key) && value !== null && value !== undefined && value !== "" && typeof value !== "function")
+          .map(([key, value]) => [labelizeKey(key), compactValue(value)]);
       }
 
       function passengerRecordCard(data, title = "Passenger Record", tone = "pass") {
@@ -2189,8 +2257,8 @@
           let complete = step?.complete;
           let time = step?.time || "----";
           if (key === "CHD") { issueCount = chdIssues; complete = (sy.chdList || []).length > 0; time = (sy.chdList || []).length ? `${(sy.chdList || []).length} CHD` : "----"; }
-          if (key === "GOV") { issueCount = govCount; complete = govCount === 0 && Boolean(sy.govAqq); time = govCount ? `${govCount} ISSUES` : (sy.govAqq ? "CLEAR" : "----"); }
-          if (key === "NBRD") { issueCount = nbrdCount; complete = (sy.bnAudit || []).length > 0 && nbrdCount === 0; time = nbrdCount ? `${nbrdCount} CKIN` : ((sy.bnAudit || []).length ? "CLEAR" : "----"); }
+          if (key === "GOV") { issueCount = govCount; complete = govCount === 0 && Boolean(sy.govAqq); time = govCount ? `${govCount} ISSUES` : (step?.time || "----"); }
+          if (key === "NBRD") { issueCount = nbrdCount; complete = (sy.bnAudit || []).length > 0 && nbrdCount === 0; time = nbrdCount ? `${nbrdCount} CKIN` : (step?.time || "----"); }
           node.dataset.status = normalizeStatus(Boolean(complete), issueCount);
           node.dataset.time = time;
           if (issueCount) node.dataset.alert = String(issueCount);
@@ -2415,6 +2483,238 @@
         renderPanel(step?.label || key, currentSy?.flightNo || "Timeline", `<div class="data-grid"><div class="data-card"><b>Status</b><span>${escapeHtml(step?.complete ? "Complete" : "Not complete")}</span></div><div class="data-card"><b>Input Time</b><span>${escapeHtml(step?.time || "Not entered")}</span></div><div class="data-card"><b>Detail</b><span>${escapeHtml(step?.tooltip || "No detail available")}</span></div></div>${checkRows}`);
       }
 
+      function renderChdPanel() {
+        const rows = currentSy?.chdList || [];
+        const missing = rows.filter((row) => row.hasChdCode === false).length;
+        const stats = `<div class="panel-stats"><span>Total ${rows.length}</span><span class="status-ok">OK ${rows.length - missing}</span><span class="status-fail">Missing CHD1/0 ${missing}</span></div>`;
+        renderPanel("CHD List", currentSy?.flightNo || "SY", `${stats}${renderBnButtons(rows, "No CHD passenger found.", (row) => `${passengerName(row)} ${row.hasChdCode ? "OK" : "Missing CHD1/0"}`, null, (row) => row.hasChdCode === false ? "is-missing" : "is-pass")}`);
+        setPanelPassengerRows(rows);
+      }
+
+      function renderGovPanel() {
+        const gov = currentSy?.govAqq || {};
+        const groups = [
+          ["Duplicate Passport", gov.duplicatePassports?.flatMap((item) => (item.bns || []).map((bn) => ({ bn, reason: `Duplicate passport ${item.passportNo || ""}` })))],
+          ["USA TIME OUT", (gov.aqqTclBnList || []).map((bn) => ({ bn, reason: "USA TIME OUT" }))],
+          ["CHN GOV FAIL", (gov.govDtaBnList || []).map((bn) => ({ bn, reason: "CHN GOV FAIL" }))],
+          ["Passport Exp", (gov.passportExpBnList || []).map((bn) => ({ bn, reason: "Passport Exp" }))],
+          ["WEB/EDI/Reswipe", (gov.passportCodeIssues || []).map((bn) => ({ bn, reason: "WEB/EDI/Reswipe" }))],
+        ];
+        const rows = groups.flatMap(([group, items]) => (items || []).map((item) => ({ ...item, group })));
+        const body = groups.map(([label, items]) => {
+          const groupRows = (items || []).map((item) => ({ ...item, group: label }));
+          return `<div class="data-card"><b>${escapeHtml(label)}</b>${renderBnButtons(groupRows, "Clear", (row) => row.reason)}</div>`;
+        }).join("");
+        renderPanel("GOV/AQQ", currentSy?.flightNo || "SY", `<div class="data-grid">${body}</div>`);
+        setPanelPassengerRows(rows);
+      }
+
+      function renderWchPanel() {
+        const rows = currentSy?.wchList || [];
+        renderPanel("WCH", currentSy?.flightNo || "SY", renderBnButtons(rows, "No WCH records found.", (row) => [row.bn ? `BN ${row.bn}` : "", row.seat ? `Seat ${row.seat}` : "", Array.isArray(row.codes) ? row.codes.join("/") : row.code].filter(Boolean).join(" / "), (row, index) => [row.bn || index + 1, row.seat].filter(Boolean).join(" / ")));
+        setPanelPassengerRows(rows);
+      }
+
+      function membershipRank(tier) {
+        return ({ platinum: 0, v: 0, gold: 1, g: 1, silver: 2, s: 2 }[String(tier || "").toLowerCase()] ?? 9);
+      }
+
+      function cabinRank(cabin) {
+        return ({ first: 0, f: 0, business: 1, j: 1, elite: 2, premium: 2, economy: 3, y: 3 }[String(cabin || "").toLowerCase()] ?? 8);
+      }
+
+      function renderMembershipPanel() {
+        const data = currentSy?.membershipList || {};
+        const rows = ["platinum", "gold", "silver"].flatMap((tier) => (data[tier] || []).map((row) => ({ ...row, tier })))
+          .sort((a, b) => membershipRank(a.tier || a.ffTier) - membershipRank(b.tier || b.ffTier) || cabinRank(a.cabin) - cabinRank(b.cabin));
+        renderPanel("Membership", currentSy?.flightNo || "SY", rowsTable(rows, [
+          { label: "Tier", value: (row) => row.tier || row.ffTier },
+          { label: "Cabin", value: (row) => row.cabin },
+          { label: "BN", value: (row) => row.bn },
+          { label: "Name", value: passengerName },
+          { label: "Seat", value: (row) => row.seat },
+          { label: "FF", value: (row) => [row.ffCarrier, row.ffNumber].filter(Boolean).join(" ") },
+        ], "No membership records found."));
+      }
+
+      function renderPsmPanel() {
+        const rows = currentSy?.psmList || [];
+        renderPanel("PSM/MSG", currentSy?.flightNo || "SY", rowsTable(rows, [
+          { label: "BN", value: (row) => row.bn },
+          { label: "Name", value: passengerName },
+          { label: "Seat", value: (row) => row.seat },
+          { label: "Type", value: (row) => Array.isArray(row.codes) ? row.codes.join("/") : row.code },
+          { label: "Input", value: (row) => row.text || row.raw || row.message },
+        ], "No PSM/MSG records found."));
+      }
+
+      function renderNbrdPanel() {
+        const rows = (currentSy?.bnAudit || []).filter((row) => /NBRD|CKIN/i.test(row?.apiReason || row?.tkReason || row?.visaReason || row?.bagReason || ""));
+        renderPanel("NBRD / CKIN", currentSy?.flightNo || "SY", renderBnButtons(rows, "No NBRD/CKIN issue found.", (row) => [row.apiReason, row.tkReason, row.visaReason, row.bagReason].filter(Boolean).join("; ")));
+        setPanelPassengerRows(rows);
+      }
+
+      function renderBagReport() {
+        const sheet = currentSy?.bagSheet || {};
+        const sections = [];
+        const addBagSection = (title, bagSection, headers) => {
+          const rows = bagSection?.rows || (bagSection?.columns ? [bagSection.columns] : []);
+          if (!rows.length) return;
+          sections.push(`<h3>${escapeHtml(title)}</h3>${rowsTable(rows, headers.map((label, index) => ({ label, value: (row) => row[index] })), "No rows.")}`);
+        };
+        addBagSection("Rush Bags", sheet.rushBags, ["Rush #", "Orig #", "To", "AKE"]);
+        addBagSection("Not Load Bags", sheet.notLoadBags, ["Tag #", "Status", "Remark"]);
+        renderPanel("Bag Report", currentSy?.flightNo || "SY", sheet.hasData && sections.length ? sections.join("") : `<p class="panel-muted">No Google Sheet bag report found for this SY date.</p>`);
+      }
+
+      function reviewPath() {
+        const flightNo = encodeURIComponent(currentSy?.flightNo || "");
+        const flightDate = encodeURIComponent(currentSy?.flightDate || "");
+        return `/security-reviews?flightNo=${flightNo}&flightDate=${flightDate}`;
+      }
+
+      async function loadSecurityReviews(rows) {
+        if (!currentSy?.flightNo || !currentSy?.flightDate || !rows.length) return rows;
+        try {
+          const data = await apiJson(reviewPath());
+          const reviews = data?.reviews || {};
+          rows.forEach((row) => {
+            row.review = reviews[String(row.bn || "").padStart(3, "0")] || null;
+          });
+        } catch (error) {
+          console.warn("Security review lookup failed.", error);
+        }
+        return rows;
+      }
+
+      async function saveSecurityReview(row, status) {
+        if (!row?.bn || !currentSy?.flightNo || !currentSy?.flightDate) return;
+        const data = await apiJson("/security-reviews", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            flightNo: currentSy.flightNo,
+            flightDate: currentSy.flightDate,
+            bn: row.bn,
+            status,
+            reviewer: currentUser.textContent || "MUFC",
+            comment: `Reviewed ${status}`,
+          }),
+        });
+        row.review = data.review;
+      }
+
+      function checkTone(status) {
+        if (status === "fail") return "fail";
+        if (status === "review") return "warning";
+        return "pass";
+      }
+
+      function securityTone(row) {
+        if (row?.review?.status === "pass") return "pass";
+        if (row?.review?.status === "fail") return "fail";
+        const statuses = [row?.apiStatus, row?.tkStatus, row?.visaStatus, row?.bagStatus];
+        if (statuses.includes("fail")) return "fail";
+        if (statuses.includes("review")) return "warning";
+        return "pass";
+      }
+
+      function securityCard(row) {
+        if (!row) return passengerRecordCard({}, "Passenger Record");
+        const tone = securityTone(row);
+        const checks = [
+          ["API", row.apiStatus, row.apiReason],
+          ["TK", row.tkStatus, row.tkReason],
+          ["VISA", row.visaStatus, row.visaReason],
+          ["BAG", row.bagStatus, row.bagReason],
+        ];
+        const pills = checks.map(([label, status]) => `<span class="security-pill is-${checkTone(status)}">${escapeHtml(label)} ${status === "fail" || status === "review" ? "⚠" : "☑"}</span>`).join("");
+        const rows = checks.map(([label, status, reason]) => `<div class="security-row"><b>${escapeHtml(label)}</b><span>${escapeHtml(reason || (status === "pass" ? `${label} passed` : "No detail"))}</span></div>`).join("");
+        const reviewLine = row.review ? `<div class="security-row"><b>Review</b><span>${escapeHtml(`${row.review.status || ""} ${row.review.reviewer ? `by ${row.review.reviewer}` : ""} ${row.review.updatedAt || ""}`)}</span></div>` : "";
+        const reviewButtons = `<div class="review-actions"><button type="button" data-review-bn="${escapeHtml(row.bn || "")}" data-review-status="pass">Review Pass</button><button type="button" data-review-bn="${escapeHtml(row.bn || "")}" data-review-status="fail">Review Fail</button></div>`;
+        return `<article class="record-card ${tone === "warning" ? "is-warning" : tone === "fail" ? "is-fail" : ""}"><div class="record-title"><span>BN${escapeHtml(row.bn || "---")}</span><span class="record-badge">${escapeHtml(tone === "pass" ? "PASS" : tone === "fail" ? "FAIL" : "WARNING")}</span></div><div class="security-pill-row">${pills}</div>${reviewButtons}${rows}${reviewLine}</article>${passengerRecordCard(row.passengerRecord || row, "Passenger Record", tone)}`;
+      }
+
+      async function renderSecurityCheck(selectedBn = null) {
+        const rows = await loadSecurityReviews(currentSy?.bnAudit || []);
+        const passCount = rows.filter((row) => securityTone(row) === "pass").length;
+        const warningCount = rows.filter((row) => securityTone(row) === "warning").length;
+        const failCount = rows.filter((row) => securityTone(row) === "fail").length;
+        const buttons = rows.length ? `<div class="security-grid">${rows.map((row, index) => `<button class="bn-button is-${securityTone(row)}" type="button" data-security-index="${index}">${escapeHtml(row.bn || index + 1)}</button>`).join("")}</div>` : `<p class="panel-muted">No security passenger rows found.</p>`;
+        const stats = `<div class="panel-stats"><span class="status-ok">${passCount} pass</span><span class="status-warn">${warningCount} warning</span><span class="status-fail">${failCount} fail</span></div>`;
+        const selectedRow = (selectedBn && rows.find((row) => String(row.bn || "") === String(selectedBn))) || rows.find((row) => securityTone(row) !== "pass") || rows[0];
+        renderPanel("Security Check", currentSy?.flightNo || "SY", `${stats}<div class="panel-workspace"><div>${buttons}</div><div class="panel-side">${securityCard(selectedRow)}</div></div>`);
+        setPanelPassengerRows(rows);
+      }
+
+      function seatNumber(value) {
+        const match = String(value || "").match(/^(\d{1,2})([A-Z])$/i);
+        return match ? { row: Number(match[1]), letter: match[2].toUpperCase() } : null;
+      }
+
+      function seatTone(record) {
+        if (!record) return "";
+        const services = [...(record.specialServices || []), ...(record.specialMeals || [])].join("/");
+        if (/INF/i.test(services) || record.hasInfant) return "fail";
+        if (/WCH/i.test(services)) return "warning";
+        if (record.ffTier === "V" || /platinum/i.test(record.membershipStatus || "")) return "warning";
+        return "pass";
+      }
+
+      function seatLettersForRow(rowNo) {
+        if (rowNo <= 2) return ["", "B", "C", "", "D", "E", "F"];
+        if (rowNo <= 20) return ["A", "", "C", "", "D", "", "F"];
+        return ["A", "B", "C", "", "D", "E", "F"];
+      }
+
+      function cabinForRow(rowNo) {
+        if (rowNo <= 2) return "First Class";
+        if (rowNo <= 20) return "Business Class";
+        return "Economy Class";
+      }
+
+      function renderSeatMap() {
+        const records = currentSy?.seatMapRecords || [];
+        const seats = new Map(records.map((row) => [String(row.seat || "").toUpperCase(), row]));
+        const parsedRows = records.map((row) => seatNumber(row.seat)).filter(Boolean).map((seat) => seat.row);
+        const configuredRows = [1, 2, 6, 7, 8, 9, 10, 11, 12, 15, 16, 17, 18, 19, 20];
+        for (let rowNo = 31; rowNo <= Math.max(31, ...parsedRows); rowNo += 1) configuredRows.push(rowNo);
+        const rowNumbers = [...new Set([...configuredRows, ...parsedRows])].filter((rowNo) => rowNo >= 1).sort((a, b) => a - b);
+        const bodyRows = [];
+        let lastCabin = "";
+        for (const rowNo of rowNumbers) {
+          const cabin = cabinForRow(rowNo);
+          if (cabin !== lastCabin) {
+            bodyRows.push(`<div class="seat-cabin-label">${escapeHtml(cabin)}</div>`);
+            lastCabin = cabin;
+          }
+          bodyRows.push(`<div class="seat-row"><div class="seat-row-number">${rowNo}</div>${seatLettersForRow(rowNo).map((letter) => {
+            if (!letter) return `<div class="seat-aisle" aria-hidden="true"></div>`;
+            const seat = `${rowNo}${letter}`;
+            const record = seats.get(seat);
+            return `<button class="seat-cell ${record ? "is-occupied" : ""} ${record ? `is-${seatTone(record)}` : ""}" type="button" ${record ? `data-seat="${escapeHtml(seat)}"` : "disabled"} title="${escapeHtml(record ? `${seat} BN ${record.bn || ""} ${passengerName(record)}` : seat)}">${escapeHtml(record?.bn || seat)}</button>`;
+          }).join("")}</div>`);
+        }
+        const legend = `<div class="panel-stats"><span class="status-ok">Checked-in / BN</span><span class="status-warn">Wheelchair / VIP / Review</span><span class="status-fail">Infant / Alert</span></div>`;
+        renderPanel("Seat Map", currentSy?.flightNo || "SY", `${legend}<div class="panel-workspace"><div class="seat-map-shell"><div class="seat-map-plane">${bodyRows.join("")}</div></div><div class="panel-side">${passengerRecordCard(records[0] || {}, "Passenger Record")}</div></div>`);
+        setPanelPassengerRows(records);
+      }
+
+      function renderStepPanel(key) {
+        if (key === "CHD") return renderChdPanel();
+        if (key === "GOV") return renderGovPanel();
+        if (key === "NBRD") return renderNbrdPanel();
+        const step = stepByKey(key);
+        const checkRows = Array.isArray(step?.checks) && step.checks.length
+          ? rowsTable(step.checks, [
+            { label: "Check", value: (row) => row.label || row.key },
+            { label: "Status", value: (row) => row.complete ? "Complete" : "Not complete" },
+            { label: "Input Time", value: (row) => row.time || "Not entered" },
+          ], "No check rows found.")
+          : "";
+        renderPanel(step?.label || key, currentSy?.flightNo || "Timeline", `<div class="data-grid"><div class="data-card"><b>Status</b><span>${escapeHtml(step?.complete ? "Complete" : "Not complete")}</span></div><div class="data-card"><b>Input Time</b><span>${escapeHtml(step?.time || "Not entered")}</span></div><div class="data-card"><b>Detail</b><span>${escapeHtml(step?.tooltip || "No detail available")}</span></div></div>${checkRows}`);
+      }
+
       function toggleMenu() {
         const open = menuButton.getAttribute("aria-expanded") === "true";
         menuButton.setAttribute("aria-expanded", String(!open));
@@ -2505,10 +2805,22 @@
       securityCheckButton.addEventListener("click", renderSecurityCheck);
       seatMapButton.addEventListener("click", renderSeatMap);
 
-      resultPanel.addEventListener("click", (event) => {
+      resultPanel.addEventListener("click", async (event) => {
         if (event.target.closest("[data-close-panel]")) {
           resultPanel.innerHTML = "";
           resultPanel._passengerRows = [];
+          return;
+        }
+        const reviewButton = event.target.closest("[data-review-status]");
+        if (reviewButton) {
+          const rows = resultPanel._passengerRows || [];
+          const bn = reviewButton.dataset.reviewBn;
+          const row = rows.find((item) => String(item.bn || "") === String(bn));
+          if (row) {
+            reviewButton.textContent = "Saving...";
+            await saveSecurityReview(row, reviewButton.dataset.reviewStatus);
+            await renderSecurityCheck(row.bn);
+          }
           return;
         }
         const securityButton = event.target.closest("[data-security-index]");
