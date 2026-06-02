@@ -1053,7 +1053,7 @@
       .result-panel {
         position: relative;
         z-index: 5;
-        margin-top: -850px;
+        margin-top: -820px;
       }
 
       .result-panel:empty {
@@ -1656,6 +1656,10 @@
           display: none;
         }
 
+        .mobile-menu-fallback {
+          display: none !important;
+        }
+
         .mobile-panel {
           top: 68px;
         }
@@ -1676,7 +1680,7 @@
 
         .time-toggle {
           position: static;
-          margin: 14px 0 0;
+          margin: 24px 0 0;
         }
 
         .status-strip {
@@ -1754,9 +1758,12 @@
         }
 
         .counts-inline .count-row {
-          gap: 6px;
-          justify-content: flex-start;
-          overflow-x: auto;
+          display: grid;
+          grid-template-columns: max-content max-content;
+          gap: 8px 10px;
+          justify-content: center;
+          overflow: visible;
+          white-space: normal;
         }
 
         .manifest-section h3,
@@ -1795,7 +1802,7 @@
         }
 
         .result-panel {
-          margin-top: -850px;
+          margin-top: -820px;
         }
 
         .panel-workspace {
@@ -2099,6 +2106,11 @@
       function setText(selector, value) {
         const el = document.querySelector(selector);
         if (el) el.textContent = value || "---";
+      }
+
+      function setBadgeText(selector, value) {
+        const el = document.querySelector(selector);
+        if (el) el.textContent = value ? String(value) : "";
       }
 
       function countTriple(matchArray) {
@@ -2465,9 +2477,9 @@
         const govIssueGroups = [gov.duplicatePassports, gov.aqqTclBnList, gov.govDtaBnList, gov.passportExpBnList, gov.passportCodeIssues];
         const govCount = govIssueGroups.reduce((sum, value) => sum + (Array.isArray(value) ? value.length : 0), 0);
         const nbrdCount = (sy.bnAudit || []).filter((row) => /NBRD|CKIN/i.test(row?.apiReason || row?.tkReason || row?.visaReason || row?.bagReason || "")).length;
-        setText("#chd-count", chdIssues ? String(chdIssues) : "");
-        setText("#gov-count", govCount ? String(govCount) : "");
-        setText("#nbrd-count", nbrdCount ? String(nbrdCount) : "");
+        setBadgeText("#chd-count", chdIssues);
+        setBadgeText("#gov-count", govCount);
+        setBadgeText("#nbrd-count", nbrdCount);
         setText("#wch-count", (sy.wchList || []).length || "0");
         setText("#psm-count", (sy.psmList || []).length || "0");
         if (bagReportButton) bagReportButton.hidden = !(sy.bagSheet?.hasData);
