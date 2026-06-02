@@ -305,11 +305,8 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
     { key: 'crew3', label: 'BJSCCXH', ...findAcceptedCommand(new RegExp(`^>\\s*${lrPrefix}\\/BJSCCXH`, 'im')) }
   ];
   const crewApisComplete = checks.every((item) => item.complete);
-  const crewApisTime = crewApisComplete
-    ? checks.reduce((latest, item) => (
-      parseSectionTimestamp(item.timestamp) >= parseSectionTimestamp(latest.timestamp) ? item : latest
-    ), checks[0]).time || ''
-    : '';
+  const crewApisPrimaryCheck = checks.find((item) => item.key === 'crew2') || null;
+  const crewApisTime = crewApisComplete ? (crewApisPrimaryCheck?.time || '') : '';
   const ccl = findAcceptedCommand(/^>\s*CCL\s*:/im);
   const cc = findAcceptedCommand(/^>\s*CC\s*:/im);
   const jcsy = findJcsyInfo(sections, flightNo, flightYmd, formatTime);
@@ -318,15 +315,11 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
   const netSearchYmd = flightYmd || baseYmd;
   const netDateUtc = ymdToUtcDate(netSearchYmd);
   const netFlightDate = dateToDdMonYy(netDateUtc);
-  const netFlightNo = escapeRegExp(flightNo);
-  const netFlightDatePattern = escapeRegExp(netFlightDate);
   const netMatch = Boolean(flightNo && netFlightDate) ? sections
     .filter((sectionObj) => {
       const ymd = getYmdFromTimestamp(sectionObj.timestamp);
       const content = String(sectionObj.content || '').toUpperCase();
-      return ymd === netSearchYmd
-        && /^>\s*PD\*,NET\b/im.test(content)
-        && new RegExp(`\\bPD:\\s*${netFlightNo}/${netFlightDatePattern}\\*LAX,NET\\b`, 'im').test(content);
+      return ymd === netSearchYmd && /^>\s*PD\*,NET\b/im.test(content);
     })
     .sort((a, b) => parseSectionTimestamp(b.timestamp) - parseSectionTimestamp(a.timestamp))[0] || null : null;
   const netComplete = Boolean(netMatch);
@@ -380,6 +373,7 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
         label: 'Crew APIS',
         complete: crewApisComplete,
         time: crewApisTime,
+        tooltip: crewApisTime ? `CWI/N ${crewApisTime}` : 'CWI/N not entered',
         checks
       },
       {

@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Mission Operations UI</title>
+    <title>MUFC</title>
     <style>
       :root {
         --bg: #020a12;
@@ -164,15 +164,28 @@
         border-color: rgba(255, 255, 255, 0.58);
       }
 
-      .search svg {
+      .search button {
         position: absolute;
-        right: 14px;
-        top: 50%;
+        right: 0;
+        top: 0;
+        width: 42px;
+        height: 38px;
+        border: 0;
+        display: grid;
+        place-items: center;
+        background: transparent;
+        color: white;
+        cursor: pointer;
+        opacity: 0.72;
+      }
+
+      .search button:hover {
+        opacity: 1;
+      }
+
+      .search svg {
         width: 16px;
         height: 16px;
-        transform: translateY(-50%);
-        color: white;
-        opacity: 0.72;
       }
 
       .nav-actions {
@@ -327,6 +340,36 @@
 
       .mobile-panel.is-open {
         transform: translateX(0);
+      }
+
+
+
+      .mobile-search {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 8px;
+        margin-bottom: 14px;
+      }
+
+      .mobile-search input,
+      .mobile-search button {
+        min-height: 42px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+      }
+
+      .mobile-search input {
+        min-width: 0;
+        background: rgba(255, 255, 255, 0.92);
+        color: #071327;
+        padding: 0 12px;
+        text-transform: uppercase;
+      }
+
+      .mobile-search button {
+        background: rgba(88, 167, 255, 0.16);
+        color: white;
+        font-weight: 900;
+        text-transform: uppercase;
       }
 
       .mobile-panel a {
@@ -647,8 +690,8 @@
         height: 17px;
         border: 2px solid white;
         border-radius: 50%;
-        background: var(--green);
-        box-shadow: 0 0 0 5px rgba(53, 212, 137, 0.14), 0 0 22px rgba(53, 212, 137, 0.72);
+        background: #05070d;
+        box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.08), 0 0 18px rgba(0, 0, 0, 0.78);
         transform: translate(-50%, -50%);
         transition:
           left 420ms cubic-bezier(0.2, 0.8, 0.2, 1),
@@ -704,8 +747,11 @@
         box-shadow: 0 0 0 5px rgba(242, 201, 76, 0.15), 0 0 22px rgba(242, 201, 76, 0.72);
       }
 
+      .node[data-status="pending"],
       .node[data-status="blink"] {
-        animation: nodePulse 950ms ease-in-out infinite;
+        background: #05070d;
+        box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.08), 0 0 18px rgba(0, 0, 0, 0.78);
+        animation: none;
       }
 
       @keyframes nodePulse {
@@ -961,6 +1007,254 @@
         line-height: 1;
       }
 
+
+
+      .result-panel,
+      .password-page {
+        width: min(100% - 48px, 1120px);
+        margin: 24px auto 0;
+        border: 1px solid rgba(176, 216, 255, 0.22);
+        background: linear-gradient(150deg, rgba(8, 24, 40, 0.76), rgba(2, 12, 22, 0.58));
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.32);
+        backdrop-filter: blur(18px);
+        padding: 18px;
+      }
+
+      .result-panel:empty {
+        display: none;
+      }
+
+      .panel-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 14px;
+        margin-bottom: 14px;
+      }
+
+      .panel-head small,
+      .node-card small {
+        color: var(--blue);
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+      }
+
+      .panel-head h2,
+      .result-panel h3,
+      .password-page h2 {
+        margin: 4px 0 0;
+        color: white;
+        letter-spacing: 0.6px;
+        text-transform: uppercase;
+      }
+
+      .panel-close,
+      .password-form button {
+        border: 1px solid rgba(88, 167, 255, 0.5);
+        background: rgba(88, 167, 255, 0.12);
+        color: white;
+        min-height: 38px;
+        padding: 0 14px;
+        font-weight: 900;
+        text-transform: uppercase;
+        cursor: pointer;
+      }
+
+      .panel-muted {
+        margin: 0 0 14px;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
+      .data-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        gap: 10px;
+      }
+
+      .data-row,
+      .data-card {
+        border: 1px solid rgba(176, 216, 255, 0.16);
+        background: rgba(0, 0, 0, 0.18);
+        padding: 12px;
+        color: rgba(244, 250, 255, 0.9);
+      }
+
+      .data-row b,
+      .data-card b {
+        color: white;
+      }
+
+      .data-row span,
+      .data-card span {
+        display: block;
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        overflow: hidden;
+      }
+
+      .data-table th,
+      .data-table td {
+        border-bottom: 1px solid rgba(176, 216, 255, 0.14);
+        padding: 10px;
+        color: rgba(244, 250, 255, 0.88);
+        text-align: left;
+        vertical-align: top;
+        font-size: 12px;
+      }
+
+      .data-table th {
+        color: var(--blue);
+        font-size: 11px;
+        letter-spacing: 0.8px;
+        text-transform: uppercase;
+      }
+
+
+
+      .bn-button-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .bn-button {
+        min-width: 64px;
+        min-height: 42px;
+        border: 1px solid rgba(88, 167, 255, 0.46);
+        background: rgba(88, 167, 255, 0.12);
+        color: white;
+        font-size: 13px;
+        font-weight: 950;
+        letter-spacing: 0.8px;
+        text-transform: uppercase;
+        cursor: pointer;
+      }
+
+      .bn-button:hover,
+      .bn-button:focus-visible {
+        border-color: rgba(255, 255, 255, 0.74);
+        background: rgba(88, 167, 255, 0.24);
+        outline: none;
+      }
+
+      .passenger-modal-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 60;
+        display: grid;
+        place-items: center;
+        padding: 20px;
+        background: rgba(1, 8, 14, 0.62);
+        backdrop-filter: blur(10px);
+        animation: modalFade 180ms ease both;
+      }
+
+      .passenger-modal {
+        width: min(420px, 100%);
+        border: 1px solid rgba(176, 216, 255, 0.32);
+        background: linear-gradient(150deg, rgba(8, 24, 40, 0.96), rgba(2, 12, 22, 0.92));
+        box-shadow: 0 32px 110px rgba(0, 0, 0, 0.58);
+        padding: 18px;
+        animation: modalFloat 220ms ease both;
+      }
+
+      .passenger-modal .data-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      @keyframes modalFade {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+
+      @keyframes modalFloat {
+        from { opacity: 0; transform: translateY(18px) scale(0.98); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+      }
+
+      .seat-map-shell {
+        overflow-x: auto;
+        padding: 10px 4px 4px;
+      }
+
+      .seat-map-plane {
+        width: max-content;
+        min-width: 360px;
+        margin: 0 auto;
+        padding: 28px 18px 22px;
+        border: 1px solid rgba(176, 216, 255, 0.24);
+        border-radius: 44px 44px 24px 24px / 74px 74px 20px 20px;
+        background: linear-gradient(180deg, rgba(235, 246, 255, 0.1), rgba(0, 0, 0, 0.14));
+      }
+
+      .seat-row {
+        display: grid;
+        grid-template-columns: 36px repeat(3, 42px) 26px repeat(3, 42px);
+        gap: 6px;
+        align-items: center;
+        margin-bottom: 6px;
+      }
+
+      .seat-row-number {
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 900;
+        text-align: right;
+      }
+
+      .seat-cell {
+        min-height: 34px;
+        border: 1px solid rgba(176, 216, 255, 0.2);
+        background: rgba(255, 255, 255, 0.05);
+        color: rgba(244, 250, 255, 0.9);
+        font-size: 10px;
+        font-weight: 900;
+        text-align: center;
+      }
+
+      .seat-cell.is-occupied {
+        border-color: rgba(53, 212, 137, 0.56);
+        background: rgba(53, 212, 137, 0.16);
+        cursor: pointer;
+      }
+
+      .seat-cell.has-alert {
+        border-color: rgba(255, 98, 92, 0.72);
+        background: rgba(255, 98, 92, 0.16);
+      }
+
+      .seat-aisle {
+        min-height: 1px;
+      }
+
+      .status-ok { color: var(--green); }
+      .status-warn { color: #ffd166; }
+      .status-fail { color: var(--danger); }
+
+      .password-form {
+        display: flex;
+        gap: 10px;
+      }
+
+      .password-form input {
+        flex: 1;
+        min-height: 42px;
+        border: 1px solid rgba(210, 231, 255, 0.2);
+        background: rgba(227, 237, 251, 0.96);
+        color: #071327;
+        padding: 0 13px;
+        outline: 0;
+      }
+
       @media (max-width: 1080px) {
         .topbar {
           grid-template-columns: auto 1fr auto;
@@ -1112,6 +1406,56 @@
         .count strong {
           font-size: 18px;
         }
+
+        .mission-side {
+          display: grid;
+          align-items: stretch;
+        }
+
+        .flight-tools,
+        .flight-menu-button {
+          width: 100%;
+        }
+
+        .flight-menu-button {
+          height: 46px;
+        }
+
+        .flight-menu {
+          left: 0;
+          right: auto;
+          width: 100%;
+        }
+
+        .detail-actions {
+          grid-template-columns: 1fr 1fr;
+        }
+
+        .result-panel,
+        .password-page {
+          width: calc(100% - 24px);
+          padding: 14px;
+        }
+
+        .panel-head {
+          display: grid;
+        }
+
+        .data-table {
+          display: block;
+          overflow-x: auto;
+          white-space: nowrap;
+        }
+
+        .passenger-modal .data-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .seat-row {
+          grid-template-columns: 30px repeat(3, 38px) 18px repeat(3, 38px);
+          gap: 4px;
+        }
+
       }
     </style>
   </head>
@@ -1119,12 +1463,14 @@
     <header class="topbar">
       <a class="brand" href="#" aria-label="MUFC home"><span>MUFC</span></a>
       <div class="nav-row">
-        <label class="search" aria-label="Search mission">
-          <input type="search" value="SY" />
-          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="m21 21-4.35-4.35m1.35-5.15a6.5 6.5 0 1 1-13 0 6.5 6.5 0 0 1 13 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-          </svg>
-        </label>
+        <form class="search" id="mission-search" aria-label="Search mission">
+          <input id="query" type="search" value="SY" autocomplete="off" />
+          <button type="submit" aria-label="Search">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="m21 21-4.35-4.35m1.35-5.15a6.5 6.5 0 1 1-13 0 6.5 6.5 0 0 1 13 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            </svg>
+          </button>
+        </form>
       </div>
       <div class="nav-actions">
         <button class="login-button" type="button" aria-label="Open login menu" aria-expanded="false">
@@ -1136,10 +1482,10 @@
         <div class="login-menu" aria-hidden="true">
           <div class="login-user">
             <span>Logged in as</span>
-            <strong>lake@mu.com</strong>
+            <strong id="current-user">Checking session...</strong>
           </div>
-          <button type="button">Change Password</button>
-          <button type="button">Logout</button>
+          <button id="change-password" type="button">Change Password</button>
+          <button id="logout" type="button">Logout</button>
         </div>
       </div>
       <button class="menu-button" type="button" aria-label="Open menu" aria-expanded="false">
@@ -1150,15 +1496,19 @@
     <button class="mobile-menu-fallback" type="button" aria-label="Open menu" aria-expanded="false">☰</button>
 
     <aside class="mobile-panel" aria-hidden="true">
-      <a href="#">Login</a>
+      <form class="mobile-search" id="mobile-mission-search" aria-label="Mobile search mission">
+        <input id="mobile-query" type="search" value="SY" autocomplete="off" />
+        <button type="submit">Search</button>
+      </form>
+      <a href="#open-login">Login</a>
     </aside>
 
     <main>
       <section class="hero" aria-label="Mission overview">
         <div class="mission-head">
           <div class="mission-title">
-            <p class="kicker">777-773L | B7883</p>
-            <h1 id="active-flight">MU 586 / 01JUN</h1>
+            <p class="kicker" id="flight-kicker">Loading SY...</p>
+            <h1 id="active-flight">SY</h1>
             <button class="time-toggle" type="button" aria-label="Show flight details" aria-expanded="false">
               <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
@@ -1167,17 +1517,18 @@
           </div>
           <div class="mission-side">
             <div class="status-strip" aria-label="Current flight metrics">
-              <div><span>Gate</span><strong>130</strong></div>
-              <div><span>BDT</span><strong>1145</strong></div>
-              <div><span>STD</span><strong>1230</strong></div>
+              <div><span>Gate</span><strong id="metric-gate">---</strong></div>
+              <div><span>BDT</span><strong id="metric-bdt">----</strong></div>
+              <div><span>STD</span><strong id="metric-std">----</strong></div>
             </div>
             <div class="flight-tools" aria-label="Flight data">
               <button class="flight-menu-button" type="button" aria-label="Open flight data menu" aria-expanded="false">
                 <span class="line-menu-icon" aria-hidden="true"><span></span><span></span><span></span></span>
               </button>
               <div class="flight-menu" aria-hidden="true">
-                <button type="button">Bag Report</button>
-                <button type="button">Security Check</button>
+                <button id="bag-report-button" type="button">Bag Report</button>
+                <button id="security-check-button" type="button">Security Check</button>
+                <button id="seat-map-button" type="button">Seat Map</button>
               </div>
             </div>
           </div>
@@ -1192,11 +1543,11 @@
                   <div class="counts">
                     <div class="count">
                       <span>Booked</span>
-                      <div class="count-row"><strong>004</strong> / <strong>052</strong> / <strong>254</strong></div>
+                      <div class="count-row" id="reservation-booked"><strong>---</strong> / <strong>---</strong> / <strong>---</strong></div>
                     </div>
                     <div class="count">
                       <span>ET</span>
-                      <div class="count-row">004 / 052 / 251</div>
+                      <div class="count-row" id="reservation-et">--- / --- / ---</div>
                     </div>
                   </div>
                 </div>
@@ -1205,22 +1556,22 @@
                   <div class="counts">
                     <div class="count">
                       <span>Accepted</span>
-                      <div class="count-row"><strong>004</strong> / <strong>052</strong> / <strong>251</strong></div>
+                      <div class="count-row" id="checkin-accepted"><strong>---</strong> / <strong>---</strong> / <strong>---</strong></div>
                     </div>
                     <div class="count">
                       <span>ET</span>
-                      <div class="count-row">004 / 052 / 251</div>
+                      <div class="count-row" id="checkin-et">--- / --- / ---</div>
                     </div>
                   </div>
                 </div>
               </div>
-              <p class="message">RK MESSAGE · CAT/005/052/255 *** CREW 32J 61C 74C *** SPML 1NL 1CH ***</p>
+              <p class="message" id="rk-message">Search SY to load live flight data.</p>
               <div class="detail-actions" aria-label="Flight detail actions">
-                <button class="detail-action" type="button">CHD List</button>
-                <button class="detail-action" type="button">GOV/AQQ</button>
-                <button class="detail-action" type="button">WCH <span class="detail-action-badge">7</span></button>
-                <button class="detail-action" type="button">Membership</button>
-                <button class="detail-action" type="button">PSM/MS</button>
+                <button class="detail-action" type="button" data-panel="chd">CHD List <span class="detail-action-badge" id="chd-count">0</span></button>
+                <button class="detail-action" type="button" data-panel="gov">GOV/AQQ <span class="detail-action-badge" id="gov-count">0</span></button>
+                <button class="detail-action" type="button" data-panel="wch">WCH <span class="detail-action-badge" id="wch-count">0</span></button>
+                <button class="detail-action" type="button" data-panel="membership">Membership</button>
+                <button class="detail-action" type="button" data-panel="psm">PSM/MS <span class="detail-action-badge" id="psm-count">0</span></button>
               </div>
             </div>
           </div>
@@ -1252,15 +1603,37 @@
             </div>
           </div>
         </div>
+        <section class="result-panel" id="result-panel" aria-live="polite"></section>
+        <section class="password-page" id="change-password-page" aria-label="Change password" hidden>
+          <div class="panel-head">
+            <div>
+              <small>Account</small>
+              <h2>Change Password</h2>
+            </div>
+            <button class="panel-close" type="button" id="close-password-page">Close</button>
+          </div>
+          <p class="panel-muted">Enter a new Firebase password for the signed-in account. After the change succeeds, please sign in again.</p>
+          <form id="change-password-form" class="password-form">
+            <input id="new-password" type="password" autocomplete="new-password" placeholder="New password" minlength="6" required />
+            <button type="submit">Update Password</button>
+          </form>
+          <p id="password-status" class="panel-muted" role="status" aria-live="polite"></p>
+        </section>
       </section>
     </main>
 
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="/__/firebase/init.js"></script>
     <script>
       const menuButton = document.querySelector(".menu-button");
       const fallbackMenuButton = document.querySelector(".mobile-menu-fallback");
       const mobilePanel = document.querySelector(".mobile-panel");
       const loginButton = document.querySelector(".login-button");
       const loginMenu = document.querySelector(".login-menu");
+      const currentUser = document.querySelector("#current-user");
+      const changePasswordButton = document.querySelector("#change-password");
+      const logoutButton = document.querySelector("#logout");
       const flightMenuButton = document.querySelector(".flight-menu-button");
       const flightMenu = document.querySelector(".flight-menu");
       const timeToggle = document.querySelector(".time-toggle");
@@ -1271,23 +1644,105 @@
       const missionPath = document.querySelector("#mission-path");
       const timeline = document.querySelector(".timeline");
       const timelineShell = document.querySelector(".timeline-shell");
+      const resultPanel = document.querySelector("#result-panel");
+      const searchForm = document.querySelector("#mission-search");
+      const mobileSearchForm = document.querySelector("#mobile-mission-search");
+      const queryInput = document.querySelector("#query");
+      const mobileQueryInput = document.querySelector("#mobile-query");
+      const bagReportButton = document.querySelector("#bag-report-button");
+      const securityCheckButton = document.querySelector("#security-check-button");
+      const seatMapButton = document.querySelector("#seat-map-button");
+      const passwordPage = document.querySelector("#change-password-page");
+      const closePasswordPageButton = document.querySelector("#close-password-page");
+      const changePasswordForm = document.querySelector("#change-password-form");
+      const newPasswordInput = document.querySelector("#new-password");
+      const passwordStatus = document.querySelector("#password-status");
       const baseProgress = [0.08, 0.19, 0.3, 0.41, 0.52, 0.63, 0.74, 0.85, 0.96];
       const centerProgress = 0.5;
       const minProgress = 0.04;
       const maxProgress = 0.96;
-      const flightState = {
-        std: "1230",
-        currentTime: "1204",
-        currentStage: null,
+      const nodeKeyMap = {
+        CREW_APIS: "crewApis",
+        NET: "net",
+        CCL: "ccl",
+        CC: "cc",
+        INITIAL_FLIGHT: "initialFlight",
+        BDT_CHG: "bdtChg",
       };
+      const auth = window.firebase?.apps?.length && window.firebase?.auth ? firebase.auth() : null;
       let selectedIndex = 0;
       let scrollOffset = 0;
       let dragStartX = 0;
       let lastDragX = 0;
       let didDrag = false;
+      let currentSy = null;
+      let latestQuery = "SY";
+
+      function loginUrl() {
+        const url = new URL("login.html", window.location.href);
+        url.searchParams.set("next", `${window.location.pathname}${window.location.search}${window.location.hash}`);
+        return url.href;
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? "").replace(/[&<>'"]/g, (char) => ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          "'": "&#39;",
+          '"': "&quot;",
+        })[char]);
+      }
+
+      function setText(selector, value) {
+        const el = document.querySelector(selector);
+        if (el) el.textContent = value || "---";
+      }
+
+      function countTriple(matchArray) {
+        if (!Array.isArray(matchArray)) return ["---", "---", "---"];
+        return [matchArray[1], matchArray[2], matchArray[3]].map((value) => value || "---");
+      }
+
+      function tripleHtml(values) {
+        return values.map((value) => `<strong>${escapeHtml(value)}</strong>`).join(" / ");
+      }
+
+      function normalizeStatus(complete) {
+        return complete ? "done" : "pending";
+      }
+
+      function stepByKey(key) {
+        const stepKey = nodeKeyMap[key] || key;
+        return (currentSy?.crewApis?.steps || []).find((step) => step.key === stepKey) || null;
+      }
+
+      function resolveApiBase() {
+        const fromWindow = window.MU_API_BASE || "";
+        const fromStorage = localStorage.getItem("mu_api_base") || "";
+        return (fromWindow.trim() || fromStorage.trim() || "https://api.mufcapp.net").replace(/\/$/, "");
+      }
+
+      async function authHeaders() {
+        const headers = {};
+        if (auth?.currentUser) {
+          headers.Authorization = `Bearer ${await auth.currentUser.getIdToken()}`;
+        }
+        return headers;
+      }
+
+      async function fetchSearch(query) {
+        const apiBase = resolveApiBase();
+        const endpoint = `${apiBase}/search?q=${encodeURIComponent(query)}`;
+        const res = await fetch(endpoint, { headers: await authHeaders() });
+        const type = res.headers.get("content-type") || "";
+        if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+        if (!type.includes("application/json")) throw new Error(`Search API returned non-JSON from ${apiBase}.`);
+        return res.json();
+      }
 
       function timeToMinutes(value) {
-        const digits = value.replace(/\D/g, "").padStart(4, "0");
+        const digits = String(value || "").replace(/\D/g, "").padStart(4, "0");
         return Number(digits.slice(0, 2)) * 60 + Number(digits.slice(2, 4));
       }
 
@@ -1295,31 +1750,14 @@
         const match = Array.from(nodes).find((node) => node.dataset.key === key);
         return match ? Number(match.dataset.index) : 0;
       }
+      window.findNodeIndexByKey = findNodeIndexByKey;
 
       function determineDefaultCenter() {
-        if (flightState.currentStage) {
-          return findNodeIndexByKey(flightState.currentStage);
-        }
-
-        const stdMinutes = timeToMinutes(flightState.std);
-        const currentMinutes = timeToMinutes(flightState.currentTime);
-        if (currentMinutes <= stdMinutes - 180) {
-          return findNodeIndexByKey("NBRD");
-        }
-
+        const stdMinutes = timeToMinutes(currentSy?.sd || "1230");
+        const currentMinutes = new Date().getUTCHours() * 60 + new Date().getUTCMinutes();
+        if (currentMinutes <= stdMinutes - 180) return findNodeIndexByKey("NBRD");
         return findNodeIndexByKey("CREW_APIS");
       }
-
-      let centeredItem = determineDefaultCenter();
-      if (window.location.hash === "#center-crew") {
-        centeredItem = findNodeIndexByKey("CREW_APIS");
-      }
-      if (window.location.hash === "#stage-cc") {
-        flightState.currentStage = "CC";
-        centeredItem = determineDefaultCenter();
-      }
-      selectedIndex = centeredItem;
-      scrollOffset = clampScrollOffset(centerProgress - baseProgress[selectedIndex]);
 
       function clamp(value, min, max) {
         return Math.min(Math.max(value, min), max);
@@ -1329,15 +1767,23 @@
         return clamp(value, minProgress - baseProgress[0], maxProgress - baseProgress[baseProgress.length - 1]);
       }
 
+      function updateNodeCard(index) {
+        const node = nodes[index];
+        if (!node) return;
+        const key = node.dataset.key;
+        const step = stepByKey(key);
+        const label = node.dataset.label || step?.label || key;
+        const time = node.dataset.time || step?.time || "----";
+        nodeCard.querySelector("h2").textContent = label;
+        nodeCard.querySelector("p").textContent = step?.tooltip || `${label} ${time !== "----" ? `entered at ${time}` : "data is not complete yet."}`;
+      }
+
       function updateSelectedNode(index) {
         selectedIndex = index;
         const node = nodes[selectedIndex];
-        if (node) {
-          nodeTime.textContent = node.dataset.time;
-        }
-        nodes.forEach((item, itemIndex) => {
-          item.classList.toggle("is-active", itemIndex === selectedIndex);
-        });
+        if (node) nodeTime.textContent = node.dataset.time || "----";
+        nodes.forEach((item, itemIndex) => item.classList.toggle("is-active", itemIndex === selectedIndex));
+        updateNodeCard(selectedIndex);
       }
 
       function findNearestCenter() {
@@ -1370,6 +1816,12 @@
         updateSelectedNode(selectedIndex);
       }
 
+      function resetTimelineCenter(key = null) {
+        selectedIndex = key ? findNodeIndexByKey(key) : determineDefaultCenter();
+        scrollOffset = clampScrollOffset(centerProgress - baseProgress[selectedIndex]);
+        placeNodes();
+      }
+
       function renderNodeItems() {
         placeNodes();
       }
@@ -1383,13 +1835,9 @@
       }
 
       function moveTimelineDrag(event) {
-        if (!timeline.classList.contains("is-dragging")) {
-          return;
-        }
+        if (!timeline.classList.contains("is-dragging")) return;
         const delta = event.clientX - lastDragX;
-        if (Math.abs(event.clientX - dragStartX) > 4) {
-          didDrag = true;
-        }
+        if (Math.abs(event.clientX - dragStartX) > 4) didDrag = true;
         lastDragX = event.clientX;
         scrollOffset = clampScrollOffset(scrollOffset + delta / timeline.clientWidth);
         selectedIndex = findNearestCenter();
@@ -1398,9 +1846,259 @@
 
       function endTimelineDrag(event) {
         timeline.classList.remove("is-dragging");
-        if (timeline.hasPointerCapture(event.pointerId)) {
-          timeline.releasePointerCapture(event.pointerId);
+        if (timeline.hasPointerCapture(event.pointerId)) timeline.releasePointerCapture(event.pointerId);
+      }
+
+      function renderPanel(title, eyebrow, body) {
+        resultPanel.innerHTML = `<div class="panel-head"><div><small>${escapeHtml(eyebrow || "Details")}</small><h2>${escapeHtml(title)}</h2></div><button class="panel-close" type="button" data-close-panel>Close</button></div>${body}`;
+        resultPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+
+      function compactValue(value) {
+        if (Array.isArray(value)) return value.filter(Boolean).join(", ");
+        if (value && typeof value === "object") return "";
+        return value;
+      }
+
+      function passengerFields(data) {
+        return [
+          ["Name", passengerName(data) || data?.name],
+          ["BN", data?.bn],
+          ["Seat", data?.seat],
+          ["Cabin", data?.cabin],
+          ["Membership", [data?.ffCarrier, data?.ffNumber, data?.membershipStatus].filter(Boolean).join(" ")],
+          ["Ticket", data?.ticketNumber],
+          ["Bags", compactValue(data?.bags)],
+          ["SSR", compactValue(data?.specialServices || data?.codes)],
+          ["Meal", compactValue(data?.specialMeals)],
+        ].filter(([, value]) => value !== null && value !== undefined && value !== "");
+      }
+
+      function passengerCards(data) {
+        const fields = passengerFields(data);
+        return fields.length
+          ? `<div class="data-grid">${fields.map(([label, value]) => `<div class="data-card"><b>${escapeHtml(label)}</b><span>${escapeHtml(value)}</span></div>`).join("")}</div>`
+          : `<p class="panel-muted">No passenger details available.</p>`;
+      }
+
+      function showPassengerModal(data, title = "Passenger Record") {
+        document.querySelector(".passenger-modal-backdrop")?.remove();
+        const overlay = document.createElement("div");
+        overlay.className = "passenger-modal-backdrop";
+        overlay.innerHTML = `<article class="passenger-modal" role="dialog" aria-modal="true"><div class="panel-head"><div><small>${escapeHtml(data?.bn ? `BN ${data.bn}` : latestQuery)}</small><h2>${escapeHtml(title)}</h2></div><button class="panel-close" type="button" data-close-modal>Close</button></div>${passengerCards(data || {})}</article>`;
+        document.body.appendChild(overlay);
+      }
+
+      function closePassengerModal() {
+        document.querySelector(".passenger-modal-backdrop")?.remove();
+      }
+
+      function renderBnButtons(rows, emptyText, reasonFn = null) {
+        if (!rows.length) return `<p class="panel-muted">${escapeHtml(emptyText || "No data found.")}</p>`;
+        return `<div class="bn-button-list">${rows.map((row, index) => `<button class="bn-button" type="button" data-passenger-index="${index}" data-passenger-bn="${escapeHtml(row.bn || "")}" title="${escapeHtml(reasonFn ? reasonFn(row) : passengerName(row) || row.bn || "Passenger")}">${escapeHtml(row.bn || row.seat || index + 1)}</button>`).join("")}</div>`;
+      }
+
+      function setPanelPassengerRows(rows) {
+        resultPanel._passengerRows = rows;
+      }
+
+      function rowsTable(rows, columns, emptyText) {
+        if (!rows.length) return `<p class="panel-muted">${escapeHtml(emptyText || "No data found.")}</p>`;
+        return `<table class="data-table"><thead><tr>${columns.map((col) => `<th>${escapeHtml(col.label)}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${columns.map((col) => `<td>${escapeHtml(col.value(row) || "-")}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+      }
+
+      function passengerName(row) {
+        return row?.name || row?.passengerName || row?.paxName || "";
+      }
+
+      function renderPassenger(data) {
+        showPassengerModal(data, "Passenger Record");
+        resultPanel.innerHTML = "";
+      }
+
+      function updateFlightFromSy(sy) {
+        currentSy = sy;
+        const reg = sy.aircraftRegistration || "---";
+        const type = sy.aircraftType || sy.aircraftTypeRaw || "---";
+        setText("#flight-kicker", `${type} | ${reg}`);
+        setText("#active-flight", `${sy.flightNo || "SY"} / ${sy.flightDate || "TODAY"}`);
+        setText("#metric-gate", sy.gate || "---");
+        setText("#metric-bdt", sy.bdt || "----");
+        setText("#metric-std", sy.sd || "----");
+        document.querySelector("#reservation-booked").innerHTML = tripleHtml(countTriple(sy.reservation));
+        document.querySelector("#reservation-et").textContent = countTriple(sy.reservationTicketed).join(" / ");
+        document.querySelector("#checkin-accepted").innerHTML = tripleHtml(countTriple(sy.checkedIn));
+        document.querySelector("#checkin-et").textContent = countTriple(sy.checkedInTicketed).join(" / ");
+        setText("#rk-message", sy.rkMessage || "No RK message found.");
+        const chdIssues = (sy.chdList || []).filter((row) => row.hasChdCode === false).length;
+        const gov = sy.govAqq || {};
+        const govCount = [gov.duplicatePassports, gov.aqqTclBnList, gov.govDtaBnList, gov.passportExpBnList, gov.passportCodeIssues].reduce((sum, value) => sum + (Array.isArray(value) ? value.length : 0), 0);
+        const nbrdCount = (sy.bnAudit || []).filter((row) => /NBRD|CKIN/i.test(row?.apiReason || row?.tkReason || row?.visaReason || row?.bagReason || "")).length;
+        setText("#chd-count", chdIssues || (sy.chdList || []).length || "0");
+        setText("#gov-count", govCount || "0");
+        setText("#wch-count", (sy.wchList || []).length || "0");
+        setText("#psm-count", (sy.psmList || []).length || "0");
+        nodes.forEach((node) => {
+          const key = node.dataset.key;
+          const step = stepByKey(key);
+          let issueCount = 0;
+          let complete = step?.complete;
+          let time = step?.time || "----";
+          if (key === "CHD") { issueCount = chdIssues; complete = issueCount === 0; time = sy.chd ? `CHD${sy.chd}` : "----"; }
+          if (key === "GOV") { issueCount = govCount; complete = issueCount === 0; time = issueCount ? `${issueCount} ISSUES` : "CLEAR"; }
+          if (key === "NBRD") { issueCount = nbrdCount; complete = issueCount === 0; time = issueCount ? `${issueCount} CKIN` : "CLEAR"; }
+          node.dataset.status = normalizeStatus(Boolean(complete), issueCount);
+          node.dataset.time = time;
+          if (issueCount) node.dataset.alert = String(issueCount);
+          else node.removeAttribute("data-alert");
+        });
+        resetTimelineCenter();
+      }
+
+      function renderSy(data) {
+        if (!data?.sy) throw new Error(data?.error || "No SY payload returned.");
+        updateFlightFromSy(data.sy);
+        renderPanel("SY Loaded", data.sy.flightNo || "SY", `<p class="panel-muted">Live SY data loaded for ${escapeHtml(data.sy.flightNo || "flight")} / ${escapeHtml(data.sy.flightDate || "today")}. Use the timeline nodes or detail buttons to open matching lists.</p>`);
+      }
+
+      async function searchPassenger() {
+        const raw = queryInput.value.trim();
+        if (!raw) return;
+        latestQuery = raw;
+        resultPanel.innerHTML = `<p class="panel-muted">Searching ${escapeHtml(raw)}...</p>`;
+        try {
+          const data = await fetchSearch(raw);
+          if (data.error) throw new Error(data.error);
+          if (data.sy || /^SY\+?(?:\/\d{2}[A-Z]{3}(?:\d{2})?)?$/i.test(raw.replace(/\s+/g, ""))) renderSy(data);
+          else renderPassenger(data);
+        } catch (error) {
+          renderPanel("Search Error", raw, `<p class="panel-muted status-fail">${escapeHtml(error?.message || "Search failed.")}</p>`);
         }
+      }
+
+      function renderChdPanel() {
+        const rows = currentSy?.chdList || [];
+        renderPanel("CHD List", currentSy?.flightNo || "SY", renderBnButtons(rows, "No CHD passenger found.", (row) => `${passengerName(row)} ${row.hasChdCode ? "OK" : "Missing CHD1/0"}`));
+        setPanelPassengerRows(rows);
+      }
+
+      function renderGovPanel() {
+        const gov = currentSy?.govAqq || {};
+        const groups = [
+          ["Duplicate Passport", gov.duplicatePassports?.flatMap((item) => (item.bns || []).map((bn) => ({ bn, reason: `Duplicate passport ${item.passportNo || ""}` })))],
+          ["USA TIME OUT", (gov.aqqTclBnList || []).map((bn) => ({ bn, reason: "USA TIME OUT" }))],
+          ["CHN GOV FAIL", (gov.govDtaBnList || []).map((bn) => ({ bn, reason: "CHN GOV FAIL" }))],
+          ["Passport Exp", (gov.passportExpBnList || []).map((bn) => ({ bn, reason: "Passport Exp" }))],
+          ["WEB/EDI/Reswipe", (gov.passportCodeIssues || []).map((bn) => ({ bn, reason: "WEB/EDI/Reswipe" }))],
+        ];
+        const rows = groups.flatMap(([group, items]) => (items || []).map((item) => ({ ...item, group })));
+        const body = groups.map(([label, items]) => {
+          const groupRows = (items || []).map((item) => ({ ...item, group: label }));
+          return `<div class="data-card"><b>${escapeHtml(label)}</b>${renderBnButtons(groupRows, "Clear", (row) => row.reason)}</div>`;
+        }).join("");
+        renderPanel("GOV/AQQ", currentSy?.flightNo || "SY", `<div class="data-grid">${body}</div>`);
+        setPanelPassengerRows(rows);
+      }
+
+      function renderWchPanel() {
+        const rows = currentSy?.wchList || [];
+        renderPanel("WCH", currentSy?.flightNo || "SY", rowsTable(rows, [
+          { label: "BN", value: (row) => row.bn },
+          { label: "Name", value: passengerName },
+          { label: "Seat", value: (row) => row.seat },
+          { label: "Codes", value: (row) => Array.isArray(row.codes) ? row.codes.join("/") : row.code },
+        ], "No WCH records found."));
+      }
+
+      function renderMembershipPanel() {
+        const data = currentSy?.membershipList || {};
+        const rows = ["platinum", "gold", "silver"].flatMap((tier) => (data[tier] || []).map((row) => ({ ...row, tier })));
+        renderPanel("Membership", currentSy?.flightNo || "SY", rowsTable(rows, [
+          { label: "Tier", value: (row) => row.tier },
+          { label: "BN", value: (row) => row.bn },
+          { label: "Name", value: passengerName },
+          { label: "Seat", value: (row) => row.seat },
+          { label: "FF", value: (row) => [row.ffCarrier, row.ffNumber].filter(Boolean).join(" ") },
+        ], "No membership records found."));
+      }
+
+      function renderPsmPanel() {
+        const rows = currentSy?.psmList || [];
+        renderPanel("PSM/MS", currentSy?.flightNo || "SY", rowsTable(rows, [
+          { label: "BN", value: (row) => row.bn },
+          { label: "Name", value: passengerName },
+          { label: "Seat", value: (row) => row.seat },
+          { label: "Codes", value: (row) => Array.isArray(row.codes) ? row.codes.join("/") : row.code },
+          { label: "Text", value: (row) => row.text || row.raw || row.message },
+        ], "No PSM/MS records found."));
+      }
+
+      function renderNbrdPanel() {
+        const rows = (currentSy?.bnAudit || []).filter((row) => /NBRD|CKIN/i.test(row?.apiReason || row?.tkReason || row?.visaReason || row?.bagReason || ""));
+        renderPanel("NBRD / CKIN", currentSy?.flightNo || "SY", renderBnButtons(rows, "No NBRD/CKIN issue found.", (row) => [row.apiReason, row.tkReason, row.visaReason, row.bagReason].filter(Boolean).join("; ")));
+        setPanelPassengerRows(rows);
+      }
+
+      function renderBagReport() {
+        const sheet = currentSy?.bagSheet || {};
+        const sections = [];
+        const addBagSection = (title, bagSection, headers) => {
+          const rows = bagSection?.rows || (bagSection?.columns ? [bagSection.columns] : []);
+          if (!rows.length) return;
+          sections.push(`<h3>${escapeHtml(title)}</h3>${rowsTable(rows, headers.map((label, index) => ({ label, value: (row) => row[index] })), "No rows.")}`);
+        };
+        addBagSection("Rush Bags", sheet.rushBags, ["Rush #", "Orig #", "To", "AKE"]);
+        addBagSection("Not Load Bags", sheet.notLoadBags, ["Tag #", "Status", "Remark"]);
+        renderPanel("Bag Report", currentSy?.flightNo || "SY", sheet.hasData && sections.length ? sections.join("") : `<p class="panel-muted">No Google Sheet bag report found for this SY date.</p>`);
+      }
+
+      function renderSecurityCheck() {
+        const rows = currentSy?.bnAudit || [];
+        const reviewRows = rows.filter((row) => [row.apiStatus, row.tkStatus, row.visaStatus, row.bagStatus].some((status) => status === "fail" || status === "review"));
+        const passCount = rows.length - reviewRows.length;
+        renderPanel("Security Check", currentSy?.flightNo || "SY", `<div class="data-grid"><div class="data-card"><b>Pass</b><span class="status-ok">${passCount}</span></div><div class="data-card"><b>Review / Fail</b><span class="status-fail">${reviewRows.length}</span></div></div>${renderBnButtons(reviewRows, "No security review passenger found.", (row) => [row.apiReason, row.tkReason, row.visaReason, row.bagReason].filter(Boolean).join("; "))}`);
+        setPanelPassengerRows(reviewRows);
+      }
+
+      function seatNumber(value) {
+        const match = String(value || "").match(/^(\d{1,2})([A-Z])$/i);
+        return match ? { row: Number(match[1]), letter: match[2].toUpperCase() } : null;
+      }
+
+      function renderSeatMap() {
+        const records = currentSy?.seatMapRecords || [];
+        const seats = new Map(records.map((row) => [String(row.seat || "").toUpperCase(), row]));
+        const parsedRows = records.map((row) => seatNumber(row.seat)).filter(Boolean).map((seat) => seat.row);
+        const maxRow = Math.max(30, ...parsedRows);
+        const minRow = Math.max(1, Math.min(1, ...parsedRows));
+        const letters = ["A", "B", "C", "", "D", "E", "F"];
+        const bodyRows = [];
+        for (let rowNo = minRow; rowNo <= maxRow; rowNo += 1) {
+          bodyRows.push(`<div class="seat-row"><div class="seat-row-number">${rowNo}</div>${letters.map((letter) => {
+            if (!letter) return `<div class="seat-aisle" aria-hidden="true"></div>`;
+            const seat = `${rowNo}${letter}`;
+            const record = seats.get(seat);
+            const hasAlert = record && [...(record.specialServices || []), ...(record.specialMeals || [])].length;
+            return `<button class="seat-cell ${record ? "is-occupied" : ""} ${hasAlert ? "has-alert" : ""}" type="button" ${record ? `data-seat="${escapeHtml(seat)}"` : "disabled"} title="${escapeHtml(record ? `${seat} BN ${record.bn || ""} ${passengerName(record)}` : seat)}">${escapeHtml(record?.bn || seat)}</button>`;
+          }).join("")}</div>`);
+        }
+        renderPanel("Seat Map", currentSy?.flightNo || "SY", `<div class="seat-map-shell"><div class="seat-map-plane">${bodyRows.join("")}</div></div>`);
+        setPanelPassengerRows(records);
+      }
+
+      function renderStepPanel(key) {
+        if (key === "CHD") return renderChdPanel();
+        if (key === "GOV") return renderGovPanel();
+        if (key === "NBRD") return renderNbrdPanel();
+        const step = stepByKey(key);
+        const checkRows = Array.isArray(step?.checks) && step.checks.length
+          ? rowsTable(step.checks, [
+            { label: "Check", value: (row) => row.label || row.key },
+            { label: "Status", value: (row) => row.complete ? "Complete" : "Not complete" },
+            { label: "Input Time", value: (row) => row.time || "Not entered" },
+          ], "No check rows found.")
+          : "";
+        renderPanel(step?.label || key, currentSy?.flightNo || "Timeline", `<div class="data-grid"><div class="data-card"><b>Status</b><span>${escapeHtml(step?.complete ? "Complete" : "Not complete")}</span></div><div class="data-card"><b>Input Time</b><span>${escapeHtml(step?.time || "Not entered")}</span></div><div class="data-card"><b>Detail</b><span>${escapeHtml(step?.tooltip || "No detail available")}</span></div></div>${checkRows}`);
       }
 
       function toggleMenu() {
@@ -1421,12 +2119,129 @@
         loginMenu.setAttribute("aria-hidden", String(open));
       });
 
+      changePasswordButton.addEventListener("click", () => {
+        loginButton.setAttribute("aria-expanded", "false");
+        loginMenu.classList.remove("is-open");
+        loginMenu.setAttribute("aria-hidden", "true");
+        passwordPage.hidden = false;
+        passwordStatus.textContent = "";
+        resultPanel.innerHTML = "";
+        newPasswordInput.focus();
+      });
+
+      closePasswordPageButton.addEventListener("click", () => {
+        passwordPage.hidden = true;
+        newPasswordInput.value = "";
+      });
+
+      changePasswordForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        passwordStatus.textContent = "Updating password...";
+        try {
+          if (!auth?.currentUser) throw new Error("You are not signed in.");
+          await auth.currentUser.updatePassword(newPasswordInput.value.trim());
+          passwordStatus.textContent = "Password changed. Please sign in again.";
+          await auth.signOut();
+          window.location.href = "login.html";
+        } catch (error) {
+          passwordStatus.textContent = error?.code === "auth/requires-recent-login"
+            ? "For security, please log out, sign in again, then change your password."
+            : (error?.message || "Password update failed.");
+        }
+      });
+
+      logoutButton.addEventListener("click", async () => {
+        if (auth) await auth.signOut();
+        window.location.href = loginUrl();
+      });
+
       flightMenuButton.addEventListener("click", () => {
         const open = flightMenuButton.getAttribute("aria-expanded") === "true";
         flightMenuButton.setAttribute("aria-expanded", String(!open));
         flightMenu.classList.toggle("is-open", !open);
         flightMenu.setAttribute("aria-hidden", String(open));
       });
+
+      timeToggle.addEventListener("click", () => {
+        const open = detailsPanel.classList.toggle("is-open");
+        timeToggle.classList.toggle("is-open", open);
+        timeToggle.setAttribute("aria-expanded", String(open));
+      });
+
+      nodes.forEach((node) => {
+        node.addEventListener("click", () => {
+          if (didDrag) return;
+          selectedIndex = Number(node.dataset.index);
+          renderNodeItems();
+          renderStepPanel(node.dataset.key);
+        });
+      });
+
+      document.querySelectorAll(".detail-action[data-panel]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const panel = button.dataset.panel;
+          if (panel === "chd") renderChdPanel();
+          if (panel === "gov") renderGovPanel();
+          if (panel === "wch") renderWchPanel();
+          if (panel === "membership") renderMembershipPanel();
+          if (panel === "psm") renderPsmPanel();
+        });
+      });
+
+      bagReportButton.addEventListener("click", renderBagReport);
+      securityCheckButton.addEventListener("click", renderSecurityCheck);
+      seatMapButton.addEventListener("click", renderSeatMap);
+
+      resultPanel.addEventListener("click", (event) => {
+        if (event.target.closest("[data-close-panel]")) {
+          resultPanel.innerHTML = "";
+          resultPanel._passengerRows = [];
+          return;
+        }
+        const passengerButton = event.target.closest("[data-passenger-index]");
+        if (passengerButton) {
+          const rows = resultPanel._passengerRows || [];
+          const index = Number(passengerButton.dataset.passengerIndex);
+          const bn = passengerButton.dataset.passengerBn;
+          const row = (bn && rows.find((item) => String(item.bn || "") === bn)) || rows[index] || { bn };
+          showPassengerModal(row, "Passenger Record");
+          return;
+        }
+        const seatButton = event.target.closest("[data-seat]");
+        if (seatButton) {
+          const seat = seatButton.dataset.seat;
+          const rows = resultPanel._passengerRows || [];
+          const row = rows.find((item) => String(item.seat || "").toUpperCase() === seat) || { seat };
+          showPassengerModal(row, "Seat Record");
+        }
+      });
+
+      document.addEventListener("click", (event) => {
+        if (event.target.closest("[data-close-modal]") || event.target.classList.contains("passenger-modal-backdrop")) closePassengerModal();
+      });
+
+      searchForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        passwordPage.hidden = true;
+        mobileQueryInput.value = queryInput.value;
+        searchPassenger();
+      });
+
+      mobileSearchForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        passwordPage.hidden = true;
+        queryInput.value = mobileQueryInput.value;
+        mobilePanel.classList.remove("is-open");
+        mobilePanel.setAttribute("aria-hidden", "true");
+        menuButton.setAttribute("aria-expanded", "false");
+        fallbackMenuButton.setAttribute("aria-expanded", "false");
+        searchPassenger();
+      });
+
+      timeline.addEventListener("pointerdown", beginTimelineDrag);
+      timeline.addEventListener("pointermove", moveTimelineDrag);
+      timeline.addEventListener("pointerup", endTimelineDrag);
+      timeline.addEventListener("pointercancel", endTimelineDrag);
 
       if (window.location.hash === "#open-login") {
         loginButton.setAttribute("aria-expanded", "true");
@@ -1440,32 +2255,21 @@
         flightMenu.setAttribute("aria-hidden", "false");
       }
 
-      timeToggle.addEventListener("click", () => {
-        const open = detailsPanel.classList.toggle("is-open");
-        timeToggle.classList.toggle("is-open", open);
-        timeToggle.setAttribute("aria-expanded", String(open));
-      });
-
-      nodes.forEach((node) => {
-        node.addEventListener("click", () => {
-          if (didDrag) {
+      if (!auth) {
+        window.location.replace(loginUrl());
+      } else {
+        auth.onAuthStateChanged((user) => {
+          if (!user) {
+            window.location.replace(loginUrl());
             return;
           }
-          selectedIndex = Number(node.dataset.index);
-          renderNodeItems();
+          currentUser.textContent = user.email || "Authenticated user";
+          if (!currentSy) searchPassenger();
         });
-      });
-
-      timeline.addEventListener("pointerdown", beginTimelineDrag);
-      timeline.addEventListener("pointermove", moveTimelineDrag);
-      timeline.addEventListener("pointerup", endTimelineDrag);
-      timeline.addEventListener("pointercancel", endTimelineDrag);
+      }
 
       placeNodes();
-      renderNodeItems();
-      new ResizeObserver(() => {
-        placeNodes();
-      }).observe(timelineShell);
+      new ResizeObserver(() => placeNodes()).observe(timelineShell);
     </script>
   </body>
 </html>
