@@ -168,12 +168,12 @@
         <strong>MUFC</strong>
       </div>
       <p class="subhead">Internal Access Only</p>
-      <form id="login-form" novalidate>
+      <form id="login-form" method="post" autocomplete="on" novalidate>
         <label class="field">
-          <input id="email" name="email" type="email" value="lake@mu.com" autocomplete="username" aria-label="Email" required />
+          <input id="email" name="email" type="email" autocomplete="username" aria-label="Email" required />
         </label>
         <label class="field">
-          <input id="password" name="password" type="password" value="password" autocomplete="current-password" aria-label="Password" required />
+          <input id="password" name="password" type="password" autocomplete="current-password" aria-label="Password" required />
         </label>
         <button class="login-button" type="submit">Login</button>
         <p class="login-status is-info" role="status" aria-live="polite">Connecting to Firebase...</p>
