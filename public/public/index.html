@@ -2062,6 +2062,7 @@
         sessionStorage.removeItem(APP_ENTRY_KEY);
         return Boolean(allowedAt);
       }
+      window.findNodeIndexByKey = findNodeIndexByKey;
 
       const canEnterApp = consumeAppEntry();
 
