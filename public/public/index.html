@@ -443,31 +443,6 @@
         }
       }
 
-      .time-toggle {
-        width: 44px;
-        height: 34px;
-        display: grid;
-        place-items: center;
-        position: absolute;
-        left: calc(100% + 28px);
-        top: calc(50% + 12px);
-        transform: translateY(-50%);
-        margin: 0;
-        border: 1px solid rgba(255, 255, 255, 0.16);
-        background: rgba(0, 0, 0, 0.18);
-        color: white;
-        cursor: pointer;
-      }
-
-      .time-toggle svg {
-        width: 18px;
-        height: 18px;
-        transition: transform 180ms ease;
-      }
-
-      .time-toggle.is-open svg {
-        transform: rotate(180deg);
-      }
 
       .mission-side {
         display: flex;
@@ -1717,11 +1692,6 @@
           width: 100%;
         }
 
-        .time-toggle {
-          position: static;
-          margin: 24px 0 0;
-        }
-
         .status-strip {
           grid-template-columns: repeat(3, minmax(0, 1fr));
           width: 100%;
@@ -1935,11 +1905,6 @@
           <div class="mission-title">
             <p class="kicker" id="flight-kicker">Loading SY...</p>
             <h1 id="active-flight">SY</h1>
-            <button class="time-toggle" type="button" aria-label="Show flight details" aria-expanded="false">
-              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-            </button>
           </div>
           <div class="mission-side">
             <div class="status-strip" aria-label="Current flight metrics">
@@ -1961,7 +1926,7 @@
           </div>
         </div>
 
-        <section class="details-panel" aria-label="Expanded flight details">
+        <section class="details-panel is-open" aria-label="Expanded flight details">
           <div class="details-inner">
             <div class="details-surface">
               <div class="details-manifest">
@@ -2053,8 +2018,6 @@
       const logoutButton = document.querySelector("#logout");
       const flightMenuButton = document.querySelector(".flight-menu-button");
       const flightMenu = document.querySelector(".flight-menu");
-      const timeToggle = document.querySelector(".time-toggle");
-      const detailsPanel = document.querySelector(".details-panel");
       const nodeTime = document.querySelector("#node-time");
       const nodes = document.querySelectorAll(".node");
       const nodeCard = document.querySelector(".node-card");
@@ -2986,12 +2949,6 @@
         flightMenuButton.setAttribute("aria-expanded", String(!open));
         flightMenu.classList.toggle("is-open", !open);
         flightMenu.setAttribute("aria-hidden", String(open));
-      });
-
-      timeToggle.addEventListener("click", () => {
-        const open = detailsPanel.classList.toggle("is-open");
-        timeToggle.classList.toggle("is-open", open);
-        timeToggle.setAttribute("aria-expanded", String(open));
       });
 
       nodes.forEach((node) => {
