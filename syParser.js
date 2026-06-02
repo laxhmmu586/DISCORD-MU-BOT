@@ -106,8 +106,10 @@ function extractPsmLines(section) {
 }
 
 function hasTargetPsm(line) {
-  const normalized = String(line || '').toUpperCase().replace(/\s+/g, '');
-  return TARGET_PSM_MSG_CODES.some((code) => normalized.includes(code));
+  const raw = String(line || '').toUpperCase();
+  if (/^\s*PSM/i.test(raw)) return true;
+  const normalized = raw.replace(/\s+/g, '');
+  return /^\s*MSG/i.test(raw) && TARGET_PSM_MSG_CODES.some((code) => normalized.includes(code));
 }
 
 
@@ -633,6 +635,16 @@ function enrichGovAqqFromLog(log, syInfo, targetYmd = null) {
   const issueByBn = new Map();
   const latestSectionByBn = new Map();
   const passportExpBnList = [];
+  const sectionRichnessScore = (text) => {
+    const raw = String(text || '');
+    let score = 0;
+    if (/PAX INFO\s*:/i.test(raw)) score += 3;
+    if (/PASSPORT\s*:/i.test(raw)) score += 3;
+    if (/\bAPI\s+/i.test(raw)) score += 1;
+    if (/\bGOV\s+/i.test(raw)) score += 1;
+    if (/\bET\s+TKNE\//i.test(raw)) score += 1;
+    return score;
+  };
   const now = new Date();
   const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
 
@@ -651,13 +663,28 @@ function enrichGovAqqFromLog(log, syInfo, targetYmd = null) {
     if (!bnMatch) continue;
     const bn = bnMatch[1].padStart(3, '0');
     const ts = parseSectionTimestamp(sectionObj.timestamp);
+    const score = sectionRichnessScore(section);
     const prev = latestSectionByBn.get(bn);
-    if (prev && prev.ts > ts) continue;
-    latestSectionByBn.set(bn, { ts, section });
+    if (!prev) {
+      latestSectionByBn.set(bn, { ts, section, score });
+      continue;
+    }
+    const hasPassengerLine = Boolean(getPassengerRecordLine(section));
+    if (ts > prev.ts) {
+      latestSectionByBn.set(bn, {
+        ts,
+        section: hasPassengerLine ? section : `${prev.section || ''}
+${section}`,
+        score
+      });
+    } else if (ts === prev.ts && score >= prev.score) {
+      latestSectionByBn.set(bn, { ts, section, score });
+    }
   }
 
   for (const [bn, latest] of latestSectionByBn.entries()) {
     const section = latest.section || '';
+    if (isDeletedPassengerSection(section)) continue;
     const passportNo = section.match(/PASSPORT\s*:\s*([A-Z0-9]+)/i)?.[1]?.toUpperCase() || '';
     const bookingName = extractBookingName(section);
     const latestApiAgent = extractLatestApiAgent(section);
