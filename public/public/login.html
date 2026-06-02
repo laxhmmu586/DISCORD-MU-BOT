@@ -137,8 +137,25 @@
         cursor: pointer;
       }
 
-      .login-button:hover {
+      .login-button:hover:not(:disabled) {
         background: linear-gradient(180deg, #4382ff, #2d67ee);
+      }
+
+      .login-button:disabled {
+        cursor: wait;
+        opacity: 0.72;
+      }
+
+      .login-status {
+        min-height: 18px;
+        margin: 12px 0 0;
+        color: #ffb4ae;
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      .login-status.is-info {
+        color: var(--muted);
       }
     </style>
   </head>
@@ -151,13 +168,101 @@
         <strong>MUFC</strong>
       </div>
       <p class="subhead">Internal Access Only</p>
-      <label class="field">
-        <input type="email" value="lake@mu.com" aria-label="Email" />
-      </label>
-      <label class="field">
-        <input type="password" value="password" aria-label="Password" />
-      </label>
-      <button class="login-button" type="button">Login</button>
+      <form id="login-form" novalidate>
+        <label class="field">
+          <input id="email" name="email" type="email" value="lake@mu.com" autocomplete="username" aria-label="Email" required />
+        </label>
+        <label class="field">
+          <input id="password" name="password" type="password" value="password" autocomplete="current-password" aria-label="Password" required />
+        </label>
+        <button class="login-button" type="submit">Login</button>
+        <p class="login-status is-info" role="status" aria-live="polite">Connecting to Firebase...</p>
+      </form>
     </main>
+
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="/__/firebase/init.js"></script>
+    <script>
+      const form = document.querySelector("#login-form");
+      const emailInput = document.querySelector("#email");
+      const passwordInput = document.querySelector("#password");
+      const submitButton = document.querySelector(".login-button");
+      const statusText = document.querySelector(".login-status");
+
+      function setStatus(message, isError = false) {
+        statusText.textContent = message;
+        statusText.classList.toggle("is-info", !isError);
+      }
+
+      const APP_ENTRY_KEY = "mufc_allow_app_entry";
+
+      function allowAppEntry() {
+        sessionStorage.setItem(APP_ENTRY_KEY, String(Date.now()));
+      }
+
+      function getRedirectTarget() {
+        const params = new URLSearchParams(window.location.search);
+        const rawNext = params.get("next") || "index.html";
+        try {
+          const url = new URL(rawNext, window.location.href);
+          if (url.origin === window.location.origin) {
+            return url.href;
+          }
+        } catch (error) {
+          // Fall back to the app home page when the next URL is invalid.
+        }
+        return new URL("index.html", window.location.href).href;
+      }
+
+      function friendlyAuthError(error) {
+        switch (error?.code) {
+          case "auth/invalid-email":
+            return "Email format is invalid.";
+          case "auth/invalid-credential":
+          case "auth/user-not-found":
+          case "auth/wrong-password":
+            return "Email or password is incorrect.";
+          case "auth/too-many-requests":
+            return "Too many attempts. Please wait and try again.";
+          case "auth/network-request-failed":
+            return "Cannot reach Firebase. Please check the network and try again.";
+          default:
+            return error?.message || "Firebase login failed. Please try again.";
+        }
+      }
+
+      function enableForm() {
+        submitButton.disabled = false;
+        setStatus("Ready to sign in.");
+      }
+
+      if (!window.firebase?.apps?.length || !window.firebase?.auth) {
+        submitButton.disabled = true;
+        setStatus("Firebase is not connected. Open this page from Firebase Hosting and redeploy if this continues.", true);
+      } else {
+        const auth = firebase.auth();
+        auth.onAuthStateChanged((user) => {
+          if (user) {
+            allowAppEntry();
+            window.location.replace(getRedirectTarget());
+            return;
+          }
+          enableForm();
+        });
+
+        form.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          submitButton.disabled = true;
+          setStatus("Signing in...");
+          try {
+            await auth.signInWithEmailAndPassword(emailInput.value.trim(), passwordInput.value);
+          } catch (error) {
+            submitButton.disabled = false;
+            setStatus(friendlyAuthError(error), true);
+          }
+        });
+      }
+    </script>
   </body>
 </html>
