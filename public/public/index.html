@@ -471,32 +471,65 @@
       .status-strip {
         display: grid;
         grid-template-columns: repeat(3, minmax(86px, 1fr));
+        gap: 12px;
         min-width: 380px;
-        border: 1px solid rgba(255, 255, 255, 0.16);
-        background: rgba(0, 0, 0, 0.32);
       }
 
-      .status-strip div {
-        padding: 19px 20px;
-        border-left: 1px solid rgba(255, 255, 255, 0.12);
+      .status-metric {
+        position: relative;
+        min-height: 82px;
+        display: grid;
+        place-items: center;
+        padding: 10px 14px 8px;
       }
 
-      .status-strip div:first-child {
-        border-left: 0;
+      .status-metric::before {
+        content: "";
+        position: absolute;
+        inset: 0 8px 12px;
+        border: 3px solid rgba(244, 250, 255, 0.9);
+        border-bottom-color: transparent;
+        border-radius: 999px 999px 0 0;
+        filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.8));
+        opacity: 0.95;
       }
 
-      .status-strip span {
+      .status-metric span,
+      .status-metric strong,
+      .status-metric em {
+        position: relative;
+        z-index: 1;
+      }
+
+      .status-metric span {
         display: block;
-        color: var(--muted);
+        color: rgba(180, 194, 207, 0.88);
         font-size: 10px;
-        font-weight: 800;
+        font-weight: 900;
+        letter-spacing: 1.2px;
+        line-height: 1;
         text-transform: uppercase;
       }
 
-      .status-strip strong {
+      .status-metric strong {
         display: block;
-        margin-top: 7px;
-        font-size: 21px;
+        margin-top: 6px;
+        color: rgba(244, 250, 255, 0.98);
+        font-size: 25px;
+        line-height: 0.95;
+        text-shadow: 0 2px 9px rgba(0, 0, 0, 0.92);
+      }
+
+      .status-metric em {
+        display: block;
+        margin-top: 4px;
+        color: rgba(205, 217, 228, 0.78);
+        font-size: 9px;
+        font-style: normal;
+        font-weight: 900;
+        letter-spacing: 1.1px;
+        line-height: 1;
+        text-transform: uppercase;
       }
 
       .flight-tools {
@@ -640,14 +673,16 @@
       .timeline-time {
         position: absolute;
         left: 50%;
-        top: calc(50% + 78px);
+        top: calc(50% + 40px);
         z-index: 3;
         transform: translateX(-50%);
         color: rgba(244, 250, 255, 0.94);
         font-size: clamp(44px, 5.2vw, 66px);
         font-weight: 300;
         letter-spacing: 1.2px;
-        text-shadow: 0 0 24px rgba(78, 176, 255, 0.22);
+        text-shadow:
+          0 3px 14px rgba(0, 0, 0, 0.95),
+          0 0 24px rgba(78, 176, 255, 0.24);
       }
 
       .timeline svg {
@@ -1777,15 +1812,32 @@
           grid-template-columns: repeat(3, minmax(0, 1fr));
           width: 100%;
           min-width: 0;
+          gap: 8px;
           margin-top: 22px;
         }
 
-        .status-strip div {
-          padding: 12px 10px;
+        .status-metric {
+          min-height: 64px;
+          padding: 8px 6px 6px;
         }
 
-        .status-strip strong {
-          font-size: 12px;
+        .status-metric::before {
+          inset: 0 3px 8px;
+          border-width: 2px;
+        }
+
+        .status-metric span {
+          font-size: 8px;
+          letter-spacing: 0.8px;
+        }
+
+        .status-metric strong {
+          margin-top: 4px;
+          font-size: 17px;
+        }
+
+        .status-metric em {
+          font-size: 7px;
         }
 
         .mission-stage {
@@ -1800,7 +1852,11 @@
 
         .timeline {
           width: min(760px, 118vw);
-          height: 260px;
+          height: 220px;
+        }
+
+        .timeline-time {
+          top: calc(50% + 30px);
         }
 
         .node-card {
@@ -1989,9 +2045,9 @@
           </div>
           <div class="mission-side">
             <div class="status-strip" aria-label="Current flight metrics">
-              <div><span>Gate</span><strong id="metric-gate">---</strong></div>
-              <div><span>BDT</span><strong id="metric-bdt">----</strong></div>
-              <div><span>STD</span><strong id="metric-std">----</strong></div>
+              <div class="status-metric"><span>Gate</span><strong id="metric-gate">---</strong><em>Gate</em></div>
+              <div class="status-metric"><span>BDT</span><strong id="metric-bdt">----</strong><em>Time</em></div>
+              <div class="status-metric"><span>STD</span><strong id="metric-std">----</strong><em>Time</em></div>
             </div>
             <div class="flight-tools" aria-label="Flight data">
               <button class="flight-menu-button" type="button" aria-label="Open flight data menu" aria-expanded="false">
@@ -2047,9 +2103,9 @@
             <div class="timeline-time" id="node-time">----</div>
             <div class="timeline" aria-label="Mission timeline">
               <svg viewBox="0 0 1200 360" preserveAspectRatio="none" aria-hidden="true">
-                <path class="orbit-shadow" d="M-70 314 C 210 178, 398 146, 600 146 S 990 178, 1270 314" />
-                <path id="mission-path" class="orbit-glow" d="M-70 314 C 210 178, 398 146, 600 146 S 990 178, 1270 314" />
-                <path class="orbit-base" d="M-70 314 C 210 178, 398 146, 600 146 S 990 178, 1270 314" />
+                <path class="orbit-shadow" data-orbit-path="main" d="M-70 314 C 210 178, 398 146, 600 146 S 990 178, 1270 314" />
+                <path id="mission-path" class="orbit-glow" data-orbit-path="main" d="M-70 314 C 210 178, 398 146, 600 146 S 990 178, 1270 314" />
+                <path class="orbit-base" data-orbit-path="main" d="M-70 314 C 210 178, 398 146, 600 146 S 990 178, 1270 314" />
                 <path class="orbit-dash" d="M-46 292 C 224 164, 410 134, 600 134 S 976 164, 1246 292" />
               </svg>
               <button class="node" type="button" data-index="0" data-key="CREW_APIS" data-label="CREW APIS" data-status="pending" data-time="----"></button>
@@ -2122,6 +2178,9 @@
       const newPasswordInput = document.querySelector("#new-password");
       const passwordStatus = document.querySelector("#password-status");
       const baseProgress = [0.08, 0.19, 0.3, 0.41, 0.52, 0.63, 0.74, 0.85, 0.96];
+      const desktopOrbitPath = "M-70 314 C 210 178, 398 146, 600 146 S 990 178, 1270 314";
+      const mobileOrbitPath = "M-70 292 C 220 198, 410 174, 600 174 S 980 198, 1270 292";
+      const mobileOrbitQuery = window.matchMedia("(max-width: 760px)");
       const centerProgress = 0.5;
       const minProgress = 0.04;
       const maxProgress = 0.96;
@@ -2398,7 +2457,15 @@
         return nearestIndex;
       }
 
+      function updateOrbitPath() {
+        const orbitPath = mobileOrbitQuery.matches ? mobileOrbitPath : desktopOrbitPath;
+        document.querySelectorAll('[data-orbit-path="main"]').forEach((path) => {
+          if (path.getAttribute("d") !== orbitPath) path.setAttribute("d", orbitPath);
+        });
+      }
+
       function placeNodes() {
+        updateOrbitPath();
         const pathLength = missionPath.getTotalLength();
         nodes.forEach((node) => {
           const index = Number(node.dataset.index);
@@ -3340,6 +3407,7 @@
       }
 
       resetTimelineCenter("CREW_APIS");
+      mobileOrbitQuery.addEventListener("change", () => placeNodes());
       new ResizeObserver(() => placeNodes()).observe(timelineShell);
     </script>
   </body>
