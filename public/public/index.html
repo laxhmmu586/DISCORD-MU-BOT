@@ -2622,6 +2622,7 @@
       let didDrag = false;
       let currentSy = null;
       let latestQuery = "SY";
+      let activeSyQuery = "SY";
 
       function setSyDetailsVisible(visible) {
         const detailsPanel = document.querySelector(".details-panel");
@@ -3272,19 +3273,65 @@
         return /^SY\+?(?:\/\d{2}[A-Z]{3}(?:\d{2})?)?$/i.test(String(value || "").replace(/\s+/g, ""));
       }
 
+      const syMonthMap = {
+        JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5,
+        JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11,
+      };
+
+      function ymdFromDate(date) {
+        return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, "0"), String(date.getDate()).padStart(2, "0")].join("-");
+      }
+
+      function normalizeSyQuery(value) {
+        const normalized = String(value || "SY").replace(/\s+/g, "").toUpperCase();
+        return normalized === "SY+" ? "SY" : normalized;
+      }
+
+      function syQueryDateYmd(value) {
+        const match = normalizeSyQuery(value).match(/^SY\+?\/(\d{2})([A-Z]{3})(\d{0,2})$/);
+        if (!match) return "";
+        const month = syMonthMap[match[2]];
+        if (month === undefined) return "";
+        const currentYear = new Date().getFullYear();
+        const year = match[3] ? 2000 + Number(match[3]) : currentYear;
+        const date = new Date(year, month, Number(match[1]));
+        if (date.getFullYear() !== year || date.getMonth() !== month || date.getDate() !== Number(match[1])) return "";
+        return ymdFromDate(date);
+      }
+
+      function isTodaySyQuery(value) {
+        const normalized = normalizeSyQuery(value);
+        if (normalized === "SY") return true;
+        const queryYmd = syQueryDateYmd(normalized);
+        return Boolean(queryYmd && queryYmd === ymdFromDate(new Date()));
+      }
+
+      function stopSyAutoRefresh() {
+        if (syAutoRefreshTimer) clearInterval(syAutoRefreshTimer);
+        syAutoRefreshTimer = null;
+      }
+
       async function refreshSy({ silent = true } = {}) {
+        if (!isTodaySyQuery(activeSyQuery)) {
+          stopSyAutoRefresh();
+          return;
+        }
         if (syAutoRefreshInFlight) return;
         syAutoRefreshInFlight = true;
         const showLoading = !currentSy;
         if (showLoading) setLoadingState(true);
+        const refreshQuery = activeSyQuery || "SY";
         try {
-          const data = await fetchSearch("SY");
+          const data = await fetchSearch(refreshQuery);
+          if (refreshQuery !== activeSyQuery || !isTodaySyQuery(activeSyQuery)) return;
           if (!data?.sy) throw new Error(data?.error || "No SY payload returned.");
           updateFlightFromSy(data.sy);
           resultPanel.innerHTML = "";
         } catch (error) {
-          clearSyDashboard();
-          resultPanel.innerHTML = "";
+          if (refreshQuery === activeSyQuery && isTodaySyQuery(activeSyQuery)) {
+            clearSyDashboard();
+            resultPanel.innerHTML = "";
+          }
           if (!silent) console.warn("Unable to load today's SY data.", error);
         } finally {
           if (showLoading) setLoadingState(false);
@@ -3292,9 +3339,11 @@
         }
       }
 
-      function startSyAutoRefresh() {
-        if (syAutoRefreshTimer) clearInterval(syAutoRefreshTimer);
-        refreshSy();
+      function startSyAutoRefresh(query = activeSyQuery, { immediate = true } = {}) {
+        activeSyQuery = normalizeSyQuery(query || "SY");
+        stopSyAutoRefresh();
+        if (!isTodaySyQuery(activeSyQuery)) return;
+        if (immediate) refreshSy();
         syAutoRefreshTimer = setInterval(refreshSy, SY_AUTO_REFRESH_MS);
       }
 
@@ -3303,13 +3352,20 @@
         if (!raw) return;
         latestQuery = raw;
         const isSySearch = isSyQuery(raw);
-        if (isSySearch) setLoadingState(true);
-        else resultPanel.innerHTML = "";
+        if (isSySearch) {
+          activeSyQuery = normalizeSyQuery(raw);
+          if (!isTodaySyQuery(activeSyQuery)) stopSyAutoRefresh();
+          setLoadingState(true);
+        } else resultPanel.innerHTML = "";
         try {
           const data = await fetchSearch(raw);
           if (data.error) throw new Error(data.error);
-          if (data.sy || isSySearch) renderSy(data);
-          else renderPassenger(data);
+          if (data.sy || isSySearch) {
+            renderSy(data);
+            activeSyQuery = normalizeSyQuery(raw);
+            if (isTodaySyQuery(activeSyQuery)) startSyAutoRefresh(activeSyQuery, { immediate: false });
+            else stopSyAutoRefresh();
+          } else renderPassenger(data);
         } catch (error) {
           if (isSySearch) {
             clearSyDashboard();
