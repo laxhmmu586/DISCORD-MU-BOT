@@ -656,15 +656,21 @@
       }
 
       .timeline-shell::before {
-        top: 50%;
-        height: 34%;
-        background: linear-gradient(180deg, rgba(0, 0, 0, 0.46), rgba(0, 0, 0, 0));
+        left: 14%;
+        right: 14%;
+        top: 44%;
+        height: 24%;
+        border-radius: 0 0 50% 50%;
+        background: radial-gradient(ellipse at 50% 0%, rgba(0, 0, 0, 0.58) 0%, rgba(0, 0, 0, 0.42) 34%, rgba(0, 0, 0, 0) 72%);
+        transform: rotate(-0.4deg);
       }
 
       .timeline-shell::after {
+        left: 16%;
+        right: 16%;
         bottom: 0;
-        height: 42%;
-        background: linear-gradient(0deg, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0));
+        height: 36%;
+        background: radial-gradient(ellipse at 50% 100%, rgba(0, 0, 0, 0.78) 0%, rgba(0, 0, 0, 0.5) 38%, rgba(0, 0, 0, 0) 72%);
       }
 
       .timeline {
@@ -1055,7 +1061,7 @@
         border: 1px solid rgba(176, 216, 255, 0.22);
         background: rgba(1, 10, 18, 0.24);
         color: rgba(235, 246, 255, 0.82);
-        font-size: 13px;
+        font-size: 14px;
         line-height: 1.45;
         text-align: center;
       }
@@ -1134,10 +1140,10 @@
 
       .result-panel {
         position: relative;
-        z-index: 5;
-        max-height: calc(100svh - 140px);
+        z-index: 80;
+        max-height: min(56svh, 520px);
         overflow-y: auto;
-        margin-top: -760px;
+        margin-top: -560px;
       }
 
       .result-panel:empty {
@@ -1773,6 +1779,13 @@
       }
 
       @media (max-width: 760px) {
+        body {
+          height: auto;
+          min-height: 100svh;
+          overflow-x: hidden;
+          overflow-y: auto;
+        }
+
         body::before {
           background-position: center top;
           background-size: auto 100svh;
@@ -1816,8 +1829,16 @@
         }
 
         main {
-          height: 100svh;
+          height: auto;
+          min-height: 100svh;
+          overflow: visible;
           padding-top: 68px;
+        }
+
+        .hero {
+          height: auto;
+          min-height: calc(100svh - 68px);
+          overflow: visible;
         }
 
         .mission-head {
@@ -1866,6 +1887,19 @@
           align-items: start;
           padding: 0;
           transform: translateY(36px);
+        }
+
+        .timeline-shell::before {
+          left: 8%;
+          right: 8%;
+          top: 48%;
+          height: 20%;
+        }
+
+        .timeline-shell::after {
+          left: 10%;
+          right: 10%;
+          height: 30%;
         }
 
         .timeline {
@@ -1978,8 +2012,10 @@
         }
 
         .result-panel {
-          max-height: calc(100svh - 92px);
-          margin-top: -760px;
+          position: relative;
+          z-index: 120;
+          max-height: 58svh;
+          margin-top: -360px;
         }
 
         .panel-workspace {
