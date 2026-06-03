@@ -1514,25 +1514,177 @@
       .psm-card-row b { color: #9bc8ff; }
 
       .record-card {
+        position: relative;
         width: 100%;
-        max-width: 560px;
-        border: 1px solid rgba(0, 213, 116, 0.78);
-        border-radius: 16px;
-        background: linear-gradient(150deg, rgba(18, 86, 55, 0.92), rgba(15, 58, 51, 0.9));
-        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.38), 0 0 26px rgba(0, 213, 116, 0.14);
-        padding: 14px;
-        color: #dcefff;
+        max-width: 680px;
+        overflow: hidden;
+        border: 1px solid rgba(75, 218, 255, 0.42);
+        border-radius: 22px;
+        background:
+          radial-gradient(circle at 88% 8%, rgba(88, 167, 255, 0.24), transparent 17rem),
+          radial-gradient(circle at 16% 18%, rgba(0, 213, 116, 0.18), transparent 15rem),
+          linear-gradient(145deg, rgba(3, 20, 34, 0.96), rgba(4, 42, 54, 0.9) 52%, rgba(8, 56, 46, 0.92));
+        box-shadow: 0 28px 90px rgba(0, 0, 0, 0.46), 0 0 34px rgba(71, 196, 255, 0.13), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        padding: 18px;
+        color: #e7f7ff;
+      }
+
+      .record-card::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background:
+          linear-gradient(90deg, transparent, rgba(127, 219, 255, 0.08), transparent),
+          repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 7px);
+        opacity: 0.55;
+        mix-blend-mode: screen;
+      }
+
+      .record-card::after {
+        content: "";
+        position: absolute;
+        right: -72px;
+        top: -84px;
+        width: 190px;
+        height: 190px;
+        border: 1px solid rgba(169, 225, 255, 0.26);
+        border-radius: 999px;
+        box-shadow: inset 0 0 28px rgba(83, 174, 255, 0.12);
+        pointer-events: none;
       }
 
       .record-card.is-warning {
         border-color: rgba(255, 199, 44, 0.86);
-        background: linear-gradient(150deg, rgba(82, 54, 16, 0.94), rgba(32, 41, 53, 0.92));
-        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.38), 0 0 22px rgba(255, 199, 44, 0.14);
+        background:
+          radial-gradient(circle at 88% 8%, rgba(255, 199, 44, 0.22), transparent 17rem),
+          radial-gradient(circle at 16% 18%, rgba(255, 232, 89, 0.14), transparent 15rem),
+          linear-gradient(145deg, rgba(34, 24, 8, 0.96), rgba(61, 46, 18, 0.9) 52%, rgba(32, 41, 53, 0.92));
+        box-shadow: 0 28px 90px rgba(0, 0, 0, 0.46), 0 0 28px rgba(255, 199, 44, 0.16);
       }
 
       .record-card.is-fail {
         border-color: rgba(255, 92, 92, 0.86);
-        background: linear-gradient(150deg, rgba(92, 24, 34, 0.94), rgba(31, 39, 51, 0.92));
+        background:
+          radial-gradient(circle at 88% 8%, rgba(255, 92, 92, 0.24), transparent 17rem),
+          radial-gradient(circle at 16% 18%, rgba(255, 123, 123, 0.12), transparent 15rem),
+          linear-gradient(145deg, rgba(42, 12, 20, 0.96), rgba(76, 25, 35, 0.9) 52%, rgba(31, 39, 51, 0.92));
+      }
+
+      .record-header,
+      .record-command-row,
+      .record-section,
+      .record-title,
+      .security-check-list,
+      .review-actions,
+      .review-line {
+        position: relative;
+        z-index: 1;
+      }
+
+      .record-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        margin-bottom: 16px;
+      }
+
+      .record-kicker {
+        display: block;
+        color: #65b6ff;
+        font-size: 11px;
+        font-weight: 950;
+        letter-spacing: 1.8px;
+        text-transform: uppercase;
+      }
+
+      .record-header h3 {
+        margin: 3px 0 0;
+        color: #f7fbff;
+        font-size: clamp(24px, 2.2vw, 34px);
+        line-height: 1;
+        letter-spacing: 0.4px;
+        text-transform: uppercase;
+      }
+
+      .record-orb {
+        width: 88px;
+        height: 88px;
+        display: grid;
+        place-items: center;
+        flex: 0 0 auto;
+        border: 3px solid rgba(236, 248, 255, 0.9);
+        border-radius: 999px;
+        background: radial-gradient(circle, rgba(88, 167, 255, 0.2), rgba(0, 0, 0, 0.12));
+        box-shadow: 0 0 28px rgba(88, 167, 255, 0.18), inset 0 0 20px rgba(0, 0, 0, 0.28);
+        text-align: center;
+      }
+
+      .record-orb span {
+        display: block;
+        color: rgba(188, 209, 224, 0.9);
+        font-size: 10px;
+        font-weight: 950;
+        letter-spacing: 1.5px;
+      }
+
+      .record-orb strong {
+        display: block;
+        color: #ffe94f;
+        font-size: 24px;
+        line-height: 1;
+      }
+
+      .record-command-row {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+        margin-bottom: 14px;
+      }
+
+      .record-command {
+        min-height: 64px;
+        border: 1px solid rgba(143, 196, 255, 0.24);
+        background: rgba(0, 0, 0, 0.2);
+        padding: 10px 12px;
+      }
+
+      .record-command span,
+      .record-section h4,
+      .record-row b {
+        color: #8fc4ff;
+        font-size: 11px;
+        font-weight: 950;
+        letter-spacing: 0.9px;
+        text-transform: uppercase;
+      }
+
+      .record-command strong {
+        display: block;
+        margin-top: 6px;
+        color: #f4fbff;
+        font-size: 18px;
+        line-height: 1.15;
+        overflow-wrap: anywhere;
+      }
+
+      .record-section {
+        border: 1px solid rgba(176, 216, 255, 0.16);
+        background: rgba(0, 0, 0, 0.16);
+        margin-top: 10px;
+        padding: 12px;
+      }
+
+      .record-section h4 {
+        margin: 0 0 8px;
+        color: #ffe94f;
+      }
+
+      .record-section-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px 12px;
       }
 
       .record-title {
@@ -1547,6 +1699,7 @@
       }
 
       .record-badge {
+        border: 1px solid rgba(255, 255, 255, 0.16);
         border-radius: 999px;
         background: rgba(255, 255, 255, 0.12);
         padding: 6px 10px;
@@ -1558,22 +1711,36 @@
       .record-row,
       .security-row {
         display: grid;
-        grid-template-columns: 96px 1fr;
+        grid-template-columns: 104px minmax(0, 1fr);
         gap: 10px;
-        border-top: 1px solid rgba(255, 255, 255, 0.1);
-        padding: 9px 0;
+        border-top: 1px solid rgba(255, 255, 255, 0.09);
+        padding: 8px 0;
         font-size: 13px;
         line-height: 1.35;
       }
 
-      .record-row b,
+      .record-section-grid .record-row {
+        border-top: 0;
+        padding: 4px 0;
+      }
+
+      .record-section-grid .record-row.is-wide {
+        grid-column: 1 / -1;
+      }
+
       .security-row b {
         color: #8fc4ff;
       }
 
       .record-row span {
+        color: #dceeff;
         white-space: pre-line;
         overflow-wrap: anywhere;
+      }
+
+      .record-empty {
+        position: relative;
+        z-index: 1;
       }
 
       .inline-record-side,
@@ -1682,7 +1849,7 @@
       }
 
       .passenger-modal {
-        width: min(520px, 100%);
+        width: min(720px, 100%);
         border: 1px solid rgba(176, 216, 255, 0.32);
         background: linear-gradient(150deg, rgba(8, 24, 40, 0.96), rgba(2, 12, 22, 0.92));
         box-shadow: 0 32px 110px rgba(0, 0, 0, 0.58);
@@ -2118,8 +2285,19 @@
         }
 
         .panel-workspace,
-        .is-full-page .seat-map-workspace {
+        .is-full-page .seat-map-workspace,
+        .record-command-row,
+        .record-section-grid {
           grid-template-columns: 1fr;
+        }
+
+        .record-card {
+          padding: 14px;
+        }
+
+        .record-orb {
+          width: 72px;
+          height: 72px;
         }
 
         .security-grid {
@@ -2776,13 +2954,51 @@
           .map(([key, value]) => [labelizeKey(key), compactValue(value)]);
       }
 
+      function recordToneClass(tone) {
+        return tone === "warning" ? "is-warning" : tone === "fail" ? "is-fail" : "";
+      }
+
+      function renderRecordRows(fields) {
+        return fields.map(([label, value]) => {
+          const wide = String(value || "").length > 72 || /\n/.test(String(value || ""));
+          return `<div class="record-row ${wide ? "is-wide" : ""}"><b>${escapeHtml(label)}</b><span>${escapeHtml(value)}</span></div>`;
+        }).join("");
+      }
+
+      function renderRecordSection(title, fields) {
+        if (!fields.length) return "";
+        return `<section class="record-section"><h4>${escapeHtml(title)}</h4><div class="record-section-grid">${renderRecordRows(fields)}</div></section>`;
+      }
+
       function passengerRecordCard(data, title = "Passenger Record", tone = "pass") {
         const fields = passengerFields(data || {});
+        const fieldMap = new Map(fields);
+        const usedLabels = new Set();
+        const takeFields = (labels) => labels.map((label) => {
+          usedLabels.add(label);
+          return fieldMap.has(label) ? [label, fieldMap.get(label)] : null;
+        }).filter(Boolean);
+        const name = fieldMap.get("Name") || passengerName(data) || "Passenger";
+        const bnNumber = data?.bn || fieldMap.get("BN") || "---";
         const bn = data?.bn ? `BN${data.bn}` : (latestQuery || "PAX");
-        const rows = fields.length
-          ? fields.map(([label, value]) => `<div class="record-row"><b>${escapeHtml(label)}</b><span>${escapeHtml(value)}</span></div>`).join("")
-          : `<p class="panel-muted">No passenger details available.</p>`;
-        return `<article class="record-card ${tone === "warning" ? "is-warning" : tone === "fail" ? "is-fail" : ""}"><div class="record-title"><span>${escapeHtml(title)}</span><span class="record-badge">${escapeHtml(bn)}</span></div>${rows}</article>`;
+        const seat = fieldMap.get("Seat") || "---";
+        const cabin = fieldMap.get("Cabin") || "---";
+        const status = fieldMap.get("Status") || (tone === "fail" ? "FAIL" : tone === "warning" ? "WARNING" : "ACTIVE");
+        ["Name", "BN", "Seat", "Cabin", "Status"].forEach((label) => usedLabels.add(label));
+        const documentFields = takeFields(["Passport", "Passport Expiry", "DOB", "Age", "Membership"]);
+        const journeyFields = takeFields(["Ticket", "Infant Ticket", "Bags", "Inbound", "Outbound"]);
+        const serviceFields = takeFields(["Lounge", "Guest", "SSR", "Meal", "Paid Service"]);
+        const operationFields = takeFields(["Checkin Details"]);
+        const additionalFields = fields.filter(([label]) => !usedLabels.has(label));
+        const sections = [
+          renderRecordSection("Identity & Docs", documentFields),
+          renderRecordSection("Journey", journeyFields),
+          renderRecordSection("Services", serviceFields),
+          renderRecordSection("Operations", operationFields),
+          renderRecordSection("Additional Data", additionalFields),
+        ].join("");
+        const body = fields.length ? `${sections || `<p class="panel-muted record-empty">No passenger details available.</p>`}` : `<p class="panel-muted record-empty">No passenger details available.</p>`;
+        return `<article class="record-card ${recordToneClass(tone)}"><div class="record-header"><div><span class="record-kicker">Passenger Data Link</span><h3>${escapeHtml(title)}</h3></div><div class="record-orb" aria-label="${escapeHtml(bn)}"><span>BN</span><strong>${escapeHtml(String(bnNumber).replace(/^BN/i, "") || "---")}</strong></div></div><div class="record-command-row"><div class="record-command"><span>Name</span><strong>${escapeHtml(name)}</strong></div><div class="record-command"><span>Seat / Cabin</span><strong>${escapeHtml([seat, cabin].filter((item) => item && item !== "---").join(" / ") || "---")}</strong></div><div class="record-command"><span>Status</span><strong>${escapeHtml(status)}</strong></div></div>${body}</article>`;
       }
 
       function passengerCards(data) {
@@ -2800,7 +3016,7 @@
           const rect = anchor.getBoundingClientRect();
           overlay.style.placeItems = "start";
           modal.style.position = "fixed";
-          const modalWidth = Math.min(520, window.innerWidth - 24);
+          const modalWidth = Math.min(720, window.innerWidth - 24);
           const left = Math.min(Math.max(12, rect.left), window.innerWidth - modalWidth - 12);
           const modalHeight = Math.min(modal.offsetHeight || 360, window.innerHeight - 24);
           const aboveTop = rect.top - modalHeight - 10;
