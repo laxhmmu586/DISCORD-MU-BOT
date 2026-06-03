@@ -1170,7 +1170,10 @@
         display: none;
       }
 
-
+      .detail-action[hidden],
+      .flight-menu button[hidden] {
+        display: none !important;
+      }
 
       .result-panel,
       .password-page {
@@ -1189,6 +1192,24 @@
         max-height: min(56svh, 520px);
         overflow-y: auto;
         margin-top: -560px;
+      }
+
+      .result-panel.is-full-page {
+        width: calc(100% - 48px);
+        max-width: none;
+        min-height: calc(100svh - 118px);
+        max-height: calc(100svh - 96px);
+        margin-top: calc(-100svh + 100px);
+        padding: 24px;
+      }
+
+      .result-panel.is-passenger-record {
+        width: min(100% - 48px, 620px);
+        padding: 0;
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+        backdrop-filter: none;
       }
 
       .password-page {
@@ -1274,6 +1295,14 @@
         font-size: 12px;
       }
 
+      .gov-details-grid {
+        margin-top: 26px !important;
+      }
+
+      .gov-detail-card .bn-button-list {
+        margin-top: 24px;
+      }
+
       .data-table {
         width: 100%;
         border-collapse: collapse;
@@ -1302,33 +1331,39 @@
       .bn-button-list {
         display: flex;
         flex-wrap: wrap;
-        gap: 10px;
+        gap: 14px;
+        align-items: center;
       }
 
       .bn-button {
-        min-width: 64px;
-        min-height: 42px;
-        border: 1px solid rgba(88, 167, 255, 0.46);
-        background: rgba(88, 167, 255, 0.12);
-        color: white;
-        font-size: 13px;
+        width: 66px;
+        min-width: 66px;
+        height: 66px;
+        min-height: 66px;
+        display: inline-grid;
+        place-items: center;
+        border: 3px solid rgba(244, 250, 255, 0.9);
+        border-radius: 999px;
+        background: transparent;
+        color: rgba(244, 250, 255, 0.96);
+        font-size: 15px;
         font-weight: 950;
-        letter-spacing: 0.8px;
+        letter-spacing: 0.5px;
         text-transform: uppercase;
         cursor: pointer;
       }
 
       .bn-button:hover,
       .bn-button:focus-visible {
-        border-color: rgba(255, 255, 255, 0.74);
-        background: rgba(88, 167, 255, 0.24);
+        border-color: rgba(255, 255, 255, 1);
+        background: rgba(255, 255, 255, 0.08);
         outline: none;
       }
 
       .bn-button.is-pass,
       .seat-cell.is-pass {
-        border-color: rgba(0, 213, 116, 0.74);
-        background: rgba(0, 139, 76, 0.52);
+        border-color: rgba(0, 213, 116, 0.9);
+        background: transparent;
         color: #ffef5c;
       }
 
@@ -1352,16 +1387,16 @@
 
       .bn-button.is-warning,
       .seat-cell.is-warning {
-        border-color: rgba(255, 199, 44, 0.82);
-        background: rgba(100, 62, 8, 0.76);
+        border-color: rgba(255, 199, 44, 0.92);
+        background: transparent;
         color: #ffe859;
       }
 
       .bn-button.is-fail,
       .bn-button.is-missing,
       .seat-cell.is-fail {
-        border-color: rgba(255, 92, 92, 0.82);
-        background: rgba(105, 20, 28, 0.78);
+        border-color: rgba(255, 92, 92, 0.92);
+        background: transparent;
         color: #ffd3d3;
       }
 
@@ -1382,39 +1417,81 @@
       }
 
       .warning-panel {
-        border: 1px solid rgba(255, 199, 44, 0.86);
-        background: linear-gradient(150deg, rgba(104, 68, 12, 0.9), rgba(37, 39, 38, 0.92));
-        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.38), 0 0 26px rgba(255, 199, 44, 0.14);
+        border: 1px solid rgba(255, 199, 44, 0.26);
+        background: linear-gradient(150deg, rgba(8, 24, 40, 0.6), rgba(2, 12, 22, 0.46));
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.04);
         padding: 14px;
       }
 
       .warning-list {
         display: grid;
-        gap: 10px;
+        gap: 12px;
+      }
+
+      .warning-card,
+      .psm-card {
+        position: relative;
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        gap: 16px;
+        align-items: center;
+        border-radius: 18px;
+        padding: 14px 16px;
+        overflow: hidden;
       }
 
       .warning-card {
-        border: 1px solid rgba(255, 218, 76, 0.72);
-        border-radius: 12px;
-        background: rgba(32, 25, 8, 0.58);
-        padding: 12px;
+        border: 1px solid rgba(255, 199, 44, 0.62);
+        background:
+          radial-gradient(circle at 90% 10%, rgba(255, 199, 44, 0.12), transparent 14rem),
+          linear-gradient(135deg, rgba(46, 34, 8, 0.82), rgba(7, 20, 34, 0.78));
       }
 
-      .warning-card-head {
+      .warning-card::before,
+      .psm-card::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background: repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 8px);
+        opacity: 0.45;
+      }
+
+      .warning-card-main,
+      .psm-card-main,
+      .warning-card > .bn-button,
+      .psm-card > .bn-button,
+      .warning-card > .psm-badge,
+      .psm-card > .psm-badge {
+        position: relative;
+        z-index: 1;
+      }
+
+      .warning-card-head,
+      .psm-card-head {
         display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        color: #ffe859;
+        align-items: baseline;
+        flex-wrap: wrap;
+        gap: 8px 12px;
+        color: #f6fbff;
         font-size: 17px;
         font-weight: 950;
+      }
+
+      .warning-card-head small,
+      .psm-card-head small {
+        color: #9bc8ff;
+        font-size: 13px;
+        font-weight: 900;
+        letter-spacing: 0.3px;
+        text-transform: uppercase;
       }
 
       .warning-card-body {
         margin-top: 8px;
         color: #fff4c2;
-        font-size: 13px;
-        line-height: 1.4;
+        font-size: 14px;
+        line-height: 1.45;
       }
 
       .panel-workspace {
@@ -1424,6 +1501,16 @@
         align-items: start;
       }
 
+      .is-full-page .panel-workspace {
+        grid-template-columns: minmax(0, 1fr) minmax(360px, 520px);
+      }
+
+      .is-full-page .seat-map-workspace {
+        grid-template-columns: max-content minmax(360px, 560px);
+        justify-content: center;
+        gap: 28px;
+      }
+
       .panel-side {
         display: grid;
         gap: 12px;
@@ -1431,30 +1518,14 @@
 
       .psm-card-list {
         display: grid;
-        gap: 10px;
+        gap: 12px;
       }
 
       .psm-card {
-        border: 1px solid rgba(86, 169, 255, 0.68);
-        border-radius: 12px;
-        background: rgba(4, 28, 52, 0.76);
-        padding: 13px;
-      }
-
-      .psm-card-head {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        color: #ffe94f;
-        font-size: 20px;
-        font-weight: 950;
-      }
-
-      .psm-card-head small {
-        color: #dce8f6;
-        font-size: 14px;
-        font-weight: 850;
+        border: 1px solid rgba(86, 169, 255, 0.62);
+        background:
+          radial-gradient(circle at 90% 10%, rgba(88, 167, 255, 0.14), transparent 14rem),
+          linear-gradient(135deg, rgba(4, 28, 52, 0.86), rgba(2, 15, 28, 0.78));
       }
 
       .psm-badge {
@@ -1467,35 +1538,176 @@
       }
 
       .psm-card-row {
-        border-top: 1px solid rgba(176, 216, 255, 0.16);
-        margin-top: 9px;
-        padding-top: 9px;
+        border-top: 1px solid rgba(176, 216, 255, 0.14);
+        margin-top: 8px;
+        padding-top: 8px;
         color: #dceeff;
         font-size: 14px;
+        line-height: 1.4;
       }
 
-      .psm-card-row b { color: #9bc8ff; }
+      .psm-card-row b {
+        color: #9bc8ff;
+        margin-right: 6px;
+        text-transform: uppercase;
+      }
 
       .record-card {
+        position: relative;
         width: 100%;
-        max-width: 760px;
-        border: 1px solid rgba(0, 213, 116, 0.78);
-        border-radius: 16px;
-        background: linear-gradient(150deg, rgba(18, 86, 55, 0.92), rgba(15, 58, 51, 0.9));
-        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.38), 0 0 26px rgba(0, 213, 116, 0.14);
+        max-width: 620px;
+        overflow: hidden;
+        border: 1px solid rgba(75, 218, 255, 0.42);
+        border-radius: 22px;
+        background:
+          radial-gradient(circle at 88% 8%, rgba(88, 167, 255, 0.2), transparent 16rem),
+          radial-gradient(circle at 16% 18%, rgba(0, 213, 116, 0.16), transparent 14rem),
+          linear-gradient(145deg, rgb(3, 20, 34), rgb(4, 38, 50) 52%, rgb(7, 45, 39));
+        box-shadow: 0 28px 90px rgba(0, 0, 0, 0.46), 0 0 34px rgba(71, 196, 255, 0.13), inset 0 1px 0 rgba(255, 255, 255, 0.08);
         padding: 14px;
-        color: #dcefff;
+        color: #e7f7ff;
+      }
+
+      .record-card::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background:
+          linear-gradient(90deg, transparent, rgba(127, 219, 255, 0.05), transparent),
+          repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0 1px, transparent 1px 7px);
+        opacity: 0.38;
+        mix-blend-mode: screen;
       }
 
       .record-card.is-warning {
         border-color: rgba(255, 199, 44, 0.86);
-        background: linear-gradient(150deg, rgba(82, 54, 16, 0.94), rgba(32, 41, 53, 0.92));
-        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.38), 0 0 22px rgba(255, 199, 44, 0.14);
+        background:
+          radial-gradient(circle at 88% 8%, rgba(255, 199, 44, 0.18), transparent 16rem),
+          radial-gradient(circle at 16% 18%, rgba(255, 232, 89, 0.1), transparent 14rem),
+          linear-gradient(145deg, rgb(34, 24, 8), rgb(52, 39, 17) 52%, rgb(28, 35, 45));
+        box-shadow: 0 28px 90px rgba(0, 0, 0, 0.46), 0 0 28px rgba(255, 199, 44, 0.16);
       }
 
       .record-card.is-fail {
         border-color: rgba(255, 92, 92, 0.86);
-        background: linear-gradient(150deg, rgba(92, 24, 34, 0.94), rgba(31, 39, 51, 0.92));
+        background:
+          radial-gradient(circle at 88% 8%, rgba(255, 92, 92, 0.18), transparent 16rem),
+          radial-gradient(circle at 16% 18%, rgba(255, 123, 123, 0.1), transparent 14rem),
+          linear-gradient(145deg, rgb(42, 12, 20), rgb(66, 22, 31) 52%, rgb(28, 34, 44));
+      }
+
+      .record-header,
+      .record-command-row,
+      .record-section,
+      .record-title,
+      .security-check-list,
+      .review-actions,
+      .review-line {
+        position: relative;
+        z-index: 1;
+      }
+
+      .record-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        margin-bottom: 12px;
+      }
+
+      .record-kicker {
+        display: block;
+        color: #65b6ff;
+        font-size: 11px;
+        font-weight: 950;
+        letter-spacing: 1.8px;
+        text-transform: uppercase;
+      }
+
+      .record-header h3 {
+        margin: 3px 0 0;
+        color: #f7fbff;
+        font-size: clamp(22px, 2vw, 30px);
+        line-height: 1;
+        letter-spacing: 0.4px;
+        text-transform: uppercase;
+      }
+
+      .record-orb {
+        width: 78px;
+        height: 78px;
+        display: grid;
+        place-items: center;
+        flex: 0 0 auto;
+        border: 3px solid rgba(236, 248, 255, 0.9);
+        border-radius: 999px;
+        background: radial-gradient(circle, rgba(88, 167, 255, 0.2), rgba(0, 0, 0, 0.12));
+        box-shadow: 0 0 28px rgba(88, 167, 255, 0.18), inset 0 0 20px rgba(0, 0, 0, 0.28);
+        text-align: center;
+      }
+
+      .record-orb span {
+        display: none;
+      }
+
+      .record-orb strong {
+        display: grid;
+        place-items: center;
+        color: #ffe94f;
+        font-size: 26px;
+        line-height: 1;
+      }
+
+      .record-command-row {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+
+      .record-command {
+        min-height: 56px;
+        border: 1px solid rgba(143, 196, 255, 0.24);
+        background: rgba(0, 0, 0, 0.2);
+        padding: 9px 11px;
+      }
+
+      .record-command span,
+      .record-section h4,
+      .record-row b {
+        color: #8fc4ff;
+        font-size: 11px;
+        font-weight: 950;
+        letter-spacing: 0.9px;
+        text-transform: uppercase;
+      }
+
+      .record-command strong {
+        display: block;
+        margin-top: 6px;
+        color: #f4fbff;
+        font-size: 16px;
+        line-height: 1.15;
+        overflow-wrap: anywhere;
+      }
+
+      .record-section {
+        border: 1px solid rgba(176, 216, 255, 0.16);
+        background: rgba(0, 0, 0, 0.16);
+        margin-top: 8px;
+        padding: 10px;
+      }
+
+      .record-section h4 {
+        margin: 0 0 8px;
+        color: #ffe94f;
+      }
+
+      .record-section-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px 10px;
       }
 
       .record-title {
@@ -1510,6 +1722,7 @@
       }
 
       .record-badge {
+        border: 1px solid rgba(255, 255, 255, 0.16);
         border-radius: 999px;
         background: rgba(255, 255, 255, 0.12);
         padding: 6px 10px;
@@ -1521,27 +1734,45 @@
       .record-row,
       .security-row {
         display: grid;
-        grid-template-columns: 96px 1fr;
+        grid-template-columns: 104px minmax(0, 1fr);
         gap: 10px;
-        border-top: 1px solid rgba(255, 255, 255, 0.1);
-        padding: 9px 0;
+        border-top: 1px solid rgba(255, 255, 255, 0.09);
+        padding: 7px 0;
         font-size: 13px;
         line-height: 1.35;
       }
 
-      .record-row b,
+      .record-section-grid .record-row {
+        border-top: 0;
+        padding: 4px 0;
+      }
+
+      .record-section-grid .record-row.is-wide {
+        grid-column: 1 / -1;
+      }
+
       .security-row b {
         color: #8fc4ff;
       }
 
       .record-row span {
+        color: #dceeff;
         white-space: pre-line;
         overflow-wrap: anywhere;
       }
 
+      .record-empty {
+        position: relative;
+        z-index: 1;
+      }
+
       .inline-record-side,
       .seat-record-side {
-        width: min(100%, 760px);
+        width: min(100%, 560px);
+      }
+
+      .seat-record-side {
+        transition: margin-top 180ms ease;
       }
 
       .security-pill-row {
@@ -1586,20 +1817,19 @@
       .review-actions button[data-review-status="fail"] { border-color: rgba(255, 92, 92, 0.72); }
 
       .security-grid {
-        max-height: min(78vh, 900px);
+        max-height: calc(100svh - 230px);
         overflow-y: auto;
         display: grid;
-        grid-template-columns: repeat(6, minmax(58px, 1fr));
-        grid-auto-flow: column;
-        grid-template-rows: repeat(54, minmax(36px, auto));
-        gap: 8px;
+        grid-template-columns: repeat(auto-fill, minmax(66px, 66px));
+        gap: 14px;
+        align-content: start;
         padding-right: 8px;
       }
 
       .bn-button.is-deleted,
       .seat-cell.is-deleted {
-        border-color: rgba(180, 190, 203, 0.34);
-        background: rgba(99, 111, 128, 0.25);
+        border-color: rgba(180, 190, 203, 0.48);
+        background: transparent;
         color: rgba(222, 230, 240, 0.52);
       }
 
@@ -1636,30 +1866,31 @@
       .passenger-modal-backdrop {
         position: fixed;
         inset: 0;
-        z-index: 60;
+        z-index: 180;
         display: grid;
         place-items: center;
         padding: 20px;
-        background: rgba(1, 8, 14, 0.62);
-        backdrop-filter: blur(10px);
+        background: rgba(1, 8, 14, 0.72);
+        backdrop-filter: blur(4px);
         animation: modalFade 180ms ease both;
       }
 
       .passenger-modal {
-        width: min(520px, 100%);
-        border: 1px solid rgba(176, 216, 255, 0.32);
-        background: linear-gradient(150deg, rgba(8, 24, 40, 0.96), rgba(2, 12, 22, 0.92));
-        box-shadow: 0 32px 110px rgba(0, 0, 0, 0.58);
-        padding: 14px;
+        width: min(620px, 100%);
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+        padding: 0;
+        pointer-events: none;
         animation: modalFloat 220ms ease both;
       }
 
+      .passenger-modal .record-card {
+        pointer-events: auto;
+      }
+
       .passenger-modal .panel-close {
-        float: right;
-        min-height: 26px;
-        padding: 0 9px;
-        font-size: 14px;
-        line-height: 1;
+        display: none;
       }
 
       .passenger-modal .data-grid {
@@ -2081,8 +2312,32 @@
           margin-top: -300px;
         }
 
-        .panel-workspace {
+        .panel-workspace,
+        .is-full-page .seat-map-workspace,
+        .record-command-row,
+        .record-section-grid,
+        .warning-card,
+        .psm-card {
           grid-template-columns: 1fr;
+        }
+
+        .warning-card > .bn-button,
+        .psm-card > .bn-button {
+          justify-self: start;
+        }
+
+        .warning-card > .psm-badge,
+        .psm-card > .psm-badge {
+          justify-self: start;
+        }
+
+        .record-card {
+          padding: 14px;
+        }
+
+        .record-orb {
+          width: 72px;
+          height: 72px;
         }
 
         .security-grid {
@@ -2213,7 +2468,7 @@
                 <button class="detail-action" type="button" data-panel="wch">WCH <span class="detail-action-badge" id="wch-count">0</span></button>
                 <button class="detail-action warning-action" type="button" data-panel="warning" id="warning-action" hidden aria-label="Open warnings">⚠️ WARNING <span class="detail-action-badge warning-badge" id="warning-count">0</span></button>
                 <button class="detail-action" type="button" data-panel="membership">Membership</button>
-                <button class="detail-action" type="button" data-panel="psm">PSM/MSG <span class="detail-action-badge" id="psm-count">0</span></button>
+                <button class="detail-action" type="button" data-panel="psm">PSM/MSG <span class="detail-action-badge" id="psm-count"></span></button>
               </div>
             </div>
           </div>
@@ -2357,7 +2612,7 @@
         setText("#warning-count", "0");
         const warningAction = document.querySelector("#warning-action");
         if (warningAction) warningAction.hidden = true;
-        setText("#psm-count", "0");
+        setBadgeText("#psm-count", 0);
         if (bagReportButton) bagReportButton.hidden = true;
         if (salesReportButton) salesReportButton.hidden = true;
         nodes.forEach((node) => {
@@ -2639,9 +2894,10 @@
         if (timeline.hasPointerCapture(event.pointerId)) timeline.releasePointerCapture(event.pointerId);
       }
 
-      function renderPanel(title, eyebrow, body) {
+      function renderPanel(title, eyebrow, body, options = {}) {
         hideTimelineNodeCard();
-        resultPanel.innerHTML = `<div class="panel-head"><div><small>${escapeHtml(eyebrow || "Details")}</small><h2>${escapeHtml(title)}</h2></div><button class="panel-close" type="button" data-close-panel>Close</button></div>${body}`;
+        resultPanel.className = `result-panel ${options.panelClass || ""}`.trim();
+        resultPanel.innerHTML = `${options.hideHeader ? "" : `<div class="panel-head"><div><small>${escapeHtml(eyebrow || "Details")}</small><h2>${escapeHtml(title)}</h2></div><button class="panel-close" type="button" data-close-panel>Close</button></div>`}${body}`;
         resultPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
       }
 
@@ -2738,13 +2994,51 @@
           .map(([key, value]) => [labelizeKey(key), compactValue(value)]);
       }
 
+      function recordToneClass(tone) {
+        return tone === "warning" ? "is-warning" : tone === "fail" ? "is-fail" : "";
+      }
+
+      function renderRecordRows(fields) {
+        return fields.map(([label, value]) => {
+          const wide = String(value || "").length > 72 || /\n/.test(String(value || ""));
+          return `<div class="record-row ${wide ? "is-wide" : ""}"><b>${escapeHtml(label)}</b><span>${escapeHtml(value)}</span></div>`;
+        }).join("");
+      }
+
+      function renderRecordSection(title, fields) {
+        if (!fields.length) return "";
+        return `<section class="record-section"><h4>${escapeHtml(title)}</h4><div class="record-section-grid">${renderRecordRows(fields)}</div></section>`;
+      }
+
       function passengerRecordCard(data, title = "Passenger Record", tone = "pass") {
         const fields = passengerFields(data || {});
+        const fieldMap = new Map(fields);
+        const usedLabels = new Set();
+        const takeFields = (labels) => labels.map((label) => {
+          usedLabels.add(label);
+          return fieldMap.has(label) ? [label, fieldMap.get(label)] : null;
+        }).filter(Boolean);
+        const name = fieldMap.get("Name") || passengerName(data) || "Passenger";
+        const bnNumber = data?.bn || fieldMap.get("BN") || "---";
         const bn = data?.bn ? `BN${data.bn}` : (latestQuery || "PAX");
-        const rows = fields.length
-          ? fields.map(([label, value]) => `<div class="record-row"><b>${escapeHtml(label)}</b><span>${escapeHtml(value)}</span></div>`).join("")
-          : `<p class="panel-muted">No passenger details available.</p>`;
-        return `<article class="record-card ${tone === "warning" ? "is-warning" : tone === "fail" ? "is-fail" : ""}"><div class="record-title"><span>${escapeHtml(title)}</span><span class="record-badge">${escapeHtml(bn)}</span></div>${rows}</article>`;
+        const seat = fieldMap.get("Seat") || "---";
+        const cabin = fieldMap.get("Cabin") || "---";
+        const status = fieldMap.get("Status") || (tone === "fail" ? "FAIL" : tone === "warning" ? "WARNING" : "ACTIVE");
+        ["Name", "BN", "Seat", "Cabin", "Status"].forEach((label) => usedLabels.add(label));
+        const documentFields = takeFields(["Passport", "Passport Expiry", "DOB", "Age", "Membership"]);
+        const journeyFields = takeFields(["Ticket", "Infant Ticket", "Bags", "Inbound", "Outbound"]);
+        const serviceFields = takeFields(["Lounge", "Guest", "SSR", "Meal", "Paid Service"]);
+        const operationFields = takeFields(["Checkin Details"]);
+        const additionalFields = fields.filter(([label]) => !usedLabels.has(label));
+        const sections = [
+          renderRecordSection("Identity & Docs", documentFields),
+          renderRecordSection("Journey", journeyFields),
+          renderRecordSection("Services", serviceFields),
+          renderRecordSection("Operations", operationFields),
+          renderRecordSection("Additional Data", additionalFields),
+        ].join("");
+        const body = fields.length ? `${sections || `<p class="panel-muted record-empty">No passenger details available.</p>`}` : `<p class="panel-muted record-empty">No passenger details available.</p>`;
+        return `<article class="record-card ${recordToneClass(tone)}"><div class="record-header"><div><h3>${escapeHtml(title)}</h3></div><div class="record-orb" aria-label="${escapeHtml(bn)}"><span>BN</span><strong>${escapeHtml(String(bnNumber).replace(/^BN/i, "") || "---")}</strong></div></div><div class="record-command-row"><div class="record-command"><span>Name</span><strong>${escapeHtml(name)}</strong></div><div class="record-command"><span>Seat / Cabin</span><strong>${escapeHtml([seat, cabin].filter((item) => item && item !== "---").join(" / ") || "---")}</strong></div><div class="record-command"><span>Status</span><strong>${escapeHtml(status)}</strong></div></div>${body}</article>`;
       }
 
       function passengerCards(data) {
@@ -2762,7 +3056,7 @@
           const rect = anchor.getBoundingClientRect();
           overlay.style.placeItems = "start";
           modal.style.position = "fixed";
-          const modalWidth = Math.min(520, window.innerWidth - 24);
+          const modalWidth = Math.min(620, window.innerWidth - 24);
           const left = Math.min(Math.max(12, rect.left), window.innerWidth - modalWidth - 12);
           const modalHeight = Math.min(modal.offsetHeight || 360, window.innerHeight - 24);
           const aboveTop = rect.top - modalHeight - 10;
@@ -2776,10 +3070,15 @@
         document.querySelector(".passenger-modal-backdrop")?.remove();
       }
 
+      function bnCircleLabel(value, fallback = "---") {
+        const raw = String(value || "").replace(/^BN/i, "").trim();
+        return raw || fallback;
+      }
+
       function renderBnButtons(rows, emptyText, reasonFn = null, labelFn = null, classFn = null) {
         if (!rows.length) return `<p class="panel-muted">${escapeHtml(emptyText || "No data found.")}</p>`;
         return `<div class="bn-button-list">${rows.map((row, index) => {
-          const label = labelFn ? labelFn(row, index) : (row.bn || row.seat || index + 1);
+          const label = labelFn ? labelFn(row, index) : bnCircleLabel(row.bn || row.seat, String(index + 1).padStart(3, "0"));
           const extraClass = classFn ? classFn(row, index) : "";
           return `<button class="bn-button ${escapeHtml(extraClass)}" type="button" data-passenger-index="${index}" data-passenger-bn="${escapeHtml(row.bn || "")}" title="${escapeHtml(reasonFn ? reasonFn(row) : passengerName(row) || row.bn || "Passenger")}">${escapeHtml(label)}</button>`;
         }).join("")}</div>`;
@@ -2826,7 +3125,22 @@
       }
 
       function renderPassenger(data) {
-        renderPanel("Passenger Record", data?.bn ? `BN${data.bn}` : latestQuery, passengerRecordCard(data, "Passenger Record"));
+        renderPanel("Passenger Record", data?.bn ? `BN${data.bn}` : latestQuery, passengerRecordCard(data, "Passenger Record"), { panelClass: "is-passenger-record", hideHeader: true });
+      }
+
+      async function refreshSalesReportButton(sy) {
+        if (!salesReportButton) return;
+        salesReportButton.hidden = true;
+        const flightNo = sy?.flightNo || "";
+        const flightDate = sy?.flightDate || "";
+        if (!flightNo || !flightDate) return;
+        try {
+          const meta = await apiJson(`/sales-report/meta?flightNo=${encodeURIComponent(flightNo)}&flightDate=${encodeURIComponent(flightDate)}`);
+          if (currentSy !== sy) return;
+          salesReportButton.hidden = !(meta?.available === true || meta?.found === true || meta?.downloadUrl || meta?.url);
+        } catch (error) {
+          if (currentSy === sy) salesReportButton.hidden = true;
+        }
       }
 
       function updateFlightFromSy(sy) {
@@ -2857,9 +3171,9 @@
         setText("#warning-count", warningRows.length || "0");
         const warningAction = document.querySelector("#warning-action");
         if (warningAction) warningAction.hidden = warningRows.length === 0;
-        setText("#psm-count", (sy.psmList || []).length || "0");
+        setBadgeText("#psm-count", (sy.psmList || []).length);
         if (bagReportButton) bagReportButton.hidden = !(sy.bagSheet?.hasData);
-        if (salesReportButton) salesReportButton.hidden = sy.salesReport?.found === false || sy.salesReportFound === false;
+        refreshSalesReportButton(sy);
         let previousStarted = true;
         nodes.forEach((node) => {
           const key = node.dataset.key;
@@ -2888,6 +3202,7 @@
         if (!data?.sy) throw new Error(data?.error || "No SY payload returned.");
         updateFlightFromSy(data.sy);
         resultPanel.innerHTML = "";
+        resultPanel.className = "result-panel";
       }
 
       function isSyQuery(value) {
@@ -2926,7 +3241,7 @@
         latestQuery = raw;
         const isSySearch = isSyQuery(raw);
         if (isSySearch) setLoadingState(true);
-        else resultPanel.innerHTML = `<p class="panel-muted">Searching ${escapeHtml(raw)}...</p>`;
+        else resultPanel.innerHTML = "";
         try {
           const data = await fetchSearch(raw);
           if (data.error) throw new Error(data.error);
@@ -2948,7 +3263,7 @@
         const rows = enrichRowsWithPassengerData(currentSy?.chdList || []);
         const missing = rows.filter((row) => row.hasChdCode === false).length;
         const stats = `<div class="panel-stats"><span>Total ${rows.length}</span><span class="status-ok">OK ${rows.length - missing}</span><span class="status-fail">Missing CHD1/0 ${missing}</span></div>`;
-        renderPanel("CHD List", currentSy?.flightNo || "SY", `${stats}${renderBnButtons(rows, "No CHD passenger found.", (row) => `${passengerName(row)} ${row.hasChdCode ? "OK" : "Missing CHD1/0"}`, null, (row) => row.hasChdCode === false ? "is-missing" : "is-pass")}<div class="panel-side inline-record-side" style="margin-top:14px"><p class="panel-muted">Click a BN button to view the passenger record.</p></div>`);
+        renderPanel("CHD List", currentSy?.flightNo || "SY", `${stats}${renderBnButtons(rows, "No CHD passenger found.", (row) => `${passengerName(row)} ${row.hasChdCode ? "OK" : "Missing CHD1/0"}`, null, (row) => row.hasChdCode === false ? "is-missing" : "is-pass")}`);
         setPanelPassengerRows(rows);
       }
 
@@ -2979,16 +3294,15 @@
         const details = groups.map(([label, items]) => {
           const groupRows = (items || []).map((item) => enrichGovRow(item, label));
           if (!groupRows.length) return "";
-          const reasonRows = groupRows.map((row, index) => `<div class="security-check-line is-warning"><b>BN${escapeHtml(row.bn || index + 1)}</b><span>${escapeHtml(row.reason || label)}</span></div>`).join("");
-          return `<article class="data-card"><b>${escapeHtml(label)} Details</b><div class="security-check-list">${reasonRows}</div>${renderBnButtons(groupRows, "", (row) => row.reason)}</article>`;
+          return `<article class="data-card gov-detail-card"><b>${escapeHtml(label)} Details</b>${renderBnButtons(groupRows, "", (row) => row.reason)}</article>`;
         }).filter(Boolean).join("");
-        renderPanel("GOV/AQQ", currentSy?.flightNo || "SY", `<div class="data-grid">${summary}</div>${details ? `<div class="data-grid" style="margin-top:14px">${details}</div><div class="panel-side inline-record-side" style="margin-top:14px"><p class="panel-muted">Click a BN button to view the passenger record.</p></div>` : ""}`);
+        renderPanel("GOV/AQQ", currentSy?.flightNo || "SY", `<div class="data-grid">${summary}</div>${details ? `<div class="data-grid gov-details-grid">${details}</div>` : ""}`);
         setPanelPassengerRows(rows);
       }
 
       function renderWchPanel() {
         const rows = enrichRowsWithPassengerData(currentSy?.wchList || []);
-        renderPanel("WCH", currentSy?.flightNo || "SY", renderBnButtons(rows, "No WCH records found.", (row) => [row.bn ? `BN ${row.bn}` : "", row.seat ? `Seat ${row.seat}` : "", Array.isArray(row.codes) ? row.codes.join("/") : row.code].filter(Boolean).join(" / "), (row, index) => [row.bn || index + 1, row.seat].filter(Boolean).join(" / ")));
+        renderPanel("WCH", currentSy?.flightNo || "SY", renderBnButtons(rows, "No WCH records found.", (row) => [row.bn ? `BN ${row.bn}` : "", row.seat ? `Seat ${row.seat}` : "", Array.isArray(row.codes) ? row.codes.join("/") : row.code].filter(Boolean).join(" / "), (row, index) => bnCircleLabel(row.bn, String(index + 1).padStart(3, "0"))));
         setPanelPassengerRows(rows);
       }
 
@@ -3047,10 +3361,29 @@
         );
       }
 
+      function isDeletedPassengerRecord(row) {
+        const passenger = row?.passengerRecord || {};
+        if (row?.deleted || row?.offloaded || passenger.deleted || passenger.offloaded) return true;
+        if (String(row?.status || "").toUpperCase() === "DELETED" || String(passenger.status || "").toUpperCase() === "DELETED") return true;
+        const bn = normalizedBn(row?.bn || passenger.bn);
+        const text = [
+          row?.sourceText,
+          passenger.sourceText,
+          row?.paxInfoRaw,
+          passenger.paxInfoRaw,
+          ...(row?.operationHistoryLines || []),
+          ...(passenger.operationHistoryLines || []),
+        ].filter(Boolean).join("\n").toUpperCase();
+        if (/^\s*\d+\.\s+[^\n]*\bDELETED\b/m.test(text)) return true;
+        if (bn && new RegExp(`\\bDEL\\b[^\\n]*\\bBN0*${Number(bn)}\\b`).test(text)) return true;
+        return false;
+      }
+
       function buildWarningRows(sy = currentSy) {
         const rows = [];
         const addWarning = (row, type, reason) => rows.push({ ...row, warningType: type, warningReason: reason, _panelCard: "warning" });
         for (const row of warningRecordPools(sy)) {
+          if (isDeletedPassengerRecord(row)) continue;
           const bn = normalizedBn(row.bn || row.passengerRecord?.bn);
           const seat = String(row.seat || row.passengerRecord?.seat || "").toUpperCase();
           const age = Number(row.ageYears ?? row.passengerRecord?.ageYears);
@@ -3076,7 +3409,7 @@
 
       function renderWarningPanel() {
         const rows = buildWarningRows();
-        const body = rows.length ? `<article class="warning-panel"><div class="panel-stats"><span class="status-warn">WARNING total: ${rows.length}</span></div><div class="warning-list">${rows.map((row, index) => `<div class="warning-card"><div class="warning-card-head"><span><button class="bn-button is-warning" type="button" data-passenger-index="${index}" data-passenger-bn="${escapeHtml(row.bn || "")}">BN${escapeHtml(row.bn || "---")}</button> <small>${escapeHtml(passengerName(row))} • ${escapeHtml(row.seat || "---")}</small></span><span class="psm-badge">${escapeHtml(row.warningType)}</span></div><div class="warning-card-body">${escapeHtml(row.warningReason)}</div></div>`).join("")}</div></article><div class="panel-side inline-record-side" style="margin-top:14px"><p class="panel-muted">Click a BN button to view the passenger record.</p></div>` : `<p class="panel-muted">No WARNING records found.</p>`;
+        const body = rows.length ? `<article class="warning-panel"><div class="panel-stats"><span class="status-warn">WARNING total: ${rows.length}</span></div><div class="warning-list">${rows.map((row, index) => `<div class="warning-card"><button class="bn-button is-warning" type="button" data-passenger-index="${index}" data-passenger-bn="${escapeHtml(row.bn || "")}">${escapeHtml(bnCircleLabel(row.bn))}</button><div class="warning-card-main"><div class="warning-card-head"><strong>${escapeHtml(passengerName(row) || "Passenger")}</strong><small>${escapeHtml(row.seat ? `Seat ${row.seat}` : "No seat")}</small></div><div class="warning-card-body">${escapeHtml(row.warningReason)}</div></div><span class="psm-badge">${escapeHtml(row.warningType)}</span></div>`).join("")}</div></article><div class="panel-side inline-record-side" style="margin-top:14px"><p class="panel-muted">Click a BN button to view the passenger record.</p></div>` : `<p class="panel-muted">No WARNING records found.</p>`;
         renderPanel("WARNING", currentSy?.flightNo || "SY", body);
         setPanelPassengerRows(rows);
       }
@@ -3114,7 +3447,7 @@
           const lines = (Array.isArray(row.psmLines) ? row.psmLines : [row.text || row.raw || row.message].filter(Boolean))
             .filter((line) => /^\s*(?:PSM|MSG)/i.test(line) && targetMsgCodes.some((code) => String(line).toUpperCase().replace(/\s+/g, "").includes(code)));
           const type = lines.some((line) => /^\s*MSG/i.test(line)) ? "MSG" : "PSM";
-          return `<article class="psm-card"><div class="psm-card-head"><span><button class="bn-button is-warning" type="button" data-passenger-index="${index}" data-passenger-bn="${escapeHtml(row.bn || "")}">BN${escapeHtml(row.bn || "---")}</button> <small>${escapeHtml(passengerName(row))} • ${escapeHtml(row.seat || "---")}</small></span><span class="psm-badge">${escapeHtml(type)}</span></div><div class="psm-card-row"><b>Bags</b> ${escapeHtml(compactValue(row.bagtags) || "-")}</div><div class="psm-card-row"><b>Detail</b><br>${lines.map((line) => escapeHtml(line)).join("<br>")}</div></article>`;
+          return `<article class="psm-card"><button class="bn-button is-warning" type="button" data-passenger-index="${index}" data-passenger-bn="${escapeHtml(row.bn || "")}">${escapeHtml(bnCircleLabel(row.bn))}</button><div class="psm-card-main"><div class="psm-card-head"><strong>${escapeHtml(passengerName(row) || "Passenger")}</strong><small>${escapeHtml(row.seat ? `Seat ${row.seat}` : "No seat")}</small></div><div class="psm-card-row"><b>Bags</b>${escapeHtml(compactValue(row.bagtags) || "-")}</div><div class="psm-card-row"><b>Detail</b><br>${lines.map((line) => escapeHtml(line)).join("<br>")}</div></div><span class="psm-badge">${escapeHtml(type)}</span></article>`;
         }).join("")}</div>` : `<p class="panel-muted">No PSM/MSG records found.</p>`;
         renderPanel("PSM/MSG", currentSy?.flightNo || "SY", body);
         setPanelPassengerRows(rows);
@@ -3242,7 +3575,7 @@
         const buttons = `<div class="security-grid">${allRows.map((row, index) => `<button class="bn-button ${row.missing || row.deleted || row.offloaded || row.status === "DELETED" ? "is-deleted" : `is-${securityTone(row)}`}" type="button" data-security-index="${index}">${escapeHtml(row.bn)}</button>`).join("")}</div>`;
         const stats = `<div class="panel-stats"><span class="status-ok">${passCount} pass</span><span class="status-warn">${warningCount} warning</span><span class="status-fail">${failCount} fail</span></div>`;
         const selectedRow = selectedBn ? allRows.find((row) => String(row.bn || "") === String(selectedBn).padStart(3, "0")) : null;
-        renderPanel("Security Check", currentSy?.flightNo || "SY", `${stats}<div class="panel-workspace"><div>${buttons}</div><div class="panel-side">${selectedRow ? securityCard(selectedRow) : `<p class="panel-muted">Click a BN button to view the passenger record.</p>`}</div></div>`);
+        renderPanel("Security Check", currentSy?.flightNo || "SY", `${stats}<div class="panel-workspace"><div>${buttons}</div><div class="panel-side">${selectedRow ? securityCard(selectedRow) : `<p class="panel-muted">Click a BN button to view the passenger record.</p>`}</div></div>`, { panelClass: "is-full-page" });
         setPanelPassengerRows(allRows);
       }
 
@@ -3310,7 +3643,7 @@
           }).join("")}</div>`);
         }
         const legend = `<div class="panel-stats"><span style="color:#8fd0ff">Wheelchair</span><span style="color:#d7bdff">Child</span><span style="color:#ffbf86">Infant</span></div>`;
-        renderPanel("Seat Map", currentSy?.flightNo || "SY", `${legend}<div class="panel-workspace seat-map-workspace"><div class="seat-map-shell"><div class="seat-map-plane">${bodyRows.join("")}</div></div><div class="panel-side seat-record-side"><p class="panel-muted">Click a seat to view the passenger record.</p></div></div>`);
+        renderPanel("Seat Map", currentSy?.flightNo || "SY", `${legend}<div class="panel-workspace seat-map-workspace"><div class="seat-map-shell"><div class="seat-map-plane">${bodyRows.join("")}</div></div><div class="panel-side seat-record-side"><p class="panel-muted">Click a seat to view the passenger record.</p></div></div>`, { panelClass: "is-full-page" });
         setPanelPassengerRows(records);
       }
 
@@ -3445,6 +3778,7 @@
       resultPanel.addEventListener("click", async (event) => {
         if (event.target.closest("[data-close-panel]")) {
           resultPanel.innerHTML = "";
+          resultPanel.className = "result-panel";
           resultPanel._passengerRows = [];
           return;
         }
@@ -3487,13 +3821,25 @@
           const row = rows.find((item) => String(item.seat || "").toUpperCase() === seat) || { seat };
           const enriched = { ...(passengerLookupByBn().get(String(row.bn || "").padStart(3, "0")) || {}), ...(row.passengerRecord || row) };
           const side = resultPanel.querySelector(".seat-record-side");
-          if (side) side.innerHTML = passengerRecordCard(enriched, "Passenger Record");
+          if (side) {
+            side.innerHTML = passengerRecordCard(enriched, "Passenger Record");
+            const workspace = resultPanel.querySelector(".seat-map-workspace");
+            if (workspace && window.matchMedia("(min-width: 761px)").matches) {
+              const seatRect = seatButton.getBoundingClientRect();
+              const workspaceTop = workspace.getBoundingClientRect().top;
+              const cardHeight = side.querySelector(".record-card")?.offsetHeight || 0;
+              const offset = Math.max(0, seatRect.top + (seatRect.height / 2) - workspaceTop - (cardHeight / 2));
+              side.style.marginTop = `${offset}px`;
+            } else {
+              side.style.marginTop = "";
+            }
+          }
           else showPassengerModal(row.passengerRecord || row, "Passenger Record", seatButton);
         }
       });
 
       document.addEventListener("click", (event) => {
-        if (event.target.closest("[data-close-modal]") || event.target.classList.contains("passenger-modal-backdrop")) closePassengerModal();
+        if (event.target.closest("[data-close-modal]") || event.target.closest(".passenger-modal-backdrop")) closePassengerModal();
       });
 
       searchForm.addEventListener("submit", (event) => {
