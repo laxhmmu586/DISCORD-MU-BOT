@@ -990,7 +990,7 @@
 
       .detail-actions {
         display: grid;
-        grid-template-columns: repeat(5, minmax(0, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
         gap: 10px;
       }
 
@@ -1011,6 +1011,23 @@
       .detail-action:hover {
         border-color: rgba(120, 183, 255, 0.5);
         background: rgba(88, 167, 255, 0.1);
+      }
+
+      .warning-action {
+        border-color: rgba(255, 199, 44, 0.72);
+        background: rgba(100, 62, 8, 0.42);
+        color: #ffe859;
+        box-shadow: 0 0 22px rgba(255, 199, 44, 0.12);
+      }
+
+      .warning-action:hover {
+        border-color: rgba(255, 222, 89, 0.94);
+        background: rgba(140, 84, 8, 0.54);
+      }
+
+      .warning-badge {
+        background: #f5b400;
+        color: #1b1300;
       }
 
       .detail-action-badge {
@@ -1229,6 +1246,42 @@
         border: 1px solid rgba(176, 216, 255, 0.18);
         background: rgba(0, 0, 0, 0.18);
         padding: 7px 10px;
+      }
+
+      .warning-panel {
+        border: 1px solid rgba(255, 199, 44, 0.86);
+        background: linear-gradient(150deg, rgba(104, 68, 12, 0.9), rgba(37, 39, 38, 0.92));
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.38), 0 0 26px rgba(255, 199, 44, 0.14);
+        padding: 14px;
+      }
+
+      .warning-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .warning-card {
+        border: 1px solid rgba(255, 218, 76, 0.72);
+        border-radius: 12px;
+        background: rgba(32, 25, 8, 0.58);
+        padding: 12px;
+      }
+
+      .warning-card-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        color: #ffe859;
+        font-size: 17px;
+        font-weight: 950;
+      }
+
+      .warning-card-body {
+        margin-top: 8px;
+        color: #fff4c2;
+        font-size: 13px;
+        line-height: 1.4;
       }
 
       .panel-workspace {
@@ -1950,6 +2003,7 @@
                 <button class="detail-action" type="button" data-panel="gov">GOV/AQQ <span class="detail-action-badge" id="gov-count"></span></button>
                 <button class="detail-action" type="button" data-panel="nbrd">CKIN/NBRD <span class="detail-action-badge" id="nbrd-count"></span></button>
                 <button class="detail-action" type="button" data-panel="wch">WCH <span class="detail-action-badge" id="wch-count">0</span></button>
+                <button class="detail-action warning-action" type="button" data-panel="warning" id="warning-action" hidden aria-label="Open warnings">⚠️ WARNING <span class="detail-action-badge warning-badge" id="warning-count">0</span></button>
                 <button class="detail-action" type="button" data-panel="membership">Membership</button>
                 <button class="detail-action" type="button" data-panel="psm">PSM/MSG <span class="detail-action-badge" id="psm-count">0</span></button>
               </div>
@@ -2084,6 +2138,9 @@
         setBadgeText("#gov-count", 0);
         setBadgeText("#nbrd-count", 0);
         setText("#wch-count", "0");
+        setText("#warning-count", "0");
+        const warningAction = document.querySelector("#warning-action");
+        if (warningAction) warningAction.hidden = true;
         setText("#psm-count", "0");
         if (bagReportButton) bagReportButton.hidden = true;
         if (salesReportButton) salesReportButton.hidden = true;
@@ -2572,6 +2629,10 @@
         setBadgeText("#gov-count", govCount);
         setBadgeText("#nbrd-count", nbrdCount);
         setText("#wch-count", (sy.wchList || []).length || "0");
+        const warningRows = buildWarningRows(sy);
+        setText("#warning-count", warningRows.length || "0");
+        const warningAction = document.querySelector("#warning-action");
+        if (warningAction) warningAction.hidden = warningRows.length === 0;
         setText("#psm-count", (sy.psmList || []).length || "0");
         if (bagReportButton) bagReportButton.hidden = !(sy.bagSheet?.hasData);
         if (salesReportButton) salesReportButton.hidden = sy.salesReport?.found === false || sy.salesReportFound === false;
@@ -2698,6 +2759,83 @@
       function renderWchPanel() {
         const rows = enrichRowsWithPassengerData(currentSy?.wchList || []);
         renderPanel("WCH", currentSy?.flightNo || "SY", renderBnButtons(rows, "No WCH records found.", (row) => [row.bn ? `BN ${row.bn}` : "", row.seat ? `Seat ${row.seat}` : "", Array.isArray(row.codes) ? row.codes.join("/") : row.code].filter(Boolean).join(" / "), (row, index) => [row.bn || index + 1, row.seat].filter(Boolean).join(" / ")));
+        setPanelPassengerRows(rows);
+      }
+
+      const restrictedUnder15Seats = new Set(["32A", "32B", "32C", "32J", "32K", "32L", "61A", "61B", "61C", "61J", "61K", "61L"]);
+
+      function normalizedBn(value) {
+        const raw = String(value || "").trim();
+        return raw ? raw.padStart(3, "0") : "";
+      }
+
+      function warningRecordPools(sy = currentSy) {
+        const byBn = new Map();
+        const add = (row) => {
+          if (!row) return;
+          const passenger = row.passengerRecord || {};
+          const bn = normalizedBn(row.bn || passenger.bn);
+          if (!bn) return;
+          byBn.set(bn, { ...(byBn.get(bn) || {}), ...passenger, ...row, passengerRecord: { ...(byBn.get(bn)?.passengerRecord || {}), ...passenger, ...row.passengerRecord } });
+        };
+        [sy?.seatMapRecords, sy?.bnAudit, sy?.chdList, sy?.wchList].forEach((list) => (list || []).forEach(add));
+        return [...byBn.values()];
+      }
+
+      function rowServices(row) {
+        const passenger = row?.passengerRecord || {};
+        return [
+          ...(row?.specialServices || []),
+          ...(row?.codes || []),
+          ...(row?.specialMeals || []),
+          ...(row?.psmLines || []),
+          ...(passenger.specialServices || []),
+          ...(passenger.codes || []),
+          ...(passenger.specialMeals || []),
+          ...(passenger.psmLines || []),
+        ].join("/").toUpperCase();
+      }
+
+      function isChildByChdLogic(row) {
+        const age = Number(row?.ageYears ?? row?.passengerRecord?.ageYears);
+        return (Number.isInteger(age) && age >= 2 && age < 12) || Boolean(row?.isChild || row?.passengerRecord?.isChild || row?.hasChdCode || row?.passengerRecord?.hasChdCode) || /CHD|CHLD/.test(rowServices(row));
+      }
+
+      function hasTicket(row) {
+        return Boolean(row?.ticketNumber || row?.ticketNo || row?.passengerRecord?.ticketNumber || row?.passengerRecord?.ticketNo);
+      }
+
+      function buildWarningRows(sy = currentSy) {
+        const rows = [];
+        const addWarning = (row, type, reason) => rows.push({ ...row, warningType: type, warningReason: reason, _panelCard: "warning" });
+        for (const row of warningRecordPools(sy)) {
+          const bn = normalizedBn(row.bn || row.passengerRecord?.bn);
+          const seat = String(row.seat || row.passengerRecord?.seat || "").toUpperCase();
+          const age = Number(row.ageYears ?? row.passengerRecord?.ageYears);
+          const services = rowServices(row);
+          if (restrictedUnder15Seats.has(seat) && Number.isInteger(age) && age < 15) {
+            addWarning(row, "EXIT/RESTRICTED SEAT", `${seat} passenger is under 15 by DOB/age (${age}).`);
+          }
+          if (/WCH/.test(services) && isChildByChdLogic(row)) {
+            addWarning(row, "WCH CHILD", "Passenger has wheelchair service and is a child by CHD List logic.");
+          }
+          if (!hasTicket(row)) {
+            addWarning(row, "NO TICKET", "Passenger has no adult ticket number in the record.");
+          }
+          if (/WCHC/.test(services)) {
+            addWarning(row, "WCHC", "Passenger has WCHC wheelchair service.");
+          }
+          if (row.hasBadSeat || row.passengerRecord?.hasBadSeat || /BAD\s*SEAT/i.test([row.warningReason, row.reason, row.apiReason, row.tkReason, row.visaReason, row.bagReason].filter(Boolean).join(" "))) {
+            addWarning(row, "BAD SEAT", "Passenger record contains BAD SEAT.");
+          }
+        }
+        return rows.sort((a, b) => Number(a.bn || 9999) - Number(b.bn || 9999) || String(a.warningType || "").localeCompare(String(b.warningType || "")));
+      }
+
+      function renderWarningPanel() {
+        const rows = buildWarningRows();
+        const body = rows.length ? `<article class="warning-panel"><div class="panel-stats"><span class="status-warn">WARNING total: ${rows.length}</span></div><div class="warning-list">${rows.map((row, index) => `<div class="warning-card"><div class="warning-card-head"><span><button class="bn-button is-warning" type="button" data-passenger-index="${index}" data-passenger-bn="${escapeHtml(row.bn || "")}">BN${escapeHtml(row.bn || "---")}</button> <small>${escapeHtml(passengerName(row))} • ${escapeHtml(row.seat || "---")}</small></span><span class="psm-badge">${escapeHtml(row.warningType)}</span></div><div class="warning-card-body">${escapeHtml(row.warningReason)}</div></div>`).join("")}</div></article><div class="panel-side inline-record-side" style="margin-top:14px"><p class="panel-muted">Click a BN button to view the passenger record.</p></div>` : `<p class="panel-muted">No WARNING records found.</p>`;
+        renderPanel("WARNING", currentSy?.flightNo || "SY", body);
         setPanelPassengerRows(rows);
       }
 
@@ -3039,6 +3177,7 @@
           if (panel === "gov") renderGovPanel();
           if (panel === "nbrd") renderNbrdPanel();
           if (panel === "wch") renderWchPanel();
+          if (panel === "warning") renderWarningPanel();
           if (panel === "membership") renderMembershipPanel();
           if (panel === "psm") renderPsmPanel();
         });
