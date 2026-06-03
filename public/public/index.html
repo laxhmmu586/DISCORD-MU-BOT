@@ -421,7 +421,7 @@
         margin: clamp(22px, 3.4vh, 38px) auto 0;
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto;
-        align-items: start;
+        align-items: end;
         justify-content: space-between;
         gap: 24px;
       }
@@ -468,22 +468,22 @@
         display: flex;
         align-items: end;
         gap: 12px;
-        transform: translateX(-32px);
+        transform: translateX(-64px);
       }
 
       .status-strip {
         display: grid;
-        grid-template-columns: repeat(3, minmax(86px, 1fr));
+        grid-template-columns: repeat(3, minmax(96px, 1fr));
         gap: 12px;
-        min-width: 380px;
+        min-width: 420px;
       }
 
       .status-metric {
         position: relative;
-        min-height: 74px;
+        min-height: 82px;
         display: grid;
         place-items: center;
-        padding: 10px 14px 14px;
+        padding: 10px 16px 14px;
       }
 
       .status-metric::before {
@@ -506,7 +506,7 @@
       .status-metric span {
         display: block;
         color: rgba(180, 194, 207, 0.88);
-        font-size: 10px;
+        font-size: 11px;
         font-weight: 900;
         letter-spacing: 1.2px;
         line-height: 1;
@@ -517,7 +517,7 @@
         display: block;
         margin-top: 6px;
         color: rgba(244, 250, 255, 0.98);
-        font-size: 25px;
+        font-size: 28px;
         line-height: 0.95;
         text-shadow: 0 2px 9px rgba(0, 0, 0, 0.92);
       }
@@ -670,8 +670,8 @@
         transform: translateX(-50%);
         color: rgba(244, 250, 255, 0.94);
         font-size: clamp(44px, 5.2vw, 66px);
-        font-weight: 300;
-        letter-spacing: 1.2px;
+        font-weight: 900;
+        letter-spacing: 0.4px;
         text-shadow: 0 3px 12px rgba(0, 0, 0, 0.96);
       }
 
@@ -1396,6 +1396,8 @@
       .psm-card-row b { color: #9bc8ff; }
 
       .record-card {
+        width: 100%;
+        max-width: 760px;
         border: 1px solid rgba(0, 213, 116, 0.78);
         border-radius: 16px;
         background: linear-gradient(150deg, rgba(18, 86, 55, 0.92), rgba(15, 58, 51, 0.9));
@@ -1453,6 +1455,12 @@
 
       .record-row span {
         white-space: pre-line;
+        overflow-wrap: anywhere;
+      }
+
+      .inline-record-side,
+      .seat-record-side {
+        width: min(100%, 760px);
       }
 
       .security-pill-row {
@@ -3013,7 +3021,6 @@
           if (meta?.error || meta?.found === false) throw new Error(meta?.error || "Sales report not found.");
           const link = `${resolveApiBase()}/sales-report/download?flightNo=${encodeURIComponent(flightNo)}&flightDate=${encodeURIComponent(flightDate)}`;
           window.open(link, "_blank", "noopener");
-          renderPanel("Sales Report", flightNo, `<p class="panel-muted">Sales report download started for ${escapeHtml(flightNo)} / ${escapeHtml(flightDate)}.</p>`);
         } catch (error) {
           renderPanel("Sales Report", flightNo, `<p class="panel-muted status-fail">${escapeHtml(error?.message || "Sales report download failed.")}</p>`);
         }
