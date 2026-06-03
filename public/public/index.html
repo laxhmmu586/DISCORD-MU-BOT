@@ -645,16 +645,31 @@
         z-index: 1;
       }
 
+      .timeline-shell::before,
+      .timeline-shell::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        pointer-events: none;
+        z-index: 0;
+      }
+
       .timeline-shell::before {
-        display: none;
+        top: 50%;
+        height: 34%;
+        background: linear-gradient(180deg, rgba(0, 0, 0, 0.46), rgba(0, 0, 0, 0));
       }
 
       .timeline-shell::after {
-        display: none;
+        bottom: 0;
+        height: 42%;
+        background: linear-gradient(0deg, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0));
       }
 
       .timeline {
         position: relative;
+        z-index: 1;
         width: min(100vw, 1480px);
         height: clamp(240px, 30vh, 340px);
         cursor: grab;
@@ -2188,8 +2203,8 @@
       const mobileOrbitPath = "M-240 296 C 130 210, 390 184, 600 184 S 1070 210, 1440 296";
       const mobileOrbitQuery = window.matchMedia("(max-width: 760px)");
       const centerProgress = 0.5;
-      const minProgress = 0.04;
-      const maxProgress = 0.96;
+      const minScrollOffset = centerProgress - baseProgress[baseProgress.length - 1];
+      const maxScrollOffset = centerProgress - baseProgress[0];
       const nodeKeyMap = {
         CREW_APIS: "crewApis",
         NET: "net",
@@ -2407,7 +2422,7 @@
       }
 
       function clampScrollOffset(value) {
-        return clamp(value, minProgress - baseProgress[0], maxProgress - baseProgress[baseProgress.length - 1]);
+        return clamp(value, minScrollOffset, maxScrollOffset);
       }
 
       function updateNodeCard(index) {
