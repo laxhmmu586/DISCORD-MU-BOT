@@ -1170,7 +1170,10 @@
         display: none;
       }
 
-
+      .detail-action[hidden],
+      .flight-menu button[hidden] {
+        display: none !important;
+      }
 
       .result-panel,
       .password-page {
@@ -1189,6 +1192,24 @@
         max-height: min(56svh, 520px);
         overflow-y: auto;
         margin-top: -560px;
+      }
+
+      .result-panel.is-full-page {
+        width: calc(100% - 48px);
+        max-width: none;
+        min-height: calc(100svh - 118px);
+        max-height: calc(100svh - 96px);
+        margin-top: calc(-100svh + 100px);
+        padding: 24px;
+      }
+
+      .result-panel.is-passenger-record {
+        width: min(100% - 48px, 620px);
+        padding: 0;
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+        backdrop-filter: none;
       }
 
       .password-page {
@@ -1302,33 +1323,39 @@
       .bn-button-list {
         display: flex;
         flex-wrap: wrap;
-        gap: 10px;
+        gap: 14px;
+        align-items: center;
       }
 
       .bn-button {
-        min-width: 64px;
-        min-height: 42px;
-        border: 1px solid rgba(88, 167, 255, 0.46);
-        background: rgba(88, 167, 255, 0.12);
-        color: white;
-        font-size: 13px;
+        width: 66px;
+        min-width: 66px;
+        height: 66px;
+        min-height: 66px;
+        display: inline-grid;
+        place-items: center;
+        border: 3px solid rgba(244, 250, 255, 0.9);
+        border-radius: 999px;
+        background: transparent;
+        color: rgba(244, 250, 255, 0.96);
+        font-size: 15px;
         font-weight: 950;
-        letter-spacing: 0.8px;
+        letter-spacing: 0.5px;
         text-transform: uppercase;
         cursor: pointer;
       }
 
       .bn-button:hover,
       .bn-button:focus-visible {
-        border-color: rgba(255, 255, 255, 0.74);
-        background: rgba(88, 167, 255, 0.24);
+        border-color: rgba(255, 255, 255, 1);
+        background: rgba(255, 255, 255, 0.08);
         outline: none;
       }
 
       .bn-button.is-pass,
       .seat-cell.is-pass {
-        border-color: rgba(0, 213, 116, 0.74);
-        background: rgba(0, 139, 76, 0.52);
+        border-color: rgba(0, 213, 116, 0.9);
+        background: transparent;
         color: #ffef5c;
       }
 
@@ -1352,16 +1379,16 @@
 
       .bn-button.is-warning,
       .seat-cell.is-warning {
-        border-color: rgba(255, 199, 44, 0.82);
-        background: rgba(100, 62, 8, 0.76);
+        border-color: rgba(255, 199, 44, 0.92);
+        background: transparent;
         color: #ffe859;
       }
 
       .bn-button.is-fail,
       .bn-button.is-missing,
       .seat-cell.is-fail {
-        border-color: rgba(255, 92, 92, 0.82);
-        background: rgba(105, 20, 28, 0.78);
+        border-color: rgba(255, 92, 92, 0.92);
+        background: transparent;
         color: #ffd3d3;
       }
 
@@ -1424,6 +1451,10 @@
         align-items: start;
       }
 
+      .is-full-page .panel-workspace {
+        grid-template-columns: minmax(0, 1fr) minmax(360px, 520px);
+      }
+
       .panel-side {
         display: grid;
         gap: 12px;
@@ -1478,7 +1509,7 @@
 
       .record-card {
         width: 100%;
-        max-width: 760px;
+        max-width: 560px;
         border: 1px solid rgba(0, 213, 116, 0.78);
         border-radius: 16px;
         background: linear-gradient(150deg, rgba(18, 86, 55, 0.92), rgba(15, 58, 51, 0.9));
@@ -1541,7 +1572,7 @@
 
       .inline-record-side,
       .seat-record-side {
-        width: min(100%, 760px);
+        width: min(100%, 560px);
       }
 
       .security-pill-row {
@@ -1586,20 +1617,19 @@
       .review-actions button[data-review-status="fail"] { border-color: rgba(255, 92, 92, 0.72); }
 
       .security-grid {
-        max-height: min(78vh, 900px);
+        max-height: calc(100svh - 230px);
         overflow-y: auto;
         display: grid;
-        grid-template-columns: repeat(6, minmax(58px, 1fr));
-        grid-auto-flow: column;
-        grid-template-rows: repeat(54, minmax(36px, auto));
-        gap: 8px;
+        grid-template-columns: repeat(auto-fill, minmax(66px, 66px));
+        gap: 14px;
+        align-content: start;
         padding-right: 8px;
       }
 
       .bn-button.is-deleted,
       .seat-cell.is-deleted {
-        border-color: rgba(180, 190, 203, 0.34);
-        background: rgba(99, 111, 128, 0.25);
+        border-color: rgba(180, 190, 203, 0.48);
+        background: transparent;
         color: rgba(222, 230, 240, 0.52);
       }
 
@@ -2213,7 +2243,7 @@
                 <button class="detail-action" type="button" data-panel="wch">WCH <span class="detail-action-badge" id="wch-count">0</span></button>
                 <button class="detail-action warning-action" type="button" data-panel="warning" id="warning-action" hidden aria-label="Open warnings">⚠️ WARNING <span class="detail-action-badge warning-badge" id="warning-count">0</span></button>
                 <button class="detail-action" type="button" data-panel="membership">Membership</button>
-                <button class="detail-action" type="button" data-panel="psm">PSM/MSG <span class="detail-action-badge" id="psm-count">0</span></button>
+                <button class="detail-action" type="button" data-panel="psm">PSM/MSG <span class="detail-action-badge" id="psm-count"></span></button>
               </div>
             </div>
           </div>
@@ -2357,7 +2387,7 @@
         setText("#warning-count", "0");
         const warningAction = document.querySelector("#warning-action");
         if (warningAction) warningAction.hidden = true;
-        setText("#psm-count", "0");
+        setBadgeText("#psm-count", 0);
         if (bagReportButton) bagReportButton.hidden = true;
         if (salesReportButton) salesReportButton.hidden = true;
         nodes.forEach((node) => {
@@ -2639,9 +2669,10 @@
         if (timeline.hasPointerCapture(event.pointerId)) timeline.releasePointerCapture(event.pointerId);
       }
 
-      function renderPanel(title, eyebrow, body) {
+      function renderPanel(title, eyebrow, body, options = {}) {
         hideTimelineNodeCard();
-        resultPanel.innerHTML = `<div class="panel-head"><div><small>${escapeHtml(eyebrow || "Details")}</small><h2>${escapeHtml(title)}</h2></div><button class="panel-close" type="button" data-close-panel>Close</button></div>${body}`;
+        resultPanel.className = `result-panel ${options.panelClass || ""}`.trim();
+        resultPanel.innerHTML = `${options.hideHeader ? "" : `<div class="panel-head"><div><small>${escapeHtml(eyebrow || "Details")}</small><h2>${escapeHtml(title)}</h2></div><button class="panel-close" type="button" data-close-panel>Close</button></div>`}${body}`;
         resultPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
       }
 
@@ -2776,10 +2807,15 @@
         document.querySelector(".passenger-modal-backdrop")?.remove();
       }
 
+      function bnCircleLabel(value, fallback = "---") {
+        const raw = String(value || "").replace(/^BN/i, "").trim();
+        return raw || fallback;
+      }
+
       function renderBnButtons(rows, emptyText, reasonFn = null, labelFn = null, classFn = null) {
         if (!rows.length) return `<p class="panel-muted">${escapeHtml(emptyText || "No data found.")}</p>`;
         return `<div class="bn-button-list">${rows.map((row, index) => {
-          const label = labelFn ? labelFn(row, index) : (row.bn || row.seat || index + 1);
+          const label = labelFn ? labelFn(row, index) : bnCircleLabel(row.bn || row.seat, String(index + 1).padStart(3, "0"));
           const extraClass = classFn ? classFn(row, index) : "";
           return `<button class="bn-button ${escapeHtml(extraClass)}" type="button" data-passenger-index="${index}" data-passenger-bn="${escapeHtml(row.bn || "")}" title="${escapeHtml(reasonFn ? reasonFn(row) : passengerName(row) || row.bn || "Passenger")}">${escapeHtml(label)}</button>`;
         }).join("")}</div>`;
@@ -2826,7 +2862,22 @@
       }
 
       function renderPassenger(data) {
-        renderPanel("Passenger Record", data?.bn ? `BN${data.bn}` : latestQuery, passengerRecordCard(data, "Passenger Record"));
+        renderPanel("Passenger Record", data?.bn ? `BN${data.bn}` : latestQuery, passengerRecordCard(data, "Passenger Record"), { panelClass: "is-passenger-record", hideHeader: true });
+      }
+
+      async function refreshSalesReportButton(sy) {
+        if (!salesReportButton) return;
+        salesReportButton.hidden = true;
+        const flightNo = sy?.flightNo || "";
+        const flightDate = sy?.flightDate || "";
+        if (!flightNo || !flightDate) return;
+        try {
+          const meta = await apiJson(`/sales-report/meta?flightNo=${encodeURIComponent(flightNo)}&flightDate=${encodeURIComponent(flightDate)}`);
+          if (currentSy !== sy) return;
+          salesReportButton.hidden = !(meta?.available === true || meta?.found === true || meta?.downloadUrl || meta?.url);
+        } catch (error) {
+          if (currentSy === sy) salesReportButton.hidden = true;
+        }
       }
 
       function updateFlightFromSy(sy) {
@@ -2857,9 +2908,9 @@
         setText("#warning-count", warningRows.length || "0");
         const warningAction = document.querySelector("#warning-action");
         if (warningAction) warningAction.hidden = warningRows.length === 0;
-        setText("#psm-count", (sy.psmList || []).length || "0");
+        setBadgeText("#psm-count", (sy.psmList || []).length);
         if (bagReportButton) bagReportButton.hidden = !(sy.bagSheet?.hasData);
-        if (salesReportButton) salesReportButton.hidden = sy.salesReport?.found === false || sy.salesReportFound === false;
+        refreshSalesReportButton(sy);
         let previousStarted = true;
         nodes.forEach((node) => {
           const key = node.dataset.key;
@@ -2888,6 +2939,7 @@
         if (!data?.sy) throw new Error(data?.error || "No SY payload returned.");
         updateFlightFromSy(data.sy);
         resultPanel.innerHTML = "";
+        resultPanel.className = "result-panel";
       }
 
       function isSyQuery(value) {
@@ -2926,7 +2978,7 @@
         latestQuery = raw;
         const isSySearch = isSyQuery(raw);
         if (isSySearch) setLoadingState(true);
-        else resultPanel.innerHTML = `<p class="panel-muted">Searching ${escapeHtml(raw)}...</p>`;
+        else resultPanel.innerHTML = "";
         try {
           const data = await fetchSearch(raw);
           if (data.error) throw new Error(data.error);
@@ -2979,8 +3031,7 @@
         const details = groups.map(([label, items]) => {
           const groupRows = (items || []).map((item) => enrichGovRow(item, label));
           if (!groupRows.length) return "";
-          const reasonRows = groupRows.map((row, index) => `<div class="security-check-line is-warning"><b>BN${escapeHtml(row.bn || index + 1)}</b><span>${escapeHtml(row.reason || label)}</span></div>`).join("");
-          return `<article class="data-card"><b>${escapeHtml(label)} Details</b><div class="security-check-list">${reasonRows}</div>${renderBnButtons(groupRows, "", (row) => row.reason)}</article>`;
+          return `<article class="data-card"><b>${escapeHtml(label)} Details</b>${renderBnButtons(groupRows, "", (row) => row.reason)}</article>`;
         }).filter(Boolean).join("");
         renderPanel("GOV/AQQ", currentSy?.flightNo || "SY", `<div class="data-grid">${summary}</div>${details ? `<div class="data-grid" style="margin-top:14px">${details}</div><div class="panel-side inline-record-side" style="margin-top:14px"><p class="panel-muted">Click a BN button to view the passenger record.</p></div>` : ""}`);
         setPanelPassengerRows(rows);
@@ -2988,7 +3039,7 @@
 
       function renderWchPanel() {
         const rows = enrichRowsWithPassengerData(currentSy?.wchList || []);
-        renderPanel("WCH", currentSy?.flightNo || "SY", renderBnButtons(rows, "No WCH records found.", (row) => [row.bn ? `BN ${row.bn}` : "", row.seat ? `Seat ${row.seat}` : "", Array.isArray(row.codes) ? row.codes.join("/") : row.code].filter(Boolean).join(" / "), (row, index) => [row.bn || index + 1, row.seat].filter(Boolean).join(" / ")));
+        renderPanel("WCH", currentSy?.flightNo || "SY", renderBnButtons(rows, "No WCH records found.", (row) => [row.bn ? `BN ${row.bn}` : "", row.seat ? `Seat ${row.seat}` : "", Array.isArray(row.codes) ? row.codes.join("/") : row.code].filter(Boolean).join(" / "), (row, index) => bnCircleLabel(row.bn, String(index + 1).padStart(3, "0"))));
         setPanelPassengerRows(rows);
       }
 
@@ -3242,7 +3293,7 @@
         const buttons = `<div class="security-grid">${allRows.map((row, index) => `<button class="bn-button ${row.missing || row.deleted || row.offloaded || row.status === "DELETED" ? "is-deleted" : `is-${securityTone(row)}`}" type="button" data-security-index="${index}">${escapeHtml(row.bn)}</button>`).join("")}</div>`;
         const stats = `<div class="panel-stats"><span class="status-ok">${passCount} pass</span><span class="status-warn">${warningCount} warning</span><span class="status-fail">${failCount} fail</span></div>`;
         const selectedRow = selectedBn ? allRows.find((row) => String(row.bn || "") === String(selectedBn).padStart(3, "0")) : null;
-        renderPanel("Security Check", currentSy?.flightNo || "SY", `${stats}<div class="panel-workspace"><div>${buttons}</div><div class="panel-side">${selectedRow ? securityCard(selectedRow) : `<p class="panel-muted">Click a BN button to view the passenger record.</p>`}</div></div>`);
+        renderPanel("Security Check", currentSy?.flightNo || "SY", `${stats}<div class="panel-workspace"><div>${buttons}</div><div class="panel-side">${selectedRow ? securityCard(selectedRow) : `<p class="panel-muted">Click a BN button to view the passenger record.</p>`}</div></div>`, { panelClass: "is-full-page" });
         setPanelPassengerRows(allRows);
       }
 
@@ -3310,7 +3361,7 @@
           }).join("")}</div>`);
         }
         const legend = `<div class="panel-stats"><span style="color:#8fd0ff">Wheelchair</span><span style="color:#d7bdff">Child</span><span style="color:#ffbf86">Infant</span></div>`;
-        renderPanel("Seat Map", currentSy?.flightNo || "SY", `${legend}<div class="panel-workspace seat-map-workspace"><div class="seat-map-shell"><div class="seat-map-plane">${bodyRows.join("")}</div></div><div class="panel-side seat-record-side"><p class="panel-muted">Click a seat to view the passenger record.</p></div></div>`);
+        renderPanel("Seat Map", currentSy?.flightNo || "SY", `${legend}<div class="panel-workspace seat-map-workspace"><div class="seat-map-shell"><div class="seat-map-plane">${bodyRows.join("")}</div></div><div class="panel-side seat-record-side"><p class="panel-muted">Click a seat to view the passenger record.</p></div></div>`, { panelClass: "is-full-page" });
         setPanelPassengerRows(records);
       }
 
@@ -3445,6 +3496,7 @@
       resultPanel.addEventListener("click", async (event) => {
         if (event.target.closest("[data-close-panel]")) {
           resultPanel.innerHTML = "";
+          resultPanel.className = "result-panel";
           resultPanel._passengerRows = [];
           return;
         }
