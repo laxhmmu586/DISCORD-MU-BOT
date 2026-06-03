@@ -1869,14 +1869,17 @@
         z-index: 180;
         display: grid;
         place-items: center;
-        padding: 20px;
+        padding: 16px;
         background: rgba(1, 8, 14, 0.72);
         backdrop-filter: blur(4px);
         animation: modalFade 180ms ease both;
       }
 
       .passenger-modal {
-        width: min(620px, 100%);
+        width: min(620px, calc(100vw - 32px));
+        max-height: calc(100svh - 32px);
+        overflow-y: auto;
+        overscroll-behavior: contain;
         border: 0;
         background: transparent;
         box-shadow: none;
@@ -1886,6 +1889,7 @@
       }
 
       .passenger-modal .record-card {
+        max-width: none;
         pointer-events: auto;
       }
 
@@ -2331,13 +2335,41 @@
           justify-self: start;
         }
 
+        .passenger-modal-backdrop {
+          place-items: start center;
+          padding: 10px;
+        }
+
+        .passenger-modal {
+          width: calc(100vw - 20px);
+          max-height: calc(100svh - 20px);
+        }
+
         .record-card {
-          padding: 14px;
+          padding: 10px;
+          border-radius: 16px;
+        }
+
+        .record-header {
+          gap: 10px;
         }
 
         .record-orb {
-          width: 72px;
-          height: 72px;
+          width: 60px;
+          height: 60px;
+          border-width: 2px;
+        }
+
+        .record-orb strong {
+          font-size: 22px;
+        }
+
+        .record-header h3 {
+          font-size: clamp(20px, 6vw, 26px);
+        }
+
+        .record-row {
+          grid-template-columns: 92px minmax(0, 1fr);
         }
 
         .security-grid {
@@ -3067,13 +3099,13 @@
           const rect = anchor.getBoundingClientRect();
           overlay.style.placeItems = "start";
           modal.style.position = "fixed";
-          const modalWidth = Math.min(620, window.innerWidth - 24);
-          const left = Math.min(Math.max(12, rect.left), window.innerWidth - modalWidth - 12);
-          const modalHeight = Math.min(modal.offsetHeight || 360, window.innerHeight - 24);
+          const modalWidth = Math.min(620, window.innerWidth - 32);
+          const left = Math.min(Math.max(16, rect.left), window.innerWidth - modalWidth - 16);
+          const modalHeight = Math.min(modal.offsetHeight || 360, window.innerHeight - 32);
           const aboveTop = rect.top - modalHeight - 10;
           const belowTop = rect.bottom + 10;
           modal.style.left = `${left}px`;
-          modal.style.top = `${aboveTop >= 12 ? aboveTop : Math.min(belowTop, window.innerHeight - modalHeight - 12)}px`;
+          modal.style.top = `${aboveTop >= 16 ? aboveTop : Math.min(belowTop, window.innerHeight - modalHeight - 16)}px`;
         }
       }
 

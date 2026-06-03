@@ -42,7 +42,7 @@ function splitLogicalSections(log) {
     }
 
     const cmd = line.match(cmdRe)?.[1]?.toUpperCase() || null;
-    const isContinuation = cmd ? /^(PN|PN1|PF|PF1)$/.test(cmd) : false;
+    const isContinuation = cmd ? /^(PN\d*|PF\d*)$/.test(cmd) : false;
 
     if (cmd && !isContinuation) {
       if (current && current.content.trim()) sections.push(current);
@@ -276,7 +276,7 @@ function parseIncrementalLog(log) {
   for (const sectionObj of sections) {
     let section = sectionObj.content;
     const isContinuationCommand =
-      /^(PN|PN1|PF|PF1)$/i.test(sectionObj.command || '');
+      /^(PN\d*|PF\d*)$/i.test(sectionObj.command || '');
 
     if (isContinuationCommand) {
       section =
