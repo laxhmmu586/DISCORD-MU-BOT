@@ -612,7 +612,7 @@
         display: grid;
         place-items: center;
         padding: 3vh 0 8vh;
-        transform: translateY(-116px);
+        transform: translateY(-84px);
         z-index: 1;
       }
 
@@ -658,10 +658,18 @@
         overflow: visible;
       }
 
+      .orbit-shadow {
+        fill: none;
+        stroke: rgba(0, 0, 0, 0.58);
+        stroke-width: 9;
+        filter: blur(2px);
+      }
+
       .orbit-base {
         fill: none;
-        stroke: rgba(226, 243, 255, 0.66);
+        stroke: rgba(226, 243, 255, 0.72);
         stroke-width: 2.2;
+        filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.95));
       }
 
       .orbit-glow {
@@ -1787,7 +1795,7 @@
         .timeline-shell {
           align-items: start;
           padding: 0;
-          transform: translateY(-112px);
+          transform: translateY(-84px);
         }
 
         .timeline {
@@ -2039,6 +2047,7 @@
             <div class="timeline-time" id="node-time">----</div>
             <div class="timeline" aria-label="Mission timeline">
               <svg viewBox="0 0 1200 360" preserveAspectRatio="none" aria-hidden="true">
+                <path class="orbit-shadow" d="M-70 314 C 210 178, 398 146, 600 146 S 990 178, 1270 314" />
                 <path id="mission-path" class="orbit-glow" d="M-70 314 C 210 178, 398 146, 600 146 S 990 178, 1270 314" />
                 <path class="orbit-base" d="M-70 314 C 210 178, 398 146, 600 146 S 990 178, 1270 314" />
                 <path class="orbit-dash" d="M-46 292 C 224 164, 410 134, 600 134 S 976 164, 1246 292" />
