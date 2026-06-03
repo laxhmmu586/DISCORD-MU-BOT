@@ -34,8 +34,9 @@
 
       body {
         margin: 0;
+        height: 100svh;
         min-height: 100vh;
-        overflow-x: hidden;
+        overflow: hidden;
         background: #01050b;
         color: var(--text);
         isolation: isolate;
@@ -60,15 +61,11 @@
         inset: 0;
         pointer-events: none;
         background-image: url("assets/earth-night-background.png");
-        background-position: center;
+        background-position: center center;
         background-repeat: no-repeat;
-        background-size: max(100vw, 177.78vh) auto;
-        filter: saturate(1.08) contrast(1.08);
-        transform: translate3d(0, 0, 0) scale(1.018);
-        transform-origin: 64% 62%;
-        animation: orbitalDrift 72s ease-in-out infinite alternate;
-        backface-visibility: hidden;
-        will-change: transform;
+        background-size: 100vw auto;
+        filter: none;
+        transform: none;
         z-index: -2;
       }
 
@@ -78,27 +75,16 @@
         inset: 0;
         pointer-events: none;
         background:
-          radial-gradient(circle at 72% 58%, rgba(66, 151, 255, 0.2), transparent 24rem),
-          radial-gradient(circle at 50% 110%, rgba(15, 75, 122, 0.28), transparent 34rem),
-          linear-gradient(180deg, rgba(0, 0, 0, 0.38), transparent 18rem),
-          linear-gradient(90deg, rgba(0, 0, 0, 0.62), rgba(0, 0, 0, 0.15) 42%, rgba(0, 0, 0, 0.38) 100%),
-          linear-gradient(115deg, rgba(3, 10, 18, 0.18), rgba(1, 5, 10, 0.5));
+          radial-gradient(circle at 72% 58%, rgba(66, 151, 255, 0.12), transparent 24rem),
+          radial-gradient(circle at 50% 110%, rgba(15, 75, 122, 0.16), transparent 34rem),
+          linear-gradient(180deg, rgba(0, 0, 0, 0.2), transparent 14rem),
+          linear-gradient(90deg, rgba(0, 0, 0, 0.36), rgba(0, 0, 0, 0.06) 42%, rgba(0, 0, 0, 0.2) 100%);
         z-index: -1;
-      }
-
-      @keyframes orbitalDrift {
-        from {
-          transform: translate3d(-0.35vw, -0.15vh, 0) scale(1.018) rotate(-0.05deg);
-        }
-        to {
-          transform: translate3d(0.35vw, 0.25vh, 0) scale(1.032) rotate(0.18deg);
-        }
       }
 
       @media (prefers-reduced-motion: reduce) {
         body::before {
-          animation: none;
-          transform: translate3d(0, 0, 0) scale(1.018);
+          transform: none;
         }
       }
 
@@ -417,24 +403,29 @@
       }
 
       main {
+        height: 100svh;
         min-height: 100vh;
+        overflow: hidden;
         padding-top: 76px;
         background: transparent;
       }
 
       .hero {
         position: relative;
-        min-height: calc(100vh - 76px);
+        height: calc(100svh - 76px);
+        min-height: calc(100svh - 76px);
         display: grid;
-        grid-template-rows: auto minmax(520px, 1fr);
+        grid-template-rows: auto auto minmax(0, 1fr);
       }
 
       .mission-head {
+        position: relative;
+        z-index: 30;
         width: min(1120px, calc(100% - 48px));
-        margin: 48px auto 0;
+        margin: clamp(22px, 3.4vh, 38px) auto 0;
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto;
-        align-items: start;
+        align-items: end;
         justify-content: space-between;
         gap: 24px;
       }
@@ -481,41 +472,63 @@
         display: flex;
         align-items: end;
         gap: 12px;
+        transform: translateX(-64px);
       }
 
       .status-strip {
         display: grid;
-        grid-template-columns: repeat(3, minmax(86px, 1fr));
-        min-width: 380px;
-        border: 1px solid rgba(255, 255, 255, 0.16);
-        background: rgba(0, 0, 0, 0.32);
+        grid-template-columns: repeat(3, minmax(96px, 1fr));
+        gap: 12px;
+        min-width: 420px;
       }
 
-      .status-strip div {
-        padding: 19px 20px;
-        border-left: 1px solid rgba(255, 255, 255, 0.12);
+      .status-metric {
+        position: relative;
+        min-height: 82px;
+        display: grid;
+        place-items: center;
+        padding: 10px 16px 14px;
       }
 
-      .status-strip div:first-child {
-        border-left: 0;
+      .status-metric::before {
+        content: "";
+        position: absolute;
+        inset: 0 8px 12px;
+        border: 3px solid rgba(244, 250, 255, 0.9);
+        border-bottom-color: transparent;
+        border-radius: 999px 999px 0 0;
+        filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.8));
+        opacity: 0.95;
       }
 
-      .status-strip span {
+      .status-metric span,
+      .status-metric strong {
+        position: relative;
+        z-index: 1;
+      }
+
+      .status-metric span {
         display: block;
-        color: var(--muted);
-        font-size: 10px;
-        font-weight: 800;
+        color: rgba(180, 194, 207, 0.88);
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: 1.2px;
+        line-height: 1;
         text-transform: uppercase;
       }
 
-      .status-strip strong {
+      .status-metric strong {
         display: block;
-        margin-top: 7px;
-        font-size: 21px;
+        margin-top: 6px;
+        color: rgba(244, 250, 255, 0.98);
+        font-size: 28px;
+        line-height: 0.95;
+        text-shadow: 0 2px 9px rgba(0, 0, 0, 0.92);
       }
 
       .flight-tools {
         position: relative;
+        z-index: 40;
         align-self: end;
       }
 
@@ -549,9 +562,10 @@
 
       .flight-menu {
         position: absolute;
-        top: calc(100% + 10px);
-        right: 0;
-        z-index: 12;
+        top: 0;
+        right: auto;
+        left: calc(100% + 10px);
+        z-index: 100;
         width: 240px;
         display: none;
         border: 1px solid rgba(176, 216, 255, 0.22);
@@ -616,7 +630,7 @@
         position: relative;
         display: grid;
         align-items: end;
-        min-height: 560px;
+        min-height: clamp(360px, calc(100svh - 360px), 540px);
         overflow: hidden;
         background: transparent;
       }
@@ -626,8 +640,8 @@
         inset: 0;
         display: grid;
         place-items: center;
-        padding: 9vh 0 4vh;
-        transform: translateY(-52px);
+        padding: 3vh 0 8vh;
+        transform: translateY(72px);
         z-index: 1;
       }
 
@@ -641,10 +655,10 @@
 
       .timeline {
         position: relative;
-        width: min(1480px, 105vw);
-        height: clamp(260px, 34vh, 360px);
+        width: min(100vw, 1480px);
+        height: clamp(240px, 30vh, 340px);
         cursor: grab;
-        touch-action: pan-y;
+        touch-action: none;
         user-select: none;
       }
 
@@ -655,14 +669,14 @@
       .timeline-time {
         position: absolute;
         left: 50%;
-        top: calc(50% + 78px);
+        top: calc(50% + 12px);
         z-index: 3;
         transform: translateX(-50%);
         color: rgba(244, 250, 255, 0.94);
         font-size: clamp(44px, 5.2vw, 66px);
-        font-weight: 300;
-        letter-spacing: 1.2px;
-        text-shadow: 0 0 24px rgba(78, 176, 255, 0.22);
+        font-weight: 900;
+        letter-spacing: 0.4px;
+        text-shadow: 0 3px 12px rgba(0, 0, 0, 0.96);
       }
 
       .timeline svg {
@@ -673,10 +687,18 @@
         overflow: visible;
       }
 
+      .orbit-shadow {
+        fill: none;
+        stroke: rgba(0, 0, 0, 0.68);
+        stroke-width: 9;
+        filter: blur(2px);
+      }
+
       .orbit-base {
         fill: none;
-        stroke: rgba(226, 243, 255, 0.66);
+        stroke: rgba(226, 243, 255, 0.76);
         stroke-width: 2.2;
+        filter: drop-shadow(0 3px 10px rgba(0, 0, 0, 0.95));
       }
 
       .orbit-glow {
@@ -1020,6 +1042,7 @@
         color: rgba(235, 246, 255, 0.82);
         font-size: 13px;
         line-height: 1.45;
+        text-align: center;
       }
 
       .detail-actions {
@@ -1097,6 +1120,8 @@
       .result-panel {
         position: relative;
         z-index: 5;
+        max-height: calc(100svh - 140px);
+        overflow-y: auto;
         margin-top: -760px;
       }
 
@@ -1378,6 +1403,8 @@
       .psm-card-row b { color: #9bc8ff; }
 
       .record-card {
+        width: 100%;
+        max-width: 760px;
         border: 1px solid rgba(0, 213, 116, 0.78);
         border-radius: 16px;
         background: linear-gradient(150deg, rgba(18, 86, 55, 0.92), rgba(15, 58, 51, 0.9));
@@ -1435,6 +1462,12 @@
 
       .record-row span {
         white-space: pre-line;
+        overflow-wrap: anywhere;
+      }
+
+      .inline-record-side,
+      .seat-record-side {
+        width: min(100%, 760px);
       }
 
       .security-pill-row {
@@ -1726,14 +1759,15 @@
 
       @media (max-width: 760px) {
         body::before {
-          background-position: 62% center;
+          background-position: center top;
+          background-size: auto 100svh;
         }
 
         .topbar {
           height: 68px;
           display: flex;
           justify-content: space-between;
-          padding: 0 18px;
+          padding: 0 16px;
         }
 
         .menu-button {
@@ -1745,7 +1779,7 @@
         }
 
         .brand {
-          min-width: 118px;
+          min-width: 104px;
           font-size: 18px;
           letter-spacing: 4px;
         }
@@ -1767,6 +1801,7 @@
         }
 
         main {
+          height: 100svh;
           padding-top: 68px;
         }
 
@@ -1784,30 +1819,47 @@
           grid-template-columns: repeat(3, minmax(0, 1fr));
           width: 100%;
           min-width: 0;
+          gap: 6px;
           margin-top: 22px;
         }
 
-        .status-strip div {
-          padding: 12px 10px;
+        .status-metric {
+          min-height: 58px;
+          padding: 8px 6px 10px;
         }
 
-        .status-strip strong {
-          font-size: 12px;
+        .status-metric::before {
+          inset: 0 3px 8px;
+          border-width: 2px;
+        }
+
+        .status-metric span {
+          font-size: 8px;
+          letter-spacing: 0.8px;
+        }
+
+        .status-metric strong {
+          margin-top: 4px;
+          font-size: 16px;
         }
 
         .mission-stage {
-          min-height: 500px;
+          min-height: clamp(330px, calc(100svh - 330px), 460px);
         }
 
         .timeline-shell {
           align-items: start;
           padding: 0;
-          transform: translateY(-88px);
+          transform: translateY(36px);
         }
 
         .timeline {
-          width: min(760px, 118vw);
-          height: 260px;
+          width: 100vw;
+          height: 220px;
+        }
+
+        .timeline-time {
+          top: calc(50% + 2px);
         }
 
         .node-card {
@@ -1881,6 +1933,7 @@
         .mission-side {
           display: grid;
           align-items: stretch;
+          transform: none;
         }
 
         .flight-tools,
@@ -1893,6 +1946,7 @@
         }
 
         .flight-menu {
+          top: calc(100% + 10px);
           left: 0;
           right: auto;
           width: 100%;
@@ -1909,6 +1963,7 @@
         }
 
         .result-panel {
+          max-height: calc(100svh - 92px);
           margin-top: -760px;
         }
 
@@ -1996,9 +2051,9 @@
           </div>
           <div class="mission-side">
             <div class="status-strip" aria-label="Current flight metrics">
-              <div><span>Gate</span><strong id="metric-gate">---</strong></div>
-              <div><span>BDT</span><strong id="metric-bdt">----</strong></div>
-              <div><span>STD</span><strong id="metric-std">----</strong></div>
+              <div class="status-metric"><span>Gate</span><strong id="metric-gate">---</strong></div>
+              <div class="status-metric"><span>BDT</span><strong id="metric-bdt">----</strong></div>
+              <div class="status-metric"><span>STD</span><strong id="metric-std">----</strong></div>
             </div>
             <div class="flight-tools" aria-label="Flight data">
               <button class="flight-menu-button" type="button" aria-label="Open flight data menu" aria-expanded="false">
@@ -2054,8 +2109,9 @@
             <div class="timeline-time" id="node-time">----</div>
             <div class="timeline" aria-label="Mission timeline">
               <svg viewBox="0 0 1200 360" preserveAspectRatio="none" aria-hidden="true">
-                <path id="mission-path" class="orbit-glow" d="M-70 314 C 210 178, 398 146, 600 146 S 990 178, 1270 314" />
-                <path class="orbit-base" d="M-70 314 C 210 178, 398 146, 600 146 S 990 178, 1270 314" />
+                <path class="orbit-shadow" data-orbit-path="main" d="M-260 318 C 120 178, 390 142, 600 142 S 1080 178, 1460 318" />
+                <path id="mission-path" class="orbit-glow" data-orbit-path="main" d="M-260 318 C 120 178, 390 142, 600 142 S 1080 178, 1460 318" />
+                <path class="orbit-base" data-orbit-path="main" d="M-260 318 C 120 178, 390 142, 600 142 S 1080 178, 1460 318" />
                 <path class="orbit-dash" d="M-46 292 C 224 164, 410 134, 600 134 S 976 164, 1246 292" />
               </svg>
               <button class="node" type="button" data-index="0" data-key="CREW_APIS" data-label="CREW APIS" data-status="pending" data-time="----"></button>
@@ -2128,6 +2184,9 @@
       const newPasswordInput = document.querySelector("#new-password");
       const passwordStatus = document.querySelector("#password-status");
       const baseProgress = [0.08, 0.19, 0.3, 0.41, 0.52, 0.63, 0.74, 0.85, 0.96];
+      const desktopOrbitPath = "M-260 318 C 120 178, 390 142, 600 142 S 1080 178, 1460 318";
+      const mobileOrbitPath = "M-240 296 C 130 210, 390 184, 600 184 S 1070 210, 1440 296";
+      const mobileOrbitQuery = window.matchMedia("(max-width: 760px)");
       const centerProgress = 0.5;
       const minProgress = 0.04;
       const maxProgress = 0.96;
@@ -2404,7 +2463,15 @@
         return nearestIndex;
       }
 
+      function updateOrbitPath() {
+        const orbitPath = mobileOrbitQuery.matches ? mobileOrbitPath : desktopOrbitPath;
+        document.querySelectorAll('[data-orbit-path="main"]').forEach((path) => {
+          if (path.getAttribute("d") !== orbitPath) path.setAttribute("d", orbitPath);
+        });
+      }
+
       function placeNodes() {
+        updateOrbitPath();
         const pathLength = missionPath.getTotalLength();
         nodes.forEach((node) => {
           const index = Number(node.dataset.index);
@@ -2963,7 +3030,6 @@
           if (meta?.error || meta?.found === false) throw new Error(meta?.error || "Sales report not found.");
           const link = `${resolveApiBase()}/sales-report/download?flightNo=${encodeURIComponent(flightNo)}&flightDate=${encodeURIComponent(flightDate)}`;
           window.open(link, "_blank", "noopener");
-          renderPanel("Sales Report", flightNo, `<p class="panel-muted">Sales report download started for ${escapeHtml(flightNo)} / ${escapeHtml(flightDate)}.</p>`);
         } catch (error) {
           renderPanel("Sales Report", flightNo, `<p class="panel-muted status-fail">${escapeHtml(error?.message || "Sales report download failed.")}</p>`);
         }
@@ -3346,6 +3412,7 @@
       }
 
       resetTimelineCenter("CREW_APIS");
+      mobileOrbitQuery.addEventListener("change", () => placeNodes());
       new ResizeObserver(() => placeNodes()).observe(timelineShell);
     </script>
   </body>
