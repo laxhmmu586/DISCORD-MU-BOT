@@ -3361,10 +3361,29 @@
         );
       }
 
+      function isDeletedPassengerRecord(row) {
+        const passenger = row?.passengerRecord || {};
+        if (row?.deleted || row?.offloaded || passenger.deleted || passenger.offloaded) return true;
+        if (String(row?.status || "").toUpperCase() === "DELETED" || String(passenger.status || "").toUpperCase() === "DELETED") return true;
+        const bn = normalizedBn(row?.bn || passenger.bn);
+        const text = [
+          row?.sourceText,
+          passenger.sourceText,
+          row?.paxInfoRaw,
+          passenger.paxInfoRaw,
+          ...(row?.operationHistoryLines || []),
+          ...(passenger.operationHistoryLines || []),
+        ].filter(Boolean).join("\n").toUpperCase();
+        if (/^\s*\d+\.\s+[^\n]*\bDELETED\b/m.test(text)) return true;
+        if (bn && new RegExp(`\\bDEL\\b[^\\n]*\\bBN0*${Number(bn)}\\b`).test(text)) return true;
+        return false;
+      }
+
       function buildWarningRows(sy = currentSy) {
         const rows = [];
         const addWarning = (row, type, reason) => rows.push({ ...row, warningType: type, warningReason: reason, _panelCard: "warning" });
         for (const row of warningRecordPools(sy)) {
+          if (isDeletedPassengerRecord(row)) continue;
           const bn = normalizedBn(row.bn || row.passengerRecord?.bn);
           const seat = String(row.seat || row.passengerRecord?.seat || "").toUpperCase();
           const age = Number(row.ageYears ?? row.passengerRecord?.ageYears);
