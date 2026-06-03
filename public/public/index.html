@@ -3459,11 +3459,6 @@
         ].join("/").toUpperCase();
       }
 
-      function isChildByChdLogic(row) {
-        const age = Number(row?.ageYears ?? row?.passengerRecord?.ageYears);
-        return (Number.isInteger(age) && age >= 2 && age < 12) || Boolean(row?.isChild || row?.passengerRecord?.isChild || row?.hasChdCode || row?.passengerRecord?.hasChdCode) || /CHD|CHLD/.test(rowServices(row));
-      }
-
       function hasTicket(row) {
         return Boolean(row?.ticketNumber || row?.ticketNo || row?.passengerRecord?.ticketNumber || row?.passengerRecord?.ticketNo);
       }
@@ -3509,9 +3504,6 @@
           const services = rowServices(row);
           if (restrictedUnder15Seats.has(seat) && Number.isInteger(age) && age < 15) {
             addWarning(row, "EXIT/RESTRICTED SEAT", `${seat} passenger is under 15 by DOB/age (${age}).`);
-          }
-          if (/WCH/.test(services) && isChildByChdLogic(row)) {
-            addWarning(row, "WCH CHILD", "Passenger has wheelchair service and is a child by CHD List logic.");
           }
           if (hasKnownPassengerRecord(row) && !hasTicket(row)) {
             addWarning(row, "NO TICKET", "Passenger has no ticket number in the record.");
