@@ -42,16 +42,18 @@
       body::before {
         content: "";
         position: fixed;
-        inset: -3vh -3vw;
+        inset: 0;
         pointer-events: none;
         background-image: url("assets/earth-night-background.png");
         background-position: center;
         background-repeat: no-repeat;
-        background-size: cover;
+        background-size: max(100vw, 177.78vh) auto;
         filter: saturate(1.08) contrast(1.08);
-        transform: scale(1.035);
+        transform: translate3d(0, 0, 0) scale(1.018);
         transform-origin: 64% 62%;
         animation: orbitalDrift 72s ease-in-out infinite alternate;
+        backface-visibility: hidden;
+        will-change: transform;
         z-index: -2;
       }
 
@@ -71,17 +73,17 @@
 
       @keyframes orbitalDrift {
         from {
-          transform: scale(1.035) translate3d(-0.8vw, -0.3vh, 0) rotate(0deg);
+          transform: translate3d(-0.35vw, -0.15vh, 0) scale(1.018) rotate(-0.05deg);
         }
         to {
-          transform: scale(1.095) translate3d(1.2vw, 0.7vh, 0) rotate(0.28deg);
+          transform: translate3d(0.35vw, 0.25vh, 0) scale(1.032) rotate(0.18deg);
         }
       }
 
       @media (prefers-reduced-motion: reduce) {
         body::before {
           animation: none;
-          transform: scale(1.05);
+          transform: translate3d(0, 0, 0) scale(1.018);
         }
       }
 
