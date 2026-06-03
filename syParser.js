@@ -959,6 +959,7 @@ function enrichSeatMapRecordsFromLog(log, syInfo, targetYmd = null) {
     const adultTicketNo = section.match(/\bET\s+TKNE\/(?!INF)(\d{10,})\/\d+\b/i)?.[1] || '';
     const infantTicketNo = section.match(/\bET\s+TKNE\/INF(\d{10,})\/\d+\b/i)?.[1] || '';
     const hasInfant = /\bINF1\/0\b/i.test(section) || Boolean(infantTicketNo);
+    const hasBadSeat = /\bBAD\s*SEAT\b/i.test(section);
     const paxInfo = section.match(/PAX INFO\s*:\s*([^\n\r]+)/i)?.[1] || '';
     const dobRaw = paxInfo.match(/DOB\/?\s*[:\/-]?\s*(\d{6,8}|\d{2}[A-Z]{3}\d{2,4}|\d{4}-\d{2}-\d{2})/i)?.[1] || null;
     const dobDate = parseDobRaw(dobRaw, atDateUtc);
@@ -984,6 +985,7 @@ function enrichSeatMapRecordsFromLog(log, syInfo, targetYmd = null) {
       ticketNo: adultTicketNo || infantTicketNo,
       infantTicketNo,
       hasInfant,
+      hasBadSeat,
       dob: formatDobDate(dobDate),
       ageYears: Number.isInteger(ageYears) ? ageYears : null,
       hasChdCode,
@@ -1211,6 +1213,7 @@ ${section}`,
       return serviceCode && emda ? `${serviceCode}/${emda}` : fullLine;
     }).filter(Boolean);
     const hasInfFlag = /\bINF1\/0\b/i.test(section);
+    const hasBadSeat = /\bBAD\s*SEAT\b/i.test(section);
     const hasAdultTk = Boolean(adultTicketNo);
     const hasInfTk = Boolean(infantTicketNo);
     const passengerRecord = {
@@ -1228,6 +1231,7 @@ ${section}`,
       ticketNo,
       infantTicketNo,
       hasInfant: hasInfFlag || hasInfTk,
+      hasBadSeat,
       dob: formatDobDate(dobDate),
       ageYears: Number.isInteger(ageYears) ? ageYears : null,
       hasChdCode,
