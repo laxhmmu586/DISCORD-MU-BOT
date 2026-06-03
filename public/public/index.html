@@ -1295,6 +1295,14 @@
         font-size: 12px;
       }
 
+      .gov-details-grid {
+        margin-top: 26px !important;
+      }
+
+      .gov-detail-card .bn-button-list {
+        margin-top: 24px;
+      }
+
       .data-table {
         width: 100%;
         border-collapse: collapse;
@@ -1516,16 +1524,16 @@
       .record-card {
         position: relative;
         width: 100%;
-        max-width: 680px;
+        max-width: 620px;
         overflow: hidden;
         border: 1px solid rgba(75, 218, 255, 0.42);
         border-radius: 22px;
         background:
-          radial-gradient(circle at 88% 8%, rgba(88, 167, 255, 0.24), transparent 17rem),
-          radial-gradient(circle at 16% 18%, rgba(0, 213, 116, 0.18), transparent 15rem),
-          linear-gradient(145deg, rgba(3, 20, 34, 0.96), rgba(4, 42, 54, 0.9) 52%, rgba(8, 56, 46, 0.92));
+          radial-gradient(circle at 88% 8%, rgba(88, 167, 255, 0.2), transparent 16rem),
+          radial-gradient(circle at 16% 18%, rgba(0, 213, 116, 0.16), transparent 14rem),
+          linear-gradient(145deg, rgb(3, 20, 34), rgb(4, 38, 50) 52%, rgb(7, 45, 39));
         box-shadow: 0 28px 90px rgba(0, 0, 0, 0.46), 0 0 34px rgba(71, 196, 255, 0.13), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-        padding: 18px;
+        padding: 14px;
         color: #e7f7ff;
       }
 
@@ -1535,27 +1543,27 @@
         inset: 0;
         pointer-events: none;
         background:
-          linear-gradient(90deg, transparent, rgba(127, 219, 255, 0.08), transparent),
-          repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 7px);
-        opacity: 0.55;
+          linear-gradient(90deg, transparent, rgba(127, 219, 255, 0.05), transparent),
+          repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0 1px, transparent 1px 7px);
+        opacity: 0.38;
         mix-blend-mode: screen;
       }
 
       .record-card.is-warning {
         border-color: rgba(255, 199, 44, 0.86);
         background:
-          radial-gradient(circle at 88% 8%, rgba(255, 199, 44, 0.22), transparent 17rem),
-          radial-gradient(circle at 16% 18%, rgba(255, 232, 89, 0.14), transparent 15rem),
-          linear-gradient(145deg, rgba(34, 24, 8, 0.96), rgba(61, 46, 18, 0.9) 52%, rgba(32, 41, 53, 0.92));
+          radial-gradient(circle at 88% 8%, rgba(255, 199, 44, 0.18), transparent 16rem),
+          radial-gradient(circle at 16% 18%, rgba(255, 232, 89, 0.1), transparent 14rem),
+          linear-gradient(145deg, rgb(34, 24, 8), rgb(52, 39, 17) 52%, rgb(28, 35, 45));
         box-shadow: 0 28px 90px rgba(0, 0, 0, 0.46), 0 0 28px rgba(255, 199, 44, 0.16);
       }
 
       .record-card.is-fail {
         border-color: rgba(255, 92, 92, 0.86);
         background:
-          radial-gradient(circle at 88% 8%, rgba(255, 92, 92, 0.24), transparent 17rem),
-          radial-gradient(circle at 16% 18%, rgba(255, 123, 123, 0.12), transparent 15rem),
-          linear-gradient(145deg, rgba(42, 12, 20, 0.96), rgba(76, 25, 35, 0.9) 52%, rgba(31, 39, 51, 0.92));
+          radial-gradient(circle at 88% 8%, rgba(255, 92, 92, 0.18), transparent 16rem),
+          radial-gradient(circle at 16% 18%, rgba(255, 123, 123, 0.1), transparent 14rem),
+          linear-gradient(145deg, rgb(42, 12, 20), rgb(66, 22, 31) 52%, rgb(28, 34, 44));
       }
 
       .record-header,
@@ -1574,7 +1582,7 @@
         align-items: center;
         justify-content: space-between;
         gap: 18px;
-        margin-bottom: 16px;
+        margin-bottom: 12px;
       }
 
       .record-kicker {
@@ -1589,15 +1597,15 @@
       .record-header h3 {
         margin: 3px 0 0;
         color: #f7fbff;
-        font-size: clamp(24px, 2.2vw, 34px);
+        font-size: clamp(22px, 2vw, 30px);
         line-height: 1;
         letter-spacing: 0.4px;
         text-transform: uppercase;
       }
 
       .record-orb {
-        width: 88px;
-        height: 88px;
+        width: 78px;
+        height: 78px;
         display: grid;
         place-items: center;
         flex: 0 0 auto;
@@ -1616,7 +1624,7 @@
         display: grid;
         place-items: center;
         color: #ffe94f;
-        font-size: 28px;
+        font-size: 26px;
         line-height: 1;
       }
 
@@ -1624,14 +1632,14 @@
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 10px;
-        margin-bottom: 14px;
+        margin-bottom: 10px;
       }
 
       .record-command {
-        min-height: 64px;
+        min-height: 56px;
         border: 1px solid rgba(143, 196, 255, 0.24);
         background: rgba(0, 0, 0, 0.2);
-        padding: 10px 12px;
+        padding: 9px 11px;
       }
 
       .record-command span,
@@ -1648,7 +1656,7 @@
         display: block;
         margin-top: 6px;
         color: #f4fbff;
-        font-size: 18px;
+        font-size: 16px;
         line-height: 1.15;
         overflow-wrap: anywhere;
       }
@@ -1656,8 +1664,8 @@
       .record-section {
         border: 1px solid rgba(176, 216, 255, 0.16);
         background: rgba(0, 0, 0, 0.16);
-        margin-top: 10px;
-        padding: 12px;
+        margin-top: 8px;
+        padding: 10px;
       }
 
       .record-section h4 {
@@ -1668,7 +1676,7 @@
       .record-section-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 8px 12px;
+        gap: 6px 10px;
       }
 
       .record-title {
@@ -1698,7 +1706,7 @@
         grid-template-columns: 104px minmax(0, 1fr);
         gap: 10px;
         border-top: 1px solid rgba(255, 255, 255, 0.09);
-        padding: 8px 0;
+        padding: 7px 0;
         font-size: 13px;
         line-height: 1.35;
       }
@@ -1831,13 +1839,13 @@
         display: grid;
         place-items: center;
         padding: 20px;
-        background: transparent;
-        backdrop-filter: none;
+        background: rgba(1, 8, 14, 0.72);
+        backdrop-filter: blur(4px);
         animation: modalFade 180ms ease both;
       }
 
       .passenger-modal {
-        width: min(720px, 100%);
+        width: min(620px, 100%);
         border: 0;
         background: transparent;
         box-shadow: none;
@@ -3005,7 +3013,7 @@
           const rect = anchor.getBoundingClientRect();
           overlay.style.placeItems = "start";
           modal.style.position = "fixed";
-          const modalWidth = Math.min(720, window.innerWidth - 24);
+          const modalWidth = Math.min(620, window.innerWidth - 24);
           const left = Math.min(Math.max(12, rect.left), window.innerWidth - modalWidth - 12);
           const modalHeight = Math.min(modal.offsetHeight || 360, window.innerHeight - 24);
           const aboveTop = rect.top - modalHeight - 10;
@@ -3243,9 +3251,9 @@
         const details = groups.map(([label, items]) => {
           const groupRows = (items || []).map((item) => enrichGovRow(item, label));
           if (!groupRows.length) return "";
-          return `<article class="data-card"><b>${escapeHtml(label)} Details</b>${renderBnButtons(groupRows, "", (row) => row.reason)}</article>`;
+          return `<article class="data-card gov-detail-card"><b>${escapeHtml(label)} Details</b>${renderBnButtons(groupRows, "", (row) => row.reason)}</article>`;
         }).filter(Boolean).join("");
-        renderPanel("GOV/AQQ", currentSy?.flightNo || "SY", `<div class="data-grid">${summary}</div>${details ? `<div class="data-grid" style="margin-top:14px">${details}</div>` : ""}`);
+        renderPanel("GOV/AQQ", currentSy?.flightNo || "SY", `<div class="data-grid">${summary}</div>${details ? `<div class="data-grid gov-details-grid">${details}</div>` : ""}`);
         setPanelPassengerRows(rows);
       }
 
@@ -3755,8 +3763,13 @@
             side.innerHTML = passengerRecordCard(enriched, "Passenger Record");
             const workspace = resultPanel.querySelector(".seat-map-workspace");
             if (workspace && window.matchMedia("(min-width: 761px)").matches) {
-              const offset = Math.max(0, seatButton.getBoundingClientRect().top - workspace.getBoundingClientRect().top - 18);
+              const seatRect = seatButton.getBoundingClientRect();
+              const workspaceTop = workspace.getBoundingClientRect().top;
+              const cardHeight = side.querySelector(".record-card")?.offsetHeight || 0;
+              const offset = Math.max(0, seatRect.top + (seatRect.height / 2) - workspaceTop - (cardHeight / 2));
               side.style.marginTop = `${offset}px`;
+            } else {
+              side.style.marginTop = "";
             }
           }
           else showPassengerModal(row.passengerRecord || row, "Passenger Record", seatButton);
@@ -3764,7 +3777,7 @@
       });
 
       document.addEventListener("click", (event) => {
-        if (event.target.closest("[data-close-modal]") || event.target.classList.contains("passenger-modal-backdrop")) closePassengerModal();
+        if (event.target.closest("[data-close-modal]") || event.target.closest(".passenger-modal-backdrop")) closePassengerModal();
       });
 
       searchForm.addEventListener("submit", (event) => {
