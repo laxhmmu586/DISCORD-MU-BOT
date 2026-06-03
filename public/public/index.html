@@ -1455,6 +1455,12 @@
         grid-template-columns: minmax(0, 1fr) minmax(360px, 520px);
       }
 
+      .is-full-page .seat-map-workspace {
+        grid-template-columns: max-content minmax(360px, 560px);
+        justify-content: center;
+        gap: 28px;
+      }
+
       .panel-side {
         display: grid;
         gap: 12px;
@@ -1666,7 +1672,7 @@
       .passenger-modal-backdrop {
         position: fixed;
         inset: 0;
-        z-index: 60;
+        z-index: 180;
         display: grid;
         place-items: center;
         padding: 20px;
@@ -2111,7 +2117,8 @@
           margin-top: -300px;
         }
 
-        .panel-workspace {
+        .panel-workspace,
+        .is-full-page .seat-map-workspace {
           grid-template-columns: 1fr;
         }
 
