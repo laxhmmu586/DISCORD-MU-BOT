@@ -34,8 +34,9 @@
 
       body {
         margin: 0;
+        height: 100svh;
         min-height: 100vh;
-        overflow-x: hidden;
+        overflow: hidden;
         background: #01050b;
         color: var(--text);
         isolation: isolate;
@@ -402,13 +403,16 @@
       }
 
       main {
+        height: 100svh;
         min-height: 100vh;
+        overflow: hidden;
         padding-top: 76px;
         background: transparent;
       }
 
       .hero {
         position: relative;
+        height: calc(100svh - 76px);
         min-height: calc(100svh - 76px);
         display: grid;
         grid-template-rows: auto auto minmax(0, 1fr);
@@ -637,7 +641,7 @@
         display: grid;
         place-items: center;
         padding: 3vh 0 8vh;
-        transform: translateY(-56px);
+        transform: translateY(72px);
         z-index: 1;
       }
 
@@ -651,10 +655,10 @@
 
       .timeline {
         position: relative;
-        width: min(1480px, 105vw);
+        width: min(100vw, 1480px);
         height: clamp(240px, 30vh, 340px);
         cursor: grab;
-        touch-action: pan-y;
+        touch-action: none;
         user-select: none;
       }
 
@@ -1038,6 +1042,7 @@
         color: rgba(235, 246, 255, 0.82);
         font-size: 13px;
         line-height: 1.45;
+        text-align: center;
       }
 
       .detail-actions {
@@ -1115,6 +1120,8 @@
       .result-panel {
         position: relative;
         z-index: 5;
+        max-height: calc(100svh - 140px);
+        overflow-y: auto;
         margin-top: -760px;
       }
 
@@ -1794,6 +1801,7 @@
         }
 
         main {
+          height: 100svh;
           padding-top: 68px;
         }
 
@@ -1842,16 +1850,16 @@
         .timeline-shell {
           align-items: start;
           padding: 0;
-          transform: translateY(-56px);
+          transform: translateY(36px);
         }
 
         .timeline {
-          width: min(760px, 118vw);
+          width: 100vw;
           height: 220px;
         }
 
         .timeline-time {
-          top: calc(50% - 6px);
+          top: calc(50% + 2px);
         }
 
         .node-card {
@@ -1955,6 +1963,7 @@
         }
 
         .result-panel {
+          max-height: calc(100svh - 92px);
           margin-top: -760px;
         }
 
@@ -2100,9 +2109,9 @@
             <div class="timeline-time" id="node-time">----</div>
             <div class="timeline" aria-label="Mission timeline">
               <svg viewBox="0 0 1200 360" preserveAspectRatio="none" aria-hidden="true">
-                <path class="orbit-shadow" data-orbit-path="main" d="M-70 314 C 210 178, 398 146, 600 146 S 990 178, 1270 314" />
-                <path id="mission-path" class="orbit-glow" data-orbit-path="main" d="M-70 314 C 210 178, 398 146, 600 146 S 990 178, 1270 314" />
-                <path class="orbit-base" data-orbit-path="main" d="M-70 314 C 210 178, 398 146, 600 146 S 990 178, 1270 314" />
+                <path class="orbit-shadow" data-orbit-path="main" d="M-260 318 C 120 178, 390 142, 600 142 S 1080 178, 1460 318" />
+                <path id="mission-path" class="orbit-glow" data-orbit-path="main" d="M-260 318 C 120 178, 390 142, 600 142 S 1080 178, 1460 318" />
+                <path class="orbit-base" data-orbit-path="main" d="M-260 318 C 120 178, 390 142, 600 142 S 1080 178, 1460 318" />
                 <path class="orbit-dash" d="M-46 292 C 224 164, 410 134, 600 134 S 976 164, 1246 292" />
               </svg>
               <button class="node" type="button" data-index="0" data-key="CREW_APIS" data-label="CREW APIS" data-status="pending" data-time="----"></button>
@@ -2175,8 +2184,8 @@
       const newPasswordInput = document.querySelector("#new-password");
       const passwordStatus = document.querySelector("#password-status");
       const baseProgress = [0.08, 0.19, 0.3, 0.41, 0.52, 0.63, 0.74, 0.85, 0.96];
-      const desktopOrbitPath = "M-70 314 C 210 178, 398 146, 600 146 S 990 178, 1270 314";
-      const mobileOrbitPath = "M-70 292 C 220 198, 410 174, 600 174 S 980 198, 1270 292";
+      const desktopOrbitPath = "M-260 318 C 120 178, 390 142, 600 142 S 1080 178, 1460 318";
+      const mobileOrbitPath = "M-240 296 C 130 210, 390 184, 600 184 S 1070 210, 1440 296";
       const mobileOrbitQuery = window.matchMedia("(max-width: 760px)");
       const centerProgress = 0.5;
       const minProgress = 0.04;
