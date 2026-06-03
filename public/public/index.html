@@ -1541,19 +1541,6 @@
         mix-blend-mode: screen;
       }
 
-      .record-card::after {
-        content: "";
-        position: absolute;
-        right: -72px;
-        top: -84px;
-        width: 190px;
-        height: 190px;
-        border: 1px solid rgba(169, 225, 255, 0.26);
-        border-radius: 999px;
-        box-shadow: inset 0 0 28px rgba(83, 174, 255, 0.12);
-        pointer-events: none;
-      }
-
       .record-card.is-warning {
         border-color: rgba(255, 199, 44, 0.86);
         background:
@@ -1622,17 +1609,14 @@
       }
 
       .record-orb span {
-        display: block;
-        color: rgba(188, 209, 224, 0.9);
-        font-size: 10px;
-        font-weight: 950;
-        letter-spacing: 1.5px;
+        display: none;
       }
 
       .record-orb strong {
-        display: block;
+        display: grid;
+        place-items: center;
         color: #ffe94f;
-        font-size: 24px;
+        font-size: 28px;
         line-height: 1;
       }
 
@@ -1748,6 +1732,10 @@
         width: min(100%, 560px);
       }
 
+      .seat-record-side {
+        transition: margin-top 180ms ease;
+      }
+
       .security-pill-row {
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1843,26 +1831,27 @@
         display: grid;
         place-items: center;
         padding: 20px;
-        background: rgba(1, 8, 14, 0.62);
-        backdrop-filter: blur(10px);
+        background: transparent;
+        backdrop-filter: none;
         animation: modalFade 180ms ease both;
       }
 
       .passenger-modal {
         width: min(720px, 100%);
-        border: 1px solid rgba(176, 216, 255, 0.32);
-        background: linear-gradient(150deg, rgba(8, 24, 40, 0.96), rgba(2, 12, 22, 0.92));
-        box-shadow: 0 32px 110px rgba(0, 0, 0, 0.58);
-        padding: 14px;
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+        padding: 0;
+        pointer-events: none;
         animation: modalFloat 220ms ease both;
       }
 
+      .passenger-modal .record-card {
+        pointer-events: auto;
+      }
+
       .passenger-modal .panel-close {
-        float: right;
-        min-height: 26px;
-        padding: 0 9px;
-        font-size: 14px;
-        line-height: 1;
+        display: none;
       }
 
       .passenger-modal .data-grid {
@@ -2998,7 +2987,7 @@
           renderRecordSection("Additional Data", additionalFields),
         ].join("");
         const body = fields.length ? `${sections || `<p class="panel-muted record-empty">No passenger details available.</p>`}` : `<p class="panel-muted record-empty">No passenger details available.</p>`;
-        return `<article class="record-card ${recordToneClass(tone)}"><div class="record-header"><div><span class="record-kicker">Passenger Data Link</span><h3>${escapeHtml(title)}</h3></div><div class="record-orb" aria-label="${escapeHtml(bn)}"><span>BN</span><strong>${escapeHtml(String(bnNumber).replace(/^BN/i, "") || "---")}</strong></div></div><div class="record-command-row"><div class="record-command"><span>Name</span><strong>${escapeHtml(name)}</strong></div><div class="record-command"><span>Seat / Cabin</span><strong>${escapeHtml([seat, cabin].filter((item) => item && item !== "---").join(" / ") || "---")}</strong></div><div class="record-command"><span>Status</span><strong>${escapeHtml(status)}</strong></div></div>${body}</article>`;
+        return `<article class="record-card ${recordToneClass(tone)}"><div class="record-header"><div><h3>${escapeHtml(title)}</h3></div><div class="record-orb" aria-label="${escapeHtml(bn)}"><span>BN</span><strong>${escapeHtml(String(bnNumber).replace(/^BN/i, "") || "---")}</strong></div></div><div class="record-command-row"><div class="record-command"><span>Name</span><strong>${escapeHtml(name)}</strong></div><div class="record-command"><span>Seat / Cabin</span><strong>${escapeHtml([seat, cabin].filter((item) => item && item !== "---").join(" / ") || "---")}</strong></div><div class="record-command"><span>Status</span><strong>${escapeHtml(status)}</strong></div></div>${body}</article>`;
       }
 
       function passengerCards(data) {
@@ -3223,7 +3212,7 @@
         const rows = enrichRowsWithPassengerData(currentSy?.chdList || []);
         const missing = rows.filter((row) => row.hasChdCode === false).length;
         const stats = `<div class="panel-stats"><span>Total ${rows.length}</span><span class="status-ok">OK ${rows.length - missing}</span><span class="status-fail">Missing CHD1/0 ${missing}</span></div>`;
-        renderPanel("CHD List", currentSy?.flightNo || "SY", `${stats}${renderBnButtons(rows, "No CHD passenger found.", (row) => `${passengerName(row)} ${row.hasChdCode ? "OK" : "Missing CHD1/0"}`, null, (row) => row.hasChdCode === false ? "is-missing" : "is-pass")}<div class="panel-side inline-record-side" style="margin-top:14px"><p class="panel-muted">Click a BN button to view the passenger record.</p></div>`);
+        renderPanel("CHD List", currentSy?.flightNo || "SY", `${stats}${renderBnButtons(rows, "No CHD passenger found.", (row) => `${passengerName(row)} ${row.hasChdCode ? "OK" : "Missing CHD1/0"}`, null, (row) => row.hasChdCode === false ? "is-missing" : "is-pass")}`);
         setPanelPassengerRows(rows);
       }
 
@@ -3256,7 +3245,7 @@
           if (!groupRows.length) return "";
           return `<article class="data-card"><b>${escapeHtml(label)} Details</b>${renderBnButtons(groupRows, "", (row) => row.reason)}</article>`;
         }).filter(Boolean).join("");
-        renderPanel("GOV/AQQ", currentSy?.flightNo || "SY", `<div class="data-grid">${summary}</div>${details ? `<div class="data-grid" style="margin-top:14px">${details}</div><div class="panel-side inline-record-side" style="margin-top:14px"><p class="panel-muted">Click a BN button to view the passenger record.</p></div>` : ""}`);
+        renderPanel("GOV/AQQ", currentSy?.flightNo || "SY", `<div class="data-grid">${summary}</div>${details ? `<div class="data-grid" style="margin-top:14px">${details}</div>` : ""}`);
         setPanelPassengerRows(rows);
       }
 
@@ -3762,7 +3751,14 @@
           const row = rows.find((item) => String(item.seat || "").toUpperCase() === seat) || { seat };
           const enriched = { ...(passengerLookupByBn().get(String(row.bn || "").padStart(3, "0")) || {}), ...(row.passengerRecord || row) };
           const side = resultPanel.querySelector(".seat-record-side");
-          if (side) side.innerHTML = passengerRecordCard(enriched, "Passenger Record");
+          if (side) {
+            side.innerHTML = passengerRecordCard(enriched, "Passenger Record");
+            const workspace = resultPanel.querySelector(".seat-map-workspace");
+            if (workspace && window.matchMedia("(min-width: 761px)").matches) {
+              const offset = Math.max(0, seatButton.getBoundingClientRect().top - workspace.getBoundingClientRect().top - 18);
+              side.style.marginTop = `${offset}px`;
+            }
+          }
           else showPassengerModal(row.passengerRecord || row, "Passenger Record", seatButton);
         }
       });
