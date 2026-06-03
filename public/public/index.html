@@ -2988,12 +2988,24 @@
         return [number, data?.membershipStatus || data?.ffTier].filter(Boolean).join(" / ");
       }
 
+      function cabinFromSeatValue(seat) {
+        const row = Number(String(seat || "").match(/\d{1,3}/)?.[0] || 0);
+        if (row >= 1 && row <= 2) return "First";
+        if (row >= 6 && row <= 20) return "Business";
+        if (row >= 31 && row <= 74) return "Economy";
+        return "";
+      }
+
+      function cabinDisplay(data) {
+        return cabinFromSeatValue(data?.seat) || data?.cabin;
+      }
+
       function passengerFields(data) {
         return [
           ["Name", passengerName(data) || data?.name],
           ["BN", data?.bn],
           ["Seat", data?.seat],
-          ["Cabin", data?.cabin],
+          ["Cabin", cabinDisplay(data)],
           ["Passport", visibleByPermission(data, "canViewTravelDocs") ? maskTail(data?.passportNo) : "Hidden"],
           ["Passport Expiry", visibleByPermission(data, "canViewTravelDocs") ? (data?.passportExpiry || data?.passportExp || data?.passportExpiryDate) : "Hidden"],
           ["DOB", visibleByPermission(data, "canViewTravelDocs") ? data?.dob : "Hidden"],
