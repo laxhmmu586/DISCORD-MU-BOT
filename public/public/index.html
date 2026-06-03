@@ -1417,39 +1417,81 @@
       }
 
       .warning-panel {
-        border: 1px solid rgba(255, 199, 44, 0.86);
-        background: linear-gradient(150deg, rgba(104, 68, 12, 0.9), rgba(37, 39, 38, 0.92));
-        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.38), 0 0 26px rgba(255, 199, 44, 0.14);
+        border: 1px solid rgba(255, 199, 44, 0.26);
+        background: linear-gradient(150deg, rgba(8, 24, 40, 0.6), rgba(2, 12, 22, 0.46));
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.04);
         padding: 14px;
       }
 
       .warning-list {
         display: grid;
-        gap: 10px;
+        gap: 12px;
+      }
+
+      .warning-card,
+      .psm-card {
+        position: relative;
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        gap: 16px;
+        align-items: center;
+        border-radius: 18px;
+        padding: 14px 16px;
+        overflow: hidden;
       }
 
       .warning-card {
-        border: 1px solid rgba(255, 218, 76, 0.72);
-        border-radius: 12px;
-        background: rgba(32, 25, 8, 0.58);
-        padding: 12px;
+        border: 1px solid rgba(255, 199, 44, 0.62);
+        background:
+          radial-gradient(circle at 90% 10%, rgba(255, 199, 44, 0.12), transparent 14rem),
+          linear-gradient(135deg, rgba(46, 34, 8, 0.82), rgba(7, 20, 34, 0.78));
       }
 
-      .warning-card-head {
+      .warning-card::before,
+      .psm-card::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background: repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 8px);
+        opacity: 0.45;
+      }
+
+      .warning-card-main,
+      .psm-card-main,
+      .warning-card > .bn-button,
+      .psm-card > .bn-button,
+      .warning-card > .psm-badge,
+      .psm-card > .psm-badge {
+        position: relative;
+        z-index: 1;
+      }
+
+      .warning-card-head,
+      .psm-card-head {
         display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        color: #ffe859;
+        align-items: baseline;
+        flex-wrap: wrap;
+        gap: 8px 12px;
+        color: #f6fbff;
         font-size: 17px;
         font-weight: 950;
+      }
+
+      .warning-card-head small,
+      .psm-card-head small {
+        color: #9bc8ff;
+        font-size: 13px;
+        font-weight: 900;
+        letter-spacing: 0.3px;
+        text-transform: uppercase;
       }
 
       .warning-card-body {
         margin-top: 8px;
         color: #fff4c2;
-        font-size: 13px;
-        line-height: 1.4;
+        font-size: 14px;
+        line-height: 1.45;
       }
 
       .panel-workspace {
@@ -1476,30 +1518,14 @@
 
       .psm-card-list {
         display: grid;
-        gap: 10px;
+        gap: 12px;
       }
 
       .psm-card {
-        border: 1px solid rgba(86, 169, 255, 0.68);
-        border-radius: 12px;
-        background: rgba(4, 28, 52, 0.76);
-        padding: 13px;
-      }
-
-      .psm-card-head {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        color: #ffe94f;
-        font-size: 20px;
-        font-weight: 950;
-      }
-
-      .psm-card-head small {
-        color: #dce8f6;
-        font-size: 14px;
-        font-weight: 850;
+        border: 1px solid rgba(86, 169, 255, 0.62);
+        background:
+          radial-gradient(circle at 90% 10%, rgba(88, 167, 255, 0.14), transparent 14rem),
+          linear-gradient(135deg, rgba(4, 28, 52, 0.86), rgba(2, 15, 28, 0.78));
       }
 
       .psm-badge {
@@ -1512,14 +1538,19 @@
       }
 
       .psm-card-row {
-        border-top: 1px solid rgba(176, 216, 255, 0.16);
-        margin-top: 9px;
-        padding-top: 9px;
+        border-top: 1px solid rgba(176, 216, 255, 0.14);
+        margin-top: 8px;
+        padding-top: 8px;
         color: #dceeff;
         font-size: 14px;
+        line-height: 1.4;
       }
 
-      .psm-card-row b { color: #9bc8ff; }
+      .psm-card-row b {
+        color: #9bc8ff;
+        margin-right: 6px;
+        text-transform: uppercase;
+      }
 
       .record-card {
         position: relative;
@@ -2284,8 +2315,20 @@
         .panel-workspace,
         .is-full-page .seat-map-workspace,
         .record-command-row,
-        .record-section-grid {
+        .record-section-grid,
+        .warning-card,
+        .psm-card {
           grid-template-columns: 1fr;
+        }
+
+        .warning-card > .bn-button,
+        .psm-card > .bn-button {
+          justify-self: start;
+        }
+
+        .warning-card > .psm-badge,
+        .psm-card > .psm-badge {
+          justify-self: start;
         }
 
         .record-card {
@@ -3347,7 +3390,7 @@
 
       function renderWarningPanel() {
         const rows = buildWarningRows();
-        const body = rows.length ? `<article class="warning-panel"><div class="panel-stats"><span class="status-warn">WARNING total: ${rows.length}</span></div><div class="warning-list">${rows.map((row, index) => `<div class="warning-card"><div class="warning-card-head"><span><button class="bn-button is-warning" type="button" data-passenger-index="${index}" data-passenger-bn="${escapeHtml(row.bn || "")}">BN${escapeHtml(row.bn || "---")}</button> <small>${escapeHtml(passengerName(row))} • ${escapeHtml(row.seat || "---")}</small></span><span class="psm-badge">${escapeHtml(row.warningType)}</span></div><div class="warning-card-body">${escapeHtml(row.warningReason)}</div></div>`).join("")}</div></article><div class="panel-side inline-record-side" style="margin-top:14px"><p class="panel-muted">Click a BN button to view the passenger record.</p></div>` : `<p class="panel-muted">No WARNING records found.</p>`;
+        const body = rows.length ? `<article class="warning-panel"><div class="panel-stats"><span class="status-warn">WARNING total: ${rows.length}</span></div><div class="warning-list">${rows.map((row, index) => `<div class="warning-card"><button class="bn-button is-warning" type="button" data-passenger-index="${index}" data-passenger-bn="${escapeHtml(row.bn || "")}">${escapeHtml(bnCircleLabel(row.bn))}</button><div class="warning-card-main"><div class="warning-card-head"><strong>${escapeHtml(passengerName(row) || "Passenger")}</strong><small>${escapeHtml(row.seat ? `Seat ${row.seat}` : "No seat")}</small></div><div class="warning-card-body">${escapeHtml(row.warningReason)}</div></div><span class="psm-badge">${escapeHtml(row.warningType)}</span></div>`).join("")}</div></article><div class="panel-side inline-record-side" style="margin-top:14px"><p class="panel-muted">Click a BN button to view the passenger record.</p></div>` : `<p class="panel-muted">No WARNING records found.</p>`;
         renderPanel("WARNING", currentSy?.flightNo || "SY", body);
         setPanelPassengerRows(rows);
       }
@@ -3385,7 +3428,7 @@
           const lines = (Array.isArray(row.psmLines) ? row.psmLines : [row.text || row.raw || row.message].filter(Boolean))
             .filter((line) => /^\s*(?:PSM|MSG)/i.test(line) && targetMsgCodes.some((code) => String(line).toUpperCase().replace(/\s+/g, "").includes(code)));
           const type = lines.some((line) => /^\s*MSG/i.test(line)) ? "MSG" : "PSM";
-          return `<article class="psm-card"><div class="psm-card-head"><span><button class="bn-button is-warning" type="button" data-passenger-index="${index}" data-passenger-bn="${escapeHtml(row.bn || "")}">BN${escapeHtml(row.bn || "---")}</button> <small>${escapeHtml(passengerName(row))} • ${escapeHtml(row.seat || "---")}</small></span><span class="psm-badge">${escapeHtml(type)}</span></div><div class="psm-card-row"><b>Bags</b> ${escapeHtml(compactValue(row.bagtags) || "-")}</div><div class="psm-card-row"><b>Detail</b><br>${lines.map((line) => escapeHtml(line)).join("<br>")}</div></article>`;
+          return `<article class="psm-card"><button class="bn-button is-warning" type="button" data-passenger-index="${index}" data-passenger-bn="${escapeHtml(row.bn || "")}">${escapeHtml(bnCircleLabel(row.bn))}</button><div class="psm-card-main"><div class="psm-card-head"><strong>${escapeHtml(passengerName(row) || "Passenger")}</strong><small>${escapeHtml(row.seat ? `Seat ${row.seat}` : "No seat")}</small></div><div class="psm-card-row"><b>Bags</b>${escapeHtml(compactValue(row.bagtags) || "-")}</div><div class="psm-card-row"><b>Detail</b><br>${lines.map((line) => escapeHtml(line)).join("<br>")}</div></div><span class="psm-badge">${escapeHtml(type)}</span></article>`;
         }).join("")}</div>` : `<p class="panel-muted">No PSM/MSG records found.</p>`;
         renderPanel("PSM/MSG", currentSy?.flightNo || "SY", body);
         setPanelPassengerRows(rows);
