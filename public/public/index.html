@@ -2988,7 +2988,7 @@
       }
 
       function extraPassengerFields(data) {
-        const used = new Set(["permissions", "name", "passengerName", "paxName", "bn", "seat", "cabin", "flight", "flightDate", "passportNo", "passportExpiry", "passportExp", "passportExpiryDate", "dob", "ageYears", "ffCarrier", "ffNumber", "membershipStatus", "ffTier", "lounge", "ticketNumber", "ticketNo", "infantTicketNo", "bagtags", "bagTags", "bags", "inbound", "outbound", "specialServices", "codes", "specialMeals", "paidProductsShort", "checkinDetails", "gateComments", "psmLines", "messages", "status", "passengerRecord", "sourceText", "paxInfoRaw", "passportRaw", "paxListName", "operationHistoryLines", "sectionTimestampMs", "recordTimestamp", "hasChdCode", "hasChildCode", "isChild", "ts", "seq"]);
+        const used = new Set(["permissions", "name", "passengerName", "paxName", "bn", "seat", "cabin", "flight", "flightDate", "passportNo", "passportExpiry", "passportExp", "passportExpiryDate", "dob", "ageYears", "ffCarrier", "ffNumber", "membershipStatus", "ffTier", "lounge", "ticketNumber", "ticketNo", "infantTicketNo", "bagtags", "bagTags", "bags", "inbound", "outbound", "specialServices", "codes", "specialMeals", "paidProductsShort", "checkinDetails", "gateComments", "psmLines", "messages", "status", "passengerRecord", "sourceText", "paxInfoRaw", "passportRaw", "paxListName", "operationHistoryLines", "sectionTimestampMs", "recordTimestamp", "hasChdCode", "hasChildCode", "isChild", "ts", "seq", "reason", "group", "apiStatus", "apiReason", "tkStatus", "tkReason", "visaStatus", "visaReason", "bagStatus", "bagReason", "warningType", "warningReason", "_panelCard"]);
         return Object.entries(data || {})
           .filter(([key, value]) => !used.has(key) && !/raw|source text|history|timestamp|pax list/i.test(labelizeKey(key)) && value !== null && value !== undefined && value !== "" && typeof value !== "function")
           .map(([key, value]) => [labelizeKey(key), compactValue(value)]);
@@ -3010,6 +3010,16 @@
         return `<section class="record-section"><h4>${escapeHtml(title)}</h4><div class="record-section-grid">${renderRecordRows(fields)}</div></section>`;
       }
 
+      function securityDetailFields(data) {
+        const details = [
+          ["API", data?.apiReason || (data?.apiStatus ? `API ${data.apiStatus}` : "")],
+          ["TK", data?.tkReason || (data?.tkStatus ? `Ticket ${data.tkStatus}` : "")],
+          ["VISA", data?.visaReason || (data?.visaStatus ? `Visa ${data.visaStatus}` : "")],
+          ["BAG", data?.bagReason || (data?.bagStatus ? `Bag ${data.bagStatus}` : "")],
+        ];
+        return details.filter(([, value]) => value !== null && value !== undefined && value !== "" && value !== false);
+      }
+
       function passengerRecordCard(data, title = "Passenger Record", tone = "pass") {
         const fields = passengerFields(data || {});
         const fieldMap = new Map(fields);
@@ -3029,7 +3039,8 @@
         const journeyFields = takeFields(["Ticket", "Infant Ticket", "Bags", "Inbound", "Outbound"]);
         const serviceFields = takeFields(["Lounge", "Guest", "SSR", "Meal", "Paid Service"]);
         const operationFields = takeFields(["Checkin Details"]);
-        const additionalFields = fields.filter(([label]) => !usedLabels.has(label));
+        const securityFields = securityDetailFields(data || {});
+        const additionalFields = securityFields.length ? securityFields : fields.filter(([label]) => !usedLabels.has(label));
         const sections = [
           renderRecordSection("Identity & Docs", documentFields),
           renderRecordSection("Journey", journeyFields),
@@ -3558,7 +3569,7 @@
         const rows = checks.map(([label, status, reason]) => `<div class="security-check-line is-${checkTone(status)}"><b>${escapeHtml(label)}</b><span>${escapeHtml(reason || (status === "pass" ? `${label} passed` : "No detail"))}</span></div>`).join("");
         const reviewLine = row.review ? `<div class="security-row"><b>Review</b><span>${escapeHtml(`${row.review.status || ""} ${row.review.reviewer ? `by ${row.review.reviewer}` : ""} ${row.review.updatedAt || ""}`)}</span></div>` : "";
         const reviewButtons = `<div class="review-actions"><button type="button" data-review-bn="${escapeHtml(row.bn || "")}" data-review-status="pass">Review Pass</button><button type="button" data-review-bn="${escapeHtml(row.bn || "")}" data-review-status="fail">Review Fail</button></div>`;
-        const passenger = { ...(row.passengerRecord || row), deleted: row.deleted, offloaded: row.offloaded, status: row.deleted || row.offloaded || row.status === "DELETED" ? "DELETED" : (row.status || row.passengerRecord?.status) };
+        const passenger = { ...(row.passengerRecord || {}), ...row, passengerRecord: row.passengerRecord, deleted: row.deleted, offloaded: row.offloaded, status: row.deleted || row.offloaded || row.status === "DELETED" ? "DELETED" : (row.status || row.passengerRecord?.status) };
         return `<article class="record-card ${tone === "warning" ? "is-warning" : tone === "fail" ? "is-fail" : ""}"><div class="record-title"><span>BN${escapeHtml(row.bn || "---")}</span><span class="record-badge">${escapeHtml(row.deleted || row.offloaded || row.status === "DELETED" ? "DELETED" : tone === "pass" ? "PASS" : tone === "fail" ? "FAIL" : "WARNING")}</span></div><div class="security-check-list">${rows}</div>${reviewButtons}${reviewLine}</article>${passengerRecordCard(passenger, "Passenger Record", tone)}`;
       }
 
@@ -3809,9 +3820,10 @@
           const bn = passengerButton.dataset.passengerBn;
           const row = (bn && rows.find((item) => String(item.bn || "") === bn)) || rows[index] || { bn };
           const inlineSide = resultPanel.querySelector(".inline-record-side");
-          const recordHtml = row._panelCard === "gov" ? `${govIssueCard(row)}${passengerRecordCard(row.passengerRecord || row, "Passenger Record", "warning")}` : passengerRecordCard(row.passengerRecord || row, "Passenger Record");
+          const recordData = { ...(row.passengerRecord || {}), ...row, passengerRecord: row.passengerRecord };
+          const recordHtml = passengerRecordCard(recordData, "Passenger Record", row._panelCard === "gov" ? "warning" : "pass");
           if (inlineSide) inlineSide.innerHTML = recordHtml;
-          else showPassengerModal(row.passengerRecord || row, "Passenger Record", passengerButton);
+          else showPassengerModal(recordData, "Passenger Record", passengerButton);
           return;
         }
         const seatButton = event.target.closest("[data-seat]");
