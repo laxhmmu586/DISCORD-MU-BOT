@@ -2805,6 +2805,18 @@
         return Boolean(row?.ticketNumber || row?.ticketNo || row?.passengerRecord?.ticketNumber || row?.passengerRecord?.ticketNo);
       }
 
+      function hasKnownPassengerRecord(row) {
+        const bn = Number(normalizedBn(row?.bn || row?.passengerRecord?.bn));
+        const name = String(passengerName(row) || row?.passengerRecord?.name || "").trim().toUpperCase();
+        const seat = String(row?.seat || row?.passengerRecord?.seat || "").trim().toUpperCase();
+        const passport = String(row?.passportNo || row?.passengerRecord?.passportNo || "").trim();
+        return bn > 0 && bn < 900 && Boolean(
+          (name && name !== "UNKNOWN" && name !== "-") ||
+          (seat && seat !== "---" && seat !== "-") ||
+          passport
+        );
+      }
+
       function buildWarningRows(sy = currentSy) {
         const rows = [];
         const addWarning = (row, type, reason) => rows.push({ ...row, warningType: type, warningReason: reason, _panelCard: "warning" });
@@ -2819,8 +2831,8 @@
           if (/WCH/.test(services) && isChildByChdLogic(row)) {
             addWarning(row, "WCH CHILD", "Passenger has wheelchair service and is a child by CHD List logic.");
           }
-          if (!hasTicket(row)) {
-            addWarning(row, "NO TICKET", "Passenger has no adult ticket number in the record.");
+          if (hasKnownPassengerRecord(row) && !hasTicket(row)) {
+            addWarning(row, "NO TICKET", "Passenger has no ticket number in the record.");
           }
           if (/WCHC/.test(services)) {
             addWarning(row, "WCHC", "Passenger has WCHC wheelchair service.");
