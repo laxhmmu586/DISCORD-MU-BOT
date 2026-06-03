@@ -433,7 +433,7 @@
       .kicker {
         margin: 0 0 10px;
         color: rgba(255, 255, 255, 0.7);
-        font-size: 12px;
+        font-size: 13px;
         font-weight: 800;
         letter-spacing: 2.4px;
         text-transform: uppercase;
@@ -656,21 +656,21 @@
       }
 
       .timeline-shell::before {
-        left: 14%;
-        right: 14%;
-        top: 44%;
-        height: 24%;
-        border-radius: 0 0 50% 50%;
-        background: radial-gradient(ellipse at 50% 0%, rgba(0, 0, 0, 0.58) 0%, rgba(0, 0, 0, 0.42) 34%, rgba(0, 0, 0, 0) 72%);
-        transform: rotate(-0.4deg);
+        left: 18%;
+        right: 24%;
+        top: 38%;
+        height: 30%;
+        border-radius: 0 0 52% 52%;
+        background: radial-gradient(ellipse at 50% 8%, rgba(0, 0, 0, 0.62) 0%, rgba(0, 0, 0, 0.44) 32%, rgba(0, 0, 0, 0) 70%);
+        transform: rotate(-0.35deg);
       }
 
       .timeline-shell::after {
-        left: 16%;
-        right: 16%;
+        left: 18%;
+        right: 22%;
         bottom: 0;
-        height: 36%;
-        background: radial-gradient(ellipse at 50% 100%, rgba(0, 0, 0, 0.78) 0%, rgba(0, 0, 0, 0.5) 38%, rgba(0, 0, 0, 0) 72%);
+        height: 34%;
+        background: radial-gradient(ellipse at 50% 100%, rgba(0, 0, 0, 0.76) 0%, rgba(0, 0, 0, 0.48) 36%, rgba(0, 0, 0, 0) 70%);
       }
 
       .timeline {
@@ -1142,6 +1142,14 @@
         position: relative;
         z-index: 80;
         max-height: min(56svh, 520px);
+        overflow-y: auto;
+        margin-top: -560px;
+      }
+
+      .password-page {
+        position: relative;
+        z-index: 140;
+        max-height: min(42svh, 360px);
         overflow-y: auto;
         margin-top: -560px;
       }
@@ -1890,16 +1898,16 @@
         }
 
         .timeline-shell::before {
-          left: 8%;
-          right: 8%;
-          top: 48%;
-          height: 20%;
+          left: 12%;
+          right: 16%;
+          top: 42%;
+          height: 24%;
         }
 
         .timeline-shell::after {
-          left: 10%;
-          right: 10%;
-          height: 30%;
+          left: 12%;
+          right: 16%;
+          height: 28%;
         }
 
         .timeline {
@@ -2016,6 +2024,13 @@
           z-index: 120;
           max-height: 58svh;
           margin-top: -360px;
+        }
+
+        .password-page {
+          position: relative;
+          z-index: 150;
+          max-height: 52svh;
+          margin-top: -300px;
         }
 
         .panel-workspace {
@@ -3273,17 +3288,29 @@
       menuButton.addEventListener("click", toggleMenu);
       fallbackMenuButton.addEventListener("click", toggleMenu);
 
+      function closeLoginMenu() {
+        loginButton.setAttribute("aria-expanded", "false");
+        loginMenu.classList.remove("is-open");
+        loginMenu.setAttribute("aria-hidden", "true");
+      }
+
+      function closeFlightMenu() {
+        flightMenuButton.setAttribute("aria-expanded", "false");
+        flightMenu.classList.remove("is-open");
+        flightMenu.setAttribute("aria-hidden", "true");
+      }
+
       loginButton.addEventListener("click", () => {
         const open = loginButton.getAttribute("aria-expanded") === "true";
+        closeFlightMenu();
         loginButton.setAttribute("aria-expanded", String(!open));
         loginMenu.classList.toggle("is-open", !open);
         loginMenu.setAttribute("aria-hidden", String(open));
       });
 
       changePasswordButton.addEventListener("click", () => {
-        loginButton.setAttribute("aria-expanded", "false");
-        loginMenu.classList.remove("is-open");
-        loginMenu.setAttribute("aria-hidden", "true");
+        closeLoginMenu();
+        closeFlightMenu();
         passwordPage.hidden = false;
         passwordStatus.textContent = "";
         resultPanel.innerHTML = "";
@@ -3318,6 +3345,7 @@
 
       flightMenuButton.addEventListener("click", () => {
         const open = flightMenuButton.getAttribute("aria-expanded") === "true";
+        closeLoginMenu();
         flightMenuButton.setAttribute("aria-expanded", String(!open));
         flightMenu.classList.toggle("is-open", !open);
         flightMenu.setAttribute("aria-hidden", String(open));
@@ -3433,12 +3461,14 @@
       timeline.addEventListener("pointercancel", endTimelineDrag);
 
       if (window.location.hash === "#open-login") {
+        closeFlightMenu();
         loginButton.setAttribute("aria-expanded", "true");
         loginMenu.classList.add("is-open");
         loginMenu.setAttribute("aria-hidden", "false");
       }
 
       if (window.location.hash === "#open-flight-menu") {
+        closeLoginMenu();
         flightMenuButton.setAttribute("aria-expanded", "true");
         flightMenu.classList.add("is-open");
         flightMenu.setAttribute("aria-hidden", "false");
