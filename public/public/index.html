@@ -36,13 +36,9 @@
         margin: 0;
         min-height: 100vh;
         overflow-x: hidden;
-        background:
-          radial-gradient(circle at 67% 15%, rgba(18, 91, 104, 0.24), transparent 34rem),
-          radial-gradient(circle at 47% 56%, rgba(21, 48, 82, 0.28), transparent 34rem),
-          linear-gradient(115deg, #071327 0%, #04121e 48%, #020b12 100%);
-        background-size: cover;
-        background-position: center;
+        background: #01050b;
         color: var(--text);
+        isolation: isolate;
       }
 
       ::-webkit-scrollbar {
@@ -61,12 +57,47 @@
       body::before {
         content: "";
         position: fixed;
+        inset: -3vh -3vw;
+        pointer-events: none;
+        background-image: url("assets/earth-night-background.png");
+        background-position: center;
+        background-repeat: no-repeat;
+        background-size: cover;
+        filter: saturate(1.08) contrast(1.08);
+        transform: scale(1.035);
+        transform-origin: 64% 62%;
+        animation: orbitalDrift 72s ease-in-out infinite alternate;
+        z-index: -2;
+      }
+
+      body::after {
+        content: "";
+        position: fixed;
         inset: 0;
         pointer-events: none;
         background:
-          linear-gradient(180deg, rgba(0, 0, 0, 0.34), transparent 22rem),
-          linear-gradient(90deg, rgba(0, 0, 0, 0.28), transparent 34%, transparent 66%, rgba(0, 0, 0, 0.36));
+          radial-gradient(circle at 72% 58%, rgba(66, 151, 255, 0.2), transparent 24rem),
+          radial-gradient(circle at 50% 110%, rgba(15, 75, 122, 0.28), transparent 34rem),
+          linear-gradient(180deg, rgba(0, 0, 0, 0.38), transparent 18rem),
+          linear-gradient(90deg, rgba(0, 0, 0, 0.62), rgba(0, 0, 0, 0.15) 42%, rgba(0, 0, 0, 0.38) 100%),
+          linear-gradient(115deg, rgba(3, 10, 18, 0.18), rgba(1, 5, 10, 0.5));
         z-index: -1;
+      }
+
+      @keyframes orbitalDrift {
+        from {
+          transform: scale(1.035) translate3d(-0.8vw, -0.3vh, 0) rotate(0deg);
+        }
+        to {
+          transform: scale(1.095) translate3d(1.2vw, 0.7vh, 0) rotate(0.28deg);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        body::before {
+          animation: none;
+          transform: scale(1.05);
+        }
       }
 
       button,
@@ -1692,6 +1723,10 @@
       }
 
       @media (max-width: 760px) {
+        body::before {
+          background-position: 62% center;
+        }
+
         .topbar {
           height: 68px;
           display: flex;
