@@ -415,6 +415,8 @@
       }
 
       .mission-head {
+        position: relative;
+        z-index: 30;
         width: min(1120px, calc(100% - 48px));
         margin: clamp(22px, 3.4vh, 38px) auto 0;
         display: grid;
@@ -522,6 +524,7 @@
 
       .flight-tools {
         position: relative;
+        z-index: 40;
         align-self: end;
       }
 
@@ -555,9 +558,10 @@
 
       .flight-menu {
         position: absolute;
-        top: calc(100% + 10px);
-        right: 0;
-        z-index: 12;
+        top: 0;
+        right: auto;
+        left: calc(100% + 10px);
+        z-index: 100;
         width: 240px;
         display: none;
         border: 1px solid rgba(176, 216, 255, 0.22);
@@ -1926,6 +1930,7 @@
         }
 
         .flight-menu {
+          top: calc(100% + 10px);
           left: 0;
           right: auto;
           width: 100%;
