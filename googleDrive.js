@@ -437,6 +437,7 @@ function isReportHeaderRow(type, values) {
   const joined = (values || []).map((value) => String(value || '').trim().toLowerCase()).join('|');
   if (!joined) return true;
   if (type === 'vip') return /flight date/.test(joined) && /passenger/.test(joined);
+  if (normalizeReportSheetType(type) === 'psmMsg') return /flight date/.test(joined) && /detail/.test(joined);
   const config = getReportSheetConfig(type);
   return Boolean(config?.headers?.every((header, index) => String(values?.[index] || '').trim() === header));
 }
@@ -447,7 +448,7 @@ function reportRowFromSheet(type, values) {
   config.fields.forEach((field, index) => {
     row[field] = values[index] || '';
   });
-  if (type === 'vip') {
+  if (type === 'vip' || normalizeReportSheetType(type) === 'psmMsg') {
     const displayDate = row.flightDate || row.date || '';
     const isoDate = normalizeSheetDateToIso(displayDate);
     row.displayDate = displayDate;
@@ -458,6 +459,8 @@ function reportRowFromSheet(type, values) {
     row.bn = String(row.bn || '').trim().padStart(3, '0').replace(/^0+$/, '');
     row.seat = String(row.seat || '').trim().toUpperCase();
     row.bags = String(row.bags || '').trim();
+    row.type = String(row.type || '').trim().toUpperCase();
+    row.detail = String(row.detail || '').trim();
   }
   return row;
 }
@@ -532,6 +535,23 @@ async function pruneStoredReportRows(type) {
   return { deleted: deleteIndexes.length };
 }
 
+
+async function getPsmMsgReportRows(fromIsoDate, toIsoDate = fromIsoDate) {
+  const from = String(fromIsoDate || '').trim();
+  const to = String(toIsoDate || from).trim();
+  const rows = await getReportSheetRows('psmMsg');
+  await ensureReportSheetHeaders('psmMsg', rows);
+  const dataRows = [];
+  const startIndex = rows.length && isReportHeaderRow('psmMsg', rows[0]) ? 1 : 0;
+  for (let i = startIndex; i < rows.length; i += 1) {
+    if (isReportHeaderRow('psmMsg', rows[i])) continue;
+    const parsed = reportRowFromSheet('psmMsg', rows[i]);
+    if (from && parsed.date < from) continue;
+    if (to && parsed.date > to) continue;
+    dataRows.push(parsed);
+  }
+  return dataRows.sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')) || String(a.flightNo || '').localeCompare(String(b.flightNo || '')) || Number(a.bn || 0) - Number(b.bn || 0));
+}
 
 async function appendVipReportRows(rows) {
   if (reportSheetAccessBlocked) return { appended: 0 };
@@ -925,6 +945,7 @@ module.exports = {
   downloadSalesReportByFlight,
   hasNextDayInfoEmail,
   getStoredReportRows,
+  getPsmMsgReportRows,
   appendStoredReportRows,
   appendVipReportRows,
   appendPsmMsgReportRows,

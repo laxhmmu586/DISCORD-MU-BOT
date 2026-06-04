@@ -2132,7 +2132,7 @@
       }
 
       .report-mode-actions {
-        grid-template-columns: repeat(2, minmax(132px, 180px));
+        grid-template-columns: repeat(3, minmax(132px, 180px));
         justify-content: start;
         margin-bottom: 18px;
       }
@@ -2154,6 +2154,7 @@
         display: none;
       }
 
+      .report-form.is-psm-mode .report-keyword-field,
       .report-form.is-sales-mode .report-to-field,
       .report-form.is-sales-mode .report-keyword-field {
         display: none;
@@ -2720,13 +2721,14 @@
           <div class="report-hero">
             <div>
               <h2>Report Center</h2>
-              <p class="panel-muted">Use Sales Report to choose one date and download the file. Use VIP Report to show the saved VIP list directly.</p>
+              <p class="panel-muted">Use Sales Report to choose one date and download the file. Use VIP Report to show saved VIP rows. Use PSM Report to search saved PSM/MSG rows by flight date.</p>
             </div>
             <button class="report-close" id="report-close" type="button">Close</button>
           </div>
           <div class="detail-actions report-mode-actions" aria-label="Report shortcuts">
             <button class="detail-action" id="report-sales-mode" type="button" data-report-mode="sales">Sales Report</button>
             <button class="detail-action" id="report-vip-mode" type="button" data-report-mode="vip">VIP Report</button>
+            <button class="detail-action" id="report-psm-mode" type="button" data-report-mode="psm">PSM Report</button>
           </div>
           <form class="report-form" id="report-form">
             <label class="report-field report-from-field"><span id="report-from-label">From</span><input id="report-from" type="date" required /></label>
@@ -2881,6 +2883,7 @@
       const reportForm = document.querySelector("#report-form");
       const reportSalesModeButton = document.querySelector("#report-sales-mode");
       const reportVipModeButton = document.querySelector("#report-vip-mode");
+      const reportPsmModeButton = document.querySelector("#report-psm-mode");
       const reportFromInput = document.querySelector("#report-from");
       const reportFromLabel = document.querySelector("#report-from-label");
       const reportToInput = document.querySelector("#report-to");
@@ -4001,19 +4004,21 @@
       }
 
       function setReportMode(mode, options = {}) {
-        activeReportMode = mode === "vip" ? "vip" : "sales";
+        activeReportMode = mode === "vip" || mode === "psm" ? mode : "sales";
         setReportDefaults(options.forceToday);
         if (activeReportMode === "sales" && reportToInput) reportToInput.value = reportFromInput?.value || reportToInput.value;
         reportForm?.classList.toggle("is-sales-mode", activeReportMode === "sales");
         reportForm?.classList.toggle("is-vip-mode", activeReportMode === "vip");
+        reportForm?.classList.toggle("is-psm-mode", activeReportMode === "psm");
         reportSalesModeButton?.classList.toggle("is-active", activeReportMode === "sales");
         reportVipModeButton?.classList.toggle("is-active", activeReportMode === "vip");
+        reportPsmModeButton?.classList.toggle("is-active", activeReportMode === "psm");
         if (reportFromLabel) reportFromLabel.textContent = activeReportMode === "sales" ? "Date" : "From";
         const reportRunButton = reportForm?.querySelector(".report-run");
         if (reportRunButton) reportRunButton.textContent = activeReportMode === "sales" ? "Download" : "Search";
         if (reportDownloadButton) reportDownloadButton.hidden = activeReportMode === "sales";
         if (reportOutput && options.resetOutput) {
-          reportOutput.innerHTML = activeReportMode === "vip" ? `<p class="panel-muted">Loading VIP Report...</p>` : `<p class="panel-muted">Choose a date, then download Sales Report.</p>`;
+          reportOutput.innerHTML = activeReportMode === "vip" ? `<p class="panel-muted">Loading VIP Report...</p>` : (activeReportMode === "psm" ? `<p class="panel-muted">Choose a flight date range, then search PSM Report.</p>` : `<p class="panel-muted">Choose a date, then download Sales Report.</p>`);
         }
         if (activeReportMode === "vip") generateReport();
       }
@@ -4245,17 +4250,24 @@
         return storedReportRows("vip", "", keyword);
       }
 
+      async function psmReportRows(from, to) {
+        const data = await apiJson(`/psm-report?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+        return data?.rows || [];
+      }
+
       async function generateReport(event) {
         event?.preventDefault();
         if (!reportOutput) return;
-        const type = activeReportMode === "vip" ? "vip" : "sales";
+        const type = activeReportMode === "vip" || activeReportMode === "psm" ? activeReportMode : "sales";
         const today = ymdFromDate(new Date());
         const from = reportFromInput?.value || today;
         const keyword = type === "vip" ? (reportKeywordInput?.value || "") : "";
+        const to = reportToInput?.value || from;
         let dates;
         try {
           dates = type === "sales" ? [from] : [];
           if (type === "sales" && !from) throw new Error("Please select a valid date.");
+          if (type === "psm") reportDateRange(from, to);
         } catch (error) {
           reportOutput.innerHTML = `<p class="panel-muted status-fail">${escapeHtml(error.message)}</p>`;
           setReportCsv([], "report.csv");
@@ -4263,13 +4275,19 @@
         }
         reportOutput.innerHTML = type === "sales"
           ? `<p class="panel-muted">Checking Sales Report for ${escapeHtml(from)}...</p>`
-          : `<p class="panel-muted">Loading VIP Report...</p>`;
+          : (type === "psm" ? `<p class="panel-muted">Loading PSM Report for ${escapeHtml(from)}${from === to ? "" : ` to ${escapeHtml(to)}`}...</p>` : `<p class="panel-muted">Loading VIP Report...</p>`);
         setReportCsv([], "report.csv");
         const rows = [];
         const errors = [];
         if (type === "vip") {
           try {
             rows.push(...await vipReportRows(keyword));
+          } catch (error) {
+            errors.push(error.message);
+          }
+        } else if (type === "psm") {
+          try {
+            rows.push(...await psmReportRows(from, to));
           } catch (error) {
             errors.push(error.message);
           }
@@ -4301,10 +4319,20 @@
             { label: "Seat", value: (row) => row.seat },
             { label: "Bags", value: (row) => row.bags },
           ], "No VIP passengers found.");
+        } else if (type === "psm") {
+          tableHtml = rowsTable(rows, [
+            { label: "Flight Date", value: (row) => row.displayDate || row.flightDate || row.date },
+            { label: "Flight #", value: (row) => row.flightNo },
+            { label: "Passenger Name", value: (row) => row.passenger },
+            { label: "BN", value: (row) => row.bn },
+            { label: "Seat", value: (row) => row.seat },
+            { label: "BAGS", value: (row) => row.bags },
+            { label: "Detail", value: (row) => row.detail },
+          ], "No PSM/MSG rows found.");
         }
         const errorHtml = errors.length ? `<h3>Skipped dates</h3><p class="panel-muted status-warn">${escapeHtml(errors.join(" | "))}</p>` : "";
         reportOutput.innerHTML = `${errorHtml}${tableHtml}`;
-        setReportCsv(type === "sales" ? rows.filter((row) => row.downloadUrl) : rows, type === "sales" ? `sales-report-${from}.csv` : "vip-report.csv");
+        setReportCsv(type === "sales" ? rows.filter((row) => row.downloadUrl) : rows, type === "sales" ? `sales-report-${from}.csv` : (type === "psm" ? `psm-report-${from}${from === to ? "" : `-to-${to}`}.csv` : "vip-report.csv"));
       }
 
       function reviewPath() {
@@ -4620,6 +4648,7 @@
       baggageForm?.addEventListener("submit", renderBagroomPage);
       reportSalesModeButton?.addEventListener("click", () => setReportMode("sales", { forceToday: true, resetOutput: true }));
       reportVipModeButton?.addEventListener("click", () => setReportMode("vip", { forceToday: true, resetOutput: true }));
+      reportPsmModeButton?.addEventListener("click", () => setReportMode("psm", { forceToday: true, resetOutput: true }));
       reportForm.addEventListener("submit", generateReport);
       reportDownloadButton.addEventListener("click", downloadCurrentReportCsv);
       securityCheckButton.addEventListener("click", closeFlightMenuAfterAction(renderSecurityCheck));

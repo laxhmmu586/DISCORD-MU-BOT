@@ -39,6 +39,7 @@ const {
   downloadSalesReportByFlight,
   hasNextDayInfoEmail,
   getStoredReportRows,
+  getPsmMsgReportRows,
   appendStoredReportRows,
   appendPsmMsgReportRows,
   pruneStoredReportRows
@@ -736,6 +737,26 @@ app.get('/vip-report', async (req, res) => {
     return res.json(result);
   } catch (err) {
     return res.status(500).json({ error: err?.message || 'VIP report lookup failed' });
+  }
+});
+
+
+app.get('/psm-report', async (req, res) => {
+  try {
+    const from = String(req.query.from || req.query.date || '').trim();
+    const to = String(req.query.to || from).trim();
+    const dateRe = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRe.test(from) || !dateRe.test(to)) return res.status(400).json({ error: 'Missing or invalid date range' });
+    const fromDate = new Date(`${from}T00:00:00Z`);
+    const toDate = new Date(`${to}T00:00:00Z`);
+    if (Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime()) || fromDate > toDate) {
+      return res.status(400).json({ error: 'Invalid date range' });
+    }
+    const rows = await getPsmMsgReportRows(from, to);
+    return res.json({ rows, source: 'sheet' });
+  } catch (err) {
+    console.error('PSM report error:', err);
+    return res.status(500).json({ error: err?.message || 'PSM report lookup failed' });
   }
 });
 
