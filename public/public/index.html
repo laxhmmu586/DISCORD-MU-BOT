@@ -2055,6 +2055,37 @@
         display: none;
       }
 
+      body.is-report-view main {
+        overflow-y: auto;
+      }
+
+      body.is-report-view .hero {
+        height: calc(100svh - 76px);
+        min-height: calc(100svh - 76px);
+        display: block;
+        overflow-y: auto;
+      }
+
+      body.is-report-view .mission-head,
+      body.is-report-view .details-panel,
+      body.is-report-view .mission-stage,
+      body.is-report-view .flight-panel,
+      body.is-report-view .result-panel,
+      body.is-report-view .password-page {
+        display: none !important;
+      }
+
+      body.is-report-view .report-page {
+        width: 100%;
+        min-height: calc(100svh - 76px);
+        max-height: none;
+        margin: 0;
+        border: 0;
+        padding: clamp(22px, 3vw, 42px);
+        background: linear-gradient(150deg, rgba(8, 24, 40, 0.92), rgba(2, 12, 22, 0.82));
+        box-shadow: none;
+      }
+
       .report-hero {
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto;
@@ -2329,6 +2360,12 @@
           min-height: 100svh;
           overflow: visible;
           padding-top: 68px;
+        }
+
+        body.is-report-view .hero,
+        body.is-report-view .report-page {
+          height: calc(100svh - 68px);
+          min-height: calc(100svh - 68px);
         }
 
         .hero {
@@ -2625,7 +2662,7 @@
   <body>
     <div class="loading-overlay" aria-live="polite"><span>Loading</span></div>
     <header class="topbar">
-      <a class="brand" href="#" aria-label="MUFC home"><span>MUFC</span></a>
+      <a class="brand" id="home-nav-link" href="#home" aria-label="MUFC home"><span>MUFC</span></a>
       <nav class="nav-links" aria-label="Primary navigation">
         <a href="#reports" id="report-nav-link">Report</a>
         <a href="#baggage" id="baggage-nav-link">Baggage</a>
@@ -2816,6 +2853,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="/__/firebase/init.js"></script>
     <script>
+      const homeNavLink = document.querySelector("#home-nav-link");
       const menuButton = document.querySelector(".menu-button");
       const fallbackMenuButton = document.querySelector(".mobile-menu-fallback");
       const mobilePanel = document.querySelector(".mobile-panel");
@@ -3943,23 +3981,48 @@
         reportToInput.value = reportToInput.value || ymd;
       }
 
+      function resetPanelState() {
+        if (!resultPanel) return;
+        resultPanel.innerHTML = "";
+        resultPanel.className = "result-panel";
+        resultPanel.style.top = "";
+        resultPanel._passengerRows = [];
+      }
+
+      function showHomePage() {
+        document.body.classList.remove("is-report-view");
+        if (reportPage) reportPage.hidden = true;
+        if (passwordPage) passwordPage.hidden = true;
+        closeLoginMenu();
+        closeFlightMenu();
+        closeMobilePanel();
+        closePassengerModal();
+        resetPanelState();
+        if (window.location.hash && window.history?.replaceState) {
+          window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+        }
+        window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      }
+
       function showReportPage() {
         setReportDefaults();
+        resetPanelState();
+        if (passwordPage) passwordPage.hidden = true;
         if (reportPage) reportPage.hidden = false;
-        if (resultPanel) {
-          resultPanel.innerHTML = "";
-          resultPanel.className = "result-panel";
-        }
-        reportPage?.scrollIntoView({ block: "start" });
+        document.body.classList.add("is-report-view");
+        closeLoginMenu();
+        closeFlightMenu();
         closeMobilePanel();
+        reportPage?.scrollTo({ top: 0, left: 0, behavior: "auto" });
       }
 
       function hideReportPage() {
-        if (reportPage) reportPage.hidden = true;
+        showHomePage();
       }
 
       function openBaggageReport() {
-        hideReportPage();
+        document.body.classList.remove("is-report-view");
+        if (reportPage) reportPage.hidden = true;
         if (currentSy?.bagSheet?.hasData) renderBagReport();
         else renderPanel("Baggage", currentSy?.flightNo || "SY", `<p class="panel-muted">No Google Sheet bag report is loaded yet. Search an SY date first, then open Baggage again.</p>`);
         closeMobilePanel();
@@ -4487,6 +4550,7 @@
         });
       });
 
+      homeNavLink.addEventListener("click", (event) => { event.preventDefault(); showHomePage(); });
       bagReportButton.addEventListener("click", renderBagReport);
       salesReportButton.addEventListener("click", downloadSalesReport);
       reportNavLink.addEventListener("click", (event) => { event.preventDefault(); showReportPage(); });
@@ -4611,6 +4675,14 @@
         flightMenuButton.setAttribute("aria-expanded", "true");
         flightMenu.classList.add("is-open");
         flightMenu.setAttribute("aria-hidden", "false");
+      }
+
+      if (window.location.hash === "#reports") {
+        showReportPage();
+      }
+
+      if (window.location.hash === "#baggage") {
+        openBaggageReport();
       }
 
       if (!auth) {
