@@ -200,6 +200,78 @@
         color: white;
       }
 
+      .nav-dropdown {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+      }
+
+      .nav-dropdown > button {
+        border: 0;
+        background: transparent;
+        color: rgba(255, 255, 255, 0.88);
+        font-size: 13px;
+        font-weight: 800;
+        letter-spacing: 0.4px;
+        text-transform: uppercase;
+        cursor: pointer;
+      }
+
+      .nav-dropdown > button::after {
+        content: "";
+        display: inline-block;
+        margin-left: 8px;
+        border-left: 4px solid transparent;
+        border-right: 4px solid transparent;
+        border-top: 5px solid currentColor;
+        vertical-align: middle;
+        opacity: 0.8;
+      }
+
+      .nav-dropdown-menu {
+        position: absolute;
+        top: calc(100% + 18px);
+        left: 50%;
+        transform: translateX(-50%);
+        width: 210px;
+        display: none;
+        padding: 8px 0;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        background: rgba(0, 0, 0, 0.86);
+        box-shadow: 0 28px 84px rgba(0, 0, 0, 0.58);
+        backdrop-filter: blur(16px);
+      }
+
+      .nav-dropdown:hover .nav-dropdown-menu,
+      .nav-dropdown.is-open .nav-dropdown-menu {
+        display: block;
+      }
+
+      .nav-dropdown-menu::before {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: -7px;
+        width: 12px;
+        height: 12px;
+        transform: translateX(-50%) rotate(45deg);
+        border-left: 1px solid rgba(255, 255, 255, 0.16);
+        border-top: 1px solid rgba(255, 255, 255, 0.16);
+        background: rgba(0, 0, 0, 0.86);
+      }
+
+      .nav-dropdown-menu a {
+        display: block;
+        padding: 13px 18px;
+        font-size: 12px;
+        letter-spacing: 1px;
+        text-align: left;
+      }
+
+      .nav-dropdown-menu a:hover {
+        background: rgba(255, 255, 255, 0.08);
+      }
+
       .search {
         position: relative;
         flex: 1;
@@ -572,14 +644,20 @@
       }
 
       .flight-menu-button {
-        width: 44px;
+        width: 46px;
         height: 72px;
         display: grid;
         place-items: center;
-        border: 1px solid rgba(176, 216, 255, 0.22);
-        background: rgba(0, 0, 0, 0.2);
+        border: 2px solid rgba(255, 255, 255, 0.88);
+        background: rgba(0, 0, 0, 0.16);
         color: white;
         cursor: pointer;
+        transition: background 160ms ease, border-color 160ms ease;
+      }
+
+      .flight-menu-button:hover {
+        border-color: white;
+        background: rgba(255, 255, 255, 0.1);
       }
 
       .flight-menu-button svg {
@@ -603,14 +681,15 @@
         position: absolute;
         top: 0;
         right: auto;
-        left: calc(100% + 10px);
+        left: calc(100% + 12px);
         z-index: 100;
-        width: 240px;
+        width: 230px;
         display: none;
-        border: 1px solid rgba(176, 216, 255, 0.22);
-        background: rgba(1, 10, 18, 0.94);
-        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.48);
-        backdrop-filter: blur(18px);
+        padding: 6px 0;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        background: rgba(0, 0, 0, 0.86);
+        box-shadow: 0 28px 84px rgba(0, 0, 0, 0.58);
+        backdrop-filter: blur(16px);
       }
 
       .flight-menu.is-open {
@@ -2104,15 +2183,27 @@
 
       .report-close,
       .report-download,
-      .report-run {
-        min-height: 42px;
-        border: 1px solid rgba(88, 167, 255, 0.5);
-        background: rgba(88, 167, 255, 0.14);
-        color: white;
-        padding: 0 16px;
-        font-weight: 900;
+      .report-run,
+      .report-tab {
+        min-height: 34px;
+        border: 1px solid rgba(176, 216, 255, 0.2);
+        background: rgba(0, 0, 0, 0.18);
+        color: rgba(244, 250, 255, 0.92);
+        padding: 0 12px;
+        font-size: 12px;
+        font-weight: 850;
+        letter-spacing: 0.4px;
         text-transform: uppercase;
         cursor: pointer;
+      }
+
+      .report-tab.is-active,
+      .report-close:hover,
+      .report-download:hover,
+      .report-run:hover,
+      .report-tab:hover {
+        border-color: rgba(120, 183, 255, 0.5);
+        background: rgba(88, 167, 255, 0.1);
       }
 
       .report-download:disabled {
@@ -2121,10 +2212,21 @@
       }
 
       .report-form {
-        display: grid;
-        grid-template-columns: 1.2fr repeat(3, minmax(150px, 0.8fr)) auto;
+        display: none;
+        grid-template-columns: minmax(150px, 220px) auto;
         gap: 12px;
         align-items: end;
+        margin-bottom: 18px;
+      }
+
+      .report-form.is-open {
+        display: grid;
+      }
+
+      .report-selector {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
         margin-bottom: 18px;
       }
 
@@ -2603,13 +2705,18 @@
       }
     </style>
   </head>
-  <body>
+  <body class="is-loading">
     <div class="loading-overlay" aria-live="polite"><span>Loading</span></div>
     <header class="topbar">
       <a class="brand" id="home-nav-link" href="#home" aria-label="MUFC home"><span>MUFC</span></a>
       <nav class="nav-links" aria-label="Primary navigation">
         <a href="#reports" id="report-nav-link">Report</a>
-        <a href="#baggage" id="baggage-nav-link">Baggage</a>
+        <div class="nav-dropdown" id="bagroom-nav">
+          <button type="button" id="bagroom-toggle" aria-expanded="false">Baggage</button>
+          <div class="nav-dropdown-menu" aria-hidden="true">
+            <a href="#bagroom" id="baggage-nav-link">Bagroom</a>
+          </div>
+        </div>
       </nav>
       <div class="nav-row">
         <form class="search" id="mission-search" aria-label="Search mission">
@@ -2650,7 +2757,7 @@
         <button type="submit">Search</button>
       </form>
       <a href="#reports" id="mobile-report-nav-link">Report</a>
-      <a href="#baggage" id="mobile-baggage-nav-link">Baggage</a>
+      <a href="#bagroom" id="mobile-baggage-nav-link">Bagroom</a>
       <a href="#open-login">Login</a>
     </aside>
 
@@ -2672,8 +2779,7 @@
                 <span class="line-menu-icon" aria-hidden="true"><span></span><span></span><span></span></span>
               </button>
               <div class="flight-menu" aria-hidden="true">
-                <button id="bag-report-button" type="button">Bag Report</button>
-                <button id="sales-report-button" type="button">Sales Report</button>
+                <button id="bag-report-button" type="button">Bagroom</button>
                 <button id="security-check-button" type="button">Security Check</button>
                 <button id="seat-map-button" type="button">Seat Map</button>
               </div>
@@ -2685,24 +2791,23 @@
           <div class="report-hero">
             <div>
               <h2>Report Center</h2>
-              <p class="panel-muted">Choose a report type and date range, then search. VIP and Wheelchair reports read saved Google Sheet records first; if a date has not been scanned yet, the system scans the log once and saves the trace to Google Sheets.</p>
+              <p class="panel-muted">Choose Sales Report or VIP Report. VIP records are loaded from the saved Google Sheet and rendered here with the site UI.</p>
             </div>
             <button class="report-close" id="report-close" type="button">Close</button>
           </div>
+          <div class="report-selector" role="group" aria-label="Report type">
+            <button class="report-tab" id="sales-report-tab" type="button" data-report-mode="sales">Sales Report</button>
+            <button class="report-tab" id="vip-report-tab" type="button" data-report-mode="vip">VIP Report</button>
+          </div>
           <form class="report-form" id="report-form">
-            <label class="report-field"><span>Report type</span><select id="report-type">
-              <option value="wheelchair">Wheelchair Report</option>
-              <option value="baggage">Baggage Report</option>
-              <option value="sales">Sales Report</option>
-              <option value="vip">VIP Report</option>
-            </select></label>
-            <label class="report-field"><span>From</span><input id="report-from" type="date" required /></label>
-            <label class="report-field"><span>To</span><input id="report-to" type="date" required /></label>
-            <label class="report-field"><span>Keyword</span><input id="report-keyword" type="search" placeholder="Optional filter" /></label>
-            <button class="report-run" type="submit">Search</button>
+            <input id="report-type" type="hidden" value="" />
+            <label class="report-field"><span>Date</span><input id="report-from" type="date" required /></label>
+            <input id="report-to" type="hidden" />
+            <input id="report-keyword" type="hidden" value="" />
+            <button class="report-run" type="submit">Download</button>
           </form>
           <div class="report-actions-row"><button class="report-download" id="report-download" type="button" disabled>Download CSV</button></div>
-          <div id="report-output"><p class="panel-muted">No search yet.</p></div>
+          <div id="report-output"><p class="panel-muted">Select a report above.</p></div>
         </section>
 
         <section class="details-panel" aria-label="Flight details" hidden>
@@ -2813,6 +2918,7 @@
       const mobileQueryInput = document.querySelector("#mobile-query");
       const bagReportButton = document.querySelector("#bag-report-button");
       const salesReportButton = document.querySelector("#sales-report-button");
+      const reportTabs = document.querySelectorAll("[data-report-mode]");
       const securityCheckButton = document.querySelector("#security-check-button");
       const seatMapButton = document.querySelector("#seat-map-button");
       const reportNavLink = document.querySelector("#report-nav-link");
@@ -3890,31 +3996,21 @@
         renderPanel("Bag Report", currentSy?.flightNo || "SY", sheet.hasData && sections.length ? sections.join("") : `<p class="panel-muted">No Google Sheet bag report found for this SY date.</p>`);
       }
 
+      function salesReportDownloadUrl(isoDate) {
+        return `${resolveApiBase()}/sales-report/download-by-date?date=${encodeURIComponent(isoDate)}`;
+      }
+
       async function downloadSalesReport() {
-        if (!currentSy?.flightNo || !currentSy?.flightDate) {
-          renderPanel("Sales Report", "No flight", `<p class="panel-muted status-fail">Search SY before downloading the sales report.</p>`);
-          return;
-        }
-        const flightNo = currentSy.flightNo;
-        const flightDate = currentSy.flightDate;
-        try {
-          const meta = await apiJson(`/sales-report/meta?flightNo=${encodeURIComponent(flightNo)}&flightDate=${encodeURIComponent(flightDate)}`);
-          if (meta?.error || meta?.found === false) throw new Error(meta?.error || "Sales report not found.");
-          const link = `${resolveApiBase()}/sales-report/download?flightNo=${encodeURIComponent(flightNo)}&flightDate=${encodeURIComponent(flightDate)}`;
-          window.open(link, "_blank", "noopener");
-        } catch (error) {
-          renderPanel("Sales Report", flightNo, `<p class="panel-muted status-fail">${escapeHtml(error?.message || "Sales report download failed.")}</p>`);
-        }
+        showReportPage("sales");
       }
 
 
 
       function setReportDefaults() {
         if (!reportFromInput || !reportToInput) return;
-        const now = new Date();
-        const ymd = ymdFromDate(now);
+        const ymd = ymdFromDate(new Date());
         reportFromInput.value = reportFromInput.value || ymd;
-        reportToInput.value = reportToInput.value || ymd;
+        reportToInput.value = reportFromInput.value;
       }
 
       function resetPanelState() {
@@ -3940,7 +4036,7 @@
         window.scrollTo({ top: 0, left: 0, behavior: "auto" });
       }
 
-      function showReportPage() {
+      function showReportPage(mode = "") {
         setReportDefaults();
         resetPanelState();
         if (passwordPage) passwordPage.hidden = true;
@@ -3949,6 +4045,7 @@
         closeLoginMenu();
         closeFlightMenu();
         closeMobilePanel();
+        if (mode) selectReportMode(mode);
         reportPage?.scrollTo({ top: 0, left: 0, behavior: "auto" });
       }
 
@@ -3985,8 +4082,8 @@
       }
 
       function reportDownloadLink(row) {
-        if (row.salesAvailable !== "Yes" || !row.flightNo || !row.flightDate) return "";
-        return `${resolveApiBase()}/sales-report/download?flightNo=${encodeURIComponent(row.flightNo)}&flightDate=${encodeURIComponent(row.flightDate)}`;
+        if (!row.date) return "";
+        return salesReportDownloadUrl(row.date);
       }
 
       function reportRowsToCsv(rows) {
@@ -4061,21 +4158,8 @@
         return rows;
       }
 
-      async function salesReportRows(sy, isoDate) {
-        const row = { date: isoDate, flightNo: sy.flightNo || "", flightDate: sy.flightDate || "", salesAvailable: "No", fileName: "", downloadUrl: "" };
-        if (!row.flightNo || !row.flightDate) return row;
-        try {
-          const meta = await apiJson(`/sales-report/meta?flightNo=${encodeURIComponent(row.flightNo)}&flightDate=${encodeURIComponent(row.flightDate)}`);
-          if (meta?.available === true || meta?.found === true) {
-            row.salesAvailable = "Yes";
-            row.fileName = meta.fileName || "Sales Report";
-            row.downloadUrl = reportDownloadLink(row);
-          }
-        } catch (error) {
-          row.salesAvailable = "Error";
-          row.fileName = error?.message || "Lookup failed";
-        }
-        return row;
+      async function salesReportRows(isoDate) {
+        return { date: isoDate, downloadUrl: salesReportDownloadUrl(isoDate) };
       }
 
       async function storedReportRows(type, isoDate, keyword) {
@@ -4090,85 +4174,54 @@
         return storedReportRows("vip", isoDate, keyword);
       }
 
+      function selectReportMode(mode) {
+        if (!reportTypeInput || !reportForm || !reportOutput) return;
+        reportTypeInput.value = mode;
+        reportForm.classList.add("is-open");
+        reportTabs.forEach((button) => button.classList.toggle("is-active", button.dataset.reportMode === mode));
+        reportForm.querySelector(".report-run").textContent = mode === "sales" ? "Download" : "Search";
+        reportDownloadButton.hidden = mode === "sales";
+        setReportCsv([], "report.csv");
+        reportOutput.innerHTML = mode === "sales"
+          ? `<p class="panel-muted">Select a date, then click Download.</p>`
+          : `<p class="panel-muted">Select a date, then search VIP records.</p>`;
+      }
+
       async function generateReport(event) {
         event?.preventDefault();
         if (!reportOutput) return;
-        const type = reportTypeInput?.value || "wheelchair";
-        const from = reportFromInput?.value || "";
-        const to = reportToInput?.value || "";
-        const keyword = reportKeywordInput?.value || "";
-        let dates;
-        try {
-          dates = reportDateRange(from, to);
-        } catch (error) {
-          reportOutput.innerHTML = `<p class="panel-muted status-fail">${escapeHtml(error.message)}</p>`;
-          setReportCsv([], "report.csv");
+        const type = reportTypeInput?.value || "";
+        const isoDate = reportFromInput?.value || "";
+        if (!type) {
+          reportOutput.innerHTML = `<p class="panel-muted status-warn">Please choose Sales Report or VIP Report.</p>`;
           return;
         }
-        reportOutput.innerHTML = `<p class="panel-muted">Searching ${escapeHtml(type)} from ${escapeHtml(from)} to ${escapeHtml(to)}...</p>`;
-        setReportCsv([], "report.csv");
-        const rows = [];
-        const errors = [];
-        for (const isoDate of dates) {
-          try {
-            if (type === "vip") {
-              rows.push(...await vipReportRows(isoDate, keyword));
-              continue;
-            }
-            if (type === "wheelchair") {
-              rows.push(...await storedReportRows("wheelchair", isoDate, keyword));
-              continue;
-            }
-            const sy = await loadSyForReport(isoDate);
-            if (type === "baggage") rows.push(...baggageReportRows(sy, isoDate));
-            if (type === "sales") rows.push(await salesReportRows(sy, isoDate));
-          } catch (error) {
-            errors.push(`${isoDate}: ${error.message}`);
-          }
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) {
+          reportOutput.innerHTML = `<p class="panel-muted status-fail">Please select a valid date.</p>`;
+          return;
         }
-        let tableHtml = "";
+        reportToInput.value = isoDate;
         if (type === "sales") {
-          tableHtml = rowsTable(rows, [
-            { label: "Date", value: (row) => row.date },
-            { label: "Flight", value: (row) => row.flightNo },
-            { label: "Flight Date", value: (row) => row.flightDate },
-            { label: "Available", value: (row) => row.salesAvailable },
-            { label: "File", value: (row) => row.fileName },
-            { label: "Download", value: (row) => row.downloadUrl ? "Open link below" : "-" },
-          ], "No sales report rows.") + `<div class="report-actions-row">${rows.filter((row) => row.downloadUrl).map((row) => `<a class="report-link-button" href="${escapeHtml(row.downloadUrl)}" target="_blank" rel="noopener">${escapeHtml(row.date)} Sales</a>`).join("")}</div>`;
-        } else if (type === "wheelchair") {
-          tableHtml = rowsTable(rows, [
-            { label: "Date", value: (row) => row.date },
-            { label: "Flight", value: (row) => row.flightNo },
-            { label: "Passenger", value: (row) => row.passenger },
-            { label: "BN", value: (row) => row.bn },
-            { label: "Seat", value: (row) => row.seat },
-            { label: "Wheelchair Type", value: (row) => row.wheelchairType },
-          ], "No wheelchair passengers found.");
-        } else if (type === "baggage") {
-          tableHtml = rowsTable(rows, [
-            { label: "Date", value: (row) => row.date },
-            { label: "Flight", value: (row) => row.flightNo },
-            { label: "Section", value: (row) => row.section },
-            { label: "Bag / Rush #", value: (row) => row.rushNo || row.tagNo },
-            { label: "Status / Orig #", value: (row) => row.status || row.origNo },
-            { label: "Remark / To", value: (row) => row.remark || row.to },
-            { label: "AKE", value: (row) => row.ake },
-          ], "No baggage rows found.");
-        } else if (type === "vip") {
-          tableHtml = rowsTable(rows, [
-            { label: "Date", value: (row) => row.date },
-            { label: "Flight", value: (row) => row.flightNo },
-            { label: "Flight Date", value: (row) => row.flightDate },
-            { label: "Passenger", value: (row) => row.passenger },
-            { label: "BN", value: (row) => row.bn },
-            { label: "Seat", value: (row) => row.seat },
-            { label: "Source", value: (row) => row.source },
-          ], "No VIP passengers found.");
+          window.open(salesReportDownloadUrl(isoDate), "_blank", "noopener");
+          reportOutput.innerHTML = `<p class="panel-muted">Sales report download started for ${escapeHtml(isoDate)}. If no file downloads, the report may not exist for that date.</p>`;
+          return;
         }
-        const errorHtml = errors.length ? `<h3>Skipped dates</h3><p class="panel-muted status-warn">${escapeHtml(errors.join(" | "))}</p>` : "";
-        reportOutput.innerHTML = `${errorHtml}${tableHtml}`;
-        setReportCsv(rows, `${type}-report-${from}-to-${to}.csv`);
+        reportOutput.innerHTML = `<p class="panel-muted">Loading VIP report for ${escapeHtml(isoDate)}...</p>`;
+        setReportCsv([], "report.csv");
+        try {
+          const rows = await vipReportRows(isoDate, "");
+          reportOutput.innerHTML = rowsTable(rows, [
+            { label: "FLIGHT DATE", value: (row) => row.flightDate },
+            { label: "FLIGHT #", value: (row) => row.flightNo },
+            { label: "NAME", value: (row) => row.passenger },
+            { label: "BN", value: (row) => row.bn },
+            { label: "SEAT", value: (row) => row.seat },
+            { label: "BAGS", value: (row) => row.bags },
+          ], "No VIP passengers found.");
+          setReportCsv(rows, `vip-report-${isoDate}.csv`);
+        } catch (error) {
+          reportOutput.innerHTML = `<p class="panel-muted status-fail">${escapeHtml(error?.message || "VIP report lookup failed.")}</p>`;
+        }
       }
 
       function reviewPath() {
@@ -4458,13 +4511,17 @@
 
       homeNavLink.addEventListener("click", (event) => { event.preventDefault(); showHomePage(); });
       bagReportButton.addEventListener("click", renderBagReport);
-      salesReportButton.addEventListener("click", downloadSalesReport);
+      salesReportButton?.addEventListener("click", downloadSalesReport);
       reportNavLink.addEventListener("click", (event) => { event.preventDefault(); showReportPage(); });
       mobileReportNavLink.addEventListener("click", (event) => { event.preventDefault(); showReportPage(); });
       baggageNavLink.addEventListener("click", (event) => { event.preventDefault(); openBaggageReport(); });
       mobileBaggageNavLink.addEventListener("click", (event) => { event.preventDefault(); openBaggageReport(); });
       reportCloseButton.addEventListener("click", hideReportPage);
       reportForm.addEventListener("submit", generateReport);
+      reportTabs.forEach((button) => button.addEventListener("click", () => {
+        selectReportMode(button.dataset.reportMode);
+        if (button.dataset.reportMode === "vip") generateReport();
+      }));
       reportDownloadButton.addEventListener("click", downloadCurrentReportCsv);
       securityCheckButton.addEventListener("click", renderSecurityCheck);
       seatMapButton.addEventListener("click", renderSeatMap);
@@ -4587,7 +4644,7 @@
         showReportPage();
       }
 
-      if (window.location.hash === "#baggage") {
+      if (window.location.hash === "#baggage" || window.location.hash === "#bagroom") {
         openBaggageReport();
       }
 
