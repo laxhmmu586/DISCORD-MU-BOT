@@ -141,7 +141,7 @@
         right: 0;
         height: 76px;
         display: grid;
-        grid-template-columns: auto 1fr auto;
+        grid-template-columns: auto auto minmax(180px, 1fr) auto auto;
         align-items: center;
         gap: 28px;
         padding: 0 32px;
@@ -2037,6 +2037,141 @@
         min-width: 72px;
       }
 
+
+
+      .report-page {
+        width: min(100% - 48px, 1180px);
+        margin: 24px auto 0;
+        border: 1px solid rgba(176, 216, 255, 0.22);
+        background: linear-gradient(150deg, rgba(8, 24, 40, 0.88), rgba(2, 12, 22, 0.72));
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.36);
+        backdrop-filter: blur(18px);
+        padding: 24px;
+        max-height: calc(100svh - 118px);
+        overflow-y: auto;
+      }
+
+      .report-page[hidden] {
+        display: none;
+      }
+
+      body.is-report-view main {
+        overflow-y: auto;
+      }
+
+      body.is-report-view .hero {
+        height: calc(100svh - 76px);
+        min-height: calc(100svh - 76px);
+        display: block;
+        overflow-y: auto;
+      }
+
+      body.is-report-view .mission-head,
+      body.is-report-view .details-panel,
+      body.is-report-view .mission-stage,
+      body.is-report-view .flight-panel,
+      body.is-report-view .result-panel,
+      body.is-report-view .password-page {
+        display: none !important;
+      }
+
+      body.is-report-view .report-page {
+        width: 100%;
+        min-height: calc(100svh - 76px);
+        max-height: none;
+        margin: 0;
+        border: 0;
+        padding: clamp(22px, 3vw, 42px);
+        background: linear-gradient(150deg, rgba(8, 24, 40, 0.92), rgba(2, 12, 22, 0.82));
+        box-shadow: none;
+      }
+
+      .report-hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 18px;
+        align-items: start;
+        margin-bottom: 18px;
+      }
+
+      .report-hero h2 {
+        margin: 4px 0 10px;
+        color: white;
+        font-size: clamp(28px, 4vw, 48px);
+        line-height: 0.96;
+        text-transform: uppercase;
+      }
+
+      .report-close,
+      .report-download,
+      .report-run {
+        min-height: 42px;
+        border: 1px solid rgba(88, 167, 255, 0.5);
+        background: rgba(88, 167, 255, 0.14);
+        color: white;
+        padding: 0 16px;
+        font-weight: 900;
+        text-transform: uppercase;
+        cursor: pointer;
+      }
+
+      .report-download:disabled {
+        cursor: not-allowed;
+        opacity: 0.48;
+      }
+
+      .report-form {
+        display: grid;
+        grid-template-columns: 1.2fr repeat(3, minmax(150px, 0.8fr)) auto;
+        gap: 12px;
+        align-items: end;
+        margin-bottom: 18px;
+      }
+
+      .report-field {
+        display: grid;
+        gap: 7px;
+      }
+
+      .report-field span {
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+      }
+
+      .report-field input,
+      .report-field select {
+        min-height: 42px;
+        border: 1px solid rgba(210, 231, 255, 0.2);
+        background: rgba(227, 237, 251, 0.96);
+        color: #071327;
+        padding: 0 12px;
+        outline: 0;
+      }
+
+      .report-actions-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 14px;
+      }
+
+      .report-link-button {
+        display: inline-flex;
+        min-height: 34px;
+        align-items: center;
+        border: 1px solid rgba(88, 167, 255, 0.5);
+        background: rgba(88, 167, 255, 0.12);
+        color: white;
+        padding: 0 10px;
+        font-size: 12px;
+        font-weight: 900;
+        text-decoration: none;
+        text-transform: uppercase;
+      }
+
       .status-ok { color: var(--green); }
       .status-warn { color: #ffd166; }
       .status-fail { color: var(--danger); }
@@ -2058,13 +2193,21 @@
 
       @media (max-width: 1080px) {
         .topbar {
-          grid-template-columns: auto 1fr auto;
+          grid-template-columns: auto minmax(0, 1fr) auto;
           gap: 18px;
         }
 
         .nav-links,
         .nav-actions {
           display: none;
+        }
+
+        .report-form {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .report-run {
+          grid-column: 1 / -1;
         }
 
         .nav-row {
@@ -2161,6 +2304,12 @@
           min-height: 100svh;
           overflow: visible;
           padding-top: 68px;
+        }
+
+        body.is-report-view .hero,
+        body.is-report-view .report-page {
+          height: calc(100svh - 68px);
+          min-height: calc(100svh - 68px);
         }
 
         .hero {
@@ -2425,8 +2574,14 @@
           grid-template-columns: repeat(3, minmax(72px, 1fr));
         }
 
-        .panel-head {
+        .panel-head,
+        .report-hero {
           display: grid;
+          grid-template-columns: 1fr;
+        }
+
+        .report-form {
+          grid-template-columns: 1fr;
         }
 
         .data-table {
@@ -2451,7 +2606,11 @@
   <body>
     <div class="loading-overlay" aria-live="polite"><span>Loading</span></div>
     <header class="topbar">
-      <a class="brand" href="#" aria-label="MUFC home"><span>MUFC</span></a>
+      <a class="brand" id="home-nav-link" href="#home" aria-label="MUFC home"><span>MUFC</span></a>
+      <nav class="nav-links" aria-label="Primary navigation">
+        <a href="#reports" id="report-nav-link">Report</a>
+        <a href="#baggage" id="baggage-nav-link">Baggage</a>
+      </nav>
       <div class="nav-row">
         <form class="search" id="mission-search" aria-label="Search mission">
           <input id="query" type="search" value="SY" autocomplete="off" />
@@ -2490,6 +2649,8 @@
         <input id="mobile-query" type="search" value="SY" autocomplete="off" />
         <button type="submit">Search</button>
       </form>
+      <a href="#reports" id="mobile-report-nav-link">Report</a>
+      <a href="#baggage" id="mobile-baggage-nav-link">Baggage</a>
       <a href="#open-login">Login</a>
     </aside>
 
@@ -2519,6 +2680,30 @@
             </div>
           </div>
         </div>
+
+        <section class="report-page" id="report-page" aria-label="Report center" hidden>
+          <div class="report-hero">
+            <div>
+              <h2>Report Center</h2>
+              <p class="panel-muted">Choose a report type and date range, then search. VIP report scans every flight on the selected dates and only shows passengers whose flight date matches the log timestamp date.</p>
+            </div>
+            <button class="report-close" id="report-close" type="button">Close</button>
+          </div>
+          <form class="report-form" id="report-form">
+            <label class="report-field"><span>Report type</span><select id="report-type">
+              <option value="wheelchair">Wheelchair Report</option>
+              <option value="baggage">Baggage Report</option>
+              <option value="sales">Sales Report</option>
+              <option value="vip">VIP Report</option>
+            </select></label>
+            <label class="report-field"><span>From</span><input id="report-from" type="date" required /></label>
+            <label class="report-field"><span>To</span><input id="report-to" type="date" required /></label>
+            <label class="report-field"><span>Keyword</span><input id="report-keyword" type="search" placeholder="Optional filter" /></label>
+            <button class="report-run" type="submit">Search</button>
+          </form>
+          <div class="report-actions-row"><button class="report-download" id="report-download" type="button" disabled>Download CSV</button></div>
+          <div id="report-output"><p class="panel-muted">No search yet.</p></div>
+        </section>
 
         <section class="details-panel" aria-label="Flight details" hidden>
           <div class="details-inner">
@@ -2604,6 +2789,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="/__/firebase/init.js"></script>
     <script>
+      const homeNavLink = document.querySelector("#home-nav-link");
       const menuButton = document.querySelector(".menu-button");
       const fallbackMenuButton = document.querySelector(".mobile-menu-fallback");
       const mobilePanel = document.querySelector(".mobile-panel");
@@ -2629,6 +2815,19 @@
       const salesReportButton = document.querySelector("#sales-report-button");
       const securityCheckButton = document.querySelector("#security-check-button");
       const seatMapButton = document.querySelector("#seat-map-button");
+      const reportNavLink = document.querySelector("#report-nav-link");
+      const mobileReportNavLink = document.querySelector("#mobile-report-nav-link");
+      const baggageNavLink = document.querySelector("#baggage-nav-link");
+      const mobileBaggageNavLink = document.querySelector("#mobile-baggage-nav-link");
+      const reportPage = document.querySelector("#report-page");
+      const reportCloseButton = document.querySelector("#report-close");
+      const reportForm = document.querySelector("#report-form");
+      const reportTypeInput = document.querySelector("#report-type");
+      const reportFromInput = document.querySelector("#report-from");
+      const reportToInput = document.querySelector("#report-to");
+      const reportKeywordInput = document.querySelector("#report-keyword");
+      const reportOutput = document.querySelector("#report-output");
+      const reportDownloadButton = document.querySelector("#report-download");
       const passwordPage = document.querySelector("#change-password-page");
       const closePasswordPageButton = document.querySelector("#close-password-page");
       const changePasswordForm = document.querySelector("#change-password-form");
@@ -3708,6 +3907,265 @@
         }
       }
 
+
+
+      function setReportDefaults() {
+        if (!reportFromInput || !reportToInput) return;
+        const now = new Date();
+        const ymd = ymdFromDate(now);
+        reportFromInput.value = reportFromInput.value || ymd;
+        reportToInput.value = reportToInput.value || ymd;
+      }
+
+      function resetPanelState() {
+        if (!resultPanel) return;
+        resultPanel.innerHTML = "";
+        resultPanel.className = "result-panel";
+        resultPanel.style.top = "";
+        resultPanel._passengerRows = [];
+      }
+
+      function showHomePage() {
+        document.body.classList.remove("is-report-view");
+        if (reportPage) reportPage.hidden = true;
+        if (passwordPage) passwordPage.hidden = true;
+        closeLoginMenu();
+        closeFlightMenu();
+        closeMobilePanel();
+        closePassengerModal();
+        resetPanelState();
+        if (window.location.hash && window.history?.replaceState) {
+          window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+        }
+        window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      }
+
+      function showReportPage() {
+        setReportDefaults();
+        resetPanelState();
+        if (passwordPage) passwordPage.hidden = true;
+        if (reportPage) reportPage.hidden = false;
+        document.body.classList.add("is-report-view");
+        closeLoginMenu();
+        closeFlightMenu();
+        closeMobilePanel();
+        reportPage?.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      }
+
+      function hideReportPage() {
+        showHomePage();
+      }
+
+      function openBaggageReport() {
+        document.body.classList.remove("is-report-view");
+        if (reportPage) reportPage.hidden = true;
+        if (currentSy?.bagSheet?.hasData) renderBagReport();
+        else renderPanel("Baggage", currentSy?.flightNo || "SY", `<p class="panel-muted">No Google Sheet bag report is loaded yet. Search an SY date first, then open Baggage again.</p>`);
+        closeMobilePanel();
+      }
+
+      function isoToSyDate(value) {
+        const m = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (!m) return "";
+        const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+        return `${m[3]}${months[Number(m[2]) - 1]}${m[1].slice(-2)}`;
+      }
+
+      function reportDateRange(fromValue, toValue) {
+        const from = new Date(`${fromValue}T00:00:00Z`);
+        const to = new Date(`${toValue}T00:00:00Z`);
+        if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) throw new Error("Please select a valid date range.");
+        if (from > to) throw new Error("From date cannot be after To date.");
+        const dates = [];
+        for (let cursor = new Date(from); cursor <= to; cursor.setUTCDate(cursor.getUTCDate() + 1)) {
+          dates.push(ymdFromDate(cursor));
+          if (dates.length > 62) throw new Error("Please select 62 days or less for one report.");
+        }
+        return dates;
+      }
+
+      function reportDownloadLink(row) {
+        if (row.salesAvailable !== "Yes" || !row.flightNo || !row.flightDate) return "";
+        return `${resolveApiBase()}/sales-report/download?flightNo=${encodeURIComponent(row.flightNo)}&flightDate=${encodeURIComponent(row.flightDate)}`;
+      }
+
+      function reportRowsToCsv(rows) {
+        if (!rows.length) return "";
+        const keys = [...rows.reduce((set, row) => {
+          Object.keys(row).forEach((key) => set.add(key));
+          return set;
+        }, new Set())];
+        const esc = (value) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+        return [keys.map(esc).join(","), ...rows.map((row) => keys.map((key) => esc(row[key])).join(","))].join("\n");
+      }
+
+      function setReportCsv(rows, fileName) {
+        if (!reportDownloadButton) return;
+        reportDownloadButton.disabled = !rows.length;
+        reportDownloadButton._csv = reportRowsToCsv(rows);
+        reportDownloadButton._fileName = fileName;
+      }
+
+      function downloadCurrentReportCsv() {
+        const csv = reportDownloadButton?._csv || "";
+        if (!csv) return;
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = reportDownloadButton._fileName || "report.csv";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+      }
+
+
+
+      async function loadSyForReport(isoDate) {
+        const syDate = isoToSyDate(isoDate);
+        const data = await fetchSearch(`SY/${syDate}`);
+        if (data?.error || !data?.sy) throw new Error(data?.error || `No SY data for ${isoDate}`);
+        return data.sy;
+      }
+
+      function wheelchairReportRows(sy, isoDate) {
+        const byBn = new Map([...(sy.seatMapRecords || []), ...(sy.bnAudit || [])].map((row) => [String(row.bn || "").padStart(3, "0"), row.passengerRecord || row]));
+        return (sy.wchList || []).map((row) => {
+          const merged = { ...(byBn.get(String(row.bn || "").padStart(3, "0")) || {}), ...row };
+          return {
+            date: isoDate,
+            flightNo: sy.flightNo || "",
+            flightDate: sy.flightDate || "",
+            passenger: passengerName(merged),
+            bn: merged.bn || "",
+            seat: merged.seat || "",
+            wheelchairType: Array.isArray(merged.codes) ? merged.codes.join("/") : (merged.code || merged.specialServices || "WCH"),
+          };
+        });
+      }
+
+      function baggageReportRows(sy, isoDate) {
+        const rows = [];
+        const addRows = (sectionName, section, headers) => {
+          const bodyRows = section?.rows || [];
+          bodyRows.forEach((row) => {
+            const out = { date: isoDate, flightNo: sy.flightNo || "", flightDate: sy.flightDate || "", section: sectionName };
+            headers.forEach((header, index) => { out[header] = row[index] || ""; });
+            rows.push(out);
+          });
+        };
+        const sheet = sy.bagSheet || {};
+        addRows("Rush Bags", sheet.rushBags, ["rushNo", "origNo", "to", "ake"]);
+        addRows("Not Load Bags", sheet.notLoadBags, ["tagNo", "status", "remark"]);
+        return rows;
+      }
+
+      async function salesReportRows(sy, isoDate) {
+        const row = { date: isoDate, flightNo: sy.flightNo || "", flightDate: sy.flightDate || "", salesAvailable: "No", fileName: "", downloadUrl: "" };
+        if (!row.flightNo || !row.flightDate) return row;
+        try {
+          const meta = await apiJson(`/sales-report/meta?flightNo=${encodeURIComponent(row.flightNo)}&flightDate=${encodeURIComponent(row.flightDate)}`);
+          if (meta?.available === true || meta?.found === true) {
+            row.salesAvailable = "Yes";
+            row.fileName = meta.fileName || "Sales Report";
+            row.downloadUrl = reportDownloadLink(row);
+          }
+        } catch (error) {
+          row.salesAvailable = "Error";
+          row.fileName = error?.message || "Lookup failed";
+        }
+        return row;
+      }
+
+      async function vipReportRows(isoDate, keyword) {
+        const data = await apiJson(`/vip-report?date=${encodeURIComponent(isoDate)}`);
+        const needle = String(keyword || "").trim().toUpperCase();
+        const rows = data?.rows || [];
+        const filtered = needle
+          ? rows.filter((row) => [row.passenger, row.flightNo, row.flightDate, row.bn, row.seat, row.source].some((value) => String(value || "").toUpperCase().includes(needle)))
+          : rows;
+        return filtered;
+      }
+
+      async function generateReport(event) {
+        event?.preventDefault();
+        if (!reportOutput) return;
+        const type = reportTypeInput?.value || "wheelchair";
+        const from = reportFromInput?.value || "";
+        const to = reportToInput?.value || "";
+        const keyword = reportKeywordInput?.value || "";
+        let dates;
+        try {
+          dates = reportDateRange(from, to);
+        } catch (error) {
+          reportOutput.innerHTML = `<p class="panel-muted status-fail">${escapeHtml(error.message)}</p>`;
+          setReportCsv([], "report.csv");
+          return;
+        }
+        reportOutput.innerHTML = `<p class="panel-muted">Searching ${escapeHtml(type)} from ${escapeHtml(from)} to ${escapeHtml(to)}...</p>`;
+        setReportCsv([], "report.csv");
+        const rows = [];
+        const errors = [];
+        for (const isoDate of dates) {
+          try {
+            if (type === "vip") {
+              rows.push(...await vipReportRows(isoDate, keyword));
+              continue;
+            }
+            const sy = await loadSyForReport(isoDate);
+            if (type === "wheelchair") rows.push(...wheelchairReportRows(sy, isoDate));
+            if (type === "baggage") rows.push(...baggageReportRows(sy, isoDate));
+            if (type === "sales") rows.push(await salesReportRows(sy, isoDate));
+          } catch (error) {
+            errors.push(`${isoDate}: ${error.message}`);
+          }
+        }
+        let tableHtml = "";
+        if (type === "sales") {
+          tableHtml = rowsTable(rows, [
+            { label: "Date", value: (row) => row.date },
+            { label: "Flight", value: (row) => row.flightNo },
+            { label: "Flight Date", value: (row) => row.flightDate },
+            { label: "Available", value: (row) => row.salesAvailable },
+            { label: "File", value: (row) => row.fileName },
+            { label: "Download", value: (row) => row.downloadUrl ? "Open link below" : "-" },
+          ], "No sales report rows.") + `<div class="report-actions-row">${rows.filter((row) => row.downloadUrl).map((row) => `<a class="report-link-button" href="${escapeHtml(row.downloadUrl)}" target="_blank" rel="noopener">${escapeHtml(row.date)} Sales</a>`).join("")}</div>`;
+        } else if (type === "wheelchair") {
+          tableHtml = rowsTable(rows, [
+            { label: "Date", value: (row) => row.date },
+            { label: "Flight", value: (row) => row.flightNo },
+            { label: "Passenger", value: (row) => row.passenger },
+            { label: "BN", value: (row) => row.bn },
+            { label: "Seat", value: (row) => row.seat },
+            { label: "Wheelchair Type", value: (row) => row.wheelchairType },
+          ], "No wheelchair passengers found.");
+        } else if (type === "baggage") {
+          tableHtml = rowsTable(rows, [
+            { label: "Date", value: (row) => row.date },
+            { label: "Flight", value: (row) => row.flightNo },
+            { label: "Section", value: (row) => row.section },
+            { label: "Bag / Rush #", value: (row) => row.rushNo || row.tagNo },
+            { label: "Status / Orig #", value: (row) => row.status || row.origNo },
+            { label: "Remark / To", value: (row) => row.remark || row.to },
+            { label: "AKE", value: (row) => row.ake },
+          ], "No baggage rows found.");
+        } else if (type === "vip") {
+          tableHtml = rowsTable(rows, [
+            { label: "Date", value: (row) => row.date },
+            { label: "Flight", value: (row) => row.flightNo },
+            { label: "Flight Date", value: (row) => row.flightDate },
+            { label: "Passenger", value: (row) => row.passenger },
+            { label: "BN", value: (row) => row.bn },
+            { label: "Seat", value: (row) => row.seat },
+            { label: "Source", value: (row) => row.source },
+          ], "No VIP passengers found.");
+        }
+        const errorHtml = errors.length ? `<h3>Skipped dates</h3><p class="panel-muted status-warn">${escapeHtml(errors.join(" | "))}</p>` : "";
+        reportOutput.innerHTML = `${errorHtml}${tableHtml}`;
+        setReportCsv(rows, `${type}-report-${from}-to-${to}.csv`);
+      }
+
       function reviewPath() {
         const flightNo = encodeURIComponent(currentSy?.flightNo || "");
         const flightDate = encodeURIComponent(currentSy?.flightDate || "");
@@ -3884,6 +4342,13 @@
         showTimelineNodeCard(key, step, inputTime);
       }
 
+      function closeMobilePanel() {
+        menuButton.setAttribute("aria-expanded", "false");
+        fallbackMenuButton.setAttribute("aria-expanded", "false");
+        mobilePanel.classList.remove("is-open");
+        mobilePanel.setAttribute("aria-hidden", "true");
+      }
+
       function toggleMenu() {
         const open = menuButton.getAttribute("aria-expanded") === "true";
         menuButton.setAttribute("aria-expanded", String(!open));
@@ -3986,8 +4451,16 @@
         });
       });
 
+      homeNavLink.addEventListener("click", (event) => { event.preventDefault(); showHomePage(); });
       bagReportButton.addEventListener("click", renderBagReport);
       salesReportButton.addEventListener("click", downloadSalesReport);
+      reportNavLink.addEventListener("click", (event) => { event.preventDefault(); showReportPage(); });
+      mobileReportNavLink.addEventListener("click", (event) => { event.preventDefault(); showReportPage(); });
+      baggageNavLink.addEventListener("click", (event) => { event.preventDefault(); openBaggageReport(); });
+      mobileBaggageNavLink.addEventListener("click", (event) => { event.preventDefault(); openBaggageReport(); });
+      reportCloseButton.addEventListener("click", hideReportPage);
+      reportForm.addEventListener("submit", generateReport);
+      reportDownloadButton.addEventListener("click", downloadCurrentReportCsv);
       securityCheckButton.addEventListener("click", renderSecurityCheck);
       seatMapButton.addEventListener("click", renderSeatMap);
 
@@ -4103,6 +4576,14 @@
         flightMenuButton.setAttribute("aria-expanded", "true");
         flightMenu.classList.add("is-open");
         flightMenu.setAttribute("aria-hidden", "false");
+      }
+
+      if (window.location.hash === "#reports") {
+        showReportPage();
+      }
+
+      if (window.location.hash === "#baggage") {
+        openBaggageReport();
       }
 
       if (!auth) {
