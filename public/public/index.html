@@ -2180,33 +2180,6 @@
         line-height: 1;
       }
 
-      .report-plan {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        gap: 12px;
-        margin-bottom: 18px;
-      }
-
-      .report-plan article {
-        border: 1px solid rgba(176, 216, 255, 0.16);
-        background: rgba(0, 0, 0, 0.16);
-        padding: 14px;
-      }
-
-      .report-plan h3 {
-        margin: 0 0 8px;
-        color: #dceeff;
-        font-size: 13px;
-        text-transform: uppercase;
-      }
-
-      .report-plan p {
-        margin: 0;
-        color: rgba(235, 246, 255, 0.76);
-        font-size: 13px;
-        line-height: 1.45;
-      }
-
       .report-actions-row {
         display: flex;
         flex-wrap: wrap;
@@ -2740,9 +2713,8 @@
         <section class="report-page" id="report-page" aria-label="Report center" hidden>
           <div class="report-hero">
             <div>
-              <p class="kicker">Mission reporting</p>
               <h2>Report Center</h2>
-              <p class="panel-muted">Choose a report type, select a date range, generate the result, and download a CSV summary. Sales report rows include per-day download links when the Drive file exists.</p>
+              <p class="panel-muted">Choose a report type and date range, generate the result, and download a CSV summary. VIP report scans every flight on the selected dates and counts passengers whose name ends with VIP.</p>
             </div>
             <button class="report-close" id="report-close" type="button">Close</button>
           </div>
@@ -2751,20 +2723,13 @@
               <option value="wheelchair">Wheelchair Report</option>
               <option value="baggage">Baggage Report</option>
               <option value="sales">Sales Report</option>
-              <option value="vip">VIP Search (planned)</option>
-              <option value="monthly">Monthly Summary</option>
+              <option value="vip">VIP Report</option>
             </select></label>
             <label class="report-field"><span>From</span><input id="report-from" type="date" required /></label>
             <label class="report-field"><span>To</span><input id="report-to" type="date" required /></label>
-            <label class="report-field"><span>Keyword / VIP</span><input id="report-keyword" type="search" placeholder="Optional" /></label>
+            <label class="report-field"><span>Keyword</span><input id="report-keyword" type="search" placeholder="Optional filter" /></label>
             <button class="report-run" type="submit">Generate</button>
           </form>
-          <div class="report-plan" id="report-plan">
-            <article><h3>Wheelchair</h3><p>Daily passenger detail: date, flight, passenger name, BN, seat, and wheelchair codes.</p></article>
-            <article><h3>Baggage</h3><p>Uses the existing Google Sheet data already connected to SY: rush bags and not-load bags.</p></article>
-            <article><h3>Sales</h3><p>Checks each selected date and provides downloadable sales files where available.</p></article>
-            <article><h3>VIP / Monthly</h3><p>Designed for the next stage: VIP keyword search and month-level totals by report category.</p></article>
-          </div>
           <div class="report-actions-row"><button class="report-download" id="report-download" type="button" disabled>Download CSV</button></div>
           <div id="report-output"><p class="panel-muted">No report generated yet.</p></div>
         </section>
@@ -4144,24 +4109,14 @@
         return row;
       }
 
-      function vipReportRows(sy, isoDate, keyword) {
+      async function vipReportRows(isoDate, keyword) {
+        const data = await apiJson(`/vip-report?date=${encodeURIComponent(isoDate)}`);
         const needle = String(keyword || "").trim().toUpperCase();
-        const rows = [...(sy.seatMapRecords || []), ...(sy.bnAudit || [])]
-          .map((row) => row.passengerRecord || row)
-          .filter((row, index, arr) => row?.bn && arr.findIndex((item) => String((item.passengerRecord || item).bn || "") === String(row.bn || "")) === index);
-        if (!needle) return [];
-        return rows.filter((row) => [passengerName(row), row.ffCarrier, row.ffNumber, row.membershipStatus, row.ffTier, row.lounge, row.specialServices].some((value) => String(value || "").toUpperCase().includes(needle))).map((row) => ({
-          date: isoDate,
-          flightNo: sy.flightNo || "",
-          flightDate: sy.flightDate || "",
-          passenger: passengerName(row),
-          bn: row.bn || "",
-          seat: row.seat || "",
-          ffCarrier: row.ffCarrier || "",
-          ffNumber: row.ffNumber || "",
-          tier: row.ffTier || row.membershipStatus || "",
-          lounge: row.lounge || "",
-        }));
+        const rows = data?.rows || [];
+        const filtered = needle
+          ? rows.filter((row) => [row.passenger, row.flightNo, row.flightDate, row.bn, row.seat, row.source].some((value) => String(value || "").toUpperCase().includes(needle)))
+          : rows;
+        return filtered;
       }
 
       async function generateReport(event) {
@@ -4185,24 +4140,14 @@
         const errors = [];
         for (const isoDate of dates) {
           try {
+            if (type === "vip") {
+              rows.push(...await vipReportRows(isoDate, keyword));
+              continue;
+            }
             const sy = await loadSyForReport(isoDate);
             if (type === "wheelchair") rows.push(...wheelchairReportRows(sy, isoDate));
             if (type === "baggage") rows.push(...baggageReportRows(sy, isoDate));
             if (type === "sales") rows.push(await salesReportRows(sy, isoDate));
-            if (type === "vip") rows.push(...vipReportRows(sy, isoDate, keyword));
-            if (type === "monthly") {
-              rows.push({
-                month: isoDate.slice(0, 7),
-                date: isoDate,
-                flightNo: sy.flightNo || "",
-                flightDate: sy.flightDate || "",
-                wheelchair: (sy.wchList || []).length,
-                rushBags: sy.bagSheet?.rushBags?.rows?.length || 0,
-                notLoadBags: sy.bagSheet?.notLoadBags?.rows?.length || 0,
-                warnings: buildWarningRows(sy).length,
-                psm: (sy.psmList || []).length,
-              });
-            }
           } catch (error) {
             errors.push(`${isoDate}: ${error.message}`);
           }
@@ -4239,26 +4184,15 @@
             { label: "AKE", value: (row) => row.ake },
           ], "No baggage rows found.");
         } else if (type === "vip") {
-          tableHtml = keyword ? rowsTable(rows, [
+          tableHtml = rowsTable(rows, [
             { label: "Date", value: (row) => row.date },
             { label: "Flight", value: (row) => row.flightNo },
+            { label: "Flight Date", value: (row) => row.flightDate },
             { label: "Passenger", value: (row) => row.passenger },
             { label: "BN", value: (row) => row.bn },
             { label: "Seat", value: (row) => row.seat },
-            { label: "Tier", value: (row) => row.tier },
-            { label: "Lounge", value: (row) => row.lounge },
-          ], "No VIP keyword matches found.") : `<p class="panel-muted status-warn">Enter a VIP keyword, FF number, tier, or lounge value to search.</p>`;
-        } else {
-          tableHtml = rowsTable(rows, [
-            { label: "Month", value: (row) => row.month },
-            { label: "Date", value: (row) => row.date },
-            { label: "Flight", value: (row) => row.flightNo },
-            { label: "Wheelchair", value: (row) => row.wheelchair },
-            { label: "Rush Bags", value: (row) => row.rushBags },
-            { label: "Not Load Bags", value: (row) => row.notLoadBags },
-            { label: "Warnings", value: (row) => row.warnings },
-            { label: "PSM", value: (row) => row.psm },
-          ], "No monthly summary rows.");
+            { label: "Source", value: (row) => row.source },
+          ], "No VIP passengers found.");
         }
         const errorHtml = errors.length ? `<h3>Skipped dates</h3><p class="panel-muted status-warn">${escapeHtml(errors.join(" | "))}</p>` : "";
         reportOutput.innerHTML = `${summary}${errorHtml}${tableHtml}`;

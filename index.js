@@ -68,6 +68,87 @@ const DEFAULT_PERMISSIONS = {
   canViewPaidService: true
 };
 
+
+function isoDateToLogDateParts(isoDate) {
+  const match = String(isoDate || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+  const monthName = months[Number(match[2]) - 1];
+  if (!monthName) return null;
+  return { date: `${match[3]}${monthName}`, yearSuffix: match[1].slice(-2) };
+}
+
+function todayIsoUtc() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function splitReportSections(log) {
+  return String(log || '')
+    .split(/(?=\n?\d{4}\s+[A-Z][a-z]{2}\s+\d{1,2},\s+[A-Z][a-z]+,\s+\d{2}:\d{2}:\d{2}\s*\n>)/g)
+    .map((content) => content.trim())
+    .filter(Boolean);
+}
+
+function cleanVipName(value) {
+  return String(value || '')
+    .toUpperCase()
+    .replace(/\+$/g, '')
+    .replace(/\s+/g, '')
+    .replace(/\/+$/g, '');
+}
+
+function extractVipNameCandidate(section) {
+  const namMatch = String(section || '').match(/^\s*NAM\s+([A-Z][A-Z/]+VIP)\b/im);
+  if (namMatch) return { name: cleanVipName(namMatch[1]), source: 'NAM' };
+
+  const passengerLine = String(section || '').match(/^\s*\d+\.\s*([A-Z][A-Z/]+(?:VIP)?\+?)\b.*?\bBN\s*\d{1,3}\b/im);
+  const passengerName = cleanVipName(passengerLine?.[1]);
+  if (passengerName.endsWith('VIP')) return { name: passengerName, source: 'Passenger Line' };
+
+  return null;
+}
+
+function extractVipPassengersFromLog(log, isoDate) {
+  const rows = [];
+  const seen = new Set();
+
+  for (const section of splitReportSections(log)) {
+    if (!/\bPR:\s*[A-Z0-9]+\//i.test(section)) continue;
+    const vip = extractVipNameCandidate(section);
+    if (!vip?.name?.endsWith('VIP')) continue;
+
+    const prMatch = section.match(/\bPR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
+    const bn = section.match(/\bBN\s*(\d{1,3})\b/i)?.[1]?.padStart(3, '0') || '';
+    const passengerLine = section.match(/^\s*\d+\.[^\n\r]*/im)?.[0] || '';
+    const seat = (
+      passengerLine.match(/\bBN\s*\d{1,3}\s+\*?(\d{1,3}[A-Z])\b/i)?.[1] ||
+      passengerLine.match(/\bSNR?\s*(\d{1,3}[A-Z])\b/i)?.[1] ||
+      ''
+    ).toUpperCase();
+    const key = `${prMatch?.[1] || ''}|${prMatch?.[2] || ''}|${bn}|${vip.name}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    rows.push({
+      date: isoDate,
+      flightNo: prMatch?.[1]?.toUpperCase() || '',
+      flightDate: prMatch?.[2]?.toUpperCase() || '',
+      passenger: vip.name,
+      bn,
+      seat,
+      source: vip.source
+    });
+  }
+
+  return rows.sort((a, b) => (a.flightNo || '').localeCompare(b.flightNo || '') || Number(a.bn || 0) - Number(b.bn || 0));
+}
+
+async function getLogForIsoDate(isoDate) {
+  if (isoDate === todayIsoUtc()) return getLatestFlightLog();
+  const parts = isoDateToLogDateParts(isoDate);
+  if (!parts) return null;
+  return getFlightLogByDate(parts.date, parts.yearSuffix);
+}
+
 async function resolveAuthContextFromRequest(req) {
   return { permissions: { ...DEFAULT_PERMISSIONS }, uid: null, claims: {} };
 }
@@ -448,6 +529,21 @@ app.post('/security-reviews', async (req, res) => {
 // ===============================
 // Search API
 // ===============================
+
+app.get('/vip-report', async (req, res) => {
+  try {
+    const isoDate = String(req.query.date || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) {
+      return res.status(400).json({ error: 'Missing or invalid date' });
+    }
+    const log = await getLogForIsoDate(isoDate);
+    if (!log) return res.json({ rows: [] });
+    return res.json({ rows: extractVipPassengersFromLog(log, isoDate) });
+  } catch (err) {
+    return res.status(500).json({ error: err?.message || 'VIP report lookup failed' });
+  }
+});
+
 app.get(
   '/sales-report/meta',
   async (req, res) => {
