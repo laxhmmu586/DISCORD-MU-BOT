@@ -18,7 +18,7 @@ const auth = new google.auth.GoogleAuth({
   scopes: [
 
     'https://www.googleapis.com/auth/drive.readonly',
-    'https://www.googleapis.com/auth/spreadsheets.readonly',
+    'https://www.googleapis.com/auth/spreadsheets',
     'https://www.googleapis.com/auth/gmail.readonly'
   ]
 });
@@ -310,6 +310,96 @@ const LOG_NAMES = [
 ];
 const SALES_REPORT_FOLDER_ID = '1-RLbv_BU9rnsaaPy8UUkbN6FkhA5YqGf';
 
+const VIP_REPORT_SHEET_ID = '1JqRnDx_uLc2m2SzyZOuHWWJsbkKenlKo60U9zwV9uMQ';
+const VIP_REPORT_GID = 1703169759;
+const VIP_REPORT_HEADERS = ['FLIGHT DATE', 'FLIGHT #', 'NAME', 'BN', 'SEAT', 'BAGS'];
+let vipReportSheetTitle = '';
+let vipReportSheetAccessBlocked = false;
+
+async function getVipReportSheetTitle() {
+  if (!vipReportSheetTitle) {
+    vipReportSheetTitle = await resolveSheetTitleByGid(VIP_REPORT_SHEET_ID, VIP_REPORT_GID);
+  }
+  return vipReportSheetTitle || '';
+}
+
+async function getVipReportSheetRows() {
+  if (vipReportSheetAccessBlocked) return [];
+  try {
+    const title = await getVipReportSheetTitle();
+    if (!title) return [];
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: VIP_REPORT_SHEET_ID,
+      range: `${title}!A:F`
+    });
+    return res.data.values || [];
+  } catch (err) {
+    const reason = err?.errors?.[0]?.reason || err?.response?.data?.error?.errors?.[0]?.reason || '';
+    if (reason === 'accessNotConfigured' || err?.code === 403) {
+      vipReportSheetAccessBlocked = true;
+      console.warn('VIP report sheet lookup disabled: Google Sheets API unavailable or not shared with service account.');
+      return [];
+    }
+    throw err;
+  }
+}
+
+async function ensureVipReportHeaders(rows) {
+  if (vipReportSheetAccessBlocked) return;
+  const title = await getVipReportSheetTitle();
+  if (!title) return;
+  const firstRow = rows?.[0] || [];
+  const hasHeaders = VIP_REPORT_HEADERS.every((header, index) => String(firstRow[index] || '').trim() === header);
+  if (hasHeaders) return;
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: VIP_REPORT_SHEET_ID,
+    range: `${title}!A1`,
+    valueInputOption: 'RAW',
+    requestBody: { values: [VIP_REPORT_HEADERS] }
+  });
+}
+
+function vipReportValues(row) {
+  return [row.flightDate, row.flightNo, row.passenger, row.bn, row.seat, row.bags]
+    .map((value) => String(value || '').trim());
+}
+
+function vipReportRowKey(row) {
+  return vipReportValues(row).map((value) => value.toUpperCase()).join('|');
+}
+
+async function appendVipReportRows(rows) {
+  if (vipReportSheetAccessBlocked || !Array.isArray(rows) || !rows.length) return { appended: 0 };
+  const title = await getVipReportSheetTitle();
+  if (!title) return { appended: 0 };
+  const sheetRows = await getVipReportSheetRows();
+  await ensureVipReportHeaders(sheetRows);
+  const existingKeys = new Set(sheetRows.slice(1).map((row) => vipReportRowKey({
+    flightDate: row[0],
+    flightNo: row[1],
+    passenger: row[2],
+    bn: row[3],
+    seat: row[4],
+    bags: row[5]
+  })).filter(Boolean));
+  const values = [];
+  for (const row of rows) {
+    const key = vipReportRowKey(row);
+    if (!key || existingKeys.has(key)) continue;
+    existingKeys.add(key);
+    values.push(vipReportValues(row));
+  }
+  if (!values.length) return { appended: 0 };
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: VIP_REPORT_SHEET_ID,
+    range: `${title}!A1`,
+    valueInputOption: 'RAW',
+    insertDataOption: 'INSERT_ROWS',
+    requestBody: { values }
+  });
+  return { appended: values.length };
+}
+
 function normalizeFlightCode(flightNo) {
   return String(flightNo || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 }
@@ -539,5 +629,6 @@ module.exports = {
   getSyBagInfoByDate,
   getSalesReportMeta,
   downloadSalesReportByFlight,
-  hasNextDayInfoEmail
+  hasNextDayInfoEmail,
+  appendVipReportRows
 };

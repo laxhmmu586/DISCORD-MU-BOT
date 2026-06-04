@@ -141,7 +141,7 @@
         right: 0;
         height: 76px;
         display: grid;
-        grid-template-columns: auto 1fr auto;
+        grid-template-columns: auto auto minmax(180px, 1fr) auto auto;
         align-items: center;
         gap: 28px;
         padding: 0 32px;
@@ -195,9 +195,53 @@
         text-transform: uppercase;
       }
 
+      .mobile-panel a.mobile-sub-link {
+        margin-top: 0;
+        padding-left: 24px;
+        color: rgba(255, 255, 255, 0.76);
+        font-size: 12px;
+      }
+
       .nav-links a:hover,
       .nav-actions a:hover {
         color: white;
+      }
+
+      .nav-item {
+        position: relative;
+      }
+
+      .nav-dropdown {
+        display: inline-flex;
+        align-items: center;
+        min-height: 76px;
+      }
+
+      .nav-menu {
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        min-width: 170px;
+        padding: 12px 0;
+        transform: translate(-50%, 8px);
+        opacity: 0;
+        pointer-events: none;
+        background: rgba(7, 18, 31, 0.9);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        box-shadow: 0 18px 40px rgba(0, 0, 0, 0.32);
+        transition: opacity 160ms ease, transform 160ms ease;
+      }
+
+      .nav-dropdown:hover .nav-menu,
+      .nav-dropdown:focus-within .nav-menu {
+        transform: translate(-50%, 0);
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .nav-menu a {
+        display: block;
+        padding: 10px 18px;
       }
 
       .search {
@@ -2037,6 +2081,167 @@
         min-width: 72px;
       }
 
+
+
+      .report-page {
+        width: min(100% - 48px, 1180px);
+        margin: 24px auto 0;
+        border: 1px solid rgba(176, 216, 255, 0.22);
+        background: linear-gradient(150deg, rgba(8, 24, 40, 0.88), rgba(2, 12, 22, 0.72));
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.36);
+        backdrop-filter: blur(18px);
+        padding: 24px;
+        max-height: calc(100svh - 118px);
+        overflow-y: auto;
+      }
+
+      .report-page[hidden] {
+        display: none;
+      }
+
+      body.is-report-view main {
+        overflow-y: auto;
+      }
+
+      body.is-report-view .hero {
+        height: calc(100svh - 76px);
+        min-height: calc(100svh - 76px);
+        display: block;
+        overflow-y: auto;
+      }
+
+      body.is-report-view .mission-head,
+      body.is-report-view .details-panel,
+      body.is-report-view .mission-stage,
+      body.is-report-view .flight-panel,
+      body.is-report-view .result-panel,
+      body.is-report-view .password-page {
+        display: none !important;
+      }
+
+      body.is-report-view .report-page {
+        width: 100%;
+        min-height: calc(100svh - 76px);
+        max-height: none;
+        margin: 0;
+        border: 0;
+        padding: clamp(22px, 3vw, 42px);
+        background: linear-gradient(150deg, rgba(8, 24, 40, 0.92), rgba(2, 12, 22, 0.82));
+        box-shadow: none;
+      }
+
+      .report-hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 18px;
+        align-items: start;
+        margin-bottom: 18px;
+      }
+
+      .report-hero h2 {
+        margin: 4px 0 10px;
+        color: white;
+        font-size: clamp(28px, 4vw, 48px);
+        line-height: 0.96;
+        text-transform: uppercase;
+      }
+
+      .report-close,
+      .report-download,
+      .report-run {
+        min-height: 42px;
+        border: 1px solid rgba(88, 167, 255, 0.5);
+        background: rgba(88, 167, 255, 0.14);
+        color: white;
+        padding: 0 16px;
+        font-weight: 900;
+        text-transform: uppercase;
+        cursor: pointer;
+      }
+
+      .report-download:disabled {
+        cursor: not-allowed;
+        opacity: 0.48;
+      }
+
+      .report-choice-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 18px;
+      }
+
+      .report-choice-row .report-run {
+        min-width: 180px;
+      }
+
+      .report-inline-panel {
+        display: grid;
+        grid-template-columns: minmax(180px, 260px) auto;
+        gap: 12px;
+        align-items: end;
+        margin-bottom: 18px;
+      }
+
+      .report-inline-panel[hidden] {
+        display: none;
+      }
+
+      .report-frame {
+        width: 100%;
+        min-height: calc(100svh - 290px);
+        border: 1px solid rgba(176, 216, 255, 0.22);
+        background: rgba(255, 255, 255, 0.92);
+      }
+
+      .report-field {
+        display: grid;
+        gap: 7px;
+      }
+
+      .report-field[hidden] {
+        display: none;
+      }
+
+      .report-field span {
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+      }
+
+      .report-field input,
+      .report-field select {
+        min-height: 42px;
+        border: 1px solid rgba(210, 231, 255, 0.2);
+        background: rgba(227, 237, 251, 0.96);
+        color: #071327;
+        padding: 0 12px;
+        outline: 0;
+      }
+
+      .report-actions-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 14px;
+      }
+
+      .report-link-button {
+        display: inline-flex;
+        min-height: 34px;
+        align-items: center;
+        border: 1px solid rgba(88, 167, 255, 0.5);
+        background: rgba(88, 167, 255, 0.12);
+        color: white;
+        padding: 0 10px;
+        font-size: 12px;
+        font-weight: 900;
+        text-decoration: none;
+        text-transform: uppercase;
+      }
+
       .status-ok { color: var(--green); }
       .status-warn { color: #ffd166; }
       .status-fail { color: var(--danger); }
@@ -2058,13 +2263,21 @@
 
       @media (max-width: 1080px) {
         .topbar {
-          grid-template-columns: auto 1fr auto;
+          grid-template-columns: auto minmax(0, 1fr) auto;
           gap: 18px;
         }
 
         .nav-links,
         .nav-actions {
           display: none;
+        }
+
+        .report-inline-panel {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .report-run {
+          grid-column: 1 / -1;
         }
 
         .nav-row {
@@ -2161,6 +2374,12 @@
           min-height: 100svh;
           overflow: visible;
           padding-top: 68px;
+        }
+
+        body.is-report-view .hero,
+        body.is-report-view .report-page {
+          height: calc(100svh - 68px);
+          min-height: calc(100svh - 68px);
         }
 
         .hero {
@@ -2425,8 +2644,14 @@
           grid-template-columns: repeat(3, minmax(72px, 1fr));
         }
 
-        .panel-head {
+        .panel-head,
+        .report-hero {
           display: grid;
+          grid-template-columns: 1fr;
+        }
+
+        .report-inline-panel {
+          grid-template-columns: 1fr;
         }
 
         .data-table {
@@ -2451,7 +2676,16 @@
   <body>
     <div class="loading-overlay" aria-live="polite"><span>Loading</span></div>
     <header class="topbar">
-      <a class="brand" href="#" aria-label="MUFC home"><span>MUFC</span></a>
+      <a class="brand" id="home-nav-link" href="#home" aria-label="MUFC home"><span>MUFC</span></a>
+      <nav class="nav-links" aria-label="Primary navigation">
+        <a href="#reports" id="report-nav-link">Report</a>
+        <div class="nav-item nav-dropdown">
+          <a href="#baggage" id="baggage-nav-link" aria-haspopup="true">Baggage</a>
+          <div class="nav-menu" aria-label="Baggage menu">
+            <a href="#bagroom" id="bagroom-nav-link">Bagroom</a>
+          </div>
+        </div>
+      </nav>
       <div class="nav-row">
         <form class="search" id="mission-search" aria-label="Search mission">
           <input id="query" type="search" value="SY" autocomplete="off" />
@@ -2490,6 +2724,9 @@
         <input id="mobile-query" type="search" value="SY" autocomplete="off" />
         <button type="submit">Search</button>
       </form>
+      <a href="#reports" id="mobile-report-nav-link">Report</a>
+      <a href="#baggage" id="mobile-baggage-nav-link">Baggage</a>
+      <a class="mobile-sub-link" href="#bagroom" id="mobile-bagroom-nav-link">Bagroom</a>
       <a href="#open-login">Login</a>
     </aside>
 
@@ -2519,6 +2756,25 @@
             </div>
           </div>
         </div>
+
+        <section class="report-page" id="report-page" aria-label="Report center" hidden>
+          <div class="report-hero">
+            <div>
+              <h2>Report Center</h2>
+              <p class="panel-muted">Choose Sales Report to download one day, or VIP Report to open the VIP Google Sheet.</p>
+            </div>
+            <button class="report-close" id="report-close" type="button">Close</button>
+          </div>
+          <div class="report-choice-row" aria-label="Report actions">
+            <button class="report-run" id="report-sales-choice" type="button">Sales Report</button>
+            <button class="report-run" id="report-vip-choice" type="button">VIP Report</button>
+          </div>
+          <div class="report-inline-panel" id="report-sales-panel" hidden>
+            <label class="report-field"><span>Date</span><input id="report-sales-date" type="date" /></label>
+            <button class="report-run" id="report-sales-download" type="button">Download</button>
+          </div>
+          <div id="report-output"><p class="panel-muted">Choose Sales Report or VIP Report.</p></div>
+        </section>
 
         <section class="details-panel" aria-label="Flight details" hidden>
           <div class="details-inner">
@@ -2604,6 +2860,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="/__/firebase/init.js"></script>
     <script>
+      const homeNavLink = document.querySelector("#home-nav-link");
       const menuButton = document.querySelector(".menu-button");
       const fallbackMenuButton = document.querySelector(".mobile-menu-fallback");
       const mobilePanel = document.querySelector(".mobile-panel");
@@ -2629,6 +2886,20 @@
       const salesReportButton = document.querySelector("#sales-report-button");
       const securityCheckButton = document.querySelector("#security-check-button");
       const seatMapButton = document.querySelector("#seat-map-button");
+      const reportNavLink = document.querySelector("#report-nav-link");
+      const mobileReportNavLink = document.querySelector("#mobile-report-nav-link");
+      const baggageNavLink = document.querySelector("#baggage-nav-link");
+      const bagroomNavLink = document.querySelector("#bagroom-nav-link");
+      const mobileBaggageNavLink = document.querySelector("#mobile-baggage-nav-link");
+      const mobileBagroomNavLink = document.querySelector("#mobile-bagroom-nav-link");
+      const reportPage = document.querySelector("#report-page");
+      const reportCloseButton = document.querySelector("#report-close");
+      const reportSalesChoice = document.querySelector("#report-sales-choice");
+      const reportVipChoice = document.querySelector("#report-vip-choice");
+      const reportSalesPanel = document.querySelector("#report-sales-panel");
+      const reportSalesDateInput = document.querySelector("#report-sales-date");
+      const reportSalesDownloadButton = document.querySelector("#report-sales-download");
+      const reportOutput = document.querySelector("#report-output");
       const passwordPage = document.querySelector("#change-password-page");
       const closePasswordPageButton = document.querySelector("#close-password-page");
       const changePasswordForm = document.querySelector("#change-password-form");
@@ -3708,6 +3979,113 @@
         }
       }
 
+
+
+      function setReportDefaults() {
+        if (!reportFromInput || !reportToInput) return;
+        const now = new Date();
+        const ymd = ymdFromDate(now);
+        reportFromInput.value = reportFromInput.value || ymd;
+        reportToInput.value = reportToInput.value || ymd;
+      }
+
+      function resetPanelState() {
+        if (!resultPanel) return;
+        resultPanel.innerHTML = "";
+        resultPanel.className = "result-panel";
+        resultPanel.style.top = "";
+        resultPanel._passengerRows = [];
+      }
+
+      function showHomePage() {
+        document.body.classList.remove("is-report-view");
+        if (reportPage) reportPage.hidden = true;
+        if (passwordPage) passwordPage.hidden = true;
+        closeLoginMenu();
+        closeFlightMenu();
+        closeMobilePanel();
+        closePassengerModal();
+        resetPanelState();
+        if (window.location.hash && window.history?.replaceState) {
+          window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+        }
+        window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      }
+
+      function showReportPage() {
+        setReportDefaults();
+        resetPanelState();
+        if (passwordPage) passwordPage.hidden = true;
+        if (reportPage) reportPage.hidden = false;
+        document.body.classList.add("is-report-view");
+        closeLoginMenu();
+        closeFlightMenu();
+        closeMobilePanel();
+        reportPage?.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      }
+
+      function hideReportPage() {
+        showHomePage();
+      }
+
+      function openBaggageReport() {
+        document.body.classList.remove("is-report-view");
+        if (reportPage) reportPage.hidden = true;
+        if (currentSy?.bagSheet?.hasData) renderBagReport();
+        else renderPanel("Baggage", currentSy?.flightNo || "SY", `<p class="panel-muted">No Google Sheet bag report is loaded yet. Search an SY date first, then open Baggage again.</p>`);
+        closeMobilePanel();
+      }
+
+      function isoToSyDate(value) {
+        const m = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (!m) return "";
+        const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+        return `${m[3]}${months[Number(m[2]) - 1]}${m[1].slice(-2)}`;
+      }
+
+      async function showSalesReportPicker() {
+        if (reportSalesPanel) reportSalesPanel.hidden = false;
+        if (reportOutput) reportOutput.innerHTML = `<p class="panel-muted">Choose one date, then click Download.</p>`;
+        if (reportSalesDateInput) {
+          const now = new Date();
+          const ymd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+          reportSalesDateInput.value = reportSalesDateInput.value || ymd;
+          reportSalesDateInput.focus();
+        }
+      }
+
+      function showVipReportSheet() {
+        if (reportSalesPanel) reportSalesPanel.hidden = true;
+        const sheetUrl = "https://docs.google.com/spreadsheets/d/1JqRnDx_uLc2m2SzyZOuHWWJsbkKenlKo60U9zwV9uMQ/edit?gid=1703169759#gid=1703169759";
+        const previewUrl = "https://docs.google.com/spreadsheets/d/1JqRnDx_uLc2m2SzyZOuHWWJsbkKenlKo60U9zwV9uMQ/preview?gid=1703169759";
+        if (reportOutput) {
+          reportOutput.innerHTML = `<div class="report-actions-row"><a class="report-link-button" href="${sheetUrl}" target="_blank" rel="noopener">Open VIP Google Sheet</a></div><iframe class="report-frame" src="${previewUrl}" title="VIP Report Google Sheet"></iframe>`;
+        }
+      }
+
+      async function downloadSelectedSalesReport() {
+        if (!reportOutput) return;
+        const isoDate = reportSalesDateInput?.value || "";
+        if (!isoDate) {
+          reportOutput.innerHTML = `<p class="panel-muted status-fail">Please choose a date first.</p>`;
+          return;
+        }
+        reportOutput.innerHTML = `<p class="panel-muted">Looking up Sales Report for ${escapeHtml(isoDate)}...</p>`;
+        try {
+          const sy = await loadSyForReport(isoDate);
+          const flightNo = sy.flightNo || "";
+          const flightDate = sy.flightDate || "";
+          if (!flightNo || !flightDate) throw new Error("No flight found for that date.");
+          const meta = await apiJson(`/sales-report/meta?flightNo=${encodeURIComponent(flightNo)}&flightDate=${encodeURIComponent(flightDate)}`);
+          if (meta?.error || meta?.available === false || meta?.found === false) throw new Error(meta?.error || "Sales report not found.");
+          const link = `${resolveApiBase()}/sales-report/download?flightNo=${encodeURIComponent(flightNo)}&flightDate=${encodeURIComponent(flightDate)}`;
+          reportOutput.innerHTML = `<p class="panel-muted status-ok">Sales Report found for ${escapeHtml(flightNo)} / ${escapeHtml(flightDate)}.</p><div class="report-actions-row"><a class="report-link-button" href="${escapeHtml(link)}" target="_blank" rel="noopener">Download Sales Report</a></div>`;
+          window.open(link, "_blank", "noopener");
+        } catch (error) {
+          reportOutput.innerHTML = `<p class="panel-muted status-fail">${escapeHtml(error?.message || "Sales report download failed.")}</p>`;
+        }
+      }
+
       function reviewPath() {
         const flightNo = encodeURIComponent(currentSy?.flightNo || "");
         const flightDate = encodeURIComponent(currentSy?.flightDate || "");
@@ -3884,6 +4262,13 @@
         showTimelineNodeCard(key, step, inputTime);
       }
 
+      function closeMobilePanel() {
+        menuButton.setAttribute("aria-expanded", "false");
+        fallbackMenuButton.setAttribute("aria-expanded", "false");
+        mobilePanel.classList.remove("is-open");
+        mobilePanel.setAttribute("aria-hidden", "true");
+      }
+
       function toggleMenu() {
         const open = menuButton.getAttribute("aria-expanded") === "true";
         menuButton.setAttribute("aria-expanded", String(!open));
@@ -3986,8 +4371,19 @@
         });
       });
 
+      homeNavLink.addEventListener("click", (event) => { event.preventDefault(); showHomePage(); });
       bagReportButton.addEventListener("click", renderBagReport);
       salesReportButton.addEventListener("click", downloadSalesReport);
+      reportNavLink.addEventListener("click", (event) => { event.preventDefault(); showReportPage(); });
+      mobileReportNavLink.addEventListener("click", (event) => { event.preventDefault(); showReportPage(); });
+      baggageNavLink.addEventListener("click", (event) => { event.preventDefault(); });
+      bagroomNavLink.addEventListener("click", (event) => { event.preventDefault(); openBaggageReport(); });
+      mobileBaggageNavLink.addEventListener("click", (event) => { event.preventDefault(); });
+      mobileBagroomNavLink.addEventListener("click", (event) => { event.preventDefault(); openBaggageReport(); });
+      reportCloseButton.addEventListener("click", hideReportPage);
+      reportSalesChoice.addEventListener("click", showSalesReportPicker);
+      reportVipChoice.addEventListener("click", showVipReportSheet);
+      reportSalesDownloadButton.addEventListener("click", downloadSelectedSalesReport);
       securityCheckButton.addEventListener("click", renderSecurityCheck);
       seatMapButton.addEventListener("click", renderSeatMap);
 
@@ -4103,6 +4499,14 @@
         flightMenuButton.setAttribute("aria-expanded", "true");
         flightMenu.classList.add("is-open");
         flightMenu.setAttribute("aria-hidden", "false");
+      }
+
+      if (window.location.hash === "#reports") {
+        showReportPage();
+      }
+
+      if (window.location.hash === "#bagroom") {
+        openBaggageReport();
       }
 
       if (!auth) {
