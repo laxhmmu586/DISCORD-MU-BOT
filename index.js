@@ -101,7 +101,7 @@ function flightDateToIsoDate(flightDate) {
 }
 
 function sectionTimestampToIsoDate(section) {
-  const match = String(section || '').match(/^(\d{4})\s+([A-Z][a-z]{2})\s+(\d{1,2}),/);
+  const match = String(section || '').match(/^(\d{4})\s+([A-Z][a-z]+)\s+(\d{1,2}),/);
   const month = monthNameToNumber(match?.[2]);
   if (!match || !month) return '';
   return `${match[1]}-${month}-${String(match[3]).padStart(2, '0')}`;
@@ -109,7 +109,7 @@ function sectionTimestampToIsoDate(section) {
 
 function splitReportSections(log) {
   return String(log || '')
-    .split(/(?=\n?\d{4}\s+[A-Z][a-z]{2}\s+\d{1,2},\s+[A-Z][a-z]+,\s+\d{2}:\d{2}:\d{2}\s*\n>)/g)
+    .split(/(?=\n?\d{4}\s+[A-Z][a-z]+\s+\d{1,2},\s+[A-Z][a-z]+,\s+\d{2}:\d{2}:\d{2}\s*\n>)/g)
     .map((content) => content.trim())
     .filter(Boolean);
 }
@@ -123,7 +123,7 @@ function cleanVipName(value) {
 }
 
 function cleanVipPassengerName(value) {
-  return cleanVipName(value).replace(/VIP$/i, '').replace(/\/+$/g, '');
+  return cleanVipName(value).replace(/\/+$/g, '');
 }
 
 function extractVipNameCandidate(section) {
@@ -777,14 +777,6 @@ app.get('/vip-report', async (req, res) => {
   try {
     const isoDate = String(req.query.date || '').trim();
     if (isoDate && !/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return res.status(400).json({ error: 'Invalid date' });
-    const syncDate = isoDate || todayIsoUtc();
-    let sync = { appended: 0, found: 0 };
-    try {
-      sync = await syncVipRowsForIsoDate(syncDate);
-    } catch (err) {
-      console.warn('VIP report sheet sync skipped:', err?.message || err);
-      sync = { appended: 0, found: 0, error: err?.message || 'Sheet sync failed' };
-    }
     const result = await loadStoredReportRows('vip', isoDate);
     return res.json({ ...result, sync });
   } catch (err) {

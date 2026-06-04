@@ -221,7 +221,6 @@ function cleanVipPassengerName(value) {
     .replace(/[\u001c-\u001f]/g, '')
     .replace(/\+$/g, '')
     .replace(/\s+/g, '')
-    .replace(/VIP$/i, '')
     .replace(/\/+$/g, '');
 }
 
