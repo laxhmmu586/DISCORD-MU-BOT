@@ -933,10 +933,16 @@
         white-space: pre-wrap;
       }
 
-      .node-email-body {
+      .node-email-body,
+      .node-diagnostic {
         display: block;
         margin-top: 6px;
         color: rgba(238, 247, 255, 0.86);
+      }
+
+      .node-diagnostic {
+        font-size: 11px;
+        color: rgba(210, 225, 240, 0.78);
       }
 
       .flight-panel {
@@ -3217,7 +3223,16 @@
       function nextDayInfoCardHtml(step) {
         const email = step?.email || null;
         if (!email) {
-          return `<b>Time</b> Not found<br><b>Status</b> Not complete<br>${escapeHtml(step?.tooltip || "NEXTDAY INFO sent email not found.")}`;
+          const diagnostic = step?.diagnostic || {};
+          const details = [
+            diagnostic.subject ? `Subject: ${diagnostic.subject}` : "",
+            diagnostic.sentDate ? `Sent date searched: ${diagnostic.sentDate}` : "",
+            diagnostic.gmailUser ? `Gmail user: ${diagnostic.gmailUser}` : "",
+            diagnostic.authMode ? `Auth: ${diagnostic.authMode}` : "",
+            diagnostic.serviceAccount ? `Service account: ${diagnostic.serviceAccount}` : "",
+            diagnostic.reason ? `Reason: ${diagnostic.reason}` : "",
+          ].filter(Boolean).join("\n");
+          return `<b>Time</b> Not found<br><b>Status</b> Not complete<br>${escapeHtml(step?.tooltip || "NEXTDAY INFO sent email not found.")}${details ? `<span class="node-diagnostic">${escapeHtml(details)}</span>` : ""}`;
         }
         const metrics = email.metrics || {};
         const counts = [

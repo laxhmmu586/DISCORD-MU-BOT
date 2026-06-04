@@ -704,7 +704,7 @@ function datePartsInTimeZone(date, timeZone) {
   return { year: parts.year, month: parts.month, day: parts.day };
 }
 
-function todayGmailDateBounds() {
+function gmailDateBoundsForToday() {
   const timeZone = process.env.NEXT_DAY_INFO_TIME_ZONE || 'America/Los_Angeles';
   const todayParts = datePartsInTimeZone(new Date(), timeZone);
   const start = new Date(Date.UTC(Number(todayParts.year), Number(todayParts.month) - 1, Number(todayParts.day)));
@@ -713,7 +713,21 @@ function todayGmailDateBounds() {
     const parts = datePartsInTimeZone(date, 'UTC');
     return `${parts.year}/${parts.month}/${parts.day}`;
   };
-  return { after: fmt(start), before: fmt(end) };
+  return {
+    after: fmt(start),
+    before: fmt(end),
+    todayYmd: `${todayParts.year}-${todayParts.month}-${todayParts.day}`,
+    timeZone
+  };
+}
+
+function emailSubjectDateFromToday(offsetDays = 1) {
+  const timeZone = process.env.NEXT_DAY_INFO_TIME_ZONE || 'America/Los_Angeles';
+  const todayParts = datePartsInTimeZone(new Date(), timeZone);
+  const todayUtc = new Date(Date.UTC(Number(todayParts.year), Number(todayParts.month) - 1, Number(todayParts.day)));
+  const target = new Date(todayUtc.getTime() + (Number(offsetDays || 0) * 86400000));
+  const mons = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${mons[target.getUTCMonth()]}-${String(target.getUTCDate()).padStart(2, '0')}`;
 }
 
 function decodeGmailBody(data) {
@@ -783,29 +797,58 @@ function gmailSentTime(internalDate, dateHeader) {
   };
 }
 
-async function getNextDayInfoEmail(flightNo, subjectDate, expectedSubject = '') {
+function nextDayInfoAuthDiagnostic(userId) {
+  const serviceAccount = process.env.GOOGLE_CLIENT_EMAIL || '';
+  return {
+    gmailUser: userId,
+    authMode: serviceAccount ? 'service-account-delegation' : 'default-google-auth',
+    serviceAccount: serviceAccount || 'not configured',
+    hasPrivateKey: Boolean(process.env.GOOGLE_PRIVATE_KEY)
+  };
+}
+
+async function lookupNextDayInfoEmail(flightNo, subjectDate = '', expectedSubject = '') {
   const normalizedFlightNo = String(flightNo || '').trim().toUpperCase();
-  const normalizedSubjectDate = String(subjectDate || '').trim();
-  const subject = String(expectedSubject || `${normalizedFlightNo} ${normalizedSubjectDate} flight information details`).trim();
-  if (!normalizedFlightNo || !normalizedSubjectDate || !subject) return null;
+  const runtimeSubjectDate = String(subjectDate || '').trim() || emailSubjectDateFromToday(1);
+  const subject = String(expectedSubject || `${normalizedFlightNo} ${runtimeSubjectDate} flight information details`).trim();
+  const userId = process.env.NEXT_DAY_INFO_GMAIL_USER || 'laxhmmu@gmail.com';
+  const bounds = gmailDateBoundsForToday();
+  const diagnostic = {
+    found: false,
+    reason: '',
+    subject,
+    subjectDate: runtimeSubjectDate,
+    sentDate: bounds.todayYmd,
+    timeZone: bounds.timeZone,
+    after: bounds.after,
+    before: bounds.before,
+    queries: [],
+    messageCount: 0,
+    candidateSubjects: [],
+    ...nextDayInfoAuthDiagnostic(userId)
+  };
+
+  if (!normalizedFlightNo || !runtimeSubjectDate || !subject) {
+    diagnostic.reason = 'Missing flight number or subject date.';
+    return { found: false, email: null, diagnostic };
+  }
 
   try {
-    const userId = process.env.NEXT_DAY_INFO_GMAIL_USER || 'laxhmmu@gmail.com';
     const gmail = gmailClientForUser(userId);
     const exactSubject = subject.replace(/"/g, '');
-    const { after, before } = todayGmailDateBounds();
-    const termQuery = `${normalizedFlightNo} ${normalizedSubjectDate} flight information details`
+    const termQuery = `${normalizedFlightNo} ${runtimeSubjectDate} flight information details`
       .split(/\s+/)
       .filter(Boolean)
       .map((term) => `subject:"${term.replace(/"/g, '')}"`)
       .join(' ');
     const queries = [
-      `in:sent subject:"${exactSubject}" after:${after} before:${before}`,
-      `in:sent subject:"${exactSubject}" newer_than:14d`,
-      `label:sent subject:"${exactSubject}" newer_than:14d`,
-      `in:sent ${termQuery} newer_than:14d`,
-      `${termQuery} newer_than:14d`
+      `in:sent subject:"${exactSubject}" after:${bounds.after} before:${bounds.before}`,
+      `label:sent subject:"${exactSubject}" after:${bounds.after} before:${bounds.before}`,
+      `from:${userId} subject:"${exactSubject}" after:${bounds.after} before:${bounds.before}`,
+      `in:sent ${termQuery} after:${bounds.after} before:${bounds.before}`,
+      `${termQuery} after:${bounds.after} before:${bounds.before}`
     ];
+    diagnostic.queries = queries;
 
     const messageIds = new Set();
     for (const q of queries) {
@@ -814,14 +857,19 @@ async function getNextDayInfoEmail(flightNo, subjectDate, expectedSubject = '') 
         q,
         includeSpamTrash: false,
         maxResults: 10,
-        fields: 'messages/id'
+        fields: 'messages/id,resultSizeEstimate'
       });
-      for (const message of result.data.messages || []) {
+      const messages = result.data.messages || [];
+      diagnostic.messageCount += messages.length;
+      for (const message of messages) {
         if (message?.id) messageIds.add(message.id);
       }
       if (messageIds.size) break;
     }
-    if (!messageIds.size) return null;
+    if (!messageIds.size) {
+      diagnostic.reason = `No sent Gmail messages matched ${subject} for ${bounds.todayYmd}.`;
+      return { found: false, email: null, diagnostic };
+    }
 
     const normalizedSubject = exactSubject.toUpperCase();
     const details = await Promise.all(Array.from(messageIds).map(async (id) => {
@@ -847,13 +895,34 @@ async function getNextDayInfoEmail(flightNo, subjectDate, expectedSubject = '') 
       };
     }));
 
+    diagnostic.candidateSubjects = details.map((item) => ({
+      subject: item.subject || '',
+      labels: item.labels || [],
+      sentAt: item.sentAt || ''
+    })).slice(0, 5);
     const exactMatches = details.filter((item) => String(item.subject || '').trim().toUpperCase() === normalizedSubject);
     const sentMatches = (exactMatches.length ? exactMatches : details).filter((item) => !item.labels?.length || item.labels.includes('SENT'));
-    return (sentMatches.length ? sentMatches : exactMatches).sort((a, b) => String(b.sentAt || '').localeCompare(String(a.sentAt || '')))[0] || null;
+    const email = (sentMatches.length ? sentMatches : exactMatches)
+      .sort((a, b) => String(b.sentAt || '').localeCompare(String(a.sentAt || '')))[0] || null;
+    if (!email) {
+      diagnostic.reason = `Gmail returned messages, but none were exact Sent matches for ${subject}.`;
+      return { found: false, email: null, diagnostic };
+    }
+    diagnostic.found = true;
+    diagnostic.reason = `Found sent Gmail message for ${subject}.`;
+    return { found: true, email: { ...email, diagnostic }, diagnostic };
   } catch (err) {
-    console.error('Gmail next day info subject search error:', err.message || err);
-    return null;
+    diagnostic.reason = err?.message || String(err || 'Unknown Gmail error');
+    diagnostic.errorCode = err?.code || err?.response?.status || '';
+    diagnostic.error = diagnostic.reason;
+    console.error('Gmail next day info subject search error:', diagnostic.reason);
+    return { found: false, email: null, diagnostic };
   }
+}
+
+async function getNextDayInfoEmail(flightNo, subjectDate, expectedSubject = '') {
+  const result = await lookupNextDayInfoEmail(flightNo, subjectDate, expectedSubject);
+  return result.email;
 }
 
 async function hasNextDayInfoEmail(flightNo, subjectDate, expectedSubject = '') {
@@ -947,6 +1016,7 @@ module.exports = {
   downloadSalesReportByDate,
   hasNextDayInfoEmail,
   getNextDayInfoEmail,
+  lookupNextDayInfoEmail,
   getStoredReportRows,
   getVipReportRowsFromSheet,
   appendStoredReportRows,

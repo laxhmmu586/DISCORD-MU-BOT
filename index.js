@@ -38,7 +38,7 @@ const {
   getSalesReportMeta,
   downloadSalesReportByFlight,
   downloadSalesReportByDate,
-  getNextDayInfoEmail,
+  lookupNextDayInfoEmail,
   getStoredReportRows,
   getVipReportRowsFromSheet,
   appendStoredReportRows,
@@ -871,15 +871,17 @@ app.get(
         const syBagInfo = isoDate ? await getSyBagInfoByDate(isoDate, syInfo.flightDate) : null;
         const nextDayQuery = syInfo.crewApis?.nextDayInfoQuery || null;
         const nextDayStep = syInfo.crewApis?.steps?.find((step) => step.key === 'nextDayInfo');
-        if (nextDayStep && nextDayQuery?.flightNo && nextDayQuery?.flightDate) {
-          const nextDaySubject = nextDayQuery.emailSubject || `${nextDayQuery.flightNo} ${nextDayQuery.flightDate} flight information details`;
-          const nextDayInfo = await getNextDayInfoEmail(nextDayQuery.flightNo, nextDayQuery.emailSubjectDate || nextDayQuery.flightDate, nextDaySubject);
-          nextDayStep.complete = Boolean(nextDayInfo);
+        if (nextDayStep && nextDayQuery?.flightNo) {
+          const lookup = await lookupNextDayInfoEmail(nextDayQuery.flightNo);
+          const nextDayInfo = lookup.email;
+          const nextDaySubject = lookup.diagnostic?.subject || nextDayQuery.emailSubject || `${nextDayQuery.flightNo} ${nextDayQuery.flightDate} flight information details`;
+          nextDayStep.complete = Boolean(lookup.found);
           nextDayStep.time = nextDayInfo?.sentTime || '';
-          nextDayStep.tooltip = nextDayInfo
+          nextDayStep.tooltip = lookup.found
             ? `NEXTDAY INFO sent email found: ${nextDaySubject}`
-            : `NEXTDAY INFO sent email not found in Sent today: ${nextDaySubject}`;
-          nextDayStep.email = nextDayInfo;
+            : `NEXTDAY INFO sent email not found in Sent today: ${nextDaySubject}. ${lookup.diagnostic?.reason || ''}`.trim();
+          nextDayStep.email = nextDayInfo || null;
+          nextDayStep.diagnostic = lookup.diagnostic || null;
         }
         const authContext = await resolveAuthContextFromRequest(req);
         return res.json({ sy: { ...syInfo, bagSheet: syBagInfo, permissions: authContext.permissions } });
