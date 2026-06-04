@@ -2120,12 +2120,36 @@
         opacity: 0.48;
       }
 
+      .report-mode-actions {
+        margin-bottom: 18px;
+      }
+
       .report-form {
         display: grid;
-        grid-template-columns: 1.2fr repeat(3, minmax(150px, 0.8fr)) auto;
+        grid-template-columns: repeat(3, minmax(120px, 1fr)) auto;
         gap: 12px;
         align-items: end;
         margin-bottom: 18px;
+      }
+
+      .report-form.is-sales-mode {
+        grid-template-columns: minmax(160px, 260px) auto;
+        justify-content: start;
+      }
+
+      .report-form.is-vip-mode {
+        display: none;
+      }
+
+      .report-form.is-sales-mode .report-to-field,
+      .report-form.is-sales-mode .report-keyword-field {
+        display: none;
+      }
+
+      .report-mode-actions .detail-action.is-active {
+        border-color: rgba(120, 183, 255, 0.78);
+        background: rgba(88, 167, 255, 0.22);
+        color: white;
       }
 
       .report-field {
@@ -2203,11 +2227,11 @@
         }
 
         .report-form {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
+          grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
         }
 
-        .report-run {
-          grid-column: 1 / -1;
+        .report-form.is-sales-mode {
+          grid-template-columns: minmax(160px, 1fr) auto;
         }
 
         .nav-row {
@@ -2580,7 +2604,8 @@
           grid-template-columns: 1fr;
         }
 
-        .report-form {
+        .report-form,
+        .report-form.is-sales-mode {
           grid-template-columns: 1fr;
         }
 
@@ -2609,7 +2634,7 @@
       <a class="brand" id="home-nav-link" href="#home" aria-label="MUFC home"><span>MUFC</span></a>
       <nav class="nav-links" aria-label="Primary navigation">
         <a href="#reports" id="report-nav-link">Report</a>
-        <a href="#baggage" id="baggage-nav-link">Baggage</a>
+        <a href="#baggage" id="baggage-nav-link">Bagroom</a>
       </nav>
       <div class="nav-row">
         <form class="search" id="mission-search" aria-label="Search mission">
@@ -2650,7 +2675,7 @@
         <button type="submit">Search</button>
       </form>
       <a href="#reports" id="mobile-report-nav-link">Report</a>
-      <a href="#baggage" id="mobile-baggage-nav-link">Baggage</a>
+      <a href="#baggage" id="mobile-baggage-nav-link">Bagroom</a>
       <a href="#open-login">Login</a>
     </aside>
 
@@ -2672,7 +2697,6 @@
                 <span class="line-menu-icon" aria-hidden="true"><span></span><span></span><span></span></span>
               </button>
               <div class="flight-menu" aria-hidden="true">
-                <button id="bag-report-button" type="button">Bag Report</button>
                 <button id="sales-report-button" type="button">Sales Report</button>
                 <button id="security-check-button" type="button">Security Check</button>
                 <button id="seat-map-button" type="button">Seat Map</button>
@@ -2685,24 +2709,33 @@
           <div class="report-hero">
             <div>
               <h2>Report Center</h2>
-              <p class="panel-muted">Choose a report type and date range, then search. VIP and Wheelchair reports read saved Google Sheet records first; if a date has not been scanned yet, the system scans the log once and saves the trace to Google Sheets.</p>
+              <p class="panel-muted">Use Sales Report to choose one date and download the file. Use VIP Report to show the saved VIP list directly.</p>
             </div>
             <button class="report-close" id="report-close" type="button">Close</button>
           </div>
+          <div class="detail-actions report-mode-actions" aria-label="Report shortcuts">
+            <button class="detail-action" id="report-sales-mode" type="button" data-report-mode="sales">Sales Report</button>
+            <button class="detail-action" id="report-vip-mode" type="button" data-report-mode="vip">VIP Report</button>
+          </div>
           <form class="report-form" id="report-form">
-            <label class="report-field"><span>Report type</span><select id="report-type">
-              <option value="wheelchair">Wheelchair Report</option>
-              <option value="baggage">Baggage Report</option>
-              <option value="sales">Sales Report</option>
-              <option value="vip">VIP Report</option>
-            </select></label>
-            <label class="report-field"><span>From</span><input id="report-from" type="date" required /></label>
-            <label class="report-field"><span>To</span><input id="report-to" type="date" required /></label>
-            <label class="report-field"><span>Keyword</span><input id="report-keyword" type="search" placeholder="Optional filter" /></label>
+            <label class="report-field report-from-field"><span id="report-from-label">From</span><input id="report-from" type="date" required /></label>
+            <label class="report-field report-to-field"><span>To</span><input id="report-to" type="date" required /></label>
+            <label class="report-field report-keyword-field"><span>Search</span><input id="report-keyword" type="search" placeholder="Optional filter" /></label>
             <button class="report-run" type="submit">Search</button>
           </form>
           <div class="report-actions-row"><button class="report-download" id="report-download" type="button" disabled>Download CSV</button></div>
-          <div id="report-output"><p class="panel-muted">No search yet.</p></div>
+          <div id="report-output"><p class="panel-muted">Choose Sales Report or VIP Report.</p></div>
+        </section>
+
+        <section class="report-page" id="baggage-page" aria-label="Bagroom" hidden>
+          <div class="report-hero">
+            <div>
+              <h2>Bagroom</h2>
+              <p class="panel-muted">Default view shows today's bagroom data.</p>
+            </div>
+            <button class="report-close" id="baggage-close" type="button">Close</button>
+          </div>
+          <div id="baggage-output"><p class="panel-muted">Loading today's bagroom data...</p></div>
         </section>
 
         <section class="details-panel" aria-label="Flight details" hidden>
@@ -2820,10 +2853,15 @@
       const baggageNavLink = document.querySelector("#baggage-nav-link");
       const mobileBaggageNavLink = document.querySelector("#mobile-baggage-nav-link");
       const reportPage = document.querySelector("#report-page");
+      const baggagePage = document.querySelector("#baggage-page");
+      const baggageOutput = document.querySelector("#baggage-output");
+      const baggageCloseButton = document.querySelector("#baggage-close");
       const reportCloseButton = document.querySelector("#report-close");
       const reportForm = document.querySelector("#report-form");
-      const reportTypeInput = document.querySelector("#report-type");
+      const reportSalesModeButton = document.querySelector("#report-sales-mode");
+      const reportVipModeButton = document.querySelector("#report-vip-mode");
       const reportFromInput = document.querySelector("#report-from");
+      const reportFromLabel = document.querySelector("#report-from-label");
       const reportToInput = document.querySelector("#report-to");
       const reportKeywordInput = document.querySelector("#report-keyword");
       const reportOutput = document.querySelector("#report-output");
@@ -2862,6 +2900,7 @@
       let didDrag = false;
       let currentSy = null;
       let latestQuery = "SY";
+      let activeReportMode = "sales";
       let activeSyQuery = "SY";
 
       function setSyDetailsVisible(visible) {
@@ -3887,7 +3926,7 @@
         };
         addBagSection("Rush Bags", sheet.rushBags, ["Rush #", "Orig #", "To", "AKE"]);
         addBagSection("Not Load Bags", sheet.notLoadBags, ["Tag #", "Status", "Remark"]);
-        renderPanel("Bag Report", currentSy?.flightNo || "SY", sheet.hasData && sections.length ? sections.join("") : `<p class="panel-muted">No Google Sheet bag report found for this SY date.</p>`);
+        renderPanel("Bagroom", currentSy?.flightNo || "SY", sheet.hasData && sections.length ? sections.join("") : `<p class="panel-muted">No Google Sheet bagroom data found for this SY date.</p>`);
       }
 
       async function downloadSalesReport() {
@@ -3909,12 +3948,30 @@
 
 
 
-      function setReportDefaults() {
+      function setReportDefaults(forceToday = false) {
         if (!reportFromInput || !reportToInput) return;
         const now = new Date();
         const ymd = ymdFromDate(now);
-        reportFromInput.value = reportFromInput.value || ymd;
-        reportToInput.value = reportToInput.value || ymd;
+        if (forceToday || !reportFromInput.value) reportFromInput.value = ymd;
+        if (forceToday || !reportToInput.value) reportToInput.value = reportFromInput.value || ymd;
+      }
+
+      function setReportMode(mode, options = {}) {
+        activeReportMode = mode === "vip" ? "vip" : "sales";
+        setReportDefaults(options.forceToday);
+        if (activeReportMode === "sales" && reportToInput) reportToInput.value = reportFromInput?.value || reportToInput.value;
+        reportForm?.classList.toggle("is-sales-mode", activeReportMode === "sales");
+        reportForm?.classList.toggle("is-vip-mode", activeReportMode === "vip");
+        reportSalesModeButton?.classList.toggle("is-active", activeReportMode === "sales");
+        reportVipModeButton?.classList.toggle("is-active", activeReportMode === "vip");
+        if (reportFromLabel) reportFromLabel.textContent = activeReportMode === "sales" ? "Date" : "From";
+        const reportRunButton = reportForm?.querySelector(".report-run");
+        if (reportRunButton) reportRunButton.textContent = activeReportMode === "sales" ? "Download" : "Search";
+        if (reportDownloadButton) reportDownloadButton.hidden = activeReportMode === "sales";
+        if (reportOutput && options.resetOutput) {
+          reportOutput.innerHTML = activeReportMode === "vip" ? `<p class="panel-muted">Loading VIP Report...</p>` : `<p class="panel-muted">Choose a date, then download Sales Report.</p>`;
+        }
+        if (activeReportMode === "vip") generateReport();
       }
 
       function resetPanelState() {
@@ -3928,6 +3985,7 @@
       function showHomePage() {
         document.body.classList.remove("is-report-view");
         if (reportPage) reportPage.hidden = true;
+        if (baggagePage) baggagePage.hidden = true;
         if (passwordPage) passwordPage.hidden = true;
         closeLoginMenu();
         closeFlightMenu();
@@ -3940,12 +3998,13 @@
         window.scrollTo({ top: 0, left: 0, behavior: "auto" });
       }
 
-      function showReportPage() {
-        setReportDefaults();
+      function showReportPage(mode = activeReportMode) {
         resetPanelState();
         if (passwordPage) passwordPage.hidden = true;
+        if (baggagePage) baggagePage.hidden = true;
         if (reportPage) reportPage.hidden = false;
         document.body.classList.add("is-report-view");
+        setReportMode(mode, { forceToday: true, resetOutput: true });
         closeLoginMenu();
         closeFlightMenu();
         closeMobilePanel();
@@ -3956,12 +4015,38 @@
         showHomePage();
       }
 
+      async function renderBagroomPage() {
+        if (!baggageOutput) return;
+        const today = ymdFromDate(new Date());
+        baggageOutput.innerHTML = `<p class="panel-muted">Loading today's bagroom data...</p>`;
+        try {
+          const sy = await loadSyForReport(today);
+          const sheet = sy?.bagSheet || {};
+          const sections = [];
+          const addBagSection = (title, bagSection, headers) => {
+            const rows = bagSection?.rows || (bagSection?.columns ? [bagSection.columns] : []);
+            if (!rows.length) return;
+            sections.push(`<h3>${escapeHtml(title)}</h3>${rowsTable(rows, headers.map((label, index) => ({ label, value: (row) => row[index] })), "No rows.")}`);
+          };
+          addBagSection("Rush Bags", sheet.rushBags, ["Rush #", "Orig #", "To", "AKE"]);
+          addBagSection("Not Load Bags", sheet.notLoadBags, ["Tag #", "Status", "Remark"]);
+          baggageOutput.innerHTML = sheet.hasData && sections.length ? sections.join("") : `<p class="panel-muted">No Google Sheet bagroom data found for today (${escapeHtml(today)}).</p>`;
+        } catch (error) {
+          baggageOutput.innerHTML = `<p class="panel-muted status-fail">${escapeHtml(error?.message || "Bagroom lookup failed.")}</p>`;
+        }
+      }
+
       function openBaggageReport() {
-        document.body.classList.remove("is-report-view");
+        resetPanelState();
+        if (passwordPage) passwordPage.hidden = true;
         if (reportPage) reportPage.hidden = true;
-        if (currentSy?.bagSheet?.hasData) renderBagReport();
-        else renderPanel("Baggage", currentSy?.flightNo || "SY", `<p class="panel-muted">No Google Sheet bag report is loaded yet. Search an SY date first, then open Baggage again.</p>`);
+        if (baggagePage) baggagePage.hidden = false;
+        document.body.classList.add("is-report-view");
+        closeLoginMenu();
+        closeFlightMenu();
         closeMobilePanel();
+        baggagePage?.scrollTo({ top: 0, left: 0, behavior: "auto" });
+        renderBagroomPage();
       }
 
       function isoToSyDate(value) {
@@ -4093,19 +4178,23 @@
       async function generateReport(event) {
         event?.preventDefault();
         if (!reportOutput) return;
-        const type = reportTypeInput?.value || "wheelchair";
-        const from = reportFromInput?.value || "";
-        const to = reportToInput?.value || "";
-        const keyword = reportKeywordInput?.value || "";
+        const type = activeReportMode === "vip" ? "vip" : "sales";
+        const today = ymdFromDate(new Date());
+        const from = type === "vip" ? today : (reportFromInput?.value || today);
+        const to = type === "sales" ? from : today;
+        const keyword = type === "vip" ? (reportKeywordInput?.value || "") : "";
         let dates;
         try {
-          dates = reportDateRange(from, to);
+          dates = type === "sales" ? [from] : [today];
+          if (type === "sales" && !from) throw new Error("Please select a valid date.");
         } catch (error) {
           reportOutput.innerHTML = `<p class="panel-muted status-fail">${escapeHtml(error.message)}</p>`;
           setReportCsv([], "report.csv");
           return;
         }
-        reportOutput.innerHTML = `<p class="panel-muted">Searching ${escapeHtml(type)} from ${escapeHtml(from)} to ${escapeHtml(to)}...</p>`;
+        reportOutput.innerHTML = type === "sales"
+          ? `<p class="panel-muted">Checking Sales Report for ${escapeHtml(from)}...</p>`
+          : `<p class="panel-muted">Loading VIP Report...</p>`;
         setReportCsv([], "report.csv");
         const rows = [];
         const errors = [];
@@ -4115,46 +4204,22 @@
               rows.push(...await vipReportRows(isoDate, keyword));
               continue;
             }
-            if (type === "wheelchair") {
-              rows.push(...await storedReportRows("wheelchair", isoDate, keyword));
-              continue;
-            }
             const sy = await loadSyForReport(isoDate);
-            if (type === "baggage") rows.push(...baggageReportRows(sy, isoDate));
-            if (type === "sales") rows.push(await salesReportRows(sy, isoDate));
+            rows.push(await salesReportRows(sy, isoDate));
           } catch (error) {
             errors.push(`${isoDate}: ${error.message}`);
           }
         }
         let tableHtml = "";
         if (type === "sales") {
+          const downloadRows = rows.filter((row) => row.downloadUrl);
           tableHtml = rowsTable(rows, [
             { label: "Date", value: (row) => row.date },
             { label: "Flight", value: (row) => row.flightNo },
             { label: "Flight Date", value: (row) => row.flightDate },
             { label: "Available", value: (row) => row.salesAvailable },
             { label: "File", value: (row) => row.fileName },
-            { label: "Download", value: (row) => row.downloadUrl ? "Open link below" : "-" },
-          ], "No sales report rows.") + `<div class="report-actions-row">${rows.filter((row) => row.downloadUrl).map((row) => `<a class="report-link-button" href="${escapeHtml(row.downloadUrl)}" target="_blank" rel="noopener">${escapeHtml(row.date)} Sales</a>`).join("")}</div>`;
-        } else if (type === "wheelchair") {
-          tableHtml = rowsTable(rows, [
-            { label: "Date", value: (row) => row.date },
-            { label: "Flight", value: (row) => row.flightNo },
-            { label: "Passenger", value: (row) => row.passenger },
-            { label: "BN", value: (row) => row.bn },
-            { label: "Seat", value: (row) => row.seat },
-            { label: "Wheelchair Type", value: (row) => row.wheelchairType },
-          ], "No wheelchair passengers found.");
-        } else if (type === "baggage") {
-          tableHtml = rowsTable(rows, [
-            { label: "Date", value: (row) => row.date },
-            { label: "Flight", value: (row) => row.flightNo },
-            { label: "Section", value: (row) => row.section },
-            { label: "Bag / Rush #", value: (row) => row.rushNo || row.tagNo },
-            { label: "Status / Orig #", value: (row) => row.status || row.origNo },
-            { label: "Remark / To", value: (row) => row.remark || row.to },
-            { label: "AKE", value: (row) => row.ake },
-          ], "No baggage rows found.");
+          ], "No sales report rows.") + `<div class="report-actions-row">${downloadRows.map((row) => `<a class="report-link-button" href="${escapeHtml(row.downloadUrl)}" target="_blank" rel="noopener">Download Sales Report</a>`).join("")}</div>`;
         } else if (type === "vip") {
           tableHtml = rowsTable(rows, [
             { label: "Date", value: (row) => row.date },
@@ -4168,7 +4233,7 @@
         }
         const errorHtml = errors.length ? `<h3>Skipped dates</h3><p class="panel-muted status-warn">${escapeHtml(errors.join(" | "))}</p>` : "";
         reportOutput.innerHTML = `${errorHtml}${tableHtml}`;
-        setReportCsv(rows, `${type}-report-${from}-to-${to}.csv`);
+        setReportCsv(type === "sales" ? rows.filter((row) => row.downloadUrl) : rows, `${type}-report-${from}${type === "sales" ? "" : `-to-${to}`}.csv`);
       }
 
       function reviewPath() {
@@ -4456,14 +4521,18 @@
         });
       });
 
+
       homeNavLink.addEventListener("click", (event) => { event.preventDefault(); showHomePage(); });
-      bagReportButton.addEventListener("click", renderBagReport);
-      salesReportButton.addEventListener("click", downloadSalesReport);
-      reportNavLink.addEventListener("click", (event) => { event.preventDefault(); showReportPage(); });
-      mobileReportNavLink.addEventListener("click", (event) => { event.preventDefault(); showReportPage(); });
+      bagReportButton?.addEventListener("click", renderBagReport);
+      salesReportButton?.addEventListener("click", downloadSalesReport);
+      reportNavLink.addEventListener("click", (event) => { event.preventDefault(); showReportPage("sales"); });
+      mobileReportNavLink.addEventListener("click", (event) => { event.preventDefault(); showReportPage("sales"); });
       baggageNavLink.addEventListener("click", (event) => { event.preventDefault(); openBaggageReport(); });
       mobileBaggageNavLink.addEventListener("click", (event) => { event.preventDefault(); openBaggageReport(); });
       reportCloseButton.addEventListener("click", hideReportPage);
+      baggageCloseButton?.addEventListener("click", hideReportPage);
+      reportSalesModeButton?.addEventListener("click", () => setReportMode("sales", { forceToday: true, resetOutput: true }));
+      reportVipModeButton?.addEventListener("click", () => setReportMode("vip", { forceToday: true, resetOutput: true }));
       reportForm.addEventListener("submit", generateReport);
       reportDownloadButton.addEventListener("click", downloadCurrentReportCsv);
       securityCheckButton.addEventListener("click", renderSecurityCheck);
