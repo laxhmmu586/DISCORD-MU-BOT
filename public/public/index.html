@@ -2164,16 +2164,34 @@
         opacity: 0.48;
       }
 
-      .report-form {
+      .report-choice-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 18px;
+      }
+
+      .report-choice-row .report-run {
+        min-width: 180px;
+      }
+
+      .report-inline-panel {
         display: grid;
-        grid-template-columns: minmax(220px, 1.2fr) repeat(2, minmax(150px, 0.8fr)) auto;
+        grid-template-columns: minmax(180px, 260px) auto;
         gap: 12px;
         align-items: end;
         margin-bottom: 18px;
       }
 
-      .report-form.is-single-date {
-        grid-template-columns: minmax(220px, 1.2fr) minmax(150px, 0.8fr) auto;
+      .report-inline-panel[hidden] {
+        display: none;
+      }
+
+      .report-frame {
+        width: 100%;
+        min-height: calc(100svh - 290px);
+        border: 1px solid rgba(176, 216, 255, 0.22);
+        background: rgba(255, 255, 255, 0.92);
       }
 
       .report-field {
@@ -2254,7 +2272,7 @@
           display: none;
         }
 
-        .report-form {
+        .report-inline-panel {
           grid-template-columns: repeat(2, minmax(0, 1fr));
         }
 
@@ -2632,7 +2650,7 @@
           grid-template-columns: 1fr;
         }
 
-        .report-form {
+        .report-inline-panel {
           grid-template-columns: 1fr;
         }
 
@@ -2743,22 +2761,19 @@
           <div class="report-hero">
             <div>
               <h2>Report Center</h2>
-              <p class="panel-muted">Choose a report type and date range, then search. VIP and Wheelchair search results are saved to Google Sheets; the next search for the same date reads the saved results directly.</p>
+              <p class="panel-muted">Choose Sales Report to download one day, or VIP Report to open the VIP Google Sheet.</p>
             </div>
             <button class="report-close" id="report-close" type="button">Close</button>
           </div>
-          <form class="report-form" id="report-form">
-            <label class="report-field"><span>Report type</span><select id="report-type">
-              <option value="wheelchair">Wheelchair Report</option>
-              <option value="sales">Sales Report</option>
-              <option value="vip">VIP Report</option>
-            </select></label>
-            <label class="report-field" id="report-from-field"><span id="report-from-label">From</span><input id="report-from" type="date" required /></label>
-            <label class="report-field" id="report-to-field"><span>To</span><input id="report-to" type="date" required /></label>
-            <button class="report-run" type="submit">Search</button>
-          </form>
-          <div class="report-actions-row"><button class="report-download" id="report-download" type="button" disabled>Download CSV</button></div>
-          <div id="report-output"><p class="panel-muted">No search yet.</p></div>
+          <div class="report-choice-row" aria-label="Report actions">
+            <button class="report-run" id="report-sales-choice" type="button">Sales Report</button>
+            <button class="report-run" id="report-vip-choice" type="button">VIP Report</button>
+          </div>
+          <div class="report-inline-panel" id="report-sales-panel" hidden>
+            <label class="report-field"><span>Date</span><input id="report-sales-date" type="date" /></label>
+            <button class="report-run" id="report-sales-download" type="button">Download</button>
+          </div>
+          <div id="report-output"><p class="panel-muted">Choose Sales Report or VIP Report.</p></div>
         </section>
 
         <section class="details-panel" aria-label="Flight details" hidden>
@@ -2879,14 +2894,12 @@
       const mobileBagroomNavLink = document.querySelector("#mobile-bagroom-nav-link");
       const reportPage = document.querySelector("#report-page");
       const reportCloseButton = document.querySelector("#report-close");
-      const reportForm = document.querySelector("#report-form");
-      const reportTypeInput = document.querySelector("#report-type");
-      const reportFromInput = document.querySelector("#report-from");
-      const reportToInput = document.querySelector("#report-to");
-      const reportFromLabel = document.querySelector("#report-from-label");
-      const reportToField = document.querySelector("#report-to-field");
+      const reportSalesChoice = document.querySelector("#report-sales-choice");
+      const reportVipChoice = document.querySelector("#report-vip-choice");
+      const reportSalesPanel = document.querySelector("#report-sales-panel");
+      const reportSalesDateInput = document.querySelector("#report-sales-date");
+      const reportSalesDownloadButton = document.querySelector("#report-sales-download");
       const reportOutput = document.querySelector("#report-output");
-      const reportDownloadButton = document.querySelector("#report-download");
       const passwordPage = document.querySelector("#change-password-page");
       const closePasswordPageButton = document.querySelector("#close-password-page");
       const changePasswordForm = document.querySelector("#change-password-form");
@@ -4030,199 +4043,47 @@
         return `${m[3]}${months[Number(m[2]) - 1]}${m[1].slice(-2)}`;
       }
 
-      function reportDateRange(fromValue, toValue) {
-        const from = new Date(`${fromValue}T00:00:00Z`);
-        const to = new Date(`${toValue}T00:00:00Z`);
-        if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) throw new Error("Please select a valid date range.");
-        if (from > to) throw new Error("From date cannot be after To date.");
-        const dates = [];
-        for (let cursor = new Date(from); cursor <= to; cursor.setUTCDate(cursor.getUTCDate() + 1)) {
-          dates.push(ymdFromDate(cursor));
-          if (dates.length > 62) throw new Error("Please select 62 days or less for one report.");
+      async function showSalesReportPicker() {
+        if (reportSalesPanel) reportSalesPanel.hidden = false;
+        if (reportOutput) reportOutput.innerHTML = `<p class="panel-muted">Choose one date, then click Download.</p>`;
+        if (reportSalesDateInput) {
+          const now = new Date();
+          const ymd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+          reportSalesDateInput.value = reportSalesDateInput.value || ymd;
+          reportSalesDateInput.focus();
         }
-        return dates;
       }
 
-      function reportDownloadLink(row) {
-        if (row.salesAvailable !== "Yes" || !row.flightNo || !row.flightDate) return "";
-        return `${resolveApiBase()}/sales-report/download?flightNo=${encodeURIComponent(row.flightNo)}&flightDate=${encodeURIComponent(row.flightDate)}`;
-      }
-
-      function reportRowsToCsv(rows) {
-        if (!rows.length) return "";
-        const keys = [...rows.reduce((set, row) => {
-          Object.keys(row).forEach((key) => set.add(key));
-          return set;
-        }, new Set())];
-        const esc = (value) => `"${String(value ?? "").replace(/"/g, '""')}"`;
-        return [keys.map(esc).join(","), ...rows.map((row) => keys.map((key) => esc(row[key])).join(","))].join("\n");
-      }
-
-      function setReportCsv(rows, fileName) {
-        if (!reportDownloadButton) return;
-        reportDownloadButton.disabled = !rows.length;
-        reportDownloadButton._csv = reportRowsToCsv(rows);
-        reportDownloadButton._fileName = fileName;
-      }
-
-      function downloadCurrentReportCsv() {
-        const csv = reportDownloadButton?._csv || "";
-        if (!csv) return;
-        const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = reportDownloadButton._fileName || "report.csv";
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        URL.revokeObjectURL(url);
-      }
-
-
-
-      async function loadSyForReport(isoDate) {
-        const syDate = isoToSyDate(isoDate);
-        const data = await fetchSearch(`SY/${syDate}`);
-        if (data?.error || !data?.sy) throw new Error(data?.error || `No SY data for ${isoDate}`);
-        return data.sy;
-      }
-
-      function wheelchairReportRows(sy, isoDate) {
-        const byBn = new Map([...(sy.seatMapRecords || []), ...(sy.bnAudit || [])].map((row) => [String(row.bn || "").padStart(3, "0"), row.passengerRecord || row]));
-        return (sy.wchList || []).map((row) => {
-          const merged = { ...(byBn.get(String(row.bn || "").padStart(3, "0")) || {}), ...row };
-          return {
-            date: isoDate,
-            flightNo: sy.flightNo || "",
-            flightDate: sy.flightDate || "",
-            passenger: passengerName(merged),
-            bn: merged.bn || "",
-            seat: merged.seat || "",
-            wheelchairType: Array.isArray(merged.codes) ? merged.codes.join("/") : (merged.code || merged.specialServices || "WCH"),
-          };
-        });
-      }
-
-      function baggageReportRows(sy, isoDate) {
-        const rows = [];
-        const addRows = (sectionName, section, headers) => {
-          const bodyRows = section?.rows || [];
-          bodyRows.forEach((row) => {
-            const out = { date: isoDate, flightNo: sy.flightNo || "", flightDate: sy.flightDate || "", section: sectionName };
-            headers.forEach((header, index) => { out[header] = row[index] || ""; });
-            rows.push(out);
-          });
-        };
-        const sheet = sy.bagSheet || {};
-        addRows("Rush Bags", sheet.rushBags, ["rushNo", "origNo", "to", "ake"]);
-        addRows("Not Load Bags", sheet.notLoadBags, ["tagNo", "status", "remark"]);
-        return rows;
-      }
-
-      async function salesReportRows(sy, isoDate) {
-        const row = { date: isoDate, flightNo: sy.flightNo || "", flightDate: sy.flightDate || "", salesAvailable: "No", fileName: "", downloadUrl: "" };
-        if (!row.flightNo || !row.flightDate) return row;
-        try {
-          const meta = await apiJson(`/sales-report/meta?flightNo=${encodeURIComponent(row.flightNo)}&flightDate=${encodeURIComponent(row.flightDate)}`);
-          if (meta?.available === true || meta?.found === true) {
-            row.salesAvailable = "Yes";
-            row.fileName = meta.fileName || "Sales Report";
-            row.downloadUrl = reportDownloadLink(row);
-          }
-        } catch (error) {
-          row.salesAvailable = "Error";
-          row.fileName = error?.message || "Lookup failed";
+      function showVipReportSheet() {
+        if (reportSalesPanel) reportSalesPanel.hidden = true;
+        const sheetUrl = "https://docs.google.com/spreadsheets/d/1JqRnDx_uLc2m2SzyZOuHWWJsbkKenlKo60U9zwV9uMQ/edit?gid=1703169759#gid=1703169759";
+        const previewUrl = "https://docs.google.com/spreadsheets/d/1JqRnDx_uLc2m2SzyZOuHWWJsbkKenlKo60U9zwV9uMQ/preview?gid=1703169759";
+        if (reportOutput) {
+          reportOutput.innerHTML = `<div class="report-actions-row"><a class="report-link-button" href="${sheetUrl}" target="_blank" rel="noopener">Open VIP Google Sheet</a></div><iframe class="report-frame" src="${previewUrl}" title="VIP Report Google Sheet"></iframe>`;
         }
-        return row;
       }
 
-      async function storedReportRows(type, isoDate) {
-        const data = await apiJson(`/stored-report?type=${encodeURIComponent(type)}&date=${encodeURIComponent(isoDate)}`);
-        return data?.rows || [];
-      }
-
-      async function vipReportRows(isoDate) {
-        return storedReportRows("vip", isoDate);
-      }
-
-      function updateReportFormMode() {
-        const isSales = reportTypeInput?.value === "sales";
-        reportForm?.classList.toggle("is-single-date", isSales);
-        if (reportFromLabel) reportFromLabel.textContent = isSales ? "Date" : "From";
-        if (reportToField) reportToField.hidden = isSales;
-        if (reportToInput) reportToInput.required = !isSales;
-        if (isSales && reportToInput && reportFromInput) reportToInput.value = reportFromInput.value;
-      }
-
-      async function generateReport(event) {
-        event?.preventDefault();
+      async function downloadSelectedSalesReport() {
         if (!reportOutput) return;
-        const type = reportTypeInput?.value || "wheelchair";
-        const from = reportFromInput?.value || "";
-        const isSales = type === "sales";
-        const to = isSales ? from : (reportToInput?.value || "");
-        let dates;
-        try {
-          dates = isSales ? reportDateRange(from, from) : reportDateRange(from, to);
-        } catch (error) {
-          reportOutput.innerHTML = `<p class="panel-muted status-fail">${escapeHtml(error.message)}</p>`;
-          setReportCsv([], "report.csv");
+        const isoDate = reportSalesDateInput?.value || "";
+        if (!isoDate) {
+          reportOutput.innerHTML = `<p class="panel-muted status-fail">Please choose a date first.</p>`;
           return;
         }
-        reportOutput.innerHTML = `<p class="panel-muted">Searching ${escapeHtml(type)} ${isSales ? `on ${escapeHtml(from)}` : `from ${escapeHtml(from)} to ${escapeHtml(to)}`}...</p>`;
-        setReportCsv([], "report.csv");
-        const rows = [];
-        const errors = [];
-        for (const isoDate of dates) {
-          try {
-            if (type === "vip") {
-              rows.push(...await vipReportRows(isoDate));
-              continue;
-            }
-            if (type === "wheelchair") {
-              rows.push(...await storedReportRows("wheelchair", isoDate));
-              continue;
-            }
-            const sy = await loadSyForReport(isoDate);
-            if (type === "sales") rows.push(await salesReportRows(sy, isoDate));
-          } catch (error) {
-            errors.push(`${isoDate}: ${error.message}`);
-          }
+        reportOutput.innerHTML = `<p class="panel-muted">Looking up Sales Report for ${escapeHtml(isoDate)}...</p>`;
+        try {
+          const sy = await loadSyForReport(isoDate);
+          const flightNo = sy.flightNo || "";
+          const flightDate = sy.flightDate || "";
+          if (!flightNo || !flightDate) throw new Error("No flight found for that date.");
+          const meta = await apiJson(`/sales-report/meta?flightNo=${encodeURIComponent(flightNo)}&flightDate=${encodeURIComponent(flightDate)}`);
+          if (meta?.error || meta?.available === false || meta?.found === false) throw new Error(meta?.error || "Sales report not found.");
+          const link = `${resolveApiBase()}/sales-report/download?flightNo=${encodeURIComponent(flightNo)}&flightDate=${encodeURIComponent(flightDate)}`;
+          reportOutput.innerHTML = `<p class="panel-muted status-ok">Sales Report found for ${escapeHtml(flightNo)} / ${escapeHtml(flightDate)}.</p><div class="report-actions-row"><a class="report-link-button" href="${escapeHtml(link)}" target="_blank" rel="noopener">Download Sales Report</a></div>`;
+          window.open(link, "_blank", "noopener");
+        } catch (error) {
+          reportOutput.innerHTML = `<p class="panel-muted status-fail">${escapeHtml(error?.message || "Sales report download failed.")}</p>`;
         }
-        let tableHtml = "";
-        if (type === "sales") {
-          tableHtml = rowsTable(rows, [
-            { label: "Date", value: (row) => row.date },
-            { label: "Flight", value: (row) => row.flightNo },
-            { label: "Flight Date", value: (row) => row.flightDate },
-            { label: "Available", value: (row) => row.salesAvailable },
-            { label: "File", value: (row) => row.fileName },
-            { label: "Download", value: (row) => row.downloadUrl ? "Open link below" : "-" },
-          ], "No sales report rows.") + `<div class="report-actions-row">${rows.filter((row) => row.downloadUrl).map((row) => `<a class="report-link-button" href="${escapeHtml(row.downloadUrl)}" target="_blank" rel="noopener">${escapeHtml(row.date)} Sales</a>`).join("")}</div>`;
-        } else if (type === "wheelchair") {
-          tableHtml = rowsTable(rows, [
-            { label: "Date", value: (row) => row.date },
-            { label: "Flight", value: (row) => row.flightNo },
-            { label: "Passenger", value: (row) => row.passenger },
-            { label: "BN", value: (row) => row.bn },
-            { label: "Seat", value: (row) => row.seat },
-            { label: "Wheelchair Type", value: (row) => row.wheelchairType },
-          ], "No wheelchair passengers found.");
-        } else if (type === "vip") {
-          tableHtml = rowsTable(rows, [
-            { label: "Date", value: (row) => row.date },
-            { label: "Flight", value: (row) => row.flightNo },
-            { label: "Flight Date", value: (row) => row.flightDate },
-            { label: "Passenger", value: (row) => row.passenger },
-            { label: "BN", value: (row) => row.bn },
-            { label: "Seat", value: (row) => row.seat },
-            { label: "Source", value: (row) => row.source },
-          ], "No VIP passengers found.");
-        }
-        const errorHtml = errors.length ? `<h3>Skipped dates</h3><p class="panel-muted status-warn">${escapeHtml(errors.join(" | "))}</p>` : "";
-        reportOutput.innerHTML = `${errorHtml}${tableHtml}`;
-        setReportCsv(rows, isSales ? `${type}-report-${from}.csv` : `${type}-report-${from}-to-${to}.csv`);
       }
 
       function reviewPath() {
@@ -4520,11 +4381,9 @@
       mobileBaggageNavLink.addEventListener("click", (event) => { event.preventDefault(); });
       mobileBagroomNavLink.addEventListener("click", (event) => { event.preventDefault(); openBaggageReport(); });
       reportCloseButton.addEventListener("click", hideReportPage);
-      reportTypeInput.addEventListener("change", updateReportFormMode);
-      reportFromInput.addEventListener("change", updateReportFormMode);
-      updateReportFormMode();
-      reportForm.addEventListener("submit", generateReport);
-      reportDownloadButton.addEventListener("click", downloadCurrentReportCsv);
+      reportSalesChoice.addEventListener("click", showSalesReportPicker);
+      reportVipChoice.addEventListener("click", showVipReportSheet);
+      reportSalesDownloadButton.addEventListener("click", downloadSelectedSalesReport);
       securityCheckButton.addEventListener("click", renderSecurityCheck);
       seatMapButton.addEventListener("click", renderSeatMap);
 
