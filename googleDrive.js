@@ -322,6 +322,11 @@ const REPORT_SHEETS = {
     gid: 910713958,
     headers: ['Recorded At', 'Date', 'Flight', 'Flight Date', 'Passenger', 'BN', 'Seat', 'Wheelchair Type', 'Key'],
     fields: ['recordedAt', 'date', 'flightNo', 'flightDate', 'passenger', 'bn', 'seat', 'wheelchairType', 'key']
+  },
+  psmMsg: {
+    gid: 101743110,
+    headers: ['Recorded At', 'Flight Date', 'Flight #', 'Passenger Name', 'BN', 'Seat', 'BAGS', 'Type', 'Detail', 'Key'],
+    fields: ['recordedAt', 'flightDate', 'flightNo', 'passenger', 'bn', 'seat', 'bags', 'type', 'detail', 'key']
   }
 };
 const reportSheetTitles = {};
@@ -554,6 +559,86 @@ async function appendVipReportRows(rows) {
     };
     if (!normalized.flightDate || !normalized.flightNo || !normalized.passenger) continue;
     const key = config.fields.map((field) => normalized[field] || '').join('|').toUpperCase();
+    if (existingKeys.has(key)) continue;
+    existingKeys.add(key);
+    values.push(config.fields.map((field) => normalized[field] || ''));
+  }
+
+  if (!values.length) return { appended: 0 };
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: REPORT_SHEET_ID,
+    range: `${title}!A1`,
+    valueInputOption: 'RAW',
+    insertDataOption: 'INSERT_ROWS',
+    requestBody: { values }
+  });
+  return { appended: values.length };
+}
+
+
+function buildPsmMsgKey(row) {
+  return [
+    'psmMsg',
+    row?.flightDate || '',
+    row?.flightNo || '',
+    row?.passenger || '',
+    row?.bn || '',
+    row?.seat || '',
+    row?.bags || '',
+    row?.type || '',
+    row?.detail || ''
+  ].map((value) => String(value || '').trim().toUpperCase()).join('|');
+}
+
+function reportPsmMsgRowFromSheet(values) {
+  const row = {};
+  const config = getReportSheetConfig('psmMsg');
+  config.fields.forEach((field, index) => {
+    row[field] = values[index] || '';
+  });
+  row.flightDate = String(row.flightDate || '').trim().toUpperCase();
+  row.flightNo = String(row.flightNo || '').trim().toUpperCase();
+  row.passenger = String(row.passenger || '').trim().toUpperCase();
+  row.bn = String(row.bn || '').trim().padStart(3, '0').replace(/^0+$/, '');
+  row.seat = String(row.seat || '').trim().toUpperCase();
+  row.bags = String(row.bags || '').trim().toUpperCase();
+  row.type = String(row.type || '').trim().toUpperCase();
+  row.detail = String(row.detail || '').trim().toUpperCase();
+  row.key = row.key || buildPsmMsgKey(row);
+  return row;
+}
+
+async function appendPsmMsgReportRows(rows) {
+  if (reportSheetAccessBlocked) return { appended: 0 };
+  const config = getReportSheetConfig('psmMsg');
+  const title = await getReportSheetTitle('psmMsg');
+  if (!config || !title) return { appended: 0 };
+  const sheetRows = await getReportSheetRows('psmMsg');
+  await ensureReportSheetHeaders('psmMsg', sheetRows);
+  const existingKeys = new Set();
+  const startIndex = sheetRows.length && isReportHeaderRow('psmMsg', sheetRows[0]) ? 1 : 0;
+  for (let i = startIndex; i < sheetRows.length; i += 1) {
+    if (isReportHeaderRow('psmMsg', sheetRows[i])) continue;
+    const parsed = reportPsmMsgRowFromSheet(sheetRows[i]);
+    existingKeys.add(String(parsed.key || buildPsmMsgKey(parsed)).trim().toUpperCase());
+  }
+
+  const values = [];
+  for (const row of rows || []) {
+    const normalized = {
+      recordedAt: row.recordedAt || new Date().toISOString(),
+      flightDate: String(row.flightDate || '').trim().toUpperCase(),
+      flightNo: String(row.flightNo || '').trim().toUpperCase(),
+      passenger: String(row.passenger || '').trim().toUpperCase(),
+      bn: String(row.bn || '').trim().padStart(3, '0'),
+      seat: String(row.seat || '').trim().toUpperCase(),
+      bags: String(row.bags || '').trim().toUpperCase(),
+      type: String(row.type || '').trim().toUpperCase(),
+      detail: String(row.detail || '').trim().toUpperCase()
+    };
+    if (!normalized.flightDate || !normalized.flightNo || !normalized.passenger || !normalized.detail) continue;
+    normalized.key = row.key || buildPsmMsgKey(normalized);
+    const key = String(normalized.key || '').trim().toUpperCase();
     if (existingKeys.has(key)) continue;
     existingKeys.add(key);
     values.push(config.fields.map((field) => normalized[field] || ''));
@@ -835,5 +920,6 @@ module.exports = {
   getStoredReportRows,
   appendStoredReportRows,
   appendVipReportRows,
+  appendPsmMsgReportRows,
   pruneStoredReportRows
 };

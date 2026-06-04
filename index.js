@@ -40,6 +40,7 @@ const {
   hasNextDayInfoEmail,
   getStoredReportRows,
   appendStoredReportRows,
+  appendPsmMsgReportRows,
   pruneStoredReportRows
 
 } = require('./googleDrive');
@@ -218,6 +219,49 @@ function extractWheelchairRowsFromSy(syInfo, isoDate) {
   });
 }
 
+
+function compactReportValue(value) {
+  if (Array.isArray(value)) return value.filter(Boolean).join(', ');
+  return String(value || '').trim();
+}
+
+function psmMsgRowsFromSyInfo(syInfo) {
+  if (!syInfo?.flightNo || !syInfo?.flightDate) return [];
+  return (syInfo.psmList || []).map((row) => {
+    const lines = (Array.isArray(row.psmLines) ? row.psmLines : [row.text || row.raw || row.message])
+      .filter(Boolean)
+      .map((line) => String(line || '').trim())
+      .filter((line) => /^\s*(?:PSM|MSG)(?:\b|-)/i.test(line));
+    const detail = lines.join('\n');
+    return {
+      flightDate: syInfo.flightDate,
+      flightNo: syInfo.flightNo,
+      passenger: reportPassengerName(row),
+      bn: String(row.bn || '').padStart(3, '0'),
+      seat: String(row.seat || '').toUpperCase(),
+      bags: compactReportValue(row.bagtags || row.bagTags || row.bags),
+      type: lines.some((line) => /^\s*MSG/i.test(line)) ? 'MSG' : 'PSM',
+      detail
+    };
+  }).filter((row) => row.passenger && row.detail);
+}
+
+async function syncPsmMsgRowsFromSyInfo(syInfo) {
+  const rows = psmMsgRowsFromSyInfo(syInfo);
+  if (!rows.length) return { appended: 0, found: 0 };
+  const result = await appendPsmMsgReportRows(rows);
+  return { ...result, found: rows.length };
+}
+
+
+async function syncTodayPsmMsgReportRows() {
+  const log = await getLatestFlightLog();
+  if (!log) return { appended: 0, found: 0 };
+  const syInfo = findSYInfo(log, null, { preferredFlightNo: 'MU586' });
+  if (!syInfo) return { appended: 0, found: 0 };
+  return syncPsmMsgRowsFromSyInfo(syInfo);
+}
+
 async function scanVipReportRows(isoDate) {
   const log = await getLogForIsoDate(isoDate);
   if (!log) return [];
@@ -256,6 +300,11 @@ async function syncTodayReportSheets() {
     } catch (err) {
       console.warn(`${type} report sheet sync skipped:`, err?.message || err);
     }
+  }
+  try {
+    await syncTodayPsmMsgReportRows();
+  } catch (err) {
+    console.warn('PSM/MSG report sheet sync skipped:', err?.message || err);
   }
 }
 
@@ -850,6 +899,12 @@ app.get(
         const yearFromFlight = m?.[3] ? (2000 + Number(m[3])) : fullYear;
         const isoDate = m ? `${yearFromFlight}-${months[m[2]] || '01'}-${m[1]}` : '';
         const syBagInfo = isoDate ? await getSyBagInfoByDate(isoDate, syInfo.flightDate) : null;
+        try {
+          syInfo.psmMsgSheetSync = await syncPsmMsgRowsFromSyInfo(syInfo);
+        } catch (err) {
+          console.warn('PSM/MSG report sheet sync skipped:', err?.message || err);
+          syInfo.psmMsgSheetSync = { appended: 0, found: (syInfo.psmList || []).length, error: err?.message || 'Sheet sync failed' };
+        }
         const nextDayQuery = syInfo.crewApis?.nextDayInfoQuery || null;
         const nextDayStep = syInfo.crewApis?.steps?.find((step) => step.key === 'nextDayInfo');
         if (nextDayStep && nextDayQuery?.flightNo && nextDayQuery?.flightDate) {
