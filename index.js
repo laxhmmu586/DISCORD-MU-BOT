@@ -240,17 +240,16 @@ async function scanWheelchairReportRows(isoDate) {
 async function loadStoredReportRows(type, isoDate, options = {}) {
   const normalizedType = String(type || '').toLowerCase();
   const stored = await getStoredReportRows(normalizedType, isoDate);
+  if (normalizedType === 'vip') return { rows: stored.rows, source: 'sheet', scanned: true };
   if (stored.scanned && !options.forceRefresh) return { rows: stored.rows, source: 'sheet', scanned: true };
-  const rows = normalizedType === 'vip'
-    ? await scanVipReportRows(isoDate)
-    : await scanWheelchairReportRows(isoDate);
+  const rows = await scanWheelchairReportRows(isoDate);
   await appendStoredReportRows(normalizedType, isoDate, rows);
   const refreshed = await getStoredReportRows(normalizedType, isoDate);
   return { rows: refreshed.rows.length ? refreshed.rows : rows, source: 'scan', scanned: true };
 }
 
 async function syncTodayReportSheets() {
-  for (const type of ['vip', 'wheelchair']) {
+  for (const type of ['wheelchair']) {
     try {
       await loadStoredReportRows(type, todayIsoUtc(), { forceRefresh: true });
       await pruneStoredReportRows(type);
@@ -658,7 +657,7 @@ app.get('/stored-report', async (req, res) => {
 app.get('/vip-report', async (req, res) => {
   try {
     const isoDate = String(req.query.date || '').trim();
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return res.status(400).json({ error: 'Missing or invalid date' });
+    if (isoDate && !/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return res.status(400).json({ error: 'Invalid date' });
     const result = await loadStoredReportRows('vip', isoDate);
     return res.json(result);
   } catch (err) {
