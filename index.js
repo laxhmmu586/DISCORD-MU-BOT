@@ -117,13 +117,19 @@ function cleanVipName(value) {
     .replace(/\/+$/g, '');
 }
 
+function sectionHasVipService(section) {
+  return /(?:\s|\/|^)VIP(?:\s|\/|$)/i.test(String(section || ''));
+}
+
 function extractVipNameCandidate(section) {
-  const namMatch = String(section || '').match(/^\s*NAM\s+([A-Z][A-Z/]+VIP)\b/im);
-  if (namMatch) return { name: cleanVipName(namMatch[1]), source: 'NAM' };
+  const hasVipService = sectionHasVipService(section);
+  const namMatch = String(section || '').match(/^\s*NAM\s+([A-Z][A-Z/]+(?:VIP)?)\b/im);
+  const namName = cleanVipName(namMatch?.[1]);
+  if (namName && (namName.endsWith('VIP') || hasVipService)) return { name: namName, source: 'NAM' };
 
   const passengerLine = String(section || '').match(/^\s*\d+\.\s*([A-Z][A-Z/]+(?:VIP)?\+?)\b.*?\bBN\s*\d{1,3}\b/im);
   const passengerName = cleanVipName(passengerLine?.[1]);
-  if (passengerName.endsWith('VIP')) return { name: passengerName, source: 'Passenger Line' };
+  if (passengerName && (passengerName.endsWith('VIP') || hasVipService)) return { name: passengerName, source: 'Passenger Line' };
 
   return null;
 }
@@ -155,7 +161,7 @@ function extractVipPassengersFromLog(log, isoDate) {
   for (const section of splitReportSections(log)) {
     if (!/\bPR:\s*[A-Z0-9]+\//i.test(section)) continue;
     const vip = extractVipNameCandidate(section);
-    if (!vip?.name?.endsWith('VIP')) continue;
+    if (!vip?.name) continue;
 
     const sectionIsoDate = sectionTimestampToIsoDate(section);
     if (sectionIsoDate !== isoDate) continue;
@@ -208,6 +214,62 @@ async function appendVipRowsForIsoDate(log, isoDate) {
     await appendVipReportRows(rows);
   } catch (err) {
     console.warn('VIP report sheet append skipped:', err?.message || err);
+  }
+}
+
+
+function normalizeVipFlightDate(pax, fallbackYearSuffix) {
+  const sourceFlightDate = String(pax?.sourceText || '').match(/\bPR:\s*[A-Z0-9]+\/(\d{2}[A-Z]{3}\d{2})\b/i)?.[1];
+  if (sourceFlightDate) return sourceFlightDate.toUpperCase();
+
+  const rawFlightDate = String(pax?.flightDate || '').toUpperCase();
+  if (/^\d{2}[A-Z]{3}\d{2}$/.test(rawFlightDate)) return rawFlightDate;
+  if (/^\d{2}[A-Z]{3}$/.test(rawFlightDate)) {
+    const yy = String(fallbackYearSuffix || new Date().getUTCFullYear().toString().slice(-2)).replace(/\D/g, '').slice(-2);
+    return `${rawFlightDate}${yy}`;
+  }
+  return '';
+}
+
+function extractVipBagsFromPassenger(pax) {
+  const bagtags = Array.isArray(pax?.bagtags) ? pax.bagtags : [];
+  if (bagtags.length) {
+    return [...new Set(bagtags.map((tag) => String(tag || '').trim().toUpperCase()).filter(Boolean))].join(' ');
+  }
+  return (
+    String(pax?.sourceText || '').match(/\bFBA\/\d+PC\b/i)?.[0] ||
+    String(pax?.sourceText || '').match(/\bBAG\d+\/\d+\/\d+\b/i)?.[0] ||
+    ''
+  ).toUpperCase();
+}
+
+function buildVipReportRowFromPassenger(pax, fallbackYearSuffix) {
+  const services = Array.isArray(pax?.specialServices) ? pax.specialServices.map((code) => String(code || '').toUpperCase()) : [];
+  const name = cleanVipName(pax?.name);
+  const sourceHasVip = sectionHasVipService(pax?.sourceText);
+  if (!services.includes('VIP') && !name.endsWith('VIP') && !sourceHasVip) return null;
+
+  const flightDate = normalizeVipFlightDate(pax, fallbackYearSuffix);
+  const flightNo = String(pax?.flight || '').trim().toUpperCase() || String(pax?.sourceText || '').match(/\bPR:\s*([A-Z0-9]+)\/\d{2}[A-Z]{3}\d{2}\b/i)?.[1]?.toUpperCase() || '';
+  if (!flightDate || !flightNo || !name) return null;
+
+  return {
+    flightDate,
+    flightNo,
+    passenger: name,
+    bn: String(pax?.bn || '').replace(/\D/g, '').padStart(3, '0').replace(/^0{3}$/, ''),
+    seat: String(pax?.seat || '').replace(/^-+$/, '').toUpperCase(),
+    bags: extractVipBagsFromPassenger(pax)
+  };
+}
+
+async function appendVipRowForPassenger(pax, fallbackYearSuffix) {
+  const row = buildVipReportRowFromPassenger(pax, fallbackYearSuffix);
+  if (!row) return;
+  try {
+    await appendVipReportRows([row]);
+  } catch (err) {
+    console.warn('VIP report passenger append skipped:', err?.message || err);
   }
 }
 
@@ -893,6 +955,8 @@ app.get(
             'Passenger not found'
         });
       }
+
+      await appendVipRowForPassenger(pax, yearSuffix);
 
       // =========================
       // Membership Status

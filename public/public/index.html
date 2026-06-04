@@ -219,29 +219,44 @@
 
       .nav-menu {
         position: absolute;
-        top: 100%;
-        left: 50%;
-        min-width: 170px;
-        padding: 12px 0;
-        transform: translate(-50%, 8px);
+        top: 0;
+        left: -22px;
+        min-width: 230px;
+        min-height: 220px;
+        padding: 76px 0 18px;
+        transform: translateY(8px);
         opacity: 0;
         pointer-events: none;
-        background: rgba(7, 18, 31, 0.9);
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        box-shadow: 0 18px 40px rgba(0, 0, 0, 0.32);
+        background: linear-gradient(180deg, rgba(24, 30, 39, 0.72), rgba(15, 20, 28, 0.58));
+        border: 0;
+        border-left: 1px solid rgba(255, 255, 255, 0.08);
+        border-right: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 24px 52px rgba(0, 0, 0, 0.34);
+        backdrop-filter: blur(8px);
         transition: opacity 160ms ease, transform 160ms ease;
       }
 
       .nav-dropdown:hover .nav-menu,
       .nav-dropdown:focus-within .nav-menu {
-        transform: translate(-50%, 0);
+        transform: translateY(0);
         opacity: 1;
         pointer-events: auto;
       }
 
       .nav-menu a {
         display: block;
-        padding: 10px 18px;
+        padding: 8px 32px;
+        color: rgba(255, 255, 255, 0.86);
+        font-size: 14px;
+        font-weight: 900;
+        letter-spacing: 0.2px;
+      }
+
+      .nav-menu a:hover,
+      .nav-menu a:focus-visible {
+        color: #fff;
+        background: rgba(255, 255, 255, 0.08);
+        outline: 0;
       }
 
       .search {
@@ -2159,20 +2174,43 @@
         cursor: pointer;
       }
 
+      .report-run:hover,
+      .report-run:focus-visible,
+      .report-close:hover,
+      .report-close:focus-visible {
+        border-color: rgba(255, 255, 255, 0.72);
+        background: rgba(255, 255, 255, 0.12);
+        outline: 0;
+      }
+
       .report-download:disabled {
         cursor: not-allowed;
         opacity: 0.48;
       }
 
       .report-choice-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 12px;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(180px, 1fr));
+        gap: 16px;
         margin-bottom: 18px;
       }
 
       .report-choice-row .report-run {
-        min-width: 180px;
+        min-height: 96px;
+        display: grid;
+        place-items: center;
+        border-color: rgba(176, 216, 255, 0.24);
+        background:
+          linear-gradient(150deg, rgba(88, 167, 255, 0.22), rgba(4, 18, 31, 0.62)),
+          rgba(0, 0, 0, 0.18);
+        box-shadow: 0 14px 34px rgba(0, 0, 0, 0.22);
+        font-size: clamp(15px, 2vw, 20px);
+        letter-spacing: 1px;
+      }
+
+      .report-choice-row .report-run.is-active {
+        border-color: rgba(88, 167, 255, 0.84);
+        background: linear-gradient(150deg, rgba(88, 167, 255, 0.34), rgba(4, 18, 31, 0.72));
       }
 
       .report-inline-panel {
@@ -2748,7 +2786,6 @@
                 <span class="line-menu-icon" aria-hidden="true"><span></span><span></span><span></span></span>
               </button>
               <div class="flight-menu" aria-hidden="true">
-                <button id="bag-report-button" type="button">Bag Report</button>
                 <button id="sales-report-button" type="button">Sales Report</button>
                 <button id="security-check-button" type="button">Security Check</button>
                 <button id="seat-map-button" type="button">Seat Map</button>
@@ -2802,7 +2839,6 @@
                 <button class="detail-action" type="button" data-panel="chd">CHD List <span class="detail-action-badge" id="chd-count"></span></button>
                 <button class="detail-action" type="button" data-panel="gov">GOV/AQQ <span class="detail-action-badge" id="gov-count"></span></button>
                 <button class="detail-action" type="button" data-panel="nbrd">CKIN/NBRD <span class="detail-action-badge" id="nbrd-count"></span></button>
-                <button class="detail-action" type="button" data-panel="wch">WCH <span class="detail-action-badge" id="wch-count">0</span></button>
                 <button class="detail-action warning-action" type="button" data-panel="warning" id="warning-action" hidden aria-label="Open warnings">⚠️ WARNING <span class="detail-action-badge warning-badge" id="warning-count">0</span></button>
                 <button class="detail-action" type="button" data-panel="membership">Membership</button>
                 <button class="detail-action" type="button" data-panel="psm">PSM/MSG <span class="detail-action-badge" id="psm-count"></span></button>
@@ -3982,11 +4018,10 @@
 
 
       function setReportDefaults() {
-        if (!reportFromInput || !reportToInput) return;
+        if (!reportSalesDateInput) return;
         const now = new Date();
         const ymd = ymdFromDate(now);
-        reportFromInput.value = reportFromInput.value || ymd;
-        reportToInput.value = reportToInput.value || ymd;
+        reportSalesDateInput.value = reportSalesDateInput.value || ymd;
       }
 
       function resetPanelState() {
@@ -4015,6 +4050,10 @@
       function showReportPage() {
         setReportDefaults();
         resetPanelState();
+        reportSalesChoice?.classList.remove("is-active");
+        reportVipChoice?.classList.remove("is-active");
+        if (reportSalesPanel) reportSalesPanel.hidden = true;
+        if (reportOutput) reportOutput.innerHTML = `<p class="panel-muted">Choose Sales Report or VIP Report.</p>`;
         if (passwordPage) passwordPage.hidden = true;
         if (reportPage) reportPage.hidden = false;
         document.body.classList.add("is-report-view");
@@ -4044,6 +4083,8 @@
       }
 
       async function showSalesReportPicker() {
+        reportSalesChoice?.classList.add("is-active");
+        reportVipChoice?.classList.remove("is-active");
         if (reportSalesPanel) reportSalesPanel.hidden = false;
         if (reportOutput) reportOutput.innerHTML = `<p class="panel-muted">Choose one date, then click Download.</p>`;
         if (reportSalesDateInput) {
@@ -4055,6 +4096,8 @@
       }
 
       function showVipReportSheet() {
+        reportVipChoice?.classList.add("is-active");
+        reportSalesChoice?.classList.remove("is-active");
         if (reportSalesPanel) reportSalesPanel.hidden = true;
         const sheetUrl = "https://docs.google.com/spreadsheets/d/1JqRnDx_uLc2m2SzyZOuHWWJsbkKenlKo60U9zwV9uMQ/edit?gid=1703169759#gid=1703169759";
         const previewUrl = "https://docs.google.com/spreadsheets/d/1JqRnDx_uLc2m2SzyZOuHWWJsbkKenlKo60U9zwV9uMQ/preview?gid=1703169759";
@@ -4364,7 +4407,7 @@
           if (panel === "chd") renderChdPanel();
           if (panel === "gov") renderGovPanel();
           if (panel === "nbrd") renderNbrdPanel();
-          if (panel === "wch") renderWchPanel();
+          if (panel === "wch") return;
           if (panel === "warning") renderWarningPanel();
           if (panel === "membership") renderMembershipPanel();
           if (panel === "psm") renderPsmPanel();
@@ -4372,8 +4415,8 @@
       });
 
       homeNavLink.addEventListener("click", (event) => { event.preventDefault(); showHomePage(); });
-      bagReportButton.addEventListener("click", renderBagReport);
-      salesReportButton.addEventListener("click", downloadSalesReport);
+      bagReportButton?.addEventListener("click", renderBagReport);
+      salesReportButton?.addEventListener("click", downloadSalesReport);
       reportNavLink.addEventListener("click", (event) => { event.preventDefault(); showReportPage(); });
       mobileReportNavLink.addEventListener("click", (event) => { event.preventDefault(); showReportPage(); });
       baggageNavLink.addEventListener("click", (event) => { event.preventDefault(); });
