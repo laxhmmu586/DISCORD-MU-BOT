@@ -233,9 +233,12 @@
       }
 
       const APP_ENTRY_KEY = "mufc_allow_app_entry";
+      const APP_LOGIN_STARTED_KEY = "mufc_login_started_at";
 
       function allowAppEntry() {
-        sessionStorage.setItem(APP_ENTRY_KEY, String(Date.now()));
+        const now = String(Date.now());
+        sessionStorage.setItem(APP_ENTRY_KEY, now);
+        sessionStorage.setItem(APP_LOGIN_STARTED_KEY, now);
       }
 
       function getRedirectTarget() {

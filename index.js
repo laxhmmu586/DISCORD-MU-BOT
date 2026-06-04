@@ -38,7 +38,6 @@ const {
   getSalesReportMeta,
   downloadSalesReportByFlight,
   downloadSalesReportByDate,
-  hasNextDayInfoEmail,
   getStoredReportRows,
   getVipReportRowsFromSheet,
   appendStoredReportRows,
@@ -263,8 +262,10 @@ async function syncTodayReportSheets() {
 }
 
 async function appendVipPassengerFromSearch(pax, fallbackYearSuffix) {
-  const services = Array.isArray(pax?.specialServices) ? pax.specialServices : [];
-  if (!services.some((code) => String(code || '').toUpperCase() === 'VIP')) return;
+  const directName = cleanVipName(pax?.name || '');
+  const sourceVip = extractVipNameCandidate(pax?.sourceText || '');
+  const vipName = directName.endsWith('VIP') ? directName : sourceVip?.name || '';
+  if (!vipName.endsWith('VIP')) return;
   const rawFlightDate = String(pax.flightDate || '').toUpperCase();
   const flightDate = /^\d{2}[A-Z]{3}\d{2}$/.test(rawFlightDate)
     ? rawFlightDate
@@ -275,7 +276,7 @@ async function appendVipPassengerFromSearch(pax, fallbackYearSuffix) {
     date: isoDate,
     flightDate,
     flightNo: String(pax.flight || '').toUpperCase(),
-    passenger: cleanVipName(pax.name || ''),
+    passenger: vipName,
     bn: String(pax.bn || '').replace(/\D/g, '').padStart(3, '0'),
     seat: String(pax.seat || '').toUpperCase(),
     bags: String(Array.isArray(pax.bagtags) ? pax.bagtags.length : 0)
@@ -867,16 +868,6 @@ app.get(
         const yearFromFlight = m?.[3] ? (2000 + Number(m[3])) : fullYear;
         const isoDate = m ? `${yearFromFlight}-${months[m[2]] || '01'}-${m[1]}` : '';
         const syBagInfo = isoDate ? await getSyBagInfoByDate(isoDate, syInfo.flightDate) : null;
-        const nextDayQuery = syInfo.crewApis?.nextDayInfoQuery || null;
-        const nextDayStep = syInfo.crewApis?.steps?.find((step) => step.key === 'nextDayInfo');
-        if (nextDayStep && nextDayQuery?.flightNo && nextDayQuery?.flightDate) {
-          const nextDaySubject = nextDayQuery.emailSubject || `${nextDayQuery.flightNo} ${nextDayQuery.flightDate} flight information details`;
-          const nextDayInfoComplete = await hasNextDayInfoEmail(nextDayQuery.flightNo, nextDayQuery.emailSubjectDate || nextDayQuery.flightDate, nextDaySubject);
-          nextDayStep.complete = nextDayInfoComplete;
-          nextDayStep.tooltip = nextDayInfoComplete
-            ? `NEXT DAY INFO sent email found: ${nextDaySubject}`
-            : `NEXT DAY INFO sent email not found: ${nextDaySubject}`;
-        }
         const authContext = await resolveAuthContextFromRequest(req);
         return res.json({ sy: { ...syInfo, bagSheet: syBagInfo, permissions: authContext.permissions } });
       }
@@ -1147,7 +1138,7 @@ app.listen(
     console.log(
       `Server running on ${PORT}`
     );
-    // VIP report rows are now loaded read-only from Google Sheets; automatic
-    // VIP appends happen only when a searched passenger carries VIP service.
+    // VIP report rows are loaded from Google Sheets; automatic appends happen
+    // only when a searched passenger name itself is marked with VIP.
   }
 );

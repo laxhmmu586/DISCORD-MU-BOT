@@ -328,7 +328,6 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
   const cc = findAcceptedCommand(/^>\s*CC\s*:/im);
   const jcsy = findJcsyInfo(sections, flightNo, flightYmd, formatTime);
   const baseYmd = targetYmd || flightYmd;
-  const baseDateUtc = ymdToUtcDate(baseYmd);
   const netSearchYmd = flightYmd || baseYmd;
   const netDateUtc = ymdToUtcDate(netSearchYmd);
   const netFlightDate = dateToDdMonYy(netDateUtc);
@@ -341,9 +340,6 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
     .sort((a, b) => parseSectionTimestamp(b.timestamp) - parseSectionTimestamp(a.timestamp))[0] || null : null;
   const netComplete = Boolean(netMatch);
   const netTime = formatTime(netMatch?.timestamp);
-  const nextDayDateUtc = addDaysUtc(baseDateUtc, 1);
-  const nextDayEmailDate = dateToEmailSubjectDate(nextDayDateUtc);
-  const nextDayEmailSubject = flightNo && nextDayEmailDate ? `${flightNo} ${nextDayEmailDate} flight information details` : '';
   const commandBaseDateUtc = ymdToUtcDate(flightYmd || baseYmd);
   const commandDateUtc = addDaysUtc(commandBaseDateUtc, 2);
   const commandDate = dateToDdMon(commandDateUtc);
@@ -378,12 +374,6 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
     : { complete: false, time: '', timestamp: '' };
   return {
     complete: crewApisComplete && ccl.complete && cc.complete,
-    nextDayInfoQuery: {
-      flightNo,
-      flightDate: nextDayEmailDate,
-      emailSubjectDate: nextDayEmailDate,
-      emailSubject: nextDayEmailSubject
-    },
     steps: [
       {
         key: 'crewApis',
