@@ -39,7 +39,11 @@ const {
   downloadSalesReportByFlight,
   hasNextDayInfoEmail,
   getStoredReportRows,
+  getVipReportRows,
+  getPsmMsgReportRows,
   appendStoredReportRows,
+  appendVipReportRows,
+  appendPsmMsgReportRows,
   pruneStoredReportRows
 
 } = require('./googleDrive');
@@ -98,7 +102,7 @@ function flightDateToIsoDate(flightDate) {
 }
 
 function sectionTimestampToIsoDate(section) {
-  const match = String(section || '').match(/^(\d{4})\s+([A-Z][a-z]{2})\s+(\d{1,2}),/);
+  const match = String(section || '').match(/^(\d{4})\s+([A-Z][a-z]+)\s+(\d{1,2}),/);
   const month = monthNameToNumber(match?.[2]);
   if (!match || !month) return '';
   return `${match[1]}-${month}-${String(match[3]).padStart(2, '0')}`;
@@ -106,7 +110,7 @@ function sectionTimestampToIsoDate(section) {
 
 function splitReportSections(log) {
   return String(log || '')
-    .split(/(?=\n?\d{4}\s+[A-Z][a-z]{2}\s+\d{1,2},\s+[A-Z][a-z]+,\s+\d{2}:\d{2}:\d{2}\s*\n>)/g)
+    .split(/(?=\n?\d{4}\s+[A-Z][a-z]+\s+\d{1,2},\s+[A-Z][a-z]+,\s+\d{2}:\d{2}:\d{2}\s*\n>)/g)
     .map((content) => content.trim())
     .filter(Boolean);
 }
@@ -119,13 +123,17 @@ function cleanVipName(value) {
     .replace(/\/+$/g, '');
 }
 
+function cleanVipPassengerName(value) {
+  return cleanVipName(value).replace(/\/+$/g, '');
+}
+
 function extractVipNameCandidate(section) {
   const namMatch = String(section || '').match(/^\s*NAM\s+([A-Z][A-Z/]+VIP)\b/im);
-  if (namMatch) return { name: cleanVipName(namMatch[1]), source: 'NAM' };
+  if (namMatch) return { name: cleanVipPassengerName(namMatch[1]), source: 'NAM' };
 
   const passengerLine = String(section || '').match(/^\s*\d+\.\s*([A-Z][A-Z/]+(?:VIP)?\+?)\b.*?\bBN\s*\d{1,3}\b/im);
   const passengerName = cleanVipName(passengerLine?.[1]);
-  if (passengerName.endsWith('VIP')) return { name: passengerName, source: 'Passenger Line' };
+  if (passengerName.endsWith('VIP')) return { name: cleanVipPassengerName(passengerName), source: 'Passenger Line' };
 
   return null;
 }
@@ -137,20 +145,36 @@ function mergeVipRow(existing, next) {
   return existing;
 }
 
+function extractBagsForVip(section) {
+  const bagTags = [];
+  const bagTagMatch = String(section || '').match(/\bBAGTAG\/([^\n\r]+)/i);
+  if (bagTagMatch) {
+    bagTagMatch[1].replace(/\b(\d{6,})(?:\/([A-Z]{3}))?\b/gi, (value, tag, destination) => {
+      bagTags.push(`${tag}${destination ? `/${String(destination).toUpperCase()}` : ''}`);
+      return value;
+    });
+  }
+  if (bagTags.length) return bagTags.join(' /');
+  return (
+    String(section || '').match(/\bBAG\d+\/\d+\/\d+\b/i)?.[0] ||
+    String(section || '').match(/\bFBA\/\d+PC\b/i)?.[0] ||
+    ''
+  ).toUpperCase();
+}
+
 function extractVipPassengersFromLog(log, isoDate) {
   const byPassengerFlight = new Map();
 
   for (const section of splitReportSections(log)) {
     if (!/\bPR:\s*[A-Z0-9]+\//i.test(section)) continue;
     const vip = extractVipNameCandidate(section);
-    if (!vip?.name?.endsWith('VIP')) continue;
+    if (!vip?.name) continue;
 
     const sectionIsoDate = sectionTimestampToIsoDate(section);
     if (sectionIsoDate !== isoDate) continue;
 
     const prMatch = section.match(/\bPR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
     const flightDate = prMatch?.[2]?.toUpperCase() || '';
-    if (flightDateToIsoDate(flightDate) !== sectionIsoDate) continue;
 
     const bn = section.match(/\bBN\s*(\d{1,3})\b/i)?.[1]?.padStart(3, '0') || '';
     const passengerLine = section.match(/^\s*\d+\.[^\n\r]*/im)?.[0] || '';
@@ -166,6 +190,7 @@ function extractVipPassengersFromLog(log, isoDate) {
       passenger: vip.name,
       bn,
       seat,
+      bags: extractBagsForVip(section),
       source: vip.source
     };
     const key = `${row.flightNo}|${row.flightDate}|${row.passenger}`;
@@ -218,6 +243,66 @@ function extractWheelchairRowsFromSy(syInfo, isoDate) {
   });
 }
 
+
+function compactReportValue(value) {
+  if (Array.isArray(value)) return value.filter(Boolean).join(', ');
+  return String(value || '').trim();
+}
+
+function psmMsgRowsFromSyInfo(syInfo) {
+  if (!syInfo?.flightNo || !syInfo?.flightDate) return [];
+  return (syInfo.psmList || []).map((row) => {
+    const lines = (Array.isArray(row.psmLines) ? row.psmLines : [row.text || row.raw || row.message])
+      .filter(Boolean)
+      .map((line) => String(line || '').trim())
+      .filter((line) => /^\s*(?:PSM|MSG)(?:\b|-)/i.test(line));
+    const detail = lines.join('\n');
+    return {
+      flightDate: syInfo.flightDate,
+      flightNo: syInfo.flightNo,
+      passenger: reportPassengerName(row),
+      bn: String(row.bn || '').padStart(3, '0'),
+      seat: String(row.seat || '').toUpperCase(),
+      bags: compactReportValue(row.bagtags || row.bagTags || row.bags),
+      type: lines.some((line) => /^\s*MSG/i.test(line)) ? 'MSG' : 'PSM',
+      detail
+    };
+  }).filter((row) => row.passenger && row.detail);
+}
+
+async function syncPsmMsgRowsFromSyInfo(syInfo) {
+  const rows = psmMsgRowsFromSyInfo(syInfo);
+  if (!rows.length) return { appended: 0, found: 0 };
+  const result = await appendPsmMsgReportRows(rows);
+  return { ...result, found: rows.length };
+}
+
+
+async function syncTodayPsmMsgReportRows() {
+  const log = await getLatestFlightLog();
+  if (!log) return { appended: 0, found: 0 };
+  const syInfo = findSYInfo(log, null, { preferredFlightNo: 'MU586' });
+  if (!syInfo) return { appended: 0, found: 0 };
+  return syncPsmMsgRowsFromSyInfo(syInfo);
+}
+
+async function syncVipRowsFromLog(log, isoDate) {
+  const rows = extractVipPassengersFromLog(log, isoDate || todayIsoUtc());
+  if (!rows.length) return { appended: 0, found: 0 };
+  const result = await appendVipReportRows(rows);
+  return { ...result, found: rows.length };
+}
+
+async function syncVipRowsForIsoDate(isoDate) {
+  const log = await getLogForIsoDate(isoDate);
+  if (!log) return { appended: 0, found: 0 };
+  return syncVipRowsFromLog(log, isoDate);
+}
+
+async function syncTodayVipReportRows() {
+  return syncVipRowsForIsoDate(todayIsoUtc());
+}
+
 async function scanVipReportRows(isoDate) {
   const log = await getLogForIsoDate(isoDate);
   if (!log) return [];
@@ -240,23 +325,32 @@ async function scanWheelchairReportRows(isoDate) {
 async function loadStoredReportRows(type, isoDate, options = {}) {
   const normalizedType = String(type || '').toLowerCase();
   const stored = await getStoredReportRows(normalizedType, isoDate);
+  if (normalizedType === 'vip') return { rows: stored.rows, source: 'sheet', scanned: true };
   if (stored.scanned && !options.forceRefresh) return { rows: stored.rows, source: 'sheet', scanned: true };
-  const rows = normalizedType === 'vip'
-    ? await scanVipReportRows(isoDate)
-    : await scanWheelchairReportRows(isoDate);
+  const rows = await scanWheelchairReportRows(isoDate);
   await appendStoredReportRows(normalizedType, isoDate, rows);
   const refreshed = await getStoredReportRows(normalizedType, isoDate);
   return { rows: refreshed.rows.length ? refreshed.rows : rows, source: 'scan', scanned: true };
 }
 
 async function syncTodayReportSheets() {
-  for (const type of ['vip', 'wheelchair']) {
+  for (const type of ['wheelchair']) {
     try {
       await loadStoredReportRows(type, todayIsoUtc(), { forceRefresh: true });
       await pruneStoredReportRows(type);
     } catch (err) {
       console.warn(`${type} report sheet sync skipped:`, err?.message || err);
     }
+  }
+  try {
+    await syncTodayPsmMsgReportRows();
+  } catch (err) {
+    console.warn('PSM/MSG report sheet sync skipped:', err?.message || err);
+  }
+  try {
+    await syncTodayVipReportRows();
+  } catch (err) {
+    console.warn('VIP report sheet sync skipped:', err?.message || err);
   }
 }
 
@@ -655,14 +749,60 @@ app.get('/stored-report', async (req, res) => {
   }
 });
 
+app.get('/bagroom-report', async (req, res) => {
+  try {
+    const from = String(req.query.from || req.query.date || '').trim();
+    const to = String(req.query.to || from).trim();
+    const dateRe = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRe.test(from) || !dateRe.test(to)) return res.status(400).json({ error: 'Missing or invalid date range' });
+    const fromDate = new Date(`${from}T00:00:00Z`);
+    const toDate = new Date(`${to}T00:00:00Z`);
+    if (Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime()) || fromDate > toDate) {
+      return res.status(400).json({ error: 'Invalid date range' });
+    }
+    const rows = [];
+    for (const cursor = new Date(fromDate); cursor <= toDate; cursor.setUTCDate(cursor.getUTCDate() + 1)) {
+      if (rows.length > 366) return res.status(400).json({ error: 'Date range is too large' });
+      const isoDate = cursor.toISOString().slice(0, 10);
+      const sheet = await getSyBagInfoByDate(isoDate);
+      rows.push({ date: isoDate, bagSheet: sheet });
+    }
+    return res.json({ rows });
+  } catch (err) {
+    console.error('Bagroom report error:', err);
+    return res.status(500).json({ error: err?.message || 'Bagroom report lookup failed' });
+  }
+});
+
 app.get('/vip-report', async (req, res) => {
   try {
     const isoDate = String(req.query.date || '').trim();
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return res.status(400).json({ error: 'Missing or invalid date' });
-    const result = await loadStoredReportRows('vip', isoDate);
-    return res.json(result);
+    if (isoDate && !/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return res.status(400).json({ error: 'Invalid date' });
+    const rows = await getVipReportRows(isoDate || '');
+    return res.json({ rows, source: 'sheet', scanned: true });
   } catch (err) {
+    console.error('VIP report error:', err);
     return res.status(500).json({ error: err?.message || 'VIP report lookup failed' });
+  }
+});
+
+
+app.get('/psm-report', async (req, res) => {
+  try {
+    const from = String(req.query.from || req.query.date || '').trim();
+    const to = String(req.query.to || from).trim();
+    const dateRe = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRe.test(from) || !dateRe.test(to)) return res.status(400).json({ error: 'Missing or invalid date range' });
+    const fromDate = new Date(`${from}T00:00:00Z`);
+    const toDate = new Date(`${to}T00:00:00Z`);
+    if (Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime()) || fromDate > toDate) {
+      return res.status(400).json({ error: 'Invalid date range' });
+    }
+    const rows = await getPsmMsgReportRows(from, to);
+    return res.json({ rows, source: 'sheet' });
+  } catch (err) {
+    console.error('PSM report error:', err);
+    return res.status(500).json({ error: err?.message || 'PSM report lookup failed' });
   }
 });
 
@@ -826,6 +966,18 @@ app.get(
         const yearFromFlight = m?.[3] ? (2000 + Number(m[3])) : fullYear;
         const isoDate = m ? `${yearFromFlight}-${months[m[2]] || '01'}-${m[1]}` : '';
         const syBagInfo = isoDate ? await getSyBagInfoByDate(isoDate, syInfo.flightDate) : null;
+        try {
+          syInfo.psmMsgSheetSync = await syncPsmMsgRowsFromSyInfo(syInfo);
+        } catch (err) {
+          console.warn('PSM/MSG report sheet sync skipped:', err?.message || err);
+          syInfo.psmMsgSheetSync = { appended: 0, found: (syInfo.psmList || []).length, error: err?.message || 'Sheet sync failed' };
+        }
+        try {
+          syInfo.vipSheetSync = await syncVipRowsFromLog(log, isoDate || todayIsoUtc());
+        } catch (err) {
+          console.warn('VIP report sheet sync skipped:', err?.message || err);
+          syInfo.vipSheetSync = { appended: 0, found: 0, error: err?.message || 'Sheet sync failed' };
+        }
         const nextDayQuery = syInfo.crewApis?.nextDayInfoQuery || null;
         const nextDayStep = syInfo.crewApis?.steps?.find((step) => step.key === 'nextDayInfo');
         if (nextDayStep && nextDayQuery?.flightNo && nextDayQuery?.flightDate) {
