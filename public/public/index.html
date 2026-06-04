@@ -2105,31 +2105,48 @@
 
         .topbar {
           height: 68px;
-          display: flex;
-          justify-content: space-between;
-          padding: 0 16px;
+          display: grid;
+          grid-template-columns: auto minmax(0, 1fr) auto;
+          gap: 10px;
+          padding: 0 10px 0 14px;
         }
 
         .menu-button {
-          position: absolute;
-          top: 12px;
-          right: 12px;
+          position: static;
           display: grid;
           place-items: center;
+          width: 40px;
+          height: 40px;
         }
 
         .brand {
-          min-width: 104px;
+          min-width: 86px;
           font-size: 18px;
           letter-spacing: 4px;
         }
 
-        .search {
-          display: none;
+        .nav-row {
+          display: block;
+          min-width: 0;
         }
 
-        .nav-row {
-          display: none;
+        .search {
+          display: block;
+          max-width: none;
+          min-width: 0;
+          width: 100%;
+        }
+
+        .search input {
+          height: 36px;
+          padding-left: 10px;
+          padding-right: 36px;
+          font-size: 14px;
+        }
+
+        .search button {
+          width: 36px;
+          height: 36px;
         }
 
         .mobile-menu-fallback {
@@ -2331,6 +2348,18 @@
           z-index: 120;
           max-height: 58svh;
           margin-top: -360px;
+        }
+
+        .result-panel.is-mobile-popup {
+          position: fixed;
+          left: 12px;
+          right: 12px;
+          width: auto;
+          max-height: min(62svh, 620px);
+          margin: 0;
+          overflow-y: auto;
+          box-shadow: 0 30px 100px rgba(0, 0, 0, 0.72), 0 0 0 9999px rgba(0, 0, 0, 0.18);
+          backdrop-filter: blur(20px);
         }
 
         .password-page {
@@ -2951,11 +2980,24 @@
         if (timeline.hasPointerCapture(event.pointerId)) timeline.releasePointerCapture(event.pointerId);
       }
 
+      function positionMobileResultPanel(options = {}) {
+        resultPanel.style.top = "";
+        resultPanel.classList.remove("is-mobile-popup");
+        if (!mobileOrbitQuery.matches || options.panelClass === "is-full-page" || options.hideHeader) return false;
+        const anchor = document.querySelector(".details-surface") || document.querySelector(".details-panel") || document.querySelector(".flight-panel");
+        const top = Math.max(76, Math.min((anchor?.getBoundingClientRect().top || 120) + 8, window.innerHeight - 180));
+        resultPanel.classList.add("is-mobile-popup");
+        resultPanel.style.top = `${top}px`;
+        return true;
+      }
+
       function renderPanel(title, eyebrow, body, options = {}) {
         hideTimelineNodeCard();
+        resultPanel.style.top = "";
         resultPanel.className = `result-panel ${options.panelClass || ""}`.trim();
         resultPanel.innerHTML = `${options.hideHeader ? "" : `<div class="panel-head"><div><small>${escapeHtml(eyebrow || "Details")}</small><h2>${escapeHtml(title)}</h2></div><button class="panel-close" type="button" data-close-panel>Close</button></div>`}${body}`;
-        resultPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        const isMobilePopup = positionMobileResultPanel(options);
+        if (!isMobilePopup) resultPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
       }
 
       function compactValue(value) {
@@ -3935,7 +3977,8 @@
       });
 
       document.querySelectorAll(".detail-action[data-panel]").forEach((button) => {
-        button.addEventListener("click", () => {
+        button.addEventListener("click", (event) => {
+          event.stopPropagation();
           const panel = button.dataset.panel;
           if (panel === "chd") renderChdPanel();
           if (panel === "gov") renderGovPanel();
@@ -3956,6 +3999,7 @@
         if (event.target.closest("[data-close-panel]")) {
           resultPanel.innerHTML = "";
           resultPanel.className = "result-panel";
+          resultPanel.style.top = "";
           resultPanel._passengerRows = [];
           return;
         }
@@ -4020,6 +4064,12 @@
         const modalBackdrop = event.target.closest(".passenger-modal-backdrop");
         if (modalBackdrop?.dataset.dragging === "true") return;
         if (event.target.closest("[data-close-modal]") || modalBackdrop) closePassengerModal();
+        if (mobileOrbitQuery.matches && resultPanel.classList.contains("is-mobile-popup")) {
+          resultPanel.innerHTML = "";
+          resultPanel.className = "result-panel";
+          resultPanel.style.top = "";
+          resultPanel._passengerRows = [];
+        }
       });
 
       searchForm.addEventListener("submit", (event) => {
