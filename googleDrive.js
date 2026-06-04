@@ -520,6 +520,56 @@ async function pruneStoredReportRows(type) {
   return { deleted: deleteIndexes.length };
 }
 
+
+async function appendVipReportRows(rows) {
+  if (reportSheetAccessBlocked) return { appended: 0 };
+  const config = getReportSheetConfig('vip');
+  const title = await getReportSheetTitle('vip');
+  if (!config || !title) return { appended: 0 };
+  const sheetRows = await getReportSheetRows('vip');
+  const existingKeys = new Set();
+  const startIndex = sheetRows.length && isReportHeaderRow('vip', sheetRows[0]) ? 1 : 0;
+  for (let i = startIndex; i < sheetRows.length; i += 1) {
+    if (isReportHeaderRow('vip', sheetRows[i])) continue;
+    const parsed = reportRowFromSheet('vip', sheetRows[i]);
+    existingKeys.add([
+      parsed.flightDate,
+      parsed.flightNo,
+      parsed.passenger,
+      parsed.bn,
+      parsed.seat,
+      parsed.bags
+    ].map((value) => String(value || '').trim().toUpperCase()).join('|'));
+  }
+
+  const values = [];
+  for (const row of rows || []) {
+    const normalized = {
+      flightDate: String(row.flightDate || '').trim().toUpperCase(),
+      flightNo: String(row.flightNo || '').trim().toUpperCase(),
+      passenger: String(row.passenger || '').trim().toUpperCase(),
+      bn: String(row.bn || '').trim().padStart(3, '0'),
+      seat: String(row.seat || '').trim().toUpperCase(),
+      bags: String(row.bags || '').trim().toUpperCase()
+    };
+    if (!normalized.flightDate || !normalized.flightNo || !normalized.passenger) continue;
+    const key = config.fields.map((field) => normalized[field] || '').join('|').toUpperCase();
+    if (existingKeys.has(key)) continue;
+    existingKeys.add(key);
+    values.push(config.fields.map((field) => normalized[field] || ''));
+  }
+
+  if (!values.length) return { appended: 0 };
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: REPORT_SHEET_ID,
+    range: `${title}!A1`,
+    valueInputOption: 'RAW',
+    insertDataOption: 'INSERT_ROWS',
+    requestBody: { values }
+  });
+  return { appended: values.length };
+}
+
 async function appendStoredReportRows(type, isoDate, rows) {
   if (reportSheetAccessBlocked) return { appended: 0 };
   const config = getReportSheetConfig(type);
@@ -784,5 +834,6 @@ module.exports = {
   hasNextDayInfoEmail,
   getStoredReportRows,
   appendStoredReportRows,
+  appendVipReportRows,
   pruneStoredReportRows
 };
