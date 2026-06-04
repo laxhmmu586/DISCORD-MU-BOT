@@ -391,6 +391,13 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
         tooltip: netComplete ? `PD*,NET ${flightNo}/${netFlightDate} ${netTime}` : `PD*,NET ${flightNo}/${netFlightDate || '------'} not found`
       },
       {
+        key: 'nextDayInfo',
+        label: 'NEXTDAY INFO',
+        complete: false,
+        time: '',
+        tooltip: nextDayEmailSubject ? `Sent email search pending: ${nextDayEmailSubject}` : 'NEXTDAY INFO email subject is not ready'
+      },
+      {
         key: 'ccl',
         label: 'CCL',
         complete: ccl.complete,

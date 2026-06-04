@@ -923,6 +923,28 @@
         color: #8fc4ff;
       }
 
+      .node-card.is-nextday-info {
+        width: min(340px, 44vw);
+      }
+
+      .node-card.is-nextday-info p {
+        max-height: 230px;
+        overflow: auto;
+        white-space: pre-wrap;
+      }
+
+      .node-email-body,
+      .node-diagnostic {
+        display: block;
+        margin-top: 6px;
+        color: rgba(238, 247, 255, 0.86);
+      }
+
+      .node-diagnostic {
+        font-size: 11px;
+        color: rgba(210, 225, 240, 0.78);
+      }
+
       .flight-panel {
         position: relative;
         z-index: 2;
@@ -1747,6 +1769,19 @@
         color: #eafff2;
         font-size: 12px;
         font-weight: 950;
+      }
+
+      .record-card.is-nextday-info {
+        max-width: 100%;
+      }
+
+      .raw-record {
+        position: relative;
+        z-index: 1;
+        overflow-x: auto;
+        white-space: pre-wrap;
+        color: #dff6ff;
+        font: 13px/1.55 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
       }
 
       .record-row,
@@ -2836,13 +2871,14 @@
               </svg>
               <button class="node" type="button" data-index="0" data-key="CREW_APIS" data-label="CREW APIS" data-status="pending" data-time="----"></button>
               <button class="node" type="button" data-index="1" data-key="NET" data-label="NET" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="2" data-key="CHD" data-label="CHD" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="3" data-key="GOV" data-label="GOV" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="4" data-key="NBRD" data-label="NBRD" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="5" data-key="CCL" data-label="CCL" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="6" data-key="CC" data-label="CC" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="7" data-key="INITIAL_FLIGHT" data-label="INITIAL FLIGHT" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="8" data-key="BDT_CHG" data-label="BDT CHG" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="2" data-key="NEXTDAY_INFO" data-label="NEXTDAY INFO" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="3" data-key="CHD" data-label="CHD" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="4" data-key="GOV" data-label="GOV" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="5" data-key="NBRD" data-label="NBRD" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="6" data-key="CCL" data-label="CCL" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="7" data-key="CC" data-label="CC" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="8" data-key="INITIAL_FLIGHT" data-label="INITIAL FLIGHT" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="9" data-key="BDT_CHG" data-label="BDT CHG" data-status="pending" data-time="----"></button>
               <article class="node-card" aria-live="polite">
                 <h2>Crew APIs</h2>
                 <p>Crew manifest and reservation data are ready. This point can open deeper crew workflows later.</p>
@@ -2902,6 +2938,9 @@
       const seatMapButton = document.querySelector("#seat-map-button");
       const reportNavLink = document.querySelector("#report-nav-link");
       const mobileReportNavLink = document.querySelector("#mobile-report-nav-link");
+      const bagroomNav = document.querySelector("#bagroom-nav");
+      const bagroomToggle = document.querySelector("#bagroom-toggle");
+      const bagroomDropdownMenu = bagroomNav?.querySelector(".nav-dropdown-menu");
       const baggageNavLink = document.querySelector("#baggage-nav-link");
       const mobileBaggageNavLink = document.querySelector("#mobile-baggage-nav-link");
       const reportPage = document.querySelector("#report-page");
@@ -2935,6 +2974,7 @@
       const nodeKeyMap = {
         CREW_APIS: "crewApis",
         NET: "net",
+        NEXTDAY_INFO: "nextDayInfo",
         CCL: "ccl",
         CC: "cc",
         INITIAL_FLIGHT: "initialFlight",
@@ -3180,6 +3220,32 @@
         return clamp(value, minScrollOffset, maxScrollOffset);
       }
 
+      function nextDayInfoCardHtml(step) {
+        const email = step?.email || null;
+        if (!email) {
+          const diagnostic = step?.diagnostic || {};
+          const details = [
+            diagnostic.subject ? `Subject: ${diagnostic.subject}` : "",
+            diagnostic.sentDate ? `Sent date searched: ${diagnostic.sentDate}` : "",
+            diagnostic.gmailUser ? `Gmail user: ${diagnostic.gmailUser}` : "",
+            diagnostic.authMode ? `Auth: ${diagnostic.authMode}` : "",
+            diagnostic.serviceAccount ? `Service account: ${diagnostic.serviceAccount}` : "",
+            diagnostic.reason ? `Reason: ${diagnostic.reason}` : "",
+          ].filter(Boolean).join("\n");
+          return `<b>Time</b> Not found<br><b>Status</b> Not complete<br>${escapeHtml(step?.tooltip || "NEXTDAY INFO sent email not found.")}${details ? `<span class="node-diagnostic">${escapeHtml(details)}</span>` : ""}`;
+        }
+        const metrics = email.metrics || {};
+        const counts = [
+          `First ${metrics.firstClass || "-"}`,
+          `Business ${metrics.businessClass || "-"}`,
+          `Economy ${metrics.economyClass || "-"}`,
+          `Intl Transfer ${metrics.internationalTransfer || "-"}`,
+          `Domestic Transfer ${metrics.domesticTransfer || "-"}`,
+          `Overnight ${metrics.overnightPassengers || "-"}`,
+        ].join(" / ");
+        return `<b>Time</b> ${escapeHtml(formatSentDateTime(email.sentAt))}<br><b>Status</b> Complete<br><b>Subject</b> ${escapeHtml(email.subject || "NEXTDAY INFO")}<br><b>Counts</b> ${escapeHtml(counts)}<span class="node-email-body">${escapeHtml(email.body || "No email body returned.")}</span>`;
+      }
+
       function updateNodeCard(index) {
         const node = nodes[index];
         if (!node) return;
@@ -3187,12 +3253,14 @@
         const step = stepByKey(key);
         const label = node.dataset.label || step?.label || key;
         const time = nodeDisplayTime(node);
+        nodeCard.classList.toggle("is-nextday-info", key === "NEXTDAY_INFO");
         nodeCard.querySelector("h2").textContent = label;
-        nodeCard.querySelector("p").textContent = step?.tooltip || `${label} ${time !== "----" ? `entered at ${time}` : "data is not complete yet."}`;
+        if (key === "NEXTDAY_INFO") nodeCard.querySelector("p").innerHTML = nextDayInfoCardHtml(step);
+        else nodeCard.querySelector("p").textContent = step?.tooltip || `${label} ${time !== "----" ? `entered at ${time}` : "data is not complete yet."}`;
       }
 
       function hideTimelineNodeCard() {
-        nodeCard.classList.remove("is-open");
+        nodeCard.classList.remove("is-open", "is-nextday-info");
       }
 
       function showTimelineNodeCard(key, step, inputTime) {
@@ -3203,8 +3271,11 @@
         const detail = step?.tooltip || (inputTime && inputTime !== "----" ? `${label} entered at ${inputTime}` : `${label} not entered`);
         nodeCard.style.left = node.style.left;
         nodeCard.style.top = node.style.top;
+        nodeCard.classList.toggle("is-nextday-info", key === "NEXTDAY_INFO");
         nodeCard.querySelector("h2").textContent = label;
-        nodeCard.querySelector("p").innerHTML = `<b>Time</b> ${escapeHtml(inputTime === "----" ? "Not entered" : inputTime)}<br><b>Status</b> ${escapeHtml(status)}<br>${escapeHtml(detail)}`;
+        nodeCard.querySelector("p").innerHTML = key === "NEXTDAY_INFO"
+          ? nextDayInfoCardHtml(step)
+          : `<b>Time</b> ${escapeHtml(inputTime === "----" ? "Not entered" : inputTime)}<br><b>Status</b> ${escapeHtml(status)}<br>${escapeHtml(detail)}`;
         nodeCard.classList.add("is-open");
       }
 
@@ -3665,17 +3736,18 @@
           let started = Boolean(step?.complete || step?.time);
           let time = step?.time || "----";
           node.dataset.inputTime = step?.time || "";
+          if (key === "NEXTDAY_INFO") { started = Boolean(step?.complete || step?.time); complete = Boolean(step?.complete); time = step?.time || "----"; }
           if (key === "CHD") { issueCount = chdIssues; started = (sy.chdList || []).length > 0; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
           if (key === "GOV") { issueCount = govCount; started = Boolean(sy.govAqq) && previousStarted; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
           if (key === "NBRD") { issueCount = nbrdCount; started = (sy.bnAudit || []).length > 0 && previousStarted; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
-          const locked = !previousStarted && !["CHD", "GOV", "NBRD"].includes(key);
+          const locked = !previousStarted && !["NEXTDAY_INFO", "CHD", "GOV", "NBRD"].includes(key);
           node.dataset.status = normalizeStatus(Boolean(complete), issueCount || (started && !complete ? 1 : 0), locked);
           node.dataset.time = String(time);
           if (["CHD", "GOV", "NBRD"].includes(key) && complete && String(time).toUpperCase() === "CLEAR") node.dataset.clearLocked = "true";
           else node.removeAttribute("data-clear-locked");
           if (issueCount) node.dataset.alert = String(issueCount);
           else node.removeAttribute("data-alert");
-          previousStarted = previousStarted && started;
+          previousStarted = previousStarted && (key === "NEXTDAY_INFO" ? true : started);
         });
         resetTimelineCenter();
       }
@@ -4055,6 +4127,7 @@
         if (passwordPage) passwordPage.hidden = true;
         closeLoginMenu();
         closeFlightMenu();
+        closeBaggageDropdown();
         closeMobilePanel();
         closePassengerModal();
         resetPanelState();
@@ -4073,6 +4146,7 @@
         document.body.classList.add("is-report-view");
         closeLoginMenu();
         closeFlightMenu();
+        closeBaggageDropdown();
         closeMobilePanel();
         if (mode) selectReportMode(mode);
         reportPage?.scrollTo({ top: 0, left: 0, behavior: "auto" });
@@ -4092,6 +4166,7 @@
         document.body.classList.add("is-report-view");
         closeLoginMenu();
         closeFlightMenu();
+        closeBaggageDropdown();
         closeMobilePanel();
         bagroomPage?.scrollTo({ top: 0, left: 0, behavior: "auto" });
         void generateBagroomReport(null, { emptyWhenNoRows: true });
@@ -4462,6 +4537,7 @@
           nodeTime.textContent = nodeDisplayTime(key);
           return;
         }
+        if (key === "NEXTDAY_INFO") { return showTimelineNodeCard(key, step, inputTime); }
         if (key === "CHD") { hideTimelineNodeCard(); return renderChdPanel(); }
         if (key === "GOV") { hideTimelineNodeCard(); return renderGovPanel(); }
         if (key === "NBRD") { hideTimelineNodeCard(); return renderNbrdPanel(); }
@@ -4476,6 +4552,21 @@
         showTimelineNodeCard(key, step, inputTime);
       }
 
+      function closeBaggageDropdown() {
+        bagroomToggle?.setAttribute("aria-expanded", "false");
+        bagroomNav?.classList.remove("is-open");
+        bagroomDropdownMenu?.setAttribute("aria-hidden", "true");
+      }
+
+      function toggleBaggageDropdown() {
+        const open = bagroomToggle?.getAttribute("aria-expanded") === "true";
+        closeLoginMenu();
+        closeFlightMenu();
+        bagroomToggle?.setAttribute("aria-expanded", String(!open));
+        bagroomNav?.classList.toggle("is-open", !open);
+        bagroomDropdownMenu?.setAttribute("aria-hidden", String(open));
+      }
+
       function closeMobilePanel() {
         menuButton.setAttribute("aria-expanded", "false");
         fallbackMenuButton.setAttribute("aria-expanded", "false");
@@ -4485,6 +4576,7 @@
 
       function toggleMenu() {
         const open = menuButton.getAttribute("aria-expanded") === "true";
+        closeBaggageDropdown();
         menuButton.setAttribute("aria-expanded", String(!open));
         fallbackMenuButton.setAttribute("aria-expanded", String(!open));
         mobilePanel.classList.toggle("is-open", !open);
@@ -4508,6 +4600,7 @@
 
       loginButton.addEventListener("click", () => {
         const open = loginButton.getAttribute("aria-expanded") === "true";
+        closeBaggageDropdown();
         closeFlightMenu();
         loginButton.setAttribute("aria-expanded", String(!open));
         loginMenu.classList.toggle("is-open", !open);
@@ -4551,6 +4644,7 @@
 
       flightMenuButton.addEventListener("click", () => {
         const open = flightMenuButton.getAttribute("aria-expanded") === "true";
+        closeBaggageDropdown();
         closeLoginMenu();
         flightMenuButton.setAttribute("aria-expanded", String(!open));
         flightMenu.classList.toggle("is-open", !open);
