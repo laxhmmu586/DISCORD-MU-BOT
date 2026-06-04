@@ -559,6 +559,7 @@ async function appendVipReportRows(rows) {
   const title = await getReportSheetTitle('vip');
   if (!config || !title) return { appended: 0 };
   const sheetRows = await getReportSheetRows('vip');
+  await ensureReportSheetHeaders('vip', sheetRows);
   const existingKeys = new Set();
   const startIndex = sheetRows.length && isReportHeaderRow('vip', sheetRows[0]) ? 1 : 0;
   for (let i = startIndex; i < sheetRows.length; i += 1) {
