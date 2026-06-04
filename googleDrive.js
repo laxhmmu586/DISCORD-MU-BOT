@@ -314,13 +314,8 @@ const REPORT_SHEET_ID = '1JqRnDx_uLc2m2SzyZOuHWWJsbkKenlKo60U9zwV9uMQ';
 const REPORT_SHEETS = {
   vip: {
     gid: 1703169759,
-    headers: ['Recorded At', 'Date', 'Flight', 'Flight Date', 'Passenger', 'BN', 'Seat', 'Source', 'Key'],
-    fields: ['recordedAt', 'date', 'flightNo', 'flightDate', 'passenger', 'bn', 'seat', 'source', 'key']
-  },
-  wheelchair: {
-    gid: 910713958,
-    headers: ['Recorded At', 'Date', 'Flight', 'Flight Date', 'Passenger', 'BN', 'Seat', 'Wheelchair Type', 'Key'],
-    fields: ['recordedAt', 'date', 'flightNo', 'flightDate', 'passenger', 'bn', 'seat', 'wheelchairType', 'key']
+    headers: ['FLIGHT DATE', 'FLIGHT #', 'NAME', 'BN', 'SEAT', 'BAGS', 'Key'],
+    fields: ['flightDate', 'flightNo', 'passenger', 'bn', 'seat', 'bags', 'key']
   }
 };
 const reportSheetTitles = {};
@@ -341,7 +336,7 @@ function buildStoredReportKey(type, row) {
     row?.passenger || '',
     row?.bn || '',
     row?.seat || '',
-    row?.wheelchairType || ''
+    row?.bags || ''
   ].map((value) => String(value || '').trim().toUpperCase()).join('|');
 }
 
@@ -397,12 +392,26 @@ async function ensureReportSheetHeaders(type, rows) {
   });
 }
 
+function reportFlightDateToIso(value) {
+  const raw = String(value || '').trim().toUpperCase();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  const flightDateIso = toIsoDateFromFlightDate(raw);
+  if (flightDateIso) return flightDateIso;
+  const slashMatch = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/);
+  if (slashMatch) {
+    const year = slashMatch[3].length === 2 ? `20${slashMatch[3]}` : slashMatch[3];
+    return `${year}-${String(slashMatch[1]).padStart(2, '0')}-${String(slashMatch[2]).padStart(2, '0')}`;
+  }
+  return '';
+}
+
 function reportRowFromSheet(type, values) {
   const config = getReportSheetConfig(type);
   const row = {};
   config.fields.forEach((field, index) => {
     row[field] = values[index] || '';
   });
+  if (type === 'vip' && !row.date) row.date = reportFlightDateToIso(row.flightDate);
   return row;
 }
 
@@ -433,6 +442,20 @@ async function getStoredReportRows(type, isoDate) {
     dataRows.push(parsed);
   }
   return { rows: dataRows, scanned };
+}
+
+async function getVipReportRowsFromSheet(isoDate) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(isoDate || ''))) return { rows: [], scanned: false, source: 'sheet' };
+  const rows = await getReportSheetRows('vip');
+  const dataRows = [];
+  for (let i = 0; i < rows.length; i += 1) {
+    const parsed = reportRowFromSheet('vip', rows[i]);
+    const isHeader = ['FLIGHT DATE', 'FLIGHT #', 'PASSENGER NAME', 'NAME'].includes(String(parsed.flightDate || '').trim().toUpperCase());
+    if (isHeader || parsed.key === scanMarkerKey('vip', isoDate) || parsed.passenger === '__SCAN_COMPLETE__') continue;
+    if (parsed.date !== isoDate) continue;
+    dataRows.push(parsed);
+  }
+  return { rows: dataRows, scanned: false, source: 'sheet' };
 }
 
 
@@ -474,7 +497,7 @@ async function pruneStoredReportRows(type) {
   return { deleted: deleteIndexes.length };
 }
 
-async function appendStoredReportRows(type, isoDate, rows) {
+async function appendStoredReportRows(type, isoDate, rows, options = {}) {
   if (reportSheetAccessBlocked) return { appended: 0 };
   const config = getReportSheetConfig(type);
   if (!config) return { appended: 0 };
@@ -491,8 +514,8 @@ async function appendStoredReportRows(type, isoDate, rows) {
     values.push(sheetValuesFromReportRow(type, { ...row, key }));
   }
   const markerKey = scanMarkerKey(type, isoDate);
-  if (!existingKeys.has(markerKey)) {
-    const marker = { recordedAt: new Date().toISOString(), date: isoDate, passenger: '__SCAN_COMPLETE__', source: 'SCAN', key: markerKey };
+  if (options.addScanMarker !== false && !existingKeys.has(markerKey)) {
+    const marker = { flightDate: isoDateToReportFlightDate(isoDate), flightNo: '__SCAN_COMPLETE__', passenger: '__SCAN_COMPLETE__', key: markerKey };
     values.push(sheetValuesFromReportRow(type, marker));
   }
   if (!values.length) return { appended: 0 };
@@ -519,6 +542,13 @@ function toIsoDateFromFlightDate(flightDate) {
   return `20${m[3]}-${mm}-${m[1]}`;
 }
 
+function isoDateToReportFlightDate(isoDate) {
+  const m = String(isoDate || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return '';
+  const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+  return `${m[3]}${months[Number(m[2]) - 1] || ''}${m[1].slice(-2)}`;
+}
+
 async function findSalesReportFile(flightNo, flightDate) {
   const normalizedFlightNo = normalizeFlightCode(flightNo);
   const isoDate = toIsoDateFromFlightDate(flightDate);
@@ -526,6 +556,17 @@ async function findSalesReportFile(flightNo, flightDate) {
   const exactName = `Sales Report ${normalizedFlightNo} ${isoDate}.xls`;
   const res = await drive.files.list({
     q: `'${SALES_REPORT_FOLDER_ID}' in parents and trashed = false and name = '${exactName.replace(/'/g, "\\'")}'`,
+    fields: 'files(id,name,mimeType,modifiedTime,size)',
+    pageSize: 1,
+    orderBy: 'modifiedTime desc'
+  });
+  return res.data.files?.[0] || null;
+}
+
+async function findSalesReportFileByDate(isoDate) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(isoDate || ''))) return null;
+  const res = await drive.files.list({
+    q: `'${SALES_REPORT_FOLDER_ID}' in parents and trashed = false and name contains 'Sales Report' and name contains '${String(isoDate).replace(/'/g, "\\'")}'`,
     fields: 'files(id,name,mimeType,modifiedTime,size)',
     pageSize: 1,
     orderBy: 'modifiedTime desc'
@@ -546,6 +587,13 @@ async function getSalesReportMeta(flightNo, flightDate) {
 
 async function downloadSalesReportByFlight(flightNo, flightDate) {
   const file = await findSalesReportFile(flightNo, flightDate);
+  if (!file) return null;
+  const response = await drive.files.get({ fileId: file.id, alt: 'media' }, { responseType: 'arraybuffer' });
+  return { fileName: file.name, content: response.data };
+}
+
+async function downloadSalesReportByDate(isoDate) {
+  const file = await findSalesReportFileByDate(isoDate);
   if (!file) return null;
   const response = await drive.files.get({ fileId: file.id, alt: 'media' }, { responseType: 'arraybuffer' });
   return { fileName: file.name, content: response.data };
@@ -735,8 +783,10 @@ module.exports = {
   getSyBagInfoByDate,
   getSalesReportMeta,
   downloadSalesReportByFlight,
+  downloadSalesReportByDate,
   hasNextDayInfoEmail,
   getStoredReportRows,
+  getVipReportRowsFromSheet,
   appendStoredReportRows,
   pruneStoredReportRows
 };
