@@ -332,8 +332,14 @@ const REPORT_SHEETS = {
 const reportSheetTitles = {};
 let reportSheetAccessBlocked = false;
 
+function normalizeReportSheetType(type) {
+  const normalized = String(type || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (normalized === 'psmmsg') return 'psmMsg';
+  return normalized;
+}
+
 function getReportSheetConfig(type) {
-  return REPORT_SHEETS[String(type || '').toLowerCase()] || null;
+  return REPORT_SHEETS[normalizeReportSheetType(type)] || null;
 }
 
 function buildStoredReportKey(type, row) {
@@ -356,12 +362,13 @@ function scanMarkerKey(type, isoDate) {
 }
 
 async function getReportSheetTitle(type) {
-  const config = getReportSheetConfig(type);
+  const normalizedType = normalizeReportSheetType(type);
+  const config = getReportSheetConfig(normalizedType);
   if (!config) return '';
-  if (!reportSheetTitles[type]) {
-    reportSheetTitles[type] = await resolveSheetTitleByGid(REPORT_SHEET_ID, config.gid);
+  if (!reportSheetTitles[normalizedType]) {
+    reportSheetTitles[normalizedType] = await resolveSheetTitleByGid(REPORT_SHEET_ID, config.gid);
   }
-  return reportSheetTitles[type] || '';
+  return reportSheetTitles[normalizedType] || '';
 }
 
 async function getReportSheetRows(type) {
