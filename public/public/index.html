@@ -207,6 +207,7 @@
       }
 
       .nav-dropdown > button {
+        padding: 0;
         border: 0;
         background: transparent;
         color: rgba(255, 255, 255, 0.88);
@@ -214,6 +215,7 @@
         font-weight: 800;
         letter-spacing: 0.4px;
         text-transform: uppercase;
+        line-height: 1;
         cursor: pointer;
       }
 
@@ -266,6 +268,11 @@
         font-size: 12px;
         letter-spacing: 1px;
         text-align: left;
+      }
+
+      .nav-dropdown > button:hover,
+      .nav-dropdown.is-open > button {
+        color: white;
       }
 
       .nav-dropdown-menu a:hover {
@@ -2816,8 +2823,25 @@
             <input id="report-keyword" type="hidden" value="" />
             <button class="report-run" type="submit">Download</button>
           </form>
-          <div class="report-actions-row"><button class="report-download" id="report-download" type="button" disabled>Download CSV</button></div>
+          <div class="report-actions-row"><button class="report-download" id="report-download" type="button" disabled hidden>Download CSV</button></div>
           <div id="report-output"><p class="panel-muted">Select a report above.</p></div>
+        </section>
+
+        <section class="report-page" id="bagroom-page" aria-label="Bagroom" hidden>
+          <div class="report-hero">
+            <div>
+              <h2>Bagroom</h2>
+              <p class="panel-muted">Search rush bags and not-load bags by date range, bag number, status, or remark.</p>
+            </div>
+            <button class="report-close" id="bagroom-close" type="button">Close</button>
+          </div>
+          <form class="report-form is-open bagroom-form" id="bagroom-form">
+            <label class="report-field"><span>From</span><input id="bagroom-from" type="date" required /></label>
+            <label class="report-field"><span>To</span><input id="bagroom-to" type="date" required /></label>
+            <label class="report-field"><span>Search</span><input id="bagroom-keyword" type="search" placeholder="Bag / rush #, status, remark" /></label>
+            <button class="report-run" type="submit">Search</button>
+          </form>
+          <div id="bagroom-output"><p class="panel-muted">Choose a date range and search Bagroom.</p></div>
         </section>
 
         <section class="details-panel" aria-label="Flight details" hidden>
@@ -2936,7 +2960,9 @@
       const baggageNavLink = document.querySelector("#baggage-nav-link");
       const mobileBaggageNavLink = document.querySelector("#mobile-baggage-nav-link");
       const reportPage = document.querySelector("#report-page");
+      const bagroomPage = document.querySelector("#bagroom-page");
       const reportCloseButton = document.querySelector("#report-close");
+      const bagroomCloseButton = document.querySelector("#bagroom-close");
       const reportForm = document.querySelector("#report-form");
       const reportTypeInput = document.querySelector("#report-type");
       const reportFromInput = document.querySelector("#report-from");
@@ -2944,6 +2970,11 @@
       const reportKeywordInput = document.querySelector("#report-keyword");
       const reportOutput = document.querySelector("#report-output");
       const reportDownloadButton = document.querySelector("#report-download");
+      const bagroomForm = document.querySelector("#bagroom-form");
+      const bagroomFromInput = document.querySelector("#bagroom-from");
+      const bagroomToInput = document.querySelector("#bagroom-to");
+      const bagroomKeywordInput = document.querySelector("#bagroom-keyword");
+      const bagroomOutput = document.querySelector("#bagroom-output");
       const passwordPage = document.querySelector("#change-password-page");
       const closePasswordPageButton = document.querySelector("#close-password-page");
       const changePasswordForm = document.querySelector("#change-password-form");
@@ -4017,10 +4048,15 @@
 
 
       function setReportDefaults() {
-        if (!reportFromInput || !reportToInput) return;
         const ymd = ymdFromDate(new Date());
-        reportFromInput.value = reportFromInput.value || ymd;
-        reportToInput.value = reportFromInput.value;
+        if (reportFromInput && reportToInput) {
+          reportFromInput.value = reportFromInput.value || ymd;
+          reportToInput.value = reportFromInput.value;
+        }
+        if (bagroomFromInput && bagroomToInput) {
+          bagroomFromInput.value = bagroomFromInput.value || ymd;
+          bagroomToInput.value = bagroomToInput.value || ymd;
+        }
       }
 
       function resetPanelState() {
@@ -4034,6 +4070,7 @@
       function showHomePage() {
         document.body.classList.remove("is-report-view");
         if (reportPage) reportPage.hidden = true;
+        if (bagroomPage) bagroomPage.hidden = true;
         if (passwordPage) passwordPage.hidden = true;
         closeLoginMenu();
         closeFlightMenu();
@@ -4051,6 +4088,7 @@
         resetPanelState();
         if (passwordPage) passwordPage.hidden = true;
         if (reportPage) reportPage.hidden = false;
+        if (bagroomPage) bagroomPage.hidden = true;
         document.body.classList.add("is-report-view");
         closeLoginMenu();
         closeFlightMenu();
@@ -4064,11 +4102,16 @@
       }
 
       function openBaggageReport() {
-        document.body.classList.remove("is-report-view");
+        setReportDefaults();
+        resetPanelState();
+        if (passwordPage) passwordPage.hidden = true;
         if (reportPage) reportPage.hidden = true;
-        if (currentSy?.bagSheet?.hasData) renderBagReport();
-        else renderPanel("Baggage", currentSy?.flightNo || "SY", `<p class="panel-muted">No Google Sheet bag report is loaded yet. Search an SY date first, then open Baggage again.</p>`);
+        if (bagroomPage) bagroomPage.hidden = false;
+        document.body.classList.add("is-report-view");
+        closeLoginMenu();
+        closeFlightMenu();
         closeMobilePanel();
+        bagroomPage?.scrollTo({ top: 0, left: 0, behavior: "auto" });
       }
 
       function isoToSyDate(value) {
@@ -4168,12 +4211,48 @@
         return rows;
       }
 
+      async function generateBagroomReport(event) {
+        event?.preventDefault();
+        if (!bagroomOutput) return;
+        let dates = [];
+        try {
+          dates = reportDateRange(bagroomFromInput?.value || "", bagroomToInput?.value || "");
+        } catch (error) {
+          bagroomOutput.innerHTML = `<p class="panel-muted status-fail">${escapeHtml(error.message)}</p>`;
+          return;
+        }
+        const keyword = String(bagroomKeywordInput?.value || "").trim().toUpperCase();
+        bagroomOutput.innerHTML = `<p class="panel-muted">Searching Bagroom from ${escapeHtml(dates[0])} to ${escapeHtml(dates[dates.length - 1])}...</p>`;
+        const rows = [];
+        const errors = [];
+        for (const isoDate of dates) {
+          try {
+            rows.push(...baggageReportRows(await loadSyForReport(isoDate), isoDate));
+          } catch (error) {
+            errors.push(`${isoDate}: ${error.message}`);
+          }
+        }
+        const filteredRows = keyword
+          ? rows.filter((row) => Object.values(row || {}).some((value) => String(value || "").toUpperCase().includes(keyword)))
+          : rows;
+        const errorHtml = errors.length ? `<h3>Skipped dates</h3><p class="panel-muted status-warn">${escapeHtml(errors.join(" | "))}</p>` : "";
+        bagroomOutput.innerHTML = `${errorHtml}${rowsTable(filteredRows, [
+          { label: "Date", value: (row) => row.date },
+          { label: "Flight", value: (row) => row.flightNo },
+          { label: "Section", value: (row) => row.section },
+          { label: "Bag / Rush #", value: (row) => row.rushNo || row.tagNo },
+          { label: "Status / Orig #", value: (row) => row.status || row.origNo },
+          { label: "Remark / To", value: (row) => row.remark || row.to },
+          { label: "AKE", value: (row) => row.ake },
+        ], "No bagroom rows found.")}`;
+      }
+
       async function salesReportRows(isoDate) {
         return { date: isoDate, downloadUrl: salesReportDownloadUrl(isoDate) };
       }
 
       async function storedReportRows(type, isoDate, keyword) {
-        const data = await apiJson(`/stored-report?type=${encodeURIComponent(type)}&date=${encodeURIComponent(isoDate)}`);
+        const data = await apiJson(`/stored-report?type=${encodeURIComponent(type)}${isoDate ? `&date=${encodeURIComponent(isoDate)}` : ""}`);
         const needle = String(keyword || "").trim().toUpperCase();
         const rows = data?.rows || [];
         if (!needle) return rows;
@@ -4187,14 +4266,14 @@
       function selectReportMode(mode) {
         if (!reportTypeInput || !reportForm || !reportOutput) return;
         reportTypeInput.value = mode;
-        reportForm.classList.add("is-open");
+        reportForm.classList.toggle("is-open", mode === "sales");
         reportTabs.forEach((button) => button.classList.toggle("is-active", button.dataset.reportMode === mode));
-        reportForm.querySelector(".report-run").textContent = mode === "sales" ? "Download" : "Search";
-        reportDownloadButton.hidden = mode === "sales";
+        reportForm.querySelector(".report-run").textContent = "Download";
+        reportDownloadButton.hidden = true;
         setReportCsv([], "report.csv");
         reportOutput.innerHTML = mode === "sales"
           ? `<p class="panel-muted">Select a date, then click Download.</p>`
-          : `<p class="panel-muted">Select a date, then search VIP records.</p>`;
+          : `<p class="panel-muted">Loading VIP report...</p>`;
       }
 
       async function generateReport(event) {
@@ -4206,6 +4285,23 @@
           reportOutput.innerHTML = `<p class="panel-muted status-warn">Please choose Sales Report or VIP Report.</p>`;
           return;
         }
+        if (type === "vip") {
+          reportOutput.innerHTML = `<p class="panel-muted">Loading VIP report...</p>`;
+          try {
+            const rows = await vipReportRows("", "");
+            reportOutput.innerHTML = rowsTable(rows, [
+              { label: "FLIGHT DATE", value: (row) => row.flightDate },
+              { label: "FLIGHT #", value: (row) => row.flightNo },
+              { label: "NAME", value: (row) => row.passenger },
+              { label: "BN", value: (row) => row.bn },
+              { label: "SEAT", value: (row) => row.seat },
+              { label: "BAGS", value: (row) => row.bags },
+            ], "No VIP passengers found.");
+          } catch (error) {
+            reportOutput.innerHTML = `<p class="panel-muted status-fail">${escapeHtml(error?.message || "VIP report lookup failed.")}</p>`;
+          }
+          return;
+        }
         if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) {
           reportOutput.innerHTML = `<p class="panel-muted status-fail">Please select a valid date.</p>`;
           return;
@@ -4214,23 +4310,6 @@
         if (type === "sales") {
           window.open(salesReportDownloadUrl(isoDate), "_blank", "noopener");
           reportOutput.innerHTML = `<p class="panel-muted">Sales report download started for ${escapeHtml(isoDate)}. If no file downloads, the report may not exist for that date.</p>`;
-          return;
-        }
-        reportOutput.innerHTML = `<p class="panel-muted">Loading VIP report for ${escapeHtml(isoDate)}...</p>`;
-        setReportCsv([], "report.csv");
-        try {
-          const rows = await vipReportRows(isoDate, "");
-          reportOutput.innerHTML = rowsTable(rows, [
-            { label: "FLIGHT DATE", value: (row) => row.flightDate },
-            { label: "FLIGHT #", value: (row) => row.flightNo },
-            { label: "NAME", value: (row) => row.passenger },
-            { label: "BN", value: (row) => row.bn },
-            { label: "SEAT", value: (row) => row.seat },
-            { label: "BAGS", value: (row) => row.bags },
-          ], "No VIP passengers found.");
-          setReportCsv(rows, `vip-report-${isoDate}.csv`);
-        } catch (error) {
-          reportOutput.innerHTML = `<p class="panel-muted status-fail">${escapeHtml(error?.message || "VIP report lookup failed.")}</p>`;
         }
       }
 
@@ -4520,14 +4599,16 @@
       });
 
       homeNavLink.addEventListener("click", (event) => { event.preventDefault(); showHomePage(); });
-      bagReportButton.addEventListener("click", renderBagReport);
+      bagReportButton.addEventListener("click", openBaggageReport);
       salesReportButton?.addEventListener("click", downloadSalesReport);
       reportNavLink.addEventListener("click", (event) => { event.preventDefault(); showReportPage(); });
       mobileReportNavLink.addEventListener("click", (event) => { event.preventDefault(); showReportPage(); });
       baggageNavLink.addEventListener("click", (event) => { event.preventDefault(); openBaggageReport(); });
       mobileBaggageNavLink.addEventListener("click", (event) => { event.preventDefault(); openBaggageReport(); });
       reportCloseButton.addEventListener("click", hideReportPage);
+      bagroomCloseButton.addEventListener("click", hideReportPage);
       reportForm.addEventListener("submit", generateReport);
+      bagroomForm.addEventListener("submit", generateBagroomReport);
       reportTabs.forEach((button) => button.addEventListener("click", () => {
         selectReportMode(button.dataset.reportMode);
         if (button.dataset.reportMode === "vip") generateReport();

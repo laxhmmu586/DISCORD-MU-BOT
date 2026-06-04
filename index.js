@@ -668,7 +668,7 @@ app.get('/stored-report', async (req, res) => {
     const type = String(req.query.type || '').trim().toLowerCase();
     const isoDate = String(req.query.date || '').trim();
     if (type !== 'vip') return res.status(400).json({ error: 'Invalid report type' });
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return res.status(400).json({ error: 'Missing or invalid date' });
+    if (isoDate && !/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return res.status(400).json({ error: 'Invalid date' });
     const result = await getVipReportRowsFromSheet(isoDate);
     return res.json(result);
   } catch (err) {
@@ -680,7 +680,7 @@ app.get('/stored-report', async (req, res) => {
 app.get('/vip-report', async (req, res) => {
   try {
     const isoDate = String(req.query.date || '').trim();
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return res.status(400).json({ error: 'Missing or invalid date' });
+    if (isoDate && !/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return res.status(400).json({ error: 'Invalid date' });
     const result = await getVipReportRowsFromSheet(isoDate);
     return res.json(result);
   } catch (err) {
@@ -1147,7 +1147,7 @@ app.listen(
     console.log(
       `Server running on ${PORT}`
     );
-    syncTodayReportSheets();
-    setInterval(syncTodayReportSheets, 30 * 60 * 1000);
+    // VIP report rows are now loaded read-only from Google Sheets; automatic
+    // VIP appends happen only when a searched passenger carries VIP service.
   }
 );

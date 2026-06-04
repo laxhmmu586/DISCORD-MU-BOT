@@ -444,15 +444,17 @@ async function getStoredReportRows(type, isoDate) {
   return { rows: dataRows, scanned };
 }
 
-async function getVipReportRowsFromSheet(isoDate) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(isoDate || ''))) return { rows: [], scanned: false, source: 'sheet' };
+async function getVipReportRowsFromSheet(isoDate = '') {
+  const selectedDate = String(isoDate || '').trim();
+  const hasDateFilter = /^\d{4}-\d{2}-\d{2}$/.test(selectedDate);
   const rows = await getReportSheetRows('vip');
   const dataRows = [];
   for (let i = 0; i < rows.length; i += 1) {
     const parsed = reportRowFromSheet('vip', rows[i]);
     const isHeader = ['FLIGHT DATE', 'FLIGHT #', 'PASSENGER NAME', 'NAME'].includes(String(parsed.flightDate || '').trim().toUpperCase());
-    if (isHeader || parsed.key === scanMarkerKey('vip', isoDate) || parsed.passenger === '__SCAN_COMPLETE__') continue;
-    if (parsed.date !== isoDate) continue;
+    if (isHeader || parsed.key === scanMarkerKey('vip', selectedDate) || parsed.passenger === '__SCAN_COMPLETE__') continue;
+    if (hasDateFilter && parsed.date !== selectedDate) continue;
+    if (![parsed.flightDate, parsed.flightNo, parsed.passenger, parsed.bn, parsed.seat, parsed.bags].some(Boolean)) continue;
     dataRows.push(parsed);
   }
   return { rows: dataRows, scanned: false, source: 'sheet' };
