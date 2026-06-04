@@ -2120,6 +2120,12 @@
         opacity: 0.48;
       }
 
+      .report-form.is-sales-mode .report-run {
+        min-height: 34px;
+        padding: 0 12px;
+        font-size: 12px;
+      }
+
       .report-mode-actions {
         margin-bottom: 18px;
       }
@@ -2248,8 +2254,7 @@
         }
 
         .mobile-menu-fallback {
-          display: grid;
-          place-items: center;
+          display: none !important;
         }
       }
 
@@ -2890,7 +2895,9 @@
       };
       const auth = window.firebase?.apps?.length && window.firebase?.auth ? firebase.auth() : null;
       const APP_ENTRY_KEY = "mufc_allow_app_entry";
-      const INACTIVITY_LIMIT_MS = 15 * 60 * 1000;
+      const AUTH_SESSION_STARTED_KEY = "mufc_auth_session_started_at";
+      const AUTH_SESSION_LIMIT_MS = 30 * 60 * 1000;
+      const APP_ENTRY_GRACE_MS = 30 * 1000;
       const SY_AUTO_REFRESH_MS = 60 * 1000;
       let inactivityTimer = null;
       let syAutoRefreshTimer = null;
@@ -2953,9 +2960,19 @@
       }
 
       function consumeAppEntry() {
-        const allowedAt = sessionStorage.getItem(APP_ENTRY_KEY);
+        const allowedAt = Number(sessionStorage.getItem(APP_ENTRY_KEY) || 0);
         sessionStorage.removeItem(APP_ENTRY_KEY);
-        return Boolean(allowedAt);
+        if (!allowedAt) return false;
+        return Date.now() - allowedAt <= APP_ENTRY_GRACE_MS;
+      }
+
+      function authSessionAgeMs() {
+        const startedAt = Number(sessionStorage.getItem(AUTH_SESSION_STARTED_KEY) || 0);
+        return startedAt ? Date.now() - startedAt : Infinity;
+      }
+
+      function isAuthSessionExpired() {
+        return authSessionAgeMs() >= AUTH_SESSION_LIMIT_MS;
       }
       window.findNodeIndexByKey = findNodeIndexByKey;
 
@@ -2963,6 +2980,7 @@
 
       async function returnToLogin() {
         sessionStorage.removeItem(APP_ENTRY_KEY);
+        sessionStorage.removeItem(AUTH_SESSION_STARTED_KEY);
         if (inactivityTimer) clearTimeout(inactivityTimer);
         const url = new URL(loginUrl());
         url.searchParams.set("forceLogin", "1");
@@ -2976,15 +2994,13 @@
 
       function resetInactivityTimer() {
         if (inactivityTimer) clearTimeout(inactivityTimer);
+        const remainingMs = AUTH_SESSION_LIMIT_MS - authSessionAgeMs();
         inactivityTimer = setTimeout(() => {
           returnToLogin();
-        }, INACTIVITY_LIMIT_MS);
+        }, Math.max(0, remainingMs));
       }
 
       function startInactivityWatch() {
-        ["click", "keydown", "mousemove", "touchstart", "pointerdown", "scroll"].forEach((eventName) => {
-          window.addEventListener(eventName, resetInactivityTimer, { passive: true });
-        });
         resetInactivityTimer();
       }
 
@@ -4166,7 +4182,9 @@
       }
 
       async function storedReportRows(type, isoDate, keyword) {
-        const data = await apiJson(`/stored-report?type=${encodeURIComponent(type)}&date=${encodeURIComponent(isoDate)}`);
+        const endpoint = type === "vip" ? "/vip-report" : "/stored-report";
+        const query = type === "vip" ? `?date=${encodeURIComponent(isoDate)}` : `?type=${encodeURIComponent(type)}&date=${encodeURIComponent(isoDate)}`;
+        const data = await apiJson(`${endpoint}${query}`);
         const needle = String(keyword || "").trim().toUpperCase();
         const rows = data?.rows || [];
         if (!needle) return rows;
@@ -4224,13 +4242,12 @@
           ], "No sales report rows.") + `<div class="report-actions-row">${downloadRows.map((row) => `<a class="report-link-button" href="${escapeHtml(row.downloadUrl)}" target="_blank" rel="noopener">Download Sales Report</a>`).join("")}</div>`;
         } else if (type === "vip") {
           tableHtml = rowsTable(rows, [
-            { label: "Date", value: (row) => row.date },
+            { label: "Flight Date", value: (row) => row.displayDate || row.flightDate || row.date },
             { label: "Flight", value: (row) => row.flightNo },
-            { label: "Flight Date", value: (row) => row.flightDate },
             { label: "Passenger", value: (row) => row.passenger },
             { label: "BN", value: (row) => row.bn },
             { label: "Seat", value: (row) => row.seat },
-            { label: "Source", value: (row) => row.source },
+            { label: "Bags", value: (row) => row.bags },
           ], "No VIP passengers found.");
         }
         const errorHtml = errors.length ? `<h3>Skipped dates</h3><p class="panel-muted status-warn">${escapeHtml(errors.join(" | "))}</p>` : "";
@@ -4444,6 +4461,13 @@
         flightMenu.setAttribute("aria-hidden", "true");
       }
 
+      function closeFlightMenuAfterAction(handler) {
+        return async function handleFlightMenuAction(event) {
+          closeFlightMenu();
+          return handler.call(this, event);
+        };
+      }
+
       loginButton.addEventListener("click", () => {
         const open = loginButton.getAttribute("aria-expanded") === "true";
         closeFlightMenu();
@@ -4525,8 +4549,8 @@
 
 
       homeNavLink.addEventListener("click", (event) => { event.preventDefault(); showHomePage(); });
-      bagReportButton?.addEventListener("click", renderBagReport);
-      salesReportButton?.addEventListener("click", downloadSalesReport);
+      bagReportButton?.addEventListener("click", closeFlightMenuAfterAction(renderBagReport));
+      salesReportButton?.addEventListener("click", closeFlightMenuAfterAction(downloadSalesReport));
       reportNavLink.addEventListener("click", (event) => { event.preventDefault(); showReportPage("sales"); });
       mobileReportNavLink.addEventListener("click", (event) => { event.preventDefault(); showReportPage("sales"); });
       baggageNavLink.addEventListener("click", (event) => { event.preventDefault(); openBaggageReport(); });
@@ -4537,8 +4561,12 @@
       reportVipModeButton?.addEventListener("click", () => setReportMode("vip", { forceToday: true, resetOutput: true }));
       reportForm.addEventListener("submit", generateReport);
       reportDownloadButton.addEventListener("click", downloadCurrentReportCsv);
-      securityCheckButton.addEventListener("click", renderSecurityCheck);
-      seatMapButton.addEventListener("click", renderSeatMap);
+      securityCheckButton.addEventListener("click", closeFlightMenuAfterAction(renderSecurityCheck));
+      seatMapButton.addEventListener("click", closeFlightMenuAfterAction(renderSeatMap));
+
+      mobilePanel.addEventListener("click", (event) => {
+        if (event.target.closest("a, button")) closeMobilePanel();
+      });
 
       resultPanel.addEventListener("click", async (event) => {
         if (event.target.closest("[data-close-panel]")) {
@@ -4670,6 +4698,10 @@
         auth.onAuthStateChanged((user) => {
           if (!user) {
             window.location.replace(loginUrl());
+            return;
+          }
+          if (isAuthSessionExpired()) {
+            returnToLogin();
             return;
           }
           currentUser.textContent = user.email || "Authenticated user";
