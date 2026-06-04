@@ -237,27 +237,19 @@ async function scanWheelchairReportRows(isoDate) {
   return extractWheelchairRowsFromSy(syInfo, isoDate);
 }
 
-async function loadStoredReportRows(type, isoDate, options = {}) {
+async function loadStoredReportRows(type, isoDate) {
   const normalizedType = String(type || '').toLowerCase();
   const stored = await getStoredReportRows(normalizedType, isoDate);
-  if (stored.scanned && !options.forceRefresh) return { rows: stored.rows, source: 'sheet', scanned: true };
+  if (stored.rows.length) return { rows: stored.rows, source: 'sheet', saved: true };
+
   const rows = normalizedType === 'vip'
     ? await scanVipReportRows(isoDate)
     : await scanWheelchairReportRows(isoDate);
-  await appendStoredReportRows(normalizedType, isoDate, rows);
-  const refreshed = await getStoredReportRows(normalizedType, isoDate);
-  return { rows: refreshed.rows.length ? refreshed.rows : rows, source: 'scan', scanned: true };
-}
+  if (rows.length) await appendStoredReportRows(normalizedType, isoDate, rows);
+  await pruneStoredReportRows(normalizedType);
 
-async function syncTodayReportSheets() {
-  for (const type of ['vip', 'wheelchair']) {
-    try {
-      await loadStoredReportRows(type, todayIsoUtc(), { forceRefresh: true });
-      await pruneStoredReportRows(type);
-    } catch (err) {
-      console.warn(`${type} report sheet sync skipped:`, err?.message || err);
-    }
-  }
+  const refreshed = rows.length ? await getStoredReportRows(normalizedType, isoDate) : { rows: [] };
+  return { rows: refreshed.rows.length ? refreshed.rows : rows, source: 'scan', saved: rows.length > 0 };
 }
 
 async function resolveAuthContextFromRequest(req) {

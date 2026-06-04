@@ -345,10 +345,6 @@ function buildStoredReportKey(type, row) {
   ].map((value) => String(value || '').trim().toUpperCase()).join('|');
 }
 
-function scanMarkerKey(type, isoDate) {
-  return `__SCAN__|${String(type || '').toLowerCase()}|${isoDate}`;
-}
-
 async function getReportSheetTitle(type) {
   const config = getReportSheetConfig(type);
   if (!config) return '';
@@ -418,21 +414,16 @@ function sheetValuesFromReportRow(type, row) {
 
 async function getStoredReportRows(type, isoDate) {
   const config = getReportSheetConfig(type);
-  if (!config) return { rows: [], scanned: false };
+  if (!config) return { rows: [] };
   const rows = await getReportSheetRows(type);
   await ensureReportSheetHeaders(type, rows);
-  let scanned = false;
   const dataRows = [];
   for (let i = 1; i < rows.length; i += 1) {
     const parsed = reportRowFromSheet(type, rows[i]);
-    if (parsed.key === scanMarkerKey(type, isoDate)) {
-      scanned = true;
-      continue;
-    }
     if (parsed.date !== isoDate) continue;
     dataRows.push(parsed);
   }
-  return { rows: dataRows, scanned };
+  return { rows: dataRows };
 }
 
 
@@ -489,11 +480,6 @@ async function appendStoredReportRows(type, isoDate, rows) {
     if (existingKeys.has(key)) continue;
     existingKeys.add(key);
     values.push(sheetValuesFromReportRow(type, { ...row, key }));
-  }
-  const markerKey = scanMarkerKey(type, isoDate);
-  if (!existingKeys.has(markerKey)) {
-    const marker = { recordedAt: new Date().toISOString(), date: isoDate, passenger: '__SCAN_COMPLETE__', source: 'SCAN', key: markerKey };
-    values.push(sheetValuesFromReportRow(type, marker));
   }
   if (!values.length) return { appended: 0 };
   await sheets.spreadsheets.values.append({
