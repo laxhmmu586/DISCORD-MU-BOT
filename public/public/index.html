@@ -2151,35 +2151,6 @@
         outline: 0;
       }
 
-      .report-summary-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-        gap: 10px;
-        margin-bottom: 16px;
-      }
-
-      .report-summary-card {
-        border: 1px solid rgba(176, 216, 255, 0.16);
-        background: rgba(0, 0, 0, 0.2);
-        padding: 14px;
-      }
-
-      .report-summary-card span {
-        display: block;
-        color: var(--muted);
-        font-size: 11px;
-        font-weight: 900;
-        text-transform: uppercase;
-      }
-
-      .report-summary-card strong {
-        display: block;
-        margin-top: 8px;
-        color: white;
-        font-size: 26px;
-        line-height: 1;
-      }
-
       .report-actions-row {
         display: flex;
         flex-wrap: wrap;
@@ -2714,7 +2685,7 @@
           <div class="report-hero">
             <div>
               <h2>Report Center</h2>
-              <p class="panel-muted">Choose a report type and date range, generate the result, and download a CSV summary. VIP report scans every flight on the selected dates and counts passengers whose name ends with VIP.</p>
+              <p class="panel-muted">Choose a report type and date range, then search. VIP report scans every flight on the selected dates and only shows passengers whose flight date matches the log timestamp date.</p>
             </div>
             <button class="report-close" id="report-close" type="button">Close</button>
           </div>
@@ -2728,10 +2699,10 @@
             <label class="report-field"><span>From</span><input id="report-from" type="date" required /></label>
             <label class="report-field"><span>To</span><input id="report-to" type="date" required /></label>
             <label class="report-field"><span>Keyword</span><input id="report-keyword" type="search" placeholder="Optional filter" /></label>
-            <button class="report-run" type="submit">Generate</button>
+            <button class="report-run" type="submit">Search</button>
           </form>
           <div class="report-actions-row"><button class="report-download" id="report-download" type="button" disabled>Download CSV</button></div>
-          <div id="report-output"><p class="panel-muted">No report generated yet.</p></div>
+          <div id="report-output"><p class="panel-muted">No search yet.</p></div>
         </section>
 
         <section class="details-panel" aria-label="Flight details" hidden>
@@ -4049,9 +4020,7 @@
         URL.revokeObjectURL(url);
       }
 
-      function reportSummaryHtml(cards) {
-        return `<div class="report-summary-grid">${cards.map(([label, value]) => `<div class="report-summary-card"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join("")}</div>`;
-      }
+
 
       async function loadSyForReport(isoDate) {
         const syDate = isoToSyDate(isoDate);
@@ -4134,7 +4103,7 @@
           setReportCsv([], "report.csv");
           return;
         }
-        reportOutput.innerHTML = `<p class="panel-muted">Generating ${escapeHtml(type)} report for ${escapeHtml(from)} to ${escapeHtml(to)}...</p>`;
+        reportOutput.innerHTML = `<p class="panel-muted">Searching ${escapeHtml(type)} from ${escapeHtml(from)} to ${escapeHtml(to)}...</p>`;
         setReportCsv([], "report.csv");
         const rows = [];
         const errors = [];
@@ -4152,8 +4121,6 @@
             errors.push(`${isoDate}: ${error.message}`);
           }
         }
-        const title = reportTypeInput?.selectedOptions?.[0]?.textContent || "Report";
-        const summary = reportSummaryHtml([["Report", title], ["Date Range", `${from} → ${to}`], ["Rows", String(rows.length)], ["Errors", String(errors.length)]]);
         let tableHtml = "";
         if (type === "sales") {
           tableHtml = rowsTable(rows, [
@@ -4195,7 +4162,7 @@
           ], "No VIP passengers found.");
         }
         const errorHtml = errors.length ? `<h3>Skipped dates</h3><p class="panel-muted status-warn">${escapeHtml(errors.join(" | "))}</p>` : "";
-        reportOutput.innerHTML = `${summary}${errorHtml}${tableHtml}`;
+        reportOutput.innerHTML = `${errorHtml}${tableHtml}`;
         setReportCsv(rows, `${type}-report-${from}-to-${to}.csv`);
       }
 
