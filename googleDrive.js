@@ -680,6 +680,15 @@ async function getLatestFlightLog() {
 
 
 function gmailClientForUser(userId) {
+  const oauthClientId = process.env.GMAIL_CLIENT_ID || process.env.GOOGLE_GMAIL_CLIENT_ID || process.env.GOOGLE_CLIENT_ID;
+  const oauthClientSecret = process.env.GMAIL_CLIENT_SECRET || process.env.GOOGLE_GMAIL_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET;
+  const oauthRefreshToken = process.env.GMAIL_REFRESH_TOKEN || process.env.GOOGLE_GMAIL_REFRESH_TOKEN || process.env.GOOGLE_REFRESH_TOKEN;
+  if (oauthClientId && oauthClientSecret && oauthRefreshToken) {
+    const oauth2 = new google.auth.OAuth2(oauthClientId, oauthClientSecret);
+    oauth2.setCredentials({ refresh_token: oauthRefreshToken });
+    return google.gmail({ version: 'v1', auth: oauth2 });
+  }
+
   const clientEmail = process.env.GOOGLE_CLIENT_EMAIL;
   const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
   if (clientEmail && privateKey && userId) {
