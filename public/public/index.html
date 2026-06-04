@@ -1771,6 +1771,19 @@
         font-weight: 950;
       }
 
+      .record-card.is-nextday-info {
+        max-width: 100%;
+      }
+
+      .raw-record {
+        position: relative;
+        z-index: 1;
+        overflow-x: auto;
+        white-space: pre-wrap;
+        color: #dff6ff;
+        font: 13px/1.55 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      }
+
       .record-row,
       .security-row {
         display: grid;
@@ -2925,6 +2938,9 @@
       const seatMapButton = document.querySelector("#seat-map-button");
       const reportNavLink = document.querySelector("#report-nav-link");
       const mobileReportNavLink = document.querySelector("#mobile-report-nav-link");
+      const bagroomNav = document.querySelector("#bagroom-nav");
+      const bagroomToggle = document.querySelector("#bagroom-toggle");
+      const bagroomDropdownMenu = bagroomNav?.querySelector(".nav-dropdown-menu");
       const baggageNavLink = document.querySelector("#baggage-nav-link");
       const mobileBaggageNavLink = document.querySelector("#mobile-baggage-nav-link");
       const reportPage = document.querySelector("#report-page");
@@ -4105,6 +4121,7 @@
         if (passwordPage) passwordPage.hidden = true;
         closeLoginMenu();
         closeFlightMenu();
+        closeBaggageDropdown();
         closeMobilePanel();
         closePassengerModal();
         resetPanelState();
@@ -4123,6 +4140,7 @@
         document.body.classList.add("is-report-view");
         closeLoginMenu();
         closeFlightMenu();
+        closeBaggageDropdown();
         closeMobilePanel();
         if (mode) selectReportMode(mode);
         reportPage?.scrollTo({ top: 0, left: 0, behavior: "auto" });
@@ -4141,6 +4159,7 @@
         document.body.classList.add("is-report-view");
         closeLoginMenu();
         closeFlightMenu();
+        closeBaggageDropdown();
         closeMobilePanel();
         bagroomPage?.scrollTo({ top: 0, left: 0, behavior: "auto" });
       }
@@ -4521,6 +4540,21 @@
         showTimelineNodeCard(key, step, inputTime);
       }
 
+      function closeBaggageDropdown() {
+        bagroomToggle?.setAttribute("aria-expanded", "false");
+        bagroomNav?.classList.remove("is-open");
+        bagroomDropdownMenu?.setAttribute("aria-hidden", "true");
+      }
+
+      function toggleBaggageDropdown() {
+        const open = bagroomToggle?.getAttribute("aria-expanded") === "true";
+        closeLoginMenu();
+        closeFlightMenu();
+        bagroomToggle?.setAttribute("aria-expanded", String(!open));
+        bagroomNav?.classList.toggle("is-open", !open);
+        bagroomDropdownMenu?.setAttribute("aria-hidden", String(open));
+      }
+
       function closeMobilePanel() {
         menuButton.setAttribute("aria-expanded", "false");
         fallbackMenuButton.setAttribute("aria-expanded", "false");
@@ -4530,6 +4564,7 @@
 
       function toggleMenu() {
         const open = menuButton.getAttribute("aria-expanded") === "true";
+        closeBaggageDropdown();
         menuButton.setAttribute("aria-expanded", String(!open));
         fallbackMenuButton.setAttribute("aria-expanded", String(!open));
         mobilePanel.classList.toggle("is-open", !open);
@@ -4553,6 +4588,7 @@
 
       loginButton.addEventListener("click", () => {
         const open = loginButton.getAttribute("aria-expanded") === "true";
+        closeBaggageDropdown();
         closeFlightMenu();
         loginButton.setAttribute("aria-expanded", String(!open));
         loginMenu.classList.toggle("is-open", !open);
@@ -4596,6 +4632,7 @@
 
       flightMenuButton.addEventListener("click", () => {
         const open = flightMenuButton.getAttribute("aria-expanded") === "true";
+        closeBaggageDropdown();
         closeLoginMenu();
         flightMenuButton.setAttribute("aria-expanded", String(!open));
         flightMenu.classList.toggle("is-open", !open);
