@@ -26,7 +26,9 @@ const {
 
   getLatestFlightLog,
 
-  getFlightLogByDate
+  getFlightLogByDate,
+
+  appendVipReportRows
 
 } = require('./googleDrive');
 const { findSYInfo } = require('./syParser');
@@ -212,6 +214,86 @@ function findPassengerByFFFromRecord(log, query) {
   return null;
 }
 
+
+function cleanVipPassengerName(value) {
+  return String(value || '')
+    .toUpperCase()
+    .replace(/[\u001c-\u001f]/g, '')
+    .replace(/\+$/g, '')
+    .replace(/\s+/g, '')
+    .replace(/\/+$/g, '');
+}
+
+function passengerNameContainsVip(value) {
+  return /VIP$/i.test(String(value || '').replace(/\+$/g, '').replace(/\s+/g, ''));
+}
+
+function extractBagsForVip(section) {
+  const bagTags = [];
+  const bagTagMatch = String(section || '').match(/\bBAGTAG\/([^\n\r]+)/i);
+  if (bagTagMatch) {
+    bagTagMatch[1].replace(/\b\d{6,}\b/g, (tag) => {
+      bagTags.push(tag);
+      return tag;
+    });
+  }
+  if (bagTags.length) return bagTags.join('/');
+  return (
+    String(section || '').match(/\bBAG\d+\/\d+\/\d+\b/i)?.[0] ||
+    String(section || '').match(/\bFBA\/\d+PC\b/i)?.[0] ||
+    ''
+  ).toUpperCase();
+}
+
+function extractVipRowsFromFbLog(log) {
+  const rows = [];
+  const seen = new Set();
+  const sections = splitLogicalSections(String(log || ''));
+
+  for (const section of sections) {
+    const prMatch = section.match(/\bPR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
+    if (!prMatch) continue;
+
+    const namMatches = [...section.matchAll(/^\s*NAM\s+([A-Z][A-Z/]+VIP)\b/gim)];
+    const vipNamName = namMatches.map((match) => match[1]).find(passengerNameContainsVip) || '';
+    const passengerMatches = [...section.matchAll(/^\s*\d+\.\s*([A-Z][A-Z/]+(?:VIP)?\+?)\s+.*?\bBN\s*(\d{1,3})\b\s+\*?(\d{1,3}[A-Z])?/gim)];
+    const prBn = section.match(/\bBN\s*(\d{1,3})\b/i)?.[1] || '';
+    const bags = extractBagsForVip(section);
+
+    const candidates = passengerMatches.length ? passengerMatches : [[null, vipNamName, prBn, '']];
+    for (const match of candidates) {
+      const rawPassengerName = match[1] || '';
+      const rawName = passengerNameContainsVip(rawPassengerName) ? rawPassengerName : vipNamName;
+      if (!passengerNameContainsVip(rawName)) continue;
+
+      const row = {
+        flightDate: prMatch[2].toUpperCase(),
+        flightNo: prMatch[1].toUpperCase(),
+        passenger: cleanVipPassengerName(rawName),
+        bn: String(match[2] || prBn || '').padStart(3, '0'),
+        seat: String(match[3] || '').toUpperCase(),
+        bags
+      };
+      if (!row.passenger || !row.bn.replace(/0/g, '')) continue;
+      const key = [row.flightDate, row.flightNo, row.passenger, row.bn, row.seat, row.bags]
+        .map((value) => String(value || '').trim().toUpperCase())
+        .join('|');
+      if (seen.has(key)) continue;
+      seen.add(key);
+      rows.push(row);
+    }
+  }
+
+  return rows;
+}
+
+async function syncVipRowsFromFbLog(log) {
+  const rows = extractVipRowsFromFbLog(log);
+  if (!rows.length) return { appended: 0, found: 0 };
+  const result = await appendVipReportRows(rows);
+  return { ...result, found: rows.length };
+}
+
 function formatSYResponse(info) {
   const fields = [
     { name: 'Registration', value: `${info.aircraftType || '-'} / ${info.aircraftRegistration || '-'}`, inline: true },
@@ -269,6 +351,14 @@ async function runLookup(mode, rawQuery) {
 
   parseIncrementalLog(log);
   parsePDLog(log);
+
+  if (mode === 'BN') {
+    try {
+      await syncVipRowsFromFbLog(log);
+    } catch (err) {
+      console.warn('VIP FB sheet sync skipped:', err?.message || err);
+    }
+  }
 
   let pax = null;
 
