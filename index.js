@@ -657,7 +657,7 @@ app.get('/stored-report', async (req, res) => {
 app.get('/vip-report', async (req, res) => {
   try {
     const isoDate = String(req.query.date || '').trim();
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return res.status(400).json({ error: 'Missing or invalid date' });
+    if (isoDate && !/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return res.status(400).json({ error: 'Invalid date' });
     const result = await loadStoredReportRows('vip', isoDate);
     return res.json(result);
   } catch (err) {

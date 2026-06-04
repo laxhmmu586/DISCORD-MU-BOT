@@ -475,7 +475,7 @@ async function getStoredReportRows(type, isoDate) {
       scanned = true;
       continue;
     }
-    if (parsed.date !== isoDate) continue;
+    if (isoDate && parsed.date !== isoDate) continue;
     dataRows.push(parsed);
   }
   return { rows: dataRows, scanned: config.readOnly ? true : scanned };

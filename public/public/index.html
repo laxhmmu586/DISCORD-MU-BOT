@@ -4183,7 +4183,7 @@
 
       async function storedReportRows(type, isoDate, keyword) {
         const endpoint = type === "vip" ? "/vip-report" : "/stored-report";
-        const query = type === "vip" ? `?date=${encodeURIComponent(isoDate)}` : `?type=${encodeURIComponent(type)}&date=${encodeURIComponent(isoDate)}`;
+        const query = type === "vip" ? "" : `?type=${encodeURIComponent(type)}&date=${encodeURIComponent(isoDate)}`;
         const data = await apiJson(`${endpoint}${query}`);
         const needle = String(keyword || "").trim().toUpperCase();
         const rows = data?.rows || [];
@@ -4191,8 +4191,8 @@
         return rows.filter((row) => Object.values(row || {}).some((value) => String(value || "").toUpperCase().includes(needle)));
       }
 
-      async function vipReportRows(isoDate, keyword) {
-        return storedReportRows("vip", isoDate, keyword);
+      async function vipReportRows(keyword) {
+        return storedReportRows("vip", "", keyword);
       }
 
       async function generateReport(event) {
@@ -4200,12 +4200,11 @@
         if (!reportOutput) return;
         const type = activeReportMode === "vip" ? "vip" : "sales";
         const today = ymdFromDate(new Date());
-        const from = type === "vip" ? today : (reportFromInput?.value || today);
-        const to = type === "sales" ? from : today;
+        const from = reportFromInput?.value || today;
         const keyword = type === "vip" ? (reportKeywordInput?.value || "") : "";
         let dates;
         try {
-          dates = type === "sales" ? [from] : [today];
+          dates = type === "sales" ? [from] : [];
           if (type === "sales" && !from) throw new Error("Please select a valid date.");
         } catch (error) {
           reportOutput.innerHTML = `<p class="panel-muted status-fail">${escapeHtml(error.message)}</p>`;
@@ -4218,12 +4217,15 @@
         setReportCsv([], "report.csv");
         const rows = [];
         const errors = [];
+        if (type === "vip") {
+          try {
+            rows.push(...await vipReportRows(keyword));
+          } catch (error) {
+            errors.push(error.message);
+          }
+        }
         for (const isoDate of dates) {
           try {
-            if (type === "vip") {
-              rows.push(...await vipReportRows(isoDate, keyword));
-              continue;
-            }
             const sy = await loadSyForReport(isoDate);
             rows.push(await salesReportRows(sy, isoDate));
           } catch (error) {
@@ -4252,7 +4254,7 @@
         }
         const errorHtml = errors.length ? `<h3>Skipped dates</h3><p class="panel-muted status-warn">${escapeHtml(errors.join(" | "))}</p>` : "";
         reportOutput.innerHTML = `${errorHtml}${tableHtml}`;
-        setReportCsv(type === "sales" ? rows.filter((row) => row.downloadUrl) : rows, `${type}-report-${from}${type === "sales" ? "" : `-to-${to}`}.csv`);
+        setReportCsv(type === "sales" ? rows.filter((row) => row.downloadUrl) : rows, type === "sales" ? `sales-report-${from}.csv` : "vip-report.csv");
       }
 
       function reviewPath() {
@@ -4517,6 +4519,14 @@
         flightMenuButton.setAttribute("aria-expanded", String(!open));
         flightMenu.classList.toggle("is-open", !open);
         flightMenu.setAttribute("aria-hidden", String(open));
+      });
+
+      flightMenu.addEventListener("click", (event) => {
+        if (event.target.closest("button")) closeFlightMenu();
+      });
+
+      document.addEventListener("click", (event) => {
+        if (!event.target.closest(".flight-tools")) closeFlightMenu();
       });
 
       nodes.forEach((node) => {
