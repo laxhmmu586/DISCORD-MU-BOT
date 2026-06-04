@@ -39,6 +39,7 @@ const {
   downloadSalesReportByFlight,
   hasNextDayInfoEmail,
   getStoredReportRows,
+  getVipReportRows,
   getPsmMsgReportRows,
   appendStoredReportRows,
   appendVipReportRows,
@@ -148,12 +149,12 @@ function extractBagsForVip(section) {
   const bagTags = [];
   const bagTagMatch = String(section || '').match(/\bBAGTAG\/([^\n\r]+)/i);
   if (bagTagMatch) {
-    bagTagMatch[1].replace(/\b\d{6,}\b/g, (tag) => {
-      bagTags.push(tag);
-      return tag;
+    bagTagMatch[1].replace(/\b(\d{6,})(?:\/([A-Z]{3}))?\b/gi, (value, tag, destination) => {
+      bagTags.push(`${tag}${destination ? `/${String(destination).toUpperCase()}` : ''}`);
+      return value;
     });
   }
-  if (bagTags.length) return bagTags.join('/');
+  if (bagTags.length) return bagTags.join(' /');
   return (
     String(section || '').match(/\bBAG\d+\/\d+\/\d+\b/i)?.[0] ||
     String(section || '').match(/\bFBA\/\d+PC\b/i)?.[0] ||
@@ -777,9 +778,10 @@ app.get('/vip-report', async (req, res) => {
   try {
     const isoDate = String(req.query.date || '').trim();
     if (isoDate && !/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return res.status(400).json({ error: 'Invalid date' });
-    const result = await loadStoredReportRows('vip', isoDate);
-    return res.json({ ...result, sync });
+    const rows = await getVipReportRows(isoDate || '');
+    return res.json({ rows, source: 'sheet', scanned: true });
   } catch (err) {
+    console.error('VIP report error:', err);
     return res.status(500).json({ error: err?.message || 'VIP report lookup failed' });
   }
 });

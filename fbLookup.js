@@ -232,12 +232,12 @@ function extractBagsForVip(section) {
   const bagTags = [];
   const bagTagMatch = String(section || '').match(/\bBAGTAG\/([^\n\r]+)/i);
   if (bagTagMatch) {
-    bagTagMatch[1].replace(/\b\d{6,}\b/g, (tag) => {
-      bagTags.push(tag);
-      return tag;
+    bagTagMatch[1].replace(/\b(\d{6,})(?:\/([A-Z]{3}))?\b/gi, (value, tag, destination) => {
+      bagTags.push(`${tag}${destination ? `/${String(destination).toUpperCase()}` : ''}`);
+      return value;
     });
   }
-  if (bagTags.length) return bagTags.join('/');
+  if (bagTags.length) return bagTags.join(' /');
   return (
     String(section || '').match(/\bBAG\d+\/\d+\/\d+\b/i)?.[0] ||
     String(section || '').match(/\bFBA\/\d+PC\b/i)?.[0] ||

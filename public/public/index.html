@@ -4024,7 +4024,7 @@
         if (reportOutput && options.resetOutput) {
           reportOutput.innerHTML = activeReportMode === "vip" ? `<p class="panel-muted">Loading VIP Report...</p>` : (activeReportMode === "psm" ? `<p class="panel-muted">Choose a flight date range, then search PSM Report.</p>` : `<p class="panel-muted">Choose a date, then download Sales Report.</p>`);
         }
-        if (activeReportMode === "vip") generateReport();
+        if (activeReportMode === "vip" || activeReportMode === "psm") generateReport();
       }
 
       function resetPanelState() {
@@ -4334,7 +4334,7 @@
             { label: "Detail", value: (row) => row.detail },
           ], "No PSM/MSG rows found.");
         }
-        const errorHtml = errors.length ? `<h3>Skipped dates</h3><p class="panel-muted status-warn">${escapeHtml(errors.join(" | "))}</p>` : "";
+        const errorHtml = errors.length ? `<p class="panel-muted status-warn">${escapeHtml(errors.join(" | "))}</p>` : "";
         reportOutput.innerHTML = `${errorHtml}${tableHtml}`;
         setReportCsv(type === "sales" ? rows.filter((row) => row.downloadUrl) : rows, type === "sales" ? `sales-report-${from}.csv` : (type === "psm" ? `psm-report-${from}${from === to ? "" : `-to-${to}`}.csv` : "vip-report.csv"));
       }

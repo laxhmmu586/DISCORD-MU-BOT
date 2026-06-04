@@ -536,6 +536,20 @@ async function pruneStoredReportRows(type) {
 }
 
 
+
+async function getVipReportRows(isoDate = '') {
+  const rows = await getReportSheetRows('vip');
+  const dataRows = [];
+  const startIndex = rows.length && isReportHeaderRow('vip', rows[0]) ? 1 : 0;
+  for (let i = startIndex; i < rows.length; i += 1) {
+    if (isReportHeaderRow('vip', rows[i])) continue;
+    const parsed = reportRowFromSheet('vip', rows[i]);
+    if (isoDate && parsed.date !== isoDate) continue;
+    dataRows.push(parsed);
+  }
+  return dataRows.sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')) || String(a.flightNo || '').localeCompare(String(b.flightNo || '')) || Number(a.bn || 0) - Number(b.bn || 0) || String(a.passenger || '').localeCompare(String(b.passenger || '')));
+}
+
 async function getPsmMsgReportRows(fromIsoDate, toIsoDate = fromIsoDate) {
   const from = String(fromIsoDate || '').trim();
   const to = String(toIsoDate || from).trim();
@@ -581,7 +595,7 @@ async function appendVipReportRows(rows) {
       flightDate: String(row.flightDate || '').trim().toUpperCase(),
       flightNo: String(row.flightNo || '').trim().toUpperCase(),
       passenger: String(row.passenger || '').trim().toUpperCase(),
-      bn: String(row.bn || '').trim().padStart(3, '0'),
+      bn: String(row.bn || '').trim().replace(/^0+(?=\d)/, ''),
       seat: String(row.seat || '').trim().toUpperCase(),
       bags: String(row.bags || '').trim().toUpperCase()
     };
@@ -946,6 +960,7 @@ module.exports = {
   downloadSalesReportByFlight,
   hasNextDayInfoEmail,
   getStoredReportRows,
+  getVipReportRows,
   getPsmMsgReportRows,
   appendStoredReportRows,
   appendVipReportRows,
