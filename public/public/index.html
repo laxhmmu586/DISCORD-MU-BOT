@@ -2111,6 +2111,7 @@
       .report-download,
       .report-run {
         min-height: 42px;
+        min-width: 132px;
         border: 1px solid rgba(88, 167, 255, 0.5);
         background: rgba(88, 167, 255, 0.14);
         color: white;
@@ -2118,6 +2119,7 @@
         font-weight: 900;
         text-transform: uppercase;
         cursor: pointer;
+        justify-self: start;
       }
 
       .report-download:disabled {
@@ -2139,9 +2141,10 @@
 
       .report-form {
         display: grid;
-        grid-template-columns: repeat(3, minmax(120px, 1fr)) auto;
-        gap: 12px;
+        grid-template-columns: repeat(3, minmax(150px, 260px)) minmax(132px, 160px);
+        gap: 10px;
         align-items: end;
+        justify-content: start;
         margin-bottom: 18px;
       }
 
@@ -2181,11 +2184,12 @@
 
       .report-field input,
       .report-field select {
-        min-height: 42px;
+        width: 100%;
+        min-height: 38px;
         border: 1px solid rgba(210, 231, 255, 0.2);
         background: rgba(227, 237, 251, 0.96);
         color: #071327;
-        padding: 0 12px;
+        padding: 0 10px;
         outline: 0;
       }
 
