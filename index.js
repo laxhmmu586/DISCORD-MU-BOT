@@ -37,7 +37,10 @@ const {
   getSyBagInfoByDate,
   getSalesReportMeta,
   downloadSalesReportByFlight,
-  hasNextDayInfoEmail
+  hasNextDayInfoEmail,
+  getStoredReportRows,
+  appendStoredReportRows,
+  pruneStoredReportRows
 
 } = require('./googleDrive');
 
@@ -67,6 +70,187 @@ const DEFAULT_PERMISSIONS = {
   canViewGuestAccess: true,
   canViewPaidService: true
 };
+
+
+function isoDateToLogDateParts(isoDate) {
+  const match = String(isoDate || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+  const monthName = months[Number(match[2]) - 1];
+  if (!monthName) return null;
+  return { date: `${match[3]}${monthName}`, yearSuffix: match[1].slice(-2) };
+}
+
+function todayIsoUtc() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function monthNameToNumber(monthName) {
+  const months = { JAN: '01', FEB: '02', MAR: '03', APR: '04', MAY: '05', JUN: '06', JUL: '07', AUG: '08', SEP: '09', OCT: '10', NOV: '11', DEC: '12' };
+  return months[String(monthName || '').slice(0, 3).toUpperCase()] || '';
+}
+
+function flightDateToIsoDate(flightDate) {
+  const match = String(flightDate || '').toUpperCase().match(/^(\d{2})([A-Z]{3})(\d{2})$/);
+  const month = monthNameToNumber(match?.[2]);
+  if (!match || !month) return '';
+  return `20${match[3]}-${month}-${match[1]}`;
+}
+
+function sectionTimestampToIsoDate(section) {
+  const match = String(section || '').match(/^(\d{4})\s+([A-Z][a-z]{2})\s+(\d{1,2}),/);
+  const month = monthNameToNumber(match?.[2]);
+  if (!match || !month) return '';
+  return `${match[1]}-${month}-${String(match[3]).padStart(2, '0')}`;
+}
+
+function splitReportSections(log) {
+  return String(log || '')
+    .split(/(?=\n?\d{4}\s+[A-Z][a-z]{2}\s+\d{1,2},\s+[A-Z][a-z]+,\s+\d{2}:\d{2}:\d{2}\s*\n>)/g)
+    .map((content) => content.trim())
+    .filter(Boolean);
+}
+
+function cleanVipName(value) {
+  return String(value || '')
+    .toUpperCase()
+    .replace(/\+$/g, '')
+    .replace(/\s+/g, '')
+    .replace(/\/+$/g, '');
+}
+
+function extractVipNameCandidate(section) {
+  const namMatch = String(section || '').match(/^\s*NAM\s+([A-Z][A-Z/]+VIP)\b/im);
+  if (namMatch) return { name: cleanVipName(namMatch[1]), source: 'NAM' };
+
+  const passengerLine = String(section || '').match(/^\s*\d+\.\s*([A-Z][A-Z/]+(?:VIP)?\+?)\b.*?\bBN\s*\d{1,3}\b/im);
+  const passengerName = cleanVipName(passengerLine?.[1]);
+  if (passengerName.endsWith('VIP')) return { name: passengerName, source: 'Passenger Line' };
+
+  return null;
+}
+
+function mergeVipRow(existing, next) {
+  if (!existing.bn && next.bn) existing.bn = next.bn;
+  if (!existing.seat && next.seat) existing.seat = next.seat;
+  if (!existing.source.includes(next.source)) existing.source = `${existing.source}/${next.source}`;
+  return existing;
+}
+
+function extractVipPassengersFromLog(log, isoDate) {
+  const byPassengerFlight = new Map();
+
+  for (const section of splitReportSections(log)) {
+    if (!/\bPR:\s*[A-Z0-9]+\//i.test(section)) continue;
+    const vip = extractVipNameCandidate(section);
+    if (!vip?.name?.endsWith('VIP')) continue;
+
+    const sectionIsoDate = sectionTimestampToIsoDate(section);
+    if (sectionIsoDate !== isoDate) continue;
+
+    const prMatch = section.match(/\bPR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
+    const flightDate = prMatch?.[2]?.toUpperCase() || '';
+    if (flightDateToIsoDate(flightDate) !== sectionIsoDate) continue;
+
+    const bn = section.match(/\bBN\s*(\d{1,3})\b/i)?.[1]?.padStart(3, '0') || '';
+    const passengerLine = section.match(/^\s*\d+\.[^\n\r]*/im)?.[0] || '';
+    const seat = (
+      passengerLine.match(/\bBN\s*\d{1,3}\s+\*?(\d{1,3}[A-Z])\b/i)?.[1] ||
+      passengerLine.match(/\bSNR?\s*(\d{1,3}[A-Z])\b/i)?.[1] ||
+      ''
+    ).toUpperCase();
+    const row = {
+      date: isoDate,
+      flightNo: prMatch?.[1]?.toUpperCase() || '',
+      flightDate,
+      passenger: vip.name,
+      bn,
+      seat,
+      source: vip.source
+    };
+    const key = `${row.flightNo}|${row.flightDate}|${row.passenger}`;
+    if (byPassengerFlight.has(key)) {
+      mergeVipRow(byPassengerFlight.get(key), row);
+      continue;
+    }
+    byPassengerFlight.set(key, row);
+  }
+
+  return Array.from(byPassengerFlight.values())
+    .sort((a, b) => (a.flightNo || '').localeCompare(b.flightNo || '') || Number(a.bn || 0) - Number(b.bn || 0) || (a.passenger || '').localeCompare(b.passenger || ''));
+}
+
+async function getLogForIsoDate(isoDate) {
+  if (isoDate === todayIsoUtc()) return getLatestFlightLog();
+  const parts = isoDateToLogDateParts(isoDate);
+  if (!parts) return null;
+  return getFlightLogByDate(parts.date, parts.yearSuffix);
+}
+
+function isoDateToSyDate(isoDate) {
+  const parts = isoDateToLogDateParts(isoDate);
+  return parts?.date || '';
+}
+
+function reportPassengerName(row) {
+  return row?.name || row?.passengerName || row?.paxName || row?.passenger || '';
+}
+
+function extractWheelchairRowsFromSy(syInfo, isoDate) {
+  const byBn = new Map([...(syInfo?.seatMapRecords || []), ...(syInfo?.bnAudit || [])]
+    .map((row) => [String(row.bn || '').padStart(3, '0'), row.passengerRecord || row]));
+  return (syInfo?.wchList || []).map((row) => {
+    const merged = { ...(byBn.get(String(row.bn || '').padStart(3, '0')) || {}), ...row };
+    const wheelchairType = Array.isArray(merged.codes)
+      ? merged.codes.join('/')
+      : (Array.isArray(merged.specialServices) ? merged.specialServices.filter((code) => /^WCH/i.test(code)).join('/') : (merged.code || merged.wheelchairType || 'WCH'));
+    const out = {
+      date: isoDate,
+      flightNo: syInfo.flightNo || '',
+      flightDate: syInfo.flightDate || '',
+      passenger: reportPassengerName(merged),
+      bn: merged.bn || '',
+      seat: merged.seat || '',
+      wheelchairType: wheelchairType || 'WCH'
+    };
+    out.key = `wheelchair|${out.date}|${out.flightNo}|${out.flightDate}|${out.passenger}|${out.bn}|${out.seat}|${out.wheelchairType}`.toUpperCase();
+    return out;
+  });
+}
+
+async function scanVipReportRows(isoDate) {
+  const log = await getLogForIsoDate(isoDate);
+  if (!log) return [];
+  return extractVipPassengersFromLog(log, isoDate).map((row) => ({
+    ...row,
+    key: `vip|${row.date}|${row.flightNo}|${row.flightDate}|${row.passenger}`.toUpperCase()
+  }));
+}
+
+async function scanWheelchairReportRows(isoDate) {
+  const log = await getLogForIsoDate(isoDate);
+  if (!log) return [];
+  const syDate = isoDateToSyDate(isoDate);
+  if (!syDate) return [];
+  const syInfo = findSYInfo(log, syDate, { preferredFlightNo: 'MU586' });
+  if (!syInfo) return [];
+  return extractWheelchairRowsFromSy(syInfo, isoDate);
+}
+
+async function loadStoredReportRows(type, isoDate) {
+  const normalizedType = String(type || '').toLowerCase();
+  const stored = await getStoredReportRows(normalizedType, isoDate);
+  if (stored.rows.length) return { rows: stored.rows, source: 'sheet', saved: true };
+
+  const rows = normalizedType === 'vip'
+    ? await scanVipReportRows(isoDate)
+    : await scanWheelchairReportRows(isoDate);
+  if (rows.length) await appendStoredReportRows(normalizedType, isoDate, rows);
+  await pruneStoredReportRows(normalizedType);
+
+  const refreshed = rows.length ? await getStoredReportRows(normalizedType, isoDate) : { rows: [] };
+  return { rows: refreshed.rows.length ? refreshed.rows : rows, source: 'scan', saved: rows.length > 0 };
+}
 
 async function resolveAuthContextFromRequest(req) {
   return { permissions: { ...DEFAULT_PERMISSIONS }, uid: null, claims: {} };
@@ -448,6 +632,32 @@ app.post('/security-reviews', async (req, res) => {
 // ===============================
 // Search API
 // ===============================
+
+app.get('/stored-report', async (req, res) => {
+  try {
+    const type = String(req.query.type || '').trim().toLowerCase();
+    const isoDate = String(req.query.date || '').trim();
+    if (!['vip', 'wheelchair'].includes(type)) return res.status(400).json({ error: 'Invalid report type' });
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return res.status(400).json({ error: 'Missing or invalid date' });
+    const result = await loadStoredReportRows(type, isoDate);
+    return res.json(result);
+  } catch (err) {
+    console.error('Stored report error:', err);
+    return res.status(500).json({ error: err?.message || 'Stored report lookup failed' });
+  }
+});
+
+app.get('/vip-report', async (req, res) => {
+  try {
+    const isoDate = String(req.query.date || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return res.status(400).json({ error: 'Missing or invalid date' });
+    const result = await loadStoredReportRows('vip', isoDate);
+    return res.json(result);
+  } catch (err) {
+    return res.status(500).json({ error: err?.message || 'VIP report lookup failed' });
+  }
+});
+
 app.get(
   '/sales-report/meta',
   async (req, res) => {

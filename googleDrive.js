@@ -18,7 +18,7 @@ const auth = new google.auth.GoogleAuth({
   scopes: [
 
     'https://www.googleapis.com/auth/drive.readonly',
-    'https://www.googleapis.com/auth/spreadsheets.readonly',
+    'https://www.googleapis.com/auth/spreadsheets',
     'https://www.googleapis.com/auth/gmail.readonly'
   ]
 });
@@ -310,6 +310,188 @@ const LOG_NAMES = [
 ];
 const SALES_REPORT_FOLDER_ID = '1-RLbv_BU9rnsaaPy8UUkbN6FkhA5YqGf';
 
+const REPORT_SHEET_ID = '1JqRnDx_uLc2m2SzyZOuHWWJsbkKenlKo60U9zwV9uMQ';
+const REPORT_SHEETS = {
+  vip: {
+    gid: 1703169759,
+    headers: ['Recorded At', 'Date', 'Flight', 'Flight Date', 'Passenger', 'BN', 'Seat', 'Source', 'Key'],
+    fields: ['recordedAt', 'date', 'flightNo', 'flightDate', 'passenger', 'bn', 'seat', 'source', 'key']
+  },
+  wheelchair: {
+    gid: 910713958,
+    headers: ['Recorded At', 'Date', 'Flight', 'Flight Date', 'Passenger', 'BN', 'Seat', 'Wheelchair Type', 'Key'],
+    fields: ['recordedAt', 'date', 'flightNo', 'flightDate', 'passenger', 'bn', 'seat', 'wheelchairType', 'key']
+  }
+};
+const reportSheetTitles = {};
+let reportSheetAccessBlocked = false;
+
+function getReportSheetConfig(type) {
+  return REPORT_SHEETS[String(type || '').toLowerCase()] || null;
+}
+
+function buildStoredReportKey(type, row) {
+  const normalizedType = String(type || '').toLowerCase();
+  if (row?.key) return String(row.key);
+  return [
+    normalizedType,
+    row?.date || '',
+    row?.flightNo || '',
+    row?.flightDate || '',
+    row?.passenger || '',
+    row?.bn || '',
+    row?.seat || '',
+    row?.wheelchairType || ''
+  ].map((value) => String(value || '').trim().toUpperCase()).join('|');
+}
+
+async function getReportSheetTitle(type) {
+  const config = getReportSheetConfig(type);
+  if (!config) return '';
+  if (!reportSheetTitles[type]) {
+    reportSheetTitles[type] = await resolveSheetTitleByGid(REPORT_SHEET_ID, config.gid);
+  }
+  return reportSheetTitles[type] || '';
+}
+
+async function getReportSheetRows(type) {
+  if (reportSheetAccessBlocked) return [];
+  const config = getReportSheetConfig(type);
+  if (!config) return [];
+  try {
+    const title = await getReportSheetTitle(type);
+    if (!title) return [];
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: REPORT_SHEET_ID,
+      range: `${title}!A:${String.fromCharCode(64 + config.headers.length)}`
+    });
+    return res.data.values || [];
+  } catch (err) {
+    const reason = err?.errors?.[0]?.reason || err?.response?.data?.error?.errors?.[0]?.reason || '';
+    if (reason === 'accessNotConfigured' || err?.code === 403) {
+      reportSheetAccessBlocked = true;
+      console.warn('Report sheet lookup disabled: Google Sheets API unavailable or not shared with service account.');
+      return [];
+    }
+    throw err;
+  }
+}
+
+async function ensureReportSheetHeaders(type, rows) {
+  if (reportSheetAccessBlocked) return;
+  const config = getReportSheetConfig(type);
+  const title = await getReportSheetTitle(type);
+  if (!config || !title) return;
+  const firstRow = rows?.[0] || [];
+  const hasHeaders = config.headers.every((header, index) => String(firstRow[index] || '').trim() === header);
+  if (hasHeaders) return;
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: REPORT_SHEET_ID,
+    range: `${title}!A1`,
+    valueInputOption: 'RAW',
+    requestBody: { values: [config.headers] }
+  });
+}
+
+function reportRowFromSheet(type, values) {
+  const config = getReportSheetConfig(type);
+  const row = {};
+  config.fields.forEach((field, index) => {
+    row[field] = values[index] || '';
+  });
+  return row;
+}
+
+function sheetValuesFromReportRow(type, row) {
+  const config = getReportSheetConfig(type);
+  const normalized = {
+    ...row,
+    recordedAt: row.recordedAt || new Date().toISOString(),
+    key: buildStoredReportKey(type, row)
+  };
+  return config.fields.map((field) => normalized[field] || '');
+}
+
+async function getStoredReportRows(type, isoDate) {
+  const config = getReportSheetConfig(type);
+  if (!config) return { rows: [] };
+  const rows = await getReportSheetRows(type);
+  await ensureReportSheetHeaders(type, rows);
+  const dataRows = [];
+  for (let i = 1; i < rows.length; i += 1) {
+    const parsed = reportRowFromSheet(type, rows[i]);
+    if (parsed.date !== isoDate) continue;
+    dataRows.push(parsed);
+  }
+  return { rows: dataRows };
+}
+
+
+function reportRetentionCutoffIso() {
+  const date = new Date();
+  date.setUTCMonth(date.getUTCMonth() - 18);
+  return date.toISOString().slice(0, 10);
+}
+
+async function pruneStoredReportRows(type) {
+  if (reportSheetAccessBlocked) return { deleted: 0 };
+  const config = getReportSheetConfig(type);
+  if (!config) return { deleted: 0 };
+  const title = await getReportSheetTitle(type);
+  if (!title) return { deleted: 0 };
+  const rows = await getReportSheetRows(type);
+  if (rows.length <= 1) return { deleted: 0 };
+  const cutoff = reportRetentionCutoffIso();
+  const deleteIndexes = [];
+  for (let i = 1; i < rows.length; i += 1) {
+    const parsed = reportRowFromSheet(type, rows[i]);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(parsed.date) && parsed.date < cutoff) deleteIndexes.push(i);
+  }
+  if (!deleteIndexes.length) return { deleted: 0 };
+  const requests = deleteIndexes.reverse().map((rowIndex) => ({
+    deleteDimension: {
+      range: {
+        sheetId: config.gid,
+        dimension: 'ROWS',
+        startIndex: rowIndex,
+        endIndex: rowIndex + 1
+      }
+    }
+  }));
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId: REPORT_SHEET_ID,
+    requestBody: { requests }
+  });
+  return { deleted: deleteIndexes.length };
+}
+
+async function appendStoredReportRows(type, isoDate, rows) {
+  if (reportSheetAccessBlocked) return { appended: 0 };
+  const config = getReportSheetConfig(type);
+  if (!config) return { appended: 0 };
+  const title = await getReportSheetTitle(type);
+  if (!title) return { appended: 0 };
+  const sheetRows = await getReportSheetRows(type);
+  await ensureReportSheetHeaders(type, sheetRows);
+  const existingKeys = new Set(sheetRows.slice(1).map((row) => reportRowFromSheet(type, row).key).filter(Boolean));
+  const values = [];
+  for (const row of rows || []) {
+    const key = buildStoredReportKey(type, row);
+    if (existingKeys.has(key)) continue;
+    existingKeys.add(key);
+    values.push(sheetValuesFromReportRow(type, { ...row, key }));
+  }
+  if (!values.length) return { appended: 0 };
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: REPORT_SHEET_ID,
+    range: `${title}!A1`,
+    valueInputOption: 'RAW',
+    insertDataOption: 'INSERT_ROWS',
+    requestBody: { values }
+  });
+  return { appended: values.length };
+}
+
 function normalizeFlightCode(flightNo) {
   return String(flightNo || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 }
@@ -539,5 +721,8 @@ module.exports = {
   getSyBagInfoByDate,
   getSalesReportMeta,
   downloadSalesReportByFlight,
-  hasNextDayInfoEmail
+  hasNextDayInfoEmail,
+  getStoredReportRows,
+  appendStoredReportRows,
+  pruneStoredReportRows
 };
