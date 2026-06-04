@@ -232,12 +232,12 @@
 
       .nav-dropdown-menu {
         position: absolute;
-        top: calc(100% + 16px);
+        top: 100%;
         left: 0;
         width: max-content;
         min-width: 190px;
         display: none;
-        padding: 14px 0 8px;
+        padding: 16px 0 8px;
         border: 0;
         background: linear-gradient(180deg, rgba(0, 0, 0, 0.62), rgba(0, 0, 0, 0.26) 72%, transparent);
         box-shadow: none;
@@ -245,6 +245,7 @@
       }
 
       .nav-dropdown:hover .nav-dropdown-menu,
+      .nav-dropdown:focus-within .nav-dropdown-menu,
       .nav-dropdown.is-open .nav-dropdown-menu {
         display: block;
       }
@@ -2240,6 +2241,16 @@
         display: grid;
       }
 
+      .bagroom-form.is-open {
+        grid-template-columns: repeat(3, minmax(150px, 220px)) auto;
+        width: fit-content;
+        max-width: 100%;
+      }
+
+      .bagroom-form .report-run {
+        min-height: 42px;
+      }
+
       .report-selector {
         display: flex;
         flex-wrap: wrap;
@@ -2323,6 +2334,11 @@
 
         .report-form {
           grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .bagroom-form.is-open {
+          grid-template-columns: repeat(3, minmax(130px, 1fr)) auto;
+          width: 100%;
         }
 
         .report-run {
@@ -2706,8 +2722,10 @@
           grid-template-columns: 1fr;
         }
 
-        .report-form {
+        .report-form,
+        .bagroom-form.is-open {
           grid-template-columns: 1fr;
+          width: 100%;
         }
 
         .data-table {
