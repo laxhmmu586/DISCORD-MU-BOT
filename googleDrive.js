@@ -392,13 +392,26 @@ async function ensureReportSheetHeaders(type, rows) {
   });
 }
 
+function reportFlightDateToIso(value) {
+  const raw = String(value || '').trim().toUpperCase();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  const flightDateIso = toIsoDateFromFlightDate(raw);
+  if (flightDateIso) return flightDateIso;
+  const slashMatch = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/);
+  if (slashMatch) {
+    const year = slashMatch[3].length === 2 ? `20${slashMatch[3]}` : slashMatch[3];
+    return `${year}-${String(slashMatch[1]).padStart(2, '0')}-${String(slashMatch[2]).padStart(2, '0')}`;
+  }
+  return '';
+}
+
 function reportRowFromSheet(type, values) {
   const config = getReportSheetConfig(type);
   const row = {};
   config.fields.forEach((field, index) => {
     row[field] = values[index] || '';
   });
-  if (type === 'vip' && !row.date) row.date = toIsoDateFromFlightDate(row.flightDate);
+  if (type === 'vip' && !row.date) row.date = reportFlightDateToIso(row.flightDate);
   return row;
 }
 
@@ -429,6 +442,20 @@ async function getStoredReportRows(type, isoDate) {
     dataRows.push(parsed);
   }
   return { rows: dataRows, scanned };
+}
+
+async function getVipReportRowsFromSheet(isoDate) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(isoDate || ''))) return { rows: [], scanned: false, source: 'sheet' };
+  const rows = await getReportSheetRows('vip');
+  const dataRows = [];
+  for (let i = 0; i < rows.length; i += 1) {
+    const parsed = reportRowFromSheet('vip', rows[i]);
+    const isHeader = ['FLIGHT DATE', 'FLIGHT #', 'PASSENGER NAME', 'NAME'].includes(String(parsed.flightDate || '').trim().toUpperCase());
+    if (isHeader || parsed.key === scanMarkerKey('vip', isoDate) || parsed.passenger === '__SCAN_COMPLETE__') continue;
+    if (parsed.date !== isoDate) continue;
+    dataRows.push(parsed);
+  }
+  return { rows: dataRows, scanned: false, source: 'sheet' };
 }
 
 
@@ -759,6 +786,7 @@ module.exports = {
   downloadSalesReportByDate,
   hasNextDayInfoEmail,
   getStoredReportRows,
+  getVipReportRowsFromSheet,
   appendStoredReportRows,
   pruneStoredReportRows
 };

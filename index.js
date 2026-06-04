@@ -40,6 +40,7 @@ const {
   downloadSalesReportByDate,
   hasNextDayInfoEmail,
   getStoredReportRows,
+  getVipReportRowsFromSheet,
   appendStoredReportRows,
   pruneStoredReportRows
 
@@ -668,7 +669,7 @@ app.get('/stored-report', async (req, res) => {
     const isoDate = String(req.query.date || '').trim();
     if (type !== 'vip') return res.status(400).json({ error: 'Invalid report type' });
     if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return res.status(400).json({ error: 'Missing or invalid date' });
-    const result = await loadStoredReportRows(type, isoDate);
+    const result = await getVipReportRowsFromSheet(isoDate);
     return res.json(result);
   } catch (err) {
     console.error('Stored report error:', err);
@@ -680,7 +681,7 @@ app.get('/vip-report', async (req, res) => {
   try {
     const isoDate = String(req.query.date || '').trim();
     if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return res.status(400).json({ error: 'Missing or invalid date' });
-    const result = await loadStoredReportRows('vip', isoDate);
+    const result = await getVipReportRowsFromSheet(isoDate);
     return res.json(result);
   } catch (err) {
     return res.status(500).json({ error: err?.message || 'VIP report lookup failed' });
