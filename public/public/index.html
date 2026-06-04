@@ -1113,6 +1113,11 @@
         gap: 10px;
       }
 
+      .details-panel .detail-action[data-report-shortcut],
+      .details-panel .detail-action[data-report-mode] {
+        display: none !important;
+      }
+
       .detail-action {
         position: relative;
         z-index: 2;
@@ -2920,8 +2925,20 @@
       let activeReportMode = "sales";
       let activeSyQuery = "SY";
 
+      function removeLegacyDetailReportButtons() {
+        const detailsPanel = document.querySelector(".details-panel");
+        if (!detailsPanel) return;
+        detailsPanel.querySelectorAll(".detail-action").forEach((button) => {
+          const label = (button.textContent || "").trim().toUpperCase();
+          if (button.dataset.reportShortcut || button.dataset.reportMode || label === "SALES REPORT" || label === "VIP REPORT") {
+            button.remove();
+          }
+        });
+      }
+
       function setSyDetailsVisible(visible) {
         const detailsPanel = document.querySelector(".details-panel");
+        removeLegacyDetailReportButtons();
         if (detailsPanel) detailsPanel.hidden = !visible;
       }
 
