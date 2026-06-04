@@ -200,79 +200,6 @@
         color: white;
       }
 
-      .nav-dropdown {
-        position: relative;
-        display: inline-flex;
-        align-items: center;
-      }
-
-      .nav-dropdown > button {
-        padding: 0;
-        border: 0;
-        background: transparent;
-        color: rgba(255, 255, 255, 0.88);
-        font-size: 13px;
-        font-weight: 800;
-        letter-spacing: 0.4px;
-        text-transform: uppercase;
-        line-height: 1;
-        cursor: pointer;
-      }
-
-      .nav-dropdown > button::after {
-        content: "";
-        display: inline-block;
-        margin-left: 8px;
-        border-left: 4px solid transparent;
-        border-right: 4px solid transparent;
-        border-top: 5px solid currentColor;
-        vertical-align: middle;
-        opacity: 0.8;
-      }
-
-      .nav-dropdown-menu {
-        position: absolute;
-        top: 100%;
-        left: 0;
-        width: max-content;
-        min-width: 190px;
-        display: none;
-        padding: 26px 0 8px;
-        border: 0;
-        background: linear-gradient(180deg, rgba(0, 0, 0, 0.62), rgba(0, 0, 0, 0.26) 72%, transparent);
-        box-shadow: none;
-        backdrop-filter: none;
-      }
-
-      .nav-dropdown:hover .nav-dropdown-menu,
-      .nav-dropdown:focus-within .nav-dropdown-menu,
-      .nav-dropdown.is-open .nav-dropdown-menu {
-        display: block;
-      }
-
-      .nav-dropdown-menu::before {
-        display: none;
-      }
-
-      .nav-dropdown-menu a {
-        display: block;
-        padding: 0 0 14px;
-        font-size: 13px;
-        line-height: 1.05;
-        letter-spacing: 0.3px;
-        text-align: left;
-      }
-
-      .nav-dropdown > button:hover,
-      .nav-dropdown.is-open > button {
-        color: white;
-      }
-
-      .nav-dropdown-menu a:hover {
-        background: transparent;
-        color: white;
-      }
-
       .search {
         position: relative;
         flex: 1;
@@ -2752,12 +2679,7 @@
       <a class="brand" id="home-nav-link" href="#home" aria-label="MUFC home"><span>MUFC</span></a>
       <nav class="nav-links" aria-label="Primary navigation">
         <a href="#reports" id="report-nav-link">Report</a>
-        <div class="nav-dropdown" id="bagroom-nav">
-          <button type="button" id="bagroom-toggle" aria-expanded="false">Baggage</button>
-          <div class="nav-dropdown-menu" aria-hidden="true">
-            <a href="#bagroom" id="baggage-nav-link">Bagroom</a>
-          </div>
-        </div>
+        <a href="#bagroom" id="baggage-nav-link">Bagroom</a>
       </nav>
       <div class="nav-row">
         <form class="search" id="mission-search" aria-label="Search mission">
@@ -4670,12 +4592,11 @@
 
       homeNavLink.addEventListener("click", (event) => { event.preventDefault(); showHomePage(); });
       bagReportButton?.addEventListener("click", openBaggageReport);
-      bagroomToggle?.addEventListener("click", (event) => { event.preventDefault(); toggleBaggageDropdown(); });
       salesReportButton?.addEventListener("click", downloadSalesReport);
       reportNavLink.addEventListener("click", (event) => { event.preventDefault(); showReportPage(); });
-      mobileReportNavLink.addEventListener("click", (event) => { event.preventDefault(); showReportPage(); });
-      baggageNavLink.addEventListener("click", (event) => { event.preventDefault(); closeBaggageDropdown(); openBaggageReport(); });
-      mobileBaggageNavLink.addEventListener("click", (event) => { event.preventDefault(); openBaggageReport(); });
+      mobileReportNavLink.addEventListener("click", (event) => { event.preventDefault(); closeMobilePanel(); showReportPage(); });
+      baggageNavLink.addEventListener("click", (event) => { event.preventDefault(); openBaggageReport(); });
+      mobileBaggageNavLink.addEventListener("click", (event) => { event.preventDefault(); closeMobilePanel(); openBaggageReport(); });
       reportCloseButton.addEventListener("click", hideReportPage);
       bagroomCloseButton.addEventListener("click", hideReportPage);
       reportForm.addEventListener("submit", generateReport);
@@ -4760,7 +4681,8 @@
       });
 
       document.addEventListener("click", (event) => {
-        if (!event.target.closest("#bagroom-nav")) closeBaggageDropdown();
+        if (!event.target.closest(".flight-tools")) closeFlightMenu();
+        if (event.target.closest(".mobile-panel a, .mobile-panel button")) closeMobilePanel();
         const modalBackdrop = event.target.closest(".passenger-modal-backdrop");
         if (modalBackdrop?.dataset.dragging === "true") return;
         if (event.target.closest("[data-close-modal]") || modalBackdrop) closePassengerModal();
