@@ -654,6 +654,31 @@ app.get('/stored-report', async (req, res) => {
   }
 });
 
+app.get('/bagroom-report', async (req, res) => {
+  try {
+    const from = String(req.query.from || req.query.date || '').trim();
+    const to = String(req.query.to || from).trim();
+    const dateRe = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRe.test(from) || !dateRe.test(to)) return res.status(400).json({ error: 'Missing or invalid date range' });
+    const fromDate = new Date(`${from}T00:00:00Z`);
+    const toDate = new Date(`${to}T00:00:00Z`);
+    if (Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime()) || fromDate > toDate) {
+      return res.status(400).json({ error: 'Invalid date range' });
+    }
+    const rows = [];
+    for (const cursor = new Date(fromDate); cursor <= toDate; cursor.setUTCDate(cursor.getUTCDate() + 1)) {
+      if (rows.length > 366) return res.status(400).json({ error: 'Date range is too large' });
+      const isoDate = cursor.toISOString().slice(0, 10);
+      const sheet = await getSyBagInfoByDate(isoDate);
+      rows.push({ date: isoDate, bagSheet: sheet });
+    }
+    return res.json({ rows });
+  } catch (err) {
+    console.error('Bagroom report error:', err);
+    return res.status(500).json({ error: err?.message || 'Bagroom report lookup failed' });
+  }
+});
+
 app.get('/vip-report', async (req, res) => {
   try {
     const isoDate = String(req.query.date || '').trim();

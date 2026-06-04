@@ -153,7 +153,7 @@ async function get240InfoByBnAndFlightDate({ bn, flightDate }) {
 
 function normalizeTimestampToIsoDate(value) {
   const raw = String(value || '').trim();
-  const m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+\d{1,2}:\d{2}(?::\d{2})?$/);
+  const m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?$/);
   if (!m) return '';
   const mm = String(Number(m[1])).padStart(2, '0');
   const dd = String(Number(m[2])).padStart(2, '0');
