@@ -195,9 +195,53 @@
         text-transform: uppercase;
       }
 
+      .mobile-panel a.mobile-sub-link {
+        margin-top: 0;
+        padding-left: 24px;
+        color: rgba(255, 255, 255, 0.76);
+        font-size: 12px;
+      }
+
       .nav-links a:hover,
       .nav-actions a:hover {
         color: white;
+      }
+
+      .nav-item {
+        position: relative;
+      }
+
+      .nav-dropdown {
+        display: inline-flex;
+        align-items: center;
+        min-height: 76px;
+      }
+
+      .nav-menu {
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        min-width: 170px;
+        padding: 12px 0;
+        transform: translate(-50%, 8px);
+        opacity: 0;
+        pointer-events: none;
+        background: rgba(7, 18, 31, 0.9);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        box-shadow: 0 18px 40px rgba(0, 0, 0, 0.32);
+        transition: opacity 160ms ease, transform 160ms ease;
+      }
+
+      .nav-dropdown:hover .nav-menu,
+      .nav-dropdown:focus-within .nav-menu {
+        transform: translate(-50%, 0);
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .nav-menu a {
+        display: block;
+        padding: 10px 18px;
       }
 
       .search {
@@ -2122,15 +2166,23 @@
 
       .report-form {
         display: grid;
-        grid-template-columns: 1.2fr repeat(3, minmax(150px, 0.8fr)) auto;
+        grid-template-columns: minmax(220px, 1.2fr) repeat(2, minmax(150px, 0.8fr)) auto;
         gap: 12px;
         align-items: end;
         margin-bottom: 18px;
       }
 
+      .report-form.is-single-date {
+        grid-template-columns: minmax(220px, 1.2fr) minmax(150px, 0.8fr) auto;
+      }
+
       .report-field {
         display: grid;
         gap: 7px;
+      }
+
+      .report-field[hidden] {
+        display: none;
       }
 
       .report-field span {
@@ -2609,7 +2661,12 @@
       <a class="brand" id="home-nav-link" href="#home" aria-label="MUFC home"><span>MUFC</span></a>
       <nav class="nav-links" aria-label="Primary navigation">
         <a href="#reports" id="report-nav-link">Report</a>
-        <a href="#baggage" id="baggage-nav-link">Baggage</a>
+        <div class="nav-item nav-dropdown">
+          <a href="#baggage" id="baggage-nav-link" aria-haspopup="true">Baggage</a>
+          <div class="nav-menu" aria-label="Baggage menu">
+            <a href="#bagroom" id="bagroom-nav-link">Bagroom</a>
+          </div>
+        </div>
       </nav>
       <div class="nav-row">
         <form class="search" id="mission-search" aria-label="Search mission">
@@ -2651,6 +2708,7 @@
       </form>
       <a href="#reports" id="mobile-report-nav-link">Report</a>
       <a href="#baggage" id="mobile-baggage-nav-link">Baggage</a>
+      <a class="mobile-sub-link" href="#bagroom" id="mobile-bagroom-nav-link">Bagroom</a>
       <a href="#open-login">Login</a>
     </aside>
 
@@ -2692,13 +2750,11 @@
           <form class="report-form" id="report-form">
             <label class="report-field"><span>Report type</span><select id="report-type">
               <option value="wheelchair">Wheelchair Report</option>
-              <option value="baggage">Baggage Report</option>
               <option value="sales">Sales Report</option>
               <option value="vip">VIP Report</option>
             </select></label>
-            <label class="report-field"><span>From</span><input id="report-from" type="date" required /></label>
-            <label class="report-field"><span>To</span><input id="report-to" type="date" required /></label>
-            <label class="report-field"><span>Keyword</span><input id="report-keyword" type="search" placeholder="Optional filter" /></label>
+            <label class="report-field" id="report-from-field"><span id="report-from-label">From</span><input id="report-from" type="date" required /></label>
+            <label class="report-field" id="report-to-field"><span>To</span><input id="report-to" type="date" required /></label>
             <button class="report-run" type="submit">Search</button>
           </form>
           <div class="report-actions-row"><button class="report-download" id="report-download" type="button" disabled>Download CSV</button></div>
@@ -2818,14 +2874,17 @@
       const reportNavLink = document.querySelector("#report-nav-link");
       const mobileReportNavLink = document.querySelector("#mobile-report-nav-link");
       const baggageNavLink = document.querySelector("#baggage-nav-link");
+      const bagroomNavLink = document.querySelector("#bagroom-nav-link");
       const mobileBaggageNavLink = document.querySelector("#mobile-baggage-nav-link");
+      const mobileBagroomNavLink = document.querySelector("#mobile-bagroom-nav-link");
       const reportPage = document.querySelector("#report-page");
       const reportCloseButton = document.querySelector("#report-close");
       const reportForm = document.querySelector("#report-form");
       const reportTypeInput = document.querySelector("#report-type");
       const reportFromInput = document.querySelector("#report-from");
       const reportToInput = document.querySelector("#report-to");
-      const reportKeywordInput = document.querySelector("#report-keyword");
+      const reportFromLabel = document.querySelector("#report-from-label");
+      const reportToField = document.querySelector("#report-to-field");
       const reportOutput = document.querySelector("#report-output");
       const reportDownloadButton = document.querySelector("#report-download");
       const passwordPage = document.querySelector("#change-password-page");
@@ -4078,16 +4137,22 @@
         return row;
       }
 
-      async function storedReportRows(type, isoDate, keyword) {
+      async function storedReportRows(type, isoDate) {
         const data = await apiJson(`/stored-report?type=${encodeURIComponent(type)}&date=${encodeURIComponent(isoDate)}`);
-        const needle = String(keyword || "").trim().toUpperCase();
-        const rows = data?.rows || [];
-        if (!needle) return rows;
-        return rows.filter((row) => Object.values(row || {}).some((value) => String(value || "").toUpperCase().includes(needle)));
+        return data?.rows || [];
       }
 
-      async function vipReportRows(isoDate, keyword) {
-        return storedReportRows("vip", isoDate, keyword);
+      async function vipReportRows(isoDate) {
+        return storedReportRows("vip", isoDate);
+      }
+
+      function updateReportFormMode() {
+        const isSales = reportTypeInput?.value === "sales";
+        reportForm?.classList.toggle("is-single-date", isSales);
+        if (reportFromLabel) reportFromLabel.textContent = isSales ? "Date" : "From";
+        if (reportToField) reportToField.hidden = isSales;
+        if (reportToInput) reportToInput.required = !isSales;
+        if (isSales && reportToInput && reportFromInput) reportToInput.value = reportFromInput.value;
       }
 
       async function generateReport(event) {
@@ -4095,32 +4160,31 @@
         if (!reportOutput) return;
         const type = reportTypeInput?.value || "wheelchair";
         const from = reportFromInput?.value || "";
-        const to = reportToInput?.value || "";
-        const keyword = reportKeywordInput?.value || "";
+        const isSales = type === "sales";
+        const to = isSales ? from : (reportToInput?.value || "");
         let dates;
         try {
-          dates = reportDateRange(from, to);
+          dates = isSales ? reportDateRange(from, from) : reportDateRange(from, to);
         } catch (error) {
           reportOutput.innerHTML = `<p class="panel-muted status-fail">${escapeHtml(error.message)}</p>`;
           setReportCsv([], "report.csv");
           return;
         }
-        reportOutput.innerHTML = `<p class="panel-muted">Searching ${escapeHtml(type)} from ${escapeHtml(from)} to ${escapeHtml(to)}...</p>`;
+        reportOutput.innerHTML = `<p class="panel-muted">Searching ${escapeHtml(type)} ${isSales ? `on ${escapeHtml(from)}` : `from ${escapeHtml(from)} to ${escapeHtml(to)}`}...</p>`;
         setReportCsv([], "report.csv");
         const rows = [];
         const errors = [];
         for (const isoDate of dates) {
           try {
             if (type === "vip") {
-              rows.push(...await vipReportRows(isoDate, keyword));
+              rows.push(...await vipReportRows(isoDate));
               continue;
             }
             if (type === "wheelchair") {
-              rows.push(...await storedReportRows("wheelchair", isoDate, keyword));
+              rows.push(...await storedReportRows("wheelchair", isoDate));
               continue;
             }
             const sy = await loadSyForReport(isoDate);
-            if (type === "baggage") rows.push(...baggageReportRows(sy, isoDate));
             if (type === "sales") rows.push(await salesReportRows(sy, isoDate));
           } catch (error) {
             errors.push(`${isoDate}: ${error.message}`);
@@ -4145,16 +4209,6 @@
             { label: "Seat", value: (row) => row.seat },
             { label: "Wheelchair Type", value: (row) => row.wheelchairType },
           ], "No wheelchair passengers found.");
-        } else if (type === "baggage") {
-          tableHtml = rowsTable(rows, [
-            { label: "Date", value: (row) => row.date },
-            { label: "Flight", value: (row) => row.flightNo },
-            { label: "Section", value: (row) => row.section },
-            { label: "Bag / Rush #", value: (row) => row.rushNo || row.tagNo },
-            { label: "Status / Orig #", value: (row) => row.status || row.origNo },
-            { label: "Remark / To", value: (row) => row.remark || row.to },
-            { label: "AKE", value: (row) => row.ake },
-          ], "No baggage rows found.");
         } else if (type === "vip") {
           tableHtml = rowsTable(rows, [
             { label: "Date", value: (row) => row.date },
@@ -4168,7 +4222,7 @@
         }
         const errorHtml = errors.length ? `<h3>Skipped dates</h3><p class="panel-muted status-warn">${escapeHtml(errors.join(" | "))}</p>` : "";
         reportOutput.innerHTML = `${errorHtml}${tableHtml}`;
-        setReportCsv(rows, `${type}-report-${from}-to-${to}.csv`);
+        setReportCsv(rows, isSales ? `${type}-report-${from}.csv` : `${type}-report-${from}-to-${to}.csv`);
       }
 
       function reviewPath() {
@@ -4461,9 +4515,14 @@
       salesReportButton.addEventListener("click", downloadSalesReport);
       reportNavLink.addEventListener("click", (event) => { event.preventDefault(); showReportPage(); });
       mobileReportNavLink.addEventListener("click", (event) => { event.preventDefault(); showReportPage(); });
-      baggageNavLink.addEventListener("click", (event) => { event.preventDefault(); openBaggageReport(); });
-      mobileBaggageNavLink.addEventListener("click", (event) => { event.preventDefault(); openBaggageReport(); });
+      baggageNavLink.addEventListener("click", (event) => { event.preventDefault(); });
+      bagroomNavLink.addEventListener("click", (event) => { event.preventDefault(); openBaggageReport(); });
+      mobileBaggageNavLink.addEventListener("click", (event) => { event.preventDefault(); });
+      mobileBagroomNavLink.addEventListener("click", (event) => { event.preventDefault(); openBaggageReport(); });
       reportCloseButton.addEventListener("click", hideReportPage);
+      reportTypeInput.addEventListener("change", updateReportFormMode);
+      reportFromInput.addEventListener("change", updateReportFormMode);
+      updateReportFormMode();
       reportForm.addEventListener("submit", generateReport);
       reportDownloadButton.addEventListener("click", downloadCurrentReportCsv);
       securityCheckButton.addEventListener("click", renderSecurityCheck);
@@ -4587,7 +4646,7 @@
         showReportPage();
       }
 
-      if (window.location.hash === "#baggage") {
+      if (window.location.hash === "#bagroom") {
         openBaggageReport();
       }
 
