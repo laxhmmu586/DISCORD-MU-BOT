@@ -232,41 +232,34 @@
 
       .nav-dropdown-menu {
         position: absolute;
-        top: calc(100% + 18px);
-        left: 50%;
-        transform: translateX(-50%);
-        width: 210px;
+        top: 100%;
+        left: 0;
+        width: max-content;
+        min-width: 190px;
         display: none;
-        padding: 8px 0;
-        border: 1px solid rgba(255, 255, 255, 0.16);
-        background: rgba(0, 0, 0, 0.86);
-        box-shadow: 0 28px 84px rgba(0, 0, 0, 0.58);
-        backdrop-filter: blur(16px);
+        padding: 26px 0 8px;
+        border: 0;
+        background: linear-gradient(180deg, rgba(0, 0, 0, 0.62), rgba(0, 0, 0, 0.26) 72%, transparent);
+        box-shadow: none;
+        backdrop-filter: none;
       }
 
       .nav-dropdown:hover .nav-dropdown-menu,
+      .nav-dropdown:focus-within .nav-dropdown-menu,
       .nav-dropdown.is-open .nav-dropdown-menu {
         display: block;
       }
 
       .nav-dropdown-menu::before {
-        content: "";
-        position: absolute;
-        left: 50%;
-        top: -7px;
-        width: 12px;
-        height: 12px;
-        transform: translateX(-50%) rotate(45deg);
-        border-left: 1px solid rgba(255, 255, 255, 0.16);
-        border-top: 1px solid rgba(255, 255, 255, 0.16);
-        background: rgba(0, 0, 0, 0.86);
+        display: none;
       }
 
       .nav-dropdown-menu a {
         display: block;
-        padding: 13px 18px;
-        font-size: 12px;
-        letter-spacing: 1px;
+        padding: 0 0 14px;
+        font-size: 13px;
+        line-height: 1.05;
+        letter-spacing: 0.3px;
         text-align: left;
       }
 
@@ -276,7 +269,8 @@
       }
 
       .nav-dropdown-menu a:hover {
-        background: rgba(255, 255, 255, 0.08);
+        background: transparent;
+        color: white;
       }
 
       .search {
@@ -464,12 +458,13 @@
         z-index: 110;
         top: 76px;
         right: 0;
-        width: min(100vw, 430px);
-        padding: 24px 28px 32px;
+        width: min(100vw, 360px);
+        padding: 22px 30px 30px;
         transform: translateX(100%);
         transition: transform 220ms ease;
-        background: rgba(0, 0, 0, 0.88);
-        border-left: 1px solid rgba(255, 255, 255, 0.14);
+        background: linear-gradient(90deg, rgba(98, 108, 116, 0.58), rgba(31, 38, 45, 0.36) 70%, transparent);
+        border-left: 0;
+        backdrop-filter: blur(5px);
       }
 
       .mobile-panel.is-open {
@@ -508,16 +503,22 @@
 
       .mobile-panel a {
         display: block;
-        margin-top: 8px;
-        padding: 14px 0;
-        border-top: 1px solid rgba(255, 255, 255, 0.11);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.11);
-        color: white;
-        font-size: 14px;
-        font-weight: 800;
-        text-align: center;
+        margin-top: 0;
+        padding: 0 0 14px;
+        border: 0;
+        color: rgba(255, 255, 255, 0.92);
+        font-size: 13px;
+        font-weight: 900;
+        line-height: 1.05;
+        letter-spacing: 0.2px;
+        text-align: left;
         text-decoration: none;
         text-transform: uppercase;
+        text-shadow: 0 2px 8px rgba(0, 0, 0, 0.55);
+      }
+
+      .mobile-panel a:hover {
+        color: white;
       }
 
       main {
@@ -2240,6 +2241,16 @@
         display: grid;
       }
 
+      .bagroom-form.is-open {
+        grid-template-columns: repeat(3, minmax(150px, 220px)) auto;
+        width: fit-content;
+        max-width: 100%;
+      }
+
+      .bagroom-form .report-run {
+        min-height: 42px;
+      }
+
       .report-selector {
         display: flex;
         flex-wrap: wrap;
@@ -2325,6 +2336,11 @@
           grid-template-columns: repeat(2, minmax(0, 1fr));
         }
 
+        .bagroom-form.is-open {
+          grid-template-columns: repeat(3, minmax(130px, 1fr)) auto;
+          width: 100%;
+        }
+
         .report-run {
           grid-column: auto;
         }
@@ -2343,8 +2359,7 @@
         }
 
         .mobile-menu-fallback {
-          display: grid;
-          place-items: center;
+          display: none !important;
         }
       }
 
@@ -2414,8 +2429,15 @@
         .mobile-panel {
           top: 68px;
           z-index: 110;
-          width: 100%;
-          padding: 18px 24px 24px;
+          left: 0;
+          right: auto;
+          width: min(72vw, 260px);
+          padding: 18px 26px 24px;
+          transform: translateX(-100%);
+        }
+
+        .mobile-panel.is-open {
+          transform: translateX(0);
         }
 
         main {
@@ -2699,8 +2721,10 @@
           grid-template-columns: 1fr;
         }
 
-        .report-form {
+        .report-form,
+        .bagroom-form.is-open {
           grid-template-columns: 1fr;
+          width: 100%;
         }
 
         .data-table {
@@ -2796,7 +2820,6 @@
                 <span class="line-menu-icon" aria-hidden="true"><span></span><span></span><span></span></span>
               </button>
               <div class="flight-menu" aria-hidden="true">
-                <button id="bag-report-button" type="button">Bagroom</button>
                 <button id="security-check-button" type="button">Security Check</button>
                 <button id="seat-map-button" type="button">Seat Map</button>
               </div>
@@ -2957,6 +2980,9 @@
       const seatMapButton = document.querySelector("#seat-map-button");
       const reportNavLink = document.querySelector("#report-nav-link");
       const mobileReportNavLink = document.querySelector("#mobile-report-nav-link");
+      const bagroomNav = document.querySelector("#bagroom-nav");
+      const bagroomToggle = document.querySelector("#bagroom-toggle");
+      const bagroomDropdownMenu = bagroomNav?.querySelector(".nav-dropdown-menu");
       const baggageNavLink = document.querySelector("#baggage-nav-link");
       const mobileBaggageNavLink = document.querySelector("#mobile-baggage-nav-link");
       const reportPage = document.querySelector("#report-page");
@@ -2997,9 +3023,12 @@
       };
       const auth = window.firebase?.apps?.length && window.firebase?.auth ? firebase.auth() : null;
       const APP_ENTRY_KEY = "mufc_allow_app_entry";
-      const INACTIVITY_LIMIT_MS = 15 * 60 * 1000;
+      const APP_LOGIN_STARTED_KEY = "mufc_login_started_at";
+      const LOGIN_LIMIT_MS = 30 * 60 * 1000;
+      const INACTIVITY_LIMIT_MS = LOGIN_LIMIT_MS;
       const SY_AUTO_REFRESH_MS = 60 * 1000;
       let inactivityTimer = null;
+      let loginExpiryTimer = null;
       let syAutoRefreshTimer = null;
       let syAutoRefreshInFlight = false;
       let selectedIndex = 0;
@@ -3059,9 +3088,13 @@
       }
 
       function consumeAppEntry() {
-        const allowedAt = sessionStorage.getItem(APP_ENTRY_KEY);
+        const allowedAt = Number(sessionStorage.getItem(APP_ENTRY_KEY) || 0);
+        const loginStartedAt = Number(sessionStorage.getItem(APP_LOGIN_STARTED_KEY) || allowedAt || 0);
         sessionStorage.removeItem(APP_ENTRY_KEY);
-        return Boolean(allowedAt);
+        if (!allowedAt || !loginStartedAt) return false;
+        if (Date.now() - loginStartedAt > LOGIN_LIMIT_MS) return false;
+        sessionStorage.setItem(APP_LOGIN_STARTED_KEY, String(loginStartedAt));
+        return true;
       }
       window.findNodeIndexByKey = findNodeIndexByKey;
 
@@ -3069,7 +3102,9 @@
 
       async function returnToLogin() {
         sessionStorage.removeItem(APP_ENTRY_KEY);
+        sessionStorage.removeItem(APP_LOGIN_STARTED_KEY);
         if (inactivityTimer) clearTimeout(inactivityTimer);
+        if (loginExpiryTimer) clearTimeout(loginExpiryTimer);
         const url = new URL(loginUrl());
         url.searchParams.set("forceLogin", "1");
         try {
@@ -3087,11 +3122,25 @@
         }, INACTIVITY_LIMIT_MS);
       }
 
+      function startLoginExpiryWatch() {
+        if (loginExpiryTimer) clearTimeout(loginExpiryTimer);
+        const loginStartedAt = Number(sessionStorage.getItem(APP_LOGIN_STARTED_KEY) || 0);
+        const remainingMs = LOGIN_LIMIT_MS - (Date.now() - loginStartedAt);
+        if (!loginStartedAt || remainingMs <= 0) {
+          returnToLogin();
+          return;
+        }
+        loginExpiryTimer = setTimeout(() => {
+          returnToLogin();
+        }, remainingMs);
+      }
+
       function startInactivityWatch() {
         ["click", "keydown", "mousemove", "touchstart", "pointerdown", "scroll"].forEach((eventName) => {
           window.addEventListener(eventName, resetInactivityTimer, { passive: true });
         });
         resetInactivityTimer();
+        startLoginExpiryWatch();
       }
 
       function escapeHtml(value) {
@@ -4074,6 +4123,7 @@
         if (passwordPage) passwordPage.hidden = true;
         closeLoginMenu();
         closeFlightMenu();
+        closeBaggageDropdown();
         closeMobilePanel();
         closePassengerModal();
         resetPanelState();
@@ -4092,6 +4142,7 @@
         document.body.classList.add("is-report-view");
         closeLoginMenu();
         closeFlightMenu();
+        closeBaggageDropdown();
         closeMobilePanel();
         if (mode) selectReportMode(mode);
         reportPage?.scrollTo({ top: 0, left: 0, behavior: "auto" });
@@ -4110,6 +4161,7 @@
         document.body.classList.add("is-report-view");
         closeLoginMenu();
         closeFlightMenu();
+        closeBaggageDropdown();
         closeMobilePanel();
         bagroomPage?.scrollTo({ top: 0, left: 0, behavior: "auto" });
       }
@@ -4489,6 +4541,21 @@
         showTimelineNodeCard(key, step, inputTime);
       }
 
+      function closeBaggageDropdown() {
+        bagroomToggle?.setAttribute("aria-expanded", "false");
+        bagroomNav?.classList.remove("is-open");
+        bagroomDropdownMenu?.setAttribute("aria-hidden", "true");
+      }
+
+      function toggleBaggageDropdown() {
+        const open = bagroomToggle?.getAttribute("aria-expanded") === "true";
+        closeLoginMenu();
+        closeFlightMenu();
+        bagroomToggle?.setAttribute("aria-expanded", String(!open));
+        bagroomNav?.classList.toggle("is-open", !open);
+        bagroomDropdownMenu?.setAttribute("aria-hidden", String(open));
+      }
+
       function closeMobilePanel() {
         menuButton.setAttribute("aria-expanded", "false");
         fallbackMenuButton.setAttribute("aria-expanded", "false");
@@ -4498,6 +4565,7 @@
 
       function toggleMenu() {
         const open = menuButton.getAttribute("aria-expanded") === "true";
+        closeBaggageDropdown();
         menuButton.setAttribute("aria-expanded", String(!open));
         fallbackMenuButton.setAttribute("aria-expanded", String(!open));
         mobilePanel.classList.toggle("is-open", !open);
@@ -4521,6 +4589,7 @@
 
       loginButton.addEventListener("click", () => {
         const open = loginButton.getAttribute("aria-expanded") === "true";
+        closeBaggageDropdown();
         closeFlightMenu();
         loginButton.setAttribute("aria-expanded", String(!open));
         loginMenu.classList.toggle("is-open", !open);
@@ -4564,6 +4633,7 @@
 
       flightMenuButton.addEventListener("click", () => {
         const open = flightMenuButton.getAttribute("aria-expanded") === "true";
+        closeBaggageDropdown();
         closeLoginMenu();
         flightMenuButton.setAttribute("aria-expanded", String(!open));
         flightMenu.classList.toggle("is-open", !open);
@@ -4599,11 +4669,12 @@
       });
 
       homeNavLink.addEventListener("click", (event) => { event.preventDefault(); showHomePage(); });
-      bagReportButton.addEventListener("click", openBaggageReport);
+      bagReportButton?.addEventListener("click", openBaggageReport);
+      bagroomToggle?.addEventListener("click", (event) => { event.preventDefault(); toggleBaggageDropdown(); });
       salesReportButton?.addEventListener("click", downloadSalesReport);
       reportNavLink.addEventListener("click", (event) => { event.preventDefault(); showReportPage(); });
       mobileReportNavLink.addEventListener("click", (event) => { event.preventDefault(); showReportPage(); });
-      baggageNavLink.addEventListener("click", (event) => { event.preventDefault(); openBaggageReport(); });
+      baggageNavLink.addEventListener("click", (event) => { event.preventDefault(); closeBaggageDropdown(); openBaggageReport(); });
       mobileBaggageNavLink.addEventListener("click", (event) => { event.preventDefault(); openBaggageReport(); });
       reportCloseButton.addEventListener("click", hideReportPage);
       bagroomCloseButton.addEventListener("click", hideReportPage);
@@ -4614,8 +4685,14 @@
         if (button.dataset.reportMode === "vip") generateReport();
       }));
       reportDownloadButton.addEventListener("click", downloadCurrentReportCsv);
-      securityCheckButton.addEventListener("click", renderSecurityCheck);
-      seatMapButton.addEventListener("click", renderSeatMap);
+      securityCheckButton.addEventListener("click", () => {
+        closeFlightMenu();
+        renderSecurityCheck();
+      });
+      seatMapButton.addEventListener("click", () => {
+        closeFlightMenu();
+        renderSeatMap();
+      });
 
       resultPanel.addEventListener("click", async (event) => {
         if (event.target.closest("[data-close-panel]")) {
@@ -4683,6 +4760,7 @@
       });
 
       document.addEventListener("click", (event) => {
+        if (!event.target.closest("#bagroom-nav")) closeBaggageDropdown();
         const modalBackdrop = event.target.closest(".passenger-modal-backdrop");
         if (modalBackdrop?.dataset.dragging === "true") return;
         if (event.target.closest("[data-close-modal]") || modalBackdrop) closePassengerModal();
