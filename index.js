@@ -1031,5 +1031,7 @@ app.listen(
     console.log(
       `Server running on ${PORT}`
     );
+    syncTodayReportSheets();
+    setInterval(syncTodayReportSheets, 30 * 60 * 1000);
   }
 );
