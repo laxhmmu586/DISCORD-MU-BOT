@@ -237,7 +237,7 @@
         width: max-content;
         min-width: 190px;
         display: none;
-        padding: 16px 0 8px;
+        padding: 26px 0 8px;
         border: 0;
         background: linear-gradient(180deg, rgba(0, 0, 0, 0.62), rgba(0, 0, 0, 0.26) 72%, transparent);
         box-shadow: none;
@@ -2359,8 +2359,7 @@
         }
 
         .mobile-menu-fallback {
-          display: grid;
-          place-items: center;
+          display: none !important;
         }
       }
 
@@ -3024,9 +3023,12 @@
       };
       const auth = window.firebase?.apps?.length && window.firebase?.auth ? firebase.auth() : null;
       const APP_ENTRY_KEY = "mufc_allow_app_entry";
-      const INACTIVITY_LIMIT_MS = 15 * 60 * 1000;
+      const APP_LOGIN_STARTED_KEY = "mufc_login_started_at";
+      const LOGIN_LIMIT_MS = 30 * 60 * 1000;
+      const INACTIVITY_LIMIT_MS = LOGIN_LIMIT_MS;
       const SY_AUTO_REFRESH_MS = 60 * 1000;
       let inactivityTimer = null;
+      let loginExpiryTimer = null;
       let syAutoRefreshTimer = null;
       let syAutoRefreshInFlight = false;
       let selectedIndex = 0;
@@ -3086,9 +3088,13 @@
       }
 
       function consumeAppEntry() {
-        const allowedAt = sessionStorage.getItem(APP_ENTRY_KEY);
+        const allowedAt = Number(sessionStorage.getItem(APP_ENTRY_KEY) || 0);
+        const loginStartedAt = Number(sessionStorage.getItem(APP_LOGIN_STARTED_KEY) || allowedAt || 0);
         sessionStorage.removeItem(APP_ENTRY_KEY);
-        return Boolean(allowedAt);
+        if (!allowedAt || !loginStartedAt) return false;
+        if (Date.now() - loginStartedAt > LOGIN_LIMIT_MS) return false;
+        sessionStorage.setItem(APP_LOGIN_STARTED_KEY, String(loginStartedAt));
+        return true;
       }
       window.findNodeIndexByKey = findNodeIndexByKey;
 
@@ -3096,7 +3102,9 @@
 
       async function returnToLogin() {
         sessionStorage.removeItem(APP_ENTRY_KEY);
+        sessionStorage.removeItem(APP_LOGIN_STARTED_KEY);
         if (inactivityTimer) clearTimeout(inactivityTimer);
+        if (loginExpiryTimer) clearTimeout(loginExpiryTimer);
         const url = new URL(loginUrl());
         url.searchParams.set("forceLogin", "1");
         try {
@@ -3114,11 +3122,25 @@
         }, INACTIVITY_LIMIT_MS);
       }
 
+      function startLoginExpiryWatch() {
+        if (loginExpiryTimer) clearTimeout(loginExpiryTimer);
+        const loginStartedAt = Number(sessionStorage.getItem(APP_LOGIN_STARTED_KEY) || 0);
+        const remainingMs = LOGIN_LIMIT_MS - (Date.now() - loginStartedAt);
+        if (!loginStartedAt || remainingMs <= 0) {
+          returnToLogin();
+          return;
+        }
+        loginExpiryTimer = setTimeout(() => {
+          returnToLogin();
+        }, remainingMs);
+      }
+
       function startInactivityWatch() {
         ["click", "keydown", "mousemove", "touchstart", "pointerdown", "scroll"].forEach((eventName) => {
           window.addEventListener(eventName, resetInactivityTimer, { passive: true });
         });
         resetInactivityTimer();
+        startLoginExpiryWatch();
       }
 
       function escapeHtml(value) {
@@ -4663,8 +4685,14 @@
         if (button.dataset.reportMode === "vip") generateReport();
       }));
       reportDownloadButton.addEventListener("click", downloadCurrentReportCsv);
-      securityCheckButton.addEventListener("click", renderSecurityCheck);
-      seatMapButton.addEventListener("click", renderSeatMap);
+      securityCheckButton.addEventListener("click", () => {
+        closeFlightMenu();
+        renderSecurityCheck();
+      });
+      seatMapButton.addEventListener("click", () => {
+        closeFlightMenu();
+        renderSeatMap();
+      });
 
       resultPanel.addEventListener("click", async (event) => {
         if (event.target.closest("[data-close-panel]")) {
