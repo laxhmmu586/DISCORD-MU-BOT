@@ -4523,12 +4523,6 @@
         });
       });
 
-      document.querySelectorAll(".detail-action[data-report-shortcut]").forEach((button) => {
-        button.addEventListener("click", (event) => {
-          event.stopPropagation();
-          showReportPage(button.dataset.reportShortcut || "sales");
-        });
-      });
 
       homeNavLink.addEventListener("click", (event) => { event.preventDefault(); showHomePage(); });
       bagReportButton?.addEventListener("click", renderBagReport);
