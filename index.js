@@ -37,8 +37,10 @@ const {
   getSyBagInfoByDate,
   getSalesReportMeta,
   downloadSalesReportByFlight,
+  downloadSalesReportByDate,
   hasNextDayInfoEmail,
   getStoredReportRows,
+  getVipReportRowsFromSheet,
   appendStoredReportRows,
   pruneStoredReportRows
 
@@ -142,8 +144,10 @@ function extractVipPassengersFromLog(log, isoDate) {
 
   for (const section of splitReportSections(log)) {
     if (!/\bPR:\s*[A-Z0-9]+\//i.test(section)) continue;
+    const hasVipService = /(?:\s|\/|^)VIP(?:\s|\/|$)/i.test(section);
     const vip = extractVipNameCandidate(section);
-    if (!vip?.name?.endsWith('VIP')) continue;
+    if (!hasVipService && !vip?.name?.endsWith('VIP')) continue;
+    if (!vip?.name) continue;
 
     const sectionIsoDate = sectionTimestampToIsoDate(section);
     if (sectionIsoDate !== isoDate) continue;
@@ -166,6 +170,7 @@ function extractVipPassengersFromLog(log, isoDate) {
       passenger: vip.name,
       bn,
       seat,
+      bags: String((section.match(/BAGTAG\s*\/([^\n\r]+)/i)?.[1] || '').match(/(?:^|\s)\/?\s*((?:[A-Z]{1,3}\s*)?\d{5,12})\s*\/\s*([A-Z]{3})\b/gi)?.length || 0),
       source: vip.source
     };
     const key = `${row.flightNo}|${row.flightDate}|${row.passenger}`;
@@ -240,24 +245,41 @@ async function scanWheelchairReportRows(isoDate) {
 async function loadStoredReportRows(type, isoDate, options = {}) {
   const normalizedType = String(type || '').toLowerCase();
   const stored = await getStoredReportRows(normalizedType, isoDate);
+  if (normalizedType !== 'vip') return { rows: [], source: 'sheet', scanned: false };
   if (stored.scanned && !options.forceRefresh) return { rows: stored.rows, source: 'sheet', scanned: true };
-  const rows = normalizedType === 'vip'
-    ? await scanVipReportRows(isoDate)
-    : await scanWheelchairReportRows(isoDate);
+  const rows = await scanVipReportRows(isoDate);
   await appendStoredReportRows(normalizedType, isoDate, rows);
   const refreshed = await getStoredReportRows(normalizedType, isoDate);
   return { rows: refreshed.rows.length ? refreshed.rows : rows, source: 'scan', scanned: true };
 }
 
 async function syncTodayReportSheets() {
-  for (const type of ['vip', 'wheelchair']) {
-    try {
-      await loadStoredReportRows(type, todayIsoUtc(), { forceRefresh: true });
-      await pruneStoredReportRows(type);
-    } catch (err) {
-      console.warn(`${type} report sheet sync skipped:`, err?.message || err);
-    }
+  try {
+    await loadStoredReportRows('vip', todayIsoUtc(), { forceRefresh: true });
+    await pruneStoredReportRows('vip');
+  } catch (err) {
+    console.warn('vip report sheet sync skipped:', err?.message || err);
   }
+}
+
+async function appendVipPassengerFromSearch(pax, fallbackYearSuffix) {
+  const services = Array.isArray(pax?.specialServices) ? pax.specialServices : [];
+  if (!services.some((code) => String(code || '').toUpperCase() === 'VIP')) return;
+  const rawFlightDate = String(pax.flightDate || '').toUpperCase();
+  const flightDate = /^\d{2}[A-Z]{3}\d{2}$/.test(rawFlightDate)
+    ? rawFlightDate
+    : `${rawFlightDate}${String(fallbackYearSuffix || new Date().getUTCFullYear().toString().slice(-2)).slice(-2)}`;
+  const isoDate = flightDateToIsoDate(flightDate);
+  if (!isoDate) return;
+  await appendStoredReportRows('vip', isoDate, [{
+    date: isoDate,
+    flightDate,
+    flightNo: String(pax.flight || '').toUpperCase(),
+    passenger: cleanVipName(pax.name || ''),
+    bn: String(pax.bn || '').replace(/\D/g, '').padStart(3, '0'),
+    seat: String(pax.seat || '').toUpperCase(),
+    bags: String(Array.isArray(pax.bagtags) ? pax.bagtags.length : 0)
+  }], { addScanMarker: false });
 }
 
 async function resolveAuthContextFromRequest(req) {
@@ -645,9 +667,9 @@ app.get('/stored-report', async (req, res) => {
   try {
     const type = String(req.query.type || '').trim().toLowerCase();
     const isoDate = String(req.query.date || '').trim();
-    if (!['vip', 'wheelchair'].includes(type)) return res.status(400).json({ error: 'Invalid report type' });
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return res.status(400).json({ error: 'Missing or invalid date' });
-    const result = await loadStoredReportRows(type, isoDate);
+    if (type !== 'vip') return res.status(400).json({ error: 'Invalid report type' });
+    if (isoDate && !/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return res.status(400).json({ error: 'Invalid date' });
+    const result = await getVipReportRowsFromSheet(isoDate);
     return res.json(result);
   } catch (err) {
     console.error('Stored report error:', err);
@@ -658,8 +680,8 @@ app.get('/stored-report', async (req, res) => {
 app.get('/vip-report', async (req, res) => {
   try {
     const isoDate = String(req.query.date || '').trim();
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return res.status(400).json({ error: 'Missing or invalid date' });
-    const result = await loadStoredReportRows('vip', isoDate);
+    if (isoDate && !/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return res.status(400).json({ error: 'Invalid date' });
+    const result = await getVipReportRowsFromSheet(isoDate);
     return res.json(result);
   } catch (err) {
     return res.status(500).json({ error: err?.message || 'VIP report lookup failed' });
@@ -694,6 +716,25 @@ app.get(
       }
       const result = await downloadSalesReportByFlight(flightNo, flightDate);
       if (!result) return res.status(404).json({ error: 'Sales report not found' });
+      res.setHeader('Content-Type', 'application/vnd.ms-excel');
+      res.setHeader('Content-Disposition', `attachment; filename="${result.fileName}"`);
+      return res.send(Buffer.from(result.content));
+    } catch (err) {
+      return res.status(500).json({ error: err?.message || 'Sales report download failed' });
+    }
+  }
+);
+
+app.get(
+  '/sales-report/download-by-date',
+  async (req, res) => {
+    try {
+      const isoDate = String(req.query.date || '').trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) {
+        return res.status(400).json({ error: 'Missing or invalid date' });
+      }
+      const result = await downloadSalesReportByDate(isoDate);
+      if (!result) return res.status(404).json({ error: 'Sales report not found for selected date' });
       res.setHeader('Content-Type', 'application/vnd.ms-excel');
       res.setHeader('Content-Disposition', `attachment; filename="${result.fileName}"`);
       return res.send(Buffer.from(result.content));
@@ -994,6 +1035,8 @@ app.get(
           'Silver';
       }
 
+      await appendVipPassengerFromSearch(pax, yearSuffix).catch((err) => console.warn('VIP search append skipped:', err?.message || err));
+
       const authContext =
         await resolveAuthContextFromRequest(req);
       const permissions = authContext.permissions;
@@ -1104,7 +1147,7 @@ app.listen(
     console.log(
       `Server running on ${PORT}`
     );
-    syncTodayReportSheets();
-    setInterval(syncTodayReportSheets, 30 * 60 * 1000);
+    // VIP report rows are now loaded read-only from Google Sheets; automatic
+    // VIP appends happen only when a searched passenger carries VIP service.
   }
 );
