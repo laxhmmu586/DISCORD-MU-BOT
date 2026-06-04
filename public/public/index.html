@@ -923,6 +923,22 @@
         color: #8fc4ff;
       }
 
+      .node-card.is-nextday-info {
+        width: min(340px, 44vw);
+      }
+
+      .node-card.is-nextday-info p {
+        max-height: 230px;
+        overflow: auto;
+        white-space: pre-wrap;
+      }
+
+      .node-email-body {
+        display: block;
+        margin-top: 6px;
+        color: rgba(238, 247, 255, 0.86);
+      }
+
       .flight-panel {
         position: relative;
         z-index: 2;
@@ -3198,6 +3214,23 @@
         return clamp(value, minScrollOffset, maxScrollOffset);
       }
 
+      function nextDayInfoCardHtml(step) {
+        const email = step?.email || null;
+        if (!email) {
+          return `<b>Time</b> Not found<br><b>Status</b> Not complete<br>${escapeHtml(step?.tooltip || "NEXTDAY INFO sent email not found.")}`;
+        }
+        const metrics = email.metrics || {};
+        const counts = [
+          `First ${metrics.firstClass || "-"}`,
+          `Business ${metrics.businessClass || "-"}`,
+          `Economy ${metrics.economyClass || "-"}`,
+          `Intl Transfer ${metrics.internationalTransfer || "-"}`,
+          `Domestic Transfer ${metrics.domesticTransfer || "-"}`,
+          `Overnight ${metrics.overnightPassengers || "-"}`,
+        ].join(" / ");
+        return `<b>Time</b> ${escapeHtml(formatSentDateTime(email.sentAt))}<br><b>Status</b> Complete<br><b>Subject</b> ${escapeHtml(email.subject || "NEXTDAY INFO")}<br><b>Counts</b> ${escapeHtml(counts)}<span class="node-email-body">${escapeHtml(email.body || "No email body returned.")}</span>`;
+      }
+
       function updateNodeCard(index) {
         const node = nodes[index];
         if (!node) return;
@@ -3205,12 +3238,14 @@
         const step = stepByKey(key);
         const label = node.dataset.label || step?.label || key;
         const time = nodeDisplayTime(node);
+        nodeCard.classList.toggle("is-nextday-info", key === "NEXTDAY_INFO");
         nodeCard.querySelector("h2").textContent = label;
-        nodeCard.querySelector("p").textContent = step?.tooltip || `${label} ${time !== "----" ? `entered at ${time}` : "data is not complete yet."}`;
+        if (key === "NEXTDAY_INFO") nodeCard.querySelector("p").innerHTML = nextDayInfoCardHtml(step);
+        else nodeCard.querySelector("p").textContent = step?.tooltip || `${label} ${time !== "----" ? `entered at ${time}` : "data is not complete yet."}`;
       }
 
       function hideTimelineNodeCard() {
-        nodeCard.classList.remove("is-open");
+        nodeCard.classList.remove("is-open", "is-nextday-info");
       }
 
       function showTimelineNodeCard(key, step, inputTime) {
@@ -3221,8 +3256,11 @@
         const detail = step?.tooltip || (inputTime && inputTime !== "----" ? `${label} entered at ${inputTime}` : `${label} not entered`);
         nodeCard.style.left = node.style.left;
         nodeCard.style.top = node.style.top;
+        nodeCard.classList.toggle("is-nextday-info", key === "NEXTDAY_INFO");
         nodeCard.querySelector("h2").textContent = label;
-        nodeCard.querySelector("p").innerHTML = `<b>Time</b> ${escapeHtml(inputTime === "----" ? "Not entered" : inputTime)}<br><b>Status</b> ${escapeHtml(status)}<br>${escapeHtml(detail)}`;
+        nodeCard.querySelector("p").innerHTML = key === "NEXTDAY_INFO"
+          ? nextDayInfoCardHtml(step)
+          : `<b>Time</b> ${escapeHtml(inputTime === "----" ? "Not entered" : inputTime)}<br><b>Status</b> ${escapeHtml(status)}<br>${escapeHtml(detail)}`;
         nodeCard.classList.add("is-open");
       }
 
@@ -3819,34 +3857,7 @@
         if (!value) return "Not found";
         const date = new Date(value);
         if (Number.isNaN(date.getTime())) return value;
-        return date.toLocaleString("en-US", { timeZone: "UTC", year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }) + " UTC";
-      }
-
-      function renderNextDayInfoPanel() {
-        const step = stepByKey("NEXTDAY_INFO");
-        const query = currentSy?.crewApis?.nextDayInfoQuery || {};
-        const email = step?.email || null;
-        const metrics = email?.metrics || {};
-        const metricRows = [
-          ["First Class", metrics.firstClass],
-          ["Business Class", metrics.businessClass],
-          ["Economy Class", metrics.economyClass],
-          ["International Transfer", metrics.internationalTransfer],
-          ["Domestic Transfer", metrics.domesticTransfer],
-          ["Overnight passengers", metrics.overnightPassengers],
-        ];
-        const stats = email
-          ? `<div class="panel-stats"><span class="status-ok">Sent ${escapeHtml(formatSentDateTime(email.sentAt))}</span><span>${escapeHtml(email.subject || query.emailSubject || "NEXTDAY INFO")}</span></div>`
-          : `<div class="panel-stats"><span class="status-fail">Sent email not found today</span><span>${escapeHtml(query.emailSubject || step?.tooltip || "NEXTDAY INFO")}</span></div>`;
-        const metricTable = email ? rowsTable(metricRows.map(([label, value]) => ({ label, value })), [
-          { label: "Item", value: (row) => row.label },
-          { label: "Count", value: (row) => row.value },
-        ], "No NEXTDAY INFO counts found.") : "";
-        const body = email
-          ? `${stats}${metricTable}<article class="record-card is-nextday-info"><div class="record-title"><span>Email Content</span><span class="record-badge">SENT</span></div><pre class="raw-record">${escapeHtml(email.body || "No email body returned.")}</pre></article>`
-          : `${stats}<p class="panel-muted">Search target: Sent mail from ${escapeHtml(query.flightNo || currentSy?.flightNo || "MU586")} with subject ${escapeHtml(query.emailSubject || "flight information details")}.</p>`;
-        renderPanel("NEXTDAY INFO", currentSy?.flightNo || "SY", body, { panelClass: "is-full-page" });
-        setPanelPassengerRows([]);
+        return date.toLocaleString("en-US", { timeZone: "America/Los_Angeles", year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }) + " LAX";
       }
 
       function renderChdPanel() {
@@ -4499,7 +4510,7 @@
           nodeTime.textContent = nodeDisplayTime(key);
           return;
         }
-        if (key === "NEXTDAY_INFO") { hideTimelineNodeCard(); return renderNextDayInfoPanel(); }
+        if (key === "NEXTDAY_INFO") { return showTimelineNodeCard(key, step, inputTime); }
         if (key === "CHD") { hideTimelineNodeCard(); return renderChdPanel(); }
         if (key === "GOV") { hideTimelineNodeCard(); return renderGovPanel(); }
         if (key === "NBRD") { hideTimelineNodeCard(); return renderNbrdPanel(); }

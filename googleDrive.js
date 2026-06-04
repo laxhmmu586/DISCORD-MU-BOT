@@ -1,5 +1,7 @@
 const { google } = require('googleapis');
 
+const GMAIL_SCOPES = ['https://www.googleapis.com/auth/gmail.readonly'];
+
 // ===============================
 // Google Auth
 // ===============================
@@ -19,7 +21,7 @@ const auth = new google.auth.GoogleAuth({
 
     'https://www.googleapis.com/auth/drive.readonly',
     'https://www.googleapis.com/auth/spreadsheets',
-    'https://www.googleapis.com/auth/gmail.readonly'
+    ...GMAIL_SCOPES
   ]
 });
 
@@ -677,11 +679,40 @@ async function getLatestFlightLog() {
 }
 
 
+function gmailClientForUser(userId) {
+  const clientEmail = process.env.GOOGLE_CLIENT_EMAIL;
+  const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+  if (clientEmail && privateKey && userId) {
+    return google.gmail({
+      version: 'v1',
+      auth: new google.auth.JWT(clientEmail, null, privateKey, GMAIL_SCOPES, userId)
+    });
+  }
+  return google.gmail({ version: 'v1', auth });
+}
+
+function datePartsInTimeZone(date, timeZone) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(date).reduce((acc, part) => {
+    acc[part.type] = part.value;
+    return acc;
+  }, {});
+  return { year: parts.year, month: parts.month, day: parts.day };
+}
+
 function todayGmailDateBounds() {
-  const now = new Date();
-  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const timeZone = process.env.NEXT_DAY_INFO_TIME_ZONE || 'America/Los_Angeles';
+  const todayParts = datePartsInTimeZone(new Date(), timeZone);
+  const start = new Date(Date.UTC(Number(todayParts.year), Number(todayParts.month) - 1, Number(todayParts.day)));
   const end = new Date(start.getTime() + 86400000);
-  const fmt = (date) => `${date.getUTCFullYear()}/${String(date.getUTCMonth() + 1).padStart(2, '0')}/${String(date.getUTCDate()).padStart(2, '0')}`;
+  const fmt = (date) => {
+    const parts = datePartsInTimeZone(date, 'UTC');
+    return `${parts.year}/${parts.month}/${parts.day}`;
+  };
   return { after: fmt(start), before: fmt(end) };
 }
 
@@ -736,9 +767,19 @@ function parseNextDayInfoBody(text) {
 function gmailSentTime(internalDate, dateHeader) {
   const date = internalDate ? new Date(Number(internalDate)) : new Date(dateHeader || '');
   if (Number.isNaN(date.getTime())) return { sentAt: '', sentTime: '' };
+  const timeZone = process.env.NEXT_DAY_INFO_TIME_ZONE || 'America/Los_Angeles';
+  const timeParts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  }).formatToParts(date).reduce((acc, part) => {
+    acc[part.type] = part.value;
+    return acc;
+  }, {});
   return {
     sentAt: date.toISOString(),
-    sentTime: `${String(date.getUTCHours()).padStart(2, '0')}${String(date.getUTCMinutes()).padStart(2, '0')}`
+    sentTime: `${timeParts.hour || ''}${timeParts.minute || ''}`
   };
 }
 
@@ -749,42 +790,66 @@ async function getNextDayInfoEmail(flightNo, subjectDate, expectedSubject = '') 
   if (!normalizedFlightNo || !normalizedSubjectDate || !subject) return null;
 
   try {
-    const gmail = google.gmail({ version: 'v1', auth });
     const userId = process.env.NEXT_DAY_INFO_GMAIL_USER || 'laxhmmu@gmail.com';
+    const gmail = gmailClientForUser(userId);
     const exactSubject = subject.replace(/"/g, '');
     const { after, before } = todayGmailDateBounds();
-    const q = `in:sent subject:"${exactSubject}" after:${after} before:${before}`;
-    const result = await gmail.users.messages.list({
-      userId,
-      q,
-      maxResults: 10,
-      fields: 'messages/id'
-    });
-    const messages = Array.isArray(result.data.messages) ? result.data.messages : [];
-    if (!messages.length) return null;
+    const termQuery = `${normalizedFlightNo} ${normalizedSubjectDate} flight information details`
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((term) => `subject:"${term.replace(/"/g, '')}"`)
+      .join(' ');
+    const queries = [
+      `in:sent subject:"${exactSubject}" after:${after} before:${before}`,
+      `in:sent subject:"${exactSubject}" newer_than:14d`,
+      `label:sent subject:"${exactSubject}" newer_than:14d`,
+      `in:sent ${termQuery} newer_than:14d`,
+      `${termQuery} newer_than:14d`
+    ];
 
-    const details = await Promise.all(messages.map(async (message) => {
+    const messageIds = new Set();
+    for (const q of queries) {
+      const result = await gmail.users.messages.list({
+        userId,
+        q,
+        includeSpamTrash: false,
+        maxResults: 10,
+        fields: 'messages/id'
+      });
+      for (const message of result.data.messages || []) {
+        if (message?.id) messageIds.add(message.id);
+      }
+      if (messageIds.size) break;
+    }
+    if (!messageIds.size) return null;
+
+    const normalizedSubject = exactSubject.toUpperCase();
+    const details = await Promise.all(Array.from(messageIds).map(async (id) => {
       const detail = await gmail.users.messages.get({
         userId,
-        id: message.id,
+        id,
         format: 'full',
-        fields: 'id,internalDate,payload(headers(name,value),mimeType,body(data),parts)'
+        fields: 'id,internalDate,labelIds,payload(headers(name,value),mimeType,body(data),parts)'
       });
       const headers = detail.data.payload?.headers || [];
       const header = (name) => headers.find((item) => String(item.name || '').toLowerCase() === name.toLowerCase())?.value || '';
+      const foundSubject = header('Subject') || subject;
       const body = extractGmailMessageText(detail.data.payload);
       return {
-        id: detail.data.id || message.id,
-        subject: header('Subject') || subject,
+        id: detail.data.id || id,
+        subject: foundSubject,
         from: header('From'),
         to: header('To'),
+        labels: detail.data.labelIds || [],
         ...gmailSentTime(detail.data.internalDate, header('Date')),
         body,
         metrics: parseNextDayInfoBody(body)
       };
     }));
 
-    return details.sort((a, b) => String(b.sentAt || '').localeCompare(String(a.sentAt || '')))[0] || null;
+    const exactMatches = details.filter((item) => String(item.subject || '').trim().toUpperCase() === normalizedSubject);
+    const sentMatches = (exactMatches.length ? exactMatches : details).filter((item) => !item.labels?.length || item.labels.includes('SENT'));
+    return (sentMatches.length ? sentMatches : exactMatches).sort((a, b) => String(b.sentAt || '').localeCompare(String(a.sentAt || '')))[0] || null;
   } catch (err) {
     console.error('Gmail next day info subject search error:', err.message || err);
     return null;
