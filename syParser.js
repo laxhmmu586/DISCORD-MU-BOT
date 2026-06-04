@@ -341,7 +341,7 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
     .sort((a, b) => parseSectionTimestamp(b.timestamp) - parseSectionTimestamp(a.timestamp))[0] || null : null;
   const netComplete = Boolean(netMatch);
   const netTime = formatTime(netMatch?.timestamp);
-  const nextDayDateUtc = addDaysUtc(baseDateUtc, 1);
+  const nextDayDateUtc = baseDateUtc;
   const nextDayEmailDate = dateToEmailSubjectDate(nextDayDateUtc);
   const nextDayEmailSubject = flightNo && nextDayEmailDate ? `${flightNo} ${nextDayEmailDate} flight information details` : '';
   const commandBaseDateUtc = ymdToUtcDate(flightYmd || baseYmd);
@@ -399,6 +399,13 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
         complete: netComplete,
         time: netTime,
         tooltip: netComplete ? `PD*,NET ${flightNo}/${netFlightDate} ${netTime}` : `PD*,NET ${flightNo}/${netFlightDate || '------'} not found`
+      },
+      {
+        key: 'nextDayInfo',
+        label: 'NEXTDAY INFO',
+        complete: false,
+        time: '',
+        tooltip: nextDayEmailSubject ? `Sent email search pending: ${nextDayEmailSubject}` : 'NEXTDAY INFO email subject is not ready'
       },
       {
         key: 'ccl',
