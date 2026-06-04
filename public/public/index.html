@@ -1210,6 +1210,14 @@
         background: transparent;
         box-shadow: none;
         backdrop-filter: none;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
+
+      .result-panel.is-passenger-record::-webkit-scrollbar {
+        display: none;
+        width: 0;
+        height: 0;
       }
 
       .password-page {
@@ -1887,7 +1895,14 @@
         box-shadow: none;
         padding: 0;
         pointer-events: none;
+        cursor: grab;
+        touch-action: none;
         animation: modalFloat 220ms ease both;
+      }
+
+      .passenger-modal.is-dragging {
+        cursor: grabbing;
+        user-select: none;
       }
 
       .passenger-modal::-webkit-scrollbar {
@@ -1899,6 +1914,7 @@
       .passenger-modal .record-card {
         max-width: none;
         pointer-events: auto;
+        cursor: inherit;
       }
 
       .passenger-modal .panel-close {
@@ -2349,8 +2365,8 @@
         }
 
         .passenger-modal {
-          width: calc(100vw - 20px);
-          max-height: calc(100svh - 20px);
+          width: calc(100vw - 24px);
+          max-height: calc(100svh - 24px);
         }
 
         .record-card {
@@ -3109,24 +3125,73 @@
         return passengerRecordCard(data, "Passenger Record");
       }
 
+      function enablePassengerModalDragScroll(overlay) {
+        const modal = overlay.querySelector(".passenger-modal");
+        if (!modal) return;
+        let startY = 0;
+        let startScrollTop = 0;
+        let isPointerDown = false;
+        let didDrag = false;
+
+        modal.addEventListener("pointerdown", (event) => {
+          if (event.button !== undefined && event.button !== 0) return;
+          isPointerDown = true;
+          didDrag = false;
+          startY = event.clientY;
+          startScrollTop = modal.scrollTop;
+          modal.classList.add("is-dragging");
+          modal.setPointerCapture?.(event.pointerId);
+        });
+
+        modal.addEventListener("pointermove", (event) => {
+          if (!isPointerDown) return;
+          const deltaY = event.clientY - startY;
+          if (Math.abs(deltaY) > 4) {
+            didDrag = true;
+            overlay.dataset.dragging = "true";
+          }
+          if (didDrag) {
+            modal.scrollTop = startScrollTop - deltaY;
+            event.preventDefault();
+          }
+        });
+
+        const finishDrag = (event) => {
+          if (!isPointerDown) return;
+          isPointerDown = false;
+          modal.classList.remove("is-dragging");
+          modal.releasePointerCapture?.(event.pointerId);
+          if (didDrag) setTimeout(() => { delete overlay.dataset.dragging; }, 120);
+        };
+        modal.addEventListener("pointerup", finishDrag);
+        modal.addEventListener("pointercancel", finishDrag);
+        modal.addEventListener("lostpointercapture", () => {
+          isPointerDown = false;
+          modal.classList.remove("is-dragging");
+          if (didDrag) setTimeout(() => { delete overlay.dataset.dragging; }, 120);
+        });
+      }
+
       function showPassengerModal(data, title = "Passenger Record", anchor = null) {
         document.querySelector(".passenger-modal-backdrop")?.remove();
         const overlay = document.createElement("div");
         overlay.className = "passenger-modal-backdrop";
         overlay.innerHTML = `<article class="passenger-modal" role="dialog" aria-modal="true"><button class="panel-close" type="button" data-close-modal>×</button>${passengerRecordCard(data || {}, title)}</article>`;
         document.body.appendChild(overlay);
+        enablePassengerModalDragScroll(overlay);
         if (anchor) {
           const modal = overlay.querySelector(".passenger-modal");
           const rect = anchor.getBoundingClientRect();
           overlay.style.placeItems = "start";
           modal.style.position = "fixed";
-          const modalWidth = Math.min(620, window.innerWidth - 32);
-          const left = Math.min(Math.max(16, rect.left), window.innerWidth - modalWidth - 16);
-          const modalHeight = Math.min(modal.offsetHeight || 360, window.innerHeight - 32);
+          const viewportGap = window.innerWidth <= 760 ? 12 : 16;
+          const modalWidth = Math.min(620, window.innerWidth - (viewportGap * 2));
+          const left = Math.min(Math.max(viewportGap, rect.left), window.innerWidth - modalWidth - viewportGap);
+          const modalHeight = Math.min(modal.offsetHeight || 360, window.innerHeight - (viewportGap * 2));
           const aboveTop = rect.top - modalHeight - 10;
           const belowTop = rect.bottom + 10;
           modal.style.left = `${left}px`;
-          modal.style.top = `${aboveTop >= 16 ? aboveTop : Math.min(belowTop, window.innerHeight - modalHeight - 16)}px`;
+          modal.style.top = `${aboveTop >= viewportGap ? aboveTop : Math.min(belowTop, window.innerHeight - modalHeight - viewportGap)}px`;
         }
       }
 
@@ -3189,7 +3254,8 @@
       }
 
       function renderPassenger(data) {
-        renderPanel("Passenger Record", data?.bn ? `BN${data.bn}` : latestQuery, passengerRecordCard(data, "Passenger Record"), { panelClass: "is-passenger-record", hideHeader: true });
+        resultPanel.innerHTML = "";
+        showPassengerModal(data, "Passenger Record");
       }
 
       async function refreshSalesReportButton(sy) {
@@ -3951,7 +4017,9 @@
       });
 
       document.addEventListener("click", (event) => {
-        if (event.target.closest("[data-close-modal]") || event.target.closest(".passenger-modal-backdrop")) closePassengerModal();
+        const modalBackdrop = event.target.closest(".passenger-modal-backdrop");
+        if (modalBackdrop?.dataset.dragging === "true") return;
+        if (event.target.closest("[data-close-modal]") || modalBackdrop) closePassengerModal();
       });
 
       searchForm.addEventListener("submit", (event) => {
