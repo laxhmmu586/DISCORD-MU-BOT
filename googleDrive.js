@@ -314,8 +314,9 @@ const REPORT_SHEET_ID = '1JqRnDx_uLc2m2SzyZOuHWWJsbkKenlKo60U9zwV9uMQ';
 const REPORT_SHEETS = {
   vip: {
     gid: 1703169759,
-    headers: ['Recorded At', 'Date', 'Flight', 'Flight Date', 'Passenger', 'BN', 'Seat', 'Source', 'Key'],
-    fields: ['recordedAt', 'date', 'flightNo', 'flightDate', 'passenger', 'bn', 'seat', 'source', 'key']
+    headers: ['Flight Date', 'Flight #', 'Passenger Name', 'BN', 'Seat', 'BAGS'],
+    fields: ['flightDate', 'flightNo', 'passenger', 'bn', 'seat', 'bags'],
+    readOnly: true
   },
   wheelchair: {
     gid: 910713958,
@@ -397,12 +398,55 @@ async function ensureReportSheetHeaders(type, rows) {
   });
 }
 
+function normalizeSheetDateToIso(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  let match = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (match) return `${match[1]}-${String(Number(match[2])).padStart(2, '0')}-${String(Number(match[3])).padStart(2, '0')}`;
+
+  match = raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2}|\d{4})(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?$/);
+  if (match) {
+    const year = match[3].length === 2 ? `20${match[3]}` : match[3];
+    return `${year}-${String(Number(match[1])).padStart(2, '0')}-${String(Number(match[2])).padStart(2, '0')}`;
+  }
+
+  match = raw.toUpperCase().match(/^(\d{1,2})([A-Z]{3})(\d{2}|\d{4})?$/);
+  if (match) {
+    const months = { JAN: '01', FEB: '02', MAR: '03', APR: '04', MAY: '05', JUN: '06', JUL: '07', AUG: '08', SEP: '09', OCT: '10', NOV: '11', DEC: '12' };
+    const month = months[match[2]];
+    const year = match[3] ? (match[3].length === 2 ? `20${match[3]}` : match[3]) : String(new Date().getUTCFullYear());
+    if (month) return `${year}-${month}-${String(Number(match[1])).padStart(2, '0')}`;
+  }
+
+  return '';
+}
+
+function isReportHeaderRow(type, values) {
+  const joined = (values || []).map((value) => String(value || '').trim().toLowerCase()).join('|');
+  if (!joined) return true;
+  if (type === 'vip') return /flight date/.test(joined) && /passenger/.test(joined);
+  const config = getReportSheetConfig(type);
+  return Boolean(config?.headers?.every((header, index) => String(values?.[index] || '').trim() === header));
+}
+
 function reportRowFromSheet(type, values) {
   const config = getReportSheetConfig(type);
   const row = {};
   config.fields.forEach((field, index) => {
     row[field] = values[index] || '';
   });
+  if (type === 'vip') {
+    const displayDate = row.flightDate || row.date || '';
+    const isoDate = normalizeSheetDateToIso(displayDate);
+    row.displayDate = displayDate;
+    row.date = isoDate || displayDate;
+    row.flightDate = displayDate;
+    row.flightNo = String(row.flightNo || '').trim().toUpperCase();
+    row.passenger = String(row.passenger || '').trim();
+    row.bn = String(row.bn || '').trim().padStart(3, '0').replace(/^0+$/, '');
+    row.seat = String(row.seat || '').trim().toUpperCase();
+    row.bags = String(row.bags || '').trim();
+  }
   return row;
 }
 
@@ -420,19 +464,21 @@ async function getStoredReportRows(type, isoDate) {
   const config = getReportSheetConfig(type);
   if (!config) return { rows: [], scanned: false };
   const rows = await getReportSheetRows(type);
-  await ensureReportSheetHeaders(type, rows);
+  if (!config.readOnly) await ensureReportSheetHeaders(type, rows);
   let scanned = false;
   const dataRows = [];
-  for (let i = 1; i < rows.length; i += 1) {
+  const startIndex = rows.length && isReportHeaderRow(type, rows[0]) ? 1 : 0;
+  for (let i = startIndex; i < rows.length; i += 1) {
+    if (isReportHeaderRow(type, rows[i])) continue;
     const parsed = reportRowFromSheet(type, rows[i]);
     if (parsed.key === scanMarkerKey(type, isoDate)) {
       scanned = true;
       continue;
     }
-    if (parsed.date !== isoDate) continue;
+    if (isoDate && parsed.date !== isoDate) continue;
     dataRows.push(parsed);
   }
-  return { rows: dataRows, scanned };
+  return { rows: dataRows, scanned: config.readOnly ? true : scanned };
 }
 
 
@@ -477,7 +523,7 @@ async function pruneStoredReportRows(type) {
 async function appendStoredReportRows(type, isoDate, rows) {
   if (reportSheetAccessBlocked) return { appended: 0 };
   const config = getReportSheetConfig(type);
-  if (!config) return { appended: 0 };
+  if (!config || config.readOnly) return { appended: 0 };
   const title = await getReportSheetTitle(type);
   if (!title) return { appended: 0 };
   const sheetRows = await getReportSheetRows(type);
