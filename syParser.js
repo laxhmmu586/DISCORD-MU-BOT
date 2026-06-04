@@ -17,7 +17,7 @@ function splitLogicalSections(log) {
     }
 
     const cmd = line.match(cmdRe)?.[1]?.toUpperCase() || null;
-    const isContinuation = cmd ? /^(PN|PN1|PF|PF1)$/.test(cmd) : false;
+    const isContinuation = cmd ? /^(PN\d*|PF\d*)$/.test(cmd) : false;
 
     if (cmd && !isContinuation) {
       if (current && current.content.trim()) sections.push(current);
@@ -122,6 +122,14 @@ function formatPassportExpiryFromSection(section) {
 
 function extractSeatAfterBn(text) {
   return (String(text || '').match(/\bBN\s*\d{1,3}\b\s+\*?(\d{1,3}[A-Z])\b/i)?.[1] || '').toUpperCase();
+}
+
+function cabinFromSeat(seat) {
+  const row = Number(String(seat || '').match(/\d{1,3}/)?.[0] || 0);
+  if (row >= 1 && row <= 2) return 'First';
+  if (row >= 6 && row <= 20) return 'Business';
+  if (row >= 31 && row <= 74) return 'Economy';
+  return 'Economy';
 }
 
 function getOutboundLines(section) {
@@ -633,6 +641,20 @@ function extractLatestApiAgent(section) {
   return apiLines[apiLines.length - 1][1];
 }
 
+function hasUnclearedApiSourceRisk(section) {
+  const operations = String(section || '')
+    .split(/\r?\n/)
+    .map((line, index) => {
+      const match = line.match(/^\s*(API|GOV|ACC|MOD|BAG|BC|BAB|RES)\s+[^\n\r]*?\bAGT(\d+)\//i);
+      return match ? { index, type: match[1].toUpperCase(), agent: match[2] } : null;
+    })
+    .filter(Boolean);
+  const apiOps = operations.filter((op) => op.type === 'API');
+  const latestApi = apiOps[apiOps.length - 1] || null;
+  if (!latestApi || APPROVED_AGENT_CODES.has(latestApi.agent)) return false;
+  return !operations.some((op) => op.index > latestApi.index);
+}
+
 function enrichGovAqqFromLog(log, syInfo, targetYmd = null) {
   if (!log || !syInfo?.flightNo || !syInfo?.flightDate) {
     return { duplicatePassports: [], aqqTclBnList: [], govDtaBnList: [], passportCodeIssues: [] };
@@ -695,7 +717,7 @@ ${section}`,
     const passportNo = section.match(/PASSPORT\s*:\s*([A-Z0-9]+)/i)?.[1]?.toUpperCase() || '';
     const bookingName = extractBookingName(section);
     const latestApiAgent = extractLatestApiAgent(section);
-    const needsReswipeByAgent = Boolean(latestApiAgent) && !APPROVED_AGENT_CODES.has(latestApiAgent);
+    const needsReswipeByAgent = hasUnclearedApiSourceRisk(section);
     const hasPaxInfoLine = /PAX INFO\s*:/i.test(section);
     const hasPassportLine = /PASSPORT\s*:/i.test(section);
     const countryCodes = extractPassportCountryCodes(section);
@@ -1145,7 +1167,7 @@ ${section}`,
     const hasGovFail = /\bGOV\/DTA\/CHN\b/i.test(section);
     const hasReview = /\bWEB\/EDI\/RESWIPE\b/i.test(section);
     const latestApiAgent = extractLatestApiAgent(section);
-    const apiNotWhitelisted = Boolean(latestApiAgent) && !APPROVED_AGENT_CODES.has(latestApiAgent);
+    const apiNotWhitelisted = hasUnclearedApiSourceRisk(section);
     const countryCodes = extractPassportCountryCodes(section);
     const countryCodeCountZero = countryCodes.length === 0;
     const passportRawLine = (section.match(/PASSPORT\s*:\s*([^\n\r]+)/i)?.[1] || '').trim().toUpperCase();
@@ -1220,7 +1242,7 @@ ${section}`,
       bn,
       name: passengerName || 'UNKNOWN',
       seat: passengerSeat || '---',
-      cabin: 'Economy',
+      cabin: cabinFromSeat(passengerSeat),
       flight: syInfo.flightNo || '',
       flightDate: syInfo.flightDate || '',
       passportNo,
