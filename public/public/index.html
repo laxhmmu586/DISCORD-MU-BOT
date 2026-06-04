@@ -1749,6 +1749,19 @@
         font-weight: 950;
       }
 
+      .record-card.is-nextday-info {
+        max-width: 100%;
+      }
+
+      .raw-record {
+        position: relative;
+        z-index: 1;
+        overflow-x: auto;
+        white-space: pre-wrap;
+        color: #dff6ff;
+        font: 13px/1.55 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      }
+
       .record-row,
       .security-row {
         display: grid;
@@ -2836,13 +2849,14 @@
               </svg>
               <button class="node" type="button" data-index="0" data-key="CREW_APIS" data-label="CREW APIS" data-status="pending" data-time="----"></button>
               <button class="node" type="button" data-index="1" data-key="NET" data-label="NET" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="2" data-key="CHD" data-label="CHD" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="3" data-key="GOV" data-label="GOV" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="4" data-key="NBRD" data-label="NBRD" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="5" data-key="CCL" data-label="CCL" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="6" data-key="CC" data-label="CC" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="7" data-key="INITIAL_FLIGHT" data-label="INITIAL FLIGHT" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="8" data-key="BDT_CHG" data-label="BDT CHG" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="2" data-key="NEXTDAY_INFO" data-label="NEXTDAY INFO" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="3" data-key="CHD" data-label="CHD" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="4" data-key="GOV" data-label="GOV" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="5" data-key="NBRD" data-label="NBRD" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="6" data-key="CCL" data-label="CCL" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="7" data-key="CC" data-label="CC" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="8" data-key="INITIAL_FLIGHT" data-label="INITIAL FLIGHT" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="9" data-key="BDT_CHG" data-label="BDT CHG" data-status="pending" data-time="----"></button>
               <article class="node-card" aria-live="polite">
                 <h2>Crew APIs</h2>
                 <p>Crew manifest and reservation data are ready. This point can open deeper crew workflows later.</p>
@@ -2928,7 +2942,7 @@
       const changePasswordForm = document.querySelector("#change-password-form");
       const newPasswordInput = document.querySelector("#new-password");
       const passwordStatus = document.querySelector("#password-status");
-      const baseProgress = [0.08, 0.19, 0.3, 0.41, 0.52, 0.63, 0.74, 0.85, 0.96];
+      const baseProgress = [0.06, 0.16, 0.26, 0.36, 0.46, 0.56, 0.66, 0.76, 0.86, 0.96];
       const desktopOrbitPath = "M-260 318 C 120 178, 390 142, 600 142 S 1080 178, 1460 318";
       const mobileOrbitPath = "M-240 296 C 130 210, 390 184, 600 184 S 1070 210, 1440 296";
       const mobileOrbitQuery = window.matchMedia("(max-width: 760px)");
@@ -2938,6 +2952,7 @@
       const nodeKeyMap = {
         CREW_APIS: "crewApis",
         NET: "net",
+        NEXTDAY_INFO: "nextDayInfo",
         CCL: "ccl",
         CC: "cc",
         INITIAL_FLIGHT: "initialFlight",
@@ -3668,17 +3683,18 @@
           let started = Boolean(step?.complete || step?.time);
           let time = step?.time || "----";
           node.dataset.inputTime = step?.time || "";
+          if (key === "NEXTDAY_INFO") { started = Boolean(step?.complete || step?.time); complete = Boolean(step?.complete); time = step?.time || "----"; }
           if (key === "CHD") { issueCount = chdIssues; started = (sy.chdList || []).length > 0; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
           if (key === "GOV") { issueCount = govCount; started = Boolean(sy.govAqq) && previousStarted; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
           if (key === "NBRD") { issueCount = nbrdCount; started = (sy.bnAudit || []).length > 0 && previousStarted; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
-          const locked = !previousStarted && !["CHD", "GOV", "NBRD"].includes(key);
+          const locked = !previousStarted && !["NEXTDAY_INFO", "CHD", "GOV", "NBRD"].includes(key);
           node.dataset.status = normalizeStatus(Boolean(complete), issueCount || (started && !complete ? 1 : 0), locked);
           node.dataset.time = String(time);
           if (["CHD", "GOV", "NBRD"].includes(key) && complete && String(time).toUpperCase() === "CLEAR") node.dataset.clearLocked = "true";
           else node.removeAttribute("data-clear-locked");
           if (issueCount) node.dataset.alert = String(issueCount);
           else node.removeAttribute("data-alert");
-          previousStarted = previousStarted && started;
+          previousStarted = previousStarted && (key === "NEXTDAY_INFO" ? true : started);
         });
         resetTimelineCenter();
       }
@@ -3797,6 +3813,40 @@
         } finally {
           if (isSySearch) setLoadingState(false);
         }
+      }
+
+      function formatSentDateTime(value) {
+        if (!value) return "Not found";
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return value;
+        return date.toLocaleString("en-US", { timeZone: "UTC", year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }) + " UTC";
+      }
+
+      function renderNextDayInfoPanel() {
+        const step = stepByKey("NEXTDAY_INFO");
+        const query = currentSy?.crewApis?.nextDayInfoQuery || {};
+        const email = step?.email || null;
+        const metrics = email?.metrics || {};
+        const metricRows = [
+          ["First Class", metrics.firstClass],
+          ["Business Class", metrics.businessClass],
+          ["Economy Class", metrics.economyClass],
+          ["International Transfer", metrics.internationalTransfer],
+          ["Domestic Transfer", metrics.domesticTransfer],
+          ["Overnight passengers", metrics.overnightPassengers],
+        ];
+        const stats = email
+          ? `<div class="panel-stats"><span class="status-ok">Sent ${escapeHtml(formatSentDateTime(email.sentAt))}</span><span>${escapeHtml(email.subject || query.emailSubject || "NEXTDAY INFO")}</span></div>`
+          : `<div class="panel-stats"><span class="status-fail">Sent email not found today</span><span>${escapeHtml(query.emailSubject || step?.tooltip || "NEXTDAY INFO")}</span></div>`;
+        const metricTable = email ? rowsTable(metricRows.map(([label, value]) => ({ label, value })), [
+          { label: "Item", value: (row) => row.label },
+          { label: "Count", value: (row) => row.value },
+        ], "No NEXTDAY INFO counts found.") : "";
+        const body = email
+          ? `${stats}${metricTable}<article class="record-card is-nextday-info"><div class="record-title"><span>Email Content</span><span class="record-badge">SENT</span></div><pre class="raw-record">${escapeHtml(email.body || "No email body returned.")}</pre></article>`
+          : `${stats}<p class="panel-muted">Search target: Sent mail from ${escapeHtml(query.flightNo || currentSy?.flightNo || "MU586")} with subject ${escapeHtml(query.emailSubject || "flight information details")}.</p>`;
+        renderPanel("NEXTDAY INFO", currentSy?.flightNo || "SY", body, { panelClass: "is-full-page" });
+        setPanelPassengerRows([]);
       }
 
       function renderChdPanel() {
@@ -4449,6 +4499,7 @@
           nodeTime.textContent = nodeDisplayTime(key);
           return;
         }
+        if (key === "NEXTDAY_INFO") { hideTimelineNodeCard(); return renderNextDayInfoPanel(); }
         if (key === "CHD") { hideTimelineNodeCard(); return renderChdPanel(); }
         if (key === "GOV") { hideTimelineNodeCard(); return renderGovPanel(); }
         if (key === "NBRD") { hideTimelineNodeCard(); return renderNbrdPanel(); }
