@@ -2685,7 +2685,7 @@
           <div class="report-hero">
             <div>
               <h2>Report Center</h2>
-              <p class="panel-muted">Choose a report type and date range, then search. VIP report scans every flight on the selected dates and only shows passengers whose flight date matches the log timestamp date.</p>
+              <p class="panel-muted">Choose a report type and date range, then search. VIP and Wheelchair reports read saved Google Sheet records first; if a date has not been scanned yet, the system scans the log once and saves the trace to Google Sheets.</p>
             </div>
             <button class="report-close" id="report-close" type="button">Close</button>
           </div>
@@ -4078,14 +4078,16 @@
         return row;
       }
 
-      async function vipReportRows(isoDate, keyword) {
-        const data = await apiJson(`/vip-report?date=${encodeURIComponent(isoDate)}`);
+      async function storedReportRows(type, isoDate, keyword) {
+        const data = await apiJson(`/stored-report?type=${encodeURIComponent(type)}&date=${encodeURIComponent(isoDate)}`);
         const needle = String(keyword || "").trim().toUpperCase();
         const rows = data?.rows || [];
-        const filtered = needle
-          ? rows.filter((row) => [row.passenger, row.flightNo, row.flightDate, row.bn, row.seat, row.source].some((value) => String(value || "").toUpperCase().includes(needle)))
-          : rows;
-        return filtered;
+        if (!needle) return rows;
+        return rows.filter((row) => Object.values(row || {}).some((value) => String(value || "").toUpperCase().includes(needle)));
+      }
+
+      async function vipReportRows(isoDate, keyword) {
+        return storedReportRows("vip", isoDate, keyword);
       }
 
       async function generateReport(event) {
@@ -4113,8 +4115,11 @@
               rows.push(...await vipReportRows(isoDate, keyword));
               continue;
             }
+            if (type === "wheelchair") {
+              rows.push(...await storedReportRows("wheelchair", isoDate, keyword));
+              continue;
+            }
             const sy = await loadSyForReport(isoDate);
-            if (type === "wheelchair") rows.push(...wheelchairReportRows(sy, isoDate));
             if (type === "baggage") rows.push(...baggageReportRows(sy, isoDate));
             if (type === "sales") rows.push(await salesReportRows(sy, isoDate));
           } catch (error) {
