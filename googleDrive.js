@@ -153,7 +153,7 @@ async function get240InfoByBnAndFlightDate({ bn, flightDate }) {
 
 function normalizeTimestampToIsoDate(value) {
   const raw = String(value || '').trim();
-  const m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+\d{1,2}:\d{2}(?::\d{2})?$/);
+  const m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?$/);
   if (!m) return '';
   const mm = String(Number(m[1])).padStart(2, '0');
   const dd = String(Number(m[2])).padStart(2, '0');
@@ -314,20 +314,32 @@ const REPORT_SHEET_ID = '1JqRnDx_uLc2m2SzyZOuHWWJsbkKenlKo60U9zwV9uMQ';
 const REPORT_SHEETS = {
   vip: {
     gid: 1703169759,
-    headers: ['Recorded At', 'Date', 'Flight', 'Flight Date', 'Passenger', 'BN', 'Seat', 'Source', 'Key'],
-    fields: ['recordedAt', 'date', 'flightNo', 'flightDate', 'passenger', 'bn', 'seat', 'source', 'key']
+    headers: ['Flight Date', 'Flight #', 'Passenger Name', 'BN', 'Seat', 'BAGS'],
+    fields: ['flightDate', 'flightNo', 'passenger', 'bn', 'seat', 'bags'],
+    readOnly: true
   },
   wheelchair: {
     gid: 910713958,
     headers: ['Recorded At', 'Date', 'Flight', 'Flight Date', 'Passenger', 'BN', 'Seat', 'Wheelchair Type', 'Key'],
     fields: ['recordedAt', 'date', 'flightNo', 'flightDate', 'passenger', 'bn', 'seat', 'wheelchairType', 'key']
+  },
+  psmMsg: {
+    gid: 101743110,
+    headers: ['Recorded At', 'Flight Date', 'Flight #', 'Passenger Name', 'BN', 'Seat', 'BAGS', 'Type', 'Detail', 'Key'],
+    fields: ['recordedAt', 'flightDate', 'flightNo', 'passenger', 'bn', 'seat', 'bags', 'type', 'detail', 'key']
   }
 };
 const reportSheetTitles = {};
 let reportSheetAccessBlocked = false;
 
+function normalizeReportSheetType(type) {
+  const normalized = String(type || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (normalized === 'psmmsg') return 'psmMsg';
+  return normalized;
+}
+
 function getReportSheetConfig(type) {
-  return REPORT_SHEETS[String(type || '').toLowerCase()] || null;
+  return REPORT_SHEETS[normalizeReportSheetType(type)] || null;
 }
 
 function buildStoredReportKey(type, row) {
@@ -350,12 +362,13 @@ function scanMarkerKey(type, isoDate) {
 }
 
 async function getReportSheetTitle(type) {
-  const config = getReportSheetConfig(type);
+  const normalizedType = normalizeReportSheetType(type);
+  const config = getReportSheetConfig(normalizedType);
   if (!config) return '';
-  if (!reportSheetTitles[type]) {
-    reportSheetTitles[type] = await resolveSheetTitleByGid(REPORT_SHEET_ID, config.gid);
+  if (!reportSheetTitles[normalizedType]) {
+    reportSheetTitles[normalizedType] = await resolveSheetTitleByGid(REPORT_SHEET_ID, config.gid);
   }
-  return reportSheetTitles[type] || '';
+  return reportSheetTitles[normalizedType] || '';
 }
 
 async function getReportSheetRows(type) {
@@ -397,12 +410,58 @@ async function ensureReportSheetHeaders(type, rows) {
   });
 }
 
+function normalizeSheetDateToIso(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  let match = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (match) return `${match[1]}-${String(Number(match[2])).padStart(2, '0')}-${String(Number(match[3])).padStart(2, '0')}`;
+
+  match = raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2}|\d{4})(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?$/);
+  if (match) {
+    const year = match[3].length === 2 ? `20${match[3]}` : match[3];
+    return `${year}-${String(Number(match[1])).padStart(2, '0')}-${String(Number(match[2])).padStart(2, '0')}`;
+  }
+
+  match = raw.toUpperCase().match(/^(\d{1,2})([A-Z]{3})(\d{2}|\d{4})?$/);
+  if (match) {
+    const months = { JAN: '01', FEB: '02', MAR: '03', APR: '04', MAY: '05', JUN: '06', JUL: '07', AUG: '08', SEP: '09', OCT: '10', NOV: '11', DEC: '12' };
+    const month = months[match[2]];
+    const year = match[3] ? (match[3].length === 2 ? `20${match[3]}` : match[3]) : String(new Date().getUTCFullYear());
+    if (month) return `${year}-${month}-${String(Number(match[1])).padStart(2, '0')}`;
+  }
+
+  return '';
+}
+
+function isReportHeaderRow(type, values) {
+  const joined = (values || []).map((value) => String(value || '').trim().toLowerCase()).join('|');
+  if (!joined) return true;
+  if (type === 'vip') return /flight date/.test(joined) && /passenger/.test(joined);
+  if (normalizeReportSheetType(type) === 'psmMsg') return /flight date/.test(joined) && /detail/.test(joined);
+  const config = getReportSheetConfig(type);
+  return Boolean(config?.headers?.every((header, index) => String(values?.[index] || '').trim() === header));
+}
+
 function reportRowFromSheet(type, values) {
   const config = getReportSheetConfig(type);
   const row = {};
   config.fields.forEach((field, index) => {
     row[field] = values[index] || '';
   });
+  if (type === 'vip' || normalizeReportSheetType(type) === 'psmMsg') {
+    const displayDate = row.flightDate || row.date || '';
+    const isoDate = normalizeSheetDateToIso(displayDate);
+    row.displayDate = displayDate;
+    row.date = isoDate || displayDate;
+    row.flightDate = displayDate;
+    row.flightNo = String(row.flightNo || '').trim().toUpperCase();
+    row.passenger = String(row.passenger || '').trim();
+    row.bn = String(row.bn || '').trim().padStart(3, '0').replace(/^0+$/, '');
+    row.seat = String(row.seat || '').trim().toUpperCase();
+    row.bags = String(row.bags || '').trim();
+    row.type = String(row.type || '').trim().toUpperCase();
+    row.detail = String(row.detail || '').trim();
+  }
   return row;
 }
 
@@ -420,19 +479,21 @@ async function getStoredReportRows(type, isoDate) {
   const config = getReportSheetConfig(type);
   if (!config) return { rows: [], scanned: false };
   const rows = await getReportSheetRows(type);
-  await ensureReportSheetHeaders(type, rows);
+  if (!config.readOnly) await ensureReportSheetHeaders(type, rows);
   let scanned = false;
   const dataRows = [];
-  for (let i = 1; i < rows.length; i += 1) {
+  const startIndex = rows.length && isReportHeaderRow(type, rows[0]) ? 1 : 0;
+  for (let i = startIndex; i < rows.length; i += 1) {
+    if (isReportHeaderRow(type, rows[i])) continue;
     const parsed = reportRowFromSheet(type, rows[i]);
     if (parsed.key === scanMarkerKey(type, isoDate)) {
       scanned = true;
       continue;
     }
-    if (parsed.date !== isoDate) continue;
+    if (isoDate && parsed.date !== isoDate) continue;
     dataRows.push(parsed);
   }
-  return { rows: dataRows, scanned };
+  return { rows: dataRows, scanned: config.readOnly ? true : scanned };
 }
 
 
@@ -474,10 +535,171 @@ async function pruneStoredReportRows(type) {
   return { deleted: deleteIndexes.length };
 }
 
+
+
+async function getVipReportRows(isoDate = '') {
+  const rows = await getReportSheetRows('vip');
+  const dataRows = [];
+  const startIndex = rows.length && isReportHeaderRow('vip', rows[0]) ? 1 : 0;
+  for (let i = startIndex; i < rows.length; i += 1) {
+    if (isReportHeaderRow('vip', rows[i])) continue;
+    const parsed = reportRowFromSheet('vip', rows[i]);
+    if (isoDate && parsed.date !== isoDate) continue;
+    dataRows.push(parsed);
+  }
+  return dataRows.sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')) || String(a.flightNo || '').localeCompare(String(b.flightNo || '')) || Number(a.bn || 0) - Number(b.bn || 0) || String(a.passenger || '').localeCompare(String(b.passenger || '')));
+}
+
+async function getPsmMsgReportRows(fromIsoDate, toIsoDate = fromIsoDate) {
+  const from = String(fromIsoDate || '').trim();
+  const to = String(toIsoDate || from).trim();
+  const rows = await getReportSheetRows('psmMsg');
+  await ensureReportSheetHeaders('psmMsg', rows);
+  const dataRows = [];
+  const startIndex = rows.length && isReportHeaderRow('psmMsg', rows[0]) ? 1 : 0;
+  for (let i = startIndex; i < rows.length; i += 1) {
+    if (isReportHeaderRow('psmMsg', rows[i])) continue;
+    const parsed = reportRowFromSheet('psmMsg', rows[i]);
+    if (from && parsed.date < from) continue;
+    if (to && parsed.date > to) continue;
+    dataRows.push(parsed);
+  }
+  return dataRows.sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')) || String(a.flightNo || '').localeCompare(String(b.flightNo || '')) || Number(a.bn || 0) - Number(b.bn || 0));
+}
+
+async function appendVipReportRows(rows) {
+  if (reportSheetAccessBlocked) return { appended: 0 };
+  const config = getReportSheetConfig('vip');
+  const title = await getReportSheetTitle('vip');
+  if (!config || !title) return { appended: 0 };
+  const sheetRows = await getReportSheetRows('vip');
+  await ensureReportSheetHeaders('vip', sheetRows);
+  const existingKeys = new Set();
+  const startIndex = sheetRows.length && isReportHeaderRow('vip', sheetRows[0]) ? 1 : 0;
+  for (let i = startIndex; i < sheetRows.length; i += 1) {
+    if (isReportHeaderRow('vip', sheetRows[i])) continue;
+    const parsed = reportRowFromSheet('vip', sheetRows[i]);
+    existingKeys.add([
+      parsed.flightDate,
+      parsed.flightNo,
+      parsed.passenger
+    ].map((value) => String(value || '').trim().toUpperCase()).join('|'));
+  }
+
+  const values = [];
+  const newestRows = [...(rows || [])].sort((a, b) => Number(b?.timestampMs || 0) - Number(a?.timestampMs || 0));
+  for (const row of newestRows) {
+    const normalized = {
+      flightDate: String(row.flightDate || '').trim().toUpperCase(),
+      flightNo: String(row.flightNo || '').trim().toUpperCase(),
+      passenger: String(row.passenger || '').trim().toUpperCase(),
+      bn: String(row.bn || '').trim().replace(/^0+(?=\d)/, ''),
+      seat: String(row.seat || '').trim().toUpperCase(),
+      bags: String(row.bags || '').trim().toUpperCase()
+    };
+    if (!normalized.flightDate || !normalized.flightNo || !normalized.passenger) continue;
+    if (normalized.flightNo === 'MU586' && (!normalized.bn || !normalized.seat)) continue;
+    const key = [normalized.flightDate, normalized.flightNo, normalized.passenger].join('|').toUpperCase();
+    if (existingKeys.has(key)) continue;
+    existingKeys.add(key);
+    values.push(config.fields.map((field) => normalized[field] || ''));
+  }
+
+  if (!values.length) return { appended: 0 };
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: REPORT_SHEET_ID,
+    range: `${title}!A1`,
+    valueInputOption: 'RAW',
+    insertDataOption: 'INSERT_ROWS',
+    requestBody: { values }
+  });
+  return { appended: values.length };
+}
+
+
+function buildPsmMsgKey(row) {
+  return [
+    'psmMsg',
+    row?.flightDate || '',
+    row?.flightNo || '',
+    row?.passenger || '',
+    row?.bn || '',
+    row?.seat || '',
+    row?.bags || '',
+    row?.type || '',
+    row?.detail || ''
+  ].map((value) => String(value || '').trim().toUpperCase()).join('|');
+}
+
+function reportPsmMsgRowFromSheet(values) {
+  const row = {};
+  const config = getReportSheetConfig('psmMsg');
+  config.fields.forEach((field, index) => {
+    row[field] = values[index] || '';
+  });
+  row.flightDate = String(row.flightDate || '').trim().toUpperCase();
+  row.flightNo = String(row.flightNo || '').trim().toUpperCase();
+  row.passenger = String(row.passenger || '').trim().toUpperCase();
+  row.bn = String(row.bn || '').trim().padStart(3, '0').replace(/^0+$/, '');
+  row.seat = String(row.seat || '').trim().toUpperCase();
+  row.bags = String(row.bags || '').trim().toUpperCase();
+  row.type = String(row.type || '').trim().toUpperCase();
+  row.detail = String(row.detail || '').trim().toUpperCase();
+  row.key = row.key || buildPsmMsgKey(row);
+  return row;
+}
+
+async function appendPsmMsgReportRows(rows) {
+  if (reportSheetAccessBlocked) return { appended: 0 };
+  const config = getReportSheetConfig('psmMsg');
+  const title = await getReportSheetTitle('psmMsg');
+  if (!config || !title) return { appended: 0 };
+  const sheetRows = await getReportSheetRows('psmMsg');
+  await ensureReportSheetHeaders('psmMsg', sheetRows);
+  const existingKeys = new Set();
+  const startIndex = sheetRows.length && isReportHeaderRow('psmMsg', sheetRows[0]) ? 1 : 0;
+  for (let i = startIndex; i < sheetRows.length; i += 1) {
+    if (isReportHeaderRow('psmMsg', sheetRows[i])) continue;
+    const parsed = reportPsmMsgRowFromSheet(sheetRows[i]);
+    existingKeys.add(String(parsed.key || buildPsmMsgKey(parsed)).trim().toUpperCase());
+  }
+
+  const values = [];
+  for (const row of rows || []) {
+    const normalized = {
+      recordedAt: row.recordedAt || new Date().toISOString(),
+      flightDate: String(row.flightDate || '').trim().toUpperCase(),
+      flightNo: String(row.flightNo || '').trim().toUpperCase(),
+      passenger: String(row.passenger || '').trim().toUpperCase(),
+      bn: String(row.bn || '').trim().padStart(3, '0'),
+      seat: String(row.seat || '').trim().toUpperCase(),
+      bags: String(row.bags || '').trim().toUpperCase(),
+      type: String(row.type || '').trim().toUpperCase(),
+      detail: String(row.detail || '').trim().toUpperCase()
+    };
+    if (!normalized.flightDate || !normalized.flightNo || !normalized.passenger || !normalized.detail) continue;
+    normalized.key = row.key || buildPsmMsgKey(normalized);
+    const key = String(normalized.key || '').trim().toUpperCase();
+    if (existingKeys.has(key)) continue;
+    existingKeys.add(key);
+    values.push(config.fields.map((field) => normalized[field] || ''));
+  }
+
+  if (!values.length) return { appended: 0 };
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: REPORT_SHEET_ID,
+    range: `${title}!A1`,
+    valueInputOption: 'RAW',
+    insertDataOption: 'INSERT_ROWS',
+    requestBody: { values }
+  });
+  return { appended: values.length };
+}
+
 async function appendStoredReportRows(type, isoDate, rows) {
   if (reportSheetAccessBlocked) return { appended: 0 };
   const config = getReportSheetConfig(type);
-  if (!config) return { appended: 0 };
+  if (!config || config.readOnly) return { appended: 0 };
   const title = await getReportSheetTitle(type);
   if (!title) return { appended: 0 };
   const sheetRows = await getReportSheetRows(type);
@@ -737,6 +959,10 @@ module.exports = {
   downloadSalesReportByFlight,
   hasNextDayInfoEmail,
   getStoredReportRows,
+  getVipReportRows,
+  getPsmMsgReportRows,
   appendStoredReportRows,
+  appendVipReportRows,
+  appendPsmMsgReportRows,
   pruneStoredReportRows
 };
