@@ -2509,7 +2509,7 @@
       .test-timeline-item {
         position: relative;
         display: grid;
-        grid-template-columns: 78px minmax(0, 1fr);
+        grid-template-columns: 82px minmax(0, 1fr);
         gap: 14px;
         align-items: start;
       }
@@ -2517,22 +2517,13 @@
       .test-timeline-item::before {
         content: "";
         position: absolute;
-        left: -38px;
-        top: 2px;
-        width: 18px;
-        height: 18px;
+        left: -29px;
+        top: 5px;
+        width: 14px;
+        height: 14px;
         border-radius: 999px;
-        background: #717d87;
-      }
-
-      .test-timeline-item.is-latest::before {
-        animation: latestTimelinePulse 1.35s ease-in-out infinite;
-        background: #5fe276;
-      }
-
-      @keyframes latestTimelinePulse {
-        0%, 100% { box-shadow: 0 0 0 7px rgba(227, 237, 251, 0.9), 0 0 0 rgba(95, 226, 118, 0); }
-        50% { box-shadow: 0 0 0 7px rgba(227, 237, 251, 0.95), 0 0 18px rgba(95, 226, 118, 0.85); }
+        background: #0d3a4d;
+        box-shadow: 0 0 0 7px rgba(227, 237, 251, 0.9);
       }
 
       .test-timeline-item.is-latest::before {
@@ -2554,9 +2545,10 @@
       .test-timeline-time {
         display: grid;
         gap: 2px;
-        text-align: left;
+        justify-items: center;
+        text-align: center;
         white-space: nowrap;
-        padding-top: 1px;
+        padding-top: 0;
       }
 
       .test-timeline-time small {
@@ -2652,18 +2644,10 @@
         fill: rgba(223, 247, 255, 0.18);
       }
 
-      .test-choice-card line,
-      .test-choice-card polyline {
+      .test-choice-card line {
         stroke: #dff7ff;
         stroke-width: 8;
         stroke-linecap: round;
-        stroke-linejoin: round;
-        fill: none;
-      }
-
-      .test-choice-card .test-icon-arrow {
-        stroke: #5fe2ff;
-        stroke-width: 7;
       }
 
       .test-choice-card[data-test-create-mode="inbound"] {
@@ -4783,7 +4767,7 @@
           </div>
           ${message ? `<p class="panel-muted status-ok">${escapeHtml(message)}</p>` : ""}
           ${testDataGrid(record)}
-          <h3>History</h3>
+          <h3>Details</h3>
           ${renderTestTimeline(record.history)}
           ${showUpdateForm ? `<div class="test-report-head test-update-head"><h3>Update</h3></div>${renderTestUpdateForm(record, mode)}` : `<div class="test-form-actions"><button class="test-add-button" type="button" data-test-show-update>Update</button></div>`}
         </article>`;
@@ -4791,9 +4775,9 @@
 
       function testPlaneIcon(direction) {
         if (direction === "inbound") {
-          return `<svg viewBox="0 0 150 100" aria-hidden="true"><g transform="rotate(12 70 42)"><path d="M22 48 L98 27 Q113 23 121 31 Q128 38 113 45 L78 58 L50 78 L36 72 L50 60 L24 60 Z"></path><polygon points="35,48 18,34 30,31 56,42"></polygon><polygon points="50,60 32,74 22,68 41,56"></polygon><circle cx="64" cy="70" r="5"></circle><circle cx="84" cy="66" r="5"></circle></g><polyline class="test-icon-arrow" points="78,38 78,68 66,56"></polyline><polyline class="test-icon-arrow" points="78,68 90,56"></polyline><line x1="34" y1="86" x2="118" y2="86"></line></svg>`;
+          return `<svg viewBox="0 0 150 100" aria-hidden="true"><g transform="translate(9 10) rotate(13 66 42)"><path d="M20 47 L98 27 Q114 23 122 31 Q129 39 113 46 L77 59 L51 79 L36 72 L51 60 L22 60 Z"></path><polygon points="35,47 19,33 31,31 58,42"></polygon><polygon points="50,60 32,74 22,68 41,56"></polygon><circle cx="64" cy="70" r="5"></circle><circle cx="85" cy="66" r="5"></circle></g><line x1="34" y1="86" x2="118" y2="86"></line></svg>`;
         }
-        return `<svg viewBox="0 0 150 100" aria-hidden="true"><g transform="rotate(-24 74 48)"><path d="M24 55 L104 32 Q119 28 127 36 Q134 44 118 51 L82 64 L55 84 L40 78 L56 64 L26 66 Z"></path><polygon points="42,54 24,40 34,37 62,49"></polygon><circle cx="72" cy="76" r="5"></circle><circle cx="91" cy="71" r="5"></circle></g><polyline class="test-icon-arrow" points="78,70 78,40 66,52"></polyline><polyline class="test-icon-arrow" points="78,40 90,52"></polyline><line x1="42" y1="86" x2="122" y2="86"></line></svg>`;
+        return `<svg viewBox="0 0 150 100" aria-hidden="true"><g transform="translate(8 6) rotate(-14 72 46)"><path d="M22 52 L101 31 Q117 27 125 35 Q132 43 116 50 L80 63 L54 84 L39 77 L54 63 L24 64 Z"></path><polygon points="39,52 22,38 34,35 63,48"></polygon><polygon points="53,63 35,77 25,70 44,59"></polygon><circle cx="70" cy="75" r="5"></circle><circle cx="90" cy="70" r="5"></circle></g><line x1="40" y1="86" x2="122" y2="86"></line></svg>`;
       }
 
       function renderTestAddChoice(bagTag) {
