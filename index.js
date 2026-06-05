@@ -806,39 +806,20 @@ app.post('/test-baggage', async (req, res) => {
     const flight = cleanBodyText(req.body?.flight, 20).toUpperCase();
     if (direction === 'inbound' && flight !== 'MU583') return res.status(400).json({ error: 'Inbound flight must be MU583' });
     if (direction === 'outbound' && flight !== 'MU586') return res.status(400).json({ error: 'Outbound flight must be MU586' });
-    const bagType = cleanBodyText(req.body?.bagType, 80);
-    const location = cleanBodyText(req.body?.location, 120);
-    const status = cleanBodyText(req.body?.status, 80);
-    const comment = cleanBodyText(req.body?.comment, 500);
-    const rushTagNumber = cleanBodyText(req.body?.rushTagNumber, 80);
-    const rushToWhere = cleanBodyText(req.body?.rushToWhere, 120);
-    const akeNumber = cleanBodyText(req.body?.akeNumber, 80);
-    const worldTracerFileNumber = cleanBodyText(req.body?.worldTracerFileNumber, 120);
-    const submittedBy = cleanBodyText(req.body?.submittedBy, 160) || 'Unknown user';
-    if (direction === 'inbound' && (!bagType || !location)) {
-      return res.status(400).json({ error: 'Inbound bag type and location are required' });
-    }
-    if (direction === 'outbound') {
-      if (!['Not load bags', 'Inbound rush'].includes(status)) return res.status(400).json({ error: 'Invalid outbound status' });
-      if (status === 'Not load bags' && !comment) return res.status(400).json({ error: 'Not load bags comment is required' });
-      if (status === 'Inbound rush' && (!rushTagNumber || !rushToWhere || !akeNumber)) {
-        return res.status(400).json({ error: 'Rush tag number, destination, and AKE number are required' });
-      }
-    }
     const result = await appendTestBaggageRecord({
       bagTag,
       direction,
       flight,
       date,
-      bagType,
-      location,
-      status,
-      comment,
-      rushTagNumber,
-      rushToWhere,
-      akeNumber,
-      worldTracerFileNumber,
-      submittedBy
+      bagType: cleanBodyText(req.body?.bagType, 80),
+      location: cleanBodyText(req.body?.location, 120),
+      status: cleanBodyText(req.body?.status, 80),
+      comment: cleanBodyText(req.body?.comment, 500),
+      rushTagNumber: cleanBodyText(req.body?.rushTagNumber, 80),
+      rushToWhere: cleanBodyText(req.body?.rushToWhere, 120),
+      akeNumber: cleanBodyText(req.body?.akeNumber, 80),
+      worldTracerFileNumber: cleanBodyText(req.body?.worldTracerFileNumber, 120),
+      submittedBy: cleanBodyText(req.body?.submittedBy, 160)
     });
     return res.status(result.created ? 201 : 200).json(result);
   } catch (err) {
@@ -853,9 +834,9 @@ app.post('/test-baggage/:bagTag/update', async (req, res) => {
     if (!isValidTestBagTag(bagTag)) return res.status(400).json({ error: 'Bag tag must match DL123456 format' });
     const type = cleanBodyText(req.body?.type, 40).toLowerCase();
     if (!['rush', 'location', 'shipping'].includes(type)) return res.status(400).json({ error: 'Invalid update type' });
-    const updatePayload = {
+    const result = await updateTestBaggageRecord(bagTag, {
       type,
-      updatedBy: cleanBodyText(req.body?.updatedBy, 160) || 'Unknown user',
+      updatedBy: cleanBodyText(req.body?.updatedBy, 160),
       rushTagNumber: cleanBodyText(req.body?.rushTagNumber, 80),
       rushToWhere: cleanBodyText(req.body?.rushToWhere, 120),
       akeNumber: cleanBodyText(req.body?.akeNumber, 80),
@@ -863,15 +844,7 @@ app.post('/test-baggage/:bagTag/update', async (req, res) => {
       location: cleanBodyText(req.body?.location, 120),
       trackingNumber: cleanBodyText(req.body?.trackingNumber, 160),
       shippingFee: cleanBodyText(req.body?.shippingFee, 80)
-    };
-    if (type === 'rush' && (!updatePayload.rushTagNumber || !updatePayload.rushToWhere || !updatePayload.akeNumber)) {
-      return res.status(400).json({ error: 'Rush tag number, destination, and AKE number are required' });
-    }
-    if (type === 'location' && !updatePayload.location) return res.status(400).json({ error: 'Current location is required' });
-    if (type === 'shipping' && (!updatePayload.trackingNumber || !updatePayload.shippingFee)) {
-      return res.status(400).json({ error: 'Tracking number and shipping fee are required' });
-    }
-    const result = await updateTestBaggageRecord(bagTag, updatePayload);
+    });
     if (result.notFound) return res.status(404).json({ error: 'Bag not found' });
     return res.json(result);
   } catch (err) {

@@ -3004,7 +3004,7 @@
           <form class="test-search-form" id="test-search-form">
             <label class="test-search-field">
               <span>Bag tag number</span>
-              <input id="test-bag-search" type="search" placeholder="DL123456" autocomplete="off" maxlength="8" pattern="DL[0-9]{6}" title="Use DL followed by six digits, for example DL123456" required />
+              <input id="test-bag-search" type="search" placeholder="DL123456" autocomplete="off" maxlength="8" pattern="DL[0-9]{6}" required />
             </label>
             <button class="report-run" type="submit">Search</button>
           </form>
@@ -4499,16 +4499,16 @@
         const today = ymdFromDate(new Date());
         const activeMode = mode === "outbound" ? "outbound" : "inbound";
         if (testOutput) testOutput._record = null;
-        const inboundFields = `<label class="test-field"><span>Bag tag number</span><input name="bagTag" value="${escapeHtml(bagTag)}" maxlength="8" pattern="DL[0-9]{6}" title="Use DL followed by six digits, for example DL123456" required /></label>
+        const inboundFields = `<label class="test-field"><span>Bag tag number</span><input name="bagTag" value="${escapeHtml(bagTag)}" pattern="DL[0-9]{6}" required /></label>
           <label class="test-field"><span>Inbound flight number</span><select name="flight" required><option value="MU583">MU583</option></select></label>
           <label class="test-field"><span>Date</span><input name="date" type="date" value="${escapeHtml(today)}" required /></label>
           <label class="test-field"><span>Bag type</span><select name="bagType" required><option>Passenger bag</option><option>Inbound rush</option><option>Co-mail</option></select></label>
           <label class="test-field"><span>Current location</span><select name="location" required><option>Office</option><option>CBS</option></select></label>`;
-        const outboundFields = `<label class="test-field"><span>Bag tag number</span><input name="bagTag" value="${escapeHtml(bagTag)}" maxlength="8" pattern="DL[0-9]{6}" title="Use DL followed by six digits, for example DL123456" required /></label>
+        const outboundFields = `<label class="test-field"><span>Bag tag number</span><input name="bagTag" value="${escapeHtml(bagTag)}" pattern="DL[0-9]{6}" required /></label>
           <label class="test-field"><span>Outbound flight number</span><select name="flight" required><option value="MU586">MU586</option></select></label>
           <label class="test-field"><span>Date</span><input name="date" type="date" value="${escapeHtml(today)}" required /></label>
           <label class="test-field"><span>Status</span><select name="status" data-test-outbound-status required><option value="Not load bags">Not load bags</option><option value="Inbound rush">Inbound rush</option></select></label>
-          <label class="test-field is-wide" data-test-not-load-field><span>Comment</span><textarea name="comment" required></textarea></label>
+          <label class="test-field is-wide" data-test-not-load-field><span>Comment</span><textarea name="comment"></textarea></label>
           <label class="test-field" data-test-rush-field hidden><span>Rush tag number</span><input name="rushTagNumber" /></label>
           <label class="test-field" data-test-rush-field hidden><span>Rush To where?</span><input name="rushToWhere" /></label>
           <label class="test-field" data-test-rush-field hidden><span>AKE number?</span><input name="akeNumber" /></label>
@@ -4551,8 +4551,6 @@
         form?.querySelectorAll("[data-test-rush-field] input").forEach((input) => { input.required = rushMode && input.name !== "worldTracerFileNumber"; });
         const notLoad = form?.querySelector("[data-test-not-load-field]");
         if (notLoad) notLoad.hidden = rushMode;
-        const comment = notLoad?.querySelector("textarea");
-        if (comment) comment.required = !rushMode;
       }
 
       function formValue(form, name) {
