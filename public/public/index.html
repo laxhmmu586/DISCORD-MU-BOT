@@ -4828,7 +4828,6 @@
             <span class="test-status-pill">${escapeHtml(record.status || record.direction || "Record")}</span>
           </div>
           ${message ? `<p class="panel-muted status-ok">${escapeHtml(message)}</p>` : ""}
-          ${testDataGrid(record)}
           <h3>Details</h3>
           ${renderTestTimeline(record.history)}
           ${showUpdateForm ? `<div class="test-report-head test-update-head"><h3>Update</h3></div>${renderTestUpdateForm(record, mode)}` : `<div class="test-form-actions"><button class="test-add-button" type="button" data-test-show-update>Update</button></div>`}
