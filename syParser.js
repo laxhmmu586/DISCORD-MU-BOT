@@ -1087,6 +1087,20 @@ function enrichPsmListFromLog(log, syInfo, targetYmd = null) {
     .map(({ ts, ...row }) => row);
 }
 
+
+function govAqqIssueBnSet(govAqq) {
+  const issueBns = new Set();
+  const addBn = (value) => {
+    const digits = String(value || '').replace(/\D/g, '');
+    if (digits) issueBns.add(digits.padStart(3, '0'));
+  };
+  (govAqq?.duplicatePassports || []).forEach((item) => (item?.bns || []).forEach(addBn));
+  ['aqqTclBnList', 'govDtaBnList', 'passportExpBnList', 'passportCodeIssues'].forEach((key) => {
+    (govAqq?.[key] || []).forEach(addBn);
+  });
+  return issueBns;
+}
+
 function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
   if (!log || !syInfo?.flightNo || !syInfo?.flightDate) return [];
   const sections = splitLogicalSections(log);
@@ -1437,12 +1451,20 @@ ${section}`,
     arr.push(row.bn);
     passportBnMap.set(row.passportNo, arr);
   });
+  const govIssueBns = govAqqIssueBnSet(syInfo.govAqq);
   auditRows.forEach((row) => {
     if (row.offloaded) return;
     const dupList = row.passportNo ? (passportBnMap.get(row.passportNo) || []) : [];
     if (dupList.length > 1 && row.apiStatus !== 'fail') {
       row.apiStatus = 'review';
       row.apiReason = row.apiReason ? `${row.apiReason}; Duplicate Passport (${dupList.join(',')})` : `Duplicate Passport (${dupList.join(',')})`;
+    }
+    if (!govIssueBns.has(row.bn)) {
+      row.apiStatus = 'pass';
+      row.apiReason = '';
+    } else if (row.apiStatus === 'pass') {
+      row.apiStatus = 'review';
+      row.apiReason = 'GOV/AQQ needs review';
     }
     if (!row.apiReason && row.apiStatus === 'review') {
       row.apiReason = 'Need review';
