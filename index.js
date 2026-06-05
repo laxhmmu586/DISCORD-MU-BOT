@@ -804,8 +804,7 @@ app.post('/test-baggage', async (req, res) => {
     const date = cleanBodyText(req.body?.date, 20);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'Missing or invalid date' });
     const flight = cleanBodyText(req.body?.flight, 20).toUpperCase();
-    if (direction === 'inbound' && flight !== 'MU583') return res.status(400).json({ error: 'Inbound flight must be MU583' });
-    if (direction === 'outbound' && flight !== 'MU586') return res.status(400).json({ error: 'Outbound flight must be MU586' });
+    if (!/^[A-Z]{2}\d{1,4}[A-Z]?$/.test(flight)) return res.status(400).json({ error: 'Missing or invalid flight number' });
     const result = await appendTestBaggageRecord({
       bagTag,
       direction,

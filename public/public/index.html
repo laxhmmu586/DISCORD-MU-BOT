@@ -2275,6 +2275,24 @@
         text-transform: uppercase;
       }
 
+      .test-search-form .report-run {
+        min-height: 56px;
+        min-width: 164px;
+        border-color: rgba(126, 218, 255, 0.58);
+        border-radius: 12px;
+        background:
+          linear-gradient(145deg, rgba(105, 196, 255, 0.24), rgba(34, 105, 144, 0.26)),
+          rgba(13, 45, 72, 0.5);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 14px 36px rgba(12, 43, 70, 0.22);
+      }
+
+      .test-search-form .report-run:hover {
+        border-color: rgba(170, 238, 255, 0.9);
+        background:
+          linear-gradient(145deg, rgba(124, 219, 255, 0.32), rgba(44, 127, 166, 0.34)),
+          rgba(13, 45, 72, 0.58);
+      }
+
       .test-field textarea {
         min-height: 88px;
         padding: 10px 12px;
@@ -2553,19 +2571,19 @@
       }
 
       .test-choice-card svg {
-        width: 150px;
-        height: 96px;
+        width: 164px;
+        height: 104px;
+        filter: drop-shadow(0 10px 20px rgba(175, 246, 255, 0.12));
       }
 
       .test-choice-card path,
-      .test-choice-card circle,
-      .test-choice-card line {
-        stroke: #dff7ff;
+      .test-choice-card circle {
         fill: #dff7ff;
       }
 
       .test-choice-card line {
-        stroke-width: 7;
+        stroke: #dff7ff;
+        stroke-width: 8;
         stroke-linecap: round;
       }
 
@@ -2585,14 +2603,22 @@
       .test-remove-entry {
         width: 34px;
         height: 34px;
-        border: 1px solid rgba(255, 98, 92, 0.74);
+        display: inline-grid;
+        place-items: center;
+        margin-left: 10px;
+        border: 1px solid rgba(255, 118, 112, 0.82);
         border-radius: 999px;
-        background: rgba(255, 98, 92, 0.16);
-        color: #ff8d88;
-        font-size: 24px;
+        background: linear-gradient(145deg, rgba(255, 118, 112, 0.22), rgba(100, 22, 28, 0.18));
+        color: #ffd7d4;
+        font-size: 20px;
         font-weight: 950;
         line-height: 1;
         cursor: pointer;
+      }
+
+      .test-remove-entry:hover {
+        border-color: rgba(255, 164, 160, 0.95);
+        background: rgba(255, 98, 92, 0.28);
       }
 
       .test-entry-head {
@@ -4609,14 +4635,12 @@
       }
 
       function testDataGrid(record) {
-        const alwaysShow = new Set(["Direction", "Flight", "Date"]);
+        const alwaysShow = new Set(["Flight", "Date"]);
         const fields = [
-          ["Direction", record.direction],
           ["Flight", record.flight],
           ["Date", record.date],
           ["Bag Type", record.bagType],
           ["Location", record.location],
-          ["Status", record.status],
           ["Comment", record.comment],
           ["Rush Tag", record.rushTagNumber],
           ["Rush To", record.rushToWhere],
@@ -4664,7 +4688,7 @@
         testOutput.innerHTML = `<article class="test-report-card">
           <div class="test-report-head">
             <div class="test-report-title"><strong>${escapeHtml(record.bagTag)}</strong><span class="panel-muted">${escapeHtml(record.direction || "Baggage report")}</span></div>
-            <span class="test-status-pill">Found</span>
+            <span class="test-status-pill">${escapeHtml(record.status || record.direction || "Record")}</span>
           </div>
           ${message ? `<p class="panel-muted status-ok">${escapeHtml(message)}</p>` : ""}
           ${testDataGrid(record)}
@@ -4675,10 +4699,10 @@
       }
 
       function testPlaneIcon(direction) {
-        const inbound = direction === "inbound";
-        const transform = inbound ? "translate(9 9) rotate(12 56 40)" : "translate(10 5) rotate(-24 58 42)";
-        const runwayY = inbound ? 78 : 84;
-        return `<svg viewBox="0 0 130 96" aria-hidden="true"><g transform="${transform}"><path d="M15 50 L88 20 Q101 15 108 23 Q114 31 101 38 L71 55 L46 80 L33 74 L46 60 L15 61 Z"></path><circle cx="58" cy="68" r="5"></circle><circle cx="76" cy="64" r="5"></circle></g><line x1="26" y1="${runwayY}" x2="108" y2="${runwayY}"></line></svg>`;
+        if (direction === "inbound") {
+          return `<svg viewBox="0 0 150 100" aria-hidden="true"><g transform="translate(12 20) rotate(-8 62 34)"><path d="M18 48 L101 28 Q116 24 123 31 Q130 39 114 46 L73 61 L47 78 L31 72 L46 58 L18 58 Z"></path><path d="M45 58 L30 69 L20 64 L35 55 Z"></path><circle cx="65" cy="70" r="5"></circle><circle cx="84" cy="66" r="5"></circle></g><line x1="48" y1="82" x2="116" y2="82"></line></svg>`;
+        }
+        return `<svg viewBox="0 0 150 100" aria-hidden="true"><g transform="translate(16 6) rotate(-48 74 54)"><path d="M26 56 L112 35 Q126 32 133 39 Q139 47 124 54 L83 68 L56 86 L42 78 L57 65 L26 66 Z"></path><circle cx="76" cy="77" r="5"></circle><circle cx="94" cy="72" r="5"></circle></g><line x1="56" y1="84" x2="124" y2="84"></line></svg>`;
       }
 
       function renderTestAddChoice(bagTag) {
@@ -4700,9 +4724,9 @@
         if (mode === "outbound") {
           const status = entry.status || "Not load bags";
           return `<fieldset class="test-create-entry" data-test-bag-entry>
-            <legend><span>Outbound bag</span>${index > 0 ? `<button class="test-remove-entry" type="button" data-test-remove-entry="${index}" aria-label="Remove bag">-</button>` : ""}</legend>
+            <legend><span>Outbound bag</span>${index > 0 ? `<button class="test-remove-entry" type="button" data-test-remove-entry="${index}" aria-label="Remove bag">×</button>` : ""}</legend>
             <div class="test-form-grid">${bagTagInput}
-              <label class="test-field"><span>Outbound flight number</span><select name="flight" required><option value="MU586">MU586</option></select></label>
+              <label class="test-field"><span>Outbound flight number</span><input name="flight" value="${escapeHtml(entry.flight || "MU586")}" required /></label>
               <label class="test-field"><span>Date</span><input name="date" type="date" value="${escapeHtml(entry.date || today)}" required /></label>
               <label class="test-field"><span>Status</span><select name="status" data-test-outbound-status required><option value="Not load bags"${selected(status, "Not load bags")}>Not load bags</option><option value="Outbound rush"${selected(status, "Outbound rush")}>Outbound rush</option></select></label>
               <label class="test-field" data-test-rush-field hidden><span>Rush tag number</span><input name="rushTagNumber" value="${escapeHtml(entry.rushTagNumber || "")}" /></label>
@@ -4716,9 +4740,9 @@
         const bagType = entry.bagType || "Passenger bag";
         const location = entry.location || "Office";
         return `<fieldset class="test-create-entry" data-test-bag-entry>
-          <legend><span>Inbound bag</span>${index > 0 ? `<button class="test-remove-entry" type="button" data-test-remove-entry="${index}" aria-label="Remove bag">-</button>` : ""}</legend>
+          <legend><span>Inbound bag</span>${index > 0 ? `<button class="test-remove-entry" type="button" data-test-remove-entry="${index}" aria-label="Remove bag">×</button>` : ""}</legend>
           <div class="test-form-grid">${bagTagInput}
-            <label class="test-field"><span>Inbound flight number</span><select name="flight" required><option value="MU583">MU583</option></select></label>
+            <label class="test-field"><span>Inbound flight number</span><input name="flight" value="${escapeHtml(entry.flight || "MU583")}" required /></label>
             <label class="test-field"><span>Date</span><input name="date" type="date" value="${escapeHtml(entry.date || today)}" required /></label>
             <label class="test-field"><span>Bag type</span><select name="bagType" required><option${selected(bagType, "Passenger bag")}>Passenger bag</option><option${selected(bagType, "Inbound rush")}>Inbound rush</option><option${selected(bagType, "Co-mail")}>Co-mail</option></select></label>
             <label class="test-field"><span>Current location</span><select name="location" required><option${selected(location, "Office")}>Office</option><option${selected(location, "CBS")}>CBS</option></select></label>
