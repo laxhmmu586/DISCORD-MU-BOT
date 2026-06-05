@@ -41,6 +41,53 @@ function getCabinFromSeat(seat) {
   return 'Economy';
 }
 
+function monthNameToNumber(monthName) {
+  const months = { JAN: '01', FEB: '02', MAR: '03', APR: '04', MAY: '05', JUN: '06', JUL: '07', AUG: '08', SEP: '09', OCT: '10', NOV: '11', DEC: '12' };
+  return months[String(monthName || '').slice(0, 3).toUpperCase()] || '';
+}
+
+function timestampToMs(timestamp) {
+  const match = String(timestamp || '').match(/^(\d{4})\s+([A-Z][a-z]+)\s+(\d{1,2}),\s+[^,]+,\s+(\d{2}):(\d{2}):(\d{2})/);
+  const month = monthNameToNumber(match?.[2]);
+  if (!match || !month) return 0;
+  return Date.UTC(Number(match[1]), Number(month) - 1, Number(match[3]), Number(match[4]), Number(match[5]), Number(match[6]));
+}
+
+function splitLogicalSectionEntries(log) {
+  const lines = log.split(/\r?\n/);
+  const tsRe = /^\d{4}\s+\w+\s+\d{2},.*?\d{2}:\d{2}:\d{2}\s*$/;
+  const cmdRe = /^>\s*([A-Z0-9*\/]+)\b/i;
+  const sections = [];
+  let current = null;
+  let pendingTimestamp = null;
+
+  for (const line of lines) {
+    if (tsRe.test(line.trim())) {
+      pendingTimestamp = line.trim();
+      continue;
+    }
+
+    const cmd = line.match(cmdRe)?.[1]?.toUpperCase() || null;
+
+    if (cmd) {
+      if (current && current.content.trim()) sections.push(current);
+      current = { content: line + '\n', timestamp: pendingTimestamp || null };
+      pendingTimestamp = null;
+      continue;
+    }
+
+    if (!current) {
+      current = { content: '', timestamp: pendingTimestamp || null };
+      pendingTimestamp = null;
+    }
+
+    current.content += line + '\n';
+  }
+
+  if (current && current.content.trim()) sections.push(current);
+  return sections;
+}
+
 function splitLogicalSections(log) {
   const lines = log.split(/\r?\n/);
   const tsRe = /^\d{4}\s+\w+\s+\d{2},.*?\d{2}:\d{2}:\d{2}\s*$/;
@@ -237,20 +284,15 @@ function extractBagsForVip(section) {
       return value;
     });
   }
-  if (bagTags.length) return bagTags.join(' /');
-  return (
-    String(section || '').match(/\bBAG\d+\/\d+\/\d+\b/i)?.[0] ||
-    String(section || '').match(/\bFBA\/\d+PC\b/i)?.[0] ||
-    ''
-  ).toUpperCase();
+  return bagTags.length ? bagTags.join(' /') : '';
 }
 
 function extractVipRowsFromFbLog(log) {
-  const rows = [];
-  const seen = new Set();
-  const sections = splitLogicalSections(String(log || ''));
+  const latestByPassengerFlight = new Map();
+  const sections = splitLogicalSectionEntries(String(log || ''));
 
-  for (const section of sections) {
+  for (const entry of sections) {
+    const section = entry.content || '';
     const prMatch = section.match(/\bPR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
     if (!prMatch) continue;
 
@@ -270,21 +312,22 @@ function extractVipRowsFromFbLog(log) {
         flightDate: prMatch[2].toUpperCase(),
         flightNo: prMatch[1].toUpperCase(),
         passenger: cleanVipPassengerName(rawName),
-        bn: String(match[2] || prBn || '').padStart(3, '0'),
+        bn: String(match[2] || prBn || '').replace(/^0+(?=\d)/, ''),
         seat: String(match[3] || '').toUpperCase(),
-        bags
+        bags,
+        timestampMs: timestampToMs(entry.timestamp)
       };
-      if (!row.passenger || !row.bn.replace(/0/g, '')) continue;
-      const key = [row.flightDate, row.flightNo, row.passenger, row.bn, row.seat, row.bags]
+      if (!row.passenger || !row.bn) continue;
+      if (row.flightNo === 'MU586' && !row.seat) continue;
+      const key = [row.flightDate, row.flightNo, row.passenger]
         .map((value) => String(value || '').trim().toUpperCase())
         .join('|');
-      if (seen.has(key)) continue;
-      seen.add(key);
-      rows.push(row);
+      const existing = latestByPassengerFlight.get(key);
+      if (!existing || row.timestampMs >= existing.timestampMs) latestByPassengerFlight.set(key, row);
     }
   }
 
-  return rows;
+  return Array.from(latestByPassengerFlight.values());
 }
 
 async function syncVipRowsFromFbLog(log) {

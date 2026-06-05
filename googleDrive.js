@@ -582,15 +582,13 @@ async function appendVipReportRows(rows) {
     existingKeys.add([
       parsed.flightDate,
       parsed.flightNo,
-      parsed.passenger,
-      parsed.bn,
-      parsed.seat,
-      parsed.bags
+      parsed.passenger
     ].map((value) => String(value || '').trim().toUpperCase()).join('|'));
   }
 
   const values = [];
-  for (const row of rows || []) {
+  const newestRows = [...(rows || [])].sort((a, b) => Number(b?.timestampMs || 0) - Number(a?.timestampMs || 0));
+  for (const row of newestRows) {
     const normalized = {
       flightDate: String(row.flightDate || '').trim().toUpperCase(),
       flightNo: String(row.flightNo || '').trim().toUpperCase(),
@@ -600,7 +598,8 @@ async function appendVipReportRows(rows) {
       bags: String(row.bags || '').trim().toUpperCase()
     };
     if (!normalized.flightDate || !normalized.flightNo || !normalized.passenger) continue;
-    const key = config.fields.map((field) => normalized[field] || '').join('|').toUpperCase();
+    if (normalized.flightNo === 'MU586' && (!normalized.bn || !normalized.seat)) continue;
+    const key = [normalized.flightDate, normalized.flightNo, normalized.passenger].join('|').toUpperCase();
     if (existingKeys.has(key)) continue;
     existingKeys.add(key);
     values.push(config.fields.map((field) => normalized[field] || ''));

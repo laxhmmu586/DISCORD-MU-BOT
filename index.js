@@ -108,6 +108,13 @@ function sectionTimestampToIsoDate(section) {
   return `${match[1]}-${month}-${String(match[3]).padStart(2, '0')}`;
 }
 
+function sectionTimestampToMs(section) {
+  const match = String(section || '').match(/^(\d{4})\s+([A-Z][a-z]+)\s+(\d{1,2}),\s+[^,]+,\s+(\d{2}):(\d{2}):(\d{2})/);
+  const month = monthNameToNumber(match?.[2]);
+  if (!match || !month) return 0;
+  return Date.UTC(Number(match[1]), Number(month) - 1, Number(match[3]), Number(match[4]), Number(match[5]), Number(match[6]));
+}
+
 function splitReportSections(log) {
   return String(log || '')
     .split(/(?=\n?\d{4}\s+[A-Z][a-z]+\s+\d{1,2},\s+[A-Z][a-z]+,\s+\d{2}:\d{2}:\d{2}\s*\n>)/g)
@@ -138,11 +145,16 @@ function extractVipNameCandidate(section) {
   return null;
 }
 
-function mergeVipRow(existing, next) {
-  if (!existing.bn && next.bn) existing.bn = next.bn;
-  if (!existing.seat && next.seat) existing.seat = next.seat;
-  if (!existing.source.includes(next.source)) existing.source = `${existing.source}/${next.source}`;
-  return existing;
+function extractBagsForVip(section) {
+  const bagTags = [];
+  const bagTagMatch = String(section || '').match(/\bBAGTAG\/([^\n\r]+)/i);
+  if (bagTagMatch) {
+    bagTagMatch[1].replace(/\b(\d{6,})(?:\/([A-Z]{3}))?\b/gi, (value, tag, destination) => {
+      bagTags.push(`${tag}${destination ? `/${String(destination).toUpperCase()}` : ''}`);
+      return value;
+    });
+  }
+  return bagTags.length ? bagTags.join(' /') : '';
 }
 
 function extractBagsForVip(section) {
@@ -163,7 +175,7 @@ function extractBagsForVip(section) {
 }
 
 function extractVipPassengersFromLog(log, isoDate) {
-  const byPassengerFlight = new Map();
+  const latestByPassengerFlight = new Map();
 
   for (const section of splitReportSections(log)) {
     if (!/\bPR:\s*[A-Z0-9]+\//i.test(section)) continue;
@@ -176,7 +188,7 @@ function extractVipPassengersFromLog(log, isoDate) {
     const prMatch = section.match(/\bPR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
     const flightDate = prMatch?.[2]?.toUpperCase() || '';
 
-    const bn = section.match(/\bBN\s*(\d{1,3})\b/i)?.[1]?.padStart(3, '0') || '';
+    const bn = section.match(/\bBN\s*(\d{1,3})\b/i)?.[1]?.replace(/^0+(?=\d)/, '') || '';
     const passengerLine = section.match(/^\s*\d+\.[^\n\r]*/im)?.[0] || '';
     const seat = (
       passengerLine.match(/\bBN\s*\d{1,3}\s+\*?(\d{1,3}[A-Z])\b/i)?.[1] ||
@@ -191,17 +203,16 @@ function extractVipPassengersFromLog(log, isoDate) {
       bn,
       seat,
       bags: extractBagsForVip(section),
-      source: vip.source
+      source: vip.source,
+      timestampMs: sectionTimestampToMs(section)
     };
+    if (row.flightNo === 'MU586' && (!row.bn || !row.seat)) continue;
     const key = `${row.flightNo}|${row.flightDate}|${row.passenger}`;
-    if (byPassengerFlight.has(key)) {
-      mergeVipRow(byPassengerFlight.get(key), row);
-      continue;
-    }
-    byPassengerFlight.set(key, row);
+    const existing = latestByPassengerFlight.get(key);
+    if (!existing || row.timestampMs >= existing.timestampMs) latestByPassengerFlight.set(key, row);
   }
 
-  return Array.from(byPassengerFlight.values())
+  return Array.from(latestByPassengerFlight.values())
     .sort((a, b) => (a.flightNo || '').localeCompare(b.flightNo || '') || Number(a.bn || 0) - Number(b.bn || 0) || (a.passenger || '').localeCompare(b.passenger || ''));
 }
 
