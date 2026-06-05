@@ -4359,6 +4359,10 @@
         return rows;
       }
 
+      function reviewerDisplayName(value) {
+        return String(value || "MUFC").trim().replace(/@.*$/, "") || "MUFC";
+      }
+
       async function saveSecurityReview(row, status) {
         if (!row?.bn || !currentSy?.flightNo || !currentSy?.flightDate) return;
         const data = await apiJson("/security-reviews", {
@@ -4369,7 +4373,7 @@
             flightDate: currentSy.flightDate,
             bn: row.bn,
             status,
-            reviewer: currentUser.textContent || "MUFC",
+            reviewer: reviewerDisplayName(currentUser.textContent),
             comment: `Reviewed ${status}`,
           }),
         });
@@ -4402,7 +4406,7 @@
           ["BAG", row.bagStatus, row.bagReason],
         ];
         const rows = checks.map(([label, status, reason]) => `<div class="security-check-line is-${checkTone(status)}"><b>${escapeHtml(label)}</b><span>${escapeHtml(reason || (status === "pass" ? `${label} passed` : "No detail"))}</span></div>`).join("");
-        const reviewLine = row.review ? `<div class="security-row"><b>Review</b><span>${escapeHtml(`${row.review.status || ""} ${row.review.reviewer ? `by ${row.review.reviewer}` : ""} ${row.review.updatedAt || ""}`)}</span></div>` : "";
+        const reviewLine = row.review ? `<div class="security-row"><b>Review</b><span>${escapeHtml(`${row.review.status || ""} ${row.review.reviewer ? `by ${reviewerDisplayName(row.review.reviewer)}` : ""} ${row.review.updatedAt || ""}`)}</span></div>` : "";
         const reviewButtons = `<div class="review-actions"><button type="button" data-review-bn="${escapeHtml(row.bn || "")}" data-review-status="pass">Review Pass</button><button type="button" data-review-bn="${escapeHtml(row.bn || "")}" data-review-status="fail">Review Fail</button></div>`;
         const passenger = { ...(row.passengerRecord || {}), ...row, passengerRecord: row.passengerRecord, deleted: row.deleted, offloaded: row.offloaded, status: row.deleted || row.offloaded || row.status === "DELETED" ? "DELETED" : (row.status || row.passengerRecord?.status) };
         return `<article class="record-card ${tone === "warning" ? "is-warning" : tone === "fail" ? "is-fail" : ""}"><div class="record-title"><span>BN${escapeHtml(row.bn || "---")}</span><span class="record-badge">${escapeHtml(row.deleted || row.offloaded || row.status === "DELETED" ? "DELETED" : tone === "pass" ? "PASS" : tone === "fail" ? "FAIL" : "WARNING")}</span></div><div class="security-check-list">${rows}</div>${reviewButtons}${reviewLine}</article>${passengerRecordCard(passenger, "Passenger Record", tone)}`;
