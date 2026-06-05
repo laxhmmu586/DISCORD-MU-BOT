@@ -523,7 +523,13 @@ async function appendTestBaggageRecord(record) {
         bagType: sanitizeSheetText(record.bagType, 80),
         location: sanitizeSheetText(record.location, 120),
         status: sanitizeSheetText(record.status, 80),
-        comment: sanitizeSheetText(record.comment, 500)
+        comment: sanitizeSheetText(record.comment, 500),
+        rushTagNumber: sanitizeSheetText(record.rushTagNumber, 80),
+        rushToWhere: sanitizeSheetText(record.rushToWhere, 120),
+        akeNumber: sanitizeSheetText(record.akeNumber, 80),
+        worldTracerFileNumber: sanitizeSheetText(record.worldTracerFileNumber, 120),
+        trackingNumber: sanitizeSheetText(record.trackingNumber, 160),
+        shippingFee: sanitizeSheetText(record.shippingFee, 80)
       }
     }]
   };
