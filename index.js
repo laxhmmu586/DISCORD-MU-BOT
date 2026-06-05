@@ -841,6 +841,7 @@ app.post('/test-baggage/:bagTag/update', async (req, res) => {
       rushToWhere: cleanBodyText(req.body?.rushToWhere, 120),
       akeNumber: cleanBodyText(req.body?.akeNumber, 80),
       worldTracerFileNumber: cleanBodyText(req.body?.worldTracerFileNumber, 120),
+      comment: cleanBodyText(req.body?.comment, 500),
       location: cleanBodyText(req.body?.location, 120),
       trackingNumber: cleanBodyText(req.body?.trackingNumber, 160),
       shippingFee: cleanBodyText(req.body?.shippingFee, 80)

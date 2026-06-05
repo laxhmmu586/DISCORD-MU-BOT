@@ -2307,6 +2307,31 @@
         margin-top: 12px;
       }
 
+      .test-create-entry {
+        border: 0;
+        border-top: 1px solid rgba(210, 231, 255, 0.14);
+        margin: 18px 0 0;
+        padding: 16px 0 0;
+      }
+
+      .test-create-entry legend {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 900;
+        letter-spacing: 1px;
+        padding: 0 10px 0 0;
+        text-transform: uppercase;
+      }
+
+      .test-update-head {
+        align-items: center;
+        margin-bottom: 10px;
+      }
+
+      .test-update-head h3 {
+        margin: 0;
+      }
+
       .test-field.is-wide,
       .test-form-actions {
         grid-column: 1 / -1;
@@ -2422,6 +2447,19 @@
       .test-timeline-time {
         color: white;
         font-weight: 900;
+      }
+
+      .test-timeline-time {
+        display: grid;
+        gap: 2px;
+        text-align: right;
+        white-space: nowrap;
+      }
+
+      .test-timeline-time small {
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 800;
       }
 
       .test-timeline-item p {
@@ -4425,14 +4463,16 @@
         const rows = [...(history || [])].reverse();
         if (!rows.length) return `<p class="panel-muted">No updates yet.</p>`;
         return `<div class="test-timeline">${rows.map((item) => {
-          const time = item.at ? new Date(item.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
-          const date = item.at ? new Date(item.at).toLocaleDateString() : "";
+          const timestamp = item.at ? new Date(item.at) : null;
+          const time = timestamp ? timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
+          const date = timestamp ? timestamp.toLocaleDateString() : "";
           const details = testDetailLine(item.details || {});
-          return `<div class="test-timeline-item"><div><b>${escapeHtml(item.type || "Update")}${item.by ? ` by ${escapeHtml(item.by)}` : ""}</b><p>${escapeHtml(details || date || "Saved")}</p></div><span class="test-timeline-time">${escapeHtml(time || date)}</span></div>`;
+          return `<div class="test-timeline-item"><div><b>${escapeHtml(item.type || "Update")}${item.by ? ` by ${escapeHtml(item.by)}` : ""}</b><p>${escapeHtml(details || date || "Saved")}</p></div><span class="test-timeline-time"><strong>${escapeHtml(time || date)}</strong>${time && date ? `<small>${escapeHtml(date)}</small>` : ""}</span></div>`;
         }).join("")}</div>`;
       }
 
       function testDataGrid(record) {
+        const alwaysShow = new Set(["Direction", "Flight", "Date"]);
         const fields = [
           ["Direction", record.direction],
           ["Flight", record.flight],
@@ -4449,7 +4489,7 @@
           ["Shipping Fee", record.shippingFee],
           ["Submitted By", record.submittedBy],
           ["Last Updated By", record.lastUpdatedBy],
-        ];
+        ].filter(([label, value]) => alwaysShow.has(label) || String(value || "").trim());
         return `<div class="test-data-grid">${fields.map(([label, value]) => `<div class="test-data-item"><b>${escapeHtml(label)}</b><span>${escapeHtml(value || "-")}</span></div>`).join("")}</div>`;
       }
 
@@ -4462,6 +4502,7 @@
               field("Rush To where?", "rushToWhere", record.rushToWhere || "", "required"),
               field("AKE number?", "akeNumber", record.akeNumber || "", "required"),
               field("Option: world tracer file #", "worldTracerFileNumber", record.worldTracerFileNumber || ""),
+              `<label class="test-field is-wide"><span>Comment</span><textarea name="comment">${escapeHtml(record.comment || "")}</textarea></label>`,
             ].join("")
           : activeMode === "location"
             ? field("Current location", "location", record.location || "", "required")
@@ -4479,50 +4520,109 @@
         </form>`;
       }
 
-      function renderTestRecord(record, mode = "rush", message = "") {
+      function renderTestRecord(record, mode = "", message = "") {
         if (!testOutput || !record) return;
         testOutput._record = record;
+        const showUpdateForm = ["rush", "location", "shipping"].includes(mode);
         testOutput.innerHTML = `<article class="test-report-card">
           <div class="test-report-head">
             <div class="test-report-title"><strong>${escapeHtml(record.bagTag)}</strong><span class="panel-muted">${escapeHtml(record.direction || "Baggage report")}</span></div>
-            <span class="test-status-pill">${escapeHtml(record.status || "Found")}</span>
+            <span class="test-status-pill">Found</span>
           </div>
+          ${message ? `<p class="panel-muted status-ok">${escapeHtml(message)}</p>` : ""}
           ${testDataGrid(record)}
           <h3>History</h3>
           ${renderTestTimeline(record.history)}
-          <h3>Update</h3>
-          ${renderTestUpdateForm(record, mode, message)}
+          <div class="test-report-head test-update-head"><h3>Update</h3>${showUpdateForm ? "" : `<button class="test-add-button" type="button" data-test-show-update>Update</button>`}</div>
+          ${showUpdateForm ? renderTestUpdateForm(record, mode) : ""}
         </article>`;
       }
 
-      function renderTestAddForm(bagTag, mode = "inbound", message = "") {
-        const today = ymdFromDate(new Date());
-        const activeMode = mode === "outbound" ? "outbound" : "inbound";
-        if (testOutput) testOutput._record = null;
-        const inboundFields = `<label class="test-field"><span>Bag tag number</span><input name="bagTag" value="${escapeHtml(bagTag)}" pattern="DL[0-9]{6}" required /></label>
-          <label class="test-field"><span>Inbound flight number</span><select name="flight" required><option value="MU583">MU583</option></select></label>
-          <label class="test-field"><span>Date</span><input name="date" type="date" value="${escapeHtml(today)}" required /></label>
-          <label class="test-field"><span>Bag type</span><select name="bagType" required><option>Passenger bag</option><option>Inbound rush</option><option>Co-mail</option></select></label>
-          <label class="test-field"><span>Current location</span><select name="location" required><option>Office</option><option>CBS</option></select></label>`;
-        const outboundFields = `<label class="test-field"><span>Bag tag number</span><input name="bagTag" value="${escapeHtml(bagTag)}" pattern="DL[0-9]{6}" required /></label>
-          <label class="test-field"><span>Outbound flight number</span><select name="flight" required><option value="MU586">MU586</option></select></label>
-          <label class="test-field"><span>Date</span><input name="date" type="date" value="${escapeHtml(today)}" required /></label>
-          <label class="test-field"><span>Status</span><select name="status" data-test-outbound-status required><option value="Not load bags">Not load bags</option><option value="Inbound rush">Inbound rush</option></select></label>
-          <label class="test-field is-wide" data-test-not-load-field><span>Comment</span><textarea name="comment"></textarea></label>
-          <label class="test-field" data-test-rush-field hidden><span>Rush tag number</span><input name="rushTagNumber" /></label>
-          <label class="test-field" data-test-rush-field hidden><span>Rush To where?</span><input name="rushToWhere" /></label>
-          <label class="test-field" data-test-rush-field hidden><span>AKE number?</span><input name="akeNumber" /></label>
-          <label class="test-field" data-test-rush-field hidden><span>Option: world tracer file #</span><input name="worldTracerFileNumber" /></label>`;
+      function renderTestAddChoice(bagTag) {
+        if (!testOutput) return;
+        testOutput._record = null;
         testOutput.innerHTML = `<article class="test-report-card">
-          <div class="test-report-head"><div class="test-report-title"><strong>${escapeHtml(bagTag)}</strong><span class="panel-muted">No matching bag found.</span></div><button class="test-add-button" type="submit" form="test-create-form">Add</button></div>
+          <div class="test-report-head"><div class="test-report-title"><strong>${escapeHtml(bagTag)}</strong><span class="panel-muted">No matching bag found.</span></div></div>
+          <div class="test-mode-actions" aria-label="Create type">
+            <button type="button" data-test-create-mode="inbound">Inbound</button>
+            <button type="button" data-test-create-mode="outbound">Outbound</button>
+          </div>
+        </article>`;
+      }
+
+      function renderTestBagEntry(mode, entry = {}) {
+        const today = ymdFromDate(new Date());
+        const selected = (value, target) => value === target ? " selected" : "";
+        const bagTagInput = `<label class="test-field"><span>Bag tag number</span><input name="bagTag" value="${escapeHtml(entry.bagTag || "")}" maxlength="8" pattern="DL[0-9]{6}" title="Use DL123456 format" autocomplete="off" required /></label>`;
+        if (mode === "outbound") {
+          const status = entry.status || "Not load bags";
+          return `<fieldset class="test-create-entry" data-test-bag-entry>
+            <legend>Outbound bag</legend>
+            <div class="test-form-grid">${bagTagInput}
+              <label class="test-field"><span>Outbound flight number</span><select name="flight" required><option value="MU586">MU586</option></select></label>
+              <label class="test-field"><span>Date</span><input name="date" type="date" value="${escapeHtml(entry.date || today)}" required /></label>
+              <label class="test-field"><span>Status</span><select name="status" data-test-outbound-status required><option value="Not load bags"${selected(status, "Not load bags")}>Not load bags</option><option value="Outbound rush"${selected(status, "Outbound rush")}>Outbound rush</option></select></label>
+              <label class="test-field" data-test-rush-field hidden><span>Rush tag number</span><input name="rushTagNumber" value="${escapeHtml(entry.rushTagNumber || "")}" /></label>
+              <label class="test-field" data-test-rush-field hidden><span>Rush To where?</span><input name="rushToWhere" value="${escapeHtml(entry.rushToWhere || "")}" /></label>
+              <label class="test-field" data-test-rush-field hidden><span>AKE number?</span><input name="akeNumber" value="${escapeHtml(entry.akeNumber || "")}" /></label>
+              <label class="test-field" data-test-rush-field hidden><span>Option: world tracer file #</span><input name="worldTracerFileNumber" value="${escapeHtml(entry.worldTracerFileNumber || "")}" /></label>
+              <label class="test-field is-wide"><span>Comment</span><input name="comment" value="${escapeHtml(entry.comment || "")}" list="test-outbound-comments" /></label>
+            </div>
+          </fieldset>`;
+        }
+        const bagType = entry.bagType || "Passenger bag";
+        const location = entry.location || "Office";
+        return `<fieldset class="test-create-entry" data-test-bag-entry>
+          <legend>Inbound bag</legend>
+          <div class="test-form-grid">${bagTagInput}
+            <label class="test-field"><span>Inbound flight number</span><select name="flight" required><option value="MU583">MU583</option></select></label>
+            <label class="test-field"><span>Date</span><input name="date" type="date" value="${escapeHtml(entry.date || today)}" required /></label>
+            <label class="test-field"><span>Bag type</span><select name="bagType" required><option${selected(bagType, "Passenger bag")}>Passenger bag</option><option${selected(bagType, "Inbound rush")}>Inbound rush</option><option${selected(bagType, "Co-mail")}>Co-mail</option></select></label>
+            <label class="test-field"><span>Current location</span><select name="location" required><option${selected(location, "Office")}>Office</option><option${selected(location, "CBS")}>CBS</option></select></label>
+          </div>
+        </fieldset>`;
+      }
+
+      function collectCreateEntries(form) {
+        return [...form.querySelectorAll("[data-test-bag-entry]")].map((entry) => ({
+          bagTag: normalizeTestBagTag(formValue(entry, "bagTag")),
+          flight: formValue(entry, "flight"),
+          date: formValue(entry, "date"),
+          bagType: formValue(entry, "bagType"),
+          location: formValue(entry, "location"),
+          status: formValue(entry, "status"),
+          comment: formValue(entry, "comment"),
+          rushTagNumber: formValue(entry, "rushTagNumber"),
+          rushToWhere: formValue(entry, "rushToWhere"),
+          akeNumber: formValue(entry, "akeNumber"),
+          worldTracerFileNumber: formValue(entry, "worldTracerFileNumber"),
+        }));
+      }
+
+      function renderTestAddForm(bagTag, mode = "inbound", entries = null, message = "") {
+        const activeMode = mode === "outbound" ? "outbound" : "inbound";
+        const bags = entries?.length ? entries : [{ bagTag }];
+        if (testOutput) testOutput._record = null;
+        testOutput.innerHTML = `<article class="test-report-card">
+          <div class="test-report-head"><div class="test-report-title"><strong>${escapeHtml(bagTag || "New bags")}</strong><span class="panel-muted">No matching bag found.</span></div><button class="test-add-button" type="button" data-test-add-row>Add</button></div>
+          <datalist id="test-outbound-comments">
+            <option value="Expected"></option>
+            <option value="Not Received"></option>
+            <option value="Force loaded"></option>
+            <option value="Gate Bag"></option>
+            <option value="Bag Delete and Add back"></option>
+            <option value="Passenger Showed Up, but baggage not received"></option>
+          </datalist>
           <form class="test-create-form" id="test-create-form" data-test-create-form data-create-mode="${escapeHtml(activeMode)}">
             <div class="test-mode-actions" aria-label="Create type">
               <button type="button" data-test-create-mode="inbound" class="${activeMode === "inbound" ? "is-active" : ""}">Inbound</button>
               <button type="button" data-test-create-mode="outbound" class="${activeMode === "outbound" ? "is-active" : ""}">Outbound</button>
             </div>
-            <div class="test-form-grid">${activeMode === "inbound" ? inboundFields : outboundFields}<div class="test-form-actions"><button class="test-submit" type="submit">Submit</button><span class="panel-muted">${escapeHtml(message)}</span></div></div>
+            <div data-test-entry-list>${bags.map((entry) => renderTestBagEntry(activeMode, entry)).join("")}</div>
+            <div class="test-form-actions"><button class="test-submit" type="submit">Submit</button><span class="panel-muted">${escapeHtml(message)}</span></div>
           </form>
         </article>`;
+        testOutput.querySelectorAll("[data-test-bag-entry]").forEach((entry) => updateOutboundFields(entry));
       }
 
       async function searchTestBag(event) {
@@ -4538,51 +4638,55 @@
         try {
           const data = await apiJson(`/test-baggage/${encodeURIComponent(bagTag)}`);
           if (data?.found && data.record) renderTestRecord(data.record);
-          else renderTestAddForm(bagTag);
+          else renderTestAddChoice(bagTag);
         } catch (error) {
           testOutput.innerHTML = `<p class="panel-muted status-fail">${escapeHtml(error?.message || "Baggage lookup failed.")}</p>`;
         }
       }
 
-      function updateOutboundFields(form) {
-        const status = form?.querySelector("[data-test-outbound-status]")?.value || "";
-        const rushMode = status === "Inbound rush";
-        form?.querySelectorAll("[data-test-rush-field]").forEach((field) => { field.hidden = !rushMode; });
-        form?.querySelectorAll("[data-test-rush-field] input").forEach((input) => { input.required = rushMode && input.name !== "worldTracerFileNumber"; });
-        const notLoad = form?.querySelector("[data-test-not-load-field]");
-        if (notLoad) notLoad.hidden = rushMode;
+      function updateOutboundFields(scope) {
+        const status = scope?.querySelector("[data-test-outbound-status]")?.value || "";
+        const rushMode = status === "Outbound rush";
+        scope?.querySelectorAll("[data-test-rush-field]").forEach((field) => { field.hidden = !rushMode; });
+        scope?.querySelectorAll("[data-test-rush-field] input").forEach((input) => { input.required = rushMode && input.name !== "worldTracerFileNumber"; });
       }
 
       function formValue(form, name) {
-        return form?.elements?.[name]?.value || "";
+        return form?.elements?.[name]?.value || form?.querySelector?.(`[name="${name}"]`)?.value || "";
       }
 
       async function submitTestCreate(form) {
         const mode = form.dataset.createMode === "outbound" ? "outbound" : "inbound";
-        const bagTag = normalizeTestBagTag(formValue(form, "bagTag"));
-        if (!isValidTestBagTag(bagTag)) throw new Error("Bag tag must match DL123456 format.");
-        const status = mode === "outbound" ? formValue(form, "status") : "";
-        const payload = {
-          direction: mode,
-          bagTag,
-          flight: formValue(form, "flight"),
-          date: formValue(form, "date"),
-          bagType: mode === "inbound" ? formValue(form, "bagType") : "",
-          location: mode === "inbound" ? formValue(form, "location") : "",
-          status,
-          comment: status === "Not load bags" ? formValue(form, "comment") : "",
-          rushTagNumber: status === "Inbound rush" ? formValue(form, "rushTagNumber") : "",
-          rushToWhere: status === "Inbound rush" ? formValue(form, "rushToWhere") : "",
-          akeNumber: status === "Inbound rush" ? formValue(form, "akeNumber") : "",
-          worldTracerFileNumber: status === "Inbound rush" ? formValue(form, "worldTracerFileNumber") : "",
-          submittedBy: currentUserName(),
-        };
-        const data = await apiJson("/test-baggage", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        if (data?.record) renderTestRecord(data.record, "rush", data.created ? "Saved." : "Bag already exists.");
+        const entries = collectCreateEntries(form);
+        if (!entries.length) throw new Error("Please add at least one bag.");
+        const saved = [];
+        for (const entry of entries) {
+          const bagTag = normalizeTestBagTag(entry.bagTag);
+          if (!isValidTestBagTag(bagTag)) throw new Error("Each bag tag must match DL123456 format.");
+          const isRush = mode === "outbound" && entry.status === "Outbound rush";
+          const payload = {
+            direction: mode,
+            bagTag,
+            flight: entry.flight,
+            date: entry.date,
+            bagType: mode === "inbound" ? entry.bagType : "",
+            location: mode === "inbound" ? entry.location : "",
+            status: mode === "outbound" ? entry.status : "",
+            comment: mode === "outbound" ? entry.comment : "",
+            rushTagNumber: isRush ? entry.rushTagNumber : "",
+            rushToWhere: isRush ? entry.rushToWhere : "",
+            akeNumber: isRush ? entry.akeNumber : "",
+            worldTracerFileNumber: isRush ? entry.worldTracerFileNumber : "",
+            submittedBy: currentUserName(),
+          };
+          const data = await apiJson("/test-baggage", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          if (data?.record) saved.push(data.record);
+        }
+        if (saved.length) renderTestRecord(saved[saved.length - 1], "", `Saved ${saved.length} bag${saved.length === 1 ? "" : "s"}.`);
       }
 
       async function submitTestUpdate(form) {
@@ -4595,6 +4699,7 @@
           rushToWhere: formValue(form, "rushToWhere"),
           akeNumber: formValue(form, "akeNumber"),
           worldTracerFileNumber: formValue(form, "worldTracerFileNumber"),
+          comment: formValue(form, "comment"),
           location: formValue(form, "location"),
           trackingNumber: formValue(form, "trackingNumber"),
           shippingFee: formValue(form, "shippingFee"),
@@ -4604,7 +4709,7 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
-        if (data?.record) renderTestRecord(data.record, mode, "Updated.");
+        if (data?.record) renderTestRecord(data.record, "", "Updated.");
       }
 
       function isoToSyDate(value) {
@@ -5145,8 +5250,23 @@
       testOutput?.addEventListener("click", (event) => {
         const createModeButton = event.target.closest("[data-test-create-mode]");
         if (createModeButton) {
-          const currentTag = normalizeTestBagTag(testOutput.querySelector("[data-test-create-form] input[name='bagTag']")?.value || testBagSearchInput?.value);
-          renderTestAddForm(currentTag, createModeButton.dataset.testCreateMode);
+          const form = testOutput.querySelector("[data-test-create-form]");
+          const entries = form ? collectCreateEntries(form) : [{ bagTag: normalizeTestBagTag(testBagSearchInput?.value) }];
+          renderTestAddForm(entries[0]?.bagTag || normalizeTestBagTag(testBagSearchInput?.value), createModeButton.dataset.testCreateMode, entries);
+          return;
+        }
+        const addRowButton = event.target.closest("[data-test-add-row]");
+        if (addRowButton) {
+          const form = testOutput.querySelector("[data-test-create-form]");
+          if (!form) return;
+          const entries = [...collectCreateEntries(form), { bagTag: "" }];
+          renderTestAddForm(entries[0]?.bagTag || normalizeTestBagTag(testBagSearchInput?.value), form.dataset.createMode, entries);
+          return;
+        }
+        const showUpdateButton = event.target.closest("[data-test-show-update]");
+        if (showUpdateButton) {
+          const record = testOutput._record;
+          if (record) renderTestRecord(record, "rush");
           return;
         }
         const updateModeButton = event.target.closest("[data-test-update-mode]");
@@ -5159,7 +5279,7 @@
       });
       testOutput?.addEventListener("change", (event) => {
         const status = event.target.closest("[data-test-outbound-status]");
-        if (status) updateOutboundFields(status.closest("form"));
+        if (status) updateOutboundFields(status.closest("[data-test-bag-entry]"));
       });
       testOutput?.addEventListener("submit", async (event) => {
         const createForm = event.target.closest("[data-test-create-form]");

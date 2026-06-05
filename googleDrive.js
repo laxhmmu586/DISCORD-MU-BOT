@@ -523,7 +523,13 @@ async function appendTestBaggageRecord(record) {
         bagType: sanitizeSheetText(record.bagType, 80),
         location: sanitizeSheetText(record.location, 120),
         status: sanitizeSheetText(record.status, 80),
-        comment: sanitizeSheetText(record.comment, 500)
+        comment: sanitizeSheetText(record.comment, 500),
+        rushTagNumber: sanitizeSheetText(record.rushTagNumber, 80),
+        rushToWhere: sanitizeSheetText(record.rushToWhere, 120),
+        akeNumber: sanitizeSheetText(record.akeNumber, 80),
+        worldTracerFileNumber: sanitizeSheetText(record.worldTracerFileNumber, 120),
+        trackingNumber: sanitizeSheetText(record.trackingNumber, 160),
+        shippingFee: sanitizeSheetText(record.shippingFee, 80)
       }
     }]
   };
@@ -559,11 +565,13 @@ async function updateTestBaggageRecord(bagTag, update) {
     next.rushToWhere = sanitizeSheetText(update.rushToWhere, 120);
     next.akeNumber = sanitizeSheetText(update.akeNumber, 80);
     next.worldTracerFileNumber = sanitizeSheetText(update.worldTracerFileNumber, 120);
+    next.comment = sanitizeSheetText(update.comment, 500);
     Object.assign(details, {
       rushTagNumber: next.rushTagNumber,
       rushToWhere: next.rushToWhere,
       akeNumber: next.akeNumber,
-      worldTracerFileNumber: next.worldTracerFileNumber
+      worldTracerFileNumber: next.worldTracerFileNumber,
+      comment: next.comment
     });
   } else if (updateType === 'location') {
     next.status = 'Bag location update';
