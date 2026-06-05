@@ -2451,9 +2451,10 @@
       .test-status-pill {
         border: 1px solid rgba(53, 212, 137, 0.45);
         color: var(--green);
-        padding: 6px 10px;
-        font-size: 12px;
-        font-weight: 900;
+        padding: 8px 12px;
+        font-size: 14px;
+        font-weight: 950;
+        letter-spacing: 0.4px;
         text-transform: uppercase;
       }
 
@@ -2491,15 +2492,15 @@
         display: grid;
         gap: 18px;
         margin: 12px 0 20px;
-        padding-left: 40px;
+        padding-left: 42px;
       }
 
       .test-timeline::before {
         content: "";
         position: absolute;
         left: 13px;
-        top: 10px;
-        bottom: 18px;
+        top: 11px;
+        bottom: 11px;
         width: 4px;
         border-radius: 999px;
         background: rgba(217, 234, 246, 0.95);
@@ -2508,21 +2509,30 @@
       .test-timeline-item {
         position: relative;
         display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-columns: 78px minmax(0, 1fr);
         gap: 14px;
-        min-height: 34px;
+        align-items: start;
       }
 
       .test-timeline-item::before {
         content: "";
         position: absolute;
-        left: -36px;
-        top: 1px;
-        width: 20px;
-        height: 20px;
-        border: 6px solid rgba(217, 234, 246, 0.95);
+        left: -38px;
+        top: 2px;
+        width: 18px;
+        height: 18px;
         border-radius: 999px;
         background: #717d87;
+      }
+
+      .test-timeline-item.is-latest::before {
+        animation: latestTimelinePulse 1.35s ease-in-out infinite;
+        background: #5fe276;
+      }
+
+      @keyframes latestTimelinePulse {
+        0%, 100% { box-shadow: 0 0 0 7px rgba(227, 237, 251, 0.9), 0 0 0 rgba(95, 226, 118, 0); }
+        50% { box-shadow: 0 0 0 7px rgba(227, 237, 251, 0.95), 0 0 18px rgba(95, 226, 118, 0.85); }
       }
 
       .test-timeline-item.is-latest::before {
@@ -2544,8 +2554,9 @@
       .test-timeline-time {
         display: grid;
         gap: 2px;
-        text-align: right;
+        text-align: left;
         white-space: nowrap;
+        padding-top: 1px;
       }
 
       .test-timeline-time small {
@@ -2641,10 +2652,18 @@
         fill: rgba(223, 247, 255, 0.18);
       }
 
-      .test-choice-card line {
+      .test-choice-card line,
+      .test-choice-card polyline {
         stroke: #dff7ff;
         stroke-width: 8;
         stroke-linecap: round;
+        stroke-linejoin: round;
+        fill: none;
+      }
+
+      .test-choice-card .test-icon-arrow {
+        stroke: #5fe2ff;
+        stroke-width: 7;
       }
 
       .test-choice-card[data-test-create-mode="inbound"] {
@@ -4702,7 +4721,7 @@
           const detailRows = testDetailRows(item.details || {});
           const rawType = String(item.type || "update").trim();
           const displayType = capitalizeTestType(/created/i.test(rawType) || /^update\b/i.test(rawType) ? rawType : `Update ${rawType}`);
-          return `<div class="test-timeline-item ${index === 0 ? "is-latest" : ""}"><div><b>${escapeHtml(displayType)}${item.by ? ` by ${escapeHtml(item.by)}` : ""}</b>${detailRows || `<p>${escapeHtml(date || "Saved")}</p>`}</div><span class="test-timeline-time"><strong>${escapeHtml(time || date)}</strong>${time && date ? `<small>${escapeHtml(date)}</small>` : ""}</span></div>`;
+          return `<div class="test-timeline-item ${index === 0 ? "is-latest" : ""}"><span class="test-timeline-time"><strong>${escapeHtml(time || date)}</strong>${time && date ? `<small>${escapeHtml(date)}</small>` : ""}</span><div><b>${escapeHtml(displayType)}${item.by ? ` by ${escapeHtml(item.by)}` : ""}</b>${detailRows || `<p>${escapeHtml(date || "Saved")}</p>`}</div></div>`;
         }).join("")}</div>`;
       }
 
@@ -4772,9 +4791,9 @@
 
       function testPlaneIcon(direction) {
         if (direction === "inbound") {
-          return `<svg viewBox="0 0 150 100" aria-hidden="true"><g transform="rotate(11 74 52)"><path d="M22 49 L98 28 Q113 24 121 31 Q128 38 113 45 L77 58 L50 78 L36 72 L50 60 L24 60 Z"></path><polygon points="36,48 20,34 30,32 56,42"></polygon><polygon points="51,60 33,74 23,68 41,56"></polygon><circle cx="64" cy="70" r="5"></circle><circle cx="84" cy="66" r="5"></circle></g><line x1="34" y1="84" x2="118" y2="84"></line></svg>`;
+          return `<svg viewBox="0 0 150 100" aria-hidden="true"><g transform="rotate(12 70 42)"><path d="M22 48 L98 27 Q113 23 121 31 Q128 38 113 45 L78 58 L50 78 L36 72 L50 60 L24 60 Z"></path><polygon points="35,48 18,34 30,31 56,42"></polygon><polygon points="50,60 32,74 22,68 41,56"></polygon><circle cx="64" cy="70" r="5"></circle><circle cx="84" cy="66" r="5"></circle></g><polyline class="test-icon-arrow" points="78,38 78,68 66,56"></polyline><polyline class="test-icon-arrow" points="78,68 90,56"></polyline><line x1="34" y1="86" x2="118" y2="86"></line></svg>`;
         }
-        return `<svg viewBox="0 0 150 100" aria-hidden="true"><rect x="80" y="10" width="44" height="62" rx="2"></rect><g transform="rotate(-45 78 52)"><path d="M27 58 L104 36 Q119 32 127 39 Q134 46 118 53 L82 66 L54 86 L40 78 L56 64 L28 66 Z"></path><polygon points="42,56 24,42 34,39 62,50"></polygon><circle cx="72" cy="77" r="5"></circle><circle cx="91" cy="72" r="5"></circle></g><line x1="44" y1="86" x2="122" y2="86"></line></svg>`;
+        return `<svg viewBox="0 0 150 100" aria-hidden="true"><g transform="rotate(-24 74 48)"><path d="M24 55 L104 32 Q119 28 127 36 Q134 44 118 51 L82 64 L55 84 L40 78 L56 64 L26 66 Z"></path><polygon points="42,54 24,40 34,37 62,49"></polygon><circle cx="72" cy="76" r="5"></circle><circle cx="91" cy="71" r="5"></circle></g><polyline class="test-icon-arrow" points="78,70 78,40 66,52"></polyline><polyline class="test-icon-arrow" points="78,40 90,52"></polyline><line x1="42" y1="86" x2="122" y2="86"></line></svg>`;
       }
 
       function renderTestAddChoice(bagTag) {
