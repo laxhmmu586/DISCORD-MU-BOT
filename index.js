@@ -776,7 +776,7 @@ function normalizeTestBagTag(value) {
 }
 
 function isValidTestBagTag(value) {
-  return /^DL\d{6}$/.test(normalizeTestBagTag(value));
+  return /^[A-Z]{2}\d{6}$/.test(normalizeTestBagTag(value));
 }
 
 function cleanBodyText(value, maxLength = 500) {
@@ -786,7 +786,7 @@ function cleanBodyText(value, maxLength = 500) {
 app.get('/test-baggage/:bagTag', async (req, res) => {
   try {
     const bagTag = normalizeTestBagTag(req.params.bagTag);
-    if (!isValidTestBagTag(bagTag)) return res.status(400).json({ error: 'Bag tag must match DL123456 format' });
+    if (!isValidTestBagTag(bagTag)) return res.status(400).json({ error: 'Bag tag must match MU123456 format' });
     const record = await findTestBaggageByTag(bagTag);
     return res.json({ found: Boolean(record), record });
   } catch (err) {
@@ -798,7 +798,7 @@ app.get('/test-baggage/:bagTag', async (req, res) => {
 app.post('/test-baggage', async (req, res) => {
   try {
     const bagTag = normalizeTestBagTag(req.body?.bagTag);
-    if (!isValidTestBagTag(bagTag)) return res.status(400).json({ error: 'Bag tag must match DL123456 format' });
+    if (!isValidTestBagTag(bagTag)) return res.status(400).json({ error: 'Bag tag must match MU123456 format' });
     const direction = cleanBodyText(req.body?.direction, 20).toLowerCase();
     if (!['inbound', 'outbound'].includes(direction)) return res.status(400).json({ error: 'Direction must be inbound or outbound' });
     const date = cleanBodyText(req.body?.date, 20);
@@ -831,7 +831,7 @@ app.post('/test-baggage', async (req, res) => {
 app.post('/test-baggage/:bagTag/update', async (req, res) => {
   try {
     const bagTag = normalizeTestBagTag(req.params.bagTag);
-    if (!isValidTestBagTag(bagTag)) return res.status(400).json({ error: 'Bag tag must match DL123456 format' });
+    if (!isValidTestBagTag(bagTag)) return res.status(400).json({ error: 'Bag tag must match MU123456 format' });
     const type = cleanBodyText(req.body?.type, 40).toLowerCase();
     if (!['rush', 'location', 'shipping'].includes(type)) return res.status(400).json({ error: 'Invalid update type' });
     const result = await updateTestBaggageRecord(bagTag, {
@@ -841,6 +841,7 @@ app.post('/test-baggage/:bagTag/update', async (req, res) => {
       rushToWhere: cleanBodyText(req.body?.rushToWhere, 120),
       akeNumber: cleanBodyText(req.body?.akeNumber, 80),
       worldTracerFileNumber: cleanBodyText(req.body?.worldTracerFileNumber, 120),
+      comment: cleanBodyText(req.body?.comment, 500),
       location: cleanBodyText(req.body?.location, 120),
       trackingNumber: cleanBodyText(req.body?.trackingNumber, 160),
       shippingFee: cleanBodyText(req.body?.shippingFee, 80)
