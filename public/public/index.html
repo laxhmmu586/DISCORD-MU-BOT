@@ -2489,19 +2489,20 @@
       .test-timeline {
         position: relative;
         display: grid;
-        gap: 16px;
+        gap: 18px;
         margin: 12px 0 20px;
-        padding-left: 34px;
+        padding-left: 40px;
       }
 
       .test-timeline::before {
         content: "";
         position: absolute;
-        left: 10px;
-        top: 7px;
-        bottom: 7px;
+        left: 13px;
+        top: 10px;
+        bottom: 18px;
         width: 4px;
-        background: rgba(227, 237, 251, 0.9);
+        border-radius: 999px;
+        background: rgba(217, 234, 246, 0.95);
       }
 
       .test-timeline-item {
@@ -2509,18 +2510,19 @@
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto;
         gap: 14px;
+        min-height: 34px;
       }
 
       .test-timeline-item::before {
         content: "";
         position: absolute;
-        left: -30px;
-        top: 7px;
-        width: 14px;
-        height: 14px;
+        left: -36px;
+        top: 1px;
+        width: 20px;
+        height: 20px;
+        border: 6px solid rgba(217, 234, 246, 0.95);
         border-radius: 999px;
-        background: #737b83;
-        box-shadow: 0 0 0 7px rgba(227, 237, 251, 0.9);
+        background: #717d87;
       }
 
       .test-timeline-item.is-latest::before {
