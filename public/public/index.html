@@ -2300,7 +2300,7 @@
       }
 
       .test-output {
-        width: min(100%, 1120px);
+        width: min(100%, 920px);
         margin: 0 auto;
       }
 
@@ -3135,10 +3135,35 @@
           font-size: 20px;
         }
 
-        .test-report-head,
-        .test-timeline-item {
+        .test-report-head {
           display: grid;
           grid-template-columns: 1fr;
+        }
+
+        .test-timeline {
+          max-height: none;
+          overflow: visible;
+          padding-left: 40px;
+          cursor: default;
+        }
+
+        .test-timeline::before {
+          left: 20px;
+          bottom: 18px;
+        }
+
+        .test-timeline-item {
+          grid-template-columns: 72px minmax(0, 1fr);
+          gap: 12px;
+        }
+
+        .test-timeline-item::before {
+          left: -29px;
+        }
+
+        .test-timeline-time {
+          justify-items: start;
+          text-align: left;
         }
 
         .data-table {
@@ -3166,8 +3191,7 @@
       <a class="brand" id="home-nav-link" href="#home" aria-label="MUFC home"><span>MUFC</span></a>
       <nav class="nav-links" aria-label="Primary navigation">
         <a href="#reports" id="report-nav-link">Report</a>
-        <a href="#baggage" id="baggage-nav-link">Bagroom</a>
-        <a href="#test" id="test-nav-link">Test</a>
+        <a href="#test" id="test-nav-link">Baggage</a>
       </nav>
       <div class="nav-row">
         <form class="search" id="mission-search" aria-label="Search mission">
@@ -3208,8 +3232,7 @@
         <button type="submit">Search</button>
       </form>
       <a href="#reports" id="mobile-report-nav-link">Report</a>
-      <a href="#baggage" id="mobile-baggage-nav-link">Bagroom</a>
-      <a href="#test" id="mobile-test-nav-link">Test</a>
+      <a href="#test" id="mobile-test-nav-link">Baggage</a>
     </aside>
 
     <main>
@@ -3242,7 +3265,7 @@
           <div class="report-hero">
             <div>
               <h2>Report Center</h2>
-              <p class="panel-muted">Use Sales Report to choose one date and download the file. Use VIP Report to show saved VIP rows. Use PSM Report to search saved PSM/MSG rows by flight date.</p>
+              <p class="panel-muted">Use Sales Report to choose one date and download the file. Use VIP Report to show saved VIP rows. Use PSM Report to search saved PSM/MSG rows by flight date. Use Bag Report for rush bags and not-load bags.</p>
             </div>
             <button class="report-close" id="report-close" type="button">Close</button>
           </div>
@@ -3250,6 +3273,7 @@
             <button class="detail-action" id="report-sales-mode" type="button" data-report-mode="sales">Sales Report</button>
             <button class="detail-action" id="report-vip-mode" type="button" data-report-mode="vip">VIP Report</button>
             <button class="detail-action" id="report-psm-mode" type="button" data-report-mode="psm">PSM Report</button>
+            <button class="detail-action" id="report-bag-mode" type="button" data-report-mode="bag">Bag Report</button>
           </div>
           <form class="report-form" id="report-form">
             <label class="report-field report-from-field"><span id="report-from-label">From</span><input id="report-from" type="date" required /></label>
@@ -3258,14 +3282,14 @@
             <button class="report-run" type="submit">Search</button>
           </form>
           <div class="report-actions-row"><button class="report-download" id="report-download" type="button" disabled>Download CSV</button></div>
-          <div id="report-output"><p class="panel-muted">Choose Sales Report or VIP Report.</p></div>
+          <div id="report-output"><p class="panel-muted">Choose Sales Report, VIP Report, PSM Report, or Bag Report.</p></div>
         </section>
 
-        <section class="report-page" id="baggage-page" aria-label="Bagroom" hidden>
+        <section class="report-page" id="baggage-page" aria-label="Bag report" hidden>
           <div class="report-hero">
             <div>
-              <h2>Bagroom</h2>
-              <p class="panel-muted">Default view shows today's rush bags and not-load bags. Use the date range to search older bagroom records.</p>
+              <h2>Bag Report</h2>
+              <p class="panel-muted">Default view shows today's rush bags and not-load bags. Use the date range to search older bag report records.</p>
             </div>
             <button class="report-close" id="baggage-close" type="button">Close</button>
           </div>
@@ -3274,13 +3298,13 @@
             <label class="report-field"><span>To</span><input id="baggage-to" type="date" required /></label>
             <button class="report-run" type="submit">Search</button>
           </form>
-          <div id="baggage-output"><p class="panel-muted">Loading today's bagroom data...</p></div>
+          <div id="baggage-output"><p class="panel-muted">Loading today's bag report data...</p></div>
         </section>
 
-        <section class="report-page test-page" id="test-page" aria-label="Test baggage" hidden>
+        <section class="report-page test-page" id="test-page" aria-label="Baggage" hidden>
           <div class="report-hero">
             <div>
-              <h2>Test</h2>
+              <h2>Baggage</h2>
               <p class="panel-muted">Format must be MU123456.</p>
             </div>
             <button class="report-close" id="test-close" type="button">Close</button>
@@ -3409,8 +3433,6 @@
       const seatMapButton = document.querySelector("#seat-map-button");
       const reportNavLink = document.querySelector("#report-nav-link");
       const mobileReportNavLink = document.querySelector("#mobile-report-nav-link");
-      const baggageNavLink = document.querySelector("#baggage-nav-link");
-      const mobileBaggageNavLink = document.querySelector("#mobile-baggage-nav-link");
       const testNavLink = document.querySelector("#test-nav-link");
       const mobileTestNavLink = document.querySelector("#mobile-test-nav-link");
       const reportPage = document.querySelector("#report-page");
@@ -3430,6 +3452,7 @@
       const reportSalesModeButton = document.querySelector("#report-sales-mode");
       const reportVipModeButton = document.querySelector("#report-vip-mode");
       const reportPsmModeButton = document.querySelector("#report-psm-mode");
+      const reportBagModeButton = document.querySelector("#report-bag-mode");
       const reportFromInput = document.querySelector("#report-from");
       const reportFromLabel = document.querySelector("#report-from-label");
       const reportToInput = document.querySelector("#report-to");
@@ -4519,7 +4542,7 @@
         };
         addBagSection("Rush Bags", sheet.rushBags, ["Rush #", "Orig #", "To", "AKE"]);
         addBagSection("Not Load Bags", sheet.notLoadBags, ["Tag #", "Status", "Remark"]);
-        renderPanel("Bagroom", currentSy?.flightNo || "SY", sheet.hasData && sections.length ? sections.join("") : `<p class="panel-muted">No Google Sheet bagroom data found for this SY date.</p>`);
+        renderPanel("Bag Report", currentSy?.flightNo || "SY", sheet.hasData && sections.length ? sections.join("") : `<p class="panel-muted">No Google Sheet bag report data found for this SY date.</p>`);
       }
 
       async function downloadSalesReport() {
@@ -4657,17 +4680,17 @@
           baggageOutput.innerHTML = `<p class="panel-muted status-fail">${escapeHtml(error.message)}</p>`;
           return;
         }
-        baggageOutput.innerHTML = `<p class="panel-muted">Loading bagroom data for ${escapeHtml(from)}${from === to ? "" : ` to ${escapeHtml(to)}`}...</p>`;
+        baggageOutput.innerHTML = `<p class="panel-muted">Loading bag report data for ${escapeHtml(from)}${from === to ? "" : ` to ${escapeHtml(to)}`}...</p>`;
         try {
           const data = await apiJson(`/bagroom-report?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
           const rows = data?.rows || [];
           const html = rows.map((row) => {
-            const body = bagroomSectionsHtml(row.bagSheet || {}, `No Google Sheet bagroom data found for ${row.date}.`);
+            const body = bagroomSectionsHtml(row.bagSheet || {}, `No Google Sheet bag report data found for ${row.date}.`);
             return `<h3>${escapeHtml(row.date)}</h3>${body}`;
           }).join("");
-          baggageOutput.innerHTML = html || `<p class="panel-muted">No Google Sheet bagroom data found for selected range.</p>`;
+          baggageOutput.innerHTML = html || `<p class="panel-muted">No Google Sheet bag report data found for selected range.</p>`;
         } catch (error) {
-          baggageOutput.innerHTML = `<p class="panel-muted status-fail">${escapeHtml(error?.message || "Bagroom lookup failed.")}</p>`;
+          baggageOutput.innerHTML = `<p class="panel-muted status-fail">${escapeHtml(error?.message || "Bag report lookup failed.")}</p>`;
         }
       }
 
@@ -5522,8 +5545,6 @@
       salesReportButton?.addEventListener("click", closeFlightMenuAfterAction(downloadSalesReport));
       reportNavLink.addEventListener("click", (event) => { event.preventDefault(); showReportPage("sales"); });
       mobileReportNavLink.addEventListener("click", (event) => { event.preventDefault(); showReportPage("sales"); });
-      baggageNavLink.addEventListener("click", (event) => { event.preventDefault(); openBaggageReport(); });
-      mobileBaggageNavLink.addEventListener("click", (event) => { event.preventDefault(); openBaggageReport(); });
       testNavLink?.addEventListener("click", (event) => { event.preventDefault(); openTestPage(); });
       mobileTestNavLink?.addEventListener("click", (event) => { event.preventDefault(); openTestPage(); });
       reportCloseButton.addEventListener("click", hideReportPage);
@@ -5606,6 +5627,7 @@
       reportSalesModeButton?.addEventListener("click", () => setReportMode("sales", { forceToday: true, resetOutput: true }));
       reportVipModeButton?.addEventListener("click", () => setReportMode("vip", { forceToday: true, resetOutput: true }));
       reportPsmModeButton?.addEventListener("click", () => setReportMode("psm", { forceToday: true, resetOutput: true }));
+      reportBagModeButton?.addEventListener("click", openBaggageReport);
       reportForm.addEventListener("submit", generateReport);
       reportDownloadButton.addEventListener("click", downloadCurrentReportCsv);
       securityCheckButton.addEventListener("click", closeFlightMenuAfterAction(renderSecurityCheck));
