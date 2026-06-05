@@ -2214,6 +2214,221 @@
         text-transform: uppercase;
       }
 
+      .test-page {
+        display: grid;
+        grid-template-rows: auto auto 1fr;
+      }
+
+      .test-search-form {
+        width: min(100%, 680px);
+        margin: clamp(24px, 8vh, 86px) auto 24px;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 10px;
+        align-items: end;
+      }
+
+      .test-search-field,
+      .test-field {
+        display: grid;
+        gap: 7px;
+      }
+
+      .test-search-field span,
+      .test-field span {
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+      }
+
+      .test-search-field input,
+      .test-field input,
+      .test-field select,
+      .test-field textarea {
+        width: 100%;
+        min-height: 42px;
+        border: 1px solid rgba(210, 231, 255, 0.2);
+        background: rgba(227, 237, 251, 0.96);
+        color: #071327;
+        padding: 0 12px;
+        outline: 0;
+      }
+
+      .test-search-field input {
+        height: 56px;
+        font-size: 24px;
+        font-weight: 900;
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
+
+      .test-field textarea {
+        min-height: 88px;
+        padding: 10px 12px;
+        resize: vertical;
+      }
+
+      .test-output {
+        width: min(100%, 980px);
+        margin: 0 auto;
+      }
+
+      .test-mode-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin: 12px 0 16px;
+      }
+
+      .test-mode-actions button,
+      .test-submit,
+      .test-add-button {
+        min-height: 40px;
+        border: 1px solid rgba(88, 167, 255, 0.5);
+        background: rgba(88, 167, 255, 0.14);
+        color: white;
+        padding: 0 14px;
+        font-weight: 900;
+        text-transform: uppercase;
+        cursor: pointer;
+      }
+
+      .test-mode-actions button.is-active {
+        border-color: rgba(120, 183, 255, 0.82);
+        background: rgba(88, 167, 255, 0.28);
+      }
+
+      .test-form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: 12px;
+      }
+
+      .test-field.is-wide,
+      .test-form-actions {
+        grid-column: 1 / -1;
+      }
+
+      .test-form-actions {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        margin-top: 4px;
+      }
+
+      .test-report-card {
+        border: 1px solid rgba(210, 231, 255, 0.18);
+        background: rgba(0, 0, 0, 0.22);
+        padding: 18px;
+        margin-bottom: 16px;
+      }
+
+      .test-report-head {
+        display: flex;
+        align-items: start;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 14px;
+      }
+
+      .test-report-title {
+        display: grid;
+        gap: 4px;
+      }
+
+      .test-report-title strong {
+        color: white;
+        font-size: clamp(24px, 4vw, 38px);
+        line-height: 1;
+      }
+
+      .test-status-pill {
+        border: 1px solid rgba(53, 212, 137, 0.45);
+        color: var(--green);
+        padding: 6px 10px;
+        font-size: 12px;
+        font-weight: 900;
+        text-transform: uppercase;
+      }
+
+      .test-data-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+        margin-bottom: 18px;
+      }
+
+      .test-data-item {
+        border: 1px solid rgba(210, 231, 255, 0.12);
+        background: rgba(255, 255, 255, 0.04);
+        padding: 10px;
+        min-height: 68px;
+      }
+
+      .test-data-item b {
+        display: block;
+        color: var(--muted);
+        font-size: 11px;
+        text-transform: uppercase;
+        margin-bottom: 6px;
+      }
+
+      .test-data-item span {
+        color: white;
+        overflow-wrap: anywhere;
+      }
+
+      .test-timeline {
+        position: relative;
+        display: grid;
+        gap: 16px;
+        margin: 12px 0 20px;
+        padding-left: 34px;
+      }
+
+      .test-timeline::before {
+        content: "";
+        position: absolute;
+        left: 10px;
+        top: 7px;
+        bottom: 7px;
+        width: 4px;
+        background: rgba(227, 237, 251, 0.9);
+      }
+
+      .test-timeline-item {
+        position: relative;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 14px;
+      }
+
+      .test-timeline-item::before {
+        content: "";
+        position: absolute;
+        left: -30px;
+        top: 7px;
+        width: 14px;
+        height: 14px;
+        border-radius: 999px;
+        background: #737b83;
+        box-shadow: 0 0 0 7px rgba(227, 237, 251, 0.9);
+      }
+
+      .test-timeline-item b,
+      .test-timeline-time {
+        color: white;
+        font-weight: 900;
+      }
+
+      .test-timeline-item p {
+        margin: 3px 0 0;
+        color: rgba(255, 255, 255, 0.76);
+      }
+
       .status-ok { color: var(--green); }
       .status-warn { color: #ffd166; }
       .status-fail { color: var(--danger); }
@@ -2626,6 +2841,22 @@
           grid-template-columns: 1fr;
         }
 
+        .test-search-form,
+        .test-form-grid,
+        .test-data-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .test-search-field input {
+          font-size: 20px;
+        }
+
+        .test-report-head,
+        .test-timeline-item {
+          display: grid;
+          grid-template-columns: 1fr;
+        }
+
         .data-table {
           display: block;
           overflow-x: auto;
@@ -2652,6 +2883,7 @@
       <nav class="nav-links" aria-label="Primary navigation">
         <a href="#reports" id="report-nav-link">Report</a>
         <a href="#baggage" id="baggage-nav-link">Bagroom</a>
+        <a href="#test" id="test-nav-link">Test</a>
       </nav>
       <div class="nav-row">
         <form class="search" id="mission-search" aria-label="Search mission">
@@ -2693,6 +2925,7 @@
       </form>
       <a href="#reports" id="mobile-report-nav-link">Report</a>
       <a href="#baggage" id="mobile-baggage-nav-link">Bagroom</a>
+      <a href="#test" id="mobile-test-nav-link">Test</a>
     </aside>
 
     <main>
@@ -2758,6 +2991,24 @@
             <button class="report-run" type="submit">Search</button>
           </form>
           <div id="baggage-output"><p class="panel-muted">Loading today's bagroom data...</p></div>
+        </section>
+
+        <section class="report-page test-page" id="test-page" aria-label="Test baggage" hidden>
+          <div class="report-hero">
+            <div>
+              <h2>Test</h2>
+              <p class="panel-muted">Search by Delta bag tag. Format must be DL123456.</p>
+            </div>
+            <button class="report-close" id="test-close" type="button">Close</button>
+          </div>
+          <form class="test-search-form" id="test-search-form">
+            <label class="test-search-field">
+              <span>Bag tag number</span>
+              <input id="test-bag-search" type="search" placeholder="DL123456" autocomplete="off" maxlength="8" pattern="DL[0-9]{6}" required />
+            </label>
+            <button class="report-run" type="submit">Search</button>
+          </form>
+          <div id="test-output" class="test-output"><p class="panel-muted">Enter a bag tag number to search the Google Sheet.</p></div>
         </section>
 
         <section class="details-panel" aria-label="Flight details" hidden>
@@ -2876,6 +3127,8 @@
       const mobileReportNavLink = document.querySelector("#mobile-report-nav-link");
       const baggageNavLink = document.querySelector("#baggage-nav-link");
       const mobileBaggageNavLink = document.querySelector("#mobile-baggage-nav-link");
+      const testNavLink = document.querySelector("#test-nav-link");
+      const mobileTestNavLink = document.querySelector("#mobile-test-nav-link");
       const reportPage = document.querySelector("#report-page");
       const baggagePage = document.querySelector("#baggage-page");
       const baggageOutput = document.querySelector("#baggage-output");
@@ -2883,6 +3136,11 @@
       const baggageFromInput = document.querySelector("#baggage-from");
       const baggageToInput = document.querySelector("#baggage-to");
       const baggageCloseButton = document.querySelector("#baggage-close");
+      const testPage = document.querySelector("#test-page");
+      const testOutput = document.querySelector("#test-output");
+      const testSearchForm = document.querySelector("#test-search-form");
+      const testBagSearchInput = document.querySelector("#test-bag-search");
+      const testCloseButton = document.querySelector("#test-close");
       const reportCloseButton = document.querySelector("#report-close");
       const reportForm = document.querySelector("#report-form");
       const reportSalesModeButton = document.querySelector("#report-sales-mode");
@@ -4039,6 +4297,7 @@
         document.body.classList.remove("is-report-view");
         if (reportPage) reportPage.hidden = true;
         if (baggagePage) baggagePage.hidden = true;
+        if (testPage) testPage.hidden = true;
         if (passwordPage) passwordPage.hidden = true;
         closeLoginMenu();
         closeFlightMenu();
@@ -4055,6 +4314,7 @@
         resetPanelState();
         if (passwordPage) passwordPage.hidden = true;
         if (baggagePage) baggagePage.hidden = true;
+        if (testPage) testPage.hidden = true;
         if (reportPage) reportPage.hidden = false;
         document.body.classList.add("is-report-view");
         setReportMode(mode, { forceToday: true, resetOutput: true });
@@ -4066,6 +4326,21 @@
 
       function hideReportPage() {
         showHomePage();
+      }
+
+      function openTestPage() {
+        resetPanelState();
+        if (passwordPage) passwordPage.hidden = true;
+        if (reportPage) reportPage.hidden = true;
+        if (baggagePage) baggagePage.hidden = true;
+        if (testPage) testPage.hidden = false;
+        document.body.classList.add("is-report-view");
+        closeLoginMenu();
+        closeFlightMenu();
+        closeMobilePanel();
+        if (testOutput) testOutput.innerHTML = `<p class="panel-muted">Enter a bag tag number to search the Google Sheet.</p>`;
+        testBagSearchInput?.focus();
+        testPage?.scrollTo({ top: 0, left: 0, behavior: "auto" });
       }
 
       function setBaggageDefaults(forceToday = false) {
@@ -4116,6 +4391,7 @@
         resetPanelState();
         if (passwordPage) passwordPage.hidden = true;
         if (reportPage) reportPage.hidden = true;
+        if (testPage) testPage.hidden = true;
         if (baggagePage) baggagePage.hidden = false;
         document.body.classList.add("is-report-view");
         closeLoginMenu();
@@ -4124,6 +4400,211 @@
         baggagePage?.scrollTo({ top: 0, left: 0, behavior: "auto" });
         setBaggageDefaults(true);
         renderBagroomPage();
+      }
+
+      function normalizeTestBagTag(value) {
+        return String(value || "").trim().toUpperCase().replace(/\s+/g, "");
+      }
+
+      function isValidTestBagTag(value) {
+        return /^DL\d{6}$/.test(normalizeTestBagTag(value));
+      }
+
+      function currentUserName() {
+        return reviewerDisplayName(currentUser?.textContent || auth?.currentUser?.email || "MUFC");
+      }
+
+      function testDetailLine(details = {}) {
+        return Object.entries(details || {})
+          .filter(([, value]) => String(value || "").trim())
+          .map(([key, value]) => `${key}: ${value}`)
+          .join(" / ");
+      }
+
+      function renderTestTimeline(history = []) {
+        const rows = [...(history || [])].reverse();
+        if (!rows.length) return `<p class="panel-muted">No updates yet.</p>`;
+        return `<div class="test-timeline">${rows.map((item) => {
+          const time = item.at ? new Date(item.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
+          const date = item.at ? new Date(item.at).toLocaleDateString() : "";
+          const details = testDetailLine(item.details || {});
+          return `<div class="test-timeline-item"><div><b>${escapeHtml(item.type || "Update")}${item.by ? ` by ${escapeHtml(item.by)}` : ""}</b><p>${escapeHtml(details || date || "Saved")}</p></div><span class="test-timeline-time">${escapeHtml(time || date)}</span></div>`;
+        }).join("")}</div>`;
+      }
+
+      function testDataGrid(record) {
+        const fields = [
+          ["Direction", record.direction],
+          ["Flight", record.flight],
+          ["Date", record.date],
+          ["Bag Type", record.bagType],
+          ["Location", record.location],
+          ["Status", record.status],
+          ["Comment", record.comment],
+          ["Rush Tag", record.rushTagNumber],
+          ["Rush To", record.rushToWhere],
+          ["AKE", record.akeNumber],
+          ["World Tracer", record.worldTracerFileNumber],
+          ["Tracking", record.trackingNumber],
+          ["Shipping Fee", record.shippingFee],
+          ["Submitted By", record.submittedBy],
+          ["Last Updated By", record.lastUpdatedBy],
+        ];
+        return `<div class="test-data-grid">${fields.map(([label, value]) => `<div class="test-data-item"><b>${escapeHtml(label)}</b><span>${escapeHtml(value || "-")}</span></div>`).join("")}</div>`;
+      }
+
+      function renderTestUpdateForm(record, mode = "rush", message = "") {
+        const activeMode = ["rush", "location", "shipping"].includes(mode) ? mode : "rush";
+        const field = (label, name, value = "", attrs = "") => `<label class="test-field"><span>${escapeHtml(label)}</span><input name="${escapeHtml(name)}" value="${escapeHtml(value)}" ${attrs} /></label>`;
+        const fields = activeMode === "rush"
+          ? [
+              field("Rush tag number", "rushTagNumber", record.rushTagNumber || "", "required"),
+              field("Rush To where?", "rushToWhere", record.rushToWhere || "", "required"),
+              field("AKE number?", "akeNumber", record.akeNumber || "", "required"),
+              field("Option: world tracer file #", "worldTracerFileNumber", record.worldTracerFileNumber || ""),
+            ].join("")
+          : activeMode === "location"
+            ? field("Current location", "location", record.location || "", "required")
+            : [
+                field("Tracking number", "trackingNumber", record.trackingNumber || "", "required"),
+                field("Shipping fee", "shippingFee", record.shippingFee || "", "required"),
+              ].join("");
+        return `<form class="test-update-form" data-test-update-form data-bag-tag="${escapeHtml(record.bagTag)}" data-update-mode="${escapeHtml(activeMode)}">
+          <div class="test-mode-actions" aria-label="Update type">
+            <button type="button" data-test-update-mode="rush" class="${activeMode === "rush" ? "is-active" : ""}">Rush</button>
+            <button type="button" data-test-update-mode="location" class="${activeMode === "location" ? "is-active" : ""}">Bag location update</button>
+            <button type="button" data-test-update-mode="shipping" class="${activeMode === "shipping" ? "is-active" : ""}">Shipping</button>
+          </div>
+          <div class="test-form-grid">${fields}<div class="test-form-actions"><button class="test-submit" type="submit">Update</button><span class="panel-muted">${escapeHtml(message)}</span></div></div>
+        </form>`;
+      }
+
+      function renderTestRecord(record, mode = "rush", message = "") {
+        if (!testOutput || !record) return;
+        testOutput._record = record;
+        testOutput.innerHTML = `<article class="test-report-card">
+          <div class="test-report-head">
+            <div class="test-report-title"><strong>${escapeHtml(record.bagTag)}</strong><span class="panel-muted">${escapeHtml(record.direction || "Baggage report")}</span></div>
+            <span class="test-status-pill">${escapeHtml(record.status || "Found")}</span>
+          </div>
+          ${testDataGrid(record)}
+          <h3>History</h3>
+          ${renderTestTimeline(record.history)}
+          <h3>Update</h3>
+          ${renderTestUpdateForm(record, mode, message)}
+        </article>`;
+      }
+
+      function renderTestAddForm(bagTag, mode = "inbound", message = "") {
+        const today = ymdFromDate(new Date());
+        const activeMode = mode === "outbound" ? "outbound" : "inbound";
+        if (testOutput) testOutput._record = null;
+        const inboundFields = `<label class="test-field"><span>Bag tag number</span><input name="bagTag" value="${escapeHtml(bagTag)}" pattern="DL[0-9]{6}" required /></label>
+          <label class="test-field"><span>Inbound flight number</span><select name="flight" required><option value="MU583">MU583</option></select></label>
+          <label class="test-field"><span>Date</span><input name="date" type="date" value="${escapeHtml(today)}" required /></label>
+          <label class="test-field"><span>Bag type</span><select name="bagType" required><option>Passenger bag</option><option>Inbound rush</option><option>Co-mail</option></select></label>
+          <label class="test-field"><span>Current location</span><select name="location" required><option>Office</option><option>CBS</option></select></label>`;
+        const outboundFields = `<label class="test-field"><span>Bag tag number</span><input name="bagTag" value="${escapeHtml(bagTag)}" pattern="DL[0-9]{6}" required /></label>
+          <label class="test-field"><span>Outbound flight number</span><select name="flight" required><option value="MU586">MU586</option></select></label>
+          <label class="test-field"><span>Date</span><input name="date" type="date" value="${escapeHtml(today)}" required /></label>
+          <label class="test-field"><span>Status</span><select name="status" data-test-outbound-status required><option value="Not load bags">Not load bags</option><option value="Inbound rush">Inbound rush</option></select></label>
+          <label class="test-field is-wide" data-test-not-load-field><span>Comment</span><textarea name="comment"></textarea></label>
+          <label class="test-field" data-test-rush-field hidden><span>Rush tag number</span><input name="rushTagNumber" /></label>
+          <label class="test-field" data-test-rush-field hidden><span>Rush To where?</span><input name="rushToWhere" /></label>
+          <label class="test-field" data-test-rush-field hidden><span>AKE number?</span><input name="akeNumber" /></label>
+          <label class="test-field" data-test-rush-field hidden><span>Option: world tracer file #</span><input name="worldTracerFileNumber" /></label>`;
+        testOutput.innerHTML = `<article class="test-report-card">
+          <div class="test-report-head"><div class="test-report-title"><strong>${escapeHtml(bagTag)}</strong><span class="panel-muted">No matching bag found.</span></div><button class="test-add-button" type="submit" form="test-create-form">Add</button></div>
+          <form class="test-create-form" id="test-create-form" data-test-create-form data-create-mode="${escapeHtml(activeMode)}">
+            <div class="test-mode-actions" aria-label="Create type">
+              <button type="button" data-test-create-mode="inbound" class="${activeMode === "inbound" ? "is-active" : ""}">Inbound</button>
+              <button type="button" data-test-create-mode="outbound" class="${activeMode === "outbound" ? "is-active" : ""}">Outbound</button>
+            </div>
+            <div class="test-form-grid">${activeMode === "inbound" ? inboundFields : outboundFields}<div class="test-form-actions"><button class="test-submit" type="submit">Submit</button><span class="panel-muted">${escapeHtml(message)}</span></div></div>
+          </form>
+        </article>`;
+      }
+
+      async function searchTestBag(event) {
+        event?.preventDefault();
+        if (!testOutput) return;
+        const bagTag = normalizeTestBagTag(testBagSearchInput?.value);
+        if (!isValidTestBagTag(bagTag)) {
+          testOutput.innerHTML = `<p class="panel-muted status-fail">Bag tag must match DL123456 format.</p>`;
+          return;
+        }
+        if (testBagSearchInput) testBagSearchInput.value = bagTag;
+        testOutput.innerHTML = `<p class="panel-muted">Searching ${escapeHtml(bagTag)}...</p>`;
+        try {
+          const data = await apiJson(`/test-baggage/${encodeURIComponent(bagTag)}`);
+          if (data?.found && data.record) renderTestRecord(data.record);
+          else renderTestAddForm(bagTag);
+        } catch (error) {
+          testOutput.innerHTML = `<p class="panel-muted status-fail">${escapeHtml(error?.message || "Baggage lookup failed.")}</p>`;
+        }
+      }
+
+      function updateOutboundFields(form) {
+        const status = form?.querySelector("[data-test-outbound-status]")?.value || "";
+        const rushMode = status === "Inbound rush";
+        form?.querySelectorAll("[data-test-rush-field]").forEach((field) => { field.hidden = !rushMode; });
+        form?.querySelectorAll("[data-test-rush-field] input").forEach((input) => { input.required = rushMode && input.name !== "worldTracerFileNumber"; });
+        const notLoad = form?.querySelector("[data-test-not-load-field]");
+        if (notLoad) notLoad.hidden = rushMode;
+      }
+
+      function formValue(form, name) {
+        return form?.elements?.[name]?.value || "";
+      }
+
+      async function submitTestCreate(form) {
+        const mode = form.dataset.createMode === "outbound" ? "outbound" : "inbound";
+        const bagTag = normalizeTestBagTag(formValue(form, "bagTag"));
+        if (!isValidTestBagTag(bagTag)) throw new Error("Bag tag must match DL123456 format.");
+        const status = mode === "outbound" ? formValue(form, "status") : "";
+        const payload = {
+          direction: mode,
+          bagTag,
+          flight: formValue(form, "flight"),
+          date: formValue(form, "date"),
+          bagType: mode === "inbound" ? formValue(form, "bagType") : "",
+          location: mode === "inbound" ? formValue(form, "location") : "",
+          status,
+          comment: status === "Not load bags" ? formValue(form, "comment") : "",
+          rushTagNumber: status === "Inbound rush" ? formValue(form, "rushTagNumber") : "",
+          rushToWhere: status === "Inbound rush" ? formValue(form, "rushToWhere") : "",
+          akeNumber: status === "Inbound rush" ? formValue(form, "akeNumber") : "",
+          worldTracerFileNumber: status === "Inbound rush" ? formValue(form, "worldTracerFileNumber") : "",
+          submittedBy: currentUserName(),
+        };
+        const data = await apiJson("/test-baggage", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (data?.record) renderTestRecord(data.record, "rush", data.created ? "Saved." : "Bag already exists.");
+      }
+
+      async function submitTestUpdate(form) {
+        const bagTag = form.dataset.bagTag;
+        const mode = form.dataset.updateMode || "rush";
+        const payload = {
+          type: mode,
+          updatedBy: currentUserName(),
+          rushTagNumber: formValue(form, "rushTagNumber"),
+          rushToWhere: formValue(form, "rushToWhere"),
+          akeNumber: formValue(form, "akeNumber"),
+          worldTracerFileNumber: formValue(form, "worldTracerFileNumber"),
+          location: formValue(form, "location"),
+          trackingNumber: formValue(form, "trackingNumber"),
+          shippingFee: formValue(form, "shippingFee"),
+        };
+        const data = await apiJson(`/test-baggage/${encodeURIComponent(bagTag)}/update`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (data?.record) renderTestRecord(data.record, mode, "Updated.");
       }
 
       function isoToSyDate(value) {
@@ -4651,9 +5132,50 @@
       mobileReportNavLink.addEventListener("click", (event) => { event.preventDefault(); showReportPage("sales"); });
       baggageNavLink.addEventListener("click", (event) => { event.preventDefault(); openBaggageReport(); });
       mobileBaggageNavLink.addEventListener("click", (event) => { event.preventDefault(); openBaggageReport(); });
+      testNavLink?.addEventListener("click", (event) => { event.preventDefault(); openTestPage(); });
+      mobileTestNavLink?.addEventListener("click", (event) => { event.preventDefault(); openTestPage(); });
       reportCloseButton.addEventListener("click", hideReportPage);
       baggageCloseButton?.addEventListener("click", hideReportPage);
+      testCloseButton?.addEventListener("click", hideReportPage);
       baggageForm?.addEventListener("submit", renderBagroomPage);
+      testSearchForm?.addEventListener("submit", searchTestBag);
+      testBagSearchInput?.addEventListener("input", () => {
+        testBagSearchInput.value = normalizeTestBagTag(testBagSearchInput.value);
+      });
+      testOutput?.addEventListener("click", (event) => {
+        const createModeButton = event.target.closest("[data-test-create-mode]");
+        if (createModeButton) {
+          const currentTag = normalizeTestBagTag(testOutput.querySelector("[data-test-create-form] input[name='bagTag']")?.value || testBagSearchInput?.value);
+          renderTestAddForm(currentTag, createModeButton.dataset.testCreateMode);
+          return;
+        }
+        const updateModeButton = event.target.closest("[data-test-update-mode]");
+        if (updateModeButton) {
+          const form = updateModeButton.closest("[data-test-update-form]");
+          const record = testOutput._record;
+          if (!form || !record) return;
+          renderTestRecord(record, updateModeButton.dataset.testUpdateMode);
+        }
+      });
+      testOutput?.addEventListener("change", (event) => {
+        const status = event.target.closest("[data-test-outbound-status]");
+        if (status) updateOutboundFields(status.closest("form"));
+      });
+      testOutput?.addEventListener("submit", async (event) => {
+        const createForm = event.target.closest("[data-test-create-form]");
+        const updateForm = event.target.closest("[data-test-update-form]");
+        if (!createForm && !updateForm) return;
+        event.preventDefault();
+        const form = createForm || updateForm;
+        const statusEl = form.querySelector(".test-form-actions .panel-muted");
+        if (statusEl) statusEl.textContent = createForm ? "Saving..." : "Updating...";
+        try {
+          if (createForm) await submitTestCreate(createForm);
+          else await submitTestUpdate(updateForm);
+        } catch (error) {
+          if (statusEl) statusEl.textContent = error?.message || "Save failed.";
+        }
+      });
       reportSalesModeButton?.addEventListener("click", () => setReportMode("sales", { forceToday: true, resetOutput: true }));
       reportVipModeButton?.addEventListener("click", () => setReportMode("vip", { forceToday: true, resetOutput: true }));
       reportPsmModeButton?.addEventListener("click", () => setReportMode("psm", { forceToday: true, resetOutput: true }));
@@ -4786,6 +5308,10 @@
 
       if (window.location.hash === "#baggage") {
         openBaggageReport();
+      }
+
+      if (window.location.hash === "#test") {
+        openTestPage();
       }
 
       if (!auth) {

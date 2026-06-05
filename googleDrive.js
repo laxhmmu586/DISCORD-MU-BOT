@@ -311,6 +311,32 @@ const LOG_NAMES = [
 const SALES_REPORT_FOLDER_ID = '1-RLbv_BU9rnsaaPy8UUkbN6FkhA5YqGf';
 
 const REPORT_SHEET_ID = '1JqRnDx_uLc2m2SzyZOuHWWJsbkKenlKo60U9zwV9uMQ';
+const TEST_BAGGAGE_SHEET_ID = '1JqRnDx_uLc2m2SzyZOuHWWJsbkKenlKo60U9zwV9uMQ';
+const TEST_BAGGAGE_GID = 1340163844;
+const TEST_BAGGAGE_HEADERS = [
+  'Bag Tag',
+  'Direction',
+  'Flight',
+  'Date',
+  'Bag Type',
+  'Location',
+  'Status',
+  'Comment',
+  'Rush Tag Number',
+  'Rush To Where',
+  'AKE Number',
+  'World Tracer File #',
+  'Tracking Number',
+  'Shipping Fee',
+  'Submitted By',
+  'Submitted At',
+  'Last Updated By',
+  'Last Updated At',
+  'Update History'
+];
+let testBaggageSheetTitle = '';
+let testBaggageSheetAccessBlocked = false;
+let testBaggageSheetCache = { loadedAt: 0, rows: [] };
 const REPORT_SHEETS = {
   vip: {
     gid: 1703169759,
@@ -331,6 +357,251 @@ const REPORT_SHEETS = {
 };
 const reportSheetTitles = {};
 let reportSheetAccessBlocked = false;
+
+function normalizeTestBagTag(value) {
+  return String(value || '').trim().toUpperCase().replace(/\s+/g, '');
+}
+
+function isValidTestBagTag(value) {
+  return /^DL\d{6}$/.test(normalizeTestBagTag(value));
+}
+
+function sanitizeSheetText(value, maxLength = 500) {
+  return String(value || '').replace(/[\u0000-\u001F\u007F]/g, ' ').trim().slice(0, maxLength);
+}
+
+function safeParseHistory(value) {
+  try {
+    const parsed = JSON.parse(String(value || '[]'));
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+async function getTestBaggageSheetTitle() {
+  if (!testBaggageSheetTitle) {
+    testBaggageSheetTitle = await resolveSheetTitleByGid(TEST_BAGGAGE_SHEET_ID, TEST_BAGGAGE_GID);
+  }
+  return testBaggageSheetTitle || '';
+}
+
+async function getTestBaggageSheetRows(options = {}) {
+  if (testBaggageSheetAccessBlocked) return [];
+  const ttlMs = 30 * 1000;
+  if (!options.forceRefresh && Date.now() - testBaggageSheetCache.loadedAt < ttlMs && testBaggageSheetCache.rows.length) {
+    return testBaggageSheetCache.rows;
+  }
+  try {
+    const title = await getTestBaggageSheetTitle();
+    if (!title) return [];
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: TEST_BAGGAGE_SHEET_ID,
+      range: `${title}!A:S`
+    });
+    const rows = res.data.values || [];
+    testBaggageSheetCache = { loadedAt: Date.now(), rows };
+    return rows;
+  } catch (err) {
+    const reason = err?.errors?.[0]?.reason || err?.response?.data?.error?.errors?.[0]?.reason || '';
+    if (reason === 'accessNotConfigured' || err?.code === 403) {
+      testBaggageSheetAccessBlocked = true;
+      console.warn('Test baggage sheet lookup disabled: Google Sheets API unavailable or not shared with service account.');
+      return [];
+    }
+    throw err;
+  }
+}
+
+async function ensureTestBaggageSheetHeaders(rows) {
+  if (testBaggageSheetAccessBlocked) return;
+  const title = await getTestBaggageSheetTitle();
+  if (!title) return;
+  const firstRow = rows?.[0] || [];
+  const hasHeaders = TEST_BAGGAGE_HEADERS.every((header, index) => String(firstRow[index] || '').trim() === header);
+  if (hasHeaders) return;
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: TEST_BAGGAGE_SHEET_ID,
+    range: `${title}!A1`,
+    valueInputOption: 'RAW',
+    requestBody: { values: [TEST_BAGGAGE_HEADERS] }
+  });
+  testBaggageSheetCache = { loadedAt: 0, rows: [] };
+}
+
+function testBaggageRowFromSheet(values, rowNumber) {
+  const row = {};
+  TEST_BAGGAGE_HEADERS.forEach((header, index) => {
+    const field = header
+      .toLowerCase()
+      .replace(/#/g, 'number')
+      .replace(/[^a-z0-9]+(.)/g, (_, chr) => chr.toUpperCase())
+      .replace(/[^a-z0-9]/g, '');
+    row[field] = values[index] || '';
+  });
+  row.bagTag = normalizeTestBagTag(values[0]);
+  row.history = safeParseHistory(values[18]);
+  row.rowNumber = rowNumber;
+  return row;
+}
+
+function testBaggageValuesFromRecord(record) {
+  return [
+    normalizeTestBagTag(record.bagTag),
+    sanitizeSheetText(record.direction, 40),
+    sanitizeSheetText(record.flight, 20).toUpperCase(),
+    sanitizeSheetText(record.date, 20),
+    sanitizeSheetText(record.bagType, 80),
+    sanitizeSheetText(record.location, 120),
+    sanitizeSheetText(record.status, 80),
+    sanitizeSheetText(record.comment, 500),
+    sanitizeSheetText(record.rushTagNumber, 80),
+    sanitizeSheetText(record.rushToWhere, 120),
+    sanitizeSheetText(record.akeNumber, 80),
+    sanitizeSheetText(record.worldTracerFileNumber, 120),
+    sanitizeSheetText(record.trackingNumber, 160),
+    sanitizeSheetText(record.shippingFee, 80),
+    sanitizeSheetText(record.submittedBy, 160),
+    sanitizeSheetText(record.submittedAt, 40),
+    sanitizeSheetText(record.lastUpdatedBy, 160),
+    sanitizeSheetText(record.lastUpdatedAt, 40),
+    JSON.stringify(Array.isArray(record.history) ? record.history : [])
+  ];
+}
+
+async function findTestBaggageByTag(bagTag) {
+  const normalizedTag = normalizeTestBagTag(bagTag);
+  if (!isValidTestBagTag(normalizedTag)) return null;
+  const rows = await getTestBaggageSheetRows({ forceRefresh: true });
+  await ensureTestBaggageSheetHeaders(rows);
+  for (let i = 1; i < rows.length; i += 1) {
+    if (normalizeTestBagTag(rows[i]?.[0]) === normalizedTag) {
+      return testBaggageRowFromSheet(rows[i], i + 1);
+    }
+  }
+  return null;
+}
+
+async function appendTestBaggageRecord(record) {
+  if (testBaggageSheetAccessBlocked) return { created: false };
+  const normalizedTag = normalizeTestBagTag(record?.bagTag);
+  if (!isValidTestBagTag(normalizedTag)) throw new Error('Bag tag must match DL123456 format');
+  const title = await getTestBaggageSheetTitle();
+  if (!title) throw new Error('Test baggage sheet not found');
+  const rows = await getTestBaggageSheetRows({ forceRefresh: true });
+  await ensureTestBaggageSheetHeaders(rows);
+  const existing = await findTestBaggageByTag(normalizedTag);
+  if (existing) return { created: false, record: existing };
+  const now = new Date().toISOString();
+  const direction = sanitizeSheetText(record.direction, 20).toLowerCase() === 'outbound' ? 'Outbound' : 'Inbound';
+  const cleanRecord = {
+    bagTag: normalizedTag,
+    direction,
+    flight: sanitizeSheetText(record.flight, 20).toUpperCase(),
+    date: sanitizeSheetText(record.date, 20),
+    bagType: sanitizeSheetText(record.bagType, 80),
+    location: sanitizeSheetText(record.location, 120),
+    status: sanitizeSheetText(record.status, 80),
+    comment: sanitizeSheetText(record.comment, 500),
+    rushTagNumber: sanitizeSheetText(record.rushTagNumber, 80),
+    rushToWhere: sanitizeSheetText(record.rushToWhere, 120),
+    akeNumber: sanitizeSheetText(record.akeNumber, 80),
+    worldTracerFileNumber: sanitizeSheetText(record.worldTracerFileNumber, 120),
+    trackingNumber: sanitizeSheetText(record.trackingNumber, 160),
+    shippingFee: sanitizeSheetText(record.shippingFee, 80),
+    submittedBy: sanitizeSheetText(record.submittedBy, 160),
+    submittedAt: now,
+    lastUpdatedBy: sanitizeSheetText(record.submittedBy, 160),
+    lastUpdatedAt: now,
+    history: [{
+      type: `${direction} created`,
+      by: sanitizeSheetText(record.submittedBy, 160),
+      at: now,
+      details: {
+        flight: sanitizeSheetText(record.flight, 20).toUpperCase(),
+        date: sanitizeSheetText(record.date, 20),
+        bagType: sanitizeSheetText(record.bagType, 80),
+        location: sanitizeSheetText(record.location, 120),
+        status: sanitizeSheetText(record.status, 80),
+        comment: sanitizeSheetText(record.comment, 500)
+      }
+    }]
+  };
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: TEST_BAGGAGE_SHEET_ID,
+    range: `${title}!A1`,
+    valueInputOption: 'RAW',
+    insertDataOption: 'INSERT_ROWS',
+    requestBody: { values: [testBaggageValuesFromRecord(cleanRecord)] }
+  });
+  testBaggageSheetCache = { loadedAt: 0, rows: [] };
+  return { created: true, record: await findTestBaggageByTag(normalizedTag) };
+}
+
+async function updateTestBaggageRecord(bagTag, update) {
+  if (testBaggageSheetAccessBlocked) return { updated: false };
+  const existing = await findTestBaggageByTag(bagTag);
+  if (!existing) return { updated: false, notFound: true };
+  const title = await getTestBaggageSheetTitle();
+  if (!title) throw new Error('Test baggage sheet not found');
+  const now = new Date().toISOString();
+  const updateType = sanitizeSheetText(update?.type, 40).toLowerCase();
+  const updatedBy = sanitizeSheetText(update?.updatedBy, 160);
+  const details = {};
+  const next = {
+    ...existing,
+    history: Array.isArray(existing.history) ? existing.history : []
+  };
+
+  if (updateType === 'rush') {
+    next.status = 'Rush';
+    next.rushTagNumber = sanitizeSheetText(update.rushTagNumber, 80);
+    next.rushToWhere = sanitizeSheetText(update.rushToWhere, 120);
+    next.akeNumber = sanitizeSheetText(update.akeNumber, 80);
+    next.worldTracerFileNumber = sanitizeSheetText(update.worldTracerFileNumber, 120);
+    Object.assign(details, {
+      rushTagNumber: next.rushTagNumber,
+      rushToWhere: next.rushToWhere,
+      akeNumber: next.akeNumber,
+      worldTracerFileNumber: next.worldTracerFileNumber
+    });
+  } else if (updateType === 'location') {
+    next.status = 'Bag location update';
+    next.location = sanitizeSheetText(update.location, 120);
+    details.location = next.location;
+  } else if (updateType === 'shipping') {
+    next.status = 'Shipping';
+    next.trackingNumber = sanitizeSheetText(update.trackingNumber, 160);
+    next.shippingFee = sanitizeSheetText(update.shippingFee, 80);
+    Object.assign(details, {
+      trackingNumber: next.trackingNumber,
+      shippingFee: next.shippingFee
+    });
+  } else {
+    throw new Error('Invalid update type');
+  }
+
+  next.lastUpdatedBy = updatedBy;
+  next.lastUpdatedAt = now;
+  next.history = [
+    ...next.history,
+    {
+      type: updateType,
+      by: updatedBy,
+      at: now,
+      details
+    }
+  ];
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: TEST_BAGGAGE_SHEET_ID,
+    range: `${title}!A${existing.rowNumber}:S${existing.rowNumber}`,
+    valueInputOption: 'RAW',
+    requestBody: { values: [testBaggageValuesFromRecord(next)] }
+  });
+  testBaggageSheetCache = { loadedAt: 0, rows: [] };
+  return { updated: true, record: await findTestBaggageByTag(existing.bagTag) };
+}
 
 function normalizeReportSheetType(type) {
   const normalized = String(type || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -964,5 +1235,8 @@ module.exports = {
   appendStoredReportRows,
   appendVipReportRows,
   appendPsmMsgReportRows,
-  pruneStoredReportRows
+  pruneStoredReportRows,
+  findTestBaggageByTag,
+  appendTestBaggageRecord,
+  updateTestBaggageRecord
 };

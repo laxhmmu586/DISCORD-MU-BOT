@@ -44,7 +44,10 @@ const {
   appendStoredReportRows,
   appendVipReportRows,
   appendPsmMsgReportRows,
-  pruneStoredReportRows
+  pruneStoredReportRows,
+  findTestBaggageByTag,
+  appendTestBaggageRecord,
+  updateTestBaggageRecord
 
 } = require('./googleDrive');
 
@@ -765,6 +768,88 @@ app.get('/bagroom-report', async (req, res) => {
   } catch (err) {
     console.error('Bagroom report error:', err);
     return res.status(500).json({ error: err?.message || 'Bagroom report lookup failed' });
+  }
+});
+
+function normalizeTestBagTag(value) {
+  return String(value || '').trim().toUpperCase().replace(/\s+/g, '');
+}
+
+function isValidTestBagTag(value) {
+  return /^DL\d{6}$/.test(normalizeTestBagTag(value));
+}
+
+function cleanBodyText(value, maxLength = 500) {
+  return String(value || '').replace(/[\u0000-\u001F\u007F]/g, ' ').trim().slice(0, maxLength);
+}
+
+app.get('/test-baggage/:bagTag', async (req, res) => {
+  try {
+    const bagTag = normalizeTestBagTag(req.params.bagTag);
+    if (!isValidTestBagTag(bagTag)) return res.status(400).json({ error: 'Bag tag must match DL123456 format' });
+    const record = await findTestBaggageByTag(bagTag);
+    return res.json({ found: Boolean(record), record });
+  } catch (err) {
+    console.error('Test baggage lookup error:', err);
+    return res.status(500).json({ error: err?.message || 'Baggage lookup failed' });
+  }
+});
+
+app.post('/test-baggage', async (req, res) => {
+  try {
+    const bagTag = normalizeTestBagTag(req.body?.bagTag);
+    if (!isValidTestBagTag(bagTag)) return res.status(400).json({ error: 'Bag tag must match DL123456 format' });
+    const direction = cleanBodyText(req.body?.direction, 20).toLowerCase();
+    if (!['inbound', 'outbound'].includes(direction)) return res.status(400).json({ error: 'Direction must be inbound or outbound' });
+    const date = cleanBodyText(req.body?.date, 20);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'Missing or invalid date' });
+    const flight = cleanBodyText(req.body?.flight, 20).toUpperCase();
+    if (direction === 'inbound' && flight !== 'MU583') return res.status(400).json({ error: 'Inbound flight must be MU583' });
+    if (direction === 'outbound' && flight !== 'MU586') return res.status(400).json({ error: 'Outbound flight must be MU586' });
+    const result = await appendTestBaggageRecord({
+      bagTag,
+      direction,
+      flight,
+      date,
+      bagType: cleanBodyText(req.body?.bagType, 80),
+      location: cleanBodyText(req.body?.location, 120),
+      status: cleanBodyText(req.body?.status, 80),
+      comment: cleanBodyText(req.body?.comment, 500),
+      rushTagNumber: cleanBodyText(req.body?.rushTagNumber, 80),
+      rushToWhere: cleanBodyText(req.body?.rushToWhere, 120),
+      akeNumber: cleanBodyText(req.body?.akeNumber, 80),
+      worldTracerFileNumber: cleanBodyText(req.body?.worldTracerFileNumber, 120),
+      submittedBy: cleanBodyText(req.body?.submittedBy, 160)
+    });
+    return res.status(result.created ? 201 : 200).json(result);
+  } catch (err) {
+    console.error('Test baggage create error:', err);
+    return res.status(500).json({ error: err?.message || 'Baggage save failed' });
+  }
+});
+
+app.post('/test-baggage/:bagTag/update', async (req, res) => {
+  try {
+    const bagTag = normalizeTestBagTag(req.params.bagTag);
+    if (!isValidTestBagTag(bagTag)) return res.status(400).json({ error: 'Bag tag must match DL123456 format' });
+    const type = cleanBodyText(req.body?.type, 40).toLowerCase();
+    if (!['rush', 'location', 'shipping'].includes(type)) return res.status(400).json({ error: 'Invalid update type' });
+    const result = await updateTestBaggageRecord(bagTag, {
+      type,
+      updatedBy: cleanBodyText(req.body?.updatedBy, 160),
+      rushTagNumber: cleanBodyText(req.body?.rushTagNumber, 80),
+      rushToWhere: cleanBodyText(req.body?.rushToWhere, 120),
+      akeNumber: cleanBodyText(req.body?.akeNumber, 80),
+      worldTracerFileNumber: cleanBodyText(req.body?.worldTracerFileNumber, 120),
+      location: cleanBodyText(req.body?.location, 120),
+      trackingNumber: cleanBodyText(req.body?.trackingNumber, 160),
+      shippingFee: cleanBodyText(req.body?.shippingFee, 80)
+    });
+    if (result.notFound) return res.status(404).json({ error: 'Bag not found' });
+    return res.json(result);
+  } catch (err) {
+    console.error('Test baggage update error:', err);
+    return res.status(500).json({ error: err?.message || 'Baggage update failed' });
   }
 });
 
