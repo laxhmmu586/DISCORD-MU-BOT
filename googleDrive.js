@@ -565,11 +565,13 @@ async function updateTestBaggageRecord(bagTag, update) {
     next.rushToWhere = sanitizeSheetText(update.rushToWhere, 120);
     next.akeNumber = sanitizeSheetText(update.akeNumber, 80);
     next.worldTracerFileNumber = sanitizeSheetText(update.worldTracerFileNumber, 120);
+    next.comment = sanitizeSheetText(update.comment, 500);
     Object.assign(details, {
       rushTagNumber: next.rushTagNumber,
       rushToWhere: next.rushToWhere,
       akeNumber: next.akeNumber,
-      worldTracerFileNumber: next.worldTracerFileNumber
+      worldTracerFileNumber: next.worldTracerFileNumber,
+      comment: next.comment
     });
   } else if (updateType === 'location') {
     next.status = 'Bag location update';
