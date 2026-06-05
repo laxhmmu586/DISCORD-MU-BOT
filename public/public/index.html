@@ -2448,16 +2448,6 @@
         line-height: 1;
       }
 
-      .test-status-pill {
-        border: 1px solid rgba(53, 212, 137, 0.45);
-        color: var(--green);
-        padding: 8px 12px;
-        font-size: 14px;
-        font-weight: 950;
-        letter-spacing: 0.4px;
-        text-transform: uppercase;
-      }
-
       .test-data-grid {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -4825,7 +4815,6 @@
         testOutput.innerHTML = `<article class="test-report-card">
           <div class="test-report-head">
             <div class="test-report-title"><strong>${escapeHtml(record.bagTag)}</strong><span class="panel-muted">${escapeHtml(record.direction || "Baggage report")}</span></div>
-            <span class="test-status-pill">${escapeHtml(record.status || record.direction || "Record")}</span>
           </div>
           ${message ? `<p class="panel-muted status-ok">${escapeHtml(message)}</p>` : ""}
           <h3>Details</h3>

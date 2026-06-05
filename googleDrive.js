@@ -479,6 +479,16 @@ async function findTestBaggageByTag(bagTag) {
       return testBaggageRowFromSheet(rows[i], i + 1);
     }
   }
+  for (let i = 1; i < rows.length; i += 1) {
+    if (normalizeTestBagTag(rows[i]?.[8]) === normalizedTag) {
+      return testBaggageRowFromSheet(rows[i], i + 1);
+    }
+  }
+  for (let i = 1; i < rows.length; i += 1) {
+    const history = safeParseHistory(rows[i]?.[18]);
+    const hasRushTagMatch = history.some((entry) => normalizeTestBagTag(entry?.details?.rushTagNumber) === normalizedTag);
+    if (hasRushTagMatch) return testBaggageRowFromSheet(rows[i], i + 1);
+  }
   return null;
 }
 
