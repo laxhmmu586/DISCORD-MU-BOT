@@ -2493,7 +2493,7 @@
         gap: 18px;
         max-height: min(56vh, 520px);
         margin: 12px 0 20px;
-        padding-left: 34px;
+        padding-left: 48px;
         overflow-y: auto;
         cursor: grab;
         scrollbar-width: none;
@@ -2512,7 +2512,7 @@
       .test-timeline::before {
         content: "";
         position: absolute;
-        left: 10px;
+        left: 26px;
         top: 15px;
         bottom: 15px;
         width: 4px;
@@ -2541,23 +2541,8 @@
       }
 
       .test-timeline-item.is-latest::before {
-        animation: latestTimelinePulse 1.35s ease-in-out infinite;
         background: #5fe276;
-      }
-
-      @keyframes latestTimelinePulse {
-        0%, 100% { box-shadow: 0 0 0 7px rgba(227, 237, 251, 0.9), 0 0 0 rgba(95, 226, 118, 0); }
-        50% { box-shadow: 0 0 0 7px rgba(227, 237, 251, 0.95), 0 0 18px rgba(95, 226, 118, 0.85); }
-      }
-
-      .test-timeline-item.is-latest::before {
-        animation: latestTimelinePulse 1.35s ease-in-out infinite;
-        background: #5fe276;
-      }
-
-      @keyframes latestTimelinePulse {
-        0%, 100% { box-shadow: 0 0 0 7px rgba(227, 237, 251, 0.9), 0 0 0 rgba(95, 226, 118, 0); }
-        50% { box-shadow: 0 0 0 7px rgba(227, 237, 251, 0.95), 0 0 18px rgba(95, 226, 118, 0.85); }
+        box-shadow: 0 0 0 7px rgba(227, 237, 251, 0.92), 0 0 14px rgba(95, 226, 118, 0.42);
       }
 
       .test-timeline-item b,
@@ -2650,6 +2635,18 @@
           radial-gradient(circle at 50% 20%, rgba(102, 218, 255, 0.32), transparent 12rem),
           linear-gradient(155deg, rgba(229, 247, 255, 0.16), rgba(18, 88, 105, 0.42));
         transform: translateY(-2px);
+      }
+
+
+      .test-choice-icon {
+        display: inline-grid;
+        place-items: center;
+        width: 150px;
+        height: 96px;
+        line-height: 1;
+        font-size: clamp(64px, 6vw, 86px);
+        text-transform: none;
+        filter: drop-shadow(0 12px 20px rgba(175, 246, 255, 0.18));
       }
 
       .test-choice-card svg {
@@ -4835,10 +4832,7 @@
       }
 
       function testPlaneIcon(direction) {
-        if (direction === "inbound") {
-          return `<svg viewBox="0 0 160 104" aria-hidden="true"><g transform="translate(10 16) rotate(7 70 38)"><path d="M18 44 L100 24 Q120 19 132 26 Q142 32 137 40 Q132 49 109 51 L72 54 L45 75 L29 69 L46 55 L20 55 Z"></path><polygon points="35,43 18,25 32,25 60,41"></polygon><polygon points="46,55 28,69 18,63 39,52"></polygon><circle cx="65" cy="69" r="5"></circle><circle cx="86" cy="66" r="5"></circle><rect class="test-plane-cut" x="20" y="57" width="34" height="5" rx="2" transform="rotate(-18 37 59)"></rect><rect class="test-plane-cut" x="35" y="64" width="24" height="5" rx="2" transform="rotate(-25 47 66)"></rect></g><line x1="36" y1="88" x2="124" y2="88"></line></svg>`;
-        }
-        return `<svg viewBox="0 0 160 104" aria-hidden="true"><g transform="translate(8 4) rotate(-17 78 50)"><path d="M20 52 L104 28 Q124 22 136 30 Q145 37 139 45 Q133 54 111 56 L75 60 L48 84 L32 77 L50 62 L22 63 Z"></path><polygon points="39,51 21,32 35,31 64,48"></polygon><polygon points="49,62 30,77 20,70 42,58"></polygon><circle cx="72" cy="77" r="5"></circle><circle cx="94" cy="73" r="5"></circle><rect class="test-plane-cut" x="21" y="65" width="35" height="5" rx="2" transform="rotate(-16 38 67)"></rect></g><line x1="40" y1="88" x2="126" y2="88"></line></svg>`;
+        return `<span class="test-choice-icon" aria-hidden="true">${direction === "inbound" ? "🛬" : "🛫"}</span>`;
       }
 
       function renderTestAddChoice(bagTag) {
