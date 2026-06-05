@@ -2337,6 +2337,20 @@
         margin-top: 12px;
       }
 
+      .test-create-entry .test-form-grid {
+        grid-template-columns: repeat(4, minmax(160px, 1fr));
+        align-items: end;
+      }
+
+      .test-create-entry .test-field:not(.is-wide) {
+        max-width: 320px;
+      }
+
+      .test-create-entry .test-field.is-wide {
+        width: 100%;
+        max-width: none;
+      }
+
       .test-create-entry {
         border: 0;
         border-top: 1px solid rgba(210, 231, 255, 0.14);
@@ -2475,19 +2489,20 @@
       .test-timeline {
         position: relative;
         display: grid;
-        gap: 16px;
+        gap: 18px;
         margin: 12px 0 20px;
-        padding-left: 34px;
+        padding-left: 40px;
       }
 
       .test-timeline::before {
         content: "";
         position: absolute;
-        left: 10px;
-        top: 7px;
-        bottom: 7px;
+        left: 13px;
+        top: 10px;
+        bottom: 18px;
         width: 4px;
-        background: rgba(227, 237, 251, 0.9);
+        border-radius: 999px;
+        background: rgba(217, 234, 246, 0.95);
       }
 
       .test-timeline-item {
@@ -2495,18 +2510,19 @@
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto;
         gap: 14px;
+        min-height: 34px;
       }
 
       .test-timeline-item::before {
         content: "";
         position: absolute;
-        left: -30px;
-        top: 7px;
-        width: 14px;
-        height: 14px;
+        left: -36px;
+        top: 1px;
+        width: 20px;
+        height: 20px;
+        border: 6px solid rgba(217, 234, 246, 0.95);
         border-radius: 999px;
-        background: #737b83;
-        box-shadow: 0 0 0 7px rgba(227, 237, 251, 0.9);
+        background: #717d87;
       }
 
       .test-timeline-item b,
@@ -2579,6 +2595,10 @@
       .test-choice-card path,
       .test-choice-card circle {
         fill: #dff7ff;
+      }
+
+      .test-choice-card rect {
+        fill: rgba(223, 247, 255, 0.18);
       }
 
       .test-choice-card line {
@@ -4630,7 +4650,9 @@
           const time = timestamp ? timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
           const date = timestamp ? timestamp.toLocaleDateString() : "";
           const details = testDetailLine(item.details || {});
-          return `<div class="test-timeline-item"><div><b>${escapeHtml(item.type || "Update")}${item.by ? ` by ${escapeHtml(item.by)}` : ""}</b><p>${escapeHtml(details || date || "Saved")}</p></div><span class="test-timeline-time"><strong>${escapeHtml(time || date)}</strong>${time && date ? `<small>${escapeHtml(date)}</small>` : ""}</span></div>`;
+          const rawType = String(item.type || "update").trim();
+          const displayType = /created/i.test(rawType) || /^update\b/i.test(rawType) ? rawType : `update ${rawType}`;
+          return `<div class="test-timeline-item"><div><b>${escapeHtml(displayType)}${item.by ? ` by ${escapeHtml(item.by)}` : ""}</b><p>${escapeHtml(details || date || "Saved")}</p></div><span class="test-timeline-time"><strong>${escapeHtml(time || date)}</strong>${time && date ? `<small>${escapeHtml(date)}</small>` : ""}</span></div>`;
         }).join("")}</div>`;
       }
 
@@ -4700,9 +4722,9 @@
 
       function testPlaneIcon(direction) {
         if (direction === "inbound") {
-          return `<svg viewBox="0 0 150 100" aria-hidden="true"><g transform="translate(12 20) rotate(-8 62 34)"><path d="M18 48 L101 28 Q116 24 123 31 Q130 39 114 46 L73 61 L47 78 L31 72 L46 58 L18 58 Z"></path><path d="M45 58 L30 69 L20 64 L35 55 Z"></path><circle cx="65" cy="70" r="5"></circle><circle cx="84" cy="66" r="5"></circle></g><line x1="48" y1="82" x2="116" y2="82"></line></svg>`;
+          return `<svg viewBox="0 0 150 100" aria-hidden="true"><rect x="22" y="12" width="54" height="58" rx="2"></rect><g transform="translate(16 18) rotate(13 58 42)"><path d="M16 46 L96 25 Q111 21 118 29 Q124 37 109 44 L74 58 L49 82 L34 75 L48 62 L18 58 Z"></path><path d="M47 62 L30 74 L21 67 L38 57 Z"></path><circle cx="62" cy="70" r="5"></circle><circle cx="82" cy="66" r="5"></circle></g><line x1="38" y1="84" x2="118" y2="84"></line></svg>`;
         }
-        return `<svg viewBox="0 0 150 100" aria-hidden="true"><g transform="translate(16 6) rotate(-48 74 54)"><path d="M26 56 L112 35 Q126 32 133 39 Q139 47 124 54 L83 68 L56 86 L42 78 L57 65 L26 66 Z"></path><circle cx="76" cy="77" r="5"></circle><circle cx="94" cy="72" r="5"></circle></g><line x1="56" y1="84" x2="124" y2="84"></line></svg>`;
+        return `<svg viewBox="0 0 150 100" aria-hidden="true"><rect x="80" y="10" width="44" height="62" rx="2"></rect><g transform="translate(14 4) rotate(-31 70 52)"><path d="M18 53 L98 31 Q113 27 121 35 Q128 43 112 50 L76 64 L48 86 L34 78 L50 63 L19 64 Z"></path><circle cx="68" cy="74" r="5"></circle><circle cx="87" cy="69" r="5"></circle></g><line x1="42" y1="85" x2="120" y2="85"></line></svg>`;
       }
 
       function renderTestAddChoice(bagTag) {
