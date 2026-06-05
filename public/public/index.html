@@ -2424,6 +2424,19 @@
         font-weight: 900;
       }
 
+      .test-timeline-time {
+        display: grid;
+        gap: 2px;
+        text-align: right;
+        white-space: nowrap;
+      }
+
+      .test-timeline-time small {
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 800;
+      }
+
       .test-timeline-item p {
         margin: 3px 0 0;
         color: rgba(255, 255, 255, 0.76);
@@ -4425,10 +4438,11 @@
         const rows = [...(history || [])].reverse();
         if (!rows.length) return `<p class="panel-muted">No updates yet.</p>`;
         return `<div class="test-timeline">${rows.map((item) => {
-          const time = item.at ? new Date(item.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
-          const date = item.at ? new Date(item.at).toLocaleDateString() : "";
+          const timestamp = item.at ? new Date(item.at) : null;
+          const time = timestamp ? timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
+          const date = timestamp ? timestamp.toLocaleDateString() : "";
           const details = testDetailLine(item.details || {});
-          return `<div class="test-timeline-item"><div><b>${escapeHtml(item.type || "Update")}${item.by ? ` by ${escapeHtml(item.by)}` : ""}</b><p>${escapeHtml(details || date || "Saved")}</p></div><span class="test-timeline-time">${escapeHtml(time || date)}</span></div>`;
+          return `<div class="test-timeline-item"><div><b>${escapeHtml(item.type || "Update")}${item.by ? ` by ${escapeHtml(item.by)}` : ""}</b><p>${escapeHtml(details || date || "Saved")}</p></div><span class="test-timeline-time"><strong>${escapeHtml(time || date)}</strong>${time && date ? `<small>${escapeHtml(date)}</small>` : ""}</span></div>`;
         }).join("")}</div>`;
       }
 
@@ -4499,12 +4513,13 @@
         const today = ymdFromDate(new Date());
         const activeMode = mode === "outbound" ? "outbound" : "inbound";
         if (testOutput) testOutput._record = null;
-        const inboundFields = `<label class="test-field"><span>Bag tag number</span><input name="bagTag" value="${escapeHtml(bagTag)}" pattern="DL[0-9]{6}" required /></label>
+        const bagTagInput = `<label class="test-field"><span>Bag tag number</span><input name="bagTag" value="${escapeHtml(bagTag)}" maxlength="8" pattern="DL[0-9]{6}" title="Use DL123456 format" autocomplete="off" required /></label>`;
+        const inboundFields = `${bagTagInput}
           <label class="test-field"><span>Inbound flight number</span><select name="flight" required><option value="MU583">MU583</option></select></label>
           <label class="test-field"><span>Date</span><input name="date" type="date" value="${escapeHtml(today)}" required /></label>
           <label class="test-field"><span>Bag type</span><select name="bagType" required><option>Passenger bag</option><option>Inbound rush</option><option>Co-mail</option></select></label>
           <label class="test-field"><span>Current location</span><select name="location" required><option>Office</option><option>CBS</option></select></label>`;
-        const outboundFields = `<label class="test-field"><span>Bag tag number</span><input name="bagTag" value="${escapeHtml(bagTag)}" pattern="DL[0-9]{6}" required /></label>
+        const outboundFields = `${bagTagInput}
           <label class="test-field"><span>Outbound flight number</span><select name="flight" required><option value="MU586">MU586</option></select></label>
           <label class="test-field"><span>Date</span><input name="date" type="date" value="${escapeHtml(today)}" required /></label>
           <label class="test-field"><span>Status</span><select name="status" data-test-outbound-status required><option value="Not load bags">Not load bags</option><option value="Inbound rush">Inbound rush</option></select></label>
