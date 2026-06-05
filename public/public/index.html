@@ -2219,13 +2219,24 @@
         grid-template-rows: auto auto 1fr;
       }
 
+      .test-search-form,
+      .test-search-hint {
+        width: min(100%, 850px);
+        margin-left: auto;
+        margin-right: auto;
+      }
+
       .test-search-form {
-        width: min(100%, 680px);
-        margin: clamp(24px, 8vh, 86px) auto 24px;
+        margin-top: clamp(24px, 8vh, 86px);
+        margin-bottom: 24px;
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto;
         gap: 10px;
         align-items: end;
+      }
+
+      .test-search-hint {
+        margin-top: -8px;
       }
 
       .test-search-field,
@@ -2264,6 +2275,24 @@
         text-transform: uppercase;
       }
 
+      .test-search-form .report-run {
+        min-height: 56px;
+        min-width: 164px;
+        border-color: rgba(126, 218, 255, 0.58);
+        border-radius: 12px;
+        background:
+          linear-gradient(145deg, rgba(105, 196, 255, 0.24), rgba(34, 105, 144, 0.26)),
+          rgba(13, 45, 72, 0.5);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 14px 36px rgba(12, 43, 70, 0.22);
+      }
+
+      .test-search-form .report-run:hover {
+        border-color: rgba(170, 238, 255, 0.9);
+        background:
+          linear-gradient(145deg, rgba(124, 219, 255, 0.32), rgba(44, 127, 166, 0.34)),
+          rgba(13, 45, 72, 0.58);
+      }
+
       .test-field textarea {
         min-height: 88px;
         padding: 10px 12px;
@@ -2271,7 +2300,7 @@
       }
 
       .test-output {
-        width: min(100%, 980px);
+        width: min(100%, 1120px);
         margin: 0 auto;
       }
 
@@ -2284,7 +2313,8 @@
 
       .test-mode-actions button,
       .test-submit,
-      .test-add-button {
+      .test-add-button,
+      .test-back-button {
         min-height: 40px;
         border: 1px solid rgba(88, 167, 255, 0.5);
         background: rgba(88, 167, 255, 0.14);
@@ -2307,6 +2337,52 @@
         margin-top: 12px;
       }
 
+      .test-create-entry .test-form-grid {
+        grid-template-columns: repeat(4, minmax(160px, 1fr));
+        align-items: end;
+      }
+
+      .test-create-entry .test-field:not(.is-wide) {
+        max-width: 320px;
+      }
+
+      .test-create-entry .test-field.is-wide {
+        width: 100%;
+        max-width: none;
+      }
+
+      .test-create-entry {
+        border: 0;
+        border-top: 1px solid rgba(210, 231, 255, 0.14);
+        margin: 18px 0 0;
+        padding: 16px 0 0;
+      }
+
+      .test-create-entry legend {
+        width: 100%;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 900;
+        letter-spacing: 1px;
+        padding: 0 10px 0 0;
+        text-transform: uppercase;
+      }
+
+      .test-create-entry legend span {
+        display: inline-flex;
+        min-height: 34px;
+        align-items: center;
+      }
+
+      .test-update-head {
+        align-items: center;
+        margin-bottom: 10px;
+      }
+
+      .test-update-head h3 {
+        margin: 0;
+      }
+
       .test-field.is-wide,
       .test-form-actions {
         grid-column: 1 / -1;
@@ -2319,11 +2395,38 @@
         margin-top: 4px;
       }
 
+      .test-report-card > .test-form-actions {
+        justify-content: flex-end;
+      }
+
       .test-report-card {
-        border: 1px solid rgba(210, 231, 255, 0.18);
-        background: rgba(0, 0, 0, 0.22);
-        padding: 18px;
+        position: relative;
+        overflow: hidden;
+        border: 1px solid rgba(82, 219, 255, 0.42);
+        border-radius: 22px;
+        background:
+          radial-gradient(circle at 86% 10%, rgba(109, 213, 255, 0.22), transparent 18rem),
+          radial-gradient(circle at 12% 16%, rgba(69, 219, 173, 0.16), transparent 16rem),
+          linear-gradient(145deg, rgba(5, 31, 54, 0.94), rgba(9, 55, 70, 0.9) 58%, rgba(8, 69, 61, 0.84));
+        box-shadow: 0 28px 90px rgba(0, 0, 0, 0.36), 0 0 34px rgba(71, 196, 255, 0.13), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        padding: 22px;
         margin-bottom: 16px;
+      }
+
+      .test-report-card::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background:
+          linear-gradient(90deg, transparent, rgba(127, 219, 255, 0.05), transparent),
+          repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 7px);
+        opacity: 0.42;
+      }
+
+      .test-report-card > * {
+        position: relative;
+        z-index: 1;
       }
 
       .test-report-head {
@@ -2348,9 +2451,10 @@
       .test-status-pill {
         border: 1px solid rgba(53, 212, 137, 0.45);
         color: var(--green);
-        padding: 6px 10px;
-        font-size: 12px;
-        font-weight: 900;
+        padding: 8px 12px;
+        font-size: 14px;
+        font-weight: 950;
+        letter-spacing: 0.4px;
         text-transform: uppercase;
       }
 
@@ -2362,10 +2466,12 @@
       }
 
       .test-data-item {
-        border: 1px solid rgba(210, 231, 255, 0.12);
-        background: rgba(255, 255, 255, 0.04);
-        padding: 10px;
-        min-height: 68px;
+        border: 1px solid rgba(190, 231, 255, 0.22);
+        border-radius: 14px;
+        background: rgba(230, 246, 255, 0.08);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        padding: 12px;
+        min-height: 72px;
       }
 
       .test-data-item b {
@@ -2384,38 +2490,64 @@
       .test-timeline {
         position: relative;
         display: grid;
-        gap: 16px;
-        margin: 12px 0 20px;
-        padding-left: 34px;
+        gap: 22px;
+        max-height: min(56vh, 520px);
+        margin: 18px 0 20px;
+        padding-left: 54px;
+        overflow-y: auto;
+        cursor: grab;
+        scrollbar-width: none;
+        touch-action: pan-y;
+        user-select: none;
+      }
+
+      .test-timeline.is-dragging {
+        cursor: grabbing;
+      }
+
+      .test-timeline::-webkit-scrollbar {
+        display: none;
       }
 
       .test-timeline::before {
         content: "";
         position: absolute;
-        left: 10px;
-        top: 7px;
-        bottom: 7px;
-        width: 4px;
-        background: rgba(227, 237, 251, 0.9);
+        left: 28px;
+        top: 28px;
+        bottom: 24px;
+        width: 5px;
+        border-radius: 999px;
+        background: linear-gradient(180deg, rgba(235, 246, 255, 0.98), rgba(205, 229, 247, 0.88));
+        box-shadow: 0 0 12px rgba(163, 224, 255, 0.18);
+        transform: translateX(-50%);
       }
 
       .test-timeline-item {
         position: relative;
         display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-columns: 82px minmax(0, 1fr);
         gap: 14px;
+        align-items: start;
       }
 
       .test-timeline-item::before {
         content: "";
         position: absolute;
-        left: -30px;
-        top: 7px;
-        width: 14px;
-        height: 14px;
+        left: -35px;
+        top: 6px;
+        width: 18px;
+        height: 18px;
+        box-sizing: border-box;
+        border: 6px solid rgba(226, 239, 251, 0.96);
         border-radius: 999px;
-        background: #737b83;
-        box-shadow: 0 0 0 7px rgba(227, 237, 251, 0.9);
+        background: #0b3447;
+        box-shadow: 0 2px 10px rgba(2, 16, 28, 0.28), 0 0 0 1px rgba(255, 255, 255, 0.12);
+      }
+
+      .test-timeline-item.is-latest::before {
+        border-color: rgba(226, 239, 251, 0.98);
+        background: #5fe276;
+        box-shadow: 0 2px 12px rgba(2, 16, 28, 0.26), 0 0 18px rgba(95, 226, 118, 0.34);
       }
 
       .test-timeline-item b,
@@ -2424,10 +2556,171 @@
         font-weight: 900;
       }
 
+      .test-timeline-time {
+        display: grid;
+        gap: 2px;
+        justify-items: center;
+        text-align: center;
+        white-space: nowrap;
+        padding-top: 0;
+      }
+
+      .test-timeline-time small {
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 800;
+      }
+
       .test-timeline-item p {
         margin: 3px 0 0;
         color: rgba(255, 255, 255, 0.76);
       }
+
+      .test-timeline-detail {
+        display: grid;
+        gap: 7px;
+        width: min(100%, 520px);
+        margin-top: 8px;
+        border: 1px solid rgba(210, 231, 255, 0.16);
+        border-radius: 12px;
+        background: rgba(239, 245, 255, 0.1);
+        padding: 12px 14px;
+      }
+
+      .test-timeline-detail div {
+        display: grid;
+        grid-template-columns: minmax(88px, 140px) minmax(0, 1fr);
+        gap: 12px;
+      }
+
+      .test-timeline-detail b {
+        color: rgba(210, 231, 255, 0.72);
+        font-size: 12px;
+        text-transform: uppercase;
+      }
+
+      .test-timeline-detail span {
+        color: rgba(255, 255, 255, 0.88);
+        overflow-wrap: anywhere;
+      }
+
+
+      .test-choice-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(240px, 1fr));
+        gap: clamp(18px, 5vw, 80px);
+        justify-content: center;
+        margin: 28px auto 10px;
+        max-width: 900px;
+      }
+
+      .test-choice-card {
+        min-height: 230px;
+        border: 1px solid rgba(106, 225, 255, 0.52);
+        border-radius: 24px;
+        background:
+          radial-gradient(circle at 50% 20%, rgba(102, 218, 255, 0.22), transparent 12rem),
+          linear-gradient(155deg, rgba(229, 247, 255, 0.12), rgba(10, 58, 75, 0.32));
+        color: #eaf9ff;
+        display: grid;
+        place-items: center;
+        gap: 12px;
+        padding: 28px;
+        font-size: 22px;
+        font-weight: 900;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        cursor: pointer;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 18px 46px rgba(4, 20, 34, 0.24);
+      }
+
+      .test-choice-card:hover {
+        border-color: rgba(137, 239, 255, 0.88);
+        background:
+          radial-gradient(circle at 50% 20%, rgba(102, 218, 255, 0.32), transparent 12rem),
+          linear-gradient(155deg, rgba(229, 247, 255, 0.16), rgba(18, 88, 105, 0.42));
+        transform: translateY(-2px);
+      }
+
+
+      .test-choice-icon {
+        display: inline-grid;
+        place-items: center;
+        width: 150px;
+        height: 96px;
+        line-height: 1;
+        font-size: clamp(64px, 6vw, 86px);
+        text-transform: none;
+        filter: drop-shadow(0 12px 20px rgba(175, 246, 255, 0.18));
+      }
+
+      .test-choice-card svg {
+        width: 178px;
+        height: 112px;
+        filter: drop-shadow(0 10px 20px rgba(175, 246, 255, 0.12));
+      }
+
+      .test-choice-card path,
+      .test-choice-card circle,
+      .test-choice-card polygon {
+        fill: #dff7ff;
+      }
+
+      .test-choice-card rect {
+        fill: rgba(223, 247, 255, 0.18);
+      }
+
+      .test-choice-card line {
+        stroke: #dff7ff;
+        stroke-width: 8;
+        stroke-linecap: round;
+      }
+
+      .test-choice-card .test-plane-cut {
+        fill: #22667c;
+      }
+
+      .test-choice-card[data-test-create-mode="inbound"] {
+        color: #baf6ff;
+      }
+
+      .test-choice-card[data-test-create-mode="outbound"] {
+        color: #c8ffd7;
+      }
+
+      .test-field[hidden],
+      [data-test-rush-field][hidden] {
+        display: none !important;
+      }
+
+      .test-remove-entry {
+        width: 34px;
+        height: 34px;
+        display: inline-grid;
+        place-items: center;
+        margin-left: 10px;
+        border: 1px solid rgba(255, 118, 112, 0.82);
+        border-radius: 999px;
+        background: linear-gradient(145deg, rgba(255, 118, 112, 0.22), rgba(100, 22, 28, 0.18));
+        color: #ffd7d4;
+        font-size: 20px;
+        font-weight: 950;
+        line-height: 1;
+        cursor: pointer;
+      }
+
+      .test-remove-entry:hover {
+        border-color: rgba(255, 164, 160, 0.95);
+        background: rgba(255, 98, 92, 0.28);
+      }
+
+      .test-entry-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
 
       .status-ok { color: var(--green); }
       .status-warn { color: #ffd166; }
@@ -2843,7 +3136,8 @@
 
         .test-search-form,
         .test-form-grid,
-        .test-data-grid {
+        .test-data-grid,
+        .test-choice-grid {
           grid-template-columns: 1fr;
         }
 
@@ -2997,18 +3291,18 @@
           <div class="report-hero">
             <div>
               <h2>Test</h2>
-              <p class="panel-muted">Search by Delta bag tag. Format must be DL123456.</p>
+              <p class="panel-muted">Format must be MU123456.</p>
             </div>
             <button class="report-close" id="test-close" type="button">Close</button>
           </div>
           <form class="test-search-form" id="test-search-form">
             <label class="test-search-field">
               <span>Bag tag number</span>
-              <input id="test-bag-search" type="search" placeholder="DL123456" autocomplete="off" maxlength="8" pattern="DL[0-9]{6}" required />
+              <input id="test-bag-search" type="search" placeholder="MU123456" autocomplete="off" maxlength="8" pattern="[A-Z]{2}[0-9]{6}" required />
             </label>
             <button class="report-run" type="submit">Search</button>
           </form>
-          <div id="test-output" class="test-output"><p class="panel-muted">Enter a bag tag number to search the Google Sheet.</p></div>
+          <div id="test-output" class="test-output"><p class="panel-muted test-search-hint">Enter a bag tag number to search</p></div>
         </section>
 
         <section class="details-panel" aria-label="Flight details" hidden>
@@ -4338,7 +4632,7 @@
         closeLoginMenu();
         closeFlightMenu();
         closeMobilePanel();
-        if (testOutput) testOutput.innerHTML = `<p class="panel-muted">Enter a bag tag number to search the Google Sheet.</p>`;
+        if (testOutput) testOutput.innerHTML = `<p class="panel-muted test-search-hint">Enter a bag tag number to search</p>`;
         testBagSearchInput?.focus();
         testPage?.scrollTo({ top: 0, left: 0, behavior: "auto" });
       }
@@ -4407,39 +4701,83 @@
       }
 
       function isValidTestBagTag(value) {
-        return /^DL\d{6}$/.test(normalizeTestBagTag(value));
+        return /^[A-Z]{2}\d{6}$/.test(normalizeTestBagTag(value));
       }
 
       function currentUserName() {
         return reviewerDisplayName(currentUser?.textContent || auth?.currentUser?.email || "MUFC");
       }
 
-      function testDetailLine(details = {}) {
-        return Object.entries(details || {})
-          .filter(([, value]) => String(value || "").trim())
-          .map(([key, value]) => `${key}: ${value}`)
-          .join(" / ");
+      function titleCaseTestLabel(value) {
+        return String(value || "")
+          .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+          .replace(/\b\w/g, (chr) => chr.toUpperCase());
+      }
+
+      function testDetailRows(details = {}) {
+        const rows = Object.entries(details || {}).filter(([, value]) => String(value || "").trim());
+        if (!rows.length) return "";
+        return `<div class="test-timeline-detail">${rows.map(([key, value]) => `<div><b>${escapeHtml(titleCaseTestLabel(key))}</b><span>${escapeHtml(value)}</span></div>`).join("")}</div>`;
+      }
+
+      function capitalizeTestType(value) {
+        return String(value || "")
+          .replace(/\b\w/g, (chr) => chr.toUpperCase());
       }
 
       function renderTestTimeline(history = []) {
         const rows = [...(history || [])].reverse();
         if (!rows.length) return `<p class="panel-muted">No updates yet.</p>`;
-        return `<div class="test-timeline">${rows.map((item) => {
-          const time = item.at ? new Date(item.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
-          const date = item.at ? new Date(item.at).toLocaleDateString() : "";
-          const details = testDetailLine(item.details || {});
-          return `<div class="test-timeline-item"><div><b>${escapeHtml(item.type || "Update")}${item.by ? ` by ${escapeHtml(item.by)}` : ""}</b><p>${escapeHtml(details || date || "Saved")}</p></div><span class="test-timeline-time">${escapeHtml(time || date)}</span></div>`;
+        return `<div class="test-timeline">${rows.map((item, index) => {
+          const timestamp = item.at ? new Date(item.at) : null;
+          const time = timestamp ? timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
+          const date = timestamp ? timestamp.toLocaleDateString() : "";
+          const detailRows = testDetailRows(item.details || {});
+          const rawType = String(item.type || "update").trim();
+          const displayType = capitalizeTestType(/created/i.test(rawType) || /^update\b/i.test(rawType) ? rawType : `Update ${rawType}`);
+          return `<div class="test-timeline-item ${index === 0 ? "is-latest" : ""}"><span class="test-timeline-time"><strong>${escapeHtml(time || date)}</strong>${time && date ? `<small>${escapeHtml(date)}</small>` : ""}</span><div><b>${escapeHtml(displayType)}${item.by ? ` by ${escapeHtml(item.by)}` : ""}</b>${detailRows || `<p>${escapeHtml(date || "Saved")}</p>`}</div></div>`;
         }).join("")}</div>`;
       }
 
+      function beginTestTimelineDrag(event) {
+        const timeline = event.currentTarget;
+        timeline.classList.add("is-dragging");
+        timeline.dataset.dragStartY = String(event.clientY);
+        timeline.dataset.dragStartScrollTop = String(timeline.scrollTop);
+        timeline.setPointerCapture?.(event.pointerId);
+      }
+
+      function moveTestTimelineDrag(event) {
+        const timeline = event.currentTarget;
+        if (!timeline.classList.contains("is-dragging")) return;
+        const startY = Number(timeline.dataset.dragStartY || event.clientY);
+        const startScrollTop = Number(timeline.dataset.dragStartScrollTop || timeline.scrollTop);
+        timeline.scrollTop = startScrollTop - (event.clientY - startY);
+      }
+
+      function endTestTimelineDrag(event) {
+        const timeline = event.currentTarget;
+        timeline.classList.remove("is-dragging");
+        timeline.releasePointerCapture?.(event.pointerId);
+      }
+
+      function wireTestTimelineDrag() {
+        const timeline = testOutput?.querySelector(".test-timeline");
+        if (!timeline || timeline.dataset.dragReady === "true") return;
+        timeline.dataset.dragReady = "true";
+        timeline.addEventListener("pointerdown", beginTestTimelineDrag);
+        timeline.addEventListener("pointermove", moveTestTimelineDrag);
+        timeline.addEventListener("pointerup", endTestTimelineDrag);
+        timeline.addEventListener("pointercancel", endTestTimelineDrag);
+      }
+
       function testDataGrid(record) {
+        const alwaysShow = new Set(["Flight", "Date"]);
         const fields = [
-          ["Direction", record.direction],
           ["Flight", record.flight],
           ["Date", record.date],
           ["Bag Type", record.bagType],
           ["Location", record.location],
-          ["Status", record.status],
           ["Comment", record.comment],
           ["Rush Tag", record.rushTagNumber],
           ["Rush To", record.rushToWhere],
@@ -4449,7 +4787,7 @@
           ["Shipping Fee", record.shippingFee],
           ["Submitted By", record.submittedBy],
           ["Last Updated By", record.lastUpdatedBy],
-        ];
+        ].filter(([label, value]) => alwaysShow.has(label) || String(value || "").trim());
         return `<div class="test-data-grid">${fields.map(([label, value]) => `<div class="test-data-item"><b>${escapeHtml(label)}</b><span>${escapeHtml(value || "-")}</span></div>`).join("")}</div>`;
       }
 
@@ -4462,6 +4800,7 @@
               field("Rush To where?", "rushToWhere", record.rushToWhere || "", "required"),
               field("AKE number?", "akeNumber", record.akeNumber || "", "required"),
               field("Option: world tracer file #", "worldTracerFileNumber", record.worldTracerFileNumber || ""),
+              `<label class="test-field is-wide"><span>Comment</span><textarea name="comment">${escapeHtml(record.comment || "")}</textarea></label>`,
             ].join("")
           : activeMode === "location"
             ? field("Current location", "location", record.location || "", "required")
@@ -4475,54 +4814,114 @@
             <button type="button" data-test-update-mode="location" class="${activeMode === "location" ? "is-active" : ""}">Bag location update</button>
             <button type="button" data-test-update-mode="shipping" class="${activeMode === "shipping" ? "is-active" : ""}">Shipping</button>
           </div>
-          <div class="test-form-grid">${fields}<div class="test-form-actions"><button class="test-submit" type="submit">Update</button><span class="panel-muted">${escapeHtml(message)}</span></div></div>
+          <div class="test-form-grid">${fields}<div class="test-form-actions"><button class="test-submit" type="submit">Update</button><button class="test-back-button" type="button" data-test-close-update>Close</button><span class="panel-muted">${escapeHtml(message)}</span></div></div>
         </form>`;
       }
 
-      function renderTestRecord(record, mode = "rush", message = "") {
+      function renderTestRecord(record, mode = "", message = "") {
         if (!testOutput || !record) return;
         testOutput._record = record;
+        const showUpdateForm = ["rush", "location", "shipping"].includes(mode);
         testOutput.innerHTML = `<article class="test-report-card">
           <div class="test-report-head">
             <div class="test-report-title"><strong>${escapeHtml(record.bagTag)}</strong><span class="panel-muted">${escapeHtml(record.direction || "Baggage report")}</span></div>
-            <span class="test-status-pill">${escapeHtml(record.status || "Found")}</span>
+            <span class="test-status-pill">${escapeHtml(record.status || record.direction || "Record")}</span>
           </div>
+          ${message ? `<p class="panel-muted status-ok">${escapeHtml(message)}</p>` : ""}
           ${testDataGrid(record)}
-          <h3>History</h3>
+          <h3>Details</h3>
           ${renderTestTimeline(record.history)}
-          <h3>Update</h3>
-          ${renderTestUpdateForm(record, mode, message)}
+          ${showUpdateForm ? `<div class="test-report-head test-update-head"><h3>Update</h3></div>${renderTestUpdateForm(record, mode)}` : `<div class="test-form-actions"><button class="test-add-button" type="button" data-test-show-update>Update</button></div>`}
+        </article>`;
+        wireTestTimelineDrag();
+      }
+
+      function testPlaneIcon(direction) {
+        return `<span class="test-choice-icon" aria-hidden="true">${direction === "inbound" ? "🛬" : "🛫"}</span>`;
+      }
+
+      function renderTestAddChoice(bagTag) {
+        if (!testOutput) return;
+        testOutput._record = null;
+        testOutput.innerHTML = `<article class="test-report-card">
+          <div class="test-report-head"><div class="test-report-title"><strong>${escapeHtml(bagTag)}</strong><span class="panel-muted">No matching bag found.</span></div></div>
+          <div class="test-choice-grid" aria-label="Create type">
+            <button class="test-choice-card" type="button" data-test-create-mode="inbound">${testPlaneIcon("inbound")}<span>Inbound</span></button>
+            <button class="test-choice-card" type="button" data-test-create-mode="outbound">${testPlaneIcon("outbound")}<span>Outbound</span></button>
+          </div>
         </article>`;
       }
 
-      function renderTestAddForm(bagTag, mode = "inbound", message = "") {
+      function renderTestBagEntry(mode, entry = {}, index = 0) {
         const today = ymdFromDate(new Date());
-        const activeMode = mode === "outbound" ? "outbound" : "inbound";
-        if (testOutput) testOutput._record = null;
-        const inboundFields = `<label class="test-field"><span>Bag tag number</span><input name="bagTag" value="${escapeHtml(bagTag)}" pattern="DL[0-9]{6}" required /></label>
-          <label class="test-field"><span>Inbound flight number</span><select name="flight" required><option value="MU583">MU583</option></select></label>
-          <label class="test-field"><span>Date</span><input name="date" type="date" value="${escapeHtml(today)}" required /></label>
-          <label class="test-field"><span>Bag type</span><select name="bagType" required><option>Passenger bag</option><option>Inbound rush</option><option>Co-mail</option></select></label>
-          <label class="test-field"><span>Current location</span><select name="location" required><option>Office</option><option>CBS</option></select></label>`;
-        const outboundFields = `<label class="test-field"><span>Bag tag number</span><input name="bagTag" value="${escapeHtml(bagTag)}" pattern="DL[0-9]{6}" required /></label>
-          <label class="test-field"><span>Outbound flight number</span><select name="flight" required><option value="MU586">MU586</option></select></label>
-          <label class="test-field"><span>Date</span><input name="date" type="date" value="${escapeHtml(today)}" required /></label>
-          <label class="test-field"><span>Status</span><select name="status" data-test-outbound-status required><option value="Not load bags">Not load bags</option><option value="Inbound rush">Inbound rush</option></select></label>
-          <label class="test-field is-wide" data-test-not-load-field><span>Comment</span><textarea name="comment"></textarea></label>
-          <label class="test-field" data-test-rush-field hidden><span>Rush tag number</span><input name="rushTagNumber" /></label>
-          <label class="test-field" data-test-rush-field hidden><span>Rush To where?</span><input name="rushToWhere" /></label>
-          <label class="test-field" data-test-rush-field hidden><span>AKE number?</span><input name="akeNumber" /></label>
-          <label class="test-field" data-test-rush-field hidden><span>Option: world tracer file #</span><input name="worldTracerFileNumber" /></label>`;
-        testOutput.innerHTML = `<article class="test-report-card">
-          <div class="test-report-head"><div class="test-report-title"><strong>${escapeHtml(bagTag)}</strong><span class="panel-muted">No matching bag found.</span></div><button class="test-add-button" type="submit" form="test-create-form">Add</button></div>
-          <form class="test-create-form" id="test-create-form" data-test-create-form data-create-mode="${escapeHtml(activeMode)}">
-            <div class="test-mode-actions" aria-label="Create type">
-              <button type="button" data-test-create-mode="inbound" class="${activeMode === "inbound" ? "is-active" : ""}">Inbound</button>
-              <button type="button" data-test-create-mode="outbound" class="${activeMode === "outbound" ? "is-active" : ""}">Outbound</button>
+        const selected = (value, target) => value === target ? " selected" : "";
+        const bagTagInput = `<label class="test-field"><span>Bag tag number</span><input name="bagTag" value="${escapeHtml(entry.bagTag || "")}" maxlength="8" pattern="[A-Z]{2}[0-9]{6}" title="Use MU123456 format" autocomplete="off" required /></label>`;
+        if (mode === "outbound") {
+          const status = entry.status || "Not load bags";
+          return `<fieldset class="test-create-entry" data-test-bag-entry>
+            <legend><span>Outbound bag</span>${index > 0 ? `<button class="test-remove-entry" type="button" data-test-remove-entry="${index}" aria-label="Remove bag">×</button>` : ""}</legend>
+            <div class="test-form-grid">${bagTagInput}
+              <label class="test-field"><span>Outbound flight number</span><input name="flight" value="${escapeHtml(entry.flight || "MU586")}" required /></label>
+              <label class="test-field"><span>Date</span><input name="date" type="date" value="${escapeHtml(entry.date || today)}" required /></label>
+              <label class="test-field"><span>Status</span><select name="status" data-test-outbound-status required><option value="Not load bags"${selected(status, "Not load bags")}>Not load bags</option><option value="Outbound rush"${selected(status, "Outbound rush")}>Outbound rush</option></select></label>
+              <label class="test-field" data-test-rush-field hidden><span>Rush tag number</span><input name="rushTagNumber" value="${escapeHtml(entry.rushTagNumber || "")}" /></label>
+              <label class="test-field" data-test-rush-field hidden><span>Rush To where?</span><input name="rushToWhere" value="${escapeHtml(entry.rushToWhere || "")}" /></label>
+              <label class="test-field" data-test-rush-field hidden><span>AKE number?</span><input name="akeNumber" value="${escapeHtml(entry.akeNumber || "")}" /></label>
+              <label class="test-field" data-test-rush-field hidden><span>Option: world tracer file #</span><input name="worldTracerFileNumber" value="${escapeHtml(entry.worldTracerFileNumber || "")}" /></label>
+              <label class="test-field is-wide"><span>Comment</span><input name="comment" value="${escapeHtml(entry.comment || "")}" list="test-outbound-comments" /></label>
             </div>
-            <div class="test-form-grid">${activeMode === "inbound" ? inboundFields : outboundFields}<div class="test-form-actions"><button class="test-submit" type="submit">Submit</button><span class="panel-muted">${escapeHtml(message)}</span></div></div>
+          </fieldset>`;
+        }
+        const bagType = entry.bagType || "Passenger bag";
+        const location = entry.location || "Office";
+        return `<fieldset class="test-create-entry" data-test-bag-entry>
+          <legend><span>Inbound bag</span>${index > 0 ? `<button class="test-remove-entry" type="button" data-test-remove-entry="${index}" aria-label="Remove bag">×</button>` : ""}</legend>
+          <div class="test-form-grid">${bagTagInput}
+            <label class="test-field"><span>Inbound flight number</span><input name="flight" value="${escapeHtml(entry.flight || "MU583")}" required /></label>
+            <label class="test-field"><span>Date</span><input name="date" type="date" value="${escapeHtml(entry.date || today)}" required /></label>
+            <label class="test-field"><span>Bag type</span><select name="bagType" required><option${selected(bagType, "Passenger bag")}>Passenger bag</option><option${selected(bagType, "Inbound rush")}>Inbound rush</option><option${selected(bagType, "Co-mail")}>Co-mail</option></select></label>
+            <label class="test-field"><span>Current location</span><input name="location" value="${escapeHtml(location)}" list="test-location-options" required /></label>
+          </div>
+        </fieldset>`;
+      }
+
+      function collectCreateEntries(form) {
+        return [...form.querySelectorAll("[data-test-bag-entry]")].map((entry) => ({
+          bagTag: normalizeTestBagTag(formValue(entry, "bagTag")),
+          flight: formValue(entry, "flight"),
+          date: formValue(entry, "date"),
+          bagType: formValue(entry, "bagType"),
+          location: formValue(entry, "location"),
+          status: formValue(entry, "status"),
+          comment: formValue(entry, "comment"),
+          rushTagNumber: formValue(entry, "rushTagNumber"),
+          rushToWhere: formValue(entry, "rushToWhere"),
+          akeNumber: formValue(entry, "akeNumber"),
+          worldTracerFileNumber: formValue(entry, "worldTracerFileNumber"),
+        }));
+      }
+
+      function renderTestAddForm(bagTag, mode = "inbound", entries = null, message = "") {
+        const activeMode = mode === "outbound" ? "outbound" : "inbound";
+        const bags = entries?.length ? entries : [{ bagTag }];
+        if (testOutput) testOutput._record = null;
+        testOutput.innerHTML = `<article class="test-report-card">
+          <div class="test-report-head"><div class="test-report-title"><strong>${escapeHtml(bagTag || "New bags")}</strong><span class="panel-muted">No matching bag found.</span></div><div class="test-form-actions"><button class="test-back-button" type="button" data-test-back-choice>Back</button><button class="test-add-button" type="button" data-test-add-row>Add</button></div></div>
+          <datalist id="test-location-options"><option value="Office"></option><option value="CBS"></option></datalist>
+          <datalist id="test-outbound-comments">
+            <option value="Expected"></option>
+            <option value="Not Received"></option>
+            <option value="Force loaded"></option>
+            <option value="Gate Bag"></option>
+            <option value="Bag Delete and Add back"></option>
+            <option value="Passenger Showed Up, but baggage not received"></option>
+          </datalist>
+          <form class="test-create-form" id="test-create-form" data-test-create-form data-create-mode="${escapeHtml(activeMode)}">
+            <div data-test-entry-list>${bags.map((entry, index) => renderTestBagEntry(activeMode, entry, index)).join("")}</div>
+            <div class="test-form-actions"><button class="test-submit" type="submit">Submit</button><span class="panel-muted">${escapeHtml(message)}</span></div>
           </form>
         </article>`;
+        testOutput.querySelectorAll("[data-test-bag-entry]").forEach((entry) => updateOutboundFields(entry));
       }
 
       async function searchTestBag(event) {
@@ -4530,7 +4929,7 @@
         if (!testOutput) return;
         const bagTag = normalizeTestBagTag(testBagSearchInput?.value);
         if (!isValidTestBagTag(bagTag)) {
-          testOutput.innerHTML = `<p class="panel-muted status-fail">Bag tag must match DL123456 format.</p>`;
+          testOutput.innerHTML = `<p class="panel-muted status-fail">Bag tag must match MU123456 format.</p>`;
           return;
         }
         if (testBagSearchInput) testBagSearchInput.value = bagTag;
@@ -4538,51 +4937,55 @@
         try {
           const data = await apiJson(`/test-baggage/${encodeURIComponent(bagTag)}`);
           if (data?.found && data.record) renderTestRecord(data.record);
-          else renderTestAddForm(bagTag);
+          else renderTestAddChoice(bagTag);
         } catch (error) {
           testOutput.innerHTML = `<p class="panel-muted status-fail">${escapeHtml(error?.message || "Baggage lookup failed.")}</p>`;
         }
       }
 
-      function updateOutboundFields(form) {
-        const status = form?.querySelector("[data-test-outbound-status]")?.value || "";
-        const rushMode = status === "Inbound rush";
-        form?.querySelectorAll("[data-test-rush-field]").forEach((field) => { field.hidden = !rushMode; });
-        form?.querySelectorAll("[data-test-rush-field] input").forEach((input) => { input.required = rushMode && input.name !== "worldTracerFileNumber"; });
-        const notLoad = form?.querySelector("[data-test-not-load-field]");
-        if (notLoad) notLoad.hidden = rushMode;
+      function updateOutboundFields(scope) {
+        const status = scope?.querySelector("[data-test-outbound-status]")?.value || "";
+        const rushMode = status === "Outbound rush";
+        scope?.querySelectorAll("[data-test-rush-field]").forEach((field) => { field.hidden = !rushMode; });
+        scope?.querySelectorAll("[data-test-rush-field] input").forEach((input) => { input.required = rushMode && input.name !== "worldTracerFileNumber"; });
       }
 
       function formValue(form, name) {
-        return form?.elements?.[name]?.value || "";
+        return form?.elements?.[name]?.value || form?.querySelector?.(`[name="${name}"]`)?.value || "";
       }
 
       async function submitTestCreate(form) {
         const mode = form.dataset.createMode === "outbound" ? "outbound" : "inbound";
-        const bagTag = normalizeTestBagTag(formValue(form, "bagTag"));
-        if (!isValidTestBagTag(bagTag)) throw new Error("Bag tag must match DL123456 format.");
-        const status = mode === "outbound" ? formValue(form, "status") : "";
-        const payload = {
-          direction: mode,
-          bagTag,
-          flight: formValue(form, "flight"),
-          date: formValue(form, "date"),
-          bagType: mode === "inbound" ? formValue(form, "bagType") : "",
-          location: mode === "inbound" ? formValue(form, "location") : "",
-          status,
-          comment: status === "Not load bags" ? formValue(form, "comment") : "",
-          rushTagNumber: status === "Inbound rush" ? formValue(form, "rushTagNumber") : "",
-          rushToWhere: status === "Inbound rush" ? formValue(form, "rushToWhere") : "",
-          akeNumber: status === "Inbound rush" ? formValue(form, "akeNumber") : "",
-          worldTracerFileNumber: status === "Inbound rush" ? formValue(form, "worldTracerFileNumber") : "",
-          submittedBy: currentUserName(),
-        };
-        const data = await apiJson("/test-baggage", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        if (data?.record) renderTestRecord(data.record, "rush", data.created ? "Saved." : "Bag already exists.");
+        const entries = collectCreateEntries(form);
+        if (!entries.length) throw new Error("Please add at least one bag.");
+        const saved = [];
+        for (const entry of entries) {
+          const bagTag = normalizeTestBagTag(entry.bagTag);
+          if (!isValidTestBagTag(bagTag)) throw new Error("Each bag tag must match MU123456 format.");
+          const isRush = mode === "outbound" && entry.status === "Outbound rush";
+          const payload = {
+            direction: mode,
+            bagTag,
+            flight: entry.flight,
+            date: entry.date,
+            bagType: mode === "inbound" ? entry.bagType : "",
+            location: mode === "inbound" ? entry.location : "",
+            status: mode === "outbound" ? entry.status : "",
+            comment: mode === "outbound" ? entry.comment : "",
+            rushTagNumber: isRush ? entry.rushTagNumber : "",
+            rushToWhere: isRush ? entry.rushToWhere : "",
+            akeNumber: isRush ? entry.akeNumber : "",
+            worldTracerFileNumber: isRush ? entry.worldTracerFileNumber : "",
+            submittedBy: currentUserName(),
+          };
+          const data = await apiJson("/test-baggage", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          if (data?.record) saved.push(data.record);
+        }
+        if (saved.length) renderTestRecord(saved[saved.length - 1], "", `Saved ${saved.length} bag${saved.length === 1 ? "" : "s"}.`);
       }
 
       async function submitTestUpdate(form) {
@@ -4595,6 +4998,7 @@
           rushToWhere: formValue(form, "rushToWhere"),
           akeNumber: formValue(form, "akeNumber"),
           worldTracerFileNumber: formValue(form, "worldTracerFileNumber"),
+          comment: formValue(form, "comment"),
           location: formValue(form, "location"),
           trackingNumber: formValue(form, "trackingNumber"),
           shippingFee: formValue(form, "shippingFee"),
@@ -4604,7 +5008,7 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
-        if (data?.record) renderTestRecord(data.record, mode, "Updated.");
+        if (data?.record) renderTestRecord(data.record, "", "Updated.");
       }
 
       function isoToSyDate(value) {
@@ -5145,8 +5549,43 @@
       testOutput?.addEventListener("click", (event) => {
         const createModeButton = event.target.closest("[data-test-create-mode]");
         if (createModeButton) {
-          const currentTag = normalizeTestBagTag(testOutput.querySelector("[data-test-create-form] input[name='bagTag']")?.value || testBagSearchInput?.value);
-          renderTestAddForm(currentTag, createModeButton.dataset.testCreateMode);
+          const form = testOutput.querySelector("[data-test-create-form]");
+          const entries = form ? collectCreateEntries(form) : [{ bagTag: normalizeTestBagTag(testBagSearchInput?.value) }];
+          renderTestAddForm(entries[0]?.bagTag || normalizeTestBagTag(testBagSearchInput?.value), createModeButton.dataset.testCreateMode, entries);
+          return;
+        }
+        const backChoiceButton = event.target.closest("[data-test-back-choice]");
+        if (backChoiceButton) {
+          renderTestAddChoice(normalizeTestBagTag(testBagSearchInput?.value));
+          return;
+        }
+        const closeUpdateButton = event.target.closest("[data-test-close-update]");
+        if (closeUpdateButton) {
+          const record = testOutput._record;
+          if (record) renderTestRecord(record);
+          return;
+        }
+        const removeEntryButton = event.target.closest("[data-test-remove-entry]");
+        if (removeEntryButton) {
+          const form = testOutput.querySelector("[data-test-create-form]");
+          if (!form) return;
+          const index = Number(removeEntryButton.dataset.testRemoveEntry);
+          const entries = collectCreateEntries(form).filter((_, entryIndex) => entryIndex !== index);
+          renderTestAddForm(entries[0]?.bagTag || normalizeTestBagTag(testBagSearchInput?.value), form.dataset.createMode, entries);
+          return;
+        }
+        const addRowButton = event.target.closest("[data-test-add-row]");
+        if (addRowButton) {
+          const form = testOutput.querySelector("[data-test-create-form]");
+          if (!form) return;
+          const entries = [...collectCreateEntries(form), { bagTag: "" }];
+          renderTestAddForm(entries[0]?.bagTag || normalizeTestBagTag(testBagSearchInput?.value), form.dataset.createMode, entries);
+          return;
+        }
+        const showUpdateButton = event.target.closest("[data-test-show-update]");
+        if (showUpdateButton) {
+          const record = testOutput._record;
+          if (record) renderTestRecord(record, "rush");
           return;
         }
         const updateModeButton = event.target.closest("[data-test-update-mode]");
@@ -5159,7 +5598,7 @@
       });
       testOutput?.addEventListener("change", (event) => {
         const status = event.target.closest("[data-test-outbound-status]");
-        if (status) updateOutboundFields(status.closest("form"));
+        if (status) updateOutboundFields(status.closest("[data-test-bag-entry]"));
       });
       testOutput?.addEventListener("submit", async (event) => {
         const createForm = event.target.closest("[data-test-create-form]");
