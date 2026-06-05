@@ -2525,6 +2525,16 @@
         background: #717d87;
       }
 
+      .test-timeline-item.is-latest::before {
+        animation: latestTimelinePulse 1.35s ease-in-out infinite;
+        background: #5fe276;
+      }
+
+      @keyframes latestTimelinePulse {
+        0%, 100% { box-shadow: 0 0 0 7px rgba(227, 237, 251, 0.9), 0 0 0 rgba(95, 226, 118, 0); }
+        50% { box-shadow: 0 0 0 7px rgba(227, 237, 251, 0.95), 0 0 18px rgba(95, 226, 118, 0.85); }
+      }
+
       .test-timeline-item b,
       .test-timeline-time {
         color: white;
@@ -2548,6 +2558,35 @@
         margin: 3px 0 0;
         color: rgba(255, 255, 255, 0.76);
       }
+
+      .test-timeline-detail {
+        display: grid;
+        gap: 7px;
+        width: min(100%, 520px);
+        margin-top: 8px;
+        border: 1px solid rgba(210, 231, 255, 0.16);
+        border-radius: 12px;
+        background: rgba(239, 245, 255, 0.1);
+        padding: 12px 14px;
+      }
+
+      .test-timeline-detail div {
+        display: grid;
+        grid-template-columns: minmax(88px, 140px) minmax(0, 1fr);
+        gap: 12px;
+      }
+
+      .test-timeline-detail b {
+        color: rgba(210, 231, 255, 0.72);
+        font-size: 12px;
+        text-transform: uppercase;
+      }
+
+      .test-timeline-detail span {
+        color: rgba(255, 255, 255, 0.88);
+        overflow-wrap: anywhere;
+      }
+
 
       .test-choice-grid {
         display: grid;
@@ -2593,7 +2632,8 @@
       }
 
       .test-choice-card path,
-      .test-choice-card circle {
+      .test-choice-card circle,
+      .test-choice-card polygon {
         fill: #dff7ff;
       }
 
@@ -4635,24 +4675,34 @@
         return reviewerDisplayName(currentUser?.textContent || auth?.currentUser?.email || "MUFC");
       }
 
-      function testDetailLine(details = {}) {
-        return Object.entries(details || {})
-          .filter(([, value]) => String(value || "").trim())
-          .map(([key, value]) => `${key}: ${value}`)
-          .join(" / ");
+      function titleCaseTestLabel(value) {
+        return String(value || "")
+          .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+          .replace(/\b\w/g, (chr) => chr.toUpperCase());
+      }
+
+      function testDetailRows(details = {}) {
+        const rows = Object.entries(details || {}).filter(([, value]) => String(value || "").trim());
+        if (!rows.length) return "";
+        return `<div class="test-timeline-detail">${rows.map(([key, value]) => `<div><b>${escapeHtml(titleCaseTestLabel(key))}</b><span>${escapeHtml(value)}</span></div>`).join("")}</div>`;
+      }
+
+      function capitalizeTestType(value) {
+        return String(value || "")
+          .replace(/\b\w/g, (chr) => chr.toUpperCase());
       }
 
       function renderTestTimeline(history = []) {
         const rows = [...(history || [])].reverse();
         if (!rows.length) return `<p class="panel-muted">No updates yet.</p>`;
-        return `<div class="test-timeline">${rows.map((item) => {
+        return `<div class="test-timeline">${rows.map((item, index) => {
           const timestamp = item.at ? new Date(item.at) : null;
           const time = timestamp ? timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
           const date = timestamp ? timestamp.toLocaleDateString() : "";
-          const details = testDetailLine(item.details || {});
+          const detailRows = testDetailRows(item.details || {});
           const rawType = String(item.type || "update").trim();
-          const displayType = /created/i.test(rawType) || /^update\b/i.test(rawType) ? rawType : `update ${rawType}`;
-          return `<div class="test-timeline-item"><div><b>${escapeHtml(displayType)}${item.by ? ` by ${escapeHtml(item.by)}` : ""}</b><p>${escapeHtml(details || date || "Saved")}</p></div><span class="test-timeline-time"><strong>${escapeHtml(time || date)}</strong>${time && date ? `<small>${escapeHtml(date)}</small>` : ""}</span></div>`;
+          const displayType = capitalizeTestType(/created/i.test(rawType) || /^update\b/i.test(rawType) ? rawType : `Update ${rawType}`);
+          return `<div class="test-timeline-item ${index === 0 ? "is-latest" : ""}"><div><b>${escapeHtml(displayType)}${item.by ? ` by ${escapeHtml(item.by)}` : ""}</b>${detailRows || `<p>${escapeHtml(date || "Saved")}</p>`}</div><span class="test-timeline-time"><strong>${escapeHtml(time || date)}</strong>${time && date ? `<small>${escapeHtml(date)}</small>` : ""}</span></div>`;
         }).join("")}</div>`;
       }
 
@@ -4722,9 +4772,9 @@
 
       function testPlaneIcon(direction) {
         if (direction === "inbound") {
-          return `<svg viewBox="0 0 150 100" aria-hidden="true"><rect x="22" y="12" width="54" height="58" rx="2"></rect><g transform="translate(16 18) rotate(13 58 42)"><path d="M16 46 L96 25 Q111 21 118 29 Q124 37 109 44 L74 58 L49 82 L34 75 L48 62 L18 58 Z"></path><path d="M47 62 L30 74 L21 67 L38 57 Z"></path><circle cx="62" cy="70" r="5"></circle><circle cx="82" cy="66" r="5"></circle></g><line x1="38" y1="84" x2="118" y2="84"></line></svg>`;
+          return `<svg viewBox="0 0 150 100" aria-hidden="true"><g transform="rotate(11 74 52)"><path d="M22 49 L98 28 Q113 24 121 31 Q128 38 113 45 L77 58 L50 78 L36 72 L50 60 L24 60 Z"></path><polygon points="36,48 20,34 30,32 56,42"></polygon><polygon points="51,60 33,74 23,68 41,56"></polygon><circle cx="64" cy="70" r="5"></circle><circle cx="84" cy="66" r="5"></circle></g><line x1="34" y1="84" x2="118" y2="84"></line></svg>`;
         }
-        return `<svg viewBox="0 0 150 100" aria-hidden="true"><rect x="80" y="10" width="44" height="62" rx="2"></rect><g transform="translate(14 4) rotate(-31 70 52)"><path d="M18 53 L98 31 Q113 27 121 35 Q128 43 112 50 L76 64 L48 86 L34 78 L50 63 L19 64 Z"></path><circle cx="68" cy="74" r="5"></circle><circle cx="87" cy="69" r="5"></circle></g><line x1="42" y1="85" x2="120" y2="85"></line></svg>`;
+        return `<svg viewBox="0 0 150 100" aria-hidden="true"><rect x="80" y="10" width="44" height="62" rx="2"></rect><g transform="rotate(-45 78 52)"><path d="M27 58 L104 36 Q119 32 127 39 Q134 46 118 53 L82 66 L54 86 L40 78 L56 64 L28 66 Z"></path><polygon points="42,56 24,42 34,39 62,50"></polygon><circle cx="72" cy="77" r="5"></circle><circle cx="91" cy="72" r="5"></circle></g><line x1="44" y1="86" x2="122" y2="86"></line></svg>`;
       }
 
       function renderTestAddChoice(bagTag) {
