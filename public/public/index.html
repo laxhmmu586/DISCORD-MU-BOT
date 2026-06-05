@@ -2491,19 +2491,33 @@
         position: relative;
         display: grid;
         gap: 18px;
+        max-height: min(56vh, 520px);
         margin: 12px 0 20px;
-        padding-left: 42px;
+        padding-left: 34px;
+        overflow-y: auto;
+        cursor: grab;
+        scrollbar-width: none;
+        touch-action: pan-y;
+        user-select: none;
+      }
+
+      .test-timeline.is-dragging {
+        cursor: grabbing;
+      }
+
+      .test-timeline::-webkit-scrollbar {
+        display: none;
       }
 
       .test-timeline::before {
         content: "";
         position: absolute;
-        left: 13px;
-        top: 11px;
-        bottom: 11px;
+        left: 10px;
+        top: 15px;
+        bottom: 15px;
         width: 4px;
         border-radius: 999px;
-        background: rgba(217, 234, 246, 0.95);
+        background: rgba(227, 237, 251, 0.9);
       }
 
       .test-timeline-item {
@@ -2523,7 +2537,17 @@
         height: 14px;
         border-radius: 999px;
         background: #0d3a4d;
-        box-shadow: 0 0 0 7px rgba(227, 237, 251, 0.9);
+        box-shadow: 0 0 0 7px rgba(227, 237, 251, 0.92);
+      }
+
+      .test-timeline-item.is-latest::before {
+        animation: latestTimelinePulse 1.35s ease-in-out infinite;
+        background: #5fe276;
+      }
+
+      @keyframes latestTimelinePulse {
+        0%, 100% { box-shadow: 0 0 0 7px rgba(227, 237, 251, 0.9), 0 0 0 rgba(95, 226, 118, 0); }
+        50% { box-shadow: 0 0 0 7px rgba(227, 237, 251, 0.95), 0 0 18px rgba(95, 226, 118, 0.85); }
       }
 
       .test-timeline-item.is-latest::before {
@@ -2629,8 +2653,8 @@
       }
 
       .test-choice-card svg {
-        width: 164px;
-        height: 104px;
+        width: 178px;
+        height: 112px;
         filter: drop-shadow(0 10px 20px rgba(175, 246, 255, 0.12));
       }
 
@@ -2648,6 +2672,10 @@
         stroke: #dff7ff;
         stroke-width: 8;
         stroke-linecap: round;
+      }
+
+      .test-choice-card .test-plane-cut {
+        fill: #22667c;
       }
 
       .test-choice-card[data-test-create-mode="inbound"] {
@@ -4709,6 +4737,38 @@
         }).join("")}</div>`;
       }
 
+      function beginTestTimelineDrag(event) {
+        const timeline = event.currentTarget;
+        timeline.classList.add("is-dragging");
+        timeline.dataset.dragStartY = String(event.clientY);
+        timeline.dataset.dragStartScrollTop = String(timeline.scrollTop);
+        timeline.setPointerCapture?.(event.pointerId);
+      }
+
+      function moveTestTimelineDrag(event) {
+        const timeline = event.currentTarget;
+        if (!timeline.classList.contains("is-dragging")) return;
+        const startY = Number(timeline.dataset.dragStartY || event.clientY);
+        const startScrollTop = Number(timeline.dataset.dragStartScrollTop || timeline.scrollTop);
+        timeline.scrollTop = startScrollTop - (event.clientY - startY);
+      }
+
+      function endTestTimelineDrag(event) {
+        const timeline = event.currentTarget;
+        timeline.classList.remove("is-dragging");
+        timeline.releasePointerCapture?.(event.pointerId);
+      }
+
+      function wireTestTimelineDrag() {
+        const timeline = testOutput?.querySelector(".test-timeline");
+        if (!timeline || timeline.dataset.dragReady === "true") return;
+        timeline.dataset.dragReady = "true";
+        timeline.addEventListener("pointerdown", beginTestTimelineDrag);
+        timeline.addEventListener("pointermove", moveTestTimelineDrag);
+        timeline.addEventListener("pointerup", endTestTimelineDrag);
+        timeline.addEventListener("pointercancel", endTestTimelineDrag);
+      }
+
       function testDataGrid(record) {
         const alwaysShow = new Set(["Flight", "Date"]);
         const fields = [
@@ -4771,13 +4831,14 @@
           ${renderTestTimeline(record.history)}
           ${showUpdateForm ? `<div class="test-report-head test-update-head"><h3>Update</h3></div>${renderTestUpdateForm(record, mode)}` : `<div class="test-form-actions"><button class="test-add-button" type="button" data-test-show-update>Update</button></div>`}
         </article>`;
+        wireTestTimelineDrag();
       }
 
       function testPlaneIcon(direction) {
         if (direction === "inbound") {
-          return `<svg viewBox="0 0 150 100" aria-hidden="true"><g transform="translate(9 10) rotate(13 66 42)"><path d="M20 47 L98 27 Q114 23 122 31 Q129 39 113 46 L77 59 L51 79 L36 72 L51 60 L22 60 Z"></path><polygon points="35,47 19,33 31,31 58,42"></polygon><polygon points="50,60 32,74 22,68 41,56"></polygon><circle cx="64" cy="70" r="5"></circle><circle cx="85" cy="66" r="5"></circle></g><line x1="34" y1="86" x2="118" y2="86"></line></svg>`;
+          return `<svg viewBox="0 0 160 104" aria-hidden="true"><g transform="translate(10 16) rotate(7 70 38)"><path d="M18 44 L100 24 Q120 19 132 26 Q142 32 137 40 Q132 49 109 51 L72 54 L45 75 L29 69 L46 55 L20 55 Z"></path><polygon points="35,43 18,25 32,25 60,41"></polygon><polygon points="46,55 28,69 18,63 39,52"></polygon><circle cx="65" cy="69" r="5"></circle><circle cx="86" cy="66" r="5"></circle><rect class="test-plane-cut" x="20" y="57" width="34" height="5" rx="2" transform="rotate(-18 37 59)"></rect><rect class="test-plane-cut" x="35" y="64" width="24" height="5" rx="2" transform="rotate(-25 47 66)"></rect></g><line x1="36" y1="88" x2="124" y2="88"></line></svg>`;
         }
-        return `<svg viewBox="0 0 150 100" aria-hidden="true"><g transform="translate(8 6) rotate(-14 72 46)"><path d="M22 52 L101 31 Q117 27 125 35 Q132 43 116 50 L80 63 L54 84 L39 77 L54 63 L24 64 Z"></path><polygon points="39,52 22,38 34,35 63,48"></polygon><polygon points="53,63 35,77 25,70 44,59"></polygon><circle cx="70" cy="75" r="5"></circle><circle cx="90" cy="70" r="5"></circle></g><line x1="40" y1="86" x2="122" y2="86"></line></svg>`;
+        return `<svg viewBox="0 0 160 104" aria-hidden="true"><g transform="translate(8 4) rotate(-17 78 50)"><path d="M20 52 L104 28 Q124 22 136 30 Q145 37 139 45 Q133 54 111 56 L75 60 L48 84 L32 77 L50 62 L22 63 Z"></path><polygon points="39,51 21,32 35,31 64,48"></polygon><polygon points="49,62 30,77 20,70 42,58"></polygon><circle cx="72" cy="77" r="5"></circle><circle cx="94" cy="73" r="5"></circle><rect class="test-plane-cut" x="21" y="65" width="35" height="5" rx="2" transform="rotate(-16 38 67)"></rect></g><line x1="40" y1="88" x2="126" y2="88"></line></svg>`;
       }
 
       function renderTestAddChoice(bagTag) {
@@ -4820,7 +4881,7 @@
             <label class="test-field"><span>Inbound flight number</span><input name="flight" value="${escapeHtml(entry.flight || "MU583")}" required /></label>
             <label class="test-field"><span>Date</span><input name="date" type="date" value="${escapeHtml(entry.date || today)}" required /></label>
             <label class="test-field"><span>Bag type</span><select name="bagType" required><option${selected(bagType, "Passenger bag")}>Passenger bag</option><option${selected(bagType, "Inbound rush")}>Inbound rush</option><option${selected(bagType, "Co-mail")}>Co-mail</option></select></label>
-            <label class="test-field"><span>Current location</span><select name="location" required><option${selected(location, "Office")}>Office</option><option${selected(location, "CBS")}>CBS</option></select></label>
+            <label class="test-field"><span>Current location</span><input name="location" value="${escapeHtml(location)}" list="test-location-options" required /></label>
           </div>
         </fieldset>`;
       }
@@ -4847,6 +4908,7 @@
         if (testOutput) testOutput._record = null;
         testOutput.innerHTML = `<article class="test-report-card">
           <div class="test-report-head"><div class="test-report-title"><strong>${escapeHtml(bagTag || "New bags")}</strong><span class="panel-muted">No matching bag found.</span></div><div class="test-form-actions"><button class="test-back-button" type="button" data-test-back-choice>Back</button><button class="test-add-button" type="button" data-test-add-row>Add</button></div></div>
+          <datalist id="test-location-options"><option value="Office"></option><option value="CBS"></option></datalist>
           <datalist id="test-outbound-comments">
             <option value="Expected"></option>
             <option value="Not Received"></option>
