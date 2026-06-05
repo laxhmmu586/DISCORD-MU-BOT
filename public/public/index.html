@@ -2219,13 +2219,24 @@
         grid-template-rows: auto auto 1fr;
       }
 
+      .test-search-form,
+      .test-search-hint {
+        width: min(100%, 850px);
+        margin-left: auto;
+        margin-right: auto;
+      }
+
       .test-search-form {
-        width: min(100%, 680px);
-        margin: clamp(24px, 8vh, 86px) auto 24px;
+        margin-top: clamp(24px, 8vh, 86px);
+        margin-bottom: 24px;
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto;
         gap: 10px;
         align-items: end;
+      }
+
+      .test-search-hint {
+        margin-top: -8px;
       }
 
       .test-search-field,
@@ -2271,7 +2282,7 @@
       }
 
       .test-output {
-        width: min(100%, 980px);
+        width: min(100%, 1120px);
         margin: 0 auto;
       }
 
@@ -2284,7 +2295,8 @@
 
       .test-mode-actions button,
       .test-submit,
-      .test-add-button {
+      .test-add-button,
+      .test-back-button {
         min-height: 40px;
         border: 1px solid rgba(88, 167, 255, 0.5);
         background: rgba(88, 167, 255, 0.14);
@@ -2345,10 +2357,33 @@
       }
 
       .test-report-card {
-        border: 1px solid rgba(210, 231, 255, 0.18);
-        background: rgba(0, 0, 0, 0.22);
-        padding: 18px;
+        position: relative;
+        overflow: hidden;
+        border: 1px solid rgba(82, 219, 255, 0.42);
+        border-radius: 22px;
+        background:
+          radial-gradient(circle at 86% 10%, rgba(109, 213, 255, 0.22), transparent 18rem),
+          radial-gradient(circle at 12% 16%, rgba(69, 219, 173, 0.16), transparent 16rem),
+          linear-gradient(145deg, rgba(5, 31, 54, 0.94), rgba(9, 55, 70, 0.9) 58%, rgba(8, 69, 61, 0.84));
+        box-shadow: 0 28px 90px rgba(0, 0, 0, 0.36), 0 0 34px rgba(71, 196, 255, 0.13), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        padding: 22px;
         margin-bottom: 16px;
+      }
+
+      .test-report-card::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background:
+          linear-gradient(90deg, transparent, rgba(127, 219, 255, 0.05), transparent),
+          repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 7px);
+        opacity: 0.42;
+      }
+
+      .test-report-card > * {
+        position: relative;
+        z-index: 1;
       }
 
       .test-report-head {
@@ -2387,10 +2422,12 @@
       }
 
       .test-data-item {
-        border: 1px solid rgba(210, 231, 255, 0.12);
-        background: rgba(255, 255, 255, 0.04);
-        padding: 10px;
-        min-height: 68px;
+        border: 1px solid rgba(190, 231, 255, 0.22);
+        border-radius: 14px;
+        background: rgba(230, 246, 255, 0.08);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        padding: 12px;
+        min-height: 72px;
       }
 
       .test-data-item b {
@@ -2466,6 +2503,54 @@
         margin: 3px 0 0;
         color: rgba(255, 255, 255, 0.76);
       }
+
+      .test-choice-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(220px, 1fr));
+        gap: clamp(18px, 8vw, 140px);
+        justify-content: center;
+        margin: 24px auto 10px;
+        max-width: 900px;
+      }
+
+      .test-choice-card {
+        min-height: 250px;
+        border: 3px solid rgba(255, 107, 117, 0.92);
+        background: rgba(6, 24, 42, 0.34);
+        color: #ff6b75;
+        display: grid;
+        place-items: center;
+        gap: 14px;
+        padding: 28px;
+        font-size: 22px;
+        font-weight: 900;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        cursor: pointer;
+      }
+
+      .test-choice-card:hover {
+        background: rgba(255, 107, 117, 0.08);
+        box-shadow: 0 18px 50px rgba(255, 107, 117, 0.12);
+      }
+
+      .test-choice-card svg {
+        width: 132px;
+        height: 86px;
+      }
+
+      .test-choice-card path,
+      .test-choice-card circle,
+      .test-choice-card line {
+        stroke: #15265e;
+        fill: #15265e;
+      }
+
+      .test-choice-card line {
+        stroke-width: 8;
+        stroke-linecap: round;
+      }
+
 
       .status-ok { color: var(--green); }
       .status-warn { color: #ffd166; }
@@ -2881,7 +2966,8 @@
 
         .test-search-form,
         .test-form-grid,
-        .test-data-grid {
+        .test-data-grid,
+        .test-choice-grid {
           grid-template-columns: 1fr;
         }
 
@@ -3035,18 +3121,18 @@
           <div class="report-hero">
             <div>
               <h2>Test</h2>
-              <p class="panel-muted">Search by Delta bag tag. Format must be DL123456.</p>
+              <p class="panel-muted">Format must be MU123456.</p>
             </div>
             <button class="report-close" id="test-close" type="button">Close</button>
           </div>
           <form class="test-search-form" id="test-search-form">
             <label class="test-search-field">
               <span>Bag tag number</span>
-              <input id="test-bag-search" type="search" placeholder="DL123456" autocomplete="off" maxlength="8" pattern="DL[0-9]{6}" required />
+              <input id="test-bag-search" type="search" placeholder="MU123456" autocomplete="off" maxlength="8" pattern="[A-Z]{2}[0-9]{6}" required />
             </label>
             <button class="report-run" type="submit">Search</button>
           </form>
-          <div id="test-output" class="test-output"><p class="panel-muted">Enter a bag tag number to search the Google Sheet.</p></div>
+          <div id="test-output" class="test-output"><p class="panel-muted test-search-hint">Enter a bag tag number to search</p></div>
         </section>
 
         <section class="details-panel" aria-label="Flight details" hidden>
@@ -4376,7 +4462,7 @@
         closeLoginMenu();
         closeFlightMenu();
         closeMobilePanel();
-        if (testOutput) testOutput.innerHTML = `<p class="panel-muted">Enter a bag tag number to search the Google Sheet.</p>`;
+        if (testOutput) testOutput.innerHTML = `<p class="panel-muted test-search-hint">Enter a bag tag number to search</p>`;
         testBagSearchInput?.focus();
         testPage?.scrollTo({ top: 0, left: 0, behavior: "auto" });
       }
@@ -4445,7 +4531,7 @@
       }
 
       function isValidTestBagTag(value) {
-        return /^DL\d{6}$/.test(normalizeTestBagTag(value));
+        return /^[A-Z]{2}\d{6}$/.test(normalizeTestBagTag(value));
       }
 
       function currentUserName() {
@@ -4538,14 +4624,19 @@
         </article>`;
       }
 
+      function testPlaneIcon(direction) {
+        const transform = direction === "outbound" ? "translate(12 6) rotate(-22 54 34)" : "translate(10 12) rotate(8 54 34)";
+        return `<svg viewBox="0 0 130 90" aria-hidden="true"><g transform="${transform}"><path d="M18 50 L84 22 Q95 18 102 24 Q107 29 98 35 L68 52 L43 75 L31 70 L43 57 L18 60 Z"></path><circle cx="58" cy="66" r="5"></circle><circle cx="75" cy="62" r="5"></circle><line x1="30" y1="82" x2="106" y2="82"></line></g></svg>`;
+      }
+
       function renderTestAddChoice(bagTag) {
         if (!testOutput) return;
         testOutput._record = null;
         testOutput.innerHTML = `<article class="test-report-card">
           <div class="test-report-head"><div class="test-report-title"><strong>${escapeHtml(bagTag)}</strong><span class="panel-muted">No matching bag found.</span></div></div>
-          <div class="test-mode-actions" aria-label="Create type">
-            <button type="button" data-test-create-mode="inbound">Inbound</button>
-            <button type="button" data-test-create-mode="outbound">Outbound</button>
+          <div class="test-choice-grid" aria-label="Create type">
+            <button class="test-choice-card" type="button" data-test-create-mode="inbound">${testPlaneIcon("inbound")}<span>Inbound</span></button>
+            <button class="test-choice-card" type="button" data-test-create-mode="outbound">${testPlaneIcon("outbound")}<span>Outbound</span></button>
           </div>
         </article>`;
       }
@@ -4553,7 +4644,7 @@
       function renderTestBagEntry(mode, entry = {}) {
         const today = ymdFromDate(new Date());
         const selected = (value, target) => value === target ? " selected" : "";
-        const bagTagInput = `<label class="test-field"><span>Bag tag number</span><input name="bagTag" value="${escapeHtml(entry.bagTag || "")}" maxlength="8" pattern="DL[0-9]{6}" title="Use DL123456 format" autocomplete="off" required /></label>`;
+        const bagTagInput = `<label class="test-field"><span>Bag tag number</span><input name="bagTag" value="${escapeHtml(entry.bagTag || "")}" maxlength="8" pattern="[A-Z]{2}[0-9]{6}" title="Use MU123456 format" autocomplete="off" required /></label>`;
         if (mode === "outbound") {
           const status = entry.status || "Not load bags";
           return `<fieldset class="test-create-entry" data-test-bag-entry>
@@ -4604,7 +4695,7 @@
         const bags = entries?.length ? entries : [{ bagTag }];
         if (testOutput) testOutput._record = null;
         testOutput.innerHTML = `<article class="test-report-card">
-          <div class="test-report-head"><div class="test-report-title"><strong>${escapeHtml(bagTag || "New bags")}</strong><span class="panel-muted">No matching bag found.</span></div><button class="test-add-button" type="button" data-test-add-row>Add</button></div>
+          <div class="test-report-head"><div class="test-report-title"><strong>${escapeHtml(bagTag || "New bags")}</strong><span class="panel-muted">No matching bag found.</span></div><div class="test-form-actions"><button class="test-back-button" type="button" data-test-back-choice>Back</button><button class="test-add-button" type="button" data-test-add-row>Add</button></div></div>
           <datalist id="test-outbound-comments">
             <option value="Expected"></option>
             <option value="Not Received"></option>
@@ -4630,7 +4721,7 @@
         if (!testOutput) return;
         const bagTag = normalizeTestBagTag(testBagSearchInput?.value);
         if (!isValidTestBagTag(bagTag)) {
-          testOutput.innerHTML = `<p class="panel-muted status-fail">Bag tag must match DL123456 format.</p>`;
+          testOutput.innerHTML = `<p class="panel-muted status-fail">Bag tag must match MU123456 format.</p>`;
           return;
         }
         if (testBagSearchInput) testBagSearchInput.value = bagTag;
@@ -4662,7 +4753,7 @@
         const saved = [];
         for (const entry of entries) {
           const bagTag = normalizeTestBagTag(entry.bagTag);
-          if (!isValidTestBagTag(bagTag)) throw new Error("Each bag tag must match DL123456 format.");
+          if (!isValidTestBagTag(bagTag)) throw new Error("Each bag tag must match MU123456 format.");
           const isRush = mode === "outbound" && entry.status === "Outbound rush";
           const payload = {
             direction: mode,
@@ -5253,6 +5344,11 @@
           const form = testOutput.querySelector("[data-test-create-form]");
           const entries = form ? collectCreateEntries(form) : [{ bagTag: normalizeTestBagTag(testBagSearchInput?.value) }];
           renderTestAddForm(entries[0]?.bagTag || normalizeTestBagTag(testBagSearchInput?.value), createModeButton.dataset.testCreateMode, entries);
+          return;
+        }
+        const backChoiceButton = event.target.closest("[data-test-back-choice]");
+        if (backChoiceButton) {
+          renderTestAddChoice(normalizeTestBagTag(testBagSearchInput?.value));
           return;
         }
         const addRowButton = event.target.closest("[data-test-add-row]");

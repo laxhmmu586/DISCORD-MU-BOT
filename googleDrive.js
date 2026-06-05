@@ -363,7 +363,7 @@ function normalizeTestBagTag(value) {
 }
 
 function isValidTestBagTag(value) {
-  return /^DL\d{6}$/.test(normalizeTestBagTag(value));
+  return /^[A-Z]{2}\d{6}$/.test(normalizeTestBagTag(value));
 }
 
 function sanitizeSheetText(value, maxLength = 500) {
@@ -485,7 +485,7 @@ async function findTestBaggageByTag(bagTag) {
 async function appendTestBaggageRecord(record) {
   if (testBaggageSheetAccessBlocked) return { created: false };
   const normalizedTag = normalizeTestBagTag(record?.bagTag);
-  if (!isValidTestBagTag(normalizedTag)) throw new Error('Bag tag must match DL123456 format');
+  if (!isValidTestBagTag(normalizedTag)) throw new Error('Bag tag must match MU123456 format');
   const title = await getTestBaggageSheetTitle();
   if (!title) throw new Error('Test baggage sheet not found');
   const rows = await getTestBaggageSheetRows({ forceRefresh: true });
