@@ -1186,28 +1186,44 @@ async function getLatestFlightLog() {
 }
 
 
+function envFirst(...names) {
+  for (const name of names) {
+    const value = String(process.env[name] || '').trim();
+    if (value) return value;
+  }
+  return '';
+}
+
 function getNextDayInfoGmailClient() {
-  const refreshToken = String(process.env.GMAIL_REFRESH_TOKEN || '').trim();
+  const requestedAuthMode = envFirst('AUTH_MODE', 'NEXT_DAY_INFO_GMAIL_AUTH_MODE').toLowerCase();
+  const refreshToken = envFirst('GOOGLE_REFRESH_TOKEN', 'GMAIL_REFRESH_TOKEN');
+  const gmailUser = envFirst('GMAIL_USER', 'NEXT_DAY_INFO_GMAIL_USER');
   if (refreshToken) {
     const oauth2Client = new google.auth.OAuth2(
-      process.env.GMAIL_CLIENT_ID || '30017158772-k1frki5rvjl2u0t905gavmuskgnolpgc.apps.googleusercontent.com',
-      process.env.GMAIL_CLIENT_SECRET || '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',
-      process.env.GMAIL_REDIRECT_URI || 'http://localhost'
+      envFirst('GOOGLE_CLIENT_ID', 'GMAIL_CLIENT_ID') || '30017158772-k1frki5rvjl2u0t905gavmuskgnolpgc.apps.googleusercontent.com',
+      envFirst('GOOGLE_CLIENT_SECRET', 'GMAIL_CLIENT_SECRET') || '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',
+      envFirst('GOOGLE_REDIRECT_URI', 'GMAIL_REDIRECT_URI') || 'http://localhost'
     );
     oauth2Client.setCredentials({ refresh_token: refreshToken });
     return {
       gmail: google.gmail({ version: 'v1', auth: oauth2Client }),
-      userId: process.env.NEXT_DAY_INFO_GMAIL_USER || 'me',
+      userId: gmailUser || 'me',
       authMode: 'oauth',
-      hasRefreshToken: true
+      hasRefreshToken: true,
+      requestedAuthMode
     };
+  }
+
+  if (requestedAuthMode === 'oauth') {
+    throw new Error('AUTH_MODE=oauth but GOOGLE_REFRESH_TOKEN/GMAIL_REFRESH_TOKEN is not configured.');
   }
 
   return {
     gmail: google.gmail({ version: 'v1', auth }),
-    userId: process.env.NEXT_DAY_INFO_GMAIL_USER || 'laxhmmu@gmail.com',
+    userId: gmailUser || 'laxhmmu@gmail.com',
     authMode: 'service-account',
-    hasRefreshToken: false
+    hasRefreshToken: false,
+    requestedAuthMode
   };
 }
 
@@ -1215,13 +1231,13 @@ function nextDayInfoGmailErrorReason(err, authMode, userId) {
   const message = err?.message || String(err || 'Unknown Gmail error');
   const details = [];
   if (authMode === 'service-account') {
-    details.push('GMAIL_REFRESH_TOKEN is not configured, so the app fell back to service-account Gmail auth. Service accounts cannot read a normal Gmail Sent mailbox unless Google Workspace domain-wide delegation is configured. Set GMAIL_REFRESH_TOKEN from get-token.js/test-gmail.js for the mailbox that sends NEXTDAY INFO.');
+    details.push('GOOGLE_REFRESH_TOKEN/GMAIL_REFRESH_TOKEN is not configured, so the app fell back to service-account Gmail auth. Service accounts cannot read a normal Gmail Sent mailbox unless Google Workspace domain-wide delegation is configured. Set GOOGLE_REFRESH_TOKEN from get-token.js/test-gmail.js for the mailbox that sends NEXTDAY INFO.');
   }
   if (/precondition/i.test(message)) {
     details.push('Gmail returned a precondition error before searching messages; this usually means the selected auth method is not allowed to access the requested mailbox.');
   }
   if (userId && authMode === 'oauth' && userId !== 'me') {
-    details.push('OAuth Gmail searches normally use userId "me". Only set NEXT_DAY_INFO_GMAIL_USER with delegated access.');
+    details.push('OAuth Gmail searches normally use userId "me", but GMAIL_USER is also supported for your .env. Only set GMAIL_USER/NEXT_DAY_INFO_GMAIL_USER to a different mailbox with delegated access.');
   }
   return [`Gmail API error: ${message}`, ...details].join(' ');
 }
@@ -1339,8 +1355,8 @@ async function getNextDayInfoEmail(flightNo, subjectDate, expectedSubject = '') 
   }
 
   let gmail = null;
-  let userId = '';
-  let authMode = '';
+  let userId = envFirst('GMAIL_USER', 'NEXT_DAY_INFO_GMAIL_USER');
+  let authMode = envFirst('AUTH_MODE', 'NEXT_DAY_INFO_GMAIL_AUTH_MODE').toLowerCase();
   let todayYmd = gmailSearchYmd(new Date());
   let q = '';
 
