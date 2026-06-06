@@ -345,9 +345,14 @@ const REPORT_SHEETS = {
     readOnly: true
   },
   wheelchair: {
-    gid: 910713958,
+    gid: 268414514,
     headers: ['Recorded At', 'Date', 'Flight', 'Flight Date', 'Passenger', 'BN', 'Seat', 'Wheelchair Type', 'Key'],
     fields: ['recordedAt', 'date', 'flightNo', 'flightDate', 'passenger', 'bn', 'seat', 'wheelchairType', 'key']
+  },
+  inad: {
+    gid: 1507379454,
+    headers: ['Recorded At', 'Date', 'Flight', 'Flight Date', 'Passenger', 'BN', 'Seat', 'Service', 'Key'],
+    fields: ['recordedAt', 'date', 'flightNo', 'flightDate', 'passenger', 'bn', 'seat', 'service', 'key']
   },
   psmMsg: {
     gid: 101743110,
@@ -363,7 +368,7 @@ function normalizeTestBagTag(value) {
 }
 
 function isValidTestBagTag(value) {
-  return /^DL\d{6}$/.test(normalizeTestBagTag(value));
+  return /^[A-Z]{2}\d{6}$/.test(normalizeTestBagTag(value));
 }
 
 function sanitizeSheetText(value, maxLength = 500) {
@@ -479,13 +484,23 @@ async function findTestBaggageByTag(bagTag) {
       return testBaggageRowFromSheet(rows[i], i + 1);
     }
   }
+  for (let i = 1; i < rows.length; i += 1) {
+    if (normalizeTestBagTag(rows[i]?.[8]) === normalizedTag) {
+      return testBaggageRowFromSheet(rows[i], i + 1);
+    }
+  }
+  for (let i = 1; i < rows.length; i += 1) {
+    const history = safeParseHistory(rows[i]?.[18]);
+    const hasRushTagMatch = history.some((entry) => normalizeTestBagTag(entry?.details?.rushTagNumber) === normalizedTag);
+    if (hasRushTagMatch) return testBaggageRowFromSheet(rows[i], i + 1);
+  }
   return null;
 }
 
 async function appendTestBaggageRecord(record) {
   if (testBaggageSheetAccessBlocked) return { created: false };
   const normalizedTag = normalizeTestBagTag(record?.bagTag);
-  if (!isValidTestBagTag(normalizedTag)) throw new Error('Bag tag must match DL123456 format');
+  if (!isValidTestBagTag(normalizedTag)) throw new Error('Bag tag must match MU123456 format');
   const title = await getTestBaggageSheetTitle();
   if (!title) throw new Error('Test baggage sheet not found');
   const rows = await getTestBaggageSheetRows({ forceRefresh: true });
@@ -523,7 +538,13 @@ async function appendTestBaggageRecord(record) {
         bagType: sanitizeSheetText(record.bagType, 80),
         location: sanitizeSheetText(record.location, 120),
         status: sanitizeSheetText(record.status, 80),
-        comment: sanitizeSheetText(record.comment, 500)
+        comment: sanitizeSheetText(record.comment, 500),
+        rushTagNumber: sanitizeSheetText(record.rushTagNumber, 80),
+        rushToWhere: sanitizeSheetText(record.rushToWhere, 120),
+        akeNumber: sanitizeSheetText(record.akeNumber, 80),
+        worldTracerFileNumber: sanitizeSheetText(record.worldTracerFileNumber, 120),
+        trackingNumber: sanitizeSheetText(record.trackingNumber, 160),
+        shippingFee: sanitizeSheetText(record.shippingFee, 80)
       }
     }]
   };
@@ -559,11 +580,13 @@ async function updateTestBaggageRecord(bagTag, update) {
     next.rushToWhere = sanitizeSheetText(update.rushToWhere, 120);
     next.akeNumber = sanitizeSheetText(update.akeNumber, 80);
     next.worldTracerFileNumber = sanitizeSheetText(update.worldTracerFileNumber, 120);
+    next.comment = sanitizeSheetText(update.comment, 500);
     Object.assign(details, {
       rushTagNumber: next.rushTagNumber,
       rushToWhere: next.rushToWhere,
       akeNumber: next.akeNumber,
-      worldTracerFileNumber: next.worldTracerFileNumber
+      worldTracerFileNumber: next.worldTracerFileNumber,
+      comment: next.comment
     });
   } else if (updateType === 'location') {
     next.status = 'Bag location update';
@@ -606,6 +629,7 @@ async function updateTestBaggageRecord(bagTag, update) {
 function normalizeReportSheetType(type) {
   const normalized = String(type || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
   if (normalized === 'psmmsg') return 'psmMsg';
+  if (normalized === 'wch') return 'wheelchair';
   return normalized;
 }
 
@@ -624,7 +648,8 @@ function buildStoredReportKey(type, row) {
     row?.passenger || '',
     row?.bn || '',
     row?.seat || '',
-    row?.wheelchairType || ''
+    row?.wheelchairType || '',
+    row?.service || ''
   ].map((value) => String(value || '').trim().toUpperCase()).join('|');
 }
 
@@ -719,7 +744,8 @@ function reportRowFromSheet(type, values) {
   config.fields.forEach((field, index) => {
     row[field] = values[index] || '';
   });
-  if (type === 'vip' || normalizeReportSheetType(type) === 'psmMsg') {
+  const normalizedType = normalizeReportSheetType(type);
+  if (type === 'vip' || normalizedType === 'psmMsg') {
     const displayDate = row.flightDate || row.date || '';
     const isoDate = normalizeSheetDateToIso(displayDate);
     row.displayDate = displayDate;
@@ -732,6 +758,17 @@ function reportRowFromSheet(type, values) {
     row.bags = String(row.bags || '').trim();
     row.type = String(row.type || '').trim().toUpperCase();
     row.detail = String(row.detail || '').trim();
+  } else if (normalizedType === 'wheelchair' || normalizedType === 'inad') {
+    const isoDate = normalizeSheetDateToIso(row.date);
+    row.date = isoDate || String(row.date || '').trim();
+    row.displayDate = row.date;
+    row.flightNo = String(row.flightNo || '').trim().toUpperCase();
+    row.flightDate = String(row.flightDate || '').trim().toUpperCase();
+    row.passenger = String(row.passenger || '').trim();
+    row.bn = String(row.bn || '').trim().padStart(3, '0').replace(/^0+$/, '');
+    row.seat = String(row.seat || '').trim().toUpperCase();
+    row.wheelchairType = String(row.wheelchairType || '').trim().toUpperCase();
+    row.service = String(row.service || '').trim().toUpperCase();
   }
   return row;
 }
@@ -757,8 +794,8 @@ async function getStoredReportRows(type, isoDate) {
   for (let i = startIndex; i < rows.length; i += 1) {
     if (isReportHeaderRow(type, rows[i])) continue;
     const parsed = reportRowFromSheet(type, rows[i]);
-    if (parsed.key === scanMarkerKey(type, isoDate)) {
-      scanned = true;
+    if (String(parsed.key || '').startsWith('__SCAN__') || parsed.passenger === '__SCAN_COMPLETE__') {
+      if (!isoDate || parsed.key === scanMarkerKey(type, isoDate)) scanned = true;
       continue;
     }
     if (isoDate && parsed.date !== isoDate) continue;
@@ -831,6 +868,38 @@ async function getPsmMsgReportRows(fromIsoDate, toIsoDate = fromIsoDate) {
   for (let i = startIndex; i < rows.length; i += 1) {
     if (isReportHeaderRow('psmMsg', rows[i])) continue;
     const parsed = reportRowFromSheet('psmMsg', rows[i]);
+    if (from && parsed.date < from) continue;
+    if (to && parsed.date > to) continue;
+    dataRows.push(parsed);
+  }
+  return dataRows.sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')) || String(a.flightNo || '').localeCompare(String(b.flightNo || '')) || Number(a.bn || 0) - Number(b.bn || 0));
+}
+
+async function getInadReportRows() {
+  const rows = await getReportSheetRows('inad');
+  await ensureReportSheetHeaders('inad', rows);
+  const dataRows = [];
+  const startIndex = rows.length && isReportHeaderRow('inad', rows[0]) ? 1 : 0;
+  for (let i = startIndex; i < rows.length; i += 1) {
+    if (isReportHeaderRow('inad', rows[i])) continue;
+    const parsed = reportRowFromSheet('inad', rows[i]);
+    if (String(parsed.key || '').startsWith('__SCAN__') || parsed.passenger === '__SCAN_COMPLETE__') continue;
+    dataRows.push(parsed);
+  }
+  return dataRows.sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')) || String(a.flightNo || '').localeCompare(String(b.flightNo || '')) || Number(a.bn || 0) - Number(b.bn || 0));
+}
+
+async function getWheelchairReportRows(fromIsoDate, toIsoDate = fromIsoDate) {
+  const from = String(fromIsoDate || '').trim();
+  const to = String(toIsoDate || from).trim();
+  const rows = await getReportSheetRows('wheelchair');
+  await ensureReportSheetHeaders('wheelchair', rows);
+  const dataRows = [];
+  const startIndex = rows.length && isReportHeaderRow('wheelchair', rows[0]) ? 1 : 0;
+  for (let i = startIndex; i < rows.length; i += 1) {
+    if (isReportHeaderRow('wheelchair', rows[i])) continue;
+    const parsed = reportRowFromSheet('wheelchair', rows[i]);
+    if (String(parsed.key || '').startsWith('__SCAN__') || parsed.passenger === '__SCAN_COMPLETE__') continue;
     if (from && parsed.date < from) continue;
     if (to && parsed.date > to) continue;
     dataRows.push(parsed);
@@ -1232,6 +1301,8 @@ module.exports = {
   getStoredReportRows,
   getVipReportRows,
   getPsmMsgReportRows,
+  getInadReportRows,
+  getWheelchairReportRows,
   appendStoredReportRows,
   appendVipReportRows,
   appendPsmMsgReportRows,
