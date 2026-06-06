@@ -1186,28 +1186,206 @@ async function getLatestFlightLog() {
 }
 
 
-async function hasNextDayInfoEmail(flightNo, subjectDate, expectedSubject = '') {
+function getNextDayInfoGmailClient() {
+  const refreshToken = String(process.env.GMAIL_REFRESH_TOKEN || '').trim();
+  if (refreshToken) {
+    const oauth2Client = new google.auth.OAuth2(
+      process.env.GMAIL_CLIENT_ID || '30017158772-k1frki5rvjl2u0t905gavmuskgnolpgc.apps.googleusercontent.com',
+      process.env.GMAIL_CLIENT_SECRET || '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',
+      process.env.GMAIL_REDIRECT_URI || 'http://localhost'
+    );
+    oauth2Client.setCredentials({ refresh_token: refreshToken });
+    return {
+      gmail: google.gmail({ version: 'v1', auth: oauth2Client }),
+      userId: process.env.NEXT_DAY_INFO_GMAIL_USER || 'me',
+      authMode: 'oauth'
+    };
+  }
+
+  return {
+    gmail: google.gmail({ version: 'v1', auth }),
+    userId: process.env.NEXT_DAY_INFO_GMAIL_USER || 'laxhmmu@gmail.com',
+    authMode: 'service-account'
+  };
+}
+
+function gmailSearchYmd(value, timeZone = process.env.NEXT_DAY_INFO_GMAIL_TIME_ZONE || 'America/Los_Angeles') {
+  const date = value instanceof Date ? value : new Date(value || Date.now());
+  if (Number.isNaN(date.getTime())) return '';
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(date).reduce((acc, part) => {
+    acc[part.type] = part.value;
+    return acc;
+  }, {});
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+function decodeGmailBody(data = '') {
+  if (!data) return '';
+  try {
+    return Buffer.from(String(data).replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
+  } catch {
+    return '';
+  }
+}
+
+function extractGmailTextParts(payload) {
+  if (!payload) return [];
+  const parts = [];
+  const walk = (part) => {
+    if (!part) return;
+    const mimeType = String(part.mimeType || '').toLowerCase();
+    const bodyText = decodeGmailBody(part.body?.data || '');
+    if (bodyText && (mimeType === 'text/plain' || !part.parts?.length)) {
+      parts.push(bodyText);
+    }
+    (part.parts || []).forEach(walk);
+  };
+  walk(payload);
+  return parts;
+}
+
+function normalizeGmailText(value = '') {
+  return String(value || '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|li)>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/\r/g, '')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n[ \t]+/g, '\n')
+    .trim();
+}
+
+function parseNextDayInfoDetails(text = '') {
+  const normalized = normalizeGmailText(text);
+  const fields = [
+    ['firstClass', 'First Class'],
+    ['businessClass', 'Business Class'],
+    ['economyClass', 'Economy Class'],
+    ['internationalTransfer', 'International Transfer'],
+    ['domesticTransfer', 'Domestic Transfer'],
+    ['overnightPassengers', 'Overnight passengers']
+  ];
+  const details = {};
+  fields.forEach(([key, label]) => {
+    const pattern = `${label.replace(/ /g, '\\s+')}\\s*:\\s*(\\d+)`;
+    const match = normalized.match(new RegExp(pattern, 'i'));
+    details[key] = match?.[1] || '';
+  });
+  return details;
+}
+
+function buildNextDayInfoDetailLines(details = {}) {
+  const rows = [
+    ['First Class', details.firstClass],
+    ['Business Class', details.businessClass],
+    ['Economy Class', details.economyClass],
+    ['', ''],
+    ['International Transfer', details.internationalTransfer],
+    ['Domestic Transfer', details.domesticTransfer],
+    ['Overnight passengers', details.overnightPassengers]
+  ];
+  return rows.map(([label, value]) => (label ? `${label}: ${value || '--'}` : '')).join('\n');
+}
+
+async function getNextDayInfoEmail(flightNo, subjectDate, expectedSubject = '') {
   const normalizedFlightNo = String(flightNo || '').trim().toUpperCase();
   const normalizedSubjectDate = String(subjectDate || '').trim();
   const subject = String(expectedSubject || `${normalizedFlightNo} ${normalizedSubjectDate} flight information details`).trim();
-  if (!normalizedFlightNo || !normalizedSubjectDate || !subject) return false;
+  const empty = (extra = {}) => ({
+    found: false,
+    sent: false,
+    subject,
+    details: {},
+    detailText: '',
+    sentAt: '',
+    messageId: '',
+    reason: '',
+    query: '',
+    authMode: '',
+    userId: '',
+    searchDate: '',
+    rawMatchCount: 0,
+    todayMatchCount: 0,
+    ...extra
+  });
+  if (!normalizedFlightNo || !normalizedSubjectDate || !subject) {
+    return empty({ reason: 'Missing flight number, subject date, or expected email subject.' });
+  }
 
   try {
-    const gmail = google.gmail({ version: 'v1', auth });
-    const userId = process.env.NEXT_DAY_INFO_GMAIL_USER || 'laxhmmu@gmail.com';
+    const { gmail, userId, authMode } = getNextDayInfoGmailClient();
+    const todayYmd = gmailSearchYmd(new Date());
     const exactSubject = subject.replace(/"/g, '');
-    const q = `subject:"${exactSubject}" newer_than:30d`;
+    const q = `in:sent subject:"${exactSubject}" newer_than:2d`;
     const result = await gmail.users.messages.list({
       userId,
       q,
       maxResults: 10,
-      fields: 'messages/id'
+      fields: 'messages(id,internalDate)'
     });
-    return Array.isArray(result.data.messages) && result.data.messages.length > 0;
+    const rawMessages = Array.isArray(result.data.messages) ? result.data.messages : [];
+    const messages = rawMessages.filter((message) => gmailSearchYmd(Number(message.internalDate)) === todayYmd);
+    if (!messages.length) {
+      const reason = rawMessages.length
+        ? `Found ${rawMessages.length} recent sent subject match(es), but none were sent today (${todayYmd}).`
+        : `No sent Gmail message matched the expected subject today (${todayYmd}).`;
+      console.log(`NEXTDAY INFO Gmail search not complete using ${authMode}: ${reason} Subject: ${subject} Query: ${q}`);
+      return empty({
+        reason,
+        query: q,
+        authMode,
+        userId,
+        searchDate: todayYmd,
+        rawMatchCount: rawMessages.length,
+        todayMatchCount: messages.length
+      });
+    }
+
+    const full = await gmail.users.messages.get({
+      userId,
+      id: messages[0].id,
+      format: 'full',
+      fields: 'id,internalDate,payload(headers,mimeType,body(data),parts(mimeType,body(data),parts(mimeType,body(data))))'
+    });
+    const text = extractGmailTextParts(full.data.payload).join('\n');
+    const details = parseNextDayInfoDetails(text);
+    const detailText = buildNextDayInfoDetailLines(details);
+    const sentAtDate = Number(full.data.internalDate) ? new Date(Number(full.data.internalDate)) : null;
+    return {
+      found: true,
+      sent: true,
+      subject,
+      details,
+      detailText,
+      sentAt: sentAtDate ? sentAtDate.toISOString() : '',
+      messageId: full.data.id || messages[0].id || '',
+      reason: '',
+      query: q,
+      authMode,
+      userId,
+      searchDate: todayYmd,
+      rawMatchCount: rawMessages.length,
+      todayMatchCount: messages.length
+    };
   } catch (err) {
-    console.error('Gmail next day info subject search error:', err.message || err);
-    return false;
+    const reason = err?.message || String(err || 'Unknown Gmail error');
+    console.error('Gmail next day info subject search error:', reason);
+    return empty({ reason: `Gmail API error: ${reason}` });
   }
+}
+
+async function hasNextDayInfoEmail(flightNo, subjectDate, expectedSubject = '') {
+  const result = await getNextDayInfoEmail(flightNo, subjectDate, expectedSubject);
+  return Boolean(result.sent || result.found);
 }
 
 // ===============================
@@ -1295,6 +1473,7 @@ module.exports = {
   getSalesReportMeta,
   downloadSalesReportByFlight,
   hasNextDayInfoEmail,
+  getNextDayInfoEmail,
   getStoredReportRows,
   getVipReportRows,
   getPsmMsgReportRows,
