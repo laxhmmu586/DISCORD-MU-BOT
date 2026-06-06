@@ -1186,10 +1186,42 @@ async function getLatestFlightLog() {
 }
 
 
-function gmailDate(value) {
+function getNextDayInfoGmailClient() {
+  const refreshToken = String(process.env.GMAIL_REFRESH_TOKEN || '').trim();
+  if (refreshToken) {
+    const oauth2Client = new google.auth.OAuth2(
+      process.env.GMAIL_CLIENT_ID || '30017158772-k1frki5rvjl2u0t905gavmuskgnolpgc.apps.googleusercontent.com',
+      process.env.GMAIL_CLIENT_SECRET || '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',
+      process.env.GMAIL_REDIRECT_URI || 'http://localhost'
+    );
+    oauth2Client.setCredentials({ refresh_token: refreshToken });
+    return {
+      gmail: google.gmail({ version: 'v1', auth: oauth2Client }),
+      userId: process.env.NEXT_DAY_INFO_GMAIL_USER || 'me',
+      authMode: 'oauth'
+    };
+  }
+
+  return {
+    gmail: google.gmail({ version: 'v1', auth }),
+    userId: process.env.NEXT_DAY_INFO_GMAIL_USER || 'laxhmmu@gmail.com',
+    authMode: 'service-account'
+  };
+}
+
+function gmailSearchYmd(value, timeZone = process.env.NEXT_DAY_INFO_GMAIL_TIME_ZONE || 'America/Los_Angeles') {
   const date = value instanceof Date ? value : new Date(value || Date.now());
   if (Number.isNaN(date.getTime())) return '';
-  return [date.getUTCFullYear(), String(date.getUTCMonth() + 1).padStart(2, '0'), String(date.getUTCDate()).padStart(2, '0')].join('/');
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(date).reduce((acc, part) => {
+    acc[part.type] = part.value;
+    return acc;
+  }, {});
+  return `${parts.year}-${parts.month}-${parts.day}`;
 }
 
 function decodeGmailBody(data = '') {
@@ -1272,20 +1304,22 @@ async function getNextDayInfoEmail(flightNo, subjectDate, expectedSubject = '') 
   if (!normalizedFlightNo || !normalizedSubjectDate || !subject) return empty;
 
   try {
-    const gmail = google.gmail({ version: 'v1', auth });
-    const userId = process.env.NEXT_DAY_INFO_GMAIL_USER || 'laxhmmu@gmail.com';
-    const today = new Date();
-    const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+    const { gmail, userId, authMode } = getNextDayInfoGmailClient();
+    const todayYmd = gmailSearchYmd(new Date());
     const exactSubject = subject.replace(/"/g, '');
-    const q = `in:sent subject:"${exactSubject}" after:${gmailDate(today)} before:${gmailDate(tomorrow)}`;
+    const q = `in:sent subject:"${exactSubject}" newer_than:2d`;
     const result = await gmail.users.messages.list({
       userId,
       q,
       maxResults: 10,
       fields: 'messages(id,internalDate)'
     });
-    const messages = Array.isArray(result.data.messages) ? result.data.messages : [];
-    if (!messages.length) return empty;
+    const messages = (Array.isArray(result.data.messages) ? result.data.messages : [])
+      .filter((message) => gmailSearchYmd(Number(message.internalDate)) === todayYmd);
+    if (!messages.length) {
+      console.log(`NEXTDAY INFO Gmail search found no sent message for today (${todayYmd}) using ${authMode}: ${subject}`);
+      return empty;
+    }
 
     const full = await gmail.users.messages.get({
       userId,
