@@ -3183,14 +3183,34 @@
         }
 
       }
+
+      body.baggage-only-page #home-nav-link {
+        pointer-events: none;
+        cursor: default;
+      }
+
+      body.baggage-only-page .nav-row,
+      body.baggage-only-page #report-nav-link,
+      body.baggage-only-page #mobile-report-nav-link,
+      body.baggage-only-page #test-close {
+        display: none !important;
+      }
+
+      body.baggage-only-page .topbar {
+        grid-template-columns: auto 1fr auto;
+      }
+
+      body.baggage-only-page .nav-links {
+        justify-self: start;
+      }
+
     </style>
   </head>
-  <body>
+  <body class="baggage-only-page">
     <div class="loading-overlay" aria-live="polite"><span>Loading</span></div>
     <header class="topbar">
-      <a class="brand" id="home-nav-link" href="#home" aria-label="MUFC home"><span>MUFC</span></a>
+      <a class="brand" id="home-nav-link" aria-label="MUFC"><span>MUFC</span></a>
       <nav class="nav-links" aria-label="Primary navigation">
-        <a href="#reports" id="report-nav-link">Report</a>
         <a href="#test" id="test-nav-link">Baggage</a>
       </nav>
       <div class="nav-row">
@@ -3231,7 +3251,6 @@
         <input id="mobile-query" type="search" value="SY" autocomplete="off" />
         <button type="submit">Search</button>
       </form>
-      <a href="#reports" id="mobile-report-nav-link">Report</a>
       <a href="#test" id="mobile-test-nav-link">Baggage</a>
     </aside>
 
@@ -3307,7 +3326,6 @@
               <h2>Baggage</h2>
               <p class="panel-muted">Format must be MU123456.</p>
             </div>
-            <button class="report-close" id="test-close" type="button">Close</button>
           </div>
           <form class="test-search-form" id="test-search-form">
             <label class="test-search-field">
@@ -3405,6 +3423,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="/__/firebase/init.js"></script>
     <script>
+      const IS_BAGGAGE_ONLY_PAGE = true;
       const homeNavLink = document.querySelector("#home-nav-link");
       const menuButton = document.querySelector(".menu-button");
       const fallbackMenuButton = document.querySelector(".mobile-menu-fallback");
@@ -3583,7 +3602,7 @@
       }
       window.findNodeIndexByKey = findNodeIndexByKey;
 
-      const canEnterApp = consumeAppEntry();
+      const canEnterApp = true;
 
       async function returnToLogin() {
         sessionStorage.removeItem(APP_ENTRY_KEY);
@@ -5549,11 +5568,11 @@
       });
 
 
-      homeNavLink.addEventListener("click", (event) => { event.preventDefault(); showHomePage(); });
+      homeNavLink?.addEventListener("click", (event) => { event.preventDefault(); });
       bagReportButton?.addEventListener("click", closeFlightMenuAfterAction(renderBagReport));
       salesReportButton?.addEventListener("click", closeFlightMenuAfterAction(downloadSalesReport));
-      reportNavLink.addEventListener("click", (event) => { event.preventDefault(); showReportPage("sales"); });
-      mobileReportNavLink.addEventListener("click", (event) => { event.preventDefault(); showReportPage("sales"); });
+      reportNavLink?.addEventListener("click", (event) => { event.preventDefault(); showReportPage("sales"); });
+      mobileReportNavLink?.addEventListener("click", (event) => { event.preventDefault(); showReportPage("sales"); });
       testNavLink?.addEventListener("click", (event) => { event.preventDefault(); openTestPage(); });
       mobileTestNavLink?.addEventListener("click", (event) => { event.preventDefault(); openTestPage(); });
       reportCloseButton.addEventListener("click", hideReportPage);
@@ -5760,14 +5779,6 @@
         flightMenu.setAttribute("aria-hidden", "false");
       }
 
-      if (window.location.hash === "#reports") {
-        showReportPage();
-      }
-
-      if (window.location.hash === "#baggage") {
-        openBaggageReport();
-      }
-
       if (window.location.hash === "#test") {
         openTestPage();
       }
@@ -5782,20 +5793,13 @@
             window.location.replace(loginUrl());
             return;
           }
-          if (isAuthSessionExpired()) {
-            returnToLogin();
-            return;
-          }
-          if (isBaggageOnlyUser(user)) {
+          if (!isBaggageOnlyUser(user)) {
             allowInternalPageRedirect();
-            window.location.replace(new URL("baggage.html", window.location.href).href);
+            window.location.replace(new URL("index.html", window.location.href).href);
             return;
           }
           currentUser.textContent = user.email || "Authenticated user";
-          startInactivityWatch();
-          queryInput.value = "SY";
-          mobileQueryInput.value = "SY";
-          startSyAutoRefresh();
+          openTestPage();
         });
       }
 
