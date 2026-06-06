@@ -4275,11 +4275,11 @@
           let started = Boolean(step?.complete || step?.time);
           let time = step?.time || "----";
           node.dataset.inputTime = step?.time || "";
-          if (key === "NEXTDAY_INFO") { started = Boolean(step?.searched || step?.complete || step?.time) && previousStarted; complete = Boolean(step?.complete); time = complete ? (step?.time || "SENT") : (started ? "MISSING" : "----"); }
+          if (key === "NEXTDAY_INFO") { started = Boolean(step?.searched || step?.complete || step?.time); complete = Boolean(step?.complete); time = complete ? (step?.time || "SENT") : (started ? "MISSING" : "----"); }
           if (key === "CHD") { issueCount = chdIssues; started = (sy.chdList || []).length > 0; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
           if (key === "GOV") { issueCount = govCount; started = Boolean(sy.govAqq) && previousStarted; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
           if (key === "NBRD") { issueCount = nbrdCount; started = (sy.bnAudit || []).length > 0 && previousStarted; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
-          const locked = !previousStarted && !["CHD", "GOV", "NBRD"].includes(key);
+          const locked = !previousStarted && !["NEXTDAY_INFO", "CHD", "GOV", "NBRD"].includes(key);
           node.dataset.status = normalizeStatus(Boolean(complete), issueCount || (started && !complete ? 1 : 0), locked);
           node.dataset.time = String(time);
           if (["CHD", "GOV", "NBRD"].includes(key) && complete && String(time).toUpperCase() === "CLEAR") node.dataset.clearLocked = "true";

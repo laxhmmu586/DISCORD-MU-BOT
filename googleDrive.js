@@ -1300,8 +1300,26 @@ async function getNextDayInfoEmail(flightNo, subjectDate, expectedSubject = '') 
   const normalizedFlightNo = String(flightNo || '').trim().toUpperCase();
   const normalizedSubjectDate = String(subjectDate || '').trim();
   const subject = String(expectedSubject || `${normalizedFlightNo} ${normalizedSubjectDate} flight information details`).trim();
-  const empty = { found: false, sent: false, subject, details: {}, detailText: '', sentAt: '', messageId: '' };
-  if (!normalizedFlightNo || !normalizedSubjectDate || !subject) return empty;
+  const empty = (extra = {}) => ({
+    found: false,
+    sent: false,
+    subject,
+    details: {},
+    detailText: '',
+    sentAt: '',
+    messageId: '',
+    reason: '',
+    query: '',
+    authMode: '',
+    userId: '',
+    searchDate: '',
+    rawMatchCount: 0,
+    todayMatchCount: 0,
+    ...extra
+  });
+  if (!normalizedFlightNo || !normalizedSubjectDate || !subject) {
+    return empty({ reason: 'Missing flight number, subject date, or expected email subject.' });
+  }
 
   try {
     const { gmail, userId, authMode } = getNextDayInfoGmailClient();
@@ -1314,11 +1332,22 @@ async function getNextDayInfoEmail(flightNo, subjectDate, expectedSubject = '') 
       maxResults: 10,
       fields: 'messages(id,internalDate)'
     });
-    const messages = (Array.isArray(result.data.messages) ? result.data.messages : [])
-      .filter((message) => gmailSearchYmd(Number(message.internalDate)) === todayYmd);
+    const rawMessages = Array.isArray(result.data.messages) ? result.data.messages : [];
+    const messages = rawMessages.filter((message) => gmailSearchYmd(Number(message.internalDate)) === todayYmd);
     if (!messages.length) {
-      console.log(`NEXTDAY INFO Gmail search found no sent message for today (${todayYmd}) using ${authMode}: ${subject}`);
-      return empty;
+      const reason = rawMessages.length
+        ? `Found ${rawMessages.length} recent sent subject match(es), but none were sent today (${todayYmd}).`
+        : `No sent Gmail message matched the expected subject today (${todayYmd}).`;
+      console.log(`NEXTDAY INFO Gmail search not complete using ${authMode}: ${reason} Subject: ${subject} Query: ${q}`);
+      return empty({
+        reason,
+        query: q,
+        authMode,
+        userId,
+        searchDate: todayYmd,
+        rawMatchCount: rawMessages.length,
+        todayMatchCount: messages.length
+      });
     }
 
     const full = await gmail.users.messages.get({
@@ -1338,11 +1367,19 @@ async function getNextDayInfoEmail(flightNo, subjectDate, expectedSubject = '') 
       details,
       detailText,
       sentAt: sentAtDate ? sentAtDate.toISOString() : '',
-      messageId: full.data.id || messages[0].id || ''
+      messageId: full.data.id || messages[0].id || '',
+      reason: '',
+      query: q,
+      authMode,
+      userId,
+      searchDate: todayYmd,
+      rawMatchCount: rawMessages.length,
+      todayMatchCount: messages.length
     };
   } catch (err) {
-    console.error('Gmail next day info subject search error:', err.message || err);
-    return empty;
+    const reason = err?.message || String(err || 'Unknown Gmail error');
+    console.error('Gmail next day info subject search error:', reason);
+    return empty({ reason: `Gmail API error: ${reason}` });
   }
 }
 

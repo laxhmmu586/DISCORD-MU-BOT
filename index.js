@@ -1143,11 +1143,33 @@ app.get(
           nextDayStep.time = nextDayEmail.sentAt ? nextDayEmail.sentAt.slice(11, 19) : '';
           nextDayStep.searched = true;
           nextDayStep.details = nextDayEmail.details || {};
-          nextDayStep.detailText = nextDayEmail.detailText || '';
+          const diagnosticLines = [
+            ['Reason', nextDayEmail.reason],
+            ['Expected Subject', nextDaySubject],
+            ['Gmail Query', nextDayEmail.query],
+            ['Auth Mode', nextDayEmail.authMode],
+            ['Gmail User', nextDayEmail.userId],
+            ['Search Date', nextDayEmail.searchDate],
+            ['Recent Matches', nextDayEmail.rawMatchCount === undefined ? '' : String(nextDayEmail.rawMatchCount)],
+            ['Today Matches', nextDayEmail.todayMatchCount === undefined ? '' : String(nextDayEmail.todayMatchCount)]
+          ].filter(([, value]) => value !== null && value !== undefined && value !== '').map(([label, value]) => `${label}: ${value}`).join('\n');
+          nextDayStep.detailText = nextDayStep.complete ? (nextDayEmail.detailText || '') : diagnosticLines;
+          nextDayStep.reason = nextDayEmail.reason || '';
+          nextDayStep.searchQuery = nextDayEmail.query || '';
+          nextDayStep.authMode = nextDayEmail.authMode || '';
+          nextDayStep.gmailUser = nextDayEmail.userId || '';
+          nextDayStep.searchDate = nextDayEmail.searchDate || '';
           nextDayStep.subject = nextDaySubject;
           nextDayStep.tooltip = nextDayStep.complete
             ? `NEXTDAY INFO sent email found: ${nextDaySubject}`
-            : `NEXTDAY INFO sent email not found today in Sent mail: ${nextDaySubject}`;
+            : `NEXTDAY INFO not found: ${nextDayEmail.reason || nextDaySubject}`;
+        } else if (nextDayStep) {
+          const reason = 'Missing flight number or next-day email subject date for Gmail search.';
+          nextDayStep.complete = false;
+          nextDayStep.searched = true;
+          nextDayStep.reason = reason;
+          nextDayStep.detailText = `Reason: ${reason}`;
+          nextDayStep.tooltip = `NEXTDAY INFO not searched: ${reason}`;
         }
         const authContext = await resolveAuthContextFromRequest(req);
         return res.json({ sy: { ...syInfo, bagSheet: syBagInfo, permissions: authContext.permissions } });
