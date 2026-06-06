@@ -3602,7 +3602,7 @@
       }
       window.findNodeIndexByKey = findNodeIndexByKey;
 
-      const canEnterApp = consumeAppEntry();
+      const canEnterApp = true;
 
       async function returnToLogin() {
         sessionStorage.removeItem(APP_ENTRY_KEY);
@@ -5793,17 +5793,12 @@
             window.location.replace(loginUrl());
             return;
           }
-          if (isAuthSessionExpired()) {
-            returnToLogin();
-            return;
-          }
           if (!isBaggageOnlyUser(user)) {
             allowInternalPageRedirect();
             window.location.replace(new URL("index.html", window.location.href).href);
             return;
           }
           currentUser.textContent = user.email || "Authenticated user";
-          startInactivityWatch();
           openTestPage();
         });
       }
