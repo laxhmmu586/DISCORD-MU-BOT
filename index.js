@@ -41,6 +41,8 @@ const {
   getStoredReportRows,
   getVipReportRows,
   getPsmMsgReportRows,
+  getInadReportRows,
+  getWheelchairReportRows,
   appendStoredReportRows,
   appendVipReportRows,
   appendPsmMsgReportRows,
@@ -218,6 +220,33 @@ function reportPassengerName(row) {
   return row?.name || row?.passengerName || row?.paxName || row?.passenger || '';
 }
 
+function extractInadRowsFromSy(syInfo, isoDate) {
+  const byBn = new Map([...(syInfo?.seatMapRecords || []), ...(syInfo?.bnAudit || [])]
+    .map((row) => [String(row.bn || '').padStart(3, '0'), row.passengerRecord || row]));
+  const seen = new Set();
+  return [...byBn.entries()].flatMap(([bn, row]) => {
+    const services = [
+      ...(Array.isArray(row.specialServices) ? row.specialServices : []),
+      ...(Array.isArray(row.passengerRecord?.specialServices) ? row.passengerRecord.specialServices : [])
+    ].map((code) => String(code || '').toUpperCase());
+    if (!services.includes('INAD')) return [];
+    const out = {
+      date: isoDate,
+      flightNo: syInfo.flightNo || '',
+      flightDate: syInfo.flightDate || '',
+      passenger: reportPassengerName(row),
+      bn,
+      seat: row.seat || row.passengerRecord?.seat || '',
+      ticketNumber: row.ticketNumber || row.ticketNo || row.passengerRecord?.ticketNumber || row.passengerRecord?.ticketNo || '',
+      service: 'INAD'
+    };
+    out.key = `inad|${out.date}|${out.flightNo}|${out.flightDate}|${out.passenger}|${out.bn}|${out.seat}|${out.ticketNumber}|${out.service}`.toUpperCase();
+    if (seen.has(out.key)) return [];
+    seen.add(out.key);
+    return [out];
+  });
+}
+
 function extractWheelchairRowsFromSy(syInfo, isoDate) {
   const byBn = new Map([...(syInfo?.seatMapRecords || []), ...(syInfo?.bnAudit || [])]
     .map((row) => [String(row.bn || '').padStart(3, '0'), row.passengerRecord || row]));
@@ -274,6 +303,19 @@ async function syncPsmMsgRowsFromSyInfo(syInfo) {
   return { ...result, found: rows.length };
 }
 
+async function syncServiceReportRowsFromSyInfo(syInfo, isoDate) {
+  const wchRows = extractWheelchairRowsFromSy(syInfo, isoDate);
+  const inadRows = extractInadRowsFromSy(syInfo, isoDate);
+  const [wheelchair, inad] = await Promise.all([
+    appendStoredReportRows('wheelchair', isoDate, wchRows),
+    appendStoredReportRows('inad', isoDate, inadRows)
+  ]);
+  return {
+    wheelchair: { ...wheelchair, found: wchRows.length },
+    inad: { ...inad, found: inadRows.length }
+  };
+}
+
 
 async function syncTodayPsmMsgReportRows() {
   const log = await getLatestFlightLog();
@@ -309,14 +351,14 @@ async function scanVipReportRows(isoDate) {
   }));
 }
 
-async function scanWheelchairReportRows(isoDate) {
+async function scanSyServiceReportRows(type, isoDate) {
   const log = await getLogForIsoDate(isoDate);
   if (!log) return [];
   const syDate = isoDateToSyDate(isoDate);
   if (!syDate) return [];
   const syInfo = findSYInfo(log, syDate, { preferredFlightNo: 'MU586' });
   if (!syInfo) return [];
-  return extractWheelchairRowsFromSy(syInfo, isoDate);
+  return type === 'inad' ? extractInadRowsFromSy(syInfo, isoDate) : extractWheelchairRowsFromSy(syInfo, isoDate);
 }
 
 async function loadStoredReportRows(type, isoDate, options = {}) {
@@ -324,14 +366,14 @@ async function loadStoredReportRows(type, isoDate, options = {}) {
   const stored = await getStoredReportRows(normalizedType, isoDate);
   if (normalizedType === 'vip') return { rows: stored.rows, source: 'sheet', scanned: true };
   if (stored.scanned && !options.forceRefresh) return { rows: stored.rows, source: 'sheet', scanned: true };
-  const rows = await scanWheelchairReportRows(isoDate);
+  const rows = await scanSyServiceReportRows(normalizedType, isoDate);
   await appendStoredReportRows(normalizedType, isoDate, rows);
   const refreshed = await getStoredReportRows(normalizedType, isoDate);
   return { rows: refreshed.rows.length ? refreshed.rows : rows, source: 'scan', scanned: true };
 }
 
 async function syncTodayReportSheets() {
-  for (const type of ['wheelchair']) {
+  for (const type of ['wheelchair', 'inad']) {
     try {
       await loadStoredReportRows(type, todayIsoUtc(), { forceRefresh: true });
       await pruneStoredReportRows(type);
@@ -736,7 +778,7 @@ app.get('/stored-report', async (req, res) => {
   try {
     const type = String(req.query.type || '').trim().toLowerCase();
     const isoDate = String(req.query.date || '').trim();
-    if (!['vip', 'wheelchair'].includes(type)) return res.status(400).json({ error: 'Invalid report type' });
+    if (!['vip', 'wheelchair', 'inad'].includes(type)) return res.status(400).json({ error: 'Invalid report type' });
     if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return res.status(400).json({ error: 'Missing or invalid date' });
     const result = await loadStoredReportRows(type, isoDate);
     return res.json(result);
@@ -776,7 +818,7 @@ function normalizeTestBagTag(value) {
 }
 
 function isValidTestBagTag(value) {
-  return /^DL\d{6}$/.test(normalizeTestBagTag(value));
+  return /^[A-Z]{2}\d{6}$/.test(normalizeTestBagTag(value));
 }
 
 function cleanBodyText(value, maxLength = 500) {
@@ -786,7 +828,7 @@ function cleanBodyText(value, maxLength = 500) {
 app.get('/test-baggage/:bagTag', async (req, res) => {
   try {
     const bagTag = normalizeTestBagTag(req.params.bagTag);
-    if (!isValidTestBagTag(bagTag)) return res.status(400).json({ error: 'Bag tag must match DL123456 format' });
+    if (!isValidTestBagTag(bagTag)) return res.status(400).json({ error: 'Bag tag must match MU123456 format' });
     const record = await findTestBaggageByTag(bagTag);
     return res.json({ found: Boolean(record), record });
   } catch (err) {
@@ -798,14 +840,13 @@ app.get('/test-baggage/:bagTag', async (req, res) => {
 app.post('/test-baggage', async (req, res) => {
   try {
     const bagTag = normalizeTestBagTag(req.body?.bagTag);
-    if (!isValidTestBagTag(bagTag)) return res.status(400).json({ error: 'Bag tag must match DL123456 format' });
+    if (!isValidTestBagTag(bagTag)) return res.status(400).json({ error: 'Bag tag must match MU123456 format' });
     const direction = cleanBodyText(req.body?.direction, 20).toLowerCase();
     if (!['inbound', 'outbound'].includes(direction)) return res.status(400).json({ error: 'Direction must be inbound or outbound' });
     const date = cleanBodyText(req.body?.date, 20);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'Missing or invalid date' });
     const flight = cleanBodyText(req.body?.flight, 20).toUpperCase();
-    if (direction === 'inbound' && flight !== 'MU583') return res.status(400).json({ error: 'Inbound flight must be MU583' });
-    if (direction === 'outbound' && flight !== 'MU586') return res.status(400).json({ error: 'Outbound flight must be MU586' });
+    if (!/^[A-Z]{2}\d{1,4}[A-Z]?$/.test(flight)) return res.status(400).json({ error: 'Missing or invalid flight number' });
     const result = await appendTestBaggageRecord({
       bagTag,
       direction,
@@ -831,7 +872,7 @@ app.post('/test-baggage', async (req, res) => {
 app.post('/test-baggage/:bagTag/update', async (req, res) => {
   try {
     const bagTag = normalizeTestBagTag(req.params.bagTag);
-    if (!isValidTestBagTag(bagTag)) return res.status(400).json({ error: 'Bag tag must match DL123456 format' });
+    if (!isValidTestBagTag(bagTag)) return res.status(400).json({ error: 'Bag tag must match MU123456 format' });
     const type = cleanBodyText(req.body?.type, 40).toLowerCase();
     if (!['rush', 'location', 'shipping'].includes(type)) return res.status(400).json({ error: 'Invalid update type' });
     const result = await updateTestBaggageRecord(bagTag, {
@@ -841,6 +882,7 @@ app.post('/test-baggage/:bagTag/update', async (req, res) => {
       rushToWhere: cleanBodyText(req.body?.rushToWhere, 120),
       akeNumber: cleanBodyText(req.body?.akeNumber, 80),
       worldTracerFileNumber: cleanBodyText(req.body?.worldTracerFileNumber, 120),
+      comment: cleanBodyText(req.body?.comment, 500),
       location: cleanBodyText(req.body?.location, 120),
       trackingNumber: cleanBodyText(req.body?.trackingNumber, 160),
       shippingFee: cleanBodyText(req.body?.shippingFee, 80)
@@ -882,6 +924,35 @@ app.get('/psm-report', async (req, res) => {
   } catch (err) {
     console.error('PSM report error:', err);
     return res.status(500).json({ error: err?.message || 'PSM report lookup failed' });
+  }
+});
+
+app.get('/inad-report', async (req, res) => {
+  try {
+    const rows = await getInadReportRows();
+    return res.json({ rows, source: 'sheet' });
+  } catch (err) {
+    console.error('INAD report error:', err);
+    return res.status(500).json({ error: err?.message || 'INAD report lookup failed' });
+  }
+});
+
+app.get('/wch-report', async (req, res) => {
+  try {
+    const from = String(req.query.from || req.query.date || '').trim();
+    const to = String(req.query.to || from).trim();
+    const dateRe = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRe.test(from) || !dateRe.test(to)) return res.status(400).json({ error: 'Missing or invalid date range' });
+    const fromDate = new Date(`${from}T00:00:00Z`);
+    const toDate = new Date(`${to}T00:00:00Z`);
+    if (Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime()) || fromDate > toDate) {
+      return res.status(400).json({ error: 'Invalid date range' });
+    }
+    const rows = await getWheelchairReportRows(from, to);
+    return res.json({ rows, source: 'sheet' });
+  } catch (err) {
+    console.error('WCH report error:', err);
+    return res.status(500).json({ error: err?.message || 'WCH report lookup failed' });
   }
 });
 
@@ -1050,6 +1121,12 @@ app.get(
         } catch (err) {
           console.warn('PSM/MSG report sheet sync skipped:', err?.message || err);
           syInfo.psmMsgSheetSync = { appended: 0, found: (syInfo.psmList || []).length, error: err?.message || 'Sheet sync failed' };
+        }
+        try {
+          syInfo.serviceSheetSync = await syncServiceReportRowsFromSyInfo(syInfo, isoDate || todayIsoUtc());
+        } catch (err) {
+          console.warn('INAD/WCH report sheet sync skipped:', err?.message || err);
+          syInfo.serviceSheetSync = { error: err?.message || 'Sheet sync failed' };
         }
         try {
           syInfo.vipSheetSync = await syncVipRowsFromLog(log, isoDate || todayIsoUtc());
