@@ -2080,6 +2080,32 @@
         display: none !important;
       }
 
+      body.is-password-view main {
+        overflow-y: auto;
+      }
+
+      body.is-password-view .hero {
+        height: calc(100svh - 76px);
+        min-height: calc(100svh - 76px);
+        display: block;
+        overflow-y: auto;
+      }
+
+      body.is-password-view .mission-head,
+      body.is-password-view .details-panel,
+      body.is-password-view .mission-stage,
+      body.is-password-view .flight-panel,
+      body.is-password-view .result-panel,
+      body.is-password-view .report-page {
+        display: none !important;
+      }
+
+      body.is-password-view .password-page {
+        display: block;
+        max-height: none;
+        margin: clamp(22px, 4vh, 42px) auto 0;
+      }
+
       body.is-report-view .report-page {
         width: 100%;
         min-height: calc(100svh - 76px);
@@ -2229,7 +2255,7 @@
       }
 
       .test-search-form {
-        margin-top: clamp(24px, 8vh, 86px);
+        margin-top: clamp(8px, 3vh, 32px);
         margin-bottom: 24px;
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto;
@@ -4575,7 +4601,7 @@
           sections.push(`<h3>${escapeHtml(title)}</h3>${rowsTable(rows, headers.map((label, index) => ({ label, value: (row) => row[index] })), "No rows.")}`);
         };
         addBagSection("Rush Bags", sheet.rushBags, ["Rush #", "Orig #", "To", "AKE"]);
-        addBagSection("Not Load Bags", sheet.notLoadBags, ["Tag #", "Status", "Remark"]);
+        addBagSection("Not Load Bags", sheet.notLoadBags, ["Tag #", "Type", "Remark"]);
         renderPanel("Bag Report", currentSy?.flightNo || "SY", sheet.hasData && sections.length ? sections.join("") : `<p class="panel-muted">No Google Sheet bag report data found for this SY date.</p>`);
       }
 
@@ -4645,7 +4671,7 @@
       }
 
       function showHomePage() {
-        document.body.classList.remove("is-report-view");
+        document.body.classList.remove("is-report-view", "is-password-view");
         if (reportPage) reportPage.hidden = true;
         if (baggagePage) baggagePage.hidden = true;
         if (testPage) testPage.hidden = true;
@@ -4667,6 +4693,7 @@
         if (baggagePage) baggagePage.hidden = true;
         if (testPage) testPage.hidden = true;
         if (reportPage) reportPage.hidden = false;
+        document.body.classList.remove("is-password-view");
         document.body.classList.add("is-report-view");
         setReportMode(mode, { forceToday: true, resetOutput: true });
         closeLoginMenu();
@@ -4685,6 +4712,7 @@
         if (reportPage) reportPage.hidden = true;
         if (baggagePage) baggagePage.hidden = true;
         if (testPage) testPage.hidden = false;
+        document.body.classList.remove("is-password-view");
         document.body.classList.add("is-report-view");
         closeLoginMenu();
         closeFlightMenu();
@@ -4708,7 +4736,7 @@
           sections.push(`<h3>${escapeHtml(title)}</h3>${rowsTable(rows, headers.map((label, index) => ({ label, value: (row) => row[index] })), "No rows.")}`);
         };
         addBagSection("Rush Bags", sheet?.rushBags, ["Rush #", "Orig #", "To", "AKE", "Remark"]);
-        addBagSection("Not Load Bags", sheet?.notLoadBags, ["Tag #", "Status", "Remark"]);
+        addBagSection("Not Load Bags", sheet?.notLoadBags, ["Tag #", "Type", "Remark"]);
         return sheet?.hasData && sections.length ? sections.join("") : `<p class="panel-muted">${escapeHtml(emptyText)}</p>`;
       }
 
@@ -4918,7 +4946,7 @@
             <div class="test-form-grid">${bagTagInput}
               <label class="test-field"><span>Outbound flight number</span><input name="flight" value="${escapeHtml(entry.flight || "MU586")}" required /></label>
               <label class="test-field"><span>Date</span><input name="date" type="date" value="${escapeHtml(entry.date || today)}" required /></label>
-              <label class="test-field"><span>Status</span><select name="status" data-test-outbound-status required><option value="Not load bags"${selected(status, "Not load bags")}>Not load bags</option><option value="Outbound rush"${selected(status, "Outbound rush")}>Outbound rush</option></select></label>
+              <label class="test-field"><span>Type</span><select name="status" data-test-outbound-status required><option value="Not load bags"${selected(status, "Not load bags")}>Not load bags</option><option value="Outbound rush"${selected(status, "Outbound rush")}>Outbound rush</option><option value="Gate bag"${selected(status, "Gate bag")}>Gate bag</option></select></label>
               <label class="test-field" data-test-rush-field hidden><span>Rush tag number</span><input name="rushTagNumber" value="${escapeHtml(entry.rushTagNumber || "")}" /></label>
               <label class="test-field" data-test-rush-field hidden><span>Rush To where?</span><input name="rushToWhere" value="${escapeHtml(entry.rushToWhere || "")}" /></label>
               <label class="test-field" data-test-rush-field hidden><span>AKE number?</span><input name="akeNumber" value="${escapeHtml(entry.akeNumber || "")}" /></label>
@@ -5561,15 +5589,24 @@
       changePasswordButton.addEventListener("click", () => {
         closeLoginMenu();
         closeFlightMenu();
+        closeMobilePanel();
+        if (reportPage) reportPage.hidden = true;
+        if (baggagePage) baggagePage.hidden = true;
+        if (testPage) testPage.hidden = true;
+        document.body.classList.remove("is-report-view");
+        document.body.classList.add("is-password-view");
+        resetPanelState();
         passwordPage.hidden = false;
         passwordStatus.textContent = "";
-        resultPanel.innerHTML = "";
         newPasswordInput.focus();
+        passwordPage.scrollIntoView({ block: "start", behavior: "auto" });
       });
 
       closePasswordPageButton.addEventListener("click", () => {
         passwordPage.hidden = true;
         newPasswordInput.value = "";
+        document.body.classList.remove("is-password-view");
+        if (IS_BAGGAGE_ONLY_PAGE) openTestPage();
       });
 
       changePasswordForm.addEventListener("submit", async (event) => {
