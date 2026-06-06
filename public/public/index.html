@@ -4886,6 +4886,11 @@
             <button class="test-choice-card" type="button" data-test-create-mode="outbound">${testPlaneIcon("outbound")}<span>Outbound</span></button>
           </div>
         </article>`;
+        wireTestTimelineDrag();
+      }
+
+      function testPlaneIcon(direction) {
+        return `<span class="test-choice-icon" aria-hidden="true">${direction === "inbound" ? "🛬" : "🛫"}</span>`;
       }
 
       function renderTestBagEntry(mode, entry = {}, index = 0) {
