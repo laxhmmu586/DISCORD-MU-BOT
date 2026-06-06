@@ -237,9 +237,10 @@ function extractInadRowsFromSy(syInfo, isoDate) {
       passenger: reportPassengerName(row),
       bn,
       seat: row.seat || row.passengerRecord?.seat || '',
+      ticketNumber: row.ticketNumber || row.ticketNo || row.passengerRecord?.ticketNumber || row.passengerRecord?.ticketNo || '',
       service: 'INAD'
     };
-    out.key = `inad|${out.date}|${out.flightNo}|${out.flightDate}|${out.passenger}|${out.bn}|${out.seat}|${out.service}`.toUpperCase();
+    out.key = `inad|${out.date}|${out.flightNo}|${out.flightDate}|${out.passenger}|${out.bn}|${out.seat}|${out.ticketNumber}|${out.service}`.toUpperCase();
     if (seen.has(out.key)) return [];
     seen.add(out.key);
     return [out];

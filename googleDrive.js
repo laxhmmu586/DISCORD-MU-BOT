@@ -351,8 +351,8 @@ const REPORT_SHEETS = {
   },
   inad: {
     gid: 1507379454,
-    headers: ['Recorded At', 'Date', 'Flight', 'Flight Date', 'Passenger', 'BN', 'Seat', 'Service', 'Key'],
-    fields: ['recordedAt', 'date', 'flightNo', 'flightDate', 'passenger', 'bn', 'seat', 'service', 'key']
+    headers: ['Recorded At', 'Date', 'Flight', 'Flight Date', 'Passenger', 'BN', 'Seat', 'Ticket Number', 'Service', 'Key'],
+    fields: ['recordedAt', 'date', 'flightNo', 'flightDate', 'passenger', 'bn', 'seat', 'ticketNumber', 'service', 'key']
   },
   psmMsg: {
     gid: 101743110,
@@ -649,6 +649,7 @@ function buildStoredReportKey(type, row) {
     row?.bn || '',
     row?.seat || '',
     row?.wheelchairType || '',
+    row?.ticketNumber || '',
     row?.service || ''
   ].map((value) => String(value || '').trim().toUpperCase()).join('|');
 }
@@ -768,6 +769,7 @@ function reportRowFromSheet(type, values) {
     row.bn = String(row.bn || '').trim().padStart(3, '0').replace(/^0+$/, '');
     row.seat = String(row.seat || '').trim().toUpperCase();
     row.wheelchairType = String(row.wheelchairType || '').trim().toUpperCase();
+    row.ticketNumber = String(row.ticketNumber || '').trim().toUpperCase();
     row.service = String(row.service || '').trim().toUpperCase();
   }
   return row;
@@ -1051,11 +1053,6 @@ async function appendStoredReportRows(type, isoDate, rows) {
     if (existingKeys.has(key)) continue;
     existingKeys.add(key);
     values.push(sheetValuesFromReportRow(type, { ...row, key }));
-  }
-  const markerKey = scanMarkerKey(type, isoDate);
-  if (!existingKeys.has(markerKey)) {
-    const marker = { recordedAt: new Date().toISOString(), date: isoDate, passenger: '__SCAN_COMPLETE__', source: 'SCAN', key: markerKey };
-    values.push(sheetValuesFromReportRow(type, marker));
   }
   if (!values.length) return { appended: 0 };
   await sheets.spreadsheets.values.append({

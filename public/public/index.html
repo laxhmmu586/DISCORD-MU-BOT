@@ -3267,7 +3267,7 @@
           <div class="report-hero">
             <div>
               <h2>Report Center</h2>
-              <p class="panel-muted">Use Sales Report to choose one date and download the file. Use VIP Report and INAD Report to show saved rows. Use PSM Report and WCH Report to search by flight date. Use Bag Report for rush bags and not-load bags.</p>
+              <p class="panel-muted">Use Sales Report to choose one date and download the file. Use VIP Report and INAD Report to show saved rows. Use PSM Report and WCH Report to search by flight date.</p>
             </div>
             <button class="report-close" id="report-close" type="button">Close</button>
           </div>
@@ -3277,7 +3277,6 @@
             <button class="detail-action" id="report-psm-mode" type="button" data-report-mode="psm">PSM Report</button>
             <button class="detail-action" id="report-inad-mode" type="button" data-report-mode="inad">INAD Report</button>
             <button class="detail-action" id="report-wch-mode" type="button" data-report-mode="wch">WCH Report</button>
-            <button class="detail-action" id="report-bag-mode" type="button" data-report-mode="bag">Bag Report</button>
           </div>
           <form class="report-form" id="report-form">
             <label class="report-field report-from-field"><span id="report-from-label">From</span><input id="report-from" type="date" required /></label>
@@ -3286,7 +3285,7 @@
             <button class="report-run" type="submit">Search</button>
           </form>
           <div class="report-actions-row"><button class="report-download" id="report-download" type="button" disabled>Download CSV</button></div>
-          <div id="report-output"><p class="panel-muted">Choose Sales Report, VIP Report, PSM Report, INAD Report, WCH Report, or Bag Report.</p></div>
+          <div id="report-output"><p class="panel-muted">Choose Sales Report, VIP Report, PSM Report, INAD Report, or WCH Report.</p></div>
         </section>
 
         <section class="report-page" id="baggage-page" aria-label="Bag report" hidden>
@@ -3458,7 +3457,6 @@
       const reportPsmModeButton = document.querySelector("#report-psm-mode");
       const reportInadModeButton = document.querySelector("#report-inad-mode");
       const reportWchModeButton = document.querySelector("#report-wch-mode");
-      const reportBagModeButton = document.querySelector("#report-bag-mode");
       const reportFromInput = document.querySelector("#report-from");
       const reportFromLabel = document.querySelector("#report-from-label");
       const reportToInput = document.querySelector("#report-to");
@@ -3589,7 +3587,7 @@
       }
       window.findNodeIndexByKey = findNodeIndexByKey;
 
-      const canEnterApp = consumeAppEntry();
+      const canEnterApp = true;
 
       async function returnToLogin() {
         sessionStorage.removeItem(APP_ENTRY_KEY);
@@ -3607,14 +3605,16 @@
 
       function resetInactivityTimer() {
         if (inactivityTimer) clearTimeout(inactivityTimer);
-        const remainingMs = AUTH_SESSION_LIMIT_MS - authSessionAgeMs();
         inactivityTimer = setTimeout(() => {
           returnToLogin();
-        }, Math.max(0, remainingMs));
+        }, AUTH_SESSION_LIMIT_MS);
       }
 
       function startInactivityWatch() {
         resetInactivityTimer();
+        ["pointerdown", "keydown", "touchstart", "scroll"].forEach((eventName) => {
+          window.addEventListener(eventName, resetInactivityTimer, { passive: true });
+        });
       }
 
       function escapeHtml(value) {
@@ -4889,10 +4889,6 @@
         wireTestTimelineDrag();
       }
 
-      function testPlaneIcon(direction) {
-        return `<span class="test-choice-icon" aria-hidden="true">${direction === "inbound" ? "🛬" : "🛫"}</span>`;
-      }
-
       function renderTestBagEntry(mode, entry = {}, index = 0) {
         const today = ymdFromDate(new Date());
         const selected = (value, target) => value === target ? " selected" : "";
@@ -5293,6 +5289,7 @@
             { label: "Passenger", value: (row) => row.passenger },
             { label: "BN", value: (row) => row.bn },
             { label: "Seat", value: (row) => row.seat },
+            { label: "Ticket", value: (row) => row.ticketNumber || "" },
             { label: "Service", value: (row) => row.service || "INAD" },
           ], "No INAD rows found.");
         } else if (type === "wch") {
@@ -5712,7 +5709,6 @@
       reportPsmModeButton?.addEventListener("click", () => setReportMode("psm", { forceToday: true, resetOutput: true }));
       reportInadModeButton?.addEventListener("click", () => setReportMode("inad", { forceToday: true, resetOutput: true }));
       reportWchModeButton?.addEventListener("click", () => setReportMode("wch", { forceToday: true, resetOutput: true }));
-      reportBagModeButton?.addEventListener("click", openBaggageReport);
       reportForm.addEventListener("submit", generateReport);
       reportDownloadButton.addEventListener("click", downloadCurrentReportCsv);
       securityCheckButton.addEventListener("click", closeFlightMenuAfterAction(renderSecurityCheck));
@@ -5858,8 +5854,9 @@
             window.location.replace(loginUrl());
             return;
           }
-          if (isAuthSessionExpired()) {
-            returnToLogin();
+          if (isBaggageOnlyUser(user)) {
+            allowInternalPageRedirect();
+            window.location.replace(new URL("baggage.html", window.location.href).href);
             return;
           }
           if (isBaggageOnlyUser(user)) {
