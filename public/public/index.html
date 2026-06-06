@@ -4886,6 +4886,7 @@
             <button class="test-choice-card" type="button" data-test-create-mode="outbound">${testPlaneIcon("outbound")}<span>Outbound</span></button>
           </div>
         </article>`;
+        wireTestTimelineDrag();
       }
 
       function renderTestBagEntry(mode, entry = {}, index = 0) {
@@ -5851,6 +5852,11 @@
         auth.onAuthStateChanged((user) => {
           if (!user) {
             window.location.replace(loginUrl());
+            return;
+          }
+          if (isBaggageOnlyUser(user)) {
+            allowInternalPageRedirect();
+            window.location.replace(new URL("baggage.html", window.location.href).href);
             return;
           }
           if (isBaggageOnlyUser(user)) {
