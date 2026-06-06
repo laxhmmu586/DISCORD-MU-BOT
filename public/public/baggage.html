@@ -4575,7 +4575,7 @@
           sections.push(`<h3>${escapeHtml(title)}</h3>${rowsTable(rows, headers.map((label, index) => ({ label, value: (row) => row[index] })), "No rows.")}`);
         };
         addBagSection("Rush Bags", sheet.rushBags, ["Rush #", "Orig #", "To", "AKE"]);
-        addBagSection("Not Load Bags", sheet.notLoadBags, ["Tag #", "Status", "Remark"]);
+        addBagSection("Not Load Bags", sheet.notLoadBags, ["Tag #", "Type", "Remark"]);
         renderPanel("Bag Report", currentSy?.flightNo || "SY", sheet.hasData && sections.length ? sections.join("") : `<p class="panel-muted">No Google Sheet bag report data found for this SY date.</p>`);
       }
 
@@ -4708,7 +4708,7 @@
           sections.push(`<h3>${escapeHtml(title)}</h3>${rowsTable(rows, headers.map((label, index) => ({ label, value: (row) => row[index] })), "No rows.")}`);
         };
         addBagSection("Rush Bags", sheet?.rushBags, ["Rush #", "Orig #", "To", "AKE", "Remark"]);
-        addBagSection("Not Load Bags", sheet?.notLoadBags, ["Tag #", "Status", "Remark"]);
+        addBagSection("Not Load Bags", sheet?.notLoadBags, ["Tag #", "Type", "Remark"]);
         return sheet?.hasData && sections.length ? sections.join("") : `<p class="panel-muted">${escapeHtml(emptyText)}</p>`;
       }
 
@@ -4918,7 +4918,7 @@
             <div class="test-form-grid">${bagTagInput}
               <label class="test-field"><span>Outbound flight number</span><input name="flight" value="${escapeHtml(entry.flight || "MU586")}" required /></label>
               <label class="test-field"><span>Date</span><input name="date" type="date" value="${escapeHtml(entry.date || today)}" required /></label>
-              <label class="test-field"><span>Status</span><select name="status" data-test-outbound-status required><option value="Not load bags"${selected(status, "Not load bags")}>Not load bags</option><option value="Outbound rush"${selected(status, "Outbound rush")}>Outbound rush</option></select></label>
+              <label class="test-field"><span>Type</span><select name="status" data-test-outbound-status required><option value="Not load bags"${selected(status, "Not load bags")}>Not load bags</option><option value="Outbound rush"${selected(status, "Outbound rush")}>Outbound rush</option><option value="Gate bag"${selected(status, "Gate bag")}>Gate bag</option></select></label>
               <label class="test-field" data-test-rush-field hidden><span>Rush tag number</span><input name="rushTagNumber" value="${escapeHtml(entry.rushTagNumber || "")}" /></label>
               <label class="test-field" data-test-rush-field hidden><span>Rush To where?</span><input name="rushToWhere" value="${escapeHtml(entry.rushToWhere || "")}" /></label>
               <label class="test-field" data-test-rush-field hidden><span>AKE number?</span><input name="akeNumber" value="${escapeHtml(entry.akeNumber || "")}" /></label>
@@ -5561,10 +5561,16 @@
       changePasswordButton.addEventListener("click", () => {
         closeLoginMenu();
         closeFlightMenu();
+        closeMobilePanel();
+        if (reportPage) reportPage.hidden = true;
+        if (baggagePage) baggagePage.hidden = true;
+        if (testPage) testPage.hidden = true;
+        document.body.classList.remove("is-report-view");
+        resetPanelState();
         passwordPage.hidden = false;
         passwordStatus.textContent = "";
-        resultPanel.innerHTML = "";
         newPasswordInput.focus();
+        passwordPage.scrollIntoView({ block: "start", behavior: "auto" });
       });
 
       closePasswordPageButton.addEventListener("click", () => {
