@@ -37,7 +37,7 @@ const {
   getSyBagInfoByDate,
   getSalesReportMeta,
   downloadSalesReportByFlight,
-  hasNextDayInfoEmail,
+  getNextDayInfoEmail,
   getStoredReportRows,
   getVipReportRows,
   getPsmMsgReportRows,
@@ -1138,11 +1138,16 @@ app.get(
         const nextDayStep = syInfo.crewApis?.steps?.find((step) => step.key === 'nextDayInfo');
         if (nextDayStep && nextDayQuery?.flightNo && nextDayQuery?.flightDate) {
           const nextDaySubject = nextDayQuery.emailSubject || `${nextDayQuery.flightNo} ${nextDayQuery.flightDate} flight information details`;
-          const nextDayInfoComplete = await hasNextDayInfoEmail(nextDayQuery.flightNo, nextDayQuery.emailSubjectDate || nextDayQuery.flightDate, nextDaySubject);
-          nextDayStep.complete = nextDayInfoComplete;
-          nextDayStep.tooltip = nextDayInfoComplete
-            ? `NEXT DAY INFO sent email found: ${nextDaySubject}`
-            : `NEXT DAY INFO sent email not found: ${nextDaySubject}`;
+          const nextDayEmail = await getNextDayInfoEmail(nextDayQuery.flightNo, nextDayQuery.emailSubjectDate || nextDayQuery.flightDate, nextDaySubject);
+          nextDayStep.complete = Boolean(nextDayEmail.sent || nextDayEmail.found);
+          nextDayStep.time = nextDayEmail.sentAt ? nextDayEmail.sentAt.slice(11, 19) : '';
+          nextDayStep.searched = true;
+          nextDayStep.details = nextDayEmail.details || {};
+          nextDayStep.detailText = nextDayEmail.detailText || '';
+          nextDayStep.subject = nextDaySubject;
+          nextDayStep.tooltip = nextDayStep.complete
+            ? `NEXTDAY INFO sent email found: ${nextDaySubject}`
+            : `NEXTDAY INFO sent email not found today in Sent mail: ${nextDaySubject}`;
         }
         const authContext = await resolveAuthContextFromRequest(req);
         return res.json({ sy: { ...syInfo, bagSheet: syBagInfo, permissions: authContext.permissions } });

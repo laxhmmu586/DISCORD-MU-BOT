@@ -394,6 +394,16 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
         checks
       },
       {
+        key: 'nextDayInfo',
+        label: 'NEXTDAY INFO',
+        complete: false,
+        time: '',
+        tooltip: nextDayEmailSubject ? `Sent email search pending: ${nextDayEmailSubject}` : 'NEXTDAY INFO email subject unavailable',
+        searched: false,
+        details: {},
+        detailText: ''
+      },
+      {
         key: 'net',
         label: 'NET',
         complete: netComplete,
