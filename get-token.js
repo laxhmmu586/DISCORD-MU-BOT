@@ -6,7 +6,7 @@ const oauth2Client = new google.auth.OAuth2(
   'http://localhost'
 );
 
-const code = '4/0AdkVLPyK0bugTLowMRFcvqyzmLK1HYcWW6lwGlQGuy9tVPPIw5GvKTJDWugKIbF0MT2k2g';
+const code = '4/0AdkVLPyPwvjGXhA9skHZmIBGcUrpIn471DEGR61viCmChE9XVWNoNPI_RGvDz8vramRMbw';
 
 async function getToken() {
   const { tokens } = await oauth2Client.getToken(code);
