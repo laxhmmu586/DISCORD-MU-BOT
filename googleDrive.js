@@ -1198,15 +1198,32 @@ function getNextDayInfoGmailClient() {
     return {
       gmail: google.gmail({ version: 'v1', auth: oauth2Client }),
       userId: process.env.NEXT_DAY_INFO_GMAIL_USER || 'me',
-      authMode: 'oauth'
+      authMode: 'oauth',
+      hasRefreshToken: true
     };
   }
 
   return {
     gmail: google.gmail({ version: 'v1', auth }),
     userId: process.env.NEXT_DAY_INFO_GMAIL_USER || 'laxhmmu@gmail.com',
-    authMode: 'service-account'
+    authMode: 'service-account',
+    hasRefreshToken: false
   };
+}
+
+function nextDayInfoGmailErrorReason(err, authMode, userId) {
+  const message = err?.message || String(err || 'Unknown Gmail error');
+  const details = [];
+  if (authMode === 'service-account') {
+    details.push('GMAIL_REFRESH_TOKEN is not configured, so the app fell back to service-account Gmail auth. Service accounts cannot read a normal Gmail Sent mailbox unless Google Workspace domain-wide delegation is configured. Set GMAIL_REFRESH_TOKEN from get-token.js/test-gmail.js for the mailbox that sends NEXTDAY INFO.');
+  }
+  if (/precondition/i.test(message)) {
+    details.push('Gmail returned a precondition error before searching messages; this usually means the selected auth method is not allowed to access the requested mailbox.');
+  }
+  if (userId && authMode === 'oauth' && userId !== 'me') {
+    details.push('OAuth Gmail searches normally use userId "me". Only set NEXT_DAY_INFO_GMAIL_USER with delegated access.');
+  }
+  return [`Gmail API error: ${message}`, ...details].join(' ');
 }
 
 function gmailSearchYmd(value, timeZone = process.env.NEXT_DAY_INFO_GMAIL_TIME_ZONE || 'America/Los_Angeles') {
@@ -1321,11 +1338,16 @@ async function getNextDayInfoEmail(flightNo, subjectDate, expectedSubject = '') 
     return empty({ reason: 'Missing flight number, subject date, or expected email subject.' });
   }
 
+  let gmail = null;
+  let userId = '';
+  let authMode = '';
+  let todayYmd = gmailSearchYmd(new Date());
+  let q = '';
+
   try {
-    const { gmail, userId, authMode } = getNextDayInfoGmailClient();
-    const todayYmd = gmailSearchYmd(new Date());
+    ({ gmail, userId, authMode } = getNextDayInfoGmailClient());
     const exactSubject = subject.replace(/"/g, '');
-    const q = `in:sent subject:"${exactSubject}" newer_than:2d`;
+    q = `in:sent subject:"${exactSubject}" newer_than:2d`;
     const result = await gmail.users.messages.list({
       userId,
       q,
@@ -1377,9 +1399,15 @@ async function getNextDayInfoEmail(flightNo, subjectDate, expectedSubject = '') 
       todayMatchCount: messages.length
     };
   } catch (err) {
-    const reason = err?.message || String(err || 'Unknown Gmail error');
+    const reason = nextDayInfoGmailErrorReason(err, authMode, userId);
     console.error('Gmail next day info subject search error:', reason);
-    return empty({ reason: `Gmail API error: ${reason}` });
+    return empty({
+      reason,
+      query: q,
+      authMode,
+      userId,
+      searchDate: todayYmd
+    });
   }
 }
 
