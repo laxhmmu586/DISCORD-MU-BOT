@@ -1519,10 +1519,92 @@ function extractXlsxColumnBText(buffer) {
   return bValues.join(' ');
 }
 
+function cfbSectorOffset(sectorId, sectorSize) {
+  return (sectorId + 1) * sectorSize;
+}
+
+function cfbReadChain(buffer, fat, startSector, sectorSize, maxBytes = Number.MAX_SAFE_INTEGER) {
+  const chunks = [];
+  const seen = new Set();
+  let sector = startSector;
+  while (sector >= 0 && sector < fat.length && sector !== 0xfffffffe && sector !== 0xffffffff && !seen.has(sector)) {
+    seen.add(sector);
+    const offset = cfbSectorOffset(sector, sectorSize);
+    if (offset < 0 || offset >= buffer.length) break;
+    chunks.push(buffer.slice(offset, Math.min(offset + sectorSize, buffer.length)));
+    if (chunks.reduce((sum, item) => sum + item.length, 0) >= maxBytes) break;
+    sector = fat[sector];
+  }
+  return Buffer.concat(chunks).slice(0, maxBytes);
+}
+
+function extractCfbStreams(buffer) {
+  if (!Buffer.isBuffer(buffer) || buffer.length < 512) return {};
+  const signature = buffer.slice(0, 8).toString('hex');
+  if (signature !== 'd0cf11e0a1b11ae1') return {};
+  const sectorShift = buffer.readUInt16LE(30);
+  const sectorSize = 1 << sectorShift;
+  const fatSectorCount = buffer.readUInt32LE(44);
+  const firstDirSector = buffer.readUInt32LE(48);
+  const firstDifatSector = buffer.readUInt32LE(68);
+  const difatSectorCount = buffer.readUInt32LE(72);
+  const fatSectors = [];
+  for (let i = 0; i < 109; i += 1) {
+    const sector = buffer.readUInt32LE(76 + (i * 4));
+    if (sector !== 0xffffffff) fatSectors.push(sector);
+  }
+  let difat = firstDifatSector;
+  for (let i = 0; i < difatSectorCount && difat !== 0xffffffff && difat !== 0xfffffffe; i += 1) {
+    const offset = cfbSectorOffset(difat, sectorSize);
+    const entriesPerDifat = (sectorSize / 4) - 1;
+    for (let j = 0; j < entriesPerDifat; j += 1) {
+      const sector = buffer.readUInt32LE(offset + (j * 4));
+      if (sector !== 0xffffffff) fatSectors.push(sector);
+    }
+    difat = buffer.readUInt32LE(offset + (entriesPerDifat * 4));
+  }
+  const fat = [];
+  fatSectors.slice(0, fatSectorCount || fatSectors.length).forEach((sector) => {
+    const offset = cfbSectorOffset(sector, sectorSize);
+    for (let pos = offset; pos + 4 <= Math.min(offset + sectorSize, buffer.length); pos += 4) {
+      fat.push(buffer.readUInt32LE(pos));
+    }
+  });
+  const dirBuffer = cfbReadChain(buffer, fat, firstDirSector, sectorSize);
+  const streams = {};
+  for (let offset = 0; offset + 128 <= dirBuffer.length; offset += 128) {
+    const nameLength = dirBuffer.readUInt16LE(offset + 64);
+    if (nameLength < 2) continue;
+    const name = dirBuffer.slice(offset, offset + nameLength - 2).toString('utf16le');
+    const type = dirBuffer.readUInt8(offset + 66);
+    if (type !== 2 && type !== 5) continue;
+    const startSector = dirBuffer.readUInt32LE(offset + 116);
+    const size = Number(dirBuffer.readBigUInt64LE ? dirBuffer.readBigUInt64LE(offset + 120) : BigInt(dirBuffer.readUInt32LE(offset + 120)));
+    if (type === 2 && startSector !== 0xffffffff && size > 0) {
+      streams[name] = cfbReadChain(buffer, fat, startSector, sectorSize, size);
+    }
+  }
+  return streams;
+}
+
+function extractXlsWorkbookText(buffer) {
+  const streams = extractCfbStreams(buffer);
+  const workbook = streams.Workbook || streams.Book || streams['WORKBOOK'] || streams['BOOK'];
+  if (!workbook) return '';
+  return [workbook.toString('latin1'), workbook.toString('utf8'), workbook.toString('utf16le')]
+    .join(' ')
+    .replace(/\u0000/g, ' ')
+    .replace(/[\u0001-\u0008\u000B-\u001F\u007F]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function extractSpreadsheetText(buffer) {
   const source = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer || '');
   const xlsxColumnBText = extractXlsxColumnBText(source);
   if (xlsxColumnBText) return xlsxColumnBText;
+  const xlsWorkbookText = extractXlsWorkbookText(source);
+  if (xlsWorkbookText) return xlsWorkbookText;
   const views = [
     source.toString('latin1'),
     source.toString('utf8'),
