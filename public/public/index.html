@@ -670,7 +670,7 @@
         display: grid;
         align-items: end;
         min-height: clamp(360px, calc(100svh - 360px), 540px);
-        overflow: hidden;
+        overflow: visible;
         background: transparent;
       }
 
@@ -681,7 +681,7 @@
         place-items: center;
         padding: 3vh 0 8vh;
         transform: translateY(72px);
-        z-index: 1;
+        z-index: 8;
       }
 
       .timeline-shell::before,
@@ -868,19 +868,26 @@
 
       .node-card {
         position: absolute;
-        z-index: 7;
-        width: min(300px, 44vw);
+        z-index: 80;
+        width: min(360px, 46vw);
+        max-height: min(320px, calc(100vh - 220px));
+        overflow-y: auto;
         display: none;
         transform: translate(-50%, calc(-100% - 24px));
         border: 1px solid rgba(176, 216, 255, 0.32);
         background: linear-gradient(150deg, rgba(7, 22, 36, 0.94), rgba(2, 12, 22, 0.9));
         box-shadow: 0 18px 54px rgba(0, 0, 0, 0.42);
         padding: 11px 12px;
-        pointer-events: none;
+        pointer-events: auto;
+        overscroll-behavior: contain;
       }
 
       .node-card.is-open {
         display: block;
+      }
+
+      .node-card.is-below {
+        transform: translate(-50%, 24px);
       }
 
       .node-card small {
@@ -2936,8 +2943,13 @@
         }
 
         .node-card {
-          width: min(250px, calc(100vw - 40px));
+          width: min(300px, calc(100vw - 40px));
+          max-height: min(280px, calc(100vh - 180px));
           transform: translate(-50%, calc(-100% - 18px));
+        }
+
+        .node-card.is-below {
+          transform: translate(-50%, 18px);
         }
 
         .node-card p {
@@ -3753,6 +3765,7 @@
         const label = node.dataset.label || step?.label || key;
         const time = nodeDisplayTime(node);
         nodeCard.querySelector("h2").textContent = label;
+        nodeCard.classList.toggle("is-below", parseFloat(node.style.top || "0") < 34);
         const detailText = step?.detailText ? `<span class="node-card-detail">${escapeHtml(step.detailText)}</span>` : "";
         nodeCard.querySelector("p").innerHTML = `${escapeHtml(step?.tooltip || `${label} ${time !== "----" ? `entered at ${time}` : "data is not complete yet."}`)}${detailText}`;
       }
@@ -3765,11 +3778,12 @@
         const node = Array.from(nodes).find((item) => item.dataset.key === key);
         if (!node) return;
         const label = node.dataset.label || step?.label || key;
-        const status = step?.complete ? "Complete" : "Not complete";
+        const status = key === "GD_CHECK" ? (step?.complete ? "Matched" : "Not matched") : (step?.complete ? "Complete" : "Not complete");
         const detail = step?.tooltip || (inputTime && inputTime !== "----" ? `${label} entered at ${inputTime}` : `${label} not entered`);
         const detailText = step?.detailText ? `<span class="node-card-detail">${escapeHtml(step.detailText)}</span>` : "";
         nodeCard.style.left = node.style.left;
         nodeCard.style.top = node.style.top;
+        nodeCard.classList.toggle("is-below", parseFloat(node.style.top || "0") < 34);
         nodeCard.querySelector("h2").textContent = label;
         nodeCard.querySelector("p").innerHTML = `<b>Time</b> ${escapeHtml(inputTime === "----" ? "Not entered" : inputTime)}<br><b>Status</b> ${escapeHtml(status)}<br>${escapeHtml(detail)}${detailText}`;
         nodeCard.classList.add("is-open");
@@ -4232,7 +4246,7 @@
           let started = Boolean(step?.complete || step?.time);
           let time = step?.time || "----";
           node.dataset.inputTime = step?.time || "";
-          if (["GD_CHECK", "NEXTDAY_INFO"].includes(key)) { started = Boolean(step?.searched || step?.complete || step?.time); complete = Boolean(step?.complete); time = complete ? (step?.time || (key === "GD_CHECK" ? "MATCH" : "SENT")) : (started ? (key === "GD_CHECK" ? "CHECK" : "MISSING") : "----"); }
+          if (["GD_CHECK", "NEXTDAY_INFO"].includes(key)) { started = Boolean(step?.searched || step?.complete || step?.time); complete = Boolean(step?.complete); time = complete ? (step?.time || (key === "GD_CHECK" ? "MATCH" : "SENT")) : (started ? (key === "GD_CHECK" ? "ISSUE" : "MISSING") : "----"); }
           if (key === "CHD") { issueCount = chdIssues; started = (sy.chdList || []).length > 0; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
           if (key === "GOV") { issueCount = govCount; started = Boolean(sy.govAqq) && previousStarted; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
           if (key === "NBRD") { issueCount = nbrdCount; started = (sy.bnAudit || []).length > 0 && previousStarted; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }

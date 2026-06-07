@@ -1479,18 +1479,19 @@ function compareGdCrew(crew = [], spreadsheetText = '') {
 
 function buildGdCheckDetailText(result) {
   const lines = [
+    `GD Result: ${result.complete ? 'MATCHED' : 'NOT MATCHED'}`,
+    `Crew Matched: ${result.matched || 0}/${result.total || 0}`,
+    result.reason ? `Reason: ${result.reason}` : '',
     `Expected Subject: ${result.subject || ''}`,
     result.query ? `Gmail Query: ${result.query}` : '',
     result.authMode ? `Auth Mode: ${result.authMode}` : '',
     result.userId ? `Gmail User: ${result.userId}` : '',
     result.searchDate ? `Search Date: ${result.searchDate}` : '',
-    result.attachmentName ? `Attachment: ${result.attachmentName}` : '',
-    `Crew Matched: ${result.matched || 0}/${result.total || 0}`
+    result.attachmentName ? `Attachment: ${result.attachmentName}` : ''
   ].filter(Boolean);
-  if (result.reason) lines.unshift(`Reason: ${result.reason}`);
   if (Array.isArray(result.missing) && result.missing.length) {
     lines.push('Missing Passports:');
-    result.missing.slice(0, 20).forEach((row) => {
+    result.missing.forEach((row) => {
       const issues = row.passportFound ? '' : 'passport';
       lines.push(`${row.no || ''}. ${row.name || ''} ${row.passport || ''} (${issues || 'not matched'})`);
     });
@@ -1598,6 +1599,11 @@ async function getGdCheckEmail(flightNo, subjectDate, crew = [], expectedSubject
     result.detailText = buildGdCheckDetailText(result);
     return result;
   }
+}
+
+async function hasNextDayInfoEmail(flightNo, subjectDate, expectedSubject = '') {
+  const result = await getNextDayInfoEmail(flightNo, subjectDate, expectedSubject);
+  return Boolean(result.sent || result.found);
 }
 
 async function hasNextDayInfoEmail(flightNo, subjectDate, expectedSubject = '') {
