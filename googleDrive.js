@@ -1,4 +1,5 @@
 const { google } = require('googleapis');
+const { Readable } = require('stream');
 const zlib = require('zlib');
 
 // ===============================
@@ -19,6 +20,7 @@ const auth = new google.auth.GoogleAuth({
   scopes: [
 
     'https://www.googleapis.com/auth/drive.readonly',
+    'https://www.googleapis.com/auth/drive.file',
     'https://www.googleapis.com/auth/spreadsheets',
     'https://www.googleapis.com/auth/gmail.readonly'
   ]
@@ -1821,7 +1823,7 @@ async function getGdCheckEmail(flightNo, subjectDate, crew = [], expectedSubject
     const messages = (Array.isArray(list.data.messages) ? list.data.messages : [])
       .sort((a, b) => Number(b.internalDate || 0) - Number(a.internalDate || 0));
     if (!messages.length) {
-      const result = empty({ reason: 'No Gmail message with the expected GD subject and spreadsheet attachment was found in the last 2 days.', query: q, authMode, userId, searchDate });
+      const result = empty({ reason: 'No Gmail message with the expected GD subject and attachment was found in the last 2 days.', query: q, authMode, userId, searchDate });
       result.detailText = buildGdCheckDetailText(result);
       return result;
     }
@@ -1888,7 +1890,7 @@ async function getGdCheckEmail(flightNo, subjectDate, crew = [], expectedSubject
       bestResult.detailText = buildGdCheckDetailText(bestResult);
       return bestResult;
     }
-    const result = empty({ reason: 'Latest GD email was found, but no .xls/.xlsx spreadsheet attachment was found.', query: q, authMode, userId, searchDate, sentAt: latestSentAt });
+    const result = empty({ reason: 'Latest GD email was found, but no .xls/.xlsx/.pdf attachment was found.', query: q, authMode, userId, searchDate, sentAt: latestSentAt });
     result.detailText = buildGdCheckDetailText(result);
     return result;
   } catch (err) {
