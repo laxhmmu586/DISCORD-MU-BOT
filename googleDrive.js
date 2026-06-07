@@ -43,6 +43,7 @@ const sheets =
     auth
   });
 
+
 const FULL_SHEET_ID =
   '1FjdIg_b1iIfcAbCsxGBmIMnhFxA70sRo7cs4Vr4OLpc';
 
@@ -1605,6 +1606,8 @@ function extractSpreadsheetText(buffer) {
   const source = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer || '');
   const xlsxColumnBText = extractXlsxColumnBText(source);
   if (xlsxColumnBText) return xlsxColumnBText;
+  const xlsColumnBText = extractXlsColumnBText(source);
+  if (xlsColumnBText) return xlsColumnBText;
   const xlsWorkbookText = extractXlsWorkbookText(source);
   if (xlsWorkbookText) return xlsWorkbookText;
   const views = [
@@ -1621,157 +1624,104 @@ function extractSpreadsheetText(buffer) {
 }
 
 
-function decodePdfLiteralString(value = '') {
-  let out = '';
-  const raw = String(value || '');
-  for (let i = 0; i < raw.length; i += 1) {
-    const ch = raw[i];
-    if (ch !== '\\') {
-      out += ch;
+function readBiffUnicodeString(buffer, offset) {
+  if (!Buffer.isBuffer(buffer) || offset + 3 > buffer.length) return { value: '', nextOffset: offset };
+  const charCount = buffer.readUInt16LE(offset);
+  const flags = buffer.readUInt8(offset + 2);
+  let pos = offset + 3;
+  const isUtf16 = Boolean(flags & 0x01);
+  const hasExtended = Boolean(flags & 0x04);
+  const hasRichText = Boolean(flags & 0x08);
+  let richRuns = 0;
+  let extendedSize = 0;
+  if (hasRichText && pos + 2 <= buffer.length) {
+    richRuns = buffer.readUInt16LE(pos);
+    pos += 2;
+  }
+  if (hasExtended && pos + 4 <= buffer.length) {
+    extendedSize = buffer.readUInt32LE(pos);
+    pos += 4;
+  }
+  const byteLength = charCount * (isUtf16 ? 2 : 1);
+  if (pos + byteLength > buffer.length) return { value: '', nextOffset: buffer.length };
+  const value = buffer.slice(pos, pos + byteLength).toString(isUtf16 ? 'utf16le' : 'latin1');
+  pos += byteLength + (richRuns * 4) + extendedSize;
+  return { value, nextOffset: Math.min(pos, buffer.length) };
+}
+
+function parseBiffSstStrings(workbook) {
+  const strings = [];
+  for (let pos = 0; pos + 4 <= workbook.length;) {
+    const opcode = workbook.readUInt16LE(pos);
+    const length = workbook.readUInt16LE(pos + 2);
+    const dataStart = pos + 4;
+    const dataEnd = Math.min(dataStart + length, workbook.length);
+    if (opcode !== 0x00fc) {
+      pos = dataEnd;
       continue;
     }
-    const next = raw[i + 1] || '';
-    if (!next) continue;
-    if (next === 'n') { out += '\n'; i += 1; continue; }
-    if (next === 'r') { out += '\r'; i += 1; continue; }
-    if (next === 't') { out += '\t'; i += 1; continue; }
-    if (next === 'b') { out += '\b'; i += 1; continue; }
-    if (next === 'f') { out += '\f'; i += 1; continue; }
-    if (next === '\n' || next === '\r') {
-      i += next === '\r' && raw[i + 2] === '\n' ? 2 : 1;
-      continue;
+    const chunks = [workbook.slice(dataStart, dataEnd)];
+    let next = dataEnd;
+    while (next + 4 <= workbook.length && workbook.readUInt16LE(next) === 0x003c) {
+      const continueLength = workbook.readUInt16LE(next + 2);
+      chunks.push(workbook.slice(next + 4, Math.min(next + 4 + continueLength, workbook.length)));
+      next += 4 + continueLength;
     }
-    if (/[0-7]/.test(next)) {
-      const octal = raw.slice(i + 1, i + 4).match(/^[0-7]{1,3}/)?.[0] || '';
-      if (octal) {
-        out += String.fromCharCode(parseInt(octal, 8));
-        i += octal.length;
-        continue;
+    const sst = Buffer.concat(chunks);
+    const uniqueCount = sst.length >= 8 ? sst.readUInt32LE(4) : 0;
+    let offset = 8;
+    for (let i = 0; i < uniqueCount && offset < sst.length; i += 1) {
+      const parsed = readBiffUnicodeString(sst, offset);
+      strings.push(parsed.value);
+      if (parsed.nextOffset <= offset) break;
+      offset = parsed.nextOffset;
+    }
+    pos = next;
+  }
+  return strings;
+}
+
+function extractXlsColumnBText(buffer) {
+  const streams = extractCfbStreams(buffer);
+  const workbook = streams.Workbook || streams.Book || streams['WORKBOOK'] || streams['BOOK'];
+  if (!workbook) return '';
+  const sharedStrings = parseBiffSstStrings(workbook);
+  const bValues = [];
+  for (let pos = 0; pos + 4 <= workbook.length;) {
+    const opcode = workbook.readUInt16LE(pos);
+    const length = workbook.readUInt16LE(pos + 2);
+    const dataStart = pos + 4;
+    const dataEnd = Math.min(dataStart + length, workbook.length);
+    if (opcode === 0x00fd && dataStart + 10 <= dataEnd) {
+      const col = workbook.readUInt16LE(dataStart + 2);
+      if (col === 1) {
+        const sstIndex = workbook.readUInt32LE(dataStart + 6);
+        const value = sharedStrings[sstIndex] || '';
+        if (value) bValues.push(value);
+      }
+    } else if (opcode === 0x0204 && dataStart + 8 <= dataEnd) {
+      const col = workbook.readUInt16LE(dataStart + 2);
+      if (col === 1) {
+        const parsed = readBiffUnicodeString(workbook.slice(dataStart + 6, dataEnd), 0);
+        const fallbackLength = workbook.readUInt8(dataStart + 6);
+        const fallback = dataStart + 7 + fallbackLength <= dataEnd ? workbook.slice(dataStart + 7, dataStart + 7 + fallbackLength).toString('latin1') : '';
+        const value = parsed.value || fallback;
+        if (value) bValues.push(value);
       }
     }
-    out += next;
-    i += 1;
+    pos = dataEnd;
   }
-  return out;
+  return bValues.join(' ');
 }
 
-function decodePdfHexString(value = '') {
-  const hex = String(value || '').replace(/\s+/g, '');
-  if (hex.length < 2) return '';
-  const evenHex = hex.length % 2 ? `${hex}0` : hex;
-  const bytes = [];
-  for (let i = 0; i + 1 < evenHex.length; i += 2) {
-    const byte = parseInt(evenHex.slice(i, i + 2), 16);
-    if (!Number.isNaN(byte)) bytes.push(byte);
-  }
-  const buffer = Buffer.from(bytes);
-  if (buffer.length >= 2 && buffer[0] === 0xfe && buffer[1] === 0xff) {
-    let out = '';
-    for (let i = 2; i + 1 < buffer.length; i += 2) out += String.fromCharCode(buffer.readUInt16BE(i));
-    return out;
-  }
-  return buffer.toString('latin1');
-}
-
-function extractPdfReadableTextFromChunk(chunk = '') {
-  const text = String(chunk || '');
-  const parts = [text];
-  text.replace(/\((?:\\.|[^\\()])*\)/g, (match) => {
-    parts.push(decodePdfLiteralString(match.slice(1, -1)));
-    return match;
-  });
-  text.replace(/(?<!<)<([0-9A-Fa-f\s]{4,})>(?!>)/g, (match, hex) => {
-    parts.push(decodePdfHexString(hex));
-    return match;
-  });
-  return parts.join(' ');
-}
-
-function extractPdfText(buffer) {
-  const source = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer || '');
-  const latin = source.toString('latin1');
-  const chunks = [latin];
-  const streamRegex = /stream\r?\n([\s\S]*?)\r?\nendstream/g;
-  let match;
-  while ((match = streamRegex.exec(latin))) {
-    const streamText = match[1] || '';
-    chunks.push(streamText);
-    const dictPrefix = latin.slice(Math.max(0, match.index - 700), match.index);
-    if (/\/FlateDecode\b/i.test(dictPrefix)) {
-      const compressed = Buffer.from(streamText, 'latin1');
-      try { chunks.push(zlib.inflateSync(compressed).toString('latin1')); } catch (err) {}
-      try { chunks.push(zlib.inflateRawSync(compressed).toString('latin1')); } catch (err) {}
-    }
-  }
-  return chunks
-    .map((chunk) => extractPdfReadableTextFromChunk(chunk))
-    .join(' ')
-    .replace(/\u0000/g, ' ')
-    .replace(/[\u0001-\u0008\u000B-\u001F\u007F]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function isPdfAttachment(filename = '', mimeType = '') {
+function isSpreadsheetAttachment(filename = '', mimeType = '') {
   const lowerName = String(filename || '').toLowerCase();
   const lowerMime = String(mimeType || '').toLowerCase();
-  return lowerName.endsWith('.pdf') || lowerMime.includes('pdf');
-}
-
-function extractGdAttachmentText(buffer, filename = '', mimeType = '') {
-  if (isPdfAttachment(filename, mimeType)) return extractPdfText(buffer);
-  return extractSpreadsheetText(buffer);
+  return lowerName.endsWith('.xls') || lowerName.endsWith('.xlsx') || /excel|spreadsheet|sheet/.test(lowerMime);
 }
 
 function gdAttachmentType(filename = '', mimeType = '') {
-  const lowerName = String(filename || '').toLowerCase();
-  const lowerMime = String(mimeType || '').toLowerCase();
-  if (isPdfAttachment(filename, mimeType)) return 'PDF';
-  if (lowerName.endsWith('.xls') || lowerName.endsWith('.xlsx') || /excel|spreadsheet|sheet/.test(lowerMime)) return 'Spreadsheet';
-  return 'Attachment';
-}
-
-
-function safeGdOcrFileName(filename = '') {
-  return String(filename || 'gd-attachment.pdf')
-    .replace(/[\\/\u0000-\u001f]+/g, '_')
-    .replace(/[^\w.() -]+/g, '_')
-    .slice(0, 120) || 'gd-attachment.pdf';
-}
-
-async function extractPdfOcrText(buffer, filename = '') {
-  const source = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer || '');
-  if (!source.length) return '';
-  let fileId = '';
-  try {
-    const created = await drive.files.create({
-      requestBody: {
-        name: `gd-ocr-${Date.now()}-${safeGdOcrFileName(filename)}`,
-        mimeType: 'application/vnd.google-apps.document'
-      },
-      media: {
-        mimeType: 'application/pdf',
-        body: Readable.from(source)
-      },
-      fields: 'id',
-      ocrLanguage: 'en'
-    });
-    fileId = created.data.id || '';
-    if (!fileId) return '';
-    const exported = await drive.files.export(
-      { fileId, mimeType: 'text/plain' },
-      { responseType: 'text' }
-    );
-    return String(exported.data || '')
-      .replace(/\u0000/g, ' ')
-      .replace(/[\u0001-\u0008\u000B-\u001F\u007F]+/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-  } finally {
-    if (fileId) {
-      try { await drive.files.delete({ fileId }); } catch (err) {}
-    }
-  }
+  return isSpreadsheetAttachment(filename, mimeType) ? 'Spreadsheet B column' : 'Attachment';
 }
 
 function normalizeGdComparable(value = '') {
@@ -1810,7 +1760,7 @@ function buildGdCheckDetailText(result) {
     result.attachmentName ? `Attachment: ${result.attachmentName}` : '',
     result.attachmentType ? `Attachment Type: ${result.attachmentType}` : '',
     Array.isArray(result.checkedAttachments) && result.checkedAttachments.length
-      ? `Checked Attachments: ${result.checkedAttachments.map((item) => `${item.name || 'attachment'} ${item.method ? `[${item.method}] ` : ''}${item.matched || 0}/${item.total || 0}${item.ocrError ? ` OCR:${item.ocrError}` : ''}`).join(' | ')}`
+      ? `Checked Attachments: ${result.checkedAttachments.map((item) => `${item.name || 'attachment'} [${item.type || 'Spreadsheet B column'}] ${item.matched || 0}/${item.total || 0}`).join(' | ')}`
       : ''
   ].filter(Boolean);
   if (Array.isArray(result.missing) && result.missing.length) {
@@ -1887,15 +1837,10 @@ async function getGdCheckEmail(flightNo, subjectDate, crew = [], expectedSubject
     });
     const latestSentAtDate = Number(full.data.internalDate) ? new Date(Number(full.data.internalDate)) : null;
     const latestSentAt = latestSentAtDate ? latestSentAtDate.toISOString() : '';
-    const gdAttachmentParts = collectGmailParts(full.data.payload, (part) => {
-      const filename = String(part.filename || '').toLowerCase();
-      const mimeType = String(part.mimeType || '').toLowerCase();
-      return Boolean(part.body?.attachmentId || part.body?.data)
-        && (filename.endsWith('.xls')
-          || filename.endsWith('.xlsx')
-          || filename.endsWith('.pdf')
-          || /excel|spreadsheet|sheet|pdf/.test(mimeType));
-    });
+    const gdAttachmentParts = collectGmailParts(full.data.payload, (part) => (
+      Boolean(part.body?.attachmentId || part.body?.data)
+        && isSpreadsheetAttachment(part.filename || '', part.mimeType || '')
+    ));
     const checkedAttachments = [];
     let bestResult = null;
     for (const part of gdAttachmentParts) {
@@ -1906,45 +1851,21 @@ async function getGdCheckEmail(flightNo, subjectDate, crew = [], expectedSubject
       }
       const attachmentBuffer = Buffer.from(String(data).replace(/-/g, '+').replace(/_/g, '/'), 'base64');
       const attachmentType = gdAttachmentType(part.filename || '', part.mimeType || '');
-      const isPdf = isPdfAttachment(part.filename || '', part.mimeType || '');
-      const extractedText = extractGdAttachmentText(attachmentBuffer, part.filename || '', part.mimeType || '');
-      let attachmentText = extractedText;
-      let comparison = compareGdCrew(crew, attachmentText);
-      let extractionMethod = isPdf ? 'PDF text' : attachmentType;
-      let ocrError = '';
-      if (isPdf && !comparison.complete) {
-        try {
-          const ocrText = await extractPdfOcrText(attachmentBuffer, part.filename || 'GD PDF attachment');
-          if (ocrText) {
-            const ocrComparison = compareGdCrew(crew, `${attachmentText} ${ocrText}`);
-            if (ocrComparison.matched >= comparison.matched) {
-              attachmentText = `${attachmentText} ${ocrText}`;
-              comparison = ocrComparison;
-              extractionMethod = 'PDF OCR';
-            }
-          } else {
-            extractionMethod = 'PDF text (OCR empty)';
-          }
-        } catch (err) {
-          ocrError = nextDayInfoGmailErrorReason(err, authMode, userId);
-          extractionMethod = 'PDF text (OCR failed)';
-        }
-      }
+      const attachmentText = extractSpreadsheetText(attachmentBuffer);
+      const comparison = compareGdCrew(crew, attachmentText);
       checkedAttachments.push({
-        name: part.filename || `${attachmentType} attachment`,
+        name: part.filename || 'GD spreadsheet attachment',
         type: attachmentType,
-        method: extractionMethod,
         matched: comparison.matched,
         total: comparison.total,
-        complete: comparison.complete,
-        ocrError
+        complete: comparison.complete
       });
       const candidate = {
         found: true,
         complete: comparison.complete,
         subject,
         detailText: '',
-        reason: comparison.complete ? '' : `${attachmentType} attachment is missing one or more CWD passport numbers.${ocrError ? ` OCR failed: ${ocrError}` : ''}`,
+        reason: comparison.complete ? '' : `${attachmentType} is missing one or more CWD passport numbers.`,
         query: q,
         authMode,
         userId,
