@@ -798,7 +798,7 @@
       }
 
       .stage-arc-label {
-        fill: white;
+        fill: rgba(230, 238, 248, 0.86);
         font-size: 18px;
         font-weight: 500;
         letter-spacing: 1.5px;
@@ -2983,12 +2983,12 @@
         }
 
         .stage-arc-label {
-          font-size: 13px;
-          letter-spacing: 0.9px;
+          font-size: 16px;
+          letter-spacing: 1.1px;
         }
 
         .stage-arc-path {
-          stroke-width: 3.4;
+          stroke-width: 3.2;
         }
 
         .node-card {
@@ -3434,8 +3434,8 @@
                 <defs>
                   <linearGradient id="stage-arc-fade" x1="0%" y1="0%" x2="100%" y2="0%">
                     <stop offset="0%" stop-color="#ffffff" stop-opacity="0" />
-                    <stop offset="18%" stop-color="#ffffff" stop-opacity="0.98" />
-                    <stop offset="82%" stop-color="#ffffff" stop-opacity="0.98" />
+                    <stop offset="18%" stop-color="#dbe6f2" stop-opacity="0.68" />
+                    <stop offset="82%" stop-color="#dbe6f2" stop-opacity="0.68" />
                     <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
                   </linearGradient>
                 </defs>
@@ -3819,13 +3819,9 @@
 
       function determineDefaultCenter() {
         const ccStep = stepByKey("CC");
-        const cclStep = stepByKey("CCL");
         if (ccStep?.time) return findNodeIndexByKey("CC");
-        if (cclStep?.time) return findNodeIndexByKey("CCL");
-        const stdMinutes = timeToMinutes(currentSy?.sd || "1230");
-        const currentMinutes = new Date().getUTCHours() * 60 + new Date().getUTCMinutes();
-        if (currentMinutes <= stdMinutes - 180) return findNodeIndexByKey("NBRD");
-        return findNodeIndexByKey("CREW_APIS");
+        const currentHour = new Date().getHours();
+        return findNodeIndexByKey(currentHour >= 9 ? "NBRD" : "NEXTDAY_INFO");
       }
 
       function clamp(value, min, max) {
@@ -5743,6 +5739,9 @@
       document.addEventListener("click", (event) => {
         if (!event.target.closest(".flight-tools")) closeFlightMenu();
         if (!event.target.closest(".nav-actions")) closeLoginMenu();
+        if (nodeCard.classList.contains("is-open") && !event.target.closest(".node-card") && !event.target.closest(".node")) {
+          hideTimelineNodeCard();
+        }
       });
 
       nodes.forEach((node) => {
@@ -6026,7 +6025,7 @@
         });
       }
 
-      resetTimelineCenter("CREW_APIS");
+      resetTimelineCenter();
       mobileOrbitQuery.addEventListener("change", () => placeNodes());
       new ResizeObserver(() => placeNodes()).observe(timelineShell);
     </script>
