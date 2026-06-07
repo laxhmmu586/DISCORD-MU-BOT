@@ -284,6 +284,32 @@ function findJcsyInfo(sections, flightNo, flightYmd, formatTime) {
   };
 }
 
+
+function parseCrewManifestRowsFromSections(sections, flightNo, flightYmd) {
+  const rows = [];
+  const seen = new Set();
+  sections.forEach((sectionObj) => {
+    const ymd = getYmdFromTimestamp(sectionObj.timestamp);
+    const content = String(sectionObj.content || '');
+    if (flightYmd && ymd && ymd !== flightYmd) return;
+    if (!/^>\s*(?:CWD|PN\d*)\b/im.test(content) && !/\bCWD\s*:/i.test(content)) return;
+    content.split(/\r?\n/).forEach((line) => {
+      const match = line.match(/^\s*(\d+)\.\s+([A-Z]+\/[A-Z]+)\s+\S+\s+\S+\s+\S+\s+[MF]\s+\d{2}[A-Z]{3}\d{2}\s+([A-Z]{1,3}\d{5,9})\b/i);
+      if (!match) return;
+      const passport = match[3].toUpperCase();
+      if (seen.has(passport)) return;
+      seen.add(passport);
+      rows.push({
+        no: Number(match[1]),
+        name: match[2].toUpperCase(),
+        gdName: match[2].toUpperCase().replace('/', ' '),
+        passport
+      });
+    });
+  });
+  return rows.sort((a, b) => a.no - b.no);
+}
+
 function enrichCrewApisFromLog(log, info, targetYmd) {
   const sections = splitLogicalSections(log);
   const flightNo = String(info?.flightNo || '').trim().toUpperCase();
@@ -341,6 +367,9 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
     .sort((a, b) => parseSectionTimestamp(b.timestamp) - parseSectionTimestamp(a.timestamp))[0] || null : null;
   const netComplete = Boolean(netMatch);
   const netTime = formatTime(netMatch?.timestamp);
+  const gdEmailDate = dateToDdMonYy(baseDateUtc);
+  const gdEmailSubject = flightNo && gdEmailDate ? `GD for ${flightNo}/${gdEmailDate}` : '';
+  const crewManifestRows = parseCrewManifestRowsFromSections(sections, flightNo, flightYmd);
   const nextDayDateUtc = addDaysUtc(baseDateUtc, 1);
   const nextDayEmailDate = dateToEmailSubjectDate(nextDayDateUtc);
   const nextDayEmailSubject = flightNo && nextDayEmailDate ? `${flightNo} ${nextDayEmailDate} flight information details` : '';
@@ -378,6 +407,13 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
     : { complete: false, time: '', timestamp: '' };
   return {
     complete: crewApisComplete && ccl.complete && cc.complete,
+    gdCheckQuery: {
+      flightNo,
+      flightDate: gdEmailDate,
+      emailSubjectDate: gdEmailDate,
+      emailSubject: gdEmailSubject,
+      crew: crewManifestRows
+    },
     nextDayInfoQuery: {
       flightNo,
       flightDate: nextDayEmailDate,
@@ -392,6 +428,27 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
         time: crewApisTime,
         tooltip: crewApisTime ? `CWI/N ${crewApisTime}` : 'CWI/N not entered',
         checks
+      },
+      {
+        key: 'gdCheck',
+        label: 'GD CHECK',
+        complete: false,
+        time: '',
+        tooltip: gdEmailSubject ? `GD attachment search pending: ${gdEmailSubject}` : 'GD email subject unavailable',
+        searched: false,
+        details: {},
+        detailText: '',
+        crew: crewManifestRows
+      },
+      {
+        key: 'nextDayInfo',
+        label: 'NEXTDAY INFO',
+        complete: false,
+        time: '',
+        tooltip: nextDayEmailSubject ? `Sent email search pending: ${nextDayEmailSubject}` : 'NEXTDAY INFO email subject unavailable',
+        searched: false,
+        details: {},
+        detailText: ''
       },
       {
         key: 'net',

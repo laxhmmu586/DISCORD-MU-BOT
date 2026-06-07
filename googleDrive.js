@@ -1,4 +1,5 @@
 const { google } = require('googleapis');
+const zlib = require('zlib');
 
 // ===============================
 // Google Auth
@@ -1186,28 +1187,460 @@ async function getLatestFlightLog() {
 }
 
 
-async function hasNextDayInfoEmail(flightNo, subjectDate, expectedSubject = '') {
+function envFirst(...names) {
+  for (const name of names) {
+    const value = String(process.env[name] || '').trim();
+    if (value) return value;
+  }
+  return '';
+}
+
+function getNextDayInfoGmailClient() {
+  const requestedAuthMode = envFirst('AUTH_MODE', 'NEXT_DAY_INFO_GMAIL_AUTH_MODE').toLowerCase();
+  const refreshToken = envFirst('GOOGLE_REFRESH_TOKEN', 'GMAIL_REFRESH_TOKEN');
+  const gmailUser = envFirst('GMAIL_USER', 'NEXT_DAY_INFO_GMAIL_USER');
+  if (refreshToken) {
+    const oauth2Client = new google.auth.OAuth2(
+      envFirst('GOOGLE_CLIENT_ID', 'GMAIL_CLIENT_ID') || '30017158772-k1frki5rvjl2u0t905gavmuskgnolpgc.apps.googleusercontent.com',
+      envFirst('GOOGLE_CLIENT_SECRET', 'GMAIL_CLIENT_SECRET') || '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',
+      envFirst('GOOGLE_REDIRECT_URI', 'GMAIL_REDIRECT_URI') || 'http://localhost'
+    );
+    oauth2Client.setCredentials({ refresh_token: refreshToken });
+    return {
+      gmail: google.gmail({ version: 'v1', auth: oauth2Client }),
+      userId: gmailUser || 'me',
+      authMode: 'oauth',
+      hasRefreshToken: true,
+      requestedAuthMode
+    };
+  }
+
+  if (requestedAuthMode === 'oauth') {
+    throw new Error('AUTH_MODE=oauth but GOOGLE_REFRESH_TOKEN/GMAIL_REFRESH_TOKEN is not configured.');
+  }
+
+  return {
+    gmail: google.gmail({ version: 'v1', auth }),
+    userId: gmailUser || 'laxhmmu@gmail.com',
+    authMode: 'service-account',
+    hasRefreshToken: false,
+    requestedAuthMode
+  };
+}
+
+function nextDayInfoGmailErrorReason(err, authMode, userId) {
+  const message = err?.message || String(err || 'Unknown Gmail error');
+  const details = [];
+  if (authMode === 'service-account') {
+    details.push('GOOGLE_REFRESH_TOKEN/GMAIL_REFRESH_TOKEN is not configured, so the app fell back to service-account Gmail auth. Service accounts cannot read a normal Gmail Sent mailbox unless Google Workspace domain-wide delegation is configured. Set GOOGLE_REFRESH_TOKEN from get-token.js/test-gmail.js for the mailbox that sends NEXTDAY INFO.');
+  }
+  if (/precondition/i.test(message)) {
+    details.push('Gmail returned a precondition error before searching messages; this usually means the selected auth method is not allowed to access the requested mailbox.');
+  }
+  if (userId && authMode === 'oauth' && userId !== 'me') {
+    details.push('OAuth Gmail searches normally use userId "me", but GMAIL_USER is also supported for your .env. Only set GMAIL_USER/NEXT_DAY_INFO_GMAIL_USER to a different mailbox with delegated access.');
+  }
+  return [`Gmail API error: ${message}`, ...details].join(' ');
+}
+
+function gmailSearchYmd(value, timeZone = process.env.NEXT_DAY_INFO_GMAIL_TIME_ZONE || 'America/Los_Angeles') {
+  const date = value instanceof Date ? value : new Date(value || Date.now());
+  if (Number.isNaN(date.getTime())) return '';
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(date).reduce((acc, part) => {
+    acc[part.type] = part.value;
+    return acc;
+  }, {});
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+function decodeGmailBody(data = '') {
+  if (!data) return '';
+  try {
+    return Buffer.from(String(data).replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
+  } catch {
+    return '';
+  }
+}
+
+function extractGmailTextParts(payload) {
+  if (!payload) return [];
+  const parts = [];
+  const walk = (part) => {
+    if (!part) return;
+    const mimeType = String(part.mimeType || '').toLowerCase();
+    const bodyText = decodeGmailBody(part.body?.data || '');
+    if (bodyText && (mimeType === 'text/plain' || !part.parts?.length)) {
+      parts.push(bodyText);
+    }
+    (part.parts || []).forEach(walk);
+  };
+  walk(payload);
+  return parts;
+}
+
+function normalizeGmailText(value = '') {
+  return String(value || '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|li)>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/\r/g, '')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n[ \t]+/g, '\n')
+    .trim();
+}
+
+function parseNextDayInfoDetails(text = '') {
+  const normalized = normalizeGmailText(text);
+  const fields = [
+    ['firstClass', 'First Class'],
+    ['businessClass', 'Business Class'],
+    ['economyClass', 'Economy Class'],
+    ['internationalTransfer', 'International Transfer'],
+    ['domesticTransfer', 'Domestic Transfer'],
+    ['overnightPassengers', 'Overnight passengers']
+  ];
+  const details = {};
+  fields.forEach(([key, label]) => {
+    const pattern = `${label.replace(/ /g, '\\s+')}\\s*:\\s*(\\d+)`;
+    const match = normalized.match(new RegExp(pattern, 'i'));
+    details[key] = match?.[1] || '';
+  });
+  return details;
+}
+
+function buildNextDayInfoDetailLines(details = {}) {
+  const rows = [
+    ['First Class', details.firstClass],
+    ['Business Class', details.businessClass],
+    ['Economy Class', details.economyClass],
+    ['', ''],
+    ['International Transfer', details.internationalTransfer],
+    ['Domestic Transfer', details.domesticTransfer],
+    ['Overnight passengers', details.overnightPassengers]
+  ];
+  return rows.map(([label, value]) => (label ? `${label}: ${value || '--'}` : '')).join('\n');
+}
+
+async function getNextDayInfoEmail(flightNo, subjectDate, expectedSubject = '') {
   const normalizedFlightNo = String(flightNo || '').trim().toUpperCase();
   const normalizedSubjectDate = String(subjectDate || '').trim();
   const subject = String(expectedSubject || `${normalizedFlightNo} ${normalizedSubjectDate} flight information details`).trim();
-  if (!normalizedFlightNo || !normalizedSubjectDate || !subject) return false;
+  const empty = (extra = {}) => ({
+    found: false,
+    sent: false,
+    subject,
+    details: {},
+    detailText: '',
+    sentAt: '',
+    messageId: '',
+    reason: '',
+    query: '',
+    authMode: '',
+    userId: '',
+    searchDate: '',
+    rawMatchCount: 0,
+    todayMatchCount: 0,
+    ...extra
+  });
+  if (!normalizedFlightNo || !normalizedSubjectDate || !subject) {
+    return empty({ reason: 'Missing flight number, subject date, or expected email subject.' });
+  }
+
+  let gmail = null;
+  let userId = envFirst('GMAIL_USER', 'NEXT_DAY_INFO_GMAIL_USER');
+  let authMode = envFirst('AUTH_MODE', 'NEXT_DAY_INFO_GMAIL_AUTH_MODE').toLowerCase();
+  let todayYmd = gmailSearchYmd(new Date());
+  let q = '';
 
   try {
-    const gmail = google.gmail({ version: 'v1', auth });
-    const userId = process.env.NEXT_DAY_INFO_GMAIL_USER || 'laxhmmu@gmail.com';
+    ({ gmail, userId, authMode } = getNextDayInfoGmailClient());
     const exactSubject = subject.replace(/"/g, '');
-    const q = `subject:"${exactSubject}" newer_than:30d`;
+    q = `in:sent subject:"${exactSubject}" newer_than:2d`;
     const result = await gmail.users.messages.list({
       userId,
       q,
       maxResults: 10,
-      fields: 'messages/id'
+      fields: 'messages(id,internalDate)'
     });
-    return Array.isArray(result.data.messages) && result.data.messages.length > 0;
+    const rawMessages = Array.isArray(result.data.messages) ? result.data.messages : [];
+    const messages = rawMessages.filter((message) => gmailSearchYmd(Number(message.internalDate)) === todayYmd);
+    if (!messages.length) {
+      const reason = rawMessages.length
+        ? `Found ${rawMessages.length} recent sent subject match(es), but none were sent today (${todayYmd}).`
+        : `No sent Gmail message matched the expected subject today (${todayYmd}).`;
+      console.log(`NEXTDAY INFO Gmail search not complete using ${authMode}: ${reason} Subject: ${subject} Query: ${q}`);
+      return empty({
+        reason,
+        query: q,
+        authMode,
+        userId,
+        searchDate: todayYmd,
+        rawMatchCount: rawMessages.length,
+        todayMatchCount: messages.length
+      });
+    }
+
+    const full = await gmail.users.messages.get({
+      userId,
+      id: messages[0].id,
+      format: 'full',
+      fields: 'id,internalDate,payload(headers,mimeType,body(data),parts(mimeType,body(data),parts(mimeType,body(data))))'
+    });
+    const text = extractGmailTextParts(full.data.payload).join('\n');
+    const details = parseNextDayInfoDetails(text);
+    const detailText = buildNextDayInfoDetailLines(details);
+    const sentAtDate = Number(full.data.internalDate) ? new Date(Number(full.data.internalDate)) : null;
+    return {
+      found: true,
+      sent: true,
+      subject,
+      details,
+      detailText,
+      sentAt: sentAtDate ? sentAtDate.toISOString() : '',
+      messageId: full.data.id || messages[0].id || '',
+      reason: '',
+      query: q,
+      authMode,
+      userId,
+      searchDate: todayYmd,
+      rawMatchCount: rawMessages.length,
+      todayMatchCount: messages.length
+    };
   } catch (err) {
-    console.error('Gmail next day info subject search error:', err.message || err);
-    return false;
+    const reason = nextDayInfoGmailErrorReason(err, authMode, userId);
+    console.error('Gmail next day info subject search error:', reason);
+    return empty({
+      reason,
+      query: q,
+      authMode,
+      userId,
+      searchDate: todayYmd
+    });
   }
+}
+
+
+function collectGmailParts(payload, predicate, collected = []) {
+  if (!payload) return collected;
+  if (predicate(payload)) collected.push(payload);
+  (payload.parts || []).forEach((part) => collectGmailParts(part, predicate, collected));
+  return collected;
+}
+
+function decodePdfString(value = '') {
+  return String(value || '')
+    .replace(/\\([nrtbf()\\])/g, (match, char) => ({ n: '\n', r: '\r', t: '\t', b: '\b', f: '\f', '(': '(', ')': ')', '\\': '\\' }[char] || char))
+    .replace(/\\(\d{1,3})/g, (match, octal) => String.fromCharCode(parseInt(octal, 8)))
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function extractPdfStrings(text = '') {
+  const out = [];
+  const literalRe = /\((?:\\.|[^\\()])*\)/g;
+  let match;
+  while ((match = literalRe.exec(text))) {
+    const decoded = decodePdfString(match[0].slice(1, -1));
+    if (decoded) out.push(decoded);
+  }
+  const hexRe = /<([0-9A-Fa-f\s]{4,})>/g;
+  while ((match = hexRe.exec(text))) {
+    const hex = match[1].replace(/\s+/g, '');
+    if (hex.length % 2) continue;
+    const bytes = [];
+    for (let i = 0; i < hex.length; i += 2) bytes.push(parseInt(hex.slice(i, i + 2), 16));
+    const decoded = Buffer.from(bytes).toString('latin1').replace(/\u0000/g, '').replace(/\s+/g, ' ').trim();
+    if (/[A-Za-z0-9]/.test(decoded)) out.push(decoded);
+  }
+  return out.join(' ');
+}
+
+function extractPdfText(buffer) {
+  const raw = Buffer.isBuffer(buffer) ? buffer.toString('latin1') : String(buffer || '');
+  const chunks = [raw];
+  const streamRe = /<<(.*?)>>\s*stream\r?\n?([\s\S]*?)\r?\n?endstream/g;
+  let match;
+  while ((match = streamRe.exec(raw))) {
+    const dict = match[1] || '';
+    const streamBuffer = Buffer.from(match[2] || '', 'latin1');
+    if (/FlateDecode/i.test(dict)) {
+      try {
+        chunks.push(zlib.inflateSync(streamBuffer).toString('latin1'));
+      } catch {
+        chunks.push(streamBuffer.toString('latin1'));
+      }
+    } else {
+      chunks.push(streamBuffer.toString('latin1'));
+    }
+  }
+  return chunks.map(extractPdfStrings).join(' ').replace(/\s+/g, ' ').trim();
+}
+
+function normalizeGdComparable(value = '') {
+  return String(value || '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function compareGdCrew(crew = [], pdfText = '') {
+  const normalizedPdf = normalizeGdComparable(pdfText);
+  const compactPdf = normalizedPdf.replace(/\s+/g, '');
+  const gdPassports = Array.from(new Set((normalizedPdf.match(/\b[A-Z]{1,3}\d{5,9}\b/g) || []).map((item) => item.toUpperCase())));
+  const logPassports = new Set(crew.map((row) => String(row.passport || '').toUpperCase()).filter(Boolean));
+  const missing = [];
+  crew.forEach((row) => {
+    const gdName = normalizeGdComparable(row.gdName || String(row.name || '').replace('/', ' '));
+    const compactName = gdName.replace(/\s+/g, '');
+    const passport = String(row.passport || '').toUpperCase();
+    const nameFound = gdName ? (normalizedPdf.includes(gdName) || compactPdf.includes(compactName)) : false;
+    const passportFound = passport ? compactPdf.includes(passport) : false;
+    if (!nameFound || !passportFound) {
+      missing.push({ ...row, nameFound, passportFound });
+    }
+  });
+  const extraPassports = gdPassports.filter((passport) => !logPassports.has(passport));
+  return {
+    complete: crew.length > 0 && missing.length === 0 && extraPassports.length === 0,
+    matched: crew.length - missing.length,
+    total: crew.length,
+    missing,
+    extraPassports,
+    gdPassports
+  };
+}
+
+function buildGdCheckDetailText(result) {
+  const lines = [
+    `Expected Subject: ${result.subject || ''}`,
+    result.query ? `Gmail Query: ${result.query}` : '',
+    result.authMode ? `Auth Mode: ${result.authMode}` : '',
+    result.userId ? `Gmail User: ${result.userId}` : '',
+    result.searchDate ? `Search Date: ${result.searchDate}` : '',
+    result.attachmentName ? `Attachment: ${result.attachmentName}` : '',
+    `Crew Matched: ${result.matched || 0}/${result.total || 0}`
+  ].filter(Boolean);
+  if (result.reason) lines.unshift(`Reason: ${result.reason}`);
+  if (Array.isArray(result.missing) && result.missing.length) {
+    lines.push('Missing / Different:');
+    result.missing.slice(0, 20).forEach((row) => {
+      const issues = [row.nameFound ? '' : 'name', row.passportFound ? '' : 'passport'].filter(Boolean).join('+');
+      lines.push(`${row.no || ''}. ${row.name || ''} ${row.passport || ''} (${issues || 'not matched'})`);
+    });
+  }
+  if (Array.isArray(result.extraPassports) && result.extraPassports.length) {
+    lines.push(`Extra GD Passports: ${result.extraPassports.slice(0, 20).join(', ')}`);
+  }
+  return lines.join('\n');
+}
+
+async function getGdCheckEmail(flightNo, subjectDate, crew = [], expectedSubject = '') {
+  const normalizedFlightNo = String(flightNo || '').trim().toUpperCase();
+  const normalizedSubjectDate = String(subjectDate || '').trim().toUpperCase();
+  const subject = String(expectedSubject || `GD for ${normalizedFlightNo}/${normalizedSubjectDate}`).trim();
+  const empty = (extra = {}) => ({
+    found: false,
+    complete: false,
+    subject,
+    detailText: '',
+    reason: '',
+    query: '',
+    authMode: '',
+    userId: '',
+    searchDate: gmailSearchYmd(new Date()),
+    attachmentName: '',
+    matched: 0,
+    total: Array.isArray(crew) ? crew.length : 0,
+    missing: [],
+    extraPassports: [],
+    ...extra
+  });
+  if (!normalizedFlightNo || !normalizedSubjectDate || !subject) {
+    const result = empty({ reason: 'Missing flight number, flight date, or GD email subject.' });
+    result.detailText = buildGdCheckDetailText(result);
+    return result;
+  }
+  if (!Array.isArray(crew) || !crew.length) {
+    const result = empty({ reason: 'No CWD crew/passport rows found in today log.' });
+    result.detailText = buildGdCheckDetailText(result);
+    return result;
+  }
+
+  let gmail = null;
+  let userId = envFirst('GMAIL_USER', 'NEXT_DAY_INFO_GMAIL_USER');
+  let authMode = envFirst('AUTH_MODE', 'NEXT_DAY_INFO_GMAIL_AUTH_MODE').toLowerCase();
+  const searchDate = gmailSearchYmd(new Date());
+  let q = '';
+  try {
+    ({ gmail, userId, authMode } = getNextDayInfoGmailClient());
+    const exactSubject = subject.replace(/"/g, '');
+    q = `subject:"${exactSubject}" newer_than:2d has:attachment`;
+    const list = await gmail.users.messages.list({ userId, q, maxResults: 10, fields: 'messages(id,internalDate)' });
+    const messages = Array.isArray(list.data.messages) ? list.data.messages : [];
+    if (!messages.length) {
+      const result = empty({ reason: 'No Gmail message with the expected GD subject and attachment was found in the last 2 days.', query: q, authMode, userId, searchDate });
+      result.detailText = buildGdCheckDetailText(result);
+      return result;
+    }
+
+    for (const message of messages) {
+      const full = await gmail.users.messages.get({
+        userId,
+        id: message.id,
+        format: 'full',
+        fields: 'id,internalDate,payload(filename,mimeType,body(attachmentId,data),parts(filename,mimeType,body(attachmentId,data),parts(filename,mimeType,body(attachmentId,data))))'
+      });
+      const pdfParts = collectGmailParts(full.data.payload, (part) => {
+        const filename = String(part.filename || '').toLowerCase();
+        const mimeType = String(part.mimeType || '').toLowerCase();
+        return Boolean(part.body?.attachmentId || part.body?.data) && (mimeType === 'application/pdf' || filename.endsWith('.pdf'));
+      });
+      for (const part of pdfParts) {
+        let data = part.body?.data || '';
+        if (part.body?.attachmentId) {
+          const attachment = await gmail.users.messages.attachments.get({ userId, messageId: full.data.id || message.id, id: part.body.attachmentId });
+          data = attachment.data.data || '';
+        }
+        const pdfText = extractPdfText(Buffer.from(String(data).replace(/-/g, '+').replace(/_/g, '/'), 'base64'));
+        const comparison = compareGdCrew(crew, pdfText);
+        const sentAtDate = Number(full.data.internalDate) ? new Date(Number(full.data.internalDate)) : null;
+        const result = {
+          found: true,
+          complete: comparison.complete,
+          subject,
+          detailText: '',
+          reason: comparison.complete ? '' : 'GD PDF does not match all CWD crew names/passports.',
+          query: q,
+          authMode,
+          userId,
+          searchDate,
+          attachmentName: part.filename || 'GD PDF attachment',
+          sentAt: sentAtDate ? sentAtDate.toISOString() : '',
+          ...comparison
+        };
+        result.detailText = buildGdCheckDetailText(result);
+        return result;
+      }
+    }
+    const result = empty({ reason: 'GD email was found, but no PDF attachment was found.', query: q, authMode, userId, searchDate });
+    result.detailText = buildGdCheckDetailText(result);
+    return result;
+  } catch (err) {
+    const result = empty({ reason: nextDayInfoGmailErrorReason(err, authMode, userId), query: q, authMode, userId, searchDate });
+    result.detailText = buildGdCheckDetailText(result);
+    return result;
+  }
+}
+
+async function hasNextDayInfoEmail(flightNo, subjectDate, expectedSubject = '') {
+  const result = await getNextDayInfoEmail(flightNo, subjectDate, expectedSubject);
+  return Boolean(result.sent || result.found);
 }
 
 // ===============================
@@ -1295,6 +1728,8 @@ module.exports = {
   getSalesReportMeta,
   downloadSalesReportByFlight,
   hasNextDayInfoEmail,
+  getNextDayInfoEmail,
+  getGdCheckEmail,
   getStoredReportRows,
   getVipReportRows,
   getPsmMsgReportRows,
