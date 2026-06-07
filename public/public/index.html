@@ -1162,7 +1162,7 @@
 
       .detail-actions {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+        grid-template-columns: repeat(4, minmax(132px, 1fr));
         gap: 10px;
       }
 
@@ -3414,11 +3414,12 @@
               <div class="detail-actions" aria-label="Flight detail actions">
                 <button class="detail-action" type="button" data-panel="chd">CHD List <span class="detail-action-badge" id="chd-count"></span></button>
                 <button class="detail-action" type="button" data-panel="gov">GOV/AQQ <span class="detail-action-badge" id="gov-count"></span></button>
+                <button class="detail-action" type="button" data-panel="webedi">WEB/EDI/RS <span class="detail-action-badge" id="webedi-count"></span></button>
                 <button class="detail-action" type="button" data-panel="nbrd">CKIN/NBRD <span class="detail-action-badge" id="nbrd-count"></span></button>
-                <button class="detail-action" type="button" data-panel="wch">WCH <span class="detail-action-badge" id="wch-count">0</span></button>
                 <button class="detail-action warning-action" type="button" data-panel="warning" id="warning-action" hidden aria-label="Open warnings">⚠️ WARNING <span class="detail-action-badge warning-badge" id="warning-count">0</span></button>
-                <button class="detail-action" type="button" data-panel="membership">Membership</button>
+                <button class="detail-action" type="button" data-panel="wch">WCH <span class="detail-action-badge" id="wch-count">0</span></button>
                 <button class="detail-action" type="button" data-panel="psm">PSM/MSG <span class="detail-action-badge" id="psm-count"></span></button>
+                <button class="detail-action" type="button" data-panel="membership">Membership</button>
                 <button class="detail-action" type="button" data-report-shortcut="sales">Sales Report</button>
                 <button class="detail-action" type="button" data-report-shortcut="vip">VIP Report</button>
               </div>
@@ -3588,7 +3589,7 @@
       const APP_ENTRY_KEY = "mufc_allow_app_entry";
       const AUTH_SESSION_STARTED_KEY = "mufc_auth_session_started_at";
       const BAGGAGE_ONLY_EMAILS = new Set(["min@hm.com", "yogesh@hm.com", "ehsan@hm.com", "terry@hm.com", "steven@hm.com"]);
-      const AUTH_SESSION_LIMIT_MS = 30 * 60 * 1000;
+      const AUTH_SESSION_LIMIT_MS = 60 * 60 * 1000;
       const APP_ENTRY_GRACE_MS = 30 * 1000;
       const SY_AUTO_REFRESH_MS = 60 * 1000;
       let inactivityTimer = null;
@@ -3640,6 +3641,7 @@
         setText("#rk-message", "");
         setBadgeText("#chd-count", 0);
         setBadgeText("#gov-count", 0);
+        setBadgeText("#webedi-count", 0);
         setBadgeText("#nbrd-count", 0);
         setText("#wch-count", "0");
         setText("#warning-count", "0");
@@ -4340,11 +4342,13 @@
         setText("#rk-message", sy.rkMessage || "No RK message found.");
         const chdIssues = (sy.chdList || []).filter((row) => row.hasChdCode === false).length;
         const gov = sy.govAqq || {};
-        const govIssueGroups = [gov.duplicatePassports, gov.aqqTclBnList, gov.govDtaBnList, gov.passportExpBnList, gov.passportCodeIssues];
+        const govIssueGroups = [gov.duplicatePassports, gov.aqqTclBnList, gov.govDtaBnList, gov.passportExpBnList, gov.wrongPassportBnList];
         const govCount = govIssueGroups.reduce((sum, value) => sum + (Array.isArray(value) ? value.length : 0), 0);
+        const webediCount = (gov.passportCodeIssues || []).length;
         const nbrdCount = (sy.bnAudit || []).filter((row) => /NBRD|CKIN/i.test(row?.apiReason || row?.tkReason || row?.visaReason || row?.bagReason || "")).length;
         setBadgeText("#chd-count", chdIssues);
         setBadgeText("#gov-count", govCount);
+        setBadgeText("#webedi-count", webediCount);
         setBadgeText("#nbrd-count", nbrdCount);
         setText("#wch-count", (sy.wchList || []).length || "0");
         const warningRows = buildWarningRows(sy);
@@ -4510,7 +4514,7 @@
           ["USA TIME OUT", (gov.aqqTclBnList || []).map((bn) => ({ bn, reason: "USA TIME OUT" }))],
           ["CHN GOV FAIL", (gov.govDtaBnList || []).map((bn) => ({ bn, reason: "CHN GOV FAIL" }))],
           ["Passport Exp", (gov.passportExpBnList || []).map((bn) => ({ bn, reason: "Passport Exp" }))],
-          ["WEB/EDI/Reswipe", (gov.passportCodeIssues || []).map((bn) => ({ bn, reason: "WEB/EDI/Reswipe" }))],
+          ["Wrong Passport", (gov.wrongPassportBnList || []).map((bn) => ({ bn, reason: "Wrong Passport: passport number has fewer than 7 characters" }))],
         ];
         const passengerByBn = passengerLookupByBn();
         const auditByBn = auditLookupByBn();
@@ -4536,6 +4540,14 @@
         setPanelPassengerRows(rows);
       }
 
+      function renderWebEdiPanel() {
+        const gov = currentSy?.govAqq || {};
+        const rows = enrichRowsWithPassengerData((gov.passportCodeIssues || []).map((bn) => ({ bn, reason: "WEB/EDI/Reswipe" })));
+        const body = rows.length ? `<div class="panel-stats"><span class="status-fail">WEB/EDI/RS total: ${rows.length}</span></div>${renderBnButtons(rows, "", (row) => row.reason)}` : `<p class="panel-muted">No WEB/EDI/RS records found.</p>`;
+        renderPanel("WEB/EDI/RS", currentSy?.flightNo || "SY", body);
+        setPanelPassengerRows(rows);
+      }
+
       function renderWchPanel() {
         const rows = enrichRowsWithPassengerData(currentSy?.wchList || []);
         renderPanel("WCH", currentSy?.flightNo || "SY", renderBnButtons(rows, "No WCH records found.", (row) => [row.bn ? `BN ${row.bn}` : "", row.seat ? `Seat ${row.seat}` : "", Array.isArray(row.codes) ? row.codes.join("/") : row.code].filter(Boolean).join(" / "), (row, index) => bnCircleLabel(row.bn, String(index + 1).padStart(3, "0"))));
@@ -4558,7 +4570,7 @@
           if (!bn) return;
           byBn.set(bn, { ...(byBn.get(bn) || {}), ...passenger, ...row, passengerRecord: { ...(byBn.get(bn)?.passengerRecord || {}), ...passenger, ...row.passengerRecord } });
         };
-        [sy?.seatMapRecords, sy?.bnAudit, sy?.chdList, sy?.wchList].forEach((list) => (list || []).forEach(add));
+        [sy?.seatMapRecords, sy?.bnAudit, sy?.chdList, sy?.wchList, sy?.badSeatList].forEach((list) => (list || []).forEach(add));
         return [...byBn.values()];
       }
 
@@ -4628,8 +4640,8 @@
           if (/WCHC/.test(services)) {
             addWarning(row, "WCHC", "Passenger has WCHC wheelchair service.");
           }
-          if (row.hasBadSeat || row.passengerRecord?.hasBadSeat || /BAD\s*SEAT/i.test([row.warningReason, row.reason, row.apiReason, row.tkReason, row.visaReason, row.bagReason].filter(Boolean).join(" "))) {
-            addWarning(row, "BAD SEAT", "Passenger record contains BAD SEAT.");
+          if (row.hasBadSeat || row.passengerRecord?.hasBadSeat) {
+            addWarning(row, "BAD SEAT", row.badSeatReason || row.passengerRecord?.badSeatReason || "PD CKIN/BAD includes CKIN BAD SEAT.");
           }
         }
         return rows.sort((a, b) => Number(a.bn || 9999) - Number(b.bn || 9999) || String(a.warningType || "").localeCompare(String(b.warningType || "")));
@@ -5012,8 +5024,6 @@
             <div class="test-report-title"><strong>${escapeHtml(record.bagTag)}</strong><span class="panel-muted">${escapeHtml(record.direction || "Baggage report")}</span></div>
           </div>
           ${message ? `<p class="panel-muted status-ok">${escapeHtml(message)}</p>` : ""}
-          <h3>Details</h3>
-          ${testDataGrid(record)}
           ${renderTestTimeline(record.history)}
           ${showUpdateForm ? `<div class="test-report-head test-update-head"><h3>Update</h3></div>${renderTestUpdateForm(record, mode)}` : `<div class="test-form-actions"><button class="test-add-button" type="button" data-test-show-update>Update</button></div>`}
         </article>`;
@@ -5764,6 +5774,7 @@
           const panel = button.dataset.panel;
           if (panel === "chd") renderChdPanel();
           if (panel === "gov") renderGovPanel();
+          if (panel === "webedi") renderWebEdiPanel();
           if (panel === "nbrd") renderNbrdPanel();
           if (panel === "wch") renderWchPanel();
           if (panel === "warning") renderWarningPanel();

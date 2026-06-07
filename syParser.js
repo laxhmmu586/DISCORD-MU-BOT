@@ -613,6 +613,7 @@ function enrichCHDListFromLog(log, syInfo, targetYmd = null) {
     const bn = (paxMatch[2] || '').padStart(3, '0');
     const paxInfo = section.match(/PAX INFO\s*:\s*([^\n\r]+)/i)?.[1] || '';
     const dobRaw = paxInfo.match(/DOB\/?\s*[:\/-]?\s*(\d{6,8}|\d{2}[A-Z]{3}\d{2,4}|\d{4}-\d{2}-\d{2})/i)?.[1] || null;
+    const dobKey = String(dobRaw || '').toUpperCase();
     const dobDate = parseDobRaw(dobRaw, atDateUtc);
     const ageYears = getAgeYearsAtDate(dobDate, atDateUtc);
     const hasChdCode = /\bCHD1\/0\b/i.test(section);
@@ -713,7 +714,7 @@ function hasUnclearedApiSourceRisk(section) {
 
 function enrichGovAqqFromLog(log, syInfo, targetYmd = null) {
   if (!log || !syInfo?.flightNo || !syInfo?.flightDate) {
-    return { duplicatePassports: [], aqqTclBnList: [], govDtaBnList: [], passportCodeIssues: [] };
+    return { duplicatePassports: [], aqqTclBnList: [], govDtaBnList: [], passportExpBnList: [], wrongPassportBnList: [], passportCodeIssues: [] };
   }
   const sections = splitLogicalSections(log);
   const paxRecords = [];
@@ -771,6 +772,8 @@ ${section}`,
     const section = latest.section || '';
     if (isDeletedPassengerSection(section)) continue;
     const passportNo = section.match(/PASSPORT\s*:\s*([A-Z0-9]+)/i)?.[1]?.toUpperCase() || '';
+    const paxInfoRawLine = (section.match(/PAX INFO\s*:\s*([^\n\r]+)/i)?.[1] || '').trim().toUpperCase();
+    const dobKey = paxInfoRawLine.match(/DOB\/?\s*[:\/-]?\s*(\d{6,8}|\d{2}[A-Z]{3}\d{2,4}|\d{4}-\d{2}-\d{2})/i)?.[1]?.toUpperCase() || '';
     const bookingName = extractBookingName(section);
     const latestApiAgent = extractLatestApiAgent(section);
     const needsReswipeByAgent = hasUnclearedApiSourceRisk(section);
@@ -820,6 +823,10 @@ ${section}`,
       issueReasons.push(`passport expired: ${expField}`);
       passportExpBnList.push(bn);
     }
+    const hasWrongPassport = Boolean(passportNo) && passportNo.length < 7;
+    if (hasWrongPassport) {
+      issueReasons.push(`wrong passport: ${passportNo} has fewer than 7 characters`);
+    }
 
     paxRecords.push({
       bn,
@@ -828,34 +835,41 @@ ${section}`,
       latestApiAgent,
       needsReswipeByAgent,
       hasAqqTcl: /\bAQQ\/TCL\/USA\b/i.test(section),
+      dobKey,
+      passportExpiryKey: expField,
       hasGovDta: /\bGOV\/DTA\/CHN\b/i.test(section),
+      hasWrongPassport,
       hasPassportCodeIssue: hasCodeIssue
     });
-    if (hasCodeIssue || hasPassportExpired) {
+    if (hasCodeIssue || hasPassportExpired || hasWrongPassport) {
       issueByBn.set(bn, issueReasons.join('; '));
     }
   }
 
-  const byPassport = new Map();
+  const byPassportIdentity = new Map();
   for (const p of paxRecords) {
     if (!p.passportNo) continue;
-    const arr = byPassport.get(p.passportNo) || [];
+    const key = `${p.passportNo}|${p.dobKey || ''}|${p.passportExpiryKey || ''}`;
+    const arr = byPassportIdentity.get(key) || [];
     arr.push(p.bn);
-    byPassport.set(p.passportNo, arr);
+    byPassportIdentity.set(key, arr);
   }
   const duplicatePassports = [];
   const duplicateReviewPairs = [];
-  for (const [passportNo, bns] of byPassport.entries()) {
+  for (const [identityKey, bns] of byPassportIdentity.entries()) {
+    const [passportNo, dobKey, passportExpiryKey] = identityKey.split('|');
     const unique = [...new Set(bns)].sort();
     if (unique.length > 1) {
-      duplicatePassports.push({ passportNo, bns: unique });
+      duplicatePassports.push({ passportNo, dob: dobKey, passportExpiry: passportExpiryKey, bns: unique });
       for (let i = 0; i < unique.length; i += 1) {
         for (let j = i + 1; j < unique.length; j += 1) {
-          const p1 = paxRecords.find((p) => p.bn === unique[i] && p.passportNo === passportNo);
-          const p2 = paxRecords.find((p) => p.bn === unique[j] && p.passportNo === passportNo);
+          const p1 = paxRecords.find((p) => p.bn === unique[i] && p.passportNo === passportNo && (p.dobKey || '') === dobKey && (p.passportExpiryKey || '') === passportExpiryKey);
+          const p2 = paxRecords.find((p) => p.bn === unique[j] && p.passportNo === passportNo && (p.dobKey || '') === dobKey && (p.passportExpiryKey || '') === passportExpiryKey);
           if (isReversedNamePair(p1?.bookingName, p2?.bookingName)) {
             duplicateReviewPairs.push({
               passportNo,
+              dob: dobKey,
+              passportExpiry: passportExpiryKey,
               bnA: unique[i],
               bnB: unique[j],
               reason: 'name reversed / possible name correction'
@@ -871,6 +885,7 @@ ${section}`,
     aqqTclBnList: [...new Set(paxRecords.filter((p) => p.hasAqqTcl).map((p) => p.bn))].sort(),
     govDtaBnList: [...new Set(paxRecords.filter((p) => p.hasGovDta).map((p) => p.bn))].sort(),
     passportExpBnList: [...new Set(passportExpBnList)].sort(),
+    wrongPassportBnList: [...new Set(paxRecords.filter((p) => p.hasWrongPassport).map((p) => p.bn))].sort(),
     passportCodeIssues: [...new Set(paxRecords.filter((p) => p.hasPassportCodeIssue).map((p) => p.bn))].sort(),
     duplicateReviewPairs,
     passportCodeIssueDetails: [...issueByBn.entries()]
@@ -1037,14 +1052,17 @@ function enrichSeatMapRecordsFromLog(log, syInfo, targetYmd = null) {
     const adultTicketNo = section.match(/\bET\s+TKNE\/(?!INF)(\d{10,})\/\d+\b/i)?.[1] || '';
     const infantTicketNo = section.match(/\bET\s+TKNE\/INF(\d{10,})\/\d+\b/i)?.[1] || '';
     const hasInfant = /\bINF1\/0\b/i.test(section) || Boolean(infantTicketNo);
-    const hasBadSeat = /\bBAD\s*SEAT\b/i.test(section);
+    const hasBadSeat = /^\s*CKIN\s+BAD\s+SEAT\s+\d{1,3}[A-Z]\b/im.test(section);
     const paxInfo = section.match(/PAX INFO\s*:\s*([^\n\r]+)/i)?.[1] || '';
     const dobRaw = paxInfo.match(/DOB\/?\s*[:\/-]?\s*(\d{6,8}|\d{2}[A-Z]{3}\d{2,4}|\d{4}-\d{2}-\d{2})/i)?.[1] || null;
+    const dobKey = String(dobRaw || '').toUpperCase();
     const dobDate = parseDobRaw(dobRaw, atDateUtc);
     const ageYears = getAgeYearsAtDate(dobDate, atDateUtc);
     const hasChdCode = /\bCHD1\/0\b/i.test(section);
     const isChild = (Number.isInteger(ageYears) && ageYears >= 2 && ageYears < 12) || hasChdCode;
     const passportNo = section.match(/PASSPORT\s*:\s*([A-Z0-9]+)/i)?.[1]?.toUpperCase() || '';
+    const passportRawLine = (section.match(/PASSPORT\s*:\s*([^\n\r]+)/i)?.[1] || '').trim().toUpperCase();
+    const expField = passportRawLine.split('/').map((x) => x.trim()).find((part) => /^\d{6}$/.test(part)) || '';
     const isOffloaded = isDeletedPassengerLine(passengerLine);
     const ts = parseSectionTimestamp(sectionObj.timestamp);
     const identity = passportNo || passengerName || `${seat}:UNKNOWN`;
@@ -1057,6 +1075,8 @@ function enrichSeatMapRecordsFromLog(log, syInfo, targetYmd = null) {
       seat,
       passportNo,
       passportExpiry: formatPassportExpiryFromSection(section),
+      passportExpiryKey: expField,
+      dobKey,
       ffCarrier: ffMatch?.[1]?.toUpperCase() || '',
       ffNumber: ffMatch?.[2] || '',
       ffTier: ffMatch?.[3]?.toUpperCase() || '',
@@ -1151,7 +1171,7 @@ function govAqqIssueBnSet(govAqq) {
     if (digits) issueBns.add(digits.padStart(3, '0'));
   };
   (govAqq?.duplicatePassports || []).forEach((item) => (item?.bns || []).forEach(addBn));
-  ['aqqTclBnList', 'govDtaBnList', 'passportExpBnList', 'passportCodeIssues'].forEach((key) => {
+  ['aqqTclBnList', 'govDtaBnList', 'passportExpBnList', 'wrongPassportBnList', 'passportCodeIssues'].forEach((key) => {
     (govAqq?.[key] || []).forEach(addBn);
   });
   return issueBns;
@@ -1293,6 +1313,7 @@ ${section}`,
     const specialMeals = [...section.matchAll(/\bSPML-([A-Z]{4})\b/gi)].map((m) => m[1].toUpperCase());
     const paxInfo = section.match(/PAX INFO\s*:\s*([^\n\r]+)/i)?.[1] || '';
     const dobRaw = paxInfo.match(/DOB\/?\s*[:\/-]?\s*(\d{6,8}|\d{2}[A-Z]{3}\d{2,4}|\d{4}-\d{2}-\d{2})/i)?.[1] || null;
+    const dobKey = String(dobRaw || '').toUpperCase();
     const dobDate = parseDobRaw(dobRaw, atDateUtc);
     const ageYears = getAgeYearsAtDate(dobDate, atDateUtc);
     const hasChdCode = /\bCHD1\/0\b/i.test(section);
@@ -1305,7 +1326,7 @@ ${section}`,
       return serviceCode && emda ? `${serviceCode}/${emda}` : fullLine;
     }).filter(Boolean);
     const hasInfFlag = /\bINF1\/0\b/i.test(section);
-    const hasBadSeat = /\bBAD\s*SEAT\b/i.test(section);
+    const hasBadSeat = /^\s*CKIN\s+BAD\s+SEAT\s+\d{1,3}[A-Z]\b/im.test(section);
     const hasAdultTk = Boolean(adultTicketNo);
     const hasInfTk = Boolean(infantTicketNo);
     const passengerRecord = {
@@ -1317,6 +1338,8 @@ ${section}`,
       flightDate: syInfo.flightDate || '',
       passportNo,
       passportExpiry: formatPassportExpiryFromSection(section),
+      passportExpiryKey: expField,
+      dobKey,
       ffCarrier: ffMatch?.[1]?.toUpperCase() || '',
       ffNumber: ffMatch?.[2] || '',
       ffTier: ffMatch?.[3]?.toUpperCase() || '',
@@ -1479,6 +1502,7 @@ ${section}`,
     if (hasTimeOut) { apiStatus = 'fail'; apiReasons.push('USA TIME OUT'); }
     if (hasGovFail) { apiStatus = 'fail'; apiReasons.push('CHN GOV FAIL'); }
     if (isPassportExpired) { apiStatus = 'fail'; apiReasons.push(`Passport expired: ${expField}`); }
+    if (passportNo && passportNo.length < 7) { apiStatus = 'fail'; apiReasons.push(`Wrong Passport: ${passportNo} has fewer than 7 characters`); }
     if (hasReview && apiStatus !== 'fail') { apiStatus = 'review'; apiReasons.push('WEB/EDI/Reswipe'); }
     if (apiNotWhitelisted && apiStatus !== 'fail') {
       apiStatus = 'review';
@@ -1490,27 +1514,29 @@ ${section}`,
     }
 
     if (isOffloaded) {
-      return { bn, apiStatus: '', tkStatus: '', visaStatus: '', bagStatus: '', apiReason: 'Passenger record is DELETED/offloaded', tkReason: '', visaReason: '', bagReason: '', passportNo: '', passengerRecord, offloaded: true };
+      return { bn, apiStatus: '', tkStatus: '', visaStatus: '', bagStatus: '', apiReason: 'Passenger record is DELETED/offloaded', tkReason: '', visaReason: '', bagReason: '', passportNo: '', dobKey, passportExpiryKey: expField, passengerRecord, offloaded: true };
     }
 
     if (hasCkinOkOverride) {
-      return { bn, apiStatus: 'pass', tkStatus: 'pass', visaStatus: 'pass', bagStatus: 'pass', apiReason: '', tkReason: '', visaReason: 'CKIN OK override', bagReason, passportNo, passengerRecord, offloaded: false };
+      return { bn, apiStatus: 'pass', tkStatus: 'pass', visaStatus: 'pass', bagStatus: 'pass', apiReason: '', tkReason: '', visaReason: 'CKIN OK override', bagReason, passportNo, dobKey, passportExpiryKey: expField, passengerRecord, offloaded: false };
     }
 
-    return { bn, apiStatus, tkStatus, visaStatus, bagStatus, apiReason: apiReasons.join('; '), tkReason, visaReason, bagReason, passportNo, passengerRecord, offloaded: false };
+    return { bn, apiStatus, tkStatus, visaStatus, bagStatus, apiReason: apiReasons.join('; '), tkReason, visaReason, bagReason, passportNo, dobKey, passportExpiryKey: expField, passengerRecord, offloaded: false };
   });
 
   const passportBnMap = new Map();
   auditRows.forEach((row) => {
     if (row.offloaded || !row.passportNo) return;
-    const arr = passportBnMap.get(row.passportNo) || [];
+    const key = `${row.passportNo}|${row.dobKey || ''}|${row.passportExpiryKey || ''}`;
+    const arr = passportBnMap.get(key) || [];
     arr.push(row.bn);
-    passportBnMap.set(row.passportNo, arr);
+    passportBnMap.set(key, arr);
   });
   const govIssueBns = govAqqIssueBnSet(syInfo.govAqq);
   auditRows.forEach((row) => {
     if (row.offloaded) return;
-    const dupList = row.passportNo ? (passportBnMap.get(row.passportNo) || []) : [];
+    const dupKey = row.passportNo ? `${row.passportNo}|${row.dobKey || ''}|${row.passportExpiryKey || ''}` : '';
+    const dupList = dupKey ? (passportBnMap.get(dupKey) || []) : [];
     if (dupList.length > 1 && row.apiStatus !== 'fail') {
       row.apiStatus = 'review';
       row.apiReason = row.apiReason ? `${row.apiReason}; Duplicate Passport (${dupList.join(',')})` : `Duplicate Passport (${dupList.join(',')})`;
@@ -1528,6 +1554,42 @@ ${section}`,
   });
 
   return auditRows.map(({ passportNo, ...rest }) => rest);
+}
+
+
+function enrichBadSeatListFromLog(log, syInfo, targetYmd = null) {
+  if (!log || !syInfo?.flightNo || !syInfo?.flightDate) return [];
+  const latestByBn = new Map();
+  for (const sectionObj of splitLogicalSections(log)) {
+    const section = sectionObj.content || '';
+    if (!/\bPD\s*:/i.test(section) || !/CKIN\/BAD/i.test(section)) continue;
+    if (targetYmd) {
+      const sectionYmd = getYmdFromTimestamp(sectionObj.timestamp);
+      if (sectionYmd && sectionYmd !== targetYmd) continue;
+    }
+    const pdMatch = section.match(/PD:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
+    if (!pdMatch) continue;
+    if (pdMatch[1].toUpperCase() !== syInfo.flightNo || pdMatch[2].toUpperCase() !== syInfo.flightDate) continue;
+    const ckinBadMatch = section.match(/^\s*CKIN\s+BAD\s+SEAT\s+([0-9]{1,3}[A-Z])\b/im);
+    if (!ckinBadMatch) continue;
+    const passengerLine = getPassengerRecordLine(section);
+    const bn = (section.match(/\bBN\s*(\d{1,3})\b/i)?.[1] || '').padStart(3, '0');
+    if (!bn) continue;
+    const ts = parseSectionTimestamp(sectionObj.timestamp);
+    const row = {
+      bn,
+      name: getPassengerNameFromSection(section) || (passengerLine.match(/^\s*\d+\.\s*([A-Z/]+)/i)?.[1] || 'UNKNOWN'),
+      seat: ckinBadMatch[1].toUpperCase(),
+      hasBadSeat: true,
+      badSeatReason: `CKIN BAD SEAT ${ckinBadMatch[1].toUpperCase()}`,
+      ts
+    };
+    const prev = latestByBn.get(bn);
+    if (!prev || ts >= prev.ts) latestByBn.set(bn, row);
+  }
+  return [...latestByBn.values()]
+    .sort((a, b) => Number(a.bn) - Number(b.bn))
+    .map(({ ts, ...row }) => row);
 }
 
 function sortSYMatches(matches, preferredFlightNo = '') {
@@ -1560,6 +1622,7 @@ function findSYInfo(log, queryDate, options = {}) {
       info.chdList = enrichCHDListFromLog(log, info, targetYmd);
       info.govAqq = enrichGovAqqFromLog(log, info, targetYmd);
       info.wchList = enrichWchListFromLog(log, info, targetYmd);
+      info.badSeatList = enrichBadSeatListFromLog(log, info, targetYmd);
       info.membershipList = enrichMembershipListFromLog(log, info, targetYmd);
       info.seatMapRecords = enrichSeatMapRecordsFromLog(log, info, targetYmd);
       info.bnAudit = enrichBnAuditFromLog(log, info, targetYmd);
@@ -1609,6 +1672,7 @@ function findSYInfo(log, queryDate, options = {}) {
     info.chdList = enrichCHDListFromLog(log, info, targetYmd);
     info.govAqq = enrichGovAqqFromLog(log, info, targetYmd);
     info.wchList = enrichWchListFromLog(log, info, targetYmd);
+    info.badSeatList = enrichBadSeatListFromLog(log, info, targetYmd);
     info.membershipList = enrichMembershipListFromLog(log, info, targetYmd);
     info.seatMapRecords = enrichSeatMapRecordsFromLog(log, info, targetYmd);
     info.bnAudit = enrichBnAuditFromLog(log, info, targetYmd);
