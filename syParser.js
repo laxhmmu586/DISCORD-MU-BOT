@@ -294,15 +294,13 @@ function parseCrewManifestRowsFromSections(sections, flightNo, flightYmd) {
     if (flightYmd && ymd && ymd !== flightYmd) return;
     if (!/^>\s*(?:CWD|PN\d*)\b/im.test(content) && !/\bCWD\s*:/i.test(content)) return;
     content.split(/\r?\n/).forEach((line) => {
-      const match = line.match(/^\s*(\d+)\.\s+([A-Z]+\/[A-Z]+)\s+\S+\s+\S+\s+\S+\s+[MF]\s+\d{2}[A-Z]{3}\d{2}\s+([A-Z]{1,3}\d{5,9})\b/i);
+      const match = line.match(/^\s*(\d+)\.[^\n\r]*?\b([A-Z]{1,3}\d{5,9})\b/i);
       if (!match) return;
-      const passport = match[3].toUpperCase();
+      const passport = match[2].toUpperCase();
       if (seen.has(passport)) return;
       seen.add(passport);
       rows.push({
         no: Number(match[1]),
-        name: match[2].toUpperCase(),
-        gdName: match[2].toUpperCase().replace('/', ' '),
         passport
       });
     });
