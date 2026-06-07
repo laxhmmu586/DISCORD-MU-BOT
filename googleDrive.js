@@ -1484,6 +1484,74 @@ function extractZipEntries(buffer) {
   return entries;
 }
 
+
+function stripSpreadsheetCellText(value = '') {
+  return xmlDecode(String(value || '')
+    .replace(/<style\b[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<script\b[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' '))
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function extractHtmlColumnBText(buffer) {
+  const source = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer || '');
+  const views = [source.toString('utf8'), source.toString('latin1'), source.toString('utf16le')];
+  const bValues = [];
+  views.forEach((html) => {
+    if (!/<t[dh]\b/i.test(html)) return;
+    html.replace(/<tr\b[\s\S]*?<\/tr>/gi, (row) => {
+      const cells = [];
+      row.replace(/<t[dh]\b[^>]*>([\s\S]*?)<\/t[dh]>/gi, (match, cell) => {
+        cells.push(stripSpreadsheetCellText(cell));
+        return match;
+      });
+      if (cells[1]) bValues.push(cells[1]);
+      return row;
+    });
+  });
+  return Array.from(new Set(bValues)).join(' ');
+}
+
+function splitDelimitedLine(line = '') {
+  const cells = [];
+  let current = '';
+  let quoted = false;
+  for (let i = 0; i < line.length; i += 1) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (quoted && line[i + 1] === '"') {
+        current += '"';
+        i += 1;
+      } else {
+        quoted = !quoted;
+      }
+    } else if (!quoted && (ch === '\t' || ch === ',')) {
+      cells.push(current.trim());
+      current = '';
+    } else {
+      current += ch;
+    }
+  }
+  cells.push(current.trim());
+  return cells;
+}
+
+function extractDelimitedColumnBText(buffer) {
+  const source = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer || '');
+  const views = [source.toString('utf8'), source.toString('latin1'), source.toString('utf16le')];
+  const bValues = [];
+  views.forEach((text) => {
+    text.split(/\r?\n/).forEach((line) => {
+      if (!/[\t,]/.test(line)) return;
+      const cells = splitDelimitedLine(line);
+      if (cells[1]) bValues.push(stripSpreadsheetCellText(cells[1]));
+    });
+  });
+  return Array.from(new Set(bValues.filter(Boolean))).join(' ');
+}
+
 function extractXlsxColumnBText(buffer) {
   const entries = extractZipEntries(buffer);
   const names = Object.keys(entries);
@@ -1604,23 +1672,113 @@ function extractXlsWorkbookText(buffer) {
 
 function extractSpreadsheetText(buffer) {
   const source = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer || '');
-  const xlsxColumnBText = extractXlsxColumnBText(source);
-  if (xlsxColumnBText) return xlsxColumnBText;
-  const xlsColumnBText = extractXlsColumnBText(source);
-  if (xlsColumnBText) return xlsColumnBText;
-  const xlsWorkbookText = extractXlsWorkbookText(source);
-  if (xlsWorkbookText) return xlsWorkbookText;
-  const views = [
-    source.toString('latin1'),
-    source.toString('utf8'),
-    source.toString('utf16le')
-  ];
-  return views
-    .join(' ')
-    .replace(/\u0000/g, ' ')
-    .replace(/[\u0001-\u0008\u000B-\u001F\u007F]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  return [
+    extractXlsxColumnBText(source),
+    extractXlsColumnBText(source),
+    extractHtmlColumnBText(source),
+    extractDelimitedColumnBText(source)
+  ].filter(Boolean).join(' ');
+}
+
+
+function readBiffUnicodeString(buffer, offset) {
+  if (!Buffer.isBuffer(buffer) || offset + 3 > buffer.length) return { value: '', nextOffset: offset };
+  const charCount = buffer.readUInt16LE(offset);
+  const flags = buffer.readUInt8(offset + 2);
+  let pos = offset + 3;
+  const isUtf16 = Boolean(flags & 0x01);
+  const hasExtended = Boolean(flags & 0x04);
+  const hasRichText = Boolean(flags & 0x08);
+  let richRuns = 0;
+  let extendedSize = 0;
+  if (hasRichText && pos + 2 <= buffer.length) {
+    richRuns = buffer.readUInt16LE(pos);
+    pos += 2;
+  }
+  if (hasExtended && pos + 4 <= buffer.length) {
+    extendedSize = buffer.readUInt32LE(pos);
+    pos += 4;
+  }
+  const byteLength = charCount * (isUtf16 ? 2 : 1);
+  if (pos + byteLength > buffer.length) return { value: '', nextOffset: buffer.length };
+  const value = buffer.slice(pos, pos + byteLength).toString(isUtf16 ? 'utf16le' : 'latin1');
+  pos += byteLength + (richRuns * 4) + extendedSize;
+  return { value, nextOffset: Math.min(pos, buffer.length) };
+}
+
+function parseBiffSstStrings(workbook) {
+  const strings = [];
+  for (let pos = 0; pos + 4 <= workbook.length;) {
+    const opcode = workbook.readUInt16LE(pos);
+    const length = workbook.readUInt16LE(pos + 2);
+    const dataStart = pos + 4;
+    const dataEnd = Math.min(dataStart + length, workbook.length);
+    if (opcode !== 0x00fc) {
+      pos = dataEnd;
+      continue;
+    }
+    const chunks = [workbook.slice(dataStart, dataEnd)];
+    let next = dataEnd;
+    while (next + 4 <= workbook.length && workbook.readUInt16LE(next) === 0x003c) {
+      const continueLength = workbook.readUInt16LE(next + 2);
+      chunks.push(workbook.slice(next + 4, Math.min(next + 4 + continueLength, workbook.length)));
+      next += 4 + continueLength;
+    }
+    const sst = Buffer.concat(chunks);
+    const uniqueCount = sst.length >= 8 ? sst.readUInt32LE(4) : 0;
+    let offset = 8;
+    for (let i = 0; i < uniqueCount && offset < sst.length; i += 1) {
+      const parsed = readBiffUnicodeString(sst, offset);
+      strings.push(parsed.value);
+      if (parsed.nextOffset <= offset) break;
+      offset = parsed.nextOffset;
+    }
+    pos = next;
+  }
+  return strings;
+}
+
+function extractXlsColumnBText(buffer) {
+  const streams = extractCfbStreams(buffer);
+  const workbook = streams.Workbook || streams.Book || streams['WORKBOOK'] || streams['BOOK'];
+  if (!workbook) return '';
+  const sharedStrings = parseBiffSstStrings(workbook);
+  const bValues = [];
+  for (let pos = 0; pos + 4 <= workbook.length;) {
+    const opcode = workbook.readUInt16LE(pos);
+    const length = workbook.readUInt16LE(pos + 2);
+    const dataStart = pos + 4;
+    const dataEnd = Math.min(dataStart + length, workbook.length);
+    if (opcode === 0x00fd && dataStart + 10 <= dataEnd) {
+      const col = workbook.readUInt16LE(dataStart + 2);
+      if (col === 1) {
+        const sstIndex = workbook.readUInt32LE(dataStart + 6);
+        const value = sharedStrings[sstIndex] || '';
+        if (value) bValues.push(value);
+      }
+    } else if (opcode === 0x0204 && dataStart + 8 <= dataEnd) {
+      const col = workbook.readUInt16LE(dataStart + 2);
+      if (col === 1) {
+        const parsed = readBiffUnicodeString(workbook.slice(dataStart + 6, dataEnd), 0);
+        const fallbackLength = workbook.readUInt8(dataStart + 6);
+        const fallback = dataStart + 7 + fallbackLength <= dataEnd ? workbook.slice(dataStart + 7, dataStart + 7 + fallbackLength).toString('latin1') : '';
+        const value = parsed.value || fallback;
+        if (value) bValues.push(value);
+      }
+    }
+    pos = dataEnd;
+  }
+  return bValues.join(' ');
+}
+
+function isSpreadsheetAttachment(filename = '', mimeType = '') {
+  const lowerName = String(filename || '').toLowerCase();
+  const lowerMime = String(mimeType || '').toLowerCase();
+  return lowerName.endsWith('.xls') || lowerName.endsWith('.xlsx') || /excel|spreadsheet|sheet/.test(lowerMime);
+}
+
+function gdAttachmentType(filename = '', mimeType = '') {
+  return isSpreadsheetAttachment(filename, mimeType) ? 'Spreadsheet B column' : 'Attachment';
 }
 
 
@@ -1760,7 +1918,7 @@ function buildGdCheckDetailText(result) {
     result.attachmentName ? `Attachment: ${result.attachmentName}` : '',
     result.attachmentType ? `Attachment Type: ${result.attachmentType}` : '',
     Array.isArray(result.checkedAttachments) && result.checkedAttachments.length
-      ? `Checked Attachments: ${result.checkedAttachments.map((item) => `${item.name || 'attachment'} [${item.type || 'Spreadsheet B column'}] ${item.matched || 0}/${item.total || 0}`).join(' | ')}`
+      ? `Checked Attachments: ${result.checkedAttachments.map((item) => `${item.name || 'attachment'} [${item.type || 'Spreadsheet B column'}] ${item.matched || 0}/${item.total || 0} passports:${item.extractedPassports || 0}`).join(' | ')}`
       : ''
   ].filter(Boolean);
   if (Array.isArray(result.missing) && result.missing.length) {
@@ -1858,7 +2016,8 @@ async function getGdCheckEmail(flightNo, subjectDate, crew = [], expectedSubject
         type: attachmentType,
         matched: comparison.matched,
         total: comparison.total,
-        complete: comparison.complete
+        complete: comparison.complete,
+        extractedPassports: comparison.gdPassports.length
       });
       const candidate = {
         found: true,

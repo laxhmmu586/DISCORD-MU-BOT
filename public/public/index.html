@@ -135,7 +135,7 @@
 
       .topbar {
         position: fixed;
-        z-index: 20;
+        z-index: 220;
         top: 0;
         left: 0;
         right: 0;
@@ -252,6 +252,7 @@
         align-items: center;
         gap: 14px;
         position: relative;
+        z-index: 260;
       }
 
       .login-button {
@@ -272,6 +273,7 @@
 
       .login-menu {
         position: absolute;
+        z-index: 1000;
         top: calc(100% + 14px);
         right: 0;
         width: 270px;
@@ -5559,7 +5561,8 @@
         };
       }
 
-      loginButton.addEventListener("click", () => {
+      loginButton.addEventListener("click", (event) => {
+        event.stopPropagation();
         const open = loginButton.getAttribute("aria-expanded") === "true";
         closeFlightMenu();
         loginButton.setAttribute("aria-expanded", String(!open));
@@ -5616,6 +5619,7 @@
 
       document.addEventListener("click", (event) => {
         if (!event.target.closest(".flight-tools")) closeFlightMenu();
+        if (!event.target.closest(".nav-actions")) closeLoginMenu();
       });
 
       nodes.forEach((node) => {
