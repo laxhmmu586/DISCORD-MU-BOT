@@ -38,6 +38,7 @@ const {
   getSalesReportMeta,
   downloadSalesReportByFlight,
   getNextDayInfoEmail,
+  getGdCheckEmail,
   getStoredReportRows,
   getVipReportRows,
   getPsmMsgReportRows,
@@ -1133,6 +1134,33 @@ app.get(
         } catch (err) {
           console.warn('VIP report sheet sync skipped:', err?.message || err);
           syInfo.vipSheetSync = { appended: 0, found: 0, error: err?.message || 'Sheet sync failed' };
+        }
+        const gdQuery = syInfo.crewApis?.gdCheckQuery || null;
+        const gdStep = syInfo.crewApis?.steps?.find((step) => step.key === 'gdCheck');
+        if (gdStep && gdQuery?.flightNo && gdQuery?.flightDate) {
+          const gdSubject = gdQuery.emailSubject || `GD for ${gdQuery.flightNo}/${gdQuery.flightDate}`;
+          const gdResult = await getGdCheckEmail(gdQuery.flightNo, gdQuery.emailSubjectDate || gdQuery.flightDate, gdQuery.crew || [], gdSubject);
+          gdStep.complete = Boolean(gdResult.complete);
+          gdStep.time = gdResult.sentAt ? gdResult.sentAt.slice(11, 19) : '';
+          gdStep.searched = true;
+          gdStep.details = gdResult;
+          gdStep.detailText = gdResult.detailText || '';
+          gdStep.reason = gdResult.reason || '';
+          gdStep.searchQuery = gdResult.query || '';
+          gdStep.authMode = gdResult.authMode || '';
+          gdStep.gmailUser = gdResult.userId || '';
+          gdStep.searchDate = gdResult.searchDate || '';
+          gdStep.subject = gdSubject;
+          gdStep.tooltip = gdStep.complete
+            ? `GD CHECK complete: ${gdResult.matched || 0}/${gdResult.total || 0} crew matched`
+            : `GD CHECK issue: ${gdResult.reason || gdSubject}`;
+        } else if (gdStep) {
+          const reason = 'Missing flight number, flight date, or CWD crew list for GD search.';
+          gdStep.complete = false;
+          gdStep.searched = true;
+          gdStep.reason = reason;
+          gdStep.detailText = `Reason: ${reason}`;
+          gdStep.tooltip = `GD CHECK not searched: ${reason}`;
         }
         const nextDayQuery = syInfo.crewApis?.nextDayInfoQuery || null;
         const nextDayStep = syInfo.crewApis?.steps?.find((step) => step.key === 'nextDayInfo');

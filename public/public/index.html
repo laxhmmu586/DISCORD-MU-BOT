@@ -3376,15 +3376,16 @@
                 <path class="orbit-dash" d="M-46 292 C 224 164, 410 134, 600 134 S 976 164, 1246 292" />
               </svg>
               <button class="node" type="button" data-index="0" data-key="CREW_APIS" data-label="CREW APIS" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="1" data-key="NEXTDAY_INFO" data-label="NEXTDAY INFO" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="2" data-key="NET" data-label="NET" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="3" data-key="CHD" data-label="CHD" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="4" data-key="GOV" data-label="GOV" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="5" data-key="NBRD" data-label="NBRD" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="6" data-key="CCL" data-label="CCL" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="7" data-key="CC" data-label="CC" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="8" data-key="INITIAL_FLIGHT" data-label="INITIAL FLIGHT" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="9" data-key="BDT_CHG" data-label="BDT CHG" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="1" data-key="GD_CHECK" data-label="GD CHECK" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="2" data-key="NEXTDAY_INFO" data-label="NEXTDAY INFO" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="3" data-key="NET" data-label="NET" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="4" data-key="CHD" data-label="CHD" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="5" data-key="GOV" data-label="GOV" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="6" data-key="NBRD" data-label="NBRD" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="7" data-key="CCL" data-label="CCL" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="8" data-key="CC" data-label="CC" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="9" data-key="INITIAL_FLIGHT" data-label="INITIAL FLIGHT" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="10" data-key="BDT_CHG" data-label="BDT CHG" data-status="pending" data-time="----"></button>
               <article class="node-card" aria-live="polite">
                 <h2>Crew APIs</h2>
                 <p>Crew manifest and reservation data are ready. This point can open deeper crew workflows later.</p>
@@ -3475,7 +3476,7 @@
       const changePasswordForm = document.querySelector("#change-password-form");
       const newPasswordInput = document.querySelector("#new-password");
       const passwordStatus = document.querySelector("#password-status");
-      const baseProgress = [0.06, 0.16, 0.26, 0.36, 0.46, 0.56, 0.66, 0.76, 0.86, 0.96];
+      const baseProgress = [0.05, 0.14, 0.23, 0.32, 0.41, 0.5, 0.59, 0.68, 0.77, 0.86, 0.95];
       const desktopOrbitPath = "M-260 318 C 120 178, 390 142, 600 142 S 1080 178, 1460 318";
       const mobileOrbitPath = "M-240 296 C 130 210, 390 184, 600 184 S 1070 210, 1440 296";
       const mobileOrbitQuery = window.matchMedia("(max-width: 760px)");
@@ -3484,6 +3485,7 @@
       const maxScrollOffset = centerProgress - baseProgress[0];
       const nodeKeyMap = {
         CREW_APIS: "crewApis",
+        GD_CHECK: "gdCheck",
         NEXTDAY_INFO: "nextDayInfo",
         NET: "net",
         CCL: "ccl",
@@ -4230,11 +4232,11 @@
           let started = Boolean(step?.complete || step?.time);
           let time = step?.time || "----";
           node.dataset.inputTime = step?.time || "";
-          if (key === "NEXTDAY_INFO") { started = Boolean(step?.searched || step?.complete || step?.time); complete = Boolean(step?.complete); time = complete ? (step?.time || "SENT") : (started ? "MISSING" : "----"); }
+          if (["GD_CHECK", "NEXTDAY_INFO"].includes(key)) { started = Boolean(step?.searched || step?.complete || step?.time); complete = Boolean(step?.complete); time = complete ? (step?.time || (key === "GD_CHECK" ? "MATCH" : "SENT")) : (started ? (key === "GD_CHECK" ? "CHECK" : "MISSING") : "----"); }
           if (key === "CHD") { issueCount = chdIssues; started = (sy.chdList || []).length > 0; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
           if (key === "GOV") { issueCount = govCount; started = Boolean(sy.govAqq) && previousStarted; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
           if (key === "NBRD") { issueCount = nbrdCount; started = (sy.bnAudit || []).length > 0 && previousStarted; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
-          const locked = !previousStarted && !["NEXTDAY_INFO", "CHD", "GOV", "NBRD"].includes(key);
+          const locked = !previousStarted && !["GD_CHECK", "NEXTDAY_INFO", "CHD", "GOV", "NBRD"].includes(key);
           node.dataset.status = normalizeStatus(Boolean(complete), issueCount || (started && !complete ? 1 : 0), locked);
           node.dataset.time = String(time);
           if (["CHD", "GOV", "NBRD"].includes(key) && complete && String(time).toUpperCase() === "CLEAR") node.dataset.clearLocked = "true";
