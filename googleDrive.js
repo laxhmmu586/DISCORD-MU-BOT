@@ -20,6 +20,7 @@ const auth = new google.auth.GoogleAuth({
 
     'https://www.googleapis.com/auth/drive.readonly',
     'https://www.googleapis.com/auth/spreadsheets',
+    'https://www.googleapis.com/auth/cloud-platform',
     'https://www.googleapis.com/auth/gmail.readonly'
   ]
 });
@@ -38,6 +39,12 @@ const drive =
 const sheets =
   google.sheets({
     version: 'v4',
+    auth
+  });
+
+const vision =
+  google.vision({
+    version: 'v1',
     auth
   });
 
@@ -1618,26 +1625,191 @@ function extractSpreadsheetText(buffer) {
     .trim();
 }
 
+
+function decodePdfLiteralString(value = '') {
+  let out = '';
+  const raw = String(value || '');
+  for (let i = 0; i < raw.length; i += 1) {
+    const ch = raw[i];
+    if (ch !== '\\') {
+      out += ch;
+      continue;
+    }
+    const next = raw[i + 1] || '';
+    if (!next) continue;
+    if (next === 'n') { out += '\n'; i += 1; continue; }
+    if (next === 'r') { out += '\r'; i += 1; continue; }
+    if (next === 't') { out += '\t'; i += 1; continue; }
+    if (next === 'b') { out += '\b'; i += 1; continue; }
+    if (next === 'f') { out += '\f'; i += 1; continue; }
+    if (next === '\n' || next === '\r') {
+      i += next === '\r' && raw[i + 2] === '\n' ? 2 : 1;
+      continue;
+    }
+    if (/[0-7]/.test(next)) {
+      const octal = raw.slice(i + 1, i + 4).match(/^[0-7]{1,3}/)?.[0] || '';
+      if (octal) {
+        out += String.fromCharCode(parseInt(octal, 8));
+        i += octal.length;
+        continue;
+      }
+    }
+    out += next;
+    i += 1;
+  }
+  return out;
+}
+
+function decodePdfHexString(value = '') {
+  const hex = String(value || '').replace(/\s+/g, '');
+  if (hex.length < 2) return '';
+  const evenHex = hex.length % 2 ? `${hex}0` : hex;
+  const bytes = [];
+  for (let i = 0; i + 1 < evenHex.length; i += 2) {
+    const byte = parseInt(evenHex.slice(i, i + 2), 16);
+    if (!Number.isNaN(byte)) bytes.push(byte);
+  }
+  const buffer = Buffer.from(bytes);
+  if (buffer.length >= 2 && buffer[0] === 0xfe && buffer[1] === 0xff) {
+    let out = '';
+    for (let i = 2; i + 1 < buffer.length; i += 2) out += String.fromCharCode(buffer.readUInt16BE(i));
+    return out;
+  }
+  return buffer.toString('latin1');
+}
+
+function extractPdfReadableTextFromChunk(chunk = '') {
+  const text = String(chunk || '');
+  const parts = [text];
+  text.replace(/\((?:\\.|[^\\()])*\)/g, (match) => {
+    parts.push(decodePdfLiteralString(match.slice(1, -1)));
+    return match;
+  });
+  text.replace(/(?<!<)<([0-9A-Fa-f\s]{4,})>(?!>)/g, (match, hex) => {
+    parts.push(decodePdfHexString(hex));
+    return match;
+  });
+  return parts.join(' ');
+}
+
+function extractPdfText(buffer) {
+  const source = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer || '');
+  const latin = source.toString('latin1');
+  const chunks = [latin];
+  const streamRegex = /stream\r?\n([\s\S]*?)\r?\nendstream/g;
+  let match;
+  while ((match = streamRegex.exec(latin))) {
+    const streamText = match[1] || '';
+    chunks.push(streamText);
+    const dictPrefix = latin.slice(Math.max(0, match.index - 700), match.index);
+    if (/\/FlateDecode\b/i.test(dictPrefix)) {
+      const compressed = Buffer.from(streamText, 'latin1');
+      try { chunks.push(zlib.inflateSync(compressed).toString('latin1')); } catch (err) {}
+      try { chunks.push(zlib.inflateRawSync(compressed).toString('latin1')); } catch (err) {}
+    }
+  }
+  return chunks
+    .map((chunk) => extractPdfReadableTextFromChunk(chunk))
+    .join(' ')
+    .replace(/\u0000/g, ' ')
+    .replace(/[\u0001-\u0008\u000B-\u001F\u007F]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function isPdfAttachment(filename = '', mimeType = '') {
+  const lowerName = String(filename || '').toLowerCase();
+  const lowerMime = String(mimeType || '').toLowerCase();
+  return lowerName.endsWith('.pdf') || lowerMime.includes('pdf');
+}
+
+function extractGdAttachmentText(buffer, filename = '', mimeType = '') {
+  if (isPdfAttachment(filename, mimeType)) return extractPdfText(buffer);
+  return extractSpreadsheetText(buffer);
+}
+
+function gdAttachmentType(filename = '', mimeType = '') {
+  const lowerName = String(filename || '').toLowerCase();
+  const lowerMime = String(mimeType || '').toLowerCase();
+  if (isPdfAttachment(filename, mimeType)) return 'PDF';
+  if (lowerName.endsWith('.xls') || lowerName.endsWith('.xlsx') || /excel|spreadsheet|sheet/.test(lowerMime)) return 'Spreadsheet';
+  return 'Attachment';
+}
+
+
+function cleanOcrText(value = '') {
+  return String(value || '')
+    .replace(new RegExp(String.fromCharCode(0), 'g'), ' ')
+    .replace(/[\x01-\x08\x0B-\x1F\x7F]+/g, ' ')
+    .replace(/\b5E(?=\d)/g, 'SE')
+    .replace(/\bS0(?=\d)/g, 'SE0')
+    .replace(/\bSO(?=\d)/g, 'SE0')
+    .replace(/\bSE[Oo](?=\d)/g, 'SE0')
+    .replace(/\bSE[IlL](?=\d)/g, 'SE1')
+    .replace(/\bSEB(?=\d)/g, 'SE8')
+    .replace(/\bSES(?=\d)/g, 'SE5')
+    .replace(/\bSEG(?=\d)/g, 'SE6')
+    .replace(/\bSEQ(?=\d)/g, 'SE0')
+    .replace(/\bSEZ(?=\d)/g, 'SE2')
+    .replace(/\b([A-Z]{1,3})\s+(\d{5,9})\b/g, '$1$2')
+    .replace(/\b([A-Z]{1,3}\d{1,4})\s+(\d{1,8})\b/g, '$1$2')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function collectVisionOcrText(fileResponse = {}) {
+  const parts = [];
+  (fileResponse.responses || []).forEach((page) => {
+    if (page?.fullTextAnnotation?.text) parts.push(page.fullTextAnnotation.text);
+    if (page?.textAnnotations?.[0]?.description) parts.push(page.textAnnotations[0].description);
+  });
+  return parts.join(' ');
+}
+
+async function extractPdfOcrText(buffer) {
+  const source = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer || '');
+  if (!source.length) return '';
+  const response = await vision.files.annotate({
+    requestBody: {
+      requests: [
+        {
+          inputConfig: {
+            mimeType: 'application/pdf',
+            content: source.toString('base64')
+          },
+          features: [
+            { type: 'DOCUMENT_TEXT_DETECTION' }
+          ]
+        }
+      ]
+    }
+  });
+  const fileResponse = response.data.responses?.[0] || {};
+  if (fileResponse.error?.message) throw new Error(fileResponse.error.message);
+  return cleanOcrText(collectVisionOcrText(fileResponse));
+}
+
+function gdOcrErrorReason(err) {
+  const message = err?.message || String(err || 'Unknown OCR error');
+  return `Vision OCR error: ${message}`;
+}
+
 function normalizeGdComparable(value = '') {
   return String(value || '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-function compareGdCrew(crew = [], spreadsheetText = '') {
-  const normalizedSheet = normalizeGdComparable(spreadsheetText);
-  const compactSheet = normalizedSheet.replace(/\s+/g, '');
-  const gdPassports = Array.from(new Set((normalizedSheet.match(/\b[A-Z]{1,3}\d{5,9}\b/g) || []).map((item) => item.toUpperCase())));
-  const missing = [];
-  crew.forEach((row) => {
-    const passport = String(row.passport || '').toUpperCase();
-    const passportFound = passport ? compactSheet.includes(passport) : false;
-    if (!passportFound) {
-      missing.push({ ...row, passportFound });
-    }
-  });
+function compareGdCrew(crew = [], attachmentText = '') {
+  const normalizedAttachment = normalizeGdComparable(attachmentText);
+  const compactAttachment = normalizedAttachment.replace(/\s+/g, '');
+  const expectedPassports = crew
+    .map((row) => ({ no: row.no, passport: String(row.passport || '').toUpperCase() }))
+    .filter((row) => row.passport);
+  const gdPassports = Array.from(new Set((normalizedAttachment.match(/\b[A-Z]{1,3}\d{5,9}\b/g) || []).map((item) => item.toUpperCase())));
+  const missing = expectedPassports.filter((row) => !compactAttachment.includes(row.passport));
   return {
-    complete: crew.length > 0 && missing.length === 0,
-    matched: crew.length - missing.length,
-    total: crew.length,
+    complete: expectedPassports.length > 0 && missing.length === 0,
+    matched: expectedPassports.length - missing.length,
+    total: expectedPassports.length,
     missing,
     extraPassports: [],
     gdPassports
@@ -1655,13 +1827,16 @@ function buildGdCheckDetailText(result) {
     result.userId ? `Gmail User: ${result.userId}` : '',
     result.searchDate ? `Search Date: ${result.searchDate}` : '',
     result.sentAt ? `Latest Email Time: ${result.sentAt}` : '',
-    result.attachmentName ? `Attachment: ${result.attachmentName}` : ''
+    result.attachmentName ? `Attachment: ${result.attachmentName}` : '',
+    result.attachmentType ? `Attachment Type: ${result.attachmentType}` : '',
+    Array.isArray(result.checkedAttachments) && result.checkedAttachments.length
+      ? `Checked Attachments: ${result.checkedAttachments.map((item) => `${item.name || 'attachment'} ${item.method ? `[${item.method}] ` : ''}${item.matched || 0}/${item.total || 0}${item.ocrError ? ` OCR:${item.ocrError}` : ''}`).join(' | ')}`
+      : ''
   ].filter(Boolean);
   if (Array.isArray(result.missing) && result.missing.length) {
     lines.push('Missing Passports:');
     result.missing.forEach((row) => {
-      const issues = row.passportFound ? '' : 'passport';
-      lines.push(`${row.no || ''}. ${row.name || ''} ${row.passport || ''} (${issues || 'not matched'})`);
+      lines.push(`${row.no || ''}. ${row.passport || ''} (passport not matched)`);
     });
   }
   if (Array.isArray(result.extraPassports) && result.extraPassports.length) {
@@ -1690,6 +1865,8 @@ async function getGdCheckEmail(flightNo, subjectDate, crew = [], expectedSubject
     total: Array.isArray(crew) ? crew.length : 0,
     missing: [],
     extraPassports: [],
+    attachmentType: '',
+    checkedAttachments: [],
     ...extra
   });
   if (!normalizedFlightNo || !normalizedSubjectDate || !subject) {
@@ -1716,7 +1893,7 @@ async function getGdCheckEmail(flightNo, subjectDate, crew = [], expectedSubject
     const messages = (Array.isArray(list.data.messages) ? list.data.messages : [])
       .sort((a, b) => Number(b.internalDate || 0) - Number(a.internalDate || 0));
     if (!messages.length) {
-      const result = empty({ reason: 'No Gmail message with the expected GD subject and spreadsheet attachment was found in the last 2 days.', query: q, authMode, userId, searchDate });
+      const result = empty({ reason: 'No Gmail message with the expected GD subject and attachment was found in the last 2 days.', query: q, authMode, userId, searchDate });
       result.detailText = buildGdCheckDetailText(result);
       return result;
     }
@@ -1730,38 +1907,89 @@ async function getGdCheckEmail(flightNo, subjectDate, crew = [], expectedSubject
     });
     const latestSentAtDate = Number(full.data.internalDate) ? new Date(Number(full.data.internalDate)) : null;
     const latestSentAt = latestSentAtDate ? latestSentAtDate.toISOString() : '';
-    const spreadsheetParts = collectGmailParts(full.data.payload, (part) => {
+    const gdAttachmentParts = collectGmailParts(full.data.payload, (part) => {
       const filename = String(part.filename || '').toLowerCase();
       const mimeType = String(part.mimeType || '').toLowerCase();
       return Boolean(part.body?.attachmentId || part.body?.data)
-        && (filename.endsWith('.xls') || filename.endsWith('.xlsx') || /excel|spreadsheet|sheet/.test(mimeType));
+        && (filename.endsWith('.xls')
+          || filename.endsWith('.xlsx')
+          || filename.endsWith('.pdf')
+          || /excel|spreadsheet|sheet|pdf/.test(mimeType));
     });
-    for (const part of spreadsheetParts) {
+    const checkedAttachments = [];
+    let bestResult = null;
+    for (const part of gdAttachmentParts) {
       let data = part.body?.data || '';
       if (part.body?.attachmentId) {
         const attachment = await gmail.users.messages.attachments.get({ userId, messageId: full.data.id || latestMessage.id, id: part.body.attachmentId });
         data = attachment.data.data || '';
       }
-      const spreadsheetText = extractSpreadsheetText(Buffer.from(String(data).replace(/-/g, '+').replace(/_/g, '/'), 'base64'));
-      const comparison = compareGdCrew(crew, spreadsheetText);
-      const result = {
-          found: true,
-          complete: comparison.complete,
-          subject,
-          detailText: '',
-          reason: comparison.complete ? '' : 'GD spreadsheet is missing one or more CWD passport numbers.',
-          query: q,
-          authMode,
-          userId,
-          searchDate,
-        attachmentName: part.filename || 'GD spreadsheet attachment',
+      const attachmentBuffer = Buffer.from(String(data).replace(/-/g, '+').replace(/_/g, '/'), 'base64');
+      const attachmentType = gdAttachmentType(part.filename || '', part.mimeType || '');
+      const isPdf = isPdfAttachment(part.filename || '', part.mimeType || '');
+      const extractedText = extractGdAttachmentText(attachmentBuffer, part.filename || '', part.mimeType || '');
+      let attachmentText = extractedText;
+      let comparison = compareGdCrew(crew, attachmentText);
+      let extractionMethod = isPdf ? 'PDF text' : attachmentType;
+      let ocrError = '';
+      if (isPdf && !comparison.complete) {
+        try {
+          const ocrText = await extractPdfOcrText(attachmentBuffer);
+          if (ocrText) {
+            const ocrComparison = compareGdCrew(crew, `${attachmentText} ${ocrText}`);
+            if (ocrComparison.matched >= comparison.matched) {
+              attachmentText = `${attachmentText} ${ocrText}`;
+              comparison = ocrComparison;
+              extractionMethod = 'Vision OCR';
+            }
+          } else {
+            extractionMethod = 'PDF text (OCR empty)';
+          }
+        } catch (err) {
+          ocrError = gdOcrErrorReason(err);
+          extractionMethod = 'PDF text (OCR failed)';
+        }
+      }
+      checkedAttachments.push({
+        name: part.filename || `${attachmentType} attachment`,
+        type: attachmentType,
+        method: extractionMethod,
+        matched: comparison.matched,
+        total: comparison.total,
+        complete: comparison.complete,
+        ocrError
+      });
+      const candidate = {
+        found: true,
+        complete: comparison.complete,
+        subject,
+        detailText: '',
+        reason: comparison.complete ? '' : `${attachmentType} attachment is missing one or more CWD passport numbers.${ocrError ? ` OCR failed: ${ocrError}` : ''}`,
+        query: q,
+        authMode,
+        userId,
+        searchDate,
+        attachmentName: part.filename || `${attachmentType} attachment`,
+        attachmentType,
         sentAt: latestSentAt,
+        checkedAttachments,
         ...comparison
       };
-      result.detailText = buildGdCheckDetailText(result);
-      return result;
+      if (candidate.complete) {
+        candidate.detailText = buildGdCheckDetailText(candidate);
+        return candidate;
+      }
+      if (!bestResult || candidate.matched > bestResult.matched) bestResult = candidate;
     }
-    const result = empty({ reason: 'Latest GD email was found, but no .xls/.xlsx spreadsheet attachment was found.', query: q, authMode, userId, searchDate, sentAt: latestSentAt });
+    if (bestResult) {
+      bestResult.checkedAttachments = checkedAttachments;
+      bestResult.reason = checkedAttachments.length > 1
+        ? 'No GD attachment matched every CWD passport number; showing the closest attachment.'
+        : bestResult.reason;
+      bestResult.detailText = buildGdCheckDetailText(bestResult);
+      return bestResult;
+    }
+    const result = empty({ reason: 'Latest GD email was found, but no .xls/.xlsx/.pdf attachment was found.', query: q, authMode, userId, searchDate, sentAt: latestSentAt });
     result.detailText = buildGdCheckDetailText(result);
     return result;
   } catch (err) {
