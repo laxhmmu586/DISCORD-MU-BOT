@@ -670,7 +670,7 @@
         display: grid;
         align-items: end;
         min-height: clamp(360px, calc(100svh - 360px), 540px);
-        overflow: hidden;
+        overflow: visible;
         background: transparent;
       }
 
@@ -681,7 +681,7 @@
         place-items: center;
         padding: 3vh 0 8vh;
         transform: translateY(72px);
-        z-index: 1;
+        z-index: 8;
       }
 
       .timeline-shell::before,
@@ -868,19 +868,26 @@
 
       .node-card {
         position: absolute;
-        z-index: 7;
-        width: min(240px, 38vw);
+        z-index: 80;
+        width: min(360px, 46vw);
+        max-height: min(320px, calc(100vh - 220px));
+        overflow-y: auto;
         display: none;
         transform: translate(-50%, calc(-100% - 24px));
         border: 1px solid rgba(176, 216, 255, 0.32);
         background: linear-gradient(150deg, rgba(7, 22, 36, 0.94), rgba(2, 12, 22, 0.9));
         box-shadow: 0 18px 54px rgba(0, 0, 0, 0.42);
         padding: 11px 12px;
-        pointer-events: none;
+        pointer-events: auto;
+        overscroll-behavior: contain;
       }
 
       .node-card.is-open {
         display: block;
+      }
+
+      .node-card.is-below {
+        transform: translate(-50%, 24px);
       }
 
       .node-card small {
@@ -907,6 +914,12 @@
 
       .node-card p b {
         color: #8fc4ff;
+      }
+
+      .node-card-detail {
+        display: block;
+        margin-top: 8px;
+        white-space: pre-line;
       }
 
       .flight-panel {
@@ -2930,8 +2943,13 @@
         }
 
         .node-card {
-          width: min(250px, calc(100vw - 40px));
+          width: min(300px, calc(100vw - 40px));
+          max-height: min(280px, calc(100vh - 180px));
           transform: translate(-50%, calc(-100% - 18px));
+        }
+
+        .node-card.is-below {
+          transform: translate(-50%, 18px);
         }
 
         .node-card p {
@@ -3370,14 +3388,16 @@
                 <path class="orbit-dash" d="M-46 292 C 224 164, 410 134, 600 134 S 976 164, 1246 292" />
               </svg>
               <button class="node" type="button" data-index="0" data-key="CREW_APIS" data-label="CREW APIS" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="1" data-key="NET" data-label="NET" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="2" data-key="CHD" data-label="CHD" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="3" data-key="GOV" data-label="GOV" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="4" data-key="NBRD" data-label="NBRD" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="5" data-key="CCL" data-label="CCL" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="6" data-key="CC" data-label="CC" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="7" data-key="INITIAL_FLIGHT" data-label="INITIAL FLIGHT" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="8" data-key="BDT_CHG" data-label="BDT CHG" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="1" data-key="GD_CHECK" data-label="GD CHECK" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="2" data-key="NEXTDAY_INFO" data-label="NEXTDAY INFO" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="3" data-key="NET" data-label="NET" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="4" data-key="CHD" data-label="CHD" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="5" data-key="GOV" data-label="GOV" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="6" data-key="NBRD" data-label="NBRD" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="7" data-key="CCL" data-label="CCL" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="8" data-key="CC" data-label="CC" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="9" data-key="INITIAL_FLIGHT" data-label="INITIAL FLIGHT" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="10" data-key="BDT_CHG" data-label="BDT CHG" data-status="pending" data-time="----"></button>
               <article class="node-card" aria-live="polite">
                 <h2>Crew APIs</h2>
                 <p>Crew manifest and reservation data are ready. This point can open deeper crew workflows later.</p>
@@ -3468,7 +3488,7 @@
       const changePasswordForm = document.querySelector("#change-password-form");
       const newPasswordInput = document.querySelector("#new-password");
       const passwordStatus = document.querySelector("#password-status");
-      const baseProgress = [0.08, 0.19, 0.3, 0.41, 0.52, 0.63, 0.74, 0.85, 0.96];
+      const baseProgress = [0.05, 0.14, 0.23, 0.32, 0.41, 0.5, 0.59, 0.68, 0.77, 0.86, 0.95];
       const desktopOrbitPath = "M-260 318 C 120 178, 390 142, 600 142 S 1080 178, 1460 318";
       const mobileOrbitPath = "M-240 296 C 130 210, 390 184, 600 184 S 1070 210, 1440 296";
       const mobileOrbitQuery = window.matchMedia("(max-width: 760px)");
@@ -3477,6 +3497,8 @@
       const maxScrollOffset = centerProgress - baseProgress[0];
       const nodeKeyMap = {
         CREW_APIS: "crewApis",
+        GD_CHECK: "gdCheck",
+        NEXTDAY_INFO: "nextDayInfo",
         NET: "net",
         CCL: "ccl",
         CC: "cc",
@@ -3743,7 +3765,9 @@
         const label = node.dataset.label || step?.label || key;
         const time = nodeDisplayTime(node);
         nodeCard.querySelector("h2").textContent = label;
-        nodeCard.querySelector("p").textContent = step?.tooltip || `${label} ${time !== "----" ? `entered at ${time}` : "data is not complete yet."}`;
+        nodeCard.classList.toggle("is-below", parseFloat(node.style.top || "0") < 34);
+        const detailText = step?.detailText ? `<span class="node-card-detail">${escapeHtml(step.detailText)}</span>` : "";
+        nodeCard.querySelector("p").innerHTML = `${escapeHtml(step?.tooltip || `${label} ${time !== "----" ? `entered at ${time}` : "data is not complete yet."}`)}${detailText}`;
       }
 
       function hideTimelineNodeCard() {
@@ -3754,12 +3778,14 @@
         const node = Array.from(nodes).find((item) => item.dataset.key === key);
         if (!node) return;
         const label = node.dataset.label || step?.label || key;
-        const status = step?.complete ? "Complete" : "Not complete";
+        const status = key === "GD_CHECK" ? (step?.complete ? "Matched" : "Not matched") : (step?.complete ? "Complete" : "Not complete");
         const detail = step?.tooltip || (inputTime && inputTime !== "----" ? `${label} entered at ${inputTime}` : `${label} not entered`);
+        const detailText = step?.detailText ? `<span class="node-card-detail">${escapeHtml(step.detailText)}</span>` : "";
         nodeCard.style.left = node.style.left;
         nodeCard.style.top = node.style.top;
+        nodeCard.classList.toggle("is-below", parseFloat(node.style.top || "0") < 34);
         nodeCard.querySelector("h2").textContent = label;
-        nodeCard.querySelector("p").innerHTML = `<b>Time</b> ${escapeHtml(inputTime === "----" ? "Not entered" : inputTime)}<br><b>Status</b> ${escapeHtml(status)}<br>${escapeHtml(detail)}`;
+        nodeCard.querySelector("p").innerHTML = `<b>Time</b> ${escapeHtml(inputTime === "----" ? "Not entered" : inputTime)}<br><b>Status</b> ${escapeHtml(status)}<br>${escapeHtml(detail)}${detailText}`;
         nodeCard.classList.add("is-open");
       }
 
@@ -4220,10 +4246,11 @@
           let started = Boolean(step?.complete || step?.time);
           let time = step?.time || "----";
           node.dataset.inputTime = step?.time || "";
+          if (["GD_CHECK", "NEXTDAY_INFO"].includes(key)) { started = Boolean(step?.searched || step?.complete || step?.time); complete = Boolean(step?.complete); time = complete ? (step?.time || (key === "GD_CHECK" ? "MATCH" : "SENT")) : (started ? (key === "GD_CHECK" ? "ISSUE" : "MISSING") : "----"); }
           if (key === "CHD") { issueCount = chdIssues; started = (sy.chdList || []).length > 0; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
           if (key === "GOV") { issueCount = govCount; started = Boolean(sy.govAqq) && previousStarted; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
           if (key === "NBRD") { issueCount = nbrdCount; started = (sy.bnAudit || []).length > 0 && previousStarted; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
-          const locked = !previousStarted && !["CHD", "GOV", "NBRD"].includes(key);
+          const locked = !previousStarted && !["GD_CHECK", "NEXTDAY_INFO", "CHD", "GOV", "NBRD"].includes(key);
           node.dataset.status = normalizeStatus(Boolean(complete), issueCount || (started && !complete ? 1 : 0), locked);
           node.dataset.time = String(time);
           if (["CHD", "GOV", "NBRD"].includes(key) && complete && String(time).toUpperCase() === "CLEAR") node.dataset.clearLocked = "true";
