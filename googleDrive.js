@@ -1,4 +1,5 @@
 const { google } = require('googleapis');
+const { Readable } = require('stream');
 const zlib = require('zlib');
 
 // ===============================
@@ -19,6 +20,7 @@ const auth = new google.auth.GoogleAuth({
   scopes: [
 
     'https://www.googleapis.com/auth/drive.readonly',
+    'https://www.googleapis.com/auth/drive.file',
     'https://www.googleapis.com/auth/spreadsheets',
     'https://www.googleapis.com/auth/gmail.readonly'
   ]
@@ -1710,19 +1712,66 @@ function extractPdfText(buffer) {
     .trim();
 }
 
-function extractGdAttachmentText(buffer, filename = '', mimeType = '') {
+function isPdfAttachment(filename = '', mimeType = '') {
   const lowerName = String(filename || '').toLowerCase();
   const lowerMime = String(mimeType || '').toLowerCase();
-  if (lowerName.endsWith('.pdf') || lowerMime.includes('pdf')) return extractPdfText(buffer);
+  return lowerName.endsWith('.pdf') || lowerMime.includes('pdf');
+}
+
+function extractGdAttachmentText(buffer, filename = '', mimeType = '') {
+  if (isPdfAttachment(filename, mimeType)) return extractPdfText(buffer);
   return extractSpreadsheetText(buffer);
 }
 
 function gdAttachmentType(filename = '', mimeType = '') {
   const lowerName = String(filename || '').toLowerCase();
   const lowerMime = String(mimeType || '').toLowerCase();
-  if (lowerName.endsWith('.pdf') || lowerMime.includes('pdf')) return 'PDF';
+  if (isPdfAttachment(filename, mimeType)) return 'PDF';
   if (lowerName.endsWith('.xls') || lowerName.endsWith('.xlsx') || /excel|spreadsheet|sheet/.test(lowerMime)) return 'Spreadsheet';
   return 'Attachment';
+}
+
+
+function safeGdOcrFileName(filename = '') {
+  return String(filename || 'gd-attachment.pdf')
+    .replace(/[\\/\u0000-\u001f]+/g, '_')
+    .replace(/[^\w.() -]+/g, '_')
+    .slice(0, 120) || 'gd-attachment.pdf';
+}
+
+async function extractPdfOcrText(buffer, filename = '') {
+  const source = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer || '');
+  if (!source.length) return '';
+  let fileId = '';
+  try {
+    const created = await drive.files.create({
+      requestBody: {
+        name: `gd-ocr-${Date.now()}-${safeGdOcrFileName(filename)}`,
+        mimeType: 'application/vnd.google-apps.document'
+      },
+      media: {
+        mimeType: 'application/pdf',
+        body: Readable.from(source)
+      },
+      fields: 'id',
+      ocrLanguage: 'en'
+    });
+    fileId = created.data.id || '';
+    if (!fileId) return '';
+    const exported = await drive.files.export(
+      { fileId, mimeType: 'text/plain' },
+      { responseType: 'text' }
+    );
+    return String(exported.data || '')
+      .replace(/\u0000/g, ' ')
+      .replace(/[\u0001-\u0008\u000B-\u001F\u007F]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  } finally {
+    if (fileId) {
+      try { await drive.files.delete({ fileId }); } catch (err) {}
+    }
+  }
 }
 
 function normalizeGdComparable(value = '') {
@@ -1761,7 +1810,7 @@ function buildGdCheckDetailText(result) {
     result.attachmentName ? `Attachment: ${result.attachmentName}` : '',
     result.attachmentType ? `Attachment Type: ${result.attachmentType}` : '',
     Array.isArray(result.checkedAttachments) && result.checkedAttachments.length
-      ? `Checked Attachments: ${result.checkedAttachments.map((item) => `${item.name || 'attachment'} ${item.matched || 0}/${item.total || 0}`).join(' | ')}`
+      ? `Checked Attachments: ${result.checkedAttachments.map((item) => `${item.name || 'attachment'} ${item.method ? `[${item.method}] ` : ''}${item.matched || 0}/${item.total || 0}${item.ocrError ? ` OCR:${item.ocrError}` : ''}`).join(' | ')}`
       : ''
   ].filter(Boolean);
   if (Array.isArray(result.missing) && result.missing.length) {
@@ -1857,21 +1906,45 @@ async function getGdCheckEmail(flightNo, subjectDate, crew = [], expectedSubject
       }
       const attachmentBuffer = Buffer.from(String(data).replace(/-/g, '+').replace(/_/g, '/'), 'base64');
       const attachmentType = gdAttachmentType(part.filename || '', part.mimeType || '');
-      const attachmentText = extractGdAttachmentText(attachmentBuffer, part.filename || '', part.mimeType || '');
-      const comparison = compareGdCrew(crew, attachmentText);
+      const isPdf = isPdfAttachment(part.filename || '', part.mimeType || '');
+      const extractedText = extractGdAttachmentText(attachmentBuffer, part.filename || '', part.mimeType || '');
+      let attachmentText = extractedText;
+      let comparison = compareGdCrew(crew, attachmentText);
+      let extractionMethod = isPdf ? 'PDF text' : attachmentType;
+      let ocrError = '';
+      if (isPdf && !comparison.complete) {
+        try {
+          const ocrText = await extractPdfOcrText(attachmentBuffer, part.filename || 'GD PDF attachment');
+          if (ocrText) {
+            const ocrComparison = compareGdCrew(crew, `${attachmentText} ${ocrText}`);
+            if (ocrComparison.matched >= comparison.matched) {
+              attachmentText = `${attachmentText} ${ocrText}`;
+              comparison = ocrComparison;
+              extractionMethod = 'PDF OCR';
+            }
+          } else {
+            extractionMethod = 'PDF text (OCR empty)';
+          }
+        } catch (err) {
+          ocrError = nextDayInfoGmailErrorReason(err, authMode, userId);
+          extractionMethod = 'PDF text (OCR failed)';
+        }
+      }
       checkedAttachments.push({
         name: part.filename || `${attachmentType} attachment`,
         type: attachmentType,
+        method: extractionMethod,
         matched: comparison.matched,
         total: comparison.total,
-        complete: comparison.complete
+        complete: comparison.complete,
+        ocrError
       });
       const candidate = {
         found: true,
         complete: comparison.complete,
         subject,
         detailText: '',
-        reason: comparison.complete ? '' : `${attachmentType} attachment is missing one or more CWD passport numbers.`,
+        reason: comparison.complete ? '' : `${attachmentType} attachment is missing one or more CWD passport numbers.${ocrError ? ` OCR failed: ${ocrError}` : ''}`,
         query: q,
         authMode,
         userId,
