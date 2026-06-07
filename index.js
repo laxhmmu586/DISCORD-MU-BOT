@@ -830,7 +830,7 @@ function cleanBodyText(value, maxLength = 500) {
 
 app.get('/test-baggage-report', async (req, res) => {
   try {
-    const rows = await getTestBaggageReportRows();
+    const rows = await getTestBaggageReportRows({ from: req.query.from, to: req.query.to, bagTag: req.query.bagTag });
     return res.json({ rows, source: 'sheet' });
   } catch (err) {
     console.error('Test baggage report error:', err);

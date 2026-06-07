@@ -502,29 +502,66 @@ async function findTestBaggageByTag(bagTag) {
 }
 
 
-async function getTestBaggageReportRows() {
+function sheetCellHeader(headers, index) {
+  return String(headers?.[index] || TEST_BAGGAGE_HEADERS[index] || `Column ${String.fromCharCode(65 + index)}`).trim() || `Column ${String.fromCharCode(65 + index)}`;
+}
+
+function baggageReportSheetNodes(values, headers) {
+  const skipColumns = new Set([0, 1, 17]);
+  return (values || [])
+    .map((value, index) => ({ value: sanitizeSheetText(value, 500), index }))
+    .filter(({ value, index }) => value && !skipColumns.has(index))
+    .map(({ value, index }) => ({
+      label: index === 15 ? 'Submitted' : (index === 18 ? 'Update History' : sheetCellHeader(headers, index)),
+      at: index === 15 || index === 17 ? value : '',
+      details: {
+        column: `${String.fromCharCode(65 + index)} - ${sheetCellHeader(headers, index)}`,
+        value
+      }
+    }));
+}
+
+async function getTestBaggageReportRows(options = {}) {
   const rows = await getTestBaggageSheetRows({ forceRefresh: true });
-  const startIndex = TEST_BAGGAGE_HEADERS.every((header, index) => String(rows?.[0]?.[index] || '').trim() === header) ? 1 : 0;
+  const hasKnownHeaders = TEST_BAGGAGE_HEADERS.every((header, index) => String(rows?.[0]?.[index] || '').trim() === header);
+  const hasSheetHeaders = !hasKnownHeaders && /submit|date|bag|status|updated/i.test((rows?.[0] || []).join('|'));
+  const headers = hasKnownHeaders || hasSheetHeaders ? rows[0] : TEST_BAGGAGE_HEADERS;
+  const startIndex = hasKnownHeaders || hasSheetHeaders ? 1 : 0;
+  const fromIso = normalizeSheetDateToIso(options.from);
+  const toIso = normalizeSheetDateToIso(options.to);
+  const bagTagNeedle = normalizeTestBagTag(options.bagTag || '');
   return (rows || [])
     .slice(startIndex)
     .map((values, offset) => {
       const rowNumber = startIndex + offset + 1;
       const mapped = testBaggageRowFromSheet(values || [], rowNumber);
+      const submitDate = sanitizeSheetText(values?.[0] || mapped.submittedAt || '', 80);
+      const submitDateIso = normalizeSheetDateToIso(submitDate);
       const bagTagFromB = normalizeTestBagTag(values?.[1] || '');
       const bagTagFromA = normalizeTestBagTag(values?.[0] || '');
+      const lastUpdated = sanitizeSheetText(values?.[17] || mapped.lastUpdatedAt || mapped.submittedAt || '', 80);
       return {
         ...mapped,
         rowNumber,
+        submitDate,
+        submitDateIso,
         bagTag: isValidTestBagTag(bagTagFromB) ? bagTagFromB : (mapped.bagTag || bagTagFromA),
-        currentStatus: values?.[6] || mapped.status || '',
-        lastUpdated: values?.[17] || mapped.lastUpdatedAt || mapped.submittedAt || '',
+        currentStatus: sanitizeSheetText(values?.[6] || mapped.status || '', 120),
+        lastUpdated,
+        sheetNodes: baggageReportSheetNodes(values || [], headers),
         raw: values || []
       };
     })
-    .filter((row) => row.bagTag || row.currentStatus || row.lastUpdated || (Array.isArray(row.history) && row.history.length))
+    .filter((row) => row.bagTag || row.currentStatus || row.lastUpdated || row.submitDate || (Array.isArray(row.history) && row.history.length))
+    .filter((row) => !bagTagNeedle || normalizeTestBagTag(row.bagTag).includes(bagTagNeedle))
+    .filter((row) => {
+      if (!fromIso && !toIso) return true;
+      if (!row.submitDateIso) return false;
+      return (!fromIso || row.submitDateIso >= fromIso) && (!toIso || row.submitDateIso <= toIso);
+    })
     .sort((a, b) => {
-      const aTime = Date.parse(a.lastUpdated || a.lastUpdatedAt || a.submittedAt || '') || 0;
-      const bTime = Date.parse(b.lastUpdated || b.lastUpdatedAt || b.submittedAt || '') || 0;
+      const aTime = Date.parse(a.lastUpdated || a.lastUpdatedAt || a.submittedAt || a.submitDate || '') || 0;
+      const bTime = Date.parse(b.lastUpdated || b.lastUpdatedAt || b.submittedAt || b.submitDate || '') || 0;
       return bTime - aTime;
     });
 }

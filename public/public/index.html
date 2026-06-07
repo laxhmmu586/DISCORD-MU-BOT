@@ -1202,9 +1202,26 @@
         background: rgba(140, 84, 8, 0.54);
       }
 
+      .warning-action.is-critical-warning {
+        border-color: rgba(255, 86, 86, 0.86);
+        background: rgba(120, 15, 22, 0.58);
+        color: #ffd6d6;
+        box-shadow: 0 0 24px rgba(255, 65, 65, 0.22);
+      }
+
+      .warning-action.is-critical-warning:hover {
+        border-color: rgba(255, 132, 132, 0.98);
+        background: rgba(154, 24, 31, 0.68);
+      }
+
       .warning-badge {
         background: #f5b400;
         color: #1b1300;
+      }
+
+      .warning-action.is-critical-warning .warning-badge {
+        background: #ff4d4d;
+        color: white;
       }
 
 
@@ -1215,7 +1232,7 @@
 
       .baggage-timeline-row {
         display: grid;
-        grid-template-columns: minmax(140px, 0.9fr) minmax(120px, 0.75fr) minmax(150px, 0.9fr) minmax(420px, 2.8fr);
+        grid-template-columns: minmax(140px, 0.75fr) minmax(120px, 0.65fr) minmax(120px, 0.65fr) minmax(150px, 0.8fr) minmax(420px, 2.7fr);
         gap: 16px;
         align-items: center;
         padding: 16px;
@@ -2309,6 +2326,10 @@
       .report-form.is-inad-mode,
       .report-form.is-baggage-mode {
         display: none;
+      }
+
+      .report-form.is-baggage-mode .report-keyword-field input {
+        text-transform: uppercase;
       }
 
       .report-form.is-psm-mode .report-keyword-field,
@@ -3752,7 +3773,10 @@
         setText("#wch-count", "0");
         setText("#warning-count", "0");
         const warningAction = document.querySelector("#warning-action");
-        if (warningAction) warningAction.hidden = true;
+        if (warningAction) {
+          warningAction.hidden = true;
+          warningAction.classList.remove("is-critical-warning");
+        }
         setBadgeText("#psm-count", 0);
         if (bagReportButton) bagReportButton.hidden = true;
         if (salesReportButton) salesReportButton.hidden = true;
@@ -4471,7 +4495,10 @@
         const warningRows = buildWarningRows(sy);
         setText("#warning-count", warningRows.length || "0");
         const warningAction = document.querySelector("#warning-action");
-        if (warningAction) warningAction.hidden = warningRows.length === 0;
+        if (warningAction) {
+          warningAction.hidden = warningRows.length === 0;
+          warningAction.classList.toggle("is-critical-warning", warningRows.length > 0);
+        }
         setBadgeText("#psm-count", (sy.psmList || []).length);
         if (bagReportButton) bagReportButton.hidden = !(sy.bagSheet?.hasData);
         refreshSalesReportButton(sy);
@@ -4861,7 +4888,7 @@
       }
 
       function setReportMode(mode, options = {}) {
-        activeReportMode = ["vip", "psm", "inad", "wch"].includes(mode) ? mode : "sales";
+        activeReportMode = ["vip", "psm", "inad", "wch", "baggage"].includes(mode) ? mode : "sales";
         setReportDefaults(options.forceToday);
         if (activeReportMode === "sales" && reportToInput) reportToInput.value = reportFromInput?.value || reportToInput.value;
         reportForm?.classList.toggle("is-sales-mode", activeReportMode === "sales");
@@ -4877,6 +4904,9 @@
         reportWchModeButton?.classList.toggle("is-active", activeReportMode === "wch");
         reportBaggageModeButton?.classList.toggle("is-active", activeReportMode === "baggage");
         if (reportFromLabel) reportFromLabel.textContent = activeReportMode === "sales" ? "Date" : "From";
+        const reportKeywordLabel = reportForm?.querySelector(".report-keyword-field span");
+        if (reportKeywordLabel) reportKeywordLabel.textContent = activeReportMode === "baggage" ? "Bag Tag" : "Search";
+        if (reportKeywordInput) reportKeywordInput.placeholder = activeReportMode === "baggage" ? "Optional bag tag" : "Optional filter";
         const reportRunButton = reportForm?.querySelector(".report-run");
         if (reportRunButton) reportRunButton.textContent = activeReportMode === "sales" ? "Download" : "Search";
         if (reportDownloadButton) reportDownloadButton.hidden = activeReportMode === "sales" || activeReportMode === "baggage";
@@ -5477,10 +5507,12 @@
       }
 
       function baggageTimelineNodes(row) {
+        const sheetNodes = Array.isArray(row?.sheetNodes) ? row.sheetNodes : [];
         const history = Array.isArray(row?.history) ? row.history : [];
-        const nodes = history.map((item, index) => {
+        const sourceNodes = history.length ? history : sheetNodes;
+        const nodes = sourceNodes.map((item, index) => {
           const details = item?.details || {};
-          const status = item?.type || details.status || row.currentStatus || row.status || `Step ${index + 1}`;
+          const status = item?.type || item?.label || details.status || row.currentStatus || row.status || `Step ${index + 1}`;
           return {
             label: status,
             at: item?.at || "",
@@ -5512,7 +5544,9 @@
         const detailHtml = details.length
           ? details.map(([key, value]) => `<br><b>${escapeHtml(titleCaseTestLabel(key))}:</b> ${escapeHtml(value)}`).join("")
           : "";
-        return `<b>${escapeHtml(node?.label || row?.currentStatus || "Update")}</b>${node?.at ? ` • ${escapeHtml(new Date(node.at).toLocaleString())}` : ""}${node?.by ? ` • ${escapeHtml(node.by)}` : ""}${detailHtml}`;
+        const atTime = node?.at ? new Date(node.at) : null;
+        const atText = atTime && !Number.isNaN(atTime.getTime()) ? atTime.toLocaleString() : (node?.at || "");
+        return `<b>${escapeHtml(node?.label || row?.currentStatus || "Update")}</b>${atText ? ` • ${escapeHtml(atText)}` : ""}${node?.by ? ` • ${escapeHtml(node.by)}` : ""}${detailHtml}`;
       }
 
       function renderBaggageTimelineRows(rows = []) {
@@ -5524,6 +5558,7 @@
           const track = nodes.map((node, nodeIndex) => `${nodeIndex > 0 ? `<span class="baggage-timeline-segment" aria-hidden="true"></span>` : ""}<button class="baggage-timeline-node ${node.current ? "is-current" : ""} ${nodeIndex === safeSelected ? "is-selected" : ""}" type="button" data-baggage-row="${rowIndex}" data-baggage-node="${nodeIndex}" title="${escapeHtml(node.label || `Step ${nodeIndex + 1}`)}"><span class="sr-only">${escapeHtml(node.label || `Step ${nodeIndex + 1}`)}</span></button>`).join("");
           return `<article class="baggage-timeline-row" data-baggage-row-card="${rowIndex}">
             <div class="baggage-timeline-meta"><small>Last Updated</small><span>${escapeHtml(row.lastUpdated || row.lastUpdatedAt || "-")}</span></div>
+            <div class="baggage-timeline-meta"><small>Submit Date</small><span>${escapeHtml(row.submitDate || row.submittedAt || "-")}</span></div>
             <div class="baggage-timeline-meta"><small>Bag Tag</small><strong>${escapeHtml(row.bagTag || "-")}</strong></div>
             <div class="baggage-timeline-meta"><small>Current Status</small><span>${escapeHtml(row.currentStatus || row.status || "-")}</span></div>
             <div class="baggage-timeline-track">${track}</div>
@@ -5537,7 +5572,16 @@
         reportOutput.innerHTML = `<p class="panel-muted">Loading Baggage Report...</p>`;
         setReportCsv([], "baggage-report.csv");
         try {
-          const data = await apiJson("/test-baggage-report");
+          const today = ymdFromDate(new Date());
+          const from = reportFromInput?.value || today;
+          const to = reportToInput?.value || from;
+          const bagTag = normalizeTestBagTag(reportKeywordInput?.value || "");
+          if (from || to) reportDateRange(from, to);
+          const params = new URLSearchParams();
+          if (from) params.set("from", from);
+          if (to) params.set("to", to);
+          if (bagTag) params.set("bagTag", bagTag);
+          const data = await apiJson(`/test-baggage-report?${params.toString()}`);
           const rows = data?.rows || [];
           reportOutput._baggageRows = rows;
           reportOutput.innerHTML = renderBaggageTimelineRows(rows);
