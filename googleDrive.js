@@ -501,6 +501,34 @@ async function findTestBaggageByTag(bagTag) {
   return null;
 }
 
+
+async function getTestBaggageReportRows() {
+  const rows = await getTestBaggageSheetRows({ forceRefresh: true });
+  const startIndex = TEST_BAGGAGE_HEADERS.every((header, index) => String(rows?.[0]?.[index] || '').trim() === header) ? 1 : 0;
+  return (rows || [])
+    .slice(startIndex)
+    .map((values, offset) => {
+      const rowNumber = startIndex + offset + 1;
+      const mapped = testBaggageRowFromSheet(values || [], rowNumber);
+      const bagTagFromB = normalizeTestBagTag(values?.[1] || '');
+      const bagTagFromA = normalizeTestBagTag(values?.[0] || '');
+      return {
+        ...mapped,
+        rowNumber,
+        bagTag: isValidTestBagTag(bagTagFromB) ? bagTagFromB : (mapped.bagTag || bagTagFromA),
+        currentStatus: values?.[6] || mapped.status || '',
+        lastUpdated: values?.[17] || mapped.lastUpdatedAt || mapped.submittedAt || '',
+        raw: values || []
+      };
+    })
+    .filter((row) => row.bagTag || row.currentStatus || row.lastUpdated || (Array.isArray(row.history) && row.history.length))
+    .sort((a, b) => {
+      const aTime = Date.parse(a.lastUpdated || a.lastUpdatedAt || a.submittedAt || '') || 0;
+      const bTime = Date.parse(b.lastUpdated || b.lastUpdatedAt || b.submittedAt || '') || 0;
+      return bTime - aTime;
+    });
+}
+
 async function appendTestBaggageRecord(record) {
   if (testBaggageSheetAccessBlocked) return { created: false };
   const normalizedTag = normalizeTestBagTag(record?.bagTag);
@@ -2161,6 +2189,7 @@ module.exports = {
   appendPsmMsgReportRows,
   pruneStoredReportRows,
   findTestBaggageByTag,
+  getTestBaggageReportRows,
   appendTestBaggageRecord,
   updateTestBaggageRecord
 };

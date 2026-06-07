@@ -1162,7 +1162,7 @@
 
       .detail-actions {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+        grid-template-columns: repeat(4, minmax(132px, 1fr));
         gap: 10px;
       }
 
@@ -1205,6 +1205,105 @@
       .warning-badge {
         background: #f5b400;
         color: #1b1300;
+      }
+
+
+      .baggage-timeline-list {
+        display: grid;
+        gap: 14px;
+      }
+
+      .baggage-timeline-row {
+        display: grid;
+        grid-template-columns: minmax(140px, 0.9fr) minmax(120px, 0.75fr) minmax(150px, 0.9fr) minmax(420px, 2.8fr);
+        gap: 16px;
+        align-items: center;
+        padding: 16px;
+        border: 1px solid rgba(176, 216, 255, 0.16);
+        border-radius: 18px;
+        background: rgba(2, 13, 24, 0.46);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      }
+
+      .baggage-timeline-meta small {
+        display: block;
+        margin-bottom: 6px;
+        color: rgba(197, 218, 238, 0.66);
+        font-size: 10px;
+        font-weight: 850;
+        letter-spacing: 0.6px;
+        text-transform: uppercase;
+      }
+
+      .baggage-timeline-meta strong,
+      .baggage-timeline-meta span {
+        display: block;
+        color: rgba(245, 251, 255, 0.95);
+        font-size: 18px;
+        word-break: break-word;
+      }
+
+      .baggage-timeline-track {
+        position: relative;
+        display: flex;
+        align-items: center;
+        min-height: 56px;
+        padding: 0 8px;
+      }
+
+      .baggage-timeline-segment {
+        height: 2px;
+        flex: 1;
+        background: rgba(230, 242, 255, 0.72);
+      }
+
+      .baggage-timeline-node {
+        position: relative;
+        z-index: 1;
+        width: 24px;
+        height: 24px;
+        flex: 0 0 auto;
+        border: 3px solid rgba(237, 246, 255, 0.95);
+        border-radius: 999px;
+        background: #061220;
+        cursor: pointer;
+        box-shadow: 0 0 0 5px rgba(6, 18, 32, 0.96);
+      }
+
+      .baggage-timeline-node.is-current {
+        border-color: #6cf49a;
+        background: #20bf63;
+        box-shadow: 0 0 0 5px rgba(6, 18, 32, 0.96), 0 0 24px rgba(82, 255, 142, 0.34);
+      }
+
+      .baggage-timeline-node.is-selected {
+        border-color: #7dc8ff;
+        box-shadow: 0 0 0 5px rgba(6, 18, 32, 0.96), 0 0 24px rgba(125, 200, 255, 0.36);
+      }
+
+      .baggage-node-detail {
+        grid-column: 1 / -1;
+        padding: 12px 14px;
+        border: 1px solid rgba(125, 200, 255, 0.18);
+        border-radius: 14px;
+        background: rgba(0, 0, 0, 0.2);
+        color: rgba(235, 246, 255, 0.88);
+        line-height: 1.5;
+      }
+
+      .baggage-node-detail b {
+        color: white;
+      }
+
+      @media (max-width: 980px) {
+        .baggage-timeline-row {
+          grid-template-columns: 1fr;
+        }
+
+        .baggage-timeline-track {
+          overflow-x: auto;
+          min-width: 100%;
+        }
       }
 
       .detail-action-badge {
@@ -2207,7 +2306,8 @@
       }
 
       .report-form.is-vip-mode,
-      .report-form.is-inad-mode {
+      .report-form.is-inad-mode,
+      .report-form.is-baggage-mode {
         display: none;
       }
 
@@ -3344,6 +3444,7 @@
             <button class="detail-action" id="report-psm-mode" type="button" data-report-mode="psm">PSM Report</button>
             <button class="detail-action" id="report-inad-mode" type="button" data-report-mode="inad">INAD Report</button>
             <button class="detail-action" id="report-wch-mode" type="button" data-report-mode="wch">WCH Report</button>
+            <button class="detail-action" id="report-baggage-mode" type="button" data-report-mode="baggage">Baggage Report</button>
           </div>
           <form class="report-form" id="report-form">
             <label class="report-field report-from-field"><span id="report-from-label">From</span><input id="report-from" type="date" required /></label>
@@ -3352,7 +3453,7 @@
             <button class="report-run" type="submit">Search</button>
           </form>
           <div class="report-actions-row"><button class="report-download" id="report-download" type="button" disabled>Download CSV</button></div>
-          <div id="report-output"><p class="panel-muted">Choose Sales Report, VIP Report, PSM Report, INAD Report, or WCH Report.</p></div>
+          <div id="report-output"><p class="panel-muted">Choose Sales Report, VIP Report, PSM Report, INAD Report, WCH Report, or Baggage Report.</p></div>
         </section>
 
         <section class="report-page" id="baggage-page" aria-label="Bag report" hidden>
@@ -3412,13 +3513,14 @@
               </div>
               <p class="message" id="rk-message">Search SY to load live flight data.</p>
               <div class="detail-actions" aria-label="Flight detail actions">
-                <button class="detail-action" type="button" data-panel="chd">CHD List <span class="detail-action-badge" id="chd-count"></span></button>
-                <button class="detail-action" type="button" data-panel="gov">GOV/AQQ <span class="detail-action-badge" id="gov-count"></span></button>
-                <button class="detail-action" type="button" data-panel="nbrd">CKIN/NBRD <span class="detail-action-badge" id="nbrd-count"></span></button>
-                <button class="detail-action" type="button" data-panel="wch">WCH <span class="detail-action-badge" id="wch-count">0</span></button>
+                <button class="detail-action" type="button" data-panel="chd" id="chd-action">CHD List <span class="detail-action-badge" id="chd-count"></span></button>
+                <button class="detail-action" type="button" data-panel="gov" id="gov-action">GOV/AQQ <span class="detail-action-badge" id="gov-count"></span></button>
+                <button class="detail-action" type="button" data-panel="webedi" id="webedi-action">WEB/EDI/RS <span class="detail-action-badge" id="webedi-count"></span></button>
+                <button class="detail-action" type="button" data-panel="nbrd" id="nbrd-action">CKIN/NBRD <span class="detail-action-badge" id="nbrd-count"></span></button>
                 <button class="detail-action warning-action" type="button" data-panel="warning" id="warning-action" hidden aria-label="Open warnings">⚠️ WARNING <span class="detail-action-badge warning-badge" id="warning-count">0</span></button>
-                <button class="detail-action" type="button" data-panel="membership">Membership</button>
+                <button class="detail-action" type="button" data-panel="wch">WCH <span class="detail-action-badge" id="wch-count">0</span></button>
                 <button class="detail-action" type="button" data-panel="psm">PSM/MSG <span class="detail-action-badge" id="psm-count"></span></button>
+                <button class="detail-action" type="button" data-panel="membership">Membership</button>
                 <button class="detail-action" type="button" data-report-shortcut="sales">Sales Report</button>
                 <button class="detail-action" type="button" data-report-shortcut="vip">VIP Report</button>
               </div>
@@ -3551,6 +3653,7 @@
       const reportPsmModeButton = document.querySelector("#report-psm-mode");
       const reportInadModeButton = document.querySelector("#report-inad-mode");
       const reportWchModeButton = document.querySelector("#report-wch-mode");
+      const reportBaggageModeButton = document.querySelector("#report-baggage-mode");
       const reportFromInput = document.querySelector("#report-from");
       const reportFromLabel = document.querySelector("#report-from-label");
       const reportToInput = document.querySelector("#report-to");
@@ -3588,7 +3691,7 @@
       const APP_ENTRY_KEY = "mufc_allow_app_entry";
       const AUTH_SESSION_STARTED_KEY = "mufc_auth_session_started_at";
       const BAGGAGE_ONLY_EMAILS = new Set(["min@hm.com", "yogesh@hm.com", "ehsan@hm.com", "terry@hm.com", "steven@hm.com"]);
-      const AUTH_SESSION_LIMIT_MS = 30 * 60 * 1000;
+      const AUTH_SESSION_LIMIT_MS = 60 * 60 * 1000;
       const APP_ENTRY_GRACE_MS = 30 * 1000;
       const SY_AUTO_REFRESH_MS = 60 * 1000;
       let inactivityTimer = null;
@@ -3640,7 +3743,12 @@
         setText("#rk-message", "");
         setBadgeText("#chd-count", 0);
         setBadgeText("#gov-count", 0);
+        setBadgeText("#webedi-count", 0);
         setBadgeText("#nbrd-count", 0);
+        setActionIssueState("#chd-action", false);
+        setActionIssueState("#gov-action", false);
+        setActionIssueState("#webedi-action", false);
+        setActionIssueState("#nbrd-action", false);
         setText("#wch-count", "0");
         setText("#warning-count", "0");
         const warningAction = document.querySelector("#warning-action");
@@ -3736,6 +3844,13 @@
       function setBadgeText(selector, value) {
         const el = document.querySelector(selector);
         if (el) el.textContent = value ? String(value) : "";
+      }
+
+      function setActionIssueState(selector, hasIssue) {
+        const button = document.querySelector(selector);
+        if (!button) return;
+        button.classList.toggle("warning-action", Boolean(hasIssue));
+        button.querySelector(".detail-action-badge")?.classList.toggle("warning-badge", Boolean(hasIssue));
       }
 
       function countTriple(matchArray) {
@@ -4340,12 +4455,18 @@
         setText("#rk-message", sy.rkMessage || "No RK message found.");
         const chdIssues = (sy.chdList || []).filter((row) => row.hasChdCode === false).length;
         const gov = sy.govAqq || {};
-        const govIssueGroups = [gov.duplicatePassports, gov.aqqTclBnList, gov.govDtaBnList, gov.passportExpBnList, gov.passportCodeIssues];
+        const govIssueGroups = [gov.duplicatePassports, gov.aqqTclBnList, gov.govDtaBnList, gov.passportExpBnList, gov.wrongPassportBnList];
         const govCount = govIssueGroups.reduce((sum, value) => sum + (Array.isArray(value) ? value.length : 0), 0);
+        const webediCount = (gov.passportCodeIssues || []).length;
         const nbrdCount = (sy.bnAudit || []).filter((row) => /NBRD|CKIN/i.test(row?.apiReason || row?.tkReason || row?.visaReason || row?.bagReason || "")).length;
         setBadgeText("#chd-count", chdIssues);
         setBadgeText("#gov-count", govCount);
+        setBadgeText("#webedi-count", webediCount);
         setBadgeText("#nbrd-count", nbrdCount);
+        setActionIssueState("#chd-action", chdIssues > 0);
+        setActionIssueState("#gov-action", govCount > 0);
+        setActionIssueState("#webedi-action", webediCount > 0);
+        setActionIssueState("#nbrd-action", nbrdCount > 0);
         setText("#wch-count", (sy.wchList || []).length || "0");
         const warningRows = buildWarningRows(sy);
         setText("#warning-count", warningRows.length || "0");
@@ -4510,7 +4631,7 @@
           ["USA TIME OUT", (gov.aqqTclBnList || []).map((bn) => ({ bn, reason: "USA TIME OUT" }))],
           ["CHN GOV FAIL", (gov.govDtaBnList || []).map((bn) => ({ bn, reason: "CHN GOV FAIL" }))],
           ["Passport Exp", (gov.passportExpBnList || []).map((bn) => ({ bn, reason: "Passport Exp" }))],
-          ["WEB/EDI/Reswipe", (gov.passportCodeIssues || []).map((bn) => ({ bn, reason: "WEB/EDI/Reswipe" }))],
+          ["Wrong Passport", (gov.wrongPassportBnList || []).map((bn) => ({ bn, reason: "Wrong Passport: passport number has fewer than 7 characters" }))],
         ];
         const passengerByBn = passengerLookupByBn();
         const auditByBn = auditLookupByBn();
@@ -4536,6 +4657,14 @@
         setPanelPassengerRows(rows);
       }
 
+      function renderWebEdiPanel() {
+        const gov = currentSy?.govAqq || {};
+        const rows = enrichRowsWithPassengerData((gov.passportCodeIssues || []).map((bn) => ({ bn, reason: "WEB/EDI/Reswipe" })));
+        const body = rows.length ? `<div class="panel-stats"><span class="status-fail">WEB/EDI/RS total: ${rows.length}</span></div>${renderBnButtons(rows, "", (row) => row.reason)}` : `<p class="panel-muted">No WEB/EDI/RS records found.</p>`;
+        renderPanel("WEB/EDI/RS", currentSy?.flightNo || "SY", body);
+        setPanelPassengerRows(rows);
+      }
+
       function renderWchPanel() {
         const rows = enrichRowsWithPassengerData(currentSy?.wchList || []);
         renderPanel("WCH", currentSy?.flightNo || "SY", renderBnButtons(rows, "No WCH records found.", (row) => [row.bn ? `BN ${row.bn}` : "", row.seat ? `Seat ${row.seat}` : "", Array.isArray(row.codes) ? row.codes.join("/") : row.code].filter(Boolean).join(" / "), (row, index) => bnCircleLabel(row.bn, String(index + 1).padStart(3, "0"))));
@@ -4558,7 +4687,7 @@
           if (!bn) return;
           byBn.set(bn, { ...(byBn.get(bn) || {}), ...passenger, ...row, passengerRecord: { ...(byBn.get(bn)?.passengerRecord || {}), ...passenger, ...row.passengerRecord } });
         };
-        [sy?.seatMapRecords, sy?.bnAudit, sy?.chdList, sy?.wchList].forEach((list) => (list || []).forEach(add));
+        [sy?.seatMapRecords, sy?.bnAudit, sy?.chdList, sy?.wchList, sy?.badSeatList].forEach((list) => (list || []).forEach(add));
         return [...byBn.values()];
       }
 
@@ -4628,8 +4757,8 @@
           if (/WCHC/.test(services)) {
             addWarning(row, "WCHC", "Passenger has WCHC wheelchair service.");
           }
-          if (row.hasBadSeat || row.passengerRecord?.hasBadSeat || /BAD\s*SEAT/i.test([row.warningReason, row.reason, row.apiReason, row.tkReason, row.visaReason, row.bagReason].filter(Boolean).join(" "))) {
-            addWarning(row, "BAD SEAT", "Passenger record contains BAD SEAT.");
+          if (row.hasBadSeat || row.passengerRecord?.hasBadSeat) {
+            addWarning(row, "BAD SEAT", row.badSeatReason || row.passengerRecord?.badSeatReason || "PD CKIN/BAD includes CKIN BAD SEAT.");
           }
         }
         return rows.sort((a, b) => Number(a.bn || 9999) - Number(b.bn || 9999) || String(a.warningType || "").localeCompare(String(b.warningType || "")));
@@ -4740,25 +4869,30 @@
         reportForm?.classList.toggle("is-psm-mode", activeReportMode === "psm");
         reportForm?.classList.toggle("is-inad-mode", activeReportMode === "inad");
         reportForm?.classList.toggle("is-wch-mode", activeReportMode === "wch");
+        reportForm?.classList.toggle("is-baggage-mode", activeReportMode === "baggage");
         reportSalesModeButton?.classList.toggle("is-active", activeReportMode === "sales");
         reportVipModeButton?.classList.toggle("is-active", activeReportMode === "vip");
         reportPsmModeButton?.classList.toggle("is-active", activeReportMode === "psm");
         reportInadModeButton?.classList.toggle("is-active", activeReportMode === "inad");
         reportWchModeButton?.classList.toggle("is-active", activeReportMode === "wch");
+        reportBaggageModeButton?.classList.toggle("is-active", activeReportMode === "baggage");
         if (reportFromLabel) reportFromLabel.textContent = activeReportMode === "sales" ? "Date" : "From";
         const reportRunButton = reportForm?.querySelector(".report-run");
         if (reportRunButton) reportRunButton.textContent = activeReportMode === "sales" ? "Download" : "Search";
-        if (reportDownloadButton) reportDownloadButton.hidden = activeReportMode === "sales";
+        if (reportDownloadButton) reportDownloadButton.hidden = activeReportMode === "sales" || activeReportMode === "baggage";
         if (reportOutput && options.resetOutput) {
           reportOutput.innerHTML = activeReportMode === "vip"
             ? `<p class="panel-muted">Loading VIP Report...</p>`
             : (activeReportMode === "inad"
               ? `<p class="panel-muted">Loading INAD Report...</p>`
-              : (["psm", "wch"].includes(activeReportMode)
-                ? `<p class="panel-muted">Choose a flight date range, then search ${activeReportMode === "wch" ? "WCH" : "PSM"} Report.</p>`
-                : `<p class="panel-muted">Choose a date, then download Sales Report.</p>`));
+              : (activeReportMode === "baggage"
+                ? `<p class="panel-muted">Loading Baggage Report...</p>`
+                : (["psm", "wch"].includes(activeReportMode)
+                  ? `<p class="panel-muted">Choose a flight date range, then search ${activeReportMode === "wch" ? "WCH" : "PSM"} Report.</p>`
+                  : `<p class="panel-muted">Choose a date, then download Sales Report.</p>`)));
         }
-        if (["vip", "psm", "inad", "wch"].includes(activeReportMode)) generateReport();
+        if (activeReportMode === "baggage") renderBaggageTimelineReport();
+        else if (["vip", "psm", "inad", "wch"].includes(activeReportMode)) generateReport();
       }
 
       function resetPanelState() {
@@ -5012,8 +5146,6 @@
             <div class="test-report-title"><strong>${escapeHtml(record.bagTag)}</strong><span class="panel-muted">${escapeHtml(record.direction || "Baggage report")}</span></div>
           </div>
           ${message ? `<p class="panel-muted status-ok">${escapeHtml(message)}</p>` : ""}
-          <h3>Details</h3>
-          ${testDataGrid(record)}
           ${renderTestTimeline(record.history)}
           ${showUpdateForm ? `<div class="test-report-head test-update-head"><h3>Update</h3></div>${renderTestUpdateForm(record, mode)}` : `<div class="test-form-actions"><button class="test-add-button" type="button" data-test-show-update>Update</button></div>`}
         </article>`;
@@ -5339,9 +5471,88 @@
         return data?.rows || [];
       }
 
+
+      function normalizeTimelineText(value) {
+        return String(value || "").trim().toUpperCase().replace(/[^A-Z0-9]+/g, "");
+      }
+
+      function baggageTimelineNodes(row) {
+        const history = Array.isArray(row?.history) ? row.history : [];
+        const nodes = history.map((item, index) => {
+          const details = item?.details || {};
+          const status = item?.type || details.status || row.currentStatus || row.status || `Step ${index + 1}`;
+          return {
+            label: status,
+            at: item?.at || "",
+            by: item?.by || "",
+            details,
+          };
+        });
+        if (!nodes.length) {
+          nodes.push({
+            label: row.currentStatus || row.status || "Created",
+            at: row.lastUpdated || row.lastUpdatedAt || row.submittedAt || "",
+            by: row.lastUpdatedBy || row.submittedBy || "",
+            details: {
+              flight: row.flight,
+              date: row.date,
+              location: row.location,
+              comment: row.comment,
+            },
+          });
+        }
+        const currentKey = normalizeTimelineText(row.currentStatus || row.status);
+        let currentIndex = nodes.findIndex((node) => normalizeTimelineText(node.label).includes(currentKey) || currentKey.includes(normalizeTimelineText(node.label)));
+        if (currentIndex < 0) currentIndex = nodes.length - 1;
+        return nodes.map((node, index) => ({ ...node, current: index === currentIndex }));
+      }
+
+      function baggageNodeDetailHtml(node, row) {
+        const details = Object.entries(node?.details || {}).filter(([, value]) => String(value || "").trim());
+        const detailHtml = details.length
+          ? details.map(([key, value]) => `<br><b>${escapeHtml(titleCaseTestLabel(key))}:</b> ${escapeHtml(value)}`).join("")
+          : "";
+        return `<b>${escapeHtml(node?.label || row?.currentStatus || "Update")}</b>${node?.at ? ` • ${escapeHtml(new Date(node.at).toLocaleString())}` : ""}${node?.by ? ` • ${escapeHtml(node.by)}` : ""}${detailHtml}`;
+      }
+
+      function renderBaggageTimelineRows(rows = []) {
+        if (!rows.length) return `<p class="panel-muted">No baggage report rows found.</p>`;
+        return `<div class="baggage-timeline-list">${rows.map((row, rowIndex) => {
+          const nodes = baggageTimelineNodes(row);
+          const selectedIndex = nodes.findIndex((node) => node.current);
+          const safeSelected = selectedIndex >= 0 ? selectedIndex : 0;
+          const track = nodes.map((node, nodeIndex) => `${nodeIndex > 0 ? `<span class="baggage-timeline-segment" aria-hidden="true"></span>` : ""}<button class="baggage-timeline-node ${node.current ? "is-current" : ""} ${nodeIndex === safeSelected ? "is-selected" : ""}" type="button" data-baggage-row="${rowIndex}" data-baggage-node="${nodeIndex}" title="${escapeHtml(node.label || `Step ${nodeIndex + 1}`)}"><span class="sr-only">${escapeHtml(node.label || `Step ${nodeIndex + 1}`)}</span></button>`).join("");
+          return `<article class="baggage-timeline-row" data-baggage-row-card="${rowIndex}">
+            <div class="baggage-timeline-meta"><small>Last Updated</small><span>${escapeHtml(row.lastUpdated || row.lastUpdatedAt || "-")}</span></div>
+            <div class="baggage-timeline-meta"><small>Bag Tag</small><strong>${escapeHtml(row.bagTag || "-")}</strong></div>
+            <div class="baggage-timeline-meta"><small>Current Status</small><span>${escapeHtml(row.currentStatus || row.status || "-")}</span></div>
+            <div class="baggage-timeline-track">${track}</div>
+            <div class="baggage-node-detail" data-baggage-detail>${baggageNodeDetailHtml(nodes[safeSelected], row)}</div>
+          </article>`;
+        }).join("")}</div>`;
+      }
+
+      async function renderBaggageTimelineReport() {
+        if (!reportOutput) return;
+        reportOutput.innerHTML = `<p class="panel-muted">Loading Baggage Report...</p>`;
+        setReportCsv([], "baggage-report.csv");
+        try {
+          const data = await apiJson("/test-baggage-report");
+          const rows = data?.rows || [];
+          reportOutput._baggageRows = rows;
+          reportOutput.innerHTML = renderBaggageTimelineRows(rows);
+        } catch (error) {
+          reportOutput.innerHTML = `<p class="panel-muted status-fail">${escapeHtml(error?.message || "Baggage report lookup failed.")}</p>`;
+        }
+      }
+
       async function generateReport(event) {
         event?.preventDefault();
         if (!reportOutput) return;
+        if (activeReportMode === "baggage") {
+          await renderBaggageTimelineReport();
+          return;
+        }
         const type = ["vip", "psm", "inad", "wch"].includes(activeReportMode) ? activeReportMode : "sales";
         const today = ymdFromDate(new Date());
         const from = reportFromInput?.value || today;
@@ -5764,6 +5975,7 @@
           const panel = button.dataset.panel;
           if (panel === "chd") renderChdPanel();
           if (panel === "gov") renderGovPanel();
+          if (panel === "webedi") renderWebEdiPanel();
           if (panel === "nbrd") renderNbrdPanel();
           if (panel === "wch") renderWchPanel();
           if (panel === "warning") renderWarningPanel();
@@ -5857,11 +6069,27 @@
           if (statusEl) statusEl.textContent = error?.message || "Save failed.";
         }
       });
+
+      reportOutput?.addEventListener("click", (event) => {
+        const node = event.target.closest("[data-baggage-node]");
+        if (!node) return;
+        const rowIndex = Number(node.dataset.baggageRow || 0);
+        const nodeIndex = Number(node.dataset.baggageNode || 0);
+        const row = (reportOutput._baggageRows || [])[rowIndex];
+        if (!row) return;
+        const card = node.closest("[data-baggage-row-card]");
+        card?.querySelectorAll(".baggage-timeline-node").forEach((item) => item.classList.toggle("is-selected", item === node));
+        const detail = card?.querySelector("[data-baggage-detail]");
+        const nodes = baggageTimelineNodes(row);
+        if (detail) detail.innerHTML = baggageNodeDetailHtml(nodes[nodeIndex], row);
+      });
+
       reportSalesModeButton?.addEventListener("click", () => setReportMode("sales", { forceToday: true, resetOutput: true }));
       reportVipModeButton?.addEventListener("click", () => setReportMode("vip", { forceToday: true, resetOutput: true }));
       reportPsmModeButton?.addEventListener("click", () => setReportMode("psm", { forceToday: true, resetOutput: true }));
       reportInadModeButton?.addEventListener("click", () => setReportMode("inad", { forceToday: true, resetOutput: true }));
       reportWchModeButton?.addEventListener("click", () => setReportMode("wch", { forceToday: true, resetOutput: true }));
+      reportBaggageModeButton?.addEventListener("click", () => setReportMode("baggage", { forceToday: true, resetOutput: true }));
       reportForm.addEventListener("submit", generateReport);
       reportDownloadButton.addEventListener("click", downloadCurrentReportCsv);
       securityCheckButton.addEventListener("click", closeFlightMenuAfterAction(renderSecurityCheck));
