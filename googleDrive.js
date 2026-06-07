@@ -1,4 +1,5 @@
 const { google } = require('googleapis');
+const zlib = require('zlib');
 
 // ===============================
 // Google Auth
@@ -1590,6 +1591,216 @@ async function getGdCheckEmail(flightNo, subjectDate, crew = [], expectedSubject
       }
     }
     const result = empty({ reason: 'GD email was found, but no .xls/.xlsx spreadsheet attachment was found.', query: q, authMode, userId, searchDate });
+    result.detailText = buildGdCheckDetailText(result);
+    return result;
+  } catch (err) {
+    const result = empty({ reason: nextDayInfoGmailErrorReason(err, authMode, userId), query: q, authMode, userId, searchDate });
+    result.detailText = buildGdCheckDetailText(result);
+    return result;
+  }
+}
+
+async function hasNextDayInfoEmail(flightNo, subjectDate, expectedSubject = '') {
+  const result = await getNextDayInfoEmail(flightNo, subjectDate, expectedSubject);
+  return Boolean(result.sent || result.found);
+}
+
+
+function collectGmailParts(payload, predicate, collected = []) {
+  if (!payload) return collected;
+  if (predicate(payload)) collected.push(payload);
+  (payload.parts || []).forEach((part) => collectGmailParts(part, predicate, collected));
+  return collected;
+}
+
+function decodePdfString(value = '') {
+  return String(value || '')
+    .replace(/\\([nrtbf()\\])/g, (match, char) => ({ n: '\n', r: '\r', t: '\t', b: '\b', f: '\f', '(': '(', ')': ')', '\\': '\\' }[char] || char))
+    .replace(/\\(\d{1,3})/g, (match, octal) => String.fromCharCode(parseInt(octal, 8)))
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function extractPdfStrings(text = '') {
+  const out = [];
+  const literalRe = /\((?:\\.|[^\\()])*\)/g;
+  let match;
+  while ((match = literalRe.exec(text))) {
+    const decoded = decodePdfString(match[0].slice(1, -1));
+    if (decoded) out.push(decoded);
+  }
+  const hexRe = /<([0-9A-Fa-f\s]{4,})>/g;
+  while ((match = hexRe.exec(text))) {
+    const hex = match[1].replace(/\s+/g, '');
+    if (hex.length % 2) continue;
+    const bytes = [];
+    for (let i = 0; i < hex.length; i += 2) bytes.push(parseInt(hex.slice(i, i + 2), 16));
+    const decoded = Buffer.from(bytes).toString('latin1').replace(/\u0000/g, '').replace(/\s+/g, ' ').trim();
+    if (/[A-Za-z0-9]/.test(decoded)) out.push(decoded);
+  }
+  return out.join(' ');
+}
+
+function extractPdfText(buffer) {
+  const raw = Buffer.isBuffer(buffer) ? buffer.toString('latin1') : String(buffer || '');
+  const chunks = [raw];
+  const streamRe = /<<(.*?)>>\s*stream\r?\n?([\s\S]*?)\r?\n?endstream/g;
+  let match;
+  while ((match = streamRe.exec(raw))) {
+    const dict = match[1] || '';
+    const streamBuffer = Buffer.from(match[2] || '', 'latin1');
+    if (/FlateDecode/i.test(dict)) {
+      try {
+        chunks.push(zlib.inflateSync(streamBuffer).toString('latin1'));
+      } catch {
+        chunks.push(streamBuffer.toString('latin1'));
+      }
+    } else {
+      chunks.push(streamBuffer.toString('latin1'));
+    }
+  }
+  return chunks.map(extractPdfStrings).join(' ').replace(/\s+/g, ' ').trim();
+}
+
+function normalizeGdComparable(value = '') {
+  return String(value || '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function compareGdCrew(crew = [], pdfText = '') {
+  const normalizedPdf = normalizeGdComparable(pdfText);
+  const compactPdf = normalizedPdf.replace(/\s+/g, '');
+  const gdPassports = Array.from(new Set((normalizedPdf.match(/\b[A-Z]{1,3}\d{5,9}\b/g) || []).map((item) => item.toUpperCase())));
+  const missing = [];
+  crew.forEach((row) => {
+    const passport = String(row.passport || '').toUpperCase();
+    const passportFound = passport ? compactPdf.includes(passport) : false;
+    if (!passportFound) {
+      missing.push({ ...row, passportFound });
+    }
+  });
+  return {
+    complete: crew.length > 0 && missing.length === 0,
+    matched: crew.length - missing.length,
+    total: crew.length,
+    missing,
+    extraPassports: [],
+    gdPassports
+  };
+}
+
+function buildGdCheckDetailText(result) {
+  const lines = [
+    `Expected Subject: ${result.subject || ''}`,
+    result.query ? `Gmail Query: ${result.query}` : '',
+    result.authMode ? `Auth Mode: ${result.authMode}` : '',
+    result.userId ? `Gmail User: ${result.userId}` : '',
+    result.searchDate ? `Search Date: ${result.searchDate}` : '',
+    result.attachmentName ? `Attachment: ${result.attachmentName}` : '',
+    `Crew Matched: ${result.matched || 0}/${result.total || 0}`
+  ].filter(Boolean);
+  if (result.reason) lines.unshift(`Reason: ${result.reason}`);
+  if (Array.isArray(result.missing) && result.missing.length) {
+    lines.push('Missing Passports:');
+    result.missing.slice(0, 20).forEach((row) => {
+      const issues = row.passportFound ? '' : 'passport';
+      lines.push(`${row.no || ''}. ${row.name || ''} ${row.passport || ''} (${issues || 'not matched'})`);
+    });
+  }
+  if (Array.isArray(result.extraPassports) && result.extraPassports.length) {
+    lines.push(`Extra GD Passports: ${result.extraPassports.slice(0, 20).join(', ')}`);
+  }
+  return lines.join('\n');
+}
+
+async function getGdCheckEmail(flightNo, subjectDate, crew = [], expectedSubject = '') {
+  const normalizedFlightNo = String(flightNo || '').trim().toUpperCase();
+  const normalizedSubjectDate = String(subjectDate || '').trim().toUpperCase();
+  const subject = String(expectedSubject || `GD for ${normalizedFlightNo}/${normalizedSubjectDate}`).trim();
+  const empty = (extra = {}) => ({
+    found: false,
+    complete: false,
+    subject,
+    detailText: '',
+    reason: '',
+    query: '',
+    authMode: '',
+    userId: '',
+    searchDate: gmailSearchYmd(new Date()),
+    attachmentName: '',
+    matched: 0,
+    total: Array.isArray(crew) ? crew.length : 0,
+    missing: [],
+    extraPassports: [],
+    ...extra
+  });
+  if (!normalizedFlightNo || !normalizedSubjectDate || !subject) {
+    const result = empty({ reason: 'Missing flight number, flight date, or GD email subject.' });
+    result.detailText = buildGdCheckDetailText(result);
+    return result;
+  }
+  if (!Array.isArray(crew) || !crew.length) {
+    const result = empty({ reason: 'No CWD crew/passport rows found in today log.' });
+    result.detailText = buildGdCheckDetailText(result);
+    return result;
+  }
+
+  let gmail = null;
+  let userId = envFirst('GMAIL_USER', 'NEXT_DAY_INFO_GMAIL_USER');
+  let authMode = envFirst('AUTH_MODE', 'NEXT_DAY_INFO_GMAIL_AUTH_MODE').toLowerCase();
+  const searchDate = gmailSearchYmd(new Date());
+  let q = '';
+  try {
+    ({ gmail, userId, authMode } = getNextDayInfoGmailClient());
+    const exactSubject = subject.replace(/"/g, '');
+    q = `subject:"${exactSubject}" newer_than:2d has:attachment`;
+    const list = await gmail.users.messages.list({ userId, q, maxResults: 10, fields: 'messages(id,internalDate)' });
+    const messages = Array.isArray(list.data.messages) ? list.data.messages : [];
+    if (!messages.length) {
+      const result = empty({ reason: 'No Gmail message with the expected GD subject and attachment was found in the last 2 days.', query: q, authMode, userId, searchDate });
+      result.detailText = buildGdCheckDetailText(result);
+      return result;
+    }
+
+    for (const message of messages) {
+      const full = await gmail.users.messages.get({
+        userId,
+        id: message.id,
+        format: 'full',
+        fields: 'id,internalDate,payload(filename,mimeType,body(attachmentId,data),parts(filename,mimeType,body(attachmentId,data),parts(filename,mimeType,body(attachmentId,data))))'
+      });
+      const pdfParts = collectGmailParts(full.data.payload, (part) => {
+        const filename = String(part.filename || '').toLowerCase();
+        const mimeType = String(part.mimeType || '').toLowerCase();
+        return Boolean(part.body?.attachmentId || part.body?.data) && (mimeType === 'application/pdf' || filename.endsWith('.pdf'));
+      });
+      for (const part of pdfParts) {
+        let data = part.body?.data || '';
+        if (part.body?.attachmentId) {
+          const attachment = await gmail.users.messages.attachments.get({ userId, messageId: full.data.id || message.id, id: part.body.attachmentId });
+          data = attachment.data.data || '';
+        }
+        const pdfText = extractPdfText(Buffer.from(String(data).replace(/-/g, '+').replace(/_/g, '/'), 'base64'));
+        const comparison = compareGdCrew(crew, pdfText);
+        const sentAtDate = Number(full.data.internalDate) ? new Date(Number(full.data.internalDate)) : null;
+        const result = {
+          found: true,
+          complete: comparison.complete,
+          subject,
+          detailText: '',
+          reason: comparison.complete ? '' : 'GD PDF is missing one or more CWD passport numbers.',
+          query: q,
+          authMode,
+          userId,
+          searchDate,
+          attachmentName: part.filename || 'GD PDF attachment',
+          sentAt: sentAtDate ? sentAtDate.toISOString() : '',
+          ...comparison
+        };
+        result.detailText = buildGdCheckDetailText(result);
+        return result;
+      }
+    }
+    const result = empty({ reason: 'GD email was found, but no PDF attachment was found.', query: q, authMode, userId, searchDate });
     result.detailText = buildGdCheckDetailText(result);
     return result;
   } catch (err) {
