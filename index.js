@@ -37,7 +37,8 @@ const {
   getSyBagInfoByDate,
   getSalesReportMeta,
   downloadSalesReportByFlight,
-  hasNextDayInfoEmail,
+  getNextDayInfoEmail,
+  getGdCheckEmail,
   getStoredReportRows,
   getVipReportRows,
   getPsmMsgReportRows,
@@ -1134,15 +1135,69 @@ app.get(
           console.warn('VIP report sheet sync skipped:', err?.message || err);
           syInfo.vipSheetSync = { appended: 0, found: 0, error: err?.message || 'Sheet sync failed' };
         }
+        const gdQuery = syInfo.crewApis?.gdCheckQuery || null;
+        const gdStep = syInfo.crewApis?.steps?.find((step) => step.key === 'gdCheck');
+        if (gdStep && gdQuery?.flightNo && gdQuery?.flightDate) {
+          const gdSubject = gdQuery.emailSubject || `GD for ${gdQuery.flightNo}/${gdQuery.flightDate}`;
+          const gdResult = await getGdCheckEmail(gdQuery.flightNo, gdQuery.emailSubjectDate || gdQuery.flightDate, gdQuery.crew || [], gdSubject);
+          gdStep.complete = Boolean(gdResult.complete);
+          gdStep.time = gdResult.sentAt ? gdResult.sentAt.slice(11, 19) : '';
+          gdStep.searched = true;
+          gdStep.details = gdResult;
+          gdStep.detailText = gdResult.detailText || '';
+          gdStep.reason = gdResult.reason || '';
+          gdStep.searchQuery = gdResult.query || '';
+          gdStep.authMode = gdResult.authMode || '';
+          gdStep.gmailUser = gdResult.userId || '';
+          gdStep.searchDate = gdResult.searchDate || '';
+          gdStep.subject = gdSubject;
+          gdStep.tooltip = gdStep.complete
+            ? `GD CHECK complete: ${gdResult.matched || 0}/${gdResult.total || 0} crew matched`
+            : `GD CHECK issue: ${gdResult.reason || gdSubject}`;
+        } else if (gdStep) {
+          const reason = 'Missing flight number, flight date, or CWD crew list for GD search.';
+          gdStep.complete = false;
+          gdStep.searched = true;
+          gdStep.reason = reason;
+          gdStep.detailText = `Reason: ${reason}`;
+          gdStep.tooltip = `GD CHECK not searched: ${reason}`;
+        }
         const nextDayQuery = syInfo.crewApis?.nextDayInfoQuery || null;
         const nextDayStep = syInfo.crewApis?.steps?.find((step) => step.key === 'nextDayInfo');
         if (nextDayStep && nextDayQuery?.flightNo && nextDayQuery?.flightDate) {
           const nextDaySubject = nextDayQuery.emailSubject || `${nextDayQuery.flightNo} ${nextDayQuery.flightDate} flight information details`;
-          const nextDayInfoComplete = await hasNextDayInfoEmail(nextDayQuery.flightNo, nextDayQuery.emailSubjectDate || nextDayQuery.flightDate, nextDaySubject);
-          nextDayStep.complete = nextDayInfoComplete;
-          nextDayStep.tooltip = nextDayInfoComplete
-            ? `NEXT DAY INFO sent email found: ${nextDaySubject}`
-            : `NEXT DAY INFO sent email not found: ${nextDaySubject}`;
+          const nextDayEmail = await getNextDayInfoEmail(nextDayQuery.flightNo, nextDayQuery.emailSubjectDate || nextDayQuery.flightDate, nextDaySubject);
+          nextDayStep.complete = Boolean(nextDayEmail.sent || nextDayEmail.found);
+          nextDayStep.time = nextDayEmail.sentAt ? nextDayEmail.sentAt.slice(11, 19) : '';
+          nextDayStep.searched = true;
+          nextDayStep.details = nextDayEmail.details || {};
+          const diagnosticLines = [
+            ['Reason', nextDayEmail.reason],
+            ['Expected Subject', nextDaySubject],
+            ['Gmail Query', nextDayEmail.query],
+            ['Auth Mode', nextDayEmail.authMode],
+            ['Gmail User', nextDayEmail.userId],
+            ['Search Date', nextDayEmail.searchDate],
+            ['Recent Matches', nextDayEmail.rawMatchCount === undefined ? '' : String(nextDayEmail.rawMatchCount)],
+            ['Today Matches', nextDayEmail.todayMatchCount === undefined ? '' : String(nextDayEmail.todayMatchCount)]
+          ].filter(([, value]) => value !== null && value !== undefined && value !== '').map(([label, value]) => `${label}: ${value}`).join('\n');
+          nextDayStep.detailText = nextDayStep.complete ? (nextDayEmail.detailText || '') : diagnosticLines;
+          nextDayStep.reason = nextDayEmail.reason || '';
+          nextDayStep.searchQuery = nextDayEmail.query || '';
+          nextDayStep.authMode = nextDayEmail.authMode || '';
+          nextDayStep.gmailUser = nextDayEmail.userId || '';
+          nextDayStep.searchDate = nextDayEmail.searchDate || '';
+          nextDayStep.subject = nextDaySubject;
+          nextDayStep.tooltip = nextDayStep.complete
+            ? `NEXTDAY INFO sent email found: ${nextDaySubject}`
+            : `NEXTDAY INFO not found: ${nextDayEmail.reason || nextDaySubject}`;
+        } else if (nextDayStep) {
+          const reason = 'Missing flight number or next-day email subject date for Gmail search.';
+          nextDayStep.complete = false;
+          nextDayStep.searched = true;
+          nextDayStep.reason = reason;
+          nextDayStep.detailText = `Reason: ${reason}`;
+          nextDayStep.tooltip = `NEXTDAY INFO not searched: ${reason}`;
         }
         const authContext = await resolveAuthContextFromRequest(req);
         return res.json({ sy: { ...syInfo, bagSheet: syBagInfo, permissions: authContext.permissions } });
