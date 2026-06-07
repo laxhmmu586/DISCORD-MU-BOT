@@ -1493,25 +1493,20 @@ function compareGdCrew(crew = [], pdfText = '') {
   const normalizedPdf = normalizeGdComparable(pdfText);
   const compactPdf = normalizedPdf.replace(/\s+/g, '');
   const gdPassports = Array.from(new Set((normalizedPdf.match(/\b[A-Z]{1,3}\d{5,9}\b/g) || []).map((item) => item.toUpperCase())));
-  const logPassports = new Set(crew.map((row) => String(row.passport || '').toUpperCase()).filter(Boolean));
   const missing = [];
   crew.forEach((row) => {
-    const gdName = normalizeGdComparable(row.gdName || String(row.name || '').replace('/', ' '));
-    const compactName = gdName.replace(/\s+/g, '');
     const passport = String(row.passport || '').toUpperCase();
-    const nameFound = gdName ? (normalizedPdf.includes(gdName) || compactPdf.includes(compactName)) : false;
     const passportFound = passport ? compactPdf.includes(passport) : false;
-    if (!nameFound || !passportFound) {
-      missing.push({ ...row, nameFound, passportFound });
+    if (!passportFound) {
+      missing.push({ ...row, passportFound });
     }
   });
-  const extraPassports = gdPassports.filter((passport) => !logPassports.has(passport));
   return {
-    complete: crew.length > 0 && missing.length === 0 && extraPassports.length === 0,
+    complete: crew.length > 0 && missing.length === 0,
     matched: crew.length - missing.length,
     total: crew.length,
     missing,
-    extraPassports,
+    extraPassports: [],
     gdPassports
   };
 }
@@ -1528,9 +1523,9 @@ function buildGdCheckDetailText(result) {
   ].filter(Boolean);
   if (result.reason) lines.unshift(`Reason: ${result.reason}`);
   if (Array.isArray(result.missing) && result.missing.length) {
-    lines.push('Missing / Different:');
+    lines.push('Missing Passports:');
     result.missing.slice(0, 20).forEach((row) => {
-      const issues = [row.nameFound ? '' : 'name', row.passportFound ? '' : 'passport'].filter(Boolean).join('+');
+      const issues = row.passportFound ? '' : 'passport';
       lines.push(`${row.no || ''}. ${row.name || ''} ${row.passport || ''} (${issues || 'not matched'})`);
     });
   }
@@ -1615,7 +1610,7 @@ async function getGdCheckEmail(flightNo, subjectDate, crew = [], expectedSubject
           complete: comparison.complete,
           subject,
           detailText: '',
-          reason: comparison.complete ? '' : 'GD PDF does not match all CWD crew names/passports.',
+          reason: comparison.complete ? '' : 'GD PDF is missing one or more CWD passport numbers.',
           query: q,
           authMode,
           userId,

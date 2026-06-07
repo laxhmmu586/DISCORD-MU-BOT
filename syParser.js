@@ -367,10 +367,11 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
     .sort((a, b) => parseSectionTimestamp(b.timestamp) - parseSectionTimestamp(a.timestamp))[0] || null : null;
   const netComplete = Boolean(netMatch);
   const netTime = formatTime(netMatch?.timestamp);
-  const gdEmailDate = dateToDdMonYy(baseDateUtc);
+  const emailBaseDateUtc = ymdToUtcDate(flightYmd || baseYmd);
+  const gdEmailDate = dateToDdMonYy(emailBaseDateUtc);
   const gdEmailSubject = flightNo && gdEmailDate ? `GD for ${flightNo}/${gdEmailDate}` : '';
   const crewManifestRows = parseCrewManifestRowsFromSections(sections, flightNo, flightYmd);
-  const nextDayDateUtc = addDaysUtc(baseDateUtc, 1);
+  const nextDayDateUtc = addDaysUtc(emailBaseDateUtc, 1);
   const nextDayEmailDate = dateToEmailSubjectDate(nextDayDateUtc);
   const nextDayEmailSubject = flightNo && nextDayEmailDate ? `${flightNo} ${nextDayEmailDate} flight information details` : '';
   const commandBaseDateUtc = ymdToUtcDate(flightYmd || baseYmd);
