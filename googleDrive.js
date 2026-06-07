@@ -1729,22 +1729,18 @@ function normalizeGdComparable(value = '') {
   return String(value || '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-function compareGdCrew(crew = [], spreadsheetText = '') {
-  const normalizedSheet = normalizeGdComparable(spreadsheetText);
-  const compactSheet = normalizedSheet.replace(/\s+/g, '');
-  const gdPassports = Array.from(new Set((normalizedSheet.match(/\b[A-Z]{1,3}\d{5,9}\b/g) || []).map((item) => item.toUpperCase())));
-  const missing = [];
-  crew.forEach((row) => {
-    const passport = String(row.passport || '').toUpperCase();
-    const passportFound = passport ? compactSheet.includes(passport) : false;
-    if (!passportFound) {
-      missing.push({ ...row, passportFound });
-    }
-  });
+function compareGdCrew(crew = [], attachmentText = '') {
+  const normalizedAttachment = normalizeGdComparable(attachmentText);
+  const compactAttachment = normalizedAttachment.replace(/\s+/g, '');
+  const expectedPassports = crew
+    .map((row) => ({ no: row.no, passport: String(row.passport || '').toUpperCase() }))
+    .filter((row) => row.passport);
+  const gdPassports = Array.from(new Set((normalizedAttachment.match(/\b[A-Z]{1,3}\d{5,9}\b/g) || []).map((item) => item.toUpperCase())));
+  const missing = expectedPassports.filter((row) => !compactAttachment.includes(row.passport));
   return {
-    complete: crew.length > 0 && missing.length === 0,
-    matched: crew.length - missing.length,
-    total: crew.length,
+    complete: expectedPassports.length > 0 && missing.length === 0,
+    matched: expectedPassports.length - missing.length,
+    total: expectedPassports.length,
     missing,
     extraPassports: [],
     gdPassports
@@ -1771,8 +1767,7 @@ function buildGdCheckDetailText(result) {
   if (Array.isArray(result.missing) && result.missing.length) {
     lines.push('Missing Passports:');
     result.missing.forEach((row) => {
-      const issues = row.passportFound ? '' : 'passport';
-      lines.push(`${row.no || ''}. ${row.name || ''} ${row.passport || ''} (${issues || 'not matched'})`);
+      lines.push(`${row.no || ''}. ${row.passport || ''} (passport not matched)`);
     });
   }
   if (Array.isArray(result.extraPassports) && result.extraPassports.length) {
