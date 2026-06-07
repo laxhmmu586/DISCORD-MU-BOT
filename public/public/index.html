@@ -776,8 +776,46 @@
         display: none;
       }
 
+      .stage-arc-svg {
+        z-index: 2;
+        pointer-events: none;
+      }
+
+      .stage-arc-path {
+        fill: none;
+        stroke: url(#stage-arc-fade);
+        stroke-width: 4.2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.9));
+        opacity: 0;
+        transition: opacity 240ms ease;
+      }
+
+      .stage-arc-text-path {
+        fill: none;
+        stroke: none;
+      }
+
+      .stage-arc-label {
+        fill: white;
+        font-size: 18px;
+        font-weight: 500;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        text-shadow: 0 3px 12px rgba(0, 0, 0, 0.95);
+        dominant-baseline: middle;
+        paint-order: stroke;
+        stroke: rgba(0, 0, 0, 0.72);
+        stroke-width: 4px;
+        stroke-linejoin: round;
+        opacity: 0;
+        transition: opacity 220ms ease;
+      }
+
       .node {
         position: absolute;
+        z-index: 6;
         width: 17px;
         height: 17px;
         border: 2px solid white;
@@ -2244,8 +2282,8 @@
       }
 
       .test-search-form {
-        margin-top: clamp(24px, 8vh, 86px);
-        margin-bottom: 24px;
+        margin-top: clamp(8px, 4vh, 46px);
+        margin-bottom: 22px;
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto;
         gap: 10px;
@@ -2944,6 +2982,15 @@
           top: calc(50% + 2px);
         }
 
+        .stage-arc-label {
+          font-size: 13px;
+          letter-spacing: 0.9px;
+        }
+
+        .stage-arc-path {
+          stroke-width: 3.4;
+        }
+
         .node-card {
           width: min(300px, calc(100vw - 40px));
           max-height: min(280px, calc(100vh - 180px));
@@ -3383,6 +3430,28 @@
           <div class="timeline-shell">
             <div class="timeline-time" id="node-time">----</div>
             <div class="timeline" aria-label="Mission timeline">
+              <svg class="stage-arc-svg" viewBox="0 0 1200 360" preserveAspectRatio="none" aria-hidden="true">
+                <defs>
+                  <linearGradient id="stage-arc-fade" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#ffffff" stop-opacity="0" />
+                    <stop offset="18%" stop-color="#ffffff" stop-opacity="0.98" />
+                    <stop offset="82%" stop-color="#ffffff" stop-opacity="0.98" />
+                    <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
+                  </linearGradient>
+                </defs>
+                <path class="stage-arc-path" data-stage-arc="preflight" data-stage-side="start" />
+                <path class="stage-arc-path" data-stage-arc="preflight" data-stage-side="end" />
+                <path class="stage-arc-text-path" id="stage-text-preflight" data-stage-text-path="preflight" />
+                <text class="stage-arc-label" data-stage-label="preflight" text-anchor="middle"><textPath href="#stage-text-preflight" startOffset="50%">Pre-flight</textPath></text>
+                <path class="stage-arc-path" data-stage-arc="operation" data-stage-side="start" />
+                <path class="stage-arc-path" data-stage-arc="operation" data-stage-side="end" />
+                <path class="stage-arc-text-path" id="stage-text-operation" data-stage-text-path="operation" />
+                <text class="stage-arc-label" data-stage-label="operation" text-anchor="middle"><textPath href="#stage-text-operation" startOffset="50%">Operation</textPath></text>
+                <path class="stage-arc-path" data-stage-arc="postflight" data-stage-side="start" />
+                <path class="stage-arc-path" data-stage-arc="postflight" data-stage-side="end" />
+                <path class="stage-arc-text-path" id="stage-text-postflight" data-stage-text-path="postflight" />
+                <text class="stage-arc-label" data-stage-label="postflight" text-anchor="middle"><textPath href="#stage-text-postflight" startOffset="50%">Post flight</textPath></text>
+              </svg>
               <svg viewBox="0 0 1200 360" preserveAspectRatio="none" aria-hidden="true">
                 <path class="orbit-shadow" data-orbit-path="main" d="M-260 318 C 120 178, 390 142, 600 142 S 1080 178, 1460 318" />
                 <path id="mission-path" class="orbit-glow" data-orbit-path="main" d="M-260 318 C 120 178, 390 142, 600 142 S 1080 178, 1460 318" />
@@ -3445,6 +3514,9 @@
       const nodes = document.querySelectorAll(".node");
       const nodeCard = document.querySelector(".node-card");
       const missionPath = document.querySelector("#mission-path");
+      const stageArcPaths = document.querySelectorAll("[data-stage-arc]");
+      const stageArcTextPaths = document.querySelectorAll("[data-stage-text-path]");
+      const stageArcLabels = document.querySelectorAll("[data-stage-label]");
       const timeline = document.querySelector(".timeline");
       const timelineShell = document.querySelector(".timeline-shell");
       const resultPanel = document.querySelector("#result-panel");
@@ -3491,6 +3563,11 @@
       const newPasswordInput = document.querySelector("#new-password");
       const passwordStatus = document.querySelector("#password-status");
       const baseProgress = [0.05, 0.14, 0.23, 0.32, 0.41, 0.5, 0.59, 0.68, 0.77, 0.86, 0.95];
+      const stageGroups = [
+        { key: "preflight", start: baseProgress[0] - 0.02, end: baseProgress[3] + 0.02, labelAt: (baseProgress[0] + baseProgress[3]) / 2 },
+        { key: "operation", start: baseProgress[4] - 0.02, end: baseProgress[8] + 0.02, labelAt: (baseProgress[4] + baseProgress[8]) / 2 },
+        { key: "postflight", start: baseProgress[9] - 0.02, end: baseProgress[9] + 0.08, labelAt: baseProgress[9] + 0.03 },
+      ];
       const desktopOrbitPath = "M-260 318 C 120 178, 390 142, 600 142 S 1080 178, 1460 318";
       const mobileOrbitPath = "M-240 296 C 130 210, 390 184, 600 184 S 1070 210, 1440 296";
       const mobileOrbitQuery = window.matchMedia("(max-width: 760px)");
@@ -3823,9 +3900,51 @@
         });
       }
 
+      function stagePathFromSamples(samples) {
+        return samples.length > 1
+          ? samples.map(([x, y], index) => `${index ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`).join(" ")
+          : "";
+      }
+
+      function renderStageArcs(pathLength) {
+        const arcYOffset = mobileOrbitQuery.matches ? -58 : -78;
+        const arcMap = new Map([...stageArcPaths].map((item) => [`${item.dataset.stageArc}:${item.dataset.stageSide}`, item]));
+        const textPathMap = new Map([...stageArcTextPaths].map((item) => [item.dataset.stageTextPath, item]));
+        const labelMap = new Map([...stageArcLabels].map((item) => [item.dataset.stageLabel, item]));
+        stageGroups.forEach((stage) => {
+          const center = stage.labelAt + scrollOffset;
+          const gap = mobileOrbitQuery.matches ? 0.045 : 0.055;
+          const segments = { start: [], end: [], text: [] };
+          const steps = 32;
+          for (let i = 0; i <= steps; i += 1) {
+            const base = stage.start + ((stage.end - stage.start) * (i / steps));
+            const progress = base + scrollOffset;
+            if (progress < 0 || progress > 1) continue;
+            const point = missionPath.getPointAtLength(pathLength * progress);
+            const sample = [point.x, Math.max(0, point.y + arcYOffset)];
+            segments.text.push(sample);
+            if (progress < center - gap) segments.start.push(sample);
+            if (progress > center + gap) segments.end.push(sample);
+          }
+          ["start", "end"].forEach((side) => {
+            const arc = arcMap.get(`${stage.key}:${side}`);
+            if (!arc) return;
+            const path = stagePathFromSamples(segments[side]);
+            arc.setAttribute("d", path);
+            arc.style.opacity = path ? "1" : "0";
+          });
+          const textPath = textPathMap.get(stage.key);
+          const label = labelMap.get(stage.key);
+          const textPathValue = stagePathFromSamples(segments.text);
+          if (textPath) textPath.setAttribute("d", textPathValue);
+          if (label) label.style.opacity = textPathValue && center >= 0 && center <= 1 ? "1" : "0";
+        });
+      }
+
       function placeNodes() {
         updateOrbitPath();
         const pathLength = missionPath.getTotalLength();
+        renderStageArcs(pathLength);
         nodes.forEach((node) => {
           const index = Number(node.dataset.index);
           const progress = baseProgress[index] + scrollOffset;
@@ -4585,7 +4704,7 @@
           sections.push(`<h3>${escapeHtml(title)}</h3>${rowsTable(rows, headers.map((label, index) => ({ label, value: (row) => row[index] })), "No rows.")}`);
         };
         addBagSection("Rush Bags", sheet.rushBags, ["Rush #", "Orig #", "To", "AKE"]);
-        addBagSection("Not Load Bags", sheet.notLoadBags, ["Tag #", "Status", "Remark"]);
+        addBagSection("Not Load Bags", sheet.notLoadBags, ["Tag #", "Type", "Remark"]);
         renderPanel("Bag Report", currentSy?.flightNo || "SY", sheet.hasData && sections.length ? sections.join("") : `<p class="panel-muted">No Google Sheet bag report data found for this SY date.</p>`);
       }
 
@@ -4718,7 +4837,7 @@
           sections.push(`<h3>${escapeHtml(title)}</h3>${rowsTable(rows, headers.map((label, index) => ({ label, value: (row) => row[index] })), "No rows.")}`);
         };
         addBagSection("Rush Bags", sheet?.rushBags, ["Rush #", "Orig #", "To", "AKE", "Remark"]);
-        addBagSection("Not Load Bags", sheet?.notLoadBags, ["Tag #", "Status", "Remark"]);
+        addBagSection("Not Load Bags", sheet?.notLoadBags, ["Tag #", "Type", "Remark"]);
         return sheet?.hasData && sections.length ? sections.join("") : `<p class="panel-muted">${escapeHtml(emptyText)}</p>`;
       }
 
@@ -4776,7 +4895,9 @@
       }
 
       function titleCaseTestLabel(value) {
-        return String(value || "")
+        const normalized = String(value || "");
+        if (normalized.toLowerCase() === "status") return "Type";
+        return normalized
           .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
           .replace(/\b\w/g, (chr) => chr.toUpperCase());
       }
@@ -4844,6 +4965,7 @@
           ["Flight", record.flight],
           ["Date", record.date],
           ["Bag Type", record.bagType],
+          ["Type", record.status],
           ["Location", record.location],
           ["Comment", record.comment],
           ["Rush Tag", record.rushTagNumber],
@@ -4895,6 +5017,7 @@
           </div>
           ${message ? `<p class="panel-muted status-ok">${escapeHtml(message)}</p>` : ""}
           <h3>Details</h3>
+          ${testDataGrid(record)}
           ${renderTestTimeline(record.history)}
           ${showUpdateForm ? `<div class="test-report-head test-update-head"><h3>Update</h3></div>${renderTestUpdateForm(record, mode)}` : `<div class="test-form-actions"><button class="test-add-button" type="button" data-test-show-update>Update</button></div>`}
         </article>`;
@@ -4929,7 +5052,7 @@
             <div class="test-form-grid">${bagTagInput}
               <label class="test-field"><span>Outbound flight number</span><input name="flight" value="${escapeHtml(entry.flight || "MU586")}" required /></label>
               <label class="test-field"><span>Date</span><input name="date" type="date" value="${escapeHtml(entry.date || today)}" required /></label>
-              <label class="test-field"><span>Status</span><select name="status" data-test-outbound-status required><option value="Not load bags"${selected(status, "Not load bags")}>Not load bags</option><option value="Outbound rush"${selected(status, "Outbound rush")}>Outbound rush</option></select></label>
+              <label class="test-field"><span>Type</span><select name="status" data-test-outbound-status required><option value="Not load bags"${selected(status, "Not load bags")}>Not load bags</option><option value="Outbound rush"${selected(status, "Outbound rush")}>Outbound rush</option><option value="Gate bag"${selected(status, "Gate bag")}>Gate bag</option></select></label>
               <label class="test-field" data-test-rush-field hidden><span>Rush tag number</span><input name="rushTagNumber" value="${escapeHtml(entry.rushTagNumber || "")}" /></label>
               <label class="test-field" data-test-rush-field hidden><span>Rush To where?</span><input name="rushToWhere" value="${escapeHtml(entry.rushToWhere || "")}" /></label>
               <label class="test-field" data-test-rush-field hidden><span>AKE number?</span><input name="akeNumber" value="${escapeHtml(entry.akeNumber || "")}" /></label>
@@ -5170,7 +5293,7 @@
         };
         const sheet = sy.bagSheet || {};
         addRows("Rush Bags", sheet.rushBags, ["rushNo", "origNo", "to", "ake"]);
-        addRows("Not Load Bags", sheet.notLoadBags, ["tagNo", "status", "remark"]);
+        addRows("Not Load Bags", sheet.notLoadBags, ["tagNo", "type", "remark"]);
         return rows;
       }
 
