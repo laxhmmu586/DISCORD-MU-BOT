@@ -776,8 +776,45 @@
         display: none;
       }
 
+      .stage-arc-svg {
+        z-index: 2;
+        pointer-events: none;
+      }
+
+      .stage-arc-path {
+        fill: none;
+        stroke: url(#stage-arc-fade);
+        stroke-width: 4.2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.9));
+        opacity: 0;
+        transition: opacity 240ms ease;
+      }
+
+      .stage-arc-label {
+        position: absolute;
+        z-index: 4;
+        pointer-events: none;
+        transform: translate(-50%, -50%);
+        color: white;
+        font-size: clamp(18px, 1.55vw, 26px);
+        font-weight: 500;
+        letter-spacing: 1.8px;
+        line-height: 1;
+        text-transform: uppercase;
+        white-space: nowrap;
+        text-shadow: 0 3px 12px rgba(0, 0, 0, 0.95);
+        opacity: 0;
+        transition:
+          left 420ms cubic-bezier(0.2, 0.8, 0.2, 1),
+          top 420ms cubic-bezier(0.2, 0.8, 0.2, 1),
+          opacity 220ms ease;
+      }
+
       .node {
         position: absolute;
+        z-index: 6;
         width: 17px;
         height: 17px;
         border: 2px solid white;
@@ -2944,6 +2981,15 @@
           top: calc(50% + 2px);
         }
 
+        .stage-arc-label {
+          font-size: 15px;
+          letter-spacing: 1px;
+        }
+
+        .stage-arc-path {
+          stroke-width: 3.4;
+        }
+
         .node-card {
           width: min(300px, calc(100vw - 40px));
           max-height: min(280px, calc(100vh - 180px));
@@ -3383,6 +3429,22 @@
           <div class="timeline-shell">
             <div class="timeline-time" id="node-time">----</div>
             <div class="timeline" aria-label="Mission timeline">
+              <svg class="stage-arc-svg" viewBox="0 0 1200 360" preserveAspectRatio="none" aria-hidden="true">
+                <defs>
+                  <linearGradient id="stage-arc-fade" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#ffffff" stop-opacity="0" />
+                    <stop offset="18%" stop-color="#ffffff" stop-opacity="0.98" />
+                    <stop offset="82%" stop-color="#ffffff" stop-opacity="0.98" />
+                    <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
+                  </linearGradient>
+                </defs>
+                <path class="stage-arc-path" data-stage-arc="preflight" />
+                <path class="stage-arc-path" data-stage-arc="operation" />
+                <path class="stage-arc-path" data-stage-arc="postflight" />
+              </svg>
+              <span class="stage-arc-label" data-stage-label="preflight">Pre-flight</span>
+              <span class="stage-arc-label" data-stage-label="operation">Operation</span>
+              <span class="stage-arc-label" data-stage-label="postflight">Post flight</span>
               <svg viewBox="0 0 1200 360" preserveAspectRatio="none" aria-hidden="true">
                 <path class="orbit-shadow" data-orbit-path="main" d="M-260 318 C 120 178, 390 142, 600 142 S 1080 178, 1460 318" />
                 <path id="mission-path" class="orbit-glow" data-orbit-path="main" d="M-260 318 C 120 178, 390 142, 600 142 S 1080 178, 1460 318" />
@@ -3445,6 +3507,8 @@
       const nodes = document.querySelectorAll(".node");
       const nodeCard = document.querySelector(".node-card");
       const missionPath = document.querySelector("#mission-path");
+      const stageArcPaths = document.querySelectorAll("[data-stage-arc]");
+      const stageArcLabels = document.querySelectorAll("[data-stage-label]");
       const timeline = document.querySelector(".timeline");
       const timelineShell = document.querySelector(".timeline-shell");
       const resultPanel = document.querySelector("#result-panel");
@@ -3491,6 +3555,11 @@
       const newPasswordInput = document.querySelector("#new-password");
       const passwordStatus = document.querySelector("#password-status");
       const baseProgress = [0.05, 0.14, 0.23, 0.32, 0.41, 0.5, 0.59, 0.68, 0.77, 0.86, 0.95];
+      const stageGroups = [
+        { key: "preflight", start: baseProgress[0] - 0.02, end: baseProgress[3] + 0.02, labelAt: (baseProgress[0] + baseProgress[3]) / 2 },
+        { key: "operation", start: baseProgress[4] - 0.02, end: baseProgress[8] + 0.02, labelAt: (baseProgress[4] + baseProgress[8]) / 2 },
+        { key: "postflight", start: baseProgress[9] - 0.02, end: baseProgress[9] + 0.08, labelAt: baseProgress[9] + 0.03 },
+      ];
       const desktopOrbitPath = "M-260 318 C 120 178, 390 142, 600 142 S 1080 178, 1460 318";
       const mobileOrbitPath = "M-240 296 C 130 210, 390 184, 600 184 S 1070 210, 1440 296";
       const mobileOrbitQuery = window.matchMedia("(max-width: 760px)");
@@ -3823,9 +3892,45 @@
         });
       }
 
+      function renderStageArcs(pathLength) {
+        const arcYOffset = mobileOrbitQuery.matches ? -58 : -78;
+        const labelYOffset = mobileOrbitQuery.matches ? -82 : -106;
+        stageGroups.forEach((stage) => {
+          const arc = Array.from(stageArcPaths).find((item) => item.dataset.stageArc === stage.key);
+          const label = Array.from(stageArcLabels).find((item) => item.dataset.stageLabel === stage.key);
+          const samples = [];
+          const steps = 24;
+          for (let i = 0; i <= steps; i += 1) {
+            const base = stage.start + ((stage.end - stage.start) * (i / steps));
+            const progress = base + scrollOffset;
+            if (progress < 0 || progress > 1) continue;
+            const point = missionPath.getPointAtLength(pathLength * progress);
+            samples.push([point.x, Math.max(0, point.y + arcYOffset)]);
+          }
+          if (arc) {
+            if (samples.length > 1) {
+              arc.setAttribute("d", samples.map(([x, y], index) => `${index ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`).join(" "));
+              arc.style.opacity = "1";
+            } else {
+              arc.setAttribute("d", "");
+              arc.style.opacity = "0";
+            }
+          }
+          if (label) {
+            const labelProgress = stage.labelAt + scrollOffset;
+            const isLabelVisible = labelProgress >= 0 && labelProgress <= 1;
+            const labelPoint = missionPath.getPointAtLength(pathLength * clamp(labelProgress, 0, 1));
+            label.style.left = `${(labelPoint.x / 1200) * 100}%`;
+            label.style.top = `${(Math.max(0, labelPoint.y + labelYOffset) / 360) * 100}%`;
+            label.style.opacity = isLabelVisible ? "1" : "0";
+          }
+        });
+      }
+
       function placeNodes() {
         updateOrbitPath();
         const pathLength = missionPath.getTotalLength();
+        renderStageArcs(pathLength);
         nodes.forEach((node) => {
           const index = Number(node.dataset.index);
           const progress = baseProgress[index] + scrollOffset;
