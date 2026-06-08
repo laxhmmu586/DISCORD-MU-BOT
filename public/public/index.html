@@ -1224,17 +1224,77 @@
         color: white;
       }
 
+      .warning-card.is-acknowledged {
+        border-color: rgba(120, 183, 255, 0.18);
+        background: rgba(2, 13, 24, 0.42);
+      }
+
+      .warning-card.is-acknowledged::before {
+        background: rgba(120, 183, 255, 0.38);
+        box-shadow: none;
+      }
+
+      .warning-ack-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        margin-top: 10px;
+      }
+
+      .warning-ack-button {
+        border: 1px solid rgba(120, 183, 255, 0.36);
+        border-radius: 999px;
+        background: rgba(88, 167, 255, 0.12);
+        color: rgba(235, 247, 255, 0.92);
+        padding: 6px 10px;
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: 0.4px;
+        text-transform: uppercase;
+        cursor: pointer;
+      }
+
+      .warning-ack-button:hover {
+        border-color: rgba(120, 183, 255, 0.72);
+        background: rgba(88, 167, 255, 0.22);
+      }
+
+      .warning-ack-button:disabled {
+        cursor: default;
+        opacity: 0.62;
+      }
+
+      .warning-ack-note {
+        color: rgba(204, 226, 246, 0.72);
+        font-size: 11px;
+        font-weight: 750;
+      }
+
 
       .baggage-timeline-list {
         display: grid;
-        gap: 14px;
+        gap: 10px;
+      }
+
+      .baggage-timeline-header,
+      .baggage-timeline-row {
+        display: grid;
+        grid-template-columns: minmax(140px, 0.75fr) minmax(120px, 0.65fr) minmax(120px, 0.65fr) minmax(150px, 0.8fr) minmax(460px, 2.8fr);
+        gap: 16px;
+        align-items: center;
+      }
+
+      .baggage-timeline-header {
+        padding: 0 16px 4px;
+        color: rgba(197, 218, 238, 0.76);
+        font-size: 11px;
+        font-weight: 950;
+        letter-spacing: 0.7px;
+        text-transform: uppercase;
       }
 
       .baggage-timeline-row {
-        display: grid;
-        grid-template-columns: minmax(140px, 0.75fr) minmax(120px, 0.65fr) minmax(120px, 0.65fr) minmax(150px, 0.8fr) minmax(420px, 2.7fr);
-        gap: 16px;
-        align-items: center;
         padding: 16px;
         border: 1px solid rgba(176, 216, 255, 0.16);
         border-radius: 18px;
@@ -1242,35 +1302,34 @@
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
       }
 
-      .baggage-timeline-meta small {
-        display: block;
-        margin-bottom: 6px;
-        color: rgba(197, 218, 238, 0.66);
-        font-size: 10px;
-        font-weight: 850;
-        letter-spacing: 0.6px;
-        text-transform: uppercase;
-      }
-
-      .baggage-timeline-meta strong,
-      .baggage-timeline-meta span {
+      .baggage-timeline-value {
         display: block;
         color: rgba(245, 251, 255, 0.95);
-        font-size: 18px;
+        font-size: 17px;
+        font-weight: 800;
         word-break: break-word;
       }
 
       .baggage-timeline-track {
-        position: relative;
         display: flex;
-        align-items: center;
-        min-height: 56px;
-        padding: 0 8px;
+        align-items: flex-start;
+        min-height: 58px;
+        overflow-x: auto;
+        padding: 0 4px;
+      }
+
+      .baggage-timeline-step {
+        display: grid;
+        justify-items: center;
+        gap: 8px;
+        min-width: 72px;
       }
 
       .baggage-timeline-segment {
         height: 2px;
-        flex: 1;
+        min-width: 72px;
+        flex: 1 1 72px;
+        margin-top: 12px;
         background: rgba(230, 242, 255, 0.72);
       }
 
@@ -1279,7 +1338,6 @@
         z-index: 1;
         width: 24px;
         height: 24px;
-        flex: 0 0 auto;
         border: 3px solid rgba(237, 246, 255, 0.95);
         border-radius: 999px;
         background: #061220;
@@ -1298,6 +1356,15 @@
         box-shadow: 0 0 0 5px rgba(6, 18, 32, 0.96), 0 0 24px rgba(125, 200, 255, 0.36);
       }
 
+      .baggage-timeline-label {
+        color: rgba(235, 246, 255, 0.84);
+        font-size: 11px;
+        font-weight: 850;
+        text-align: center;
+        text-transform: uppercase;
+        max-width: 110px;
+      }
+
       .baggage-node-detail {
         grid-column: 1 / -1;
         padding: 12px 14px;
@@ -1308,18 +1375,18 @@
         line-height: 1.5;
       }
 
+      .baggage-node-detail[hidden] {
+        display: none;
+      }
+
       .baggage-node-detail b {
         color: white;
       }
 
       @media (max-width: 980px) {
+        .baggage-timeline-header,
         .baggage-timeline-row {
           grid-template-columns: 1fr;
-        }
-
-        .baggage-timeline-track {
-          overflow-x: auto;
-          min-width: 100%;
         }
       }
 
@@ -3686,6 +3753,7 @@
       const changePasswordForm = document.querySelector("#change-password-form");
       const newPasswordInput = document.querySelector("#new-password");
       const passwordStatus = document.querySelector("#password-status");
+      const WARNING_ACK_STORAGE_KEY = "mufc_warning_acknowledgements";
       const baseProgress = [0.05, 0.14, 0.23, 0.32, 0.41, 0.5, 0.59, 0.68, 0.77, 0.86, 0.95];
       const stageGroups = [
         { key: "preflight", start: baseProgress[0] - 0.02, end: baseProgress[3] + 0.02, labelAt: (baseProgress[0] + baseProgress[3]) / 2 },
@@ -4492,13 +4560,7 @@
         setActionIssueState("#webedi-action", webediCount > 0);
         setActionIssueState("#nbrd-action", nbrdCount > 0);
         setText("#wch-count", (sy.wchList || []).length || "0");
-        const warningRows = buildWarningRows(sy);
-        setText("#warning-count", warningRows.length || "0");
-        const warningAction = document.querySelector("#warning-action");
-        if (warningAction) {
-          warningAction.hidden = warningRows.length === 0;
-          warningAction.classList.toggle("is-critical-warning", warningRows.length > 0);
-        }
+        updateWarningActionState(buildWarningRows(sy));
         setBadgeText("#psm-count", (sy.psmList || []).length);
         if (bagReportButton) bagReportButton.hidden = !(sy.bagSheet?.hasData);
         refreshSalesReportButton(sy);
@@ -4766,6 +4828,49 @@
         return false;
       }
 
+      function warningAckStore() {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(WARNING_ACK_STORAGE_KEY) || "{}");
+          return parsed && typeof parsed === "object" ? parsed : {};
+        } catch {
+          return {};
+        }
+      }
+
+      function saveWarningAckStore(store) {
+        try {
+          localStorage.setItem(WARNING_ACK_STORAGE_KEY, JSON.stringify(store || {}));
+        } catch {}
+      }
+
+      function warningAckKey(row) {
+        return [currentSy?.flightNo || "SY", currentSy?.flightDate || "TODAY", normalizedBn(row?.bn || row?.passengerRecord?.bn), row?.seat || row?.passengerRecord?.seat || "", row?.warningType || "WARNING", row?.warningReason || ""].join("|").toUpperCase();
+      }
+
+      function applyWarningAck(rows = []) {
+        const store = warningAckStore();
+        return rows.map((row) => {
+          const ack = store[warningAckKey(row)];
+          return ack ? { ...row, acknowledgedBy: ack.by, acknowledgedAt: ack.at } : row;
+        });
+      }
+
+      function updateWarningActionState(rows = buildWarningRows()) {
+        const warningAction = document.querySelector("#warning-action");
+        const unackedCount = rows.filter((row) => !row.acknowledgedBy).length;
+        setText("#warning-count", rows.length || "0");
+        if (warningAction) {
+          warningAction.hidden = rows.length === 0;
+          warningAction.classList.toggle("is-critical-warning", unackedCount > 0);
+        }
+      }
+
+      function acknowledgeWarning(row) {
+        const store = warningAckStore();
+        store[warningAckKey(row)] = { by: currentUserName(), at: new Date().toISOString() };
+        saveWarningAckStore(store);
+      }
+
       function buildWarningRows(sy = currentSy) {
         const rows = [];
         const addWarning = (row, type, reason) => rows.push({ ...row, warningType: type, warningReason: reason, _panelCard: "warning" });
@@ -4788,14 +4893,18 @@
             addWarning(row, "BAD SEAT", row.badSeatReason || row.passengerRecord?.badSeatReason || "PD CKIN/BAD includes CKIN BAD SEAT.");
           }
         }
-        return rows.sort((a, b) => Number(a.bn || 9999) - Number(b.bn || 9999) || String(a.warningType || "").localeCompare(String(b.warningType || "")));
+        return applyWarningAck(rows.sort((a, b) => Number(a.bn || 9999) - Number(b.bn || 9999) || String(a.warningType || "").localeCompare(String(b.warningType || ""))));
       }
 
       function renderWarningPanel() {
         const rows = buildWarningRows();
-        const body = rows.length ? `<article class="warning-panel"><div class="panel-stats"><span class="status-warn">WARNING total: ${rows.length}</span></div><div class="warning-list">${rows.map((row, index) => `<div class="warning-card"><button class="bn-button is-warning" type="button" data-passenger-index="${index}" data-passenger-bn="${escapeHtml(row.bn || "")}">${escapeHtml(bnCircleLabel(row.bn))}</button><div class="warning-card-main"><div class="warning-card-head"><strong>${escapeHtml(passengerName(row) || "Passenger")}</strong><small>${escapeHtml(row.seat ? `Seat ${row.seat}` : "No seat")}</small></div><div class="warning-card-body">${escapeHtml(row.warningReason)}</div></div><span class="psm-badge">${escapeHtml(row.warningType)}</span></div>`).join("")}</div></article><div class="panel-side inline-record-side" style="margin-top:14px"><p class="panel-muted">Click a BN button to view the passenger record.</p></div>` : `<p class="panel-muted">No WARNING records found.</p>`;
+        const body = rows.length ? `<article class="warning-panel"><div class="panel-stats"><span class="status-warn">WARNING total: ${rows.length}</span><span class="status-ok">Acknowledged: ${rows.filter((row) => row.acknowledgedBy).length}</span></div><div class="warning-list">${rows.map((row, index) => {
+          const ackText = row.acknowledgedBy ? `Acknowledged by ${row.acknowledgedBy}${row.acknowledgedAt ? ` at ${new Date(row.acknowledgedAt).toLocaleString()}` : ""}` : "Not acknowledged";
+          return `<div class="warning-card ${row.acknowledgedBy ? "is-acknowledged" : ""}" data-warning-card="${index}"><button class="bn-button ${row.acknowledgedBy ? "" : "is-warning"}" type="button" data-passenger-index="${index}" data-passenger-bn="${escapeHtml(row.bn || "")}">${escapeHtml(bnCircleLabel(row.bn))}</button><div class="warning-card-main"><div class="warning-card-head"><strong>${escapeHtml(passengerName(row) || "Passenger")}</strong><small>${escapeHtml(row.seat ? `Seat ${row.seat}` : "No seat")}</small></div><div class="warning-card-body">${escapeHtml(row.warningReason)}</div><div class="warning-ack-row"><button class="warning-ack-button" type="button" data-warning-ack="${index}" ${row.acknowledgedBy ? "disabled" : ""}>${row.acknowledgedBy ? "Acknowledged" : "Acknowledge"}</button><span class="warning-ack-note">${escapeHtml(ackText)}</span></div></div><span class="psm-badge">${escapeHtml(row.warningType)}</span></div>`;
+        }).join("")}</div></article><div class="panel-side inline-record-side" style="margin-top:14px"><p class="panel-muted">Click a BN button to view the passenger record.</p></div>` : `<p class="panel-muted">No WARNING records found.</p>`;
         renderPanel("WARNING", currentSy?.flightNo || "SY", body);
         setPanelPassengerRows(rows);
+        updateWarningActionState(rows);
       }
 
       function membershipRank(tier) {
@@ -4916,7 +5025,7 @@
             : (activeReportMode === "inad"
               ? `<p class="panel-muted">Loading INAD Report...</p>`
               : (activeReportMode === "baggage"
-                ? `<p class="panel-muted">Loading Baggage Report...</p>`
+                ? `<p class="panel-muted">Select a submit-date range, optionally enter a bag tag, then click Search.</p>`
                 : (["psm", "wch"].includes(activeReportMode)
                   ? `<p class="panel-muted">Choose a flight date range, then search ${activeReportMode === "wch" ? "WCH" : "PSM"} Report.</p>`
                   : `<p class="panel-muted">Choose a date, then download Sales Report.</p>`)));
@@ -5551,18 +5660,17 @@
 
       function renderBaggageTimelineRows(rows = []) {
         if (!rows.length) return `<p class="panel-muted">No baggage report rows found.</p>`;
-        return `<div class="baggage-timeline-list">${rows.map((row, rowIndex) => {
+        const header = `<div class="baggage-timeline-header"><span>Last Update</span><span>Submit Date</span><span>Bag Tag</span><span>Current Status</span><span>Tracking</span></div>`;
+        return `<div class="baggage-timeline-list">${header}${rows.map((row, rowIndex) => {
           const nodes = baggageTimelineNodes(row);
-          const selectedIndex = nodes.findIndex((node) => node.current);
-          const safeSelected = selectedIndex >= 0 ? selectedIndex : 0;
-          const track = nodes.map((node, nodeIndex) => `${nodeIndex > 0 ? `<span class="baggage-timeline-segment" aria-hidden="true"></span>` : ""}<button class="baggage-timeline-node ${node.current ? "is-current" : ""} ${nodeIndex === safeSelected ? "is-selected" : ""}" type="button" data-baggage-row="${rowIndex}" data-baggage-node="${nodeIndex}" title="${escapeHtml(node.label || `Step ${nodeIndex + 1}`)}"><span class="sr-only">${escapeHtml(node.label || `Step ${nodeIndex + 1}`)}</span></button>`).join("");
+          const track = nodes.map((node, nodeIndex) => `<span class="baggage-timeline-step"><button class="baggage-timeline-node ${node.current ? "is-current" : ""}" type="button" data-baggage-row="${rowIndex}" data-baggage-node="${nodeIndex}" title="${escapeHtml(node.label || `Step ${nodeIndex + 1}`)}"><span class="sr-only">${escapeHtml(node.label || `Step ${nodeIndex + 1}`)}</span></button><span class="baggage-timeline-label">${escapeHtml(node.label || `Step ${nodeIndex + 1}`)}</span></span>${nodeIndex < nodes.length - 1 ? `<span class="baggage-timeline-segment" aria-hidden="true"></span>` : ""}`).join("");
           return `<article class="baggage-timeline-row" data-baggage-row-card="${rowIndex}">
-            <div class="baggage-timeline-meta"><small>Last Updated</small><span>${escapeHtml(row.lastUpdated || row.lastUpdatedAt || "-")}</span></div>
-            <div class="baggage-timeline-meta"><small>Submit Date</small><span>${escapeHtml(row.submitDate || row.submittedAt || "-")}</span></div>
-            <div class="baggage-timeline-meta"><small>Bag Tag</small><strong>${escapeHtml(row.bagTag || "-")}</strong></div>
-            <div class="baggage-timeline-meta"><small>Current Status</small><span>${escapeHtml(row.currentStatus || row.status || "-")}</span></div>
+            <span class="baggage-timeline-value">${escapeHtml(row.lastUpdated || row.lastUpdatedAt || "-")}</span>
+            <span class="baggage-timeline-value">${escapeHtml(row.submitDate || row.submittedAt || "-")}</span>
+            <strong class="baggage-timeline-value">${escapeHtml(row.bagTag || "-")}</strong>
+            <span class="baggage-timeline-value">${escapeHtml(row.currentStatus || row.status || "-")}</span>
             <div class="baggage-timeline-track">${track}</div>
-            <div class="baggage-node-detail" data-baggage-detail>${baggageNodeDetailHtml(nodes[safeSelected], row)}</div>
+            <div class="baggage-node-detail" data-baggage-detail hidden></div>
           </article>`;
         }).join("")}</div>`;
       }
@@ -6125,7 +6233,10 @@
         card?.querySelectorAll(".baggage-timeline-node").forEach((item) => item.classList.toggle("is-selected", item === node));
         const detail = card?.querySelector("[data-baggage-detail]");
         const nodes = baggageTimelineNodes(row);
-        if (detail) detail.innerHTML = baggageNodeDetailHtml(nodes[nodeIndex], row);
+        if (detail) {
+          detail.hidden = false;
+          detail.innerHTML = baggageNodeDetailHtml(nodes[nodeIndex], row);
+        }
       });
 
       reportSalesModeButton?.addEventListener("click", () => setReportMode("sales", { forceToday: true, resetOutput: true }));
@@ -6169,6 +6280,16 @@
           const row = rows[Number(securityButton.dataset.securityIndex)];
           const side = resultPanel.querySelector(".panel-side");
           if (side) side.innerHTML = securityCard(row);
+          return;
+        }
+        const warningAckButton = event.target.closest("[data-warning-ack]");
+        if (warningAckButton) {
+          const rows = resultPanel._passengerRows || [];
+          const row = rows[Number(warningAckButton.dataset.warningAck)];
+          if (row && !row.acknowledgedBy) {
+            acknowledgeWarning(row);
+            renderWarningPanel();
+          }
           return;
         }
         const passengerButton = event.target.closest("[data-passenger-index]");
