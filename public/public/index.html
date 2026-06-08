@@ -2431,6 +2431,26 @@
         display: none;
       }
 
+      .baggage-report-search {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(150px, 240px)) minmax(120px, 150px);
+        gap: 10px;
+        align-items: end;
+        margin: 0 0 16px;
+        padding: 14px;
+        border: 1px solid rgba(125, 200, 255, 0.2);
+        border-radius: 18px;
+        background: rgba(2, 13, 24, 0.5);
+      }
+
+      .baggage-report-search .report-field {
+        margin: 0;
+      }
+
+      .baggage-report-search button {
+        min-height: 42px;
+      }
+
       .report-mode-actions .detail-action.is-active {
         border-color: rgba(120, 183, 255, 0.78);
         background: rgba(88, 167, 255, 0.22);
@@ -4950,7 +4970,7 @@
         const rows = buildWarningRows();
         const body = rows.length ? `<article class="warning-panel"><div class="panel-stats"><span class="status-warn">WARNING total: ${rows.length}</span><span class="status-ok">Acknowledged: ${rows.filter((row) => (row.acknowledgements || []).length).length}</span></div><div class="warning-list">${rows.map((row, index) => {
           const ackList = row.acknowledgements || [];
-          const ackText = ackList.length ? `Acknowledged by ${ackList.map((ack) => `${ack.by}${ack.at ? ` at ${new Date(ack.at).toLocaleString()}` : ""}`).join(", ")}` : "Not acknowledged";
+          const ackText = ackList.length ? `Acknowledged by ${ackList.map((ack) => ack.by).filter(Boolean).join(", ")}` : "Not acknowledged";
           const ownAck = userHasAcknowledged(ackList);
           return `<div class="warning-card ${ownAck ? "is-acknowledged" : ""}" data-warning-card="${index}"><button class="bn-button ${ownAck ? "" : "is-warning"}" type="button" data-passenger-index="${index}" data-passenger-bn="${escapeHtml(row.bn || "")}">${escapeHtml(bnCircleLabel(row.bn))}</button><div class="warning-card-main"><div class="warning-card-head"><strong>${escapeHtml(passengerName(row) || "Passenger")}</strong><small>${escapeHtml(row.seat ? `Seat ${row.seat}` : "No seat")}</small></div><div class="warning-card-body">${escapeHtml(row.warningReason)}</div><div class="warning-ack-row"><button class="warning-ack-button" type="button" data-warning-ack="${index}" ${ownAck ? "disabled" : ""}>${ownAck ? "Acknowledged" : "Acknowledge"}</button><span class="warning-ack-note">${escapeHtml(ackText)}</span></div></div><span class="psm-badge">${escapeHtml(row.warningType)}</span></div>`;
         }).join("")}</div></article><div class="panel-side inline-record-side" style="margin-top:14px"><p class="panel-muted">Click a BN button to view the passenger record.</p></div>` : `<p class="panel-muted">No WARNING records found.</p>`;
@@ -5010,7 +5030,7 @@
         const body = rows.length ? `<div class="panel-stats"><span class="status-fail">CKIN/NBRD total: ${rows.length}</span><span class="status-ok">Acknowledged: ${rows.filter((row) => (row.acknowledgements || []).length).length}</span></div><div class="psm-card-list">${rows.map((row, index) => {
           const detailLines = [row.apiReason, row.tkReason, row.visaReason, row.bagReason].filter(Boolean);
           const ackList = row.acknowledgements || [];
-          const ackText = ackList.length ? `Acknowledged by ${ackList.map((ack) => `${ack.by}${ack.at ? ` at ${new Date(ack.at).toLocaleString()}` : ""}`).join(", ")}` : "Not acknowledged";
+          const ackText = ackList.length ? `Acknowledged by ${ackList.map((ack) => ack.by).filter(Boolean).join(", ")}` : "Not acknowledged";
           const ownAck = userHasAcknowledged(ackList);
           return `<article class="psm-card"><div class="psm-card-head"><span><button class="bn-button is-warning" type="button" data-passenger-index="${index}" data-passenger-bn="${escapeHtml(row.bn || "")}">BN${escapeHtml(row.bn || "---")}</button> <small>${escapeHtml(passengerName(row))} • ${escapeHtml(row.seat || "---")}</small></span><span class="psm-badge">CKIN/NBRD</span></div><div class="psm-card-row"><b>Detail</b><br>${detailLines.map((line) => escapeHtml(line)).join("<br>")}</div><div class="warning-ack-row"><button class="warning-ack-button" type="button" data-warning-ack="${index}" ${ownAck ? "disabled" : ""}>${ownAck ? "Acknowledged" : "Acknowledge"}</button><span class="warning-ack-note">${escapeHtml(ackText)}</span></div></article>`;
         }).join("")}</div>` : `<p class="panel-muted">No NBRD/CKIN issue found.</p>`;
@@ -5733,7 +5753,16 @@
           });
         }
         const currentKey = normalizeTimelineText(row.currentStatus || row.status);
-        let currentIndex = nodes.findIndex((node) => normalizeTimelineText(node.label).includes(currentKey) || currentKey.includes(normalizeTimelineText(node.label)));
+        let currentIndex = -1;
+        if (currentKey) {
+          for (let index = nodes.length - 1; index >= 0; index -= 1) {
+            const nodeKey = normalizeTimelineText(nodes[index]?.label);
+            if (nodeKey && (nodeKey.includes(currentKey) || currentKey.includes(nodeKey))) {
+              currentIndex = index;
+              break;
+            }
+          }
+        }
         if (currentIndex < 0) currentIndex = nodes.length - 1;
         return nodes.map((node, index) => ({ ...node, current: index === currentIndex }));
       }
@@ -5748,10 +5777,19 @@
         return `<b>${escapeHtml(node?.label || row?.currentStatus || "Update")}</b>${atText ? ` • ${escapeHtml(atText)}` : ""}${node?.by ? ` • ${escapeHtml(node.by)}` : ""}${detailHtml}`;
       }
 
+      function renderBaggageReportSearchForm() {
+        return `<form class="baggage-report-search" data-baggage-report-search>
+          <label class="report-field"><span>FROM</span><input data-baggage-report-from type="date" value="${escapeHtml(reportFromInput?.value || "")}" /></label>
+          <label class="report-field"><span>TO</span><input data-baggage-report-to type="date" value="${escapeHtml(reportToInput?.value || "")}" /></label>
+          <label class="report-field"><span>BAG TAG</span><input data-baggage-report-bagtag type="search" placeholder="MU123456" value="${escapeHtml(reportKeywordInput?.value || "")}" /></label>
+          <button class="report-run" type="submit">Search</button>
+        </form>`;
+      }
+
       function renderBaggageTimelineRows(rows = []) {
-        if (!rows.length) return `<p class="panel-muted">No baggage report rows found.</p>`;
+        if (!rows.length) return `${renderBaggageReportSearchForm()}<p class="panel-muted">No baggage report rows found.</p>`;
         const header = `<div class="baggage-timeline-header"><span>Last Update</span><span>Submit Date</span><span>Bag Tag</span><span>Current Status</span><span>Tracking</span></div>`;
-        return `<div class="baggage-timeline-list">${header}${rows.map((row, rowIndex) => {
+        return `${renderBaggageReportSearchForm()}<div class="baggage-timeline-list">${header}${rows.map((row, rowIndex) => {
           const nodes = baggageTimelineNodes(row);
           const track = nodes.map((node, nodeIndex) => `<span class="baggage-timeline-step"><button class="baggage-timeline-node ${node.current ? "is-current" : ""}" type="button" data-baggage-row="${rowIndex}" data-baggage-node="${nodeIndex}" aria-label="${escapeHtml(node.label || `Step ${nodeIndex + 1}`)}" title="${escapeHtml(node.label || `Step ${nodeIndex + 1}`)}"></button><span class="baggage-timeline-label">${escapeHtml(node.label || `Step ${nodeIndex + 1}`)}</span></span>${nodeIndex < nodes.length - 1 ? `<span class="baggage-timeline-segment" aria-hidden="true"></span>` : ""}`).join("");
           const flightClass = /MU583/i.test(row.flight || "") ? " is-flight-mu583" : (/MU586/i.test(row.flight || "") ? " is-flight-mu586" : "");
@@ -5785,7 +5823,7 @@
           reportOutput._baggageRows = rows;
           reportOutput.innerHTML = renderBaggageTimelineRows(rows);
         } catch (error) {
-          reportOutput.innerHTML = `<p class="panel-muted status-fail">${escapeHtml(error?.message || "Baggage report lookup failed.")}</p>`;
+          reportOutput.innerHTML = `${renderBaggageReportSearchForm()}<p class="panel-muted status-fail">${escapeHtml(error?.message || "Baggage report lookup failed.")}</p>`;
         }
       }
 
@@ -6311,6 +6349,16 @@
         } catch (error) {
           if (statusEl) statusEl.textContent = error?.message || "Save failed.";
         }
+      });
+
+      reportOutput?.addEventListener("submit", async (event) => {
+        const searchForm = event.target.closest("[data-baggage-report-search]");
+        if (!searchForm) return;
+        event.preventDefault();
+        if (reportFromInput) reportFromInput.value = searchForm.querySelector("[data-baggage-report-from]")?.value || "";
+        if (reportToInput) reportToInput.value = searchForm.querySelector("[data-baggage-report-to]")?.value || "";
+        if (reportKeywordInput) reportKeywordInput.value = normalizeTestBagTag(searchForm.querySelector("[data-baggage-report-bagtag]")?.value || "");
+        await renderBaggageTimelineReport();
       });
 
       reportOutput?.addEventListener("click", (event) => {

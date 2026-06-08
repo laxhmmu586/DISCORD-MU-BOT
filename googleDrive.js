@@ -557,9 +557,9 @@ async function getTestBaggageReportRows(options = {}) {
       const rowNumber = startIndex + offset + 1;
       const mapped = testBaggageRowFromSheet(values || [], rowNumber);
       const bagTagFromA = normalizeTestBagTag(values?.[0] || '');
-      const submitDate = sanitizeSheetText(values?.[3] || mapped.date || mapped.submittedAt || '', 80);
+      const submitDate = sanitizeSheetText(values?.[15] || mapped.submittedAt || mapped.date || '', 80);
       const submitDateIso = normalizeSheetDateToIso(submitDate);
-      const rawLastUpdated = sanitizeSheetText(values?.[16] || values?.[17] || mapped.lastUpdatedAt || mapped.submittedAt || '', 80);
+      const rawLastUpdated = sanitizeSheetText(values?.[17] || mapped.lastUpdatedAt || values?.[16] || mapped.submittedAt || '', 80);
       const lastUpdated = baggageReportDateOnly(rawLastUpdated);
       const row = {
         ...mapped,
