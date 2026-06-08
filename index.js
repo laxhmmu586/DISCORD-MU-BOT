@@ -49,6 +49,7 @@ const {
   appendPsmMsgReportRows,
   pruneStoredReportRows,
   findTestBaggageByTag,
+  getTestBaggageReportRows,
   appendTestBaggageRecord,
   updateTestBaggageRecord
 
@@ -611,6 +612,7 @@ app.use(
 );
 
 const REVIEW_STORE_PATH = path.join(__dirname, 'securityReviews.json');
+const WARNING_ACK_STORE_PATH = path.join(__dirname, 'warningAcknowledgements.json');
 const REVIEW_RETENTION_MS = 365 * 24 * 60 * 60 * 1000;
 
 function reviewCutoffIso() {
@@ -651,6 +653,48 @@ function pruneReviewStore(store) {
   });
   store.reviews = reviews;
   return store;
+}
+
+
+async function readWarningAckStore() {
+  try {
+    const raw = await fs.readFile(WARNING_ACK_STORE_PATH, 'utf8');
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : { acknowledgements: {} };
+  } catch (err) {
+    if (err?.code === 'ENOENT') return { acknowledgements: {} };
+    throw err;
+  }
+}
+
+async function writeWarningAckStore(store) {
+  await fs.writeFile(WARNING_ACK_STORE_PATH, `${JSON.stringify(store, null, 2)}\n`);
+}
+
+function pruneWarningAckStore(store) {
+  const cutoff = reviewCutoffIso();
+  const acknowledgements = store.acknowledgements && typeof store.acknowledgements === 'object' ? store.acknowledgements : {};
+  Object.entries(acknowledgements).forEach(([flightKey, rows]) => {
+    if (!rows || typeof rows !== 'object') {
+      delete acknowledgements[flightKey];
+      return;
+    }
+    Object.entries(rows).forEach(([warningKey, ackList]) => {
+      if (!Array.isArray(ackList)) {
+        delete rows[warningKey];
+        return;
+      }
+      rows[warningKey] = ackList.filter((ack) => ack?.at && ack.at >= cutoff && ack.by);
+      if (!rows[warningKey].length) delete rows[warningKey];
+    });
+    if (!Object.keys(rows).length) delete acknowledgements[flightKey];
+  });
+  store.acknowledgements = acknowledgements;
+  return store;
+}
+
+function sanitizeWarningKey(value) {
+  return String(value || '').replace(/[\u0000-\u001F\u007F]/g, ' ').trim().slice(0, 500).toUpperCase();
 }
 
 function sanitizeReviewStatus(value) {
@@ -771,6 +815,45 @@ app.post('/security-reviews', async (req, res) => {
   }
 });
 
+
+app.get('/warning-acknowledgements', async (req, res) => {
+  try {
+    const flightNo = String(req.query.flightNo || '').toUpperCase();
+    const flightDate = String(req.query.flightDate || '').toUpperCase();
+    if (!flightNo || !flightDate) return res.status(400).json({ error: 'Missing flightNo or flightDate' });
+    const store = pruneWarningAckStore(await readWarningAckStore());
+    await writeWarningAckStore(store);
+    const key = reviewFlightKey(flightNo, flightDate);
+    return res.json({ acknowledgements: store.acknowledgements[key] || {} });
+  } catch (err) {
+    return res.status(500).json({ error: err?.message || 'Warning acknowledgement lookup failed' });
+  }
+});
+
+app.post('/warning-acknowledgements', async (req, res) => {
+  try {
+    const flightNo = String(req.body?.flightNo || '').toUpperCase();
+    const flightDate = String(req.body?.flightDate || '').toUpperCase();
+    const warningKey = sanitizeWarningKey(req.body?.warningKey);
+    const reviewer = sanitizeReviewer(req.body?.reviewer);
+    if (!flightNo || !flightDate || !warningKey || !reviewer) {
+      return res.status(400).json({ error: 'Missing flightNo, flightDate, warningKey, or reviewer' });
+    }
+    const store = pruneWarningAckStore(await readWarningAckStore());
+    const key = reviewFlightKey(flightNo, flightDate);
+    store.acknowledgements[key] = store.acknowledgements[key] || {};
+    const existing = Array.isArray(store.acknowledgements[key][warningKey]) ? store.acknowledgements[key][warningKey] : [];
+    const now = new Date().toISOString();
+    const next = existing.filter((ack) => String(ack?.by || '').toLowerCase() !== reviewer.toLowerCase());
+    next.push({ by: reviewer, at: now });
+    store.acknowledgements[key][warningKey] = next;
+    await writeWarningAckStore(store);
+    return res.json({ ok: true, acknowledgements: store.acknowledgements[key][warningKey] });
+  } catch (err) {
+    return res.status(500).json({ error: err?.message || 'Warning acknowledgement save failed' });
+  }
+});
+
 // ===============================
 // Search API
 // ===============================
@@ -826,6 +909,17 @@ function cleanBodyText(value, maxLength = 500) {
   return String(value || '').replace(/[\u0000-\u001F\u007F]/g, ' ').trim().slice(0, maxLength);
 }
 
+
+app.get('/test-baggage-report', async (req, res) => {
+  try {
+    const rows = await getTestBaggageReportRows({ from: req.query.from, to: req.query.to, bagTag: req.query.bagTag });
+    return res.json({ rows, source: 'sheet' });
+  } catch (err) {
+    console.error('Test baggage report error:', err);
+    return res.status(500).json({ error: err?.message || 'Baggage report lookup failed' });
+  }
+});
+
 app.get('/test-baggage/:bagTag', async (req, res) => {
   try {
     const bagTag = normalizeTestBagTag(req.params.bagTag);
@@ -855,7 +949,7 @@ app.post('/test-baggage', async (req, res) => {
       date,
       bagType: cleanBodyText(req.body?.bagType, 80),
       location: cleanBodyText(req.body?.location, 120),
-      status: cleanBodyText(req.body?.status, 80),
+      status: cleanBodyText(req.body?.status, 80) || (direction === 'inbound' ? 'Bag location update' : ''),
       comment: cleanBodyText(req.body?.comment, 500),
       rushTagNumber: cleanBodyText(req.body?.rushTagNumber, 80),
       rushToWhere: cleanBodyText(req.body?.rushToWhere, 120),
