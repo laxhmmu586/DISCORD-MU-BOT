@@ -2392,7 +2392,8 @@
       }
 
       .report-form.is-vip-mode,
-      .report-form.is-inad-mode {
+      .report-form.is-inad-mode,
+      .report-form.is-baggage-mode {
         display: none;
       }
 
@@ -3754,6 +3755,7 @@
       const changePasswordForm = document.querySelector("#change-password-form");
       const newPasswordInput = document.querySelector("#new-password");
       const passwordStatus = document.querySelector("#password-status");
+      const WARNING_ACK_STORAGE_KEY = "mufc_warning_acknowledgements";
       const baseProgress = [0.05, 0.14, 0.23, 0.32, 0.41, 0.5, 0.59, 0.68, 0.77, 0.86, 0.95];
       const stageGroups = [
         { key: "preflight", start: baseProgress[0] - 0.02, end: baseProgress[3] + 0.02, labelAt: (baseProgress[0] + baseProgress[3]) / 2 },
@@ -5056,7 +5058,8 @@
                   ? `<p class="panel-muted">Choose a flight date range, then search ${activeReportMode === "wch" ? "WCH" : "PSM"} Report.</p>`
                   : `<p class="panel-muted">Choose a date, then download Sales Report.</p>`)));
         }
-        if (["vip", "psm", "inad", "wch"].includes(activeReportMode)) generateReport();
+        if (activeReportMode === "baggage") renderBaggageTimelineReport();
+        else if (["vip", "psm", "inad", "wch"].includes(activeReportMode)) generateReport();
       }
 
       function resetPanelState() {
