@@ -501,6 +501,96 @@ async function findTestBaggageByTag(bagTag) {
   return null;
 }
 
+
+function sheetCellHeader(headers, index) {
+  return String(headers?.[index] || TEST_BAGGAGE_HEADERS[index] || `Column ${String.fromCharCode(65 + index)}`).trim() || `Column ${String.fromCharCode(65 + index)}`;
+}
+
+function baggageReportDetails(values, headers) {
+  const detail = {};
+  (values || []).forEach((value, index) => {
+    const cleaned = sanitizeSheetText(value, 500);
+    if (cleaned) detail[`${String.fromCharCode(65 + index)} - ${sheetCellHeader(headers, index)}`] = cleaned;
+  });
+  return detail;
+}
+
+function baggageReportDateOnly(value) {
+  const raw = sanitizeSheetText(value, 80);
+  const iso = normalizeSheetDateToIso(raw);
+  if (iso) return iso;
+  const match = raw.match(/^(\d{4}-\d{2}-\d{2})T/);
+  return match ? match[1] : raw;
+}
+
+function baggageReportSheetNodes(values, headers, row = {}) {
+  const details = baggageReportDetails(values, headers);
+  const nodes = [{
+    label: 'Create',
+    at: row.submitDate || row.submittedAt || '',
+    details
+  }];
+  const currentStatus = sanitizeSheetText(row.currentStatus || row.status || '', 120);
+  if (currentStatus) {
+    nodes.push({
+      label: currentStatus,
+      at: row.lastUpdated || row.lastUpdatedAt || '',
+      details
+    });
+  }
+  return nodes;
+}
+
+async function getTestBaggageReportRows(options = {}) {
+  const rows = await getTestBaggageSheetRows({ forceRefresh: true });
+  const hasKnownHeaders = TEST_BAGGAGE_HEADERS.every((header, index) => String(rows?.[0]?.[index] || '').trim() === header);
+  const hasSheetHeaders = !hasKnownHeaders && /submit|date|bag|status|updated/i.test((rows?.[0] || []).join('|'));
+  const headers = hasKnownHeaders || hasSheetHeaders ? rows[0] : TEST_BAGGAGE_HEADERS;
+  const startIndex = hasKnownHeaders || hasSheetHeaders ? 1 : 0;
+  const fromIso = normalizeSheetDateToIso(options.from);
+  const toIso = normalizeSheetDateToIso(options.to);
+  const bagTagNeedle = normalizeTestBagTag(options.bagTag || '');
+  const hasSearch = Boolean(fromIso || toIso || bagTagNeedle);
+  const result = (rows || [])
+    .slice(startIndex)
+    .map((values, offset) => {
+      const rowNumber = startIndex + offset + 1;
+      const mapped = testBaggageRowFromSheet(values || [], rowNumber);
+      const submitDate = sanitizeSheetText(values?.[0] || mapped.submittedAt || '', 80);
+      const submitDateIso = normalizeSheetDateToIso(submitDate);
+      const bagTagFromB = normalizeTestBagTag(values?.[1] || '');
+      const bagTagFromA = normalizeTestBagTag(values?.[0] || '');
+      const rawLastUpdated = sanitizeSheetText(values?.[17] || mapped.lastUpdatedAt || mapped.submittedAt || '', 80);
+      const lastUpdated = baggageReportDateOnly(rawLastUpdated);
+      const row = {
+        ...mapped,
+        rowNumber,
+        submitDate,
+        submitDateIso,
+        bagTag: isValidTestBagTag(bagTagFromB) ? bagTagFromB : (mapped.bagTag || bagTagFromA),
+        currentStatus: sanitizeSheetText(values?.[6] || mapped.status || '', 120),
+        lastUpdated,
+        rawLastUpdated,
+        raw: values || []
+      };
+      row.sheetNodes = baggageReportSheetNodes(values || [], headers, row);
+      return row;
+    })
+    .filter((row) => row.bagTag || row.currentStatus || row.lastUpdated || row.submitDate || (Array.isArray(row.history) && row.history.length))
+    .filter((row) => !bagTagNeedle || normalizeTestBagTag(row.bagTag).includes(bagTagNeedle))
+    .filter((row) => {
+      if (!fromIso && !toIso) return true;
+      if (!row.submitDateIso) return false;
+      return (!fromIso || row.submitDateIso >= fromIso) && (!toIso || row.submitDateIso <= toIso);
+    })
+    .sort((a, b) => {
+      const aTime = Date.parse(a.rawLastUpdated || a.lastUpdated || a.lastUpdatedAt || a.submittedAt || a.submitDate || '') || 0;
+      const bTime = Date.parse(b.rawLastUpdated || b.lastUpdated || b.lastUpdatedAt || b.submittedAt || b.submitDate || '') || 0;
+      return bTime - aTime;
+    });
+  return hasSearch ? result : result.slice(0, 20);
+}
+
 async function appendTestBaggageRecord(record) {
   if (testBaggageSheetAccessBlocked) return { created: false };
   const normalizedTag = normalizeTestBagTag(record?.bagTag);
@@ -520,7 +610,7 @@ async function appendTestBaggageRecord(record) {
     date: sanitizeSheetText(record.date, 20),
     bagType: sanitizeSheetText(record.bagType, 80),
     location: sanitizeSheetText(record.location, 120),
-    status: sanitizeSheetText(record.status, 80),
+    status: sanitizeSheetText(record.status, 80) || (direction === 'Inbound' ? 'Bag location update' : ''),
     comment: sanitizeSheetText(record.comment, 500),
     rushTagNumber: sanitizeSheetText(record.rushTagNumber, 80),
     rushToWhere: sanitizeSheetText(record.rushToWhere, 120),
@@ -541,7 +631,7 @@ async function appendTestBaggageRecord(record) {
         date: sanitizeSheetText(record.date, 20),
         bagType: sanitizeSheetText(record.bagType, 80),
         location: sanitizeSheetText(record.location, 120),
-        status: sanitizeSheetText(record.status, 80),
+        status: sanitizeSheetText(record.status, 80) || (direction === 'Inbound' ? 'Bag location update' : ''),
         comment: sanitizeSheetText(record.comment, 500),
         rushTagNumber: sanitizeSheetText(record.rushTagNumber, 80),
         rushToWhere: sanitizeSheetText(record.rushToWhere, 120),
@@ -714,7 +804,7 @@ async function ensureReportSheetHeaders(type, rows) {
 function normalizeSheetDateToIso(value) {
   const raw = String(value || '').trim();
   if (!raw) return '';
-  let match = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  let match = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:T.*)?$/);
   if (match) return `${match[1]}-${String(Number(match[2])).padStart(2, '0')}-${String(Number(match[3])).padStart(2, '0')}`;
 
   match = raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2}|\d{4})(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?$/);
@@ -2161,6 +2251,7 @@ module.exports = {
   appendPsmMsgReportRows,
   pruneStoredReportRows,
   findTestBaggageByTag,
+  getTestBaggageReportRows,
   appendTestBaggageRecord,
   updateTestBaggageRecord
 };
