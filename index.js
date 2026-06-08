@@ -49,6 +49,7 @@ const {
   appendPsmMsgReportRows,
   pruneStoredReportRows,
   findTestBaggageByTag,
+  getTestBaggageReportRows,
   appendTestBaggageRecord,
   updateTestBaggageRecord
 
@@ -825,6 +826,17 @@ function isValidTestBagTag(value) {
 function cleanBodyText(value, maxLength = 500) {
   return String(value || '').replace(/[\u0000-\u001F\u007F]/g, ' ').trim().slice(0, maxLength);
 }
+
+
+app.get('/test-baggage-report', async (req, res) => {
+  try {
+    const rows = await getTestBaggageReportRows({ from: req.query.from, to: req.query.to, bagTag: req.query.bagTag });
+    return res.json({ rows, source: 'sheet' });
+  } catch (err) {
+    console.error('Test baggage report error:', err);
+    return res.status(500).json({ error: err?.message || 'Baggage report lookup failed' });
+  }
+});
 
 app.get('/test-baggage/:bagTag', async (req, res) => {
   try {

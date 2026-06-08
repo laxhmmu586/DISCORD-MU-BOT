@@ -1162,7 +1162,7 @@
 
       .detail-actions {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+        grid-template-columns: repeat(4, minmax(132px, 1fr));
         gap: 10px;
       }
 
@@ -1202,9 +1202,192 @@
         background: rgba(140, 84, 8, 0.54);
       }
 
+      .warning-action.is-critical-warning {
+        border-color: rgba(255, 86, 86, 0.86);
+        background: rgba(120, 15, 22, 0.58);
+        color: #ffd6d6;
+        box-shadow: 0 0 24px rgba(255, 65, 65, 0.22);
+      }
+
+      .warning-action.is-critical-warning:hover {
+        border-color: rgba(255, 132, 132, 0.98);
+        background: rgba(154, 24, 31, 0.68);
+      }
+
       .warning-badge {
         background: #f5b400;
         color: #1b1300;
+      }
+
+      .warning-action.is-critical-warning .warning-badge {
+        background: #ff4d4d;
+        color: white;
+      }
+
+      .warning-card.is-acknowledged {
+        border-color: rgba(120, 183, 255, 0.18);
+        background: rgba(2, 13, 24, 0.42);
+      }
+
+      .warning-card.is-acknowledged::before {
+        background: rgba(120, 183, 255, 0.38);
+        box-shadow: none;
+      }
+
+      .warning-ack-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        margin-top: 10px;
+      }
+
+      .warning-ack-button {
+        border: 1px solid rgba(120, 183, 255, 0.36);
+        border-radius: 999px;
+        background: rgba(88, 167, 255, 0.12);
+        color: rgba(235, 247, 255, 0.92);
+        padding: 6px 10px;
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: 0.4px;
+        text-transform: uppercase;
+        cursor: pointer;
+      }
+
+      .warning-ack-button:hover {
+        border-color: rgba(120, 183, 255, 0.72);
+        background: rgba(88, 167, 255, 0.22);
+      }
+
+      .warning-ack-button:disabled {
+        cursor: default;
+        opacity: 0.62;
+      }
+
+      .warning-ack-note {
+        color: rgba(204, 226, 246, 0.72);
+        font-size: 11px;
+        font-weight: 750;
+      }
+
+
+      .baggage-timeline-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .baggage-timeline-header,
+      .baggage-timeline-row {
+        display: grid;
+        grid-template-columns: minmax(140px, 0.75fr) minmax(120px, 0.65fr) minmax(120px, 0.65fr) minmax(150px, 0.8fr) minmax(460px, 2.8fr);
+        gap: 16px;
+        align-items: center;
+      }
+
+      .baggage-timeline-header {
+        padding: 0 16px 4px;
+        color: rgba(197, 218, 238, 0.76);
+        font-size: 11px;
+        font-weight: 950;
+        letter-spacing: 0.7px;
+        text-transform: uppercase;
+      }
+
+      .baggage-timeline-row {
+        padding: 16px;
+        border: 1px solid rgba(176, 216, 255, 0.16);
+        border-radius: 18px;
+        background: rgba(2, 13, 24, 0.46);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      }
+
+      .baggage-timeline-value {
+        display: block;
+        color: rgba(245, 251, 255, 0.95);
+        font-size: 17px;
+        font-weight: 800;
+        word-break: break-word;
+      }
+
+      .baggage-timeline-track {
+        display: flex;
+        align-items: flex-start;
+        min-height: 58px;
+        overflow-x: auto;
+        padding: 0 4px;
+      }
+
+      .baggage-timeline-step {
+        display: grid;
+        justify-items: center;
+        gap: 8px;
+        min-width: 72px;
+      }
+
+      .baggage-timeline-segment {
+        height: 2px;
+        min-width: 72px;
+        flex: 1 1 72px;
+        margin-top: 12px;
+        background: rgba(230, 242, 255, 0.72);
+      }
+
+      .baggage-timeline-node {
+        position: relative;
+        z-index: 1;
+        width: 24px;
+        height: 24px;
+        border: 3px solid rgba(237, 246, 255, 0.95);
+        border-radius: 999px;
+        background: #061220;
+        cursor: pointer;
+        box-shadow: 0 0 0 5px rgba(6, 18, 32, 0.96);
+      }
+
+      .baggage-timeline-node.is-current {
+        border-color: #6cf49a;
+        background: #20bf63;
+        box-shadow: 0 0 0 5px rgba(6, 18, 32, 0.96), 0 0 24px rgba(82, 255, 142, 0.34);
+      }
+
+      .baggage-timeline-node.is-selected {
+        border-color: #7dc8ff;
+        box-shadow: 0 0 0 5px rgba(6, 18, 32, 0.96), 0 0 24px rgba(125, 200, 255, 0.36);
+      }
+
+      .baggage-timeline-label {
+        color: rgba(235, 246, 255, 0.84);
+        font-size: 11px;
+        font-weight: 850;
+        text-align: center;
+        text-transform: uppercase;
+        max-width: 110px;
+      }
+
+      .baggage-node-detail {
+        grid-column: 1 / -1;
+        padding: 12px 14px;
+        border: 1px solid rgba(125, 200, 255, 0.18);
+        border-radius: 14px;
+        background: rgba(0, 0, 0, 0.2);
+        color: rgba(235, 246, 255, 0.88);
+        line-height: 1.5;
+      }
+
+      .baggage-node-detail[hidden] {
+        display: none;
+      }
+
+      .baggage-node-detail b {
+        color: white;
+      }
+
+      @media (max-width: 980px) {
+        .baggage-timeline-header,
+        .baggage-timeline-row {
+          grid-template-columns: 1fr;
+        }
       }
 
       .detail-action-badge {
@@ -2209,6 +2392,10 @@
       .report-form.is-vip-mode,
       .report-form.is-inad-mode {
         display: none;
+      }
+
+      .report-form.is-baggage-mode .report-keyword-field input {
+        text-transform: uppercase;
       }
 
       .report-form.is-psm-mode .report-keyword-field,
@@ -3344,6 +3531,7 @@
             <button class="detail-action" id="report-psm-mode" type="button" data-report-mode="psm">PSM Report</button>
             <button class="detail-action" id="report-inad-mode" type="button" data-report-mode="inad">INAD Report</button>
             <button class="detail-action" id="report-wch-mode" type="button" data-report-mode="wch">WCH Report</button>
+            <button class="detail-action" id="report-baggage-mode" type="button" data-report-mode="baggage">Baggage Report</button>
           </div>
           <form class="report-form" id="report-form">
             <label class="report-field report-from-field"><span id="report-from-label">From</span><input id="report-from" type="date" required /></label>
@@ -3352,7 +3540,7 @@
             <button class="report-run" type="submit">Search</button>
           </form>
           <div class="report-actions-row"><button class="report-download" id="report-download" type="button" disabled>Download CSV</button></div>
-          <div id="report-output"><p class="panel-muted">Choose Sales Report, VIP Report, PSM Report, INAD Report, or WCH Report.</p></div>
+          <div id="report-output"><p class="panel-muted">Choose Sales Report, VIP Report, PSM Report, INAD Report, WCH Report, or Baggage Report.</p></div>
         </section>
 
         <section class="report-page" id="baggage-page" aria-label="Bag report" hidden>
@@ -3412,13 +3600,14 @@
               </div>
               <p class="message" id="rk-message">Search SY to load live flight data.</p>
               <div class="detail-actions" aria-label="Flight detail actions">
-                <button class="detail-action" type="button" data-panel="chd">CHD List <span class="detail-action-badge" id="chd-count"></span></button>
-                <button class="detail-action" type="button" data-panel="gov">GOV/AQQ <span class="detail-action-badge" id="gov-count"></span></button>
-                <button class="detail-action" type="button" data-panel="nbrd">CKIN/NBRD <span class="detail-action-badge" id="nbrd-count"></span></button>
-                <button class="detail-action" type="button" data-panel="wch">WCH <span class="detail-action-badge" id="wch-count">0</span></button>
+                <button class="detail-action" type="button" data-panel="chd" id="chd-action">CHD List <span class="detail-action-badge" id="chd-count"></span></button>
+                <button class="detail-action" type="button" data-panel="gov" id="gov-action">GOV/AQQ <span class="detail-action-badge" id="gov-count"></span></button>
+                <button class="detail-action" type="button" data-panel="webedi" id="webedi-action">WEB/EDI/RS <span class="detail-action-badge" id="webedi-count"></span></button>
+                <button class="detail-action" type="button" data-panel="nbrd" id="nbrd-action">CKIN/NBRD <span class="detail-action-badge" id="nbrd-count"></span></button>
                 <button class="detail-action warning-action" type="button" data-panel="warning" id="warning-action" hidden aria-label="Open warnings">⚠️ WARNING <span class="detail-action-badge warning-badge" id="warning-count">0</span></button>
-                <button class="detail-action" type="button" data-panel="membership">Membership</button>
+                <button class="detail-action" type="button" data-panel="wch">WCH <span class="detail-action-badge" id="wch-count">0</span></button>
                 <button class="detail-action" type="button" data-panel="psm">PSM/MSG <span class="detail-action-badge" id="psm-count"></span></button>
+                <button class="detail-action" type="button" data-panel="membership">Membership</button>
                 <button class="detail-action" type="button" data-report-shortcut="sales">Sales Report</button>
                 <button class="detail-action" type="button" data-report-shortcut="vip">VIP Report</button>
               </div>
@@ -3551,6 +3740,7 @@
       const reportPsmModeButton = document.querySelector("#report-psm-mode");
       const reportInadModeButton = document.querySelector("#report-inad-mode");
       const reportWchModeButton = document.querySelector("#report-wch-mode");
+      const reportBaggageModeButton = document.querySelector("#report-baggage-mode");
       const reportFromInput = document.querySelector("#report-from");
       const reportFromLabel = document.querySelector("#report-from-label");
       const reportToInput = document.querySelector("#report-to");
@@ -3562,6 +3752,7 @@
       const changePasswordForm = document.querySelector("#change-password-form");
       const newPasswordInput = document.querySelector("#new-password");
       const passwordStatus = document.querySelector("#password-status");
+      const WARNING_ACK_STORAGE_KEY = "mufc_warning_acknowledgements";
       const baseProgress = [0.05, 0.14, 0.23, 0.32, 0.41, 0.5, 0.59, 0.68, 0.77, 0.86, 0.95];
       const stageGroups = [
         { key: "preflight", start: baseProgress[0] - 0.02, end: baseProgress[3] + 0.02, labelAt: (baseProgress[0] + baseProgress[3]) / 2 },
@@ -3588,7 +3779,7 @@
       const APP_ENTRY_KEY = "mufc_allow_app_entry";
       const AUTH_SESSION_STARTED_KEY = "mufc_auth_session_started_at";
       const BAGGAGE_ONLY_EMAILS = new Set(["min@hm.com", "yogesh@hm.com", "ehsan@hm.com", "terry@hm.com", "steven@hm.com"]);
-      const AUTH_SESSION_LIMIT_MS = 30 * 60 * 1000;
+      const AUTH_SESSION_LIMIT_MS = 60 * 60 * 1000;
       const APP_ENTRY_GRACE_MS = 30 * 1000;
       const SY_AUTO_REFRESH_MS = 60 * 1000;
       let inactivityTimer = null;
@@ -3640,11 +3831,19 @@
         setText("#rk-message", "");
         setBadgeText("#chd-count", 0);
         setBadgeText("#gov-count", 0);
+        setBadgeText("#webedi-count", 0);
         setBadgeText("#nbrd-count", 0);
+        setActionIssueState("#chd-action", false);
+        setActionIssueState("#gov-action", false);
+        setActionIssueState("#webedi-action", false);
+        setActionIssueState("#nbrd-action", false);
         setText("#wch-count", "0");
         setText("#warning-count", "0");
         const warningAction = document.querySelector("#warning-action");
-        if (warningAction) warningAction.hidden = true;
+        if (warningAction) {
+          warningAction.hidden = true;
+          warningAction.classList.remove("is-critical-warning");
+        }
         setBadgeText("#psm-count", 0);
         if (bagReportButton) bagReportButton.hidden = true;
         if (salesReportButton) salesReportButton.hidden = true;
@@ -3736,6 +3935,13 @@
       function setBadgeText(selector, value) {
         const el = document.querySelector(selector);
         if (el) el.textContent = value ? String(value) : "";
+      }
+
+      function setActionIssueState(selector, hasIssue) {
+        const button = document.querySelector(selector);
+        if (!button) return;
+        button.classList.toggle("warning-action", Boolean(hasIssue));
+        button.querySelector(".detail-action-badge")?.classList.toggle("warning-badge", Boolean(hasIssue));
       }
 
       function countTriple(matchArray) {
@@ -4340,17 +4546,20 @@
         setText("#rk-message", sy.rkMessage || "No RK message found.");
         const chdIssues = (sy.chdList || []).filter((row) => row.hasChdCode === false).length;
         const gov = sy.govAqq || {};
-        const govIssueGroups = [gov.duplicatePassports, gov.aqqTclBnList, gov.govDtaBnList, gov.passportExpBnList, gov.passportCodeIssues];
+        const govIssueGroups = [gov.duplicatePassports, gov.aqqTclBnList, gov.govDtaBnList, gov.passportExpBnList, gov.wrongPassportBnList];
         const govCount = govIssueGroups.reduce((sum, value) => sum + (Array.isArray(value) ? value.length : 0), 0);
+        const webediCount = (gov.passportCodeIssues || []).length;
         const nbrdCount = (sy.bnAudit || []).filter((row) => /NBRD|CKIN/i.test(row?.apiReason || row?.tkReason || row?.visaReason || row?.bagReason || "")).length;
         setBadgeText("#chd-count", chdIssues);
         setBadgeText("#gov-count", govCount);
+        setBadgeText("#webedi-count", webediCount);
         setBadgeText("#nbrd-count", nbrdCount);
+        setActionIssueState("#chd-action", chdIssues > 0);
+        setActionIssueState("#gov-action", govCount > 0);
+        setActionIssueState("#webedi-action", webediCount > 0);
+        setActionIssueState("#nbrd-action", nbrdCount > 0);
         setText("#wch-count", (sy.wchList || []).length || "0");
-        const warningRows = buildWarningRows(sy);
-        setText("#warning-count", warningRows.length || "0");
-        const warningAction = document.querySelector("#warning-action");
-        if (warningAction) warningAction.hidden = warningRows.length === 0;
+        updateWarningActionState(buildWarningRows(sy));
         setBadgeText("#psm-count", (sy.psmList || []).length);
         if (bagReportButton) bagReportButton.hidden = !(sy.bagSheet?.hasData);
         refreshSalesReportButton(sy);
@@ -4510,7 +4719,7 @@
           ["USA TIME OUT", (gov.aqqTclBnList || []).map((bn) => ({ bn, reason: "USA TIME OUT" }))],
           ["CHN GOV FAIL", (gov.govDtaBnList || []).map((bn) => ({ bn, reason: "CHN GOV FAIL" }))],
           ["Passport Exp", (gov.passportExpBnList || []).map((bn) => ({ bn, reason: "Passport Exp" }))],
-          ["WEB/EDI/Reswipe", (gov.passportCodeIssues || []).map((bn) => ({ bn, reason: "WEB/EDI/Reswipe" }))],
+          ["Wrong Passport", (gov.wrongPassportBnList || []).map((bn) => ({ bn, reason: "Wrong Passport: passport number has fewer than 7 characters" }))],
         ];
         const passengerByBn = passengerLookupByBn();
         const auditByBn = auditLookupByBn();
@@ -4536,6 +4745,14 @@
         setPanelPassengerRows(rows);
       }
 
+      function renderWebEdiPanel() {
+        const gov = currentSy?.govAqq || {};
+        const rows = enrichRowsWithPassengerData((gov.passportCodeIssues || []).map((bn) => ({ bn, reason: "WEB/EDI/Reswipe" })));
+        const body = rows.length ? `<div class="panel-stats"><span class="status-fail">WEB/EDI/RS total: ${rows.length}</span></div>${renderBnButtons(rows, "", (row) => row.reason)}` : `<p class="panel-muted">No WEB/EDI/RS records found.</p>`;
+        renderPanel("WEB/EDI/RS", currentSy?.flightNo || "SY", body);
+        setPanelPassengerRows(rows);
+      }
+
       function renderWchPanel() {
         const rows = enrichRowsWithPassengerData(currentSy?.wchList || []);
         renderPanel("WCH", currentSy?.flightNo || "SY", renderBnButtons(rows, "No WCH records found.", (row) => [row.bn ? `BN ${row.bn}` : "", row.seat ? `Seat ${row.seat}` : "", Array.isArray(row.codes) ? row.codes.join("/") : row.code].filter(Boolean).join(" / "), (row, index) => bnCircleLabel(row.bn, String(index + 1).padStart(3, "0"))));
@@ -4558,7 +4775,7 @@
           if (!bn) return;
           byBn.set(bn, { ...(byBn.get(bn) || {}), ...passenger, ...row, passengerRecord: { ...(byBn.get(bn)?.passengerRecord || {}), ...passenger, ...row.passengerRecord } });
         };
-        [sy?.seatMapRecords, sy?.bnAudit, sy?.chdList, sy?.wchList].forEach((list) => (list || []).forEach(add));
+        [sy?.seatMapRecords, sy?.bnAudit, sy?.chdList, sy?.wchList, sy?.badSeatList].forEach((list) => (list || []).forEach(add));
         return [...byBn.values()];
       }
 
@@ -4610,6 +4827,49 @@
         return false;
       }
 
+      function warningAckStore() {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(WARNING_ACK_STORAGE_KEY) || "{}");
+          return parsed && typeof parsed === "object" ? parsed : {};
+        } catch {
+          return {};
+        }
+      }
+
+      function saveWarningAckStore(store) {
+        try {
+          localStorage.setItem(WARNING_ACK_STORAGE_KEY, JSON.stringify(store || {}));
+        } catch {}
+      }
+
+      function warningAckKey(row) {
+        return [currentSy?.flightNo || "SY", currentSy?.flightDate || "TODAY", normalizedBn(row?.bn || row?.passengerRecord?.bn), row?.seat || row?.passengerRecord?.seat || "", row?.warningType || "WARNING", row?.warningReason || ""].join("|").toUpperCase();
+      }
+
+      function applyWarningAck(rows = []) {
+        const store = warningAckStore();
+        return rows.map((row) => {
+          const ack = store[warningAckKey(row)];
+          return ack ? { ...row, acknowledgedBy: ack.by, acknowledgedAt: ack.at } : row;
+        });
+      }
+
+      function updateWarningActionState(rows = buildWarningRows()) {
+        const warningAction = document.querySelector("#warning-action");
+        const unackedCount = rows.filter((row) => !row.acknowledgedBy).length;
+        setText("#warning-count", rows.length || "0");
+        if (warningAction) {
+          warningAction.hidden = rows.length === 0;
+          warningAction.classList.toggle("is-critical-warning", unackedCount > 0);
+        }
+      }
+
+      function acknowledgeWarning(row) {
+        const store = warningAckStore();
+        store[warningAckKey(row)] = { by: currentUserName(), at: new Date().toISOString() };
+        saveWarningAckStore(store);
+      }
+
       function buildWarningRows(sy = currentSy) {
         const rows = [];
         const addWarning = (row, type, reason) => rows.push({ ...row, warningType: type, warningReason: reason, _panelCard: "warning" });
@@ -4628,18 +4888,22 @@
           if (/WCHC/.test(services)) {
             addWarning(row, "WCHC", "Passenger has WCHC wheelchair service.");
           }
-          if (row.hasBadSeat || row.passengerRecord?.hasBadSeat || /BAD\s*SEAT/i.test([row.warningReason, row.reason, row.apiReason, row.tkReason, row.visaReason, row.bagReason].filter(Boolean).join(" "))) {
-            addWarning(row, "BAD SEAT", "Passenger record contains BAD SEAT.");
+          if (row.hasBadSeat || row.passengerRecord?.hasBadSeat) {
+            addWarning(row, "BAD SEAT", row.badSeatReason || row.passengerRecord?.badSeatReason || "PD CKIN/BAD includes CKIN BAD SEAT.");
           }
         }
-        return rows.sort((a, b) => Number(a.bn || 9999) - Number(b.bn || 9999) || String(a.warningType || "").localeCompare(String(b.warningType || "")));
+        return applyWarningAck(rows.sort((a, b) => Number(a.bn || 9999) - Number(b.bn || 9999) || String(a.warningType || "").localeCompare(String(b.warningType || ""))));
       }
 
       function renderWarningPanel() {
         const rows = buildWarningRows();
-        const body = rows.length ? `<article class="warning-panel"><div class="panel-stats"><span class="status-warn">WARNING total: ${rows.length}</span></div><div class="warning-list">${rows.map((row, index) => `<div class="warning-card"><button class="bn-button is-warning" type="button" data-passenger-index="${index}" data-passenger-bn="${escapeHtml(row.bn || "")}">${escapeHtml(bnCircleLabel(row.bn))}</button><div class="warning-card-main"><div class="warning-card-head"><strong>${escapeHtml(passengerName(row) || "Passenger")}</strong><small>${escapeHtml(row.seat ? `Seat ${row.seat}` : "No seat")}</small></div><div class="warning-card-body">${escapeHtml(row.warningReason)}</div></div><span class="psm-badge">${escapeHtml(row.warningType)}</span></div>`).join("")}</div></article><div class="panel-side inline-record-side" style="margin-top:14px"><p class="panel-muted">Click a BN button to view the passenger record.</p></div>` : `<p class="panel-muted">No WARNING records found.</p>`;
+        const body = rows.length ? `<article class="warning-panel"><div class="panel-stats"><span class="status-warn">WARNING total: ${rows.length}</span><span class="status-ok">Acknowledged: ${rows.filter((row) => row.acknowledgedBy).length}</span></div><div class="warning-list">${rows.map((row, index) => {
+          const ackText = row.acknowledgedBy ? `Acknowledged by ${row.acknowledgedBy}${row.acknowledgedAt ? ` at ${new Date(row.acknowledgedAt).toLocaleString()}` : ""}` : "Not acknowledged";
+          return `<div class="warning-card ${row.acknowledgedBy ? "is-acknowledged" : ""}" data-warning-card="${index}"><button class="bn-button ${row.acknowledgedBy ? "" : "is-warning"}" type="button" data-passenger-index="${index}" data-passenger-bn="${escapeHtml(row.bn || "")}">${escapeHtml(bnCircleLabel(row.bn))}</button><div class="warning-card-main"><div class="warning-card-head"><strong>${escapeHtml(passengerName(row) || "Passenger")}</strong><small>${escapeHtml(row.seat ? `Seat ${row.seat}` : "No seat")}</small></div><div class="warning-card-body">${escapeHtml(row.warningReason)}</div><div class="warning-ack-row"><button class="warning-ack-button" type="button" data-warning-ack="${index}" ${row.acknowledgedBy ? "disabled" : ""}>${row.acknowledgedBy ? "Acknowledged" : "Acknowledge"}</button><span class="warning-ack-note">${escapeHtml(ackText)}</span></div></div><span class="psm-badge">${escapeHtml(row.warningType)}</span></div>`;
+        }).join("")}</div></article><div class="panel-side inline-record-side" style="margin-top:14px"><p class="panel-muted">Click a BN button to view the passenger record.</p></div>` : `<p class="panel-muted">No WARNING records found.</p>`;
         renderPanel("WARNING", currentSy?.flightNo || "SY", body);
         setPanelPassengerRows(rows);
+        updateWarningActionState(rows);
       }
 
       function membershipRank(tier) {
@@ -4732,7 +4996,7 @@
       }
 
       function setReportMode(mode, options = {}) {
-        activeReportMode = ["vip", "psm", "inad", "wch"].includes(mode) ? mode : "sales";
+        activeReportMode = ["vip", "psm", "inad", "wch", "baggage"].includes(mode) ? mode : "sales";
         setReportDefaults(options.forceToday);
         if (activeReportMode === "sales" && reportToInput) reportToInput.value = reportFromInput?.value || reportToInput.value;
         reportForm?.classList.toggle("is-sales-mode", activeReportMode === "sales");
@@ -4740,23 +5004,30 @@
         reportForm?.classList.toggle("is-psm-mode", activeReportMode === "psm");
         reportForm?.classList.toggle("is-inad-mode", activeReportMode === "inad");
         reportForm?.classList.toggle("is-wch-mode", activeReportMode === "wch");
+        reportForm?.classList.toggle("is-baggage-mode", activeReportMode === "baggage");
         reportSalesModeButton?.classList.toggle("is-active", activeReportMode === "sales");
         reportVipModeButton?.classList.toggle("is-active", activeReportMode === "vip");
         reportPsmModeButton?.classList.toggle("is-active", activeReportMode === "psm");
         reportInadModeButton?.classList.toggle("is-active", activeReportMode === "inad");
         reportWchModeButton?.classList.toggle("is-active", activeReportMode === "wch");
+        reportBaggageModeButton?.classList.toggle("is-active", activeReportMode === "baggage");
         if (reportFromLabel) reportFromLabel.textContent = activeReportMode === "sales" ? "Date" : "From";
+        const reportKeywordLabel = reportForm?.querySelector(".report-keyword-field span");
+        if (reportKeywordLabel) reportKeywordLabel.textContent = activeReportMode === "baggage" ? "Bag Tag" : "Search";
+        if (reportKeywordInput) reportKeywordInput.placeholder = activeReportMode === "baggage" ? "Optional bag tag" : "Optional filter";
         const reportRunButton = reportForm?.querySelector(".report-run");
         if (reportRunButton) reportRunButton.textContent = activeReportMode === "sales" ? "Download" : "Search";
-        if (reportDownloadButton) reportDownloadButton.hidden = activeReportMode === "sales";
+        if (reportDownloadButton) reportDownloadButton.hidden = activeReportMode === "sales" || activeReportMode === "baggage";
         if (reportOutput && options.resetOutput) {
           reportOutput.innerHTML = activeReportMode === "vip"
             ? `<p class="panel-muted">Loading VIP Report...</p>`
             : (activeReportMode === "inad"
               ? `<p class="panel-muted">Loading INAD Report...</p>`
-              : (["psm", "wch"].includes(activeReportMode)
-                ? `<p class="panel-muted">Choose a flight date range, then search ${activeReportMode === "wch" ? "WCH" : "PSM"} Report.</p>`
-                : `<p class="panel-muted">Choose a date, then download Sales Report.</p>`));
+              : (activeReportMode === "baggage"
+                ? `<p class="panel-muted">Select a submit-date range, optionally enter a bag tag, then click Search.</p>`
+                : (["psm", "wch"].includes(activeReportMode)
+                  ? `<p class="panel-muted">Choose a flight date range, then search ${activeReportMode === "wch" ? "WCH" : "PSM"} Report.</p>`
+                  : `<p class="panel-muted">Choose a date, then download Sales Report.</p>`)));
         }
         if (["vip", "psm", "inad", "wch"].includes(activeReportMode)) generateReport();
       }
@@ -5012,8 +5283,6 @@
             <div class="test-report-title"><strong>${escapeHtml(record.bagTag)}</strong><span class="panel-muted">${escapeHtml(record.direction || "Baggage report")}</span></div>
           </div>
           ${message ? `<p class="panel-muted status-ok">${escapeHtml(message)}</p>` : ""}
-          <h3>Details</h3>
-          ${testDataGrid(record)}
           ${renderTestTimeline(record.history)}
           ${showUpdateForm ? `<div class="test-report-head test-update-head"><h3>Update</h3></div>${renderTestUpdateForm(record, mode)}` : `<div class="test-form-actions"><button class="test-add-button" type="button" data-test-show-update>Update</button></div>`}
         </article>`;
@@ -5339,9 +5608,101 @@
         return data?.rows || [];
       }
 
+
+      function normalizeTimelineText(value) {
+        return String(value || "").trim().toUpperCase().replace(/[^A-Z0-9]+/g, "");
+      }
+
+      function baggageTimelineNodes(row) {
+        const sheetNodes = Array.isArray(row?.sheetNodes) ? row.sheetNodes : [];
+        const history = Array.isArray(row?.history) ? row.history : [];
+        const sourceNodes = history.length ? history : sheetNodes;
+        const nodes = sourceNodes.map((item, index) => {
+          const details = item?.details || {};
+          const status = item?.type || item?.label || details.status || row.currentStatus || row.status || `Step ${index + 1}`;
+          return {
+            label: status,
+            at: item?.at || "",
+            by: item?.by || "",
+            details,
+          };
+        });
+        if (!nodes.length) {
+          nodes.push({
+            label: row.currentStatus || row.status || "Created",
+            at: row.lastUpdated || row.lastUpdatedAt || row.submittedAt || "",
+            by: row.lastUpdatedBy || row.submittedBy || "",
+            details: {
+              flight: row.flight,
+              date: row.date,
+              location: row.location,
+              comment: row.comment,
+            },
+          });
+        }
+        const currentKey = normalizeTimelineText(row.currentStatus || row.status);
+        let currentIndex = nodes.findIndex((node) => normalizeTimelineText(node.label).includes(currentKey) || currentKey.includes(normalizeTimelineText(node.label)));
+        if (currentIndex < 0) currentIndex = nodes.length - 1;
+        return nodes.map((node, index) => ({ ...node, current: index === currentIndex }));
+      }
+
+      function baggageNodeDetailHtml(node, row) {
+        const details = Object.entries(node?.details || {}).filter(([, value]) => String(value || "").trim());
+        const detailHtml = details.length
+          ? details.map(([key, value]) => `<br><b>${escapeHtml(titleCaseTestLabel(key))}:</b> ${escapeHtml(value)}`).join("")
+          : "";
+        const atTime = node?.at ? new Date(node.at) : null;
+        const atText = atTime && !Number.isNaN(atTime.getTime()) ? atTime.toLocaleString() : (node?.at || "");
+        return `<b>${escapeHtml(node?.label || row?.currentStatus || "Update")}</b>${atText ? ` • ${escapeHtml(atText)}` : ""}${node?.by ? ` • ${escapeHtml(node.by)}` : ""}${detailHtml}`;
+      }
+
+      function renderBaggageTimelineRows(rows = []) {
+        if (!rows.length) return `<p class="panel-muted">No baggage report rows found.</p>`;
+        const header = `<div class="baggage-timeline-header"><span>Last Update</span><span>Submit Date</span><span>Bag Tag</span><span>Current Status</span><span>Tracking</span></div>`;
+        return `<div class="baggage-timeline-list">${header}${rows.map((row, rowIndex) => {
+          const nodes = baggageTimelineNodes(row);
+          const track = nodes.map((node, nodeIndex) => `<span class="baggage-timeline-step"><button class="baggage-timeline-node ${node.current ? "is-current" : ""}" type="button" data-baggage-row="${rowIndex}" data-baggage-node="${nodeIndex}" title="${escapeHtml(node.label || `Step ${nodeIndex + 1}`)}"><span class="sr-only">${escapeHtml(node.label || `Step ${nodeIndex + 1}`)}</span></button><span class="baggage-timeline-label">${escapeHtml(node.label || `Step ${nodeIndex + 1}`)}</span></span>${nodeIndex < nodes.length - 1 ? `<span class="baggage-timeline-segment" aria-hidden="true"></span>` : ""}`).join("");
+          return `<article class="baggage-timeline-row" data-baggage-row-card="${rowIndex}">
+            <span class="baggage-timeline-value">${escapeHtml(row.lastUpdated || row.lastUpdatedAt || "-")}</span>
+            <span class="baggage-timeline-value">${escapeHtml(row.submitDate || row.submittedAt || "-")}</span>
+            <strong class="baggage-timeline-value">${escapeHtml(row.bagTag || "-")}</strong>
+            <span class="baggage-timeline-value">${escapeHtml(row.currentStatus || row.status || "-")}</span>
+            <div class="baggage-timeline-track">${track}</div>
+            <div class="baggage-node-detail" data-baggage-detail hidden></div>
+          </article>`;
+        }).join("")}</div>`;
+      }
+
+      async function renderBaggageTimelineReport() {
+        if (!reportOutput) return;
+        reportOutput.innerHTML = `<p class="panel-muted">Loading Baggage Report...</p>`;
+        setReportCsv([], "baggage-report.csv");
+        try {
+          const today = ymdFromDate(new Date());
+          const from = reportFromInput?.value || today;
+          const to = reportToInput?.value || from;
+          const bagTag = normalizeTestBagTag(reportKeywordInput?.value || "");
+          if (from || to) reportDateRange(from, to);
+          const params = new URLSearchParams();
+          if (from) params.set("from", from);
+          if (to) params.set("to", to);
+          if (bagTag) params.set("bagTag", bagTag);
+          const data = await apiJson(`/test-baggage-report?${params.toString()}`);
+          const rows = data?.rows || [];
+          reportOutput._baggageRows = rows;
+          reportOutput.innerHTML = renderBaggageTimelineRows(rows);
+        } catch (error) {
+          reportOutput.innerHTML = `<p class="panel-muted status-fail">${escapeHtml(error?.message || "Baggage report lookup failed.")}</p>`;
+        }
+      }
+
       async function generateReport(event) {
         event?.preventDefault();
         if (!reportOutput) return;
+        if (activeReportMode === "baggage") {
+          await renderBaggageTimelineReport();
+          return;
+        }
         const type = ["vip", "psm", "inad", "wch"].includes(activeReportMode) ? activeReportMode : "sales";
         const today = ymdFromDate(new Date());
         const from = reportFromInput?.value || today;
@@ -5764,6 +6125,7 @@
           const panel = button.dataset.panel;
           if (panel === "chd") renderChdPanel();
           if (panel === "gov") renderGovPanel();
+          if (panel === "webedi") renderWebEdiPanel();
           if (panel === "nbrd") renderNbrdPanel();
           if (panel === "wch") renderWchPanel();
           if (panel === "warning") renderWarningPanel();
@@ -5857,11 +6219,30 @@
           if (statusEl) statusEl.textContent = error?.message || "Save failed.";
         }
       });
+
+      reportOutput?.addEventListener("click", (event) => {
+        const node = event.target.closest("[data-baggage-node]");
+        if (!node) return;
+        const rowIndex = Number(node.dataset.baggageRow || 0);
+        const nodeIndex = Number(node.dataset.baggageNode || 0);
+        const row = (reportOutput._baggageRows || [])[rowIndex];
+        if (!row) return;
+        const card = node.closest("[data-baggage-row-card]");
+        card?.querySelectorAll(".baggage-timeline-node").forEach((item) => item.classList.toggle("is-selected", item === node));
+        const detail = card?.querySelector("[data-baggage-detail]");
+        const nodes = baggageTimelineNodes(row);
+        if (detail) {
+          detail.hidden = false;
+          detail.innerHTML = baggageNodeDetailHtml(nodes[nodeIndex], row);
+        }
+      });
+
       reportSalesModeButton?.addEventListener("click", () => setReportMode("sales", { forceToday: true, resetOutput: true }));
       reportVipModeButton?.addEventListener("click", () => setReportMode("vip", { forceToday: true, resetOutput: true }));
       reportPsmModeButton?.addEventListener("click", () => setReportMode("psm", { forceToday: true, resetOutput: true }));
       reportInadModeButton?.addEventListener("click", () => setReportMode("inad", { forceToday: true, resetOutput: true }));
       reportWchModeButton?.addEventListener("click", () => setReportMode("wch", { forceToday: true, resetOutput: true }));
+      reportBaggageModeButton?.addEventListener("click", () => setReportMode("baggage", { forceToday: true, resetOutput: true }));
       reportForm.addEventListener("submit", generateReport);
       reportDownloadButton.addEventListener("click", downloadCurrentReportCsv);
       securityCheckButton.addEventListener("click", closeFlightMenuAfterAction(renderSecurityCheck));
@@ -5897,6 +6278,16 @@
           const row = rows[Number(securityButton.dataset.securityIndex)];
           const side = resultPanel.querySelector(".panel-side");
           if (side) side.innerHTML = securityCard(row);
+          return;
+        }
+        const warningAckButton = event.target.closest("[data-warning-ack]");
+        if (warningAckButton) {
+          const rows = resultPanel._passengerRows || [];
+          const row = rows[Number(warningAckButton.dataset.warningAck)];
+          if (row && !row.acknowledgedBy) {
+            acknowledgeWarning(row);
+            renderWarningPanel();
+          }
           return;
         }
         const passengerButton = event.target.closest("[data-passenger-index]");
