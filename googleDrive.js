@@ -515,6 +515,14 @@ function baggageReportDetails(values, headers) {
   return detail;
 }
 
+function baggageReportDateOnly(value) {
+  const raw = sanitizeSheetText(value, 80);
+  const iso = normalizeSheetDateToIso(raw);
+  if (iso) return iso;
+  const match = raw.match(/^(\d{4}-\d{2}-\d{2})T/);
+  return match ? match[1] : raw;
+}
+
 function baggageReportSheetNodes(values, headers, row = {}) {
   const details = baggageReportDetails(values, headers);
   const nodes = [{
@@ -542,7 +550,8 @@ async function getTestBaggageReportRows(options = {}) {
   const fromIso = normalizeSheetDateToIso(options.from);
   const toIso = normalizeSheetDateToIso(options.to);
   const bagTagNeedle = normalizeTestBagTag(options.bagTag || '');
-  return (rows || [])
+  const hasSearch = Boolean(fromIso || toIso || bagTagNeedle);
+  const result = (rows || [])
     .slice(startIndex)
     .map((values, offset) => {
       const rowNumber = startIndex + offset + 1;
@@ -551,7 +560,8 @@ async function getTestBaggageReportRows(options = {}) {
       const submitDateIso = normalizeSheetDateToIso(submitDate);
       const bagTagFromB = normalizeTestBagTag(values?.[1] || '');
       const bagTagFromA = normalizeTestBagTag(values?.[0] || '');
-      const lastUpdated = sanitizeSheetText(values?.[17] || mapped.lastUpdatedAt || mapped.submittedAt || '', 80);
+      const rawLastUpdated = sanitizeSheetText(values?.[17] || mapped.lastUpdatedAt || mapped.submittedAt || '', 80);
+      const lastUpdated = baggageReportDateOnly(rawLastUpdated);
       const row = {
         ...mapped,
         rowNumber,
@@ -560,6 +570,7 @@ async function getTestBaggageReportRows(options = {}) {
         bagTag: isValidTestBagTag(bagTagFromB) ? bagTagFromB : (mapped.bagTag || bagTagFromA),
         currentStatus: sanitizeSheetText(values?.[6] || mapped.status || '', 120),
         lastUpdated,
+        rawLastUpdated,
         raw: values || []
       };
       row.sheetNodes = baggageReportSheetNodes(values || [], headers, row);
@@ -573,10 +584,11 @@ async function getTestBaggageReportRows(options = {}) {
       return (!fromIso || row.submitDateIso >= fromIso) && (!toIso || row.submitDateIso <= toIso);
     })
     .sort((a, b) => {
-      const aTime = Date.parse(a.lastUpdated || a.lastUpdatedAt || a.submittedAt || a.submitDate || '') || 0;
-      const bTime = Date.parse(b.lastUpdated || b.lastUpdatedAt || b.submittedAt || b.submitDate || '') || 0;
+      const aTime = Date.parse(a.rawLastUpdated || a.lastUpdated || a.lastUpdatedAt || a.submittedAt || a.submitDate || '') || 0;
+      const bTime = Date.parse(b.rawLastUpdated || b.lastUpdated || b.lastUpdatedAt || b.submittedAt || b.submitDate || '') || 0;
       return bTime - aTime;
     });
+  return hasSearch ? result : result.slice(0, 20);
 }
 
 async function appendTestBaggageRecord(record) {
@@ -598,7 +610,7 @@ async function appendTestBaggageRecord(record) {
     date: sanitizeSheetText(record.date, 20),
     bagType: sanitizeSheetText(record.bagType, 80),
     location: sanitizeSheetText(record.location, 120),
-    status: sanitizeSheetText(record.status, 80),
+    status: sanitizeSheetText(record.status, 80) || (direction === 'Inbound' ? 'Bag location update' : ''),
     comment: sanitizeSheetText(record.comment, 500),
     rushTagNumber: sanitizeSheetText(record.rushTagNumber, 80),
     rushToWhere: sanitizeSheetText(record.rushToWhere, 120),
@@ -619,7 +631,7 @@ async function appendTestBaggageRecord(record) {
         date: sanitizeSheetText(record.date, 20),
         bagType: sanitizeSheetText(record.bagType, 80),
         location: sanitizeSheetText(record.location, 120),
-        status: sanitizeSheetText(record.status, 80),
+        status: sanitizeSheetText(record.status, 80) || (direction === 'Inbound' ? 'Bag location update' : ''),
         comment: sanitizeSheetText(record.comment, 500),
         rushTagNumber: sanitizeSheetText(record.rushTagNumber, 80),
         rushToWhere: sanitizeSheetText(record.rushToWhere, 120),
@@ -792,7 +804,7 @@ async function ensureReportSheetHeaders(type, rows) {
 function normalizeSheetDateToIso(value) {
   const raw = String(value || '').trim();
   if (!raw) return '';
-  let match = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  let match = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:T.*)?$/);
   if (match) return `${match[1]}-${String(Number(match[2])).padStart(2, '0')}-${String(Number(match[3])).padStart(2, '0')}`;
 
   match = raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2}|\d{4})(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?$/);
