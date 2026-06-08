@@ -1224,20 +1224,31 @@
         color: white;
       }
 
+      .warning-action.is-acknowledged-warning {
+        border-color: rgba(108, 244, 154, 0.86);
+        background: rgba(16, 102, 56, 0.58);
+        color: #9dffbe;
+        box-shadow: 0 0 24px rgba(82, 255, 142, 0.2);
+      }
+
+      .warning-action.is-acknowledged-warning:hover {
+        border-color: rgba(141, 255, 177, 0.98);
+        background: rgba(24, 130, 74, 0.66);
+      }
+
+      .warning-action.is-acknowledged-warning .warning-badge {
+        background: #20bf63;
+        color: white;
+      }
+
       .warning-card.is-acknowledged {
-        border-color: rgba(108, 244, 154, 0.46);
-        background: linear-gradient(135deg, rgba(20, 130, 74, 0.22), rgba(2, 35, 24, 0.5));
-        box-shadow: 0 0 24px rgba(82, 255, 142, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        border-color: rgba(120, 183, 255, 0.18);
+        background: rgba(2, 13, 24, 0.42);
       }
 
       .warning-card.is-acknowledged::before {
-        background: rgba(108, 244, 154, 0.9);
-        box-shadow: 0 0 18px rgba(82, 255, 142, 0.34);
-      }
-
-      .warning-card.is-acknowledged .bn-button {
-        border-color: rgba(108, 244, 154, 0.92);
-        color: #8dffb1;
+        background: rgba(120, 183, 255, 0.38);
+        box-shadow: none;
       }
 
       .warning-ack-row {
@@ -3896,7 +3907,7 @@
         const warningAction = document.querySelector("#warning-action");
         if (warningAction) {
           warningAction.hidden = true;
-          warningAction.classList.remove("is-critical-warning");
+          warningAction.classList.remove("is-critical-warning", "is-acknowledged-warning");
         }
         setBadgeText("#psm-count", 0);
         if (bagReportButton) bagReportButton.hidden = true;
@@ -4915,6 +4926,7 @@
         if (warningAction) {
           warningAction.hidden = rows.length === 0;
           warningAction.classList.toggle("is-critical-warning", unackedCount > 0);
+          warningAction.classList.toggle("is-acknowledged-warning", rows.length > 0 && unackedCount === 0);
         }
       }
 
