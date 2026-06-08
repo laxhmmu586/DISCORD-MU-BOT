@@ -2390,7 +2390,8 @@
       }
 
       .report-form.is-vip-mode,
-      .report-form.is-inad-mode {
+      .report-form.is-inad-mode,
+      .report-form.is-baggage-mode {
         display: none;
       }
 
@@ -5029,7 +5030,8 @@
                   ? `<p class="panel-muted">Choose a flight date range, then search ${activeReportMode === "wch" ? "WCH" : "PSM"} Report.</p>`
                   : `<p class="panel-muted">Choose a date, then download Sales Report.</p>`)));
         }
-        if (["vip", "psm", "inad", "wch"].includes(activeReportMode)) generateReport();
+        if (activeReportMode === "baggage") renderBaggageTimelineReport();
+        else if (["vip", "psm", "inad", "wch"].includes(activeReportMode)) generateReport();
       }
 
       function resetPanelState() {
