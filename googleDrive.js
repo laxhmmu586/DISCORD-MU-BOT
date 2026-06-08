@@ -556,18 +556,18 @@ async function getTestBaggageReportRows(options = {}) {
     .map((values, offset) => {
       const rowNumber = startIndex + offset + 1;
       const mapped = testBaggageRowFromSheet(values || [], rowNumber);
-      const submitDate = sanitizeSheetText(values?.[0] || mapped.submittedAt || '', 80);
-      const submitDateIso = normalizeSheetDateToIso(submitDate);
-      const bagTagFromB = normalizeTestBagTag(values?.[1] || '');
       const bagTagFromA = normalizeTestBagTag(values?.[0] || '');
-      const rawLastUpdated = sanitizeSheetText(values?.[17] || mapped.lastUpdatedAt || mapped.submittedAt || '', 80);
+      const submitDate = sanitizeSheetText(values?.[3] || mapped.date || mapped.submittedAt || '', 80);
+      const submitDateIso = normalizeSheetDateToIso(submitDate);
+      const rawLastUpdated = sanitizeSheetText(values?.[16] || values?.[17] || mapped.lastUpdatedAt || mapped.submittedAt || '', 80);
       const lastUpdated = baggageReportDateOnly(rawLastUpdated);
       const row = {
         ...mapped,
         rowNumber,
         submitDate,
         submitDateIso,
-        bagTag: isValidTestBagTag(bagTagFromB) ? bagTagFromB : (mapped.bagTag || bagTagFromA),
+        bagTag: isValidTestBagTag(bagTagFromA) ? bagTagFromA : mapped.bagTag,
+        flight: sanitizeSheetText(values?.[2] || mapped.flight || '', 20).toUpperCase(),
         currentStatus: sanitizeSheetText(values?.[6] || mapped.status || '', 120),
         lastUpdated,
         rawLastUpdated,

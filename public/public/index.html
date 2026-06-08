@@ -1385,6 +1385,29 @@
         color: white;
       }
 
+      .baggage-timeline-row.is-flight-mu583 {
+        border-color: rgba(108, 244, 154, 0.36);
+        background: linear-gradient(135deg, rgba(20, 130, 74, 0.18), rgba(2, 13, 24, 0.48));
+      }
+
+      .baggage-timeline-row.is-flight-mu586 {
+        border-color: rgba(125, 200, 255, 0.38);
+        background: linear-gradient(135deg, rgba(49, 126, 255, 0.18), rgba(2, 13, 24, 0.48));
+      }
+
+      .baggage-flight-badge {
+        display: inline-flex;
+        width: max-content;
+        margin-top: 5px;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.1);
+        color: rgba(235, 246, 255, 0.84);
+        font-size: 10px;
+        font-weight: 950;
+        letter-spacing: 0.5px;
+      }
+
       @media (max-width: 980px) {
         .baggage-timeline-header,
         .baggage-timeline-row {
@@ -4877,6 +4900,7 @@
           currentWarningAckMap = data?.acknowledgements || {};
           updateWarningActionState(buildWarningRows(sy));
           if (resultPanel?.dataset?.panelTitle === "WARNING") renderWarningPanel();
+          if (resultPanel?.dataset?.panelTitle === "CKIN/NBRD") renderNbrdPanel();
         } catch (error) {
           console.warn("Warning acknowledgement lookup failed.", error);
         }
@@ -4975,10 +4999,20 @@
       }
 
       function renderNbrdPanel() {
-        const rows = enrichRowsWithPassengerData((currentSy?.bnAudit || []).filter((row) => /NBRD|CKIN/i.test(row?.apiReason || row?.tkReason || row?.visaReason || row?.bagReason || "")));
-        const body = rows.length ? `<div class="panel-stats"><span class="status-fail">CKIN/NBRD total: ${rows.length}</span></div><div class="psm-card-list">${rows.map((row, index) => {
+        const rows = applyWarningAck(enrichRowsWithPassengerData((currentSy?.bnAudit || []).filter((row) => /NBRD|CKIN/i.test(row?.apiReason || row?.tkReason || row?.visaReason || row?.bagReason || ""))).map((row) => {
           const detailLines = [row.apiReason, row.tkReason, row.visaReason, row.bagReason].filter(Boolean);
-          return `<article class="psm-card"><div class="psm-card-head"><span><button class="bn-button is-warning" type="button" data-passenger-index="${index}" data-passenger-bn="${escapeHtml(row.bn || "")}">BN${escapeHtml(row.bn || "---")}</button> <small>${escapeHtml(passengerName(row))} • ${escapeHtml(row.seat || "---")}</small></span><span class="psm-badge">CKIN/NBRD</span></div><div class="psm-card-row"><b>Detail</b><br>${detailLines.map((line) => escapeHtml(line)).join("<br>")}</div></article>`;
+          return {
+            ...row,
+            warningType: "CKIN/NBRD",
+            warningReason: detailLines.join(" | ") || "CKIN/NBRD issue",
+          };
+        }));
+        const body = rows.length ? `<div class="panel-stats"><span class="status-fail">CKIN/NBRD total: ${rows.length}</span><span class="status-ok">Acknowledged: ${rows.filter((row) => (row.acknowledgements || []).length).length}</span></div><div class="psm-card-list">${rows.map((row, index) => {
+          const detailLines = [row.apiReason, row.tkReason, row.visaReason, row.bagReason].filter(Boolean);
+          const ackList = row.acknowledgements || [];
+          const ackText = ackList.length ? `Acknowledged by ${ackList.map((ack) => `${ack.by}${ack.at ? ` at ${new Date(ack.at).toLocaleString()}` : ""}`).join(", ")}` : "Not acknowledged";
+          const ownAck = userHasAcknowledged(ackList);
+          return `<article class="psm-card"><div class="psm-card-head"><span><button class="bn-button is-warning" type="button" data-passenger-index="${index}" data-passenger-bn="${escapeHtml(row.bn || "")}">BN${escapeHtml(row.bn || "---")}</button> <small>${escapeHtml(passengerName(row))} • ${escapeHtml(row.seat || "---")}</small></span><span class="psm-badge">CKIN/NBRD</span></div><div class="psm-card-row"><b>Detail</b><br>${detailLines.map((line) => escapeHtml(line)).join("<br>")}</div><div class="warning-ack-row"><button class="warning-ack-button" type="button" data-warning-ack="${index}" ${ownAck ? "disabled" : ""}>${ownAck ? "Acknowledged" : "Acknowledge"}</button><span class="warning-ack-note">${escapeHtml(ackText)}</span></div></article>`;
         }).join("")}</div>` : `<p class="panel-muted">No NBRD/CKIN issue found.</p>`;
         renderPanel("CKIN/NBRD", currentSy?.flightNo || "SY", body);
         setPanelPassengerRows(rows);
@@ -5026,7 +5060,18 @@
 
       function setReportMode(mode, options = {}) {
         activeReportMode = ["vip", "psm", "inad", "wch", "baggage"].includes(mode) ? mode : "sales";
-        setReportDefaults(options.forceToday);
+        if (activeReportMode === "baggage") {
+          if (options.forceToday) setReportDefaults(true);
+        } else {
+          setReportDefaults(options.forceToday);
+        }
+        if (reportFromInput) reportFromInput.required = activeReportMode !== "baggage";
+        if (reportToInput) reportToInput.required = activeReportMode !== "baggage";
+        if (activeReportMode === "baggage" && options.resetOutput) {
+          if (reportFromInput) reportFromInput.value = "";
+          if (reportToInput) reportToInput.value = "";
+          if (reportKeywordInput) reportKeywordInput.value = "";
+        }
         if (activeReportMode === "sales" && reportToInput) reportToInput.value = reportFromInput?.value || reportToInput.value;
         reportForm?.classList.toggle("is-sales-mode", activeReportMode === "sales");
         reportForm?.classList.toggle("is-vip-mode", activeReportMode === "vip");
@@ -5708,11 +5753,12 @@
         const header = `<div class="baggage-timeline-header"><span>Last Update</span><span>Submit Date</span><span>Bag Tag</span><span>Current Status</span><span>Tracking</span></div>`;
         return `<div class="baggage-timeline-list">${header}${rows.map((row, rowIndex) => {
           const nodes = baggageTimelineNodes(row);
-          const track = nodes.map((node, nodeIndex) => `<span class="baggage-timeline-step"><button class="baggage-timeline-node ${node.current ? "is-current" : ""}" type="button" data-baggage-row="${rowIndex}" data-baggage-node="${nodeIndex}" title="${escapeHtml(node.label || `Step ${nodeIndex + 1}`)}"><span class="sr-only">${escapeHtml(node.label || `Step ${nodeIndex + 1}`)}</span></button><span class="baggage-timeline-label">${escapeHtml(node.label || `Step ${nodeIndex + 1}`)}</span></span>${nodeIndex < nodes.length - 1 ? `<span class="baggage-timeline-segment" aria-hidden="true"></span>` : ""}`).join("");
-          return `<article class="baggage-timeline-row" data-baggage-row-card="${rowIndex}">
+          const track = nodes.map((node, nodeIndex) => `<span class="baggage-timeline-step"><button class="baggage-timeline-node ${node.current ? "is-current" : ""}" type="button" data-baggage-row="${rowIndex}" data-baggage-node="${nodeIndex}" aria-label="${escapeHtml(node.label || `Step ${nodeIndex + 1}`)}" title="${escapeHtml(node.label || `Step ${nodeIndex + 1}`)}"></button><span class="baggage-timeline-label">${escapeHtml(node.label || `Step ${nodeIndex + 1}`)}</span></span>${nodeIndex < nodes.length - 1 ? `<span class="baggage-timeline-segment" aria-hidden="true"></span>` : ""}`).join("");
+          const flightClass = /MU583/i.test(row.flight || "") ? " is-flight-mu583" : (/MU586/i.test(row.flight || "") ? " is-flight-mu586" : "");
+          return `<article class="baggage-timeline-row${flightClass}" data-baggage-row-card="${rowIndex}">
             <span class="baggage-timeline-value">${escapeHtml(baggageDisplayDate(row.lastUpdated || row.lastUpdatedAt) || "-")}</span>
             <span class="baggage-timeline-value">${escapeHtml(baggageDisplayDate(row.submitDate || row.submittedAt) || "-")}</span>
-            <strong class="baggage-timeline-value">${escapeHtml(row.bagTag || "-")}</strong>
+            <strong class="baggage-timeline-value">${escapeHtml(row.bagTag || "-")}${row.flight ? `<small class="baggage-flight-badge">${escapeHtml(row.flight)}</small>` : ""}</strong>
             <span class="baggage-timeline-value">${escapeHtml(row.currentStatus || row.status || "-")}</span>
             <div class="baggage-timeline-track">${track}</div>
             <div class="baggage-node-detail" data-baggage-detail hidden></div>
@@ -5725,12 +5771,11 @@
         reportOutput.innerHTML = `<p class="panel-muted">Loading Baggage Report...</p>`;
         setReportCsv([], "baggage-report.csv");
         try {
-          const today = ymdFromDate(new Date());
           const latestOnly = Boolean(options.latestOnly);
-          const from = latestOnly ? "" : (reportFromInput?.value || today);
-          const to = latestOnly ? "" : (reportToInput?.value || from);
+          const from = latestOnly ? "" : (reportFromInput?.value || "");
+          const to = latestOnly ? "" : (reportToInput?.value || "");
           const bagTag = latestOnly ? "" : normalizeTestBagTag(reportKeywordInput?.value || "");
-          if (!latestOnly && (from || to)) reportDateRange(from, to);
+          if (!latestOnly && from && to) reportDateRange(from, to);
           const params = new URLSearchParams();
           if (from) params.set("from", from);
           if (to) params.set("to", to);
@@ -6302,7 +6347,7 @@
       reportPsmModeButton?.addEventListener("click", () => setReportMode("psm", { forceToday: true, resetOutput: true }));
       reportInadModeButton?.addEventListener("click", () => setReportMode("inad", { forceToday: true, resetOutput: true }));
       reportWchModeButton?.addEventListener("click", () => setReportMode("wch", { forceToday: true, resetOutput: true }));
-      reportBaggageModeButton?.addEventListener("click", () => { setReportMode("baggage", { forceToday: true, resetOutput: true }); renderBaggageTimelineReport({ latestOnly: true }); });
+      reportBaggageModeButton?.addEventListener("click", () => { setReportMode("baggage", { resetOutput: true }); renderBaggageTimelineReport({ latestOnly: true }); });
       reportForm.addEventListener("submit", generateReport);
       reportDownloadButton.addEventListener("click", downloadCurrentReportCsv);
       securityCheckButton.addEventListener("click", closeFlightMenuAfterAction(renderSecurityCheck));
@@ -6347,7 +6392,8 @@
           if (row && !userHasAcknowledged(row.acknowledgements)) {
             warningAckButton.textContent = "Saving...";
             await acknowledgeWarning(row);
-            renderWarningPanel();
+            if (resultPanel?.dataset?.panelTitle === "CKIN/NBRD") renderNbrdPanel();
+            else renderWarningPanel();
           }
           return;
         }
