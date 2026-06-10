@@ -234,7 +234,6 @@
 
       const APP_ENTRY_KEY = "mufc_allow_app_entry";
       const AUTH_SESSION_STARTED_KEY = "mufc_auth_session_started_at";
-      const BAGGAGE_ONLY_EMAILS = new Set(["min@hm.com", "yogesh@hm.com", "ehsan@hm.com", "terry@hm.com", "steven@hm.com"]);
 
       function allowAppEntry() {
         const now = String(Date.now());
@@ -242,24 +241,7 @@
         sessionStorage.setItem(AUTH_SESSION_STARTED_KEY, now);
       }
 
-      function isBaggageOnlyEmail(email) {
-        return BAGGAGE_ONLY_EMAILS.has(String(email || "").trim().toLowerCase());
-      }
-
-      function getRedirectTarget(user) {
-        if (isBaggageOnlyEmail(user?.email)) {
-          return new URL("baggage.html", window.location.href).href;
-        }
-        const params = new URLSearchParams(window.location.search);
-        const rawNext = params.get("next") || "index.html";
-        try {
-          const url = new URL(rawNext, window.location.href);
-          if (url.origin === window.location.origin) {
-            return url.href;
-          }
-        } catch (error) {
-          // Fall back to the app home page when the next URL is invalid.
-        }
+      function getRedirectTarget() {
         return new URL("index.html", window.location.href).href;
       }
 
