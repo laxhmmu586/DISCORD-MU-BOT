@@ -3841,7 +3841,6 @@
       const auth = window.firebase?.apps?.length && window.firebase?.auth ? firebase.auth() : null;
       const APP_ENTRY_KEY = "mufc_allow_app_entry";
       const AUTH_SESSION_STARTED_KEY = "mufc_auth_session_started_at";
-      const BAGGAGE_ONLY_EMAILS = new Set(["min@hm.com", "yogesh@hm.com", "ehsan@hm.com", "terry@hm.com", "steven@hm.com"]);
       const AUTH_SESSION_LIMIT_MS = 60 * 60 * 1000;
       const APP_ENTRY_GRACE_MS = 30 * 1000;
       const SY_AUTO_REFRESH_MS = 60 * 1000;
@@ -3943,9 +3942,6 @@
         return authSessionAgeMs() >= AUTH_SESSION_LIMIT_MS;
       }
 
-      function isBaggageOnlyUser(user) {
-        return BAGGAGE_ONLY_EMAILS.has(String(user?.email || "").trim().toLowerCase());
-      }
 
       function allowInternalPageRedirect() {
         sessionStorage.setItem(APP_ENTRY_KEY, String(Date.now()));
@@ -6569,16 +6565,6 @@
         auth.onAuthStateChanged((user) => {
           if (!user) {
             window.location.replace(loginUrl());
-            return;
-          }
-          if (isBaggageOnlyUser(user)) {
-            allowInternalPageRedirect();
-            window.location.replace(new URL("baggage.html", window.location.href).href);
-            return;
-          }
-          if (isBaggageOnlyUser(user)) {
-            allowInternalPageRedirect();
-            window.location.replace(new URL("baggage.html", window.location.href).href);
             return;
           }
           currentUser.textContent = user.email || "Authenticated user";

@@ -141,13 +141,23 @@ function cleanVipPassengerName(value) {
   return cleanVipName(value).replace(/\/+$/g, '');
 }
 
+function hasVipServiceMarker(section) {
+  return /(?:^|\s)PSM-\/VIP(?:\s|$)/im.test(section)
+    || /(?:^|[\s/])VIP(?:[\s/]|$)/i.test(section);
+}
+
 function extractVipNameCandidate(section) {
-  const namMatch = String(section || '').match(/^\s*NAM\s+([A-Z][A-Z/]+VIP)\b/im);
+  const text = String(section || '');
+  const namMatch = text.match(/^\s*NAM\s+([A-Z][A-Z/]+VIP)\b/im);
   if (namMatch) return { name: cleanVipPassengerName(namMatch[1]), source: 'NAM' };
 
-  const passengerLine = String(section || '').match(/^\s*\d+\.\s*([A-Z][A-Z/]+(?:VIP)?\+?)\b.*?\bBN\s*\d{1,3}\b/im);
+  const passengerLine = text.match(/^\s*\d+\.\s*([A-Z][A-Z/]+(?:VIP)?\+?)\b.*?\bBN\s*\d{1,3}\b/im);
   const passengerName = cleanVipName(passengerLine?.[1]);
   if (passengerName.endsWith('VIP')) return { name: cleanVipPassengerName(passengerName), source: 'Passenger Line' };
+
+  if (passengerName && hasVipServiceMarker(text)) {
+    return { name: cleanVipPassengerName(passengerName), source: 'VIP Service' };
+  }
 
   return null;
 }
