@@ -275,6 +275,11 @@ function passengerNameContainsVip(value) {
   return /VIP$/i.test(String(value || '').replace(/\+$/g, '').replace(/\s+/g, ''));
 }
 
+function sectionContainsVipService(value) {
+  return /(?:^|\s)PSM-\/VIP(?:\s|$)/im.test(value)
+    || /(?:^|[\s/])VIP(?:[\s/]|$)/i.test(value);
+}
+
 function extractBagsForVip(section) {
   const bagTags = [];
   const bagTagMatch = String(section || '').match(/\bBAGTAG\/([^\n\r]+)/i);
@@ -299,14 +304,16 @@ function extractVipRowsFromFbLog(log) {
     const namMatches = [...section.matchAll(/^\s*NAM\s+([A-Z][A-Z/]+VIP)\b/gim)];
     const vipNamName = namMatches.map((match) => match[1]).find(passengerNameContainsVip) || '';
     const passengerMatches = [...section.matchAll(/^\s*\d+\.\s*([A-Z][A-Z/]+(?:VIP)?\+?)\s+.*?\bBN\s*(\d{1,3})\b\s+\*?(\d{1,3}[A-Z])?/gim)];
+    const hasVipService = sectionContainsVipService(section);
+    if (!vipNamName && !hasVipService && !passengerMatches.some((match) => passengerNameContainsVip(match[1]))) continue;
     const prBn = section.match(/\bBN\s*(\d{1,3})\b/i)?.[1] || '';
     const bags = extractBagsForVip(section);
 
     const candidates = passengerMatches.length ? passengerMatches : [[null, vipNamName, prBn, '']];
     for (const match of candidates) {
       const rawPassengerName = match[1] || '';
-      const rawName = passengerNameContainsVip(rawPassengerName) ? rawPassengerName : vipNamName;
-      if (!passengerNameContainsVip(rawName)) continue;
+      const rawName = passengerNameContainsVip(rawPassengerName) ? rawPassengerName : (vipNamName || (hasVipService ? rawPassengerName : ''));
+      if (!passengerNameContainsVip(rawName) && !hasVipService) continue;
 
       const row = {
         flightDate: prMatch[2].toUpperCase(),
