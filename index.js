@@ -241,9 +241,13 @@ async function syncFscRateFromTodaySyLog(log, isoDate) {
     return { skipped: true, reason: 'already synced', rate };
   }
 
-  const result = await updateFscExchangeRate(rate);
-  fscRateSheetSyncCache.set(isoDate, rate);
-  return { ...result, skipped: false };
+  try {
+    const result = await updateFscExchangeRate(rate);
+    fscRateSheetSyncCache.set(isoDate, rate);
+    return { ...result, skipped: false };
+  } catch (err) {
+    return { skipped: true, rate, error: err?.message || 'Sheet sync failed' };
+  }
 }
 
 function reportPassengerName(row) {
