@@ -3447,6 +3447,20 @@
           overflow: visible;
         }
 
+        .security-hint {
+          display: none;
+        }
+
+        .result-panel[data-panel-title="Security Check"] .panel-workspace {
+          gap: 12px;
+        }
+
+        .result-panel[data-panel-title="Security Check"] .security-detail-side {
+          position: sticky;
+          top: 8px;
+          z-index: 4;
+        }
+
         .security-grid .bn-button {
           width: 54px;
           min-width: 54px;
@@ -6151,7 +6165,8 @@
         const buttons = `<div class="security-grid">${allRows.map((row, index) => `<button class="bn-button ${row.missing || row.deleted || row.offloaded || row.status === "DELETED" ? "is-deleted" : `is-${securityTone(row)}`}" type="button" data-security-index="${index}">${escapeHtml(row.bn)}</button>`).join("")}</div>`;
         const stats = `<div class="panel-stats"><span class="status-ok">${passCount} pass</span><span class="status-warn">${warningCount} warning</span><span class="status-fail">${failCount} fail</span></div>`;
         const selectedRow = selectedBn ? allRows.find((row) => String(row.bn || "") === String(selectedBn).padStart(3, "0")) : null;
-        renderPanel("Security Check", currentSy?.flightNo || "SY", `${stats}<div class="panel-workspace"><div>${buttons}</div><div class="panel-side">${selectedRow ? securityCard(selectedRow) : `<p class="panel-muted">Click a BN button to view the passenger record.</p>`}</div></div>`, { panelClass: "is-full-page" });
+        const sideClass = selectedRow ? "panel-side security-detail-side" : "panel-side security-empty-side";
+        renderPanel("Security Check", currentSy?.flightNo || "SY", `${stats}<div class="panel-workspace"><div>${buttons}</div><div class="${sideClass}">${selectedRow ? securityCard(selectedRow) : `<p class="panel-muted security-hint">Click a BN button to view the passenger record.</p>`}</div></div>`, { panelClass: "is-full-page" });
         setPanelPassengerRows(allRows);
       }
 
@@ -6543,7 +6558,20 @@
           const rows = resultPanel._passengerRows || [];
           const row = rows[Number(securityButton.dataset.securityIndex)];
           const side = resultPanel.querySelector(".panel-side");
-          if (side) side.innerHTML = securityCard(row);
+          if (side) {
+            side.classList.remove("security-empty-side");
+            side.classList.add("security-detail-side");
+            side.innerHTML = securityCard(row);
+          }
+          return;
+        }
+        if (mobileOrbitQuery.matches && resultPanel?.dataset?.panelTitle === "Security Check" && resultPanel.querySelector(".panel-side .record-card")) {
+          const side = resultPanel.querySelector(".panel-side");
+          if (side) {
+            side.classList.remove("security-detail-side");
+            side.classList.add("security-empty-side");
+            side.innerHTML = `<p class="panel-muted security-hint">Click a BN button to view the passenger record.</p>`;
+          }
           return;
         }
         const warningAckButton = event.target.closest("[data-warning-ack]");
