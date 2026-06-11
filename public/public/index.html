@@ -3241,6 +3241,16 @@
           stroke-width: 3.2;
         }
 
+        .node::after {
+          top: 24px;
+          max-width: 92px;
+          min-width: 0;
+          white-space: normal;
+          text-align: center;
+          font-size: 10px;
+          line-height: 1.08;
+        }
+
         .node-card {
           width: min(300px, calc(100vw - 40px));
           max-height: min(280px, calc(100vh - 180px));
@@ -3429,7 +3439,31 @@
         }
 
         .security-grid {
-          grid-template-columns: repeat(3, minmax(72px, 1fr));
+          grid-template-columns: repeat(4, minmax(54px, 1fr));
+          gap: 12px 8px;
+          justify-items: center;
+          padding: 4px 0 12px;
+          max-height: none;
+          overflow: visible;
+        }
+
+        .security-grid .bn-button {
+          width: 54px;
+          min-width: 54px;
+          height: 54px;
+          min-height: 54px;
+          border-width: 2px;
+          font-size: 13px;
+        }
+
+        .panel-workspace > div:first-child,
+        .panel-workspace > .panel-side {
+          min-width: 0;
+        }
+
+        .panel-workspace > .panel-side .panel-muted {
+          white-space: normal;
+          overflow-wrap: anywhere;
         }
 
         .panel-head,
@@ -3668,7 +3702,7 @@
                 <button class="detail-action" type="button" data-panel="webedi" id="webedi-action">WEB/EDI/RS <span class="detail-action-badge" id="webedi-count"></span></button>
                 <button class="detail-action" type="button" data-panel="nbrd" id="nbrd-action">CKIN/NBRD <span class="detail-action-badge" id="nbrd-count"></span></button>
                 <button class="detail-action warning-action" type="button" data-panel="warning" id="warning-action" hidden aria-label="Open warnings">⚠️ WARNING <span class="detail-action-badge warning-badge" id="warning-count">0</span></button>
-                <button class="detail-action" type="button" data-panel="wch">WCH <span class="detail-action-badge" id="wch-count">0</span></button>
+                <button class="detail-action" type="button" data-panel="wch">WCH <span class="detail-action-badge" id="wch-count"></span></button>
                 <button class="detail-action" type="button" data-panel="psm">PSM/MSG <span class="detail-action-badge" id="psm-count"></span></button>
                 <button class="detail-action" type="button" data-panel="membership">Membership</button>
                 <button class="detail-action" type="button" data-report-shortcut="sales">Sales Report</button>
@@ -3819,17 +3853,11 @@
       const passwordStatus = document.querySelector("#password-status");
       const WARNING_ACK_STORAGE_KEY = "mufc_warning_acknowledgements";
       const baseProgress = [0.05, 0.125, 0.2, 0.275, 0.35, 0.425, 0.5, 0.575, 0.65, 0.725, 0.8, 0.875, 0.95];
-      const stageGroups = [
-        { key: "preflight", start: baseProgress[0] - 0.02, end: baseProgress[4] + 0.02, labelAt: (baseProgress[0] + baseProgress[4]) / 2 },
-        { key: "operation", start: baseProgress[5] - 0.02, end: baseProgress[10] + 0.02, labelAt: (baseProgress[5] + baseProgress[10]) / 2 },
-        { key: "postflight", start: baseProgress[11] - 0.02, end: baseProgress[11] + 0.08, labelAt: baseProgress[11] + 0.03 },
-      ];
+      const mobileProgress = [-0.46, -0.30, -0.14, 0.02, 0.18, 0.34, 0.5, 0.66, 0.82, 0.98, 1.14, 1.30, 1.46];
       const desktopOrbitPath = "M-260 318 C 120 178, 390 142, 600 142 S 1080 178, 1460 318";
       const mobileOrbitPath = "M-240 296 C 130 210, 390 184, 600 184 S 1070 210, 1440 296";
       const mobileOrbitQuery = window.matchMedia("(max-width: 760px)");
       const centerProgress = 0.5;
-      const minScrollOffset = centerProgress - baseProgress[baseProgress.length - 1];
-      const maxScrollOffset = centerProgress - baseProgress[0];
       const nodeKeyMap = {
         CREW_APIS: "crewApis",
         GD_CHECK: "gdCheck",
@@ -3849,6 +3877,7 @@
       let inactivityTimer = null;
       let syAutoRefreshTimer = null;
       let syAutoRefreshInFlight = false;
+      let pendingSyRefresh = null;
       let selectedIndex = 0;
       let scrollOffset = 0;
       let dragStartX = 0;
@@ -3881,6 +3910,18 @@
         document.body.classList.toggle("is-loading", Boolean(loading));
       }
 
+      function isSyRefreshProtectedView() {
+        const protectedPanelTitles = ["Security Check", "Seat Map"];
+        return document.body.classList.contains("is-report-view") || protectedPanelTitles.includes(resultPanel?.dataset?.panelTitle || "");
+      }
+
+      function applyPendingSyRefresh() {
+        if (!pendingSyRefresh || isSyRefreshProtectedView()) return;
+        const sy = pendingSyRefresh;
+        pendingSyRefresh = null;
+        updateFlightFromSy(sy);
+      }
+
       function clearSyDashboard() {
         currentSy = null;
         currentWarningAckMap = {};
@@ -3903,7 +3944,7 @@
         setActionIssueState("#gov-action", false);
         setActionIssueState("#webedi-action", false);
         setActionIssueState("#nbrd-action", false);
-        setText("#wch-count", "0");
+        setBadgeText("#wch-count", 0);
         setText("#warning-count", "0");
         const warningAction = document.querySelector("#warning-action");
         if (warningAction) {
@@ -4097,7 +4138,22 @@
         return Math.min(Math.max(value, min), max);
       }
 
+      function progressStops() {
+        return mobileOrbitQuery.matches ? mobileProgress : baseProgress;
+      }
+
+      function stageGroupsForProgress(progress = progressStops()) {
+        return [
+          { key: "preflight", start: progress[0] - 0.02, end: progress[4] + 0.02, labelAt: (progress[0] + progress[4]) / 2 },
+          { key: "operation", start: progress[5] - 0.02, end: progress[10] + 0.02, labelAt: (progress[5] + progress[10]) / 2 },
+          { key: "postflight", start: progress[11] - 0.02, end: progress[11] + 0.08, labelAt: progress[11] + 0.03 },
+        ];
+      }
+
       function clampScrollOffset(value) {
+        const progress = progressStops();
+        const minScrollOffset = centerProgress - progress[progress.length - 1];
+        const maxScrollOffset = centerProgress - progress[0];
         return clamp(value, minScrollOffset, maxScrollOffset);
       }
 
@@ -4172,10 +4228,11 @@
       function findNearestCenter() {
         let nearestIndex = selectedIndex;
         let nearestDistance = Number.POSITIVE_INFINITY;
+        const progress = progressStops();
         nodes.forEach((node) => {
           const index = Number(node.dataset.index);
-          const progress = baseProgress[index] + scrollOffset;
-          const distance = Math.abs(progress - centerProgress);
+          const nodeProgress = progress[index] + scrollOffset;
+          const distance = Math.abs(nodeProgress - centerProgress);
           if (distance < nearestDistance) {
             nearestDistance = distance;
             nearestIndex = index;
@@ -4202,7 +4259,7 @@
         const arcMap = new Map([...stageArcPaths].map((item) => [`${item.dataset.stageArc}:${item.dataset.stageSide}`, item]));
         const textPathMap = new Map([...stageArcTextPaths].map((item) => [item.dataset.stageTextPath, item]));
         const labelMap = new Map([...stageArcLabels].map((item) => [item.dataset.stageLabel, item]));
-        stageGroups.forEach((stage) => {
+        stageGroupsForProgress().forEach((stage) => {
           const center = stage.labelAt + scrollOffset;
           const gap = mobileOrbitQuery.matches ? 0.045 : 0.055;
           const segments = { start: [], end: [], text: [] };
@@ -4234,13 +4291,15 @@
 
       function placeNodes() {
         updateOrbitPath();
+        scrollOffset = clampScrollOffset(scrollOffset);
         const pathLength = missionPath.getTotalLength();
         renderStageArcs(pathLength);
+        const progress = progressStops();
         nodes.forEach((node) => {
           const index = Number(node.dataset.index);
-          const progress = baseProgress[index] + scrollOffset;
-          const isVisible = progress >= 0 && progress <= 1;
-          const point = missionPath.getPointAtLength(pathLength * clamp(progress, 0, 1));
+          const nodeProgress = progress[index] + scrollOffset;
+          const isVisible = nodeProgress >= 0 && nodeProgress <= 1;
+          const point = missionPath.getPointAtLength(pathLength * clamp(nodeProgress, 0, 1));
           node.style.left = `${(point.x / 1200) * 100}%`;
           node.style.top = `${(point.y / 360) * 100}%`;
           node.style.opacity = isVisible ? "1" : "0";
@@ -4251,7 +4310,7 @@
 
       function resetTimelineCenter(key = null) {
         selectedIndex = key ? findNodeIndexByKey(key) : determineDefaultCenter();
-        scrollOffset = clampScrollOffset(centerProgress - baseProgress[selectedIndex]);
+        scrollOffset = clampScrollOffset(centerProgress - progressStops()[selectedIndex]);
         placeNodes();
       }
 
@@ -4650,7 +4709,7 @@
         setActionIssueState("#gov-action", govCount > 0);
         setActionIssueState("#webedi-action", webediCount > 0);
         setActionIssueState("#nbrd-action", nbrdCount > 0);
-        setText("#wch-count", (sy.wchList || []).length || "0");
+        setBadgeText("#wch-count", (sy.wchList || []).length);
         updateWarningActionState(buildWarningRows(sy));
         loadWarningAcknowledgements(sy);
         setBadgeText("#psm-count", (sy.psmList || []).length);
@@ -4739,17 +4798,22 @@
         }
         if (syAutoRefreshInFlight) return;
         syAutoRefreshInFlight = true;
-        const showLoading = !currentSy;
+        const protectedView = isSyRefreshProtectedView();
+        const showLoading = !currentSy && !protectedView;
         if (showLoading) setLoadingState(true);
         const refreshQuery = activeSyQuery || "SY";
         try {
           const data = await fetchSearch(refreshQuery);
           if (refreshQuery !== activeSyQuery || !isTodaySyQuery(activeSyQuery)) return;
           if (!data?.sy) throw new Error(data?.error || "No SY payload returned.");
+          if (isSyRefreshProtectedView()) {
+            pendingSyRefresh = data.sy;
+            return;
+          }
+          pendingSyRefresh = null;
           updateFlightFromSy(data.sy);
-          resultPanel.innerHTML = "";
         } catch (error) {
-          if (refreshQuery === activeSyQuery && isTodaySyQuery(activeSyQuery)) {
+          if (refreshQuery === activeSyQuery && isTodaySyQuery(activeSyQuery) && !isSyRefreshProtectedView()) {
             clearSyDashboard();
             resultPanel.innerHTML = "";
           }
@@ -4773,10 +4837,10 @@
         if (!raw) return;
         latestQuery = raw;
         const isSySearch = isSyQuery(raw);
+        setLoadingState(true);
         if (isSySearch) {
           activeSyQuery = normalizeSyQuery(raw);
           if (!isTodaySyQuery(activeSyQuery)) stopSyAutoRefresh();
-          setLoadingState(true);
         } else resultPanel.innerHTML = "";
         try {
           const data = await fetchSearch(raw);
@@ -4795,7 +4859,7 @@
           }
           renderPanel("Search Error", raw, `<p class="panel-muted status-fail">${escapeHtml(error?.message || "Search failed.")}</p>`);
         } finally {
-          if (isSySearch) setLoadingState(false);
+          setLoadingState(false);
         }
       }
 
@@ -5176,6 +5240,7 @@
         resultPanel.innerHTML = "";
         resultPanel.className = "result-panel";
         resultPanel.style.top = "";
+        delete resultPanel.dataset.panelTitle;
         resultPanel._passengerRows = [];
       }
 
@@ -5194,6 +5259,7 @@
           window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
         }
         window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+        applyPendingSyRefresh();
       }
 
       function showReportPage(mode = activeReportMode) {
@@ -6455,7 +6521,9 @@
           resultPanel.innerHTML = "";
           resultPanel.className = "result-panel";
           resultPanel.style.top = "";
+          delete resultPanel.dataset.panelTitle;
           resultPanel._passengerRows = [];
+          applyPendingSyRefresh();
           return;
         }
         const reviewButton = event.target.closest("[data-review-status]");
@@ -6607,7 +6675,7 @@
       }
 
       resetTimelineCenter();
-      mobileOrbitQuery.addEventListener("change", () => placeNodes());
+      mobileOrbitQuery.addEventListener("change", () => resetTimelineCenter(nodes[selectedIndex]?.dataset?.key));
       new ResizeObserver(() => placeNodes()).observe(timelineShell);
     </script>
   </body>
