@@ -47,6 +47,19 @@ const sheets =
 const FULL_SHEET_ID =
   '1FjdIg_b1iIfcAbCsxGBmIMnhFxA70sRo7cs4Vr4OLpc';
 
+const FSC_RATE_SHEET_ID =
+  process.env.FSC_RATE_SHEET_ID || '1-BnQrtRj6-uTgoC89uj8zQ1dZTcSh96QFRH-_Tf4JEQ';
+const FSC_RATE_SHEET_GID =
+  Number(process.env.FSC_RATE_SHEET_GID || 1436143706);
+const FSC_RATE_CELL =
+  process.env.FSC_RATE_CELL || 'I8';
+const SY_BOOKING_SHEET_ID =
+  process.env.SY_BOOKING_SHEET_ID || FSC_RATE_SHEET_ID;
+const SY_BOOKING_SHEET_GID =
+  Number(process.env.SY_BOOKING_SHEET_GID || 701688915);
+const SY_BOOKING_RANGE =
+  process.env.SY_BOOKING_RANGE || 'F7:F9';
+
 const ENABLE_240_SHEET =
   String(process.env.ENABLE_240_SHEET || 'true').toLowerCase() !== 'false';
 
@@ -81,6 +94,82 @@ function normalizeFlightDate(value) {
   const mon = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'][month - 1];
   if (!mon || !day) return '';
   return `${String(day).padStart(2, '0')}${mon}`;
+}
+
+
+function escapeSheetTitle(title) {
+  return `'${String(title || '').replace(/'/g, "''")}'`;
+}
+
+function extractFscExchangeRate(value) {
+  const match = String(value || '').match(/\bRATE\s+BSR\s+1\s*CNY\s*=\s*(\d+(?:\.\d+)?)\s*USD\b/i);
+  return match?.[1] || '';
+}
+
+async function updateFscExchangeRate(rate) {
+  const normalizedRate = String(rate || '').trim();
+  if (!/^\d+(?:\.\d+)?$/.test(normalizedRate)) {
+    throw new Error('Invalid FSC exchange rate.');
+  }
+
+  const title = await resolveSheetTitleByGid(FSC_RATE_SHEET_ID, FSC_RATE_SHEET_GID);
+  if (!title) {
+    throw new Error(`Sheet gid ${FSC_RATE_SHEET_GID} was not found in spreadsheet ${FSC_RATE_SHEET_ID}.`);
+  }
+  const range = `${escapeSheetTitle(title)}!${FSC_RATE_CELL}`;
+  const res = await sheets.spreadsheets.values.update({
+    spreadsheetId: FSC_RATE_SHEET_ID,
+    range,
+    valueInputOption: 'USER_ENTERED',
+    requestBody: { values: [[normalizedRate]] }
+  });
+
+  return {
+    rate: normalizedRate,
+    spreadsheetId: FSC_RATE_SHEET_ID,
+    gid: FSC_RATE_SHEET_GID,
+    cell: FSC_RATE_CELL,
+    sheetTitle: title,
+    updatedRange: res.data.updatedRange || range
+  };
+}
+
+function normalizeSyBookingCounts(counts) {
+  if (!Array.isArray(counts) || counts.length !== 3) {
+    throw new Error('Invalid SY booking counts.');
+  }
+
+  return counts.map((value) => {
+    const digits = String(value ?? '').replace(/\D/g, '');
+    if (!digits) throw new Error('Invalid SY booking count.');
+    return String(Number(digits));
+  });
+}
+
+async function updateSyBookingCounts(counts) {
+  const [first, business, economy] = normalizeSyBookingCounts(counts);
+  const title = await resolveSheetTitleByGid(SY_BOOKING_SHEET_ID, SY_BOOKING_SHEET_GID);
+  if (!title) {
+    throw new Error(`Sheet gid ${SY_BOOKING_SHEET_GID} was not found in spreadsheet ${SY_BOOKING_SHEET_ID}.`);
+  }
+
+  const range = `${escapeSheetTitle(title)}!${SY_BOOKING_RANGE}`;
+  const values = [[first], [business], [economy]];
+  const res = await sheets.spreadsheets.values.update({
+    spreadsheetId: SY_BOOKING_SHEET_ID,
+    range,
+    valueInputOption: 'USER_ENTERED',
+    requestBody: { values }
+  });
+
+  return {
+    counts: { first, business, economy },
+    spreadsheetId: SY_BOOKING_SHEET_ID,
+    gid: SY_BOOKING_SHEET_GID,
+    range: SY_BOOKING_RANGE,
+    sheetTitle: title,
+    updatedRange: res.data.updatedRange || range
+  };
 }
 
 async function getFullSheetRows() {
@@ -2253,5 +2342,9 @@ module.exports = {
   findTestBaggageByTag,
   getTestBaggageReportRows,
   appendTestBaggageRecord,
-  updateTestBaggageRecord
+  updateTestBaggageRecord,
+  updateFscExchangeRate,
+  extractFscExchangeRate,
+  updateSyBookingCounts,
+  normalizeSyBookingCounts
 };
