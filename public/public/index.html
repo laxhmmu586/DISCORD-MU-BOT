@@ -4791,10 +4791,10 @@
         if (!raw) return;
         latestQuery = raw;
         const isSySearch = isSyQuery(raw);
+        setLoadingState(true);
         if (isSySearch) {
           activeSyQuery = normalizeSyQuery(raw);
           if (!isTodaySyQuery(activeSyQuery)) stopSyAutoRefresh();
-          if (!currentSy) setLoadingState(true);
         } else resultPanel.innerHTML = "";
         try {
           const data = await fetchSearch(raw);
@@ -4813,7 +4813,7 @@
           }
           renderPanel("Search Error", raw, `<p class="panel-muted status-fail">${escapeHtml(error?.message || "Search failed.")}</p>`);
         } finally {
-          if (isSySearch) setLoadingState(false);
+          setLoadingState(false);
         }
       }
 
