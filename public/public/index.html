@@ -3668,7 +3668,7 @@
                 <button class="detail-action" type="button" data-panel="webedi" id="webedi-action">WEB/EDI/RS <span class="detail-action-badge" id="webedi-count"></span></button>
                 <button class="detail-action" type="button" data-panel="nbrd" id="nbrd-action">CKIN/NBRD <span class="detail-action-badge" id="nbrd-count"></span></button>
                 <button class="detail-action warning-action" type="button" data-panel="warning" id="warning-action" hidden aria-label="Open warnings">⚠️ WARNING <span class="detail-action-badge warning-badge" id="warning-count">0</span></button>
-                <button class="detail-action" type="button" data-panel="wch">WCH <span class="detail-action-badge" id="wch-count">0</span></button>
+                <button class="detail-action" type="button" data-panel="wch">WCH <span class="detail-action-badge" id="wch-count"></span></button>
                 <button class="detail-action" type="button" data-panel="psm">PSM/MSG <span class="detail-action-badge" id="psm-count"></span></button>
                 <button class="detail-action" type="button" data-panel="membership">Membership</button>
                 <button class="detail-action" type="button" data-report-shortcut="sales">Sales Report</button>
@@ -3849,6 +3849,7 @@
       let inactivityTimer = null;
       let syAutoRefreshTimer = null;
       let syAutoRefreshInFlight = false;
+      let pendingSyRefresh = null;
       let selectedIndex = 0;
       let scrollOffset = 0;
       let dragStartX = 0;
@@ -3881,6 +3882,18 @@
         document.body.classList.toggle("is-loading", Boolean(loading));
       }
 
+      function isSyRefreshProtectedView() {
+        const protectedPanelTitles = ["Security Check", "Seat Map"];
+        return document.body.classList.contains("is-report-view") || protectedPanelTitles.includes(resultPanel?.dataset?.panelTitle || "");
+      }
+
+      function applyPendingSyRefresh() {
+        if (!pendingSyRefresh || isSyRefreshProtectedView()) return;
+        const sy = pendingSyRefresh;
+        pendingSyRefresh = null;
+        updateFlightFromSy(sy);
+      }
+
       function clearSyDashboard() {
         currentSy = null;
         currentWarningAckMap = {};
@@ -3903,7 +3916,7 @@
         setActionIssueState("#gov-action", false);
         setActionIssueState("#webedi-action", false);
         setActionIssueState("#nbrd-action", false);
-        setText("#wch-count", "0");
+        setBadgeText("#wch-count", 0);
         setText("#warning-count", "0");
         const warningAction = document.querySelector("#warning-action");
         if (warningAction) {
@@ -4650,7 +4663,7 @@
         setActionIssueState("#gov-action", govCount > 0);
         setActionIssueState("#webedi-action", webediCount > 0);
         setActionIssueState("#nbrd-action", nbrdCount > 0);
-        setText("#wch-count", (sy.wchList || []).length || "0");
+        setBadgeText("#wch-count", (sy.wchList || []).length);
         updateWarningActionState(buildWarningRows(sy));
         loadWarningAcknowledgements(sy);
         setBadgeText("#psm-count", (sy.psmList || []).length);
@@ -4739,17 +4752,22 @@
         }
         if (syAutoRefreshInFlight) return;
         syAutoRefreshInFlight = true;
-        const showLoading = !currentSy;
+        const protectedView = isSyRefreshProtectedView();
+        const showLoading = !currentSy && !protectedView;
         if (showLoading) setLoadingState(true);
         const refreshQuery = activeSyQuery || "SY";
         try {
           const data = await fetchSearch(refreshQuery);
           if (refreshQuery !== activeSyQuery || !isTodaySyQuery(activeSyQuery)) return;
           if (!data?.sy) throw new Error(data?.error || "No SY payload returned.");
+          if (isSyRefreshProtectedView()) {
+            pendingSyRefresh = data.sy;
+            return;
+          }
+          pendingSyRefresh = null;
           updateFlightFromSy(data.sy);
-          resultPanel.innerHTML = "";
         } catch (error) {
-          if (refreshQuery === activeSyQuery && isTodaySyQuery(activeSyQuery)) {
+          if (refreshQuery === activeSyQuery && isTodaySyQuery(activeSyQuery) && !isSyRefreshProtectedView()) {
             clearSyDashboard();
             resultPanel.innerHTML = "";
           }
@@ -4776,7 +4794,7 @@
         if (isSySearch) {
           activeSyQuery = normalizeSyQuery(raw);
           if (!isTodaySyQuery(activeSyQuery)) stopSyAutoRefresh();
-          setLoadingState(true);
+          if (!currentSy) setLoadingState(true);
         } else resultPanel.innerHTML = "";
         try {
           const data = await fetchSearch(raw);
@@ -5176,6 +5194,7 @@
         resultPanel.innerHTML = "";
         resultPanel.className = "result-panel";
         resultPanel.style.top = "";
+        delete resultPanel.dataset.panelTitle;
         resultPanel._passengerRows = [];
       }
 
@@ -5194,6 +5213,7 @@
           window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
         }
         window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+        applyPendingSyRefresh();
       }
 
       function showReportPage(mode = activeReportMode) {
@@ -6455,7 +6475,9 @@
           resultPanel.innerHTML = "";
           resultPanel.className = "result-panel";
           resultPanel.style.top = "";
+          delete resultPanel.dataset.panelTitle;
           resultPanel._passengerRows = [];
+          applyPendingSyRefresh();
           return;
         }
         const reviewButton = event.target.closest("[data-review-status]");
