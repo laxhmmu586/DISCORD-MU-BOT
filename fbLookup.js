@@ -33,6 +33,7 @@ const {
 } = require('./googleDrive');
 const { findSYInfo } = require('./syParser');
 
+
 function getCabinFromSeat(seat) {
   const row = parseInt((seat || '').match(/\d+/)?.[0]);
   if (!row) return 'Economy';

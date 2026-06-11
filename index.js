@@ -51,7 +51,9 @@ const {
   findTestBaggageByTag,
   getTestBaggageReportRows,
   appendTestBaggageRecord,
-  updateTestBaggageRecord
+  updateTestBaggageRecord,
+  updateFscExchangeRate,
+  extractFscExchangeRate
 
 } = require('./googleDrive');
 
@@ -226,6 +228,22 @@ async function getLogForIsoDate(isoDate) {
 function isoDateToSyDate(isoDate) {
   const parts = isoDateToLogDateParts(isoDate);
   return parts?.date || '';
+}
+
+const fscRateSheetSyncCache = new Map();
+
+async function syncFscRateFromTodaySyLog(log, isoDate) {
+  if (isoDate !== todayIsoUtc()) return { skipped: true, reason: 'not today' };
+  const rate = extractFscExchangeRate(log);
+  if (!rate) return { skipped: true, reason: 'rate not found' };
+
+  if (fscRateSheetSyncCache.get(isoDate) === rate) {
+    return { skipped: true, reason: 'already synced', rate };
+  }
+
+  const result = await updateFscExchangeRate(rate);
+  fscRateSheetSyncCache.set(isoDate, rate);
+  return { ...result, skipped: false };
 }
 
 function reportPassengerName(row) {
@@ -1221,6 +1239,12 @@ app.get(
         const yearFromFlight = m?.[3] ? (2000 + Number(m[3])) : fullYear;
         const isoDate = m ? `${yearFromFlight}-${months[m[2]] || '01'}-${m[1]}` : '';
         const syBagInfo = isoDate ? await getSyBagInfoByDate(isoDate, syInfo.flightDate) : null;
+        try {
+          syInfo.fscRateSheetSync = await syncFscRateFromTodaySyLog(log, isoDate);
+        } catch (err) {
+          console.warn('FSC exchange rate sheet sync skipped:', err?.message || err);
+          syInfo.fscRateSheetSync = { skipped: true, error: err?.message || 'Sheet sync failed' };
+        }
         try {
           syInfo.psmMsgSheetSync = await syncPsmMsgRowsFromSyInfo(syInfo);
         } catch (err) {
