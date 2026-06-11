@@ -3241,6 +3241,16 @@
           stroke-width: 3.2;
         }
 
+        .node::after {
+          top: 24px;
+          max-width: 92px;
+          min-width: 0;
+          white-space: normal;
+          text-align: center;
+          font-size: 10px;
+          line-height: 1.08;
+        }
+
         .node-card {
           width: min(300px, calc(100vw - 40px));
           max-height: min(280px, calc(100vh - 180px));
@@ -3429,7 +3439,31 @@
         }
 
         .security-grid {
-          grid-template-columns: repeat(3, minmax(72px, 1fr));
+          grid-template-columns: repeat(4, minmax(54px, 1fr));
+          gap: 12px 8px;
+          justify-items: center;
+          padding: 4px 0 12px;
+          max-height: none;
+          overflow: visible;
+        }
+
+        .security-grid .bn-button {
+          width: 54px;
+          min-width: 54px;
+          height: 54px;
+          min-height: 54px;
+          border-width: 2px;
+          font-size: 13px;
+        }
+
+        .panel-workspace > div:first-child,
+        .panel-workspace > .panel-side {
+          min-width: 0;
+        }
+
+        .panel-workspace > .panel-side .panel-muted {
+          white-space: normal;
+          overflow-wrap: anywhere;
         }
 
         .panel-head,
@@ -3819,17 +3853,11 @@
       const passwordStatus = document.querySelector("#password-status");
       const WARNING_ACK_STORAGE_KEY = "mufc_warning_acknowledgements";
       const baseProgress = [0.05, 0.125, 0.2, 0.275, 0.35, 0.425, 0.5, 0.575, 0.65, 0.725, 0.8, 0.875, 0.95];
-      const stageGroups = [
-        { key: "preflight", start: baseProgress[0] - 0.02, end: baseProgress[4] + 0.02, labelAt: (baseProgress[0] + baseProgress[4]) / 2 },
-        { key: "operation", start: baseProgress[5] - 0.02, end: baseProgress[10] + 0.02, labelAt: (baseProgress[5] + baseProgress[10]) / 2 },
-        { key: "postflight", start: baseProgress[11] - 0.02, end: baseProgress[11] + 0.08, labelAt: baseProgress[11] + 0.03 },
-      ];
+      const mobileProgress = [-0.46, -0.30, -0.14, 0.02, 0.18, 0.34, 0.5, 0.66, 0.82, 0.98, 1.14, 1.30, 1.46];
       const desktopOrbitPath = "M-260 318 C 120 178, 390 142, 600 142 S 1080 178, 1460 318";
       const mobileOrbitPath = "M-240 296 C 130 210, 390 184, 600 184 S 1070 210, 1440 296";
       const mobileOrbitQuery = window.matchMedia("(max-width: 760px)");
       const centerProgress = 0.5;
-      const minScrollOffset = centerProgress - baseProgress[baseProgress.length - 1];
-      const maxScrollOffset = centerProgress - baseProgress[0];
       const nodeKeyMap = {
         CREW_APIS: "crewApis",
         GD_CHECK: "gdCheck",
@@ -4110,7 +4138,22 @@
         return Math.min(Math.max(value, min), max);
       }
 
+      function progressStops() {
+        return mobileOrbitQuery.matches ? mobileProgress : baseProgress;
+      }
+
+      function stageGroupsForProgress(progress = progressStops()) {
+        return [
+          { key: "preflight", start: progress[0] - 0.02, end: progress[4] + 0.02, labelAt: (progress[0] + progress[4]) / 2 },
+          { key: "operation", start: progress[5] - 0.02, end: progress[10] + 0.02, labelAt: (progress[5] + progress[10]) / 2 },
+          { key: "postflight", start: progress[11] - 0.02, end: progress[11] + 0.08, labelAt: progress[11] + 0.03 },
+        ];
+      }
+
       function clampScrollOffset(value) {
+        const progress = progressStops();
+        const minScrollOffset = centerProgress - progress[progress.length - 1];
+        const maxScrollOffset = centerProgress - progress[0];
         return clamp(value, minScrollOffset, maxScrollOffset);
       }
 
@@ -4185,10 +4228,11 @@
       function findNearestCenter() {
         let nearestIndex = selectedIndex;
         let nearestDistance = Number.POSITIVE_INFINITY;
+        const progress = progressStops();
         nodes.forEach((node) => {
           const index = Number(node.dataset.index);
-          const progress = baseProgress[index] + scrollOffset;
-          const distance = Math.abs(progress - centerProgress);
+          const nodeProgress = progress[index] + scrollOffset;
+          const distance = Math.abs(nodeProgress - centerProgress);
           if (distance < nearestDistance) {
             nearestDistance = distance;
             nearestIndex = index;
@@ -4215,7 +4259,7 @@
         const arcMap = new Map([...stageArcPaths].map((item) => [`${item.dataset.stageArc}:${item.dataset.stageSide}`, item]));
         const textPathMap = new Map([...stageArcTextPaths].map((item) => [item.dataset.stageTextPath, item]));
         const labelMap = new Map([...stageArcLabels].map((item) => [item.dataset.stageLabel, item]));
-        stageGroups.forEach((stage) => {
+        stageGroupsForProgress().forEach((stage) => {
           const center = stage.labelAt + scrollOffset;
           const gap = mobileOrbitQuery.matches ? 0.045 : 0.055;
           const segments = { start: [], end: [], text: [] };
@@ -4247,13 +4291,15 @@
 
       function placeNodes() {
         updateOrbitPath();
+        scrollOffset = clampScrollOffset(scrollOffset);
         const pathLength = missionPath.getTotalLength();
         renderStageArcs(pathLength);
+        const progress = progressStops();
         nodes.forEach((node) => {
           const index = Number(node.dataset.index);
-          const progress = baseProgress[index] + scrollOffset;
-          const isVisible = progress >= 0 && progress <= 1;
-          const point = missionPath.getPointAtLength(pathLength * clamp(progress, 0, 1));
+          const nodeProgress = progress[index] + scrollOffset;
+          const isVisible = nodeProgress >= 0 && nodeProgress <= 1;
+          const point = missionPath.getPointAtLength(pathLength * clamp(nodeProgress, 0, 1));
           node.style.left = `${(point.x / 1200) * 100}%`;
           node.style.top = `${(point.y / 360) * 100}%`;
           node.style.opacity = isVisible ? "1" : "0";
@@ -4264,7 +4310,7 @@
 
       function resetTimelineCenter(key = null) {
         selectedIndex = key ? findNodeIndexByKey(key) : determineDefaultCenter();
-        scrollOffset = clampScrollOffset(centerProgress - baseProgress[selectedIndex]);
+        scrollOffset = clampScrollOffset(centerProgress - progressStops()[selectedIndex]);
         placeNodes();
       }
 
@@ -6629,7 +6675,7 @@
       }
 
       resetTimelineCenter();
-      mobileOrbitQuery.addEventListener("change", () => placeNodes());
+      mobileOrbitQuery.addEventListener("change", () => resetTimelineCenter(nodes[selectedIndex]?.dataset?.key));
       new ResizeObserver(() => placeNodes()).observe(timelineShell);
     </script>
   </body>
