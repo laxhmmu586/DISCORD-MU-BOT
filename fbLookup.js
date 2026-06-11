@@ -28,10 +28,18 @@ const {
 
   getFlightLogByDate,
 
-  appendVipReportRows
+  appendVipReportRows,
+
+  updateFscExchangeRate
 
 } = require('./googleDrive');
 const { findSYInfo } = require('./syParser');
+
+
+function extractFscExchangeRate(value) {
+  const match = String(value || '').match(/\bRATE\s+BSR\s+1\s*CNY\s*=\s*(\d+(?:\.\d+)?)\s*USD\b/i);
+  return match?.[1] || '';
+}
 
 function getCabinFromSeat(seat) {
   const row = parseInt((seat || '').match(/\d+/)?.[0]);
@@ -536,6 +544,17 @@ module.exports = (client) => {
 
     const content = message.content.trim();
     const upper = content.toUpperCase();
+
+    const fscRate = extractFscExchangeRate(content);
+    if (fscRate) {
+      try {
+        const result = await updateFscExchangeRate(fscRate);
+        return message.reply(`FSC exchange rate ${result.rate} saved to ${result.sheetTitle}!${result.cell}.`);
+      } catch (err) {
+        console.error('FSC exchange rate sheet update failed:', err);
+        return message.reply('FSC exchange rate found, but sheet update failed.');
+      }
+    }
 
     let query = '';
     let mode = '';
