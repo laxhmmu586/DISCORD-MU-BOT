@@ -53,7 +53,8 @@ const {
   appendTestBaggageRecord,
   updateTestBaggageRecord,
   updateFscExchangeRate,
-  extractFscExchangeRate
+  extractFscExchangeRate,
+  updateSyBookingCounts
 
 } = require('./googleDrive');
 
@@ -247,6 +248,24 @@ async function syncFscRateFromTodaySyLog(log, isoDate) {
     return { ...result, skipped: false };
   } catch (err) {
     return { skipped: true, rate, error: err?.message || 'Sheet sync failed' };
+  }
+}
+
+function syBookingCountsFromRetMatch(matchArray) {
+  if (!Array.isArray(matchArray) || matchArray.length < 4) return null;
+  return [matchArray[1], matchArray[2], matchArray[3]];
+}
+
+async function syncSyBookingFromTodaySy(syInfo, isoDate) {
+  if (isoDate !== todayIsoUtc()) return { skipped: true, reason: 'not today' };
+  const counts = syBookingCountsFromRetMatch(syInfo?.reservationTicketed);
+  if (!counts) return { skipped: true, reason: 'RET booking not found' };
+
+  try {
+    const result = await updateSyBookingCounts(counts);
+    return { ...result, skipped: false };
+  } catch (err) {
+    return { skipped: true, counts: { first: counts[0], business: counts[1], economy: counts[2] }, error: err?.message || 'Sheet sync failed' };
   }
 }
 
@@ -1248,6 +1267,12 @@ app.get(
         } catch (err) {
           console.warn('FSC exchange rate sheet sync skipped:', err?.message || err);
           syInfo.fscRateSheetSync = { skipped: true, error: err?.message || 'Sheet sync failed' };
+        }
+        try {
+          syInfo.bookingSheetSync = await syncSyBookingFromTodaySy(syInfo, isoDate);
+        } catch (err) {
+          console.warn('SY booking sheet sync skipped:', err?.message || err);
+          syInfo.bookingSheetSync = { skipped: true, error: err?.message || 'Sheet sync failed' };
         }
         try {
           syInfo.psmMsgSheetSync = await syncPsmMsgRowsFromSyInfo(syInfo);
