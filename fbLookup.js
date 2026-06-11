@@ -36,11 +36,6 @@ const {
 const { findSYInfo } = require('./syParser');
 
 
-function extractFscExchangeRate(value) {
-  const match = String(value || '').match(/\bRATE\s+BSR\s+1\s*CNY\s*=\s*(\d+(?:\.\d+)?)\s*USD\b/i);
-  return match?.[1] || '';
-}
-
 function getCabinFromSeat(seat) {
   const row = parseInt((seat || '').match(/\d+/)?.[0]);
   if (!row) return 'Economy';

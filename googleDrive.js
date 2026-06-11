@@ -95,6 +95,11 @@ function escapeSheetTitle(title) {
   return `'${String(title || '').replace(/'/g, "''")}'`;
 }
 
+function extractFscExchangeRate(value) {
+  const match = String(value || '').match(/\bRATE\s+BSR\s+1\s*CNY\s*=\s*(\d+(?:\.\d+)?)\s*USD\b/i);
+  return match?.[1] || '';
+}
+
 async function updateFscExchangeRate(rate) {
   const normalizedRate = String(rate || '').trim();
   if (!/^\d+(?:\.\d+)?$/.test(normalizedRate)) {
@@ -2294,5 +2299,6 @@ module.exports = {
   getTestBaggageReportRows,
   appendTestBaggageRecord,
   updateTestBaggageRecord,
-  updateFscExchangeRate
+  updateFscExchangeRate,
+  extractFscExchangeRate
 };
