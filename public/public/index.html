@@ -4745,7 +4745,7 @@
         syAutoRefreshTimer = null;
       }
 
-      async function refreshSy({ silent = true } = {}) {
+      async function refreshSy({ silent = true, background = false } = {}) {
         if (!isTodaySyQuery(activeSyQuery)) {
           stopSyAutoRefresh();
           return;
@@ -4782,7 +4782,7 @@
         activeSyQuery = normalizeSyQuery(query || "SY");
         stopSyAutoRefresh();
         if (!isTodaySyQuery(activeSyQuery)) return;
-        if (immediate) refreshSy();
+        if (immediate) refreshSy({ background: true });
         syAutoRefreshTimer = setInterval(refreshSy, SY_AUTO_REFRESH_MS);
       }
 
