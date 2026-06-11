@@ -232,20 +232,50 @@ function isoDateToSyDate(isoDate) {
 }
 
 const fscRateSheetSyncCache = new Map();
+const syBookingSheetSyncCache = new Map();
+const preflightStepCache = new Map();
+
+function preflightCacheKey(syInfo, isoDate, stepKey) {
+  return [syInfo?.flightNo || 'SY', isoDate || todayIsoUtc(), stepKey].join('|');
+}
+
+function findCrewApiStep(syInfo, stepKey) {
+  return syInfo?.crewApis?.steps?.find((step) => step.key === stepKey) || null;
+}
+
+function rememberCompletedPreflightSteps(syInfo, isoDate) {
+  ['crewApis', 'net'].forEach((stepKey) => {
+    const step = findCrewApiStep(syInfo, stepKey);
+    if (step?.complete) preflightStepCache.set(preflightCacheKey(syInfo, isoDate, stepKey), { ...step });
+  });
+}
+
+function applyCachedPreflightStep(syInfo, isoDate, stepKey) {
+  const step = findCrewApiStep(syInfo, stepKey);
+  const cached = preflightStepCache.get(preflightCacheKey(syInfo, isoDate, stepKey));
+  if (!step || !cached?.complete) return false;
+  Object.assign(step, { ...cached, cached: true });
+  return true;
+}
+
+function cacheCompletedPreflightStep(syInfo, isoDate, stepKey) {
+  const step = findCrewApiStep(syInfo, stepKey);
+  if (step?.complete) preflightStepCache.set(preflightCacheKey(syInfo, isoDate, stepKey), { ...step });
+}
 
 async function syncFscRateFromTodaySyLog(log, isoDate) {
   if (isoDate !== todayIsoUtc()) return { skipped: true, reason: 'not today' };
+  const cached = fscRateSheetSyncCache.get(isoDate);
+  if (cached?.rate) return { ...cached, skipped: true, reason: 'already synced' };
+
   const rate = extractFscExchangeRate(log);
   if (!rate) return { skipped: true, reason: 'rate not found' };
 
-  if (fscRateSheetSyncCache.get(isoDate) === rate) {
-    return { skipped: true, reason: 'already synced', rate };
-  }
-
   try {
     const result = await updateFscExchangeRate(rate);
-    fscRateSheetSyncCache.set(isoDate, rate);
-    return { ...result, skipped: false };
+    const synced = { ...result, skipped: false };
+    fscRateSheetSyncCache.set(isoDate, synced);
+    return synced;
   } catch (err) {
     return { skipped: true, rate, error: err?.message || 'Sheet sync failed' };
   }
@@ -258,12 +288,17 @@ function syBookingCountsFromRetMatch(matchArray) {
 
 async function syncSyBookingFromTodaySy(syInfo, isoDate) {
   if (isoDate !== todayIsoUtc()) return { skipped: true, reason: 'not today' };
+  const cached = syBookingSheetSyncCache.get(isoDate);
+  if (cached?.counts) return { ...cached, skipped: true, reason: 'already synced' };
+
   const counts = syBookingCountsFromRetMatch(syInfo?.reservationTicketed);
   if (!counts) return { skipped: true, reason: 'RET booking not found' };
 
   try {
     const result = await updateSyBookingCounts(counts);
-    return { ...result, skipped: false };
+    const synced = { ...result, skipped: false };
+    syBookingSheetSyncCache.set(isoDate, synced);
+    return synced;
   } catch (err) {
     return { skipped: true, counts: { first: counts[0], business: counts[1], economy: counts[2] }, error: err?.message || 'Sheet sync failed' };
   }
@@ -1262,6 +1297,21 @@ app.get(
         const yearFromFlight = m?.[3] ? (2000 + Number(m[3])) : fullYear;
         const isoDate = m ? `${yearFromFlight}-${months[m[2]] || '01'}-${m[1]}` : '';
         const syBagInfo = isoDate ? await getSyBagInfoByDate(isoDate, syInfo.flightDate) : null;
+        rememberCompletedPreflightSteps(syInfo, isoDate);
+        applyCachedPreflightStep(syInfo, isoDate, 'crewApis');
+        applyCachedPreflightStep(syInfo, isoDate, 'net');
+        try {
+          syInfo.fscRateSheetSync = await syncFscRateFromTodaySyLog(log, isoDate);
+        } catch (err) {
+          console.warn('FSC exchange rate sheet sync skipped:', err?.message || err);
+          syInfo.fscRateSheetSync = { skipped: true, error: err?.message || 'Sheet sync failed' };
+        }
+        try {
+          syInfo.bookingSheetSync = await syncSyBookingFromTodaySy(syInfo, isoDate);
+        } catch (err) {
+          console.warn('SY booking sheet sync skipped:', err?.message || err);
+          syInfo.bookingSheetSync = { skipped: true, error: err?.message || 'Sheet sync failed' };
+        }
         try {
           syInfo.fscRateSheetSync = await syncFscRateFromTodaySyLog(log, isoDate);
         } catch (err) {
@@ -1294,7 +1344,9 @@ app.get(
         }
         const gdQuery = syInfo.crewApis?.gdCheckQuery || null;
         const gdStep = syInfo.crewApis?.steps?.find((step) => step.key === 'gdCheck');
-        if (gdStep && gdQuery?.flightNo && gdQuery?.flightDate) {
+        if (applyCachedPreflightStep(syInfo, isoDate, 'gdCheck')) {
+          // Reuse completed GD CHECK result from an earlier refresh.
+        } else if (gdStep && gdQuery?.flightNo && gdQuery?.flightDate) {
           const gdSubject = gdQuery.emailSubject || `GD for ${gdQuery.flightNo}/${gdQuery.flightDate}`;
           const gdResult = await getGdCheckEmail(gdQuery.flightNo, gdQuery.emailSubjectDate || gdQuery.flightDate, gdQuery.crew || [], gdSubject);
           gdStep.complete = Boolean(gdResult.complete);
@@ -1311,6 +1363,7 @@ app.get(
           gdStep.tooltip = gdStep.complete
             ? `GD CHECK complete: ${gdResult.matched || 0}/${gdResult.total || 0} crew matched`
             : `GD CHECK issue: ${gdResult.reason || gdSubject}`;
+          cacheCompletedPreflightStep(syInfo, isoDate, 'gdCheck');
         } else if (gdStep) {
           const reason = 'Missing flight number, flight date, or CWD crew list for GD search.';
           gdStep.complete = false;
@@ -1321,7 +1374,9 @@ app.get(
         }
         const nextDayQuery = syInfo.crewApis?.nextDayInfoQuery || null;
         const nextDayStep = syInfo.crewApis?.steps?.find((step) => step.key === 'nextDayInfo');
-        if (nextDayStep && nextDayQuery?.flightNo && nextDayQuery?.flightDate) {
+        if (applyCachedPreflightStep(syInfo, isoDate, 'nextDayInfo')) {
+          // Reuse completed NEXTDAY INFO result from an earlier refresh.
+        } else if (nextDayStep && nextDayQuery?.flightNo && nextDayQuery?.flightDate) {
           const nextDaySubject = nextDayQuery.emailSubject || `${nextDayQuery.flightNo} ${nextDayQuery.flightDate} flight information details`;
           const nextDayEmail = await getNextDayInfoEmail(nextDayQuery.flightNo, nextDayQuery.emailSubjectDate || nextDayQuery.flightDate, nextDaySubject);
           nextDayStep.complete = Boolean(nextDayEmail.sent || nextDayEmail.found);
@@ -1348,6 +1403,7 @@ app.get(
           nextDayStep.tooltip = nextDayStep.complete
             ? `NEXTDAY INFO sent email found: ${nextDaySubject}`
             : `NEXTDAY INFO not found: ${nextDayEmail.reason || nextDaySubject}`;
+          cacheCompletedPreflightStep(syInfo, isoDate, 'nextDayInfo');
         } else if (nextDayStep) {
           const reason = 'Missing flight number or next-day email subject date for Gmail search.';
           nextDayStep.complete = false;
