@@ -4753,7 +4753,7 @@
         if (syAutoRefreshInFlight) return;
         syAutoRefreshInFlight = true;
         const protectedView = isSyRefreshProtectedView();
-        const showLoading = !background && !currentSy && !protectedView;
+        const showLoading = !currentSy && !protectedView;
         if (showLoading) setLoadingState(true);
         const refreshQuery = activeSyQuery || "SY";
         try {
