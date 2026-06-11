@@ -1313,6 +1313,18 @@ app.get(
           syInfo.bookingSheetSync = { skipped: true, error: err?.message || 'Sheet sync failed' };
         }
         try {
+          syInfo.fscRateSheetSync = await syncFscRateFromTodaySyLog(log, isoDate);
+        } catch (err) {
+          console.warn('FSC exchange rate sheet sync skipped:', err?.message || err);
+          syInfo.fscRateSheetSync = { skipped: true, error: err?.message || 'Sheet sync failed' };
+        }
+        try {
+          syInfo.bookingSheetSync = await syncSyBookingFromTodaySy(syInfo, isoDate);
+        } catch (err) {
+          console.warn('SY booking sheet sync skipped:', err?.message || err);
+          syInfo.bookingSheetSync = { skipped: true, error: err?.message || 'Sheet sync failed' };
+        }
+        try {
           syInfo.psmMsgSheetSync = await syncPsmMsgRowsFromSyInfo(syInfo);
         } catch (err) {
           console.warn('PSM/MSG report sheet sync skipped:', err?.message || err);
