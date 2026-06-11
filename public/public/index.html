@@ -3849,6 +3849,7 @@
       let inactivityTimer = null;
       let syAutoRefreshTimer = null;
       let syAutoRefreshInFlight = false;
+      let pendingSyRefresh = null;
       let selectedIndex = 0;
       let scrollOffset = 0;
       let dragStartX = 0;
@@ -3879,6 +3880,18 @@
 
       function setLoadingState(loading) {
         document.body.classList.toggle("is-loading", Boolean(loading));
+      }
+
+      function isSyRefreshProtectedView() {
+        const protectedPanelTitles = ["Security Check", "Seat Map"];
+        return document.body.classList.contains("is-report-view") || protectedPanelTitles.includes(resultPanel?.dataset?.panelTitle || "");
+      }
+
+      function applyPendingSyRefresh() {
+        if (!pendingSyRefresh || isSyRefreshProtectedView()) return;
+        const sy = pendingSyRefresh;
+        pendingSyRefresh = null;
+        updateFlightFromSy(sy);
       }
 
       function clearSyDashboard() {
@@ -4732,24 +4745,29 @@
         syAutoRefreshTimer = null;
       }
 
-      async function refreshSy({ silent = true } = {}) {
+      async function refreshSy({ silent = true, background = false } = {}) {
         if (!isTodaySyQuery(activeSyQuery)) {
           stopSyAutoRefresh();
           return;
         }
         if (syAutoRefreshInFlight) return;
         syAutoRefreshInFlight = true;
-        const showLoading = !currentSy;
+        const protectedView = isSyRefreshProtectedView();
+        const showLoading = !background && !currentSy && !protectedView;
         if (showLoading) setLoadingState(true);
         const refreshQuery = activeSyQuery || "SY";
         try {
           const data = await fetchSearch(refreshQuery);
           if (refreshQuery !== activeSyQuery || !isTodaySyQuery(activeSyQuery)) return;
           if (!data?.sy) throw new Error(data?.error || "No SY payload returned.");
+          if (isSyRefreshProtectedView()) {
+            pendingSyRefresh = data.sy;
+            return;
+          }
+          pendingSyRefresh = null;
           updateFlightFromSy(data.sy);
-          resultPanel.innerHTML = "";
         } catch (error) {
-          if (refreshQuery === activeSyQuery && isTodaySyQuery(activeSyQuery)) {
+          if (refreshQuery === activeSyQuery && isTodaySyQuery(activeSyQuery) && !isSyRefreshProtectedView()) {
             clearSyDashboard();
             resultPanel.innerHTML = "";
           }
@@ -4764,7 +4782,7 @@
         activeSyQuery = normalizeSyQuery(query || "SY");
         stopSyAutoRefresh();
         if (!isTodaySyQuery(activeSyQuery)) return;
-        if (immediate) refreshSy();
+        if (immediate) refreshSy({ background: true });
         syAutoRefreshTimer = setInterval(refreshSy, SY_AUTO_REFRESH_MS);
       }
 
@@ -4776,7 +4794,7 @@
         if (isSySearch) {
           activeSyQuery = normalizeSyQuery(raw);
           if (!isTodaySyQuery(activeSyQuery)) stopSyAutoRefresh();
-          setLoadingState(true);
+          if (!currentSy) setLoadingState(true);
         } else resultPanel.innerHTML = "";
         try {
           const data = await fetchSearch(raw);
@@ -5176,6 +5194,7 @@
         resultPanel.innerHTML = "";
         resultPanel.className = "result-panel";
         resultPanel.style.top = "";
+        delete resultPanel.dataset.panelTitle;
         resultPanel._passengerRows = [];
       }
 
@@ -5194,6 +5213,7 @@
           window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
         }
         window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+        applyPendingSyRefresh();
       }
 
       function showReportPage(mode = activeReportMode) {
@@ -6455,7 +6475,9 @@
           resultPanel.innerHTML = "";
           resultPanel.className = "result-panel";
           resultPanel.style.top = "";
+          delete resultPanel.dataset.panelTitle;
           resultPanel._passengerRows = [];
+          applyPendingSyRefresh();
           return;
         }
         const reviewButton = event.target.closest("[data-review-status]");
