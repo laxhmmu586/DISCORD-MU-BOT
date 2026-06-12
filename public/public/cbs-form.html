@@ -3,21 +3,23 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>CBS Baggage Case Form</title>
+  <title>Property Irregularity Report (PIR)</title>
   <style>
-    :root { --bg:#f4f8fb; --ink:#172033; --muted:#667085; --brand:#123a73; --line:#d7e1ec; --panel:#fff; --ok:#087443; --warn:#b54708; }
+    :root { --bg:#f4f8fb; --ink:#172033; --muted:#667085; --brand:#123a73; --line:#d7e1ec; --panel:#fff; --ok:#087443; }
     * { box-sizing:border-box; }
+    html[lang="en"] .zh, html[lang="zh"] .en { display:none; }
     body { margin:0; font-family:Inter,Arial,"Noto Sans SC",sans-serif; background:linear-gradient(135deg,#eaf4ff,#fdfefe); color:var(--ink); }
-    header { position:sticky; top:0; z-index:10; display:flex; justify-content:space-between; align-items:center; padding:18px clamp(18px,4vw,52px); background:rgba(255,255,255,.92); border-bottom:1px solid var(--line); backdrop-filter:blur(12px); }
+    header { position:sticky; top:0; z-index:10; display:flex; justify-content:space-between; align-items:center; gap:14px; padding:18px clamp(18px,4vw,52px); background:rgba(255,255,255,.92); border-bottom:1px solid var(--line); backdrop-filter:blur(12px); }
     .brand { font-weight:900; color:var(--brand); letter-spacing:.08em; text-decoration:none; }
+    .header-title { flex:1; text-align:right; font-weight:900; }
+    .lang-toggle { border:1px solid var(--line); border-radius:999px; padding:9px 13px; font-weight:850; cursor:pointer; background:#e8eef7; color:var(--brand); }
     .wrap { width:min(980px,94vw); margin:28px auto 56px; display:grid; gap:24px; }
-    .hero,.card { background:var(--panel); border:1px solid var(--line); border-radius:22px; box-shadow:0 18px 42px rgba(22,48,76,.08); }
-    .hero { padding:28px; display:grid; grid-template-columns:1.2fr .8fr; gap:22px; align-items:center; }
-    h1,h2,h3 { margin:0 0 10px; }
+    .page-title,.card { background:var(--panel); border:1px solid var(--line); border-radius:22px; box-shadow:0 18px 42px rgba(22,48,76,.08); }
+    .page-title { padding:28px; }
+    .page-title h1 { margin:0; font-size:clamp(26px,4vw,38px); }
+    h2,h3 { margin:0 0 10px; }
     p { line-height:1.65; }
     .muted { color:var(--muted); }
-    .flow { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; font-size:13px; }
-    .flow span { border:1px solid var(--line); border-radius:12px; padding:10px; background:#f8fbff; text-align:center; }
     .card { padding:24px; }
     form { display:grid; gap:18px; }
     .grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
@@ -38,83 +40,81 @@
     .status.ok { color:var(--ok); } .status.err { color:#b42318; }
     .thanks { display:none; padding:24px; border-radius:22px; background:#dff8ff; border:1px solid #9ce5f3; }
     .thanks.is-active { display:block; }
-    .sketch-shell { display:grid; gap:10px; }
-    .sketch-board { width:100%; max-width:760px; border:1px solid var(--line); border-radius:14px; background:#fff; touch-action:none; }
+    .sketch-shell { display:grid; gap:10px; overflow:hidden; }
+    .sketch-board { width:100%; max-width:820px; border:1px solid var(--line); border-radius:14px; background:#fff; touch-action:none; display:block; }
     .attachment-hint { font-size:12px; color:var(--muted); font-weight:600; }
-    @media (max-width:840px){ .hero,.grid{grid-template-columns:1fr}.flow{grid-template-columns:1fr 1fr}.flight-row,.flight-head{grid-template-columns:1fr} }
+    @media (max-width:840px){ .grid{grid-template-columns:1fr}.flight-row,.flight-head{grid-template-columns:1fr}.header-title{text-align:left}header{flex-wrap:wrap} }
   </style>
 </head>
 <body>
-  <header><a class="brand" href="index.html">MUFC</a><strong>CBS Case Form / 行李表格</strong></header>
+  <header>
+    <a class="brand" href="index.html">MUFC</a>
+    <strong class="header-title">Property Irregularity report(PIR)</strong>
+    <button class="lang-toggle" id="language-toggle" type="button">中文</button>
+  </header>
   <main class="wrap">
-    <section class="hero">
-      <div>
-        <h1>China Eastern CBS / PIR Form<br />中国东方航空行李运输事故记录表</h1>
-        <p class="muted">No login required. Submit AHL delayed baggage or DPR damaged baggage information. 无需登录，填写延误/丢失行李或破损行李信息，生成PDF并发送邮件。</p>
-      </div>
-      <div class="flow" aria-label="Form flow">
-        <span>Passenger name<br>旅客姓名</span><span>Flight routing<br>航班行程</span><span>Bag tag<br>行李牌</span><span>Phone / Email<br>电话/邮箱</span><span>AHL or DPR<br>延误或破损</span><span>PDF + Email<br>生成并发送</span>
-      </div>
+    <section class="page-title">
+      <h1><span class="en">Property Irregularity Report (PIR)</span><span class="zh">行李运输事故记录单</span></h1>
     </section>
 
     <section class="card">
-      <h2>New case / 新建表格</h2>
+      <h2><span class="en">New case</span><span class="zh">新建表格</span></h2>
       <form id="cbs-form">
         <div class="grid">
-          <label>Passenger name / 旅客姓名<input name="passengerName" required placeholder="LAST/FIRST" /></label>
-          <label>Email / 电子邮箱<input name="email" type="email" required placeholder="passenger@example.com" /></label>
-          <label>Phone number / 联系电话<input name="phone" placeholder="Country/area code + number / 国家地区号+电话" /></label>
+          <label><span class="en">Passenger name</span><span class="zh">旅客姓名</span><input name="passengerName" required placeholder="LAST/FIRST" /></label>
+          <label><span class="en">Email</span><span class="zh">电子邮箱</span><input name="email" type="email" required placeholder="passenger@example.com" /></label>
+          <label><span class="en">Phone number</span><span class="zh">联系电话</span><input name="phone" placeholder="Country/area code + number" /></label>
           <div class="wide flight-rows" aria-label="Flight route rows">
-            <strong>Flight route / 航班行程</strong>
-            <div class="flight-head"><span>Flight No. / 航班号</span><span>Date / 日期</span><span>Destination / 目的地</span></div>
+            <strong><span class="en">Flight route</span><span class="zh">航班行程</span></strong>
+            <div class="flight-head"><span><span class="en">Flight No.</span><span class="zh">航班号</span></span><span><span class="en">Date</span><span class="zh">日期</span></span><span><span class="en">Destination</span><span class="zh">目的地</span></span></div>
             <div class="flight-row"><input name="flightNo1" placeholder="MU1112" /><input name="flightDate1" placeholder="11JUN" /><input name="destination1" placeholder="CAN" /></div>
             <div class="flight-row"><input name="flightNo2" placeholder="MU583" /><input name="flightDate2" placeholder="11JUN" /><input name="destination2" placeholder="PVG" /></div>
             <div class="flight-row"><input name="flightNo3" placeholder="DL223" /><input name="flightDate3" placeholder="12JUN" /><input name="destination3" placeholder="SEA" /></div>
           </div>
-          <label>Bag tag / 行李牌号<input name="bagTag" placeholder="MU123456" /></label>
-          <label>Case type / 表格类型<select name="caseType" id="case-type"><option value="AHL">AHL - Delayed/Lost / 延误或丢失</option><option value="DPR">DPR - Damaged / 破损</option></select></label>
-          <label class="wide">Permanent address / 永久地址<textarea name="permanentAddress" placeholder="If available / 如有请填写"></textarea></label>
-          <label>Temporary address available? / 是否有临时地址?<select name="addressAvailable" id="address-available"><option value="No">No / 否</option><option value="Yes">Yes / 是</option></select></label>
-          <label id="valid-until-field" hidden>Temporary address valid until / 临时地址有效期至<input name="temporaryAddressValidUntil" type="date" /></label>
-          <label class="wide" id="temporary-address-field" hidden>Temporary address / 临时地址<textarea name="temporaryAddress"></textarea></label>
-          <label class="wide">Attachments / 附件<input name="attachments" id="attachments" type="file" multiple /><span class="attachment-hint">Files are sent as email attachments only; they are not saved to Drive or the case sheet. 附件只随邮件发送，不保存到网盘或表格。</span></label>
+          <label><span class="en">Bag tag</span><span class="zh">行李牌号</span><input name="bagTag" placeholder="MU123456" /></label>
+          <label><span class="en">Case type</span><span class="zh">表格类型</span><select name="caseType" id="case-type"><option value="AHL">AHL - Delayed/Lost</option><option value="DPR">DPR - Damaged</option></select></label>
+          <label class="wide"><span class="en">Permanent address</span><span class="zh">永久地址</span><textarea name="permanentAddress" placeholder="If available"></textarea></label>
+          <label><span class="en">Temporary address available?</span><span class="zh">是否有临时地址？</span><select name="addressAvailable" id="address-available"><option value="No">No</option><option value="Yes">Yes</option></select></label>
+          <label id="valid-until-field" hidden><span class="en">Temporary address valid until</span><span class="zh">临时地址有效期至</span><input name="temporaryAddressValidUntil" type="date" /></label>
+          <label class="wide" id="temporary-address-field" hidden><span class="en">Temporary address</span><span class="zh">临时地址</span><textarea name="temporaryAddress"></textarea></label>
+          <label class="wide"><span class="en">Attachments</span><span class="zh">附件</span><input name="attachments" id="attachments" type="file" multiple /><span class="attachment-hint"><span class="en">Files are sent as email attachments only; they are not saved to Drive or the case sheet.</span><span class="zh">附件只随邮件发送，不保存到网盘或表格。</span></span></label>
         </div>
 
         <section id="ahl-fields" class="case-fields is-active">
-          <h3>AHL information / 延误或丢失行李信息</h3>
+          <h3><span class="en">AHL information</span><span class="zh">延误或丢失行李信息</span></h3>
           <div class="grid">
-            <label class="wide">Baggage description / 行李描述<textarea name="ahlBagDescription" placeholder="Color, size, wheels, hard/soft shell..."></textarea></label>
-            <label>Bag brand tag / 行李箱品牌牌<input name="ahlBagBrandTag" /></label>
-            <label>Bag type / 行李类型<input name="ahlBagType" placeholder="Suitcase / duffel / carton" /></label>
-            <label>Features / 特征<input name="ahlFeatures" placeholder="Sticker, ribbon, lock..." /></label>
-            <label class="wide">Other visible features / 其他明显特征<textarea name="ahlOtherFeatures"></textarea></label>
-            <label class="wide">Detailed contents / 物品具体描述<textarea name="ahlContents"></textarea></label>
+            <label class="wide"><span class="en">Baggage description</span><span class="zh">行李描述</span><textarea name="ahlBagDescription" placeholder="Color, size, wheels, hard/soft shell..."></textarea></label>
+            <label><span class="en">Bag brand tag</span><span class="zh">行李箱品牌牌</span><input name="ahlBagBrandTag" /></label>
+            <label><span class="en">Bag type</span><span class="zh">行李类型</span><input name="ahlBagType" placeholder="Suitcase / duffel / carton" /></label>
+            <label><span class="en">Features</span><span class="zh">特征</span><input name="ahlFeatures" placeholder="Sticker, ribbon, lock..." /></label>
+            <label class="wide"><span class="en">Other visible features</span><span class="zh">其他明显特征</span><textarea name="ahlOtherFeatures"></textarea></label>
+            <label class="wide"><span class="en">Detailed contents</span><span class="zh">物品具体描述</span><textarea name="ahlContents"></textarea></label>
           </div>
         </section>
 
         <section id="dpr-fields" class="case-fields">
-          <h3>DPR information / 破损行李信息</h3>
+          <h3><span class="en">DPR information</span><span class="zh">破损行李信息</span></h3>
           <div class="grid">
-            <label>Damage level / 破损程度<select name="dprDamageLevel"><option>Minor</option><option>Major</option><option>Total</option></select></label>
-            <label>Bag type / 行李类型<input name="dprBagType" /></label>
-            <label class="wide">Baggage information / damage location / 行李信息/破损位置<textarea name="dprBagInfo" placeholder="Side 1, Side 2, End 1, wheel, handle..."></textarea></label>
-            <label class="wide">Inner damage / 内物破损<textarea name="dprInnerDamage"></textarea></label>
+            <label><span class="en">Damage level</span><span class="zh">破损程度</span><select name="dprDamageLevel"><option>Minor</option><option>Major</option><option>Total</option></select></label>
+            <label><span class="en">Bag type</span><span class="zh">行李类型</span><input name="dprBagType" /></label>
+            <label class="wide"><span class="en">Baggage information / damage location</span><span class="zh">行李信息 / 破损位置</span><textarea name="dprBagInfo" placeholder="Side 1, Side 2, End 1, wheel, handle..."></textarea></label>
+            <label class="wide"><span class="en">Inner damage</span><span class="zh">内物破损</span><textarea name="dprInnerDamage"></textarea></label>
             <div class="wide sketch-shell">
-              <strong>Circle damaged area / 圈出破损部位</strong>
-              <canvas id="damage-sketch" class="sketch-board" width="900" height="230" aria-label="Baggage damage sketch canvas"></canvas>
-              <div class="actions"><button class="secondary" id="clear-sketch" type="button">Clear circles / 清除标记</button><span class="attachment-hint">Drag on the picture to freely circle damaged parts. 在图上拖动圈出破损部位，标记图会随邮件发送。</span></div>
+              <strong><span class="en">Circle damaged area</span><span class="zh">圈出破损部位</span></strong>
+              <canvas id="damage-sketch" class="sketch-board" width="820" height="220" aria-label="Baggage damage sketch canvas"></canvas>
+              <div class="actions"><button class="secondary" id="clear-sketch" type="button"><span class="en">Clear circles</span><span class="zh">清除标记</span></button><span class="attachment-hint"><span class="en">Drag on the picture to freely circle damaged parts. The marked sketch will be attached to the email.</span><span class="zh">在图上拖动圈出破损部位，标记图会随邮件发送。</span></span></div>
             </div>
           </div>
         </section>
 
-        <div class="actions"><button type="submit">Submit, save, PDF & email / 提交保存并发送</button><button class="secondary" type="reset">Reset / 重置</button><span id="form-status" class="status"></span></div>
+        <div class="actions"><button type="submit"><span class="en">Submit, save, PDF & email</span><span class="zh">提交保存并发送</span></button><button class="secondary" type="reset"><span class="en">Reset</span><span class="zh">重置</span></button><span id="form-status" class="status"></span></div>
       </form>
     </section>
 
     <section id="thanks" class="thanks">
-      <h2>Dear Passenger / 亲爱的旅客：</h2>
-      <p>We apologize sincerely for the baggage inconvenience. We will continue tracing or handling your baggage case and keep you informed of the progress. 对于此次行李问题我们深表歉意，我们将继续查询或处理并及时通知您进展。</p>
-      <p><strong>Your case number / 查询编号：</strong> <span id="thanks-case"></span></p>
+      <h2><span class="en">Dear Passenger:</span><span class="zh">亲爱的旅客：</span></h2>
+      <p><span class="en">We apologize sincerely for the baggage inconvenience. We will continue tracing or handling your baggage case and keep you informed of the progress.</span><span class="zh">对于此次行李问题我们深表歉意，我们将继续查询或处理并及时通知您进展。</span></p>
+      <p><strong><span class="en">Your case number:</span><span class="zh">查询编号：</span></strong> <span id="thanks-case"></span></p>
       <p>China Eastern Airlines</p>
     </section>
   </main>
@@ -133,14 +133,24 @@
     const attachmentsInput = document.querySelector('#attachments');
     const canvas = document.querySelector('#damage-sketch');
     const ctx = canvas.getContext('2d');
+    const languageToggle = document.querySelector('#language-toggle');
     let drawing = false;
     let startPoint = null;
     let sketchDirty = false;
 
-    function escapeHtml(value) { return String(value || '').replace(/[&<>'"]/g, (ch) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch])); }
+    function setLanguage(lang) {
+      document.documentElement.lang = lang;
+      languageToggle.textContent = lang === 'en' ? '中文' : 'English';
+      typeSelect.options[0].textContent = lang === 'en' ? 'AHL - Delayed/Lost' : 'AHL - 延误或丢失';
+      typeSelect.options[1].textContent = lang === 'en' ? 'DPR - Damaged' : 'DPR - 破损';
+      addressAvailable.options[0].textContent = lang === 'en' ? 'No' : '否';
+      addressAvailable.options[1].textContent = lang === 'en' ? 'Yes' : '是';
+    }
+    languageToggle.addEventListener('click', () => setLanguage(document.documentElement.lang === 'en' ? 'zh' : 'en'));
+
     async function parseJson(res) { const text = await res.text(); try { return JSON.parse(text); } catch { throw new Error(`API returned non-JSON (${res.status}). Please check API base: ${apiBase}`); } }
     function setTypeFields() { const isAhl = typeSelect.value === 'AHL'; ahlFields.classList.toggle('is-active', isAhl); dprFields.classList.toggle('is-active', !isAhl); }
-    function setAddressFields() { const yes = addressAvailable.value !== 'No'; validUntilField.hidden = !yes; temporaryAddressField.hidden = !yes; if (!yes) { validUntilField.querySelector('input').value = ''; temporaryAddressField.querySelector('textarea').value = ''; } }
+    function setAddressFields() { const show = addressAvailable.value === 'Yes'; validUntilField.hidden = !show; temporaryAddressField.hidden = !show; if (!show) { validUntilField.querySelector('input').value = ''; temporaryAddressField.querySelector('textarea').value = ''; } }
     typeSelect.addEventListener('change', setTypeFields);
     addressAvailable.addEventListener('change', setAddressFields);
 
@@ -152,50 +162,22 @@
       ctx.fillStyle = '#1f2933';
       ctx.lineWidth = 3;
       ctx.font = '16px Arial';
-      const rounded = (x, y, w, h, r = 2) => {
-        ctx.beginPath();
-        ctx.moveTo(x + r, y);
-        ctx.lineTo(x + w - r, y);
-        ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-        ctx.lineTo(x + w, y + h - r);
-        ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-        ctx.lineTo(x + r, y + h);
-        ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-        ctx.lineTo(x, y + r);
-        ctx.quadraticCurveTo(x, y, x + r, y);
-        ctx.stroke();
-      };
-      const wheels = (x, y, w, h) => {
-        ctx.beginPath();
-        ctx.arc(x + 14, y + h + 2, 6, 0, Math.PI * 2);
-        ctx.arc(x + w - 14, y + h + 2, 6, 0, Math.PI * 2);
-        ctx.stroke();
-      };
-      const handle = (x, y, w) => {
-        ctx.beginPath();
-        ctx.arc(x + w / 2, y, 24, Math.PI, 0);
-        ctx.stroke();
-      };
-      const sideBag = (x, label) => {
-        rounded(x, 58, 116, 78, 1);
-        handle(x, 58, 116);
-        wheels(x, 58, 116, 78);
-        ctx.fillText(label, x + 28, 164);
-      };
-      sideBag(38, 'SIDE 1');
-      sideBag(205, 'SIDE 2');
-      rounded(395, 35, 28, 118, 1);
-      rounded(468, 35, 28, 118, 1);
-      ctx.fillText('END 1', 382, 184);
-      ctx.fillText('END 2', 455, 184);
-      rounded(585, 28, 150, 38, 1);
-      ctx.beginPath();
-      ctx.arc(660, 41, 30, 0, Math.PI);
-      ctx.stroke();
-      rounded(585, 88, 150, 38, 1);
-      ctx.fillText('TOP', 758, 48);
-      ctx.fillText('BOTTOM', 758, 108);
-      rounded(855, 48, 62, 105, 1);
+      const rect = (x, y, w, h) => ctx.strokeRect(x, y, w, h);
+      const wheels = (x, y, w, h) => { ctx.beginPath(); ctx.arc(x + 12, y + h + 2, 5, 0, Math.PI * 2); ctx.arc(x + w - 12, y + h + 2, 5, 0, Math.PI * 2); ctx.stroke(); };
+      const handle = (x, y, w) => { ctx.beginPath(); ctx.arc(x + w / 2, y, 22, Math.PI, 0); ctx.stroke(); };
+      const sideBag = (x, label) => { handle(x, 55, 110); rect(x, 55, 110, 72); wheels(x, 55, 110, 72); ctx.fillText(label, x + 27, 158); };
+      sideBag(35, 'SIDE 1');
+      sideBag(185, 'SIDE 2');
+      rect(345, 35, 26, 105);
+      rect(415, 35, 26, 105);
+      ctx.fillText('END 1', 332, 168);
+      ctx.fillText('END 2', 402, 168);
+      rect(525, 30, 135, 34);
+      ctx.beginPath(); ctx.arc(592, 43, 26, 0, Math.PI); ctx.stroke();
+      rect(525, 88, 135, 34);
+      ctx.fillText('TOP', 680, 52);
+      ctx.fillText('BOTTOM', 680, 112);
+      rect(760, 55, 48, 86);
     }
     function canvasPoint(event) { const rect = canvas.getBoundingClientRect(); return { x:(event.clientX-rect.left)*canvas.width/rect.width, y:(event.clientY-rect.top)*canvas.height/rect.height }; }
     canvas.addEventListener('pointerdown', (event) => { drawing = true; startPoint = canvasPoint(event); canvas.setPointerCapture(event.pointerId); });
@@ -218,7 +200,7 @@
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       formStatus.className = 'status';
-      formStatus.textContent = 'Submitting...';
+      formStatus.textContent = document.documentElement.lang === 'en' ? 'Submitting...' : '提交中...';
       const payload = Object.fromEntries(new FormData(form).entries());
       payload.flightRows = [1, 2, 3].map((index) => ({
         flightNo: payload[`flightNo${index}`],
@@ -239,7 +221,9 @@
       } catch (error) { formStatus.className = 'status err'; formStatus.textContent = error.message; }
     });
     form.addEventListener('reset', () => setTimeout(() => { sketchDirty = false; drawBagBase(); setTypeFields(); setAddressFields(); }, 0));
-    setTypeFields(); setAddressFields();
+    setLanguage('en');
+    setTypeFields();
+    setAddressFields();
   </script>
 </body>
 </html>

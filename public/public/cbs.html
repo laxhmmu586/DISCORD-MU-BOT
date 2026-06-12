@@ -7,6 +7,7 @@
   <style>
     :root { --bg:#f4f8fb; --ink:#172033; --muted:#667085; --brand:#123a73; --line:#d7e1ec; --panel:#fff; --ok:#087443; }
     * { box-sizing:border-box; }
+    html[lang="en"] .zh, html[lang="zh"] .en { display:none; }
     body { margin:0; font-family:Inter,Arial,"Noto Sans SC",sans-serif; background:linear-gradient(135deg,#eaf4ff,#fdfefe); color:var(--ink); }
     header { position:sticky; top:0; z-index:10; display:flex; justify-content:space-between; align-items:center; gap:16px; padding:18px clamp(18px,4vw,52px); background:rgba(255,255,255,.92); border-bottom:1px solid var(--line); backdrop-filter:blur(12px); }
     .brand { font-weight:900; color:var(--brand); letter-spacing:.08em; text-decoration:none; }
@@ -17,6 +18,7 @@
     .muted { color:var(--muted); }
     .actions { display:flex; gap:12px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
     button,a.button { border:0; border-radius:999px; padding:12px 18px; font-weight:850; cursor:pointer; background:var(--brand); color:white; text-decoration:none; }
+    .lang-toggle { border:1px solid var(--line); background:#e8eef7; color:var(--brand); }
     button.secondary,a.secondary { background:#e8eef7; color:var(--brand); }
     button.danger { background:#b42318; }
     .status { min-height:24px; font-weight:800; }
@@ -32,12 +34,12 @@
   </style>
 </head>
 <body>
-  <header><a class="brand" href="index.html">MUFC</a><strong>CBS All Cases / 所有表格</strong></header>
+  <header><a class="brand" href="index.html">MUFC</a><strong><span class="en">CBS All Cases</span><span class="zh">所有表格</span></strong><button class="lang-toggle" id="language-toggle" type="button">中文</button></header>
   <main class="wrap">
     <section class="card">
       <div class="actions">
-        <div><h1>All CBS cases / 所有CBS表格</h1><p class="muted">This page is for staff case tracking only. New passenger intake has its own standalone URL: <code>cbs-form.html</code>. 此页面只显示所有已提交表格，填表入口为单独页面。</p></div>
-        <div class="actions"><button class="secondary" id="refresh-cases" type="button">Refresh / 刷新</button></div>
+        <div><h1><span class="en">All CBS cases</span><span class="zh">所有CBS表格</span></h1><p class="muted"><span class="en">This page is for staff case tracking only. New passenger intake has its own standalone URL: <code>cbs-form.html</code>.</span><span class="zh">此页面只显示所有已提交表格，填表入口为单独页面：<code>cbs-form.html</code>。</span></p></div>
+        <div class="actions"><button class="secondary" id="refresh-cases" type="button"><span class="en">Refresh</span><span class="zh">刷新</span></button></div>
       </div>
       <div id="cases-output"><p class="muted">Loading cases...</p></div>
     </section>
@@ -46,6 +48,14 @@
     const apiBase = (window.MU_API_BASE || 'https://api.mufcapp.net').replace(/\/$/, '');
     const casesOutput = document.querySelector('#cases-output');
     const refreshCases = document.querySelector('#refresh-cases');
+    const languageToggle = document.querySelector('#language-toggle');
+    function setLanguage(lang) {
+      document.documentElement.lang = lang;
+      languageToggle.textContent = lang === 'en' ? '中文' : 'English';
+      loadCases();
+    }
+    languageToggle.addEventListener('click', () => setLanguage(document.documentElement.lang === 'en' ? 'zh' : 'en'));
+    function label(en, zh) { return document.documentElement.lang === 'en' ? en : zh; }
     function escapeHtml(value) { return String(value || '').replace(/[&<>'"]/g, (ch) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch])); }
     async function parseJson(res) { const text = await res.text(); try { return JSON.parse(text); } catch { throw new Error(`API returned non-JSON (${res.status}). Please check API base: ${apiBase}`); } }
     async function loadCases() {
@@ -56,9 +66,9 @@
         if (!res.ok) throw new Error(data.error || 'Case loading failed');
         const rows = data.rows || [];
         if (!rows.length) { casesOutput.innerHTML = '<p class="muted">No CBS cases yet.</p>'; return; }
-        casesOutput.innerHTML = `<table><thead><tr><th>Case / 编号</th><th>Status / 状态</th><th>Passenger / 旅客</th><th>Type / 类型</th><th>Bag / flight<br>行李/航班</th><th>Email / 邮箱</th><th>Update / 更新</th></tr></thead><tbody>${rows.map((row) => {
+        casesOutput.innerHTML = `<table><thead><tr><th>${label('Case', '编号')}</th><th>${label('Status', '状态')}</th><th>${label('Passenger', '旅客')}</th><th>${label('Type', '类型')}</th><th>${label('Bag / flight', '行李/航班')}</th><th>${label('Email', '邮箱')}</th><th>${label('Update', '更新')}</th></tr></thead><tbody>${rows.map((row) => {
           const closed = String(row.status || '').toLowerCase().includes('close');
-          return `<tr><td><strong>${escapeHtml(row.caseNumber)}</strong><br><span class="muted">${escapeHtml((row.submittedAt || '').slice(0,10))}</span></td><td><span class="pill ${closed ? 'closed' : ''}">${escapeHtml(closed ? 'Case Close' : (row.status || 'Open'))}</span></td><td>${escapeHtml(row.passengerName)}</td><td>${escapeHtml(row.caseType)}</td><td>${escapeHtml(row.bagTag)}<br><span class="muted">${escapeHtml(row.flightRoute)}</span></td><td>${escapeHtml(row.email)}</td><td><form class="case-update" data-case="${escapeHtml(row.caseNumber)}"><input name="status" value="${escapeHtml(closed ? 'Case Close' : (row.status || 'Open'))}" /><input name="updateNote" placeholder="Note / 备注" /><button type="submit">Update / 更新</button><button type="button" class="danger" data-close-case="${escapeHtml(row.caseNumber)}">Close / 关闭</button></form></td></tr>`;
+          return `<tr><td><strong>${escapeHtml(row.caseNumber)}</strong><br><span class="muted">${escapeHtml((row.submittedAt || '').slice(0,10))}</span></td><td><span class="pill ${closed ? 'closed' : ''}">${escapeHtml(closed ? 'Case Close' : (row.status || 'Open'))}</span></td><td>${escapeHtml(row.passengerName)}</td><td>${escapeHtml(row.caseType)}</td><td>${escapeHtml(row.bagTag)}<br><span class="muted">${escapeHtml(row.flightRoute)}</span></td><td>${escapeHtml(row.email)}</td><td><form class="case-update" data-case="${escapeHtml(row.caseNumber)}"><input name="status" value="${escapeHtml(closed ? 'Case Close' : (row.status || 'Open'))}" /><input name="updateNote" placeholder="${label('Note', '备注')}" /><button type="submit">${label('Update', '更新')}</button><button type="button" class="danger" data-close-case="${escapeHtml(row.caseNumber)}">${label('Close', '关闭')}</button></form></td></tr>`;
         }).join('')}</tbody></table>`;
       } catch (error) { casesOutput.innerHTML = `<p class="status err">${escapeHtml(error.message)}</p>`; }
     }
@@ -84,7 +94,7 @@
       } catch (error) { alert(error.message); } finally { casesOutput.style.opacity = '1'; }
     }
     refreshCases.addEventListener('click', loadCases);
-    loadCases();
+    setLanguage('en');
   </script>
 </body>
 </html>

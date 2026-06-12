@@ -1039,14 +1039,15 @@ function createSimplePdf(lines) {
   const content = [];
   content.push('0.93 0.95 0.98 rg 0 0 612 792 re f');
   content.push('0 0 0 RG 1 w 36 36 540 720 re S');
+  content.push('0 0 0 rg 0 0 0 RG');
   content.push('BT /F1 18 Tf 72 738 Td (CHINA EASTERN AIRLINES) Tj ET');
-  content.push('BT /F1 16 Tf 252 710 Td (PROPERTY IRREGULARITY REPORT) Tj ET');
+  content.push('BT /F1 16 Tf 300 710 Td (Property Irregularity report\(PIR\)) Tj ET');
   content.push('BT /F1 10 Tf 420 692 Td (To be issued in BLOCK LETTERS) Tj ET');
   let y = 662;
   const write = (label, value, x = 56, width = 500) => {
     const safeLabel = pdfEscape(label);
     const safeValue = pdfEscape(value || '');
-    content.push(`0 0 0 RG 0.5 w ${x} ${y - 5} ${width} 18 re S`);
+    content.push(`0 0 0 RG 0 0 0 rg 0.5 w ${x} ${y - 5} ${width} 18 re S`);
     content.push(`BT /F1 8 Tf ${x + 4} ${y + 1} Td (${safeLabel}) Tj ET`);
     content.push(`BT /F1 10 Tf ${x + 135} ${y + 1} Td (${safeValue}) Tj ET`);
     y -= 24;
@@ -1054,8 +1055,8 @@ function createSimplePdf(lines) {
   lines.forEach((item) => write(item[0], item[1]));
   content.push('0 0 0 RG 0.8 w 56 130 500 90 re S');
   content.push('BT /F1 10 Tf 64 202 Td (Baggage sketch / damage reference) Tj ET');
-  content.push('56 170 500 0 l S');
-  content.push('0 0 0 RG 1 w 92 150 64 32 re S 188 150 64 32 re S 292 148 18 54 re S 326 148 18 54 re S');
+  content.push('56 170 m 556 170 l S');
+  content.push('0 0 0 RG 0 0 0 rg 1 w 92 150 64 32 re S 188 150 64 32 re S 292 148 18 54 re S 326 148 18 54 re S');
   content.push('BT /F1 8 Tf 103 138 Td (SIDE 1) Tj ET BT /F1 8 Tf 199 138 Td (SIDE 2) Tj ET BT /F1 8 Tf 286 138 Td (END 1) Tj ET BT /F1 8 Tf 322 138 Td (END 2) Tj ET');
   content.push('BT /F1 9 Tf 56 84 Td (This report does not involve any acknowledgement of liability.) Tj ET');
   content.push('BT /F1 9 Tf 56 64 Td (Agent signature ____________________    Passenger signature ____________________) Tj ET');
