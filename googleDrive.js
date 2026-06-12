@@ -106,6 +106,10 @@ const CBS_HEADERS = [
 ];
 let cbsSheetTitle = '';
 let cbsSheetCache = { loadedAt: 0, rows: [] };
+const CBS_MISSING_BAG_SHEET_GID = Number(process.env.CBS_MISSING_BAG_SHEET_GID || 1145829442);
+const CBS_MISSING_BAG_HEADERS = ['Bag Tag', 'Passenger Name', 'Destination', 'Airline', 'Source Email Date', 'Source Attachment', 'Recorded At', 'Case Number', 'Case Created At'];
+let cbsMissingBagSheetTitle = '';
+let cbsMissingBagSheetCache = { loadedAt: 0, rows: [] };
 
 let fullSheetCache = {
   loadedAt: 0,
@@ -2496,6 +2500,225 @@ async function updateCbsCase(caseNumber, update = {}) {
   return { updated: true, record: next };
 }
 
+async function getCbsMissingBagSheetTitle() {
+  if (!cbsMissingBagSheetTitle) cbsMissingBagSheetTitle = await resolveSheetTitleByGid(CBS_SHEET_ID, CBS_MISSING_BAG_SHEET_GID);
+  return cbsMissingBagSheetTitle || 'Missing Bag Report';
+}
+
+async function getCbsMissingBagSheetRows(options = {}) {
+  const ttlMs = Number(options.ttlMs || 30000);
+  if (!options.forceRefresh && Date.now() - cbsMissingBagSheetCache.loadedAt < ttlMs && cbsMissingBagSheetCache.rows.length) return cbsMissingBagSheetCache.rows;
+  const title = await getCbsMissingBagSheetTitle();
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: CBS_SHEET_ID,
+    range: `${escapeSheetTitle(title)}!A:I`
+  });
+  const rows = res.data.values || [];
+  cbsMissingBagSheetCache = { loadedAt: Date.now(), rows };
+  return rows;
+}
+
+async function ensureCbsMissingBagHeaders(rows) {
+  const firstRow = rows?.[0] || [];
+  const hasHeaders = CBS_MISSING_BAG_HEADERS.every((header, index) => String(firstRow[index] || '').trim() === header);
+  if (hasHeaders) return;
+  const title = await getCbsMissingBagSheetTitle();
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: CBS_SHEET_ID,
+    range: `${escapeSheetTitle(title)}!A1:I1`,
+    valueInputOption: 'RAW',
+    requestBody: { values: [CBS_MISSING_BAG_HEADERS] }
+  });
+  cbsMissingBagSheetCache = { loadedAt: 0, rows: [] };
+}
+
+function cbsMissingBagRecordFromSheet(values = [], rowNumber = 0) {
+  return {
+    rowNumber,
+    bagTag: String(values[0] || '').trim(),
+    passengerName: String(values[1] || '').trim(),
+    destination: String(values[2] || '').trim().toUpperCase(),
+    airline: String(values[3] || '').trim().toUpperCase(),
+    sourceEmailDate: String(values[4] || '').trim(),
+    sourceAttachment: String(values[5] || '').trim(),
+    recordedAt: String(values[6] || '').trim(),
+    caseNumber: String(values[7] || '').trim(),
+    caseCreatedAt: String(values[8] || '').trim()
+  };
+}
+
+function cbsMissingBagValues(record = {}) {
+  return [
+    sanitizeSheetText(record.bagTag, 80),
+    sanitizeSheetText(record.passengerName, 160),
+    sanitizeSheetText(record.destination, 40),
+    sanitizeSheetText(record.airline, 40),
+    sanitizeSheetText(record.sourceEmailDate, 80),
+    sanitizeSheetText(record.sourceAttachment, 160),
+    sanitizeSheetText(record.recordedAt, 80),
+    sanitizeSheetText(record.caseNumber, 80),
+    sanitizeSheetText(record.caseCreatedAt, 80)
+  ];
+}
+
+function columnIndexFromCellRef(ref = '') {
+  const letters = String(ref || '').replace(/[^A-Z]/gi, '').toUpperCase();
+  let index = 0;
+  for (const ch of letters) index = index * 26 + (ch.charCodeAt(0) - 64);
+  return index - 1;
+}
+
+function parseXlsxRows(buffer) {
+  const entries = extractZipEntries(buffer);
+  const sharedXml = entries['xl/sharedStrings.xml'] || '';
+  const sharedStrings = [];
+  sharedXml.replace(/<si\b[\s\S]*?<\/si>/g, (si) => {
+    const text = Array.from(si.matchAll(/<t[^>]*>([\s\S]*?)<\/t>/g)).map((match) => xmlDecode(match[1])).join('');
+    sharedStrings.push(text);
+    return si;
+  });
+  const sheetName = Object.keys(entries).find((name) => /^xl\/worksheets\/sheet\d+\.xml$/i.test(name)) || 'xl/worksheets/sheet1.xml';
+  const sheetXml = entries[sheetName] || '';
+  const rows = [];
+  sheetXml.replace(/<row\b[^>]*>([\s\S]*?)<\/row>/g, (rowMatch, rowXml) => {
+    const row = [];
+    rowXml.replace(/<c\b([^>]*)>([\s\S]*?)<\/c>/g, (cellMatch, attrs, cellXml) => {
+      const ref = (attrs.match(/\br="([A-Z]+)\d+"/i) || [])[1] || '';
+      const col = columnIndexFromCellRef(ref);
+      if (col < 0) return cellMatch;
+      const type = (attrs.match(/\bt="([^"]+)"/i) || [])[1] || '';
+      let value = '';
+      const inline = cellXml.match(/<is>[\s\S]*?<t[^>]*>([\s\S]*?)<\/t>[\s\S]*?<\/is>/i);
+      const raw = (cellXml.match(/<v[^>]*>([\s\S]*?)<\/v>/i) || [])[1] || '';
+      if (type === 's') value = sharedStrings[Number(raw)] || '';
+      else if (type === 'inlineStr') value = inline ? xmlDecode(inline[1]) : '';
+      else value = xmlDecode(raw);
+      row[col] = String(value || '').trim();
+      return cellMatch;
+    });
+    if (row.some(Boolean)) rows.push(row);
+    return rowMatch;
+  });
+  return rows;
+}
+
+function parseCbsMissingBagRowsFromXlsx(buffer, meta = {}) {
+  return parseXlsxRows(buffer)
+    .map((row) => ({
+      bagTag: String(row[0] || '').trim(),
+      passengerName: String(row[1] || '').trim(),
+      destination: String(row[2] || '').trim().toUpperCase(),
+      airline: String(row[3] || '').trim().toUpperCase(),
+      sourceEmailDate: meta.sourceEmailDate || '',
+      sourceAttachment: meta.sourceAttachment || '',
+      recordedAt: new Date().toISOString(),
+      caseNumber: '',
+      caseCreatedAt: ''
+    }))
+    .filter((row) => row.bagTag && /MU/i.test(row.airline));
+}
+
+async function appendCbsMissingBagRows(records = []) {
+  const rows = await getCbsMissingBagSheetRows({ forceRefresh: true });
+  await ensureCbsMissingBagHeaders(rows);
+  const existingTags = new Set(rows.slice(1).map((row) => String(row?.[0] || '').trim().toUpperCase()).filter(Boolean));
+  const newRows = records.filter((record) => {
+    const tag = String(record.bagTag || '').trim().toUpperCase();
+    if (!tag || existingTags.has(tag)) return false;
+    existingTags.add(tag);
+    return true;
+  });
+  if (!newRows.length) return { appended: 0 };
+  const title = await getCbsMissingBagSheetTitle();
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: CBS_SHEET_ID,
+    range: `${escapeSheetTitle(title)}!A:I`,
+    valueInputOption: 'RAW',
+    insertDataOption: 'INSERT_ROWS',
+    requestBody: { values: newRows.map(cbsMissingBagValues) }
+  });
+  cbsMissingBagSheetCache = { loadedAt: 0, rows: [] };
+  return { appended: newRows.length };
+}
+
+async function syncCbsMissingBagReportsFromGmail() {
+  let gmail = null;
+  let userId = '';
+  let authMode = '';
+  const checkedAttachments = [];
+  let appended = 0;
+  let q = '';
+  try {
+    ({ gmail, userId, authMode } = getNextDayInfoGmailClient());
+    q = 'from:dispatch@laxtec.com subject:"Early Bag Storage (EBS) Missed Bag Report" newer_than:7d has:attachment';
+    const list = await gmail.users.messages.list({ userId, q, maxResults: 10, fields: 'messages(id,internalDate)' });
+    const messages = (Array.isArray(list.data.messages) ? list.data.messages : [])
+      .sort((a, b) => Number(b.internalDate || 0) - Number(a.internalDate || 0));
+    for (const message of messages) {
+      const full = await gmail.users.messages.get({
+        userId,
+        id: message.id,
+        format: 'full',
+        fields: 'id,internalDate,payload(filename,mimeType,body(attachmentId,data),parts(filename,mimeType,body(attachmentId,data),parts(filename,mimeType,body(attachmentId,data))))'
+      });
+      const sentAtDate = Number(full.data.internalDate || message.internalDate) ? new Date(Number(full.data.internalDate || message.internalDate)) : null;
+      const sentAt = sentAtDate ? sentAtDate.toISOString() : '';
+      const parts = collectGmailParts(full.data.payload, (part) => (
+        Boolean(part.body?.attachmentId || part.body?.data)
+        && String(part.filename || '').toLowerCase().endsWith('.xlsx')
+      ));
+      for (const part of parts) {
+        let data = part.body?.data || '';
+        if (part.body?.attachmentId) {
+          const attachment = await gmail.users.messages.attachments.get({ userId, messageId: full.data.id || message.id, id: part.body.attachmentId });
+          data = attachment.data.data || '';
+        }
+        const buffer = Buffer.from(String(data).replace(/-/g, '+').replace(/_/g, '/'), 'base64');
+        const parsedRows = parseCbsMissingBagRowsFromXlsx(buffer, { sourceEmailDate: sentAt, sourceAttachment: part.filename || 'Missed Bags Report.xlsx' });
+        const result = await appendCbsMissingBagRows(parsedRows);
+        appended += result.appended || 0;
+        checkedAttachments.push({ filename: part.filename || '', rows: parsedRows.length, appended: result.appended || 0 });
+      }
+    }
+    return { synced: true, appended, checkedAttachments, query: q, authMode, userId };
+  } catch (err) {
+    console.error('CBS missing bag Gmail sync error:', err);
+    return { synced: false, appended, checkedAttachments, query: q, authMode, userId, error: err?.message || 'Missing bag sync failed' };
+  }
+}
+
+async function getCbsMissingBagReports(options = {}) {
+  let sync = null;
+  if (options.sync) sync = await syncCbsMissingBagReportsFromGmail();
+  const rows = await getCbsMissingBagSheetRows({ forceRefresh: true });
+  await ensureCbsMissingBagHeaders(rows);
+  const records = rows
+    .map((values, index) => ({ values: values || [], rowNumber: index + 1 }))
+    .filter(({ rowNumber }) => rowNumber > 1)
+    .map(({ values, rowNumber }) => cbsMissingBagRecordFromSheet(values, rowNumber))
+    .filter((row) => row.bagTag || row.passengerName || row.destination || row.airline || row.caseNumber);
+  return { rows: records, sync };
+}
+
+async function markCbsMissingBagCase(rowNumber, caseNumber) {
+  const numericRow = Number(rowNumber);
+  if (!Number.isInteger(numericRow) || numericRow < 2) return { notFound: true };
+  const rows = await getCbsMissingBagSheetRows({ forceRefresh: true });
+  await ensureCbsMissingBagHeaders(rows);
+  const current = cbsMissingBagRecordFromSheet(rows[numericRow - 1] || [], numericRow);
+  if (!current.bagTag) return { notFound: true };
+  const next = { ...current, caseNumber, caseCreatedAt: new Date().toISOString() };
+  const title = await getCbsMissingBagSheetTitle();
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: CBS_SHEET_ID,
+    range: `${escapeSheetTitle(title)}!A${numericRow}:I${numericRow}`,
+    valueInputOption: 'RAW',
+    requestBody: { values: [cbsMissingBagValues(next)] }
+  });
+  cbsMissingBagSheetCache = { loadedAt: 0, rows: [] };
+  return { updated: true, record: next };
+}
+
 function base64UrlEncode(value) {
   return Buffer.from(value).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
 }
@@ -2595,5 +2818,7 @@ module.exports = {
   appendCbsCase,
   getCbsCases,
   updateCbsCase,
+  getCbsMissingBagReports,
+  markCbsMissingBagCase,
   sendCbsCaseEmail
 };

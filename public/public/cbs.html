@@ -16,6 +16,11 @@
     h1,h2 { margin:0 0 10px; }
     p { line-height:1.65; }
     .muted { color:var(--muted); }
+    .missing-alert-wrap { display:flex; justify-content:center; }
+    .missing-alert { display:none; border:0; border-radius:999px; padding:12px 22px; background:#d92d20; color:#fff; font-weight:950; letter-spacing:.04em; box-shadow:0 0 0 0 rgba(217,45,32,.55); animation:missingPulse 1s infinite; }
+    .missing-alert.is-active { display:inline-flex; }
+    @keyframes missingPulse { 0%{box-shadow:0 0 0 0 rgba(217,45,32,.55)} 70%{box-shadow:0 0 0 14px rgba(217,45,32,0)} 100%{box-shadow:0 0 0 0 rgba(217,45,32,0)} }
+    .search-field { min-width:260px; max-width:360px; }
     .actions { display:flex; gap:12px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
     button,a.button { border:0; border-radius:999px; padding:12px 18px; font-weight:850; cursor:pointer; background:var(--brand); color:white; text-decoration:none; }
     .lang-toggle { border:1px solid var(--line); background:#e8eef7; color:var(--brand); }
@@ -53,23 +58,35 @@
 <body>
   <header><a class="brand" href="index.html">MUFC</a><span></span><button class="lang-toggle" id="language-toggle" type="button">中文</button></header>
   <main class="wrap">
-    <section class="card">
+    <div class="missing-alert-wrap"><button class="missing-alert" id="missing-report-alert" type="button">MISSING BAG REPORT</button></div>
+    <section class="card" id="cases-card">
       <div class="actions">
         <div><h1><span class="en">All Cases</span><span class="zh">所有案件</span></h1></div>
-        <div class="actions"><button class="secondary" id="refresh-cases" type="button"><span class="en">Refresh</span><span class="zh">刷新</span></button></div>
+        <div class="actions"><input class="search-field" id="case-search" placeholder="Search case / bag tag / passenger" /><button class="secondary" id="refresh-cases" type="button"><span class="en">Refresh</span><span class="zh">刷新</span></button></div>
       </div>
       <div id="cases-output"><p class="muted">Loading cases...</p></div>
+    </section>
+    <section class="card" id="missing-report-card" hidden>
+      <div class="actions"><div><h1>MISSING BAG REPORT</h1><p class="muted">MU rows imported from Early Bag Storage missed bag email.</p></div><button class="secondary" id="back-to-cases" type="button">Back to Cases</button></div>
+      <div id="missing-report-output"><p class="muted">Loading missing bags...</p></div>
     </section>
   </main>
   <script>
     const apiBase = (window.MU_API_BASE || 'https://api.mufcapp.net').replace(/\/$/, '');
     const casesOutput = document.querySelector('#cases-output');
+    const casesCard = document.querySelector('#cases-card');
+    const caseSearch = document.querySelector('#case-search');
+    const missingAlert = document.querySelector('#missing-report-alert');
+    const missingReportCard = document.querySelector('#missing-report-card');
+    const missingReportOutput = document.querySelector('#missing-report-output');
+    const backToCases = document.querySelector('#back-to-cases');
     const refreshCases = document.querySelector('#refresh-cases');
     const languageToggle = document.querySelector('#language-toggle');
     function setLanguage(lang) {
       document.documentElement.lang = lang;
       languageToggle.textContent = lang === 'en' ? '中文' : 'English';
       loadCases();
+      loadMissingReports(true);
     }
     languageToggle.addEventListener('click', () => setLanguage(document.documentElement.lang === 'en' ? 'zh' : 'en'));
     function label(en, zh) { return document.documentElement.lang === 'en' ? en : zh; }
@@ -150,23 +167,56 @@
         <div class="actions"><button type="submit">${label('Update', '更新')}</button></div>
       </form>`;
     }
+    function isClosedCase(row) { return /close/i.test(String(row?.status || '')); }
+    function rowSearchText(row) { return Object.values(row || {}).join(' ').toLowerCase(); }
+    function sortedCaseRows(rows) {
+      return [...rows].sort((a, b) => {
+        const closedDelta = Number(isClosedCase(a)) - Number(isClosedCase(b));
+        if (closedDelta) return closedDelta;
+        const aTime = Date.parse(a.submittedAt || a.submitDate || '') || 0;
+        const bTime = Date.parse(b.submittedAt || b.submitDate || '') || 0;
+        return bTime - aTime;
+      });
+    }
+    function renderCases() {
+      const query = String(caseSearch?.value || '').trim().toLowerCase();
+      const rows = sortedCaseRows(window._cbsRows || []).filter((row) => !query || rowSearchText(row).includes(query));
+      if (!rows.length) { casesOutput.innerHTML = '<p class="muted">No matching cases.</p>'; return; }
+      casesOutput.innerHTML = `<table><colgroup><col style="width:220px"><col style="width:120px"><col style="width:280px"><col></colgroup><thead><tr><th>${label('Case Number', '编号')}</th><th>${label('Case Type', '类型')}</th><th>${label('Bag Tag', '行李牌')}</th><th class="tracking-cell">Tracking</th></tr></thead><tbody>${rows.map((row, index) => {
+        const detailKey = row.caseNumber || `row-${row.rowNumber || index}`;
+        const caseNumberLabel = row.caseNumber || label('Missing case number', '缺少编号');
+        const caseType = inferCaseType(row);
+        const details = detailRows(row);
+        return `<tr class="case-summary" data-toggle-case="${escapeHtml(detailKey)}"><td><button class="secondary" type="button">${escapeHtml(caseNumberLabel)}</button></td><td>${escapeHtml(caseType || '-')}</td><td>${escapeHtml(row.bagTag || '-')}</td><td class="tracking-cell">${trackingHtml(row)}</td></tr><tr class="case-detail" data-detail-case="${escapeHtml(detailKey)}" hidden><td colspan="4"><div class="detail-grid">${details.map(([key, value]) => `<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(renderValue(value))}</p>`).join('')}</div>${updateFormHtml(row)}</td></tr>`;
+      }).join('')}</tbody></table>`;
+    }
     async function loadCases() {
       casesOutput.innerHTML = '<p class="muted">Loading cases...</p>';
       try {
         const res = await fetch(`${apiBase}/cbs-cases`);
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || 'Case loading failed');
-        const rows = data.rows || [];
-        window._cbsRows = rows;
-        if (!rows.length) { casesOutput.innerHTML = '<p class="muted">No cases yet.</p>'; return; }
-        casesOutput.innerHTML = `<table><colgroup><col style="width:220px"><col style="width:120px"><col style="width:280px"><col></colgroup><thead><tr><th>${label('Case Number', '编号')}</th><th>${label('Case Type', '类型')}</th><th>${label('Bag Tag', '行李牌')}</th><th class="tracking-cell">Tracking</th></tr></thead><tbody>${rows.map((row, index) => {
-          const detailKey = row.caseNumber || `row-${row.rowNumber || index}`;
-          const caseNumberLabel = row.caseNumber || label('Missing case number', '缺少编号');
-          const caseType = inferCaseType(row);
-          const details = detailRows(row);
-          return `<tr class="case-summary" data-toggle-case="${escapeHtml(detailKey)}"><td><button class="secondary" type="button">${escapeHtml(caseNumberLabel)}</button></td><td>${escapeHtml(caseType || '-')}</td><td>${escapeHtml(row.bagTag || '-')}</td><td class="tracking-cell">${trackingHtml(row)}</td></tr><tr class="case-detail" data-detail-case="${escapeHtml(detailKey)}" hidden><td colspan="4"><div class="detail-grid">${details.map(([key, value]) => `<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(renderValue(value))}</p>`).join('')}</div>${updateFormHtml(row)}</td></tr>`;
-        }).join('')}</tbody></table>`;
+        window._cbsRows = data.rows || [];
+        renderCases();
       } catch (error) { casesOutput.innerHTML = `<p class="status err">${escapeHtml(error.message)}</p>`; }
+    }
+    function renderMissingReports(rows = []) {
+      const openRows = rows.filter((row) => !row.caseNumber);
+      missingAlert.classList.toggle('is-active', openRows.length > 0);
+      if (!rows.length) { missingReportOutput.innerHTML = '<p class="muted">No MU missing bag rows found.</p>'; return; }
+      missingReportOutput.innerHTML = `<table><thead><tr><th>Bag Tag</th><th>Passenger</th><th>Destination</th><th>Airline</th><th>Source</th><th>Case</th><th></th></tr></thead><tbody>${rows.map((row) => `<tr><td>${escapeHtml(row.bagTag)}</td><td>${escapeHtml(row.passengerName)}</td><td>${escapeHtml(row.destination)}</td><td>${escapeHtml(row.airline)}</td><td>${escapeHtml(row.sourceAttachment || row.sourceEmailDate)}</td><td>${escapeHtml(row.caseNumber || '-')}</td><td>${row.caseNumber ? '' : `<button type="button" data-create-missing-case="${escapeHtml(row.rowNumber)}">Create CASE</button>`}</td></tr>`).join('')}</tbody></table>`;
+    }
+    async function loadMissingReports(sync = true) {
+      try {
+        const res = await fetch(`${apiBase}/cbs-missing-bags?sync=${sync ? 'true' : 'false'}`);
+        const data = await parseJson(res);
+        if (!res.ok) throw new Error(data.error || 'Missing bag report loading failed');
+        window._missingBagRows = data.rows || [];
+        renderMissingReports(window._missingBagRows);
+      } catch (error) {
+        missingAlert.classList.remove('is-active');
+        missingReportOutput.innerHTML = `<p class="status err">${escapeHtml(error.message)}</p>`;
+      }
     }
     casesOutput.addEventListener('submit', async (event) => {
       const updateForm = event.target.closest('.case-update');
@@ -201,7 +251,23 @@
         await loadCases();
       } catch (error) { alert(error.message); } finally { casesOutput.style.opacity = '1'; }
     }
-    refreshCases.addEventListener('click', loadCases);
+    caseSearch?.addEventListener('input', renderCases);
+    missingAlert?.addEventListener('click', async () => { casesCard.hidden = true; missingReportCard.hidden = false; await loadMissingReports(true); });
+    backToCases?.addEventListener('click', () => { missingReportCard.hidden = true; casesCard.hidden = false; });
+    missingReportOutput?.addEventListener('click', async (event) => {
+      const button = event.target.closest('[data-create-missing-case]');
+      if (!button) return;
+      button.disabled = true;
+      button.textContent = 'Creating...';
+      try {
+        const res = await fetch(`${apiBase}/cbs-missing-bags/${encodeURIComponent(button.dataset.createMissingCase)}/create-case`, { method:'POST' });
+        const data = await parseJson(res);
+        if (!res.ok) throw new Error(data.error || 'Create case failed');
+        await loadMissingReports(false);
+        await loadCases();
+      } catch (error) { alert(error.message); } finally { button.disabled = false; }
+    });
+    refreshCases.addEventListener('click', async () => { await loadCases(); await loadMissingReports(true); });
     setLanguage('en');
   </script>
 </body>

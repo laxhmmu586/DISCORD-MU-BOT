@@ -58,6 +58,8 @@ const {
   appendCbsCase,
   getCbsCases,
   updateCbsCase,
+  getCbsMissingBagReports,
+  markCbsMissingBagCase,
   sendCbsCaseEmail
 
 } = require('./googleDrive');
@@ -1334,6 +1336,75 @@ function buildCbsUpdateFields(update = {}) {
   return { status: 'Shipping', updateNote: `SHIPPING | Tracking: ${trackingNumber} | Ship to: ${shippingTo}${comment ? ` | Comment: ${comment}` : ''}` };
 }
 
+
+
+app.get('/cbs-missing-bags', async (req, res) => {
+  try {
+    const sync = String(req.query?.sync || 'true').toLowerCase() !== 'false';
+    const result = await getCbsMissingBagReports({ sync });
+    return res.json(result);
+  } catch (err) {
+    console.error('CBS missing bag report error:', err);
+    return res.status(500).json({ error: err?.message || 'CBS missing bag report failed' });
+  }
+});
+
+app.post('/cbs-missing-bags/:rowNumber/create-case', async (req, res) => {
+  try {
+    const rowNumber = Number(req.params.rowNumber);
+    const report = await getCbsMissingBagReports({ sync: false });
+    const missing = (report.rows || []).find((row) => Number(row.rowNumber) === rowNumber);
+    if (!missing) return res.status(404).json({ error: 'Missing bag row not found' });
+    if (missing.caseNumber) return res.json({ created: false, caseNumber: missing.caseNumber, record: missing });
+    const now = new Date().toISOString();
+    const caseNumber = await makeCbsCaseNumber();
+    const bagTag = normalizeCbsBagTags(missing.bagTag);
+    const record = {
+      caseNumber,
+      caseType: 'AHL',
+      status: 'Open',
+      passengerName: sanitizeCbsText(missing.passengerName, 160) || 'UNKNOWN',
+      email: '',
+      phone: '',
+      ticketNumber: '',
+      classOfTravel: '',
+      departureOrigin: '',
+      language: 'en',
+      flightRoute: '',
+      bagTag,
+      destinationOnBags: sanitizeCbsText(missing.destination, 80).toUpperCase(),
+      permanentAddress: '',
+      temporaryAddress: '',
+      temporaryAddressValidUntil: '',
+      addressAvailable: '',
+      ahlBagDescription: 'Created from Missing Bag Report',
+      ahlBagBrandTag: '',
+      ahlBagType: '',
+      ahlFeatures: '',
+      ahlOtherFeatures: '',
+      ahlContents: '',
+      dprDamageLevel: '',
+      dprBagInfo: '',
+      dprBagType: '',
+      dprInnerDamage: '',
+      contentsRows: [],
+      contentsDetails: '',
+      issueDate: todayIsoUtc(),
+      passengerSignature: '',
+      passengerSignatureDataUrl: '',
+      damageSketch: '',
+      submittedAt: now,
+      updatedAt: now,
+      updateNote: `Created from Missing Bag Report row ${rowNumber}`
+    };
+    await appendCbsCase(record);
+    await markCbsMissingBagCase(rowNumber, caseNumber);
+    return res.status(201).json({ created: true, caseNumber, record });
+  } catch (err) {
+    console.error('CBS missing bag create case error:', err);
+    return res.status(500).json({ error: err?.message || 'CBS missing bag case creation failed' });
+  }
+});
 
 app.get('/cbs-cases', async (req, res) => {
   try {
