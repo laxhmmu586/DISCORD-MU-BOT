@@ -1033,17 +1033,32 @@ async function makeCbsCaseNumber() {
   const today = todayIsoUtc();
   const yy = today.slice(2, 4);
   const mm = today.slice(5, 7);
+  const monthKey = today.slice(0, 7);
   const prefix = `LAX MU${yy}${mm}`;
   const cases = await getCbsCases().catch(() => []);
-  const maxSequence = cases.reduce((max, row) => {
-    const match = String(row.caseNumber || '').toUpperCase().match(new RegExp(`^${prefix}(\\d{2})$`));
-    return match ? Math.max(max, Number(match[1])) : max;
-  }, 0);
-  return `${prefix}${String(maxSequence + 1).padStart(2, '0')}`;
+  const usedSequences = new Set();
+  let sameMonthRows = 0;
+  cases.forEach((row) => {
+    const caseNumber = String(row.caseNumber || '').toUpperCase();
+    const match = caseNumber.match(new RegExp(`^${prefix}(\\d{2})$`));
+    if (match) usedSequences.add(Number(match[1]));
+    if (match || String(row.submittedAt || row.submitDate || '').startsWith(monthKey)) sameMonthRows += 1;
+  });
+  let nextSequence = Math.max(0, sameMonthRows, ...usedSequences) + 1;
+  while (usedSequences.has(nextSequence)) nextSequence += 1;
+  return `${prefix}${String(nextSequence).padStart(2, '0')}`;
+}
+
+function pdfSafeText(value) {
+  return String(value || '')
+    .replace(/[\u3400-\u9FFF\uF900-\uFAFF\u3000-\u303F\uFF00-\uFFEF]/g, '')
+    .replace(/[^\x20-\x7E]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function pdfEscape(value) {
-  return String(value || '').replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
+  return pdfSafeText(value).replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
 }
 
 function pdfText(content, x, y, size = 9) {

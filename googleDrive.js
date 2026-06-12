@@ -2397,6 +2397,8 @@ function cbsRecordFromSheet(values, rowNumber) {
     const key = header.toLowerCase().replace(/[^a-z0-9]+(.)/g, (_, chr) => chr.toUpperCase()).replace(/[^a-z0-9]/g, '');
     row[key] = values[index] || '';
   });
+  row.caseNumber = row.caseNumber || values.find((value) => /^LAX\s*MU\d{6,}$/i.test(String(value || '').trim())) || '';
+  row.bagTag = row.bagTag || values.find((value) => /^[A-Z]{2}\d{6,}(\s*\/\s*[A-Z]{2}\d{6,})*$/i.test(String(value || '').trim())) || '';
   row.submittedAt = row.submittedAt || row.submitDate || values[27] || '';
   row.rowNumber = rowNumber;
   return row;

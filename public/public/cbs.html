@@ -68,11 +68,17 @@
         if (!res.ok) throw new Error(data.error || 'Case loading failed');
         const rows = data.rows || [];
         if (!rows.length) { casesOutput.innerHTML = '<p class="muted">No cases yet.</p>'; return; }
-        casesOutput.innerHTML = `<table><thead><tr><th>${label('Case Number', '编号')}</th><th>${label('Case Type', '类型')}</th><th>${label('Passenger Name', '旅客姓名')}</th><th>${label('Email', '邮箱')}</th><th>${label('Phone', '电话')}</th><th>${label('Bag Tag', '行李牌')}</th></tr></thead><tbody>${rows.map((row) => {
+        casesOutput.innerHTML = `<table><thead><tr><th>${label('Case Number', '编号')}</th><th>${label('Case Type', '类型')}</th><th>${label('Bag Tag', '行李牌')}</th></tr></thead><tbody>${rows.map((row, index) => {
+          const detailKey = row.caseNumber || `row-${row.rowNumber || index}`;
+          const caseNumberLabel = row.caseNumber || label('Missing case number', '缺少编号');
           const details = [
+            [label('Passenger Name', '旅客姓名'), row.passengerName],
+            [label('Email', '邮箱'), row.email],
+            [label('Phone', '电话'), row.phone],
             [label('Status', '状态'), row.status],
             [label('Baggage Routing', '行李航程'), row.flightRoute],
-            [label('Permanent Address', '永久地址'), row.permanentAddress],
+            [label('Destination on Bags', '行李牌目的地'), row.destinationOnBags],
+            [label('Address', '住址'), row.permanentAddress],
             [label('Temporary Address', '临时地址'), row.temporaryAddress],
             [label('Baggage Details', '行李详情'), row.ahlBagDescription || row.dprBagInfo],
             [label('Contents', '包内物品'), row.contentsDetails || row.ahlContents || row.dprInnerDamage],
@@ -81,7 +87,8 @@
             [label('Updated At', '更新时间'), row.updatedAt],
             [label('Update Note', '更新备注'), row.updateNote]
           ].filter((item) => item[1]);
-          return `<tr class="case-summary" data-case-row="${escapeHtml(row.caseNumber)}"><td><button class="secondary" type="button" data-toggle-case="${escapeHtml(row.caseNumber)}">${escapeHtml(row.caseNumber)}</button></td><td>${escapeHtml(row.caseType)}</td><td>${escapeHtml(row.passengerName)}</td><td>${escapeHtml(row.email)}</td><td>${escapeHtml(row.phone)}</td><td>${escapeHtml(row.bagTag)}</td></tr><tr class="case-detail" data-detail-case="${escapeHtml(row.caseNumber)}" hidden><td colspan="6"><div class="detail-grid">${details.map(([key, value]) => `<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(value)}</p>`).join('')}</div><form class="case-update" data-case="${escapeHtml(row.caseNumber)}"><input name="status" value="${escapeHtml(row.status || 'Open')}" /><input name="updateNote" placeholder="${label('Note', '备注')}" /><button type="submit">${label('Update', '更新')}</button><button type="button" class="danger" data-close-case="${escapeHtml(row.caseNumber)}">${label('Close', '关闭')}</button></form></td></tr>`;
+          const updateControls = row.caseNumber ? `<form class="case-update" data-case="${escapeHtml(row.caseNumber)}"><input name="status" value="${escapeHtml(row.status || 'Open')}" /><input name="updateNote" placeholder="${label('Note', '备注')}" /><button type="submit">${label('Update', '更新')}</button><button type="button" class="danger" data-close-case="${escapeHtml(row.caseNumber)}">${label('Close', '关闭')}</button></form>` : `<p class="status err">${label('A case number is required in column A before this row can be updated.', 'A列需要有Case Number后才能更新。')}</p>`;
+          return `<tr class="case-summary" data-case-row="${escapeHtml(detailKey)}"><td><button class="secondary" type="button" data-toggle-case="${escapeHtml(detailKey)}">${escapeHtml(caseNumberLabel)}</button></td><td>${escapeHtml(row.caseType)}</td><td>${escapeHtml(row.bagTag)}</td></tr><tr class="case-detail" data-detail-case="${escapeHtml(detailKey)}" hidden><td colspan="3"><div class="detail-grid">${details.map(([key, value]) => `<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(value)}</p>`).join('')}</div>${updateControls}</td></tr>`;
         }).join('')}</tbody></table>`;
       } catch (error) { casesOutput.innerHTML = `<p class="status err">${escapeHtml(error.message)}</p>`; }
     }
