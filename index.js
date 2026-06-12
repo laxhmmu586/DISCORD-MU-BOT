@@ -58,6 +58,9 @@ const {
   appendCbsCase,
   getCbsCases,
   updateCbsCase,
+  getCbsMissingBagReports,
+  markCbsMissingBagCase,
+  acknowledgeCbsMissingBag,
   sendCbsCaseEmail
 
 } = require('./googleDrive');
@@ -1100,8 +1103,9 @@ function createPirPdf(record) {
   content.push('0 0 0 RG 0 0 0 rg 1 w 36 36 540 720 re S');
   content.push(pdfText('PROPERTY IRREGULARITY REPORT (PIR)', 54, 724, 15));
   content.push(pdfText(`CASE ID: ${record.caseNumber || ''}`, 410, 724, 10));
-  content.push(pdfText('FOR INQUIRIES PLEASE EMAIL:', 390, 704, 9));
-  content.push(pdfText('LAXHMMU@GMAIL.COM', 390, 690, 9));
+  content.push(pdfText(`CASE TYPE: ${record.caseType || ''}`, 410, 710, 10));
+  content.push(pdfText('FOR INQUIRIES PLEASE EMAIL:', 390, 696, 9));
+  content.push(pdfText('LAXHMMU@GMAIL.COM', 390, 682, 9));
   const section = (title, y) => {
     content.push('0.78 0.78 0.78 rg');
     content.push(`44 ${y} 524 18 re f`);
@@ -1122,7 +1126,8 @@ function createPirPdf(record) {
   coded('TA', 'Temporary Address', record.temporaryAddress, 52, 536, 318, 38);
   coded('PN', 'Phone', record.phone, 382, 602, 170, 22);
   coded('TK', 'Ticket', record.ticketNumber, 382, 580, 170, 22);
-  coded('CL', '', record.classOfTravel, 382, 558, 170, 22);
+  coded('CL', '', record.classOfTravel, 382, 558, 84, 22);
+  coded('OR', 'Origin', record.departureOrigin, 466, 558, 86, 22);
   coded('EA', 'Email', record.email, 382, 536, 170, 22);
   section('FLIGHT / BAGGAGE INFORMATION', 506);
   coded('BR', 'Baggage Routing', record.flightRoute, 52, 476, 500, 26);
@@ -1155,7 +1160,6 @@ function createPirPdf(record) {
   } else {
     content.push(pdfText('Passenger Signature __________________________', 330, 50, 9));
   }
-  content.push(pdfText('This report does not involve any acknowledgement of liability', 56, 34, 7));
   const stream = content.join('\n');
   const fontId = addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
   const streamId = addObject(`<< /Length ${Buffer.byteLength(stream, 'binary')} >>\nstream\n${stream}\nendstream`);
@@ -1177,13 +1181,35 @@ function createPirPdf(record) {
   return Buffer.from(pdf, 'binary');
 }
 
-function cbsPassengerMessageHtml(language) {
+function cbsPassengerMessageHtml(language, caseType = 'AHL') {
+  const isDpr = String(caseType || '').toUpperCase() === 'DPR';
+  if (language === 'zh' && isDpr) {
+    return [
+      '<h2>尊敬的旅客：</h2>',
+      '<p>对于您的托运行李在运输过程中发生损坏，我们深表歉意，并感谢您的理解与配合。</p>',
+      '<p>为了尽快协助您处理此次行李损坏事件，本公司将根据相关规定对行李损坏情况进行调查及评估。请您妥善保留损坏行李、行李牌（Bag Tag）、登机牌及其他相关文件，以便后续核实及处理。</p>',
+      '<p>如需进一步检查、维修评估或提交补充资料，我们的工作人员将与您联系并提供协助。您也可随时致电本公司当地办事处查询处理进度，我们的地勤人员将竭诚为您提供所需信息。</p>',
+      '<p>若您委托他人代为办理相关手续，请确保受委托人携带您的亲笔授权委托书、行李损坏报告单、您的护照（或护照复印件）以及受委托人本人的有效身份证件。</p>',
+      '<p>再次对本次行李损坏给您带来的不便表示诚挚歉意。我们将尽最大努力协助您完成后续处理，并感谢您的理解与支持。</p>',
+      '<p>中国东方航空公司</p>'
+    ].join('');
+  }
+  if (isDpr) {
+    return [
+      '<h2>Dear Passenger,</h2>',
+      '<p>We sincerely apologize for the damage to your checked baggage during transportation and appreciate your understanding and cooperation.</p>',
+      '<p>To assist you as quickly as possible, we will investigate and assess the damage to your baggage in accordance with applicable regulations and procedures. Please retain the damaged baggage, baggage claim tag (Bag Tag), boarding pass, and any other relevant documents for verification and processing purposes.</p>',
+      '<p>Should further inspection, repair assessment, or additional documentation be required, our staff will contact you and provide the necessary assistance. You may also contact our local office at any time to inquire about the status of your claim. Our ground service staff will be pleased to assist you with any information you may need.</p>',
+      '<p>If you authorize another person to handle the claim on your behalf, the authorized representative must present your signed authorization letter, the baggage damage report, your passport (or a copy of your passport), and the representative\'s valid identification document.</p>',
+      '<p>Once again, we sincerely apologize for the inconvenience caused by the damage to your baggage. We will make every effort to assist you with the resolution of this matter and appreciate your patience and understanding.</p>',
+      '<p>China Eastern Airlines</p>'
+    ].join('');
+  }
   if (language === 'zh') {
     return [
       '<h2>亲爱的旅客：</h2>',
       '<p>我们对您到达目的地后未能即时领回所交运的行李深表歉意，并谨此保证本公司将竭尽所能找回您的行李。</p>',
       '<p>从您报失开始，我们立即采用已接驳全球各航空公司之电脑行李查询系统展开追查服务，并将于寻获后告知您。我们会尽力向您报告进展情况。如欲查询，您也可致电我们在各地的办事处，我们的地勤人员当乐意提供所需资料。</p>',
-      '<p>行李如在七天后仍未寻回，您将收到我们寄来的行李问卷，请正确填写，并随机票、护照、行李逾重票之影印件一并按前页的地址寄回。此问卷将有助于行李搜寻及日后赔偿之用。</p>',
       '<p>一旦您的行李安然寻回，我们会立即通知您，并在当地政府有关当局许可之情况下尽快安排送回。如果行李由于海关问题或因破损需您来提取时，请带好行李报失单和护照。</p>',
       '<p>如果您委托他人前来领取您的行李，必须让受委托人带上您的亲笔委托书、行李报失单、您的护照、（或影印本）及其本人的身份证。</p>',
       '<p>再次对由于行李意外引致的不便表示歉意。</p>',
@@ -1191,11 +1217,10 @@ function cbsPassengerMessageHtml(language) {
     ].join('');
   }
   return [
-    '<h2>Dear Passenger.</h2>',
+    '<h2>Dear Passenger,</h2>',
     '<p>We sincerely apologize that your checked baggage was not available upon your arrival. Please be assured that every possible step is being taken to locate your missing baggage or articles.</p>',
     '<p>Tracing efforts began as soon as you reported the delay to our Baggage Service Agent using the IATA WorldTracer worldwide baggage tracing computer system.</p>',
     '<p>Our ground staff will keep you informed of the progress. If you have any questions, please feel free to contact us at any time. We will be pleased to provide any further information you may require.</p>',
-    '<p>If your baggage has not been located after seven days, you will receive a baggage questionnaire. Please complete it and return it to the address shown on the front of the form together with copies of your passport, ticket, and excess baggage ticket. This questionnaire will assist us in tracing your baggage and considering any future claim.</p>',
     '<p>As soon as your baggage is located, we will notify you and arrange delivery where permitted by local government authorities. If your baggage requires customs clearance or must be collected because of damage, please bring the P.I.R. form and your passport to the airport.</p>',
     '<p>If someone else collects the baggage on your behalf, they should bring a letter of authorization, your passport or a photocopy of it, the P.I.R. form, and their ID card.</p>',
     '<p>Once again, please accept our sincere apologies for this unfortunate incident and the inconvenience it has caused.</p>',
@@ -1204,7 +1229,7 @@ function cbsPassengerMessageHtml(language) {
 }
 
 function buildCbsEmailHtml(record) {
-  return `${cbsPassengerMessageHtml(record.language)}<p><strong>Case ID:</strong> ${record.caseNumber}</p>`;
+  return `${cbsPassengerMessageHtml(record.language, record.caseType)}<p><strong>Case ID:</strong> ${record.caseNumber}</p>`;
 }
 
 function buildCbsFlightRoute(body) {
@@ -1249,6 +1274,7 @@ function cbsPdfLines(record) {
     ['Passenger name', record.passengerName],
     ['Email', record.email],
     ['Phone', record.phone],
+    ['Origin', record.departureOrigin],
     ['Flight routing', record.flightRoute],
     ['Baggage tag number', record.bagTag],
     ['Destination on Bags', record.destinationOnBags],
@@ -1276,10 +1302,122 @@ function sanitizeCbsAttachments(value) {
     const bytes = Math.floor((contentBase64.length * 3) / 4);
     totalBytes += bytes;
     if (totalBytes > maxTotalBytes) return null;
-    return { filename, mimeType, contentBase64 };
+    const attachmentType = sanitizeCbsText(item?.attachmentType, 40);
+    return { filename, mimeType, contentBase64, attachmentType };
   }).filter(Boolean);
 }
 
+
+function missingRequiredCbsAttachmentTypes(attachments = []) {
+  const uploadedTypes = new Set(attachments.map((item) => String(item.attachmentType || '').trim().toLowerCase()));
+  return ['passport', 'boardingpass', 'bagtag'].filter((type) => !uploadedTypes.has(type));
+}
+
+
+function buildCbsUpdateFields(update = {}) {
+  const type = sanitizeCbsText(update.type, 40).toLowerCase();
+  if (!['rush', 'location', 'shipping'].includes(type)) return null;
+  const comment = sanitizeCbsText(update.comment, 500);
+  if (type === 'rush') {
+    const rushTagNumber = sanitizeCbsText(update.rushTagNumber, 80).toUpperCase();
+    const rushToWhere = sanitizeCbsText(update.rushToWhere, 120).toUpperCase();
+    const akeNumber = sanitizeCbsText(update.akeNumber, 80).toUpperCase();
+    const worldTracerFileNumber = sanitizeCbsText(update.worldTracerFileNumber, 120).toUpperCase();
+    if (!rushTagNumber || !rushToWhere || !akeNumber) return null;
+    return { status: 'Rush', updateNote: `RUSH | Rush tag: ${rushTagNumber} | Rush to: ${rushToWhere} | AKE: ${akeNumber}${worldTracerFileNumber ? ` | WorldTracer: ${worldTracerFileNumber}` : ''}${comment ? ` | Comment: ${comment}` : ''}` };
+  }
+  if (type === 'location') {
+    const location = sanitizeCbsText(update.location, 160).toUpperCase();
+    if (!location) return null;
+    return { status: 'Bag Location Update', updateNote: `BAG LOCATION UPDATE | Location: ${location}${comment ? ` | Comment: ${comment}` : ''}` };
+  }
+  const trackingNumber = sanitizeCbsText(update.trackingNumber, 160).toUpperCase();
+  const shippingTo = sanitizeCbsText(update.shippingTo, 300);
+  if (!trackingNumber || !shippingTo) return null;
+  return { status: 'Shipping', updateNote: `SHIPPING | Tracking: ${trackingNumber} | Ship to: ${shippingTo}${comment ? ` | Comment: ${comment}` : ''}` };
+}
+
+
+
+app.get('/cbs-missing-bags', async (req, res) => {
+  try {
+    const sync = String(req.query?.sync || 'true').toLowerCase() !== 'false';
+    const result = await getCbsMissingBagReports({ sync });
+    return res.json(result);
+  } catch (err) {
+    console.error('CBS missing bag report error:', err);
+    return res.status(500).json({ error: err?.message || 'CBS missing bag report failed' });
+  }
+});
+
+app.post('/cbs-missing-bags/:rowNumber/create-case', async (req, res) => {
+  try {
+    const rowNumber = Number(req.params.rowNumber);
+    const report = await getCbsMissingBagReports({ sync: false });
+    const missing = (report.rows || []).find((row) => Number(row.rowNumber) === rowNumber);
+    if (!missing) return res.status(404).json({ error: 'Missing bag row not found' });
+    if (missing.caseNumber) return res.json({ created: false, caseNumber: missing.caseNumber, record: missing });
+    const now = new Date().toISOString();
+    const caseNumber = await makeCbsCaseNumber();
+    const bagTag = normalizeCbsBagTags(missing.bagTag);
+    const record = {
+      caseNumber,
+      caseType: 'AHL',
+      status: 'Open',
+      passengerName: sanitizeCbsText(missing.passengerName, 160) || 'UNKNOWN',
+      email: '',
+      phone: '',
+      ticketNumber: '',
+      classOfTravel: '',
+      departureOrigin: '',
+      language: 'en',
+      flightRoute: '',
+      bagTag,
+      destinationOnBags: sanitizeCbsText(missing.destination, 80).toUpperCase(),
+      permanentAddress: '',
+      temporaryAddress: '',
+      temporaryAddressValidUntil: '',
+      addressAvailable: '',
+      ahlBagDescription: 'Created from Missing Bag Report',
+      ahlBagBrandTag: '',
+      ahlBagType: '',
+      ahlFeatures: '',
+      ahlOtherFeatures: '',
+      ahlContents: '',
+      dprDamageLevel: '',
+      dprBagInfo: '',
+      dprBagType: '',
+      dprInnerDamage: '',
+      contentsRows: [],
+      contentsDetails: '',
+      issueDate: todayIsoUtc(),
+      passengerSignature: '',
+      passengerSignatureDataUrl: '',
+      damageSketch: '',
+      submittedAt: now,
+      updatedAt: now,
+      updateNote: `Created from Missing Bag Report row ${rowNumber}`
+    };
+    await appendCbsCase(record);
+    await markCbsMissingBagCase(rowNumber, caseNumber);
+    return res.status(201).json({ created: true, caseNumber, record });
+  } catch (err) {
+    console.error('CBS missing bag create case error:', err);
+    return res.status(500).json({ error: err?.message || 'CBS missing bag case creation failed' });
+  }
+});
+
+
+app.post('/cbs-missing-bags/:rowNumber/acknowledge', async (req, res) => {
+  try {
+    const result = await acknowledgeCbsMissingBag(req.params.rowNumber);
+    if (result.notFound) return res.status(404).json({ error: 'Missing bag row not found' });
+    return res.json(result);
+  } catch (err) {
+    console.error('CBS missing bag acknowledge error:', err);
+    return res.status(500).json({ error: err?.message || 'CBS missing bag acknowledge failed' });
+  }
+});
 
 app.get('/cbs-cases', async (req, res) => {
   try {
@@ -1310,6 +1448,8 @@ app.post('/cbs-cases', async (req, res) => {
     if (!body.passengerSignature) return res.status(400).json({ error: 'Passenger signature is required' });
     const now = new Date().toISOString();
     let attachments = sanitizeCbsAttachments(body.attachments);
+    const missingAttachmentTypes = missingRequiredCbsAttachmentTypes(attachments);
+    if (missingAttachmentTypes.length) return res.status(400).json({ error: 'Passport, boarding pass, and bag tag receipt attachments are required' });
     const contentsRows = buildCbsContentsRows(body);
     const record = {
       caseNumber: await makeCbsCaseNumber(),
@@ -1320,6 +1460,7 @@ app.post('/cbs-cases', async (req, res) => {
       phone: sanitizeCbsText(body.phone, 80),
       ticketNumber: sanitizeCbsText(body.ticketNumber, 80),
       classOfTravel: sanitizeCbsText(body.classOfTravel, 40).toUpperCase(),
+      departureOrigin: sanitizeCbsText(body.departureOrigin, 40).toUpperCase(),
       language: sanitizeCbsText(body.language, 5) === 'zh' ? 'zh' : 'en',
       flightRoute: buildCbsFlightRoute(body),
       bagTag: normalizedBagTags,
@@ -1374,9 +1515,9 @@ app.post('/cbs-cases', async (req, res) => {
 
 app.post('/cbs-cases/:caseNumber/update', async (req, res) => {
   try {
-    const status = sanitizeCbsText(req.body?.status, 80) || 'Open';
-    const updateNote = sanitizeCbsText(req.body?.updateNote, 500);
-    const result = await updateCbsCase(req.params.caseNumber, { status, updateNote });
+    const updateFields = buildCbsUpdateFields(req.body || {});
+    if (!updateFields) return res.status(400).json({ error: 'Valid RUSH, BAG LOCATION UPDATE, or SHIPPING details are required' });
+    const result = await updateCbsCase(req.params.caseNumber, updateFields);
     if (result.notFound) return res.status(404).json({ error: 'Case not found' });
     return res.json(result);
   } catch (err) {
