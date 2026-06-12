@@ -1078,10 +1078,10 @@ function createPirPdf(record) {
   const content = [];
   content.push('0.97 0.98 1 rg 0 0 612 792 re f');
   content.push('0 0 0 RG 0 0 0 rg 1 w 36 36 540 720 re S');
-  content.push(pdfText('PROPERTY IRREGULARITY REPORT (PIR)', 54, 724, 17));
-  content.push(pdfText(`CASE ID: ${record.caseNumber || ''}`, 390, 724, 11));
-  content.push(pdfText('FOR INQUIRIES PLEASE PHONE:', 390, 704, 9));
-  content.push('390 698 m 548 698 l S');
+  content.push(pdfText('PROPERTY IRREGULARITY REPORT (PIR)', 54, 724, 15));
+  content.push(pdfText(`CASE ID: ${record.caseNumber || ''}`, 410, 724, 10));
+  content.push(pdfText('FOR INQUIRIES PLEASE EMAIL:', 390, 704, 9));
+  content.push(pdfText('LAXHMMU@GMAIL.COM', 390, 690, 9));
   const section = (title, y) => {
     content.push('0.78 0.78 0.78 rg');
     content.push(`44 ${y} 524 18 re f`);
@@ -1100,8 +1100,10 @@ function createPirPdf(record) {
   coded('NM', 'Passenger Name', record.passengerName, 52, 612, 318, 24);
   coded('PA', 'Address', record.permanentAddress, 52, 574, 318, 38);
   coded('TA', 'Temporary Address', record.temporaryAddress, 52, 536, 318, 38);
-  coded('PN', 'Phone', record.phone, 382, 588, 170, 28);
-  coded('EA', 'Email', record.email, 382, 560, 170, 28);
+  coded('PN', 'Phone', record.phone, 382, 602, 170, 22);
+  coded('TK', 'Ticket', record.ticketNumber, 382, 580, 170, 22);
+  coded('CL', 'Class', record.classOfTravel, 382, 558, 170, 22);
+  coded('EA', 'Email', record.email, 382, 536, 170, 22);
   section('FLIGHT / BAGGAGE INFORMATION', 506);
   coded('BR', 'Baggage Routing', record.flightRoute, 52, 476, 500, 26);
   coded('TN', 'Bag Tag Number', record.bagTag, 52, 450, 500, 26);
@@ -1154,8 +1156,34 @@ function createPirPdf(record) {
   return Buffer.from(pdf, 'binary');
 }
 
+function cbsPassengerMessageHtml(language) {
+  if (language === 'zh') {
+    return [
+      '<h2>亲爱的旅客：</h2>',
+      '<p>我们对您到达目的地后未能即时领回所交运的行李深表歉意，并谨此保证本公司将竭尽所能找回您的行李。</p>',
+      '<p>从您报失开始，我们立即采用已接驳全球各航空公司之电脑行李查询系统展开追查服务，并将于寻获后告知您。我们会尽力向您报告进展情况。如欲查询，您也可致电我们在各地的办事处，我们的地勤人员当乐意提供所需资料。</p>',
+      '<p>行李如在七天后仍未寻回，您将收到我们寄来的行李问卷，请正确填写，并随机票、护照、行李逾重票之影印件一并按前页的地址寄回。此问卷将有助于行李搜寻及日后赔偿之用。</p>',
+      '<p>一旦您的行李安然寻回，我们会立即通知您，并在当地政府有关当局许可之情况下尽快安排送回。如果行李由于海关问题或因破损需您来提取时，请带好行李报失单和护照。</p>',
+      '<p>如果您委托他人前来领取您的行李，必须让受委托人带上您的亲笔委托书、行李报失单、您的护照、（或影印本）及其本人的身份证。</p>',
+      '<p>再次对由于行李意外引致的不便表示歉意。</p>',
+      '<p>中国东方航空公司</p>'
+    ].join('');
+  }
+  return [
+    '<h2>Dear Passenger.</h2>',
+    '<p>We sincerely apologize that your checked baggage was not available upon your arrival. Please be assured that every possible step is being taken to locate your missing baggage or articles.</p>',
+    '<p>Tracing efforts began as soon as you reported the delay to our Baggage Service Agent using the IATA WorldTracer worldwide baggage tracing computer system.</p>',
+    '<p>Our ground staff will keep you informed of the progress. If you have any questions, please feel free to contact us at any time. We will be pleased to provide any further information you may require.</p>',
+    '<p>If your baggage has not been located after seven days, you will receive a baggage questionnaire. Please complete it and return it to the address shown on the front of the form together with copies of your passport, ticket, and excess baggage ticket. This questionnaire will assist us in tracing your baggage and considering any future claim.</p>',
+    '<p>As soon as your baggage is located, we will notify you and arrange delivery where permitted by local government authorities. If your baggage requires customs clearance or must be collected because of damage, please bring the P.I.R. form and your passport to the airport.</p>',
+    '<p>If someone else collects the baggage on your behalf, they should bring a letter of authorization, your passport or a photocopy of it, the P.I.R. form, and their ID card.</p>',
+    '<p>Once again, please accept our sincere apologies for this unfortunate incident and the inconvenience it has caused.</p>',
+    '<p>Yours sincerely,<br>China Eastern Airlines</p>'
+  ].join('');
+}
+
 function buildCbsEmailHtml(record) {
-  return `<p>Dear Passenger,</p><p>We apologize sincerely for the baggage irregularity reported upon arrival. Your case has been created and the attached PIR PDF is provided for your records.</p><p><strong>Case Number:</strong> ${record.caseNumber}<br><strong>Status:</strong> ${record.status}</p><p>China Eastern Airlines</p>`;
+  return `${cbsPassengerMessageHtml(record.language)}<p><strong>Case ID:</strong> ${record.caseNumber}</p>`;
 }
 
 function buildCbsFlightRoute(body) {
@@ -1267,6 +1295,9 @@ app.post('/cbs-cases', async (req, res) => {
       passengerName,
       email,
       phone: sanitizeCbsText(body.phone, 80),
+      ticketNumber: sanitizeCbsText(body.ticketNumber, 80),
+      classOfTravel: sanitizeCbsText(body.classOfTravel, 40).toUpperCase(),
+      language: sanitizeCbsText(body.language, 5) === 'zh' ? 'zh' : 'en',
       flightRoute: buildCbsFlightRoute(body),
       bagTag: normalizeCbsBagTag(body.bagTag),
       permanentAddress: sanitizeCbsText(body.permanentAddress, 500),

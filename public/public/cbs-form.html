@@ -8,6 +8,7 @@
     :root { --bg:#f4f8fb; --ink:#172033; --muted:#667085; --brand:#123a73; --line:#d7e1ec; --panel:#fff; --ok:#087443; }
     * { box-sizing:border-box; }
     html[lang="en"] .zh, html[lang="zh"] .en { display:none; }
+    [hidden] { display:none !important; }
     body { margin:0; font-family:Inter,Arial,"Noto Sans SC",sans-serif; background:linear-gradient(135deg,#eaf4ff,#fdfefe); color:var(--ink); }
     header { position:sticky; top:0; z-index:10; display:flex; justify-content:space-between; align-items:center; gap:14px; padding:18px clamp(18px,4vw,52px); background:rgba(255,255,255,.92); border-bottom:1px solid var(--line); backdrop-filter:blur(12px); }
     .brand { font-weight:900; color:var(--brand); letter-spacing:.08em; text-decoration:none; }
@@ -52,12 +53,12 @@
     .sketch-shell { display:grid; gap:10px; overflow:hidden; }
     .sketch-board { width:100%; max-width:820px; border:1px solid var(--line); border-radius:14px; background:#fff; touch-action:none; display:block; }
     .attachment-hint { font-size:12px; color:var(--muted); font-weight:600; }
-    @media (max-width:840px){ .grid{grid-template-columns:1fr}.flight-row,.flight-head,.contents-row,.routing-layout,.bag-report-row,.bag-report-fields{grid-template-columns:1fr}.header-title{text-align:left}header{flex-wrap:wrap} }
+    @media (max-width:840px){ .grid{grid-template-columns:1fr}.routing-layout,.bag-report-row,.bag-report-fields,.contents-row{grid-template-columns:1fr}.flight-row,.flight-head{grid-template-columns:1fr .8fr .8fr; gap:6px}.header-title{text-align:left}header{flex-wrap:wrap}.tag-example{transform:none} }
   </style>
 </head>
 <body>
   <header>
-    <span class="brand">MUFC</span>
+    <span class="brand">MU</span>
     <strong class="header-title">Property Irregularity report(PIR)</strong>
     <button class="lang-toggle" id="language-toggle" type="button">中文</button>
   </header>
@@ -73,6 +74,8 @@
           <label><span class="en">Passenger name</span><span class="zh">旅客姓名</span><input name="passengerName" required placeholder="LAST/FIRST" /></label>
           <label><span class="en">Email</span><span class="zh">电子邮箱</span><input name="email" type="email" required placeholder="passenger@example.com" /></label>
           <label><span class="en">Phone number</span><span class="zh">联系电话</span><input name="phone" placeholder="Country/area code + number" required /></label>
+          <label><span class="en">Ticket number</span><span class="zh">机票号码</span><input name="ticketNumber" placeholder="7816262626666" /></label>
+          <label><span class="en">Class of travel</span><span class="zh">舱位等级</span><select name="classOfTravel"><option value="">--</option><option value="FIRST">First</option><option value="BUSINESS">Business</option><option value="ECONOMY">Economy</option></select></label>
           <div class="wide flight-rows" aria-label="Baggage routing rows">
             <strong><span class="en">Baggage routing</span><span class="zh">行李航线</span></strong>
             <div class="routing-layout">
@@ -83,9 +86,9 @@
               </div>
               <div>
                 <div class="flight-head"><span><span class="en">Flight No.</span><span class="zh">航班号</span></span><span><span class="en">Date</span><span class="zh">日期</span></span><span><span class="en">Destination</span><span class="zh">目的地</span></span></div>
-                <div class="flight-row"><input name="flightNo1" placeholder="MU1112" required /><input name="flightDate1" placeholder="11JUN" required /><input name="destination1" placeholder="CAN" required /></div>
-                <div class="flight-row"><input name="flightNo2" placeholder="MU583" /><input name="flightDate2" placeholder="11JUN" /><input name="destination2" placeholder="PVG" /></div>
-                <div class="flight-row"><input name="flightNo3" placeholder="DL223" /><input name="flightDate3" placeholder="12JUN" /><input name="destination3" placeholder="SEA" /></div>
+                <div class="flight-row"><input name="flightNo1" value="MU583" placeholder="MU583" required /><input name="flightDate1" value="11JUN" placeholder="11JUN" required /><input name="destination1" value="PVG" placeholder="PVG" required /></div>
+                <div class="flight-row"><input name="flightNo2" value="MU0840" placeholder="MU0840" /><input name="flightDate2" value="11JUN" placeholder="11JUN" /><input name="destination2" value="PVG" placeholder="PVG" /></div>
+                <div class="flight-row"><input name="flightNo3" placeholder="" /><input name="flightDate3" placeholder="" /><input name="destination3" placeholder="" /></div>
               </div>
             </div>
           </div>
@@ -306,6 +309,7 @@
         destination: payload[`destination${index}`]
       }));
       payload.contentsRows = collectContentsRows();
+      payload.language = document.documentElement.lang;
       payload.passengerSignature = signatureDirty ? signaturePad.toDataURL('image/jpeg', 0.85) : '';
       payload.damageSketch = sketchDirty ? canvas.toDataURL('image/jpeg', 0.85) : '';
       payload.attachments = await filesToAttachments(attachmentsInput.files);
