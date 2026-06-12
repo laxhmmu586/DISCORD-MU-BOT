@@ -705,8 +705,10 @@ app.use((req, res, next) => {
   next();
 });
 
+const JSON_BODY_LIMIT = process.env.JSON_BODY_LIMIT || '60mb';
+
 app.use(
-  express.json({ limit: '15mb' })
+  express.json({ limit: JSON_BODY_LIMIT })
 );
 
 app.use(

@@ -29,7 +29,7 @@
     .flight-row, .flight-head { display:grid; grid-template-columns:1fr .8fr .8fr; gap:10px; align-items:end; }
     .flight-row + .flight-row { margin-top:3px; }
     .routing-layout { display:grid; grid-template-columns:290px minmax(0,1fr); column-gap:18px; align-items:start; }
-    .bag-report-row { grid-column:1/-1; display:grid; grid-template-columns:290px minmax(0,1fr); column-gap:18px; margin-top:8px; }
+    .bag-report-row { grid-column:1/-1; display:grid; grid-template-columns:290px minmax(0,1fr); column-gap:18px; margin-top:-24px; }
     .bag-report-fields { display:grid; grid-template-columns:1fr 1fr; gap:14px 18px; width:100%; align-items:end; }
     .field-label { font-weight:750; font-size:13px; }
     .required-mark { color:#d92d20; font-weight:900; margin-left:3px; }
@@ -68,7 +68,7 @@
     .sketch-board { width:100%; max-width:820px; border:1px solid var(--line); border-radius:14px; background:#fff; touch-action:none; display:block; }
     .attachment-hint { font-size:12px; color:var(--muted); font-weight:600; }
     .attachment-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; }
-    @media (max-width:840px){ .grid,.passenger-grid,.attachment-grid{grid-template-columns:1fr}.routing-layout,.bag-report-row,.bag-report-fields,.contents-row{grid-template-columns:1fr}.flight-row,.flight-head{grid-template-columns:1fr .8fr .8fr; gap:6px}.header-title{text-align:left}header{flex-wrap:wrap}.tag-example{transform:none} }
+    @media (max-width:840px){ .grid,.passenger-grid,.attachment-grid{grid-template-columns:1fr}.routing-layout,.bag-report-row,.bag-report-fields,.contents-row{grid-template-columns:1fr}.bag-report-row{margin-top:8px}.flight-row,.flight-head{grid-template-columns:1fr .8fr .8fr; gap:6px}.header-title{text-align:left}header{flex-wrap:wrap}.tag-example{transform:none} }
   </style>
 </head>
 <body>
@@ -350,22 +350,12 @@
         ctx.fill();
         ctx.stroke();
 
-        const sideWidth = Math.max(12, Math.min(24, w * .16));
-        const sideGradient = ctx.createLinearGradient(x + w - sideWidth, y, x + w, y + h);
-        sideGradient.addColorStop(0, '#aebfd1');
-        sideGradient.addColorStop(1, '#71869b');
-        ctx.fillStyle = sideGradient;
-        ctx.beginPath();
-        ctx.roundRect(x + w - sideWidth, y + 4, sideWidth - 4, h - 8, horizontal ? 10 : 12);
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(38,56,77,.65)';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-
         ctx.strokeStyle = 'rgba(38,56,77,.7)';
         ctx.lineWidth = 2;
+        const insetX = side ? 9 : 12;
+        const insetY = horizontal ? 10 : 12;
         ctx.beginPath();
-        ctx.roundRect(x + 12, y + 12, w - sideWidth - 22, h - 24, horizontal ? 12 : 14);
+        ctx.roundRect(x + insetX, y + insetY, w - (insetX * 2), h - (insetY * 2), horizontal ? 12 : 14);
         ctx.stroke();
 
         ctx.strokeStyle = 'rgba(255,255,255,.75)';
@@ -378,19 +368,21 @@
         ctx.strokeStyle = 'rgba(38,56,77,.32)';
         ctx.lineWidth = 2;
         const seamCount = horizontal ? 2 : 3;
+        const seamLeft = x + insetX + 8;
+        const seamWidth = Math.max(8, w - ((insetX + 8) * 2));
         for (let i = 1; i <= seamCount; i += 1) {
-          const sx = x + 16 + ((w - sideWidth - 36) / (seamCount + 1)) * i;
+          const sx = seamLeft + (seamWidth / (seamCount + 1)) * i;
           ctx.beginPath();
-          ctx.moveTo(sx, y + 18);
-          ctx.lineTo(sx, y + h - 18);
+          ctx.moveTo(sx, y + insetY + 6);
+          ctx.lineTo(sx, y + h - insetY - 6);
           ctx.stroke();
         }
 
         if (!side && !horizontal) {
           ctx.fillStyle = edge;
-          [x + 28, x + w - sideWidth - 20].forEach((wheelX) => { ctx.beginPath(); ctx.arc(wheelX, y + h + 10, 8, 0, Math.PI * 2); ctx.fill(); });
+          [x + 28, x + w - 28].forEach((wheelX) => { ctx.beginPath(); ctx.arc(wheelX, y + h + 10, 8, 0, Math.PI * 2); ctx.fill(); });
           ctx.fillRect(x + 24, y + h - 3, 10, 12);
-          ctx.fillRect(x + w - sideWidth - 24, y + h - 3, 10, 12);
+          ctx.fillRect(x + w - 34, y + h - 3, 10, 12);
         }
 
         ctx.fillStyle = edge;
@@ -436,10 +428,34 @@
     document.querySelector('#clear-signature').addEventListener('click', clearSignature);
     clearSignature();
 
+    async function imageFileToDataUrl(file) {
+      const objectUrl = URL.createObjectURL(file);
+      try {
+        const image = await new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.onerror = reject;
+          img.src = objectUrl;
+        });
+        const maxSide = 1600;
+        const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
+        const canvasEl = document.createElement('canvas');
+        canvasEl.width = Math.max(1, Math.round(image.width * scale));
+        canvasEl.height = Math.max(1, Math.round(image.height * scale));
+        canvasEl.getContext('2d').drawImage(image, 0, 0, canvasEl.width, canvasEl.height);
+        return canvasEl.toDataURL('image/jpeg', 0.78);
+      } finally {
+        URL.revokeObjectURL(objectUrl);
+      }
+    }
+
     async function fileToAttachment(file, attachmentType) {
-      const dataUrl = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result || '')); reader.onerror = reject; reader.readAsDataURL(file); });
+      const dataUrl = file.type?.startsWith('image/')
+        ? await imageFileToDataUrl(file)
+        : await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result || '')); reader.onerror = reject; reader.readAsDataURL(file); });
       const base64 = dataUrl.split(',')[1] || '';
-      return base64 ? { filename:file.name, mimeType:file.type || 'application/octet-stream', contentBase64:base64, attachmentType } : null;
+      const mimeType = file.type?.startsWith('image/') ? 'image/jpeg' : (file.type || 'application/octet-stream');
+      return base64 ? { filename:file.name, mimeType, contentBase64:base64, attachmentType } : null;
     }
 
     async function collectRequiredAttachments() {
@@ -471,7 +487,7 @@
       payload.contentsRows = collectContentsRows();
       payload.language = document.documentElement.lang;
       payload.passengerSignature = signatureDirty ? signaturePad.toDataURL('image/jpeg', 0.85) : '';
-      payload.damageSketch = sketchDirty ? canvas.toDataURL('image/jpeg', 0.85) : '';
+      payload.damageSketch = sketchDirty ? canvas.toDataURL('image/jpeg', 0.78) : '';
       payload.attachments = await collectRequiredAttachments();
       try {
         const res = await fetch(`${apiBase}/cbs-cases`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
@@ -484,7 +500,13 @@
         thanks.classList.add('is-active');
         thanks.scrollIntoView({ behavior:'smooth', block:'center' });
         form.reset(); sketchDirty = false; drawBagBase(); clearSignature(); contentsList.innerHTML = ''; addContentRow(); issueDateInput.valueAsDate = new Date(); setTypeFields(); setAddressFields();
-      } catch (error) { formStatus.className = 'status err'; formStatus.textContent = error.message; }
+      } catch (error) {
+        formStatus.className = 'status err';
+        const failedFetch = /failed to fetch/i.test(error.message || '');
+        formStatus.textContent = failedFetch
+          ? (document.documentElement.lang === 'en' ? 'Submit failed. Please check the network or try smaller attachment files.' : '提交失败。请检查网络，或尝试上传较小的附件文件。')
+          : error.message;
+      }
     });
     form.addEventListener('reset', () => setTimeout(() => { sketchDirty = false; drawBagBase(); clearSignature(); contentsList.innerHTML = ''; addContentRow(); issueDateInput.valueAsDate = new Date(); setTypeFields(); setAddressFields(); }, 0));
     addContentRow();
