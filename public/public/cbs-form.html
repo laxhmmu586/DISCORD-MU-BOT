@@ -24,16 +24,26 @@
     .card { padding:24px; }
     form { display:grid; gap:18px; }
     .grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
+    .passenger-grid { grid-template-columns:repeat(4,minmax(0,1fr)); }
     .flight-rows { display:grid; gap:10px; }
     .flight-row, .flight-head { display:grid; grid-template-columns:1fr .8fr .8fr; gap:10px; align-items:end; }
-    .routing-layout { display:grid; grid-template-columns:270px minmax(0,1fr); gap:18px; align-items:start; }
-    .bag-report-row { grid-column:1/-1; display:grid; grid-template-columns:270px minmax(0,1fr); gap:18px; }
-    .bag-report-fields { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; justify-self:end; width:min(860px,100%); }
+    .flight-row + .flight-row { margin-top:3px; }
+    .routing-layout { display:grid; grid-template-columns:290px minmax(0,1fr); column-gap:18px; align-items:start; }
+    .bag-report-row { grid-column:1/-1; margin-top:8px; }
+    .bag-report-fields { display:grid; grid-template-columns:1.1fr 1fr 1fr; gap:14px; width:100%; align-items:end; }
     .field-label { font-weight:750; font-size:13px; }
-    .bag-list { display:grid; gap:7px; }
+    .required-mark { color:#d92d20; font-weight:900; margin-left:3px; }
+    label:has(input[required]) > span.en::after,
+    label:has(input[required]) > span.zh::after,
+    label:has(select[required]) > span.en::after,
+    label:has(select[required]) > span.zh::after,
+    label:has(textarea[required]) > span.en::after,
+    label:has(textarea[required]) > span.zh::after { content:" *"; color:#d92d20; font-weight:900; }
+    .bag-list { display:grid; gap:8px; }
     .bag-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; align-items:center; }
+    .bag-row input { min-width:0; }
     .bag-row button { padding:10px 13px; }
-    .tag-example { border:1px dashed var(--line); border-radius:16px; padding:16px; background:#fbfdff; transform:rotate(-3deg); color:#202938; font-family:"Courier New",monospace; box-shadow:0 10px 24px rgba(22,48,76,.08); }
+    .tag-example { border:1px dashed var(--line); border-radius:16px; padding:16px; background:#fbfdff; transform:rotate(-3deg); color:#202938; font-family:"Courier New",monospace; box-shadow:0 10px 24px rgba(22,48,76,.08); margin-bottom:10px; }
     .tag-example strong { display:block; font-size:22px; letter-spacing:3px; margin-bottom:8px; }
     .tag-barcode { height:44px; margin:10px 0; background:repeating-linear-gradient(90deg,#111 0 3px,transparent 3px 6px,#111 6px 8px,transparent 8px 12px); }
     .tag-example .tag-route { display:grid; grid-template-columns:1fr .7fr .7fr; gap:8px; font-size:16px; }
@@ -57,7 +67,8 @@
     .sketch-shell { display:grid; gap:10px; overflow:hidden; }
     .sketch-board { width:100%; max-width:820px; border:1px solid var(--line); border-radius:14px; background:#fff; touch-action:none; display:block; }
     .attachment-hint { font-size:12px; color:var(--muted); font-weight:600; }
-    @media (max-width:840px){ .grid{grid-template-columns:1fr}.routing-layout,.bag-report-row,.bag-report-fields,.contents-row{grid-template-columns:1fr}.flight-row,.flight-head{grid-template-columns:1fr .8fr .8fr; gap:6px}.header-title{text-align:left}header{flex-wrap:wrap}.tag-example{transform:none} }
+    .attachment-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; }
+    @media (max-width:840px){ .grid,.passenger-grid,.attachment-grid{grid-template-columns:1fr}.routing-layout,.bag-report-row,.bag-report-fields,.contents-row{grid-template-columns:1fr}.flight-row,.flight-head{grid-template-columns:1fr .8fr .8fr; gap:6px}.header-title{text-align:left}header{flex-wrap:wrap}.tag-example{transform:none} }
   </style>
 </head>
 <body>
@@ -74,12 +85,13 @@
     <section class="card">
       <h2><span class="en">New case</span><span class="zh">新建案</span></h2>
       <form id="cbs-form">
-        <div class="grid">
+        <div class="grid passenger-grid">
           <label><span class="en">Passenger name</span><span class="zh">旅客姓名</span><input name="passengerName" required placeholder="LAST/FIRST" /></label>
           <label><span class="en">Email</span><span class="zh">电子邮箱</span><input name="email" type="email" required placeholder="passenger@example.com" /></label>
           <label><span class="en">Phone number</span><span class="zh">联系电话</span><input name="phone" placeholder="Country/area code + number" required /></label>
           <label><span class="en">Ticket number</span><span class="zh">机票号码</span><input name="ticketNumber" placeholder="7816262626666" /></label>
           <label><span class="en">Class of travel</span><span class="zh">舱位等级</span><select name="classOfTravel"><option value="">--</option><option value="FIRST">First</option><option value="BUSINESS">Business</option><option value="ECONOMY">Economy</option></select></label>
+          <label><span class="en">Origin</span><span class="zh">始发地</span><input name="departureOrigin" placeholder="LAX" /></label>
           <div class="wide flight-rows" aria-label="Baggage routing rows">
             <strong><span class="en">Baggage routing</span><span class="zh">行李航线</span></strong>
             <div class="routing-layout">
@@ -96,7 +108,22 @@
               </div>
             </div>
           </div>
-          <div class="bag-report-row"><span></span><div class="bag-report-fields"><div class="bag-list"><span class="field-label"><span class="en">Bag tag</span><span class="zh">行李牌号</span></span><div id="bag-tags-list"><div class="bag-row"><input name="bagTag" data-bag-tag placeholder="MU123456" required /><button class="secondary" type="button" data-remove-bag-tag hidden>-</button></div></div><button class="secondary" id="add-bag-tag" type="button">+ <span class="en">Add bag</span><span class="zh">添加行李</span></button></div><label><span class="en">Destination on Bags</span><span class="zh">行李牌目的地</span><input name="destinationOnBags" placeholder="PVG" /></label><label><span class="en">Report type</span><span class="zh">报告类型</span><select name="caseType" id="case-type" required><option value="AHL">AHL - Delayed/Lost</option><option value="DPR">DPR - Damaged</option></select></label></div></div>
+          <div class="bag-report-row">
+            <span></span>
+            <div class="bag-report-fields">
+              <div class="bag-list">
+                <span class="field-label"><span class="en">Bag tag</span><span class="zh">行李牌号</span><span class="required-mark">*</span></span>
+                <div id="bag-tags-list">
+                  <div class="bag-row">
+                    <input name="bagTag" data-bag-tag placeholder="MU123456" required />
+                    <button class="secondary" id="add-bag-tag" type="button">+ <span class="en">Add bag</span><span class="zh">添加行李</span></button>
+                  </div>
+                </div>
+              </div>
+              <label><span class="en">Destination on Bags</span><span class="zh">行李牌目的地</span><input name="destinationOnBags" placeholder="PVG" /></label>
+              <label><span class="en">Report type</span><span class="zh">报告类型</span><select name="caseType" id="case-type" required><option value="AHL">AHL - Delayed/Lost</option><option value="DPR">DPR - Damaged</option></select></label>
+            </div>
+          </div>
           <label class="wide"><span class="en">Address</span><span class="zh">住址</span><textarea name="permanentAddress" placeholder="If available"></textarea></label>
           <label><span class="en">Temporary address available?</span><span class="zh">是否有临时地址？</span><select name="addressAvailable" id="address-available"><option value="No">No</option><option value="Yes">Yes</option></select></label>
           <label id="valid-until-field" hidden><span class="en">Temporary address valid until</span><span class="zh">临时地址有效期至</span><input name="temporaryAddressValidUntil" type="date" /></label>
@@ -128,13 +155,22 @@
             <label class="wide"><span class="en">Inner damage</span><span class="zh">内物破损</span><textarea name="dprInnerDamage"></textarea></label>
             <div class="wide sketch-shell">
               <strong><span class="en">Circle damaged area</span><span class="zh">圈出破损部位</span></strong>
-              <canvas id="damage-sketch" class="sketch-board" width="820" height="220" aria-label="Baggage damage sketch canvas"></canvas>
+              <canvas id="damage-sketch" class="sketch-board" width="900" height="260" aria-label="Baggage damage sketch canvas"></canvas>
               <div class="actions"><button class="secondary" id="clear-sketch" type="button"><span class="en">Clear sketch</span><span class="zh">清除标记</span></button><span class="attachment-hint"><span class="en">Draw freely on the picture. The marked sketch is included in the PDF report.</span><span class="zh">可在图上自由绘制，标记图会显示在PDF报告中。</span></span></div>
             </div>
           </div>
         </section>
 
-        <label class="wide"><span class="en">Attachments</span><span class="zh">附件</span><input name="attachments" id="attachments" type="file" multiple /><span class="attachment-hint"><span class="en">Files are sent as email attachments only; they are not saved to Drive or the case sheet.</span><span class="zh">附件只随邮件发送，不保存到网盘或表格。</span></span></label>
+        <section class="case-fields is-active wide">
+          <h3><span class="en">Attachments</span><span class="zh">附件</span><span class="required-mark">*</span></h3>
+          <div class="attachment-grid">
+            <label><span class="en">Passport</span><span class="zh">护照</span><input name="passportAttachment" data-attachment-input data-attachment-type="passport" type="file" required /></label>
+            <label><span class="en">Boarding pass</span><span class="zh">登机牌</span><input name="boardingPassAttachment" data-attachment-input data-attachment-type="boardingPass" type="file" required /></label>
+            <label><span class="en">Bag tag receipt</span><span class="zh">行李票</span><input name="bagTagAttachment" data-attachment-input data-attachment-type="bagTag" type="file" required /></label>
+            <label><span class="en">Other document</span><span class="zh">其他附件</span><input name="otherAttachment" data-attachment-input data-attachment-type="other" type="file" /></label>
+          </div>
+          <span class="attachment-hint"><span class="en">Passport, boarding pass, and bag tag receipt are required. Files are sent as email attachments only; they are not saved to Drive or the case sheet.</span><span class="zh">必须上传护照、登机牌、行李票。附件只随邮件发送，不保存到网盘或表格。</span></span>
+        </section>
 
         <section class="case-fields is-active">
           <h3><span class="en">Passenger signature and date</span><span class="zh">旅客签字和日期</span></h3>
@@ -151,25 +187,41 @@
     </section>
 
     <section id="thanks" class="thanks">
-      <div class="en">
-        <h2>Dear Passenger.</h2>
+      <div class="en" data-thanks-message="AHL">
+        <h2>Dear Passenger,</h2>
         <p>We sincerely apologize that your checked baggage was not available upon your arrival. Please be assured that every possible step is being taken to locate your missing baggage or articles.</p>
         <p>Tracing efforts began as soon as you reported the delay to our Baggage Service Agent using the IATA WorldTracer worldwide baggage tracing computer system.</p>
         <p>Our ground staff will keep you informed of the progress. If you have any questions, please feel free to contact us at any time. We will be pleased to provide any further information you may require.</p>
-        <p>If your baggage has not been located after seven days, you will receive a baggage questionnaire. Please complete it and return it to the address shown on the front of the form together with copies of your passport, ticket, and excess baggage ticket. This questionnaire will assist us in tracing your baggage and considering any future claim.</p>
         <p>As soon as your baggage is located, we will notify you and arrange delivery where permitted by local government authorities. If your baggage requires customs clearance or must be collected because of damage, please bring the P.I.R. form and your passport to the airport.</p>
         <p>If someone else collects the baggage on your behalf, they should bring a letter of authorization, your passport or a photocopy of it, the P.I.R. form, and their ID card.</p>
         <p>Once again, please accept our sincere apologies for this unfortunate incident and the inconvenience it has caused.</p>
         <p>Yours sincerely,<br>China Eastern Airlines</p>
       </div>
-      <div class="zh">
+      <div class="zh" data-thanks-message="AHL">
         <h2>亲爱的旅客：</h2>
         <p>我们对您到达目的地后未能即时领回所交运的行李深表歉意，并谨此保证本公司将竭尽所能找回您的行李。</p>
         <p>从您报失开始，我们立即采用已接驳全球各航空公司之电脑行李查询系统展开追查服务，并将于寻获后告知您。我们会尽力向您报告进展情况。如欲查询，您也可致电我们在各地的办事处，我们的地勤人员当乐意提供所需资料。</p>
-        <p>行李如在七天后仍未寻回，您将收到我们寄来的行李问卷，请正确填写，并随机票、护照、行李逾重票之影印件一并按前页的地址寄回。此问卷将有助于行李搜寻及日后赔偿之用。</p>
         <p>一旦您的行李安然寻回，我们会立即通知您，并在当地政府有关当局许可之情况下尽快安排送回。如果行李由于海关问题或因破损需您来提取时，请带好行李报失单和护照。</p>
         <p>如果您委托他人前来领取您的行李，必须让受委托人带上您的亲笔委托书、行李报失单、您的护照、（或影印本）及其本人的身份证。</p>
         <p>再次对由于行李意外引致的不便表示歉意。</p>
+        <p>中国东方航空公司</p>
+      </div>
+      <div class="en" data-thanks-message="DPR">
+        <h2>Dear Passenger,</h2>
+        <p>We sincerely apologize for the damage to your checked baggage during transportation and appreciate your understanding and cooperation.</p>
+        <p>To assist you as quickly as possible, we will investigate and assess the damage to your baggage in accordance with applicable regulations and procedures. Please retain the damaged baggage, baggage claim tag (Bag Tag), boarding pass, and any other relevant documents for verification and processing purposes.</p>
+        <p>Should further inspection, repair assessment, or additional documentation be required, our staff will contact you and provide the necessary assistance. You may also contact our local office at any time to inquire about the status of your claim. Our ground service staff will be pleased to assist you with any information you may need.</p>
+        <p>If you authorize another person to handle the claim on your behalf, the authorized representative must present your signed authorization letter, the baggage damage report, your passport (or a copy of your passport), and the representative's valid identification document.</p>
+        <p>Once again, we sincerely apologize for the inconvenience caused by the damage to your baggage. We will make every effort to assist you with the resolution of this matter and appreciate your patience and understanding.</p>
+        <p>China Eastern Airlines</p>
+      </div>
+      <div class="zh" data-thanks-message="DPR">
+        <h2>尊敬的旅客：</h2>
+        <p>对于您的托运行李在运输过程中发生损坏，我们深表歉意，并感谢您的理解与配合。</p>
+        <p>为了尽快协助您处理此次行李损坏事件，本公司将根据相关规定对行李损坏情况进行调查及评估。请您妥善保留损坏行李、行李牌（Bag Tag）、登机牌及其他相关文件，以便后续核实及处理。</p>
+        <p>如需进一步检查、维修评估或提交补充资料，我们的工作人员将与您联系并提供协助。您也可随时致电本公司当地办事处查询处理进度，我们的地勤人员将竭诚为您提供所需信息。</p>
+        <p>若您委托他人代为办理相关手续，请确保受委托人携带您的亲笔授权委托书、行李损坏报告单、您的护照（或护照复印件）以及受委托人本人的有效身份证件。</p>
+        <p>再次对本次行李损坏给您带来的不便表示诚挚歉意。我们将尽最大努力协助您完成后续处理，并感谢您的理解与支持。</p>
         <p>中国东方航空公司</p>
       </div>
       <p><strong><span class="en">Your case number:</span><span class="zh">查询编号：</span></strong> <span id="thanks-case"></span></p>
@@ -187,7 +239,7 @@
     const formStatus = document.querySelector('#form-status');
     const thanks = document.querySelector('#thanks');
     const thanksCase = document.querySelector('#thanks-case');
-    const attachmentsInput = document.querySelector('#attachments');
+    const attachmentInputs = Array.from(document.querySelectorAll('[data-attachment-input]'));
     const bagTagsList = document.querySelector('#bag-tags-list');
     const addBagTagButton = document.querySelector('#add-bag-tag');
     const canvas = document.querySelector('#damage-sketch');
@@ -250,35 +302,87 @@
     }
 
     async function parseJson(res) { const text = await res.text(); try { return JSON.parse(text); } catch { throw new Error(`API returned non-JSON (${res.status}). Please check API base: ${apiBase}`); } }
-    function setTypeFields() { const isAhl = typeSelect.value === 'AHL'; ahlFields.classList.toggle('is-active', isAhl); dprFields.classList.toggle('is-active', !isAhl); ahlDescriptionInput.required = isAhl; }
+    function setTypeFields() { const isAhl = typeSelect.value === 'AHL'; ahlFields.classList.toggle('is-active', isAhl); dprFields.classList.toggle('is-active', !isAhl); ahlDescriptionInput.required = isAhl; thanks.classList.remove('is-active'); }
     function setAddressFields() { const show = addressAvailable.value === 'Yes'; validUntilField.hidden = !show; temporaryAddressField.hidden = !show; if (!show) { validUntilField.querySelector('input').value = ''; temporaryAddressField.querySelector('textarea').value = ''; } }
     typeSelect.addEventListener('change', setTypeFields);
     addressAvailable.addEventListener('change', setAddressFields);
 
     function drawBagBase() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = '#fff';
+      const bg = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+      bg.addColorStop(0, '#f8fbff');
+      bg.addColorStop(1, '#edf4fd');
+      ctx.fillStyle = bg;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.strokeStyle = '#1f2933';
-      ctx.fillStyle = '#1f2933';
-      ctx.lineWidth = 3;
-      ctx.font = '16px Arial';
-      const rect = (x, y, w, h) => ctx.strokeRect(x, y, w, h);
-      const wheels = (x, y, w, h) => { ctx.beginPath(); ctx.arc(x + 12, y + h + 2, 5, 0, Math.PI * 2); ctx.arc(x + w - 12, y + h + 2, 5, 0, Math.PI * 2); ctx.stroke(); };
-      const handle = (x, y, w) => { ctx.beginPath(); ctx.arc(x + w / 2, y, 22, Math.PI, 0); ctx.stroke(); };
-      const sideBag = (x, label) => { handle(x, 55, 110); rect(x, 55, 110, 72); wheels(x, 55, 110, 72); ctx.fillText(label, x + 27, 158); };
-      sideBag(35, 'SIDE 1');
-      sideBag(185, 'SIDE 2');
-      rect(345, 35, 26, 105);
-      rect(415, 35, 26, 105);
-      ctx.fillText('END 1', 332, 168);
-      ctx.fillText('END 2', 402, 168);
-      rect(525, 30, 135, 34);
-      ctx.beginPath(); ctx.arc(592, 43, 26, 0, Math.PI); ctx.stroke();
-      rect(525, 88, 135, 34);
-      ctx.fillText('TOP', 680, 52);
-      ctx.fillText('BOTTOM', 680, 112);
-      rect(760, 55, 48, 86);
+      ctx.font = '800 16px Arial';
+      ctx.lineJoin = 'round';
+      const drawPrismBag = ({ x, y, w, h, depth = 24, label, wheels = true, handle = true, color = '#c9d7e6' }) => {
+        const side = '#7f90a4';
+        const top = '#a9bacd';
+        const faceGradient = ctx.createLinearGradient(x, y, x + w, y + h);
+        faceGradient.addColorStop(0, '#e4edf7');
+        faceGradient.addColorStop(0.52, color);
+        faceGradient.addColorStop(1, '#9fb0c4');
+        ctx.save();
+        ctx.shadowColor = 'rgba(28,45,64,.18)';
+        ctx.shadowBlur = 10;
+        ctx.shadowOffsetY = 6;
+        if (handle) {
+          ctx.strokeStyle = '#213044';
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.roundRect(x + w * .32, y - 18, w * .36, 24, 10);
+          ctx.stroke();
+        }
+        ctx.shadowColor = 'transparent';
+        ctx.fillStyle = top;
+        ctx.beginPath();
+        ctx.moveTo(x + 12, y);
+        ctx.lineTo(x + depth, y - depth);
+        ctx.lineTo(x + w + depth, y - depth);
+        ctx.lineTo(x + w, y);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = '#26364a';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.fillStyle = side;
+        ctx.beginPath();
+        ctx.moveTo(x + w, y);
+        ctx.lineTo(x + w + depth, y - depth);
+        ctx.lineTo(x + w + depth, y + h - depth);
+        ctx.lineTo(x + w, y + h);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = faceGradient;
+        ctx.beginPath();
+        ctx.roundRect(x, y, w, h, 15);
+        ctx.fill();
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,255,255,.68)';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(x + 24, y + 28);
+        ctx.lineTo(x + w - 40, y + 28);
+        ctx.stroke();
+        if (wheels) {
+          ctx.fillStyle = '#1f2937';
+          [x + 28, x + w - 28].forEach((wheelX) => { ctx.beginPath(); ctx.arc(wheelX, y + h + 10, 8, 0, Math.PI * 2); ctx.fill(); });
+        }
+        ctx.fillStyle = '#1f2937';
+        ctx.font = '800 16px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(label, x + w / 2, y + h + (wheels ? 44 : 36));
+        ctx.restore();
+      };
+      drawPrismBag({ x: 35, y: 70, w: 130, h: 78, label: 'SIDE 1' });
+      drawPrismBag({ x: 220, y: 70, w: 130, h: 78, label: 'SIDE 2' });
+      drawPrismBag({ x: 410, y: 62, w: 54, h: 100, depth: 22, label: 'END 1', wheels: false, handle: false });
+      drawPrismBag({ x: 540, y: 62, w: 54, h: 100, depth: 22, label: 'END 2', wheels: false, handle: false });
+      drawPrismBag({ x: 675, y: 48, w: 145, h: 50, depth: 24, label: 'TOP', wheels: false, handle: false });
+      drawPrismBag({ x: 675, y: 148, w: 145, h: 50, depth: 24, label: 'BOTTOM', wheels: false, handle: false });
+      ctx.textAlign = 'left';
     }
     function canvasPoint(event) { const rect = canvas.getBoundingClientRect(); return { x:(event.clientX-rect.left)*canvas.width/rect.width, y:(event.clientY-rect.top)*canvas.height/rect.height }; }
     canvas.addEventListener('pointerdown', (event) => { drawing = true; const point = canvasPoint(event); canvas.setPointerCapture(event.pointerId); ctx.strokeStyle = '#d92d20'; ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(point.x, point.y); });
@@ -308,13 +412,20 @@
     document.querySelector('#clear-signature').addEventListener('click', clearSignature);
     clearSignature();
 
-    async function filesToAttachments(files) {
-      const selected = Array.from(files || []);
+    async function fileToAttachment(file, attachmentType) {
+      const dataUrl = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result || '')); reader.onerror = reject; reader.readAsDataURL(file); });
+      const base64 = dataUrl.split(',')[1] || '';
+      return base64 ? { filename:file.name, mimeType:file.type || 'application/octet-stream', contentBase64:base64, attachmentType } : null;
+    }
+
+    async function collectRequiredAttachments() {
       const output = [];
-      for (const file of selected) {
-        const dataUrl = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result || '')); reader.onerror = reject; reader.readAsDataURL(file); });
-        const base64 = dataUrl.split(',')[1] || '';
-        if (base64) output.push({ filename:file.name, mimeType:file.type || 'application/octet-stream', contentBase64:base64 });
+      for (const input of attachmentInputs) {
+        const file = input.files?.[0];
+        if (!file && input.required) throw new Error(document.documentElement.lang === 'en' ? 'Passport, boarding pass, and bag tag receipt attachments are required.' : '必须上传护照、登机牌、行李票附件。');
+        if (!file) continue;
+        const attachment = await fileToAttachment(file, input.dataset.attachmentType || 'document');
+        if (attachment) output.push(attachment);
       }
       return output;
     }
@@ -325,6 +436,7 @@
       formStatus.textContent = document.documentElement.lang === 'en' ? 'Submitting...' : '提交中...';
       if (!signatureDirty) { formStatus.className = 'status err'; formStatus.textContent = document.documentElement.lang === 'en' ? 'Passenger signature is required.' : '请旅客签字。'; return; }
       const payload = Object.fromEntries(new FormData(form).entries());
+      ['passportAttachment', 'boardingPassAttachment', 'bagTagAttachment', 'otherAttachment'].forEach((key) => delete payload[key]);
       payload.flightRows = [1, 2, 3].map((index) => ({
         flightNo: payload[`flightNo${index}`],
         flightDate: payload[`flightDate${index}`],
@@ -336,7 +448,7 @@
       payload.language = document.documentElement.lang;
       payload.passengerSignature = signatureDirty ? signaturePad.toDataURL('image/jpeg', 0.85) : '';
       payload.damageSketch = sketchDirty ? canvas.toDataURL('image/jpeg', 0.85) : '';
-      payload.attachments = await filesToAttachments(attachmentsInput.files);
+      payload.attachments = await collectRequiredAttachments();
       try {
         const res = await fetch(`${apiBase}/cbs-cases`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
         const data = await parseJson(res);
@@ -344,6 +456,7 @@
         formStatus.className = data.emailError ? 'status err' : 'status ok';
         formStatus.textContent = data.emailError ? `Created ${data.record.caseNumber}, but email failed: ${data.emailError}` : `Created ${data.record.caseNumber} and email sent`;
         thanksCase.textContent = data.record.caseNumber;
+        thanks.querySelectorAll('[data-thanks-message]').forEach((item) => { item.hidden = item.dataset.thanksMessage !== data.record.caseType; });
         thanks.classList.add('is-active');
         thanks.scrollIntoView({ behavior:'smooth', block:'center' });
         form.reset(); sketchDirty = false; drawBagBase(); clearSignature(); contentsList.innerHTML = ''; addContentRow(); issueDateInput.valueAsDate = new Date(); setTypeFields(); setAddressFields();
