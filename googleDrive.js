@@ -22,7 +22,8 @@ const auth = new google.auth.GoogleAuth({
     'https://www.googleapis.com/auth/drive.readonly',
     'https://www.googleapis.com/auth/drive.file',
     'https://www.googleapis.com/auth/spreadsheets',
-    'https://www.googleapis.com/auth/gmail.readonly'
+    'https://www.googleapis.com/auth/gmail.readonly',
+    'https://www.googleapis.com/auth/gmail.send'
   ]
 });
 
@@ -62,6 +63,48 @@ const SY_BOOKING_RANGE =
 
 const ENABLE_240_SHEET =
   String(process.env.ENABLE_240_SHEET || 'true').toLowerCase() !== 'false';
+
+const CBS_SHEET_ID = process.env.CBS_SHEET_ID || '10oEQypkoaNvosREqT-mNw8zsyrQxln2EwsBUuS9OtsU';
+const CBS_SHEET_GID = Number(process.env.CBS_SHEET_GID || 0);
+const CBS_NOTIFICATION_EMAILS = (process.env.CBS_NOTIFICATION_EMAILS || 'laxhmmu@gmail.com')
+  .split(',')
+  .map((value) => value.trim())
+  .filter(Boolean);
+const CBS_HEADERS = [
+  'Case Number',
+  'Case Type',
+  'Status',
+  'Passenger Name',
+  'Email',
+  'Phone',
+  'Ticket Number',
+  'Class Of Travel',
+  'Flight Route',
+  'Bag Tag',
+  'Permanent Address',
+  'Temporary Address',
+  'Temporary Address Valid Until',
+  'Address Available',
+  'AHL Bag Description',
+  'AHL Bag Brand Tag',
+  'AHL Bag Type',
+  'AHL Features',
+  'AHL Other Features',
+  'AHL Contents',
+  'DPR Damage Level',
+  'DPR Bag Info',
+  'DPR Bag Type',
+  'DPR Inner Damage',
+  'Contents Details',
+  'Issue Date',
+  'Passenger Signature',
+  'Submit Date',
+  'Updated At',
+  'Update Note',
+  'Destination On Bags'
+];
+let cbsSheetTitle = '';
+let cbsSheetCache = { loadedAt: 0, rows: [] };
 
 let fullSheetCache = {
   loadedAt: 0,
@@ -2315,6 +2358,203 @@ async function getFlightLogByDate(date, yearSuffix) {
   }
 }
 
+
+async function getCbsSheetTitle() {
+  if (!cbsSheetTitle) cbsSheetTitle = await resolveSheetTitleByGid(CBS_SHEET_ID, CBS_SHEET_GID);
+  return cbsSheetTitle || 'Sheet1';
+}
+
+async function getCbsSheetRows(options = {}) {
+  const ttlMs = 15 * 1000;
+  if (!options.forceRefresh && Date.now() - cbsSheetCache.loadedAt < ttlMs && cbsSheetCache.rows.length) return cbsSheetCache.rows;
+  const title = await getCbsSheetTitle();
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: CBS_SHEET_ID,
+    range: `${escapeSheetTitle(title)}!A:AE`
+  });
+  const rows = res.data.values || [];
+  cbsSheetCache = { loadedAt: Date.now(), rows };
+  return rows;
+}
+
+async function ensureCbsSheetHeaders(rows) {
+  const firstRow = rows?.[0] || [];
+  const hasHeaders = CBS_HEADERS.every((header, index) => String(firstRow[index] || '').trim() === header);
+  if (hasHeaders) return;
+  const title = await getCbsSheetTitle();
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: CBS_SHEET_ID,
+    range: `${escapeSheetTitle(title)}!A1:AE1`,
+    valueInputOption: 'RAW',
+    requestBody: { values: [CBS_HEADERS] }
+  });
+  cbsSheetCache = { loadedAt: 0, rows: [] };
+}
+
+function cbsRecordFromSheet(values, rowNumber) {
+  const row = {};
+  CBS_HEADERS.forEach((header, index) => {
+    const key = header.toLowerCase().replace(/[^a-z0-9]+(.)/g, (_, chr) => chr.toUpperCase()).replace(/[^a-z0-9]/g, '');
+    row[key] = values[index] || '';
+  });
+  row.submittedAt = row.submittedAt || row.submitDate || values[27] || '';
+  row.rowNumber = rowNumber;
+  return row;
+}
+
+function cbsValuesFromRecord(record) {
+  return [
+    record.caseNumber,
+    record.caseType,
+    record.status,
+    record.passengerName,
+    record.email,
+    record.phone,
+    record.ticketNumber,
+    record.classOfTravel,
+    record.flightRoute,
+    record.bagTag,
+    record.permanentAddress,
+    record.temporaryAddress,
+    record.temporaryAddressValidUntil,
+    record.addressAvailable,
+    record.ahlBagDescription,
+    record.ahlBagBrandTag,
+    record.ahlBagType,
+    record.ahlFeatures,
+    record.ahlOtherFeatures,
+    record.ahlContents,
+    record.dprDamageLevel,
+    record.dprBagInfo,
+    record.dprBagType,
+    record.dprInnerDamage,
+    record.contentsDetails,
+    record.issueDate,
+    record.passengerSignature,
+    record.submittedAt,
+    record.updatedAt,
+    record.updateNote,
+    record.destinationOnBags
+  ];
+}
+
+async function appendCbsCase(record) {
+  const title = await getCbsSheetTitle();
+  const rows = await getCbsSheetRows({ forceRefresh: true });
+  await ensureCbsSheetHeaders(rows);
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: CBS_SHEET_ID,
+    range: `${escapeSheetTitle(title)}!A:AE`,
+    valueInputOption: 'RAW',
+    insertDataOption: 'INSERT_ROWS',
+    requestBody: { values: [cbsValuesFromRecord(record)] }
+  });
+  cbsSheetCache = { loadedAt: 0, rows: [] };
+  return record;
+}
+
+function isCbsHeaderRow(values = []) {
+  const normalized = values.map((value) => String(value || '').trim().toLowerCase());
+  return normalized.includes('case number') || normalized.includes('case id') || normalized.includes('passenger name');
+}
+
+async function getCbsCases() {
+  const rows = await getCbsSheetRows({ forceRefresh: true });
+  return rows
+    .map((values, index) => ({ values: values || [], rowNumber: index + 1 }))
+    .filter(({ values }) => !isCbsHeaderRow(values))
+    .map(({ values, rowNumber }) => cbsRecordFromSheet(values, rowNumber))
+    .filter((row) => row.caseNumber || row.caseType || row.passengerName || row.email || row.phone || row.bagTag || row.submittedAt);
+}
+
+async function updateCbsCase(caseNumber, update = {}) {
+  const rows = await getCbsSheetRows({ forceRefresh: true });
+  await ensureCbsSheetHeaders(rows);
+  const normalizedCaseNumber = String(caseNumber || '').trim().toUpperCase();
+  const rowIndex = rows.findIndex((row, index) => index > 0 && String(row?.[0] || '').trim().toUpperCase() === normalizedCaseNumber);
+  if (rowIndex < 0) return { notFound: true };
+  const current = cbsRecordFromSheet(rows[rowIndex] || [], rowIndex + 1);
+  const next = {
+    ...current,
+    status: sanitizeSheetText(update.status, 80) || current.status || 'Open',
+    updatedAt: new Date().toISOString(),
+    updateNote: sanitizeSheetText(update.updateNote, 500) || current.updateNote || ''
+  };
+  const title = await getCbsSheetTitle();
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: CBS_SHEET_ID,
+    range: `${escapeSheetTitle(title)}!A${rowIndex + 1}:AE${rowIndex + 1}`,
+    valueInputOption: 'RAW',
+    requestBody: { values: [cbsValuesFromRecord(next)] }
+  });
+  cbsSheetCache = { loadedAt: 0, rows: [] };
+  return { updated: true, record: next };
+}
+
+function base64UrlEncode(value) {
+  return Buffer.from(value).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+function encodeEmailHeader(value) {
+  return String(value || '').replace(/[\r\n]+/g, ' ');
+}
+
+function cbsBase64Lines(value) {
+  return String(value || '').match(/.{1,76}/g)?.join('\r\n') || '';
+}
+
+function cbsAttachmentPart({ filename, mimeType, contentBase64 }) {
+  return [
+    `Content-Type: ${encodeEmailHeader(mimeType || 'application/octet-stream')}`,
+    'Content-Transfer-Encoding: base64',
+    `Content-Disposition: attachment; filename="${encodeEmailHeader(filename || 'attachment')}"`,
+    '',
+    cbsBase64Lines(contentBase64)
+  ];
+}
+
+function buildRawCbsEmail({ to, cc = [], subject, html, pdfBuffer, filename, attachments = [] }) {
+  const boundary = `cbs_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+  const ccList = Array.isArray(cc) ? cc.filter(Boolean) : [];
+  const headers = [
+    `To: ${encodeEmailHeader(to)}`,
+    ...(ccList.length ? [`Cc: ${ccList.map(encodeEmailHeader).join(', ')}`] : []),
+    `Subject: ${encodeEmailHeader(subject)}`,
+    'MIME-Version: 1.0',
+    `Content-Type: multipart/mixed; boundary="${boundary}"`
+  ];
+  const body = [
+    `--${boundary}`,
+    'Content-Type: text/html; charset="UTF-8"',
+    'Content-Transfer-Encoding: quoted-printable',
+    '',
+    String(html || '').replace(/=/g, '=3D'),
+    `--${boundary}`,
+    'Content-Type: application/pdf',
+    'Content-Transfer-Encoding: base64',
+    `Content-Disposition: attachment; filename="${encodeEmailHeader(filename)}"`,
+    '',
+    cbsBase64Lines(pdfBuffer.toString('base64'))
+  ];
+  attachments.forEach((attachment) => {
+    body.push(`--${boundary}`, ...cbsAttachmentPart(attachment));
+  });
+  body.push(`--${boundary}--`);
+  return `${headers.join('\r\n')}\r\n\r\n${body.join('\r\n')}`;
+}
+
+async function sendCbsCaseEmail({ passengerEmail, subject, html, pdfBuffer, filename, attachments = [] }) {
+  const { gmail, userId } = getNextDayInfoGmailClient();
+  const to = String(passengerEmail || '').trim();
+  const cc = Array.from(new Set(CBS_NOTIFICATION_EMAILS.filter((email) => email && email.toLowerCase() !== to.toLowerCase())));
+  const raw = buildRawCbsEmail({ to, cc, subject, html, pdfBuffer, filename, attachments });
+  const sent = await gmail.users.messages.send({
+    userId,
+    requestBody: { raw: base64UrlEncode(raw) }
+  });
+  return [{ to, cc, id: sent.data.id || '' }];
+}
+
 // ===============================
 // Exports
 // ===============================
@@ -2346,5 +2586,9 @@ module.exports = {
   updateFscExchangeRate,
   extractFscExchangeRate,
   updateSyBookingCounts,
-  normalizeSyBookingCounts
+  normalizeSyBookingCounts,
+  appendCbsCase,
+  getCbsCases,
+  updateCbsCase,
+  sendCbsCaseEmail
 };
