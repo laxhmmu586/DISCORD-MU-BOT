@@ -2478,7 +2478,21 @@ function encodeEmailHeader(value) {
   return String(value || '').replace(/[\r\n]+/g, ' ');
 }
 
-function buildRawCbsEmail({ to, subject, html, pdfBuffer, filename }) {
+function cbsBase64Lines(value) {
+  return String(value || '').match(/.{1,76}/g)?.join('\r\n') || '';
+}
+
+function cbsAttachmentPart({ filename, mimeType, contentBase64 }) {
+  return [
+    `Content-Type: ${encodeEmailHeader(mimeType || 'application/octet-stream')}`,
+    'Content-Transfer-Encoding: base64',
+    `Content-Disposition: attachment; filename="${encodeEmailHeader(filename || 'attachment')}"`,
+    '',
+    cbsBase64Lines(contentBase64)
+  ];
+}
+
+function buildRawCbsEmail({ to, subject, html, pdfBuffer, filename, attachments = [] }) {
   const boundary = `cbs_${Date.now()}_${Math.random().toString(16).slice(2)}`;
   const headers = [
     `To: ${encodeEmailHeader(to)}`,
@@ -2497,18 +2511,21 @@ function buildRawCbsEmail({ to, subject, html, pdfBuffer, filename }) {
     'Content-Transfer-Encoding: base64',
     `Content-Disposition: attachment; filename="${encodeEmailHeader(filename)}"`,
     '',
-    pdfBuffer.toString('base64').match(/.{1,76}/g).join('\r\n'),
-    `--${boundary}--`
+    cbsBase64Lines(pdfBuffer.toString('base64'))
   ];
+  attachments.forEach((attachment) => {
+    body.push(`--${boundary}`, ...cbsAttachmentPart(attachment));
+  });
+  body.push(`--${boundary}--`);
   return `${headers.join('\r\n')}\r\n\r\n${body.join('\r\n')}`;
 }
 
-async function sendCbsCaseEmail({ passengerEmail, subject, html, pdfBuffer, filename }) {
+async function sendCbsCaseEmail({ passengerEmail, subject, html, pdfBuffer, filename, attachments = [] }) {
   const { gmail, userId } = getNextDayInfoGmailClient();
   const recipients = Array.from(new Set([passengerEmail, ...CBS_NOTIFICATION_EMAILS].filter(Boolean)));
   const results = [];
   for (const to of recipients) {
-    const raw = buildRawCbsEmail({ to, subject, html, pdfBuffer, filename });
+    const raw = buildRawCbsEmail({ to, subject, html, pdfBuffer, filename, attachments });
     const sent = await gmail.users.messages.send({
       userId,
       requestBody: { raw: base64UrlEncode(raw) }

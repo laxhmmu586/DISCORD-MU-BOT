@@ -3,136 +3,56 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>CBS Baggage Case</title>
+  <title>CBS Cases</title>
   <style>
-    :root { --bg:#f4f8fb; --ink:#172033; --muted:#667085; --brand:#123a73; --line:#d7e1ec; --panel:#fff; --ok:#087443; --warn:#b54708; }
+    :root { --bg:#f4f8fb; --ink:#172033; --muted:#667085; --brand:#123a73; --line:#d7e1ec; --panel:#fff; --ok:#087443; }
     * { box-sizing:border-box; }
     body { margin:0; font-family:Inter,Arial,"Noto Sans SC",sans-serif; background:linear-gradient(135deg,#eaf4ff,#fdfefe); color:var(--ink); }
-    header { position:sticky; top:0; z-index:10; display:flex; justify-content:space-between; align-items:center; padding:18px clamp(18px,4vw,52px); background:rgba(255,255,255,.92); border-bottom:1px solid var(--line); backdrop-filter:blur(12px); }
+    header { position:sticky; top:0; z-index:10; display:flex; justify-content:space-between; align-items:center; gap:16px; padding:18px clamp(18px,4vw,52px); background:rgba(255,255,255,.92); border-bottom:1px solid var(--line); backdrop-filter:blur(12px); }
     .brand { font-weight:900; color:var(--brand); letter-spacing:.08em; text-decoration:none; }
     .wrap { width:min(1180px,94vw); margin:28px auto 56px; display:grid; gap:24px; }
-    .hero,.card { background:var(--panel); border:1px solid var(--line); border-radius:22px; box-shadow:0 18px 42px rgba(22,48,76,.08); }
-    .hero { padding:28px; display:grid; grid-template-columns:1.2fr .8fr; gap:22px; align-items:center; }
-    h1,h2,h3 { margin:0 0 10px; }
+    .card { background:var(--panel); border:1px solid var(--line); border-radius:22px; box-shadow:0 18px 42px rgba(22,48,76,.08); padding:24px; }
+    h1,h2 { margin:0 0 10px; }
     p { line-height:1.65; }
     .muted { color:var(--muted); }
-    .flow { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; font-size:13px; }
-    .flow span { border:1px solid var(--line); border-radius:12px; padding:10px; background:#f8fbff; text-align:center; }
-    .card { padding:24px; }
-    form { display:grid; gap:18px; }
-    .grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
-    label { display:grid; gap:7px; font-weight:750; font-size:13px; }
-    input,select,textarea,button { font:inherit; }
-    input,select,textarea { width:100%; border:1px solid var(--line); border-radius:12px; padding:11px 12px; background:#fff; color:var(--ink); }
-    textarea { min-height:88px; resize:vertical; }
-    .wide { grid-column:1/-1; }
-    .case-fields { display:none; border:1px dashed var(--line); border-radius:18px; padding:18px; background:#fbfdff; }
-    .case-fields.is-active { display:grid; gap:14px; }
-    .actions { display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
-    button { border:0; border-radius:999px; padding:12px 18px; font-weight:850; cursor:pointer; background:var(--brand); color:white; }
-    button.secondary { background:#e8eef7; color:var(--brand); }
+    .actions { display:flex; gap:12px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
+    button,a.button { border:0; border-radius:999px; padding:12px 18px; font-weight:850; cursor:pointer; background:var(--brand); color:white; text-decoration:none; }
+    button.secondary,a.secondary { background:#e8eef7; color:var(--brand); }
     button.danger { background:#b42318; }
     .status { min-height:24px; font-weight:800; }
-    .status.ok { color:var(--ok); } .status.err { color:#b42318; }
-    .thanks { display:none; padding:24px; border-radius:22px; background:#dff8ff; border:1px solid #9ce5f3; }
-    .thanks.is-active { display:block; }
+    .status.err { color:#b42318; }
     table { width:100%; border-collapse:collapse; font-size:13px; }
     th,td { padding:10px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; }
     th { color:var(--muted); font-size:12px; text-transform:uppercase; }
     .pill { display:inline-flex; border-radius:999px; padding:4px 10px; font-weight:850; background:#eef4ff; color:#1849a9; }
     .pill.closed { background:#dcfae6; color:#067647; }
     .case-update { display:flex; gap:8px; min-width:280px; }
-    .case-update input { min-width:120px; }
-    @media (max-width:840px){ .hero,.grid{grid-template-columns:1fr}.flow{grid-template-columns:1fr 1fr}.case-update{min-width:0;flex-wrap:wrap} }
+    input { width:100%; border:1px solid var(--line); border-radius:12px; padding:10px 12px; background:#fff; color:var(--ink); font:inherit; }
+    @media (max-width:840px){ .case-update{min-width:0;flex-wrap:wrap} table{display:block;overflow-x:auto;white-space:nowrap} }
   </style>
 </head>
 <body>
-  <header><a class="brand" href="index.html">MUFC</a><strong>CBS Case Form</strong></header>
+  <header><a class="brand" href="index.html">MUFC</a><strong>CBS All Cases</strong></header>
   <main class="wrap">
-    <section class="hero">
-      <div>
-        <h1>China Eastern CBS / PIR Form</h1>
-        <p class="muted">No login required. Submit AHL delayed baggage or DPR damaged baggage information, save it to the CBS Google Sheet, generate a PIR-style PDF, and send it to the passenger plus the baggage office mailbox.</p>
-      </div>
-      <div class="flow" aria-label="Form flow">
-        <span>Passenger name</span><span>Flight routing</span><span>Bag tag</span><span>Phone / Email</span><span>AHL or DPR</span><span>PDF + Email</span>
-      </div>
-    </section>
-
     <section class="card">
-      <h2>New case</h2>
-      <form id="cbs-form">
-        <div class="grid">
-          <label>Passenger name<input name="passengerName" required placeholder="LAST/FIRST" /></label>
-          <label>Email<input name="email" type="email" required placeholder="passenger@example.com" /></label>
-          <label>Phone<input name="phone" placeholder="+1..." /></label>
-          <label>Flight route<input name="flightRoute" placeholder="MU1111 CAN / MU583 PVG / DL123 SEA" /></label>
-          <label>Bag tag<input name="bagTag" placeholder="MU123456" /></label>
-          <label>Case type<select name="caseType" id="case-type"><option value="AHL">AHL - Delayed/Lost</option><option value="DPR">DPR - Damaged</option></select></label>
-          <label class="wide">Permanent address<textarea name="permanentAddress" placeholder="If available"></textarea></label>
-          <label>Temporary address available?<select name="addressAvailable"><option value="Yes">Yes</option><option value="No">No</option></select></label>
-          <label>Temporary address valid until<input name="temporaryAddressValidUntil" type="date" /></label>
-          <label class="wide">Temporary address<textarea name="temporaryAddress"></textarea></label>
-        </div>
-
-        <section id="ahl-fields" class="case-fields is-active">
-          <h3>AHL information</h3>
-          <div class="grid">
-            <label class="wide">Baggage description<textarea name="ahlBagDescription" placeholder="Color, size, wheels, hard/soft shell..."></textarea></label>
-            <label>Bag brand tag<input name="ahlBagBrandTag" /></label>
-            <label>Bag type<input name="ahlBagType" placeholder="Suitcase / duffel / carton" /></label>
-            <label>Features<input name="ahlFeatures" placeholder="Sticker, ribbon, lock..." /></label>
-            <label class="wide">Other visible features<textarea name="ahlOtherFeatures"></textarea></label>
-            <label class="wide">Detailed contents<textarea name="ahlContents"></textarea></label>
-          </div>
-        </section>
-
-        <section id="dpr-fields" class="case-fields">
-          <h3>DPR information</h3>
-          <div class="grid">
-            <label>Damage level<select name="dprDamageLevel"><option>Minor</option><option>Major</option><option>Total</option></select></label>
-            <label>Bag type<input name="dprBagType" /></label>
-            <label class="wide">Baggage information / damage location<textarea name="dprBagInfo" placeholder="Side 1, Side 2, End 1, wheel, handle..."></textarea></label>
-            <label class="wide">Inner damage<textarea name="dprInnerDamage"></textarea></label>
-          </div>
-        </section>
-
-        <div class="actions"><button type="submit">Submit, save, PDF & email</button><button class="secondary" type="reset">Reset</button><span id="form-status" class="status"></span></div>
-      </form>
-    </section>
-
-    <section id="thanks" class="thanks">
-      <h2>Dear Passenger:</h2>
-      <p>We apologize sincerely for not being able to deliver your baggage upon your arrival. Tracing or handling efforts will continue, and our staff will keep you informed of the progress. The PIR PDF has been sent to the provided email address.</p>
-      <p><strong>Your case number:</strong> <span id="thanks-case"></span></p>
-      <p>China Eastern Airlines</p>
-    </section>
-
-    <section class="card">
-      <div class="actions" style="justify-content:space-between"><div><h2>All CBS cases</h2><p class="muted">Click update to change latest status. Use <strong>Case Close</strong> when finished.</p></div><button class="secondary" id="refresh-cases" type="button">Refresh</button></div>
+      <div class="actions">
+        <div><h1>All CBS cases</h1><p class="muted">This page is for staff case tracking only. New passenger intake has its own standalone URL: <code>cbs-form.html</code>.</p></div>
+        <div class="actions"><a class="button secondary" href="cbs-form.html">Open form</a><button class="secondary" id="refresh-cases" type="button">Refresh</button></div>
+      </div>
       <div id="cases-output"><p class="muted">Loading cases...</p></div>
     </section>
   </main>
   <script>
-    const form = document.querySelector('#cbs-form');
-    const typeSelect = document.querySelector('#case-type');
-    const ahlFields = document.querySelector('#ahl-fields');
-    const dprFields = document.querySelector('#dpr-fields');
-    const formStatus = document.querySelector('#form-status');
-    const thanks = document.querySelector('#thanks');
-    const thanksCase = document.querySelector('#thanks-case');
+    const apiBase = (window.MU_API_BASE || 'https://api.mufcapp.net').replace(/\/$/, '');
     const casesOutput = document.querySelector('#cases-output');
     const refreshCases = document.querySelector('#refresh-cases');
-
     function escapeHtml(value) { return String(value || '').replace(/[&<>'"]/g, (ch) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch])); }
-    function setTypeFields() { const isAhl = typeSelect.value === 'AHL'; ahlFields.classList.toggle('is-active', isAhl); dprFields.classList.toggle('is-active', !isAhl); }
-    typeSelect.addEventListener('change', setTypeFields);
-
+    async function parseJson(res) { const text = await res.text(); try { return JSON.parse(text); } catch { throw new Error(`API returned non-JSON (${res.status}). Please check API base: ${apiBase}`); } }
     async function loadCases() {
       casesOutput.innerHTML = '<p class="muted">Loading cases...</p>';
       try {
-        const res = await fetch('/cbs-cases');
-        const data = await res.json();
+        const res = await fetch(`${apiBase}/cbs-cases`);
+        const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || 'Case loading failed');
         const rows = data.rows || [];
         if (!rows.length) { casesOutput.innerHTML = '<p class="muted">No CBS cases yet.</p>'; return; }
@@ -142,25 +62,6 @@
         }).join('')}</tbody></table>`;
       } catch (error) { casesOutput.innerHTML = `<p class="status err">${escapeHtml(error.message)}</p>`; }
     }
-
-    form.addEventListener('submit', async (event) => {
-      event.preventDefault();
-      formStatus.className = 'status';
-      formStatus.textContent = 'Submitting...';
-      const payload = Object.fromEntries(new FormData(form).entries());
-      try {
-        const res = await fetch('/cbs-cases', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Submit failed');
-        formStatus.className = data.emailError ? 'status err' : 'status ok';
-        formStatus.textContent = data.emailError ? `Created ${data.record.caseNumber}, but email failed: ${data.emailError}` : `Created ${data.record.caseNumber} and email sent`;
-        thanksCase.textContent = data.record.caseNumber;
-        thanks.classList.add('is-active');
-        thanks.scrollIntoView({ behavior:'smooth', block:'center' });
-        form.reset(); setTypeFields(); loadCases();
-      } catch (error) { formStatus.className = 'status err'; formStatus.textContent = error.message; }
-    });
-
     casesOutput.addEventListener('submit', async (event) => {
       const updateForm = event.target.closest('.case-update');
       if (!updateForm) return;
@@ -176,14 +77,14 @@
     async function updateCase(caseNumber, payload) {
       casesOutput.style.opacity = '.65';
       try {
-        const res = await fetch(`/cbs-cases/${encodeURIComponent(caseNumber)}/update`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
-        const data = await res.json();
+        const res = await fetch(`${apiBase}/cbs-cases/${encodeURIComponent(caseNumber)}/update`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+        const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || 'Update failed');
         await loadCases();
       } catch (error) { alert(error.message); } finally { casesOutput.style.opacity = '1'; }
     }
     refreshCases.addEventListener('click', loadCases);
-    setTypeFields(); loadCases();
+    loadCases();
   </script>
 </body>
 </html>

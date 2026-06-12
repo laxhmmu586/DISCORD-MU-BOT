@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CBS Baggage Case Form</title>
+  <style>
+    :root { --bg:#f4f8fb; --ink:#172033; --muted:#667085; --brand:#123a73; --line:#d7e1ec; --panel:#fff; --ok:#087443; --warn:#b54708; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:Inter,Arial,"Noto Sans SC",sans-serif; background:linear-gradient(135deg,#eaf4ff,#fdfefe); color:var(--ink); }
+    header { position:sticky; top:0; z-index:10; display:flex; justify-content:space-between; align-items:center; padding:18px clamp(18px,4vw,52px); background:rgba(255,255,255,.92); border-bottom:1px solid var(--line); backdrop-filter:blur(12px); }
+    .brand { font-weight:900; color:var(--brand); letter-spacing:.08em; text-decoration:none; }
+    .wrap { width:min(980px,94vw); margin:28px auto 56px; display:grid; gap:24px; }
+    .hero,.card { background:var(--panel); border:1px solid var(--line); border-radius:22px; box-shadow:0 18px 42px rgba(22,48,76,.08); }
+    .hero { padding:28px; display:grid; grid-template-columns:1.2fr .8fr; gap:22px; align-items:center; }
+    h1,h2,h3 { margin:0 0 10px; }
+    p { line-height:1.65; }
+    .muted { color:var(--muted); }
+    .flow { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; font-size:13px; }
+    .flow span { border:1px solid var(--line); border-radius:12px; padding:10px; background:#f8fbff; text-align:center; }
+    .card { padding:24px; }
+    form { display:grid; gap:18px; }
+    .grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
+    label { display:grid; gap:7px; font-weight:750; font-size:13px; }
+    input,select,textarea,button { font:inherit; }
+    input,select,textarea { width:100%; border:1px solid var(--line); border-radius:12px; padding:11px 12px; background:#fff; color:var(--ink); }
+    textarea { min-height:88px; resize:vertical; }
+    .wide { grid-column:1/-1; }
+    .case-fields { display:none; border:1px dashed var(--line); border-radius:18px; padding:18px; background:#fbfdff; }
+    .case-fields.is-active { display:grid; gap:14px; }
+    .actions { display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+    button { border:0; border-radius:999px; padding:12px 18px; font-weight:850; cursor:pointer; background:var(--brand); color:white; }
+    button.secondary { background:#e8eef7; color:var(--brand); }
+    .status { min-height:24px; font-weight:800; }
+    .status.ok { color:var(--ok); } .status.err { color:#b42318; }
+    .thanks { display:none; padding:24px; border-radius:22px; background:#dff8ff; border:1px solid #9ce5f3; }
+    .thanks.is-active { display:block; }
+    .sketch-shell { display:grid; gap:10px; }
+    .sketch-board { width:100%; max-width:760px; border:1px solid var(--line); border-radius:14px; background:#fff; touch-action:none; }
+    .attachment-hint { font-size:12px; color:var(--muted); font-weight:600; }
+    @media (max-width:840px){ .hero,.grid{grid-template-columns:1fr}.flow{grid-template-columns:1fr 1fr} }
+  </style>
+</head>
+<body>
+  <header><a class="brand" href="index.html">MUFC</a><strong>CBS Case Form</strong></header>
+  <main class="wrap">
+    <section class="hero">
+      <div>
+        <h1>China Eastern CBS / PIR Form</h1>
+        <p class="muted">No login required. Submit AHL delayed baggage or DPR damaged baggage information, save it to the CBS Google Sheet, generate a PIR-style PDF, and send it to the passenger plus the baggage office mailbox.</p>
+      </div>
+      <div class="flow" aria-label="Form flow">
+        <span>Passenger name</span><span>Flight routing</span><span>Bag tag</span><span>Phone / Email</span><span>AHL or DPR</span><span>PDF + Email</span>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>New case</h2>
+      <form id="cbs-form">
+        <div class="grid">
+          <label>Passenger name<input name="passengerName" required placeholder="LAST/FIRST" /></label>
+          <label>Email<input name="email" type="email" required placeholder="passenger@example.com" /></label>
+          <label>Phone<input name="phone" placeholder="+1..." /></label>
+          <label>Flight route<input name="flightRoute" placeholder="MU1111 CAN / MU583 PVG / DL123 SEA" /></label>
+          <label>Bag tag<input name="bagTag" placeholder="MU123456" /></label>
+          <label>Case type<select name="caseType" id="case-type"><option value="AHL">AHL - Delayed/Lost</option><option value="DPR">DPR - Damaged</option></select></label>
+          <label class="wide">Permanent address<textarea name="permanentAddress" placeholder="If available"></textarea></label>
+          <label>Temporary address available?<select name="addressAvailable" id="address-available"><option value="Yes">Yes</option><option value="No">No</option></select></label>
+          <label id="valid-until-field">Temporary address valid until<input name="temporaryAddressValidUntil" type="date" /></label>
+          <label class="wide" id="temporary-address-field">Temporary address<textarea name="temporaryAddress"></textarea></label>
+          <label class="wide">Attachments<input name="attachments" id="attachments" type="file" multiple /><span class="attachment-hint">Files are sent as email attachments only; they are not saved to Drive or the case sheet.</span></label>
+        </div>
+
+        <section id="ahl-fields" class="case-fields is-active">
+          <h3>AHL information</h3>
+          <div class="grid">
+            <label class="wide">Baggage description<textarea name="ahlBagDescription" placeholder="Color, size, wheels, hard/soft shell..."></textarea></label>
+            <label>Bag brand tag<input name="ahlBagBrandTag" /></label>
+            <label>Bag type<input name="ahlBagType" placeholder="Suitcase / duffel / carton" /></label>
+            <label>Features<input name="ahlFeatures" placeholder="Sticker, ribbon, lock..." /></label>
+            <label class="wide">Other visible features<textarea name="ahlOtherFeatures"></textarea></label>
+            <label class="wide">Detailed contents<textarea name="ahlContents"></textarea></label>
+          </div>
+        </section>
+
+        <section id="dpr-fields" class="case-fields">
+          <h3>DPR information</h3>
+          <div class="grid">
+            <label>Damage level<select name="dprDamageLevel"><option>Minor</option><option>Major</option><option>Total</option></select></label>
+            <label>Bag type<input name="dprBagType" /></label>
+            <label class="wide">Baggage information / damage location<textarea name="dprBagInfo" placeholder="Side 1, Side 2, End 1, wheel, handle..."></textarea></label>
+            <label class="wide">Inner damage<textarea name="dprInnerDamage"></textarea></label>
+            <div class="wide sketch-shell">
+              <strong>Circle damaged area</strong>
+              <canvas id="damage-sketch" class="sketch-board" width="900" height="230" aria-label="Baggage damage sketch canvas"></canvas>
+              <div class="actions"><button class="secondary" id="clear-sketch" type="button">Clear circles</button><span class="attachment-hint">Drag on the picture to freely circle damaged parts. The marked sketch will be attached to the email.</span></div>
+            </div>
+          </div>
+        </section>
+
+        <div class="actions"><button type="submit">Submit, save, PDF & email</button><button class="secondary" type="reset">Reset</button><span id="form-status" class="status"></span></div>
+      </form>
+    </section>
+
+    <section id="thanks" class="thanks">
+      <h2>Dear Passenger:</h2>
+      <p>We apologize sincerely for not being able to deliver your baggage upon your arrival. Tracing or handling efforts will continue, and our staff will keep you informed of the progress. The PIR PDF has been sent to the provided email address.</p>
+      <p><strong>Your case number:</strong> <span id="thanks-case"></span></p>
+      <p>China Eastern Airlines</p>
+    </section>
+  </main>
+  <script>
+    const apiBase = (window.MU_API_BASE || 'https://api.mufcapp.net').replace(/\/$/, '');
+    const form = document.querySelector('#cbs-form');
+    const typeSelect = document.querySelector('#case-type');
+    const addressAvailable = document.querySelector('#address-available');
+    const validUntilField = document.querySelector('#valid-until-field');
+    const temporaryAddressField = document.querySelector('#temporary-address-field');
+    const ahlFields = document.querySelector('#ahl-fields');
+    const dprFields = document.querySelector('#dpr-fields');
+    const formStatus = document.querySelector('#form-status');
+    const thanks = document.querySelector('#thanks');
+    const thanksCase = document.querySelector('#thanks-case');
+    const attachmentsInput = document.querySelector('#attachments');
+    const canvas = document.querySelector('#damage-sketch');
+    const ctx = canvas.getContext('2d');
+    let drawing = false;
+    let startPoint = null;
+    let sketchDirty = false;
+
+    function escapeHtml(value) { return String(value || '').replace(/[&<>'"]/g, (ch) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch])); }
+    async function parseJson(res) { const text = await res.text(); try { return JSON.parse(text); } catch { throw new Error(`API returned non-JSON (${res.status}). Please check API base: ${apiBase}`); } }
+    function setTypeFields() { const isAhl = typeSelect.value === 'AHL'; ahlFields.classList.toggle('is-active', isAhl); dprFields.classList.toggle('is-active', !isAhl); }
+    function setAddressFields() { const yes = addressAvailable.value !== 'No'; validUntilField.hidden = !yes; temporaryAddressField.hidden = !yes; if (!yes) { validUntilField.querySelector('input').value = ''; temporaryAddressField.querySelector('textarea').value = ''; } }
+    typeSelect.addEventListener('change', setTypeFields);
+    addressAvailable.addEventListener('change', setAddressFields);
+
+    function drawBagBase() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = '#222'; ctx.lineWidth = 2; ctx.font = '16px Arial'; ctx.fillStyle = '#222';
+      const bag = (x,y,w,h,label) => { ctx.strokeRect(x,y,w,h); ctx.beginPath(); ctx.arc(x+14,y+h,5,0,Math.PI*2); ctx.arc(x+w-14,y+h,5,0,Math.PI*2); ctx.stroke(); ctx.beginPath(); ctx.arc(x+w/2,y,18,Math.PI,0); ctx.stroke(); ctx.fillText(label,x+w/2-28,y+h+28); };
+      bag(40,65,110,75,'SIDE 1'); bag(200,65,110,75,'SIDE 2');
+      ctx.strokeRect(382,45,26,115); ctx.strokeRect(452,45,26,115); ctx.fillText('END 1',372,188); ctx.fillText('END 2',442,188);
+      ctx.strokeRect(555,35,145,38); ctx.strokeRect(555,95,145,38); ctx.beginPath(); ctx.arc(627,54,26,0,Math.PI); ctx.stroke(); ctx.fillText('TOP',722,60); ctx.fillText('BOTTOM',722,120);
+      ctx.strokeRect(815,55,60,105);
+    }
+    function canvasPoint(event) { const rect = canvas.getBoundingClientRect(); return { x:(event.clientX-rect.left)*canvas.width/rect.width, y:(event.clientY-rect.top)*canvas.height/rect.height }; }
+    canvas.addEventListener('pointerdown', (event) => { drawing = true; startPoint = canvasPoint(event); canvas.setPointerCapture(event.pointerId); });
+    canvas.addEventListener('pointerup', (event) => { if (!drawing || !startPoint) return; const end = canvasPoint(event); const rx = Math.max(12, Math.abs(end.x - startPoint.x)); const ry = Math.max(12, Math.abs(end.y - startPoint.y)); ctx.strokeStyle = '#d92d20'; ctx.lineWidth = 5; ctx.beginPath(); ctx.ellipse(startPoint.x, startPoint.y, rx, ry, 0, 0, Math.PI * 2); ctx.stroke(); drawing = false; sketchDirty = true; });
+    document.querySelector('#clear-sketch').addEventListener('click', () => { sketchDirty = false; drawBagBase(); });
+    drawBagBase();
+
+    async function filesToAttachments(files) {
+      const selected = Array.from(files || []);
+      const output = [];
+      for (const file of selected) {
+        const dataUrl = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result || '')); reader.onerror = reject; reader.readAsDataURL(file); });
+        const base64 = dataUrl.split(',')[1] || '';
+        if (base64) output.push({ filename:file.name, mimeType:file.type || 'application/octet-stream', contentBase64:base64 });
+      }
+      if (typeSelect.value === 'DPR' && sketchDirty) output.push({ filename:'damage-sketch.png', mimeType:'image/png', contentBase64:canvas.toDataURL('image/png').split(',')[1] });
+      return output;
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      formStatus.className = 'status';
+      formStatus.textContent = 'Submitting...';
+      const payload = Object.fromEntries(new FormData(form).entries());
+      payload.attachments = await filesToAttachments(attachmentsInput.files);
+      try {
+        const res = await fetch(`${apiBase}/cbs-cases`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+        const data = await parseJson(res);
+        if (!res.ok) throw new Error(data.error || 'Submit failed');
+        formStatus.className = data.emailError ? 'status err' : 'status ok';
+        formStatus.textContent = data.emailError ? `Created ${data.record.caseNumber}, but email failed: ${data.emailError}` : `Created ${data.record.caseNumber} and email sent`;
+        thanksCase.textContent = data.record.caseNumber;
+        thanks.classList.add('is-active');
+        thanks.scrollIntoView({ behavior:'smooth', block:'center' });
+        form.reset(); sketchDirty = false; drawBagBase(); setTypeFields(); setAddressFields();
+      } catch (error) { formStatus.className = 'status err'; formStatus.textContent = error.message; }
+    });
+    form.addEventListener('reset', () => setTimeout(() => { sketchDirty = false; drawBagBase(); setTypeFields(); setAddressFields(); }, 0));
+    setTypeFields(); setAddressFields();
+  </script>
+</body>
+</html>

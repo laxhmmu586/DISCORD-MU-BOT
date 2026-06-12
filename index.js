@@ -703,7 +703,7 @@ app.use((req, res, next) => {
 });
 
 app.use(
-  express.json()
+  express.json({ limit: '15mb' })
 );
 
 app.use(
@@ -1102,6 +1102,24 @@ function cbsPdfLines(record) {
 
 
 
+function sanitizeCbsAttachments(value) {
+  const list = Array.isArray(value) ? value : [];
+  const maxAttachments = 8;
+  const maxTotalBytes = 10 * 1024 * 1024;
+  let totalBytes = 0;
+  return list.slice(0, maxAttachments).map((item, index) => {
+    const filename = sanitizeCbsText(item?.filename, 120) || `attachment-${index + 1}`;
+    const mimeType = sanitizeCbsText(item?.mimeType, 120) || 'application/octet-stream';
+    const contentBase64 = String(item?.contentBase64 || '').replace(/\s/g, '');
+    if (!/^[A-Za-z0-9+/]*={0,2}$/.test(contentBase64)) return null;
+    const bytes = Math.floor((contentBase64.length * 3) / 4);
+    totalBytes += bytes;
+    if (totalBytes > maxTotalBytes) return null;
+    return { filename, mimeType, contentBase64 };
+  }).filter(Boolean);
+}
+
+
 app.get('/cbs-cases', async (req, res) => {
   try {
     const rows = await getCbsCases();
@@ -1122,6 +1140,7 @@ app.post('/cbs-cases', async (req, res) => {
     const caseType = sanitizeCbsText(body.caseType, 10).toUpperCase();
     if (!['AHL', 'DPR'].includes(caseType)) return res.status(400).json({ error: 'Case type must be AHL or DPR' });
     const now = new Date().toISOString();
+    const attachments = sanitizeCbsAttachments(body.attachments);
     const record = {
       caseNumber: makeCbsCaseNumber(),
       caseType,
@@ -1159,7 +1178,8 @@ app.post('/cbs-cases', async (req, res) => {
         subject: `China Eastern Baggage Case ${record.caseNumber}`,
         html: buildCbsEmailHtml(record),
         pdfBuffer,
-        filename: `${record.caseNumber}.pdf`
+        filename: `${record.caseNumber}.pdf`,
+        attachments
       });
     } catch (mailErr) {
       emailError = mailErr?.message || 'Email send failed';
