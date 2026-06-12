@@ -29,8 +29,8 @@
     .flight-row, .flight-head { display:grid; grid-template-columns:1fr .8fr .8fr; gap:10px; align-items:end; }
     .flight-row + .flight-row { margin-top:3px; }
     .routing-layout { display:grid; grid-template-columns:290px minmax(0,1fr); column-gap:18px; align-items:start; }
-    .bag-report-row { grid-column:1/-1; margin-top:8px; }
-    .bag-report-fields { display:grid; grid-template-columns:1.1fr 1fr 1fr; gap:14px; width:100%; align-items:end; }
+    .bag-report-row { grid-column:1/-1; display:grid; grid-template-columns:290px minmax(0,1fr); column-gap:18px; margin-top:8px; }
+    .bag-report-fields { display:grid; grid-template-columns:1fr 1fr; gap:14px 18px; width:100%; align-items:end; }
     .field-label { font-weight:750; font-size:13px; }
     .required-mark { color:#d92d20; font-weight:900; margin-left:3px; }
     label:has(input[required]) > span.en::after,
@@ -39,8 +39,8 @@
     label:has(select[required]) > span.zh::after,
     label:has(textarea[required]) > span.en::after,
     label:has(textarea[required]) > span.zh::after { content:" *"; color:#d92d20; font-weight:900; }
-    .bag-list { display:grid; gap:8px; }
-    .bag-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; align-items:center; }
+    .bag-list { display:grid; grid-column:1/-1; gap:8px; max-width:650px; }
+    .bag-row { display:grid; grid-template-columns:minmax(260px, 420px) auto; gap:14px; align-items:center; justify-content:start; }
     .bag-row input { min-width:0; }
     .bag-row button { padding:10px 13px; }
     .tag-example { border:1px dashed var(--line); border-radius:16px; padding:16px; background:#fbfdff; transform:rotate(-3deg); color:#202938; font-family:"Courier New",monospace; box-shadow:0 10px 24px rgba(22,48,76,.08); margin-bottom:10px; }

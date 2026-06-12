@@ -60,6 +60,7 @@ const {
   updateCbsCase,
   getCbsMissingBagReports,
   markCbsMissingBagCase,
+  acknowledgeCbsMissingBag,
   sendCbsCaseEmail
 
 } = require('./googleDrive');
@@ -1403,6 +1404,18 @@ app.post('/cbs-missing-bags/:rowNumber/create-case', async (req, res) => {
   } catch (err) {
     console.error('CBS missing bag create case error:', err);
     return res.status(500).json({ error: err?.message || 'CBS missing bag case creation failed' });
+  }
+});
+
+
+app.post('/cbs-missing-bags/:rowNumber/acknowledge', async (req, res) => {
+  try {
+    const result = await acknowledgeCbsMissingBag(req.params.rowNumber);
+    if (result.notFound) return res.status(404).json({ error: 'Missing bag row not found' });
+    return res.json(result);
+  } catch (err) {
+    console.error('CBS missing bag acknowledge error:', err);
+    return res.status(500).json({ error: err?.message || 'CBS missing bag acknowledge failed' });
   }
 });
 

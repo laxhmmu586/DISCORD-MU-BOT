@@ -107,7 +107,7 @@ const CBS_HEADERS = [
 let cbsSheetTitle = '';
 let cbsSheetCache = { loadedAt: 0, rows: [] };
 const CBS_MISSING_BAG_SHEET_GID = Number(process.env.CBS_MISSING_BAG_SHEET_GID || 1145829442);
-const CBS_MISSING_BAG_HEADERS = ['Bag Tag', 'Passenger Name', 'Destination', 'Airline', 'Source Email Date', 'Source Attachment', 'Recorded At', 'Case Number', 'Case Created At'];
+const CBS_MISSING_BAG_HEADERS = ['Bag Tag', 'Passenger Name', 'Destination', 'Airline', 'Source Email Date', 'Source Attachment', 'Recorded At', 'Case Number', 'Case Created At', 'Acknowledged At'];
 let cbsMissingBagSheetTitle = '';
 let cbsMissingBagSheetCache = { loadedAt: 0, rows: [] };
 
@@ -2511,7 +2511,7 @@ async function getCbsMissingBagSheetRows(options = {}) {
   const title = await getCbsMissingBagSheetTitle();
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A:I`
+    range: `${escapeSheetTitle(title)}!A:J`
   });
   const rows = res.data.values || [];
   cbsMissingBagSheetCache = { loadedAt: Date.now(), rows };
@@ -2525,7 +2525,7 @@ async function ensureCbsMissingBagHeaders(rows) {
   const title = await getCbsMissingBagSheetTitle();
   await sheets.spreadsheets.values.update({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A1:I1`,
+    range: `${escapeSheetTitle(title)}!A1:J1`,
     valueInputOption: 'RAW',
     requestBody: { values: [CBS_MISSING_BAG_HEADERS] }
   });
@@ -2543,7 +2543,8 @@ function cbsMissingBagRecordFromSheet(values = [], rowNumber = 0) {
     sourceAttachment: String(values[5] || '').trim(),
     recordedAt: String(values[6] || '').trim(),
     caseNumber: String(values[7] || '').trim(),
-    caseCreatedAt: String(values[8] || '').trim()
+    caseCreatedAt: String(values[8] || '').trim(),
+    acknowledgedAt: String(values[9] || '').trim()
   };
 }
 
@@ -2557,7 +2558,8 @@ function cbsMissingBagValues(record = {}) {
     sanitizeSheetText(record.sourceAttachment, 160),
     sanitizeSheetText(record.recordedAt, 80),
     sanitizeSheetText(record.caseNumber, 80),
-    sanitizeSheetText(record.caseCreatedAt, 80)
+    sanitizeSheetText(record.caseCreatedAt, 80),
+    sanitizeSheetText(record.acknowledgedAt, 80)
   ];
 }
 
@@ -2613,7 +2615,8 @@ function parseCbsMissingBagRowsFromXlsx(buffer, meta = {}) {
       sourceAttachment: meta.sourceAttachment || '',
       recordedAt: new Date().toISOString(),
       caseNumber: '',
-      caseCreatedAt: ''
+      caseCreatedAt: '',
+      acknowledgedAt: ''
     }))
     .filter((row) => row.bagTag && /MU/i.test(row.airline));
 }
@@ -2632,7 +2635,7 @@ async function appendCbsMissingBagRows(records = []) {
   const title = await getCbsMissingBagSheetTitle();
   await sheets.spreadsheets.values.append({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A:I`,
+    range: `${escapeSheetTitle(title)}!A:J`,
     valueInputOption: 'RAW',
     insertDataOption: 'INSERT_ROWS',
     requestBody: { values: newRows.map(cbsMissingBagValues) }
@@ -2711,7 +2714,26 @@ async function markCbsMissingBagCase(rowNumber, caseNumber) {
   const title = await getCbsMissingBagSheetTitle();
   await sheets.spreadsheets.values.update({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A${numericRow}:I${numericRow}`,
+    range: `${escapeSheetTitle(title)}!A${numericRow}:J${numericRow}`,
+    valueInputOption: 'RAW',
+    requestBody: { values: [cbsMissingBagValues(next)] }
+  });
+  cbsMissingBagSheetCache = { loadedAt: 0, rows: [] };
+  return { updated: true, record: next };
+}
+
+async function acknowledgeCbsMissingBag(rowNumber) {
+  const numericRow = Number(rowNumber);
+  if (!Number.isInteger(numericRow) || numericRow < 2) return { notFound: true };
+  const rows = await getCbsMissingBagSheetRows({ forceRefresh: true });
+  await ensureCbsMissingBagHeaders(rows);
+  const current = cbsMissingBagRecordFromSheet(rows[numericRow - 1] || [], numericRow);
+  if (!current.bagTag) return { notFound: true };
+  const next = { ...current, acknowledgedAt: new Date().toISOString() };
+  const title = await getCbsMissingBagSheetTitle();
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: CBS_SHEET_ID,
+    range: `${escapeSheetTitle(title)}!A${numericRow}:J${numericRow}`,
     valueInputOption: 'RAW',
     requestBody: { values: [cbsMissingBagValues(next)] }
   });
@@ -2820,5 +2842,6 @@ module.exports = {
   updateCbsCase,
   getCbsMissingBagReports,
   markCbsMissingBagCase,
+  acknowledgeCbsMissingBag,
   sendCbsCaseEmail
 };

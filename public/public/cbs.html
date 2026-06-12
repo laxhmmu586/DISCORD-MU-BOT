@@ -21,6 +21,8 @@
     .missing-alert.is-active { display:inline-flex; }
     @keyframes missingPulse { 0%{box-shadow:0 0 0 0 rgba(217,45,32,.55)} 70%{box-shadow:0 0 0 14px rgba(217,45,32,0)} 100%{box-shadow:0 0 0 0 rgba(217,45,32,0)} }
     .search-field { min-width:260px; max-width:360px; }
+    .case-toolbar { display:flex; flex-wrap:nowrap; gap:10px; align-items:center; }
+    .missing-actions { display:flex; gap:8px; flex-wrap:nowrap; align-items:center; }
     .actions { display:flex; gap:12px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
     button,a.button { border:0; border-radius:999px; padding:12px 18px; font-weight:850; cursor:pointer; background:var(--brand); color:white; text-decoration:none; }
     .lang-toggle { border:1px solid var(--line); background:#e8eef7; color:var(--brand); }
@@ -62,7 +64,7 @@
     <section class="card" id="cases-card">
       <div class="actions">
         <div><h1><span class="en">All Cases</span><span class="zh">所有案件</span></h1></div>
-        <div class="actions"><input class="search-field" id="case-search" placeholder="Search case / bag tag / passenger" /><button class="secondary" id="refresh-cases" type="button"><span class="en">Refresh</span><span class="zh">刷新</span></button></div>
+        <div class="case-toolbar"><input class="search-field" id="case-search" placeholder="Search case / bag tag / passenger" /><button class="secondary" id="refresh-cases" type="button"><span class="en">Refresh</span><span class="zh">刷新</span></button></div>
       </div>
       <div id="cases-output"><p class="muted">Loading cases...</p></div>
     </section>
@@ -201,10 +203,10 @@
       } catch (error) { casesOutput.innerHTML = `<p class="status err">${escapeHtml(error.message)}</p>`; }
     }
     function renderMissingReports(rows = []) {
-      const openRows = rows.filter((row) => !row.caseNumber);
+      const openRows = rows.filter((row) => !row.caseNumber && !row.acknowledgedAt);
       missingAlert.classList.toggle('is-active', openRows.length > 0);
       if (!rows.length) { missingReportOutput.innerHTML = '<p class="muted">No MU missing bag rows found.</p>'; return; }
-      missingReportOutput.innerHTML = `<table><thead><tr><th>Bag Tag</th><th>Passenger</th><th>Destination</th><th>Airline</th><th>Source</th><th>Case</th><th></th></tr></thead><tbody>${rows.map((row) => `<tr><td>${escapeHtml(row.bagTag)}</td><td>${escapeHtml(row.passengerName)}</td><td>${escapeHtml(row.destination)}</td><td>${escapeHtml(row.airline)}</td><td>${escapeHtml(row.sourceAttachment || row.sourceEmailDate)}</td><td>${escapeHtml(row.caseNumber || '-')}</td><td>${row.caseNumber ? '' : `<button type="button" data-create-missing-case="${escapeHtml(row.rowNumber)}">Create CASE</button>`}</td></tr>`).join('')}</tbody></table>`;
+      missingReportOutput.innerHTML = `<table><thead><tr><th>Bag Tag</th><th>Passenger</th><th>Destination</th><th>Airline</th><th>Source</th><th>Case</th><th>Status</th><th></th></tr></thead><tbody>${rows.map((row) => { const resolved = Boolean(row.caseNumber || row.acknowledgedAt); return `<tr><td>${escapeHtml(row.bagTag)}</td><td>${escapeHtml(row.passengerName)}</td><td>${escapeHtml(row.destination)}</td><td>${escapeHtml(row.airline)}</td><td>${escapeHtml(row.sourceAttachment || row.sourceEmailDate)}</td><td>${escapeHtml(row.caseNumber || '-')}</td><td>${escapeHtml(row.acknowledgedAt ? 'Acknowledged' : (row.caseNumber ? 'Case Created' : 'Open'))}</td><td>${resolved ? '' : `<div class="missing-actions"><button type="button" data-create-missing-case="${escapeHtml(row.rowNumber)}">Create CASE</button><button class="secondary" type="button" data-ack-missing="${escapeHtml(row.rowNumber)}">Acknowledge</button></div>`}</td></tr>`; }).join('')}</tbody></table>`;
     }
     async function loadMissingReports(sync = true) {
       try {
@@ -255,17 +257,22 @@
     missingAlert?.addEventListener('click', async () => { casesCard.hidden = true; missingReportCard.hidden = false; await loadMissingReports(true); });
     backToCases?.addEventListener('click', () => { missingReportCard.hidden = true; casesCard.hidden = false; });
     missingReportOutput?.addEventListener('click', async (event) => {
-      const button = event.target.closest('[data-create-missing-case]');
+      const createButton = event.target.closest('[data-create-missing-case]');
+      const ackButton = event.target.closest('[data-ack-missing]');
+      const button = createButton || ackButton;
       if (!button) return;
       button.disabled = true;
-      button.textContent = 'Creating...';
+      const originalText = button.textContent;
+      button.textContent = createButton ? 'Creating...' : 'Acknowledging...';
       try {
-        const res = await fetch(`${apiBase}/cbs-missing-bags/${encodeURIComponent(button.dataset.createMissingCase)}/create-case`, { method:'POST' });
+        const rowNumber = createButton ? createButton.dataset.createMissingCase : ackButton.dataset.ackMissing;
+        const action = createButton ? 'create-case' : 'acknowledge';
+        const res = await fetch(`${apiBase}/cbs-missing-bags/${encodeURIComponent(rowNumber)}/${action}`, { method:'POST' });
         const data = await parseJson(res);
-        if (!res.ok) throw new Error(data.error || 'Create case failed');
+        if (!res.ok) throw new Error(data.error || (createButton ? 'Create case failed' : 'Acknowledge failed'));
         await loadMissingReports(false);
         await loadCases();
-      } catch (error) { alert(error.message); } finally { button.disabled = false; }
+      } catch (error) { alert(error.message); } finally { button.disabled = false; button.textContent = originalText; }
     });
     refreshCases.addEventListener('click', async () => { await loadCases(); await loadMissingReports(true); });
     setLanguage('en');
