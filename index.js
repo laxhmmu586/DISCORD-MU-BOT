@@ -54,7 +54,11 @@ const {
   updateTestBaggageRecord,
   updateFscExchangeRate,
   extractFscExchangeRate,
-  updateSyBookingCounts
+  updateSyBookingCounts,
+  appendCbsCase,
+  getCbsCases,
+  updateCbsCase,
+  sendCbsCaseEmail
 
 } = require('./googleDrive');
 
@@ -1004,6 +1008,182 @@ function cleanBodyText(value, maxLength = 500) {
   return String(value || '').replace(/[\u0000-\u001F\u007F]/g, ' ').trim().slice(0, maxLength);
 }
 
+
+function sanitizeCbsText(value, maxLength = 1000) {
+  return String(value || '').replace(/[\u0000-\u001F\u007F]/g, ' ').trim().slice(0, maxLength);
+}
+
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
+}
+
+function makeCbsCaseNumber() {
+  const now = new Date();
+  const stamp = now.toISOString().replace(/[-:TZ.]/g, '').slice(2, 14);
+  return `CBS-${stamp}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+}
+
+function pdfEscape(value) {
+  return String(value || '').replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
+}
+
+function createSimplePdf(lines) {
+  const objects = [];
+  const addObject = (content) => {
+    objects.push(content);
+    return objects.length;
+  };
+  const pageWidth = 612;
+  const pageHeight = 792;
+  const content = [];
+  content.push('0.93 0.95 0.98 rg 0 0 612 792 re f');
+  content.push('0 0 0 RG 1 w 36 36 540 720 re S');
+  content.push('BT /F1 18 Tf 72 738 Td (CHINA EASTERN AIRLINES) Tj ET');
+  content.push('BT /F1 16 Tf 252 710 Td (PROPERTY IRREGULARITY REPORT) Tj ET');
+  content.push('BT /F1 10 Tf 420 692 Td (To be issued in BLOCK LETTERS) Tj ET');
+  let y = 662;
+  const write = (label, value, x = 56, width = 500) => {
+    const safeLabel = pdfEscape(label);
+    const safeValue = pdfEscape(value || '');
+    content.push(`0 0 0 RG 0.5 w ${x} ${y - 5} ${width} 18 re S`);
+    content.push(`BT /F1 8 Tf ${x + 4} ${y + 1} Td (${safeLabel}) Tj ET`);
+    content.push(`BT /F1 10 Tf ${x + 135} ${y + 1} Td (${safeValue}) Tj ET`);
+    y -= 24;
+  };
+  lines.forEach((item) => write(item[0], item[1]));
+  content.push('0 0 0 RG 0.8 w 56 130 500 90 re S');
+  content.push('BT /F1 10 Tf 64 202 Td (Baggage sketch / damage reference) Tj ET');
+  content.push('56 170 500 0 l S');
+  content.push('0 0 0 RG 1 w 92 150 64 32 re S 188 150 64 32 re S 292 148 18 54 re S 326 148 18 54 re S');
+  content.push('BT /F1 8 Tf 103 138 Td (SIDE 1) Tj ET BT /F1 8 Tf 199 138 Td (SIDE 2) Tj ET BT /F1 8 Tf 286 138 Td (END 1) Tj ET BT /F1 8 Tf 322 138 Td (END 2) Tj ET');
+  content.push('BT /F1 9 Tf 56 84 Td (This report does not involve any acknowledgement of liability.) Tj ET');
+  content.push('BT /F1 9 Tf 56 64 Td (Agent signature ____________________    Passenger signature ____________________) Tj ET');
+  const stream = content.join('\n');
+  const fontId = addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
+  const streamId = addObject(`<< /Length ${Buffer.byteLength(stream)} >>\nstream\n${stream}\nendstream`);
+  const pageId = addObject(`<< /Type /Page /Parent 4 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 ${fontId} 0 R >> >> /Contents ${streamId} 0 R >>`);
+  const pagesId = addObject(`<< /Type /Pages /Kids [${pageId} 0 R] /Count 1 >>`);
+  const catalogId = addObject(`<< /Type /Catalog /Pages ${pagesId} 0 R >>`);
+  let pdf = '%PDF-1.4\n';
+  const offsets = [0];
+  objects.forEach((obj, index) => {
+    offsets.push(Buffer.byteLength(pdf));
+    pdf += `${index + 1} 0 obj\n${obj}\nendobj\n`;
+  });
+  const xref = Buffer.byteLength(pdf);
+  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  for (let i = 1; i <= objects.length; i += 1) pdf += `${String(offsets[i]).padStart(10, '0')} 00000 n \n`;
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root ${catalogId} 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+  return Buffer.from(pdf, 'binary');
+}
+
+function buildCbsEmailHtml(record) {
+  return `<p>Dear Passenger,</p><p>We apologize sincerely for the baggage irregularity reported upon arrival. Your case has been created and the attached PIR PDF is provided for your records.</p><p><strong>Case Number:</strong> ${record.caseNumber}<br><strong>Status:</strong> ${record.status}</p><p>China Eastern Airlines</p>`;
+}
+
+function cbsPdfLines(record) {
+  return [
+    ['Reference Number', record.caseNumber],
+    ['Case Type', record.caseType],
+    ['Status', record.status],
+    ['Passenger name', record.passengerName],
+    ['Email', record.email],
+    ['Phone', record.phone],
+    ['Flight routing', record.flightRoute],
+    ['Baggage tag number', record.bagTag],
+    ['Permanent address', record.permanentAddress],
+    ['Temporary address', record.temporaryAddress],
+    ['Bag description', record.ahlBagDescription || record.dprBagInfo],
+    ['Bag type', record.ahlBagType || record.dprBagType],
+    ['Damage level', record.dprDamageLevel],
+    ['Contents / inner damage', record.ahlContents || record.dprInnerDamage]
+  ];
+}
+
+
+
+app.get('/cbs-cases', async (req, res) => {
+  try {
+    const rows = await getCbsCases();
+    return res.json({ rows });
+  } catch (err) {
+    console.error('CBS case list error:', err);
+    return res.status(500).json({ error: err?.message || 'CBS case lookup failed' });
+  }
+});
+
+app.post('/cbs-cases', async (req, res) => {
+  try {
+    const body = req.body || {};
+    const email = sanitizeCbsText(body.email, 160).toLowerCase();
+    if (!isValidEmail(email)) return res.status(400).json({ error: 'Valid passenger email is required' });
+    const passengerName = sanitizeCbsText(body.passengerName, 160);
+    if (!passengerName) return res.status(400).json({ error: 'Passenger name is required' });
+    const caseType = sanitizeCbsText(body.caseType, 10).toUpperCase();
+    if (!['AHL', 'DPR'].includes(caseType)) return res.status(400).json({ error: 'Case type must be AHL or DPR' });
+    const now = new Date().toISOString();
+    const record = {
+      caseNumber: makeCbsCaseNumber(),
+      caseType,
+      status: 'Open',
+      passengerName,
+      email,
+      phone: sanitizeCbsText(body.phone, 80),
+      flightRoute: sanitizeCbsText(body.flightRoute, 240),
+      bagTag: sanitizeCbsText(body.bagTag, 80).toUpperCase(),
+      permanentAddress: sanitizeCbsText(body.permanentAddress, 500),
+      temporaryAddress: sanitizeCbsText(body.temporaryAddress, 500),
+      temporaryAddressValidUntil: sanitizeCbsText(body.temporaryAddressValidUntil, 40),
+      addressAvailable: sanitizeCbsText(body.addressAvailable, 20),
+      ahlBagDescription: sanitizeCbsText(body.ahlBagDescription, 500),
+      ahlBagBrandTag: sanitizeCbsText(body.ahlBagBrandTag, 200),
+      ahlBagType: sanitizeCbsText(body.ahlBagType, 160),
+      ahlFeatures: sanitizeCbsText(body.ahlFeatures, 500),
+      ahlOtherFeatures: sanitizeCbsText(body.ahlOtherFeatures, 500),
+      ahlContents: sanitizeCbsText(body.ahlContents, 1000),
+      dprDamageLevel: sanitizeCbsText(body.dprDamageLevel, 40),
+      dprBagInfo: sanitizeCbsText(body.dprBagInfo, 500),
+      dprBagType: sanitizeCbsText(body.dprBagType, 160),
+      dprInnerDamage: sanitizeCbsText(body.dprInnerDamage, 1000),
+      submittedAt: now,
+      updatedAt: now,
+      updateNote: 'Case created'
+    };
+    await appendCbsCase(record);
+    const pdfBuffer = createSimplePdf(cbsPdfLines(record));
+    let emailResults = [];
+    let emailError = '';
+    try {
+      emailResults = await sendCbsCaseEmail({
+        passengerEmail: record.email,
+        subject: `China Eastern Baggage Case ${record.caseNumber}`,
+        html: buildCbsEmailHtml(record),
+        pdfBuffer,
+        filename: `${record.caseNumber}.pdf`
+      });
+    } catch (mailErr) {
+      emailError = mailErr?.message || 'Email send failed';
+      console.error('CBS case email error:', mailErr);
+    }
+    return res.status(201).json({ created: true, record, emailResults, emailError });
+  } catch (err) {
+    console.error('CBS case create error:', err);
+    return res.status(500).json({ error: err?.message || 'CBS case save failed' });
+  }
+});
+
+app.post('/cbs-cases/:caseNumber/update', async (req, res) => {
+  try {
+    const status = sanitizeCbsText(req.body?.status, 80) || 'Open';
+    const updateNote = sanitizeCbsText(req.body?.updateNote, 500);
+    const result = await updateCbsCase(req.params.caseNumber, { status, updateNote });
+    if (result.notFound) return res.status(404).json({ error: 'Case not found' });
+    return res.json(result);
+  } catch (err) {
+    console.error('CBS case update error:', err);
+    return res.status(500).json({ error: err?.message || 'CBS case update failed' });
+  }
+});
 
 app.get('/test-baggage-report', async (req, res) => {
   try {
