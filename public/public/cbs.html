@@ -32,12 +32,12 @@
   </style>
 </head>
 <body>
-  <header><a class="brand" href="index.html">MUFC</a><strong>CBS All Cases</strong></header>
+  <header><a class="brand" href="index.html">MUFC</a><strong>CBS All Cases / 所有表格</strong></header>
   <main class="wrap">
     <section class="card">
       <div class="actions">
-        <div><h1>All CBS cases</h1><p class="muted">This page is for staff case tracking only. New passenger intake has its own standalone URL: <code>cbs-form.html</code>.</p></div>
-        <div class="actions"><a class="button secondary" href="cbs-form.html">Open form</a><button class="secondary" id="refresh-cases" type="button">Refresh</button></div>
+        <div><h1>All CBS cases / 所有CBS表格</h1><p class="muted">This page is for staff case tracking only. New passenger intake has its own standalone URL: <code>cbs-form.html</code>. 此页面只显示所有已提交表格，填表入口为单独页面。</p></div>
+        <div class="actions"><button class="secondary" id="refresh-cases" type="button">Refresh / 刷新</button></div>
       </div>
       <div id="cases-output"><p class="muted">Loading cases...</p></div>
     </section>
@@ -56,9 +56,9 @@
         if (!res.ok) throw new Error(data.error || 'Case loading failed');
         const rows = data.rows || [];
         if (!rows.length) { casesOutput.innerHTML = '<p class="muted">No CBS cases yet.</p>'; return; }
-        casesOutput.innerHTML = `<table><thead><tr><th>Case</th><th>Status</th><th>Passenger</th><th>Type</th><th>Bag / flight</th><th>Email</th><th>Update</th></tr></thead><tbody>${rows.map((row) => {
+        casesOutput.innerHTML = `<table><thead><tr><th>Case / 编号</th><th>Status / 状态</th><th>Passenger / 旅客</th><th>Type / 类型</th><th>Bag / flight<br>行李/航班</th><th>Email / 邮箱</th><th>Update / 更新</th></tr></thead><tbody>${rows.map((row) => {
           const closed = String(row.status || '').toLowerCase().includes('close');
-          return `<tr><td><strong>${escapeHtml(row.caseNumber)}</strong><br><span class="muted">${escapeHtml((row.submittedAt || '').slice(0,10))}</span></td><td><span class="pill ${closed ? 'closed' : ''}">${escapeHtml(closed ? 'Case Close' : (row.status || 'Open'))}</span></td><td>${escapeHtml(row.passengerName)}</td><td>${escapeHtml(row.caseType)}</td><td>${escapeHtml(row.bagTag)}<br><span class="muted">${escapeHtml(row.flightRoute)}</span></td><td>${escapeHtml(row.email)}</td><td><form class="case-update" data-case="${escapeHtml(row.caseNumber)}"><input name="status" value="${escapeHtml(closed ? 'Case Close' : (row.status || 'Open'))}" /><input name="updateNote" placeholder="Note" /><button type="submit">Update</button><button type="button" class="danger" data-close-case="${escapeHtml(row.caseNumber)}">Close</button></form></td></tr>`;
+          return `<tr><td><strong>${escapeHtml(row.caseNumber)}</strong><br><span class="muted">${escapeHtml((row.submittedAt || '').slice(0,10))}</span></td><td><span class="pill ${closed ? 'closed' : ''}">${escapeHtml(closed ? 'Case Close' : (row.status || 'Open'))}</span></td><td>${escapeHtml(row.passengerName)}</td><td>${escapeHtml(row.caseType)}</td><td>${escapeHtml(row.bagTag)}<br><span class="muted">${escapeHtml(row.flightRoute)}</span></td><td>${escapeHtml(row.email)}</td><td><form class="case-update" data-case="${escapeHtml(row.caseNumber)}"><input name="status" value="${escapeHtml(closed ? 'Case Close' : (row.status || 'Open'))}" /><input name="updateNote" placeholder="Note / 备注" /><button type="submit">Update / 更新</button><button type="button" class="danger" data-close-case="${escapeHtml(row.caseNumber)}">Close / 关闭</button></form></td></tr>`;
         }).join('')}</tbody></table>`;
       } catch (error) { casesOutput.innerHTML = `<p class="status err">${escapeHtml(error.message)}</p>`; }
     }

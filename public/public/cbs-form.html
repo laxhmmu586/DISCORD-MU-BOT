@@ -21,6 +21,9 @@
     .card { padding:24px; }
     form { display:grid; gap:18px; }
     .grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
+    .flight-rows { display:grid; gap:10px; }
+    .flight-row, .flight-head { display:grid; grid-template-columns:1fr .8fr .8fr; gap:10px; align-items:end; }
+    .flight-head { color:var(--muted); font-size:12px; font-weight:850; text-transform:uppercase; }
     label { display:grid; gap:7px; font-weight:750; font-size:13px; }
     input,select,textarea,button { font:inherit; }
     input,select,textarea { width:100%; border:1px solid var(--line); border-radius:12px; padding:11px 12px; background:#fff; color:var(--ink); }
@@ -38,74 +41,80 @@
     .sketch-shell { display:grid; gap:10px; }
     .sketch-board { width:100%; max-width:760px; border:1px solid var(--line); border-radius:14px; background:#fff; touch-action:none; }
     .attachment-hint { font-size:12px; color:var(--muted); font-weight:600; }
-    @media (max-width:840px){ .hero,.grid{grid-template-columns:1fr}.flow{grid-template-columns:1fr 1fr} }
+    @media (max-width:840px){ .hero,.grid{grid-template-columns:1fr}.flow{grid-template-columns:1fr 1fr}.flight-row,.flight-head{grid-template-columns:1fr} }
   </style>
 </head>
 <body>
-  <header><a class="brand" href="index.html">MUFC</a><strong>CBS Case Form</strong></header>
+  <header><a class="brand" href="index.html">MUFC</a><strong>CBS Case Form / 行李表格</strong></header>
   <main class="wrap">
     <section class="hero">
       <div>
-        <h1>China Eastern CBS / PIR Form</h1>
-        <p class="muted">No login required. Submit AHL delayed baggage or DPR damaged baggage information, save it to the CBS Google Sheet, generate a PIR-style PDF, and send it to the passenger plus the baggage office mailbox.</p>
+        <h1>China Eastern CBS / PIR Form<br />中国东方航空行李运输事故记录表</h1>
+        <p class="muted">No login required. Submit AHL delayed baggage or DPR damaged baggage information. 无需登录，填写延误/丢失行李或破损行李信息，生成PDF并发送邮件。</p>
       </div>
       <div class="flow" aria-label="Form flow">
-        <span>Passenger name</span><span>Flight routing</span><span>Bag tag</span><span>Phone / Email</span><span>AHL or DPR</span><span>PDF + Email</span>
+        <span>Passenger name<br>旅客姓名</span><span>Flight routing<br>航班行程</span><span>Bag tag<br>行李牌</span><span>Phone / Email<br>电话/邮箱</span><span>AHL or DPR<br>延误或破损</span><span>PDF + Email<br>生成并发送</span>
       </div>
     </section>
 
     <section class="card">
-      <h2>New case</h2>
+      <h2>New case / 新建表格</h2>
       <form id="cbs-form">
         <div class="grid">
-          <label>Passenger name<input name="passengerName" required placeholder="LAST/FIRST" /></label>
-          <label>Email<input name="email" type="email" required placeholder="passenger@example.com" /></label>
-          <label>Phone<input name="phone" placeholder="+1..." /></label>
-          <label>Flight route<input name="flightRoute" placeholder="MU1111 CAN / MU583 PVG / DL123 SEA" /></label>
-          <label>Bag tag<input name="bagTag" placeholder="MU123456" /></label>
-          <label>Case type<select name="caseType" id="case-type"><option value="AHL">AHL - Delayed/Lost</option><option value="DPR">DPR - Damaged</option></select></label>
-          <label class="wide">Permanent address<textarea name="permanentAddress" placeholder="If available"></textarea></label>
-          <label>Temporary address available?<select name="addressAvailable" id="address-available"><option value="Yes">Yes</option><option value="No">No</option></select></label>
-          <label id="valid-until-field">Temporary address valid until<input name="temporaryAddressValidUntil" type="date" /></label>
-          <label class="wide" id="temporary-address-field">Temporary address<textarea name="temporaryAddress"></textarea></label>
-          <label class="wide">Attachments<input name="attachments" id="attachments" type="file" multiple /><span class="attachment-hint">Files are sent as email attachments only; they are not saved to Drive or the case sheet.</span></label>
+          <label>Passenger name / 旅客姓名<input name="passengerName" required placeholder="LAST/FIRST" /></label>
+          <label>Email / 电子邮箱<input name="email" type="email" required placeholder="passenger@example.com" /></label>
+          <label>Phone number / 联系电话<input name="phone" placeholder="Country/area code + number / 国家地区号+电话" /></label>
+          <div class="wide flight-rows" aria-label="Flight route rows">
+            <strong>Flight route / 航班行程</strong>
+            <div class="flight-head"><span>Flight No. / 航班号</span><span>Date / 日期</span><span>Destination / 目的地</span></div>
+            <div class="flight-row"><input name="flightNo1" placeholder="MU1112" /><input name="flightDate1" placeholder="11JUN" /><input name="destination1" placeholder="CAN" /></div>
+            <div class="flight-row"><input name="flightNo2" placeholder="MU583" /><input name="flightDate2" placeholder="11JUN" /><input name="destination2" placeholder="PVG" /></div>
+            <div class="flight-row"><input name="flightNo3" placeholder="DL223" /><input name="flightDate3" placeholder="12JUN" /><input name="destination3" placeholder="SEA" /></div>
+          </div>
+          <label>Bag tag / 行李牌号<input name="bagTag" placeholder="MU123456" /></label>
+          <label>Case type / 表格类型<select name="caseType" id="case-type"><option value="AHL">AHL - Delayed/Lost / 延误或丢失</option><option value="DPR">DPR - Damaged / 破损</option></select></label>
+          <label class="wide">Permanent address / 永久地址<textarea name="permanentAddress" placeholder="If available / 如有请填写"></textarea></label>
+          <label>Temporary address available? / 是否有临时地址?<select name="addressAvailable" id="address-available"><option value="No">No / 否</option><option value="Yes">Yes / 是</option></select></label>
+          <label id="valid-until-field" hidden>Temporary address valid until / 临时地址有效期至<input name="temporaryAddressValidUntil" type="date" /></label>
+          <label class="wide" id="temporary-address-field" hidden>Temporary address / 临时地址<textarea name="temporaryAddress"></textarea></label>
+          <label class="wide">Attachments / 附件<input name="attachments" id="attachments" type="file" multiple /><span class="attachment-hint">Files are sent as email attachments only; they are not saved to Drive or the case sheet. 附件只随邮件发送，不保存到网盘或表格。</span></label>
         </div>
 
         <section id="ahl-fields" class="case-fields is-active">
-          <h3>AHL information</h3>
+          <h3>AHL information / 延误或丢失行李信息</h3>
           <div class="grid">
-            <label class="wide">Baggage description<textarea name="ahlBagDescription" placeholder="Color, size, wheels, hard/soft shell..."></textarea></label>
-            <label>Bag brand tag<input name="ahlBagBrandTag" /></label>
-            <label>Bag type<input name="ahlBagType" placeholder="Suitcase / duffel / carton" /></label>
-            <label>Features<input name="ahlFeatures" placeholder="Sticker, ribbon, lock..." /></label>
-            <label class="wide">Other visible features<textarea name="ahlOtherFeatures"></textarea></label>
-            <label class="wide">Detailed contents<textarea name="ahlContents"></textarea></label>
+            <label class="wide">Baggage description / 行李描述<textarea name="ahlBagDescription" placeholder="Color, size, wheels, hard/soft shell..."></textarea></label>
+            <label>Bag brand tag / 行李箱品牌牌<input name="ahlBagBrandTag" /></label>
+            <label>Bag type / 行李类型<input name="ahlBagType" placeholder="Suitcase / duffel / carton" /></label>
+            <label>Features / 特征<input name="ahlFeatures" placeholder="Sticker, ribbon, lock..." /></label>
+            <label class="wide">Other visible features / 其他明显特征<textarea name="ahlOtherFeatures"></textarea></label>
+            <label class="wide">Detailed contents / 物品具体描述<textarea name="ahlContents"></textarea></label>
           </div>
         </section>
 
         <section id="dpr-fields" class="case-fields">
-          <h3>DPR information</h3>
+          <h3>DPR information / 破损行李信息</h3>
           <div class="grid">
-            <label>Damage level<select name="dprDamageLevel"><option>Minor</option><option>Major</option><option>Total</option></select></label>
-            <label>Bag type<input name="dprBagType" /></label>
-            <label class="wide">Baggage information / damage location<textarea name="dprBagInfo" placeholder="Side 1, Side 2, End 1, wheel, handle..."></textarea></label>
-            <label class="wide">Inner damage<textarea name="dprInnerDamage"></textarea></label>
+            <label>Damage level / 破损程度<select name="dprDamageLevel"><option>Minor</option><option>Major</option><option>Total</option></select></label>
+            <label>Bag type / 行李类型<input name="dprBagType" /></label>
+            <label class="wide">Baggage information / damage location / 行李信息/破损位置<textarea name="dprBagInfo" placeholder="Side 1, Side 2, End 1, wheel, handle..."></textarea></label>
+            <label class="wide">Inner damage / 内物破损<textarea name="dprInnerDamage"></textarea></label>
             <div class="wide sketch-shell">
-              <strong>Circle damaged area</strong>
+              <strong>Circle damaged area / 圈出破损部位</strong>
               <canvas id="damage-sketch" class="sketch-board" width="900" height="230" aria-label="Baggage damage sketch canvas"></canvas>
-              <div class="actions"><button class="secondary" id="clear-sketch" type="button">Clear circles</button><span class="attachment-hint">Drag on the picture to freely circle damaged parts. The marked sketch will be attached to the email.</span></div>
+              <div class="actions"><button class="secondary" id="clear-sketch" type="button">Clear circles / 清除标记</button><span class="attachment-hint">Drag on the picture to freely circle damaged parts. 在图上拖动圈出破损部位，标记图会随邮件发送。</span></div>
             </div>
           </div>
         </section>
 
-        <div class="actions"><button type="submit">Submit, save, PDF & email</button><button class="secondary" type="reset">Reset</button><span id="form-status" class="status"></span></div>
+        <div class="actions"><button type="submit">Submit, save, PDF & email / 提交保存并发送</button><button class="secondary" type="reset">Reset / 重置</button><span id="form-status" class="status"></span></div>
       </form>
     </section>
 
     <section id="thanks" class="thanks">
-      <h2>Dear Passenger:</h2>
-      <p>We apologize sincerely for not being able to deliver your baggage upon your arrival. Tracing or handling efforts will continue, and our staff will keep you informed of the progress. The PIR PDF has been sent to the provided email address.</p>
-      <p><strong>Your case number:</strong> <span id="thanks-case"></span></p>
+      <h2>Dear Passenger / 亲爱的旅客：</h2>
+      <p>We apologize sincerely for the baggage inconvenience. We will continue tracing or handling your baggage case and keep you informed of the progress. 对于此次行李问题我们深表歉意，我们将继续查询或处理并及时通知您进展。</p>
+      <p><strong>Your case number / 查询编号：</strong> <span id="thanks-case"></span></p>
       <p>China Eastern Airlines</p>
     </section>
   </main>
@@ -137,13 +146,56 @@
 
     function drawBagBase() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.strokeStyle = '#222'; ctx.lineWidth = 2; ctx.font = '16px Arial'; ctx.fillStyle = '#222';
-      const bag = (x,y,w,h,label) => { ctx.strokeRect(x,y,w,h); ctx.beginPath(); ctx.arc(x+14,y+h,5,0,Math.PI*2); ctx.arc(x+w-14,y+h,5,0,Math.PI*2); ctx.stroke(); ctx.beginPath(); ctx.arc(x+w/2,y,18,Math.PI,0); ctx.stroke(); ctx.fillText(label,x+w/2-28,y+h+28); };
-      bag(40,65,110,75,'SIDE 1'); bag(200,65,110,75,'SIDE 2');
-      ctx.strokeRect(382,45,26,115); ctx.strokeRect(452,45,26,115); ctx.fillText('END 1',372,188); ctx.fillText('END 2',442,188);
-      ctx.strokeRect(555,35,145,38); ctx.strokeRect(555,95,145,38); ctx.beginPath(); ctx.arc(627,54,26,0,Math.PI); ctx.stroke(); ctx.fillText('TOP',722,60); ctx.fillText('BOTTOM',722,120);
-      ctx.strokeRect(815,55,60,105);
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = '#1f2933';
+      ctx.fillStyle = '#1f2933';
+      ctx.lineWidth = 3;
+      ctx.font = '16px Arial';
+      const rounded = (x, y, w, h, r = 2) => {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.lineTo(x + w - r, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+        ctx.lineTo(x + w, y + h - r);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+        ctx.lineTo(x + r, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+        ctx.lineTo(x, y + r);
+        ctx.quadraticCurveTo(x, y, x + r, y);
+        ctx.stroke();
+      };
+      const wheels = (x, y, w, h) => {
+        ctx.beginPath();
+        ctx.arc(x + 14, y + h + 2, 6, 0, Math.PI * 2);
+        ctx.arc(x + w - 14, y + h + 2, 6, 0, Math.PI * 2);
+        ctx.stroke();
+      };
+      const handle = (x, y, w) => {
+        ctx.beginPath();
+        ctx.arc(x + w / 2, y, 24, Math.PI, 0);
+        ctx.stroke();
+      };
+      const sideBag = (x, label) => {
+        rounded(x, 58, 116, 78, 1);
+        handle(x, 58, 116);
+        wheels(x, 58, 116, 78);
+        ctx.fillText(label, x + 28, 164);
+      };
+      sideBag(38, 'SIDE 1');
+      sideBag(205, 'SIDE 2');
+      rounded(395, 35, 28, 118, 1);
+      rounded(468, 35, 28, 118, 1);
+      ctx.fillText('END 1', 382, 184);
+      ctx.fillText('END 2', 455, 184);
+      rounded(585, 28, 150, 38, 1);
+      ctx.beginPath();
+      ctx.arc(660, 41, 30, 0, Math.PI);
+      ctx.stroke();
+      rounded(585, 88, 150, 38, 1);
+      ctx.fillText('TOP', 758, 48);
+      ctx.fillText('BOTTOM', 758, 108);
+      rounded(855, 48, 62, 105, 1);
     }
     function canvasPoint(event) { const rect = canvas.getBoundingClientRect(); return { x:(event.clientX-rect.left)*canvas.width/rect.width, y:(event.clientY-rect.top)*canvas.height/rect.height }; }
     canvas.addEventListener('pointerdown', (event) => { drawing = true; startPoint = canvasPoint(event); canvas.setPointerCapture(event.pointerId); });
@@ -168,6 +220,11 @@
       formStatus.className = 'status';
       formStatus.textContent = 'Submitting...';
       const payload = Object.fromEntries(new FormData(form).entries());
+      payload.flightRows = [1, 2, 3].map((index) => ({
+        flightNo: payload[`flightNo${index}`],
+        flightDate: payload[`flightDate${index}`],
+        destination: payload[`destination${index}`]
+      }));
       payload.attachments = await filesToAttachments(attachmentsInput.files);
       try {
         const res = await fetch(`${apiBase}/cbs-cases`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });

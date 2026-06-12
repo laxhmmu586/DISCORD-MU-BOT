@@ -1017,10 +1017,11 @@ function isValidEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
 }
 
-function makeCbsCaseNumber() {
-  const now = new Date();
-  const stamp = now.toISOString().replace(/[-:TZ.]/g, '').slice(2, 14);
-  return `CBS-${stamp}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+function makeCbsCaseNumber(bagTag) {
+  const normalizedBagTag = String(bagTag || '').trim().toUpperCase().replace(/\s+/g, '');
+  if (/^[A-Z]{2}\d{5,10}$/.test(normalizedBagTag)) return `LAX-${normalizedBagTag}`;
+  const fallback = `MU${new Date().toISOString().replace(/\D/g, '').slice(6, 11)}`;
+  return `LAX-${fallback}`;
 }
 
 function pdfEscape(value) {
@@ -1079,6 +1080,27 @@ function createSimplePdf(lines) {
 
 function buildCbsEmailHtml(record) {
   return `<p>Dear Passenger,</p><p>We apologize sincerely for the baggage irregularity reported upon arrival. Your case has been created and the attached PIR PDF is provided for your records.</p><p><strong>Case Number:</strong> ${record.caseNumber}<br><strong>Status:</strong> ${record.status}</p><p>China Eastern Airlines</p>`;
+}
+
+function buildCbsFlightRoute(body) {
+  const rows = Array.isArray(body.flightRows) ? body.flightRows : [];
+  const normalizedRows = rows.map((row) => ({
+    flightNo: sanitizeCbsText(row?.flightNo, 20).toUpperCase(),
+    flightDate: sanitizeCbsText(row?.flightDate, 20).toUpperCase(),
+    destination: sanitizeCbsText(row?.destination, 20).toUpperCase()
+  })).filter((row) => row.flightNo || row.flightDate || row.destination);
+  if (normalizedRows.length) {
+    return normalizedRows.map((row) => [row.flightNo, row.flightDate, row.destination].filter(Boolean).join(' ')).join(' / ');
+  }
+  return sanitizeCbsText(body.flightRoute, 240).toUpperCase();
+}
+
+function cbsEmailErrorMessage(err) {
+  const message = err?.message || 'Email send failed';
+  if (/insufficient permission|insufficient authentication scopes|forbidden|permission/i.test(message)) {
+    return 'Gmail insufficient permission. Please regenerate GOOGLE_REFRESH_TOKEN/GMAIL_REFRESH_TOKEN using get-token.js with gmail.send scope, then redeploy/restart.';
+  }
+  return message;
 }
 
 function cbsPdfLines(record) {
@@ -1142,13 +1164,13 @@ app.post('/cbs-cases', async (req, res) => {
     const now = new Date().toISOString();
     const attachments = sanitizeCbsAttachments(body.attachments);
     const record = {
-      caseNumber: makeCbsCaseNumber(),
+      caseNumber: makeCbsCaseNumber(body.bagTag),
       caseType,
       status: 'Open',
       passengerName,
       email,
       phone: sanitizeCbsText(body.phone, 80),
-      flightRoute: sanitizeCbsText(body.flightRoute, 240),
+      flightRoute: buildCbsFlightRoute(body),
       bagTag: sanitizeCbsText(body.bagTag, 80).toUpperCase(),
       permanentAddress: sanitizeCbsText(body.permanentAddress, 500),
       temporaryAddress: sanitizeCbsText(body.temporaryAddress, 500),
@@ -1182,7 +1204,7 @@ app.post('/cbs-cases', async (req, res) => {
         attachments
       });
     } catch (mailErr) {
-      emailError = mailErr?.message || 'Email send failed';
+      emailError = cbsEmailErrorMessage(mailErr);
       console.error('CBS case email error:', mailErr);
     }
     return res.status(201).json({ created: true, record, emailResults, emailError });
