@@ -25,6 +25,11 @@
     .grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
     .flight-rows { display:grid; gap:10px; }
     .flight-row, .flight-head { display:grid; grid-template-columns:1fr .8fr .8fr; gap:10px; align-items:end; }
+    .routing-layout { display:grid; grid-template-columns:270px minmax(0,1fr); gap:18px; align-items:start; }
+    .tag-example { border:1px dashed var(--line); border-radius:16px; padding:16px; background:#fbfdff; transform:rotate(-3deg); color:#202938; font-family:"Courier New",monospace; box-shadow:0 10px 24px rgba(22,48,76,.08); }
+    .tag-example strong { display:block; font-size:22px; letter-spacing:3px; margin-bottom:8px; }
+    .tag-barcode { height:44px; margin:10px 0; background:repeating-linear-gradient(90deg,#111 0 3px,transparent 3px 6px,#111 6px 8px,transparent 8px 12px); }
+    .tag-example .tag-route { display:grid; grid-template-columns:1fr .7fr .7fr; gap:8px; font-size:16px; }
     .flight-head { color:var(--muted); font-size:12px; font-weight:850; text-transform:uppercase; }
     .contents-row { display:grid; grid-template-columns:.8fr 1.2fr auto; gap:10px; align-items:center; }
     .signature-pad { width:100%; max-width:560px; height:180px; border:1px solid var(--line); border-radius:14px; background:#fff; touch-action:none; display:block; }
@@ -45,7 +50,7 @@
     .sketch-shell { display:grid; gap:10px; overflow:hidden; }
     .sketch-board { width:100%; max-width:820px; border:1px solid var(--line); border-radius:14px; background:#fff; touch-action:none; display:block; }
     .attachment-hint { font-size:12px; color:var(--muted); font-weight:600; }
-    @media (max-width:840px){ .grid{grid-template-columns:1fr}.flight-row,.flight-head,.contents-row{grid-template-columns:1fr}.header-title{text-align:left}header{flex-wrap:wrap} }
+    @media (max-width:840px){ .grid{grid-template-columns:1fr}.flight-row,.flight-head,.contents-row,.routing-layout{grid-template-columns:1fr}.header-title{text-align:left}header{flex-wrap:wrap} }
   </style>
 </head>
 <body>
@@ -66,12 +71,21 @@
           <label><span class="en">Passenger name</span><span class="zh">旅客姓名</span><input name="passengerName" required placeholder="LAST/FIRST" /></label>
           <label><span class="en">Email</span><span class="zh">电子邮箱</span><input name="email" type="email" required placeholder="passenger@example.com" /></label>
           <label><span class="en">Phone number</span><span class="zh">联系电话</span><input name="phone" placeholder="Country/area code + number" /></label>
-          <div class="wide flight-rows" aria-label="Flight route rows">
-            <strong><span class="en">Flight route</span><span class="zh">航班行程</span></strong>
-            <div class="flight-head"><span><span class="en">Flight No.</span><span class="zh">航班号</span></span><span><span class="en">Date</span><span class="zh">日期</span></span><span><span class="en">Destination</span><span class="zh">目的地</span></span></div>
-            <div class="flight-row"><input name="flightNo1" placeholder="MU1112" /><input name="flightDate1" placeholder="11JUN" /><input name="destination1" placeholder="CAN" /></div>
-            <div class="flight-row"><input name="flightNo2" placeholder="MU583" /><input name="flightDate2" placeholder="11JUN" /><input name="destination2" placeholder="PVG" /></div>
-            <div class="flight-row"><input name="flightNo3" placeholder="DL223" /><input name="flightDate3" placeholder="12JUN" /><input name="destination3" placeholder="SEA" /></div>
+          <div class="wide flight-rows" aria-label="Baggage routing rows">
+            <strong><span class="en">Baggage routing</span><span class="zh">行李航线</span></strong>
+            <div class="routing-layout">
+              <div class="tag-example" aria-label="Baggage tag example">
+                <strong>FM0774774870</strong>
+                <div class="tag-barcode" aria-hidden="true"></div>
+                <div class="tag-route"><span>MU 0583</span><span>11JUN</span><span>LAX</span><span>FM 0848</span><span>11JUN</span><span>PVG</span></div>
+              </div>
+              <div>
+                <div class="flight-head"><span><span class="en">Flight No.</span><span class="zh">航班号</span></span><span><span class="en">Date</span><span class="zh">日期</span></span><span><span class="en">Destination</span><span class="zh">目的地</span></span></div>
+                <div class="flight-row"><input name="flightNo1" placeholder="MU1112" /><input name="flightDate1" placeholder="11JUN" /><input name="destination1" placeholder="CAN" /></div>
+                <div class="flight-row"><input name="flightNo2" placeholder="MU583" /><input name="flightDate2" placeholder="11JUN" /><input name="destination2" placeholder="PVG" /></div>
+                <div class="flight-row"><input name="flightNo3" placeholder="DL223" /><input name="flightDate3" placeholder="12JUN" /><input name="destination3" placeholder="SEA" /></div>
+              </div>
+            </div>
           </div>
           <label><span class="en">Bag tag</span><span class="zh">行李牌号</span><input name="bagTag" placeholder="MU123456" /></label>
           <label><span class="en">Case type</span><span class="zh">表格类型</span><select name="caseType" id="case-type"><option value="AHL">AHL - Delayed/Lost</option><option value="DPR">DPR - Damaged</option></select></label>
@@ -128,10 +142,28 @@
     </section>
 
     <section id="thanks" class="thanks">
-      <h2><span class="en">Dear Passenger:</span><span class="zh">亲爱的旅客：</span></h2>
-      <p><span class="en">We apologize sincerely for the baggage inconvenience. We will continue tracing or handling your baggage case and keep you informed of the progress.</span><span class="zh">对于此次行李问题我们深表歉意，我们将继续查询或处理并及时通知您进展。</span></p>
+      <div class="en">
+        <h2>Dear Passenger.</h2>
+        <p>We sincerely apologize that your checked baggage was not available upon your arrival. Please be assured that every possible step is being taken to locate your missing baggage or articles.</p>
+        <p>Tracing efforts began as soon as you reported the delay to our Baggage Service Agent using the IATA WorldTracer worldwide baggage tracing computer system.</p>
+        <p>Our ground staff will keep you informed of the progress. If you have any questions, please feel free to contact us at any time. We will be pleased to provide any further information you may require.</p>
+        <p>If your baggage has not been located after seven days, you will receive a baggage questionnaire. Please complete it and return it to the address shown on the front of the form together with copies of your passport, ticket, and excess baggage ticket. This questionnaire will assist us in tracing your baggage and considering any future claim.</p>
+        <p>As soon as your baggage is located, we will notify you and arrange delivery where permitted by local government authorities. If your baggage requires customs clearance or must be collected because of damage, please bring the P.I.R. form and your passport to the airport.</p>
+        <p>If someone else collects the baggage on your behalf, they should bring a letter of authorization, your passport or a photocopy of it, the P.I.R. form, and their ID card.</p>
+        <p>Once again, please accept our sincere apologies for this unfortunate incident and the inconvenience it has caused.</p>
+        <p>Yours sincerely,<br>China Eastern Airlines</p>
+      </div>
+      <div class="zh">
+        <h2>亲爱的旅客：</h2>
+        <p>我们对您到达目的地后未能即时领回所交运的行李深表歉意，并谨此保证本公司将竭尽所能找回您的行李。</p>
+        <p>从您报失开始，我们立即采用已接驳全球各航空公司之电脑行李查询系统展开追查服务，并将于寻获后告知您。我们会尽力向您报告进展情况。如欲查询，您也可致电我们在各地的办事处，我们的地勤人员当乐意提供所需资料。</p>
+        <p>行李如在七天后仍未寻回，您将收到我们寄来的行李问卷，请正确填写，并随机票、护照、行李逾重票之影印件一并按前页的地址寄回。此问卷将有助于行李搜寻及日后赔偿之用。</p>
+        <p>一旦您的行李安然寻回，我们会立即通知您，并在当地政府有关当局许可之情况下尽快安排送回。如果行李由于海关问题或因破损需您来提取时，请带好行李报失单和护照。</p>
+        <p>如果您委托他人前来领取您的行李，必须让受委托人带上您的亲笔委托书、行李报失单、您的护照、（或影印本）及其本人的身份证。</p>
+        <p>再次对由于行李意外引致的不便表示歉意。</p>
+        <p>中国东方航空公司</p>
+      </div>
       <p><strong><span class="en">Your case number:</span><span class="zh">查询编号：</span></strong> <span id="thanks-case"></span></p>
-      <p>China Eastern Airlines</p>
     </section>
   </main>
   <script>

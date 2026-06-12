@@ -2498,10 +2498,12 @@ function cbsAttachmentPart({ filename, mimeType, contentBase64 }) {
   ];
 }
 
-function buildRawCbsEmail({ to, subject, html, pdfBuffer, filename, attachments = [] }) {
+function buildRawCbsEmail({ to, cc = [], subject, html, pdfBuffer, filename, attachments = [] }) {
   const boundary = `cbs_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+  const ccList = Array.isArray(cc) ? cc.filter(Boolean) : [];
   const headers = [
     `To: ${encodeEmailHeader(to)}`,
+    ...(ccList.length ? [`Cc: ${ccList.map(encodeEmailHeader).join(', ')}`] : []),
     `Subject: ${encodeEmailHeader(subject)}`,
     'MIME-Version: 1.0',
     `Content-Type: multipart/mixed; boundary="${boundary}"`
@@ -2528,17 +2530,14 @@ function buildRawCbsEmail({ to, subject, html, pdfBuffer, filename, attachments 
 
 async function sendCbsCaseEmail({ passengerEmail, subject, html, pdfBuffer, filename, attachments = [] }) {
   const { gmail, userId } = getNextDayInfoGmailClient();
-  const recipients = Array.from(new Set([passengerEmail, ...CBS_NOTIFICATION_EMAILS].filter(Boolean)));
-  const results = [];
-  for (const to of recipients) {
-    const raw = buildRawCbsEmail({ to, subject, html, pdfBuffer, filename, attachments });
-    const sent = await gmail.users.messages.send({
-      userId,
-      requestBody: { raw: base64UrlEncode(raw) }
-    });
-    results.push({ to, id: sent.data.id || '' });
-  }
-  return results;
+  const to = String(passengerEmail || '').trim();
+  const cc = Array.from(new Set(CBS_NOTIFICATION_EMAILS.filter((email) => email && email.toLowerCase() !== to.toLowerCase())));
+  const raw = buildRawCbsEmail({ to, cc, subject, html, pdfBuffer, filename, attachments });
+  const sent = await gmail.users.messages.send({
+    userId,
+    requestBody: { raw: base64UrlEncode(raw) }
+  });
+  return [{ to, cc, id: sent.data.id || '' }];
 }
 
 // ===============================
