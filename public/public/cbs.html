@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CBS Cases</title>
+  <style>
+    :root { --bg:#f4f8fb; --ink:#172033; --muted:#667085; --brand:#123a73; --line:#d7e1ec; --panel:#fff; --ok:#087443; }
+    * { box-sizing:border-box; }
+    html[lang="en"] .zh, html[lang="zh"] .en { display:none; }
+    body { margin:0; font-family:Inter,Arial,"Noto Sans SC",sans-serif; background:linear-gradient(135deg,#eaf4ff,#fdfefe); color:var(--ink); }
+    header { position:sticky; top:0; z-index:10; display:flex; justify-content:space-between; align-items:center; gap:16px; padding:18px clamp(18px,4vw,52px); background:rgba(255,255,255,.92); border-bottom:1px solid var(--line); backdrop-filter:blur(12px); }
+    .brand { font-weight:900; color:var(--brand); letter-spacing:.08em; text-decoration:none; }
+    .wrap { width:min(1180px,94vw); margin:28px auto 56px; display:grid; gap:24px; }
+    .card { background:var(--panel); border:1px solid var(--line); border-radius:22px; box-shadow:0 18px 42px rgba(22,48,76,.08); padding:24px; }
+    h1,h2 { margin:0 0 10px; }
+    p { line-height:1.65; }
+    .muted { color:var(--muted); }
+    .actions { display:flex; gap:12px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
+    button,a.button { border:0; border-radius:999px; padding:12px 18px; font-weight:850; cursor:pointer; background:var(--brand); color:white; text-decoration:none; }
+    .lang-toggle { border:1px solid var(--line); background:#e8eef7; color:var(--brand); }
+    button.secondary,a.secondary { background:#e8eef7; color:var(--brand); }
+    button.danger { background:#b42318; }
+    .status { min-height:24px; font-weight:800; }
+    .status.err { color:#b42318; }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th,td { padding:10px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; }
+    th { color:var(--muted); font-size:12px; text-transform:uppercase; }
+    .pill { display:inline-flex; border-radius:999px; padding:4px 10px; font-weight:850; background:#eef4ff; color:#1849a9; }
+    .pill.closed { background:#dcfae6; color:#067647; }
+    .case-update { display:flex; gap:8px; min-width:280px; }
+    input { width:100%; border:1px solid var(--line); border-radius:12px; padding:10px 12px; background:#fff; color:var(--ink); font:inherit; }
+    @media (max-width:840px){ .case-update{min-width:0;flex-wrap:wrap} table{display:block;overflow-x:auto;white-space:nowrap} }
+  </style>
+</head>
+<body>
+  <header><a class="brand" href="index.html">MUFC</a><strong><span class="en">CBS All Cases</span><span class="zh">所有表格</span></strong><button class="lang-toggle" id="language-toggle" type="button">中文</button></header>
+  <main class="wrap">
+    <section class="card">
+      <div class="actions">
+        <div><h1><span class="en">All CBS cases</span><span class="zh">所有CBS表格</span></h1><p class="muted"><span class="en">This page is for staff case tracking only. New passenger intake has its own standalone URL: <code>cbs-form.html</code>.</span><span class="zh">此页面只显示所有已提交表格，填表入口为单独页面：<code>cbs-form.html</code>。</span></p></div>
+        <div class="actions"><button class="secondary" id="refresh-cases" type="button"><span class="en">Refresh</span><span class="zh">刷新</span></button></div>
+      </div>
+      <div id="cases-output"><p class="muted">Loading cases...</p></div>
+    </section>
+  </main>
+  <script>
+    const apiBase = (window.MU_API_BASE || 'https://api.mufcapp.net').replace(/\/$/, '');
+    const casesOutput = document.querySelector('#cases-output');
+    const refreshCases = document.querySelector('#refresh-cases');
+    const languageToggle = document.querySelector('#language-toggle');
+    function setLanguage(lang) {
+      document.documentElement.lang = lang;
+      languageToggle.textContent = lang === 'en' ? '中文' : 'English';
+      loadCases();
+    }
+    languageToggle.addEventListener('click', () => setLanguage(document.documentElement.lang === 'en' ? 'zh' : 'en'));
+    function label(en, zh) { return document.documentElement.lang === 'en' ? en : zh; }
+    function escapeHtml(value) { return String(value || '').replace(/[&<>'"]/g, (ch) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch])); }
+    async function parseJson(res) { const text = await res.text(); try { return JSON.parse(text); } catch { throw new Error(`API returned non-JSON (${res.status}). Please check API base: ${apiBase}`); } }
+    async function loadCases() {
+      casesOutput.innerHTML = '<p class="muted">Loading cases...</p>';
+      try {
+        const res = await fetch(`${apiBase}/cbs-cases`);
+        const data = await parseJson(res);
+        if (!res.ok) throw new Error(data.error || 'Case loading failed');
+        const rows = data.rows || [];
+        if (!rows.length) { casesOutput.innerHTML = '<p class="muted">No CBS cases yet.</p>'; return; }
+        casesOutput.innerHTML = `<table><thead><tr><th>${label('Case', '编号')}</th><th>${label('Status', '状态')}</th><th>${label('Passenger', '旅客')}</th><th>${label('Type', '类型')}</th><th>${label('Bag / flight', '行李/航班')}</th><th>${label('Email', '邮箱')}</th><th>${label('Update', '更新')}</th></tr></thead><tbody>${rows.map((row) => {
+          const closed = String(row.status || '').toLowerCase().includes('close');
+          return `<tr><td><strong>${escapeHtml(row.caseNumber)}</strong><br><span class="muted">${escapeHtml((row.submittedAt || '').slice(0,10))}</span></td><td><span class="pill ${closed ? 'closed' : ''}">${escapeHtml(closed ? 'Case Close' : (row.status || 'Open'))}</span></td><td>${escapeHtml(row.passengerName)}</td><td>${escapeHtml(row.caseType)}</td><td>${escapeHtml(row.bagTag)}<br><span class="muted">${escapeHtml(row.flightRoute)}</span></td><td>${escapeHtml(row.email)}</td><td><form class="case-update" data-case="${escapeHtml(row.caseNumber)}"><input name="status" value="${escapeHtml(closed ? 'Case Close' : (row.status || 'Open'))}" /><input name="updateNote" placeholder="${label('Note', '备注')}" /><button type="submit">${label('Update', '更新')}</button><button type="button" class="danger" data-close-case="${escapeHtml(row.caseNumber)}">${label('Close', '关闭')}</button></form></td></tr>`;
+        }).join('')}</tbody></table>`;
+      } catch (error) { casesOutput.innerHTML = `<p class="status err">${escapeHtml(error.message)}</p>`; }
+    }
+    casesOutput.addEventListener('submit', async (event) => {
+      const updateForm = event.target.closest('.case-update');
+      if (!updateForm) return;
+      event.preventDefault();
+      const payload = Object.fromEntries(new FormData(updateForm).entries());
+      await updateCase(updateForm.dataset.case, payload);
+    });
+    casesOutput.addEventListener('click', async (event) => {
+      const closeButton = event.target.closest('[data-close-case]');
+      if (!closeButton) return;
+      await updateCase(closeButton.dataset.closeCase, { status:'Case Close', updateNote:'Closed from CBS page' });
+    });
+    async function updateCase(caseNumber, payload) {
+      casesOutput.style.opacity = '.65';
+      try {
+        const res = await fetch(`${apiBase}/cbs-cases/${encodeURIComponent(caseNumber)}/update`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+        const data = await parseJson(res);
+        if (!res.ok) throw new Error(data.error || 'Update failed');
+        await loadCases();
+      } catch (error) { alert(error.message); } finally { casesOutput.style.opacity = '1'; }
+    }
+    refreshCases.addEventListener('click', loadCases);
+    setLanguage('en');
+  </script>
+</body>
+</html>
