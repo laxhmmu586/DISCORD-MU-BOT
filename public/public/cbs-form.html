@@ -311,42 +311,53 @@
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       const bg = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
       bg.addColorStop(0, '#f8fbff');
-      bg.addColorStop(1, '#edf4fd');
+      bg.addColorStop(1, '#eef5fe');
       ctx.fillStyle = bg;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.font = '800 16px Arial';
       ctx.lineJoin = 'round';
-      const drawPrismBag = ({ x, y, w, h, depth = 24, label, wheels = true, handle = true, color = '#c9d7e6' }) => {
-        const side = '#7f90a4';
-        const top = '#a9bacd';
-        const faceGradient = ctx.createLinearGradient(x, y, x + w, y + h);
-        faceGradient.addColorStop(0, '#e4edf7');
-        faceGradient.addColorStop(0.52, color);
-        faceGradient.addColorStop(1, '#9fb0c4');
+      ctx.lineCap = 'round';
+
+      const drawSuitcase = ({ x, y, w, h, depth = 24, label, side = false, horizontal = false }) => {
+        const body = ctx.createLinearGradient(x, y, x + w, y + h);
+        body.addColorStop(0, '#e8f1fb');
+        body.addColorStop(0.55, '#c5d5e7');
+        body.addColorStop(1, '#91a6bd');
+        const edge = '#243449';
+        const sideColor = '#75889d';
+        const topColor = '#aebfd2';
         ctx.save();
-        ctx.shadowColor = 'rgba(28,45,64,.18)';
-        ctx.shadowBlur = 10;
-        ctx.shadowOffsetY = 6;
-        if (handle) {
-          ctx.strokeStyle = '#213044';
+        ctx.shadowColor = 'rgba(27,47,70,.22)';
+        ctx.shadowBlur = 12;
+        ctx.shadowOffsetY = 8;
+
+        if (!horizontal && !side) {
+          ctx.strokeStyle = edge;
           ctx.lineWidth = 4;
           ctx.beginPath();
-          ctx.roundRect(x + w * .32, y - 18, w * .36, 24, 10);
+          ctx.roundRect(x + w * .34, y - 30, w * .32, 28, 11);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(x + w * .42, y - 2);
+          ctx.lineTo(x + w * .42, y + 8);
+          ctx.moveTo(x + w * .58, y - 2);
+          ctx.lineTo(x + w * .58, y + 8);
           ctx.stroke();
         }
+
         ctx.shadowColor = 'transparent';
-        ctx.fillStyle = top;
+        ctx.fillStyle = topColor;
         ctx.beginPath();
-        ctx.moveTo(x + 12, y);
+        ctx.moveTo(x + 14, y);
         ctx.lineTo(x + depth, y - depth);
         ctx.lineTo(x + w + depth, y - depth);
         ctx.lineTo(x + w, y);
         ctx.closePath();
         ctx.fill();
-        ctx.strokeStyle = '#26364a';
+        ctx.strokeStyle = edge;
         ctx.lineWidth = 3;
         ctx.stroke();
-        ctx.fillStyle = side;
+
+        ctx.fillStyle = sideColor;
         ctx.beginPath();
         ctx.moveTo(x + w, y);
         ctx.lineTo(x + w + depth, y - depth);
@@ -355,33 +366,57 @@
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
-        ctx.fillStyle = faceGradient;
+
+        ctx.fillStyle = body;
         ctx.beginPath();
-        ctx.roundRect(x, y, w, h, 15);
+        ctx.roundRect(x, y, w, h, horizontal ? 16 : 18);
         ctx.fill();
         ctx.stroke();
-        ctx.strokeStyle = 'rgba(255,255,255,.68)';
+
+        ctx.strokeStyle = 'rgba(34,52,73,.72)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(x + 10, y + 10, w - 22, h - 20, horizontal ? 12 : 14);
+        ctx.stroke();
+
+        ctx.strokeStyle = 'rgba(255,255,255,.72)';
         ctx.lineWidth = 4;
         ctx.beginPath();
-        ctx.moveTo(x + 24, y + 28);
-        ctx.lineTo(x + w - 40, y + 28);
+        ctx.moveTo(x + w * .18, y + h * .34);
+        ctx.lineTo(x + w * .72, y + h * .34);
         ctx.stroke();
-        if (wheels) {
-          ctx.fillStyle = '#1f2937';
-          [x + 28, x + w - 28].forEach((wheelX) => { ctx.beginPath(); ctx.arc(wheelX, y + h + 10, 8, 0, Math.PI * 2); ctx.fill(); });
+
+        ctx.strokeStyle = 'rgba(36,52,73,.38)';
+        ctx.lineWidth = 2;
+        const seamCount = horizontal ? 2 : 3;
+        for (let i = 1; i <= seamCount; i += 1) {
+          const sx = x + (w / (seamCount + 1)) * i;
+          ctx.beginPath();
+          ctx.moveTo(sx, y + 14);
+          ctx.lineTo(sx, y + h - 14);
+          ctx.stroke();
         }
-        ctx.fillStyle = '#1f2937';
-        ctx.font = '800 16px Arial';
+
+        if (!side && !horizontal) {
+          ctx.fillStyle = edge;
+          [x + 28, x + w - 28].forEach((wheelX) => { ctx.beginPath(); ctx.arc(wheelX, y + h + 10, 8, 0, Math.PI * 2); ctx.fill(); });
+          ctx.fillRect(x + 24, y + h - 3, 10, 12);
+          ctx.fillRect(x + w - 34, y + h - 3, 10, 12);
+        }
+
+        ctx.fillStyle = edge;
+        ctx.font = '900 16px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText(label, x + w / 2, y + h + (wheels ? 44 : 36));
+        ctx.fillText(label, x + w / 2, y + h + (side || horizontal ? 38 : 50));
         ctx.restore();
       };
-      drawPrismBag({ x: 35, y: 70, w: 130, h: 78, label: 'SIDE 1' });
-      drawPrismBag({ x: 220, y: 70, w: 130, h: 78, label: 'SIDE 2' });
-      drawPrismBag({ x: 410, y: 62, w: 54, h: 100, depth: 22, label: 'END 1', wheels: false, handle: false });
-      drawPrismBag({ x: 540, y: 62, w: 54, h: 100, depth: 22, label: 'END 2', wheels: false, handle: false });
-      drawPrismBag({ x: 675, y: 48, w: 145, h: 50, depth: 24, label: 'TOP', wheels: false, handle: false });
-      drawPrismBag({ x: 675, y: 148, w: 145, h: 50, depth: 24, label: 'BOTTOM', wheels: false, handle: false });
+
+      drawSuitcase({ x: 35, y: 78, w: 130, h: 86, label: 'SIDE 1' });
+      drawSuitcase({ x: 225, y: 78, w: 130, h: 86, label: 'SIDE 2' });
+      drawSuitcase({ x: 430, y: 72, w: 56, h: 108, depth: 24, label: 'END 1', side: true });
+      drawSuitcase({ x: 560, y: 72, w: 56, h: 108, depth: 24, label: 'END 2', side: true });
+      drawSuitcase({ x: 695, y: 58, w: 145, h: 56, depth: 26, label: 'TOP', horizontal: true });
+      drawSuitcase({ x: 695, y: 158, w: 145, h: 56, depth: 26, label: 'BOTTOM', horizontal: true });
       ctx.textAlign = 'left';
     }
     function canvasPoint(event) { const rect = canvas.getBoundingClientRect(); return { x:(event.clientX-rect.left)*canvas.width/rect.width, y:(event.clientY-rect.top)*canvas.height/rect.height }; }
