@@ -1017,53 +1017,118 @@ function isValidEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
 }
 
-function makeCbsCaseNumber(bagTag) {
-  const normalizedBagTag = String(bagTag || '').trim().toUpperCase().replace(/\s+/g, '');
-  if (/^[A-Z]{2}\d{5,10}$/.test(normalizedBagTag)) return `LAX-${normalizedBagTag}`;
-  const fallback = `MU${new Date().toISOString().replace(/\D/g, '').slice(6, 11)}`;
-  return `LAX-${fallback}`;
+function normalizeCbsBagTag(value) {
+  const normalized = String(value || '').trim().toUpperCase().replace(/\s+/g, '');
+  const match = normalized.match(/^([A-Z]{2})(\d{6,})$/);
+  if (match) return `${match[1]}${match[2].slice(-6)}`;
+  return normalized;
+}
+
+async function makeCbsCaseNumber(bagTag) {
+  const normalizedBagTag = normalizeCbsBagTag(bagTag);
+  const base = /^[A-Z]{2}\d{6}$/.test(normalizedBagTag)
+    ? `LAX-${normalizedBagTag}`
+    : `LAX-MU${new Date().toISOString().replace(/\D/g, '').slice(6, 12)}`;
+  const cases = await getCbsCases().catch(() => []);
+  const existing = new Set(cases.map((row) => String(row.caseNumber || '').toUpperCase()));
+  if (!existing.has(base)) return base;
+  for (let index = 2; index < 100; index += 1) {
+    const candidate = `${base}-${index}`;
+    if (!existing.has(candidate)) return candidate;
+  }
+  return `${base}-${Date.now().toString().slice(-3)}`;
 }
 
 function pdfEscape(value) {
   return String(value || '').replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
 }
 
-function createSimplePdf(lines) {
+function pdfText(content, x, y, size = 9) {
+  return `BT /F1 ${size} Tf ${x} ${y} Td (${pdfEscape(content)}) Tj ET`;
+}
+
+function pdfBoxText(content, x, y, w, h, size = 8) {
+  return [
+    `0 0 0 RG 0.5 w ${x} ${y} ${w} ${h} re S`,
+    pdfText(content, x + 4, y + Math.max(5, Math.floor(h / 2) - 3), size)
+  ];
+}
+
+function createPirPdf(record) {
   const objects = [];
   const addObject = (content) => {
     objects.push(content);
     return objects.length;
   };
-  const pageWidth = 612;
-  const pageHeight = 792;
   const content = [];
-  content.push('0.93 0.95 0.98 rg 0 0 612 792 re f');
-  content.push('0 0 0 RG 1 w 36 36 540 720 re S');
-  content.push('0 0 0 rg 0 0 0 RG');
-  content.push('BT /F1 18 Tf 72 738 Td (CHINA EASTERN AIRLINES) Tj ET');
-  content.push('BT /F1 16 Tf 300 710 Td (Property Irregularity report\(PIR\)) Tj ET');
-  content.push('BT /F1 10 Tf 420 692 Td (To be issued in BLOCK LETTERS) Tj ET');
-  let y = 662;
-  const write = (label, value, x = 56, width = 500) => {
-    const safeLabel = pdfEscape(label);
-    const safeValue = pdfEscape(value || '');
-    content.push(`0 0 0 RG 0 0 0 rg 0.5 w ${x} ${y - 5} ${width} 18 re S`);
-    content.push(`BT /F1 8 Tf ${x + 4} ${y + 1} Td (${safeLabel}) Tj ET`);
-    content.push(`BT /F1 10 Tf ${x + 135} ${y + 1} Td (${safeValue}) Tj ET`);
-    y -= 24;
+  content.push('0.97 0.98 1 rg 0 0 612 792 re f');
+  content.push('0 0 0 RG 0 0 0 rg 1 w 36 36 540 720 re S');
+  content.push(pdfText('PROPERTY IRREGULARITY REPORT (PIR)', 56, 724, 20));
+  content.push(pdfText('FOR INQUIRIES PLEASE PHONE:', 356, 724, 12));
+  content.push('356 710 m 540 710 l S');
+  content.push('0.78 0.78 0.78 rg 44 650 524 18 re f 0 0 0 rg');
+  content.push(pdfText('PASSENGER INFORMATION', 50, 655, 11));
+  const leftX = 52;
+  const labelW = 28;
+  const valueX = 80;
+  const valueW = 300;
+  const rightX = 386;
+  const rightValueX = 414;
+  let y = 622;
+  const row = (code, label, value, options = {}) => {
+    const height = options.height || 24;
+    content.push(`0 0 0 RG 0.5 w ${leftX} ${y} ${labelW} ${height} re S`);
+    content.push(pdfText(code, leftX + 7, y + height - 14, 9));
+    content.push(`0 0 0 RG 0.5 w ${valueX} ${y} ${options.valueW || valueW} ${height} re S`);
+    content.push(pdfText(`${label} ${value || ''}`.slice(0, 90), valueX + 6, y + height - 14, 9));
+    y -= height;
   };
-  lines.forEach((item) => write(item[0], item[1]));
-  content.push('0 0 0 RG 0.8 w 56 130 500 90 re S');
-  content.push('BT /F1 10 Tf 64 202 Td (Baggage sketch / damage reference) Tj ET');
-  content.push('56 170 m 556 170 l S');
-  content.push('0 0 0 RG 0 0 0 rg 1 w 92 150 64 32 re S 188 150 64 32 re S 292 148 18 54 re S 326 148 18 54 re S');
-  content.push('BT /F1 8 Tf 103 138 Td (SIDE 1) Tj ET BT /F1 8 Tf 199 138 Td (SIDE 2) Tj ET BT /F1 8 Tf 286 138 Td (END 1) Tj ET BT /F1 8 Tf 322 138 Td (END 2) Tj ET');
-  content.push('BT /F1 9 Tf 56 84 Td (This report does not involve any acknowledgement of liability.) Tj ET');
-  content.push('BT /F1 9 Tf 56 64 Td (Agent signature ____________________    Passenger signature ____________________) Tj ET');
+  row('NM', 'Passenger Name', record.passengerName);
+  row('PA', 'Permanent Address', record.permanentAddress, { height: 34 });
+  row('TA', 'Temporary Address', record.temporaryAddress, { height: 34 });
+  content.push(`0 0 0 RG 0.5 w ${rightX} 588 28 24 re S`);
+  content.push(pdfText('PN', rightX + 7, 598, 9));
+  content.push(`0 0 0 RG 0.5 w ${rightValueX} 588 150 24 re S`);
+  content.push(pdfText(`Phone ${record.phone || ''}`.slice(0, 35), rightValueX + 6, 598, 9));
+  content.push(`0 0 0 RG 0.5 w ${rightX} 564 28 24 re S`);
+  content.push(pdfText('EA', rightX + 7, 574, 9));
+  content.push(`0 0 0 RG 0.5 w ${rightValueX} 564 150 24 re S`);
+  content.push(pdfText(`Email ${record.email || ''}`.slice(0, 35), rightValueX + 6, 574, 9));
+  content.push('0.78 0.78 0.78 rg 44 492 524 18 re f 0 0 0 rg');
+  content.push(pdfText('FLIGHT / BAGGAGE INFORMATION', 50, 497, 11));
+  y = 462;
+  row('BR', 'Baggage Routing', record.flightRoute, { valueW: 480 });
+  row('TN', 'Bag Tag Number', record.bagTag, { valueW: 480 });
+  row('BD', 'Baggage Details', record.ahlBagDescription || record.dprBagInfo, { height: 36, valueW: 480 });
+  row('CD', 'Contents / Inner Damage', record.contentsDetails || record.ahlContents || record.dprInnerDamage, { height: 36, valueW: 480 });
+  content.push('0.78 0.78 0.78 rg 44 300 524 18 re f 0 0 0 rg');
+  content.push(pdfText('CONTENTS', 50, 305, 11));
+  content.push(`0 0 0 RG 0.5 w 52 272 160 24 re S`);
+  content.push(`0 0 0 RG 0.5 w 212 272 348 24 re S`);
+  content.push(pdfText('CATEGORY', 92, 281, 9));
+  content.push(pdfText('DESCRIPTION', 330, 281, 9));
+  const items = Array.isArray(record.contentsRows) && record.contentsRows.length
+    ? record.contentsRows
+    : String(record.contentsDetails || '').split(/\s+\/\s+/).filter(Boolean).map((value) => ({ category: '', description: value }));
+  let itemY = 248;
+  for (let index = 0; index < 5; index += 1) {
+    const item = items[index] || {};
+    content.push(`0 0 0 RG 0.5 w 52 ${itemY} 160 24 re S`);
+    content.push(`0 0 0 RG 0.5 w 212 ${itemY} 348 24 re S`);
+    content.push(pdfText(String(item.category || '').slice(0, 24), 58, itemY + 9, 8));
+    content.push(pdfText(String(item.description || '').slice(0, 60), 218, itemY + 9, 8));
+    itemY -= 24;
+  }
+  content.push('0.78 0.78 0.78 rg 44 112 524 18 re f 0 0 0 rg');
+  content.push(pdfText('SIGNATURE', 50, 117, 11));
+  content.push(pdfText('Agent Name ________________________________', 56, 80, 10));
+  content.push(pdfText(`Date of issue ${record.issueDate || ''}`, 356, 80, 10));
+  content.push(pdfText('Passenger Signature ________________________________', 56, 52, 10));
+  content.push(pdfText('This report does not involve any acknowledgement of liability', 344, 52, 8));
   const stream = content.join('\n');
   const fontId = addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
   const streamId = addObject(`<< /Length ${Buffer.byteLength(stream)} >>\nstream\n${stream}\nendstream`);
-  const pageId = addObject(`<< /Type /Page /Parent 4 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 ${fontId} 0 R >> >> /Contents ${streamId} 0 R >>`);
+  const pageId = addObject(`<< /Type /Page /Parent 4 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 ${fontId} 0 R >> >> /Contents ${streamId} 0 R >>`);
   const pagesId = addObject(`<< /Type /Pages /Kids [${pageId} 0 R] /Count 1 >>`);
   const catalogId = addObject(`<< /Type /Catalog /Pages ${pagesId} 0 R >>`);
   let pdf = '%PDF-1.4\n';
@@ -1094,6 +1159,24 @@ function buildCbsFlightRoute(body) {
     return normalizedRows.map((row) => [row.flightNo, row.flightDate, row.destination].filter(Boolean).join(' ')).join(' / ');
   }
   return sanitizeCbsText(body.flightRoute, 240).toUpperCase();
+}
+
+function buildCbsContentsRows(body) {
+  const rows = Array.isArray(body.contentsRows) ? body.contentsRows : [];
+  return rows.map((row) => ({
+    category: sanitizeCbsText(row?.category, 80),
+    description: sanitizeCbsText(row?.description, 300)
+  })).filter((row) => row.category || row.description);
+}
+
+function cbsContentsText(rows) {
+  return rows.map((row) => [row.category, row.description].filter(Boolean).join(': ')).join(' / ');
+}
+
+function signatureAttachment(passengerSignature) {
+  const match = String(passengerSignature || '').match(/^data:image\/png;base64,([A-Za-z0-9+/=]+)$/);
+  if (!match) return null;
+  return { filename: 'passenger-signature.png', mimeType: 'image/png', contentBase64: match[1] };
 }
 
 function cbsEmailErrorMessage(err) {
@@ -1163,16 +1246,19 @@ app.post('/cbs-cases', async (req, res) => {
     const caseType = sanitizeCbsText(body.caseType, 10).toUpperCase();
     if (!['AHL', 'DPR'].includes(caseType)) return res.status(400).json({ error: 'Case type must be AHL or DPR' });
     const now = new Date().toISOString();
-    const attachments = sanitizeCbsAttachments(body.attachments);
+    let attachments = sanitizeCbsAttachments(body.attachments);
+    const contentsRows = buildCbsContentsRows(body);
+    const signatureFile = signatureAttachment(body.passengerSignature);
+    if (signatureFile) attachments = [...attachments, signatureFile];
     const record = {
-      caseNumber: makeCbsCaseNumber(body.bagTag),
+      caseNumber: await makeCbsCaseNumber(body.bagTag),
       caseType,
       status: 'Open',
       passengerName,
       email,
       phone: sanitizeCbsText(body.phone, 80),
       flightRoute: buildCbsFlightRoute(body),
-      bagTag: sanitizeCbsText(body.bagTag, 80).toUpperCase(),
+      bagTag: normalizeCbsBagTag(body.bagTag),
       permanentAddress: sanitizeCbsText(body.permanentAddress, 500),
       temporaryAddress: sanitizeCbsText(body.temporaryAddress, 500),
       temporaryAddressValidUntil: sanitizeCbsText(body.temporaryAddressValidUntil, 40),
@@ -1187,12 +1273,16 @@ app.post('/cbs-cases', async (req, res) => {
       dprBagInfo: sanitizeCbsText(body.dprBagInfo, 500),
       dprBagType: sanitizeCbsText(body.dprBagType, 160),
       dprInnerDamage: sanitizeCbsText(body.dprInnerDamage, 1000),
+      contentsRows,
+      contentsDetails: cbsContentsText(contentsRows),
+      issueDate: sanitizeCbsText(body.issueDate, 40),
+      passengerSignature: body.passengerSignature ? 'Attached to email' : '',
       submittedAt: now,
       updatedAt: now,
       updateNote: 'Case created'
     };
     await appendCbsCase(record);
-    const pdfBuffer = createSimplePdf(cbsPdfLines(record));
+    const pdfBuffer = createPirPdf(record);
     let emailResults = [];
     let emailError = '';
     try {

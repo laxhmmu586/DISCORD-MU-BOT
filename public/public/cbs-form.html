@@ -26,6 +26,8 @@
     .flight-rows { display:grid; gap:10px; }
     .flight-row, .flight-head { display:grid; grid-template-columns:1fr .8fr .8fr; gap:10px; align-items:end; }
     .flight-head { color:var(--muted); font-size:12px; font-weight:850; text-transform:uppercase; }
+    .contents-row { display:grid; grid-template-columns:.8fr 1.2fr auto; gap:10px; align-items:center; }
+    .signature-pad { width:100%; max-width:560px; height:180px; border:1px solid var(--line); border-radius:14px; background:#fff; touch-action:none; display:block; }
     label { display:grid; gap:7px; font-weight:750; font-size:13px; }
     input,select,textarea,button { font:inherit; }
     input,select,textarea { width:100%; border:1px solid var(--line); border-radius:12px; padding:11px 12px; background:#fff; color:var(--ink); }
@@ -43,7 +45,7 @@
     .sketch-shell { display:grid; gap:10px; overflow:hidden; }
     .sketch-board { width:100%; max-width:820px; border:1px solid var(--line); border-radius:14px; background:#fff; touch-action:none; display:block; }
     .attachment-hint { font-size:12px; color:var(--muted); font-weight:600; }
-    @media (max-width:840px){ .grid{grid-template-columns:1fr}.flight-row,.flight-head{grid-template-columns:1fr}.header-title{text-align:left}header{flex-wrap:wrap} }
+    @media (max-width:840px){ .grid{grid-template-columns:1fr}.flight-row,.flight-head,.contents-row{grid-template-columns:1fr}.header-title{text-align:left}header{flex-wrap:wrap} }
   </style>
 </head>
 <body>
@@ -58,7 +60,7 @@
     </section>
 
     <section class="card">
-      <h2><span class="en">New case</span><span class="zh">新建表格</span></h2>
+      <h2><span class="en">New case</span><span class="zh">新建案</span></h2>
       <form id="cbs-form">
         <div class="grid">
           <label><span class="en">Passenger name</span><span class="zh">旅客姓名</span><input name="passengerName" required placeholder="LAST/FIRST" /></label>
@@ -85,18 +87,22 @@
           <div class="grid">
             <label class="wide"><span class="en">Baggage description</span><span class="zh">行李描述</span><textarea name="ahlBagDescription" placeholder="Color, size, wheels, hard/soft shell..."></textarea></label>
             <label><span class="en">Bag brand tag</span><span class="zh">行李箱品牌牌</span><input name="ahlBagBrandTag" /></label>
-            <label><span class="en">Bag type</span><span class="zh">行李类型</span><input name="ahlBagType" placeholder="Suitcase / duffel / carton" /></label>
             <label><span class="en">Features</span><span class="zh">特征</span><input name="ahlFeatures" placeholder="Sticker, ribbon, lock..." /></label>
             <label class="wide"><span class="en">Other visible features</span><span class="zh">其他明显特征</span><textarea name="ahlOtherFeatures"></textarea></label>
-            <label class="wide"><span class="en">Detailed contents</span><span class="zh">物品具体描述</span><textarea name="ahlContents"></textarea></label>
           </div>
+        </section>
+
+        <section class="case-fields is-active" id="contents-fields">
+          <h3><span class="en">Contents</span><span class="zh">包内物品</span></h3>
+          <div class="contents-row flight-head"><span><span class="en">Category</span><span class="zh">类别</span></span><span><span class="en">Description</span><span class="zh">描述</span></span><span></span></div>
+          <div id="contents-list"></div>
+          <button class="secondary" id="add-content-row" type="button">+ <span class="en">Add item</span><span class="zh">添加物品</span></button>
         </section>
 
         <section id="dpr-fields" class="case-fields">
           <h3><span class="en">DPR information</span><span class="zh">破损行李信息</span></h3>
           <div class="grid">
             <label><span class="en">Damage level</span><span class="zh">破损程度</span><select name="dprDamageLevel"><option>Minor</option><option>Major</option><option>Total</option></select></label>
-            <label><span class="en">Bag type</span><span class="zh">行李类型</span><input name="dprBagType" /></label>
             <label class="wide"><span class="en">Baggage information / damage location</span><span class="zh">行李信息 / 破损位置</span><textarea name="dprBagInfo" placeholder="Side 1, Side 2, End 1, wheel, handle..."></textarea></label>
             <label class="wide"><span class="en">Inner damage</span><span class="zh">内物破损</span><textarea name="dprInnerDamage"></textarea></label>
             <div class="wide sketch-shell">
@@ -104,6 +110,16 @@
               <canvas id="damage-sketch" class="sketch-board" width="820" height="220" aria-label="Baggage damage sketch canvas"></canvas>
               <div class="actions"><button class="secondary" id="clear-sketch" type="button"><span class="en">Clear circles</span><span class="zh">清除标记</span></button><span class="attachment-hint"><span class="en">Drag on the picture to freely circle damaged parts. The marked sketch will be attached to the email.</span><span class="zh">在图上拖动圈出破损部位，标记图会随邮件发送。</span></span></div>
             </div>
+          </div>
+        </section>
+
+        <section class="case-fields is-active">
+          <h3><span class="en">Passenger signature and date</span><span class="zh">旅客签字和日期</span></h3>
+          <label><span class="en">Date of issue</span><span class="zh">填写日期</span><input name="issueDate" id="issue-date" type="date" /></label>
+          <div class="wide">
+            <strong><span class="en">Passenger signature</span><span class="zh">旅客签字</span></strong>
+            <canvas id="signature-pad" class="signature-pad" width="560" height="180" aria-label="Passenger signature pad"></canvas>
+            <div class="actions"><button class="secondary" id="clear-signature" type="button"><span class="en">Clear signature</span><span class="zh">清除签名</span></button></div>
           </div>
         </section>
 
@@ -133,10 +149,17 @@
     const attachmentsInput = document.querySelector('#attachments');
     const canvas = document.querySelector('#damage-sketch');
     const ctx = canvas.getContext('2d');
+    const signaturePad = document.querySelector('#signature-pad');
+    const signatureCtx = signaturePad.getContext('2d');
+    const contentsList = document.querySelector('#contents-list');
+    const addContentRowButton = document.querySelector('#add-content-row');
+    const issueDateInput = document.querySelector('#issue-date');
     const languageToggle = document.querySelector('#language-toggle');
     let drawing = false;
     let startPoint = null;
     let sketchDirty = false;
+    let signatureDirty = false;
+    let signing = false;
 
     function setLanguage(lang) {
       document.documentElement.lang = lang;
@@ -147,6 +170,25 @@
       addressAvailable.options[1].textContent = lang === 'en' ? 'Yes' : '是';
     }
     languageToggle.addEventListener('click', () => setLanguage(document.documentElement.lang === 'en' ? 'zh' : 'en'));
+
+    function addContentRow(category = '', description = '') {
+      const row = document.createElement('div');
+      row.className = 'contents-row';
+      row.innerHTML = `<input name="contentCategory" placeholder="Category" value="${category.replace(/&/g, '&amp;').replace(/"/g, '&quot;')}" /><input name="contentDescription" placeholder="Description" value="${description.replace(/&/g, '&amp;').replace(/"/g, '&quot;')}" /><button class="secondary" type="button" data-remove-content>−</button>`;
+      contentsList.appendChild(row);
+    }
+    addContentRowButton.addEventListener('click', () => addContentRow());
+    contentsList.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-remove-content]');
+      if (button && contentsList.children.length > 1) button.closest('.contents-row')?.remove();
+    });
+
+    function collectContentsRows() {
+      return Array.from(contentsList.querySelectorAll('.contents-row')).map((row) => ({
+        category: row.querySelector('[name="contentCategory"]')?.value || '',
+        description: row.querySelector('[name="contentDescription"]')?.value || ''
+      })).filter((row) => row.category.trim() || row.description.trim());
+    }
 
     async function parseJson(res) { const text = await res.text(); try { return JSON.parse(text); } catch { throw new Error(`API returned non-JSON (${res.status}). Please check API base: ${apiBase}`); } }
     function setTypeFields() { const isAhl = typeSelect.value === 'AHL'; ahlFields.classList.toggle('is-active', isAhl); dprFields.classList.toggle('is-active', !isAhl); }
@@ -185,6 +227,26 @@
     document.querySelector('#clear-sketch').addEventListener('click', () => { sketchDirty = false; drawBagBase(); });
     drawBagBase();
 
+    function clearSignature() {
+      signatureCtx.clearRect(0, 0, signaturePad.width, signaturePad.height);
+      signatureCtx.fillStyle = '#fff';
+      signatureCtx.fillRect(0, 0, signaturePad.width, signaturePad.height);
+      signatureCtx.strokeStyle = '#111827';
+      signatureCtx.lineWidth = 3;
+      signatureCtx.lineCap = 'round';
+      signatureDirty = false;
+    }
+    function signaturePoint(event) {
+      const rect = signaturePad.getBoundingClientRect();
+      return { x:(event.clientX-rect.left)*signaturePad.width/rect.width, y:(event.clientY-rect.top)*signaturePad.height/rect.height };
+    }
+    signaturePad.addEventListener('pointerdown', (event) => { signing = true; signaturePad.setPointerCapture(event.pointerId); const point = signaturePoint(event); signatureCtx.beginPath(); signatureCtx.moveTo(point.x, point.y); });
+    signaturePad.addEventListener('pointermove', (event) => { if (!signing) return; const point = signaturePoint(event); signatureCtx.lineTo(point.x, point.y); signatureCtx.stroke(); signatureDirty = true; });
+    signaturePad.addEventListener('pointerup', () => { signing = false; });
+    signaturePad.addEventListener('pointercancel', () => { signing = false; });
+    document.querySelector('#clear-signature').addEventListener('click', clearSignature);
+    clearSignature();
+
     async function filesToAttachments(files) {
       const selected = Array.from(files || []);
       const output = [];
@@ -207,6 +269,8 @@
         flightDate: payload[`flightDate${index}`],
         destination: payload[`destination${index}`]
       }));
+      payload.contentsRows = collectContentsRows();
+      payload.passengerSignature = signatureDirty ? signaturePad.toDataURL('image/png') : '';
       payload.attachments = await filesToAttachments(attachmentsInput.files);
       try {
         const res = await fetch(`${apiBase}/cbs-cases`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
@@ -217,10 +281,12 @@
         thanksCase.textContent = data.record.caseNumber;
         thanks.classList.add('is-active');
         thanks.scrollIntoView({ behavior:'smooth', block:'center' });
-        form.reset(); sketchDirty = false; drawBagBase(); setTypeFields(); setAddressFields();
+        form.reset(); sketchDirty = false; drawBagBase(); clearSignature(); contentsList.innerHTML = ''; addContentRow(); issueDateInput.valueAsDate = new Date(); setTypeFields(); setAddressFields();
       } catch (error) { formStatus.className = 'status err'; formStatus.textContent = error.message; }
     });
-    form.addEventListener('reset', () => setTimeout(() => { sketchDirty = false; drawBagBase(); setTypeFields(); setAddressFields(); }, 0));
+    form.addEventListener('reset', () => setTimeout(() => { sketchDirty = false; drawBagBase(); clearSignature(); contentsList.innerHTML = ''; addContentRow(); issueDateInput.valueAsDate = new Date(); setTypeFields(); setAddressFields(); }, 0));
+    addContentRow();
+    issueDateInput.valueAsDate = new Date();
     setLanguage('en');
     setTypeFields();
     setAddressFields();
