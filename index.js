@@ -54,7 +54,11 @@ const {
   updateTestBaggageRecord,
   updateFscExchangeRate,
   extractFscExchangeRate,
-  updateSyBookingCounts
+  updateSyBookingCounts,
+  appendCbsCase,
+  getCbsCases,
+  updateCbsCase,
+  sendCbsCaseEmail
 
 } = require('./googleDrive');
 
@@ -699,7 +703,7 @@ app.use((req, res, next) => {
 });
 
 app.use(
-  express.json()
+  express.json({ limit: '15mb' })
 );
 
 app.use(
@@ -1004,6 +1008,327 @@ function cleanBodyText(value, maxLength = 500) {
   return String(value || '').replace(/[\u0000-\u001F\u007F]/g, ' ').trim().slice(0, maxLength);
 }
 
+
+function sanitizeCbsText(value, maxLength = 1000) {
+  return String(value || '').replace(/[\u0000-\u001F\u007F]/g, ' ').trim().slice(0, maxLength);
+}
+
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
+}
+
+function normalizeCbsBagTag(value) {
+  const normalized = String(value || '').trim().toUpperCase().replace(/\s+/g, '');
+  const match = normalized.match(/^([A-Z]{2})(\d{6,})$/);
+  if (match) return `${match[1]}${match[2].slice(-6)}`;
+  return normalized;
+}
+
+async function makeCbsCaseNumber() {
+  const today = todayIsoUtc();
+  const yy = today.slice(2, 4);
+  const mm = today.slice(5, 7);
+  const prefix = `LAX MU${yy}${mm}`;
+  const cases = await getCbsCases().catch(() => []);
+  const maxSequence = cases.reduce((max, row) => {
+    const match = String(row.caseNumber || '').toUpperCase().match(new RegExp(`^${prefix}(\\d{2})$`));
+    return match ? Math.max(max, Number(match[1])) : max;
+  }, 0);
+  return `${prefix}${String(maxSequence + 1).padStart(2, '0')}`;
+}
+
+function pdfEscape(value) {
+  return String(value || '').replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
+}
+
+function pdfText(content, x, y, size = 9) {
+  return `BT /F1 ${size} Tf ${x} ${y} Td (${pdfEscape(content)}) Tj ET`;
+}
+
+function pdfBoxText(content, x, y, w, h, size = 8) {
+  return [
+    `0 0 0 RG 0.5 w ${x} ${y} ${w} ${h} re S`,
+    pdfText(content, x + 4, y + Math.max(5, Math.floor(h / 2) - 3), size)
+  ];
+}
+
+function jpegFromDataUrl(dataUrl) {
+  const match = String(dataUrl || '').match(/^data:image\/jpe?g;base64,([A-Za-z0-9+/=]+)$/i);
+  if (!match) return null;
+  const buffer = Buffer.from(match[1], 'base64');
+  for (let i = 0; i < buffer.length - 9; i += 1) {
+    if (buffer[i] === 0xFF && [0xC0, 0xC2].includes(buffer[i + 1])) {
+      return { buffer, width: buffer.readUInt16BE(i + 7), height: buffer.readUInt16BE(i + 5) };
+    }
+  }
+  return { buffer, width: 560, height: 180 };
+}
+
+function createPirPdf(record) {
+  const objects = [];
+  const addObject = (content) => {
+    objects.push(content);
+    return objects.length;
+  };
+  const damageImage = jpegFromDataUrl(record.damageSketch);
+  const signatureImage = jpegFromDataUrl(record.passengerSignatureDataUrl);
+  const imageRefs = {};
+  if (damageImage) imageRefs.Damage = addObject(`<< /Type /XObject /Subtype /Image /Width ${damageImage.width} /Height ${damageImage.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${damageImage.buffer.length} >>\nstream\n${damageImage.buffer.toString('binary')}\nendstream`);
+  if (signatureImage) imageRefs.Signature = addObject(`<< /Type /XObject /Subtype /Image /Width ${signatureImage.width} /Height ${signatureImage.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${signatureImage.buffer.length} >>\nstream\n${signatureImage.buffer.toString('binary')}\nendstream`);
+  const content = [];
+  content.push('0.97 0.98 1 rg 0 0 612 792 re f');
+  content.push('0 0 0 RG 0 0 0 rg 1 w 36 36 540 720 re S');
+  content.push(pdfText('PROPERTY IRREGULARITY REPORT (PIR)', 54, 724, 17));
+  content.push(pdfText(`CASE ID: ${record.caseNumber || ''}`, 390, 724, 11));
+  content.push(pdfText('FOR INQUIRIES PLEASE PHONE:', 390, 704, 9));
+  content.push('390 698 m 548 698 l S');
+  const section = (title, y) => {
+    content.push('0.78 0.78 0.78 rg');
+    content.push(`44 ${y} 524 18 re f`);
+    content.push('0 0 0 rg');
+    content.push(pdfText(title, 50, y + 5, 10));
+  };
+  const box = (x, y, w, h, text, size = 8) => {
+    content.push(`0 0 0 RG 0.5 w ${x} ${y} ${w} ${h} re S`);
+    if (text) content.push(pdfText(text, x + 5, y + h - 13, size));
+  };
+  const coded = (code, label, value, x, y, w, h) => {
+    box(x, y, 26, h, code, 8);
+    box(x + 26, y, w - 26, h, `${label} ${value || ''}`.slice(0, 95), 7.5);
+  };
+  section('PASSENGER INFORMATION', 642);
+  coded('NM', 'Passenger Name', record.passengerName, 52, 612, 318, 24);
+  coded('PA', 'Address', record.permanentAddress, 52, 574, 318, 38);
+  coded('TA', 'Temporary Address', record.temporaryAddress, 52, 536, 318, 38);
+  coded('PN', 'Phone', record.phone, 382, 588, 170, 28);
+  coded('EA', 'Email', record.email, 382, 560, 170, 28);
+  section('FLIGHT / BAGGAGE INFORMATION', 506);
+  coded('BR', 'Baggage Routing', record.flightRoute, 52, 476, 500, 26);
+  coded('TN', 'Bag Tag Number', record.bagTag, 52, 450, 500, 26);
+  coded('BD', 'Baggage Details', record.ahlBagDescription || record.dprBagInfo, 52, 410, 500, 40);
+  coded('CD', 'Contents / Inner Damage', record.contentsDetails || record.dprInnerDamage, 52, 370, 500, 40);
+  if (damageImage) {
+    box(52, 282, 500, 78, 'Damage Sketch', 8);
+    content.push(`q 150 0 0 55 190 292 cm /Damage Do Q`);
+  }
+  section('CONTENTS', 250);
+  box(52, 222, 160, 24, 'CATEGORY', 8);
+  box(212, 222, 340, 24, 'DESCRIPTION', 8);
+  const items = Array.isArray(record.contentsRows) && record.contentsRows.length
+    ? record.contentsRows
+    : String(record.contentsDetails || '').split(/\s+\/\s+/).filter(Boolean).map((value) => ({ category: '', description: value }));
+  let itemY = 198;
+  for (let index = 0; index < 4; index += 1) {
+    const item = items[index] || {};
+    box(52, itemY, 160, 24, String(item.category || '').slice(0, 24), 8);
+    box(212, itemY, 340, 24, String(item.description || '').slice(0, 64), 8);
+    itemY -= 24;
+  }
+  section('SIGNATURE', 88);
+  content.push(pdfText(`Date of issue ${record.issueDate || ''}`, 56, 60, 9));
+  if (signatureImage) {
+    box(240, 48, 160, 34, '', 8);
+    content.push(`q 150 0 0 30 245 50 cm /Signature Do Q`);
+  } else {
+    content.push(pdfText('Passenger Signature __________________________', 240, 60, 9));
+  }
+  content.push(pdfText('This report does not involve any acknowledgement of liability', 56, 42, 7));
+  const stream = content.join('\n');
+  const fontId = addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
+  const streamId = addObject(`<< /Length ${Buffer.byteLength(stream, 'binary')} >>\nstream\n${stream}\nendstream`);
+  const xObjectEntries = [imageRefs.Damage ? `/Damage ${imageRefs.Damage} 0 R` : '', imageRefs.Signature ? `/Signature ${imageRefs.Signature} 0 R` : ''].filter(Boolean).join(' ');
+  const resources = `<< /Font << /F1 ${fontId} 0 R >> ${xObjectEntries ? `/XObject << ${xObjectEntries} >>` : ''} >>`;
+  const pageId = addObject(`<< /Type /Page /Parent ${objects.length + 2} 0 R /MediaBox [0 0 612 792] /Resources ${resources} /Contents ${streamId} 0 R >>`);
+  const pagesId = addObject(`<< /Type /Pages /Kids [${pageId} 0 R] /Count 1 >>`);
+  const catalogId = addObject(`<< /Type /Catalog /Pages ${pagesId} 0 R >>`);
+  let pdf = '%PDF-1.4\n';
+  const offsets = [0];
+  objects.forEach((obj, index) => {
+    offsets.push(Buffer.byteLength(pdf, 'binary'));
+    pdf += `${index + 1} 0 obj\n${obj}\nendobj\n`;
+  });
+  const xref = Buffer.byteLength(pdf, 'binary');
+  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  for (let i = 1; i <= objects.length; i += 1) pdf += `${String(offsets[i]).padStart(10, '0')} 00000 n \n`;
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root ${catalogId} 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+  return Buffer.from(pdf, 'binary');
+}
+
+function buildCbsEmailHtml(record) {
+  return `<p>Dear Passenger,</p><p>We apologize sincerely for the baggage irregularity reported upon arrival. Your case has been created and the attached PIR PDF is provided for your records.</p><p><strong>Case Number:</strong> ${record.caseNumber}<br><strong>Status:</strong> ${record.status}</p><p>China Eastern Airlines</p>`;
+}
+
+function buildCbsFlightRoute(body) {
+  const rows = Array.isArray(body.flightRows) ? body.flightRows : [];
+  const normalizedRows = rows.map((row) => ({
+    flightNo: sanitizeCbsText(row?.flightNo, 20).toUpperCase(),
+    flightDate: sanitizeCbsText(row?.flightDate, 20).toUpperCase(),
+    destination: sanitizeCbsText(row?.destination, 20).toUpperCase()
+  })).filter((row) => row.flightNo || row.flightDate || row.destination);
+  if (normalizedRows.length) {
+    return normalizedRows.map((row) => [row.flightNo, row.flightDate, row.destination].filter(Boolean).join(' ')).join(' / ');
+  }
+  return sanitizeCbsText(body.flightRoute, 240).toUpperCase();
+}
+
+function buildCbsContentsRows(body) {
+  const rows = Array.isArray(body.contentsRows) ? body.contentsRows : [];
+  return rows.map((row) => ({
+    category: sanitizeCbsText(row?.category, 80),
+    description: sanitizeCbsText(row?.description, 300)
+  })).filter((row) => row.category || row.description);
+}
+
+function cbsContentsText(rows) {
+  return rows.map((row) => [row.category, row.description].filter(Boolean).join(': ')).join(' / ');
+}
+
+
+function cbsEmailErrorMessage(err) {
+  const message = err?.message || 'Email send failed';
+  if (/insufficient permission|insufficient authentication scopes|forbidden|permission/i.test(message)) {
+    return 'Gmail insufficient permission. Please regenerate GOOGLE_REFRESH_TOKEN/GMAIL_REFRESH_TOKEN using get-token.js with gmail.send scope, then redeploy/restart.';
+  }
+  return message;
+}
+
+function cbsPdfLines(record) {
+  return [
+    ['Reference Number', record.caseNumber],
+    ['Case Type', record.caseType],
+    ['Status', record.status],
+    ['Passenger name', record.passengerName],
+    ['Email', record.email],
+    ['Phone', record.phone],
+    ['Flight routing', record.flightRoute],
+    ['Baggage tag number', record.bagTag],
+    ['Permanent address', record.permanentAddress],
+    ['Temporary address', record.temporaryAddress],
+    ['Bag description', record.ahlBagDescription || record.dprBagInfo],
+    ['Bag type', record.ahlBagType || record.dprBagType],
+    ['Damage level', record.dprDamageLevel],
+    ['Contents / inner damage', record.ahlContents || record.dprInnerDamage]
+  ];
+}
+
+
+
+function sanitizeCbsAttachments(value) {
+  const list = Array.isArray(value) ? value : [];
+  const maxAttachments = 8;
+  const maxTotalBytes = 10 * 1024 * 1024;
+  let totalBytes = 0;
+  return list.slice(0, maxAttachments).map((item, index) => {
+    const filename = sanitizeCbsText(item?.filename, 120) || `attachment-${index + 1}`;
+    const mimeType = sanitizeCbsText(item?.mimeType, 120) || 'application/octet-stream';
+    const contentBase64 = String(item?.contentBase64 || '').replace(/\s/g, '');
+    if (!/^[A-Za-z0-9+/]*={0,2}$/.test(contentBase64)) return null;
+    const bytes = Math.floor((contentBase64.length * 3) / 4);
+    totalBytes += bytes;
+    if (totalBytes > maxTotalBytes) return null;
+    return { filename, mimeType, contentBase64 };
+  }).filter(Boolean);
+}
+
+
+app.get('/cbs-cases', async (req, res) => {
+  try {
+    const rows = await getCbsCases();
+    return res.json({ rows });
+  } catch (err) {
+    console.error('CBS case list error:', err);
+    return res.status(500).json({ error: err?.message || 'CBS case lookup failed' });
+  }
+});
+
+app.post('/cbs-cases', async (req, res) => {
+  try {
+    const body = req.body || {};
+    const email = sanitizeCbsText(body.email, 160).toLowerCase();
+    if (!isValidEmail(email)) return res.status(400).json({ error: 'Valid passenger email is required' });
+    const passengerName = sanitizeCbsText(body.passengerName, 160);
+    if (!passengerName) return res.status(400).json({ error: 'Passenger name is required' });
+    const caseType = sanitizeCbsText(body.caseType, 10).toUpperCase();
+    if (!['AHL', 'DPR'].includes(caseType)) return res.status(400).json({ error: 'Case type must be AHL or DPR' });
+    const firstFlight = Array.isArray(body.flightRows) ? body.flightRows[0] || {} : {};
+    if (!sanitizeCbsText(body.phone, 80)) return res.status(400).json({ error: 'Phone is required' });
+    if (!sanitizeCbsText(firstFlight.flightNo, 20) || !sanitizeCbsText(firstFlight.flightDate, 20) || !sanitizeCbsText(firstFlight.destination, 20)) return res.status(400).json({ error: 'First baggage routing row is required' });
+    if (!normalizeCbsBagTag(body.bagTag)) return res.status(400).json({ error: 'Bag tag is required' });
+    if (caseType === 'AHL' && !sanitizeCbsText(body.ahlBagDescription, 500)) return res.status(400).json({ error: 'AHL baggage description is required' });
+    if (!sanitizeCbsText(body.issueDate, 40)) return res.status(400).json({ error: 'Issue date is required' });
+    if (!body.passengerSignature) return res.status(400).json({ error: 'Passenger signature is required' });
+    const now = new Date().toISOString();
+    let attachments = sanitizeCbsAttachments(body.attachments);
+    const contentsRows = buildCbsContentsRows(body);
+    const record = {
+      caseNumber: await makeCbsCaseNumber(),
+      caseType,
+      status: 'Open',
+      passengerName,
+      email,
+      phone: sanitizeCbsText(body.phone, 80),
+      flightRoute: buildCbsFlightRoute(body),
+      bagTag: normalizeCbsBagTag(body.bagTag),
+      permanentAddress: sanitizeCbsText(body.permanentAddress, 500),
+      temporaryAddress: sanitizeCbsText(body.temporaryAddress, 500),
+      temporaryAddressValidUntil: sanitizeCbsText(body.temporaryAddressValidUntil, 40),
+      addressAvailable: sanitizeCbsText(body.addressAvailable, 20),
+      ahlBagDescription: sanitizeCbsText(body.ahlBagDescription, 500),
+      ahlBagBrandTag: sanitizeCbsText(body.ahlBagBrandTag, 200),
+      ahlBagType: sanitizeCbsText(body.ahlBagType, 160),
+      ahlFeatures: sanitizeCbsText(body.ahlFeatures, 500),
+      ahlOtherFeatures: sanitizeCbsText(body.ahlOtherFeatures, 500),
+      ahlContents: sanitizeCbsText(body.ahlContents, 1000),
+      dprDamageLevel: sanitizeCbsText(body.dprDamageLevel, 40),
+      dprBagInfo: sanitizeCbsText(body.dprBagInfo, 500),
+      dprBagType: sanitizeCbsText(body.dprBagType, 160),
+      dprInnerDamage: sanitizeCbsText(body.dprInnerDamage, 1000),
+      contentsRows,
+      contentsDetails: cbsContentsText(contentsRows),
+      issueDate: sanitizeCbsText(body.issueDate, 40),
+      passengerSignature: body.passengerSignature ? 'Included in report' : '',
+      passengerSignatureDataUrl: body.passengerSignature,
+      damageSketch: body.damageSketch,
+      submittedAt: now,
+      updatedAt: now,
+      updateNote: 'Case created'
+    };
+    await appendCbsCase(record);
+    const pdfBuffer = createPirPdf(record);
+    let emailResults = [];
+    let emailError = '';
+    try {
+      emailResults = await sendCbsCaseEmail({
+        passengerEmail: record.email,
+        subject: `China Eastern Baggage Case ${record.caseNumber}`,
+        html: buildCbsEmailHtml(record),
+        pdfBuffer,
+        filename: `${record.caseNumber}.pdf`,
+        attachments
+      });
+    } catch (mailErr) {
+      emailError = cbsEmailErrorMessage(mailErr);
+      console.error('CBS case email error:', mailErr);
+    }
+    return res.status(201).json({ created: true, record, emailResults, emailError });
+  } catch (err) {
+    console.error('CBS case create error:', err);
+    return res.status(500).json({ error: err?.message || 'CBS case save failed' });
+  }
+});
+
+app.post('/cbs-cases/:caseNumber/update', async (req, res) => {
+  try {
+    const status = sanitizeCbsText(req.body?.status, 80) || 'Open';
+    const updateNote = sanitizeCbsText(req.body?.updateNote, 500);
+    const result = await updateCbsCase(req.params.caseNumber, { status, updateNote });
+    if (result.notFound) return res.status(404).json({ error: 'Case not found' });
+    return res.json(result);
+  } catch (err) {
+    console.error('CBS case update error:', err);
+    return res.status(500).json({ error: err?.message || 'CBS case update failed' });
+  }
+});
 
 app.get('/test-baggage-report', async (req, res) => {
   try {
