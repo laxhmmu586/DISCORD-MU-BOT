@@ -120,6 +120,18 @@ function formatPassportExpiryFromSection(section) {
   return `${value.slice(4, 6)}/${value.slice(2, 4)}/20${value.slice(0, 2)}`;
 }
 
+function extractTicketNoFromSection(section) {
+  const adultTicketNo = String(section || '').match(/\bET\s+TKNE\/(?!INF)(\d{10,})\/\d+\b/i)?.[1] || '';
+  const infantTicketNo = String(section || '').match(/\bET\s+TKNE\/INF(\d{10,})\/\d+\b/i)?.[1] || '';
+  return adultTicketNo || infantTicketNo;
+}
+
+function isSameKnownTicket(a, b) {
+  const ticketA = String(a || '').trim();
+  const ticketB = String(b || '').trim();
+  return Boolean(ticketA && ticketB && ticketA === ticketB);
+}
+
 function extractSeatAfterBn(text) {
   return (String(text || '').match(/\bBN\s*\d{1,3}\b\s+\*?(\d{1,3}[A-Z])\b/i)?.[1] || '').toUpperCase();
 }
@@ -837,6 +849,7 @@ ${section}`,
       hasAqqTcl: /\bAQQ\/TCL\/USA\b/i.test(section),
       dobKey,
       passportExpiryKey: expField,
+      ticketNo: extractTicketNoFromSection(section),
       hasGovDta: /\bGOV\/DTA\/CHN\b/i.test(section),
       hasWrongPassport,
       hasPassportCodeIssue: hasCodeIssue
@@ -859,12 +872,16 @@ ${section}`,
   for (const [identityKey, bns] of byPassportIdentity.entries()) {
     const [passportNo, dobKey, passportExpiryKey] = identityKey.split('|');
     const unique = [...new Set(bns)].sort();
+    const duplicateBns = new Set();
+    const getIdentityRecord = (bn) => paxRecords.find((p) => p.bn === bn && p.passportNo === passportNo && (p.dobKey || '') === dobKey && (p.passportExpiryKey || '') === passportExpiryKey);
     if (unique.length > 1) {
-      duplicatePassports.push({ passportNo, dob: dobKey, passportExpiry: passportExpiryKey, bns: unique });
       for (let i = 0; i < unique.length; i += 1) {
         for (let j = i + 1; j < unique.length; j += 1) {
-          const p1 = paxRecords.find((p) => p.bn === unique[i] && p.passportNo === passportNo && (p.dobKey || '') === dobKey && (p.passportExpiryKey || '') === passportExpiryKey);
-          const p2 = paxRecords.find((p) => p.bn === unique[j] && p.passportNo === passportNo && (p.dobKey || '') === dobKey && (p.passportExpiryKey || '') === passportExpiryKey);
+          const p1 = getIdentityRecord(unique[i]);
+          const p2 = getIdentityRecord(unique[j]);
+          if (isSameKnownTicket(p1?.ticketNo, p2?.ticketNo)) continue;
+          duplicateBns.add(unique[i]);
+          duplicateBns.add(unique[j]);
           if (isReversedNamePair(p1?.bookingName, p2?.bookingName)) {
             duplicateReviewPairs.push({
               passportNo,
@@ -877,6 +894,10 @@ ${section}`,
           }
         }
       }
+    }
+    const duplicateUnique = [...duplicateBns].sort();
+    if (duplicateUnique.length > 1) {
+      duplicatePassports.push({ passportNo, dob: dobKey, passportExpiry: passportExpiryKey, bns: duplicateUnique });
     }
   }
 
