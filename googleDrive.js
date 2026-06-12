@@ -101,7 +101,8 @@ const CBS_HEADERS = [
   'Submit Date',
   'Updated At',
   'Update Note',
-  'Destination On Bags'
+  'Destination On Bags',
+  'Departure Origin'
 ];
 let cbsSheetTitle = '';
 let cbsSheetCache = { loadedAt: 0, rows: [] };
@@ -2370,7 +2371,7 @@ async function getCbsSheetRows(options = {}) {
   const title = await getCbsSheetTitle();
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A:AE`
+    range: `${escapeSheetTitle(title)}!A:AF`
   });
   const rows = res.data.values || [];
   cbsSheetCache = { loadedAt: Date.now(), rows };
@@ -2384,7 +2385,7 @@ async function ensureCbsSheetHeaders(rows) {
   const title = await getCbsSheetTitle();
   await sheets.spreadsheets.values.update({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A1:AE1`,
+    range: `${escapeSheetTitle(title)}!A1:AF1`,
     valueInputOption: 'RAW',
     requestBody: { values: [CBS_HEADERS] }
   });
@@ -2398,6 +2399,7 @@ function cbsRecordFromSheet(values, rowNumber) {
     row[key] = values[index] || '';
   });
   row.caseNumber = row.caseNumber || values.find((value) => /^LAX\s*MU\d{6,}$/i.test(String(value || '').trim())) || '';
+  row.caseType = row.caseType || values.find((value) => /^(AHL|DPR)$/i.test(String(value || '').trim())) || '';
   row.bagTag = row.bagTag || values.find((value) => /^[A-Z]{2}\d{6,}(\s*\/\s*[A-Z]{2}\d{6,})*$/i.test(String(value || '').trim())) || '';
   row.submittedAt = row.submittedAt || row.submitDate || values[27] || '';
   row.rowNumber = rowNumber;
@@ -2436,7 +2438,8 @@ function cbsValuesFromRecord(record) {
     record.submittedAt,
     record.updatedAt,
     record.updateNote,
-    record.destinationOnBags
+    record.destinationOnBags,
+    record.departureOrigin
   ];
 }
 
@@ -2446,7 +2449,7 @@ async function appendCbsCase(record) {
   await ensureCbsSheetHeaders(rows);
   await sheets.spreadsheets.values.append({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A:AE`,
+    range: `${escapeSheetTitle(title)}!A:AF`,
     valueInputOption: 'RAW',
     insertDataOption: 'INSERT_ROWS',
     requestBody: { values: [cbsValuesFromRecord(record)] }
@@ -2485,7 +2488,7 @@ async function updateCbsCase(caseNumber, update = {}) {
   const title = await getCbsSheetTitle();
   await sheets.spreadsheets.values.update({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A${rowIndex + 1}:AE${rowIndex + 1}`,
+    range: `${escapeSheetTitle(title)}!A${rowIndex + 1}:AF${rowIndex + 1}`,
     valueInputOption: 'RAW',
     requestBody: { values: [cbsValuesFromRecord(next)] }
   });
