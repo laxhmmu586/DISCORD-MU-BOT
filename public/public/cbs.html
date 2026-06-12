@@ -67,7 +67,7 @@
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || 'Case loading failed');
         const rows = data.rows || [];
-        if (!rows.length) { casesOutput.innerHTML = '<p class="muted">No CBS cases yet.</p>'; return; }
+        if (!rows.length) { casesOutput.innerHTML = '<p class="muted">No cases yet.</p>'; return; }
         casesOutput.innerHTML = `<table><thead><tr><th>${label('Case Number', '编号')}</th><th>${label('Case Type', '类型')}</th><th>${label('Passenger Name', '旅客姓名')}</th><th>${label('Email', '邮箱')}</th><th>${label('Phone', '电话')}</th><th>${label('Bag Tag', '行李牌')}</th></tr></thead><tbody>${rows.map((row) => {
           const details = [
             [label('Status', '状态'), row.status],
@@ -77,7 +77,7 @@
             [label('Baggage Details', '行李详情'), row.ahlBagDescription || row.dprBagInfo],
             [label('Contents', '包内物品'), row.contentsDetails || row.ahlContents || row.dprInnerDamage],
             [label('Issue Date', '填写日期'), row.issueDate],
-            [label('Submitted At', '提交时间'), row.submittedAt],
+            [label('Submit Date', '提交日期'), row.submittedAt],
             [label('Updated At', '更新时间'), row.updatedAt],
             [label('Update Note', '更新备注'), row.updateNote]
           ].filter((item) => item[1]);

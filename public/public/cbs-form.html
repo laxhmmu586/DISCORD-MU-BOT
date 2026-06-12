@@ -28,7 +28,11 @@
     .flight-row, .flight-head { display:grid; grid-template-columns:1fr .8fr .8fr; gap:10px; align-items:end; }
     .routing-layout { display:grid; grid-template-columns:270px minmax(0,1fr); gap:18px; align-items:start; }
     .bag-report-row { grid-column:1/-1; display:grid; grid-template-columns:270px minmax(0,1fr); gap:18px; }
-    .bag-report-fields { display:grid; grid-template-columns:1fr 1fr; gap:14px; justify-self:end; width:min(560px,100%); }
+    .bag-report-fields { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; justify-self:end; width:min(860px,100%); }
+    .field-label { font-weight:750; font-size:13px; }
+    .bag-list { display:grid; gap:7px; }
+    .bag-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; align-items:center; }
+    .bag-row button { padding:10px 13px; }
     .tag-example { border:1px dashed var(--line); border-radius:16px; padding:16px; background:#fbfdff; transform:rotate(-3deg); color:#202938; font-family:"Courier New",monospace; box-shadow:0 10px 24px rgba(22,48,76,.08); }
     .tag-example strong { display:block; font-size:22px; letter-spacing:3px; margin-bottom:8px; }
     .tag-barcode { height:44px; margin:10px 0; background:repeating-linear-gradient(90deg,#111 0 3px,transparent 3px 6px,#111 6px 8px,transparent 8px 12px); }
@@ -86,18 +90,17 @@
               </div>
               <div>
                 <div class="flight-head"><span><span class="en">Flight No.</span><span class="zh">航班号</span></span><span><span class="en">Date</span><span class="zh">日期</span></span><span><span class="en">Destination</span><span class="zh">目的地</span></span></div>
-                <div class="flight-row"><input name="flightNo1" value="MU583" placeholder="MU583" required /><input name="flightDate1" value="11JUN" placeholder="11JUN" required /><input name="destination1" value="PVG" placeholder="PVG" required /></div>
-                <div class="flight-row"><input name="flightNo2" value="MU0840" placeholder="MU0840" /><input name="flightDate2" value="11JUN" placeholder="11JUN" /><input name="destination2" value="PVG" placeholder="PVG" /></div>
+                <div class="flight-row"><input name="flightNo1" placeholder="MU583" required /><input name="flightDate1" placeholder="11JUN" required /><input name="destination1" placeholder="PVG" required /></div>
+                <div class="flight-row"><input name="flightNo2" placeholder="MU0840" /><input name="flightDate2" placeholder="11JUN" /><input name="destination2" placeholder="PVG" /></div>
                 <div class="flight-row"><input name="flightNo3" placeholder="" /><input name="flightDate3" placeholder="" /><input name="destination3" placeholder="" /></div>
               </div>
             </div>
           </div>
-          <div class="bag-report-row"><span></span><div class="bag-report-fields"><label><span class="en">Bag tag</span><span class="zh">行李牌号</span><input name="bagTag" placeholder="MU123456" required /></label><label><span class="en">Report type</span><span class="zh">报告类型</span><select name="caseType" id="case-type" required><option value="AHL">AHL - Delayed/Lost</option><option value="DPR">DPR - Damaged</option></select></label></div></div>
+          <div class="bag-report-row"><span></span><div class="bag-report-fields"><div class="bag-list"><span class="field-label"><span class="en">Bag tag</span><span class="zh">行李牌号</span></span><div id="bag-tags-list"><div class="bag-row"><input name="bagTag" data-bag-tag placeholder="MU123456" required /><button class="secondary" type="button" data-remove-bag-tag hidden>-</button></div></div><button class="secondary" id="add-bag-tag" type="button">+ <span class="en">Add bag</span><span class="zh">添加行李</span></button></div><label><span class="en">Destination on Bags</span><span class="zh">行李牌目的地</span><input name="destinationOnBags" placeholder="PVG" /></label><label><span class="en">Report type</span><span class="zh">报告类型</span><select name="caseType" id="case-type" required><option value="AHL">AHL - Delayed/Lost</option><option value="DPR">DPR - Damaged</option></select></label></div></div>
           <label class="wide"><span class="en">Address</span><span class="zh">住址</span><textarea name="permanentAddress" placeholder="If available"></textarea></label>
           <label><span class="en">Temporary address available?</span><span class="zh">是否有临时地址？</span><select name="addressAvailable" id="address-available"><option value="No">No</option><option value="Yes">Yes</option></select></label>
           <label id="valid-until-field" hidden><span class="en">Temporary address valid until</span><span class="zh">临时地址有效期至</span><input name="temporaryAddressValidUntil" type="date" /></label>
           <label class="wide" id="temporary-address-field" hidden><span class="en">Temporary address</span><span class="zh">临时地址</span><textarea name="temporaryAddress"></textarea></label>
-          <label class="wide"><span class="en">Attachments</span><span class="zh">附件</span><input name="attachments" id="attachments" type="file" multiple /><span class="attachment-hint"><span class="en">Files are sent as email attachments only; they are not saved to Drive or the case sheet.</span><span class="zh">附件只随邮件发送，不保存到网盘或表格。</span></span></label>
         </div>
 
         <section id="ahl-fields" class="case-fields is-active">
@@ -126,10 +129,12 @@
             <div class="wide sketch-shell">
               <strong><span class="en">Circle damaged area</span><span class="zh">圈出破损部位</span></strong>
               <canvas id="damage-sketch" class="sketch-board" width="820" height="220" aria-label="Baggage damage sketch canvas"></canvas>
-              <div class="actions"><button class="secondary" id="clear-sketch" type="button"><span class="en">Clear circles</span><span class="zh">清除标记</span></button><span class="attachment-hint"><span class="en">Drag on the picture to freely circle damaged parts. The marked sketch will be attached to the email.</span><span class="zh">在图上拖动圈出破损部位，标记图会随邮件发送。</span></span></div>
+              <div class="actions"><button class="secondary" id="clear-sketch" type="button"><span class="en">Clear sketch</span><span class="zh">清除标记</span></button><span class="attachment-hint"><span class="en">Draw freely on the picture. The marked sketch is included in the PDF report.</span><span class="zh">可在图上自由绘制，标记图会显示在PDF报告中。</span></span></div>
             </div>
           </div>
         </section>
+
+        <label class="wide"><span class="en">Attachments</span><span class="zh">附件</span><input name="attachments" id="attachments" type="file" multiple /><span class="attachment-hint"><span class="en">Files are sent as email attachments only; they are not saved to Drive or the case sheet.</span><span class="zh">附件只随邮件发送，不保存到网盘或表格。</span></span></label>
 
         <section class="case-fields is-active">
           <h3><span class="en">Passenger signature and date</span><span class="zh">旅客签字和日期</span></h3>
@@ -183,6 +188,8 @@
     const thanks = document.querySelector('#thanks');
     const thanksCase = document.querySelector('#thanks-case');
     const attachmentsInput = document.querySelector('#attachments');
+    const bagTagsList = document.querySelector('#bag-tags-list');
+    const addBagTagButton = document.querySelector('#add-bag-tag');
     const canvas = document.querySelector('#damage-sketch');
     const ctx = canvas.getContext('2d');
     const signaturePad = document.querySelector('#signature-pad');
@@ -219,6 +226,21 @@
       const button = event.target.closest('[data-remove-content]');
       if (button && contentsList.children.length > 1) button.closest('.contents-row')?.remove();
     });
+
+    function addBagTagRow() {
+      const row = document.createElement('div');
+      row.className = 'bag-row';
+      row.innerHTML = '<input data-bag-tag placeholder="MU123456" /><button class="secondary" type="button" data-remove-bag-tag>-</button>';
+      bagTagsList.appendChild(row);
+    }
+    addBagTagButton.addEventListener('click', addBagTagRow);
+    bagTagsList.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-remove-bag-tag]');
+      if (button && bagTagsList.children.length > 1) button.closest('.bag-row')?.remove();
+    });
+    function collectBagTags() {
+      return Array.from(bagTagsList.querySelectorAll('[data-bag-tag]')).map((input) => input.value.trim()).filter(Boolean);
+    }
 
     function collectContentsRows() {
       return Array.from(contentsList.querySelectorAll('.contents-row')).map((row) => ({
@@ -308,6 +330,8 @@
         flightDate: payload[`flightDate${index}`],
         destination: payload[`destination${index}`]
       }));
+      payload.bagTags = collectBagTags();
+      payload.bagTag = payload.bagTags.join(' / ');
       payload.contentsRows = collectContentsRows();
       payload.language = document.documentElement.lang;
       payload.passengerSignature = signatureDirty ? signaturePad.toDataURL('image/jpeg', 0.85) : '';

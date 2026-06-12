@@ -1024,6 +1024,11 @@ function normalizeCbsBagTag(value) {
   return normalized;
 }
 
+function normalizeCbsBagTags(value) {
+  const source = Array.isArray(value) ? value : String(value || '').split(/[\n,/]+/);
+  return source.map((item) => normalizeCbsBagTag(item)).filter(Boolean).join(' / ');
+}
+
 async function makeCbsCaseNumber() {
   const today = todayIsoUtc();
   const yy = today.slice(2, 4);
@@ -1094,7 +1099,7 @@ function createPirPdf(record) {
   };
   const coded = (code, label, value, x, y, w, h) => {
     box(x, y, 26, h, code, 8);
-    box(x + 26, y, w - 26, h, `${label} ${value || ''}`.slice(0, 95), 7.5);
+    box(x + 26, y, w - 26, h, [label, value || ''].filter(Boolean).join(' ').slice(0, 95), 7.5);
   };
   section('PASSENGER INFORMATION', 642);
   coded('NM', 'Passenger Name', record.passengerName, 52, 612, 318, 24);
@@ -1102,39 +1107,40 @@ function createPirPdf(record) {
   coded('TA', 'Temporary Address', record.temporaryAddress, 52, 536, 318, 38);
   coded('PN', 'Phone', record.phone, 382, 602, 170, 22);
   coded('TK', 'Ticket', record.ticketNumber, 382, 580, 170, 22);
-  coded('CL', 'Class', record.classOfTravel, 382, 558, 170, 22);
+  coded('CL', '', record.classOfTravel, 382, 558, 170, 22);
   coded('EA', 'Email', record.email, 382, 536, 170, 22);
   section('FLIGHT / BAGGAGE INFORMATION', 506);
   coded('BR', 'Baggage Routing', record.flightRoute, 52, 476, 500, 26);
   coded('TN', 'Bag Tag Number', record.bagTag, 52, 450, 500, 26);
-  coded('BD', 'Baggage Details', record.ahlBagDescription || record.dprBagInfo, 52, 410, 500, 40);
-  coded('CD', 'Contents / Inner Damage', record.contentsDetails || record.dprInnerDamage, 52, 370, 500, 40);
+  coded('DB', 'Destination on Bags', record.destinationOnBags, 52, 424, 500, 26);
+  coded('BD', 'Baggage Details', record.ahlBagDescription || record.dprBagInfo, 52, 386, 500, 38);
+  coded('CD', 'Contents / Inner Damage', record.contentsDetails || record.dprInnerDamage, 52, 348, 500, 38);
   if (damageImage) {
-    box(52, 282, 500, 78, 'Damage Sketch', 8);
-    content.push(`q 150 0 0 55 190 292 cm /Damage Do Q`);
+    box(52, 242, 500, 96, 'Damage Sketch', 8);
+    content.push(`q 280 0 0 78 166 252 cm /Damage Do Q`);
   }
-  section('CONTENTS', 250);
-  box(52, 222, 160, 24, 'CATEGORY', 8);
-  box(212, 222, 340, 24, 'DESCRIPTION', 8);
+  section('CONTENTS', 214);
+  box(52, 186, 160, 24, 'CATEGORY', 8);
+  box(212, 186, 340, 24, 'DESCRIPTION', 8);
   const items = Array.isArray(record.contentsRows) && record.contentsRows.length
     ? record.contentsRows
     : String(record.contentsDetails || '').split(/\s+\/\s+/).filter(Boolean).map((value) => ({ category: '', description: value }));
-  let itemY = 198;
+  let itemY = 162;
   for (let index = 0; index < 4; index += 1) {
     const item = items[index] || {};
     box(52, itemY, 160, 24, String(item.category || '').slice(0, 24), 8);
     box(212, itemY, 340, 24, String(item.description || '').slice(0, 64), 8);
     itemY -= 24;
   }
-  section('SIGNATURE', 88);
-  content.push(pdfText(`Date of issue ${record.issueDate || ''}`, 56, 60, 9));
+  section('SIGNATURE', 72);
+  content.push(pdfText(`Date of issue ${record.issueDate || ''}`, 56, 50, 9));
   if (signatureImage) {
-    box(240, 48, 160, 34, '', 8);
-    content.push(`q 150 0 0 30 245 50 cm /Signature Do Q`);
+    box(390, 42, 160, 28, '', 8);
+    content.push(`q 150 0 0 24 395 44 cm /Signature Do Q`);
   } else {
-    content.push(pdfText('Passenger Signature __________________________', 240, 60, 9));
+    content.push(pdfText('Passenger Signature __________________________', 330, 50, 9));
   }
-  content.push(pdfText('This report does not involve any acknowledgement of liability', 56, 42, 7));
+  content.push(pdfText('This report does not involve any acknowledgement of liability', 56, 34, 7));
   const stream = content.join('\n');
   const fontId = addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
   const streamId = addObject(`<< /Length ${Buffer.byteLength(stream, 'binary')} >>\nstream\n${stream}\nendstream`);
@@ -1230,6 +1236,7 @@ function cbsPdfLines(record) {
     ['Phone', record.phone],
     ['Flight routing', record.flightRoute],
     ['Baggage tag number', record.bagTag],
+    ['Destination on Bags', record.destinationOnBags],
     ['Permanent address', record.permanentAddress],
     ['Temporary address', record.temporaryAddress],
     ['Bag description', record.ahlBagDescription || record.dprBagInfo],
@@ -1281,7 +1288,8 @@ app.post('/cbs-cases', async (req, res) => {
     const firstFlight = Array.isArray(body.flightRows) ? body.flightRows[0] || {} : {};
     if (!sanitizeCbsText(body.phone, 80)) return res.status(400).json({ error: 'Phone is required' });
     if (!sanitizeCbsText(firstFlight.flightNo, 20) || !sanitizeCbsText(firstFlight.flightDate, 20) || !sanitizeCbsText(firstFlight.destination, 20)) return res.status(400).json({ error: 'First baggage routing row is required' });
-    if (!normalizeCbsBagTag(body.bagTag)) return res.status(400).json({ error: 'Bag tag is required' });
+    const normalizedBagTags = normalizeCbsBagTags(body.bagTags || body.bagTag);
+    if (!normalizedBagTags) return res.status(400).json({ error: 'Bag tag is required' });
     if (caseType === 'AHL' && !sanitizeCbsText(body.ahlBagDescription, 500)) return res.status(400).json({ error: 'AHL baggage description is required' });
     if (!sanitizeCbsText(body.issueDate, 40)) return res.status(400).json({ error: 'Issue date is required' });
     if (!body.passengerSignature) return res.status(400).json({ error: 'Passenger signature is required' });
@@ -1299,7 +1307,8 @@ app.post('/cbs-cases', async (req, res) => {
       classOfTravel: sanitizeCbsText(body.classOfTravel, 40).toUpperCase(),
       language: sanitizeCbsText(body.language, 5) === 'zh' ? 'zh' : 'en',
       flightRoute: buildCbsFlightRoute(body),
-      bagTag: normalizeCbsBagTag(body.bagTag),
+      bagTag: normalizedBagTags,
+      destinationOnBags: sanitizeCbsText(body.destinationOnBags, 80).toUpperCase(),
       permanentAddress: sanitizeCbsText(body.permanentAddress, 500),
       temporaryAddress: sanitizeCbsText(body.temporaryAddress, 500),
       temporaryAddressValidUntil: sanitizeCbsText(body.temporaryAddressValidUntil, 40),

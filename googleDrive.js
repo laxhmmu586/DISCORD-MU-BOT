@@ -98,9 +98,10 @@ const CBS_HEADERS = [
   'Contents Details',
   'Issue Date',
   'Passenger Signature',
-  'Submitted At',
+  'Submit Date',
   'Updated At',
-  'Update Note'
+  'Update Note',
+  'Destination On Bags'
 ];
 let cbsSheetTitle = '';
 let cbsSheetCache = { loadedAt: 0, rows: [] };
@@ -2369,7 +2370,7 @@ async function getCbsSheetRows(options = {}) {
   const title = await getCbsSheetTitle();
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A:AD`
+    range: `${escapeSheetTitle(title)}!A:AE`
   });
   const rows = res.data.values || [];
   cbsSheetCache = { loadedAt: Date.now(), rows };
@@ -2383,7 +2384,7 @@ async function ensureCbsSheetHeaders(rows) {
   const title = await getCbsSheetTitle();
   await sheets.spreadsheets.values.update({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A1:AD1`,
+    range: `${escapeSheetTitle(title)}!A1:AE1`,
     valueInputOption: 'RAW',
     requestBody: { values: [CBS_HEADERS] }
   });
@@ -2396,6 +2397,7 @@ function cbsRecordFromSheet(values, rowNumber) {
     const key = header.toLowerCase().replace(/[^a-z0-9]+(.)/g, (_, chr) => chr.toUpperCase()).replace(/[^a-z0-9]/g, '');
     row[key] = values[index] || '';
   });
+  row.submittedAt = row.submittedAt || row.submitDate || values[27] || '';
   row.rowNumber = rowNumber;
   return row;
 }
@@ -2431,7 +2433,8 @@ function cbsValuesFromRecord(record) {
     record.passengerSignature,
     record.submittedAt,
     record.updatedAt,
-    record.updateNote
+    record.updateNote,
+    record.destinationOnBags
   ];
 }
 
@@ -2441,7 +2444,7 @@ async function appendCbsCase(record) {
   await ensureCbsSheetHeaders(rows);
   await sheets.spreadsheets.values.append({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A:AD`,
+    range: `${escapeSheetTitle(title)}!A:AE`,
     valueInputOption: 'RAW',
     insertDataOption: 'INSERT_ROWS',
     requestBody: { values: [cbsValuesFromRecord(record)] }
@@ -2450,10 +2453,18 @@ async function appendCbsCase(record) {
   return record;
 }
 
+function isCbsHeaderRow(values = []) {
+  const normalized = values.map((value) => String(value || '').trim().toLowerCase());
+  return normalized.includes('case number') || normalized.includes('case id') || normalized.includes('passenger name');
+}
+
 async function getCbsCases() {
   const rows = await getCbsSheetRows({ forceRefresh: true });
-  await ensureCbsSheetHeaders(rows);
-  return rows.slice(1).map((values, index) => cbsRecordFromSheet(values || [], index + 2)).filter((row) => row.caseNumber);
+  return rows
+    .map((values, index) => ({ values: values || [], rowNumber: index + 1 }))
+    .filter(({ values }) => !isCbsHeaderRow(values))
+    .map(({ values, rowNumber }) => cbsRecordFromSheet(values, rowNumber))
+    .filter((row) => row.caseNumber || row.caseType || row.passengerName || row.email || row.phone || row.bagTag || row.submittedAt);
 }
 
 async function updateCbsCase(caseNumber, update = {}) {
@@ -2472,7 +2483,7 @@ async function updateCbsCase(caseNumber, update = {}) {
   const title = await getCbsSheetTitle();
   await sheets.spreadsheets.values.update({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A${rowIndex + 1}:AD${rowIndex + 1}`,
+    range: `${escapeSheetTitle(title)}!A${rowIndex + 1}:AE${rowIndex + 1}`,
     valueInputOption: 'RAW',
     requestBody: { values: [cbsValuesFromRecord(next)] }
   });
