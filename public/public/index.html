@@ -4713,16 +4713,13 @@
         setText("#rk-message", sy.rkMessage || "No RK message found.");
         const chdIssues = (sy.chdList || []).filter((row) => row.hasChdCode === false).length;
         const gov = sy.govAqq || {};
-        const govIssueGroups = [gov.duplicatePassports, gov.aqqTclBnList, gov.govDtaBnList, gov.passportExpBnList, gov.wrongPassportBnList];
-        const govCount = govIssueGroups.reduce((sum, value) => sum + (Array.isArray(value) ? value.length : 0), 0);
         const webediCount = (gov.passportCodeIssues || []).length;
         const nbrdCount = (sy.bnAudit || []).filter((row) => /NBRD|CKIN/i.test(row?.apiReason || row?.tkReason || row?.visaReason || row?.bagReason || "")).length;
         setBadgeText("#chd-count", chdIssues);
-        setBadgeText("#gov-count", govCount);
+        updateGovActionState(sy);
         setBadgeText("#webedi-count", webediCount);
         setBadgeText("#nbrd-count", nbrdCount);
         setActionIssueState("#chd-action", chdIssues > 0);
-        setActionIssueState("#gov-action", govCount > 0);
         setActionIssueState("#webedi-action", webediCount > 0);
         setActionIssueState("#nbrd-action", nbrdCount > 0);
         setBadgeText("#wch-count", (sy.wchList || []).length);
@@ -4887,37 +4884,92 @@
         setPanelPassengerRows(rows);
       }
 
-      function renderGovPanel() {
-        const gov = currentSy?.govAqq || {};
-        const groups = [
-          ["Duplicate Passport", gov.duplicatePassports?.flatMap((item) => (item.bns || []).map((bn) => ({ bn, reason: `Duplicate passport ${item.passportNo || ""}` })))],
-          ["USA TIME OUT", (gov.aqqTclBnList || []).map((bn) => ({ bn, reason: "USA TIME OUT" }))],
-          ["CHN GOV FAIL", (gov.govDtaBnList || []).map((bn) => ({ bn, reason: "CHN GOV FAIL" }))],
-          ["Passport Exp", (gov.passportExpBnList || []).map((bn) => ({ bn, reason: "Passport Exp" }))],
-          ["Wrong Passport", (gov.wrongPassportBnList || []).map((bn) => ({ bn, reason: "Wrong Passport: passport number has fewer than 7 characters" }))],
+      function safeList(value) {
+        return Array.isArray(value) ? value : [];
+      }
+
+      function duplicatePassportRows(gov = currentSy?.govAqq || {}) {
+        return safeList(gov.duplicatePassports).flatMap((item) => safeList(item?.bns).map((bn) => ({ bn, reason: `Duplicate passport ${item?.passportNo || ""}` })));
+      }
+
+      function govGroups(gov = currentSy?.govAqq || {}) {
+        return [
+          ["Duplicate Passport", duplicatePassportRows(gov)],
+          ["USA TIME OUT", safeList(gov.aqqTclBnList).map((bn) => ({ bn, reason: "USA TIME OUT" }))],
+          ["CHN GOV FAIL", safeList(gov.govDtaBnList).map((bn) => ({ bn, reason: "CHN GOV FAIL" }))],
+          ["Passport Exp", safeList(gov.passportExpBnList).map((bn) => ({ bn, reason: "Passport Exp" }))],
+          ["Wrong Passport", safeList(gov.wrongPassportBnList).map((bn) => ({ bn, reason: "Wrong Passport: passport number has fewer than 7 characters" }))],
         ];
+      }
+
+      function enrichGovRows(groups = govGroups()) {
         const passengerByBn = passengerLookupByBn();
         const auditByBn = auditLookupByBn();
-        const enrichGovRow = (item, group) => {
+        return groups.flatMap(([group, items]) => (items || []).map((item) => {
           const bn = String(item.bn || "").padStart(3, "0");
           const audit = auditByBn.get(bn) || {};
           const passenger = passengerByBn.get(bn) || {};
+          const warningRow = { ...item, bn: item.bn || audit.bn || passenger.bn, warningType: group, warningReason: item.reason };
+          const acknowledgements = Array.isArray(currentWarningAckMap[warningAckKey(warningRow)]) ? currentWarningAckMap[warningAckKey(warningRow)] : [];
           const passengerRecord = { ...(passenger || {}), ...(audit.passengerRecord || {}), ...(item.passengerRecord || {}), reason: item.reason, group };
-          return { ...passenger, ...audit, ...item, bn: item.bn || audit.bn || passenger.bn, group, _panelCard: "gov", passengerRecord };
-        };
-        const rows = groups.flatMap(([group, items]) => (items || []).map((item) => enrichGovRow(item, group)));
-        const summary = groups.map(([label, items]) => {
-          const groupRows = (items || []).map((item) => enrichGovRow(item, label));
-          const status = groupRows.length ? String(groupRows.length) : "Clear";
+          return { ...passenger, ...audit, ...warningRow, group, _panelCard: "gov", passengerRecord, warningKey: warningAckKey(warningRow), acknowledgements };
+        }));
+      }
+
+      function duplicatePassportIsAcknowledged(row) {
+        const key = warningAckKey({ ...row, warningType: "Duplicate Passport", warningReason: row.reason });
+        return safeList(currentWarningAckMap[key]).length > 0;
+      }
+
+      function govOpenIssueCount(sy = currentSy) {
+        const gov = sy?.govAqq || {};
+        const duplicateOpen = duplicatePassportRows(gov).filter((row) => !duplicatePassportIsAcknowledged(row)).length;
+        return duplicateOpen
+          + safeList(gov.aqqTclBnList).length
+          + safeList(gov.govDtaBnList).length
+          + safeList(gov.passportExpBnList).length
+          + safeList(gov.wrongPassportBnList).length;
+      }
+
+      function updateGovActionState(sy = currentSy) {
+        try {
+          const govCount = govOpenIssueCount(sy);
+          setBadgeText("#gov-count", govCount);
+          setActionIssueState("#gov-action", govCount > 0);
+        } catch (error) {
+          console.warn("GOV/AQQ status update failed.", error);
+          setBadgeText("#gov-count", 0);
+          setActionIssueState("#gov-action", false);
+        }
+      }
+
+      function renderDuplicatePassportDetails(groupRows) {
+        return `<div class="warning-list">${groupRows.map((row) => {
+          const ackList = row.acknowledgements || [];
+          const ackText = ackList.length ? `Acknowledged by ${ackList.map((ack) => ack.by).filter(Boolean).join(", ")}` : "Not acknowledged";
+          const isCleared = ackList.length > 0;
+          return `<div class="warning-card ${isCleared ? "is-acknowledged" : ""}"><button class="bn-button ${isCleared ? "" : "is-warning"}" type="button" data-passenger-index="${escapeHtml(row._panelIndex)}" data-passenger-bn="${escapeHtml(row.bn || "")}">${escapeHtml(bnCircleLabel(row.bn))}</button><div class="warning-card-main"><div class="warning-card-head"><strong>${escapeHtml(passengerName(row) || "Passenger")}</strong><small>${escapeHtml(row.seat ? `Seat ${row.seat}` : "Duplicate passport")}</small></div><div class="warning-card-body">${escapeHtml(row.warningReason || row.reason || "Duplicate passport")}</div><div class="warning-ack-row"><button class="warning-ack-button" type="button" data-gov-duplicate-ack="${escapeHtml(row._panelIndex)}" ${isCleared ? "disabled" : ""}>${isCleared ? "Acknowledged" : "Acknowledge"}</button><span class="warning-ack-note">${escapeHtml(ackText)}</span></div></div></div>`;
+        }).join("")}</div>`;
+      }
+
+      function renderGovPanel() {
+        const groups = govGroups();
+        const rows = enrichGovRows(groups).map((row, index) => ({ ...row, _panelIndex: index }));
+        const summary = groups.map(([label]) => {
+          const groupRows = rows.filter((row) => row.group === label);
+          const openRows = label === "Duplicate Passport" ? groupRows.filter((row) => !(row.acknowledgements || []).length) : groupRows;
+          const status = openRows.length ? String(openRows.length) : "Clear";
           return `<div class="data-card"><b>${escapeHtml(label)}</b><span>${escapeHtml(status)}</span></div>`;
         }).join("");
-        const details = groups.map(([label, items]) => {
-          const groupRows = (items || []).map((item) => enrichGovRow(item, label));
+        const details = groups.map(([label]) => {
+          const groupRows = rows.filter((row) => row.group === label);
           if (!groupRows.length) return "";
-          return `<article class="data-card gov-detail-card"><b>${escapeHtml(label)} Details</b>${renderBnButtons(groupRows, "", (row) => row.reason)}</article>`;
+          const detailBody = label === "Duplicate Passport" ? renderDuplicatePassportDetails(groupRows) : renderBnButtons(groupRows, "", (row) => row.reason);
+          return `<article class="data-card gov-detail-card"><b>${escapeHtml(label)} Details</b>${detailBody}</article>`;
         }).filter(Boolean).join("");
         renderPanel("GOV/AQQ", currentSy?.flightNo || "SY", `<div class="data-grid">${summary}</div>${details ? `<div class="data-grid gov-details-grid">${details}</div>` : ""}`);
         setPanelPassengerRows(rows);
+        updateGovActionState();
       }
 
       function renderWebEdiPanel() {
@@ -5043,8 +5095,10 @@
           if (currentSy !== sy) return;
           currentWarningAckMap = data?.acknowledgements || {};
           updateWarningActionState(buildWarningRows(sy));
+          updateGovActionState(sy);
           if (resultPanel?.dataset?.panelTitle === "WARNING") renderWarningPanel();
           if (resultPanel?.dataset?.panelTitle === "CKIN/NBRD") renderNbrdPanel();
+          if (resultPanel?.dataset?.panelTitle === "GOV/AQQ") renderGovPanel();
         } catch (error) {
           console.warn("Warning acknowledgement lookup failed.", error);
         }
@@ -6573,6 +6627,17 @@
             side.classList.remove("security-detail-side");
             side.classList.add("security-empty-side");
             side.innerHTML = `<p class="panel-muted security-hint">Click a BN button to view the passenger record.</p>`;
+          }
+          return;
+        }
+        const govDuplicateAckButton = event.target.closest("[data-gov-duplicate-ack]");
+        if (govDuplicateAckButton) {
+          const rows = resultPanel._passengerRows || [];
+          const row = rows[Number(govDuplicateAckButton.dataset.govDuplicateAck)];
+          if (row && !(row.acknowledgements || []).length) {
+            govDuplicateAckButton.textContent = "Saving...";
+            await acknowledgeWarning(row);
+            renderGovPanel();
           }
           return;
         }
