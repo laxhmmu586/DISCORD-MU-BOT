@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CBS Cases</title>
+  <style>
+    :root { --bg:#f4f8fb; --ink:#172033; --muted:#667085; --brand:#123a73; --line:#d7e1ec; --panel:#fff; --ok:#087443; }
+    * { box-sizing:border-box; }
+    html[lang="en"] .zh, html[lang="zh"] .en { display:none; }
+    body { margin:0; font-family:Inter,Arial,"Noto Sans SC",sans-serif; background:linear-gradient(135deg,#eaf4ff,#fdfefe); color:var(--ink); }
+    header { position:sticky; top:0; z-index:10; display:flex; justify-content:space-between; align-items:center; gap:16px; padding:18px clamp(18px,4vw,52px); background:rgba(255,255,255,.92); border-bottom:1px solid var(--line); backdrop-filter:blur(12px); }
+    .brand { font-weight:900; color:var(--brand); letter-spacing:.08em; text-decoration:none; }
+    .wrap { width:min(1180px,94vw); margin:28px auto 56px; display:grid; gap:24px; }
+    .card { background:var(--panel); border:1px solid var(--line); border-radius:22px; box-shadow:0 18px 42px rgba(22,48,76,.08); padding:24px; }
+    h1,h2 { margin:0 0 10px; }
+    p { line-height:1.65; }
+    .muted { color:var(--muted); }
+    .actions { display:flex; gap:12px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
+    button,a.button { border:0; border-radius:999px; padding:12px 18px; font-weight:850; cursor:pointer; background:var(--brand); color:white; text-decoration:none; }
+    .lang-toggle { border:1px solid var(--line); background:#e8eef7; color:var(--brand); }
+    button.secondary,a.secondary { background:#e8eef7; color:var(--brand); }
+    button.danger { background:#b42318; }
+    .status { min-height:24px; font-weight:800; }
+    .status.err { color:#b42318; }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th,td { padding:10px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; }
+    th { color:var(--muted); font-size:12px; text-transform:uppercase; }
+    .pill { display:inline-flex; border-radius:999px; padding:4px 10px; font-weight:850; background:#eef4ff; color:#1849a9; }
+    .pill.closed { background:#dcfae6; color:#067647; }
+    .case-update { display:flex; gap:8px; min-width:280px; }
+    .detail-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:4px 18px; margin-bottom:12px; }
+    .detail-grid p { margin:0; }
+    input { width:100%; border:1px solid var(--line); border-radius:12px; padding:10px 12px; background:#fff; color:var(--ink); font:inherit; }
+    @media (max-width:840px){ .case-update{min-width:0;flex-wrap:wrap} table{display:block;overflow-x:auto;white-space:nowrap} }
+  </style>
+</head>
+<body>
+  <header><a class="brand" href="index.html">MUFC</a><span></span><button class="lang-toggle" id="language-toggle" type="button">中文</button></header>
+  <main class="wrap">
+    <section class="card">
+      <div class="actions">
+        <div><h1><span class="en">All Cases</span><span class="zh">所有案件</span></h1></div>
+        <div class="actions"><a class="button secondary" href="cbs-form.html"><span class="en">Open form</span><span class="zh">打开表格</span></a><button class="secondary" id="refresh-cases" type="button"><span class="en">Refresh</span><span class="zh">刷新</span></button></div>
+      </div>
+      <div id="cases-output"><p class="muted">Loading cases...</p></div>
+    </section>
+  </main>
+  <script>
+    const apiBase = (window.MU_API_BASE || 'https://api.mufcapp.net').replace(/\/$/, '');
+    const casesOutput = document.querySelector('#cases-output');
+    const refreshCases = document.querySelector('#refresh-cases');
+    const languageToggle = document.querySelector('#language-toggle');
+    function setLanguage(lang) {
+      document.documentElement.lang = lang;
+      languageToggle.textContent = lang === 'en' ? '中文' : 'English';
+      loadCases();
+    }
+    languageToggle.addEventListener('click', () => setLanguage(document.documentElement.lang === 'en' ? 'zh' : 'en'));
+    function label(en, zh) { return document.documentElement.lang === 'en' ? en : zh; }
+    function escapeHtml(value) { return String(value || '').replace(/[&<>'"]/g, (ch) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch])); }
+    async function parseJson(res) { const text = await res.text(); try { return JSON.parse(text); } catch { throw new Error(`API returned non-JSON (${res.status}). Please check API base: ${apiBase}`); } }
+    async function loadCases() {
+      casesOutput.innerHTML = '<p class="muted">Loading cases...</p>';
+      try {
+        const res = await fetch(`${apiBase}/cbs-cases`);
+        const data = await parseJson(res);
+        if (!res.ok) throw new Error(data.error || 'Case loading failed');
+        const rows = data.rows || [];
+        if (!rows.length) { casesOutput.innerHTML = '<p class="muted">No CBS cases yet.</p>'; return; }
+        casesOutput.innerHTML = `<table><thead><tr><th>${label('Case Number', '编号')}</th><th>${label('Case Type', '类型')}</th><th>${label('Passenger Name', '旅客姓名')}</th><th>${label('Email', '邮箱')}</th><th>${label('Phone', '电话')}</th><th>${label('Bag Tag', '行李牌')}</th></tr></thead><tbody>${rows.map((row) => {
+          const details = [
+            [label('Status', '状态'), row.status],
+            [label('Baggage Routing', '行李航程'), row.flightRoute],
+            [label('Permanent Address', '永久地址'), row.permanentAddress],
+            [label('Temporary Address', '临时地址'), row.temporaryAddress],
+            [label('Baggage Details', '行李详情'), row.ahlBagDescription || row.dprBagInfo],
+            [label('Contents', '包内物品'), row.contentsDetails || row.ahlContents || row.dprInnerDamage],
+            [label('Issue Date', '填写日期'), row.issueDate],
+            [label('Submitted At', '提交时间'), row.submittedAt],
+            [label('Updated At', '更新时间'), row.updatedAt],
+            [label('Update Note', '更新备注'), row.updateNote]
+          ].filter((item) => item[1]);
+          return `<tr class="case-summary" data-case-row="${escapeHtml(row.caseNumber)}"><td><button class="secondary" type="button" data-toggle-case="${escapeHtml(row.caseNumber)}">${escapeHtml(row.caseNumber)}</button></td><td>${escapeHtml(row.caseType)}</td><td>${escapeHtml(row.passengerName)}</td><td>${escapeHtml(row.email)}</td><td>${escapeHtml(row.phone)}</td><td>${escapeHtml(row.bagTag)}</td></tr><tr class="case-detail" data-detail-case="${escapeHtml(row.caseNumber)}" hidden><td colspan="6"><div class="detail-grid">${details.map(([key, value]) => `<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(value)}</p>`).join('')}</div><form class="case-update" data-case="${escapeHtml(row.caseNumber)}"><input name="status" value="${escapeHtml(row.status || 'Open')}" /><input name="updateNote" placeholder="${label('Note', '备注')}" /><button type="submit">${label('Update', '更新')}</button><button type="button" class="danger" data-close-case="${escapeHtml(row.caseNumber)}">${label('Close', '关闭')}</button></form></td></tr>`;
+        }).join('')}</tbody></table>`;
+      } catch (error) { casesOutput.innerHTML = `<p class="status err">${escapeHtml(error.message)}</p>`; }
+    }
+    casesOutput.addEventListener('submit', async (event) => {
+      const updateForm = event.target.closest('.case-update');
+      if (!updateForm) return;
+      event.preventDefault();
+      const payload = Object.fromEntries(new FormData(updateForm).entries());
+      await updateCase(updateForm.dataset.case, payload);
+    });
+    casesOutput.addEventListener('click', async (event) => {
+      const toggleButton = event.target.closest('[data-toggle-case]');
+      if (toggleButton) {
+        const detail = Array.from(casesOutput.querySelectorAll('[data-detail-case]')).find((item) => item.dataset.detailCase === toggleButton.dataset.toggleCase);
+        if (detail) detail.hidden = !detail.hidden;
+        return;
+      }
+      const closeButton = event.target.closest('[data-close-case]');
+      if (!closeButton) return;
+      await updateCase(closeButton.dataset.closeCase, { status:'Case Close', updateNote:'Closed from CBS page' });
+    });
+    async function updateCase(caseNumber, payload) {
+      casesOutput.style.opacity = '.65';
+      try {
+        const res = await fetch(`${apiBase}/cbs-cases/${encodeURIComponent(caseNumber)}/update`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+        const data = await parseJson(res);
+        if (!res.ok) throw new Error(data.error || 'Update failed');
+        await loadCases();
+      } catch (error) { alert(error.message); } finally { casesOutput.style.opacity = '1'; }
+    }
+    refreshCases.addEventListener('click', loadCases);
+    setLanguage('en');
+  </script>
+</body>
+</html>
