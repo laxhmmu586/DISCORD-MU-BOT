@@ -26,6 +26,8 @@
     .flight-rows { display:grid; gap:10px; }
     .flight-row, .flight-head { display:grid; grid-template-columns:1fr .8fr .8fr; gap:10px; align-items:end; }
     .routing-layout { display:grid; grid-template-columns:270px minmax(0,1fr); gap:18px; align-items:start; }
+    .bag-report-row { grid-column:1/-1; display:grid; grid-template-columns:270px minmax(0,1fr); gap:18px; }
+    .bag-report-fields { display:grid; grid-template-columns:1fr 1fr; gap:14px; justify-self:end; width:min(560px,100%); }
     .tag-example { border:1px dashed var(--line); border-radius:16px; padding:16px; background:#fbfdff; transform:rotate(-3deg); color:#202938; font-family:"Courier New",monospace; box-shadow:0 10px 24px rgba(22,48,76,.08); }
     .tag-example strong { display:block; font-size:22px; letter-spacing:3px; margin-bottom:8px; }
     .tag-barcode { height:44px; margin:10px 0; background:repeating-linear-gradient(90deg,#111 0 3px,transparent 3px 6px,#111 6px 8px,transparent 8px 12px); }
@@ -50,12 +52,12 @@
     .sketch-shell { display:grid; gap:10px; overflow:hidden; }
     .sketch-board { width:100%; max-width:820px; border:1px solid var(--line); border-radius:14px; background:#fff; touch-action:none; display:block; }
     .attachment-hint { font-size:12px; color:var(--muted); font-weight:600; }
-    @media (max-width:840px){ .grid{grid-template-columns:1fr}.flight-row,.flight-head,.contents-row,.routing-layout{grid-template-columns:1fr}.header-title{text-align:left}header{flex-wrap:wrap} }
+    @media (max-width:840px){ .grid{grid-template-columns:1fr}.flight-row,.flight-head,.contents-row,.routing-layout,.bag-report-row,.bag-report-fields{grid-template-columns:1fr}.header-title{text-align:left}header{flex-wrap:wrap} }
   </style>
 </head>
 <body>
   <header>
-    <a class="brand" href="index.html">MUFC</a>
+    <span class="brand">MUFC</span>
     <strong class="header-title">Property Irregularity report(PIR)</strong>
     <button class="lang-toggle" id="language-toggle" type="button">中文</button>
   </header>
@@ -70,26 +72,25 @@
         <div class="grid">
           <label><span class="en">Passenger name</span><span class="zh">旅客姓名</span><input name="passengerName" required placeholder="LAST/FIRST" /></label>
           <label><span class="en">Email</span><span class="zh">电子邮箱</span><input name="email" type="email" required placeholder="passenger@example.com" /></label>
-          <label><span class="en">Phone number</span><span class="zh">联系电话</span><input name="phone" placeholder="Country/area code + number" /></label>
+          <label><span class="en">Phone number</span><span class="zh">联系电话</span><input name="phone" placeholder="Country/area code + number" required /></label>
           <div class="wide flight-rows" aria-label="Baggage routing rows">
             <strong><span class="en">Baggage routing</span><span class="zh">行李航线</span></strong>
             <div class="routing-layout">
               <div class="tag-example" aria-label="Baggage tag example">
-                <strong>FM0774774870</strong>
+                <strong>MU774870</strong>
                 <div class="tag-barcode" aria-hidden="true"></div>
-                <div class="tag-route"><span>MU 0583</span><span>11JUN</span><span>LAX</span><span>FM 0848</span><span>11JUN</span><span>PVG</span></div>
+                <div class="tag-route"><span>MU583</span><span>11JUN</span><span>LAX</span><span>MU0840</span><span>11JUN</span><span>PVG</span></div>
               </div>
               <div>
                 <div class="flight-head"><span><span class="en">Flight No.</span><span class="zh">航班号</span></span><span><span class="en">Date</span><span class="zh">日期</span></span><span><span class="en">Destination</span><span class="zh">目的地</span></span></div>
-                <div class="flight-row"><input name="flightNo1" placeholder="MU1112" /><input name="flightDate1" placeholder="11JUN" /><input name="destination1" placeholder="CAN" /></div>
+                <div class="flight-row"><input name="flightNo1" placeholder="MU1112" required /><input name="flightDate1" placeholder="11JUN" required /><input name="destination1" placeholder="CAN" required /></div>
                 <div class="flight-row"><input name="flightNo2" placeholder="MU583" /><input name="flightDate2" placeholder="11JUN" /><input name="destination2" placeholder="PVG" /></div>
                 <div class="flight-row"><input name="flightNo3" placeholder="DL223" /><input name="flightDate3" placeholder="12JUN" /><input name="destination3" placeholder="SEA" /></div>
               </div>
             </div>
           </div>
-          <label><span class="en">Bag tag</span><span class="zh">行李牌号</span><input name="bagTag" placeholder="MU123456" /></label>
-          <label><span class="en">Case type</span><span class="zh">表格类型</span><select name="caseType" id="case-type"><option value="AHL">AHL - Delayed/Lost</option><option value="DPR">DPR - Damaged</option></select></label>
-          <label class="wide"><span class="en">Permanent address</span><span class="zh">永久地址</span><textarea name="permanentAddress" placeholder="If available"></textarea></label>
+          <div class="bag-report-row"><span></span><div class="bag-report-fields"><label><span class="en">Bag tag</span><span class="zh">行李牌号</span><input name="bagTag" placeholder="MU123456" required /></label><label><span class="en">Report type</span><span class="zh">报告类型</span><select name="caseType" id="case-type" required><option value="AHL">AHL - Delayed/Lost</option><option value="DPR">DPR - Damaged</option></select></label></div></div>
+          <label class="wide"><span class="en">Address</span><span class="zh">住址</span><textarea name="permanentAddress" placeholder="If available"></textarea></label>
           <label><span class="en">Temporary address available?</span><span class="zh">是否有临时地址？</span><select name="addressAvailable" id="address-available"><option value="No">No</option><option value="Yes">Yes</option></select></label>
           <label id="valid-until-field" hidden><span class="en">Temporary address valid until</span><span class="zh">临时地址有效期至</span><input name="temporaryAddressValidUntil" type="date" /></label>
           <label class="wide" id="temporary-address-field" hidden><span class="en">Temporary address</span><span class="zh">临时地址</span><textarea name="temporaryAddress"></textarea></label>
@@ -99,7 +100,7 @@
         <section id="ahl-fields" class="case-fields is-active">
           <h3><span class="en">AHL information</span><span class="zh">延误或丢失行李信息</span></h3>
           <div class="grid">
-            <label class="wide"><span class="en">Baggage description</span><span class="zh">行李描述</span><textarea name="ahlBagDescription" placeholder="Color, size, wheels, hard/soft shell..."></textarea></label>
+            <label class="wide"><span class="en">Baggage description</span><span class="zh">行李描述</span><textarea name="ahlBagDescription" id="ahl-description" placeholder="Color, size, wheels, hard/soft shell..."></textarea></label>
             <label><span class="en">Bag brand tag</span><span class="zh">行李箱品牌牌</span><input name="ahlBagBrandTag" /></label>
             <label><span class="en">Features</span><span class="zh">特征</span><input name="ahlFeatures" placeholder="Sticker, ribbon, lock..." /></label>
             <label class="wide"><span class="en">Other visible features</span><span class="zh">其他明显特征</span><textarea name="ahlOtherFeatures"></textarea></label>
@@ -129,7 +130,7 @@
 
         <section class="case-fields is-active">
           <h3><span class="en">Passenger signature and date</span><span class="zh">旅客签字和日期</span></h3>
-          <label><span class="en">Date of issue</span><span class="zh">填写日期</span><input name="issueDate" id="issue-date" type="date" /></label>
+          <label><span class="en">Date of issue</span><span class="zh">填写日期</span><input name="issueDate" id="issue-date" type="date" required /></label>
           <div class="wide">
             <strong><span class="en">Passenger signature</span><span class="zh">旅客签字</span></strong>
             <canvas id="signature-pad" class="signature-pad" width="560" height="180" aria-label="Passenger signature pad"></canvas>
@@ -186,6 +187,7 @@
     const contentsList = document.querySelector('#contents-list');
     const addContentRowButton = document.querySelector('#add-content-row');
     const issueDateInput = document.querySelector('#issue-date');
+    const ahlDescriptionInput = document.querySelector('#ahl-description');
     const languageToggle = document.querySelector('#language-toggle');
     let drawing = false;
     let startPoint = null;
@@ -223,7 +225,7 @@
     }
 
     async function parseJson(res) { const text = await res.text(); try { return JSON.parse(text); } catch { throw new Error(`API returned non-JSON (${res.status}). Please check API base: ${apiBase}`); } }
-    function setTypeFields() { const isAhl = typeSelect.value === 'AHL'; ahlFields.classList.toggle('is-active', isAhl); dprFields.classList.toggle('is-active', !isAhl); }
+    function setTypeFields() { const isAhl = typeSelect.value === 'AHL'; ahlFields.classList.toggle('is-active', isAhl); dprFields.classList.toggle('is-active', !isAhl); ahlDescriptionInput.required = isAhl; }
     function setAddressFields() { const show = addressAvailable.value === 'Yes'; validUntilField.hidden = !show; temporaryAddressField.hidden = !show; if (!show) { validUntilField.querySelector('input').value = ''; temporaryAddressField.querySelector('textarea').value = ''; } }
     typeSelect.addEventListener('change', setTypeFields);
     addressAvailable.addEventListener('change', setAddressFields);
@@ -254,8 +256,10 @@
       rect(760, 55, 48, 86);
     }
     function canvasPoint(event) { const rect = canvas.getBoundingClientRect(); return { x:(event.clientX-rect.left)*canvas.width/rect.width, y:(event.clientY-rect.top)*canvas.height/rect.height }; }
-    canvas.addEventListener('pointerdown', (event) => { drawing = true; startPoint = canvasPoint(event); canvas.setPointerCapture(event.pointerId); });
-    canvas.addEventListener('pointerup', (event) => { if (!drawing || !startPoint) return; const end = canvasPoint(event); const rx = Math.max(12, Math.abs(end.x - startPoint.x)); const ry = Math.max(12, Math.abs(end.y - startPoint.y)); ctx.strokeStyle = '#d92d20'; ctx.lineWidth = 5; ctx.beginPath(); ctx.ellipse(startPoint.x, startPoint.y, rx, ry, 0, 0, Math.PI * 2); ctx.stroke(); drawing = false; sketchDirty = true; });
+    canvas.addEventListener('pointerdown', (event) => { drawing = true; const point = canvasPoint(event); canvas.setPointerCapture(event.pointerId); ctx.strokeStyle = '#d92d20'; ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(point.x, point.y); });
+    canvas.addEventListener('pointermove', (event) => { if (!drawing) return; const point = canvasPoint(event); ctx.lineTo(point.x, point.y); ctx.stroke(); sketchDirty = true; });
+    canvas.addEventListener('pointerup', () => { drawing = false; });
+    canvas.addEventListener('pointercancel', () => { drawing = false; });
     document.querySelector('#clear-sketch').addEventListener('click', () => { sketchDirty = false; drawBagBase(); });
     drawBagBase();
 
@@ -287,7 +291,6 @@
         const base64 = dataUrl.split(',')[1] || '';
         if (base64) output.push({ filename:file.name, mimeType:file.type || 'application/octet-stream', contentBase64:base64 });
       }
-      if (typeSelect.value === 'DPR' && sketchDirty) output.push({ filename:'damage-sketch.png', mimeType:'image/png', contentBase64:canvas.toDataURL('image/png').split(',')[1] });
       return output;
     }
 
@@ -295,6 +298,7 @@
       event.preventDefault();
       formStatus.className = 'status';
       formStatus.textContent = document.documentElement.lang === 'en' ? 'Submitting...' : '提交中...';
+      if (!signatureDirty) { formStatus.className = 'status err'; formStatus.textContent = document.documentElement.lang === 'en' ? 'Passenger signature is required.' : '请旅客签字。'; return; }
       const payload = Object.fromEntries(new FormData(form).entries());
       payload.flightRows = [1, 2, 3].map((index) => ({
         flightNo: payload[`flightNo${index}`],
@@ -302,7 +306,8 @@
         destination: payload[`destination${index}`]
       }));
       payload.contentsRows = collectContentsRows();
-      payload.passengerSignature = signatureDirty ? signaturePad.toDataURL('image/png') : '';
+      payload.passengerSignature = signatureDirty ? signaturePad.toDataURL('image/jpeg', 0.85) : '';
+      payload.damageSketch = sketchDirty ? canvas.toDataURL('image/jpeg', 0.85) : '';
       payload.attachments = await filesToAttachments(attachmentsInput.files);
       try {
         const res = await fetch(`${apiBase}/cbs-cases`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
