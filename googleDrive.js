@@ -2399,6 +2399,7 @@ function cbsRecordFromSheet(values, rowNumber) {
     row[key] = values[index] || '';
   });
   row.caseNumber = row.caseNumber || values.find((value) => /^LAX\s*MU\d{6,}$/i.test(String(value || '').trim())) || '';
+  row.caseType = row.caseType || values.find((value) => /^(AHL|DPR)$/i.test(String(value || '').trim())) || '';
   row.bagTag = row.bagTag || values.find((value) => /^[A-Z]{2}\d{6,}(\s*\/\s*[A-Z]{2}\d{6,})*$/i.test(String(value || '').trim())) || '';
   row.submittedAt = row.submittedAt || row.submitDate || values[27] || '';
   row.rowNumber = rowNumber;

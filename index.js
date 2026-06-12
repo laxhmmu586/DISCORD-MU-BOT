@@ -1100,8 +1100,9 @@ function createPirPdf(record) {
   content.push('0 0 0 RG 0 0 0 rg 1 w 36 36 540 720 re S');
   content.push(pdfText('PROPERTY IRREGULARITY REPORT (PIR)', 54, 724, 15));
   content.push(pdfText(`CASE ID: ${record.caseNumber || ''}`, 410, 724, 10));
-  content.push(pdfText('FOR INQUIRIES PLEASE EMAIL:', 390, 704, 9));
-  content.push(pdfText('LAXHMMU@GMAIL.COM', 390, 690, 9));
+  content.push(pdfText(`CASE TYPE: ${record.caseType || ''}`, 410, 710, 10));
+  content.push(pdfText('FOR INQUIRIES PLEASE EMAIL:', 390, 696, 9));
+  content.push(pdfText('LAXHMMU@GMAIL.COM', 390, 682, 9));
   const section = (title, y) => {
     content.push('0.78 0.78 0.78 rg');
     content.push(`44 ${y} 524 18 re f`);
@@ -1156,7 +1157,6 @@ function createPirPdf(record) {
   } else {
     content.push(pdfText('Passenger Signature __________________________', 330, 50, 9));
   }
-  content.push(pdfText('This report does not involve any acknowledgement of liability', 56, 34, 7));
   const stream = content.join('\n');
   const fontId = addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
   const streamId = addObject(`<< /Length ${Buffer.byteLength(stream, 'binary')} >>\nstream\n${stream}\nendstream`);
@@ -1307,7 +1307,31 @@ function sanitizeCbsAttachments(value) {
 
 function missingRequiredCbsAttachmentTypes(attachments = []) {
   const uploadedTypes = new Set(attachments.map((item) => String(item.attachmentType || '').trim().toLowerCase()));
-  return ['passport', 'ticket', 'bagtag'].filter((type) => !uploadedTypes.has(type));
+  return ['passport', 'boardingpass', 'bagtag'].filter((type) => !uploadedTypes.has(type));
+}
+
+
+function buildCbsUpdateFields(update = {}) {
+  const type = sanitizeCbsText(update.type, 40).toLowerCase();
+  if (!['rush', 'location', 'shipping'].includes(type)) return null;
+  const comment = sanitizeCbsText(update.comment, 500);
+  if (type === 'rush') {
+    const rushTagNumber = sanitizeCbsText(update.rushTagNumber, 80).toUpperCase();
+    const rushToWhere = sanitizeCbsText(update.rushToWhere, 120).toUpperCase();
+    const akeNumber = sanitizeCbsText(update.akeNumber, 80).toUpperCase();
+    const worldTracerFileNumber = sanitizeCbsText(update.worldTracerFileNumber, 120).toUpperCase();
+    if (!rushTagNumber || !rushToWhere || !akeNumber) return null;
+    return { status: 'Rush', updateNote: `RUSH | Rush tag: ${rushTagNumber} | Rush to: ${rushToWhere} | AKE: ${akeNumber}${worldTracerFileNumber ? ` | WorldTracer: ${worldTracerFileNumber}` : ''}${comment ? ` | Comment: ${comment}` : ''}` };
+  }
+  if (type === 'location') {
+    const location = sanitizeCbsText(update.location, 160).toUpperCase();
+    if (!location) return null;
+    return { status: 'Bag Location Update', updateNote: `BAG LOCATION UPDATE | Location: ${location}${comment ? ` | Comment: ${comment}` : ''}` };
+  }
+  const trackingNumber = sanitizeCbsText(update.trackingNumber, 160).toUpperCase();
+  const shippingTo = sanitizeCbsText(update.shippingTo, 300);
+  if (!trackingNumber || !shippingTo) return null;
+  return { status: 'Shipping', updateNote: `SHIPPING | Tracking: ${trackingNumber} | Ship to: ${shippingTo}${comment ? ` | Comment: ${comment}` : ''}` };
 }
 
 
@@ -1341,7 +1365,7 @@ app.post('/cbs-cases', async (req, res) => {
     const now = new Date().toISOString();
     let attachments = sanitizeCbsAttachments(body.attachments);
     const missingAttachmentTypes = missingRequiredCbsAttachmentTypes(attachments);
-    if (missingAttachmentTypes.length) return res.status(400).json({ error: 'Passport, ticket, and bag tag receipt attachments are required' });
+    if (missingAttachmentTypes.length) return res.status(400).json({ error: 'Passport, boarding pass, and bag tag receipt attachments are required' });
     const contentsRows = buildCbsContentsRows(body);
     const record = {
       caseNumber: await makeCbsCaseNumber(),
@@ -1407,9 +1431,9 @@ app.post('/cbs-cases', async (req, res) => {
 
 app.post('/cbs-cases/:caseNumber/update', async (req, res) => {
   try {
-    const status = sanitizeCbsText(req.body?.status, 80) || 'Open';
-    const updateNote = sanitizeCbsText(req.body?.updateNote, 500);
-    const result = await updateCbsCase(req.params.caseNumber, { status, updateNote });
+    const updateFields = buildCbsUpdateFields(req.body || {});
+    if (!updateFields) return res.status(400).json({ error: 'Valid RUSH, BAG LOCATION UPDATE, or SHIPPING details are required' });
+    const result = await updateCbsCase(req.params.caseNumber, updateFields);
     if (result.notFound) return res.status(404).json({ error: 'Case not found' });
     return res.json(result);
   } catch (err) {

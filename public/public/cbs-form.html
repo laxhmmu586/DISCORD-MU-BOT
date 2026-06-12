@@ -27,9 +27,10 @@
     .passenger-grid { grid-template-columns:repeat(4,minmax(0,1fr)); }
     .flight-rows { display:grid; gap:10px; }
     .flight-row, .flight-head { display:grid; grid-template-columns:1fr .8fr .8fr; gap:10px; align-items:end; }
-    .routing-layout { display:grid; grid-template-columns:290px minmax(0,1fr); gap:26px; align-items:start; }
-    .bag-report-row { grid-column:1/-1; display:grid; grid-template-columns:290px minmax(0,1fr); gap:26px; margin-top:14px; }
-    .bag-report-fields { display:grid; grid-template-columns:minmax(220px,.8fr) minmax(220px,1fr) minmax(220px,1fr); gap:22px; width:100%; align-items:end; }
+    .flight-row + .flight-row { margin-top:3px; }
+    .routing-layout { display:grid; grid-template-columns:290px minmax(0,1fr); column-gap:18px; align-items:start; }
+    .bag-report-row { grid-column:1/-1; margin-top:8px; }
+    .bag-report-fields { display:grid; grid-template-columns:1.1fr 1fr 1fr; gap:14px; width:100%; align-items:end; }
     .field-label { font-weight:750; font-size:13px; }
     .required-mark { color:#d92d20; font-weight:900; margin-left:3px; }
     label:has(input[required]) > span.en::after,
@@ -38,8 +39,9 @@
     label:has(select[required]) > span.zh::after,
     label:has(textarea[required]) > span.en::after,
     label:has(textarea[required]) > span.zh::after { content:" *"; color:#d92d20; font-weight:900; }
-    .bag-list { display:grid; gap:9px; }
+    .bag-list { display:grid; gap:8px; }
     .bag-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; align-items:center; }
+    .bag-row input { min-width:0; }
     .bag-row button { padding:10px 13px; }
     .tag-example { border:1px dashed var(--line); border-radius:16px; padding:16px; background:#fbfdff; transform:rotate(-3deg); color:#202938; font-family:"Courier New",monospace; box-shadow:0 10px 24px rgba(22,48,76,.08); margin-bottom:10px; }
     .tag-example strong { display:block; font-size:22px; letter-spacing:3px; margin-bottom:8px; }
@@ -65,7 +67,7 @@
     .sketch-shell { display:grid; gap:10px; overflow:hidden; }
     .sketch-board { width:100%; max-width:820px; border:1px solid var(--line); border-radius:14px; background:#fff; touch-action:none; display:block; }
     .attachment-hint { font-size:12px; color:var(--muted); font-weight:600; }
-    .attachment-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
+    .attachment-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; }
     @media (max-width:840px){ .grid,.passenger-grid,.attachment-grid{grid-template-columns:1fr}.routing-layout,.bag-report-row,.bag-report-fields,.contents-row{grid-template-columns:1fr}.flight-row,.flight-head{grid-template-columns:1fr .8fr .8fr; gap:6px}.header-title{text-align:left}header{flex-wrap:wrap}.tag-example{transform:none} }
   </style>
 </head>
@@ -153,7 +155,7 @@
             <label class="wide"><span class="en">Inner damage</span><span class="zh">内物破损</span><textarea name="dprInnerDamage"></textarea></label>
             <div class="wide sketch-shell">
               <strong><span class="en">Circle damaged area</span><span class="zh">圈出破损部位</span></strong>
-              <canvas id="damage-sketch" class="sketch-board" width="820" height="220" aria-label="Baggage damage sketch canvas"></canvas>
+              <canvas id="damage-sketch" class="sketch-board" width="900" height="260" aria-label="Baggage damage sketch canvas"></canvas>
               <div class="actions"><button class="secondary" id="clear-sketch" type="button"><span class="en">Clear sketch</span><span class="zh">清除标记</span></button><span class="attachment-hint"><span class="en">Draw freely on the picture. The marked sketch is included in the PDF report.</span><span class="zh">可在图上自由绘制，标记图会显示在PDF报告中。</span></span></div>
             </div>
           </div>
@@ -163,10 +165,11 @@
           <h3><span class="en">Attachments</span><span class="zh">附件</span><span class="required-mark">*</span></h3>
           <div class="attachment-grid">
             <label><span class="en">Passport</span><span class="zh">护照</span><input name="passportAttachment" data-attachment-input data-attachment-type="passport" type="file" required /></label>
-            <label><span class="en">Ticket</span><span class="zh">机票</span><input name="ticketAttachment" data-attachment-input data-attachment-type="ticket" type="file" required /></label>
+            <label><span class="en">Boarding pass</span><span class="zh">登机牌</span><input name="boardingPassAttachment" data-attachment-input data-attachment-type="boardingPass" type="file" required /></label>
             <label><span class="en">Bag tag receipt</span><span class="zh">行李票</span><input name="bagTagAttachment" data-attachment-input data-attachment-type="bagTag" type="file" required /></label>
+            <label><span class="en">Other document</span><span class="zh">其他附件</span><input name="otherAttachment" data-attachment-input data-attachment-type="other" type="file" /></label>
           </div>
-          <span class="attachment-hint"><span class="en">Passport, ticket, and bag tag receipt are required. Files are sent as email attachments only; they are not saved to Drive or the case sheet.</span><span class="zh">必须上传护照、机票、行李票。附件只随邮件发送，不保存到网盘或表格。</span></span>
+          <span class="attachment-hint"><span class="en">Passport, boarding pass, and bag tag receipt are required. Files are sent as email attachments only; they are not saved to Drive or the case sheet.</span><span class="zh">必须上传护照、登机牌、行李票。附件只随邮件发送，不保存到网盘或表格。</span></span>
         </section>
 
         <section class="case-fields is-active">
@@ -308,27 +311,42 @@
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       const bg = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
       bg.addColorStop(0, '#f8fbff');
-      bg.addColorStop(1, '#e9f1fb');
+      bg.addColorStop(1, '#edf4fd');
       ctx.fillStyle = bg;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.lineWidth = 2;
-      ctx.font = '700 14px Arial';
-      const roundedBox = (x, y, w, h, label, color1, color2) => {
-        const depth = 18;
-        const gradient = ctx.createLinearGradient(x, y, x + w, y + h);
-        gradient.addColorStop(0, color1);
-        gradient.addColorStop(1, color2);
-        ctx.fillStyle = '#9aa8ba';
+      ctx.font = '800 16px Arial';
+      ctx.lineJoin = 'round';
+      const drawPrismBag = ({ x, y, w, h, depth = 24, label, wheels = true, handle = true, color = '#c9d7e6' }) => {
+        const side = '#7f90a4';
+        const top = '#a9bacd';
+        const faceGradient = ctx.createLinearGradient(x, y, x + w, y + h);
+        faceGradient.addColorStop(0, '#e4edf7');
+        faceGradient.addColorStop(0.52, color);
+        faceGradient.addColorStop(1, '#9fb0c4');
+        ctx.save();
+        ctx.shadowColor = 'rgba(28,45,64,.18)';
+        ctx.shadowBlur = 10;
+        ctx.shadowOffsetY = 6;
+        if (handle) {
+          ctx.strokeStyle = '#213044';
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.roundRect(x + w * .32, y - 18, w * .36, 24, 10);
+          ctx.stroke();
+        }
+        ctx.shadowColor = 'transparent';
+        ctx.fillStyle = top;
         ctx.beginPath();
-        ctx.moveTo(x + depth, y - depth);
+        ctx.moveTo(x + 12, y);
+        ctx.lineTo(x + depth, y - depth);
         ctx.lineTo(x + w + depth, y - depth);
         ctx.lineTo(x + w, y);
-        ctx.lineTo(x, y);
         ctx.closePath();
         ctx.fill();
-        ctx.strokeStyle = '#526173';
+        ctx.strokeStyle = '#26364a';
+        ctx.lineWidth = 3;
         ctx.stroke();
-        ctx.fillStyle = '#6f7f92';
+        ctx.fillStyle = side;
         ctx.beginPath();
         ctx.moveTo(x + w, y);
         ctx.lineTo(x + w + depth, y - depth);
@@ -337,38 +355,34 @@
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
-        ctx.fillStyle = gradient;
+        ctx.fillStyle = faceGradient;
         ctx.beginPath();
-        ctx.roundRect(x, y, w, h, 14);
+        ctx.roundRect(x, y, w, h, 15);
         ctx.fill();
-        ctx.strokeStyle = '#1f2937';
         ctx.stroke();
-        ctx.strokeStyle = 'rgba(255,255,255,.55)';
+        ctx.strokeStyle = 'rgba(255,255,255,.68)';
+        ctx.lineWidth = 4;
         ctx.beginPath();
-        ctx.moveTo(x + 18, y + 18);
-        ctx.lineTo(x + w - 24, y + 18);
+        ctx.moveTo(x + 24, y + 28);
+        ctx.lineTo(x + w - 40, y + 28);
         ctx.stroke();
+        if (wheels) {
+          ctx.fillStyle = '#1f2937';
+          [x + 28, x + w - 28].forEach((wheelX) => { ctx.beginPath(); ctx.arc(wheelX, y + h + 10, 8, 0, Math.PI * 2); ctx.fill(); });
+        }
         ctx.fillStyle = '#1f2937';
-        ctx.fillText(label, x + 22, y + h + 30);
+        ctx.font = '800 16px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(label, x + w / 2, y + h + (wheels ? 44 : 36));
+        ctx.restore();
       };
-      const wheels = (x, y, w, h) => {
-        ctx.fillStyle = '#1f2937';
-        [x + 24, x + w - 24].forEach((wheelX) => { ctx.beginPath(); ctx.arc(wheelX, y + h + 8, 7, 0, Math.PI * 2); ctx.fill(); });
-      };
-      const handle = (x, y, w) => {
-        ctx.strokeStyle = '#1f2937';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.roundRect(x + w / 2 - 26, y - 24, 52, 28, 12);
-        ctx.stroke();
-      };
-      const suitcase = (x, y, w, h, label, color1, color2) => { handle(x, y, w); roundedBox(x, y, w, h, label, color1, color2); wheels(x, y, w, h); };
-      suitcase(35, 58, 118, 78, 'SIDE 1', '#dbe7f5', '#9fb2c9');
-      suitcase(205, 58, 118, 78, 'SIDE 2', '#e6edf6', '#a9b8c9');
-      roundedBox(380, 48, 46, 96, 'END 1', '#d9e3ef', '#8ea2ba');
-      roundedBox(485, 48, 46, 96, 'END 2', '#e1e9f3', '#94a7bd');
-      roundedBox(600, 42, 135, 46, 'TOP', '#edf3f9', '#b7c5d6');
-      roundedBox(600, 122, 135, 46, 'BOTTOM', '#dce6f1', '#9dafc4');
+      drawPrismBag({ x: 35, y: 70, w: 130, h: 78, label: 'SIDE 1' });
+      drawPrismBag({ x: 220, y: 70, w: 130, h: 78, label: 'SIDE 2' });
+      drawPrismBag({ x: 410, y: 62, w: 54, h: 100, depth: 22, label: 'END 1', wheels: false, handle: false });
+      drawPrismBag({ x: 540, y: 62, w: 54, h: 100, depth: 22, label: 'END 2', wheels: false, handle: false });
+      drawPrismBag({ x: 675, y: 48, w: 145, h: 50, depth: 24, label: 'TOP', wheels: false, handle: false });
+      drawPrismBag({ x: 675, y: 148, w: 145, h: 50, depth: 24, label: 'BOTTOM', wheels: false, handle: false });
+      ctx.textAlign = 'left';
     }
     function canvasPoint(event) { const rect = canvas.getBoundingClientRect(); return { x:(event.clientX-rect.left)*canvas.width/rect.width, y:(event.clientY-rect.top)*canvas.height/rect.height }; }
     canvas.addEventListener('pointerdown', (event) => { drawing = true; const point = canvasPoint(event); canvas.setPointerCapture(event.pointerId); ctx.strokeStyle = '#d92d20'; ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(point.x, point.y); });
@@ -408,7 +422,8 @@
       const output = [];
       for (const input of attachmentInputs) {
         const file = input.files?.[0];
-        if (!file) throw new Error(document.documentElement.lang === 'en' ? 'Passport, ticket, and bag tag receipt attachments are required.' : '必须上传护照、机票、行李票附件。');
+        if (!file && input.required) throw new Error(document.documentElement.lang === 'en' ? 'Passport, boarding pass, and bag tag receipt attachments are required.' : '必须上传护照、登机牌、行李票附件。');
+        if (!file) continue;
         const attachment = await fileToAttachment(file, input.dataset.attachmentType || 'document');
         if (attachment) output.push(attachment);
       }
@@ -421,7 +436,7 @@
       formStatus.textContent = document.documentElement.lang === 'en' ? 'Submitting...' : '提交中...';
       if (!signatureDirty) { formStatus.className = 'status err'; formStatus.textContent = document.documentElement.lang === 'en' ? 'Passenger signature is required.' : '请旅客签字。'; return; }
       const payload = Object.fromEntries(new FormData(form).entries());
-      ['passportAttachment', 'ticketAttachment', 'bagTagAttachment'].forEach((key) => delete payload[key]);
+      ['passportAttachment', 'boardingPassAttachment', 'bagTagAttachment', 'otherAttachment'].forEach((key) => delete payload[key]);
       payload.flightRows = [1, 2, 3].map((index) => ({
         flightNo: payload[`flightNo${index}`],
         flightDate: payload[`flightDate${index}`],
