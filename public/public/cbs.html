@@ -16,13 +16,18 @@
     h1,h2 { margin:0 0 10px; }
     p { line-height:1.65; }
     .muted { color:var(--muted); }
-    .missing-alert-wrap { display:flex; justify-content:center; }
-    .missing-alert { display:none; border:0; border-radius:999px; padding:12px 22px; background:#d92d20; color:#fff; font-weight:950; letter-spacing:.04em; box-shadow:0 0 0 0 rgba(217,45,32,.55); animation:missingPulse 1s infinite; }
-    .missing-alert.is-active { display:inline-flex; }
+    .missing-alert-wrap { display:flex; justify-content:flex-end; }
+    .missing-alert { display:inline-flex; border:0; border-radius:999px; padding:12px 22px; background:var(--brand); color:#fff; font-weight:950; letter-spacing:.04em; box-shadow:none; animation:none; }
+    .missing-alert.is-active { background:#d92d20; box-shadow:0 0 0 0 rgba(217,45,32,.55); animation:missingPulse 1s infinite; }
+    .missing-alert.is-complete { background:var(--ok); box-shadow:none; animation:none; }
     @keyframes missingPulse { 0%{box-shadow:0 0 0 0 rgba(217,45,32,.55)} 70%{box-shadow:0 0 0 14px rgba(217,45,32,0)} 100%{box-shadow:0 0 0 0 rgba(217,45,32,0)} }
     .search-field { min-width:260px; max-width:360px; }
     .case-toolbar { display:flex; flex-wrap:nowrap; gap:10px; align-items:center; }
-    .missing-actions { display:flex; gap:8px; flex-wrap:nowrap; align-items:center; }
+    .missing-actions { display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:flex-start; max-width:100%; }
+    .missing-actions button { padding:10px 14px; white-space:normal; }
+    .case-link-button { padding:0; border-radius:0; background:transparent; color:var(--brand); font-weight:900; text-decoration:underline; }
+    .missing-report-table { table-layout:auto; }
+    .missing-report-table th:last-child,.missing-report-table td:last-child { width:230px; min-width:230px; }
     .actions { display:flex; gap:12px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
     button,a.button { border:0; border-radius:999px; padding:12px 18px; font-weight:850; cursor:pointer; background:var(--brand); color:white; text-decoration:none; }
     .lang-toggle { border:1px solid var(--line); background:#e8eef7; color:var(--brand); }
@@ -88,7 +93,6 @@
       document.documentElement.lang = lang;
       languageToggle.textContent = lang === 'en' ? '中文' : 'English';
       loadCases();
-      loadMissingReports(true);
     }
     languageToggle.addEventListener('click', () => setLanguage(document.documentElement.lang === 'en' ? 'zh' : 'en'));
     function label(en, zh) { return document.documentElement.lang === 'en' ? en : zh; }
@@ -101,7 +105,8 @@
       if (row?.ahlBagDescription || row?.ahlBagBrandTag || row?.ahlFeatures || row?.ahlOtherFeatures) return 'AHL';
       return '';
     }
-    function renderValue(value) { return value == null || value === '' ? '-' : value; }
+    function hasValue(value) { return value != null && String(value).trim() !== ''; }
+    function renderValue(value) { return hasValue(value) ? value : '-'; }
     function trackingHtml(row) {
       const isClosed = /close/i.test(String(row?.status || ''));
       return `<div class="tracking-step"><span class="tracking-dot ${isClosed ? 'is-closed' : ''}"></span><span>${escapeHtml(isClosed ? label('Closed', '关闭') : label('Create', '创建'))}</span></div>`;
@@ -143,24 +148,27 @@
         [label('Update Note', '更新备注'), row.updateNote]
       ];
     }
-    function updateFormHtml(row, mode = 'rush') {
+    function updateFormHtml(row, mode = 'worldtracer') {
       if (!row.caseNumber) return `<p class="status err">${label('A case number is required in column A before this row can be updated.', 'A列需要有Case Number后才能更新。')}</p>`;
-      const active = ['rush', 'location', 'shipping'].includes(mode) ? mode : 'rush';
+      const active = ['worldtracer', 'rush', 'location', 'shipping'].includes(mode) ? mode : 'worldtracer';
       const input = (title, name, attrs = 'required') => `<label><span>${escapeHtml(title)}</span><input name="${escapeHtml(name)}" ${attrs} /></label>`;
-      const fields = active === 'rush'
-        ? [
-            input('Rush tag number', 'rushTagNumber'),
-            input('Rush to where?', 'rushToWhere'),
-            input('AKE number?', 'akeNumber'),
-            input('Option: World Tracer file #', 'worldTracerFileNumber', ''),
-            `<label class="wide"><span>Comment</span><textarea name="comment"></textarea></label>`
-          ].join('')
-        : active === 'location'
+      const fields = active === 'worldtracer'
+        ? input('File number', 'fileNumber')
+        : active === 'rush'
+          ? [
+              input('Rush tag number', 'rushTagNumber'),
+              input('Rush to where?', 'rushToWhere'),
+              input('AKE number?', 'akeNumber'),
+              input('Option: World Tracer file #', 'worldTracerFileNumber', ''),
+              `<label class="wide"><span>Comment</span><textarea name="comment"></textarea></label>`
+            ].join('')
+          : active === 'location'
           ? [input('Bag location', 'location'), `<label class="wide"><span>Comment</span><textarea name="comment"></textarea></label>`].join('')
           : [input('Tracking number', 'trackingNumber'), input('Shipping to where?', 'shippingTo'), `<label class="wide"><span>Comment</span><textarea name="comment"></textarea></label>`].join('');
       return `<form class="case-update" data-case="${escapeHtml(row.caseNumber)}" data-update-mode="${escapeHtml(active)}">
         <h2>${label('Update', '更新')}</h2>
         <div class="update-mode-actions">
+          <button type="button" data-cbs-update-mode="worldtracer" class="${active === 'worldtracer' ? 'is-active' : ''}">WORLDTRACER</button>
           <button type="button" data-cbs-update-mode="rush" class="${active === 'rush' ? 'is-active' : ''}">RUSH</button>
           <button type="button" data-cbs-update-mode="location" class="${active === 'location' ? 'is-active' : ''}">BAG LOCATION UPDATE</button>
           <button type="button" data-cbs-update-mode="shipping" class="${active === 'shipping' ? 'is-active' : ''}">SHIPPING</button>
@@ -180,6 +188,21 @@
         return bTime - aTime;
       });
     }
+    function displayBagTag(row) {
+      return row?.bagTag || String(row?.updateNote || '').match(/\bBag tag:\s*([^|]+)/i)?.[1]?.trim() || '';
+    }
+    function revealCase(caseNumber) {
+      const normalized = String(caseNumber || '').trim();
+      if (!normalized) return;
+      casesCard.hidden = false;
+      missingReportCard.hidden = true;
+      if (caseSearch) caseSearch.value = normalized;
+      renderCases();
+      const summary = Array.from(casesOutput.querySelectorAll('[data-toggle-case]')).find((item) => item.dataset.toggleCase === normalized);
+      const detail = Array.from(casesOutput.querySelectorAll('[data-detail-case]')).find((item) => item.dataset.detailCase === normalized);
+      if (detail) detail.hidden = false;
+      (summary || detail)?.scrollIntoView({ behavior:'smooth', block:'center' });
+    }
     function renderCases() {
       const query = String(caseSearch?.value || '').trim().toLowerCase();
       const rows = sortedCaseRows(window._cbsRows || []).filter((row) => !query || rowSearchText(row).includes(query));
@@ -188,8 +211,9 @@
         const detailKey = row.caseNumber || `row-${row.rowNumber || index}`;
         const caseNumberLabel = row.caseNumber || label('Missing case number', '缺少编号');
         const caseType = inferCaseType(row);
-        const details = detailRows(row);
-        return `<tr class="case-summary" data-toggle-case="${escapeHtml(detailKey)}"><td><button class="secondary" type="button">${escapeHtml(caseNumberLabel)}</button></td><td>${escapeHtml(caseType || '-')}</td><td>${escapeHtml(row.bagTag || '-')}</td><td class="tracking-cell">${trackingHtml(row)}</td></tr><tr class="case-detail" data-detail-case="${escapeHtml(detailKey)}" hidden><td colspan="4"><div class="detail-grid">${details.map(([key, value]) => `<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(renderValue(value))}</p>`).join('')}</div>${updateFormHtml(row)}</td></tr>`;
+        const details = detailRows(row).filter(([, value]) => hasValue(value));
+        const detailHtml = details.length ? `<div class="detail-grid">${details.map(([key, value]) => `<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(renderValue(value))}</p>`).join('')}</div>` : '';
+        return `<tr class="case-summary" data-toggle-case="${escapeHtml(detailKey)}"><td><button class="secondary" type="button">${escapeHtml(caseNumberLabel)}</button></td><td>${escapeHtml(caseType || '-')}</td><td>${escapeHtml(displayBagTag(row) || '-')}</td><td class="tracking-cell">${trackingHtml(row)}</td></tr><tr class="case-detail" data-detail-case="${escapeHtml(detailKey)}" hidden><td colspan="4">${detailHtml}${updateFormHtml(row)}</td></tr>`;
       }).join('')}</tbody></table>`;
     }
     async function loadCases() {
@@ -203,20 +227,33 @@
       } catch (error) { casesOutput.innerHTML = `<p class="status err">${escapeHtml(error.message)}</p>`; }
     }
     function renderMissingReports(rows = []) {
-      const openRows = rows.filter((row) => !row.caseNumber && !row.acknowledgedAt);
+      const isComplete = (row) => Boolean(row.acknowledgedAt || row.linkedCaseUpdated);
+      const openRows = rows.filter((row) => !isComplete(row));
       missingAlert.classList.toggle('is-active', openRows.length > 0);
+      missingAlert.classList.toggle('is-complete', rows.length > 0 && openRows.length === 0);
       if (!rows.length) { missingReportOutput.innerHTML = '<p class="muted">No MU missing bag rows found.</p>'; return; }
-      missingReportOutput.innerHTML = `<table><thead><tr><th>Bag Tag</th><th>Passenger</th><th>Destination</th><th>Airline</th><th>Source</th><th>Case</th><th>Status</th><th></th></tr></thead><tbody>${rows.map((row) => { const resolved = Boolean(row.caseNumber || row.acknowledgedAt); return `<tr><td>${escapeHtml(row.bagTag)}</td><td>${escapeHtml(row.passengerName)}</td><td>${escapeHtml(row.destination)}</td><td>${escapeHtml(row.airline)}</td><td>${escapeHtml(row.sourceAttachment || row.sourceEmailDate)}</td><td>${escapeHtml(row.caseNumber || '-')}</td><td>${escapeHtml(row.acknowledgedAt ? 'Acknowledged' : (row.caseNumber ? 'Case Created' : 'Open'))}</td><td>${resolved ? '' : `<div class="missing-actions"><button type="button" data-create-missing-case="${escapeHtml(row.rowNumber)}">Create CASE</button><button class="secondary" type="button" data-ack-missing="${escapeHtml(row.rowNumber)}">Acknowledge</button></div>`}</td></tr>`; }).join('')}</tbody></table>`;
+      missingReportOutput.innerHTML = `<table class="missing-report-table"><thead><tr><th>Bag Tag</th><th>Passenger</th><th>Destination</th><th>Airline</th><th>Source</th><th>Case</th><th>Status</th><th></th></tr></thead><tbody>${rows.map((row) => {
+        const linkedCaseNumber = row.linkedCaseNumber || row.caseNumber || '';
+        const status = row.acknowledgedAt ? 'Acknowledged' : (linkedCaseNumber ? (row.linkedCaseUpdated ? 'Updated' : 'Needs Update') : 'Open');
+        const caseHtml = linkedCaseNumber
+          ? `<button class="case-link-button" type="button" data-link-case="${escapeHtml(linkedCaseNumber)}">${escapeHtml(linkedCaseNumber)}</button>`
+          : '-';
+        const actionHtml = linkedCaseNumber
+          ? ''
+          : `<div class="missing-actions"><button type="button" data-create-missing-case="${escapeHtml(row.rowNumber)}" data-missing-bag-tag="${escapeHtml(row.bagTag)}">Create CASE</button><button class="secondary" type="button" data-ack-missing="${escapeHtml(row.rowNumber)}">Acknowledge</button></div>`;
+        return `<tr><td>${escapeHtml(row.bagTag)}</td><td>${escapeHtml(row.passengerName)}</td><td>${escapeHtml(row.destination)}</td><td>${escapeHtml(row.airline)}</td><td>${escapeHtml(row.sourceAttachment || row.sourceEmailDate)}</td><td>${caseHtml}</td><td>${escapeHtml(status)}</td><td>${row.acknowledgedAt ? '' : actionHtml}</td></tr>`;
+      }).join('')}</tbody></table>`;
     }
     async function loadMissingReports(sync = true) {
       try {
         const res = await fetch(`${apiBase}/cbs-missing-bags?sync=${sync ? 'true' : 'false'}`);
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || 'Missing bag report loading failed');
+        window._missingReportLoaded = true;
         window._missingBagRows = data.rows || [];
         renderMissingReports(window._missingBagRows);
       } catch (error) {
-        missingAlert.classList.remove('is-active');
+        missingAlert.classList.remove('is-active', 'is-complete');
         missingReportOutput.innerHTML = `<p class="status err">${escapeHtml(error.message)}</p>`;
       }
     }
@@ -225,7 +262,7 @@
       if (!updateForm) return;
       event.preventDefault();
       const payload = Object.fromEntries(new FormData(updateForm).entries());
-      payload.type = updateForm.dataset.updateMode || 'rush';
+      payload.type = updateForm.dataset.updateMode || 'worldtracer';
       await updateCase(updateForm.dataset.case, payload);
     });
     casesOutput.addEventListener('click', async (event) => {
@@ -251,12 +288,18 @@
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || 'Update failed');
         await loadCases();
+        if (window._missingReportLoaded || !missingReportCard.hidden) await loadMissingReports(false);
       } catch (error) { alert(error.message); } finally { casesOutput.style.opacity = '1'; }
     }
     caseSearch?.addEventListener('input', renderCases);
     missingAlert?.addEventListener('click', async () => { casesCard.hidden = true; missingReportCard.hidden = false; await loadMissingReports(true); });
     backToCases?.addEventListener('click', () => { missingReportCard.hidden = true; casesCard.hidden = false; });
     missingReportOutput?.addEventListener('click', async (event) => {
+      const linkButton = event.target.closest('[data-link-case]');
+      if (linkButton) {
+        revealCase(linkButton.dataset.linkCase);
+        return;
+      }
       const createButton = event.target.closest('[data-create-missing-case]');
       const ackButton = event.target.closest('[data-ack-missing]');
       const button = createButton || ackButton;
@@ -267,14 +310,17 @@
       try {
         const rowNumber = createButton ? createButton.dataset.createMissingCase : ackButton.dataset.ackMissing;
         const action = createButton ? 'create-case' : 'acknowledge';
-        const res = await fetch(`${apiBase}/cbs-missing-bags/${encodeURIComponent(rowNumber)}/${action}`, { method:'POST' });
+        const fetchOptions = createButton
+          ? { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ bagTag: createButton.dataset.missingBagTag || '' }) }
+          : { method:'POST' };
+        const res = await fetch(`${apiBase}/cbs-missing-bags/${encodeURIComponent(rowNumber)}/${action}`, fetchOptions);
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || (createButton ? 'Create case failed' : 'Acknowledge failed'));
         await loadMissingReports(false);
         await loadCases();
       } catch (error) { alert(error.message); } finally { button.disabled = false; button.textContent = originalText; }
     });
-    refreshCases.addEventListener('click', async () => { await loadCases(); await loadMissingReports(true); });
+    refreshCases.addEventListener('click', async () => { await loadCases(); });
     setLanguage('en');
   </script>
 </body>
