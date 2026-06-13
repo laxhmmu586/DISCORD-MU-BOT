@@ -2396,6 +2396,44 @@ async function ensureCbsSheetHeaders(rows) {
   cbsSheetCache = { loadedAt: 0, rows: [] };
 }
 
+function extractCbsBagTagFromUpdateNote(updateNote = '') {
+  return String(updateNote || '').match(/\bBag tag:\s*([^|]+)/i)?.[1]?.trim() || '';
+}
+
+function cbsBagTagMatchKeys(value = '') {
+  const keys = new Set();
+  String(value || '')
+    .toUpperCase()
+    .split(/\s*\/\s*|[,;\n]+/)
+    .map((item) => item.replace(/\s+/g, '').trim())
+    .filter(Boolean)
+    .forEach((tag) => {
+      keys.add(tag);
+      const carrierMatch = tag.match(/^([A-Z]{2})(\d{6,})$/);
+      const numeric = carrierMatch ? carrierMatch[2] : (tag.match(/^(\d{6,})$/)?.[1] || '');
+      if (numeric) {
+        keys.add(numeric);
+        keys.add(numeric.slice(-6));
+        keys.add(`MU${numeric.slice(-6)}`);
+      }
+    });
+  return keys;
+}
+
+function cbsBagTagsMatch(a = '', b = '') {
+  const aKeys = cbsBagTagMatchKeys(a);
+  const bKeys = cbsBagTagMatchKeys(b);
+  if (!aKeys.size || !bKeys.size) return false;
+  return [...aKeys].some((key) => bKeys.has(key));
+}
+
+function isCbsCaseUpdatedAfterMissingLink(row = {}) {
+  const status = String(row.status || '').trim().toLowerCase();
+  const note = String(row.updateNote || '').trim();
+  if (status && status !== 'open') return true;
+  return Boolean(note && !/^Created from Missing Bag Report row\b/i.test(note));
+}
+
 function cbsRecordFromSheet(values, rowNumber) {
   const row = {};
   CBS_HEADERS.forEach((header, index) => {
@@ -2404,7 +2442,7 @@ function cbsRecordFromSheet(values, rowNumber) {
   });
   row.caseNumber = row.caseNumber || values.find((value) => /^LAX\s*MU\d{6,}$/i.test(String(value || '').trim())) || '';
   row.caseType = row.caseType || values.find((value) => /^(AHL|DPR)$/i.test(String(value || '').trim())) || '';
-  row.bagTag = row.bagTag || values.find((value) => /^[A-Z]{2}\d{6,}(\s*\/\s*[A-Z]{2}\d{6,})*$/i.test(String(value || '').trim())) || '';
+  row.bagTag = row.bagTag || values[9] || extractCbsBagTagFromUpdateNote(row.updateNote) || values.find((value) => /^[A-Z]{2}\d{6,}(\s*\/\s*[A-Z]{2}\d{6,})*$/i.test(String(value || '').trim())) || '';
   row.submittedAt = row.submittedAt || row.submitDate || values[27] || '';
   row.rowNumber = rowNumber;
   return row;
@@ -2695,11 +2733,30 @@ async function getCbsMissingBagReports(options = {}) {
   if (options.sync) sync = await syncCbsMissingBagReportsFromGmail();
   const rows = await getCbsMissingBagSheetRows({ forceRefresh: true });
   await ensureCbsMissingBagHeaders(rows);
+  const cbsCases = await getCbsCases();
+  const findLinkedCase = (missingRow) => {
+    const explicitCaseNumber = String(missingRow.caseNumber || '').trim().toUpperCase();
+    if (explicitCaseNumber) {
+      const explicit = cbsCases.find((row) => String(row.caseNumber || '').trim().toUpperCase() === explicitCaseNumber);
+      if (explicit) return explicit;
+    }
+    return cbsCases.find((row) => cbsBagTagsMatch(row.bagTag, missingRow.bagTag)) || null;
+  };
   const records = rows
     .map((values, index) => ({ values: values || [], rowNumber: index + 1 }))
     .filter(({ rowNumber }) => rowNumber > 1)
     .map(({ values, rowNumber }) => cbsMissingBagRecordFromSheet(values, rowNumber))
-    .filter((row) => row.bagTag || row.passengerName || row.destination || row.airline || row.caseNumber);
+    .filter((row) => row.bagTag || row.passengerName || row.destination || row.airline || row.caseNumber)
+    .map((row) => {
+      const linkedCase = findLinkedCase(row);
+      return {
+        ...row,
+        linkedCaseNumber: linkedCase?.caseNumber || row.caseNumber || '',
+        linkedCaseBagTag: linkedCase?.bagTag || '',
+        linkedCaseStatus: linkedCase?.status || '',
+        linkedCaseUpdated: Boolean(linkedCase && isCbsCaseUpdatedAfterMissingLink(linkedCase))
+      };
+    });
   return { rows: records, sync };
 }
 
