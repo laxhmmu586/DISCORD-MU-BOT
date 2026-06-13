@@ -1364,9 +1364,10 @@ app.post('/cbs-missing-bags/:rowNumber/create-case', async (req, res) => {
     const missing = (report.rows || []).find((row) => Number(row.rowNumber) === rowNumber);
     if (!missing) return res.status(404).json({ error: 'Missing bag row not found' });
     if (missing.caseNumber) return res.json({ created: false, caseNumber: missing.caseNumber, record: missing });
+    if (!normalizeCbsBagTags(missing.bagTag || req.body?.bagTag)) return res.status(400).json({ error: 'Bag tag is required to create a case' });
     const now = new Date().toISOString();
     const caseNumber = await makeCbsCaseNumber();
-    const bagTag = normalizeCbsBagTags(missing.bagTag);
+    const bagTag = normalizeCbsBagTags(missing.bagTag || req.body?.bagTag);
     const record = {
       caseNumber,
       caseType: 'AHL',
@@ -1403,7 +1404,7 @@ app.post('/cbs-missing-bags/:rowNumber/create-case', async (req, res) => {
       damageSketch: '',
       submittedAt: now,
       updatedAt: now,
-      updateNote: `Created from Missing Bag Report row ${rowNumber}`
+      updateNote: `Created from Missing Bag Report row ${rowNumber} | Bag tag: ${bagTag}`
     };
     await appendCbsCase(record);
     await markCbsMissingBagCase(rowNumber, caseNumber);

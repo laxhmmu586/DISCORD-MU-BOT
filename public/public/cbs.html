@@ -22,7 +22,10 @@
     @keyframes missingPulse { 0%{box-shadow:0 0 0 0 rgba(217,45,32,.55)} 70%{box-shadow:0 0 0 14px rgba(217,45,32,0)} 100%{box-shadow:0 0 0 0 rgba(217,45,32,0)} }
     .search-field { min-width:260px; max-width:360px; }
     .case-toolbar { display:flex; flex-wrap:nowrap; gap:10px; align-items:center; }
-    .missing-actions { display:flex; gap:8px; flex-wrap:nowrap; align-items:center; }
+    .missing-actions { display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:flex-start; max-width:100%; }
+    .missing-actions button { padding:10px 14px; white-space:normal; }
+    .missing-report-table { table-layout:auto; }
+    .missing-report-table th:last-child,.missing-report-table td:last-child { width:230px; min-width:230px; }
     .actions { display:flex; gap:12px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
     button,a.button { border:0; border-radius:999px; padding:12px 18px; font-weight:850; cursor:pointer; background:var(--brand); color:white; text-decoration:none; }
     .lang-toggle { border:1px solid var(--line); background:#e8eef7; color:var(--brand); }
@@ -211,7 +214,7 @@
       const openRows = rows.filter((row) => !row.caseNumber && !row.acknowledgedAt);
       missingAlert.classList.toggle('is-active', openRows.length > 0);
       if (!rows.length) { missingReportOutput.innerHTML = '<p class="muted">No MU missing bag rows found.</p>'; return; }
-      missingReportOutput.innerHTML = `<table><thead><tr><th>Bag Tag</th><th>Passenger</th><th>Destination</th><th>Airline</th><th>Source</th><th>Case</th><th>Status</th><th></th></tr></thead><tbody>${rows.map((row) => { const resolved = Boolean(row.caseNumber || row.acknowledgedAt); return `<tr><td>${escapeHtml(row.bagTag)}</td><td>${escapeHtml(row.passengerName)}</td><td>${escapeHtml(row.destination)}</td><td>${escapeHtml(row.airline)}</td><td>${escapeHtml(row.sourceAttachment || row.sourceEmailDate)}</td><td>${escapeHtml(row.caseNumber || '-')}</td><td>${escapeHtml(row.acknowledgedAt ? 'Acknowledged' : (row.caseNumber ? 'Case Created' : 'Open'))}</td><td>${resolved ? '' : `<div class="missing-actions"><button type="button" data-create-missing-case="${escapeHtml(row.rowNumber)}">Create CASE</button><button class="secondary" type="button" data-ack-missing="${escapeHtml(row.rowNumber)}">Acknowledge</button></div>`}</td></tr>`; }).join('')}</tbody></table>`;
+      missingReportOutput.innerHTML = `<table class="missing-report-table"><thead><tr><th>Bag Tag</th><th>Passenger</th><th>Destination</th><th>Airline</th><th>Source</th><th>Case</th><th>Status</th><th></th></tr></thead><tbody>${rows.map((row) => { const resolved = Boolean(row.caseNumber || row.acknowledgedAt); return `<tr><td>${escapeHtml(row.bagTag)}</td><td>${escapeHtml(row.passengerName)}</td><td>${escapeHtml(row.destination)}</td><td>${escapeHtml(row.airline)}</td><td>${escapeHtml(row.sourceAttachment || row.sourceEmailDate)}</td><td>${escapeHtml(row.caseNumber || '-')}</td><td>${escapeHtml(row.acknowledgedAt ? 'Acknowledged' : (row.caseNumber ? 'Case Created' : 'Open'))}</td><td>${resolved ? '' : `<div class="missing-actions"><button type="button" data-create-missing-case="${escapeHtml(row.rowNumber)}" data-missing-bag-tag="${escapeHtml(row.bagTag)}">Create CASE</button><button class="secondary" type="button" data-ack-missing="${escapeHtml(row.rowNumber)}">Acknowledge</button></div>`}</td></tr>`; }).join('')}</tbody></table>`;
     }
     async function loadMissingReports(sync = true) {
       try {
@@ -272,7 +275,10 @@
       try {
         const rowNumber = createButton ? createButton.dataset.createMissingCase : ackButton.dataset.ackMissing;
         const action = createButton ? 'create-case' : 'acknowledge';
-        const res = await fetch(`${apiBase}/cbs-missing-bags/${encodeURIComponent(rowNumber)}/${action}`, { method:'POST' });
+        const fetchOptions = createButton
+          ? { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ bagTag: createButton.dataset.missingBagTag || '' }) }
+          : { method:'POST' };
+        const res = await fetch(`${apiBase}/cbs-missing-bags/${encodeURIComponent(rowNumber)}/${action}`, fetchOptions);
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || (createButton ? 'Create case failed' : 'Acknowledge failed'));
         await loadMissingReports(false);
