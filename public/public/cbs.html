@@ -16,14 +16,16 @@
     h1,h2 { margin:0 0 10px; }
     p { line-height:1.65; }
     .muted { color:var(--muted); }
-    .missing-alert-wrap { display:flex; justify-content:center; }
-    .missing-alert { display:none; border:0; border-radius:999px; padding:12px 22px; background:#d92d20; color:#fff; font-weight:950; letter-spacing:.04em; box-shadow:0 0 0 0 rgba(217,45,32,.55); animation:missingPulse 1s infinite; }
-    .missing-alert.is-active { display:inline-flex; }
+    .missing-alert-wrap { display:flex; justify-content:flex-end; }
+    .missing-alert { display:none; border:0; border-radius:999px; padding:12px 22px; background:#d92d20; color:#fff; font-weight:950; letter-spacing:.04em; box-shadow:0 0 0 0 rgba(217,45,32,.55); }
+    .missing-alert.is-active { display:inline-flex; animation:missingPulse 1s infinite; }
+    .missing-alert.is-complete { display:inline-flex; background:var(--ok); box-shadow:none; animation:none; }
     @keyframes missingPulse { 0%{box-shadow:0 0 0 0 rgba(217,45,32,.55)} 70%{box-shadow:0 0 0 14px rgba(217,45,32,0)} 100%{box-shadow:0 0 0 0 rgba(217,45,32,0)} }
     .search-field { min-width:260px; max-width:360px; }
     .case-toolbar { display:flex; flex-wrap:nowrap; gap:10px; align-items:center; }
     .missing-actions { display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:flex-start; max-width:100%; }
     .missing-actions button { padding:10px 14px; white-space:normal; }
+    .case-link-button { padding:0; border-radius:0; background:transparent; color:var(--brand); font-weight:900; text-decoration:underline; }
     .missing-report-table { table-layout:auto; }
     .missing-report-table th:last-child,.missing-report-table td:last-child { width:230px; min-width:230px; }
     .actions { display:flex; gap:12px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
@@ -229,14 +231,18 @@
       const isComplete = (row) => Boolean(row.acknowledgedAt || row.linkedCaseUpdated);
       const openRows = rows.filter((row) => !isComplete(row));
       missingAlert.classList.toggle('is-active', openRows.length > 0);
+      missingAlert.classList.toggle('is-complete', rows.length > 0 && openRows.length === 0);
       if (!rows.length) { missingReportOutput.innerHTML = '<p class="muted">No MU missing bag rows found.</p>'; return; }
       missingReportOutput.innerHTML = `<table class="missing-report-table"><thead><tr><th>Bag Tag</th><th>Passenger</th><th>Destination</th><th>Airline</th><th>Source</th><th>Case</th><th>Status</th><th></th></tr></thead><tbody>${rows.map((row) => {
         const linkedCaseNumber = row.linkedCaseNumber || row.caseNumber || '';
         const status = row.acknowledgedAt ? 'Acknowledged' : (linkedCaseNumber ? (row.linkedCaseUpdated ? 'Updated' : 'Needs Update') : 'Open');
+        const caseHtml = linkedCaseNumber
+          ? `<button class="case-link-button" type="button" data-link-case="${escapeHtml(linkedCaseNumber)}">${escapeHtml(linkedCaseNumber)}</button>`
+          : '-';
         const actionHtml = linkedCaseNumber
-          ? `<div class="missing-actions"><button type="button" data-link-case="${escapeHtml(linkedCaseNumber)}">Link to Case</button></div>`
+          ? ''
           : `<div class="missing-actions"><button type="button" data-create-missing-case="${escapeHtml(row.rowNumber)}" data-missing-bag-tag="${escapeHtml(row.bagTag)}">Create CASE</button><button class="secondary" type="button" data-ack-missing="${escapeHtml(row.rowNumber)}">Acknowledge</button></div>`;
-        return `<tr><td>${escapeHtml(row.bagTag)}</td><td>${escapeHtml(row.passengerName)}</td><td>${escapeHtml(row.destination)}</td><td>${escapeHtml(row.airline)}</td><td>${escapeHtml(row.sourceAttachment || row.sourceEmailDate)}</td><td>${escapeHtml(linkedCaseNumber || '-')}</td><td>${escapeHtml(status)}</td><td>${row.acknowledgedAt ? '' : actionHtml}</td></tr>`;
+        return `<tr><td>${escapeHtml(row.bagTag)}</td><td>${escapeHtml(row.passengerName)}</td><td>${escapeHtml(row.destination)}</td><td>${escapeHtml(row.airline)}</td><td>${escapeHtml(row.sourceAttachment || row.sourceEmailDate)}</td><td>${caseHtml}</td><td>${escapeHtml(status)}</td><td>${row.acknowledgedAt ? '' : actionHtml}</td></tr>`;
       }).join('')}</tbody></table>`;
     }
     async function loadMissingReports(sync = true) {
@@ -247,7 +253,7 @@
         window._missingBagRows = data.rows || [];
         renderMissingReports(window._missingBagRows);
       } catch (error) {
-        missingAlert.classList.remove('is-active');
+        missingAlert.classList.remove('is-active', 'is-complete');
         missingReportOutput.innerHTML = `<p class="status err">${escapeHtml(error.message)}</p>`;
       }
     }
