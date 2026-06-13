@@ -187,6 +187,21 @@
         return bTime - aTime;
       });
     }
+    function displayBagTag(row) {
+      return row?.bagTag || String(row?.updateNote || '').match(/\bBag tag:\s*([^|]+)/i)?.[1]?.trim() || '';
+    }
+    function revealCase(caseNumber) {
+      const normalized = String(caseNumber || '').trim();
+      if (!normalized) return;
+      casesCard.hidden = false;
+      missingReportCard.hidden = true;
+      if (caseSearch) caseSearch.value = normalized;
+      renderCases();
+      const summary = Array.from(casesOutput.querySelectorAll('[data-toggle-case]')).find((item) => item.dataset.toggleCase === normalized);
+      const detail = Array.from(casesOutput.querySelectorAll('[data-detail-case]')).find((item) => item.dataset.detailCase === normalized);
+      if (detail) detail.hidden = false;
+      (summary || detail)?.scrollIntoView({ behavior:'smooth', block:'center' });
+    }
     function renderCases() {
       const query = String(caseSearch?.value || '').trim().toLowerCase();
       const rows = sortedCaseRows(window._cbsRows || []).filter((row) => !query || rowSearchText(row).includes(query));
@@ -197,7 +212,7 @@
         const caseType = inferCaseType(row);
         const details = detailRows(row).filter(([, value]) => hasValue(value));
         const detailHtml = details.length ? `<div class="detail-grid">${details.map(([key, value]) => `<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(renderValue(value))}</p>`).join('')}</div>` : '';
-        return `<tr class="case-summary" data-toggle-case="${escapeHtml(detailKey)}"><td><button class="secondary" type="button">${escapeHtml(caseNumberLabel)}</button></td><td>${escapeHtml(caseType || '-')}</td><td>${escapeHtml(row.bagTag || '-')}</td><td class="tracking-cell">${trackingHtml(row)}</td></tr><tr class="case-detail" data-detail-case="${escapeHtml(detailKey)}" hidden><td colspan="4">${detailHtml}${updateFormHtml(row)}</td></tr>`;
+        return `<tr class="case-summary" data-toggle-case="${escapeHtml(detailKey)}"><td><button class="secondary" type="button">${escapeHtml(caseNumberLabel)}</button></td><td>${escapeHtml(caseType || '-')}</td><td>${escapeHtml(displayBagTag(row) || '-')}</td><td class="tracking-cell">${trackingHtml(row)}</td></tr><tr class="case-detail" data-detail-case="${escapeHtml(detailKey)}" hidden><td colspan="4">${detailHtml}${updateFormHtml(row)}</td></tr>`;
       }).join('')}</tbody></table>`;
     }
     async function loadCases() {
@@ -211,10 +226,18 @@
       } catch (error) { casesOutput.innerHTML = `<p class="status err">${escapeHtml(error.message)}</p>`; }
     }
     function renderMissingReports(rows = []) {
-      const openRows = rows.filter((row) => !row.caseNumber && !row.acknowledgedAt);
+      const isComplete = (row) => Boolean(row.acknowledgedAt || row.linkedCaseUpdated);
+      const openRows = rows.filter((row) => !isComplete(row));
       missingAlert.classList.toggle('is-active', openRows.length > 0);
       if (!rows.length) { missingReportOutput.innerHTML = '<p class="muted">No MU missing bag rows found.</p>'; return; }
-      missingReportOutput.innerHTML = `<table class="missing-report-table"><thead><tr><th>Bag Tag</th><th>Passenger</th><th>Destination</th><th>Airline</th><th>Source</th><th>Case</th><th>Status</th><th></th></tr></thead><tbody>${rows.map((row) => { const resolved = Boolean(row.caseNumber || row.acknowledgedAt); return `<tr><td>${escapeHtml(row.bagTag)}</td><td>${escapeHtml(row.passengerName)}</td><td>${escapeHtml(row.destination)}</td><td>${escapeHtml(row.airline)}</td><td>${escapeHtml(row.sourceAttachment || row.sourceEmailDate)}</td><td>${escapeHtml(row.caseNumber || '-')}</td><td>${escapeHtml(row.acknowledgedAt ? 'Acknowledged' : (row.caseNumber ? 'Case Created' : 'Open'))}</td><td>${resolved ? '' : `<div class="missing-actions"><button type="button" data-create-missing-case="${escapeHtml(row.rowNumber)}" data-missing-bag-tag="${escapeHtml(row.bagTag)}">Create CASE</button><button class="secondary" type="button" data-ack-missing="${escapeHtml(row.rowNumber)}">Acknowledge</button></div>`}</td></tr>`; }).join('')}</tbody></table>`;
+      missingReportOutput.innerHTML = `<table class="missing-report-table"><thead><tr><th>Bag Tag</th><th>Passenger</th><th>Destination</th><th>Airline</th><th>Source</th><th>Case</th><th>Status</th><th></th></tr></thead><tbody>${rows.map((row) => {
+        const linkedCaseNumber = row.linkedCaseNumber || row.caseNumber || '';
+        const status = row.acknowledgedAt ? 'Acknowledged' : (linkedCaseNumber ? (row.linkedCaseUpdated ? 'Updated' : 'Needs Update') : 'Open');
+        const actionHtml = linkedCaseNumber
+          ? `<div class="missing-actions"><button type="button" data-link-case="${escapeHtml(linkedCaseNumber)}">Link to Case</button></div>`
+          : `<div class="missing-actions"><button type="button" data-create-missing-case="${escapeHtml(row.rowNumber)}" data-missing-bag-tag="${escapeHtml(row.bagTag)}">Create CASE</button><button class="secondary" type="button" data-ack-missing="${escapeHtml(row.rowNumber)}">Acknowledge</button></div>`;
+        return `<tr><td>${escapeHtml(row.bagTag)}</td><td>${escapeHtml(row.passengerName)}</td><td>${escapeHtml(row.destination)}</td><td>${escapeHtml(row.airline)}</td><td>${escapeHtml(row.sourceAttachment || row.sourceEmailDate)}</td><td>${escapeHtml(linkedCaseNumber || '-')}</td><td>${escapeHtml(status)}</td><td>${row.acknowledgedAt ? '' : actionHtml}</td></tr>`;
+      }).join('')}</tbody></table>`;
     }
     async function loadMissingReports(sync = true) {
       try {
@@ -259,12 +282,18 @@
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || 'Update failed');
         await loadCases();
+        await loadMissingReports(false);
       } catch (error) { alert(error.message); } finally { casesOutput.style.opacity = '1'; }
     }
     caseSearch?.addEventListener('input', renderCases);
     missingAlert?.addEventListener('click', async () => { casesCard.hidden = true; missingReportCard.hidden = false; await loadMissingReports(true); });
     backToCases?.addEventListener('click', () => { missingReportCard.hidden = true; casesCard.hidden = false; });
     missingReportOutput?.addEventListener('click', async (event) => {
+      const linkButton = event.target.closest('[data-link-case]');
+      if (linkButton) {
+        revealCase(linkButton.dataset.linkCase);
+        return;
+      }
       const createButton = event.target.closest('[data-create-missing-case]');
       const ackButton = event.target.closest('[data-ack-missing]');
       const button = createButton || ackButton;
