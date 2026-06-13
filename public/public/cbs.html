@@ -101,7 +101,8 @@
       if (row?.ahlBagDescription || row?.ahlBagBrandTag || row?.ahlFeatures || row?.ahlOtherFeatures) return 'AHL';
       return '';
     }
-    function renderValue(value) { return value == null || value === '' ? '-' : value; }
+    function hasValue(value) { return value != null && String(value).trim() !== ''; }
+    function renderValue(value) { return hasValue(value) ? value : '-'; }
     function trackingHtml(row) {
       const isClosed = /close/i.test(String(row?.status || ''));
       return `<div class="tracking-step"><span class="tracking-dot ${isClosed ? 'is-closed' : ''}"></span><span>${escapeHtml(isClosed ? label('Closed', '关闭') : label('Create', '创建'))}</span></div>`;
@@ -143,24 +144,27 @@
         [label('Update Note', '更新备注'), row.updateNote]
       ];
     }
-    function updateFormHtml(row, mode = 'rush') {
+    function updateFormHtml(row, mode = 'worldtracer') {
       if (!row.caseNumber) return `<p class="status err">${label('A case number is required in column A before this row can be updated.', 'A列需要有Case Number后才能更新。')}</p>`;
-      const active = ['rush', 'location', 'shipping'].includes(mode) ? mode : 'rush';
+      const active = ['worldtracer', 'rush', 'location', 'shipping'].includes(mode) ? mode : 'worldtracer';
       const input = (title, name, attrs = 'required') => `<label><span>${escapeHtml(title)}</span><input name="${escapeHtml(name)}" ${attrs} /></label>`;
-      const fields = active === 'rush'
-        ? [
-            input('Rush tag number', 'rushTagNumber'),
-            input('Rush to where?', 'rushToWhere'),
-            input('AKE number?', 'akeNumber'),
-            input('Option: World Tracer file #', 'worldTracerFileNumber', ''),
-            `<label class="wide"><span>Comment</span><textarea name="comment"></textarea></label>`
-          ].join('')
-        : active === 'location'
+      const fields = active === 'worldtracer'
+        ? input('File number', 'fileNumber')
+        : active === 'rush'
+          ? [
+              input('Rush tag number', 'rushTagNumber'),
+              input('Rush to where?', 'rushToWhere'),
+              input('AKE number?', 'akeNumber'),
+              input('Option: World Tracer file #', 'worldTracerFileNumber', ''),
+              `<label class="wide"><span>Comment</span><textarea name="comment"></textarea></label>`
+            ].join('')
+          : active === 'location'
           ? [input('Bag location', 'location'), `<label class="wide"><span>Comment</span><textarea name="comment"></textarea></label>`].join('')
           : [input('Tracking number', 'trackingNumber'), input('Shipping to where?', 'shippingTo'), `<label class="wide"><span>Comment</span><textarea name="comment"></textarea></label>`].join('');
       return `<form class="case-update" data-case="${escapeHtml(row.caseNumber)}" data-update-mode="${escapeHtml(active)}">
         <h2>${label('Update', '更新')}</h2>
         <div class="update-mode-actions">
+          <button type="button" data-cbs-update-mode="worldtracer" class="${active === 'worldtracer' ? 'is-active' : ''}">WORLDTRACER</button>
           <button type="button" data-cbs-update-mode="rush" class="${active === 'rush' ? 'is-active' : ''}">RUSH</button>
           <button type="button" data-cbs-update-mode="location" class="${active === 'location' ? 'is-active' : ''}">BAG LOCATION UPDATE</button>
           <button type="button" data-cbs-update-mode="shipping" class="${active === 'shipping' ? 'is-active' : ''}">SHIPPING</button>
@@ -188,8 +192,9 @@
         const detailKey = row.caseNumber || `row-${row.rowNumber || index}`;
         const caseNumberLabel = row.caseNumber || label('Missing case number', '缺少编号');
         const caseType = inferCaseType(row);
-        const details = detailRows(row);
-        return `<tr class="case-summary" data-toggle-case="${escapeHtml(detailKey)}"><td><button class="secondary" type="button">${escapeHtml(caseNumberLabel)}</button></td><td>${escapeHtml(caseType || '-')}</td><td>${escapeHtml(row.bagTag || '-')}</td><td class="tracking-cell">${trackingHtml(row)}</td></tr><tr class="case-detail" data-detail-case="${escapeHtml(detailKey)}" hidden><td colspan="4"><div class="detail-grid">${details.map(([key, value]) => `<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(renderValue(value))}</p>`).join('')}</div>${updateFormHtml(row)}</td></tr>`;
+        const details = detailRows(row).filter(([, value]) => hasValue(value));
+        const detailHtml = details.length ? `<div class="detail-grid">${details.map(([key, value]) => `<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(renderValue(value))}</p>`).join('')}</div>` : '';
+        return `<tr class="case-summary" data-toggle-case="${escapeHtml(detailKey)}"><td><button class="secondary" type="button">${escapeHtml(caseNumberLabel)}</button></td><td>${escapeHtml(caseType || '-')}</td><td>${escapeHtml(row.bagTag || '-')}</td><td class="tracking-cell">${trackingHtml(row)}</td></tr><tr class="case-detail" data-detail-case="${escapeHtml(detailKey)}" hidden><td colspan="4">${detailHtml}${updateFormHtml(row)}</td></tr>`;
       }).join('')}</tbody></table>`;
     }
     async function loadCases() {
@@ -225,7 +230,7 @@
       if (!updateForm) return;
       event.preventDefault();
       const payload = Object.fromEntries(new FormData(updateForm).entries());
-      payload.type = updateForm.dataset.updateMode || 'rush';
+      payload.type = updateForm.dataset.updateMode || 'worldtracer';
       await updateCase(updateForm.dataset.case, payload);
     });
     casesOutput.addEventListener('click', async (event) => {
