@@ -1318,8 +1318,13 @@ function missingRequiredCbsAttachmentTypes(attachments = []) {
 
 function buildCbsUpdateFields(update = {}) {
   const type = sanitizeCbsText(update.type, 40).toLowerCase();
-  if (!['rush', 'location', 'shipping'].includes(type)) return null;
+  if (!['worldtracer', 'rush', 'location', 'shipping'].includes(type)) return null;
   const comment = sanitizeCbsText(update.comment, 500);
+  if (type === 'worldtracer') {
+    const fileNumber = sanitizeCbsText(update.fileNumber || update.worldTracerFileNumber, 120).toUpperCase();
+    if (!fileNumber) return null;
+    return { status: 'WorldTracer', updateNote: `WORLDTRACER | File number: ${fileNumber}` };
+  }
   if (type === 'rush') {
     const rushTagNumber = sanitizeCbsText(update.rushTagNumber, 80).toUpperCase();
     const rushToWhere = sanitizeCbsText(update.rushToWhere, 120).toUpperCase();
@@ -1518,7 +1523,7 @@ app.post('/cbs-cases', async (req, res) => {
 app.post('/cbs-cases/:caseNumber/update', async (req, res) => {
   try {
     const updateFields = buildCbsUpdateFields(req.body || {});
-    if (!updateFields) return res.status(400).json({ error: 'Valid RUSH, BAG LOCATION UPDATE, or SHIPPING details are required' });
+    if (!updateFields) return res.status(400).json({ error: 'Valid WORLDTRACER, RUSH, BAG LOCATION UPDATE, or SHIPPING details are required' });
     const result = await updateCbsCase(req.params.caseNumber, updateFields);
     if (result.notFound) return res.status(404).json({ error: 'Case not found' });
     return res.json(result);
