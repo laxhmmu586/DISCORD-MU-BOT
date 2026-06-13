@@ -17,9 +17,9 @@
     p { line-height:1.65; }
     .muted { color:var(--muted); }
     .missing-alert-wrap { display:flex; justify-content:flex-end; }
-    .missing-alert { display:none; border:0; border-radius:999px; padding:12px 22px; background:#d92d20; color:#fff; font-weight:950; letter-spacing:.04em; box-shadow:0 0 0 0 rgba(217,45,32,.55); }
-    .missing-alert.is-active { display:inline-flex; animation:missingPulse 1s infinite; }
-    .missing-alert.is-complete { display:inline-flex; background:var(--ok); box-shadow:none; animation:none; }
+    .missing-alert { display:inline-flex; border:0; border-radius:999px; padding:12px 22px; background:var(--brand); color:#fff; font-weight:950; letter-spacing:.04em; box-shadow:none; animation:none; }
+    .missing-alert.is-active { background:#d92d20; box-shadow:0 0 0 0 rgba(217,45,32,.55); animation:missingPulse 1s infinite; }
+    .missing-alert.is-complete { background:var(--ok); box-shadow:none; animation:none; }
     @keyframes missingPulse { 0%{box-shadow:0 0 0 0 rgba(217,45,32,.55)} 70%{box-shadow:0 0 0 14px rgba(217,45,32,0)} 100%{box-shadow:0 0 0 0 rgba(217,45,32,0)} }
     .search-field { min-width:260px; max-width:360px; }
     .case-toolbar { display:flex; flex-wrap:nowrap; gap:10px; align-items:center; }
@@ -93,7 +93,6 @@
       document.documentElement.lang = lang;
       languageToggle.textContent = lang === 'en' ? '中文' : 'English';
       loadCases();
-      loadMissingReports(true);
     }
     languageToggle.addEventListener('click', () => setLanguage(document.documentElement.lang === 'en' ? 'zh' : 'en'));
     function label(en, zh) { return document.documentElement.lang === 'en' ? en : zh; }
@@ -250,6 +249,7 @@
         const res = await fetch(`${apiBase}/cbs-missing-bags?sync=${sync ? 'true' : 'false'}`);
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || 'Missing bag report loading failed');
+        window._missingReportLoaded = true;
         window._missingBagRows = data.rows || [];
         renderMissingReports(window._missingBagRows);
       } catch (error) {
@@ -288,7 +288,7 @@
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || 'Update failed');
         await loadCases();
-        await loadMissingReports(false);
+        if (window._missingReportLoaded || !missingReportCard.hidden) await loadMissingReports(false);
       } catch (error) { alert(error.message); } finally { casesOutput.style.opacity = '1'; }
     }
     caseSearch?.addEventListener('input', renderCases);
@@ -320,7 +320,7 @@
         await loadCases();
       } catch (error) { alert(error.message); } finally { button.disabled = false; button.textContent = originalText; }
     });
-    refreshCases.addEventListener('click', async () => { await loadCases(); await loadMissingReports(true); });
+    refreshCases.addEventListener('click', async () => { await loadCases(); });
     setLanguage('en');
   </script>
 </body>
