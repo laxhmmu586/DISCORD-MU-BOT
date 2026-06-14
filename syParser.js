@@ -1395,7 +1395,7 @@ ${section}`,
     const operationLineList = section.split(/\r?\n/)
       .map((line) => line.trim())
       .filter((line) => /^(?:API|GOV|ACC|MOD|BAG|BC|BAB|RES)\b/i.test(line));
-    const gateComments = ckinLineList.filter((item) => /^CKIN\s+NBRD\b/i.test(item));
+    const gateComments = [...new Set(ckinLineList.filter((item) => /^CKIN\s+NBRD\b/i.test(item)))];
     passengerRecord.gateComments = gateComments;
     passengerRecord.checkinDetails = operationLineList;
     const visaRelevantCkinLineList = ckinLineList.filter((line) => !isVisaIrrelevantCkinLine(line));
@@ -1439,6 +1439,11 @@ ${section}`,
       visaReason = visaPassReason('USA passport traveling to Bangkok');
     } else {
       visaReason = visaReviewReason(`Rule not implemented: passport ${passportNat || 'UNK'} to ${visaDest}`);
+    }
+
+    if (gateComments.length) {
+      visaStatus = 'review';
+      visaReason = `CKIN/NBRD: ${gateComments.join(' | ')}`;
     }
 
     const tkStatus = hasInfFlag ? (hasAdultTk && hasInfTk ? 'pass' : 'fail') : (hasAdultTk ? 'pass' : 'fail');
