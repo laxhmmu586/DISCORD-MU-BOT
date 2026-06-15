@@ -1582,6 +1582,14 @@
         font-size: 12px;
       }
 
+      .gov-summary-grid {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+      }
+
+      .gov-summary-grid .data-card {
+        min-width: 0;
+      }
+
       .gov-details-grid {
         margin-top: 26px !important;
       }
@@ -4917,7 +4925,7 @@
           if (!groupRows.length) return "";
           return `<article class="data-card gov-detail-card"><b>${escapeHtml(label)} Details</b>${renderBnButtons(groupRows, "", (row) => row.reason)}</article>`;
         }).filter(Boolean).join("");
-        renderPanel("GOV/AQQ", currentSy?.flightNo || "SY", `<div class="data-grid">${summary}</div>${details ? `<div class="data-grid gov-details-grid">${details}</div>` : ""}`);
+        renderPanel("GOV/AQQ", currentSy?.flightNo || "SY", `<div class="data-grid gov-summary-grid">${summary}</div>${details ? `<div class="data-grid gov-details-grid">${details}</div>` : ""}`);
         setPanelPassengerRows(rows);
       }
 
