@@ -726,7 +726,7 @@ function hasUnclearedApiSourceRisk(section) {
 
 function enrichGovAqqFromLog(log, syInfo, targetYmd = null) {
   if (!log || !syInfo?.flightNo || !syInfo?.flightDate) {
-    return { duplicatePassports: [], aqqTclBnList: [], govDtaBnList: [], passportExpBnList: [], wrongPassportBnList: [], passportCodeIssues: [] };
+    return { duplicatePassports: [], aqqTclBnList: [], govDtaBnList: [], passportExpBnList: [], wrongPassportBnList: [], missingApiBnList: [], passportCodeIssues: [] };
   }
   const sections = splitLogicalSections(log);
   const paxRecords = [];
@@ -788,6 +788,7 @@ ${section}`,
     const dobKey = paxInfoRawLine.match(/DOB\/?\s*[:\/-]?\s*(\d{6,8}|\d{2}[A-Z]{3}\d{2,4}|\d{4}-\d{2}-\d{2})/i)?.[1]?.toUpperCase() || '';
     const bookingName = extractBookingName(section);
     const latestApiAgent = extractLatestApiAgent(section);
+    const hasApiOperation = /^\s*API\s+/im.test(section);
     const needsReswipeByAgent = hasUnclearedApiSourceRisk(section);
     const hasPaxInfoLine = /PAX INFO\s*:/i.test(section);
     const hasPassportLine = /PASSPORT\s*:/i.test(section);
@@ -813,11 +814,14 @@ ${section}`,
       issueReasons.some((x) => x.startsWith('country codes not identical:'));
 
     const hasApiSourceRisk = needsReswipeByAgent;
+    if (!hasApiOperation) {
+      issueReasons.push('missing API item');
+    }
     if (hasApiSourceRisk) {
       issueReasons.push(`latest API by AGT${latestApiAgent}`);
     }
 
-    const hasCodeIssue = hasCountryCodeRisk || hasApiSourceRisk;
+    const hasCodeIssue = hasCountryCodeRisk || hasApiSourceRisk || !hasApiOperation;
     const passportRawLine = (section.match(/PASSPORT\s*:\s*([^\n\r]+)/i)?.[1] || '').trim().toUpperCase();
     const passportParts = passportRawLine.split('/').map((x) => x.trim());
     const expField = passportParts.find((part) => /^\d{6}$/.test(part)) || '';
@@ -845,6 +849,7 @@ ${section}`,
       bookingName,
       passportNo,
       latestApiAgent,
+      hasApiOperation,
       needsReswipeByAgent,
       hasAqqTcl: /\bAQQ\/TCL\/USA\b/i.test(section),
       dobKey,
@@ -907,6 +912,7 @@ ${section}`,
     govDtaBnList: [...new Set(paxRecords.filter((p) => p.hasGovDta).map((p) => p.bn))].sort(),
     passportExpBnList: [...new Set(passportExpBnList)].sort(),
     wrongPassportBnList: [...new Set(paxRecords.filter((p) => p.hasWrongPassport).map((p) => p.bn))].sort(),
+    missingApiBnList: [...new Set(paxRecords.filter((p) => !p.hasApiOperation).map((p) => p.bn))].sort(),
     passportCodeIssues: [...new Set(paxRecords.filter((p) => p.hasPassportCodeIssue).map((p) => p.bn))].sort(),
     duplicateReviewPairs,
     passportCodeIssueDetails: [...issueByBn.entries()]
@@ -1192,7 +1198,7 @@ function govAqqIssueBnSet(govAqq) {
     if (digits) issueBns.add(digits.padStart(3, '0'));
   };
   (govAqq?.duplicatePassports || []).forEach((item) => (item?.bns || []).forEach(addBn));
-  ['aqqTclBnList', 'govDtaBnList', 'passportExpBnList', 'wrongPassportBnList', 'passportCodeIssues'].forEach((key) => {
+  ['aqqTclBnList', 'govDtaBnList', 'passportExpBnList', 'wrongPassportBnList', 'missingApiBnList', 'passportCodeIssues'].forEach((key) => {
     (govAqq?.[key] || []).forEach(addBn);
   });
   return issueBns;
@@ -1278,6 +1284,7 @@ ${section}`,
     const hasGovFail = /\bGOV\/DTA\/CHN\b/i.test(section);
     const hasReview = /\bWEB\/EDI\/RESWIPE\b/i.test(section);
     const latestApiAgent = extractLatestApiAgent(section);
+    const hasApiOperation = /^\s*API\s+/im.test(section);
     const apiNotWhitelisted = hasUnclearedApiSourceRisk(section);
     const countryCodes = extractPassportCountryCodes(section);
     const countryCodeCountZero = countryCodes.length === 0;
@@ -1530,6 +1537,10 @@ ${section}`,
     if (isPassportExpired) { apiStatus = 'fail'; apiReasons.push(`Passport expired: ${expField}`); }
     if (passportNo && passportNo.length < 7) { apiStatus = 'fail'; apiReasons.push(`Wrong Passport: ${passportNo} has fewer than 7 characters`); }
     if (hasReview && apiStatus !== 'fail') { apiStatus = 'review'; apiReasons.push('WEB/EDI/Reswipe'); }
+    if (!hasApiOperation && apiStatus !== 'fail') {
+      apiStatus = 'review';
+      apiReasons.push('missing API item');
+    }
     if (apiNotWhitelisted && apiStatus !== 'fail') {
       apiStatus = 'review';
       apiReasons.push(`latest API AGT${latestApiAgent} not in whitelist`);
