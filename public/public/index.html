@@ -4724,7 +4724,7 @@
         const govIssueGroups = [gov.duplicatePassports, gov.aqqTclBnList, gov.govDtaBnList, gov.passportExpBnList, gov.wrongPassportBnList, gov.missingApiBnList];
         const govCount = govIssueGroups.reduce((sum, value) => sum + (Array.isArray(value) ? value.length : 0), 0);
         const webediCount = (gov.passportCodeIssues || []).length;
-        const nbrdCount = (sy.bnAudit || []).filter((row) => /NBRD|CKIN/i.test(row?.apiReason || row?.tkReason || row?.visaReason || row?.bagReason || "")).length;
+        const nbrdCount = (sy.bnAudit || []).filter(rowHasCkinNbrdIssue).length;
         setBadgeText("#chd-count", chdIssues);
         setBadgeText("#gov-count", govCount);
         setBadgeText("#webedi-count", webediCount);
@@ -5151,8 +5151,16 @@
         setPanelPassengerRows(rows);
       }
 
+      function auditReasonText(row) {
+        return [row?.apiReason, row?.tkReason, row?.visaReason, row?.bagReason].filter(Boolean).join(" | ");
+      }
+
+      function rowHasCkinNbrdIssue(row) {
+        return /NBRD|CKIN/i.test(auditReasonText(row));
+      }
+
       function renderNbrdPanel() {
-        const rows = applyWarningAck(enrichRowsWithPassengerData((currentSy?.bnAudit || []).filter((row) => /NBRD|CKIN/i.test(row?.apiReason || row?.tkReason || row?.visaReason || row?.bagReason || ""))).map((row) => {
+        const rows = applyWarningAck(enrichRowsWithPassengerData((currentSy?.bnAudit || []).filter(rowHasCkinNbrdIssue)).map((row) => {
           const detailLines = [row.apiReason, row.tkReason, row.visaReason, row.bagReason].filter(Boolean);
           return {
             ...row,
