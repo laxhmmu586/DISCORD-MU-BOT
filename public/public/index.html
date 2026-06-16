@@ -4724,7 +4724,7 @@
         const govIssueGroups = [gov.duplicatePassports, gov.aqqTclBnList, gov.govDtaBnList, gov.passportExpBnList, gov.wrongPassportBnList, gov.missingApiBnList];
         const govCount = govIssueGroups.reduce((sum, value) => sum + (Array.isArray(value) ? value.length : 0), 0);
         const webediCount = (gov.passportCodeIssues || []).length;
-        const nbrdCount = (sy.bnAudit || []).filter((row) => /NBRD|CKIN/i.test(row?.apiReason || row?.tkReason || row?.visaReason || row?.bagReason || "")).length;
+        const nbrdCount = (sy.bnAudit || []).filter(rowHasCkinNbrdIssue).length;
         setBadgeText("#chd-count", chdIssues);
         setBadgeText("#gov-count", govCount);
         setBadgeText("#webedi-count", webediCount);
@@ -5151,9 +5151,24 @@
         setPanelPassengerRows(rows);
       }
 
+      function ckinNbrdLines(row) {
+        const gateComments = Array.isArray(row?.passengerRecord?.gateComments) ? row.passengerRecord.gateComments : [];
+        const directGateComments = gateComments.filter((line) => /^CKIN\s+NBRD\b/i.test(String(line || "").trim()));
+        if (directGateComments.length) return directGateComments;
+        return [row?.apiReason, row?.tkReason, row?.visaReason, row?.bagReason]
+          .filter(Boolean)
+          .flatMap((text) => String(text).split(/\s*\|\s*|\n/))
+          .map((line) => line.replace(/^CKIN\/NBRD:\s*/i, "").trim())
+          .filter((line) => /^CKIN\s+NBRD\b/i.test(line));
+      }
+
+      function rowHasCkinNbrdIssue(row) {
+        return ckinNbrdLines(row).length > 0;
+      }
+
       function renderNbrdPanel() {
-        const rows = applyWarningAck(enrichRowsWithPassengerData((currentSy?.bnAudit || []).filter((row) => /NBRD|CKIN/i.test(row?.apiReason || row?.tkReason || row?.visaReason || row?.bagReason || ""))).map((row) => {
-          const detailLines = [row.apiReason, row.tkReason, row.visaReason, row.bagReason].filter(Boolean);
+        const rows = applyWarningAck(enrichRowsWithPassengerData((currentSy?.bnAudit || []).filter(rowHasCkinNbrdIssue)).map((row) => {
+          const detailLines = ckinNbrdLines(row);
           return {
             ...row,
             warningType: "CKIN/NBRD",
