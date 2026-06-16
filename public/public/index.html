@@ -4724,7 +4724,7 @@
         const govIssueGroups = [gov.duplicatePassports, gov.aqqTclBnList, gov.govDtaBnList, gov.passportExpBnList, gov.wrongPassportBnList, gov.missingApiBnList];
         const govCount = govIssueGroups.reduce((sum, value) => sum + (Array.isArray(value) ? value.length : 0), 0);
         const webediCount = (gov.passportCodeIssues || []).length;
-        const nbrdCount = (sy.bnAudit || []).filter((row) => /NBRD|CKIN/i.test(row?.apiReason || row?.tkReason || row?.visaReason || row?.bagReason || "")).length;
+        const nbrdCount = (sy.bnAudit || []).filter(rowHasCkinNbrdIssue).length;
         setBadgeText("#chd-count", chdIssues);
         setBadgeText("#gov-count", govCount);
         setBadgeText("#webedi-count", webediCount);
@@ -5151,17 +5151,34 @@
         setPanelPassengerRows(rows);
       }
 
+      function ckinNbrdLines(row) {
+        if (row?.offloaded) return [];
+        const gateComments = Array.isArray(row?.passengerRecord?.gateComments) ? row.passengerRecord.gateComments : [];
+        return gateComments
+          .map((line) => String(line || "").trim())
+          .filter((line) => /^CKIN\s+NBRD\b/i.test(line));
+      }
+
+      function ckinNbrdDetails(row) {
+        return ckinNbrdLines(row).map((line) => `CKIN/NBRD: ${line}`);
+      }
+
+      function rowHasCkinNbrdIssue(row) {
+        return ckinNbrdLines(row).length > 0;
+      }
+
       function renderNbrdPanel() {
-        const rows = applyWarningAck(enrichRowsWithPassengerData((currentSy?.bnAudit || []).filter((row) => /NBRD|CKIN/i.test(row?.apiReason || row?.tkReason || row?.visaReason || row?.bagReason || ""))).map((row) => {
-          const detailLines = [row.apiReason, row.tkReason, row.visaReason, row.bagReason].filter(Boolean);
+        const rows = applyWarningAck(enrichRowsWithPassengerData((currentSy?.bnAudit || []).filter(rowHasCkinNbrdIssue)).map((row) => {
+          const detailLines = ckinNbrdDetails(row);
           return {
             ...row,
             warningType: "CKIN/NBRD",
             warningReason: detailLines.join(" | ") || "CKIN/NBRD issue",
+            ckinNbrdDetailLines: detailLines,
           };
         }));
         const body = rows.length ? `<div class="panel-stats"><span class="status-fail">CKIN/NBRD total: ${rows.length}</span><span class="status-ok">Acknowledged: ${rows.filter((row) => (row.acknowledgements || []).length).length}</span></div><div class="psm-card-list">${rows.map((row, index) => {
-          const detailLines = [row.apiReason, row.tkReason, row.visaReason, row.bagReason].filter(Boolean);
+          const detailLines = Array.isArray(row.ckinNbrdDetailLines) ? row.ckinNbrdDetailLines : ckinNbrdDetails(row);
           const ackList = row.acknowledgements || [];
           const ackText = ackList.length ? `Acknowledged by ${ackList.map((ack) => ack.by).filter(Boolean).join(", ")}` : "Not acknowledged";
           const ownAck = userHasAcknowledged(ackList);
