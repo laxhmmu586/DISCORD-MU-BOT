@@ -5152,14 +5152,15 @@
       }
 
       function ckinNbrdLines(row) {
+        if (row?.offloaded) return [];
         const gateComments = Array.isArray(row?.passengerRecord?.gateComments) ? row.passengerRecord.gateComments : [];
-        const directGateComments = gateComments.filter((line) => /^CKIN\s+NBRD\b/i.test(String(line || "").trim()));
-        if (directGateComments.length) return directGateComments;
-        return [row?.apiReason, row?.tkReason, row?.visaReason, row?.bagReason]
-          .filter(Boolean)
-          .flatMap((text) => String(text).split(/\s*\|\s*|\n/))
-          .map((line) => line.replace(/^CKIN\/NBRD:\s*/i, "").trim())
+        return gateComments
+          .map((line) => String(line || "").trim())
           .filter((line) => /^CKIN\s+NBRD\b/i.test(line));
+      }
+
+      function ckinNbrdDetails(row) {
+        return ckinNbrdLines(row).map((line) => `CKIN/NBRD: ${line}`);
       }
 
       function rowHasCkinNbrdIssue(row) {
@@ -5168,15 +5169,16 @@
 
       function renderNbrdPanel() {
         const rows = applyWarningAck(enrichRowsWithPassengerData((currentSy?.bnAudit || []).filter(rowHasCkinNbrdIssue)).map((row) => {
-          const detailLines = ckinNbrdLines(row);
+          const detailLines = ckinNbrdDetails(row);
           return {
             ...row,
             warningType: "CKIN/NBRD",
             warningReason: detailLines.join(" | ") || "CKIN/NBRD issue",
+            ckinNbrdDetailLines: detailLines,
           };
         }));
         const body = rows.length ? `<div class="panel-stats"><span class="status-fail">CKIN/NBRD total: ${rows.length}</span><span class="status-ok">Acknowledged: ${rows.filter((row) => (row.acknowledgements || []).length).length}</span></div><div class="psm-card-list">${rows.map((row, index) => {
-          const detailLines = [row.apiReason, row.tkReason, row.visaReason, row.bagReason].filter(Boolean);
+          const detailLines = Array.isArray(row.ckinNbrdDetailLines) ? row.ckinNbrdDetailLines : ckinNbrdDetails(row);
           const ackList = row.acknowledgements || [];
           const ackText = ackList.length ? `Acknowledged by ${ackList.map((ack) => ack.by).filter(Boolean).join(", ")}` : "Not acknowledged";
           const ownAck = userHasAcknowledged(ackList);
