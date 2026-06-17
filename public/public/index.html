@@ -4719,12 +4719,13 @@
         document.querySelector("#checkin-accepted").innerHTML = tripleHtml(countTriple(sy.checkedIn));
         document.querySelector("#checkin-et").textContent = countTriple(sy.checkedInTicketed).join(" / ");
         setText("#rk-message", sy.rkMessage || "No RK message found.");
-        const chdIssues = (sy.chdList || []).filter((row) => row.hasChdCode === false).length;
+        const isClearLocked = (key) => document.querySelector(`.node[data-key="${key}"]`)?.dataset?.clearLocked === "true";
+        const chdIssues = isClearLocked("CHD") ? 0 : (sy.chdList || []).filter((row) => row.hasChdCode === false).length;
         const gov = sy.govAqq || {};
         const govIssueGroups = [gov.duplicatePassports, gov.aqqTclBnList, gov.govDtaBnList, gov.passportExpBnList, gov.wrongPassportBnList, gov.missingApiBnList];
-        const govCount = govIssueGroups.reduce((sum, value) => sum + (Array.isArray(value) ? value.length : 0), 0);
-        const webediCount = (gov.passportCodeIssues || []).length;
-        const nbrdCount = (sy.bnAudit || []).filter(rowHasCkinNbrdIssue).length;
+        const govCount = isClearLocked("GOV") ? 0 : govIssueGroups.reduce((sum, value) => sum + (Array.isArray(value) ? value.length : 0), 0);
+        const webediCount = isClearLocked("WEBEDI") ? 0 : (gov.passportCodeIssues || []).length;
+        const nbrdCount = isClearLocked("NBRD") ? 0 : (sy.bnAudit || []).filter(rowHasCkinNbrdIssue).length;
         setBadgeText("#chd-count", chdIssues);
         setBadgeText("#gov-count", govCount);
         setBadgeText("#webedi-count", webediCount);
