@@ -260,9 +260,14 @@ function findCrewApiStep(syInfo, stepKey) {
 }
 
 function rememberCompletedPreflightSteps(syInfo, isoDate) {
-  ['crewApis', 'net'].forEach((stepKey) => {
-    const step = findCrewApiStep(syInfo, stepKey);
-    if (step?.complete) preflightStepCache.set(preflightCacheKey(syInfo, isoDate, stepKey), { ...step });
+  (syInfo?.crewApis?.steps || []).forEach((step) => {
+    if (step?.key && step.complete) preflightStepCache.set(preflightCacheKey(syInfo, isoDate, step.key), { ...step });
+  });
+}
+
+function applyCachedCompletedPreflightSteps(syInfo, isoDate) {
+  (syInfo?.crewApis?.steps || []).forEach((step) => {
+    if (step?.key) applyCachedPreflightStep(syInfo, isoDate, step.key);
   });
 }
 
@@ -1936,8 +1941,7 @@ app.get(
         const isoDate = m ? `${yearFromFlight}-${months[m[2]] || '01'}-${m[1]}` : '';
         const syBagInfo = isoDate ? await getSyBagInfoByDate(isoDate, syInfo.flightDate) : null;
         rememberCompletedPreflightSteps(syInfo, isoDate);
-        applyCachedPreflightStep(syInfo, isoDate, 'crewApis');
-        applyCachedPreflightStep(syInfo, isoDate, 'net');
+        applyCachedCompletedPreflightSteps(syInfo, isoDate);
         syInfo.fscRateSheetSync = fscRateSheetSyncCache.get(isoDate) || { skipped: true, reason: 'sync pending' };
         syInfo.bookingSheetSync = syBookingSheetSyncCache.get(isoDate) || { skipped: true, reason: 'sync pending' };
         if (!applyCachedPreflightStep(syInfo, isoDate, 'gdCheck')) {
