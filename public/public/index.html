@@ -4705,7 +4705,10 @@
       function updateFlightFromSy(sy) {
         const sameFlight = currentSy?.flightNo === sy?.flightNo && currentSy?.flightDate === sy?.flightDate;
         currentSy = sy;
-        if (!sameFlight) currentWarningAckMap = {};
+        if (!sameFlight) {
+          currentWarningAckMap = {};
+          nodes.forEach((node) => node.removeAttribute("data-clear-locked"));
+        }
         setSyDetailsVisible(true);
         const reg = sy.aircraftRegistration || "---";
         const type = sy.aircraftType || sy.aircraftTypeRaw || "---";
@@ -4719,12 +4722,13 @@
         document.querySelector("#checkin-accepted").innerHTML = tripleHtml(countTriple(sy.checkedIn));
         document.querySelector("#checkin-et").textContent = countTriple(sy.checkedInTicketed).join(" / ");
         setText("#rk-message", sy.rkMessage || "No RK message found.");
-        const chdIssues = (sy.chdList || []).filter((row) => row.hasChdCode === false).length;
+        const isClearLocked = (key) => document.querySelector(`.node[data-key="${key}"]`)?.dataset?.clearLocked === "true";
+        const chdIssues = isClearLocked("CHD") ? 0 : (sy.chdList || []).filter((row) => row.hasChdCode === false).length;
         const gov = sy.govAqq || {};
         const govIssueGroups = [gov.duplicatePassports, gov.aqqTclBnList, gov.govDtaBnList, gov.passportExpBnList, gov.wrongPassportBnList, gov.missingApiBnList];
-        const govCount = govIssueGroups.reduce((sum, value) => sum + (Array.isArray(value) ? value.length : 0), 0);
-        const webediCount = (gov.passportCodeIssues || []).length;
-        const nbrdCount = (sy.bnAudit || []).filter(rowHasCkinNbrdIssue).length;
+        const govCount = isClearLocked("GOV") ? 0 : govIssueGroups.reduce((sum, value) => sum + (Array.isArray(value) ? value.length : 0), 0);
+        const webediCount = isClearLocked("WEBEDI") ? 0 : (gov.passportCodeIssues || []).length;
+        const nbrdCount = isClearLocked("NBRD") ? 0 : (sy.bnAudit || []).filter(rowHasCkinNbrdIssue).length;
         setBadgeText("#chd-count", chdIssues);
         setBadgeText("#gov-count", govCount);
         setBadgeText("#webedi-count", webediCount);
@@ -4763,6 +4767,7 @@
           else node.removeAttribute("data-alert");
           previousStarted = previousStarted && (key === "FSC" ? true : started);
         });
+        stopSyAutoRefreshWhenCcComplete();
         resetTimelineCenter();
       }
 
@@ -4813,6 +4818,18 @@
       function stopSyAutoRefresh() {
         if (syAutoRefreshTimer) clearInterval(syAutoRefreshTimer);
         syAutoRefreshTimer = null;
+      }
+
+      function nodeIsDone(key) {
+        return document.querySelector(`.node[data-key="${key}"]`)?.dataset?.status === "done";
+      }
+
+      function ccTimelineIsComplete() {
+        return ["CCL", "CC", "INITIAL_FLIGHT", "BDT_CHG"].every(nodeIsDone);
+      }
+
+      function stopSyAutoRefreshWhenCcComplete() {
+        if (ccTimelineIsComplete()) stopSyAutoRefresh();
       }
 
       async function refreshSy({ silent = true, background = false } = {}) {
