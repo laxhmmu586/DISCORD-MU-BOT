@@ -476,6 +476,106 @@ async function loadStoredReportRows(type, isoDate, options = {}) {
   return { rows: refreshed.rows.length ? refreshed.rows : rows, source: 'scan', scanned: true };
 }
 
+
+const deferredSyRefreshes = new Map();
+
+async function refreshDeferredSyData(syInfo, log, isoDate) {
+  const key = preflightCacheKey(syInfo, isoDate, 'deferredSyData');
+  if (deferredSyRefreshes.has(key)) return deferredSyRefreshes.get(key);
+
+  const work = (async () => {
+    try {
+      syInfo.fscRateSheetSync = await syncFscRateFromTodaySyLog(log, isoDate);
+    } catch (err) {
+      console.warn('FSC exchange rate sheet sync skipped:', err?.message || err);
+      syInfo.fscRateSheetSync = { skipped: true, error: err?.message || 'Sheet sync failed' };
+    }
+
+    try {
+      syInfo.bookingSheetSync = await syncSyBookingFromTodaySy(syInfo, isoDate);
+    } catch (err) {
+      console.warn('SY booking sheet sync skipped:', err?.message || err);
+      syInfo.bookingSheetSync = { skipped: true, error: err?.message || 'Sheet sync failed' };
+    }
+
+    try {
+      syInfo.psmMsgSheetSync = await syncPsmMsgRowsFromSyInfo(syInfo);
+    } catch (err) {
+      console.warn('PSM/MSG report sheet sync skipped:', err?.message || err);
+      syInfo.psmMsgSheetSync = { appended: 0, found: (syInfo.psmList || []).length, error: err?.message || 'Sheet sync failed' };
+    }
+
+    try {
+      syInfo.serviceSheetSync = await syncServiceReportRowsFromSyInfo(syInfo, isoDate || todayIsoUtc());
+    } catch (err) {
+      console.warn('INAD/WCH report sheet sync skipped:', err?.message || err);
+      syInfo.serviceSheetSync = { error: err?.message || 'Sheet sync failed' };
+    }
+
+    try {
+      syInfo.vipSheetSync = await syncVipRowsFromLog(log, isoDate || todayIsoUtc());
+    } catch (err) {
+      console.warn('VIP report sheet sync skipped:', err?.message || err);
+      syInfo.vipSheetSync = { appended: 0, found: 0, error: err?.message || 'Sheet sync failed' };
+    }
+
+    const gdQuery = syInfo.crewApis?.gdCheckQuery || null;
+    const gdStep = syInfo.crewApis?.steps?.find((step) => step.key === 'gdCheck');
+    if (!applyCachedPreflightStep(syInfo, isoDate, 'gdCheck') && gdStep && gdQuery?.flightNo && gdQuery?.flightDate) {
+      const gdSubject = gdQuery.emailSubject || `GD for ${gdQuery.flightNo}/${gdQuery.flightDate}`;
+      const gdResult = await getGdCheckEmail(gdQuery.flightNo, gdQuery.emailSubjectDate || gdQuery.flightDate, gdQuery.crew || [], gdSubject);
+      gdStep.complete = Boolean(gdResult.complete);
+      gdStep.time = gdResult.sentAt ? gdResult.sentAt.slice(11, 19) : '';
+      gdStep.searched = true;
+      gdStep.details = gdResult;
+      gdStep.detailText = gdResult.detailText || '';
+      gdStep.reason = gdResult.reason || '';
+      gdStep.searchQuery = gdResult.query || '';
+      gdStep.authMode = gdResult.authMode || '';
+      gdStep.gmailUser = gdResult.userId || '';
+      gdStep.searchDate = gdResult.searchDate || '';
+      gdStep.subject = gdSubject;
+      gdStep.tooltip = gdStep.complete
+        ? `GD CHECK complete: ${gdResult.matched || 0}/${gdResult.total || 0} crew matched`
+        : `GD CHECK issue: ${gdResult.reason || gdSubject}`;
+      cacheCompletedPreflightStep(syInfo, isoDate, 'gdCheck');
+    } else if (gdStep && !gdQuery?.flightNo) {
+      gdStep.searched = true;
+      gdStep.reason = 'Missing flight number, flight date, or CWD crew list for GD search.';
+    }
+
+    const nextDayQuery = syInfo.crewApis?.nextDayInfoQuery || null;
+    const nextDayStep = syInfo.crewApis?.steps?.find((step) => step.key === 'nextDayInfo');
+    if (!applyCachedPreflightStep(syInfo, isoDate, 'nextDayInfo') && nextDayStep && nextDayQuery?.flightNo && nextDayQuery?.flightDate) {
+      const nextDaySubject = nextDayQuery.emailSubject || `${nextDayQuery.flightNo} ${nextDayQuery.flightDate} flight information details`;
+      const nextDayEmail = await getNextDayInfoEmail(nextDayQuery.flightNo, nextDayQuery.emailSubjectDate || nextDayQuery.flightDate, nextDaySubject);
+      nextDayStep.complete = Boolean(nextDayEmail.sent || nextDayEmail.found);
+      nextDayStep.time = nextDayEmail.sentAt ? nextDayEmail.sentAt.slice(11, 19) : '';
+      nextDayStep.searched = true;
+      nextDayStep.details = nextDayEmail.details || {};
+      nextDayStep.detailText = nextDayStep.complete ? (nextDayEmail.detailText || '') : '';
+      nextDayStep.reason = nextDayEmail.reason || '';
+      nextDayStep.searchQuery = nextDayEmail.query || '';
+      nextDayStep.authMode = nextDayEmail.authMode || '';
+      nextDayStep.gmailUser = nextDayEmail.userId || '';
+      nextDayStep.searchDate = nextDayEmail.searchDate || '';
+      nextDayStep.subject = nextDaySubject;
+      nextDayStep.tooltip = nextDayStep.complete
+        ? `NEXTDAY INFO sent email found: ${nextDaySubject}`
+        : `NEXTDAY INFO not found: ${nextDayEmail.reason || nextDaySubject}`;
+      cacheCompletedPreflightStep(syInfo, isoDate, 'nextDayInfo');
+    } else if (nextDayStep && !nextDayQuery?.flightNo) {
+      nextDayStep.searched = true;
+      nextDayStep.reason = 'Missing flight number or next-day email subject date for Gmail search.';
+    }
+  })().finally(() => {
+    deferredSyRefreshes.delete(key);
+  });
+
+  deferredSyRefreshes.set(key, work);
+  return work;
+}
+
 async function syncTodayReportSheets() {
   for (const type of ['wheelchair', 'inad']) {
     try {
@@ -1838,118 +1938,27 @@ app.get(
         rememberCompletedPreflightSteps(syInfo, isoDate);
         applyCachedPreflightStep(syInfo, isoDate, 'crewApis');
         applyCachedPreflightStep(syInfo, isoDate, 'net');
-        try {
-          syInfo.fscRateSheetSync = await syncFscRateFromTodaySyLog(log, isoDate);
-        } catch (err) {
-          console.warn('FSC exchange rate sheet sync skipped:', err?.message || err);
-          syInfo.fscRateSheetSync = { skipped: true, error: err?.message || 'Sheet sync failed' };
+        syInfo.fscRateSheetSync = fscRateSheetSyncCache.get(isoDate) || { skipped: true, reason: 'sync pending' };
+        syInfo.bookingSheetSync = syBookingSheetSyncCache.get(isoDate) || { skipped: true, reason: 'sync pending' };
+        if (!applyCachedPreflightStep(syInfo, isoDate, 'gdCheck')) {
+          const gdStep = syInfo.crewApis?.steps?.find((step) => step.key === 'gdCheck');
+          if (gdStep) {
+            gdStep.searched = false;
+            gdStep.tooltip = 'GD CHECK will update in the background.';
+          }
         }
-        try {
-          syInfo.bookingSheetSync = await syncSyBookingFromTodaySy(syInfo, isoDate);
-        } catch (err) {
-          console.warn('SY booking sheet sync skipped:', err?.message || err);
-          syInfo.bookingSheetSync = { skipped: true, error: err?.message || 'Sheet sync failed' };
+        if (!applyCachedPreflightStep(syInfo, isoDate, 'nextDayInfo')) {
+          const nextDayStep = syInfo.crewApis?.steps?.find((step) => step.key === 'nextDayInfo');
+          if (nextDayStep) {
+            nextDayStep.searched = false;
+            nextDayStep.tooltip = 'NEXTDAY INFO will update in the background.';
+          }
         }
-        try {
-          syInfo.fscRateSheetSync = await syncFscRateFromTodaySyLog(log, isoDate);
-        } catch (err) {
-          console.warn('FSC exchange rate sheet sync skipped:', err?.message || err);
-          syInfo.fscRateSheetSync = { skipped: true, error: err?.message || 'Sheet sync failed' };
-        }
-        try {
-          syInfo.bookingSheetSync = await syncSyBookingFromTodaySy(syInfo, isoDate);
-        } catch (err) {
-          console.warn('SY booking sheet sync skipped:', err?.message || err);
-          syInfo.bookingSheetSync = { skipped: true, error: err?.message || 'Sheet sync failed' };
-        }
-        try {
-          syInfo.psmMsgSheetSync = await syncPsmMsgRowsFromSyInfo(syInfo);
-        } catch (err) {
-          console.warn('PSM/MSG report sheet sync skipped:', err?.message || err);
-          syInfo.psmMsgSheetSync = { appended: 0, found: (syInfo.psmList || []).length, error: err?.message || 'Sheet sync failed' };
-        }
-        try {
-          syInfo.serviceSheetSync = await syncServiceReportRowsFromSyInfo(syInfo, isoDate || todayIsoUtc());
-        } catch (err) {
-          console.warn('INAD/WCH report sheet sync skipped:', err?.message || err);
-          syInfo.serviceSheetSync = { error: err?.message || 'Sheet sync failed' };
-        }
-        try {
-          syInfo.vipSheetSync = await syncVipRowsFromLog(log, isoDate || todayIsoUtc());
-        } catch (err) {
-          console.warn('VIP report sheet sync skipped:', err?.message || err);
-          syInfo.vipSheetSync = { appended: 0, found: 0, error: err?.message || 'Sheet sync failed' };
-        }
-        const gdQuery = syInfo.crewApis?.gdCheckQuery || null;
-        const gdStep = syInfo.crewApis?.steps?.find((step) => step.key === 'gdCheck');
-        if (applyCachedPreflightStep(syInfo, isoDate, 'gdCheck')) {
-          // Reuse completed GD CHECK result from an earlier refresh.
-        } else if (gdStep && gdQuery?.flightNo && gdQuery?.flightDate) {
-          const gdSubject = gdQuery.emailSubject || `GD for ${gdQuery.flightNo}/${gdQuery.flightDate}`;
-          const gdResult = await getGdCheckEmail(gdQuery.flightNo, gdQuery.emailSubjectDate || gdQuery.flightDate, gdQuery.crew || [], gdSubject);
-          gdStep.complete = Boolean(gdResult.complete);
-          gdStep.time = gdResult.sentAt ? gdResult.sentAt.slice(11, 19) : '';
-          gdStep.searched = true;
-          gdStep.details = gdResult;
-          gdStep.detailText = gdResult.detailText || '';
-          gdStep.reason = gdResult.reason || '';
-          gdStep.searchQuery = gdResult.query || '';
-          gdStep.authMode = gdResult.authMode || '';
-          gdStep.gmailUser = gdResult.userId || '';
-          gdStep.searchDate = gdResult.searchDate || '';
-          gdStep.subject = gdSubject;
-          gdStep.tooltip = gdStep.complete
-            ? `GD CHECK complete: ${gdResult.matched || 0}/${gdResult.total || 0} crew matched`
-            : `GD CHECK issue: ${gdResult.reason || gdSubject}`;
-          cacheCompletedPreflightStep(syInfo, isoDate, 'gdCheck');
-        } else if (gdStep) {
-          const reason = 'Missing flight number, flight date, or CWD crew list for GD search.';
-          gdStep.complete = false;
-          gdStep.searched = true;
-          gdStep.reason = reason;
-          gdStep.detailText = `Reason: ${reason}`;
-          gdStep.tooltip = `GD CHECK not searched: ${reason}`;
-        }
-        const nextDayQuery = syInfo.crewApis?.nextDayInfoQuery || null;
-        const nextDayStep = syInfo.crewApis?.steps?.find((step) => step.key === 'nextDayInfo');
-        if (applyCachedPreflightStep(syInfo, isoDate, 'nextDayInfo')) {
-          // Reuse completed NEXTDAY INFO result from an earlier refresh.
-        } else if (nextDayStep && nextDayQuery?.flightNo && nextDayQuery?.flightDate) {
-          const nextDaySubject = nextDayQuery.emailSubject || `${nextDayQuery.flightNo} ${nextDayQuery.flightDate} flight information details`;
-          const nextDayEmail = await getNextDayInfoEmail(nextDayQuery.flightNo, nextDayQuery.emailSubjectDate || nextDayQuery.flightDate, nextDaySubject);
-          nextDayStep.complete = Boolean(nextDayEmail.sent || nextDayEmail.found);
-          nextDayStep.time = nextDayEmail.sentAt ? nextDayEmail.sentAt.slice(11, 19) : '';
-          nextDayStep.searched = true;
-          nextDayStep.details = nextDayEmail.details || {};
-          const diagnosticLines = [
-            ['Reason', nextDayEmail.reason],
-            ['Expected Subject', nextDaySubject],
-            ['Gmail Query', nextDayEmail.query],
-            ['Auth Mode', nextDayEmail.authMode],
-            ['Gmail User', nextDayEmail.userId],
-            ['Search Date', nextDayEmail.searchDate],
-            ['Recent Matches', nextDayEmail.rawMatchCount === undefined ? '' : String(nextDayEmail.rawMatchCount)],
-            ['Today Matches', nextDayEmail.todayMatchCount === undefined ? '' : String(nextDayEmail.todayMatchCount)]
-          ].filter(([, value]) => value !== null && value !== undefined && value !== '').map(([label, value]) => `${label}: ${value}`).join('\n');
-          nextDayStep.detailText = nextDayStep.complete ? (nextDayEmail.detailText || '') : diagnosticLines;
-          nextDayStep.reason = nextDayEmail.reason || '';
-          nextDayStep.searchQuery = nextDayEmail.query || '';
-          nextDayStep.authMode = nextDayEmail.authMode || '';
-          nextDayStep.gmailUser = nextDayEmail.userId || '';
-          nextDayStep.searchDate = nextDayEmail.searchDate || '';
-          nextDayStep.subject = nextDaySubject;
-          nextDayStep.tooltip = nextDayStep.complete
-            ? `NEXTDAY INFO sent email found: ${nextDaySubject}`
-            : `NEXTDAY INFO not found: ${nextDayEmail.reason || nextDaySubject}`;
-          cacheCompletedPreflightStep(syInfo, isoDate, 'nextDayInfo');
-        } else if (nextDayStep) {
-          const reason = 'Missing flight number or next-day email subject date for Gmail search.';
-          nextDayStep.complete = false;
-          nextDayStep.searched = true;
-          nextDayStep.reason = reason;
-          nextDayStep.detailText = `Reason: ${reason}`;
-          nextDayStep.tooltip = `NEXTDAY INFO not searched: ${reason}`;
-        }
+        setImmediate(() => {
+          refreshDeferredSyData(syInfo, log, isoDate).catch((err) => {
+            console.warn('Deferred SY refresh skipped:', err?.message || err);
+          });
+        });
         const authContext = await resolveAuthContextFromRequest(req);
         return res.json({ sy: { ...syInfo, bagSheet: syBagInfo, permissions: authContext.permissions } });
       }
