@@ -3568,6 +3568,7 @@
         <a href="#reports" id="report-nav-link">Report</a>
         <a href="#test" id="test-nav-link">Baggage</a>
         <a href="cbs.html" id="cbs-nav-link">CBS</a>
+        <a href="notes.html" id="notes-nav-link">NOTES</a>
       </nav>
       <div class="nav-row">
         <form class="search" id="mission-search" aria-label="Search mission">
@@ -3610,6 +3611,7 @@
       <a href="#reports" id="mobile-report-nav-link">Report</a>
       <a href="#test" id="mobile-test-nav-link">Baggage</a>
       <a href="cbs.html" id="mobile-cbs-nav-link">CBS</a>
+      <a href="notes.html" id="mobile-notes-nav-link">NOTES</a>
     </aside>
 
     <main>
@@ -3895,6 +3897,7 @@
       const auth = window.firebase?.apps?.length && window.firebase?.auth ? firebase.auth() : null;
       const APP_ENTRY_KEY = "mufc_allow_app_entry";
       const AUTH_SESSION_STARTED_KEY = "mufc_auth_session_started_at";
+      const AUTH_LAST_ACTIVITY_KEY = "mufc_auth_last_activity_at";
       const AUTH_SESSION_LIMIT_MS = 60 * 60 * 1000;
       const APP_ENTRY_GRACE_MS = 30 * 1000;
       const SY_AUTO_REFRESH_MS = 60 * 1000;
@@ -4003,8 +4006,8 @@
       }
 
       function authSessionAgeMs() {
-        const startedAt = Number(sessionStorage.getItem(AUTH_SESSION_STARTED_KEY) || 0);
-        return startedAt ? Date.now() - startedAt : Infinity;
+        const lastActivityAt = Number(sessionStorage.getItem(AUTH_LAST_ACTIVITY_KEY) || sessionStorage.getItem(AUTH_SESSION_STARTED_KEY) || 0);
+        return lastActivityAt ? Date.now() - lastActivityAt : Infinity;
       }
 
       function isAuthSessionExpired() {
@@ -4022,6 +4025,7 @@
       async function returnToLogin() {
         sessionStorage.removeItem(APP_ENTRY_KEY);
         sessionStorage.removeItem(AUTH_SESSION_STARTED_KEY);
+        sessionStorage.removeItem(AUTH_LAST_ACTIVITY_KEY);
         if (inactivityTimer) clearTimeout(inactivityTimer);
         const url = new URL(loginUrl());
         url.searchParams.set("forceLogin", "1");
@@ -4034,6 +4038,7 @@
       }
 
       function resetInactivityTimer() {
+        sessionStorage.setItem(AUTH_LAST_ACTIVITY_KEY, String(Date.now()));
         if (inactivityTimer) clearTimeout(inactivityTimer);
         inactivityTimer = setTimeout(() => {
           returnToLogin();
@@ -6786,6 +6791,10 @@
         auth.onAuthStateChanged((user) => {
           if (!user) {
             window.location.replace(loginUrl());
+            return;
+          }
+          if (isAuthSessionExpired()) {
+            returnToLogin();
             return;
           }
           currentUser.textContent = user.email || "Authenticated user";

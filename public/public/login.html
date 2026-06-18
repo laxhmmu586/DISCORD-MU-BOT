@@ -234,11 +234,19 @@
 
       const APP_ENTRY_KEY = "mufc_allow_app_entry";
       const AUTH_SESSION_STARTED_KEY = "mufc_auth_session_started_at";
+      const AUTH_LAST_ACTIVITY_KEY = "mufc_auth_last_activity_at";
+      const AUTH_SESSION_LIMIT_MS = 60 * 60 * 1000;
 
       function allowAppEntry() {
         const now = String(Date.now());
         sessionStorage.setItem(APP_ENTRY_KEY, now);
         sessionStorage.setItem(AUTH_SESSION_STARTED_KEY, now);
+        sessionStorage.setItem(AUTH_LAST_ACTIVITY_KEY, now);
+      }
+
+      function hasActiveSession() {
+        const lastActivityAt = Number(sessionStorage.getItem(AUTH_LAST_ACTIVITY_KEY) || sessionStorage.getItem(AUTH_SESSION_STARTED_KEY) || 0);
+        return Boolean(lastActivityAt && Date.now() - lastActivityAt < AUTH_SESSION_LIMIT_MS);
       }
 
       function getRedirectTarget() {
@@ -273,10 +281,16 @@
       } else {
         const auth = firebase.auth();
         let forceLogin = new URLSearchParams(window.location.search).has("forceLogin");
+        let interactiveLogin = false;
         auth.onAuthStateChanged(async (user) => {
-          if (user && !forceLogin) {
+          if (user && !forceLogin && (interactiveLogin || hasActiveSession())) {
             allowAppEntry();
             window.location.replace(getRedirectTarget(user));
+            return;
+          }
+          if (user && !forceLogin) {
+            await auth.signOut();
+            enableForm();
             return;
           }
           if (user && forceLogin) {
@@ -289,11 +303,13 @@
         form.addEventListener("submit", async (event) => {
           event.preventDefault();
           forceLogin = false;
+          interactiveLogin = true;
           submitButton.disabled = true;
           setStatus("Signing in...");
           try {
             await auth.signInWithEmailAndPassword(emailInput.value.trim(), passwordInput.value);
           } catch (error) {
+            interactiveLogin = false;
             submitButton.disabled = false;
             setStatus(friendlyAuthError(error), true);
           }
