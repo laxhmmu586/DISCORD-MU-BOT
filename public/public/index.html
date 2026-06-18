@@ -3411,20 +3411,25 @@
 
         .passenger-modal-backdrop {
           place-items: start center;
-          padding: 10px;
+          padding: calc(env(safe-area-inset-top, 0px) + 18px) 10px 10px;
         }
 
         .passenger-modal {
           width: calc(100vw - 24px);
-          max-height: calc(100svh - 24px);
+          max-height: calc(100svh - env(safe-area-inset-top, 0px) - 34px);
         }
 
         .record-card {
-          padding: 10px;
+          padding: 12px 10px 10px;
           border-radius: 16px;
         }
 
         .record-header {
+          position: sticky;
+          top: 0;
+          padding: 2px 0 10px;
+          background: linear-gradient(180deg, rgba(3, 20, 34, 0.96), rgba(3, 20, 34, 0.76));
+          backdrop-filter: blur(8px);
           gap: 10px;
         }
 
@@ -4653,12 +4658,12 @@
         overlay.innerHTML = `<article class="passenger-modal" role="dialog" aria-modal="true"><button class="panel-close" type="button" data-close-modal>×</button>${passengerRecordCard(data || {}, title)}</article>`;
         document.body.appendChild(overlay);
         enablePassengerModalDragScroll(overlay);
-        if (anchor) {
+        if (anchor && window.innerWidth > 760) {
           const modal = overlay.querySelector(".passenger-modal");
           const rect = anchor.getBoundingClientRect();
           overlay.style.placeItems = "start";
           modal.style.position = "fixed";
-          const viewportGap = window.innerWidth <= 760 ? 12 : 16;
+          const viewportGap = 16;
           const modalWidth = Math.min(620, window.innerWidth - (viewportGap * 2));
           const left = Math.min(Math.max(viewportGap, rect.left), window.innerWidth - modalWidth - viewportGap);
           const modalHeight = Math.min(modal.offsetHeight || 360, window.innerHeight - (viewportGap * 2));

@@ -5,32 +5,42 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>MUFC Notes</title>
   <style>
-    :root { --bg:#f5f7fb; --ink:#172033; --muted:#667085; --brand:#123a73; --line:#d7e1ec; --panel:#fff; --accent:#7c3aed; }
+    :root { --bg:#f4f1ea; --ink:#201f1e; --muted:#605e5c; --brand:#7719aa; --brand2:#4c1d95; --line:#ded8cf; --panel:#fffdf8; --page:#fff; --selected:#eadcff; }
     * { box-sizing:border-box; }
-    body { margin:0; font-family:Inter,Arial,"Noto Sans SC",sans-serif; background:linear-gradient(135deg,#eef5ff,#fff); color:var(--ink); }
-    header { position:sticky; top:0; z-index:10; display:flex; align-items:center; gap:14px; padding:16px clamp(16px,4vw,46px); background:rgba(255,255,255,.94); border-bottom:1px solid var(--line); backdrop-filter:blur(12px); }
-    .brand { font-weight:950; letter-spacing:.08em; color:var(--brand); text-decoration:none; }
-    nav { display:flex; gap:10px; flex-wrap:wrap; }
-    nav a, button, .button { border:0; border-radius:999px; padding:10px 15px; font-weight:850; background:#e8eef7; color:var(--brand); text-decoration:none; cursor:pointer; }
+    body { margin:0; min-height:100svh; font-family:Inter,Arial,"Noto Sans SC",sans-serif; background:var(--bg); color:var(--ink); }
+    header { position:sticky; top:0; z-index:20; display:flex; align-items:center; gap:12px; padding:12px clamp(12px,3vw,28px); background:#fffaf2; border-bottom:1px solid var(--line); box-shadow:0 8px 24px rgba(43,27,18,.06); }
+    .brand { font-weight:950; letter-spacing:.08em; color:var(--brand2); text-decoration:none; }
+    nav { display:flex; gap:8px; flex-wrap:wrap; }
+    nav a, button, .button { display:inline-flex; align-items:center; justify-content:center; border:0; border-radius:10px; padding:9px 12px; font-weight:850; background:#f0e7d8; color:#3b2f24; text-decoration:none; cursor:pointer; line-height:1.1; }
     button.primary, .button.primary { background:var(--brand); color:#fff; }
-    button.danger { background:#fee4e2; color:#b42318; }
-    main { width:min(1280px,95vw); margin:24px auto 48px; display:grid; grid-template-columns:270px 320px minmax(0,1fr); gap:16px; }
-    .card { background:var(--panel); border:1px solid var(--line); border-radius:22px; box-shadow:0 18px 42px rgba(22,48,76,.08); padding:18px; min-width:0; }
-    h1,h2,h3 { margin:0 0 10px; }
-    p { line-height:1.55; }
-    .muted { color:var(--muted); }
-    .stack { display:grid; gap:10px; }
-    .section-list,.page-list { display:grid; gap:8px; max-height:62vh; overflow:auto; padding-right:4px; }
-    .item { width:100%; border-radius:14px; text-align:left; background:#f4f7fb; color:var(--ink); display:flex; justify-content:space-between; gap:8px; align-items:center; }
-    .item.is-active { background:#efe7ff; color:#5b21b6; box-shadow:inset 4px 0 0 var(--accent); }
-    .item small { color:var(--muted); font-weight:750; }
-    label { display:grid; gap:6px; color:var(--muted); font-size:12px; font-weight:900; text-transform:uppercase; letter-spacing:.08em; }
-    input, textarea, select { width:100%; border:1px solid var(--line); border-radius:14px; padding:11px 12px; font:inherit; color:var(--ink); background:#fff; }
-    textarea { min-height:330px; resize:vertical; line-height:1.5; font-family:"Cascadia Mono","SFMono-Regular",Consolas,monospace; }
+    button.ghost, .button.ghost { background:#f7f1ff; color:var(--brand2); border:1px solid #d8c4ff; }
+    button.danger { background:#fde8e2; color:#a62310; }
+    main { height:calc(100svh - 58px); display:grid; grid-template-columns:210px 310px minmax(0,1fr); overflow:hidden; }
+    aside, section { min-width:0; min-height:0; }
+    .sections { background:#eee7db; border-right:1px solid var(--line); display:flex; flex-direction:column; }
+    .pages { background:#f8f5ef; border-right:1px solid var(--line); display:flex; flex-direction:column; }
+    .editor { background:var(--page); display:flex; flex-direction:column; }
+    .pane-head { padding:16px; border-bottom:1px solid var(--line); display:grid; gap:10px; }
+    .pane-head h1,.pane-head h2 { margin:0; letter-spacing:.02em; }
+    .pane-head p { margin:0; color:var(--muted); line-height:1.45; }
+    .section-list,.page-list { overflow:auto; padding:10px; display:grid; align-content:start; gap:6px; }
+    .section-list { padding-top:6px; }
+    .item { width:100%; min-height:42px; border-radius:8px; text-align:left; background:transparent; color:var(--ink); display:flex; justify-content:space-between; gap:8px; align-items:center; }
+    .item:hover { background:rgba(255,255,255,.65); }
+    .item.is-active { background:#fff; box-shadow:inset 5px 0 0 var(--brand); color:var(--brand2); }
+    .item small { color:var(--muted); font-weight:800; white-space:nowrap; }
+    .search-wrap { padding:12px 14px; border-bottom:1px solid var(--line); }
+    label { display:grid; gap:6px; color:#6b5873; font-size:12px; font-weight:900; text-transform:uppercase; letter-spacing:.08em; }
+    input, textarea { width:100%; border:1px solid #d8d0c4; border-radius:10px; padding:10px 12px; font:inherit; color:var(--ink); background:#fff; }
+    textarea { min-height:300px; flex:1; resize:none; line-height:1.5; font-family:"Cascadia Mono","SFMono-Regular",Consolas,monospace; }
+    .editor-head { padding:18px 22px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; gap:14px; align-items:start; }
+    .editor-head h2 { margin:0 0 6px; font-size:28px; }
+    .editor-body { padding:18px 22px 24px; overflow:auto; display:grid; gap:12px; }
     .toolbar { display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
-    .note-view { white-space:pre-wrap; border:1px solid var(--line); border-radius:18px; background:#fbfdff; padding:18px; min-height:260px; line-height:1.6; }
-    .source { border-left:4px solid var(--accent); background:#faf7ff; }
-    @media (max-width:980px){ main{grid-template-columns:1fr}.section-list,.page-list{max-height:none} }
+    .source-link { width:100%; }
+    .note-view { white-space:pre-wrap; border:1px solid var(--line); border-radius:14px; background:#fffdf7; padding:16px; min-height:160px; line-height:1.6; }
+    .hint { margin:10px; padding:12px; border-left:4px solid var(--brand); border-radius:10px; background:#fff8ff; color:var(--muted); line-height:1.45; }
+    @media (max-width:900px){ main{height:auto; min-height:calc(100svh - 58px); grid-template-columns:1fr}.sections,.pages,.editor{border-right:0;border-bottom:1px solid var(--line)}.section-list,.page-list{max-height:260px}.editor-head{position:sticky;top:58px;background:#fff;z-index:5}.editor-body{padding:14px}textarea{min-height:240px} }
   </style>
 </head>
 <body>
@@ -39,25 +49,30 @@
     <nav aria-label="Primary navigation"><a href="index.html">Home</a><a href="cbs.html">CBS</a><a href="notes.html">NOTES</a></nav>
   </header>
   <main>
-    <aside class="card stack">
-      <div><h1>NOTES</h1><p class="muted">把 OneNote 内容一条一条放进这里，保存在本机浏览器。</p></div>
-      <a class="button primary" target="_blank" rel="noopener" href="https://1drv.ms/o/c/f5e6db55afa655a4/IgCS_Pe2zMyfRKX4Tavw3trQASm8xGCuC6pz4DWN5xN8Y-0?e=1z2Kjr">Open OneNote source</a>
-      <section class="card source"><h3>How to use</h3><p class="muted">先 Add Section，再 Add Page，把 OneNote 页面内容复制进 Content，点 Save。</p></section>
-      <div class="toolbar"><h2>Sections</h2><button class="primary" id="add-section" type="button">Add Section</button></div>
+    <aside class="sections">
+      <div class="pane-head">
+        <h1>NOTES</h1>
+        <p>像 OneNote 一样按 Section / Page 保存。内容保存在本机浏览器。</p>
+        <a class="button ghost source-link" target="_blank" rel="noopener" href="https://1drv.ms/o/c/f5e6db55afa655a4/IgCS_Pe2zMyfRKX4Tavw3trQASm8xGCuC6pz4DWN5xN8Y-0?e=1z2Kjr">Open OneNote</a>
+        <button class="primary" id="add-section" type="button">Add Section</button>
+      </div>
+      <p class="hint">先 Add Section，再 Add Page，把 OneNote 页面复制到右边 Content，点 Save。</p>
       <div class="section-list" id="section-list"></div>
     </aside>
-    <section class="card stack">
-      <div class="toolbar"><h2 id="section-title">Pages</h2><button class="primary" id="add-page" type="button">Add Page</button></div>
-      <input id="note-search" type="search" placeholder="Search notes" />
+    <section class="pages">
+      <div class="pane-head"><div class="toolbar"><h2 id="section-title">Pages</h2><button class="primary" id="add-page" type="button">Add Page</button></div></div>
+      <div class="search-wrap"><input id="note-search" type="search" placeholder="Search notes" /></div>
       <div class="page-list" id="page-list"></div>
     </section>
-    <section class="card stack">
-      <div class="toolbar"><div><h2 id="page-heading">Select a page</h2><p class="muted" id="page-meta">Create notes from the left panels.</p></div><button class="danger" id="delete-page" type="button">Delete Page</button></div>
-      <label>Title<input id="note-title" placeholder="GO SHOW" /></label>
-      <label>Section<input id="note-section" placeholder="CODE" /></label>
-      <label>Content<textarea id="note-content" placeholder="Paste OneNote content here..."></textarea></label>
-      <div class="toolbar"><button class="primary" id="save-note" type="button">Save Note</button><span class="muted" id="note-status"></span></div>
-      <h3>Preview</h3><div class="note-view" id="note-preview"></div>
+    <section class="editor">
+      <div class="editor-head"><div><h2 id="page-heading">Select a page</h2><p id="page-meta">Create notes from the left panels.</p></div><button class="danger" id="delete-page" type="button">Delete</button></div>
+      <div class="editor-body">
+        <label>Title<input id="note-title" placeholder="GO SHOW" /></label>
+        <label>Section<input id="note-section" placeholder="CODE" /></label>
+        <label>Content<textarea id="note-content" placeholder="Paste OneNote content here..."></textarea></label>
+        <div class="toolbar"><button class="primary" id="save-note" type="button">Save Note</button><span id="note-status"></span></div>
+        <h3>Preview</h3><div class="note-view" id="note-preview"></div>
+      </div>
     </section>
   </main>
   <script>
@@ -93,7 +108,7 @@
       sectionList.innerHTML = sections().map((section) => `<button class="item ${section === selectedSection ? 'is-active' : ''}" data-section="${escapeHtml(section)}" type="button"><span>${escapeHtml(section)}</span><small>${notes.filter((note) => note.section === section).length}</small></button>`).join('');
       const pages = notes.filter((note) => note.section === selectedSection && (!query || `${note.title} ${note.content}`.toLowerCase().includes(query)));
       sectionTitle.textContent = `${selectedSection} Pages`;
-      pageList.innerHTML = pages.length ? pages.map((note) => `<button class="item ${note.id === selectedId ? 'is-active' : ''}" data-page="${note.id}" type="button"><span>${escapeHtml(note.title || 'Untitled')}</span><small>${new Date(note.updatedAt || Date.now()).toLocaleDateString()}</small></button>`).join('') : '<p class="muted">No pages in this section.</p>';
+      pageList.innerHTML = pages.length ? pages.map((note) => `<button class="item ${note.id === selectedId ? 'is-active' : ''}" data-page="${note.id}" type="button"><span>${escapeHtml(note.title || 'Untitled')}</span><small>${new Date(note.updatedAt || Date.now()).toLocaleDateString()}</small></button>`).join('') : '<p class="hint">No pages in this section.</p>';
       const note = selectedNote();
       if (note) { selectedId = note.id; noteTitle.value = note.title || ''; noteSection.value = note.section || selectedSection; noteContent.value = note.content || ''; pageHeading.textContent = note.title || 'Untitled'; pageMeta.textContent = `Section: ${note.section || 'General'}`; notePreview.innerHTML = escapeHtml(note.content || ''); }
       else { noteTitle.value = ''; noteSection.value = selectedSection; noteContent.value = ''; pageHeading.textContent = 'New page'; pageMeta.textContent = `Section: ${selectedSection}`; notePreview.innerHTML = ''; }
