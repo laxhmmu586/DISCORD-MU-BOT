@@ -1832,6 +1832,45 @@
         font-weight: 950;
       }
 
+
+
+      .ckin-nbrd-card {
+        grid-template-columns: 1fr;
+        gap: 14px;
+        align-items: stretch;
+      }
+
+      .ckin-nbrd-head {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        gap: 14px;
+        align-items: center;
+      }
+
+      .ckin-nbrd-passenger {
+        min-width: 0;
+        display: grid;
+        gap: 4px;
+      }
+
+      .ckin-nbrd-name {
+        color: #f6fbff;
+        font-size: 18px;
+        font-weight: 950;
+        line-height: 1.15;
+        overflow-wrap: anywhere;
+      }
+
+      .ckin-nbrd-seat {
+        color: #9bc8ff;
+        font-size: 13px;
+        font-weight: 900;
+        letter-spacing: 0.3px;
+        text-transform: uppercase;
+      }
+
       .psm-card-row {
         border-top: 1px solid rgba(176, 216, 255, 0.14);
         margin-top: 8px;
@@ -3421,6 +3460,53 @@
         .warning-card > .psm-badge,
         .psm-card > .psm-badge {
           justify-self: start;
+        }
+
+
+        .ckin-nbrd-card {
+          padding: 12px;
+          gap: 12px;
+          border-radius: 16px;
+        }
+
+        .ckin-nbrd-head {
+          grid-template-columns: auto minmax(0, 1fr);
+          gap: 10px;
+        }
+
+        .ckin-nbrd-head .psm-badge {
+          grid-column: 1 / -1;
+          justify-self: start;
+          padding: 5px 9px;
+          font-size: 11px;
+        }
+
+        .ckin-nbrd-head .bn-button {
+          width: 64px;
+          min-width: 64px;
+          height: 64px;
+          min-height: 64px;
+          font-size: 13px;
+          border-width: 3px;
+        }
+
+        .ckin-nbrd-name {
+          font-size: 16px;
+          line-height: 1.2;
+        }
+
+        .ckin-nbrd-seat {
+          font-size: 12px;
+        }
+
+        .ckin-nbrd-card .warning-ack-row {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 8px;
+        }
+
+        .ckin-nbrd-card .warning-ack-button {
+          width: 100%;
         }
 
         .passenger-modal-backdrop {
@@ -5295,7 +5381,7 @@
           const ackList = row.acknowledgements || [];
           const ackText = ackList.length ? `Acknowledged by ${ackList.map((ack) => ack.by).filter(Boolean).join(", ")}` : "Not acknowledged";
           const ownAck = userHasAcknowledged(ackList);
-          return `<article class="psm-card"><div class="psm-card-head"><span><button class="bn-button is-warning" type="button" data-passenger-index="${index}" data-passenger-bn="${escapeHtml(row.bn || "")}">BN${escapeHtml(row.bn || "---")}</button> <small>${escapeHtml(passengerName(row))} • ${escapeHtml(row.seat || "---")}</small></span><span class="psm-badge">CKIN/NBRD</span></div><div class="psm-card-row"><b>Detail</b><br>${detailLines.map((line) => escapeHtml(line)).join("<br>")}</div><div class="warning-ack-row"><button class="warning-ack-button" type="button" data-warning-ack="${index}" ${ownAck ? "disabled" : ""}>${ownAck ? "Acknowledged" : "Acknowledge"}</button><span class="warning-ack-note">${escapeHtml(ackText)}</span></div></article>`;
+          return `<article class="psm-card ckin-nbrd-card"><div class="ckin-nbrd-head"><button class="bn-button is-warning" type="button" data-passenger-index="${index}" data-passenger-bn="${escapeHtml(row.bn || "")}">BN${escapeHtml(row.bn || "---")}</button><div class="ckin-nbrd-passenger"><span class="ckin-nbrd-name">${escapeHtml(passengerName(row) || "Passenger")}</span><span class="ckin-nbrd-seat">Seat ${escapeHtml(row.seat || "---")}</span></div><span class="psm-badge">CKIN/NBRD</span></div><div class="psm-card-row"><b>Detail</b><br>${detailLines.map((line) => escapeHtml(line)).join("<br>")}</div><div class="warning-ack-row"><button class="warning-ack-button" type="button" data-warning-ack="${index}" ${ownAck ? "disabled" : ""}>${ownAck ? "Acknowledged" : "Acknowledge"}</button><span class="warning-ack-note">${escapeHtml(ackText)}</span></div></article>`;
         }).join("")}</div>` : `<p class="panel-muted">No NBRD/CKIN issue found.</p>`;
         renderPanel("CKIN/NBRD", currentSy?.flightNo || "SY", body);
         setPanelPassengerRows(rows);
