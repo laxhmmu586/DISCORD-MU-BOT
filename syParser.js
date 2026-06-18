@@ -682,8 +682,13 @@ function extractPassportCountryCodes(section) {
 
 function normalizeCountryCodeForRisk(code) {
   const raw = String(code || '').toUpperCase();
-  if (raw === 'GBR' || raw === 'GBN') return 'GB';
-  return raw;
+  const aliases = {
+    CN: 'CHN',
+    US: 'USA',
+    GB: 'GBR',
+    GBN: 'GBR'
+  };
+  return aliases[raw] || raw;
 }
 
 function extractBookingName(section) {
@@ -800,17 +805,17 @@ ${section}`,
     if (countryCodes.length !== 3) {
       issueReasons.push(`country code count is ${countryCodes.length}, expected 3`);
     }
-    if (countryCodes.some((c) => c.length !== 3)) {
-      issueReasons.push('contains non-3-letter country code');
-    }
     const normalizedCountryCodes = countryCodes.map(normalizeCountryCodeForRisk);
+    if (normalizedCountryCodes.some((c) => !/^[A-Z]{3}$/.test(c))) {
+      issueReasons.push('contains invalid country code');
+    }
     if (countryCodes.length === 3 && new Set(normalizedCountryCodes).size !== 1) {
       issueReasons.push(`country codes not identical: ${countryCodes.join('/')}`);
     }
     const hasCountryCodeRisk =
       issueReasons.includes('missing PAX INFO or PASSPORT line') ||
       issueReasons.some((x) => x.startsWith('country code count is')) ||
-      issueReasons.includes('contains non-3-letter country code') ||
+      issueReasons.includes('contains invalid country code') ||
       issueReasons.some((x) => x.startsWith('country codes not identical:'));
 
     const hasApiSourceRisk = needsReswipeByAgent;
