@@ -61,7 +61,9 @@ const {
   getCbsMissingBagReports,
   markCbsMissingBagCase,
   acknowledgeCbsMissingBag,
-  sendCbsCaseEmail
+  sendCbsCaseEmail,
+  readNotesDriveStore,
+  writeNotesDriveStore
 
 } = require('./googleDrive');
 
@@ -869,18 +871,11 @@ function pruneReviewStore(store) {
 
 
 async function readNotesStore() {
-  try {
-    const raw = await fs.readFile(NOTES_STORE_PATH, 'utf8');
-    const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === 'object' && Array.isArray(parsed.notes) ? parsed : { notes: [] };
-  } catch (err) {
-    if (err?.code === 'ENOENT') return { notes: [] };
-    throw err;
-  }
+  return readNotesDriveStore();
 }
 
 async function writeNotesStore(store) {
-  await fs.writeFile(NOTES_STORE_PATH, `${JSON.stringify(store, null, 2)}\n`);
+  await writeNotesDriveStore(store);
 }
 
 function sanitizeNoteText(value, max = 20000) {

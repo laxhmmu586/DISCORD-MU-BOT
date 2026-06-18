@@ -124,6 +124,50 @@ let syBagSheetTitle = '';
 
 let sheetAccessBlocked = false;
 
+const NOTES_DRIVE_FILE_ID = process.env.NOTES_DRIVE_FILE_ID || '';
+const NOTES_DRIVE_FILE_NAME = process.env.NOTES_DRIVE_FILE_NAME || 'mufc-notes-store.json';
+let notesDriveFileId = NOTES_DRIVE_FILE_ID;
+
+async function resolveNotesDriveFileId() {
+  if (notesDriveFileId) return notesDriveFileId;
+  const escapedName = NOTES_DRIVE_FILE_NAME.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  const response = await drive.files.list({
+    q: `name='${escapedName}' and trashed=false`,
+    fields: 'files(id,name,modifiedTime)',
+    spaces: 'drive',
+    pageSize: 1,
+    orderBy: 'modifiedTime desc'
+  });
+  notesDriveFileId = response.data.files?.[0]?.id || '';
+  return notesDriveFileId;
+}
+
+async function readNotesDriveStore() {
+  const fileId = await resolveNotesDriveFileId();
+  if (!fileId) return { notes: [] };
+  const response = await drive.files.get({ fileId, alt: 'media' }, { responseType: 'text' });
+  const parsed = JSON.parse(response.data || '{}');
+  return parsed && typeof parsed === 'object' && Array.isArray(parsed.notes) ? parsed : { notes: [] };
+}
+
+async function writeNotesDriveStore(store) {
+  const body = JSON.stringify(store && typeof store === 'object' ? store : { notes: [] }, null, 2) + '\n';
+  const media = { mimeType: 'application/json', body: Readable.from([body]) };
+  const fileId = await resolveNotesDriveFileId();
+  if (fileId) {
+    await drive.files.update({ fileId, media });
+    return { fileId };
+  }
+  const created = await drive.files.create({
+    requestBody: { name: NOTES_DRIVE_FILE_NAME, mimeType: 'application/json' },
+    media,
+    fields: 'id'
+  });
+  notesDriveFileId = created.data.id || '';
+  return { fileId: notesDriveFileId };
+}
+
+
 function normalizeBn(value) {
   const digits =
     String(value || '')
@@ -2900,5 +2944,7 @@ module.exports = {
   getCbsMissingBagReports,
   markCbsMissingBagCase,
   acknowledgeCbsMissingBag,
-  sendCbsCaseEmail
+  sendCbsCaseEmail,
+  readNotesDriveStore,
+  writeNotesDriveStore
 };

@@ -3517,6 +3517,7 @@
         .passenger-modal {
           width: calc(100vw - 24px);
           max-height: calc(100svh - env(safe-area-inset-top, 0px) - 34px);
+          overflow-x: hidden;
         }
 
         .passenger-modal-mobile-title {
@@ -3542,8 +3543,16 @@
         }
 
         .record-card {
+          box-sizing: border-box;
+          max-width: 100%;
+          min-width: 0;
           padding: 12px 10px 10px;
           border-radius: 16px;
+        }
+
+        .record-card,
+        .record-card * {
+          overflow-wrap: anywhere;
         }
 
         .record-header {
@@ -4290,7 +4299,7 @@
       async function fetchSearch(query) {
         const apiBase = resolveApiBase();
         const endpoint = `${apiBase}/search?q=${encodeURIComponent(query)}`;
-        const res = await fetch(endpoint, { headers: await authHeaders() });
+        const res = await fetch(endpoint, { cache: "no-store", headers: await authHeaders() });
         const type = res.headers.get("content-type") || "";
         if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
         if (!type.includes("application/json")) throw new Error(`Search API returned non-JSON from ${apiBase}.`);
@@ -4300,6 +4309,7 @@
       async function apiJson(path, options = {}) {
         const apiBase = resolveApiBase();
         const res = await fetch(`${apiBase}${path}`, {
+          cache: "no-store",
           ...options,
           headers: {
             ...(await authHeaders()),
@@ -4895,7 +4905,7 @@
         document.querySelector("#checkin-accepted").innerHTML = tripleHtml(countTriple(sy.checkedIn));
         document.querySelector("#checkin-et").textContent = countTriple(sy.checkedInTicketed).join(" / ");
         setText("#rk-message", sy.rkMessage || "No RK message found.");
-        const isClearLocked = (key) => document.querySelector(`.node[data-key="${key}"]`)?.dataset?.clearLocked === "true";
+        const isClearLocked = (_key) => false;
         const chdIssues = isClearLocked("CHD") ? 0 : (sy.chdList || []).filter((row) => row.hasChdCode === false).length;
         const gov = sy.govAqq || {};
         const govIssueGroups = [gov.duplicatePassports, gov.aqqTclBnList, gov.govDtaBnList, gov.passportExpBnList, gov.wrongPassportBnList, gov.missingApiBnList];
@@ -4943,8 +4953,7 @@
           node.dataset.status = key === "FSC" ? (complete ? "done" : "pending") : normalizeStatus(Boolean(complete), issueCount || (started && !complete ? 1 : 0), locked);
           node.dataset.time = String(time);
           if (complete && PERSISTENT_GREEN_NODE_KEYS.includes(key)) rememberCompletedSyNode(sy, key, time);
-          if (["CHD", "GOV", "WEBEDI", "NBRD"].includes(key) && complete && String(time).toUpperCase() === "CLEAR") node.dataset.clearLocked = "true";
-          else node.removeAttribute("data-clear-locked");
+          if (["CHD", "GOV", "WEBEDI", "NBRD"].includes(key)) node.removeAttribute("data-clear-locked");
           if (issueCount) node.dataset.alert = String(issueCount);
           else node.removeAttribute("data-alert");
           previousStarted = previousStarted && (key === "FSC" ? true : started);
