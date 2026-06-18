@@ -38,6 +38,16 @@
     .editor-head h2 { margin:0 0 6px; font-size:28px; }
     .editor-body { padding:18px 22px 24px; overflow:auto; display:grid; gap:12px; align-content:start; }
     .toolbar { display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
+    .color-toolbar { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+    .color-toolbar button { padding:7px 10px; border:1px solid #d8d0c4; background:#fff; }
+    .color-toolbar .red { color:#ff1f1f; }
+    .color-toolbar .blue { color:#2563eb; }
+    .color-toolbar .green { color:#059669; }
+    .color-toolbar .mark { background:#fff3a3; color:#4a3500; }
+    .note-red { color:#ff1f1f; }
+    .note-blue { color:#2563eb; }
+    .note-green { color:#059669; }
+    .note-mark { background:#fff3a3; color:#2b2110; padding:0 .12em; border-radius:.2em; }
     .source-link { width:100%; }
     .note-view { white-space:pre-wrap; border:1px solid var(--line); border-radius:14px; background:#fffdf7; padding:16px; min-height:220px; max-height:60svh; overflow:auto; line-height:1.6; font-family:"Cascadia Mono","SFMono-Regular",Consolas,monospace; }
     .hint { margin:10px; padding:12px; border-left:4px solid var(--brand); border-radius:10px; background:#fff8ff; color:var(--muted); line-height:1.45; }
@@ -70,7 +80,8 @@
       <div class="editor-body">
         <label class="editor-only">Title<input id="note-title" placeholder="GO SHOW" /></label>
         <label class="editor-only">Section<input id="note-section" placeholder="CODE" /></label>
-        <label class="editor-only">Content<textarea id="note-content" placeholder="Paste OneNote content here..."></textarea></label>
+        <label class="editor-only">Content<textarea id="note-content" placeholder="Paste OneNote content here... Use [red]text[/red], [blue]text[/blue], [green]text[/green], or [mark]text[/mark] for color."></textarea></label>
+        <div class="color-toolbar editor-only" aria-label="Note color tools"><button class="red" type="button" data-color-wrap="red">Red</button><button class="blue" type="button" data-color-wrap="blue">Blue</button><button class="green" type="button" data-color-wrap="green">Green</button><button class="mark" type="button" data-color-wrap="mark">Highlight</button></div>
         <div class="toolbar editor-only"><button class="primary" id="save-note" type="button">Save Note</button><span id="note-status"></span></div>
         <h3 id="content-heading">Content</h3><div class="note-view" id="note-preview"></div>
       </div>
@@ -116,6 +127,8 @@
     async function fetchSharedNotes(){ try { const response = await fetch('/notes', { cache: 'no-store' }); if (!response.ok) return; const data = await response.json(); if (Array.isArray(data.notes) && data.notes.length) { if (canEditNotes && startupNotes.length > data.notes.length) { applyNotesList(startupNotes); await saveSharedNotes(); } else { applyNotesList(data.notes); } } } catch (error) { console.warn('Unable to load shared notes.', error); } }
     async function saveSharedNotes(){ try { const response = await fetch('/notes', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Editor-Email': NOTE_EDITOR_EMAIL }, body: JSON.stringify({ editorEmail: NOTE_EDITOR_EMAIL, notes }) }); if (!response.ok) throw new Error(`HTTP ${response.status}`); } catch (error) { console.warn('Unable to save shared notes.', error); noteStatus.textContent = 'Saved locally only'; } }
     function escapeHtml(value){ return String(value || '').replace(/[&<>"']/g, (ch) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
+    function renderNoteContent(value){ const classes = { red:'note-red', blue:'note-blue', green:'note-green', mark:'note-mark' }; let html = escapeHtml(value); Object.entries(classes).forEach(([tag, className]) => { const pattern = new RegExp(`\\[${tag}\\]([\\s\\S]*?)\\[\\/${tag}\\]`, 'gi'); html = html.replace(pattern, `<span class="${className}">$1</span>`); }); return html; }
+    function wrapSelection(tag){ const start = noteContent.selectionStart ?? 0; const end = noteContent.selectionEnd ?? start; const before = noteContent.value.slice(0, start); const selected = noteContent.value.slice(start, end) || 'text'; const after = noteContent.value.slice(end); const wrapped = `[${tag}]${selected}[/${tag}]`; noteContent.value = `${before}${wrapped}${after}`; noteContent.focus(); noteContent.setSelectionRange(start + tag.length + 2, start + tag.length + 2 + selected.length); notePreview.innerHTML = renderNoteContent(noteContent.value); }
     function sections(){ return [...new Set(notes.map((note) => note.section || 'General'))].sort((a,b) => a.localeCompare(b)); }
     function selectedNote(){ return notes.find((note) => note.id === selectedId) || notes.find((note) => note.section === selectedSection) || null; }
     function render(){
@@ -125,13 +138,14 @@
       sectionTitle.textContent = `${selectedSection} Pages`;
       pageList.innerHTML = pages.length ? pages.map((note) => `<button class="item ${note.id === selectedId ? 'is-active' : ''}" data-page="${note.id}" type="button"><span>${escapeHtml(note.title || 'Untitled')}</span><small>${new Date(note.updatedAt || Date.now()).toLocaleDateString()}</small></button>`).join('') : '<p class="hint">No pages in this section.</p>';
       const note = selectedNote();
-      if (note) { selectedId = note.id; noteTitle.value = note.title || ''; noteSection.value = note.section || selectedSection; noteContent.value = note.content || ''; pageHeading.textContent = note.title || 'Untitled'; pageMeta.textContent = `Section: ${note.section || 'General'}`; notePreview.innerHTML = escapeHtml(note.content || ''); }
+      if (note) { selectedId = note.id; noteTitle.value = note.title || ''; noteSection.value = note.section || selectedSection; noteContent.value = note.content || ''; pageHeading.textContent = note.title || 'Untitled'; pageMeta.textContent = `Section: ${note.section || 'General'}`; notePreview.innerHTML = renderNoteContent(note.content || ''); }
       else { noteTitle.value = ''; noteSection.value = selectedSection; noteContent.value = ''; pageHeading.textContent = 'New page'; pageMeta.textContent = `Section: ${selectedSection}`; notePreview.innerHTML = ''; }
     }
     sectionList.addEventListener('click', (event) => { const button = event.target.closest('[data-section]'); if (!button) return; selectedSection = button.dataset.section; selectedId = notes.find((note) => note.section === selectedSection)?.id || ''; render(); });
     pageList.addEventListener('click', (event) => { const button = event.target.closest('[data-page]'); if (!button) return; selectedId = button.dataset.page; render(); });
     noteSearch.addEventListener('input', render);
-    noteContent.addEventListener('input', () => { notePreview.innerHTML = escapeHtml(noteContent.value); });
+    noteContent.addEventListener('input', () => { notePreview.innerHTML = renderNoteContent(noteContent.value); });
+    document.querySelectorAll('[data-color-wrap]').forEach((button) => button.addEventListener('click', () => wrapSelection(button.dataset.colorWrap)));
     document.querySelector('#add-section').addEventListener('click', () => { if (!canEditNotes) return; const name = prompt('Section name / 分区名称'); if (!name) return; selectedSection = name.trim(); selectedId = ''; render(); });
     document.querySelector('#add-page').addEventListener('click', async () => { if (!canEditNotes) return; const note = { id: crypto.randomUUID(), section: selectedSection || 'General', title: 'New Page', content: '', updatedAt: new Date().toISOString() }; notes.unshift(note); selectedId = note.id; await saveNotes(); render(); });
     document.querySelector('#save-note').addEventListener('click', async () => { if (!canEditNotes) return; let note = notes.find((item) => item.id === selectedId); if (!note) { note = { id: crypto.randomUUID() }; notes.unshift(note); selectedId = note.id; } note.title = noteTitle.value.trim() || 'Untitled'; note.section = noteSection.value.trim() || 'General'; note.content = noteContent.value; note.updatedAt = new Date().toISOString(); selectedSection = note.section; await saveNotes(); noteStatus.textContent = 'Saved'; setTimeout(() => noteStatus.textContent = '', 1500); render(); });
