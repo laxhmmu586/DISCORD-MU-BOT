@@ -2212,6 +2212,10 @@
         grid-template-columns: 1fr 1fr;
       }
 
+      .passenger-modal-mobile-title {
+        display: none;
+      }
+
       @keyframes modalFade {
         from { opacity: 0; }
         to { opacity: 1; }
@@ -3417,6 +3421,28 @@
         .passenger-modal {
           width: calc(100vw - 24px);
           max-height: calc(100svh - env(safe-area-inset-top, 0px) - 34px);
+        }
+
+        .passenger-modal-mobile-title {
+          position: sticky;
+          top: 0;
+          z-index: 5;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          margin-bottom: 8px;
+          padding: 10px 12px;
+          border-radius: 16px;
+          background: #fff7d6;
+          color: #1f2937;
+          box-shadow: 0 10px 28px rgba(0,0,0,.22);
+          font-weight: 950;
+        }
+
+        .passenger-modal-mobile-title strong {
+          color: #4c1d95;
+          font-size: 24px;
         }
 
         .record-card {
@@ -4655,7 +4681,8 @@
         document.querySelector(".passenger-modal-backdrop")?.remove();
         const overlay = document.createElement("div");
         overlay.className = "passenger-modal-backdrop";
-        overlay.innerHTML = `<article class="passenger-modal" role="dialog" aria-modal="true"><button class="panel-close" type="button" data-close-modal>×</button>${passengerRecordCard(data || {}, title)}</article>`;
+        const modalBnNumber = data?.bn || data?.passengerRecord?.bn || "---";
+        overlay.innerHTML = `<article class="passenger-modal" role="dialog" aria-modal="true"><button class="panel-close" type="button" data-close-modal>×</button><div class="passenger-modal-mobile-title"><span>${escapeHtml(title)}</span><strong>BN${escapeHtml(String(modalBnNumber).replace(/^BN/i, "") || "---")}</strong></div>${passengerRecordCard(data || {}, title)}</article>`;
         document.body.appendChild(overlay);
         enablePassengerModalDragScroll(overlay);
         if (anchor && window.innerWidth > 760) {

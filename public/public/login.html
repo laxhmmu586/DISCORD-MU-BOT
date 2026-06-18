@@ -250,6 +250,8 @@
       }
 
       function getRedirectTarget() {
+        const next = new URLSearchParams(window.location.search).get("next");
+        if (next && next.startsWith("/") && !next.startsWith("//")) return new URL(next, window.location.origin).href;
         return new URL("index.html", window.location.href).href;
       }
 
