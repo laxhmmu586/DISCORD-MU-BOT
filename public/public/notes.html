@@ -41,7 +41,7 @@
     .source-link { width:100%; }
     .note-view { white-space:pre-wrap; border:1px solid var(--line); border-radius:14px; background:#fffdf7; padding:16px; min-height:220px; max-height:60svh; overflow:auto; line-height:1.6; font-family:"Cascadia Mono","SFMono-Regular",Consolas,monospace; }
     .hint { margin:10px; padding:12px; border-left:4px solid var(--brand); border-radius:10px; background:#fff8ff; color:var(--muted); line-height:1.45; }
-    @media (max-width:900px){ main{height:auto; min-height:calc(100svh - 58px); grid-template-columns:1fr}.sections,.pages,.editor{border-right:0;border-bottom:1px solid var(--line)}.section-list,.page-list{max-height:260px}.editor-head{position:sticky;top:58px;background:#fff;z-index:5}.editor-body{padding:14px}textarea{min-height:240px} }
+    @media (max-width:900px){ main{height:auto; min-height:calc(100svh - 58px); grid-template-columns:1fr; overflow:visible}.sections,.pages,.editor{border-right:0;border-bottom:1px solid var(--line)}.section-list{max-height:180px}.page-list{max-height:none; overflow:visible}.editor-head{position:sticky;top:58px;background:#fff;z-index:5}.editor-body{padding:14px}textarea{min-height:240px} }
   </style>
 </head>
 <body>
@@ -87,7 +87,8 @@
     const auth = window.firebase?.apps?.length && window.firebase?.auth ? firebase.auth() : null;
     let canEditNotes = false;
     const sourceSeed = [{ id: crypto.randomUUID(), section: 'CODE', title: 'GO SHOW', content: 'GSY1 (GSJ1)\nPA YPVG#1XIA/LAKE,URES\n\nAPI 1/PAXLST    input passport information\nPA 1            Checkin\nBC 1            print boarding pass\n\nGO SHOW INAD OVERDATE\nGOSHOW FIRST\nPULLOVER TICKET\nPA #1,OVR/DATE,ET3', updatedAt: new Date().toISOString() }];
-    let notes = loadNotes();
+    const startupNotes = loadNotes();
+    let notes = startupNotes;
     let selectedSection = notes[0]?.section || 'CODE';
     let selectedId = notes[0]?.id || '';
     const sectionList = document.querySelector('#section-list');
@@ -111,7 +112,8 @@
     function loadNotes(){ try { const saved = JSON.parse(localStorage.getItem(NOTES_KEY) || '[]'); return Array.isArray(saved) && saved.length ? saved : sourceSeed; } catch { return sourceSeed; } }
     async function saveNotes(){ if (!canEditNotes) return; localStorage.setItem(NOTES_KEY, JSON.stringify(notes)); await saveSharedNotes(); }
     function applyEditMode(){ editorOnlyElements.forEach((el) => { el.hidden = !canEditNotes; }); readonlyOnlyElements.forEach((el) => { el.hidden = canEditNotes; }); noteContent.readOnly = !canEditNotes; noteTitle.readOnly = !canEditNotes; noteSection.readOnly = !canEditNotes; }
-    async function fetchSharedNotes(){ try { const response = await fetch('/notes', { cache: 'no-store' }); if (!response.ok) return; const data = await response.json(); if (Array.isArray(data.notes) && data.notes.length) { notes = data.notes; localStorage.setItem(NOTES_KEY, JSON.stringify(notes)); selectedSection = notes[0]?.section || selectedSection; selectedId = notes[0]?.id || selectedId; render(); } } catch (error) { console.warn('Unable to load shared notes.', error); } }
+    function applyNotesList(nextNotes){ notes = nextNotes; localStorage.setItem(NOTES_KEY, JSON.stringify(notes)); selectedSection = notes.find((note) => note.id === selectedId)?.section || notes[0]?.section || selectedSection; selectedId = notes.find((note) => note.id === selectedId)?.id || notes[0]?.id || selectedId; render(); }
+    async function fetchSharedNotes(){ try { const response = await fetch('/notes', { cache: 'no-store' }); if (!response.ok) return; const data = await response.json(); if (Array.isArray(data.notes) && data.notes.length) { if (canEditNotes && startupNotes.length > data.notes.length) { applyNotesList(startupNotes); await saveSharedNotes(); } else { applyNotesList(data.notes); } } } catch (error) { console.warn('Unable to load shared notes.', error); } }
     async function saveSharedNotes(){ try { const response = await fetch('/notes', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Editor-Email': NOTE_EDITOR_EMAIL }, body: JSON.stringify({ editorEmail: NOTE_EDITOR_EMAIL, notes }) }); if (!response.ok) throw new Error(`HTTP ${response.status}`); } catch (error) { console.warn('Unable to save shared notes.', error); noteStatus.textContent = 'Saved locally only'; } }
     function escapeHtml(value){ return String(value || '').replace(/[&<>"']/g, (ch) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
     function sections(){ return [...new Set(notes.map((note) => note.section || 'General'))].sort((a,b) => a.localeCompare(b)); }
@@ -135,7 +137,7 @@
     document.querySelector('#save-note').addEventListener('click', async () => { if (!canEditNotes) return; let note = notes.find((item) => item.id === selectedId); if (!note) { note = { id: crypto.randomUUID() }; notes.unshift(note); selectedId = note.id; } note.title = noteTitle.value.trim() || 'Untitled'; note.section = noteSection.value.trim() || 'General'; note.content = noteContent.value; note.updatedAt = new Date().toISOString(); selectedSection = note.section; await saveNotes(); noteStatus.textContent = 'Saved'; setTimeout(() => noteStatus.textContent = '', 1500); render(); });
     document.querySelector('#delete-page').addEventListener('click', async () => { if (!canEditNotes) return; if (!selectedId || !confirm('Delete this page?')) return; notes = notes.filter((note) => note.id !== selectedId); selectedId = notes.find((note) => note.section === selectedSection)?.id || notes[0]?.id || ''; selectedSection = notes.find((note) => note.id === selectedId)?.section || selectedSection; await saveNotes(); render(); });
     applyEditMode();
-    if (auth) auth.onAuthStateChanged(async (user) => { canEditNotes = String(user?.email || '').trim().toLowerCase() === NOTE_EDITOR_EMAIL; applyEditMode(); if (canEditNotes && notes.length > 1) await saveSharedNotes(); render(); });
+    if (auth) auth.onAuthStateChanged(async (user) => { canEditNotes = String(user?.email || '').trim().toLowerCase() === NOTE_EDITOR_EMAIL; applyEditMode(); if (canEditNotes && startupNotes.length > notes.length) applyNotesList(startupNotes); if (canEditNotes && notes.length > 1) await saveSharedNotes(); render(); });
     render();
     fetchSharedNotes();
   </script>
