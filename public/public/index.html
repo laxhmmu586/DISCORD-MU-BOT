@@ -3898,6 +3898,8 @@
       const AUTH_SESSION_LIMIT_MS = 60 * 60 * 1000;
       const APP_ENTRY_GRACE_MS = 30 * 1000;
       const SY_AUTO_REFRESH_MS = 60 * 1000;
+      const SY_COMPLETED_NODE_CACHE_KEY = "mufc_sy_completed_nodes_v1";
+      const PERSISTENT_GREEN_NODE_KEYS = ["CREW_APIS", "GD_CHECK", "FSC", "NEXTDAY_INFO", "NET"];
       let inactivityTimer = null;
       let syAutoRefreshTimer = null;
       let syAutoRefreshInFlight = false;
@@ -4100,6 +4102,44 @@
         const node = typeof nodeOrKey === "string" ? Array.from(nodes).find((item) => item.dataset.key === nodeOrKey) : nodeOrKey;
         const step = stepByKey(node?.dataset?.key || nodeOrKey);
         return step?.time || node?.dataset?.inputTime || node?.dataset?.time || "----";
+      }
+
+      function readCompletedSyNodeCache() {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(SY_COMPLETED_NODE_CACHE_KEY) || "{}");
+          return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+        } catch (_) {
+          return {};
+        }
+      }
+
+      function writeCompletedSyNodeCache(cache) {
+        try {
+          localStorage.setItem(SY_COMPLETED_NODE_CACHE_KEY, JSON.stringify(cache));
+        } catch (_) {}
+      }
+
+      function syCompletedNodeCacheKey(sy = currentSy) {
+        const flightNo = String(sy?.flightNo || "SY").toUpperCase();
+        const flightDate = String(sy?.flightDate || activeSyQuery || "TODAY").toUpperCase();
+        return `${flightNo}|${flightDate}`;
+      }
+
+      function completedSyNodeState(sy = currentSy) {
+        return readCompletedSyNodeCache()[syCompletedNodeCacheKey(sy)] || {};
+      }
+
+      function rememberCompletedSyNode(sy, key, time) {
+        if (!PERSISTENT_GREEN_NODE_KEYS.includes(key)) return;
+        const cache = readCompletedSyNodeCache();
+        const cacheKey = syCompletedNodeCacheKey(sy);
+        cache[cacheKey] = cache[cacheKey] || {};
+        cache[cacheKey][key] = {
+          complete: true,
+          time: String(time || "DONE"),
+          savedAt: new Date().toISOString()
+        };
+        writeCompletedSyNodeCache(cache);
       }
 
       function resolveApiBase() {
@@ -4744,9 +4784,11 @@
         if (bagReportButton) bagReportButton.hidden = !(sy.bagSheet?.hasData);
         refreshSalesReportButton(sy);
         let previousStarted = true;
+        const persistedGreenNodes = completedSyNodeState(sy);
         nodes.forEach((node) => {
           const key = node.dataset.key;
           const step = stepByKey(key);
+          const persistedGreenNode = PERSISTENT_GREEN_NODE_KEYS.includes(key) ? persistedGreenNodes[key] : null;
           let issueCount = 0;
           let complete = Boolean(step?.complete);
           let started = Boolean(step?.complete || step?.time);
@@ -4758,9 +4800,16 @@
           if (key === "GOV") { issueCount = govCount; started = Boolean(sy.govAqq) && previousStarted; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
           if (key === "WEBEDI") { issueCount = webediCount; started = Boolean(sy.govAqq) && previousStarted; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
           if (key === "NBRD") { issueCount = nbrdCount; started = (sy.bnAudit || []).length > 0 && previousStarted; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
+          if (persistedGreenNode?.complete) {
+            complete = true;
+            started = true;
+            issueCount = 0;
+            time = persistedGreenNode.time || time || "DONE";
+          }
           const locked = !previousStarted && !["GD_CHECK", "FSC", "NEXTDAY_INFO", "CHD", "GOV", "WEBEDI", "NBRD"].includes(key);
           node.dataset.status = key === "FSC" ? (complete ? "done" : "pending") : normalizeStatus(Boolean(complete), issueCount || (started && !complete ? 1 : 0), locked);
           node.dataset.time = String(time);
+          if (complete && PERSISTENT_GREEN_NODE_KEYS.includes(key)) rememberCompletedSyNode(sy, key, time);
           if (["CHD", "GOV", "WEBEDI", "NBRD"].includes(key) && complete && String(time).toUpperCase() === "CLEAR") node.dataset.clearLocked = "true";
           else node.removeAttribute("data-clear-locked");
           if (issueCount) node.dataset.alert = String(issueCount);
