@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MUFC Notes</title>
+  <style>
+    :root { --bg:#f4f1ea; --ink:#201f1e; --muted:#605e5c; --brand:#7719aa; --brand2:#4c1d95; --line:#ded8cf; --panel:#fffdf8; --page:#fff; --selected:#eadcff; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100svh; font-family:Inter,Arial,"Noto Sans SC",sans-serif; background:var(--bg); color:var(--ink); }
+    header { position:sticky; top:0; z-index:20; display:flex; align-items:center; gap:12px; padding:12px clamp(12px,3vw,28px); background:#fffaf2; border-bottom:1px solid var(--line); box-shadow:0 8px 24px rgba(43,27,18,.06); }
+    .brand { font-weight:950; letter-spacing:.08em; color:var(--brand2); text-decoration:none; }
+    nav { display:flex; gap:8px; flex-wrap:wrap; }
+    nav a, button, .button { display:inline-flex; align-items:center; justify-content:center; border:0; border-radius:10px; padding:9px 12px; font-weight:850; background:#f0e7d8; color:#3b2f24; text-decoration:none; cursor:pointer; line-height:1.1; }
+    button.primary, .button.primary { background:var(--brand); color:#fff; }
+    button.ghost, .button.ghost { background:#f7f1ff; color:var(--brand2); border:1px solid #d8c4ff; }
+    button.danger { background:#fde8e2; color:#a62310; }
+    button[hidden], .editor-only[hidden], .readonly-only[hidden] { display:none !important; }
+    main { height:calc(100svh - 58px); display:grid; grid-template-columns:210px 310px minmax(0,1fr); overflow:hidden; }
+    aside, section { min-width:0; min-height:0; }
+    .sections { background:#eee7db; border-right:1px solid var(--line); display:flex; flex-direction:column; }
+    .pages { background:#f8f5ef; border-right:1px solid var(--line); display:flex; flex-direction:column; }
+    .editor { background:var(--page); display:flex; flex-direction:column; }
+    .pane-head { padding:16px; border-bottom:1px solid var(--line); display:grid; gap:10px; }
+    .pane-head h1,.pane-head h2 { margin:0; letter-spacing:.02em; }
+    .pane-head p { margin:0; color:var(--muted); line-height:1.45; }
+    .section-list,.page-list { overflow:auto; padding:10px; display:grid; align-content:start; gap:6px; }
+    .section-list { padding-top:6px; }
+    .item { width:100%; min-height:42px; border-radius:8px; text-align:left; background:transparent; color:var(--ink); display:flex; justify-content:space-between; gap:8px; align-items:center; }
+    .item:hover { background:rgba(255,255,255,.65); }
+    .item.is-active { background:#fff; box-shadow:inset 5px 0 0 var(--brand); color:var(--brand2); }
+    .item small { color:var(--muted); font-weight:800; white-space:nowrap; }
+    .search-wrap { padding:12px 14px; border-bottom:1px solid var(--line); }
+    label { display:grid; gap:6px; color:#6b5873; font-size:12px; font-weight:900; text-transform:uppercase; letter-spacing:.08em; }
+    input, textarea { width:100%; border:1px solid #d8d0c4; border-radius:10px; padding:10px 12px; font:inherit; color:var(--ink); background:#fff; }
+    textarea { min-height:300px; flex:1; resize:none; line-height:1.5; font-family:"Cascadia Mono","SFMono-Regular",Consolas,monospace; }
+    .editor-head { padding:18px 22px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; gap:14px; align-items:start; }
+    .editor-head h2 { margin:0 0 6px; font-size:28px; }
+    .editor-body { padding:18px 22px 24px; overflow:auto; display:grid; gap:12px; align-content:start; }
+    .toolbar { display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
+    .source-link { width:100%; }
+    .note-view { white-space:pre-wrap; border:1px solid var(--line); border-radius:14px; background:#fffdf7; padding:16px; min-height:220px; max-height:60svh; overflow:auto; line-height:1.6; font-family:"Cascadia Mono","SFMono-Regular",Consolas,monospace; }
+    .hint { margin:10px; padding:12px; border-left:4px solid var(--brand); border-radius:10px; background:#fff8ff; color:var(--muted); line-height:1.45; }
+    @media (max-width:900px){ main{height:auto; min-height:calc(100svh - 58px); grid-template-columns:1fr}.sections,.pages,.editor{border-right:0;border-bottom:1px solid var(--line)}.section-list,.page-list{max-height:260px}.editor-head{position:sticky;top:58px;background:#fff;z-index:5}.editor-body{padding:14px}textarea{min-height:240px} }
+  </style>
+</head>
+<body>
+  <header>
+    <a class="brand" href="index.html">MUFC</a>
+    <nav aria-label="Primary navigation"><a href="index.html">Home</a><a href="cbs.html">CBS</a><a href="notes.html">NOTES</a></nav>
+  </header>
+  <main>
+    <aside class="sections">
+      <div class="pane-head">
+        <h1>NOTES</h1>
+        <p>像 OneNote 一样按 Section / Page 保存。内容保存在本机浏览器。</p>
+        <a class="button ghost source-link" target="_blank" rel="noopener" href="https://1drv.ms/o/c/f5e6db55afa655a4/IgCS_Pe2zMyfRKX4Tavw3trQASm8xGCuC6pz4DWN5xN8Y-0?e=1z2Kjr">Open OneNote</a>
+        <button class="primary editor-only" id="add-section" type="button">Add Section</button>
+      </div>
+      <p class="hint">先 Add Section，再 Add Page，把 OneNote 页面复制到右边 Content，点 Save。</p>
+      <div class="section-list" id="section-list"></div>
+    </aside>
+    <section class="pages">
+      <div class="pane-head"><div class="toolbar"><h2 id="section-title">Pages</h2><button class="primary editor-only" id="add-page" type="button">Add Page</button></div></div>
+      <div class="search-wrap"><input id="note-search" type="search" placeholder="Search notes" /></div>
+      <div class="page-list" id="page-list"></div>
+    </section>
+    <section class="editor">
+      <div class="editor-head"><div><h2 id="page-heading">Select a page</h2><p id="page-meta">Create notes from the left panels.</p></div><button class="danger editor-only" id="delete-page" type="button">Delete</button></div>
+      <div class="editor-body">
+        <label class="editor-only">Title<input id="note-title" placeholder="GO SHOW" /></label>
+        <label class="editor-only">Section<input id="note-section" placeholder="CODE" /></label>
+        <label class="editor-only">Content<textarea id="note-content" placeholder="Paste OneNote content here..."></textarea></label>
+        <div class="toolbar editor-only"><button class="primary" id="save-note" type="button">Save Note</button><span id="note-status"></span></div>
+        <h3 id="content-heading">Content</h3><div class="note-view" id="note-preview"></div>
+      </div>
+    </section>
+  </main>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="/__/firebase/init.js"></script>
+  <script>
+    const NOTES_KEY = 'mufc_notes_v1';
+    const LAST_ACTIVITY_KEY = 'mufc_auth_last_activity_at';
+    const SESSION_LIMIT_MS = 60 * 60 * 1000;
+    const NOTE_EDITOR_EMAIL = 'lake@mu.com';
+    const auth = window.firebase?.apps?.length && window.firebase?.auth ? firebase.auth() : null;
+    let canEditNotes = false;
+    const sourceSeed = [{ id: crypto.randomUUID(), section: 'CODE', title: 'GO SHOW', content: 'GSY1 (GSJ1)\nPA YPVG#1XIA/LAKE,URES\n\nAPI 1/PAXLST    input passport information\nPA 1            Checkin\nBC 1            print boarding pass\n\nGO SHOW INAD OVERDATE\nGOSHOW FIRST\nPULLOVER TICKET\nPA #1,OVR/DATE,ET3', updatedAt: new Date().toISOString() }];
+    let notes = loadNotes();
+    let selectedSection = notes[0]?.section || 'CODE';
+    let selectedId = notes[0]?.id || '';
+    const sectionList = document.querySelector('#section-list');
+    const pageList = document.querySelector('#page-list');
+    const noteSearch = document.querySelector('#note-search');
+    const sectionTitle = document.querySelector('#section-title');
+    const pageHeading = document.querySelector('#page-heading');
+    const pageMeta = document.querySelector('#page-meta');
+    const noteTitle = document.querySelector('#note-title');
+    const noteSection = document.querySelector('#note-section');
+    const noteContent = document.querySelector('#note-content');
+    const notePreview = document.querySelector('#note-preview');
+    const noteStatus = document.querySelector('#note-status');
+    const editorOnlyElements = [...document.querySelectorAll('.editor-only')];
+    const readonlyOnlyElements = [...document.querySelectorAll('.readonly-only')];
+    function touchSession(){ sessionStorage.setItem(LAST_ACTIVITY_KEY, String(Date.now())); }
+    function loginUrl(){ const url = new URL('login.html', window.location.href); url.searchParams.set('next', `${window.location.pathname}${window.location.search}${window.location.hash}`); url.searchParams.set('forceLogin', '1'); return url.href; }
+    function checkSession(){ const last = Number(sessionStorage.getItem(LAST_ACTIVITY_KEY) || 0); if (!last || Date.now() - last >= SESSION_LIMIT_MS) window.location.replace(loginUrl()); }
+    ['pointerdown','keydown','touchstart','scroll'].forEach((eventName) => window.addEventListener(eventName, touchSession, { passive:true }));
+    setInterval(checkSession, 60 * 1000); checkSession(); touchSession();
+    function loadNotes(){ try { const saved = JSON.parse(localStorage.getItem(NOTES_KEY) || '[]'); return Array.isArray(saved) && saved.length ? saved : sourceSeed; } catch { return sourceSeed; } }
+    async function saveNotes(){ if (!canEditNotes) return; localStorage.setItem(NOTES_KEY, JSON.stringify(notes)); await saveSharedNotes(); }
+    function applyEditMode(){ editorOnlyElements.forEach((el) => { el.hidden = !canEditNotes; }); readonlyOnlyElements.forEach((el) => { el.hidden = canEditNotes; }); noteContent.readOnly = !canEditNotes; noteTitle.readOnly = !canEditNotes; noteSection.readOnly = !canEditNotes; }
+    async function fetchSharedNotes(){ try { const response = await fetch('/notes', { cache: 'no-store' }); if (!response.ok) return; const data = await response.json(); if (Array.isArray(data.notes) && data.notes.length) { notes = data.notes; localStorage.setItem(NOTES_KEY, JSON.stringify(notes)); selectedSection = notes[0]?.section || selectedSection; selectedId = notes[0]?.id || selectedId; render(); } } catch (error) { console.warn('Unable to load shared notes.', error); } }
+    async function saveSharedNotes(){ try { const response = await fetch('/notes', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Editor-Email': NOTE_EDITOR_EMAIL }, body: JSON.stringify({ editorEmail: NOTE_EDITOR_EMAIL, notes }) }); if (!response.ok) throw new Error(`HTTP ${response.status}`); } catch (error) { console.warn('Unable to save shared notes.', error); noteStatus.textContent = 'Saved locally only'; } }
+    function escapeHtml(value){ return String(value || '').replace(/[&<>"']/g, (ch) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
+    function sections(){ return [...new Set(notes.map((note) => note.section || 'General'))].sort((a,b) => a.localeCompare(b)); }
+    function selectedNote(){ return notes.find((note) => note.id === selectedId) || notes.find((note) => note.section === selectedSection) || null; }
+    function render(){
+      const query = noteSearch.value.trim().toLowerCase();
+      sectionList.innerHTML = sections().map((section) => `<button class="item ${section === selectedSection ? 'is-active' : ''}" data-section="${escapeHtml(section)}" type="button"><span>${escapeHtml(section)}</span><small>${notes.filter((note) => note.section === section).length}</small></button>`).join('');
+      const pages = notes.filter((note) => note.section === selectedSection && (!query || `${note.title} ${note.content}`.toLowerCase().includes(query)));
+      sectionTitle.textContent = `${selectedSection} Pages`;
+      pageList.innerHTML = pages.length ? pages.map((note) => `<button class="item ${note.id === selectedId ? 'is-active' : ''}" data-page="${note.id}" type="button"><span>${escapeHtml(note.title || 'Untitled')}</span><small>${new Date(note.updatedAt || Date.now()).toLocaleDateString()}</small></button>`).join('') : '<p class="hint">No pages in this section.</p>';
+      const note = selectedNote();
+      if (note) { selectedId = note.id; noteTitle.value = note.title || ''; noteSection.value = note.section || selectedSection; noteContent.value = note.content || ''; pageHeading.textContent = note.title || 'Untitled'; pageMeta.textContent = `Section: ${note.section || 'General'}`; notePreview.innerHTML = escapeHtml(note.content || ''); }
+      else { noteTitle.value = ''; noteSection.value = selectedSection; noteContent.value = ''; pageHeading.textContent = 'New page'; pageMeta.textContent = `Section: ${selectedSection}`; notePreview.innerHTML = ''; }
+    }
+    sectionList.addEventListener('click', (event) => { const button = event.target.closest('[data-section]'); if (!button) return; selectedSection = button.dataset.section; selectedId = notes.find((note) => note.section === selectedSection)?.id || ''; render(); });
+    pageList.addEventListener('click', (event) => { const button = event.target.closest('[data-page]'); if (!button) return; selectedId = button.dataset.page; render(); });
+    noteSearch.addEventListener('input', render);
+    noteContent.addEventListener('input', () => { notePreview.innerHTML = escapeHtml(noteContent.value); });
+    document.querySelector('#add-section').addEventListener('click', () => { if (!canEditNotes) return; const name = prompt('Section name / 分区名称'); if (!name) return; selectedSection = name.trim(); selectedId = ''; render(); });
+    document.querySelector('#add-page').addEventListener('click', async () => { if (!canEditNotes) return; const note = { id: crypto.randomUUID(), section: selectedSection || 'General', title: 'New Page', content: '', updatedAt: new Date().toISOString() }; notes.unshift(note); selectedId = note.id; await saveNotes(); render(); });
+    document.querySelector('#save-note').addEventListener('click', async () => { if (!canEditNotes) return; let note = notes.find((item) => item.id === selectedId); if (!note) { note = { id: crypto.randomUUID() }; notes.unshift(note); selectedId = note.id; } note.title = noteTitle.value.trim() || 'Untitled'; note.section = noteSection.value.trim() || 'General'; note.content = noteContent.value; note.updatedAt = new Date().toISOString(); selectedSection = note.section; await saveNotes(); noteStatus.textContent = 'Saved'; setTimeout(() => noteStatus.textContent = '', 1500); render(); });
+    document.querySelector('#delete-page').addEventListener('click', async () => { if (!canEditNotes) return; if (!selectedId || !confirm('Delete this page?')) return; notes = notes.filter((note) => note.id !== selectedId); selectedId = notes.find((note) => note.section === selectedSection)?.id || notes[0]?.id || ''; selectedSection = notes.find((note) => note.id === selectedId)?.section || selectedSection; await saveNotes(); render(); });
+    applyEditMode();
+    if (auth) auth.onAuthStateChanged(async (user) => { canEditNotes = String(user?.email || '').trim().toLowerCase() === NOTE_EDITOR_EMAIL; applyEditMode(); if (canEditNotes && notes.length > 1) await saveSharedNotes(); render(); });
+    render();
+    fetchSharedNotes();
+  </script>
+</body>
+</html>
