@@ -822,6 +822,8 @@ app.use(
 
 const REVIEW_STORE_PATH = path.join(__dirname, 'securityReviews.json');
 const WARNING_ACK_STORE_PATH = path.join(__dirname, 'warningAcknowledgements.json');
+const NOTES_STORE_PATH = path.join(__dirname, 'notesStore.json');
+const NOTES_EDITOR_EMAIL = 'lake@mu.com';
 const REVIEW_RETENTION_MS = 365 * 24 * 60 * 60 * 1000;
 
 function reviewCutoffIso() {
@@ -864,6 +866,54 @@ function pruneReviewStore(store) {
   return store;
 }
 
+
+
+async function readNotesStore() {
+  try {
+    const raw = await fs.readFile(NOTES_STORE_PATH, 'utf8');
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' && Array.isArray(parsed.notes) ? parsed : { notes: [] };
+  } catch (err) {
+    if (err?.code === 'ENOENT') return { notes: [] };
+    throw err;
+  }
+}
+
+async function writeNotesStore(store) {
+  await fs.writeFile(NOTES_STORE_PATH, `${JSON.stringify(store, null, 2)}\n`);
+}
+
+function sanitizeNoteText(value, max = 20000) {
+  return String(value || '').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '').slice(0, max);
+}
+
+function sanitizeNote(note) {
+  const now = new Date().toISOString();
+  const id = sanitizeNoteText(note?.id || `${Date.now()}-${Math.random().toString(36).slice(2)}`, 120) || `${Date.now()}`;
+  return {
+    id,
+    section: sanitizeNoteText(note?.section || 'General', 120).trim() || 'General',
+    title: sanitizeNoteText(note?.title || 'Untitled', 200).trim() || 'Untitled',
+    content: sanitizeNoteText(note?.content || '', 20000),
+    updatedAt: sanitizeNoteText(note?.updatedAt || now, 60) || now
+  };
+}
+
+function sanitizeNotesList(notes) {
+  const seen = new Set();
+  return (Array.isArray(notes) ? notes : [])
+    .map(sanitizeNote)
+    .filter((note) => {
+      if (seen.has(note.id)) return false;
+      seen.add(note.id);
+      return true;
+    })
+    .slice(0, 1000);
+}
+
+function requestEditorEmail(req) {
+  return String(req.body?.editorEmail || req.headers['x-editor-email'] || '').trim().toLowerCase();
+}
 
 async function readWarningAckStore() {
   try {
@@ -987,6 +1037,30 @@ client.once(
   }
 );
 
+
+
+app.get('/notes', async (req, res) => {
+  try {
+    const store = await readNotesStore();
+    return res.json({ notes: sanitizeNotesList(store.notes) });
+  } catch (err) {
+    return res.status(500).json({ error: err?.message || 'Notes lookup failed' });
+  }
+});
+
+app.post('/notes', async (req, res) => {
+  try {
+    if (requestEditorEmail(req) !== NOTES_EDITOR_EMAIL) {
+      return res.status(403).json({ error: 'Only lake@mu.com can edit notes' });
+    }
+    const notes = sanitizeNotesList(req.body?.notes);
+    const store = { notes, updatedAt: new Date().toISOString(), updatedBy: NOTES_EDITOR_EMAIL };
+    await writeNotesStore(store);
+    return res.json({ ok: true, notes: store.notes, updatedAt: store.updatedAt });
+  } catch (err) {
+    return res.status(500).json({ error: err?.message || 'Notes save failed' });
+  }
+});
 
 app.get('/security-reviews', async (req, res) => {
   try {

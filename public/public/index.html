@@ -3156,6 +3156,8 @@
         }
 
         main {
+          width: 100%;
+          max-width: 100vw;
           height: auto;
           min-height: 100svh;
           overflow: visible;
@@ -3169,15 +3171,17 @@
         }
 
         .hero {
+          width: 100%;
+          max-width: 100vw;
           height: auto;
           min-height: calc(100svh - 68px);
-          overflow: visible;
+          overflow: hidden;
         }
 
         .mission-head {
           display: block;
-          width: min(100% - 32px, 1120px);
-          margin-top: 34px;
+          width: min(calc(100vw - 32px), 1120px);
+          margin: 34px auto 0;
         }
 
         .mission-title {
@@ -3213,6 +3217,9 @@
         }
 
         .mission-stage {
+          width: 100%;
+          max-width: 100vw;
+          justify-items: center;
           min-height: clamp(330px, calc(100svh - 330px), 460px);
         }
 
@@ -3236,7 +3243,8 @@
         }
 
         .timeline {
-          width: 100vw;
+          width: 100%;
+          max-width: 100vw;
           height: 220px;
         }
 
@@ -3278,7 +3286,9 @@
         }
 
         .flight-panel {
-          width: calc(100% - 32px);
+          width: min(calc(100vw - 48px), 680px);
+          margin-left: auto;
+          margin-right: auto;
           margin-bottom: 9vh;
         }
 

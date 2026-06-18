@@ -111,8 +111,10 @@
     ['pointerdown','keydown','touchstart','scroll'].forEach((eventName) => window.addEventListener(eventName, touchSession, { passive:true }));
     setInterval(checkSession, 60 * 1000); checkSession(); touchSession();
     function loadNotes(){ try { const saved = JSON.parse(localStorage.getItem(NOTES_KEY) || '[]'); return Array.isArray(saved) && saved.length ? saved : sourceSeed; } catch { return sourceSeed; } }
-    function saveNotes(){ if (!canEditNotes) return; localStorage.setItem(NOTES_KEY, JSON.stringify(notes)); }
+    async function saveNotes(){ if (!canEditNotes) return; localStorage.setItem(NOTES_KEY, JSON.stringify(notes)); await saveSharedNotes(); }
     function applyEditMode(){ editorOnlyElements.forEach((el) => { el.hidden = !canEditNotes; }); readonlyOnlyElements.forEach((el) => { el.hidden = canEditNotes; }); noteContent.readOnly = !canEditNotes; noteTitle.readOnly = !canEditNotes; noteSection.readOnly = !canEditNotes; }
+    async function fetchSharedNotes(){ try { const response = await fetch('/notes', { cache: 'no-store' }); if (!response.ok) return; const data = await response.json(); if (Array.isArray(data.notes) && data.notes.length) { notes = data.notes; localStorage.setItem(NOTES_KEY, JSON.stringify(notes)); selectedSection = notes[0]?.section || selectedSection; selectedId = notes[0]?.id || selectedId; render(); } } catch (error) { console.warn('Unable to load shared notes.', error); } }
+    async function saveSharedNotes(){ try { const response = await fetch('/notes', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Editor-Email': NOTE_EDITOR_EMAIL }, body: JSON.stringify({ editorEmail: NOTE_EDITOR_EMAIL, notes }) }); if (!response.ok) throw new Error(`HTTP ${response.status}`); } catch (error) { console.warn('Unable to save shared notes.', error); noteStatus.textContent = 'Saved locally only'; } }
     function escapeHtml(value){ return String(value || '').replace(/[&<>"']/g, (ch) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
     function sections(){ return [...new Set(notes.map((note) => note.section || 'General'))].sort((a,b) => a.localeCompare(b)); }
     function selectedNote(){ return notes.find((note) => note.id === selectedId) || notes.find((note) => note.section === selectedSection) || null; }
@@ -131,12 +133,13 @@
     noteSearch.addEventListener('input', render);
     noteContent.addEventListener('input', () => { notePreview.innerHTML = escapeHtml(noteContent.value); });
     document.querySelector('#add-section').addEventListener('click', () => { if (!canEditNotes) return; const name = prompt('Section name / 分区名称'); if (!name) return; selectedSection = name.trim(); selectedId = ''; render(); });
-    document.querySelector('#add-page').addEventListener('click', () => { if (!canEditNotes) return; const note = { id: crypto.randomUUID(), section: selectedSection || 'General', title: 'New Page', content: '', updatedAt: new Date().toISOString() }; notes.unshift(note); selectedId = note.id; saveNotes(); render(); });
-    document.querySelector('#save-note').addEventListener('click', () => { if (!canEditNotes) return; let note = notes.find((item) => item.id === selectedId); if (!note) { note = { id: crypto.randomUUID() }; notes.unshift(note); selectedId = note.id; } note.title = noteTitle.value.trim() || 'Untitled'; note.section = noteSection.value.trim() || 'General'; note.content = noteContent.value; note.updatedAt = new Date().toISOString(); selectedSection = note.section; saveNotes(); noteStatus.textContent = 'Saved'; setTimeout(() => noteStatus.textContent = '', 1500); render(); });
-    document.querySelector('#delete-page').addEventListener('click', () => { if (!canEditNotes) return; if (!selectedId || !confirm('Delete this page?')) return; notes = notes.filter((note) => note.id !== selectedId); selectedId = notes.find((note) => note.section === selectedSection)?.id || notes[0]?.id || ''; selectedSection = notes.find((note) => note.id === selectedId)?.section || selectedSection; saveNotes(); render(); });
+    document.querySelector('#add-page').addEventListener('click', async () => { if (!canEditNotes) return; const note = { id: crypto.randomUUID(), section: selectedSection || 'General', title: 'New Page', content: '', updatedAt: new Date().toISOString() }; notes.unshift(note); selectedId = note.id; await saveNotes(); render(); });
+    document.querySelector('#save-note').addEventListener('click', async () => { if (!canEditNotes) return; let note = notes.find((item) => item.id === selectedId); if (!note) { note = { id: crypto.randomUUID() }; notes.unshift(note); selectedId = note.id; } note.title = noteTitle.value.trim() || 'Untitled'; note.section = noteSection.value.trim() || 'General'; note.content = noteContent.value; note.updatedAt = new Date().toISOString(); selectedSection = note.section; await saveNotes(); noteStatus.textContent = 'Saved'; setTimeout(() => noteStatus.textContent = '', 1500); render(); });
+    document.querySelector('#delete-page').addEventListener('click', async () => { if (!canEditNotes) return; if (!selectedId || !confirm('Delete this page?')) return; notes = notes.filter((note) => note.id !== selectedId); selectedId = notes.find((note) => note.section === selectedSection)?.id || notes[0]?.id || ''; selectedSection = notes.find((note) => note.id === selectedId)?.section || selectedSection; await saveNotes(); render(); });
     applyEditMode();
-    if (auth) auth.onAuthStateChanged((user) => { canEditNotes = String(user?.email || '').trim().toLowerCase() === NOTE_EDITOR_EMAIL; applyEditMode(); render(); });
+    if (auth) auth.onAuthStateChanged(async (user) => { canEditNotes = String(user?.email || '').trim().toLowerCase() === NOTE_EDITOR_EMAIL; applyEditMode(); if (canEditNotes && notes.length > 1) await saveSharedNotes(); render(); });
     render();
+    fetchSharedNotes();
   </script>
 </body>
 </html>
