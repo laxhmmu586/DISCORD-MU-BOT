@@ -1968,6 +1968,12 @@ app.get(
             date,
             yearSuffix
           );
+
+        if (!log && !dateSuffixMatch?.[3]) {
+          const previousYearSuffix = String(Number(yearSuffix) - 1).padStart(2, '0');
+          log = await getFlightLogByDate(date, previousYearSuffix);
+          if (log) yearSuffix = previousYearSuffix;
+        }
       }
 
       // Today
@@ -2027,11 +2033,17 @@ app.get(
             nextDayStep.tooltip = 'NEXTDAY INFO will update in the background.';
           }
         }
-        setImmediate(() => {
-          refreshDeferredSyData(syInfo, log, isoDate).catch((err) => {
-            console.warn('Deferred SY refresh skipped:', err?.message || err);
+        if (isoDate && isoDate !== todayIsoUtc()) {
+          await refreshDeferredSyData(syInfo, log, isoDate);
+          rememberCompletedPreflightSteps(syInfo, isoDate);
+          applyCachedCompletedPreflightSteps(syInfo, isoDate);
+        } else {
+          setImmediate(() => {
+            refreshDeferredSyData(syInfo, log, isoDate).catch((err) => {
+              console.warn('Deferred SY refresh skipped:', err?.message || err);
+            });
           });
-        });
+        }
         const authContext = await resolveAuthContextFromRequest(req);
         return res.json({ sy: { ...syInfo, bagSheet: syBagInfo, permissions: authContext.permissions } });
       }

@@ -1835,16 +1835,22 @@
 
 
       .ckin-nbrd-card {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
         gap: 14px;
         align-items: stretch;
+        padding: 16px;
+        border-color: rgba(255, 199, 44, 0.5);
+        background:
+          radial-gradient(circle at 0% 0%, rgba(255, 199, 44, 0.12), transparent 16rem),
+          radial-gradient(circle at 100% 0%, rgba(88, 167, 255, 0.18), transparent 18rem),
+          linear-gradient(135deg, rgba(5, 25, 45, 0.94), rgba(2, 14, 27, 0.86));
       }
 
       .ckin-nbrd-head {
         position: relative;
         z-index: 1;
         display: grid;
-        grid-template-columns: auto minmax(0, 1fr) auto;
+        grid-template-columns: auto minmax(0, 1fr);
         gap: 14px;
         align-items: center;
       }
@@ -1869,6 +1875,40 @@
         font-weight: 900;
         letter-spacing: 0.3px;
         text-transform: uppercase;
+      }
+
+      .ckin-nbrd-detail {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        gap: 8px;
+        padding: 12px 14px;
+        border: 1px solid rgba(176, 216, 255, 0.16);
+        border-radius: 14px;
+        background: rgba(0, 0, 0, 0.18);
+      }
+
+      .ckin-nbrd-detail b {
+        color: #ffd45f;
+        font-size: 11px;
+        font-weight: 950;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+      }
+
+      .ckin-nbrd-line {
+        color: #f4fbff;
+        line-height: 1.35;
+        overflow-wrap: anywhere;
+      }
+
+      .ckin-nbrd-meta {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
       }
 
       .psm-card-row {
@@ -3474,9 +3514,7 @@
           gap: 10px;
         }
 
-        .ckin-nbrd-head .psm-badge {
-          grid-column: 1 / -1;
-          justify-self: start;
+        .ckin-nbrd-meta .psm-badge {
           padding: 5px 9px;
           font-size: 11px;
         }
@@ -3516,6 +3554,7 @@
 
         .passenger-modal {
           width: calc(100vw - 24px);
+          max-width: calc(100vw - 24px);
           max-height: calc(100svh - env(safe-area-inset-top, 0px) - 34px);
           overflow-x: hidden;
         }
@@ -3558,10 +3597,15 @@
         .record-header {
           position: sticky;
           top: 0;
+          min-width: 0;
           padding: 2px 0 10px;
           background: linear-gradient(180deg, rgba(3, 20, 34, 0.96), rgba(3, 20, 34, 0.76));
           backdrop-filter: blur(8px);
           gap: 10px;
+        }
+
+        .record-header > div:first-child {
+          min-width: 0;
         }
 
         .record-orb {
@@ -4036,9 +4080,9 @@
       const AUTH_LAST_ACTIVITY_KEY = "mufc_auth_last_activity_at";
       const AUTH_SESSION_LIMIT_MS = 60 * 60 * 1000;
       const APP_ENTRY_GRACE_MS = 30 * 1000;
-      const SY_AUTO_REFRESH_MS = 60 * 1000;
+      const SY_AUTO_REFRESH_MS = 5 * 1000;
       const SY_COMPLETED_NODE_CACHE_KEY = "mufc_sy_completed_nodes_v1";
-      const PERSISTENT_GREEN_NODE_KEYS = ["CREW_APIS", "GD_CHECK", "FSC", "NEXTDAY_INFO", "NET"];
+      const PERSISTENT_GREEN_NODE_KEYS = ["CREW_APIS", "GD_CHECK", "FSC", "NEXTDAY_INFO", "NET", "CCL", "CC", "INITIAL_FLIGHT", "BDT_CHG"];
       let inactivityTimer = null;
       let syAutoRefreshTimer = null;
       let syAutoRefreshInFlight = false;
@@ -4911,7 +4955,7 @@
         const govIssueGroups = [gov.duplicatePassports, gov.aqqTclBnList, gov.govDtaBnList, gov.passportExpBnList, gov.wrongPassportBnList, gov.missingApiBnList];
         const govCount = isClearLocked("GOV") ? 0 : govIssueGroups.reduce((sum, value) => sum + (Array.isArray(value) ? value.length : 0), 0);
         const webediCount = isClearLocked("WEBEDI") ? 0 : (gov.passportCodeIssues || []).length;
-        const nbrdCount = isClearLocked("NBRD") ? 0 : (sy.bnAudit || []).filter(rowHasCkinNbrdIssue).length;
+        const nbrdCount = isClearLocked("NBRD") ? 0 : unacknowledgedNbrdCount(sy);
         setBadgeText("#chd-count", chdIssues);
         setBadgeText("#gov-count", govCount);
         setBadgeText("#webedi-count", webediCount);
@@ -4958,8 +5002,33 @@
           else node.removeAttribute("data-alert");
           previousStarted = previousStarted && (key === "FSC" ? true : started);
         });
+        applyPostFlightCompletionCascade();
         stopSyAutoRefreshWhenCcComplete();
         resetTimelineCenter();
+        rerenderActiveRealtimePanel();
+      }
+
+
+      function rerenderActiveRealtimePanel() {
+        const title = resultPanel?.dataset?.panelTitle || "";
+        if (title === "CHD List") renderChdPanel();
+        else if (title === "GOV/AQQ") renderGovPanel();
+        else if (title === "WEB/EDI/RS") renderWebEdiPanel();
+        else if (title === "CKIN/NBRD") renderNbrdPanel();
+      }
+
+      function applyPostFlightCompletionCascade() {
+        const keys = ["CCL", "CC", "INITIAL_FLIGHT", "BDT_CHG"];
+        const postFlightNodes = keys.map((key) => document.querySelector(`.node[data-key="${key}"]`));
+        const latestDoneIndex = postFlightNodes.reduce((latest, node, index) => node?.dataset?.status === "done" ? index : latest, -1);
+        if (latestDoneIndex <= 0) return;
+        for (let index = 0; index < latestDoneIndex; index += 1) {
+          const node = postFlightNodes[index];
+          if (!node) continue;
+          node.dataset.status = "done";
+          node.dataset.time = node.dataset.time && node.dataset.time !== "----" ? node.dataset.time : "DONE";
+          node.removeAttribute("data-alert");
+        }
       }
 
       function renderSy(data) {
@@ -4992,10 +5061,14 @@
         if (!match) return "";
         const month = syMonthMap[match[2]];
         if (month === undefined) return "";
-        const currentYear = new Date().getFullYear();
-        const year = match[3] ? 2000 + Number(match[3]) : currentYear;
-        const date = new Date(year, month, Number(match[1]));
+        const now = new Date();
+        let year = match[3] ? 2000 + Number(match[3]) : now.getFullYear();
+        let date = new Date(year, month, Number(match[1]));
         if (date.getFullYear() !== year || date.getMonth() !== month || date.getDate() !== Number(match[1])) return "";
+        if (!match[3] && date > now) {
+          year -= 1;
+          date = new Date(year, month, Number(match[1]));
+        }
         return ymdFromDate(date);
       }
 
@@ -5260,6 +5333,7 @@
           if (currentSy !== sy) return;
           currentWarningAckMap = data?.acknowledgements || {};
           updateWarningActionState(buildWarningRows(sy));
+          applyNbrdAcknowledgementState(sy);
           if (resultPanel?.dataset?.panelTitle === "WARNING") renderWarningPanel();
           if (resultPanel?.dataset?.panelTitle === "CKIN/NBRD") renderNbrdPanel();
         } catch (error) {
@@ -5375,8 +5449,30 @@
         return ckinNbrdLines(row).length > 0;
       }
 
+      function nbrdRowsWithAcknowledgements(sy = currentSy) {
+        return applyWarningAck(enrichRowsWithPassengerData((sy?.bnAudit || []).filter(rowHasCkinNbrdIssue)));
+      }
+
+      function unacknowledgedNbrdCount(sy = currentSy) {
+        return nbrdRowsWithAcknowledgements(sy).filter((row) => !(row.acknowledgements || []).length).length;
+      }
+
+      function applyNbrdAcknowledgementState(sy = currentSy) {
+        if (!sy) return;
+        const nbrdCount = unacknowledgedNbrdCount(sy);
+        setBadgeText("#nbrd-count", nbrdCount);
+        setActionIssueState("#nbrd-action", nbrdCount > 0);
+        const node = document.querySelector('.node[data-key="NBRD"]');
+        if (node && (sy.bnAudit || []).length) {
+          node.dataset.status = nbrdCount > 0 ? "issue" : "done";
+          node.dataset.time = nbrdCount > 0 ? String(nbrdCount) : "CLEAR";
+          if (nbrdCount > 0) node.dataset.alert = String(nbrdCount);
+          else node.removeAttribute("data-alert");
+        }
+      }
+
       function renderNbrdPanel() {
-        const rows = applyWarningAck(enrichRowsWithPassengerData((currentSy?.bnAudit || []).filter(rowHasCkinNbrdIssue)).map((row) => {
+        const rows = nbrdRowsWithAcknowledgements().map((row) => {
           const detailLines = ckinNbrdDetails(row);
           return {
             ...row,
@@ -5384,13 +5480,13 @@
             warningReason: detailLines.join(" | ") || "CKIN/NBRD issue",
             ckinNbrdDetailLines: detailLines,
           };
-        }));
+        });
         const body = rows.length ? `<div class="panel-stats"><span class="status-fail">CKIN/NBRD total: ${rows.length}</span><span class="status-ok">Acknowledged: ${rows.filter((row) => (row.acknowledgements || []).length).length}</span></div><div class="psm-card-list">${rows.map((row, index) => {
           const detailLines = Array.isArray(row.ckinNbrdDetailLines) ? row.ckinNbrdDetailLines : ckinNbrdDetails(row);
           const ackList = row.acknowledgements || [];
           const ackText = ackList.length ? `Acknowledged by ${ackList.map((ack) => ack.by).filter(Boolean).join(", ")}` : "Not acknowledged";
           const ownAck = userHasAcknowledged(ackList);
-          return `<article class="psm-card ckin-nbrd-card"><div class="ckin-nbrd-head"><button class="bn-button is-warning" type="button" data-passenger-index="${index}" data-passenger-bn="${escapeHtml(row.bn || "")}">BN${escapeHtml(row.bn || "---")}</button><div class="ckin-nbrd-passenger"><span class="ckin-nbrd-name">${escapeHtml(passengerName(row) || "Passenger")}</span><span class="ckin-nbrd-seat">Seat ${escapeHtml(row.seat || "---")}</span></div><span class="psm-badge">CKIN/NBRD</span></div><div class="psm-card-row"><b>Detail</b><br>${detailLines.map((line) => escapeHtml(line)).join("<br>")}</div><div class="warning-ack-row"><button class="warning-ack-button" type="button" data-warning-ack="${index}" ${ownAck ? "disabled" : ""}>${ownAck ? "Acknowledged" : "Acknowledge"}</button><span class="warning-ack-note">${escapeHtml(ackText)}</span></div></article>`;
+          return `<article class="psm-card ckin-nbrd-card"><div class="ckin-nbrd-head"><button class="bn-button is-warning" type="button" data-passenger-index="${index}" data-passenger-bn="${escapeHtml(row.bn || "")}">BN${escapeHtml(row.bn || "---")}</button><div class="ckin-nbrd-passenger"><span class="ckin-nbrd-name">${escapeHtml(passengerName(row) || "Passenger")}</span><span class="ckin-nbrd-seat">${escapeHtml([row.seat ? `Seat ${row.seat}` : "No seat", row.cabin].filter(Boolean).join(" • "))}</span></div></div><div class="ckin-nbrd-detail"><b>Detail</b>${detailLines.map((line) => `<span class="ckin-nbrd-line">${escapeHtml(line)}</span>`).join("")}</div><div class="ckin-nbrd-meta"><span class="psm-badge">CKIN/NBRD</span><button class="warning-ack-button" type="button" data-warning-ack="${index}" ${ownAck ? "disabled" : ""}>${ownAck ? "Acknowledged" : "Acknowledge"}</button><span class="warning-ack-note">${escapeHtml(ackText)}</span></div></article>`;
         }).join("")}</div>` : `<p class="panel-muted">No NBRD/CKIN issue found.</p>`;
         renderPanel("CKIN/NBRD", currentSy?.flightNo || "SY", body);
         setPanelPassengerRows(rows);
