@@ -2033,11 +2033,17 @@ app.get(
             nextDayStep.tooltip = 'NEXTDAY INFO will update in the background.';
           }
         }
-        setImmediate(() => {
-          refreshDeferredSyData(syInfo, log, isoDate).catch((err) => {
-            console.warn('Deferred SY refresh skipped:', err?.message || err);
+        if (isoDate && isoDate !== todayIsoUtc()) {
+          await refreshDeferredSyData(syInfo, log, isoDate);
+          rememberCompletedPreflightSteps(syInfo, isoDate);
+          applyCachedCompletedPreflightSteps(syInfo, isoDate);
+        } else {
+          setImmediate(() => {
+            refreshDeferredSyData(syInfo, log, isoDate).catch((err) => {
+              console.warn('Deferred SY refresh skipped:', err?.message || err);
+            });
           });
-        });
+        }
         const authContext = await resolveAuthContextFromRequest(req);
         return res.json({ sy: { ...syInfo, bagSheet: syBagInfo, permissions: authContext.permissions } });
       }
