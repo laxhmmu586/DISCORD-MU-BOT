@@ -1968,6 +1968,12 @@ app.get(
             date,
             yearSuffix
           );
+
+        if (!log && !dateSuffixMatch?.[3]) {
+          const previousYearSuffix = String(Number(yearSuffix) - 1).padStart(2, '0');
+          log = await getFlightLogByDate(date, previousYearSuffix);
+          if (log) yearSuffix = previousYearSuffix;
+        }
       }
 
       // Today
