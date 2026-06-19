@@ -30,7 +30,9 @@ const {
 
   appendVipReportRows,
 
-  updateFscExchangeRate
+  updateFscExchangeRate,
+
+  extractFscExchangeRate
 
 } = require('./googleDrive');
 const { findSYInfo } = require('./syParser');
