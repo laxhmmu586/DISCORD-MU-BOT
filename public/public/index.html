@@ -3516,6 +3516,7 @@
 
         .passenger-modal {
           width: calc(100vw - 24px);
+          max-width: calc(100vw - 24px);
           max-height: calc(100svh - env(safe-area-inset-top, 0px) - 34px);
           overflow-x: hidden;
         }
@@ -3558,10 +3559,15 @@
         .record-header {
           position: sticky;
           top: 0;
+          min-width: 0;
           padding: 2px 0 10px;
           background: linear-gradient(180deg, rgba(3, 20, 34, 0.96), rgba(3, 20, 34, 0.76));
           backdrop-filter: blur(8px);
           gap: 10px;
+        }
+
+        .record-header > div:first-child {
+          min-width: 0;
         }
 
         .record-orb {
@@ -4036,9 +4042,9 @@
       const AUTH_LAST_ACTIVITY_KEY = "mufc_auth_last_activity_at";
       const AUTH_SESSION_LIMIT_MS = 60 * 60 * 1000;
       const APP_ENTRY_GRACE_MS = 30 * 1000;
-      const SY_AUTO_REFRESH_MS = 60 * 1000;
+      const SY_AUTO_REFRESH_MS = 15 * 1000;
       const SY_COMPLETED_NODE_CACHE_KEY = "mufc_sy_completed_nodes_v1";
-      const PERSISTENT_GREEN_NODE_KEYS = ["CREW_APIS", "GD_CHECK", "FSC", "NEXTDAY_INFO", "NET"];
+      const PERSISTENT_GREEN_NODE_KEYS = ["CREW_APIS", "GD_CHECK", "FSC", "NEXTDAY_INFO", "NET", "CCL", "CC", "INITIAL_FLIGHT", "BDT_CHG"];
       let inactivityTimer = null;
       let syAutoRefreshTimer = null;
       let syAutoRefreshInFlight = false;
@@ -4960,6 +4966,16 @@
         });
         stopSyAutoRefreshWhenCcComplete();
         resetTimelineCenter();
+        rerenderActiveRealtimePanel();
+      }
+
+
+      function rerenderActiveRealtimePanel() {
+        const title = resultPanel?.dataset?.panelTitle || "";
+        if (title === "CHD List") renderChdPanel();
+        else if (title === "GOV/AQQ") renderGovPanel();
+        else if (title === "WEB/EDI/RS") renderWebEdiPanel();
+        else if (title === "CKIN/NBRD") renderNbrdPanel();
       }
 
       function renderSy(data) {
@@ -4992,10 +5008,14 @@
         if (!match) return "";
         const month = syMonthMap[match[2]];
         if (month === undefined) return "";
-        const currentYear = new Date().getFullYear();
-        const year = match[3] ? 2000 + Number(match[3]) : currentYear;
-        const date = new Date(year, month, Number(match[1]));
+        const now = new Date();
+        let year = match[3] ? 2000 + Number(match[3]) : now.getFullYear();
+        let date = new Date(year, month, Number(match[1]));
         if (date.getFullYear() !== year || date.getMonth() !== month || date.getDate() !== Number(match[1])) return "";
+        if (!match[3] && date > now) {
+          year -= 1;
+          date = new Date(year, month, Number(match[1]));
+        }
         return ymdFromDate(date);
       }
 
