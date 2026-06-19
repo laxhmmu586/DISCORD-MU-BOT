@@ -124,6 +124,7 @@ let syBagSheetTitle = '';
 
 let sheetAccessBlocked = false;
 
+
 function normalizeBn(value) {
   const digits =
     String(value || '')
