@@ -3549,12 +3549,18 @@
 
         .passenger-modal-backdrop {
           place-items: start center;
-          padding: calc(env(safe-area-inset-top, 0px) + 18px) 10px 10px;
+          justify-items: center;
+          width: 100dvw;
+          max-width: 100dvw;
+          overflow: hidden;
+          padding: calc(env(safe-area-inset-top, 0px) + 18px) 12px 12px;
         }
 
         .passenger-modal {
-          width: calc(100vw - 24px);
-          max-width: calc(100vw - 24px);
+          justify-self: center;
+          width: min(100%, calc(100dvw - 24px));
+          max-width: calc(100dvw - 24px);
+          margin-inline: auto;
           max-height: calc(100svh - env(safe-area-inset-top, 0px) - 34px);
           overflow-x: hidden;
         }
@@ -3581,8 +3587,10 @@
           font-size: 24px;
         }
 
+        .passenger-modal .record-card,
         .record-card {
           box-sizing: border-box;
+          width: 100%;
           max-width: 100%;
           min-width: 0;
           padding: 12px 10px 10px;
@@ -3598,6 +3606,9 @@
           position: sticky;
           top: 0;
           min-width: 0;
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
+          align-items: center;
           padding: 2px 0 10px;
           background: linear-gradient(180deg, rgba(3, 20, 34, 0.96), rgba(3, 20, 34, 0.76));
           backdrop-filter: blur(8px);
@@ -3619,7 +3630,9 @@
         }
 
         .record-header h3 {
-          font-size: clamp(20px, 6vw, 26px);
+          max-width: 100%;
+          font-size: clamp(18px, 5.4vw, 24px);
+          overflow-wrap: anywhere;
         }
 
         .record-row {
@@ -4080,7 +4093,7 @@
       const AUTH_LAST_ACTIVITY_KEY = "mufc_auth_last_activity_at";
       const AUTH_SESSION_LIMIT_MS = 60 * 60 * 1000;
       const APP_ENTRY_GRACE_MS = 30 * 1000;
-      const SY_AUTO_REFRESH_MS = 5 * 1000;
+      const SY_AUTO_REFRESH_MS = 50 * 1000;
       const SY_COMPLETED_NODE_CACHE_KEY = "mufc_sy_completed_nodes_v1";
       const PERSISTENT_GREEN_NODE_KEYS = ["CREW_APIS", "GD_CHECK", "FSC", "NEXTDAY_INFO", "NET", "CCL", "CC", "INITIAL_FLIGHT", "BDT_CHG"];
       let inactivityTimer = null;
