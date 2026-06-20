@@ -4093,7 +4093,7 @@
       const APP_ENTRY_GRACE_MS = 30 * 1000;
       const SY_AUTO_REFRESH_MS = 30 * 1000;
       const SY_COMPLETED_NODE_CACHE_KEY = "mufc_sy_completed_nodes_v1";
-      const PERSISTENT_GREEN_NODE_KEYS = ["CREW_APIS", "GD_CHECK", "FSC", "NEXTDAY_INFO", "NET", "CCL", "CC", "INITIAL_FLIGHT", "BDT_CHG"];
+      const PERSISTENT_GREEN_NODE_KEYS = ["CREW_APIS", "GD_CHECK", "FSC", "NEXTDAY_INFO", "NET", "CHD", "GOV", "WEBEDI", "NBRD", "CCL", "CC", "INITIAL_FLIGHT", "BDT_CHG"];
       let inactivityTimer = null;
       let syAutoRefreshTimer = null;
       let syAutoRefreshInFlight = false;
@@ -4268,6 +4268,51 @@
         if (!button) return;
         button.classList.toggle("warning-action", Boolean(hasIssue));
         button.querySelector(".detail-action-badge")?.classList.toggle("warning-badge", Boolean(hasIssue));
+      }
+
+      function normalizedBn(value) {
+        const raw = typeof value === "object" && value !== null ? (value.bn || value.no || value.BN || "") : value;
+        const digits = String(raw || "").match(/\d{1,3}/)?.[0] || "";
+        return digits ? digits.padStart(3, "0") : "";
+      }
+
+      function securityReviewPassBnSet(sy = currentSy) {
+        return new Set((sy?.bnAudit || [])
+          .filter((row) => row?.review?.status === "pass")
+          .map((row) => normalizedBn(row.bn))
+          .filter(Boolean));
+      }
+
+      function unresolvedReviewedBnCount(items = [], passBnSet = securityReviewPassBnSet()) {
+        return (Array.isArray(items) ? items : []).filter((item) => {
+          const bn = normalizedBn(item);
+          return !bn || !passBnSet.has(bn);
+        }).length;
+      }
+
+      function updateOperationReviewNodesFromRows(rows = currentSy?.bnAudit || []) {
+        if (!currentSy) return;
+        currentSy.bnAudit = rows;
+        const passBnSet = securityReviewPassBnSet(currentSy);
+        const gov = currentSy.govAqq || {};
+        const govGroups = [gov.duplicatePassports, gov.aqqTclBnList, gov.govDtaBnList, gov.passportExpBnList, gov.wrongPassportBnList, gov.missingApiBnList];
+        const counts = {
+          GOV: govGroups.reduce((sum, value) => sum + unresolvedReviewedBnCount(value, passBnSet), 0),
+          WEBEDI: unresolvedReviewedBnCount(gov.passportCodeIssues || [], passBnSet),
+        };
+        Object.entries(counts).forEach(([key, count]) => {
+          const node = document.querySelector(`.node[data-key="${key}"]`);
+          if (!node) return;
+          node.dataset.status = count > 0 ? "issue" : "done";
+          node.dataset.time = count > 0 ? String(count) : "CLEAR";
+          if (count > 0) node.dataset.alert = String(count);
+          else node.removeAttribute("data-alert");
+          if (count === 0) rememberCompletedSyNode(currentSy, key, "CLEAR");
+        });
+        setBadgeText("#gov-count", counts.GOV);
+        setBadgeText("#webedi-count", counts.WEBEDI);
+        setActionIssueState("#gov-action", counts.GOV > 0);
+        setActionIssueState("#webedi-action", counts.WEBEDI > 0);
       }
 
       function countTriple(matchArray) {
@@ -4963,9 +5008,10 @@
         const isClearLocked = (_key) => false;
         const chdIssues = isClearLocked("CHD") ? 0 : (sy.chdList || []).filter((row) => row.hasChdCode === false).length;
         const gov = sy.govAqq || {};
+        const passBnSet = securityReviewPassBnSet(sy);
         const govIssueGroups = [gov.duplicatePassports, gov.aqqTclBnList, gov.govDtaBnList, gov.passportExpBnList, gov.wrongPassportBnList, gov.missingApiBnList];
-        const govCount = isClearLocked("GOV") ? 0 : govIssueGroups.reduce((sum, value) => sum + (Array.isArray(value) ? value.length : 0), 0);
-        const webediCount = isClearLocked("WEBEDI") ? 0 : (gov.passportCodeIssues || []).length;
+        const govCount = isClearLocked("GOV") ? 0 : govIssueGroups.reduce((sum, value) => sum + unresolvedReviewedBnCount(value, passBnSet), 0);
+        const webediCount = isClearLocked("WEBEDI") ? 0 : unresolvedReviewedBnCount(gov.passportCodeIssues || [], passBnSet);
         const nbrdCount = isClearLocked("NBRD") ? 0 : unacknowledgedNbrdCount(sy);
         setBadgeText("#chd-count", chdIssues);
         setBadgeText("#gov-count", govCount);
@@ -6892,7 +6938,9 @@
           if (row) {
             reviewButton.textContent = "Saving...";
             await saveSecurityReview(row, reviewButton.dataset.reviewStatus);
+            updateOperationReviewNodesFromRows(rows);
             await renderSecurityCheck(row.bn);
+            updateOperationReviewNodesFromRows(resultPanel._passengerRows || rows);
           }
           return;
         }
