@@ -2045,7 +2045,7 @@ function extractXlsColumnBText(buffer) {
 function isSpreadsheetAttachment(filename = '', mimeType = '') {
   const lowerName = String(filename || '').toLowerCase();
   const lowerMime = String(mimeType || '').toLowerCase();
-  return lowerName.endsWith('.xls') || lowerName.endsWith('.xlsx') || /excel|spreadsheet|sheet/.test(lowerMime);
+  return /\.(xls|xlsx|xlsm|xlsb|csv)$/i.test(lowerName) || /excel|spreadsheet|sheet|csv/.test(lowerMime);
 }
 
 function gdAttachmentType(filename = '', mimeType = '') {
@@ -2146,7 +2146,7 @@ function extractXlsColumnBText(buffer) {
 function isSpreadsheetAttachment(filename = '', mimeType = '') {
   const lowerName = String(filename || '').toLowerCase();
   const lowerMime = String(mimeType || '').toLowerCase();
-  return lowerName.endsWith('.xls') || lowerName.endsWith('.xlsx') || /excel|spreadsheet|sheet/.test(lowerMime);
+  return /\.(xls|xlsx|xlsm|xlsb|csv)$/i.test(lowerName) || /excel|spreadsheet|sheet|csv/.test(lowerMime);
 }
 
 function gdAttachmentType(filename = '', mimeType = '') {
@@ -2257,60 +2257,67 @@ async function getGdCheckEmail(flightNo, subjectDate, crew = [], expectedSubject
       return result;
     }
 
-    const latestMessage = messages[0];
-    const full = await gmail.users.messages.get({
-      userId,
-      id: latestMessage.id,
-      format: 'full',
-      fields: 'id,internalDate,payload(filename,mimeType,body(attachmentId,data),parts(filename,mimeType,body(attachmentId,data),parts(filename,mimeType,body(attachmentId,data))))'
-    });
-    const latestSentAtDate = Number(full.data.internalDate) ? new Date(Number(full.data.internalDate)) : null;
-    const latestSentAt = latestSentAtDate ? latestSentAtDate.toISOString() : '';
-    const gdAttachmentParts = collectGmailParts(full.data.payload, (part) => (
-      Boolean(part.body?.attachmentId || part.body?.data)
-        && isSpreadsheetAttachment(part.filename || '', part.mimeType || '')
-    ));
     const checkedAttachments = [];
     let bestResult = null;
-    for (const part of gdAttachmentParts) {
-      let data = part.body?.data || '';
-      if (part.body?.attachmentId) {
-        const attachment = await gmail.users.messages.attachments.get({ userId, messageId: full.data.id || latestMessage.id, id: part.body.attachmentId });
-        data = attachment.data.data || '';
-      }
-      const attachmentBuffer = Buffer.from(String(data).replace(/-/g, '+').replace(/_/g, '/'), 'base64');
-      const attachmentType = gdAttachmentType(part.filename || '', part.mimeType || '');
-      const attachmentText = extractSpreadsheetText(attachmentBuffer);
-      const comparison = compareGdCrew(crew, attachmentText);
-      checkedAttachments.push({
-        name: part.filename || 'GD spreadsheet attachment',
-        type: attachmentType,
-        matched: comparison.matched,
-        total: comparison.total,
-        complete: comparison.complete,
-        extractedPassports: comparison.gdPassports.length
-      });
-      const candidate = {
-        found: true,
-        complete: comparison.complete,
-        subject,
-        detailText: '',
-        reason: comparison.complete ? '' : `${attachmentType} is missing one or more CWD passport numbers.`,
-        query: q,
-        authMode,
+    let latestSentAt = '';
+    let messagesWithSpreadsheet = 0;
+    for (const message of messages) {
+      const full = await gmail.users.messages.get({
         userId,
-        searchDate,
-        attachmentName: part.filename || `${attachmentType} attachment`,
-        attachmentType,
-        sentAt: latestSentAt,
-        checkedAttachments,
-        ...comparison
-      };
-      if (candidate.complete) {
-        candidate.detailText = buildGdCheckDetailText(candidate);
-        return candidate;
+        id: message.id,
+        format: 'full',
+        fields: 'id,internalDate,payload(filename,mimeType,body(attachmentId,data),parts(filename,mimeType,body(attachmentId,data),parts(filename,mimeType,body(attachmentId,data))))'
+      });
+      const sentAtDate = Number(full.data.internalDate) ? new Date(Number(full.data.internalDate)) : null;
+      const sentAt = sentAtDate ? sentAtDate.toISOString() : '';
+      if (!latestSentAt && sentAt) latestSentAt = sentAt;
+      const gdAttachmentParts = collectGmailParts(full.data.payload, (part) => (
+        Boolean(part.body?.attachmentId || part.body?.data)
+          && isSpreadsheetAttachment(part.filename || '', part.mimeType || '')
+      ));
+      if (!gdAttachmentParts.length) continue;
+      messagesWithSpreadsheet += 1;
+      for (const part of gdAttachmentParts) {
+        let data = part.body?.data || '';
+        if (part.body?.attachmentId) {
+          const attachment = await gmail.users.messages.attachments.get({ userId, messageId: full.data.id || message.id, id: part.body.attachmentId });
+          data = attachment.data.data || '';
+        }
+        const attachmentBuffer = Buffer.from(String(data).replace(/-/g, '+').replace(/_/g, '/'), 'base64');
+        const attachmentType = gdAttachmentType(part.filename || '', part.mimeType || '');
+        const attachmentText = extractSpreadsheetText(attachmentBuffer);
+        const comparison = compareGdCrew(crew, attachmentText);
+        checkedAttachments.push({
+          name: part.filename || 'GD spreadsheet attachment',
+          type: attachmentType,
+          matched: comparison.matched,
+          total: comparison.total,
+          complete: comparison.complete,
+          extractedPassports: comparison.gdPassports.length,
+          sentAt
+        });
+        const candidate = {
+          found: true,
+          complete: comparison.complete,
+          subject,
+          detailText: '',
+          reason: comparison.complete ? '' : `${attachmentType} is missing one or more CWD passport numbers.`,
+          query: q,
+          authMode,
+          userId,
+          searchDate,
+          attachmentName: part.filename || `${attachmentType} attachment`,
+          attachmentType,
+          sentAt,
+          checkedAttachments,
+          ...comparison
+        };
+        if (candidate.complete) {
+          candidate.detailText = buildGdCheckDetailText(candidate);
+          return candidate;
+        }
+        if (!bestResult || candidate.matched > bestResult.matched) bestResult = candidate;
       }
-      if (!bestResult || candidate.matched > bestResult.matched) bestResult = candidate;
     }
     if (bestResult) {
       bestResult.checkedAttachments = checkedAttachments;
@@ -2320,7 +2327,7 @@ async function getGdCheckEmail(flightNo, subjectDate, crew = [], expectedSubject
       bestResult.detailText = buildGdCheckDetailText(bestResult);
       return bestResult;
     }
-    const result = empty({ reason: 'Latest GD email was found, but no .xls/.xlsx/.pdf attachment was found.', query: q, authMode, userId, searchDate, sentAt: latestSentAt });
+    const result = empty({ reason: messagesWithSpreadsheet ? 'GD spreadsheet attachments were found but could not be read.' : 'GD email thread was found, but no .xls/.xlsx/.xlsm/.xlsb/.csv attachment was found in the matched messages.', query: q, authMode, userId, searchDate, sentAt: latestSentAt });
     result.detailText = buildGdCheckDetailText(result);
     return result;
   } catch (err) {
