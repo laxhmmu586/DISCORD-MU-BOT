@@ -300,19 +300,35 @@ function findJcsyInfo(sections, flightNo, flightYmd, formatTime) {
 function parseCrewManifestRowsFromSections(sections, flightNo, flightYmd) {
   const rows = [];
   const seen = new Set();
+  const normalizeFlight = (value) => {
+    const match = String(value || '').toUpperCase().match(/^([A-Z]+)0*(\d+[A-Z]?)$/);
+    return match ? `${match[1]}${match[2]}` : String(value || '').toUpperCase();
+  };
+  const expectedFlight = normalizeFlight(flightNo);
+  const expectedDate = flightYmd ? dateToDdMonYy(ymdToUtcDate(flightYmd)) : '';
   sections.forEach((sectionObj) => {
     const ymd = getYmdFromTimestamp(sectionObj.timestamp);
     const content = String(sectionObj.content || '');
     if (flightYmd && ymd && ymd !== flightYmd) return;
-    if (!/^>\s*(?:CWD|PN\d*)\b/im.test(content) && !/\bCWD\s*:/i.test(content)) return;
+    if (!/^>\s*CWD\b/im.test(content) && !/\bCWD\s*:/i.test(content)) return;
+    let activeManifest = false;
     content.split(/\r?\n/).forEach((line) => {
+      const header = line.match(/\bCWD\s*:\s*([A-Z]{2}0*\d+[A-Z]?)\/(\d{2}[A-Z]{3}\d{2})\b[^\n\r]*?CREW\s+NUMBER\s*:\s*(\d+)/i);
+      if (header) {
+        const headerFlight = normalizeFlight(header[1]);
+        const headerDate = header[2].toUpperCase();
+        activeManifest = (!expectedFlight || headerFlight === expectedFlight) && (!expectedDate || headerDate === expectedDate);
+        return;
+      }
+      if (!activeManifest) return;
       const match = line.match(/^\s*(\d+)\.[^\n\r]*?\b([A-Z]{1,3}\d{5,9})\b/i);
       if (!match) return;
+      const no = Number(match[1]);
       const passport = match[2].toUpperCase();
       if (seen.has(passport)) return;
       seen.add(passport);
       rows.push({
-        no: Number(match[1]),
+        no,
         passport
       });
     });
