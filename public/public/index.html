@@ -5921,7 +5921,7 @@
         if (mode === "outbound") {
           const status = entry.status || "Not load bags";
           return `<fieldset class="test-create-entry" data-test-bag-entry>
-            <legend><span>Outbound bag</span>${index > 0 ? `<button class="test-remove-entry" type="button" data-test-remove-entry="${index}" aria-label="Remove bag">×</button>` : ""}</legend>
+            <legend><span>Outbound bag</span></legend>
             <div class="test-form-grid">${bagTagInput}
               <label class="test-field"><span>Outbound flight number</span><input name="flight" value="${escapeHtml(entry.flight || "MU586")}" required /></label>
               <label class="test-field"><span>Date</span><input name="date" type="date" value="${escapeHtml(entry.date || today)}" required /></label>
@@ -5937,7 +5937,7 @@
         const bagType = entry.bagType || "Passenger bag";
         const location = entry.location || "Office";
         return `<fieldset class="test-create-entry" data-test-bag-entry>
-          <legend><span>Inbound bag</span>${index > 0 ? `<button class="test-remove-entry" type="button" data-test-remove-entry="${index}" aria-label="Remove bag">×</button>` : ""}</legend>
+          <legend><span>Inbound bag</span></legend>
           <div class="test-form-grid">${bagTagInput}
             <label class="test-field"><span>Inbound flight number</span><input name="flight" value="${escapeHtml(entry.flight || "MU583")}" required /></label>
             <label class="test-field"><span>Date</span><input name="date" type="date" value="${escapeHtml(entry.date || today)}" required /></label>
@@ -5965,10 +5965,10 @@
 
       function renderTestAddForm(bagTag, mode = "inbound", entries = null, message = "") {
         const activeMode = mode === "outbound" ? "outbound" : "inbound";
-        const bags = entries?.length ? entries : [{ bagTag }];
+        const bag = entries?.length ? entries[0] : { bagTag };
         if (testOutput) testOutput._record = null;
         testOutput.innerHTML = `<article class="test-report-card">
-          <div class="test-report-head"><div class="test-report-title"><strong>${escapeHtml(bagTag || "New bags")}</strong><span class="panel-muted">No matching bag found.</span></div><div class="test-form-actions"><button class="test-back-button" type="button" data-test-back-choice>Back</button><button class="test-add-button" type="button" data-test-add-row>Add</button></div></div>
+          <div class="test-report-head"><div class="test-report-title"><strong>${escapeHtml(bagTag || "New bag")}</strong><span class="panel-muted">No matching bag found.</span></div><div class="test-form-actions"><button class="test-back-button" type="button" data-test-back-choice>Back</button></div></div>
           <datalist id="test-location-options"><option value="Office"></option><option value="CBS"></option></datalist>
           <datalist id="test-outbound-comments">
             <option value="Expected"></option>
@@ -5979,7 +5979,7 @@
             <option value="Passenger Showed Up, but baggage not received"></option>
           </datalist>
           <form class="test-create-form" id="test-create-form" data-test-create-form data-create-mode="${escapeHtml(activeMode)}">
-            <div data-test-entry-list>${bags.map((entry, index) => renderTestBagEntry(activeMode, entry, index)).join("")}</div>
+            <div data-test-entry-list>${renderTestBagEntry(activeMode, bag, 0)}</div>
             <div class="test-form-actions"><button class="test-submit" type="submit">Submit</button><span class="panel-muted">${escapeHtml(message)}</span></div>
           </form>
         </article>`;
@@ -6813,23 +6813,6 @@
         if (closeUpdateButton) {
           const record = testOutput._record;
           if (record) renderTestRecord(record);
-          return;
-        }
-        const removeEntryButton = event.target.closest("[data-test-remove-entry]");
-        if (removeEntryButton) {
-          const form = testOutput.querySelector("[data-test-create-form]");
-          if (!form) return;
-          const index = Number(removeEntryButton.dataset.testRemoveEntry);
-          const entries = collectCreateEntries(form).filter((_, entryIndex) => entryIndex !== index);
-          renderTestAddForm(entries[0]?.bagTag || normalizeTestBagTag(testBagSearchInput?.value), form.dataset.createMode, entries);
-          return;
-        }
-        const addRowButton = event.target.closest("[data-test-add-row]");
-        if (addRowButton) {
-          const form = testOutput.querySelector("[data-test-create-form]");
-          if (!form) return;
-          const entries = [...collectCreateEntries(form), { bagTag: "" }];
-          renderTestAddForm(entries[0]?.bagTag || normalizeTestBagTag(testBagSearchInput?.value), form.dataset.createMode, entries);
           return;
         }
         const showUpdateButton = event.target.closest("[data-test-show-update]");
