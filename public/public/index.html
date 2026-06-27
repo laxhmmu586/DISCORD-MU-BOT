@@ -4092,7 +4092,7 @@
       const AUTH_LAST_ACTIVITY_KEY = "mufc_auth_last_activity_at";
       const AUTH_SESSION_LIMIT_MS = 60 * 60 * 1000;
       const APP_ENTRY_GRACE_MS = 30 * 1000;
-      const SY_AUTO_REFRESH_MS = 30 * 1000;
+      const SY_AUTO_REFRESH_MS = 15 * 1000;
       const SY_COMPLETED_NODE_CACHE_KEY = "mufc_sy_completed_nodes_v1";
       const PERSISTENT_GREEN_NODE_KEYS = ["GD_CHECK", "FSC", "NEXTDAY_INFO"];
       let inactivityTimer = null;
@@ -5160,7 +5160,7 @@
           previousStarted = previousStarted && (key === "FSC" ? true : started);
         });
         applyPostFlightCompletionCascade();
-        stopSyAutoRefreshWhenCcComplete();
+        stopSyAutoRefreshWhenFinalNodesComplete();
         resetTimelineCenter();
         rerenderActiveRealtimePanel();
       }
@@ -5244,21 +5244,17 @@
         syAutoRefreshInFlight = false;
       }
 
-      function nodeIsDone(key) {
-        return document.querySelector(`.node[data-key="${key}"]`)?.dataset?.status === "done";
+      function finalTimelineNodesComplete() {
+        return ["CC", "INITIAL_FLIGHT", "BDT_CHG"].every((key) => document.querySelector(`.node[data-key="${key}"]`)?.dataset.status === "done");
       }
 
-      function ccTimelineIsComplete() {
-        return ["CCL", "CC", "INITIAL_FLIGHT", "BDT_CHG"].every(nodeIsDone);
-      }
-
-      function stopSyAutoRefreshWhenCcComplete() {
-        if (ccTimelineIsComplete()) stopSyAutoRefresh();
+      function stopSyAutoRefreshWhenFinalNodesComplete() {
+        if (finalTimelineNodesComplete()) stopSyAutoRefresh();
       }
 
       async function refreshSy({ silent = true, background = false } = {}) {
         if (document.hidden) return;
-        if (!isTodaySyQuery(activeSyQuery)) {
+        if (!isTodaySyQuery(activeSyQuery) || finalTimelineNodesComplete()) {
           stopSyAutoRefresh();
           return;
         }
@@ -5297,9 +5293,9 @@
       function startSyAutoRefresh(query = activeSyQuery, { immediate = true } = {}) {
         activeSyQuery = normalizeSyQuery(query || "SY");
         stopSyAutoRefresh();
-        if (!isTodaySyQuery(activeSyQuery)) return;
+        if (!isTodaySyQuery(activeSyQuery) || finalTimelineNodesComplete()) return;
         if (immediate) refreshSy({ background: true });
-        if (!document.hidden) syAutoRefreshTimer = setInterval(refreshSy, SY_AUTO_REFRESH_MS);
+        if (!document.hidden && !finalTimelineNodesComplete()) syAutoRefreshTimer = setInterval(refreshSy, SY_AUTO_REFRESH_MS);
       }
 
       function syncSyAutoRefreshWithVisibility() {
@@ -5307,7 +5303,7 @@
           stopSyAutoRefresh();
           return;
         }
-        if (isTodaySyQuery(activeSyQuery) && !syAutoRefreshTimer) startSyAutoRefresh(activeSyQuery, { immediate: true });
+        if (isTodaySyQuery(activeSyQuery) && !finalTimelineNodesComplete() && !syAutoRefreshTimer) startSyAutoRefresh(activeSyQuery, { immediate: true });
       }
 
       async function searchPassenger() {
