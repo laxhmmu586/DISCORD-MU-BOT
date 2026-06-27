@@ -3921,7 +3921,6 @@
                 <button class="detail-action warning-action" type="button" data-panel="warning" id="warning-action" hidden aria-label="Open warnings">⚠️ WARNING <span class="detail-action-badge warning-badge" id="warning-count">0</span></button>
                 <button class="detail-action" type="button" data-panel="wch">WCH <span class="detail-action-badge" id="wch-count"></span></button>
                 <button class="detail-action" type="button" data-panel="psm">PSM/MSG <span class="detail-action-badge" id="psm-count"></span></button>
-                <button class="detail-action" type="button" data-panel="membership">Membership</button>
                 <button class="detail-action" type="button" data-report-shortcut="sales">Sales Report</button>
                 <button class="detail-action" type="button" data-report-shortcut="vip">VIP Report</button>
               </div>
@@ -4097,6 +4096,7 @@
       let inactivityTimer = null;
       let syAutoRefreshTimer = null;
       let syAutoRefreshInFlight = false;
+      let syAutoRefreshAbortController = null;
       let pendingSyRefresh = null;
       let selectedIndex = 0;
       let scrollOffset = 0;
@@ -4356,7 +4356,11 @@
 
       function writeCompletedSyNodeCache(cache) {
         try {
-          localStorage.setItem(SY_COMPLETED_NODE_CACHE_KEY, JSON.stringify(cache));
+          const savedTime = (entry) => Math.max(0, ...Object.values(entry || {}).map((item) => Date.parse(item?.savedAt || 0) || 0));
+          const entries = Object.entries(cache || {})
+            .sort(([, a], [, b]) => savedTime(b) - savedTime(a))
+            .slice(0, 20);
+          localStorage.setItem(SY_COMPLETED_NODE_CACHE_KEY, JSON.stringify(Object.fromEntries(entries)));
         } catch (_) {}
       }
 
@@ -4396,10 +4400,10 @@
         return headers;
       }
 
-      async function fetchSearch(query) {
+      async function fetchSearch(query, options = {}) {
         const apiBase = resolveApiBase();
         const endpoint = `${apiBase}/search?q=${encodeURIComponent(query)}`;
-        const res = await fetch(endpoint, { cache: "no-store", headers: await authHeaders() });
+        const res = await fetch(endpoint, { cache: "no-store", headers: await authHeaders(), signal: options.signal });
         const type = res.headers.get("content-type") || "";
         if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
         if (!type.includes("application/json")) throw new Error(`Search API returned non-JSON from ${apiBase}.`);
@@ -5139,6 +5143,9 @@
       function stopSyAutoRefresh() {
         if (syAutoRefreshTimer) clearInterval(syAutoRefreshTimer);
         syAutoRefreshTimer = null;
+        syAutoRefreshAbortController?.abort();
+        syAutoRefreshAbortController = null;
+        syAutoRefreshInFlight = false;
       }
 
       function nodeIsDone(key) {
@@ -5154,18 +5161,21 @@
       }
 
       async function refreshSy({ silent = true, background = false } = {}) {
+        if (document.hidden) return;
         if (!isTodaySyQuery(activeSyQuery)) {
           stopSyAutoRefresh();
           return;
         }
         if (syAutoRefreshInFlight) return;
+        syAutoRefreshAbortController?.abort();
+        syAutoRefreshAbortController = new AbortController();
         syAutoRefreshInFlight = true;
         const protectedView = isSyRefreshProtectedView();
         const showLoading = !currentSy && !protectedView;
         if (showLoading) setLoadingState(true);
         const refreshQuery = activeSyQuery || "SY";
         try {
-          const data = await fetchSearch(refreshQuery);
+          const data = await fetchSearch(refreshQuery, { signal: syAutoRefreshAbortController.signal });
           if (refreshQuery !== activeSyQuery || !isTodaySyQuery(activeSyQuery)) return;
           if (!data?.sy) throw new Error(data?.error || "No SY payload returned.");
           if (isSyRefreshProtectedView()) {
@@ -5175,6 +5185,7 @@
           pendingSyRefresh = null;
           updateFlightFromSy(data.sy);
         } catch (error) {
+          if (error?.name === "AbortError") return;
           if (refreshQuery === activeSyQuery && isTodaySyQuery(activeSyQuery) && !isSyRefreshProtectedView()) {
             clearSyDashboard();
             resultPanel.innerHTML = "";
@@ -5183,6 +5194,7 @@
         } finally {
           if (showLoading) setLoadingState(false);
           syAutoRefreshInFlight = false;
+          syAutoRefreshAbortController = null;
         }
       }
 
@@ -5191,7 +5203,15 @@
         stopSyAutoRefresh();
         if (!isTodaySyQuery(activeSyQuery)) return;
         if (immediate) refreshSy({ background: true });
-        syAutoRefreshTimer = setInterval(refreshSy, SY_AUTO_REFRESH_MS);
+        if (!document.hidden) syAutoRefreshTimer = setInterval(refreshSy, SY_AUTO_REFRESH_MS);
+      }
+
+      function syncSyAutoRefreshWithVisibility() {
+        if (document.hidden) {
+          stopSyAutoRefresh();
+          return;
+        }
+        if (isTodaySyQuery(activeSyQuery) && !syAutoRefreshTimer) startSyAutoRefresh(activeSyQuery, { immediate: true });
       }
 
       async function searchPassenger() {
@@ -7081,6 +7101,8 @@
       }
 
       resetTimelineCenter();
+      document.addEventListener("visibilitychange", syncSyAutoRefreshWithVisibility);
+      window.addEventListener("pagehide", stopSyAutoRefresh);
       mobileOrbitQuery.addEventListener("change", () => resetTimelineCenter(nodes[selectedIndex]?.dataset?.key));
       new ResizeObserver(() => placeNodes()).observe(timelineShell);
     </script>
