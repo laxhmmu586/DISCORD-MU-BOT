@@ -3921,7 +3921,8 @@
                 <button class="detail-action warning-action" type="button" data-panel="warning" id="warning-action" hidden aria-label="Open warnings">⚠️ WARNING <span class="detail-action-badge warning-badge" id="warning-count">0</span></button>
                 <button class="detail-action" type="button" data-panel="wch">WCH <span class="detail-action-badge" id="wch-count"></span></button>
                 <button class="detail-action" type="button" data-panel="psm">PSM/MSG <span class="detail-action-badge" id="psm-count"></span></button>
-                <button class="detail-action" type="button" data-panel="membership">Membership</button>
+                <button class="detail-action" type="button" data-panel="duplicate-bags" id="duplicate-bags-action">DUP BAG <span class="detail-action-badge" id="duplicate-bags-count"></span></button>
+                <button class="detail-action" type="button" data-panel="duplicate-names" id="duplicate-names-action">DUP NAME <span class="detail-action-badge" id="duplicate-names-count"></span></button>
                 <button class="detail-action" type="button" data-report-shortcut="sales">Sales Report</button>
                 <button class="detail-action" type="button" data-report-shortcut="vip">VIP Report</button>
               </div>
@@ -4091,12 +4092,13 @@
       const AUTH_LAST_ACTIVITY_KEY = "mufc_auth_last_activity_at";
       const AUTH_SESSION_LIMIT_MS = 60 * 60 * 1000;
       const APP_ENTRY_GRACE_MS = 30 * 1000;
-      const SY_AUTO_REFRESH_MS = 30 * 1000;
+      const SY_AUTO_REFRESH_MS = 15 * 1000;
       const SY_COMPLETED_NODE_CACHE_KEY = "mufc_sy_completed_nodes_v1";
       const PERSISTENT_GREEN_NODE_KEYS = ["GD_CHECK", "FSC", "NEXTDAY_INFO"];
       let inactivityTimer = null;
       let syAutoRefreshTimer = null;
       let syAutoRefreshInFlight = false;
+      let syAutoRefreshAbortController = null;
       let pendingSyRefresh = null;
       let selectedIndex = 0;
       let scrollOffset = 0;
@@ -4356,7 +4358,11 @@
 
       function writeCompletedSyNodeCache(cache) {
         try {
-          localStorage.setItem(SY_COMPLETED_NODE_CACHE_KEY, JSON.stringify(cache));
+          const savedTime = (entry) => Math.max(0, ...Object.values(entry || {}).map((item) => Date.parse(item?.savedAt || 0) || 0));
+          const entries = Object.entries(cache || {})
+            .sort(([, a], [, b]) => savedTime(b) - savedTime(a))
+            .slice(0, 20);
+          localStorage.setItem(SY_COMPLETED_NODE_CACHE_KEY, JSON.stringify(Object.fromEntries(entries)));
         } catch (_) {}
       }
 
@@ -4396,10 +4402,10 @@
         return headers;
       }
 
-      async function fetchSearch(query) {
+      async function fetchSearch(query, options = {}) {
         const apiBase = resolveApiBase();
         const endpoint = `${apiBase}/search?q=${encodeURIComponent(query)}`;
-        const res = await fetch(endpoint, { cache: "no-store", headers: await authHeaders() });
+        const res = await fetch(endpoint, { cache: "no-store", headers: await authHeaders(), signal: options.signal });
         const type = res.headers.get("content-type") || "";
         if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
         if (!type.includes("application/json")) throw new Error(`Search API returned non-JSON from ${apiBase}.`);
@@ -4965,6 +4971,94 @@
         return (rows || []).map((row) => ({ ...(lookup.get(String(row.bn || "").padStart(3, "0")) || {}), ...row }));
       }
 
+      function allPassengerRecords(sy = currentSy) {
+        const byKey = new Map();
+        [...(sy?.seatMapRecords || []), ...(sy?.bnAudit || []).map((row) => row?.passengerRecord || row)].forEach((row) => {
+          const bn = String(row?.bn || "").padStart(3, "0");
+          const key = bn || `${passengerName(row)}|${row?.seat || ""}|${row?.passportNo || ""}`;
+          if (!key || key === "000") return;
+          byKey.set(key, { ...(byKey.get(key) || {}), ...row, bn });
+        });
+        return [...byKey.values()];
+      }
+
+      function splitBagTag(value) {
+        const text = String(value || "").trim().toUpperCase();
+        const match = text.match(/((?:[A-Z]{1,3}\s*)?\d{5,12})\s*\/\s*([A-Z]{3})\b/);
+        if (!match) return null;
+        const digits = String(match[1] || "").replace(/\D/g, "");
+        if (digits.length < 6) return null;
+        return { display: `${String(match[1] || "").replace(/\s+/g, " ").trim()}/${match[2]}`, key: digits.slice(-6), destination: match[2] };
+      }
+
+      function bagEntriesForRow(row) {
+        const values = Array.isArray(row?.bagtags || row?.bagTags || row?.bags)
+          ? (row.bagtags || row.bagTags || row.bags)
+          : compactValue(row?.bagtags || row?.bagTags || row?.bags).split(/\s+\/\s+|\s*,\s*/);
+        return values.map(splitBagTag).filter(Boolean).map((bag) => ({
+          ...bag,
+          name: passengerName(row),
+          bn: row?.bn || "",
+          seat: row?.seat || "",
+          passportNo: row?.passportNo || "",
+          ticketNo: row?.ticketNumber || row?.ticketNo || ""
+        }));
+      }
+
+      function hasUnknownPassengerName(row) {
+        const name = String(row?.name || passengerName(row) || "").trim().toUpperCase();
+        return !name || name === "UNKNOWN" || name === "-";
+      }
+
+      function duplicateBagRows(sy = currentSy) {
+        const groups = new Map();
+        allPassengerRecords(sy).forEach((row) => {
+          bagEntriesForRow(row).forEach((bag) => {
+            const group = groups.get(bag.key) || [];
+            group.push(bag);
+            groups.set(bag.key, group);
+          });
+        });
+        return [...groups.entries()].flatMap(([bagKey, rows]) => {
+          if (rows.some(hasUnknownPassengerName)) return [];
+          const uniquePassengers = new Set(rows.map((row) => row.bn || `${row.name}|${row.seat}`));
+          const destinations = new Set(rows.map((row) => row.destination));
+          if (rows.length < 2 || (uniquePassengers.size < 2 && destinations.size < 2)) return [];
+          return rows.map((row) => ({ ...row, bagKey }));
+        }).sort((a, b) => a.bagKey.localeCompare(b.bagKey) || Number(a.bn || 9999) - Number(b.bn || 9999));
+      }
+
+      function normalizeComparableName(name) {
+        return String(name || "")
+          .toUpperCase()
+          .replace(/\s+/g, "")
+          .replace(/\+/g, "")
+          .split("/")
+          .map((part) => part.replace(/(MSTR|MISS|MRS|MR|MS)$/i, ""))
+          .join("/");
+      }
+
+      function duplicateNameRows(sy = currentSy) {
+        const groups = new Map();
+        allPassengerRecords(sy).forEach((row) => {
+          if (hasUnknownPassengerName(row)) return;
+          const nameKey = normalizeComparableName(passengerName(row));
+          if (!nameKey) return;
+          const group = groups.get(nameKey) || [];
+          group.push(row);
+          groups.set(nameKey, group);
+        });
+        return [...groups.entries()].flatMap(([nameKey, rows]) => {
+          const uniqueDocuments = new Set(rows.map((row) => row.passportNo || `${row.bn}|${row.seat}`));
+          if (rows.length < 2 || uniqueDocuments.size < 2) return [];
+          return rows.flatMap((row) => {
+            const bags = bagEntriesForRow(row);
+            const base = { ...row, nameKey, ticketNo: row.ticketNumber || row.ticketNo || "" };
+            return bags.length ? bags.map((bag) => ({ ...base, bagtag: bag.display, bagDestination: bag.destination })) : [{ ...base, bagtag: "", bagDestination: "" }];
+          });
+        }).sort((a, b) => a.nameKey.localeCompare(b.nameKey) || Number(a.bn || 9999) - Number(b.bn || 9999));
+      }
+
       function renderPassenger(data) {
         resultPanel.innerHTML = "";
         showPassengerModal(data, "Passenger Record");
@@ -5025,6 +5119,12 @@
         updateWarningActionState(buildWarningRows(sy));
         loadWarningAcknowledgements(sy);
         setBadgeText("#psm-count", (sy.psmList || []).length);
+        const duplicateBagCount = duplicateBagRows(sy).length;
+        const duplicateNameCount = duplicateNameRows(sy).length;
+        setBadgeText("#duplicate-bags-count", duplicateBagCount);
+        setBadgeText("#duplicate-names-count", duplicateNameCount);
+        setActionIssueState("#duplicate-bags-action", duplicateBagCount > 0);
+        setActionIssueState("#duplicate-names-action", duplicateNameCount > 0);
         if (bagReportButton) bagReportButton.hidden = !(sy.bagSheet?.hasData);
         refreshSalesReportButton(sy);
         let previousStarted = true;
@@ -5060,7 +5160,7 @@
           previousStarted = previousStarted && (key === "FSC" ? true : started);
         });
         applyPostFlightCompletionCascade();
-        stopSyAutoRefreshWhenCcComplete();
+        stopSyAutoRefreshWhenAllNodesComplete();
         resetTimelineCenter();
         rerenderActiveRealtimePanel();
       }
@@ -5139,33 +5239,35 @@
       function stopSyAutoRefresh() {
         if (syAutoRefreshTimer) clearInterval(syAutoRefreshTimer);
         syAutoRefreshTimer = null;
+        syAutoRefreshAbortController?.abort();
+        syAutoRefreshAbortController = null;
+        syAutoRefreshInFlight = false;
       }
 
-      function nodeIsDone(key) {
-        return document.querySelector(`.node[data-key="${key}"]`)?.dataset?.status === "done";
+      function allTimelineNodesComplete() {
+        return Array.from(nodes).every((node) => node.dataset.status === "done");
       }
 
-      function ccTimelineIsComplete() {
-        return ["CCL", "CC", "INITIAL_FLIGHT", "BDT_CHG"].every(nodeIsDone);
-      }
-
-      function stopSyAutoRefreshWhenCcComplete() {
-        if (ccTimelineIsComplete()) stopSyAutoRefresh();
+      function stopSyAutoRefreshWhenAllNodesComplete() {
+        if (allTimelineNodesComplete()) stopSyAutoRefresh();
       }
 
       async function refreshSy({ silent = true, background = false } = {}) {
-        if (!isTodaySyQuery(activeSyQuery)) {
+        if (document.hidden) return;
+        if (!isTodaySyQuery(activeSyQuery) || allTimelineNodesComplete()) {
           stopSyAutoRefresh();
           return;
         }
         if (syAutoRefreshInFlight) return;
+        syAutoRefreshAbortController?.abort();
+        syAutoRefreshAbortController = new AbortController();
         syAutoRefreshInFlight = true;
         const protectedView = isSyRefreshProtectedView();
         const showLoading = !currentSy && !protectedView;
         if (showLoading) setLoadingState(true);
         const refreshQuery = activeSyQuery || "SY";
         try {
-          const data = await fetchSearch(refreshQuery);
+          const data = await fetchSearch(refreshQuery, { signal: syAutoRefreshAbortController.signal });
           if (refreshQuery !== activeSyQuery || !isTodaySyQuery(activeSyQuery)) return;
           if (!data?.sy) throw new Error(data?.error || "No SY payload returned.");
           if (isSyRefreshProtectedView()) {
@@ -5175,6 +5277,7 @@
           pendingSyRefresh = null;
           updateFlightFromSy(data.sy);
         } catch (error) {
+          if (error?.name === "AbortError") return;
           if (refreshQuery === activeSyQuery && isTodaySyQuery(activeSyQuery) && !isSyRefreshProtectedView()) {
             clearSyDashboard();
             resultPanel.innerHTML = "";
@@ -5183,15 +5286,24 @@
         } finally {
           if (showLoading) setLoadingState(false);
           syAutoRefreshInFlight = false;
+          syAutoRefreshAbortController = null;
         }
       }
 
       function startSyAutoRefresh(query = activeSyQuery, { immediate = true } = {}) {
         activeSyQuery = normalizeSyQuery(query || "SY");
         stopSyAutoRefresh();
-        if (!isTodaySyQuery(activeSyQuery)) return;
+        if (!isTodaySyQuery(activeSyQuery) || allTimelineNodesComplete()) return;
         if (immediate) refreshSy({ background: true });
-        syAutoRefreshTimer = setInterval(refreshSy, SY_AUTO_REFRESH_MS);
+        if (!document.hidden && !allTimelineNodesComplete()) syAutoRefreshTimer = setInterval(refreshSy, SY_AUTO_REFRESH_MS);
+      }
+
+      function syncSyAutoRefreshWithVisibility() {
+        if (document.hidden) {
+          stopSyAutoRefresh();
+          return;
+        }
+        if (isTodaySyQuery(activeSyQuery) && !allTimelineNodesComplete() && !syAutoRefreshTimer) startSyAutoRefresh(activeSyQuery, { immediate: true });
       }
 
       async function searchPassenger() {
@@ -5472,6 +5584,34 @@
           { label: "FF", value: (row) => [row.ffCarrier, row.ffNumber].filter(Boolean).join(" ") },
         ], "No membership records found.") : `<p class="panel-muted">No membership records found.</p>`);
         setPanelPassengerRows(rows);
+      }
+
+      function renderDuplicateBagsPanel() {
+        const rows = duplicateBagRows(currentSy);
+        const stats = `<div class="panel-stats"><span class="status-fail">Duplicate bag rows: ${rows.length}</span><span>Compare by last 6 digits</span></div>`;
+        renderPanel("Duplicate Bag Tags", currentSy?.flightNo || "SY", stats + rowsTable(rows, [
+          { label: "Last 6", value: (row) => row.bagKey },
+          { label: "Name", value: (row) => row.name },
+          { label: "BN", value: (row) => row.bn ? `BN${row.bn}` : "" },
+          { label: "Bag Tag", value: (row) => row.display },
+          { label: "Destination", value: (row) => row.destination },
+        ], "No duplicate bag tags found."));
+        setPanelPassengerRows(enrichRowsWithPassengerData(rows));
+      }
+
+      function renderDuplicateNamesPanel() {
+        const rows = duplicateNameRows(currentSy);
+        const stats = `<div class="panel-stats"><span class="status-fail">Duplicate/similar name rows: ${rows.length}</span><span>Titles like MR/MS/MRS are ignored</span></div>`;
+        renderPanel("Duplicate Names", currentSy?.flightNo || "SY", stats + rowsTable(rows, [
+          { label: "Name", value: passengerName },
+          { label: "Passport", value: (row) => row.passportNo },
+          { label: "BN", value: (row) => row.bn ? `BN${row.bn}` : "" },
+          { label: "Seat", value: (row) => row.seat },
+          { label: "TKNE", value: (row) => row.ticketNo || row.ticketNumber },
+          { label: "Bag Tag", value: (row) => row.bagtag },
+          { label: "Destination", value: (row) => row.bagDestination },
+        ], "No duplicate or highly similar names found."));
+        setPanelPassengerRows(enrichRowsWithPassengerData(rows));
       }
 
       function renderPsmPanel() {
@@ -6777,6 +6917,8 @@
           if (panel === "warning") renderWarningPanel();
           if (panel === "membership") renderMembershipPanel();
           if (panel === "psm") renderPsmPanel();
+          if (panel === "duplicate-bags") renderDuplicateBagsPanel();
+          if (panel === "duplicate-names") renderDuplicateNamesPanel();
         });
       });
 
@@ -7081,6 +7223,8 @@
       }
 
       resetTimelineCenter();
+      document.addEventListener("visibilitychange", syncSyAutoRefreshWithVisibility);
+      window.addEventListener("pagehide", stopSyAutoRefresh);
       mobileOrbitQuery.addEventListener("change", () => resetTimelineCenter(nodes[selectedIndex]?.dataset?.key));
       new ResizeObserver(() => placeNodes()).observe(timelineShell);
     </script>
