@@ -5005,6 +5005,11 @@
         }));
       }
 
+      function hasUnknownPassengerName(row) {
+        const name = String(row?.name || passengerName(row) || "").trim().toUpperCase();
+        return !name || name === "UNKNOWN" || name === "-";
+      }
+
       function duplicateBagRows(sy = currentSy) {
         const groups = new Map();
         allPassengerRecords(sy).forEach((row) => {
@@ -5015,6 +5020,7 @@
           });
         });
         return [...groups.entries()].flatMap(([bagKey, rows]) => {
+          if (rows.some(hasUnknownPassengerName)) return [];
           const uniquePassengers = new Set(rows.map((row) => row.bn || `${row.name}|${row.seat}`));
           const destinations = new Set(rows.map((row) => row.destination));
           if (rows.length < 2 || (uniquePassengers.size < 2 && destinations.size < 2)) return [];
@@ -5035,6 +5041,7 @@
       function duplicateNameRows(sy = currentSy) {
         const groups = new Map();
         allPassengerRecords(sy).forEach((row) => {
+          if (hasUnknownPassengerName(row)) return;
           const nameKey = normalizeComparableName(passengerName(row));
           if (!nameKey) return;
           const group = groups.get(nameKey) || [];
