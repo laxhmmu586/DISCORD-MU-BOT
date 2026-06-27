@@ -3921,6 +3921,8 @@
                 <button class="detail-action warning-action" type="button" data-panel="warning" id="warning-action" hidden aria-label="Open warnings">⚠️ WARNING <span class="detail-action-badge warning-badge" id="warning-count">0</span></button>
                 <button class="detail-action" type="button" data-panel="wch">WCH <span class="detail-action-badge" id="wch-count"></span></button>
                 <button class="detail-action" type="button" data-panel="psm">PSM/MSG <span class="detail-action-badge" id="psm-count"></span></button>
+                <button class="detail-action" type="button" data-panel="duplicate-bags" id="duplicate-bags-action">DUP BAG <span class="detail-action-badge" id="duplicate-bags-count"></span></button>
+                <button class="detail-action" type="button" data-panel="duplicate-names" id="duplicate-names-action">DUP NAME <span class="detail-action-badge" id="duplicate-names-count"></span></button>
                 <button class="detail-action" type="button" data-report-shortcut="sales">Sales Report</button>
                 <button class="detail-action" type="button" data-report-shortcut="vip">VIP Report</button>
               </div>
@@ -4969,6 +4971,87 @@
         return (rows || []).map((row) => ({ ...(lookup.get(String(row.bn || "").padStart(3, "0")) || {}), ...row }));
       }
 
+      function allPassengerRecords(sy = currentSy) {
+        const byKey = new Map();
+        [...(sy?.seatMapRecords || []), ...(sy?.bnAudit || []).map((row) => row?.passengerRecord || row)].forEach((row) => {
+          const bn = String(row?.bn || "").padStart(3, "0");
+          const key = bn || `${passengerName(row)}|${row?.seat || ""}|${row?.passportNo || ""}`;
+          if (!key || key === "000") return;
+          byKey.set(key, { ...(byKey.get(key) || {}), ...row, bn });
+        });
+        return [...byKey.values()];
+      }
+
+      function splitBagTag(value) {
+        const text = String(value || "").trim().toUpperCase();
+        const match = text.match(/((?:[A-Z]{1,3}\s*)?\d{5,12})\s*\/\s*([A-Z]{3})\b/);
+        if (!match) return null;
+        const digits = String(match[1] || "").replace(/\D/g, "");
+        if (digits.length < 6) return null;
+        return { display: `${String(match[1] || "").replace(/\s+/g, " ").trim()}/${match[2]}`, key: digits.slice(-6), destination: match[2] };
+      }
+
+      function bagEntriesForRow(row) {
+        const values = Array.isArray(row?.bagtags || row?.bagTags || row?.bags)
+          ? (row.bagtags || row.bagTags || row.bags)
+          : compactValue(row?.bagtags || row?.bagTags || row?.bags).split(/\s+\/\s+|\s*,\s*/);
+        return values.map(splitBagTag).filter(Boolean).map((bag) => ({
+          ...bag,
+          name: passengerName(row),
+          bn: row?.bn || "",
+          seat: row?.seat || "",
+          passportNo: row?.passportNo || "",
+          ticketNo: row?.ticketNumber || row?.ticketNo || ""
+        }));
+      }
+
+      function duplicateBagRows(sy = currentSy) {
+        const groups = new Map();
+        allPassengerRecords(sy).forEach((row) => {
+          bagEntriesForRow(row).forEach((bag) => {
+            const group = groups.get(bag.key) || [];
+            group.push(bag);
+            groups.set(bag.key, group);
+          });
+        });
+        return [...groups.entries()].flatMap(([bagKey, rows]) => {
+          const uniquePassengers = new Set(rows.map((row) => row.bn || `${row.name}|${row.seat}`));
+          const destinations = new Set(rows.map((row) => row.destination));
+          if (rows.length < 2 || (uniquePassengers.size < 2 && destinations.size < 2)) return [];
+          return rows.map((row) => ({ ...row, bagKey }));
+        }).sort((a, b) => a.bagKey.localeCompare(b.bagKey) || Number(a.bn || 9999) - Number(b.bn || 9999));
+      }
+
+      function normalizeComparableName(name) {
+        return String(name || "")
+          .toUpperCase()
+          .replace(/\s+/g, "")
+          .replace(/\+/g, "")
+          .split("/")
+          .map((part) => part.replace(/(MSTR|MISS|MRS|MR|MS)$/i, ""))
+          .join("/");
+      }
+
+      function duplicateNameRows(sy = currentSy) {
+        const groups = new Map();
+        allPassengerRecords(sy).forEach((row) => {
+          const nameKey = normalizeComparableName(passengerName(row));
+          if (!nameKey) return;
+          const group = groups.get(nameKey) || [];
+          group.push(row);
+          groups.set(nameKey, group);
+        });
+        return [...groups.entries()].flatMap(([nameKey, rows]) => {
+          const uniqueDocuments = new Set(rows.map((row) => row.passportNo || `${row.bn}|${row.seat}`));
+          if (rows.length < 2 || uniqueDocuments.size < 2) return [];
+          return rows.flatMap((row) => {
+            const bags = bagEntriesForRow(row);
+            const base = { ...row, nameKey, ticketNo: row.ticketNumber || row.ticketNo || "" };
+            return bags.length ? bags.map((bag) => ({ ...base, bagtag: bag.display, bagDestination: bag.destination })) : [{ ...base, bagtag: "", bagDestination: "" }];
+          });
+        }).sort((a, b) => a.nameKey.localeCompare(b.nameKey) || Number(a.bn || 9999) - Number(b.bn || 9999));
+      }
+
       function renderPassenger(data) {
         resultPanel.innerHTML = "";
         showPassengerModal(data, "Passenger Record");
@@ -5029,6 +5112,12 @@
         updateWarningActionState(buildWarningRows(sy));
         loadWarningAcknowledgements(sy);
         setBadgeText("#psm-count", (sy.psmList || []).length);
+        const duplicateBagCount = duplicateBagRows(sy).length;
+        const duplicateNameCount = duplicateNameRows(sy).length;
+        setBadgeText("#duplicate-bags-count", duplicateBagCount);
+        setBadgeText("#duplicate-names-count", duplicateNameCount);
+        setActionIssueState("#duplicate-bags-action", duplicateBagCount > 0);
+        setActionIssueState("#duplicate-names-action", duplicateNameCount > 0);
         if (bagReportButton) bagReportButton.hidden = !(sy.bagSheet?.hasData);
         refreshSalesReportButton(sy);
         let previousStarted = true;
@@ -5492,6 +5581,34 @@
           { label: "FF", value: (row) => [row.ffCarrier, row.ffNumber].filter(Boolean).join(" ") },
         ], "No membership records found.") : `<p class="panel-muted">No membership records found.</p>`);
         setPanelPassengerRows(rows);
+      }
+
+      function renderDuplicateBagsPanel() {
+        const rows = duplicateBagRows(currentSy);
+        const stats = `<div class="panel-stats"><span class="status-fail">Duplicate bag rows: ${rows.length}</span><span>Compare by last 6 digits</span></div>`;
+        renderPanel("Duplicate Bag Tags", currentSy?.flightNo || "SY", stats + rowsTable(rows, [
+          { label: "Last 6", value: (row) => row.bagKey },
+          { label: "Name", value: (row) => row.name },
+          { label: "BN", value: (row) => row.bn ? `BN${row.bn}` : "" },
+          { label: "Bag Tag", value: (row) => row.display },
+          { label: "Destination", value: (row) => row.destination },
+        ], "No duplicate bag tags found."));
+        setPanelPassengerRows(enrichRowsWithPassengerData(rows));
+      }
+
+      function renderDuplicateNamesPanel() {
+        const rows = duplicateNameRows(currentSy);
+        const stats = `<div class="panel-stats"><span class="status-fail">Duplicate/similar name rows: ${rows.length}</span><span>Titles like MR/MS/MRS are ignored</span></div>`;
+        renderPanel("Duplicate Names", currentSy?.flightNo || "SY", stats + rowsTable(rows, [
+          { label: "Name", value: passengerName },
+          { label: "Passport", value: (row) => row.passportNo },
+          { label: "BN", value: (row) => row.bn ? `BN${row.bn}` : "" },
+          { label: "Seat", value: (row) => row.seat },
+          { label: "TKNE", value: (row) => row.ticketNo || row.ticketNumber },
+          { label: "Bag Tag", value: (row) => row.bagtag },
+          { label: "Destination", value: (row) => row.bagDestination },
+        ], "No duplicate or highly similar names found."));
+        setPanelPassengerRows(enrichRowsWithPassengerData(rows));
       }
 
       function renderPsmPanel() {
@@ -6797,6 +6914,8 @@
           if (panel === "warning") renderWarningPanel();
           if (panel === "membership") renderMembershipPanel();
           if (panel === "psm") renderPsmPanel();
+          if (panel === "duplicate-bags") renderDuplicateBagsPanel();
+          if (panel === "duplicate-names") renderDuplicateNamesPanel();
         });
       });
 
