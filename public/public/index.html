@@ -653,7 +653,7 @@
 
       .details-surface {
         display: grid;
-        gap: 12px;
+        gap: 26px;
         padding: 18px;
         border: 1px solid rgba(176, 216, 255, 0.22);
         background: linear-gradient(150deg, rgba(5, 18, 31, 0.68), rgba(2, 11, 20, 0.52));
@@ -661,10 +661,35 @@
         box-shadow: 0 22px 70px rgba(0, 0, 0, 0.28);
       }
 
+      .details-main {
+        display: grid;
+        gap: 26px;
+        min-width: 0;
+      }
+
       .details-manifest {
+        position: relative;
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 12px;
+        gap: 20px;
+      }
+
+      .details-manifest::after {
+        content: "→";
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 58px;
+        height: 58px;
+        display: grid;
+        place-items: center;
+        border: 1px solid rgba(201, 222, 244, 0.42);
+        border-radius: 999px;
+        background: rgba(7, 17, 28, 0.86);
+        color: rgba(226, 238, 248, 0.9);
+        font-size: 38px;
+        transform: translate(-50%, -50%);
+        box-shadow: 0 10px 30px rgba(0,0,0,.42), inset 0 0 18px rgba(88,167,255,.08);
       }
 
       .mission-stage {
@@ -1066,9 +1091,25 @@
       }
 
       .manifest-section {
-        border: 1px solid rgba(176, 216, 255, 0.22);
-        padding: 16px 18px;
-        background: rgba(6, 20, 34, 0.46);
+        position: relative;
+        overflow: hidden;
+        min-height: 228px;
+        border: 1px solid rgba(176, 216, 255, 0.34);
+        border-radius: 8px;
+        padding: 24px 30px;
+        background:
+          linear-gradient(135deg, rgba(8, 21, 34, 0.84), rgba(1, 8, 15, 0.72)),
+          radial-gradient(circle at 72% 8%, rgba(88, 167, 255, 0.14), transparent 34%);
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,.035), 0 18px 38px rgba(0,0,0,.32);
+      }
+
+      .manifest-section::before {
+        content: "···";
+        position: absolute;
+        right: 18px;
+        top: 8px;
+        color: rgba(166, 190, 214, 0.18);
+        letter-spacing: 2px;
       }
 
       .manifest-section h3 {
@@ -1150,44 +1191,95 @@
       }
 
       .message {
-        margin: 0;
-        padding: 14px 16px;
-        border: 1px solid rgba(176, 216, 255, 0.22);
-        background: rgba(1, 10, 18, 0.24);
-        color: rgba(235, 246, 255, 0.82);
-        font-size: 14px;
-        line-height: 1.45;
-        text-align: center;
+        margin: -16px 34px 0;
+        padding: 0;
+        border: 0;
+        border-top: 3px solid rgba(255, 88, 96, 0.94);
+        background: transparent;
+        color: transparent;
+        font-size: 0;
+        line-height: 0;
       }
 
       .detail-actions {
         display: grid;
-        grid-template-columns: repeat(4, minmax(132px, 1fr));
-        gap: 10px;
+        grid-template-columns: repeat(8, minmax(82px, 1fr));
+        gap: 8px;
       }
 
       .details-panel .detail-action[data-report-shortcut],
-      .details-panel .detail-action[data-report-mode] {
+      .details-panel .detail-action[data-report-mode],
+      .details-panel #warning-action {
         display: none !important;
       }
 
       .detail-action {
         position: relative;
         z-index: 2;
-        min-height: 42px;
-        border: 1px solid rgba(176, 216, 255, 0.2);
-        background: rgba(0, 0, 0, 0.18);
-        color: rgba(244, 250, 255, 0.92);
-        font-size: 12px;
-        font-weight: 850;
-        letter-spacing: 0.4px;
+        min-height: 104px;
+        display: grid;
+        grid-template-rows: 38px auto 1px;
+        align-content: center;
+        justify-items: center;
+        gap: 10px;
+        padding: 14px 10px 12px;
+        border: 1px solid rgba(176, 216, 255, 0.22);
+        border-radius: 5px;
+        background:
+          radial-gradient(circle at 50% 8%, rgba(88, 167, 255, 0.055), transparent 34%),
+          linear-gradient(145deg, rgba(5, 17, 28, 0.8), rgba(1, 8, 14, 0.72));
+        color: rgba(244, 250, 255, 0.72);
+        font-size: 10px;
+        font-weight: 650;
+        letter-spacing: 0.25px;
+        line-height: 1;
         text-transform: uppercase;
         cursor: pointer;
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,.03), 0 10px 22px rgba(0,0,0,.26);
+      }
+
+      .detail-action-icon {
+        width: 38px;
+        height: 38px;
+        color: rgba(236, 244, 252, 0.84);
+        stroke: currentColor;
+        filter: drop-shadow(0 0 4px rgba(255,255,255,.08));
+      }
+
+      .detail-action::before {
+        content: "";
+        position: absolute;
+        inset: 4px 4px auto auto;
+        width: 14px;
+        height: 12px;
+        opacity: 0.12;
+        background-image: radial-gradient(circle, currentColor 1px, transparent 1.5px);
+        background-size: 4px 4px;
+      }
+
+      .detail-action::after {
+        content: "";
+        width: 58px;
+        height: 1px;
+        background: rgba(174, 194, 213, 0.2);
       }
 
       .detail-action:hover {
         border-color: rgba(120, 183, 255, 0.5);
         background: rgba(88, 167, 255, 0.1);
+      }
+
+      .detail-action.is-clear-blue {
+        border-color: rgba(99, 160, 255, 0.78);
+        background: linear-gradient(145deg, rgba(15, 55, 106, 0.66), rgba(2, 14, 27, 0.82));
+        color: rgba(244, 250, 255, 0.9);
+        box-shadow: inset 0 0 0 1px rgba(130, 187, 255, 0.24), 0 0 16px rgba(58, 130, 255, 0.44);
+      }
+
+      .detail-action.is-clear-blue::after {
+        height: 2px;
+        background: #58a7ff;
+        box-shadow: 0 0 10px rgba(88, 167, 255, 0.78);
       }
 
       .warning-action {
@@ -1433,20 +1525,47 @@
       }
 
       .detail-action-badge {
+        position: absolute;
+        top: 9px;
+        right: 12px;
         display: inline-grid;
-        min-width: 20px;
-        height: 20px;
+        min-width: 22px;
+        height: 22px;
         place-items: center;
-        margin-left: 6px;
+        margin-left: 0;
         border-radius: 999px;
-        background: #2f6af1;
+        background: #7654bd;
         color: white;
-        font-size: 11px;
+        font-size: 12px;
+        font-weight: 800;
         line-height: 1;
       }
 
       .detail-action-badge:empty {
         display: none;
+      }
+
+
+      .report-page .detail-actions {
+        grid-template-columns: repeat(6, minmax(132px, 1fr));
+        gap: 10px;
+      }
+
+      .report-page .detail-action {
+        min-height: 42px;
+        display: block;
+        border-radius: 0;
+        background: rgba(0, 0, 0, 0.18);
+        color: rgba(244, 250, 255, 0.92);
+        font-size: 12px;
+        font-weight: 850;
+        letter-spacing: 0.4px;
+        box-shadow: none;
+      }
+
+      .report-page .detail-action::before,
+      .report-page .detail-action::after {
+        content: none;
       }
 
       .detail-action[hidden],
@@ -3827,6 +3946,7 @@
                 <button id="security-check-button" type="button">Security Check</button>
                 <button id="seat-map-button" type="button">Seat Map</button>
               </div>
+              </div>
             </div>
           </div>
         </div>
@@ -3894,6 +4014,7 @@
         <section class="details-panel" aria-label="Flight details" hidden>
           <div class="details-inner">
             <div class="details-surface">
+              <div class="details-main">
               <div class="details-manifest">
                 <div class="manifest-section">
                   <h3>Reservation</h3>
@@ -3914,17 +4035,18 @@
               </div>
               <p class="message" id="rk-message">Search SY to load live flight data.</p>
               <div class="detail-actions" aria-label="Flight detail actions">
-                <button class="detail-action" type="button" data-panel="chd" id="chd-action">CHD List <span class="detail-action-badge" id="chd-count"></span></button>
-                <button class="detail-action" type="button" data-panel="gov" id="gov-action">GOV/AQQ <span class="detail-action-badge" id="gov-count"></span></button>
-                <button class="detail-action" type="button" data-panel="webedi" id="webedi-action">WEB/EDI/RS <span class="detail-action-badge" id="webedi-count"></span></button>
-                <button class="detail-action" type="button" data-panel="nbrd" id="nbrd-action">CKIN/NBRD <span class="detail-action-badge" id="nbrd-count"></span></button>
+                <button class="detail-action" type="button" data-panel="chd" id="chd-action"><svg class="detail-action-icon" viewBox="0 0 48 48" fill="none" aria-hidden="true"><path d="M18 10h12M19 8h10l1.5 5H37v27H11V13h6.5L19 8Z" stroke-width="2"/><path d="M18 22h12M18 29h12M18 36h8" stroke-width="2" stroke-linecap="round"/></svg><span class="detail-action-label">CHD List</span><span class="detail-action-badge" id="chd-count"></span></button>
+                <button class="detail-action" type="button" data-panel="gov" id="gov-action"><svg class="detail-action-icon" viewBox="0 0 48 48" fill="none" aria-hidden="true"><circle cx="24" cy="16" r="7" stroke-width="2"/><path d="M12 40c1.2-9 5.8-14 12-14s10.8 5 12 14H12Z" stroke-width="2" stroke-linejoin="round"/></svg><span class="detail-action-label">GOV/AQQ</span><span class="detail-action-badge" id="gov-count"></span></button>
+                <button class="detail-action" type="button" data-panel="webedi" id="webedi-action"><svg class="detail-action-icon" viewBox="0 0 48 48" fill="none" aria-hidden="true"><circle cx="24" cy="24" r="17" stroke-width="2"/><path d="M7 24h34M24 7c5 5 7.5 10.7 7.5 17S29 36 24 41M24 7c-5 5-7.5 10.7-7.5 17S19 36 24 41" stroke-width="2" stroke-linecap="round"/></svg><span class="detail-action-label">WEB/EDI/RS</span><span class="detail-action-badge" id="webedi-count"></span></button>
+                <button class="detail-action" type="button" data-panel="wch"><svg class="detail-action-icon" viewBox="0 0 48 48" fill="none" aria-hidden="true"><circle cx="24" cy="13" r="5" stroke-width="2"/><circle cx="13" cy="20" r="4" stroke-width="2"/><circle cx="35" cy="20" r="4" stroke-width="2"/><path d="M16 39V28h16v11M7 39V29c0-3 2-5 6-5M41 39V29c0-3-2-5-6-5M19 28c0-4 2-6 5-6s5 2 5 6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="detail-action-label">WCH</span><span class="detail-action-badge" id="wch-count"></span></button>
+                <button class="detail-action" type="button" data-panel="psm"><svg class="detail-action-icon" viewBox="0 0 48 48" fill="none" aria-hidden="true"><path d="M9 14h30v22H9V14Z" stroke-width="2"/><path d="m10 15 14 12 14-12" stroke-width="2" stroke-linejoin="round"/></svg><span class="detail-action-label">PSM/MSG</span><span class="detail-action-badge" id="psm-count"></span></button>
+                <button class="detail-action" type="button" data-panel="duplicate-bags" id="duplicate-bags-action"><svg class="detail-action-icon" viewBox="0 0 48 48" fill="none" aria-hidden="true"><path d="M15 16h18v25H15V16Z" stroke-width="2"/><path d="M20 16v-5h8v5M10 20h5M33 20h5M20 16v25M28 16v25" stroke-width="2" stroke-linecap="round"/></svg><span class="detail-action-label">DUP BAG</span><span class="detail-action-badge" id="duplicate-bags-count"></span></button>
+                <button class="detail-action" type="button" data-panel="duplicate-names" id="duplicate-names-action"><svg class="detail-action-icon" viewBox="0 0 48 48" fill="none" aria-hidden="true"><path d="M10 12h28v24H10V12Z" stroke-width="2"/><circle cx="19" cy="22" r="4" stroke-width="2"/><path d="M13 32c1-4 3-6 6-6s5 2 6 6M29 20h6M29 27h6" stroke-width="2" stroke-linecap="round"/></svg><span class="detail-action-label">DUP NAME</span><span class="detail-action-badge" id="duplicate-names-count"></span></button>
+                <button class="detail-action" type="button" data-panel="nbrd" id="nbrd-action"><svg class="detail-action-icon" viewBox="0 0 48 48" fill="none" aria-hidden="true"><path d="M10 12h28v24H10V12Z" stroke-width="2"/><circle cx="19" cy="22" r="4" stroke-width="2"/><path d="M13 32c1-4 3-6 6-6s5 2 6 6M29 20h6M29 27h6" stroke-width="2" stroke-linecap="round"/></svg><span class="detail-action-label">CKIN/NBRD</span><span class="detail-action-badge" id="nbrd-count"></span></button>
                 <button class="detail-action warning-action" type="button" data-panel="warning" id="warning-action" hidden aria-label="Open warnings">⚠️ WARNING <span class="detail-action-badge warning-badge" id="warning-count">0</span></button>
-                <button class="detail-action" type="button" data-panel="wch">WCH <span class="detail-action-badge" id="wch-count"></span></button>
-                <button class="detail-action" type="button" data-panel="psm">PSM/MSG <span class="detail-action-badge" id="psm-count"></span></button>
-                <button class="detail-action" type="button" data-panel="duplicate-bags" id="duplicate-bags-action">DUP BAG <span class="detail-action-badge" id="duplicate-bags-count"></span></button>
-                <button class="detail-action" type="button" data-panel="duplicate-names" id="duplicate-names-action">DUP NAME <span class="detail-action-badge" id="duplicate-names-count"></span></button>
                 <button class="detail-action" type="button" data-report-shortcut="sales">Sales Report</button>
                 <button class="detail-action" type="button" data-report-shortcut="vip">VIP Report</button>
+              </div>
               </div>
             </div>
           </div>
@@ -4271,7 +4393,14 @@
         const button = document.querySelector(selector);
         if (!button) return;
         button.classList.toggle("warning-action", Boolean(hasIssue));
+        if (hasIssue) button.classList.remove("is-clear-blue");
         button.querySelector(".detail-action-badge")?.classList.toggle("warning-badge", Boolean(hasIssue));
+      }
+
+      function setActionClearState(selector, isClear) {
+        const button = document.querySelector(selector);
+        if (!button) return;
+        button.classList.toggle("is-clear-blue", Boolean(isClear) && !button.classList.contains("warning-action"));
       }
 
       function normalizedBn(value) {
@@ -4317,6 +4446,8 @@
         setBadgeText("#webedi-count", counts.WEBEDI);
         setActionIssueState("#gov-action", counts.GOV > 0);
         setActionIssueState("#webedi-action", counts.WEBEDI > 0);
+        setActionClearState("#gov-action", counts.GOV === 0);
+        setActionClearState("#webedi-action", counts.WEBEDI === 0);
       }
 
       function countTriple(matchArray) {
@@ -5128,9 +5259,12 @@
         setActionIssueState("#chd-action", chdIssues > 0);
         setActionIssueState("#gov-action", govCount > 0);
         setActionIssueState("#webedi-action", webediCount > 0);
+        setActionClearState("#gov-action", Boolean(sy.govAqq) && govCount === 0);
+        setActionClearState("#webedi-action", Boolean(sy.govAqq) && webediCount === 0);
         setActionIssueState("#nbrd-action", nbrdCount > 0);
         setBadgeText("#wch-count", (sy.wchList || []).length);
-        updateWarningActionState(buildWarningRows(sy));
+        const warningRowsForSummary = buildWarningRows(sy);
+        updateWarningActionState(warningRowsForSummary);
         loadWarningAcknowledgements(sy);
         setBadgeText("#psm-count", (sy.psmList || []).length);
         const duplicateBagCount = duplicateBagRows(sy).length;
@@ -5515,7 +5649,8 @@
           const data = await apiJson(`/warning-acknowledgements?flightNo=${encodeURIComponent(sy.flightNo)}&flightDate=${encodeURIComponent(sy.flightDate)}`);
           if (currentSy !== sy) return;
           currentWarningAckMap = data?.acknowledgements || {};
-          updateWarningActionState(buildWarningRows(sy));
+          const warningRowsForSummary = buildWarningRows(sy);
+          updateWarningActionState(warningRowsForSummary);
           applyNbrdAcknowledgementState(sy);
           if (resultPanel?.dataset?.panelTitle === "WARNING") renderWarningPanel();
           if (resultPanel?.dataset?.panelTitle === "CKIN/NBRD") renderNbrdPanel();
