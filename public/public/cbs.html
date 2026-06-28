@@ -45,7 +45,14 @@
     .tracking-cell { text-align:center; color:var(--muted); font-size:11px; font-weight:900; text-transform:uppercase; letter-spacing:.08em; }
     .tracking-step { display:inline-grid; justify-items:center; gap:5px; min-width:72px; }
     .tracking-dot { width:22px; height:22px; border-radius:999px; border:4px solid #b7f7cd; background:#12b76a; box-shadow:0 0 0 6px rgba(18,183,106,.12); }
+    .tracking-dot.is-create { border-color:#d1e9ff; background:#2e90fa; box-shadow:0 0 0 6px rgba(46,144,250,.1); }
+    .tracking-dot.is-worldtracer { border-color:#b7f7cd; background:#12b76a; box-shadow:0 0 0 6px rgba(18,183,106,.12); }
+    .tracking-dot.is-rush { border-color:#fedf89; background:#f79009; box-shadow:0 0 0 6px rgba(247,144,9,.12); }
+    .tracking-dot.is-location { border-color:#d9d6fe; background:#7a5af8; box-shadow:0 0 0 6px rgba(122,90,248,.12); }
+    .tracking-dot.is-shipping { border-color:#a6f4c5; background:#039855; box-shadow:0 0 0 6px rgba(3,152,85,.12); }
     .tracking-dot.is-closed { border-color:#d0d5dd; background:#667085; box-shadow:0 0 0 6px rgba(102,112,133,.1); }
+    .detail-actions { margin:6px 0 16px; justify-content:flex-start; }
+    .update-note-box { margin:0 0 14px; padding:12px 14px; border-radius:14px; background:#eef4ff; color:var(--brand); font-weight:850; }
     .case-update { display:grid; gap:14px; margin-top:18px; padding:18px; border:1px dashed var(--line); border-radius:20px; background:#fbfdff; box-shadow:inset 0 1px 0 rgba(255,255,255,.7); }
     .case-update h2 { color:var(--brand); }
     .update-mode-actions { display:flex; flex-wrap:wrap; gap:10px; }
@@ -107,9 +114,19 @@
     }
     function hasValue(value) { return value != null && String(value).trim() !== ''; }
     function renderValue(value) { return hasValue(value) ? value : '-'; }
+    function trackingStage(row) {
+      const status = String(row?.status || '').trim().toLowerCase();
+      const note = String(row?.updateNote || '').trim().toLowerCase();
+      if (/close/.test(status)) return { key:'closed', text:label('Closed', '关闭') };
+      if (/ship/.test(status) || /^shipping\b/.test(note)) return { key:'shipping', text:label('Shipping', '派送') };
+      if (/location/.test(status) || /^bag location update\b/.test(note)) return { key:'location', text:label('Location', '定位') };
+      if (/rush/.test(status) || /^rush\b/.test(note)) return { key:'rush', text:'Rush' };
+      if (/world\s*tracer/.test(status) || /^worldtracer\b/.test(note)) return { key:'worldtracer', text:'WorldTracer' };
+      return { key:'create', text:label('Create', '创建') };
+    }
     function trackingHtml(row) {
-      const isClosed = /close/i.test(String(row?.status || ''));
-      return `<div class="tracking-step"><span class="tracking-dot ${isClosed ? 'is-closed' : ''}"></span><span>${escapeHtml(isClosed ? label('Closed', '关闭') : label('Create', '创建'))}</span></div>`;
+      const stage = trackingStage(row);
+      return `<div class="tracking-step"><span class="tracking-dot is-${escapeHtml(stage.key)}"></span><span>${escapeHtml(stage.text)}</span></div>`;
     }
     function detailRows(row) {
       const caseType = inferCaseType(row);
@@ -196,7 +213,8 @@
       if (!normalized) return;
       casesCard.hidden = false;
       missingReportCard.hidden = true;
-      if (caseSearch) caseSearch.value = normalized;
+      window._selectedCbsCase = normalized;
+      if (caseSearch) caseSearch.value = '';
       renderCases();
       const summary = Array.from(casesOutput.querySelectorAll('[data-toggle-case]')).find((item) => item.dataset.toggleCase === normalized);
       const detail = Array.from(casesOutput.querySelectorAll('[data-detail-case]')).find((item) => item.dataset.detailCase === normalized);
@@ -205,15 +223,19 @@
     }
     function renderCases() {
       const query = String(caseSearch?.value || '').trim().toLowerCase();
-      const rows = sortedCaseRows(window._cbsRows || []).filter((row) => !query || rowSearchText(row).includes(query));
+      const selectedCase = String(window._selectedCbsCase || '').trim();
+      const sourceRows = selectedCase ? (window._cbsRows || []).filter((row) => String(row.caseNumber || '').trim() === selectedCase) : (window._cbsRows || []);
+      const rows = sortedCaseRows(sourceRows).filter((row) => !query || rowSearchText(row).includes(query));
       if (!rows.length) { casesOutput.innerHTML = '<p class="muted">No matching cases.</p>'; return; }
       casesOutput.innerHTML = `<table><colgroup><col style="width:220px"><col style="width:120px"><col style="width:280px"><col></colgroup><thead><tr><th>${label('Case Number', '编号')}</th><th>${label('Case Type', '类型')}</th><th>${label('Bag Tag', '行李牌')}</th><th class="tracking-cell">Tracking</th></tr></thead><tbody>${rows.map((row, index) => {
         const detailKey = row.caseNumber || `row-${row.rowNumber || index}`;
         const caseNumberLabel = row.caseNumber || label('Missing case number', '缺少编号');
         const caseType = inferCaseType(row);
-        const details = detailRows(row).filter(([, value]) => hasValue(value));
-        const detailHtml = details.length ? `<div class="detail-grid">${details.map(([key, value]) => `<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(renderValue(value))}</p>`).join('')}</div>` : '';
-        return `<tr class="case-summary" data-toggle-case="${escapeHtml(detailKey)}"><td><button class="secondary" type="button">${escapeHtml(caseNumberLabel)}</button></td><td>${escapeHtml(caseType || '-')}</td><td>${escapeHtml(displayBagTag(row) || '-')}</td><td class="tracking-cell">${trackingHtml(row)}</td></tr><tr class="case-detail" data-detail-case="${escapeHtml(detailKey)}" hidden><td colspan="4">${detailHtml}${updateFormHtml(row)}</td></tr>`;
+        const details = detailRows(row);
+        const updateNoteHtml = hasValue(row.updateNote) ? `<div class="update-note-box"><strong>${label('Latest Update', '最新更新')}:</strong> ${escapeHtml(row.updateNote)}</div>` : '';
+        const backHtml = selectedCase ? `<div class="actions detail-actions"><button class="secondary" type="button" data-back-all-cases>${label('Back to all cases', '返回所有案件')}</button></div>` : '';
+        const detailHtml = `<div class="detail-grid">${details.map(([key, value]) => `<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(renderValue(value))}</p>`).join('')}</div>`;
+        return `<tr class="case-summary" data-toggle-case="${escapeHtml(detailKey)}"><td><button class="secondary" type="button">${escapeHtml(caseNumberLabel)}</button></td><td>${escapeHtml(caseType || '-')}</td><td>${escapeHtml(displayBagTag(row) || '-')}</td><td class="tracking-cell">${trackingHtml(row)}</td></tr><tr class="case-detail" data-detail-case="${escapeHtml(detailKey)}" ${selectedCase ? '' : 'hidden'}><td colspan="4">${backHtml}${updateNoteHtml}${detailHtml}${updateFormHtml(row)}</td></tr>`;
       }).join('')}</tbody></table>`;
     }
     async function loadCases() {
@@ -276,10 +298,17 @@
         if (detail) detail.hidden = false;
         return;
       }
+      if (event.target.closest('[data-back-all-cases]')) {
+        window._selectedCbsCase = '';
+        if (caseSearch) caseSearch.value = '';
+        renderCases();
+        return;
+      }
       const summary = event.target.closest('[data-toggle-case]');
       if (!summary) return;
-      const detail = Array.from(casesOutput.querySelectorAll('[data-detail-case]')).find((item) => item.dataset.detailCase === summary.dataset.toggleCase);
-      if (detail) detail.hidden = !detail.hidden;
+      window._selectedCbsCase = summary.dataset.toggleCase;
+      if (caseSearch) caseSearch.value = '';
+      renderCases();
     });
     async function updateCase(caseNumber, payload) {
       casesOutput.style.opacity = '.65';
@@ -287,6 +316,7 @@
         const res = await fetch(`${apiBase}/cbs-cases/${encodeURIComponent(caseNumber)}/update`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || 'Update failed');
+        window._selectedCbsCase = caseNumber;
         await loadCases();
         if (window._missingReportLoaded || !missingReportCard.hidden) await loadMissingReports(false);
       } catch (error) { alert(error.message); } finally { casesOutput.style.opacity = '1'; }
