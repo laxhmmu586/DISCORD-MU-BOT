@@ -4092,7 +4092,7 @@
       const AUTH_LAST_ACTIVITY_KEY = "mufc_auth_last_activity_at";
       const AUTH_SESSION_LIMIT_MS = 60 * 60 * 1000;
       const APP_ENTRY_GRACE_MS = 30 * 1000;
-      const SY_AUTO_REFRESH_MS = 15 * 1000;
+      const SY_AUTO_REFRESH_MS = 30 * 1000;
       const SY_COMPLETED_NODE_CACHE_KEY = "mufc_sy_completed_nodes_v1";
       const PERSISTENT_GREEN_NODE_KEYS = ["GD_CHECK", "FSC", "NEXTDAY_INFO"];
       let inactivityTimer = null;
@@ -4110,6 +4110,7 @@
       let activeReportMode = "sales";
       let activeSyQuery = "SY";
       let currentWarningAckMap = {};
+      let lastSyRenderSignature = "";
 
       function removeLegacyDetailReportButtons() {
         const detailsPanel = document.querySelector(".details-panel");
@@ -4146,6 +4147,7 @@
 
       function clearSyDashboard() {
         currentSy = null;
+        lastSyRenderSignature = "";
         currentWarningAckMap = {};
         setSyDetailsVisible(false);
         setText("#flight-kicker", "Loading SY...");
@@ -5079,7 +5081,19 @@
         }
       }
 
-      function updateFlightFromSy(sy) {
+      function syRenderSignature(sy) {
+        if (!sy) return "";
+        const steps = (sy.crewApis?.steps || []).map((step) => [step.key || step.label, step.time || "", Boolean(step.complete), Boolean(step.searched)].join(":"));
+        return JSON.stringify([sy.flightNo, sy.flightDate, sy.gate, sy.bdt, sy.sd, sy.rkMessage, sy.reservation, sy.reservationTicketed, sy.checkedIn, sy.checkedInTicketed, steps, (sy.chdList || []).length, (sy.psmList || []).length, (sy.wchList || []).length]);
+      }
+
+      function updateFlightFromSy(sy, options = {}) {
+        const signature = syRenderSignature(sy);
+        if (options.skipUnchanged && signature && signature === lastSyRenderSignature) {
+          currentSy = sy;
+          return;
+        }
+        lastSyRenderSignature = signature;
         const sameFlight = currentSy?.flightNo === sy?.flightNo && currentSy?.flightDate === sy?.flightDate;
         currentSy = sy;
         if (!sameFlight) {
@@ -5275,7 +5289,7 @@
             return;
           }
           pendingSyRefresh = null;
-          updateFlightFromSy(data.sy);
+          updateFlightFromSy(data.sy, { skipUnchanged: true });
         } catch (error) {
           if (error?.name === "AbortError") return;
           if (refreshQuery === activeSyQuery && isTodaySyQuery(activeSyQuery) && !isSyRefreshProtectedView()) {

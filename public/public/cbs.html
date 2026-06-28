@@ -43,9 +43,37 @@
     .pill { display:inline-flex; border-radius:999px; padding:4px 10px; font-weight:850; background:#eef4ff; color:#1849a9; }
     .pill.closed { background:#dcfae6; color:#067647; }
     .tracking-cell { text-align:center; color:var(--muted); font-size:11px; font-weight:900; text-transform:uppercase; letter-spacing:.08em; }
-    .tracking-step { display:inline-grid; justify-items:center; gap:5px; min-width:72px; }
-    .tracking-dot { width:22px; height:22px; border-radius:999px; border:4px solid #b7f7cd; background:#12b76a; box-shadow:0 0 0 6px rgba(18,183,106,.12); }
-    .tracking-dot.is-closed { border-color:#d0d5dd; background:#667085; box-shadow:0 0 0 6px rgba(102,112,133,.1); }
+    .tracking-line { --dot:#12b76a; display:flex; align-items:flex-start; justify-content:center; gap:0; min-width:320px; }
+    .tracking-step { position:relative; display:grid; justify-items:center; gap:6px; min-width:92px; color:#98a2b3; }
+    .tracking-step:not(:last-child)::after { content:""; position:absolute; top:11px; left:calc(50% + 15px); width:calc(100% - 30px); height:3px; border-radius:999px; background:#d7e1ec; }
+    .tracking-step.is-done, .tracking-step.is-active { color:var(--brand); }
+    .tracking-step.is-done:not(:last-child)::after { background:var(--dot); }
+    .tracking-dot { position:relative; z-index:1; width:24px; height:24px; border-radius:999px; border:5px solid #e4e7ec; background:#98a2b3; box-shadow:0 0 0 5px rgba(152,162,179,.08); }
+    .tracking-step.is-done .tracking-dot, .tracking-step.is-active .tracking-dot { border-color:#b7f7cd; background:var(--dot); box-shadow:0 0 0 6px rgba(18,183,106,.12); }
+    .tracking-label { font-size:10px; line-height:1.2; white-space:nowrap; }
+    .tracking-cell .tracking-line { min-width:0; }
+    .tracking-cell .tracking-step { min-width:58px; }
+    .tracking-cell .tracking-step:not(:last-child)::after { left:calc(50% + 12px); width:calc(100% - 24px); }
+    .tracking-cell .tracking-dot { width:20px; height:20px; border-width:4px; }
+    .tracking-cell .tracking-label { font-size:9px; }
+    .tracking-detail { margin:14px 0 20px; padding:20px; border-radius:22px; background:linear-gradient(160deg,#07324a,#064640); color:#fff; box-shadow:inset 0 0 0 1px rgba(125,211,252,.35); }
+    .tracking-detail h2 { margin:0 0 6px; font-size:34px; letter-spacing:.03em; color:#fff; }
+    .tracking-detail .muted { color:#b8d7df; margin:0 0 20px; }
+    .tracking-events { display:grid; gap:18px; }
+    .tracking-event { display:grid; grid-template-columns:110px 1fr; gap:24px; position:relative; }
+    .tracking-event::before { content:""; position:absolute; left:23px; top:26px; bottom:-28px; width:4px; border-radius:999px; background:#d8eff7; }
+    .tracking-event:last-child::before { display:none; }
+    .tracking-event-time { position:relative; display:grid; grid-template-columns:46px 1fr; gap:10px; color:#fff; font-weight:900; }
+    .tracking-event-time::before { content:""; width:16px; height:16px; margin:4px auto 0; border-radius:999px; background:#12b76a; border:5px solid #e7f8ef; box-shadow:0 0 0 1px rgba(255,255,255,.6); }
+    .tracking-event-date { display:block; color:#b8d7df; font-size:11px; font-weight:800; }
+    .tracking-event-title { margin:0 0 8px; color:#fff; font-weight:950; font-size:16px; }
+    .tracking-event-card { display:grid; gap:8px; padding:12px 14px; border:1px solid rgba(216,239,247,.22); border-radius:10px; background:rgba(255,255,255,.13); }
+    .tracking-event-field { display:grid; grid-template-columns:150px 1fr; gap:10px; }
+    .tracking-event-field b { color:#b8d7df; text-transform:uppercase; font-size:11px; letter-spacing:.04em; }
+    .case-info-panel { margin:0 0 18px; padding:18px; border:1px solid var(--line); border-radius:18px; background:#fbfdff; }
+    .case-info-panel h2 { color:var(--brand); margin-bottom:14px; }
+    .detail-actions { margin:6px 0 16px; justify-content:flex-start; }
+    .update-note-box { margin:0 0 14px; padding:12px 14px; border-radius:14px; background:#eef4ff; color:var(--brand); font-weight:850; white-space:pre-wrap; }
     .case-update { display:grid; gap:14px; margin-top:18px; padding:18px; border:1px dashed var(--line); border-radius:20px; background:#fbfdff; box-shadow:inset 0 1px 0 rgba(255,255,255,.7); }
     .case-update h2 { color:var(--brand); }
     .update-mode-actions { display:flex; flex-wrap:wrap; gap:10px; }
@@ -59,7 +87,7 @@
     .detail-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px 18px; margin-bottom:12px; }
     .detail-grid p { margin:0; }
     input,textarea { width:100%; border:1px solid var(--line); border-radius:12px; padding:10px 12px; background:#fff; color:var(--ink); font:inherit; }
-    @media (max-width:840px){ .case-update-grid,.detail-grid{grid-template-columns:1fr}.case-update{min-width:0} table{display:block;overflow-x:auto;white-space:nowrap} }
+    @media (max-width:840px){ .case-update-grid,.detail-grid{grid-template-columns:1fr}.tracking-event{grid-template-columns:86px 1fr;gap:12px}.tracking-event-card{font-size:12px}.tracking-event-field{grid-template-columns:1fr}.case-update{min-width:0} table{display:block;overflow-x:auto;white-space:nowrap} }
   </style>
 </head>
 <body>
@@ -107,9 +135,94 @@
     }
     function hasValue(value) { return value != null && String(value).trim() !== ''; }
     function renderValue(value) { return hasValue(value) ? value : '-'; }
+    const TRACKING_STAGES = [
+      { key:'create', text:'Create' },
+      { key:'worldtracer', text:'WorldTracer' },
+      { key:'rush', text:'Rush' },
+      { key:'location', text:'Location' },
+      { key:'shipping', text:'Shipping' },
+      { key:'closed', text:'Closed' }
+    ];
+    function parseUpdateNoteEvents(row) {
+      const note = String(row?.updateNote || '').trim();
+      const events = [];
+      if (row?.caseNumber) {
+        const createFields = [
+          [label('Case Number', '编号'), row.caseNumber],
+          [label('Case Type', '类型'), inferCaseType(row)],
+          [label('Passenger Name', '旅客姓名'), row.passengerName],
+          [label('Email', '邮箱'), row.email],
+          [label('Phone', '电话'), row.phone],
+          [label('Flight Route', '行李航程'), row.flightRoute],
+          [label('Bag Tag', '行李牌'), displayBagTag(row)],
+          [label('Destination on Bags', '行李牌目的地'), row.destinationOnBags],
+          [label('Submit Date', '提交日期'), row.submittedAt]
+        ].filter(([, value]) => hasValue(value));
+        events.push({ key:'create', title:'Create Case', at:row.submittedAt || row.issueDate || '', fields:createFields });
+      }
+      if (!note || /^case created$/i.test(note)) {
+        const statusKey = trackingKeyFromText(row?.status);
+        if (statusKey !== 'create') events.push({ key:statusKey, title:TRACKING_STAGES.find((stage) => stage.key === statusKey)?.text || row.status || 'Update', at:row.updatedAt || '', fields:[[label('Status', '状态'), row.status], [label('Update Details', '更新内容'), label('No recorded update details in sheet', '表格里没有记录更新内容')]] });
+        return events;
+      }
+      const parts = note.split(/\n+/).map((item) => item.trim()).filter(Boolean);
+      parts.forEach((part) => {
+        const match = part.match(/^\[([^\]]+)\]\s*(.*)$/);
+        const at = match ? match[1] : (row.updatedAt || '');
+        const body = match ? match[2] : part;
+        if (/^case created$/i.test(body) || /^Created from Missing Bag Report row\b/i.test(body)) return;
+        events.push(updateEventFromText(body, at));
+      });
+      return events;
+    }
+    function updateEventFromText(text, at = '') {
+      const pieces = String(text || '').split('|').map((item) => item.trim()).filter(Boolean);
+      const type = (pieces.shift() || 'Update').trim();
+      const key = trackingKeyFromText(type);
+      const stageName = TRACKING_STAGES.find((stage) => stage.key === key)?.text || type;
+      const title = key === 'create' ? type : `Update ${stageName}`;
+      const fields = pieces.map((piece) => {
+        const split = piece.split(/:\s*/);
+        return split.length > 1 ? [split.shift(), split.join(': ')] : [label('Detail', '详情'), piece];
+      });
+      return { key, title, at, fields:fields.length ? fields : [[label('Detail', '详情'), text]] };
+    }
+    function trackingKeyFromText(value) {
+      const text = String(value || '').toLowerCase();
+      if (/close/.test(text)) return 'closed';
+      if (/ship/.test(text)) return 'shipping';
+      if (/location/.test(text)) return 'location';
+      if (/rush/.test(text)) return 'rush';
+      if (/world\s*tracer|worldtracer/.test(text)) return 'worldtracer';
+      return 'create';
+    }
+    function trackingStage(row) {
+      const statusKey = trackingKeyFromText(row?.status);
+      const eventKeys = parseUpdateNoteEvents(row).map((event) => event.key);
+      const key = statusKey !== 'create' ? statusKey : (eventKeys[eventKeys.length - 1] || 'create');
+      return TRACKING_STAGES.find((stage) => stage.key === key) || TRACKING_STAGES[0];
+    }
     function trackingHtml(row) {
-      const isClosed = /close/i.test(String(row?.status || ''));
-      return `<div class="tracking-step"><span class="tracking-dot ${isClosed ? 'is-closed' : ''}"></span><span>${escapeHtml(isClosed ? label('Closed', '关闭') : label('Create', '创建'))}</span></div>`;
+      const activeKey = trackingStage(row).key;
+      const activeIndex = TRACKING_STAGES.findIndex((stage) => stage.key === activeKey);
+      return `<div class="tracking-line">${TRACKING_STAGES.map((stage, index) => {
+        const state = index < activeIndex ? 'is-done' : (index === activeIndex ? 'is-active' : '');
+        return `<span class="tracking-step ${state}"><span class="tracking-dot"></span><span class="tracking-label">${escapeHtml(label(stage.text, stage.text))}</span></span>`;
+      }).join('')}</div>`;
+    }
+    function formatEventTime(value) {
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return { time:'--:--', date:'' };
+      return { time:date.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit', hour12:false }), date:date.toLocaleDateString() };
+    }
+    function trackingDetailHtml(row) {
+      const events = parseUpdateNoteEvents(row);
+      if (!events.length) return '';
+      return `<section class="tracking-detail"><h2>${escapeHtml(row.caseNumber || 'CASE')}</h2><p class="muted">${escapeHtml(inferCaseType(row) || 'CBS Case')} Tracking</p><div class="tracking-events">${events.map((event) => {
+        const time = formatEventTime(event.at);
+        const fields = (event.fields || []).map(([key, value]) => `<div class="tracking-event-field"><b>${escapeHtml(key)}</b><span>${escapeHtml(renderValue(value))}</span></div>`).join('');
+        return `<article class="tracking-event"><div class="tracking-event-time"><span>${escapeHtml(time.time)}<span class="tracking-event-date">${escapeHtml(time.date)}</span></span></div><div><h3 class="tracking-event-title">${escapeHtml(event.title)}</h3><div class="tracking-event-card">${fields}</div></div></article>`;
+      }).join('')}</div></section>`;
     }
     function detailRows(row) {
       const caseType = inferCaseType(row);
@@ -144,8 +257,7 @@
         [label('Issue Date', '填写日期'), row.issueDate],
         [label('Passenger Signature', '旅客签字'), row.passengerSignature],
         [label('Submit Date', '提交日期'), row.submittedAt],
-        [label('Updated At', '更新时间'), row.updatedAt],
-        [label('Update Note', '更新备注'), row.updateNote]
+        [label('Updated At', '更新时间'), row.updatedAt]
       ];
     }
     function updateFormHtml(row, mode = 'worldtracer') {
@@ -196,7 +308,8 @@
       if (!normalized) return;
       casesCard.hidden = false;
       missingReportCard.hidden = true;
-      if (caseSearch) caseSearch.value = normalized;
+      window._selectedCbsCase = normalized;
+      if (caseSearch) caseSearch.value = '';
       renderCases();
       const summary = Array.from(casesOutput.querySelectorAll('[data-toggle-case]')).find((item) => item.dataset.toggleCase === normalized);
       const detail = Array.from(casesOutput.querySelectorAll('[data-detail-case]')).find((item) => item.dataset.detailCase === normalized);
@@ -205,15 +318,18 @@
     }
     function renderCases() {
       const query = String(caseSearch?.value || '').trim().toLowerCase();
-      const rows = sortedCaseRows(window._cbsRows || []).filter((row) => !query || rowSearchText(row).includes(query));
+      const selectedCase = String(window._selectedCbsCase || '').trim();
+      const sourceRows = selectedCase ? (window._cbsRows || []).filter((row) => String(row.caseNumber || '').trim() === selectedCase) : (window._cbsRows || []);
+      const rows = sortedCaseRows(sourceRows).filter((row) => !query || rowSearchText(row).includes(query));
       if (!rows.length) { casesOutput.innerHTML = '<p class="muted">No matching cases.</p>'; return; }
       casesOutput.innerHTML = `<table><colgroup><col style="width:220px"><col style="width:120px"><col style="width:280px"><col></colgroup><thead><tr><th>${label('Case Number', '编号')}</th><th>${label('Case Type', '类型')}</th><th>${label('Bag Tag', '行李牌')}</th><th class="tracking-cell">Tracking</th></tr></thead><tbody>${rows.map((row, index) => {
         const detailKey = row.caseNumber || `row-${row.rowNumber || index}`;
         const caseNumberLabel = row.caseNumber || label('Missing case number', '缺少编号');
         const caseType = inferCaseType(row);
         const details = detailRows(row).filter(([, value]) => hasValue(value));
-        const detailHtml = details.length ? `<div class="detail-grid">${details.map(([key, value]) => `<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(renderValue(value))}</p>`).join('')}</div>` : '';
-        return `<tr class="case-summary" data-toggle-case="${escapeHtml(detailKey)}"><td><button class="secondary" type="button">${escapeHtml(caseNumberLabel)}</button></td><td>${escapeHtml(caseType || '-')}</td><td>${escapeHtml(displayBagTag(row) || '-')}</td><td class="tracking-cell">${trackingHtml(row)}</td></tr><tr class="case-detail" data-detail-case="${escapeHtml(detailKey)}" hidden><td colspan="4">${detailHtml}${updateFormHtml(row)}</td></tr>`;
+        const backHtml = selectedCase ? `<div class="actions detail-actions"><button class="secondary" type="button" data-back-all-cases>${label('Back to all cases', '返回所有案件')}</button></div>` : '';
+        const detailHtml = details.length ? `<section class="case-info-panel"><h2>${label('Case Information', '案件信息')}</h2><div class="detail-grid">${details.map(([key, value]) => `<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(renderValue(value))}</p>`).join('')}</div></section>` : '';
+        return `<tr class="case-summary" data-toggle-case="${escapeHtml(detailKey)}"><td><button class="secondary" type="button">${escapeHtml(caseNumberLabel)}</button></td><td>${escapeHtml(caseType || '-')}</td><td>${escapeHtml(displayBagTag(row) || '-')}</td><td class="tracking-cell">${trackingHtml(row)}</td></tr><tr class="case-detail" data-detail-case="${escapeHtml(detailKey)}" ${selectedCase ? '' : 'hidden'}><td colspan="4">${backHtml}${trackingDetailHtml(row)}${detailHtml}${updateFormHtml(row)}</td></tr>`;
       }).join('')}</tbody></table>`;
     }
     async function loadCases() {
@@ -276,10 +392,17 @@
         if (detail) detail.hidden = false;
         return;
       }
+      if (event.target.closest('[data-back-all-cases]')) {
+        window._selectedCbsCase = '';
+        if (caseSearch) caseSearch.value = '';
+        renderCases();
+        return;
+      }
       const summary = event.target.closest('[data-toggle-case]');
       if (!summary) return;
-      const detail = Array.from(casesOutput.querySelectorAll('[data-detail-case]')).find((item) => item.dataset.detailCase === summary.dataset.toggleCase);
-      if (detail) detail.hidden = !detail.hidden;
+      window._selectedCbsCase = summary.dataset.toggleCase;
+      if (caseSearch) caseSearch.value = '';
+      renderCases();
     });
     async function updateCase(caseNumber, payload) {
       casesOutput.style.opacity = '.65';
@@ -287,6 +410,7 @@
         const res = await fetch(`${apiBase}/cbs-cases/${encodeURIComponent(caseNumber)}/update`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || 'Update failed');
+        window._selectedCbsCase = caseNumber;
         await loadCases();
         if (window._missingReportLoaded || !missingReportCard.hidden) await loadMissingReports(false);
       } catch (error) { alert(error.message); } finally { casesOutput.style.opacity = '1'; }

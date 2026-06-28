@@ -2572,11 +2572,17 @@ async function updateCbsCase(caseNumber, update = {}) {
   const rowIndex = rows.findIndex((row, index) => index > 0 && String(row?.[0] || '').trim().toUpperCase() === normalizedCaseNumber);
   if (rowIndex < 0) return { notFound: true };
   const current = cbsRecordFromSheet(rows[rowIndex] || [], rowIndex + 1);
+  const now = new Date().toISOString();
+  const incomingNote = sanitizeSheetText(update.updateNote, 1000);
+  const existingNote = sanitizeSheetText(current.updateNote, 3000);
+  const nextUpdateNote = incomingNote
+    ? [existingNote, `[${now}] ${incomingNote}`].filter(Boolean).join('\n')
+    : existingNote;
   const next = {
     ...current,
     status: sanitizeSheetText(update.status, 80) || current.status || 'Open',
-    updatedAt: new Date().toISOString(),
-    updateNote: sanitizeSheetText(update.updateNote, 500) || current.updateNote || ''
+    updatedAt: now,
+    updateNote: sanitizeSheetText(nextUpdateNote, 4000)
   };
   const title = await getCbsSheetTitle();
   await sheets.spreadsheets.values.update({
