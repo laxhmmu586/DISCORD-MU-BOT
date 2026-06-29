@@ -1847,6 +1847,27 @@
         min-width: 0;
       }
 
+      .gov-summary-grid .data-card.is-clear {
+        border-color: rgba(88, 167, 255, 0.72);
+        box-shadow: 0 0 18px rgba(88, 167, 255, 0.28), inset 0 0 16px rgba(88, 167, 255, 0.1);
+      }
+
+      .gov-summary-grid .data-card.is-warning {
+        border-color: rgba(255, 199, 44, 0.82);
+        box-shadow: 0 0 20px rgba(255, 199, 44, 0.32), inset 0 0 16px rgba(255, 199, 44, 0.12);
+      }
+
+      .gov-summary-grid .data-card.is-warning span {
+        color: #ffe682;
+      }
+
+      .gov-details-grid .bn-button.is-warning,
+      .result-panel[data-panel-title="WEB/EDI/RS"] .bn-button.is-warning {
+        border-color: rgba(255, 199, 44, 0.96);
+        box-shadow: 0 0 18px rgba(255, 199, 44, 0.28), inset 0 0 12px rgba(255, 199, 44, 0.1);
+        color: #ffe859;
+      }
+
       .gov-details-grid {
         margin-top: 26px !important;
       }
@@ -3766,6 +3787,54 @@
           height: 40px;
         }
 
+        .details-manifest,
+        .details-manifest.is-warning-hidden {
+          grid-template-columns: 1fr 1fr;
+          grid-template-areas:
+            "reservation checkin"
+            "rk rk"
+            "warning security";
+          grid-template-rows: auto minmax(54px, auto) 132px;
+        }
+
+        .details-manifest.is-warning-hidden {
+          grid-template-areas:
+            "reservation checkin"
+            "rk rk"
+            "warning warning";
+        }
+
+        .details-panel {
+          overflow: visible;
+        }
+
+        .details-surface,
+        .details-panel .detail-actions {
+          min-width: 0;
+        }
+
+        .details-panel .detail-actions {
+          flex-wrap: wrap;
+          justify-content: center;
+          overflow: visible;
+        }
+
+        .details-panel .detail-actions .detail-action {
+          flex: 1 1 calc(50% - 14px);
+          max-width: calc(50% - 7px);
+        }
+
+        .details-panel .detail-actions .detail-action,
+        .details-panel .details-manifest > .detail-action {
+          min-height: 132px;
+          padding: 18px 10px 12px;
+        }
+
+        .detail-action-icon {
+          width: 40px;
+          height: 40px;
+        }
+
         .result-panel,
         .password-page {
           width: calc(100% - 24px);
@@ -4213,7 +4282,7 @@
                   <h3>Reservation</h3>
                   <div class="counts counts-inline">
                     <div class="count count-wide">
-                      <div class="count-row"><span>ET</span> <span id="reservation-et">--- / --- / ---</span></div>
+                      <div class="count-row"><span id="reservation-et">--- / --- / ---</span></div>
                     </div>
                   </div>
                 </div>
@@ -4221,7 +4290,7 @@
                   <h3>Check-In</h3>
                   <div class="counts counts-inline">
                     <div class="count count-wide">
-                      <div class="count-row"><span>CET</span> <span id="checkin-et">--- / --- / ---</span></div>
+                      <div class="count-row"><span id="checkin-et">--- / --- / ---</span></div>
                     </div>
                   </div>
                 </div>
@@ -5711,13 +5780,14 @@
         const rows = groups.flatMap(([group, items]) => (items || []).map((item) => enrichGovRow(item, group)));
         const summary = groups.map(([label, items]) => {
           const groupRows = (items || []).map((item) => enrichGovRow(item, label));
-          const status = groupRows.length ? String(groupRows.length) : "Clear";
-          return `<div class="data-card"><b>${escapeHtml(label)}</b><span>${escapeHtml(status)}</span></div>`;
+          const isClear = !groupRows.length;
+          const status = isClear ? "Clear" : String(groupRows.length);
+          return `<div class="data-card ${isClear ? "is-clear" : "is-warning"}"><b>${escapeHtml(label)}</b><span>${escapeHtml(status)}</span></div>`;
         }).join("");
         const details = groups.map(([label, items]) => {
           const groupRows = (items || []).map((item) => enrichGovRow(item, label));
           if (!groupRows.length) return "";
-          return `<article class="data-card gov-detail-card"><b>${escapeHtml(label)} Details</b>${renderBnButtons(groupRows, "", (row) => row.reason)}</article>`;
+          return `<article class="data-card gov-detail-card"><b>${escapeHtml(label)} Details</b>${renderBnButtons(groupRows, "", (row) => row.reason, null, () => "is-warning")}</article>`;
         }).filter(Boolean).join("");
         renderPanel("GOV/AQQ", currentSy?.flightNo || "SY", `<div class="data-grid gov-summary-grid">${summary}</div>${details ? `<div class="data-grid gov-details-grid">${details}</div>` : ""}`);
         setPanelPassengerRows(rows);
@@ -5726,7 +5796,7 @@
       function renderWebEdiPanel() {
         const gov = currentSy?.govAqq || {};
         const rows = enrichRowsWithPassengerData((gov.passportCodeIssues || []).map((bn) => ({ bn, reason: "WEB/EDI/Reswipe" })));
-        const body = rows.length ? `<div class="panel-stats"><span class="status-fail">WEB/EDI/RS total: ${rows.length}</span></div>${renderBnButtons(rows, "", (row) => row.reason)}` : `<p class="panel-muted">No WEB/EDI/RS records found.</p>`;
+        const body = rows.length ? `<div class="panel-stats"><span class="status-fail">WEB/EDI/RS total: ${rows.length}</span></div>${renderBnButtons(rows, "", (row) => row.reason, null, () => "is-warning")}` : `<p class="panel-muted">No WEB/EDI/RS records found.</p>`;
         renderPanel("WEB/EDI/RS", currentSy?.flightNo || "SY", body);
         setPanelPassengerRows(rows);
       }
