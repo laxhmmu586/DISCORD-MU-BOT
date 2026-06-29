@@ -104,7 +104,8 @@ const CBS_HEADERS = [
   'Updated At',
   'Update Note',
   'Destination On Bags',
-  'Departure Origin'
+  'Departure Origin',
+  'Update History'
 ];
 let cbsSheetTitle = '';
 let cbsSheetCache = { loadedAt: 0, rows: [] };
@@ -2430,7 +2431,7 @@ async function getCbsSheetRows(options = {}) {
   const title = await getCbsSheetTitle();
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A:AF`
+    range: `${escapeSheetTitle(title)}!A:AG`
   });
   const rows = res.data.values || [];
   cbsSheetCache = { loadedAt: Date.now(), rows };
@@ -2444,7 +2445,7 @@ async function ensureCbsSheetHeaders(rows) {
   const title = await getCbsSheetTitle();
   await sheets.spreadsheets.values.update({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A1:AF1`,
+    range: `${escapeSheetTitle(title)}!A1:AG1`,
     valueInputOption: 'RAW',
     requestBody: { values: [CBS_HEADERS] }
   });
@@ -2499,6 +2500,7 @@ function cbsRecordFromSheet(values, rowNumber) {
   row.caseType = row.caseType || values.find((value) => /^(AHL|DPR)$/i.test(String(value || '').trim())) || '';
   row.bagTag = row.bagTag || values[9] || extractCbsBagTagFromUpdateNote(row.updateNote) || values.find((value) => /^[A-Z]{2}\d{6,}(\s*\/\s*[A-Z]{2}\d{6,})*$/i.test(String(value || '').trim())) || '';
   row.submittedAt = row.submittedAt || row.submitDate || values[27] || '';
+  row.updateHistory = row.updateHistory || values[32] || '';
   row.rowNumber = rowNumber;
   return row;
 }
@@ -2536,7 +2538,8 @@ function cbsValuesFromRecord(record) {
     record.updatedAt,
     record.updateNote,
     record.destinationOnBags,
-    record.departureOrigin
+    record.departureOrigin,
+    record.updateHistory || ''
   ];
 }
 
@@ -2546,7 +2549,7 @@ async function appendCbsCase(record) {
   await ensureCbsSheetHeaders(rows);
   await sheets.spreadsheets.values.append({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A:AF`,
+    range: `${escapeSheetTitle(title)}!A:AG`,
     valueInputOption: 'RAW',
     insertDataOption: 'INSERT_ROWS',
     requestBody: { values: [cbsValuesFromRecord(record)] }
@@ -2558,25 +2561,6 @@ async function appendCbsCase(record) {
 function isCbsHeaderRow(values = []) {
   const normalized = values.map((value) => String(value || '').trim().toLowerCase());
   return normalized.includes('case number') || normalized.includes('case id') || normalized.includes('passenger name');
-}
-
-async function readCbsUpdateHistory() {
-  if (cbsUpdateHistoryCache.data && Date.now() - cbsUpdateHistoryCache.loadedAt < 5000) return cbsUpdateHistoryCache.data;
-  try {
-    const text = await fs.readFile(CBS_UPDATE_HISTORY_FILE, 'utf8');
-    const parsed = JSON.parse(text);
-    cbsUpdateHistoryCache = { loadedAt: Date.now(), data: parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {} };
-  } catch (err) {
-    if (err?.code !== 'ENOENT') console.warn('CBS update history read error:', err?.message || err);
-    cbsUpdateHistoryCache = { loadedAt: Date.now(), data: {} };
-  }
-  return cbsUpdateHistoryCache.data;
-}
-
-async function writeCbsUpdateHistory(data) {
-  await fs.mkdir(path.dirname(CBS_UPDATE_HISTORY_FILE), { recursive: true });
-  await fs.writeFile(CBS_UPDATE_HISTORY_FILE, JSON.stringify(data || {}, null, 2));
-  cbsUpdateHistoryCache = { loadedAt: Date.now(), data: data || {} };
 }
 
 function normalizeCbsHistoryCaseNumber(caseNumber) {
@@ -2596,15 +2580,17 @@ function sanitizeCbsUpdateEvent(event = {}, fallback = {}) {
   };
 }
 
-async function appendCbsUpdateHistory(caseNumber, event) {
-  const normalized = normalizeCbsHistoryCaseNumber(caseNumber);
-  if (!normalized) return [];
-  const data = await readCbsUpdateHistory();
-  const list = Array.isArray(data[normalized]) ? data[normalized] : [];
-  list.push(event);
-  data[normalized] = list.slice(-100);
-  await writeCbsUpdateHistory(data);
-  return data[normalized];
+function parseCbsUpdateHistory(value) {
+  try {
+    const parsed = JSON.parse(String(value || '[]'));
+    return Array.isArray(parsed) ? parsed.map((event) => sanitizeCbsUpdateEvent(event)).filter((event) => event.at || event.note || event.fields.length) : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function stringifyCbsUpdateHistory(events = []) {
+  return sanitizeSheetText(JSON.stringify((Array.isArray(events) ? events : []).slice(-100)), 20000);
 }
 
 function cbsEventsFromUpdateNote(row = {}) {
@@ -2627,11 +2613,9 @@ function cbsEventsFromUpdateNote(row = {}) {
   });
 }
 
-async function attachCbsUpdateHistory(rows = []) {
-  const history = await readCbsUpdateHistory();
+function attachCbsUpdateHistory(rows = []) {
   return rows.map((row) => {
-    const normalized = normalizeCbsHistoryCaseNumber(row.caseNumber);
-    const storedEvents = Array.isArray(history[normalized]) ? history[normalized] : [];
+    const storedEvents = parseCbsUpdateHistory(row.updateHistory);
     const legacyEvents = storedEvents.length ? [] : cbsEventsFromUpdateNote(row);
     const updateEvents = [...legacyEvents, ...storedEvents];
     const latestEvent = updateEvents[updateEvents.length - 1];
@@ -2674,7 +2658,17 @@ async function updateCbsCase(caseNumber, update = {}) {
     note: incomingNote,
     title: next.status ? `Update ${next.status}` : 'Update'
   });
-  const updateEvents = incomingNote ? await appendCbsUpdateHistory(next.caseNumber, historyEvent) : [];
+  const currentEvents = parseCbsUpdateHistory(current.updateHistory);
+  const updateEvents = incomingNote ? currentEvents.concat(historyEvent).slice(-100) : currentEvents;
+  next.updateHistory = stringifyCbsUpdateHistory(updateEvents);
+  const title = await getCbsSheetTitle();
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: CBS_SHEET_ID,
+    range: `${escapeSheetTitle(title)}!A${rowIndex + 1}:AG${rowIndex + 1}`,
+    valueInputOption: 'RAW',
+    requestBody: { values: [cbsValuesFromRecord(next)] }
+  });
+  cbsSheetCache = { loadedAt: 0, rows: [] };
   return { updated: true, record: { ...next, updateEvents } };
 }
 
