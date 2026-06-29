@@ -1160,10 +1160,58 @@
         text-align: center;
       }
 
+      .detail-top-actions,
       .detail-actions {
         display: grid;
-        grid-template-columns: repeat(4, minmax(132px, 1fr));
         gap: 10px;
+      }
+
+      .detail-top-actions {
+        grid-template-columns: repeat(3, minmax(132px, 1fr));
+      }
+
+      .detail-actions {
+        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      }
+
+      .detail-actions .detail-action {
+        min-height: 46px;
+        display: grid;
+        grid-template-columns: 20px minmax(0, 1fr) auto;
+        align-items: center;
+        justify-items: start;
+        gap: 7px;
+        padding: 7px 12px;
+      }
+
+      .detail-action-icon {
+        width: 17px;
+        height: 17px;
+        display: inline-grid;
+        place-items: center;
+        color: rgba(230, 239, 248, 0.9);
+      }
+
+      .detail-action-icon svg {
+        width: 100%;
+        height: 100%;
+        display: block;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .detail-action-label {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .detail-actions .detail-action-badge {
+        margin-left: 0;
       }
 
       .details-panel .detail-action[data-report-shortcut],
@@ -3447,6 +3495,7 @@
           width: 100%;
         }
 
+        .detail-top-actions,
         .detail-actions {
           grid-template-columns: 1fr 1fr;
         }
@@ -3912,17 +3961,19 @@
                   </div>
                 </div>
               </div>
-              <p class="message" id="rk-message">Search SY to load live flight data.</p>
-              <div class="detail-actions" aria-label="Flight detail actions">
-                <button class="detail-action" type="button" data-panel="chd" id="chd-action">CHD List <span class="detail-action-badge" id="chd-count"></span></button>
-                <button class="detail-action" type="button" data-panel="gov" id="gov-action">GOV/AQQ <span class="detail-action-badge" id="gov-count"></span></button>
-                <button class="detail-action" type="button" data-panel="webedi" id="webedi-action">WEB/EDI/RS <span class="detail-action-badge" id="webedi-count"></span></button>
-                <button class="detail-action" type="button" data-panel="nbrd" id="nbrd-action">CKIN/NBRD <span class="detail-action-badge" id="nbrd-count"></span></button>
-                <button class="detail-action warning-action" type="button" data-panel="warning" id="warning-action" hidden aria-label="Open warnings">⚠️ WARNING <span class="detail-action-badge warning-badge" id="warning-count">0</span></button>
+              <div class="detail-top-actions" aria-label="Passenger service actions">
                 <button class="detail-action" type="button" data-panel="wch">WCH <span class="detail-action-badge" id="wch-count"></span></button>
                 <button class="detail-action" type="button" data-panel="psm">PSM/MSG <span class="detail-action-badge" id="psm-count"></span></button>
-                <button class="detail-action" type="button" data-panel="duplicate-bags" id="duplicate-bags-action">DUP BAG <span class="detail-action-badge" id="duplicate-bags-count"></span></button>
-                <button class="detail-action" type="button" data-panel="duplicate-names" id="duplicate-names-action">DUP NAME <span class="detail-action-badge" id="duplicate-names-count"></span></button>
+                <button class="detail-action" type="button" data-panel="security" id="security-detail-action">Security Check</button>
+              </div>
+              <div class="detail-actions" aria-label="Flight detail actions">
+                <button class="detail-action" type="button" data-panel="chd" id="chd-action"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M11 7h10"/><path d="M12 5h8l1 4h-10z"/><path d="M8 8h16v19H8z"/><path d="M12 15h8"/><path d="M12 20h8"/></svg></span><span class="detail-action-label">CHD List</span> <span class="detail-action-badge" id="chd-count"></span></button>
+                <button class="detail-action" type="button" data-panel="gov" id="gov-action"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="16" cy="11" r="5"/><path d="M7 27c1.2-6 4.4-9 9-9s7.8 3 9 9"/></svg></span><span class="detail-action-label">GOV/AQQ</span> <span class="detail-action-badge" id="gov-count"></span></button>
+                <button class="detail-action" type="button" data-panel="webedi" id="webedi-action"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="10"/><path d="M6 16h20"/><path d="M16 6c3 3 4.5 6.3 4.5 10S19 23 16 26"/><path d="M16 6c-3 3-4.5 6.3-4.5 10S13 23 16 26"/></svg></span><span class="detail-action-label">WEB/EDI/RS</span> <span class="detail-action-badge" id="webedi-count"></span></button>
+                <button class="detail-action" type="button" data-panel="nbrd" id="nbrd-action"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M6 9h20v14H6z"/><circle cx="12" cy="15" r="2.5"/><path d="M9 21c.8-2.2 2-3.3 3-3.3s2.2 1.1 3 3.3"/><path d="M18 14h5"/><path d="M18 19h5"/></svg></span><span class="detail-action-label">CKIN/NBRD</span> <span class="detail-action-badge" id="nbrd-count"></span></button>
+                <button class="detail-action warning-action" type="button" data-panel="warning" id="warning-action" hidden aria-label="Open warnings"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M16 5 29 27H3z"/><path d="M16 12v7"/><path d="M16 23h.01"/></svg></span><span class="detail-action-label">WARNING</span> <span class="detail-action-badge warning-badge" id="warning-count">0</span></button>
+                <button class="detail-action" type="button" data-panel="duplicate-bags" id="duplicate-bags-action" hidden><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M10 11V8h12v3"/><path d="M6 11h20v15H6z"/><path d="M10 11v15"/><path d="M22 11v15"/></svg></span><span class="detail-action-label">DUP BAG</span> <span class="detail-action-badge" id="duplicate-bags-count"></span></button>
+                <button class="detail-action" type="button" data-panel="duplicate-names" id="duplicate-names-action" hidden><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M12 23c-1.5-1.8-2.2-4.2-2.2-7.1 0-5.6 3-9.4 7.4-9.4 4 0 6.8 2.8 6.8 6.8 0 2.7-1.4 4.9-3.9 6.1"/><path d="M16.9 11.3c1.6 0 2.7 1.1 2.7 2.8 0 1.9-1.1 3-3.4 3.8-1.4.5-2.1 1.4-2.1 2.7 0 2.8 2.1 4.9 5.8 4.9"/><path d="M7.5 25.5c1.9-1 3.5-1.5 5-1.5 1.8 0 3.3.5 4.6 1.5"/></svg></span><span class="detail-action-label">DUP NAME</span> <span class="detail-action-badge" id="duplicate-names-count"></span></button>
                 <button class="detail-action" type="button" data-report-shortcut="sales">Sales Report</button>
                 <button class="detail-action" type="button" data-report-shortcut="vip">VIP Report</button>
               </div>
@@ -5139,6 +5190,10 @@
         setBadgeText("#duplicate-names-count", duplicateNameCount);
         setActionIssueState("#duplicate-bags-action", duplicateBagCount > 0);
         setActionIssueState("#duplicate-names-action", duplicateNameCount > 0);
+        const duplicateBagsAction = document.querySelector("#duplicate-bags-action");
+        const duplicateNamesAction = document.querySelector("#duplicate-names-action");
+        if (duplicateBagsAction) duplicateBagsAction.hidden = duplicateBagCount === 0;
+        if (duplicateNamesAction) duplicateNamesAction.hidden = duplicateNameCount === 0;
         if (bagReportButton) bagReportButton.hidden = !(sy.bagSheet?.hasData);
         refreshSalesReportButton(sy);
         let previousStarted = true;
@@ -6933,6 +6988,7 @@
           if (panel === "psm") renderPsmPanel();
           if (panel === "duplicate-bags") renderDuplicateBagsPanel();
           if (panel === "duplicate-names") renderDuplicateNamesPanel();
+          if (panel === "security") renderSecurityCheck();
         });
       });
 
