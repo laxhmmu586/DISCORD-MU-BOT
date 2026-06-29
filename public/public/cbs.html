@@ -270,6 +270,41 @@
         [label('Updated At', '更新时间'), row.updatedAt]
       ];
     }
+    function originalFormDetailRows(row) {
+      const caseType = inferCaseType(row);
+      return [
+        [label('Case Type', '类型'), caseType],
+        [label('Passenger Name', '旅客姓名'), row.passengerName],
+        [label('Email', '邮箱'), row.email],
+        [label('Phone', '电话'), row.phone],
+        [label('Ticket Number', '机票号码'), row.ticketNumber],
+        [label('Class Of Travel', '舱位等级'), row.classOfTravel],
+        [label('Origin', '始发地'), row.departureOrigin],
+        [label('Flight Route', '行李航程'), row.flightRoute],
+        [label('Bag Tag', '行李牌'), row.bagTag],
+        [label('Destination on Bags', '行李牌目的地'), row.destinationOnBags],
+        [label('Permanent Address', '住址'), row.permanentAddress],
+        [label('Temporary Address Available', '是否有临时地址'), row.addressAvailable],
+        [label('Temporary Address Valid Until', '临时地址有效期至'), row.temporaryAddressValidUntil],
+        [label('Temporary Address', '临时地址'), row.temporaryAddress],
+        [label('AHL Bag Description', 'AHL行李描述'), row.ahlBagDescription],
+        [label('AHL Bag Brand Tag', 'AHL行李品牌牌'), row.ahlBagBrandTag],
+        [label('AHL Bag Type', 'AHL行李类型'), row.ahlBagType],
+        [label('AHL Features', 'AHL特征'), row.ahlFeatures],
+        [label('AHL Other Features', 'AHL其他特征'), row.ahlOtherFeatures],
+        [label('AHL Contents', 'AHL包内物品'), row.ahlContents],
+        [label('DPR Damage Level', 'DPR破损程度'), row.dprDamageLevel],
+        [label('DPR Bag Info', 'DPR行李信息'), row.dprBagInfo],
+        [label('DPR Bag Type', 'DPR行李类型'), row.dprBagType],
+        [label('DPR Inner Damage', 'DPR内物破损'), row.dprInnerDamage],
+        [label('Contents Details', '包内物品详情'), row.contentsDetails],
+        [label('Issue Date', '填写日期'), row.issueDate],
+        [label('Passenger Signature', '旅客签字'), row.passengerSignature]
+      ];
+    }
+    function isOriginalFormCase(row) {
+      return !/^Created from Missing Bag Report row\b/i.test(String(row?.updateNote || '')) && (hasValue(row?.email) || hasValue(row?.phone) || hasValue(row?.passengerSignature));
+    }
     function updateFormHtml(row, mode = 'worldtracer') {
       if (!row.caseNumber) return `<p class="status err">${label('A case number is required in column A before this row can be updated.', 'A列需要有Case Number后才能更新。')}</p>`;
       const active = ['worldtracer', 'rush', 'location', 'shipping'].includes(mode) ? mode : 'worldtracer';
@@ -336,7 +371,7 @@
         const detailKey = row.caseNumber || `row-${row.rowNumber || index}`;
         const caseNumberLabel = row.caseNumber || label('Missing case number', '缺少编号');
         const caseType = inferCaseType(row);
-        const details = detailRows(row).filter(([, value]) => hasValue(value));
+        const details = (isOriginalFormCase(row) ? originalFormDetailRows(row) : detailRows(row)).filter(([, value]) => hasValue(value));
         const backHtml = selectedCase ? `<div class="actions detail-actions"><button class="secondary" type="button" data-back-all-cases>${label('Back to all cases', '返回所有案件')}</button></div>` : '';
         const detailHtml = details.length ? `<section class="case-info-panel"><h2>${label('Case Information', '案件信息')}</h2><div class="detail-grid">${details.map(([key, value]) => `<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(renderValue(value))}</p>`).join('')}</div></section>` : '';
         return `<tr class="case-summary" data-toggle-case="${escapeHtml(detailKey)}"><td><button class="secondary" type="button">${escapeHtml(caseNumberLabel)}</button></td><td>${escapeHtml(caseType || '-')}</td><td>${escapeHtml(displayBagTag(row) || '-')}</td><td class="tracking-cell">${trackingHtml(row)}</td></tr><tr class="case-detail" data-detail-case="${escapeHtml(detailKey)}" ${selectedCase ? '' : 'hidden'}><td colspan="4">${backHtml}${trackingDetailHtml(row)}${detailHtml}${updateFormHtml(row)}</td></tr>`;
