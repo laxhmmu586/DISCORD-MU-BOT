@@ -157,17 +157,9 @@
       const note = String(row?.updateNote || '').trim();
       const events = [];
       if (row?.caseNumber) {
-        const createFields = [
-          [label('Case Number', '编号'), row.caseNumber],
-          [label('Case Type', '类型'), inferCaseType(row)],
-          [label('Passenger Name', '旅客姓名'), row.passengerName],
-          [label('Email', '邮箱'), row.email],
-          [label('Phone', '电话'), row.phone],
-          [label('Flight Route', '行李航程'), row.flightRoute],
-          [label('Bag Tag', '行李牌'), displayBagTag(row)],
-          [label('Destination on Bags', '行李牌目的地'), row.destinationOnBags],
-          [label('Submit Date', '提交日期'), row.submittedAt]
-        ].filter(([, value]) => hasValue(value));
+        const hiddenCreateLabels = new Set([label('Status', '状态'), label('Updated At', '更新时间')]);
+        const createFields = detailRows(row)
+          .filter(([key, value]) => hasValue(value) && !hiddenCreateLabels.has(key));
         events.push({ key:'create', title:'Create Case', at:row.submittedAt || row.issueDate || '', fields:createFields });
       }
       const storedEvents = parseStoredUpdateEvents(row);
