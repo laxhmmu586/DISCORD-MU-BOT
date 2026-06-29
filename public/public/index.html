@@ -34,9 +34,9 @@
 
       body {
         margin: 0;
-        height: 100svh;
         min-height: 100vh;
-        overflow: hidden;
+        overflow-x: hidden;
+        overflow-y: auto;
         background: #01050b;
         color: var(--text);
         isolation: isolate;
@@ -513,33 +513,54 @@
         display: flex;
         align-items: end;
         gap: 12px;
-        transform: translateX(-64px);
+        transform: translateX(-128px);
       }
 
       .status-strip {
         display: grid;
-        grid-template-columns: repeat(3, minmax(96px, 1fr));
-        gap: 12px;
-        min-width: 420px;
+        grid-template-columns: repeat(3, 104px);
+        gap: 18px;
+        min-width: 348px;
       }
 
       .status-metric {
         position: relative;
-        min-height: 82px;
+        width: 104px;
+        height: 104px;
         display: grid;
         place-items: center;
-        padding: 10px 16px 14px;
+        padding: 17px 10px 12px;
+        border: 2px solid rgba(244, 250, 255, 0.86);
+        border-radius: 999px;
+        background:
+          radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 0.42), rgba(0, 0, 0, 0.28) 54%, rgba(255, 255, 255, 0.04) 100%);
+        box-shadow:
+          0 0 0 1px rgba(244, 250, 255, 0.12),
+          inset 0 0 28px rgba(0, 0, 0, 0.82),
+          inset 0 0 12px rgba(244, 250, 255, 0.12),
+          0 2px 8px rgba(0, 0, 0, 0.72);
       }
 
       .status-metric::before {
         content: "";
         position: absolute;
-        inset: 0 8px 12px;
-        border: 3px solid rgba(244, 250, 255, 0.9);
-        border-bottom-color: transparent;
-        border-radius: 999px 999px 0 0;
-        filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.8));
+        inset: 8px;
+        border: 1px solid rgba(244, 250, 255, 0.2);
+        border-radius: inherit;
+        box-shadow:
+          inset 0 0 18px rgba(0, 0, 0, 0.72),
+          0 0 10px rgba(0, 0, 0, 0.28);
         opacity: 0.95;
+      }
+
+      .status-metric::after {
+        content: "";
+        position: absolute;
+        inset: -5px;
+        border-radius: inherit;
+        border: 1px solid rgba(244, 250, 255, 0.22);
+        clip-path: polygon(0 0, 100% 0, 100% 18%, 0 18%);
+        opacity: 0.78;
       }
 
       .status-metric span,
@@ -549,22 +570,31 @@
       }
 
       .status-metric span {
+        position: absolute;
+        top: 25px;
+        left: 0;
+        right: 0;
         display: block;
         color: rgba(180, 194, 207, 0.88);
         font-size: 11px;
         font-weight: 900;
         letter-spacing: 1.2px;
         line-height: 1;
+        text-align: center;
         text-transform: uppercase;
       }
 
       .status-metric strong {
+        position: absolute;
+        top: 54%;
+        left: 50%;
         display: block;
-        margin-top: 6px;
+        margin: 0;
         color: rgba(244, 250, 255, 0.98);
         font-size: 28px;
         line-height: 0.95;
         text-shadow: 0 2px 9px rgba(0, 0, 0, 0.92);
+        transform: translate(-50%, -50%);
       }
 
       .flight-tools {
@@ -639,8 +669,9 @@
       }
 
       .details-panel {
-        width: min(960px, calc(100% - 48px));
+        width: min(920px, calc(100% - 48px));
         margin: 22px auto 0;
+        overflow: visible;
       }
 
       .details-panel[hidden] {
@@ -653,18 +684,57 @@
 
       .details-surface {
         display: grid;
-        gap: 12px;
-        padding: 18px;
-        border: 1px solid rgba(176, 216, 255, 0.22);
-        background: linear-gradient(150deg, rgba(5, 18, 31, 0.68), rgba(2, 11, 20, 0.52));
-        backdrop-filter: blur(18px);
-        box-shadow: 0 22px 70px rgba(0, 0, 0, 0.28);
+        gap: 10px;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        backdrop-filter: none;
+        box-shadow: none;
       }
 
       .details-manifest {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(2, minmax(174px, max-content)) repeat(2, minmax(132px, 132px));
+        grid-template-areas:
+          "reservation checkin warning security"
+          "rk rk warning security";
+        grid-template-rows: minmax(40px, auto) minmax(50px, auto);
         gap: 12px;
+        align-items: stretch;
+        justify-content: center;
+      }
+
+      .manifest-section.is-reservation { grid-area: reservation; }
+      .manifest-section.is-checkin { grid-area: checkin; }
+      .manifest-rk { grid-area: rk; }
+      .summary-warning-action { grid-area: warning; }
+      .summary-security-action { grid-area: security; }
+      .details-manifest.is-warning-hidden {
+        grid-template-columns: repeat(2, minmax(174px, max-content)) minmax(132px, 132px);
+        grid-template-areas:
+          "reservation checkin warning"
+          "rk rk warning";
+      }
+
+      .details-manifest.is-warning-hidden .summary-security-action { grid-area: warning; }
+
+      .details-panel .details-manifest > .detail-action {
+        min-height: 0;
+        height: 100%;
+        padding: 12px 10px 10px;
+        gap: 7px;
+      }
+
+      .details-panel .details-manifest > .detail-action .detail-action-label {
+        overflow: visible;
+        text-overflow: clip;
+        white-space: normal;
+        line-height: 1.15;
+      }
+
+      .details-panel .details-manifest > .detail-action .detail-action-icon {
+        width: 34px;
+        height: 34px;
       }
 
       .mission-stage {
@@ -682,7 +752,7 @@
         display: grid;
         place-items: center;
         padding: 3vh 0 8vh;
-        transform: translateY(72px);
+        transform: translateY(-58px);
         z-index: 8;
       }
 
@@ -1066,22 +1136,27 @@
       }
 
       .manifest-section {
+        display: grid;
+        align-content: center;
+        justify-items: center;
         border: 1px solid rgba(176, 216, 255, 0.22);
-        padding: 16px 18px;
-        background: rgba(6, 20, 34, 0.46);
+        padding: 4px 12px;
+        background: rgba(3, 13, 24, 0.76);
       }
 
       .manifest-section h3 {
-        margin: 0 0 16px;
+        margin: 0 0 2px;
         color: rgba(244, 250, 255, 0.96);
-        font-size: 13px;
-        letter-spacing: 1.6px;
+        font-size: 15px;
+        line-height: 1.05;
+        letter-spacing: 1.2px;
+        text-align: center;
         text-transform: uppercase;
       }
 
       .counts {
         display: grid;
-        gap: 12px;
+        gap: 6px;
         text-align: center;
       }
 
@@ -1119,10 +1194,33 @@
         display: inline;
       }
 
+      .details-manifest .count-row {
+        font-size: 18px;
+        letter-spacing: 0.6px;
+        line-height: 1.05;
+        text-align: center;
+      }
+
+      .details-manifest .counts-inline .count-row {
+        display: grid;
+        grid-template-columns: 1fr;
+        justify-items: center;
+        align-items: center;
+        gap: 3px;
+      }
+
+      .details-manifest .count-row span:first-child {
+        font-size: 16px;
+      }
+
+      .details-manifest .count-row span:last-child {
+        font-size: 19px;
+      }
+
       .counts-inline .count-row {
         display: flex;
         flex-wrap: nowrap;
-        align-items: baseline;
+        align-items: center;
         justify-content: center;
         gap: 10px;
         white-space: nowrap;
@@ -1135,6 +1233,15 @@
 
       .count-wide {
         width: 100%;
+      }
+
+      .manifest-rk {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 50px;
+        padding-block: 10px;
+        text-align: center;
       }
 
       .count:nth-child(1) strong {
@@ -1151,20 +1258,170 @@
 
       .message {
         margin: 0;
-        padding: 14px 16px;
+        padding: 5px 10px;
         border: 1px solid rgba(176, 216, 255, 0.22);
-        background: rgba(1, 10, 18, 0.24);
+        background: rgba(3, 13, 24, 0.76);
         color: rgba(235, 246, 255, 0.82);
-        font-size: 14px;
-        line-height: 1.45;
+        font-size: 12px;
+        line-height: 1.18;
         text-align: center;
       }
 
+      .detail-top-actions,
       .detail-actions {
         display: grid;
-        grid-template-columns: repeat(4, minmax(132px, 1fr));
         gap: 10px;
       }
+
+      .detail-top-actions {
+        grid-template-columns: repeat(3, minmax(132px, 1fr));
+      }
+
+      .detail-actions {
+        grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+        gap: 14px;
+      }
+
+      .details-panel .detail-actions {
+        display: flex;
+        flex-wrap: nowrap;
+        gap: 14px;
+        margin-top: 14px;
+        justify-content: center;
+        overflow-x: auto;
+        padding-bottom: 4px;
+        scrollbar-width: none;
+      }
+
+      .details-panel .detail-actions::-webkit-scrollbar {
+        display: none;
+      }
+
+      .details-panel .detail-actions .detail-action {
+        flex: 0 0 132px;
+      }
+
+      .details-panel .detail-actions .detail-action,
+      .details-panel .details-manifest > .detail-action {
+        --tile-accent: rgba(88, 167, 255, 0.86);
+        --tile-accent-soft: rgba(88, 167, 255, 0.34);
+        --tile-accent-faint: rgba(88, 167, 255, 0.14);
+        min-height: 168px;
+        display: grid;
+        grid-template-rows: 1fr auto 20px;
+        grid-template-columns: 1fr;
+        align-items: center;
+        justify-items: center;
+        gap: 12px;
+        padding: 22px 12px 16px;
+        overflow: hidden;
+        border-radius: 8px;
+        font-size: 13px;
+        letter-spacing: 0.35px;
+        border-color: var(--tile-accent-soft);
+        background:
+          radial-gradient(circle at 82% 12%, var(--tile-accent-faint), transparent 34px),
+          radial-gradient(circle, rgba(235, 246, 255, 0.045) 1px, transparent 1.2px) 0 0 / 8px 8px,
+          linear-gradient(180deg, rgba(6, 20, 34, 0.93), rgba(2, 10, 18, 0.9));
+        box-shadow:
+          inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+          inset 0 0 30px var(--tile-accent-faint),
+          0 0 0 1px rgba(0, 0, 0, 0.42),
+          0 0 22px var(--tile-accent-soft),
+          0 12px 30px rgba(0, 0, 0, 0.34);
+        backdrop-filter: blur(8px);
+      }
+
+      .details-panel .detail-actions .detail-action::before,
+      .details-panel .details-manifest > .detail-action::before {
+        content: "";
+        position: absolute;
+        inset: 4px;
+        border: 1px solid var(--tile-accent-soft);
+        border-radius: 6px;
+        pointer-events: none;
+      }
+
+      .details-panel .detail-actions .detail-action.warning-action,
+      .details-panel .details-manifest > .detail-action.warning-action {
+        --tile-accent: rgba(255, 215, 67, 0.92);
+        --tile-accent-soft: rgba(255, 199, 44, 0.68);
+        --tile-accent-faint: rgba(255, 199, 44, 0.18);
+      }
+
+      .details-panel .detail-actions .detail-action.is-acknowledged-warning,
+      .details-panel .details-manifest > .detail-action.is-acknowledged-warning {
+        --tile-accent: rgba(108, 244, 154, 0.9);
+        --tile-accent-soft: rgba(108, 244, 154, 0.64);
+        --tile-accent-faint: rgba(108, 244, 154, 0.16);
+      }
+
+      .details-panel .detail-actions .detail-action:hover,
+      .details-panel .details-manifest > .detail-action:hover {
+        border-color: var(--tile-accent);
+        box-shadow:
+          inset 0 0 0 1px rgba(255, 255, 255, 0.07),
+          inset 0 0 32px var(--tile-accent-faint),
+          0 0 0 1px var(--tile-accent-soft),
+          0 0 24px var(--tile-accent-soft),
+          0 12px 30px rgba(0, 0, 0, 0.3);
+      }
+
+      .details-panel .detail-actions .detail-action:hover::before,
+      .details-panel .details-manifest > .detail-action:hover::before {
+        border-color: var(--tile-accent-soft);
+      }
+
+      .details-panel .detail-actions .detail-action::after,
+      .details-panel .details-manifest > .detail-action::after {
+        content: "";
+        width: min(72px, 64%);
+        height: 2px;
+        align-self: end;
+        background: var(--tile-accent);
+        box-shadow: 0 0 12px var(--tile-accent-soft);
+      }
+
+      .detail-action-icon {
+        width: 52px;
+        height: 52px;
+        display: inline-grid;
+        place-items: center;
+        color: rgba(230, 239, 248, 0.9);
+      }
+
+      .detail-action-icon svg {
+        width: 100%;
+        height: 100%;
+        display: block;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .detail-action-label {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .details-panel .detail-actions .detail-action-badge,
+      .details-panel .details-manifest > .detail-action .detail-action-badge {
+        position: absolute;
+        top: 18px;
+        right: 16px;
+        margin-left: 0;
+      }
+
+      .details-panel .detail-actions .detail-action-label,
+      .details-panel .details-manifest > .detail-action .detail-action-label {
+        width: 100%;
+        text-align: center;
+      }
+
 
       .details-panel .detail-action[data-report-shortcut],
       .details-panel .detail-action[data-report-mode] {
@@ -1588,6 +1845,27 @@
 
       .gov-summary-grid .data-card {
         min-width: 0;
+      }
+
+      .gov-summary-grid .data-card.is-clear {
+        border-color: rgba(88, 167, 255, 0.72);
+        box-shadow: 0 0 18px rgba(88, 167, 255, 0.28), inset 0 0 16px rgba(88, 167, 255, 0.1);
+      }
+
+      .gov-summary-grid .data-card.is-warning {
+        border-color: rgba(255, 199, 44, 0.82);
+        box-shadow: 0 0 20px rgba(255, 199, 44, 0.32), inset 0 0 16px rgba(255, 199, 44, 0.12);
+      }
+
+      .gov-summary-grid .data-card.is-warning span {
+        color: #ffe682;
+      }
+
+      .gov-details-grid .bn-button.is-warning,
+      .result-panel[data-panel-title="WEB/EDI/RS"] .bn-button.is-warning {
+        border-color: rgba(255, 199, 44, 0.96);
+        box-shadow: 0 0 18px rgba(255, 199, 44, 0.28), inset 0 0 12px rgba(255, 199, 44, 0.1);
+        color: #ffe859;
       }
 
       .gov-details-grid {
@@ -3268,31 +3546,40 @@
         }
 
         .status-strip {
-          grid-template-columns: repeat(3, minmax(0, 1fr));
+          grid-template-columns: repeat(3, 82px);
+          justify-content: center;
           width: 100%;
           min-width: 0;
-          gap: 6px;
+          gap: 12px;
           margin-top: 22px;
         }
 
         .status-metric {
-          min-height: 58px;
-          padding: 8px 6px 10px;
+          width: 82px;
+          height: 82px;
+          min-height: 0;
+          padding: 0;
         }
 
         .status-metric::before {
-          inset: 0 3px 8px;
-          border-width: 2px;
+          inset: 6px;
+          border-width: 1px;
+        }
+
+        .status-metric::after {
+          inset: -3px;
         }
 
         .status-metric span {
+          top: 19px;
           font-size: 8px;
           letter-spacing: 0.8px;
         }
 
         .status-metric strong {
-          margin-top: 4px;
-          font-size: 16px;
+          top: 55%;
+          margin: 0;
+          font-size: 22px;
         }
 
         .mission-stage {
@@ -3305,7 +3592,7 @@
         .timeline-shell {
           align-items: start;
           padding: 0;
-          transform: translateY(36px);
+          transform: translateY(-28px);
         }
 
         .timeline-shell::before {
@@ -3447,8 +3734,57 @@
           width: 100%;
         }
 
-        .detail-actions {
+        .detail-top-actions,
+        .details-manifest {
           grid-template-columns: 1fr 1fr;
+        }
+
+        .details-manifest,
+        .details-manifest.is-warning-hidden {
+          grid-template-columns: 1fr 1fr;
+          grid-template-areas:
+            "reservation checkin"
+            "rk rk"
+            "warning security";
+          grid-template-rows: auto minmax(54px, auto) 132px;
+        }
+
+        .details-manifest.is-warning-hidden {
+          grid-template-areas:
+            "reservation checkin"
+            "rk rk"
+            "warning warning";
+        }
+
+        .details-panel {
+          overflow: visible;
+        }
+
+        .details-surface,
+        .details-panel .detail-actions {
+          min-width: 0;
+        }
+
+        .details-panel .detail-actions {
+          flex-wrap: wrap;
+          justify-content: center;
+          overflow: visible;
+        }
+
+        .details-panel .detail-actions .detail-action {
+          flex: 1 1 calc(50% - 14px);
+          max-width: calc(50% - 7px);
+        }
+
+        .details-panel .detail-actions .detail-action,
+        .details-panel .details-manifest > .detail-action {
+          min-height: 132px;
+          padding: 18px 10px 12px;
+        }
+
+        .detail-action-icon {
+          width: 40px;
+          height: 40px;
         }
 
         .result-panel,
@@ -3824,7 +4160,6 @@
               </button>
               <div class="flight-menu" aria-hidden="true">
                 <button id="sales-report-button" type="button">Sales Report</button>
-                <button id="security-check-button" type="button">Security Check</button>
                 <button id="seat-map-button" type="button">Seat Map</button>
               </div>
             </div>
@@ -3895,37 +4230,38 @@
           <div class="details-inner">
             <div class="details-surface">
               <div class="details-manifest">
-                <div class="manifest-section">
+                <div class="manifest-section is-reservation">
                   <h3>Reservation</h3>
                   <div class="counts counts-inline">
                     <div class="count count-wide">
-                      <div class="count-row"><span>Booked</span> <span id="reservation-booked"><strong>---</strong> / <strong>---</strong> / <strong>---</strong></span> <span>ET</span> <span id="reservation-et">--- / --- / ---</span></div>
+                      <div class="count-row"><span id="reservation-et">--- / --- / ---</span></div>
                     </div>
                   </div>
                 </div>
-                <div class="manifest-section">
+                <div class="manifest-section is-checkin">
                   <h3>Check-In</h3>
                   <div class="counts counts-inline">
                     <div class="count count-wide">
-                      <div class="count-row"><span>Accepted</span> <span id="checkin-accepted"><strong>---</strong> / <strong>---</strong> / <strong>---</strong></span> <span>CET</span> <span id="checkin-et">--- / --- / ---</span></div>
+                      <div class="count-row"><span id="checkin-et">--- / --- / ---</span></div>
                     </div>
                   </div>
                 </div>
+                <p class="message manifest-rk" id="rk-message">Search SY to load live flight data.</p>
+                <button class="detail-action warning-action summary-warning-action" type="button" data-panel="warning" id="warning-action" hidden aria-label="Open warnings"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M16 5 29 27H3z"/><path d="M16 12v7"/><path d="M16 23h.01"/></svg></span><span class="detail-action-label">WARNING</span> <span class="detail-action-badge warning-badge" id="warning-count">0</span></button>
+                <button class="detail-action summary-security-action" type="button" data-panel="security" id="security-detail-action"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M16 4 26 8v7c0 6.6-3.8 10.8-10 13-6.2-2.2-10-6.4-10-13V8z"/><path d="M11 16l3 3 7-7"/></svg></span><span class="detail-action-label">Security Check</span></button>
               </div>
-              <p class="message" id="rk-message">Search SY to load live flight data.</p>
-              <div class="detail-actions" aria-label="Flight detail actions">
-                <button class="detail-action" type="button" data-panel="chd" id="chd-action">CHD List <span class="detail-action-badge" id="chd-count"></span></button>
-                <button class="detail-action" type="button" data-panel="gov" id="gov-action">GOV/AQQ <span class="detail-action-badge" id="gov-count"></span></button>
-                <button class="detail-action" type="button" data-panel="webedi" id="webedi-action">WEB/EDI/RS <span class="detail-action-badge" id="webedi-count"></span></button>
-                <button class="detail-action" type="button" data-panel="nbrd" id="nbrd-action">CKIN/NBRD <span class="detail-action-badge" id="nbrd-count"></span></button>
-                <button class="detail-action warning-action" type="button" data-panel="warning" id="warning-action" hidden aria-label="Open warnings">⚠️ WARNING <span class="detail-action-badge warning-badge" id="warning-count">0</span></button>
-                <button class="detail-action" type="button" data-panel="wch">WCH <span class="detail-action-badge" id="wch-count"></span></button>
-                <button class="detail-action" type="button" data-panel="psm">PSM/MSG <span class="detail-action-badge" id="psm-count"></span></button>
-                <button class="detail-action" type="button" data-panel="duplicate-bags" id="duplicate-bags-action">DUP BAG <span class="detail-action-badge" id="duplicate-bags-count"></span></button>
-                <button class="detail-action" type="button" data-panel="duplicate-names" id="duplicate-names-action">DUP NAME <span class="detail-action-badge" id="duplicate-names-count"></span></button>
+            </div>
+            <div class="detail-actions" aria-label="Flight detail actions">
+              <button class="detail-action" type="button" data-panel="chd" id="chd-action"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M11 7h10"/><path d="M12 5h8l1 4h-10z"/><path d="M8 8h16v19H8z"/><path d="M12 15h8"/><path d="M12 20h8"/></svg></span><span class="detail-action-label">CHD List</span> <span class="detail-action-badge" id="chd-count"></span></button>
+                <button class="detail-action" type="button" data-panel="gov" id="gov-action"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="16" cy="11" r="5"/><path d="M7 27c1.2-6 4.4-9 9-9s7.8 3 9 9"/></svg></span><span class="detail-action-label">GOV/AQQ</span> <span class="detail-action-badge" id="gov-count"></span></button>
+                <button class="detail-action" type="button" data-panel="webedi" id="webedi-action"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="10"/><path d="M6 16h20"/><path d="M16 6c3 3 4.5 6.3 4.5 10S19 23 16 26"/><path d="M16 6c-3 3-4.5 6.3-4.5 10S13 23 16 26"/></svg></span><span class="detail-action-label">WEB/EDI/RS</span> <span class="detail-action-badge" id="webedi-count"></span></button>
+                <button class="detail-action" type="button" data-panel="nbrd" id="nbrd-action"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M6 9h20v14H6z"/><circle cx="12" cy="15" r="2.5"/><path d="M9 21c.8-2.2 2-3.3 3-3.3s2.2 1.1 3 3.3"/><path d="M18 14h5"/><path d="M18 19h5"/></svg></span><span class="detail-action-label">CKIN/NBRD</span> <span class="detail-action-badge" id="nbrd-count"></span></button>
+                <button class="detail-action" type="button" data-panel="duplicate-bags" id="duplicate-bags-action" hidden><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M10 11V8h12v3"/><path d="M6 11h20v15H6z"/><path d="M10 11v15"/><path d="M22 11v15"/></svg></span><span class="detail-action-label">DUP BAG</span> <span class="detail-action-badge" id="duplicate-bags-count"></span></button>
+                <button class="detail-action" type="button" data-panel="duplicate-names" id="duplicate-names-action" hidden><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M12 23c-1.5-1.8-2.2-4.2-2.2-7.1 0-5.6 3-9.4 7.4-9.4 4 0 6.8 2.8 6.8 6.8 0 2.7-1.4 4.9-3.9 6.1"/><path d="M16.9 11.3c1.6 0 2.7 1.1 2.7 2.8 0 1.9-1.1 3-3.4 3.8-1.4.5-2.1 1.4-2.1 2.7 0 2.8 2.1 4.9 5.8 4.9"/><path d="M7.5 25.5c1.9-1 3.5-1.5 5-1.5 1.8 0 3.3.5 4.6 1.5"/></svg></span><span class="detail-action-label">DUP NAME</span> <span class="detail-action-badge" id="duplicate-names-count"></span></button>
+                <button class="detail-action" type="button" data-panel="wch"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="16" cy="10" r="3.5"/><circle cx="9" cy="14" r="2.8"/><circle cx="23" cy="14" r="2.8"/><path d="M10 25v-4.5c0-3 2.3-5.5 6-5.5s6 2.5 6 5.5V25"/><path d="M4.8 24v-3.4c0-2.5 1.6-4.2 4.2-4.2"/><path d="M27.2 24v-3.4c0-2.5-1.6-4.2-4.2-4.2"/></svg></span><span class="detail-action-label">WCH</span> <span class="detail-action-badge" id="wch-count"></span></button>
+                <button class="detail-action" type="button" data-panel="psm" id="psm-action"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M5 9h22v15H5z"/><path d="m6 10 10 8 10-8"/></svg></span><span class="detail-action-label">PSM/MSG</span> <span class="detail-action-badge" id="psm-count"></span></button>
                 <button class="detail-action" type="button" data-report-shortcut="sales">Sales Report</button>
-                <button class="detail-action" type="button" data-report-shortcut="vip">VIP Report</button>
-              </div>
+              <button class="detail-action" type="button" data-report-shortcut="vip">VIP Report</button>
             </div>
           </div>
         </section>
@@ -4155,9 +4491,11 @@
         setText("#metric-gate", "---");
         setText("#metric-bdt", "----");
         setText("#metric-std", "----");
-        document.querySelector("#reservation-booked").innerHTML = tripleHtml(["---", "---", "---"]);
+        const reservationBookedEl = document.querySelector("#reservation-booked");
+        if (reservationBookedEl) reservationBookedEl.innerHTML = tripleHtml(["---", "---", "---"]);
         document.querySelector("#reservation-et").textContent = "--- / --- / ---";
-        document.querySelector("#checkin-accepted").innerHTML = tripleHtml(["---", "---", "---"]);
+        const checkinAcceptedEl = document.querySelector("#checkin-accepted");
+        if (checkinAcceptedEl) checkinAcceptedEl.innerHTML = tripleHtml(["---", "---", "---"]);
         document.querySelector("#checkin-et").textContent = "--- / --- / ---";
         setText("#rk-message", "");
         setBadgeText("#chd-count", 0);
@@ -4171,11 +4509,15 @@
         setBadgeText("#wch-count", 0);
         setText("#warning-count", "0");
         const warningAction = document.querySelector("#warning-action");
+        const detailsManifest = document.querySelector(".details-manifest");
+        detailsManifest?.classList.add("is-warning-hidden");
         if (warningAction) {
           warningAction.hidden = true;
           warningAction.classList.remove("is-critical-warning", "is-acknowledged-warning");
         }
         setBadgeText("#psm-count", 0);
+        const psmAction = document.querySelector("#psm-action");
+        if (psmAction) psmAction.hidden = true;
         if (bagReportButton) bagReportButton.hidden = true;
         if (salesReportButton) salesReportButton.hidden = true;
         nodes.forEach((node) => {
@@ -5108,9 +5450,11 @@
         setText("#metric-gate", sy.gate || "---");
         setText("#metric-bdt", sy.bdt || "----");
         setText("#metric-std", sy.sd || "----");
-        document.querySelector("#reservation-booked").innerHTML = tripleHtml(countTriple(sy.reservation));
+        const reservationBookedEl = document.querySelector("#reservation-booked");
+        if (reservationBookedEl) reservationBookedEl.innerHTML = tripleHtml(countTriple(sy.reservation));
         document.querySelector("#reservation-et").textContent = countTriple(sy.reservationTicketed).join(" / ");
-        document.querySelector("#checkin-accepted").innerHTML = tripleHtml(countTriple(sy.checkedIn));
+        const checkinAcceptedEl = document.querySelector("#checkin-accepted");
+        if (checkinAcceptedEl) checkinAcceptedEl.innerHTML = tripleHtml(countTriple(sy.checkedIn));
         document.querySelector("#checkin-et").textContent = countTriple(sy.checkedInTicketed).join(" / ");
         setText("#rk-message", sy.rkMessage || "No RK message found.");
         const isClearLocked = (_key) => false;
@@ -5132,13 +5476,20 @@
         setBadgeText("#wch-count", (sy.wchList || []).length);
         updateWarningActionState(buildWarningRows(sy));
         loadWarningAcknowledgements(sy);
-        setBadgeText("#psm-count", (sy.psmList || []).length);
+        const psmCount = (sy.psmList || []).length;
+        setBadgeText("#psm-count", psmCount);
+        const psmAction = document.querySelector("#psm-action");
+        if (psmAction) psmAction.hidden = psmCount === 0;
         const duplicateBagCount = duplicateBagRows(sy).length;
         const duplicateNameCount = duplicateNameRows(sy).length;
         setBadgeText("#duplicate-bags-count", duplicateBagCount);
         setBadgeText("#duplicate-names-count", duplicateNameCount);
         setActionIssueState("#duplicate-bags-action", duplicateBagCount > 0);
         setActionIssueState("#duplicate-names-action", duplicateNameCount > 0);
+        const duplicateBagsAction = document.querySelector("#duplicate-bags-action");
+        const duplicateNamesAction = document.querySelector("#duplicate-names-action");
+        if (duplicateBagsAction) duplicateBagsAction.hidden = duplicateBagCount === 0;
+        if (duplicateNamesAction) duplicateNamesAction.hidden = duplicateNameCount === 0;
         if (bagReportButton) bagReportButton.hidden = !(sy.bagSheet?.hasData);
         refreshSalesReportButton(sy);
         let previousStarted = true;
@@ -5381,13 +5732,14 @@
         const rows = groups.flatMap(([group, items]) => (items || []).map((item) => enrichGovRow(item, group)));
         const summary = groups.map(([label, items]) => {
           const groupRows = (items || []).map((item) => enrichGovRow(item, label));
-          const status = groupRows.length ? String(groupRows.length) : "Clear";
-          return `<div class="data-card"><b>${escapeHtml(label)}</b><span>${escapeHtml(status)}</span></div>`;
+          const isClear = !groupRows.length;
+          const status = isClear ? "Clear" : String(groupRows.length);
+          return `<div class="data-card ${isClear ? "is-clear" : "is-warning"}"><b>${escapeHtml(label)}</b><span>${escapeHtml(status)}</span></div>`;
         }).join("");
         const details = groups.map(([label, items]) => {
           const groupRows = (items || []).map((item) => enrichGovRow(item, label));
           if (!groupRows.length) return "";
-          return `<article class="data-card gov-detail-card"><b>${escapeHtml(label)} Details</b>${renderBnButtons(groupRows, "", (row) => row.reason)}</article>`;
+          return `<article class="data-card gov-detail-card"><b>${escapeHtml(label)} Details</b>${renderBnButtons(groupRows, "", (row) => row.reason, null, () => "is-warning")}</article>`;
         }).filter(Boolean).join("");
         renderPanel("GOV/AQQ", currentSy?.flightNo || "SY", `<div class="data-grid gov-summary-grid">${summary}</div>${details ? `<div class="data-grid gov-details-grid">${details}</div>` : ""}`);
         setPanelPassengerRows(rows);
@@ -5396,7 +5748,7 @@
       function renderWebEdiPanel() {
         const gov = currentSy?.govAqq || {};
         const rows = enrichRowsWithPassengerData((gov.passportCodeIssues || []).map((bn) => ({ bn, reason: "WEB/EDI/Reswipe" })));
-        const body = rows.length ? `<div class="panel-stats"><span class="status-fail">WEB/EDI/RS total: ${rows.length}</span></div>${renderBnButtons(rows, "", (row) => row.reason)}` : `<p class="panel-muted">No WEB/EDI/RS records found.</p>`;
+        const body = rows.length ? `<div class="panel-stats"><span class="status-fail">WEB/EDI/RS total: ${rows.length}</span></div>${renderBnButtons(rows, "", (row) => row.reason, null, () => "is-warning")}` : `<p class="panel-muted">No WEB/EDI/RS records found.</p>`;
         renderPanel("WEB/EDI/RS", currentSy?.flightNo || "SY", body);
         setPanelPassengerRows(rows);
       }
@@ -5500,8 +5852,10 @@
 
       function updateWarningActionState(rows = buildWarningRows()) {
         const warningAction = document.querySelector("#warning-action");
+        const detailsManifest = document.querySelector(".details-manifest");
         const unackedCount = rows.filter((row) => !userHasAcknowledged(row.acknowledgements)).length;
         setText("#warning-count", rows.length || "0");
+        detailsManifest?.classList.toggle("is-warning-hidden", rows.length === 0);
         if (warningAction) {
           warningAction.hidden = rows.length === 0;
           warningAction.classList.toggle("is-critical-warning", unackedCount > 0);
@@ -6933,6 +7287,7 @@
           if (panel === "psm") renderPsmPanel();
           if (panel === "duplicate-bags") renderDuplicateBagsPanel();
           if (panel === "duplicate-names") renderDuplicateNamesPanel();
+          if (panel === "security") renderSecurityCheck();
         });
       });
 
@@ -7052,7 +7407,7 @@
       reportBaggageModeButton?.addEventListener("click", () => { setReportMode("baggage", { resetOutput: true }); renderBaggageTimelineReport({ latestOnly: true }); });
       reportForm.addEventListener("submit", generateReport);
       reportDownloadButton.addEventListener("click", downloadCurrentReportCsv);
-      securityCheckButton.addEventListener("click", closeFlightMenuAfterAction(renderSecurityCheck));
+      securityCheckButton?.addEventListener("click", closeFlightMenuAfterAction(renderSecurityCheck));
       seatMapButton.addEventListener("click", closeFlightMenuAfterAction(renderSeatMap));
 
       mobilePanel.addEventListener("click", (event) => {
