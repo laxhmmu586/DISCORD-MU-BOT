@@ -639,8 +639,8 @@
       }
 
       .details-panel {
-        width: min(960px, calc(100% - 48px));
-        margin: 22px auto 0;
+        width: min(1400px, calc(100% - 48px));
+        margin: 30px auto 0;
       }
 
       .details-panel[hidden] {
@@ -653,18 +653,48 @@
 
       .details-surface {
         display: grid;
-        gap: 12px;
-        padding: 18px;
-        border: 1px solid rgba(176, 216, 255, 0.22);
-        background: linear-gradient(150deg, rgba(5, 18, 31, 0.68), rgba(2, 11, 20, 0.52));
-        backdrop-filter: blur(18px);
-        box-shadow: 0 22px 70px rgba(0, 0, 0, 0.28);
+        grid-template-columns: minmax(0, 1fr) 244px;
+        gap: 20px;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        backdrop-filter: none;
+        box-shadow: none;
+      }
+
+      .details-surface:not(:has(.details-warning-summary:not([hidden]))) {
+        grid-template-columns: 1fr;
+      }
+
+      .details-main {
+        display: grid;
+        gap: 26px;
+        min-width: 0;
       }
 
       .details-manifest {
+        position: relative;
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 12px;
+        gap: 20px;
+      }
+
+      .details-manifest::after {
+        content: "→";
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 58px;
+        height: 58px;
+        display: grid;
+        place-items: center;
+        border: 1px solid rgba(201, 222, 244, 0.42);
+        border-radius: 999px;
+        background: rgba(7, 17, 28, 0.86);
+        color: rgba(226, 238, 248, 0.9);
+        font-size: 38px;
+        transform: translate(-50%, -50%);
+        box-shadow: 0 10px 30px rgba(0,0,0,.42), inset 0 0 18px rgba(88,167,255,.08);
       }
 
       .mission-stage {
@@ -1066,15 +1096,32 @@
       }
 
       .manifest-section {
-        border: 1px solid rgba(176, 216, 255, 0.22);
-        padding: 16px 18px;
-        background: rgba(6, 20, 34, 0.46);
+        position: relative;
+        overflow: hidden;
+        min-height: 168px;
+        border: 1px solid rgba(176, 216, 255, 0.34);
+        border-radius: 12px;
+        padding: 26px 34px;
+        background:
+          linear-gradient(135deg, rgba(10, 19, 28, 0.94), rgba(5, 13, 21, 0.9)),
+          radial-gradient(circle at 76% 10%, rgba(88, 167, 255, 0.12), transparent 36%);
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,.04), 0 18px 42px rgba(0,0,0,.36);
+      }
+
+      .manifest-section::before {
+        content: "···";
+        position: absolute;
+        right: 18px;
+        top: 8px;
+        color: rgba(166, 190, 214, 0.18);
+        letter-spacing: 2px;
       }
 
       .manifest-section h3 {
-        margin: 0 0 16px;
-        color: rgba(244, 250, 255, 0.96);
-        font-size: 13px;
+        margin: 0 0 24px;
+        color: rgba(244, 250, 255, 0.9);
+        font-size: 22px;
+        font-weight: 500;
         letter-spacing: 1.6px;
         text-transform: uppercase;
       }
@@ -1108,8 +1155,8 @@
 
       .count-row {
         color: rgba(244, 250, 255, 0.95);
-        font-size: clamp(28px, 2.2vw, 34px);
-        font-weight: 850;
+        font-size: clamp(24px, 1.75vw, 28px);
+        font-weight: 550;
         letter-spacing: 1px;
         line-height: 1;
       }
@@ -1123,14 +1170,84 @@
         display: flex;
         flex-wrap: nowrap;
         align-items: baseline;
-        justify-content: center;
-        gap: 10px;
+        justify-content: flex-start;
+        gap: 16px;
         white-space: nowrap;
       }
 
       .counts-inline .count-row span {
         display: inline;
         margin: 0;
+      }
+
+      .manifest-progress-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 14px;
+        margin-top: 28px;
+      }
+
+      .manifest-progress-track {
+        height: 9px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: rgba(172, 190, 208, 0.16);
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,.035);
+      }
+
+      .manifest-progress-fill {
+        display: block;
+        width: 0%;
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #6ea4ff, #77a5ff);
+        box-shadow: 0 0 16px rgba(100, 150, 255, 0.45);
+      }
+
+      .manifest-progress-percent {
+        color: rgba(224, 232, 242, 0.72);
+        font-size: 16px;
+        font-weight: 700;
+        letter-spacing: 0.3px;
+      }
+
+      .details-warning-summary {
+        min-height: 168px;
+        display: grid;
+        place-items: center;
+        align-self: start;
+        border: 1px solid rgba(255, 86, 86, 0.48);
+        border-radius: 12px;
+        background: linear-gradient(145deg, rgba(27, 9, 13, 0.94), rgba(7, 10, 15, 0.92));
+        color: #ff645d;
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,.025), 0 18px 42px rgba(0,0,0,.36);
+        cursor: pointer;
+      }
+
+      .details-warning-summary[hidden] {
+        display: none !important;
+      }
+
+      .warning-summary-title {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        color: #ff645d;
+        font-size: 20px;
+        font-weight: 800;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+      }
+
+      .warning-summary-title .detail-action-badge {
+        position: static;
+        min-width: 28px;
+        height: 28px;
+        background: #e2554e;
+        font-size: 14px;
       }
 
       .count-wide {
@@ -1150,39 +1267,71 @@
       }
 
       .message {
-        margin: 0;
-        padding: 14px 16px;
-        border: 1px solid rgba(176, 216, 255, 0.22);
-        background: rgba(1, 10, 18, 0.24);
-        color: rgba(235, 246, 255, 0.82);
-        font-size: 14px;
-        line-height: 1.45;
-        text-align: center;
+        display: none;
       }
 
       .detail-actions {
         display: grid;
-        grid-template-columns: repeat(4, minmax(132px, 1fr));
-        gap: 10px;
+        grid-template-columns: repeat(8, minmax(132px, 1fr));
+        gap: 16px;
       }
 
       .details-panel .detail-action[data-report-shortcut],
-      .details-panel .detail-action[data-report-mode] {
+      .details-panel .detail-action[data-report-mode],
+      .details-panel #warning-action {
         display: none !important;
       }
 
       .detail-action {
         position: relative;
         z-index: 2;
-        min-height: 42px;
-        border: 1px solid rgba(176, 216, 255, 0.2);
-        background: rgba(0, 0, 0, 0.18);
-        color: rgba(244, 250, 255, 0.92);
-        font-size: 12px;
-        font-weight: 850;
-        letter-spacing: 0.4px;
+        min-height: 202px;
+        display: grid;
+        grid-template-rows: 68px auto 2px;
+        align-content: center;
+        justify-items: center;
+        gap: 18px;
+        padding: 26px 18px 24px;
+        border: 1px solid rgba(176, 216, 255, 0.24);
+        border-radius: 10px;
+        background:
+          radial-gradient(circle at 50% 8%, rgba(88, 167, 255, 0.08), transparent 34%),
+          linear-gradient(145deg, rgba(8, 18, 29, 0.94), rgba(3, 10, 17, 0.9));
+        backdrop-filter: blur(10px);
+        color: rgba(244, 250, 255, 0.72);
+        font-size: 18px;
+        font-weight: 650;
+        letter-spacing: 0.8px;
+        line-height: 1;
         text-transform: uppercase;
         cursor: pointer;
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,.03), 0 16px 36px rgba(0,0,0,.28);
+      }
+
+      .detail-action-icon {
+        width: 68px;
+        height: 68px;
+        color: rgba(236, 244, 252, 0.84);
+        stroke: currentColor;
+        filter: drop-shadow(0 0 4px rgba(255,255,255,.08));
+      }
+
+      .detail-action::before {
+        content: "";
+        position: absolute;
+        inset: 9px 9px auto auto;
+        width: 18px;
+        height: 16px;
+        opacity: 0.12;
+        background-image: radial-gradient(circle, currentColor 1px, transparent 1.5px);
+        background-size: 4px 4px;
+      }
+
+      .detail-action::after {
+        content: "";
+        width: 92px;
+        height: 1px;
+        background: rgba(174, 194, 213, 0.2);
       }
 
       .detail-action:hover {
@@ -1190,9 +1339,22 @@
         background: rgba(88, 167, 255, 0.1);
       }
 
+      .detail-action.is-clear-blue {
+        border-color: rgba(99, 160, 255, 0.78);
+        background: linear-gradient(145deg, rgba(16, 58, 108, 0.9), rgba(3, 18, 34, 0.92));
+        color: rgba(244, 250, 255, 0.9);
+        box-shadow: inset 0 0 0 1px rgba(130, 187, 255, 0.24), 0 0 16px rgba(58, 130, 255, 0.44);
+      }
+
+      .detail-action.is-clear-blue::after {
+        height: 2px;
+        background: #58a7ff;
+        box-shadow: 0 0 10px rgba(88, 167, 255, 0.78);
+      }
+
       .warning-action {
         border-color: rgba(255, 199, 44, 0.72);
-        background: rgba(100, 62, 8, 0.42);
+        background: rgba(90, 58, 14, 0.78);
         color: #ffe859;
         box-shadow: 0 0 22px rgba(255, 199, 44, 0.12);
       }
@@ -1433,20 +1595,47 @@
       }
 
       .detail-action-badge {
+        position: absolute;
+        top: 18px;
+        right: 24px;
         display: inline-grid;
-        min-width: 20px;
-        height: 20px;
+        min-width: 30px;
+        height: 30px;
         place-items: center;
-        margin-left: 6px;
+        margin-left: 0;
         border-radius: 999px;
-        background: #2f6af1;
+        background: #7654bd;
         color: white;
-        font-size: 11px;
+        font-size: 18px;
+        font-weight: 800;
         line-height: 1;
       }
 
       .detail-action-badge:empty {
         display: none;
+      }
+
+
+      .report-page .detail-actions {
+        grid-template-columns: repeat(6, minmax(132px, 1fr));
+        gap: 10px;
+      }
+
+      .report-page .detail-action {
+        min-height: 42px;
+        display: block;
+        border-radius: 0;
+        background: rgba(0, 0, 0, 0.18);
+        color: rgba(244, 250, 255, 0.92);
+        font-size: 12px;
+        font-weight: 850;
+        letter-spacing: 0.4px;
+        box-shadow: none;
+      }
+
+      .report-page .detail-action::before,
+      .report-page .detail-action::after {
+        content: none;
       }
 
       .detail-action[hidden],
@@ -3827,6 +4016,7 @@
                 <button id="security-check-button" type="button">Security Check</button>
                 <button id="seat-map-button" type="button">Seat Map</button>
               </div>
+              </div>
             </div>
           </div>
         </div>
@@ -3894,12 +4084,14 @@
         <section class="details-panel" aria-label="Flight details" hidden>
           <div class="details-inner">
             <div class="details-surface">
+              <div class="details-main">
               <div class="details-manifest">
                 <div class="manifest-section">
                   <h3>Reservation</h3>
                   <div class="counts counts-inline">
                     <div class="count count-wide">
-                      <div class="count-row"><span>Booked</span> <span id="reservation-booked"><strong>---</strong> / <strong>---</strong> / <strong>---</strong></span> <span>ET</span> <span id="reservation-et">--- / --- / ---</span></div>
+                      <div class="count-row"><span>Booked</span> <span id="reservation-booked"><strong>---</strong> / <strong>---</strong> / <strong>---</strong></span> <span>ET</span> <span id="reservation-et">---</span></div>
+                      <div class="manifest-progress-row"><div class="manifest-progress-track"><span class="manifest-progress-fill" id="reservation-progress"></span></div><span class="manifest-progress-percent" id="reservation-progress-percent">--.-%</span></div>
                     </div>
                   </div>
                 </div>
@@ -3907,25 +4099,30 @@
                   <h3>Check-In</h3>
                   <div class="counts counts-inline">
                     <div class="count count-wide">
-                      <div class="count-row"><span>Accepted</span> <span id="checkin-accepted"><strong>---</strong> / <strong>---</strong> / <strong>---</strong></span> <span>CET</span> <span id="checkin-et">--- / --- / ---</span></div>
+                      <div class="count-row"><span>Accepted</span> <span id="checkin-accepted"><strong>---</strong> / <strong>---</strong> / <strong>---</strong></span> <span>CET</span> <span id="checkin-et">---</span></div>
+                      <div class="manifest-progress-row"><div class="manifest-progress-track"><span class="manifest-progress-fill" id="checkin-progress"></span></div><span class="manifest-progress-percent" id="checkin-progress-percent">--.-%</span></div>
                     </div>
                   </div>
                 </div>
               </div>
               <p class="message" id="rk-message">Search SY to load live flight data.</p>
               <div class="detail-actions" aria-label="Flight detail actions">
-                <button class="detail-action" type="button" data-panel="chd" id="chd-action">CHD List <span class="detail-action-badge" id="chd-count"></span></button>
-                <button class="detail-action" type="button" data-panel="gov" id="gov-action">GOV/AQQ <span class="detail-action-badge" id="gov-count"></span></button>
-                <button class="detail-action" type="button" data-panel="webedi" id="webedi-action">WEB/EDI/RS <span class="detail-action-badge" id="webedi-count"></span></button>
-                <button class="detail-action" type="button" data-panel="nbrd" id="nbrd-action">CKIN/NBRD <span class="detail-action-badge" id="nbrd-count"></span></button>
+                <button class="detail-action" type="button" data-panel="chd" id="chd-action"><svg class="detail-action-icon" viewBox="0 0 48 48" fill="none" aria-hidden="true"><path d="M18 10h12M19 8h10l1.5 5H37v27H11V13h6.5L19 8Z" stroke-width="2"/><path d="M18 22h12M18 29h12M18 36h8" stroke-width="2" stroke-linecap="round"/></svg><span class="detail-action-label">CHD List</span><span class="detail-action-badge" id="chd-count"></span></button>
+                <button class="detail-action" type="button" data-panel="gov" id="gov-action"><svg class="detail-action-icon" viewBox="0 0 48 48" fill="none" aria-hidden="true"><circle cx="24" cy="16" r="7" stroke-width="2"/><path d="M12 40c1.2-9 5.8-14 12-14s10.8 5 12 14H12Z" stroke-width="2" stroke-linejoin="round"/></svg><span class="detail-action-label">GOV/AQQ</span><span class="detail-action-badge" id="gov-count"></span></button>
+                <button class="detail-action" type="button" data-panel="webedi" id="webedi-action"><svg class="detail-action-icon" viewBox="0 0 48 48" fill="none" aria-hidden="true"><circle cx="24" cy="24" r="17" stroke-width="2"/><path d="M7 24h34M24 7c5 5 7.5 10.7 7.5 17S29 36 24 41M24 7c-5 5-7.5 10.7-7.5 17S19 36 24 41" stroke-width="2" stroke-linecap="round"/></svg><span class="detail-action-label">WEB/EDI/RS</span><span class="detail-action-badge" id="webedi-count"></span></button>
+                <button class="detail-action" type="button" data-panel="wch"><svg class="detail-action-icon" viewBox="0 0 48 48" fill="none" aria-hidden="true"><circle cx="24" cy="13" r="5" stroke-width="2"/><circle cx="13" cy="20" r="4" stroke-width="2"/><circle cx="35" cy="20" r="4" stroke-width="2"/><path d="M16 39V28h16v11M7 39V29c0-3 2-5 6-5M41 39V29c0-3-2-5-6-5M19 28c0-4 2-6 5-6s5 2 5 6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="detail-action-label">WCH</span><span class="detail-action-badge" id="wch-count"></span></button>
+                <button class="detail-action" type="button" data-panel="psm"><svg class="detail-action-icon" viewBox="0 0 48 48" fill="none" aria-hidden="true"><path d="M9 14h30v22H9V14Z" stroke-width="2"/><path d="m10 15 14 12 14-12" stroke-width="2" stroke-linejoin="round"/></svg><span class="detail-action-label">PSM/MSG</span><span class="detail-action-badge" id="psm-count"></span></button>
+                <button class="detail-action" type="button" data-panel="duplicate-bags" id="duplicate-bags-action"><svg class="detail-action-icon" viewBox="0 0 48 48" fill="none" aria-hidden="true"><path d="M15 16h18v25H15V16Z" stroke-width="2"/><path d="M20 16v-5h8v5M10 20h5M33 20h5M20 16v25M28 16v25" stroke-width="2" stroke-linecap="round"/></svg><span class="detail-action-label">DUP BAG</span><span class="detail-action-badge" id="duplicate-bags-count"></span></button>
+                <button class="detail-action" type="button" data-panel="duplicate-names" id="duplicate-names-action"><svg class="detail-action-icon" viewBox="0 0 48 48" fill="none" aria-hidden="true"><path d="M10 12h28v24H10V12Z" stroke-width="2"/><circle cx="19" cy="22" r="4" stroke-width="2"/><path d="M13 32c1-4 3-6 6-6s5 2 6 6M29 20h6M29 27h6" stroke-width="2" stroke-linecap="round"/></svg><span class="detail-action-label">DUP NAME</span><span class="detail-action-badge" id="duplicate-names-count"></span></button>
+                <button class="detail-action" type="button" data-panel="nbrd" id="nbrd-action"><svg class="detail-action-icon" viewBox="0 0 48 48" fill="none" aria-hidden="true"><path d="M10 12h28v24H10V12Z" stroke-width="2"/><circle cx="19" cy="22" r="4" stroke-width="2"/><path d="M13 32c1-4 3-6 6-6s5 2 6 6M29 20h6M29 27h6" stroke-width="2" stroke-linecap="round"/></svg><span class="detail-action-label">CKIN/NBRD</span><span class="detail-action-badge" id="nbrd-count"></span></button>
                 <button class="detail-action warning-action" type="button" data-panel="warning" id="warning-action" hidden aria-label="Open warnings">⚠️ WARNING <span class="detail-action-badge warning-badge" id="warning-count">0</span></button>
-                <button class="detail-action" type="button" data-panel="wch">WCH <span class="detail-action-badge" id="wch-count"></span></button>
-                <button class="detail-action" type="button" data-panel="psm">PSM/MSG <span class="detail-action-badge" id="psm-count"></span></button>
-                <button class="detail-action" type="button" data-panel="duplicate-bags" id="duplicate-bags-action">DUP BAG <span class="detail-action-badge" id="duplicate-bags-count"></span></button>
-                <button class="detail-action" type="button" data-panel="duplicate-names" id="duplicate-names-action">DUP NAME <span class="detail-action-badge" id="duplicate-names-count"></span></button>
                 <button class="detail-action" type="button" data-report-shortcut="sales">Sales Report</button>
                 <button class="detail-action" type="button" data-report-shortcut="vip">VIP Report</button>
               </div>
+              </div>
+              <button class="details-warning-summary" type="button" data-panel="warning" id="warning-summary" hidden aria-label="Open warnings">
+                <div class="warning-summary-title"><span>⚠</span><span>WARNING</span><span class="detail-action-badge warning-badge" id="warning-summary-count">0</span></div>
+              </button>
             </div>
           </div>
         </section>
@@ -4156,9 +4353,11 @@
         setText("#metric-bdt", "----");
         setText("#metric-std", "----");
         document.querySelector("#reservation-booked").innerHTML = tripleHtml(["---", "---", "---"]);
-        document.querySelector("#reservation-et").textContent = "--- / --- / ---";
+        document.querySelector("#reservation-et").textContent = "---";
         document.querySelector("#checkin-accepted").innerHTML = tripleHtml(["---", "---", "---"]);
-        document.querySelector("#checkin-et").textContent = "--- / --- / ---";
+        document.querySelector("#checkin-et").textContent = "---";
+        setManifestProgress("#reservation-progress", "#reservation-progress-percent", []);
+        setManifestProgress("#checkin-progress", "#checkin-progress-percent", []);
         setText("#rk-message", "");
         setBadgeText("#chd-count", 0);
         setBadgeText("#gov-count", 0);
@@ -4267,11 +4466,34 @@
         if (el) el.textContent = value ? String(value) : "";
       }
 
+      function setManifestProgress(fillSelector, percentSelector, values) {
+        const nums = Array.isArray(values) ? values.map((value) => Number(value) || 0) : [];
+        const total = nums[2] || 0;
+        const cleared = Math.max(0, total - (nums[0] || 0));
+        const percent = total ? Math.min(100, Math.max(0, (cleared / total) * 100)) : 0;
+        const fill = document.querySelector(fillSelector);
+        const label = document.querySelector(percentSelector);
+        if (fill) fill.style.width = `${percent.toFixed(1)}%`;
+        if (label) label.textContent = total ? `${percent.toFixed(1)}%` : "--.-%";
+      }
+
+      function ticketedCountLabel(values) {
+        const list = Array.isArray(values) ? values : [];
+        return list[2] || list[1] || list[0] || "---";
+      }
+
       function setActionIssueState(selector, hasIssue) {
         const button = document.querySelector(selector);
         if (!button) return;
         button.classList.toggle("warning-action", Boolean(hasIssue));
+        if (hasIssue) button.classList.remove("is-clear-blue");
         button.querySelector(".detail-action-badge")?.classList.toggle("warning-badge", Boolean(hasIssue));
+      }
+
+      function setActionClearState(selector, isClear) {
+        const button = document.querySelector(selector);
+        if (!button) return;
+        button.classList.toggle("is-clear-blue", Boolean(isClear) && !button.classList.contains("warning-action"));
       }
 
       function normalizedBn(value) {
@@ -4317,6 +4539,8 @@
         setBadgeText("#webedi-count", counts.WEBEDI);
         setActionIssueState("#gov-action", counts.GOV > 0);
         setActionIssueState("#webedi-action", counts.WEBEDI > 0);
+        setActionClearState("#gov-action", counts.GOV === 0);
+        setActionClearState("#webedi-action", counts.WEBEDI === 0);
       }
 
       function countTriple(matchArray) {
@@ -5108,10 +5332,16 @@
         setText("#metric-gate", sy.gate || "---");
         setText("#metric-bdt", sy.bdt || "----");
         setText("#metric-std", sy.sd || "----");
-        document.querySelector("#reservation-booked").innerHTML = tripleHtml(countTriple(sy.reservation));
-        document.querySelector("#reservation-et").textContent = countTriple(sy.reservationTicketed).join(" / ");
-        document.querySelector("#checkin-accepted").innerHTML = tripleHtml(countTriple(sy.checkedIn));
-        document.querySelector("#checkin-et").textContent = countTriple(sy.checkedInTicketed).join(" / ");
+        const reservationCounts = countTriple(sy.reservation);
+        const reservationTicketedCounts = countTriple(sy.reservationTicketed);
+        const checkinCounts = countTriple(sy.checkedIn);
+        const checkinTicketedCounts = countTriple(sy.checkedInTicketed);
+        document.querySelector("#reservation-booked").innerHTML = tripleHtml(reservationCounts);
+        document.querySelector("#reservation-et").textContent = ticketedCountLabel(reservationTicketedCounts);
+        document.querySelector("#checkin-accepted").innerHTML = tripleHtml(checkinCounts);
+        document.querySelector("#checkin-et").textContent = ticketedCountLabel(checkinTicketedCounts);
+        setManifestProgress("#reservation-progress", "#reservation-progress-percent", reservationCounts);
+        setManifestProgress("#checkin-progress", "#checkin-progress-percent", checkinCounts);
         setText("#rk-message", sy.rkMessage || "No RK message found.");
         const isClearLocked = (_key) => false;
         const chdIssues = isClearLocked("CHD") ? 0 : (sy.chdList || []).filter((row) => row.hasChdCode === false).length;
@@ -5128,9 +5358,12 @@
         setActionIssueState("#chd-action", chdIssues > 0);
         setActionIssueState("#gov-action", govCount > 0);
         setActionIssueState("#webedi-action", webediCount > 0);
+        setActionClearState("#gov-action", Boolean(sy.govAqq) && govCount === 0);
+        setActionClearState("#webedi-action", Boolean(sy.govAqq) && webediCount === 0);
         setActionIssueState("#nbrd-action", nbrdCount > 0);
         setBadgeText("#wch-count", (sy.wchList || []).length);
-        updateWarningActionState(buildWarningRows(sy));
+        const warningRowsForSummary = buildWarningRows(sy);
+        updateWarningActionState(warningRowsForSummary);
         loadWarningAcknowledgements(sy);
         setBadgeText("#psm-count", (sy.psmList || []).length);
         const duplicateBagCount = duplicateBagRows(sy).length;
@@ -5507,6 +5740,9 @@
           warningAction.classList.toggle("is-critical-warning", unackedCount > 0);
           warningAction.classList.toggle("is-acknowledged-warning", rows.length > 0 && unackedCount === 0);
         }
+        const warningSummary = document.querySelector("#warning-summary");
+        if (warningSummary) warningSummary.hidden = rows.length === 0;
+        setBadgeText("#warning-summary-count", rows.length);
       }
 
       async function loadWarningAcknowledgements(sy = currentSy) {
@@ -5515,7 +5751,8 @@
           const data = await apiJson(`/warning-acknowledgements?flightNo=${encodeURIComponent(sy.flightNo)}&flightDate=${encodeURIComponent(sy.flightDate)}`);
           if (currentSy !== sy) return;
           currentWarningAckMap = data?.acknowledgements || {};
-          updateWarningActionState(buildWarningRows(sy));
+          const warningRowsForSummary = buildWarningRows(sy);
+          updateWarningActionState(warningRowsForSummary);
           applyNbrdAcknowledgementState(sy);
           if (resultPanel?.dataset?.panelTitle === "WARNING") renderWarningPanel();
           if (resultPanel?.dataset?.panelTitle === "CKIN/NBRD") renderNbrdPanel();
@@ -6916,6 +7153,13 @@
           if (node.dataset.clearLocked === "true") return;
           resetTimelineCenter(node.dataset.key);
           renderStepPanel(node.dataset.key);
+        });
+      });
+
+      document.querySelectorAll(".details-warning-summary[data-panel]").forEach((button) => {
+        button.addEventListener("click", () => {
+          renderWarningPanel();
+          document.querySelector(".result-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
         });
       });
 
