@@ -513,7 +513,7 @@
         display: flex;
         align-items: end;
         gap: 12px;
-        transform: translateX(-64px);
+        transform: translateX(-128px);
       }
 
       .status-strip {
@@ -669,7 +669,7 @@
       }
 
       .details-panel {
-        width: min(1040px, calc(100% - 48px));
+        width: min(920px, calc(100% - 48px));
         margin: 22px auto 0;
         overflow: visible;
       }
@@ -694,11 +694,11 @@
 
       .details-manifest {
         display: grid;
-        grid-template-columns: repeat(2, minmax(220px, 1fr)) repeat(2, minmax(132px, 132px));
+        grid-template-columns: repeat(2, minmax(190px, 1fr)) repeat(2, minmax(132px, 132px));
         grid-template-areas:
           "reservation checkin warning security"
           "rk rk warning security";
-        grid-template-rows: minmax(62px, auto) 46px;
+        grid-template-rows: minmax(54px, auto) 38px;
         gap: 12px;
         align-items: stretch;
       }
@@ -1128,12 +1128,12 @@
 
       .manifest-section {
         border: 1px solid rgba(176, 216, 255, 0.22);
-        padding: 9px 14px;
+        padding: 7px 12px;
         background: rgba(3, 13, 24, 0.76);
       }
 
       .manifest-section h3 {
-        margin: 0 0 7px;
+        margin: 0 0 5px;
         color: rgba(244, 250, 255, 0.96);
         font-size: 13px;
         letter-spacing: 1.6px;
@@ -1142,7 +1142,7 @@
 
       .counts {
         display: grid;
-        gap: 12px;
+        gap: 6px;
         text-align: center;
       }
 
@@ -1212,12 +1212,12 @@
 
       .message {
         margin: 0;
-        padding: 10px 14px;
+        padding: 7px 12px;
         border: 1px solid rgba(176, 216, 255, 0.22);
         background: rgba(3, 13, 24, 0.76);
         color: rgba(235, 246, 255, 0.82);
-        font-size: 14px;
-        line-height: 1.45;
+        font-size: 13px;
+        line-height: 1.25;
         text-align: center;
       }
 
