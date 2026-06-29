@@ -766,24 +766,9 @@
         z-index: 0;
       }
 
-      .timeline-shell::before {
-        left: 24%;
-        right: 28%;
-        top: 46%;
-        height: 18%;
-        border-radius: 0 0 52% 52%;
-        clip-path: polygon(8% 0, 94% 0, 82% 100%, 18% 100%);
-        background: radial-gradient(ellipse at 50% 0%, rgba(0, 0, 0, 0.54) 0%, rgba(0, 0, 0, 0.38) 34%, rgba(0, 0, 0, 0) 74%);
-        transform: rotate(-0.25deg);
-      }
-
+      .timeline-shell::before,
       .timeline-shell::after {
-        left: 24%;
-        right: 28%;
-        bottom: 0;
-        height: 38%;
-        clip-path: polygon(18% 0, 82% 0, 100% 100%, 0 100%);
-        background: linear-gradient(0deg, rgba(0, 0, 0, 0.86) 0%, rgba(0, 0, 0, 0.58) 42%, rgba(0, 0, 0, 0) 100%);
+        display: none;
       }
 
       .timeline {
