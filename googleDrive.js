@@ -102,7 +102,8 @@ const CBS_HEADERS = [
   'Updated At',
   'Update Note',
   'Destination On Bags',
-  'Departure Origin'
+  'Departure Origin',
+  'Update History'
 ];
 let cbsSheetTitle = '';
 let cbsSheetCache = { loadedAt: 0, rows: [] };
@@ -2426,7 +2427,7 @@ async function getCbsSheetRows(options = {}) {
   const title = await getCbsSheetTitle();
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A:AF`
+    range: `${escapeSheetTitle(title)}!A:AG`
   });
   const rows = res.data.values || [];
   cbsSheetCache = { loadedAt: Date.now(), rows };
@@ -2440,7 +2441,7 @@ async function ensureCbsSheetHeaders(rows) {
   const title = await getCbsSheetTitle();
   await sheets.spreadsheets.values.update({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A1:AF1`,
+    range: `${escapeSheetTitle(title)}!A1:AG1`,
     valueInputOption: 'RAW',
     requestBody: { values: [CBS_HEADERS] }
   });
@@ -2495,6 +2496,7 @@ function cbsRecordFromSheet(values, rowNumber) {
   row.caseType = row.caseType || values.find((value) => /^(AHL|DPR)$/i.test(String(value || '').trim())) || '';
   row.bagTag = row.bagTag || values[9] || extractCbsBagTagFromUpdateNote(row.updateNote) || values.find((value) => /^[A-Z]{2}\d{6,}(\s*\/\s*[A-Z]{2}\d{6,})*$/i.test(String(value || '').trim())) || '';
   row.submittedAt = row.submittedAt || row.submitDate || values[27] || '';
+  row.updateHistory = row.updateHistory || values[32] || '';
   row.rowNumber = rowNumber;
   return row;
 }
@@ -2532,7 +2534,8 @@ function cbsValuesFromRecord(record) {
     record.updatedAt,
     record.updateNote,
     record.destinationOnBags,
-    record.departureOrigin
+    record.departureOrigin,
+    record.updateHistory || ''
   ];
 }
 
@@ -2542,7 +2545,7 @@ async function appendCbsCase(record) {
   await ensureCbsSheetHeaders(rows);
   await sheets.spreadsheets.values.append({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A:AF`,
+    range: `${escapeSheetTitle(title)}!A:AG`,
     valueInputOption: 'RAW',
     insertDataOption: 'INSERT_ROWS',
     requestBody: { values: [cbsValuesFromRecord(record)] }
@@ -2556,13 +2559,79 @@ function isCbsHeaderRow(values = []) {
   return normalized.includes('case number') || normalized.includes('case id') || normalized.includes('passenger name');
 }
 
+function normalizeCbsHistoryCaseNumber(caseNumber) {
+  return String(caseNumber || '').trim().toUpperCase();
+}
+
+function sanitizeCbsUpdateEvent(event = {}, fallback = {}) {
+  const key = sanitizeSheetText(event.key || fallback.key, 40).toLowerCase() || 'update';
+  const fields = Array.isArray(event.fields) ? event.fields : [];
+  return {
+    key,
+    title: sanitizeSheetText(event.title || fallback.title || 'Update', 120),
+    status: sanitizeSheetText(fallback.status || event.status, 80),
+    at: sanitizeSheetText(fallback.at || event.at || new Date().toISOString(), 40),
+    fields: fields.map((field) => Array.isArray(field) ? [sanitizeSheetText(field[0], 120), sanitizeSheetText(field[1], 500)] : null).filter((field) => field && field[0] && field[1]),
+    note: sanitizeSheetText(fallback.note || event.note, 1000)
+  };
+}
+
+function parseCbsUpdateHistory(value) {
+  try {
+    const parsed = JSON.parse(String(value || '[]'));
+    return Array.isArray(parsed) ? parsed.map((event) => sanitizeCbsUpdateEvent(event)).filter((event) => event.at || event.note || event.fields.length) : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function stringifyCbsUpdateHistory(events = []) {
+  return sanitizeSheetText(JSON.stringify((Array.isArray(events) ? events : []).slice(-100)), 20000);
+}
+
+function cbsEventsFromUpdateNote(row = {}) {
+  const note = String(row.updateNote || '').trim();
+  if (!note || /^case created$/i.test(note)) return [];
+  const timestampedParts = note.match(/\[[^\]]+\]\s*[^\[]+/g);
+  const parts = (timestampedParts || note.split(/\s*\|\|\s*/)).map((item) => item.trim()).filter(Boolean);
+  return parts.map((part) => {
+    const match = part.match(/^\[([^\]]+)\]\s*(.*)$/);
+    const at = match ? match[1] : row.updatedAt;
+    const body = match ? match[2] : part;
+    const pieces = body.split('|').map((item) => item.trim()).filter(Boolean);
+    const type = pieces.shift() || 'Update';
+    const key = /rush/i.test(type) ? 'rush' : (/location/i.test(type) ? 'location' : (/ship/i.test(type) ? 'shipping' : (/world\s*tracer|worldtracer/i.test(type) ? 'worldtracer' : 'update')));
+    const fields = pieces.map((piece) => {
+      const split = piece.split(/:\s*/);
+      return split.length > 1 ? [split.shift(), split.join(': ')] : ['Detail', piece];
+    });
+    return sanitizeCbsUpdateEvent({ key, title: key === 'update' ? type : `Update ${type.replace(/_/g, ' ')}`, fields }, { at, status: row.status, note: body });
+  });
+}
+
+function attachCbsUpdateHistory(rows = []) {
+  return rows.map((row) => {
+    const storedEvents = parseCbsUpdateHistory(row.updateHistory);
+    const legacyEvents = storedEvents.length ? [] : cbsEventsFromUpdateNote(row);
+    const updateEvents = [...legacyEvents, ...storedEvents];
+    const latestEvent = updateEvents[updateEvents.length - 1];
+    return {
+      ...row,
+      status: latestEvent?.status || row.status,
+      updatedAt: latestEvent?.at || row.updatedAt,
+      updateEvents
+    };
+  });
+}
+
 async function getCbsCases() {
   const rows = await getCbsSheetRows({ forceRefresh: true });
-  return rows
+  const cases = rows
     .map((values, index) => ({ values: values || [], rowNumber: index + 1 }))
     .filter(({ values }) => !isCbsHeaderRow(values))
     .map(({ values, rowNumber }) => cbsRecordFromSheet(values, rowNumber))
     .filter((row) => row.caseNumber || row.caseType || row.passengerName || row.email || row.phone || row.bagTag || row.submittedAt);
+  return attachCbsUpdateHistory(cases);
 }
 
 async function updateCbsCase(caseNumber, update = {}) {
@@ -2572,21 +2641,31 @@ async function updateCbsCase(caseNumber, update = {}) {
   const rowIndex = rows.findIndex((row, index) => index > 0 && String(row?.[0] || '').trim().toUpperCase() === normalizedCaseNumber);
   if (rowIndex < 0) return { notFound: true };
   const current = cbsRecordFromSheet(rows[rowIndex] || [], rowIndex + 1);
+  const now = new Date().toISOString();
+  const incomingNote = sanitizeSheetText(update.updateNote, 1000);
   const next = {
     ...current,
     status: sanitizeSheetText(update.status, 80) || current.status || 'Open',
-    updatedAt: new Date().toISOString(),
-    updateNote: sanitizeSheetText(update.updateNote, 500) || current.updateNote || ''
+    updatedAt: now
   };
+  const historyEvent = sanitizeCbsUpdateEvent(update.updateEvent, {
+    status: next.status,
+    at: now,
+    note: incomingNote,
+    title: next.status ? `Update ${next.status}` : 'Update'
+  });
+  const currentEvents = parseCbsUpdateHistory(current.updateHistory);
+  const updateEvents = incomingNote ? currentEvents.concat(historyEvent).slice(-100) : currentEvents;
+  next.updateHistory = stringifyCbsUpdateHistory(updateEvents);
   const title = await getCbsSheetTitle();
   await sheets.spreadsheets.values.update({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A${rowIndex + 1}:AF${rowIndex + 1}`,
+    range: `${escapeSheetTitle(title)}!A${rowIndex + 1}:AG${rowIndex + 1}`,
     valueInputOption: 'RAW',
     requestBody: { values: [cbsValuesFromRecord(next)] }
   });
   cbsSheetCache = { loadedAt: 0, rows: [] };
-  return { updated: true, record: next };
+  return { updated: true, record: { ...next, updateEvents } };
 }
 
 async function getCbsMissingBagSheetTitle() {

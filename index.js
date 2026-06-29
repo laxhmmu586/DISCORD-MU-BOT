@@ -1503,7 +1503,7 @@ function buildCbsUpdateFields(update = {}) {
   if (type === 'worldtracer') {
     const fileNumber = sanitizeCbsText(update.fileNumber || update.worldTracerFileNumber, 120).toUpperCase();
     if (!fileNumber) return null;
-    return { status: 'WorldTracer', updateNote: `WORLDTRACER | File number: ${fileNumber}` };
+    return { status: 'WorldTracer', updateNote: `WORLDTRACER | File number: ${fileNumber}`, updateEvent: { key: 'worldtracer', title: 'Update WorldTracer', fields: [['File Number', fileNumber]] } };
   }
   if (type === 'rush') {
     const rushTagNumber = sanitizeCbsText(update.rushTagNumber, 80).toUpperCase();
@@ -1511,17 +1511,17 @@ function buildCbsUpdateFields(update = {}) {
     const akeNumber = sanitizeCbsText(update.akeNumber, 80).toUpperCase();
     const worldTracerFileNumber = sanitizeCbsText(update.worldTracerFileNumber, 120).toUpperCase();
     if (!rushTagNumber || !rushToWhere || !akeNumber) return null;
-    return { status: 'Rush', updateNote: `RUSH | Rush tag: ${rushTagNumber} | Rush to: ${rushToWhere} | AKE: ${akeNumber}${worldTracerFileNumber ? ` | WorldTracer: ${worldTracerFileNumber}` : ''}${comment ? ` | Comment: ${comment}` : ''}` };
+    return { status: 'Rush', updateNote: `RUSH | Rush tag: ${rushTagNumber} | Rush to: ${rushToWhere} | AKE: ${akeNumber}${worldTracerFileNumber ? ` | WorldTracer: ${worldTracerFileNumber}` : ''}${comment ? ` | Comment: ${comment}` : ''}`, updateEvent: { key: 'rush', title: 'Update Rush', fields: [['Rush Tag Number', rushTagNumber], ['Rush To Where', rushToWhere], ['AKE Number', akeNumber], ...(worldTracerFileNumber ? [['WorldTracer', worldTracerFileNumber]] : []), ...(comment ? [['Comment', comment]] : [])] } };
   }
   if (type === 'location') {
     const location = sanitizeCbsText(update.location, 160).toUpperCase();
     if (!location) return null;
-    return { status: 'Bag Location Update', updateNote: `BAG LOCATION UPDATE | Location: ${location}${comment ? ` | Comment: ${comment}` : ''}` };
+    return { status: 'Bag Location Update', updateNote: `BAG LOCATION UPDATE | Location: ${location}${comment ? ` | Comment: ${comment}` : ''}`, updateEvent: { key: 'location', title: 'Update Bag Location', fields: [['Location', location], ...(comment ? [['Comment', comment]] : [])] } };
   }
   const trackingNumber = sanitizeCbsText(update.trackingNumber, 160).toUpperCase();
   const shippingTo = sanitizeCbsText(update.shippingTo, 300);
   if (!trackingNumber || !shippingTo) return null;
-  return { status: 'Shipping', updateNote: `SHIPPING | Tracking: ${trackingNumber} | Ship to: ${shippingTo}${comment ? ` | Comment: ${comment}` : ''}` };
+  return { status: 'Shipping', updateNote: `SHIPPING | Tracking: ${trackingNumber} | Ship to: ${shippingTo}${comment ? ` | Comment: ${comment}` : ''}`, updateEvent: { key: 'shipping', title: 'Update Shipping', fields: [['Tracking Number', trackingNumber], ['Ship To', shippingTo], ...(comment ? [['Comment', comment]] : [])] } };
 }
 
 
