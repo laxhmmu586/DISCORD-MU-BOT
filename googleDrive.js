@@ -2576,7 +2576,7 @@ async function updateCbsCase(caseNumber, update = {}) {
   const incomingNote = sanitizeSheetText(update.updateNote, 1000);
   const existingNote = sanitizeSheetText(current.updateNote, 3000);
   const nextUpdateNote = incomingNote
-    ? [existingNote, `[${now}] ${incomingNote}`].filter(Boolean).join('\n')
+    ? [existingNote, `[${now}] ${incomingNote}`].filter(Boolean).join(' || ')
     : existingNote;
   const next = {
     ...current,
