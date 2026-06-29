@@ -667,6 +667,12 @@
         min-width: 0;
       }
 
+      .details-main {
+        display: grid;
+        gap: 26px;
+        min-width: 0;
+      }
+
       .details-manifest {
         position: relative;
         display: grid;
@@ -1324,6 +1330,51 @@
       .warning-action.is-acknowledged-warning .warning-badge {
         background: #20bf63;
         color: white;
+      }
+
+      .details-warning-summary {
+        min-height: 228px;
+        border: 1px solid rgba(255, 86, 86, 0.42);
+        border-radius: 8px;
+        padding: 26px 20px;
+        background: linear-gradient(145deg, rgba(28, 8, 12, 0.72), rgba(5, 8, 13, 0.78));
+        color: #ff6b63;
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,.025), 0 18px 38px rgba(0,0,0,.32);
+      }
+
+      .warning-summary-title {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 22px;
+        font-size: 18px;
+        font-weight: 800;
+        letter-spacing: 1px;
+      }
+
+      .warning-summary-title .warning-badge {
+        position: static;
+        margin-left: auto;
+        background: #e54f48;
+        color: white;
+      }
+
+      .warning-summary-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 10px 0;
+        border-top: 1px solid rgba(255, 86, 86, 0.18);
+        color: rgba(235, 219, 219, 0.76);
+        font-size: 13px;
+        text-transform: uppercase;
+      }
+
+      .warning-summary-link {
+        margin-top: 18px;
+        color: rgba(235, 219, 219, 0.76);
+        font-size: 13px;
+        text-transform: uppercase;
       }
 
       .warning-card.is-acknowledged {
@@ -7044,6 +7095,13 @@
           if (node.dataset.clearLocked === "true") return;
           resetTimelineCenter(node.dataset.key);
           renderStepPanel(node.dataset.key);
+        });
+      });
+
+      document.querySelectorAll(".details-warning-summary[data-panel]").forEach((button) => {
+        button.addEventListener("click", () => {
+          renderWarningPanel();
+          document.querySelector(".result-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
         });
       });
 
