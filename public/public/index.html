@@ -698,7 +698,7 @@
         grid-template-areas:
           "reservation checkin warning security"
           "rk rk warning security";
-        grid-template-rows: minmax(40px, auto) minmax(50px, auto);
+        grid-template-rows: minmax(40px, auto) minmax(44px, auto);
         gap: 12px;
         align-items: stretch;
         justify-content: center;
@@ -1145,7 +1145,7 @@
       }
 
       .manifest-section h3 {
-        margin: 0 0 2px;
+        margin: 0 0 7px;
         color: rgba(244, 250, 255, 0.96);
         font-size: 15px;
         line-height: 1.05;
@@ -1239,8 +1239,8 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        min-height: 50px;
-        padding-block: 10px;
+        min-height: 44px;
+        padding-block: 8px;
         text-align: center;
       }
 
@@ -3737,6 +3737,49 @@
         .detail-top-actions,
         .details-manifest {
           grid-template-columns: 1fr 1fr;
+          grid-template-areas:
+            "reservation checkin"
+            "rk rk"
+            "warning security";
+          grid-template-rows: auto minmax(54px, auto) 132px;
+        }
+
+        .details-manifest.is-warning-hidden {
+          grid-template-areas:
+            "reservation checkin"
+            "rk rk"
+            "warning warning";
+        }
+
+        .details-panel {
+          overflow: visible;
+        }
+
+        .details-surface,
+        .details-panel .detail-actions {
+          min-width: 0;
+        }
+
+        .details-panel .detail-actions {
+          flex-wrap: wrap;
+          justify-content: center;
+          overflow: visible;
+        }
+
+        .details-panel .detail-actions .detail-action {
+          flex: 1 1 calc(50% - 14px);
+          max-width: calc(50% - 7px);
+        }
+
+        .details-panel .detail-actions .detail-action,
+        .details-panel .details-manifest > .detail-action {
+          min-height: 132px;
+          padding: 18px 10px 12px;
+        }
+
+        .detail-action-icon {
+          width: 40px;
+          height: 40px;
         }
 
         .details-manifest,
@@ -3794,7 +3837,7 @@
             "reservation checkin"
             "rk rk"
             "warning security";
-          grid-template-rows: auto minmax(54px, auto) 132px;
+          grid-template-rows: auto minmax(48px, auto) 132px;
         }
 
         .details-manifest.is-warning-hidden {
@@ -3858,6 +3901,31 @@
           overflow-y: auto;
           box-shadow: 0 30px 100px rgba(0, 0, 0, 0.72), 0 0 0 9999px rgba(0, 0, 0, 0.18);
           backdrop-filter: blur(20px);
+        }
+
+
+        .result-panel.is-mobile-popup .gov-summary-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 10px;
+        }
+
+        .result-panel.is-mobile-popup .gov-summary-grid .data-card {
+          min-height: 92px;
+          padding: 10px 8px;
+          overflow: hidden;
+        }
+
+        .result-panel.is-mobile-popup .gov-summary-grid .data-card b {
+          display: block;
+          font-size: 13px;
+          line-height: 1.16;
+          overflow-wrap: anywhere;
+          word-break: normal;
+        }
+
+        .result-panel.is-mobile-popup .gov-summary-grid .data-card span {
+          font-size: 12px;
+          line-height: 1.2;
         }
 
         .password-page {
