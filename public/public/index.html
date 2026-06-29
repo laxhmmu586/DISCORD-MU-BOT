@@ -563,22 +563,31 @@
       }
 
       .status-metric span {
+        position: absolute;
+        top: 25px;
+        left: 0;
+        right: 0;
         display: block;
         color: rgba(180, 194, 207, 0.88);
         font-size: 11px;
         font-weight: 900;
         letter-spacing: 1.2px;
         line-height: 1;
+        text-align: center;
         text-transform: uppercase;
       }
 
       .status-metric strong {
+        position: absolute;
+        top: 54%;
+        left: 50%;
         display: block;
-        margin-top: 6px;
+        margin: 0;
         color: rgba(244, 250, 255, 0.98);
         font-size: 28px;
         line-height: 0.95;
         text-shadow: 0 2px 9px rgba(0, 0, 0, 0.92);
+        transform: translate(-50%, -50%);
       }
 
       .flight-tools {
@@ -653,7 +662,7 @@
       }
 
       .details-panel {
-        width: min(1200px, calc(100% - 48px));
+        width: min(1120px, calc(100% - 48px));
         margin: 22px auto 0;
         overflow: visible;
       }
@@ -678,7 +687,7 @@
 
       .details-manifest {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr)) repeat(2, minmax(132px, 132px));
+        grid-template-columns: repeat(2, minmax(240px, 1fr)) repeat(2, minmax(132px, 132px));
         grid-template-areas:
           "reservation checkin warning security"
           "rk rk warning security";
@@ -1113,7 +1122,7 @@
       .manifest-section {
         border: 1px solid rgba(176, 216, 255, 0.22);
         padding: 12px 16px;
-        background: rgba(6, 20, 34, 0.46);
+        background: rgba(3, 13, 24, 0.76);
       }
 
       .manifest-section h3 {
@@ -1198,7 +1207,7 @@
         margin: 0;
         padding: 14px 16px;
         border: 1px solid rgba(176, 216, 255, 0.22);
-        background: rgba(1, 10, 18, 0.24);
+        background: rgba(3, 13, 24, 0.76);
         color: rgba(235, 246, 255, 0.82);
         font-size: 14px;
         line-height: 1.45;
@@ -3463,19 +3472,19 @@
         }
 
         .status-strip {
-          grid-template-columns: repeat(3, minmax(0, 1fr));
+          grid-template-columns: repeat(3, 82px);
+          justify-content: center;
           width: 100%;
           min-width: 0;
-          gap: 6px;
+          gap: 12px;
           margin-top: 22px;
         }
 
         .status-metric {
-          width: 100%;
-          height: auto;
-          aspect-ratio: 1;
+          width: 82px;
+          height: 82px;
           min-height: 0;
-          padding: 8px 6px 10px;
+          padding: 0;
         }
 
         .status-metric::before {
@@ -3488,13 +3497,15 @@
         }
 
         .status-metric span {
+          top: 19px;
           font-size: 8px;
           letter-spacing: 0.8px;
         }
 
         .status-metric strong {
-          margin-top: 4px;
-          font-size: 16px;
+          top: 55%;
+          margin: 0;
+          font-size: 22px;
         }
 
         .mission-stage {
@@ -4066,7 +4077,6 @@
               </button>
               <div class="flight-menu" aria-hidden="true">
                 <button id="sales-report-button" type="button">Sales Report</button>
-                <button id="security-check-button" type="button">Security Check</button>
                 <button id="seat-map-button" type="button">Seat Map</button>
               </div>
             </div>
@@ -7309,7 +7319,7 @@
       reportBaggageModeButton?.addEventListener("click", () => { setReportMode("baggage", { resetOutput: true }); renderBaggageTimelineReport({ latestOnly: true }); });
       reportForm.addEventListener("submit", generateReport);
       reportDownloadButton.addEventListener("click", downloadCurrentReportCsv);
-      securityCheckButton.addEventListener("click", closeFlightMenuAfterAction(renderSecurityCheck));
+      securityCheckButton?.addEventListener("click", closeFlightMenuAfterAction(renderSecurityCheck));
       seatMapButton.addEventListener("click", closeFlightMenuAfterAction(renderSeatMap));
 
       mobilePanel.addEventListener("click", (event) => {
