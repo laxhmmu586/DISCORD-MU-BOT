@@ -639,7 +639,7 @@
       }
 
       .details-panel {
-        width: min(1380px, calc(100% - 48px));
+        width: min(1400px, calc(100% - 48px));
         margin: 30px auto 0;
       }
 
@@ -653,12 +653,18 @@
 
       .details-surface {
         display: grid;
+        gap: 28px;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        backdrop-filter: none;
+        box-shadow: none;
+      }
+
+      .details-main {
+        display: grid;
         gap: 26px;
-        padding: 18px;
-        border: 1px solid rgba(176, 216, 255, 0.22);
-        background: linear-gradient(150deg, rgba(5, 18, 31, 0.68), rgba(2, 11, 20, 0.52));
-        backdrop-filter: blur(18px);
-        box-shadow: 0 22px 70px rgba(0, 0, 0, 0.28);
+        min-width: 0;
       }
 
       .details-main {
@@ -1191,20 +1197,13 @@
       }
 
       .message {
-        margin: -16px 34px 0;
-        padding: 0;
-        border: 0;
-        border-top: 3px solid rgba(255, 88, 96, 0.94);
-        background: transparent;
-        color: transparent;
-        font-size: 0;
-        line-height: 0;
+        display: none;
       }
 
       .detail-actions {
         display: grid;
-        grid-template-columns: repeat(8, minmax(82px, 1fr));
-        gap: 8px;
+        grid-template-columns: repeat(8, minmax(132px, 1fr));
+        gap: 16px;
       }
 
       .details-panel .detail-action[data-report-shortcut],
@@ -1216,31 +1215,31 @@
       .detail-action {
         position: relative;
         z-index: 2;
-        min-height: 104px;
+        min-height: 202px;
         display: grid;
-        grid-template-rows: 38px auto 1px;
+        grid-template-rows: 68px auto 2px;
         align-content: center;
         justify-items: center;
-        gap: 10px;
-        padding: 14px 10px 12px;
-        border: 1px solid rgba(176, 216, 255, 0.22);
-        border-radius: 5px;
+        gap: 18px;
+        padding: 26px 18px 24px;
+        border: 1px solid rgba(176, 216, 255, 0.24);
+        border-radius: 10px;
         background:
           radial-gradient(circle at 50% 8%, rgba(88, 167, 255, 0.055), transparent 34%),
           linear-gradient(145deg, rgba(5, 17, 28, 0.8), rgba(1, 8, 14, 0.72));
         color: rgba(244, 250, 255, 0.72);
-        font-size: 10px;
+        font-size: 18px;
         font-weight: 650;
-        letter-spacing: 0.25px;
+        letter-spacing: 0.8px;
         line-height: 1;
         text-transform: uppercase;
         cursor: pointer;
-        box-shadow: inset 0 0 0 1px rgba(255,255,255,.03), 0 10px 22px rgba(0,0,0,.26);
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,.03), 0 16px 36px rgba(0,0,0,.28);
       }
 
       .detail-action-icon {
-        width: 38px;
-        height: 38px;
+        width: 68px;
+        height: 68px;
         color: rgba(236, 244, 252, 0.84);
         stroke: currentColor;
         filter: drop-shadow(0 0 4px rgba(255,255,255,.08));
@@ -1249,9 +1248,9 @@
       .detail-action::before {
         content: "";
         position: absolute;
-        inset: 4px 4px auto auto;
-        width: 14px;
-        height: 12px;
+        inset: 9px 9px auto auto;
+        width: 18px;
+        height: 16px;
         opacity: 0.12;
         background-image: radial-gradient(circle, currentColor 1px, transparent 1.5px);
         background-size: 4px 4px;
@@ -1259,7 +1258,7 @@
 
       .detail-action::after {
         content: "";
-        width: 58px;
+        width: 92px;
         height: 1px;
         background: rgba(174, 194, 213, 0.2);
       }
@@ -1571,17 +1570,17 @@
 
       .detail-action-badge {
         position: absolute;
-        top: 9px;
-        right: 12px;
+        top: 18px;
+        right: 24px;
         display: inline-grid;
-        min-width: 22px;
-        height: 22px;
+        min-width: 30px;
+        height: 30px;
         place-items: center;
         margin-left: 0;
         border-radius: 999px;
         background: #7654bd;
         color: white;
-        font-size: 12px;
+        font-size: 18px;
         font-weight: 800;
         line-height: 1;
       }
