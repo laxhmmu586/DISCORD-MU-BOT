@@ -698,7 +698,7 @@
         grid-template-areas:
           "reservation checkin warning security"
           "rk rk warning security";
-        grid-template-rows: minmax(54px, auto) 38px;
+        grid-template-rows: minmax(42px, auto) 32px;
         gap: 12px;
         align-items: stretch;
       }
@@ -708,6 +708,7 @@
       .manifest-rk { grid-area: rk; }
       .summary-warning-action { grid-area: warning; }
       .summary-security-action { grid-area: security; }
+      .details-manifest.is-warning-hidden .summary-security-action { grid-area: warning; }
 
       .details-panel .details-manifest > .detail-action {
         min-height: 0;
@@ -1128,15 +1129,15 @@
 
       .manifest-section {
         border: 1px solid rgba(176, 216, 255, 0.22);
-        padding: 7px 12px;
+        padding: 5px 10px;
         background: rgba(3, 13, 24, 0.76);
       }
 
       .manifest-section h3 {
-        margin: 0 0 5px;
+        margin: 0 0 3px;
         color: rgba(244, 250, 255, 0.96);
-        font-size: 13px;
-        letter-spacing: 1.6px;
+        font-size: 12px;
+        letter-spacing: 1.4px;
         text-transform: uppercase;
       }
 
@@ -1180,6 +1181,11 @@
         display: inline;
       }
 
+      .details-manifest .count-row {
+        font-size: 13px;
+        letter-spacing: 0.5px;
+      }
+
       .counts-inline .count-row {
         display: flex;
         flex-wrap: nowrap;
@@ -1212,12 +1218,12 @@
 
       .message {
         margin: 0;
-        padding: 7px 12px;
+        padding: 5px 10px;
         border: 1px solid rgba(176, 216, 255, 0.22);
         background: rgba(3, 13, 24, 0.76);
         color: rgba(235, 246, 255, 0.82);
-        font-size: 13px;
-        line-height: 1.25;
+        font-size: 12px;
+        line-height: 1.18;
         text-align: center;
       }
 
@@ -4433,6 +4439,8 @@
         setBadgeText("#wch-count", 0);
         setText("#warning-count", "0");
         const warningAction = document.querySelector("#warning-action");
+        const detailsManifest = document.querySelector(".details-manifest");
+        detailsManifest?.classList.add("is-warning-hidden");
         if (warningAction) {
           warningAction.hidden = true;
           warningAction.classList.remove("is-critical-warning", "is-acknowledged-warning");
@@ -5773,8 +5781,10 @@
 
       function updateWarningActionState(rows = buildWarningRows()) {
         const warningAction = document.querySelector("#warning-action");
+        const detailsManifest = document.querySelector(".details-manifest");
         const unackedCount = rows.filter((row) => !userHasAcknowledged(row.acknowledgements)).length;
         setText("#warning-count", rows.length || "0");
+        detailsManifest?.classList.toggle("is-warning-hidden", rows.length === 0);
         if (warningAction) {
           warningAction.hidden = rows.length === 0;
           warningAction.classList.toggle("is-critical-warning", unackedCount > 0);
