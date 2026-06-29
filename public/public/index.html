@@ -1180,6 +1180,9 @@
       }
 
       .details-panel .detail-actions .detail-action {
+        --tile-accent: rgba(88, 167, 255, 0.86);
+        --tile-accent-soft: rgba(88, 167, 255, 0.24);
+        --tile-accent-faint: rgba(88, 167, 255, 0.1);
         min-height: 168px;
         display: grid;
         grid-template-rows: 1fr auto 20px;
@@ -1191,35 +1194,51 @@
         overflow: hidden;
         font-size: 13px;
         letter-spacing: 0.35px;
+        border-color: var(--tile-accent-soft);
         background:
-          radial-gradient(circle at 82% 12%, rgba(120, 183, 255, 0.08), transparent 32px),
-          linear-gradient(180deg, rgba(6, 20, 34, 0.68), rgba(2, 10, 18, 0.74));
+          radial-gradient(circle at 82% 12%, var(--tile-accent-faint), transparent 34px),
+          radial-gradient(circle, rgba(235, 246, 255, 0.075) 1px, transparent 1.2px) 0 0 / 8px 8px,
+          linear-gradient(180deg, rgba(6, 20, 34, 0.78), rgba(2, 10, 18, 0.74));
         box-shadow:
           inset 0 0 0 1px rgba(255, 255, 255, 0.05),
-          inset 0 0 24px rgba(88, 167, 255, 0.06),
-          0 10px 28px rgba(0, 0, 0, 0.22);
+          inset 0 0 26px var(--tile-accent-faint),
+          0 0 0 1px rgba(0, 0, 0, 0.3),
+          0 0 18px var(--tile-accent-soft),
+          0 10px 28px rgba(0, 0, 0, 0.24);
       }
 
       .details-panel .detail-actions .detail-action::before {
         content: "";
         position: absolute;
         inset: 4px;
-        border: 1px solid rgba(176, 216, 255, 0.11);
+        border: 1px solid var(--tile-accent-soft);
         pointer-events: none;
       }
 
-      .details-panel .detail-actions .detail-action:hover,
       .details-panel .detail-actions .detail-action.warning-action {
-        box-shadow:
-          inset 0 0 0 1px rgba(255, 255, 255, 0.06),
-          inset 0 0 28px rgba(88, 167, 255, 0.11),
-          0 0 0 1px rgba(88, 167, 255, 0.32),
-          0 12px 30px rgba(0, 0, 0, 0.28);
+        --tile-accent: rgba(255, 215, 67, 0.92);
+        --tile-accent-soft: rgba(255, 199, 44, 0.58);
+        --tile-accent-faint: rgba(255, 199, 44, 0.14);
       }
 
-      .details-panel .detail-actions .detail-action:hover::before,
-      .details-panel .detail-actions .detail-action.warning-action::before {
-        border-color: rgba(88, 167, 255, 0.28);
+      .details-panel .detail-actions .detail-action.is-acknowledged-warning {
+        --tile-accent: rgba(108, 244, 154, 0.9);
+        --tile-accent-soft: rgba(108, 244, 154, 0.54);
+        --tile-accent-faint: rgba(108, 244, 154, 0.12);
+      }
+
+      .details-panel .detail-actions .detail-action:hover {
+        border-color: var(--tile-accent);
+        box-shadow:
+          inset 0 0 0 1px rgba(255, 255, 255, 0.07),
+          inset 0 0 32px var(--tile-accent-faint),
+          0 0 0 1px var(--tile-accent-soft),
+          0 0 24px var(--tile-accent-soft),
+          0 12px 30px rgba(0, 0, 0, 0.3);
+      }
+
+      .details-panel .detail-actions .detail-action:hover::before {
+        border-color: var(--tile-accent-soft);
       }
 
       .details-panel .detail-actions .detail-action::after {
@@ -1227,7 +1246,8 @@
         width: min(72px, 64%);
         height: 2px;
         align-self: end;
-        background: rgba(176, 216, 255, 0.18);
+        background: var(--tile-accent);
+        box-shadow: 0 0 12px var(--tile-accent-soft);
       }
 
       .detail-action-icon {
@@ -1268,11 +1288,6 @@
         text-align: center;
       }
 
-      .details-panel .detail-actions .detail-action:hover::after,
-      .details-panel .detail-actions .detail-action.warning-action::after {
-        background: rgba(88, 167, 255, 0.86);
-        box-shadow: 0 0 12px rgba(88, 167, 255, 0.52);
-      }
 
       .details-panel .detail-action[data-report-shortcut],
       .details-panel .detail-action[data-report-mode] {
