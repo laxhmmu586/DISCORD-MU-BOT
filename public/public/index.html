@@ -1160,10 +1160,18 @@
         text-align: center;
       }
 
+      .detail-top-actions,
       .detail-actions {
         display: grid;
-        grid-template-columns: repeat(4, minmax(132px, 1fr));
         gap: 10px;
+      }
+
+      .detail-top-actions {
+        grid-template-columns: repeat(3, minmax(132px, 1fr));
+      }
+
+      .detail-actions {
+        grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
       }
 
       .details-panel .detail-action[data-report-shortcut],
@@ -3447,6 +3455,7 @@
           width: 100%;
         }
 
+        .detail-top-actions,
         .detail-actions {
           grid-template-columns: 1fr 1fr;
         }
@@ -3912,17 +3921,19 @@
                   </div>
                 </div>
               </div>
-              <p class="message" id="rk-message">Search SY to load live flight data.</p>
+              <div class="detail-top-actions" aria-label="Passenger service actions">
+                <button class="detail-action" type="button" data-panel="wch">WCH <span class="detail-action-badge" id="wch-count"></span></button>
+                <button class="detail-action" type="button" data-panel="psm">PSM/MSG <span class="detail-action-badge" id="psm-count"></span></button>
+                <button class="detail-action" type="button" data-panel="security" id="security-detail-action">Security Check</button>
+              </div>
               <div class="detail-actions" aria-label="Flight detail actions">
                 <button class="detail-action" type="button" data-panel="chd" id="chd-action">CHD List <span class="detail-action-badge" id="chd-count"></span></button>
                 <button class="detail-action" type="button" data-panel="gov" id="gov-action">GOV/AQQ <span class="detail-action-badge" id="gov-count"></span></button>
                 <button class="detail-action" type="button" data-panel="webedi" id="webedi-action">WEB/EDI/RS <span class="detail-action-badge" id="webedi-count"></span></button>
                 <button class="detail-action" type="button" data-panel="nbrd" id="nbrd-action">CKIN/NBRD <span class="detail-action-badge" id="nbrd-count"></span></button>
-                <button class="detail-action warning-action" type="button" data-panel="warning" id="warning-action" hidden aria-label="Open warnings">⚠️ WARNING <span class="detail-action-badge warning-badge" id="warning-count">0</span></button>
-                <button class="detail-action" type="button" data-panel="wch">WCH <span class="detail-action-badge" id="wch-count"></span></button>
-                <button class="detail-action" type="button" data-panel="psm">PSM/MSG <span class="detail-action-badge" id="psm-count"></span></button>
-                <button class="detail-action" type="button" data-panel="duplicate-bags" id="duplicate-bags-action">DUP BAG <span class="detail-action-badge" id="duplicate-bags-count"></span></button>
-                <button class="detail-action" type="button" data-panel="duplicate-names" id="duplicate-names-action">DUP NAME <span class="detail-action-badge" id="duplicate-names-count"></span></button>
+                <button class="detail-action warning-action" type="button" data-panel="warning" id="warning-action" hidden aria-label="Open warnings">WARNING <span class="detail-action-badge warning-badge" id="warning-count">0</span></button>
+                <button class="detail-action" type="button" data-panel="duplicate-bags" id="duplicate-bags-action" hidden>DUP BAG <span class="detail-action-badge" id="duplicate-bags-count"></span></button>
+                <button class="detail-action" type="button" data-panel="duplicate-names" id="duplicate-names-action" hidden>DUP NAME <span class="detail-action-badge" id="duplicate-names-count"></span></button>
                 <button class="detail-action" type="button" data-report-shortcut="sales">Sales Report</button>
                 <button class="detail-action" type="button" data-report-shortcut="vip">VIP Report</button>
               </div>
@@ -5139,6 +5150,10 @@
         setBadgeText("#duplicate-names-count", duplicateNameCount);
         setActionIssueState("#duplicate-bags-action", duplicateBagCount > 0);
         setActionIssueState("#duplicate-names-action", duplicateNameCount > 0);
+        const duplicateBagsAction = document.querySelector("#duplicate-bags-action");
+        const duplicateNamesAction = document.querySelector("#duplicate-names-action");
+        if (duplicateBagsAction) duplicateBagsAction.hidden = duplicateBagCount === 0;
+        if (duplicateNamesAction) duplicateNamesAction.hidden = duplicateNameCount === 0;
         if (bagReportButton) bagReportButton.hidden = !(sy.bagSheet?.hasData);
         refreshSalesReportButton(sy);
         let previousStarted = true;
@@ -6933,6 +6948,7 @@
           if (panel === "psm") renderPsmPanel();
           if (panel === "duplicate-bags") renderDuplicateBagsPanel();
           if (panel === "duplicate-names") renderDuplicateNamesPanel();
+          if (panel === "security") renderSecurityCheck();
         });
       });
 
