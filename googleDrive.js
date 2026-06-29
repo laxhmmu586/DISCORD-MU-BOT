@@ -1,5 +1,7 @@
 const { google } = require('googleapis');
 const { Readable } = require('stream');
+const fs = require('fs/promises');
+const path = require('path');
 const zlib = require('zlib');
 
 // ===============================
@@ -107,6 +109,8 @@ const CBS_HEADERS = [
 ];
 let cbsSheetTitle = '';
 let cbsSheetCache = { loadedAt: 0, rows: [] };
+const CBS_UPDATE_HISTORY_FILE = process.env.CBS_UPDATE_HISTORY_FILE || path.join(__dirname, 'data', 'cbs-update-history.json');
+let cbsUpdateHistoryCache = { loadedAt: 0, data: null };
 const CBS_MISSING_BAG_SHEET_GID = Number(process.env.CBS_MISSING_BAG_SHEET_GID || 1145829442);
 const CBS_MISSING_BAG_HEADERS = ['Bag Tag', 'Passenger Name', 'Destination', 'Airline', 'Source Email Date', 'Source Attachment', 'Recorded At', 'Case Number', 'Case Created At', 'Acknowledged At'];
 let cbsMissingBagSheetTitle = '';
