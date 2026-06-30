@@ -4737,6 +4737,27 @@
         }).length;
       }
 
+      function webEdiIssueBnList(sy = currentSy) {
+        const gov = sy?.govAqq || {};
+        const rawBns = [...new Set((gov.passportCodeIssues || []).map(normalizedBn).filter(Boolean))].sort();
+        if (!rawBns.length) return [];
+        const issueBnSet = new Set(rawBns);
+        const rows = allPassengerRecords(sy);
+        const byBn = new Map(rows.map((row) => [normalizedBn(row.bn), row]).filter(([bn]) => Boolean(bn)));
+        const cleanIdentityKeys = new Set();
+        rows.forEach((row) => {
+          const bn = normalizedBn(row.bn);
+          if (!bn || issueBnSet.has(bn) || row?.deleted || row?.offloaded || row?.status === "DELETED") return;
+          passengerIdentityKeys(row).forEach((key) => cleanIdentityKeys.add(key));
+        });
+        return rawBns.filter((bn) => {
+          const row = byBn.get(bn);
+          if (!row) return true;
+          const keys = passengerIdentityKeys(row);
+          return !keys.length || !keys.some((key) => cleanIdentityKeys.has(key));
+        });
+      }
+
       function updateOperationReviewNodesFromRows(rows = currentSy?.bnAudit || []) {
         if (!currentSy) return;
         currentSy.bnAudit = rows;
@@ -4745,7 +4766,7 @@
         const govGroups = [gov.duplicatePassports, gov.aqqTclBnList, gov.govDtaBnList, gov.passportExpBnList, gov.wrongPassportBnList, gov.missingApiBnList];
         const counts = {
           GOV: govGroups.reduce((sum, value) => sum + unresolvedReviewedBnCount(value, passBnSet), 0),
-          WEBEDI: unresolvedReviewedBnCount(gov.passportCodeIssues || [], passBnSet),
+          WEBEDI: unresolvedReviewedBnCount(webEdiIssueBnList(currentSy), passBnSet),
         };
         Object.entries(counts).forEach(([key, count]) => {
           const node = document.querySelector(`.node[data-key="${key}"]`);
@@ -5455,6 +5476,24 @@
         return !name || name === "UNKNOWN" || name === "-";
       }
 
+      function normalizeIdentityText(value) {
+        return String(value || "").trim().toUpperCase().replace(/\s+/g, "");
+      }
+
+      function passengerIdentityKeys(row) {
+        const ticket = normalizeIdentityText(row?.ticketNo || row?.ticketNumber);
+        const passport = normalizeIdentityText(row?.passportNo);
+        const dob = normalizeIdentityText(row?.dobKey || row?.dob);
+        const expiry = normalizeIdentityText(row?.passportExpiryKey || row?.passportExpiry || row?.passportExp);
+        const name = normalizeComparableName(passengerName(row));
+        return [
+          ticket && `TKT:${ticket}`,
+          passport && dob && `PPT_DOB:${passport}|${dob}`,
+          passport && expiry && `PPT_EXP:${passport}|${expiry}`,
+          passport && name && `PPT_NAME:${passport}|${name}`,
+        ].filter(Boolean);
+      }
+
       function duplicateBagRows(sy = currentSy) {
         const groups = new Map();
         allPassengerRecords(sy).forEach((row) => {
@@ -5564,7 +5603,7 @@
         const passBnSet = securityReviewPassBnSet(sy);
         const govIssueGroups = [gov.duplicatePassports, gov.aqqTclBnList, gov.govDtaBnList, gov.passportExpBnList, gov.wrongPassportBnList, gov.missingApiBnList];
         const govCount = isClearLocked("GOV") ? 0 : govIssueGroups.reduce((sum, value) => sum + unresolvedReviewedBnCount(value, passBnSet), 0);
-        const webediCount = isClearLocked("WEBEDI") ? 0 : unresolvedReviewedBnCount(gov.passportCodeIssues || [], passBnSet);
+        const webediCount = isClearLocked("WEBEDI") ? 0 : unresolvedReviewedBnCount(webEdiIssueBnList(sy), passBnSet);
         const nbrdCount = isClearLocked("NBRD") ? 0 : unacknowledgedNbrdCount(sy);
         setBadgeText("#chd-count", chdIssues);
         setBadgeText("#gov-count", govCount);
@@ -5847,8 +5886,7 @@
       }
 
       function renderWebEdiPanel() {
-        const gov = currentSy?.govAqq || {};
-        const rows = enrichRowsWithPassengerData((gov.passportCodeIssues || []).map((bn) => ({ bn, reason: "WEB/EDI/Reswipe" })));
+        const rows = enrichRowsWithPassengerData(webEdiIssueBnList(currentSy).map((bn) => ({ bn, reason: "WEB/EDI/Reswipe" })));
         const body = rows.length ? `<div class="panel-stats"><span class="status-fail">WEB/EDI/RS total: ${rows.length}</span></div>${renderBnButtons(rows, "", (row) => row.reason, null, () => "is-warning")}` : `<p class="panel-muted">No WEB/EDI/RS records found.</p>`;
         renderPanel("WEB/EDI/RS", currentSy?.flightNo || "SY", body);
         setPanelPassengerRows(rows);
