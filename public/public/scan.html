@@ -71,7 +71,8 @@
           scanBusy = true;
           lastScanText = text;
           lastScanAt = now;
-          handleText(text).finally(() => { scanBusy = false; });
+          setStatus('Code detected. Saving before next scan...');
+          handleText(text).finally(() => { setTimeout(() => { scanBusy = false; if (controls) setStatus('Scanning PDF417...'); }, 1500); });
         });
         setStatus('Scanning PDF417...');
       } catch (err) { setStatus(err.message, 'err'); alert(err.message); }

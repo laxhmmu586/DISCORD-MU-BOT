@@ -63,6 +63,7 @@ const {
   acknowledgeCbsMissingBag,
   sendCbsCaseEmail,
   appendCbsScanRecord,
+  appendCbsScanNbrdBns,
   readNotesDriveStore,
   writeNotesDriveStore
 
@@ -1644,6 +1645,17 @@ app.post('/cbs-scan', async (req, res) => {
   } catch (err) {
     const status = err?.code === 'DUPLICATE_BN' || err?.code === 'NBRD_MESSAGE' ? 409 : (err?.code === 'WRONG_FLIGHT' ? 400 : 422);
     return res.status(status).json({ error: err?.message || 'CBS scan save failed', code: err?.code || 'SCAN_ERROR', flight: err?.flight || '', bn: err?.bn || '' });
+  }
+});
+
+
+app.post('/cbs-scan/nbrd-bns', async (req, res) => {
+  try {
+    const bns = Array.isArray(req.body?.bns) ? req.body.bns : [req.body?.bn].filter(Boolean);
+    const result = await appendCbsScanNbrdBns(bns);
+    return res.json({ ok: true, ...result });
+  } catch (err) {
+    return res.status(422).json({ error: err?.message || 'NBRD BN save failed', code: err?.code || 'NBRD_SAVE_ERROR' });
   }
 });
 

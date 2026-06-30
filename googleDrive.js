@@ -2462,9 +2462,6 @@ function normalizeCbsScanBn(value) {
   return digits ? digits.padStart(4, '0') : '';
 }
 
-function hasCbsScanNbrdStatus(rawScan = '') {
-  return /\b(?:CKIN|NBRD)\b/i.test(String(rawScan || ''));
-}
 
 async function appendCbsScanNbrdBn(title, bn, dataRows) {
   const existing = dataRows.find((row) => normalizeCbsScanBn(row[11]) === bn);
@@ -2479,6 +2476,27 @@ async function appendCbsScanNbrdBn(title, bn, dataRows) {
   });
   cbsScanSheetCache = { loadedAt: 0, rows: [] };
   return true;
+}
+
+async function appendCbsScanNbrdBns(values = []) {
+  const bns = [...new Set((Array.isArray(values) ? values : [values]).map(normalizeCbsScanBn).filter(Boolean))];
+  if (!bns.length) return { added: [], existing: [] };
+  const title = await getCbsScanSheetTitle();
+  const rows = await getCbsScanSheetRows({ forceRefresh: true });
+  await ensureCbsScanSheetHeaders(rows);
+  let dataRows = (await getCbsScanSheetRows({ forceRefresh: true })).slice(1);
+  const added = [];
+  const existing = [];
+  for (const bn of bns) {
+    if (dataRows.find((row) => normalizeCbsScanBn(row[11]) === bn)) {
+      existing.push(bn);
+      continue;
+    }
+    await appendCbsScanNbrdBn(title, bn, dataRows);
+    added.push(bn);
+    dataRows = (await getCbsScanSheetRows({ forceRefresh: true })).slice(1);
+  }
+  return { added, existing };
 }
 
 function throwCbsScanNbrdMessage(bn) {
@@ -2501,10 +2519,6 @@ async function appendCbsScanRecord(record = {}) {
   const dataRows = (await getCbsScanSheetRows({ forceRefresh: true })).slice(1);
   const nbrdExisting = dataRows.find((row) => normalizeCbsScanBn(row[11]) === bn);
   if (nbrdExisting) throwCbsScanNbrdMessage(bn);
-  if (hasCbsScanNbrdStatus(rawScan)) {
-    await appendCbsScanNbrdBn(title, bn, dataRows);
-    throwCbsScanNbrdMessage(bn);
-  }
   const existing = dataRows.find((row) => normalizeCbsScanBn(row[0]) === bn);
   if (existing) {
     const err = new Error(`Duplicate BN ${bn}.`);
@@ -3146,6 +3160,7 @@ module.exports = {
   acknowledgeCbsMissingBag,
   sendCbsCaseEmail,
   appendCbsScanRecord,
+  appendCbsScanNbrdBns,
   readNotesDriveStore,
   writeNotesDriveStore
 };

@@ -5620,6 +5620,7 @@
         const govCount = isClearLocked("GOV") ? 0 : govIssueGroups.reduce((sum, value) => sum + unresolvedReviewedBnCount(value, passBnSet), 0);
         const webediCount = isClearLocked("WEBEDI") ? 0 : unresolvedReviewedBnCount(webEdiIssueBnList(sy), passBnSet);
         const nbrdCount = isClearLocked("NBRD") ? 0 : unacknowledgedNbrdCount(sy);
+        syncCkinNbrdBnsToBoardingSheet(sy);
         setBadgeText("#chd-count", chdIssues);
         setBadgeText("#gov-count", govCount);
         setBadgeText("#webedi-count", webediCount);
@@ -6169,6 +6170,24 @@
 
       function rowHasCkinNbrdIssue(row) {
         return ckinNbrdLines(row).length > 0;
+      }
+
+      let lastNbrdSheetSyncKey = "";
+      function syncCkinNbrdBnsToBoardingSheet(sy = currentSy) {
+        const bns = [...new Set((enrichRowsWithPassengerData((sy?.bnAudit || []).filter(rowHasCkinNbrdIssue)) || [])
+          .map((row) => String(row.bn || "").replace(/\D/g, "").padStart(4, "0"))
+          .filter((bn) => /^\d{4}$/.test(bn)))];
+        const syncKey = [sy?.flightNo || "SY", sy?.flightDate || "", bns.join(",")].join("|");
+        if (!bns.length || syncKey === lastNbrdSheetSyncKey) return;
+        lastNbrdSheetSyncKey = syncKey;
+        apiJson("/cbs-scan/nbrd-bns", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ bns }),
+        }).catch((error) => {
+          lastNbrdSheetSyncKey = "";
+          console.warn("Unable to sync CKIN/NBRD BN list to boarding sheet.", error);
+        });
       }
 
       function nbrdRowsWithAcknowledgements(sy = currentSy) {
