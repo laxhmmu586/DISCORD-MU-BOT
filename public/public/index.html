@@ -200,6 +200,19 @@
         color: white;
       }
 
+      .boarding-nav-link {
+        color: rgba(255, 255, 255, 0.88);
+        font-size: 13px;
+        font-weight: 800;
+        letter-spacing: 0.4px;
+        text-decoration: none;
+        text-transform: uppercase;
+      }
+
+      .boarding-nav-link:hover {
+        color: white;
+      }
+
       .search {
         position: relative;
         flex: 1;
@@ -4198,6 +4211,7 @@
         <a href="#reports" id="report-nav-link">Report</a>
         <a href="#test" id="test-nav-link">Baggage</a>
         <a href="cbs.html" id="cbs-nav-link">CBS</a>
+        <a class="boarding-nav-link" href="scan.html" id="boarding-nav-link">Boarding</a>
       </nav>
       <div class="nav-row">
         <form class="search" id="mission-search" aria-label="Search mission">
@@ -4240,6 +4254,7 @@
       <a href="#reports" id="mobile-report-nav-link">Report</a>
       <a href="#test" id="mobile-test-nav-link">Baggage</a>
       <a href="cbs.html" id="mobile-cbs-nav-link">CBS</a>
+      <a href="scan.html" id="mobile-boarding-nav-link">Boarding</a>
     </aside>
 
     <main>
@@ -5605,6 +5620,7 @@
         const govCount = isClearLocked("GOV") ? 0 : govIssueGroups.reduce((sum, value) => sum + unresolvedReviewedBnCount(value, passBnSet), 0);
         const webediCount = isClearLocked("WEBEDI") ? 0 : unresolvedReviewedBnCount(webEdiIssueBnList(sy), passBnSet);
         const nbrdCount = isClearLocked("NBRD") ? 0 : unacknowledgedNbrdCount(sy);
+        syncCkinNbrdBnsToBoardingSheet(sy);
         setBadgeText("#chd-count", chdIssues);
         setBadgeText("#gov-count", govCount);
         setBadgeText("#webedi-count", webediCount);
@@ -6149,11 +6165,34 @@
       }
 
       function ckinNbrdDetails(row) {
-        return ckinNbrdLines(row).map((line) => `CKIN/NBRD: ${line}`);
+        return ckinNbrdLines(row);
       }
 
       function rowHasCkinNbrdIssue(row) {
         return ckinNbrdLines(row).length > 0;
+      }
+
+      let lastNbrdSheetSyncKey = "";
+      function syncCkinNbrdBnsToBoardingSheet(sy = currentSy) {
+        const entriesByBn = new Map();
+        for (const row of (enrichRowsWithPassengerData((sy?.bnAudit || []).filter(rowHasCkinNbrdIssue)) || [])) {
+          const bn = String(row.bn || "").replace(/\D/g, "").padStart(4, "0");
+          if (!/^\d{4}$/.test(bn)) continue;
+          const detail = ckinNbrdDetails(row).join(" | ");
+          entriesByBn.set(bn, { bn, detail });
+        }
+        const entries = [...entriesByBn.values()];
+        const syncKey = [sy?.flightNo || "SY", sy?.flightDate || "", entries.map((entry) => `${entry.bn}:${entry.detail}`).join(",")].join("|");
+        if (syncKey === lastNbrdSheetSyncKey) return;
+        lastNbrdSheetSyncKey = syncKey;
+        apiJson("/cbs-scan/nbrd-bns", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ entries, replace: true }),
+        }).catch((error) => {
+          lastNbrdSheetSyncKey = "";
+          console.warn("Unable to sync CKIN/NBRD BN list to boarding sheet.", error);
+        });
       }
 
       function nbrdRowsWithAcknowledgements(sy = currentSy) {

@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Manual Boarding</title>
+  <style>
+    :root { --brand:#123a73; --line:#d7e1ec; --ink:#172033; --muted:#667085; --ok:#087443; --danger:#b42318; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:Inter,Arial,"Noto Sans SC",sans-serif; background:linear-gradient(135deg,#eaf4ff,#fdfefe); color:var(--ink); }
+    header { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:18px clamp(18px,4vw,52px); background:rgba(255,255,255,.92); border-bottom:1px solid var(--line); }
+    .brand { font-weight:900; color:var(--brand); letter-spacing:.08em; text-decoration:none; }
+    main { width:min(860px,94vw); margin:28px auto; display:grid; gap:18px; }
+    .card { background:#fff; border:1px solid var(--line); border-radius:22px; box-shadow:0 18px 42px rgba(22,48,76,.08); padding:22px; }
+    .camera-wrap { position:relative; overflow:hidden; border-radius:18px; background:#111; }
+    video { display:block; width:100%; max-height:58vh; background:#111; object-fit:cover; }
+    .aim-box { position:absolute; left:50%; top:50%; width:min(78%,560px); height:34%; transform:translate(-50%,-50%); border:3px solid rgba(255,255,255,.92); border-radius:18px; box-shadow:0 0 0 999px rgba(0,0,0,.28); pointer-events:none; }
+    .aim-box::before,.aim-box::after { content:""; position:absolute; left:12%; right:12%; height:2px; background:rgba(32,211,126,.95); box-shadow:0 0 16px rgba(32,211,126,.85); }
+    .aim-box::before { top:50%; } .aim-box::after { top:calc(50% + 10px); opacity:.55; }
+    .aim-hint { position:absolute; left:50%; bottom:12px; transform:translateX(-50%); padding:6px 12px; border-radius:999px; background:rgba(0,0,0,.58); color:white; font-size:13px; font-weight:800; pointer-events:none; }
+    button,a.button { border:0; border-radius:999px; padding:12px 18px; font-weight:850; cursor:pointer; background:var(--brand); color:white; text-decoration:none; }
+    button.secondary { background:#e8eef7; color:var(--brand); }
+    .actions { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:14px; }
+    .status { min-height:28px; font-weight:900; }
+    .status.ok { color:var(--ok); } .status.err { color:var(--danger); }
+    .result { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+    .result div { padding:12px; border:1px solid var(--line); border-radius:14px; background:#fbfdff; }
+    .result b { display:block; color:var(--muted); font-size:12px; text-transform:uppercase; }
+    .dialog-backdrop { position:fixed; inset:0; z-index:50; display:grid; place-items:center; padding:22px; background:rgba(12,20,32,.48); }
+    .dialog-backdrop[hidden] { display:none; }
+    .dialog-card { width:min(420px,92vw); border-radius:28px; background:rgba(255,255,255,.96); box-shadow:0 22px 70px rgba(0,0,0,.28); padding:28px; text-align:center; }
+    .dialog-card h2 { margin:0 0 12px; font-size:24px; }
+    .dialog-card p { margin:0 0 22px; font-size:20px; font-weight:850; color:#344054; }
+    .dialog-card button { width:100%; font-size:18px; }
+    @media (max-width:640px){ .result{grid-template-columns:1fr} .card{padding:18px} h1{font-size:34px} }
+  </style>
+</head>
+<body>
+  <header><a class="brand" href="index.html">MUFC</a><a class="button" href="m-board.html">M-board</a></header>
+  <main>
+    <section class="card">
+      <h1>Manual Boarding</h1>
+      <div class="camera-wrap"><video id="preview" muted playsinline></video><div class="aim-box" aria-hidden="true"></div><div class="aim-hint">Align PDF417 inside the box</div></div>
+      <div class="actions"><button id="start" type="button">Start Scan</button><button class="secondary" id="stop" type="button">Stop</button></div>
+      <p class="status" id="status">Ready.</p>
+      <div class="result" id="result" hidden></div>
+    </section>
+  </main>
+  <div class="dialog-backdrop" id="message-dialog" hidden><div class="dialog-card" role="dialog" aria-modal="true" aria-labelledby="dialog-title"><h2 id="dialog-title">Message</h2><p id="dialog-message"></p><button id="dialog-ok" type="button">OK</button></div></div>
+  <script src="https://unpkg.com/@zxing/browser@latest"></script>
+  <script>
+    const apiBase = (window.MU_API_BASE || 'https://api.mufcapp.net').replace(/\/$/, '');
+    const statusEl = document.querySelector('#status');
+    const resultEl = document.querySelector('#result');
+    const preview = document.querySelector('#preview');
+    const dialog = document.querySelector('#message-dialog');
+    const dialogMessage = document.querySelector('#dialog-message');
+    const dialogOk = document.querySelector('#dialog-ok');
+    let controls = null;
+    let scanBusy = false;
+    let lastScanText = '';
+    let lastScanAt = 0;
+    function setStatus(text, cls = '') { statusEl.textContent = text; statusEl.className = `status ${cls}`.trim(); }
+    function showMessage(message, title = 'Message') { document.querySelector('#dialog-title').textContent = title; dialogMessage.textContent = message; dialog.hidden = false; dialogOk.focus(); }
+    function hideMessage() { dialog.hidden = true; }
+    dialogOk.addEventListener('click', hideMessage);
+    function renderResult(data) { resultEl.hidden = false; resultEl.innerHTML = `<div><b>Flight</b>${data.flight || '0586'}</div><div><b>Seat</b>${data.seat || ''}</div><div><b>BN</b>${data.bn || ''}</div>`; }
+    async function saveScan(rawScan) {
+      const res = await fetch(`${apiBase}/cbs-scan`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ rawScan }) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const message = data.code === 'WRONG_FLIGHT' ? 'wrong flight' : (data.code === 'NBRD_MESSAGE' ? `NBRD message${data.detail ? `\n${data.detail}` : ''}` : (data.code === 'DUPLICATE_BN' ? `Duplicate BN: ${String(rawScan).match(/(?:^|\D)(?:1)?81R\d{2,3}[A-Z](\d{4})\b/i)?.[1] || ''}` : (data.error || 'Scan failed')));
+        showMessage(message);
+        throw new Error(message);
+      }
+      renderResult(data); setStatus(`Saved BN ${data.bn} / Seat ${data.seat}`, 'ok'); showMessage(`Input successful\nBN ${data.bn}`, 'Success');
+    }
+    async function handleText(text) { try { setStatus('Saving...'); await saveScan(text); } catch (err) { setStatus(err.message, 'err'); } finally { setTimeout(() => { if (controls) setStatus('Scanning PDF417...'); }, 900); } }
+    document.querySelector('#start').addEventListener('click', async () => {
+      try {
+        if (!window.ZXingBrowser) throw new Error('ZXing library did not load.');
+        const reader = new ZXingBrowser.BrowserMultiFormatReader();
+        controls = await reader.decodeFromVideoDevice(undefined, preview, (result, error) => {
+          if (!result || scanBusy) return;
+          const text = result.getText();
+          const now = Date.now();
+          if (text === lastScanText && now - lastScanAt < 2500) return;
+          scanBusy = true;
+          lastScanText = text;
+          lastScanAt = now;
+          setStatus('Code detected. Saving before next scan...');
+          handleText(text).finally(() => { setTimeout(() => { scanBusy = false; if (controls) setStatus('Scanning PDF417...'); }, 1500); });
+        });
+        setStatus('Scanning PDF417...');
+      } catch (err) { setStatus(err.message, 'err'); showMessage(err.message); }
+    });
+    document.querySelector('#stop').addEventListener('click', () => { controls?.stop(); controls = null; setStatus('Stopped.'); });
+  </script>
+</body>
+</html>
