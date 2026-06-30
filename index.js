@@ -1620,6 +1620,64 @@ app.get('/cbs-cases', async (req, res) => {
   }
 });
 
+
+app.post('/cbs-cases/from-baggage/:bagTag', async (req, res) => {
+  try {
+    const bagTag = normalizeTestBagTag(req.params.bagTag || req.body?.bagTag);
+    if (!isValidTestBagTag(bagTag)) return res.status(400).json({ error: 'Bag tag must match MU123456 format' });
+    const baggage = await findTestBaggageByTag(bagTag);
+    if (!baggage) return res.status(404).json({ error: 'Baggage record not found' });
+    const existingCase = (await getCbsCases()).find((row) => String(row.bagTag || '').split(/\s*\/\s*/).some((tag) => normalizeCbsBagTag(tag) === bagTag));
+    if (existingCase?.caseNumber) return res.json({ created: false, caseNumber: existingCase.caseNumber, record: existingCase });
+    const now = new Date().toISOString();
+    const caseNumber = await makeCbsCaseNumber();
+    const flightRoute = [baggage.flight, baggage.date].map((value) => sanitizeCbsText(value, 40)).filter(Boolean).join(' ');
+    const record = {
+      caseNumber,
+      caseType: 'AHL',
+      status: 'Open',
+      passengerName: 'UNKNOWN',
+      email: '',
+      phone: '',
+      ticketNumber: '',
+      classOfTravel: '',
+      departureOrigin: '',
+      language: 'en',
+      flightRoute,
+      bagTag,
+      destinationOnBags: '',
+      permanentAddress: '',
+      temporaryAddress: '',
+      temporaryAddressValidUntil: '',
+      addressAvailable: '',
+      ahlBagDescription: 'Created from Baggage search',
+      ahlBagBrandTag: '',
+      ahlBagType: sanitizeCbsText(baggage.bagType, 160),
+      ahlFeatures: '',
+      ahlOtherFeatures: '',
+      ahlContents: '',
+      dprDamageLevel: '',
+      dprBagInfo: '',
+      dprBagType: '',
+      dprInnerDamage: '',
+      contentsRows: [],
+      contentsDetails: '',
+      issueDate: todayIsoUtc(),
+      passengerSignature: '',
+      passengerSignatureDataUrl: '',
+      damageSketch: '',
+      submittedAt: now,
+      updatedAt: now,
+      updateNote: `Created from Baggage search | Bag tag: ${bagTag} | Status: ${sanitizeCbsText(baggage.currentStatus || baggage.status, 120)} | Flight: ${flightRoute}`
+    };
+    await appendCbsCase(record);
+    return res.status(201).json({ created: true, caseNumber, record });
+  } catch (err) {
+    console.error('CBS baggage create case error:', err);
+    return res.status(500).json({ error: err?.message || 'CBS baggage case creation failed' });
+  }
+});
+
 app.post('/cbs-cases', async (req, res) => {
   try {
     const body = req.body || {};

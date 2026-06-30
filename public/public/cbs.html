@@ -35,6 +35,9 @@
     button.danger { background:#b42318; }
     .case-summary { cursor:pointer; }
     .case-summary:hover { background:#f7fbff; }
+    .baggage-search-card { margin:14px 0 0; padding:16px; border:1px solid var(--line); border-radius:18px; background:#fbfdff; display:grid; gap:10px; }
+    .baggage-search-card h3 { margin:0; color:var(--brand); }
+    .baggage-search-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px 18px; }
     .status { min-height:24px; font-weight:800; }
     .status.err { color:#b42318; }
     table { width:100%; border-collapse:collapse; table-layout:fixed; font-size:13px; }
@@ -92,7 +95,7 @@
     .detail-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px 18px; margin-bottom:12px; }
     .detail-grid p { margin:0; }
     input,textarea { width:100%; border:1px solid var(--line); border-radius:12px; padding:10px 12px; background:#fff; color:var(--ink); font:inherit; }
-    @media (max-width:840px){ .case-update-grid,.detail-grid{grid-template-columns:1fr}.tracking-event{grid-template-columns:86px 1fr;gap:12px}.tracking-event-card{font-size:12px}.tracking-event-field{grid-template-columns:1fr}.case-update{min-width:0} table{display:block;overflow-x:auto;white-space:nowrap} }
+    @media (max-width:840px){ .case-update-grid,.detail-grid,.baggage-search-grid{grid-template-columns:1fr}.tracking-event{grid-template-columns:86px 1fr;gap:12px}.tracking-event-card{font-size:12px}.tracking-event-field{grid-template-columns:1fr}.case-update{min-width:0} table{display:block;overflow-x:auto;white-space:nowrap} }
   </style>
 </head>
 <body>
@@ -140,6 +143,8 @@
     }
     function hasValue(value) { return value != null && String(value).trim() !== ''; }
     function renderValue(value) { return hasValue(value) ? value : '-'; }
+    function normalizeBagSearch(value) { return String(value || '').trim().toUpperCase().replace(/\s+/g, ''); }
+    function isBagTagSearch(value) { return /^[A-Z]{2}\d{6}$/.test(normalizeBagSearch(value)); }
     const TRACKING_STAGES = [
       { key:'create', text:'Create' },
       { key:'worldtracer', text:'WorldTracer' },
@@ -368,12 +373,53 @@
       if (detail) detail.hidden = false;
       (summary || detail)?.scrollIntoView({ behavior:'smooth', block:'center' });
     }
+    function baggageSearchHtml() {
+      const result = window._cbsBaggageSearch;
+      if (!result) return '';
+      if (result.loading) return `<div class="baggage-search-card"><p class="muted">Searching baggage ${escapeHtml(result.bagTag)}...</p></div>`;
+      if (result.error) return `<div class="baggage-search-card"><p class="status err">${escapeHtml(result.error)}</p></div>`;
+      if (!result.found || !result.record) return '';
+      const record = result.record;
+      const hasCase = (window._cbsRows || []).some((row) => String(row.bagTag || '').split(/\s*\/\s*/).some((tag) => normalizeBagSearch(tag) === result.bagTag));
+      return `<section class="baggage-search-card"><h3>Baggage Result</h3><div class="baggage-search-grid">
+        <p><strong>Bag Tag:</strong> ${escapeHtml(record.bagTag || result.bagTag)}</p>
+        <p><strong>Status:</strong> ${escapeHtml(record.currentStatus || record.status || '-')}</p>
+        <p><strong>Flight:</strong> ${escapeHtml(record.flight || '-')}</p>
+        <p><strong>Date:</strong> ${escapeHtml(record.date || record.submitDate || '-')}</p>
+        <p><strong>Direction:</strong> ${escapeHtml(record.direction || '-')}</p>
+        <p><strong>Location:</strong> ${escapeHtml(record.location || '-')}</p>
+      </div>${hasCase ? '<p class="muted">A CBS case already exists for this bag tag.</p>' : `<div class="actions"><button type="button" data-create-baggage-case="${escapeHtml(result.bagTag)}">Create CASE</button></div>`}</section>`;
+    }
+    async function loadBaggageSearch(value) {
+      const bagTag = normalizeBagSearch(value);
+      const token = Symbol('baggage-search');
+      window._cbsBaggageSearchToken = token;
+      if (!isBagTagSearch(bagTag)) {
+        window._cbsBaggageSearch = null;
+        renderCases();
+        return;
+      }
+      window._cbsBaggageSearch = { bagTag, loading:true };
+      renderCases();
+      try {
+        const res = await fetch(`${apiBase}/test-baggage/${encodeURIComponent(bagTag)}`);
+        const data = await parseJson(res);
+        if (window._cbsBaggageSearchToken !== token) return;
+        if (!res.ok) throw new Error(data.error || 'Baggage lookup failed');
+        window._cbsBaggageSearch = { bagTag, found:Boolean(data.found), record:data.record || null };
+      } catch (error) {
+        if (window._cbsBaggageSearchToken !== token) return;
+        window._cbsBaggageSearch = { bagTag, error:error.message };
+      }
+      renderCases();
+    }
     function renderCases() {
       const query = String(caseSearch?.value || '').trim().toLowerCase();
       const selectedCase = String(window._selectedCbsCase || '').trim();
       const sourceRows = selectedCase ? (window._cbsRows || []).filter((row) => String(row.caseNumber || '').trim() === selectedCase) : (window._cbsRows || []);
       const rows = sortedCaseRows(sourceRows).filter((row) => !query || rowSearchText(row).includes(query));
-      if (!rows.length) { casesOutput.innerHTML = '<p class="muted">No matching cases.</p>'; return; }
+      const baggageHtml = baggageSearchHtml();
+      if (!rows.length) { casesOutput.innerHTML = `<p class="muted">No matching cases.</p>${baggageHtml}`; return; }
       casesOutput.innerHTML = `<table><colgroup><col style="width:220px"><col style="width:120px"><col style="width:280px"><col></colgroup><thead><tr><th>${label('Case Number', '编号')}</th><th>${label('Case Type', '类型')}</th><th>${label('Bag Tag', '行李牌')}</th><th class="tracking-cell">Tracking</th></tr></thead><tbody>${rows.map((row, index) => {
         const detailKey = row.caseNumber || `row-${row.rowNumber || index}`;
         const caseNumberLabel = row.caseNumber || label('Missing case number', '缺少编号');
@@ -382,7 +428,7 @@
         const backHtml = selectedCase ? `<div class="actions detail-actions"><button class="secondary" type="button" data-back-all-cases>${label('Back to all cases', '返回所有案件')}</button></div>` : '';
         const detailHtml = details.length ? `<section class="case-info-panel"><h2>${label('Case Information', '案件信息')}</h2><div class="detail-grid">${details.map(([key, value]) => `<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(renderValue(value))}</p>`).join('')}</div></section>` : '';
         return `<tr class="case-summary" data-toggle-case="${escapeHtml(detailKey)}"><td><button class="secondary" type="button">${escapeHtml(caseNumberLabel)}</button></td><td>${escapeHtml(caseType || '-')}</td><td>${escapeHtml(displayBagTag(row) || '-')}</td><td class="tracking-cell">${trackingHtml(row)}</td></tr><tr class="case-detail" data-detail-case="${escapeHtml(detailKey)}" ${selectedCase ? '' : 'hidden'}><td colspan="4">${backHtml}${trackingDetailHtml(row)}${detailHtml}${updateFormHtml(row)}</td></tr>`;
-      }).join('')}</tbody></table>`;
+      }).join('')}</tbody></table>${baggageHtml}`;
     }
     async function loadCases() {
       casesOutput.innerHTML = '<p class="muted">Loading cases...</p>';
@@ -434,6 +480,22 @@
       await updateCase(updateForm.dataset.case, payload);
     });
     casesOutput.addEventListener('click', async (event) => {
+      const createBaggageButton = event.target.closest('[data-create-baggage-case]');
+      if (createBaggageButton) {
+        const bagTag = createBaggageButton.dataset.createBaggageCase;
+        createBaggageButton.disabled = true;
+        createBaggageButton.textContent = 'Creating...';
+        try {
+          const res = await fetch(`${apiBase}/cbs-cases/from-baggage/${encodeURIComponent(bagTag)}`, { method:'POST' });
+          const data = await parseJson(res);
+          if (!res.ok) throw new Error(data.error || 'Create case failed');
+          window._selectedCbsCase = data.caseNumber || data.record?.caseNumber || '';
+          window._cbsBaggageSearch = null;
+          if (caseSearch) caseSearch.value = '';
+          await loadCases();
+        } catch (error) { alert(error.message); }
+        return;
+      }
       const modeButton = event.target.closest('[data-cbs-update-mode]');
       if (modeButton) {
         const form = modeButton.closest('.case-update');
@@ -467,7 +529,7 @@
         if (window._missingReportLoaded || !missingReportCard.hidden) await loadMissingReports(false);
       } catch (error) { alert(error.message); } finally { casesOutput.style.opacity = '1'; }
     }
-    caseSearch?.addEventListener('input', renderCases);
+    caseSearch?.addEventListener('input', () => { renderCases(); loadBaggageSearch(caseSearch.value); });
     missingAlert?.addEventListener('click', async () => { casesCard.hidden = true; missingReportCard.hidden = false; await loadMissingReports(true); });
     backToCases?.addEventListener('click', () => { missingReportCard.hidden = true; casesCard.hidden = false; });
     missingReportOutput?.addEventListener('click', async (event) => {
