@@ -2580,15 +2580,10 @@ async function appendCbsScanRecord(record = {}) {
     err.code = 'DUPLICATE_BN';
     throw err;
   }
-  const insertOffset = dataRows.findIndex((row) => {
-    const rowBn = normalizeCbsScanBn(row[0]);
-    return rowBn && Number(rowBn) > Number(bn);
-  });
-  const rowNumber = insertOffset === -1 ? dataRows.length + 2 : insertOffset + 2;
-  await sheets.spreadsheets.batchUpdate({
-    spreadsheetId: CBS_SCAN_SHEET_ID,
-    requestBody: { requests: [{ insertDimension: { range: { sheetId: CBS_SCAN_SHEET_GID, dimension: 'ROWS', startIndex: rowNumber - 1, endIndex: rowNumber }, inheritFromBefore: rowNumber > 2 } }] }
-  });
+  const lastScanOffset = dataRows.reduce((lastIndex, row, index) => (
+    row.slice(0, 5).some((cell) => String(cell || '').trim()) ? index : lastIndex
+  ), -1);
+  const rowNumber = lastScanOffset + 3;
   await sheets.spreadsheets.values.update({
     spreadsheetId: CBS_SCAN_SHEET_ID,
     range: `${escapeSheetTitle(title)}!A${rowNumber}:E${rowNumber}`,
