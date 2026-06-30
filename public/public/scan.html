@@ -28,7 +28,8 @@
     .field-grid { display:grid; grid-template-columns:180px 1fr; gap:12px; }
     label { display:grid; gap:6px; color:var(--muted); font-size:12px; font-weight:900; text-transform:uppercase; letter-spacing:.04em; }
     input,textarea { width:100%; border:1px solid var(--line); border-radius:14px; padding:12px 14px; color:var(--ink); font:inherit; font-weight:750; background:#fbfdff; }
-    textarea { min-height:86px; resize:vertical; }
+    textarea { min-height:64px; resize:vertical; }
+    @media (min-width:700px){ .nbrd-form{max-width:760px}.field-grid{grid-template-columns:160px minmax(320px,1fr);align-items:end} #nbrd-message{min-height:58px} }
     .dialog-backdrop { position:fixed; inset:0; z-index:50; display:grid; place-items:center; padding:22px; background:rgba(12,20,32,.48); }
     .dialog-backdrop[hidden] { display:none; }
     .dialog-card { width:min(420px,92vw); border-radius:28px; background:rgba(255,255,255,.96); box-shadow:0 22px 70px rgba(0,0,0,.28); padding:28px; text-align:center; }

@@ -17,6 +17,8 @@
     h1 { margin:0; font-size:clamp(32px,6vw,56px); }
     .status { color:var(--muted); font-weight:800; }
     .status.err { color:var(--danger); }
+    .board-section { display:grid; gap:10px; margin-top:18px; }
+    .board-section h2 { margin:0; font-size:22px; }
     .table-wrap { overflow:auto; border:1px solid var(--line); border-radius:16px; }
     table { width:100%; border-collapse:collapse; min-width:420px; background:white; }
     th,td { padding:12px 14px; border-bottom:1px solid var(--line); text-align:left; white-space:nowrap; }
@@ -32,18 +34,30 @@
     <section class="card">
       <div class="toolbar"><h1>M-board</h1><button id="refresh" type="button">Refresh</button></div>
       <p class="status" id="status">Loading...</p>
-      <div class="table-wrap" id="table-wrap"><div class="empty">Loading Google Sheet...</div></div>
+      <div class="board-section"><h2>NBRD</h2><div class="table-wrap" id="nbrd-wrap"><div class="empty">Loading NBRD...</div></div></div>
+      <div class="board-section"><h2>Boarding Scan</h2><div class="table-wrap" id="table-wrap"><div class="empty">Loading Google Sheet...</div></div></div>
     </section>
   </main>
   <script>
     const apiBase = (window.MU_API_BASE || 'https://api.mufcapp.net').replace(/\/$/, '');
     const statusEl = document.querySelector('#status');
     const tableWrap = document.querySelector('#table-wrap');
+    const nbrdWrap = document.querySelector('#nbrd-wrap');
     function escapeHtml(value) { return String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char])); }
     function setStatus(text, isError = false) { statusEl.textContent = text; statusEl.className = `status ${isError ? 'err' : ''}`.trim(); }
-    function renderRows(rows) {
-      if (!rows.length) { tableWrap.innerHTML = '<div class="empty">No Google Sheet rows found.</div>'; return; }
+    function renderNbrdRows(rows) {
+      if (!rows.length) { nbrdWrap.innerHTML = '<div class="empty">No NBRD rows found.</div>'; return; }
+      nbrdWrap.innerHTML = `<table><thead><tr><th>BN</th><th>Message</th></tr></thead><tbody>${rows.map((row) => `<tr><td class="nbrd">${escapeHtml(row.nbrdBn)}</td><td>${escapeHtml(row.nbrdDetail)}</td></tr>`).join('')}</tbody></table>`;
+    }
+    function renderScanRows(rows) {
+      if (!rows.length) { tableWrap.innerHTML = '<div class="empty">No boarding scan rows found.</div>'; return; }
       tableWrap.innerHTML = `<table><thead><tr><th>BN</th><th>Seat</th><th>Flight</th></tr></thead><tbody>${rows.map((row) => `<tr><td>${escapeHtml(row.bn)}</td><td>${escapeHtml(row.seat)}</td><td>${escapeHtml(row.flight)}</td></tr>`).join('')}</tbody></table>`;
+    }
+    function renderRows(rows) {
+      const nbrdRows = rows.filter((row) => row.nbrdBn || row.nbrdDetail);
+      const scanRows = rows.filter((row) => row.bn || row.seat || row.flight);
+      renderNbrdRows(nbrdRows);
+      renderScanRows(scanRows);
     }
     async function loadBoard() {
       try {
@@ -54,6 +68,7 @@
         renderRows(data.rows || []);
         setStatus(`Loaded ${(data.rows || []).length} rows.`);
       } catch (err) {
+        nbrdWrap.innerHTML = '<div class="empty">Unable to load NBRD rows.</div>';
         tableWrap.innerHTML = '<div class="empty">Unable to load Google Sheet.</div>';
         setStatus(err.message || 'Load failed', true);
       }
