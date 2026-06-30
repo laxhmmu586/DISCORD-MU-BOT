@@ -64,6 +64,7 @@ const {
   sendCbsCaseEmail,
   appendCbsScanRecord,
   appendCbsScanNbrdBns,
+  getCbsScanRecords,
   readNotesDriveStore,
   writeNotesDriveStore
 
@@ -1648,6 +1649,15 @@ app.post('/cbs-scan', async (req, res) => {
   }
 });
 
+
+app.get('/cbs-scan/records', async (req, res) => {
+  try {
+    const rows = await getCbsScanRecords();
+    return res.json({ ok: true, rows });
+  } catch (err) {
+    return res.status(422).json({ error: err?.message || 'CBS scan records load failed', code: err?.code || 'CBS_SCAN_RECORDS_ERROR' });
+  }
+});
 
 app.post('/cbs-scan/nbrd-bns', async (req, res) => {
   try {

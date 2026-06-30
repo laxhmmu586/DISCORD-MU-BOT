@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>M-board</title>
+  <style>
+    :root { --brand:#123a73; --line:#d7e1ec; --ink:#172033; --muted:#667085; --danger:#b42318; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:Inter,Arial,"Noto Sans SC",sans-serif; background:linear-gradient(135deg,#eaf4ff,#fdfefe); color:var(--ink); }
+    header { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:18px clamp(18px,4vw,52px); background:rgba(255,255,255,.92); border-bottom:1px solid var(--line); }
+    .brand { font-weight:900; color:var(--brand); letter-spacing:.08em; text-decoration:none; }
+    main { width:min(1100px,94vw); margin:28px auto; display:grid; gap:18px; }
+    .button,button { border:0; border-radius:999px; padding:12px 18px; font-weight:850; cursor:pointer; background:var(--brand); color:white; text-decoration:none; }
+    .card { background:#fff; border:1px solid var(--line); border-radius:22px; box-shadow:0 18px 42px rgba(22,48,76,.08); padding:22px; overflow:hidden; }
+    .toolbar { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
+    h1 { margin:0; font-size:clamp(32px,6vw,56px); }
+    .status { color:var(--muted); font-weight:800; }
+    .status.err { color:var(--danger); }
+    .table-wrap { overflow:auto; border:1px solid var(--line); border-radius:16px; }
+    table { width:100%; border-collapse:collapse; min-width:760px; background:white; }
+    th,td { padding:12px 14px; border-bottom:1px solid var(--line); text-align:left; white-space:nowrap; }
+    th { position:sticky; top:0; background:#f5f8fc; color:#344054; font-size:12px; text-transform:uppercase; letter-spacing:.04em; }
+    tr:last-child td { border-bottom:0; }
+    .empty { padding:28px; color:var(--muted); font-weight:800; text-align:center; }
+    .nbrd { color:#b42318; font-weight:900; }
+  </style>
+</head>
+<body>
+  <header><a class="brand" href="index.html">MUFC</a><a class="button" href="scan.html">Manual Boarding</a></header>
+  <main>
+    <section class="card">
+      <div class="toolbar"><h1>M-board</h1><button id="refresh" type="button">Refresh</button></div>
+      <p class="status" id="status">Loading...</p>
+      <div class="table-wrap" id="table-wrap"><div class="empty">Loading Google Sheet...</div></div>
+    </section>
+  </main>
+  <script>
+    const apiBase = (window.MU_API_BASE || 'https://api.mufcapp.net').replace(/\/$/, '');
+    const statusEl = document.querySelector('#status');
+    const tableWrap = document.querySelector('#table-wrap');
+    function escapeHtml(value) { return String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char])); }
+    function setStatus(text, isError = false) { statusEl.textContent = text; statusEl.className = `status ${isError ? 'err' : ''}`.trim(); }
+    function renderRows(rows) {
+      if (!rows.length) { tableWrap.innerHTML = '<div class="empty">No Google Sheet rows found.</div>'; return; }
+      tableWrap.innerHTML = `<table><thead><tr><th>Row</th><th>BN</th><th>Seat</th><th>Flight</th><th>Scanned At</th><th>L / NBRD BN</th></tr></thead><tbody>${rows.map((row) => `<tr><td>${escapeHtml(row.rowNumber)}</td><td>${escapeHtml(row.bn)}</td><td>${escapeHtml(row.seat)}</td><td>${escapeHtml(row.flight)}</td><td>${escapeHtml(row.scannedAt)}</td><td class="${row.nbrdBn ? 'nbrd' : ''}">${escapeHtml(row.nbrdBn)}</td></tr>`).join('')}</tbody></table>`;
+    }
+    async function loadBoard() {
+      try {
+        setStatus('Loading...');
+        const res = await fetch(`${apiBase}/cbs-scan/records`, { cache:'no-store' });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Load failed');
+        renderRows(data.rows || []);
+        setStatus(`Loaded ${(data.rows || []).length} rows.`);
+      } catch (err) {
+        tableWrap.innerHTML = '<div class="empty">Unable to load Google Sheet.</div>';
+        setStatus(err.message || 'Load failed', true);
+      }
+    }
+    document.querySelector('#refresh').addEventListener('click', loadBoard);
+    loadBoard();
+  </script>
+</body>
+</html>

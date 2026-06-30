@@ -2499,6 +2499,20 @@ async function appendCbsScanNbrdBns(values = []) {
   return { added, existing };
 }
 
+async function getCbsScanRecords() {
+  const rows = await getCbsScanSheetRows({ forceRefresh: true });
+  await ensureCbsScanSheetHeaders(rows);
+  const freshRows = await getCbsScanSheetRows({ forceRefresh: true });
+  return freshRows.slice(1).map((row, index) => ({
+    rowNumber: index + 2,
+    bn: normalizeCbsScanBn(row[0]),
+    seat: String(row[1] || '').trim(),
+    flight: String(row[2] || '').trim(),
+    scannedAt: String(row[4] || '').trim(),
+    nbrdBn: normalizeCbsScanBn(row[11]),
+  })).filter((row) => row.bn || row.seat || row.flight || row.scannedAt || row.nbrdBn);
+}
+
 function throwCbsScanNbrdMessage(bn) {
   const err = new Error('NBRD message');
   err.code = 'NBRD_MESSAGE';
@@ -3161,6 +3175,7 @@ module.exports = {
   sendCbsCaseEmail,
   appendCbsScanRecord,
   appendCbsScanNbrdBns,
+  getCbsScanRecords,
   readNotesDriveStore,
   writeNotesDriveStore
 };
