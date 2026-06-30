@@ -6165,7 +6165,7 @@
       }
 
       function ckinNbrdDetails(row) {
-        return ckinNbrdLines(row).map((line) => `CKIN/NBRD: ${line}`);
+        return ckinNbrdLines(row);
       }
 
       function rowHasCkinNbrdIssue(row) {
@@ -6183,12 +6183,12 @@
         }
         const entries = [...entriesByBn.values()];
         const syncKey = [sy?.flightNo || "SY", sy?.flightDate || "", entries.map((entry) => `${entry.bn}:${entry.detail}`).join(",")].join("|");
-        if (!entries.length || syncKey === lastNbrdSheetSyncKey) return;
+        if (syncKey === lastNbrdSheetSyncKey) return;
         lastNbrdSheetSyncKey = syncKey;
         apiJson("/cbs-scan/nbrd-bns", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ entries }),
+          body: JSON.stringify({ entries, replace: true }),
         }).catch((error) => {
           lastNbrdSheetSyncKey = "";
           console.warn("Unable to sync CKIN/NBRD BN list to boarding sheet.", error);

@@ -1670,7 +1670,7 @@ app.get('/cbs-scan/records', async (req, res) => {
 app.post('/cbs-scan/nbrd-bns', async (req, res) => {
   try {
     const entries = Array.isArray(req.body?.entries) ? req.body.entries : (Array.isArray(req.body?.bns) ? req.body.bns : [req.body?.bn].filter(Boolean));
-    const result = await appendCbsScanNbrdBns(entries);
+    const result = await appendCbsScanNbrdBns(entries, { replace: req.body?.replace === true });
     return res.json({ ok: true, ...result });
   } catch (err) {
     return res.status(422).json({ error: err?.message || 'NBRD BN save failed', code: err?.code || 'NBRD_SAVE_ERROR' });
