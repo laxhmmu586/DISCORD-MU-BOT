@@ -2537,19 +2537,71 @@ async function appendCbsScanNbrdBns(values = [], options = {}) {
   return { added, existing, cleared: Boolean(options.replace) };
 }
 
+function isCbsScanEnteredCell(cell = {}) {
+  const color = cell.userEnteredFormat?.backgroundColor || cell.effectiveFormat?.backgroundColor || {};
+  const red = Number(color.red || 0);
+  const green = Number(color.green || 0);
+  const blue = Number(color.blue || 0);
+  return green > red + 0.03 && green > blue + 0.03;
+}
+
+async function getCbsScanEnteredRowNumbers(title) {
+  const res = await sheets.spreadsheets.get({
+    spreadsheetId: CBS_SCAN_SHEET_ID,
+    ranges: [`${escapeSheetTitle(title)}!A2:E`],
+    includeGridData: true,
+    fields: 'sheets(data(rowData(values(userEnteredFormat(backgroundColor),effectiveFormat(backgroundColor)))))'
+  });
+  const rowData = res.data.sheets?.[0]?.data?.[0]?.rowData || [];
+  const entered = new Set();
+  rowData.forEach((row, index) => {
+    if ((row.values || []).some(isCbsScanEnteredCell)) entered.add(index + 2);
+  });
+  return entered;
+}
+
 async function getCbsScanRecords() {
   const rows = await getCbsScanSheetRows({ forceRefresh: true });
   await ensureCbsScanSheetHeaders(rows);
+  const title = await getCbsScanSheetTitle();
   const freshRows = await getCbsScanSheetRows({ forceRefresh: true });
+  const enteredRows = await getCbsScanEnteredRowNumbers(title);
   return freshRows.slice(1).map((row, index) => ({
     rowNumber: index + 2,
     bn: normalizeCbsScanBn(row[0]),
     seat: String(row[1] || '').trim(),
     flight: String(row[2] || '').trim(),
     scannedAt: String(row[4] || '').trim(),
+    entered: enteredRows.has(index + 2),
     nbrdBn: normalizeCbsScanBn(row[11]),
     nbrdDetail: normalizeCbsScanNbrdDetail(row[12]),
   })).filter((row) => row.bn || row.seat || row.flight || row.scannedAt || row.nbrdBn || row.nbrdDetail);
+}
+
+async function setCbsScanRecordEntered(rowNumber, entered = false) {
+  const targetRow = Number(rowNumber);
+  if (!Number.isInteger(targetRow) || targetRow < 2) throw new Error('Invalid scan row number.');
+  const backgroundColor = entered ? { red: 0.91, green: 0.97, blue: 0.93 } : { red: 1, green: 1, blue: 1 };
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId: CBS_SCAN_SHEET_ID,
+    requestBody: {
+      requests: [{
+        repeatCell: {
+          range: {
+            sheetId: CBS_SCAN_SHEET_GID,
+            startRowIndex: targetRow - 1,
+            endRowIndex: targetRow,
+            startColumnIndex: 0,
+            endColumnIndex: 5
+          },
+          cell: { userEnteredFormat: { backgroundColor } },
+          fields: 'userEnteredFormat.backgroundColor'
+        }
+      }]
+    }
+  });
+  cbsScanSheetCache = { loadedAt: 0, rows: [] };
+  return { rowNumber: targetRow, entered: Boolean(entered) };
 }
 
 function throwCbsScanNbrdMessage(bn, detail = '') {
@@ -3212,6 +3264,7 @@ module.exports = {
   appendCbsScanRecord,
   appendCbsScanNbrdBns,
   getCbsScanRecords,
+  setCbsScanRecordEntered,
   readNotesDriveStore,
   writeNotesDriveStore
 };
