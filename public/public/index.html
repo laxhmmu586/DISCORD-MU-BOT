@@ -6174,16 +6174,21 @@
 
       let lastNbrdSheetSyncKey = "";
       function syncCkinNbrdBnsToBoardingSheet(sy = currentSy) {
-        const bns = [...new Set((enrichRowsWithPassengerData((sy?.bnAudit || []).filter(rowHasCkinNbrdIssue)) || [])
-          .map((row) => String(row.bn || "").replace(/\D/g, "").padStart(4, "0"))
-          .filter((bn) => /^\d{4}$/.test(bn)))];
-        const syncKey = [sy?.flightNo || "SY", sy?.flightDate || "", bns.join(",")].join("|");
-        if (!bns.length || syncKey === lastNbrdSheetSyncKey) return;
+        const entriesByBn = new Map();
+        for (const row of (enrichRowsWithPassengerData((sy?.bnAudit || []).filter(rowHasCkinNbrdIssue)) || [])) {
+          const bn = String(row.bn || "").replace(/\D/g, "").padStart(4, "0");
+          if (!/^\d{4}$/.test(bn)) continue;
+          const detail = ckinNbrdDetails(row).join(" | ");
+          entriesByBn.set(bn, { bn, detail });
+        }
+        const entries = [...entriesByBn.values()];
+        const syncKey = [sy?.flightNo || "SY", sy?.flightDate || "", entries.map((entry) => `${entry.bn}:${entry.detail}`).join(",")].join("|");
+        if (!entries.length || syncKey === lastNbrdSheetSyncKey) return;
         lastNbrdSheetSyncKey = syncKey;
         apiJson("/cbs-scan/nbrd-bns", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ bns }),
+          body: JSON.stringify({ entries }),
         }).catch((error) => {
           lastNbrdSheetSyncKey = "";
           console.warn("Unable to sync CKIN/NBRD BN list to boarding sheet.", error);

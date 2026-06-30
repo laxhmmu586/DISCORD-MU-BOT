@@ -2436,7 +2436,7 @@ async function getCbsScanSheetRows(options = {}) {
   const title = await getCbsScanSheetTitle();
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: CBS_SCAN_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A:L`
+    range: `${escapeSheetTitle(title)}!A:M`
   });
   const rows = res.data.values || [];
   cbsScanSheetCache = { loadedAt: Date.now(), rows };
@@ -2454,6 +2454,12 @@ async function ensureCbsScanSheetHeaders(rows) {
     valueInputOption: 'RAW',
     requestBody: { values: [CBS_SCAN_HEADERS] }
   });
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: CBS_SCAN_SHEET_ID,
+    range: `${escapeSheetTitle(title)}!L1:M1`,
+    valueInputOption: 'RAW',
+    requestBody: { values: [['NBRD BN', 'CKIN NBRD Detail']] }
+  });
   cbsScanSheetCache = { loadedAt: 0, rows: [] };
 }
 
@@ -2463,37 +2469,56 @@ function normalizeCbsScanBn(value) {
 }
 
 
-async function appendCbsScanNbrdBn(title, bn, dataRows) {
-  const existing = dataRows.find((row) => normalizeCbsScanBn(row[11]) === bn);
-  if (existing) return false;
-  const nextOffset = dataRows.findIndex((row) => !normalizeCbsScanBn(row[11]));
-  const rowNumber = nextOffset === -1 ? dataRows.length + 2 : nextOffset + 2;
+function normalizeCbsScanNbrdEntry(value) {
+  if (value && typeof value === 'object') {
+    return {
+      bn: normalizeCbsScanBn(value.bn),
+      detail: String(value.detail || value.message || value.info || '').trim()
+    };
+  }
+  return { bn: normalizeCbsScanBn(value), detail: '' };
+}
+
+async function writeCbsScanNbrdDetail(title, rowNumber, bn, detail = '') {
   await sheets.spreadsheets.values.update({
     spreadsheetId: CBS_SCAN_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!L${rowNumber}`,
+    range: `${escapeSheetTitle(title)}!L${rowNumber}:M${rowNumber}`,
     valueInputOption: 'RAW',
-    requestBody: { values: [[bn]] }
+    requestBody: { values: [[bn, detail]] }
   });
   cbsScanSheetCache = { loadedAt: 0, rows: [] };
+}
+
+async function appendCbsScanNbrdBn(title, bn, dataRows, detail = '') {
+  const existingIndex = dataRows.findIndex((row) => normalizeCbsScanBn(row[11]) === bn);
+  if (existingIndex !== -1) {
+    const rowNumber = existingIndex + 2;
+    if (detail && String(dataRows[existingIndex][12] || '').trim() !== detail) await writeCbsScanNbrdDetail(title, rowNumber, bn, detail);
+    return false;
+  }
+  const nextOffset = dataRows.findIndex((row) => !normalizeCbsScanBn(row[11]));
+  const rowNumber = nextOffset === -1 ? dataRows.length + 2 : nextOffset + 2;
+  await writeCbsScanNbrdDetail(title, rowNumber, bn, detail);
   return true;
 }
 
 async function appendCbsScanNbrdBns(values = []) {
-  const bns = [...new Set((Array.isArray(values) ? values : [values]).map(normalizeCbsScanBn).filter(Boolean))];
-  if (!bns.length) return { added: [], existing: [] };
+  const entriesByBn = new Map();
+  for (const value of (Array.isArray(values) ? values : [values])) {
+    const entry = normalizeCbsScanNbrdEntry(value);
+    if (entry.bn) entriesByBn.set(entry.bn, entry);
+  }
+  const entries = [...entriesByBn.values()];
+  if (!entries.length) return { added: [], existing: [] };
   const title = await getCbsScanSheetTitle();
   const rows = await getCbsScanSheetRows({ forceRefresh: true });
   await ensureCbsScanSheetHeaders(rows);
   let dataRows = (await getCbsScanSheetRows({ forceRefresh: true })).slice(1);
   const added = [];
   const existing = [];
-  for (const bn of bns) {
-    if (dataRows.find((row) => normalizeCbsScanBn(row[11]) === bn)) {
-      existing.push(bn);
-      continue;
-    }
-    await appendCbsScanNbrdBn(title, bn, dataRows);
-    added.push(bn);
+  for (const entry of entries) {
+    const didAdd = await appendCbsScanNbrdBn(title, entry.bn, dataRows, entry.detail);
+    (didAdd ? added : existing).push(entry.bn);
     dataRows = (await getCbsScanSheetRows({ forceRefresh: true })).slice(1);
   }
   return { added, existing };
@@ -2510,13 +2535,16 @@ async function getCbsScanRecords() {
     flight: String(row[2] || '').trim(),
     scannedAt: String(row[4] || '').trim(),
     nbrdBn: normalizeCbsScanBn(row[11]),
-  })).filter((row) => row.bn || row.seat || row.flight || row.scannedAt || row.nbrdBn);
+    nbrdDetail: String(row[12] || '').trim(),
+  })).filter((row) => row.bn || row.seat || row.flight || row.scannedAt || row.nbrdBn || row.nbrdDetail);
 }
 
-function throwCbsScanNbrdMessage(bn) {
-  const err = new Error('NBRD message');
+function throwCbsScanNbrdMessage(bn, detail = '') {
+  const message = detail ? `NBRD message: ${detail}` : 'NBRD message';
+  const err = new Error(message);
   err.code = 'NBRD_MESSAGE';
   err.bn = bn;
+  err.detail = detail;
   throw err;
 }
 
@@ -2532,7 +2560,7 @@ async function appendCbsScanRecord(record = {}) {
   await ensureCbsScanSheetHeaders(rows);
   const dataRows = (await getCbsScanSheetRows({ forceRefresh: true })).slice(1);
   const nbrdExisting = dataRows.find((row) => normalizeCbsScanBn(row[11]) === bn);
-  if (nbrdExisting) throwCbsScanNbrdMessage(bn);
+  if (nbrdExisting) throwCbsScanNbrdMessage(bn, String(nbrdExisting[12] || '').trim());
   const existing = dataRows.find((row) => normalizeCbsScanBn(row[0]) === bn);
   if (existing) {
     const err = new Error(`Duplicate BN ${bn}.`);
