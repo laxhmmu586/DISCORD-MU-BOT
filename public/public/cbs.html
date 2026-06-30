@@ -50,6 +50,8 @@
     .tracking-step.is-done:not(:last-child)::after { background:var(--dot); }
     .tracking-dot { position:relative; z-index:1; width:24px; height:24px; border-radius:999px; border:5px solid #e4e7ec; background:#98a2b3; box-shadow:0 0 0 5px rgba(152,162,179,.08); }
     .tracking-step.is-done .tracking-dot, .tracking-step.is-active .tracking-dot { border-color:#b7f7cd; background:var(--dot); box-shadow:0 0 0 6px rgba(18,183,106,.12); }
+    .tracking-step--closed.is-done, .tracking-step--closed.is-active { color:var(--brand); }
+    .tracking-step--closed.is-done .tracking-dot, .tracking-step--closed.is-active .tracking-dot { border-color:#cfe1f8; background:var(--brand); box-shadow:0 0 0 6px rgba(18,58,115,.12); }
     .tracking-label { font-size:10px; line-height:1.2; white-space:nowrap; }
     .tracking-cell .tracking-line { min-width:0; }
     .tracking-cell .tracking-step { min-width:58px; }
@@ -66,6 +68,7 @@
     .tracking-event:last-child::before { display:none; }
     .tracking-event-time { position:relative; z-index:1; display:grid; grid-template-columns:46px 1fr; gap:10px; color:#fff; font-weight:900; }
     .tracking-event-time::before { content:""; position:relative; z-index:1; width:16px; height:16px; margin:4px auto 0; border-radius:999px; background:#12b76a; border:5px solid #e7f8ef; box-shadow:0 0 0 1px rgba(255,255,255,.6); }
+    .tracking-event--closed .tracking-event-time::before { background:var(--brand); border-color:#cfe1f8; }
     .tracking-event-date { display:block; color:#b8d7df; font-size:11px; font-weight:800; }
     .tracking-event-title { margin:0 0 8px; color:#fff; font-weight:950; font-size:16px; }
     .tracking-event-card { display:grid; gap:8px; padding:12px 14px; border:1px solid rgba(216,239,247,.22); border-radius:10px; background:rgba(255,255,255,.13); }
@@ -217,7 +220,7 @@
         const stageText = TRACKING_STAGES.find((stage) => stage.key === event.key)?.text || event.title || 'Update';
         const time = formatEventTime(event.at).time;
         const timeHtml = time !== '--:--' ? `<span class="tracking-time">${escapeHtml(time)}</span>` : '';
-        return `<span class="tracking-step ${state}"><span class="tracking-dot"></span><span class="tracking-label">${escapeHtml(stageText)}</span>${timeHtml}</span>`;
+        return `<span class="tracking-step tracking-step--${escapeHtml(event.key)} ${state}"><span class="tracking-dot"></span><span class="tracking-label">${escapeHtml(stageText)}</span>${timeHtml}</span>`;
       }).join('')}</div>`;
     }
     function formatEventTime(value) {
@@ -232,7 +235,7 @@
         const time = formatEventTime(event.at);
         const eventFields = (event.fields || []).length ? event.fields : (event.note ? [[label('Detail', '详情'), event.note]] : []);
         const fields = eventFields.map(([key, value]) => `<div class="tracking-event-field"><b>${escapeHtml(key)}</b><span>${escapeHtml(renderValue(value))}</span></div>`).join('');
-        return `<article class="tracking-event"><div class="tracking-event-time"><span>${escapeHtml(time.time)}<span class="tracking-event-date">${escapeHtml(time.date)}</span></span></div><div><h3 class="tracking-event-title">${escapeHtml(event.title)}</h3><div class="tracking-event-card">${fields}</div></div></article>`;
+        return `<article class="tracking-event tracking-event--${escapeHtml(event.key)}"><div class="tracking-event-time"><span>${escapeHtml(time.time)}<span class="tracking-event-date">${escapeHtml(time.date)}</span></span></div><div><h3 class="tracking-event-title">${escapeHtml(event.title)}</h3><div class="tracking-event-card">${fields}</div></div></article>`;
       }).join('')}</div></section>`;
     }
     function detailRows(row) {
