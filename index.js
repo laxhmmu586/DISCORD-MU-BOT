@@ -1625,8 +1625,8 @@ app.post('/cbs-missing-bags/:rowNumber/acknowledge', async (req, res) => {
 function parseCbsPdf417(rawValue = '') {
   const rawScan = String(rawValue || '').trim();
   const compact = rawScan.replace(/\s+/g, ' ');
-  const flightMatch = compact.match(/\bLAXPVGMU\s*(\d{4})\b/i);
-  const flightNumber = flightMatch?.[1] || '';
+  const flightMatch = compact.match(/\b(?:[A-Z]{6})?MU\s*(\d{3,4})\b/i);
+  const flightNumber = flightMatch?.[1]?.padStart(4, '0') || '';
   if (!flightNumber) throw new Error('Flight not found.');
   if (flightNumber !== '0586') {
     const err = new Error('wrong flight');
@@ -1635,7 +1635,7 @@ function parseCbsPdf417(rawValue = '') {
     throw err;
   }
 
-  const detailMatch = rawScan.match(/(?:^|\D)(?:1)?81R(\d{2,3}[A-Z])(\d{4})\b/i);
+  const detailMatch = rawScan.match(/(?:^|\D)(?:1)?81[A-Z](\d{2,3}[A-Z])(\d{4})\b/i);
   if (!detailMatch) throw new Error('Seat/BN segment not found.');
   const seat = detailMatch[1].toUpperCase().replace(/^0+(?=\d)/, '');
   return {

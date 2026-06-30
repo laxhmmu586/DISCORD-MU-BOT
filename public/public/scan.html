@@ -58,7 +58,32 @@
     let scanBusy = false;
     let lastScanText = '';
     let lastScanAt = 0;
+    const cameraConstraints = {
+      video: {
+        facingMode: { ideal: 'environment' },
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
+        focusMode: { ideal: 'continuous' },
+        advanced: [{ focusMode: 'continuous' }]
+      },
+      audio: false
+    };
     function setStatus(text, cls = '') { statusEl.textContent = text; statusEl.className = `status ${cls}`.trim(); }
+    async function applyCameraFocus() {
+      const track = preview.srcObject?.getVideoTracks?.()[0];
+      if (!track?.applyConstraints) return;
+      const capabilities = track.getCapabilities?.() || {};
+      const constraints = { advanced: [] };
+      if (Array.isArray(capabilities.focusMode) && capabilities.focusMode.includes('continuous')) constraints.advanced.push({ focusMode: 'continuous' });
+      if (Array.isArray(capabilities.exposureMode) && capabilities.exposureMode.includes('continuous')) constraints.advanced.push({ exposureMode: 'continuous' });
+      if (Array.isArray(capabilities.whiteBalanceMode) && capabilities.whiteBalanceMode.includes('continuous')) constraints.advanced.push({ whiteBalanceMode: 'continuous' });
+      if (capabilities.zoom && Number.isFinite(capabilities.zoom.min) && Number.isFinite(capabilities.zoom.max)) {
+        const targetZoom = Math.min(capabilities.zoom.max, Math.max(capabilities.zoom.min, 1.4));
+        constraints.advanced.push({ zoom: targetZoom });
+      }
+      if (!constraints.advanced.length) return;
+      await track.applyConstraints(constraints).catch(() => {});
+    }
     function showMessage(message, title = 'Message') { document.querySelector('#dialog-title').textContent = title; dialogMessage.textContent = message; dialog.hidden = false; dialogOk.focus(); }
     function hideMessage() { dialog.hidden = true; }
     dialogOk.addEventListener('click', hideMessage);
@@ -77,8 +102,12 @@
     document.querySelector('#start').addEventListener('click', async () => {
       try {
         if (!window.ZXingBrowser) throw new Error('ZXing library did not load.');
-        const reader = new ZXingBrowser.BrowserMultiFormatReader();
-        controls = await reader.decodeFromVideoDevice(undefined, preview, (result, error) => {
+        const Reader = ZXingBrowser.BrowserPDF417Reader || ZXingBrowser.BrowserMultiFormatReader;
+        const reader = new Reader();
+        const decode = typeof reader.decodeFromConstraints === 'function'
+          ? reader.decodeFromConstraints.bind(reader, cameraConstraints)
+          : reader.decodeFromVideoDevice.bind(reader, undefined);
+        controls = await decode(preview, (result, error) => {
           if (!result || scanBusy) return;
           const text = result.getText();
           const now = Date.now();
@@ -89,6 +118,7 @@
           setStatus('Code detected. Saving before next scan...');
           handleText(text).finally(() => { setTimeout(() => { scanBusy = false; if (controls) setStatus('Scanning PDF417...'); }, 1500); });
         });
+        await applyCameraFocus();
         setStatus('Scanning PDF417...');
       } catch (err) { setStatus(err.message, 'err'); showMessage(err.message); }
     });
