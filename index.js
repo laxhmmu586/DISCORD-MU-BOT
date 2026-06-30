@@ -831,6 +831,14 @@ app.use(
   express.static('public')
 );
 
+app.get(['/scan.html', '/scan'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'public', 'scan.html'));
+});
+
+app.get(['/m-board.html', '/m-board'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'public', 'm-board.html'));
+});
+
 const REVIEW_STORE_PATH = path.join(__dirname, 'securityReviews.json');
 const WARNING_ACK_STORE_PATH = path.join(__dirname, 'warningAcknowledgements.json');
 const NOTES_STORE_PATH = path.join(__dirname, 'notesStore.json');

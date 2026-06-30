@@ -18,7 +18,7 @@
     .status { color:var(--muted); font-weight:800; }
     .status.err { color:var(--danger); }
     .table-wrap { overflow:auto; border:1px solid var(--line); border-radius:16px; }
-    table { width:100%; border-collapse:collapse; min-width:760px; background:white; }
+    table { width:100%; border-collapse:collapse; min-width:420px; background:white; }
     th,td { padding:12px 14px; border-bottom:1px solid var(--line); text-align:left; white-space:nowrap; }
     th { position:sticky; top:0; background:#f5f8fc; color:#344054; font-size:12px; text-transform:uppercase; letter-spacing:.04em; }
     tr:last-child td { border-bottom:0; }
@@ -27,7 +27,7 @@
   </style>
 </head>
 <body>
-  <header><a class="brand" href="index.html">MUFC</a><a class="button" href="scan.html">Manual Boarding</a></header>
+  <header><a class="brand" href="index.html">MUFC</a><a class="button" href="/scan.html">Manual Boarding</a></header>
   <main>
     <section class="card">
       <div class="toolbar"><h1>M-board</h1><button id="refresh" type="button">Refresh</button></div>
@@ -43,7 +43,7 @@
     function setStatus(text, isError = false) { statusEl.textContent = text; statusEl.className = `status ${isError ? 'err' : ''}`.trim(); }
     function renderRows(rows) {
       if (!rows.length) { tableWrap.innerHTML = '<div class="empty">No Google Sheet rows found.</div>'; return; }
-      tableWrap.innerHTML = `<table><thead><tr><th>Row</th><th>BN</th><th>Seat</th><th>Flight</th><th>Scanned At</th><th>L / NBRD BN</th></tr></thead><tbody>${rows.map((row) => `<tr><td>${escapeHtml(row.rowNumber)}</td><td>${escapeHtml(row.bn)}</td><td>${escapeHtml(row.seat)}</td><td>${escapeHtml(row.flight)}</td><td>${escapeHtml(row.scannedAt)}</td><td class="${row.nbrdBn ? 'nbrd' : ''}">${escapeHtml(row.nbrdBn)}</td></tr>`).join('')}</tbody></table>`;
+      tableWrap.innerHTML = `<table><thead><tr><th>BN</th><th>Seat</th><th>Flight</th></tr></thead><tbody>${rows.map((row) => `<tr><td>${escapeHtml(row.bn)}</td><td>${escapeHtml(row.seat)}</td><td>${escapeHtml(row.flight)}</td></tr>`).join('')}</tbody></table>`;
     }
     async function loadBoard() {
       try {
