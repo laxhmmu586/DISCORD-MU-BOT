@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>CBS PDF417 Scan</title>
+  <title>Manual Boarding</title>
   <style>
     :root { --brand:#123a73; --line:#d7e1ec; --ink:#172033; --muted:#667085; --ok:#087443; --danger:#b42318; }
     * { box-sizing:border-box; }
@@ -26,20 +26,14 @@
   </style>
 </head>
 <body>
-  <header><a class="brand" href="index.html">MUFC</a><a class="button" href="cbs.html">CBS</a></header>
+  <header><a class="brand" href="index.html">MUFC</a></header>
   <main>
     <section class="card">
-      <h1>CBS PDF417 Scan</h1>
-      <p>Scan a PDF417 boarding pass. Only flight <strong>MU 0586</strong> is accepted.</p>
+      <h1>Manual Boarding</h1>
       <video id="preview" muted playsinline></video>
       <div class="actions"><button id="start" type="button">Start Scan</button><button class="secondary" id="stop" type="button">Stop</button></div>
       <p class="status" id="status">Ready.</p>
       <div class="result" id="result" hidden></div>
-    </section>
-    <section class="card">
-      <h2>Manual test</h2>
-      <textarea id="manual" placeholder="Paste PDF417 text here"></textarea>
-      <div class="actions"><button id="submit-manual" type="button">Analyze & Save</button></div>
     </section>
   </main>
   <script src="https://unpkg.com/@zxing/browser@latest"></script>
@@ -49,6 +43,9 @@
     const resultEl = document.querySelector('#result');
     const preview = document.querySelector('#preview');
     let controls = null;
+    let scanBusy = false;
+    let lastScanText = '';
+    let lastScanAt = 0;
     function setStatus(text, cls = '') { statusEl.textContent = text; statusEl.className = `status ${cls}`.trim(); }
     function renderResult(data) { resultEl.hidden = false; resultEl.innerHTML = `<div><b>Flight</b>${data.flight || '0586'}</div><div><b>Seat</b>${data.seat || ''}</div><div><b>BN</b>${data.bn || ''}</div>`; }
     async function saveScan(rawScan) {
@@ -61,21 +58,25 @@
       }
       renderResult(data); setStatus(`Saved BN ${data.bn} / Seat ${data.seat}`, 'ok');
     }
-    async function handleText(text) { try { setStatus('Saving...'); await saveScan(text); } catch (err) { setStatus(err.message, 'err'); } }
+    async function handleText(text) { try { setStatus('Saving...'); await saveScan(text); } catch (err) { setStatus(err.message, 'err'); } finally { setTimeout(() => { if (controls) setStatus('Scanning PDF417...'); }, 900); } }
     document.querySelector('#start').addEventListener('click', async () => {
       try {
         if (!window.ZXingBrowser) throw new Error('ZXing library did not load.');
         const reader = new ZXingBrowser.BrowserMultiFormatReader();
         controls = await reader.decodeFromVideoDevice(undefined, preview, (result, error) => {
-          if (!result) return;
-          controls?.stop(); controls = null;
-          handleText(result.getText());
+          if (!result || scanBusy) return;
+          const text = result.getText();
+          const now = Date.now();
+          if (text === lastScanText && now - lastScanAt < 2500) return;
+          scanBusy = true;
+          lastScanText = text;
+          lastScanAt = now;
+          handleText(text).finally(() => { scanBusy = false; });
         });
         setStatus('Scanning PDF417...');
       } catch (err) { setStatus(err.message, 'err'); alert(err.message); }
     });
     document.querySelector('#stop').addEventListener('click', () => { controls?.stop(); controls = null; setStatus('Stopped.'); });
-    document.querySelector('#submit-manual').addEventListener('click', () => handleText(document.querySelector('#manual').value));
   </script>
 </body>
 </html>
