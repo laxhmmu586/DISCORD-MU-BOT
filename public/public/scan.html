@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CBS PDF417 Scan</title>
+  <style>
+    :root { --brand:#123a73; --line:#d7e1ec; --ink:#172033; --muted:#667085; --ok:#087443; --danger:#b42318; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:Inter,Arial,"Noto Sans SC",sans-serif; background:linear-gradient(135deg,#eaf4ff,#fdfefe); color:var(--ink); }
+    header { display:flex; align-items:center; justify-content:space-between; padding:18px clamp(18px,4vw,52px); background:rgba(255,255,255,.92); border-bottom:1px solid var(--line); }
+    .brand { font-weight:900; color:var(--brand); letter-spacing:.08em; text-decoration:none; }
+    main { width:min(860px,94vw); margin:28px auto; display:grid; gap:18px; }
+    .card { background:#fff; border:1px solid var(--line); border-radius:22px; box-shadow:0 18px 42px rgba(22,48,76,.08); padding:22px; }
+    video { width:100%; max-height:58vh; border-radius:18px; background:#111; object-fit:cover; }
+    button,a.button { border:0; border-radius:999px; padding:12px 18px; font-weight:850; cursor:pointer; background:var(--brand); color:white; text-decoration:none; }
+    button.secondary { background:#e8eef7; color:var(--brand); }
+    .actions { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    .status { min-height:28px; font-weight:900; }
+    .status.ok { color:var(--ok); } .status.err { color:var(--danger); }
+    textarea { width:100%; min-height:110px; border:1px solid var(--line); border-radius:14px; padding:12px; font:inherit; }
+    .result { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+    .result div { padding:12px; border:1px solid var(--line); border-radius:14px; background:#fbfdff; }
+    .result b { display:block; color:var(--muted); font-size:12px; text-transform:uppercase; }
+    @media (max-width:640px){ .result{grid-template-columns:1fr} }
+  </style>
+</head>
+<body>
+  <header><a class="brand" href="index.html">MUFC</a><a class="button" href="cbs.html">CBS</a></header>
+  <main>
+    <section class="card">
+      <h1>CBS PDF417 Scan</h1>
+      <p>Scan a PDF417 boarding pass. Only flight <strong>MU 0586</strong> is accepted.</p>
+      <video id="preview" muted playsinline></video>
+      <div class="actions"><button id="start" type="button">Start Scan</button><button class="secondary" id="stop" type="button">Stop</button></div>
+      <p class="status" id="status">Ready.</p>
+      <div class="result" id="result" hidden></div>
+    </section>
+    <section class="card">
+      <h2>Manual test</h2>
+      <textarea id="manual" placeholder="Paste PDF417 text here"></textarea>
+      <div class="actions"><button id="submit-manual" type="button">Analyze & Save</button></div>
+    </section>
+  </main>
+  <script src="https://unpkg.com/@zxing/browser@latest"></script>
+  <script>
+    const apiBase = (window.MU_API_BASE || 'https://api.mufcapp.net').replace(/\/$/, '');
+    const statusEl = document.querySelector('#status');
+    const resultEl = document.querySelector('#result');
+    const preview = document.querySelector('#preview');
+    let controls = null;
+    function setStatus(text, cls = '') { statusEl.textContent = text; statusEl.className = `status ${cls}`.trim(); }
+    function renderResult(data) { resultEl.hidden = false; resultEl.innerHTML = `<div><b>Flight</b>${data.flight || '0586'}</div><div><b>Seat</b>${data.seat || ''}</div><div><b>BN</b>${data.bn || ''}</div>`; }
+    async function saveScan(rawScan) {
+      const res = await fetch(`${apiBase}/cbs-scan`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ rawScan }) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const message = data.code === 'WRONG_FLIGHT' ? 'wrong flight' : (data.code === 'DUPLICATE_BN' ? `Duplicate BN: ${String(rawScan).match(/81R\d{2,3}[A-Z](\d{4})/i)?.[1] || ''}` : (data.error || 'Scan failed'));
+        alert(message);
+        throw new Error(message);
+      }
+      renderResult(data); setStatus(`Saved BN ${data.bn} / Seat ${data.seat}`, 'ok');
+    }
+    async function handleText(text) { try { setStatus('Saving...'); await saveScan(text); } catch (err) { setStatus(err.message, 'err'); } }
+    document.querySelector('#start').addEventListener('click', async () => {
+      try {
+        if (!window.ZXingBrowser) throw new Error('ZXing library did not load.');
+        const reader = new ZXingBrowser.BrowserMultiFormatReader();
+        controls = await reader.decodeFromVideoDevice(undefined, preview, (result, error) => {
+          if (!result) return;
+          controls?.stop(); controls = null;
+          handleText(result.getText());
+        });
+        setStatus('Scanning PDF417...');
+      } catch (err) { setStatus(err.message, 'err'); alert(err.message); }
+    });
+    document.querySelector('#stop').addEventListener('click', () => { controls?.stop(); controls = null; setStatus('Stopped.'); });
+    document.querySelector('#submit-manual').addEventListener('click', () => handleText(document.querySelector('#manual').value));
+  </script>
+</body>
+</html>
