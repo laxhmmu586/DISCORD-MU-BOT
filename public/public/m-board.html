@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>M-board</title>
+  <style>
+    :root { --brand:#123a73; --line:#d7e1ec; --ink:#172033; --muted:#667085; --danger:#b42318; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:Inter,Arial,"Noto Sans SC",sans-serif; background:linear-gradient(135deg,#eaf4ff,#fdfefe); color:var(--ink); }
+    header { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:18px clamp(18px,4vw,52px); background:rgba(255,255,255,.92); border-bottom:1px solid var(--line); }
+    .brand { font-weight:900; color:var(--brand); letter-spacing:.08em; text-decoration:none; }
+    main { width:min(1100px,94vw); margin:28px auto; display:grid; gap:18px; }
+    .button,button { border:0; border-radius:999px; padding:12px 18px; font-weight:850; cursor:pointer; background:var(--brand); color:white; text-decoration:none; }
+    .card { background:#fff; border:1px solid var(--line); border-radius:22px; box-shadow:0 18px 42px rgba(22,48,76,.08); padding:22px; overflow:hidden; }
+    .toolbar { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
+    h1 { margin:0; font-size:clamp(32px,6vw,56px); }
+    .status { color:var(--muted); font-weight:800; }
+    .status.err { color:var(--danger); }
+    .board-section { display:grid; gap:10px; margin-top:18px; }
+    .board-section h2 { margin:0; font-size:22px; }
+    .table-wrap { overflow:auto; border:1px solid var(--line); border-radius:16px; }
+    table { width:100%; border-collapse:collapse; min-width:420px; background:white; }
+    th,td { padding:12px 14px; border-bottom:1px solid var(--line); text-align:left; white-space:nowrap; }
+    th { position:sticky; top:0; background:#f5f8fc; color:#344054; font-size:12px; text-transform:uppercase; letter-spacing:.04em; }
+    tr:last-child td { border-bottom:0; }
+    .empty { padding:28px; color:var(--muted); font-weight:800; text-align:center; }
+    .nbrd { color:#b42318; font-weight:900; }
+    tr[data-row-number] { cursor:pointer; }
+    tr.is-entered td { background:#e8f7ed; color:#087443; font-weight:900; }
+    tr.is-entered td:first-child { border-left:5px solid #087443; }
+  </style>
+</head>
+<body>
+  <header><a class="brand" href="index.html">MUFC</a><a class="button" href="/scan.html">Manual Boarding</a></header>
+  <main>
+    <section class="card">
+      <div class="toolbar"><h1>M-board</h1><button id="refresh" type="button">Refresh</button></div>
+      <p class="status" id="status">Loading...</p>
+      <div class="board-section"><h2>NBRD</h2><div class="table-wrap" id="nbrd-wrap"><div class="empty">Loading NBRD...</div></div></div>
+      <div class="board-section"><h2>Boarding Scan</h2><div class="table-wrap" id="table-wrap"><div class="empty">Loading Google Sheet...</div></div></div>
+    </section>
+  </main>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="/__/firebase/init.js"></script>
+  <script>
+    const auth = window.firebase?.apps?.length && window.firebase?.auth ? firebase.auth() : null;
+    const AUTH_SESSION_STARTED_KEY = 'mufc_auth_session_started_at';
+    const AUTH_LAST_ACTIVITY_KEY = 'mufc_auth_last_activity_at';
+    const AUTH_SESSION_LIMIT_MS = 60 * 60 * 1000;
+    function loginUrl() {
+      const url = new URL('login.html', window.location.href);
+      url.searchParams.set('next', `${window.location.pathname}${window.location.search}${window.location.hash}`);
+      return url.href;
+    }
+    function hasActiveAuthSession() {
+      const lastActivityAt = Number(sessionStorage.getItem(AUTH_LAST_ACTIVITY_KEY) || sessionStorage.getItem(AUTH_SESSION_STARTED_KEY) || 0);
+      return Boolean(lastActivityAt && Date.now() - lastActivityAt < AUTH_SESSION_LIMIT_MS);
+    }
+    function markAuthActivity() {
+      sessionStorage.setItem(AUTH_LAST_ACTIVITY_KEY, String(Date.now()));
+    }
+    function requireLogin() {
+      if (!auth) { window.location.replace(loginUrl()); return; }
+      auth.onAuthStateChanged(async (user) => {
+        if (!user || !hasActiveAuthSession()) {
+          sessionStorage.removeItem(AUTH_SESSION_STARTED_KEY);
+          sessionStorage.removeItem(AUTH_LAST_ACTIVITY_KEY);
+          if (user) await auth.signOut();
+          window.location.replace(loginUrl());
+          return;
+        }
+        markAuthActivity();
+      });
+    }
+    requireLogin();
+    const apiBase = (window.MU_API_BASE || 'https://api.mufcapp.net').replace(/\/$/, '');
+    const statusEl = document.querySelector('#status');
+    const tableWrap = document.querySelector('#table-wrap');
+    const nbrdWrap = document.querySelector('#nbrd-wrap');
+    function escapeHtml(value) { return String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char])); }
+    function setStatus(text, isError = false) { statusEl.textContent = text; statusEl.className = `status ${isError ? 'err' : ''}`.trim(); }
+    function renderNbrdRows(rows) {
+      if (!rows.length) { nbrdWrap.innerHTML = '<div class="empty">No NBRD rows found.</div>'; return; }
+      nbrdWrap.innerHTML = `<table><thead><tr><th>BN</th><th>Message</th></tr></thead><tbody>${rows.map((row) => `<tr><td class="nbrd">${escapeHtml(row.nbrdBn)}</td><td>${escapeHtml(row.nbrdDetail)}</td></tr>`).join('')}</tbody></table>`;
+    }
+    function renderScanRows(rows) {
+      if (!rows.length) { tableWrap.innerHTML = '<div class="empty">No boarding scan rows found.</div>'; return; }
+      tableWrap.innerHTML = `<table><thead><tr><th>BN</th><th>Seat</th></tr></thead><tbody>${rows.map((row, index) => {
+        const checked = Boolean(row.entered);
+        return `<tr class="${checked ? 'is-entered' : ''}" data-row-number="${escapeHtml(row.rowNumber)}" data-row-index="${index}"><td>${escapeHtml(row.bn)}</td><td>${escapeHtml(row.seat)}</td></tr>`;
+      }).join('')}</tbody></table>`;
+    }
+    function renderRows(rows) {
+      const nbrdRows = rows.filter((row) => row.nbrdBn || row.nbrdDetail);
+      const scanRows = rows.filter((row) => row.bn || row.seat || row.flight);
+      renderNbrdRows(nbrdRows);
+      renderScanRows(scanRows);
+    }
+    async function loadBoard() {
+      try {
+        setStatus('Loading...');
+        const res = await fetch(`${apiBase}/cbs-scan/records`, { cache:'no-store' });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Load failed');
+        renderRows(data.rows || []);
+        setStatus(`Loaded ${(data.rows || []).length} rows.`);
+      } catch (err) {
+        nbrdWrap.innerHTML = '<div class="empty">Unable to load NBRD rows.</div>';
+        tableWrap.innerHTML = '<div class="empty">Unable to load Google Sheet.</div>';
+        setStatus(err.message || 'Load failed', true);
+      }
+    }
+    async function updateEnteredRows(rowNumbers, entered) {
+      if (!rowNumbers.length) return;
+      const res = await fetch(`${apiBase}/cbs-scan/records/entered`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ rowNumbers, entered }) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Unable to update row colors.');
+    }
+    tableWrap.addEventListener('click', async (event) => {
+      const row = event.target.closest('tr[data-row-index]');
+      if (!row) return;
+      const targetIndex = Number(row.dataset.rowIndex);
+      const rows = [...tableWrap.querySelectorAll('tr[data-row-index]')];
+      const doneRows = rows.filter((item) => Number(item.dataset.rowIndex) <= targetIndex);
+      const openRows = rows.filter((item) => Number(item.dataset.rowIndex) > targetIndex);
+      const doneRowNumbers = doneRows.map((item) => Number(item.dataset.rowNumber)).filter(Boolean);
+      const openRowNumbers = openRows.map((item) => Number(item.dataset.rowNumber)).filter(Boolean);
+      try {
+        setStatus('Updating Google Sheet colors...');
+        await updateEnteredRows(doneRowNumbers, true);
+        await updateEnteredRows(openRowNumbers, false);
+        doneRows.forEach((item) => item.classList.add('is-entered'));
+        openRows.forEach((item) => item.classList.remove('is-entered'));
+        setStatus(`Marked through BN ${row.children[0]?.textContent || ''}.`);
+      } catch (err) {
+        setStatus(err.message || 'Unable to update row colors.', true);
+      }
+    });
+    document.querySelector('#refresh').addEventListener('click', loadBoard);
+    loadBoard();
+  </script>
+</body>
+</html>
