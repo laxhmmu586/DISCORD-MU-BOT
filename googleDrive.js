@@ -113,6 +113,11 @@ const CBS_UPDATE_HISTORY_FILE = process.env.CBS_UPDATE_HISTORY_FILE || path.join
 let cbsUpdateHistoryCache = { loadedAt: 0, data: null };
 const CBS_MISSING_BAG_SHEET_GID = Number(process.env.CBS_MISSING_BAG_SHEET_GID || 1145829442);
 const CBS_MISSING_BAG_HEADERS = ['Bag Tag', 'Passenger Name', 'Destination', 'Airline', 'Source Email Date', 'Source Attachment', 'Recorded At', 'Case Number', 'Case Created At', 'Acknowledged At'];
+const CBS_SCAN_SHEET_ID = process.env.CBS_SCAN_SHEET_ID || '1bfIeytT6UMdvWXimeg4s1HVuXHqmpYZx53ufsbes6Ms';
+const CBS_SCAN_SHEET_GID = Number(process.env.CBS_SCAN_SHEET_GID || 0);
+const CBS_SCAN_HEADERS = ['BN', 'Seat', 'Flight', 'Raw Scan', 'Scanned At'];
+let cbsScanSheetTitle = '';
+let cbsScanSheetCache = { loadedAt: 0, rows: [] };
 let cbsMissingBagSheetTitle = '';
 let cbsMissingBagSheetCache = { loadedAt: 0, rows: [] };
 
@@ -2420,6 +2425,79 @@ async function getFlightLogByDate(date, yearSuffix) {
 }
 
 
+async function getCbsScanSheetTitle() {
+  if (!cbsScanSheetTitle) cbsScanSheetTitle = await resolveSheetTitleByGid(CBS_SCAN_SHEET_ID, CBS_SCAN_SHEET_GID);
+  return cbsScanSheetTitle || 'Sheet1';
+}
+
+async function getCbsScanSheetRows(options = {}) {
+  const ttlMs = 5 * 1000;
+  if (!options.forceRefresh && Date.now() - cbsScanSheetCache.loadedAt < ttlMs && cbsScanSheetCache.rows.length) return cbsScanSheetCache.rows;
+  const title = await getCbsScanSheetTitle();
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: CBS_SCAN_SHEET_ID,
+    range: `${escapeSheetTitle(title)}!A:E`
+  });
+  const rows = res.data.values || [];
+  cbsScanSheetCache = { loadedAt: Date.now(), rows };
+  return rows;
+}
+
+async function ensureCbsScanSheetHeaders(rows) {
+  const firstRow = rows?.[0] || [];
+  const hasHeaders = CBS_SCAN_HEADERS.every((header, index) => String(firstRow[index] || '').trim() === header);
+  if (hasHeaders) return;
+  const title = await getCbsScanSheetTitle();
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: CBS_SCAN_SHEET_ID,
+    range: `${escapeSheetTitle(title)}!A1:E1`,
+    valueInputOption: 'RAW',
+    requestBody: { values: [CBS_SCAN_HEADERS] }
+  });
+  cbsScanSheetCache = { loadedAt: 0, rows: [] };
+}
+
+function normalizeCbsScanBn(value) {
+  const digits = String(value || '').replace(/\D/g, '');
+  return digits ? digits.padStart(4, '0') : '';
+}
+
+async function appendCbsScanRecord(record = {}) {
+  const bn = normalizeCbsScanBn(record.bn);
+  if (!bn) throw new Error('Invalid BN.');
+  const seat = String(record.seat || '').trim().toUpperCase();
+  const flight = String(record.flight || '').trim().toUpperCase();
+  const rawScan = String(record.rawScan || record.raw || '').trim();
+  const scannedAt = record.scannedAt || new Date().toISOString();
+  const title = await getCbsScanSheetTitle();
+  const rows = await getCbsScanSheetRows({ forceRefresh: true });
+  await ensureCbsScanSheetHeaders(rows);
+  const dataRows = (await getCbsScanSheetRows({ forceRefresh: true })).slice(1);
+  const existing = dataRows.find((row) => normalizeCbsScanBn(row[0]) === bn);
+  if (existing) {
+    const err = new Error(`Duplicate BN ${bn}.`);
+    err.code = 'DUPLICATE_BN';
+    throw err;
+  }
+  const insertOffset = dataRows.findIndex((row) => {
+    const rowBn = normalizeCbsScanBn(row[0]);
+    return rowBn && Number(rowBn) > Number(bn);
+  });
+  const rowNumber = insertOffset === -1 ? dataRows.length + 2 : insertOffset + 2;
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId: CBS_SCAN_SHEET_ID,
+    requestBody: { requests: [{ insertDimension: { range: { sheetId: CBS_SCAN_SHEET_GID, dimension: 'ROWS', startIndex: rowNumber - 1, endIndex: rowNumber }, inheritFromBefore: rowNumber > 2 } }] }
+  });
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: CBS_SCAN_SHEET_ID,
+    range: `${escapeSheetTitle(title)}!A${rowNumber}:E${rowNumber}`,
+    valueInputOption: 'RAW',
+    requestBody: { values: [[bn, seat, flight, rawScan, scannedAt]] }
+  });
+  cbsScanSheetCache = { loadedAt: 0, rows: [] };
+  return { bn, seat, flight, rowNumber, scannedAt };
+}
+
 async function getCbsSheetTitle() {
   if (!cbsSheetTitle) cbsSheetTitle = await resolveSheetTitleByGid(CBS_SHEET_ID, CBS_SHEET_GID);
   return cbsSheetTitle || 'Sheet1';
@@ -3035,6 +3113,7 @@ module.exports = {
   markCbsMissingBagCase,
   acknowledgeCbsMissingBag,
   sendCbsCaseEmail,
+  appendCbsScanRecord,
   readNotesDriveStore,
   writeNotesDriveStore
 };
