@@ -1498,7 +1498,7 @@ function missingRequiredCbsAttachmentTypes(attachments = []) {
 
 function buildCbsUpdateFields(update = {}) {
   const type = sanitizeCbsText(update.type, 40).toLowerCase();
-  if (!['worldtracer', 'rush', 'location', 'shipping'].includes(type)) return null;
+  if (!['worldtracer', 'rush', 'location', 'shipping', 'closed'].includes(type)) return null;
   const comment = sanitizeCbsText(update.comment, 500);
   if (type === 'worldtracer') {
     const fileNumber = sanitizeCbsText(update.fileNumber || update.worldTracerFileNumber, 120).toUpperCase();
@@ -1517,6 +1517,9 @@ function buildCbsUpdateFields(update = {}) {
     const location = sanitizeCbsText(update.location, 160).toUpperCase();
     if (!location) return null;
     return { status: 'Bag Location Update', updateNote: `BAG LOCATION UPDATE | Location: ${location}${comment ? ` | Comment: ${comment}` : ''}`, updateEvent: { key: 'location', title: 'Update Bag Location', fields: [['Location', location], ...(comment ? [['Comment', comment]] : [])] } };
+  }
+  if (type === 'closed') {
+    return { status: 'Closed', updateNote: `CASE CLOSE${comment ? ` | Comment: ${comment}` : ''}`, updateEvent: { key: 'closed', title: 'Case Close', fields: comment ? [['Comment', comment]] : [] } };
   }
   const trackingNumber = sanitizeCbsText(update.trackingNumber, 160).toUpperCase();
   const shippingTo = sanitizeCbsText(update.shippingTo, 300);
@@ -1704,7 +1707,7 @@ app.post('/cbs-cases', async (req, res) => {
 app.post('/cbs-cases/:caseNumber/update', async (req, res) => {
   try {
     const updateFields = buildCbsUpdateFields(req.body || {});
-    if (!updateFields) return res.status(400).json({ error: 'Valid WORLDTRACER, RUSH, BAG LOCATION UPDATE, or SHIPPING details are required' });
+    if (!updateFields) return res.status(400).json({ error: 'Valid WORLDTRACER, RUSH, BAG LOCATION UPDATE, SHIPPING, or CASE CLOSE details are required' });
     const result = await updateCbsCase(req.params.caseNumber, updateFields);
     if (result.notFound) return res.status(404).json({ error: 'Case not found' });
     return res.json(result);
