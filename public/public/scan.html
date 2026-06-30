@@ -52,7 +52,7 @@
       const res = await fetch(`${apiBase}/cbs-scan`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ rawScan }) });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const message = data.code === 'WRONG_FLIGHT' ? 'wrong flight' : (data.code === 'DUPLICATE_BN' ? `Duplicate BN: ${String(rawScan).match(/(?:^|\D)(?:1)?81R\d{2,3}[A-Z](\d{4})\b/i)?.[1] || ''}` : (data.error || 'Scan failed'));
+        const message = data.code === 'WRONG_FLIGHT' ? 'wrong flight' : (data.code === 'NBRD_MESSAGE' ? 'NBRD message' : (data.code === 'DUPLICATE_BN' ? `Duplicate BN: ${String(rawScan).match(/(?:^|\D)(?:1)?81R\d{2,3}[A-Z](\d{4})\b/i)?.[1] || ''}` : (data.error || 'Scan failed')));
         alert(message);
         throw new Error(message);
       }

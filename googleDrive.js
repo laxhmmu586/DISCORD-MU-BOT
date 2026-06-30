@@ -2436,7 +2436,7 @@ async function getCbsScanSheetRows(options = {}) {
   const title = await getCbsScanSheetTitle();
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: CBS_SCAN_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A:E`
+    range: `${escapeSheetTitle(title)}!A:L`
   });
   const rows = res.data.values || [];
   cbsScanSheetCache = { loadedAt: Date.now(), rows };
@@ -2462,6 +2462,32 @@ function normalizeCbsScanBn(value) {
   return digits ? digits.padStart(4, '0') : '';
 }
 
+function hasCbsScanNbrdStatus(rawScan = '') {
+  return /\b(?:CKIN|NBRD)\b/i.test(String(rawScan || ''));
+}
+
+async function appendCbsScanNbrdBn(title, bn, dataRows) {
+  const existing = dataRows.find((row) => normalizeCbsScanBn(row[11]) === bn);
+  if (existing) return false;
+  const nextOffset = dataRows.findIndex((row) => !normalizeCbsScanBn(row[11]));
+  const rowNumber = nextOffset === -1 ? dataRows.length + 2 : nextOffset + 2;
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: CBS_SCAN_SHEET_ID,
+    range: `${escapeSheetTitle(title)}!L${rowNumber}`,
+    valueInputOption: 'RAW',
+    requestBody: { values: [[bn]] }
+  });
+  cbsScanSheetCache = { loadedAt: 0, rows: [] };
+  return true;
+}
+
+function throwCbsScanNbrdMessage(bn) {
+  const err = new Error('NBRD message');
+  err.code = 'NBRD_MESSAGE';
+  err.bn = bn;
+  throw err;
+}
+
 async function appendCbsScanRecord(record = {}) {
   const bn = normalizeCbsScanBn(record.bn);
   if (!bn) throw new Error('Invalid BN.');
@@ -2473,6 +2499,12 @@ async function appendCbsScanRecord(record = {}) {
   const rows = await getCbsScanSheetRows({ forceRefresh: true });
   await ensureCbsScanSheetHeaders(rows);
   const dataRows = (await getCbsScanSheetRows({ forceRefresh: true })).slice(1);
+  const nbrdExisting = dataRows.find((row) => normalizeCbsScanBn(row[11]) === bn);
+  if (nbrdExisting) throwCbsScanNbrdMessage(bn);
+  if (hasCbsScanNbrdStatus(rawScan)) {
+    await appendCbsScanNbrdBn(title, bn, dataRows);
+    throwCbsScanNbrdMessage(bn);
+  }
   const existing = dataRows.find((row) => normalizeCbsScanBn(row[0]) === bn);
   if (existing) {
     const err = new Error(`Duplicate BN ${bn}.`);
