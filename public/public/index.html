@@ -5625,9 +5625,12 @@
         setBadgeText("#duplicate-bags-count", duplicateBagCount);
         setBadgeText("#duplicate-names-count", duplicateNameCount);
         setActionIssueState("#duplicate-bags-action", duplicateBagCount > 0);
-        setActionIssueState("#duplicate-names-action", duplicateNameCount > 0);
         const duplicateBagsAction = document.querySelector("#duplicate-bags-action");
         const duplicateNamesAction = document.querySelector("#duplicate-names-action");
+        if (duplicateNamesAction) {
+          duplicateNamesAction.classList.remove("warning-action");
+          duplicateNamesAction.querySelector(".detail-action-badge")?.classList.remove("warning-badge");
+        }
         if (duplicateBagsAction) duplicateBagsAction.hidden = duplicateBagCount === 0;
         if (duplicateNamesAction) duplicateNamesAction.hidden = duplicateNameCount === 0;
         if (bagReportButton) bagReportButton.hidden = !(sy.bagSheet?.hasData);
