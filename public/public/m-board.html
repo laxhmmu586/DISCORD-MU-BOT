@@ -19,8 +19,12 @@
     .status.err { color:var(--danger); }
     .board-section { display:grid; gap:10px; margin-top:18px; }
     .board-section h2 { margin:0; font-size:22px; }
-    .bulk-actions { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
+    .bulk-actions { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:10px; }
+    .bulk-hint { color:var(--muted); font-size:12px; font-weight:900; }
     .bulk-actions button { padding:10px 14px; font-size:12px; }
+    .bulk-icon { display:inline-grid; width:44px; height:44px; place-items:center; border-radius:999px; padding:0; font-size:22px; }
+    .bulk-icon.is-done { background:#22a40f; }
+    .bulk-icon.is-clear { background:#b42318; }
     .table-wrap { overflow:auto; border:1px solid var(--line); border-radius:16px; }
     table { width:100%; border-collapse:collapse; min-width:420px; background:white; }
     th,td { padding:12px 14px; border-bottom:1px solid var(--line); text-align:left; white-space:nowrap; }
@@ -90,9 +94,9 @@
     }
     function renderScanRows(rows) {
       if (!rows.length) { tableWrap.innerHTML = '<div class="empty">No boarding scan rows found.</div>'; return; }
-      tableWrap.innerHTML = `<div class="bulk-actions"><button type="button" data-bulk="select-all">Select all</button><button type="button" data-bulk="clear-selection">Clear selection</button><button type="button" data-bulk="mark-done">Mark selected done</button><button type="button" data-bulk="mark-open">Clear selected done</button></div><table><thead><tr><th class="done-col">Done</th><th>BN</th><th>Seat</th><th>Flight</th></tr></thead><tbody>${rows.map((row) => {
+      tableWrap.innerHTML = `<div class="bulk-actions"><span class="bulk-hint">Hold first row and drag down to select range, then tap ✓.</span><button class="bulk-icon is-done" type="button" data-bulk="mark-done" aria-label="Mark selected done">✓</button><button class="bulk-icon is-clear" type="button" data-bulk="mark-open" aria-label="Clear selected done">✕</button><button type="button" data-bulk="clear-selection">Clear selection</button></div><table><thead><tr><th class="done-col">Done</th><th>BN</th><th>Seat</th><th>Flight</th></tr></thead><tbody>${rows.map((row, index) => {
         const checked = Boolean(row.entered);
-        return `<tr class="${checked ? 'is-entered' : ''}" data-row-number="${escapeHtml(row.rowNumber)}"><td class="done-col"><input class="scan-check" type="checkbox" aria-label="Select BN ${escapeHtml(row.bn)}" ${checked ? 'checked' : ''} data-original="${checked ? '1' : '0'}" /></td><td>${escapeHtml(row.bn)}</td><td>${escapeHtml(row.seat)}</td><td>${escapeHtml(row.flight)}</td></tr>`;
+        return `<tr class="${checked ? 'is-entered' : ''}" data-row-number="${escapeHtml(row.rowNumber)}" data-row-index="${index}"><td class="done-col"><input class="scan-check" type="checkbox" aria-label="Select BN ${escapeHtml(row.bn)}" ${checked ? 'checked' : ''} data-original="${checked ? '1' : '0'}" /></td><td>${escapeHtml(row.bn)}</td><td>${escapeHtml(row.seat)}</td><td>${escapeHtml(row.flight)}</td></tr>`;
       }).join('')}</tbody></table>`;
     }
     function renderRows(rows) {
@@ -115,6 +119,38 @@
         setStatus(err.message || 'Load failed', true);
       }
     }
+    function setRowChecked(row, checked) {
+      const checkbox = row?.querySelector('.scan-check');
+      if (!checkbox) return;
+      checkbox.checked = checked;
+      row.classList.toggle('is-entered', checked);
+    }
+    function selectRange(fromIndex, toIndex) {
+      const start = Math.min(fromIndex, toIndex);
+      const end = Math.max(fromIndex, toIndex);
+      tableWrap.querySelectorAll('tr[data-row-index]').forEach((row) => {
+        const index = Number(row.dataset.rowIndex);
+        setRowChecked(row, index >= start && index <= end);
+      });
+    }
+    let dragSelectAnchor = null;
+    let dragSelecting = false;
+    tableWrap.addEventListener('pointerdown', (event) => {
+      if (event.target.closest('.scan-check')) return;
+      const row = event.target.closest('tr[data-row-index]');
+      if (!row) return;
+      dragSelectAnchor = Number(row.dataset.rowIndex);
+      dragSelecting = true;
+      selectRange(dragSelectAnchor, dragSelectAnchor);
+      row.setPointerCapture?.(event.pointerId);
+    });
+    tableWrap.addEventListener('pointermove', (event) => {
+      if (!dragSelecting || dragSelectAnchor === null) return;
+      const target = document.elementFromPoint(event.clientX, event.clientY)?.closest?.('tr[data-row-index]');
+      if (!target || !tableWrap.contains(target)) return;
+      selectRange(dragSelectAnchor, Number(target.dataset.rowIndex));
+    });
+    window.addEventListener('pointerup', () => { dragSelecting = false; dragSelectAnchor = null; });
     tableWrap.addEventListener('change', (event) => {
       const checkbox = event.target.closest('.scan-check');
       if (!checkbox) return;
@@ -124,7 +160,6 @@
       const action = event.target.closest('[data-bulk]')?.dataset?.bulk;
       if (!action) return;
       const checkboxes = [...tableWrap.querySelectorAll('.scan-check')];
-      if (action === 'select-all') { checkboxes.forEach((box) => { box.checked = true; box.dispatchEvent(new Event('change', { bubbles:true })); }); return; }
       if (action === 'clear-selection') { checkboxes.forEach((box) => { box.checked = false; box.dispatchEvent(new Event('change', { bubbles:true })); }); return; }
       const selectedRows = checkboxes.filter((box) => box.checked).map((box) => box.closest('tr[data-row-number]')).filter(Boolean);
       const rowNumbers = selectedRows.map((row) => Number(row.dataset.rowNumber)).filter(Boolean);
