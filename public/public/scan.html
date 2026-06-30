@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Manual Boarding</title>
+  <style>
+    :root { --brand:#123a73; --line:#d7e1ec; --ink:#172033; --muted:#667085; --ok:#087443; --danger:#b42318; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:Inter,Arial,"Noto Sans SC",sans-serif; background:linear-gradient(135deg,#eaf4ff,#fdfefe); color:var(--ink); }
+    header { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:18px clamp(18px,4vw,52px); background:rgba(255,255,255,.92); border-bottom:1px solid var(--line); }
+    .brand { font-weight:900; color:var(--brand); letter-spacing:.08em; }
+    .header-actions { position:relative; display:flex; align-items:center; gap:10px; }
+    .avatar-button { display:grid; width:44px; height:44px; place-items:center; border-radius:999px; padding:0; background:#050914; color:white; }
+    .avatar-button svg { width:26px; height:26px; }
+    .user-menu { position:absolute; top:calc(100% + 10px); right:0; z-index:20; display:grid; min-width:190px; gap:6px; padding:10px; border:1px solid var(--line); border-radius:18px; background:white; box-shadow:0 18px 42px rgba(22,48,76,.18); }
+    .user-menu[hidden] { display:none; }
+    .user-menu button { width:100%; border-radius:12px; background:#eef4fb; color:var(--brand); text-align:left; }
+    .user-menu button:last-child { background:#fff1f1; color:var(--danger); }
+    main { width:min(860px,94vw); margin:28px auto; display:grid; gap:18px; }
+    .card { background:#fff; border:1px solid var(--line); border-radius:22px; box-shadow:0 18px 42px rgba(22,48,76,.08); padding:22px; }
+    .camera-wrap { position:relative; overflow:hidden; border-radius:18px; background:#111; }
+    video { display:block; width:100%; max-height:58vh; background:#111; object-fit:cover; }
+    .aim-box { position:absolute; left:50%; top:50%; width:min(78%,560px); height:34%; transform:translate(-50%,-50%); border:3px solid rgba(255,255,255,.92); border-radius:18px; box-shadow:0 0 0 999px rgba(0,0,0,.28); pointer-events:none; }
+    .aim-hint { position:absolute; left:50%; bottom:12px; transform:translateX(-50%); padding:6px 12px; border-radius:999px; background:rgba(0,0,0,.58); color:white; font-size:13px; font-weight:800; pointer-events:none; }
+    button,a.button { border:0; border-radius:999px; padding:12px 18px; font-weight:850; cursor:pointer; background:var(--brand); color:white; text-decoration:none; }
+    button.secondary { background:#e8eef7; color:var(--brand); }
+    .actions { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:14px; }
+    .status { min-height:28px; font-weight:900; }
+    .status.ok { color:var(--ok); } .status.err { color:var(--danger); }
+    .result { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+    .result div { padding:12px; border:1px solid var(--line); border-radius:14px; background:#fbfdff; }
+    .result b { display:block; color:var(--muted); font-size:12px; text-transform:uppercase; }
+    .nbrd-form { display:grid; gap:12px; }
+    .field-grid { display:grid; grid-template-columns:180px 1fr; gap:12px; }
+    label { display:grid; gap:6px; color:var(--muted); font-size:12px; font-weight:900; text-transform:uppercase; letter-spacing:.04em; }
+    input,textarea { width:100%; border:1px solid var(--line); border-radius:14px; padding:12px 14px; color:var(--ink); font:inherit; font-weight:750; background:#fbfdff; }
+    textarea { min-height:64px; resize:vertical; }
+    @media (min-width:700px){ .nbrd-form{max-width:760px}.field-grid{grid-template-columns:160px minmax(320px,1fr);align-items:end} #nbrd-message{min-height:58px} }
+    .dialog-backdrop { position:fixed; inset:0; z-index:50; display:grid; place-items:center; padding:22px; background:rgba(12,20,32,.48); }
+    .dialog-backdrop[hidden] { display:none; }
+    .dialog-card { width:min(420px,92vw); border-radius:28px; background:rgba(255,255,255,.96); box-shadow:0 22px 70px rgba(0,0,0,.28); padding:28px; text-align:center; }
+    .dialog-icon { display:grid; width:78px; height:78px; place-items:center; margin:0 auto 14px; border-radius:999px; color:white; font-size:46px; font-weight:1000; line-height:1; box-shadow:inset 0 8px 12px rgba(255,255,255,.45), inset 0 -10px 18px rgba(0,0,0,.18), 0 10px 20px rgba(0,0,0,.18); text-shadow:0 2px 4px rgba(0,0,0,.25); }
+    .dialog-icon.success { background:linear-gradient(145deg,#7dff4b,#26b50f 58%,#168906); }
+    .dialog-icon.warning { background:linear-gradient(145deg,#ffe66a,#f59e0b 58%,#b45309); }
+    .dialog-icon.error { background:linear-gradient(145deg,#ff8a8a,#ef2424 58%,#b42318); }
+    .dialog-card h2 { margin:0 0 12px; font-size:24px; }
+    .dialog-card p { margin:0 0 22px; font-size:20px; font-weight:850; color:#344054; white-space:pre-line; }
+    .dialog-card input { margin:0 0 10px; }
+    .dialog-card button { width:100%; font-size:18px; }
+    .dialog-card .secondary { margin-top:8px; }
+    @media (max-width:640px){ .result,.field-grid{grid-template-columns:1fr} .card{padding:18px} h1{font-size:34px} }
+  </style>
+</head>
+<body>
+  <header><span class="brand">MUFC</span><div class="header-actions"><a class="button" href="m-board.html">M-board</a><button class="avatar-button" id="user-menu-button" type="button" aria-label="Account menu" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/><path d="M4 21c1.6-4.4 4.3-6.6 8-6.6s6.4 2.2 8 6.6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button><div class="user-menu" id="user-menu" hidden><button id="change-password" type="button">Change password</button><button id="logout" type="button">Logout</button></div></div></header>
+  <main>
+    <section class="card">
+      <h1>Manual Boarding</h1>
+      <div class="camera-wrap"><video id="preview" muted playsinline></video><div class="aim-box" aria-hidden="true"></div><div class="aim-hint">Align PDF417 inside the box</div></div>
+      <div class="actions"><button id="start" type="button">Start Scan</button><button class="secondary" id="stop" type="button">Stop</button></div>
+      <p class="status" id="status">Ready.</p>
+      <div class="result" id="result" hidden></div>
+    </section>
+    <section class="card">
+      <h2>Add NBRD</h2>
+      <form class="nbrd-form" id="nbrd-form">
+        <div class="field-grid">
+          <label>BN<input id="nbrd-bn" name="bn" inputmode="numeric" pattern="\d{1,4}" placeholder="94 or 0094" required /></label>
+          <label>NBRD Message<textarea id="nbrd-message" name="message" placeholder="CKIN NBRD CTC LAKE" required></textarea></label>
+        </div>
+        <div class="actions"><button type="submit">Add NBRD</button></div>
+      </form>
+    </section>
+  </main>
+  <div class="dialog-backdrop" id="message-dialog" hidden><div class="dialog-card" role="dialog" aria-modal="true" aria-labelledby="dialog-title"><div class="dialog-icon" id="dialog-icon" hidden></div><h2 id="dialog-title">Message</h2><p id="dialog-message"></p><button id="dialog-ok" type="button">OK</button></div></div>
+  <div class="dialog-backdrop" id="password-dialog" hidden><form class="dialog-card" id="password-form" role="dialog" aria-modal="true" aria-labelledby="password-title"><h2 id="password-title">Change password</h2><input id="new-password" type="password" autocomplete="new-password" placeholder="New password" minlength="6" required /><input id="confirm-password" type="password" autocomplete="new-password" placeholder="Confirm password" minlength="6" required /><button type="submit">Update password</button><button class="secondary" id="password-cancel" type="button">Cancel</button></form></div>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="/__/firebase/init.js"></script>
+  <script src="https://unpkg.com/@zxing/browser@latest"></script>
+  <script>
+    const auth = window.firebase?.apps?.length && window.firebase?.auth ? firebase.auth() : null;
+    const AUTH_SESSION_STARTED_KEY = 'mufc_auth_session_started_at';
+    const AUTH_LAST_ACTIVITY_KEY = 'mufc_auth_last_activity_at';
+    const AUTH_SESSION_LIMIT_MS = 60 * 60 * 1000;
+    function loginUrl() {
+      const url = new URL('login.html', window.location.href);
+      url.searchParams.set('next', `${window.location.pathname}${window.location.search}${window.location.hash}`);
+      return url.href;
+    }
+    function hasActiveAuthSession() {
+      const lastActivityAt = Number(sessionStorage.getItem(AUTH_LAST_ACTIVITY_KEY) || sessionStorage.getItem(AUTH_SESSION_STARTED_KEY) || 0);
+      return Boolean(lastActivityAt && Date.now() - lastActivityAt < AUTH_SESSION_LIMIT_MS);
+    }
+    function markAuthActivity() {
+      sessionStorage.setItem(AUTH_LAST_ACTIVITY_KEY, String(Date.now()));
+    }
+    function requireLogin() {
+      if (!auth) { window.location.replace(loginUrl()); return; }
+      auth.onAuthStateChanged(async (user) => {
+        if (!user || !hasActiveAuthSession()) {
+          sessionStorage.removeItem(AUTH_SESSION_STARTED_KEY);
+          sessionStorage.removeItem(AUTH_LAST_ACTIVITY_KEY);
+          if (user) await auth.signOut();
+          window.location.replace(loginUrl());
+          return;
+        }
+        markAuthActivity();
+      });
+    }
+    requireLogin();
+    const apiBase = (window.MU_API_BASE || 'https://api.mufcapp.net').replace(/\/$/, '');
+    const statusEl = document.querySelector('#status');
+    const resultEl = document.querySelector('#result');
+    const preview = document.querySelector('#preview');
+    const dialog = document.querySelector('#message-dialog');
+    const dialogMessage = document.querySelector('#dialog-message');
+    const dialogIcon = document.querySelector('#dialog-icon');
+    const dialogOk = document.querySelector('#dialog-ok');
+    const passwordDialog = document.querySelector('#password-dialog');
+    const passwordForm = document.querySelector('#password-form');
+    const passwordCancel = document.querySelector('#password-cancel');
+    const newPasswordInput = document.querySelector('#new-password');
+    const confirmPasswordInput = document.querySelector('#confirm-password');
+    const userMenuButton = document.querySelector('#user-menu-button');
+    const userMenu = document.querySelector('#user-menu');
+    const changePasswordButton = document.querySelector('#change-password');
+    const logoutButton = document.querySelector('#logout');
+    let controls = null;
+    let scanBusy = false;
+    let lastScanText = '';
+    let lastScanAt = 0;
+    const cameraConstraints = {
+      video: {
+        facingMode: { ideal: 'environment' },
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
+        focusMode: { ideal: 'continuous' },
+        advanced: [{ focusMode: 'continuous' }]
+      },
+      audio: false
+    };
+    function setStatus(text, cls = '') { statusEl.textContent = text; statusEl.className = `status ${cls}`.trim(); }
+    async function applyCameraFocus() {
+      const track = preview.srcObject?.getVideoTracks?.()[0];
+      if (!track?.applyConstraints) return;
+      const capabilities = track.getCapabilities?.() || {};
+      const constraints = { advanced: [] };
+      if (Array.isArray(capabilities.focusMode) && capabilities.focusMode.includes('continuous')) constraints.advanced.push({ focusMode: 'continuous' });
+      if (Array.isArray(capabilities.exposureMode) && capabilities.exposureMode.includes('continuous')) constraints.advanced.push({ exposureMode: 'continuous' });
+      if (Array.isArray(capabilities.whiteBalanceMode) && capabilities.whiteBalanceMode.includes('continuous')) constraints.advanced.push({ whiteBalanceMode: 'continuous' });
+      if (capabilities.zoom && Number.isFinite(capabilities.zoom.min) && Number.isFinite(capabilities.zoom.max)) {
+        const targetZoom = Math.min(capabilities.zoom.max, Math.max(capabilities.zoom.min, 1.4));
+        constraints.advanced.push({ zoom: targetZoom });
+      }
+      if (!constraints.advanced.length) return;
+      await track.applyConstraints(constraints).catch(() => {});
+    }
+    function showMessage(message, title = 'Message', type = '') {
+      document.querySelector('#dialog-title').textContent = title;
+      dialogMessage.textContent = message;
+      const icons = { success:'✓', warning:'!', error:'✕' };
+      dialogIcon.hidden = !icons[type];
+      dialogIcon.textContent = icons[type] || '';
+      dialogIcon.className = `dialog-icon ${type || ''}`.trim();
+      dialog.hidden = false;
+      dialogOk.focus();
+    }
+    function hideMessage() { dialog.hidden = true; }
+    dialogOk.addEventListener('click', hideMessage);
+    userMenuButton.addEventListener('click', () => {
+      const isOpen = userMenu.hidden;
+      userMenu.hidden = !isOpen;
+      userMenuButton.setAttribute('aria-expanded', String(isOpen));
+    });
+    document.addEventListener('click', (event) => {
+      if (userMenu.hidden || event.target.closest('.header-actions')) return;
+      userMenu.hidden = true;
+      userMenuButton.setAttribute('aria-expanded', 'false');
+    });
+    changePasswordButton.addEventListener('click', () => {
+      userMenu.hidden = true;
+      userMenuButton.setAttribute('aria-expanded', 'false');
+      newPasswordInput.value = '';
+      confirmPasswordInput.value = '';
+      passwordDialog.hidden = false;
+      newPasswordInput.focus();
+    });
+    passwordCancel.addEventListener('click', () => { passwordDialog.hidden = true; });
+    passwordForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const nextPassword = newPasswordInput.value;
+      if (nextPassword !== confirmPasswordInput.value) { showMessage('Passwords do not match.', 'Change password', 'error'); return; }
+      try {
+        await auth.currentUser.updatePassword(nextPassword);
+        passwordDialog.hidden = true;
+        showMessage('Password updated successfully.', 'Success', 'success');
+      } catch (err) {
+        showMessage(err.message || 'Unable to update password. Please login again and retry.', 'Change password', 'error');
+      }
+    });
+    logoutButton.addEventListener('click', async () => {
+      sessionStorage.removeItem(AUTH_SESSION_STARTED_KEY);
+      sessionStorage.removeItem(AUTH_LAST_ACTIVITY_KEY);
+      await auth?.signOut?.();
+      window.location.replace(loginUrl());
+    });
+    function renderResult(data) { resultEl.hidden = false; resultEl.innerHTML = `<div><b>Flight</b>${data.flight || '0586'}</div><div><b>Seat</b>${data.seat || ''}</div><div><b>BN</b>${data.bn || ''}</div>`; }
+    async function saveScan(rawScan) {
+      const res = await fetch(`${apiBase}/cbs-scan`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ rawScan }) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const message = data.code === 'WRONG_FLIGHT' ? 'wrong flight' : (data.code === 'NBRD_MESSAGE' ? `NBRD message${data.detail ? `\n${data.detail}` : ''}` : (data.code === 'DUPLICATE_BN' ? `Duplicate BN: ${String(rawScan).match(/(?:^|\D)(?:1)?81[A-Z]\d{2,3}[A-Z](\d{4})\b/i)?.[1] || ''}` : (data.error || 'Scan failed')));
+        const type = data.code === 'WRONG_FLIGHT' ? 'error' : (data.code === 'NBRD_MESSAGE' ? 'warning' : '');
+        showMessage(message, 'Message', type);
+        throw new Error(message);
+      }
+      renderResult(data); setStatus(`Saved BN ${data.bn} / Seat ${data.seat}`, 'ok'); showMessage(`Input successful BN ${data.bn}`, 'Success', 'success');
+    }
+    async function handleText(text) { try { setStatus('Saving...'); await saveScan(text); } catch (err) { setStatus(err.message, 'err'); } finally { setTimeout(() => { if (controls) setStatus('Scanning PDF417...'); }, 900); } }
+    document.querySelector('#nbrd-form').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const bnInput = document.querySelector('#nbrd-bn');
+      const messageInput = document.querySelector('#nbrd-message');
+      const bn = String(bnInput.value || '').replace(/\D/g, '');
+      const detail = String(messageInput.value || '').trim();
+      if (!/^\d{1,4}$/.test(bn)) { showMessage('BN must be 1 to 4 digits.'); return; }
+      if (!detail) { showMessage('NBRD message is required.'); return; }
+      try {
+        setStatus('Saving NBRD...');
+        const res = await fetch(`${apiBase}/cbs-scan/nbrd-bns`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ entries:[{ bn, detail }] }) });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'NBRD save failed');
+        bnInput.value = '';
+        messageInput.value = '';
+        setStatus(`Saved NBRD BN ${String(bn).padStart(4, '0')}`, 'ok');
+        showMessage(`NBRD saved BN ${String(bn).padStart(4, '0')}`, 'Success', 'success');
+      } catch (err) {
+        setStatus(err.message || 'NBRD save failed', 'err');
+        showMessage(err.message || 'NBRD save failed');
+      }
+    });
+    document.querySelector('#start').addEventListener('click', async () => {
+      try {
+        if (!window.ZXingBrowser) throw new Error('ZXing library did not load.');
+        const Reader = ZXingBrowser.BrowserPDF417Reader || ZXingBrowser.BrowserMultiFormatReader;
+        const reader = new Reader();
+        const decode = typeof reader.decodeFromConstraints === 'function'
+          ? reader.decodeFromConstraints.bind(reader, cameraConstraints)
+          : reader.decodeFromVideoDevice.bind(reader, undefined);
+        controls = await decode(preview, (result, error) => {
+          if (!result || scanBusy) return;
+          const text = result.getText();
+          const now = Date.now();
+          if (text === lastScanText && now - lastScanAt < 2500) return;
+          scanBusy = true;
+          lastScanText = text;
+          lastScanAt = now;
+          setStatus('Code detected. Saving before next scan...');
+          handleText(text).finally(() => { setTimeout(() => { scanBusy = false; if (controls) setStatus('Scanning PDF417...'); }, 1500); });
+        });
+        await applyCameraFocus();
+        setStatus('Scanning PDF417...');
+      } catch (err) { setStatus(err.message, 'err'); showMessage(err.message); }
+    });
+    document.querySelector('#stop').addEventListener('click', () => { controls?.stop(); controls = null; setStatus('Stopped.'); });
+  </script>
+</body>
+</html>
