@@ -200,20 +200,17 @@
         color: white;
       }
 
-      .scan-nav-link {
-        display: inline-grid;
-        place-items: center;
-        width: 34px;
-        height: 34px;
-        border: 1px solid rgba(255, 255, 255, 0.24);
-        border-radius: 999px;
-        background: rgba(88, 167, 255, 0.12);
-        color: white;
+      .boarding-nav-link {
+        color: rgba(255, 255, 255, 0.88);
+        font-size: 13px;
+        font-weight: 800;
+        letter-spacing: 0.4px;
+        text-decoration: none;
+        text-transform: uppercase;
       }
 
-      .scan-nav-link svg {
-        width: 18px;
-        height: 18px;
+      .boarding-nav-link:hover {
+        color: white;
       }
 
       .search {
@@ -4214,11 +4211,7 @@
         <a href="#reports" id="report-nav-link">Report</a>
         <a href="#test" id="test-nav-link">Baggage</a>
         <a href="cbs.html" id="cbs-nav-link">CBS</a>
-        <a class="scan-nav-link" href="scan.html" id="scan-nav-link" aria-label="Scan PDF417 boarding pass">
-          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2M7 9h10M7 12h10M7 15h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-          </svg>
-        </a>
+        <a class="boarding-nav-link" href="scan.html" id="boarding-nav-link">Boarding</a>
       </nav>
       <div class="nav-row">
         <form class="search" id="mission-search" aria-label="Search mission">
@@ -4261,6 +4254,7 @@
       <a href="#reports" id="mobile-report-nav-link">Report</a>
       <a href="#test" id="mobile-test-nav-link">Baggage</a>
       <a href="cbs.html" id="mobile-cbs-nav-link">CBS</a>
+      <a href="scan.html" id="mobile-boarding-nav-link">Boarding</a>
     </aside>
 
     <main>
