@@ -1625,11 +1625,12 @@ function parseCbsPdf417(rawValue = '') {
     throw err;
   }
 
-  const detailMatch = rawScan.match(/\b81R(\d{2,3}[A-Z])(\d{4})\b/i);
+  const detailMatch = rawScan.match(/(?:^|\D)(?:1)?81R(\d{2,3}[A-Z])(\d{4})\b/i);
   if (!detailMatch) throw new Error('Seat/BN segment not found.');
+  const seat = detailMatch[1].toUpperCase().replace(/^0+(?=\d)/, '');
   return {
     flight: flightNumber,
-    seat: detailMatch[1].toUpperCase(),
+    seat,
     bn: detailMatch[2],
     rawScan
   };
