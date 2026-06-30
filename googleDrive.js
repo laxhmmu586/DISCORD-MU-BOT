@@ -2578,30 +2578,40 @@ async function getCbsScanRecords() {
   })).filter((row) => row.bn || row.seat || row.flight || row.scannedAt || row.nbrdBn || row.nbrdDetail);
 }
 
-async function setCbsScanRecordEntered(rowNumber, entered = false) {
+function cbsScanEnteredRepeatCellRequest(rowNumber, entered = false) {
   const targetRow = Number(rowNumber);
   if (!Number.isInteger(targetRow) || targetRow < 2) throw new Error('Invalid scan row number.');
   const backgroundColor = entered ? { red: 0.91, green: 0.97, blue: 0.93 } : { red: 1, green: 1, blue: 1 };
+  return {
+    repeatCell: {
+      range: {
+        sheetId: CBS_SCAN_SHEET_GID,
+        startRowIndex: targetRow - 1,
+        endRowIndex: targetRow,
+        startColumnIndex: 0,
+        endColumnIndex: 5
+      },
+      cell: { userEnteredFormat: { backgroundColor } },
+      fields: 'userEnteredFormat.backgroundColor'
+    }
+  };
+}
+
+async function setCbsScanRecordsEntered(rowNumbers = [], entered = false) {
+  const uniqueRows = [...new Set((Array.isArray(rowNumbers) ? rowNumbers : [rowNumbers]).map(Number))]
+    .filter((rowNumber) => Number.isInteger(rowNumber) && rowNumber >= 2);
+  if (!uniqueRows.length) throw new Error('No valid scan row numbers.');
   await sheets.spreadsheets.batchUpdate({
     spreadsheetId: CBS_SCAN_SHEET_ID,
-    requestBody: {
-      requests: [{
-        repeatCell: {
-          range: {
-            sheetId: CBS_SCAN_SHEET_GID,
-            startRowIndex: targetRow - 1,
-            endRowIndex: targetRow,
-            startColumnIndex: 0,
-            endColumnIndex: 5
-          },
-          cell: { userEnteredFormat: { backgroundColor } },
-          fields: 'userEnteredFormat.backgroundColor'
-        }
-      }]
-    }
+    requestBody: { requests: uniqueRows.map((rowNumber) => cbsScanEnteredRepeatCellRequest(rowNumber, entered)) }
   });
   cbsScanSheetCache = { loadedAt: 0, rows: [] };
-  return { rowNumber: targetRow, entered: Boolean(entered) };
+  return { rowNumbers: uniqueRows, entered: Boolean(entered) };
+}
+
+async function setCbsScanRecordEntered(rowNumber, entered = false) {
+  const result = await setCbsScanRecordsEntered([rowNumber], entered);
+  return { rowNumber: result.rowNumbers[0], entered: result.entered };
 }
 
 function throwCbsScanNbrdMessage(bn, detail = '') {
@@ -3265,6 +3275,7 @@ module.exports = {
   appendCbsScanNbrdBns,
   getCbsScanRecords,
   setCbsScanRecordEntered,
+  setCbsScanRecordsEntered,
   readNotesDriveStore,
   writeNotesDriveStore
 };

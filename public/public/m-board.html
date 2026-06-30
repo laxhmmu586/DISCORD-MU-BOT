@@ -19,6 +19,8 @@
     .status.err { color:var(--danger); }
     .board-section { display:grid; gap:10px; margin-top:18px; }
     .board-section h2 { margin:0; font-size:22px; }
+    .bulk-actions { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
+    .bulk-actions button { padding:10px 14px; font-size:12px; }
     .table-wrap { overflow:auto; border:1px solid var(--line); border-radius:16px; }
     table { width:100%; border-collapse:collapse; min-width:420px; background:white; }
     th,td { padding:12px 14px; border-bottom:1px solid var(--line); text-align:left; white-space:nowrap; }
@@ -88,9 +90,9 @@
     }
     function renderScanRows(rows) {
       if (!rows.length) { tableWrap.innerHTML = '<div class="empty">No boarding scan rows found.</div>'; return; }
-      tableWrap.innerHTML = `<table><thead><tr><th class="done-col">Done</th><th>BN</th><th>Seat</th><th>Flight</th></tr></thead><tbody>${rows.map((row) => {
+      tableWrap.innerHTML = `<div class="bulk-actions"><button type="button" data-bulk="select-all">Select all</button><button type="button" data-bulk="clear-selection">Clear selection</button><button type="button" data-bulk="mark-done">Mark selected done</button><button type="button" data-bulk="mark-open">Clear selected done</button></div><table><thead><tr><th class="done-col">Done</th><th>BN</th><th>Seat</th><th>Flight</th></tr></thead><tbody>${rows.map((row) => {
         const checked = Boolean(row.entered);
-        return `<tr class="${checked ? 'is-entered' : ''}" data-row-number="${escapeHtml(row.rowNumber)}"><td class="done-col"><input class="scan-check" type="checkbox" aria-label="Mark BN ${escapeHtml(row.bn)} entered" ${checked ? 'checked' : ''} /></td><td>${escapeHtml(row.bn)}</td><td>${escapeHtml(row.seat)}</td><td>${escapeHtml(row.flight)}</td></tr>`;
+        return `<tr class="${checked ? 'is-entered' : ''}" data-row-number="${escapeHtml(row.rowNumber)}"><td class="done-col"><input class="scan-check" type="checkbox" aria-label="Select BN ${escapeHtml(row.bn)}" ${checked ? 'checked' : ''} data-original="${checked ? '1' : '0'}" /></td><td>${escapeHtml(row.bn)}</td><td>${escapeHtml(row.seat)}</td><td>${escapeHtml(row.flight)}</td></tr>`;
       }).join('')}</tbody></table>`;
     }
     function renderRows(rows) {
@@ -113,23 +115,34 @@
         setStatus(err.message || 'Load failed', true);
       }
     }
-    tableWrap.addEventListener('change', async (event) => {
+    tableWrap.addEventListener('change', (event) => {
       const checkbox = event.target.closest('.scan-check');
       if (!checkbox) return;
-      const row = checkbox.closest('tr[data-row-number]');
-      const rowNumber = row?.dataset?.rowNumber;
-      if (!rowNumber) return;
-      checkbox.disabled = true;
+      checkbox.closest('tr[data-row-number]')?.classList.toggle('is-entered', checkbox.checked);
+    });
+    tableWrap.addEventListener('click', async (event) => {
+      const action = event.target.closest('[data-bulk]')?.dataset?.bulk;
+      if (!action) return;
+      const checkboxes = [...tableWrap.querySelectorAll('.scan-check')];
+      if (action === 'select-all') { checkboxes.forEach((box) => { box.checked = true; box.dispatchEvent(new Event('change', { bubbles:true })); }); return; }
+      if (action === 'clear-selection') { checkboxes.forEach((box) => { box.checked = false; box.dispatchEvent(new Event('change', { bubbles:true })); }); return; }
+      const selectedRows = checkboxes.filter((box) => box.checked).map((box) => box.closest('tr[data-row-number]')).filter(Boolean);
+      const rowNumbers = selectedRows.map((row) => Number(row.dataset.rowNumber)).filter(Boolean);
+      if (!rowNumbers.length) { setStatus('Select one or more scan rows first.', true); return; }
+      const entered = action === 'mark-done';
       try {
-        const res = await fetch(`${apiBase}/cbs-scan/records/${encodeURIComponent(rowNumber)}/entered`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ entered: checkbox.checked }) });
+        setStatus('Updating Google Sheet colors...');
+        const res = await fetch(`${apiBase}/cbs-scan/records/entered`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ rowNumbers, entered }) });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || 'Unable to update row color.');
-        row.classList.toggle('is-entered', checkbox.checked);
+        if (!res.ok) throw new Error(data.error || 'Unable to update row colors.');
+        selectedRows.forEach((row) => {
+          row.classList.toggle('is-entered', entered);
+          const box = row.querySelector('.scan-check');
+          if (box) { box.checked = entered; box.dataset.original = entered ? '1' : '0'; }
+        });
+        setStatus(`Updated ${rowNumbers.length} rows.`);
       } catch (err) {
-        checkbox.checked = !checkbox.checked;
-        setStatus(err.message || 'Unable to update row color.', true);
-      } finally {
-        checkbox.disabled = false;
+        setStatus(err.message || 'Unable to update row colors.', true);
       }
     });
     document.querySelector('#refresh').addEventListener('click', loadBoard);

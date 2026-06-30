@@ -66,6 +66,7 @@ const {
   appendCbsScanNbrdBns,
   getCbsScanRecords,
   setCbsScanRecordEntered,
+  setCbsScanRecordsEntered,
   readNotesDriveStore,
   writeNotesDriveStore
 
@@ -1668,6 +1669,16 @@ app.get('/cbs-scan/records', async (req, res) => {
   }
 });
 
+
+
+app.post('/cbs-scan/records/entered', async (req, res) => {
+  try {
+    const result = await setCbsScanRecordsEntered(req.body?.rowNumbers || [], req.body?.entered === true);
+    return res.json({ ok: true, ...result });
+  } catch (err) {
+    return res.status(422).json({ error: err?.message || 'CBS scan rows update failed', code: err?.code || 'CBS_SCAN_ROWS_UPDATE_ERROR' });
+  }
+});
 
 app.post('/cbs-scan/records/:rowNumber/entered', async (req, res) => {
   try {
