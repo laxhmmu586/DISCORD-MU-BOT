@@ -2468,6 +2468,10 @@ function normalizeCbsScanBn(value) {
   return digits ? digits.padStart(4, '0') : '';
 }
 
+function formatCbsScanSheetBn(value) {
+  const normalized = normalizeCbsScanBn(value);
+  return normalized ? normalized.slice(-3) : '';
+}
 
 function normalizeCbsScanNbrdDetail(value = '') {
   return String(value || '').trim().replace(/^CKIN\/NBRD:\s*/i, '').trim();
@@ -2488,7 +2492,7 @@ async function writeCbsScanNbrdDetail(title, rowNumber, bn, detail = '') {
     spreadsheetId: CBS_SCAN_SHEET_ID,
     range: `${escapeSheetTitle(title)}!L${rowNumber}:M${rowNumber}`,
     valueInputOption: 'RAW',
-    requestBody: { values: [[bn, detail]] }
+    requestBody: { values: [[formatCbsScanSheetBn(bn), detail]] }
   });
   cbsScanSheetCache = { loadedAt: 0, rows: [] };
 }
@@ -2568,12 +2572,12 @@ async function getCbsScanRecords() {
   const enteredRows = await getCbsScanEnteredRowNumbers(title);
   return freshRows.slice(1).map((row, index) => ({
     rowNumber: index + 2,
-    bn: normalizeCbsScanBn(row[0]),
+    bn: formatCbsScanSheetBn(row[0]),
     seat: String(row[1] || '').trim(),
     flight: String(row[2] || '').trim(),
     scannedAt: String(row[4] || '').trim(),
     entered: enteredRows.has(index + 2),
-    nbrdBn: normalizeCbsScanBn(row[11]),
+    nbrdBn: formatCbsScanSheetBn(row[11]),
     nbrdDetail: normalizeCbsScanNbrdDetail(row[12]),
   })).filter((row) => row.bn || row.seat || row.flight || row.scannedAt || row.nbrdBn || row.nbrdDetail);
 }
@@ -2618,7 +2622,7 @@ function throwCbsScanNbrdMessage(bn, detail = '') {
   const message = detail ? `NBRD message: ${detail}` : 'NBRD message';
   const err = new Error(message);
   err.code = 'NBRD_MESSAGE';
-  err.bn = bn;
+  err.bn = formatCbsScanSheetBn(bn);
   err.detail = detail;
   throw err;
 }
@@ -2638,7 +2642,7 @@ async function appendCbsScanRecord(record = {}) {
   if (nbrdExisting) throwCbsScanNbrdMessage(bn, String(nbrdExisting[12] || '').trim());
   const existing = dataRows.find((row) => normalizeCbsScanBn(row[0]) === bn);
   if (existing) {
-    const err = new Error(`Duplicate BN ${bn}.`);
+    const err = new Error(`Duplicate BN ${formatCbsScanSheetBn(bn)}.`);
     err.code = 'DUPLICATE_BN';
     throw err;
   }
@@ -2650,10 +2654,10 @@ async function appendCbsScanRecord(record = {}) {
     spreadsheetId: CBS_SCAN_SHEET_ID,
     range: `${escapeSheetTitle(title)}!A${rowNumber}:E${rowNumber}`,
     valueInputOption: 'RAW',
-    requestBody: { values: [[bn, seat, flight, rawScan, scannedAt]] }
+    requestBody: { values: [[formatCbsScanSheetBn(bn), seat, flight, rawScan, scannedAt]] }
   });
   cbsScanSheetCache = { loadedAt: 0, rows: [] };
-  return { bn, seat, flight, rowNumber, scannedAt };
+  return { bn: formatCbsScanSheetBn(bn), seat, flight, rowNumber, scannedAt };
 }
 
 async function getCbsSheetTitle() {

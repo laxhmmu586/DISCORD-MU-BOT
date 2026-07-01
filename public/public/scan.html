@@ -211,7 +211,7 @@
       const res = await fetch(`${apiBase}/cbs-scan`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ rawScan }) });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const message = data.code === 'WRONG_FLIGHT' ? 'wrong flight' : (data.code === 'NBRD_MESSAGE' ? `NBRD message${data.detail ? `\n${data.detail}` : ''}` : (data.code === 'DUPLICATE_BN' ? `Duplicate BN: ${String(rawScan).match(/(?:^|\D)(?:1)?81[A-Z]\d{2,3}[A-Z](\d{4})\b/i)?.[1] || ''}` : (data.error || 'Scan failed')));
+        const message = data.code === 'WRONG_FLIGHT' ? 'wrong flight' : (data.code === 'NBRD_MESSAGE' ? `NBRD message${data.detail ? `\n${data.detail}` : ''}` : (data.code === 'DUPLICATE_BN' ? `Duplicate BN: ${(String(rawScan).match(/(?:^|\D)(?:1)?81[A-Z]\d{2,3}[A-Z](\d{4})\b/i)?.[1] || '').slice(-3)}` : (data.error || 'Scan failed')));
         const type = data.code === 'WRONG_FLIGHT' ? 'error' : (data.code === 'NBRD_MESSAGE' ? 'warning' : '');
         showMessage(message, 'Message', type);
         throw new Error(message);
@@ -234,8 +234,8 @@
         if (!res.ok) throw new Error(data.error || 'NBRD save failed');
         bnInput.value = '';
         messageInput.value = '';
-        setStatus(`Saved NBRD BN ${String(bn).padStart(4, '0')}`, 'ok');
-        showMessage(`NBRD saved BN ${String(bn).padStart(4, '0')}`, 'Success', 'success');
+        setStatus(`Saved NBRD BN ${String(bn).padStart(4, '0').slice(-3)}`, 'ok');
+        showMessage(`NBRD saved BN ${String(bn).padStart(4, '0').slice(-3)}`, 'Success', 'success');
       } catch (err) {
         setStatus(err.message || 'NBRD save failed', 'err');
         showMessage(err.message || 'NBRD save failed');
