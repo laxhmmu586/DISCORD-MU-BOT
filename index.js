@@ -1637,7 +1637,7 @@ function parseCbsPdf417(rawValue = '') {
     throw err;
   }
 
-  const detailMatch = rawScan.match(/(?:^|\D)(?:1)?81[A-Z](\d{2,3}[A-Z])(\d{4})\b/i);
+  const detailMatch = rawScan.match(/(?:^|\D)(?:1)?8\d[A-Z](\d{2,3}[A-Z])(\d{3,4})\b/i);
   if (!detailMatch) throw new Error('Seat/BN segment not found.');
   const seat = detailMatch[1].toUpperCase().replace(/^0+(?=\d)/, '');
   return {
