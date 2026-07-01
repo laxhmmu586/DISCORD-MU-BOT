@@ -2552,7 +2552,7 @@ function isCbsScanEnteredCell(cell = {}) {
 async function getCbsScanEnteredRowNumbers(title) {
   const res = await sheets.spreadsheets.get({
     spreadsheetId: CBS_SCAN_SHEET_ID,
-    ranges: [`${escapeSheetTitle(title)}!A2:E`],
+    ranges: [`${escapeSheetTitle(title)}!A2:C`],
     includeGridData: true,
     fields: 'sheets(data(rowData(values(userEnteredFormat(backgroundColor),effectiveFormat(backgroundColor)))))'
   });
@@ -2593,7 +2593,7 @@ function cbsScanEnteredRepeatCellRequest(rowNumber, entered = false) {
         startRowIndex: targetRow - 1,
         endRowIndex: targetRow,
         startColumnIndex: 0,
-        endColumnIndex: 5
+        endColumnIndex: 3
       },
       cell: { userEnteredFormat: { backgroundColor } },
       fields: 'userEnteredFormat.backgroundColor'
