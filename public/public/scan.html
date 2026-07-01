@@ -31,12 +31,12 @@
     .result { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
     .result div { padding:12px; border:1px solid var(--line); border-radius:14px; background:#fbfdff; }
     .result b { display:block; color:var(--muted); font-size:12px; text-transform:uppercase; }
-    .nbrd-form { display:grid; gap:12px; }
-    .field-grid { display:grid; grid-template-columns:180px 1fr; gap:12px; }
-    label { display:grid; gap:6px; color:var(--muted); font-size:12px; font-weight:900; text-transform:uppercase; letter-spacing:.04em; }
-    input,textarea { width:100%; border:1px solid var(--line); border-radius:14px; padding:12px 14px; color:var(--ink); font:inherit; font-weight:750; background:#fbfdff; }
-    textarea { min-height:64px; resize:vertical; }
-    @media (min-width:700px){ .nbrd-form{max-width:760px}.field-grid{grid-template-columns:160px minmax(320px,1fr);align-items:end} #nbrd-message{min-height:58px} }
+    .nbrd-form { display:grid; gap:14px; }
+    .field-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; align-items:start; }
+    label { display:grid; gap:8px; color:var(--muted); font-size:12px; font-weight:900; text-transform:uppercase; letter-spacing:.04em; }
+    input,textarea { width:100%; height:56px; border:1px solid var(--line); border-radius:14px; padding:14px 16px; color:var(--ink); font:inherit; font-weight:750; background:#fbfdff; box-shadow:inset 0 1px 0 rgba(255,255,255,.7); }
+    textarea { min-height:56px; resize:none; overflow:auto; line-height:1.35; }
+    #nbrd-form .actions { margin-top:2px; }
     .dialog-backdrop { position:fixed; inset:0; z-index:50; display:grid; place-items:center; padding:22px; background:rgba(12,20,32,.48); }
     .dialog-backdrop[hidden] { display:none; }
     .dialog-card { width:min(420px,92vw); border-radius:28px; background:rgba(255,255,255,.96); box-shadow:0 22px 70px rgba(0,0,0,.28); padding:28px; text-align:center; }
@@ -49,7 +49,7 @@
     .dialog-card input { margin:0 0 10px; }
     .dialog-card button { width:100%; font-size:18px; }
     .dialog-card .secondary { margin-top:8px; }
-    @media (max-width:640px){ .result,.field-grid{grid-template-columns:1fr} .card{padding:18px} h1{font-size:34px} }
+    @media (max-width:640px){ .result,.field-grid{grid-template-columns:1fr} input,textarea{height:54px} .card{padding:18px} h1{font-size:34px} }
   </style>
 </head>
 <body>
