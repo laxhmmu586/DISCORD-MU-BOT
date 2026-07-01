@@ -218,7 +218,7 @@
       }
       renderResult(data); setStatus(`Saved BN ${data.bn} / Seat ${data.seat}`, 'ok'); showMessage(`Input successful BN ${data.bn}`, 'Success', 'success');
     }
-    async function handleText(text) { try { setStatus('Saving...'); await saveScan(text); } catch (err) { setStatus(err.message, 'err'); } finally { setTimeout(() => { if (controls) setStatus('Scanning PDF417...'); }, 900); } }
+    async function handleText(text) { try { setStatus('Saving...'); await saveScan(text); } catch (err) { setStatus(err.message, 'err'); } finally { setTimeout(() => { if (controls) setStatus('Scanning'); }, 900); } }
     document.querySelector('#nbrd-form').addEventListener('submit', async (event) => {
       event.preventDefault();
       const bnInput = document.querySelector('#nbrd-bn');
@@ -258,10 +258,10 @@
           lastScanText = text;
           lastScanAt = now;
           setStatus('Code detected. Saving before next scan...');
-          handleText(text).finally(() => { setTimeout(() => { scanBusy = false; if (controls) setStatus('Scanning PDF417...'); }, 1500); });
+          handleText(text).finally(() => { setTimeout(() => { scanBusy = false; if (controls) setStatus('Scanning'); }, 1500); });
         });
         await applyCameraFocus();
-        setStatus('Scanning PDF417...');
+        setStatus('Scanning');
       } catch (err) { setStatus(err.message, 'err'); showMessage(err.message); }
     });
     document.querySelector('#stop').addEventListener('click', () => { controls?.stop(); controls = null; setStatus('Stopped.'); });
