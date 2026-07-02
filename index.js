@@ -1637,14 +1637,18 @@ function parseCbsPdf417(rawValue = '') {
     throw err;
   }
 
-  const detailMatch = rawScan.match(/(?:^|\D)0*(\d{1,3}[A-Z])(\d{3,4})\b/i);
+  const detailMatch = rawScan.match(/(?:^|\D)(0*INF|0*\d{1,3}[A-Z])(\d{3,4})\b/i);
   if (!detailMatch) throw new Error('Seat/BN segment not found.');
-  const seat = detailMatch[1].toUpperCase().replace(/^0+(?=\d)/, '');
+  const seatToken = detailMatch[1].toUpperCase();
+  const normalizedSeatToken = seatToken.replace(/^0+/, '');
+  const isInfant = normalizedSeatToken === 'INF';
+  const seat = isInfant ? 'INF' : seatToken.replace(/^0+(?=\d)/, '');
   return {
     flight: flightNumber,
     seat,
     bn: detailMatch[2],
-    rawScan
+    rawScan,
+    isInfant
   };
 }
 
