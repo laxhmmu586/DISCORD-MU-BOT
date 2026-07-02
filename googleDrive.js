@@ -116,6 +116,7 @@ const CBS_MISSING_BAG_HEADERS = ['Bag Tag', 'Passenger Name', 'Destination', 'Ai
 const CBS_SCAN_SHEET_ID = process.env.CBS_SCAN_SHEET_ID || '1bfIeytT6UMdvWXimeg4s1HVuXHqmpYZx53ufsbes6Ms';
 const CBS_SCAN_SHEET_GID = Number(process.env.CBS_SCAN_SHEET_GID || 0);
 const CBS_SCAN_HEADERS = ['BN', 'Seat', 'Flight', 'Raw Scan', 'Scanned At'];
+const CBS_SCAN_INFANT_HEADERS = ['Infant BN', 'Infant Seat', 'Infant Flight', 'Infant Raw Scan', 'Infant Scanned At'];
 let cbsScanSheetTitle = '';
 let cbsScanSheetCache = { loadedAt: 0, rows: [] };
 let cbsMissingBagSheetTitle = '';
@@ -2436,7 +2437,7 @@ async function getCbsScanSheetRows(options = {}) {
   const title = await getCbsScanSheetTitle();
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: CBS_SCAN_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A:M`
+    range: `${escapeSheetTitle(title)}!A:R`
   });
   const rows = res.data.values || [];
   cbsScanSheetCache = { loadedAt: Date.now(), rows };
@@ -2446,9 +2447,9 @@ async function getCbsScanSheetRows(options = {}) {
 async function ensureCbsScanSheetHeaders(rows) {
   const firstRow = rows?.[0] || [];
   const hasHeaders = CBS_SCAN_HEADERS.every((header, index) => String(firstRow[index] || '').trim() === header);
-  if (hasHeaders) return;
+  const hasInfantHeaders = CBS_SCAN_INFANT_HEADERS.every((header, index) => String(firstRow[index + 13] || '').trim() === header);
   const title = await getCbsScanSheetTitle();
-  await sheets.spreadsheets.values.update({
+  if (!hasHeaders) await sheets.spreadsheets.values.update({
     spreadsheetId: CBS_SCAN_SHEET_ID,
     range: `${escapeSheetTitle(title)}!A1:E1`,
     valueInputOption: 'RAW',
@@ -2459,6 +2460,12 @@ async function ensureCbsScanSheetHeaders(rows) {
     range: `${escapeSheetTitle(title)}!L1:M1`,
     valueInputOption: 'RAW',
     requestBody: { values: [['NBRD BN', 'CKIN NBRD Detail']] }
+  });
+  if (!hasInfantHeaders) await sheets.spreadsheets.values.update({
+    spreadsheetId: CBS_SCAN_SHEET_ID,
+    range: `${escapeSheetTitle(title)}!N1:R1`,
+    valueInputOption: 'RAW',
+    requestBody: { values: [CBS_SCAN_INFANT_HEADERS] }
   });
   cbsScanSheetCache = { loadedAt: 0, rows: [] };
 }
@@ -2579,7 +2586,11 @@ async function getCbsScanRecords() {
     entered: enteredRows.has(index + 2),
     nbrdBn: formatCbsScanSheetBn(row[11]),
     nbrdDetail: normalizeCbsScanNbrdDetail(row[12]),
-  })).filter((row) => row.bn || row.seat || row.flight || row.scannedAt || row.nbrdBn || row.nbrdDetail);
+    infantBn: formatCbsScanSheetBn(row[13]),
+    infantSeat: String(row[14] || '').trim(),
+    infantFlight: String(row[15] || '').trim(),
+    infantScannedAt: String(row[17] || '').trim(),
+  })).filter((row) => row.bn || row.seat || row.flight || row.scannedAt || row.nbrdBn || row.nbrdDetail || row.infantBn || row.infantSeat || row.infantFlight || row.infantScannedAt);
 }
 
 function cbsScanEnteredRepeatCellRequest(rowNumber, entered = false) {
@@ -2640,24 +2651,28 @@ async function appendCbsScanRecord(record = {}) {
   const dataRows = (await getCbsScanSheetRows({ forceRefresh: true })).slice(1);
   const nbrdExisting = dataRows.find((row) => normalizeCbsScanBn(row[11]) === bn);
   if (nbrdExisting) throwCbsScanNbrdMessage(bn, String(nbrdExisting[12] || '').trim());
-  const existing = dataRows.find((row) => normalizeCbsScanBn(row[0]) === bn);
+  const isInfant = record.isInfant === true || seat === 'INF';
+  const bnColumnIndex = isInfant ? 13 : 0;
+  const existing = dataRows.find((row) => normalizeCbsScanBn(row[bnColumnIndex]) === bn);
   if (existing) {
     const err = new Error(`Duplicate BN ${formatCbsScanSheetBn(bn)}.`);
     err.code = 'DUPLICATE_BN';
     throw err;
   }
+  const scanColumnStart = isInfant ? 13 : 0;
+  const scanRangeColumns = isInfant ? 'N:R' : 'A:E';
   const lastScanOffset = dataRows.reduce((lastIndex, row, index) => (
-    row.slice(0, 5).some((cell) => String(cell || '').trim()) ? index : lastIndex
+    row.slice(scanColumnStart, scanColumnStart + 5).some((cell) => String(cell || '').trim()) ? index : lastIndex
   ), -1);
   const rowNumber = lastScanOffset + 3;
   await sheets.spreadsheets.values.update({
     spreadsheetId: CBS_SCAN_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A${rowNumber}:E${rowNumber}`,
+    range: `${escapeSheetTitle(title)}!${scanRangeColumns.replace(':', `${rowNumber}:`)}${rowNumber}`,
     valueInputOption: 'RAW',
     requestBody: { values: [[formatCbsScanSheetBn(bn), seat, flight, rawScan, scannedAt]] }
   });
   cbsScanSheetCache = { loadedAt: 0, rows: [] };
-  return { bn: formatCbsScanSheetBn(bn), seat, flight, rowNumber, scannedAt };
+  return { bn: formatCbsScanSheetBn(bn), seat, flight, rowNumber, scannedAt, isInfant };
 }
 
 async function getCbsSheetTitle() {
