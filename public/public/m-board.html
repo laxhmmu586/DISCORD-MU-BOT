@@ -97,7 +97,7 @@
     }
     function renderInfantRows(rows) {
       if (!rows.length) { infantWrap.innerHTML = '<div class="empty">No infant scans found.</div>'; return; }
-      infantWrap.innerHTML = `<table><thead><tr><th>BN</th><th>Seat</th><th>Scanned At</th></tr></thead><tbody>${rows.map((row) => `<tr><td class="infant">${escapeHtml(row.infantBn)}</td><td>${escapeHtml(row.infantSeat || 'INF')}</td><td>${escapeHtml(row.infantScannedAt)}</td></tr>`).join('')}</tbody></table>`;
+      infantWrap.innerHTML = `<table><thead><tr><th>BN</th><th>Seat</th></tr></thead><tbody>${rows.map((row) => `<tr><td class="infant">${escapeHtml(row.infantBn)}</td><td>${escapeHtml(row.infantSeat || 'INF')}</td></tr>`).join('')}</tbody></table>`;
     }
     function renderRows(rows) {
       const nbrdRows = rows.filter((row) => row.nbrdBn || row.nbrdDetail);
@@ -113,8 +113,10 @@
         const res = await fetch(`${apiBase}/cbs-scan/records`, { cache:'no-store' });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || 'Load failed');
-        renderRows(data.rows || []);
-        setStatus(`Loaded ${(data.rows || []).length} rows.`);
+        const rows = data.rows || [];
+        renderRows(rows);
+        const scannedCount = rows.filter((row) => row.bn || row.seat || row.flight).length;
+        setStatus(`Scanned ${scannedCount}`);
       } catch (err) {
         nbrdWrap.innerHTML = '<div class="empty">Unable to load NBRD rows.</div>';
         tableWrap.innerHTML = '<div class="empty">Unable to load Google Sheet.</div>';
