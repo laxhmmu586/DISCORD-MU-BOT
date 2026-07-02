@@ -212,7 +212,7 @@
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         const message = data.code === 'WRONG_FLIGHT' ? 'wrong flight' : (data.code === 'NBRD_MESSAGE' ? `NBRD message${data.detail ? `\n${data.detail}` : ''}` : (data.code === 'DUPLICATE_BN' ? `Duplicate BN: ${(String(rawScan).match(/(?:^|\D)(?:0*INF|0*\d{1,3}[A-Z])(\d{3,4})\b/i)?.[1] || '').slice(-3)}` : (data.error || 'Scan failed')));
-        const type = data.code === 'WRONG_FLIGHT' ? 'error' : (data.code === 'NBRD_MESSAGE' ? 'warning' : '');
+        const type = data.code === 'WRONG_FLIGHT' || data.code === 'DUPLICATE_BN' ? 'error' : (data.code === 'NBRD_MESSAGE' ? 'warning' : '');
         showMessage(message, 'Message', type);
         throw new Error(message);
       }
