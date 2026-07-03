@@ -2525,6 +2525,34 @@ async function clearCbsScanNbrdRows(title) {
   cbsScanSheetCache = { loadedAt: 0, rows: [] };
 }
 
+async function deleteCbsScanNbrdBn(rowNumber, bn = '') {
+  const targetRow = Number(rowNumber);
+  if (!Number.isInteger(targetRow) || targetRow < 2) throw new Error('Invalid NBRD row number.');
+  const expectedBn = normalizeCbsScanBn(bn);
+  const title = await getCbsScanSheetTitle();
+  const rows = await getCbsScanSheetRows({ forceRefresh: true });
+  await ensureCbsScanSheetHeaders(rows);
+  const freshRows = await getCbsScanSheetRows({ forceRefresh: true });
+  const row = freshRows[targetRow - 1] || [];
+  const rowBn = normalizeCbsScanBn(row[11]);
+  if (!rowBn) {
+    const err = new Error('NBRD row not found.');
+    err.code = 'NBRD_NOT_FOUND';
+    throw err;
+  }
+  if (expectedBn && rowBn !== expectedBn) {
+    const err = new Error('NBRD row does not match requested BN.');
+    err.code = 'NBRD_MISMATCH';
+    throw err;
+  }
+  await sheets.spreadsheets.values.clear({
+    spreadsheetId: CBS_SCAN_SHEET_ID,
+    range: `${escapeSheetTitle(title)}!L${targetRow}:M${targetRow}`
+  });
+  cbsScanSheetCache = { loadedAt: 0, rows: [] };
+  return { deleted: true, rowNumber: targetRow, bn: formatCbsScanSheetBn(rowBn) };
+}
+
 async function appendCbsScanNbrdBns(values = [], options = {}) {
   const entriesByBn = new Map();
   for (const value of (Array.isArray(values) ? values : [values])) {
@@ -3292,6 +3320,7 @@ module.exports = {
   sendCbsCaseEmail,
   appendCbsScanRecord,
   appendCbsScanNbrdBns,
+  deleteCbsScanNbrdBn,
   getCbsScanRecords,
   setCbsScanRecordEntered,
   setCbsScanRecordsEntered,

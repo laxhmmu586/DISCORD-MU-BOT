@@ -64,6 +64,7 @@ const {
   sendCbsCaseEmail,
   appendCbsScanRecord,
   appendCbsScanNbrdBns,
+  deleteCbsScanNbrdBn,
   getCbsScanRecords,
   setCbsScanRecordEntered,
   setCbsScanRecordsEntered,
@@ -1700,6 +1701,16 @@ app.post('/cbs-scan/nbrd-bns', async (req, res) => {
     return res.json({ ok: true, ...result });
   } catch (err) {
     return res.status(422).json({ error: err?.message || 'NBRD BN save failed', code: err?.code || 'NBRD_SAVE_ERROR' });
+  }
+});
+
+app.delete('/cbs-scan/nbrd-bns/:rowNumber', async (req, res) => {
+  try {
+    const result = await deleteCbsScanNbrdBn(req.params.rowNumber, req.body?.bn || req.query?.bn || '');
+    return res.json({ ok: true, ...result });
+  } catch (err) {
+    const status = err?.code === 'NBRD_NOT_FOUND' || err?.code === 'NBRD_MISMATCH' ? 404 : 422;
+    return res.status(status).json({ error: err?.message || 'NBRD BN delete failed', code: err?.code || 'NBRD_DELETE_ERROR' });
   }
 });
 
