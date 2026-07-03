@@ -141,11 +141,14 @@
       try {
         button.disabled = true;
         setStatus(`Deleting NBRD BN ${bn}...`);
-        const res = await fetch(`${apiBase}/cbs-scan/nbrd-bns/${encodeURIComponent(rowNumber)}?bn=${encodeURIComponent(bn)}`, { method:'DELETE' });
+        const res = await fetch(`${apiBase}/cbs-scan/nbrd-bns/${encodeURIComponent(rowNumber)}/delete`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ bn }) });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || 'Unable to delete NBRD BN.');
+        const tableRow = button.closest('tr');
+        const tableBody = tableRow?.parentElement;
+        tableRow?.remove();
+        if (tableBody && !tableBody.querySelector('tr')) renderNbrdRows([]);
         setStatus(`Deleted NBRD BN ${bn}.`);
-        await loadBoard();
       } catch (err) {
         button.disabled = false;
         setStatus(err.message || 'Unable to delete NBRD BN.', true);

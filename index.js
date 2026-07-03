@@ -1704,7 +1704,7 @@ app.post('/cbs-scan/nbrd-bns', async (req, res) => {
   }
 });
 
-app.delete('/cbs-scan/nbrd-bns/:rowNumber', async (req, res) => {
+async function handleCbsScanNbrdDelete(req, res) {
   try {
     const result = await deleteCbsScanNbrdBn(req.params.rowNumber, req.body?.bn || req.query?.bn || '');
     return res.json({ ok: true, ...result });
@@ -1712,7 +1712,10 @@ app.delete('/cbs-scan/nbrd-bns/:rowNumber', async (req, res) => {
     const status = err?.code === 'NBRD_NOT_FOUND' || err?.code === 'NBRD_MISMATCH' ? 404 : 422;
     return res.status(status).json({ error: err?.message || 'NBRD BN delete failed', code: err?.code || 'NBRD_DELETE_ERROR' });
   }
-});
+}
+
+app.post('/cbs-scan/nbrd-bns/:rowNumber/delete', handleCbsScanNbrdDelete);
+app.delete('/cbs-scan/nbrd-bns/:rowNumber', handleCbsScanNbrdDelete);
 
 app.get('/cbs-cases', async (req, res) => {
   try {
