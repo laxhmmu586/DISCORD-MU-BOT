@@ -30,26 +30,7 @@
     .result { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
     .result div { padding:12px; border:1px solid var(--line); border-radius:14px; background:#fbfdff; }
     .result b { display:block; color:var(--muted); font-size:12px; text-transform:uppercase; }
-    .nbrd-form { display:grid; gap:14px; }
-    .field-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; align-items:start; }
-    label { display:grid; gap:8px; color:var(--muted); font-size:12px; font-weight:900; text-transform:uppercase; letter-spacing:.04em; }
-    input,textarea { width:100%; height:56px; border:1px solid var(--line); border-radius:14px; padding:14px 16px; color:var(--ink); font:inherit; font-weight:750; background:#fbfdff; box-shadow:inset 0 1px 0 rgba(255,255,255,.7); }
-    textarea { min-height:56px; resize:none; overflow:auto; line-height:1.35; }
-    #nbrd-form .actions { margin-top:2px; }
-    .dialog-backdrop { position:fixed; inset:0; z-index:50; display:grid; place-items:center; padding:22px; background:rgba(12,20,32,.48); }
-    .dialog-backdrop[hidden] { display:none; }
-    .dialog-card { width:min(420px,92vw); border-radius:28px; background:rgba(255,255,255,.96); box-shadow:0 22px 70px rgba(0,0,0,.28); padding:28px; text-align:center; }
-    .dialog-icon { display:grid; width:78px; height:78px; place-items:center; margin:0 auto 14px; border-radius:999px; color:white; font-size:46px; font-weight:1000; line-height:1; box-shadow:inset 0 8px 12px rgba(255,255,255,.45), inset 0 -10px 18px rgba(0,0,0,.18), 0 10px 20px rgba(0,0,0,.18); text-shadow:0 2px 4px rgba(0,0,0,.25); }
-    .dialog-icon.success { background:linear-gradient(145deg,#7dff4b,#26b50f 58%,#168906); }
-    .dialog-icon.infant { background:linear-gradient(145deg,#7dd3fc,#2563eb 58%,#123a73); }
-    .dialog-icon.warning { background:linear-gradient(145deg,#ffe66a,#f59e0b 58%,#b45309); }
-    .dialog-icon.error { background:linear-gradient(145deg,#ff8a8a,#ef2424 58%,#b42318); }
-    .dialog-card h2 { margin:0 0 12px; font-size:24px; }
-    .dialog-card p { margin:0 0 22px; font-size:20px; font-weight:850; color:#344054; white-space:pre-line; }
-    .dialog-card input { margin:0 0 10px; }
-    .dialog-card button { width:100%; font-size:18px; }
-    .dialog-card .secondary { margin-top:8px; }
-    @media (max-width:640px){ .result,.field-grid{grid-template-columns:1fr} input,textarea{height:54px} .card{padding:18px} h1{font-size:34px} }
+    @media (max-width:640px){ .result{grid-template-columns:1fr} .mode-grid{grid-template-columns:1fr} .mode-card{min-height:190px} }
   </style>
 </head>
 <body>
