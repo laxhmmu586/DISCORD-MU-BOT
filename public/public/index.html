@@ -5619,7 +5619,9 @@
         const govIssueGroups = [gov.duplicatePassports, gov.aqqTclBnList, gov.govDtaBnList, gov.passportExpBnList, gov.wrongPassportBnList, gov.missingApiBnList, gov.infApiBnList];
         const govCount = isClearLocked("GOV") ? 0 : govIssueGroups.reduce((sum, value) => sum + unresolvedReviewedBnCount(value, passBnSet), 0);
         const webediCount = isClearLocked("WEBEDI") ? 0 : unresolvedReviewedBnCount(webEdiIssueBnList(sy), passBnSet);
-        const nbrdCount = isClearLocked("NBRD") ? 0 : unacknowledgedNbrdCount(sy);
+        const nbrdRows = nbrdRowsWithAcknowledgements(sy);
+        const nbrdCount = isClearLocked("NBRD") ? 0 : nbrdRows.length;
+        const unackedNbrdCount = isClearLocked("NBRD") ? 0 : unacknowledgedNbrdCount(sy, nbrdRows);
         syncCkinNbrdBnsToBoardingSheet(sy);
         setBadgeText("#chd-count", chdIssues);
         setBadgeText("#gov-count", govCount);
@@ -5628,7 +5630,7 @@
         setActionIssueState("#chd-action", chdIssues > 0);
         setActionIssueState("#gov-action", govCount > 0);
         setActionIssueState("#webedi-action", webediCount > 0);
-        setActionIssueState("#nbrd-action", nbrdCount > 0);
+        setActionIssueState("#nbrd-action", unackedNbrdCount > 0);
         setBadgeText("#wch-count", (sy.wchList || []).length);
         updateWarningActionState(buildWarningRows(sy));
         loadWarningAcknowledgements(sy);
@@ -5667,7 +5669,7 @@
           if (key === "CHD") { issueCount = chdIssues; started = (sy.chdList || []).length > 0; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
           if (key === "GOV") { issueCount = govCount; started = Boolean(sy.govAqq) && previousStarted; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
           if (key === "WEBEDI") { issueCount = webediCount; started = Boolean(sy.govAqq) && previousStarted; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
-          if (key === "NBRD") { issueCount = nbrdCount; started = (sy.bnAudit || []).length > 0 && previousStarted; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
+          if (key === "NBRD") { issueCount = unackedNbrdCount; started = nbrdCount > 0 && previousStarted; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
           if (persistedGreenNode?.complete) {
             complete = true;
             started = true;
@@ -5683,7 +5685,6 @@
           else node.removeAttribute("data-alert");
           previousStarted = previousStarted && (key === "FSC" ? true : started);
         });
-        applyPostFlightCompletionCascade();
         stopSyAutoRefreshWhenFinalNodesComplete();
         resetTimelineCenter();
         rerenderActiveRealtimePanel();
@@ -5696,20 +5697,6 @@
         else if (title === "GOV/AQQ") renderGovPanel();
         else if (title === "WEB/EDI/RS") renderWebEdiPanel();
         else if (title === "CKIN/NBRD") renderNbrdPanel();
-      }
-
-      function applyPostFlightCompletionCascade() {
-        const keys = ["CCL", "CC", "INITIAL_FLIGHT", "BDT_CHG"];
-        const postFlightNodes = keys.map((key) => document.querySelector(`.node[data-key="${key}"]`));
-        const latestDoneIndex = postFlightNodes.reduce((latest, node, index) => node?.dataset?.status === "done" ? index : latest, -1);
-        if (latestDoneIndex <= 0) return;
-        for (let index = 0; index < latestDoneIndex; index += 1) {
-          const node = postFlightNodes[index];
-          if (!node) continue;
-          node.dataset.status = "done";
-          node.dataset.time = node.dataset.time && node.dataset.time !== "----" ? node.dataset.time : "DONE";
-          node.removeAttribute("data-alert");
-        }
       }
 
       function renderSy(data) {
@@ -6200,20 +6187,22 @@
         return applyWarningAck(enrichRowsWithPassengerData((sy?.bnAudit || []).filter(rowHasCkinNbrdIssue)));
       }
 
-      function unacknowledgedNbrdCount(sy = currentSy) {
-        return nbrdRowsWithAcknowledgements(sy).filter((row) => !(row.acknowledgements || []).length).length;
+      function unacknowledgedNbrdCount(sy = currentSy, rows = nbrdRowsWithAcknowledgements(sy)) {
+        return rows.filter((row) => !(row.acknowledgements || []).length).length;
       }
 
       function applyNbrdAcknowledgementState(sy = currentSy) {
         if (!sy) return;
-        const nbrdCount = unacknowledgedNbrdCount(sy);
+        const rows = nbrdRowsWithAcknowledgements(sy);
+        const nbrdCount = rows.length;
+        const unackedNbrdCount = unacknowledgedNbrdCount(sy, rows);
         setBadgeText("#nbrd-count", nbrdCount);
-        setActionIssueState("#nbrd-action", nbrdCount > 0);
+        setActionIssueState("#nbrd-action", unackedNbrdCount > 0);
         const node = document.querySelector('.node[data-key="NBRD"]');
         if (node && (sy.bnAudit || []).length) {
-          node.dataset.status = nbrdCount > 0 ? "issue" : "done";
-          node.dataset.time = nbrdCount > 0 ? String(nbrdCount) : "CLEAR";
-          if (nbrdCount > 0) node.dataset.alert = String(nbrdCount);
+          node.dataset.status = unackedNbrdCount > 0 ? "issue" : "done";
+          node.dataset.time = unackedNbrdCount > 0 ? String(nbrdCount) : "CLEAR";
+          if (unackedNbrdCount > 0) node.dataset.alert = String(nbrdCount);
           else node.removeAttribute("data-alert");
         }
       }
