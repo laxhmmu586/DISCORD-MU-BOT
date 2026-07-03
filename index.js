@@ -64,6 +64,7 @@ const {
   sendCbsCaseEmail,
   appendCbsScanRecord,
   appendCbsScanNbrdBns,
+  deleteCbsScanNbrdBn,
   getCbsScanRecords,
   setCbsScanRecordEntered,
   setCbsScanRecordsEntered,
@@ -1637,14 +1638,18 @@ function parseCbsPdf417(rawValue = '') {
     throw err;
   }
 
-  const detailMatch = rawScan.match(/(?:^|\D)0*(\d{1,3}[A-Z])(\d{3,4})\b/i);
+  const detailMatch = rawScan.match(/(?:^|\D)(0*INF|0*\d{1,3}[A-Z])(\d{3,4})\b/i);
   if (!detailMatch) throw new Error('Seat/BN segment not found.');
-  const seat = detailMatch[1].toUpperCase().replace(/^0+(?=\d)/, '');
+  const seatToken = detailMatch[1].toUpperCase();
+  const normalizedSeatToken = seatToken.replace(/^0+/, '');
+  const isInfant = normalizedSeatToken === 'INF';
+  const seat = isInfant ? 'INF' : seatToken.replace(/^0+(?=\d)/, '');
   return {
     flight: flightNumber,
     seat,
     bn: detailMatch[2],
-    rawScan
+    rawScan,
+    isInfant
   };
 }
 
@@ -1698,6 +1703,19 @@ app.post('/cbs-scan/nbrd-bns', async (req, res) => {
     return res.status(422).json({ error: err?.message || 'NBRD BN save failed', code: err?.code || 'NBRD_SAVE_ERROR' });
   }
 });
+
+async function handleCbsScanNbrdDelete(req, res) {
+  try {
+    const result = await deleteCbsScanNbrdBn(req.params.rowNumber, req.body?.bn || req.query?.bn || '');
+    return res.json({ ok: true, ...result });
+  } catch (err) {
+    const status = err?.code === 'NBRD_NOT_FOUND' || err?.code === 'NBRD_MISMATCH' ? 404 : 422;
+    return res.status(status).json({ error: err?.message || 'NBRD BN delete failed', code: err?.code || 'NBRD_DELETE_ERROR' });
+  }
+}
+
+app.post('/cbs-scan/nbrd-bns/:rowNumber/delete', handleCbsScanNbrdDelete);
+app.delete('/cbs-scan/nbrd-bns/:rowNumber', handleCbsScanNbrdDelete);
 
 app.get('/cbs-cases', async (req, res) => {
   try {
