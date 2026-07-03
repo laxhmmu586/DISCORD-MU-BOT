@@ -745,15 +745,40 @@ function hasUnclearedApiSourceRisk(section) {
   return !operations.some((op) => op.index > latestApi.index);
 }
 
+function infantApiIssueFromSection(section) {
+  const lines = String(section || '').split(/\r?\n/);
+  const infantLineIndex = lines.findIndex((line) => /^\s*INF-/i.test(line));
+  if (infantLineIndex < 0) return null;
+  const infantLine = lines[infantLineIndex].trim();
+  const secOkRegex = /^\s*SEC\s+TXT-CHN\s+OK\s+TO\s+BOARD\b/i;
+  const nextMeaningfulLine = lines.slice(infantLineIndex + 1).find((line) => line.trim());
+  const hasDirectInfantApi = secOkRegex.test(nextMeaningfulLine || '');
+  const secOkCount = lines.filter((line) => secOkRegex.test(line)).length;
+  if (hasDirectInfantApi || secOkCount >= 2) return null;
+  const infantName = infantLine
+    .replace(/^INF-\s*/i, '')
+    .replace(/^T\s+HK\d+\s+/i, '')
+    .replace(/^HK\d+\s+/i, '')
+    .replace(/\s+\d{1,2}[A-Z]{3}\d{2,4}.*$/i, '')
+    .trim();
+  return {
+    infantName,
+    reason: infantName
+      ? `INF API not passed for ${infantName}: missing infant SEC TXT-CHN OK TO BOARD`
+      : 'INF API not passed: missing infant SEC TXT-CHN OK TO BOARD'
+  };
+}
+
 function enrichGovAqqFromLog(log, syInfo, targetYmd = null) {
   if (!log || !syInfo?.flightNo || !syInfo?.flightDate) {
-    return { duplicatePassports: [], aqqTclBnList: [], govDtaBnList: [], passportExpBnList: [], wrongPassportBnList: [], missingApiBnList: [], passportCodeIssues: [] };
+    return { duplicatePassports: [], aqqTclBnList: [], govDtaBnList: [], passportExpBnList: [], wrongPassportBnList: [], missingApiBnList: [], infApiBnList: [], passportCodeIssues: [] };
   }
   const sections = splitLogicalSections(log);
   const paxRecords = [];
   const issueByBn = new Map();
   const latestSectionByBn = new Map();
   const passportExpBnList = [];
+  const infApiIssues = [];
   const sectionRichnessScore = (text) => {
     const raw = String(text || '');
     let score = 0;
@@ -864,6 +889,11 @@ ${section}`,
     if (hasWrongPassport) {
       issueReasons.push(`wrong passport: ${passportNo} has fewer than 7 characters`);
     }
+    const infApiIssue = infantApiIssueFromSection(section);
+    if (infApiIssue) {
+      issueReasons.push(infApiIssue.reason);
+      infApiIssues.push({ bn, ...infApiIssue });
+    }
 
     paxRecords.push({
       bn,
@@ -878,9 +908,10 @@ ${section}`,
       ticketNo: extractTicketNoFromSection(section),
       hasGovDta: /\bGOV\/DTA\/CHN\b/i.test(section),
       hasWrongPassport,
+      hasInfApiIssue: Boolean(infApiIssue),
       hasPassportCodeIssue: hasCodeIssue
     });
-    if (hasCodeIssue || hasPassportExpired || hasWrongPassport) {
+    if (hasCodeIssue || hasPassportExpired || hasWrongPassport || infApiIssue) {
       issueByBn.set(bn, issueReasons.join('; '));
     }
   }
@@ -934,8 +965,10 @@ ${section}`,
     passportExpBnList: [...new Set(passportExpBnList)].sort(),
     wrongPassportBnList: [...new Set(paxRecords.filter((p) => p.hasWrongPassport).map((p) => p.bn))].sort(),
     missingApiBnList: [...new Set(paxRecords.filter((p) => !p.hasApiOperation).map((p) => p.bn))].sort(),
+    infApiBnList: [...new Set(paxRecords.filter((p) => p.hasInfApiIssue).map((p) => p.bn))].sort(),
     passportCodeIssues: [...new Set(paxRecords.filter((p) => p.hasPassportCodeIssue).map((p) => p.bn))].sort(),
     duplicateReviewPairs,
+    infApiIssueDetails: infApiIssues.sort((a, b) => Number(a.bn) - Number(b.bn)),
     passportCodeIssueDetails: [...issueByBn.entries()]
       .sort((a, b) => Number(a[0]) - Number(b[0]))
       .map(([bn, reason]) => ({ bn, reason }))
@@ -1219,7 +1252,7 @@ function govAqqIssueBnSet(govAqq) {
     if (digits) issueBns.add(digits.padStart(3, '0'));
   };
   (govAqq?.duplicatePassports || []).forEach((item) => (item?.bns || []).forEach(addBn));
-  ['aqqTclBnList', 'govDtaBnList', 'passportExpBnList', 'wrongPassportBnList', 'missingApiBnList', 'passportCodeIssues'].forEach((key) => {
+  ['aqqTclBnList', 'govDtaBnList', 'passportExpBnList', 'wrongPassportBnList', 'missingApiBnList', 'infApiBnList', 'passportCodeIssues'].forEach((key) => {
     (govAqq?.[key] || []).forEach(addBn);
   });
   return issueBns;
