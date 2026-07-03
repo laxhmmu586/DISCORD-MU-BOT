@@ -64,6 +64,9 @@ const {
   sendCbsCaseEmail,
   appendCbsScanRecord,
   appendCbsScanNbrdBns,
+  getCbsScanRecords,
+  setCbsScanRecordEntered,
+  setCbsScanRecordsEntered,
   readNotesDriveStore,
   writeNotesDriveStore
 
@@ -829,6 +832,14 @@ app.use(
 app.use(
   express.static('public')
 );
+
+app.get(['/scan.html', '/scan'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'public', 'scan.html'));
+});
+
+app.get(['/m-board.html', '/m-board'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'public', 'm-board.html'));
+});
 
 const REVIEW_STORE_PATH = path.join(__dirname, 'securityReviews.json');
 const WARNING_ACK_STORE_PATH = path.join(__dirname, 'warningAcknowledgements.json');
@@ -1616,8 +1627,8 @@ app.post('/cbs-missing-bags/:rowNumber/acknowledge', async (req, res) => {
 function parseCbsPdf417(rawValue = '') {
   const rawScan = String(rawValue || '').trim();
   const compact = rawScan.replace(/\s+/g, ' ');
-  const flightMatch = compact.match(/\bLAXPVGMU\s*(\d{4})\b/i);
-  const flightNumber = flightMatch?.[1] || '';
+  const flightMatch = compact.match(/\b(?:[A-Z]{6})?MU\s*(\d{3,4})\b/i);
+  const flightNumber = flightMatch?.[1]?.padStart(4, '0') || '';
   if (!flightNumber) throw new Error('Flight not found.');
   if (flightNumber !== '0586') {
     const err = new Error('wrong flight');
@@ -1626,14 +1637,18 @@ function parseCbsPdf417(rawValue = '') {
     throw err;
   }
 
-  const detailMatch = rawScan.match(/(?:^|\D)(?:1)?81R(\d{2,3}[A-Z])(\d{4})\b/i);
+  const detailMatch = rawScan.match(/(?:^|\D)(0*INF|0*\d{1,3}[A-Z])(\d{3,4})\b/i);
   if (!detailMatch) throw new Error('Seat/BN segment not found.');
-  const seat = detailMatch[1].toUpperCase().replace(/^0+(?=\d)/, '');
+  const seatToken = detailMatch[1].toUpperCase();
+  const normalizedSeatToken = seatToken.replace(/^0+/, '');
+  const isInfant = normalizedSeatToken === 'INF';
+  const seat = isInfant ? 'INF' : seatToken.replace(/^0+(?=\d)/, '');
   return {
     flight: flightNumber,
     seat,
     bn: detailMatch[2],
-    rawScan
+    rawScan,
+    isInfant
   };
 }
 
@@ -1644,15 +1659,44 @@ app.post('/cbs-scan', async (req, res) => {
     return res.json({ ok: true, ...saved });
   } catch (err) {
     const status = err?.code === 'DUPLICATE_BN' || err?.code === 'NBRD_MESSAGE' ? 409 : (err?.code === 'WRONG_FLIGHT' ? 400 : 422);
-    return res.status(status).json({ error: err?.message || 'CBS scan save failed', code: err?.code || 'SCAN_ERROR', flight: err?.flight || '', bn: err?.bn || '' });
+    return res.status(status).json({ error: err?.message || 'CBS scan save failed', code: err?.code || 'SCAN_ERROR', flight: err?.flight || '', bn: err?.bn || '', detail: err?.detail || '' });
   }
 });
 
 
+app.get('/cbs-scan/records', async (req, res) => {
+  try {
+    const rows = await getCbsScanRecords();
+    return res.json({ ok: true, rows });
+  } catch (err) {
+    return res.status(422).json({ error: err?.message || 'CBS scan records load failed', code: err?.code || 'CBS_SCAN_RECORDS_ERROR' });
+  }
+});
+
+
+
+app.post('/cbs-scan/records/entered', async (req, res) => {
+  try {
+    const result = await setCbsScanRecordsEntered(req.body?.rowNumbers || [], req.body?.entered === true);
+    return res.json({ ok: true, ...result });
+  } catch (err) {
+    return res.status(422).json({ error: err?.message || 'CBS scan rows update failed', code: err?.code || 'CBS_SCAN_ROWS_UPDATE_ERROR' });
+  }
+});
+
+app.post('/cbs-scan/records/:rowNumber/entered', async (req, res) => {
+  try {
+    const result = await setCbsScanRecordEntered(req.params.rowNumber, req.body?.entered === true);
+    return res.json({ ok: true, ...result });
+  } catch (err) {
+    return res.status(422).json({ error: err?.message || 'CBS scan row update failed', code: err?.code || 'CBS_SCAN_ROW_UPDATE_ERROR' });
+  }
+});
+
 app.post('/cbs-scan/nbrd-bns', async (req, res) => {
   try {
-    const bns = Array.isArray(req.body?.bns) ? req.body.bns : [req.body?.bn].filter(Boolean);
-    const result = await appendCbsScanNbrdBns(bns);
+    const entries = Array.isArray(req.body?.entries) ? req.body.entries : (Array.isArray(req.body?.bns) ? req.body.bns : [req.body?.bn].filter(Boolean));
+    const result = await appendCbsScanNbrdBns(entries, { replace: req.body?.replace === true });
     return res.json({ ok: true, ...result });
   } catch (err) {
     return res.status(422).json({ error: err?.message || 'NBRD BN save failed', code: err?.code || 'NBRD_SAVE_ERROR' });
