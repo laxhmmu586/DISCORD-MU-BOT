@@ -8,15 +8,16 @@
     :root { --brand:#123a73; --brand-soft:#eaf2ff; --line:#d7e1ec; --ink:#172033; --muted:#667085; --ok:#087443; --danger:#b42318; }
     * { box-sizing:border-box; }
     body { min-height:100vh; margin:0; font-family:Inter,Arial,"Noto Sans SC",sans-serif; background:linear-gradient(135deg,#eaf4ff,#fdfefe); color:var(--ink); }
-    header { display:flex; align-items:center; justify-content:space-between; padding:18px clamp(18px,4vw,52px); background:rgba(255,255,255,.92); border-bottom:1px solid var(--line); }
+    header { display:flex; align-items:center; justify-content:space-between; gap:18px; padding:18px clamp(18px,4vw,52px); background:rgba(255,255,255,.92); border-bottom:1px solid var(--line); }
     .brand { font-weight:900; color:var(--brand); letter-spacing:.08em; text-decoration:none; }
-    .header-actions { position:relative; display:flex; align-items:center; gap:10px; }
-    .avatar-button { display:grid; width:44px; height:44px; place-items:center; border-radius:999px; padding:0; background:#050914; color:white; }
-    .avatar-button svg { width:26px; height:26px; }
-    .user-menu { position:absolute; top:calc(100% + 10px); right:0; z-index:20; display:grid; min-width:190px; gap:6px; padding:10px; border:1px solid var(--line); border-radius:18px; background:white; box-shadow:0 18px 42px rgba(22,48,76,.18); }
+    .header-right { display:flex; align-items:center; gap:14px; margin-left:auto; }
+    .boarding-pill { border:1px solid rgba(18,58,115,.18); border-radius:999px; padding:10px 14px; color:var(--brand); background:var(--brand-soft); font-size:12px; font-weight:950; letter-spacing:.08em; text-decoration:none; text-transform:uppercase; }
+    .user-menu-wrap { position:relative; }
+    .icon-button { width:42px; height:42px; display:grid; place-items:center; border:1px solid rgba(18,58,115,.18); border-radius:50%; padding:0; background:#fff; color:var(--brand); cursor:pointer; box-shadow:0 8px 22px rgba(18,58,115,.08); }
+    .icon-button svg { width:23px; height:23px; }
+    .user-menu { position:absolute; right:0; top:calc(100% + 10px); min-width:190px; display:grid; gap:8px; padding:12px; border:1px solid var(--line); border-radius:16px; background:#fff; box-shadow:0 18px 42px rgba(22,48,76,.16); z-index:10; }
     .user-menu[hidden] { display:none; }
-    .user-menu button { width:100%; border-radius:12px; background:#eef4fb; color:var(--brand); text-align:left; }
-    .user-menu button:last-child { background:#fff1f1; color:var(--danger); }
+    .user-menu a, .user-menu button { width:100%; border:0; border-radius:12px; padding:10px 12px; background:#f4f7fb; color:var(--brand); font:inherit; font-weight:850; text-align:left; text-decoration:none; cursor:pointer; }
     main { width:min(860px,94vw); margin:28px auto; display:grid; gap:18px; }
     .mode-picker { width:min(940px,94vw); }
     .mode-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:24px; }
@@ -31,7 +32,8 @@
     .scan-workspace[hidden], .mode-picker[hidden] { display:none; }
     .card { background:#fff; border:1px solid var(--line); border-radius:22px; box-shadow:0 18px 42px rgba(22,48,76,.08); padding:22px; }
     video { width:100%; max-height:58vh; border-radius:18px; background:#111; object-fit:cover; }
-    button:not(.mode-card),a.button { border:0; border-radius:999px; padding:12px 18px; font-weight:850; cursor:pointer; background:var(--brand); color:white; text-decoration:none; }
+    button,a.button { border:0; border-radius:999px; padding:12px 18px; font-weight:850; cursor:pointer; background:var(--brand); color:white; text-decoration:none; }
+    .mode-card { border:1px solid rgba(18,58,115,.26); border-radius:24px; padding:22px; background:linear-gradient(160deg,rgba(255,255,255,.92),rgba(234,242,255,.72)); }
     button.secondary { background:#e8eef7; color:var(--brand); }
     .actions { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:14px; }
     .status { min-height:28px; font-weight:900; }
@@ -43,7 +45,21 @@
   </style>
 </head>
 <body>
-  <header><a class="brand" href="index.html">MUFC</a></header>
+  <header>
+    <a class="brand" href="index.html">MUFC</a>
+    <div class="header-right">
+      <a class="boarding-pill" href="scan.html" aria-current="page">M-Boarding</a>
+      <div class="user-menu-wrap">
+        <button class="icon-button" id="user-menu-button" type="button" aria-label="Open account menu" aria-expanded="false">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 12.5a4.25 4.25 0 1 0 0-8.5 4.25 4.25 0 0 0 0 8.5Z" stroke="currentColor" stroke-width="2.1"/><path d="M4.25 20.25a8.25 8.25 0 0 1 15.5 0" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/></svg>
+        </button>
+        <div class="user-menu" id="user-menu" hidden>
+          <a href="index.html#change-password">Change Password</a>
+          <button id="scan-logout" type="button">Logout</button>
+        </div>
+      </div>
+    </div>
+  </header>
   <main class="mode-picker" id="mode-picker">
     <section class="mode-grid" aria-label="Scan mode selection">
       <button class="mode-card" id="manual-mode" type="button" aria-label="Open manual boarding">
@@ -117,6 +133,10 @@
     const modePicker = document.querySelector('#mode-picker');
     const scanWorkspace = document.querySelector('#scan-workspace');
     document.querySelector('#manual-mode').addEventListener('click', () => { modePicker.hidden = true; scanWorkspace.hidden = false; });
+    const userMenuButton = document.querySelector('#user-menu-button');
+    const userMenu = document.querySelector('#user-menu');
+    userMenuButton?.addEventListener('click', () => { const open = userMenu.hidden; userMenu.hidden = !open; userMenuButton.setAttribute('aria-expanded', String(open)); });
+    document.querySelector('#scan-logout')?.addEventListener('click', () => { window.location.href = 'login.html'; });
     const statusEl = document.querySelector('#status');
     const resultEl = document.querySelector('#result');
     const preview = document.querySelector('#preview');
