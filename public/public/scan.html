@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Manual Boarding</title>
   <style>
-    :root { --brand:#123a73; --line:#d7e1ec; --ink:#172033; --muted:#667085; --ok:#087443; --danger:#b42318; }
+    :root { --brand:#123a73; --brand-soft:#eaf2ff; --line:#d7e1ec; --ink:#172033; --muted:#667085; --ok:#087443; --danger:#b42318; }
     * { box-sizing:border-box; }
-    body { margin:0; font-family:Inter,Arial,"Noto Sans SC",sans-serif; background:linear-gradient(135deg,#eaf4ff,#fdfefe); color:var(--ink); }
-    header { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:18px clamp(18px,4vw,52px); background:rgba(255,255,255,.92); border-bottom:1px solid var(--line); }
+    body { min-height:100vh; margin:0; font-family:Inter,Arial,"Noto Sans SC",sans-serif; background:linear-gradient(135deg,#eaf4ff,#fdfefe); color:var(--ink); }
+    header { display:flex; align-items:center; justify-content:space-between; padding:18px clamp(18px,4vw,52px); background:rgba(255,255,255,.92); border-bottom:1px solid var(--line); }
     .brand { font-weight:900; color:var(--brand); letter-spacing:.08em; text-decoration:none; }
     .header-actions { position:relative; display:flex; align-items:center; gap:10px; }
     .avatar-button { display:grid; width:44px; height:44px; place-items:center; border-radius:999px; padding:0; background:#050914; color:white; }
@@ -18,11 +18,20 @@
     .user-menu button { width:100%; border-radius:12px; background:#eef4fb; color:var(--brand); text-align:left; }
     .user-menu button:last-child { background:#fff1f1; color:var(--danger); }
     main { width:min(860px,94vw); margin:28px auto; display:grid; gap:18px; }
+    .mode-picker { width:min(940px,94vw); }
+    .mode-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:24px; }
+    .mode-card { min-height:230px; display:grid; align-content:center; justify-items:center; gap:16px; border:1px solid rgba(18,58,115,.26); border-radius:24px; background:linear-gradient(160deg,rgba(255,255,255,.92),rgba(234,242,255,.72)); box-shadow:0 22px 52px rgba(18,58,115,.12), inset 0 1px 0 rgba(255,255,255,.85); color:var(--brand); text-align:center; transition:transform .18s ease, border-color .18s ease, box-shadow .18s ease; }
+    .mode-card:not(.is-disabled) { cursor:pointer; }
+    .mode-card:not(.is-disabled):hover { transform:translateY(-3px); border-color:rgba(18,58,115,.54); box-shadow:0 28px 64px rgba(18,58,115,.18), inset 0 1px 0 rgba(255,255,255,.92); }
+    .mode-card.is-disabled { cursor:not-allowed; opacity:.68; filter:saturate(.72); }
+    .mode-icon { width:84px; height:84px; display:grid; place-items:center; border-radius:24px; background:rgba(18,58,115,.08); color:var(--brand); }
+    .mode-icon svg { width:58px; height:58px; fill:none; stroke:currentColor; stroke-width:2.5; stroke-linecap:round; stroke-linejoin:round; }
+    .mode-title { margin:0; color:var(--brand); font-size:24px; font-weight:950; letter-spacing:.08em; text-transform:uppercase; }
+    .mode-note { margin:0; color:var(--muted); font-size:13px; font-weight:850; text-transform:uppercase; letter-spacing:.04em; }
+    .scan-workspace[hidden], .mode-picker[hidden] { display:none; }
     .card { background:#fff; border:1px solid var(--line); border-radius:22px; box-shadow:0 18px 42px rgba(22,48,76,.08); padding:22px; }
-    .camera-wrap { position:relative; overflow:hidden; border-radius:18px; background:#111; }
-    video { display:block; width:100%; max-height:58vh; background:#111; object-fit:cover; }
-    .aim-box { position:absolute; left:50%; top:50%; width:min(78%,560px); height:34%; transform:translate(-50%,-50%); border:3px solid rgba(255,255,255,.92); border-radius:18px; box-shadow:0 0 0 999px rgba(0,0,0,.28); pointer-events:none; }
-    button,a.button { border:0; border-radius:999px; padding:12px 18px; font-weight:850; cursor:pointer; background:var(--brand); color:white; text-decoration:none; }
+    video { width:100%; max-height:58vh; border-radius:18px; background:#111; object-fit:cover; }
+    button:not(.mode-card),a.button { border:0; border-radius:999px; padding:12px 18px; font-weight:850; cursor:pointer; background:var(--brand); color:white; text-decoration:none; }
     button.secondary { background:#e8eef7; color:var(--brand); }
     .actions { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:14px; }
     .status { min-height:28px; font-weight:900; }
@@ -30,31 +39,25 @@
     .result { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
     .result div { padding:12px; border:1px solid var(--line); border-radius:14px; background:#fbfdff; }
     .result b { display:block; color:var(--muted); font-size:12px; text-transform:uppercase; }
-    .nbrd-form { display:grid; gap:14px; }
-    .field-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; align-items:start; }
-    label { display:grid; gap:8px; color:var(--muted); font-size:12px; font-weight:900; text-transform:uppercase; letter-spacing:.04em; }
-    input,textarea { width:100%; height:56px; border:1px solid var(--line); border-radius:14px; padding:14px 16px; color:var(--ink); font:inherit; font-weight:750; background:#fbfdff; box-shadow:inset 0 1px 0 rgba(255,255,255,.7); }
-    textarea { min-height:56px; resize:none; overflow:auto; line-height:1.35; }
-    #nbrd-form .actions { margin-top:2px; }
-    .dialog-backdrop { position:fixed; inset:0; z-index:50; display:grid; place-items:center; padding:22px; background:rgba(12,20,32,.48); }
-    .dialog-backdrop[hidden] { display:none; }
-    .dialog-card { width:min(420px,92vw); border-radius:28px; background:rgba(255,255,255,.96); box-shadow:0 22px 70px rgba(0,0,0,.28); padding:28px; text-align:center; }
-    .dialog-icon { display:grid; width:78px; height:78px; place-items:center; margin:0 auto 14px; border-radius:999px; color:white; font-size:46px; font-weight:1000; line-height:1; box-shadow:inset 0 8px 12px rgba(255,255,255,.45), inset 0 -10px 18px rgba(0,0,0,.18), 0 10px 20px rgba(0,0,0,.18); text-shadow:0 2px 4px rgba(0,0,0,.25); }
-    .dialog-icon.success { background:linear-gradient(145deg,#7dff4b,#26b50f 58%,#168906); }
-    .dialog-icon.infant { background:linear-gradient(145deg,#7dd3fc,#2563eb 58%,#123a73); }
-    .dialog-icon.warning { background:linear-gradient(145deg,#ffe66a,#f59e0b 58%,#b45309); }
-    .dialog-icon.error { background:linear-gradient(145deg,#ff8a8a,#ef2424 58%,#b42318); }
-    .dialog-card h2 { margin:0 0 12px; font-size:24px; }
-    .dialog-card p { margin:0 0 22px; font-size:20px; font-weight:850; color:#344054; white-space:pre-line; }
-    .dialog-card input { margin:0 0 10px; }
-    .dialog-card button { width:100%; font-size:18px; }
-    .dialog-card .secondary { margin-top:8px; }
-    @media (max-width:640px){ .result,.field-grid{grid-template-columns:1fr} input,textarea{height:54px} .card{padding:18px} h1{font-size:34px} }
+    @media (max-width:640px){ .result{grid-template-columns:1fr} .mode-grid{grid-template-columns:1fr} .mode-card{min-height:190px} }
   </style>
 </head>
 <body>
-  <header><a class="brand" href="index.html">MUFC</a><div class="header-actions"><a class="button" href="m-board.html">M-board</a><button class="avatar-button" id="user-menu-button" type="button" aria-label="Account menu" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/><path d="M4 21c1.6-4.4 4.3-6.6 8-6.6s6.4 2.2 8 6.6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button><div class="user-menu" id="user-menu" hidden><button id="change-password" type="button">Change password</button><button id="logout" type="button">Logout</button></div></div></header>
-  <main>
+  <header><a class="brand" href="index.html">MUFC</a></header>
+  <main class="mode-picker" id="mode-picker">
+    <section class="mode-grid" aria-label="Scan mode selection">
+      <button class="mode-card" id="manual-mode" type="button" aria-label="Open manual boarding">
+        <span class="mode-icon" aria-hidden="true"><svg viewBox="0 0 64 64"><path d="M13 12h38a5 5 0 0 1 5 5v30a5 5 0 0 1-5 5H13a5 5 0 0 1-5-5V17a5 5 0 0 1 5-5Z"/><path d="M19 22h26"/><path d="M19 32h18"/><path d="M19 42h26"/><path d="M48 22h.01"/><path d="M43 32h.01"/></svg></span>
+        <span class="mode-title">Manual Boarding</span>
+      </button>
+      <button class="mode-card is-disabled" type="button" aria-disabled="true" tabindex="-1">
+        <span class="mode-icon" aria-hidden="true"><svg viewBox="0 0 64 64"><path d="M10 27h44a5 5 0 0 1 5 5v17a5 5 0 0 1-5 5H10a5 5 0 0 1-5-5V32a5 5 0 0 1 5-5Z"/><path d="M15 27 25 8l23 12-4 7"/><path d="M34 27 44 15l15 12"/><path d="M24 41h18"/></svg></span>
+        <span class="mode-title">Box</span>
+        <span class="mode-note">Not available</span>
+      </button>
+    </section>
+  </main>
+  <main class="scan-workspace" id="scan-workspace" hidden>
     <section class="card">
       <h1>Manual Boarding</h1>
       <div class="camera-wrap"><video id="preview" muted playsinline></video><div class="aim-box" aria-hidden="true"></div></div>
@@ -111,6 +114,9 @@
     }
     requireLogin();
     const apiBase = (window.MU_API_BASE || 'https://api.mufcapp.net').replace(/\/$/, '');
+    const modePicker = document.querySelector('#mode-picker');
+    const scanWorkspace = document.querySelector('#scan-workspace');
+    document.querySelector('#manual-mode').addEventListener('click', () => { modePicker.hidden = true; scanWorkspace.hidden = false; });
     const statusEl = document.querySelector('#status');
     const resultEl = document.querySelector('#result');
     const preview = document.querySelector('#preview');
