@@ -750,9 +750,11 @@ function infantApiIssueFromSection(section) {
   const infantLineIndex = lines.findIndex((line) => /^\s*INF-/i.test(line));
   if (infantLineIndex < 0) return null;
   const infantLine = lines[infantLineIndex].trim();
+  const secOkRegex = /^\s*SEC\s+TXT-CHN\s+OK\s+TO\s+BOARD\b/i;
   const nextMeaningfulLine = lines.slice(infantLineIndex + 1).find((line) => line.trim());
-  const hasInfantApi = /^\s*SEC\s+TXT-CHN\s+OK\s+TO\s+BOARD\b/i.test(nextMeaningfulLine || '');
-  if (hasInfantApi) return null;
+  const hasDirectInfantApi = secOkRegex.test(nextMeaningfulLine || '');
+  const secOkCount = lines.filter((line) => secOkRegex.test(line)).length;
+  if (hasDirectInfantApi || secOkCount >= 2) return null;
   const infantName = infantLine
     .replace(/^INF-\s*/i, '')
     .replace(/^T\s+HK\d+\s+/i, '')
@@ -762,8 +764,8 @@ function infantApiIssueFromSection(section) {
   return {
     infantName,
     reason: infantName
-      ? `INF API not passed for ${infantName}: missing SEC TXT-CHN OK TO BOARD directly below INF line`
-      : 'INF API not passed: missing SEC TXT-CHN OK TO BOARD directly below INF line'
+      ? `INF API not passed for ${infantName}: missing infant SEC TXT-CHN OK TO BOARD`
+      : 'INF API not passed: missing infant SEC TXT-CHN OK TO BOARD'
   };
 }
 
