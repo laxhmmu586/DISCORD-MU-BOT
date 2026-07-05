@@ -5961,12 +5961,28 @@
         return match ? Number(match[1]) : null;
       }
 
+      function hasPsmExbg(row) {
+        const passenger = row?.passengerRecord || {};
+        const lines = [
+          ...(row?.psmLines || []),
+          ...(passenger.psmLines || []),
+          row?.text,
+          row?.raw,
+          row?.message,
+          passenger.text,
+          passenger.raw,
+          passenger.message,
+        ];
+        return lines.some((line) => /^\s*PSM-EXBG/i.test(String(line || "")));
+      }
+
       function bagCountMismatchReason(row) {
+        if (hasPsmExbg(row)) return "";
         const reason = row?.bagReason || row?.passengerRecord?.bagReason || "";
         const allowanceCount = bagPieceCountFromText(reason, "Allowance[^;,.]*=");
         const checkedCount = bagPieceCountFromText(reason, "checked\\s+bags");
-        if (!Number.isFinite(allowanceCount) || !Number.isFinite(checkedCount) || allowanceCount === checkedCount) return "";
-        return `Security Check BAG count mismatch: allowance ${allowanceCount}PC, checked bags ${checkedCount}PC. Please input PSM.`;
+        if (!Number.isFinite(allowanceCount) || !Number.isFinite(checkedCount) || checkedCount <= allowanceCount) return "";
+        return `Security Check BAG count exceeds allowance: allowance ${allowanceCount}PC, checked bags ${checkedCount}PC. Please input PSM.`;
       }
 
       function isDeletedPassengerRecord(row) {
