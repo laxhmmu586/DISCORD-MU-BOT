@@ -5955,6 +5955,20 @@
         );
       }
 
+      function bagPieceCountFromText(value, labelPattern) {
+        const text = String(value || "");
+        const match = text.match(new RegExp(`${labelPattern}\\s*:?\\s*(\\d+)\\s*PC`, "i"));
+        return match ? Number(match[1]) : null;
+      }
+
+      function bagCountMismatchReason(row) {
+        const reason = row?.bagReason || row?.passengerRecord?.bagReason || "";
+        const allowanceCount = bagPieceCountFromText(reason, "Allowance[^;,.]*=");
+        const checkedCount = bagPieceCountFromText(reason, "checked\\s+bags");
+        if (!Number.isFinite(allowanceCount) || !Number.isFinite(checkedCount) || allowanceCount === checkedCount) return "";
+        return `Security Check BAG count mismatch: allowance ${allowanceCount}PC, checked bags ${checkedCount}PC. Please input PSM.`;
+      }
+
       function isDeletedPassengerRecord(row) {
         const passenger = row?.passengerRecord || {};
         if (row?.deleted || row?.offloaded || passenger.deleted || passenger.offloaded) return true;
@@ -6059,6 +6073,10 @@
           }
           if (row.hasBadSeat || row.passengerRecord?.hasBadSeat) {
             addWarning(row, "BAD SEAT", row.badSeatReason || row.passengerRecord?.badSeatReason || "PD CKIN/BAD includes CKIN BAD SEAT.");
+          }
+          const bagMismatchReason = bagCountMismatchReason(row);
+          if (bagMismatchReason) {
+            addWarning(row, "BAG PSM", bagMismatchReason);
           }
         }
         return applyWarningAck(rows.sort((a, b) => Number(a.bn || 9999) - Number(b.bn || 9999) || String(a.warningType || "").localeCompare(String(b.warningType || ""))));
