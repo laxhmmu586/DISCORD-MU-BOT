@@ -4286,12 +4286,13 @@
           <div class="report-hero">
             <div>
               <h2>Report Center</h2>
-              <p class="panel-muted">Use Sales Report to choose one date and download the file. Use VIP Report and INAD Report to show saved rows. Use PSM Report and WCH Report to search by flight date.</p>
+              <p class="panel-muted">Use Sales Report to choose one date and download the file. Use Sales Details to search a date range and total amounts by type. Use VIP Report and INAD Report to show saved rows. Use PSM Report and WCH Report to search by flight date.</p>
             </div>
             <button class="report-close" id="report-close" type="button">Close</button>
           </div>
           <div class="detail-actions report-mode-actions" aria-label="Report shortcuts">
             <button class="detail-action" id="report-sales-mode" type="button" data-report-mode="sales">Sales Report</button>
+            <button class="detail-action" id="report-sales-details-mode" type="button" data-report-mode="salesDetails">Sales Details</button>
             <button class="detail-action" id="report-vip-mode" type="button" data-report-mode="vip">VIP Report</button>
             <button class="detail-action" id="report-psm-mode" type="button" data-report-mode="psm">PSM Report</button>
             <button class="detail-action" id="report-inad-mode" type="button" data-report-mode="inad">INAD Report</button>
@@ -4505,6 +4506,7 @@
       const reportCloseButton = document.querySelector("#report-close");
       const reportForm = document.querySelector("#report-form");
       const reportSalesModeButton = document.querySelector("#report-sales-mode");
+      const reportSalesDetailsModeButton = document.querySelector("#report-sales-details-mode");
       const reportVipModeButton = document.querySelector("#report-vip-mode");
       const reportPsmModeButton = document.querySelector("#report-psm-mode");
       const reportInadModeButton = document.querySelector("#report-inad-mode");
@@ -6303,7 +6305,7 @@
       }
 
       function setReportMode(mode, options = {}) {
-        activeReportMode = ["vip", "psm", "inad", "wch", "baggage"].includes(mode) ? mode : "sales";
+        activeReportMode = ["vip", "psm", "inad", "wch", "baggage", "salesDetails"].includes(mode) ? mode : "sales";
         if (activeReportMode === "baggage") {
           if (options.forceToday) setReportDefaults(true);
         } else {
@@ -6319,11 +6321,13 @@
         if (activeReportMode === "sales" && reportToInput) reportToInput.value = reportFromInput?.value || reportToInput.value;
         reportForm?.classList.toggle("is-sales-mode", activeReportMode === "sales");
         reportForm?.classList.toggle("is-vip-mode", activeReportMode === "vip");
+        reportForm?.classList.toggle("is-sales-details-mode", activeReportMode === "salesDetails");
         reportForm?.classList.toggle("is-psm-mode", activeReportMode === "psm");
         reportForm?.classList.toggle("is-inad-mode", activeReportMode === "inad");
         reportForm?.classList.toggle("is-wch-mode", activeReportMode === "wch");
         reportForm?.classList.toggle("is-baggage-mode", activeReportMode === "baggage");
         reportSalesModeButton?.classList.toggle("is-active", activeReportMode === "sales");
+        reportSalesDetailsModeButton?.classList.toggle("is-active", activeReportMode === "salesDetails");
         reportVipModeButton?.classList.toggle("is-active", activeReportMode === "vip");
         reportPsmModeButton?.classList.toggle("is-active", activeReportMode === "psm");
         reportInadModeButton?.classList.toggle("is-active", activeReportMode === "inad");
@@ -6345,10 +6349,12 @@
                 ? `<p class="panel-muted">Select a submit-date range, optionally enter a bag tag, then click Search.</p>`
                 : (["psm", "wch"].includes(activeReportMode)
                   ? `<p class="panel-muted">Choose a flight date range, then search ${activeReportMode === "wch" ? "WCH" : "PSM"} Report.</p>`
-                  : `<p class="panel-muted">Choose a date, then download Sales Report.</p>`)));
+                  : (activeReportMode === "salesDetails"
+                    ? `<p class="panel-muted">Choose a date range, then search Sales Details totals by Type.</p>`
+                    : `<p class="panel-muted">Choose a date, then download Sales Report.</p>`))));
         }
         if (activeReportMode === "baggage") renderBaggageTimelineReport();
-        else if (["vip", "psm", "inad", "wch"].includes(activeReportMode)) generateReport();
+        else if (["vip", "psm", "inad", "wch", "salesDetails"].includes(activeReportMode)) generateReport();
       }
 
       function resetPanelState() {
@@ -6929,6 +6935,10 @@
         return data?.rows || [];
       }
 
+      async function salesDetailsReport(from, to) {
+        return apiJson(`/sales-details-report?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+      }
+
 
       function normalizeTimelineText(value) {
         return String(value || "").trim().toUpperCase().replace(/[^A-Z0-9]+/g, "");
@@ -7060,7 +7070,7 @@
           await renderBaggageTimelineReport();
           return;
         }
-        const type = ["vip", "psm", "inad", "wch"].includes(activeReportMode) ? activeReportMode : "sales";
+        const type = ["vip", "psm", "inad", "wch", "salesDetails"].includes(activeReportMode) ? activeReportMode : "sales";
         const today = ymdFromDate(new Date());
         const from = reportFromInput?.value || today;
         const keyword = type === "vip" ? (reportKeywordInput?.value || "") : "";
@@ -7069,7 +7079,7 @@
         try {
           dates = type === "sales" ? [from] : [];
           if (type === "sales" && !from) throw new Error("Please select a valid date.");
-          if (type === "psm" || type === "wch") reportDateRange(from, to);
+          if (type === "psm" || type === "wch" || type === "salesDetails") reportDateRange(from, to);
         } catch (error) {
           reportOutput.innerHTML = `<p class="panel-muted status-fail">${escapeHtml(error.message)}</p>`;
           setReportCsv([], "report.csv");
@@ -7077,11 +7087,13 @@
         }
         reportOutput.innerHTML = type === "sales"
           ? `<p class="panel-muted">Checking Sales Report for ${escapeHtml(from)}...</p>`
-          : (type === "psm"
+          : (type === "salesDetails"
+            ? `<p class="panel-muted">Loading Sales Details for ${escapeHtml(from)}${from === to ? "" : ` to ${escapeHtml(to)}`}...</p>`
+            : (type === "psm"
             ? `<p class="panel-muted">Loading PSM Report for ${escapeHtml(from)}${from === to ? "" : ` to ${escapeHtml(to)}`}...</p>`
             : (type === "wch"
               ? `<p class="panel-muted">Loading WCH Report for ${escapeHtml(from)}${from === to ? "" : ` to ${escapeHtml(to)}`}...</p>`
-              : (type === "inad" ? `<p class="panel-muted">Loading INAD Report...</p>` : `<p class="panel-muted">Loading VIP Report...</p>`)));
+              : (type === "inad" ? `<p class="panel-muted">Loading INAD Report...</p>` : `<p class="panel-muted">Loading VIP Report...</p>`))));
         setReportCsv([], "report.csv");
         const rows = [];
         const errors = [];
@@ -7109,6 +7121,15 @@
           } catch (error) {
             errors.push(error.message);
           }
+        } else if (type === "salesDetails") {
+          try {
+            const data = await salesDetailsReport(from, to);
+            rows.push(...(data?.rows || []));
+            rows._totals = data?.totals || [];
+            rows._sync = data?.sync || {};
+          } catch (error) {
+            errors.push(error.message);
+          }
         }
         for (const isoDate of dates) {
           try {
@@ -7128,6 +7149,21 @@
             { label: "Available", value: (row) => row.salesAvailable },
             { label: "File", value: (row) => row.fileName },
           ], "No sales report rows.") + `<div class="report-actions-row">${downloadRows.map((row) => `<a class="report-link-button" href="${escapeHtml(row.downloadUrl)}" target="_blank" rel="noopener">Download Sales Report</a>`).join("")}</div>`;
+        } else if (type === "salesDetails") {
+          const totals = rows._totals || [];
+          const sync = rows._sync || {};
+          const summary = `<div class="panel-stats"><span>Files scanned: ${escapeHtml(sync.files ?? 0)}</span><span>New rows: ${escapeHtml(sync.appended ?? 0)}</span><span>Total rows: ${escapeHtml(rows.length)}</span></div>`;
+          tableHtml = summary + rowsTable(totals, [
+            { label: "Type", value: (row) => row.type },
+            { label: "Total Amount", value: (row) => Number(row.amount || 0).toFixed(2) },
+          ], "No sales detail totals found.") + rowsTable(rows, [
+            { label: "Date", value: (row) => row.date },
+            { label: "EMD", value: (row) => row.emd },
+            { label: "Value", value: (row) => Number(row.value || 0).toFixed(2) },
+            { label: "Type", value: (row) => row.type },
+            { label: "Flight", value: (row) => row.flightNo },
+            { label: "Report Date", value: (row) => row.reportDate },
+          ], "No sales detail rows found.");
         } else if (type === "vip") {
           tableHtml = rowsTable(rows, [
             { label: "Flight Date", value: (row) => row.displayDate || row.flightDate || row.date },
@@ -7173,6 +7209,7 @@
         reportOutput.innerHTML = `${errorHtml}${tableHtml}`;
         const reportFileNames = {
           sales: `sales-report-${from}.csv`,
+          salesDetails: `sales-details-${from}${from === to ? "" : `-to-${to}`}.csv`,
           vip: "vip-report.csv",
           psm: `psm-report-${from}${from === to ? "" : `-to-${to}`}.csv`,
           inad: "inad-report.csv",
@@ -7605,6 +7642,7 @@
       });
 
       reportSalesModeButton?.addEventListener("click", () => setReportMode("sales", { forceToday: true, resetOutput: true }));
+      reportSalesDetailsModeButton?.addEventListener("click", () => setReportMode("salesDetails", { forceToday: true, resetOutput: true }));
       reportVipModeButton?.addEventListener("click", () => setReportMode("vip", { forceToday: true, resetOutput: true }));
       reportPsmModeButton?.addEventListener("click", () => setReportMode("psm", { forceToday: true, resetOutput: true }));
       reportInadModeButton?.addEventListener("click", () => setReportMode("inad", { forceToday: true, resetOutput: true }));
