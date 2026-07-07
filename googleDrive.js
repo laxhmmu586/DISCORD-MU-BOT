@@ -554,6 +554,11 @@ const REPORT_SHEETS = {
     gid: 101743110,
     headers: ['Recorded At', 'Flight Date', 'Flight #', 'Passenger Name', 'BN', 'Seat', 'BAGS', 'Type', 'Detail', 'Key'],
     fields: ['recordedAt', 'flightDate', 'flightNo', 'passenger', 'bn', 'seat', 'bags', 'type', 'detail', 'key']
+  },
+  salesDetails: {
+    gid: 1069298005,
+    headers: ['Date', 'EMD', 'Value', 'Type', 'Flight', 'Report Date', 'File Name', 'Key'],
+    fields: ['date', 'emd', 'value', 'type', 'flightNo', 'reportDate', 'fileName', 'key']
   }
 };
 const reportSheetTitles = {};
@@ -915,6 +920,7 @@ async function updateTestBaggageRecord(bagTag, update) {
 function normalizeReportSheetType(type) {
   const normalized = String(type || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
   if (normalized === 'psmmsg') return 'psmMsg';
+  if (normalized === 'salesdetail' || normalized === 'salesdetails') return 'salesDetails';
   if (normalized === 'wch') return 'wheelchair';
   return normalized;
 }
@@ -926,6 +932,17 @@ function getReportSheetConfig(type) {
 function buildStoredReportKey(type, row) {
   const normalizedType = String(type || '').toLowerCase();
   if (row?.key) return String(row.key);
+  if (normalizedType === 'salesdetails') {
+    return [
+      normalizedType,
+      row?.date || '',
+      row?.emd || '',
+      row?.value || '',
+      row?.type || '',
+      row?.flightNo || '',
+      row?.reportDate || ''
+    ].map((value) => String(value || '').trim().toUpperCase()).join('|');
+  }
   return [
     normalizedType,
     row?.date || '',
@@ -1045,6 +1062,14 @@ function reportRowFromSheet(type, values) {
     row.bags = String(row.bags || '').trim();
     row.type = String(row.type || '').trim().toUpperCase();
     row.detail = String(row.detail || '').trim();
+  } else if (normalizedType === 'salesDetails') {
+    row.date = normalizeSheetDateToIso(row.date) || String(row.date || '').trim();
+    row.emd = String(row.emd || '').trim();
+    row.value = Number(String(row.value || '').replace(/[^0-9.-]+/g, '')) || 0;
+    row.type = String(row.type || '').trim().toUpperCase();
+    row.flightNo = String(row.flightNo || '').trim().toUpperCase();
+    row.reportDate = normalizeSheetDateToIso(row.reportDate) || String(row.reportDate || '').trim();
+    row.fileName = String(row.fileName || '').trim();
   } else if (normalizedType === 'wheelchair' || normalizedType === 'inad') {
     const isoDate = normalizeSheetDateToIso(row.date);
     row.date = isoDate || String(row.date || '').trim();
@@ -1362,6 +1387,111 @@ function toIsoDateFromFlightDate(flightDate) {
   const mm = months[m[2]];
   if (!mm) return '';
   return `20${m[3]}-${mm}-${m[1]}`;
+}
+
+
+function salesReportFileInfo(fileName) {
+  const match = String(fileName || '').match(/^Sales Report\s+([A-Z0-9]+)\s+(\d{4}-\d{2}-\d{2})\.xls$/i);
+  if (!match) return null;
+  return { flightNo: match[1].toUpperCase(), reportDate: match[2] };
+}
+
+async function listSalesReportFilesByDateRange(fromIsoDate, toIsoDate) {
+  const files = [];
+  let pageToken = '';
+  do {
+    const res = await drive.files.list({
+      q: `'${SALES_REPORT_FOLDER_ID}' in parents and trashed = false and name contains 'Sales Report'`,
+      fields: 'nextPageToken,files(id,name,mimeType,modifiedTime,size)',
+      pageSize: 1000,
+      pageToken: pageToken || undefined,
+      orderBy: 'name'
+    });
+    for (const file of res.data.files || []) {
+      const info = salesReportFileInfo(file.name);
+      if (!info || info.reportDate < fromIsoDate || info.reportDate > toIsoDate) continue;
+      files.push({ ...file, ...info });
+    }
+    pageToken = res.data.nextPageToken || '';
+  } while (pageToken);
+  return files;
+}
+
+async function readSalesReportXlsValues(file) {
+  let copiedId = '';
+  try {
+    const copied = await drive.files.copy({
+      fileId: file.id,
+      requestBody: { name: `TMP ${file.name}`, mimeType: 'application/vnd.google-apps.spreadsheet' },
+      fields: 'id'
+    });
+    copiedId = copied.data.id;
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: copiedId,
+      range: 'A:U',
+      valueRenderOption: 'FORMATTED_VALUE'
+    });
+    return res.data.values || [];
+  } finally {
+    if (copiedId) {
+      try { await drive.files.delete({ fileId: copiedId }); } catch (err) { console.warn('Temp sales report cleanup failed:', err?.message || err); }
+    }
+  }
+}
+
+function salesDetailRowFromValues(values, file) {
+  const date = normalizeSheetDateToIso(values?.[0]) || String(values?.[0] || '').trim();
+  const emd = String(values?.[1] || '').trim();
+  const rawValue = values?.[5] ?? '';
+  const type = String(values?.[20] || '').trim().toUpperCase();
+  if (!date || !emd || !type || /^date$/i.test(date) || /^emd$/i.test(emd)) return null;
+  const value = typeof rawValue === 'number' ? rawValue : Number(String(rawValue || '').replace(/[^0-9.-]+/g, ''));
+  const row = { date, emd, value: Number.isFinite(value) ? value : 0, type, flightNo: file.flightNo, reportDate: file.reportDate, fileName: file.name };
+  row.key = buildStoredReportKey('salesDetails', row);
+  return row;
+}
+
+async function syncSalesDetailsFromDrive(fromIsoDate, toIsoDate) {
+  const files = await listSalesReportFilesByDateRange(fromIsoDate, toIsoDate);
+  const sheetRows = await getReportSheetRows('salesDetails');
+  await ensureReportSheetHeaders('salesDetails', sheetRows);
+  const existing = new Set(sheetRows.slice(1).map((row) => String(row[7] || '').trim()).filter(Boolean));
+  const values = [];
+  for (const file of files) {
+    const rows = await readSalesReportXlsValues(file);
+    for (const valuesRow of rows) {
+      const row = salesDetailRowFromValues(valuesRow, file);
+      if (!row || existing.has(row.key)) continue;
+      existing.add(row.key);
+      values.push(sheetValuesFromReportRow('salesDetails', row));
+    }
+  }
+  if (values.length) {
+    const title = await getReportSheetTitle('salesDetails');
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: REPORT_SHEET_ID,
+      range: `${title}!A:H`,
+      valueInputOption: 'RAW',
+      insertDataOption: 'INSERT_ROWS',
+      requestBody: { values }
+    });
+  }
+  return { files: files.length, appended: values.length };
+}
+
+async function getSalesDetailsReportRows(fromIsoDate, toIsoDate, options = {}) {
+  const sync = options.sync !== false ? await syncSalesDetailsFromDrive(fromIsoDate, toIsoDate) : { files: 0, appended: 0 };
+  const rows = await getReportSheetRows('salesDetails');
+  await ensureReportSheetHeaders('salesDetails', rows);
+  const dataRows = [];
+  for (let i = rows.length && isReportHeaderRow('salesDetails', rows[0]) ? 1 : 0; i < rows.length; i += 1) {
+    if (isReportHeaderRow('salesDetails', rows[i])) continue;
+    const row = reportRowFromSheet('salesDetails', rows[i]);
+    if (row.date >= fromIsoDate && row.date <= toIsoDate) dataRows.push(row);
+  }
+  const totals = {};
+  for (const row of dataRows) totals[row.type || 'UNKNOWN'] = (totals[row.type || 'UNKNOWN'] || 0) + (Number(row.value) || 0);
+  return { rows: dataRows, totals: Object.entries(totals).sort(([a], [b]) => a.localeCompare(b)).map(([type, amount]) => ({ type, amount: Math.round(amount * 100) / 100 })), sync };
 }
 
 async function findSalesReportFile(flightNo, flightDate) {
@@ -3291,6 +3421,7 @@ module.exports = {
   getSyBagInfoByDate,
   getSalesReportMeta,
   downloadSalesReportByFlight,
+  getSalesDetailsReportRows,
   hasNextDayInfoEmail,
   getNextDayInfoEmail,
   getGdCheckEmail,
