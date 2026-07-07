@@ -1026,7 +1026,7 @@ function normalizeSheetDateToIso(value) {
     return `${year}-${String(Number(match[1])).padStart(2, '0')}-${String(Number(match[2])).padStart(2, '0')}`;
   }
 
-  match = raw.toUpperCase().match(/^(\d{1,2})([A-Z]{3})(\d{2}|\d{4})?$/);
+  match = raw.toUpperCase().match(/^(\d{1,2})[-\s]?([A-Z]{3})[-\s]?(\d{2}|\d{4})?$/);
   if (match) {
     const months = { JAN: '01', FEB: '02', MAR: '03', APR: '04', MAY: '05', JUN: '06', JUL: '07', AUG: '08', SEP: '09', OCT: '10', NOV: '11', DEC: '12' };
     const month = months[match[2]];
@@ -1423,14 +1423,47 @@ function salesDetailRowFromValues(values, file = {}) {
   return row;
 }
 
+
+function normalizedHeaderLabel(value) {
+  return String(value || '').trim().toUpperCase().replace(/[^A-Z0-9]+/g, '');
+}
+
+function salesDetailRowsFromSourceValues(rows = []) {
+  const parsed = [];
+  let columns = null;
+  for (const values of rows) {
+    const labels = (values || []).map(normalizedHeaderLabel);
+    const emdIndex = labels.indexOf('EMD');
+    const valueIndex = labels.indexOf('VALUE');
+    const dateIndex = labels.indexOf('DATE');
+    const typeIndexes = labels.map((label, index) => (label === 'TYPE' ? index : -1)).filter((index) => index >= 0);
+    if (emdIndex >= 0 && valueIndex >= 0 && dateIndex >= 0 && typeIndexes.length) {
+      columns = { dateIndex, emdIndex, valueIndex, typeIndex: typeIndexes[typeIndexes.length - 1] };
+      continue;
+    }
+    if (!columns) continue;
+    const row = salesDetailRowFromValues([
+      values[columns.dateIndex],
+      values[columns.emdIndex],
+      '',
+      '',
+      '',
+      values[columns.valueIndex],
+      ...Array(14).fill(''),
+      values[columns.typeIndex]
+    ], { name: 'Daily Sales Report' });
+    if (row) parsed.push(row);
+  }
+  return parsed;
+}
+
 async function syncSalesDetailsFromSourceSheet(fromIsoDate, toIsoDate) {
   const sourceRows = await readSalesReportSourceValues();
   const sheetRows = await getReportSheetRows('salesDetails');
   await ensureReportSheetHeaders('salesDetails', sheetRows);
   const existing = new Set(sheetRows.slice(1).map((row) => String(row[7] || '').trim()).filter(Boolean));
   const values = [];
-  for (const valuesRow of sourceRows) {
-    const row = salesDetailRowFromValues(valuesRow, { name: 'Daily Sales Report' });
+  for (const row of salesDetailRowsFromSourceValues(sourceRows)) {
     if (!row || row.date < fromIsoDate || row.date > toIsoDate || existing.has(row.key)) continue;
     existing.add(row.key);
     values.push(sheetValuesFromReportRow('salesDetails', row));
