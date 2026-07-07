@@ -2798,6 +2798,11 @@
         justify-content: start;
       }
 
+      .report-form.is-sales-details-mode {
+        grid-template-columns: repeat(2, minmax(150px, 260px)) minmax(132px, 160px);
+        justify-content: start;
+      }
+
       .report-form.is-vip-mode,
       .report-form.is-inad-mode,
       .report-form.is-baggage-mode {
@@ -2810,6 +2815,7 @@
 
       .report-form.is-psm-mode .report-keyword-field,
       .report-form.is-wch-mode .report-keyword-field,
+      .report-form.is-sales-details-mode .report-keyword-field,
       .report-form.is-sales-mode .report-to-field,
       .report-form.is-sales-mode .report-keyword-field {
         display: none;

@@ -507,6 +507,8 @@ const LOG_NAMES = [
 const SALES_REPORT_FOLDER_ID = '1-RLbv_BU9rnsaaPy8UUkbN6FkhA5YqGf';
 
 const REPORT_SHEET_ID = '1JqRnDx_uLc2m2SzyZOuHWWJsbkKenlKo60U9zwV9uMQ';
+const SALES_REPORT_SOURCE_SHEET_ID = '1VDIRN77cKZMQPXQ1ZLY-8lp8VI44tpFD5oU1Q9YAzYs';
+const SALES_REPORT_SOURCE_GID = 2078248111;
 const SALES_REPORT_DETAIL_SHEET_NAME = '销售日报明细表';
 const TEST_BAGGAGE_SHEET_ID = '1JqRnDx_uLc2m2SzyZOuHWWJsbkKenlKo60U9zwV9uMQ';
 const TEST_BAGGAGE_GID = 1340163844;
@@ -564,6 +566,7 @@ const REPORT_SHEETS = {
 };
 const reportSheetTitles = {};
 let reportSheetAccessBlocked = false;
+let salesReportSourceSheetTitle = '';
 
 function normalizeTestBagTag(value) {
   return String(value || '').trim().toUpperCase().replace(/\s+/g, '');
@@ -1391,88 +1394,46 @@ function toIsoDateFromFlightDate(flightDate) {
 }
 
 
-function salesReportFileInfo(fileName) {
-  const match = String(fileName || '').match(/^Sales Report\s+([A-Z0-9]+)\s+(\d{4}-\d{2}-\d{2})\.xls$/i);
-  if (!match) return null;
-  return { flightNo: match[1].toUpperCase(), reportDate: match[2] };
-}
-
-async function listSalesReportFilesByDateRange(fromIsoDate, toIsoDate) {
-  const files = [];
-  let pageToken = '';
-  do {
-    const res = await drive.files.list({
-      q: `'${SALES_REPORT_FOLDER_ID}' in parents and trashed = false and name contains 'Sales Report'`,
-      fields: 'nextPageToken,files(id,name,mimeType,modifiedTime,size)',
-      pageSize: 1000,
-      pageToken: pageToken || undefined,
-      orderBy: 'name'
-    });
-    for (const file of res.data.files || []) {
-      const info = salesReportFileInfo(file.name);
-      if (!info || info.reportDate < fromIsoDate || info.reportDate > toIsoDate) continue;
-      files.push({ ...file, ...info });
-    }
-    pageToken = res.data.nextPageToken || '';
-  } while (pageToken);
-  return files;
-}
-
-async function readSalesReportXlsValues(file) {
-  let copiedId = '';
-  try {
-    const copied = await drive.files.copy({
-      fileId: file.id,
-      requestBody: { name: `TMP ${file.name}`, mimeType: 'application/vnd.google-apps.spreadsheet' },
-      fields: 'id'
-    });
-    copiedId = copied.data.id;
-    const res = await sheets.spreadsheets.values.get({
-      spreadsheetId: copiedId,
-      range: `'${SALES_REPORT_DETAIL_SHEET_NAME}'!A:U`,
-      valueRenderOption: 'FORMATTED_VALUE'
-    });
-    return res.data.values || [];
-  } finally {
-    if (copiedId) {
-      try { await drive.files.delete({ fileId: copiedId }); } catch (err) { console.warn('Temp sales report cleanup failed:', err?.message || err); }
-    }
+async function getSalesReportSourceSheetTitle() {
+  if (!salesReportSourceSheetTitle) {
+    salesReportSourceSheetTitle = await resolveSheetTitleByGid(SALES_REPORT_SOURCE_SHEET_ID, SALES_REPORT_SOURCE_GID);
   }
+  return salesReportSourceSheetTitle || SALES_REPORT_DETAIL_SHEET_NAME;
 }
 
-function salesDetailRowFromValues(values, file) {
+async function readSalesReportSourceValues() {
+  const title = await getSalesReportSourceSheetTitle();
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: SALES_REPORT_SOURCE_SHEET_ID,
+    range: `${title}!A:U`,
+    valueRenderOption: 'FORMATTED_VALUE'
+  });
+  return res.data.values || [];
+}
+
+function salesDetailRowFromValues(values, file = {}) {
   const date = normalizeSheetDateToIso(values?.[0]) || String(values?.[0] || '').trim();
   const emd = String(values?.[1] || '').trim();
   const rawValue = values?.[5] ?? '';
   const type = String(values?.[20] || '').trim().toUpperCase();
   if (!date || !emd || !type || /^date$/i.test(date) || /^emd$/i.test(emd)) return null;
   const value = typeof rawValue === 'number' ? rawValue : Number(String(rawValue || '').replace(/[^0-9.-]+/g, ''));
-  const row = { date, emd, value: Number.isFinite(value) ? value : 0, type, flightNo: file.flightNo, reportDate: file.reportDate, fileName: file.name };
+  const row = { date, emd, value: Number.isFinite(value) ? value : 0, type, flightNo: file.flightNo || '', reportDate: file.reportDate || date, fileName: file.name || '' };
   row.key = buildStoredReportKey('salesDetails', row);
   return row;
 }
 
-async function syncSalesDetailsFromDrive(fromIsoDate, toIsoDate) {
-  const files = await listSalesReportFilesByDateRange(fromIsoDate, toIsoDate);
+async function syncSalesDetailsFromSourceSheet(fromIsoDate, toIsoDate) {
+  const sourceRows = await readSalesReportSourceValues();
   const sheetRows = await getReportSheetRows('salesDetails');
   await ensureReportSheetHeaders('salesDetails', sheetRows);
   const existing = new Set(sheetRows.slice(1).map((row) => String(row[7] || '').trim()).filter(Boolean));
   const values = [];
-  const errors = [];
-  for (const file of files) {
-    let rows = [];
-    try {
-      rows = await readSalesReportXlsValues(file);
-    } catch (err) {
-      errors.push(`${file.name}: ${err?.message || 'read failed'}`);
-      continue;
-    }
-    for (const valuesRow of rows) {
-      const row = salesDetailRowFromValues(valuesRow, file);
-      if (!row || existing.has(row.key)) continue;
-      existing.add(row.key);
-      values.push(sheetValuesFromReportRow('salesDetails', row));
-    }
+  for (const valuesRow of sourceRows) {
+    const row = salesDetailRowFromValues(valuesRow, { name: 'Daily Sales Report' });
+    if (!row || row.date < fromIsoDate || row.date > toIsoDate || existing.has(row.key)) continue;
+    existing.add(row.key);
+    values.push(sheetValuesFromReportRow('salesDetails', row));
   }
   if (values.length) {
     const title = await getReportSheetTitle('salesDetails');
@@ -1484,16 +1445,16 @@ async function syncSalesDetailsFromDrive(fromIsoDate, toIsoDate) {
       requestBody: { values }
     });
   }
-  return { files: files.length, appended: values.length, errors };
+  return { source: 'dailySheet', appended: values.length };
 }
 
 async function getSalesDetailsReportRows(fromIsoDate, toIsoDate, options = {}) {
-  let sync = { files: 0, appended: 0, errors: [] };
+  let sync = { source: 'dailySheet', appended: 0, errors: [] };
   if (options.sync !== false) {
     try {
-      sync = await syncSalesDetailsFromDrive(fromIsoDate, toIsoDate);
+      sync = await syncSalesDetailsFromSourceSheet(fromIsoDate, toIsoDate);
     } catch (err) {
-      sync = { files: 0, appended: 0, errors: [err?.message || 'Sales details sync failed'] };
+      sync = { source: 'dailySheet', appended: 0, errors: [err?.message || 'Sales details sync failed'] };
     }
   }
   const rows = await getReportSheetRows('salesDetails');
