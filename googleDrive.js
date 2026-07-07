@@ -1458,8 +1458,15 @@ async function syncSalesDetailsFromDrive(fromIsoDate, toIsoDate) {
   await ensureReportSheetHeaders('salesDetails', sheetRows);
   const existing = new Set(sheetRows.slice(1).map((row) => String(row[7] || '').trim()).filter(Boolean));
   const values = [];
+  const errors = [];
   for (const file of files) {
-    const rows = await readSalesReportXlsValues(file);
+    let rows = [];
+    try {
+      rows = await readSalesReportXlsValues(file);
+    } catch (err) {
+      errors.push(`${file.name}: ${err?.message || 'read failed'}`);
+      continue;
+    }
     for (const valuesRow of rows) {
       const row = salesDetailRowFromValues(valuesRow, file);
       if (!row || existing.has(row.key)) continue;
@@ -1477,11 +1484,18 @@ async function syncSalesDetailsFromDrive(fromIsoDate, toIsoDate) {
       requestBody: { values }
     });
   }
-  return { files: files.length, appended: values.length };
+  return { files: files.length, appended: values.length, errors };
 }
 
 async function getSalesDetailsReportRows(fromIsoDate, toIsoDate, options = {}) {
-  const sync = options.sync !== false ? await syncSalesDetailsFromDrive(fromIsoDate, toIsoDate) : { files: 0, appended: 0 };
+  let sync = { files: 0, appended: 0, errors: [] };
+  if (options.sync !== false) {
+    try {
+      sync = await syncSalesDetailsFromDrive(fromIsoDate, toIsoDate);
+    } catch (err) {
+      sync = { files: 0, appended: 0, errors: [err?.message || 'Sales details sync failed'] };
+    }
+  }
   const rows = await getReportSheetRows('salesDetails');
   await ensureReportSheetHeaders('salesDetails', rows);
   const dataRows = [];

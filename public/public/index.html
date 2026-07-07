@@ -4906,7 +4906,18 @@
           },
         });
         const type = res.headers.get("content-type") || "";
-        if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+        if (!res.ok) {
+          let detail = "";
+          if (type.includes("application/json")) {
+            try {
+              const body = await res.json();
+              detail = body?.error ? `: ${body.error}` : "";
+            } catch (_) {
+              detail = "";
+            }
+          }
+          throw new Error(`HTTP ${res.status} ${res.statusText}${detail}`);
+        }
         if (!type.includes("application/json")) throw new Error(`API returned non-JSON from ${apiBase}.`);
         return res.json();
       }
@@ -7126,7 +7137,7 @@
             const data = await salesDetailsReport(from, to);
             rows.push(...(data?.rows || []));
             rows._totals = data?.totals || [];
-            rows._sync = data?.sync || {};
+            if (data?.sync?.errors?.length) errors.push(`Sales Details sync warning: ${data.sync.errors.join(" | ")}`);
           } catch (error) {
             errors.push(error.message);
           }
@@ -7151,9 +7162,7 @@
           ], "No sales report rows.") + `<div class="report-actions-row">${downloadRows.map((row) => `<a class="report-link-button" href="${escapeHtml(row.downloadUrl)}" target="_blank" rel="noopener">Download Sales Report</a>`).join("")}</div>`;
         } else if (type === "salesDetails") {
           const totals = rows._totals || [];
-          const sync = rows._sync || {};
-          const summary = `<div class="panel-stats"><span>Files scanned: ${escapeHtml(sync.files ?? 0)}</span><span>New rows: ${escapeHtml(sync.appended ?? 0)}</span><span>Total rows: ${escapeHtml(rows.length)}</span></div>`;
-          tableHtml = summary + rowsTable(totals, [
+          tableHtml = rowsTable(totals, [
             { label: "Type", value: (row) => row.type },
             { label: "Total Amount", value: (row) => Number(row.amount || 0).toFixed(2) },
           ], "No sales detail totals found.") + rowsTable(rows, [
