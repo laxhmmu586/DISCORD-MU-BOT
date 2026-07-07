@@ -2892,6 +2892,84 @@
         text-transform: uppercase;
       }
 
+      .sales-details-summary {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+        margin: 16px 0 22px;
+      }
+
+      .sales-details-total-card,
+      .sales-details-group {
+        border: 1px solid rgba(126, 164, 255, 0.28);
+        background: rgba(12, 24, 48, 0.62);
+        box-shadow: 0 18px 48px rgba(0, 0, 0, 0.18);
+      }
+
+      .sales-details-total-card {
+        padding: 16px 18px;
+      }
+
+      .sales-details-total-card span,
+      .sales-details-eyebrow {
+        display: block;
+        color: #91a8ff;
+        font-size: 11px;
+        font-weight: 1000;
+        letter-spacing: 1.1px;
+        text-transform: uppercase;
+      }
+
+      .sales-details-total-card strong {
+        display: block;
+        margin-top: 8px;
+        color: white;
+        font-size: clamp(24px, 3vw, 36px);
+        line-height: 1;
+      }
+
+      .sales-details-section-title {
+        margin: 26px 0 12px;
+        color: white;
+        font-size: clamp(20px, 2.4vw, 30px);
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .sales-details-groups {
+        display: grid;
+        gap: 18px;
+      }
+
+      .sales-details-group {
+        padding: 16px;
+      }
+
+      .sales-details-group-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: end;
+        gap: 14px;
+        margin-bottom: 12px;
+        border-bottom: 1px solid rgba(126, 164, 255, 0.2);
+        padding-bottom: 12px;
+      }
+
+      .sales-details-group-head h3 {
+        margin: 0;
+        color: white;
+        font-size: 22px;
+        text-transform: uppercase;
+      }
+
+      .sales-details-group-total {
+        color: #b9c8ff;
+        font-size: 18px;
+        font-weight: 1000;
+        text-align: right;
+      }
+
+
       .test-page {
         display: grid;
         grid-template-rows: auto auto 1fr;
@@ -5440,6 +5518,37 @@
         return `<table class="data-table"><thead><tr>${columns.map((col) => `<th>${escapeHtml(col.label)}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${columns.map((col) => `<td>${escapeHtml(col.value(row) || "-")}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
       }
 
+      function moneyText(value) {
+        return Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+
+      function renderSalesDetailsReport(rows = [], totals = []) {
+        if (!rows.length && !totals.length) return `<p class="panel-muted">No sales detail rows found.</p>`;
+        const summaryHtml = totals.length
+          ? `<h3 class="sales-details-section-title">Total Amount</h3><div class="sales-details-summary">${totals.map((row) => `<article class="sales-details-total-card"><span>${escapeHtml(row.type || "UNKNOWN")}</span><strong>$${escapeHtml(moneyText(row.amount))}</strong></article>`).join("")}</div>`
+          : `<h3 class="sales-details-section-title">Total Amount</h3><p class="panel-muted">No sales detail totals found.</p>`;
+        const groups = rows.reduce((map, row) => {
+          const key = String(row.type || "UNKNOWN").trim().toUpperCase() || "UNKNOWN";
+          if (!map.has(key)) map.set(key, { type: key, amount: 0, rows: [] });
+          const group = map.get(key);
+          group.amount += Number(row.value) || 0;
+          group.rows.push(row);
+          return map;
+        }, new Map());
+        const detailColumns = [
+          { label: "Date", value: (row) => row.date },
+          { label: "EMD", value: (row) => row.emd },
+          { label: "Value", value: (row) => `$${moneyText(row.value)}` },
+          { label: "Report Date", value: (row) => row.reportDate },
+        ];
+        const groupsHtml = [...groups.values()].sort((a, b) => a.type.localeCompare(b.type)).map((group) => `<article class="sales-details-group">
+          <div class="sales-details-group-head"><div><span class="sales-details-eyebrow">Type</span><h3>${escapeHtml(group.type)}</h3></div><div class="sales-details-group-total">Total $${escapeHtml(moneyText(group.amount))}</div></div>
+          ${rowsTable(group.rows, detailColumns, `No ${group.type} rows found.`)}
+        </article>`).join("");
+        return `${summaryHtml}<h3 class="sales-details-section-title">Details by Type</h3><div class="sales-details-groups">${groupsHtml}</div>`;
+      }
+
+
       function passengerName(row) {
         return row?.name || row?.passengerName || row?.paxName || "";
       }
@@ -7168,17 +7277,7 @@
           ], "No sales report rows.") + `<div class="report-actions-row">${downloadRows.map((row) => `<a class="report-link-button" href="${escapeHtml(row.downloadUrl)}" target="_blank" rel="noopener">Download Sales Report</a>`).join("")}</div>`;
         } else if (type === "salesDetails") {
           const totals = rows._totals || [];
-          tableHtml = rowsTable(totals, [
-            { label: "Type", value: (row) => row.type },
-            { label: "Total Amount", value: (row) => Number(row.amount || 0).toFixed(2) },
-          ], "No sales detail totals found.") + rowsTable(rows, [
-            { label: "Date", value: (row) => row.date },
-            { label: "EMD", value: (row) => row.emd },
-            { label: "Value", value: (row) => Number(row.value || 0).toFixed(2) },
-            { label: "Type", value: (row) => row.type },
-            { label: "Flight", value: (row) => row.flightNo },
-            { label: "Report Date", value: (row) => row.reportDate },
-          ], "No sales detail rows found.");
+          tableHtml = renderSalesDetailsReport(rows, totals);
         } else if (type === "vip") {
           tableHtml = rowsTable(rows, [
             { label: "Flight Date", value: (row) => row.displayDate || row.flightDate || row.date },
