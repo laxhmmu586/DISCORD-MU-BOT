@@ -2910,8 +2910,7 @@
         padding: 16px 18px;
       }
 
-      .sales-details-total-card span,
-      .sales-details-eyebrow {
+      .sales-details-total-card span {
         display: block;
         color: #91a8ff;
         font-size: 11px;
@@ -2926,6 +2925,16 @@
         color: white;
         font-size: clamp(24px, 3vw, 36px);
         line-height: 1;
+      }
+
+      .sales-details-total-card small {
+        display: block;
+        margin-top: 8px;
+        color: #b9c8ff;
+        font-size: 13px;
+        font-weight: 900;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
       }
 
       .sales-details-section-title {
@@ -5537,9 +5546,6 @@
 
       function renderSalesDetailsReport(rows = [], totals = []) {
         if (!rows.length && !totals.length) return `<p class="panel-muted">No sales detail rows found.</p>`;
-        const summaryHtml = totals.length
-          ? `<h3 class="sales-details-section-title">Total Amount</h3><div class="sales-details-summary">${[...totals].sort(salesDetailsTypeSort).map((row) => `<article class="sales-details-total-card"><span>${escapeHtml(row.type || "UNKNOWN")}</span><strong>$${escapeHtml(moneyText(row.amount))}</strong></article>`).join("")}</div>`
-          : `<h3 class="sales-details-section-title">Total Amount</h3><p class="panel-muted">No sales detail totals found.</p>`;
         const groups = rows.reduce((map, row) => {
           const key = String(row.type || "UNKNOWN").trim().toUpperCase() || "UNKNOWN";
           if (!map.has(key)) map.set(key, { type: key, amount: 0, rows: [] });
@@ -5548,6 +5554,14 @@
           group.rows.push(row);
           return map;
         }, new Map());
+        const summaryItems = (totals.length ? totals : [...groups.values()]).map((row) => {
+          const type = String(row.type || "UNKNOWN").trim().toUpperCase() || "UNKNOWN";
+          const group = groups.get(type);
+          return { type, amount: row.amount ?? group?.amount ?? 0, count: row.count ?? group?.rows?.length ?? 0 };
+        });
+        const summaryHtml = summaryItems.length
+          ? `<h3 class="sales-details-section-title">Total Amount</h3><div class="sales-details-summary">${summaryItems.sort(salesDetailsTypeSort).map((row) => `<article class="sales-details-total-card"><span>${escapeHtml(row.type)}</span><strong>$${escapeHtml(moneyText(row.amount))}</strong><small>${escapeHtml(row.count)} item${Number(row.count) === 1 ? "" : "s"}</small></article>`).join("")}</div>`
+          : `<h3 class="sales-details-section-title">Total Amount</h3><p class="panel-muted">No sales detail totals found.</p>`;
         const detailColumns = [
           { label: "Date", value: (row) => row.date },
           { label: "EMD", value: (row) => row.emd },
@@ -5555,7 +5569,7 @@
           { label: "Report Date", value: (row) => row.reportDate },
         ];
         const groupsHtml = [...groups.values()].sort(salesDetailsTypeSort).map((group) => `<article class="sales-details-group">
-          <div class="sales-details-group-head"><div><span class="sales-details-eyebrow">Type</span><h3>${escapeHtml(group.type)}</h3></div><div class="sales-details-group-total">Total $${escapeHtml(moneyText(group.amount))}</div></div>
+          <div class="sales-details-group-head"><h3>${escapeHtml(group.type)}</h3><div class="sales-details-group-total">${escapeHtml(group.rows.length)} item${group.rows.length === 1 ? "" : "s"} • Total $${escapeHtml(moneyText(group.amount))}</div></div>
           ${rowsTable(group.rows, detailColumns, `No ${group.type} rows found.`)}
         </article>`).join("");
         return `${summaryHtml}<h3 class="sales-details-section-title">Details by Type</h3><div class="sales-details-groups">${groupsHtml}</div>`;

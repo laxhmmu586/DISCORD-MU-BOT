@@ -1499,8 +1499,13 @@ async function getSalesDetailsReportRows(fromIsoDate, toIsoDate, options = {}) {
     if (row.date >= fromIsoDate && row.date <= toIsoDate) dataRows.push(row);
   }
   const totals = {};
-  for (const row of dataRows) totals[row.type || 'UNKNOWN'] = (totals[row.type || 'UNKNOWN'] || 0) + (Number(row.value) || 0);
-  return { rows: dataRows, totals: Object.entries(totals).sort(([a], [b]) => a.localeCompare(b)).map(([type, amount]) => ({ type, amount: Math.round(amount * 100) / 100 })), sync };
+  for (const row of dataRows) {
+    const type = row.type || 'UNKNOWN';
+    if (!totals[type]) totals[type] = { amount: 0, count: 0 };
+    totals[type].amount += Number(row.value) || 0;
+    totals[type].count += 1;
+  }
+  return { rows: dataRows, totals: Object.entries(totals).sort(([a], [b]) => a.localeCompare(b)).map(([type, total]) => ({ type, amount: Math.round(total.amount * 100) / 100, count: total.count })), sync };
 }
 
 async function findSalesReportFile(flightNo, flightDate) {
