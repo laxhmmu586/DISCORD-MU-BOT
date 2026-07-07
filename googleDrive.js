@@ -507,6 +507,7 @@ const LOG_NAMES = [
 const SALES_REPORT_FOLDER_ID = '1-RLbv_BU9rnsaaPy8UUkbN6FkhA5YqGf';
 
 const REPORT_SHEET_ID = '1JqRnDx_uLc2m2SzyZOuHWWJsbkKenlKo60U9zwV9uMQ';
+const SALES_REPORT_DETAIL_SHEET_NAME = '销售日报明细表';
 const TEST_BAGGAGE_SHEET_ID = '1JqRnDx_uLc2m2SzyZOuHWWJsbkKenlKo60U9zwV9uMQ';
 const TEST_BAGGAGE_GID = 1340163844;
 const TEST_BAGGAGE_HEADERS = [
@@ -1428,7 +1429,7 @@ async function readSalesReportXlsValues(file) {
     copiedId = copied.data.id;
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: copiedId,
-      range: 'A:U',
+      range: `'${SALES_REPORT_DETAIL_SHEET_NAME}'!A:U`,
       valueRenderOption: 'FORMATTED_VALUE'
     });
     return res.data.values || [];
