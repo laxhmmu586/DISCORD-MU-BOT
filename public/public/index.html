@@ -707,11 +707,11 @@
 
       .details-manifest {
         display: grid;
-        grid-template-columns: repeat(2, minmax(174px, max-content)) repeat(2, minmax(132px, 132px));
+        grid-template-columns: minmax(174px, max-content) minmax(132px, 132px) repeat(2, minmax(116px, 116px));
         grid-template-areas:
-          "reservation checkin warning security"
-          "rk rk warning security";
-        grid-template-rows: minmax(40px, auto) minmax(44px, auto);
+          "reservation warning security jcsy"
+          "checkin warning security jcsy";
+        grid-template-rows: minmax(58px, 1fr) minmax(58px, 1fr);
         gap: 12px;
         align-items: stretch;
         justify-content: center;
@@ -719,17 +719,17 @@
 
       .manifest-section.is-reservation { grid-area: reservation; }
       .manifest-section.is-checkin { grid-area: checkin; }
-      .manifest-rk { grid-area: rk; }
       .summary-warning-action { grid-area: warning; }
       .summary-security-action { grid-area: security; }
+      .summary-jcsy-action { grid-area: jcsy; }
       .details-manifest.is-warning-hidden {
-        grid-template-columns: repeat(2, minmax(174px, max-content)) minmax(132px, 132px);
+        grid-template-columns: minmax(174px, max-content) repeat(2, minmax(116px, 116px));
         grid-template-areas:
-          "reservation checkin warning"
-          "rk rk warning";
+          "reservation security jcsy"
+          "checkin security jcsy";
       }
 
-      .details-manifest.is-warning-hidden .summary-security-action { grid-area: warning; }
+      .details-manifest.is-warning-hidden .summary-security-action { grid-area: security; }
 
       .details-panel .details-manifest > .detail-action {
         min-height: 0;
@@ -748,6 +748,33 @@
       .details-panel .details-manifest > .detail-action .detail-action-icon {
         width: 34px;
         height: 34px;
+      }
+
+      .details-panel .details-manifest > .summary-security-action,
+      .details-panel .details-manifest > .summary-jcsy-action {
+        --tile-accent: rgba(255, 255, 255, 0.95);
+        --tile-accent-soft: rgba(255, 255, 255, 0.72);
+        --tile-accent-faint: rgba(255, 255, 255, 0.08);
+        min-height: 118px;
+        padding: 16px 12px;
+        color: rgba(255, 255, 255, 0.96);
+        border: 2px solid rgba(255, 255, 255, 0.86);
+        background: transparent;
+        clip-path: polygon(16% 0, 84% 0, 100% 50%, 84% 100%, 16% 100%, 0 50%);
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.28), 0 0 18px rgba(255,255,255,0.12);
+      }
+
+      .details-panel .details-manifest > .summary-security-action::before,
+      .details-panel .details-manifest > .summary-jcsy-action::before {
+        background: none;
+        border: 0;
+      }
+
+      .details-panel .details-manifest > .summary-security-action::after,
+      .details-panel .details-manifest > .summary-jcsy-action::after,
+      .details-panel .details-manifest > .summary-security-action .detail-action-icon,
+      .details-panel .details-manifest > .summary-jcsy-action .detail-action-icon {
+        display: none;
       }
 
       .mission-stage {
@@ -1231,15 +1258,6 @@
 
       .count-wide {
         width: 100%;
-      }
-
-      .manifest-rk {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 44px;
-        padding-block: 8px;
-        text-align: center;
       }
 
       .count:nth-child(1) strong {
@@ -2798,6 +2816,11 @@
         justify-content: start;
       }
 
+      .report-form.is-sales-details-mode {
+        grid-template-columns: repeat(2, minmax(150px, 260px)) minmax(132px, 160px);
+        justify-content: start;
+      }
+
       .report-form.is-vip-mode,
       .report-form.is-inad-mode,
       .report-form.is-baggage-mode {
@@ -2810,6 +2833,7 @@
 
       .report-form.is-psm-mode .report-keyword-field,
       .report-form.is-wch-mode .report-keyword-field,
+      .report-form.is-sales-details-mode .report-keyword-field,
       .report-form.is-sales-mode .report-to-field,
       .report-form.is-sales-mode .report-keyword-field {
         display: none;
@@ -2885,6 +2909,93 @@
         text-decoration: none;
         text-transform: uppercase;
       }
+
+      .sales-details-summary {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+        margin: 16px 0 22px;
+      }
+
+      .sales-details-total-card,
+      .sales-details-group {
+        border: 1px solid rgba(126, 164, 255, 0.28);
+        background: rgba(12, 24, 48, 0.62);
+        box-shadow: 0 18px 48px rgba(0, 0, 0, 0.18);
+      }
+
+      .sales-details-total-card {
+        padding: 16px 18px;
+      }
+
+      .sales-details-total-card span {
+        display: block;
+        color: #91a8ff;
+        font-size: 11px;
+        font-weight: 1000;
+        letter-spacing: 1.1px;
+        text-transform: uppercase;
+      }
+
+      .sales-details-total-card strong {
+        display: block;
+        margin-top: 8px;
+        color: white;
+        font-size: clamp(24px, 3vw, 36px);
+        line-height: 1;
+      }
+
+      .sales-details-total-card small {
+        display: block;
+        margin-top: 8px;
+        color: #b9c8ff;
+        font-size: 13px;
+        font-weight: 900;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .sales-details-section-title {
+        margin: 26px 0 12px;
+        color: white;
+        font-size: clamp(20px, 2.4vw, 30px);
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .sales-details-groups {
+        display: grid;
+        gap: 18px;
+      }
+
+      .sales-details-group {
+        padding: 16px;
+      }
+
+      .sales-details-group-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: end;
+        gap: 14px;
+        margin-bottom: 12px;
+        border-bottom: 1px solid rgba(126, 164, 255, 0.2);
+        padding-bottom: 12px;
+      }
+
+      .sales-details-group-head h3 {
+        margin: 0;
+        color: white;
+        font-size: 22px;
+        text-transform: uppercase;
+      }
+
+      .sales-details-group-total {
+        color: #b9c8ff;
+        font-size: 18px;
+        font-weight: 1000;
+        text-align: right;
+      }
+
 
       .test-page {
         display: grid;
@@ -3737,16 +3848,16 @@
           grid-template-columns: 1fr 1fr;
           grid-template-areas:
             "reservation checkin"
-            "rk rk"
-            "warning security";
-          grid-template-rows: auto minmax(54px, auto) 132px;
+            "warning security"
+            "warning jcsy";
+          grid-template-rows: auto 66px 66px;
         }
 
         .details-manifest.is-warning-hidden {
           grid-template-areas:
             "reservation checkin"
-            "rk rk"
-            "warning warning";
+            "security jcsy";
+          grid-template-rows: auto 132px;
         }
 
         .details-panel {
@@ -3785,16 +3896,16 @@
           grid-template-columns: 1fr 1fr;
           grid-template-areas:
             "reservation checkin"
-            "rk rk"
-            "warning security";
-          grid-template-rows: auto minmax(54px, auto) 132px;
+            "warning security"
+            "warning jcsy";
+          grid-template-rows: auto 66px 66px;
         }
 
         .details-manifest.is-warning-hidden {
           grid-template-areas:
             "reservation checkin"
-            "rk rk"
-            "warning warning";
+            "security jcsy";
+          grid-template-rows: auto 132px;
         }
 
         .details-panel {
@@ -3833,16 +3944,16 @@
           grid-template-columns: 1fr 1fr;
           grid-template-areas:
             "reservation checkin"
-            "rk rk"
-            "warning security";
-          grid-template-rows: auto minmax(48px, auto) 132px;
+            "warning security"
+            "warning jcsy";
+          grid-template-rows: auto 66px 66px;
         }
 
         .details-manifest.is-warning-hidden {
           grid-template-areas:
             "reservation checkin"
-            "rk rk"
-            "warning warning";
+            "security jcsy";
+          grid-template-rows: auto 132px;
         }
 
         .details-panel {
@@ -4286,12 +4397,13 @@
           <div class="report-hero">
             <div>
               <h2>Report Center</h2>
-              <p class="panel-muted">Use Sales Report to choose one date and download the file. Use VIP Report and INAD Report to show saved rows. Use PSM Report and WCH Report to search by flight date.</p>
+              <p class="panel-muted">Use Sales Report to choose one date and download the file. Use Sales Details to search a date range and total amounts by type. Use VIP Report and INAD Report to show saved rows. Use PSM Report and WCH Report to search by flight date.</p>
             </div>
             <button class="report-close" id="report-close" type="button">Close</button>
           </div>
           <div class="detail-actions report-mode-actions" aria-label="Report shortcuts">
             <button class="detail-action" id="report-sales-mode" type="button" data-report-mode="sales">Sales Report</button>
+            <button class="detail-action" id="report-sales-details-mode" type="button" data-report-mode="salesDetails">Sales Details</button>
             <button class="detail-action" id="report-vip-mode" type="button" data-report-mode="vip">VIP Report</button>
             <button class="detail-action" id="report-psm-mode" type="button" data-report-mode="psm">PSM Report</button>
             <button class="detail-action" id="report-inad-mode" type="button" data-report-mode="inad">INAD Report</button>
@@ -4362,9 +4474,9 @@
                     </div>
                   </div>
                 </div>
-                <p class="message manifest-rk" id="rk-message">Search SY to load live flight data.</p>
                 <button class="detail-action warning-action summary-warning-action" type="button" data-panel="warning" id="warning-action" hidden aria-label="Open warnings"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M16 5 29 27H3z"/><path d="M16 12v7"/><path d="M16 23h.01"/></svg></span><span class="detail-action-label">WARNING</span> <span class="detail-action-badge warning-badge" id="warning-count">0</span></button>
-                <button class="detail-action summary-security-action" type="button" data-panel="security" id="security-detail-action"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M16 4 26 8v7c0 6.6-3.8 10.8-10 13-6.2-2.2-10-6.4-10-13V8z"/><path d="M11 16l3 3 7-7"/></svg></span><span class="detail-action-label">Security Check</span></button>
+                <button class="detail-action summary-security-action" type="button" data-panel="security" id="security-detail-action"><span class="detail-action-label">Security Check</span></button>
+                <button class="detail-action summary-jcsy-action" type="button" data-panel="jcsy" id="jcsy-detail-action"><span class="detail-action-label">JCSY</span></button>
               </div>
             </div>
             <div class="detail-actions" aria-label="Flight detail actions">
@@ -4505,6 +4617,7 @@
       const reportCloseButton = document.querySelector("#report-close");
       const reportForm = document.querySelector("#report-form");
       const reportSalesModeButton = document.querySelector("#report-sales-mode");
+      const reportSalesDetailsModeButton = document.querySelector("#report-sales-details-mode");
       const reportVipModeButton = document.querySelector("#report-vip-mode");
       const reportPsmModeButton = document.querySelector("#report-psm-mode");
       const reportInadModeButton = document.querySelector("#report-inad-mode");
@@ -4613,7 +4726,6 @@
         const checkinAcceptedEl = document.querySelector("#checkin-accepted");
         if (checkinAcceptedEl) checkinAcceptedEl.innerHTML = tripleHtml(["---", "---", "---"]);
         document.querySelector("#checkin-et").textContent = "--- / --- / ---";
-        setText("#rk-message", "");
         setBadgeText("#chd-count", 0);
         setBadgeText("#gov-count", 0);
         setBadgeText("#webedi-count", 0);
@@ -4904,7 +5016,18 @@
           },
         });
         const type = res.headers.get("content-type") || "";
-        if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+        if (!res.ok) {
+          let detail = "";
+          if (type.includes("application/json")) {
+            try {
+              const body = await res.json();
+              detail = body?.error ? `: ${body.error}` : "";
+            } catch (_) {
+              detail = "";
+            }
+          }
+          throw new Error(`HTTP ${res.status} ${res.statusText}${detail}`);
+        }
         if (!type.includes("application/json")) throw new Error(`API returned non-JSON from ${apiBase}.`);
         return res.json();
       }
@@ -5421,6 +5544,55 @@
         return `<table class="data-table"><thead><tr>${columns.map((col) => `<th>${escapeHtml(col.label)}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${columns.map((col) => `<td>${escapeHtml(col.value(row) || "-")}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
       }
 
+      function moneyText(value) {
+        return Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+
+
+      function salesDetailsTypeRank(type) {
+        const key = String(type || "UNKNOWN").trim().toUpperCase();
+        if (key === "UPG") return 0;
+        return 10;
+      }
+
+      function salesDetailsTypeSort(a, b) {
+        const aType = String(a?.type || "UNKNOWN").trim().toUpperCase();
+        const bType = String(b?.type || "UNKNOWN").trim().toUpperCase();
+        return (salesDetailsTypeRank(aType) - salesDetailsTypeRank(bType)) || aType.localeCompare(bType);
+      }
+
+      function renderSalesDetailsReport(rows = [], totals = []) {
+        if (!rows.length && !totals.length) return `<p class="panel-muted">No sales detail rows found.</p>`;
+        const groups = rows.reduce((map, row) => {
+          const key = String(row.type || "UNKNOWN").trim().toUpperCase() || "UNKNOWN";
+          if (!map.has(key)) map.set(key, { type: key, amount: 0, rows: [] });
+          const group = map.get(key);
+          group.amount += Number(row.value) || 0;
+          group.rows.push(row);
+          return map;
+        }, new Map());
+        const summaryItems = (totals.length ? totals : [...groups.values()]).map((row) => {
+          const type = String(row.type || "UNKNOWN").trim().toUpperCase() || "UNKNOWN";
+          const group = groups.get(type);
+          return { type, amount: row.amount ?? group?.amount ?? 0, count: row.count ?? group?.rows?.length ?? 0 };
+        });
+        const summaryHtml = summaryItems.length
+          ? `<h3 class="sales-details-section-title">Total Amount</h3><div class="sales-details-summary">${summaryItems.sort(salesDetailsTypeSort).map((row) => `<article class="sales-details-total-card"><span>${escapeHtml(row.type)}</span><strong>$${escapeHtml(moneyText(row.amount))}</strong><small>${escapeHtml(row.count)} item${Number(row.count) === 1 ? "" : "s"}</small></article>`).join("")}</div>`
+          : `<h3 class="sales-details-section-title">Total Amount</h3><p class="panel-muted">No sales detail totals found.</p>`;
+        const detailColumns = [
+          { label: "Date", value: (row) => row.date },
+          { label: "EMD", value: (row) => row.emd },
+          { label: "Value", value: (row) => `$${moneyText(row.value)}` },
+          { label: "Report Date", value: (row) => row.reportDate },
+        ];
+        const groupsHtml = [...groups.values()].sort(salesDetailsTypeSort).map((group) => `<article class="sales-details-group">
+          <div class="sales-details-group-head"><h3>${escapeHtml(group.type)}</h3><div class="sales-details-group-total">${escapeHtml(group.rows.length)} item${group.rows.length === 1 ? "" : "s"} • Total $${escapeHtml(moneyText(group.amount))}</div></div>
+          ${rowsTable(group.rows, detailColumns, `No ${group.type} rows found.`)}
+        </article>`).join("");
+        return `${summaryHtml}<h3 class="sales-details-section-title">Details by Type</h3><div class="sales-details-groups">${groupsHtml}</div>`;
+      }
+
+
       function passengerName(row) {
         return row?.name || row?.passengerName || row?.paxName || "";
       }
@@ -5467,9 +5639,10 @@
         const text = String(value || "").trim().toUpperCase();
         const match = text.match(/((?:[A-Z]{1,3}\s*)?\d{5,12})\s*\/\s*([A-Z]{3})\b/);
         if (!match) return null;
-        const digits = String(match[1] || "").replace(/\D/g, "");
+        const tagBody = String(match[1] || "").toUpperCase().replace(/\s+/g, "").trim();
+        const digits = tagBody.replace(/\D/g, "");
         if (digits.length < 6) return null;
-        return { display: `${String(match[1] || "").replace(/\s+/g, " ").trim()}/${match[2]}`, key: digits.slice(-6), destination: match[2] };
+        return { display: `${String(match[1] || "").replace(/\s+/g, " ").trim()}/${match[2]}`, key: tagBody, destination: match[2] };
       }
 
       function bagEntriesForRow(row) {
@@ -5521,8 +5694,7 @@
         return [...groups.entries()].flatMap(([bagKey, rows]) => {
           if (rows.some(hasUnknownPassengerName)) return [];
           const uniquePassengers = new Set(rows.map((row) => row.bn || `${row.name}|${row.seat}`));
-          const destinations = new Set(rows.map((row) => row.destination));
-          if (rows.length < 2 || (uniquePassengers.size < 2 && destinations.size < 2)) return [];
+          if (rows.length < 2 || uniquePassengers.size < 2) return [];
           return rows.map((row) => ({ ...row, bagKey }));
         }).sort((a, b) => a.bagKey.localeCompare(b.bagKey) || Number(a.bn || 9999) - Number(b.bn || 9999));
       }
@@ -5581,7 +5753,7 @@
       function syRenderSignature(sy) {
         if (!sy) return "";
         const steps = (sy.crewApis?.steps || []).map((step) => [step.key || step.label, step.time || "", Boolean(step.complete), Boolean(step.searched)].join(":"));
-        return JSON.stringify([sy.flightNo, sy.flightDate, sy.gate, sy.bdt, sy.sd, sy.rkMessage, sy.reservation, sy.reservationTicketed, sy.checkedIn, sy.checkedInTicketed, steps, (sy.chdList || []).length, (sy.psmList || []).length, (sy.wchList || []).length]);
+        return JSON.stringify([sy.flightNo, sy.flightDate, sy.gate, sy.bdt, sy.sd, sy.reservation, sy.reservationTicketed, sy.checkedIn, sy.checkedInTicketed, sy.jcsy, steps, (sy.chdList || []).length, (sy.psmList || []).length, (sy.wchList || []).length]);
       }
 
       function updateFlightFromSy(sy, options = {}) {
@@ -5611,7 +5783,6 @@
         const checkinAcceptedEl = document.querySelector("#checkin-accepted");
         if (checkinAcceptedEl) checkinAcceptedEl.innerHTML = tripleHtml(countTriple(sy.checkedIn));
         document.querySelector("#checkin-et").textContent = countTriple(sy.checkedInTicketed).join(" / ");
-        setText("#rk-message", sy.rkMessage || "No RK message found.");
         const isClearLocked = (_key) => false;
         const chdIssues = isClearLocked("CHD") ? 0 : (sy.chdList || []).filter((row) => row.hasChdCode === false).length;
         const gov = sy.govAqq || {};
@@ -6136,9 +6307,9 @@
 
       function renderDuplicateBagsPanel() {
         const rows = duplicateBagRows(currentSy);
-        const stats = `<div class="panel-stats"><span class="status-fail">Duplicate bag rows: ${rows.length}</span><span>Compare by last 6 digits</span></div>`;
+        const stats = `<div class="panel-stats"><span class="status-fail">Duplicate bag rows: ${rows.length}</span><span>Compare by exact bag tag before destination</span></div>`;
         renderPanel("Duplicate Bag Tags", currentSy?.flightNo || "SY", stats + rowsTable(rows, [
-          { label: "Last 6", value: (row) => row.bagKey },
+          { label: "Bag Tag Key", value: (row) => row.bagKey },
           { label: "Name", value: (row) => row.name },
           { label: "BN", value: (row) => row.bn ? `BN${row.bn}` : "" },
           { label: "Bag Tag", value: (row) => row.display },
@@ -6160,6 +6331,25 @@
           { label: "Destination", value: (row) => row.bagDestination },
         ], "No duplicate or highly similar names found."));
         setPanelPassengerRows(enrichRowsWithPassengerData(rows));
+      }
+
+
+      function renderJcsyPanel() {
+        const jcsy = currentSy?.jcsy || {};
+        const rows = Array.isArray(jcsy.rows) ? jcsy.rows : [];
+        const stats = `<div class="panel-stats"><span>Domestic pax: ${escapeHtml(jcsy.domestic ?? 0)}</span><span>International pax: ${escapeHtml(jcsy.international ?? 0)}</span><span>Overnight: ${escapeHtml(jcsy.overnight ?? 0)}</span><span>PVG only: ${escapeHtml(jcsy.pvgOnly ?? 0)}</span></div>`;
+        renderPanel("JCSY", currentSy?.flightNo || "SY", stats + rowsTable(rows, [
+          { label: "Flight", value: (row) => row.flightNo },
+          { label: "Dest", value: (row) => row.destination },
+          { label: "Departure", value: (row) => row.departure || "PVG ONLY" },
+          { label: "F", value: (row) => row.first },
+          { label: "J", value: (row) => row.business },
+          { label: "Y", value: (row) => row.economy },
+          { label: "Total", value: (row) => row.total },
+          { label: "Market", value: (row) => row.market },
+          { label: "Overnight", value: (row) => row.overnight ? "Yes" : "" },
+        ], "No JCSY rows found."));
+        setPanelPassengerRows([]);
       }
 
       function renderPsmPanel() {
@@ -6303,7 +6493,7 @@
       }
 
       function setReportMode(mode, options = {}) {
-        activeReportMode = ["vip", "psm", "inad", "wch", "baggage"].includes(mode) ? mode : "sales";
+        activeReportMode = ["vip", "psm", "inad", "wch", "baggage", "salesDetails"].includes(mode) ? mode : "sales";
         if (activeReportMode === "baggage") {
           if (options.forceToday) setReportDefaults(true);
         } else {
@@ -6319,11 +6509,13 @@
         if (activeReportMode === "sales" && reportToInput) reportToInput.value = reportFromInput?.value || reportToInput.value;
         reportForm?.classList.toggle("is-sales-mode", activeReportMode === "sales");
         reportForm?.classList.toggle("is-vip-mode", activeReportMode === "vip");
+        reportForm?.classList.toggle("is-sales-details-mode", activeReportMode === "salesDetails");
         reportForm?.classList.toggle("is-psm-mode", activeReportMode === "psm");
         reportForm?.classList.toggle("is-inad-mode", activeReportMode === "inad");
         reportForm?.classList.toggle("is-wch-mode", activeReportMode === "wch");
         reportForm?.classList.toggle("is-baggage-mode", activeReportMode === "baggage");
         reportSalesModeButton?.classList.toggle("is-active", activeReportMode === "sales");
+        reportSalesDetailsModeButton?.classList.toggle("is-active", activeReportMode === "salesDetails");
         reportVipModeButton?.classList.toggle("is-active", activeReportMode === "vip");
         reportPsmModeButton?.classList.toggle("is-active", activeReportMode === "psm");
         reportInadModeButton?.classList.toggle("is-active", activeReportMode === "inad");
@@ -6345,10 +6537,12 @@
                 ? `<p class="panel-muted">Select a submit-date range, optionally enter a bag tag, then click Search.</p>`
                 : (["psm", "wch"].includes(activeReportMode)
                   ? `<p class="panel-muted">Choose a flight date range, then search ${activeReportMode === "wch" ? "WCH" : "PSM"} Report.</p>`
-                  : `<p class="panel-muted">Choose a date, then download Sales Report.</p>`)));
+                  : (activeReportMode === "salesDetails"
+                    ? `<p class="panel-muted">Choose a date range, then search Sales Details totals by Type.</p>`
+                    : `<p class="panel-muted">Choose a date, then download Sales Report.</p>`))));
         }
         if (activeReportMode === "baggage") renderBaggageTimelineReport();
-        else if (["vip", "psm", "inad", "wch"].includes(activeReportMode)) generateReport();
+        else if (["vip", "psm", "inad", "wch", "salesDetails"].includes(activeReportMode)) generateReport();
       }
 
       function resetPanelState() {
@@ -6929,6 +7123,10 @@
         return data?.rows || [];
       }
 
+      async function salesDetailsReport(from, to) {
+        return apiJson(`/sales-details-report?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+      }
+
 
       function normalizeTimelineText(value) {
         return String(value || "").trim().toUpperCase().replace(/[^A-Z0-9]+/g, "");
@@ -7060,7 +7258,7 @@
           await renderBaggageTimelineReport();
           return;
         }
-        const type = ["vip", "psm", "inad", "wch"].includes(activeReportMode) ? activeReportMode : "sales";
+        const type = ["vip", "psm", "inad", "wch", "salesDetails"].includes(activeReportMode) ? activeReportMode : "sales";
         const today = ymdFromDate(new Date());
         const from = reportFromInput?.value || today;
         const keyword = type === "vip" ? (reportKeywordInput?.value || "") : "";
@@ -7069,7 +7267,7 @@
         try {
           dates = type === "sales" ? [from] : [];
           if (type === "sales" && !from) throw new Error("Please select a valid date.");
-          if (type === "psm" || type === "wch") reportDateRange(from, to);
+          if (type === "psm" || type === "wch" || type === "salesDetails") reportDateRange(from, to);
         } catch (error) {
           reportOutput.innerHTML = `<p class="panel-muted status-fail">${escapeHtml(error.message)}</p>`;
           setReportCsv([], "report.csv");
@@ -7077,11 +7275,13 @@
         }
         reportOutput.innerHTML = type === "sales"
           ? `<p class="panel-muted">Checking Sales Report for ${escapeHtml(from)}...</p>`
-          : (type === "psm"
+          : (type === "salesDetails"
+            ? `<p class="panel-muted">Loading Sales Details for ${escapeHtml(from)}${from === to ? "" : ` to ${escapeHtml(to)}`}...</p>`
+            : (type === "psm"
             ? `<p class="panel-muted">Loading PSM Report for ${escapeHtml(from)}${from === to ? "" : ` to ${escapeHtml(to)}`}...</p>`
             : (type === "wch"
               ? `<p class="panel-muted">Loading WCH Report for ${escapeHtml(from)}${from === to ? "" : ` to ${escapeHtml(to)}`}...</p>`
-              : (type === "inad" ? `<p class="panel-muted">Loading INAD Report...</p>` : `<p class="panel-muted">Loading VIP Report...</p>`)));
+              : (type === "inad" ? `<p class="panel-muted">Loading INAD Report...</p>` : `<p class="panel-muted">Loading VIP Report...</p>`))));
         setReportCsv([], "report.csv");
         const rows = [];
         const errors = [];
@@ -7109,6 +7309,15 @@
           } catch (error) {
             errors.push(error.message);
           }
+        } else if (type === "salesDetails") {
+          try {
+            const data = await salesDetailsReport(from, to);
+            rows.push(...(data?.rows || []));
+            rows._totals = data?.totals || [];
+            if (data?.sync?.errors?.length) errors.push(`Sales Details sync warning: ${data.sync.errors.join(" | ")}`);
+          } catch (error) {
+            errors.push(error.message);
+          }
         }
         for (const isoDate of dates) {
           try {
@@ -7128,6 +7337,9 @@
             { label: "Available", value: (row) => row.salesAvailable },
             { label: "File", value: (row) => row.fileName },
           ], "No sales report rows.") + `<div class="report-actions-row">${downloadRows.map((row) => `<a class="report-link-button" href="${escapeHtml(row.downloadUrl)}" target="_blank" rel="noopener">Download Sales Report</a>`).join("")}</div>`;
+        } else if (type === "salesDetails") {
+          const totals = rows._totals || [];
+          tableHtml = renderSalesDetailsReport(rows, totals);
         } else if (type === "vip") {
           tableHtml = rowsTable(rows, [
             { label: "Flight Date", value: (row) => row.displayDate || row.flightDate || row.date },
@@ -7173,6 +7385,7 @@
         reportOutput.innerHTML = `${errorHtml}${tableHtml}`;
         const reportFileNames = {
           sales: `sales-report-${from}.csv`,
+          salesDetails: `sales-details-${from}${from === to ? "" : `-to-${to}`}.csv`,
           vip: "vip-report.csv",
           psm: `psm-report-${from}${from === to ? "" : `-to-${to}`}.csv`,
           inad: "inad-report.csv",
@@ -7493,6 +7706,7 @@
           if (panel === "duplicate-bags") renderDuplicateBagsPanel();
           if (panel === "duplicate-names") renderDuplicateNamesPanel();
           if (panel === "security") renderSecurityCheck();
+          if (panel === "jcsy") renderJcsyPanel();
         });
       });
 
@@ -7605,6 +7819,7 @@
       });
 
       reportSalesModeButton?.addEventListener("click", () => setReportMode("sales", { forceToday: true, resetOutput: true }));
+      reportSalesDetailsModeButton?.addEventListener("click", () => setReportMode("salesDetails", { forceToday: true, resetOutput: true }));
       reportVipModeButton?.addEventListener("click", () => setReportMode("vip", { forceToday: true, resetOutput: true }));
       reportPsmModeButton?.addEventListener("click", () => setReportMode("psm", { forceToday: true, resetOutput: true }));
       reportInadModeButton?.addEventListener("click", () => setReportMode("inad", { forceToday: true, resetOutput: true }));
