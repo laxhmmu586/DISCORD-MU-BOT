@@ -292,16 +292,19 @@ function parseJcsyRows(content) {
   }).filter(Boolean);
 }
 
-function findJcsyInfo(sections, flightNo, flightYmd, formatTime) {
-  const flightDate = dateToDdMon(ymdToUtcDate(flightYmd));
+function findJcsyInfo(sections, flightNo, flightYmd, formatTime, fallbackYmd = '') {
+  const dateCandidates = [flightYmd, fallbackYmd]
+    .map((ymd) => dateToDdMon(ymdToUtcDate(ymd)))
+    .filter(Boolean);
+  const flightDate = dateCandidates[0] || '';
   const jcsyFlightNo = normalizeJcsyFlightNo(flightNo);
-  const flightDatePattern = escapeRegExp(flightDate);
   const flightNoPattern = escapeRegExp(jcsyFlightNo);
-  const matches = Boolean(flightYmd && jcsyFlightNo && flightDate) ? sections.filter((sectionObj) => {
+  const datePattern = dateCandidates.map(escapeRegExp).join('|');
+  const matches = Boolean(jcsyFlightNo && datePattern) ? sections.filter((sectionObj) => {
     const content = String(sectionObj.content || '').toUpperCase();
     return /^>\s*JCSY\s*:/im.test(content)
       && /##TOTAL##/i.test(content)
-      && new RegExp(`\\bJCSY:\\s*${flightNoPattern}/${flightDatePattern}/LAX,O\\b`, 'im').test(content);
+      && new RegExp(`\\bJCSY:\\s*${flightNoPattern}/(?:${datePattern})/LAX,O\\b`, 'im').test(content);
   }) : [];
   const sectionObj = matches.sort((a, b) => parseSectionTimestamp(b.timestamp) - parseSectionTimestamp(a.timestamp))[0] || null;
   const rows = parseJcsyRows(sectionObj?.content || '');
@@ -410,7 +413,7 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
   const crewApisTime = crewApisPrimaryCheck?.time || '';
   const ccl = findAcceptedCommand(/^>\s*CCL\s*:/im);
   const cc = findAcceptedCommand(/^>\s*CC\s*:/im);
-  const jcsy = findJcsyInfo(sections, flightNo, flightYmd, formatTime);
+  const jcsy = findJcsyInfo(sections, flightNo, flightYmd, formatTime, targetYmd);
   const baseYmd = targetYmd || flightYmd;
   const baseDateUtc = ymdToUtcDate(baseYmd);
   const netSearchYmd = flightYmd || baseYmd;

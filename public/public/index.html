@@ -709,8 +709,8 @@
         display: grid;
         grid-template-columns: minmax(174px, max-content) minmax(132px, 132px) minmax(132px, 132px);
         grid-template-areas:
-          "reservation warning security"
-          "checkin warning jcsy";
+          "reservation checkin warning security"
+          "rk rk warning jcsy";
         grid-template-rows: minmax(58px, 1fr) minmax(58px, 1fr);
         gap: 12px;
         align-items: stretch;
@@ -725,8 +725,8 @@
       .details-manifest.is-warning-hidden {
         grid-template-columns: minmax(174px, max-content) minmax(132px, 132px);
         grid-template-areas:
-          "reservation security"
-          "checkin jcsy";
+          "reservation checkin security"
+          "rk rk jcsy";
       }
 
       .details-manifest.is-warning-hidden .summary-security-action { grid-area: security; }
@@ -3821,16 +3821,18 @@
           grid-template-columns: 1fr 1fr;
           grid-template-areas:
             "reservation checkin"
-            "security jcsy"
-            "warning warning";
-          grid-template-rows: auto 132px 132px;
+            "rk rk"
+            "warning security"
+            "warning jcsy";
+          grid-template-rows: auto minmax(54px, auto) 66px 66px;
         }
 
         .details-manifest.is-warning-hidden {
           grid-template-areas:
             "reservation checkin"
+            "rk rk"
             "security jcsy";
-          grid-template-rows: auto 132px;
+          grid-template-rows: auto minmax(54px, auto) 132px;
         }
 
         .details-panel {
@@ -3869,16 +3871,18 @@
           grid-template-columns: 1fr 1fr;
           grid-template-areas:
             "reservation checkin"
-            "security jcsy"
-            "warning warning";
-          grid-template-rows: auto 132px 132px;
+            "rk rk"
+            "warning security"
+            "warning jcsy";
+          grid-template-rows: auto minmax(54px, auto) 66px 66px;
         }
 
         .details-manifest.is-warning-hidden {
           grid-template-areas:
             "reservation checkin"
+            "rk rk"
             "security jcsy";
-          grid-template-rows: auto 132px;
+          grid-template-rows: auto minmax(54px, auto) 132px;
         }
 
         .details-panel {
@@ -3917,16 +3921,18 @@
           grid-template-columns: 1fr 1fr;
           grid-template-areas:
             "reservation checkin"
-            "security jcsy"
-            "warning warning";
-          grid-template-rows: auto 132px 132px;
+            "rk rk"
+            "warning security"
+            "warning jcsy";
+          grid-template-rows: auto minmax(54px, auto) 66px 66px;
         }
 
         .details-manifest.is-warning-hidden {
           grid-template-areas:
             "reservation checkin"
+            "rk rk"
             "security jcsy";
-          grid-template-rows: auto 132px;
+          grid-template-rows: auto minmax(54px, auto) 132px;
         }
 
         .details-panel {
