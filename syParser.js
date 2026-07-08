@@ -469,6 +469,7 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
     : { complete: false, time: '', timestamp: '' };
   return {
     complete: crewApisComplete && ccl.complete && cc.complete,
+    jcsy,
     gdCheckQuery: {
       flightNo,
       flightDate: gdEmailDate,

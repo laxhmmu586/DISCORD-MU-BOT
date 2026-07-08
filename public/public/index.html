@@ -707,10 +707,10 @@
 
       .details-manifest {
         display: grid;
-        grid-template-columns: minmax(174px, max-content) minmax(132px, 132px) minmax(132px, 132px);
+        grid-template-columns: repeat(2, minmax(174px, max-content)) repeat(3, minmax(132px, 132px));
         grid-template-areas:
-          "reservation checkin warning security"
-          "rk rk warning jcsy";
+          "reservation checkin warning security jcsy"
+          "rk rk warning security jcsy";
         grid-template-rows: minmax(58px, 1fr) minmax(58px, 1fr);
         gap: 12px;
         align-items: stretch;
@@ -723,10 +723,10 @@
       .summary-security-action { grid-area: security; }
       .summary-jcsy-action { grid-area: jcsy; }
       .details-manifest.is-warning-hidden {
-        grid-template-columns: minmax(174px, max-content) minmax(132px, 132px);
+        grid-template-columns: repeat(2, minmax(174px, max-content)) repeat(2, minmax(132px, 132px));
         grid-template-areas:
-          "reservation checkin security"
-          "rk rk jcsy";
+          "reservation checkin security jcsy"
+          "rk rk security jcsy";
       }
 
       .details-manifest.is-warning-hidden .summary-security-action { grid-area: security; }
