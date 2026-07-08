@@ -37,6 +37,7 @@ const {
   getSyBagInfoByDate,
   getSalesReportMeta,
   downloadSalesReportByFlight,
+  getSalesDetailsReportRows,
   getNextDayInfoEmail,
   getGdCheckEmail,
   getStoredReportRows,
@@ -2060,6 +2061,26 @@ app.get(
   }
 );
 
+
+app.get('/sales-details-report', async (req, res) => {
+  try {
+    const from = String(req.query.from || req.query.date || '').trim();
+    const to = String(req.query.to || from).trim();
+    const dateRe = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRe.test(from) || !dateRe.test(to)) return res.status(400).json({ error: 'Missing or invalid date range' });
+    const fromDate = new Date(`${from}T00:00:00Z`);
+    const toDate = new Date(`${to}T00:00:00Z`);
+    if (Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime()) || fromDate > toDate) {
+      return res.status(400).json({ error: 'Invalid date range' });
+    }
+    const result = await getSalesDetailsReportRows(from, to, { sync: String(req.query.sync || 'true').toLowerCase() !== 'false' });
+    return res.json({ ...result, source: 'sheet' });
+  } catch (err) {
+    console.error('Sales details report error:', err);
+    return res.status(500).json({ error: err?.message || 'Sales details report lookup failed' });
+  }
+});
+
 app.get(
 
   '/search',
@@ -2162,7 +2183,7 @@ app.get(
         return res.json({
 
           error:
-            'Unable to load logs (Flight Control.log / Lake.log / Ticketing.log)'
+            'Unable to load .log files'
         });
       }
 

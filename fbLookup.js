@@ -402,7 +402,7 @@ async function runLookup(mode, rawQuery) {
   if (date) log = await getFlightLogByDate(date, yearSuffix);
   else log = await getLatestFlightLog();
 
-  if (!log) return { error: 'Unable to load logs (Flight Control.log / Lake.log / Ticketing.log)' };
+  if (!log) return { error: 'Unable to load .log files' };
 
   parseIncrementalLog(log);
   parsePDLog(log);
