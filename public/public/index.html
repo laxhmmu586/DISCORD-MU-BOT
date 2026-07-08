@@ -5197,6 +5197,62 @@
         nodeCard.classList.add("is-open");
       }
 
+      async function sendNextDayInfoFromNode(node) {
+        if (!currentSy?.flightNo) {
+          alert("缺少SY信息：请先加载SY。");
+          return;
+        }
+        const ok = confirm("确认发送 NEXTDAY INFO 邮件到 laxhmmu@gmail.com？");
+        if (!ok) return;
+        const step = stepByKey("NEXTDAY_INFO");
+        if (step) {
+          step.searched = true;
+          step.tooltip = "NEXTDAY INFO sending email...";
+        }
+        node.dataset.status = "pending";
+        node.dataset.time = "SENDING";
+        nodeTime.textContent = "SENDING";
+        showTimelineNodeCard("NEXTDAY_INFO", step, "SENDING");
+        try {
+          const data = await apiJson("/nextday-info/send", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ flightNo: currentSy.flightNo || "MU586" }),
+          });
+          if (data?.step) {
+            currentSy.crewApis = currentSy.crewApis || {};
+            currentSy.crewApis.steps = currentSy.crewApis.steps || [];
+            const index = currentSy.crewApis.steps.findIndex((item) => item.key === "nextDayInfo");
+            if (index >= 0) currentSy.crewApis.steps[index] = { ...currentSy.crewApis.steps[index], ...data.step };
+            else currentSy.crewApis.steps.push(data.step);
+          }
+          const updatedStep = stepByKey("NEXTDAY_INFO");
+          if (updatedStep) {
+            updatedStep.complete = true;
+            updatedStep.searched = true;
+            updatedStep.time = updatedStep.time || (data.sentAt ? data.sentAt.slice(11, 19) : "SENT");
+            updatedStep.subject = data.subject || updatedStep.subject || "";
+            updatedStep.details = data.details || updatedStep.details || {};
+            updatedStep.detailText = data.detailText || updatedStep.detailText || "";
+            updatedStep.tooltip = `NEXTDAY INFO sent to ${data.to || "laxhmmu@gmail.com"}: ${data.subject || ""}`;
+          }
+          refreshSyBadges(currentSy);
+          const sentStep = stepByKey("NEXTDAY_INFO");
+          showTimelineNodeCard("NEXTDAY_INFO", sentStep, sentStep?.time || "SENT");
+        } catch (err) {
+          const message = err?.message || "NEXTDAY INFO email send failed.";
+          if (step) {
+            step.complete = false;
+            step.searched = true;
+            step.reason = message;
+            step.tooltip = message;
+          }
+          refreshSyBadges(currentSy);
+          showTimelineNodeCard("NEXTDAY_INFO", stepByKey("NEXTDAY_INFO"), "MISSING");
+          alert(message);
+        }
+      }
+
       function updateSelectedNode(index) {
         selectedIndex = index;
         const node = nodes[selectedIndex];
@@ -7753,6 +7809,10 @@
           didDrag = false;
           if (node.dataset.clearLocked === "true") return;
           resetTimelineCenter(node.dataset.key);
+          if (node.dataset.key === "NEXTDAY_INFO") {
+            sendNextDayInfoFromNode(node);
+            return;
+          }
           renderStepPanel(node.dataset.key);
         });
       });
