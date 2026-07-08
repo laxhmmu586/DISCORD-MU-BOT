@@ -589,7 +589,7 @@ function parseSYSection(sectionObj) {
     bdt: timeMatch?.[1] || null,
     sd: timeMatch?.[2] || null,
     ed: timeMatch?.[3] || null,
-    rkMessage: catLine || null,
+    rkMessage: catLine || routeLine || null,
     reservation,
     reservationTicketed,
     checkedIn,

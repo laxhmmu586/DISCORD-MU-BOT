@@ -4705,9 +4705,7 @@
         const checkinAcceptedEl = document.querySelector("#checkin-accepted");
         if (checkinAcceptedEl) checkinAcceptedEl.innerHTML = tripleHtml(["---", "---", "---"]);
         document.querySelector("#checkin-et").textContent = "--- / --- / ---";
-        setText("#jcsy-domestic", "0");
-        setText("#jcsy-international", "0");
-        setText("#jcsy-overnight", "0");
+        setText("#rk-message", "Search SY to load live flight data.");
         setBadgeText("#chd-count", 0);
         setBadgeText("#gov-count", 0);
         setBadgeText("#webedi-count", 0);
@@ -5765,9 +5763,7 @@
         const checkinAcceptedEl = document.querySelector("#checkin-accepted");
         if (checkinAcceptedEl) checkinAcceptedEl.innerHTML = tripleHtml(countTriple(sy.checkedIn));
         document.querySelector("#checkin-et").textContent = countTriple(sy.checkedInTicketed).join(" / ");
-        setText("#jcsy-domestic", sy.jcsy?.domestic ?? 0);
-        setText("#jcsy-international", sy.jcsy?.international ?? 0);
-        setText("#jcsy-overnight", sy.jcsy?.overnight ?? 0);
+        setText("#rk-message", String(sy.rkMessage || "").trim() || "RK not found.");
         const isClearLocked = (_key) => false;
         const chdIssues = isClearLocked("CHD") ? 0 : (sy.chdList || []).filter((row) => row.hasChdCode === false).length;
         const gov = sy.govAqq || {};
