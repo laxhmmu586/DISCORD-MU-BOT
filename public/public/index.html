@@ -707,7 +707,7 @@
 
       .details-manifest {
         display: grid;
-        grid-template-columns: repeat(2, minmax(174px, max-content)) repeat(3, minmax(132px, 132px));
+        grid-template-columns: repeat(2, minmax(174px, max-content)) minmax(132px, 132px) repeat(2, minmax(116px, 116px));
         grid-template-areas:
           "reservation checkin warning security jcsy"
           "rk rk warning security jcsy";
@@ -723,7 +723,7 @@
       .summary-security-action { grid-area: security; }
       .summary-jcsy-action { grid-area: jcsy; }
       .details-manifest.is-warning-hidden {
-        grid-template-columns: repeat(2, minmax(174px, max-content)) repeat(2, minmax(132px, 132px));
+        grid-template-columns: repeat(2, minmax(174px, max-content)) repeat(2, minmax(116px, 116px));
         grid-template-areas:
           "reservation checkin security jcsy"
           "rk rk security jcsy";
@@ -748,6 +748,21 @@
       .details-panel .details-manifest > .detail-action .detail-action-icon {
         width: 34px;
         height: 34px;
+      }
+
+      .details-panel .details-manifest > .summary-security-action,
+      .details-panel .details-manifest > .summary-jcsy-action {
+        --tile-accent: rgba(102, 232, 170, 0.9);
+        --tile-accent-soft: rgba(102, 232, 170, 0.34);
+        --tile-accent-faint: rgba(102, 232, 170, 0.14);
+        min-height: 136px;
+        padding: 16px 10px 12px;
+      }
+
+      .details-panel .details-manifest > .summary-security-action .detail-action-icon,
+      .details-panel .details-manifest > .summary-jcsy-action .detail-action-icon {
+        width: 30px;
+        height: 30px;
       }
 
       .mission-stage {
@@ -4455,7 +4470,7 @@
                 </div>
                 <button class="detail-action warning-action summary-warning-action" type="button" data-panel="warning" id="warning-action" hidden aria-label="Open warnings"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M16 5 29 27H3z"/><path d="M16 12v7"/><path d="M16 23h.01"/></svg></span><span class="detail-action-label">WARNING</span> <span class="detail-action-badge warning-badge" id="warning-count">0</span></button>
                 <button class="detail-action summary-security-action" type="button" data-panel="security" id="security-detail-action"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M16 4 26 8v7c0 6.6-3.8 10.8-10 13-6.2-2.2-10-6.4-10-13V8z"/><path d="M11 16l3 3 7-7"/></svg></span><span class="detail-action-label">Security Check</span></button>
-                <button class="detail-action summary-jcsy-action" type="button" data-panel="jcsy" id="jcsy-detail-action"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M6 8h20"/><path d="M6 16h20"/><path d="M6 24h20"/><path d="M10 5v22"/><path d="M22 5v22"/></svg></span><span class="detail-action-label">JCSY</span></button>
+                <button class="detail-action summary-jcsy-action" type="button" data-panel="jcsy" id="jcsy-detail-action"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M7 23h18"/><path d="M9 19l7-12 7 12"/><path d="M12 15h8"/><path d="M16 7v16"/></svg></span><span class="detail-action-label">JCSY</span></button>
               </div>
             </div>
             <div class="detail-actions" aria-label="Flight detail actions">

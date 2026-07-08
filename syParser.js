@@ -299,13 +299,16 @@ function findJcsyInfo(sections, flightNo, flightYmd, formatTime, fallbackYmd = '
   const flightDate = dateCandidates[0] || '';
   const jcsyFlightNo = normalizeJcsyFlightNo(flightNo);
   const flightNoPattern = escapeRegExp(jcsyFlightNo);
-  const datePattern = dateCandidates.map(escapeRegExp).join('|');
-  const matches = Boolean(jcsyFlightNo && datePattern) ? sections.filter((sectionObj) => {
-    const content = String(sectionObj.content || '').toUpperCase();
-    return /^>\s*JCSY\s*:/im.test(content)
-      && /##TOTAL##/i.test(content)
-      && new RegExp(`\\bJCSY:\\s*${flightNoPattern}/(?:${datePattern})/LAX,O\\b`, 'im').test(content);
-  }) : [];
+  const matchesForDate = (flightDateToken) => {
+    const flightDatePattern = escapeRegExp(flightDateToken);
+    return Boolean(jcsyFlightNo && flightDatePattern) ? sections.filter((sectionObj) => {
+      const content = String(sectionObj.content || '').toUpperCase();
+      return /^>\s*JCSY\s*:/im.test(content)
+        && /##TOTAL##/i.test(content)
+        && new RegExp(`\\bJCSY:\\s*${flightNoPattern}/${flightDatePattern}/LAX,O\\b`, 'im').test(content);
+    }) : [];
+  };
+  const matches = dateCandidates.reduce((found, flightDateToken) => (found.length ? found : matchesForDate(flightDateToken)), []);
   const sectionObj = matches.sort((a, b) => parseSectionTimestamp(b.timestamp) - parseSectionTimestamp(a.timestamp))[0] || null;
   const rows = parseJcsyRows(sectionObj?.content || '');
   const groups = {
