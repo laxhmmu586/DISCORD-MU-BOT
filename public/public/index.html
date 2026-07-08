@@ -5202,7 +5202,7 @@
           alert("缺少SY信息：请先加载SY。");
           return;
         }
-        const ok = confirm("确认发送 NEXTDAY INFO 邮件到 laxhmmu@gmail.com？");
+        const ok = confirm("确认发送 NEXTDAY INFO 邮件到 LAXHMXH@hallmark-aviation.com 和 dg-lax-lounge@qantas.com.au？");
         if (!ok) return;
         const step = stepByKey("NEXTDAY_INFO");
         if (step) {
@@ -5234,7 +5234,7 @@
             updatedStep.subject = data.subject || updatedStep.subject || "";
             updatedStep.details = data.details || updatedStep.details || {};
             updatedStep.detailText = data.detailText || updatedStep.detailText || "";
-            updatedStep.tooltip = `NEXTDAY INFO sent to ${data.to || "laxhmmu@gmail.com"}: ${data.subject || ""}`;
+            updatedStep.tooltip = `NEXTDAY INFO sent to ${(data.to || []).join(", ") || "LAXHMXH@hallmark-aviation.com, dg-lax-lounge@qantas.com.au"}; CC ${(data.cc || []).join(", ") || "lax.mupax@hallmark-aviation.com, laxhmmu@gmail.com"}: ${data.subject || ""}`;
           }
           refreshSyBadges(currentSy);
           const sentStep = stepByKey("NEXTDAY_INFO");

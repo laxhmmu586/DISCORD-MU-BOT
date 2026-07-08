@@ -2547,7 +2547,9 @@ app.post('/nextday-info/send', async (req, res) => {
       overnightPassengers: String(transferCounts.overnightPassengers)
     };
     const text = buildNextDayInfoEmailBody(subjectDate, details);
-    const email = await sendNextDayInfoEmail({ to: 'laxhmmu@gmail.com', subject, text });
+    const to = ['LAXHMXH@hallmark-aviation.com', 'dg-lax-lounge@qantas.com.au'];
+    const cc = ['lax.mupax@hallmark-aviation.com', 'laxhmmu@gmail.com'];
+    const email = await sendNextDayInfoEmail({ to, cc, subject, text });
     const sentAt = new Date().toISOString();
     const step = syInfo.crewApis?.steps?.find((item) => item.key === 'nextDayInfo') || null;
     if (step) {
@@ -2558,10 +2560,10 @@ app.post('/nextday-info/send', async (req, res) => {
       step.details = details;
       step.detailText = buildNextDayInfoDetailLines(details);
       step.reason = '';
-      step.tooltip = `NEXTDAY INFO sent to laxhmmu@gmail.com: ${subject}`;
+      step.tooltip = `NEXTDAY INFO sent to ${to.join(', ')}; CC ${cc.join(', ')}: ${subject}`;
     }
-    cacheCompletedPreflightStep(syInfo, nextIso, 'nextDayInfo', { time: sentAt.slice(11, 19) });
-    return res.json({ ok: true, sentAt, subject, to: email.to, messageId: email.id, details, detailText: step?.detailText || buildNextDayInfoDetailLines(details), step });
+    cacheCompletedPreflightStep(syInfo, todayIso, 'nextDayInfo');
+    return res.json({ ok: true, sentAt, subject, to: email.to, cc: email.cc, messageId: email.id, details, detailText: step?.detailText || buildNextDayInfoDetailLines(details), step });
   } catch (err) {
     console.error('NEXTDAY INFO send failed:', err);
     return res.status(500).json({ error: err?.message || 'NEXTDAY INFO email send failed.' });

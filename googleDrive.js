@@ -3410,9 +3410,12 @@ function buildRawCbsEmail({ to, cc = [], subject, html, pdfBuffer, filename, att
 }
 
 
-function buildRawPlainEmail({ to, subject, text }) {
+function buildRawPlainEmail({ to, cc = [], subject, text }) {
+  const toList = (Array.isArray(to) ? to : [to]).map((item) => String(item || '').trim()).filter(Boolean);
+  const ccList = (Array.isArray(cc) ? cc : [cc]).map((item) => String(item || '').trim()).filter(Boolean);
   return [
-    `To: ${encodeEmailHeader(to)}`,
+    `To: ${toList.map(encodeEmailHeader).join(', ')}`,
+    ...(ccList.length ? [`Cc: ${ccList.map(encodeEmailHeader).join(', ')}`] : []),
     `Subject: ${encodeEmailHeader(subject)}`,
     'MIME-Version: 1.0',
     'Content-Type: text/plain; charset="UTF-8"',
@@ -3422,14 +3425,14 @@ function buildRawPlainEmail({ to, subject, text }) {
   ].join('\r\n');
 }
 
-async function sendNextDayInfoEmail({ to = 'laxhmmu@gmail.com', subject, text }) {
+async function sendNextDayInfoEmail({ to = 'laxhmmu@gmail.com', cc = [], subject, text }) {
   const { gmail, userId, authMode } = getNextDayInfoGmailClient();
-  const raw = buildRawPlainEmail({ to, subject, text });
+  const raw = buildRawPlainEmail({ to, cc, subject, text });
   const sent = await gmail.users.messages.send({
     userId,
     requestBody: { raw: base64UrlEncode(raw) }
   });
-  return { to, id: sent.data.id || '', userId, authMode };
+  return { to: Array.isArray(to) ? to : [to], cc: Array.isArray(cc) ? cc : [cc].filter(Boolean), id: sent.data.id || '', userId, authMode };
 }
 
 async function sendCbsCaseEmail({ passengerEmail, subject, html, pdfBuffer, filename, attachments = [] }) {
