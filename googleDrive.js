@@ -507,6 +507,9 @@ const LOG_NAMES = [
 const SALES_REPORT_FOLDER_ID = '1-RLbv_BU9rnsaaPy8UUkbN6FkhA5YqGf';
 
 const REPORT_SHEET_ID = '1JqRnDx_uLc2m2SzyZOuHWWJsbkKenlKo60U9zwV9uMQ';
+const SALES_REPORT_SOURCE_SHEET_ID = '1VDIRN77cKZMQPXQ1ZLY-8lp8VI44tpFD5oU1Q9YAzYs';
+const SALES_REPORT_SOURCE_GID = 2078248111;
+const SALES_REPORT_DETAIL_SHEET_NAME = '销售日报明细表';
 const TEST_BAGGAGE_SHEET_ID = '1JqRnDx_uLc2m2SzyZOuHWWJsbkKenlKo60U9zwV9uMQ';
 const TEST_BAGGAGE_GID = 1340163844;
 const TEST_BAGGAGE_HEADERS = [
@@ -554,10 +557,16 @@ const REPORT_SHEETS = {
     gid: 101743110,
     headers: ['Recorded At', 'Flight Date', 'Flight #', 'Passenger Name', 'BN', 'Seat', 'BAGS', 'Type', 'Detail', 'Key'],
     fields: ['recordedAt', 'flightDate', 'flightNo', 'passenger', 'bn', 'seat', 'bags', 'type', 'detail', 'key']
+  },
+  salesDetails: {
+    gid: 1069298005,
+    headers: ['Date', 'EMD', 'Value', 'Type', 'Flight', 'Report Date', 'File Name', 'Key'],
+    fields: ['date', 'emd', 'value', 'type', 'flightNo', 'reportDate', 'fileName', 'key']
   }
 };
 const reportSheetTitles = {};
 let reportSheetAccessBlocked = false;
+let salesReportSourceSheetTitle = '';
 
 function normalizeTestBagTag(value) {
   return String(value || '').trim().toUpperCase().replace(/\s+/g, '');
@@ -915,6 +924,7 @@ async function updateTestBaggageRecord(bagTag, update) {
 function normalizeReportSheetType(type) {
   const normalized = String(type || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
   if (normalized === 'psmmsg') return 'psmMsg';
+  if (normalized === 'salesdetail' || normalized === 'salesdetails') return 'salesDetails';
   if (normalized === 'wch') return 'wheelchair';
   return normalized;
 }
@@ -926,6 +936,17 @@ function getReportSheetConfig(type) {
 function buildStoredReportKey(type, row) {
   const normalizedType = String(type || '').toLowerCase();
   if (row?.key) return String(row.key);
+  if (normalizedType === 'salesdetails') {
+    return [
+      normalizedType,
+      row?.date || '',
+      row?.emd || '',
+      row?.value || '',
+      row?.type || '',
+      row?.flightNo || '',
+      row?.reportDate || ''
+    ].map((value) => String(value || '').trim().toUpperCase()).join('|');
+  }
   return [
     normalizedType,
     row?.date || '',
@@ -1005,7 +1026,7 @@ function normalizeSheetDateToIso(value) {
     return `${year}-${String(Number(match[1])).padStart(2, '0')}-${String(Number(match[2])).padStart(2, '0')}`;
   }
 
-  match = raw.toUpperCase().match(/^(\d{1,2})([A-Z]{3})(\d{2}|\d{4})?$/);
+  match = raw.toUpperCase().match(/^(\d{1,2})[-\s]?([A-Z]{3})[-\s]?(\d{2}|\d{4})?$/);
   if (match) {
     const months = { JAN: '01', FEB: '02', MAR: '03', APR: '04', MAY: '05', JUN: '06', JUL: '07', AUG: '08', SEP: '09', OCT: '10', NOV: '11', DEC: '12' };
     const month = months[match[2]];
@@ -1045,6 +1066,14 @@ function reportRowFromSheet(type, values) {
     row.bags = String(row.bags || '').trim();
     row.type = String(row.type || '').trim().toUpperCase();
     row.detail = String(row.detail || '').trim();
+  } else if (normalizedType === 'salesDetails') {
+    row.date = normalizeSheetDateToIso(row.date) || String(row.date || '').trim();
+    row.emd = String(row.emd || '').trim();
+    row.value = Number(String(row.value || '').replace(/[^0-9.-]+/g, '')) || 0;
+    row.type = String(row.type || '').trim().toUpperCase();
+    row.flightNo = String(row.flightNo || '').trim().toUpperCase();
+    row.reportDate = normalizeSheetDateToIso(row.reportDate) || String(row.reportDate || '').trim();
+    row.fileName = String(row.fileName || '').trim();
   } else if (normalizedType === 'wheelchair' || normalizedType === 'inad') {
     const isoDate = normalizeSheetDateToIso(row.date);
     row.date = isoDate || String(row.date || '').trim();
@@ -1362,6 +1391,121 @@ function toIsoDateFromFlightDate(flightDate) {
   const mm = months[m[2]];
   if (!mm) return '';
   return `20${m[3]}-${mm}-${m[1]}`;
+}
+
+
+async function getSalesReportSourceSheetTitle() {
+  if (!salesReportSourceSheetTitle) {
+    salesReportSourceSheetTitle = await resolveSheetTitleByGid(SALES_REPORT_SOURCE_SHEET_ID, SALES_REPORT_SOURCE_GID);
+  }
+  return salesReportSourceSheetTitle || SALES_REPORT_DETAIL_SHEET_NAME;
+}
+
+async function readSalesReportSourceValues() {
+  const title = await getSalesReportSourceSheetTitle();
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: SALES_REPORT_SOURCE_SHEET_ID,
+    range: `${title}!A:U`,
+    valueRenderOption: 'FORMATTED_VALUE'
+  });
+  return res.data.values || [];
+}
+
+function salesDetailRowFromValues(values, file = {}) {
+  const date = normalizeSheetDateToIso(values?.[0]) || String(values?.[0] || '').trim();
+  const emd = String(values?.[1] || '').trim();
+  const rawValue = values?.[5] ?? '';
+  const type = String(values?.[20] || '').trim().toUpperCase();
+  if (!date || !emd || !type || /^date$/i.test(date) || /^emd$/i.test(emd)) return null;
+  const value = typeof rawValue === 'number' ? rawValue : Number(String(rawValue || '').replace(/[^0-9.-]+/g, ''));
+  const row = { date, emd, value: Number.isFinite(value) ? value : 0, type, flightNo: file.flightNo || '', reportDate: file.reportDate || date, fileName: file.name || '' };
+  row.key = buildStoredReportKey('salesDetails', row);
+  return row;
+}
+
+
+function normalizedHeaderLabel(value) {
+  return String(value || '').trim().toUpperCase().replace(/[^A-Z0-9]+/g, '');
+}
+
+function salesDetailRowsFromSourceValues(rows = []) {
+  const parsed = [];
+  let columns = null;
+  for (const values of rows) {
+    const labels = (values || []).map(normalizedHeaderLabel);
+    const emdIndex = labels.indexOf('EMD');
+    const valueIndex = labels.indexOf('VALUE');
+    const dateIndex = labels.indexOf('DATE');
+    const typeIndexes = labels.map((label, index) => (label === 'TYPE' ? index : -1)).filter((index) => index >= 0);
+    if (emdIndex >= 0 && valueIndex >= 0 && dateIndex >= 0 && typeIndexes.length) {
+      columns = { dateIndex, emdIndex, valueIndex, typeIndex: typeIndexes[typeIndexes.length - 1] };
+      continue;
+    }
+    if (!columns) continue;
+    const row = salesDetailRowFromValues([
+      values[columns.dateIndex],
+      values[columns.emdIndex],
+      '',
+      '',
+      '',
+      values[columns.valueIndex],
+      ...Array(14).fill(''),
+      values[columns.typeIndex]
+    ], { name: 'Daily Sales Report' });
+    if (row) parsed.push(row);
+  }
+  return parsed;
+}
+
+async function syncSalesDetailsFromSourceSheet(fromIsoDate, toIsoDate) {
+  const sourceRows = await readSalesReportSourceValues();
+  const sheetRows = await getReportSheetRows('salesDetails');
+  await ensureReportSheetHeaders('salesDetails', sheetRows);
+  const existing = new Set(sheetRows.slice(1).map((row) => String(row[7] || '').trim()).filter(Boolean));
+  const values = [];
+  for (const row of salesDetailRowsFromSourceValues(sourceRows)) {
+    if (!row || row.date < fromIsoDate || row.date > toIsoDate || existing.has(row.key)) continue;
+    existing.add(row.key);
+    values.push(sheetValuesFromReportRow('salesDetails', row));
+  }
+  if (values.length) {
+    const title = await getReportSheetTitle('salesDetails');
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: REPORT_SHEET_ID,
+      range: `${title}!A:H`,
+      valueInputOption: 'RAW',
+      insertDataOption: 'INSERT_ROWS',
+      requestBody: { values }
+    });
+  }
+  return { source: 'dailySheet', appended: values.length };
+}
+
+async function getSalesDetailsReportRows(fromIsoDate, toIsoDate, options = {}) {
+  let sync = { source: 'dailySheet', appended: 0, errors: [] };
+  if (options.sync !== false) {
+    try {
+      sync = await syncSalesDetailsFromSourceSheet(fromIsoDate, toIsoDate);
+    } catch (err) {
+      sync = { source: 'dailySheet', appended: 0, errors: [err?.message || 'Sales details sync failed'] };
+    }
+  }
+  const rows = await getReportSheetRows('salesDetails');
+  await ensureReportSheetHeaders('salesDetails', rows);
+  const dataRows = [];
+  for (let i = rows.length && isReportHeaderRow('salesDetails', rows[0]) ? 1 : 0; i < rows.length; i += 1) {
+    if (isReportHeaderRow('salesDetails', rows[i])) continue;
+    const row = reportRowFromSheet('salesDetails', rows[i]);
+    if (row.date >= fromIsoDate && row.date <= toIsoDate) dataRows.push(row);
+  }
+  const totals = {};
+  for (const row of dataRows) {
+    const type = row.type || 'UNKNOWN';
+    if (!totals[type]) totals[type] = { amount: 0, count: 0 };
+    totals[type].amount += Number(row.value) || 0;
+    totals[type].count += 1;
+  }
+  return { rows: dataRows, totals: Object.entries(totals).sort(([a], [b]) => a.localeCompare(b)).map(([type, total]) => ({ type, amount: Math.round(total.amount * 100) / 100, count: total.count })), sync };
 }
 
 async function findSalesReportFile(flightNo, flightDate) {
@@ -3291,6 +3435,7 @@ module.exports = {
   getSyBagInfoByDate,
   getSalesReportMeta,
   downloadSalesReportByFlight,
+  getSalesDetailsReportRows,
   hasNextDayInfoEmail,
   getNextDayInfoEmail,
   getGdCheckEmail,
