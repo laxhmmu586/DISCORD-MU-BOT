@@ -707,7 +707,7 @@
 
       .details-manifest {
         display: grid;
-        grid-template-columns: minmax(174px, max-content) minmax(132px, 132px) repeat(2, minmax(116px, 116px));
+        grid-template-columns: minmax(174px, max-content) minmax(132px, 132px) repeat(2, minmax(150px, 150px));
         grid-template-areas:
           "reservation warning security jcsy"
           "checkin warning security jcsy";
@@ -723,7 +723,7 @@
       .summary-security-action { grid-area: security; }
       .summary-jcsy-action { grid-area: jcsy; }
       .details-manifest.is-warning-hidden {
-        grid-template-columns: minmax(174px, max-content) repeat(2, minmax(116px, 116px));
+        grid-template-columns: minmax(174px, max-content) repeat(2, minmax(150px, 150px));
         grid-template-areas:
           "reservation security jcsy"
           "checkin security jcsy";
