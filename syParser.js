@@ -231,12 +231,8 @@ function subtractMinutesFromTime(hhmm, minutes) {
   return `${String(Math.floor(total / 60)).padStart(2, '0')}${String(total % 60).padStart(2, '0')}`;
 }
 
-const JCSY_INTERNATIONAL_DESTS = new Set([
-  'ALA', 'CEB', 'DEL', 'HKG', 'MNL', 'SGN',
-  'BKK', 'CMB', 'DXB', 'HAN', 'MEL', 'SIN',
-  'BKI', 'CJU', 'DPS', 'ICN', 'MLE', 'TPE',
-  'CNX', 'DAC', 'KUL', 'NGO', 'VTE',
-  'CGK', 'KIX', 'OKA', 'KTI', 'PUS'
+const MAINLAND_CHINA_DESTINATIONS = new Set([
+  'AAT','AKA','AKU','AQG','AVA','BAV','BHY','BPX','BSD','CAN','CGD','CGO','CGQ','CIF','CIH','CKG','CSX','CTU','CZX','DAT','DAX','DDG','DIG','DLC','DLU','DNH','DOY','DSN','DYG','ENH','FOC','FUG','FUO','HAK','HDG','HEK','HET','HFE','HGH','HIA','HJJ','HLD','HLH','HRB','HSN','HTN','HYN','INC','IQM','JDZ','JGN','JHG','JIC','JIL','JIU','JJN','JMU','JNG','JNZ','JSJ','JUZ','KHG','KHN','KMG','KOW','KRL','KRY','KWE','KWL','LCX','LHW','LJG','LLB','LLF','LNJ','LUM','LXA','LYA','LYG','LYI','LZH','LZO','MDG','MIG','MXZ','NAO','NBS','NDG','NGB','NKG','NLT','NNG','NNY','NTG','NZH','PEK','PKX','PVG','SHA','SHE','SIA','SJW','SWA','SYM','SYX','SZX','TAO','TCG','TEN','TNA','TSN','TVS','TXN','TYN','URC','UYN','WEF','WEH','WHA','WNH','WNZ','WUA','WUH','WUS','WUX','WUZ','XFN','XIC','XIY','XMN','XNN','XUZ','YBP','YCU','YIC','YIH','YIN','YIW','YNJ','YNT','YNZ','YTY','YUS','ZAT','ZHA','ZUH','ZYI'
 ]);
 
 function normalizeJcsyFlightNo(flightNo) {
@@ -245,25 +241,54 @@ function normalizeJcsyFlightNo(flightNo) {
   return `${m[1]}${m[2].padStart(4, '0')}`;
 }
 
-function classifyJcsyRow(row) {
-  const flightNo = String(row?.flightNo || '').toUpperCase();
-  const dest = String(row?.dest || '').toUpperCase();
-  if (/\+2\b/.test(String(row?.depart || ''))) return 'overnight';
-  if (!/^(MU|FM)/.test(flightNo) || flightNo === 'MU1113' || dest === 'PVG') return 'pvgOnly';
-  if (JCSY_INTERNATIONAL_DESTS.has(dest)) return 'international';
-  return 'domestic';
+function parseJcsyCountTriple(value = '') {
+  const match = String(value || '').match(/^(\d{2})\/(\d{3})\/(\d{3})/);
+  if (!match) return { first: 0, business: 0, economy: 0, total: 0 };
+  const first = Number(match[1]) || 0;
+  const business = Number(match[2]) || 0;
+  const economy = Number(match[3]) || 0;
+  return { first, business, economy, total: first + business + economy };
+}
+
+function parseJcsyDeparture(raw = '') {
+  const value = String(raw || '').trim().toUpperCase();
+  const match = value.match(/^(\d{4})(?:\+(\d+))?$/);
+  if (!match) return { value, pvgOnly: true, overnight: false, sameDayTransfer: false };
+  const minutes = Number(match[1].slice(0, 2)) * 60 + Number(match[1].slice(2));
+  const dayOffset = match[2] ? Number(match[2]) : 0;
+  return {
+    value,
+    pvgOnly: false,
+    overnight: dayOffset > 2 || (dayOffset === 2 && minutes >= 120),
+    sameDayTransfer: dayOffset === 1 || (dayOffset === 2 && minutes < 120)
+  };
 }
 
 function parseJcsyRows(content) {
   return String(content || '').split(/\r?\n/).map((line) => {
-    const m = line.match(/^\s*([A-Z]{2}\d{3,4})\s+\/([A-Z]{3})\/\s+(\d{4}(?:\+\d)?)/i);
+    const m = line.match(/^\s*([A-Z]{2}\d{3,4})\s+\/([A-Z]{3})\/\s+(?:(\d{4}(?:\+\d)?)\s+)?(\d{2}\/\d{3}\/\d{3})\b/i);
     if (!m) return null;
-    const row = {
+    const booked = parseJcsyCountTriple(m[4]);
+    const departure = parseJcsyDeparture(m[3] || '');
+    const destination = m[2].toUpperCase();
+    const isDomestic = MAINLAND_CHINA_DESTINATIONS.has(destination);
+    return {
       flightNo: m[1].toUpperCase(),
-      dest: m[2].toUpperCase(),
-      depart: m[3].toUpperCase()
+      destination,
+      dest: destination,
+      departure: departure.value,
+      depart: departure.value,
+      first: booked.first,
+      business: booked.business,
+      economy: booked.economy,
+      total: booked.total,
+      market: isDomestic ? 'Domestic' : 'International',
+      category: departure.pvgOnly ? 'pvgOnly' : (departure.overnight ? 'overnight' : (isDomestic ? 'domestic' : 'international')),
+      isDomestic,
+      pvgOnly: departure.pvgOnly,
+      sameDayTransfer: departure.sameDayTransfer,
+      overnight: departure.overnight
     };
-    return { ...row, category: classifyJcsyRow(row) };
   }).filter(Boolean);
 }
 
@@ -273,10 +298,9 @@ function findJcsyInfo(sections, flightNo, flightYmd, formatTime) {
   const flightDatePattern = escapeRegExp(flightDate);
   const flightNoPattern = escapeRegExp(jcsyFlightNo);
   const matches = Boolean(flightYmd && jcsyFlightNo && flightDate) ? sections.filter((sectionObj) => {
-    const ymd = getYmdFromTimestamp(sectionObj.timestamp);
     const content = String(sectionObj.content || '').toUpperCase();
-    return ymd === flightYmd
-      && /^>\s*JCSY\s*:/im.test(content)
+    return /^>\s*JCSY\s*:/im.test(content)
+      && /##TOTAL##/i.test(content)
       && new RegExp(`\\bJCSY:\\s*${flightNoPattern}/${flightDatePattern}/LAX,O\\b`, 'im').test(content);
   }) : [];
   const sectionObj = matches.sort((a, b) => parseSectionTimestamp(b.timestamp) - parseSectionTimestamp(a.timestamp))[0] || null;
@@ -287,15 +311,23 @@ function findJcsyInfo(sections, flightNo, flightYmd, formatTime) {
     overnight: rows.filter((row) => row.category === 'overnight'),
     pvgOnly: rows.filter((row) => row.category === 'pvgOnly')
   };
+  const domestic = groups.domestic.reduce((sum, row) => sum + row.total, 0);
+  const international = groups.international.reduce((sum, row) => sum + row.total, 0);
   return {
     complete: Boolean(sectionObj),
     time: formatTime(sectionObj?.commandTimestamp || sectionObj?.timestamp),
+    timestamp: sectionObj?.timestamp || '',
     flightNo: jcsyFlightNo,
     flightDate,
+    domestic,
+    international,
+    overnight: groups.overnight.length,
+    pvgOnly: groups.pvgOnly.length,
+    total: domestic + international,
+    rows,
     groups
   };
 }
-
 
 function parseCrewManifestRowsFromSections(sections, flightNo, flightYmd) {
   const rows = [];
@@ -1695,6 +1727,8 @@ function sortSYMatches(matches, preferredFlightNo = '') {
   });
 }
 
+
+
 function findSYInfo(log, queryDate, options = {}) {
   const sections = splitLogicalSections(log);
   const preferredFlightNo = String(options.preferredFlightNo || '').trim().toUpperCase();
@@ -1719,6 +1753,7 @@ function findSYInfo(log, queryDate, options = {}) {
       info.bnAudit = enrichBnAuditFromLog(log, info, targetYmd);
       info.psmList = enrichPsmListFromLog(log, info, targetYmd);
       info.crewApis = enrichCrewApisFromLog(log, info, targetYmd);
+      info.jcsy = info.crewApis?.jcsy || null;
       return info;
     }
   }
@@ -1769,6 +1804,7 @@ function findSYInfo(log, queryDate, options = {}) {
     info.bnAudit = enrichBnAuditFromLog(log, info, targetYmd);
     info.psmList = enrichPsmListFromLog(log, info, targetYmd);
     info.crewApis = enrichCrewApisFromLog(log, info, targetYmd);
+    info.jcsy = info.crewApis?.jcsy || null;
     return info;
   }
 
