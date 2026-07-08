@@ -707,7 +707,7 @@
 
       .details-manifest {
         display: grid;
-        grid-template-columns: minmax(174px, max-content) minmax(132px, 132px) repeat(2, minmax(116px, 116px));
+        grid-template-columns: minmax(174px, max-content) minmax(132px, 132px) repeat(2, minmax(150px, 150px));
         grid-template-areas:
           "reservation warning security jcsy"
           "checkin warning security jcsy";
@@ -723,7 +723,7 @@
       .summary-security-action { grid-area: security; }
       .summary-jcsy-action { grid-area: jcsy; }
       .details-manifest.is-warning-hidden {
-        grid-template-columns: minmax(174px, max-content) repeat(2, minmax(116px, 116px));
+        grid-template-columns: minmax(174px, max-content) repeat(2, minmax(150px, 150px));
         grid-template-areas:
           "reservation security jcsy"
           "checkin security jcsy";
@@ -750,59 +750,83 @@
         height: 34px;
       }
 
-      .details-panel .details-manifest > .summary-security-action,
-      .details-panel .details-manifest > .summary-jcsy-action {
-        --hex-edge: rgba(255, 255, 255, 0.96);
-        --hex-edge-soft: rgba(255, 255, 255, 0.34);
-        --hex-hover: rgba(63, 169, 255, 0.98);
-        --hex-hover-soft: rgba(63, 169, 255, 0.42);
-        min-height: 118px;
-        padding: 16px 18px;
-        color: rgba(255, 255, 255, 0.98);
+      .details-panel .details-manifest > .detail-action.summary-security-action,
+      .details-panel .details-manifest > .detail-action.summary-jcsy-action {
+        --hex-fill: rgba(25, 34, 47, 0.86);
+        --hex-edge: rgba(255, 255, 255, 0.92);
+        --hex-edge-soft: rgba(255, 255, 255, 0.38);
+        --hex-shadow-edge: rgba(11, 19, 32, 0.96);
+        --hex-hover: rgba(62, 166, 255, 0.98);
+        --hex-hover-soft: rgba(62, 166, 255, 0.34);
+        min-height: 130px;
+        width: 150px;
+        padding: 26px 20px 22px;
+        grid-template-rows: 40px auto;
+        gap: 12px;
+        color: #ffffff;
         border: 0;
         border-radius: 0;
-        background: transparent;
-        clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
-        box-shadow: none;
+        background: var(--hex-fill);
+        clip-path: polygon(25% 5%, 75% 5%, 100% 50%, 75% 95%, 25% 95%, 0 50%);
+        box-shadow: 0 0 0 4px var(--hex-shadow-edge), 0 0 0 8px rgba(17, 27, 43, 0.72);
         isolation: isolate;
-        transition: color 180ms ease, filter 180ms ease, transform 180ms ease;
+        overflow: visible;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+        transition: color 180ms ease, filter 180ms ease, transform 180ms ease, background 180ms ease, box-shadow 180ms ease;
       }
 
-      .details-panel .details-manifest > .summary-security-action::before,
-      .details-panel .details-manifest > .summary-jcsy-action::before {
+      .details-panel .details-manifest > .detail-action.summary-security-action::before,
+      .details-panel .details-manifest > .detail-action.summary-jcsy-action::before {
         content: "";
         position: absolute;
-        inset: 0;
+        inset: 7px;
         border: 2px solid var(--hex-edge);
         border-radius: 0;
         background: transparent;
-        clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
+        clip-path: polygon(25% 5%, 75% 5%, 100% 50%, 75% 95%, 25% 95%, 0 50%);
         pointer-events: none;
-        box-shadow: inset 0 0 0 1px var(--hex-edge-soft), 0 0 18px rgba(255, 255, 255, 0.16);
-        transition: border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
-        z-index: -1;
+        box-shadow: inset 0 0 0 2px rgba(15, 24, 38, 0.78), 0 0 0 1px var(--hex-edge-soft);
+        transition: border-color 180ms ease, box-shadow 180ms ease;
+        z-index: 0;
       }
 
-      .details-panel .details-manifest > .summary-security-action:hover,
-      .details-panel .details-manifest > .summary-jcsy-action:hover {
-        color: #dff4ff;
-        background: transparent;
-        filter: drop-shadow(0 0 16px var(--hex-hover-soft));
-        transform: translateY(-2px);
+      .details-panel .details-manifest > .detail-action.summary-security-action:hover,
+      .details-panel .details-manifest > .detail-action.summary-jcsy-action:hover {
+        color: #eef9ff;
+        background: rgba(26, 45, 67, 0.92);
+        filter: drop-shadow(0 0 15px var(--hex-hover-soft));
+        transform: translateY(-3px);
+        box-shadow: 0 0 0 4px rgba(15, 37, 63, 0.96), 0 0 0 8px rgba(62, 166, 255, 0.18);
       }
 
-      .details-panel .details-manifest > .summary-security-action:hover::before,
-      .details-panel .details-manifest > .summary-jcsy-action:hover::before {
+      .details-panel .details-manifest > .detail-action.summary-security-action:hover::before,
+      .details-panel .details-manifest > .detail-action.summary-jcsy-action:hover::before {
         border-color: var(--hex-hover);
-        background: rgba(63, 169, 255, 0.08);
-        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22), 0 0 22px var(--hex-hover-soft);
+        box-shadow: inset 0 0 0 2px rgba(15, 24, 38, 0.68), 0 0 18px var(--hex-hover-soft);
       }
 
-      .details-panel .details-manifest > .summary-security-action::after,
-      .details-panel .details-manifest > .summary-jcsy-action::after,
-      .details-panel .details-manifest > .summary-security-action .detail-action-icon,
-      .details-panel .details-manifest > .summary-jcsy-action .detail-action-icon {
+      .details-panel .details-manifest > .detail-action.summary-security-action::after,
+      .details-panel .details-manifest > .detail-action.summary-jcsy-action::after {
         display: none;
+      }
+
+      .details-panel .details-manifest > .detail-action.summary-security-action .detail-action-icon,
+      .details-panel .details-manifest > .detail-action.summary-jcsy-action .detail-action-icon {
+        position: relative;
+        z-index: 1;
+        display: inline-grid;
+        width: 34px;
+        height: 34px;
+        color: #ffffff;
+      }
+
+      .details-panel .details-manifest > .detail-action.summary-security-action .detail-action-label,
+      .details-panel .details-manifest > .detail-action.summary-jcsy-action .detail-action-label {
+        position: relative;
+        z-index: 1;
+        font-size: 14px;
+        line-height: 1.05;
+        letter-spacing: 0.8px;
       }
 
       .mission-stage {
@@ -4503,8 +4527,8 @@
                   </div>
                 </div>
                 <button class="detail-action warning-action summary-warning-action" type="button" data-panel="warning" id="warning-action" hidden aria-label="Open warnings"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M16 5 29 27H3z"/><path d="M16 12v7"/><path d="M16 23h.01"/></svg></span><span class="detail-action-label">WARNING</span> <span class="detail-action-badge warning-badge" id="warning-count">0</span></button>
-                <button class="detail-action summary-security-action" type="button" data-panel="security" id="security-detail-action"><span class="detail-action-label">Security Check</span></button>
-                <button class="detail-action summary-jcsy-action" type="button" data-panel="jcsy" id="jcsy-detail-action"><span class="detail-action-label">JCSY</span></button>
+                <button class="detail-action summary-security-action" type="button" data-panel="security" id="security-detail-action"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="10"/><circle cx="16" cy="16" r="3"/><path d="M16 4v5M16 23v5M4 16h5M23 16h5"/></svg></span><span class="detail-action-label">Security Check</span></button>
+                <button class="detail-action summary-jcsy-action" type="button" data-panel="jcsy" id="jcsy-detail-action"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="10" cy="10" r="3"/><circle cx="22" cy="10" r="3"/><circle cx="10" cy="22" r="3"/><circle cx="22" cy="22" r="3"/><path d="M16 10h.01M16 16h.01M16 22h.01"/></svg></span><span class="detail-action-label">JCSY</span></button>
               </div>
             </div>
             <div class="detail-actions" aria-label="Flight detail actions">
