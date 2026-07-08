@@ -298,10 +298,8 @@ function findJcsyInfo(sections, flightNo, flightYmd, formatTime) {
   const flightDatePattern = escapeRegExp(flightDate);
   const flightNoPattern = escapeRegExp(jcsyFlightNo);
   const matches = Boolean(flightYmd && jcsyFlightNo && flightDate) ? sections.filter((sectionObj) => {
-    const ymd = getYmdFromTimestamp(sectionObj.timestamp);
     const content = String(sectionObj.content || '').toUpperCase();
-    return ymd === flightYmd
-      && /^>\s*JCSY\s*:/im.test(content)
+    return /^>\s*JCSY\s*:/im.test(content)
       && /##TOTAL##/i.test(content)
       && new RegExp(`\\bJCSY:\\s*${flightNoPattern}/${flightDatePattern}/LAX,O\\b`, 'im').test(content);
   }) : [];
