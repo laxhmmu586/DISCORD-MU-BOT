@@ -499,11 +499,9 @@ async function downloadLog(fileId) {
 // ===============================
 // Get Today Log
 // ===============================
-const LOG_NAMES = [
-  'Flight Control.log',
-  'Lake.log',
-  'Ticketing.log'
-];
+function isLogFileName(name = '') {
+  return String(name || '').trim().toLowerCase().endsWith('.log');
+}
 const SALES_REPORT_FOLDER_ID = '1-RLbv_BU9rnsaaPy8UUkbN6FkhA5YqGf';
 
 const REPORT_SHEET_ID = '1JqRnDx_uLc2m2SzyZOuHWWJsbkKenlKo60U9zwV9uMQ';
@@ -1542,40 +1540,44 @@ async function downloadSalesReportByFlight(flightNo, flightDate) {
 
 async function downloadLogsInFolder(folderId, label) {
 
-  const logs = [];
+  const files = [];
+  let pageToken = null;
 
-  for (const logName of LOG_NAMES) {
-
+  do {
     const res =
       await drive.files.list({
 
         q:
-          `'${folderId}' in parents and name = '${logName}' and trashed = false`,
+          `'${folderId}' in parents and trashed = false`,
 
         fields:
-          'files(id,name,modifiedTime)',
+          'nextPageToken,files(id,name,modifiedTime,mimeType)',
 
         orderBy:
-          'modifiedTime desc',
+          'name',
 
         pageSize:
-          1
+          1000,
+
+        pageToken
       });
 
-    const file =
-      res.data.files[0];
+    files.push(...(res.data.files || []).filter((file) => isLogFileName(file.name)));
+    pageToken = res.data.nextPageToken || null;
+  } while (pageToken);
 
-    if (!file) {
+  if (!files.length) {
+    console.log(`${label} .log files not found`);
+    return null;
+  }
 
-      console.log(
-        `${label} ${logName} not found`
-      );
+  files.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
 
-      continue;
-    }
+  const logs = [];
 
+  for (const file of files) {
     console.log(
-      `Using ${label} ${logName}:`,
+      `Using ${label} log ${file.name}:`,
       file.modifiedTime || ''
     );
 
@@ -1583,10 +1585,6 @@ async function downloadLogsInFolder(folderId, label) {
       await downloadLog(file.id);
 
     logs.push(content);
-  }
-
-  if (!logs.length) {
-    return null;
   }
 
   return logs.join('\n');

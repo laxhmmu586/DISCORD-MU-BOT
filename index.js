@@ -2183,7 +2183,7 @@ app.get(
         return res.json({
 
           error:
-            'Unable to load logs (Flight Control.log / Lake.log / Ticketing.log)'
+            'Unable to load .log files'
         });
       }
 
