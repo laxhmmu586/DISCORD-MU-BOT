@@ -296,18 +296,16 @@
       const APP_ENTRY_KEY = "mufc_allow_app_entry";
       const AUTH_SESSION_STARTED_KEY = "mufc_auth_session_started_at";
       const AUTH_LAST_ACTIVITY_KEY = "mufc_auth_last_activity_at";
-      const AUTH_SESSION_LIMIT_MS = 60 * 60 * 1000;
+
+      function authStorage() {
+        return window.localStorage || window.sessionStorage;
+      }
 
       function allowAppEntry() {
         const now = String(Date.now());
-        sessionStorage.setItem(APP_ENTRY_KEY, now);
-        sessionStorage.setItem(AUTH_SESSION_STARTED_KEY, now);
-        sessionStorage.setItem(AUTH_LAST_ACTIVITY_KEY, now);
-      }
-
-      function hasActiveSession() {
-        const lastActivityAt = Number(sessionStorage.getItem(AUTH_LAST_ACTIVITY_KEY) || sessionStorage.getItem(AUTH_SESSION_STARTED_KEY) || 0);
-        return Boolean(lastActivityAt && Date.now() - lastActivityAt < AUTH_SESSION_LIMIT_MS);
+        authStorage().setItem(APP_ENTRY_KEY, now);
+        authStorage().setItem(AUTH_SESSION_STARTED_KEY, now);
+        authStorage().setItem(AUTH_LAST_ACTIVITY_KEY, now);
       }
 
       function getRedirectTarget() {
@@ -345,15 +343,11 @@
         const auth = firebase.auth();
         let forceLogin = new URLSearchParams(window.location.search).has("forceLogin");
         let interactiveLogin = false;
+        auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
         auth.onAuthStateChanged(async (user) => {
-          if (user && !forceLogin && (interactiveLogin || hasActiveSession())) {
+          if (user && !forceLogin) {
             allowAppEntry();
             window.location.replace(getRedirectTarget(user));
-            return;
-          }
-          if (user && !forceLogin) {
-            await auth.signOut();
-            enableForm();
             return;
           }
           if (user && forceLogin) {

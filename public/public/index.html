@@ -4723,8 +4723,7 @@
       const APP_ENTRY_KEY = "mufc_allow_app_entry";
       const AUTH_SESSION_STARTED_KEY = "mufc_auth_session_started_at";
       const AUTH_LAST_ACTIVITY_KEY = "mufc_auth_last_activity_at";
-      const AUTH_SESSION_LIMIT_MS = 60 * 60 * 1000;
-      const APP_ENTRY_GRACE_MS = 30 * 1000;
+      const AUTH_SESSION_LIMIT_MS = 12 * 60 * 60 * 1000;
       const SY_AUTO_REFRESH_MS = 30 * 1000;
       const SY_COMPLETED_NODE_CACHE_KEY = "mufc_sy_completed_nodes_v1";
       const PERSISTENT_GREEN_NODE_KEYS = ["GD_CHECK", "FSC", "NEXTDAY_INFO"];
@@ -4831,31 +4830,21 @@
         return url.href;
       }
 
-      function consumeAppEntry() {
-        const allowedAt = Number(sessionStorage.getItem(APP_ENTRY_KEY) || 0);
-        sessionStorage.removeItem(APP_ENTRY_KEY);
-        if (!allowedAt) return false;
-        return Date.now() - allowedAt <= APP_ENTRY_GRACE_MS;
+      function authStorage() {
+        return window.localStorage || window.sessionStorage;
       }
-
-      function authSessionAgeMs() {
-        const lastActivityAt = Number(sessionStorage.getItem(AUTH_LAST_ACTIVITY_KEY) || sessionStorage.getItem(AUTH_SESSION_STARTED_KEY) || 0);
-        return lastActivityAt ? Date.now() - lastActivityAt : Infinity;
-      }
-
-      function isAuthSessionExpired() {
-        return authSessionAgeMs() >= AUTH_SESSION_LIMIT_MS;
-      }
-
 
       function allowInternalPageRedirect() {
-        sessionStorage.setItem(APP_ENTRY_KEY, String(Date.now()));
+        authStorage().setItem(APP_ENTRY_KEY, String(Date.now()));
       }
       window.findNodeIndexByKey = findNodeIndexByKey;
 
       const canEnterApp = true;
 
       async function returnToLogin() {
+        authStorage().removeItem(APP_ENTRY_KEY);
+        authStorage().removeItem(AUTH_SESSION_STARTED_KEY);
+        authStorage().removeItem(AUTH_LAST_ACTIVITY_KEY);
         sessionStorage.removeItem(APP_ENTRY_KEY);
         sessionStorage.removeItem(AUTH_SESSION_STARTED_KEY);
         sessionStorage.removeItem(AUTH_LAST_ACTIVITY_KEY);
@@ -4871,7 +4860,7 @@
       }
 
       function resetInactivityTimer() {
-        sessionStorage.setItem(AUTH_LAST_ACTIVITY_KEY, String(Date.now()));
+        authStorage().setItem(AUTH_LAST_ACTIVITY_KEY, String(Date.now()));
         if (inactivityTimer) clearTimeout(inactivityTimer);
         inactivityTimer = setTimeout(() => {
           returnToLogin();
@@ -8125,10 +8114,6 @@
         auth.onAuthStateChanged((user) => {
           if (!user) {
             window.location.replace(loginUrl());
-            return;
-          }
-          if (isAuthSessionExpired()) {
-            returnToLogin();
             return;
           }
           currentUser.textContent = user.email || "Authenticated user";
