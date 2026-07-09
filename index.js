@@ -38,6 +38,7 @@ const {
   getSalesReportMeta,
   downloadSalesReportByFlight,
   getSalesDetailsReportRows,
+  syncSalesDetailsFromSourceSheet,
   getNextDayInfoEmail,
   sendNextDayInfoEmail,
   getGdCheckEmail,
@@ -340,6 +341,8 @@ function isoDateToSyDate(isoDate) {
 
 const fscRateSheetSyncCache = new Map();
 const syBookingSheetSyncCache = new Map();
+const salesDetailsSheetSyncCache = new Map();
+const SALES_DETAILS_SYNC_RETRY_MS = 5 * 60 * 1000;
 const preflightStepCache = new Map();
 
 function preflightCacheKey(syInfo, isoDate, stepKey) {
@@ -413,6 +416,25 @@ async function syncSyBookingFromTodaySy(syInfo, isoDate) {
     return synced;
   } catch (err) {
     return { skipped: true, counts: { first: counts[0], business: counts[1], economy: counts[2] }, error: err?.message || 'Sheet sync failed' };
+  }
+}
+
+
+async function syncSalesDetailsFromTodaySy(isoDate) {
+  if (isoDate !== todayIsoUtc()) return { skipped: true, reason: 'not today' };
+
+  const cached = salesDetailsSheetSyncCache.get(isoDate);
+  if (cached && Date.now() - cached.syncedAt < SALES_DETAILS_SYNC_RETRY_MS) {
+    return { ...cached, skipped: true, reason: cached.reason || 'recently synced' };
+  }
+
+  try {
+    const result = await syncSalesDetailsFromSourceSheet(isoDate, isoDate);
+    const synced = { ...result, skipped: false, syncedAt: Date.now() };
+    salesDetailsSheetSyncCache.set(isoDate, synced);
+    return synced;
+  } catch (err) {
+    return { skipped: true, error: err?.message || 'Sales details sync failed' };
   }
 }
 
@@ -2396,6 +2418,7 @@ app.get(
         applyCachedCompletedPreflightSteps(syInfo, isoDate);
         syInfo.fscRateSheetSync = fscRateSheetSyncCache.get(isoDate) || { skipped: true, reason: 'sync pending' };
         syInfo.bookingSheetSync = syBookingSheetSyncCache.get(isoDate) || { skipped: true, reason: 'sync pending' };
+        syInfo.salesDetailsSheetSync = await syncSalesDetailsFromTodaySy(isoDate);
         if (!applyCachedPreflightStep(syInfo, isoDate, 'gdCheck')) {
           const gdStep = syInfo.crewApis?.steps?.find((step) => step.key === 'gdCheck');
           if (gdStep) {
