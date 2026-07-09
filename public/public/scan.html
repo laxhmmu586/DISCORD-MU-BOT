@@ -83,26 +83,18 @@
     const auth = window.firebase?.apps?.length && window.firebase?.auth ? firebase.auth() : null;
     const AUTH_SESSION_STARTED_KEY = 'mufc_auth_session_started_at';
     const AUTH_LAST_ACTIVITY_KEY = 'mufc_auth_last_activity_at';
-    const AUTH_SESSION_LIMIT_MS = 60 * 60 * 1000;
     function loginUrl() {
       const url = new URL('login.html', window.location.href);
       url.searchParams.set('next', `${window.location.pathname}${window.location.search}${window.location.hash}`);
       return url.href;
     }
-    function hasActiveAuthSession() {
-      const lastActivityAt = Number(sessionStorage.getItem(AUTH_LAST_ACTIVITY_KEY) || sessionStorage.getItem(AUTH_SESSION_STARTED_KEY) || 0);
-      return Boolean(lastActivityAt && Date.now() - lastActivityAt < AUTH_SESSION_LIMIT_MS);
-    }
     function markAuthActivity() {
-      sessionStorage.setItem(AUTH_LAST_ACTIVITY_KEY, String(Date.now()));
+      (window.localStorage || window.sessionStorage).setItem(AUTH_LAST_ACTIVITY_KEY, String(Date.now()));
     }
     function requireLogin() {
       if (!auth) { window.location.replace(loginUrl()); return; }
       auth.onAuthStateChanged(async (user) => {
-        if (!user || !hasActiveAuthSession()) {
-          sessionStorage.removeItem(AUTH_SESSION_STARTED_KEY);
-          sessionStorage.removeItem(AUTH_LAST_ACTIVITY_KEY);
-          if (user) await auth.signOut();
+        if (!user) {
           window.location.replace(loginUrl());
           return;
         }
@@ -201,6 +193,8 @@
       }
     });
     logoutButton.addEventListener('click', async () => {
+      localStorage.removeItem(AUTH_SESSION_STARTED_KEY);
+      localStorage.removeItem(AUTH_LAST_ACTIVITY_KEY);
       sessionStorage.removeItem(AUTH_SESSION_STARTED_KEY);
       sessionStorage.removeItem(AUTH_LAST_ACTIVITY_KEY);
       await auth?.signOut?.();
