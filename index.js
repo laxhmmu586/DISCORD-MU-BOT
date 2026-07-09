@@ -1738,6 +1738,25 @@ function parseCbsPdf417(rawValue = '') {
   };
 }
 
+function sanitizeTransit240AttachmentName(name, index) {
+  const fallback = `transit-240-${index + 1}.jpg`;
+  return String(name || fallback).replace(/[^a-z0-9_.-]/gi, '_').slice(0, 80) || fallback;
+}
+
+function buildTransit240DiscordFiles(attachments = []) {
+  if (!Array.isArray(attachments)) return [];
+  return attachments
+    .map((file, index) => {
+      const data = String(file?.data || '').trim();
+      if (!data) return null;
+      return {
+        attachment: Buffer.from(data, 'base64'),
+        name: sanitizeTransit240AttachmentName(file?.name, index)
+      };
+    })
+    .filter(Boolean);
+}
+
 function formatTransit240Date(value) {
   const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!match) return String(value || '').trim() || '—';
@@ -1763,7 +1782,8 @@ async function sendTransit240ToDiscord(record) {
     ],
     footer: { text: 'MUFC' }
   };
-  await channel.send({ embeds: [embed] });
+  const files = buildTransit240DiscordFiles(record.attachments);
+  await channel.send({ embeds: [embed], files });
   return { sent: true, channelId: TRANSIT_240_DISCORD_CHANNEL_ID };
 }
 
@@ -1777,7 +1797,12 @@ app.post('/transit-240', async (req, res) => {
       passportExpiry: String(req.body?.passportExpiry || '').trim(),
       itinerary: Array.isArray(req.body?.itinerary) ? req.body.itinerary.map((value) => String(value || '').trim().toUpperCase()).filter(Boolean) : [],
       itineraryDates: Array.isArray(req.body?.itineraryDates) ? req.body.itineraryDates.map((value) => String(value || '').trim()).filter(Boolean) : [],
-      agent: String(req.body?.agent || '').trim()
+      agent: String(req.body?.agent || '').trim(),
+      attachments: Array.isArray(req.body?.attachments) ? req.body.attachments.map((file) => ({
+        name: String(file?.name || '').trim(),
+        type: String(file?.type || '').trim(),
+        data: String(file?.data || '').trim()
+      })).filter((file) => file.data) : []
     };
     if (!record.passengerName || !record.seatNumber || !record.bnNumber || !record.nationalityCode || !record.passportExpiry || record.itinerary.length < 3) {
       return res.status(400).json({ error: 'Missing required 240 transit fields.' });
