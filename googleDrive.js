@@ -3523,6 +3523,7 @@ module.exports = {
   getSalesReportMeta,
   downloadSalesReportByFlight,
   getSalesDetailsReportRows,
+  syncSalesDetailsFromSourceSheet,
   hasNextDayInfoEmail,
   getNextDayInfoEmail,
   sendNextDayInfoEmail,
