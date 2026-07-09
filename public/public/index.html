@@ -4723,7 +4723,6 @@
       const APP_ENTRY_KEY = "mufc_allow_app_entry";
       const AUTH_SESSION_STARTED_KEY = "mufc_auth_session_started_at";
       const AUTH_LAST_ACTIVITY_KEY = "mufc_auth_last_activity_at";
-      const AUTH_SESSION_LIMIT_MS = 12 * 60 * 60 * 1000;
       const SY_AUTO_REFRESH_MS = 30 * 1000;
       const SY_COMPLETED_NODE_CACHE_KEY = "mufc_sy_completed_nodes_v1";
       const PERSISTENT_GREEN_NODE_KEYS = ["GD_CHECK", "FSC", "NEXTDAY_INFO"];
@@ -4850,21 +4849,12 @@
         sessionStorage.removeItem(AUTH_LAST_ACTIVITY_KEY);
         if (inactivityTimer) clearTimeout(inactivityTimer);
         const url = new URL(loginUrl());
-        url.searchParams.set("forceLogin", "1");
-        try {
-          if (auth?.currentUser) await auth.signOut();
-        } catch (error) {
-          console.warn("Unable to sign out before returning to login.", error);
-        }
         window.location.replace(url.href);
       }
 
       function resetInactivityTimer() {
         authStorage().setItem(AUTH_LAST_ACTIVITY_KEY, String(Date.now()));
         if (inactivityTimer) clearTimeout(inactivityTimer);
-        inactivityTimer = setTimeout(() => {
-          returnToLogin();
-        }, AUTH_SESSION_LIMIT_MS);
       }
 
       function startInactivityWatch() {
