@@ -1774,11 +1774,10 @@ async function sendTransit240ToDiscord(record) {
     fields: [
       { name: 'BN', value: record.bnNumber || '—', inline: true },
       { name: 'Passenger', value: record.passengerName || '—', inline: true },
-      { name: 'Agent', value: record.agent || '—', inline: true },
       { name: 'Nationality', value: record.nationalityCode || '—', inline: true },
       { name: 'Passport Exp', value: formatTransit240Date(record.passportExpiry), inline: true },
       { name: 'Leave Date', value: formatTransit240Date(itineraryDates.at(-1)), inline: true },
-      { name: 'Destination', value: itinerary.at(-1) || '—', inline: false }
+      { name: 'Itinerary', value: itinerary.length ? itinerary.join(' → ') : '—', inline: false }
     ],
     footer: { text: 'MUFC' }
   };
