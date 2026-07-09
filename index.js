@@ -220,7 +220,6 @@ function buildNextDayInfoEmailBody(subjectDate, details) {
     '',
     `International Transfer:  ${details.internationalTransfer}`,
     `Domestic Transfer:  ${details.domesticTransfer}`,
-    '',
     `Overnight passengers:  ${details.overnightPassengers}`,
     '',
     'Thank you,',
