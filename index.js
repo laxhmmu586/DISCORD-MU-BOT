@@ -64,6 +64,7 @@ const {
   markCbsMissingBagCase,
   acknowledgeCbsMissingBag,
   sendCbsCaseEmail,
+  hasTransit240RecordByBn,
   appendTransit240Record,
   appendCbsScanRecord,
   appendCbsScanNbrdBns,
@@ -89,6 +90,7 @@ const fbLookup =
 const { findSYInfo } = require('./syParser');
 const NEXTDAY_INFO_DISCORD_CHANNEL_ID = '1399400605742661702';
 const TRANSIT_240_DISCORD_CHANNEL_ID = process.env.TRANSIT_240_DISCORD_CHANNEL_ID || '1365773224276660257';
+const transit240SubmitLocks = new Set();
 
 const DEFAULT_PERMISSIONS = {
   canViewTravelDocs: true,
@@ -1738,19 +1740,51 @@ function parseCbsPdf417(rawValue = '') {
   };
 }
 
+function sanitizeTransit240AttachmentName(name, index) {
+  const fallback = `transit-240-${index + 1}.jpg`;
+  return String(name || fallback).replace(/[^a-z0-9_.-]/gi, '_').slice(0, 80) || fallback;
+}
+
+function buildTransit240DiscordFiles(attachments = []) {
+  if (!Array.isArray(attachments)) return [];
+  return attachments
+    .map((file, index) => {
+      const data = String(file?.data || '').trim();
+      if (!data) return null;
+      return {
+        attachment: Buffer.from(data, 'base64'),
+        name: sanitizeTransit240AttachmentName(file?.name, index)
+      };
+    })
+    .filter(Boolean);
+}
+
+function formatTransit240Date(value) {
+  const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return String(value || '').trim() || '—';
+  return `${Number(match[2])}/${Number(match[3])}/${match[1]}`;
+}
+
 async function sendTransit240ToDiscord(record) {
   const channel = await client.channels.fetch(TRANSIT_240_DISCORD_CHANNEL_ID);
   if (!channel) return { sent: false, reason: 'Discord channel not found.' };
-  const lines = [
-    '**240 Transit Submitted**',
-    `Passenger: ${record.passengerName}`,
-    `Seat: ${record.seatNumber}`,
-    `BN: ${record.bnNumber}`,
-    `Passport Nationality Code: ${record.nationalityCode}`,
-    `Passport Expiration Date: ${record.passportExpiry}`,
-    `Itinerary: ${(record.itinerary || []).join(' → ')}`
-  ];
-  await channel.send(lines.join('\n'));
+  const itinerary = Array.isArray(record.itinerary) ? record.itinerary : [];
+  const itineraryDates = Array.isArray(record.itineraryDates) ? record.itineraryDates : [];
+  const embed = {
+    color: 0x2ecc71,
+    title: '240 Record',
+    fields: [
+      { name: 'BN', value: record.bnNumber || '—', inline: true },
+      { name: 'Passenger', value: record.passengerName || '—', inline: true },
+      { name: 'Nationality', value: record.nationalityCode || '—', inline: true },
+      { name: 'Passport Exp', value: formatTransit240Date(record.passportExpiry), inline: true },
+      { name: 'Leave Date', value: formatTransit240Date(itineraryDates.at(-1)), inline: true },
+      { name: 'Itinerary', value: itinerary.length ? itinerary.join(' → ') : '—', inline: false }
+    ],
+    footer: { text: 'MUFC' }
+  };
+  const files = buildTransit240DiscordFiles(record.attachments);
+  await channel.send({ embeds: [embed], files });
   return { sent: true, channelId: TRANSIT_240_DISCORD_CHANNEL_ID };
 }
 
@@ -1762,21 +1796,40 @@ app.post('/transit-240', async (req, res) => {
       bnNumber: String(req.body?.bnNumber || '').trim(),
       nationalityCode: String(req.body?.nationalityCode || '').trim().toUpperCase(),
       passportExpiry: String(req.body?.passportExpiry || '').trim(),
-      itinerary: Array.isArray(req.body?.itinerary) ? req.body.itinerary.map((value) => String(value || '').trim().toUpperCase()).filter(Boolean) : []
+      itinerary: Array.isArray(req.body?.itinerary) ? req.body.itinerary.map((value) => String(value || '').trim().toUpperCase()).filter(Boolean) : [],
+      itineraryDates: Array.isArray(req.body?.itineraryDates) ? req.body.itineraryDates.map((value) => String(value || '').trim()).filter(Boolean) : [],
+      agent: String(req.body?.agent || '').trim(),
+      attachments: Array.isArray(req.body?.attachments) ? req.body.attachments.map((file) => ({
+        name: String(file?.name || '').trim(),
+        type: String(file?.type || '').trim(),
+        data: String(file?.data || '').trim()
+      })).filter((file) => file.data) : []
     };
     if (!record.passengerName || !record.seatNumber || !record.bnNumber || !record.nationalityCode || !record.passportExpiry || record.itinerary.length < 3) {
       return res.status(400).json({ error: 'Missing required 240 transit fields.' });
     }
-    const saved = await appendTransit240Record(record);
-    let discord = null;
-    let discordError = '';
-    try {
-      discord = await sendTransit240ToDiscord(record);
-    } catch (err) {
-      discordError = err?.message || 'Discord post failed.';
-      console.error('240 Transit Discord post failed:', err);
+    const lockKey = record.bnNumber;
+    if (transit240SubmitLocks.has(lockKey)) {
+      return res.status(409).json({ error: 'Duplicate BN Number. This 240 record was already submitted.' });
     }
-    return res.json({ ok: true, ...saved, discord, discordError });
+    transit240SubmitLocks.add(lockKey);
+    try {
+      if (await hasTransit240RecordByBn(lockKey)) {
+        return res.status(409).json({ error: 'Duplicate BN Number. This 240 record was already submitted.' });
+      }
+      const saved = await appendTransit240Record(record);
+      let discord = null;
+      let discordError = '';
+      try {
+        discord = await sendTransit240ToDiscord(record);
+      } catch (err) {
+        discordError = err?.message || 'Discord post failed.';
+        console.error('240 Transit Discord post failed:', err);
+      }
+      return res.json({ ok: true, ...saved, discord, discordError });
+    } finally {
+      transit240SubmitLocks.delete(lockKey);
+    }
   } catch (err) {
     console.error('240 Transit submit failed:', err);
     return res.status(500).json({ error: err?.message || '240 transit submit failed.' });
