@@ -39,6 +39,7 @@ const {
   downloadSalesReportByFlight,
   getSalesDetailsReportRows,
   getNextDayInfoEmail,
+  sendNextDayInfoEmail,
   getGdCheckEmail,
   getStoredReportRows,
   getVipReportRows,
@@ -85,6 +86,8 @@ const {
 const fbLookup =
   require('./fbLookup');
 const { findSYInfo } = require('./syParser');
+const NEXTDAY_INFO_DISCORD_CHANNEL_ID = '1399400605742661702';
+
 const DEFAULT_PERMISSIONS = {
   canViewTravelDocs: true,
   canViewMembership: true,
@@ -148,6 +151,81 @@ function sectionTimestampToMs(section) {
   const month = monthNameToNumber(match?.[2]);
   if (!match || !month) return 0;
   return Date.UTC(Number(match[1]), Number(month) - 1, Number(match[3]), Number(match[4]), Number(match[5]), Number(match[6]));
+}
+
+function addIsoDays(isoDate, days) {
+  const match = String(isoDate || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return '';
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]) + Number(days || 0)));
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+}
+
+
+function isoDateToEmailSubjectDate(isoDate) {
+  const match = String(isoDate || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return '';
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const month = months[Number(match[2]) - 1];
+  return month ? `${month}-${match[3]}` : '';
+}
+
+function retCountsFromSyInfo(syInfo) {
+  const ret = syInfo?.reservationTicketed;
+  if (!ret || ret.length < 4) return null;
+  return {
+    firstClass: String(Number(ret[1]) || 0),
+    businessClass: String(Number(ret[2]) || 0),
+    economyClass: String(Number(ret[3]) || 0)
+  };
+}
+
+function transferCountsFromJcsy(jcsy) {
+  const rows = Array.isArray(jcsy?.rows) ? jcsy.rows : [];
+  if (!jcsy?.complete || !rows.length) return null;
+  return rows.reduce((acc, row) => {
+    const total = Number(row?.total) || 0;
+    const hasDeparture = Boolean(String(row?.departure || row?.depart || '').trim());
+    if (!hasDeparture || row?.overnight || row?.category === 'overnight' || row?.category === 'pvgOnly') acc.overnightPassengers += total;
+    else if (row?.isDomestic || row?.market === 'Domestic' || row?.category === 'domestic') acc.domesticTransfer += total;
+    else acc.internationalTransfer += total;
+    return acc;
+  }, { internationalTransfer: 0, domesticTransfer: 0, overnightPassengers: 0 });
+}
+
+
+function buildNextDayInfoDetailLines(details = {}) {
+  return [
+    `First Class: ${details.firstClass || '--'}`,
+    `Business Class: ${details.businessClass || '--'}`,
+    `Economy Class: ${details.economyClass || '--'}`,
+    '',
+    `International Transfer: ${details.internationalTransfer || '--'}`,
+    `Domestic Transfer: ${details.domesticTransfer || '--'}`,
+    `Overnight passengers: ${details.overnightPassengers || '--'}`
+  ].join('\n');
+}
+
+function buildNextDayInfoEmailBody(subjectDate, details) {
+  return [
+    'To whom it may concern,',
+    '',
+    `Please see the list below for ${subjectDate} flight information details.`,
+    '',
+    `First Class:  ${details.firstClass}`,
+    `Business Class:  ${details.businessClass}`,
+    `Economy Class:  ${details.economyClass}`,
+    '',
+    '',
+    'For Ops:',
+    '',
+    `International Transfer:  ${details.internationalTransfer}`,
+    `Domestic Transfer:  ${details.domesticTransfer}`,
+    `Overnight passengers:  ${details.overnightPassengers}`,
+    '',
+    'Thank you,',
+    '',
+    'CHINA EASTERN AIRLINES LAX STATION (BOT)'
+  ].join('\n');
 }
 
 function splitReportSections(log) {
@@ -2438,6 +2516,81 @@ app.get(
   }
 );
 
+
+
+
+async function sendNextDayInfoToDiscord(content) {
+  const text = String(content || '').trim();
+  if (!text) return { sent: false, reason: 'No NEXTDAY INFO email body to post.' };
+  const channel = await client.channels.fetch(NEXTDAY_INFO_DISCORD_CHANNEL_ID);
+  if (!channel) return { sent: false, reason: 'Discord channel not found.' };
+  const chunks = text.match(/[\s\S]{1,1900}/g) || [text];
+  for (const chunk of chunks) {
+    await channel.send(chunk);
+  }
+  return { sent: true, channelId: NEXTDAY_INFO_DISCORD_CHANNEL_ID, chunks: chunks.length };
+}
+
+// ===============================
+// NEXTDAY INFO Email API
+// ===============================
+app.post('/nextday-info/send', async (req, res) => {
+  try {
+    const flightNo = String(req.body?.flightNo || 'MU586').trim().toUpperCase() || 'MU586';
+    const todayIso = todayIsoUtc();
+    const nextIso = addIsoDays(todayIso, 1);
+    const syDate = isoDateToSyDate(nextIso);
+    const subjectDate = isoDateToEmailSubjectDate(nextIso);
+    const subject = `${flightNo} ${subjectDate} flight information details`;
+    const log = await getLatestFlightLog();
+    if (!log) return res.status(400).json({ error: 'Missing SY information: unable to load latest log.' });
+
+    const syInfo = findSYInfo(log, syDate, { preferredFlightNo: flightNo });
+    if (!syInfo) return res.status(400).json({ error: `Missing SY information for ${flightNo}/${syDate}.` });
+
+    const retCounts = retCountsFromSyInfo(syInfo);
+    if (!retCounts) return res.status(400).json({ error: `Missing SY information: RET counts not found for ${flightNo}/${syDate}.` });
+
+    const transferCounts = transferCountsFromJcsy(syInfo.crewApis?.jcsy);
+    if (!transferCounts) return res.status(400).json({ error: `Missing JCSY information for ${flightNo}/${subjectDate}.` });
+
+    const details = {
+      ...retCounts,
+      internationalTransfer: String(transferCounts.internationalTransfer),
+      domesticTransfer: String(transferCounts.domesticTransfer),
+      overnightPassengers: String(transferCounts.overnightPassengers)
+    };
+    const text = buildNextDayInfoEmailBody(subjectDate, details);
+    const to = ['LAXHMXH@hallmark-aviation.com', 'dg-lax-lounge@qantas.com.au'];
+    const cc = ['lax.mupax@hallmark-aviation.com', 'laxhmmu@gmail.com'];
+    const email = await sendNextDayInfoEmail({ to, cc, subject, text });
+    let discordPost = null;
+    let discordError = '';
+    try {
+      discordPost = await sendNextDayInfoToDiscord(text);
+    } catch (discordErr) {
+      discordError = discordErr?.message || 'Discord NEXTDAY INFO post failed.';
+      console.error('NEXTDAY INFO Discord post failed:', discordErr);
+    }
+    const sentAt = new Date().toISOString();
+    const step = syInfo.crewApis?.steps?.find((item) => item.key === 'nextDayInfo') || null;
+    if (step) {
+      step.complete = true;
+      step.searched = true;
+      step.time = sentAt.slice(11, 19);
+      step.subject = subject;
+      step.details = details;
+      step.detailText = buildNextDayInfoDetailLines(details);
+      step.reason = '';
+      step.tooltip = `NEXTDAY INFO sent to ${to.join(', ')}; CC ${cc.join(', ')}: ${subject}`;
+    }
+    cacheCompletedPreflightStep(syInfo, todayIso, 'nextDayInfo');
+    return res.json({ ok: true, sentAt, subject, to: email.to, cc: email.cc, messageId: email.id, discordPost, discordError, details, detailText: step?.detailText || buildNextDayInfoDetailLines(details), step });
+  } catch (err) {
+    console.error('NEXTDAY INFO send failed:', err);
+    return res.status(500).json({ error: err?.message || 'NEXTDAY INFO email send failed.' });
+  }
+});
 
 // ===============================
 // Send Message API
