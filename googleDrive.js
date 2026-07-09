@@ -115,6 +115,10 @@ const CBS_MISSING_BAG_SHEET_GID = Number(process.env.CBS_MISSING_BAG_SHEET_GID |
 const CBS_MISSING_BAG_HEADERS = ['Bag Tag', 'Passenger Name', 'Destination', 'Airline', 'Source Email Date', 'Source Attachment', 'Recorded At', 'Case Number', 'Case Created At', 'Acknowledged At'];
 const CBS_SCAN_SHEET_ID = process.env.CBS_SCAN_SHEET_ID || '1bfIeytT6UMdvWXimeg4s1HVuXHqmpYZx53ufsbes6Ms';
 const CBS_SCAN_SHEET_GID = Number(process.env.CBS_SCAN_SHEET_GID || 0);
+const TRANSIT_240_SHEET_ID = process.env.TRANSIT_240_SHEET_ID || '1JqRnDx_uLc2m2SzyZOuHWWJsbkKenlKo60U9zwV9uMQ';
+const TRANSIT_240_SHEET_GID = Number(process.env.TRANSIT_240_SHEET_GID || 527537258);
+const TRANSIT_240_HEADERS = ['Submit Date', 'Passenger Name', 'Seat Number', 'BN Number', 'Passport Nationality Code', 'Passport Expiration Date', 'Itinerary'];
+let transit240SheetTitle = '';
 const CBS_SCAN_HEADERS = ['BN', 'Seat', 'Flight', 'Raw Scan', 'Scanned At'];
 const CBS_SCAN_INFANT_HEADERS = ['Infant BN', 'Infant Seat', 'Infant Flight', 'Infant Raw Scan', 'Infant Scanned At'];
 let cbsScanSheetTitle = '';
@@ -2845,6 +2849,52 @@ async function appendCbsScanRecord(record = {}) {
   return { bn: formatCbsScanSheetBn(bn), seat, flight, rowNumber, scannedAt, isInfant };
 }
 
+async function getTransit240SheetTitle() {
+  if (!transit240SheetTitle) transit240SheetTitle = await resolveSheetTitleByGid(TRANSIT_240_SHEET_ID, TRANSIT_240_SHEET_GID);
+  return transit240SheetTitle || 'Sheet1';
+}
+
+async function ensureTransit240Headers(title) {
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: TRANSIT_240_SHEET_ID,
+    range: `${escapeSheetTitle(title)}!A1:G1`
+  }).catch(() => ({ data: { values: [] } }));
+  const firstRow = res.data.values?.[0] || [];
+  const hasHeaders = TRANSIT_240_HEADERS.every((header, index) => String(firstRow[index] || '').trim() === header);
+  if (!hasHeaders) {
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: TRANSIT_240_SHEET_ID,
+      range: `${escapeSheetTitle(title)}!A1:G1`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [TRANSIT_240_HEADERS] }
+    });
+  }
+}
+
+async function appendTransit240Record(record = {}) {
+  const title = await getTransit240SheetTitle();
+  await ensureTransit240Headers(title);
+  const submittedAt = record.submittedAt || new Date().toISOString();
+  const itinerary = Array.isArray(record.itinerary) ? record.itinerary.join(' → ') : String(record.itinerary || '').trim();
+  const values = [[
+    submittedAt,
+    String(record.passengerName || '').trim(),
+    String(record.seatNumber || '').trim().toUpperCase(),
+    String(record.bnNumber || '').trim(),
+    String(record.nationalityCode || '').trim().toUpperCase(),
+    String(record.passportExpiry || '').trim(),
+    itinerary
+  ]];
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: TRANSIT_240_SHEET_ID,
+    range: `${escapeSheetTitle(title)}!A:G`,
+    valueInputOption: 'RAW',
+    insertDataOption: 'INSERT_ROWS',
+    requestBody: { values }
+  });
+  return { submittedAt, itinerary };
+}
+
 async function getCbsSheetTitle() {
   if (!cbsSheetTitle) cbsSheetTitle = await resolveSheetTitleByGid(CBS_SHEET_ID, CBS_SHEET_GID);
   return cbsSheetTitle || 'Sheet1';
@@ -3488,6 +3538,7 @@ module.exports = {
   markCbsMissingBagCase,
   acknowledgeCbsMissingBag,
   sendCbsCaseEmail,
+  appendTransit240Record,
   appendCbsScanRecord,
   appendCbsScanNbrdBns,
   deleteCbsScanNbrdBn,
