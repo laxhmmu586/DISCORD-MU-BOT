@@ -5234,7 +5234,7 @@
             updatedStep.subject = data.subject || updatedStep.subject || "";
             updatedStep.details = data.details || updatedStep.details || {};
             updatedStep.detailText = data.detailText || updatedStep.detailText || "";
-            updatedStep.tooltip = `NEXTDAY INFO sent to ${(data.to || []).join(", ") || "LAXHMXH@hallmark-aviation.com, dg-lax-lounge@qantas.com.au"}; CC ${(data.cc || []).join(", ") || "lax.mupax@hallmark-aviation.com, laxhmmu@gmail.com"}: ${data.subject || ""}`;
+            updatedStep.tooltip = `NEXTDAY INFO sent to ${(data.to || []).join(", ") || "LAXHMXH@hallmark-aviation.com, dg-lax-lounge@qantas.com.au"}; CC ${(data.cc || []).join(", ") || "lax.mupax@hallmark-aviation.com, laxhmmu@gmail.com"}: ${data.subject || ""}${data.discordError ? ` (Discord post failed: ${data.discordError})` : ""}`;
           }
           refreshSyBadges(currentSy);
           const sentStep = stepByKey("NEXTDAY_INFO");
