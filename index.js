@@ -64,6 +64,7 @@ const {
   markCbsMissingBagCase,
   acknowledgeCbsMissingBag,
   sendCbsCaseEmail,
+  appendTransit240Record,
   appendCbsScanRecord,
   appendCbsScanNbrdBns,
   deleteCbsScanNbrdBn,
@@ -87,6 +88,7 @@ const fbLookup =
   require('./fbLookup');
 const { findSYInfo } = require('./syParser');
 const NEXTDAY_INFO_DISCORD_CHANNEL_ID = '1399400605742661702';
+const TRANSIT_240_DISCORD_CHANNEL_ID = process.env.TRANSIT_240_DISCORD_CHANNEL_ID || '1365773224276660257';
 
 const DEFAULT_PERMISSIONS = {
   canViewTravelDocs: true,
@@ -921,6 +923,10 @@ app.get(['/m-board.html', '/m-board'], (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'public', 'm-board.html'));
 });
 
+app.get(['/240.html', '/240'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'public', '240.html'));
+});
+
 const REVIEW_STORE_PATH = path.join(__dirname, 'securityReviews.json');
 const WARNING_ACK_STORE_PATH = path.join(__dirname, 'warningAcknowledgements.json');
 const NOTES_STORE_PATH = path.join(__dirname, 'notesStore.json');
@@ -1731,6 +1737,51 @@ function parseCbsPdf417(rawValue = '') {
     isInfant
   };
 }
+
+async function sendTransit240ToDiscord(record) {
+  const channel = await client.channels.fetch(TRANSIT_240_DISCORD_CHANNEL_ID);
+  if (!channel) return { sent: false, reason: 'Discord channel not found.' };
+  const lines = [
+    '**240 Transit Submitted**',
+    `Passenger: ${record.passengerName}`,
+    `Seat: ${record.seatNumber}`,
+    `BN: ${record.bnNumber}`,
+    `Passport Nationality Code: ${record.nationalityCode}`,
+    `Passport Expiration Date: ${record.passportExpiry}`,
+    `Itinerary: ${(record.itinerary || []).join(' → ')}`
+  ];
+  await channel.send(lines.join('\n'));
+  return { sent: true, channelId: TRANSIT_240_DISCORD_CHANNEL_ID };
+}
+
+app.post('/transit-240', async (req, res) => {
+  try {
+    const record = {
+      passengerName: String(req.body?.passengerName || '').trim(),
+      seatNumber: String(req.body?.seatNumber || '').trim().toUpperCase(),
+      bnNumber: String(req.body?.bnNumber || '').trim(),
+      nationalityCode: String(req.body?.nationalityCode || '').trim().toUpperCase(),
+      passportExpiry: String(req.body?.passportExpiry || '').trim(),
+      itinerary: Array.isArray(req.body?.itinerary) ? req.body.itinerary.map((value) => String(value || '').trim().toUpperCase()).filter(Boolean) : []
+    };
+    if (!record.passengerName || !record.seatNumber || !record.bnNumber || !record.nationalityCode || !record.passportExpiry || record.itinerary.length < 3) {
+      return res.status(400).json({ error: 'Missing required 240 transit fields.' });
+    }
+    const saved = await appendTransit240Record(record);
+    let discord = null;
+    let discordError = '';
+    try {
+      discord = await sendTransit240ToDiscord(record);
+    } catch (err) {
+      discordError = err?.message || 'Discord post failed.';
+      console.error('240 Transit Discord post failed:', err);
+    }
+    return res.json({ ok: true, ...saved, discord, discordError });
+  } catch (err) {
+    console.error('240 Transit submit failed:', err);
+    return res.status(500).json({ error: err?.message || '240 transit submit failed.' });
+  }
+});
 
 app.post('/cbs-scan', async (req, res) => {
   try {
