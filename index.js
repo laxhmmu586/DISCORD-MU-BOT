@@ -1738,19 +1738,32 @@ function parseCbsPdf417(rawValue = '') {
   };
 }
 
+function formatTransit240Date(value) {
+  const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return String(value || '').trim() || '—';
+  return `${Number(match[2])}/${Number(match[3])}/${match[1]}`;
+}
+
 async function sendTransit240ToDiscord(record) {
   const channel = await client.channels.fetch(TRANSIT_240_DISCORD_CHANNEL_ID);
   if (!channel) return { sent: false, reason: 'Discord channel not found.' };
-  const lines = [
-    '**240 Transit Submitted**',
-    `Passenger: ${record.passengerName}`,
-    `Seat: ${record.seatNumber}`,
-    `BN: ${record.bnNumber}`,
-    `Passport Nationality Code: ${record.nationalityCode}`,
-    `Passport Expiration Date: ${record.passportExpiry}`,
-    `Itinerary: ${(record.itinerary || []).join(' → ')}`
-  ];
-  await channel.send(lines.join('\n'));
+  const itinerary = Array.isArray(record.itinerary) ? record.itinerary : [];
+  const itineraryDates = Array.isArray(record.itineraryDates) ? record.itineraryDates : [];
+  const embed = {
+    color: 0x2ecc71,
+    title: '240 Record',
+    fields: [
+      { name: 'BN', value: record.bnNumber || '—', inline: true },
+      { name: 'Passenger', value: record.passengerName || '—', inline: true },
+      { name: 'Agent', value: record.agent || '—', inline: true },
+      { name: 'Nationality', value: record.nationalityCode || '—', inline: true },
+      { name: 'Passport Exp', value: formatTransit240Date(record.passportExpiry), inline: true },
+      { name: 'Leave Date', value: formatTransit240Date(itineraryDates.at(-1)), inline: true },
+      { name: 'Destination', value: itinerary.at(-1) || '—', inline: false }
+    ],
+    footer: { text: 'MUFC' }
+  };
+  await channel.send({ embeds: [embed] });
   return { sent: true, channelId: TRANSIT_240_DISCORD_CHANNEL_ID };
 }
 
@@ -1762,7 +1775,9 @@ app.post('/transit-240', async (req, res) => {
       bnNumber: String(req.body?.bnNumber || '').trim(),
       nationalityCode: String(req.body?.nationalityCode || '').trim().toUpperCase(),
       passportExpiry: String(req.body?.passportExpiry || '').trim(),
-      itinerary: Array.isArray(req.body?.itinerary) ? req.body.itinerary.map((value) => String(value || '').trim().toUpperCase()).filter(Boolean) : []
+      itinerary: Array.isArray(req.body?.itinerary) ? req.body.itinerary.map((value) => String(value || '').trim().toUpperCase()).filter(Boolean) : [],
+      itineraryDates: Array.isArray(req.body?.itineraryDates) ? req.body.itineraryDates.map((value) => String(value || '').trim()).filter(Boolean) : [],
+      agent: String(req.body?.agent || '').trim()
     };
     if (!record.passengerName || !record.seatNumber || !record.bnNumber || !record.nationalityCode || !record.passportExpiry || record.itinerary.length < 3) {
       return res.status(400).json({ error: 'Missing required 240 transit fields.' });
