@@ -3916,14 +3916,14 @@
             "reservation checkin"
             "warning security"
             "warning jcsy";
-          grid-template-rows: auto 66px 66px;
+          grid-template-rows: auto minmax(132px, auto) minmax(132px, auto);
         }
 
         .details-manifest.is-warning-hidden {
           grid-template-areas:
             "reservation checkin"
             "security jcsy";
-          grid-template-rows: auto 132px;
+          grid-template-rows: auto minmax(132px, auto);
         }
 
         .details-panel {
@@ -3952,100 +3952,9 @@
           padding: 18px 10px 12px;
         }
 
-        .detail-action-icon {
-          width: 40px;
-          height: 40px;
-        }
-
-        .details-manifest,
-        .details-manifest.is-warning-hidden {
-          grid-template-columns: 1fr 1fr;
-          grid-template-areas:
-            "reservation checkin"
-            "warning security"
-            "warning jcsy";
-          grid-template-rows: auto 66px 66px;
-        }
-
-        .details-manifest.is-warning-hidden {
-          grid-template-areas:
-            "reservation checkin"
-            "security jcsy";
-          grid-template-rows: auto 132px;
-        }
-
-        .details-panel {
-          overflow: visible;
-        }
-
-        .details-surface,
-        .details-panel .detail-actions {
-          min-width: 0;
-        }
-
-        .details-panel .detail-actions {
-          flex-wrap: wrap;
-          justify-content: center;
-          overflow: visible;
-        }
-
-        .details-panel .detail-actions .detail-action {
-          flex: 1 1 calc(50% - 14px);
-          max-width: calc(50% - 7px);
-        }
-
-        .details-panel .detail-actions .detail-action,
-        .details-panel .details-manifest > .detail-action {
-          min-height: 132px;
-          padding: 18px 10px 12px;
-        }
-
-        .detail-action-icon {
-          width: 40px;
-          height: 40px;
-        }
-
-        .details-manifest,
-        .details-manifest.is-warning-hidden {
-          grid-template-columns: 1fr 1fr;
-          grid-template-areas:
-            "reservation checkin"
-            "warning security"
-            "warning jcsy";
-          grid-template-rows: auto 66px 66px;
-        }
-
-        .details-manifest.is-warning-hidden {
-          grid-template-areas:
-            "reservation checkin"
-            "security jcsy";
-          grid-template-rows: auto 132px;
-        }
-
-        .details-panel {
-          overflow: visible;
-        }
-
-        .details-surface,
-        .details-panel .detail-actions {
-          min-width: 0;
-        }
-
-        .details-panel .detail-actions {
-          flex-wrap: wrap;
-          justify-content: center;
-          overflow: visible;
-        }
-
-        .details-panel .detail-actions .detail-action {
-          flex: 1 1 calc(50% - 14px);
-          max-width: calc(50% - 7px);
-        }
-
-        .details-panel .detail-actions .detail-action,
-        .details-panel .details-manifest > .detail-action {
-          min-height: 132px;
-          padding: 18px 10px 12px;
+        .details-panel .details-manifest > .detail-action.summary-warning-action {
+          align-self: start;
+          height: auto;
         }
 
         .detail-action-icon {
