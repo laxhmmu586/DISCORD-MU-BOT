@@ -132,13 +132,13 @@
       currentRecordKeys = collectRecordKeys(nbrdRows, scanRows, infantRows);
       return { nbrdRows, scanRows, infantRows };
     }
-    function scrollToNewRecord(newKeys) {
-      if (!newKeys.size) return false;
-      const firstNewRow = document.querySelector('tr.is-new');
-      firstNewRow?.scrollIntoView({ behavior:'smooth', block:'center' });
-      return Boolean(firstNewRow);
+    function scrollToLatestRecord() {
+      const rows = [...document.querySelectorAll('tr[data-record-key]')];
+      const latestRow = rows[rows.length - 1];
+      latestRow?.scrollIntoView({ behavior:'smooth', block:'center' });
+      return Boolean(latestRow);
     }
-    async function loadBoard({ scrollToNew = false } = {}) {
+    async function loadBoard({ scrollToLatest = false } = {}) {
       const previousRecordKeys = new Set(currentRecordKeys);
       try {
         setRefreshDisabled(true);
@@ -152,9 +152,9 @@
           rows.filter((row) => row.bn || row.seat || row.flight),
           rows.filter((row) => row.infantBn || row.infantSeat || row.infantFlight || row.infantScannedAt),
         );
-        const newKeys = scrollToNew ? new Set([...nextRecordKeys].filter((key) => !previousRecordKeys.has(key))) : new Set();
+        const newKeys = scrollToLatest ? new Set([...nextRecordKeys].filter((key) => !previousRecordKeys.has(key))) : new Set();
         renderRows(rows, newKeys);
-        if (scrollToNew) scrollToNewRecord(newKeys);
+        if (scrollToLatest) scrollToLatestRecord();
         const scannedCount = rows.filter((row) => row.bn || row.seat || row.flight).length;
         setStatus(`Scanned ${scannedCount}`);
       } catch (err) {
@@ -215,7 +215,7 @@
         setStatus(err.message || 'Unable to update row colors.', true);
       }
     });
-    refreshButtons.forEach((button) => button.addEventListener('click', () => loadBoard({ scrollToNew:true })));
+    refreshButtons.forEach((button) => button.addEventListener('click', () => loadBoard({ scrollToLatest:true })));
     loadBoard();
   </script>
 </body>
