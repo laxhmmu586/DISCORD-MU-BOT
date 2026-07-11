@@ -15,10 +15,8 @@
     .card { background:#fff; border:1px solid var(--line); border-radius:22px; box-shadow:0 18px 42px rgba(22,48,76,.08); padding:22px; overflow:hidden; }
     .toolbar { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
     .section-heading { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; }
-    .quick-jump { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:10px 0 2px; }
-    .quick-jump-label { color:var(--muted); font-weight:900; font-size:13px; text-transform:uppercase; letter-spacing:.04em; }
-    .quick-jump button { padding:9px 12px; background:#eef5ff; color:var(--brand); border:1px solid #cfe0f5; font-size:13px; }
-    .quick-jump button:disabled, button:disabled { opacity:.55; cursor:not-allowed; }
+    button:disabled { opacity:.55; cursor:not-allowed; }
+    tr.is-new td { background:#fff7db; box-shadow:inset 0 0 0 9999px rgba(255,213,79,.18); }
     h1 { margin:0; font-size:clamp(32px,6vw,56px); }
     .status { color:var(--muted); font-weight:800; }
     .status.err { color:var(--danger); }
@@ -44,10 +42,9 @@
     <section class="card">
       <div class="toolbar"><h1>M-board</h1><button class="refresh-board" id="refresh" type="button">Refresh</button></div>
       <p class="status" id="status">Loading...</p>
-      <div class="quick-jump" id="quick-jump" aria-label="One-click direct"><span class="quick-jump-label">一键直达</span></div>
-      <div class="board-section" id="nbrd-section"><h2>NBRD</h2><div class="table-wrap" id="nbrd-wrap"><div class="empty">Loading NBRD...</div></div></div>
-      <div class="board-section" id="scan-section"><h2>Boarding Scan</h2><div class="table-wrap" id="table-wrap"><div class="empty">Loading Google Sheet...</div></div></div>
-      <div class="board-section" id="infant-section"><div class="section-heading"><h2>Infant Scan</h2><button class="refresh-board" id="infant-refresh" type="button">Refresh</button></div><div class="table-wrap" id="infant-wrap"><div class="empty">Loading infant scans...</div></div></div>
+      <div class="board-section"><h2>NBRD</h2><div class="table-wrap" id="nbrd-wrap"><div class="empty">Loading NBRD...</div></div></div>
+      <div class="board-section"><h2>Boarding Scan</h2><div class="table-wrap" id="table-wrap"><div class="empty">Loading Google Sheet...</div></div></div>
+      <div class="board-section"><div class="section-heading"><h2>Infant Scan</h2><button class="refresh-board" id="infant-refresh" type="button">Refresh</button></div><div class="table-wrap" id="infant-wrap"><div class="empty">Loading infant scans...</div></div></div>
     </section>
   </main>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -81,50 +78,68 @@
     const tableWrap = document.querySelector('#table-wrap');
     const nbrdWrap = document.querySelector('#nbrd-wrap');
     const infantWrap = document.querySelector('#infant-wrap');
-    const quickJump = document.querySelector('#quick-jump');
     const refreshButtons = [...document.querySelectorAll('.refresh-board')];
+    let currentRecordKeys = new Set();
     function escapeHtml(value) { return String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char])); }
     function setStatus(text, isError = false) { statusEl.textContent = text; statusEl.className = `status ${isError ? 'err' : ''}`.trim(); }
-    function renderNbrdRows(rows) {
-      if (!rows.length) { nbrdWrap.innerHTML = '<div class="empty">No NBRD rows found.</div>'; return; }
-      nbrdWrap.innerHTML = `<table><thead><tr><th>BN</th><th>Message</th><th>Action</th></tr></thead><tbody>${rows.map((row) => `<tr><td class="nbrd">${escapeHtml(row.nbrdBn)}</td><td>${escapeHtml(row.nbrdDetail)}</td><td><button class="delete-nbrd" type="button" data-nbrd-row="${escapeHtml(row.rowNumber)}" data-nbrd-bn="${escapeHtml(row.nbrdBn)}" aria-label="Delete NBRD BN ${escapeHtml(row.nbrdBn)}">Delete</button></td></tr>`).join('')}</tbody></table>`;
+    function recordKey(type, row) {
+      if (row.rowNumber) return `${type}:${row.rowNumber}`;
+      if (type === 'nbrd') return `${type}:${row.nbrdBn || ''}:${row.nbrdDetail || ''}`;
+      if (type === 'infant') return `${type}:${row.infantBn || ''}:${row.infantSeat || ''}:${row.infantScannedAt || ''}`;
+      return `${type}:${row.bn || ''}:${row.seat || ''}:${row.flight || ''}`;
     }
-    function renderScanRows(rows) {
+    function rowNewClass(key, newKeys) { return newKeys.has(key) ? ' class="is-new"' : ''; }
+    function renderNbrdRows(rows, newKeys) {
+      if (!rows.length) { nbrdWrap.innerHTML = '<div class="empty">No NBRD rows found.</div>'; return; }
+      nbrdWrap.innerHTML = `<table><thead><tr><th>BN</th><th>Message</th><th>Action</th></tr></thead><tbody>${rows.map((row) => {
+        const key = recordKey('nbrd', row);
+        return `<tr${rowNewClass(key, newKeys)} data-record-key="${escapeHtml(key)}"><td class="nbrd">${escapeHtml(row.nbrdBn)}</td><td>${escapeHtml(row.nbrdDetail)}</td><td><button class="delete-nbrd" type="button" data-nbrd-row="${escapeHtml(row.rowNumber)}" data-nbrd-bn="${escapeHtml(row.nbrdBn)}" aria-label="Delete NBRD BN ${escapeHtml(row.nbrdBn)}">Delete</button></td></tr>`;
+      }).join('')}</tbody></table>`;
+    }
+    function renderScanRows(rows, newKeys) {
       if (!rows.length) { tableWrap.innerHTML = '<div class="empty">No boarding scan rows found.</div>'; return; }
       tableWrap.innerHTML = `<table><thead><tr><th>BN</th><th>Seat</th></tr></thead><tbody>${rows.map((row, index) => {
         const checked = Boolean(row.entered);
-        return `<tr class="${checked ? 'is-entered' : ''}" data-row-number="${escapeHtml(row.rowNumber)}" data-row-index="${index}"><td>${escapeHtml(row.bn)}</td><td>${escapeHtml(row.seat)}</td></tr>`;
+        const key = recordKey('scan', row);
+        const classes = [checked ? 'is-entered' : '', newKeys.has(key) ? 'is-new' : ''].filter(Boolean).join(' ');
+        return `<tr class="${classes}" data-record-key="${escapeHtml(key)}" data-row-number="${escapeHtml(row.rowNumber)}" data-row-index="${index}"><td>${escapeHtml(row.bn)}</td><td>${escapeHtml(row.seat)}</td></tr>`;
       }).join('')}</tbody></table>`;
     }
-    function renderInfantRows(rows) {
+    function renderInfantRows(rows, newKeys) {
       if (!rows.length) { infantWrap.innerHTML = '<div class="empty">No infant scans found.</div>'; return; }
-      infantWrap.innerHTML = `<table><thead><tr><th>BN</th><th>Seat</th></tr></thead><tbody>${rows.map((row) => `<tr><td class="infant">${escapeHtml(row.infantBn)}</td><td>${escapeHtml(row.infantSeat || 'INF')}</td></tr>`).join('')}</tbody></table>`;
-    }
-    function latestLabel(rows, fields, fallback) {
-      const latest = rows[rows.length - 1] || {};
-      return fields.map((field) => latest[field]).find(Boolean) || fallback;
+      infantWrap.innerHTML = `<table><thead><tr><th>BN</th><th>Seat</th></tr></thead><tbody>${rows.map((row) => {
+        const key = recordKey('infant', row);
+        return `<tr${rowNewClass(key, newKeys)} data-record-key="${escapeHtml(key)}"><td class="infant">${escapeHtml(row.infantBn)}</td><td>${escapeHtml(row.infantSeat || 'INF')}</td></tr>`;
+      }).join('')}</tbody></table>`;
     }
     function setRefreshDisabled(disabled) {
       refreshButtons.forEach((button) => { button.disabled = disabled; });
     }
-    function renderQuickJump(nbrdRows, scanRows, infantRows) {
-      const links = [
-        { label: `NBRD ${latestLabel(nbrdRows, ['nbrdBn'], '')}`, target: 'nbrd-section', enabled: nbrdRows.length },
-        { label: `Boarding ${latestLabel(scanRows, ['bn', 'seat'], '')}`, target: 'scan-section', enabled: scanRows.length },
-        { label: `Infant ${latestLabel(infantRows, ['infantBn', 'infantSeat'], '')}`, target: 'infant-section', enabled: infantRows.length },
-      ];
-      quickJump.innerHTML = '<span class="quick-jump-label">一键直达</span>' + links.map((link) => `<button type="button" data-jump-target="${link.target}" ${link.enabled ? '' : 'disabled'}>${escapeHtml(link.label.trim())}</button>`).join('');
+    function collectRecordKeys(nbrdRows, scanRows, infantRows) {
+      return new Set([
+        ...nbrdRows.map((row) => recordKey('nbrd', row)),
+        ...scanRows.map((row) => recordKey('scan', row)),
+        ...infantRows.map((row) => recordKey('infant', row)),
+      ]);
     }
-    function renderRows(rows) {
+    function renderRows(rows, newKeys = new Set()) {
       const nbrdRows = rows.filter((row) => row.nbrdBn || row.nbrdDetail);
       const scanRows = rows.filter((row) => row.bn || row.seat || row.flight);
       const infantRows = rows.filter((row) => row.infantBn || row.infantSeat || row.infantFlight || row.infantScannedAt);
-      renderNbrdRows(nbrdRows);
-      renderScanRows(scanRows);
-      renderInfantRows(infantRows);
-      renderQuickJump(nbrdRows, scanRows, infantRows);
+      renderNbrdRows(nbrdRows, newKeys);
+      renderScanRows(scanRows, newKeys);
+      renderInfantRows(infantRows, newKeys);
+      currentRecordKeys = collectRecordKeys(nbrdRows, scanRows, infantRows);
+      return { nbrdRows, scanRows, infantRows };
     }
-    async function loadBoard() {
+    function scrollToNewRecord(newKeys) {
+      if (!newKeys.size) return false;
+      const firstNewRow = document.querySelector('tr.is-new');
+      firstNewRow?.scrollIntoView({ behavior:'smooth', block:'center' });
+      return Boolean(firstNewRow);
+    }
+    async function loadBoard({ scrollToNew = false } = {}) {
+      const previousRecordKeys = new Set(currentRecordKeys);
       try {
         setRefreshDisabled(true);
         setStatus('Loading...');
@@ -132,7 +147,14 @@
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || 'Load failed');
         const rows = data.rows || [];
-        renderRows(rows);
+        const nextRecordKeys = collectRecordKeys(
+          rows.filter((row) => row.nbrdBn || row.nbrdDetail),
+          rows.filter((row) => row.bn || row.seat || row.flight),
+          rows.filter((row) => row.infantBn || row.infantSeat || row.infantFlight || row.infantScannedAt),
+        );
+        const newKeys = scrollToNew ? new Set([...nextRecordKeys].filter((key) => !previousRecordKeys.has(key))) : new Set();
+        renderRows(rows, newKeys);
+        if (scrollToNew) scrollToNewRecord(newKeys);
         const scannedCount = rows.filter((row) => row.bn || row.seat || row.flight).length;
         setStatus(`Scanned ${scannedCount}`);
       } catch (err) {
@@ -193,12 +215,7 @@
         setStatus(err.message || 'Unable to update row colors.', true);
       }
     });
-    quickJump.addEventListener('click', (event) => {
-      const button = event.target.closest('[data-jump-target]');
-      if (!button) return;
-      document.querySelector(`#${button.dataset.jumpTarget}`)?.scrollIntoView({ behavior:'smooth', block:'start' });
-    });
-    refreshButtons.forEach((button) => button.addEventListener('click', loadBoard));
+    refreshButtons.forEach((button) => button.addEventListener('click', () => loadBoard({ scrollToNew:true })));
     loadBoard();
   </script>
 </body>
