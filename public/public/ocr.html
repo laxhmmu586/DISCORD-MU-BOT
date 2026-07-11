@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MUFC OCR Scan</title>
+  <style>
+    :root { --brand:#123a73; --line:#d7e1ec; --ink:#172033; --muted:#667085; --ok:#087443; --danger:#b42318; --warn:#b45309; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:Inter,Arial,"Noto Sans SC",sans-serif; background:linear-gradient(135deg,#eaf4ff,#fdfefe); color:var(--ink); }
+    header { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:18px clamp(18px,4vw,52px); background:rgba(255,255,255,.92); border-bottom:1px solid var(--line); position:sticky; top:0; z-index:10; }
+    .brand { font-weight:900; color:var(--brand); letter-spacing:.08em; text-decoration:none; }
+    .header-actions { display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:flex-end; }
+    main { width:min(980px,94vw); margin:28px auto; display:grid; gap:18px; }
+    .card { background:#fff; border:1px solid var(--line); border-radius:22px; box-shadow:0 18px 42px rgba(22,48,76,.08); padding:22px; }
+    h1,h2 { margin:.15em 0 .45em; color:#102a4c; }
+    p { line-height:1.55; }
+    .muted { color:var(--muted); }
+    .camera-wrap { position:relative; overflow:hidden; border-radius:18px; background:#111; min-height:260px; display:grid; place-items:center; }
+    video, canvas, img.preview { display:block; width:100%; max-height:62vh; background:#111; object-fit:contain; }
+    canvas { display:none; }
+    .aim-box { position:absolute; left:50%; top:50%; width:min(82%,660px); height:44%; transform:translate(-50%,-50%); border:3px solid rgba(255,255,255,.95); border-radius:18px; box-shadow:0 0 0 999px rgba(0,0,0,.22); pointer-events:none; }
+    button,a.button { border:0; border-radius:999px; padding:12px 18px; font-weight:850; cursor:pointer; background:var(--brand); color:white; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:8px; }
+    button.secondary,a.secondary { background:#e8eef7; color:var(--brand); }
+    button.danger { background:#fff1f1; color:var(--danger); }
+    button:disabled { opacity:.55; cursor:not-allowed; }
+    .actions { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:14px; }
+    .status { min-height:28px; font-weight:900; color:var(--muted); }
+    .status.ok { color:var(--ok); } .status.err { color:var(--danger); } .status.warn { color:var(--warn); }
+    .field-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; align-items:start; }
+    label { display:grid; gap:8px; color:var(--muted); font-size:12px; font-weight:900; text-transform:uppercase; letter-spacing:.04em; }
+    input,textarea { width:100%; min-height:54px; border:1px solid var(--line); border-radius:14px; padding:13px 15px; color:var(--ink); font:inherit; font-weight:750; background:#fbfdff; box-shadow:inset 0 1px 0 rgba(255,255,255,.7); }
+    textarea { min-height:132px; resize:vertical; line-height:1.35; font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:13px; text-transform:none; }
+    .sheet-box { display:grid; gap:6px; padding:14px; border:1px dashed #a9bdd4; border-radius:16px; background:#f8fbff; font-size:14px; }
+    @media (max-width:780px){ .field-grid{grid-template-columns:1fr} .card{padding:18px} h1{font-size:30px} }
+  </style>
+</head>
+<body>
+  <header><a class="brand" href="index.html">MUFC</a><div class="header-actions"><a class="button secondary" href="scan.html">Boarding</a><a class="button secondary" href="m-board.html">M-board</a></div></header>
+  <main>
+    <section class="card">
+      <h1>OCR Boarding Pass Scan</h1>
+      <p class="muted">拍照或上传登机牌，Tesseract.js 会识别文字并自动提取 Flight、Date、Serial 和 Seat。提交前请人工确认，避免 006 前面的 0 丢失。</p>
+      <div class="camera-wrap"><video id="preview" muted playsinline></video><img class="preview" id="image-preview" alt="Captured boarding pass preview" hidden /><canvas id="canvas"></canvas><div class="aim-box" aria-hidden="true"></div></div>
+      <div class="actions"><button id="start" type="button">Start Camera</button><button id="capture" type="button" disabled>Capture + OCR</button><button class="secondary" id="stop" type="button">Stop</button><label class="button secondary" for="upload">Upload Image</label><input id="upload" type="file" accept="image/*" hidden /></div>
+      <p class="status" id="status">Ready.</p>
+    </section>
+
+    <section class="card">
+      <h2>Check and Submit</h2>
+      <form id="ocr-form">
+        <div class="field-grid">
+          <label>Flight<input id="flight" name="flight" placeholder="MU586" autocomplete="off" required /></label>
+          <label>Date<input id="flightDate" name="date" placeholder="11JUL" autocomplete="off" required /></label>
+          <label>Serial<input id="serial" name="serial" placeholder="006" autocomplete="off" inputmode="numeric" required /></label>
+          <label>Seat<input id="seat" name="seat" placeholder="70F" autocomplete="off" required /></label>
+        </div>
+        <label style="margin-top:14px">Raw OCR Text<textarea id="rawText" name="rawText" placeholder="OCR text will appear here"></textarea></label>
+        <div class="actions"><button id="submit" type="submit">Submit to Google Sheet</button><button class="secondary" id="reparse" type="button">Re-parse Text</button><button class="danger" id="clear" type="button">Clear</button></div>
+      </form>
+      <p class="status" id="submit-status">Google Sheet target is configured below.</p>
+    </section>
+
+    <section class="card">
+      <h2>Google Sheet Target</h2>
+      <div class="sheet-box"><b>直接写入 MUFC 后端已配置的 Google Sheet</b><span>Spreadsheet ID: <code>1bfIeytT6UMdvWXimeg4s1HVuXHqmpYZx53ufsbes6Ms</code></span><span>GID: <code>1256735562</code></span></div>
+      <p class="muted">和 Boarding 页面一样，这个页面会提交到 MUFC API，由后端服务账号写入 Google Sheet，不需要在这里粘贴 Apps Script URL。</p>
+    </section>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script>
+    const apiBase = (window.MU_API_BASE || 'https://api.mufcapp.net').replace(/\/$/, '');
+    const els = {
+      preview: document.querySelector('#preview'), imagePreview: document.querySelector('#image-preview'), canvas: document.querySelector('#canvas'),
+      start: document.querySelector('#start'), capture: document.querySelector('#capture'), stop: document.querySelector('#stop'), upload: document.querySelector('#upload'),
+      status: document.querySelector('#status'), submitStatus: document.querySelector('#submit-status'), form: document.querySelector('#ocr-form'),
+      flight: document.querySelector('#flight'), flightDate: document.querySelector('#flightDate'), serial: document.querySelector('#serial'), seat: document.querySelector('#seat'), rawText: document.querySelector('#rawText'),
+      reparse: document.querySelector('#reparse'), clear: document.querySelector('#clear')
+    };
+    let stream = null;
+    function setStatus(text, type = '') { els.status.textContent = text; els.status.className = `status ${type}`.trim(); }
+    function setSubmitStatus(text, type = '') { els.submitStatus.textContent = text; els.submitStatus.className = `status ${type}`.trim(); }
+    function normalize(text) { return String(text || '').toUpperCase().replace(/[|]/g, 'I').replace(/[０-９]/g, d => String.fromCharCode(d.charCodeAt(0) - 65248)); }
+    function parseBoardingPass(text) {
+      const clean = normalize(text).replace(/\s+/g, ' ');
+      const compact = clean.replace(/\s/g, '');
+      const flight = (clean.match(/\bMU\s?\d{3,4}\b/i)?.[0] || compact.match(/MU\d{3,4}/)?.[0] || '').replace(/\s/g, '');
+      const date = clean.match(/\b\d{1,2}\s?(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\b/i)?.[0]?.replace(/\s/g, '') || '';
+      const seatCandidates = [...clean.matchAll(/\b\d{1,3}\s?[A-K]\b/g)].map(m => m[0].replace(/\s/g, '').replace(/O/g, '0'));
+      const seat = seatCandidates.find(v => !/^\d{3}$/.test(v)) || '';
+      const serial = clean.match(/SERIAL\s*(NO\.?|NUMBER)?\s*[:#-]?\s*(\d{1,4})\b/i)?.[2] || clean.match(/\b(\d{3})\b/)?.[1] || '';
+      return { flight, date, serial: serial.padStart(3, '0').slice(-3), seat };
+    }
+    function fillFields(data) { els.flight.value = data.flight || els.flight.value; els.flightDate.value = data.date || els.flightDate.value; els.serial.value = data.serial || els.serial.value; els.seat.value = data.seat || els.seat.value; }
+    async function startCamera() {
+      try { stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ ideal:'environment' }, width:{ ideal:1920 }, height:{ ideal:1080 } }, audio:false }); els.preview.srcObject = stream; await els.preview.play(); els.preview.hidden = false; els.imagePreview.hidden = true; els.capture.disabled = false; setStatus('Camera ready. Put boarding pass inside the frame.','ok'); } catch (err) { setStatus(err.message || 'Unable to start camera. Try Upload Image.','err'); }
+    }
+    function stopCamera() { stream?.getTracks?.().forEach(t => t.stop()); stream = null; els.capture.disabled = true; setStatus('Camera stopped.','warn'); }
+    function canvasFromVideo() { const w = els.preview.videoWidth || 1280, h = els.preview.videoHeight || 720; els.canvas.width = w; els.canvas.height = h; els.canvas.getContext('2d').drawImage(els.preview, 0, 0, w, h); return els.canvas; }
+    async function runOcr(source) { setStatus('OCR running...'); const result = await Tesseract.recognize(source, 'eng', { logger: m => { if (m.status) setStatus(`${m.status} ${Math.round((m.progress || 0) * 100)}%`); } }); const text = result?.data?.text || ''; els.rawText.value = text; fillFields(parseBoardingPass(text)); setStatus('OCR complete. Please check the fields before submitting.','ok'); }
+    els.start.addEventListener('click', startCamera); els.stop.addEventListener('click', stopCamera); els.capture.addEventListener('click', () => runOcr(canvasFromVideo()).catch(err => setStatus(err.message || 'OCR failed.','err')));
+    els.upload.addEventListener('change', () => { const file = els.upload.files?.[0]; if (!file) return; const url = URL.createObjectURL(file); els.imagePreview.src = url; els.imagePreview.hidden = false; els.preview.hidden = true; runOcr(file).catch(err => setStatus(err.message || 'OCR failed.','err')); });
+    els.reparse.addEventListener('click', () => { fillFields(parseBoardingPass(els.rawText.value)); setStatus('Text parsed again.','ok'); });
+    els.clear.addEventListener('click', () => { els.form.reset(); els.imagePreview.hidden = true; setStatus('Cleared.'); });
+    els.form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const payload = { flight:els.flight.value.trim().toUpperCase(), date:els.flightDate.value.trim().toUpperCase(), serial:els.serial.value.trim().padStart(3,'0'), seat:els.seat.value.trim().toUpperCase(), rawText:els.rawText.value };
+      try {
+        setSubmitStatus('Submitting to Google Sheet...');
+        const res = await fetch(`${apiBase}/ocr-scan`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Submit failed');
+        setSubmitStatus(`Submitted to ${data.sheetTitle || 'Google Sheet'}.`, 'ok');
+      } catch (err) {
+        setSubmitStatus(err.message || 'Submit failed.', 'err');
+      }
+    });
+  </script>
+</body>
+</html>
