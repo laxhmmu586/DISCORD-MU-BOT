@@ -31,11 +31,8 @@
     label { display:grid; gap:8px; color:var(--muted); font-size:12px; font-weight:900; text-transform:uppercase; letter-spacing:.04em; }
     input,textarea { width:100%; min-height:54px; border:1px solid var(--line); border-radius:14px; padding:13px 15px; color:var(--ink); font:inherit; font-weight:750; background:#fbfdff; box-shadow:inset 0 1px 0 rgba(255,255,255,.7); }
     textarea { min-height:132px; resize:vertical; line-height:1.35; font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:13px; text-transform:none; }
-    .settings-grid { display:grid; grid-template-columns:1fr auto; gap:12px; align-items:end; }
     .sheet-box { display:grid; gap:6px; padding:14px; border:1px dashed #a9bdd4; border-radius:16px; background:#f8fbff; font-size:14px; }
-    .code { overflow:auto; max-height:260px; padding:14px; border-radius:14px; background:#0b1220; color:#d7e8ff; font:12px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace; white-space:pre; }
-    .hidden-frame { position:absolute; width:1px; height:1px; border:0; opacity:0; pointer-events:none; }
-    @media (max-width:780px){ .field-grid,.settings-grid{grid-template-columns:1fr} .card{padding:18px} h1{font-size:30px} }
+    @media (max-width:780px){ .field-grid{grid-template-columns:1fr} .card{padding:18px} h1{font-size:30px} }
   </style>
 </head>
 <body>
@@ -65,36 +62,22 @@
     </section>
 
     <section class="card">
-      <h2>Google Sheet Setup</h2>
-      <div class="sheet-box"><b>Target Sheet</b><span>Spreadsheet ID: <code>1bfIeytT6UMdvWXimeg4s1HVuXHqmpYZx53ufsbes6Ms</code></span><span>GID: <code>1256735562</code></span></div>
-      <div class="settings-grid" style="margin-top:14px"><label>Google Apps Script Web App URL<input id="webAppUrl" placeholder="https://script.google.com/macros/s/.../exec" /></label><button id="save-url" type="button">Save URL</button></div>
-      <p class="muted">网页不能直接写入私人 Google Sheet。请把下面 Apps Script 部署为 Web App（执行身份：你；访问权限：Anyone with the link），再把部署 URL 粘贴到这里。</p>
-      <pre class="code">const SPREADSHEET_ID = '1bfIeytT6UMdvWXimeg4s1HVuXHqmpYZx53ufsbes6Ms';
-const SHEET_GID = 1256735562;
-
-function doPost(e) {
-  const data = e.parameter || JSON.parse(e.postData.contents || '{}');
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const sheet = ss.getSheets().find(s => s.getSheetId() === SHEET_GID) || ss.getSheets()[0];
-  sheet.appendRow([new Date(), data.flight, data.date, data.serial, data.seat, data.rawText]);
-  return ContentService.createTextOutput(JSON.stringify({ ok: true })).setMimeType(ContentService.MimeType.JSON);
-}</pre>
+      <h2>Google Sheet Target</h2>
+      <div class="sheet-box"><b>直接写入 MUFC 后端已配置的 Google Sheet</b><span>Spreadsheet ID: <code>1bfIeytT6UMdvWXimeg4s1HVuXHqmpYZx53ufsbes6Ms</code></span><span>GID: <code>1256735562</code></span></div>
+      <p class="muted">和 Boarding 页面一样，这个页面会提交到 MUFC API，由后端服务账号写入 Google Sheet，不需要在这里粘贴 Apps Script URL。</p>
     </section>
   </main>
-  <iframe class="hidden-frame" name="sheet-submit-frame" title="Google Sheet submit result"></iframe>
-  <form id="sheet-post-form" method="post" target="sheet-submit-frame" hidden></form>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script>
-    const SHEET_URL_KEY = 'mufc_ocr_google_apps_script_url';
+    const apiBase = (window.MU_API_BASE || 'https://api.mufcapp.net').replace(/\/$/, '');
     const els = {
       preview: document.querySelector('#preview'), imagePreview: document.querySelector('#image-preview'), canvas: document.querySelector('#canvas'),
       start: document.querySelector('#start'), capture: document.querySelector('#capture'), stop: document.querySelector('#stop'), upload: document.querySelector('#upload'),
       status: document.querySelector('#status'), submitStatus: document.querySelector('#submit-status'), form: document.querySelector('#ocr-form'),
       flight: document.querySelector('#flight'), flightDate: document.querySelector('#flightDate'), serial: document.querySelector('#serial'), seat: document.querySelector('#seat'), rawText: document.querySelector('#rawText'),
-      webAppUrl: document.querySelector('#webAppUrl'), saveUrl: document.querySelector('#save-url'), reparse: document.querySelector('#reparse'), clear: document.querySelector('#clear'), postForm: document.querySelector('#sheet-post-form')
+      reparse: document.querySelector('#reparse'), clear: document.querySelector('#clear')
     };
     let stream = null;
-    els.webAppUrl.value = localStorage.getItem(SHEET_URL_KEY) || window.MU_OCR_WEB_APP_URL || '';
     function setStatus(text, type = '') { els.status.textContent = text; els.status.className = `status ${type}`.trim(); }
     function setSubmitStatus(text, type = '') { els.submitStatus.textContent = text; els.submitStatus.className = `status ${type}`.trim(); }
     function normalize(text) { return String(text || '').toUpperCase().replace(/[|]/g, 'I').replace(/[０-９]/g, d => String.fromCharCode(d.charCodeAt(0) - 65248)); }
@@ -119,8 +102,19 @@ function doPost(e) {
     els.upload.addEventListener('change', () => { const file = els.upload.files?.[0]; if (!file) return; const url = URL.createObjectURL(file); els.imagePreview.src = url; els.imagePreview.hidden = false; els.preview.hidden = true; runOcr(file).catch(err => setStatus(err.message || 'OCR failed.','err')); });
     els.reparse.addEventListener('click', () => { fillFields(parseBoardingPass(els.rawText.value)); setStatus('Text parsed again.','ok'); });
     els.clear.addEventListener('click', () => { els.form.reset(); els.imagePreview.hidden = true; setStatus('Cleared.'); });
-    els.saveUrl.addEventListener('click', () => { localStorage.setItem(SHEET_URL_KEY, els.webAppUrl.value.trim()); setSubmitStatus('Apps Script URL saved.','ok'); });
-    els.form.addEventListener('submit', (event) => { event.preventDefault(); const url = els.webAppUrl.value.trim(); if (!url) { setSubmitStatus('Paste and save the Google Apps Script Web App URL first.','err'); return; } localStorage.setItem(SHEET_URL_KEY, url); els.postForm.action = url; els.postForm.innerHTML = ''; const payload = { flight:els.flight.value.trim().toUpperCase(), date:els.flightDate.value.trim().toUpperCase(), serial:els.serial.value.trim().padStart(3,'0'), seat:els.seat.value.trim().toUpperCase(), rawText:els.rawText.value }; Object.entries(payload).forEach(([name,value]) => { const input = document.createElement('input'); input.type = 'hidden'; input.name = name; input.value = value; els.postForm.appendChild(input); }); els.postForm.submit(); setSubmitStatus('Submitted to Google Sheet. Please verify the new row in Google Sheets.','ok'); });
+    els.form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const payload = { flight:els.flight.value.trim().toUpperCase(), date:els.flightDate.value.trim().toUpperCase(), serial:els.serial.value.trim().padStart(3,'0'), seat:els.seat.value.trim().toUpperCase(), rawText:els.rawText.value };
+      try {
+        setSubmitStatus('Submitting to Google Sheet...');
+        const res = await fetch(`${apiBase}/ocr-scan`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Submit failed');
+        setSubmitStatus(`Submitted to ${data.sheetTitle || 'Google Sheet'}.`, 'ok');
+      } catch (err) {
+        setSubmitStatus(err.message || 'Submit failed.', 'err');
+      }
+    });
   </script>
 </body>
 </html>
