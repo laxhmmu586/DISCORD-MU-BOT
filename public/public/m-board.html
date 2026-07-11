@@ -14,6 +14,11 @@
     .button,button { border:0; border-radius:999px; padding:12px 18px; font-weight:850; cursor:pointer; background:var(--brand); color:white; text-decoration:none; }
     .card { background:#fff; border:1px solid var(--line); border-radius:22px; box-shadow:0 18px 42px rgba(22,48,76,.08); padding:22px; overflow:hidden; }
     .toolbar { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
+    .section-heading { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; }
+    .quick-jump { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:10px 0 2px; }
+    .quick-jump-label { color:var(--muted); font-weight:900; font-size:13px; text-transform:uppercase; letter-spacing:.04em; }
+    .quick-jump button { padding:9px 12px; background:#eef5ff; color:var(--brand); border:1px solid #cfe0f5; font-size:13px; }
+    .quick-jump button:disabled, button:disabled { opacity:.55; cursor:not-allowed; }
     h1 { margin:0; font-size:clamp(32px,6vw,56px); }
     .status { color:var(--muted); font-weight:800; }
     .status.err { color:var(--danger); }
@@ -37,11 +42,12 @@
   <header><a class="brand" href="index.html">MUFC</a><a class="button" href="/scan.html">Manual Boarding</a></header>
   <main>
     <section class="card">
-      <div class="toolbar"><h1>M-board</h1><button id="refresh" type="button">Refresh</button></div>
+      <div class="toolbar"><h1>M-board</h1><button class="refresh-board" id="refresh" type="button">Refresh</button></div>
       <p class="status" id="status">Loading...</p>
-      <div class="board-section"><h2>NBRD</h2><div class="table-wrap" id="nbrd-wrap"><div class="empty">Loading NBRD...</div></div></div>
-      <div class="board-section"><h2>Boarding Scan</h2><div class="table-wrap" id="table-wrap"><div class="empty">Loading Google Sheet...</div></div></div>
-      <div class="board-section"><h2>Infant Scan</h2><div class="table-wrap" id="infant-wrap"><div class="empty">Loading infant scans...</div></div></div>
+      <div class="quick-jump" id="quick-jump" aria-label="One-click direct"><span class="quick-jump-label">一键直达</span></div>
+      <div class="board-section" id="nbrd-section"><h2>NBRD</h2><div class="table-wrap" id="nbrd-wrap"><div class="empty">Loading NBRD...</div></div></div>
+      <div class="board-section" id="scan-section"><h2>Boarding Scan</h2><div class="table-wrap" id="table-wrap"><div class="empty">Loading Google Sheet...</div></div></div>
+      <div class="board-section" id="infant-section"><div class="section-heading"><h2>Infant Scan</h2><button class="refresh-board" id="infant-refresh" type="button">Refresh</button></div><div class="table-wrap" id="infant-wrap"><div class="empty">Loading infant scans...</div></div></div>
     </section>
   </main>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -75,6 +81,8 @@
     const tableWrap = document.querySelector('#table-wrap');
     const nbrdWrap = document.querySelector('#nbrd-wrap');
     const infantWrap = document.querySelector('#infant-wrap');
+    const quickJump = document.querySelector('#quick-jump');
+    const refreshButtons = [...document.querySelectorAll('.refresh-board')];
     function escapeHtml(value) { return String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char])); }
     function setStatus(text, isError = false) { statusEl.textContent = text; statusEl.className = `status ${isError ? 'err' : ''}`.trim(); }
     function renderNbrdRows(rows) {
@@ -92,6 +100,21 @@
       if (!rows.length) { infantWrap.innerHTML = '<div class="empty">No infant scans found.</div>'; return; }
       infantWrap.innerHTML = `<table><thead><tr><th>BN</th><th>Seat</th></tr></thead><tbody>${rows.map((row) => `<tr><td class="infant">${escapeHtml(row.infantBn)}</td><td>${escapeHtml(row.infantSeat || 'INF')}</td></tr>`).join('')}</tbody></table>`;
     }
+    function latestLabel(rows, fields, fallback) {
+      const latest = rows[rows.length - 1] || {};
+      return fields.map((field) => latest[field]).find(Boolean) || fallback;
+    }
+    function setRefreshDisabled(disabled) {
+      refreshButtons.forEach((button) => { button.disabled = disabled; });
+    }
+    function renderQuickJump(nbrdRows, scanRows, infantRows) {
+      const links = [
+        { label: `NBRD ${latestLabel(nbrdRows, ['nbrdBn'], '')}`, target: 'nbrd-section', enabled: nbrdRows.length },
+        { label: `Boarding ${latestLabel(scanRows, ['bn', 'seat'], '')}`, target: 'scan-section', enabled: scanRows.length },
+        { label: `Infant ${latestLabel(infantRows, ['infantBn', 'infantSeat'], '')}`, target: 'infant-section', enabled: infantRows.length },
+      ];
+      quickJump.innerHTML = '<span class="quick-jump-label">一键直达</span>' + links.map((link) => `<button type="button" data-jump-target="${link.target}" ${link.enabled ? '' : 'disabled'}>${escapeHtml(link.label.trim())}</button>`).join('');
+    }
     function renderRows(rows) {
       const nbrdRows = rows.filter((row) => row.nbrdBn || row.nbrdDetail);
       const scanRows = rows.filter((row) => row.bn || row.seat || row.flight);
@@ -99,9 +122,11 @@
       renderNbrdRows(nbrdRows);
       renderScanRows(scanRows);
       renderInfantRows(infantRows);
+      renderQuickJump(nbrdRows, scanRows, infantRows);
     }
     async function loadBoard() {
       try {
+        setRefreshDisabled(true);
         setStatus('Loading...');
         const res = await fetch(`${apiBase}/cbs-scan/records`, { cache:'no-store' });
         const data = await res.json().catch(() => ({}));
@@ -115,6 +140,8 @@
         tableWrap.innerHTML = '<div class="empty">Unable to load Google Sheet.</div>';
         infantWrap.innerHTML = '<div class="empty">Unable to load infant scans.</div>';
         setStatus(err.message || 'Load failed', true);
+      } finally {
+        setRefreshDisabled(false);
       }
     }
     async function updateEnteredRows(rowNumbers, entered) {
@@ -166,7 +193,12 @@
         setStatus(err.message || 'Unable to update row colors.', true);
       }
     });
-    document.querySelector('#refresh').addEventListener('click', loadBoard);
+    quickJump.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-jump-target]');
+      if (!button) return;
+      document.querySelector(`#${button.dataset.jumpTarget}`)?.scrollIntoView({ behavior:'smooth', block:'start' });
+    });
+    refreshButtons.forEach((button) => button.addEventListener('click', loadBoard));
     loadBoard();
   </script>
 </body>
