@@ -115,6 +115,10 @@ const CBS_MISSING_BAG_SHEET_GID = Number(process.env.CBS_MISSING_BAG_SHEET_GID |
 const CBS_MISSING_BAG_HEADERS = ['Bag Tag', 'Passenger Name', 'Destination', 'Airline', 'Source Email Date', 'Source Attachment', 'Recorded At', 'Case Number', 'Case Created At', 'Acknowledged At'];
 const CBS_SCAN_SHEET_ID = process.env.CBS_SCAN_SHEET_ID || '1bfIeytT6UMdvWXimeg4s1HVuXHqmpYZx53ufsbes6Ms';
 const CBS_SCAN_SHEET_GID = Number(process.env.CBS_SCAN_SHEET_GID || 0);
+const OCR_SCAN_SHEET_ID = process.env.OCR_SCAN_SHEET_ID || '1bfIeytT6UMdvWXimeg4s1HVuXHqmpYZx53ufsbes6Ms';
+const OCR_SCAN_SHEET_GID = Number(process.env.OCR_SCAN_SHEET_GID || 1256735562);
+const OCR_SCAN_HEADERS = ['Submit Date', 'Flight', 'Date', 'Serial', 'Seat', 'Raw OCR Text'];
+let ocrScanSheetTitle = '';
 const TRANSIT_240_SHEET_ID = process.env.TRANSIT_240_SHEET_ID || '1JqRnDx_uLc2m2SzyZOuHWWJsbkKenlKo60U9zwV9uMQ';
 const TRANSIT_240_SHEET_GID = Number(process.env.TRANSIT_240_SHEET_GID || 527537258);
 const TRANSIT_240_HEADERS = ['Submit Date', 'Passenger Name', 'Seat Number', 'BN Number', 'Passport Nationality Code', 'Passport Expiration Date', 'Itinerary'];
@@ -2812,6 +2816,51 @@ function throwCbsScanNbrdMessage(bn, detail = '') {
   throw err;
 }
 
+
+async function getOcrScanSheetTitle() {
+  if (!ocrScanSheetTitle) ocrScanSheetTitle = await resolveSheetTitleByGid(OCR_SCAN_SHEET_ID, OCR_SCAN_SHEET_GID);
+  if (!ocrScanSheetTitle) throw new Error(`OCR sheet gid ${OCR_SCAN_SHEET_GID} was not found in spreadsheet ${OCR_SCAN_SHEET_ID}.`);
+  return ocrScanSheetTitle;
+}
+
+async function ensureOcrScanHeaders(title) {
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: OCR_SCAN_SHEET_ID,
+    range: `${escapeSheetTitle(title)}!A1:F1`
+  });
+  const firstRow = res.data.values?.[0] || [];
+  const hasHeaders = OCR_SCAN_HEADERS.every((header, index) => String(firstRow[index] || '').trim() === header);
+  if (!hasHeaders) await sheets.spreadsheets.values.update({
+    spreadsheetId: OCR_SCAN_SHEET_ID,
+    range: `${escapeSheetTitle(title)}!A1:F1`,
+    valueInputOption: 'RAW',
+    requestBody: { values: [OCR_SCAN_HEADERS] }
+  });
+}
+
+async function appendOcrScanRecord(record = {}) {
+  const flight = String(record.flight || '').trim().toUpperCase();
+  const date = String(record.date || record.flightDate || '').trim().toUpperCase();
+  const serialDigits = String(record.serial || '').replace(/\D/g, '');
+  const serial = serialDigits ? serialDigits.padStart(3, '0').slice(-3) : '';
+  const seat = String(record.seat || '').trim().toUpperCase();
+  const rawText = String(record.rawText || record.raw || '').trim();
+  if (!flight) throw new Error('Flight is required.');
+  if (!date) throw new Error('Date is required.');
+  if (!serial) throw new Error('Serial is required.');
+  if (!seat) throw new Error('Seat is required.');
+  const title = await getOcrScanSheetTitle();
+  await ensureOcrScanHeaders(title);
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: OCR_SCAN_SHEET_ID,
+    range: `${escapeSheetTitle(title)}!A:F`,
+    valueInputOption: 'RAW',
+    insertDataOption: 'INSERT_ROWS',
+    requestBody: { values: [[new Date().toISOString(), flight, date, serial, seat, rawText]] }
+  });
+  return { flight, date, serial, seat, sheetTitle: title };
+}
+
 async function appendCbsScanRecord(record = {}) {
   const bn = normalizeCbsScanBn(record.bn);
   if (!bn) throw new Error('Invalid BN.');
@@ -3555,6 +3604,7 @@ module.exports = {
   hasTransit240RecordByBn,
   appendTransit240Record,
   appendCbsScanRecord,
+  appendOcrScanRecord,
   appendCbsScanNbrdBns,
   deleteCbsScanNbrdBn,
   getCbsScanRecords,
