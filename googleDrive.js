@@ -115,6 +115,10 @@ const CBS_MISSING_BAG_SHEET_GID = Number(process.env.CBS_MISSING_BAG_SHEET_GID |
 const CBS_MISSING_BAG_HEADERS = ['Bag Tag', 'Passenger Name', 'Destination', 'Airline', 'Source Email Date', 'Source Attachment', 'Recorded At', 'Case Number', 'Case Created At', 'Acknowledged At'];
 const CBS_SCAN_SHEET_ID = process.env.CBS_SCAN_SHEET_ID || '1bfIeytT6UMdvWXimeg4s1HVuXHqmpYZx53ufsbes6Ms';
 const CBS_SCAN_SHEET_GID = Number(process.env.CBS_SCAN_SHEET_GID || 0);
+const OCR_SCAN_SHEET_ID = process.env.OCR_SCAN_SHEET_ID || '1bfIeytT6UMdvWXimeg4s1HVuXHqmpYZx53ufsbes6Ms';
+const OCR_SCAN_SHEET_GID = Number(process.env.OCR_SCAN_SHEET_GID || 1256735562);
+const OCR_SCAN_HEADERS = ['Submit Date', 'Flight', 'Date', 'Serial', 'Seat', 'Raw OCR Text'];
+let ocrScanSheetTitle = '';
 const TRANSIT_240_SHEET_ID = process.env.TRANSIT_240_SHEET_ID || '1JqRnDx_uLc2m2SzyZOuHWWJsbkKenlKo60U9zwV9uMQ';
 const TRANSIT_240_SHEET_GID = Number(process.env.TRANSIT_240_SHEET_GID || 527537258);
 const TRANSIT_240_HEADERS = ['Submit Date', 'Passenger Name', 'Seat Number', 'BN Number', 'Passport Nationality Code', 'Passport Expiration Date', 'Itinerary'];
@@ -3556,6 +3560,7 @@ module.exports = {
   hasTransit240RecordByBn,
   appendTransit240Record,
   appendCbsScanRecord,
+  appendOcrScanRecord,
   appendCbsScanNbrdBns,
   deleteCbsScanNbrdBn,
   getCbsScanRecords,

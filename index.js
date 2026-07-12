@@ -68,6 +68,7 @@ const {
   hasTransit240RecordByBn,
   appendTransit240Record,
   appendCbsScanRecord,
+  appendOcrScanRecord,
   appendCbsScanNbrdBns,
   deleteCbsScanNbrdBn,
   getCbsScanRecords,
@@ -1870,6 +1871,16 @@ app.post('/cbs-scan', async (req, res) => {
   }
 });
 
+
+
+app.post('/ocr-scan', async (req, res) => {
+  try {
+    const saved = await appendOcrScanRecord(req.body || {});
+    return res.json({ ok: true, ...saved });
+  } catch (err) {
+    return res.status(422).json({ error: err?.message || 'OCR scan save failed' });
+  }
+});
 
 app.get('/cbs-scan/records', async (req, res) => {
   try {
