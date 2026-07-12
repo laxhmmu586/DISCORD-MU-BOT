@@ -948,6 +948,10 @@ app.get(['/m-board.html', '/m-board'], (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'public', 'm-board.html'));
 });
 
+app.get(['/ocr.html', '/ocr'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'public', 'ocr.html'));
+});
+
 app.get(['/240.html', '/240'], (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'public', '240.html'));
 });

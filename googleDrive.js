@@ -2819,7 +2819,8 @@ function throwCbsScanNbrdMessage(bn, detail = '') {
 
 async function getOcrScanSheetTitle() {
   if (!ocrScanSheetTitle) ocrScanSheetTitle = await resolveSheetTitleByGid(OCR_SCAN_SHEET_ID, OCR_SCAN_SHEET_GID);
-  return ocrScanSheetTitle || 'Sheet1';
+  if (!ocrScanSheetTitle) throw new Error(`OCR sheet gid ${OCR_SCAN_SHEET_GID} was not found in spreadsheet ${OCR_SCAN_SHEET_ID}.`);
+  return ocrScanSheetTitle;
 }
 
 async function ensureOcrScanHeaders(title) {
@@ -2840,7 +2841,8 @@ async function ensureOcrScanHeaders(title) {
 async function appendOcrScanRecord(record = {}) {
   const flight = String(record.flight || '').trim().toUpperCase();
   const date = String(record.date || record.flightDate || '').trim().toUpperCase();
-  const serial = String(record.serial || '').replace(/\D/g, '').padStart(3, '0').slice(-3);
+  const serialDigits = String(record.serial || '').replace(/\D/g, '');
+  const serial = serialDigits ? serialDigits.padStart(3, '0').slice(-3) : '';
   const seat = String(record.seat || '').trim().toUpperCase();
   const rawText = String(record.rawText || record.raw || '').trim();
   if (!flight) throw new Error('Flight is required.');

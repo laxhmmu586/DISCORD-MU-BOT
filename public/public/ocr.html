@@ -16,10 +16,12 @@
     h1,h2 { margin:.15em 0 .45em; color:#102a4c; }
     p { line-height:1.55; }
     .muted { color:var(--muted); }
-    .camera-wrap { position:relative; overflow:hidden; border-radius:18px; background:#111; min-height:260px; display:grid; place-items:center; }
-    video, canvas, img.preview { display:block; width:100%; max-height:62vh; background:#111; object-fit:contain; }
+    .camera-wrap { position:relative; overflow:hidden; border-radius:18px; background:#111; min-height:420px; aspect-ratio:9/14; max-height:72vh; display:grid; place-items:center; }
+    video, canvas, img.preview { display:block; width:100%; height:100%; background:#111; object-fit:cover; }
     canvas { display:none; }
-    .aim-box { position:absolute; left:50%; top:50%; width:min(82%,660px); height:44%; transform:translate(-50%,-50%); border:3px solid rgba(255,255,255,.95); border-radius:18px; box-shadow:0 0 0 999px rgba(0,0,0,.22); pointer-events:none; }
+    .aim-box { position:absolute; left:50%; top:49%; width:min(76%,360px); height:88%; transform:translate(-50%,-50%); border:3px solid rgba(255,255,255,.96); border-radius:18px; box-shadow:0 0 0 999px rgba(0,0,0,.34); pointer-events:none; }
+    .aim-box::before { content:"BOARDING PASS OCR AREA"; position:absolute; left:50%; top:10px; transform:translateX(-50%); padding:5px 10px; border-radius:999px; background:rgba(18,58,115,.86); color:white; font-size:11px; font-weight:900; letter-spacing:.08em; white-space:nowrap; }
+    .aim-box::after { content:"Flight / Date / Serial / Seat"; position:absolute; left:50%; bottom:10px; transform:translateX(-50%); padding:5px 10px; border-radius:999px; background:rgba(255,255,255,.9); color:#123a73; font-size:11px; font-weight:900; white-space:nowrap; }
     button,a.button { border:0; border-radius:999px; padding:12px 18px; font-weight:850; cursor:pointer; background:var(--brand); color:white; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:8px; }
     button.secondary,a.secondary { background:#e8eef7; color:var(--brand); }
     button.danger { background:#fff1f1; color:var(--danger); }
@@ -28,6 +30,8 @@
     .status { min-height:28px; font-weight:900; color:var(--muted); }
     .status.ok { color:var(--ok); } .status.err { color:var(--danger); } .status.warn { color:var(--warn); }
     .field-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; align-items:start; }
+    .auto-row { display:flex; align-items:center; gap:10px; margin-top:14px; color:var(--muted); font-size:13px; font-weight:850; text-transform:none; letter-spacing:0; }
+    .auto-row input { width:20px; min-height:20px; height:20px; padding:0; box-shadow:none; }
     label { display:grid; gap:8px; color:var(--muted); font-size:12px; font-weight:900; text-transform:uppercase; letter-spacing:.04em; }
     input,textarea { width:100%; min-height:54px; border:1px solid var(--line); border-radius:14px; padding:13px 15px; color:var(--ink); font:inherit; font-weight:750; background:#fbfdff; box-shadow:inset 0 1px 0 rgba(255,255,255,.7); }
     textarea { min-height:132px; resize:vertical; line-height:1.35; font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:13px; text-transform:none; }
@@ -40,7 +44,7 @@
   <main>
     <section class="card">
       <h1>OCR Boarding Pass Scan</h1>
-      <p class="muted">拍照或上传登机牌，Tesseract.js 会识别文字并自动提取 Flight、Date、Serial 和 Seat。提交前请人工确认，避免 006 前面的 0 丢失。</p>
+      <p class="muted">请把登机牌左侧信息区对准白色竖框（航班、日期、序号、座位都在框内）。Tesseract.js 会识别文字并自动提取 Flight、Date、Serial 和 Seat。提交前请人工确认，避免 006 前面的 0 丢失。</p>
       <div class="camera-wrap"><video id="preview" muted playsinline></video><img class="preview" id="image-preview" alt="Captured boarding pass preview" hidden /><canvas id="canvas"></canvas><div class="aim-box" aria-hidden="true"></div></div>
       <div class="actions"><button id="start" type="button">Start Camera</button><button id="capture" type="button" disabled>Capture + OCR</button><button class="secondary" id="stop" type="button">Stop</button><label class="button secondary" for="upload">Upload Image</label><input id="upload" type="file" accept="image/*" hidden /></div>
       <p class="status" id="status">Ready.</p>
@@ -55,6 +59,7 @@
           <label>Serial<input id="serial" name="serial" placeholder="006" autocomplete="off" inputmode="numeric" required /></label>
           <label>Seat<input id="seat" name="seat" placeholder="70F" autocomplete="off" required /></label>
         </div>
+        <label class="auto-row"><input id="autoSubmit" type="checkbox" checked /> Auto write to Google Sheet after OCR recognizes all fields</label>
         <label style="margin-top:14px">Raw OCR Text<textarea id="rawText" name="rawText" placeholder="OCR text will appear here"></textarea></label>
         <div class="actions"><button id="submit" type="submit">Submit to Google Sheet</button><button class="secondary" id="reparse" type="button">Re-parse Text</button><button class="danger" id="clear" type="button">Clear</button></div>
       </form>
@@ -74,7 +79,7 @@
       preview: document.querySelector('#preview'), imagePreview: document.querySelector('#image-preview'), canvas: document.querySelector('#canvas'),
       start: document.querySelector('#start'), capture: document.querySelector('#capture'), stop: document.querySelector('#stop'), upload: document.querySelector('#upload'),
       status: document.querySelector('#status'), submitStatus: document.querySelector('#submit-status'), form: document.querySelector('#ocr-form'),
-      flight: document.querySelector('#flight'), flightDate: document.querySelector('#flightDate'), serial: document.querySelector('#serial'), seat: document.querySelector('#seat'), rawText: document.querySelector('#rawText'),
+      flight: document.querySelector('#flight'), flightDate: document.querySelector('#flightDate'), serial: document.querySelector('#serial'), seat: document.querySelector('#seat'), rawText: document.querySelector('#rawText'), autoSubmit: document.querySelector('#autoSubmit'),
       reparse: document.querySelector('#reparse'), clear: document.querySelector('#clear')
     };
     let stream = null;
@@ -96,24 +101,65 @@
       try { stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ ideal:'environment' }, width:{ ideal:1920 }, height:{ ideal:1080 } }, audio:false }); els.preview.srcObject = stream; await els.preview.play(); els.preview.hidden = false; els.imagePreview.hidden = true; els.capture.disabled = false; setStatus('Camera ready. Put boarding pass inside the frame.','ok'); } catch (err) { setStatus(err.message || 'Unable to start camera. Try Upload Image.','err'); }
     }
     function stopCamera() { stream?.getTracks?.().forEach(t => t.stop()); stream = null; els.capture.disabled = true; setStatus('Camera stopped.','warn'); }
-    function canvasFromVideo() { const w = els.preview.videoWidth || 1280, h = els.preview.videoHeight || 720; els.canvas.width = w; els.canvas.height = h; els.canvas.getContext('2d').drawImage(els.preview, 0, 0, w, h); return els.canvas; }
-    async function runOcr(source) { setStatus('OCR running...'); const result = await Tesseract.recognize(source, 'eng', { logger: m => { if (m.status) setStatus(`${m.status} ${Math.round((m.progress || 0) * 100)}%`); } }); const text = result?.data?.text || ''; els.rawText.value = text; fillFields(parseBoardingPass(text)); setStatus('OCR complete. Please check the fields before submitting.','ok'); }
+    function canvasFromVideo() {
+      const videoW = els.preview.videoWidth || 1280;
+      const videoH = els.preview.videoHeight || 720;
+      const wrap = document.querySelector('.camera-wrap');
+      const box = document.querySelector('.aim-box');
+      const wrapRect = wrap.getBoundingClientRect();
+      const boxRect = box.getBoundingClientRect();
+      const displayedRatio = wrapRect.width / wrapRect.height;
+      const videoRatio = videoW / videoH;
+      let sourceX = 0;
+      let sourceY = 0;
+      let sourceW = videoW;
+      let sourceH = videoH;
+      if (videoRatio > displayedRatio) {
+        sourceW = videoH * displayedRatio;
+        sourceX = (videoW - sourceW) / 2;
+      } else {
+        sourceH = videoW / displayedRatio;
+        sourceY = (videoH - sourceH) / 2;
+      }
+      const scaleX = sourceW / wrapRect.width;
+      const scaleY = sourceH / wrapRect.height;
+      const cropX = sourceX + (boxRect.left - wrapRect.left) * scaleX;
+      const cropY = sourceY + (boxRect.top - wrapRect.top) * scaleY;
+      const cropW = boxRect.width * scaleX;
+      const cropH = boxRect.height * scaleY;
+      els.canvas.width = Math.round(cropW);
+      els.canvas.height = Math.round(cropH);
+      els.canvas.getContext('2d').drawImage(els.preview, cropX, cropY, cropW, cropH, 0, 0, els.canvas.width, els.canvas.height);
+      return els.canvas;
+    }
+    function currentPayload() { const serialDigits = els.serial.value.replace(/\D/g, ''); return { flight:els.flight.value.trim().toUpperCase(), date:els.flightDate.value.trim().toUpperCase(), serial:serialDigits ? serialDigits.padStart(3,'0') : '', seat:els.seat.value.trim().toUpperCase(), rawText:els.rawText.value }; }
+    function hasRequiredPayload(payload) { return Boolean(payload.flight && payload.date && payload.serial && payload.seat); }
+    async function submitToSheet(auto = false) {
+      const payload = currentPayload();
+      if (!hasRequiredPayload(payload)) {
+        setSubmitStatus('OCR did not find all fields. Please correct Flight / Date / Serial / Seat, then submit.', 'err');
+        return false;
+      }
+      try {
+        setSubmitStatus(auto ? 'Recognized. Writing to Google Sheet...' : 'Submitting to Google Sheet...');
+        const res = await fetch(`${apiBase}/ocr-scan`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Submit failed');
+        setSubmitStatus(`Written to ${data.sheetTitle || 'Google Sheet'}.`, 'ok');
+        return true;
+      } catch (err) {
+        setSubmitStatus(err.message || 'Submit failed.', 'err');
+        return false;
+      }
+    }
+    async function runOcr(source) { setStatus('OCR running...'); const result = await Tesseract.recognize(source, 'eng', { logger: m => { if (m.status) setStatus(`${m.status} ${Math.round((m.progress || 0) * 100)}%`); } }); const text = result?.data?.text || ''; els.rawText.value = text; fillFields(parseBoardingPass(text)); setStatus('OCR complete. Please check the fields before submitting.','ok'); if (els.autoSubmit.checked) await submitToSheet(true); }
     els.start.addEventListener('click', startCamera); els.stop.addEventListener('click', stopCamera); els.capture.addEventListener('click', () => runOcr(canvasFromVideo()).catch(err => setStatus(err.message || 'OCR failed.','err')));
     els.upload.addEventListener('change', () => { const file = els.upload.files?.[0]; if (!file) return; const url = URL.createObjectURL(file); els.imagePreview.src = url; els.imagePreview.hidden = false; els.preview.hidden = true; runOcr(file).catch(err => setStatus(err.message || 'OCR failed.','err')); });
     els.reparse.addEventListener('click', () => { fillFields(parseBoardingPass(els.rawText.value)); setStatus('Text parsed again.','ok'); });
     els.clear.addEventListener('click', () => { els.form.reset(); els.imagePreview.hidden = true; setStatus('Cleared.'); });
     els.form.addEventListener('submit', async (event) => {
       event.preventDefault();
-      const payload = { flight:els.flight.value.trim().toUpperCase(), date:els.flightDate.value.trim().toUpperCase(), serial:els.serial.value.trim().padStart(3,'0'), seat:els.seat.value.trim().toUpperCase(), rawText:els.rawText.value };
-      try {
-        setSubmitStatus('Submitting to Google Sheet...');
-        const res = await fetch(`${apiBase}/ocr-scan`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || 'Submit failed');
-        setSubmitStatus(`Submitted to ${data.sheetTitle || 'Google Sheet'}.`, 'ok');
-      } catch (err) {
-        setSubmitStatus(err.message || 'Submit failed.', 'err');
-      }
+      await submitToSheet(false);
     });
   </script>
 </body>
