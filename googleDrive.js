@@ -2812,6 +2812,7 @@ function throwCbsScanNbrdMessage(bn, detail = '') {
   throw err;
 }
 
+
 async function appendCbsScanRecord(record = {}) {
   const bn = normalizeCbsScanBn(record.bn);
   if (!bn) throw new Error('Invalid BN.');
