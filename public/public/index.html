@@ -4923,7 +4923,7 @@
         currentSy.bnAudit = rows;
         const passBnSet = securityReviewPassBnSet(currentSy);
         const gov = currentSy.govAqq || {};
-        const govGroups = [gov.duplicatePassports, gov.aqqTclBnList, gov.govDtaBnList, gov.passportExpBnList, gov.wrongPassportBnList, gov.missingApiBnList, gov.infApiBnList];
+        const govGroups = [gov.duplicatePassports, gov.aqqTclBnList, gov.govDtaBnList, gov.passportExpBnList, gov.passportExpiringSoonBnList, gov.wrongPassportBnList, gov.missingApiBnList, gov.infApiBnList];
         const counts = {
           GOV: govGroups.reduce((sum, value) => sum + unresolvedReviewedBnCount(value, passBnSet), 0),
           WEBEDI: unresolvedReviewedBnCount(webEdiIssueBnList(currentSy), passBnSet),
@@ -5876,7 +5876,7 @@
         const chdIssues = isClearLocked("CHD") ? 0 : (sy.chdList || []).filter((row) => row.hasChdCode === false).length;
         const gov = sy.govAqq || {};
         const passBnSet = securityReviewPassBnSet(sy);
-        const govIssueGroups = [gov.duplicatePassports, gov.aqqTclBnList, gov.govDtaBnList, gov.passportExpBnList, gov.wrongPassportBnList, gov.missingApiBnList, gov.infApiBnList];
+        const govIssueGroups = [gov.duplicatePassports, gov.aqqTclBnList, gov.govDtaBnList, gov.passportExpBnList, gov.passportExpiringSoonBnList, gov.wrongPassportBnList, gov.missingApiBnList, gov.infApiBnList];
         const govCount = isClearLocked("GOV") ? 0 : govIssueGroups.reduce((sum, value) => sum + unresolvedReviewedBnCount(value, passBnSet), 0);
         const webediCount = isClearLocked("WEBEDI") ? 0 : unresolvedReviewedBnCount(webEdiIssueBnList(sy), passBnSet);
         const nbrdRows = nbrdRowsWithAcknowledgements(sy);
@@ -6123,6 +6123,7 @@
           ["USA TIME OUT", (gov.aqqTclBnList || []).map((bn) => ({ bn, reason: "USA TIME OUT" }))],
           ["CHN GOV FAIL", (gov.govDtaBnList || []).map((bn) => ({ bn, reason: "CHN GOV FAIL" }))],
           ["Passport Exp", (gov.passportExpBnList || []).map((bn) => ({ bn, reason: "Passport Exp" }))],
+          ["Passport <3 Months", (gov.passportExpiringSoonBnList || []).map((bn) => ({ bn, reason: "Passport expires within 3 months" }))],
           ["Wrong Passport", (gov.wrongPassportBnList || []).map((bn) => ({ bn, reason: "Wrong Passport: passport number has fewer than 7 characters" }))],
           ["Missing API", (gov.missingApiBnList || []).map((bn) => ({ bn, reason: "Missing API item" }))],
           ["INF API", (gov.infApiIssueDetails || gov.infApiBnList || []).map((item) => typeof item === "string" ? { bn: item, reason: "INF API not passed" } : item)],
