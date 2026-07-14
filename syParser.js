@@ -1678,7 +1678,7 @@ ${section}`,
     if (hasGovFail) { apiStatus = 'fail'; apiReasons.push('CHN GOV FAIL'); }
     if (isPassportExpired) { apiStatus = 'fail'; apiReasons.push(`Passport expired: ${expField}`); }
     else if (isPassportExpiringSoon) { apiStatus = 'fail'; apiReasons.push(`Passport expires within 3 months: ${expField}`); }
-    if (passportNo && passportNo.length < 6) { apiStatus = 'fail'; apiReasons.push(`Wrong Passport: ${passportNo} has fewer than 6 characters`); }
+    if (passportNo && passportNo.length < 7) { apiStatus = 'fail'; apiReasons.push(`Wrong Passport: ${passportNo} has fewer than 7 characters`); }
     if (hasReview && apiStatus !== 'fail') { apiStatus = 'review'; apiReasons.push('WEB/EDI/Reswipe'); }
     if (!hasApiOperation && apiStatus !== 'fail') {
       apiStatus = 'review';

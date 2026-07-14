@@ -6124,7 +6124,7 @@
           ["CHN GOV FAIL", (gov.govDtaBnList || []).map((bn) => ({ bn, reason: "CHN GOV FAIL" }))],
           ["Passport Exp", (gov.passportExpBnList || []).map((bn) => ({ bn, reason: "Passport Exp" }))],
           ["Passport <3 Months", (gov.passportExpiringSoonBnList || []).map((bn) => ({ bn, reason: "Passport expires within 3 months" }))],
-          ["Wrong Passport", (gov.wrongPassportBnList || []).map((bn) => ({ bn, reason: "Wrong Passport: passport number has fewer than 6 characters" }))],
+          ["Wrong Passport", (gov.wrongPassportBnList || []).map((bn) => ({ bn, reason: "Wrong Passport: passport number has fewer than 7 characters" }))],
           ["Missing API", (gov.missingApiBnList || []).map((bn) => ({ bn, reason: "Missing API item" }))],
           ["INF API", (gov.infApiIssueDetails || gov.infApiBnList || []).map((item) => typeof item === "string" ? { bn: item, reason: "INF API not passed" } : item)],
         ];
