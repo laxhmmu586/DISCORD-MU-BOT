@@ -442,18 +442,29 @@
         text-transform: uppercase;
       }
 
-      .mobile-panel a {
+      .mobile-panel a,
+      .mobile-logout-button {
         display: block;
+        width: 100%;
         margin-top: 8px;
         padding: 14px 0;
+        border: 0;
         border-top: 1px solid rgba(255, 255, 255, 0.11);
         border-bottom: 1px solid rgba(255, 255, 255, 0.11);
+        background: transparent;
         color: white;
         font-size: 14px;
         font-weight: 800;
         text-align: center;
         text-decoration: none;
         text-transform: uppercase;
+        cursor: pointer;
+      }
+
+      .mobile-logout-button {
+        margin-top: 18px;
+        border-color: rgba(255, 98, 92, 0.38);
+        color: #ffb4ae;
       }
 
       main {
@@ -1922,7 +1933,7 @@
       }
 
       .gov-summary-grid {
-        grid-template-columns: repeat(7, minmax(0, 1fr));
+        grid-template-columns: repeat(8, minmax(116px, 1fr));
       }
 
       .gov-summary-grid .data-card {
@@ -4343,6 +4354,7 @@
       <a href="cbs.html" id="mobile-cbs-nav-link">CBS</a>
       <a href="scan.html" id="mobile-boarding-nav-link">Boarding</a>
       <a href="240.html" id="mobile-transit-240-nav-link">240</a>
+      <button class="mobile-logout-button" id="mobile-logout" type="button">Logout</button>
     </aside>
 
     <main>
@@ -4555,6 +4567,7 @@
       const currentUser = document.querySelector("#current-user");
       const changePasswordButton = document.querySelector("#change-password");
       const logoutButton = document.querySelector("#logout");
+      const mobileLogoutButton = document.querySelector("#mobile-logout");
       const flightMenuButton = document.querySelector(".flight-menu-button");
       const flightMenu = document.querySelector(".flight-menu");
       const nodeTime = document.querySelector("#node-time");
@@ -4633,6 +4646,7 @@
       const AUTH_SESSION_STARTED_KEY = "mufc_auth_session_started_at";
       const AUTH_LAST_ACTIVITY_KEY = "mufc_auth_last_activity_at";
       const SY_AUTO_REFRESH_MS = 30 * 1000;
+      const AUTH_INACTIVITY_LIMIT_MS = 60 * 60 * 1000;
       const SY_COMPLETED_NODE_CACHE_KEY = "mufc_sy_completed_nodes_v1";
       const PERSISTENT_GREEN_NODE_KEYS = ["GD_CHECK", "FSC", "NEXTDAY_INFO"];
       let inactivityTimer = null;
@@ -4738,38 +4752,101 @@
         return url.href;
       }
 
-      function authStorage() {
-        return window.localStorage || window.sessionStorage;
+      function storageCandidates() {
+        return ["localStorage", "sessionStorage"].map((key) => {
+          try {
+            return window[key];
+          } catch (error) {
+            return null;
+          }
+        }).filter(Boolean);
+      }
+
+      function safeStorageWrite(key, value) {
+        for (const storage of storageCandidates()) {
+          try {
+            storage.setItem(key, value);
+          } catch (error) {
+            // Some mobile/private browsers expose storage but reject writes.
+          }
+        }
+      }
+
+      function safeStorageRemove(key) {
+        for (const storage of storageCandidates()) {
+          try {
+            storage.removeItem(key);
+          } catch (error) {
+            // Ignore storage cleanup failures.
+          }
+        }
+      }
+
+      function safeStorageReadNumber(key) {
+        for (const storage of storageCandidates()) {
+          try {
+            const value = Number(storage.getItem(key));
+            if (Number.isFinite(value) && value > 0) return value;
+          } catch (error) {
+            // Ignore inaccessible storage.
+          }
+        }
+        return 0;
       }
 
       function allowInternalPageRedirect() {
-        authStorage().setItem(APP_ENTRY_KEY, String(Date.now()));
+        safeStorageWrite(APP_ENTRY_KEY, String(Date.now()));
       }
       window.findNodeIndexByKey = findNodeIndexByKey;
 
       const canEnterApp = true;
 
       async function returnToLogin() {
-        authStorage().removeItem(APP_ENTRY_KEY);
-        authStorage().removeItem(AUTH_SESSION_STARTED_KEY);
-        authStorage().removeItem(AUTH_LAST_ACTIVITY_KEY);
-        sessionStorage.removeItem(APP_ENTRY_KEY);
-        sessionStorage.removeItem(AUTH_SESSION_STARTED_KEY);
-        sessionStorage.removeItem(AUTH_LAST_ACTIVITY_KEY);
+        safeStorageRemove(APP_ENTRY_KEY);
+        safeStorageRemove(AUTH_SESSION_STARTED_KEY);
+        safeStorageRemove(AUTH_LAST_ACTIVITY_KEY);
         if (inactivityTimer) clearTimeout(inactivityTimer);
+        inactivityTimer = null;
+        if (auth?.currentUser) {
+          try {
+            await auth.signOut();
+          } catch (error) {
+            // Redirect to login even if Firebase sign-out cannot complete.
+          }
+        }
         const url = new URL(loginUrl());
         window.location.replace(url.href);
       }
 
-      function resetInactivityTimer() {
-        authStorage().setItem(AUTH_LAST_ACTIVITY_KEY, String(Date.now()));
+      function scheduleInactivityLogout() {
         if (inactivityTimer) clearTimeout(inactivityTimer);
+        const lastActivity = safeStorageReadNumber(AUTH_LAST_ACTIVITY_KEY) || Date.now();
+        const remaining = AUTH_INACTIVITY_LIMIT_MS - (Date.now() - lastActivity);
+        if (remaining <= 0) {
+          returnToLogin();
+          return;
+        }
+        inactivityTimer = setTimeout(returnToLogin, remaining);
+      }
+
+      function resetInactivityTimer() {
+        safeStorageWrite(AUTH_LAST_ACTIVITY_KEY, String(Date.now()));
+        scheduleInactivityLogout();
       }
 
       function startInactivityWatch() {
+        const previousActivity = safeStorageReadNumber(AUTH_LAST_ACTIVITY_KEY);
+        if (previousActivity && Date.now() - previousActivity >= AUTH_INACTIVITY_LIMIT_MS) {
+          returnToLogin();
+          return;
+        }
+        if (!safeStorageReadNumber(AUTH_SESSION_STARTED_KEY)) safeStorageWrite(AUTH_SESSION_STARTED_KEY, String(Date.now()));
         resetInactivityTimer();
-        ["pointerdown", "keydown", "touchstart", "scroll"].forEach((eventName) => {
+        ["pointerdown", "keydown", "touchstart", "scroll", "focus", "pageshow"].forEach((eventName) => {
           window.addEventListener(eventName, resetInactivityTimer, { passive: true });
+        });
+        document.addEventListener("visibilitychange", () => {
+          if (!document.hidden) scheduleInactivityLogout();
         });
       }
 
@@ -4846,7 +4923,7 @@
         currentSy.bnAudit = rows;
         const passBnSet = securityReviewPassBnSet(currentSy);
         const gov = currentSy.govAqq || {};
-        const govGroups = [gov.duplicatePassports, gov.aqqTclBnList, gov.govDtaBnList, gov.passportExpBnList, gov.wrongPassportBnList, gov.missingApiBnList, gov.infApiBnList];
+        const govGroups = [gov.duplicatePassports, gov.aqqTclBnList, gov.govDtaBnList, gov.passportExpBnList, gov.passportExpiringSoonBnList, gov.wrongPassportBnList, gov.missingApiBnList, gov.infApiBnList];
         const counts = {
           GOV: govGroups.reduce((sum, value) => sum + unresolvedReviewedBnCount(value, passBnSet), 0),
           WEBEDI: unresolvedReviewedBnCount(webEdiIssueBnList(currentSy), passBnSet),
@@ -5799,7 +5876,7 @@
         const chdIssues = isClearLocked("CHD") ? 0 : (sy.chdList || []).filter((row) => row.hasChdCode === false).length;
         const gov = sy.govAqq || {};
         const passBnSet = securityReviewPassBnSet(sy);
-        const govIssueGroups = [gov.duplicatePassports, gov.aqqTclBnList, gov.govDtaBnList, gov.passportExpBnList, gov.wrongPassportBnList, gov.missingApiBnList, gov.infApiBnList];
+        const govIssueGroups = [gov.duplicatePassports, gov.aqqTclBnList, gov.govDtaBnList, gov.passportExpBnList, gov.passportExpiringSoonBnList, gov.wrongPassportBnList, gov.missingApiBnList, gov.infApiBnList];
         const govCount = isClearLocked("GOV") ? 0 : govIssueGroups.reduce((sum, value) => sum + unresolvedReviewedBnCount(value, passBnSet), 0);
         const webediCount = isClearLocked("WEBEDI") ? 0 : unresolvedReviewedBnCount(webEdiIssueBnList(sy), passBnSet);
         const nbrdRows = nbrdRowsWithAcknowledgements(sy);
@@ -6046,6 +6123,7 @@
           ["USA TIME OUT", (gov.aqqTclBnList || []).map((bn) => ({ bn, reason: "USA TIME OUT" }))],
           ["CHN GOV FAIL", (gov.govDtaBnList || []).map((bn) => ({ bn, reason: "CHN GOV FAIL" }))],
           ["Passport Exp", (gov.passportExpBnList || []).map((bn) => ({ bn, reason: "Passport Exp" }))],
+          ["Passport <3 Months", (gov.passportExpiringSoonBnList || []).map((bn) => ({ bn, reason: "Passport expires within 3 months" }))],
           ["Wrong Passport", (gov.wrongPassportBnList || []).map((bn) => ({ bn, reason: "Wrong Passport: passport number has fewer than 7 characters" }))],
           ["Missing API", (gov.missingApiBnList || []).map((bn) => ({ bn, reason: "Missing API item" }))],
           ["INF API", (gov.infApiIssueDetails || gov.infApiBnList || []).map((item) => typeof item === "string" ? { bn: item, reason: "INF API not passed" } : item)],
@@ -7664,10 +7742,12 @@
         }
       });
 
-      logoutButton.addEventListener("click", async () => {
-        if (auth) await auth.signOut();
-        window.location.href = loginUrl();
-      });
+      async function logoutToLogin() {
+        await returnToLogin();
+      }
+
+      logoutButton.addEventListener("click", logoutToLogin);
+      mobileLogoutButton?.addEventListener("click", logoutToLogin);
 
       flightMenuButton.addEventListener("click", () => {
         const open = flightMenuButton.getAttribute("aria-expanded") === "true";
