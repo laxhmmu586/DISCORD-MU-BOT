@@ -297,15 +297,33 @@
       const AUTH_SESSION_STARTED_KEY = "mufc_auth_session_started_at";
       const AUTH_LAST_ACTIVITY_KEY = "mufc_auth_last_activity_at";
 
-      function authStorage() {
-        return window.localStorage || window.sessionStorage;
+      function storageCandidates() {
+        return ["localStorage", "sessionStorage"].map((key) => {
+          try {
+            return window[key];
+          } catch (error) {
+            return null;
+          }
+        }).filter(Boolean);
+      }
+
+      function safeSetStorage(key, value) {
+        for (const storage of storageCandidates()) {
+          try {
+            storage.setItem(key, value);
+            return true;
+          } catch (error) {
+            // Some mobile/private browsers expose storage but reject writes.
+          }
+        }
+        return false;
       }
 
       function allowAppEntry() {
         const now = String(Date.now());
-        authStorage().setItem(APP_ENTRY_KEY, now);
-        authStorage().setItem(AUTH_SESSION_STARTED_KEY, now);
-        authStorage().setItem(AUTH_LAST_ACTIVITY_KEY, now);
+        safeSetStorage(APP_ENTRY_KEY, now);
+        safeSetStorage(AUTH_SESSION_STARTED_KEY, now);
+        safeSetStorage(AUTH_LAST_ACTIVITY_KEY, now);
       }
 
       function getRedirectTarget() {
@@ -341,7 +359,9 @@
         setStatus("Firebase is not connected. Open this page from Firebase Hosting and redeploy if this continues.", true);
       } else {
         const auth = firebase.auth();
-        const persistenceReady = auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
+        const persistenceReady = auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+          .catch(() => auth.setPersistence(firebase.auth.Auth.Persistence.SESSION))
+          .catch(() => {});
         auth.onAuthStateChanged((user) => {
           if (user) {
             allowAppEntry();
@@ -357,7 +377,12 @@
           setStatus("Signing in...");
           try {
             await persistenceReady;
-            await auth.signInWithEmailAndPassword(emailInput.value.trim(), passwordInput.value);
+            const credential = await auth.signInWithEmailAndPassword(emailInput.value.trim(), passwordInput.value);
+            if (credential?.user) {
+              allowAppEntry();
+              setStatus("Login successful. Opening dashboard...");
+              window.location.replace(getRedirectTarget());
+            }
           } catch (error) {
             submitButton.disabled = false;
             setStatus(friendlyAuthError(error), true);
