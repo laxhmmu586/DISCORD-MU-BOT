@@ -113,13 +113,18 @@ function hasTargetPsm(line) {
 
 function formatPassportExpiryFromSection(section) {
   const passportRawLine = (String(section || '').match(/PASSPORT\s*:\s*([^\n\r]+)/i)?.[1] || '').trim().toUpperCase();
-  const expField = passportRawLine.split('/').map((x) => x.trim()).find((part, index, parts) => /^\d{6}$/.test(part) && (parts[index - 1] || '').trim() === '');
-  const fallback = passportRawLine.split('/').map((x) => x.trim()).find((part) => /^\d{6}$/.test(part)) || '';
-  const value = expField || fallback;
+  const value = extractPassportExpiryKeyFromRawLine(passportRawLine);
   if (!value) return '';
   return `${value.slice(4, 6)}/${value.slice(2, 4)}/20${value.slice(0, 2)}`;
 }
 
+
+function extractPassportExpiryKeyFromRawLine(passportRawLine) {
+  const parts = String(passportRawLine || '').toUpperCase().split('/').map((x) => x.trim());
+  return parts.find((part, index) => index > 0 && /^\d{6}$/.test(part) && (parts[index - 1] || '') === '')
+    || parts.find((part, index) => /^\d{6}$/.test(part) && /^[A-Z]{3}$/.test(parts[index + 1] || ''))
+    || '';
+}
 
 function parsePassportExpiryKey(expField) {
   const value = String(expField || '').trim();
@@ -159,6 +164,14 @@ function passportNationalityFromRawLine(passportRawLine) {
   return raw.match(/\/NAT\/([A-Z]{3})\//i)?.[1]?.toUpperCase()
     || raw.split('/').map((x) => x.trim()).find((part, index, parts) => index > 0 && parts[index - 1] === 'NAT' && /^[A-Z]{3}$/.test(part))
     || '';
+}
+
+function flightDateToUtc(flightDate) {
+  const match = String(flightDate || '').toUpperCase().match(/^(\d{2})([A-Z]{3})(\d{2})$/);
+  if (!match) return NaN;
+  const month = MONTH_INDEX[match[2]];
+  if (month === undefined) return NaN;
+  return Date.UTC(2000 + Number(match[3]), month, Number(match[1]));
 }
 
 function extractTicketNoFromSection(section) {
@@ -871,7 +884,7 @@ function enrichGovAqqFromLog(log, syInfo, targetYmd = null) {
     return score;
   };
   const now = new Date();
-  const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const todayUtc = flightDateToUtc(syInfo.flightDate) || Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
 
   for (const sectionObj of sections) {
     const section = sectionObj.content || '';
@@ -950,8 +963,7 @@ ${section}`,
 
     const hasCodeIssue = hasCountryCodeRisk || hasApiSourceRisk || !hasApiOperation;
     const passportRawLine = (section.match(/PASSPORT\s*:\s*([^\n\r]+)/i)?.[1] || '').trim().toUpperCase();
-    const passportParts = passportRawLine.split('/').map((x) => x.trim());
-    const expField = passportParts.find((part) => /^\d{6}$/.test(part)) || '';
+    const expField = extractPassportExpiryKeyFromRawLine(passportRawLine);
     const passportNat = passportNationalityFromRawLine(passportRawLine);
     const expDate = parsePassportExpiryKey(expField);
     const expDateUtc = expDate ? Date.UTC(expDate.getUTCFullYear(), expDate.getUTCMonth(), expDate.getUTCDate()) : 0;
@@ -964,9 +976,9 @@ ${section}`,
       issueReasons.push(`passport expires within 3 months: ${expField}`);
       passportExpiringSoonBnList.push(bn);
     }
-    const hasWrongPassport = Boolean(passportNo) && passportNo.length < 7;
+    const hasWrongPassport = Boolean(passportNo) && passportNo.length < 6;
     if (hasWrongPassport) {
-      issueReasons.push(`wrong passport: ${passportNo} has fewer than 7 characters`);
+      issueReasons.push(`wrong passport: ${passportNo} has fewer than 6 characters`);
     }
     const infApiIssue = infantApiIssueFromSection(section);
     if (infApiIssue) {
@@ -1224,7 +1236,7 @@ function enrichSeatMapRecordsFromLog(log, syInfo, targetYmd = null) {
     const isChild = (Number.isInteger(ageYears) && ageYears >= 2 && ageYears < 12) || hasChdCode;
     const passportNo = section.match(/PASSPORT\s*:\s*([A-Z0-9]+)/i)?.[1]?.toUpperCase() || '';
     const passportRawLine = (section.match(/PASSPORT\s*:\s*([^\n\r]+)/i)?.[1] || '').trim().toUpperCase();
-    const expField = passportRawLine.split('/').map((x) => x.trim()).find((part) => /^\d{6}$/.test(part)) || '';
+    const expField = extractPassportExpiryKeyFromRawLine(passportRawLine);
     const isOffloaded = isDeletedPassengerLine(passengerLine);
     const ts = parseSectionTimestamp(sectionObj.timestamp);
     const identity = passportNo || passengerName || `${seat}:UNKNOWN`;
@@ -1425,9 +1437,9 @@ ${section}`,
     const countryCodeCountZero = countryCodes.length === 0;
     const passportRawLine = (section.match(/PASSPORT\s*:\s*([^\n\r]+)/i)?.[1] || '').trim().toUpperCase();
     const passportNo = section.match(/PASSPORT\s*:\s*([A-Z0-9]+)/i)?.[1]?.toUpperCase() || '';
-    const expField = passportRawLine.split('/').map((x) => x.trim()).find((part) => /^\d{6}$/.test(part)) || '';
+    const expField = extractPassportExpiryKeyFromRawLine(passportRawLine);
     const now = new Date();
-    const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+    const todayUtc = flightDateToUtc(syInfo.flightDate) || Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
     const expDate = parsePassportExpiryKey(expField);
     const expDateUtc = expDate ? Date.UTC(expDate.getUTCFullYear(), expDate.getUTCMonth(), expDate.getUTCDate()) : 0;
     const isPassportExpired = Boolean(expDateUtc && expDateUtc < todayUtc);
@@ -1666,7 +1678,7 @@ ${section}`,
     if (hasGovFail) { apiStatus = 'fail'; apiReasons.push('CHN GOV FAIL'); }
     if (isPassportExpired) { apiStatus = 'fail'; apiReasons.push(`Passport expired: ${expField}`); }
     else if (isPassportExpiringSoon) { apiStatus = 'fail'; apiReasons.push(`Passport expires within 3 months: ${expField}`); }
-    if (passportNo && passportNo.length < 7) { apiStatus = 'fail'; apiReasons.push(`Wrong Passport: ${passportNo} has fewer than 7 characters`); }
+    if (passportNo && passportNo.length < 6) { apiStatus = 'fail'; apiReasons.push(`Wrong Passport: ${passportNo} has fewer than 6 characters`); }
     if (hasReview && apiStatus !== 'fail') { apiStatus = 'review'; apiReasons.push('WEB/EDI/Reswipe'); }
     if (!hasApiOperation && apiStatus !== 'fail') {
       apiStatus = 'review';
