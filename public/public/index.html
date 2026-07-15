@@ -6210,6 +6210,16 @@
         ].join("/").toUpperCase();
       }
 
+      function rowActiveServiceCodes(row) {
+        const passenger = row?.passengerRecord || {};
+        return [
+          ...(row?.specialServices || []),
+          ...(row?.codes || []),
+          ...(passenger.specialServices || []),
+          ...(passenger.codes || []),
+        ].join("/").toUpperCase();
+      }
+
       function hasTicket(row) {
         return Boolean(row?.ticketNumber || row?.ticketNo || row?.passengerRecord?.ticketNumber || row?.passengerRecord?.ticketNo);
       }
@@ -6349,13 +6359,14 @@
           const seat = String(row.seat || row.passengerRecord?.seat || "").toUpperCase();
           const age = Number(row.ageYears ?? row.passengerRecord?.ageYears);
           const services = rowServices(row);
+          const activeServiceCodes = rowActiveServiceCodes(row);
           if (restrictedUnder15Seats.has(seat) && Number.isInteger(age) && age < 15) {
             addWarning(row, "EXIT/RESTRICTED SEAT", `${seat} passenger is under 15 by DOB/age (${age}).`);
           }
           if (hasKnownPassengerRecord(row) && !hasTicket(row)) {
             addWarning(row, "NO TICKET", "Passenger has no ticket number in the record.");
           }
-          if (/WCHC/.test(services)) {
+          if (/WCHC/.test(activeServiceCodes)) {
             addWarning(row, "WCHC", "Passenger has WCHC wheelchair service.");
           }
           if (row.hasBadSeat || row.passengerRecord?.hasBadSeat) {
