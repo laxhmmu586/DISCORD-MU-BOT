@@ -123,7 +123,9 @@ const CBS_SCAN_HEADERS = ['BN', 'Seat', 'Flight', 'Raw Scan', 'Scanned At'];
 const CBS_SCAN_INFANT_HEADERS = ['Infant BN', 'Infant Seat', 'Infant Flight', 'Infant Raw Scan', 'Infant Scanned At'];
 let cbsScanSheetTitle = '';
 let cbsScanSheetCache = { loadedAt: 0, rows: [] };
-let cbsScanAppendQueue = Promise.resolve();
+let cbsScanAppendPending = [];
+let cbsScanAppendTimer = null;
+let cbsScanAppendBatchChain = Promise.resolve();
 let cbsMissingBagSheetTitle = '';
 let cbsMissingBagSheetCache = { loadedAt: 0, rows: [] };
 
@@ -2573,6 +2575,31 @@ async function getFlightLogByDate(date, yearSuffix) {
 }
 
 
+function isCbsScanQuotaError(err) {
+  const status = Number(err?.code || err?.status || err?.response?.status || 0);
+  const reasonText = JSON.stringify(err?.errors || err?.response?.data || err?.message || '').toLowerCase();
+  return status === 429 || (status === 403 && /quota|ratelimit|rate limit|user-rate|usage limits/.test(reasonText));
+}
+
+async function cbsScanSheetsCall(fn, label = 'Google Sheets request') {
+  const delays = [750, 1500, 3000, 5000];
+  for (let attempt = 0; attempt <= delays.length; attempt += 1) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (!isCbsScanQuotaError(err) || attempt === delays.length) {
+        if (isCbsScanQuotaError(err)) {
+          err.code = 'SHEETS_QUOTA';
+          err.message = `${label} hit Google Sheets quota. Please wait a few seconds and scan again.`;
+        }
+        throw err;
+      }
+      await new Promise((resolve) => setTimeout(resolve, delays[attempt]));
+    }
+  }
+  throw new Error(`${label} failed.`);
+}
+
 async function getCbsScanSheetTitle() {
   if (!cbsScanSheetTitle) cbsScanSheetTitle = await resolveSheetTitleByGid(CBS_SCAN_SHEET_ID, CBS_SCAN_SHEET_GID);
   return cbsScanSheetTitle || 'Sheet1';
@@ -2582,10 +2609,10 @@ async function getCbsScanSheetRows(options = {}) {
   const ttlMs = 5 * 1000;
   if (!options.forceRefresh && Date.now() - cbsScanSheetCache.loadedAt < ttlMs && cbsScanSheetCache.rows.length) return cbsScanSheetCache.rows;
   const title = await getCbsScanSheetTitle();
-  const res = await sheets.spreadsheets.values.get({
+  const res = await cbsScanSheetsCall(() => sheets.spreadsheets.values.get({
     spreadsheetId: CBS_SCAN_SHEET_ID,
     range: `${escapeSheetTitle(title)}!A:R`
-  });
+  }), 'CBS scan sheet read');
   const rows = res.data.values || [];
   cbsScanSheetCache = { loadedAt: Date.now(), rows };
   return rows;
@@ -2599,30 +2626,30 @@ async function ensureCbsScanSheetHeaders(rows) {
   const title = await getCbsScanSheetTitle();
   let updated = false;
   if (!hasHeaders) {
-    await sheets.spreadsheets.values.update({
+    await cbsScanSheetsCall(() => sheets.spreadsheets.values.update({
       spreadsheetId: CBS_SCAN_SHEET_ID,
       range: `${escapeSheetTitle(title)}!A1:E1`,
       valueInputOption: 'RAW',
       requestBody: { values: [CBS_SCAN_HEADERS] }
-    });
+    }), 'CBS scan header update');
     updated = true;
   }
   if (!hasNbrdHeaders) {
-    await sheets.spreadsheets.values.update({
+    await cbsScanSheetsCall(() => sheets.spreadsheets.values.update({
       spreadsheetId: CBS_SCAN_SHEET_ID,
       range: `${escapeSheetTitle(title)}!L1:M1`,
       valueInputOption: 'RAW',
       requestBody: { values: [['NBRD BN', 'CKIN NBRD Detail']] }
-    });
+    }), 'CBS scan header update');
     updated = true;
   }
   if (!hasInfantHeaders) {
-    await sheets.spreadsheets.values.update({
+    await cbsScanSheetsCall(() => sheets.spreadsheets.values.update({
       spreadsheetId: CBS_SCAN_SHEET_ID,
       range: `${escapeSheetTitle(title)}!N1:R1`,
       valueInputOption: 'RAW',
       requestBody: { values: [CBS_SCAN_INFANT_HEADERS] }
-    });
+    }), 'CBS scan header update');
     updated = true;
   }
   if (updated) cbsScanSheetCache = { loadedAt: 0, rows: [] };
@@ -2654,12 +2681,12 @@ function normalizeCbsScanNbrdEntry(value) {
 }
 
 async function writeCbsScanNbrdDetail(title, rowNumber, bn, detail = '') {
-  await sheets.spreadsheets.values.update({
+  await cbsScanSheetsCall(() => sheets.spreadsheets.values.update({
     spreadsheetId: CBS_SCAN_SHEET_ID,
     range: `${escapeSheetTitle(title)}!L${rowNumber}:M${rowNumber}`,
     valueInputOption: 'RAW',
     requestBody: { values: [[formatCbsScanSheetBn(bn), detail]] }
-  });
+  }), 'CBS scan NBRD update');
   cbsScanSheetCache = { loadedAt: 0, rows: [] };
 }
 
@@ -2677,10 +2704,10 @@ async function appendCbsScanNbrdBn(title, bn, dataRows, detail = '') {
 }
 
 async function clearCbsScanNbrdRows(title) {
-  await sheets.spreadsheets.values.clear({
+  await cbsScanSheetsCall(() => sheets.spreadsheets.values.clear({
     spreadsheetId: CBS_SCAN_SHEET_ID,
     range: `${escapeSheetTitle(title)}!L2:M`
-  });
+  }), 'CBS scan NBRD clear');
   cbsScanSheetCache = { loadedAt: 0, rows: [] };
 }
 
@@ -2704,10 +2731,10 @@ async function deleteCbsScanNbrdBn(rowNumber, bn = '') {
     err.code = 'NBRD_MISMATCH';
     throw err;
   }
-  await sheets.spreadsheets.values.clear({
+  await cbsScanSheetsCall(() => sheets.spreadsheets.values.clear({
     spreadsheetId: CBS_SCAN_SHEET_ID,
     range: `${escapeSheetTitle(title)}!L${targetRow}:M${targetRow}`
-  });
+  }), 'CBS scan NBRD delete');
   cbsScanSheetCache = { loadedAt: 0, rows: [] };
   return { deleted: true, rowNumber: targetRow, bn: formatCbsScanSheetBn(rowBn) };
 }
@@ -2744,12 +2771,12 @@ function isCbsScanEnteredCell(cell = {}) {
 }
 
 async function getCbsScanEnteredRowNumbers(title) {
-  const res = await sheets.spreadsheets.get({
+  const res = await cbsScanSheetsCall(() => sheets.spreadsheets.get({
     spreadsheetId: CBS_SCAN_SHEET_ID,
     ranges: [`${escapeSheetTitle(title)}!A2:C`],
     includeGridData: true,
     fields: 'sheets(data(rowData(values(userEnteredFormat(backgroundColor),effectiveFormat(backgroundColor)))))'
-  });
+  }), 'CBS scan entered-state read');
   const rowData = res.data.sheets?.[0]?.data?.[0]?.rowData || [];
   const entered = new Set();
   rowData.forEach((row, index) => {
@@ -2803,10 +2830,10 @@ async function setCbsScanRecordsEntered(rowNumbers = [], entered = false) {
   const uniqueRows = [...new Set((Array.isArray(rowNumbers) ? rowNumbers : [rowNumbers]).map(Number))]
     .filter((rowNumber) => Number.isInteger(rowNumber) && rowNumber >= 2);
   if (!uniqueRows.length) throw new Error('No valid scan row numbers.');
-  await sheets.spreadsheets.batchUpdate({
+  await cbsScanSheetsCall(() => sheets.spreadsheets.batchUpdate({
     spreadsheetId: CBS_SCAN_SHEET_ID,
     requestBody: { requests: uniqueRows.map((rowNumber) => cbsScanEnteredRepeatCellRequest(rowNumber, entered)) }
-  });
+  }), 'CBS scan entered-state update');
   cbsScanSheetCache = { loadedAt: 0, rows: [] };
   return { rowNumbers: uniqueRows, entered: Boolean(entered) };
 }
@@ -2825,51 +2852,96 @@ function throwCbsScanNbrdMessage(bn, detail = '') {
   throw err;
 }
 
-function queueCbsScanAppend(work) {
-  const run = cbsScanAppendQueue.catch(() => {}).then(work);
-  cbsScanAppendQueue = run.catch(() => {});
-  return run;
+function makeCbsScanDuplicateError(bn) {
+  const err = new Error(`Duplicate BN ${formatCbsScanSheetBn(bn)}.`);
+  err.code = 'DUPLICATE_BN';
+  return err;
 }
 
-async function appendCbsScanRecord(record = {}) {
-  return queueCbsScanAppend(() => appendCbsScanRecordNow(record));
+function applyCbsScanWorkingRow(workingRows, rowNumber, scanColumnStart, values) {
+  const rowIndex = rowNumber - 2;
+  while (workingRows.length <= rowIndex) workingRows.push([]);
+  const row = workingRows[rowIndex];
+  values.forEach((value, index) => { row[scanColumnStart + index] = value; });
 }
 
-async function appendCbsScanRecordNow(record = {}) {
+function prepareCbsScanAppend(record = {}, workingRows = []) {
   const bn = normalizeCbsScanBn(record.bn);
   if (!bn) throw new Error('Invalid BN.');
   const seat = String(record.seat || '').trim().toUpperCase();
   const flight = String(record.flight || '').trim().toUpperCase();
   const rawScan = String(record.rawScan || record.raw || '').trim();
   const scannedAt = record.scannedAt || new Date().toISOString();
-  const title = await getCbsScanSheetTitle();
-  const rows = await getCbsScanSheetRows({ forceRefresh: true });
-  const headersUpdated = await ensureCbsScanSheetHeaders(rows);
-  const dataRows = (headersUpdated ? await getCbsScanSheetRows({ forceRefresh: true }) : rows).slice(1);
-  const nbrdExisting = dataRows.find((row) => normalizeCbsScanBn(row[11]) === bn);
+  const nbrdExisting = workingRows.find((row) => normalizeCbsScanBn(row[11]) === bn);
   if (nbrdExisting) throwCbsScanNbrdMessage(bn, String(nbrdExisting[12] || '').trim());
   const isInfant = record.isInfant === true || seat === 'INF';
   const bnColumnIndex = isInfant ? 13 : 0;
-  const existing = dataRows.find((row) => normalizeCbsScanBn(row[bnColumnIndex]) === bn);
-  if (existing) {
-    const err = new Error(`Duplicate BN ${formatCbsScanSheetBn(bn)}.`);
-    err.code = 'DUPLICATE_BN';
-    throw err;
-  }
+  const existing = workingRows.find((row) => normalizeCbsScanBn(row[bnColumnIndex]) === bn);
+  if (existing) throw makeCbsScanDuplicateError(bn);
   const scanColumnStart = isInfant ? 13 : 0;
   const scanRangeColumns = isInfant ? 'N:R' : 'A:E';
-  const lastScanOffset = dataRows.reduce((lastIndex, row, index) => (
+  const lastScanOffset = workingRows.reduce((lastIndex, row, index) => (
     row.slice(scanColumnStart, scanColumnStart + 5).some((cell) => String(cell || '').trim()) ? index : lastIndex
   ), -1);
   const rowNumber = lastScanOffset + 3;
-  await sheets.spreadsheets.values.update({
-    spreadsheetId: CBS_SCAN_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!${scanRangeColumns.replace(':', `${rowNumber}:`)}${rowNumber}`,
-    valueInputOption: 'RAW',
-    requestBody: { values: [[formatCbsScanSheetBn(bn), seat, flight, rawScan, scannedAt]] }
+  const values = [formatCbsScanSheetBn(bn), seat, flight, rawScan, scannedAt];
+  applyCbsScanWorkingRow(workingRows, rowNumber, scanColumnStart, values);
+  return { values, scanRangeColumns, rowNumber, result: { bn: formatCbsScanSheetBn(bn), seat, flight, rowNumber, scannedAt, isInfant } };
+}
+
+async function processCbsScanAppendBatch(batch = []) {
+  if (!batch.length) return;
+  let title = '';
+  let dataRows = [];
+  try {
+    title = await getCbsScanSheetTitle();
+    const rows = await getCbsScanSheetRows({ forceRefresh: true });
+    const headersUpdated = await ensureCbsScanSheetHeaders(rows);
+    dataRows = (headersUpdated ? await getCbsScanSheetRows({ forceRefresh: true }) : rows).slice(1).map((row) => [...row]);
+  } catch (err) {
+    batch.forEach((item) => item.reject(err));
+    return;
+  }
+  const updates = [];
+  const prepared = [];
+  for (const item of batch) {
+    try {
+      const next = prepareCbsScanAppend(item.record, dataRows);
+      updates.push({
+        range: `${escapeSheetTitle(title)}!${next.scanRangeColumns.replace(':', `${next.rowNumber}:`)}${next.rowNumber}`,
+        values: [next.values]
+      });
+      prepared.push({ item, result: next.result });
+    } catch (err) {
+      item.reject(err);
+    }
+  }
+  if (!updates.length) return;
+  try {
+    await cbsScanSheetsCall(() => sheets.spreadsheets.values.batchUpdate({
+      spreadsheetId: CBS_SCAN_SHEET_ID,
+      requestBody: { valueInputOption: 'RAW', data: updates }
+    }), 'CBS scan batch row write');
+    cbsScanSheetCache = { loadedAt: 0, rows: [] };
+    prepared.forEach(({ item, result }) => item.resolve(result));
+  } catch (err) {
+    prepared.forEach(({ item }) => item.reject(err));
+  }
+}
+
+function flushCbsScanAppendBatch() {
+  const batch = cbsScanAppendPending.splice(0);
+  cbsScanAppendTimer = null;
+  cbsScanAppendBatchChain = cbsScanAppendBatchChain
+    .catch(() => {})
+    .then(() => processCbsScanAppendBatch(batch));
+}
+
+async function appendCbsScanRecord(record = {}) {
+  return new Promise((resolve, reject) => {
+    cbsScanAppendPending.push({ record, resolve, reject });
+    if (!cbsScanAppendTimer) cbsScanAppendTimer = setTimeout(flushCbsScanAppendBatch, 300);
   });
-  cbsScanSheetCache = { loadedAt: 0, rows: [] };
-  return { bn: formatCbsScanSheetBn(bn), seat, flight, rowNumber, scannedAt, isInfant };
 }
 
 async function getTransit240SheetTitle() {
