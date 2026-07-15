@@ -92,8 +92,12 @@ function getPassengerNameFromSection(section) {
   const passengerLine = getPassengerRecordLine(section);
   const lineName = (passengerLine.match(/^\s*\d+\.\s*\d?([A-Z\/]+\+?)/i)?.[1] || '').replace(/\+$/, '').toUpperCase();
   if (lineName) return lineName;
-  const paxListName = (String(section || '').match(/PAXLST\s*:\s*([A-Z\/]+)\/?/i)?.[1] || '').replace(/\+$/, '').toUpperCase();
+  const paxListName = extractPaxListName(section);
   return paxListName || 'UNKNOWN';
+}
+
+function extractPaxListName(section) {
+  return (String(section || '').match(/PAXLST\s*:\s*([A-Z]+\/[A-Z]+)/i)?.[1] || '').toUpperCase();
 }
 
 const TARGET_PSM_MSG_CODES = ['TSXL', 'JMSQ', 'XCSQ', 'TXLK', 'QTQK', 'EXBG0KG'];
@@ -1224,6 +1228,7 @@ function enrichSeatMapRecordsFromLog(log, syInfo, targetYmd = null) {
 
     const passengerLine = getPassengerRecordLine(section);
     const passengerName = (passengerLine.match(/^\s*\d+\.\s*\d?([A-Z\/]+\+?)/i)?.[1] || '').replace(/\+$/, '').toUpperCase();
+    const paxListName = extractPaxListName(section);
     const bn = section.match(/\bBN\s*(\d{1,3})\b/i)?.[1]?.padStart(3, '0') || '';
     const seat = (
       extractSeatAfterBn(passengerLine) ||
@@ -1262,6 +1267,7 @@ function enrichSeatMapRecordsFromLog(log, syInfo, targetYmd = null) {
     latestByKey.set(key, {
       bn,
       name: passengerName || 'UNKNOWN',
+      paxListName,
       seat,
       passportNo,
       passportExpiry: formatPassportExpiryFromSection(section),
@@ -1463,6 +1469,7 @@ ${section}`,
     const isPassportExpiringSoon = passportNat !== 'CHN' && isPassportExpiringWithinMonths(expField, todayUtc, 3);
     const passengerLine = getPassengerRecordLine(section);
     const passengerName = (passengerLine.match(/^\s*\d+\.\s*\d?([A-Z\/]+\+?)/i)?.[1] || '').replace(/\+$/, '').toUpperCase();
+    const paxListName = extractPaxListName(section);
     const passengerSeat = (
       extractSeatAfterBn(passengerLine) ||
       section.match(/\bSN\s*(\d{1,3}[A-Z])\b/i)?.[1] ||
@@ -1518,6 +1525,7 @@ ${section}`,
     const passengerRecord = {
       bn,
       name: passengerName || 'UNKNOWN',
+      paxListName,
       seat: passengerSeat || '---',
       cabin: cabinFromSeat(passengerSeat),
       flight: syInfo.flightNo || '',
