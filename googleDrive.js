@@ -123,6 +123,7 @@ const CBS_SCAN_HEADERS = ['BN', 'Seat', 'Flight', 'Raw Scan', 'Scanned At'];
 const CBS_SCAN_INFANT_HEADERS = ['Infant BN', 'Infant Seat', 'Infant Flight', 'Infant Raw Scan', 'Infant Scanned At'];
 let cbsScanSheetTitle = '';
 let cbsScanSheetCache = { loadedAt: 0, rows: [] };
+let cbsScanAppendQueue = Promise.resolve();
 let cbsMissingBagSheetTitle = '';
 let cbsMissingBagSheetCache = { loadedAt: 0, rows: [] };
 
@@ -2593,27 +2594,39 @@ async function getCbsScanSheetRows(options = {}) {
 async function ensureCbsScanSheetHeaders(rows) {
   const firstRow = rows?.[0] || [];
   const hasHeaders = CBS_SCAN_HEADERS.every((header, index) => String(firstRow[index] || '').trim() === header);
+  const hasNbrdHeaders = ['NBRD BN', 'CKIN NBRD Detail'].every((header, index) => String(firstRow[index + 11] || '').trim() === header);
   const hasInfantHeaders = CBS_SCAN_INFANT_HEADERS.every((header, index) => String(firstRow[index + 13] || '').trim() === header);
   const title = await getCbsScanSheetTitle();
-  if (!hasHeaders) await sheets.spreadsheets.values.update({
-    spreadsheetId: CBS_SCAN_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A1:E1`,
-    valueInputOption: 'RAW',
-    requestBody: { values: [CBS_SCAN_HEADERS] }
-  });
-  await sheets.spreadsheets.values.update({
-    spreadsheetId: CBS_SCAN_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!L1:M1`,
-    valueInputOption: 'RAW',
-    requestBody: { values: [['NBRD BN', 'CKIN NBRD Detail']] }
-  });
-  if (!hasInfantHeaders) await sheets.spreadsheets.values.update({
-    spreadsheetId: CBS_SCAN_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!N1:R1`,
-    valueInputOption: 'RAW',
-    requestBody: { values: [CBS_SCAN_INFANT_HEADERS] }
-  });
-  cbsScanSheetCache = { loadedAt: 0, rows: [] };
+  let updated = false;
+  if (!hasHeaders) {
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: CBS_SCAN_SHEET_ID,
+      range: `${escapeSheetTitle(title)}!A1:E1`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [CBS_SCAN_HEADERS] }
+    });
+    updated = true;
+  }
+  if (!hasNbrdHeaders) {
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: CBS_SCAN_SHEET_ID,
+      range: `${escapeSheetTitle(title)}!L1:M1`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [['NBRD BN', 'CKIN NBRD Detail']] }
+    });
+    updated = true;
+  }
+  if (!hasInfantHeaders) {
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: CBS_SCAN_SHEET_ID,
+      range: `${escapeSheetTitle(title)}!N1:R1`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [CBS_SCAN_INFANT_HEADERS] }
+    });
+    updated = true;
+  }
+  if (updated) cbsScanSheetCache = { loadedAt: 0, rows: [] };
+  return updated;
 }
 
 function normalizeCbsScanBn(value) {
@@ -2812,7 +2825,17 @@ function throwCbsScanNbrdMessage(bn, detail = '') {
   throw err;
 }
 
+function queueCbsScanAppend(work) {
+  const run = cbsScanAppendQueue.catch(() => {}).then(work);
+  cbsScanAppendQueue = run.catch(() => {});
+  return run;
+}
+
 async function appendCbsScanRecord(record = {}) {
+  return queueCbsScanAppend(() => appendCbsScanRecordNow(record));
+}
+
+async function appendCbsScanRecordNow(record = {}) {
   const bn = normalizeCbsScanBn(record.bn);
   if (!bn) throw new Error('Invalid BN.');
   const seat = String(record.seat || '').trim().toUpperCase();
@@ -2821,8 +2844,8 @@ async function appendCbsScanRecord(record = {}) {
   const scannedAt = record.scannedAt || new Date().toISOString();
   const title = await getCbsScanSheetTitle();
   const rows = await getCbsScanSheetRows({ forceRefresh: true });
-  await ensureCbsScanSheetHeaders(rows);
-  const dataRows = (await getCbsScanSheetRows({ forceRefresh: true })).slice(1);
+  const headersUpdated = await ensureCbsScanSheetHeaders(rows);
+  const dataRows = (headersUpdated ? await getCbsScanSheetRows({ forceRefresh: true }) : rows).slice(1);
   const nbrdExisting = dataRows.find((row) => normalizeCbsScanBn(row[11]) === bn);
   if (nbrdExisting) throwCbsScanNbrdMessage(bn, String(nbrdExisting[12] || '').trim());
   const isInfant = record.isInfant === true || seat === 'INF';
