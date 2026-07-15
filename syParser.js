@@ -113,11 +113,65 @@ function hasTargetPsm(line) {
 
 function formatPassportExpiryFromSection(section) {
   const passportRawLine = (String(section || '').match(/PASSPORT\s*:\s*([^\n\r]+)/i)?.[1] || '').trim().toUpperCase();
-  const expField = passportRawLine.split('/').map((x) => x.trim()).find((part, index, parts) => /^\d{6}$/.test(part) && (parts[index - 1] || '').trim() === '');
-  const fallback = passportRawLine.split('/').map((x) => x.trim()).find((part) => /^\d{6}$/.test(part)) || '';
-  const value = expField || fallback;
+  const value = extractPassportExpiryKeyFromRawLine(passportRawLine);
   if (!value) return '';
   return `${value.slice(4, 6)}/${value.slice(2, 4)}/20${value.slice(0, 2)}`;
+}
+
+
+function extractPassportExpiryKeyFromRawLine(passportRawLine) {
+  const parts = String(passportRawLine || '').toUpperCase().split('/').map((x) => x.trim());
+  return parts.find((part, index) => index > 0 && /^\d{6}$/.test(part) && (parts[index - 1] || '') === '')
+    || parts.find((part, index) => /^\d{6}$/.test(part) && /^[A-Z]{3}$/.test(parts[index + 1] || ''))
+    || '';
+}
+
+function parsePassportExpiryKey(expField) {
+  const value = String(expField || '').trim();
+  if (!/^\d{6}$/.test(value)) return null;
+  const yy = Number(value.slice(0, 2));
+  const mm = Number(value.slice(2, 4));
+  const dd = Number(value.slice(4, 6));
+  if (mm < 1 || mm > 12 || dd < 1 || dd > 31) return null;
+  const date = new Date(Date.UTC(2000 + yy, mm - 1, dd));
+  if (date.getUTCFullYear() !== 2000 + yy || date.getUTCMonth() !== mm - 1 || date.getUTCDate() !== dd) return null;
+  return date;
+}
+
+function addUtcMonths(date, months) {
+  const result = new Date(date.getTime());
+  const targetMonth = result.getUTCMonth() + months;
+  const originalDay = result.getUTCDate();
+  result.setUTCDate(1);
+  result.setUTCMonth(targetMonth);
+  const lastDay = new Date(Date.UTC(result.getUTCFullYear(), result.getUTCMonth() + 1, 0)).getUTCDate();
+  result.setUTCDate(Math.min(originalDay, lastDay));
+  return result;
+}
+
+function isPassportExpiringWithinMonths(expField, referenceUtc, months) {
+  const expDate = parsePassportExpiryKey(expField);
+  if (!expDate || !Number.isFinite(referenceUtc)) return false;
+  const referenceDate = new Date(referenceUtc);
+  const referenceDayUtc = Date.UTC(referenceDate.getUTCFullYear(), referenceDate.getUTCMonth(), referenceDate.getUTCDate());
+  const expiryUtc = Date.UTC(expDate.getUTCFullYear(), expDate.getUTCMonth(), expDate.getUTCDate());
+  const thresholdUtc = addUtcMonths(new Date(referenceDayUtc), months).getTime();
+  return expiryUtc >= referenceDayUtc && expiryUtc < thresholdUtc;
+}
+
+function passportNationalityFromRawLine(passportRawLine) {
+  const raw = String(passportRawLine || '').toUpperCase();
+  return raw.match(/\/NAT\/([A-Z]{3})\//i)?.[1]?.toUpperCase()
+    || raw.split('/').map((x) => x.trim()).find((part, index, parts) => index > 0 && parts[index - 1] === 'NAT' && /^[A-Z]{3}$/.test(part))
+    || '';
+}
+
+function flightDateToUtc(flightDate) {
+  const match = String(flightDate || '').toUpperCase().match(/^(\d{2})([A-Z]{3})(\d{2})$/);
+  if (!match) return NaN;
+  const month = MONTH_INDEX[match[2]];
+  if (month === undefined) return NaN;
+  return Date.UTC(2000 + Number(match[3]), month, Number(match[1]));
 }
 
 function extractTicketNoFromSection(section) {
@@ -810,13 +864,14 @@ function infantApiIssueFromSection(section) {
 
 function enrichGovAqqFromLog(log, syInfo, targetYmd = null) {
   if (!log || !syInfo?.flightNo || !syInfo?.flightDate) {
-    return { duplicatePassports: [], aqqTclBnList: [], govDtaBnList: [], passportExpBnList: [], wrongPassportBnList: [], missingApiBnList: [], infApiBnList: [], passportCodeIssues: [] };
+    return { duplicatePassports: [], aqqTclBnList: [], govDtaBnList: [], passportExpBnList: [], passportExpiringSoonBnList: [], wrongPassportBnList: [], missingApiBnList: [], infApiBnList: [], passportCodeIssues: [] };
   }
   const sections = splitLogicalSections(log);
   const paxRecords = [];
   const issueByBn = new Map();
   const latestSectionByBn = new Map();
   const passportExpBnList = [];
+  const passportExpiringSoonBnList = [];
   const infApiIssues = [];
   const sectionRichnessScore = (text) => {
     const raw = String(text || '');
@@ -829,7 +884,7 @@ function enrichGovAqqFromLog(log, syInfo, targetYmd = null) {
     return score;
   };
   const now = new Date();
-  const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const todayUtc = flightDateToUtc(syInfo.flightDate) || Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
 
   for (const sectionObj of sections) {
     const section = sectionObj.content || '';
@@ -908,21 +963,18 @@ ${section}`,
 
     const hasCodeIssue = hasCountryCodeRisk || hasApiSourceRisk || !hasApiOperation;
     const passportRawLine = (section.match(/PASSPORT\s*:\s*([^\n\r]+)/i)?.[1] || '').trim().toUpperCase();
-    const passportParts = passportRawLine.split('/').map((x) => x.trim());
-    const expField = passportParts.find((part) => /^\d{6}$/.test(part)) || '';
-    let hasPassportExpired = false;
-    if (expField) {
-      const yy = Number(expField.slice(0, 2));
-      const mm = Number(expField.slice(2, 4));
-      const dd = Number(expField.slice(4, 6));
-      if (mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31) {
-        const expDateUtc = Date.UTC(2000 + yy, mm - 1, dd);
-        hasPassportExpired = expDateUtc < todayUtc;
-      }
-    }
+    const expField = extractPassportExpiryKeyFromRawLine(passportRawLine);
+    const passportNat = passportNationalityFromRawLine(passportRawLine);
+    const expDate = parsePassportExpiryKey(expField);
+    const expDateUtc = expDate ? Date.UTC(expDate.getUTCFullYear(), expDate.getUTCMonth(), expDate.getUTCDate()) : 0;
+    const hasPassportExpired = Boolean(expDateUtc && expDateUtc < todayUtc);
+    const hasPassportExpiringSoon = passportNat !== 'CHN' && isPassportExpiringWithinMonths(expField, todayUtc, 3);
     if (hasPassportExpired) {
       issueReasons.push(`passport expired: ${expField}`);
       passportExpBnList.push(bn);
+    } else if (hasPassportExpiringSoon) {
+      issueReasons.push(`passport expires within 3 months: ${expField}`);
+      passportExpiringSoonBnList.push(bn);
     }
     const hasWrongPassport = Boolean(passportNo) && passportNo.length < 7;
     if (hasWrongPassport) {
@@ -947,10 +999,11 @@ ${section}`,
       ticketNo: extractTicketNoFromSection(section),
       hasGovDta: /\bGOV\/DTA\/CHN\b/i.test(section),
       hasWrongPassport,
+      hasPassportExpiringSoon,
       hasInfApiIssue: Boolean(infApiIssue),
       hasPassportCodeIssue: hasCodeIssue
     });
-    if (hasCodeIssue || hasPassportExpired || hasWrongPassport || infApiIssue) {
+    if (hasCodeIssue || hasPassportExpired || hasPassportExpiringSoon || hasWrongPassport || infApiIssue) {
       issueByBn.set(bn, issueReasons.join('; '));
     }
   }
@@ -1002,6 +1055,7 @@ ${section}`,
     aqqTclBnList: [...new Set(paxRecords.filter((p) => p.hasAqqTcl).map((p) => p.bn))].sort(),
     govDtaBnList: [...new Set(paxRecords.filter((p) => p.hasGovDta).map((p) => p.bn))].sort(),
     passportExpBnList: [...new Set(passportExpBnList)].sort(),
+    passportExpiringSoonBnList: [...new Set(passportExpiringSoonBnList)].sort(),
     wrongPassportBnList: [...new Set(paxRecords.filter((p) => p.hasWrongPassport).map((p) => p.bn))].sort(),
     missingApiBnList: [...new Set(paxRecords.filter((p) => !p.hasApiOperation).map((p) => p.bn))].sort(),
     infApiBnList: [...new Set(paxRecords.filter((p) => p.hasInfApiIssue).map((p) => p.bn))].sort(),
@@ -1182,7 +1236,7 @@ function enrichSeatMapRecordsFromLog(log, syInfo, targetYmd = null) {
     const isChild = (Number.isInteger(ageYears) && ageYears >= 2 && ageYears < 12) || hasChdCode;
     const passportNo = section.match(/PASSPORT\s*:\s*([A-Z0-9]+)/i)?.[1]?.toUpperCase() || '';
     const passportRawLine = (section.match(/PASSPORT\s*:\s*([^\n\r]+)/i)?.[1] || '').trim().toUpperCase();
-    const expField = passportRawLine.split('/').map((x) => x.trim()).find((part) => /^\d{6}$/.test(part)) || '';
+    const expField = extractPassportExpiryKeyFromRawLine(passportRawLine);
     const isOffloaded = isDeletedPassengerLine(passengerLine);
     const ts = parseSectionTimestamp(sectionObj.timestamp);
     const identity = passportNo || passengerName || `${seat}:UNKNOWN`;
@@ -1383,19 +1437,14 @@ ${section}`,
     const countryCodeCountZero = countryCodes.length === 0;
     const passportRawLine = (section.match(/PASSPORT\s*:\s*([^\n\r]+)/i)?.[1] || '').trim().toUpperCase();
     const passportNo = section.match(/PASSPORT\s*:\s*([A-Z0-9]+)/i)?.[1]?.toUpperCase() || '';
-    const expField = passportRawLine.split('/').map((x) => x.trim()).find((part) => /^\d{6}$/.test(part)) || '';
+    const expField = extractPassportExpiryKeyFromRawLine(passportRawLine);
     const now = new Date();
-    const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-    let isPassportExpired = false;
-    if (expField) {
-      const yy = Number(expField.slice(0, 2));
-      const mm = Number(expField.slice(2, 4));
-      const dd = Number(expField.slice(4, 6));
-      if (mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31) {
-        isPassportExpired = Date.UTC(2000 + yy, mm - 1, dd) < todayUtc;
-      }
-    }
-    const passportNat = passportRawLine.match(/\/NAT\/([A-Z]{3})\//i)?.[1]?.toUpperCase() || '';
+    const todayUtc = flightDateToUtc(syInfo.flightDate) || Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+    const expDate = parsePassportExpiryKey(expField);
+    const expDateUtc = expDate ? Date.UTC(expDate.getUTCFullYear(), expDate.getUTCMonth(), expDate.getUTCDate()) : 0;
+    const isPassportExpired = Boolean(expDateUtc && expDateUtc < todayUtc);
+    const passportNat = passportNationalityFromRawLine(passportRawLine);
+    const isPassportExpiringSoon = passportNat !== 'CHN' && isPassportExpiringWithinMonths(expField, todayUtc, 3);
     const passengerLine = getPassengerRecordLine(section);
     const passengerName = (passengerLine.match(/^\s*\d+\.\s*\d?([A-Z\/]+\+?)/i)?.[1] || '').replace(/\+$/, '').toUpperCase();
     const passengerSeat = (
@@ -1628,6 +1677,7 @@ ${section}`,
     if (hasTimeOut) { apiStatus = 'fail'; apiReasons.push('USA TIME OUT'); }
     if (hasGovFail) { apiStatus = 'fail'; apiReasons.push('CHN GOV FAIL'); }
     if (isPassportExpired) { apiStatus = 'fail'; apiReasons.push(`Passport expired: ${expField}`); }
+    else if (isPassportExpiringSoon) { apiStatus = 'fail'; apiReasons.push(`Passport expires within 3 months: ${expField}`); }
     if (passportNo && passportNo.length < 7) { apiStatus = 'fail'; apiReasons.push(`Wrong Passport: ${passportNo} has fewer than 7 characters`); }
     if (hasReview && apiStatus !== 'fail') { apiStatus = 'review'; apiReasons.push('WEB/EDI/Reswipe'); }
     if (!hasApiOperation && apiStatus !== 'fail') {
