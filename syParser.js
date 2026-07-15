@@ -996,9 +996,9 @@ ${section}`,
       issueReasons.push(`passport expires within 3 months: ${expField}`);
       passportExpiringSoonBnList.push(bn);
     }
-    const hasWrongPassport = Boolean(passportNo) && passportNo.length < 7;
+    const hasWrongPassport = Boolean(passportNo) && passportNo.length < 6;
     if (hasWrongPassport) {
-      issueReasons.push(`wrong passport: ${passportNo} has fewer than 7 characters`);
+      issueReasons.push(`wrong passport: ${passportNo} has fewer than 6 characters`);
     }
     const infApiIssue = infantApiIssueFromSection(section);
     if (infApiIssue) {
