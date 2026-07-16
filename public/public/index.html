@@ -6030,12 +6030,12 @@
       }
 
       function stopSyAutoRefreshWhenFinalNodesComplete() {
-        if (finalTimelineNodesComplete()) stopSyAutoRefresh();
+        // Keep the home dashboard refreshing every 30 seconds even after final timeline nodes complete.
       }
 
       async function refreshSy({ silent = true, background = false } = {}) {
         if (document.hidden) return;
-        if (!isTodaySyQuery(activeSyQuery) || finalTimelineNodesComplete()) {
+        if (!isTodaySyQuery(activeSyQuery)) {
           stopSyAutoRefresh();
           return;
         }
@@ -6074,9 +6074,9 @@
       function startSyAutoRefresh(query = activeSyQuery, { immediate = true } = {}) {
         activeSyQuery = normalizeSyQuery(query || "SY");
         stopSyAutoRefresh();
-        if (!isTodaySyQuery(activeSyQuery) || finalTimelineNodesComplete()) return;
+        if (!isTodaySyQuery(activeSyQuery)) return;
         if (immediate) refreshSy({ background: true });
-        if (!document.hidden && !finalTimelineNodesComplete()) syAutoRefreshTimer = setInterval(refreshSy, SY_AUTO_REFRESH_MS);
+        if (!document.hidden) syAutoRefreshTimer = setInterval(refreshSy, SY_AUTO_REFRESH_MS);
       }
 
       function syncSyAutoRefreshWithVisibility() {
@@ -6084,7 +6084,7 @@
           stopSyAutoRefresh();
           return;
         }
-        if (isTodaySyQuery(activeSyQuery) && !finalTimelineNodesComplete() && !syAutoRefreshTimer) startSyAutoRefresh(activeSyQuery, { immediate: true });
+        if (isTodaySyQuery(activeSyQuery) && !syAutoRefreshTimer) startSyAutoRefresh(activeSyQuery, { immediate: true });
       }
 
       async function searchPassenger() {
