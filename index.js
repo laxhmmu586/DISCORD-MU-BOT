@@ -91,6 +91,7 @@ const fbLookup =
 const { findSYInfo } = require('./syParser');
 const NEXTDAY_INFO_DISCORD_CHANNEL_ID = '1399400605742661702';
 const TRANSIT_240_DISCORD_CHANNEL_ID = process.env.TRANSIT_240_DISCORD_CHANNEL_ID || '1365773224276660257';
+const CBS_ATTACHMENTS_DISCORD_CHANNEL_ID = process.env.CBS_ATTACHMENTS_DISCORD_CHANNEL_ID || '1527344986075693167';
 const transit240SubmitLocks = new Set();
 
 const DEFAULT_PERMISSIONS = {
@@ -1439,25 +1440,14 @@ function createPirPdf(record) {
   coded('TN', 'Bag Tag Number', record.bagTag, 52, 450, 500, 26);
   coded('DB', 'Destination on Bags', record.destinationOnBags, 52, 424, 500, 26);
   coded('BD', 'Baggage Details', record.ahlBagDescription || record.dprBagInfo, 52, 386, 500, 38);
-  coded('CD', 'Contents / Inner Damage', record.contentsDetails || record.dprInnerDamage, 52, 348, 500, 38);
   if (damageImage) {
-    box(52, 242, 500, 96, 'Damage Sketch', 8);
-    content.push(`q 280 0 0 78 166 252 cm /Damage Do Q`);
+    box(52, 252, 500, 96, 'Damage Sketch', 8);
+    content.push(`q 280 0 0 78 166 262 cm /Damage Do Q`);
   }
-  section('CONTENTS', 214);
-  box(52, 186, 160, 24, 'CATEGORY', 8);
-  box(212, 186, 340, 24, 'DESCRIPTION', 8);
   const items = Array.isArray(record.contentsRows) && record.contentsRows.length
     ? record.contentsRows
     : String(record.contentsDetails || '').split(/\s+\/\s+/).filter(Boolean).map((value) => ({ category: '', description: value }));
-  let itemY = 162;
-  for (let index = 0; index < 4; index += 1) {
-    const item = items[index] || {};
-    box(52, itemY, 160, 24, String(item.category || '').slice(0, 24), 8);
-    box(212, itemY, 340, 24, String(item.description || '').slice(0, 64), 8);
-    itemY -= 24;
-  }
-  section('SIGNATURE', 72);
+  section('SIGNATURE', 122);
   content.push(pdfText(`Date of issue ${record.issueDate || ''}`, 56, 50, 9));
   if (signatureImage) {
     box(390, 42, 160, 28, '', 8);
@@ -1465,13 +1455,47 @@ function createPirPdf(record) {
   } else {
     content.push(pdfText('Passenger Signature __________________________', 330, 50, 9));
   }
-  const stream = content.join('\n');
+  const contentPages = [content];
+  const chunkSize = 30;
+  const contentChunks = items.length ? Array.from({ length: Math.ceil(items.length / chunkSize) }, (_, index) => items.slice(index * chunkSize, (index + 1) * chunkSize)) : [[]];
+  contentChunks.forEach((chunk, pageIndex) => {
+    const page = [];
+    page.push('0.97 0.98 1 rg 0 0 612 792 re f');
+    page.push('0 0 0 RG 0 0 0 rg 1 w 36 36 540 720 re S');
+    page.push(pdfText('PROPERTY IRREGULARITY REPORT (PIR)', 54, 724, 15));
+    page.push(pdfText(pageIndex ? `CONTENTS CONTINUED (${pageIndex + 1})` : 'CONTENTS / PACKED ITEMS', 54, 706, 12));
+    page.push(pdfText(`CASE ID: ${record.caseNumber || ''}`, 410, 706, 10));
+    page.push(pdfText(`Passenger: ${record.passengerName || ''}`, 54, 686, 10));
+    page.push(pdfText(`Bag Tag: ${record.bagTag || ''}`, 54, 672, 10));
+    page.push('0.78 0.78 0.78 rg');
+    page.push('44 642 524 18 re f');
+    page.push('0 0 0 rg');
+    page.push(pdfText(pageIndex ? `CONTENTS CONTINUED (${pageIndex + 1})` : 'CONTENTS / PACKED ITEMS', 50, 647, 10));
+    page.push('0 0 0 RG 0.5 w 52 614 160 22 re S');
+    page.push(pdfText('CATEGORY', 58, 622, 8));
+    page.push('0 0 0 RG 0.5 w 212 614 340 22 re S');
+    page.push(pdfText('DESCRIPTION', 218, 622, 8));
+    let y = 592;
+    chunk.forEach((item) => {
+      page.push(`0 0 0 RG 0.5 w 52 ${y} 160 18 re S`);
+      page.push(pdfText(String(item.category || '').slice(0, 28), 58, y + 6, 7.5));
+      page.push(`0 0 0 RG 0.5 w 212 ${y} 340 18 re S`);
+      page.push(pdfText(String(item.description || '').slice(0, 80), 218, y + 6, 7.5));
+      y -= 18;
+    });
+    if (!chunk.length) page.push(pdfText('No contents entered.', 58, 610, 9));
+    contentPages.push(page);
+  });
   const fontId = addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
-  const streamId = addObject(`<< /Length ${Buffer.byteLength(stream, 'binary')} >>\nstream\n${stream}\nendstream`);
   const xObjectEntries = [imageRefs.Damage ? `/Damage ${imageRefs.Damage} 0 R` : '', imageRefs.Signature ? `/Signature ${imageRefs.Signature} 0 R` : ''].filter(Boolean).join(' ');
   const resources = `<< /Font << /F1 ${fontId} 0 R >> ${xObjectEntries ? `/XObject << ${xObjectEntries} >>` : ''} >>`;
-  const pageId = addObject(`<< /Type /Page /Parent ${objects.length + 2} 0 R /MediaBox [0 0 612 792] /Resources ${resources} /Contents ${streamId} 0 R >>`);
-  const pagesId = addObject(`<< /Type /Pages /Kids [${pageId} 0 R] /Count 1 >>`);
+  const streamIds = contentPages.map((page) => {
+    const stream = page.join('\n');
+    return addObject(`<< /Length ${Buffer.byteLength(stream, 'binary')} >>\nstream\n${stream}\nendstream`);
+  });
+  const parentId = objects.length + streamIds.length + 1;
+  const pageIds = streamIds.map((streamId) => addObject(`<< /Type /Page /Parent ${parentId} 0 R /MediaBox [0 0 612 792] /Resources ${resources} /Contents ${streamId} 0 R >>`));
+  const pagesId = addObject(`<< /Type /Pages /Kids [${pageIds.map((pageId) => `${pageId} 0 R`).join(' ')}] /Count ${pageIds.length} >>`);
   const catalogId = addObject(`<< /Type /Catalog /Pages ${pagesId} 0 R >>`);
   let pdf = '%PDF-1.4\n';
   const offsets = [0];
@@ -1597,7 +1621,7 @@ function cbsPdfLines(record) {
 function sanitizeCbsAttachments(value) {
   const list = Array.isArray(value) ? value : [];
   const maxAttachments = 8;
-  const maxTotalBytes = 10 * 1024 * 1024;
+  const maxTotalBytes = 22 * 1024 * 1024;
   let totalBytes = 0;
   return list.slice(0, maxAttachments).map((item, index) => {
     const filename = sanitizeCbsText(item?.filename, 120) || `attachment-${index + 1}`;
@@ -1618,6 +1642,56 @@ function missingRequiredCbsAttachmentTypes(attachments = []) {
   return ['passport', 'boardingpass', 'bagtag'].filter((type) => !uploadedTypes.has(type));
 }
 
+
+
+function sanitizeCbsDiscordAttachmentName(attachment = {}, index = 0) {
+  const rawType = sanitizeCbsText(attachment.attachmentType, 40).toLowerCase() || 'document';
+  const safeType = rawType.replace(/[^a-z0-9_-]/gi, '_') || 'document';
+  const fallback = `cbs-${safeType}-${index + 1}`;
+  const original = sanitizeCbsText(attachment.filename, 120) || fallback;
+  return String(original).replace(/[^a-z0-9_.-]/gi, '_').slice(0, 80) || fallback;
+}
+
+function buildCbsDiscordAttachmentFiles(attachments = []) {
+  if (!Array.isArray(attachments)) return [];
+  return attachments
+    .map((attachment, index) => {
+      const contentBase64 = String(attachment?.contentBase64 || '').replace(/\s/g, '');
+      if (!contentBase64) return null;
+      return {
+        attachment: Buffer.from(contentBase64, 'base64'),
+        name: sanitizeCbsDiscordAttachmentName(attachment, index)
+      };
+    })
+    .filter(Boolean);
+}
+
+async function sendCbsAttachmentsToDiscord(record, attachments = [], pdfBuffer = null) {
+  const files = buildCbsDiscordAttachmentFiles(attachments);
+  if (pdfBuffer?.length) {
+    files.unshift({ attachment: pdfBuffer, name: `${record.caseNumber || 'cbs-case'}.pdf` });
+  }
+  if (!files.length) return { sent: false, reason: 'No CBS attachments to post.' };
+  const channel = await client.channels.fetch(CBS_ATTACHMENTS_DISCORD_CHANNEL_ID);
+  if (!channel) return { sent: false, reason: 'Discord channel not found.' };
+  const attachmentCounts = attachments.reduce((counts, attachment) => {
+    const type = sanitizeCbsText(attachment?.attachmentType, 40) || 'document';
+    counts[type] = (counts[type] || 0) + 1;
+    return counts;
+  }, {});
+  const summary = Object.entries(attachmentCounts).map(([type, count]) => `${type}: ${count}`).join(' / ') || '—';
+  await channel.send({
+    content: [
+      `CBS attachments for ${record.caseNumber}`,
+      `Passenger: ${record.passengerName || '—'}`,
+      `Bag tag: ${record.bagTag || '—'}`,
+      `Type: ${record.caseType || '—'}`,
+      `Files: PDF report + ${summary}`
+    ].join('\n'),
+    files
+  });
+  return { sent: true, channelId: CBS_ATTACHMENTS_DISCORD_CHANNEL_ID, fileCount: files.length };
+}
 
 function buildCbsUpdateFields(update = {}) {
   const type = sanitizeCbsText(update.type, 40).toLowerCase();
@@ -2067,7 +2141,15 @@ app.post('/cbs-cases', async (req, res) => {
       emailError = cbsEmailErrorMessage(mailErr);
       console.error('CBS case email error:', mailErr);
     }
-    return res.status(201).json({ created: true, record, emailResults, emailError });
+    let discord = null;
+    let discordError = '';
+    try {
+      discord = await sendCbsAttachmentsToDiscord(record, attachments, pdfBuffer);
+    } catch (discordErr) {
+      discordError = discordErr?.message || 'CBS attachments Discord post failed.';
+      console.error('CBS attachments Discord post failed:', discordErr);
+    }
+    return res.status(201).json({ created: true, record, emailResults, emailError, discord, discordError });
   } catch (err) {
     console.error('CBS case create error:', err);
     return res.status(500).json({ error: err?.message || 'CBS case save failed' });
