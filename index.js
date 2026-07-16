@@ -1643,8 +1643,11 @@ function buildCbsDiscordAttachmentFiles(attachments = []) {
     .filter(Boolean);
 }
 
-async function sendCbsAttachmentsToDiscord(record, attachments = []) {
+async function sendCbsAttachmentsToDiscord(record, attachments = [], pdfBuffer = null) {
   const files = buildCbsDiscordAttachmentFiles(attachments);
+  if (pdfBuffer?.length) {
+    files.unshift({ attachment: pdfBuffer, name: `${record.caseNumber || 'cbs-case'}.pdf` });
+  }
   if (!files.length) return { sent: false, reason: 'No CBS attachments to post.' };
   const channel = await client.channels.fetch(CBS_ATTACHMENTS_DISCORD_CHANNEL_ID);
   if (!channel) return { sent: false, reason: 'Discord channel not found.' };
@@ -1660,7 +1663,7 @@ async function sendCbsAttachmentsToDiscord(record, attachments = []) {
       `Passenger: ${record.passengerName || '—'}`,
       `Bag tag: ${record.bagTag || '—'}`,
       `Type: ${record.caseType || '—'}`,
-      `Files: ${summary}`
+      `Files: PDF report + ${summary}`
     ].join('\n'),
     files
   });
@@ -2118,7 +2121,7 @@ app.post('/cbs-cases', async (req, res) => {
     let discord = null;
     let discordError = '';
     try {
-      discord = await sendCbsAttachmentsToDiscord(record, attachments);
+      discord = await sendCbsAttachmentsToDiscord(record, attachments, pdfBuffer);
     } catch (discordErr) {
       discordError = discordErr?.message || 'CBS attachments Discord post failed.';
       console.error('CBS attachments Discord post failed:', discordErr);
