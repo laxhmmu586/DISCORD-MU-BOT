@@ -4300,7 +4300,7 @@
       }
     </style>
   </head>
-  <body>
+  <body class="is-loading">
     <div class="loading-overlay" aria-live="polite"><span>THINKING</span></div>
     <header class="topbar">
       <a class="brand" id="home-nav-link" href="#home" aria-label="MUFC home"><span>MUFC</span></a>
@@ -6093,7 +6093,7 @@
           if (!silent) console.warn("Unable to load today's SY data.", error);
         } finally {
           window.clearTimeout(refreshTimeout);
-          if (showLoading) setLoadingState(false);
+          if (showLoading && currentSy) setLoadingState(false);
           syAutoRefreshInFlight = false;
           if (syAutoRefreshAbortController === refreshAbortController) syAutoRefreshAbortController = null;
         }
