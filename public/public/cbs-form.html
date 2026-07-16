@@ -580,8 +580,9 @@
         const res = await fetch(`${apiBase}/cbs-cases`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || 'Submit failed');
-        formStatus.className = data.emailError ? 'status err' : 'status ok';
-        formStatus.textContent = data.emailError ? `Created ${data.record.caseNumber}, but email failed: ${data.emailError}` : `Created ${data.record.caseNumber} and email sent`;
+        const deliveryErrors = [data.emailError && `email failed: ${data.emailError}`, data.discordError && `Discord failed: ${data.discordError}`].filter(Boolean);
+        formStatus.className = deliveryErrors.length ? 'status err' : 'status ok';
+        formStatus.textContent = deliveryErrors.length ? `Created ${data.record.caseNumber}, but ${deliveryErrors.join('; ')}` : `Created ${data.record.caseNumber}, email sent, and attachments posted to Discord`;
         thanksCase.textContent = data.record.caseNumber;
         thanks.querySelectorAll('[data-thanks-message]').forEach((item) => { item.hidden = item.dataset.thanksMessage !== data.record.caseType; });
         thanks.classList.add('is-active');
