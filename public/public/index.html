@@ -4645,7 +4645,7 @@
       const APP_ENTRY_KEY = "mufc_allow_app_entry";
       const AUTH_SESSION_STARTED_KEY = "mufc_auth_session_started_at";
       const AUTH_LAST_ACTIVITY_KEY = "mufc_auth_last_activity_at";
-      const SY_AUTO_REFRESH_MS = 30 * 1000;
+      const SY_AUTO_REFRESH_MS = 5 * 1000;
       const AUTH_INACTIVITY_LIMIT_MS = 60 * 60 * 1000;
       const SY_COMPLETED_NODE_CACHE_KEY = "mufc_sy_completed_nodes_v1";
       const PERSISTENT_GREEN_NODE_KEYS = ["GD_CHECK", "FSC", "NEXTDAY_INFO"];
@@ -5040,7 +5040,8 @@
 
       async function fetchSearch(query, options = {}) {
         const apiBase = resolveApiBase();
-        const endpoint = `${apiBase}/search?q=${encodeURIComponent(query)}`;
+        const cacheBust = options.realtime ? `&_=${Date.now()}` : "";
+        const endpoint = `${apiBase}/search?q=${encodeURIComponent(query)}${cacheBust}`;
         const res = await fetch(endpoint, { cache: "no-store", headers: await authHeaders(), signal: options.signal });
         const type = res.headers.get("content-type") || "";
         if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
@@ -6075,7 +6076,7 @@
         if (showLoading) setLoadingState(true);
         const refreshQuery = activeSyQuery || "SY";
         try {
-          const data = await fetchSearch(refreshQuery, { signal: syAutoRefreshAbortController.signal });
+          const data = await fetchSearch(refreshQuery, { signal: syAutoRefreshAbortController.signal, realtime: true });
           if (refreshQuery !== activeSyQuery || !isTodaySyQuery(activeSyQuery)) return;
           if (!data?.sy) throw new Error(data?.error || "No SY payload returned.");
           if (isSyRefreshProtectedView()) {
@@ -6111,7 +6112,7 @@
           stopSyAutoRefresh();
           return;
         }
-        if (isTodaySyQuery(activeSyQuery) && !syAutoRefreshTimer) startSyAutoRefresh(activeSyQuery, { immediate: true });
+        if (isTodaySyQuery(activeSyQuery)) startSyAutoRefresh(activeSyQuery, { immediate: true });
       }
 
       async function searchPassenger() {
@@ -6130,7 +6131,7 @@
           if (data.sy || isSySearch) {
             renderSy(data);
             activeSyQuery = normalizeSyQuery(raw);
-            if (isTodaySyQuery(activeSyQuery)) startSyAutoRefresh(activeSyQuery, { immediate: false });
+            if (isTodaySyQuery(activeSyQuery)) startSyAutoRefresh(activeSyQuery, { immediate: true });
             else stopSyAutoRefresh();
           } else renderPassenger(data);
         } catch (error) {
@@ -8173,6 +8174,9 @@
 
       resetTimelineCenter();
       document.addEventListener("visibilitychange", syncSyAutoRefreshWithVisibility);
+      window.addEventListener("focus", () => {
+        if (isTodaySyQuery(activeSyQuery)) startSyAutoRefresh(activeSyQuery, { immediate: true });
+      });
       window.addEventListener("pagehide", stopSyAutoRefresh);
       mobileOrbitQuery.addEventListener("change", () => resetTimelineCenter(nodes[selectedIndex]?.dataset?.key));
       new ResizeObserver(() => placeNodes()).observe(timelineShell);
