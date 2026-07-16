@@ -67,8 +67,20 @@
     .sketch-shell { display:grid; gap:10px; overflow:hidden; }
     .sketch-board { width:100%; max-width:820px; border:1px solid var(--line); border-radius:14px; background:#fff; touch-action:none; display:block; }
     .attachment-hint { font-size:12px; color:var(--muted); font-weight:600; }
-    .attachment-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; }
-    @media (max-width:840px){ .grid,.passenger-grid,.attachment-grid{grid-template-columns:1fr}.routing-layout,.bag-report-row,.bag-report-fields,.contents-row{grid-template-columns:1fr}.bag-report-row{margin-top:8px}.flight-row,.flight-head{grid-template-columns:1fr .8fr .8fr; gap:6px}.header-title{text-align:left}header{flex-wrap:wrap}.tag-example{transform:none} }
+    .attachment-grid { display:grid; grid-template-columns:repeat(4,minmax(100px,1fr)); gap:10px; }
+    .attachment-group { display:grid; grid-template-columns:repeat(auto-fill,minmax(82px,1fr)); gap:8px; align-content:start; border:1px dashed #b8c7d9; border-radius:14px; padding:8px; background:#fbfdff; }
+    .attachment-items { display:contents; }
+    .attachment-tile { position:relative; display:grid; gap:5px; align-content:start; min-height:104px; border:1px dashed #c6d5e6; border-radius:12px; padding:6px; background:#fff; cursor:pointer; transition:border-color .2s ease, box-shadow .2s ease, transform .2s ease; }
+    .attachment-tile:hover, .attachment-tile:focus-within { border-color:var(--brand); box-shadow:0 10px 24px rgba(18,58,115,.12); transform:translateY(-1px); }
+    .attachment-tile input[type="file"] { position:absolute; inline-size:1px; block-size:1px; opacity:0; overflow:hidden; pointer-events:none; }
+    .attachment-preview { position:relative; display:grid; place-items:center; height:76px; border-radius:10px; overflow:hidden; background:#eef5fe; color:var(--brand); font-weight:900; }
+    .attachment-upload .attachment-preview::before { content:"+"; display:grid; place-items:center; width:34px; height:34px; border-radius:999px; background:#fff; border:1px solid var(--line); color:var(--brand); font-size:28px; line-height:1; box-shadow:0 8px 18px rgba(22,48,76,.1); }
+    .attachment-preview img { width:100%; height:100%; object-fit:cover; display:block; }
+    .attachment-document { display:grid; place-items:center; width:48px; height:48px; border-radius:999px; background:#fff; border:1px solid var(--line); color:var(--brand); font-size:13px; letter-spacing:.06em; box-shadow:0 8px 18px rgba(22,48,76,.1); }
+    .attachment-title { display:flex; gap:4px; align-items:center; justify-content:center; text-align:center; font-weight:850; font-size:12px; }
+    .attachment-filename { min-height:16px; text-align:center; color:var(--muted); font-size:11px; font-weight:650; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    @media (max-width:840px){ .grid,.passenger-grid{grid-template-columns:1fr}.attachment-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.routing-layout,.bag-report-row,.bag-report-fields,.contents-row{grid-template-columns:1fr}.bag-report-row{margin-top:8px}.flight-row,.flight-head{grid-template-columns:1fr .8fr .8fr; gap:6px}.header-title{text-align:left}header{flex-wrap:wrap}.tag-example{transform:none} }
+    @media (max-width:520px){ .attachment-grid{grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px}.attachment-group{grid-template-columns:repeat(auto-fill,minmax(70px,1fr)); gap:6px; padding:6px}.attachment-tile{min-height:94px; padding:5px}.attachment-preview{height:66px}.attachment-upload .attachment-preview::before{width:30px;height:30px;font-size:24px}.attachment-title{font-size:11px}.attachment-filename{font-size:10px} }
   </style>
 </head>
 <body>
@@ -164,10 +176,22 @@
         <section class="case-fields is-active wide">
           <h3><span class="en">Attachments</span><span class="zh">附件</span><span class="required-mark">*</span></h3>
           <div class="attachment-grid">
-            <label><span class="en">Passport</span><span class="zh">护照</span><input name="passportAttachment" data-attachment-input data-attachment-type="passport" type="file" required /></label>
-            <label><span class="en">Boarding pass</span><span class="zh">登机牌</span><input name="boardingPassAttachment" data-attachment-input data-attachment-type="boardingPass" type="file" required /></label>
-            <label><span class="en">Bag tag receipt</span><span class="zh">行李票</span><input name="bagTagAttachment" data-attachment-input data-attachment-type="bagTag" type="file" required /></label>
-            <label><span class="en">Other document</span><span class="zh">其他附件</span><input name="otherAttachment" data-attachment-input data-attachment-type="other" type="file" /></label>
+            <div class="attachment-group" data-attachment-group data-attachment-type="passport" data-required-attachment="true">
+              <div class="attachment-items" data-attachment-items></div>
+              <label class="attachment-tile attachment-upload"><span class="attachment-preview"></span><span class="attachment-title"><span class="en">Passport</span><span class="zh">护照</span><span class="required-mark">*</span></span><span class="attachment-filename"></span><input name="passportAttachment" data-attachment-input data-attachment-type="passport" type="file" accept="image/*,.pdf" multiple /></label>
+            </div>
+            <div class="attachment-group" data-attachment-group data-attachment-type="boardingPass" data-required-attachment="true">
+              <div class="attachment-items" data-attachment-items></div>
+              <label class="attachment-tile attachment-upload"><span class="attachment-preview"></span><span class="attachment-title"><span class="en">Boarding pass</span><span class="zh">登机牌</span><span class="required-mark">*</span></span><span class="attachment-filename"></span><input name="boardingPassAttachment" data-attachment-input data-attachment-type="boardingPass" type="file" accept="image/*,.pdf" multiple /></label>
+            </div>
+            <div class="attachment-group" data-attachment-group data-attachment-type="bagTag" data-required-attachment="true">
+              <div class="attachment-items" data-attachment-items></div>
+              <label class="attachment-tile attachment-upload"><span class="attachment-preview"></span><span class="attachment-title"><span class="en">Bag tag receipt</span><span class="zh">行李票</span><span class="required-mark">*</span></span><span class="attachment-filename"></span><input name="bagTagAttachment" data-attachment-input data-attachment-type="bagTag" type="file" accept="image/*,.pdf" multiple /></label>
+            </div>
+            <div class="attachment-group" data-attachment-group data-attachment-type="other">
+              <div class="attachment-items" data-attachment-items></div>
+              <label class="attachment-tile attachment-upload"><span class="attachment-preview"></span><span class="attachment-title"><span class="en">Other document</span><span class="zh">其他附件</span></span><span class="attachment-filename"></span><input name="otherAttachment" data-attachment-input data-attachment-type="other" type="file" accept="image/*,.pdf" multiple /></label>
+            </div>
           </div>
           <span class="attachment-hint"><span class="en">Passport, boarding pass, and bag tag receipt are required. Files are sent as email attachments only; they are not saved to Drive or the case sheet.</span><span class="zh">必须上传护照、登机牌、行李票。附件只随邮件发送，不保存到网盘或表格。</span></span>
         </section>
@@ -458,14 +482,77 @@
       return base64 ? { filename:file.name, mimeType, contentBase64:base64, attachmentType } : null;
     }
 
+
+    const selectedAttachments = new Map();
+
+    function attachmentKey(input) {
+      return input.dataset.attachmentType || 'document';
+    }
+
+    function createAttachmentTile(file) {
+      const tile = document.createElement('div');
+      tile.className = 'attachment-tile attachment-thumb';
+      const preview = document.createElement('span');
+      preview.className = 'attachment-preview';
+      if (file.type?.startsWith('image/')) {
+        const objectUrl = URL.createObjectURL(file);
+        const img = document.createElement('img');
+        img.alt = file.name;
+        img.dataset.objectUrl = objectUrl;
+        img.src = objectUrl;
+        preview.appendChild(img);
+      } else {
+        const icon = document.createElement('span');
+        icon.className = 'attachment-document';
+        icon.textContent = 'DOC';
+        preview.appendChild(icon);
+      }
+      const filename = document.createElement('span');
+      filename.className = 'attachment-filename';
+      filename.textContent = file.name;
+      tile.append(preview, filename);
+      return tile;
+    }
+
+    function clearAttachmentGroup(group) {
+      group.querySelectorAll('[data-attachment-items] img[data-object-url]').forEach((img) => URL.revokeObjectURL(img.dataset.objectUrl));
+      const items = group.querySelector('[data-attachment-items]');
+      if (items) items.innerHTML = '';
+    }
+
+    function renderAttachmentGroup(input) {
+      const group = input.closest('[data-attachment-group]');
+      if (!group) return;
+      clearAttachmentGroup(group);
+      const items = group.querySelector('[data-attachment-items]');
+      const files = selectedAttachments.get(attachmentKey(input)) || [];
+      files.forEach((file) => items?.appendChild(createAttachmentTile(file)));
+    }
+
+    function updateAttachmentPreview(input) {
+      const files = Array.from(input.files || []);
+      if (!files.length) return;
+      const key = attachmentKey(input);
+      selectedAttachments.set(key, [...(selectedAttachments.get(key) || []), ...files]);
+      renderAttachmentGroup(input);
+      input.value = '';
+    }
+
+    attachmentInputs.forEach((input) => input.addEventListener('change', () => updateAttachmentPreview(input)));
+    function clearAttachmentPreviews() {
+      document.querySelectorAll('[data-attachment-group]').forEach(clearAttachmentGroup);
+      selectedAttachments.clear();
+    }
+
     async function collectRequiredAttachments() {
       const output = [];
       for (const input of attachmentInputs) {
-        const file = input.files?.[0];
-        if (!file && input.required) throw new Error(document.documentElement.lang === 'en' ? 'Passport, boarding pass, and bag tag receipt attachments are required.' : '必须上传护照、登机牌、行李票附件。');
-        if (!file) continue;
-        const attachment = await fileToAttachment(file, input.dataset.attachmentType || 'document');
-        if (attachment) output.push(attachment);
+        const files = selectedAttachments.get(attachmentKey(input)) || [];
+        if (!files.length && input.closest('[data-attachment-group]')?.dataset.requiredAttachment === 'true') throw new Error(document.documentElement.lang === 'en' ? 'Passport, boarding pass, and bag tag receipt attachments are required.' : '必须上传护照、登机牌、行李票附件。');
+        for (const file of files) {
+          const attachment = await fileToAttachment(file, input.dataset.attachmentType || 'document');
+          if (attachment) output.push(attachment);
+        }
       }
       return output;
     }
@@ -499,7 +586,7 @@
         thanks.querySelectorAll('[data-thanks-message]').forEach((item) => { item.hidden = item.dataset.thanksMessage !== data.record.caseType; });
         thanks.classList.add('is-active');
         thanks.scrollIntoView({ behavior:'smooth', block:'center' });
-        form.reset(); sketchDirty = false; drawBagBase(); clearSignature(); contentsList.innerHTML = ''; addContentRow(); issueDateInput.valueAsDate = new Date(); setTypeFields(); setAddressFields();
+        form.reset(); clearAttachmentPreviews(); sketchDirty = false; drawBagBase(); clearSignature(); contentsList.innerHTML = ''; addContentRow(); issueDateInput.valueAsDate = new Date(); setTypeFields(); setAddressFields();
       } catch (error) {
         formStatus.className = 'status err';
         const failedFetch = /failed to fetch/i.test(error.message || '');
@@ -508,7 +595,7 @@
           : error.message;
       }
     });
-    form.addEventListener('reset', () => setTimeout(() => { sketchDirty = false; drawBagBase(); clearSignature(); contentsList.innerHTML = ''; addContentRow(); issueDateInput.valueAsDate = new Date(); setTypeFields(); setAddressFields(); }, 0));
+    form.addEventListener('reset', () => setTimeout(() => { clearAttachmentPreviews(); sketchDirty = false; drawBagBase(); clearSignature(); contentsList.innerHTML = ''; addContentRow(); issueDateInput.valueAsDate = new Date(); setTypeFields(); setAddressFields(); }, 0));
     addContentRow();
     issueDateInput.valueAsDate = new Date();
     setLanguage('en');
