@@ -76,6 +76,7 @@
     .attachment-preview { position:relative; display:grid; place-items:center; height:76px; border-radius:10px; overflow:hidden; background:#eef5fe; color:var(--brand); font-weight:900; }
     .attachment-upload .attachment-preview::before { content:"+"; display:grid; place-items:center; width:34px; height:34px; border-radius:999px; background:#fff; border:1px solid var(--line); color:var(--brand); font-size:28px; line-height:1; box-shadow:0 8px 18px rgba(22,48,76,.1); }
     .attachment-preview img { width:100%; height:100%; object-fit:cover; display:block; }
+    .attachment-remove { position:absolute; top:2px; right:2px; z-index:2; display:grid; place-items:center; width:24px; height:24px; border:1px solid rgba(255,255,255,.85); border-radius:999px; padding:0; background:#d92d20; color:#fff; font-size:16px; line-height:1; box-shadow:0 4px 10px rgba(22,48,76,.22); }
     .attachment-document { display:grid; place-items:center; width:48px; height:48px; border-radius:999px; background:#fff; border:1px solid var(--line); color:var(--brand); font-size:13px; letter-spacing:.06em; box-shadow:0 8px 18px rgba(22,48,76,.1); }
     .attachment-title { display:flex; gap:4px; align-items:center; justify-content:center; text-align:center; font-weight:850; font-size:12px; }
     .attachment-filename { min-height:16px; text-align:center; color:var(--muted); font-size:11px; font-weight:650; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -489,9 +490,23 @@
       return input.dataset.attachmentType || 'document';
     }
 
-    function createAttachmentTile(file) {
+    function createAttachmentTile(file, index, input) {
       const tile = document.createElement('div');
       tile.className = 'attachment-tile attachment-thumb';
+      const removeButton = document.createElement('button');
+      removeButton.className = 'attachment-remove';
+      removeButton.type = 'button';
+      removeButton.setAttribute('aria-label', `Remove ${file.name}`);
+      removeButton.textContent = '×';
+      removeButton.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const key = attachmentKey(input);
+        const files = selectedAttachments.get(key) || [];
+        files.splice(index, 1);
+        selectedAttachments.set(key, files);
+        renderAttachmentGroup(input);
+      });
       const preview = document.createElement('span');
       preview.className = 'attachment-preview';
       if (file.type?.startsWith('image/')) {
@@ -510,7 +525,7 @@
       const filename = document.createElement('span');
       filename.className = 'attachment-filename';
       filename.textContent = file.name;
-      tile.append(preview, filename);
+      tile.append(removeButton, preview, filename);
       return tile;
     }
 
@@ -526,7 +541,7 @@
       clearAttachmentGroup(group);
       const items = group.querySelector('[data-attachment-items]');
       const files = selectedAttachments.get(attachmentKey(input)) || [];
-      files.forEach((file) => items?.appendChild(createAttachmentTile(file)));
+      files.forEach((file, index) => items?.appendChild(createAttachmentTile(file, index, input)));
     }
 
     function updateAttachmentPreview(input) {
