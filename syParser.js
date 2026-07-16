@@ -489,7 +489,7 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
   const crewApisComplete = Boolean(crewApisPrimaryCheck?.complete);
   const crewApisTime = crewApisPrimaryCheck?.time || '';
   const ccl = findAcceptedCommand(/^>\s*CCL\s*:/im);
-  const cc = findAcceptedCommand(/^>\s*CC(?:\s*:)?\s*$/im);
+  const cc = findAcceptedCommand(/^>\s*CC(?:\s*:\s*[^\r\n]*)?\s*$/im);
   const jcsy = findJcsyInfo(sections, flightNo, flightYmd, formatTime, targetYmd);
   const baseYmd = targetYmd || flightYmd;
   const baseDateUtc = ymdToUtcDate(baseYmd);
