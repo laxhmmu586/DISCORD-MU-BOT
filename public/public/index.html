@@ -5597,6 +5597,8 @@
         const overlay = document.createElement("div");
         overlay.className = "passenger-modal-backdrop";
         const modalBnNumber = data?.bn || data?.passengerRecord?.bn || "---";
+        overlay.dataset.passengerBn = String(modalBnNumber || "").replace(/^BN/i, "");
+        overlay.dataset.passengerTitle = title;
         overlay.innerHTML = `<article class="passenger-modal" role="dialog" aria-modal="true"><button class="panel-close" type="button" data-close-modal>×</button><div class="passenger-modal-mobile-title"><span>${escapeHtml(title)}</span><strong>BN${escapeHtml(String(modalBnNumber).replace(/^BN/i, "") || "---")}</strong></div>${passengerRecordCard(data || {}, title)}</article>`;
         document.body.appendChild(overlay);
         enablePassengerModalDragScroll(overlay);
@@ -5852,15 +5854,25 @@
       function syRenderSignature(sy) {
         if (!sy) return "";
         const steps = (sy.crewApis?.steps || []).map((step) => [step.key || step.label, step.time || "", Boolean(step.complete), Boolean(step.searched)].join(":"));
-        return JSON.stringify([sy.flightNo, sy.flightDate, sy.gate, sy.bdt, sy.sd, sy.reservation, sy.reservationTicketed, sy.checkedIn, sy.checkedInTicketed, sy.jcsy, steps, (sy.chdList || []).length, (sy.psmList || []).length, (sy.wchList || []).length]);
+        const gov = sy.govAqq || {};
+        const govSignature = [
+          gov.duplicatePassports,
+          gov.aqqTclBnList,
+          gov.govDtaBnList,
+          gov.passportExpBnList,
+          gov.passportExpiringSoonBnList,
+          govWrongPassportBnList(sy),
+          gov.missingApiBnList,
+          gov.infApiIssueDetails || gov.infApiBnList,
+        ];
+        const nbrdSignature = (sy.bnAudit || []).filter(rowHasCkinNbrdIssue).map((row) => [row.bn, row.seat, ckinNbrdDetails(row).join("|")]);
+        const warningSignature = buildWarningRows(sy).map((row) => [row.bn, row.seat, row.warningType, row.warningReason, (row.acknowledgements || []).length]);
+        return JSON.stringify([sy.flightNo, sy.flightDate, sy.gate, sy.bdt, sy.sd, sy.reservation, sy.reservationTicketed, sy.checkedIn, sy.checkedInTicketed, sy.jcsy, steps, sy.chdList || [], govSignature, webEdiIssueBnList(sy), nbrdSignature, warningSignature, sy.psmList || [], sy.wchList || []]);
       }
 
       function updateFlightFromSy(sy, options = {}) {
         const signature = syRenderSignature(sy);
-        if (options.skipUnchanged && signature && signature === lastSyRenderSignature) {
-          currentSy = sy;
-          return;
-        }
+        const unchanged = options.skipUnchanged && signature && signature === lastSyRenderSignature;
         lastSyRenderSignature = signature;
         const sameFlight = currentSy?.flightNo === sy?.flightNo && currentSy?.flightDate === sy?.flightDate;
         currentSy = sy;
@@ -5956,10 +5968,23 @@
           previousStarted = previousStarted && (key === "FSC" ? true : started);
         });
         stopSyAutoRefreshWhenFinalNodesComplete();
-        resetTimelineCenter();
+        if (!unchanged) resetTimelineCenter();
         rerenderActiveRealtimePanel();
       }
 
+
+      function refreshOpenPassengerModal() {
+        const overlay = document.querySelector(".passenger-modal-backdrop[data-passenger-bn]");
+        if (!overlay || !currentSy) return;
+        const bn = normalizedBn(overlay.dataset.passengerBn || "");
+        const updatedRecord = allPassengerRecords(currentSy).find((row) => normalizedBn(row.bn || row.passengerRecord?.bn) === bn);
+        const modal = overlay.querySelector(".passenger-modal");
+        if (!updatedRecord || !modal) return;
+        const scrollTop = modal.scrollTop;
+        const title = overlay.dataset.passengerTitle || "Passenger Record";
+        modal.innerHTML = `<button class="panel-close" type="button" data-close-modal>×</button><div class="passenger-modal-mobile-title"><span>${escapeHtml(title)}</span><strong>BN${escapeHtml(String(updatedRecord.bn || bn || "---").replace(/^BN/i, ""))}</strong></div>${passengerRecordCard(updatedRecord, title)}`;
+        modal.scrollTop = scrollTop;
+      }
 
       function rerenderActiveRealtimePanel() {
         const title = resultPanel?.dataset?.panelTitle || "";
@@ -5967,6 +5992,8 @@
         else if (title === "GOV/AQQ") renderGovPanel();
         else if (title === "WEB/EDI/RS") renderWebEdiPanel();
         else if (title === "CKIN/NBRD") renderNbrdPanel();
+        else if (title === "WARNING") renderWarningPanel();
+        refreshOpenPassengerModal();
       }
 
       function renderSy(data) {
