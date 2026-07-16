@@ -1440,25 +1440,14 @@ function createPirPdf(record) {
   coded('TN', 'Bag Tag Number', record.bagTag, 52, 450, 500, 26);
   coded('DB', 'Destination on Bags', record.destinationOnBags, 52, 424, 500, 26);
   coded('BD', 'Baggage Details', record.ahlBagDescription || record.dprBagInfo, 52, 386, 500, 38);
-  coded('CD', 'Contents / Inner Damage', record.contentsDetails || record.dprInnerDamage, 52, 348, 500, 38);
   if (damageImage) {
-    box(52, 242, 500, 96, 'Damage Sketch', 8);
-    content.push(`q 280 0 0 78 166 252 cm /Damage Do Q`);
+    box(52, 252, 500, 96, 'Damage Sketch', 8);
+    content.push(`q 280 0 0 78 166 262 cm /Damage Do Q`);
   }
-  section('CONTENTS', 214);
-  box(52, 186, 160, 24, 'CATEGORY', 8);
-  box(212, 186, 340, 24, 'DESCRIPTION', 8);
   const items = Array.isArray(record.contentsRows) && record.contentsRows.length
     ? record.contentsRows
     : String(record.contentsDetails || '').split(/\s+\/\s+/).filter(Boolean).map((value) => ({ category: '', description: value }));
-  let itemY = 162;
-  for (let index = 0; index < 4; index += 1) {
-    const item = items[index] || {};
-    box(52, itemY, 160, 24, String(item.category || '').slice(0, 24), 8);
-    box(212, itemY, 340, 24, String(item.description || '').slice(0, 64), 8);
-    itemY -= 24;
-  }
-  section('SIGNATURE', 72);
+  section('SIGNATURE', 122);
   content.push(pdfText(`Date of issue ${record.issueDate || ''}`, 56, 50, 9));
   if (signatureImage) {
     box(390, 42, 160, 28, '', 8);
@@ -1466,13 +1455,46 @@ function createPirPdf(record) {
   } else {
     content.push(pdfText('Passenger Signature __________________________', 330, 50, 9));
   }
-  const stream = content.join('\n');
+  const contentPages = [content];
+  const chunkSize = 30;
+  const contentChunks = items.length ? Array.from({ length: Math.ceil(items.length / chunkSize) }, (_, index) => items.slice(index * chunkSize, (index + 1) * chunkSize)) : [[]];
+  contentChunks.forEach((chunk, pageIndex) => {
+    const page = [];
+    page.push('0.97 0.98 1 rg 0 0 612 792 re f');
+    page.push('0 0 0 RG 0 0 0 rg 1 w 36 36 540 720 re S');
+    page.push(pdfText('PROPERTY IRREGULARITY REPORT (PIR) - CONTENTS', 54, 724, 15));
+    page.push(pdfText(`CASE ID: ${record.caseNumber || ''}`, 410, 724, 10));
+    page.push(pdfText(`Passenger: ${record.passengerName || ''}`, 54, 704, 10));
+    page.push(pdfText(`Bag Tag: ${record.bagTag || ''}`, 54, 690, 10));
+    page.push('0.78 0.78 0.78 rg');
+    page.push('44 660 524 18 re f');
+    page.push('0 0 0 rg');
+    page.push(pdfText(pageIndex ? `CONTENTS CONTINUED (${pageIndex + 1})` : 'CONTENTS / PACKED ITEMS', 50, 665, 10));
+    page.push('0 0 0 RG 0.5 w 52 632 160 22 re S');
+    page.push(pdfText('CATEGORY', 58, 640, 8));
+    page.push('0 0 0 RG 0.5 w 212 632 340 22 re S');
+    page.push(pdfText('DESCRIPTION', 218, 640, 8));
+    let y = 610;
+    chunk.forEach((item) => {
+      page.push(`0 0 0 RG 0.5 w 52 ${y} 160 18 re S`);
+      page.push(pdfText(String(item.category || '').slice(0, 28), 58, y + 6, 7.5));
+      page.push(`0 0 0 RG 0.5 w 212 ${y} 340 18 re S`);
+      page.push(pdfText(String(item.description || '').slice(0, 80), 218, y + 6, 7.5));
+      y -= 18;
+    });
+    if (!chunk.length) page.push(pdfText('No contents entered.', 58, 610, 9));
+    contentPages.push(page);
+  });
   const fontId = addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
-  const streamId = addObject(`<< /Length ${Buffer.byteLength(stream, 'binary')} >>\nstream\n${stream}\nendstream`);
   const xObjectEntries = [imageRefs.Damage ? `/Damage ${imageRefs.Damage} 0 R` : '', imageRefs.Signature ? `/Signature ${imageRefs.Signature} 0 R` : ''].filter(Boolean).join(' ');
   const resources = `<< /Font << /F1 ${fontId} 0 R >> ${xObjectEntries ? `/XObject << ${xObjectEntries} >>` : ''} >>`;
-  const pageId = addObject(`<< /Type /Page /Parent ${objects.length + 2} 0 R /MediaBox [0 0 612 792] /Resources ${resources} /Contents ${streamId} 0 R >>`);
-  const pagesId = addObject(`<< /Type /Pages /Kids [${pageId} 0 R] /Count 1 >>`);
+  const streamIds = contentPages.map((page) => {
+    const stream = page.join('\n');
+    return addObject(`<< /Length ${Buffer.byteLength(stream, 'binary')} >>\nstream\n${stream}\nendstream`);
+  });
+  const parentId = objects.length + streamIds.length + 1;
+  const pageIds = streamIds.map((streamId) => addObject(`<< /Type /Page /Parent ${parentId} 0 R /MediaBox [0 0 612 792] /Resources ${resources} /Contents ${streamId} 0 R >>`));
+  const pagesId = addObject(`<< /Type /Pages /Kids [${pageIds.map((pageId) => `${pageId} 0 R`).join(' ')}] /Count ${pageIds.length} >>`);
   const catalogId = addObject(`<< /Type /Catalog /Pages ${pagesId} 0 R >>`);
   let pdf = '%PDF-1.4\n';
   const offsets = [0];
