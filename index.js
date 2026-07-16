@@ -1598,7 +1598,7 @@ function cbsPdfLines(record) {
 function sanitizeCbsAttachments(value) {
   const list = Array.isArray(value) ? value : [];
   const maxAttachments = 8;
-  const maxTotalBytes = 10 * 1024 * 1024;
+  const maxTotalBytes = 22 * 1024 * 1024;
   let totalBytes = 0;
   return list.slice(0, maxAttachments).map((item, index) => {
     const filename = sanitizeCbsText(item?.filename, 120) || `attachment-${index + 1}`;
