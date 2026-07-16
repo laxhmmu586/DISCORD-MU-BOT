@@ -91,6 +91,7 @@ const fbLookup =
 const { findSYInfo } = require('./syParser');
 const NEXTDAY_INFO_DISCORD_CHANNEL_ID = '1399400605742661702';
 const TRANSIT_240_DISCORD_CHANNEL_ID = process.env.TRANSIT_240_DISCORD_CHANNEL_ID || '1365773224276660257';
+const CBS_ATTACHMENTS_DISCORD_CHANNEL_ID = process.env.CBS_ATTACHMENTS_DISCORD_CHANNEL_ID || '1527344986075693167';
 const transit240SubmitLocks = new Set();
 
 const DEFAULT_PERMISSIONS = {
@@ -1597,7 +1598,7 @@ function cbsPdfLines(record) {
 function sanitizeCbsAttachments(value) {
   const list = Array.isArray(value) ? value : [];
   const maxAttachments = 8;
-  const maxTotalBytes = 10 * 1024 * 1024;
+  const maxTotalBytes = 22 * 1024 * 1024;
   let totalBytes = 0;
   return list.slice(0, maxAttachments).map((item, index) => {
     const filename = sanitizeCbsText(item?.filename, 120) || `attachment-${index + 1}`;
@@ -1618,6 +1619,56 @@ function missingRequiredCbsAttachmentTypes(attachments = []) {
   return ['passport', 'boardingpass', 'bagtag'].filter((type) => !uploadedTypes.has(type));
 }
 
+
+
+function sanitizeCbsDiscordAttachmentName(attachment = {}, index = 0) {
+  const rawType = sanitizeCbsText(attachment.attachmentType, 40).toLowerCase() || 'document';
+  const safeType = rawType.replace(/[^a-z0-9_-]/gi, '_') || 'document';
+  const fallback = `cbs-${safeType}-${index + 1}`;
+  const original = sanitizeCbsText(attachment.filename, 120) || fallback;
+  return String(original).replace(/[^a-z0-9_.-]/gi, '_').slice(0, 80) || fallback;
+}
+
+function buildCbsDiscordAttachmentFiles(attachments = []) {
+  if (!Array.isArray(attachments)) return [];
+  return attachments
+    .map((attachment, index) => {
+      const contentBase64 = String(attachment?.contentBase64 || '').replace(/\s/g, '');
+      if (!contentBase64) return null;
+      return {
+        attachment: Buffer.from(contentBase64, 'base64'),
+        name: sanitizeCbsDiscordAttachmentName(attachment, index)
+      };
+    })
+    .filter(Boolean);
+}
+
+async function sendCbsAttachmentsToDiscord(record, attachments = [], pdfBuffer = null) {
+  const files = buildCbsDiscordAttachmentFiles(attachments);
+  if (pdfBuffer?.length) {
+    files.unshift({ attachment: pdfBuffer, name: `${record.caseNumber || 'cbs-case'}.pdf` });
+  }
+  if (!files.length) return { sent: false, reason: 'No CBS attachments to post.' };
+  const channel = await client.channels.fetch(CBS_ATTACHMENTS_DISCORD_CHANNEL_ID);
+  if (!channel) return { sent: false, reason: 'Discord channel not found.' };
+  const attachmentCounts = attachments.reduce((counts, attachment) => {
+    const type = sanitizeCbsText(attachment?.attachmentType, 40) || 'document';
+    counts[type] = (counts[type] || 0) + 1;
+    return counts;
+  }, {});
+  const summary = Object.entries(attachmentCounts).map(([type, count]) => `${type}: ${count}`).join(' / ') || '—';
+  await channel.send({
+    content: [
+      `CBS attachments for ${record.caseNumber}`,
+      `Passenger: ${record.passengerName || '—'}`,
+      `Bag tag: ${record.bagTag || '—'}`,
+      `Type: ${record.caseType || '—'}`,
+      `Files: PDF report + ${summary}`
+    ].join('\n'),
+    files
+  });
+  return { sent: true, channelId: CBS_ATTACHMENTS_DISCORD_CHANNEL_ID, fileCount: files.length };
+}
 
 function buildCbsUpdateFields(update = {}) {
   const type = sanitizeCbsText(update.type, 40).toLowerCase();
@@ -2067,7 +2118,15 @@ app.post('/cbs-cases', async (req, res) => {
       emailError = cbsEmailErrorMessage(mailErr);
       console.error('CBS case email error:', mailErr);
     }
-    return res.status(201).json({ created: true, record, emailResults, emailError });
+    let discord = null;
+    let discordError = '';
+    try {
+      discord = await sendCbsAttachmentsToDiscord(record, attachments, pdfBuffer);
+    } catch (discordErr) {
+      discordError = discordErr?.message || 'CBS attachments Discord post failed.';
+      console.error('CBS attachments Discord post failed:', discordErr);
+    }
+    return res.status(201).json({ created: true, record, emailResults, emailError, discord, discordError });
   } catch (err) {
     console.error('CBS case create error:', err);
     return res.status(500).json({ error: err?.message || 'CBS case save failed' });
