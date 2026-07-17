@@ -5763,7 +5763,8 @@
       }
 
       function hasUnknownPassengerName(row) {
-        const name = String(row?.name || passengerName(row) || "").trim().toUpperCase();
+        const passenger = row?.passengerRecord || {};
+        const name = String(row?.name || row?.passengerName || row?.paxName || passenger.name || passenger.passengerName || passenger.paxName || "").trim().toUpperCase();
         return !name || name === "UNKNOWN" || name === "-";
       }
 
@@ -6398,7 +6399,7 @@
         const rows = [];
         const addWarning = (row, type, reason) => rows.push({ ...row, warningType: type, warningReason: reason, _panelCard: "warning" });
         for (const row of warningRecordPools(sy)) {
-          if (isDeletedPassengerRecord(row)) continue;
+          if (isDeletedPassengerRecord(row) || hasUnknownPassengerName(row)) continue;
           const bn = normalizedBn(row.bn || row.passengerRecord?.bn);
           const seat = String(row.seat || row.passengerRecord?.seat || "").toUpperCase();
           const age = Number(row.ageYears ?? row.passengerRecord?.ageYears);
