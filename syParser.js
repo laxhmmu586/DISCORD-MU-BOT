@@ -978,18 +978,19 @@ ${section}`,
       issueReasons.push('PASSPORT line country codes must be 3-letter codes');
     }
     const normalizedCountryCodes = countryCodes.map(normalizeCountryCodeForRisk);
+    const normalizedPassportLineCountryCodes = passportLineCountryCodes.map(normalizeCountryCodeForRisk);
     if (normalizedCountryCodes.some((c) => !/^[A-Z]{3}$/.test(c))) {
       issueReasons.push('contains invalid country code');
     }
-    if (countryCodes.length === 3 && new Set(normalizedCountryCodes).size !== 1) {
-      issueReasons.push(`country codes not identical: ${countryCodes.join('/')}`);
+    if (passportLineCountryCodes.length === 2 && new Set(normalizedPassportLineCountryCodes).size !== 1) {
+      issueReasons.push(`PASSPORT line country codes not identical: ${passportLineCountryCodes.join('/')}`);
     }
     const hasCountryCodeRisk =
       issueReasons.includes('missing PAX INFO or PASSPORT line') ||
       issueReasons.some((x) => x.startsWith('country code count is')) ||
       issueReasons.includes('contains invalid country code') ||
       issueReasons.includes('PASSPORT line country codes must be 3-letter codes') ||
-      issueReasons.some((x) => x.startsWith('country codes not identical:'));
+      issueReasons.some((x) => x.startsWith('PASSPORT line country codes not identical:'));
 
     const hasApiSourceRisk = needsReswipeByAgent;
     if (!hasApiOperation) {
