@@ -977,9 +977,8 @@ ${section}`,
     if (passportLineCountryCodes.length !== 2 || passportLineCountryCodes.some((c) => !/^[A-Z]{3}$/.test(c))) {
       issueReasons.push('PASSPORT line country codes must be 3-letter codes');
     }
-    const normalizedCountryCodes = countryCodes.map(normalizeCountryCodeForRisk);
     const normalizedPassportLineCountryCodes = passportLineCountryCodes.map(normalizeCountryCodeForRisk);
-    if (normalizedCountryCodes.some((c) => !/^[A-Z]{3}$/.test(c))) {
+    if (countryCodes.some((c) => !/^[A-Z]{2,3}$/.test(c))) {
       issueReasons.push('contains invalid country code');
     }
     if (passportLineCountryCodes.length === 2 && new Set(normalizedPassportLineCountryCodes).size !== 1) {
