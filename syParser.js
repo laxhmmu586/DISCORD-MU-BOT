@@ -786,27 +786,39 @@ function enrichCHDListFromLog(log, syInfo, targetYmd = null) {
 }
 
 function extractPassportCountryCodes(section) {
-  const codes = [];
+  const passportCountryFields = extractPassportCountryFields(section);
+  return [
+    passportCountryFields.paxInfoCode,
+    passportCountryFields.passportNatCode,
+    passportCountryFields.passportIssueCode
+  ].filter(Boolean);
+}
+
+function extractPassportCountryFields(section) {
   const paxInfo = (section.match(/PAX INFO\s*:\s*([^\n\r]+)/i)?.[1] || '').trim().toUpperCase();
   const paxPassport = (section.match(/PASSPORT\s*:\s*([^\n\r]+)/i)?.[1] || '').trim().toUpperCase();
+  const fields = {
+    paxInfoCode: '',
+    passportNatCode: '',
+    passportIssueCode: ''
+  };
 
-  const paxInfoCode = paxInfo.match(/^([A-Z]{2,3})\//)?.[1];
-  if (paxInfoCode) codes.push(paxInfoCode);
+  fields.paxInfoCode = paxInfo.match(/^([A-Z]{2,3})\//)?.[1] || '';
 
   if (paxPassport) {
     const parts = paxPassport.split('/').map((x) => x.trim());
     const natIndex = parts.indexOf('NAT');
     if (natIndex >= 0 && /^[A-Z]{2,3}$/.test(parts[natIndex + 1] || '')) {
-      codes.push(parts[natIndex + 1]);
+      fields.passportNatCode = parts[natIndex + 1];
     }
 
     const expiryIndex = parts.findIndex((x) => /^\d{6}$/.test(x));
     if (expiryIndex >= 0 && /^[A-Z]{2,3}$/.test(parts[expiryIndex + 1] || '')) {
-      codes.push(parts[expiryIndex + 1]);
+      fields.passportIssueCode = parts[expiryIndex + 1];
     }
   }
 
-  return codes;
+  return fields;
 }
 
 function normalizeCountryCodeForRisk(code) {
@@ -952,7 +964,9 @@ ${section}`,
     const needsReswipeByAgent = hasUnclearedApiSourceRisk(section);
     const hasPaxInfoLine = /PAX INFO\s*:/i.test(section);
     const hasPassportLine = /PASSPORT\s*:/i.test(section);
-    const countryCodes = extractPassportCountryCodes(section);
+    const countryFields = extractPassportCountryFields(section);
+    const countryCodes = [countryFields.paxInfoCode, countryFields.passportNatCode, countryFields.passportIssueCode].filter(Boolean);
+    const passportLineCountryCodes = [countryFields.passportNatCode, countryFields.passportIssueCode].filter(Boolean);
     const issueReasons = [];
     if (!hasPaxInfoLine || !hasPassportLine) {
       issueReasons.push('missing PAX INFO or PASSPORT line');
@@ -960,18 +974,22 @@ ${section}`,
     if (countryCodes.length !== 3) {
       issueReasons.push(`country code count is ${countryCodes.length}, expected 3`);
     }
-    const normalizedCountryCodes = countryCodes.map(normalizeCountryCodeForRisk);
-    if (normalizedCountryCodes.some((c) => !/^[A-Z]{3}$/.test(c))) {
+    if (passportLineCountryCodes.length !== 2 || passportLineCountryCodes.some((c) => !/^[A-Z]{3}$/.test(c))) {
+      issueReasons.push('PASSPORT line country codes must be 3-letter codes');
+    }
+    const normalizedPassportLineCountryCodes = passportLineCountryCodes.map(normalizeCountryCodeForRisk);
+    if (countryCodes.some((c) => !/^[A-Z]{2,3}$/.test(c))) {
       issueReasons.push('contains invalid country code');
     }
-    if (countryCodes.length === 3 && new Set(normalizedCountryCodes).size !== 1) {
-      issueReasons.push(`country codes not identical: ${countryCodes.join('/')}`);
+    if (passportLineCountryCodes.length === 2 && new Set(normalizedPassportLineCountryCodes).size !== 1) {
+      issueReasons.push(`PASSPORT line country codes not identical: ${passportLineCountryCodes.join('/')}`);
     }
     const hasCountryCodeRisk =
       issueReasons.includes('missing PAX INFO or PASSPORT line') ||
       issueReasons.some((x) => x.startsWith('country code count is')) ||
       issueReasons.includes('contains invalid country code') ||
-      issueReasons.some((x) => x.startsWith('country codes not identical:'));
+      issueReasons.includes('PASSPORT line country codes must be 3-letter codes') ||
+      issueReasons.some((x) => x.startsWith('PASSPORT line country codes not identical:'));
 
     const hasApiSourceRisk = needsReswipeByAgent;
     if (!hasApiOperation) {
