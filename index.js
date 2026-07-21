@@ -1905,14 +1905,14 @@ app.post('/transit-240', async (req, res) => {
       return res.status(400).json({ error: 'Missing required 240 transit fields.' });
     }
     record.submittedAt = new Date().toISOString();
-    const travelDate = record.itineraryDates[0] || '';
-    const lockKey = `${travelDate}:${record.bnNumber}`;
+    const submitDate = record.submittedAt.slice(0, 10);
+    const lockKey = `${submitDate}:${record.bnNumber}`;
     if (transit240SubmitLocks.has(lockKey)) {
       return res.status(409).json({ error: 'Duplicate BN Number. This 240 record was already submitted.' });
     }
     transit240SubmitLocks.add(lockKey);
     try {
-      if (await hasTransit240RecordByBn(record.bnNumber, travelDate)) {
+      if (await hasTransit240RecordByBn(record.bnNumber, record.submittedAt)) {
         return res.status(409).json({ error: 'Duplicate BN Number. This 240 record was already submitted.' });
       }
       const saved = await appendTransit240Record(record);

@@ -2977,19 +2977,19 @@ function normalizeTransit240Date(value) {
   return parsed.toISOString().slice(0, 10);
 }
 
-async function hasTransit240RecordByBn(bn, travelDate) {
+async function hasTransit240RecordByBn(bn, submitDate) {
   const normalizedBn = String(bn || '').trim();
-  const normalizedTravelDate = normalizeTransit240Date(travelDate);
-  if (!normalizedBn || !normalizedTravelDate) return false;
+  const normalizedSubmitDate = normalizeTransit240Date(submitDate);
+  if (!normalizedBn || !normalizedSubmitDate) return false;
   const title = await getTransit240SheetTitle();
   await ensureTransit240Headers(title);
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: TRANSIT_240_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A2:G`
+    range: `${escapeSheetTitle(title)}!A2:D`
   }).catch(() => ({ data: { values: [] } }));
   return (res.data.values || []).some((row) => (
-    String(row?.[3] || '').trim() === normalizedBn
-    && normalizeTransit240Date(row?.[6]) === normalizedTravelDate
+    normalizeTransit240Date(row?.[0]) === normalizedSubmitDate
+    && String(row?.[3] || '').trim() === normalizedBn
   ));
 }
 
