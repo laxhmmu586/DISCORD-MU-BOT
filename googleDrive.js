@@ -2967,16 +2967,30 @@ async function ensureTransit240Headers(title) {
 }
 
 
-async function hasTransit240RecordByBn(bn) {
+function normalizeTransit240Date(value) {
+  const text = String(value || '').trim();
+  if (!text) return '';
+  const isoDate = text.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (isoDate) return isoDate[1];
+  const parsed = new Date(text);
+  if (Number.isNaN(parsed.getTime())) return '';
+  return parsed.toISOString().slice(0, 10);
+}
+
+async function hasTransit240RecordByBn(bn, submitDate) {
   const normalizedBn = String(bn || '').trim();
-  if (!normalizedBn) return false;
+  const normalizedSubmitDate = normalizeTransit240Date(submitDate);
+  if (!normalizedBn || !normalizedSubmitDate) return false;
   const title = await getTransit240SheetTitle();
   await ensureTransit240Headers(title);
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: TRANSIT_240_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!D2:D`
+    range: `${escapeSheetTitle(title)}!A2:D`
   }).catch(() => ({ data: { values: [] } }));
-  return (res.data.values || []).some((row) => String(row?.[0] || '').trim() === normalizedBn);
+  return (res.data.values || []).some((row) => (
+    normalizeTransit240Date(row?.[0]) === normalizedSubmitDate
+    && String(row?.[3] || '').trim() === normalizedBn
+  ));
 }
 
 async function appendTransit240Record(record = {}) {
