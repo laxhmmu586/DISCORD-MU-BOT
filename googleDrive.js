@@ -2967,23 +2967,43 @@ async function ensureTransit240Headers(title) {
 }
 
 
-async function hasTransit240RecordByBn(bn) {
+function normalizeTransit240Date(value) {
+  const text = String(value || '').trim();
+  if (!text) return '';
+  const isoDate = text.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (isoDate) return isoDate[1];
+  const parsed = new Date(text);
+  if (Number.isNaN(parsed.getTime())) return '';
+  return parsed.toISOString().slice(0, 10);
+}
+
+async function hasTransit240RecordByBn(bn, travelDate) {
   const normalizedBn = String(bn || '').trim();
-  if (!normalizedBn) return false;
+  const normalizedTravelDate = normalizeTransit240Date(travelDate);
+  if (!normalizedBn || !normalizedTravelDate) return false;
   const title = await getTransit240SheetTitle();
   await ensureTransit240Headers(title);
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: TRANSIT_240_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!D2:D`
+    range: `${escapeSheetTitle(title)}!A2:G`
   }).catch(() => ({ data: { values: [] } }));
-  return (res.data.values || []).some((row) => String(row?.[0] || '').trim() === normalizedBn);
+  return (res.data.values || []).some((row) => (
+    String(row?.[3] || '').trim() === normalizedBn
+    && normalizeTransit240Date(row?.[6]) === normalizedTravelDate
+  ));
 }
 
 async function appendTransit240Record(record = {}) {
   const title = await getTransit240SheetTitle();
   await ensureTransit240Headers(title);
   const submittedAt = record.submittedAt || new Date().toISOString();
-  const itinerary = Array.isArray(record.itinerary) ? record.itinerary.join(' → ') : String(record.itinerary || '').trim();
+  const itineraryDates = Array.isArray(record.itineraryDates) ? record.itineraryDates : [];
+  const itinerary = Array.isArray(record.itinerary)
+    ? record.itinerary.map((stop, index) => {
+      const date = itineraryDates[index - 1];
+      return date ? `${stop} (${date})` : stop;
+    }).join(' → ')
+    : String(record.itinerary || '').trim();
   const values = [[
     submittedAt,
     String(record.passengerName || '').trim(),
