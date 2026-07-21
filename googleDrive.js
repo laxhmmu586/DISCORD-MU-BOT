@@ -2997,7 +2997,13 @@ async function appendTransit240Record(record = {}) {
   const title = await getTransit240SheetTitle();
   await ensureTransit240Headers(title);
   const submittedAt = record.submittedAt || new Date().toISOString();
-  const itinerary = Array.isArray(record.itinerary) ? record.itinerary.join(' → ') : String(record.itinerary || '').trim();
+  const itineraryDates = Array.isArray(record.itineraryDates) ? record.itineraryDates : [];
+  const itinerary = Array.isArray(record.itinerary)
+    ? record.itinerary.map((stop, index) => {
+      const date = itineraryDates[index - 1];
+      return date ? `${stop} (${date})` : stop;
+    }).join(' → ')
+    : String(record.itinerary || '').trim();
   const values = [[
     submittedAt,
     String(record.passengerName || '').trim(),
