@@ -65,7 +65,6 @@ const {
   markCbsMissingBagCase,
   acknowledgeCbsMissingBag,
   sendCbsCaseEmail,
-  hasTransit240RecordByBn,
   appendTransit240Record,
   appendCbsScanRecord,
   appendCbsScanNbrdBns,
@@ -92,7 +91,6 @@ const { findSYInfo } = require('./syParser');
 const NEXTDAY_INFO_DISCORD_CHANNEL_ID = '1399400605742661702';
 const TRANSIT_240_DISCORD_CHANNEL_ID = process.env.TRANSIT_240_DISCORD_CHANNEL_ID || '1365773224276660257';
 const CBS_ATTACHMENTS_DISCORD_CHANNEL_ID = process.env.CBS_ATTACHMENTS_DISCORD_CHANNEL_ID || '1527344986075693167';
-const transit240SubmitLocks = new Set();
 
 const DEFAULT_PERMISSIONS = {
   canViewTravelDocs: true,
@@ -1904,28 +1902,17 @@ app.post('/transit-240', async (req, res) => {
     if (!record.passengerName || !record.seatNumber || !record.bnNumber || !record.nationalityCode || !record.passportExpiry || record.itinerary.length < 3) {
       return res.status(400).json({ error: 'Missing required 240 transit fields.' });
     }
-    const lockKey = record.bnNumber;
-    if (transit240SubmitLocks.has(lockKey)) {
-      return res.status(409).json({ error: 'Duplicate BN Number. This 240 record was already submitted.' });
-    }
-    transit240SubmitLocks.add(lockKey);
+    record.submittedAt = new Date().toISOString();
+    const saved = await appendTransit240Record(record);
+    let discord = null;
+    let discordError = '';
     try {
-      if (await hasTransit240RecordByBn(lockKey)) {
-        return res.status(409).json({ error: 'Duplicate BN Number. This 240 record was already submitted.' });
-      }
-      const saved = await appendTransit240Record(record);
-      let discord = null;
-      let discordError = '';
-      try {
-        discord = await sendTransit240ToDiscord(record);
-      } catch (err) {
-        discordError = err?.message || 'Discord post failed.';
-        console.error('240 Transit Discord post failed:', err);
-      }
-      return res.json({ ok: true, ...saved, discord, discordError });
-    } finally {
-      transit240SubmitLocks.delete(lockKey);
+      discord = await sendTransit240ToDiscord(record);
+    } catch (err) {
+      discordError = err?.message || 'Discord post failed.';
+      console.error('240 Transit Discord post failed:', err);
     }
+    return res.json({ ok: true, ...saved, discord, discordError });
   } catch (err) {
     console.error('240 Transit submit failed:', err);
     return res.status(500).json({ error: err?.message || '240 transit submit failed.' });

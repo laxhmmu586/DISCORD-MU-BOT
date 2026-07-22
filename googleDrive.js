@@ -2967,18 +2967,6 @@ async function ensureTransit240Headers(title) {
 }
 
 
-async function hasTransit240RecordByBn(bn) {
-  const normalizedBn = String(bn || '').trim();
-  if (!normalizedBn) return false;
-  const title = await getTransit240SheetTitle();
-  await ensureTransit240Headers(title);
-  const res = await sheets.spreadsheets.values.get({
-    spreadsheetId: TRANSIT_240_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!D2:D`
-  }).catch(() => ({ data: { values: [] } }));
-  return (res.data.values || []).some((row) => String(row?.[0] || '').trim() === normalizedBn);
-}
-
 async function appendTransit240Record(record = {}) {
   const title = await getTransit240SheetTitle();
   await ensureTransit240Headers(title);
@@ -3647,7 +3635,6 @@ module.exports = {
   markCbsMissingBagCase,
   acknowledgeCbsMissingBag,
   sendCbsCaseEmail,
-  hasTransit240RecordByBn,
   appendTransit240Record,
   appendCbsScanRecord,
   appendCbsScanNbrdBns,
