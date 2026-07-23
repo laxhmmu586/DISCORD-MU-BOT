@@ -2715,6 +2715,30 @@ app.get(
 
 
 
+
+function removeBoardingLinesFromDiscordEmbedText(value) {
+  if (typeof value !== 'string') return value;
+  return value
+    .split(/\r?\n/)
+    .filter((line) => !/^\s*(?:[🔹▪️•*-]\s*)?Boarding\s*:/i.test(line))
+    .join('\n')
+    .trimEnd();
+}
+
+function removeBoardingLinesFromDiscordValue(value) {
+  if (typeof value === 'string') return removeBoardingLinesFromDiscordEmbedText(value);
+  if (Array.isArray(value)) return value.map(removeBoardingLinesFromDiscordValue);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([key, nestedValue]) => [key, removeBoardingLinesFromDiscordValue(nestedValue)]));
+  }
+  return value;
+}
+
+function removeBoardingLinesFromDiscordEmbeds(embeds) {
+  if (!Array.isArray(embeds)) return embeds;
+  return embeds.map(removeBoardingLinesFromDiscordValue);
+}
+
 async function sendNextDayInfoToDiscord(content) {
   const text = String(content || '').trim();
   if (!text) return { sent: false, reason: 'No NEXTDAY INFO email body to post.' };
@@ -2799,6 +2823,7 @@ app.post('/send', async (req, res) => {
       channelId,
       message
     } = req.body;
+    const sanitizedMessage = removeBoardingLinesFromDiscordEmbedText(message);
 
     if (!channelId) {
 
@@ -2820,13 +2845,13 @@ app.post('/send', async (req, res) => {
     if (req.body.embeds) {
 
   await channel.send({
-    content: message || "",
-    embeds: req.body.embeds
+    content: sanitizedMessage || "",
+    embeds: removeBoardingLinesFromDiscordEmbeds(req.body.embeds)
   });
 
 } else {
 
-  await channel.send(message);
+  await channel.send(sanitizedMessage);
 }
 
     res.json({
