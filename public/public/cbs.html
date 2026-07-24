@@ -41,10 +41,14 @@
     .cbs-sheet th,.cbs-sheet td { height:34px; padding:12px 14px; border:0; background:#fff; vertical-align:top; }
     .cbs-sheet th { position:sticky; top:0; z-index:2; background:#f8fbff; color:#344054; text-transform:none; font-size:13px; font-weight:900; box-shadow:inset 0 -1px 0 #d8e4f1; }
     .cbs-sheet tbody tr { box-shadow:0 8px 22px rgba(18,58,115,.055); }
+    .cbs-sheet .case-summary-row { cursor:pointer; }
+    .cbs-sheet .case-summary-row:hover td { background:#f8fbff; }
+    .cbs-sheet .case-detail-row td { background:#fbfdff; padding:18px; }
     .cbs-sheet tbody tr.is-closed { box-shadow:0 8px 22px rgba(8,116,67,.08); }
     .cbs-sheet tbody tr.is-closed td { background:#f0fbf5; }
     .cbs-sheet tbody td:first-child { border-radius:14px 0 0 14px; }
     .cbs-sheet tbody td:last-child { border-radius:0 14px 14px 0; }
+    .cbs-sheet .case-detail-row td:first-child,.cbs-sheet .case-detail-row td:last-child { border-radius:14px; }
     .cbs-sheet .case-key { color:#344054; font-weight:900; }
     .cbs-sheet .bag-subfield { color:#000; font-weight:700; }
     .cbs-sheet .sheet-meta { color:#344054; font-weight:850; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -55,6 +59,7 @@
     .cbs-sheet .sheet-event small { display:block; color:var(--muted); font-weight:700; }
     .cbs-sheet .sheet-detail-row td { background:#fbfdff; }
     .cbs-sheet .sheet-detail-cell { padding:12px; }
+    .case-detail-layout { display:grid; gap:18px; }
     .sheet-detail-grid { display:grid; grid-template-columns:repeat(4,minmax(160px,1fr)); gap:8px 14px; }
     .sheet-detail-grid p { margin:0; min-width:0; color:#172033; }
     .sheet-detail-grid strong { color:#475467; }
@@ -497,11 +502,16 @@
       const rows = sortedCaseRows(sourceRows).filter((row) => !query || rowSearchText(row).includes(query));
       const baggageHtml = baggageSearchHtml();
       if (!rows.length) { casesOutput.innerHTML = `<p class="muted">No matching cases.</p>${baggageHtml}`; return; }
-      casesOutput.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:170px"><col style="width:120px"><col style="width:220px"><col></colgroup><thead><tr><th>${label('Case Number', '编号')}</th><th>${label('Case Type', '类型')}</th><th>${label('Bag Tag', '行李牌')}</th><th>${label('Tracking', '追踪')}</th></tr></thead><tbody>${rows.map((row) => {
+      const expandedCases = window._expandedCbsCases || new Set();
+      casesOutput.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:220px"><col style="width:150px"><col></colgroup><thead><tr><th>${label('Case Number', '编号')}</th><th>${label('Case Type', '类型')}</th><th>${label('Bag Tag', '行李牌')}</th></tr></thead><tbody>${rows.map((row, index) => {
+        const detailKey = row.caseNumber || `row-${row.rowNumber || index}`;
         const caseNumberLabel = row.caseNumber || label('Missing case number', '缺少编号');
         const caseType = inferCaseType(row);
-        const closedClass = isClosedCase(row) ? ' class="is-closed"' : '';
-        return `<tr${closedClass}><td class="case-key">${escapeHtml(caseNumberLabel)}</td><td class="sheet-meta">${escapeHtml(caseType || '-')}</td><td class="sheet-meta"><span class="bag-tag-value">${escapeHtml(displayBagTag(row) || '-')}</span></td><td>${trackingControlHtml(row)}</td></tr>`;
+        const closedClass = isClosedCase(row) ? ' is-closed' : '';
+        const details = (isOriginalFormCase(row) ? originalFormDetailRows(row) : detailRows(row)).filter(([, value]) => hasValue(value));
+        const detailHtml = details.length ? `<div class="sheet-detail-grid">${details.map(([key, value]) => `<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(renderValue(value))}</p>`).join('')}</div>` : `<p class="muted">${label('No extra details.', '没有更多详情。')}</p>`;
+        const isExpanded = expandedCases.has(detailKey);
+        return `<tr class="case-summary-row${closedClass}" data-toggle-case="${escapeHtml(detailKey)}" aria-expanded="${isExpanded ? 'true' : 'false'}"><td class="case-key">${escapeHtml(caseNumberLabel)}</td><td class="sheet-meta">${escapeHtml(caseType || '-')}</td><td class="sheet-meta"><span class="bag-tag-value">${escapeHtml(displayBagTag(row) || '-')}</span></td></tr><tr class="case-detail-row${closedClass}" data-detail-case="${escapeHtml(detailKey)}" ${isExpanded ? '' : 'hidden'}><td colspan="3"><div class="case-detail-layout">${trackingControlHtml(row)}${detailHtml}</div></td></tr>`;
       }).join('')}</tbody></table></div>${baggageHtml}`;
     }
     async function loadCases() {
@@ -596,7 +606,16 @@
         renderCases();
         return;
       }
-      return;
+      const summary = event.target.closest('[data-toggle-case]');
+      if (!summary) return;
+      window._expandedCbsCases = window._expandedCbsCases || new Set();
+      const detailKey = summary.dataset.toggleCase;
+      if (window._expandedCbsCases.has(detailKey)) {
+        window._expandedCbsCases.delete(detailKey);
+      } else {
+        window._expandedCbsCases.add(detailKey);
+      }
+      renderCases();
     });
     async function updateCase(caseNumber, payload) {
       casesOutput.style.opacity = '.65';
