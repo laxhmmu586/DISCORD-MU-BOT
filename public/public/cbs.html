@@ -41,6 +41,8 @@
     .cbs-sheet th,.cbs-sheet td { height:34px; padding:12px 14px; border:0; background:#fff; vertical-align:top; }
     .cbs-sheet th { position:sticky; top:0; z-index:2; background:#f8fbff; color:#344054; text-transform:none; font-size:13px; font-weight:900; box-shadow:inset 0 -1px 0 #d8e4f1; }
     .cbs-sheet tbody tr { box-shadow:0 8px 22px rgba(18,58,115,.055); }
+    .cbs-sheet tbody tr.is-closed { box-shadow:0 8px 22px rgba(8,116,67,.08); }
+    .cbs-sheet tbody tr.is-closed td { background:#f0fbf5; }
     .cbs-sheet tbody td:first-child { border-radius:14px 0 0 14px; }
     .cbs-sheet tbody td:last-child { border-radius:0 14px 14px 0; }
     .cbs-sheet .case-key { color:#344054; font-weight:900; }
@@ -60,6 +62,7 @@
     .tracking-workspace { display:grid; gap:14px; align-items:start; }
     .tracking-history { display:flex; flex-wrap:wrap; gap:10px; align-items:stretch; }
     .tracking-chip { display:inline-grid; gap:3px; min-width:150px; padding:9px 11px; border-radius:14px; background:#eef4ff; color:var(--brand); font-weight:850; box-shadow:inset 0 0 0 1px rgba(18,58,115,.04); }
+    .tracking-chip.is-closed { background:#dcfae6; color:#067647; }
     .tracking-chip small { color:var(--muted); font-weight:700; }
     .tracking-chip-detail { color:#344054; font-size:11px; font-weight:750; line-height:1.35; }
     .tracking-current-time { margin:0 0 8px; color:var(--muted); font-weight:800; }
@@ -480,8 +483,9 @@
           const title = TRACKING_STAGES.find((stage) => stage.key === event.key)?.text || event.title || 'Update';
           const detailFields = (event.fields || []).filter(([, value]) => hasValue(value));
           const detailHtml = detailFields.map(([fieldKey, value]) => `<span class="tracking-chip-detail">${escapeHtml(fieldKey)}: ${escapeHtml(renderValue(value))}</span>`).join('');
-          const noteHtml = hasValue(event.note) ? `<span class="tracking-chip-detail">${escapeHtml(event.note)}</span>` : '';
-          return `<span class="tracking-chip">${escapeHtml(title)}<small>${escapeHtml(time.date || '')} ${escapeHtml(time.time || '')}</small>${detailHtml}${noteHtml}</span>`;
+          const noteHtml = !detailFields.length && hasValue(event.note) ? `<span class="tracking-chip-detail">${escapeHtml(event.note)}</span>` : '';
+          const closedClass = event.key === 'closed' ? ' is-closed' : '';
+          return `<span class="tracking-chip${closedClass}">${escapeHtml(title)}<small>${escapeHtml(time.date || '')} ${escapeHtml(time.time || '')}</small>${detailHtml}${noteHtml}</span>`;
         }).join('') || '<span class="sheet-empty">No tracking updates yet</span>';
       if (!row.caseNumber) return historyHtml;
       return `<div class="tracking-workspace"><div><p class="tracking-current-time">${label('Last update', '最后更新')}: ${escapeHtml(latestTime.date || '-')} ${escapeHtml(latestTime.time || '')}</p><div class="tracking-history">${historyHtml}</div></div><div><label class="tracking-stage-picker"><span>${label('Current stage', '当前阶段')}</span><select data-cbs-stage-select>${updateKeys.map((stage) => `<option value="${escapeHtml(stage.key)}" ${stage.key === active ? 'selected' : ''}>${escapeHtml(stage.text)}</option>`).join('')}</select></label><form class="inline-update case-update" data-case="${escapeHtml(row.caseNumber)}" data-update-mode="${escapeHtml(active)}"><div data-cbs-inline-fields>${inlineUpdateFieldsHtml(active)}</div><button type="submit">${label('Update Tracking', '更新进度')}</button></form></div></div>`;
@@ -496,7 +500,8 @@
       casesOutput.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:170px"><col style="width:120px"><col style="width:220px"><col></colgroup><thead><tr><th>${label('Case Number', '编号')}</th><th>${label('Case Type', '类型')}</th><th>${label('Bag Tag', '行李牌')}</th><th>${label('Tracking', '追踪')}</th></tr></thead><tbody>${rows.map((row) => {
         const caseNumberLabel = row.caseNumber || label('Missing case number', '缺少编号');
         const caseType = inferCaseType(row);
-        return `<tr><td class="case-key">${escapeHtml(caseNumberLabel)}</td><td class="sheet-meta">${escapeHtml(caseType || '-')}</td><td class="sheet-meta"><span class="bag-tag-value">${escapeHtml(displayBagTag(row) || '-')}</span></td><td>${trackingControlHtml(row)}</td></tr>`;
+        const closedClass = isClosedCase(row) ? ' class="is-closed"' : '';
+        return `<tr${closedClass}><td class="case-key">${escapeHtml(caseNumberLabel)}</td><td class="sheet-meta">${escapeHtml(caseType || '-')}</td><td class="sheet-meta"><span class="bag-tag-value">${escapeHtml(displayBagTag(row) || '-')}</span></td><td>${trackingControlHtml(row)}</td></tr>`;
       }).join('')}</tbody></table></div>${baggageHtml}`;
     }
     async function loadCases() {
