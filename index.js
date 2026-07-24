@@ -2716,11 +2716,13 @@ app.get(
 
 
 
+const DISCORD_BOARDING_LINE_PATTERN = /^\s*(?:[^\p{L}\p{N}]*\s*)?Boarding\s*[:：]/iu;
+
 function removeBoardingLinesFromDiscordEmbedText(value) {
   if (typeof value !== 'string') return value;
   return value
     .split(/\r?\n/)
-    .filter((line) => !/^\s*(?:[🔹▪️•*-]\s*)?Boarding\s*:/i.test(line))
+    .filter((line) => !DISCORD_BOARDING_LINE_PATTERN.test(line))
     .join('\n')
     .trimEnd();
 }
