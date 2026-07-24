@@ -36,13 +36,14 @@
     .case-summary { cursor:pointer; }
     .case-summary:hover { background:#f7fbff; }
 
-    .sheet-shell { overflow:auto; border:1px solid var(--line); border-radius:18px; background:#fff; box-shadow:inset 0 1px 0 rgba(255,255,255,.85); }
-    .cbs-sheet { min-width:980px; border-collapse:collapse; table-layout:fixed; font-size:13px; }
-    .cbs-sheet th,.cbs-sheet td { height:34px; padding:7px 8px; border:1px solid #d9e1ea; border-bottom:1px solid #d9e1ea; background:#fff; vertical-align:top; }
-    .cbs-sheet th { position:sticky; top:0; z-index:2; background:#f8fbff; color:#475467; text-transform:none; font-size:13px; font-weight:900; }
-    .cbs-sheet .sheet-group-start td { border-top:1px solid #b9c9dc; }
+    .sheet-shell { overflow:auto; border:1px solid #d8e4f1; border-radius:18px; background:#fff; box-shadow:0 12px 30px rgba(18,58,115,.06); }
+    .cbs-sheet { min-width:980px; border-collapse:separate; border-spacing:0; table-layout:fixed; font-size:13px; }
+    .cbs-sheet th,.cbs-sheet td { height:34px; padding:9px 10px; border:0; border-bottom:1px solid #e7eef6; background:#fff; vertical-align:top; }
+    .cbs-sheet th { position:sticky; top:0; z-index:2; background:#f8fbff; color:#344054; text-transform:none; font-size:13px; font-weight:900; box-shadow:inset 0 -1px 0 #d8e4f1; }
+    .cbs-sheet th:not(:last-child),.cbs-sheet td:not(:last-child) { box-shadow:inset -1px 0 0 #edf2f7; }
+    .cbs-sheet .sheet-group-start td { border-top:8px solid #f5f9fd; }
     .cbs-sheet .case-contact-row td { border-top:0; border-bottom:0; }
-    .cbs-sheet .case-spacer-row td { border-top:0; height:14px; padding:0; background:#fbfdff; }
+    .cbs-sheet .case-spacer-row td { border:0; height:10px; padding:0; background:#f8fbff; }
     .cbs-sheet .case-key { color:#344054; font-weight:900; }
     .cbs-sheet .bag-subfield { color:#000; font-weight:700; }
     .cbs-sheet .sheet-meta { color:#344054; font-weight:850; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -58,8 +59,9 @@
     .sheet-actions { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:12px; }
     .tracking-workspace { display:grid; grid-template-columns:minmax(220px,.8fr) minmax(260px,1.2fr); gap:16px; align-items:start; }
     .tracking-history { display:flex; flex-wrap:wrap; gap:8px; }
-    .tracking-chip { display:inline-grid; gap:2px; padding:7px 10px; border-radius:12px; background:#eef4ff; color:var(--brand); font-weight:850; }
+    .tracking-chip { display:inline-grid; gap:3px; min-width:150px; padding:9px 11px; border-radius:14px; background:#eef4ff; color:var(--brand); font-weight:850; box-shadow:inset 0 0 0 1px rgba(18,58,115,.04); }
     .tracking-chip small { color:var(--muted); font-weight:700; }
+    .tracking-chip-detail { color:#344054; font-size:11px; font-weight:750; line-height:1.35; }
     .tracking-current-time { margin:0 0 8px; color:var(--muted); font-weight:800; }
     .tracking-stage-picker { display:grid; gap:6px; color:var(--muted); font-size:12px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }
     .tracking-stage-picker select { width:100%; border:1px solid var(--line); border-radius:10px; padding:8px 10px; background:#fff; color:var(--ink); font:inherit; }
@@ -473,7 +475,10 @@
       const historyHtml = events.map((event) => {
         const time = formatEventTime(event.at);
         const title = TRACKING_STAGES.find((stage) => stage.key === event.key)?.text || event.title || 'Update';
-        return `<span class="tracking-chip">${escapeHtml(title)}<small>${escapeHtml(time.date || '')} ${escapeHtml(time.time || '')}</small></span>`;
+        const detailFields = (event.fields || []).filter(([, value]) => hasValue(value));
+        const detailHtml = detailFields.map(([fieldKey, value]) => `<span class="tracking-chip-detail">${escapeHtml(fieldKey)}: ${escapeHtml(renderValue(value))}</span>`).join('');
+        const noteHtml = hasValue(event.note) ? `<span class="tracking-chip-detail">${escapeHtml(event.note)}</span>` : '';
+        return `<span class="tracking-chip">${escapeHtml(title)}<small>${escapeHtml(time.date || '')} ${escapeHtml(time.time || '')}</small>${detailHtml}${noteHtml}</span>`;
       }).join('') || '<span class="sheet-empty">No tracking updates yet</span>';
       if (!row.caseNumber) return historyHtml;
       return `<div class="tracking-workspace"><div><p class="tracking-current-time">${label('Last update', '最后更新')}: ${escapeHtml(latestTime.date || '-')} ${escapeHtml(latestTime.time || '')}</p><div class="tracking-history">${historyHtml}</div></div><div><label class="tracking-stage-picker"><span>${label('Current stage', '当前阶段')}</span><select data-cbs-stage-select>${updateKeys.map((stage) => `<option value="${escapeHtml(stage.key)}" ${stage.key === active ? 'selected' : ''}>${escapeHtml(stage.text)}</option>`).join('')}</select></label><form class="inline-update case-update" data-case="${escapeHtml(row.caseNumber)}" data-update-mode="${escapeHtml(active)}"><div data-cbs-inline-fields>${inlineUpdateFieldsHtml(active)}</div><button type="submit">${label('Update Tracking', '更新进度')}</button></form></div></div>`;
