@@ -59,6 +59,11 @@ const {
   extractFscExchangeRate,
   updateSyBookingCounts,
   appendCbsCase,
+  appendCbsWorldTracerCase,
+  getCbsWorldTracerCases,
+  updateCbsWorldTracerCase,
+  getCbsUnresolvedBaggageCases,
+  resolveCbsUnresolvedBaggageCase,
   getCbsCases,
   updateCbsCase,
   getCbsMissingBagReports,
@@ -1805,6 +1810,18 @@ app.post('/cbs-missing-bags/:rowNumber/acknowledge', async (req, res) => {
   }
 });
 
+app.post('/cbs-missing-bags/:rowNumber/link-on-hand-rush', async (req, res) => {
+  try {
+    const worldTracerFileNumber = sanitizeCbsText(req.body?.worldTracerFileNumber, 120).toUpperCase();
+    if (!worldTracerFileNumber) return res.status(400).json({ error:'WorldTracer file number is required' });
+    await markCbsMissingBagCase(req.params.rowNumber, `RUSH ${worldTracerFileNumber}`);
+    return res.json({ linked:true, worldTracerFileNumber });
+  } catch (err) {
+    console.error('CBS missing bag On-hard link error:', err);
+    return res.status(500).json({ error:err?.message || 'Missing bag On-hard link failed' });
+  }
+});
+
 
 function parseCbsPdf417(rawValue = '') {
   const rawScan = String(rawValue || '').trim();
@@ -1990,6 +2007,94 @@ app.get('/cbs-cases', async (req, res) => {
   } catch (err) {
     console.error('CBS case list error:', err);
     return res.status(500).json({ error: err?.message || 'CBS case lookup failed' });
+  }
+});
+
+app.post('/cbs-worldtracer-cases', async (req, res) => {
+  try {
+    const body = req.body || {};
+    const record = {
+      worldTracerFileNumber: sanitizeCbsText(body.worldTracerFileNumber, 120).toUpperCase(),
+      originalTagNumber: sanitizeCbsText(body.originalTagNumber || body.bagTagNumber, 120).toUpperCase(),
+      rushTagNumber: sanitizeCbsText(body.rushTagNumber, 120).toUpperCase(),
+      flightRows: (Array.isArray(body.flightRows) ? body.flightRows : []).slice(0, 20).map((flight) => ({
+        flightDate: sanitizeCbsText(flight?.flightDate, 40),
+        flightNumber: sanitizeCbsText(flight?.flightNumber, 40).toUpperCase(),
+        from: sanitizeCbsText(flight?.from, 40).toUpperCase(),
+        to: sanitizeCbsText(flight?.to, 40).toUpperCase()
+      })),
+      createdAt: new Date().toISOString()
+    };
+    const invalidFlight = !record.flightRows.length || record.flightRows.some((flight) => Object.values(flight).some((value) => !value));
+    if (!record.worldTracerFileNumber || !record.originalTagNumber || !record.rushTagNumber || invalidFlight) {
+      return res.status(400).json({ error: 'WorldTracer file number, original tag, RUSH tag, and complete flight segments are required' });
+    }
+    const saved = await appendCbsWorldTracerCase(record);
+    return res.status(201).json({ created: true, record: saved });
+  } catch (err) {
+    console.error('CBS WorldTracer case create error:', err);
+    return res.status(500).json({ error: err?.message || 'WorldTracer case save failed' });
+  }
+});
+
+app.get('/cbs-worldtracer-cases', async (req, res) => {
+  try {
+    return res.json({ rows: await getCbsWorldTracerCases() });
+  } catch (err) {
+    console.error('CBS WorldTracer case list error:', err);
+    return res.status(500).json({ error: err?.message || 'WorldTracer case lookup failed' });
+  }
+});
+
+app.post('/cbs-worldtracer-cases/update', async (req, res) => {
+  try {
+    const body = req.body || {};
+    const record = {
+      worldTracerFileNumber: sanitizeCbsText(body.worldTracerFileNumber, 120).toUpperCase(), originalTagNumber: sanitizeCbsText(body.originalTagNumber, 120).toUpperCase(), rushTagNumber: sanitizeCbsText(body.rushTagNumber, 120).toUpperCase(), createdAt:sanitizeCbsText(body.createdAt, 40),
+      flightRows:(Array.isArray(body.flightRows) ? body.flightRows : []).slice(0, 20).map((flight) => ({ flightDate:sanitizeCbsText(flight?.flightDate, 40), flightNumber:sanitizeCbsText(flight?.flightNumber, 40).toUpperCase(), from:sanitizeCbsText(flight?.from, 40).toUpperCase(), to:sanitizeCbsText(flight?.to, 40).toUpperCase() }))
+    };
+    if (!record.worldTracerFileNumber || !record.originalTagNumber || !record.rushTagNumber || !record.flightRows.length || record.flightRows.some((flight) => Object.values(flight).some((value) => !value))) return res.status(400).json({ error:'Complete On-hard details are required' });
+    const result = await updateCbsWorldTracerCase(body.rowNumbers, record);
+    if (result.notFound) return res.status(404).json({ error:'On-hard case not found' });
+    return res.json(result);
+  } catch (err) {
+    console.error('CBS On-hard update error:', err);
+    return res.status(500).json({ error:err?.message || 'On-hard update failed' });
+  }
+});
+
+app.get('/cbs-unresolved-baggage', async (req, res) => {
+  try {
+    return res.json({ rows: await getCbsUnresolvedBaggageCases() });
+  } catch (err) {
+    console.error('CBS unresolved baggage list error:', err);
+    return res.status(500).json({ error: err?.message || 'Unresolved baggage lookup failed' });
+  }
+});
+
+app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
+  try {
+    const action = sanitizeCbsText(req.body?.action, 40).toLowerCase();
+    if (!['on-hand-rush', 'passenger-collected', 'shipped', 'other'].includes(action)) return res.status(400).json({ error: 'A valid resolution is required' });
+    const note = sanitizeCbsText(req.body?.note, 500);
+    if (action === 'on-hand-rush') {
+      const flightRows = (Array.isArray(req.body?.flightRows) ? req.body.flightRows : []).slice(0, 20).map((flight) => ({
+        flightDate: sanitizeCbsText(flight?.flightDate, 40), flightNumber: sanitizeCbsText(flight?.flightNumber, 40).toUpperCase(),
+        from: sanitizeCbsText(flight?.from, 40).toUpperCase(), to: sanitizeCbsText(flight?.to, 40).toUpperCase()
+      }));
+      const worldTracerFileNumber = sanitizeCbsText(req.body?.worldTracerFileNumber, 120).toUpperCase();
+      const originalTagNumber = sanitizeCbsText(req.body?.originalTagNumber || req.body?.bagTagNumber, 120).toUpperCase();
+      const rushTagNumber = sanitizeCbsText(req.body?.rushTagNumber, 120).toUpperCase();
+      if (!worldTracerFileNumber || !originalTagNumber || !rushTagNumber || !flightRows.length || flightRows.some((flight) => Object.values(flight).some((value) => !value))) return res.status(400).json({ error: 'Complete On-hard details are required' });
+      await appendCbsWorldTracerCase({ worldTracerFileNumber, originalTagNumber, rushTagNumber, flightRows, createdAt: new Date().toISOString() });
+    }
+    if (action !== 'on-hand-rush' && !note) return res.status(400).json({ error: 'A resolution note is required' });
+    const result = await resolveCbsUnresolvedBaggageCase(req.params.rowNumber, action, note);
+    if (result.notFound) return res.status(404).json({ error: 'Unresolved baggage case not found' });
+    return res.json(result);
+  } catch (err) {
+    console.error('CBS unresolved baggage update error:', err);
+    return res.status(500).json({ error: err?.message || 'Unresolved baggage update failed' });
   }
 });
 
@@ -2716,11 +2821,13 @@ app.get(
 
 
 
+const DISCORD_BOARDING_LINE_PATTERN = /^\s*(?:[^\p{L}\p{N}]*\s*)?Boarding\s*[:：]/iu;
+
 function removeBoardingLinesFromDiscordEmbedText(value) {
   if (typeof value !== 'string') return value;
   return value
     .split(/\r?\n/)
-    .filter((line) => !/^\s*(?:[🔹▪️•*-]\s*)?Boarding\s*:/i.test(line))
+    .filter((line) => !DISCORD_BOARDING_LINE_PATTERN.test(line))
     .join('\n')
     .trimEnd();
 }
