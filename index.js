@@ -61,6 +61,7 @@ const {
   appendCbsCase,
   appendCbsWorldTracerCase,
   getCbsWorldTracerCases,
+  updateCbsWorldTracerCase,
   getCbsUnresolvedBaggageCases,
   resolveCbsUnresolvedBaggageCase,
   getCbsCases,
@@ -1809,6 +1810,18 @@ app.post('/cbs-missing-bags/:rowNumber/acknowledge', async (req, res) => {
   }
 });
 
+app.post('/cbs-missing-bags/:rowNumber/link-on-hand-rush', async (req, res) => {
+  try {
+    const worldTracerFileNumber = sanitizeCbsText(req.body?.worldTracerFileNumber, 120).toUpperCase();
+    if (!worldTracerFileNumber) return res.status(400).json({ error:'WorldTracer file number is required' });
+    await markCbsMissingBagCase(req.params.rowNumber, `RUSH ${worldTracerFileNumber}`);
+    return res.json({ linked:true, worldTracerFileNumber });
+  } catch (err) {
+    console.error('CBS missing bag On-hand Rush link error:', err);
+    return res.status(500).json({ error:err?.message || 'Missing bag On-hand Rush link failed' });
+  }
+});
+
 
 function parseCbsPdf417(rawValue = '') {
   const rawScan = String(rawValue || '').trim();
@@ -2002,7 +2015,8 @@ app.post('/cbs-worldtracer-cases', async (req, res) => {
     const body = req.body || {};
     const record = {
       worldTracerFileNumber: sanitizeCbsText(body.worldTracerFileNumber, 120).toUpperCase(),
-      bagTagNumber: sanitizeCbsText(body.bagTagNumber, 120).toUpperCase(),
+      originalTagNumber: sanitizeCbsText(body.originalTagNumber || body.bagTagNumber, 120).toUpperCase(),
+      rushTagNumber: sanitizeCbsText(body.rushTagNumber, 120).toUpperCase(),
       flightRows: (Array.isArray(body.flightRows) ? body.flightRows : []).slice(0, 20).map((flight) => ({
         flightDate: sanitizeCbsText(flight?.flightDate, 40),
         flightNumber: sanitizeCbsText(flight?.flightNumber, 40).toUpperCase(),
@@ -2012,8 +2026,8 @@ app.post('/cbs-worldtracer-cases', async (req, res) => {
       createdAt: new Date().toISOString()
     };
     const invalidFlight = !record.flightRows.length || record.flightRows.some((flight) => Object.values(flight).some((value) => !value));
-    if (!record.worldTracerFileNumber || !record.bagTagNumber || invalidFlight) {
-      return res.status(400).json({ error: 'WorldTracer file number, bag tag number, and complete RUSH flight segments are required' });
+    if (!record.worldTracerFileNumber || !record.originalTagNumber || !record.rushTagNumber || invalidFlight) {
+      return res.status(400).json({ error: 'WorldTracer file number, original tag, RUSH tag, and complete flight segments are required' });
     }
     const saved = await appendCbsWorldTracerCase(record);
     return res.status(201).json({ created: true, record: saved });
@@ -2029,6 +2043,23 @@ app.get('/cbs-worldtracer-cases', async (req, res) => {
   } catch (err) {
     console.error('CBS WorldTracer case list error:', err);
     return res.status(500).json({ error: err?.message || 'WorldTracer case lookup failed' });
+  }
+});
+
+app.post('/cbs-worldtracer-cases/update', async (req, res) => {
+  try {
+    const body = req.body || {};
+    const record = {
+      worldTracerFileNumber: sanitizeCbsText(body.worldTracerFileNumber, 120).toUpperCase(), originalTagNumber: sanitizeCbsText(body.originalTagNumber, 120).toUpperCase(), rushTagNumber: sanitizeCbsText(body.rushTagNumber, 120).toUpperCase(), createdAt:sanitizeCbsText(body.createdAt, 40),
+      flightRows:(Array.isArray(body.flightRows) ? body.flightRows : []).slice(0, 20).map((flight) => ({ flightDate:sanitizeCbsText(flight?.flightDate, 40), flightNumber:sanitizeCbsText(flight?.flightNumber, 40).toUpperCase(), from:sanitizeCbsText(flight?.from, 40).toUpperCase(), to:sanitizeCbsText(flight?.to, 40).toUpperCase() }))
+    };
+    if (!record.worldTracerFileNumber || !record.originalTagNumber || !record.rushTagNumber || !record.flightRows.length || record.flightRows.some((flight) => Object.values(flight).some((value) => !value))) return res.status(400).json({ error:'Complete On-hand Rush details are required' });
+    const result = await updateCbsWorldTracerCase(body.rowNumbers, record);
+    if (result.notFound) return res.status(404).json({ error:'On-hand Rush case not found' });
+    return res.json(result);
+  } catch (err) {
+    console.error('CBS On-hand Rush update error:', err);
+    return res.status(500).json({ error:err?.message || 'On-hand Rush update failed' });
   }
 });
 
@@ -2052,9 +2083,10 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
         from: sanitizeCbsText(flight?.from, 40).toUpperCase(), to: sanitizeCbsText(flight?.to, 40).toUpperCase()
       }));
       const worldTracerFileNumber = sanitizeCbsText(req.body?.worldTracerFileNumber, 120).toUpperCase();
-      const bagTagNumber = sanitizeCbsText(req.body?.bagTagNumber, 120).toUpperCase();
-      if (!worldTracerFileNumber || !bagTagNumber || !flightRows.length || flightRows.some((flight) => Object.values(flight).some((value) => !value))) return res.status(400).json({ error: 'Complete On-hand Rush details are required' });
-      await appendCbsWorldTracerCase({ worldTracerFileNumber, bagTagNumber, flightRows, createdAt: new Date().toISOString() });
+      const originalTagNumber = sanitizeCbsText(req.body?.originalTagNumber || req.body?.bagTagNumber, 120).toUpperCase();
+      const rushTagNumber = sanitizeCbsText(req.body?.rushTagNumber, 120).toUpperCase();
+      if (!worldTracerFileNumber || !originalTagNumber || !rushTagNumber || !flightRows.length || flightRows.some((flight) => Object.values(flight).some((value) => !value))) return res.status(400).json({ error: 'Complete On-hand Rush details are required' });
+      await appendCbsWorldTracerCase({ worldTracerFileNumber, originalTagNumber, rushTagNumber, flightRows, createdAt: new Date().toISOString() });
     }
     if (action !== 'on-hand-rush' && !note) return res.status(400).json({ error: 'A resolution note is required' });
     const result = await resolveCbsUnresolvedBaggageCase(req.params.rowNumber, action, note);

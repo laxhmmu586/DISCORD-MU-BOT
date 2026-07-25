@@ -12,7 +12,7 @@
     header { position:sticky; top:0; z-index:10; display:flex; flex-wrap:wrap; align-items:center; gap:24px; padding:14px clamp(18px,4vw,52px); background:rgba(255,255,255,.92); border-bottom:1px solid var(--line); backdrop-filter:blur(12px); }
     .brand { font-weight:900; color:var(--brand); letter-spacing:.08em; text-decoration:none; }
     .page-tabs { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
-    .page-tab { border:1px solid transparent; background:transparent; color:#475467; box-shadow:none; padding:10px 15px; }
+    .page-tab { border:1px solid transparent; border-radius:999px; background:transparent; color:#475467; box-shadow:none; padding:10px 15px; font-weight:850; text-decoration:none; cursor:pointer; }
     .page-tab:hover { background:#f0f5fb; color:var(--brand); }
     .page-tab.is-active { border-color:#c9d9ec; background:#e8f1ff; color:var(--brand); }
     .header-spacer { flex:1; }
@@ -151,7 +151,7 @@
     .rush-flight-row button { padding:10px 12px; border-radius:10px; background:#fce8e6; color:#b42318; }
     .rush-route-arrow { align-self:center; padding-top:21px; text-align:center; color:var(--muted); font-weight:900; }
     .worldtracer-list { margin-top:18px; }
-    .worldtracer-route { display:flex; flex-wrap:wrap; gap:8px; }
+    .worldtracer-route { display:grid; gap:8px; }
     .worldtracer-route span { display:inline-flex; padding:6px 10px; border-radius:10px; background:#eef4ff; color:#344054; font-weight:800; }
     .unresolved-list { display:grid; gap:12px; margin-top:18px; }
     .unresolved-case { padding:16px; border:1px solid #d8e4f1; border-radius:16px; background:#fbfdff; }
@@ -171,6 +171,7 @@
       <button class="page-tab" id="worldtracer-tab" type="button">On-hand Rush</button>
       <button class="page-tab" id="missing-report-alert" type="button">Missing Bag Report</button>
       <button class="page-tab" id="unresolved-baggage-tab" type="button">Unresolved Baggage</button>
+      <a class="page-tab" href="index.html#test">Add Baggage</a>
     </nav>
     <span class="header-spacer"></span>
     <button class="lang-toggle" id="language-toggle" type="button">中文</button>
@@ -188,7 +189,8 @@
       <p class="muted"><span class="en">Create an On-hand Rush case and save it to the operations sheet.</span><span class="zh">创建 On-hand Rush 案件并保存到工作表。</span></p>
       <form class="worldtracer-form" id="worldtracer-form">
         <label><span>WorldTracer File Number</span><input name="worldTracerFileNumber" required autocomplete="off" /></label>
-        <label><span>Bag Tag Number</span><input name="bagTagNumber" required autocomplete="off" /></label>
+        <label><span>Original Tag Number</span><input name="originalTagNumber" required autocomplete="off" /></label>
+        <label><span>RUSH Tag Number</span><input name="rushTagNumber" required autocomplete="off" /></label>
         <div class="rush-itinerary">
           <div class="rush-itinerary-head"><h2>RUSH Itinerary</h2><button class="secondary" id="add-rush-flight" type="button">+ Add Flight</button></div>
           <div id="rush-flight-rows"></div>
@@ -230,8 +232,8 @@
     const backToCases = document.querySelector('#back-to-cases');
     const refreshCases = document.querySelector('#refresh-cases');
     const languageToggle = document.querySelector('#language-toggle');
-    function rushFlightRowHtml() {
-      return `<div class="rush-flight-row" data-rush-flight-row><label><span>Date</span><input data-flight-date type="date" required /></label><label><span>Flight Number</span><input data-flight-number required autocomplete="off" placeholder="MU586" /></label><label><span>From</span><input data-flight-from required autocomplete="off" placeholder="LAX" /></label><span class="rush-route-arrow">–</span><label><span>To</span><input data-flight-to required autocomplete="off" placeholder="PVG" /></label><button type="button" data-remove-rush-flight aria-label="Remove flight">Remove</button></div>`;
+    function rushFlightRowHtml(flight = {}) {
+      return `<div class="rush-flight-row" data-rush-flight-row><label><span>Date</span><input data-flight-date type="date" value="${escapeHtml(flight.flightDate || '')}" required /></label><label><span>Flight Number</span><input data-flight-number value="${escapeHtml(flight.flightNumber || '')}" required autocomplete="off" placeholder="MU586" /></label><label><span>From</span><input data-flight-from value="${escapeHtml(flight.from || '')}" required autocomplete="off" placeholder="LAX" /></label><span class="rush-route-arrow">–</span><label><span>To</span><input data-flight-to value="${escapeHtml(flight.to || '')}" required autocomplete="off" placeholder="PVG" /></label><button type="button" data-remove-rush-flight aria-label="Remove flight">Remove</button></div>`;
     }
     function addRushFlightRow() { rushFlightRows.insertAdjacentHTML('beforeend', rushFlightRowHtml()); }
     function showSection(section) {
@@ -255,10 +257,11 @@
     async function parseJson(res) { const text = await res.text(); try { return JSON.parse(text); } catch { throw new Error(`API returned non-JSON (${res.status}). Please check API base: ${apiBase}`); } }
     function renderWorldTracerCases(rows = []) {
       if (!rows.length) { worldTracerOutput.innerHTML = `<p class="muted">${label('No On-hand Rush cases yet.', '暂无 On-hand Rush 案件。')}</p>`; return; }
-      worldTracerOutput.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:240px"><col style="width:190px"><col><col style="width:190px"></colgroup><thead><tr><th>WorldTracer File Number</th><th>Bag Tag</th><th>RUSH Itinerary</th><th>${label('Created', '创建时间')}</th></tr></thead><tbody>${rows.map((row) => {
+      worldTracerOutput.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:210px"><col style="width:170px"><col style="width:170px"><col><col style="width:170px"><col style="width:110px"></colgroup><thead><tr><th>WorldTracer File Number</th><th>Original Tag</th><th>RUSH Tag</th><th>RUSH Itinerary</th><th>${label('Created', '创建时间')}</th><th></th></tr></thead><tbody>${rows.map((row, caseIndex) => {
         const routes = (row.flightRows || []).map((flight) => `<span>${escapeHtml(flight.flightDate || '-')} &nbsp; ${escapeHtml(flight.flightNumber || '-')} &nbsp; ${escapeHtml(flight.from || '-')} – ${escapeHtml(flight.to || '-')}</span>`).join('');
         const created = row.createdAt ? new Date(row.createdAt).toLocaleString() : '-';
-        return `<tr><td class="case-key">${escapeHtml(row.worldTracerFileNumber || '-')}</td><td><span class="bag-tag-value">${escapeHtml(row.bagTagNumber || '-')}</span></td><td><div class="worldtracer-route">${routes}</div></td><td class="sheet-meta">${escapeHtml(created)}</td></tr>`;
+        const editFlights = (row.flightRows || []).map((flight) => rushFlightRowHtml(flight)).join('');
+        return `<tr><td class="case-key">${escapeHtml(row.worldTracerFileNumber || '-')}</td><td><span class="bag-tag-value">${escapeHtml(row.originalTagNumber || '-')}</span></td><td><span class="bag-tag-value">${escapeHtml(row.rushTagNumber || '-')}</span></td><td><div class="worldtracer-route">${routes}</div></td><td class="sheet-meta">${escapeHtml(created)}</td><td><button type="button" data-toggle-onhand-update="${caseIndex}">Update</button></td></tr><tr data-onhand-update-row="${caseIndex}" hidden><td colspan="6"><form class="worldtracer-form onhand-update-form" data-row-numbers="${escapeHtml((row.rowNumbers || []).join(','))}" data-created-at="${escapeHtml(row.createdAt)}"><label><span>WorldTracer File Number</span><input name="worldTracerFileNumber" value="${escapeHtml(row.worldTracerFileNumber)}" required /></label><label><span>Original Tag Number</span><input name="originalTagNumber" value="${escapeHtml(row.originalTagNumber)}" required /></label><label><span>RUSH Tag Number</span><input name="rushTagNumber" value="${escapeHtml(row.rushTagNumber)}" required /></label><div class="rush-itinerary wide"><div class="rush-itinerary-head"><h2>RUSH Itinerary</h2><button class="secondary" type="button" data-add-onhand-flight>+ Add Flight</button></div><div data-onhand-flight-rows>${editFlights}</div></div><div class="actions"><button type="submit">Save Update</button></div></form></td></tr>`;
       }).join('')}</tbody></table></div>`;
     }
     async function loadWorldTracerCases() {
@@ -273,7 +276,7 @@
       }
     }
     function unresolvedUpdateFieldsHtml(action, bagTag) {
-      if (action === 'on-hand-rush') return `<label><span>WorldTracer File Number</span><input name="worldTracerFileNumber" required /></label><label><span>Bag Tag</span><input name="bagTagNumber" value="${escapeHtml(bagTag)}" required /></label><label><span>Flight Date</span><input name="flightDate" type="date" required /></label><label><span>Flight Number</span><input name="flightNumber" placeholder="MU586" required /></label><label><span>From</span><input name="from" placeholder="LAX" required /></label><label><span>To</span><input name="to" placeholder="PVG" required /></label>`;
+      if (action === 'on-hand-rush') return `<label><span>WorldTracer File Number</span><input name="worldTracerFileNumber" required /></label><label><span>Original Tag</span><input name="originalTagNumber" value="${escapeHtml(bagTag)}" required /></label><label><span>RUSH Tag</span><input name="rushTagNumber" required /></label><label><span>Flight Date</span><input name="flightDate" type="date" required /></label><label><span>Flight Number</span><input name="flightNumber" placeholder="MU586" required /></label><label><span>From</span><input name="from" placeholder="LAX" required /></label><label><span>To</span><input name="to" placeholder="PVG" required /></label>`;
       const placeholder = action === 'passenger-collected' ? 'Who collected the bag?' : (action === 'shipped' ? 'Tracking number and destination' : 'Describe how this case was resolved');
       return `<label class="wide"><span>Resolution Note</span><textarea name="note" placeholder="${placeholder}" required></textarea></label>`;
     }
@@ -646,11 +649,11 @@
         const linkedCaseNumber = row.linkedCaseNumber || row.caseNumber || '';
         const status = row.acknowledgedAt ? 'Acknowledged' : (linkedCaseNumber ? (row.linkedCaseUpdated ? 'Updated' : 'Needs Update') : 'Open');
         const caseHtml = linkedCaseNumber
-          ? `<button class="case-link-button" type="button" data-link-case="${escapeHtml(linkedCaseNumber)}">${escapeHtml(linkedCaseNumber)}</button>`
+          ? (/^LAX\s+MU/i.test(linkedCaseNumber) ? `<button class="case-link-button" type="button" data-link-case="${escapeHtml(linkedCaseNumber)}">${escapeHtml(linkedCaseNumber)}</button>` : `<span class="pill">${escapeHtml(linkedCaseNumber)}</span>`)
           : '-';
         const actionHtml = linkedCaseNumber
           ? ''
-          : `<div class="missing-actions"><button type="button" data-create-missing-case="${escapeHtml(row.rowNumber)}" data-missing-bag-tag="${escapeHtml(row.bagTag)}">Create CASE</button><button class="secondary" type="button" data-ack-missing="${escapeHtml(row.rowNumber)}">Acknowledge</button></div>`;
+          : `<div class="missing-actions"><button type="button" data-create-missing-rush="${escapeHtml(row.rowNumber)}" data-missing-bag-tag="${escapeHtml(row.bagTag)}">Create On-hand Rush</button><button class="secondary" type="button" data-ack-missing="${escapeHtml(row.rowNumber)}">Acknowledge</button></div>`;
         return `<tr><td>${escapeHtml(row.bagTag)}</td><td>${escapeHtml(row.passengerName)}</td><td>${escapeHtml(row.destination)}</td><td>${escapeHtml(row.airline)}</td><td>${escapeHtml(row.sourceAttachment || row.sourceEmailDate)}</td><td>${caseHtml}</td><td>${escapeHtml(status)}</td><td>${row.acknowledgedAt ? '' : actionHtml}</td></tr>`;
       }).join('')}</tbody></table>`;
     }
@@ -742,7 +745,7 @@
     }
     caseSearch?.addEventListener('input', () => { renderCases(); loadBaggageSearch(caseSearch.value); });
     passengerCasesTab?.addEventListener('click', () => showSection('passenger'));
-    worldTracerTab?.addEventListener('click', async () => { showSection('worldtracer'); await loadWorldTracerCases(); });
+    worldTracerTab?.addEventListener('click', async () => { delete worldTracerForm.dataset.missingRow; showSection('worldtracer'); await loadWorldTracerCases(); });
     missingAlert?.addEventListener('click', async () => { showSection('missing'); await loadMissingReports(true); });
     unresolvedBaggageTab?.addEventListener('click', async () => { showSection('unresolved'); await loadUnresolvedBaggage(); });
     backToCases?.addEventListener('click', () => showSection('passenger'));
@@ -771,6 +774,13 @@
         const res = await fetch(`${apiBase}/cbs-worldtracer-cases`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || 'On-hand Rush case save failed');
+        if (worldTracerForm.dataset.missingRow) {
+          const linkRes = await fetch(`${apiBase}/cbs-missing-bags/${encodeURIComponent(worldTracerForm.dataset.missingRow)}/link-on-hand-rush`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ worldTracerFileNumber:payload.worldTracerFileNumber }) });
+          const linkData = await parseJson(linkRes);
+          if (!linkRes.ok) throw new Error(linkData.error || 'Missing bag link failed');
+          delete worldTracerForm.dataset.missingRow;
+          await loadMissingReports(false);
+        }
         worldTracerForm.reset();
         rushFlightRows.innerHTML = '';
         addRushFlightRow();
@@ -782,6 +792,38 @@
       } finally {
         button.disabled = false;
       }
+    });
+    worldTracerOutput?.addEventListener('click', (event) => {
+      const toggle = event.target.closest('[data-toggle-onhand-update]');
+      if (toggle) {
+        const detail = worldTracerOutput.querySelector(`[data-onhand-update-row="${toggle.dataset.toggleOnhandUpdate}"]`);
+        detail.hidden = !detail.hidden;
+        return;
+      }
+      const add = event.target.closest('[data-add-onhand-flight]');
+      if (add) add.closest('form').querySelector('[data-onhand-flight-rows]').insertAdjacentHTML('beforeend', rushFlightRowHtml());
+      const remove = event.target.closest('[data-remove-rush-flight]');
+      if (remove) {
+        const container = remove.closest('form').querySelector('[data-onhand-flight-rows]');
+        if (container.querySelectorAll('[data-rush-flight-row]').length > 1) remove.closest('[data-rush-flight-row]').remove();
+      }
+    });
+    worldTracerOutput?.addEventListener('submit', async (event) => {
+      const form = event.target.closest('.onhand-update-form');
+      if (!form) return;
+      event.preventDefault();
+      const payload = Object.fromEntries(new FormData(form).entries());
+      payload.createdAt = form.dataset.createdAt;
+      payload.rowNumbers = form.dataset.rowNumbers.split(',').filter(Boolean).map(Number);
+      payload.flightRows = Array.from(form.querySelectorAll('[data-rush-flight-row]')).map((row) => ({ flightDate:row.querySelector('[data-flight-date]').value, flightNumber:row.querySelector('[data-flight-number]').value, from:row.querySelector('[data-flight-from]').value, to:row.querySelector('[data-flight-to]').value }));
+      const button = form.querySelector('button[type="submit"]');
+      button.disabled = true;
+      try {
+        const res = await fetch(`${apiBase}/cbs-worldtracer-cases/update`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+        const data = await parseJson(res);
+        if (!res.ok) throw new Error(data.error || 'On-hand Rush update failed');
+        await loadWorldTracerCases();
+      } catch (error) { alert(error.message); } finally { button.disabled = false; }
     });
     unresolvedBaggageOutput?.addEventListener('click', (event) => {
       const toggle = event.target.closest('[data-toggle-unresolved-update]');
@@ -815,6 +857,17 @@
       }
     });
     missingReportOutput?.addEventListener('click', async (event) => {
+      const rushButton = event.target.closest('[data-create-missing-rush]');
+      if (rushButton) {
+        showSection('worldtracer');
+        worldTracerForm.reset();
+        worldTracerForm.dataset.missingRow = rushButton.dataset.createMissingRush || '';
+        worldTracerForm.elements.originalTagNumber.value = rushButton.dataset.missingBagTag || '';
+        rushFlightRows.innerHTML = '';
+        addRushFlightRow();
+        worldTracerForm.scrollIntoView({ behavior:'smooth', block:'start' });
+        return;
+      }
       const linkButton = event.target.closest('[data-link-case]');
       if (linkButton) {
         revealCase(linkButton.dataset.linkCase);
