@@ -68,6 +68,7 @@ const ENABLE_240_SHEET =
 
 const CBS_SHEET_ID = process.env.CBS_SHEET_ID || '10oEQypkoaNvosREqT-mNw8zsyrQxln2EwsBUuS9OtsU';
 const CBS_SHEET_GID = Number(process.env.CBS_SHEET_GID || 0);
+const CBS_WORLDTRACER_SHEET_GID = Number(process.env.CBS_WORLDTRACER_SHEET_GID || 944289437);
 const CBS_NOTIFICATION_EMAILS = (process.env.CBS_NOTIFICATION_EMAILS || 'laxhmmu@gmail.com')
   .split(',')
   .map((value) => value.trim())
@@ -108,6 +109,7 @@ const CBS_HEADERS = [
   'Update History'
 ];
 let cbsSheetTitle = '';
+let cbsWorldTracerSheetTitle = '';
 let cbsSheetCache = { loadedAt: 0, rows: [] };
 const CBS_UPDATE_HISTORY_FILE = process.env.CBS_UPDATE_HISTORY_FILE || path.join(__dirname, 'data', 'cbs-update-history.json');
 let cbsUpdateHistoryCache = { loadedAt: 0, data: null };
@@ -3135,6 +3137,39 @@ async function appendCbsCase(record) {
   return record;
 }
 
+async function appendCbsWorldTracerCase(record = {}) {
+  if (!cbsWorldTracerSheetTitle) cbsWorldTracerSheetTitle = await resolveSheetTitleByGid(CBS_SHEET_ID, CBS_WORLDTRACER_SHEET_GID);
+  const title = cbsWorldTracerSheetTitle || 'Sheet1';
+  const headers = ['WorldTracer File Number', 'Bag Tag Number', 'RUSH Flight Number', 'RUSH Flight Date', 'From', 'To', 'Created At'];
+  const range = `${escapeSheetTitle(title)}!A:G`;
+  const existing = await sheets.spreadsheets.values.get({ spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!A1:G1` });
+  if (!existing.data.values?.length) {
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: CBS_SHEET_ID,
+      range: `${escapeSheetTitle(title)}!A1:G1`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [headers] }
+    });
+  }
+  const saved = {
+    worldTracerFileNumber: sanitizeSheetText(record.worldTracerFileNumber, 120).toUpperCase(),
+    bagTagNumber: sanitizeSheetText(record.bagTagNumber, 120).toUpperCase(),
+    rushFlightNumber: sanitizeSheetText(record.rushFlightNumber, 40).toUpperCase(),
+    rushFlightDate: sanitizeSheetText(record.rushFlightDate, 40),
+    rushFrom: sanitizeSheetText(record.rushFrom, 40).toUpperCase(),
+    rushTo: sanitizeSheetText(record.rushTo, 40).toUpperCase(),
+    createdAt: sanitizeSheetText(record.createdAt || new Date().toISOString(), 40)
+  };
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: CBS_SHEET_ID,
+    range,
+    valueInputOption: 'RAW',
+    insertDataOption: 'INSERT_ROWS',
+    requestBody: { values: [[saved.worldTracerFileNumber, saved.bagTagNumber, saved.rushFlightNumber, saved.rushFlightDate, saved.rushFrom, saved.rushTo, saved.createdAt]] }
+  });
+  return saved;
+}
+
 function isCbsHeaderRow(values = []) {
   const normalized = values.map((value) => String(value || '').trim().toLowerCase());
   return normalized.includes('case number') || normalized.includes('case id') || normalized.includes('passenger name');
@@ -3635,6 +3670,7 @@ module.exports = {
   updateSyBookingCounts,
   normalizeSyBookingCounts,
   appendCbsCase,
+  appendCbsWorldTracerCase,
   getCbsCases,
   updateCbsCase,
   getCbsMissingBagReports,

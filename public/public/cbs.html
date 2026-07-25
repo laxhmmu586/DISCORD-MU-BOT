@@ -9,17 +9,22 @@
     * { box-sizing:border-box; }
     html[lang="en"] .zh, html[lang="zh"] .en { display:none; }
     body { margin:0; font-family:Inter,Arial,"Noto Sans SC",sans-serif; background:linear-gradient(135deg,#eaf4ff,#fdfefe); color:var(--ink); }
-    header { position:sticky; top:0; z-index:10; display:flex; justify-content:space-between; align-items:center; gap:16px; padding:18px clamp(18px,4vw,52px); background:rgba(255,255,255,.92); border-bottom:1px solid var(--line); backdrop-filter:blur(12px); }
+    header { position:sticky; top:0; z-index:10; display:flex; flex-wrap:wrap; align-items:center; gap:24px; padding:14px clamp(18px,4vw,52px); background:rgba(255,255,255,.92); border-bottom:1px solid var(--line); backdrop-filter:blur(12px); }
     .brand { font-weight:900; color:var(--brand); letter-spacing:.08em; text-decoration:none; }
+    .page-tabs { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+    .page-tab { border:1px solid transparent; background:transparent; color:#475467; box-shadow:none; padding:10px 15px; }
+    .page-tab:hover { background:#f0f5fb; color:var(--brand); }
+    .page-tab.is-active { border-color:#c9d9ec; background:#e8f1ff; color:var(--brand); }
+    .header-spacer { flex:1; }
     .wrap { width:min(100%,96vw); margin:28px auto 56px; display:grid; gap:24px; }
     .card { background:var(--panel); border:1px solid var(--line); border-radius:22px; box-shadow:0 18px 42px rgba(22,48,76,.08); padding:24px; min-height:calc(100vh - 170px); }
     h1,h2 { margin:0 0 10px; }
     p { line-height:1.65; }
     .muted { color:var(--muted); }
-    .missing-alert-wrap { display:flex; justify-content:flex-end; }
     .missing-alert { display:inline-flex; border:0; border-radius:999px; padding:12px 22px; background:var(--brand); color:#fff; font-weight:950; letter-spacing:.04em; box-shadow:none; animation:none; }
     .missing-alert.is-active { background:#d92d20; box-shadow:0 0 0 0 rgba(217,45,32,.55); animation:missingPulse 1s infinite; }
     .missing-alert.is-complete { background:var(--ok); box-shadow:none; animation:none; }
+    .missing-alert.is-active-tab { outline:3px solid rgba(18,58,115,.18); outline-offset:2px; }
     @keyframes missingPulse { 0%{box-shadow:0 0 0 0 rgba(217,45,32,.55)} 70%{box-shadow:0 0 0 14px rgba(217,45,32,0)} 100%{box-shadow:0 0 0 0 rgba(217,45,32,0)} }
     .search-field { min-width:260px; max-width:360px; }
     .case-toolbar { display:flex; flex-wrap:nowrap; gap:10px; align-items:center; }
@@ -139,13 +144,26 @@
     .detail-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px 18px; margin-bottom:12px; }
     .detail-grid p { margin:0; }
     input,textarea { width:100%; border:1px solid var(--line); border-radius:12px; padding:10px 12px; background:#fff; color:var(--ink); font:inherit; }
-    @media (max-width:840px){ .case-update-grid,.detail-grid,.baggage-search-grid,.sheet-detail-grid,.inline-update.case-update{grid-template-columns:1fr}.tracking-event{grid-template-columns:86px 1fr;gap:12px}.tracking-event-card{font-size:12px}.tracking-event-field{grid-template-columns:1fr}.case-update{min-width:0} table{display:block;overflow-x:auto;white-space:nowrap} }
+    .worldtracer-create { max-width:900px; min-height:0; }
+    .worldtracer-form { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; margin-top:24px; }
+    .worldtracer-form label { display:grid; gap:7px; color:#475467; font-size:12px; font-weight:900; letter-spacing:.05em; text-transform:uppercase; }
+    .worldtracer-form .wide,.worldtracer-form .actions,.worldtracer-status { grid-column:1/-1; }
+    .worldtracer-status { margin:0; }
+    @media (max-width:840px){ header{align-items:flex-start;gap:10px}.page-tabs{order:3;width:100%}.page-tab{flex:1}.case-update-grid,.detail-grid,.baggage-search-grid,.sheet-detail-grid,.inline-update.case-update,.worldtracer-form{grid-template-columns:1fr}.tracking-event{grid-template-columns:86px 1fr;gap:12px}.tracking-event-card{font-size:12px}.tracking-event-field{grid-template-columns:1fr}.case-update{min-width:0} table{display:block;overflow-x:auto;white-space:nowrap} }
   </style>
 </head>
 <body>
-  <header><a class="brand" href="index.html">MUFC</a><span></span><button class="lang-toggle" id="language-toggle" type="button">中文</button></header>
+  <header>
+    <a class="brand" href="index.html">MUFC</a>
+    <nav class="page-tabs" aria-label="CBS sections">
+      <button class="page-tab is-active" id="passenger-cases-tab" type="button"><span class="en">Passenger Filed Cases</span><span class="zh">旅客提交案件</span></button>
+      <button class="page-tab" id="worldtracer-tab" type="button">WorldTracer</button>
+      <button class="page-tab missing-alert" id="missing-report-alert" type="button">Missing Bag Report</button>
+    </nav>
+    <span class="header-spacer"></span>
+    <button class="lang-toggle" id="language-toggle" type="button">中文</button>
+  </header>
   <main class="wrap">
-    <div class="missing-alert-wrap"><button class="missing-alert" id="missing-report-alert" type="button">MISSING BAG REPORT</button></div>
     <section class="card" id="cases-card">
       <div class="actions">
         <div><h1><span class="en">All Cases</span><span class="zh">所有案件</span></h1></div>
@@ -153,8 +171,22 @@
       </div>
       <div id="cases-output"><p class="muted">Loading cases...</p></div>
     </section>
+    <section class="card worldtracer-create" id="worldtracer-card" hidden>
+      <h1>WorldTracer</h1>
+      <p class="muted"><span class="en">Create a WorldTracer/RUSH case and save it to the operations sheet.</span><span class="zh">创建 WorldTracer/RUSH 案件并保存到工作表。</span></p>
+      <form class="worldtracer-form" id="worldtracer-form">
+        <label><span>WorldTracer File Number</span><input name="worldTracerFileNumber" required autocomplete="off" /></label>
+        <label><span>Bag Tag Number</span><input name="bagTagNumber" required autocomplete="off" /></label>
+        <label><span>RUSH Flight Number</span><input name="rushFlightNumber" required autocomplete="off" placeholder="MU586" /></label>
+        <label><span>RUSH Flight Date</span><input name="rushFlightDate" type="date" required /></label>
+        <label><span>From</span><input name="rushFrom" required autocomplete="off" placeholder="LAX" /></label>
+        <label><span>To</span><input name="rushTo" required autocomplete="off" placeholder="PVG" /></label>
+        <p class="worldtracer-status status" id="worldtracer-status" aria-live="polite"></p>
+        <div class="actions"><button type="submit"><span class="en">Create Case</span><span class="zh">创建案件</span></button></div>
+      </form>
+    </section>
     <section class="card" id="missing-report-card" hidden>
-      <div class="actions"><div><h1>MISSING BAG REPORT</h1><p class="muted">MU rows imported from Early Bag Storage missed bag email.</p></div><button class="secondary" id="back-to-cases" type="button">Back to Cases</button></div>
+      <div class="actions"><div><h1>MISSING BAG REPORT</h1><p class="muted">MU rows imported from Early Bag Storage missed bag email.</p></div></div>
       <div id="missing-report-output"><p class="muted">Loading missing bags...</p></div>
     </section>
   </main>
@@ -162,6 +194,11 @@
     const apiBase = (window.MU_API_BASE || 'https://api.mufcapp.net').replace(/\/$/, '');
     const casesOutput = document.querySelector('#cases-output');
     const casesCard = document.querySelector('#cases-card');
+    const passengerCasesTab = document.querySelector('#passenger-cases-tab');
+    const worldTracerTab = document.querySelector('#worldtracer-tab');
+    const worldTracerCard = document.querySelector('#worldtracer-card');
+    const worldTracerForm = document.querySelector('#worldtracer-form');
+    const worldTracerStatus = document.querySelector('#worldtracer-status');
     const caseSearch = document.querySelector('#case-search');
     const missingAlert = document.querySelector('#missing-report-alert');
     const missingReportCard = document.querySelector('#missing-report-card');
@@ -169,6 +206,14 @@
     const backToCases = document.querySelector('#back-to-cases');
     const refreshCases = document.querySelector('#refresh-cases');
     const languageToggle = document.querySelector('#language-toggle');
+    function showSection(section) {
+      casesCard.hidden = section !== 'passenger';
+      worldTracerCard.hidden = section !== 'worldtracer';
+      missingReportCard.hidden = section !== 'missing';
+      passengerCasesTab.classList.toggle('is-active', section === 'passenger');
+      worldTracerTab.classList.toggle('is-active', section === 'worldtracer');
+      missingAlert.classList.toggle('is-active-tab', section === 'missing');
+    }
     function setLanguage(lang) {
       document.documentElement.lang = lang;
       languageToggle.textContent = lang === 'en' ? '中文' : 'English';
@@ -406,8 +451,7 @@
     function revealCase(caseNumber) {
       const normalized = String(caseNumber || '').trim();
       if (!normalized) return;
-      casesCard.hidden = false;
-      missingReportCard.hidden = true;
+      showSection('passenger');
       window._selectedCbsCase = normalized;
       if (caseSearch) caseSearch.value = '';
       renderCases();
@@ -629,8 +673,30 @@
       } catch (error) { alert(error.message); } finally { casesOutput.style.opacity = '1'; }
     }
     caseSearch?.addEventListener('input', () => { renderCases(); loadBaggageSearch(caseSearch.value); });
-    missingAlert?.addEventListener('click', async () => { casesCard.hidden = true; missingReportCard.hidden = false; await loadMissingReports(true); });
-    backToCases?.addEventListener('click', () => { missingReportCard.hidden = true; casesCard.hidden = false; });
+    passengerCasesTab?.addEventListener('click', () => showSection('passenger'));
+    worldTracerTab?.addEventListener('click', () => showSection('worldtracer'));
+    missingAlert?.addEventListener('click', async () => { showSection('missing'); await loadMissingReports(true); });
+    backToCases?.addEventListener('click', () => showSection('passenger'));
+    worldTracerForm?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const button = worldTracerForm.querySelector('button[type="submit"]');
+      const payload = Object.fromEntries(new FormData(worldTracerForm).entries());
+      button.disabled = true;
+      worldTracerStatus.classList.remove('err');
+      worldTracerStatus.textContent = label('Saving case...', '正在保存案件……');
+      try {
+        const res = await fetch(`${apiBase}/cbs-worldtracer-cases`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+        const data = await parseJson(res);
+        if (!res.ok) throw new Error(data.error || 'WorldTracer case save failed');
+        worldTracerForm.reset();
+        worldTracerStatus.textContent = label('Case created and saved to the WorldTracer sheet.', '案件已创建并保存到 WorldTracer 工作表。');
+      } catch (error) {
+        worldTracerStatus.classList.add('err');
+        worldTracerStatus.textContent = error.message;
+      } finally {
+        button.disabled = false;
+      }
+    });
     missingReportOutput?.addEventListener('click', async (event) => {
       const linkButton = event.target.closest('[data-link-case]');
       if (linkButton) {
@@ -658,6 +724,7 @@
       } catch (error) { alert(error.message); } finally { button.disabled = false; button.textContent = originalText; }
     });
     refreshCases.addEventListener('click', async () => { await loadCases(); });
+    showSection('passenger');
     setLanguage('en');
   </script>
 </body>

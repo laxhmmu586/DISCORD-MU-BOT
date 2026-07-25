@@ -59,6 +59,7 @@ const {
   extractFscExchangeRate,
   updateSyBookingCounts,
   appendCbsCase,
+  appendCbsWorldTracerCase,
   getCbsCases,
   updateCbsCase,
   getCbsMissingBagReports,
@@ -1990,6 +1991,29 @@ app.get('/cbs-cases', async (req, res) => {
   } catch (err) {
     console.error('CBS case list error:', err);
     return res.status(500).json({ error: err?.message || 'CBS case lookup failed' });
+  }
+});
+
+app.post('/cbs-worldtracer-cases', async (req, res) => {
+  try {
+    const body = req.body || {};
+    const record = {
+      worldTracerFileNumber: sanitizeCbsText(body.worldTracerFileNumber, 120).toUpperCase(),
+      bagTagNumber: sanitizeCbsText(body.bagTagNumber, 120).toUpperCase(),
+      rushFlightNumber: sanitizeCbsText(body.rushFlightNumber, 40).toUpperCase(),
+      rushFlightDate: sanitizeCbsText(body.rushFlightDate, 40),
+      rushFrom: sanitizeCbsText(body.rushFrom, 40).toUpperCase(),
+      rushTo: sanitizeCbsText(body.rushTo, 40).toUpperCase(),
+      createdAt: new Date().toISOString()
+    };
+    if (Object.entries(record).some(([key, value]) => key !== 'createdAt' && !value)) {
+      return res.status(400).json({ error: 'WorldTracer file number, bag tag number, RUSH flight/date, origin, and destination are required' });
+    }
+    const saved = await appendCbsWorldTracerCase(record);
+    return res.status(201).json({ created: true, record: saved });
+  } catch (err) {
+    console.error('CBS WorldTracer case create error:', err);
+    return res.status(500).json({ error: err?.message || 'WorldTracer case save failed' });
   }
 });
 
