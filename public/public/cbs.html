@@ -9,17 +9,22 @@
     * { box-sizing:border-box; }
     html[lang="en"] .zh, html[lang="zh"] .en { display:none; }
     body { margin:0; font-family:Inter,Arial,"Noto Sans SC",sans-serif; background:linear-gradient(135deg,#eaf4ff,#fdfefe); color:var(--ink); }
-    header { position:sticky; top:0; z-index:10; display:flex; justify-content:space-between; align-items:center; gap:16px; padding:18px clamp(18px,4vw,52px); background:rgba(255,255,255,.92); border-bottom:1px solid var(--line); backdrop-filter:blur(12px); }
+    header { position:sticky; top:0; z-index:10; display:flex; flex-wrap:wrap; align-items:center; gap:24px; padding:14px clamp(18px,4vw,52px); background:rgba(255,255,255,.92); border-bottom:1px solid var(--line); backdrop-filter:blur(12px); }
     .brand { font-weight:900; color:var(--brand); letter-spacing:.08em; text-decoration:none; }
-    .wrap { width:min(1180px,94vw); margin:28px auto 56px; display:grid; gap:24px; }
-    .card { background:var(--panel); border:1px solid var(--line); border-radius:22px; box-shadow:0 18px 42px rgba(22,48,76,.08); padding:24px; }
+    .page-tabs { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+    .page-tab { border:1px solid transparent; background:transparent; color:#475467; box-shadow:none; padding:10px 15px; }
+    .page-tab:hover { background:#f0f5fb; color:var(--brand); }
+    .page-tab.is-active { border-color:#c9d9ec; background:#e8f1ff; color:var(--brand); }
+    .header-spacer { flex:1; }
+    .wrap { width:min(100%,96vw); margin:28px auto 56px; display:grid; gap:24px; }
+    .card { background:var(--panel); border:1px solid var(--line); border-radius:22px; box-shadow:0 18px 42px rgba(22,48,76,.08); padding:24px; min-height:calc(100vh - 170px); }
     h1,h2 { margin:0 0 10px; }
     p { line-height:1.65; }
     .muted { color:var(--muted); }
-    .missing-alert-wrap { display:flex; justify-content:flex-end; }
     .missing-alert { display:inline-flex; border:0; border-radius:999px; padding:12px 22px; background:var(--brand); color:#fff; font-weight:950; letter-spacing:.04em; box-shadow:none; animation:none; }
     .missing-alert.is-active { background:#d92d20; box-shadow:0 0 0 0 rgba(217,45,32,.55); animation:missingPulse 1s infinite; }
     .missing-alert.is-complete { background:var(--ok); box-shadow:none; animation:none; }
+    .missing-alert.is-active-tab { outline:3px solid rgba(18,58,115,.18); outline-offset:2px; }
     @keyframes missingPulse { 0%{box-shadow:0 0 0 0 rgba(217,45,32,.55)} 70%{box-shadow:0 0 0 14px rgba(217,45,32,0)} 100%{box-shadow:0 0 0 0 rgba(217,45,32,0)} }
     .search-field { min-width:260px; max-width:360px; }
     .case-toolbar { display:flex; flex-wrap:nowrap; gap:10px; align-items:center; }
@@ -35,6 +40,50 @@
     button.danger { background:#b42318; }
     .case-summary { cursor:pointer; }
     .case-summary:hover { background:#f7fbff; }
+
+    .sheet-shell { overflow:auto; border:1px solid #d8e4f1; border-radius:18px; background:#fff; box-shadow:0 12px 30px rgba(18,58,115,.06); }
+    .cbs-sheet { min-width:980px; border-collapse:separate; border-spacing:0 10px; table-layout:fixed; font-size:13px; }
+    .cbs-sheet th,.cbs-sheet td { height:34px; padding:12px 14px; border:0; background:#fff; vertical-align:top; }
+    .cbs-sheet th { position:sticky; top:0; z-index:2; background:#f8fbff; color:#344054; text-transform:none; font-size:13px; font-weight:900; box-shadow:inset 0 -1px 0 #d8e4f1; }
+    .cbs-sheet tbody tr { box-shadow:0 8px 22px rgba(18,58,115,.055); }
+    .cbs-sheet .case-summary-row { cursor:pointer; }
+    .cbs-sheet .case-summary-row:hover td { background:#f8fbff; }
+    .cbs-sheet .case-detail-row td { background:#fbfdff; padding:18px; }
+    .cbs-sheet tbody tr.is-closed { box-shadow:0 8px 22px rgba(8,116,67,.08); }
+    .cbs-sheet tbody tr.is-closed td { background:#f0fbf5; }
+    .cbs-sheet tbody td:first-child { border-radius:14px 0 0 14px; }
+    .cbs-sheet tbody td:last-child { border-radius:0 14px 14px 0; }
+    .cbs-sheet .case-detail-row td:first-child,.cbs-sheet .case-detail-row td:last-child { border-radius:14px; }
+    .cbs-sheet .case-key { color:#344054; font-weight:900; }
+    .cbs-sheet .bag-subfield { color:#000; font-weight:700; }
+    .cbs-sheet .sheet-meta { color:#344054; font-weight:850; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .cbs-sheet .bag-tag-value { display:inline-flex; padding:5px 10px; border-radius:999px; background:#e8f1ff; color:#0b4ea2; font-weight:950; letter-spacing:.02em; }
+    .cbs-sheet .sheet-empty { color:#98a2b3; }
+    .cbs-sheet .sheet-event { color:#344054; font-weight:800; line-height:1.35; white-space:normal; }
+    .cbs-sheet .sheet-event b { display:block; color:var(--brand); font-size:11px; text-transform:uppercase; }
+    .cbs-sheet .sheet-event small { display:block; color:var(--muted); font-weight:700; }
+    .cbs-sheet .sheet-detail-row td { background:#fbfdff; }
+    .cbs-sheet .sheet-detail-cell { padding:12px; }
+    .case-detail-layout { display:grid; gap:18px; }
+    .sheet-detail-grid { display:grid; grid-template-columns:repeat(4,minmax(160px,1fr)); gap:8px 14px; }
+    .sheet-detail-grid p { margin:0; min-width:0; color:#172033; }
+    .sheet-detail-grid strong { color:#475467; }
+    .sheet-actions { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:12px; }
+    .tracking-workspace { display:grid; gap:14px; align-items:start; }
+    .tracking-history { display:flex; flex-wrap:wrap; gap:10px; align-items:stretch; }
+    .tracking-chip { display:inline-grid; grid-template-rows:auto auto; align-content:start; gap:3px; min-width:150px; padding:9px 11px; border-radius:14px; background:#eef4ff; color:var(--brand); font-weight:850; box-shadow:inset 0 0 0 1px rgba(18,58,115,.04); }
+    .tracking-chip.is-closed { background:#dcfae6; color:#067647; }
+    .tracking-chip-title,.tracking-chip small { display:block; }
+    .tracking-chip small { color:var(--muted); font-weight:700; }
+    .tracking-chip-detail { color:#344054; font-size:11px; font-weight:750; line-height:1.35; }
+    .tracking-current-time { margin:0 0 8px; color:var(--muted); font-weight:800; }
+    .tracking-stage-picker { display:grid; gap:6px; color:var(--muted); font-size:12px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }
+    .tracking-stage-picker select { width:100%; border:1px solid var(--line); border-radius:10px; padding:8px 10px; background:#fff; color:var(--ink); font:inherit; }
+    .inline-update.case-update { display:grid; grid-template-columns:repeat(2,minmax(150px,1fr)); gap:8px; margin:8px 0 0; padding:0; border:0; border-radius:0; background:transparent; box-shadow:none; }
+    .inline-update [data-cbs-inline-fields] { display:contents; }
+    .inline-update input,.inline-update textarea { min-height:32px; padding:7px 9px; border-radius:8px; font-size:12px; }
+    .inline-update textarea { min-height:58px; resize:vertical; grid-column:1/-1; }
+    .inline-update button { width:max-content; padding:8px 13px; border-radius:12px; font-size:12px; grid-column:1/-1; }
     .baggage-search-card { margin:14px 0 0; padding:16px; border:1px solid var(--line); border-radius:18px; background:#fbfdff; display:grid; gap:10px; }
     .baggage-search-card h3 { margin:0; color:var(--brand); }
     .baggage-search-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px 18px; }
@@ -95,13 +144,32 @@
     .detail-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px 18px; margin-bottom:12px; }
     .detail-grid p { margin:0; }
     input,textarea { width:100%; border:1px solid var(--line); border-radius:12px; padding:10px 12px; background:#fff; color:var(--ink); font:inherit; }
-    @media (max-width:840px){ .case-update-grid,.detail-grid,.baggage-search-grid{grid-template-columns:1fr}.tracking-event{grid-template-columns:86px 1fr;gap:12px}.tracking-event-card{font-size:12px}.tracking-event-field{grid-template-columns:1fr}.case-update{min-width:0} table{display:block;overflow-x:auto;white-space:nowrap} }
+    .worldtracer-create { max-width:900px; min-height:0; }
+    .worldtracer-form { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; margin-top:24px; }
+    .worldtracer-form label { display:grid; gap:7px; color:#475467; font-size:12px; font-weight:900; letter-spacing:.05em; text-transform:uppercase; }
+    .worldtracer-form .wide,.worldtracer-form .actions,.worldtracer-status { grid-column:1/-1; }
+    .worldtracer-status { margin:0; }
+    .rush-itinerary { grid-column:1/-1; display:grid; gap:10px; padding:16px; border-radius:16px; background:#f8fbff; border:1px solid #d8e4f1; }
+    .rush-itinerary-head { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+    .rush-itinerary-head h2 { margin:0; font-size:18px; color:var(--brand); }
+    .rush-flight-row { display:grid; grid-template-columns:150px 150px minmax(90px,1fr) 24px minmax(90px,1fr) auto; gap:8px; align-items:end; }
+    .rush-flight-row button { padding:10px 12px; border-radius:10px; background:#fce8e6; color:#b42318; }
+    .rush-route-arrow { align-self:center; padding-top:21px; text-align:center; color:var(--muted); font-weight:900; }
+    @media (max-width:840px){ header{align-items:flex-start;gap:10px}.page-tabs{order:3;width:100%}.page-tab{flex:1}.case-update-grid,.detail-grid,.baggage-search-grid,.sheet-detail-grid,.inline-update.case-update,.worldtracer-form{grid-template-columns:1fr}.rush-flight-row{grid-template-columns:1fr 1fr}.rush-route-arrow{display:none}.rush-flight-row button{grid-column:1/-1}.tracking-event{grid-template-columns:86px 1fr;gap:12px}.tracking-event-card{font-size:12px}.tracking-event-field{grid-template-columns:1fr}.case-update{min-width:0} table{display:block;overflow-x:auto;white-space:nowrap} }
   </style>
 </head>
 <body>
-  <header><a class="brand" href="index.html">MUFC</a><span></span><button class="lang-toggle" id="language-toggle" type="button">中文</button></header>
+  <header>
+    <a class="brand" href="index.html">MUFC</a>
+    <nav class="page-tabs" aria-label="CBS sections">
+      <button class="page-tab is-active" id="passenger-cases-tab" type="button"><span class="en">Passenger Filed Cases</span><span class="zh">旅客提交案件</span></button>
+      <button class="page-tab" id="worldtracer-tab" type="button">WorldTracer</button>
+      <button class="page-tab missing-alert" id="missing-report-alert" type="button">Missing Bag Report</button>
+    </nav>
+    <span class="header-spacer"></span>
+    <button class="lang-toggle" id="language-toggle" type="button">中文</button>
+  </header>
   <main class="wrap">
-    <div class="missing-alert-wrap"><button class="missing-alert" id="missing-report-alert" type="button">MISSING BAG REPORT</button></div>
     <section class="card" id="cases-card">
       <div class="actions">
         <div><h1><span class="en">All Cases</span><span class="zh">所有案件</span></h1></div>
@@ -109,8 +177,22 @@
       </div>
       <div id="cases-output"><p class="muted">Loading cases...</p></div>
     </section>
+    <section class="card worldtracer-create" id="worldtracer-card" hidden>
+      <h1>WorldTracer</h1>
+      <p class="muted"><span class="en">Create a WorldTracer/RUSH case and save it to the operations sheet.</span><span class="zh">创建 WorldTracer/RUSH 案件并保存到工作表。</span></p>
+      <form class="worldtracer-form" id="worldtracer-form">
+        <label><span>WorldTracer File Number</span><input name="worldTracerFileNumber" required autocomplete="off" /></label>
+        <label><span>Bag Tag Number</span><input name="bagTagNumber" required autocomplete="off" /></label>
+        <div class="rush-itinerary">
+          <div class="rush-itinerary-head"><h2>RUSH Itinerary</h2><button class="secondary" id="add-rush-flight" type="button">+ Add Flight</button></div>
+          <div id="rush-flight-rows"></div>
+        </div>
+        <p class="worldtracer-status status" id="worldtracer-status" aria-live="polite"></p>
+        <div class="actions"><button type="submit"><span class="en">Create Case</span><span class="zh">创建案件</span></button></div>
+      </form>
+    </section>
     <section class="card" id="missing-report-card" hidden>
-      <div class="actions"><div><h1>MISSING BAG REPORT</h1><p class="muted">MU rows imported from Early Bag Storage missed bag email.</p></div><button class="secondary" id="back-to-cases" type="button">Back to Cases</button></div>
+      <div class="actions"><div><h1>MISSING BAG REPORT</h1><p class="muted">MU rows imported from Early Bag Storage missed bag email.</p></div></div>
       <div id="missing-report-output"><p class="muted">Loading missing bags...</p></div>
     </section>
   </main>
@@ -118,6 +200,13 @@
     const apiBase = (window.MU_API_BASE || 'https://api.mufcapp.net').replace(/\/$/, '');
     const casesOutput = document.querySelector('#cases-output');
     const casesCard = document.querySelector('#cases-card');
+    const passengerCasesTab = document.querySelector('#passenger-cases-tab');
+    const worldTracerTab = document.querySelector('#worldtracer-tab');
+    const worldTracerCard = document.querySelector('#worldtracer-card');
+    const worldTracerForm = document.querySelector('#worldtracer-form');
+    const worldTracerStatus = document.querySelector('#worldtracer-status');
+    const rushFlightRows = document.querySelector('#rush-flight-rows');
+    const addRushFlight = document.querySelector('#add-rush-flight');
     const caseSearch = document.querySelector('#case-search');
     const missingAlert = document.querySelector('#missing-report-alert');
     const missingReportCard = document.querySelector('#missing-report-card');
@@ -125,6 +214,18 @@
     const backToCases = document.querySelector('#back-to-cases');
     const refreshCases = document.querySelector('#refresh-cases');
     const languageToggle = document.querySelector('#language-toggle');
+    function rushFlightRowHtml() {
+      return `<div class="rush-flight-row" data-rush-flight-row><label><span>Date</span><input data-flight-date type="date" required /></label><label><span>Flight Number</span><input data-flight-number required autocomplete="off" placeholder="MU586" /></label><label><span>From</span><input data-flight-from required autocomplete="off" placeholder="LAX" /></label><span class="rush-route-arrow">–</span><label><span>To</span><input data-flight-to required autocomplete="off" placeholder="PVG" /></label><button type="button" data-remove-rush-flight aria-label="Remove flight">Remove</button></div>`;
+    }
+    function addRushFlightRow() { rushFlightRows.insertAdjacentHTML('beforeend', rushFlightRowHtml()); }
+    function showSection(section) {
+      casesCard.hidden = section !== 'passenger';
+      worldTracerCard.hidden = section !== 'worldtracer';
+      missingReportCard.hidden = section !== 'missing';
+      passengerCasesTab.classList.toggle('is-active', section === 'passenger');
+      worldTracerTab.classList.toggle('is-active', section === 'worldtracer');
+      missingAlert.classList.toggle('is-active-tab', section === 'missing');
+    }
     function setLanguage(lang) {
       document.documentElement.lang = lang;
       languageToggle.textContent = lang === 'en' ? '中文' : 'English';
@@ -275,7 +376,6 @@
         [label('Contents Details', '包内物品详情'), row.contentsDetails],
         [label('Issue Date', '填写日期'), row.issueDate],
         [label('Passenger Signature', '旅客签字'), row.passengerSignature],
-        [label('Submit Date', '提交日期'), row.submittedAt],
         [label('Updated At', '更新时间'), row.updatedAt]
       ];
     }
@@ -363,8 +463,7 @@
     function revealCase(caseNumber) {
       const normalized = String(caseNumber || '').trim();
       if (!normalized) return;
-      casesCard.hidden = false;
-      missingReportCard.hidden = true;
+      showSection('passenger');
       window._selectedCbsCase = normalized;
       if (caseSearch) caseSearch.value = '';
       renderCases();
@@ -413,6 +512,45 @@
       }
       renderCases();
     }
+    function inlineUpdateFieldsHtml(key) {
+      const input = (placeholder, name, required = true) => `<input name="${escapeHtml(name)}" placeholder="${escapeHtml(placeholder)}" ${required ? 'required' : ''} />`;
+      if (key === 'worldtracer') return input('File number', 'fileNumber');
+      if (key === 'rush') return [input('Rush tag number', 'rushTagNumber'), input('Rush to where?', 'rushToWhere'), input('AKE number?', 'akeNumber'), input('World Tracer file # (optional)', 'worldTracerFileNumber', false), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
+      if (key === 'location') return [input('Bag location', 'location'), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
+      if (key === 'shipping') return [input('Tracking number', 'trackingNumber'), input('Shipping to where?', 'shippingTo'), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
+      if (key === 'closed') return '<textarea name="comment" placeholder="Close note (optional)"></textarea>';
+      return '';
+    }
+    function nextTrackingKey(row) {
+      const current = trackingStage(row).key;
+      if (current === 'create') return 'worldtracer';
+      if (current === 'worldtracer') return 'rush';
+      if (current === 'rush') return 'location';
+      if (current === 'location') return 'shipping';
+      if (current === 'shipping') return 'closed';
+      return 'worldtracer';
+    }
+    function trackingControlHtml(row) {
+      const events = parseUpdateNoteEvents(row);
+      const latest = events[events.length - 1] || null;
+      const latestTime = latest ? formatEventTime(latest.at) : { time:'--:--', date:'' };
+      const active = nextTrackingKey(row);
+      const updateKeys = TRACKING_STAGES.filter((stage) => stage.key !== 'create');
+      const historyHtml = events
+        .slice()
+        .sort((a, b) => (Date.parse(a.at || '') || 0) - (Date.parse(b.at || '') || 0))
+        .map((event) => {
+          const time = formatEventTime(event.at);
+          const title = TRACKING_STAGES.find((stage) => stage.key === event.key)?.text || event.title || 'Update';
+          const detailFields = (event.fields || []).filter(([, value]) => hasValue(value));
+          const detailHtml = detailFields.map(([fieldKey, value]) => `<span class="tracking-chip-detail">${escapeHtml(fieldKey)}: ${escapeHtml(renderValue(value))}</span>`).join('');
+          const noteHtml = !detailFields.length && hasValue(event.note) ? `<span class="tracking-chip-detail">${escapeHtml(event.note)}</span>` : '';
+          const closedClass = event.key === 'closed' ? ' is-closed' : '';
+          return `<span class="tracking-chip${closedClass}"><span class="tracking-chip-title">${escapeHtml(title)}</span><small>${escapeHtml(time.date || '')} ${escapeHtml(time.time || '')}</small>${detailHtml}${noteHtml}</span>`;
+        }).join('') || '<span class="sheet-empty">No tracking updates yet</span>';
+      if (!row.caseNumber) return historyHtml;
+      return `<div class="tracking-workspace"><div><p class="tracking-current-time">${label('Last update', '最后更新')}: ${escapeHtml(latestTime.date || '-')} ${escapeHtml(latestTime.time || '')}</p><div class="tracking-history">${historyHtml}</div></div><div><label class="tracking-stage-picker"><span>${label('Current stage', '当前阶段')}</span><select data-cbs-stage-select>${updateKeys.map((stage) => `<option value="${escapeHtml(stage.key)}" ${stage.key === active ? 'selected' : ''}>${escapeHtml(stage.text)}</option>`).join('')}</select></label><form class="inline-update case-update" data-case="${escapeHtml(row.caseNumber)}" data-update-mode="${escapeHtml(active)}"><div data-cbs-inline-fields>${inlineUpdateFieldsHtml(active)}</div><button type="submit">${label('Update Tracking', '更新进度')}</button></form></div></div>`;
+    }
     function renderCases() {
       const query = String(caseSearch?.value || '').trim().toLowerCase();
       const selectedCase = String(window._selectedCbsCase || '').trim();
@@ -420,15 +558,17 @@
       const rows = sortedCaseRows(sourceRows).filter((row) => !query || rowSearchText(row).includes(query));
       const baggageHtml = baggageSearchHtml();
       if (!rows.length) { casesOutput.innerHTML = `<p class="muted">No matching cases.</p>${baggageHtml}`; return; }
-      casesOutput.innerHTML = `<table><colgroup><col style="width:220px"><col style="width:120px"><col style="width:280px"><col></colgroup><thead><tr><th>${label('Case Number', '编号')}</th><th>${label('Case Type', '类型')}</th><th>${label('Bag Tag', '行李牌')}</th><th class="tracking-cell">Tracking</th></tr></thead><tbody>${rows.map((row, index) => {
+      const expandedCases = window._expandedCbsCases || new Set();
+      casesOutput.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:220px"><col style="width:150px"><col></colgroup><thead><tr><th>${label('Case Number', '编号')}</th><th>${label('Case Type', '类型')}</th><th>${label('Bag Tag', '行李牌')}</th></tr></thead><tbody>${rows.map((row, index) => {
         const detailKey = row.caseNumber || `row-${row.rowNumber || index}`;
         const caseNumberLabel = row.caseNumber || label('Missing case number', '缺少编号');
         const caseType = inferCaseType(row);
+        const closedClass = isClosedCase(row) ? ' is-closed' : '';
         const details = (isOriginalFormCase(row) ? originalFormDetailRows(row) : detailRows(row)).filter(([, value]) => hasValue(value));
-        const backHtml = selectedCase ? `<div class="actions detail-actions"><button class="secondary" type="button" data-back-all-cases>${label('Back to all cases', '返回所有案件')}</button></div>` : '';
-        const detailHtml = details.length ? `<section class="case-info-panel"><h2>${label('Case Information', '案件信息')}</h2><div class="detail-grid">${details.map(([key, value]) => `<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(renderValue(value))}</p>`).join('')}</div></section>` : '';
-        return `<tr class="case-summary" data-toggle-case="${escapeHtml(detailKey)}"><td><button class="secondary" type="button">${escapeHtml(caseNumberLabel)}</button></td><td>${escapeHtml(caseType || '-')}</td><td>${escapeHtml(displayBagTag(row) || '-')}</td><td class="tracking-cell">${trackingHtml(row)}</td></tr><tr class="case-detail" data-detail-case="${escapeHtml(detailKey)}" ${selectedCase ? '' : 'hidden'}><td colspan="4">${backHtml}${trackingDetailHtml(row)}${detailHtml}${updateFormHtml(row)}</td></tr>`;
-      }).join('')}</tbody></table>${baggageHtml}`;
+        const detailHtml = details.length ? `<div class="sheet-detail-grid">${details.map(([key, value]) => `<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(renderValue(value))}</p>`).join('')}</div>` : `<p class="muted">${label('No extra details.', '没有更多详情。')}</p>`;
+        const isExpanded = expandedCases.has(detailKey);
+        return `<tr class="case-summary-row${closedClass}" data-toggle-case="${escapeHtml(detailKey)}" aria-expanded="${isExpanded ? 'true' : 'false'}"><td class="case-key">${escapeHtml(caseNumberLabel)}</td><td class="sheet-meta">${escapeHtml(caseType || '-')}</td><td class="sheet-meta"><span class="bag-tag-value">${escapeHtml(displayBagTag(row) || '-')}</span></td></tr><tr class="case-detail-row${closedClass}" data-detail-case="${escapeHtml(detailKey)}" ${isExpanded ? '' : 'hidden'}><td colspan="3"><div class="case-detail-layout">${trackingControlHtml(row)}${detailHtml}</div></td></tr>`;
+      }).join('')}</tbody></table></div>${baggageHtml}`;
     }
     async function loadCases() {
       casesOutput.innerHTML = '<p class="muted">Loading cases...</p>';
@@ -479,6 +619,16 @@
       payload.type = updateForm.dataset.updateMode || 'worldtracer';
       await updateCase(updateForm.dataset.case, payload);
     });
+    casesOutput.addEventListener('change', (event) => {
+      const select = event.target.closest('[data-cbs-stage-select]');
+      if (!select) return;
+      const workspace = select.closest('.tracking-workspace');
+      const form = workspace?.querySelector('.case-update');
+      const fields = form?.querySelector('[data-cbs-inline-fields]');
+      if (!form || !fields) return;
+      form.dataset.updateMode = select.value;
+      fields.innerHTML = inlineUpdateFieldsHtml(select.value);
+    });
     casesOutput.addEventListener('click', async (event) => {
       const createBaggageButton = event.target.closest('[data-create-baggage-case]');
       if (createBaggageButton) {
@@ -514,8 +664,13 @@
       }
       const summary = event.target.closest('[data-toggle-case]');
       if (!summary) return;
-      window._selectedCbsCase = summary.dataset.toggleCase;
-      if (caseSearch) caseSearch.value = '';
+      window._expandedCbsCases = window._expandedCbsCases || new Set();
+      const detailKey = summary.dataset.toggleCase;
+      if (window._expandedCbsCases.has(detailKey)) {
+        window._expandedCbsCases.delete(detailKey);
+      } else {
+        window._expandedCbsCases.add(detailKey);
+      }
       renderCases();
     });
     async function updateCase(caseNumber, payload) {
@@ -530,8 +685,46 @@
       } catch (error) { alert(error.message); } finally { casesOutput.style.opacity = '1'; }
     }
     caseSearch?.addEventListener('input', () => { renderCases(); loadBaggageSearch(caseSearch.value); });
-    missingAlert?.addEventListener('click', async () => { casesCard.hidden = true; missingReportCard.hidden = false; await loadMissingReports(true); });
-    backToCases?.addEventListener('click', () => { missingReportCard.hidden = true; casesCard.hidden = false; });
+    passengerCasesTab?.addEventListener('click', () => showSection('passenger'));
+    worldTracerTab?.addEventListener('click', () => showSection('worldtracer'));
+    missingAlert?.addEventListener('click', async () => { showSection('missing'); await loadMissingReports(true); });
+    backToCases?.addEventListener('click', () => showSection('passenger'));
+    addRushFlight?.addEventListener('click', addRushFlightRow);
+    rushFlightRows?.addEventListener('click', (event) => {
+      const removeButton = event.target.closest('[data-remove-rush-flight]');
+      if (!removeButton) return;
+      const rows = rushFlightRows.querySelectorAll('[data-rush-flight-row]');
+      if (rows.length > 1) removeButton.closest('[data-rush-flight-row]').remove();
+      else removeButton.closest('[data-rush-flight-row]').querySelectorAll('input').forEach((input) => { input.value = ''; });
+    });
+    worldTracerForm?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const button = worldTracerForm.querySelector('button[type="submit"]');
+      const payload = Object.fromEntries(new FormData(worldTracerForm).entries());
+      payload.flightRows = Array.from(rushFlightRows.querySelectorAll('[data-rush-flight-row]')).map((row) => ({
+        flightDate: row.querySelector('[data-flight-date]').value,
+        flightNumber: row.querySelector('[data-flight-number]').value,
+        from: row.querySelector('[data-flight-from]').value,
+        to: row.querySelector('[data-flight-to]').value
+      }));
+      button.disabled = true;
+      worldTracerStatus.classList.remove('err');
+      worldTracerStatus.textContent = label('Saving case...', '正在保存案件……');
+      try {
+        const res = await fetch(`${apiBase}/cbs-worldtracer-cases`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+        const data = await parseJson(res);
+        if (!res.ok) throw new Error(data.error || 'WorldTracer case save failed');
+        worldTracerForm.reset();
+        rushFlightRows.innerHTML = '';
+        addRushFlightRow();
+        worldTracerStatus.textContent = label('Case created and saved to the WorldTracer sheet.', '案件已创建并保存到 WorldTracer 工作表。');
+      } catch (error) {
+        worldTracerStatus.classList.add('err');
+        worldTracerStatus.textContent = error.message;
+      } finally {
+        button.disabled = false;
+      }
+    });
     missingReportOutput?.addEventListener('click', async (event) => {
       const linkButton = event.target.closest('[data-link-case]');
       if (linkButton) {
@@ -559,6 +752,8 @@
       } catch (error) { alert(error.message); } finally { button.disabled = false; button.textContent = originalText; }
     });
     refreshCases.addEventListener('click', async () => { await loadCases(); });
+    addRushFlightRow();
+    showSection('passenger');
     setLanguage('en');
   </script>
 </body>
