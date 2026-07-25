@@ -742,7 +742,7 @@
       const dateKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
       const todayKey = dateKey(new Date());
       const groups = new Map();
-      openRows.forEach((row) => {
+      rows.forEach((row) => {
         const sourceDate = row.sourceEmailDate ? new Date(row.sourceEmailDate) : null;
         const validDate = sourceDate && !Number.isNaN(sourceDate.getTime());
         const key = validDate ? dateKey(sourceDate) : 'unknown';
@@ -750,11 +750,19 @@
         groups.get(key).rows.push(row);
       });
       const groupedReports = Array.from(groups.entries()).sort(([, left], [, right]) => (right.date?.getTime() || 0) - (left.date?.getTime() || 0));
-      if (!groupedReports.length) { missingReportOutput.innerHTML = '<p class="muted">No open missing bag reports.</p>'; return; }
+      if (!groupedReports.length) { missingReportOutput.innerHTML = '<p class="muted">No missing bag reports.</p>'; return; }
       missingReportOutput.innerHTML = `<div class="missing-date-groups">${groupedReports.map(([key, group]) => {
         const dateLabel = group.date ? group.date.toLocaleDateString(undefined, { weekday:'short', month:'short', day:'numeric', year:'numeric' }) : 'Date unavailable';
         const todayLabel = key === todayKey ? '<span>Today</span>' : '';
-        return `<section class="missing-date-group"><h2 class="missing-date-heading">${todayLabel}${escapeHtml(dateLabel)}</h2><div class="sheet-shell"><table class="missing-report-table"><thead><tr><th>Bag Tag</th><th>Passenger</th><th>Destination</th><th>Airline</th><th>Source</th><th></th></tr></thead><tbody>${group.rows.map((row) => `<tr><td>${escapeHtml(row.bagTag)}</td><td>${escapeHtml(row.passengerName)}</td><td>${escapeHtml(row.destination)}</td><td>${escapeHtml(row.airline)}</td><td>${escapeHtml(row.sourceAttachment || '-')}</td><td><div class="missing-actions"><button type="button" data-create-missing-rush="${escapeHtml(row.rowNumber)}" data-missing-bag-tag="${escapeHtml(row.bagTag)}">Create On-hard</button><button class="secondary" type="button" data-ack-missing="${escapeHtml(row.rowNumber)}">Acknowledge</button></div></td></tr>`).join('')}</tbody></table></div></section>`;
+        return `<section class="missing-date-group"><h2 class="missing-date-heading">${todayLabel}${escapeHtml(dateLabel)}</h2><div class="sheet-shell"><table class="missing-report-table"><thead><tr><th>Bag Tag</th><th>Passenger</th><th>Destination</th><th>Airline</th><th>Source</th><th>Case</th><th>Status</th><th></th></tr></thead><tbody>${group.rows.map((row) => {
+          const linkedCaseNumber = row.linkedCaseNumber || row.caseNumber || '';
+          const status = row.acknowledgedAt ? 'Acknowledged' : (linkedCaseNumber ? 'On-hard Created' : 'Open');
+          const caseHtml = linkedCaseNumber
+            ? (/^LAX\s+MU/i.test(linkedCaseNumber) ? `<button class="case-link-button" type="button" data-link-case="${escapeHtml(linkedCaseNumber)}">${escapeHtml(linkedCaseNumber)}</button>` : `<span class="pill">${escapeHtml(linkedCaseNumber)}</span>`)
+            : '-';
+          const actionHtml = row.acknowledgedAt || linkedCaseNumber ? '' : `<div class="missing-actions"><button type="button" data-create-missing-rush="${escapeHtml(row.rowNumber)}" data-missing-bag-tag="${escapeHtml(row.bagTag)}">Create On-hard</button><button class="secondary" type="button" data-ack-missing="${escapeHtml(row.rowNumber)}">Acknowledge</button></div>`;
+          return `<tr><td>${escapeHtml(row.bagTag)}</td><td>${escapeHtml(row.passengerName)}</td><td>${escapeHtml(row.destination)}</td><td>${escapeHtml(row.airline)}</td><td>${escapeHtml(row.sourceAttachment || '-')}</td><td>${caseHtml}</td><td>${escapeHtml(status)}</td><td>${actionHtml}</td></tr>`;
+        }).join('')}</tbody></table></div></section>`;
       }).join('')}</div>`;
     }
     async function loadMissingReports(sync = true) {
