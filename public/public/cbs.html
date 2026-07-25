@@ -66,8 +66,9 @@
     .sheet-actions { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:12px; }
     .tracking-workspace { display:grid; gap:14px; align-items:start; }
     .tracking-history { display:flex; flex-wrap:wrap; gap:10px; align-items:stretch; }
-    .tracking-chip { display:inline-grid; gap:3px; min-width:150px; padding:9px 11px; border-radius:14px; background:#eef4ff; color:var(--brand); font-weight:850; box-shadow:inset 0 0 0 1px rgba(18,58,115,.04); }
+    .tracking-chip { display:inline-grid; grid-template-rows:auto auto; align-content:start; gap:3px; min-width:150px; padding:9px 11px; border-radius:14px; background:#eef4ff; color:var(--brand); font-weight:850; box-shadow:inset 0 0 0 1px rgba(18,58,115,.04); }
     .tracking-chip.is-closed { background:#dcfae6; color:#067647; }
+    .tracking-chip-title,.tracking-chip small { display:block; }
     .tracking-chip small { color:var(--muted); font-weight:700; }
     .tracking-chip-detail { color:#344054; font-size:11px; font-weight:750; line-height:1.35; }
     .tracking-current-time { margin:0 0 8px; color:var(--muted); font-weight:800; }
@@ -489,7 +490,7 @@
           const detailHtml = detailFields.map(([fieldKey, value]) => `<span class="tracking-chip-detail">${escapeHtml(fieldKey)}: ${escapeHtml(renderValue(value))}</span>`).join('');
           const noteHtml = !detailFields.length && hasValue(event.note) ? `<span class="tracking-chip-detail">${escapeHtml(event.note)}</span>` : '';
           const closedClass = event.key === 'closed' ? ' is-closed' : '';
-          return `<span class="tracking-chip${closedClass}">${escapeHtml(title)}<small>${escapeHtml(time.date || '')} ${escapeHtml(time.time || '')}</small>${detailHtml}${noteHtml}</span>`;
+          return `<span class="tracking-chip${closedClass}"><span class="tracking-chip-title">${escapeHtml(title)}</span><small>${escapeHtml(time.date || '')} ${escapeHtml(time.time || '')}</small>${detailHtml}${noteHtml}</span>`;
         }).join('') || '<span class="sheet-empty">No tracking updates yet</span>';
       if (!row.caseNumber) return historyHtml;
       return `<div class="tracking-workspace"><div><p class="tracking-current-time">${label('Last update', '最后更新')}: ${escapeHtml(latestTime.date || '-')} ${escapeHtml(latestTime.time || '')}</p><div class="tracking-history">${historyHtml}</div></div><div><label class="tracking-stage-picker"><span>${label('Current stage', '当前阶段')}</span><select data-cbs-stage-select>${updateKeys.map((stage) => `<option value="${escapeHtml(stage.key)}" ${stage.key === active ? 'selected' : ''}>${escapeHtml(stage.text)}</option>`).join('')}</select></label><form class="inline-update case-update" data-case="${escapeHtml(row.caseNumber)}" data-update-mode="${escapeHtml(active)}"><div data-cbs-inline-fields>${inlineUpdateFieldsHtml(active)}</div><button type="submit">${label('Update Tracking', '更新进度')}</button></form></div></div>`;
