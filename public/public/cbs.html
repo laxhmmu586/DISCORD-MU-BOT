@@ -153,7 +153,14 @@
     .worldtracer-list { margin-top:18px; }
     .worldtracer-route { display:flex; flex-wrap:wrap; gap:8px; }
     .worldtracer-route span { display:inline-flex; padding:6px 10px; border-radius:10px; background:#eef4ff; color:#344054; font-weight:800; }
-    @media (max-width:840px){ header{align-items:flex-start;gap:10px}.page-tabs{order:3;width:100%}.page-tab{flex:1}.case-update-grid,.detail-grid,.baggage-search-grid,.sheet-detail-grid,.inline-update.case-update,.worldtracer-form{grid-template-columns:1fr}.rush-flight-row{grid-template-columns:1fr 1fr}.rush-route-arrow{display:none}.rush-flight-row button{grid-column:1/-1}.tracking-event{grid-template-columns:86px 1fr;gap:12px}.tracking-event-card{font-size:12px}.tracking-event-field{grid-template-columns:1fr}.case-update{min-width:0} table{display:block;overflow-x:auto;white-space:nowrap} }
+    .unresolved-list { display:grid; gap:12px; margin-top:18px; }
+    .unresolved-case { padding:16px; border:1px solid #d8e4f1; border-radius:16px; background:#fbfdff; }
+    .unresolved-summary { display:grid; grid-template-columns:repeat(5,minmax(110px,1fr)) auto; gap:12px; align-items:center; }
+    .unresolved-summary strong { display:block; color:var(--brand); }
+    .unresolved-update { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-top:14px; padding-top:14px; border-top:1px solid var(--line); }
+    .unresolved-update .wide,.unresolved-update .actions { grid-column:1/-1; }
+    .unresolved-update-fields { display:contents; }
+    @media (max-width:840px){ header{align-items:flex-start;gap:10px}.page-tabs{order:3;width:100%}.page-tab{flex:1}.case-update-grid,.detail-grid,.baggage-search-grid,.sheet-detail-grid,.inline-update.case-update,.worldtracer-form,.unresolved-update{grid-template-columns:1fr}.unresolved-summary{grid-template-columns:1fr 1fr}.rush-flight-row{grid-template-columns:1fr 1fr}.rush-route-arrow{display:none}.rush-flight-row button{grid-column:1/-1}.tracking-event{grid-template-columns:86px 1fr;gap:12px}.tracking-event-card{font-size:12px}.tracking-event-field{grid-template-columns:1fr}.case-update{min-width:0} table{display:block;overflow-x:auto;white-space:nowrap} }
   </style>
 </head>
 <body>
@@ -163,6 +170,7 @@
       <button class="page-tab is-active" id="passenger-cases-tab" type="button"><span class="en">Passenger Filed Cases</span><span class="zh">旅客提交案件</span></button>
       <button class="page-tab" id="worldtracer-tab" type="button">On-hand Rush</button>
       <button class="page-tab" id="missing-report-alert" type="button">Missing Bag Report</button>
+      <button class="page-tab" id="unresolved-baggage-tab" type="button">Unresolved Baggage</button>
     </nav>
     <span class="header-spacer"></span>
     <button class="lang-toggle" id="language-toggle" type="button">中文</button>
@@ -194,6 +202,11 @@
       <div class="actions"><div><h1>MISSING BAG REPORT</h1><p class="muted">MU rows imported from Early Bag Storage missed bag email.</p></div></div>
       <div id="missing-report-output"><p class="muted">Loading missing bags...</p></div>
     </section>
+    <section class="card" id="unresolved-baggage-card" hidden>
+      <h1>Unresolved Baggage</h1>
+      <p class="muted">Passenger bags entered as inbound and not-loaded outbound bags remain here until an update resolves the case.</p>
+      <div id="unresolved-baggage-output"><p class="muted">Loading cases...</p></div>
+    </section>
   </main>
   <script>
     const apiBase = (window.MU_API_BASE || 'https://api.mufcapp.net').replace(/\/$/, '');
@@ -211,6 +224,9 @@
     const missingAlert = document.querySelector('#missing-report-alert');
     const missingReportCard = document.querySelector('#missing-report-card');
     const missingReportOutput = document.querySelector('#missing-report-output');
+    const unresolvedBaggageTab = document.querySelector('#unresolved-baggage-tab');
+    const unresolvedBaggageCard = document.querySelector('#unresolved-baggage-card');
+    const unresolvedBaggageOutput = document.querySelector('#unresolved-baggage-output');
     const backToCases = document.querySelector('#back-to-cases');
     const refreshCases = document.querySelector('#refresh-cases');
     const languageToggle = document.querySelector('#language-toggle');
@@ -222,9 +238,11 @@
       casesCard.hidden = section !== 'passenger';
       worldTracerCard.hidden = section !== 'worldtracer';
       missingReportCard.hidden = section !== 'missing';
+      unresolvedBaggageCard.hidden = section !== 'unresolved';
       passengerCasesTab.classList.toggle('is-active', section === 'passenger');
       worldTracerTab.classList.toggle('is-active', section === 'worldtracer');
       missingAlert.classList.toggle('is-active', section === 'missing');
+      unresolvedBaggageTab.classList.toggle('is-active', section === 'unresolved');
     }
     function setLanguage(lang) {
       document.documentElement.lang = lang;
@@ -252,6 +270,26 @@
         renderWorldTracerCases(data.rows || []);
       } catch (error) {
         worldTracerOutput.innerHTML = `<p class="status err">${escapeHtml(error.message)}</p>`;
+      }
+    }
+    function unresolvedUpdateFieldsHtml(action, bagTag) {
+      if (action === 'on-hand-rush') return `<label><span>WorldTracer File Number</span><input name="worldTracerFileNumber" required /></label><label><span>Bag Tag</span><input name="bagTagNumber" value="${escapeHtml(bagTag)}" required /></label><label><span>Flight Date</span><input name="flightDate" type="date" required /></label><label><span>Flight Number</span><input name="flightNumber" placeholder="MU586" required /></label><label><span>From</span><input name="from" placeholder="LAX" required /></label><label><span>To</span><input name="to" placeholder="PVG" required /></label>`;
+      const placeholder = action === 'passenger-collected' ? 'Who collected the bag?' : (action === 'shipped' ? 'Tracking number and destination' : 'Describe how this case was resolved');
+      return `<label class="wide"><span>Resolution Note</span><textarea name="note" placeholder="${placeholder}" required></textarea></label>`;
+    }
+    function renderUnresolvedBaggage(rows = []) {
+      if (!rows.length) { unresolvedBaggageOutput.innerHTML = '<p class="muted">No unresolved baggage cases.</p>'; return; }
+      unresolvedBaggageOutput.innerHTML = `<div class="unresolved-list">${rows.map((row) => `<article class="unresolved-case"><div class="unresolved-summary"><div><small>Bag Tag</small><strong>${escapeHtml(row.bagTag)}</strong></div><div><small>Direction</small><strong>${escapeHtml(row.direction)}</strong></div><div><small>Flight / Date</small><strong>${escapeHtml(row.flightNumber)} · ${escapeHtml(row.flightDate)}</strong></div><div><small>Type / Status</small><strong>${escapeHtml(row.bagType || row.status || '-')}</strong></div><div><small>Location</small><strong>${escapeHtml(row.location || '-')}</strong></div><button type="button" data-toggle-unresolved-update>Update</button></div><form class="unresolved-update" data-unresolved-row="${escapeHtml(row.rowNumber)}" data-bag-tag="${escapeHtml(row.bagTag)}" hidden><label class="wide"><span>Resolution</span><select name="action" data-unresolved-action><option value="on-hand-rush">Create On-hand Rush</option><option value="passenger-collected">Passenger collected / Case closed</option><option value="shipped">Shipped</option><option value="other">Other resolution</option></select></label><div class="unresolved-update-fields">${unresolvedUpdateFieldsHtml('on-hand-rush', row.bagTag)}</div><div class="actions"><button type="submit">Resolve Case</button></div></form></article>`).join('')}</div>`;
+    }
+    async function loadUnresolvedBaggage() {
+      unresolvedBaggageOutput.innerHTML = '<p class="muted">Loading cases...</p>';
+      try {
+        const res = await fetch(`${apiBase}/cbs-unresolved-baggage`);
+        const data = await parseJson(res);
+        if (!res.ok) throw new Error(data.error || 'Unresolved baggage lookup failed');
+        renderUnresolvedBaggage(data.rows || []);
+      } catch (error) {
+        unresolvedBaggageOutput.innerHTML = `<p class="status err">${escapeHtml(error.message)}</p>`;
       }
     }
     function inferCaseType(row) {
@@ -706,6 +744,7 @@
     passengerCasesTab?.addEventListener('click', () => showSection('passenger'));
     worldTracerTab?.addEventListener('click', async () => { showSection('worldtracer'); await loadWorldTracerCases(); });
     missingAlert?.addEventListener('click', async () => { showSection('missing'); await loadMissingReports(true); });
+    unresolvedBaggageTab?.addEventListener('click', async () => { showSection('unresolved'); await loadUnresolvedBaggage(); });
     backToCases?.addEventListener('click', () => showSection('passenger'));
     addRushFlight?.addEventListener('click', addRushFlightRow);
     rushFlightRows?.addEventListener('click', (event) => {
@@ -740,6 +779,37 @@
       } catch (error) {
         worldTracerStatus.classList.add('err');
         worldTracerStatus.textContent = error.message;
+      } finally {
+        button.disabled = false;
+      }
+    });
+    unresolvedBaggageOutput?.addEventListener('click', (event) => {
+      const toggle = event.target.closest('[data-toggle-unresolved-update]');
+      if (!toggle) return;
+      const form = toggle.closest('.unresolved-case').querySelector('.unresolved-update');
+      form.hidden = !form.hidden;
+    });
+    unresolvedBaggageOutput?.addEventListener('change', (event) => {
+      const select = event.target.closest('[data-unresolved-action]');
+      if (!select) return;
+      const form = select.closest('.unresolved-update');
+      form.querySelector('.unresolved-update-fields').innerHTML = unresolvedUpdateFieldsHtml(select.value, form.dataset.bagTag);
+    });
+    unresolvedBaggageOutput?.addEventListener('submit', async (event) => {
+      const form = event.target.closest('.unresolved-update');
+      if (!form) return;
+      event.preventDefault();
+      const button = form.querySelector('button[type="submit"]');
+      const payload = Object.fromEntries(new FormData(form).entries());
+      if (payload.action === 'on-hand-rush') payload.flightRows = [{ flightDate:payload.flightDate, flightNumber:payload.flightNumber, from:payload.from, to:payload.to }];
+      button.disabled = true;
+      try {
+        const res = await fetch(`${apiBase}/cbs-unresolved-baggage/${encodeURIComponent(form.dataset.unresolvedRow)}/update`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+        const data = await parseJson(res);
+        if (!res.ok) throw new Error(data.error || 'Unresolved baggage update failed');
+        await loadUnresolvedBaggage();
+      } catch (error) {
+        alert(error.message);
       } finally {
         button.disabled = false;
       }

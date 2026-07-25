@@ -61,6 +61,8 @@ const {
   appendCbsCase,
   appendCbsWorldTracerCase,
   getCbsWorldTracerCases,
+  getCbsUnresolvedBaggageCases,
+  resolveCbsUnresolvedBaggageCase,
   getCbsCases,
   updateCbsCase,
   getCbsMissingBagReports,
@@ -2027,6 +2029,40 @@ app.get('/cbs-worldtracer-cases', async (req, res) => {
   } catch (err) {
     console.error('CBS WorldTracer case list error:', err);
     return res.status(500).json({ error: err?.message || 'WorldTracer case lookup failed' });
+  }
+});
+
+app.get('/cbs-unresolved-baggage', async (req, res) => {
+  try {
+    return res.json({ rows: await getCbsUnresolvedBaggageCases() });
+  } catch (err) {
+    console.error('CBS unresolved baggage list error:', err);
+    return res.status(500).json({ error: err?.message || 'Unresolved baggage lookup failed' });
+  }
+});
+
+app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
+  try {
+    const action = sanitizeCbsText(req.body?.action, 40).toLowerCase();
+    if (!['on-hand-rush', 'passenger-collected', 'shipped', 'other'].includes(action)) return res.status(400).json({ error: 'A valid resolution is required' });
+    const note = sanitizeCbsText(req.body?.note, 500);
+    if (action === 'on-hand-rush') {
+      const flightRows = (Array.isArray(req.body?.flightRows) ? req.body.flightRows : []).slice(0, 20).map((flight) => ({
+        flightDate: sanitizeCbsText(flight?.flightDate, 40), flightNumber: sanitizeCbsText(flight?.flightNumber, 40).toUpperCase(),
+        from: sanitizeCbsText(flight?.from, 40).toUpperCase(), to: sanitizeCbsText(flight?.to, 40).toUpperCase()
+      }));
+      const worldTracerFileNumber = sanitizeCbsText(req.body?.worldTracerFileNumber, 120).toUpperCase();
+      const bagTagNumber = sanitizeCbsText(req.body?.bagTagNumber, 120).toUpperCase();
+      if (!worldTracerFileNumber || !bagTagNumber || !flightRows.length || flightRows.some((flight) => Object.values(flight).some((value) => !value))) return res.status(400).json({ error: 'Complete On-hand Rush details are required' });
+      await appendCbsWorldTracerCase({ worldTracerFileNumber, bagTagNumber, flightRows, createdAt: new Date().toISOString() });
+    }
+    if (action !== 'on-hand-rush' && !note) return res.status(400).json({ error: 'A resolution note is required' });
+    const result = await resolveCbsUnresolvedBaggageCase(req.params.rowNumber, action, note);
+    if (result.notFound) return res.status(404).json({ error: 'Unresolved baggage case not found' });
+    return res.json(result);
+  } catch (err) {
+    console.error('CBS unresolved baggage update error:', err);
+    return res.status(500).json({ error: err?.message || 'Unresolved baggage update failed' });
   }
 });
 

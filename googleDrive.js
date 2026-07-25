@@ -69,6 +69,7 @@ const ENABLE_240_SHEET =
 const CBS_SHEET_ID = process.env.CBS_SHEET_ID || '10oEQypkoaNvosREqT-mNw8zsyrQxln2EwsBUuS9OtsU';
 const CBS_SHEET_GID = Number(process.env.CBS_SHEET_GID || 0);
 const CBS_WORLDTRACER_SHEET_GID = Number(process.env.CBS_WORLDTRACER_SHEET_GID || 944289437);
+const CBS_UNRESOLVED_BAGGAGE_SHEET_GID = Number(process.env.CBS_UNRESOLVED_BAGGAGE_SHEET_GID || 1279643787);
 const CBS_NOTIFICATION_EMAILS = (process.env.CBS_NOTIFICATION_EMAILS || 'laxhmmu@gmail.com')
   .split(',')
   .map((value) => value.trim())
@@ -110,6 +111,7 @@ const CBS_HEADERS = [
 ];
 let cbsSheetTitle = '';
 let cbsWorldTracerSheetTitle = '';
+let cbsUnresolvedBaggageSheetTitle = '';
 let cbsSheetCache = { loadedAt: 0, rows: [] };
 const CBS_UPDATE_HISTORY_FILE = process.env.CBS_UPDATE_HISTORY_FILE || path.join(__dirname, 'data', 'cbs-update-history.json');
 let cbsUpdateHistoryCache = { loadedAt: 0, data: null };
@@ -808,7 +810,13 @@ async function appendTestBaggageRecord(record) {
   const rows = await getTestBaggageSheetRows({ forceRefresh: true });
   await ensureTestBaggageSheetHeaders(rows);
   const existing = await findTestBaggageByTag(normalizedTag);
-  if (existing) return { created: false, record: existing };
+  if (existing) {
+    const existingDirection = String(existing.direction || '').toLowerCase();
+    const shouldSyncExisting = (existingDirection === 'inbound' && String(existing.bagType || '').toLowerCase() === 'passenger bag')
+      || (existingDirection === 'outbound' && String(existing.status || '').toLowerCase() === 'not load bags');
+    if (shouldSyncExisting) await appendCbsUnresolvedBaggageCase(existing);
+    return { created: false, record: existing };
+  }
   const now = new Date().toISOString();
   const direction = sanitizeSheetText(record.direction, 20).toLowerCase() === 'outbound' ? 'Outbound' : 'Inbound';
   const cleanRecord = {
@@ -858,6 +866,9 @@ async function appendTestBaggageRecord(record) {
     requestBody: { values: [testBaggageValuesFromRecord(cleanRecord)] }
   });
   testBaggageSheetCache = { loadedAt: 0, rows: [] };
+  const isUnresolvedInbound = direction === 'Inbound' && cleanRecord.bagType.toLowerCase() === 'passenger bag';
+  const isUnresolvedOutbound = direction === 'Outbound' && cleanRecord.status.toLowerCase() === 'not load bags';
+  if (isUnresolvedInbound || isUnresolvedOutbound) await appendCbsUnresolvedBaggageCase(cleanRecord);
   return { created: true, record: await findTestBaggageByTag(normalizedTag) };
 }
 
@@ -3172,6 +3183,64 @@ async function appendCbsWorldTracerCase(record = {}) {
   return saved;
 }
 
+async function getCbsUnresolvedBaggageSheetTitle() {
+  if (!cbsUnresolvedBaggageSheetTitle) cbsUnresolvedBaggageSheetTitle = await resolveSheetTitleByGid(CBS_SHEET_ID, CBS_UNRESOLVED_BAGGAGE_SHEET_GID);
+  return cbsUnresolvedBaggageSheetTitle || 'Sheet1';
+}
+
+const CBS_UNRESOLVED_BAGGAGE_HEADERS = ['Bag Tag', 'Direction', 'Flight Number', 'Flight Date', 'Bag Type', 'Status', 'Location', 'Created At', 'Resolution', 'Resolution Note', 'Resolved At'];
+
+async function getCbsUnresolvedBaggageCases(options = {}) {
+  const title = await getCbsUnresolvedBaggageSheetTitle();
+  const response = await sheets.spreadsheets.values.get({ spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!A:K` });
+  const rows = response.data.values || [];
+  const start = String(rows[0]?.[0] || '').trim() === CBS_UNRESOLVED_BAGGAGE_HEADERS[0] ? 1 : 0;
+  return rows.slice(start).map((values, index) => ({
+    bagTag: values[0] || '', direction: values[1] || '', flightNumber: values[2] || '', flightDate: values[3] || '',
+    bagType: values[4] || '', status: values[5] || '', location: values[6] || '', createdAt: values[7] || '',
+    resolution: values[8] || '', resolutionNote: values[9] || '', resolvedAt: values[10] || '', rowNumber: start + index + 1
+  })).filter((row) => options.includeResolved || !row.resolvedAt).sort((a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0));
+}
+
+async function appendCbsUnresolvedBaggageCase(record = {}) {
+  const title = await getCbsUnresolvedBaggageSheetTitle();
+  const existing = await getCbsUnresolvedBaggageCases();
+  const bagTag = sanitizeSheetText(record.bagTag, 80).toUpperCase();
+  if (existing.some((row) => row.bagTag.toUpperCase() === bagTag)) return { created: false };
+  const header = await sheets.spreadsheets.values.get({ spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!A1:K1` });
+  if (!header.data.values?.length) {
+    await sheets.spreadsheets.values.update({ spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!A1:K1`, valueInputOption: 'RAW', requestBody: { values: [CBS_UNRESOLVED_BAGGAGE_HEADERS] } });
+  }
+  const saved = {
+    bagTag,
+    direction: sanitizeSheetText(record.direction, 20),
+    flightNumber: sanitizeSheetText(record.flight, 40).toUpperCase(),
+    flightDate: sanitizeSheetText(record.date, 40),
+    bagType: sanitizeSheetText(record.bagType, 80),
+    status: sanitizeSheetText(record.status, 80),
+    location: sanitizeSheetText(record.location, 120),
+    createdAt: sanitizeSheetText(record.submittedAt || new Date().toISOString(), 40)
+  };
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!A:K`, valueInputOption: 'RAW', insertDataOption: 'INSERT_ROWS',
+    requestBody: { values: [[saved.bagTag, saved.direction, saved.flightNumber, saved.flightDate, saved.bagType, saved.status, saved.location, saved.createdAt, '', '', '']] }
+  });
+  return { created: true, record: saved };
+}
+
+async function resolveCbsUnresolvedBaggageCase(rowNumber, resolution, resolutionNote = '') {
+  const rows = await getCbsUnresolvedBaggageCases({ includeResolved: true });
+  const target = rows.find((row) => Number(row.rowNumber) === Number(rowNumber));
+  if (!target) return { updated: false, notFound: true };
+  const title = await getCbsUnresolvedBaggageSheetTitle();
+  const resolvedAt = new Date().toISOString();
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!I${target.rowNumber}:K${target.rowNumber}`, valueInputOption: 'RAW',
+    requestBody: { values: [[sanitizeSheetText(resolution, 80), sanitizeSheetText(resolutionNote, 500), resolvedAt]] }
+  });
+  return { updated: true, record: { ...target, resolution, resolutionNote, resolvedAt } };
+}
+
 async function getCbsWorldTracerCases() {
   if (!cbsWorldTracerSheetTitle) cbsWorldTracerSheetTitle = await resolveSheetTitleByGid(CBS_SHEET_ID, CBS_WORLDTRACER_SHEET_GID);
   const title = cbsWorldTracerSheetTitle || 'Sheet1';
@@ -3692,6 +3761,8 @@ module.exports = {
   appendCbsCase,
   appendCbsWorldTracerCase,
   getCbsWorldTracerCases,
+  getCbsUnresolvedBaggageCases,
+  resolveCbsUnresolvedBaggageCase,
   getCbsCases,
   updateCbsCase,
   getCbsMissingBagReports,
