@@ -1732,12 +1732,20 @@ function buildCbsUpdateFields(update = {}) {
 
 app.get('/cbs-missing-bags', async (req, res) => {
   try {
-    const sync = String(req.query?.sync || 'true').toLowerCase() !== 'false';
-    const result = await getCbsMissingBagReports({ sync });
+    const result = await getCbsMissingBagReports({ sync: false });
     return res.json(result);
   } catch (err) {
     console.error('CBS missing bag report error:', err);
     return res.status(500).json({ error: err?.message || 'CBS missing bag report failed' });
+  }
+});
+
+app.post('/cbs-missing-bags/sync', async (req, res) => {
+  try {
+    return res.json(await getCbsMissingBagReports({ sync: true }));
+  } catch (err) {
+    console.error('CBS missing bag sync error:', err);
+    return res.status(500).json({ error: err?.message || 'CBS missing bag sync failed' });
   }
 });
 
