@@ -376,6 +376,16 @@
       return `<label class="wide"><span>Resolution Note</span><textarea name="note" placeholder="${placeholder}" required></textarea></label>`;
     }
     function renderUnresolvedBaggage(rows = []) {
+      const uniqueRows = new Map();
+      rows.forEach((row) => {
+        const tag = String(row.bagTag || '').trim().toUpperCase();
+        if (!tag) return;
+        const current = uniqueRows.get(tag);
+        if (!current || (Date.parse(row.createdAt) || 0) > (Date.parse(current.createdAt) || 0)) uniqueRows.set(tag, row);
+      });
+      rows = [...uniqueRows.values()];
+      window._unresolvedBaggageRows = rows;
+      window._unresolvedBaggageLoaded = true;
       if (!rows.length) { unresolvedBaggageOutput.innerHTML = '<p class="muted">No unresolved baggage cases.</p>'; return; }
       unresolvedBaggageOutput.innerHTML = `<div class="unresolved-list">${rows.map((row) => `<article class="unresolved-case"><div class="unresolved-summary"><div><small>Bag Tag</small><strong>${escapeHtml(row.bagTag)}</strong></div><div><small>Direction</small><strong>${escapeHtml(row.direction)}</strong></div><div><small>Flight / Date</small><strong>${escapeHtml(row.flightNumber)} · ${escapeHtml(row.flightDate)}</strong></div><div><small>Type / Status</small><strong>${escapeHtml(row.bagType || row.status || '-')}</strong></div><div><small>Location</small><strong>${escapeHtml(row.location || '-')}</strong></div><button type="button" data-toggle-unresolved-update>Update</button></div><form class="unresolved-update" data-unresolved-row="${escapeHtml(row.rowNumber)}" data-bag-tag="${escapeHtml(row.bagTag)}" hidden><label class="wide"><span>Resolution</span><select name="action" data-unresolved-action><option value="on-hand-rush">Create On-hard</option><option value="passenger-collected">Passenger collected / Case closed</option><option value="shipped">Shipped</option><option value="other">Other resolution</option></select></label><div class="unresolved-update-fields">${unresolvedUpdateFieldsHtml('on-hand-rush', row.bagTag)}</div><div class="actions"><button type="submit">Resolve Case</button></div></form></article>`).join('')}</div>`;
     }
@@ -736,6 +746,18 @@
       } catch (error) { casesOutput.innerHTML = `<p class="status err">${escapeHtml(error.message)}</p>`; }
     }
     function renderMissingReports(rows = []) {
+      const uniqueRows = new Map();
+      rows.forEach((row) => {
+        const tag = String(row.bagTag || '').trim().toUpperCase();
+        if (!tag) return;
+        const current = uniqueRows.get(tag);
+        const rowIsProcessed = Boolean(row.acknowledgedAt || row.linkedCaseNumber || row.caseNumber);
+        const currentIsProcessed = Boolean(current?.acknowledgedAt || current?.linkedCaseNumber || current?.caseNumber);
+        const rowDate = Date.parse(row.sourceEmailDate) || 0;
+        const currentDate = Date.parse(current?.sourceEmailDate) || 0;
+        if (!current || (rowIsProcessed && !currentIsProcessed) || (rowIsProcessed === currentIsProcessed && rowDate > currentDate)) uniqueRows.set(tag, row);
+      });
+      rows = [...uniqueRows.values()];
       const openRows = rows.filter((row) => !row.acknowledgedAt && !row.linkedCaseNumber);
       missingAlert.dataset.hasOpenReports = openRows.length ? 'true' : 'false';
       if (!rows.length) { missingReportOutput.innerHTML = '<p class="muted">No MU missing bag rows found.</p>'; return; }
@@ -752,11 +774,13 @@
       const groupedReports = Array.from(groups.entries()).sort(([, left], [, right]) => (right.date?.getTime() || 0) - (left.date?.getTime() || 0));
       if (!groupedReports.length) { missingReportOutput.innerHTML = '<p class="muted">No missing bag reports.</p>'; return; }
       missingReportOutput.innerHTML = `<div class="missing-date-groups">${groupedReports.map(([key, group]) => {
-        const dateLabel = group.date ? group.date.toLocaleDateString(undefined, { weekday:'short', month:'short', day:'numeric', year:'numeric' }) : 'Date unavailable';
+        const dateLabel = group.date
+          ? `${group.date.getMonth() + 1}/${group.date.getDate()}/${group.date.getFullYear()},${group.date.toLocaleDateString('en-US', { weekday:'long' })}`
+          : 'Date unavailable';
         const todayLabel = key === todayKey ? '<span>Today</span>' : '';
         return `<section class="missing-date-group"><h2 class="missing-date-heading">${todayLabel}${escapeHtml(dateLabel)}</h2><div class="sheet-shell"><table class="missing-report-table"><thead><tr><th>Bag Tag</th><th>Passenger</th><th>Destination</th><th>Airline</th><th>Source</th><th>Case</th><th>Status</th><th></th></tr></thead><tbody>${group.rows.map((row) => {
           const linkedCaseNumber = row.linkedCaseNumber || row.caseNumber || '';
-          const status = row.acknowledgedAt ? 'Acknowledged' : (linkedCaseNumber ? 'On-hard Created' : 'Open');
+          const status = row.acknowledgedAt ? 'Acknowledged' : (linkedCaseNumber ? (row.linkedCaseUpdated ? 'Updated' : 'On-hard Created') : 'Open');
           const caseHtml = linkedCaseNumber
             ? (/^LAX\s+MU/i.test(linkedCaseNumber) ? `<button class="case-link-button" type="button" data-link-case="${escapeHtml(linkedCaseNumber)}">${escapeHtml(linkedCaseNumber)}</button>` : `<span class="pill">${escapeHtml(linkedCaseNumber)}</span>`)
             : '-';
@@ -765,9 +789,9 @@
         }).join('')}</tbody></table></div></section>`;
       }).join('')}</div>`;
     }
-    async function loadMissingReports(sync = true) {
+    async function loadMissingReports() {
       try {
-        const res = await fetch(`${apiBase}/cbs-missing-bags?sync=${sync ? 'true' : 'false'}`);
+        const res = await fetch(`${apiBase}/cbs-missing-bags`);
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || 'Missing bag report loading failed');
         window._missingReportLoaded = true;
@@ -776,6 +800,18 @@
       } catch (error) {
         delete missingAlert.dataset.hasOpenReports;
         missingReportOutput.innerHTML = `<p class="status err">${escapeHtml(error.message)}</p>`;
+      }
+    }
+    async function syncMissingReports() {
+      try {
+        const res = await fetch(`${apiBase}/cbs-missing-bags/sync`, { method:'POST' });
+        const data = await parseJson(res);
+        if (!res.ok) throw new Error(data.error || 'Missing bag report sync failed');
+        window._missingReportLoaded = true;
+        window._missingBagRows = data.rows || [];
+        renderMissingReports(window._missingBagRows);
+      } catch (error) {
+        console.error('Missing bag background sync failed:', error);
       }
     }
     casesOutput.addEventListener('submit', async (event) => {
@@ -848,14 +884,20 @@
         if (!res.ok) throw new Error(data.error || 'Update failed');
         window._selectedCbsCase = caseNumber;
         await loadCases();
-        if (window._missingReportLoaded || !missingReportCard.hidden) await loadMissingReports(false);
+        if (window._missingReportLoaded || !missingReportCard.hidden) await loadMissingReports();
       } catch (error) { alert(error.message); } finally { casesOutput.style.opacity = '1'; }
     }
     caseSearch?.addEventListener('input', () => { renderCases(); loadBaggageSearch(caseSearch.value); });
     passengerCasesTab?.addEventListener('click', () => showSection('passenger'));
     worldTracerTab?.addEventListener('click', async () => { delete worldTracerForm.dataset.missingRow; showSection('worldtracer'); await loadWorldTracerCases(); });
-    missingAlert?.addEventListener('click', async () => { showSection('missing'); await loadMissingReports(true); });
-    unresolvedBaggageTab?.addEventListener('click', async () => { showSection('unresolved'); await loadUnresolvedBaggage(); });
+    missingAlert?.addEventListener('click', () => {
+      showSection('missing');
+      if (window._missingReportLoaded) renderMissingReports(window._missingBagRows || []);
+    });
+    unresolvedBaggageTab?.addEventListener('click', () => {
+      showSection('unresolved');
+      if (window._unresolvedBaggageLoaded) renderUnresolvedBaggage(window._unresolvedBaggageRows || []);
+    });
     addBaggageTab?.addEventListener('click', () => { showSection('add-baggage'); addBaggageSearch.elements.bagTag.focus(); });
     baggageChartTab?.addEventListener('click', () => showSection('baggage-chart'));
     backToCases?.addEventListener('click', () => showSection('passenger'));
@@ -889,7 +931,7 @@
           const linkData = await parseJson(linkRes);
           if (!linkRes.ok) throw new Error(linkData.error || 'Missing bag link failed');
           delete worldTracerForm.dataset.missingRow;
-          await loadMissingReports(false);
+          await loadMissingReports();
         }
         worldTracerForm.reset();
         rushFlightRows.innerHTML = '';
@@ -1040,13 +1082,16 @@
         const res = await fetch(`${apiBase}/cbs-missing-bags/${encodeURIComponent(rowNumber)}/${action}`, fetchOptions);
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || (createButton ? 'Create case failed' : 'Acknowledge failed'));
-        await loadMissingReports(false);
+        await loadMissingReports();
         await loadCases();
       } catch (error) { alert(error.message); } finally { button.disabled = false; button.textContent = originalText; }
     });
     addRushFlightRow();
     showSection('passenger');
     loadCases();
+    loadMissingReports();
+    syncMissingReports();
+    loadUnresolvedBaggage();
   </script>
 </body>
 </html>
