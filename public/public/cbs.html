@@ -160,7 +160,14 @@
     .unresolved-update { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-top:14px; padding-top:14px; border-top:1px solid var(--line); }
     .unresolved-update .wide,.unresolved-update .actions { grid-column:1/-1; }
     .unresolved-update-fields { display:contents; }
-    @media (max-width:840px){ header{align-items:flex-start;gap:10px}.page-tabs{order:3;width:100%}.page-tab{flex:1}.case-update-grid,.detail-grid,.baggage-search-grid,.sheet-detail-grid,.inline-update.case-update,.worldtracer-form,.unresolved-update{grid-template-columns:1fr}.unresolved-summary{grid-template-columns:1fr 1fr}.rush-flight-row{grid-template-columns:1fr 1fr}.rush-route-arrow{display:none}.rush-flight-row button{grid-column:1/-1}.tracking-event{grid-template-columns:86px 1fr;gap:12px}.tracking-event-card{font-size:12px}.tracking-event-field{grid-template-columns:1fr}.case-update{min-width:0} table{display:block;overflow-x:auto;white-space:nowrap} }
+    .unresolved-update-fields[hidden] { display:none; }
+    .add-baggage-search { display:grid; grid-template-columns:minmax(260px,1fr) auto; gap:12px; max-width:900px; margin:28px auto; align-items:end; }
+    .add-baggage-search label,.add-baggage-form label { display:grid; gap:7px; color:#475467; font-size:12px; font-weight:900; letter-spacing:.05em; text-transform:uppercase; }
+    .add-baggage-panel { max-width:900px; margin:0 auto; padding:22px; border:1px solid #c9d9ec; border-radius:20px; background:#f8fbff; }
+    .add-baggage-modes { display:flex; gap:12px; flex-wrap:wrap; margin:16px 0; }
+    .add-baggage-form { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+    .add-baggage-form .wide,.add-baggage-form .actions { grid-column:1/-1; }
+    @media (max-width:840px){ header{align-items:flex-start;gap:10px}.page-tabs{order:3;width:100%}.page-tab{flex:1}.case-update-grid,.detail-grid,.baggage-search-grid,.sheet-detail-grid,.inline-update.case-update,.worldtracer-form,.unresolved-update,.add-baggage-form,.add-baggage-search{grid-template-columns:1fr}.unresolved-summary{grid-template-columns:1fr 1fr}.rush-flight-row{grid-template-columns:1fr 1fr}.rush-route-arrow{display:none}.rush-flight-row button{grid-column:1/-1}.tracking-event{grid-template-columns:86px 1fr;gap:12px}.tracking-event-card{font-size:12px}.tracking-event-field{grid-template-columns:1fr}.case-update{min-width:0} table{display:block;overflow-x:auto;white-space:nowrap} }
   </style>
 </head>
 <body>
@@ -171,7 +178,7 @@
       <button class="page-tab" id="worldtracer-tab" type="button">On-hand Rush</button>
       <button class="page-tab" id="missing-report-alert" type="button">Missing Bag Report</button>
       <button class="page-tab" id="unresolved-baggage-tab" type="button">Unresolved Baggage</button>
-      <a class="page-tab" href="index.html#test">Add Baggage</a>
+      <button class="page-tab" id="add-baggage-tab" type="button">Add Baggage</button>
     </nav>
     <span class="header-spacer"></span>
     <button class="lang-toggle" id="language-toggle" type="button">中文</button>
@@ -209,6 +216,12 @@
       <p class="muted">Passenger bags entered as inbound and not-loaded outbound bags remain here until an update resolves the case.</p>
       <div id="unresolved-baggage-output"><p class="muted">Loading cases...</p></div>
     </section>
+    <section class="card" id="add-baggage-card" hidden>
+      <h1>Add Baggage</h1>
+      <p class="muted">Search a bag tag, then add the inbound or outbound baggage record here.</p>
+      <form class="add-baggage-search" id="add-baggage-search"><label><span>Bag Tag Number</span><input name="bagTag" placeholder="MU123456" maxlength="8" pattern="[A-Za-z]{2}[0-9]{6}" required autocomplete="off" /></label><button type="submit">Search</button></form>
+      <div id="add-baggage-output"><p class="muted">Enter a bag tag number to search.</p></div>
+    </section>
   </main>
   <script>
     const apiBase = (window.MU_API_BASE || 'https://api.mufcapp.net').replace(/\/$/, '');
@@ -229,6 +242,10 @@
     const unresolvedBaggageTab = document.querySelector('#unresolved-baggage-tab');
     const unresolvedBaggageCard = document.querySelector('#unresolved-baggage-card');
     const unresolvedBaggageOutput = document.querySelector('#unresolved-baggage-output');
+    const addBaggageTab = document.querySelector('#add-baggage-tab');
+    const addBaggageCard = document.querySelector('#add-baggage-card');
+    const addBaggageSearch = document.querySelector('#add-baggage-search');
+    const addBaggageOutput = document.querySelector('#add-baggage-output');
     const backToCases = document.querySelector('#back-to-cases');
     const refreshCases = document.querySelector('#refresh-cases');
     const languageToggle = document.querySelector('#language-toggle');
@@ -241,10 +258,12 @@
       worldTracerCard.hidden = section !== 'worldtracer';
       missingReportCard.hidden = section !== 'missing';
       unresolvedBaggageCard.hidden = section !== 'unresolved';
+      addBaggageCard.hidden = section !== 'add-baggage';
       passengerCasesTab.classList.toggle('is-active', section === 'passenger');
       worldTracerTab.classList.toggle('is-active', section === 'worldtracer');
       missingAlert.classList.toggle('is-active', section === 'missing');
       unresolvedBaggageTab.classList.toggle('is-active', section === 'unresolved');
+      addBaggageTab.classList.toggle('is-active', section === 'add-baggage');
     }
     function setLanguage(lang) {
       document.documentElement.lang = lang;
@@ -255,6 +274,18 @@
     function label(en, zh) { return document.documentElement.lang === 'en' ? en : zh; }
     function escapeHtml(value) { return String(value || '').replace(/[&<>'"]/g, (ch) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch])); }
     async function parseJson(res) { const text = await res.text(); try { return JSON.parse(text); } catch { throw new Error(`API returned non-JSON (${res.status}). Please check API base: ${apiBase}`); } }
+    function normalizeBaggageTag(value) { return String(value || '').trim().toUpperCase().replace(/\s+/g, ''); }
+    function addBaggageFormHtml(bagTag, direction) {
+      const today = new Date().toISOString().slice(0, 10);
+      if (direction === 'outbound') return `<form class="add-baggage-form" data-add-baggage-direction="outbound"><label><span>Bag Tag Number</span><input name="bagTag" value="${escapeHtml(bagTag)}" readonly /></label><label><span>Outbound Flight Number</span><input name="flight" placeholder="MU586" required /></label><label><span>Date</span><input name="date" type="date" value="${today}" required /></label><label><span>Status</span><select name="status" data-add-outbound-status><option>Not load bags</option><option>Outbound rush</option><option>Gate bag</option></select></label><div class="unresolved-update-fields" data-add-outbound-rush hidden><label><span>RUSH Tag Number</span><input name="rushTagNumber" /></label><label><span>Rush To Where</span><input name="rushToWhere" /></label><label><span>AKE Number</span><input name="akeNumber" /></label><label><span>WorldTracer File Number</span><input name="worldTracerFileNumber" /></label></div><label class="wide"><span>Comment</span><input name="comment" /></label><div class="actions"><button type="submit">Submit</button><button class="secondary" type="button" data-cancel-add-baggage>Back</button></div></form>`;
+      return `<form class="add-baggage-form" data-add-baggage-direction="inbound"><label><span>Bag Tag Number</span><input name="bagTag" value="${escapeHtml(bagTag)}" readonly /></label><label><span>Inbound Flight Number</span><input name="flight" placeholder="MU583" required /></label><label><span>Date</span><input name="date" type="date" value="${today}" required /></label><label><span>Bag Type</span><select name="bagType"><option>Passenger bag</option><option>Inbound rush</option><option>Co-mail</option></select></label><label><span>Current Location</span><input name="location" value="Office" required /></label><div class="actions"><button type="submit">Submit</button><button class="secondary" type="button" data-cancel-add-baggage>Back</button></div></form>`;
+    }
+    function renderAddBaggageChoice(bagTag) {
+      addBaggageOutput.innerHTML = `<div class="add-baggage-panel"><h2>${escapeHtml(bagTag)}</h2><p class="muted">No matching bag found. Choose the baggage direction.</p><div class="add-baggage-modes"><button type="button" data-add-baggage-mode="inbound">Inbound</button><button type="button" data-add-baggage-mode="outbound">Outbound</button></div></div>`;
+    }
+    function renderExistingBaggage(record) {
+      addBaggageOutput.innerHTML = `<div class="add-baggage-panel"><h2>${escapeHtml(record.bagTag)}</h2><p><strong>${escapeHtml(record.direction || '-')}</strong> · ${escapeHtml(record.flight || '-')} · ${escapeHtml(record.date || '-')}</p><p class="muted">${escapeHtml(record.bagType || record.status || '')}${record.location ? ` · ${escapeHtml(record.location)}` : ''}</p><button class="secondary" type="button" data-cancel-add-baggage>Search Another Bag</button></div>`;
+    }
     function renderWorldTracerCases(rows = []) {
       if (!rows.length) { worldTracerOutput.innerHTML = `<p class="muted">${label('No On-hand Rush cases yet.', '暂无 On-hand Rush 案件。')}</p>`; return; }
       worldTracerOutput.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:210px"><col style="width:170px"><col style="width:170px"><col><col style="width:170px"><col style="width:110px"></colgroup><thead><tr><th>WorldTracer File Number</th><th>Original Tag</th><th>RUSH Tag</th><th>RUSH Itinerary</th><th>${label('Created', '创建时间')}</th><th></th></tr></thead><tbody>${rows.map((row, caseIndex) => {
@@ -748,6 +779,7 @@
     worldTracerTab?.addEventListener('click', async () => { delete worldTracerForm.dataset.missingRow; showSection('worldtracer'); await loadWorldTracerCases(); });
     missingAlert?.addEventListener('click', async () => { showSection('missing'); await loadMissingReports(true); });
     unresolvedBaggageTab?.addEventListener('click', async () => { showSection('unresolved'); await loadUnresolvedBaggage(); });
+    addBaggageTab?.addEventListener('click', () => { showSection('add-baggage'); addBaggageSearch.elements.bagTag.focus(); });
     backToCases?.addEventListener('click', () => showSection('passenger'));
     addRushFlight?.addEventListener('click', addRushFlightRow);
     rushFlightRows?.addEventListener('click', (event) => {
@@ -855,6 +887,47 @@
       } finally {
         button.disabled = false;
       }
+    });
+    addBaggageSearch?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const bagTag = normalizeBaggageTag(new FormData(addBaggageSearch).get('bagTag'));
+      addBaggageSearch.elements.bagTag.value = bagTag;
+      if (!/^[A-Z]{2}\d{6}$/.test(bagTag)) { addBaggageOutput.innerHTML = '<p class="status err">Bag tag must match MU123456 format.</p>'; return; }
+      addBaggageOutput.innerHTML = `<p class="muted">Searching ${escapeHtml(bagTag)}...</p>`;
+      try {
+        const res = await fetch(`${apiBase}/test-baggage/${encodeURIComponent(bagTag)}`);
+        const data = await parseJson(res);
+        if (!res.ok) throw new Error(data.error || 'Baggage lookup failed');
+        if (data.found && data.record) renderExistingBaggage(data.record); else renderAddBaggageChoice(bagTag);
+      } catch (error) { addBaggageOutput.innerHTML = `<p class="status err">${escapeHtml(error.message)}</p>`; }
+    });
+    addBaggageOutput?.addEventListener('click', (event) => {
+      const mode = event.target.closest('[data-add-baggage-mode]');
+      if (mode) { const bagTag = normalizeBaggageTag(addBaggageSearch.elements.bagTag.value); addBaggageOutput.innerHTML = `<div class="add-baggage-panel"><h2>${escapeHtml(bagTag)}</h2>${addBaggageFormHtml(bagTag, mode.dataset.addBaggageMode)}</div>`; return; }
+      if (event.target.closest('[data-cancel-add-baggage]')) { addBaggageOutput.innerHTML = '<p class="muted">Enter a bag tag number to search.</p>'; addBaggageSearch.elements.bagTag.focus(); }
+    });
+    addBaggageOutput?.addEventListener('change', (event) => {
+      const status = event.target.closest('[data-add-outbound-status]');
+      if (!status) return;
+      const rushFields = status.closest('form').querySelector('[data-add-outbound-rush]');
+      const isRush = status.value === 'Outbound rush';
+      rushFields.hidden = !isRush;
+      rushFields.querySelectorAll('input').forEach((input) => { input.required = isRush && input.name !== 'worldTracerFileNumber'; });
+    });
+    addBaggageOutput?.addEventListener('submit', async (event) => {
+      const form = event.target.closest('[data-add-baggage-direction]');
+      if (!form) return;
+      event.preventDefault();
+      const payload = Object.fromEntries(new FormData(form).entries());
+      payload.direction = form.dataset.addBaggageDirection;
+      const button = form.querySelector('button[type="submit"]');
+      button.disabled = true;
+      try {
+        const res = await fetch(`${apiBase}/test-baggage`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+        const data = await parseJson(res);
+        if (!res.ok) throw new Error(data.error || 'Baggage save failed');
+        renderExistingBaggage(data.record || payload);
+      } catch (error) { alert(error.message); } finally { button.disabled = false; }
     });
     missingReportOutput?.addEventListener('click', async (event) => {
       const rushButton = event.target.closest('[data-create-missing-rush]');
