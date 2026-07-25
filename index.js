@@ -2011,19 +2011,6 @@ app.get('/cbs-cases', async (req, res) => {
   }
 });
 
-app.get('/cbs-baggage-chart/:page', async (req, res) => {
-  try {
-    const image = await getCbsBaggageChartImage(req.params.page);
-    if (!image) return res.status(404).send('Baggage chart image not found');
-    res.set('Content-Type', image.mimeType);
-    res.set('Cache-Control', 'public, max-age=3600');
-    return res.send(image.buffer);
-  } catch (err) {
-    console.error('CBS baggage chart image error:', err);
-    return res.status(500).send('Baggage chart image load failed');
-  }
-});
-
 app.post('/cbs-worldtracer-cases', async (req, res) => {
   try {
     const body = req.body || {};
