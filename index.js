@@ -70,6 +70,7 @@ const {
   markCbsMissingBagCase,
   acknowledgeCbsMissingBag,
   sendCbsCaseEmail,
+  getCbsBaggageChartImage,
   appendTransit240Record,
   appendCbsScanRecord,
   appendCbsScanNbrdBns,

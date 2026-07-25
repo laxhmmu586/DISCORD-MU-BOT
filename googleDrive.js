@@ -3624,7 +3624,8 @@ async function getCbsMissingBagReports(options = {}) {
         linkedCaseStatus: linkedCase?.status || '',
         linkedCaseUpdated: Boolean(linkedCase && isCbsCaseUpdatedAfterMissingLink(linkedCase))
       };
-    });
+    })
+    .filter((row) => !row.acknowledgedAt && !row.linkedCaseNumber);
   return { rows: records, sync };
 }
 
@@ -3756,6 +3757,21 @@ async function sendCbsCaseEmail({ passengerEmail, subject, html, pdfBuffer, file
   return [{ to, cc, id: sent.data.id || '' }];
 }
 
+async function getCbsBaggageChartImage(page) {
+  const pageNumber = Number(page) === 2 ? 2 : 1;
+  const name = `640653098-BAGGAGE-CHART-11_0${pageNumber}.png`;
+  const result = await drive.files.list({
+    q: `name = '${name}' and trashed = false`,
+    fields: 'files(id,name,mimeType)',
+    pageSize: 1,
+    spaces: 'drive'
+  });
+  const file = result.data.files?.[0];
+  if (!file?.id) return null;
+  const response = await drive.files.get({ fileId:file.id, alt:'media' }, { responseType:'arraybuffer' });
+  return { buffer:Buffer.from(response.data), mimeType:file.mimeType || 'image/png', name:file.name || name };
+}
+
 // ===============================
 // Exports
 // ===============================
@@ -3803,6 +3819,7 @@ module.exports = {
   markCbsMissingBagCase,
   acknowledgeCbsMissingBag,
   sendCbsCaseEmail,
+  getCbsBaggageChartImage,
   appendTransit240Record,
   appendCbsScanRecord,
   appendCbsScanNbrdBns,
