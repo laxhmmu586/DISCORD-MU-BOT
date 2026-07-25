@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900">
+<rect width="1440" height="900" fill="#eef6ff"/><rect width="238" height="900" fill="#0c3168"/>
+<text x="34" y="58" font-family="Arial" font-size="26" font-weight="700" fill="white">MUFC</text>
+<text x="34" y="92" font-family="Arial" font-size="12" fill="#9fc4f1">CBS OPERATIONS</text>
+<rect x="18" y="125" width="202" height="48" rx="12" fill="#fff" fill-opacity=".16"/>
+<g font-family="Arial" font-size="15" fill="white"><text x="36" y="155" font-weight="700">▦  Passenger Cases</text><text x="36" y="214">✈  On-hard</text><text x="36" y="263">◉  Missing Bag Report</text><text x="36" y="312">!  Unresolved Baggage</text><text x="36" y="361">＋  Add Baggage</text><text x="36" y="410">▤  Baggage Chart</text></g>
+<rect x="18" y="820" width="202" height="48" rx="12" fill="#082752"/><text x="36" y="850" font-family="Arial" font-size="14" fill="white">中文 / English</text>
+<rect x="238" width="1202" height="76" fill="white"/><text x="280" y="47" font-family="Arial" font-size="22" font-weight="700" fill="#102a4c">Passenger Filed Cases</text><circle cx="1378" cy="38" r="20" fill="#e8f0fa"/><text x="1371" y="44" font-family="Arial" font-size="14" fill="#123a70">MU</text>
+<rect x="274" y="106" width="1130" height="752" rx="22" fill="white"/><text x="308" y="158" font-family="Arial" font-size="31" font-weight="700" fill="#10233f">All Cases</text>
+<rect x="1040" y="126" width="230" height="42" rx="12" fill="white" stroke="#cbd8e8"/><text x="1060" y="152" font-family="Arial" font-size="14" fill="#718096">Search cases...</text><rect x="1285" y="126" width="85" height="42" rx="21" fill="#e8f0fb"/><text x="1304" y="152" font-family="Arial" font-size="14" font-weight="700" fill="#123a70">Refresh</text>
+<rect x="308" y="190" width="1062" height="52" rx="10" fill="#f3f7fc"/><g font-family="Arial" font-size="13" font-weight="700" fill="#23364f"><text x="330" y="221">CASE NUMBER</text><text x="570" y="221">CASE TYPE</text><text x="780" y="221">BAG TAG</text><text x="1255" y="221">STATUS</text></g>
+<g font-family="Arial" font-size="15" fill="#172a46"><text x="330" y="286" font-weight="700">LAX MU260704</text><text x="570" y="286">AHL</text><text x="780" y="286">4006301241</text><text x="1260" y="286" fill="#1c7c54">Closed</text><text x="330" y="350" font-weight="700">LAX MU260703</text><text x="570" y="350">AHL</text><text x="780" y="350">MU711255</text><text x="1260" y="350" fill="#c17a10">Active</text><text x="330" y="414" font-weight="700">LAX MU260702</text><text x="570" y="414">DPR</text><text x="780" y="414">MF258741</text><text x="1260" y="414" fill="#c17a10">Active</text></g>
+<g stroke="#e5edf6"><line x1="308" y1="310" x2="1370" y2="310"/><line x1="308" y1="374" x2="1370" y2="374"/><line x1="308" y1="438" x2="1370" y2="438"/></g>
+<rect x="276" y="790" width="238" height="42" rx="21" fill="#dcecff"/><text x="302" y="816" font-family="Arial" font-size="13" font-weight="700" fill="#174b8c">A · LEFT SIDEBAR — RECOMMENDED</text>
+</svg>
