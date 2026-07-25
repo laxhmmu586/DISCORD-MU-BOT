@@ -2000,14 +2000,17 @@ app.post('/cbs-worldtracer-cases', async (req, res) => {
     const record = {
       worldTracerFileNumber: sanitizeCbsText(body.worldTracerFileNumber, 120).toUpperCase(),
       bagTagNumber: sanitizeCbsText(body.bagTagNumber, 120).toUpperCase(),
-      rushFlightNumber: sanitizeCbsText(body.rushFlightNumber, 40).toUpperCase(),
-      rushFlightDate: sanitizeCbsText(body.rushFlightDate, 40),
-      rushFrom: sanitizeCbsText(body.rushFrom, 40).toUpperCase(),
-      rushTo: sanitizeCbsText(body.rushTo, 40).toUpperCase(),
+      flightRows: (Array.isArray(body.flightRows) ? body.flightRows : []).slice(0, 20).map((flight) => ({
+        flightDate: sanitizeCbsText(flight?.flightDate, 40),
+        flightNumber: sanitizeCbsText(flight?.flightNumber, 40).toUpperCase(),
+        from: sanitizeCbsText(flight?.from, 40).toUpperCase(),
+        to: sanitizeCbsText(flight?.to, 40).toUpperCase()
+      })),
       createdAt: new Date().toISOString()
     };
-    if (Object.entries(record).some(([key, value]) => key !== 'createdAt' && !value)) {
-      return res.status(400).json({ error: 'WorldTracer file number, bag tag number, RUSH flight/date, origin, and destination are required' });
+    const invalidFlight = !record.flightRows.length || record.flightRows.some((flight) => Object.values(flight).some((value) => !value));
+    if (!record.worldTracerFileNumber || !record.bagTagNumber || invalidFlight) {
+      return res.status(400).json({ error: 'WorldTracer file number, bag tag number, and complete RUSH flight segments are required' });
     }
     const saved = await appendCbsWorldTracerCase(record);
     return res.status(201).json({ created: true, record: saved });

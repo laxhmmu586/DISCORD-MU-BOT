@@ -3154,10 +3154,12 @@ async function appendCbsWorldTracerCase(record = {}) {
   const saved = {
     worldTracerFileNumber: sanitizeSheetText(record.worldTracerFileNumber, 120).toUpperCase(),
     bagTagNumber: sanitizeSheetText(record.bagTagNumber, 120).toUpperCase(),
-    rushFlightNumber: sanitizeSheetText(record.rushFlightNumber, 40).toUpperCase(),
-    rushFlightDate: sanitizeSheetText(record.rushFlightDate, 40),
-    rushFrom: sanitizeSheetText(record.rushFrom, 40).toUpperCase(),
-    rushTo: sanitizeSheetText(record.rushTo, 40).toUpperCase(),
+    flightRows: (Array.isArray(record.flightRows) ? record.flightRows : []).map((flight) => ({
+      flightDate: sanitizeSheetText(flight.flightDate, 40),
+      flightNumber: sanitizeSheetText(flight.flightNumber, 40).toUpperCase(),
+      from: sanitizeSheetText(flight.from, 40).toUpperCase(),
+      to: sanitizeSheetText(flight.to, 40).toUpperCase()
+    })),
     createdAt: sanitizeSheetText(record.createdAt || new Date().toISOString(), 40)
   };
   await sheets.spreadsheets.values.append({
@@ -3165,7 +3167,7 @@ async function appendCbsWorldTracerCase(record = {}) {
     range,
     valueInputOption: 'RAW',
     insertDataOption: 'INSERT_ROWS',
-    requestBody: { values: [[saved.worldTracerFileNumber, saved.bagTagNumber, saved.rushFlightNumber, saved.rushFlightDate, saved.rushFrom, saved.rushTo, saved.createdAt]] }
+    requestBody: { values: saved.flightRows.map((flight) => [saved.worldTracerFileNumber, saved.bagTagNumber, flight.flightNumber, flight.flightDate, flight.from, flight.to, saved.createdAt]) }
   });
   return saved;
 }

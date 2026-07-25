@@ -149,7 +149,13 @@
     .worldtracer-form label { display:grid; gap:7px; color:#475467; font-size:12px; font-weight:900; letter-spacing:.05em; text-transform:uppercase; }
     .worldtracer-form .wide,.worldtracer-form .actions,.worldtracer-status { grid-column:1/-1; }
     .worldtracer-status { margin:0; }
-    @media (max-width:840px){ header{align-items:flex-start;gap:10px}.page-tabs{order:3;width:100%}.page-tab{flex:1}.case-update-grid,.detail-grid,.baggage-search-grid,.sheet-detail-grid,.inline-update.case-update,.worldtracer-form{grid-template-columns:1fr}.tracking-event{grid-template-columns:86px 1fr;gap:12px}.tracking-event-card{font-size:12px}.tracking-event-field{grid-template-columns:1fr}.case-update{min-width:0} table{display:block;overflow-x:auto;white-space:nowrap} }
+    .rush-itinerary { grid-column:1/-1; display:grid; gap:10px; padding:16px; border-radius:16px; background:#f8fbff; border:1px solid #d8e4f1; }
+    .rush-itinerary-head { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+    .rush-itinerary-head h2 { margin:0; font-size:18px; color:var(--brand); }
+    .rush-flight-row { display:grid; grid-template-columns:150px 150px minmax(90px,1fr) 24px minmax(90px,1fr) auto; gap:8px; align-items:end; }
+    .rush-flight-row button { padding:10px 12px; border-radius:10px; background:#fce8e6; color:#b42318; }
+    .rush-route-arrow { align-self:center; padding-top:21px; text-align:center; color:var(--muted); font-weight:900; }
+    @media (max-width:840px){ header{align-items:flex-start;gap:10px}.page-tabs{order:3;width:100%}.page-tab{flex:1}.case-update-grid,.detail-grid,.baggage-search-grid,.sheet-detail-grid,.inline-update.case-update,.worldtracer-form{grid-template-columns:1fr}.rush-flight-row{grid-template-columns:1fr 1fr}.rush-route-arrow{display:none}.rush-flight-row button{grid-column:1/-1}.tracking-event{grid-template-columns:86px 1fr;gap:12px}.tracking-event-card{font-size:12px}.tracking-event-field{grid-template-columns:1fr}.case-update{min-width:0} table{display:block;overflow-x:auto;white-space:nowrap} }
   </style>
 </head>
 <body>
@@ -177,10 +183,10 @@
       <form class="worldtracer-form" id="worldtracer-form">
         <label><span>WorldTracer File Number</span><input name="worldTracerFileNumber" required autocomplete="off" /></label>
         <label><span>Bag Tag Number</span><input name="bagTagNumber" required autocomplete="off" /></label>
-        <label><span>RUSH Flight Number</span><input name="rushFlightNumber" required autocomplete="off" placeholder="MU586" /></label>
-        <label><span>RUSH Flight Date</span><input name="rushFlightDate" type="date" required /></label>
-        <label><span>From</span><input name="rushFrom" required autocomplete="off" placeholder="LAX" /></label>
-        <label><span>To</span><input name="rushTo" required autocomplete="off" placeholder="PVG" /></label>
+        <div class="rush-itinerary">
+          <div class="rush-itinerary-head"><h2>RUSH Itinerary</h2><button class="secondary" id="add-rush-flight" type="button">+ Add Flight</button></div>
+          <div id="rush-flight-rows"></div>
+        </div>
         <p class="worldtracer-status status" id="worldtracer-status" aria-live="polite"></p>
         <div class="actions"><button type="submit"><span class="en">Create Case</span><span class="zh">创建案件</span></button></div>
       </form>
@@ -199,6 +205,8 @@
     const worldTracerCard = document.querySelector('#worldtracer-card');
     const worldTracerForm = document.querySelector('#worldtracer-form');
     const worldTracerStatus = document.querySelector('#worldtracer-status');
+    const rushFlightRows = document.querySelector('#rush-flight-rows');
+    const addRushFlight = document.querySelector('#add-rush-flight');
     const caseSearch = document.querySelector('#case-search');
     const missingAlert = document.querySelector('#missing-report-alert');
     const missingReportCard = document.querySelector('#missing-report-card');
@@ -206,6 +214,10 @@
     const backToCases = document.querySelector('#back-to-cases');
     const refreshCases = document.querySelector('#refresh-cases');
     const languageToggle = document.querySelector('#language-toggle');
+    function rushFlightRowHtml() {
+      return `<div class="rush-flight-row" data-rush-flight-row><label><span>Date</span><input data-flight-date type="date" required /></label><label><span>Flight Number</span><input data-flight-number required autocomplete="off" placeholder="MU586" /></label><label><span>From</span><input data-flight-from required autocomplete="off" placeholder="LAX" /></label><span class="rush-route-arrow">–</span><label><span>To</span><input data-flight-to required autocomplete="off" placeholder="PVG" /></label><button type="button" data-remove-rush-flight aria-label="Remove flight">Remove</button></div>`;
+    }
+    function addRushFlightRow() { rushFlightRows.insertAdjacentHTML('beforeend', rushFlightRowHtml()); }
     function showSection(section) {
       casesCard.hidden = section !== 'passenger';
       worldTracerCard.hidden = section !== 'worldtracer';
@@ -677,10 +689,24 @@
     worldTracerTab?.addEventListener('click', () => showSection('worldtracer'));
     missingAlert?.addEventListener('click', async () => { showSection('missing'); await loadMissingReports(true); });
     backToCases?.addEventListener('click', () => showSection('passenger'));
+    addRushFlight?.addEventListener('click', addRushFlightRow);
+    rushFlightRows?.addEventListener('click', (event) => {
+      const removeButton = event.target.closest('[data-remove-rush-flight]');
+      if (!removeButton) return;
+      const rows = rushFlightRows.querySelectorAll('[data-rush-flight-row]');
+      if (rows.length > 1) removeButton.closest('[data-rush-flight-row]').remove();
+      else removeButton.closest('[data-rush-flight-row]').querySelectorAll('input').forEach((input) => { input.value = ''; });
+    });
     worldTracerForm?.addEventListener('submit', async (event) => {
       event.preventDefault();
       const button = worldTracerForm.querySelector('button[type="submit"]');
       const payload = Object.fromEntries(new FormData(worldTracerForm).entries());
+      payload.flightRows = Array.from(rushFlightRows.querySelectorAll('[data-rush-flight-row]')).map((row) => ({
+        flightDate: row.querySelector('[data-flight-date]').value,
+        flightNumber: row.querySelector('[data-flight-number]').value,
+        from: row.querySelector('[data-flight-from]').value,
+        to: row.querySelector('[data-flight-to]').value
+      }));
       button.disabled = true;
       worldTracerStatus.classList.remove('err');
       worldTracerStatus.textContent = label('Saving case...', '正在保存案件……');
@@ -689,6 +715,8 @@
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || 'WorldTracer case save failed');
         worldTracerForm.reset();
+        rushFlightRows.innerHTML = '';
+        addRushFlightRow();
         worldTracerStatus.textContent = label('Case created and saved to the WorldTracer sheet.', '案件已创建并保存到 WorldTracer 工作表。');
       } catch (error) {
         worldTracerStatus.classList.add('err');
@@ -724,6 +752,7 @@
       } catch (error) { alert(error.message); } finally { button.disabled = false; button.textContent = originalText; }
     });
     refreshCases.addEventListener('click', async () => { await loadCases(); });
+    addRushFlightRow();
     showSection('passenger');
     setLanguage('en');
   </script>
