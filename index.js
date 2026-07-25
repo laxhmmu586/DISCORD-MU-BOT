@@ -60,6 +60,7 @@ const {
   updateSyBookingCounts,
   appendCbsCase,
   appendCbsWorldTracerCase,
+  getCbsWorldTracerCases,
   getCbsCases,
   updateCbsCase,
   getCbsMissingBagReports,
@@ -2017,6 +2018,15 @@ app.post('/cbs-worldtracer-cases', async (req, res) => {
   } catch (err) {
     console.error('CBS WorldTracer case create error:', err);
     return res.status(500).json({ error: err?.message || 'WorldTracer case save failed' });
+  }
+});
+
+app.get('/cbs-worldtracer-cases', async (req, res) => {
+  try {
+    return res.json({ rows: await getCbsWorldTracerCases() });
+  } catch (err) {
+    console.error('CBS WorldTracer case list error:', err);
+    return res.status(500).json({ error: err?.message || 'WorldTracer case lookup failed' });
   }
 });
 

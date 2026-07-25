@@ -21,11 +21,6 @@
     h1,h2 { margin:0 0 10px; }
     p { line-height:1.65; }
     .muted { color:var(--muted); }
-    .missing-alert { display:inline-flex; border:0; border-radius:999px; padding:12px 22px; background:var(--brand); color:#fff; font-weight:950; letter-spacing:.04em; box-shadow:none; animation:none; }
-    .missing-alert.is-active { background:#d92d20; box-shadow:0 0 0 0 rgba(217,45,32,.55); animation:missingPulse 1s infinite; }
-    .missing-alert.is-complete { background:var(--ok); box-shadow:none; animation:none; }
-    .missing-alert.is-active-tab { outline:3px solid rgba(18,58,115,.18); outline-offset:2px; }
-    @keyframes missingPulse { 0%{box-shadow:0 0 0 0 rgba(217,45,32,.55)} 70%{box-shadow:0 0 0 14px rgba(217,45,32,0)} 100%{box-shadow:0 0 0 0 rgba(217,45,32,0)} }
     .search-field { min-width:260px; max-width:360px; }
     .case-toolbar { display:flex; flex-wrap:nowrap; gap:10px; align-items:center; }
     .missing-actions { display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:flex-start; max-width:100%; }
@@ -144,8 +139,8 @@
     .detail-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px 18px; margin-bottom:12px; }
     .detail-grid p { margin:0; }
     input,textarea { width:100%; border:1px solid var(--line); border-radius:12px; padding:10px 12px; background:#fff; color:var(--ink); font:inherit; }
-    .worldtracer-create { max-width:900px; min-height:0; }
-    .worldtracer-form { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; margin-top:24px; }
+    .worldtracer-create { min-height:0; }
+    .worldtracer-form { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; max-width:900px; margin:24px 0 30px; }
     .worldtracer-form label { display:grid; gap:7px; color:#475467; font-size:12px; font-weight:900; letter-spacing:.05em; text-transform:uppercase; }
     .worldtracer-form .wide,.worldtracer-form .actions,.worldtracer-status { grid-column:1/-1; }
     .worldtracer-status { margin:0; }
@@ -155,6 +150,9 @@
     .rush-flight-row { display:grid; grid-template-columns:150px 150px minmax(90px,1fr) 24px minmax(90px,1fr) auto; gap:8px; align-items:end; }
     .rush-flight-row button { padding:10px 12px; border-radius:10px; background:#fce8e6; color:#b42318; }
     .rush-route-arrow { align-self:center; padding-top:21px; text-align:center; color:var(--muted); font-weight:900; }
+    .worldtracer-list { margin-top:18px; }
+    .worldtracer-route { display:flex; flex-wrap:wrap; gap:8px; }
+    .worldtracer-route span { display:inline-flex; padding:6px 10px; border-radius:10px; background:#eef4ff; color:#344054; font-weight:800; }
     @media (max-width:840px){ header{align-items:flex-start;gap:10px}.page-tabs{order:3;width:100%}.page-tab{flex:1}.case-update-grid,.detail-grid,.baggage-search-grid,.sheet-detail-grid,.inline-update.case-update,.worldtracer-form{grid-template-columns:1fr}.rush-flight-row{grid-template-columns:1fr 1fr}.rush-route-arrow{display:none}.rush-flight-row button{grid-column:1/-1}.tracking-event{grid-template-columns:86px 1fr;gap:12px}.tracking-event-card{font-size:12px}.tracking-event-field{grid-template-columns:1fr}.case-update{min-width:0} table{display:block;overflow-x:auto;white-space:nowrap} }
   </style>
 </head>
@@ -164,7 +162,7 @@
     <nav class="page-tabs" aria-label="CBS sections">
       <button class="page-tab is-active" id="passenger-cases-tab" type="button"><span class="en">Passenger Filed Cases</span><span class="zh">旅客提交案件</span></button>
       <button class="page-tab" id="worldtracer-tab" type="button">WorldTracer</button>
-      <button class="page-tab missing-alert" id="missing-report-alert" type="button">Missing Bag Report</button>
+      <button class="page-tab" id="missing-report-alert" type="button">Missing Bag Report</button>
     </nav>
     <span class="header-spacer"></span>
     <button class="lang-toggle" id="language-toggle" type="button">中文</button>
@@ -190,6 +188,7 @@
         <p class="worldtracer-status status" id="worldtracer-status" aria-live="polite"></p>
         <div class="actions"><button type="submit"><span class="en">Create Case</span><span class="zh">创建案件</span></button></div>
       </form>
+      <div class="worldtracer-list"><h2><span class="en">All WorldTracer Cases</span><span class="zh">所有 WorldTracer 案件</span></h2><div id="worldtracer-output"><p class="muted">Loading cases...</p></div></div>
     </section>
     <section class="card" id="missing-report-card" hidden>
       <div class="actions"><div><h1>MISSING BAG REPORT</h1><p class="muted">MU rows imported from Early Bag Storage missed bag email.</p></div></div>
@@ -205,6 +204,7 @@
     const worldTracerCard = document.querySelector('#worldtracer-card');
     const worldTracerForm = document.querySelector('#worldtracer-form');
     const worldTracerStatus = document.querySelector('#worldtracer-status');
+    const worldTracerOutput = document.querySelector('#worldtracer-output');
     const rushFlightRows = document.querySelector('#rush-flight-rows');
     const addRushFlight = document.querySelector('#add-rush-flight');
     const caseSearch = document.querySelector('#case-search');
@@ -224,7 +224,7 @@
       missingReportCard.hidden = section !== 'missing';
       passengerCasesTab.classList.toggle('is-active', section === 'passenger');
       worldTracerTab.classList.toggle('is-active', section === 'worldtracer');
-      missingAlert.classList.toggle('is-active-tab', section === 'missing');
+      missingAlert.classList.toggle('is-active', section === 'missing');
     }
     function setLanguage(lang) {
       document.documentElement.lang = lang;
@@ -235,6 +235,25 @@
     function label(en, zh) { return document.documentElement.lang === 'en' ? en : zh; }
     function escapeHtml(value) { return String(value || '').replace(/[&<>'"]/g, (ch) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch])); }
     async function parseJson(res) { const text = await res.text(); try { return JSON.parse(text); } catch { throw new Error(`API returned non-JSON (${res.status}). Please check API base: ${apiBase}`); } }
+    function renderWorldTracerCases(rows = []) {
+      if (!rows.length) { worldTracerOutput.innerHTML = `<p class="muted">${label('No WorldTracer cases yet.', '暂无 WorldTracer 案件。')}</p>`; return; }
+      worldTracerOutput.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:240px"><col style="width:190px"><col><col style="width:190px"></colgroup><thead><tr><th>WorldTracer File Number</th><th>Bag Tag</th><th>RUSH Itinerary</th><th>${label('Created', '创建时间')}</th></tr></thead><tbody>${rows.map((row) => {
+        const routes = (row.flightRows || []).map((flight) => `<span>${escapeHtml(flight.flightDate || '-')} &nbsp; ${escapeHtml(flight.flightNumber || '-')} &nbsp; ${escapeHtml(flight.from || '-')} – ${escapeHtml(flight.to || '-')}</span>`).join('');
+        const created = row.createdAt ? new Date(row.createdAt).toLocaleString() : '-';
+        return `<tr><td class="case-key">${escapeHtml(row.worldTracerFileNumber || '-')}</td><td><span class="bag-tag-value">${escapeHtml(row.bagTagNumber || '-')}</span></td><td><div class="worldtracer-route">${routes}</div></td><td class="sheet-meta">${escapeHtml(created)}</td></tr>`;
+      }).join('')}</tbody></table></div>`;
+    }
+    async function loadWorldTracerCases() {
+      worldTracerOutput.innerHTML = `<p class="muted">${label('Loading cases...', '正在加载案件……')}</p>`;
+      try {
+        const res = await fetch(`${apiBase}/cbs-worldtracer-cases`);
+        const data = await parseJson(res);
+        if (!res.ok) throw new Error(data.error || 'WorldTracer case lookup failed');
+        renderWorldTracerCases(data.rows || []);
+      } catch (error) {
+        worldTracerOutput.innerHTML = `<p class="status err">${escapeHtml(error.message)}</p>`;
+      }
+    }
     function inferCaseType(row) {
       const explicit = String(row?.caseType || '').trim().toUpperCase();
       if (explicit) return explicit;
@@ -583,8 +602,7 @@
     function renderMissingReports(rows = []) {
       const isComplete = (row) => Boolean(row.acknowledgedAt || row.linkedCaseUpdated);
       const openRows = rows.filter((row) => !isComplete(row));
-      missingAlert.classList.toggle('is-active', openRows.length > 0);
-      missingAlert.classList.toggle('is-complete', rows.length > 0 && openRows.length === 0);
+      missingAlert.dataset.hasOpenReports = openRows.length > 0 ? 'true' : 'false';
       if (!rows.length) { missingReportOutput.innerHTML = '<p class="muted">No MU missing bag rows found.</p>'; return; }
       missingReportOutput.innerHTML = `<table class="missing-report-table"><thead><tr><th>Bag Tag</th><th>Passenger</th><th>Destination</th><th>Airline</th><th>Source</th><th>Case</th><th>Status</th><th></th></tr></thead><tbody>${rows.map((row) => {
         const linkedCaseNumber = row.linkedCaseNumber || row.caseNumber || '';
@@ -607,7 +625,7 @@
         window._missingBagRows = data.rows || [];
         renderMissingReports(window._missingBagRows);
       } catch (error) {
-        missingAlert.classList.remove('is-active', 'is-complete');
+        delete missingAlert.dataset.hasOpenReports;
         missingReportOutput.innerHTML = `<p class="status err">${escapeHtml(error.message)}</p>`;
       }
     }
@@ -686,7 +704,7 @@
     }
     caseSearch?.addEventListener('input', () => { renderCases(); loadBaggageSearch(caseSearch.value); });
     passengerCasesTab?.addEventListener('click', () => showSection('passenger'));
-    worldTracerTab?.addEventListener('click', () => showSection('worldtracer'));
+    worldTracerTab?.addEventListener('click', async () => { showSection('worldtracer'); await loadWorldTracerCases(); });
     missingAlert?.addEventListener('click', async () => { showSection('missing'); await loadMissingReports(true); });
     backToCases?.addEventListener('click', () => showSection('passenger'));
     addRushFlight?.addEventListener('click', addRushFlightRow);
@@ -718,6 +736,7 @@
         rushFlightRows.innerHTML = '';
         addRushFlightRow();
         worldTracerStatus.textContent = label('Case created and saved to the WorldTracer sheet.', '案件已创建并保存到 WorldTracer 工作表。');
+        await loadWorldTracerCases();
       } catch (error) {
         worldTracerStatus.classList.add('err');
         worldTracerStatus.textContent = error.message;

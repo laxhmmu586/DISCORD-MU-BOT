@@ -3172,6 +3172,24 @@ async function appendCbsWorldTracerCase(record = {}) {
   return saved;
 }
 
+async function getCbsWorldTracerCases() {
+  if (!cbsWorldTracerSheetTitle) cbsWorldTracerSheetTitle = await resolveSheetTitleByGid(CBS_SHEET_ID, CBS_WORLDTRACER_SHEET_GID);
+  const title = cbsWorldTracerSheetTitle || 'Sheet1';
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId: CBS_SHEET_ID,
+    range: `${escapeSheetTitle(title)}!A2:G`
+  });
+  const grouped = new Map();
+  for (const values of response.data.values || []) {
+    const [worldTracerFileNumber = '', bagTagNumber = '', flightNumber = '', flightDate = '', from = '', to = '', createdAt = ''] = values;
+    if (!worldTracerFileNumber && !bagTagNumber) continue;
+    const key = `${worldTracerFileNumber}\u0000${bagTagNumber}\u0000${createdAt}`;
+    if (!grouped.has(key)) grouped.set(key, { worldTracerFileNumber, bagTagNumber, createdAt, flightRows: [] });
+    grouped.get(key).flightRows.push({ flightNumber, flightDate, from, to });
+  }
+  return [...grouped.values()].sort((a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0));
+}
+
 function isCbsHeaderRow(values = []) {
   const normalized = values.map((value) => String(value || '').trim().toLowerCase());
   return normalized.includes('case number') || normalized.includes('case id') || normalized.includes('passenger name');
@@ -3673,6 +3691,7 @@ module.exports = {
   normalizeSyBookingCounts,
   appendCbsCase,
   appendCbsWorldTracerCase,
+  getCbsWorldTracerCases,
   getCbsCases,
   updateCbsCase,
   getCbsMissingBagReports,
