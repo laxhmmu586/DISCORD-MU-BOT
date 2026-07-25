@@ -3530,11 +3530,15 @@ function parseCbsMissingBagRowsFromXlsx(buffer, meta = {}) {
 async function appendCbsMissingBagRows(records = []) {
   const rows = await getCbsMissingBagSheetRows({ forceRefresh: true });
   await ensureCbsMissingBagHeaders(rows);
-  const existingTags = new Set(rows.slice(1).map((row) => String(row?.[0] || '').trim().toUpperCase()).filter(Boolean));
+  const reportRowKey = (record = {}) => [record.bagTag, record.sourceEmailDate, record.sourceAttachment]
+    .map((value) => String(value || '').trim().toUpperCase())
+    .join('\u0000');
+  const existingRows = new Set(rows.slice(1).map((values) => reportRowKey(cbsMissingBagRecordFromSheet(values))));
   const newRows = records.filter((record) => {
-    const tag = String(record.bagTag || '').trim().toUpperCase();
-    if (!tag || existingTags.has(tag)) return false;
-    existingTags.add(tag);
+    const tag = String(record.bagTag || '').trim();
+    const key = reportRowKey(record);
+    if (!tag || existingRows.has(key)) return false;
+    existingRows.add(key);
     return true;
   });
   if (!newRows.length) return { appended: 0 };
