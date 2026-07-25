@@ -3625,7 +3625,7 @@ async function getCbsMissingBagReports(options = {}) {
         linkedCaseUpdated: Boolean(linkedCase && isCbsCaseUpdatedAfterMissingLink(linkedCase))
       };
     })
-    .filter((row) => !row.acknowledgedAt && !row.caseNumber);
+    .filter((row) => !row.acknowledgedAt && !row.linkedCaseNumber);
   return { rows: records, sync };
 }
 

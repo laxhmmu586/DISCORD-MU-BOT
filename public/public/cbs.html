@@ -45,8 +45,8 @@
     .missing-report-table th:last-child,.missing-report-table td:last-child { width:230px; min-width:230px; }
     .missing-date-groups { display:grid; gap:26px; margin-top:20px; }
     .missing-date-group { display:grid; gap:10px; }
-    .missing-date-heading { display:flex; align-items:baseline; gap:10px; margin:0; color:var(--brand); font-size:20px; }
-    .missing-date-heading span { color:var(--muted); font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; }
+    .missing-date-heading { display:grid; gap:4px; margin:0; color:var(--brand); font-size:20px; }
+    .missing-date-heading span { display:block; color:var(--muted); font-size:12px; font-weight:800; line-height:1; text-transform:uppercase; letter-spacing:.08em; }
     .actions { display:flex; gap:12px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
     button,a.button { border:0; border-radius:999px; padding:12px 18px; font-weight:850; cursor:pointer; background:var(--brand); color:white; text-decoration:none; }
     .sidebar-actions { display:grid; gap:5px; }
@@ -736,7 +736,7 @@
       } catch (error) { casesOutput.innerHTML = `<p class="status err">${escapeHtml(error.message)}</p>`; }
     }
     function renderMissingReports(rows = []) {
-      const openRows = rows.filter((row) => !row.acknowledgedAt && !row.caseNumber);
+      const openRows = rows.filter((row) => !row.acknowledgedAt && !row.linkedCaseNumber);
       missingAlert.dataset.hasOpenReports = openRows.length ? 'true' : 'false';
       if (!rows.length) { missingReportOutput.innerHTML = '<p class="muted">No MU missing bag rows found.</p>'; return; }
       const dateKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
