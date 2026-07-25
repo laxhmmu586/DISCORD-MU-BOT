@@ -1570,10 +1570,11 @@ function buildCbsFlightRoute(body) {
   const normalizedRows = rows.map((row) => ({
     flightNo: sanitizeCbsText(row?.flightNo, 20).toUpperCase(),
     flightDate: sanitizeCbsText(row?.flightDate, 20).toUpperCase(),
+    origin: sanitizeCbsText(row?.origin, 20).toUpperCase(),
     destination: sanitizeCbsText(row?.destination, 20).toUpperCase()
-  })).filter((row) => row.flightNo || row.flightDate || row.destination);
+  })).filter((row) => row.flightNo || row.flightDate || row.origin || row.destination);
   if (normalizedRows.length) {
-    return normalizedRows.map((row) => [row.flightNo, row.flightDate, row.destination].filter(Boolean).join(' ')).join(' / ');
+    return normalizedRows.map((row) => [row.flightNo, row.flightDate, row.origin, row.destination].filter(Boolean).join(' ')).join(' / ');
   }
   return sanitizeCbsText(body.flightRoute, 240).toUpperCase();
 }
@@ -2176,7 +2177,9 @@ app.post('/cbs-cases', async (req, res) => {
     if (!['AHL', 'DPR'].includes(caseType)) return res.status(400).json({ error: 'Case type must be AHL or DPR' });
     const firstFlight = Array.isArray(body.flightRows) ? body.flightRows[0] || {} : {};
     if (!sanitizeCbsText(body.phone, 80)) return res.status(400).json({ error: 'Phone is required' });
-    if (!sanitizeCbsText(firstFlight.flightNo, 20) || !sanitizeCbsText(firstFlight.flightDate, 20) || !sanitizeCbsText(firstFlight.destination, 20)) return res.status(400).json({ error: 'First baggage routing row is required' });
+    if (!sanitizeCbsText(body.ticketNumber, 80)) return res.status(400).json({ error: 'Ticket number is required' });
+    if (!sanitizeCbsText(firstFlight.flightNo, 20) || !sanitizeCbsText(firstFlight.flightDate, 20) || !sanitizeCbsText(firstFlight.origin, 20) || !sanitizeCbsText(firstFlight.destination, 20)) return res.status(400).json({ error: 'First flight row is required' });
+    if (!sanitizeCbsText(body.permanentAddress, 500)) return res.status(400).json({ error: 'Address is required' });
     const normalizedBagTags = normalizeCbsBagTags(body.bagTags || body.bagTag);
     if (!normalizedBagTags) return res.status(400).json({ error: 'Bag tag is required' });
     if (caseType === 'AHL' && !sanitizeCbsText(body.ahlBagDescription, 500)) return res.status(400).json({ error: 'AHL baggage description is required' });
