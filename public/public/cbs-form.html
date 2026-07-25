@@ -26,7 +26,7 @@
     .grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
     .passenger-grid { grid-template-columns:repeat(4,minmax(0,1fr)); }
     .flight-rows { display:grid; gap:10px; }
-    .flight-row, .flight-head { display:grid; grid-template-columns:1fr .8fr .8fr; gap:10px; align-items:end; }
+    .flight-row, .flight-head { display:grid; grid-template-columns:1fr .8fr .8fr 1fr; gap:10px; align-items:end; }
     .flight-row + .flight-row { margin-top:3px; }
     .routing-layout { display:grid; grid-template-columns:290px minmax(0,1fr); column-gap:18px; align-items:start; }
     .bag-report-row { grid-column:1/-1; display:grid; grid-template-columns:290px minmax(0,1fr); column-gap:18px; margin-top:-24px; }
@@ -80,7 +80,7 @@
     .attachment-document { display:grid; place-items:center; width:48px; height:48px; border-radius:999px; background:#fff; border:1px solid var(--line); color:var(--brand); font-size:13px; letter-spacing:.06em; box-shadow:0 8px 18px rgba(22,48,76,.1); }
     .attachment-title { display:flex; gap:4px; align-items:center; justify-content:center; text-align:center; font-weight:850; font-size:12px; }
     .attachment-filename { min-height:16px; text-align:center; color:var(--muted); font-size:11px; font-weight:650; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    @media (max-width:840px){ .grid,.passenger-grid{grid-template-columns:1fr}.attachment-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.routing-layout,.bag-report-row,.bag-report-fields,.contents-row{grid-template-columns:1fr}.bag-report-row{margin-top:8px}.flight-row,.flight-head{grid-template-columns:1fr .8fr .8fr; gap:6px}.header-title{text-align:left}header{flex-wrap:wrap}.tag-example{transform:none} }
+    @media (max-width:840px){ .grid,.passenger-grid{grid-template-columns:1fr}.attachment-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.routing-layout,.bag-report-row,.bag-report-fields,.contents-row{grid-template-columns:1fr}.bag-report-row{margin-top:8px}.flight-row,.flight-head{grid-template-columns:1fr .8fr .8fr 1fr; gap:6px}.header-title{text-align:left}header{flex-wrap:wrap}.tag-example{transform:none} }
     @media (max-width:520px){ .attachment-grid{grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px}.attachment-group{grid-template-columns:repeat(auto-fill,minmax(70px,1fr)); gap:6px; padding:6px}.attachment-tile{min-height:94px; padding:5px}.attachment-preview{height:66px}.attachment-upload .attachment-preview::before{width:30px;height:30px;font-size:24px}.attachment-title{font-size:11px}.attachment-filename{font-size:10px} }
   </style>
 </head>
@@ -102,11 +102,9 @@
           <label><span class="en">Passenger name</span><span class="zh">旅客姓名</span><input name="passengerName" required placeholder="LAST/FIRST" /></label>
           <label><span class="en">Email</span><span class="zh">电子邮箱</span><input name="email" type="email" required placeholder="passenger@example.com" /></label>
           <label><span class="en">Phone number</span><span class="zh">联系电话</span><input name="phone" placeholder="Country/area code + number" required /></label>
-          <label><span class="en">Ticket number</span><span class="zh">机票号码</span><input name="ticketNumber" placeholder="7816262626666" /></label>
-          <label><span class="en">Class of travel</span><span class="zh">舱位等级</span><select name="classOfTravel"><option value="">--</option><option value="FIRST">First</option><option value="BUSINESS">Business</option><option value="ECONOMY">Economy</option></select></label>
-          <label><span class="en">Origin</span><span class="zh">始发地</span><input name="departureOrigin" placeholder="PVG" /></label>
-          <div class="wide flight-rows" aria-label="Baggage routing rows">
-            <strong><span class="en">Baggage routing</span><span class="zh">行李航线</span></strong>
+          <label><span class="en">Ticket number</span><span class="zh">机票号码</span><input name="ticketNumber" placeholder="7816262626666" required /></label>
+          <div class="wide flight-rows" aria-label="Flight rows">
+            <strong><span class="en">Flights</span><span class="zh">航班</span><span class="required-mark">*</span></strong>
             <div class="routing-layout">
               <div class="tag-example" aria-label="Baggage tag example">
                 <strong>MU774870</strong>
@@ -114,10 +112,10 @@
                 <div class="tag-route"><span>MU583</span><span>11JUN</span><span>LAX</span><span>MU0840</span><span>11JUN</span><span>PVG</span></div>
               </div>
               <div>
-                <div class="flight-head"><span><span class="en">Flight No.</span><span class="zh">航班号</span></span><span><span class="en">Date</span><span class="zh">日期</span></span><span><span class="en">Destination</span><span class="zh">目的地</span></span></div>
-                <div class="flight-row"><input name="flightNo1" placeholder="MU583" required /><input name="flightDate1" placeholder="11JUN" required /><input name="destination1" placeholder="LAX" required /></div>
-                <div class="flight-row"><input name="flightNo2" placeholder="MU0840" /><input name="flightDate2" placeholder="11JUN" /><input name="destination2" placeholder="LAX" /></div>
-                <div class="flight-row"><input name="flightNo3" placeholder="" /><input name="flightDate3" placeholder="" /><input name="destination3" placeholder="" /></div>
+                <div class="flight-head"><span><span class="en">Flight No.</span><span class="zh">航班号</span></span><span><span class="en">Date</span><span class="zh">日期</span></span><span><span class="en">Origin</span><span class="zh">始发地</span></span><span><span class="en">Destination</span><span class="zh">目的地</span></span></div>
+                <div class="flight-row"><input name="flightNo1" placeholder="MU583" required /><input name="flightDate1" placeholder="11JUN" required /><input name="flightOrigin1" placeholder="PVG" required /><input name="destination1" placeholder="LAX" required /></div>
+                <div class="flight-row"><input name="flightNo2" placeholder="MU0840" /><input name="flightDate2" placeholder="11JUN" /><input name="flightOrigin2" placeholder="PVG" /><input name="destination2" placeholder="LAX" /></div>
+                <div class="flight-row"><input name="flightNo3" placeholder="" /><input name="flightDate3" placeholder="" /><input name="flightOrigin3" placeholder="" /><input name="destination3" placeholder="" /></div>
               </div>
             </div>
           </div>
@@ -137,7 +135,7 @@
               <label><span class="en">Report type</span><span class="zh">报告类型</span><select name="caseType" id="case-type" required><option value="AHL">AHL - Delayed/Lost</option><option value="DPR">DPR - Damaged</option></select></label>
             </div>
           </div>
-          <label class="wide"><span class="en">Address</span><span class="zh">住址</span><textarea name="permanentAddress" placeholder="If available"></textarea></label>
+          <label class="wide"><span class="en">Address</span><span class="zh">住址</span><textarea name="permanentAddress" required></textarea></label>
           <label><span class="en">Temporary address available?</span><span class="zh">是否有临时地址？</span><select name="addressAvailable" id="address-available"><option value="No">No</option><option value="Yes">Yes</option></select></label>
           <label id="valid-until-field" hidden><span class="en">Temporary address valid until</span><span class="zh">临时地址有效期至</span><input name="temporaryAddressValidUntil" type="date" /></label>
           <label class="wide" id="temporary-address-field" hidden><span class="en">Temporary address</span><span class="zh">临时地址</span><textarea name="temporaryAddress"></textarea></label>
@@ -582,6 +580,7 @@
       payload.flightRows = [1, 2, 3].map((index) => ({
         flightNo: payload[`flightNo${index}`],
         flightDate: payload[`flightDate${index}`],
+        origin: payload[`flightOrigin${index}`],
         destination: payload[`destination${index}`]
       }));
       payload.bagTags = collectBagTags();
