@@ -43,6 +43,10 @@
     .case-link-button { padding:0; border-radius:0; background:transparent; color:var(--brand); font-weight:900; text-decoration:underline; }
     .missing-report-table { table-layout:auto; }
     .missing-report-table th:last-child,.missing-report-table td:last-child { width:230px; min-width:230px; }
+    .missing-date-groups { display:grid; gap:26px; margin-top:20px; }
+    .missing-date-group { display:grid; gap:10px; }
+    .missing-date-heading { display:flex; align-items:baseline; gap:10px; margin:0; color:var(--brand); font-size:20px; }
+    .missing-date-heading span { color:var(--muted); font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; }
     .actions { display:flex; gap:12px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
     button,a.button { border:0; border-radius:999px; padding:12px 18px; font-weight:850; cursor:pointer; background:var(--brand); color:white; text-decoration:none; }
     .sidebar-actions { display:grid; gap:5px; }
@@ -199,7 +203,7 @@
     <div class="nav-kicker">Baggage Operations</div>
     <nav class="page-tabs" aria-label="CBS sections">
       <button class="page-tab is-active" id="passenger-cases-tab" type="button" title="Passenger Filed"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h12v18H6zM9 7h6M9 11h6M9 15h4"/></svg></span><span class="page-tab-label"><span class="en">Passenger Filed</span><span class="zh">旅客提交</span></span></button>
-      <button class="page-tab" id="worldtracer-tab" type="button" title="On-hand Rush"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m3 14 7-3V5l2-2 2 7 5-2 2 1-7 5v5l-2 2-2-6-4 2z"/></svg></span><span class="page-tab-label">On-hand Rush</span></button>
+      <button class="page-tab" id="worldtracer-tab" type="button" title="On-hard"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m3 14 7-3V5l2-2 2 7 5-2 2 1-7 5v5l-2 2-2-6-4 2z"/></svg></span><span class="page-tab-label">On-hard</span></button>
       <button class="page-tab" id="missing-report-alert" type="button" title="Missing Bag Report"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="7" width="12" height="12" rx="2"/><path d="M8 7V5h4v2m5 10 4 4m-1-7a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg></span><span class="page-tab-label">Missing Bag Report</span></button>
       <button class="page-tab" id="unresolved-baggage-tab" type="button" title="Unresolved Baggage"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 2.5 20h19zM12 9v5m0 3v.1"/></svg></span><span class="page-tab-label">Unresolved Baggage</span></button>
       <button class="page-tab" id="add-baggage-tab" type="button" title="Add Baggage"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="13" height="12" rx="2"/><path d="M7 8V5h5v3m7-4v8m-4-4h8"/></svg></span><span class="page-tab-label">Add Baggage</span></button>
@@ -221,8 +225,8 @@
       <div id="cases-output"><p class="muted">Loading cases...</p></div>
     </section>
     <section class="card worldtracer-create" id="worldtracer-card" hidden>
-      <h1>On-hand Rush</h1>
-      <p class="muted"><span class="en">Create an On-hand Rush case and save it to the operations sheet.</span><span class="zh">创建 On-hand Rush 案件并保存到工作表。</span></p>
+      <h1>On-hard</h1>
+      <p class="muted"><span class="en">Create an On-hard case and save it to the operations sheet.</span><span class="zh">创建 On-hard 案件并保存到工作表。</span></p>
       <form class="worldtracer-form" id="worldtracer-form">
         <label><span>WorldTracer File Number</span><input name="worldTracerFileNumber" required autocomplete="off" /></label>
         <label><span>Original Tag Number</span><input name="originalTagNumber" required autocomplete="off" /></label>
@@ -234,7 +238,7 @@
         <p class="worldtracer-status status" id="worldtracer-status" aria-live="polite"></p>
         <div class="actions"><button type="submit"><span class="en">Create Case</span><span class="zh">创建案件</span></button></div>
       </form>
-      <div class="worldtracer-list"><h2><span class="en">All On-hand Rush Cases</span><span class="zh">所有 On-hand Rush 案件</span></h2><div id="worldtracer-output"><p class="muted">Loading cases...</p></div></div>
+      <div class="worldtracer-list"><h2><span class="en">All On-hard Cases</span><span class="zh">所有 On-hard 案件</span></h2><div id="worldtracer-output"><p class="muted">Loading cases...</p></div></div>
     </section>
     <section class="card" id="missing-report-card" hidden>
       <div class="actions"><div><h1>MISSING BAG REPORT</h1><p class="muted">MU rows imported from Early Bag Storage missed bag email.</p></div></div>
@@ -347,7 +351,7 @@
       addBaggageOutput.innerHTML = `<div class="add-baggage-panel"><h2>${escapeHtml(record.bagTag)}</h2><p><strong>${escapeHtml(record.direction || '-')}</strong> · ${escapeHtml(record.flight || '-')} · ${escapeHtml(record.date || '-')}</p><p class="muted">${escapeHtml(record.bagType || record.status || '')}${record.location ? ` · ${escapeHtml(record.location)}` : ''}</p><button class="secondary" type="button" data-cancel-add-baggage>Search Another Bag</button></div>`;
     }
     function renderWorldTracerCases(rows = []) {
-      if (!rows.length) { worldTracerOutput.innerHTML = `<p class="muted">${label('No On-hand Rush cases yet.', '暂无 On-hand Rush 案件。')}</p>`; return; }
+      if (!rows.length) { worldTracerOutput.innerHTML = `<p class="muted">${label('No On-hard cases yet.', '暂无 On-hard 案件。')}</p>`; return; }
       worldTracerOutput.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:210px"><col style="width:170px"><col style="width:170px"><col><col style="width:170px"><col style="width:110px"></colgroup><thead><tr><th>WorldTracer File Number</th><th>Original Tag</th><th>RUSH Tag</th><th>RUSH Itinerary</th><th>${label('Created', '创建时间')}</th><th></th></tr></thead><tbody>${rows.map((row, caseIndex) => {
         const routes = (row.flightRows || []).map((flight) => `<span>${escapeHtml(flight.flightDate || '-')} &nbsp; ${escapeHtml(flight.flightNumber || '-')} &nbsp; ${escapeHtml(flight.from || '-')} – ${escapeHtml(flight.to || '-')}</span>`).join('');
         const created = row.createdAt ? new Date(row.createdAt).toLocaleString() : '-';
@@ -360,7 +364,7 @@
       try {
         const res = await fetch(`${apiBase}/cbs-worldtracer-cases`);
         const data = await parseJson(res);
-        if (!res.ok) throw new Error(data.error || 'On-hand Rush case lookup failed');
+        if (!res.ok) throw new Error(data.error || 'On-hard case lookup failed');
         renderWorldTracerCases(data.rows || []);
       } catch (error) {
         worldTracerOutput.innerHTML = `<p class="status err">${escapeHtml(error.message)}</p>`;
@@ -373,7 +377,7 @@
     }
     function renderUnresolvedBaggage(rows = []) {
       if (!rows.length) { unresolvedBaggageOutput.innerHTML = '<p class="muted">No unresolved baggage cases.</p>'; return; }
-      unresolvedBaggageOutput.innerHTML = `<div class="unresolved-list">${rows.map((row) => `<article class="unresolved-case"><div class="unresolved-summary"><div><small>Bag Tag</small><strong>${escapeHtml(row.bagTag)}</strong></div><div><small>Direction</small><strong>${escapeHtml(row.direction)}</strong></div><div><small>Flight / Date</small><strong>${escapeHtml(row.flightNumber)} · ${escapeHtml(row.flightDate)}</strong></div><div><small>Type / Status</small><strong>${escapeHtml(row.bagType || row.status || '-')}</strong></div><div><small>Location</small><strong>${escapeHtml(row.location || '-')}</strong></div><button type="button" data-toggle-unresolved-update>Update</button></div><form class="unresolved-update" data-unresolved-row="${escapeHtml(row.rowNumber)}" data-bag-tag="${escapeHtml(row.bagTag)}" hidden><label class="wide"><span>Resolution</span><select name="action" data-unresolved-action><option value="on-hand-rush">Create On-hand Rush</option><option value="passenger-collected">Passenger collected / Case closed</option><option value="shipped">Shipped</option><option value="other">Other resolution</option></select></label><div class="unresolved-update-fields">${unresolvedUpdateFieldsHtml('on-hand-rush', row.bagTag)}</div><div class="actions"><button type="submit">Resolve Case</button></div></form></article>`).join('')}</div>`;
+      unresolvedBaggageOutput.innerHTML = `<div class="unresolved-list">${rows.map((row) => `<article class="unresolved-case"><div class="unresolved-summary"><div><small>Bag Tag</small><strong>${escapeHtml(row.bagTag)}</strong></div><div><small>Direction</small><strong>${escapeHtml(row.direction)}</strong></div><div><small>Flight / Date</small><strong>${escapeHtml(row.flightNumber)} · ${escapeHtml(row.flightDate)}</strong></div><div><small>Type / Status</small><strong>${escapeHtml(row.bagType || row.status || '-')}</strong></div><div><small>Location</small><strong>${escapeHtml(row.location || '-')}</strong></div><button type="button" data-toggle-unresolved-update>Update</button></div><form class="unresolved-update" data-unresolved-row="${escapeHtml(row.rowNumber)}" data-bag-tag="${escapeHtml(row.bagTag)}" hidden><label class="wide"><span>Resolution</span><select name="action" data-unresolved-action><option value="on-hand-rush">Create On-hard</option><option value="passenger-collected">Passenger collected / Case closed</option><option value="shipped">Shipped</option><option value="other">Other resolution</option></select></label><div class="unresolved-update-fields">${unresolvedUpdateFieldsHtml('on-hand-rush', row.bagTag)}</div><div class="actions"><button type="submit">Resolve Case</button></div></form></article>`).join('')}</div>`;
     }
     async function loadUnresolvedBaggage() {
       unresolvedBaggageOutput.innerHTML = '<p class="muted">Loading cases...</p>';
@@ -732,21 +736,26 @@
       } catch (error) { casesOutput.innerHTML = `<p class="status err">${escapeHtml(error.message)}</p>`; }
     }
     function renderMissingReports(rows = []) {
-      const isComplete = (row) => Boolean(row.acknowledgedAt || row.linkedCaseUpdated);
-      const openRows = rows.filter((row) => !isComplete(row));
-      missingAlert.dataset.hasOpenReports = openRows.length > 0 ? 'true' : 'false';
+      const openRows = rows.filter((row) => !row.acknowledgedAt && !row.caseNumber);
+      missingAlert.dataset.hasOpenReports = openRows.length ? 'true' : 'false';
       if (!rows.length) { missingReportOutput.innerHTML = '<p class="muted">No MU missing bag rows found.</p>'; return; }
-      missingReportOutput.innerHTML = `<table class="missing-report-table"><thead><tr><th>Bag Tag</th><th>Passenger</th><th>Destination</th><th>Airline</th><th>Source</th><th>Case</th><th>Status</th><th></th></tr></thead><tbody>${rows.map((row) => {
-        const linkedCaseNumber = row.linkedCaseNumber || row.caseNumber || '';
-        const status = row.acknowledgedAt ? 'Acknowledged' : (linkedCaseNumber ? (row.linkedCaseUpdated ? 'Updated' : 'Needs Update') : 'Open');
-        const caseHtml = linkedCaseNumber
-          ? (/^LAX\s+MU/i.test(linkedCaseNumber) ? `<button class="case-link-button" type="button" data-link-case="${escapeHtml(linkedCaseNumber)}">${escapeHtml(linkedCaseNumber)}</button>` : `<span class="pill">${escapeHtml(linkedCaseNumber)}</span>`)
-          : '-';
-        const actionHtml = linkedCaseNumber
-          ? ''
-          : `<div class="missing-actions"><button type="button" data-create-missing-rush="${escapeHtml(row.rowNumber)}" data-missing-bag-tag="${escapeHtml(row.bagTag)}">Create On-hand Rush</button><button class="secondary" type="button" data-ack-missing="${escapeHtml(row.rowNumber)}">Acknowledge</button></div>`;
-        return `<tr><td>${escapeHtml(row.bagTag)}</td><td>${escapeHtml(row.passengerName)}</td><td>${escapeHtml(row.destination)}</td><td>${escapeHtml(row.airline)}</td><td>${escapeHtml(row.sourceAttachment || row.sourceEmailDate)}</td><td>${caseHtml}</td><td>${escapeHtml(status)}</td><td>${row.acknowledgedAt ? '' : actionHtml}</td></tr>`;
-      }).join('')}</tbody></table>`;
+      const dateKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      const todayKey = dateKey(new Date());
+      const groups = new Map();
+      openRows.forEach((row) => {
+        const sourceDate = row.sourceEmailDate ? new Date(row.sourceEmailDate) : null;
+        const validDate = sourceDate && !Number.isNaN(sourceDate.getTime());
+        const key = validDate ? dateKey(sourceDate) : 'unknown';
+        if (!groups.has(key)) groups.set(key, { date:validDate ? sourceDate : null, rows:[] });
+        groups.get(key).rows.push(row);
+      });
+      const groupedReports = Array.from(groups.entries()).sort(([, left], [, right]) => (right.date?.getTime() || 0) - (left.date?.getTime() || 0));
+      if (!groupedReports.length) { missingReportOutput.innerHTML = '<p class="muted">No open missing bag reports.</p>'; return; }
+      missingReportOutput.innerHTML = `<div class="missing-date-groups">${groupedReports.map(([key, group]) => {
+        const dateLabel = group.date ? group.date.toLocaleDateString(undefined, { weekday:'short', month:'short', day:'numeric', year:'numeric' }) : 'Date unavailable';
+        const todayLabel = key === todayKey ? '<span>Today</span>' : '';
+        return `<section class="missing-date-group"><h2 class="missing-date-heading">${todayLabel}${escapeHtml(dateLabel)}</h2><div class="sheet-shell"><table class="missing-report-table"><thead><tr><th>Bag Tag</th><th>Passenger</th><th>Destination</th><th>Airline</th><th>Source</th><th></th></tr></thead><tbody>${group.rows.map((row) => `<tr><td>${escapeHtml(row.bagTag)}</td><td>${escapeHtml(row.passengerName)}</td><td>${escapeHtml(row.destination)}</td><td>${escapeHtml(row.airline)}</td><td>${escapeHtml(row.sourceAttachment || '-')}</td><td><div class="missing-actions"><button type="button" data-create-missing-rush="${escapeHtml(row.rowNumber)}" data-missing-bag-tag="${escapeHtml(row.bagTag)}">Create On-hard</button><button class="secondary" type="button" data-ack-missing="${escapeHtml(row.rowNumber)}">Acknowledge</button></div></td></tr>`).join('')}</tbody></table></div></section>`;
+      }).join('')}</div>`;
     }
     async function loadMissingReports(sync = true) {
       try {
@@ -866,7 +875,7 @@
       try {
         const res = await fetch(`${apiBase}/cbs-worldtracer-cases`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
         const data = await parseJson(res);
-        if (!res.ok) throw new Error(data.error || 'On-hand Rush case save failed');
+        if (!res.ok) throw new Error(data.error || 'On-hard case save failed');
         if (worldTracerForm.dataset.missingRow) {
           const linkRes = await fetch(`${apiBase}/cbs-missing-bags/${encodeURIComponent(worldTracerForm.dataset.missingRow)}/link-on-hand-rush`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ worldTracerFileNumber:payload.worldTracerFileNumber }) });
           const linkData = await parseJson(linkRes);
@@ -877,7 +886,7 @@
         worldTracerForm.reset();
         rushFlightRows.innerHTML = '';
         addRushFlightRow();
-        worldTracerStatus.textContent = label('On-hand Rush case created and saved.', 'On-hand Rush 案件已创建并保存。');
+        worldTracerStatus.textContent = label('On-hard case created and saved.', 'On-hard 案件已创建并保存。');
         await loadWorldTracerCases();
       } catch (error) {
         worldTracerStatus.classList.add('err');
@@ -914,7 +923,7 @@
       try {
         const res = await fetch(`${apiBase}/cbs-worldtracer-cases/update`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
         const data = await parseJson(res);
-        if (!res.ok) throw new Error(data.error || 'On-hand Rush update failed');
+        if (!res.ok) throw new Error(data.error || 'On-hard update failed');
         await loadWorldTracerCases();
       } catch (error) { alert(error.message); } finally { button.disabled = false; }
     });

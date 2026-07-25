@@ -3,7 +3,7 @@
 <text x="34" y="58" font-family="Arial" font-size="26" font-weight="700" fill="white">MUFC</text>
 <text x="34" y="92" font-family="Arial" font-size="12" fill="#9fc4f1">CBS OPERATIONS</text>
 <rect x="18" y="125" width="202" height="48" rx="12" fill="#fff" fill-opacity=".16"/>
-<g font-family="Arial" font-size="15" fill="white"><text x="36" y="155" font-weight="700">▦  Passenger Cases</text><text x="36" y="214">✈  On-hand Rush</text><text x="36" y="263">◉  Missing Bag Report</text><text x="36" y="312">!  Unresolved Baggage</text><text x="36" y="361">＋  Add Baggage</text><text x="36" y="410">▤  Baggage Chart</text></g>
+<g font-family="Arial" font-size="15" fill="white"><text x="36" y="155" font-weight="700">▦  Passenger Cases</text><text x="36" y="214">✈  On-hard</text><text x="36" y="263">◉  Missing Bag Report</text><text x="36" y="312">!  Unresolved Baggage</text><text x="36" y="361">＋  Add Baggage</text><text x="36" y="410">▤  Baggage Chart</text></g>
 <rect x="18" y="820" width="202" height="48" rx="12" fill="#082752"/><text x="36" y="850" font-family="Arial" font-size="14" fill="white">中文 / English</text>
 <rect x="238" width="1202" height="76" fill="white"/><text x="280" y="47" font-family="Arial" font-size="22" font-weight="700" fill="#102a4c">Passenger Filed Cases</text><circle cx="1378" cy="38" r="20" fill="#e8f0fa"/><text x="1371" y="44" font-family="Arial" font-size="14" fill="#123a70">MU</text>
 <rect x="274" y="106" width="1130" height="752" rx="22" fill="white"/><text x="308" y="158" font-family="Arial" font-size="31" font-weight="700" fill="#10233f">All Cases</text>
