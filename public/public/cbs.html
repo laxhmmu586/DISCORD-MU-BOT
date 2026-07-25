@@ -167,6 +167,10 @@
     .add-baggage-modes { display:flex; gap:12px; flex-wrap:wrap; margin:16px 0; }
     .add-baggage-form { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
     .add-baggage-form .wide,.add-baggage-form .actions { grid-column:1/-1; }
+    .baggage-chart-grid { display:grid; gap:24px; margin-top:22px; }
+    .baggage-chart-image { display:block; width:100%; height:auto; border:1px solid #c9d9ec; border-radius:16px; background:#fff; box-shadow:0 10px 28px rgba(18,58,115,.08); }
+    .baggage-chart-link { display:block; color:inherit; text-decoration:none; }
+    .baggage-chart-link span { display:block; margin:0 0 8px; color:var(--brand); font-weight:900; }
     @media (max-width:840px){ header{align-items:flex-start;gap:10px}.page-tabs{order:3;width:100%}.page-tab{flex:1}.case-update-grid,.detail-grid,.baggage-search-grid,.sheet-detail-grid,.inline-update.case-update,.worldtracer-form,.unresolved-update,.add-baggage-form,.add-baggage-search{grid-template-columns:1fr}.unresolved-summary{grid-template-columns:1fr 1fr}.rush-flight-row{grid-template-columns:1fr 1fr}.rush-route-arrow{display:none}.rush-flight-row button{grid-column:1/-1}.tracking-event{grid-template-columns:86px 1fr;gap:12px}.tracking-event-card{font-size:12px}.tracking-event-field{grid-template-columns:1fr}.case-update{min-width:0} table{display:block;overflow-x:auto;white-space:nowrap} }
   </style>
 </head>
@@ -179,6 +183,7 @@
       <button class="page-tab" id="missing-report-alert" type="button">Missing Bag Report</button>
       <button class="page-tab" id="unresolved-baggage-tab" type="button">Unresolved Baggage</button>
       <button class="page-tab" id="add-baggage-tab" type="button">Add Baggage</button>
+      <button class="page-tab" id="baggage-chart-tab" type="button">Baggage Chart</button>
     </nav>
     <span class="header-spacer"></span>
     <button class="lang-toggle" id="language-toggle" type="button">中文</button>
@@ -222,9 +227,19 @@
       <form class="add-baggage-search" id="add-baggage-search"><label><span>Bag Tag Number</span><input name="bagTag" placeholder="MU123456" maxlength="8" pattern="[A-Za-z]{2}[0-9]{6}" required autocomplete="off" /></label><button type="submit">Search</button></form>
       <div id="add-baggage-output"><p class="muted">Enter a bag tag number to search.</p></div>
     </section>
+    <section class="card" id="baggage-chart-card" hidden>
+      <h1>Baggage Identification Chart</h1>
+      <p class="muted">Select either chart to open the original high-resolution image.</p>
+      <div class="baggage-chart-grid">
+        <a class="baggage-chart-link" data-baggage-chart-link="1" target="_blank" rel="noopener"><span>Luggage / Bags</span><img class="baggage-chart-image" data-baggage-chart-image="1" alt="IATA baggage identification chart for luggage and bags" /></a>
+        <a class="baggage-chart-link" data-baggage-chart-link="2" target="_blank" rel="noopener"><span>Miscellaneous Articles</span><img class="baggage-chart-image" data-baggage-chart-image="2" alt="IATA baggage identification chart for miscellaneous articles" /></a>
+      </div>
+    </section>
   </main>
   <script>
     const apiBase = (window.MU_API_BASE || 'https://api.mufcapp.net').replace(/\/$/, '');
+    document.querySelectorAll('[data-baggage-chart-image]').forEach((image) => { image.src = `${apiBase}/cbs-baggage-chart/${image.dataset.baggageChartImage}`; });
+    document.querySelectorAll('[data-baggage-chart-link]').forEach((link) => { link.href = `${apiBase}/cbs-baggage-chart/${link.dataset.baggageChartLink}`; });
     const casesOutput = document.querySelector('#cases-output');
     const casesCard = document.querySelector('#cases-card');
     const passengerCasesTab = document.querySelector('#passenger-cases-tab');
@@ -246,6 +261,8 @@
     const addBaggageCard = document.querySelector('#add-baggage-card');
     const addBaggageSearch = document.querySelector('#add-baggage-search');
     const addBaggageOutput = document.querySelector('#add-baggage-output');
+    const baggageChartTab = document.querySelector('#baggage-chart-tab');
+    const baggageChartCard = document.querySelector('#baggage-chart-card');
     const backToCases = document.querySelector('#back-to-cases');
     const refreshCases = document.querySelector('#refresh-cases');
     const languageToggle = document.querySelector('#language-toggle');
@@ -259,11 +276,13 @@
       missingReportCard.hidden = section !== 'missing';
       unresolvedBaggageCard.hidden = section !== 'unresolved';
       addBaggageCard.hidden = section !== 'add-baggage';
+      baggageChartCard.hidden = section !== 'baggage-chart';
       passengerCasesTab.classList.toggle('is-active', section === 'passenger');
       worldTracerTab.classList.toggle('is-active', section === 'worldtracer');
       missingAlert.classList.toggle('is-active', section === 'missing');
       unresolvedBaggageTab.classList.toggle('is-active', section === 'unresolved');
       addBaggageTab.classList.toggle('is-active', section === 'add-baggage');
+      baggageChartTab.classList.toggle('is-active', section === 'baggage-chart');
     }
     function setLanguage(lang) {
       document.documentElement.lang = lang;
@@ -780,6 +799,7 @@
     missingAlert?.addEventListener('click', async () => { showSection('missing'); await loadMissingReports(true); });
     unresolvedBaggageTab?.addEventListener('click', async () => { showSection('unresolved'); await loadUnresolvedBaggage(); });
     addBaggageTab?.addEventListener('click', () => { showSection('add-baggage'); addBaggageSearch.elements.bagTag.focus(); });
+    baggageChartTab?.addEventListener('click', () => showSection('baggage-chart'));
     backToCases?.addEventListener('click', () => showSection('passenger'));
     addRushFlight?.addEventListener('click', addRushFlightRow);
     rushFlightRows?.addEventListener('click', (event) => {

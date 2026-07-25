@@ -70,6 +70,7 @@ const {
   markCbsMissingBagCase,
   acknowledgeCbsMissingBag,
   sendCbsCaseEmail,
+  getCbsBaggageChartImage,
   appendTransit240Record,
   appendCbsScanRecord,
   appendCbsScanNbrdBns,
@@ -2007,6 +2008,19 @@ app.get('/cbs-cases', async (req, res) => {
   } catch (err) {
     console.error('CBS case list error:', err);
     return res.status(500).json({ error: err?.message || 'CBS case lookup failed' });
+  }
+});
+
+app.get('/cbs-baggage-chart/:page', async (req, res) => {
+  try {
+    const image = await getCbsBaggageChartImage(req.params.page);
+    if (!image) return res.status(404).send('Baggage chart image not found');
+    res.set('Content-Type', image.mimeType);
+    res.set('Cache-Control', 'public, max-age=3600');
+    return res.send(image.buffer);
+  } catch (err) {
+    console.error('CBS baggage chart image error:', err);
+    return res.status(500).send('Baggage chart image load failed');
   }
 });
 
