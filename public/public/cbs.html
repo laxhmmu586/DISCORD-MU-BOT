@@ -238,6 +238,8 @@
   </main>
   <script>
     const apiBase = (window.MU_API_BASE || 'https://api.mufcapp.net').replace(/\/$/, '');
+    document.querySelectorAll('[data-baggage-chart-image]').forEach((image) => { image.src = `${apiBase}/cbs-baggage-chart/${image.dataset.baggageChartImage}`; });
+    document.querySelectorAll('[data-baggage-chart-link]').forEach((link) => { link.href = `${apiBase}/cbs-baggage-chart/${link.dataset.baggageChartLink}`; });
     const casesOutput = document.querySelector('#cases-output');
     const casesCard = document.querySelector('#cases-card');
     const passengerCasesTab = document.querySelector('#passenger-cases-tab');
