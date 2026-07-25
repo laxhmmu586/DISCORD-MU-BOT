@@ -11,14 +11,28 @@
     body { margin:0; padding-left:248px; min-height:100vh; font-family:Inter,Arial,"Noto Sans SC",sans-serif; background:linear-gradient(135deg,#eaf4ff,#fdfefe); color:var(--ink); }
     header { position:fixed; inset:0 auto 0 0; z-index:10; width:248px; display:flex; flex-direction:column; align-items:stretch; gap:18px; padding:28px 18px 20px; overflow-y:auto; background:linear-gradient(180deg,#123a73,#0b2e5d); color:#fff; box-shadow:10px 0 32px rgba(18,58,115,.12); }
     .brand { padding:0 14px; font-size:24px; font-weight:950; color:#fff; letter-spacing:.1em; text-decoration:none; }
-    .nav-kicker { padding:0 14px; margin-top:-10px; color:#a9c8ed; font-size:11px; font-weight:850; letter-spacing:.14em; text-transform:uppercase; }
+    .nav-kicker { padding:0 14px; margin-top:-10px; color:#a9c8ed; font-size:11px; font-weight:850; letter-spacing:.14em; text-transform:uppercase; white-space:nowrap; }
     .page-tabs { display:grid; gap:6px; align-items:stretch; }
     .page-tab { display:grid; grid-template-columns:26px 1fr; align-items:center; width:100%; border:1px solid transparent; border-radius:12px; background:transparent; color:#d8e8fb; box-shadow:none; padding:12px 13px; font-weight:850; text-align:left; text-decoration:none; cursor:pointer; }
-    .page-tab-icon { color:#93b9e7; font-size:17px; line-height:1; text-align:center; }
+    .page-tab-icon { display:grid; place-items:center; color:#93b9e7; line-height:1; }
+    .page-tab-icon svg { width:19px; height:19px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
     .page-tab:hover { background:rgba(255,255,255,.09); color:#fff; }
     .page-tab.is-active { border-color:rgba(255,255,255,.12); background:rgba(255,255,255,.16); color:#fff; box-shadow:inset 3px 0 0 #8ec5ff; }
     .page-tab.is-active .page-tab-icon { color:#fff; }
     .header-spacer { flex:1; }
+    .sidebar-toggle { position:fixed; z-index:11; left:229px; bottom:72px; display:grid; place-items:center; width:38px; height:38px; padding:0; border:3px solid #eaf4ff; border-radius:999px; background:#245fce; color:#fff; box-shadow:0 7px 18px rgba(11,46,93,.28); transition:left .2s ease,transform .2s ease; }
+    .sidebar-toggle svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+    body.sidebar-collapsed { padding-left:76px; }
+    body.sidebar-collapsed header { width:76px; padding-inline:10px; }
+    body.sidebar-collapsed .brand { overflow:hidden; width:38px; padding:0; font-size:0; text-align:center; }
+    body.sidebar-collapsed .brand::after { content:"MU"; display:grid; place-items:center; width:38px; height:38px; border-radius:999px; background:#245fce; color:#fff; font-size:12px; letter-spacing:0; }
+    body.sidebar-collapsed .nav-kicker,body.sidebar-collapsed .page-tab-label,body.sidebar-collapsed .lang-label { display:none; }
+    body.sidebar-collapsed .page-tab { grid-template-columns:1fr; justify-items:center; padding:13px 8px; }
+    body.sidebar-collapsed .page-tab-icon svg { width:22px; height:22px; }
+    body.sidebar-collapsed .lang-toggle { padding:11px 4px; font-size:0; }
+    body.sidebar-collapsed .lang-toggle::after { content:"文"; font-size:14px; }
+    body.sidebar-collapsed .sidebar-toggle { left:57px; transform:rotate(180deg); }
+    body.sidebar-collapsed .wrap { width:min(100%,calc(100vw - 76px)); }
     .wrap { width:min(100%,calc(100vw - 248px)); margin:0 auto; padding:28px 32px 56px; display:grid; gap:24px; }
     .card { background:var(--panel); border:1px solid var(--line); border-radius:22px; box-shadow:0 18px 42px rgba(22,48,76,.08); padding:24px; min-height:calc(100vh - 170px); }
     h1,h2 { margin:0 0 10px; }
@@ -174,24 +188,25 @@
     .baggage-chart-image { display:block; width:100%; height:auto; border:1px solid #c9d9ec; border-radius:16px; background:#fff; box-shadow:0 10px 28px rgba(18,58,115,.08); }
     .baggage-chart-link { display:block; color:inherit; text-decoration:none; }
     .baggage-chart-link span { display:block; margin:0 0 8px; color:var(--brand); font-weight:900; }
-    @media (max-width:840px){ body{padding-left:0}header{position:sticky;inset:auto;top:0;width:100%;height:auto;display:flex;flex-direction:row;align-items:center;gap:10px;padding:12px 16px;overflow:visible;background:rgba(18,58,115,.98)}.brand{padding:0;font-size:18px}.nav-kicker{display:none}.page-tabs{order:3;position:absolute;top:100%;left:0;width:100%;display:flex;gap:4px;padding:7px 10px;overflow-x:auto;background:#fff;border-bottom:1px solid var(--line);box-shadow:0 8px 20px rgba(18,58,115,.08)}.page-tab{display:flex;gap:7px;width:auto;min-width:max-content;padding:9px 11px;border-radius:10px;color:#52677f}.page-tab-icon{font-size:14px}.page-tab:hover{background:#f0f5fb;color:var(--brand)}.page-tab.is-active{border-color:#c9d9ec;background:#e8f1ff;color:var(--brand);box-shadow:none}.page-tab.is-active .page-tab-icon{color:var(--brand)}.header-spacer{display:block}.lang-toggle{width:auto;padding:9px 13px}.wrap{width:100%;margin:50px 0 0;padding:16px 12px 40px}.card{padding:18px;min-height:calc(100vh - 150px)}.case-update-grid,.detail-grid,.baggage-search-grid,.sheet-detail-grid,.inline-update.case-update,.worldtracer-form,.unresolved-update,.add-baggage-form,.add-baggage-search{grid-template-columns:1fr}.unresolved-summary{grid-template-columns:1fr 1fr}.rush-flight-row{grid-template-columns:1fr 1fr}.rush-route-arrow{display:none}.rush-flight-row button{grid-column:1/-1}.tracking-event{grid-template-columns:86px 1fr;gap:12px}.tracking-event-card{font-size:12px}.tracking-event-field{grid-template-columns:1fr}.case-update{min-width:0}table{display:block;overflow-x:auto;white-space:nowrap} }
+    @media (max-width:840px){ body,body.sidebar-collapsed{padding-left:0}header,body.sidebar-collapsed header{position:sticky;inset:auto;top:0;width:100%;height:auto;display:flex;flex-direction:row;align-items:center;gap:10px;padding:12px 16px;overflow:visible;background:rgba(18,58,115,.98)}.brand,body.sidebar-collapsed .brand{padding:0;width:auto;font-size:18px;overflow:visible}.brand::after,body.sidebar-collapsed .brand::after{display:none}.nav-kicker{display:none}.page-tabs{order:3;position:absolute;top:100%;left:0;width:100%;display:flex;gap:4px;padding:7px 10px;overflow-x:auto;background:#fff;border-bottom:1px solid var(--line);box-shadow:0 8px 20px rgba(18,58,115,.08)}.page-tab,body.sidebar-collapsed .page-tab{display:flex;gap:7px;width:auto;min-width:max-content;padding:9px 11px;border-radius:10px;color:#52677f}.page-tab-label,body.sidebar-collapsed .page-tab-label,.lang-label,body.sidebar-collapsed .lang-label{display:inline}.page-tab-icon svg,body.sidebar-collapsed .page-tab-icon svg{width:17px;height:17px}.page-tab:hover{background:#f0f5fb;color:var(--brand)}.page-tab.is-active{border-color:#c9d9ec;background:#e8f1ff;color:var(--brand);box-shadow:none}.page-tab.is-active .page-tab-icon{color:var(--brand)}.header-spacer{display:block}.lang-toggle,body.sidebar-collapsed .lang-toggle{width:auto;padding:9px 13px;font-size:inherit}.lang-toggle::after,body.sidebar-collapsed .lang-toggle::after{display:none}.sidebar-toggle{display:none}.wrap,body.sidebar-collapsed .wrap{width:100%;margin:50px 0 0;padding:16px 12px 40px}.card{padding:18px;min-height:calc(100vh - 150px)}.case-update-grid,.detail-grid,.baggage-search-grid,.sheet-detail-grid,.inline-update.case-update,.worldtracer-form,.unresolved-update,.add-baggage-form,.add-baggage-search{grid-template-columns:1fr}.unresolved-summary{grid-template-columns:1fr 1fr}.rush-flight-row{grid-template-columns:1fr 1fr}.rush-route-arrow{display:none}.rush-flight-row button{grid-column:1/-1}.tracking-event{grid-template-columns:86px 1fr;gap:12px}.tracking-event-card{font-size:12px}.tracking-event-field{grid-template-columns:1fr}.case-update{min-width:0}table{display:block;overflow-x:auto;white-space:nowrap} }
   </style>
 </head>
 <body>
   <header>
     <a class="brand" href="index.html">MUFC</a>
-    <div class="nav-kicker">CBS Operations</div>
+    <div class="nav-kicker">Baggage Operations</div>
     <nav class="page-tabs" aria-label="CBS sections">
-      <button class="page-tab is-active" id="passenger-cases-tab" type="button"><span class="page-tab-icon" aria-hidden="true">▦</span><span><span class="en">Passenger Filed Cases</span><span class="zh">旅客提交案件</span></span></button>
-      <button class="page-tab" id="worldtracer-tab" type="button"><span class="page-tab-icon" aria-hidden="true">✈</span><span>On-hand Rush</span></button>
-      <button class="page-tab" id="missing-report-alert" type="button"><span class="page-tab-icon" aria-hidden="true">◉</span><span>Missing Bag Report</span></button>
-      <button class="page-tab" id="unresolved-baggage-tab" type="button"><span class="page-tab-icon" aria-hidden="true">!</span><span>Unresolved Baggage</span></button>
-      <button class="page-tab" id="add-baggage-tab" type="button"><span class="page-tab-icon" aria-hidden="true">＋</span><span>Add Baggage</span></button>
-      <button class="page-tab" id="baggage-chart-tab" type="button"><span class="page-tab-icon" aria-hidden="true">▤</span><span>Baggage Chart</span></button>
+      <button class="page-tab is-active" id="passenger-cases-tab" type="button" title="Passenger Filed"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h12v18H6zM9 7h6M9 11h6M9 15h4"/></svg></span><span class="page-tab-label"><span class="en">Passenger Filed</span><span class="zh">旅客提交</span></span></button>
+      <button class="page-tab" id="worldtracer-tab" type="button" title="On-hand Rush"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m3 14 7-3V5l2-2 2 7 5-2 2 1-7 5v5l-2 2-2-6-4 2z"/></svg></span><span class="page-tab-label">On-hand Rush</span></button>
+      <button class="page-tab" id="missing-report-alert" type="button" title="Missing Bag Report"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="7" width="12" height="12" rx="2"/><path d="M8 7V5h4v2m5 10 4 4m-1-7a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg></span><span class="page-tab-label">Missing Bag Report</span></button>
+      <button class="page-tab" id="unresolved-baggage-tab" type="button" title="Unresolved Baggage"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 2.5 20h19zM12 9v5m0 3v.1"/></svg></span><span class="page-tab-label">Unresolved Baggage</span></button>
+      <button class="page-tab" id="add-baggage-tab" type="button" title="Add Baggage"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="13" height="12" rx="2"/><path d="M7 8V5h5v3m7-4v8m-4-4h8"/></svg></span><span class="page-tab-label">Add Baggage</span></button>
+      <button class="page-tab" id="baggage-chart-tab" type="button" title="Baggage Chart"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19V9m5 10V5m5 14v-7m5 7V3"/></svg></span><span class="page-tab-label">Baggage Chart</span></button>
     </nav>
     <span class="header-spacer"></span>
-    <button class="lang-toggle" id="language-toggle" type="button">中文</button>
+    <button class="lang-toggle" id="language-toggle" type="button"><span class="lang-label">中文</span></button>
   </header>
+  <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Collapse sidebar" aria-expanded="true" title="Collapse sidebar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg></button>
   <main class="wrap">
     <section class="card" id="cases-card">
       <div class="actions">
@@ -270,6 +285,8 @@
     const backToCases = document.querySelector('#back-to-cases');
     const refreshCases = document.querySelector('#refresh-cases');
     const languageToggle = document.querySelector('#language-toggle');
+    const languageLabel = languageToggle.querySelector('.lang-label');
+    const sidebarToggle = document.querySelector('#sidebar-toggle');
     function rushFlightRowHtml(flight = {}) {
       return `<div class="rush-flight-row" data-rush-flight-row><label><span>Date</span><input data-flight-date type="date" value="${escapeHtml(flight.flightDate || '')}" required /></label><label><span>Flight Number</span><input data-flight-number value="${escapeHtml(flight.flightNumber || '')}" required autocomplete="off" placeholder="MU586" /></label><label><span>From</span><input data-flight-from value="${escapeHtml(flight.from || '')}" required autocomplete="off" placeholder="LAX" /></label><span class="rush-route-arrow">–</span><label><span>To</span><input data-flight-to value="${escapeHtml(flight.to || '')}" required autocomplete="off" placeholder="PVG" /></label><button type="button" data-remove-rush-flight aria-label="Remove flight">Remove</button></div>`;
     }
@@ -290,10 +307,19 @@
     }
     function setLanguage(lang) {
       document.documentElement.lang = lang;
-      languageToggle.textContent = lang === 'en' ? '中文' : 'English';
+      languageLabel.textContent = lang === 'en' ? '中文' : 'English';
       loadCases();
     }
     languageToggle.addEventListener('click', () => setLanguage(document.documentElement.lang === 'en' ? 'zh' : 'en'));
+    function setSidebarCollapsed(collapsed) {
+      document.body.classList.toggle('sidebar-collapsed', collapsed);
+      sidebarToggle.setAttribute('aria-expanded', String(!collapsed));
+      sidebarToggle.setAttribute('aria-label', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
+      sidebarToggle.title = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
+      localStorage.setItem('cbs-sidebar-collapsed', collapsed ? '1' : '0');
+    }
+    sidebarToggle.addEventListener('click', () => setSidebarCollapsed(!document.body.classList.contains('sidebar-collapsed')));
+    setSidebarCollapsed(localStorage.getItem('cbs-sidebar-collapsed') === '1');
     function label(en, zh) { return document.documentElement.lang === 'en' ? en : zh; }
     function escapeHtml(value) { return String(value || '').replace(/[&<>'"]/g, (ch) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch])); }
     async function parseJson(res) { const text = await res.text(); try { return JSON.parse(text); } catch { throw new Error(`API returned non-JSON (${res.status}). Please check API base: ${apiBase}`); } }
