@@ -6990,9 +6990,9 @@
           return `<fieldset class="test-create-entry" data-test-bag-entry>
             <legend><span>Outbound bag</span></legend>
             <div class="test-form-grid">${bagTagInput}
-              <label class="test-field"><span>Outbound flight number</span><input name="flight" value="${escapeHtml(entry.flight || "MU586")}" required /></label>
               <label class="test-field"><span>Date</span><input name="date" type="date" value="${escapeHtml(entry.date || today)}" required /></label>
               <label class="test-field"><span>Type</span><select name="status" data-test-outbound-status required><option value="Not load bags"${selected(status, "Not load bags")}>Not load bags</option><option value="Outbound rush"${selected(status, "Outbound rush")}>Outbound rush</option><option value="Gate bag"${selected(status, "Gate bag")}>Gate bag</option></select></label>
+              <label class="test-field"><span>Current location</span><input name="location" value="${escapeHtml(entry.location || "")}" list="test-location-options" required /></label>
               <label class="test-field" data-test-rush-field hidden><span>Rush tag number</span><input name="rushTagNumber" value="${escapeHtml(entry.rushTagNumber || "")}" /></label>
               <label class="test-field" data-test-rush-field hidden><span>Rush To where?</span><input name="rushToWhere" value="${escapeHtml(entry.rushToWhere || "")}" /></label>
               <label class="test-field" data-test-rush-field hidden><span>AKE number?</span><input name="akeNumber" value="${escapeHtml(entry.akeNumber || "")}" /></label>
@@ -7006,7 +7006,6 @@
         return `<fieldset class="test-create-entry" data-test-bag-entry>
           <legend><span>Inbound bag</span></legend>
           <div class="test-form-grid">${bagTagInput}
-            <label class="test-field"><span>Inbound flight number</span><input name="flight" value="${escapeHtml(entry.flight || "MU583")}" required /></label>
             <label class="test-field"><span>Date</span><input name="date" type="date" value="${escapeHtml(entry.date || today)}" required /></label>
             <label class="test-field"><span>Bag type</span><select name="bagType" required><option${selected(bagType, "Passenger bag")}>Passenger bag</option><option${selected(bagType, "Inbound rush")}>Inbound rush</option><option${selected(bagType, "Co-mail")}>Co-mail</option></select></label>
             <label class="test-field"><span>Current location</span><input name="location" value="${escapeHtml(location)}" list="test-location-options" required /></label>
@@ -7015,9 +7014,10 @@
       }
 
       function collectCreateEntries(form) {
+        const mode = form.dataset.createMode;
         return [...form.querySelectorAll("[data-test-bag-entry]")].map((entry) => ({
           bagTag: normalizeTestBagTag(formValue(entry, "bagTag")),
-          flight: formValue(entry, "flight"),
+          flight: mode === "outbound" ? "MU586" : "MU583",
           date: formValue(entry, "date"),
           bagType: formValue(entry, "bagType"),
           location: formValue(entry, "location"),
@@ -7098,7 +7098,7 @@
             flight: entry.flight,
             date: entry.date,
             bagType: mode === "inbound" ? entry.bagType : "",
-            location: mode === "inbound" ? entry.location : "",
+            location: entry.location,
             status: mode === "outbound" ? entry.status : "Bag location update",
             comment: mode === "outbound" ? entry.comment : "",
             rushTagNumber: isRush ? entry.rushTagNumber : "",
