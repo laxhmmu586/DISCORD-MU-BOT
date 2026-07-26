@@ -433,7 +433,10 @@
       const events = [];
       if (row?.caseNumber) {
         const hiddenCreateLabels = new Set([label('Status', '状态'), label('Updated At', '更新时间')]);
-        const createFields = detailRows(row)
+        // The Create card is the permanent snapshot of what the passenger filed.
+        // Do not reduce it to case metadata: agents should not have to look in a
+        // separate panel for the passenger's contact, itinerary, bag, or address.
+        const createFields = passengerFiledDetailRows(row)
           .filter(([key, value]) => hasValue(value) && !hiddenCreateLabels.has(key));
         events.push({ key:'create', title:'Create Case', at:row.submittedAt || row.issueDate || '', fields:createFields });
       }
@@ -542,6 +545,25 @@
         [label('Issue Date', '填写日期'), row.issueDate],
         [label('Passenger Signature', '旅客签字'), row.passengerSignature],
         [label('Updated At', '更新时间'), row.updatedAt]
+      ];
+    }
+    function passengerFiledDetailRows(row) {
+      const flights = Array.isArray(row?.flightRows) && row.flightRows.length
+        ? row.flightRows.map((flight) => [flight.flightNo || flight.flightNumber, flight.flightDate, flight.origin || flight.from, flight.destination || flight.to].filter(hasValue).join(' ')).filter(Boolean).join(' / ')
+        : row?.flightRoute;
+      return [
+        [label('Passenger Name', '旅客姓名'), row?.passengerName],
+        [label('Email', '邮箱'), row?.email],
+        [label('Phone Number', '电话号码'), row?.phoneNumber || row?.phone],
+        [label('Ticket Number', '机票号码'), row?.ticketNumber],
+        [label('Flights', '航班'), flights],
+        [label('Bag Tag', '行李牌'), row?.bagTag],
+        [label('Permanent Address', '住址'), row?.permanentAddress || row?.address],
+        ...detailRows(row).filter(([key]) => !new Set([
+          label('Passenger Name', '旅客姓名'), label('Email', '邮箱'), label('Phone', '电话'),
+          label('Ticket Number', '机票号码'), label('Flight Route', '行李航程'), label('Bag Tag', '行李牌'),
+          label('Permanent Address', '住址')
+        ]).has(key))
       ];
     }
     function originalFormDetailRows(row) {
