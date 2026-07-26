@@ -2075,7 +2075,11 @@ app.post('/cbs-worldtracer-cases/update', async (req, res) => {
 
 app.get('/cbs-unresolved-baggage', async (req, res) => {
   try {
-    return res.json({ rows: await getCbsUnresolvedBaggageCases({ includeResolved: true }) });
+    const rows = await getCbsUnresolvedBaggageCases({ includeResolved: true });
+    // A Create Rush resolution is represented by the new Rush Bag record. Do not
+    // also keep a duplicate copy in On-hand; other completed resolutions remain
+    // available there as history.
+    return res.json({ rows: rows.filter((row) => String(row.resolution || '').toLowerCase() !== 'on-hand-rush') });
   } catch (err) {
     console.error('CBS On-hand baggage list error:', err);
     return res.status(500).json({ error: err?.message || 'On-hand baggage lookup failed' });

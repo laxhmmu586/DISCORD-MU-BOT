@@ -399,7 +399,7 @@
         const resolvedHistory = row.history.filter((item) => item.resolvedAt);
         const active = row.history.find((item) => !item.resolvedAt);
         const historyHtml = resolvedHistory.length ? `<section class="unresolved-history"><h3>History</h3>${resolvedHistory.map((item) => `<p><strong>${escapeHtml(item.resolution || 'Completed')}</strong> · ${escapeHtml(item.resolvedAt ? new Date(item.resolvedAt).toLocaleString() : '')}${item.resolutionNote ? `<br>${escapeHtml(item.resolutionNote)}` : ''}</p>`).join('')}</section>` : '';
-        const formHtml = active ? `<form class="unresolved-update" data-unresolved-row="${escapeHtml(active.rowNumber)}" data-bag-tag="${escapeHtml(active.bagTag)}"><label class="wide"><span>Resolution</span><select name="action" data-unresolved-action><option value="on-hand-rush">Create Rush</option><option value="passenger-collected">Passenger collected / Case closed</option><option value="shipped">Shipped</option><option value="other">Other resolution</option></select></label><div class="unresolved-update-fields">${unresolvedUpdateFieldsHtml('on-hand-rush', active.bagTag)}</div><div class="actions"><button type="submit">Resolve Case</button></div></form>` : '';
+        const formHtml = active ? `<form class="unresolved-update" data-unresolved-row="${escapeHtml(active.rowNumber)}" data-bag-tag="${escapeHtml(active.bagTag)}"><label class="wide"><span>Resolution</span><select name="action" data-unresolved-action><option value="on-hand-rush">Create Rush</option><option value="passenger-collected">Passenger collected / Case closed</option><option value="shipped">Shipped</option><option value="other">Other resolution</option></select></label><div class="unresolved-update-fields">${unresolvedUpdateFieldsHtml('on-hand-rush', active.bagTag)}</div><div class="actions"><button type="submit">Update</button></div></form>` : '';
         return `<article class="unresolved-case"><div class="unresolved-summary" data-toggle-unresolved-update role="button" tabindex="0" aria-expanded="false"><div><small>Bag Tag</small><strong>${escapeHtml(row.bagTag)}</strong></div><div><small>Direction</small><strong>${escapeHtml(row.direction)}</strong></div><div><small>Date</small><strong>${escapeHtml(row.flightDate || '-')}</strong></div><div><small>Type / Status</small><strong>${escapeHtml(row.bagType || row.status || '-')}</strong></div><div><small>Location</small><strong>${escapeHtml(row.location || '-')}</strong></div></div><div data-unresolved-detail hidden>${formHtml}${historyHtml}</div></article>`;
       }).join('')}</div>`;
     }
@@ -1056,7 +1056,7 @@
         const res = await fetch(`${apiBase}/cbs-unresolved-baggage/${encodeURIComponent(form.dataset.unresolvedRow)}/update`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || 'On-hand baggage update failed');
-        await loadUnresolvedBaggage();
+        await Promise.all([loadUnresolvedBaggage(), loadWorldTracerCases()]);
       } catch (error) {
         alert(error.message);
       } finally {
