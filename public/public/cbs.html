@@ -186,8 +186,8 @@
     .unresolved-update-fields { display:contents; }
     .unresolved-update-fields[hidden] { display:none; }
     .unresolved-update label { display:grid; gap:7px; color:#475467; font-size:12px; font-weight:900; letter-spacing:.05em; text-transform:uppercase; }
-    .unresolved-history { grid-column:1/-1; display:grid; gap:8px; padding:12px; border-radius:12px; background:#f4f8fc; }
-    .unresolved-history h3 { margin:0; color:var(--brand); }
+    .unresolved-history { grid-column:1/-1; display:grid; gap:8px; margin-top:16px; padding:14px; border:1px solid #a6e3c1; border-radius:12px; background:#eafaf1; color:#06603a; }
+    .unresolved-history h3 { margin:0; color:#067647; }
     .unresolved-history p { margin:0; }
     .add-baggage-search { display:grid; grid-template-columns:minmax(260px,1fr) auto; gap:12px; max-width:900px; margin:28px auto; align-items:end; }
     .add-baggage-search label,.add-baggage-form label { display:grid; gap:7px; color:#475467; font-size:12px; font-weight:900; letter-spacing:.05em; text-transform:uppercase; }
@@ -346,8 +346,8 @@
     function normalizeBaggageTag(value) { return String(value || '').trim().toUpperCase().replace(/\s+/g, ''); }
     function addBaggageFormHtml(bagTag, direction) {
       const today = new Date().toISOString().slice(0, 10);
-      if (direction === 'outbound') return `<form class="add-baggage-form" data-add-baggage-direction="outbound"><label><span>Bag Tag Number</span><input name="bagTag" value="${escapeHtml(bagTag)}" readonly /></label><label><span>Outbound Flight Number</span><input name="flight" placeholder="MU586" required /></label><label><span>Date</span><input name="date" type="date" value="${today}" required /></label><label><span>Status</span><select name="status" data-add-outbound-status><option>Not load bags</option><option>Outbound rush</option><option>Gate bag</option></select></label><div class="unresolved-update-fields" data-add-outbound-rush hidden><label><span>RUSH Tag Number</span><input name="rushTagNumber" /></label><label><span>Rush To Where</span><input name="rushToWhere" /></label><label><span>AKE Number</span><input name="akeNumber" /></label><label><span>WorldTracer File Number</span><input name="worldTracerFileNumber" /></label></div><label class="wide"><span>Comment</span><input name="comment" /></label><div class="actions"><button type="submit">Submit</button><button class="secondary" type="button" data-cancel-add-baggage>Back</button></div></form>`;
-      return `<form class="add-baggage-form" data-add-baggage-direction="inbound"><label><span>Bag Tag Number</span><input name="bagTag" value="${escapeHtml(bagTag)}" readonly /></label><label><span>Inbound Flight Number</span><input name="flight" placeholder="MU583" required /></label><label><span>Date</span><input name="date" type="date" value="${today}" required /></label><label><span>Bag Type</span><select name="bagType"><option>Passenger bag</option><option>Inbound rush</option><option>Co-mail</option></select></label><label><span>Current Location</span><input name="location" value="Office" required /></label><div class="actions"><button type="submit">Submit</button><button class="secondary" type="button" data-cancel-add-baggage>Back</button></div></form>`;
+      if (direction === 'outbound') return `<form class="add-baggage-form" data-add-baggage-direction="outbound"><label><span>Bag Tag Number</span><input name="bagTag" value="${escapeHtml(bagTag)}" readonly /></label><label><span>Date</span><input name="date" type="date" value="${today}" required /></label><label><span>Status</span><select name="status" data-add-outbound-status><option>Not load bags</option><option>Outbound rush</option><option>Gate bag</option></select></label><label><span>Current Location</span><input name="location" required /></label><div class="unresolved-update-fields" data-add-outbound-rush hidden><label><span>RUSH Tag Number</span><input name="rushTagNumber" /></label><label><span>Rush To Where</span><input name="rushToWhere" /></label><label><span>AKE Number</span><input name="akeNumber" /></label><label><span>WorldTracer File Number</span><input name="worldTracerFileNumber" /></label></div><label class="wide"><span>Comment</span><input name="comment" /></label><div class="actions"><button type="submit">Submit</button><button class="secondary" type="button" data-cancel-add-baggage>Back</button></div></form>`;
+      return `<form class="add-baggage-form" data-add-baggage-direction="inbound"><label><span>Bag Tag Number</span><input name="bagTag" value="${escapeHtml(bagTag)}" readonly /></label><label><span>Date</span><input name="date" type="date" value="${today}" required /></label><label><span>Bag Type</span><select name="bagType"><option>Passenger bag</option><option>Inbound rush</option><option>Co-mail</option></select></label><label><span>Current Location</span><input name="location" value="Office" required /></label><div class="actions"><button type="submit">Submit</button><button class="secondary" type="button" data-cancel-add-baggage>Back</button></div></form>`;
     }
     function renderAddBaggageChoice(bagTag) {
       addBaggageOutput.innerHTML = `<div class="add-baggage-panel"><h2>${escapeHtml(bagTag)}</h2><p class="muted">No matching bag found. Choose the baggage direction.</p><div class="add-baggage-modes"><button type="button" data-add-baggage-mode="inbound">Inbound</button><button type="button" data-add-baggage-mode="outbound">Outbound</button></div></div>`;
@@ -391,7 +391,7 @@
       rows = [...rowsByTag.values()].map((history) => {
         history.sort((a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0));
         return { ...history[0], history };
-      });
+      }).sort((a, b) => Number(Boolean(a.history.find((item) => !item.resolvedAt))) === Number(Boolean(b.history.find((item) => !item.resolvedAt))) ? 0 : (a.history.find((item) => !item.resolvedAt) ? -1 : 1));
       window._unresolvedBaggageRows = rows;
       window._unresolvedBaggageLoaded = true;
       if (!rows.length) { unresolvedBaggageOutput.innerHTML = '<p class="muted">No On-hand baggage cases.</p>'; return; }
@@ -400,7 +400,7 @@
         const active = row.history.find((item) => !item.resolvedAt);
         const historyHtml = resolvedHistory.length ? `<section class="unresolved-history"><h3>History</h3>${resolvedHistory.map((item) => `<p><strong>${escapeHtml(item.resolution || 'Completed')}</strong> · ${escapeHtml(item.resolvedAt ? new Date(item.resolvedAt).toLocaleString() : '')}${item.resolutionNote ? `<br>${escapeHtml(item.resolutionNote)}` : ''}</p>`).join('')}</section>` : '';
         const formHtml = active ? `<form class="unresolved-update" data-unresolved-row="${escapeHtml(active.rowNumber)}" data-bag-tag="${escapeHtml(active.bagTag)}"><label class="wide"><span>Resolution</span><select name="action" data-unresolved-action><option value="on-hand-rush">Create Rush</option><option value="passenger-collected">Passenger collected / Case closed</option><option value="shipped">Shipped</option><option value="other">Other resolution</option></select></label><div class="unresolved-update-fields">${unresolvedUpdateFieldsHtml('on-hand-rush', active.bagTag)}</div><div class="actions"><button type="submit">Resolve Case</button></div></form>` : '';
-        return `<article class="unresolved-case"><div class="unresolved-summary" data-toggle-unresolved-update role="button" tabindex="0" aria-expanded="false"><div><small>Bag Tag</small><strong>${escapeHtml(row.bagTag)}</strong></div><div><small>Direction</small><strong>${escapeHtml(row.direction)}</strong></div><div><small>Flight / Date</small><strong>${escapeHtml(row.flightNumber)} · ${escapeHtml(row.flightDate)}</strong></div><div><small>Type / Status</small><strong>${escapeHtml(row.bagType || row.status || '-')}</strong></div><div><small>Location</small><strong>${escapeHtml(row.location || '-')}</strong></div></div><div data-unresolved-detail hidden>${historyHtml}${formHtml}</div></article>`;
+        return `<article class="unresolved-case"><div class="unresolved-summary" data-toggle-unresolved-update role="button" tabindex="0" aria-expanded="false"><div><small>Bag Tag</small><strong>${escapeHtml(row.bagTag)}</strong></div><div><small>Direction</small><strong>${escapeHtml(row.direction)}</strong></div><div><small>Date</small><strong>${escapeHtml(row.flightDate || '-')}</strong></div><div><small>Type / Status</small><strong>${escapeHtml(row.bagType || row.status || '-')}</strong></div><div><small>Location</small><strong>${escapeHtml(row.location || '-')}</strong></div></div><div data-unresolved-detail hidden>${formHtml}${historyHtml}</div></article>`;
       }).join('')}</div>`;
     }
     async function loadUnresolvedBaggage() {
@@ -1095,6 +1095,7 @@
       event.preventDefault();
       const payload = Object.fromEntries(new FormData(form).entries());
       payload.direction = form.dataset.addBaggageDirection;
+      payload.flight = payload.direction === 'outbound' ? 'MU586' : 'MU583';
       const button = form.querySelector('button[type="submit"]');
       button.disabled = true;
       try {
