@@ -376,7 +376,7 @@
       }
     }
     function unresolvedUpdateFieldsHtml(action, bagTag) {
-      if (action === 'on-hand-rush') return `<label><span>WorldTracer File Number</span><input name="worldTracerFileNumber" required /></label><label><span>Original Tag</span><input name="originalTagNumber" value="${escapeHtml(bagTag)}" required /></label><label><span>RUSH Tag</span><input name="rushTagNumber" required /></label><label><span>Flight Date</span><input name="flightDate" type="date" required /></label><label><span>Flight Number</span><input name="flightNumber" placeholder="MU586" required /></label><label><span>From</span><input name="from" placeholder="LAX" required /></label><label><span>To</span><input name="to" placeholder="PVG" required /></label>`;
+      if (action === 'on-hand-rush') return `<label><span>WorldTracer File Number</span><input name="worldTracerFileNumber" required /></label><label><span>Original Tag Number</span><input name="originalTagNumber" value="${escapeHtml(bagTag)}" required /></label><label><span>RUSH Tag Number</span><input name="rushTagNumber" required /></label><div class="rush-itinerary wide"><div class="rush-itinerary-head"><h2>RUSH Itinerary</h2><button class="secondary" type="button" data-add-unresolved-flight>+ Add Flight</button></div><div data-unresolved-flight-rows>${rushFlightRowHtml()}</div></div>`;
       const placeholder = action === 'passenger-collected' ? 'Who collected the bag?' : (action === 'shipped' ? 'Tracking number and destination' : 'Describe how this case was resolved');
       return `<label class="wide"><span>Resolution Note</span><textarea name="note" placeholder="${placeholder}" required></textarea></label>`;
     }
@@ -1027,6 +1027,19 @@
       } catch (error) { alert(error.message); } finally { button.disabled = false; }
     });
     unresolvedBaggageOutput?.addEventListener('click', (event) => {
+      const addFlight = event.target.closest('[data-add-unresolved-flight]');
+      if (addFlight) {
+        addFlight.closest('form').querySelector('[data-unresolved-flight-rows]').insertAdjacentHTML('beforeend', rushFlightRowHtml());
+        return;
+      }
+      const removeFlight = event.target.closest('[data-remove-rush-flight]');
+      if (removeFlight) {
+        const container = removeFlight.closest('form').querySelector('[data-unresolved-flight-rows]');
+        const rows = container.querySelectorAll('[data-rush-flight-row]');
+        if (rows.length > 1) removeFlight.closest('[data-rush-flight-row]').remove();
+        else rows[0].querySelectorAll('input').forEach((input) => { input.value = ''; });
+        return;
+      }
       const toggle = event.target.closest('[data-toggle-unresolved-update]');
       if (!toggle) return;
       const detail = toggle.closest('.unresolved-case').querySelector('[data-unresolved-detail]');
@@ -1050,7 +1063,12 @@
       event.preventDefault();
       const button = form.querySelector('button[type="submit"]');
       const payload = Object.fromEntries(new FormData(form).entries());
-      if (payload.action === 'on-hand-rush') payload.flightRows = [{ flightDate:payload.flightDate, flightNumber:payload.flightNumber, from:payload.from, to:payload.to }];
+      if (payload.action === 'on-hand-rush') payload.flightRows = Array.from(form.querySelectorAll('[data-unresolved-flight-rows] [data-rush-flight-row]')).map((row) => ({
+        flightDate:row.querySelector('[data-flight-date]').value,
+        flightNumber:row.querySelector('[data-flight-number]').value,
+        from:row.querySelector('[data-flight-from]').value,
+        to:row.querySelector('[data-flight-to]').value
+      }));
       button.disabled = true;
       try {
         const res = await fetch(`${apiBase}/cbs-unresolved-baggage/${encodeURIComponent(form.dataset.unresolvedRow)}/update`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
