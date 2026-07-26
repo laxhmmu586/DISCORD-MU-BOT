@@ -178,12 +178,17 @@
     .worldtracer-route span { display:inline-flex; padding:6px 10px; border-radius:10px; background:#eef4ff; color:#344054; font-weight:800; }
     .unresolved-list { display:grid; gap:12px; margin-top:18px; }
     .unresolved-case { padding:16px; border:1px solid #d8e4f1; border-radius:16px; background:#fbfdff; }
-    .unresolved-summary { display:grid; grid-template-columns:repeat(5,minmax(110px,1fr)) auto; gap:12px; align-items:center; }
+    .unresolved-summary { display:grid; grid-template-columns:repeat(5,minmax(110px,1fr)); gap:12px; align-items:center; cursor:pointer; }
+    .unresolved-summary:hover { background:#f4f8fc; }
     .unresolved-summary strong { display:block; color:var(--brand); }
-    .unresolved-update { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-top:14px; padding-top:14px; border-top:1px solid var(--line); }
+    .unresolved-update { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; max-width:900px; margin-top:14px; padding-top:14px; border-top:1px solid var(--line); }
     .unresolved-update .wide,.unresolved-update .actions { grid-column:1/-1; }
     .unresolved-update-fields { display:contents; }
     .unresolved-update-fields[hidden] { display:none; }
+    .unresolved-update label { display:grid; gap:7px; color:#475467; font-size:12px; font-weight:900; letter-spacing:.05em; text-transform:uppercase; }
+    .unresolved-history { grid-column:1/-1; display:grid; gap:8px; margin-top:16px; padding:14px; border:1px solid #a6e3c1; border-radius:12px; background:#eafaf1; color:#06603a; }
+    .unresolved-history h3 { margin:0; color:#067647; }
+    .unresolved-history p { margin:0; }
     .add-baggage-search { display:grid; grid-template-columns:minmax(260px,1fr) auto; gap:12px; max-width:900px; margin:28px auto; align-items:end; }
     .add-baggage-search label,.add-baggage-form label { display:grid; gap:7px; color:#475467; font-size:12px; font-weight:900; letter-spacing:.05em; text-transform:uppercase; }
     .add-baggage-panel { max-width:900px; margin:0 auto; padding:22px; border:1px solid #c9d9ec; border-radius:20px; background:#f8fbff; }
@@ -203,9 +208,9 @@
     <div class="nav-kicker">Baggage Operations</div>
     <nav class="page-tabs" aria-label="CBS sections">
       <button class="page-tab is-active" id="passenger-cases-tab" type="button" title="Passenger Filed"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h12v18H6zM9 7h6M9 11h6M9 15h4"/></svg></span><span class="page-tab-label"><span class="en">Passenger Filed</span><span class="zh">旅客提交</span></span></button>
-      <button class="page-tab" id="worldtracer-tab" type="button" title="On-hard"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m3 14 7-3V5l2-2 2 7 5-2 2 1-7 5v5l-2 2-2-6-4 2z"/></svg></span><span class="page-tab-label">On-hard</span></button>
+      <button class="page-tab" id="worldtracer-tab" type="button" title="Rush Bag"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m3 14 7-3V5l2-2 2 7 5-2 2 1-7 5v5l-2 2-2-6-4 2z"/></svg></span><span class="page-tab-label">Rush Bag</span></button>
       <button class="page-tab" id="missing-report-alert" type="button" title="Missing Bag Report"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="7" width="12" height="12" rx="2"/><path d="M8 7V5h4v2m5 10 4 4m-1-7a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg></span><span class="page-tab-label">Missing Bag Report</span></button>
-      <button class="page-tab" id="unresolved-baggage-tab" type="button" title="Unresolved Baggage"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 2.5 20h19zM12 9v5m0 3v.1"/></svg></span><span class="page-tab-label">Unresolved Baggage</span></button>
+      <button class="page-tab" id="unresolved-baggage-tab" type="button" title="On-hand"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 2.5 20h19zM12 9v5m0 3v.1"/></svg></span><span class="page-tab-label">On-hand</span></button>
       <button class="page-tab" id="add-baggage-tab" type="button" title="Add Baggage"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="13" height="12" rx="2"/><path d="M7 8V5h5v3m7-4v8m-4-4h8"/></svg></span><span class="page-tab-label">Add Baggage</span></button>
       <button class="page-tab" id="baggage-chart-tab" type="button" title="Baggage Chart"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19V9m5 10V5m5 14v-7m5 7V3"/></svg></span><span class="page-tab-label">Baggage Chart</span></button>
     </nav>
@@ -225,8 +230,8 @@
       <div id="cases-output"><p class="muted">Loading cases...</p></div>
     </section>
     <section class="card worldtracer-create" id="worldtracer-card" hidden>
-      <h1>On-hard</h1>
-      <p class="muted"><span class="en">Create an On-hard case and save it to the operations sheet.</span><span class="zh">创建 On-hard 案件并保存到工作表。</span></p>
+      <h1>Rush Bag</h1>
+      <p class="muted"><span class="en">Create a Rush Bag case and save it to the operations sheet.</span><span class="zh">创建 Rush Bag 案件并保存到工作表。</span></p>
       <form class="worldtracer-form" id="worldtracer-form">
         <label><span>WorldTracer File Number</span><input name="worldTracerFileNumber" required autocomplete="off" /></label>
         <label><span>Original Tag Number</span><input name="originalTagNumber" required autocomplete="off" /></label>
@@ -238,14 +243,14 @@
         <p class="worldtracer-status status" id="worldtracer-status" aria-live="polite"></p>
         <div class="actions"><button type="submit"><span class="en">Create Case</span><span class="zh">创建案件</span></button></div>
       </form>
-      <div class="worldtracer-list"><h2><span class="en">All On-hard Cases</span><span class="zh">所有 On-hard 案件</span></h2><div id="worldtracer-output"><p class="muted">Loading cases...</p></div></div>
+      <div class="worldtracer-list"><h2><span class="en">All Rush Bag Cases</span><span class="zh">所有 Rush Bag 案件</span></h2><div id="worldtracer-output"><p class="muted">Loading cases...</p></div></div>
     </section>
     <section class="card" id="missing-report-card" hidden>
       <div class="actions"><div><h1>MISSING BAG REPORT</h1><p class="muted">MU rows imported from Early Bag Storage missed bag email.</p></div></div>
       <div id="missing-report-output"><p class="muted">Loading missing bags...</p></div>
     </section>
     <section class="card" id="unresolved-baggage-card" hidden>
-      <h1>Unresolved Baggage</h1>
+      <h1>On-hand</h1>
       <p class="muted">Passenger bags entered as inbound and not-loaded outbound bags remain here until an update resolves the case.</p>
       <div id="unresolved-baggage-output"><p class="muted">Loading cases...</p></div>
     </section>
@@ -341,8 +346,8 @@
     function normalizeBaggageTag(value) { return String(value || '').trim().toUpperCase().replace(/\s+/g, ''); }
     function addBaggageFormHtml(bagTag, direction) {
       const today = new Date().toISOString().slice(0, 10);
-      if (direction === 'outbound') return `<form class="add-baggage-form" data-add-baggage-direction="outbound"><label><span>Bag Tag Number</span><input name="bagTag" value="${escapeHtml(bagTag)}" readonly /></label><label><span>Outbound Flight Number</span><input name="flight" placeholder="MU586" required /></label><label><span>Date</span><input name="date" type="date" value="${today}" required /></label><label><span>Status</span><select name="status" data-add-outbound-status><option>Not load bags</option><option>Outbound rush</option><option>Gate bag</option></select></label><div class="unresolved-update-fields" data-add-outbound-rush hidden><label><span>RUSH Tag Number</span><input name="rushTagNumber" /></label><label><span>Rush To Where</span><input name="rushToWhere" /></label><label><span>AKE Number</span><input name="akeNumber" /></label><label><span>WorldTracer File Number</span><input name="worldTracerFileNumber" /></label></div><label class="wide"><span>Comment</span><input name="comment" /></label><div class="actions"><button type="submit">Submit</button><button class="secondary" type="button" data-cancel-add-baggage>Back</button></div></form>`;
-      return `<form class="add-baggage-form" data-add-baggage-direction="inbound"><label><span>Bag Tag Number</span><input name="bagTag" value="${escapeHtml(bagTag)}" readonly /></label><label><span>Inbound Flight Number</span><input name="flight" placeholder="MU583" required /></label><label><span>Date</span><input name="date" type="date" value="${today}" required /></label><label><span>Bag Type</span><select name="bagType"><option>Passenger bag</option><option>Inbound rush</option><option>Co-mail</option></select></label><label><span>Current Location</span><input name="location" value="Office" required /></label><div class="actions"><button type="submit">Submit</button><button class="secondary" type="button" data-cancel-add-baggage>Back</button></div></form>`;
+      if (direction === 'outbound') return `<form class="add-baggage-form" data-add-baggage-direction="outbound"><label><span>Bag Tag Number</span><input name="bagTag" value="${escapeHtml(bagTag)}" readonly /></label><label><span>Date</span><input name="date" type="date" value="${today}" required /></label><label><span>Status</span><select name="status" data-add-outbound-status><option>Not load bags</option><option>Outbound rush</option><option>Gate bag</option></select></label><label><span>Current Location</span><input name="location" required /></label><div class="unresolved-update-fields" data-add-outbound-rush hidden><label><span>RUSH Tag Number</span><input name="rushTagNumber" /></label><label><span>Rush To Where</span><input name="rushToWhere" /></label><label><span>AKE Number</span><input name="akeNumber" /></label><label><span>WorldTracer File Number</span><input name="worldTracerFileNumber" /></label></div><label class="wide"><span>Comment</span><input name="comment" /></label><div class="actions"><button type="submit">Submit</button><button class="secondary" type="button" data-cancel-add-baggage>Back</button></div></form>`;
+      return `<form class="add-baggage-form" data-add-baggage-direction="inbound"><label><span>Bag Tag Number</span><input name="bagTag" value="${escapeHtml(bagTag)}" readonly /></label><label><span>Date</span><input name="date" type="date" value="${today}" required /></label><label><span>Bag Type</span><select name="bagType"><option>Passenger bag</option><option>Inbound rush</option><option>Co-mail</option></select></label><label><span>Current Location</span><input name="location" value="Office" required /></label><div class="actions"><button type="submit">Submit</button><button class="secondary" type="button" data-cancel-add-baggage>Back</button></div></form>`;
     }
     function renderAddBaggageChoice(bagTag) {
       addBaggageOutput.innerHTML = `<div class="add-baggage-panel"><h2>${escapeHtml(bagTag)}</h2><p class="muted">No matching bag found. Choose the baggage direction.</p><div class="add-baggage-modes"><button type="button" data-add-baggage-mode="inbound">Inbound</button><button type="button" data-add-baggage-mode="outbound">Outbound</button></div></div>`;
@@ -351,7 +356,7 @@
       addBaggageOutput.innerHTML = `<div class="add-baggage-panel"><h2>${escapeHtml(record.bagTag)}</h2><p><strong>${escapeHtml(record.direction || '-')}</strong> · ${escapeHtml(record.flight || '-')} · ${escapeHtml(record.date || '-')}</p><p class="muted">${escapeHtml(record.bagType || record.status || '')}${record.location ? ` · ${escapeHtml(record.location)}` : ''}</p><button class="secondary" type="button" data-cancel-add-baggage>Search Another Bag</button></div>`;
     }
     function renderWorldTracerCases(rows = []) {
-      if (!rows.length) { worldTracerOutput.innerHTML = `<p class="muted">${label('No On-hard cases yet.', '暂无 On-hard 案件。')}</p>`; return; }
+      if (!rows.length) { worldTracerOutput.innerHTML = `<p class="muted">${label('No Rush Bag cases yet.', '暂无 Rush Bag 案件。')}</p>`; return; }
       worldTracerOutput.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:210px"><col style="width:170px"><col style="width:170px"><col><col style="width:170px"><col style="width:110px"></colgroup><thead><tr><th>WorldTracer File Number</th><th>Original Tag</th><th>RUSH Tag</th><th>RUSH Itinerary</th><th>${label('Created', '创建时间')}</th><th></th></tr></thead><tbody>${rows.map((row, caseIndex) => {
         const routes = (row.flightRows || []).map((flight) => `<span>${escapeHtml(flight.flightDate || '-')} &nbsp; ${escapeHtml(flight.flightNumber || '-')} &nbsp; ${escapeHtml(flight.from || '-')} – ${escapeHtml(flight.to || '-')}</span>`).join('');
         const created = row.createdAt ? new Date(row.createdAt).toLocaleString() : '-';
@@ -364,7 +369,7 @@
       try {
         const res = await fetch(`${apiBase}/cbs-worldtracer-cases`);
         const data = await parseJson(res);
-        if (!res.ok) throw new Error(data.error || 'On-hard case lookup failed');
+        if (!res.ok) throw new Error(data.error || 'Rush Bag case lookup failed');
         renderWorldTracerCases(data.rows || []);
       } catch (error) {
         worldTracerOutput.innerHTML = `<p class="status err">${escapeHtml(error.message)}</p>`;
@@ -376,25 +381,34 @@
       return `<label class="wide"><span>Resolution Note</span><textarea name="note" placeholder="${placeholder}" required></textarea></label>`;
     }
     function renderUnresolvedBaggage(rows = []) {
-      const uniqueRows = new Map();
+      const rowsByTag = new Map();
       rows.forEach((row) => {
         const tag = String(row.bagTag || '').trim().toUpperCase();
         if (!tag) return;
-        const current = uniqueRows.get(tag);
-        if (!current || (Date.parse(row.createdAt) || 0) > (Date.parse(current.createdAt) || 0)) uniqueRows.set(tag, row);
+        if (!rowsByTag.has(tag)) rowsByTag.set(tag, []);
+        rowsByTag.get(tag).push(row);
       });
-      rows = [...uniqueRows.values()];
+      rows = [...rowsByTag.values()].map((history) => {
+        history.sort((a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0));
+        return { ...history[0], history };
+      }).sort((a, b) => Number(Boolean(a.history.find((item) => !item.resolvedAt))) === Number(Boolean(b.history.find((item) => !item.resolvedAt))) ? 0 : (a.history.find((item) => !item.resolvedAt) ? -1 : 1));
       window._unresolvedBaggageRows = rows;
       window._unresolvedBaggageLoaded = true;
-      if (!rows.length) { unresolvedBaggageOutput.innerHTML = '<p class="muted">No unresolved baggage cases.</p>'; return; }
-      unresolvedBaggageOutput.innerHTML = `<div class="unresolved-list">${rows.map((row) => `<article class="unresolved-case"><div class="unresolved-summary"><div><small>Bag Tag</small><strong>${escapeHtml(row.bagTag)}</strong></div><div><small>Direction</small><strong>${escapeHtml(row.direction)}</strong></div><div><small>Flight / Date</small><strong>${escapeHtml(row.flightNumber)} · ${escapeHtml(row.flightDate)}</strong></div><div><small>Type / Status</small><strong>${escapeHtml(row.bagType || row.status || '-')}</strong></div><div><small>Location</small><strong>${escapeHtml(row.location || '-')}</strong></div><button type="button" data-toggle-unresolved-update>Update</button></div><form class="unresolved-update" data-unresolved-row="${escapeHtml(row.rowNumber)}" data-bag-tag="${escapeHtml(row.bagTag)}" hidden><label class="wide"><span>Resolution</span><select name="action" data-unresolved-action><option value="on-hand-rush">Create On-hard</option><option value="passenger-collected">Passenger collected / Case closed</option><option value="shipped">Shipped</option><option value="other">Other resolution</option></select></label><div class="unresolved-update-fields">${unresolvedUpdateFieldsHtml('on-hand-rush', row.bagTag)}</div><div class="actions"><button type="submit">Resolve Case</button></div></form></article>`).join('')}</div>`;
+      if (!rows.length) { unresolvedBaggageOutput.innerHTML = '<p class="muted">No On-hand baggage cases.</p>'; return; }
+      unresolvedBaggageOutput.innerHTML = `<div class="unresolved-list">${rows.map((row) => {
+        const resolvedHistory = row.history.filter((item) => item.resolvedAt);
+        const active = row.history.find((item) => !item.resolvedAt);
+        const historyHtml = resolvedHistory.length ? `<section class="unresolved-history"><h3>History</h3>${resolvedHistory.map((item) => `<p><strong>${escapeHtml(item.resolution || 'Completed')}</strong> · ${escapeHtml(item.resolvedAt ? new Date(item.resolvedAt).toLocaleString() : '')}${item.resolutionNote ? `<br>${escapeHtml(item.resolutionNote)}` : ''}</p>`).join('')}</section>` : '';
+        const formHtml = active ? `<form class="unresolved-update" data-unresolved-row="${escapeHtml(active.rowNumber)}" data-bag-tag="${escapeHtml(active.bagTag)}"><label class="wide"><span>Resolution</span><select name="action" data-unresolved-action><option value="on-hand-rush">Create Rush</option><option value="passenger-collected">Passenger collected / Case closed</option><option value="shipped">Shipped</option><option value="other">Other resolution</option></select></label><div class="unresolved-update-fields">${unresolvedUpdateFieldsHtml('on-hand-rush', active.bagTag)}</div><div class="actions"><button type="submit">Resolve Case</button></div></form>` : '';
+        return `<article class="unresolved-case"><div class="unresolved-summary" data-toggle-unresolved-update role="button" tabindex="0" aria-expanded="false"><div><small>Bag Tag</small><strong>${escapeHtml(row.bagTag)}</strong></div><div><small>Direction</small><strong>${escapeHtml(row.direction)}</strong></div><div><small>Date</small><strong>${escapeHtml(row.flightDate || '-')}</strong></div><div><small>Type / Status</small><strong>${escapeHtml(row.bagType || row.status || '-')}</strong></div><div><small>Location</small><strong>${escapeHtml(row.location || '-')}</strong></div></div><div data-unresolved-detail hidden>${formHtml}${historyHtml}</div></article>`;
+      }).join('')}</div>`;
     }
     async function loadUnresolvedBaggage() {
       unresolvedBaggageOutput.innerHTML = '<p class="muted">Loading cases...</p>';
       try {
         const res = await fetch(`${apiBase}/cbs-unresolved-baggage`);
         const data = await parseJson(res);
-        if (!res.ok) throw new Error(data.error || 'Unresolved baggage lookup failed');
+        if (!res.ok) throw new Error(data.error || 'On-hand baggage lookup failed');
         renderUnresolvedBaggage(data.rows || []);
       } catch (error) {
         unresolvedBaggageOutput.innerHTML = `<p class="status err">${escapeHtml(error.message)}</p>`;
@@ -433,8 +447,15 @@
       const events = [];
       if (row?.caseNumber) {
         const hiddenCreateLabels = new Set([label('Status', '状态'), label('Updated At', '更新时间')]);
-        const createFields = detailRows(row)
-          .filter(([key, value]) => hasValue(value) && !hiddenCreateLabels.has(key));
+        const alwaysVisibleCreateLabels = new Set([
+          label('Passenger Name', '旅客姓名'), label('Email', '邮箱'), label('Phone Number', '电话号码'),
+          label('Ticket Number', '机票号码'), label('Flights', '航班'), label('Bag Tag', '行李牌'), label('Address', '地址')
+        ]);
+        // The Create card is the permanent snapshot of what the passenger filed.
+        // Do not reduce it to case metadata: agents should not have to look in a
+        // separate panel for the passenger's contact, itinerary, bag, or address.
+        const createFields = passengerFiledDetailRows(row)
+          .filter(([key, value]) => !hiddenCreateLabels.has(key) && (hasValue(value) || alwaysVisibleCreateLabels.has(key)));
         events.push({ key:'create', title:'Create Case', at:row.submittedAt || row.issueDate || '', fields:createFields });
       }
       const storedEvents = parseStoredUpdateEvents(row);
@@ -544,6 +565,25 @@
         [label('Updated At', '更新时间'), row.updatedAt]
       ];
     }
+    function passengerFiledDetailRows(row) {
+      const flights = Array.isArray(row?.flightRows) && row.flightRows.length
+        ? row.flightRows.map((flight) => [flight.flightNo || flight.flightNumber, flight.flightDate, flight.origin || flight.from, flight.destination || flight.to].filter(hasValue).join(' ')).filter(Boolean).join(' / ')
+        : row?.flightRoute;
+      return [
+        [label('Passenger Name', '旅客姓名'), row?.passengerName],
+        [label('Email', '邮箱'), row?.email],
+        [label('Phone Number', '电话号码'), row?.phoneNumber || row?.phone],
+        [label('Ticket Number', '机票号码'), row?.ticketNumber],
+        [label('Flights', '航班'), flights],
+        [label('Bag Tag', '行李牌'), row?.bagTag],
+        [label('Address', '地址'), row?.permanentAddress || row?.address || row?.temporaryAddress],
+        ...detailRows(row).filter(([key]) => !new Set([
+          label('Passenger Name', '旅客姓名'), label('Email', '邮箱'), label('Phone', '电话'),
+          label('Ticket Number', '机票号码'), label('Flight Route', '行李航程'), label('Bag Tag', '行李牌'),
+          label('Permanent Address', '住址'), label('Temporary Address', '临时地址')
+        ]).has(key))
+      ];
+    }
     function originalFormDetailRows(row) {
       const caseType = inferCaseType(row);
       return [
@@ -624,6 +664,15 @@
     }
     function displayBagTag(row) {
       return row?.bagTag || String(row?.updateNote || '').match(/\bBag tag:\s*([^|]+)/i)?.[1]?.trim() || '';
+    }
+    function displayWorldTracerFile(row) {
+      if (hasValue(row?.worldTracerFileNumber)) return row.worldTracerFileNumber;
+      const events = parseUpdateNoteEvents(row).slice().reverse();
+      for (const event of events) {
+        const field = (event.fields || []).find(([key, value]) => hasValue(value) && (/world\s*tracer/i.test(key) || (event.key === 'worldtracer' && /file\s*number/i.test(key))));
+        if (field) return field[1];
+      }
+      return '';
     }
     function revealCase(caseNumber) {
       const normalized = String(caseNumber || '').trim();
@@ -724,7 +773,7 @@
       const baggageHtml = baggageSearchHtml();
       if (!rows.length) { casesOutput.innerHTML = `<p class="muted">No matching cases.</p>${baggageHtml}`; return; }
       const expandedCases = window._expandedCbsCases || new Set();
-      casesOutput.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:220px"><col style="width:150px"><col></colgroup><thead><tr><th>${label('Case Number', '编号')}</th><th>${label('Case Type', '类型')}</th><th>${label('Bag Tag', '行李牌')}</th></tr></thead><tbody>${rows.map((row, index) => {
+      casesOutput.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:220px"><col style="width:220px"><col style="width:150px"><col></colgroup><thead><tr><th>${label('Local Case Number', '本地案件编号')}</th><th>WorldTracer File</th><th>${label('Case Type', '类型')}</th><th>${label('Bag Tag', '行李牌')}</th></tr></thead><tbody>${rows.map((row, index) => {
         const detailKey = row.caseNumber || `row-${row.rowNumber || index}`;
         const caseNumberLabel = row.caseNumber || label('Missing case number', '缺少编号');
         const caseType = inferCaseType(row);
@@ -732,7 +781,7 @@
         const details = (isOriginalFormCase(row) ? originalFormDetailRows(row) : detailRows(row)).filter(([, value]) => hasValue(value));
         const detailHtml = details.length ? `<div class="sheet-detail-grid">${details.map(([key, value]) => `<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(renderValue(value))}</p>`).join('')}</div>` : `<p class="muted">${label('No extra details.', '没有更多详情。')}</p>`;
         const isExpanded = expandedCases.has(detailKey);
-        return `<tr class="case-summary-row${closedClass}" data-toggle-case="${escapeHtml(detailKey)}" aria-expanded="${isExpanded ? 'true' : 'false'}"><td class="case-key">${escapeHtml(caseNumberLabel)}</td><td class="sheet-meta">${escapeHtml(caseType || '-')}</td><td class="sheet-meta"><span class="bag-tag-value">${escapeHtml(displayBagTag(row) || '-')}</span></td></tr><tr class="case-detail-row${closedClass}" data-detail-case="${escapeHtml(detailKey)}" ${isExpanded ? '' : 'hidden'}><td colspan="3"><div class="case-detail-layout">${trackingControlHtml(row)}${detailHtml}</div></td></tr>`;
+        return `<tr class="case-summary-row${closedClass}" data-toggle-case="${escapeHtml(detailKey)}" aria-expanded="${isExpanded ? 'true' : 'false'}"><td class="case-key">${escapeHtml(caseNumberLabel)}</td><td class="sheet-meta">${escapeHtml(displayWorldTracerFile(row) || '-')}</td><td class="sheet-meta">${escapeHtml(caseType || '-')}</td><td class="sheet-meta"><span class="bag-tag-value">${escapeHtml(displayBagTag(row) || '-')}</span></td></tr><tr class="case-detail-row${closedClass}" data-detail-case="${escapeHtml(detailKey)}" ${isExpanded ? '' : 'hidden'}><td colspan="4"><div class="case-detail-layout">${trackingControlHtml(row)}${detailHtml}</div></td></tr>`;
       }).join('')}</tbody></table></div>${baggageHtml}`;
     }
     async function loadCases() {
@@ -780,11 +829,11 @@
         const todayLabel = key === todayKey ? '<span>Today</span>' : '';
         return `<section class="missing-date-group"><h2 class="missing-date-heading">${todayLabel}${escapeHtml(dateLabel)}</h2><div class="sheet-shell"><table class="missing-report-table"><thead><tr><th>Bag Tag</th><th>Passenger</th><th>Destination</th><th>Airline</th><th>Source</th><th>Case</th><th>Status</th><th></th></tr></thead><tbody>${group.rows.map((row) => {
           const linkedCaseNumber = row.linkedCaseNumber || row.caseNumber || '';
-          const status = row.acknowledgedAt ? 'Acknowledged' : (linkedCaseNumber ? (row.linkedCaseUpdated ? 'Updated' : 'On-hard Created') : 'Open');
+          const status = row.acknowledgedAt ? 'Acknowledged' : (linkedCaseNumber ? (row.linkedCaseUpdated ? 'Updated' : 'Rush Created') : 'Open');
           const caseHtml = linkedCaseNumber
             ? (/^LAX\s+MU/i.test(linkedCaseNumber) ? `<button class="case-link-button" type="button" data-link-case="${escapeHtml(linkedCaseNumber)}">${escapeHtml(linkedCaseNumber)}</button>` : `<span class="pill">${escapeHtml(linkedCaseNumber)}</span>`)
             : '-';
-          const actionHtml = row.acknowledgedAt || linkedCaseNumber ? '' : `<div class="missing-actions"><button type="button" data-create-missing-rush="${escapeHtml(row.rowNumber)}" data-missing-bag-tag="${escapeHtml(row.bagTag)}">Create On-hard</button><button class="secondary" type="button" data-ack-missing="${escapeHtml(row.rowNumber)}">Acknowledge</button></div>`;
+          const actionHtml = row.acknowledgedAt || linkedCaseNumber ? '' : `<div class="missing-actions"><button type="button" data-create-missing-rush="${escapeHtml(row.rowNumber)}" data-missing-bag-tag="${escapeHtml(row.bagTag)}">Create Rush</button><button class="secondary" type="button" data-ack-missing="${escapeHtml(row.rowNumber)}">Acknowledge</button></div>`;
           return `<tr><td>${escapeHtml(row.bagTag)}</td><td>${escapeHtml(row.passengerName)}</td><td>${escapeHtml(row.destination)}</td><td>${escapeHtml(row.airline)}</td><td>${escapeHtml(row.sourceAttachment || '-')}</td><td>${caseHtml}</td><td>${escapeHtml(status)}</td><td>${actionHtml}</td></tr>`;
         }).join('')}</tbody></table></div></section>`;
       }).join('')}</div>`;
@@ -925,7 +974,7 @@
       try {
         const res = await fetch(`${apiBase}/cbs-worldtracer-cases`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
         const data = await parseJson(res);
-        if (!res.ok) throw new Error(data.error || 'On-hard case save failed');
+        if (!res.ok) throw new Error(data.error || 'Rush Bag case save failed');
         if (worldTracerForm.dataset.missingRow) {
           const linkRes = await fetch(`${apiBase}/cbs-missing-bags/${encodeURIComponent(worldTracerForm.dataset.missingRow)}/link-on-hand-rush`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ worldTracerFileNumber:payload.worldTracerFileNumber }) });
           const linkData = await parseJson(linkRes);
@@ -936,7 +985,7 @@
         worldTracerForm.reset();
         rushFlightRows.innerHTML = '';
         addRushFlightRow();
-        worldTracerStatus.textContent = label('On-hard case created and saved.', 'On-hard 案件已创建并保存。');
+        worldTracerStatus.textContent = label('Rush Bag case created and saved.', 'Rush Bag 案件已创建并保存。');
         await loadWorldTracerCases();
       } catch (error) {
         worldTracerStatus.classList.add('err');
@@ -973,15 +1022,21 @@
       try {
         const res = await fetch(`${apiBase}/cbs-worldtracer-cases/update`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
         const data = await parseJson(res);
-        if (!res.ok) throw new Error(data.error || 'On-hard update failed');
+        if (!res.ok) throw new Error(data.error || 'Rush Bag update failed');
         await loadWorldTracerCases();
       } catch (error) { alert(error.message); } finally { button.disabled = false; }
     });
     unresolvedBaggageOutput?.addEventListener('click', (event) => {
       const toggle = event.target.closest('[data-toggle-unresolved-update]');
       if (!toggle) return;
-      const form = toggle.closest('.unresolved-case').querySelector('.unresolved-update');
-      form.hidden = !form.hidden;
+      const detail = toggle.closest('.unresolved-case').querySelector('[data-unresolved-detail]');
+      detail.hidden = !detail.hidden;
+      toggle.setAttribute('aria-expanded', detail.hidden ? 'false' : 'true');
+    });
+    unresolvedBaggageOutput?.addEventListener('keydown', (event) => {
+      if (!event.target.matches('[data-toggle-unresolved-update]') || !['Enter', ' '].includes(event.key)) return;
+      event.preventDefault();
+      event.target.click();
     });
     unresolvedBaggageOutput?.addEventListener('change', (event) => {
       const select = event.target.closest('[data-unresolved-action]');
@@ -1000,7 +1055,7 @@
       try {
         const res = await fetch(`${apiBase}/cbs-unresolved-baggage/${encodeURIComponent(form.dataset.unresolvedRow)}/update`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
         const data = await parseJson(res);
-        if (!res.ok) throw new Error(data.error || 'Unresolved baggage update failed');
+        if (!res.ok) throw new Error(data.error || 'On-hand baggage update failed');
         await loadUnresolvedBaggage();
       } catch (error) {
         alert(error.message);
@@ -1040,6 +1095,7 @@
       event.preventDefault();
       const payload = Object.fromEntries(new FormData(form).entries());
       payload.direction = form.dataset.addBaggageDirection;
+      payload.flight = payload.direction === 'outbound' ? 'MU586' : 'MU583';
       const button = form.querySelector('button[type="submit"]');
       button.disabled = true;
       try {

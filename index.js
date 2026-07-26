@@ -2075,10 +2075,10 @@ app.post('/cbs-worldtracer-cases/update', async (req, res) => {
 
 app.get('/cbs-unresolved-baggage', async (req, res) => {
   try {
-    return res.json({ rows: await getCbsUnresolvedBaggageCases() });
+    return res.json({ rows: await getCbsUnresolvedBaggageCases({ includeResolved: true }) });
   } catch (err) {
-    console.error('CBS unresolved baggage list error:', err);
-    return res.status(500).json({ error: err?.message || 'Unresolved baggage lookup failed' });
+    console.error('CBS On-hand baggage list error:', err);
+    return res.status(500).json({ error: err?.message || 'On-hand baggage lookup failed' });
   }
 });
 
