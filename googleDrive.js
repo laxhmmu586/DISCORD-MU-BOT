@@ -3152,8 +3152,8 @@ async function appendCbsCase(record) {
 
 async function appendContactFormSubmission(record = {}) {
   const title = await resolveSheetTitleByGid(CONTACT_FORM_SHEET_ID, CONTACT_FORM_SHEET_GID) || 'Sheet1';
-  const headers = ['Submitted At', 'Date', 'Name', 'Seat Number', 'Ticket Number', 'Phone Number', 'Attachments'];
-  const headerRange = `${escapeSheetTitle(title)}!A1:G1`;
+  const headers = ['Submitted At', 'Date', 'Name', 'Seat Number', 'Ticket Number', 'Phone Number', 'Attachments', 'Language'];
+  const headerRange = `${escapeSheetTitle(title)}!A1:H1`;
   const existing = await sheets.spreadsheets.values.get({ spreadsheetId: CONTACT_FORM_SHEET_ID, range: headerRange });
   const currentHeaders = existing.data.values?.[0] || [];
   if (headers.some((header, index) => currentHeaders[index] !== header)) {
@@ -3166,10 +3166,10 @@ async function appendContactFormSubmission(record = {}) {
   }
   await sheets.spreadsheets.values.append({
     spreadsheetId: CONTACT_FORM_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A:G`,
+    range: `${escapeSheetTitle(title)}!A:H`,
     valueInputOption: 'RAW',
     insertDataOption: 'INSERT_ROWS',
-    requestBody: { values: [[record.submittedAt, record.date, record.name, record.seatNumber, record.ticketNumber, record.phone, record.attachmentNames || '']] }
+    requestBody: { values: [[record.submittedAt, record.date, record.name, record.seatNumber, record.ticketNumber, record.phone, record.attachmentNames || '', record.language || '']] }
   });
   return record;
 }
@@ -3178,7 +3178,7 @@ async function getContactFormSubmissions() {
   const title = await resolveSheetTitleByGid(CONTACT_FORM_SHEET_ID, CONTACT_FORM_SHEET_GID) || 'Sheet1';
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: CONTACT_FORM_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A:G`
+    range: `${escapeSheetTitle(title)}!A:H`
   });
   const rows = response.data.values || [];
   return rows.slice(1).map((values) => ({
@@ -3188,7 +3188,8 @@ async function getContactFormSubmissions() {
     seatNumber: values[3] || '',
     ticketNumber: values[4] || '',
     phone: values[5] || '',
-    attachments: values[6] || ''
+    attachments: values[6] || '',
+    language: values[7] || ''
   })).filter((row) => row.submittedAt || row.date || row.name).reverse();
 }
 

@@ -4387,7 +4387,7 @@
           <div class="report-hero">
             <div>
               <h2>Report Center</h2>
-              <p class="panel-muted">Choose a report below to view saved rows, search by flight date, or download the current results. Miss Connection displays passenger contact form submissions.</p>
+              <p class="panel-muted">Choose a report below to view saved rows, search by flight date, or download the current results. Misconnection displays passenger assistance submissions.</p>
             </div>
             <button class="report-close" id="report-close" type="button">Close</button>
           </div>
@@ -4398,7 +4398,7 @@
             <button class="detail-action" id="report-psm-mode" type="button" data-report-mode="psm">PSM Report</button>
             <button class="detail-action" id="report-inad-mode" type="button" data-report-mode="inad">INAD Report</button>
             <button class="detail-action" id="report-wch-mode" type="button" data-report-mode="wch">WCH Report</button>
-            <button class="detail-action" id="report-miss-connection-mode" type="button" data-report-mode="missConnection">Miss Connection</button>
+            <button class="detail-action" id="report-miss-connection-mode" type="button" data-report-mode="missConnection">Misconnection</button>
             <button class="detail-action" id="report-baggage-mode" type="button" data-report-mode="baggage">Baggage Report</button>
           </div>
           <form class="report-form" id="report-form">
@@ -6699,7 +6699,7 @@
             : (activeReportMode === "inad"
               ? `<p class="panel-muted">Loading INAD Report...</p>`
               : (activeReportMode === "missConnection"
-                ? `<p class="panel-muted">Loading Miss Connection Report...</p>`
+                ? `<p class="panel-muted">Loading Misconnection Report...</p>`
               : (activeReportMode === "baggage"
                 ? `<p class="panel-muted">Select a submit-date range, optionally enter a bag tag, then click Search.</p>`
                 : (["psm", "wch"].includes(activeReportMode)
@@ -7453,7 +7453,7 @@
             ? `<p class="panel-muted">Loading PSM Report for ${escapeHtml(from)}${from === to ? "" : ` to ${escapeHtml(to)}`}...</p>`
             : (type === "wch"
               ? `<p class="panel-muted">Loading WCH Report for ${escapeHtml(from)}${from === to ? "" : ` to ${escapeHtml(to)}`}...</p>`
-              : (type === "inad" ? `<p class="panel-muted">Loading INAD Report...</p>` : (type === "missConnection" ? `<p class="panel-muted">Loading Miss Connection Report...</p>` : `<p class="panel-muted">Loading VIP Report...</p>`)))));
+              : (type === "inad" ? `<p class="panel-muted">Loading INAD Report...</p>` : (type === "missConnection" ? `<p class="panel-muted">Loading Misconnection Report...</p>` : `<p class="panel-muted">Loading VIP Report...</p>`)))));
         setReportCsv([], "report.csv");
         const rows = [];
         const errors = [];
@@ -7567,7 +7567,7 @@
             { label: "Ticket Number", value: (row) => row.ticketNumber },
             { label: "Phone Number", value: (row) => row.phone },
             { label: "Attachments", value: (row) => row.attachments },
-          ], "No miss connection submissions found.");
+          ], "No misconnection submissions found.");
         }
         const errorHtml = errors.length ? `<p class="panel-muted status-warn">${escapeHtml(errors.join(" | "))}</p>` : "";
         reportOutput.innerHTML = `${errorHtml}${tableHtml}`;

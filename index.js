@@ -1728,17 +1728,11 @@ async function sendContactFormToDiscord(record, attachments) {
   const channel = await client.channels.fetch(CONTACT_FORM_DISCORD_CHANNEL_ID);
   if (!channel?.isTextBased()) throw new Error('Contact form Discord channel was not found or is not text based.');
   const files = buildCbsDiscordAttachmentFiles(attachments);
+  const content = record.language === 'en'
+    ? ['**Misconnection Passenger Assistance**', `Date: ${record.date}`, `Name: ${record.name}`, `Seat number: ${record.seatNumber}`, `Ticket number: ${record.ticketNumber}`, `Phone number: ${record.phone}`, `Attachments: ${record.attachmentNames || 'None'}`]
+    : ['**未能衔接后续航班旅客协助**', `日期：${record.date}`, `姓名：${record.name}`, `座位号：${record.seatNumber}`, `票号：${record.ticketNumber}`, `电话号码：${record.phone}`, `附件：${record.attachmentNames || '无'}`];
   await channel.send({
-    content: [
-      '**New passenger contact form / 新旅客联系表**',
-      `Date / 日期: ${record.date}`,
-      `Name / 姓名: ${record.name}`,
-      `Seat / 座位号: ${record.seatNumber}`,
-      `Ticket / 票号: ${record.ticketNumber}`,
-      `Phone / 电话号码: ${record.phone}`,
-      `Submitted / 提交时间: ${record.submittedAt}`,
-      `Attachments / 附件: ${record.attachmentNames || 'None / 无'}`
-    ].join('\n'),
+    content: content.join('\n'),
     files,
     allowedMentions: { parse: [] }
   });
@@ -1753,6 +1747,7 @@ app.post('/contact-form-submissions', async (req, res) => {
     const seatNumber = sanitizeCbsText(body.seatNumber, 20).toUpperCase();
     const ticketNumber = sanitizeCbsText(body.ticketNumber, 40);
     const phone = sanitizeCbsText(body.phone, 80);
+    const language = sanitizeCbsText(body.language, 5) === 'en' ? 'en' : 'zh';
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'A valid date is required.' });
     if (!name || !seatNumber || !ticketNumber || !phone) return res.status(400).json({ error: 'Name, seat number, ticket number, and phone number are required.' });
     const attachments = sanitizeContactAttachments(body.attachments);
@@ -1760,7 +1755,7 @@ app.post('/contact-form-submissions', async (req, res) => {
       return res.status(400).json({ error: 'Use no more than 10 attachments, no more than 22 MB total, and no file larger than 8 MB.' });
     }
     const record = {
-      submittedAt: new Date().toISOString(), date, name, seatNumber, ticketNumber, phone,
+      submittedAt: new Date().toISOString(), date, name, seatNumber, ticketNumber, phone, language,
       attachmentNames: attachments.map((attachment) => attachment.filename).join(', ')
     };
     await appendContactFormSubmission(record);
