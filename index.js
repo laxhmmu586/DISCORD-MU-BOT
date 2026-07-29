@@ -60,6 +60,7 @@ const {
   updateSyBookingCounts,
   appendCbsCase,
   appendContactFormSubmission,
+  getContactFormSubmissions,
   appendCbsWorldTracerCase,
   getCbsWorldTracerCases,
   updateCbsWorldTracerCase,
@@ -914,6 +915,7 @@ const app =
 
 const allowedOrigins = [
   "https://china-eastern.web.app",
+  "https://china-eastern.firebaseapp.com",
   "https://www.mufcapp.net",
   "https://mufcapp.net"
 ];
@@ -1767,6 +1769,16 @@ app.post('/contact-form-submissions', async (req, res) => {
   } catch (err) {
     console.error('Contact form submission error:', err);
     return res.status(500).json({ error: 'The form could not be submitted. Please try again or contact a staff member.' });
+  }
+});
+
+app.get('/miss-connection-report', async (req, res) => {
+  try {
+    const rows = await getContactFormSubmissions();
+    return res.json({ rows, source: 'sheet' });
+  } catch (err) {
+    console.error('Miss connection report error:', err);
+    return res.status(500).json({ error: err?.message || 'Miss connection report lookup failed.' });
   }
 });
 
