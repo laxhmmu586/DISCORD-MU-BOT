@@ -68,6 +68,8 @@ const ENABLE_240_SHEET =
 
 const CBS_SHEET_ID = process.env.CBS_SHEET_ID || '10oEQypkoaNvosREqT-mNw8zsyrQxln2EwsBUuS9OtsU';
 const CBS_SHEET_GID = Number(process.env.CBS_SHEET_GID || 0);
+const CONTACT_FORM_SHEET_ID = process.env.CONTACT_FORM_SHEET_ID || '1uALQ2K3JcDvQZU9gsQjdADs5a3RXLOb44MDbeEE9rh4';
+const CONTACT_FORM_SHEET_GID = Number(process.env.CONTACT_FORM_SHEET_GID || 0);
 const CBS_WORLDTRACER_SHEET_GID = Number(process.env.CBS_WORLDTRACER_SHEET_GID || 944289437);
 const CBS_UNRESOLVED_BAGGAGE_SHEET_GID = Number(process.env.CBS_UNRESOLVED_BAGGAGE_SHEET_GID || 1279643787);
 const CBS_NOTIFICATION_EMAILS = (process.env.CBS_NOTIFICATION_EMAILS || 'laxhmmu@gmail.com')
@@ -3148,6 +3150,30 @@ async function appendCbsCase(record) {
   return record;
 }
 
+async function appendContactFormSubmission(record = {}) {
+  const title = await resolveSheetTitleByGid(CONTACT_FORM_SHEET_ID, CONTACT_FORM_SHEET_GID) || 'Sheet1';
+  const headers = ['Submitted At', 'Date', 'Name', 'Seat Number', 'Ticket Number', 'Phone Number', 'Attachments'];
+  const headerRange = `${escapeSheetTitle(title)}!A1:G1`;
+  const existing = await sheets.spreadsheets.values.get({ spreadsheetId: CONTACT_FORM_SHEET_ID, range: headerRange });
+  const currentHeaders = existing.data.values?.[0] || [];
+  if (headers.some((header, index) => currentHeaders[index] !== header)) {
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: CONTACT_FORM_SHEET_ID,
+      range: headerRange,
+      valueInputOption: 'RAW',
+      requestBody: { values: [headers] }
+    });
+  }
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: CONTACT_FORM_SHEET_ID,
+    range: `${escapeSheetTitle(title)}!A:G`,
+    valueInputOption: 'RAW',
+    insertDataOption: 'INSERT_ROWS',
+    requestBody: { values: [[record.submittedAt, record.date, record.name, record.seatNumber, record.ticketNumber, record.phone, record.attachmentNames || '']] }
+  });
+  return record;
+}
+
 async function appendCbsWorldTracerCase(record = {}) {
   if (!cbsWorldTracerSheetTitle) cbsWorldTracerSheetTitle = await resolveSheetTitleByGid(CBS_SHEET_ID, CBS_WORLDTRACER_SHEET_GID);
   const title = cbsWorldTracerSheetTitle || 'Sheet1';
@@ -3811,6 +3837,7 @@ module.exports = {
   updateSyBookingCounts,
   normalizeSyBookingCounts,
   appendCbsCase,
+  appendContactFormSubmission,
   appendCbsWorldTracerCase,
   getCbsWorldTracerCases,
   updateCbsWorldTracerCase,
