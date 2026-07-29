@@ -7483,7 +7483,8 @@
           }
         } else if (type === "missConnection") {
           try {
-            rows.push(...await missConnectionReportRows());
+            const submissions = await missConnectionReportRows();
+            rows.push(...submissions.map((row) => ({ date: row.date, name: row.name, seatNumber: row.seatNumber, ticketNumber: row.ticketNumber, phone: row.phone })));
           } catch (error) {
             errors.push(error.message);
           }
@@ -7560,13 +7561,11 @@
           ], "No WCH rows found.");
         } else if (type === "missConnection") {
           tableHtml = rowsTable(rows, [
-            { label: "Submitted At", value: (row) => row.submittedAt },
             { label: "Date", value: (row) => row.date },
             { label: "Passenger Name", value: (row) => row.name },
             { label: "Seat", value: (row) => row.seatNumber },
             { label: "Ticket Number", value: (row) => row.ticketNumber },
             { label: "Phone Number", value: (row) => row.phone },
-            { label: "Attachments", value: (row) => row.attachments },
           ], "No misconnection submissions found.");
         }
         const errorHtml = errors.length ? `<p class="panel-muted status-warn">${escapeHtml(errors.join(" | "))}</p>` : "";

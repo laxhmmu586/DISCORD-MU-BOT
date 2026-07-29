@@ -19,11 +19,12 @@
     .intro { padding:32px clamp(22px,5vw,44px) 24px; border-bottom:1px solid var(--line); }
     h1 { margin:0 0 9px; color:var(--navy); font-size:clamp(27px,5vw,39px); line-height:1.15; } .intro p { margin:0; color:var(--muted); line-height:1.65; }
     form { display:grid; gap:21px; padding:28px clamp(22px,5vw,44px) 38px; }
-    .grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
-    label { display:grid; gap:8px; font-size:14px; font-weight:750; }
+    .grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:18px; min-width:0; }
+    label { display:grid; gap:8px; min-width:0; font-size:14px; font-weight:750; }
     label span small { display:block; margin-top:2px; color:var(--muted); font-size:12px; font-weight:500; }
     .required { color:var(--red); }
     input { width:100%; min-height:48px; padding:12px 14px; color:var(--ink); font:inherit; border:1px solid var(--line); border-radius:12px; outline:none; background:#fbfdff; transition:.2s; }
+    input[type="date"] { display:block; min-width:0; max-width:100%; }
     input:focus { border-color:var(--blue); box-shadow:0 0 0 4px #1768b519; background:#fff; }
     .upload { display:grid; gap:16px; padding:20px; border:1px dashed #b8cbe0; border-radius:20px; background:#f9fcff; }
     .upload h2 { margin:0; color:var(--ink); font-size:18px; }
@@ -56,7 +57,7 @@
       <div class="intro"><h1><span class="zh">未能衔接后续航班旅客协助</span><span class="en">Misconnection Passenger Assistance</span></h1><p class="zh">请填写以下必填信息。</p><p class="en">Please complete all required fields below.</p></div>
       <form id="contact-form">
         <div class="grid">
-          <label><span><span class="zh">日期</span><span class="en">Date</span> <span class="required">*</span></span><input id="date" name="date" type="date" required></label>
+          <label><span><span class="zh">日期</span><span class="en">Date</span> <span class="required">*</span></span><input id="date" name="date" type="date" lang="zh-CN" required></label>
           <label><span><span class="zh">姓名</span><span class="en">Name</span> <span class="required">*</span></span><input name="name" autocomplete="name" maxlength="160" required></label>
           <label><span><span class="zh">座位号</span><span class="en">Seat number</span> <span class="required">*</span></span><input name="seatNumber" maxlength="20" placeholder="32A" required></label>
           <label><span><span class="zh">票号</span><span class="en">Ticket number</span> <span class="required">*</span></span><input name="ticketNumber" inputmode="numeric" maxlength="40" required></label>
@@ -86,7 +87,7 @@
     const selectedFiles = new Map(fileInputs.map((input) => [input, []]));
     function localToday() { const now = new Date(); return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`; }
     dateInput.value = localToday();
-    function setLanguage(language) { document.documentElement.lang = language; languageToggle.textContent = language === 'zh-CN' ? 'English' : '中文'; }
+    function setLanguage(language) { document.documentElement.lang = language; dateInput.lang = language; languageToggle.textContent = language === 'zh-CN' ? 'English' : '中文'; }
     languageToggle.addEventListener('click', () => setLanguage(document.documentElement.lang === 'zh-CN' ? 'en' : 'zh-CN'));
     function fileToAttachment(file) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve({ filename:file.name, mimeType:file.type || 'application/octet-stream', contentBase64:String(reader.result || '').split(',')[1] || '' }); reader.onerror = reject; reader.readAsDataURL(file); }); }
     function renderAttachments(input) {
