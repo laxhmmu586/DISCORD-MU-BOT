@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Passenger Contact Form | 旅客联系表</title>
+  <style>
+    :root { color-scheme:light; --navy:#092d57; --blue:#1768b5; --red:#dc2538; --ink:#142033; --muted:#637083; --line:#dbe4ee; --bg:#eef5fb; --white:#fff; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; color:var(--ink); font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC",sans-serif; background:radial-gradient(circle at 15% 0,#d9ebfb 0,transparent 33%),linear-gradient(145deg,#f6f9fc,#eaf2f9); }
+    .topbar { height:7px; background:linear-gradient(90deg,var(--navy) 0 67%,var(--red) 67%); }
+    header { display:flex; align-items:center; gap:14px; width:min(760px,calc(100% - 32px)); margin:28px auto 18px; }
+    .mark { display:grid; place-items:center; width:50px; height:50px; border-radius:16px; color:#fff; font-size:19px; font-weight:900; letter-spacing:.06em; background:var(--navy); box-shadow:0 12px 24px #092d5730; }
+    header strong { display:block; color:var(--navy); font-size:17px; } header span { color:var(--muted); font-size:13px; }
+    main { width:min(760px,calc(100% - 32px)); margin:0 auto 56px; }
+    .card { overflow:hidden; border:1px solid #fff; border-radius:26px; background:rgba(255,255,255,.96); box-shadow:0 24px 65px #173b5d1c; }
+    .intro { padding:32px clamp(22px,5vw,44px) 24px; border-bottom:1px solid var(--line); }
+    h1 { margin:0 0 9px; color:var(--navy); font-size:clamp(27px,5vw,39px); line-height:1.15; } .intro p { margin:0; color:var(--muted); line-height:1.65; }
+    form { display:grid; gap:21px; padding:28px clamp(22px,5vw,44px) 38px; }
+    .grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+    label { display:grid; gap:8px; font-size:14px; font-weight:750; }
+    label span small { display:block; margin-top:2px; color:var(--muted); font-size:12px; font-weight:500; }
+    .required { color:var(--red); }
+    input { width:100%; min-height:48px; padding:12px 14px; color:var(--ink); font:inherit; border:1px solid var(--line); border-radius:12px; outline:none; background:#fbfdff; transition:.2s; }
+    input:focus { border-color:var(--blue); box-shadow:0 0 0 4px #1768b519; background:#fff; }
+    .upload { display:grid; gap:16px; padding:20px; border:1px dashed #b8cbe0; border-radius:20px; background:#f9fcff; }
+    .upload h2 { margin:0; color:var(--ink); font-size:18px; }
+    .attachment-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; }
+    .attachment-group { display:grid; gap:8px; min-width:0; padding:9px; border:1px dashed #b8cbe0; border-radius:16px; background:#fbfdff; }
+    .attachment-items { display:grid; gap:8px; }
+    .attachment-tile { position:relative; display:grid; gap:7px; min-width:0; padding:8px; border:1px dashed #c5d5e7; border-radius:13px; background:#fff; cursor:pointer; }
+    .attachment-tile input { position:absolute; width:1px; height:1px; min-height:0; opacity:0; pointer-events:none; }
+    .attachment-preview { display:grid; place-items:center; height:92px; overflow:hidden; border-radius:11px; color:var(--navy); background:#eaf2fd; }
+    .attachment-upload .attachment-preview::before { content:"+"; display:grid; place-items:center; width:42px; height:42px; border:1px solid var(--line); border-radius:50%; background:#fff; box-shadow:0 8px 20px #173b5d18; font-size:31px; font-weight:900; line-height:1; }
+    .attachment-preview img { width:100%; height:100%; object-fit:cover; }
+    .attachment-document { display:grid; place-items:center; width:50px; height:50px; border-radius:50%; background:#fff; font-size:12px; font-weight:900; }
+    .attachment-title,.attachment-filename { overflow:hidden; text-align:center; text-overflow:ellipsis; white-space:nowrap; }
+    .attachment-title { font-size:12px; font-weight:850; } .attachment-filename { min-height:15px; color:var(--muted); font-size:10px; }
+    .attachment-remove { position:absolute; z-index:2; top:3px; right:3px; display:grid; place-items:center; min-width:0; width:25px; height:25px; padding:0; border-radius:50%; background:var(--red); box-shadow:none; font-size:17px; }
+    .hint { margin:0; color:var(--muted); font-size:12px; font-weight:500; line-height:1.5; }
+    .actions { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+    button { min-width:150px; padding:14px 22px; color:#fff; font:800 15px inherit; border:0; border-radius:999px; cursor:pointer; background:linear-gradient(135deg,var(--navy),var(--blue)); box-shadow:0 12px 25px #1768b52b; }
+    button:disabled { cursor:wait; opacity:.65; } #status { color:var(--muted); font-size:13px; font-weight:650; } #status.error { color:#b42318; }
+    dialog { width:min(500px,calc(100% - 32px)); padding:0; border:0; border-radius:24px; box-shadow:0 30px 80px #071b3155; } dialog::backdrop { background:#071b3180; backdrop-filter:blur(4px); }
+    .modal { padding:32px; text-align:center; } .check { display:grid; place-items:center; width:62px; height:62px; margin:0 auto 18px; border-radius:50%; color:#fff; font-size:30px; background:#16835b; } .modal h2 { margin:0 0 12px; color:var(--navy); } .modal p { color:var(--muted); line-height:1.7; } .modal button { margin-top:8px; }
+    @media (max-width:720px) { .attachment-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+    @media (max-width:600px) { .grid { grid-template-columns:1fr; } header { margin-top:20px; } .intro { padding-top:26px; } .upload { padding:14px; } }
+  </style>
+</head>
+<body>
+  <div class="topbar"></div>
+  <header><div class="mark">MU</div><div><strong>China Eastern Airlines</strong><span>Passenger Services · 旅客服务</span></div></header>
+  <main>
+    <section class="card">
+      <div class="intro"><h1>旅客联系表</h1><p>Passenger Contact Form<br>请填写以下必填信息。Please complete all required fields below.</p></div>
+      <form id="contact-form">
+        <div class="grid">
+          <label><span>日期 <span class="required">*</span><small>Date</small></span><input id="date" name="date" type="date" required></label>
+          <label><span>姓名 <span class="required">*</span><small>Name</small></span><input name="name" autocomplete="name" maxlength="160" required></label>
+          <label><span>座位号 <span class="required">*</span><small>Seat number</small></span><input name="seatNumber" maxlength="20" placeholder="例如 / e.g. 32A" required></label>
+          <label><span>票号 <span class="required">*</span><small>Ticket number</small></span><input name="ticketNumber" inputmode="numeric" maxlength="40" required></label>
+          <label><span>电话号码 <span class="required">*</span><small>Phone number</small></span><input name="phone" type="tel" autocomplete="tel" maxlength="80" required></label>
+        </div>
+        <section class="upload">
+          <h2>上传附件 <small>Attachments</small></h2>
+          <div class="attachment-grid">
+            <div class="attachment-group" data-attachment-group><div class="attachment-items" data-attachment-items></div><label class="attachment-tile attachment-upload"><span class="attachment-preview"></span><span class="attachment-title">护照 · Passport</span><span class="attachment-filename"></span><input data-attachment-input type="file" accept="image/*,.pdf" multiple></label></div>
+            <div class="attachment-group" data-attachment-group><div class="attachment-items" data-attachment-items></div><label class="attachment-tile attachment-upload"><span class="attachment-preview"></span><span class="attachment-title">登机牌 · Boarding pass</span><span class="attachment-filename"></span><input data-attachment-input type="file" accept="image/*,.pdf" multiple></label></div>
+            <div class="attachment-group" data-attachment-group><div class="attachment-items" data-attachment-items></div><label class="attachment-tile attachment-upload"><span class="attachment-preview"></span><span class="attachment-title">行李票 · Bag tag receipt</span><span class="attachment-filename"></span><input data-attachment-input type="file" accept="image/*,.pdf" multiple></label></div>
+            <div class="attachment-group" data-attachment-group><div class="attachment-items" data-attachment-items></div><label class="attachment-tile attachment-upload"><span class="attachment-preview"></span><span class="attachment-title">其他 · Other document</span><span class="attachment-filename"></span><input data-attachment-input type="file" accept="image/*,.pdf" multiple></label></div>
+          </div>
+          <p class="hint">附件为可选项目。最多 10 个文件，每个不超过 8 MB，总计不超过 22 MB。Attachments are optional: up to 10 files, 8 MB each and 22 MB total.</p>
+        </section>
+        <div class="actions"><button id="submit" type="submit">提交 / Submit</button><span id="status" role="status" aria-live="polite"></span></div>
+      </form>
+    </section>
+  </main>
+  <dialog id="success-dialog"><div class="modal"><div class="check">✓</div><h2>提交成功 · Submitted</h2><p>请耐心等待工作人员与您取得联系。<br>Please wait patiently for a staff member to contact you.</p><button id="close-dialog" type="button">好的 / OK</button></div></dialog>
+  <script>
+    const apiBase = (window.MU_API_BASE || 'https://api.mufcapp.net').replace(/\/$/, '');
+    const form = document.querySelector('#contact-form');
+    const dateInput = document.querySelector('#date');
+    const fileInputs = Array.from(document.querySelectorAll('[data-attachment-input]'));
+    const submitButton = document.querySelector('#submit');
+    const status = document.querySelector('#status');
+    const dialog = document.querySelector('#success-dialog');
+    const selectedFiles = new Map(fileInputs.map((input) => [input, []]));
+    function localToday() { const now = new Date(); return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`; }
+    dateInput.value = localToday();
+    function fileToAttachment(file) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve({ filename:file.name, mimeType:file.type || 'application/octet-stream', contentBase64:String(reader.result || '').split(',')[1] || '' }); reader.onerror = reject; reader.readAsDataURL(file); }); }
+    function renderAttachments(input) {
+      const items = input.closest('[data-attachment-group]').querySelector('[data-attachment-items]');
+      items.querySelectorAll('img[data-url]').forEach((image) => URL.revokeObjectURL(image.dataset.url)); items.innerHTML = '';
+      selectedFiles.get(input).forEach((file, index) => {
+        const tile = document.createElement('div'); tile.className = 'attachment-tile';
+        const preview = document.createElement('span'); preview.className = 'attachment-preview';
+        if (file.type.startsWith('image/')) { const image = document.createElement('img'); image.alt = file.name; image.dataset.url = URL.createObjectURL(file); image.src = image.dataset.url; preview.append(image); }
+        else { const documentIcon = document.createElement('span'); documentIcon.className = 'attachment-document'; documentIcon.textContent = 'DOC'; preview.append(documentIcon); }
+        const filename = document.createElement('span'); filename.className = 'attachment-filename'; filename.textContent = file.name;
+        const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'attachment-remove'; remove.setAttribute('aria-label', `Remove ${file.name}`); remove.textContent = '×';
+        remove.addEventListener('click', () => { selectedFiles.get(input).splice(index, 1); renderAttachments(input); });
+        tile.append(remove, preview, filename); items.append(tile);
+      });
+    }
+    fileInputs.forEach((input) => input.addEventListener('change', () => { selectedFiles.set(input, [...selectedFiles.get(input), ...Array.from(input.files || [])]); input.value = ''; renderAttachments(input); }));
+    function clearAttachments() { fileInputs.forEach((input) => { selectedFiles.set(input, []); renderAttachments(input); }); }
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault(); status.className = ''; status.textContent = '正在提交… Submitting…'; submitButton.disabled = true;
+      try {
+        const files = fileInputs.flatMap((input) => selectedFiles.get(input));
+        if (files.length > 10 || files.some((file) => file.size > 8 * 1024 * 1024) || files.reduce((sum, file) => sum + file.size, 0) > 22 * 1024 * 1024) throw new Error('附件最多 10 个，每个不超过 8 MB，总计不超过 22 MB。Up to 10 files, 8 MB each and 22 MB total.');
+        const fields = Object.fromEntries(new FormData(form).entries()); delete fields.attachments;
+        fields.attachments = await Promise.all(files.map(fileToAttachment));
+        const response = await fetch(`${apiBase}/contact-form-submissions`, { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(fields) });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || '提交失败，请稍后重试。Submission failed; please try again.');
+        form.reset(); clearAttachments(); dateInput.value = localToday(); status.textContent = ''; dialog.showModal();
+      } catch (error) { status.className = 'error'; status.textContent = error.message; }
+      finally { submitButton.disabled = false; }
+    });
+    document.querySelector('#close-dialog').addEventListener('click', () => dialog.close());
+  </script>
+</body>
+</html>
