@@ -1729,8 +1729,8 @@ async function sendContactFormToDiscord(record, attachments) {
   if (!channel?.isTextBased()) throw new Error('Contact form Discord channel was not found or is not text based.');
   const files = buildCbsDiscordAttachmentFiles(attachments);
   const content = record.language === 'en'
-    ? ['**Misconnection Passenger Assistance**', `Date: ${record.date}`, `Name: ${record.name}`, `Seat number: ${record.seatNumber}`, `Ticket number: ${record.ticketNumber}`, `Phone number: ${record.phone}`, `Attachments: ${record.attachmentNames || 'None'}`]
-    : ['**未能衔接后续航班旅客协助**', `日期：${record.date}`, `姓名：${record.name}`, `座位号：${record.seatNumber}`, `票号：${record.ticketNumber}`, `电话号码：${record.phone}`, `附件：${record.attachmentNames || '无'}`];
+    ? ['**Misconnection Passenger Assistance Request**', `Date: ${record.date}`, `Name: ${record.name}`, `Seat number: ${record.seatNumber}`, `Ticket number: ${record.ticketNumber}`, `Phone number: ${record.phone}`, `Attachments: ${record.attachmentNames || 'None'}`]
+    : ['**未能衔接后续航班旅客协助请求**', `日期：${record.date}`, `姓名：${record.name}`, `座位号：${record.seatNumber}`, `票号：${record.ticketNumber}`, `电话号码：${record.phone}`, `附件：${record.attachmentNames || '无'}`];
   await channel.send({
     content: content.join('\n'),
     files,
