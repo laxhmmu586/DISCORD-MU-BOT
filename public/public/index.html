@@ -2900,6 +2900,7 @@
 
       .report-form.is-vip-mode,
       .report-form.is-inad-mode,
+      .report-form.is-miss-connection-mode,
       .report-form.is-baggage-mode {
         display: none;
       }
@@ -4386,7 +4387,7 @@
           <div class="report-hero">
             <div>
               <h2>Report Center</h2>
-              <p class="panel-muted">Use Sales Report to choose one date and download the file. Use Sales Details to search a date range and total amounts by type. Use VIP Report and INAD Report to show saved rows. Use PSM Report and WCH Report to search by flight date.</p>
+              <p class="panel-muted">Choose a report below to view saved rows, search by flight date, or download the current results. Misconnection displays passenger assistance submissions.</p>
             </div>
             <button class="report-close" id="report-close" type="button">Close</button>
           </div>
@@ -4397,6 +4398,7 @@
             <button class="detail-action" id="report-psm-mode" type="button" data-report-mode="psm">PSM Report</button>
             <button class="detail-action" id="report-inad-mode" type="button" data-report-mode="inad">INAD Report</button>
             <button class="detail-action" id="report-wch-mode" type="button" data-report-mode="wch">WCH Report</button>
+            <button class="detail-action" id="report-miss-connection-mode" type="button" data-report-mode="missConnection">Misconnection</button>
             <button class="detail-action" id="report-baggage-mode" type="button" data-report-mode="baggage">Baggage Report</button>
           </div>
           <form class="report-form" id="report-form">
@@ -4406,7 +4408,7 @@
             <button class="report-run" type="submit">Search</button>
           </form>
           <div class="report-actions-row"><button class="report-download" id="report-download" type="button" disabled>Download CSV</button></div>
-          <div id="report-output"><p class="panel-muted">Choose Sales Report, VIP Report, PSM Report, INAD Report, WCH Report, or Baggage Report.</p></div>
+          <div id="report-output"><p class="panel-muted">Choose a report type to continue.</p></div>
         </section>
 
         <section class="report-page" id="baggage-page" aria-label="Bag report" hidden>
@@ -4612,6 +4614,7 @@
       const reportPsmModeButton = document.querySelector("#report-psm-mode");
       const reportInadModeButton = document.querySelector("#report-inad-mode");
       const reportWchModeButton = document.querySelector("#report-wch-mode");
+      const reportMissConnectionModeButton = document.querySelector("#report-miss-connection-mode");
       const reportBaggageModeButton = document.querySelector("#report-baggage-mode");
       const reportFromInput = document.querySelector("#report-from");
       const reportFromLabel = document.querySelector("#report-from-label");
@@ -6653,7 +6656,7 @@
       }
 
       function setReportMode(mode, options = {}) {
-        activeReportMode = ["vip", "psm", "inad", "wch", "baggage", "salesDetails"].includes(mode) ? mode : "sales";
+        activeReportMode = ["vip", "psm", "inad", "wch", "missConnection", "baggage", "salesDetails"].includes(mode) ? mode : "sales";
         if (activeReportMode === "baggage") {
           if (options.forceToday) setReportDefaults(true);
         } else {
@@ -6673,6 +6676,7 @@
         reportForm?.classList.toggle("is-psm-mode", activeReportMode === "psm");
         reportForm?.classList.toggle("is-inad-mode", activeReportMode === "inad");
         reportForm?.classList.toggle("is-wch-mode", activeReportMode === "wch");
+        reportForm?.classList.toggle("is-miss-connection-mode", activeReportMode === "missConnection");
         reportForm?.classList.toggle("is-baggage-mode", activeReportMode === "baggage");
         reportSalesModeButton?.classList.toggle("is-active", activeReportMode === "sales");
         reportSalesDetailsModeButton?.classList.toggle("is-active", activeReportMode === "salesDetails");
@@ -6680,6 +6684,7 @@
         reportPsmModeButton?.classList.toggle("is-active", activeReportMode === "psm");
         reportInadModeButton?.classList.toggle("is-active", activeReportMode === "inad");
         reportWchModeButton?.classList.toggle("is-active", activeReportMode === "wch");
+        reportMissConnectionModeButton?.classList.toggle("is-active", activeReportMode === "missConnection");
         reportBaggageModeButton?.classList.toggle("is-active", activeReportMode === "baggage");
         if (reportFromLabel) reportFromLabel.textContent = activeReportMode === "sales" ? "Date" : "From";
         const reportKeywordLabel = reportForm?.querySelector(".report-keyword-field span");
@@ -6693,16 +6698,18 @@
             ? `<p class="panel-muted">Loading VIP Report...</p>`
             : (activeReportMode === "inad"
               ? `<p class="panel-muted">Loading INAD Report...</p>`
+              : (activeReportMode === "missConnection"
+                ? `<p class="panel-muted">Loading Misconnection Report...</p>`
               : (activeReportMode === "baggage"
                 ? `<p class="panel-muted">Select a submit-date range, optionally enter a bag tag, then click Search.</p>`
                 : (["psm", "wch"].includes(activeReportMode)
                   ? `<p class="panel-muted">Choose a flight date range, then search ${activeReportMode === "wch" ? "WCH" : "PSM"} Report.</p>`
                   : (activeReportMode === "salesDetails"
                     ? `<p class="panel-muted">Choose a date range, then search Sales Details totals by Type.</p>`
-                    : `<p class="panel-muted">Choose a date, then download Sales Report.</p>`))));
+                    : `<p class="panel-muted">Choose a date, then download Sales Report.</p>`)))));
         }
         if (activeReportMode === "baggage") renderBaggageTimelineReport();
-        else if (["vip", "psm", "inad", "wch", "salesDetails"].includes(activeReportMode)) generateReport();
+        else if (["vip", "psm", "inad", "wch", "missConnection", "salesDetails"].includes(activeReportMode)) generateReport();
       }
 
       function resetPanelState() {
@@ -7283,6 +7290,11 @@
         return data?.rows || [];
       }
 
+      async function missConnectionReportRows() {
+        const data = await apiJson('/miss-connection-report');
+        return data?.rows || [];
+      }
+
       async function salesDetailsReport(from, to) {
         return apiJson(`/sales-details-report?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
       }
@@ -7418,7 +7430,7 @@
           await renderBaggageTimelineReport();
           return;
         }
-        const type = ["vip", "psm", "inad", "wch", "salesDetails"].includes(activeReportMode) ? activeReportMode : "sales";
+        const type = ["vip", "psm", "inad", "wch", "missConnection", "salesDetails"].includes(activeReportMode) ? activeReportMode : "sales";
         const today = ymdFromDate(new Date());
         const from = reportFromInput?.value || today;
         const keyword = type === "vip" ? (reportKeywordInput?.value || "") : "";
@@ -7441,7 +7453,7 @@
             ? `<p class="panel-muted">Loading PSM Report for ${escapeHtml(from)}${from === to ? "" : ` to ${escapeHtml(to)}`}...</p>`
             : (type === "wch"
               ? `<p class="panel-muted">Loading WCH Report for ${escapeHtml(from)}${from === to ? "" : ` to ${escapeHtml(to)}`}...</p>`
-              : (type === "inad" ? `<p class="panel-muted">Loading INAD Report...</p>` : `<p class="panel-muted">Loading VIP Report...</p>`))));
+              : (type === "inad" ? `<p class="panel-muted">Loading INAD Report...</p>` : (type === "missConnection" ? `<p class="panel-muted">Loading Misconnection Report...</p>` : `<p class="panel-muted">Loading VIP Report...</p>`)))));
         setReportCsv([], "report.csv");
         const rows = [];
         const errors = [];
@@ -7466,6 +7478,13 @@
         } else if (type === "wch") {
           try {
             rows.push(...await wchReportRows(from, to));
+          } catch (error) {
+            errors.push(error.message);
+          }
+        } else if (type === "missConnection") {
+          try {
+            const submissions = await missConnectionReportRows();
+            rows.push(...submissions.map((row) => ({ date: row.date, name: row.name, seatNumber: row.seatNumber, ticketNumber: row.ticketNumber, phone: row.phone })));
           } catch (error) {
             errors.push(error.message);
           }
@@ -7540,6 +7559,14 @@
             { label: "Seat", value: (row) => row.seat },
             { label: "WCH Type", value: (row) => row.wheelchairType },
           ], "No WCH rows found.");
+        } else if (type === "missConnection") {
+          tableHtml = rowsTable(rows, [
+            { label: "Date", value: (row) => row.date },
+            { label: "Passenger Name", value: (row) => row.name },
+            { label: "Seat", value: (row) => row.seatNumber },
+            { label: "Ticket Number", value: (row) => row.ticketNumber },
+            { label: "Phone Number", value: (row) => row.phone },
+          ], "No misconnection submissions found.");
         }
         const errorHtml = errors.length ? `<p class="panel-muted status-warn">${escapeHtml(errors.join(" | "))}</p>` : "";
         reportOutput.innerHTML = `${errorHtml}${tableHtml}`;
@@ -7550,6 +7577,7 @@
           psm: `psm-report-${from}${from === to ? "" : `-to-${to}`}.csv`,
           inad: "inad-report.csv",
           wch: `wch-report-${from}${from === to ? "" : `-to-${to}`}.csv`,
+          missConnection: "miss-connection-report.csv",
         };
         setReportCsv(type === "sales" ? rows.filter((row) => row.downloadUrl) : rows, reportFileNames[type] || "report.csv");
       }
@@ -7990,6 +8018,7 @@
       reportPsmModeButton?.addEventListener("click", () => setReportMode("psm", { forceToday: true, resetOutput: true }));
       reportInadModeButton?.addEventListener("click", () => setReportMode("inad", { forceToday: true, resetOutput: true }));
       reportWchModeButton?.addEventListener("click", () => setReportMode("wch", { forceToday: true, resetOutput: true }));
+      reportMissConnectionModeButton?.addEventListener("click", () => setReportMode("missConnection", { resetOutput: true }));
       reportBaggageModeButton?.addEventListener("click", () => { setReportMode("baggage", { resetOutput: true }); renderBaggageTimelineReport({ latestOnly: true }); });
       reportForm.addEventListener("submit", generateReport);
       reportDownloadButton.addEventListener("click", downloadCurrentReportCsv);

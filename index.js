@@ -59,6 +59,8 @@ const {
   extractFscExchangeRate,
   updateSyBookingCounts,
   appendCbsCase,
+  appendContactFormSubmission,
+  getContactFormSubmissions,
   appendCbsWorldTracerCase,
   getCbsWorldTracerCases,
   updateCbsWorldTracerCase,
@@ -97,6 +99,7 @@ const { findSYInfo } = require('./syParser');
 const NEXTDAY_INFO_DISCORD_CHANNEL_ID = '1399400605742661702';
 const TRANSIT_240_DISCORD_CHANNEL_ID = process.env.TRANSIT_240_DISCORD_CHANNEL_ID || '1365773224276660257';
 const CBS_ATTACHMENTS_DISCORD_CHANNEL_ID = process.env.CBS_ATTACHMENTS_DISCORD_CHANNEL_ID || '1527344986075693167';
+const CONTACT_FORM_DISCORD_CHANNEL_ID = process.env.CONTACT_FORM_DISCORD_CHANNEL_ID || '1531867051755442266';
 
 const DEFAULT_PERMISSIONS = {
   canViewTravelDocs: true,
@@ -912,6 +915,7 @@ const app =
 
 const allowedOrigins = [
   "https://china-eastern.web.app",
+  "https://china-eastern.firebaseapp.com",
   "https://www.mufcapp.net",
   "https://mufcapp.net"
 ];
@@ -954,6 +958,10 @@ app.get(['/m-board.html', '/m-board'], (req, res) => {
 
 app.get(['/240.html', '/240'], (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'public', '240.html'));
+});
+
+app.get(['/contact-form.html', '/contact-form'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'public', 'contact-form.html'));
 });
 
 const REVIEW_STORE_PATH = path.join(__dirname, 'securityReviews.json');
@@ -1697,6 +1705,77 @@ async function sendCbsAttachmentsToDiscord(record, attachments = [], pdfBuffer =
   });
   return { sent: true, channelId: CBS_ATTACHMENTS_DISCORD_CHANNEL_ID, fileCount: files.length };
 }
+
+function sanitizeContactAttachments(value) {
+  const input = Array.isArray(value) ? value : [];
+  const maxFileBytes = 8 * 1024 * 1024;
+  let totalBytes = 0;
+  return input.slice(0, 10).map((item, index) => {
+    const contentBase64 = String(item?.contentBase64 || '').replace(/\s/g, '');
+    if (!contentBase64 || !/^[A-Za-z0-9+/]*={0,2}$/.test(contentBase64)) return null;
+    const bytes = Buffer.byteLength(contentBase64, 'base64');
+    totalBytes += bytes;
+    if (bytes > maxFileBytes || totalBytes > 22 * 1024 * 1024) return null;
+    return {
+      filename: sanitizeCbsText(item?.filename, 120) || `attachment-${index + 1}`,
+      mimeType: sanitizeCbsText(item?.mimeType, 120) || 'application/octet-stream',
+      contentBase64
+    };
+  }).filter(Boolean);
+}
+
+async function sendContactFormToDiscord(record, attachments) {
+  const channel = await client.channels.fetch(CONTACT_FORM_DISCORD_CHANNEL_ID);
+  if (!channel?.isTextBased()) throw new Error('Contact form Discord channel was not found or is not text based.');
+  const files = buildCbsDiscordAttachmentFiles(attachments);
+  const content = record.language === 'en'
+    ? ['**Misconnection Passenger Assistance**', `Date: ${record.date}`, `Name: ${record.name}`, `Seat number: ${record.seatNumber}`, `Ticket number: ${record.ticketNumber}`, `Phone number: ${record.phone}`, `Attachments: ${record.attachmentNames || 'None'}`]
+    : ['**未能衔接后续航班旅客协助**', `日期：${record.date}`, `姓名：${record.name}`, `座位号：${record.seatNumber}`, `票号：${record.ticketNumber}`, `电话号码：${record.phone}`, `附件：${record.attachmentNames || '无'}`];
+  await channel.send({
+    content: content.join('\n'),
+    files,
+    allowedMentions: { parse: [] }
+  });
+  return { sent: true, channelId: CONTACT_FORM_DISCORD_CHANNEL_ID, fileCount: files.length };
+}
+
+app.post('/contact-form-submissions', async (req, res) => {
+  try {
+    const body = req.body || {};
+    const date = sanitizeCbsText(body.date, 10);
+    const name = sanitizeCbsText(body.name, 160);
+    const seatNumber = sanitizeCbsText(body.seatNumber, 20).toUpperCase();
+    const ticketNumber = sanitizeCbsText(body.ticketNumber, 40);
+    const phone = sanitizeCbsText(body.phone, 80);
+    const language = sanitizeCbsText(body.language, 5) === 'en' ? 'en' : 'zh';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'A valid date is required.' });
+    if (!name || !seatNumber || !ticketNumber || !phone) return res.status(400).json({ error: 'Name, seat number, ticket number, and phone number are required.' });
+    const attachments = sanitizeContactAttachments(body.attachments);
+    if ((Array.isArray(body.attachments) ? body.attachments.length : 0) !== attachments.length) {
+      return res.status(400).json({ error: 'Use no more than 10 attachments, no more than 22 MB total, and no file larger than 8 MB.' });
+    }
+    const record = {
+      submittedAt: new Date().toISOString(), date, name, seatNumber, ticketNumber, phone, language,
+      attachmentNames: attachments.map((attachment) => attachment.filename).join(', ')
+    };
+    await appendContactFormSubmission(record);
+    const discord = await sendContactFormToDiscord(record, attachments);
+    return res.status(201).json({ created: true, record, discord });
+  } catch (err) {
+    console.error('Contact form submission error:', err);
+    return res.status(500).json({ error: 'The form could not be submitted. Please try again or contact a staff member.' });
+  }
+});
+
+app.get('/miss-connection-report', async (req, res) => {
+  try {
+    const rows = await getContactFormSubmissions();
+    return res.json({ rows, source: 'sheet' });
+  } catch (err) {
+    console.error('Miss connection report error:', err);
+    return res.status(500).json({ error: err?.message || 'Miss connection report lookup failed.' });
+  }
+});
 
 function buildCbsUpdateFields(update = {}) {
   const type = sanitizeCbsText(update.type, 40).toLowerCase();
