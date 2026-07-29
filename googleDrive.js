@@ -3152,7 +3152,7 @@ async function appendCbsCase(record) {
 
 async function appendContactFormSubmission(record = {}) {
   const title = await resolveSheetTitleByGid(CONTACT_FORM_SHEET_ID, CONTACT_FORM_SHEET_GID) || 'Sheet1';
-  const headers = ['Submitted At', 'Date', 'Name', 'Seat Number', 'Ticket Number', 'Phone Number', 'Attachments', 'Language'];
+  const headers = ['Submitted At', 'Date', 'Name', 'Seat Number', 'Passport Number', 'Mobile Number', 'Attachments', 'Language'];
   const headerRange = `${escapeSheetTitle(title)}!A1:H1`;
   const existing = await sheets.spreadsheets.values.get({ spreadsheetId: CONTACT_FORM_SHEET_ID, range: headerRange });
   const currentHeaders = existing.data.values?.[0] || [];
