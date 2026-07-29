@@ -24,7 +24,7 @@
     label span small { display:block; margin-top:2px; color:var(--muted); font-size:12px; font-weight:500; }
     .required { color:var(--red); }
     input { width:100%; min-height:48px; padding:12px 14px; color:var(--ink); font:inherit; border:1px solid var(--line); border-radius:12px; outline:none; background:#fbfdff; transition:.2s; }
-    input[type="date"] { display:block; min-width:0; max-width:100%; }
+    input[type="date"] { display:block; width:100%; min-width:0; max-width:100%; inline-size:100%; min-inline-size:0; max-inline-size:100%; overflow:hidden; -webkit-appearance:none; appearance:none; }
     input:focus { border-color:var(--blue); box-shadow:0 0 0 4px #1768b519; background:#fff; }
     .upload { display:grid; gap:16px; padding:20px; border:1px dashed #b8cbe0; border-radius:20px; background:#f9fcff; }
     .upload h2 { margin:0; color:var(--ink); font-size:18px; }
@@ -46,7 +46,16 @@
     button:disabled { cursor:wait; opacity:.65; } #status { color:var(--muted); font-size:13px; font-weight:650; } #status.error { color:#b42318; }
     dialog { width:min(500px,calc(100% - 32px)); padding:0; border:0; border-radius:24px; box-shadow:0 30px 80px #071b3155; } dialog::backdrop { background:#071b3180; backdrop-filter:blur(4px); }
     .modal { padding:32px; text-align:center; } .check { display:grid; place-items:center; width:62px; height:62px; margin:0 auto 18px; border-radius:50%; color:#fff; font-size:30px; background:#16835b; } .modal h2 { margin:0 0 12px; color:var(--navy); } .modal p { color:var(--muted); line-height:1.7; } .modal button { margin-top:8px; }
-    @media (max-width:600px) { .grid { grid-template-columns:1fr; } header { margin-top:20px; } .intro { padding-top:26px; } .upload { padding:14px; } }
+    @media (max-width:600px) {
+      .grid { grid-template-columns:minmax(0,1fr); width:100%; }
+      .grid label { width:100%; min-width:0; overflow:hidden; }
+      .grid input { width:100%; min-width:0; max-width:100%; }
+      header { margin-top:20px; }
+      .intro { padding-top:26px; }
+      .intro h1 { font-size:22px; }
+      .intro h1 .en { display:block; font-size:16.5px; line-height:1.2; letter-spacing:-.025em; white-space:nowrap; }
+      .upload { padding:14px; }
+    }
   </style>
 </head>
 <body>
