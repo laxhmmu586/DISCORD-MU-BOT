@@ -68,6 +68,8 @@ const ENABLE_240_SHEET =
 
 const CBS_SHEET_ID = process.env.CBS_SHEET_ID || '10oEQypkoaNvosREqT-mNw8zsyrQxln2EwsBUuS9OtsU';
 const CBS_SHEET_GID = Number(process.env.CBS_SHEET_GID || 0);
+const CONTACT_FORM_SHEET_ID = process.env.CONTACT_FORM_SHEET_ID || '1JqRnDx_uLc2m2SzyZOuHWWJsbkKenlKo60U9zwV9uMQ';
+const CONTACT_FORM_SHEET_GID = Number(process.env.CONTACT_FORM_SHEET_GID || 1889354016);
 const CBS_WORLDTRACER_SHEET_GID = Number(process.env.CBS_WORLDTRACER_SHEET_GID || 944289437);
 const CBS_UNRESOLVED_BAGGAGE_SHEET_GID = Number(process.env.CBS_UNRESOLVED_BAGGAGE_SHEET_GID || 1279643787);
 const CBS_NOTIFICATION_EMAILS = (process.env.CBS_NOTIFICATION_EMAILS || 'laxhmmu@gmail.com')
@@ -3148,6 +3150,49 @@ async function appendCbsCase(record) {
   return record;
 }
 
+async function appendContactFormSubmission(record = {}) {
+  const title = await resolveSheetTitleByGid(CONTACT_FORM_SHEET_ID, CONTACT_FORM_SHEET_GID) || 'Sheet1';
+  const headers = ['Submitted At', 'Date', 'Name', 'Seat Number', 'Passport Number', 'Mobile Number', 'Attachments', 'Language'];
+  const headerRange = `${escapeSheetTitle(title)}!A1:H1`;
+  const existing = await sheets.spreadsheets.values.get({ spreadsheetId: CONTACT_FORM_SHEET_ID, range: headerRange });
+  const currentHeaders = existing.data.values?.[0] || [];
+  if (headers.some((header, index) => currentHeaders[index] !== header)) {
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: CONTACT_FORM_SHEET_ID,
+      range: headerRange,
+      valueInputOption: 'RAW',
+      requestBody: { values: [headers] }
+    });
+  }
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: CONTACT_FORM_SHEET_ID,
+    range: `${escapeSheetTitle(title)}!A:H`,
+    valueInputOption: 'RAW',
+    insertDataOption: 'INSERT_ROWS',
+    requestBody: { values: [[record.submittedAt, record.date, record.name, record.seatNumber, record.ticketNumber, record.phone, record.attachmentNames || '', record.language || '']] }
+  });
+  return record;
+}
+
+async function getContactFormSubmissions() {
+  const title = await resolveSheetTitleByGid(CONTACT_FORM_SHEET_ID, CONTACT_FORM_SHEET_GID) || 'Sheet1';
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId: CONTACT_FORM_SHEET_ID,
+    range: `${escapeSheetTitle(title)}!A:H`
+  });
+  const rows = response.data.values || [];
+  return rows.slice(1).map((values) => ({
+    submittedAt: values[0] || '',
+    date: values[1] || '',
+    name: values[2] || '',
+    seatNumber: values[3] || '',
+    ticketNumber: values[4] || '',
+    phone: values[5] || '',
+    attachments: values[6] || '',
+    language: values[7] || ''
+  })).filter((row) => row.submittedAt || row.date || row.name).reverse();
+}
+
 async function appendCbsWorldTracerCase(record = {}) {
   if (!cbsWorldTracerSheetTitle) cbsWorldTracerSheetTitle = await resolveSheetTitleByGid(CBS_SHEET_ID, CBS_WORLDTRACER_SHEET_GID);
   const title = cbsWorldTracerSheetTitle || 'Sheet1';
@@ -3811,6 +3856,8 @@ module.exports = {
   updateSyBookingCounts,
   normalizeSyBookingCounts,
   appendCbsCase,
+  appendContactFormSubmission,
+  getContactFormSubmissions,
   appendCbsWorldTracerCase,
   getCbsWorldTracerCases,
   updateCbsWorldTracerCase,
