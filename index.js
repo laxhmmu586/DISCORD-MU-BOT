@@ -1759,8 +1759,15 @@ app.post('/contact-form-submissions', async (req, res) => {
       attachmentNames: attachments.map((attachment) => attachment.filename).join(', ')
     };
     await appendContactFormSubmission(record);
-    const discord = await sendContactFormToDiscord(record, attachments);
-    return res.status(201).json({ created: true, record, discord });
+    let discord = null;
+    let discordError = '';
+    try {
+      discord = await sendContactFormToDiscord(record, attachments);
+    } catch (discordErr) {
+      discordError = discordErr?.message || 'Discord notification failed.';
+      console.error('Contact form Discord notification error:', discordErr);
+    }
+    return res.status(201).json({ created: true, record, discord, discordError });
   } catch (err) {
     console.error('Contact form submission error:', err);
     return res.status(500).json({ error: 'The form could not be submitted. Please try again or contact a staff member.' });

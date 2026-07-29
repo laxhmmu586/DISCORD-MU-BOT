@@ -98,7 +98,22 @@
     dateInput.value = localToday();
     function setLanguage(language) { document.documentElement.lang = language; dateInput.lang = language; languageToggle.textContent = language === 'zh-CN' ? 'English' : '中文'; }
     languageToggle.addEventListener('click', () => setLanguage(document.documentElement.lang === 'zh-CN' ? 'en' : 'zh-CN'));
-    function fileToAttachment(file) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve({ filename:file.name, mimeType:file.type || 'application/octet-stream', contentBase64:String(reader.result || '').split(',')[1] || '' }); reader.onerror = reject; reader.readAsDataURL(file); }); }
+    function readFileAsDataUrl(file) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result || '')); reader.onerror = reject; reader.readAsDataURL(file); }); }
+    async function fileToAttachment(file) {
+      let dataUrl;
+      let mimeType = file.type || 'application/octet-stream';
+      if (file.type.startsWith('image/')) {
+        const source = await readFileAsDataUrl(file);
+        const image = await new Promise((resolve, reject) => { const item = new Image(); item.onload = () => resolve(item); item.onerror = reject; item.src = source; });
+        const maxSide = 1600;
+        const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(image.naturalWidth * scale)); canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+        canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
+        dataUrl = canvas.toDataURL('image/jpeg', 0.72); mimeType = 'image/jpeg';
+      } else dataUrl = await readFileAsDataUrl(file);
+      return { filename:file.name, mimeType, contentBase64:dataUrl.split(',')[1] || '' };
+    }
     function renderAttachments(input) {
       const items = input.closest('[data-attachment-group]').querySelector('[data-attachment-items]');
       items.querySelectorAll('img[data-url]').forEach((image) => URL.revokeObjectURL(image.dataset.url)); items.innerHTML = '';
@@ -126,7 +141,7 @@
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(isEnglish ? (data.error || 'Submission failed; please try again.') : '提交失败，请稍后重试。');
         form.reset(); clearAttachments(); dateInput.value = localToday(); status.textContent = ''; dialog.showModal();
-      } catch (error) { status.className = 'error'; status.textContent = error.message; }
+      } catch (error) { status.className = 'error'; status.textContent = /load failed|failed to fetch|networkerror/i.test(error.message || '') ? (isEnglish ? 'Unable to reach the server. Please check your connection and try again.' : '无法连接服务器，请检查网络后重试。') : error.message; }
       finally { submitButton.disabled = false; }
     });
     document.querySelector('#close-dialog').addEventListener('click', () => dialog.close());
