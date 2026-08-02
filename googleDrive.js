@@ -76,6 +76,9 @@ const CBS_NOTIFICATION_EMAILS = (process.env.CBS_NOTIFICATION_EMAILS || 'laxhmmu
   .split(',')
   .map((value) => value.trim())
   .filter(Boolean);
+const CBS_MISSING_BAG_EMAIL_SENDER = String(
+  process.env.CBS_MISSING_BAG_EMAIL_SENDER || 'VIBES-NO-REPLY@lawa.org'
+).trim();
 const CBS_HEADERS = [
   'Case Number',
   'Case Type',
@@ -3608,7 +3611,7 @@ async function syncCbsMissingBagReportsFromGmail() {
   let q = '';
   try {
     ({ gmail, userId, authMode } = getNextDayInfoGmailClient());
-    q = 'from:dispatch@laxtec.com subject:"Early Bag Storage (EBS) Missed Bag Report" newer_than:7d has:attachment';
+    q = `from:${CBS_MISSING_BAG_EMAIL_SENDER} subject:"Early Bag Storage (EBS) Missed Bag Report" newer_than:7d has:attachment`;
     const list = await gmail.users.messages.list({ userId, q, maxResults: 10, fields: 'messages(id,internalDate)' });
     const messages = (Array.isArray(list.data.messages) ? list.data.messages : [])
       .sort((a, b) => Number(b.internalDate || 0) - Number(a.internalDate || 0));
