@@ -77,7 +77,6 @@ const CBS_NOTIFICATION_EMAILS = (process.env.CBS_NOTIFICATION_EMAILS || 'laxhmmu
   .map((value) => value.trim())
   .filter(Boolean);
 const CBS_HEADERS = [
-  'Case Number',
   'Case Type',
   'Status',
   'Passenger Name',
@@ -118,7 +117,7 @@ let cbsSheetCache = { loadedAt: 0, rows: [] };
 const CBS_UPDATE_HISTORY_FILE = process.env.CBS_UPDATE_HISTORY_FILE || path.join(__dirname, 'data', 'cbs-update-history.json');
 let cbsUpdateHistoryCache = { loadedAt: 0, data: null };
 const CBS_MISSING_BAG_SHEET_GID = Number(process.env.CBS_MISSING_BAG_SHEET_GID || 1145829442);
-const CBS_MISSING_BAG_HEADERS = ['Bag Tag', 'Passenger Name', 'Destination', 'Airline', 'Source Email Date', 'Source Attachment', 'Recorded At', 'Case Number', 'Case Created At', 'Acknowledged At'];
+const CBS_MISSING_BAG_HEADERS = ['Bag Tag', 'Passenger Name', 'Destination', 'Airline', 'Source Email Date', 'Source Attachment', 'Recorded At', 'Case Created At', 'Acknowledged At'];
 const CBS_SCAN_SHEET_ID = process.env.CBS_SCAN_SHEET_ID || '1bfIeytT6UMdvWXimeg4s1HVuXHqmpYZx53ufsbes6Ms';
 const CBS_SCAN_SHEET_GID = Number(process.env.CBS_SCAN_SHEET_GID || 0);
 const TRANSIT_240_SHEET_ID = process.env.TRANSIT_240_SHEET_ID || '1JqRnDx_uLc2m2SzyZOuHWWJsbkKenlKo60U9zwV9uMQ';
@@ -3031,13 +3030,21 @@ async function getCbsSheetRows(options = {}) {
 }
 
 async function ensureCbsSheetHeaders(rows) {
-  const firstRow = rows?.[0] || [];
+  let firstRow = rows?.[0] || [];
+  if (/^case (?:number|id)$/i.test(String(firstRow[0] || '').trim())) {
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: CBS_SHEET_ID,
+      requestBody: { requests: [{ deleteDimension: { range: { sheetId: CBS_SHEET_GID, dimension: 'COLUMNS', startIndex: 0, endIndex: 1 } } }] }
+    });
+    rows.forEach((row) => row.shift());
+    firstRow = rows?.[0] || [];
+  }
   const hasHeaders = CBS_HEADERS.every((header, index) => String(firstRow[index] || '').trim() === header);
   if (hasHeaders) return;
   const title = await getCbsSheetTitle();
   await sheets.spreadsheets.values.update({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A1:AG1`,
+    range: `${escapeSheetTitle(title)}!A1:AF1`,
     valueInputOption: 'RAW',
     requestBody: { values: [CBS_HEADERS] }
   });
@@ -3088,18 +3095,16 @@ function cbsRecordFromSheet(values, rowNumber) {
     const key = header.toLowerCase().replace(/[^a-z0-9]+(.)/g, (_, chr) => chr.toUpperCase()).replace(/[^a-z0-9]/g, '');
     row[key] = values[index] || '';
   });
-  row.caseNumber = row.caseNumber || values.find((value) => /^LAX\s*MU\d{6,}$/i.test(String(value || '').trim())) || '';
   row.caseType = row.caseType || values.find((value) => /^(AHL|DPR)$/i.test(String(value || '').trim())) || '';
-  row.bagTag = row.bagTag || values[9] || extractCbsBagTagFromUpdateNote(row.updateNote) || values.find((value) => /^[A-Z]{2}\d{6,}(\s*\/\s*[A-Z]{2}\d{6,})*$/i.test(String(value || '').trim())) || '';
-  row.submittedAt = row.submittedAt || row.submitDate || values[27] || '';
-  row.updateHistory = row.updateHistory || values[32] || '';
+  row.bagTag = row.bagTag || values[8] || extractCbsBagTagFromUpdateNote(row.updateNote) || values.find((value) => /^[A-Z]{2}\d{6,}(\s*\/\s*[A-Z]{2}\d{6,})*$/i.test(String(value || '').trim())) || '';
+  row.submittedAt = row.submittedAt || row.submitDate || values[26] || '';
+  row.updateHistory = row.updateHistory || values[31] || '';
   row.rowNumber = rowNumber;
   return row;
 }
 
 function cbsValuesFromRecord(record) {
   return [
-    record.caseNumber,
     record.caseType,
     record.status,
     record.passengerName,
@@ -3141,7 +3146,7 @@ async function appendCbsCase(record) {
   await ensureCbsSheetHeaders(rows);
   await sheets.spreadsheets.values.append({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A:AG`,
+    range: `${escapeSheetTitle(title)}!A:AF`,
     valueInputOption: 'RAW',
     insertDataOption: 'INSERT_ROWS',
     requestBody: { values: [cbsValuesFromRecord(record)] }
@@ -3339,11 +3344,7 @@ async function updateCbsWorldTracerCase(rowNumbers = [], record = {}) {
 
 function isCbsHeaderRow(values = []) {
   const normalized = values.map((value) => String(value || '').trim().toLowerCase());
-  return normalized.includes('case number') || normalized.includes('case id') || normalized.includes('passenger name');
-}
-
-function normalizeCbsHistoryCaseNumber(caseNumber) {
-  return String(caseNumber || '').trim().toUpperCase();
+  return normalized.includes('passenger name');
 }
 
 function sanitizeCbsUpdateEvent(event = {}, fallback = {}) {
@@ -3408,21 +3409,22 @@ function attachCbsUpdateHistory(rows = []) {
 }
 
 async function getCbsCases() {
-  const rows = await getCbsSheetRows({ forceRefresh: true });
+  let rows = await getCbsSheetRows({ forceRefresh: true });
+  await ensureCbsSheetHeaders(rows);
+  rows = await getCbsSheetRows({ forceRefresh: true });
   const cases = rows
     .map((values, index) => ({ values: values || [], rowNumber: index + 1 }))
     .filter(({ values }) => !isCbsHeaderRow(values))
     .map(({ values, rowNumber }) => cbsRecordFromSheet(values, rowNumber))
-    .filter((row) => row.caseNumber || row.caseType || row.passengerName || row.email || row.phone || row.bagTag || row.submittedAt);
+    .filter((row) => row.caseType || row.passengerName || row.email || row.phone || row.bagTag || row.submittedAt);
   return attachCbsUpdateHistory(cases);
 }
 
-async function updateCbsCase(caseNumber, update = {}) {
+async function updateCbsCase(rowNumber, update = {}) {
   const rows = await getCbsSheetRows({ forceRefresh: true });
   await ensureCbsSheetHeaders(rows);
-  const normalizedCaseNumber = String(caseNumber || '').trim().toUpperCase();
-  const rowIndex = rows.findIndex((row, index) => index > 0 && String(row?.[0] || '').trim().toUpperCase() === normalizedCaseNumber);
-  if (rowIndex < 0) return { notFound: true };
+  const rowIndex = Number(rowNumber) - 1;
+  if (!Number.isInteger(rowIndex) || rowIndex < 1 || !rows[rowIndex]) return { notFound: true };
   const current = cbsRecordFromSheet(rows[rowIndex] || [], rowIndex + 1);
   const now = new Date().toISOString();
   const incomingNote = sanitizeSheetText(update.updateNote, 1000);
@@ -3443,7 +3445,7 @@ async function updateCbsCase(caseNumber, update = {}) {
   const title = await getCbsSheetTitle();
   await sheets.spreadsheets.values.update({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A${rowIndex + 1}:AG${rowIndex + 1}`,
+    range: `${escapeSheetTitle(title)}!A${rowIndex + 1}:AF${rowIndex + 1}`,
     valueInputOption: 'RAW',
     requestBody: { values: [cbsValuesFromRecord(next)] }
   });
@@ -3470,13 +3472,21 @@ async function getCbsMissingBagSheetRows(options = {}) {
 }
 
 async function ensureCbsMissingBagHeaders(rows) {
-  const firstRow = rows?.[0] || [];
+  let firstRow = rows?.[0] || [];
+  if (/^case (?:number|id)$/i.test(String(firstRow[7] || '').trim())) {
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: CBS_SHEET_ID,
+      requestBody: { requests: [{ deleteDimension: { range: { sheetId: CBS_MISSING_BAG_SHEET_GID, dimension: 'COLUMNS', startIndex: 7, endIndex: 8 } } }] }
+    });
+    rows.forEach((row) => row.splice(7, 1));
+    firstRow = rows?.[0] || [];
+  }
   const hasHeaders = CBS_MISSING_BAG_HEADERS.every((header, index) => String(firstRow[index] || '').trim() === header);
   if (hasHeaders) return;
   const title = await getCbsMissingBagSheetTitle();
   await sheets.spreadsheets.values.update({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A1:J1`,
+    range: `${escapeSheetTitle(title)}!A1:I1`,
     valueInputOption: 'RAW',
     requestBody: { values: [CBS_MISSING_BAG_HEADERS] }
   });
@@ -3493,9 +3503,8 @@ function cbsMissingBagRecordFromSheet(values = [], rowNumber = 0) {
     sourceEmailDate: String(values[4] || '').trim(),
     sourceAttachment: String(values[5] || '').trim(),
     recordedAt: String(values[6] || '').trim(),
-    caseNumber: String(values[7] || '').trim(),
-    caseCreatedAt: String(values[8] || '').trim(),
-    acknowledgedAt: String(values[9] || '').trim()
+    caseCreatedAt: String(values[7] || '').trim(),
+    acknowledgedAt: String(values[8] || '').trim()
   };
 }
 
@@ -3508,7 +3517,6 @@ function cbsMissingBagValues(record = {}) {
     sanitizeSheetText(record.sourceEmailDate, 80),
     sanitizeSheetText(record.sourceAttachment, 160),
     sanitizeSheetText(record.recordedAt, 80),
-    sanitizeSheetText(record.caseNumber, 80),
     sanitizeSheetText(record.caseCreatedAt, 80),
     sanitizeSheetText(record.acknowledgedAt, 80)
   ];
@@ -3565,7 +3573,6 @@ function parseCbsMissingBagRowsFromXlsx(buffer, meta = {}) {
       sourceEmailDate: meta.sourceEmailDate || '',
       sourceAttachment: meta.sourceAttachment || '',
       recordedAt: new Date().toISOString(),
-      caseNumber: '',
       caseCreatedAt: '',
       acknowledgedAt: ''
     }))
@@ -3590,7 +3597,7 @@ async function appendCbsMissingBagRows(records = []) {
   const title = await getCbsMissingBagSheetTitle();
   await sheets.spreadsheets.values.append({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A:J`,
+    range: `${escapeSheetTitle(title)}!A:I`,
     valueInputOption: 'RAW',
     insertDataOption: 'INSERT_ROWS',
     requestBody: { values: newRows.map(cbsMissingBagValues) }
@@ -3651,24 +3658,17 @@ async function getCbsMissingBagReports(options = {}) {
   const rows = await getCbsMissingBagSheetRows({ forceRefresh: true });
   await ensureCbsMissingBagHeaders(rows);
   const cbsCases = await getCbsCases();
-  const findLinkedCase = (missingRow) => {
-    const explicitCaseNumber = String(missingRow.caseNumber || '').trim().toUpperCase();
-    if (explicitCaseNumber) {
-      const explicit = cbsCases.find((row) => String(row.caseNumber || '').trim().toUpperCase() === explicitCaseNumber);
-      if (explicit) return explicit;
-    }
-    return cbsCases.find((row) => cbsBagTagsMatch(row.bagTag, missingRow.bagTag)) || null;
-  };
+  const findLinkedCase = (missingRow) => cbsCases.find((row) => cbsBagTagsMatch(row.bagTag, missingRow.bagTag)) || null;
   const records = rows
     .map((values, index) => ({ values: values || [], rowNumber: index + 1 }))
     .filter(({ rowNumber }) => rowNumber > 1)
     .map(({ values, rowNumber }) => cbsMissingBagRecordFromSheet(values, rowNumber))
-    .filter((row) => row.bagTag || row.passengerName || row.destination || row.airline || row.caseNumber)
+    .filter((row) => row.bagTag || row.passengerName || row.destination || row.airline)
     .map((row) => {
       const linkedCase = findLinkedCase(row);
       return {
         ...row,
-        linkedCaseNumber: linkedCase?.caseNumber || row.caseNumber || '',
+        linkedCaseRowNumber: linkedCase?.rowNumber || '',
         linkedCaseBagTag: linkedCase?.bagTag || '',
         linkedCaseStatus: linkedCase?.status || '',
         linkedCaseUpdated: Boolean(linkedCase && isCbsCaseUpdatedAfterMissingLink(linkedCase))
@@ -3677,18 +3677,18 @@ async function getCbsMissingBagReports(options = {}) {
   return { rows: records, sync };
 }
 
-async function markCbsMissingBagCase(rowNumber, caseNumber) {
+async function markCbsMissingBagCase(rowNumber) {
   const numericRow = Number(rowNumber);
   if (!Number.isInteger(numericRow) || numericRow < 2) return { notFound: true };
   const rows = await getCbsMissingBagSheetRows({ forceRefresh: true });
   await ensureCbsMissingBagHeaders(rows);
   const current = cbsMissingBagRecordFromSheet(rows[numericRow - 1] || [], numericRow);
   if (!current.bagTag) return { notFound: true };
-  const next = { ...current, caseNumber, caseCreatedAt: new Date().toISOString() };
+  const next = { ...current, caseCreatedAt: new Date().toISOString() };
   const title = await getCbsMissingBagSheetTitle();
   await sheets.spreadsheets.values.update({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A${numericRow}:J${numericRow}`,
+    range: `${escapeSheetTitle(title)}!A${numericRow}:I${numericRow}`,
     valueInputOption: 'RAW',
     requestBody: { values: [cbsMissingBagValues(next)] }
   });
@@ -3707,7 +3707,7 @@ async function acknowledgeCbsMissingBag(rowNumber) {
   const title = await getCbsMissingBagSheetTitle();
   await sheets.spreadsheets.values.update({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A${numericRow}:J${numericRow}`,
+    range: `${escapeSheetTitle(title)}!A${numericRow}:I${numericRow}`,
     valueInputOption: 'RAW',
     requestBody: { values: [cbsMissingBagValues(next)] }
   });

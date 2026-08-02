@@ -445,7 +445,7 @@
     function parseUpdateNoteEvents(row) {
       const note = String(row?.updateNote || '').trim();
       const events = [];
-      if (row?.caseNumber) {
+      if (row?.rowNumber) {
         const hiddenCreateLabels = new Set([label('Status', '状态'), label('Updated At', '更新时间')]);
         const alwaysVisibleCreateLabels = new Set([
           label('Passenger Name', '旅客姓名'), label('Email', '邮箱'), label('Phone Number', '电话号码'),
@@ -523,7 +523,7 @@
     function trackingDetailHtml(row) {
       const events = parseUpdateNoteEvents(row);
       if (!events.length) return '';
-      return `<section class="tracking-detail"><h2>${escapeHtml(row.caseNumber || 'CASE')}</h2><p class="muted">${escapeHtml(inferCaseType(row) || 'CBS Case')} Tracking</p><div class="tracking-events">${events.map((event) => {
+      return `<section class="tracking-detail"><h2>${label('Baggage Case', '行李案件')}</h2><p class="muted">${escapeHtml(inferCaseType(row) || 'CBS Case')} Tracking</p><div class="tracking-events">${events.map((event) => {
         const time = formatEventTime(event.at);
         const eventFields = (event.fields || []).length ? event.fields : (event.note ? [[label('Detail', '详情'), event.note]] : []);
         const fields = eventFields.map(([key, value]) => `<div class="tracking-event-field"><b>${escapeHtml(key)}</b><span>${escapeHtml(renderValue(value))}</span></div>`).join('');
@@ -533,7 +533,6 @@
     function detailRows(row) {
       const caseType = inferCaseType(row);
       return [
-        [label('Case Number', '编号'), row.caseNumber],
         [label('Case Type', '类型'), caseType],
         [label('Status', '状态'), row.status],
         [label('Passenger Name', '旅客姓名'), row.passengerName],
@@ -620,7 +619,7 @@
       return !/^Created from Missing Bag Report row\b/i.test(String(row?.updateNote || '')) && (hasValue(row?.email) || hasValue(row?.phone) || hasValue(row?.passengerSignature));
     }
     function updateFormHtml(row, mode = 'worldtracer') {
-      if (!row.caseNumber) return `<p class="status err">${label('A case number is required in column A before this row can be updated.', 'A列需要有Case Number后才能更新。')}</p>`;
+      if (!row.rowNumber) return `<p class="status err">${label('A saved row is required before this case can be updated.', '案件保存后才能更新。')}</p>`;
       const active = ['worldtracer', 'rush', 'location', 'shipping', 'closed'].includes(mode) ? mode : 'worldtracer';
       const input = (title, name, attrs = 'required') => `<label><span>${escapeHtml(title)}</span><input name="${escapeHtml(name)}" ${attrs} /></label>`;
       const fields = active === 'worldtracer'
@@ -638,7 +637,7 @@
           : active === 'shipping'
           ? [input('Tracking number', 'trackingNumber'), input('Shipping to where?', 'shippingTo'), `<label class="wide"><span>Comment</span><textarea name="comment"></textarea></label>`].join('')
           : `<label class="wide"><span>Comment</span><textarea name="comment" placeholder="Optional close note"></textarea></label>`;
-      return `<form class="case-update" data-case="${escapeHtml(row.caseNumber)}" data-update-mode="${escapeHtml(active)}">
+      return `<form class="case-update" data-row-number="${escapeHtml(row.rowNumber)}" data-update-mode="${escapeHtml(active)}">
         <h2>${label('Update', '更新')}</h2>
         <div class="update-mode-actions">
           <button type="button" data-cbs-update-mode="worldtracer" class="${active === 'worldtracer' ? 'is-active' : ''}">WORLDTRACER</button>
@@ -673,18 +672,6 @@
         if (field) return field[1];
       }
       return '';
-    }
-    function revealCase(caseNumber) {
-      const normalized = String(caseNumber || '').trim();
-      if (!normalized) return;
-      showSection('passenger');
-      window._selectedCbsCase = normalized;
-      if (caseSearch) caseSearch.value = '';
-      renderCases();
-      const summary = Array.from(casesOutput.querySelectorAll('[data-toggle-case]')).find((item) => item.dataset.toggleCase === normalized);
-      const detail = Array.from(casesOutput.querySelectorAll('[data-detail-case]')).find((item) => item.dataset.detailCase === normalized);
-      if (detail) detail.hidden = false;
-      (summary || detail)?.scrollIntoView({ behavior:'smooth', block:'center' });
     }
     function baggageSearchHtml() {
       const result = window._cbsBaggageSearch;
@@ -762,26 +749,25 @@
           const closedClass = event.key === 'closed' ? ' is-closed' : '';
           return `<span class="tracking-chip${closedClass}"><span class="tracking-chip-title">${escapeHtml(title)}</span><small>${escapeHtml(time.date || '')} ${escapeHtml(time.time || '')}</small>${detailHtml}${noteHtml}</span>`;
         }).join('') || '<span class="sheet-empty">No tracking updates yet</span>';
-      if (!row.caseNumber) return historyHtml;
-      return `<div class="tracking-workspace"><div><p class="tracking-current-time">${label('Last update', '最后更新')}: ${escapeHtml(latestTime.date || '-')} ${escapeHtml(latestTime.time || '')}</p><div class="tracking-history">${historyHtml}</div></div><div><label class="tracking-stage-picker"><span>${label('Current stage', '当前阶段')}</span><select data-cbs-stage-select>${updateKeys.map((stage) => `<option value="${escapeHtml(stage.key)}" ${stage.key === active ? 'selected' : ''}>${escapeHtml(stage.text)}</option>`).join('')}</select></label><form class="inline-update case-update" data-case="${escapeHtml(row.caseNumber)}" data-update-mode="${escapeHtml(active)}"><div data-cbs-inline-fields>${inlineUpdateFieldsHtml(active)}</div><button type="submit">${label('Update Tracking', '更新进度')}</button></form></div></div>`;
+      if (!row.rowNumber) return historyHtml;
+      return `<div class="tracking-workspace"><div><p class="tracking-current-time">${label('Last update', '最后更新')}: ${escapeHtml(latestTime.date || '-')} ${escapeHtml(latestTime.time || '')}</p><div class="tracking-history">${historyHtml}</div></div><div><label class="tracking-stage-picker"><span>${label('Current stage', '当前阶段')}</span><select data-cbs-stage-select>${updateKeys.map((stage) => `<option value="${escapeHtml(stage.key)}" ${stage.key === active ? 'selected' : ''}>${escapeHtml(stage.text)}</option>`).join('')}</select></label><form class="inline-update case-update" data-row-number="${escapeHtml(row.rowNumber)}" data-update-mode="${escapeHtml(active)}"><div data-cbs-inline-fields>${inlineUpdateFieldsHtml(active)}</div><button type="submit">${label('Update Tracking', '更新进度')}</button></form></div></div>`;
     }
     function renderCases() {
       const query = String(caseSearch?.value || '').trim().toLowerCase();
-      const selectedCase = String(window._selectedCbsCase || '').trim();
-      const sourceRows = selectedCase ? (window._cbsRows || []).filter((row) => String(row.caseNumber || '').trim() === selectedCase) : (window._cbsRows || []);
+      const selectedRow = Number(window._selectedCbsRow || 0);
+      const sourceRows = selectedRow ? (window._cbsRows || []).filter((row) => Number(row.rowNumber) === selectedRow) : (window._cbsRows || []);
       const rows = sortedCaseRows(sourceRows).filter((row) => !query || rowSearchText(row).includes(query));
       const baggageHtml = baggageSearchHtml();
       if (!rows.length) { casesOutput.innerHTML = `<p class="muted">No matching cases.</p>${baggageHtml}`; return; }
       const expandedCases = window._expandedCbsCases || new Set();
-      casesOutput.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:220px"><col style="width:220px"><col style="width:150px"><col></colgroup><thead><tr><th>${label('Local Case Number', '本地案件编号')}</th><th>WorldTracer File</th><th>${label('Case Type', '类型')}</th><th>${label('Bag Tag', '行李牌')}</th></tr></thead><tbody>${rows.map((row, index) => {
-        const detailKey = row.caseNumber || `row-${row.rowNumber || index}`;
-        const caseNumberLabel = row.caseNumber || label('Missing case number', '缺少编号');
+      casesOutput.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:220px"><col style="width:150px"><col></colgroup><thead><tr><th>WorldTracer File</th><th>${label('Case Type', '类型')}</th><th>${label('Bag Tag', '行李牌')}</th></tr></thead><tbody>${rows.map((row, index) => {
+        const detailKey = `row-${row.rowNumber || index}`;
         const caseType = inferCaseType(row);
         const closedClass = isClosedCase(row) ? ' is-closed' : '';
         const details = (isOriginalFormCase(row) ? originalFormDetailRows(row) : detailRows(row)).filter(([, value]) => hasValue(value));
         const detailHtml = details.length ? `<div class="sheet-detail-grid">${details.map(([key, value]) => `<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(renderValue(value))}</p>`).join('')}</div>` : `<p class="muted">${label('No extra details.', '没有更多详情。')}</p>`;
         const isExpanded = expandedCases.has(detailKey);
-        return `<tr class="case-summary-row${closedClass}" data-toggle-case="${escapeHtml(detailKey)}" aria-expanded="${isExpanded ? 'true' : 'false'}"><td class="case-key">${escapeHtml(caseNumberLabel)}</td><td class="sheet-meta">${escapeHtml(displayWorldTracerFile(row) || '-')}</td><td class="sheet-meta">${escapeHtml(caseType || '-')}</td><td class="sheet-meta"><span class="bag-tag-value">${escapeHtml(displayBagTag(row) || '-')}</span></td></tr><tr class="case-detail-row${closedClass}" data-detail-case="${escapeHtml(detailKey)}" ${isExpanded ? '' : 'hidden'}><td colspan="4"><div class="case-detail-layout">${trackingControlHtml(row)}${detailHtml}</div></td></tr>`;
+        return `<tr class="case-summary-row${closedClass}" data-toggle-case="${escapeHtml(detailKey)}" aria-expanded="${isExpanded ? 'true' : 'false'}"><td class="sheet-meta">${escapeHtml(displayWorldTracerFile(row) || '-')}</td><td class="sheet-meta">${escapeHtml(caseType || '-')}</td><td class="sheet-meta"><span class="bag-tag-value">${escapeHtml(displayBagTag(row) || '-')}</span></td></tr><tr class="case-detail-row${closedClass}" data-detail-case="${escapeHtml(detailKey)}" ${isExpanded ? '' : 'hidden'}><td colspan="3"><div class="case-detail-layout">${trackingControlHtml(row)}${detailHtml}</div></td></tr>`;
       }).join('')}</tbody></table></div>${baggageHtml}`;
     }
     async function loadCases() {
@@ -800,14 +786,14 @@
         const tag = String(row.bagTag || '').trim().toUpperCase();
         if (!tag) return;
         const current = uniqueRows.get(tag);
-        const rowIsProcessed = Boolean(row.acknowledgedAt || row.linkedCaseNumber || row.caseNumber);
-        const currentIsProcessed = Boolean(current?.acknowledgedAt || current?.linkedCaseNumber || current?.caseNumber);
+        const rowIsProcessed = Boolean(row.acknowledgedAt || row.caseCreatedAt);
+        const currentIsProcessed = Boolean(current?.acknowledgedAt || current?.caseCreatedAt);
         const rowDate = Date.parse(row.sourceEmailDate) || 0;
         const currentDate = Date.parse(current?.sourceEmailDate) || 0;
         if (!current || (rowIsProcessed && !currentIsProcessed) || (rowIsProcessed === currentIsProcessed && rowDate > currentDate)) uniqueRows.set(tag, row);
       });
       rows = [...uniqueRows.values()];
-      const openRows = rows.filter((row) => !row.acknowledgedAt && !row.linkedCaseNumber);
+      const openRows = rows.filter((row) => !row.acknowledgedAt && !row.caseCreatedAt);
       missingAlert.dataset.hasOpenReports = openRows.length ? 'true' : 'false';
       if (!rows.length) { missingReportOutput.innerHTML = '<p class="muted">No MU missing bag rows found.</p>'; return; }
       const dateKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -827,14 +813,10 @@
           ? `${group.date.getMonth() + 1}/${group.date.getDate()}/${group.date.getFullYear()},${group.date.toLocaleDateString('en-US', { weekday:'long' })}`
           : 'Date unavailable';
         const todayLabel = key === todayKey ? '<span>Today</span>' : '';
-        return `<section class="missing-date-group"><h2 class="missing-date-heading">${todayLabel}${escapeHtml(dateLabel)}</h2><div class="sheet-shell"><table class="missing-report-table"><thead><tr><th>Bag Tag</th><th>Passenger</th><th>Destination</th><th>Airline</th><th>Source</th><th>Case</th><th>Status</th><th></th></tr></thead><tbody>${group.rows.map((row) => {
-          const linkedCaseNumber = row.linkedCaseNumber || row.caseNumber || '';
-          const status = row.acknowledgedAt ? 'Acknowledged' : (linkedCaseNumber ? (row.linkedCaseUpdated ? 'Updated' : 'Rush Created') : 'Open');
-          const caseHtml = linkedCaseNumber
-            ? (/^LAX\s+MU/i.test(linkedCaseNumber) ? `<button class="case-link-button" type="button" data-link-case="${escapeHtml(linkedCaseNumber)}">${escapeHtml(linkedCaseNumber)}</button>` : `<span class="pill">${escapeHtml(linkedCaseNumber)}</span>`)
-            : '-';
-          const actionHtml = row.acknowledgedAt || linkedCaseNumber ? '' : `<div class="missing-actions"><button type="button" data-create-missing-rush="${escapeHtml(row.rowNumber)}" data-missing-bag-tag="${escapeHtml(row.bagTag)}">Create Rush</button><button class="secondary" type="button" data-ack-missing="${escapeHtml(row.rowNumber)}">Acknowledge</button></div>`;
-          return `<tr><td>${escapeHtml(row.bagTag)}</td><td>${escapeHtml(row.passengerName)}</td><td>${escapeHtml(row.destination)}</td><td>${escapeHtml(row.airline)}</td><td>${escapeHtml(row.sourceAttachment || '-')}</td><td>${caseHtml}</td><td>${escapeHtml(status)}</td><td>${actionHtml}</td></tr>`;
+        return `<section class="missing-date-group"><h2 class="missing-date-heading">${todayLabel}${escapeHtml(dateLabel)}</h2><div class="sheet-shell"><table class="missing-report-table"><thead><tr><th>Bag Tag</th><th>Passenger</th><th>Destination</th><th>Airline</th><th>Source</th><th>Status</th><th></th></tr></thead><tbody>${group.rows.map((row) => {
+          const status = row.acknowledgedAt ? 'Acknowledged' : (row.caseCreatedAt ? (row.linkedCaseUpdated ? 'Updated' : 'Rush Created') : 'Open');
+          const actionHtml = row.acknowledgedAt || row.caseCreatedAt ? '' : `<div class="missing-actions"><button type="button" data-create-missing-rush="${escapeHtml(row.rowNumber)}" data-missing-bag-tag="${escapeHtml(row.bagTag)}">Create Rush</button><button class="secondary" type="button" data-ack-missing="${escapeHtml(row.rowNumber)}">Acknowledge</button></div>`;
+          return `<tr><td>${escapeHtml(row.bagTag)}</td><td>${escapeHtml(row.passengerName)}</td><td>${escapeHtml(row.destination)}</td><td>${escapeHtml(row.airline)}</td><td>${escapeHtml(row.sourceAttachment || '-')}</td><td>${escapeHtml(status)}</td><td>${actionHtml}</td></tr>`;
         }).join('')}</tbody></table></div></section>`;
       }).join('')}</div>`;
     }
@@ -869,7 +851,7 @@
       event.preventDefault();
       const payload = Object.fromEntries(new FormData(updateForm).entries());
       payload.type = updateForm.dataset.updateMode || 'worldtracer';
-      await updateCase(updateForm.dataset.case, payload);
+      await updateCase(updateForm.dataset.rowNumber, payload);
     });
     casesOutput.addEventListener('change', (event) => {
       const select = event.target.closest('[data-cbs-stage-select]');
@@ -891,7 +873,7 @@
           const res = await fetch(`${apiBase}/cbs-cases/from-baggage/${encodeURIComponent(bagTag)}`, { method:'POST' });
           const data = await parseJson(res);
           if (!res.ok) throw new Error(data.error || 'Create case failed');
-          window._selectedCbsCase = data.caseNumber || data.record?.caseNumber || '';
+          window._selectedCbsRow = 0;
           window._cbsBaggageSearch = null;
           if (caseSearch) caseSearch.value = '';
           await loadCases();
@@ -902,14 +884,14 @@
       if (modeButton) {
         const form = modeButton.closest('.case-update');
         const detail = modeButton.closest('.case-detail');
-        const caseNumber = form?.dataset.case;
-        const currentRow = (window._cbsRows || []).find((row) => row.caseNumber === caseNumber) || { caseNumber };
+        const rowNumber = Number(form?.dataset.rowNumber);
+        const currentRow = (window._cbsRows || []).find((row) => Number(row.rowNumber) === rowNumber) || { rowNumber };
         form.outerHTML = updateFormHtml(currentRow, modeButton.dataset.cbsUpdateMode);
         if (detail) detail.hidden = false;
         return;
       }
       if (event.target.closest('[data-back-all-cases]')) {
-        window._selectedCbsCase = '';
+        window._selectedCbsRow = 0;
         if (caseSearch) caseSearch.value = '';
         renderCases();
         return;
@@ -925,13 +907,13 @@
       }
       renderCases();
     });
-    async function updateCase(caseNumber, payload) {
+    async function updateCase(rowNumber, payload) {
       casesOutput.style.opacity = '.65';
       try {
-        const res = await fetch(`${apiBase}/cbs-cases/${encodeURIComponent(caseNumber)}/update`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+        const res = await fetch(`${apiBase}/cbs-cases/${encodeURIComponent(rowNumber)}/update`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || 'Update failed');
-        window._selectedCbsCase = caseNumber;
+        window._selectedCbsRow = Number(rowNumber);
         await loadCases();
         if (window._missingReportLoaded || !missingReportCard.hidden) await loadMissingReports();
       } catch (error) { alert(error.message); } finally { casesOutput.style.opacity = '1'; }
@@ -1133,11 +1115,6 @@
         rushFlightRows.innerHTML = '';
         addRushFlightRow();
         worldTracerForm.scrollIntoView({ behavior:'smooth', block:'start' });
-        return;
-      }
-      const linkButton = event.target.closest('[data-link-case]');
-      if (linkButton) {
-        revealCase(linkButton.dataset.linkCase);
         return;
       }
       const createButton = event.target.closest('[data-create-missing-case]');
