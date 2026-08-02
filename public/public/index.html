@@ -4299,6 +4299,45 @@
         }
 
       }
+
+      @media (max-width: 760px) {
+        .details-manifest .manifest-section {
+          min-width: 0;
+          overflow: hidden;
+          padding-inline: 8px;
+        }
+
+        .details-manifest .manifest-section .counts,
+        .details-manifest .manifest-section .count,
+        .details-manifest .manifest-section .count-row {
+          width: 100%;
+          min-width: 0;
+        }
+
+        .details-manifest .manifest-section .count-row {
+          display: block;
+          overflow: hidden;
+          font-size: clamp(13px, 4vw, 16px);
+          letter-spacing: 0;
+          line-height: 1.1;
+          text-align: center;
+          white-space: nowrap;
+        }
+
+        .details-manifest .manifest-section .count-row span:first-child,
+        .details-manifest .manifest-section .count-row span:last-child {
+          font-size: inherit;
+          white-space: nowrap;
+        }
+
+        .details-panel .details-manifest > .detail-action.summary-security-action {
+          justify-self: end;
+        }
+
+        .details-panel .details-manifest > .detail-action.summary-jcsy-action {
+          justify-self: start;
+        }
+      }
     </style>
   </head>
   <body class="is-loading">
