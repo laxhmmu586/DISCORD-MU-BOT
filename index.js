@@ -1570,7 +1570,7 @@ function cbsPassengerMessageHtml(language, caseType = 'AHL') {
 }
 
 function buildCbsEmailHtml(record) {
-  return `${cbsPassengerMessageHtml(record.language, record.caseType)}<p><strong>Case ID:</strong> ${record.caseNumber}</p>`;
+  return cbsPassengerMessageHtml(record.language, record.caseType);
 }
 
 function buildCbsFlightRoute(body) {
@@ -2325,7 +2325,7 @@ app.post('/cbs-cases', async (req, res) => {
     try {
       emailResults = await sendCbsCaseEmail({
         passengerEmail: record.email,
-        subject: `China Eastern Baggage Case ${record.caseNumber}`,
+        subject: 'China Eastern Baggage Case',
         html: buildCbsEmailHtml(record),
         pdfBuffer,
         filename: `${record.caseNumber}.pdf`,
