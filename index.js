@@ -1350,26 +1350,6 @@ function normalizeCbsBagTags(value) {
   return source.map((item) => normalizeCbsBagTag(item)).filter(Boolean).join(' / ');
 }
 
-async function makeCbsCaseNumber() {
-  const today = todayIsoUtc();
-  const yy = today.slice(2, 4);
-  const mm = today.slice(5, 7);
-  const monthKey = today.slice(0, 7);
-  const prefix = `LAX MU${yy}${mm}`;
-  const cases = await getCbsCases().catch(() => []);
-  const usedSequences = new Set();
-  let sameMonthRows = 0;
-  cases.forEach((row) => {
-    const caseNumber = String(row.caseNumber || '').toUpperCase();
-    const match = caseNumber.match(new RegExp(`^${prefix}(\\d{2})$`));
-    if (match) usedSequences.add(Number(match[1]));
-    if (match || String(row.submittedAt || row.submitDate || '').startsWith(monthKey)) sameMonthRows += 1;
-  });
-  let nextSequence = Math.max(0, sameMonthRows, ...usedSequences) + 1;
-  while (usedSequences.has(nextSequence)) nextSequence += 1;
-  return `${prefix}${String(nextSequence).padStart(2, '0')}`;
-}
-
 function pdfSafeText(value) {
   return String(value || '')
     .replace(/[\u3400-\u9FFF\uF900-\uFAFF\u3000-\u303F\uFF00-\uFFEF]/g, '')
@@ -1420,7 +1400,6 @@ function createPirPdf(record) {
   content.push('0.97 0.98 1 rg 0 0 612 792 re f');
   content.push('0 0 0 RG 0 0 0 rg 1 w 36 36 540 720 re S');
   content.push(pdfText('PROPERTY IRREGULARITY REPORT (PIR)', 54, 724, 15));
-  content.push(pdfText(`CASE ID: ${record.caseNumber || ''}`, 410, 724, 10));
   content.push(pdfText(`CASE TYPE: ${record.caseType || ''}`, 410, 710, 10));
   content.push(pdfText('FOR INQUIRIES PLEASE EMAIL:', 390, 696, 9));
   content.push(pdfText('LAXHMMU@GMAIL.COM', 390, 682, 9));
@@ -1476,7 +1455,6 @@ function createPirPdf(record) {
     page.push('0 0 0 RG 0 0 0 rg 1 w 36 36 540 720 re S');
     page.push(pdfText('PROPERTY IRREGULARITY REPORT (PIR)', 54, 724, 15));
     page.push(pdfText(pageIndex ? `CONTENTS CONTINUED (${pageIndex + 1})` : 'CONTENTS / PACKED ITEMS', 54, 706, 12));
-    page.push(pdfText(`CASE ID: ${record.caseNumber || ''}`, 410, 706, 10));
     page.push(pdfText(`Passenger: ${record.passengerName || ''}`, 54, 686, 10));
     page.push(pdfText(`Bag Tag: ${record.bagTag || ''}`, 54, 672, 10));
     page.push('0.78 0.78 0.78 rg');
@@ -1570,7 +1548,7 @@ function cbsPassengerMessageHtml(language, caseType = 'AHL') {
 }
 
 function buildCbsEmailHtml(record) {
-  return `${cbsPassengerMessageHtml(record.language, record.caseType)}<p><strong>Case ID:</strong> ${record.caseNumber}</p>`;
+  return cbsPassengerMessageHtml(record.language, record.caseType);
 }
 
 function buildCbsFlightRoute(body) {
@@ -1610,7 +1588,6 @@ function cbsEmailErrorMessage(err) {
 
 function cbsPdfLines(record) {
   return [
-    ['Reference Number', record.caseNumber],
     ['Case Type', record.caseType],
     ['Status', record.status],
     ['Passenger name', record.passengerName],
@@ -1652,7 +1629,7 @@ function sanitizeCbsAttachments(value) {
 
 function missingRequiredCbsAttachmentTypes(attachments = []) {
   const uploadedTypes = new Set(attachments.map((item) => String(item.attachmentType || '').trim().toLowerCase()));
-  return ['passport', 'boardingpass', 'bagtag'].filter((type) => !uploadedTypes.has(type));
+  return ['boardingpass', 'bagtag'].filter((type) => !uploadedTypes.has(type));
 }
 
 
@@ -1682,7 +1659,7 @@ function buildCbsDiscordAttachmentFiles(attachments = []) {
 async function sendCbsAttachmentsToDiscord(record, attachments = [], pdfBuffer = null) {
   const files = buildCbsDiscordAttachmentFiles(attachments);
   if (pdfBuffer?.length) {
-    files.unshift({ attachment: pdfBuffer, name: `${record.caseNumber || 'cbs-case'}.pdf` });
+    files.unshift({ attachment: pdfBuffer, name: 'baggage-report.pdf' });
   }
   if (!files.length) return { sent: false, reason: 'No CBS attachments to post.' };
   const channel = await client.channels.fetch(CBS_ATTACHMENTS_DISCORD_CHANNEL_ID);
@@ -1695,7 +1672,7 @@ async function sendCbsAttachmentsToDiscord(record, attachments = [], pdfBuffer =
   const summary = Object.entries(attachmentCounts).map(([type, count]) => `${type}: ${count}`).join(' / ') || '—';
   await channel.send({
     content: [
-      `CBS attachments for ${record.caseNumber}`,
+      'CBS baggage case attachments',
       `Passenger: ${record.passengerName || '—'}`,
       `Bag tag: ${record.bagTag || '—'}`,
       `Type: ${record.caseType || '—'}`,
@@ -1842,13 +1819,11 @@ app.post('/cbs-missing-bags/:rowNumber/create-case', async (req, res) => {
     const report = await getCbsMissingBagReports({ sync: false });
     const missing = (report.rows || []).find((row) => Number(row.rowNumber) === rowNumber);
     if (!missing) return res.status(404).json({ error: 'Missing bag row not found' });
-    if (missing.caseNumber) return res.json({ created: false, caseNumber: missing.caseNumber, record: missing });
+    if (missing.caseCreatedAt) return res.json({ created: false, record: missing });
     if (!normalizeCbsBagTags(missing.bagTag || req.body?.bagTag)) return res.status(400).json({ error: 'Bag tag is required to create a case' });
     const now = new Date().toISOString();
-    const caseNumber = await makeCbsCaseNumber();
     const bagTag = normalizeCbsBagTags(missing.bagTag || req.body?.bagTag);
     const record = {
-      caseNumber,
       caseType: 'AHL',
       status: 'Open',
       passengerName: sanitizeCbsText(missing.passengerName, 160) || 'UNKNOWN',
@@ -1886,8 +1861,8 @@ app.post('/cbs-missing-bags/:rowNumber/create-case', async (req, res) => {
       updateNote: `Created from Missing Bag Report row ${rowNumber} | Bag tag: ${bagTag}`
     };
     await appendCbsCase(record);
-    await markCbsMissingBagCase(rowNumber, caseNumber);
-    return res.status(201).json({ created: true, caseNumber, record });
+    await markCbsMissingBagCase(rowNumber);
+    return res.status(201).json({ created: true, record });
   } catch (err) {
     console.error('CBS missing bag create case error:', err);
     return res.status(500).json({ error: err?.message || 'CBS missing bag case creation failed' });
@@ -2206,12 +2181,10 @@ app.post('/cbs-cases/from-baggage/:bagTag', async (req, res) => {
     const baggage = await findTestBaggageByTag(bagTag);
     if (!baggage) return res.status(404).json({ error: 'Baggage record not found' });
     const existingCase = (await getCbsCases()).find((row) => String(row.bagTag || '').split(/\s*\/\s*/).some((tag) => normalizeCbsBagTag(tag) === bagTag));
-    if (existingCase?.caseNumber) return res.json({ created: false, caseNumber: existingCase.caseNumber, record: existingCase });
+    if (existingCase) return res.json({ created: false, record: existingCase });
     const now = new Date().toISOString();
-    const caseNumber = await makeCbsCaseNumber();
     const flightRoute = [baggage.flight, baggage.date].map((value) => sanitizeCbsText(value, 40)).filter(Boolean).join(' ');
     const record = {
-      caseNumber,
       caseType: 'AHL',
       status: 'Open',
       passengerName: 'UNKNOWN',
@@ -2249,7 +2222,7 @@ app.post('/cbs-cases/from-baggage/:bagTag', async (req, res) => {
       updateNote: `Created from Baggage search | Bag tag: ${bagTag} | Status: ${sanitizeCbsText(baggage.currentStatus || baggage.status, 120)} | Flight: ${flightRoute}`
     };
     await appendCbsCase(record);
-    return res.status(201).json({ created: true, caseNumber, record });
+    return res.status(201).json({ created: true, record });
   } catch (err) {
     console.error('CBS baggage create case error:', err);
     return res.status(500).json({ error: err?.message || 'CBS baggage case creation failed' });
@@ -2278,10 +2251,9 @@ app.post('/cbs-cases', async (req, res) => {
     const now = new Date().toISOString();
     let attachments = sanitizeCbsAttachments(body.attachments);
     const missingAttachmentTypes = missingRequiredCbsAttachmentTypes(attachments);
-    if (missingAttachmentTypes.length) return res.status(400).json({ error: 'Passport, boarding pass, and bag tag receipt attachments are required' });
+    if (missingAttachmentTypes.length) return res.status(400).json({ error: 'Boarding pass and bag tag receipt attachments are required' });
     const contentsRows = buildCbsContentsRows(body);
     const record = {
-      caseNumber: await makeCbsCaseNumber(),
       caseType,
       status: 'Open',
       passengerName,
@@ -2325,10 +2297,10 @@ app.post('/cbs-cases', async (req, res) => {
     try {
       emailResults = await sendCbsCaseEmail({
         passengerEmail: record.email,
-        subject: `China Eastern Baggage Case ${record.caseNumber}`,
+        subject: 'China Eastern Baggage Case',
         html: buildCbsEmailHtml(record),
         pdfBuffer,
-        filename: `${record.caseNumber}.pdf`,
+        filename: 'baggage-report.pdf',
         attachments
       });
     } catch (mailErr) {
@@ -2350,11 +2322,11 @@ app.post('/cbs-cases', async (req, res) => {
   }
 });
 
-app.post('/cbs-cases/:caseNumber/update', async (req, res) => {
+app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
   try {
     const updateFields = buildCbsUpdateFields(req.body || {});
     if (!updateFields) return res.status(400).json({ error: 'Valid WORLDTRACER, RUSH, BAG LOCATION UPDATE, SHIPPING, or CASE CLOSE details are required' });
-    const result = await updateCbsCase(req.params.caseNumber, updateFields);
+    const result = await updateCbsCase(req.params.rowNumber, updateFields);
     if (result.notFound) return res.status(404).json({ error: 'Case not found' });
     return res.json(result);
   } catch (err) {
