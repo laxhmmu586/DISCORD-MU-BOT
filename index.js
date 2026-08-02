@@ -1629,7 +1629,7 @@ function sanitizeCbsAttachments(value) {
 
 function missingRequiredCbsAttachmentTypes(attachments = []) {
   const uploadedTypes = new Set(attachments.map((item) => String(item.attachmentType || '').trim().toLowerCase()));
-  return ['passport', 'boardingpass', 'bagtag'].filter((type) => !uploadedTypes.has(type));
+  return ['boardingpass', 'bagtag'].filter((type) => !uploadedTypes.has(type));
 }
 
 
@@ -2251,7 +2251,7 @@ app.post('/cbs-cases', async (req, res) => {
     const now = new Date().toISOString();
     let attachments = sanitizeCbsAttachments(body.attachments);
     const missingAttachmentTypes = missingRequiredCbsAttachmentTypes(attachments);
-    if (missingAttachmentTypes.length) return res.status(400).json({ error: 'Passport, boarding pass, and bag tag receipt attachments are required' });
+    if (missingAttachmentTypes.length) return res.status(400).json({ error: 'Boarding pass and bag tag receipt attachments are required' });
     const contentsRows = buildCbsContentsRows(body);
     const record = {
       caseType,

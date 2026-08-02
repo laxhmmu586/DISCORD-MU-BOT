@@ -18,6 +18,8 @@
     .page-title,.card { background:var(--panel); border:1px solid var(--line); border-radius:22px; box-shadow:0 18px 42px rgba(22,48,76,.08); }
     .page-title { padding:28px; }
     .page-title h1 { margin:0; font-size:clamp(26px,4vw,38px); }
+    .page-title p { margin:12px 0 0; color:var(--muted); }
+    .page-title a { color:var(--brand); font-weight:800; }
     h2,h3 { margin:0 0 10px; }
     p { line-height:1.65; }
     .muted { color:var(--muted); }
@@ -67,7 +69,7 @@
     .sketch-shell { display:grid; gap:10px; overflow:hidden; }
     .sketch-board { width:100%; max-width:820px; border:1px solid var(--line); border-radius:14px; background:#fff; touch-action:none; display:block; }
     .attachment-hint { font-size:12px; color:var(--muted); font-weight:600; }
-    .attachment-grid { display:grid; grid-template-columns:repeat(4,minmax(100px,1fr)); gap:10px; }
+    .attachment-grid { display:grid; grid-template-columns:repeat(3,minmax(100px,1fr)); gap:10px; }
     .attachment-group { display:grid; grid-template-columns:1fr; gap:8px; align-content:start; border:1px dashed #b8c7d9; border-radius:14px; padding:8px; background:#fbfdff; }
     .attachment-items { display:contents; }
     .attachment-tile { position:relative; display:grid; gap:5px; align-content:start; min-height:104px; border:1px dashed #c6d5e6; border-radius:12px; padding:6px; background:#fff; cursor:pointer; transition:border-color .2s ease, box-shadow .2s ease, transform .2s ease; }
@@ -93,6 +95,7 @@
   <main class="wrap">
     <section class="page-title">
       <h1><span class="en">Property Irregularity Report (PIR)</span><span class="zh">行李运输事故记录单</span></h1>
+      <p><span class="en">If you encounter any difficulties while completing the form, please email us directly at <a href="mailto:laxhmmu@gmail.com">laxhmmu@gmail.com</a>, and we will be happy to assist you.</span><span class="zh">如果您在填写过程中遇到任何困难，请直接发送邮件至：<a href="mailto:laxhmmu@gmail.com">laxhmmu@gmail.com</a>，我们将尽快为您提供协助。</span></p>
     </section>
 
     <section class="card">
@@ -174,10 +177,6 @@
         <section class="case-fields is-active wide">
           <h3><span class="en">Attachments</span><span class="zh">附件</span><span class="required-mark">*</span></h3>
           <div class="attachment-grid">
-            <div class="attachment-group" data-attachment-group data-attachment-type="passport" data-required-attachment="true">
-              <div class="attachment-items" data-attachment-items></div>
-              <label class="attachment-tile attachment-upload"><span class="attachment-preview"></span><span class="attachment-title"><span class="en">Passport</span><span class="zh">护照</span><span class="required-mark">*</span></span><span class="attachment-filename"></span><input name="passportAttachment" data-attachment-input data-attachment-type="passport" type="file" accept="image/*,.pdf" multiple /></label>
-            </div>
             <div class="attachment-group" data-attachment-group data-attachment-type="boardingPass" data-required-attachment="true">
               <div class="attachment-items" data-attachment-items></div>
               <label class="attachment-tile attachment-upload"><span class="attachment-preview"></span><span class="attachment-title"><span class="en">Boarding pass</span><span class="zh">登机牌</span><span class="required-mark">*</span></span><span class="attachment-filename"></span><input name="boardingPassAttachment" data-attachment-input data-attachment-type="boardingPass" type="file" accept="image/*,.pdf" multiple /></label>
@@ -191,7 +190,7 @@
               <label class="attachment-tile attachment-upload"><span class="attachment-preview"></span><span class="attachment-title"><span class="en">Other document</span><span class="zh">其他附件</span></span><span class="attachment-filename"></span><input name="otherAttachment" data-attachment-input data-attachment-type="other" type="file" accept="image/*,.pdf" multiple /></label>
             </div>
           </div>
-          <span class="attachment-hint"><span class="en">Passport, boarding pass, and bag tag receipt are required. Files are sent as email attachments only; they are not saved to Drive or the case sheet.</span><span class="zh">必须上传护照、登机牌、行李票。附件只随邮件发送，不保存到网盘或表格。</span></span>
+          <span class="attachment-hint"><span class="en">Boarding pass and bag tag receipt are required. Files are sent as email attachments only; they are not saved to Drive or the case sheet.</span><span class="zh">必须上传登机牌和行李票。附件只随邮件发送，不保存到网盘或表格。</span></span>
         </section>
 
         <section class="case-fields is-active">
@@ -558,7 +557,7 @@
       const output = [];
       for (const input of attachmentInputs) {
         const files = selectedAttachments.get(attachmentKey(input)) || [];
-        if (!files.length && input.closest('[data-attachment-group]')?.dataset.requiredAttachment === 'true') throw new Error(document.documentElement.lang === 'en' ? 'Passport, boarding pass, and bag tag receipt attachments are required.' : '必须上传护照、登机牌、行李票附件。');
+        if (!files.length && input.closest('[data-attachment-group]')?.dataset.requiredAttachment === 'true') throw new Error(document.documentElement.lang === 'en' ? 'Boarding pass and bag tag receipt attachments are required.' : '必须上传登机牌和行李票附件。');
         for (const file of files) {
           const attachment = await fileToAttachment(file, input.dataset.attachmentType || 'document');
           if (attachment) output.push(attachment);
