@@ -773,15 +773,14 @@
       const baggageHtml = baggageSearchHtml();
       if (!rows.length) { casesOutput.innerHTML = `<p class="muted">No matching cases.</p>${baggageHtml}`; return; }
       const expandedCases = window._expandedCbsCases || new Set();
-      casesOutput.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:220px"><col style="width:220px"><col style="width:150px"><col></colgroup><thead><tr><th>${label('Local Case Number', '本地案件编号')}</th><th>WorldTracer File</th><th>${label('Case Type', '类型')}</th><th>${label('Bag Tag', '行李牌')}</th></tr></thead><tbody>${rows.map((row, index) => {
+      casesOutput.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:220px"><col style="width:150px"><col></colgroup><thead><tr><th>WorldTracer File</th><th>${label('Case Type', '类型')}</th><th>${label('Bag Tag', '行李牌')}</th></tr></thead><tbody>${rows.map((row, index) => {
         const detailKey = row.caseNumber || `row-${row.rowNumber || index}`;
-        const caseNumberLabel = row.caseNumber || label('Missing case number', '缺少编号');
         const caseType = inferCaseType(row);
         const closedClass = isClosedCase(row) ? ' is-closed' : '';
         const details = (isOriginalFormCase(row) ? originalFormDetailRows(row) : detailRows(row)).filter(([, value]) => hasValue(value));
         const detailHtml = details.length ? `<div class="sheet-detail-grid">${details.map(([key, value]) => `<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(renderValue(value))}</p>`).join('')}</div>` : `<p class="muted">${label('No extra details.', '没有更多详情。')}</p>`;
         const isExpanded = expandedCases.has(detailKey);
-        return `<tr class="case-summary-row${closedClass}" data-toggle-case="${escapeHtml(detailKey)}" aria-expanded="${isExpanded ? 'true' : 'false'}"><td class="case-key">${escapeHtml(caseNumberLabel)}</td><td class="sheet-meta">${escapeHtml(displayWorldTracerFile(row) || '-')}</td><td class="sheet-meta">${escapeHtml(caseType || '-')}</td><td class="sheet-meta"><span class="bag-tag-value">${escapeHtml(displayBagTag(row) || '-')}</span></td></tr><tr class="case-detail-row${closedClass}" data-detail-case="${escapeHtml(detailKey)}" ${isExpanded ? '' : 'hidden'}><td colspan="4"><div class="case-detail-layout">${trackingControlHtml(row)}${detailHtml}</div></td></tr>`;
+        return `<tr class="case-summary-row${closedClass}" data-toggle-case="${escapeHtml(detailKey)}" aria-expanded="${isExpanded ? 'true' : 'false'}"><td class="sheet-meta">${escapeHtml(displayWorldTracerFile(row) || '-')}</td><td class="sheet-meta">${escapeHtml(caseType || '-')}</td><td class="sheet-meta"><span class="bag-tag-value">${escapeHtml(displayBagTag(row) || '-')}</span></td></tr><tr class="case-detail-row${closedClass}" data-detail-case="${escapeHtml(detailKey)}" ${isExpanded ? '' : 'hidden'}><td colspan="3"><div class="case-detail-layout">${trackingControlHtml(row)}${detailHtml}</div></td></tr>`;
       }).join('')}</tbody></table></div>${baggageHtml}`;
     }
     async function loadCases() {
