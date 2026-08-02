@@ -246,7 +246,6 @@
         <p>再次对本次行李损坏给您带来的不便表示诚挚歉意。我们将尽最大努力协助您完成后续处理，并感谢您的理解与支持。</p>
         <p>中国东方航空公司</p>
       </div>
-      <p><strong><span class="en">Your case number:</span><span class="zh">查询编号：</span></strong> <span id="thanks-case"></span></p>
     </section>
   </main>
   <script>
@@ -260,7 +259,6 @@
     const dprFields = document.querySelector('#dpr-fields');
     const formStatus = document.querySelector('#form-status');
     const thanks = document.querySelector('#thanks');
-    const thanksCase = document.querySelector('#thanks-case');
     const attachmentInputs = Array.from(document.querySelectorAll('[data-attachment-input]'));
     const bagTagsList = document.querySelector('#bag-tags-list');
     const addBagTagButton = document.querySelector('#add-bag-tag');
@@ -595,8 +593,7 @@
         if (!res.ok) throw new Error(data.error || 'Submit failed');
         const deliveryErrors = [data.emailError && `email failed: ${data.emailError}`, data.discordError && `Discord failed: ${data.discordError}`].filter(Boolean);
         formStatus.className = deliveryErrors.length ? 'status err' : 'status ok';
-        formStatus.textContent = deliveryErrors.length ? `Created ${data.record.caseNumber}, but ${deliveryErrors.join('; ')}` : `Created ${data.record.caseNumber}, email sent, and attachments posted to Discord`;
-        thanksCase.textContent = data.record.caseNumber;
+        formStatus.textContent = deliveryErrors.length ? `Created, but ${deliveryErrors.join('; ')}` : 'Created, email sent, and attachments posted to Discord';
         thanks.querySelectorAll('[data-thanks-message]').forEach((item) => { item.hidden = item.dataset.thanksMessage !== data.record.caseType; });
         thanks.classList.add('is-active');
         thanks.scrollIntoView({ behavior:'smooth', block:'center' });
