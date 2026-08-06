@@ -431,6 +431,7 @@
     function isBagTagSearch(value) { return /^[A-Z]{2}\d{6}$/.test(normalizeBagSearch(value)); }
     const TRACKING_STAGES = [
       { key:'create', text:'Create' },
+      { key:'update', text:'Update' },
       { key:'worldtracer', text:'WorldTracer' },
       { key:'rush', text:'Rush' },
       { key:'location', text:'Location' },
@@ -459,7 +460,7 @@
         // Do not reduce it to case metadata: agents should not have to look in a
         // separate panel for the passenger's contact, itinerary, bag, or address.
         const createFields = passengerFiledDetailRows(row)
-          .filter(([key, value]) => !hiddenCreateLabels.has(key) && (hasValue(value) || alwaysVisibleCreateLabels.has(key)));
+          .filter(([key, value]) => !hiddenCreateLabels.has(key) && (hasValue(value) || (row?.source !== 'wrongBaggage' && alwaysVisibleCreateLabels.has(key))));
         events.push({ key:'create', title:'Create Case', at:row.submittedAt || row.issueDate || '', fields:createFields });
       }
       const storedEvents = parseStoredUpdateEvents(row);
@@ -502,6 +503,7 @@
       if (/location/.test(text)) return 'location';
       if (/rush/.test(text)) return 'rush';
       if (/world\s*tracer|worldtracer/.test(text)) return 'worldtracer';
+      if (/update/.test(text)) return 'update';
       return 'create';
     }
     function trackingStage(row) {
@@ -574,6 +576,7 @@
         : row?.flightRoute;
       return [
         [label('Passenger Name', '旅客姓名'), row?.passengerName],
+        [label('Seat Number', '座位号'), row?.seatNumber],
         [label('Email', '邮箱'), row?.email],
         [label('Mobile Number', '手机号码'), row?.phoneNumber || row?.phone],
         [label('Ticket Number', '机票号码'), row?.ticketNumber],
@@ -737,6 +740,15 @@
     }
     function trackingControlHtml(row) {
       const events = parseUpdateNoteEvents(row);
+      if (row?.source === 'wrongBaggage') {
+        const historyHtml = events.map((event) => {
+          const time = formatEventTime(event.at);
+          const details = (event.fields || []).filter(([, value]) => hasValue(value)).map(([key, value]) => `<span class="tracking-chip-detail">${escapeHtml(key)}: ${escapeHtml(renderValue(value))}</span>`).join('');
+          return `<span class="tracking-chip${event.key === 'closed' ? ' is-closed' : ''}"><span class="tracking-chip-title">${escapeHtml(event.title || 'Update')}</span><small>${escapeHtml(time.date)} ${escapeHtml(time.time)}</small>${details}</span>`;
+        }).join('');
+        if (isClosedCase(row)) return `<div class="tracking-workspace"><div><div class="tracking-history">${historyHtml}</div></div><p class="status ok">${label('Case closed', '案件已关闭')}</p></div>`;
+        return `<div class="tracking-workspace"><div><div class="tracking-history">${historyHtml}</div></div><form class="inline-update case-update" data-row-number="${escapeHtml(row.rowNumber)}" data-case-source="wrongBaggage" data-update-mode="update"><div data-cbs-inline-fields><textarea name="comment" placeholder="${label('Enter any update', '输入更新内容')}" required></textarea></div><div class="actions"><button type="submit">${label('Save Update', '保存更新')}</button><button type="submit" class="secondary" name="type" value="closed" formnovalidate>${label('Case Close', '关闭案件')}</button></div></form></div>`;
+      }
       const latest = events[events.length - 1] || null;
       const latestTime = latest ? formatEventTime(latest.at) : { time:'--:--', date:'' };
       const active = nextTrackingKey(row);
@@ -853,9 +865,9 @@
       const updateForm = event.target.closest('.case-update');
       if (!updateForm) return;
       event.preventDefault();
-      const payload = Object.fromEntries(new FormData(updateForm).entries());
-      payload.type = updateForm.dataset.updateMode || 'worldtracer';
-      await updateCase(updateForm.dataset.rowNumber, payload);
+      const payload = Object.fromEntries(new FormData(updateForm, event.submitter).entries());
+      payload.type = payload.type || updateForm.dataset.updateMode || 'worldtracer';
+      await updateCase(updateForm.dataset.rowNumber, payload, updateForm.dataset.caseSource || 'pir');
     });
     casesOutput.addEventListener('change', (event) => {
       const select = event.target.closest('[data-cbs-stage-select]');
@@ -911,10 +923,11 @@
       }
       renderCases();
     });
-    async function updateCase(rowNumber, payload) {
+    async function updateCase(rowNumber, payload, source = 'pir') {
       casesOutput.style.opacity = '.65';
       try {
-        const res = await fetch(`${apiBase}/cbs-cases/${encodeURIComponent(rowNumber)}/update`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+        const endpoint = source === 'wrongBaggage' ? `wrong-baggage-submissions/${encodeURIComponent(rowNumber)}/update` : `cbs-cases/${encodeURIComponent(rowNumber)}/update`;
+        const res = await fetch(`${apiBase}/${endpoint}`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || 'Update failed');
         window._selectedCbsRow = Number(rowNumber);

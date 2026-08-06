@@ -134,7 +134,7 @@
                   </div>
                 </div>
               </div>
-              <label><span class="en">Report type</span><span class="zh">报告类型</span><select name="caseType" id="case-type" required><option value="AHL">AHL - Delayed/Lost</option><option value="DPR">DPR - Damaged</option></select></label>
+              <input name="caseType" id="case-type" type="hidden" value="AHL" />
             </div>
           </div>
           <label class="wide"><span class="en">Address</span><span class="zh">住址</span><textarea name="permanentAddress" required></textarea></label>
@@ -279,8 +279,6 @@
     function setLanguage(lang) {
       document.documentElement.lang = lang;
       languageToggle.textContent = lang === 'en' ? '中文' : 'English';
-      typeSelect.options[0].textContent = lang === 'en' ? 'AHL - Delayed/Lost' : 'AHL - 延误或丢失';
-      typeSelect.options[1].textContent = lang === 'en' ? 'DPR - Damaged' : 'DPR - 破损';
       addressAvailable.options[0].textContent = lang === 'en' ? 'No' : '否';
       addressAvailable.options[1].textContent = lang === 'en' ? 'Yes' : '是';
     }

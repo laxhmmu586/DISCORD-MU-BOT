@@ -59,6 +59,9 @@ const {
   extractFscExchangeRate,
   updateSyBookingCounts,
   appendCbsCase,
+  appendWrongBaggageSubmission,
+  getWrongBaggageSubmissions,
+  updateWrongBaggageSubmission,
   appendContactFormSubmission,
   getContactFormSubmissions,
   appendCbsWorldTracerCase,
@@ -1755,8 +1758,16 @@ app.post('/wrong-baggage-submissions', async (req, res) => {
     if ((Array.isArray(body.attachments) ? body.attachments.length : 0) !== attachments.length || attachments.some((item) => !String(item.mimeType).startsWith('image/'))) {
       return res.status(400).json({ error: 'Upload up to 10 images, no more than 8 MB each and 22 MB total.' });
     }
-    const discord = await sendWrongBaggageFormToDiscord(record, attachments);
-    return res.status(201).json({ created: true, record, discord });
+    await appendWrongBaggageSubmission(record);
+    let discord = null;
+    let discordError = '';
+    try {
+      discord = await sendWrongBaggageFormToDiscord(record, attachments);
+    } catch (discordErr) {
+      discordError = discordErr?.message || 'Discord notification failed.';
+      console.error('Wrong baggage Discord notification error:', discordErr);
+    }
+    return res.status(201).json({ created: true, record, discord, discordError });
   } catch (err) {
     console.error('Wrong baggage form submission error:', err);
     return res.status(500).json({ error: 'The form could not be submitted. Please try again or contact a staff member.' });
@@ -2119,11 +2130,26 @@ app.delete('/cbs-scan/nbrd-bns/:rowNumber', handleCbsScanNbrdDelete);
 
 app.get('/cbs-cases', async (req, res) => {
   try {
-    const rows = await getCbsCases();
-    return res.json({ rows });
+    const [pirRows, wrongBaggageRows] = await Promise.all([getCbsCases(), getWrongBaggageSubmissions()]);
+    return res.json({ rows: [...pirRows, ...wrongBaggageRows] });
   } catch (err) {
     console.error('CBS case list error:', err);
     return res.status(500).json({ error: err?.message || 'CBS case lookup failed' });
+  }
+});
+
+app.post('/wrong-baggage-submissions/:rowNumber/update', async (req, res) => {
+  try {
+    const type = sanitizeCbsText(req.body?.type, 20).toLowerCase();
+    const comment = sanitizeCbsText(req.body?.comment, 1000);
+    if (!['update', 'closed'].includes(type) || (type === 'update' && !comment)) {
+      return res.status(400).json({ error: 'Enter an update comment or close the case.' });
+    }
+    const record = await updateWrongBaggageSubmission(req.params.rowNumber, { type, comment });
+    return res.json({ updated: true, record });
+  } catch (err) {
+    console.error('Wrong baggage update error:', err);
+    return res.status(500).json({ error: err?.message || 'Wrong baggage update failed' });
   }
 });
 
