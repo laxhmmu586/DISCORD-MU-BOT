@@ -59,6 +59,9 @@ const {
   extractFscExchangeRate,
   updateSyBookingCounts,
   appendCbsCase,
+  appendWrongBaggageSubmission,
+  getWrongBaggageSubmissions,
+  updateWrongBaggageSubmission,
   appendContactFormSubmission,
   getContactFormSubmissions,
   appendCbsWorldTracerCase,
@@ -98,7 +101,9 @@ const fbLookup =
 const { findSYInfo } = require('./syParser');
 const NEXTDAY_INFO_DISCORD_CHANNEL_ID = '1399400605742661702';
 const TRANSIT_240_DISCORD_CHANNEL_ID = process.env.TRANSIT_240_DISCORD_CHANNEL_ID || '1365773224276660257';
-const CBS_ATTACHMENTS_DISCORD_CHANNEL_ID = process.env.CBS_ATTACHMENTS_DISCORD_CHANNEL_ID || '1527344986075693167';
+const WRONG_BAGGAGE_DISCORD_CHANNEL_ID = process.env.WRONG_BAGGAGE_DISCORD_CHANNEL_ID || '1534758804535640227';
+const CBS_DELAYED_LOST_DISCORD_CHANNEL_ID = process.env.CBS_DELAYED_LOST_DISCORD_CHANNEL_ID || '1534758703369289821';
+const CBS_DAMAGED_DISCORD_CHANNEL_ID = process.env.CBS_DAMAGED_DISCORD_CHANNEL_ID || process.env.CBS_ATTACHMENTS_DISCORD_CHANNEL_ID || '1527344986075693167';
 const CONTACT_FORM_DISCORD_CHANNEL_ID = process.env.CONTACT_FORM_DISCORD_CHANNEL_ID || '1531867051755442266';
 
 const DEFAULT_PERMISSIONS = {
@@ -1521,7 +1526,7 @@ function cbsPassengerMessageHtml(language, caseType = 'AHL') {
       '<p>Should further inspection, repair assessment, or additional documentation be required, our staff will contact you and provide the necessary assistance. You may also contact our local office at any time to inquire about the status of your claim. Our ground service staff will be pleased to assist you with any information you may need.</p>',
       '<p>If you authorize another person to handle the claim on your behalf, the authorized representative must present your signed authorization letter, the baggage damage report, your passport (or a copy of your passport), and the representative\'s valid identification document.</p>',
       '<p>Once again, we sincerely apologize for the inconvenience caused by the damage to your baggage. We will make every effort to assist you with the resolution of this matter and appreciate your patience and understanding.</p>',
-      '<p>China Eastern Airlines</p>'
+      '<p>China Eastern Airlines - LAX</p>'
     ].join('');
   }
   if (language === 'zh') {
@@ -1543,7 +1548,7 @@ function cbsPassengerMessageHtml(language, caseType = 'AHL') {
     '<p>As soon as your baggage is located, we will notify you and arrange delivery where permitted by local government authorities. If your baggage requires customs clearance or must be collected because of damage, please bring the P.I.R. form and your passport to the airport.</p>',
     '<p>If someone else collects the baggage on your behalf, they should bring a letter of authorization, your passport or a photocopy of it, the P.I.R. form, and their ID card.</p>',
     '<p>Once again, please accept our sincere apologies for this unfortunate incident and the inconvenience it has caused.</p>',
-    '<p>Yours sincerely,<br>China Eastern Airlines</p>'
+    '<p>Yours sincerely,<br>China Eastern Airlines - LAX</p>'
   ].join('');
 }
 
@@ -1662,7 +1667,10 @@ async function sendCbsAttachmentsToDiscord(record, attachments = [], pdfBuffer =
     files.unshift({ attachment: pdfBuffer, name: 'baggage-report.pdf' });
   }
   if (!files.length) return { sent: false, reason: 'No CBS attachments to post.' };
-  const channel = await client.channels.fetch(CBS_ATTACHMENTS_DISCORD_CHANNEL_ID);
+  const channelId = String(record?.caseType || '').toUpperCase() === 'DPR'
+    ? CBS_DAMAGED_DISCORD_CHANNEL_ID
+    : CBS_DELAYED_LOST_DISCORD_CHANNEL_ID;
+  const channel = await client.channels.fetch(channelId);
   if (!channel) return { sent: false, reason: 'Discord channel not found.' };
   const attachmentCounts = attachments.reduce((counts, attachment) => {
     const type = sanitizeCbsText(attachment?.attachmentType, 40) || 'document';
@@ -1680,7 +1688,7 @@ async function sendCbsAttachmentsToDiscord(record, attachments = [], pdfBuffer =
     ].join('\n'),
     files
   });
-  return { sent: true, channelId: CBS_ATTACHMENTS_DISCORD_CHANNEL_ID, fileCount: files.length };
+  return { sent: true, channelId, fileCount: files.length };
 }
 
 function sanitizeContactAttachments(value) {
@@ -1715,6 +1723,61 @@ async function sendContactFormToDiscord(record, attachments) {
   });
   return { sent: true, channelId: CONTACT_FORM_DISCORD_CHANNEL_ID, fileCount: files.length };
 }
+
+async function sendWrongBaggageFormToDiscord(record, attachments) {
+  const channel = await client.channels.fetch(WRONG_BAGGAGE_DISCORD_CHANNEL_ID);
+  if (!channel?.isTextBased()) throw new Error('CBS attachments Discord channel was not found or is not text based.');
+  await channel.send({
+    content: [
+      '**Wrong Baggage Pick-up Report / 误取行李申报**',
+      `Name / 姓名: ${record.name}`,
+      `Seat number / 座位号: ${record.seatNumber}`,
+      `Baggage tag / 行李牌号码: ${record.bagTagNumber}`,
+      `Email / 电子邮箱: ${record.email}`,
+      `Mobile number / 手机号码: ${record.phone}`,
+      `Language / 语言: ${record.language}`
+    ].join('\n'),
+    files: buildCbsDiscordAttachmentFiles(attachments),
+    allowedMentions: { parse: [] }
+  });
+  return { sent: true, channelId: WRONG_BAGGAGE_DISCORD_CHANNEL_ID, fileCount: attachments.length };
+}
+
+app.post('/wrong-baggage-submissions', async (req, res) => {
+  try {
+    const body = req.body || {};
+    const record = {
+      submittedAt: new Date().toISOString(),
+      name: sanitizeCbsText(body.name, 160),
+      seatNumber: sanitizeCbsText(body.seatNumber, 20).toUpperCase(),
+      bagTagNumber: sanitizeCbsText(body.bagTagNumber, 40).toUpperCase(),
+      email: sanitizeCbsText(body.email, 160).toLowerCase(),
+      phone: sanitizeCbsText(body.phone, 80),
+      language: sanitizeCbsText(body.language, 5) === 'en' ? 'en' : 'zh'
+    };
+    if (!record.name || !record.seatNumber || !record.bagTagNumber || !record.phone || !isValidEmail(record.email)) {
+      return res.status(400).json({ error: 'Name, seat number, baggage tag number, valid email, and mobile number are required.' });
+    }
+    const attachments = sanitizeContactAttachments(body.attachments);
+    if (!attachments.length) return res.status(400).json({ error: 'At least one baggage photo is required.' });
+    if ((Array.isArray(body.attachments) ? body.attachments.length : 0) !== attachments.length || attachments.some((item) => !String(item.mimeType).startsWith('image/'))) {
+      return res.status(400).json({ error: 'Upload up to 10 images, no more than 8 MB each and 22 MB total.' });
+    }
+    await appendWrongBaggageSubmission(record);
+    let discord = null;
+    let discordError = '';
+    try {
+      discord = await sendWrongBaggageFormToDiscord(record, attachments);
+    } catch (discordErr) {
+      discordError = discordErr?.message || 'Discord notification failed.';
+      console.error('Wrong baggage Discord notification error:', discordErr);
+    }
+    return res.status(201).json({ created: true, record, discord, discordError });
+  } catch (err) {
+    console.error('Wrong baggage form submission error:', err);
+    return res.status(500).json({ error: 'The form could not be submitted. Please try again or contact a staff member.' });
+  }
+});
 
 app.post('/contact-form-submissions', async (req, res) => {
   try {
@@ -2072,11 +2135,26 @@ app.delete('/cbs-scan/nbrd-bns/:rowNumber', handleCbsScanNbrdDelete);
 
 app.get('/cbs-cases', async (req, res) => {
   try {
-    const rows = await getCbsCases();
-    return res.json({ rows });
+    const [pirRows, wrongBaggageRows] = await Promise.all([getCbsCases(), getWrongBaggageSubmissions()]);
+    return res.json({ rows: [...pirRows, ...wrongBaggageRows] });
   } catch (err) {
     console.error('CBS case list error:', err);
     return res.status(500).json({ error: err?.message || 'CBS case lookup failed' });
+  }
+});
+
+app.post('/wrong-baggage-submissions/:rowNumber/update', async (req, res) => {
+  try {
+    const type = sanitizeCbsText(req.body?.type, 20).toLowerCase();
+    const comment = sanitizeCbsText(req.body?.comment, 1000);
+    if (!['update', 'closed'].includes(type) || (type === 'update' && !comment)) {
+      return res.status(400).json({ error: 'Enter an update comment or close the case.' });
+    }
+    const record = await updateWrongBaggageSubmission(req.params.rowNumber, { type, comment });
+    return res.json({ updated: true, record });
+  } catch (err) {
+    console.error('Wrong baggage update error:', err);
+    return res.status(500).json({ error: err?.message || 'Wrong baggage update failed' });
   }
 });
 
