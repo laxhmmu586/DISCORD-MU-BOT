@@ -452,7 +452,7 @@
       if (row?.rowNumber) {
         const hiddenCreateLabels = new Set([label('Status', '状态'), label('Updated At', '更新时间')]);
         const alwaysVisibleCreateLabels = new Set([
-          label('Passenger Name', '旅客姓名'), label('Email', '邮箱'), label('Phone Number', '电话号码'),
+          label('Passenger Name', '旅客姓名'), label('Email', '邮箱'), label('Mobile Number', '手机号码'),
           label('Ticket Number', '机票号码'), label('Flights', '航班'), label('Bag Tag', '行李牌'), label('Address', '地址')
         ]);
         // The Create card is the permanent snapshot of what the passenger filed.
@@ -575,7 +575,7 @@
       return [
         [label('Passenger Name', '旅客姓名'), row?.passengerName],
         [label('Email', '邮箱'), row?.email],
-        [label('Phone Number', '电话号码'), row?.phoneNumber || row?.phone],
+        [label('Mobile Number', '手机号码'), row?.phoneNumber || row?.phone],
         [label('Ticket Number', '机票号码'), row?.ticketNumber],
         [label('Flights', '航班'), flights],
         [label('Bag Tag', '行李牌'), row?.bagTag],

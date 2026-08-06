@@ -1521,7 +1521,7 @@ function cbsPassengerMessageHtml(language, caseType = 'AHL') {
       '<p>Should further inspection, repair assessment, or additional documentation be required, our staff will contact you and provide the necessary assistance. You may also contact our local office at any time to inquire about the status of your claim. Our ground service staff will be pleased to assist you with any information you may need.</p>',
       '<p>If you authorize another person to handle the claim on your behalf, the authorized representative must present your signed authorization letter, the baggage damage report, your passport (or a copy of your passport), and the representative\'s valid identification document.</p>',
       '<p>Once again, we sincerely apologize for the inconvenience caused by the damage to your baggage. We will make every effort to assist you with the resolution of this matter and appreciate your patience and understanding.</p>',
-      '<p>China Eastern Airlines</p>'
+      '<p>China Eastern Airlines - LAX</p>'
     ].join('');
   }
   if (language === 'zh') {
@@ -1543,7 +1543,7 @@ function cbsPassengerMessageHtml(language, caseType = 'AHL') {
     '<p>As soon as your baggage is located, we will notify you and arrange delivery where permitted by local government authorities. If your baggage requires customs clearance or must be collected because of damage, please bring the P.I.R. form and your passport to the airport.</p>',
     '<p>If someone else collects the baggage on your behalf, they should bring a letter of authorization, your passport or a photocopy of it, the P.I.R. form, and their ID card.</p>',
     '<p>Once again, please accept our sincere apologies for this unfortunate incident and the inconvenience it has caused.</p>',
-    '<p>Yours sincerely,<br>China Eastern Airlines</p>'
+    '<p>Yours sincerely,<br>China Eastern Airlines - LAX</p>'
   ].join('');
 }
 
@@ -1715,6 +1715,53 @@ async function sendContactFormToDiscord(record, attachments) {
   });
   return { sent: true, channelId: CONTACT_FORM_DISCORD_CHANNEL_ID, fileCount: files.length };
 }
+
+async function sendWrongBaggageFormToDiscord(record, attachments) {
+  const channel = await client.channels.fetch(CBS_ATTACHMENTS_DISCORD_CHANNEL_ID);
+  if (!channel?.isTextBased()) throw new Error('CBS attachments Discord channel was not found or is not text based.');
+  await channel.send({
+    content: [
+      '**Wrong Baggage Pick-up Report / 误取行李申报**',
+      `Name / 姓名: ${record.name}`,
+      `Seat number / 座位号: ${record.seatNumber}`,
+      `Baggage tag / 行李牌号码: ${record.bagTagNumber}`,
+      `Email / 电子邮箱: ${record.email}`,
+      `Mobile number / 手机号码: ${record.phone}`,
+      `Language / 语言: ${record.language}`
+    ].join('\n'),
+    files: buildCbsDiscordAttachmentFiles(attachments),
+    allowedMentions: { parse: [] }
+  });
+  return { sent: true, channelId: CBS_ATTACHMENTS_DISCORD_CHANNEL_ID, fileCount: attachments.length };
+}
+
+app.post('/wrong-baggage-submissions', async (req, res) => {
+  try {
+    const body = req.body || {};
+    const record = {
+      submittedAt: new Date().toISOString(),
+      name: sanitizeCbsText(body.name, 160),
+      seatNumber: sanitizeCbsText(body.seatNumber, 20).toUpperCase(),
+      bagTagNumber: sanitizeCbsText(body.bagTagNumber, 40).toUpperCase(),
+      email: sanitizeCbsText(body.email, 160).toLowerCase(),
+      phone: sanitizeCbsText(body.phone, 80),
+      language: sanitizeCbsText(body.language, 5) === 'en' ? 'en' : 'zh'
+    };
+    if (!record.name || !record.seatNumber || !record.bagTagNumber || !record.phone || !isValidEmail(record.email)) {
+      return res.status(400).json({ error: 'Name, seat number, baggage tag number, valid email, and mobile number are required.' });
+    }
+    const attachments = sanitizeContactAttachments(body.attachments);
+    if (!attachments.length) return res.status(400).json({ error: 'At least one baggage photo is required.' });
+    if ((Array.isArray(body.attachments) ? body.attachments.length : 0) !== attachments.length || attachments.some((item) => !String(item.mimeType).startsWith('image/'))) {
+      return res.status(400).json({ error: 'Upload up to 10 images, no more than 8 MB each and 22 MB total.' });
+    }
+    const discord = await sendWrongBaggageFormToDiscord(record, attachments);
+    return res.status(201).json({ created: true, record, discord });
+  } catch (err) {
+    console.error('Wrong baggage form submission error:', err);
+    return res.status(500).json({ error: 'The form could not be submitted. Please try again or contact a staff member.' });
+  }
+});
 
 app.post('/contact-form-submissions', async (req, res) => {
   try {
