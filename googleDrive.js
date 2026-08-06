@@ -69,7 +69,7 @@ const ENABLE_240_SHEET =
 const CBS_SHEET_ID = process.env.CBS_SHEET_ID || '10oEQypkoaNvosREqT-mNw8zsyrQxln2EwsBUuS9OtsU';
 const CBS_SHEET_GID = Number(process.env.CBS_SHEET_GID || 0);
 const WRONG_BAGGAGE_SHEET_GID = Number(process.env.WRONG_BAGGAGE_SHEET_GID || 1615438730);
-const WRONG_BAGGAGE_HEADERS = ['Submitted At', 'Status', 'Name', 'Seat Number', 'Baggage Tag Number', 'Email', 'Mobile Number', 'Language', 'Updated At', 'Update Note', 'Update History'];
+const WRONG_BAGGAGE_HEADERS = ['Submitted At', 'Status', 'Name', 'Seat Number', 'Baggage Tag Number', 'Email', 'Mobile Number', 'Language', 'Updated At', 'Update Note', 'Update History', 'Additional Information'];
 const CONTACT_FORM_SHEET_ID = process.env.CONTACT_FORM_SHEET_ID || '1JqRnDx_uLc2m2SzyZOuHWWJsbkKenlKo60U9zwV9uMQ';
 const CONTACT_FORM_SHEET_GID = Number(process.env.CONTACT_FORM_SHEET_GID || 1889354016);
 const CBS_WORLDTRACER_SHEET_GID = Number(process.env.CBS_WORLDTRACER_SHEET_GID || 944289437);
@@ -3165,7 +3165,7 @@ async function getWrongBaggageSheetTitle() {
 }
 
 async function ensureWrongBaggageHeaders(title) {
-  const range = `${escapeSheetTitle(title)}!A1:K1`;
+  const range = `${escapeSheetTitle(title)}!A1:L1`;
   const response = await sheets.spreadsheets.values.get({ spreadsheetId: CBS_SHEET_ID, range });
   const current = response.data.values?.[0] || [];
   if (WRONG_BAGGAGE_HEADERS.some((header, index) => current[index] !== header)) {
@@ -3197,6 +3197,7 @@ function wrongBaggageRecordFromValues(values, rowNumber) {
     updatedAt: values[8] || '',
     updateNote: values[9] || '',
     updateEvents: Array.isArray(updateEvents) ? updateEvents : [],
+    additionalInformation: values[11] || '',
     rowNumber
   };
 }
@@ -3206,17 +3207,17 @@ async function appendWrongBaggageSubmission(record = {}) {
   await ensureWrongBaggageHeaders(title);
   await sheets.spreadsheets.values.append({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A:K`,
+    range: `${escapeSheetTitle(title)}!A:L`,
     valueInputOption: 'RAW',
     insertDataOption: 'INSERT_ROWS',
-    requestBody: { values: [[record.submittedAt, 'Open', record.name, record.seatNumber, record.bagTagNumber, record.email, record.phone, record.language, record.submittedAt, 'Case created', '[]']] }
+    requestBody: { values: [[record.submittedAt, 'Open', record.name, record.seatNumber, record.bagTagNumber, record.email, record.phone, record.language, record.submittedAt, 'Case created', '[]', record.additionalInformation || '']] }
   });
   return record;
 }
 
 async function getWrongBaggageSubmissions() {
   const title = await getWrongBaggageSheetTitle();
-  const response = await sheets.spreadsheets.values.get({ spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!A:K` });
+  const response = await sheets.spreadsheets.values.get({ spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!A:L` });
   return (response.data.values || []).slice(1).map((values, index) => wrongBaggageRecordFromValues(values, index + 2));
 }
 
@@ -3224,7 +3225,7 @@ async function updateWrongBaggageSubmission(rowNumber, update = {}) {
   const row = Number(rowNumber);
   if (!Number.isInteger(row) || row < 2) throw new Error('Invalid wrong-baggage row number');
   const title = await getWrongBaggageSheetTitle();
-  const range = `${escapeSheetTitle(title)}!A${row}:K${row}`;
+  const range = `${escapeSheetTitle(title)}!A${row}:L${row}`;
   const response = await sheets.spreadsheets.values.get({ spreadsheetId: CBS_SHEET_ID, range });
   const values = [...(response.data.values?.[0] || [])];
   if (!values.length) throw new Error('Wrong-baggage case not found');

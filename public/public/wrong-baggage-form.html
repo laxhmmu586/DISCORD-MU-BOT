@@ -23,9 +23,11 @@
     label { display:grid; gap:8px; min-width:0; font-size:14px; font-weight:750; }
     label span small { display:block; margin-top:2px; color:var(--muted); font-size:12px; font-weight:500; }
     .required { color:var(--red); }
-    input { width:100%; min-height:48px; padding:12px 14px; color:var(--ink); font:inherit; border:1px solid var(--line); border-radius:12px; outline:none; background:#fbfdff; transition:.2s; }
+    input,textarea { width:100%; min-height:48px; padding:12px 14px; color:var(--ink); font:inherit; border:1px solid var(--line); border-radius:12px; outline:none; background:#fbfdff; transition:.2s; }
+    textarea { min-height:112px; resize:vertical; }
+    .wide { grid-column:1/-1; }
+    input:focus,textarea:focus { border-color:var(--blue); box-shadow:0 0 0 4px #1768b519; background:#fff; }
     input[type="date"] { display:block; width:100%; min-width:0; max-width:100%; inline-size:100%; min-inline-size:0; max-inline-size:100%; overflow:hidden; -webkit-appearance:none; appearance:none; }
-    input:focus { border-color:var(--blue); box-shadow:0 0 0 4px #1768b519; background:#fff; }
     .upload { display:grid; gap:16px; padding:20px; border:1px dashed #b8cbe0; border-radius:20px; background:#f9fcff; }
     .upload h2 { margin:0; color:var(--ink); font-size:18px; }
     .attachment-grid { display:grid; grid-template-columns:minmax(180px,260px); gap:12px; }
@@ -71,6 +73,7 @@
           <label><span><span class="zh">行李牌号码</span><span class="en">Baggage tag number</span> <span class="required">*</span></span><input name="bagTagNumber" maxlength="40" placeholder="MU123456" required></label>
           <label><span><span class="zh">电子邮箱</span><span class="en">Email</span> <span class="required">*</span></span><input name="email" type="email" autocomplete="email" maxlength="160" required></label>
           <label><span><span class="zh">手机号码</span><span class="en">Mobile Number</span> <span class="required">*</span></span><input name="phone" type="tel" autocomplete="tel" maxlength="80" required></label>
+          <label class="wide"><span><span class="zh">其他有用信息</span><span class="en">Additional useful information</span> <small><span class="zh">选填，可填写行李特征、误取经过或其他有助于处理的信息</span><span class="en">Optional: bag features, pick-up details, or anything else that may help us.</span></small></span><textarea name="additionalInformation" maxlength="1000"></textarea></label>
         </div>
         <section class="upload">
           <h2><span class="zh">上传行李照片 <span class="required">*</span></span><span class="en">Baggage photos <span class="required">*</span></span></h2>

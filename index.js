@@ -1735,6 +1735,7 @@ async function sendWrongBaggageFormToDiscord(record, attachments) {
       `Baggage tag / 行李牌号码: ${record.bagTagNumber}`,
       `Email / 电子邮箱: ${record.email}`,
       `Mobile number / 手机号码: ${record.phone}`,
+      `Additional information / 其他信息: ${record.additionalInformation || '—'}`,
       `Language / 语言: ${record.language}`
     ].join('\n'),
     files: buildCbsDiscordAttachmentFiles(attachments),
@@ -1753,6 +1754,7 @@ app.post('/wrong-baggage-submissions', async (req, res) => {
       bagTagNumber: sanitizeCbsText(body.bagTagNumber, 40).toUpperCase(),
       email: sanitizeCbsText(body.email, 160).toLowerCase(),
       phone: sanitizeCbsText(body.phone, 80),
+      additionalInformation: sanitizeCbsText(body.additionalInformation, 1000),
       language: sanitizeCbsText(body.language, 5) === 'en' ? 'en' : 'zh'
     };
     if (!record.name || !record.seatNumber || !record.bagTagNumber || !record.phone || !isValidEmail(record.email)) {
