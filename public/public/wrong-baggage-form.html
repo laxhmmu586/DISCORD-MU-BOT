@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Misconnection Passenger Assistance | 未能衔接后续航班旅客协助</title>
+  <title>Wrong Baggage Pick-up | 误取行李</title>
   <style>
     :root { color-scheme:light; --navy:#092d57; --blue:#1768b5; --red:#dc2538; --ink:#142033; --muted:#637083; --line:#dbe4ee; --bg:#eef5fb; --white:#fff; }
     * { box-sizing:border-box; }
@@ -63,21 +63,21 @@
   <header><div class="mark">MU</div><div><strong>China Eastern Airlines - LAX</strong><span>Passenger Services · 旅客服务</span></div><button class="language-toggle" id="language-toggle" type="button">English</button></header>
   <main>
     <section class="card">
-      <div class="intro"><h1><span class="zh">未能衔接后续航班旅客协助</span><span class="en">Misconnection Passenger Assistance</span></h1><p class="zh">本服务仅限联程客票旅客使用，请完整填写以下必填信息。</p><p class="en">This service is available only to passengers traveling on a through ticket. Please complete all required fields below.</p></div>
+      <div class="intro"><h1><span class="zh">误取行李申报</span><span class="en">Wrong Baggage Pick-up Report</span></h1><p class="zh">如果您误取了他人的行李，或怀疑自己的行李被他人误取，请填写以下资料并上传行李照片。</p><p class="en">If you picked up someone else’s bag, or believe yours was picked up by mistake, complete the details below and upload baggage photos.</p></div>
       <form id="contact-form">
         <div class="grid">
-          <label><span><span class="zh">日期</span><span class="en">Date</span> <span class="required">*</span></span><input id="date" name="date" type="date" lang="zh-CN" required></label>
           <label><span><span class="zh">姓名</span><span class="en">Name</span> <span class="required">*</span></span><input name="name" autocomplete="name" maxlength="160" required></label>
           <label><span><span class="zh">座位号</span><span class="en">Seat number</span> <span class="required">*</span></span><input name="seatNumber" maxlength="20" placeholder="32A" required></label>
-          <label><span><span class="zh">护照号</span><span class="en">Passport number</span> <span class="required">*</span></span><input name="ticketNumber" maxlength="40" required></label>
+          <label><span><span class="zh">行李牌号码</span><span class="en">Baggage tag number</span> <span class="required">*</span></span><input name="bagTagNumber" maxlength="40" placeholder="MU123456" required></label>
+          <label><span><span class="zh">电子邮箱</span><span class="en">Email</span> <span class="required">*</span></span><input name="email" type="email" autocomplete="email" maxlength="160" required></label>
           <label><span><span class="zh">手机号码</span><span class="en">Mobile Number</span> <span class="required">*</span></span><input name="phone" type="tel" autocomplete="tel" maxlength="80" required></label>
         </div>
         <section class="upload">
-          <h2><span class="zh">上传补充资料</span><span class="en">Attachments</span></h2>
+          <h2><span class="zh">上传行李照片 <span class="required">*</span></span><span class="en">Baggage photos <span class="required">*</span></span></h2>
           <div class="attachment-grid">
-            <div class="attachment-group" data-attachment-group><div class="attachment-items" data-attachment-items></div><label class="attachment-tile attachment-upload"><span class="attachment-preview"></span><span class="attachment-title"><span class="zh">选择附件</span><span class="en">Choose attachments</span></span><span class="attachment-filename"></span><input data-attachment-input type="file" accept="image/*,.pdf" multiple></label></div>
+            <div class="attachment-group" data-attachment-group><div class="attachment-items" data-attachment-items></div><label class="attachment-tile attachment-upload"><span class="attachment-preview"></span><span class="attachment-title"><span class="zh">选择附件</span><span class="en">Choose attachments</span></span><span class="attachment-filename"></span><input data-attachment-input type="file" accept="image/*" multiple required></label></div>
           </div>
-          <p class="hint zh">附件为可选项目。最多 10 个文件，每个不超过 8 MB，总计不超过 22 MB。</p><p class="hint en">Attachments are optional: up to 10 files, 8 MB each and 22 MB total.</p>
+          <p class="hint zh">请至少上传一张清晰的行李照片。最多 10 张，每张不超过 8 MB，总计不超过 22 MB。</p><p class="hint en">Upload at least one clear baggage photo: up to 10 images, 8 MB each and 22 MB total.</p>
         </section>
         <div class="actions"><button id="submit" type="submit"><span class="zh">提交</span><span class="en">Submit</span></button><span id="status" role="status" aria-live="polite"></span></div>
       </form>
@@ -87,7 +87,6 @@
   <script>
     const apiBase = (window.MU_API_BASE || 'https://api.mufcapp.net').replace(/\/$/, '');
     const form = document.querySelector('#contact-form');
-    const dateInput = document.querySelector('#date');
     const fileInputs = Array.from(document.querySelectorAll('[data-attachment-input]'));
     const submitButton = document.querySelector('#submit');
     const status = document.querySelector('#status');
@@ -95,8 +94,7 @@
     const languageToggle = document.querySelector('#language-toggle');
     const selectedFiles = new Map(fileInputs.map((input) => [input, []]));
     function localToday() { const now = new Date(); return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`; }
-    dateInput.value = localToday();
-    function setLanguage(language) { document.documentElement.lang = language; dateInput.lang = language; languageToggle.textContent = language === 'zh-CN' ? 'English' : '中文'; }
+    function setLanguage(language) { document.documentElement.lang = language; languageToggle.textContent = language === 'zh-CN' ? 'English' : '中文'; }
     languageToggle.addEventListener('click', () => setLanguage(document.documentElement.lang === 'zh-CN' ? 'en' : 'zh-CN'));
     function readFileAsDataUrl(file) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result || '')); reader.onerror = reject; reader.readAsDataURL(file); }); }
     async function fileToAttachment(file) {
@@ -134,13 +132,14 @@
       event.preventDefault(); const isEnglish = document.documentElement.lang === 'en'; status.className = ''; status.textContent = isEnglish ? 'Submitting…' : '正在提交…'; submitButton.disabled = true;
       try {
         const files = fileInputs.flatMap((input) => selectedFiles.get(input));
+        if (!files.length) throw new Error(isEnglish ? 'Please upload at least one baggage photo.' : '请至少上传一张行李照片。');
         if (files.length > 10 || files.some((file) => file.size > 8 * 1024 * 1024) || files.reduce((sum, file) => sum + file.size, 0) > 22 * 1024 * 1024) throw new Error(isEnglish ? 'Up to 10 files, 8 MB each and 22 MB total.' : '附件最多 10 个，每个不超过 8 MB，总计不超过 22 MB。');
         const fields = Object.fromEntries(new FormData(form).entries()); delete fields.attachments; fields.language = document.documentElement.lang === 'en' ? 'en' : 'zh';
         fields.attachments = await Promise.all(files.map(fileToAttachment));
-        const response = await fetch(`${apiBase}/contact-form-submissions`, { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(fields) });
+        const response = await fetch(`${apiBase}/wrong-baggage-submissions`, { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(fields) });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(isEnglish ? (data.error || 'Submission failed; please try again.') : '提交失败，请稍后重试。');
-        form.reset(); clearAttachments(); dateInput.value = localToday(); status.textContent = ''; dialog.showModal();
+        form.reset(); clearAttachments(); status.textContent = ''; dialog.showModal();
       } catch (error) { status.className = 'error'; status.textContent = /load failed|failed to fetch|networkerror/i.test(error.message || '') ? (isEnglish ? 'Unable to reach the server. Please check your connection and try again.' : '无法连接服务器，请检查网络后重试。') : error.message; }
       finally { submitButton.disabled = false; }
     });
