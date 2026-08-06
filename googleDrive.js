@@ -68,6 +68,8 @@ const ENABLE_240_SHEET =
 
 const CBS_SHEET_ID = process.env.CBS_SHEET_ID || '10oEQypkoaNvosREqT-mNw8zsyrQxln2EwsBUuS9OtsU';
 const CBS_SHEET_GID = Number(process.env.CBS_SHEET_GID || 0);
+const WRONG_BAGGAGE_SHEET_GID = Number(process.env.WRONG_BAGGAGE_SHEET_GID || 1615438730);
+const WRONG_BAGGAGE_HEADERS = ['Submitted At', 'Status', 'Name', 'Seat Number', 'Baggage Tag Number', 'Email', 'Mobile Number', 'Language', 'Updated At', 'Update Note', 'Update History', 'Additional Information'];
 const CONTACT_FORM_SHEET_ID = process.env.CONTACT_FORM_SHEET_ID || '1JqRnDx_uLc2m2SzyZOuHWWJsbkKenlKo60U9zwV9uMQ';
 const CONTACT_FORM_SHEET_GID = Number(process.env.CONTACT_FORM_SHEET_GID || 1889354016);
 const CBS_WORLDTRACER_SHEET_GID = Number(process.env.CBS_WORLDTRACER_SHEET_GID || 944289437);
@@ -3158,6 +3160,92 @@ async function appendCbsCase(record) {
   return record;
 }
 
+async function getWrongBaggageSheetTitle() {
+  return await resolveSheetTitleByGid(CBS_SHEET_ID, WRONG_BAGGAGE_SHEET_GID) || 'Sheet1';
+}
+
+async function ensureWrongBaggageHeaders(title) {
+  const range = `${escapeSheetTitle(title)}!A1:L1`;
+  const response = await sheets.spreadsheets.values.get({ spreadsheetId: CBS_SHEET_ID, range });
+  const current = response.data.values?.[0] || [];
+  if (WRONG_BAGGAGE_HEADERS.some((header, index) => current[index] !== header)) {
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: CBS_SHEET_ID,
+      range,
+      valueInputOption: 'RAW',
+      requestBody: { values: [WRONG_BAGGAGE_HEADERS] }
+    });
+  }
+}
+
+function wrongBaggageRecordFromValues(values, rowNumber) {
+  let updateEvents = [];
+  try { updateEvents = JSON.parse(values[10] || '[]'); } catch { updateEvents = []; }
+  return {
+    source: 'wrongBaggage',
+    caseType: 'WRONG BAGGAGE PICKUP',
+    submittedAt: values[0] || '',
+    status: values[1] || 'Open',
+    passengerName: values[2] || '',
+    name: values[2] || '',
+    seatNumber: values[3] || '',
+    bagTag: values[4] || '',
+    bagTagNumber: values[4] || '',
+    email: values[5] || '',
+    phone: values[6] || '',
+    language: values[7] || '',
+    updatedAt: values[8] || '',
+    updateNote: values[9] || '',
+    updateEvents: Array.isArray(updateEvents) ? updateEvents : [],
+    additionalInformation: values[11] || '',
+    rowNumber
+  };
+}
+
+async function appendWrongBaggageSubmission(record = {}) {
+  const title = await getWrongBaggageSheetTitle();
+  await ensureWrongBaggageHeaders(title);
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: CBS_SHEET_ID,
+    range: `${escapeSheetTitle(title)}!A:L`,
+    valueInputOption: 'RAW',
+    insertDataOption: 'INSERT_ROWS',
+    requestBody: { values: [[record.submittedAt, 'Open', record.name, record.seatNumber, record.bagTagNumber, record.email, record.phone, record.language, record.submittedAt, 'Case created', '[]', record.additionalInformation || '']] }
+  });
+  return record;
+}
+
+async function getWrongBaggageSubmissions() {
+  const title = await getWrongBaggageSheetTitle();
+  const response = await sheets.spreadsheets.values.get({ spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!A:L` });
+  return (response.data.values || []).slice(1).map((values, index) => wrongBaggageRecordFromValues(values, index + 2));
+}
+
+async function updateWrongBaggageSubmission(rowNumber, update = {}) {
+  const row = Number(rowNumber);
+  if (!Number.isInteger(row) || row < 2) throw new Error('Invalid wrong-baggage row number');
+  const title = await getWrongBaggageSheetTitle();
+  const range = `${escapeSheetTitle(title)}!A${row}:L${row}`;
+  const response = await sheets.spreadsheets.values.get({ spreadsheetId: CBS_SHEET_ID, range });
+  const values = [...(response.data.values?.[0] || [])];
+  if (!values.length) throw new Error('Wrong-baggage case not found');
+  while (values.length < WRONG_BAGGAGE_HEADERS.length) values.push('');
+  let history = [];
+  try { history = JSON.parse(values[10] || '[]'); } catch { history = []; }
+  const now = new Date().toISOString();
+  const close = String(update.type || '').toLowerCase() === 'closed';
+  const comment = sanitizeSheetText(update.comment, 1000);
+  if (!comment && !close) throw new Error('Update comment is required');
+  const event = { key: close ? 'closed' : 'update', title: close ? 'Case Close' : 'Update', at: now, fields: comment ? [['Comment', comment]] : [] };
+  history.push(event);
+  values[1] = close ? 'Closed' : (values[1] || 'Open');
+  values[8] = now;
+  values[9] = close ? `CASE CLOSE${comment ? ` | Comment: ${comment}` : ''}` : `UPDATE | Comment: ${comment}`;
+  values[10] = JSON.stringify(history);
+  await sheets.spreadsheets.values.update({ spreadsheetId: CBS_SHEET_ID, range, valueInputOption: 'RAW', requestBody: { values: [values] } });
+  return wrongBaggageRecordFromValues(values, row);
+}
+
 async function appendContactFormSubmission(record = {}) {
   const title = await resolveSheetTitleByGid(CONTACT_FORM_SHEET_ID, CONTACT_FORM_SHEET_GID) || 'Sheet1';
   const headers = ['Submitted At', 'Date', 'Name', 'Seat Number', 'Passport Number', 'Mobile Number', 'Attachments', 'Language'];
@@ -3859,6 +3947,9 @@ module.exports = {
   updateSyBookingCounts,
   normalizeSyBookingCounts,
   appendCbsCase,
+  appendWrongBaggageSubmission,
+  getWrongBaggageSubmissions,
+  updateWrongBaggageSubmission,
   appendContactFormSubmission,
   getContactFormSubmissions,
   appendCbsWorldTracerCase,
