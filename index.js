@@ -101,7 +101,9 @@ const fbLookup =
 const { findSYInfo } = require('./syParser');
 const NEXTDAY_INFO_DISCORD_CHANNEL_ID = '1399400605742661702';
 const TRANSIT_240_DISCORD_CHANNEL_ID = process.env.TRANSIT_240_DISCORD_CHANNEL_ID || '1365773224276660257';
-const CBS_ATTACHMENTS_DISCORD_CHANNEL_ID = process.env.CBS_ATTACHMENTS_DISCORD_CHANNEL_ID || '1527344986075693167';
+const WRONG_BAGGAGE_DISCORD_CHANNEL_ID = process.env.WRONG_BAGGAGE_DISCORD_CHANNEL_ID || '1534758804535640227';
+const CBS_DELAYED_LOST_DISCORD_CHANNEL_ID = process.env.CBS_DELAYED_LOST_DISCORD_CHANNEL_ID || '1534758703369289821';
+const CBS_DAMAGED_DISCORD_CHANNEL_ID = process.env.CBS_DAMAGED_DISCORD_CHANNEL_ID || process.env.CBS_ATTACHMENTS_DISCORD_CHANNEL_ID || '1527344986075693167';
 const CONTACT_FORM_DISCORD_CHANNEL_ID = process.env.CONTACT_FORM_DISCORD_CHANNEL_ID || '1531867051755442266';
 
 const DEFAULT_PERMISSIONS = {
@@ -1665,7 +1667,10 @@ async function sendCbsAttachmentsToDiscord(record, attachments = [], pdfBuffer =
     files.unshift({ attachment: pdfBuffer, name: 'baggage-report.pdf' });
   }
   if (!files.length) return { sent: false, reason: 'No CBS attachments to post.' };
-  const channel = await client.channels.fetch(CBS_ATTACHMENTS_DISCORD_CHANNEL_ID);
+  const channelId = String(record?.caseType || '').toUpperCase() === 'DPR'
+    ? CBS_DAMAGED_DISCORD_CHANNEL_ID
+    : CBS_DELAYED_LOST_DISCORD_CHANNEL_ID;
+  const channel = await client.channels.fetch(channelId);
   if (!channel) return { sent: false, reason: 'Discord channel not found.' };
   const attachmentCounts = attachments.reduce((counts, attachment) => {
     const type = sanitizeCbsText(attachment?.attachmentType, 40) || 'document';
@@ -1683,7 +1688,7 @@ async function sendCbsAttachmentsToDiscord(record, attachments = [], pdfBuffer =
     ].join('\n'),
     files
   });
-  return { sent: true, channelId: CBS_ATTACHMENTS_DISCORD_CHANNEL_ID, fileCount: files.length };
+  return { sent: true, channelId, fileCount: files.length };
 }
 
 function sanitizeContactAttachments(value) {
@@ -1720,7 +1725,7 @@ async function sendContactFormToDiscord(record, attachments) {
 }
 
 async function sendWrongBaggageFormToDiscord(record, attachments) {
-  const channel = await client.channels.fetch(CBS_ATTACHMENTS_DISCORD_CHANNEL_ID);
+  const channel = await client.channels.fetch(WRONG_BAGGAGE_DISCORD_CHANNEL_ID);
   if (!channel?.isTextBased()) throw new Error('CBS attachments Discord channel was not found or is not text based.');
   await channel.send({
     content: [
@@ -1735,7 +1740,7 @@ async function sendWrongBaggageFormToDiscord(record, attachments) {
     files: buildCbsDiscordAttachmentFiles(attachments),
     allowedMentions: { parse: [] }
   });
-  return { sent: true, channelId: CBS_ATTACHMENTS_DISCORD_CHANNEL_ID, fileCount: attachments.length };
+  return { sent: true, channelId: WRONG_BAGGAGE_DISCORD_CHANNEL_ID, fileCount: attachments.length };
 }
 
 app.post('/wrong-baggage-submissions', async (req, res) => {
