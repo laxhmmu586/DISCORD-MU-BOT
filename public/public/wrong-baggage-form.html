@@ -75,7 +75,7 @@
         <section class="upload">
           <h2><span class="zh">上传行李照片 <span class="required">*</span></span><span class="en">Baggage photos <span class="required">*</span></span></h2>
           <div class="attachment-grid">
-            <div class="attachment-group" data-attachment-group><div class="attachment-items" data-attachment-items></div><label class="attachment-tile attachment-upload"><span class="attachment-preview"></span><span class="attachment-title"><span class="zh">选择附件</span><span class="en">Choose attachments</span></span><span class="attachment-filename"></span><input data-attachment-input type="file" accept="image/*" multiple required></label></div>
+            <div class="attachment-group" data-attachment-group><div class="attachment-items" data-attachment-items></div><label class="attachment-tile attachment-upload"><span class="attachment-preview"></span><span class="attachment-title"><span class="zh">选择附件</span><span class="en">Choose attachments</span></span><span class="attachment-filename"></span><input data-attachment-input type="file" accept="image/*" multiple aria-required="true"></label></div>
           </div>
           <p class="hint zh">请至少上传一张清晰的行李照片。最多 10 张，每张不超过 8 MB，总计不超过 22 MB。</p><p class="hint en">Upload at least one clear baggage photo: up to 10 images, 8 MB each and 22 MB total.</p>
         </section>
@@ -126,6 +126,8 @@
         tile.append(remove, preview, filename); items.append(tile);
       });
     }
+    // The native file input is cleared after selection so the same photo can be selected again.
+    // Do not use the HTML `required` attribute here: selected files live in selectedFiles and are validated on submit.
     fileInputs.forEach((input) => input.addEventListener('change', () => { selectedFiles.set(input, [...selectedFiles.get(input), ...Array.from(input.files || [])]); input.value = ''; renderAttachments(input); }));
     function clearAttachments() { fileInputs.forEach((input) => { selectedFiles.set(input, []); renderAttachments(input); }); }
     form.addEventListener('submit', async (event) => {
