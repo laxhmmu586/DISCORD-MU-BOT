@@ -125,6 +125,9 @@ const CBS_MISSING_BAG_SHEET_GID = Number(process.env.CBS_MISSING_BAG_SHEET_GID |
 const CBS_MISSING_BAG_HEADERS = ['Bag Tag', 'Passenger Name', 'Destination', 'Airline', 'Source Email Date', 'Source Attachment', 'Recorded At', 'Case Created At', 'Acknowledged At'];
 const CBS_SCAN_SHEET_ID = process.env.CBS_SCAN_SHEET_ID || '1bfIeytT6UMdvWXimeg4s1HVuXHqmpYZx53ufsbes6Ms';
 const CBS_SCAN_SHEET_GID = Number(process.env.CBS_SCAN_SHEET_GID || 0);
+const RECORD_SCAN_SHEET_ID = process.env.RECORD_SCAN_SHEET_ID || '1bfIeytT6UMdvWXimeg4s1HVuXHqmpYZx53ufsbes6Ms';
+const RECORD_SCAN_SHEET_GID = Number(process.env.RECORD_SCAN_SHEET_GID || 621930495);
+const RECORD_SCAN_HEADERS = ['BN', 'SEAT', 'FLIGHT NUMBER'];
 const TRANSIT_240_SHEET_ID = process.env.TRANSIT_240_SHEET_ID || '1JqRnDx_uLc2m2SzyZOuHWWJsbkKenlKo60U9zwV9uMQ';
 const TRANSIT_240_SHEET_GID = Number(process.env.TRANSIT_240_SHEET_GID || 527537258);
 const TRANSIT_240_HEADERS = ['Submit Date', 'Passenger Name', 'Seat Number', 'BN Number', 'Passport Nationality Code', 'Passport Expiration Date', 'Itinerary'];
@@ -132,6 +135,7 @@ let transit240SheetTitle = '';
 const CBS_SCAN_HEADERS = ['BN', 'Seat', 'Flight', 'Raw Scan', 'Scanned At'];
 const CBS_SCAN_INFANT_HEADERS = ['Infant BN', 'Infant Seat', 'Infant Flight', 'Infant Raw Scan', 'Infant Scanned At'];
 let cbsScanSheetTitle = '';
+let recordScanSheetTitle = '';
 let cbsScanSheetCache = { loadedAt: 0, rows: [] };
 let cbsScanAppendPending = [];
 let cbsScanAppendTimer = null;
@@ -2963,6 +2967,46 @@ async function appendCbsScanRecord(record = {}) {
   });
 }
 
+async function getRecordScanSheetTitle() {
+  if (!recordScanSheetTitle) recordScanSheetTitle = await resolveSheetTitleByGid(RECORD_SCAN_SHEET_ID, RECORD_SCAN_SHEET_GID);
+  return recordScanSheetTitle || 'Sheet1';
+}
+
+async function appendRecordScanRecord(record = {}) {
+  const bn = formatCbsScanSheetBn(record.bn);
+  const seat = String(record.seat || '').trim().toUpperCase();
+  const flight = String(record.flight || '').trim().toUpperCase();
+  if (!bn || !seat || !['MU586', 'MU586D'].includes(flight)) throw new Error('Invalid record scan.');
+
+  const title = await getRecordScanSheetTitle();
+  const range = `${escapeSheetTitle(title)}!A:C`;
+  const response = await cbsScanSheetsCall(() => sheets.spreadsheets.values.get({
+    spreadsheetId: RECORD_SCAN_SHEET_ID,
+    range
+  }), 'Record scan sheet read');
+  const rows = response.data.values || [];
+  const firstRow = rows[0] || [];
+  const hasHeaders = RECORD_SCAN_HEADERS.every((header, index) => String(firstRow[index] || '').trim().toUpperCase() === header);
+  if (!hasHeaders) {
+    await cbsScanSheetsCall(() => sheets.spreadsheets.values.update({
+      spreadsheetId: RECORD_SCAN_SHEET_ID,
+      range: `${escapeSheetTitle(title)}!A1:C1`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [RECORD_SCAN_HEADERS] }
+    }), 'Record scan header update');
+  }
+  const dataRows = hasHeaders ? rows.slice(1) : rows;
+  if (dataRows.some((row) => normalizeCbsScanBn(row[0]) === normalizeCbsScanBn(bn))) throw makeCbsScanDuplicateError(bn);
+  await cbsScanSheetsCall(() => sheets.spreadsheets.values.append({
+    spreadsheetId: RECORD_SCAN_SHEET_ID,
+    range,
+    valueInputOption: 'RAW',
+    insertDataOption: 'INSERT_ROWS',
+    requestBody: { values: [[bn, seat, flight]] }
+  }), 'Record scan row write');
+  return { bn, seat, flight };
+}
+
 async function getTransit240SheetTitle() {
   if (!transit240SheetTitle) transit240SheetTitle = await resolveSheetTitleByGid(TRANSIT_240_SHEET_ID, TRANSIT_240_SHEET_GID);
   return transit240SheetTitle || 'Sheet1';
@@ -3966,6 +4010,7 @@ module.exports = {
   getCbsBaggageChartImage,
   appendTransit240Record,
   appendCbsScanRecord,
+  appendRecordScanRecord,
   appendCbsScanNbrdBns,
   deleteCbsScanNbrdBn,
   getCbsScanRecords,

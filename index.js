@@ -78,6 +78,7 @@ const {
   getCbsBaggageChartImage,
   appendTransit240Record,
   appendCbsScanRecord,
+  appendRecordScanRecord,
   appendCbsScanNbrdBns,
   deleteCbsScanNbrdBn,
   getCbsScanRecords,
@@ -1986,6 +1987,26 @@ function parseCbsPdf417(rawValue = '') {
   };
 }
 
+function parseRecordPdf417(rawValue = '') {
+  const rawScan = String(rawValue || '').trim();
+  const compact = rawScan.replace(/\s+/g, ' ');
+  const flightMatch = compact.match(/\b(?:[A-Z]{6})?MU\s*0*(586D?)\b/i);
+  if (!flightMatch) {
+    const err = new Error('wrong flight');
+    err.code = 'WRONG_FLIGHT';
+    throw err;
+  }
+  const detailMatch = rawScan.match(/(?:^|\D)(0*INF|0*\d{1,3}[A-Z])(\d{3,4})\b/i);
+  if (!detailMatch) throw new Error('Seat/BN segment not found.');
+  const seatToken = detailMatch[1].toUpperCase();
+  return {
+    flight: `MU${flightMatch[1].toUpperCase()}`,
+    seat: seatToken.replace(/^0+(?=\d)/, ''),
+    bn: detailMatch[2],
+    rawScan
+  };
+}
+
 function sanitizeTransit240AttachmentName(name, index) {
   const fallback = `transit-240-${index + 1}.jpg`;
   return String(name || fallback).replace(/[^a-z0-9_.-]/gi, '_').slice(0, 80) || fallback;
@@ -2079,6 +2100,17 @@ app.post('/cbs-scan', async (req, res) => {
   } catch (err) {
     const status = err?.code === 'DUPLICATE_BN' || err?.code === 'NBRD_MESSAGE' ? 409 : (err?.code === 'WRONG_FLIGHT' ? 400 : (err?.code === 'SHEETS_QUOTA' ? 503 : 422));
     return res.status(status).json({ error: err?.message || 'CBS scan save failed', code: err?.code || 'SCAN_ERROR', flight: err?.flight || '', bn: err?.bn || '', detail: err?.detail || '' });
+  }
+});
+
+app.post('/record-scan', async (req, res) => {
+  try {
+    const parsed = parseRecordPdf417(req.body?.rawScan || req.body?.raw || req.body?.text || '');
+    const saved = await appendRecordScanRecord(parsed);
+    return res.json({ ok: true, ...saved });
+  } catch (err) {
+    const status = err?.code === 'DUPLICATE_BN' ? 409 : (err?.code === 'WRONG_FLIGHT' ? 400 : (err?.code === 'SHEETS_QUOTA' ? 503 : 422));
+    return res.status(status).json({ error: err?.message || 'Record scan save failed', code: err?.code || 'SCAN_ERROR' });
   }
 });
 
