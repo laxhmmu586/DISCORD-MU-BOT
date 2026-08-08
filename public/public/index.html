@@ -4415,6 +4415,8 @@
                 <span class="line-menu-icon" aria-hidden="true"><span></span><span></span><span></span></span>
               </button>
               <div class="flight-menu" aria-hidden="true">
+                <button id="normal-flight-button" type="button">MU586 (Normal)</button>
+                <button id="delayed-flight-button" type="button">MU586D (Delayed)</button>
                 <button id="sales-report-button" type="button">Sales Report</button>
                 <button id="seat-map-button" type="button">Seat Map</button>
               </div>
@@ -4627,6 +4629,8 @@
       const mobileQueryInput = document.querySelector("#mobile-query");
       const bagReportButton = document.querySelector("#bag-report-button");
       const salesReportButton = document.querySelector("#sales-report-button");
+      const normalFlightButton = document.querySelector("#normal-flight-button");
+      const delayedFlightButton = document.querySelector("#delayed-flight-button");
       const securityCheckButton = document.querySelector("#security-check-button");
       const seatMapButton = document.querySelector("#seat-map-button");
       const reportNavLink = document.querySelector("#report-nav-link");
@@ -6049,7 +6053,7 @@
       }
 
       function isSyQuery(value) {
-        return /^SY\+?(?:\/\d{2}[A-Z]{3}(?:\d{2})?)?$/i.test(String(value || "").replace(/\s+/g, ""));
+        return /^SY\+?(?:\s+[A-Z]{2}\d{1,4}[A-Z]?)?(?:\/\d{2}[A-Z]{3}(?:\d{2})?)?$/i.test(String(value || "").trim());
       }
 
       const syMonthMap = {
@@ -6062,12 +6066,12 @@
       }
 
       function normalizeSyQuery(value) {
-        const normalized = String(value || "SY").replace(/\s+/g, "").toUpperCase();
+        const normalized = String(value || "SY").trim().replace(/\s+/g, " ").toUpperCase();
         return normalized === "SY+" ? "SY" : normalized;
       }
 
       function syQueryDateYmd(value) {
-        const match = normalizeSyQuery(value).match(/^SY\+?\/(\d{2})([A-Z]{3})(\d{0,2})$/);
+        const match = normalizeSyQuery(value).match(/^SY\+?(?:\s+[A-Z]{2}\d{1,4}[A-Z]?)?\/(\d{2})([A-Z]{3})(\d{0,2})$/);
         if (!match) return "";
         const month = syMonthMap[match[2]];
         if (month === undefined) return "";
@@ -6084,7 +6088,7 @@
 
       function isTodaySyQuery(value) {
         const normalized = normalizeSyQuery(value);
-        if (normalized === "SY") return true;
+        if (/^SY(?:\s+[A-Z]{2}\d{1,4}[A-Z]?)?$/.test(normalized)) return true;
         const queryYmd = syQueryDateYmd(normalized);
         return Boolean(queryYmd && queryYmd === ymdFromDate(new Date()));
       }
@@ -7897,6 +7901,16 @@
       flightMenu.addEventListener("click", (event) => {
         if (event.target.closest("button")) closeFlightMenu();
       });
+
+      function openFlightDashboard(flightNo) {
+        const query = `SY ${flightNo}`;
+        queryInput.value = query;
+        mobileQueryInput.value = query;
+        searchPassenger();
+      }
+
+      normalFlightButton?.addEventListener("click", () => openFlightDashboard("MU586"));
+      delayedFlightButton?.addEventListener("click", () => openFlightDashboard("MU586D"));
 
       document.addEventListener("click", (event) => {
         if (!event.target.closest(".flight-tools")) closeFlightMenu();
