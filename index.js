@@ -2676,10 +2676,12 @@ app.get(
             .toUpperCase();
       }
 
-      const isSYRawQuery =
-        /^SY\+?(?:\/\d{2}[A-Z]{3}(?:\d{2})?)?$/.test(
-          rawQuery.replace(/\s+/g, '')
-        );
+      // An optional flight number keeps irregular operations isolated from the
+      // normal MU586 dashboard, for example: SY MU586D/09AUG26.
+      const syRawMatch = rawQuery.match(
+        /^SY(\+)?(?:\s+([A-Z]{2}\d{1,4}[A-Z]?))?(?:\/(\d{2}[A-Z]{3})(\d{2})?)?$/i
+      );
+      const isSYRawQuery = Boolean(syRawMatch);
 
       // =========================
       // Load Log
@@ -2725,14 +2727,18 @@ app.get(
 
       parsePDLog(log);
 
-      const normalizedRaw = rawQuery.replace(/\s+/g, '');
-      const syMatch = normalizedRaw.match(/^SY(\+)?(?:\/(\d{2}[A-Z]{3})(?:\d{2})?)?$/i);
+      const syMatch = syRawMatch;
       if (syMatch) {
         const preferNextDay = Boolean(syMatch[1]) && !date;
-        const syDate = syMatch[2] ? syMatch[2].toUpperCase() : date;
-        const syInfo = findSYInfo(log, syDate, { preferNextDay, preferredFlightNo: 'MU586' });
+        const requestedFlightNo = syMatch[2]?.toUpperCase() || 'MU586';
+        const syDate = syMatch[3] ? syMatch[3].toUpperCase() : date;
+        const syInfo = findSYInfo(log, syDate, {
+          preferNextDay,
+          preferredFlightNo: requestedFlightNo,
+          strictPreferredFlight: Boolean(syMatch[2])
+        });
         if (!syInfo) {
-          return res.json({ error: 'No SY section found for selected date.' });
+          return res.json({ error: `No SY section found for ${requestedFlightNo}${syDate ? `/${syDate}` : ''}.` });
         }
         const year = Number(yearSuffix || new Date().getUTCFullYear().toString().slice(-2));
         const fullYear = year >= 100 ? year : (year >= 70 ? 1900 + year : 2000 + year);
