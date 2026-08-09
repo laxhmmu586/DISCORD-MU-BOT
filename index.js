@@ -78,6 +78,7 @@ const {
   getCbsBaggageChartImage,
   appendTransit240Record,
   appendCbsScanRecord,
+  appendRecordScanRecord,
   appendCbsScanNbrdBns,
   deleteCbsScanNbrdBn,
   getCbsScanRecords,
@@ -1961,10 +1962,10 @@ app.post('/cbs-missing-bags/:rowNumber/link-on-hand-rush', async (req, res) => {
 function parseCbsPdf417(rawValue = '') {
   const rawScan = String(rawValue || '').trim();
   const compact = rawScan.replace(/\s+/g, ' ');
-  const flightMatch = compact.match(/\b(?:[A-Z]{6})?MU\s*(\d{3,4})\b/i);
-  const flightNumber = flightMatch?.[1]?.padStart(4, '0') || '';
+  const flightMatch = compact.match(/\b(?:[A-Z]{6})?MU\s*(\d{3,4})(D?)\b/i);
+  const flightNumber = flightMatch ? `${flightMatch[1].padStart(4, '0')}${flightMatch[2].toUpperCase()}` : '';
   if (!flightNumber) throw new Error('Flight not found.');
-  if (flightNumber !== '0586') {
+  if (!['0586', '0586D'].includes(flightNumber)) {
     const err = new Error('wrong flight');
     err.code = 'WRONG_FLIGHT';
     err.flight = flightNumber;
@@ -1983,6 +1984,26 @@ function parseCbsPdf417(rawValue = '') {
     bn: detailMatch[2],
     rawScan,
     isInfant
+  };
+}
+
+function parseRecordPdf417(rawValue = '') {
+  const rawScan = String(rawValue || '').trim();
+  const compact = rawScan.replace(/\s+/g, ' ');
+  const flightMatch = compact.match(/\b(?:[A-Z]{6})?MU\s*0*(586D?)\b/i);
+  if (!flightMatch) {
+    const err = new Error('wrong flight');
+    err.code = 'WRONG_FLIGHT';
+    throw err;
+  }
+  const detailMatch = rawScan.match(/(?:^|\D)(0*INF|0*\d{1,3}[A-Z])(\d{3,4})\b/i);
+  if (!detailMatch) throw new Error('Seat/BN segment not found.');
+  const seatToken = detailMatch[1].toUpperCase();
+  return {
+    flight: `MU${flightMatch[1].toUpperCase()}`,
+    seat: seatToken.replace(/^0+(?=\d)/, ''),
+    bn: detailMatch[2],
+    rawScan
   };
 }
 
@@ -2079,6 +2100,17 @@ app.post('/cbs-scan', async (req, res) => {
   } catch (err) {
     const status = err?.code === 'DUPLICATE_BN' || err?.code === 'NBRD_MESSAGE' ? 409 : (err?.code === 'WRONG_FLIGHT' ? 400 : (err?.code === 'SHEETS_QUOTA' ? 503 : 422));
     return res.status(status).json({ error: err?.message || 'CBS scan save failed', code: err?.code || 'SCAN_ERROR', flight: err?.flight || '', bn: err?.bn || '', detail: err?.detail || '' });
+  }
+});
+
+app.post('/record-scan', async (req, res) => {
+  try {
+    const parsed = parseRecordPdf417(req.body?.rawScan || req.body?.raw || req.body?.text || '');
+    const saved = await appendRecordScanRecord(parsed);
+    return res.json({ ok: true, ...saved });
+  } catch (err) {
+    const status = err?.code === 'DUPLICATE_BN' ? 409 : (err?.code === 'WRONG_FLIGHT' ? 400 : (err?.code === 'SHEETS_QUOTA' ? 503 : 422));
+    return res.status(status).json({ error: err?.message || 'Record scan save failed', code: err?.code || 'SCAN_ERROR' });
   }
 });
 
