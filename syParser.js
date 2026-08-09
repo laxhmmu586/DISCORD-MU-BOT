@@ -309,10 +309,20 @@ const MAINLAND_CHINA_DESTINATIONS = new Set([
   'AAT','AKA','AKU','AQG','AVA','BAV','BHY','BPX','BSD','CAN','CGD','CGO','CGQ','CIF','CIH','CKG','CSX','CTU','CZX','DAT','DAX','DDG','DIG','DLC','DLU','DNH','DOY','DSN','DYG','ENH','FOC','FUG','FUO','HAK','HDG','HEK','HET','HFE','HGH','HIA','HJJ','HLD','HLH','HRB','HSN','HTN','HYN','INC','IQM','JDZ','JGN','JHG','JIC','JIL','JIU','JJN','JMU','JNG','JNZ','JSJ','JUZ','KHG','KHN','KMG','KOW','KRL','KRY','KWE','KWL','LCX','LHW','LJG','LLB','LLF','LNJ','LUM','LXA','LYA','LYG','LYI','LZH','LZO','MDG','MIG','MXZ','NAO','NBS','NDG','NGB','NKG','NLT','NNG','NNY','NTG','NZH','PEK','PKX','PVG','SHA','SHE','SIA','SJW','SWA','SYM','SYX','SZX','TAO','TCG','TEN','TNA','TSN','TVS','TXN','TYN','URC','UYN','WEF','WEH','WHA','WNH','WNZ','WUA','WUH','WUS','WUX','WUZ','XFN','XIC','XIY','XMN','XNN','XUZ','YBP','YCU','YIC','YIH','YIN','YIW','YNJ','YNT','YNZ','YTY','YUS','ZAT','ZHA','ZUH','ZYI'
 ]);
 
+function normalizeOperationalFlightNo(flightNo) {
+  const value = String(flightNo || '').trim().toUpperCase();
+  const m = value.match(/^([A-Z]+)0*(\d+)([A-Z]?)$/);
+  return m ? `${m[1]}${Number(m[2])}${m[3]}` : value;
+}
+
+function sameOperationalFlightNo(left, right) {
+  return normalizeOperationalFlightNo(left) === normalizeOperationalFlightNo(right);
+}
+
 function normalizeJcsyFlightNo(flightNo) {
-  const m = String(flightNo || '').trim().toUpperCase().match(/^([A-Z]+)(\d+)$/);
+  const m = String(flightNo || '').trim().toUpperCase().match(/^([A-Z]+)0*(\d+)([A-Z]?)$/);
   if (!m) return String(flightNo || '').trim().toUpperCase();
-  return `${m[1]}${m[2].padStart(4, '0')}`;
+  return `${m[1]}${m[2].padStart(4, '0')}${m[3]}`;
 }
 
 function parseJcsyCountTriple(value = '') {
@@ -372,7 +382,11 @@ function findJcsyInfo(sections, flightNo, flightYmd, formatTime, fallbackYmd = '
     .filter(Boolean);
   const flightDate = dateCandidates[0] || '';
   const jcsyFlightNo = normalizeJcsyFlightNo(flightNo);
-  const flightNoPattern = escapeRegExp(jcsyFlightNo);
+  const canonicalFlight = normalizeOperationalFlightNo(flightNo);
+  const canonicalParts = canonicalFlight.match(/^([A-Z]+)(\d+)([A-Z]?)$/);
+  const flightNoPattern = canonicalParts
+    ? `${escapeRegExp(canonicalParts[1])}0*${escapeRegExp(canonicalParts[2])}${escapeRegExp(canonicalParts[3])}`
+    : escapeRegExp(jcsyFlightNo);
   const matchesForDate = (flightDateToken) => {
     const flightDatePattern = escapeRegExp(flightDateToken);
     return Boolean(jcsyFlightNo && flightDatePattern) ? sections.filter((sectionObj) => {
@@ -412,11 +426,7 @@ function findJcsyInfo(sections, flightNo, flightYmd, formatTime, fallbackYmd = '
 function parseCrewManifestRowsFromSections(sections, flightNo, flightYmd) {
   const rows = [];
   const seen = new Set();
-  const normalizeFlight = (value) => {
-    const match = String(value || '').toUpperCase().match(/^([A-Z]+)0*(\d+[A-Z]?)$/);
-    return match ? `${match[1]}${match[2]}` : String(value || '').toUpperCase();
-  };
-  const expectedFlight = normalizeFlight(flightNo);
+  const expectedFlight = normalizeOperationalFlightNo(flightNo);
   const expectedDate = flightYmd ? dateToDdMonYy(ymdToUtcDate(flightYmd)) : '';
   sections.forEach((sectionObj) => {
     const ymd = getYmdFromTimestamp(sectionObj.timestamp);
@@ -427,7 +437,7 @@ function parseCrewManifestRowsFromSections(sections, flightNo, flightYmd) {
     content.split(/\r?\n/).forEach((line) => {
       const header = line.match(/\bCWD\s*:\s*([A-Z]{2}0*\d+[A-Z]?)\/(\d{2}[A-Z]{3}\d{2})\b[^\n\r]*?CREW\s+NUMBER\s*:\s*(\d+)/i);
       if (header) {
-        const headerFlight = normalizeFlight(header[1]);
+        const headerFlight = normalizeOperationalFlightNo(header[1]);
         const headerDate = header[2].toUpperCase();
         activeManifest = (!expectedFlight || headerFlight === expectedFlight) && (!expectedDate || headerDate === expectedDate);
         return;
@@ -533,7 +543,7 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
   const futureSy = sections
     .filter((sectionObj) => getYmdFromTimestamp(sectionObj.timestamp) === baseYmd)
     .map((sectionObj) => parseSYSection(sectionObj))
-    .filter((item) => item && item.flightNo === flightNo && item.flightDate === commandFlightDateFull)
+    .filter((item) => item && sameOperationalFlightNo(item.flightNo, flightNo) && item.flightDate === commandFlightDateFull)
     .sort((a, b) => String(b.statusDisplay || '').localeCompare(String(a.statusDisplay || '')))[0] || null;
   const commandFlightNo = escapeRegExp(flightNo);
   const commandFlightDate = escapeRegExp(commandDate);
@@ -746,7 +756,7 @@ function enrichCHDListFromLog(log, syInfo, targetYmd = null) {
     }
     const prMatch = section.match(/PR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
     if (!prMatch) continue;
-    if (prMatch[1].toUpperCase() !== syInfo.flightNo || prMatch[2].toUpperCase() !== syInfo.flightDate) continue;
+    if (!sameOperationalFlightNo(prMatch[1], syInfo.flightNo) || prMatch[2].toUpperCase() !== syInfo.flightDate) continue;
 
     const paxMatch = section.match(/\n\s*\d+\.\s*([A-Z\/]+).*?\bBN(\d{1,3})\b.*?(?:\*?(\d+[A-Z]))?/i);
     if (!paxMatch) continue;
@@ -927,7 +937,7 @@ function enrichGovAqqFromLog(log, syInfo, targetYmd = null) {
     }
     const prMatch = section.match(/PR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
     if (!prMatch) continue;
-    if (prMatch[1].toUpperCase() !== syInfo.flightNo || prMatch[2].toUpperCase() !== syInfo.flightDate) continue;
+    if (!sameOperationalFlightNo(prMatch[1], syInfo.flightNo) || prMatch[2].toUpperCase() !== syInfo.flightDate) continue;
 
     const bnMatch = section.match(/PR:\s*[A-Z0-9]+\/\d{2}[A-Z]{3}\d{2}\*[A-Z]{3},BN(\d{1,3})/i);
     if (!bnMatch) continue;
@@ -1121,7 +1131,7 @@ function enrichWchListFromLog(log, syInfo, targetYmd = null) {
     }
     const prMatch = section.match(/PR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
     if (!prMatch) continue;
-    if (prMatch[1].toUpperCase() !== syInfo.flightNo || prMatch[2].toUpperCase() !== syInfo.flightDate) continue;
+    if (!sameOperationalFlightNo(prMatch[1], syInfo.flightNo) || prMatch[2].toUpperCase() !== syInfo.flightDate) continue;
 
     const bnMatch = section.match(/\bBN(\d{1,3})\b/i);
     if (!bnMatch) continue;
@@ -1175,7 +1185,7 @@ function enrichMembershipListFromLog(log, syInfo, targetYmd = null) {
     }
     const prMatch = section.match(/PR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
     if (!prMatch) continue;
-    if (prMatch[1].toUpperCase() !== syInfo.flightNo || prMatch[2].toUpperCase() !== syInfo.flightDate) continue;
+    if (!sameOperationalFlightNo(prMatch[1], syInfo.flightNo) || prMatch[2].toUpperCase() !== syInfo.flightDate) continue;
 
     const paxLine = section.match(/\n\s*\d+\.\s*[^\n\r]*/)?.[0] || '';
     const bn = (paxLine.match(/\bBN(\d{1,3})\b/i)?.[1] || '').padStart(3, '0');
@@ -1242,7 +1252,7 @@ function enrichSeatMapRecordsFromLog(log, syInfo, targetYmd = null) {
 
     const prMatch = section.match(/PR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
     if (!prMatch) continue;
-    if (prMatch[1].toUpperCase() !== syInfo.flightNo || prMatch[2].toUpperCase() !== syInfo.flightDate) continue;
+    if (!sameOperationalFlightNo(prMatch[1], syInfo.flightNo) || prMatch[2].toUpperCase() !== syInfo.flightDate) continue;
 
     const passengerLine = getPassengerRecordLine(section);
     const passengerName = (passengerLine.match(/^\s*\d+\.\s*\d?([A-Z\/]+\+?)/i)?.[1] || '').replace(/\+$/, '').toUpperCase();
@@ -1339,7 +1349,7 @@ function enrichPsmListFromLog(log, syInfo, targetYmd = null) {
 
     const prMatch = section.match(/PR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
     if (!prMatch) continue;
-    if (prMatch[1].toUpperCase() !== syInfo.flightNo || prMatch[2].toUpperCase() !== syInfo.flightDate) continue;
+    if (!sameOperationalFlightNo(prMatch[1], syInfo.flightNo) || prMatch[2].toUpperCase() !== syInfo.flightDate) continue;
 
     const psmLines = extractPsmLines(section).filter(hasTargetPsm);
     if (!psmLines.length) continue;
@@ -1422,7 +1432,7 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     }
     const prMatch = section.match(/PR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
     if (!prMatch) continue;
-    if (prMatch[1].toUpperCase() !== syInfo.flightNo || prMatch[2].toUpperCase() !== syInfo.flightDate) continue;
+    if (!sameOperationalFlightNo(prMatch[1], syInfo.flightNo) || prMatch[2].toUpperCase() !== syInfo.flightDate) continue;
     const bnMatch = section.match(/\bBN(\d{1,3})\b/i);
     if (!bnMatch) continue;
     const bn = bnMatch[1].padStart(3, '0');
@@ -1791,7 +1801,7 @@ function enrichBadSeatListFromLog(log, syInfo, targetYmd = null) {
     }
     const pdMatch = section.match(/PD:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
     if (!pdMatch) continue;
-    if (pdMatch[1].toUpperCase() !== syInfo.flightNo || pdMatch[2].toUpperCase() !== syInfo.flightDate) continue;
+    if (!sameOperationalFlightNo(pdMatch[1], syInfo.flightNo) || pdMatch[2].toUpperCase() !== syInfo.flightDate) continue;
     const ckinBadMatch = section.match(/^\s*CKIN\s+BAD\s+SEAT\s+([0-9]{1,3}[A-Z])\b/im);
     if (!ckinBadMatch) continue;
     const passengerLine = getPassengerRecordLine(section);
@@ -1818,8 +1828,8 @@ function sortSYMatches(matches, preferredFlightNo = '') {
   const preferred = String(preferredFlightNo || '').trim().toUpperCase();
   return matches.slice().sort((a, b) => {
     if (preferred) {
-      const aPreferred = a.info?.flightNo === preferred ? 1 : 0;
-      const bPreferred = b.info?.flightNo === preferred ? 1 : 0;
+      const aPreferred = sameOperationalFlightNo(a.info?.flightNo, preferred) ? 1 : 0;
+      const bPreferred = sameOperationalFlightNo(b.info?.flightNo, preferred) ? 1 : 0;
       if (aPreferred !== bPreferred) return bPreferred - aPreferred;
     }
     return parseSectionTimestamp(b.section.timestamp) - parseSectionTimestamp(a.section.timestamp);
@@ -1840,7 +1850,7 @@ function findSYInfo(log, queryDate, options = {}) {
     const matched = sortSYMatches(sySections
       .map(s => ({ section: s, info: parseSYSection(s) }))
       .filter(x => x.info)
-      .filter(x => !strictPreferredFlight || x.info.flightNo === preferredFlightNo)
+      .filter(x => !strictPreferredFlight || sameOperationalFlightNo(x.info.flightNo, preferredFlightNo))
       .filter(x => x.info.flightDate?.startsWith(queryDate)), preferredFlightNo);
     if (matched.length) {
       const info = matched[0].info;
@@ -1862,7 +1872,7 @@ function findSYInfo(log, queryDate, options = {}) {
   const parsed = sySections
     .map(s => ({ section: s, info: parseSYSection(s) }))
     .filter(x => x.info)
-    .filter(x => !strictPreferredFlight || x.info.flightNo === preferredFlightNo);
+    .filter(x => !strictPreferredFlight || sameOperationalFlightNo(x.info.flightNo, preferredFlightNo));
 
   const latestLogSection = sections
     .slice()
@@ -1913,4 +1923,4 @@ function findSYInfo(log, queryDate, options = {}) {
   return null;
 }
 
-module.exports = { findSYInfo };
+module.exports = { findSYInfo, normalizeOperationalFlightNo, normalizeJcsyFlightNo };
