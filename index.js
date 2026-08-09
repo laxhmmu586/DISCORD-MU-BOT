@@ -1962,10 +1962,10 @@ app.post('/cbs-missing-bags/:rowNumber/link-on-hand-rush', async (req, res) => {
 function parseCbsPdf417(rawValue = '') {
   const rawScan = String(rawValue || '').trim();
   const compact = rawScan.replace(/\s+/g, ' ');
-  const flightMatch = compact.match(/\b(?:[A-Z]{6})?MU\s*(\d{3,4})\b/i);
-  const flightNumber = flightMatch?.[1]?.padStart(4, '0') || '';
+  const flightMatch = compact.match(/\b(?:[A-Z]{6})?MU\s*(\d{3,4})(D?)\b/i);
+  const flightNumber = flightMatch ? `${flightMatch[1].padStart(4, '0')}${flightMatch[2].toUpperCase()}` : '';
   if (!flightNumber) throw new Error('Flight not found.');
-  if (flightNumber !== '0586') {
+  if (!['0586', '0586D'].includes(flightNumber)) {
     const err = new Error('wrong flight');
     err.code = 'WRONG_FLIGHT';
     err.flight = flightNumber;
