@@ -27,6 +27,7 @@
     .actions { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:14px; }
     .status { min-height:28px; font-weight:900; }
     .status.ok { color:var(--ok); } .status.err { color:var(--danger); }
+    .flight-support { margin:-8px 0 18px; color:var(--brand); font-size:13px; font-weight:950; letter-spacing:.12em; }
     .result { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
     .result div { padding:12px; border:1px solid var(--line); border-radius:14px; background:#fbfdff; }
     .result b { display:block; color:var(--muted); font-size:12px; text-transform:uppercase; }
@@ -57,6 +58,7 @@
   <main>
     <section class="card">
       <h1>Manual Boarding</h1>
+      <p class="flight-support">MU586 · MU586D</p>
       <div class="camera-wrap"><video id="preview" muted playsinline></video><div class="aim-box" aria-hidden="true"></div></div>
       <div class="actions"><button id="start" type="button">Start Scan</button><button class="secondary" id="stop" type="button">Stop</button></div>
       <p class="status" id="status">Ready.</p>
@@ -200,7 +202,7 @@
       await auth?.signOut?.();
       window.location.replace(loginUrl());
     });
-    function renderResult(data) { resultEl.hidden = false; resultEl.innerHTML = `<div><b>Flight</b>${data.flight || '0586'}</div><div><b>Seat</b>${data.seat || ''}</div><div><b>BN</b>${data.bn || ''}</div>${data.isInfant ? '<div><b>Type</b>INFANT</div>' : ''}`; }
+    function renderResult(data) { resultEl.hidden = false; resultEl.innerHTML = `<div><b>Flight</b>${data.flight || ''}</div><div><b>Seat</b>${data.seat || ''}</div><div><b>BN</b>${data.bn || ''}</div>${data.isInfant ? '<div><b>Type</b>INFANT</div>' : ''}`; }
     async function saveScan(rawScan) {
       const res = await fetch(`${apiBase}/cbs-scan`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ rawScan }) });
       const data = await res.json().catch(() => ({}));
