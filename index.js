@@ -19,6 +19,7 @@ const {
   findByBagtag
 
 } = require('./flightParser');
+const { matchMuFlight } = require('./cbsScanParser');
 
 const {
 
@@ -1961,14 +1962,12 @@ app.post('/cbs-missing-bags/:rowNumber/link-on-hand-rush', async (req, res) => {
 
 function parseCbsPdf417(rawValue = '') {
   const rawScan = String(rawValue || '').trim();
-  const compact = rawScan.replace(/\s+/g, ' ');
-  const flightMatch = compact.match(/\b(?:[A-Z]{6})?MU\s*(\d{3,4})(D?)\b/i);
-  const flightNumber = flightMatch ? `${flightMatch[1].padStart(4, '0')}${flightMatch[2].toUpperCase()}` : '';
-  if (!flightNumber) throw new Error('Flight not found.');
-  if (!['0586', '0586D'].includes(flightNumber)) {
+  const flightMatch = matchMuFlight(rawScan);
+  if (!flightMatch) throw new Error('Flight not found.');
+  if (!flightMatch.supported) {
     const err = new Error('wrong flight');
     err.code = 'WRONG_FLIGHT';
-    err.flight = flightNumber;
+    err.flight = flightMatch.number;
     throw err;
   }
 
@@ -1979,7 +1978,7 @@ function parseCbsPdf417(rawValue = '') {
   const isInfant = normalizedSeatToken === 'INF';
   const seat = isInfant ? 'INF' : seatToken.replace(/^0+(?=\d)/, '');
   return {
-    flight: flightNumber,
+    flight: flightMatch.number,
     seat,
     bn: detailMatch[2],
     rawScan,
@@ -1989,9 +1988,8 @@ function parseCbsPdf417(rawValue = '') {
 
 function parseRecordPdf417(rawValue = '') {
   const rawScan = String(rawValue || '').trim();
-  const compact = rawScan.replace(/\s+/g, ' ');
-  const flightMatch = compact.match(/\b(?:[A-Z]{6})?MU\s*0*(586D?)\b/i);
-  if (!flightMatch) {
+  const flightMatch = matchMuFlight(rawScan);
+  if (!flightMatch?.supported) {
     const err = new Error('wrong flight');
     err.code = 'WRONG_FLIGHT';
     throw err;
@@ -2000,7 +1998,7 @@ function parseRecordPdf417(rawValue = '') {
   if (!detailMatch) throw new Error('Seat/BN segment not found.');
   const seatToken = detailMatch[1].toUpperCase();
   return {
-    flight: `MU${flightMatch[1].toUpperCase()}`,
+    flight: `MU${flightMatch.number.replace(/^0+/, '')}`,
     seat: seatToken.replace(/^0+(?=\d)/, ''),
     bn: detailMatch[2],
     rawScan
