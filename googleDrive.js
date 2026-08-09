@@ -127,7 +127,7 @@ const CBS_SCAN_SHEET_ID = process.env.CBS_SCAN_SHEET_ID || '1bfIeytT6UMdvWXimeg4
 const CBS_SCAN_SHEET_GID = Number(process.env.CBS_SCAN_SHEET_GID || 0);
 const RECORD_SCAN_SHEET_ID = process.env.RECORD_SCAN_SHEET_ID || '1bfIeytT6UMdvWXimeg4s1HVuXHqmpYZx53ufsbes6Ms';
 const RECORD_SCAN_SHEET_GID = Number(process.env.RECORD_SCAN_SHEET_GID || 621930495);
-const RECORD_SCAN_HEADERS = ['BN', 'SEAT', 'FLIGHT NUMBER'];
+const RECORD_SCAN_HEADERS = ['BN', 'SEAT', 'FLIGHT NUMBER', 'RAW SCAN'];
 const TRANSIT_240_SHEET_ID = process.env.TRANSIT_240_SHEET_ID || '1JqRnDx_uLc2m2SzyZOuHWWJsbkKenlKo60U9zwV9uMQ';
 const TRANSIT_240_SHEET_GID = Number(process.env.TRANSIT_240_SHEET_GID || 527537258);
 const TRANSIT_240_HEADERS = ['Submit Date', 'Passenger Name', 'Seat Number', 'BN Number', 'Passport Nationality Code', 'Passport Expiration Date', 'Itinerary'];
@@ -2976,10 +2976,11 @@ async function appendRecordScanRecord(record = {}) {
   const bn = formatCbsScanSheetBn(record.bn);
   const seat = String(record.seat || '').trim().toUpperCase();
   const flight = String(record.flight || '').trim().toUpperCase();
-  if (!bn || !seat || !['MU586', 'MU586D'].includes(flight)) throw new Error('Invalid record scan.');
+  const rawScan = String(record.rawScan || record.raw || '').trim();
+  if (!bn || !seat || !rawScan || !['MU586', 'MU586D'].includes(flight)) throw new Error('Invalid record scan.');
 
   const title = await getRecordScanSheetTitle();
-  const range = `${escapeSheetTitle(title)}!A:C`;
+  const range = `${escapeSheetTitle(title)}!A:D`;
   const response = await cbsScanSheetsCall(() => sheets.spreadsheets.values.get({
     spreadsheetId: RECORD_SCAN_SHEET_ID,
     range
@@ -2990,7 +2991,7 @@ async function appendRecordScanRecord(record = {}) {
   if (!hasHeaders) {
     await cbsScanSheetsCall(() => sheets.spreadsheets.values.update({
       spreadsheetId: RECORD_SCAN_SHEET_ID,
-      range: `${escapeSheetTitle(title)}!A1:C1`,
+      range: `${escapeSheetTitle(title)}!A1:D1`,
       valueInputOption: 'RAW',
       requestBody: { values: [RECORD_SCAN_HEADERS] }
     }), 'Record scan header update');
@@ -3002,7 +3003,7 @@ async function appendRecordScanRecord(record = {}) {
     range,
     valueInputOption: 'RAW',
     insertDataOption: 'INSERT_ROWS',
-    requestBody: { values: [[bn, seat, flight]] }
+    requestBody: { values: [[bn, seat, flight, rawScan]] }
   }), 'Record scan row write');
   return { bn, seat, flight };
 }
