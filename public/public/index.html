@@ -5262,7 +5262,10 @@
           const data = await apiJson("/nextday-info/send", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ flightNo: currentSy.flightNo || "MU586" }),
+            body: JSON.stringify({
+              flightNo: currentSy.flightNo || "MU586",
+              details: step?.details || {},
+            }),
             signal: sendController.signal,
           });
           if (!data?.ok) {

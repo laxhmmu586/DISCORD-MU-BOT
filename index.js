@@ -3063,35 +3063,31 @@ function settleWithin(promise, timeoutMs, label) {
   ]).finally(() => clearTimeout(timer));
 }
 
+function nextDayInfoDetailsFromRequest(value) {
+  const keys = ['firstClass', 'businessClass', 'economyClass', 'internationalTransfer', 'domesticTransfer', 'overnightPassengers'];
+  const details = {};
+  for (const key of keys) {
+    const text = String(value?.[key] ?? '').trim();
+    if (!/^\d+$/.test(text)) return null;
+    details[key] = text;
+  }
+  return details;
+}
+
 // ===============================
 // NEXTDAY INFO Email API
 // ===============================
 app.post('/nextday-info/send', async (req, res) => {
   try {
     const flightNo = String(req.body?.flightNo || 'MU586').trim().toUpperCase() || 'MU586';
-    const todayIso = todayIsoUtc();
-    const nextIso = addIsoDays(todayIso, 1);
-    const syDate = isoDateToSyDate(nextIso);
+    const nextIso = addIsoDays(todayIsoUtc(), 1);
     const subjectDate = isoDateToEmailSubjectDate(nextIso);
     const subject = `${flightNo} ${subjectDate} flight information details`;
-    const log = await getLatestFlightLog();
-    if (!log) return res.status(400).json({ error: 'Missing SY information: unable to load latest log.' });
-
-    const syInfo = findSYInfo(log, syDate, { preferredFlightNo: flightNo });
-    if (!syInfo) return res.status(400).json({ error: `Missing SY information for ${flightNo}/${syDate}.` });
-
-    const retCounts = retCountsFromSyInfo(syInfo);
-    if (!retCounts) return res.status(400).json({ error: `Missing SY information: RET counts not found for ${flightNo}/${syDate}.` });
-
-    const transferCounts = transferCountsFromJcsy(syInfo.crewApis?.jcsy);
-    if (!transferCounts) return res.status(400).json({ error: `Missing JCSY information for ${flightNo}/${subjectDate}.` });
-
-    const details = {
-      ...retCounts,
-      internationalTransfer: String(transferCounts.internationalTransfer),
-      domesticTransfer: String(transferCounts.domesticTransfer),
-      overnightPassengers: String(transferCounts.overnightPassengers)
-    };
+    // The browser already has the exact figures shown in the confirmation card.
+    // Use them directly so clicking Send does not first block on another Drive log
+    // download (the actual source of the request hanging before either delivery).
+    const details = nextDayInfoDetailsFromRequest(req.body?.details);
+    if (!details) return res.status(400).json({ error: 'Missing or invalid NEXTDAY INFO figures. Refresh SY and try again.' });
     const text = buildNextDayInfoEmailBody(subjectDate, details);
     const to = ['LAXHMXH@hallmark-aviation.com', 'dg-lax-lounge@qantas.com.au'];
     const cc = ['lax.mupax@hallmark-aviation.com', 'laxhmmu@gmail.com'];
@@ -3109,20 +3105,14 @@ app.post('/nextday-info/send', async (req, res) => {
     if (discordError) console.error('NEXTDAY INFO Discord post failed:', discordResult.reason);
     const delivered = Boolean(email && discordPost?.sent && !emailError && !discordError);
     const sentAt = new Date().toISOString();
-    const step = syInfo.crewApis?.steps?.find((item) => item.key === 'nextDayInfo') || null;
-    if (step) {
-      step.complete = delivered;
-      step.searched = true;
-      step.time = sentAt.slice(11, 19);
-      step.subject = subject;
-      step.details = details;
-      step.detailText = buildNextDayInfoDetailLines(details);
-      step.reason = [emailError && `Email: ${emailError}`, discordError && `Discord: ${discordError}`].filter(Boolean).join(' ');
-      step.tooltip = delivered
+    const reason = [emailError && `Email: ${emailError}`, discordError && `Discord: ${discordError}`].filter(Boolean).join(' ');
+    const step = {
+      key: 'nextDayInfo', label: 'NEXTDAY INFO', complete: delivered, searched: true,
+      time: sentAt.slice(11, 19), subject, details, detailText: buildNextDayInfoDetailLines(details), reason,
+      tooltip: delivered
         ? `NEXTDAY INFO sent to ${to.join(', ')}; CC ${cc.join(', ')}: ${subject}`
-        : `NEXTDAY INFO delivery failed. ${step.reason}`;
-    }
-    if (delivered) cacheCompletedPreflightStep(syInfo, todayIso, 'nextDayInfo');
+        : `NEXTDAY INFO delivery failed. ${reason}`
+    };
     return res.json({ ok: delivered, sentAt, subject, to, cc, messageId: email?.id || '', emailError, discordPost, discordError, details, detailText: step?.detailText || buildNextDayInfoDetailLines(details), step });
   } catch (err) {
     console.error('NEXTDAY INFO send failed:', err);
