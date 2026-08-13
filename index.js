@@ -3053,6 +3053,16 @@ function deliveryError(result, fallback) {
   return '';
 }
 
+function settleWithin(promise, timeoutMs, label) {
+  let timer;
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`${label} timed out after ${Math.round(timeoutMs / 1000)} seconds.`)), timeoutMs);
+    })
+  ]).finally(() => clearTimeout(timer));
+}
+
 // ===============================
 // NEXTDAY INFO Email API
 // ===============================
@@ -3088,8 +3098,8 @@ app.post('/nextday-info/send', async (req, res) => {
     // Do not make Discord wait for Gmail. A stalled Gmail request previously left
     // the browser on SENDING forever and prevented the Discord attempt entirely.
     const [emailResult, discordResult] = await Promise.allSettled([
-      sendNextDayInfoEmail({ to, cc, subject, text }),
-      sendNextDayInfoToDiscord(text)
+      settleWithin(sendNextDayInfoEmail({ to, cc, subject, text }), 35000, 'Email delivery'),
+      settleWithin(sendNextDayInfoToDiscord(text), 35000, 'Discord delivery')
     ]);
     const email = emailResult.status === 'fulfilled' ? emailResult.value : null;
     const discordPost = discordResult.status === 'fulfilled' ? discordResult.value : null;

@@ -5074,6 +5074,16 @@
         writeCompletedSyNodeCache(cache);
       }
 
+      function forgetCompletedSyNode(sy, key) {
+        if (!PERSISTENT_GREEN_NODE_KEYS.includes(key)) return;
+        const cache = readCompletedSyNodeCache();
+        const cacheKey = syCompletedNodeCacheKey(sy);
+        if (!cache[cacheKey]?.[key]) return;
+        delete cache[cacheKey][key];
+        if (!Object.keys(cache[cacheKey]).length) delete cache[cacheKey];
+        writeCompletedSyNodeCache(cache);
+      }
+
       function resolveApiBase() {
         const fromWindow = window.MU_API_BASE || "";
         return (fromWindow.trim() || "https://api.mufcapp.net").replace(/\/$/, "");
@@ -5233,9 +5243,15 @@
         if (!ok) return;
         const step = stepByKey("NEXTDAY_INFO");
         if (step) {
+          // A previous successful send may still be green in both the live step
+          // and local cache. Clear it before displaying this new attempt.
+          step.complete = false;
           step.searched = true;
+          step.time = "";
+          step.reason = "";
           step.tooltip = "NEXTDAY INFO sending email...";
         }
+        forgetCompletedSyNode(currentSy, "NEXTDAY_INFO");
         node.dataset.status = "pending";
         node.dataset.time = "SENDING";
         nodeTime.textContent = "SENDING";
