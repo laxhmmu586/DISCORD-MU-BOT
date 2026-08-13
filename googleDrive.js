@@ -3922,10 +3922,11 @@ function buildRawPlainEmail({ to, cc = [], subject, text }) {
 async function sendNextDayInfoEmail({ to = 'laxhmmu@gmail.com', cc = [], subject, text }) {
   const { gmail, userId, authMode } = getNextDayInfoGmailClient();
   const raw = buildRawPlainEmail({ to, cc, subject, text });
+  const timeout = Math.max(1000, Number(process.env.NEXTDAY_INFO_EMAIL_TIMEOUT_MS) || 30000);
   const sent = await gmail.users.messages.send({
     userId,
     requestBody: { raw: base64UrlEncode(raw) }
-  });
+  }, { timeout });
   return { to: Array.isArray(to) ? to : [to], cc: Array.isArray(cc) ? cc : [cc].filter(Boolean), id: sent.data.id || '', userId, authMode };
 }
 
