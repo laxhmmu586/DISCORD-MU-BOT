@@ -344,7 +344,7 @@ function normalizeJcsyFlightNo(flightNo) {
 }
 
 function parseJcsyCountTriple(value = '') {
-  const match = String(value || '').match(/^(\d{2})\/(\d{3})\/(\d{3})/);
+  const match = String(value || '').match(/^(\d{2})\/(\d{2,3})\/(\d{3})/);
   if (!match) return { first: 0, business: 0, economy: 0, total: 0 };
   const first = Number(match[1]) || 0;
   const business = Number(match[2]) || 0;
@@ -368,7 +368,7 @@ function parseJcsyDeparture(raw = '') {
 
 function parseJcsyRows(content) {
   return String(content || '').split(/\r?\n/).map((line) => {
-    const m = line.match(/^\s*([A-Z]{2}\d{3,4})\s+\/([A-Z]{3})\/\s+(?:(\d{4}(?:\+\d)?)\s+)?(\d{2}\/\d{3}\/\d{3})\b/i);
+    const m = line.match(/^\s*([A-Z]{2}\d{3,4})\s+\/([A-Z]{3})\/\s+(?:(\d{4}(?:\+\d)?)\s+)?(\d{2}\/\d{2,3}\/\d{3})\b/i);
     if (!m) return null;
     const booked = parseJcsyCountTriple(m[4]);
     const departure = parseJcsyDeparture(m[3] || '');
@@ -1887,4 +1887,4 @@ function findSYInfo(log, queryDate, options = {}) {
   return null;
 }
 
-module.exports = { findSYInfo, normalizeOperationalFlightNo, normalizeJcsyFlightNo, sectionMatchesFlightOperationDate, matchesSyFlightRecord, extractPassportCountryCodes };
+module.exports = { findSYInfo, normalizeOperationalFlightNo, normalizeJcsyFlightNo, sectionMatchesFlightOperationDate, matchesSyFlightRecord, extractPassportCountryCodes, parseJcsyRows };
