@@ -344,7 +344,7 @@ function normalizeJcsyFlightNo(flightNo) {
 }
 
 function parseJcsyCountTriple(value = '') {
-  const match = String(value || '').match(/^(\d{2})\/(\d{3})\/(\d{3})/);
+  const match = String(value || '').match(/^(\d{2})\/(\d{2,3})\/(\d{3})/);
   if (!match) return { first: 0, business: 0, economy: 0, total: 0 };
   const first = Number(match[1]) || 0;
   const business = Number(match[2]) || 0;
@@ -368,7 +368,7 @@ function parseJcsyDeparture(raw = '') {
 
 function parseJcsyRows(content) {
   return String(content || '').split(/\r?\n/).map((line) => {
-    const m = line.match(/^\s*([A-Z]{2}\d{3,4})\s+\/([A-Z]{3})\/\s+(?:(\d{4}(?:\+\d)?)\s+)?(\d{2}\/\d{3}\/\d{3})\b/i);
+    const m = line.match(/^\s*([A-Z]{2}\d{3,4})\s+\/([A-Z]{3})\/\s+(?:(\d{4}(?:\+\d)?)\s+)?(\d{2}\/\d{2,3}\/\d{3})\b/i);
     if (!m) return null;
     const booked = parseJcsyCountTriple(m[4]);
     const departure = parseJcsyDeparture(m[3] || '');
@@ -814,48 +814,32 @@ function enrichCHDListFromLog(log, syInfo, targetYmd = null) {
 function extractPassportCountryCodes(section) {
   const passportCountryFields = extractPassportCountryFields(section);
   return [
-    passportCountryFields.paxInfoCode,
     passportCountryFields.passportNatCode,
     passportCountryFields.passportIssueCode
   ].filter(Boolean);
 }
 
 function extractPassportCountryFields(section) {
-  const paxInfo = (section.match(/PAX INFO\s*:\s*([^\n\r]+)/i)?.[1] || '').trim().toUpperCase();
   const paxPassport = (section.match(/PASSPORT\s*:\s*([^\n\r]+)/i)?.[1] || '').trim().toUpperCase();
   const fields = {
-    paxInfoCode: '',
     passportNatCode: '',
     passportIssueCode: ''
   };
 
-  fields.paxInfoCode = paxInfo.match(/^([A-Z]{2,3})\//)?.[1] || '';
-
   if (paxPassport) {
     const parts = paxPassport.split('/').map((x) => x.trim());
     const natIndex = parts.indexOf('NAT');
-    if (natIndex >= 0 && /^[A-Z]{2,3}$/.test(parts[natIndex + 1] || '')) {
+    if (natIndex >= 0 && /^[A-Z]{3}$/.test(parts[natIndex + 1] || '')) {
       fields.passportNatCode = parts[natIndex + 1];
     }
 
     const expiryIndex = parts.findIndex((x) => /^\d{6}$/.test(x));
-    if (expiryIndex >= 0 && /^[A-Z]{2,3}$/.test(parts[expiryIndex + 1] || '')) {
+    if (expiryIndex >= 0 && /^[A-Z]{3}$/.test(parts[expiryIndex + 1] || '')) {
       fields.passportIssueCode = parts[expiryIndex + 1];
     }
   }
 
   return fields;
-}
-
-function normalizeCountryCodeForRisk(code) {
-  const raw = String(code || '').toUpperCase();
-  const aliases = {
-    CN: 'CHN',
-    US: 'USA',
-    GB: 'GBR',
-    GBN: 'GBR'
-  };
-  return aliases[raw] || raw;
 }
 
 function extractBookingName(section) {
@@ -985,34 +969,19 @@ ${section}`,
     const latestApiAgent = extractLatestApiAgent(section);
     const hasApiOperation = /^\s*API\s+/im.test(section);
     const needsReswipeByAgent = hasUnclearedApiSourceRisk(section);
-    const hasPaxInfoLine = /PAX INFO\s*:/i.test(section);
     const hasPassportLine = /PASSPORT\s*:/i.test(section);
     const countryFields = extractPassportCountryFields(section);
-    const countryCodes = [countryFields.paxInfoCode, countryFields.passportNatCode, countryFields.passportIssueCode].filter(Boolean);
     const passportLineCountryCodes = [countryFields.passportNatCode, countryFields.passportIssueCode].filter(Boolean);
     const issueReasons = [];
-    if (!hasPaxInfoLine || !hasPassportLine) {
-      issueReasons.push('missing PAX INFO or PASSPORT line');
+    if (!hasPassportLine) {
+      issueReasons.push('missing PASSPORT line');
     }
-    if (countryCodes.length !== 3) {
-      issueReasons.push(`country code count is ${countryCodes.length}, expected 3`);
-    }
-    if (passportLineCountryCodes.length !== 2 || passportLineCountryCodes.some((c) => !/^[A-Z]{3}$/.test(c))) {
-      issueReasons.push('PASSPORT line country codes must be 3-letter codes');
-    }
-    const normalizedPassportLineCountryCodes = passportLineCountryCodes.map(normalizeCountryCodeForRisk);
-    if (countryCodes.some((c) => !/^[A-Z]{2,3}$/.test(c))) {
-      issueReasons.push('contains invalid country code');
-    }
-    if (passportLineCountryCodes.length === 2 && new Set(normalizedPassportLineCountryCodes).size !== 1) {
-      issueReasons.push(`PASSPORT line country codes not identical: ${passportLineCountryCodes.join('/')}`);
+    if (passportLineCountryCodes.length !== 2) {
+      issueReasons.push(`PASSPORT country code count is ${passportLineCountryCodes.length}, expected 2`);
     }
     const hasCountryCodeRisk =
-      issueReasons.includes('missing PAX INFO or PASSPORT line') ||
-      issueReasons.some((x) => x.startsWith('country code count is')) ||
-      issueReasons.includes('contains invalid country code') ||
-      issueReasons.includes('PASSPORT line country codes must be 3-letter codes') ||
-      issueReasons.some((x) => x.startsWith('PASSPORT line country codes not identical:'));
+      issueReasons.includes('missing PASSPORT line') ||
+      issueReasons.some((x) => x.startsWith('PASSPORT country code count is'));
 
     const hasApiSourceRisk = needsReswipeByAgent;
     if (!hasApiOperation) {
@@ -1481,8 +1450,8 @@ ${section}`,
     const latestApiAgent = extractLatestApiAgent(section);
     const hasApiOperation = /^\s*API\s+/im.test(section);
     const apiNotWhitelisted = hasUnclearedApiSourceRisk(section);
-    const countryCodes = extractPassportCountryCodes(section);
-    const countryCodeCountZero = countryCodes.length === 0;
+    const passportCountryCodes = extractPassportCountryCodes(section);
+    const hasTwoPassportCountryCodes = passportCountryCodes.length === 2;
     const passportRawLine = (section.match(/PASSPORT\s*:\s*([^\n\r]+)/i)?.[1] || '').trim().toUpperCase();
     const passportNo = section.match(/PASSPORT\s*:\s*([A-Z0-9]+)/i)?.[1]?.toUpperCase() || '';
     const expField = extractPassportExpiryKeyFromRawLine(passportRawLine);
@@ -1738,9 +1707,9 @@ ${section}`,
       apiStatus = 'review';
       apiReasons.push(`latest API AGT${latestApiAgent} not in whitelist`);
     }
-    if (countryCodeCountZero && apiStatus !== 'fail') {
+    if (!hasTwoPassportCountryCodes && apiStatus !== 'fail') {
       apiStatus = 'review';
-      apiReasons.push('country code count is 0, expected 3');
+      apiReasons.push(`PASSPORT country code count is ${passportCountryCodes.length}, expected 2`);
     }
 
     if (isOffloaded) {
@@ -1918,4 +1887,4 @@ function findSYInfo(log, queryDate, options = {}) {
   return null;
 }
 
-module.exports = { findSYInfo, normalizeOperationalFlightNo, normalizeJcsyFlightNo, sectionMatchesFlightOperationDate, matchesSyFlightRecord };
+module.exports = { findSYInfo, normalizeOperationalFlightNo, normalizeJcsyFlightNo, sectionMatchesFlightOperationDate, matchesSyFlightRecord, extractPassportCountryCodes, parseJcsyRows };
