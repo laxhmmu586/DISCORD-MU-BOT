@@ -5074,15 +5074,36 @@
         writeCompletedSyNodeCache(cache);
       }
 
+      function forgetCompletedSyNode(sy, key) {
+        if (!PERSISTENT_GREEN_NODE_KEYS.includes(key)) return;
+        const cache = readCompletedSyNodeCache();
+        const cacheKey = syCompletedNodeCacheKey(sy);
+        if (!cache[cacheKey]?.[key]) return;
+        delete cache[cacheKey][key];
+        if (!Object.keys(cache[cacheKey]).length) delete cache[cacheKey];
+        writeCompletedSyNodeCache(cache);
+      }
+
       function resolveApiBase() {
         const fromWindow = window.MU_API_BASE || "";
         return (fromWindow.trim() || "https://api.mufcapp.net").replace(/\/$/, "");
       }
 
-      async function authHeaders() {
+      async function authHeaders(timeoutMs = 10000) {
         const headers = {};
         if (auth?.currentUser) {
-          headers.Authorization = `Bearer ${await auth.currentUser.getIdToken()}`;
+          let timer;
+          try {
+            const token = await Promise.race([
+              auth.currentUser.getIdToken(),
+              new Promise((_, reject) => {
+                timer = setTimeout(() => reject(new Error("Authentication timed out. Please reload the page and sign in again.")), timeoutMs);
+              }),
+            ]);
+            headers.Authorization = `Bearer ${token}`;
+          } finally {
+            clearTimeout(timer);
+          }
         }
         return headers;
       }
@@ -5100,11 +5121,12 @@
 
       async function apiJson(path, options = {}) {
         const apiBase = resolveApiBase();
+        const { authTimeoutMs = 10000, ...fetchOptions } = options;
         const res = await fetch(`${apiBase}${path}`, {
           cache: "no-store",
-          ...options,
+          ...fetchOptions,
           headers: {
-            ...(await authHeaders()),
+            ...(await authHeaders(authTimeoutMs)),
             ...(options.headers || {}),
           },
         });
@@ -5233,19 +5255,39 @@
         if (!ok) return;
         const step = stepByKey("NEXTDAY_INFO");
         if (step) {
+          // A previous successful send may still be green in both the live step
+          // and local cache. Clear it before displaying this new attempt.
+          step.complete = false;
           step.searched = true;
+          step.time = "";
+          step.reason = "";
           step.tooltip = "NEXTDAY INFO sending email...";
         }
+        forgetCompletedSyNode(currentSy, "NEXTDAY_INFO");
         node.dataset.status = "pending";
         node.dataset.time = "SENDING";
         nodeTime.textContent = "SENDING";
         showTimelineNodeCard("NEXTDAY_INFO", step, "SENDING");
+        const sendController = new AbortController();
+        const sendTimeout = setTimeout(() => sendController.abort(), 45000);
         try {
           const data = await apiJson("/nextday-info/send", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ flightNo: currentSy.flightNo || "MU586" }),
+            body: JSON.stringify({
+              flightNo: currentSy.flightNo || "MU586",
+              details: step?.details || {},
+            }),
+            signal: sendController.signal,
+            authTimeoutMs: 10000,
           });
+          if (!data?.ok) {
+            const failures = [
+              data?.emailError && `Email: ${data.emailError}`,
+              data?.discordError && `Discord: ${data.discordError}`,
+            ].filter(Boolean);
+            throw new Error(failures.join("; ") || "NEXTDAY INFO delivery failed.");
+          }
           if (data?.step) {
             currentSy.crewApis = currentSy.crewApis || {};
             currentSy.crewApis.steps = currentSy.crewApis.steps || [];
@@ -5267,7 +5309,9 @@
           const sentStep = stepByKey("NEXTDAY_INFO");
           showTimelineNodeCard("NEXTDAY_INFO", sentStep, sentStep?.time || "SENT");
         } catch (err) {
-          const message = err?.message || "NEXTDAY INFO email send failed.";
+          const message = err?.name === "AbortError"
+            ? "NEXTDAY INFO delivery timed out after 45 seconds. Please check email and Discord before retrying."
+            : (err?.message || "NEXTDAY INFO email send failed.");
           if (step) {
             step.complete = false;
             step.searched = true;
@@ -5277,6 +5321,16 @@
           refreshSyBadges(currentSy);
           showTimelineNodeCard("NEXTDAY_INFO", stepByKey("NEXTDAY_INFO"), "MISSING");
           alert(message);
+        } finally {
+          clearTimeout(sendTimeout);
+          // Last-resort cleanup: no exit path may leave the node displaying
+          // SENDING after the request has settled or timed out.
+          if (node.dataset.time === "SENDING") {
+            node.dataset.status = "issue";
+            node.dataset.time = "MISSING";
+            nodeTime.textContent = "MISSING";
+            showTimelineNodeCard("NEXTDAY_INFO", stepByKey("NEXTDAY_INFO"), "MISSING");
+          }
         }
       }
 
