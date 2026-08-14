@@ -5084,6 +5084,28 @@
         writeCompletedSyNodeCache(cache);
       }
 
+      function nextDayInfoDetailsFromSy(sy) {
+        const ret = sy?.reservationTicketed;
+        const rows = Array.isArray(sy?.jcsy?.rows) ? sy.jcsy.rows : [];
+        if (!Array.isArray(ret) || ret.length < 4 || !sy?.jcsy?.complete || !rows.length) return null;
+        const transfers = rows.reduce((totals, row) => {
+          const total = Number(row?.total) || 0;
+          const hasDeparture = Boolean(String(row?.departure || row?.depart || "").trim());
+          if (!hasDeparture || row?.overnight || row?.category === "overnight" || row?.category === "pvgOnly") totals.overnightPassengers += total;
+          else if (row?.isDomestic || row?.market === "Domestic" || row?.category === "domestic") totals.domesticTransfer += total;
+          else totals.internationalTransfer += total;
+          return totals;
+        }, { internationalTransfer: 0, domesticTransfer: 0, overnightPassengers: 0 });
+        return {
+          firstClass: String(Number(ret[1]) || 0),
+          businessClass: String(Number(ret[2]) || 0),
+          economyClass: String(Number(ret[3]) || 0),
+          internationalTransfer: String(transfers.internationalTransfer),
+          domesticTransfer: String(transfers.domesticTransfer),
+          overnightPassengers: String(transfers.overnightPassengers),
+        };
+      }
+
       function resolveApiBase() {
         const fromWindow = window.MU_API_BASE || "";
         return (fromWindow.trim() || "https://api.mufcapp.net").replace(/\/$/, "");
@@ -5254,6 +5276,11 @@
         const ok = confirm("确认发送 NEXTDAY INFO 邮件到 LAXHMXH@hallmark-aviation.com 和 dg-lax-lounge@qantas.com.au？");
         if (!ok) return;
         const step = stepByKey("NEXTDAY_INFO");
+        const details = nextDayInfoDetailsFromSy(currentSy);
+        if (!details) {
+          alert("缺少 JCSY 转机数据：SY 的 RET 人数已经读取，但发送 NEXTDAY INFO 还需要先完成 JCSY 查询。");
+          return;
+        }
         if (step) {
           // A previous successful send may still be green in both the live step
           // and local cache. Clear it before displaying this new attempt.
@@ -5261,6 +5288,16 @@
           step.searched = true;
           step.time = "";
           step.reason = "";
+          step.details = details;
+          step.detailText = [
+            `First Class: ${details.firstClass}`,
+            `Business Class: ${details.businessClass}`,
+            `Economy Class: ${details.economyClass}`,
+            "",
+            `International Transfer: ${details.internationalTransfer}`,
+            `Domestic Transfer: ${details.domesticTransfer}`,
+            `Overnight passengers: ${details.overnightPassengers}`,
+          ].join("\n");
           step.tooltip = "NEXTDAY INFO sending email...";
         }
         forgetCompletedSyNode(currentSy, "NEXTDAY_INFO");
@@ -5276,7 +5313,7 @@
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               flightNo: currentSy.flightNo || "MU586",
-              details: step?.details || {},
+              details,
             }),
             signal: sendController.signal,
             authTimeoutMs: 10000,
