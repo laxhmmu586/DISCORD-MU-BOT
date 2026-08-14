@@ -5089,10 +5089,21 @@
         return (fromWindow.trim() || "https://api.mufcapp.net").replace(/\/$/, "");
       }
 
-      async function authHeaders() {
+      async function authHeaders(timeoutMs = 10000) {
         const headers = {};
         if (auth?.currentUser) {
-          headers.Authorization = `Bearer ${await auth.currentUser.getIdToken()}`;
+          let timer;
+          try {
+            const token = await Promise.race([
+              auth.currentUser.getIdToken(),
+              new Promise((_, reject) => {
+                timer = setTimeout(() => reject(new Error("Authentication timed out. Please reload the page and sign in again.")), timeoutMs);
+              }),
+            ]);
+            headers.Authorization = `Bearer ${token}`;
+          } finally {
+            clearTimeout(timer);
+          }
         }
         return headers;
       }
@@ -5110,11 +5121,12 @@
 
       async function apiJson(path, options = {}) {
         const apiBase = resolveApiBase();
+        const { authTimeoutMs = 10000, ...fetchOptions } = options;
         const res = await fetch(`${apiBase}${path}`, {
           cache: "no-store",
-          ...options,
+          ...fetchOptions,
           headers: {
-            ...(await authHeaders()),
+            ...(await authHeaders(authTimeoutMs)),
             ...(options.headers || {}),
           },
         });
@@ -5267,6 +5279,7 @@
               details: step?.details || {},
             }),
             signal: sendController.signal,
+            authTimeoutMs: 10000,
           });
           if (!data?.ok) {
             const failures = [
@@ -5310,6 +5323,14 @@
           alert(message);
         } finally {
           clearTimeout(sendTimeout);
+          // Last-resort cleanup: no exit path may leave the node displaying
+          // SENDING after the request has settled or timed out.
+          if (node.dataset.time === "SENDING") {
+            node.dataset.status = "issue";
+            node.dataset.time = "MISSING";
+            nodeTime.textContent = "MISSING";
+            showTimelineNodeCard("NEXTDAY_INFO", stepByKey("NEXTDAY_INFO"), "MISSING");
+          }
         }
       }
 
