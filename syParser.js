@@ -867,17 +867,8 @@ function extractLatestApiAgent(section) {
 }
 
 function hasUnclearedApiSourceRisk(section) {
-  const operations = String(section || '')
-    .split(/\r?\n/)
-    .map((line, index) => {
-      const match = line.match(/^\s*(API|GOV|ACC|MOD|BAG|BC|BAB|RES)\s+[^\n\r]*?\bAGT(\d+)\//i);
-      return match ? { index, type: match[1].toUpperCase(), agent: match[2] } : null;
-    })
-    .filter(Boolean);
-  const apiOps = operations.filter((op) => op.type === 'API');
-  const latestApi = apiOps[apiOps.length - 1] || null;
-  if (!latestApi || APPROVED_AGENT_CODES.has(latestApi.agent)) return false;
-  return !operations.some((op) => op.index > latestApi.index);
+  const latestApiAgent = extractLatestApiAgent(section);
+  return Boolean(latestApiAgent) && !APPROVED_AGENT_CODES.has(latestApiAgent);
 }
 
 function infantApiIssueFromSection(section) {
@@ -1887,4 +1878,4 @@ function findSYInfo(log, queryDate, options = {}) {
   return null;
 }
 
-module.exports = { findSYInfo, normalizeOperationalFlightNo, normalizeJcsyFlightNo, sectionMatchesFlightOperationDate, matchesSyFlightRecord, extractPassportCountryCodes, parseJcsyRows };
+module.exports = { findSYInfo, normalizeOperationalFlightNo, normalizeJcsyFlightNo, sectionMatchesFlightOperationDate, matchesSyFlightRecord, extractPassportCountryCodes, parseJcsyRows, hasUnclearedApiSourceRisk };
