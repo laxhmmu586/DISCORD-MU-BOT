@@ -107,6 +107,7 @@ const WRONG_BAGGAGE_DISCORD_CHANNEL_ID = process.env.WRONG_BAGGAGE_DISCORD_CHANN
 const CBS_DELAYED_LOST_DISCORD_CHANNEL_ID = process.env.CBS_DELAYED_LOST_DISCORD_CHANNEL_ID || '1534758703369289821';
 const CBS_DAMAGED_DISCORD_CHANNEL_ID = process.env.CBS_DAMAGED_DISCORD_CHANNEL_ID || process.env.CBS_ATTACHMENTS_DISCORD_CHANNEL_ID || '1527344986075693167';
 const CONTACT_FORM_DISCORD_CHANNEL_ID = process.env.CONTACT_FORM_DISCORD_CHANNEL_ID || '1531867051755442266';
+const CONTACT_FORM_DISCORD_ROLE_ID = process.env.CONTACT_FORM_DISCORD_ROLE_ID || '1252026975279906876';
 
 const DEFAULT_PERMISSIONS = {
   canViewTravelDocs: true,
@@ -1716,12 +1717,12 @@ async function sendContactFormToDiscord(record, attachments) {
   if (!channel?.isTextBased()) throw new Error('Contact form Discord channel was not found or is not text based.');
   const files = buildCbsDiscordAttachmentFiles(attachments);
   const content = record.language === 'en'
-    ? ['**Misconnection Passenger Assistance Request**', `Date: ${record.date}`, `Name: ${record.name}`, `Seat number: ${record.seatNumber}`, `Passport number: ${record.ticketNumber}`, `Mobile Number: ${record.phone}`, `Attachments: ${record.attachmentNames || 'None'}`]
-    : ['**未能衔接后续航班旅客协助请求**', `日期：${record.date}`, `姓名：${record.name}`, `座位号：${record.seatNumber}`, `护照号：${record.ticketNumber}`, `手机号码：${record.phone}`, `附件：${record.attachmentNames || '无'}`];
+    ? [`<@&${CONTACT_FORM_DISCORD_ROLE_ID}>`, '**Misconnection Passenger Assistance Request**', `Date: ${record.date}`, `Name: ${record.name}`, `Seat number: ${record.seatNumber}`, `Passport number: ${record.ticketNumber}`, `Mobile Number: ${record.phone}`, `Attachments: ${record.attachmentNames || 'None'}`]
+    : [`<@&${CONTACT_FORM_DISCORD_ROLE_ID}>`, '**未能衔接后续航班旅客协助请求**', `日期：${record.date}`, `姓名：${record.name}`, `座位号：${record.seatNumber}`, `护照号：${record.ticketNumber}`, `手机号码：${record.phone}`, `附件：${record.attachmentNames || '无'}`];
   await channel.send({
     content: content.join('\n'),
     files,
-    allowedMentions: { parse: [] }
+    allowedMentions: { parse: [], roles: [CONTACT_FORM_DISCORD_ROLE_ID] }
   });
   return { sent: true, channelId: CONTACT_FORM_DISCORD_CHANNEL_ID, fileCount: files.length };
 }
