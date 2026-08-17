@@ -101,7 +101,7 @@
     .visual-option { display:grid; justify-items:center; gap:5px; padding:6px 3px; border:2px solid transparent; border-radius:8px; background:#fff; color:#342cff; font-weight:700; }
     .visual-option:hover,.visual-option.is-selected { border-color:#342cff; background:#f3f3ff; }
     .swatch { width:22px; height:16px; border:1px solid #aaa; background:var(--swatch); }
-    .type-icon { display:block; width:72px; height:72px; border-radius:5px; background-color:#fff; background-image:url('assets/640653098-BAGGAGE-CHART-11_01.png'); background-repeat:no-repeat; background-size:974px 640px; background-position:var(--icon-x) var(--icon-y); cursor:zoom-in; }
+    .type-icon { display:block; width:72px; height:72px; border-radius:5px; background-color:#fff; background-image:url('assets/640653098-BAGGAGE-CHART-11_01.png'); background-repeat:no-repeat; background-size:974px 640px; background-position:var(--icon-x) var(--icon-y); cursor:pointer; }
     .type-icon--misc { background-image:url('assets/640653098-BAGGAGE-CHART-11_02.png'); }
     .descriptor-icon { display:block; width:58px; height:48px; border:1px solid #1684d6; background-color:#fff; background-image:url('assets/640653098-BAGGAGE-CHART-11_01.png'); background-repeat:no-repeat; background-size:974px 640px; background-position:var(--icon-x) var(--icon-y); }
     .descriptor-option small { line-height:1.2; }
@@ -119,6 +119,8 @@
     .chart-dialog.icon-preview img { width:100%; height:100%; object-fit:contain; object-position:center; }
     .chart-dialog.icon-preview .enlarged-icon { width:100%; height:100%; background-size:var(--zoom-size); background-position:var(--zoom-position); }
     .enlarged-icon { width:min(432px,100%); height:372px; margin:auto; border-radius:12px; background-color:#fff; background-repeat:no-repeat; background-size:5844px 3840px; }
+    .hover-image-preview { position:fixed; z-index:100; width:210px; height:190px; border:2px solid #1684d6; border-radius:8px; background-color:#fff; background-repeat:no-repeat; box-shadow:0 16px 42px rgba(12,35,61,.3); pointer-events:none; }
+    .hover-image-preview[hidden] { display:none; }
     .chart-close { position:absolute; top:7px; right:9px; padding:6px 11px; font-size:20px; }
     @media (max-width:840px){ .grid,.passenger-grid,.bag-selector-grid{grid-template-columns:1fr}.attachment-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.routing-layout,.bag-report-row,.bag-report-fields,.contents-row{grid-template-columns:1fr}.bag-report-row{margin-top:8px}.flight-row,.flight-head{grid-template-columns:1fr .8fr .8fr 1fr; gap:6px}.header-title{text-align:left}header{flex-wrap:wrap}.tag-example{transform:none} }
     @media (max-width:600px){.bag-fields{grid-template-columns:1fr}.bag-fields .bag-tag-field,.bag-fields .descriptor-field{grid-column:auto}.option-grid{grid-template-columns:repeat(4,minmax(48px,1fr))}}
@@ -300,7 +302,7 @@
       </div>
     </section>
   </main>
-  <dialog class="chart-dialog" id="chart-dialog"><button class="chart-close" id="chart-close" type="button" aria-label="Close">×</button><img id="chart-dialog-image" alt="" /><div class="enlarged-icon" id="enlarged-icon" hidden></div></dialog>
+  <dialog class="chart-dialog" id="chart-dialog"><button class="chart-close" id="chart-close" type="button" aria-label="Close">×</button><img id="chart-dialog-image" alt="" /><div class="enlarged-icon" id="enlarged-icon" hidden></div></dialog><div class="hover-image-preview" id="hover-image-preview" hidden></div>
   <script>
     const apiBase = (window.MU_API_BASE || 'https://api.mufcapp.net').replace(/\/$/, '');
     const form = document.querySelector('#cbs-form');
@@ -329,6 +331,7 @@
     const chartDialog = document.querySelector('#chart-dialog');
     const chartDialogImage = document.querySelector('#chart-dialog-image');
     const enlargedIcon = document.querySelector('#enlarged-icon');
+    const hoverImagePreview = document.querySelector('#hover-image-preview');
     let drawing = false;
     let startPoint = null;
     let sketchDirty = false;
@@ -388,28 +391,6 @@
     document.querySelector('#add-another-bag').addEventListener('click', addBag);
     bagSelectorGrid.addEventListener('click', (event) => {
       const remove = event.target.closest('[data-remove-bag]'); if (remove) { remove.closest('.bag-selector').remove(); return; }
-      const preview = event.target.closest('[data-icon-preview]');
-      if (preview) {
-        event.preventDefault(); event.stopPropagation();
-        if (preview.dataset.typeCode) {
-          const crop = typeImageCrops[preview.dataset.typeCode];
-          enlargedIcon.hidden = false; chartDialogImage.hidden = true; chartDialog.classList.add('icon-preview');
-          enlargedIcon.style.backgroundImage = "url('assets/640653098-BAGGAGE-CHART-11_01.png')";
-          enlargedIcon.style.cssText += cropStyle(crop,432,400);
-          chartDialog.showModal(); return;
-        }
-        if (preview.dataset.miscCode) {
-          const crop = miscellaneousImageCrops[preview.dataset.miscCode];
-          enlargedIcon.hidden = false; chartDialogImage.hidden = true; chartDialog.classList.add('icon-preview');
-          enlargedIcon.style.backgroundImage = "url('assets/640653098-BAGGAGE-CHART-11_02.png')";
-          enlargedIcon.style.cssText += cropStyle(crop,432,400);
-          chartDialog.showModal(); return;
-        }
-        const style = getComputedStyle(preview); const [x,y] = style.backgroundPosition.split(' ').map(parseFloat);
-        chartDialogImage.hidden = true; enlargedIcon.hidden = false; chartDialog.classList.add('icon-preview');
-        enlargedIcon.style.backgroundImage = style.backgroundImage; enlargedIcon.style.backgroundPosition = `${x * 6}px ${y * 6}px`;
-        chartDialog.showModal(); return;
-      }
       const pickerElement = event.target.closest('[data-picker]'); if (!pickerElement) return;
       const panel = pickerElement.querySelector('[data-picker-panel]');
       if (event.target.closest('[data-picker-trigger]')) { document.querySelectorAll('[data-picker-panel]').forEach((item) => { if (item !== panel) item.hidden = true; }); panel.hidden = !panel.hidden; return; }
@@ -419,6 +400,23 @@
       if (multiple) { let values = input.value ? input.value.split(',') : []; values = values.includes(option.dataset.option) ? values.filter((value) => value !== option.dataset.option) : (values.length < 3 ? [...values,option.dataset.option] : values); input.value = values.join(','); pickerElement.querySelectorAll('[data-option]').forEach((item) => item.classList.toggle('is-selected', values.includes(item.dataset.option))); pickerElement.querySelector('[data-picker-trigger]').textContent = values.join(', ') || 'Select descriptive elements'; }
       else { input.value = option.dataset.option; pickerElement.querySelectorAll('[data-option]').forEach((item) => item.classList.toggle('is-selected', item === option)); const trigger = pickerElement.querySelector('[data-picker-trigger]'); trigger.textContent = option.dataset.label; trigger.classList.remove('placeholder'); panel.hidden = true; }
     });
+    bagSelectorGrid.addEventListener('pointerover', (event) => {
+      const icon = event.target.closest('[data-icon-preview],.descriptor-icon'); if (!icon) return;
+      const sourceStyle = getComputedStyle(icon); const rect = icon.getBoundingClientRect();
+      hoverImagePreview.style.backgroundImage = sourceStyle.backgroundImage;
+      if (icon.dataset.typeCode) hoverImagePreview.style.cssText += cropStyle(typeImageCrops[icon.dataset.typeCode],210,190);
+      else if (icon.dataset.miscCode) hoverImagePreview.style.cssText += cropStyle(miscellaneousImageCrops[icon.dataset.miscCode],210,190);
+      else {
+        const factor = 3.5; const size = sourceStyle.backgroundSize.split(' ').map(parseFloat); const position = sourceStyle.backgroundPosition.split(' ').map(parseFloat);
+        hoverImagePreview.style.backgroundSize = `${size[0] * factor}px ${size[1] * factor}px`;
+        hoverImagePreview.style.backgroundPosition = `${position[0] * factor}px ${position[1] * factor}px`;
+      }
+      hoverImagePreview.style.left = `${Math.min(window.innerWidth - 220, Math.max(8, rect.right + 10))}px`;
+      hoverImagePreview.style.top = `${Math.min(window.innerHeight - 200, Math.max(8, rect.top - 55))}px`;
+      hoverImagePreview.hidden = false;
+    });
+    bagSelectorGrid.addEventListener('pointerout', (event) => { if (event.target.closest('[data-icon-preview],.descriptor-icon')) hoverImagePreview.hidden = true; });
+    document.addEventListener('click', (event) => { if (!event.target.closest('[data-picker]')) document.querySelectorAll('[data-picker-panel]').forEach((panel) => { panel.hidden = true; }); });
     document.querySelectorAll('[data-chart-src]').forEach((button) => button.addEventListener('click', () => { chartDialog.classList.remove('icon-preview'); enlargedIcon.hidden = true; chartDialogImage.hidden = false; chartDialogImage.src = button.dataset.chartSrc; chartDialogImage.alt = button.querySelector('img').alt; chartDialog.showModal(); }));
     document.querySelector('#chart-close').addEventListener('click', () => chartDialog.close());
     chartDialog.addEventListener('click', (event) => { if (event.target === chartDialog) chartDialog.close(); });
