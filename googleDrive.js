@@ -74,10 +74,6 @@ const CONTACT_FORM_SHEET_ID = process.env.CONTACT_FORM_SHEET_ID || '1JqRnDx_uLc2
 const CONTACT_FORM_SHEET_GID = Number(process.env.CONTACT_FORM_SHEET_GID || 1889354016);
 const CBS_WORLDTRACER_SHEET_GID = Number(process.env.CBS_WORLDTRACER_SHEET_GID || 944289437);
 const CBS_UNRESOLVED_BAGGAGE_SHEET_GID = Number(process.env.CBS_UNRESOLVED_BAGGAGE_SHEET_GID || 1279643787);
-const CBS_NOTIFICATION_EMAILS = (process.env.CBS_NOTIFICATION_EMAILS || 'laxhmmu@gmail.com')
-  .split(',')
-  .map((value) => value.trim())
-  .filter(Boolean);
 const CBS_MISSING_BAG_EMAIL_SENDER = String(
   process.env.CBS_MISSING_BAG_EMAIL_SENDER || 'VIBES-NO-REPLY@lawa.org'
 ).trim();
@@ -3293,8 +3289,8 @@ async function updateWrongBaggageSubmission(rowNumber, update = {}) {
 
 async function appendContactFormSubmission(record = {}) {
   const title = await resolveSheetTitleByGid(CONTACT_FORM_SHEET_ID, CONTACT_FORM_SHEET_GID) || 'Sheet1';
-  const headers = ['Submitted At', 'Date', 'Name', 'Seat Number', 'Passport Number', 'Mobile Number', 'Attachments', 'Language'];
-  const headerRange = `${escapeSheetTitle(title)}!A1:H1`;
+  const headers = ['Submitted At', 'Date', 'Name', 'Seat Number', 'Passport Number', 'Mobile Number', 'Attachments', 'Language', 'Email'];
+  const headerRange = `${escapeSheetTitle(title)}!A1:I1`;
   const existing = await sheets.spreadsheets.values.get({ spreadsheetId: CONTACT_FORM_SHEET_ID, range: headerRange });
   const currentHeaders = existing.data.values?.[0] || [];
   if (headers.some((header, index) => currentHeaders[index] !== header)) {
@@ -3307,10 +3303,10 @@ async function appendContactFormSubmission(record = {}) {
   }
   await sheets.spreadsheets.values.append({
     spreadsheetId: CONTACT_FORM_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A:H`,
+    range: `${escapeSheetTitle(title)}!A:I`,
     valueInputOption: 'RAW',
     insertDataOption: 'INSERT_ROWS',
-    requestBody: { values: [[record.submittedAt, record.date, record.name, record.seatNumber, record.ticketNumber, record.phone, record.attachmentNames || '', record.language || '']] }
+    requestBody: { values: [[record.submittedAt, record.date, record.name, record.seatNumber, record.ticketNumber, record.phone, record.attachmentNames || '', record.language || '', record.email || '']] }
   });
   return record;
 }
@@ -3319,7 +3315,7 @@ async function getContactFormSubmissions() {
   const title = await resolveSheetTitleByGid(CONTACT_FORM_SHEET_ID, CONTACT_FORM_SHEET_GID) || 'Sheet1';
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: CONTACT_FORM_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A:H`
+    range: `${escapeSheetTitle(title)}!A:I`
   });
   const rows = response.data.values || [];
   return rows.slice(1).map((values) => ({
@@ -3330,7 +3326,8 @@ async function getContactFormSubmissions() {
     ticketNumber: values[4] || '',
     phone: values[5] || '',
     attachments: values[6] || '',
-    language: values[7] || ''
+    language: values[7] || '',
+    email: values[8] || ''
   })).filter((row) => row.submittedAt || row.date || row.name).reverse();
 }
 
@@ -3919,6 +3916,20 @@ function buildRawPlainEmail({ to, cc = [], subject, text }) {
   ].join('\r\n');
 }
 
+function buildRawHtmlEmail({ to, cc = [], subject, html }) {
+  const ccList = (Array.isArray(cc) ? cc : [cc]).map((item) => String(item || '').trim()).filter(Boolean);
+  return [
+    `To: ${encodeEmailHeader(to)}`,
+    ...(ccList.length ? [`Cc: ${ccList.map(encodeEmailHeader).join(', ')}`] : []),
+    `Subject: ${encodeEmailHeader(subject)}`,
+    'MIME-Version: 1.0',
+    'Content-Type: text/html; charset="UTF-8"',
+    'Content-Transfer-Encoding: base64',
+    '',
+    cbsBase64Lines(Buffer.from(String(html || ''), 'utf8').toString('base64'))
+  ].join('\r\n');
+}
+
 async function sendNextDayInfoEmail({ to = 'laxhmmu@gmail.com', cc = [], subject, text }) {
   const { gmail, userId, authMode } = getNextDayInfoGmailClient();
   const raw = buildRawPlainEmail({ to, cc, subject, text });
@@ -3933,13 +3944,81 @@ async function sendNextDayInfoEmail({ to = 'laxhmmu@gmail.com', cc = [], subject
 async function sendCbsCaseEmail({ passengerEmail, subject, html, pdfBuffer, filename, attachments = [] }) {
   const { gmail, userId } = getNextDayInfoGmailClient();
   const to = String(passengerEmail || '').trim();
-  const cc = Array.from(new Set(CBS_NOTIFICATION_EMAILS.filter((email) => email && email.toLowerCase() !== to.toLowerCase())));
+  const cc = to.toLowerCase() === 'laxhmmu@gmail.com' ? [] : ['laxhmmu@gmail.com'];
   const raw = buildRawCbsEmail({ to, cc, subject, html, pdfBuffer, filename, attachments });
   const sent = await gmail.users.messages.send({
     userId,
     requestBody: { raw: base64UrlEncode(raw) }
   });
   return [{ to, cc, id: sent.data.id || '' }];
+}
+
+async function sendWrongBaggageCaseEmail({ passengerEmail, language = 'en' }) {
+  const { gmail, userId } = getNextDayInfoGmailClient();
+  const to = String(passengerEmail || '').trim();
+  const cc = to.toLowerCase() === 'laxhmmu@gmail.com' ? [] : ['laxhmmu@gmail.com'];
+  const isChinese = language === 'zh';
+  const subject = isChinese ? '中国东方航空 – 行李误拿处理通知' : 'China Eastern Airlines – Baggage Mishandling Case';
+  const html = isChinese ? [
+    '<p>尊敬的旅客：</p><p>您好！</p>',
+    '<p>对于您可能误拿了其他旅客的行李，或您的托运行李可能被其他旅客误拿的情况，我们深表歉意。</p>',
+    '<p>目前工作人员正在协助调查，并将尽力寻找正确的行李，同时尽快协调后续的行李交换及处理事宜。</p>',
+    '<p>在此期间，请您妥善保管目前持有的行李，<strong>请勿丢弃、打开行李或取出其中任何物品</strong>，以便工作人员进行后续核实和处理。</p>',
+    '<p>为协助我们调查，请您保留好您的<strong>行李领取凭证（Bag Tag）、登机牌、行李事故报告以及其他相关旅行文件</strong>。如工作人员需要，也请您配合提供目前所持行李的照片，包括行李牌以及能够识别该行李的外观特征。</p>',
+    '<p>如果您发现自己误拿了其他旅客的行李，或您的行李已经找回，请尽快联系我们的当地工作人员，以便我们安排下一步处理。</p>',
+    '<p>如您授权他人代为处理此行李案件，被授权人需提供您的签字授权书、行李事故报告、您的护照复印件以及被授权人的有效身份证件。</p>',
+    '<p>对于此次情况给您带来的不便，我们再次深表歉意。感谢您的耐心、理解与配合，我们将尽力协助您解决此次行李问题。</p>',
+    '<p>中国东方航空 – 洛杉矶</p>'
+  ].join('') : [
+    '<p>Dear Passenger,</p>',
+    '<p>We are sorry to learn that you may have received or taken baggage that does not belong to you, or that your checked baggage may have been taken by another passenger by mistake.</p>',
+    '<p>Our staff is currently assisting with the investigation and will make every effort to locate the correct baggage and coordinate the exchange as soon as possible.</p>',
+    '<p>Please keep any baggage currently in your possession in a safe place and <strong>do not dispose of, open, or remove any items from the baggage</strong> while the case is being investigated.</p>',
+    '<p>To assist us with the investigation, please retain your <strong>baggage claim tag (Bag Tag), boarding pass, baggage report, and any other relevant travel documents</strong>. If requested, please also provide photographs of the baggage currently in your possession, including the baggage tag and any identifying features.</p>',
+    '<p>If you discover that you have another passenger\'s baggage, or if your baggage has been returned to you, please contact our local office as soon as possible so that we can arrange the next steps.</p>',
+    '<p>If another person will handle this case on your behalf, the authorized representative must present your signed authorization letter, the baggage report, a copy of your passport, and the representative\'s valid identification document.</p>',
+    '<p>We sincerely apologize for the inconvenience caused and appreciate your patience, understanding, and cooperation while we work to resolve this matter.</p>',
+    '<p>China Eastern Airlines – LAX</p>'
+  ].join('');
+  const raw = buildRawHtmlEmail({ to, cc, subject, html });
+  const sent = await gmail.users.messages.send({ userId, requestBody: { raw: base64UrlEncode(raw) } });
+  return { to, cc, subject, id: sent.data.id || '' };
+}
+
+async function sendMisconnectionAssistanceEmail({ passengerEmail, language = 'en' }) {
+  const { gmail, userId } = getNextDayInfoGmailClient();
+  const to = String(passengerEmail || '').trim();
+  const cc = to.toLowerCase() === 'laxhmmu@gmail.com' ? [] : ['laxhmmu@gmail.com'];
+  const isChinese = language === 'zh';
+  const subject = isChinese ? '中国东方航空 – 未能衔接后续航班旅客协助申请已收到' : 'China Eastern Airlines – Misconnection Passenger Assistance Request Received';
+  const html = isChinese ? [
+    '<p>尊敬的旅客：</p><p>您好！</p>',
+    '<p>我们已收到您提交的<strong>后续航班旅客协助表格</strong>，感谢您的配合。</p>',
+    '<p>我们的工作人员将根据您所提供的航班及行程信息，协助核实您的后续航班安排，并根据实际情况协调相关后续事宜。</p>',
+    '<p>请您留意以下事项：</p><ul>',
+    '<li>请妥善保管您的登机牌、行李牌及其他相关旅行文件。</li>',
+    '<li>请保持您在表格中提供的电话及电子邮箱畅通，以便工作人员在需要时与您联系。</li>',
+    '<li>如您的后续航班信息、联系方式或行程发生任何变化，请回复邮件通知我们的工作人员。</li>',
+    '<li>后续航班安排可能受到航班实际运行情况、座位 availability 以及相关航空公司政策等因素影响，最终安排以实际确认为准。</li></ul>',
+    '<p>如有进一步的信息或需要您提供其他资料，我们的工作人员将与您联系。</p>',
+    '<p>对于航班衔接给您带来的不便，我们深表歉意，并感谢您的耐心、理解与配合。</p>',
+    '<p>中国东方航空 – 洛杉矶</p>'
+  ].join('') : [
+    '<p>Dear Passenger,</p>',
+    '<p>We have received your <strong>Misconnection Passenger Assistance Request</strong>. Thank you for providing the requested information.</p>',
+    '<p>Our staff will review the flight and itinerary information you submitted and assist with coordinating your onward travel arrangements based on the circumstances of your journey.</p>',
+    '<p>Please note the following:</p><ul>',
+    '<li>Please retain your boarding pass, baggage claim tag, and other relevant travel documents.</li>',
+    '<li>Please ensure that the telephone number and email address provided on the form remain available so that our staff can contact you if necessary.</li>',
+    '<li>If there are any changes to your connecting flight, contact information, or travel itinerary, please reply to this email as soon as possible.</li>',
+    '<li>Connecting flight arrangements are subject to actual flight operations, seat availability, and the applicable policies of the operating airline. Final arrangements are subject to confirmation.</li></ul>',
+    '<p>If additional information or documentation is required, our staff will contact you accordingly.</p>',
+    '<p>We sincerely apologize for any inconvenience caused to your onward journey and appreciate your patience, understanding, and cooperation.</p>',
+    '<p>China Eastern Airlines – LAX</p>'
+  ].join('');
+  const raw = buildRawHtmlEmail({ to, cc, subject, html });
+  const sent = await gmail.users.messages.send({ userId, requestBody: { raw: base64UrlEncode(raw) } });
+  return { to, cc, subject, id: sent.data.id || '' };
 }
 
 async function getCbsBaggageChartImage(page) {
@@ -4009,6 +4088,8 @@ module.exports = {
   markCbsMissingBagCase,
   acknowledgeCbsMissingBag,
   sendCbsCaseEmail,
+  sendWrongBaggageCaseEmail,
+  sendMisconnectionAssistanceEmail,
   getCbsBaggageChartImage,
   appendTransit240Record,
   appendCbsScanRecord,
