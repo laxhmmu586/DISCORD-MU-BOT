@@ -101,7 +101,7 @@
     .visual-option { display:grid; justify-items:center; gap:5px; padding:6px 3px; border:2px solid transparent; border-radius:8px; background:#fff; color:#342cff; font-weight:700; }
     .visual-option:hover,.visual-option.is-selected { border-color:#342cff; background:#f3f3ff; }
     .swatch { width:22px; height:16px; border:1px solid #aaa; background:var(--swatch); }
-    .type-icon { display:block; width:72px; height:62px; border-radius:5px; background-color:#fff; background-image:url('assets/640653098-BAGGAGE-CHART-11_01.png'); background-repeat:no-repeat; background-size:974px 640px; background-position:var(--icon-x) var(--icon-y); cursor:zoom-in; }
+    .type-icon { display:block; width:72px; height:72px; border-radius:5px; background-color:#fff; background-image:url('assets/640653098-BAGGAGE-CHART-11_01.png'); background-repeat:no-repeat; background-size:974px 640px; background-position:var(--icon-x) var(--icon-y); cursor:zoom-in; }
     .type-icon--misc { background-image:url('assets/640653098-BAGGAGE-CHART-11_02.png'); }
     .descriptor-icon { display:block; width:58px; height:48px; border:1px solid #1684d6; background-color:#fff; background-image:url('assets/640653098-BAGGAGE-CHART-11_01.png'); background-repeat:no-repeat; background-size:974px 640px; background-position:var(--icon-x) var(--icon-y); }
     .descriptor-option small { line-height:1.2; }
@@ -115,7 +115,9 @@
     .chart-dialog { width:min(1200px,96vw); max-width:none; padding:42px 12px 12px; border:0; border-radius:18px; background:#fff; box-shadow:0 24px 80px rgba(0,0,0,.35); }
     .chart-dialog::backdrop { background:rgba(5,19,38,.78); }
     .chart-dialog img { display:block; width:100%; height:auto; }
-    .chart-dialog.icon-preview { width:min(500px,94vw); min-height:430px; padding:50px 18px 18px; }
+    .chart-dialog.icon-preview { width:min(500px,94vw); height:min(500px,90vh); min-height:0; padding:50px 18px 18px; }
+    .chart-dialog.icon-preview img { width:100%; height:100%; object-fit:contain; object-position:center; }
+    .chart-dialog.icon-preview .enlarged-icon { width:100%; height:100%; background-size:var(--zoom-size); background-position:var(--zoom-position); }
     .enlarged-icon { width:min(432px,100%); height:372px; margin:auto; border-radius:12px; background-color:#fff; background-repeat:no-repeat; background-size:5844px 3840px; }
     .chart-close { position:absolute; top:7px; right:9px; padding:6px 11px; font-size:20px; }
     @media (max-width:840px){ .grid,.passenger-grid,.bag-selector-grid{grid-template-columns:1fr}.attachment-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.routing-layout,.bag-report-row,.bag-report-fields,.contents-row{grid-template-columns:1fr}.bag-report-row{margin-top:8px}.flight-row,.flight-head{grid-template-columns:1fr .8fr .8fr 1fr; gap:6px}.header-title{text-align:left}header{flex-wrap:wrap}.tag-example{transform:none} }
@@ -339,12 +341,24 @@
       ['01','Horizontal hard shell','横式硬壳箱',20,205,'unzipped'],['02','Upright design','直立式行李箱',137,205,'unzipped'],['03','Horizontal non-expandable suitcase','横式不可扩展箱',253,205,'unzipped'],['05','Horizontal expandable suitcase','横式可扩展箱',370,205,'unzipped'],['06','Briefcase','公文包',20,312,'unzipped'],['07','Document case','文件箱',370,312,'unzipped'],['08','Military-style bag','军用式行李袋',20,417,'unzipped'],['09','Plastic / laundry bag','塑料袋／洗衣袋',137,417,'unzipped'],['10','Box','箱盒',253,417,'unzipped'],['12','Storage container','储物箱',370,417,'unzipped'],['20','Garment / suit carrier','西装袋／衣物袋',503,205,'zipped'],['22','Soft upright bag','软质直立箱',652,205,'zipped'],['22D','Hard/soft upright bag','软硬结合直立箱',758,205,'zipped'],['22R','Hard upright bag','硬质直立箱',855,205,'zipped'],['23','Horizontal suitcase','横式行李箱',503,312,'zipped'],['25','Duffel / sport bag','旅行袋／运动包',845,312,'zipped'],['26','Laptop / overnight bag','电脑包／过夜包',503,417,'zipped'],['27','Expandable upright bag','可扩展直立包',620,417,'zipped'],['28','Matted woven bag','编织袋',735,417,'zipped'],['29','Backpack / rucksack','背包',846,417,'zipped'],
       ...[['50','Hat box','帽盒'],['51','Courier bag / package','快递袋／包裹'],['52','Trunk / display case','旅行箱／展示箱'],['53','Art portfolio','艺术作品袋'],['54','Tube','长筒'],['55','Duty-free articles','免税品'],['56','Cosmetic case','化妆箱'],['57','Pet container','宠物箱'],['58','Ice chest / cooler','冰箱／冷藏箱'],['59','Tool box','工具箱'],['60','Fishing rods','钓鱼竿'],['61','Firearm case','枪械箱'],['62','Golf bag','高尔夫球袋'],['63','Bicycle','自行车'],['64','Sleeping bag / tent','睡袋／帐篷'],['65','Surf equipment','冲浪设备'],['66','Skis / ski poles','滑雪板／滑雪杖'],['67','Snowboard / sled','滑雪板／雪橇'],['68','Ski boots','滑雪靴'],['69','Sporting equipment','运动器材'],['71','Child car seat','儿童汽车座椅'],['72','Child equipment','儿童用品'],['73','Baby carriage','婴儿车'],['74','Umbrella stroller','伞车'],['75','Wheeled sporting item','带轮运动用品'],['81','Audio / video equipment','影音设备'],['82','Computer equipment','电脑设备'],['83','Electrical appliance','电器'],['85','Musical instrument','乐器'],['89','Folding chair','折叠椅'],['90','Baggage trolley','行李手推车'],['92','Security-removed item','安检取下物品'],['93','Shopping bag','购物袋'],['94','Wheelchair','轮椅'],['95','Orthopaedic device','矫形器具'],['96','Bedding bag','寝具袋'],['97','Dive equipment','潜水设备'],['98','Umbrella','雨伞'],['99','Article not shown','未列物品']].map((item,index) => [...item,15 + (index % 10) * 94,205 + Math.floor(index / 10) * 107,'other'])
     ];
+    const typeImageCrops = {
+      '01':[190,710,245,250],'02':[610,720,195,240],'03':[1010,725,230,235],'05':[1415,710,230,250],
+      '06':[145,1080,285,230],'07':[1390,1080,255,230],'08':[180,1435,240,245],'09':[590,1440,245,245],
+      '10':[1000,1480,245,220],'12':[1400,1460,245,235],'20':[1810,710,370,250],'22':[2370,710,185,250],
+      '22D':[2720,710,180,250],'22R':[3100,710,190,250],'23':[1850,1080,290,230],'25':[3000,1040,290,270],
+      '26':[1800,1440,290,305],'27':[2220,1435,260,245],'28':[2600,1450,260,250],'29':[2990,1430,305,270]
+    };
+    function cropStyle(crop, width, height) {
+      const [x,y,w,h] = crop; const scale = Math.min(width / w, height / h);
+      const left = (width - w * scale) / 2 - x * scale; const top = (height - h * scale) / 2 - y * scale;
+      return `background-size:${3360 * scale}px ${2208 * scale}px;background-position:${left}px ${top}px`;
+    }
     const descriptors = [['D','Dual soft / hard','软硬混合',22,548,'material'],['L','Leather','皮革',82,548,'material'],['M','Metal','金属',139,548,'material'],['R','Rigid / hard','硬质',198,548,'material'],['T','Tweed / fabric','粗花呢／布料',255,548,'material'],['X-M','No material element','无材质特征',310,548,'material'],['B','Single item in a box','单件箱盒',337,548,'basic'],['K','Cabin size','登机尺寸',397,548,'basic'],['C','Combination lock','密码锁',525,548,'external'],['H','Retractable handles','伸缩手柄',610,548,'external'],['S','Straps to close / secure','固定带',711,548,'external'],['W','Wheels / rollers','轮子',808,548,'external'],['X-E','No external element','无外部特征',910,548,'external']];
     const escapeAttribute = (value) => String(value).replace(/&/g,'&amp;').replace(/"/g,'&quot;');
     const picker = (kind, number, labelEn, labelZh) => `<div class="picker ${kind === 'descriptor' ? 'descriptor-field' : ''}" data-picker="${kind}"><span><span class="en">${labelEn}</span><span class="zh">${labelZh}</span>${number === 1 ? '<span class="required-mark">*</span>' : ''}</span><input type="hidden" name="ahlBag${kind[0].toUpperCase()+kind.slice(1)}${number}" ${kind === 'descriptor' ? 'data-bag-descriptors' : `data-bag-${kind}`}><button class="picker-trigger placeholder" type="button" data-picker-trigger><span class="en">Select ${labelEn.toLowerCase()}</span><span class="zh">选择${labelZh}</span></button><div class="picker-panel" data-picker-panel hidden><button class="picker-close" type="button" data-picker-close>×</button><div data-picker-options></div></div></div>`;
     function pickerOptions(kind) {
       if (kind === 'color') return `<div class="option-grid">${bagColors.map(([code,en,zh,swatch]) => `<button class="visual-option" type="button" data-option="${code}" data-label="${escapeAttribute(`${code} · ${en} / ${zh}`)}"><span>${code}</span><i class="swatch" style="--swatch:${swatch}"></i></button>`).join('')}</div>`;
-      if (kind === 'type') return ['unzipped','zipped','other'].map((group) => `<strong class="picker-section">${group === 'unzipped' ? 'Un-Zippered Bags / 无拉链行李' : group === 'zipped' ? 'Zippered Bags / 拉链行李' : 'Miscellaneous Articles / 其他物品'}</strong><div class="option-grid">${bagTypes.filter((item) => item[5] === group).map(([code,en,zh,x,y]) => `<button class="visual-option" type="button" data-option="${code}" data-label="${escapeAttribute(`${code} · ${en} / ${zh}`)}" title="${escapeAttribute(`${en} / ${zh}`)}"><span>${code}</span><i data-icon-preview aria-label="Enlarge ${escapeAttribute(code)} image" class="type-icon ${group === 'other' ? 'type-icon--misc' : ''}" style="--icon-x:-${x}px;--icon-y:-${y}px"></i></button>`).join('')}</div>`).join('');
+      if (kind === 'type') return ['unzipped','zipped','other'].map((group) => `<strong class="picker-section">${group === 'unzipped' ? 'Un-Zippered Bags / 无拉链行李' : group === 'zipped' ? 'Zippered Bags / 拉链行李' : 'Miscellaneous Articles / 其他物品'}</strong><div class="option-grid">${bagTypes.filter((item) => item[5] === group).map(([code,en,zh,x,y]) => `<button class="visual-option" type="button" data-option="${code}" data-label="${escapeAttribute(`${code} · ${en} / ${zh}`)}" title="${escapeAttribute(`${en} / ${zh}`)}"><span>${code}</span>${group === 'other' ? `<i data-icon-preview aria-label="Enlarge ${escapeAttribute(code)} image" class="type-icon type-icon--misc" style="--icon-x:-${x}px;--icon-y:-${y}px"></i>` : `<i data-icon-preview data-type-code="${code}" aria-label="Enlarge ${escapeAttribute(code)} image" class="type-icon" style="${cropStyle(typeImageCrops[code],72,72)}"></i>`}</button>`).join('')}</div>`).join('');
       return `<p><strong><span class="en">Maximum of three descriptors can be selected.</span><span class="zh">最多可选择三个描述特征。</span></strong></p>${['material','basic','external'].map((group) => `<strong class="picker-section">${group === 'material' ? 'Material Elements / 材质特征' : group === 'basic' ? 'Basic Elements / 基本特征' : 'External Elements / 外部特征'}</strong><div class="option-grid">${descriptors.filter((item) => item[5] === group).map(([code,en,zh,x,y]) => `<button class="visual-option descriptor-option" type="button" data-option="${code}" data-label="${escapeAttribute(`${code} · ${en} / ${zh}`)}"><span>${code.replace(/-.*/, '')}</span><i class="descriptor-icon" style="--icon-x:-${x}px;--icon-y:-${y}px"></i><small>${en}<br>${zh}</small></button>`).join('')}</div>`).join('')}`;
     }
     let bagCounter = 0;
@@ -364,6 +378,13 @@
       const preview = event.target.closest('[data-icon-preview]');
       if (preview) {
         event.preventDefault(); event.stopPropagation();
+        if (preview.dataset.typeCode) {
+          const crop = typeImageCrops[preview.dataset.typeCode];
+          enlargedIcon.hidden = false; chartDialogImage.hidden = true; chartDialog.classList.add('icon-preview');
+          enlargedIcon.style.backgroundImage = "url('assets/640653098-BAGGAGE-CHART-11_01.png')";
+          enlargedIcon.style.cssText += cropStyle(crop,432,400);
+          chartDialog.showModal(); return;
+        }
         const style = getComputedStyle(preview); const [x,y] = style.backgroundPosition.split(' ').map(parseFloat);
         chartDialogImage.hidden = true; enlargedIcon.hidden = false; chartDialog.classList.add('icon-preview');
         enlargedIcon.style.backgroundImage = style.backgroundImage; enlargedIcon.style.backgroundPosition = `${x * 6}px ${y * 6}px`;
