@@ -3956,7 +3956,7 @@ async function sendCbsCaseEmail({ passengerEmail, subject, html, pdfBuffer, file
 async function sendWrongBaggageCaseEmail({ passengerEmail, language = 'en' }) {
   const { gmail, userId } = getNextDayInfoGmailClient();
   const to = String(passengerEmail || '').trim();
-  const cc = to.toLowerCase() === 'laxhmmu@gmail.com' ? [] : ['laxhmmu@gmail.com'];
+  const cc = ['laxhmmu@gmail.com'];
   const isChinese = language === 'zh';
   const subject = isChinese ? '中国东方航空 – 行李误拿处理通知' : 'China Eastern Airlines – Baggage Mishandling Case';
   const html = isChinese ? [
@@ -3988,7 +3988,7 @@ async function sendWrongBaggageCaseEmail({ passengerEmail, language = 'en' }) {
 async function sendMisconnectionAssistanceEmail({ passengerEmail, language = 'en' }) {
   const { gmail, userId } = getNextDayInfoGmailClient();
   const to = String(passengerEmail || '').trim();
-  const cc = to.toLowerCase() === 'laxhmmu@gmail.com' ? [] : ['laxhmmu@gmail.com'];
+  const cc = ['laxhmmu@gmail.com'];
   const isChinese = language === 'zh';
   const subject = isChinese ? '中国东方航空 – 未能衔接后续航班旅客协助申请已收到' : 'China Eastern Airlines – Misconnection Passenger Assistance Request Received';
   const html = isChinese ? [
