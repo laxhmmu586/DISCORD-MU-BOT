@@ -82,7 +82,40 @@
     .attachment-document { display:grid; place-items:center; width:48px; height:48px; border-radius:999px; background:#fff; border:1px solid var(--line); color:var(--brand); font-size:13px; letter-spacing:.06em; box-shadow:0 8px 18px rgba(22,48,76,.1); }
     .attachment-title { display:flex; gap:4px; align-items:center; justify-content:center; text-align:center; font-weight:850; font-size:12px; }
     .attachment-filename { min-height:16px; text-align:center; color:var(--muted); font-size:11px; font-weight:650; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    @media (max-width:840px){ .grid,.passenger-grid{grid-template-columns:1fr}.attachment-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.routing-layout,.bag-report-row,.bag-report-fields,.contents-row{grid-template-columns:1fr}.bag-report-row{margin-top:8px}.flight-row,.flight-head{grid-template-columns:1fr .8fr .8fr 1fr; gap:6px}.header-title{text-align:left}header{flex-wrap:wrap}.tag-example{transform:none} }
+    .bag-identification { grid-column:1/-1; display:grid; gap:14px; }
+    .bag-identification-head { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+    .bag-identification-head p { margin:0; color:var(--muted); font-size:12px; font-weight:600; }
+    .bag-selector-grid { display:grid; gap:14px; }
+    .bag-selector { display:grid; gap:12px; padding:16px; border:1px solid var(--line); border-radius:15px; background:#fff; }
+    .bag-selector h4 { margin:0; color:var(--brand); font-size:17px; }
+    .bag-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+    .bag-fields .bag-tag-field,.bag-fields .descriptor-field { grid-column:1/-1; }
+    .picker { position:relative; display:grid; gap:7px; }
+    .picker-trigger { width:100%; min-height:43px; padding:10px 12px; border:1px solid var(--line); border-left:8px solid #294f36; border-radius:5px; background:#fff; color:var(--ink); text-align:left; font-weight:500; }
+    .picker-trigger.placeholder { color:var(--muted); }
+    .picker-panel { position:absolute; top:calc(100% + 5px); left:0; z-index:20; width:min(520px,88vw); max-height:390px; overflow:auto; padding:14px; border:1px solid var(--line); border-radius:12px; background:#fff; box-shadow:0 18px 45px rgba(12,35,61,.24); }
+    .picker-panel[hidden] { display:none; }
+    .picker-close { position:sticky; top:0; float:right; z-index:2; padding:2px 8px; background:#fff; color:var(--ink); font-size:20px; }
+    .option-grid { display:grid; grid-template-columns:repeat(6,minmax(48px,1fr)); gap:10px; clear:both; }
+    .picker-section { margin:10px 0 8px; clear:both; font-size:14px; }
+    .visual-option { display:grid; justify-items:center; gap:5px; padding:6px 3px; border:2px solid transparent; border-radius:8px; background:#fff; color:#342cff; font-weight:700; }
+    .visual-option:hover,.visual-option.is-selected { border-color:#342cff; background:#f3f3ff; }
+    .swatch { width:22px; height:16px; border:1px solid #aaa; background:var(--swatch); }
+    .type-icon { display:grid; place-items:center; width:48px; height:38px; border-radius:5px; background:#edf2f7; color:#243b55; font-size:22px; }
+    .descriptor-option img { width:52px; height:40px; object-fit:cover; border:1px solid #1684d6; }
+    .bag-card-actions { display:flex; justify-content:flex-end; }
+    .remove-bag { padding:7px 12px; background:#fff0f0; color:#b42318; }
+    .add-another-bag { justify-self:start; background:transparent; color:#342cff; padding:8px 2px; }
+    .chart-links { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+    .chart-button { overflow:hidden; padding:0; border:1px solid var(--line); border-radius:14px; background:#fff; color:var(--brand); text-align:left; }
+    .chart-button img { display:block; width:100%; height:120px; object-fit:cover; object-position:top; }
+    .chart-button span { display:block; padding:9px 11px; font-size:12px; }
+    .chart-dialog { width:min(1200px,96vw); max-width:none; padding:42px 12px 12px; border:0; border-radius:18px; background:#fff; box-shadow:0 24px 80px rgba(0,0,0,.35); }
+    .chart-dialog::backdrop { background:rgba(5,19,38,.78); }
+    .chart-dialog img { display:block; width:100%; height:auto; }
+    .chart-close { position:absolute; top:7px; right:9px; padding:6px 11px; font-size:20px; }
+    @media (max-width:840px){ .grid,.passenger-grid,.bag-selector-grid{grid-template-columns:1fr}.attachment-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.routing-layout,.bag-report-row,.bag-report-fields,.contents-row{grid-template-columns:1fr}.bag-report-row{margin-top:8px}.flight-row,.flight-head{grid-template-columns:1fr .8fr .8fr 1fr; gap:6px}.header-title{text-align:left}header{flex-wrap:wrap}.tag-example{transform:none} }
+    @media (max-width:600px){.bag-fields{grid-template-columns:1fr}.bag-fields .bag-tag-field,.bag-fields .descriptor-field{grid-column:auto}.option-grid{grid-template-columns:repeat(4,minmax(48px,1fr))}}
     @media (max-width:520px){ .attachment-grid{grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px}.attachment-group{grid-template-columns:repeat(auto-fill,minmax(70px,1fr)); gap:6px; padding:6px}.attachment-tile{min-height:94px; padding:5px}.attachment-preview{height:66px}.attachment-upload .attachment-preview::before{width:30px;height:30px;font-size:24px}.attachment-title{font-size:11px}.attachment-filename{font-size:10px} }
   </style>
 </head>
@@ -104,7 +137,7 @@
         <div class="grid passenger-grid">
           <label><span class="en">Passenger name</span><span class="zh">旅客姓名</span><input name="passengerName" required placeholder="LAST/FIRST" /></label>
           <label><span class="en">Email</span><span class="zh">电子邮箱</span><input name="email" type="email" required placeholder="passenger@example.com" /></label>
-          <label><span class="en">Mobile number</span><span class="zh">手机号码</span><input name="phone" placeholder="Country/area code + number" required /></label>
+          <label><span class="en">Mobile number - US</span><span class="zh">手机号码-美国</span><input name="phone" type="tel" autocomplete="tel-national" placeholder="US phone number" required /></label>
           <label><span class="en">Ticket number</span><span class="zh">机票号码</span><input name="ticketNumber" placeholder="7816262626666" required /></label>
           <div class="wide flight-rows" aria-label="Flight rows">
             <strong><span class="en">Flights</span><span class="zh">航班</span><span class="required-mark">*</span></strong>
@@ -122,7 +155,7 @@
               </div>
             </div>
           </div>
-          <div class="bag-report-row">
+          <div class="bag-report-row" id="standalone-bag-tags">
             <span></span>
             <div class="bag-report-fields">
               <div class="bag-list">
@@ -146,6 +179,11 @@
         <section id="ahl-fields" class="case-fields is-active">
           <h3><span class="en">AHL information</span><span class="zh">延误或丢失行李信息</span></h3>
           <div class="grid">
+            <div class="bag-identification">
+              <div class="bag-identification-head"><strong><span class="en">Baggage information</span><span class="zh">行李信息</span></strong><p><span class="en">Select each field from the visual IATA guide.</span><span class="zh">请根据IATA图片指南选择每一项。</span></p></div>
+              <div class="bag-selector-grid" id="bag-selector-grid"></div>
+              <button class="add-another-bag" id="add-another-bag" type="button">⊕ <span class="en">Add another bag</span><span class="zh">添加另一个行李</span></button>
+            </div>
             <label class="wide"><span class="en">Baggage description</span><span class="zh">行李描述</span><textarea name="ahlBagDescription" id="ahl-description" placeholder="Color, size, wheels, hard/soft shell..."></textarea></label>
             <label><span class="en">Bag brand tag</span><span class="zh">行李箱品牌牌</span><input name="ahlBagBrandTag" /></label>
             <label><span class="en">Features</span><span class="zh">特征</span><input name="ahlFeatures" placeholder="Sticker, ribbon, lock..." /></label>
@@ -247,6 +285,7 @@
       </div>
     </section>
   </main>
+  <dialog class="chart-dialog" id="chart-dialog"><button class="chart-close" id="chart-close" type="button" aria-label="Close">×</button><img id="chart-dialog-image" alt="" /></dialog>
   <script>
     const apiBase = (window.MU_API_BASE || 'https://api.mufcapp.net').replace(/\/$/, '');
     const form = document.querySelector('#cbs-form');
@@ -270,6 +309,10 @@
     const issueDateInput = document.querySelector('#issue-date');
     const ahlDescriptionInput = document.querySelector('#ahl-description');
     const languageToggle = document.querySelector('#language-toggle');
+    const bagSelectorGrid = document.querySelector('#bag-selector-grid');
+    const standaloneBagTags = document.querySelector('#standalone-bag-tags');
+    const chartDialog = document.querySelector('#chart-dialog');
+    const chartDialogImage = document.querySelector('#chart-dialog-image');
     let drawing = false;
     let startPoint = null;
     let sketchDirty = false;
@@ -283,6 +326,47 @@
       addressAvailable.options[1].textContent = lang === 'en' ? 'Yes' : '是';
     }
     languageToggle.addEventListener('click', () => setLanguage(document.documentElement.lang === 'en' ? 'zh' : 'en'));
+
+    const bagColors = [
+      ['WT','White / clear','白色／透明','#fff'],['BK','Black','黑色','#111'],['GY','Grey','灰色','linear-gradient(90deg,#555,#aaa,#ddd)'],['BU','Blue','蓝色','#1684c7'],['RD','Red','红色','#c4143d'],['YW','Yellow','黄色','#f1c40f'],['BE','Beige','米色','#e7ddbd'],['BN','Brown','棕色','#9b3d0c'],['GN','Green','绿色','#46883f'],['MC','Multi-coloured','多色','linear-gradient(90deg,#222 0 25%,#fff 25% 50%,#d22 50% 75%,#3a6 75%)'],['PU','Purple','紫色','#8e4896'],['PR','Pattern','图案','repeating-linear-gradient(45deg,#657, #657 3px,#bd9 3px,#bd9 6px)']
+    ];
+    const bagTypes = [
+      ['01','Horizontal hard shell','横式硬壳箱'],['02','Upright design','直立式行李箱'],['03','Horizontal non-expandable suitcase','横式不可扩展箱'],['05','Horizontal expandable suitcase','横式可扩展箱'],['06','Briefcase','公文包'],['07','Document case','文件箱'],['08','Military-style bag','军用式行李袋'],['09','Plastic / laundry bag','塑料袋／洗衣袋'],['10','Box','箱盒'],['12','Storage container','储物箱'],['20','Garment / suit carrier','西装袋／衣物袋'],['22','Soft upright bag','软质直立箱'],['22D','Hard/soft upright bag','软硬结合直立箱'],['22R','Hard upright bag','硬质直立箱'],['23','Horizontal suitcase','横式行李箱'],['25','Duffel / sport bag','旅行袋／运动包'],['26','Laptop / overnight bag','电脑包／过夜包'],['27','Expandable upright bag','可扩展直立包'],['28','Matted woven bag','编织袋'],['29','Backpack / rucksack','背包'],['50–99','Miscellaneous article (see chart)','其他物品（见图表）']
+    ];
+    const descriptors = [['D','Dual soft / hard','软硬混合'],['L','Leather','皮革'],['M','Metal','金属'],['R','Rigid / hard','硬质'],['T','Tweed / fabric','粗花呢／布料'],['X-M','No material element','无材质特征'],['B','Single item in a box','单件箱盒'],['K','Cabin size','登机尺寸'],['C','Combination lock','密码锁'],['H','Retractable handles','伸缩手柄'],['S','Straps to close / secure','固定带'],['W','Wheels / rollers','轮子'],['X-E','No external element','无外部特征']];
+    const escapeAttribute = (value) => String(value).replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+    const picker = (kind, number, labelEn, labelZh) => `<div class="picker ${kind === 'descriptor' ? 'descriptor-field' : ''}" data-picker="${kind}"><span><span class="en">${labelEn}</span><span class="zh">${labelZh}</span>${number === 1 ? '<span class="required-mark">*</span>' : ''}</span><input type="hidden" name="ahlBag${kind[0].toUpperCase()+kind.slice(1)}${number}" ${kind === 'descriptor' ? 'data-bag-descriptors' : `data-bag-${kind}`}><button class="picker-trigger placeholder" type="button" data-picker-trigger><span class="en">Select ${labelEn.toLowerCase()}</span><span class="zh">选择${labelZh}</span></button><div class="picker-panel" data-picker-panel hidden><button class="picker-close" type="button" data-picker-close>×</button><div data-picker-options></div></div></div>`;
+    function pickerOptions(kind) {
+      if (kind === 'color') return `<div class="option-grid">${bagColors.map(([code,en,zh,swatch]) => `<button class="visual-option" type="button" data-option="${code}" data-label="${escapeAttribute(`${code} · ${en} / ${zh}`)}"><span>${code}</span><i class="swatch" style="--swatch:${swatch}"></i></button>`).join('')}</div>`;
+      if (kind === 'type') return `<strong class="picker-section">Un-Zippered Bags / 无拉链行李</strong><div class="option-grid">${bagTypes.map(([code,en,zh]) => `<button class="visual-option" type="button" data-option="${code}" data-label="${escapeAttribute(`${code} · ${en} / ${zh}`)}"><span>${code}</span><i class="type-icon">🧳</i></button>`).join('')}</div>`;
+      return `<p><strong><span class="en">Maximum of three descriptors can be selected.</span><span class="zh">最多可选择三个描述特征。</span></strong></p><div class="option-grid">${descriptors.map(([code,en,zh],index) => `<button class="visual-option descriptor-option" type="button" data-option="${code}" data-label="${escapeAttribute(`${code} · ${en} / ${zh}`)}"><span>${code.replace(/-.*/, '')}</span><img src="assets/640653098-BAGGAGE-CHART-11_01.png" style="object-position:${(index%6)*18}% 100%" alt=""><small>${en}<br>${zh}</small></button>`).join('')}</div>`;
+    }
+    let bagCounter = 0;
+    function addBag() {
+      const number = ++bagCounter;
+      const card = document.createElement('section');
+      card.className = 'bag-selector'; card.dataset.bagNumber = number;
+      card.innerHTML = `<h4><span class="en">Bag ${number}</span><span class="zh">行李 ${number}</span></h4><div class="bag-fields"><label class="bag-tag-field"><span class="en">Tag Number</span><span class="zh">行李牌号码</span><span class="required-mark">*</span><input data-bag-tag name="ahlBagTag${number}" placeholder="MU123456" required></label>${picker('color',number,'Color','颜色')}${picker('type',number,'Type','种类')}${picker('descriptor',number,'Descriptive Element(s)','描述特征')}</div>${number > 1 ? '<div class="bag-card-actions"><button class="remove-bag" type="button" data-remove-bag><span class="en">Remove bag</span><span class="zh">删除行李</span></button></div>' : ''}`;
+      card.querySelectorAll('[data-picker]').forEach((element) => { element.querySelector('[data-picker-options]').innerHTML = pickerOptions(element.dataset.picker); });
+      bagSelectorGrid.appendChild(card);
+    }
+    function resetBagCards() { bagSelectorGrid.innerHTML = ''; bagCounter = 0; addBag(); }
+    addBag();
+    document.querySelector('#add-another-bag').addEventListener('click', addBag);
+    bagSelectorGrid.addEventListener('click', (event) => {
+      const remove = event.target.closest('[data-remove-bag]'); if (remove) { remove.closest('.bag-selector').remove(); return; }
+      const pickerElement = event.target.closest('[data-picker]'); if (!pickerElement) return;
+      const panel = pickerElement.querySelector('[data-picker-panel]');
+      if (event.target.closest('[data-picker-trigger]')) { document.querySelectorAll('[data-picker-panel]').forEach((item) => { if (item !== panel) item.hidden = true; }); panel.hidden = !panel.hidden; return; }
+      if (event.target.closest('[data-picker-close]')) { panel.hidden = true; return; }
+      const option = event.target.closest('[data-option]'); if (!option) return;
+      const input = pickerElement.querySelector('input'); const multiple = pickerElement.dataset.picker === 'descriptor';
+      if (multiple) { let values = input.value ? input.value.split(',') : []; values = values.includes(option.dataset.option) ? values.filter((value) => value !== option.dataset.option) : (values.length < 3 ? [...values,option.dataset.option] : values); input.value = values.join(','); pickerElement.querySelectorAll('[data-option]').forEach((item) => item.classList.toggle('is-selected', values.includes(item.dataset.option))); pickerElement.querySelector('[data-picker-trigger]').textContent = values.join(', ') || 'Select descriptive elements'; }
+      else { input.value = option.dataset.option; pickerElement.querySelectorAll('[data-option]').forEach((item) => item.classList.toggle('is-selected', item === option)); const trigger = pickerElement.querySelector('[data-picker-trigger]'); trigger.textContent = option.dataset.label; trigger.classList.remove('placeholder'); panel.hidden = true; }
+    });
+    document.querySelectorAll('[data-chart-src]').forEach((button) => button.addEventListener('click', () => { chartDialogImage.src = button.dataset.chartSrc; chartDialogImage.alt = button.querySelector('img').alt; chartDialog.showModal(); }));
+    document.querySelector('#chart-close').addEventListener('click', () => chartDialog.close());
+    chartDialog.addEventListener('click', (event) => { if (event.target === chartDialog) chartDialog.close(); });
 
     function addContentRow(category = '', description = '') {
       const row = document.createElement('div');
@@ -308,7 +392,7 @@
       if (button && bagTagsList.children.length > 1) button.closest('.bag-row')?.remove();
     });
     function collectBagTags() {
-      return Array.from(bagTagsList.querySelectorAll('[data-bag-tag]')).map((input) => input.value.trim()).filter(Boolean);
+      return Array.from(form.querySelectorAll('[data-bag-tag]:not(:disabled)')).map((input) => input.value.trim()).filter(Boolean);
     }
 
     function collectContentsRows() {
@@ -319,7 +403,7 @@
     }
 
     async function parseJson(res) { const text = await res.text(); try { return JSON.parse(text); } catch { throw new Error(`API returned non-JSON (${res.status}). Please check API base: ${apiBase}`); } }
-    function setTypeFields() { const isAhl = typeSelect.value === 'AHL'; ahlFields.classList.toggle('is-active', isAhl); dprFields.classList.toggle('is-active', !isAhl); ahlDescriptionInput.required = isAhl; thanks.classList.remove('is-active'); }
+    function setTypeFields() { const isAhl = typeSelect.value === 'AHL'; ahlFields.classList.toggle('is-active', isAhl); dprFields.classList.toggle('is-active', !isAhl); standaloneBagTags.hidden = isAhl; standaloneBagTags.querySelectorAll('input,button').forEach((control) => { control.disabled = isAhl; }); bagSelectorGrid.querySelectorAll('input,button').forEach((control) => { control.disabled = !isAhl; }); ahlDescriptionInput.required = isAhl; thanks.classList.remove('is-active'); }
     function setAddressFields() { const show = addressAvailable.value === 'Yes'; validUntilField.hidden = !show; temporaryAddressField.hidden = !show; if (!show) { validUntilField.querySelector('input').value = ''; temporaryAddressField.querySelector('textarea').value = ''; } }
     typeSelect.addEventListener('change', setTypeFields);
     addressAvailable.addEventListener('change', setAddressFields);
@@ -572,6 +656,7 @@
       formStatus.className = 'status';
       formStatus.textContent = document.documentElement.lang === 'en' ? 'Submitting...' : '提交中...';
       if (!signatureDirty) { formStatus.className = 'status err'; formStatus.textContent = document.documentElement.lang === 'en' ? 'Passenger signature is required.' : '请旅客签字。'; return; }
+      if (typeSelect.value === 'AHL' && Array.from(bagSelectorGrid.querySelectorAll('.bag-selector')).some((bag) => !bag.querySelector('[data-bag-color]').value || !bag.querySelector('[data-bag-type]').value)) { formStatus.className = 'status err'; formStatus.textContent = document.documentElement.lang === 'en' ? 'Please select a color and type for every bag.' : '请为每件行李选择颜色和种类。'; return; }
       const payload = Object.fromEntries(new FormData(form).entries());
       ['passportAttachment', 'boardingPassAttachment', 'bagTagAttachment', 'otherAttachment'].forEach((key) => delete payload[key]);
       payload.flightRows = [1, 2, 3].map((index) => ({
@@ -582,6 +667,9 @@
       }));
       payload.bagTags = collectBagTags();
       payload.bagTag = payload.bagTags.join(' / ');
+      const bagIdentifications = Array.from(bagSelectorGrid.querySelectorAll('.bag-selector')).map((bag, index) => ({ number:index + 1, tag:bag.querySelector('[data-bag-tag]').value, color:bag.querySelector('[data-bag-color]').value, type:bag.querySelector('[data-bag-type]').value, descriptors:bag.querySelector('[data-bag-descriptors]').value }));
+      payload.ahlBagType = bagIdentifications.map((bag) => `Bag ${bag.number}: ${bag.type || '-'}`).join(' / ');
+      payload.ahlBagDescription = [`IATA identification: ${bagIdentifications.map((bag) => `Bag ${bag.number} Tag ${bag.tag}, ${bag.color}-${bag.type}, elements ${bag.descriptors || '-'}`).join(' / ')}`, payload.ahlBagDescription].filter(Boolean).join(' | ');
       payload.contentsRows = collectContentsRows();
       payload.language = document.documentElement.lang;
       payload.passengerSignature = signatureDirty ? signaturePad.toDataURL('image/jpeg', 0.75) : '';
@@ -606,7 +694,7 @@
           : error.message;
       }
     });
-    form.addEventListener('reset', () => setTimeout(() => { clearAttachmentPreviews(); sketchDirty = false; drawBagBase(); clearSignature(); contentsList.innerHTML = ''; addContentRow(); issueDateInput.valueAsDate = new Date(); setTypeFields(); setAddressFields(); }, 0));
+    form.addEventListener('reset', () => setTimeout(() => { clearAttachmentPreviews(); sketchDirty = false; drawBagBase(); clearSignature(); contentsList.innerHTML = ''; addContentRow(); resetBagCards(); issueDateInput.valueAsDate = new Date(); setTypeFields(); setAddressFields(); }, 0));
     addContentRow();
     issueDateInput.valueAsDate = new Date();
     setLanguage('en');
