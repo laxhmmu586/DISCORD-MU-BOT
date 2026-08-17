@@ -74,10 +74,6 @@ const CONTACT_FORM_SHEET_ID = process.env.CONTACT_FORM_SHEET_ID || '1JqRnDx_uLc2
 const CONTACT_FORM_SHEET_GID = Number(process.env.CONTACT_FORM_SHEET_GID || 1889354016);
 const CBS_WORLDTRACER_SHEET_GID = Number(process.env.CBS_WORLDTRACER_SHEET_GID || 944289437);
 const CBS_UNRESOLVED_BAGGAGE_SHEET_GID = Number(process.env.CBS_UNRESOLVED_BAGGAGE_SHEET_GID || 1279643787);
-const CBS_NOTIFICATION_EMAILS = (process.env.CBS_NOTIFICATION_EMAILS || 'laxhmmu@gmail.com')
-  .split(',')
-  .map((value) => value.trim())
-  .filter(Boolean);
 const CBS_MISSING_BAG_EMAIL_SENDER = String(
   process.env.CBS_MISSING_BAG_EMAIL_SENDER || 'VIBES-NO-REPLY@lawa.org'
 ).trim();
@@ -3933,7 +3929,7 @@ async function sendNextDayInfoEmail({ to = 'laxhmmu@gmail.com', cc = [], subject
 async function sendCbsCaseEmail({ passengerEmail, subject, html, pdfBuffer, filename, attachments = [] }) {
   const { gmail, userId } = getNextDayInfoGmailClient();
   const to = String(passengerEmail || '').trim();
-  const cc = Array.from(new Set(CBS_NOTIFICATION_EMAILS.filter((email) => email && email.toLowerCase() !== to.toLowerCase())));
+  const cc = to.toLowerCase() === 'laxhmmu@gmail.com' ? [] : ['laxhmmu@gmail.com'];
   const raw = buildRawCbsEmail({ to, cc, subject, html, pdfBuffer, filename, attachments });
   const sent = await gmail.users.messages.send({
     userId,
