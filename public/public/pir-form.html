@@ -357,6 +357,10 @@
       '22D':[2720,710,180,250],'22R':[3100,710,190,250],'23':[1850,1080,290,230],'25':[3000,1040,290,270],
       '26':[1800,1440,290,305],'27':[2220,1435,260,245],'28':[2600,1450,260,250],'29':[2990,1430,305,270]
     };
+    const miscellaneousImageCrops = {
+      '53':[1140,680,230,245], '54':[1515,675,170,250], '55':[1760,675,260,250],
+      '62':[785,1040,240,250], '72':[425,1410,275,260], '73':[780,1395,245,275], '74':[1090,1400,245,265]
+    };
     function cropStyle(crop, width, height) {
       const [x,y,w,h] = crop; const scale = Math.min(width / w, height / h);
       const left = (width - w * scale) / 2 - x * scale; const top = (height - h * scale) / 2 - y * scale;
@@ -367,7 +371,7 @@
     const picker = (kind, number, labelEn, labelZh) => `<div class="picker ${kind === 'descriptor' ? 'descriptor-field' : ''}" data-picker="${kind}"><span><span class="en">${labelEn}</span><span class="zh">${labelZh}</span>${number === 1 ? '<span class="required-mark">*</span>' : ''}</span><input type="hidden" name="ahlBag${kind[0].toUpperCase()+kind.slice(1)}${number}" ${kind === 'descriptor' ? 'data-bag-descriptors' : `data-bag-${kind}`}><button class="picker-trigger placeholder" type="button" data-picker-trigger><span class="en">Select ${labelEn.toLowerCase()}</span><span class="zh">选择${labelZh}</span></button><div class="picker-panel" data-picker-panel hidden><button class="picker-close" type="button" data-picker-close>×</button><div data-picker-options></div></div></div>`;
     function pickerOptions(kind) {
       if (kind === 'color') return `<div class="option-grid">${bagColors.map(([code,en,zh,swatch]) => `<button class="visual-option" type="button" data-option="${code}" data-label="${escapeAttribute(`${code} · ${en} / ${zh}`)}"><span>${code}</span><i class="swatch" style="--swatch:${swatch}"></i></button>`).join('')}</div>`;
-      if (kind === 'type') return ['unzipped','zipped','other'].map((group) => `<strong class="picker-section">${group === 'unzipped' ? 'Un-Zippered Bags / 无拉链行李' : group === 'zipped' ? 'Zippered Bags / 拉链行李' : 'Miscellaneous Articles / 其他物品'}</strong><div class="option-grid">${bagTypes.filter((item) => item[5] === group).map(([code,en,zh,x,y]) => `<button class="visual-option" type="button" data-option="${code}" data-label="${escapeAttribute(`${code} · ${en} / ${zh}`)}" title="${escapeAttribute(`${en} / ${zh}`)}"><span>${code}</span>${group === 'other' ? `<i data-icon-preview aria-label="Enlarge ${escapeAttribute(code)} image" class="type-icon type-icon--misc" style="--icon-x:-${x}px;--icon-y:-${y}px"></i>` : `<i data-icon-preview data-type-code="${code}" aria-label="Enlarge ${escapeAttribute(code)} image" class="type-icon" style="${cropStyle(typeImageCrops[code],72,72)}"></i>`}</button>`).join('')}</div>`).join('');
+      if (kind === 'type') return ['unzipped','zipped','other'].map((group) => `<strong class="picker-section">${group === 'unzipped' ? 'Un-Zippered Bags / 无拉链行李' : group === 'zipped' ? 'Zippered Bags / 拉链行李' : 'Miscellaneous Articles / 其他物品'}</strong><div class="option-grid">${bagTypes.filter((item) => item[5] === group).map(([code,en,zh,x,y]) => `<button class="visual-option" type="button" data-option="${code}" data-label="${escapeAttribute(`${code} · ${en} / ${zh}`)}" title="${escapeAttribute(`${en} / ${zh}`)}"><span>${code}</span>${group === 'other' ? `<i data-icon-preview ${miscellaneousImageCrops[code] ? `data-misc-code="${code}"` : ''} aria-label="Enlarge ${escapeAttribute(code)} image" class="type-icon type-icon--misc" style="${miscellaneousImageCrops[code] ? cropStyle(miscellaneousImageCrops[code],72,72) : `--icon-x:-${x}px;--icon-y:-${y}px`}"></i>` : `<i data-icon-preview data-type-code="${code}" aria-label="Enlarge ${escapeAttribute(code)} image" class="type-icon" style="${cropStyle(typeImageCrops[code],72,72)}"></i>`}</button>`).join('')}</div>`).join('');
       return `<p><strong><span class="en">Maximum of three descriptors can be selected.</span><span class="zh">最多可选择三个描述特征。</span></strong></p>${['material','basic','external'].map((group) => `<strong class="picker-section">${group === 'material' ? 'Material Elements / 材质特征' : group === 'basic' ? 'Basic Elements / 基本特征' : 'External Elements / 外部特征'}</strong><div class="option-grid">${descriptors.filter((item) => item[5] === group).map(([code,en,zh,x,y]) => `<button class="visual-option descriptor-option" type="button" data-option="${code}" data-label="${escapeAttribute(`${code} · ${en} / ${zh}`)}"><span>${code.replace(/-.*/, '')}</span><i class="descriptor-icon" style="--icon-x:-${x}px;--icon-y:-${y}px"></i><small>${en}<br>${zh}</small></button>`).join('')}</div>`).join('')}`;
     }
     let bagCounter = 0;
@@ -391,6 +395,13 @@
           const crop = typeImageCrops[preview.dataset.typeCode];
           enlargedIcon.hidden = false; chartDialogImage.hidden = true; chartDialog.classList.add('icon-preview');
           enlargedIcon.style.backgroundImage = "url('assets/640653098-BAGGAGE-CHART-11_01.png')";
+          enlargedIcon.style.cssText += cropStyle(crop,432,400);
+          chartDialog.showModal(); return;
+        }
+        if (preview.dataset.miscCode) {
+          const crop = miscellaneousImageCrops[preview.dataset.miscCode];
+          enlargedIcon.hidden = false; chartDialogImage.hidden = true; chartDialog.classList.add('icon-preview');
+          enlargedIcon.style.backgroundImage = "url('assets/640653098-BAGGAGE-CHART-11_02.png')";
           enlargedIcon.style.cssText += cropStyle(crop,432,400);
           chartDialog.showModal(); return;
         }
