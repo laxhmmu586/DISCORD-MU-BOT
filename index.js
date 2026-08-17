@@ -76,6 +76,7 @@ const {
   markCbsMissingBagCase,
   acknowledgeCbsMissingBag,
   sendCbsCaseEmail,
+  sendWrongBaggageCaseEmail,
   getCbsBaggageChartImage,
   appendTransit240Record,
   appendCbsScanRecord,
@@ -1790,6 +1791,14 @@ app.post('/wrong-baggage-submissions', async (req, res) => {
       return res.status(400).json({ error: 'Upload up to 10 images, no more than 8 MB each and 22 MB total.' });
     }
     await appendWrongBaggageSubmission(record);
+    let email = null;
+    let emailError = '';
+    try {
+      email = await sendWrongBaggageCaseEmail({ passengerEmail: record.email, language: record.language });
+    } catch (mailErr) {
+      emailError = cbsEmailErrorMessage(mailErr);
+      console.error('Wrong baggage passenger email error:', mailErr);
+    }
     let discord = null;
     let discordError = '';
     try {
@@ -1798,7 +1807,7 @@ app.post('/wrong-baggage-submissions', async (req, res) => {
       discordError = discordErr?.message || 'Discord notification failed.';
       console.error('Wrong baggage Discord notification error:', discordErr);
     }
-    return res.status(201).json({ created: true, record, discord, discordError });
+    return res.status(201).json({ created: true, record, email, emailError, discord, discordError });
   } catch (err) {
     console.error('Wrong baggage form submission error:', err);
     return res.status(500).json({ error: 'The form could not be submitted. Please try again or contact a staff member.' });
