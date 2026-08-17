@@ -76,6 +76,7 @@ const {
   markCbsMissingBagCase,
   acknowledgeCbsMissingBag,
   sendCbsCaseEmail,
+  sendWrongBaggageCaseEmail,
   getCbsBaggageChartImage,
   appendTransit240Record,
   appendCbsScanRecord,
@@ -1419,11 +1420,23 @@ function createPirPdf(record) {
   };
   const box = (x, y, w, h, text, size = 8) => {
     content.push(`0 0 0 RG 0.5 w ${x} ${y} ${w} ${h} re S`);
-    if (text) content.push(pdfText(text, x + 5, y + h - 13, size));
+    if (text) {
+      const safe = pdfSafeText(text);
+      const maxChars = Math.max(12, Math.floor((w - 10) / (size * 0.52)));
+      const words = safe.split(/\s+/);
+      const lines = [];
+      words.forEach((word) => {
+        const current = lines[lines.length - 1] || '';
+        if (!current || `${current} ${word}`.length > maxChars) lines.push(word);
+        else lines[lines.length - 1] = `${current} ${word}`;
+      });
+      const maxLines = Math.max(1, Math.floor((h - 8) / (size + 2)));
+      lines.slice(0, maxLines).forEach((line, index) => content.push(pdfText(line, x + 5, y + h - 13 - index * (size + 2), size)));
+    }
   };
   const coded = (code, label, value, x, y, w, h) => {
     box(x, y, 26, h, code, 8);
-    box(x + 26, y, w - 26, h, [label, value || ''].filter(Boolean).join(' ').slice(0, 95), 7.5);
+    box(x + 26, y, w - 26, h, [label, value || ''].filter(Boolean).join(' '), 7.5);
   };
   section('PASSENGER INFORMATION', 642);
   coded('NM', 'Passenger Name', record.passengerName, 52, 612, 318, 24);
@@ -1438,10 +1451,19 @@ function createPirPdf(record) {
   coded('BR', 'Baggage Routing', record.flightRoute, 52, 476, 500, 26);
   coded('TN', 'Bag Tag Number', record.bagTag, 52, 450, 500, 26);
   coded('DB', 'Destination on Bags', record.destinationOnBags, 52, 424, 500, 26);
-  coded('BD', 'Baggage Details', record.ahlBagDescription || record.dprBagInfo, 52, 386, 500, 38);
-  if (damageImage) {
-    box(52, 252, 500, 96, 'Damage Sketch', 8);
-    content.push(`q 280 0 0 78 166 262 cm /Damage Do Q`);
+  coded('BD', 'Baggage Details', record.ahlBagDescription || record.dprBagInfo, 52, 350, 500, 74);
+  if (String(record.caseType).toUpperCase() === 'DPR') {
+    coded('DL', 'Damage Level', record.dprDamageLevel, 52, 324, 500, 26);
+    coded('ID', 'Inner Damage', record.dprInnerDamage, 52, 286, 500, 38);
+    if (damageImage) {
+      box(52, 170, 500, 104, 'Damage Sketch', 8);
+      content.push(`q 280 0 0 82 166 180 cm /Damage Do Q`);
+    }
+  } else {
+    coded('BT', 'Bag Type', record.ahlBagType, 52, 324, 500, 26);
+    coded('BM', 'Bag Brand / Tag', record.ahlBagBrandTag, 52, 298, 500, 26);
+    coded('FT', 'Features', record.ahlFeatures, 52, 260, 500, 38);
+    coded('OF', 'Other Visible Features', record.ahlOtherFeatures, 52, 222, 500, 38);
   }
   const items = Array.isArray(record.contentsRows) && record.contentsRows.length
     ? record.contentsRows
@@ -1769,6 +1791,14 @@ app.post('/wrong-baggage-submissions', async (req, res) => {
       return res.status(400).json({ error: 'Upload up to 10 images, no more than 8 MB each and 22 MB total.' });
     }
     await appendWrongBaggageSubmission(record);
+    let email = null;
+    let emailError = '';
+    try {
+      email = await sendWrongBaggageCaseEmail({ passengerEmail: record.email, language: record.language });
+    } catch (mailErr) {
+      emailError = cbsEmailErrorMessage(mailErr);
+      console.error('Wrong baggage passenger email error:', mailErr);
+    }
     let discord = null;
     let discordError = '';
     try {
@@ -1777,7 +1807,7 @@ app.post('/wrong-baggage-submissions', async (req, res) => {
       discordError = discordErr?.message || 'Discord notification failed.';
       console.error('Wrong baggage Discord notification error:', discordErr);
     }
-    return res.status(201).json({ created: true, record, discord, discordError });
+    return res.status(201).json({ created: true, record, email, emailError, discord, discordError });
   } catch (err) {
     console.error('Wrong baggage form submission error:', err);
     return res.status(500).json({ error: 'The form could not be submitted. Please try again or contact a staff member.' });

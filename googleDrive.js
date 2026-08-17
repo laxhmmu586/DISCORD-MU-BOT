@@ -74,10 +74,6 @@ const CONTACT_FORM_SHEET_ID = process.env.CONTACT_FORM_SHEET_ID || '1JqRnDx_uLc2
 const CONTACT_FORM_SHEET_GID = Number(process.env.CONTACT_FORM_SHEET_GID || 1889354016);
 const CBS_WORLDTRACER_SHEET_GID = Number(process.env.CBS_WORLDTRACER_SHEET_GID || 944289437);
 const CBS_UNRESOLVED_BAGGAGE_SHEET_GID = Number(process.env.CBS_UNRESOLVED_BAGGAGE_SHEET_GID || 1279643787);
-const CBS_NOTIFICATION_EMAILS = (process.env.CBS_NOTIFICATION_EMAILS || 'laxhmmu@gmail.com')
-  .split(',')
-  .map((value) => value.trim())
-  .filter(Boolean);
 const CBS_MISSING_BAG_EMAIL_SENDER = String(
   process.env.CBS_MISSING_BAG_EMAIL_SENDER || 'VIBES-NO-REPLY@lawa.org'
 ).trim();
@@ -3919,6 +3915,20 @@ function buildRawPlainEmail({ to, cc = [], subject, text }) {
   ].join('\r\n');
 }
 
+function buildRawHtmlEmail({ to, cc = [], subject, html }) {
+  const ccList = (Array.isArray(cc) ? cc : [cc]).map((item) => String(item || '').trim()).filter(Boolean);
+  return [
+    `To: ${encodeEmailHeader(to)}`,
+    ...(ccList.length ? [`Cc: ${ccList.map(encodeEmailHeader).join(', ')}`] : []),
+    `Subject: ${encodeEmailHeader(subject)}`,
+    'MIME-Version: 1.0',
+    'Content-Type: text/html; charset="UTF-8"',
+    'Content-Transfer-Encoding: base64',
+    '',
+    cbsBase64Lines(Buffer.from(String(html || ''), 'utf8').toString('base64'))
+  ].join('\r\n');
+}
+
 async function sendNextDayInfoEmail({ to = 'laxhmmu@gmail.com', cc = [], subject, text }) {
   const { gmail, userId, authMode } = getNextDayInfoGmailClient();
   const raw = buildRawPlainEmail({ to, cc, subject, text });
@@ -3933,13 +3943,45 @@ async function sendNextDayInfoEmail({ to = 'laxhmmu@gmail.com', cc = [], subject
 async function sendCbsCaseEmail({ passengerEmail, subject, html, pdfBuffer, filename, attachments = [] }) {
   const { gmail, userId } = getNextDayInfoGmailClient();
   const to = String(passengerEmail || '').trim();
-  const cc = Array.from(new Set(CBS_NOTIFICATION_EMAILS.filter((email) => email && email.toLowerCase() !== to.toLowerCase())));
+  const cc = to.toLowerCase() === 'laxhmmu@gmail.com' ? [] : ['laxhmmu@gmail.com'];
   const raw = buildRawCbsEmail({ to, cc, subject, html, pdfBuffer, filename, attachments });
   const sent = await gmail.users.messages.send({
     userId,
     requestBody: { raw: base64UrlEncode(raw) }
   });
   return [{ to, cc, id: sent.data.id || '' }];
+}
+
+async function sendWrongBaggageCaseEmail({ passengerEmail, language = 'en' }) {
+  const { gmail, userId } = getNextDayInfoGmailClient();
+  const to = String(passengerEmail || '').trim();
+  const cc = to.toLowerCase() === 'laxhmmu@gmail.com' ? [] : ['laxhmmu@gmail.com'];
+  const isChinese = language === 'zh';
+  const subject = isChinese ? '中国东方航空 – 行李误拿处理通知' : 'China Eastern Airlines – Baggage Mishandling Case';
+  const html = isChinese ? [
+    '<p>尊敬的旅客：</p><p>您好！</p>',
+    '<p>对于您可能误拿了其他旅客的行李，或您的托运行李可能被其他旅客误拿的情况，我们深表歉意。</p>',
+    '<p>目前工作人员正在协助调查，并将尽力寻找正确的行李，同时尽快协调后续的行李交换及处理事宜。</p>',
+    '<p>在此期间，请您妥善保管目前持有的行李，<strong>请勿丢弃、打开行李或取出其中任何物品</strong>，以便工作人员进行后续核实和处理。</p>',
+    '<p>为协助我们调查，请您保留好您的<strong>行李领取凭证（Bag Tag）、登机牌、行李事故报告以及其他相关旅行文件</strong>。如工作人员需要，也请您配合提供目前所持行李的照片，包括行李牌以及能够识别该行李的外观特征。</p>',
+    '<p>如果您发现自己误拿了其他旅客的行李，或您的行李已经找回，请尽快联系我们的当地工作人员，以便我们安排下一步处理。</p>',
+    '<p>如您授权他人代为处理此行李案件，被授权人需提供您的签字授权书、行李事故报告、您的护照复印件以及被授权人的有效身份证件。</p>',
+    '<p>对于此次情况给您带来的不便，我们再次深表歉意。感谢您的耐心、理解与配合，我们将尽力协助您解决此次行李问题。</p>',
+    '<p>中国东方航空 – 洛杉矶</p>'
+  ].join('') : [
+    '<p>Dear Passenger,</p>',
+    '<p>We are sorry to learn that you may have received or taken baggage that does not belong to you, or that your checked baggage may have been taken by another passenger by mistake.</p>',
+    '<p>Our staff is currently assisting with the investigation and will make every effort to locate the correct baggage and coordinate the exchange as soon as possible.</p>',
+    '<p>Please keep any baggage currently in your possession in a safe place and <strong>do not dispose of, open, or remove any items from the baggage</strong> while the case is being investigated.</p>',
+    '<p>To assist us with the investigation, please retain your <strong>baggage claim tag (Bag Tag), boarding pass, baggage report, and any other relevant travel documents</strong>. If requested, please also provide photographs of the baggage currently in your possession, including the baggage tag and any identifying features.</p>',
+    '<p>If you discover that you have another passenger\'s baggage, or if your baggage has been returned to you, please contact our local office as soon as possible so that we can arrange the next steps.</p>',
+    '<p>If another person will handle this case on your behalf, the authorized representative must present your signed authorization letter, the baggage report, a copy of your passport, and the representative\'s valid identification document.</p>',
+    '<p>We sincerely apologize for the inconvenience caused and appreciate your patience, understanding, and cooperation while we work to resolve this matter.</p>',
+    '<p>China Eastern Airlines – LAX</p>'
+  ].join('');
+  const raw = buildRawHtmlEmail({ to, cc, subject, html });
+  const sent = await gmail.users.messages.send({ userId, requestBody: { raw: base64UrlEncode(raw) } });
+  return { to, cc, subject, id: sent.data.id || '' };
 }
 
 async function getCbsBaggageChartImage(page) {
@@ -4009,6 +4051,7 @@ module.exports = {
   markCbsMissingBagCase,
   acknowledgeCbsMissingBag,
   sendCbsCaseEmail,
+  sendWrongBaggageCaseEmail,
   getCbsBaggageChartImage,
   appendTransit240Record,
   appendCbsScanRecord,
