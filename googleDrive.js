@@ -3853,7 +3853,19 @@ function base64UrlEncode(value) {
 }
 
 function encodeEmailHeader(value) {
-  return String(value || '').replace(/[\r\n]+/g, ' ');
+  const clean = String(value || '').replace(/[\r\n]+/g, ' ');
+  if (/^[\x20-\x7E]*$/.test(clean)) return clean;
+  const chunks = [];
+  let chunk = '';
+  for (const character of clean) {
+    if (chunk && Buffer.byteLength(chunk + character, 'utf8') > 42) {
+      chunks.push(chunk);
+      chunk = '';
+    }
+    chunk += character;
+  }
+  if (chunk) chunks.push(chunk);
+  return chunks.map((part) => `=?UTF-8?B?${Buffer.from(part, 'utf8').toString('base64')}?=`).join(' ');
 }
 
 function cbsBase64Lines(value) {
