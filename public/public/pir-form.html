@@ -196,6 +196,11 @@
         <section id="ahl-fields" class="case-fields is-active">
           <h3><span class="en">AHL information</span><span class="zh">延误或丢失行李信息</span></h3>
           <div class="grid">
+            <div class="bag-identification">
+              <div class="bag-identification-head"><strong><span class="en">Baggage information</span><span class="zh">行李信息</span></strong><p><span class="en">Select each field from the visual IATA guide.</span><span class="zh">请根据IATA图片指南选择每一项。</span></p></div>
+              <div class="bag-selector-grid" id="bag-selector-grid"></div>
+              <button class="add-another-bag" id="add-another-bag" type="button">⊕ <span class="en">Add another bag</span><span class="zh">添加另一个行李</span></button>
+            </div>
             <label class="wide"><span class="en">Baggage description</span><span class="zh">行李描述</span><textarea name="ahlBagDescription" id="ahl-description" placeholder="Color, size, wheels, hard/soft shell..."></textarea></label>
             <label><span class="en">Bag brand tag</span><span class="zh">行李箱品牌牌</span><input name="ahlBagBrandTag" /></label>
             <label><span class="en">Features</span><span class="zh">特征</span><input name="ahlFeatures" placeholder="Sticker, ribbon, lock..." /></label>
