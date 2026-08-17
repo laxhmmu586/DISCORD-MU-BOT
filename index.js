@@ -77,6 +77,7 @@ const {
   acknowledgeCbsMissingBag,
   sendCbsCaseEmail,
   sendWrongBaggageCaseEmail,
+  sendMisconnectionAssistanceEmail,
   getCbsBaggageChartImage,
   appendTransit240Record,
   appendCbsScanRecord,
@@ -1739,8 +1740,8 @@ async function sendContactFormToDiscord(record, attachments) {
   if (!channel?.isTextBased()) throw new Error('Contact form Discord channel was not found or is not text based.');
   const files = buildCbsDiscordAttachmentFiles(attachments);
   const content = record.language === 'en'
-    ? [`<@&${CONTACT_FORM_DISCORD_ROLE_ID}>`, '**Misconnection Passenger Assistance Request**', `Date: ${record.date}`, `Name: ${record.name}`, `Seat number: ${record.seatNumber}`, `Passport number: ${record.ticketNumber}`, `Mobile Number: ${record.phone}`, `Attachments: ${record.attachmentNames || 'None'}`]
-    : [`<@&${CONTACT_FORM_DISCORD_ROLE_ID}>`, '**未能衔接后续航班旅客协助请求**', `日期：${record.date}`, `姓名：${record.name}`, `座位号：${record.seatNumber}`, `护照号：${record.ticketNumber}`, `手机号码：${record.phone}`, `附件：${record.attachmentNames || '无'}`];
+    ? [`<@&${CONTACT_FORM_DISCORD_ROLE_ID}>`, '**Misconnection Passenger Assistance Request**', `Date: ${record.date}`, `Name: ${record.name}`, `Seat number: ${record.seatNumber}`, `Passport number: ${record.ticketNumber}`, `Email: ${record.email}`, `Mobile Number: ${record.phone}`, `Attachments: ${record.attachmentNames || 'None'}`]
+    : [`<@&${CONTACT_FORM_DISCORD_ROLE_ID}>`, '**未能衔接后续航班旅客协助请求**', `日期：${record.date}`, `姓名：${record.name}`, `座位号：${record.seatNumber}`, `护照号：${record.ticketNumber}`, `电子邮箱：${record.email}`, `手机号码：${record.phone}`, `附件：${record.attachmentNames || '无'}`];
   await channel.send({
     content: content.join('\n'),
     files,
@@ -1821,19 +1822,28 @@ app.post('/contact-form-submissions', async (req, res) => {
     const name = sanitizeCbsText(body.name, 160);
     const seatNumber = sanitizeCbsText(body.seatNumber, 20).toUpperCase();
     const ticketNumber = sanitizeCbsText(body.ticketNumber, 40);
+    const email = sanitizeCbsText(body.email, 160).toLowerCase();
     const phone = sanitizeCbsText(body.phone, 80);
     const language = sanitizeCbsText(body.language, 5) === 'en' ? 'en' : 'zh';
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'A valid date is required.' });
-    if (!name || !seatNumber || !ticketNumber || !phone) return res.status(400).json({ error: 'Name, seat number, passport number, and mobile number are required.' });
+    if (!name || !seatNumber || !ticketNumber || !phone || !isValidEmail(email)) return res.status(400).json({ error: 'Name, seat number, passport number, valid email, and mobile number are required.' });
     const attachments = sanitizeContactAttachments(body.attachments);
     if ((Array.isArray(body.attachments) ? body.attachments.length : 0) !== attachments.length) {
       return res.status(400).json({ error: 'Use no more than 10 attachments, no more than 22 MB total, and no file larger than 8 MB.' });
     }
     const record = {
-      submittedAt: new Date().toISOString(), date, name, seatNumber, ticketNumber, phone, language,
+      submittedAt: new Date().toISOString(), date, name, seatNumber, ticketNumber, email, phone, language,
       attachmentNames: attachments.map((attachment) => attachment.filename).join(', ')
     };
     await appendContactFormSubmission(record);
+    let emailResult = null;
+    let emailError = '';
+    try {
+      emailResult = await sendMisconnectionAssistanceEmail({ passengerEmail: record.email, language: record.language });
+    } catch (mailErr) {
+      emailError = cbsEmailErrorMessage(mailErr);
+      console.error('Misconnection passenger email error:', mailErr);
+    }
     let discord = null;
     let discordError = '';
     try {
@@ -1842,7 +1852,7 @@ app.post('/contact-form-submissions', async (req, res) => {
       discordError = discordErr?.message || 'Discord notification failed.';
       console.error('Contact form Discord notification error:', discordErr);
     }
-    return res.status(201).json({ created: true, record, discord, discordError });
+    return res.status(201).json({ created: true, record, email: emailResult, emailError, discord, discordError });
   } catch (err) {
     console.error('Contact form submission error:', err);
     return res.status(500).json({ error: 'The form could not be submitted. Please try again or contact a staff member.' });
