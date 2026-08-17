@@ -182,6 +182,15 @@
           <label class="wide" id="temporary-address-field" hidden><span class="en">Temporary address</span><span class="zh">临时地址</span><textarea name="temporaryAddress"></textarea></label>
         </div>
 
+        <section class="case-fields is-active" id="shared-baggage-fields">
+          <h3><span class="en">Baggage information</span><span class="zh">行李信息</span></h3>
+          <div class="bag-identification">
+            <div class="bag-identification-head"><strong><span class="en">Bag identification</span><span class="zh">行李识别信息</span></strong><p><span class="en">Select each field from the visual IATA guide.</span><span class="zh">请根据IATA图片指南选择每一项。</span></p></div>
+            <div class="bag-selector-grid" id="bag-selector-grid"></div>
+            <button class="add-another-bag" id="add-another-bag" type="button">⊕ <span class="en">Add another bag</span><span class="zh">添加另一个行李</span></button>
+          </div>
+        </section>
+
         <section id="ahl-fields" class="case-fields is-active">
           <h3><span class="en">AHL information</span><span class="zh">延误或丢失行李信息</span></h3>
           <div class="grid">
@@ -438,7 +447,7 @@
     }
 
     async function parseJson(res) { const text = await res.text(); try { return JSON.parse(text); } catch { throw new Error(`API returned non-JSON (${res.status}). Please check API base: ${apiBase}`); } }
-    function setTypeFields() { const isAhl = typeSelect.value === 'AHL'; ahlFields.classList.toggle('is-active', isAhl); dprFields.classList.toggle('is-active', !isAhl); standaloneBagTags.hidden = isAhl; standaloneBagTags.querySelectorAll('input,button').forEach((control) => { control.disabled = isAhl; }); bagSelectorGrid.querySelectorAll('input,button').forEach((control) => { control.disabled = !isAhl; }); ahlDescriptionInput.required = isAhl; thanks.classList.remove('is-active'); }
+    function setTypeFields() { const isAhl = typeSelect.value === 'AHL'; ahlFields.classList.toggle('is-active', isAhl); dprFields.classList.toggle('is-active', !isAhl); standaloneBagTags.hidden = true; standaloneBagTags.querySelectorAll('input,button').forEach((control) => { control.disabled = true; }); bagSelectorGrid.querySelectorAll('input,button').forEach((control) => { control.disabled = false; }); ahlDescriptionInput.required = isAhl; thanks.classList.remove('is-active'); }
     function setAddressFields() { const show = addressAvailable.value === 'Yes'; validUntilField.hidden = !show; temporaryAddressField.hidden = !show; if (!show) { validUntilField.querySelector('input').value = ''; temporaryAddressField.querySelector('textarea').value = ''; } }
     typeSelect.addEventListener('change', setTypeFields);
     addressAvailable.addEventListener('change', setAddressFields);
@@ -691,7 +700,7 @@
       formStatus.className = 'status';
       formStatus.textContent = document.documentElement.lang === 'en' ? 'Submitting...' : '提交中...';
       if (!signatureDirty) { formStatus.className = 'status err'; formStatus.textContent = document.documentElement.lang === 'en' ? 'Passenger signature is required.' : '请旅客签字。'; return; }
-      if (typeSelect.value === 'AHL' && Array.from(bagSelectorGrid.querySelectorAll('.bag-selector')).some((bag) => !bag.querySelector('[data-bag-color]').value || !bag.querySelector('[data-bag-type]').value)) { formStatus.className = 'status err'; formStatus.textContent = document.documentElement.lang === 'en' ? 'Please select a color and type for every bag.' : '请为每件行李选择颜色和种类。'; return; }
+      if (Array.from(bagSelectorGrid.querySelectorAll('.bag-selector')).some((bag) => !bag.querySelector('[data-bag-color]').value || !bag.querySelector('[data-bag-type]').value)) { formStatus.className = 'status err'; formStatus.textContent = document.documentElement.lang === 'en' ? 'Please select a color and type for every bag.' : '请为每件行李选择颜色和种类。'; return; }
       const payload = Object.fromEntries(new FormData(form).entries());
       ['passportAttachment', 'boardingPassAttachment', 'bagTagAttachment', 'otherAttachment'].forEach((key) => delete payload[key]);
       payload.flightRows = [1, 2, 3].map((index) => ({
@@ -703,8 +712,13 @@
       payload.bagTags = collectBagTags();
       payload.bagTag = payload.bagTags.join(' / ');
       const bagIdentifications = Array.from(bagSelectorGrid.querySelectorAll('.bag-selector')).map((bag, index) => ({ number:index + 1, tag:bag.querySelector('[data-bag-tag]').value, color:bag.querySelector('[data-bag-color]').value, type:bag.querySelector('[data-bag-type]').value, descriptors:bag.querySelector('[data-bag-descriptors]').value }));
-      payload.ahlBagType = bagIdentifications.map((bag) => `Bag ${bag.number}: ${bag.type || '-'}`).join(' / ');
-      payload.ahlBagDescription = [`IATA identification: ${bagIdentifications.map((bag) => `Bag ${bag.number} Tag ${bag.tag}, ${bag.color}-${bag.type}, elements ${bag.descriptors || '-'}`).join(' / ')}`, payload.ahlBagDescription].filter(Boolean).join(' | ');
+      const iataIdentification = bagIdentifications.map((bag) => `Bag ${bag.number} Tag ${bag.tag}, ${bag.color}-${bag.type}, elements ${bag.descriptors || '-'}`).join(' / ');
+      if (typeSelect.value === 'AHL') {
+        payload.ahlBagType = bagIdentifications.map((bag) => `Bag ${bag.number}: ${bag.type || '-'}`).join(' / ');
+        payload.ahlBagDescription = [`IATA identification: ${iataIdentification}`, payload.ahlBagDescription].filter(Boolean).join(' | ');
+      } else {
+        payload.dprBagInfo = [`IATA identification: ${iataIdentification}`, payload.dprBagInfo].filter(Boolean).join(' | ');
+      }
       payload.contentsRows = collectContentsRows();
       payload.language = document.documentElement.lang;
       payload.passengerSignature = signatureDirty ? signaturePad.toDataURL('image/jpeg', 0.75) : '';
