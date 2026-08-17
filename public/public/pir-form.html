@@ -173,9 +173,9 @@
                   </div>
                 </div>
               </div>
-              <input name="caseType" id="case-type" type="hidden" value="AHL" />
             </div>
           </div>
+          <input name="caseType" id="case-type" type="hidden" value="AHL" />
           <label class="wide"><span class="en">Address</span><span class="zh">住址</span><textarea name="permanentAddress" required></textarea></label>
           <label><span class="en">Temporary address available?</span><span class="zh">是否有临时地址？</span><select name="addressAvailable" id="address-available"><option value="No">No</option><option value="Yes">Yes</option></select></label>
           <label id="valid-until-field" hidden><span class="en">Temporary address valid until</span><span class="zh">临时地址有效期至</span><input name="temporaryAddressValidUntil" type="date" /></label>
@@ -458,7 +458,7 @@
     }
 
     async function parseJson(res) { const text = await res.text(); try { return JSON.parse(text); } catch { throw new Error(`API returned non-JSON (${res.status}). Please check API base: ${apiBase}`); } }
-    function setTypeFields() { const isAhl = typeSelect.value === 'AHL'; ahlFields.classList.toggle('is-active', isAhl); dprFields.classList.toggle('is-active', !isAhl); standaloneBagTags.hidden = true; standaloneBagTags.querySelectorAll('input,button').forEach((control) => { control.disabled = true; }); bagSelectorGrid.querySelectorAll('input,button').forEach((control) => { control.disabled = false; }); ahlDescriptionInput.required = isAhl; thanks.classList.remove('is-active'); }
+    function setTypeFields() { const isAhl = typeSelect.value === 'AHL'; ahlFields.classList.toggle('is-active', isAhl); dprFields.classList.toggle('is-active', !isAhl); standaloneBagTags.hidden = true; standaloneBagTags.querySelectorAll('input,button').forEach((control) => { control.disabled = true; }); typeSelect.disabled = false; bagSelectorGrid.querySelectorAll('input,button').forEach((control) => { control.disabled = false; }); ahlDescriptionInput.required = isAhl; thanks.classList.remove('is-active'); }
     function setAddressFields() { const show = addressAvailable.value === 'Yes'; validUntilField.hidden = !show; temporaryAddressField.hidden = !show; if (!show) { validUntilField.querySelector('input').value = ''; temporaryAddressField.querySelector('textarea').value = ''; } }
     typeSelect.addEventListener('change', setTypeFields);
     addressAvailable.addEventListener('change', setAddressFields);
@@ -713,6 +713,7 @@
       if (!signatureDirty) { formStatus.className = 'status err'; formStatus.textContent = document.documentElement.lang === 'en' ? 'Passenger signature is required.' : '请旅客签字。'; return; }
       if (Array.from(bagSelectorGrid.querySelectorAll('.bag-selector')).some((bag) => !bag.querySelector('[data-bag-color]').value || !bag.querySelector('[data-bag-type]').value)) { formStatus.className = 'status err'; formStatus.textContent = document.documentElement.lang === 'en' ? 'Please select a color and type for every bag.' : '请为每件行李选择颜色和种类。'; return; }
       const payload = Object.fromEntries(new FormData(form).entries());
+      payload.caseType = typeSelect.value;
       ['passportAttachment', 'boardingPassAttachment', 'bagTagAttachment', 'otherAttachment'].forEach((key) => delete payload[key]);
       payload.flightRows = [1, 2, 3].map((index) => ({
         flightNo: payload[`flightNo${index}`],
@@ -745,7 +746,7 @@
         thanks.querySelectorAll('[data-thanks-message]').forEach((item) => { item.hidden = item.dataset.thanksMessage !== data.record.caseType; });
         thanks.classList.add('is-active');
         thanks.scrollIntoView({ behavior:'smooth', block:'center' });
-        form.reset(); clearAttachmentPreviews(); sketchDirty = false; drawBagBase(); clearSignature(); contentsList.innerHTML = ''; addContentRow(); issueDateInput.valueAsDate = new Date(); setTypeFields(); setAddressFields();
+        form.reset(); if (requestedType === 'AHL' || requestedType === 'DPR') typeSelect.value = requestedType; clearAttachmentPreviews(); sketchDirty = false; drawBagBase(); clearSignature(); contentsList.innerHTML = ''; addContentRow(); issueDateInput.valueAsDate = new Date(); setTypeFields(); setAddressFields();
       } catch (error) {
         formStatus.className = 'status err';
         const failedFetch = /failed to fetch/i.test(error.message || '');
@@ -754,7 +755,7 @@
           : error.message;
       }
     });
-    form.addEventListener('reset', () => setTimeout(() => { clearAttachmentPreviews(); sketchDirty = false; drawBagBase(); clearSignature(); contentsList.innerHTML = ''; addContentRow(); resetBagCards(); issueDateInput.valueAsDate = new Date(); setTypeFields(); setAddressFields(); }, 0));
+    form.addEventListener('reset', () => setTimeout(() => { if (requestedType === 'AHL' || requestedType === 'DPR') typeSelect.value = requestedType; clearAttachmentPreviews(); sketchDirty = false; drawBagBase(); clearSignature(); contentsList.innerHTML = ''; addContentRow(); resetBagCards(); issueDateInput.valueAsDate = new Date(); setTypeFields(); setAddressFields(); }, 0));
     addContentRow();
     issueDateInput.valueAsDate = new Date();
     setLanguage('en');
