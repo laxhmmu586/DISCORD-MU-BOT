@@ -1594,6 +1594,18 @@ function worldTracerUpdateEmail(record, fileNumber) {
   };
 }
 
+function requestedBagsUpdateEmail(record, fileNumber) {
+  const reference = String(fileNumber || '').replace(/[&<>"']/g, (character) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character]));
+  if (record.language === 'zh') return {
+    subject: `行李案件更新通知 – WorldTracer 案件编号：${fileNumber}`,
+    html: `<p>尊敬的旅客：</p><p>您好！</p><p>我们很高兴地通知您，您的行李已找到，目前正在安排转运中。</p><p><strong>WorldTracer 案件编号：${reference}</strong></p><p>我们将持续跟进行李的转运情况。如有下一步进展，包括行李抵达或后续领取/配送安排，我们会尽快与您联系并向您提供最新信息。</p><p>如您有任何问题或需要进一步协助，请直接回复此邮件与我们联系。</p><p>感谢您的耐心与理解。</p><p>此致<br>中国东方航空</p>`
+  };
+  return {
+    subject: `Baggage Case Update – WorldTracer Reference: ${fileNumber}`,
+    html: `<p>Dear Passenger,</p><p>We are pleased to inform you that your baggage has been located and is currently being arranged for transfer.</p><p><strong>WorldTracer Reference Number: ${reference}</strong></p><p>We will continue to monitor the transfer status of your baggage. Once there are any further updates, including its arrival or pickup/delivery arrangements, we will contact you as soon as possible and provide you with the latest information.</p><p>If you have any questions or need further assistance, please feel free to reply directly to this email.</p><p>Thank you for your patience and understanding.</p><p>Sincerely,<br>China Eastern Airlines</p>`
+  };
+}
+
 function buildCbsFlightRoute(body) {
   const rows = Array.isArray(body.flightRows) ? body.flightRows : [];
   const normalizedRows = rows.map((row) => ({
@@ -1883,12 +1895,15 @@ app.get('/miss-connection-report', async (req, res) => {
 
 function buildCbsUpdateFields(update = {}) {
   const type = sanitizeCbsText(update.type, 40).toLowerCase();
-  if (!['worldtracer', 'rush', 'location', 'shipping', 'forward_mu', 'closed', 'reopen'].includes(type)) return null;
+  if (!['worldtracer', 'requested_bags', 'rush', 'location', 'shipping', 'forward_mu', 'closed', 'reopen'].includes(type)) return null;
   const comment = sanitizeCbsText(update.comment, 500);
   if (type === 'worldtracer') {
     const fileNumber = sanitizeCbsText(update.fileNumber || update.worldTracerFileNumber, 120).toUpperCase();
     if (!fileNumber) return null;
     return { status: 'WorldTracer', updateNote: `WORLDTRACER | File number: ${fileNumber}`, updateEvent: { key: 'worldtracer', title: 'Update WorldTracer', fields: [['File Number', fileNumber]] } };
+  }
+  if (type === 'requested_bags') {
+    return { status: 'Requested Bags', updateNote: 'REQUESTED BAGS', updateEvent: { key: 'requested_bags', title: 'Requested Bags', fields: [] } };
   }
   if (type === 'rush') {
     const rushTagNumber = sanitizeCbsText(update.rushTagNumber, 80).toUpperCase();
@@ -2495,7 +2510,7 @@ app.post('/cbs-cases', async (req, res) => {
 app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
   try {
     const updateFields = buildCbsUpdateFields(req.body || {});
-    if (!updateFields) return res.status(400).json({ error: 'Valid WORLDTRACER, RUSH, BAG LOCATION UPDATE, SHIPPING, FORWARD TO MU, CASE CLOSE, or REOPEN details are required' });
+    if (!updateFields) return res.status(400).json({ error: 'Valid WORLDTRACER, REQUESTED BAGS, RUSH, BAG LOCATION UPDATE, SHIPPING, FORWARD TO MU, CASE CLOSE, or REOPEN details are required' });
     const result = await updateCbsCase(req.params.rowNumber, updateFields);
     if (result.notFound) return res.status(404).json({ error: 'Case not found' });
     if (result.invalidCaseType) return res.status(400).json({ error: 'FORWARD TO MU is only available for DPR cases' });
@@ -2513,6 +2528,22 @@ app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
       } catch (mailErr) {
         result.emailError = cbsEmailErrorMessage(mailErr);
         console.error('CBS WorldTracer update email error:', mailErr);
+      }
+    }
+    if (updateFields.updateEvent?.key === 'requested_bags') {
+      const record = result.record;
+      const fileNumber = record.worldTracerFileNumber || '';
+      const message = requestedBagsUpdateEmail(record, fileNumber);
+      try {
+        result.email = await sendCbsCaseEmail({
+          passengerEmail: record.email,
+          subject: message.subject,
+          html: message.html,
+          ccOperations: false
+        });
+      } catch (mailErr) {
+        result.emailError = cbsEmailErrorMessage(mailErr);
+        console.error('CBS requested bags update email error:', mailErr);
       }
     }
     return res.json(result);

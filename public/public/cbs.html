@@ -455,6 +455,7 @@
       { key:'create', text:'Create' },
       { key:'update', text:'Update' },
       { key:'worldtracer', text:'WorldTracer' },
+      { key:'requested_bags', text:'Requested Bags' },
       { key:'rush', text:'Rush' },
       { key:'location', text:'Location' },
       { key:'shipping', text:'Shipping' },
@@ -519,6 +520,7 @@
       if (/location/.test(text)) return 'location';
       if (/rush/.test(text)) return 'rush';
       if (/world\s*tracer|worldtracer/.test(text)) return 'worldtracer';
+      if (/requested\s*bags?/.test(text)) return 'requested_bags';
       if (/update/.test(text)) return 'update';
       return 'create';
     }
@@ -652,7 +654,7 @@
       const requiredPassengerFields = [
         [label('Passenger Name', '旅客姓名'), row.passengerName], [label('Email', '邮箱'), row.email],
         [label('Phone', '电话'), row.phoneNumber || row.phone], [label('Ticket Number', '机票号码'), row.ticketNumber],
-        [label('Flight Route', '行李航程'), row.flightRoute], [label('Bag Tag', '行李牌'), row.bagTag],
+        [label('Flight Route', '行李航程'), row.flightRoute],
         [label('Permanent Address', '住址'), row.permanentAddress]
       ];
       const sharedBaggageFields = [[label('Case Type', '类型'), inferCaseType(row)], [label('Bag Tag', '行李牌'), row.bagTag]];
@@ -671,7 +673,7 @@
     }
     function updateFormHtml(row, mode = 'worldtracer') {
       if (!row.rowNumber) return `<p class="status err">${label('A saved row is required before this case can be updated.', '案件保存后才能更新。')}</p>`;
-      const active = ['worldtracer', 'rush', 'location', 'shipping', 'closed'].includes(mode) ? mode : 'worldtracer';
+      const active = ['worldtracer', 'requested_bags', 'rush', 'location', 'shipping', 'closed'].includes(mode) ? mode : 'worldtracer';
       const input = (title, name, attrs = 'required') => `<label><span>${escapeHtml(title)}</span><input name="${escapeHtml(name)}" ${attrs} /></label>`;
       const fields = active === 'worldtracer'
         ? input('File number', 'fileNumber')
@@ -767,6 +769,7 @@
     function inlineUpdateFieldsHtml(key) {
       const input = (placeholder, name, required = true) => `<input name="${escapeHtml(name)}" placeholder="${escapeHtml(placeholder)}" ${required ? 'required' : ''} />`;
       if (key === 'worldtracer') return input('File number', 'fileNumber');
+      if (key === 'requested_bags') return '';
       if (key === 'rush') return [input('Rush tag number', 'rushTagNumber'), input('Rush to where?', 'rushToWhere'), input('AKE number?', 'akeNumber'), input('World Tracer file # (optional)', 'worldTracerFileNumber', false), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
       if (key === 'location') return [input('Bag location', 'location'), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
       if (key === 'shipping') return [input('Tracking number', 'trackingNumber'), input('Shipping to where?', 'shippingTo'), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');

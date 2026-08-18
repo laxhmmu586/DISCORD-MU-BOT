@@ -11,3 +11,10 @@ test('CBS updates persist their note, timestamp, and WorldTracer file number', (
   assert.match(drive, /'WorldTracer File Number'/);
   assert.match(drive, /A\$\{rowIndex \+ 1\}:AH\$\{rowIndex \+ 1\}/);
 });
+
+test('CBS reads required passenger details from their fixed sheet columns', () => {
+  assert.match(drive, /row\.passengerName = values\[2\]/);
+  assert.match(drive, /row\.ticketNumber = values\[5\]/);
+  assert.match(drive, /row\.flightRoute = values\[7\]/);
+  assert.match(drive, /row\.permanentAddress = values\[9\]/);
+});

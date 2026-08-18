@@ -3070,7 +3070,7 @@ async function getCbsSheetRows(options = {}) {
   const title = await getCbsSheetTitle();
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A:AG`
+    range: `${escapeSheetTitle(title)}!A:AH`
   });
   const rows = res.data.values || [];
   cbsSheetCache = { loadedAt: Date.now(), rows };
@@ -3143,6 +3143,13 @@ function cbsRecordFromSheet(values, rowNumber) {
     const key = header.toLowerCase().replace(/[^a-z0-9]+(.)/g, (_, chr) => chr.toUpperCase()).replace(/[^a-z0-9]/g, '');
     row[key] = values[index] || '';
   });
+  // These operational fields have fixed columns in the CBS sheet. Read them
+  // directly so a stale or manually edited header row cannot hide passenger
+  // details that are present in columns C, F, H, and J.
+  row.passengerName = values[2] || row.passengerName || '';
+  row.ticketNumber = values[5] || row.ticketNumber || '';
+  row.flightRoute = values[7] || row.flightRoute || '';
+  row.permanentAddress = values[9] || row.permanentAddress || '';
   row.caseType = row.caseType || values.find((value) => /^(AHL|DPR)$/i.test(String(value || '').trim())) || '';
   row.bagTag = row.bagTag || values[8] || extractCbsBagTagFromUpdateNote(row.updateNote) || values.find((value) => /^[A-Z]{2}\d{6,}(\s*\/\s*[A-Z]{2}\d{6,})*$/i.test(String(value || '').trim())) || '';
   row.submittedAt = row.submittedAt || row.submitDate || values[26] || '';
