@@ -1893,7 +1893,7 @@ function buildCbsUpdateFields(update = {}) {
   if (type === 'forward_mu') {
     const forwardDate = sanitizeCbsText(update.forwardDate, 40);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(forwardDate)) return null;
-    return { status: 'Forward to MU', updateNote: `FORWARD TO MU | Date: ${forwardDate}`, updateEvent: { key: 'forward_mu', title: 'Forward to MU', fields: [['Date', forwardDate]] } };
+    return { status: 'Closed - Forward to MU', updateNote: `FORWARD TO MU | Date: ${forwardDate}`, updateEvent: { key: 'forward_mu', title: 'Forward to MU', fields: [['Date', forwardDate]] } };
   }
   if (type === 'closed') {
     return { status: 'Closed', updateNote: `CASE CLOSE${comment ? ` | Comment: ${comment}` : ''}`, updateEvent: { key: 'closed', title: 'Case Close', fields: comment ? [['Comment', comment]] : [] } };
