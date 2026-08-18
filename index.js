@@ -1917,7 +1917,7 @@ app.get('/miss-connection-report', async (req, res) => {
 
 function buildCbsUpdateFields(update = {}) {
   const type = sanitizeCbsText(update.type, 40).toLowerCase();
-  if (!['worldtracer', 'requested_bags', 'rush', 'location', 'shipping', 'forward_mu', 'closed', 'reopen'].includes(type)) return null;
+  if (!['worldtracer', 'requested_bags', 'rush', 'location', 'shipping', 'closed', 'reopen'].includes(type)) return null;
   const comment = sanitizeCbsText(update.comment, 500);
   if (type === 'worldtracer') {
     const fileNumber = sanitizeCbsText(update.fileNumber || update.worldTracerFileNumber, 120).toUpperCase();
@@ -2532,10 +2532,9 @@ app.post('/cbs-cases', async (req, res) => {
 app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
   try {
     const updateFields = buildCbsUpdateFields(req.body || {});
-    if (!updateFields) return res.status(400).json({ error: 'Valid WORLDTRACER, REQUESTED BAGS, RUSH, BAG LOCATION UPDATE, SHIPPING, FORWARD TO MU, CASE CLOSE, or REOPEN details are required' });
+    if (!updateFields) return res.status(400).json({ error: 'Valid WORLDTRACER, REQUESTED BAGS, RUSH, BAG LOCATION UPDATE, SHIPPING, CASE CLOSE, or REOPEN details are required' });
     const result = await updateCbsCase(req.params.rowNumber, updateFields);
     if (result.notFound) return res.status(404).json({ error: 'Case not found' });
-    if (result.invalidCaseType) return res.status(400).json({ error: 'FORWARD TO MU is only available for DPR cases' });
     if (updateFields.updateEvent?.key === 'worldtracer') {
       const fileNumber = updateFields.updateEvent.fields[0][1];
       const record = { ...result.record, worldTracerFileNumber: fileNumber };

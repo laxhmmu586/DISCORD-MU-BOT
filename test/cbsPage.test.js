@@ -19,6 +19,10 @@ test('CBS tracking offers the requested bags stage', () => {
   assert.match(page, /if \(key === 'requested_bags'\) return ''/);
 });
 
+test('CBS tracking no longer offers Forward to MU', () => {
+  assert.doesNotMatch(page, /forward_mu|Forward to MU/);
+});
+
 test('CBS passenger detail view can recover values from the original form snapshot', () => {
   assert.match(page, /JSON\.parse\(row\.originalFormData \|\| '\{\}'\)/);
 });

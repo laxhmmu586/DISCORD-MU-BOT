@@ -18,3 +18,9 @@ test('CBS reads required passenger details from their fixed sheet columns', () =
   assert.match(drive, /row\.flightRoute = values\[7\]/);
   assert.match(drive, /row\.permanentAddress = values\[9\]/);
 });
+
+test('DPR WorldTracer updates close the case automatically', () => {
+  assert.match(drive, /closesDprWorldTracer = update\.updateEvent\?\.key === 'worldtracer'/);
+  assert.match(drive, /closesDprWorldTracer \? 'Closed - WorldTracer'/);
+  assert.doesNotMatch(drive, /update\.updateEvent\?\.key === 'forward_mu'/);
+});

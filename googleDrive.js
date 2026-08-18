@@ -3592,9 +3592,10 @@ async function updateCbsCase(rowNumber, update = {}) {
   if (update.updateEvent?.key === 'forward_mu' && String(current.caseType || '').toUpperCase() !== 'DPR') return { invalidCaseType: true };
   const now = new Date().toISOString();
   const incomingNote = sanitizeSheetText(update.updateNote, 1000);
+  const closesDprWorldTracer = update.updateEvent?.key === 'worldtracer' && String(current.caseType || '').toUpperCase() === 'DPR';
   const next = {
     ...current,
-    status: sanitizeSheetText(update.status, 80) || current.status || 'Open',
+    status: closesDprWorldTracer ? 'Closed - WorldTracer' : (sanitizeSheetText(update.status, 80) || current.status || 'Open'),
     updatedAt: now,
     updateNote: incomingNote || current.updateNote || ''
   };
