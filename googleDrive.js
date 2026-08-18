@@ -109,7 +109,8 @@ const CBS_HEADERS = [
   'Update Note',
   'Destination On Bags',
   'Departure Origin',
-  'Update History'
+  'Update History',
+  'Original Form Data'
 ];
 let cbsSheetTitle = '';
 let cbsWorldTracerSheetTitle = '';
@@ -3090,7 +3091,7 @@ async function ensureCbsSheetHeaders(rows) {
   const title = await getCbsSheetTitle();
   await sheets.spreadsheets.values.update({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A1:AF1`,
+    range: `${escapeSheetTitle(title)}!A1:AG1`,
     valueInputOption: 'RAW',
     requestBody: { values: [CBS_HEADERS] }
   });
@@ -3145,8 +3146,25 @@ function cbsRecordFromSheet(values, rowNumber) {
   row.bagTag = row.bagTag || values[8] || extractCbsBagTagFromUpdateNote(row.updateNote) || values.find((value) => /^[A-Z]{2}\d{6,}(\s*\/\s*[A-Z]{2}\d{6,})*$/i.test(String(value || '').trim())) || '';
   row.submittedAt = row.submittedAt || row.submitDate || values[26] || '';
   row.updateHistory = row.updateHistory || values[31] || '';
+  try {
+    const original = JSON.parse(row.originalFormData || '{}');
+    Object.entries(original).forEach(([key, value]) => {
+      if (!row[key] && value != null && String(value).trim()) row[key] = value;
+    });
+  } catch {}
   row.rowNumber = rowNumber;
   return row;
+}
+
+function cbsOriginalFormData(record = {}) {
+  const keys = [
+    'caseType', 'passengerName', 'email', 'phone', 'ticketNumber', 'classOfTravel', 'flightRoute', 'bagTag',
+    'permanentAddress', 'temporaryAddress', 'temporaryAddressValidUntil', 'addressAvailable', 'ahlBagDescription',
+    'ahlBagBrandTag', 'ahlBagType', 'ahlFeatures', 'ahlOtherFeatures', 'ahlContents', 'dprDamageLevel', 'dprBagInfo',
+    'dprBagType', 'dprInnerDamage', 'contentsDetails', 'issueDate', 'passengerSignature', 'submittedAt',
+    'destinationOnBags', 'departureOrigin'
+  ];
+  return JSON.stringify(Object.fromEntries(keys.filter((key) => record[key] != null && String(record[key]).trim()).map((key) => [key, record[key]])));
 }
 
 function cbsValuesFromRecord(record) {
@@ -3182,7 +3200,8 @@ function cbsValuesFromRecord(record) {
     record.updateNote,
     record.destinationOnBags,
     record.departureOrigin,
-    record.updateHistory || ''
+    record.updateHistory || '',
+    record.originalFormData || cbsOriginalFormData(record)
   ];
 }
 
@@ -3192,7 +3211,7 @@ async function appendCbsCase(record) {
   await ensureCbsSheetHeaders(rows);
   await sheets.spreadsheets.values.append({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A:AF`,
+    range: `${escapeSheetTitle(title)}!A:AG`,
     valueInputOption: 'RAW',
     insertDataOption: 'INSERT_ROWS',
     requestBody: { values: [cbsValuesFromRecord(record)] }
@@ -3581,7 +3600,7 @@ async function updateCbsCase(rowNumber, update = {}) {
   const title = await getCbsSheetTitle();
   await sheets.spreadsheets.values.update({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A${rowIndex + 1}:AF${rowIndex + 1}`,
+    range: `${escapeSheetTitle(title)}!A${rowIndex + 1}:AG${rowIndex + 1}`,
     valueInputOption: 'RAW',
     requestBody: { values: [cbsValuesFromRecord(next)] }
   });
