@@ -1413,6 +1413,7 @@ function createPirPdf(record) {
   content.push(pdfText(`CASE TYPE: ${record.caseType || ''}`, 410, 710, 10));
   content.push(pdfText('FOR INQUIRIES PLEASE EMAIL:', 390, 696, 9));
   content.push(pdfText('LAXHMMU@GMAIL.COM', 390, 682, 9));
+  if (record.worldTracerFileNumber) content.push(pdfText(`WORLDTRACER: ${record.worldTracerFileNumber}`, 390, 664, 10));
   const section = (title, y) => {
     content.push('0.78 0.78 0.78 rg');
     content.push(`44 ${y} 524 18 re f`);
@@ -1581,6 +1582,30 @@ function buildCbsEmailHtml(record) {
   return cbsPassengerMessageHtml(record.language, record.caseType);
 }
 
+function worldTracerUpdateEmail(record, fileNumber) {
+  const reference = String(fileNumber || '').replace(/[&<>"']/g, (character) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character]));
+  if (record.language === 'zh') return {
+    subject: `行李案件更新通知 – WorldTracer 案件编号：${fileNumber}`,
+    html: `<p>尊敬的旅客：</p><p>您好！</p><p>您的行李案件现已更新至 WorldTracer 全球行李查询系统。</p><p><strong>WorldTracer 案件编号：${reference}</strong></p><p>请妥善保存此案件编号，以便后续查询或跟进行李处理进度时使用。</p><p>我们将继续跟进您的行李案件。如有进一步信息或进展，我们会及时与您联系。</p><p>感谢您的耐心与理解。</p><p>此致<br>中国东方航空</p>`
+  };
+  return {
+    subject: `Baggage Case Update – WorldTracer Reference: ${fileNumber}`,
+    html: `<p>Dear Passenger,</p><p>We would like to inform you that your baggage case has been updated in the WorldTracer baggage tracing system.</p><p><strong>WorldTracer Reference Number: ${reference}</strong></p><p>Please keep this reference number for your records, as it may be required for future inquiries or updates regarding your baggage case.</p><p>We will continue to follow up on your case and provide further updates when additional information becomes available.</p><p>Thank you for your patience and understanding.</p><p>Sincerely,<br>China Eastern Airlines</p>`
+  };
+}
+
+function requestedBagsUpdateEmail(record, fileNumber) {
+  const reference = String(fileNumber || '').replace(/[&<>"']/g, (character) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character]));
+  if (record.language === 'zh') return {
+    subject: `行李案件更新通知 – WorldTracer 案件编号：${fileNumber}`,
+    html: `<p>尊敬的旅客：</p><p>您好！</p><p>我们很高兴地通知您，您的行李已找到，目前正在安排转运中。</p><p><strong>WorldTracer 案件编号：${reference}</strong></p><p>我们将持续跟进行李的转运情况。如有下一步进展，包括行李抵达或后续领取/配送安排，我们会尽快与您联系并向您提供最新信息。</p><p>如您有任何问题或需要进一步协助，请直接回复此邮件与我们联系。</p><p>感谢您的耐心与理解。</p><p>此致<br>中国东方航空</p>`
+  };
+  return {
+    subject: `Baggage Case Update – WorldTracer Reference: ${fileNumber}`,
+    html: `<p>Dear Passenger,</p><p>We are pleased to inform you that your baggage has been located and is currently being arranged for transfer.</p><p><strong>WorldTracer Reference Number: ${reference}</strong></p><p>We will continue to monitor the transfer status of your baggage. Once there are any further updates, including its arrival or pickup/delivery arrangements, we will contact you as soon as possible and provide you with the latest information.</p><p>If you have any questions or need further assistance, please feel free to reply directly to this email.</p><p>Thank you for your patience and understanding.</p><p>Sincerely,<br>China Eastern Airlines</p>`
+  };
+}
+
 function buildCbsFlightRoute(body) {
   const rows = Array.isArray(body.flightRows) ? body.flightRows : [];
   const normalizedRows = rows.map((row) => ({
@@ -1714,6 +1739,28 @@ async function sendCbsAttachmentsToDiscord(record, attachments = [], pdfBuffer =
     files
   });
   return { sent: true, channelId, fileCount: files.length };
+}
+
+async function sendDprWorldTracerUpdateToDiscord(record, fileNumber) {
+  if (String(record?.caseType || '').trim().toUpperCase() !== 'DPR') {
+    return { sent: false, reason: 'Discord WorldTracer updates are only sent for DPR cases.' };
+  }
+  const channel = await client.channels.fetch(CBS_DAMAGED_DISCORD_CHANNEL_ID);
+  if (!channel?.isTextBased()) {
+    return { sent: false, reason: 'DPR Discord channel was not found or is not text based.' };
+  }
+  await channel.send({
+    content: [
+      'DPR WorldTracer update',
+      `Passenger Name: ${sanitizeCbsText(record.passengerName, 160) || '—'}`,
+      `Bag Tag: ${sanitizeCbsText(record.bagTag, 160) || '—'}`,
+      `Email: ${sanitizeCbsText(record.email, 160) || '—'}`,
+      `Phone: ${sanitizeCbsText(record.phone, 80) || '—'}`,
+      `WorldTracer File #: ${sanitizeCbsText(fileNumber, 120) || '—'}`
+    ].join('\n'),
+    allowedMentions: { parse: [] }
+  });
+  return { sent: true, channelId: CBS_DAMAGED_DISCORD_CHANNEL_ID };
 }
 
 function sanitizeContactAttachments(value) {
@@ -1870,12 +1917,15 @@ app.get('/miss-connection-report', async (req, res) => {
 
 function buildCbsUpdateFields(update = {}) {
   const type = sanitizeCbsText(update.type, 40).toLowerCase();
-  if (!['worldtracer', 'rush', 'location', 'shipping', 'closed', 'reopen'].includes(type)) return null;
+  if (!['worldtracer', 'requested_bags', 'rush', 'location', 'shipping', 'closed', 'reopen'].includes(type)) return null;
   const comment = sanitizeCbsText(update.comment, 500);
   if (type === 'worldtracer') {
     const fileNumber = sanitizeCbsText(update.fileNumber || update.worldTracerFileNumber, 120).toUpperCase();
     if (!fileNumber) return null;
     return { status: 'WorldTracer', updateNote: `WORLDTRACER | File number: ${fileNumber}`, updateEvent: { key: 'worldtracer', title: 'Update WorldTracer', fields: [['File Number', fileNumber]] } };
+  }
+  if (type === 'requested_bags') {
+    return { status: 'Requested Bags', updateNote: 'REQUESTED BAGS', updateEvent: { key: 'requested_bags', title: 'Requested Bags', fields: [] } };
   }
   if (type === 'rush') {
     const rushTagNumber = sanitizeCbsText(update.rushTagNumber, 80).toUpperCase();
@@ -2477,9 +2527,49 @@ app.post('/cbs-cases', async (req, res) => {
 app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
   try {
     const updateFields = buildCbsUpdateFields(req.body || {});
-    if (!updateFields) return res.status(400).json({ error: 'Valid WORLDTRACER, RUSH, BAG LOCATION UPDATE, SHIPPING, CASE CLOSE, or REOPEN details are required' });
+    if (!updateFields) return res.status(400).json({ error: 'Valid WORLDTRACER, REQUESTED BAGS, RUSH, BAG LOCATION UPDATE, SHIPPING, CASE CLOSE, or REOPEN details are required' });
     const result = await updateCbsCase(req.params.rowNumber, updateFields);
     if (result.notFound) return res.status(404).json({ error: 'Case not found' });
+    if (updateFields.updateEvent?.key === 'worldtracer') {
+      const fileNumber = updateFields.updateEvent.fields[0][1];
+      const record = { ...result.record, worldTracerFileNumber: fileNumber };
+      const message = worldTracerUpdateEmail(record, fileNumber);
+      try {
+        result.email = await sendCbsCaseEmail({
+          passengerEmail: record.email,
+          subject: message.subject,
+          html: message.html,
+          ccOperations: false
+        });
+      } catch (mailErr) {
+        result.emailError = cbsEmailErrorMessage(mailErr);
+        console.error('CBS WorldTracer update email error:', mailErr);
+      }
+      if (String(record.caseType || '').toUpperCase() === 'DPR') {
+        try {
+          result.discord = await sendDprWorldTracerUpdateToDiscord(record, fileNumber);
+        } catch (discordErr) {
+          result.discordError = discordErr?.message || 'DPR WorldTracer Discord notification failed.';
+          console.error('CBS DPR WorldTracer Discord notification error:', discordErr);
+        }
+      }
+    }
+    if (updateFields.updateEvent?.key === 'requested_bags') {
+      const record = result.record;
+      const fileNumber = record.worldTracerFileNumber || '';
+      const message = requestedBagsUpdateEmail(record, fileNumber);
+      try {
+        result.email = await sendCbsCaseEmail({
+          passengerEmail: record.email,
+          subject: message.subject,
+          html: message.html,
+          ccOperations: false
+        });
+      } catch (mailErr) {
+        result.emailError = cbsEmailErrorMessage(mailErr);
+        console.error('CBS requested bags update email error:', mailErr);
+      }
+    }
     return res.json(result);
   } catch (err) {
     console.error('CBS case update error:', err);
