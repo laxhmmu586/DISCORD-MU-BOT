@@ -3589,6 +3589,7 @@ async function updateCbsCase(rowNumber, update = {}) {
   const rowIndex = Number(rowNumber) - 1;
   if (!Number.isInteger(rowIndex) || rowIndex < 1 || !rows[rowIndex]) return { notFound: true };
   const current = cbsRecordFromSheet(rows[rowIndex] || [], rowIndex + 1);
+  if (update.updateEvent?.key === 'forward_mu' && String(current.caseType || '').toUpperCase() !== 'DPR') return { invalidCaseType: true };
   const now = new Date().toISOString();
   const incomingNote = sanitizeSheetText(update.updateNote, 1000);
   const closesDprWorldTracer = update.updateEvent?.key === 'worldtracer' && String(current.caseType || '').toUpperCase() === 'DPR';
