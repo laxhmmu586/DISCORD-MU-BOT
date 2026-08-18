@@ -16,3 +16,7 @@ test('CBS passenger information keeps all operationally required fields visible'
 test('CBS passenger detail view can recover values from the original form snapshot', () => {
   assert.match(page, /JSON\.parse\(row\.originalFormData \|\| '\{\}'\)/);
 });
+
+test('CBS detail view omits the redundant journey and address section', () => {
+  assert.doesNotMatch(page, /<h3>\$\{label\('Journey and address'/);
+});

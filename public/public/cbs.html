@@ -466,7 +466,7 @@
       return (Array.isArray(row?.updateEvents) ? row.updateEvents : []).map((event) => ({
         key: trackingKeyFromText(event.key || event.status || event.title),
         title: event.title || `Update ${event.status || 'Case'}`,
-        at: event.at || event.updatedAt || '',
+        at: event.at || event.updatedAt || row.updatedAt || row.submittedAt || '',
         fields: Array.isArray(event.fields) ? event.fields : [],
         note: event.note || ''
       }));
@@ -483,7 +483,7 @@
         const statusKey = trackingKeyFromText(row?.status);
         if (statusKey !== 'create') {
           const title = TRACKING_STAGES.find((stage) => stage.key === statusKey)?.text || row.status || 'Update';
-          events.push({ key:statusKey, title:`Update ${title}`, at:row.updatedAt || '', fields:[[label('Status', '状态'), row.status]] });
+          events.push({ key:statusKey, title:`Update ${title}`, at:row.updatedAt || row.submittedAt || '', fields:[[label('Status', '状态'), row.status]] });
         }
         return events;
       }
@@ -491,7 +491,7 @@
       const parts = (timestampedParts || note.split(/\s*\|\|\s*|\n+/)).map((item) => item.trim()).filter(Boolean);
       parts.forEach((part) => {
         const match = part.match(/^\[([^\]]+)\]\s*(.*)$/);
-        const at = match ? match[1] : (row.updatedAt || '');
+        const at = match ? match[1] : (row.updatedAt || row.submittedAt || '');
         const body = match ? match[2] : part;
         if (/^case created$/i.test(body) || /^Created from Missing Bag Report row\b/i.test(body)) return;
         events.push(updateEventFromText(body, at));
@@ -655,13 +655,6 @@
         [label('Flight Route', '行李航程'), row.flightRoute], [label('Bag Tag', '行李牌'), row.bagTag],
         [label('Permanent Address', '住址'), row.permanentAddress]
       ];
-      const journeyFields = [
-        [label('Class Of Travel', '舱位等级'), row.classOfTravel], [label('Origin', '始发地'), row.departureOrigin],
-        [label('Destination on Bags', '行李牌目的地'), row.destinationOnBags],
-        [label('Temporary Address Available', '是否有临时地址'), row.addressAvailable],
-        [label('Temporary Address Valid Until', '临时地址有效期至'), row.temporaryAddressValidUntil],
-        [label('Temporary Address', '临时地址'), row.temporaryAddress]
-      ];
       const sharedBaggageFields = [[label('Case Type', '类型'), inferCaseType(row)], [label('Bag Tag', '行李牌'), row.bagTag]];
       const baggageFields = inferCaseType(row) === 'DPR' ? sharedBaggageFields.concat([
         [label('DPR Damage Level', 'DPR破损程度'), row.dprDamageLevel], [label('DPR Bag Info', 'DPR行李信息'), row.dprBagInfo],
@@ -674,7 +667,7 @@
         [label('Contents Details', '包内物品详情'), row.contentsDetails]
       ]);
       const submissionFields = [[label('Issue Date', '填写日期'), row.issueDate], [label('Passenger Signature', '旅客签字'), row.passengerSignature], [label('Submitted At', '提交时间'), row.submittedAt || row.submitDate]];
-      return `<div class="full-file"><section class="full-file-section"><h3>${label('Passenger information', '旅客资料')}</h3>${requiredFieldGrid(requiredPassengerFields)}</section><section class="full-file-section"><h3>${label('Journey and address', '行程及地址')}</h3>${fieldGrid(journeyFields)}</section><section class="full-file-section"><h3>${label('Baggage information', '行李资料')}</h3>${fieldGrid(baggageFields)}</section><section class="full-file-section"><h3>${label('Submission information', '提交资料')}</h3>${fieldGrid(submissionFields)}</section></div>`;
+      return `<div class="full-file"><section class="full-file-section"><h3>${label('Passenger information', '旅客资料')}</h3>${requiredFieldGrid(requiredPassengerFields)}</section><section class="full-file-section"><h3>${label('Baggage information', '行李资料')}</h3>${fieldGrid(baggageFields)}</section><section class="full-file-section"><h3>${label('Submission information', '提交资料')}</h3>${fieldGrid(submissionFields)}</section></div>`;
     }
     function updateFormHtml(row, mode = 'worldtracer') {
       if (!row.rowNumber) return `<p class="status err">${label('A saved row is required before this case can be updated.', '案件保存后才能更新。')}</p>`;

@@ -110,7 +110,8 @@ const CBS_HEADERS = [
   'Destination On Bags',
   'Departure Origin',
   'Update History',
-  'Original Form Data'
+  'Original Form Data',
+  'WorldTracer File Number'
 ];
 let cbsSheetTitle = '';
 let cbsWorldTracerSheetTitle = '';
@@ -3091,7 +3092,7 @@ async function ensureCbsSheetHeaders(rows) {
   const title = await getCbsSheetTitle();
   await sheets.spreadsheets.values.update({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A1:AG1`,
+    range: `${escapeSheetTitle(title)}!A1:AH1`,
     valueInputOption: 'RAW',
     requestBody: { values: [CBS_HEADERS] }
   });
@@ -3201,7 +3202,8 @@ function cbsValuesFromRecord(record) {
     record.destinationOnBags,
     record.departureOrigin,
     record.updateHistory || '',
-    record.originalFormData || cbsOriginalFormData(record)
+    record.originalFormData || cbsOriginalFormData(record),
+    record.worldTracerFileNumber || ''
   ];
 }
 
@@ -3211,7 +3213,7 @@ async function appendCbsCase(record) {
   await ensureCbsSheetHeaders(rows);
   await sheets.spreadsheets.values.append({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A:AG`,
+    range: `${escapeSheetTitle(title)}!A:AH`,
     valueInputOption: 'RAW',
     insertDataOption: 'INSERT_ROWS',
     requestBody: { values: [cbsValuesFromRecord(record)] }
@@ -3586,8 +3588,10 @@ async function updateCbsCase(rowNumber, update = {}) {
   const next = {
     ...current,
     status: sanitizeSheetText(update.status, 80) || current.status || 'Open',
-    updatedAt: now
+    updatedAt: now,
+    updateNote: incomingNote || current.updateNote || ''
   };
+  if (update.updateEvent?.key === 'worldtracer') next.worldTracerFileNumber = sanitizeSheetText(update.updateEvent.fields?.[0]?.[1], 120).toUpperCase();
   const historyEvent = sanitizeCbsUpdateEvent(update.updateEvent, {
     status: next.status,
     at: now,
@@ -3600,7 +3604,7 @@ async function updateCbsCase(rowNumber, update = {}) {
   const title = await getCbsSheetTitle();
   await sheets.spreadsheets.values.update({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A${rowIndex + 1}:AG${rowIndex + 1}`,
+    range: `${escapeSheetTitle(title)}!A${rowIndex + 1}:AH${rowIndex + 1}`,
     valueInputOption: 'RAW',
     requestBody: { values: [cbsValuesFromRecord(next)] }
   });
