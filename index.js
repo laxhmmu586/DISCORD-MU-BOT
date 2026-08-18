@@ -1871,7 +1871,7 @@ app.get('/miss-connection-report', async (req, res) => {
 
 function buildCbsUpdateFields(update = {}) {
   const type = sanitizeCbsText(update.type, 40).toLowerCase();
-  if (!['worldtracer', 'rush', 'location', 'shipping', 'closed'].includes(type)) return null;
+  if (!['worldtracer', 'rush', 'location', 'shipping', 'closed', 'reopen'].includes(type)) return null;
   const comment = sanitizeCbsText(update.comment, 500);
   if (type === 'worldtracer') {
     const fileNumber = sanitizeCbsText(update.fileNumber || update.worldTracerFileNumber, 120).toUpperCase();
@@ -1893,6 +1893,9 @@ function buildCbsUpdateFields(update = {}) {
   }
   if (type === 'closed') {
     return { status: 'Closed', updateNote: `CASE CLOSE${comment ? ` | Comment: ${comment}` : ''}`, updateEvent: { key: 'closed', title: 'Case Close', fields: comment ? [['Comment', comment]] : [] } };
+  }
+  if (type === 'reopen') {
+    return { status: 'Open', updateNote: `CASE REOPEN${comment ? ` | Comment: ${comment}` : ''}`, updateEvent: { key: 'reopen', title: 'Case Reopened', fields: comment ? [['Comment', comment]] : [] } };
   }
   const trackingNumber = sanitizeCbsText(update.trackingNumber, 160).toUpperCase();
   const shippingTo = sanitizeCbsText(update.shippingTo, 300);
@@ -2220,7 +2223,7 @@ app.post('/wrong-baggage-submissions/:rowNumber/update', async (req, res) => {
   try {
     const type = sanitizeCbsText(req.body?.type, 20).toLowerCase();
     const comment = sanitizeCbsText(req.body?.comment, 1000);
-    if (!['update', 'closed'].includes(type) || (type === 'update' && !comment)) {
+    if (!['update', 'closed', 'reopen'].includes(type) || (type === 'update' && !comment)) {
       return res.status(400).json({ error: 'Enter an update comment or close the case.' });
     }
     const record = await updateWrongBaggageSubmission(req.params.rowNumber, { type, comment });
@@ -2475,7 +2478,7 @@ app.post('/cbs-cases', async (req, res) => {
 app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
   try {
     const updateFields = buildCbsUpdateFields(req.body || {});
-    if (!updateFields) return res.status(400).json({ error: 'Valid WORLDTRACER, RUSH, BAG LOCATION UPDATE, SHIPPING, or CASE CLOSE details are required' });
+    if (!updateFields) return res.status(400).json({ error: 'Valid WORLDTRACER, RUSH, BAG LOCATION UPDATE, SHIPPING, CASE CLOSE, or REOPEN details are required' });
     const result = await updateCbsCase(req.params.rowNumber, updateFields);
     if (result.notFound) return res.status(404).json({ error: 'Case not found' });
     return res.json(result);
