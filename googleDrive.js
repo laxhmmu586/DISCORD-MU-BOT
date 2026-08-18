@@ -3274,14 +3274,16 @@ async function updateWrongBaggageSubmission(rowNumber, update = {}) {
   let history = [];
   try { history = JSON.parse(values[10] || '[]'); } catch { history = []; }
   const now = new Date().toISOString();
-  const close = String(update.type || '').toLowerCase() === 'closed';
+  const type = String(update.type || '').toLowerCase();
+  const close = type === 'closed';
+  const reopen = type === 'reopen';
   const comment = sanitizeSheetText(update.comment, 1000);
-  if (!comment && !close) throw new Error('Update comment is required');
-  const event = { key: close ? 'closed' : 'update', title: close ? 'Case Close' : 'Update', at: now, fields: comment ? [['Comment', comment]] : [] };
+  if (!comment && !close && !reopen) throw new Error('Update comment is required');
+  const event = { key: close ? 'closed' : (reopen ? 'reopen' : 'update'), title: close ? 'Case Close' : (reopen ? 'Case Reopened' : 'Update'), at: now, fields: comment ? [['Comment', comment]] : [] };
   history.push(event);
-  values[1] = close ? 'Closed' : (values[1] || 'Open');
+  values[1] = close ? 'Closed' : (reopen ? 'Open' : (values[1] || 'Open'));
   values[8] = now;
-  values[9] = close ? `CASE CLOSE${comment ? ` | Comment: ${comment}` : ''}` : `UPDATE | Comment: ${comment}`;
+  values[9] = close ? `CASE CLOSE${comment ? ` | Comment: ${comment}` : ''}` : (reopen ? `CASE REOPEN${comment ? ` | Comment: ${comment}` : ''}` : `UPDATE | Comment: ${comment}`);
   values[10] = JSON.stringify(history);
   await sheets.spreadsheets.values.update({ spreadsheetId: CBS_SHEET_ID, range, valueInputOption: 'RAW', requestBody: { values: [values] } });
   return wrongBaggageRecordFromValues(values, row);
