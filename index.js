@@ -2507,7 +2507,8 @@ app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
         result.email = await sendCbsCaseEmail({
           passengerEmail: record.email,
           subject: message.subject,
-          html: message.html
+          html: message.html,
+          ccOperations: false
         });
       } catch (mailErr) {
         result.emailError = cbsEmailErrorMessage(mailErr);

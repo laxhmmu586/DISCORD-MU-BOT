@@ -3983,10 +3983,10 @@ async function sendNextDayInfoEmail({ to = 'laxhmmu@gmail.com', cc = [], subject
   return { to: Array.isArray(to) ? to : [to], cc: Array.isArray(cc) ? cc : [cc].filter(Boolean), id: sent.data.id || '', userId, authMode };
 }
 
-async function sendCbsCaseEmail({ passengerEmail, subject, html, pdfBuffer, filename, attachments = [] }) {
+async function sendCbsCaseEmail({ passengerEmail, subject, html, pdfBuffer, filename, attachments = [], ccOperations = true }) {
   const { gmail, userId } = getNextDayInfoGmailClient();
   const to = String(passengerEmail || '').trim();
-  const cc = to.toLowerCase() === 'laxhmmu@gmail.com' ? [] : ['laxhmmu@gmail.com'];
+  const cc = ccOperations && to.toLowerCase() !== 'laxhmmu@gmail.com' ? ['laxhmmu@gmail.com'] : [];
   const raw = buildRawCbsEmail({ to, cc, subject, html, pdfBuffer, filename, attachments });
   const sent = await gmail.users.messages.send({
     userId,
