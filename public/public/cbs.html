@@ -422,9 +422,21 @@
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || 'On-hand baggage lookup failed');
         renderUnresolvedBaggage(data.rows || []);
+        renderOpenCases();
       } catch (error) {
         unresolvedBaggageOutput.innerHTML = `<p class="status err">${escapeHtml(error.message)}</p>`;
       }
+    }
+    function renderOpenCases() {
+      if (!openCasesOutput) return;
+      const passengerRows = sortedCaseRows(window._cbsRows || []).filter((row) => !isClosedCase(row));
+      const onHandRows = (window._unresolvedBaggageRows || []).filter((row) => (row.history || [row]).some((item) => !item.resolvedAt));
+      const passengerHtml = passengerRows.length ? passengerRows.map((row, index) => {
+        const key = `row-${row.rowNumber || index}`;
+        return `<button class="open-case-item" type="button" data-open-passenger-case="${escapeHtml(key)}"><strong>${escapeHtml(displayBagTag(row) || '-')}</strong><span>${escapeHtml(row.passengerName || '-')}</span><span>${escapeHtml(inferCaseType(row) || 'Passenger Filed')}</span><span>View full file →</span></button>`;
+      }).join('') : '<p class="muted">No open Passenger Filed cases.</p>';
+      const onHandHtml = onHandRows.length ? onHandRows.map((row) => `<button class="open-case-item" type="button" data-open-onhand-case><strong>${escapeHtml(row.bagTag || '-')}</strong><span>${escapeHtml(row.bagType || row.status || '-')}</span><span>${escapeHtml(row.location || '-')}</span><span>View On-hand →</span></button>`).join('') : '<p class="muted">No open On-hand cases.</p>';
+      openCasesOutput.innerHTML = `<div class="open-case-groups"><section class="open-case-group"><h2>Passenger Filed (${passengerRows.length})</h2><div class="open-case-list">${passengerHtml}</div></section><section class="open-case-group"><h2>On-hand (${onHandRows.length})</h2><div class="open-case-list">${onHandHtml}</div></section></div>`;
     }
     function inferCaseType(row) {
       const explicit = String(row?.caseType || '').trim().toUpperCase();
@@ -821,6 +833,7 @@
         if (!res.ok) throw new Error(data.error || 'Case loading failed');
         window._cbsRows = data.rows || [];
         renderCases();
+        renderOpenCases();
       } catch (error) { casesOutput.innerHTML = `<p class="status err">${escapeHtml(error.message)}</p>`; }
     }
     function renderMissingReports(rows = []) {
