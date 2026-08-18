@@ -422,21 +422,9 @@
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || 'On-hand baggage lookup failed');
         renderUnresolvedBaggage(data.rows || []);
-        renderOpenCases();
       } catch (error) {
         unresolvedBaggageOutput.innerHTML = `<p class="status err">${escapeHtml(error.message)}</p>`;
       }
-    }
-    function renderOpenCases() {
-      if (!openCasesOutput) return;
-      const passengerRows = sortedCaseRows(window._cbsRows || []).filter((row) => !isClosedCase(row));
-      const onHandRows = (window._unresolvedBaggageRows || []).filter((row) => (row.history || [row]).some((item) => !item.resolvedAt));
-      const passengerHtml = passengerRows.length ? passengerRows.map((row, index) => {
-        const key = `row-${row.rowNumber || index}`;
-        return `<button class="open-case-item" type="button" data-open-passenger-case="${escapeHtml(key)}"><strong>${escapeHtml(displayBagTag(row) || '-')}</strong><span>${escapeHtml(row.passengerName || '-')}</span><span>${escapeHtml(inferCaseType(row) || 'Passenger Filed')}</span><span>View full file →</span></button>`;
-      }).join('') : '<p class="muted">No open Passenger Filed cases.</p>';
-      const onHandHtml = onHandRows.length ? onHandRows.map((row) => `<button class="open-case-item" type="button" data-open-onhand-case><strong>${escapeHtml(row.bagTag || '-')}</strong><span>${escapeHtml(row.bagType || row.status || '-')}</span><span>${escapeHtml(row.location || '-')}</span><span>View On-hand →</span></button>`).join('') : '<p class="muted">No open On-hand cases.</p>';
-      openCasesOutput.innerHTML = `<div class="open-case-groups"><section class="open-case-group"><h2>Passenger Filed (${passengerRows.length})</h2><div class="open-case-list">${passengerHtml}</div></section><section class="open-case-group"><h2>On-hand (${onHandRows.length})</h2><div class="open-case-list">${onHandHtml}</div></section></div>`;
     }
     function inferCaseType(row) {
       const explicit = String(row?.caseType || '').trim().toUpperCase();
@@ -456,6 +444,7 @@
       { key:'rush', text:'Rush' },
       { key:'location', text:'Location' },
       { key:'shipping', text:'Shipping' },
+      { key:'forward_mu', text:'Forward to MU' },
       { key:'closed', text:'Closed' },
       { key:'reopen', text:'Reopened' }
     ];
@@ -522,6 +511,7 @@
       if (/close/.test(text)) return 'closed';
       if (/reopen/.test(text)) return 'reopen';
       if (/ship/.test(text)) return 'shipping';
+      if (/forward\s*(?:to\s*)?mu/.test(text)) return 'forward_mu';
       if (/location/.test(text)) return 'location';
       if (/rush/.test(text)) return 'rush';
       if (/world\s*tracer|worldtracer/.test(text)) return 'worldtracer';
@@ -649,19 +639,32 @@
       return !/^Created from Missing Bag Report row\b/i.test(String(row?.updateNote || '')) && (hasValue(row?.email) || hasValue(row?.phone) || hasValue(row?.passengerSignature));
     }
     function fullPassengerFileHtml(row) {
-      const allFields = passengerFiledDetailRows(row).filter(([, value]) => hasValue(value));
-      const passengerLabels = new Set([
-        label('Passenger Name', '旅客姓名'), label('Seat Number', '座位号'), label('Email', '邮箱'),
-        label('Mobile number - US', '手机号码-美国'), label('Additional Information', '其他有用信息'),
-        label('Ticket Number', '机票号码'), label('Flights*', '航班*'), label('Bag Tag', '行李牌'), label('Address', '地址'),
-        label('Class Of Travel', '舱位等级'), label('Origin', '始发地'), label('Destination on Bags', '行李牌目的地'),
-        label('Temporary Address Available', '是否有临时地址'), label('Temporary Address Valid Until', '临时地址有效期至'),
-        label('Passenger Signature', '旅客签字'), label('Issue Date', '填写日期')
+      const fieldGrid = (fields) => `<div class="sheet-detail-grid">${fields.map(([key, value]) => `<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(renderValue(value))}</p>`).join('')}</div>`;
+      const passengerFields = [
+        [label('Passenger Name', '旅客姓名'), row.passengerName], [label('Email', '邮箱'), row.email],
+        [label('Mobile number - US', '手机号码-美国'), row.phoneNumber || row.phone], [label('Ticket Number', '机票号码'), row.ticketNumber],
+        [label('Class Of Travel', '舱位等级'), row.classOfTravel]
+      ];
+      const journeyFields = [
+        [label('Flights', '航班'), row.flightRoute], [label('Origin', '始发地'), row.departureOrigin],
+        [label('Destination on Bags', '行李牌目的地'), row.destinationOnBags], [label('Address', '地址'), row.permanentAddress],
+        [label('Temporary Address Available', '是否有临时地址'), row.addressAvailable],
+        [label('Temporary Address Valid Until', '临时地址有效期至'), row.temporaryAddressValidUntil],
+        [label('Temporary Address', '临时地址'), row.temporaryAddress]
+      ];
+      const sharedBaggageFields = [[label('Case Type', '类型'), inferCaseType(row)], [label('Bag Tag', '行李牌'), row.bagTag]];
+      const baggageFields = inferCaseType(row) === 'DPR' ? sharedBaggageFields.concat([
+        [label('DPR Damage Level', 'DPR破损程度'), row.dprDamageLevel], [label('DPR Bag Info', 'DPR行李信息'), row.dprBagInfo],
+        [label('DPR Bag Type', 'DPR行李类型'), row.dprBagType], [label('DPR Inner Damage', 'DPR内物破损'), row.dprInnerDamage],
+        [label('Contents Details', '包内物品详情'), row.contentsDetails]
+      ]) : sharedBaggageFields.concat([
+        [label('AHL Bag Description', 'AHL行李描述'), row.ahlBagDescription], [label('AHL Bag Brand Tag', 'AHL行李品牌牌'), row.ahlBagBrandTag],
+        [label('AHL Bag Type', 'AHL行李类型'), row.ahlBagType], [label('AHL Features', 'AHL特征'), row.ahlFeatures],
+        [label('AHL Other Features', 'AHL其他特征'), row.ahlOtherFeatures], [label('AHL Contents', 'AHL包内物品'), row.ahlContents],
+        [label('Contents Details', '包内物品详情'), row.contentsDetails]
       ]);
-      const fieldGrid = (fields) => fields.length ? `<div class="sheet-detail-grid">${fields.map(([key, value]) => `<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(renderValue(value))}</p>`).join('')}</div>` : `<p class="muted">${label('No information provided.', '未填写资料。')}</p>`;
-      const passengerFields = allFields.filter(([key]) => passengerLabels.has(key));
-      const baggageFields = allFields.filter(([key]) => !passengerLabels.has(key) && ![label('Status', '状态'), label('Updated At', '更新时间')].includes(key));
-      return `<div class="full-file"><section class="full-file-section"><h3>${label('Passenger information', '旅客资料')}</h3>${fieldGrid(passengerFields)}</section><section class="full-file-section"><h3>${label('Baggage information / AHL information', '行李资料 / AHL资料')}</h3>${fieldGrid(baggageFields)}</section></div>`;
+      const submissionFields = [[label('Issue Date', '填写日期'), row.issueDate], [label('Passenger Signature', '旅客签字'), row.passengerSignature], [label('Submitted At', '提交时间'), row.submittedAt || row.submitDate]];
+      return `<div class="full-file"><section class="full-file-section"><h3>${label('Passenger information', '旅客资料')}</h3>${fieldGrid(passengerFields)}</section><section class="full-file-section"><h3>${label('Journey and address', '行程及地址')}</h3>${fieldGrid(journeyFields)}</section><section class="full-file-section"><h3>${label('Baggage information', '行李资料')}</h3>${fieldGrid(baggageFields)}</section><section class="full-file-section"><h3>${label('Submission information', '提交资料')}</h3>${fieldGrid(submissionFields)}</section></div>`;
     }
     function updateFormHtml(row, mode = 'worldtracer') {
       if (!row.rowNumber) return `<p class="status err">${label('A saved row is required before this case can be updated.', '案件保存后才能更新。')}</p>`;
@@ -764,6 +767,7 @@
       if (key === 'rush') return [input('Rush tag number', 'rushTagNumber'), input('Rush to where?', 'rushToWhere'), input('AKE number?', 'akeNumber'), input('World Tracer file # (optional)', 'worldTracerFileNumber', false), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
       if (key === 'location') return [input('Bag location', 'location'), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
       if (key === 'shipping') return [input('Tracking number', 'trackingNumber'), input('Shipping to where?', 'shippingTo'), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
+      if (key === 'forward_mu') return '<input name="forwardDate" type="date" aria-label="Forward to MU date" required />';
       if (key === 'closed') return '<textarea name="comment" placeholder="Close note (optional)"></textarea>';
       return '';
     }
@@ -790,7 +794,7 @@
       const latest = events[events.length - 1] || null;
       const latestTime = latest ? formatEventTime(latest.at) : { time:'--:--', date:'' };
       const active = nextTrackingKey(row);
-      const updateKeys = TRACKING_STAGES.filter((stage) => !['create', 'reopen'].includes(stage.key));
+      const updateKeys = TRACKING_STAGES.filter((stage) => !['create', 'reopen'].includes(stage.key) && (stage.key !== 'forward_mu' || inferCaseType(row) === 'DPR'));
       const historyHtml = events
         .slice()
         .sort((a, b) => (Date.parse(a.at || '') || 0) - (Date.parse(b.at || '') || 0))
@@ -833,7 +837,6 @@
         if (!res.ok) throw new Error(data.error || 'Case loading failed');
         window._cbsRows = data.rows || [];
         renderCases();
-        renderOpenCases();
       } catch (error) { casesOutput.innerHTML = `<p class="status err">${escapeHtml(error.message)}</p>`; }
     }
     function renderMissingReports(rows = []) {
