@@ -1413,6 +1413,7 @@ function createPirPdf(record) {
   content.push(pdfText(`CASE TYPE: ${record.caseType || ''}`, 410, 710, 10));
   content.push(pdfText('FOR INQUIRIES PLEASE EMAIL:', 390, 696, 9));
   content.push(pdfText('LAXHMMU@GMAIL.COM', 390, 682, 9));
+  if (record.worldTracerFileNumber) content.push(pdfText(`WORLDTRACER: ${record.worldTracerFileNumber}`, 390, 664, 10));
   const section = (title, y) => {
     content.push('0.78 0.78 0.78 rg');
     content.push(`44 ${y} 524 18 re f`);
@@ -1579,6 +1580,18 @@ function cbsPassengerMessageHtml(language, caseType = 'AHL') {
 
 function buildCbsEmailHtml(record) {
   return cbsPassengerMessageHtml(record.language, record.caseType);
+}
+
+function worldTracerUpdateEmail(record, fileNumber) {
+  const reference = String(fileNumber || '').replace(/[&<>"']/g, (character) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character]));
+  if (record.language === 'zh') return {
+    subject: `行李案件更新通知 – WorldTracer 案件编号：${fileNumber}`,
+    html: `<p>尊敬的旅客：</p><p>您好！</p><p>您的行李案件现已更新至 WorldTracer 全球行李查询系统。</p><p><strong>WorldTracer 案件编号：${reference}</strong></p><p>请妥善保存此案件编号，以便后续查询或跟进行李处理进度时使用。</p><p>我们将继续跟进您的行李案件。如有进一步信息或进展，我们会及时与您联系。</p><p>感谢您的耐心与理解。</p><p>此致<br>中国东方航空</p>`
+  };
+  return {
+    subject: `Baggage Case Update – WorldTracer Reference: ${fileNumber}`,
+    html: `<p>Dear Passenger,</p><p>We would like to inform you that your baggage case has been updated in the WorldTracer baggage tracing system.</p><p><strong>WorldTracer Reference Number: ${reference}</strong></p><p>Please keep this reference number for your records, as it may be required for future inquiries or updates regarding your baggage case.</p><p>We will continue to follow up on your case and provide further updates when additional information becomes available.</p><p>Thank you for your patience and understanding.</p><p>Sincerely,<br>China Eastern Airlines</p>`
+  };
 }
 
 function buildCbsFlightRoute(body) {
@@ -1870,7 +1883,7 @@ app.get('/miss-connection-report', async (req, res) => {
 
 function buildCbsUpdateFields(update = {}) {
   const type = sanitizeCbsText(update.type, 40).toLowerCase();
-  if (!['worldtracer', 'rush', 'location', 'shipping', 'closed', 'reopen'].includes(type)) return null;
+  if (!['worldtracer', 'rush', 'location', 'shipping', 'forward_mu', 'closed', 'reopen'].includes(type)) return null;
   const comment = sanitizeCbsText(update.comment, 500);
   if (type === 'worldtracer') {
     const fileNumber = sanitizeCbsText(update.fileNumber || update.worldTracerFileNumber, 120).toUpperCase();
@@ -1889,6 +1902,11 @@ function buildCbsUpdateFields(update = {}) {
     const location = sanitizeCbsText(update.location, 160).toUpperCase();
     if (!location) return null;
     return { status: 'Bag Location Update', updateNote: `BAG LOCATION UPDATE | Location: ${location}${comment ? ` | Comment: ${comment}` : ''}`, updateEvent: { key: 'location', title: 'Update Bag Location', fields: [['Location', location], ...(comment ? [['Comment', comment]] : [])] } };
+  }
+  if (type === 'forward_mu') {
+    const forwardDate = sanitizeCbsText(update.forwardDate, 40);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(forwardDate)) return null;
+    return { status: 'Closed - Forward to MU', updateNote: `FORWARD TO MU | Date: ${forwardDate}`, updateEvent: { key: 'forward_mu', title: 'Forward to MU', fields: [['Date', forwardDate]] } };
   }
   if (type === 'closed') {
     return { status: 'Closed', updateNote: `CASE CLOSE${comment ? ` | Comment: ${comment}` : ''}`, updateEvent: { key: 'closed', title: 'Case Close', fields: comment ? [['Comment', comment]] : [] } };
@@ -2477,9 +2495,27 @@ app.post('/cbs-cases', async (req, res) => {
 app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
   try {
     const updateFields = buildCbsUpdateFields(req.body || {});
-    if (!updateFields) return res.status(400).json({ error: 'Valid WORLDTRACER, RUSH, BAG LOCATION UPDATE, SHIPPING, CASE CLOSE, or REOPEN details are required' });
+    if (!updateFields) return res.status(400).json({ error: 'Valid WORLDTRACER, RUSH, BAG LOCATION UPDATE, SHIPPING, FORWARD TO MU, CASE CLOSE, or REOPEN details are required' });
     const result = await updateCbsCase(req.params.rowNumber, updateFields);
     if (result.notFound) return res.status(404).json({ error: 'Case not found' });
+    if (result.invalidCaseType) return res.status(400).json({ error: 'FORWARD TO MU is only available for DPR cases' });
+    if (updateFields.updateEvent?.key === 'worldtracer') {
+      const fileNumber = updateFields.updateEvent.fields[0][1];
+      const record = { ...result.record, worldTracerFileNumber: fileNumber };
+      const message = worldTracerUpdateEmail(record, fileNumber);
+      try {
+        result.email = await sendCbsCaseEmail({
+          passengerEmail: record.email,
+          subject: message.subject,
+          html: message.html,
+          pdfBuffer: createPirPdf(record),
+          filename: 'baggage-report.pdf'
+        });
+      } catch (mailErr) {
+        result.emailError = cbsEmailErrorMessage(mailErr);
+        console.error('CBS WorldTracer update email error:', mailErr);
+      }
+    }
     return res.json(result);
   } catch (err) {
     console.error('CBS case update error:', err);
