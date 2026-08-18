@@ -3919,14 +3919,18 @@ function buildRawCbsEmail({ to, cc = [], subject, html, pdfBuffer, filename, att
     'Content-Type: text/html; charset="UTF-8"',
     'Content-Transfer-Encoding: quoted-printable',
     '',
-    String(html || '').replace(/=/g, '=3D'),
-    `--${boundary}`,
-    'Content-Type: application/pdf',
-    'Content-Transfer-Encoding: base64',
-    `Content-Disposition: attachment; filename="${encodeEmailHeader(filename)}"`,
-    '',
-    cbsBase64Lines(pdfBuffer.toString('base64'))
+    String(html || '').replace(/=/g, '=3D')
   ];
+  if (pdfBuffer?.length) {
+    body.push(
+      `--${boundary}`,
+      'Content-Type: application/pdf',
+      'Content-Transfer-Encoding: base64',
+      `Content-Disposition: attachment; filename="${encodeEmailHeader(filename || 'baggage-report.pdf')}"`,
+      '',
+      cbsBase64Lines(pdfBuffer.toString('base64'))
+    );
+  }
   attachments.forEach((attachment) => {
     body.push(`--${boundary}`, ...cbsAttachmentPart(attachment));
   });

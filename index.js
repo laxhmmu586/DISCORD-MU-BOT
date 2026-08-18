@@ -2507,9 +2507,7 @@ app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
         result.email = await sendCbsCaseEmail({
           passengerEmail: record.email,
           subject: message.subject,
-          html: message.html,
-          pdfBuffer: createPirPdf(record),
-          filename: 'baggage-report.pdf'
+          html: message.html
         });
       } catch (mailErr) {
         result.emailError = cbsEmailErrorMessage(mailErr);
