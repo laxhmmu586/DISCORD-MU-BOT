@@ -978,6 +978,7 @@
         const res = await fetch(`${apiBase}/${endpoint}`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || 'Update failed');
+        if (data.emailError) alert(`Case updated, but the passenger email failed: ${data.emailError}`);
         window._selectedCbsRow = Number(rowNumber);
         await loadCases();
         if (window._missingReportLoaded || !missingReportCard.hidden) await loadMissingReports();
