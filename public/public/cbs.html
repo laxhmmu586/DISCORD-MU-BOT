@@ -643,15 +643,21 @@
       return !/^Created from Missing Bag Report row\b/i.test(String(row?.updateNote || '')) && (hasValue(row?.email) || hasValue(row?.phone) || hasValue(row?.passengerSignature));
     }
     function fullPassengerFileHtml(row) {
+      try {
+        const original = JSON.parse(row.originalFormData || '{}');
+        row = { ...original, ...Object.fromEntries(Object.entries(row).filter(([, value]) => hasValue(value))) };
+      } catch {}
       const fieldGrid = (fields) => `<div class="sheet-detail-grid">${fields.filter(([, value]) => hasValue(value)).map(([key, value]) => `<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(value)}</p>`).join('')}</div>`;
-      const passengerFields = [
+      const requiredFieldGrid = (fields) => `<div class="sheet-detail-grid">${fields.map(([key, value]) => `<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(renderValue(value))}</p>`).join('')}</div>`;
+      const requiredPassengerFields = [
         [label('Passenger Name', '旅客姓名'), row.passengerName], [label('Email', '邮箱'), row.email],
-        [label('Mobile number - US', '手机号码-美国'), row.phoneNumber || row.phone], [label('Ticket Number', '机票号码'), row.ticketNumber],
-        [label('Class Of Travel', '舱位等级'), row.classOfTravel]
+        [label('Phone', '电话'), row.phoneNumber || row.phone], [label('Ticket Number', '机票号码'), row.ticketNumber],
+        [label('Flight Route', '行李航程'), row.flightRoute], [label('Bag Tag', '行李牌'), row.bagTag],
+        [label('Permanent Address', '住址'), row.permanentAddress]
       ];
       const journeyFields = [
-        [label('Flights', '航班'), row.flightRoute], [label('Origin', '始发地'), row.departureOrigin],
-        [label('Destination on Bags', '行李牌目的地'), row.destinationOnBags], [label('Address', '地址'), row.permanentAddress],
+        [label('Class Of Travel', '舱位等级'), row.classOfTravel], [label('Origin', '始发地'), row.departureOrigin],
+        [label('Destination on Bags', '行李牌目的地'), row.destinationOnBags],
         [label('Temporary Address Available', '是否有临时地址'), row.addressAvailable],
         [label('Temporary Address Valid Until', '临时地址有效期至'), row.temporaryAddressValidUntil],
         [label('Temporary Address', '临时地址'), row.temporaryAddress]
@@ -668,7 +674,7 @@
         [label('Contents Details', '包内物品详情'), row.contentsDetails]
       ]);
       const submissionFields = [[label('Issue Date', '填写日期'), row.issueDate], [label('Passenger Signature', '旅客签字'), row.passengerSignature], [label('Submitted At', '提交时间'), row.submittedAt || row.submitDate]];
-      return `<div class="full-file"><section class="full-file-section"><h3>${label('Passenger information', '旅客资料')}</h3>${fieldGrid(passengerFields)}</section><section class="full-file-section"><h3>${label('Journey and address', '行程及地址')}</h3>${fieldGrid(journeyFields)}</section><section class="full-file-section"><h3>${label('Baggage information', '行李资料')}</h3>${fieldGrid(baggageFields)}</section><section class="full-file-section"><h3>${label('Submission information', '提交资料')}</h3>${fieldGrid(submissionFields)}</section></div>`;
+      return `<div class="full-file"><section class="full-file-section"><h3>${label('Passenger information', '旅客资料')}</h3>${requiredFieldGrid(requiredPassengerFields)}</section><section class="full-file-section"><h3>${label('Journey and address', '行程及地址')}</h3>${fieldGrid(journeyFields)}</section><section class="full-file-section"><h3>${label('Baggage information', '行李资料')}</h3>${fieldGrid(baggageFields)}</section><section class="full-file-section"><h3>${label('Submission information', '提交资料')}</h3>${fieldGrid(submissionFields)}</section></div>`;
     }
     function updateFormHtml(row, mode = 'worldtracer') {
       if (!row.rowNumber) return `<p class="status err">${label('A saved row is required before this case can be updated.', '案件保存后才能更新。')}</p>`;
