@@ -109,7 +109,9 @@ const CBS_HEADERS = [
   'Update Note',
   'Destination On Bags',
   'Departure Origin',
-  'Update History'
+  'Update History',
+  'Original Form Data',
+  'WorldTracer File Number'
 ];
 let cbsSheetTitle = '';
 let cbsWorldTracerSheetTitle = '';
@@ -3090,7 +3092,7 @@ async function ensureCbsSheetHeaders(rows) {
   const title = await getCbsSheetTitle();
   await sheets.spreadsheets.values.update({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A1:AF1`,
+    range: `${escapeSheetTitle(title)}!A1:AH1`,
     valueInputOption: 'RAW',
     requestBody: { values: [CBS_HEADERS] }
   });
@@ -3145,8 +3147,25 @@ function cbsRecordFromSheet(values, rowNumber) {
   row.bagTag = row.bagTag || values[8] || extractCbsBagTagFromUpdateNote(row.updateNote) || values.find((value) => /^[A-Z]{2}\d{6,}(\s*\/\s*[A-Z]{2}\d{6,})*$/i.test(String(value || '').trim())) || '';
   row.submittedAt = row.submittedAt || row.submitDate || values[26] || '';
   row.updateHistory = row.updateHistory || values[31] || '';
+  try {
+    const original = JSON.parse(row.originalFormData || '{}');
+    Object.entries(original).forEach(([key, value]) => {
+      if (!row[key] && value != null && String(value).trim()) row[key] = value;
+    });
+  } catch {}
   row.rowNumber = rowNumber;
   return row;
+}
+
+function cbsOriginalFormData(record = {}) {
+  const keys = [
+    'caseType', 'passengerName', 'email', 'phone', 'ticketNumber', 'classOfTravel', 'flightRoute', 'bagTag',
+    'permanentAddress', 'temporaryAddress', 'temporaryAddressValidUntil', 'addressAvailable', 'ahlBagDescription',
+    'ahlBagBrandTag', 'ahlBagType', 'ahlFeatures', 'ahlOtherFeatures', 'ahlContents', 'dprDamageLevel', 'dprBagInfo',
+    'dprBagType', 'dprInnerDamage', 'contentsDetails', 'issueDate', 'passengerSignature', 'submittedAt',
+    'destinationOnBags', 'departureOrigin', 'language'
+  ];
+  return JSON.stringify(Object.fromEntries(keys.filter((key) => record[key] != null && String(record[key]).trim()).map((key) => [key, record[key]])));
 }
 
 function cbsValuesFromRecord(record) {
@@ -3182,7 +3201,9 @@ function cbsValuesFromRecord(record) {
     record.updateNote,
     record.destinationOnBags,
     record.departureOrigin,
-    record.updateHistory || ''
+    record.updateHistory || '',
+    record.originalFormData || cbsOriginalFormData(record),
+    record.worldTracerFileNumber || ''
   ];
 }
 
@@ -3192,7 +3213,7 @@ async function appendCbsCase(record) {
   await ensureCbsSheetHeaders(rows);
   await sheets.spreadsheets.values.append({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A:AF`,
+    range: `${escapeSheetTitle(title)}!A:AH`,
     valueInputOption: 'RAW',
     insertDataOption: 'INSERT_ROWS',
     requestBody: { values: [cbsValuesFromRecord(record)] }
@@ -3561,13 +3582,16 @@ async function updateCbsCase(rowNumber, update = {}) {
   const rowIndex = Number(rowNumber) - 1;
   if (!Number.isInteger(rowIndex) || rowIndex < 1 || !rows[rowIndex]) return { notFound: true };
   const current = cbsRecordFromSheet(rows[rowIndex] || [], rowIndex + 1);
+  if (update.updateEvent?.key === 'forward_mu' && String(current.caseType || '').toUpperCase() !== 'DPR') return { invalidCaseType: true };
   const now = new Date().toISOString();
   const incomingNote = sanitizeSheetText(update.updateNote, 1000);
   const next = {
     ...current,
     status: sanitizeSheetText(update.status, 80) || current.status || 'Open',
-    updatedAt: now
+    updatedAt: now,
+    updateNote: incomingNote || current.updateNote || ''
   };
+  if (update.updateEvent?.key === 'worldtracer') next.worldTracerFileNumber = sanitizeSheetText(update.updateEvent.fields?.[0]?.[1], 120).toUpperCase();
   const historyEvent = sanitizeCbsUpdateEvent(update.updateEvent, {
     status: next.status,
     at: now,
@@ -3580,7 +3604,7 @@ async function updateCbsCase(rowNumber, update = {}) {
   const title = await getCbsSheetTitle();
   await sheets.spreadsheets.values.update({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A${rowIndex + 1}:AF${rowIndex + 1}`,
+    range: `${escapeSheetTitle(title)}!A${rowIndex + 1}:AH${rowIndex + 1}`,
     valueInputOption: 'RAW',
     requestBody: { values: [cbsValuesFromRecord(next)] }
   });
@@ -3899,14 +3923,18 @@ function buildRawCbsEmail({ to, cc = [], subject, html, pdfBuffer, filename, att
     'Content-Type: text/html; charset="UTF-8"',
     'Content-Transfer-Encoding: quoted-printable',
     '',
-    String(html || '').replace(/=/g, '=3D'),
-    `--${boundary}`,
-    'Content-Type: application/pdf',
-    'Content-Transfer-Encoding: base64',
-    `Content-Disposition: attachment; filename="${encodeEmailHeader(filename)}"`,
-    '',
-    cbsBase64Lines(pdfBuffer.toString('base64'))
+    String(html || '').replace(/=/g, '=3D')
   ];
+  if (pdfBuffer?.length) {
+    body.push(
+      `--${boundary}`,
+      'Content-Type: application/pdf',
+      'Content-Transfer-Encoding: base64',
+      `Content-Disposition: attachment; filename="${encodeEmailHeader(filename || 'baggage-report.pdf')}"`,
+      '',
+      cbsBase64Lines(pdfBuffer.toString('base64'))
+    );
+  }
   attachments.forEach((attachment) => {
     body.push(`--${boundary}`, ...cbsAttachmentPart(attachment));
   });
@@ -3955,10 +3983,10 @@ async function sendNextDayInfoEmail({ to = 'laxhmmu@gmail.com', cc = [], subject
   return { to: Array.isArray(to) ? to : [to], cc: Array.isArray(cc) ? cc : [cc].filter(Boolean), id: sent.data.id || '', userId, authMode };
 }
 
-async function sendCbsCaseEmail({ passengerEmail, subject, html, pdfBuffer, filename, attachments = [] }) {
+async function sendCbsCaseEmail({ passengerEmail, subject, html, pdfBuffer, filename, attachments = [], ccOperations = true }) {
   const { gmail, userId } = getNextDayInfoGmailClient();
   const to = String(passengerEmail || '').trim();
-  const cc = to.toLowerCase() === 'laxhmmu@gmail.com' ? [] : ['laxhmmu@gmail.com'];
+  const cc = ccOperations && to.toLowerCase() !== 'laxhmmu@gmail.com' ? ['laxhmmu@gmail.com'] : [];
   const raw = buildRawCbsEmail({ to, cc, subject, html, pdfBuffer, filename, attachments });
   const sent = await gmail.users.messages.send({
     userId,
