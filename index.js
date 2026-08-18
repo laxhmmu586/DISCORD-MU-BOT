@@ -1741,6 +1741,28 @@ async function sendCbsAttachmentsToDiscord(record, attachments = [], pdfBuffer =
   return { sent: true, channelId, fileCount: files.length };
 }
 
+async function sendDprWorldTracerUpdateToDiscord(record, fileNumber) {
+  if (String(record?.caseType || '').trim().toUpperCase() !== 'DPR') {
+    return { sent: false, reason: 'Discord WorldTracer updates are only sent for DPR cases.' };
+  }
+  const channel = await client.channels.fetch(CBS_DAMAGED_DISCORD_CHANNEL_ID);
+  if (!channel?.isTextBased()) {
+    return { sent: false, reason: 'DPR Discord channel was not found or is not text based.' };
+  }
+  await channel.send({
+    content: [
+      'DPR WorldTracer update',
+      `Passenger Name: ${sanitizeCbsText(record.passengerName, 160) || '—'}`,
+      `Bag Tag: ${sanitizeCbsText(record.bagTag, 160) || '—'}`,
+      `Email: ${sanitizeCbsText(record.email, 160) || '—'}`,
+      `Phone: ${sanitizeCbsText(record.phone, 80) || '—'}`,
+      `WorldTracer File #: ${sanitizeCbsText(fileNumber, 120) || '—'}`
+    ].join('\n'),
+    allowedMentions: { parse: [] }
+  });
+  return { sent: true, channelId: CBS_DAMAGED_DISCORD_CHANNEL_ID };
+}
+
 function sanitizeContactAttachments(value) {
   const input = Array.isArray(value) ? value : [];
   const maxFileBytes = 8 * 1024 * 1024;
@@ -2528,6 +2550,14 @@ app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
       } catch (mailErr) {
         result.emailError = cbsEmailErrorMessage(mailErr);
         console.error('CBS WorldTracer update email error:', mailErr);
+      }
+      if (String(record.caseType || '').toUpperCase() === 'DPR') {
+        try {
+          result.discord = await sendDprWorldTracerUpdateToDiscord(record, fileNumber);
+        } catch (discordErr) {
+          result.discordError = discordErr?.message || 'DPR WorldTracer Discord notification failed.';
+          console.error('CBS DPR WorldTracer Discord notification error:', discordErr);
+        }
       }
     }
     if (updateFields.updateEvent?.key === 'requested_bags') {

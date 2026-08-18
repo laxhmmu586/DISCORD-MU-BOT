@@ -19,3 +19,14 @@ test('requested bags update emails the passenger without an operations CC', () =
   assert.match(block, /sendCbsCaseEmail/);
   assert.match(block, /ccOperations: false/);
 });
+
+test('DPR WorldTracer updates notify the damaged-baggage Discord channel', () => {
+  assert.match(server, /CBS_DAMAGED_DISCORD_CHANNEL_ID[^\n]*'1527344986075693167'/);
+  const helper = server.match(/async function sendDprWorldTracerUpdateToDiscord[\s\S]*?\n\}/)?.[0] || '';
+  for (const field of ['Passenger Name', 'Bag Tag', 'Email', 'Phone', 'WorldTracer File #']) {
+    assert.match(helper, new RegExp(field.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+  assert.match(helper, /allowedMentions: \{ parse: \[\] \}/);
+  assert.match(server, /if \(String\(record\.caseType \|\| ''\)\.toUpperCase\(\) === 'DPR'\)/);
+  assert.match(server, /sendDprWorldTracerUpdateToDiscord\(record, fileNumber\)/);
+});
