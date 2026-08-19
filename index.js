@@ -1362,8 +1362,7 @@ function normalizeCbsBagTags(value) {
 
 function pdfSafeText(value) {
   return String(value || '')
-    .replace(/[\u3400-\u9FFF\uF900-\uFAFF\u3000-\u303F\uFF00-\uFFEF]/g, '')
-    .replace(/[^\x20-\x7E]/g, ' ')
+    .replace(/[\u0000-\u001F\u007F]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -1373,7 +1372,12 @@ function pdfEscape(value) {
 }
 
 function pdfText(content, x, y, size = 9) {
-  return `BT /F1 ${size} Tf ${x} ${y} Td (${pdfEscape(content)}) Tj ET`;
+  const safe = pdfSafeText(content);
+  if (/[^\x20-\x7E]/.test(safe)) {
+    const utf16Hex = Buffer.from(safe, 'utf16le').swap16().toString('hex').toUpperCase();
+    return `BT /F2 ${size} Tf ${x} ${y} Td <${utf16Hex}> Tj ET`;
+  }
+  return `BT /F1 ${size} Tf ${x} ${y} Td (${pdfEscape(safe)}) Tj ET`;
 }
 
 function pdfBoxText(content, x, y, w, h, size = 8) {
@@ -1509,8 +1513,9 @@ function createPirPdf(record) {
     contentPages.push(page);
   });
   const fontId = addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
+  const unicodeFontId = addObject('<< /Type /Font /Subtype /Type0 /BaseFont /STSong-Light /Encoding /UniGB-UCS2-H /DescendantFonts [ << /Type /Font /Subtype /CIDFontType0 /BaseFont /STSong-Light /CIDSystemInfo << /Registry (Adobe) /Ordering (GB1) /Supplement 4 >> >> ] >>');
   const xObjectEntries = [imageRefs.Damage ? `/Damage ${imageRefs.Damage} 0 R` : '', imageRefs.Signature ? `/Signature ${imageRefs.Signature} 0 R` : ''].filter(Boolean).join(' ');
-  const resources = `<< /Font << /F1 ${fontId} 0 R >> ${xObjectEntries ? `/XObject << ${xObjectEntries} >>` : ''} >>`;
+  const resources = `<< /Font << /F1 ${fontId} 0 R /F2 ${unicodeFontId} 0 R >> ${xObjectEntries ? `/XObject << ${xObjectEntries} >>` : ''} >>`;
   const streamIds = contentPages.map((page) => {
     const stream = page.join('\n');
     return addObject(`<< /Length ${Buffer.byteLength(stream, 'binary')} >>\nstream\n${stream}\nendstream`);
