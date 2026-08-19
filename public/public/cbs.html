@@ -459,7 +459,6 @@
       { key:'rush', text:'Rush' },
       { key:'location', text:'Location' },
       { key:'shipping', text:'Shipping' },
-      { key:'forward_mu', text:'Forward to MU' },
       { key:'closed', text:'Closed' },
       { key:'reopen', text:'Reopened' }
     ];
@@ -516,7 +515,6 @@
       if (/close/.test(text)) return 'closed';
       if (/reopen/.test(text)) return 'reopen';
       if (/ship/.test(text)) return 'shipping';
-      if (/forward\s*(?:to\s*)?mu/.test(text)) return 'forward_mu';
       if (/location/.test(text)) return 'location';
       if (/rush/.test(text)) return 'rush';
       if (/world\s*tracer|worldtracer/.test(text)) return 'worldtracer';
@@ -663,7 +661,7 @@
         [label('DPR Bag Type', 'DPR行李类型'), row.dprBagType], [label('DPR Inner Damage', 'DPR内物破损'), row.dprInnerDamage],
         [label('Contents Details', '包内物品详情'), row.contentsDetails]
       ]) : sharedBaggageFields.concat([
-        [label('AHL Bag Description', 'AHL行李描述'), row.ahlBagDescription], [label('AHL Bag Brand Tag', 'AHL行李品牌牌'), row.ahlBagBrandTag],
+        [label('Baggage Details', '行李详情'), row.baggageDetails || row.ahlBagDescription], [label('AHL Bag Brand Tag', 'AHL行李品牌牌'), row.ahlBagBrandTag],
         [label('AHL Bag Type', 'AHL行李类型'), row.ahlBagType], [label('AHL Features', 'AHL特征'), row.ahlFeatures],
         [label('AHL Other Features', 'AHL其他特征'), row.ahlOtherFeatures], [label('AHL Contents', 'AHL包内物品'), row.ahlContents],
         [label('Contents Details', '包内物品详情'), row.contentsDetails]
@@ -773,7 +771,6 @@
       if (key === 'rush') return [input('Rush tag number', 'rushTagNumber'), input('Rush to where?', 'rushToWhere'), input('AKE number?', 'akeNumber'), input('World Tracer file # (optional)', 'worldTracerFileNumber', false), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
       if (key === 'location') return [input('Bag location', 'location'), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
       if (key === 'shipping') return [input('Tracking number', 'trackingNumber'), input('Shipping to where?', 'shippingTo'), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
-      if (key === 'forward_mu') return '<input name="forwardDate" type="date" aria-label="Forward to MU date" required />';
       if (key === 'closed') return '<textarea name="comment" placeholder="Close note (optional)"></textarea>';
       return '';
     }
@@ -800,7 +797,7 @@
       const latest = events[events.length - 1] || null;
       const latestTime = latest ? formatEventTime(latest.at) : { time:'--:--', date:'' };
       const active = nextTrackingKey(row);
-      const updateKeys = TRACKING_STAGES.filter((stage) => !['create', 'reopen'].includes(stage.key) && (stage.key !== 'forward_mu' || inferCaseType(row) === 'DPR'));
+      const updateKeys = TRACKING_STAGES.filter((stage) => !['create', 'reopen'].includes(stage.key));
       const historyHtml = events
         .slice()
         .sort((a, b) => (Date.parse(a.at || '') || 0) - (Date.parse(b.at || '') || 0))
