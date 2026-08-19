@@ -19,7 +19,9 @@ test('CBS tracking offers the requested bags stage', () => {
   assert.match(page, /key:'requested_bags', text:'Requested Bags'/);
   assert.match(page, /if \(key === 'requested_bags'\) return input\('From which station\?', 'fromStation'\)/);
   assert.match(page, /requested\[\\s_-\]\*bags\?/);
-  assert.match(page, /event\.key === 'requested_bags' \? 'Update'/);
+  assert.doesNotMatch(page, /event\.key === 'requested_bags' \? 'Update'/);
+  assert.match(page, /tracking-step-number/);
+  assert.match(page, /index === sortedEvents\.length - 1 \? ' is-latest'/);
 });
 
 test('CBS tracking no longer offers Forward to MU', () => {
