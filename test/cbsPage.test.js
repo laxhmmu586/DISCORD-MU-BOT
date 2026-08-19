@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const page = fs.readFileSync(path.join(__dirname, '..', 'public', 'public', 'cbs.html'), 'utf8');
+const pirForm = fs.readFileSync(path.join(__dirname, '..', 'public', 'public', 'pir-form.html'), 'utf8');
 
 test('CBS passenger information keeps all operationally required fields visible', () => {
   const requiredFields = page.match(/const requiredPassengerFields = \[([\s\S]*?)\n\s*\];/)?.[1] || '';
@@ -35,4 +36,9 @@ test('CBS baggage information displays baggage details from sheet column N', () 
 
 test('CBS detail view omits the redundant journey and address section', () => {
   assert.doesNotMatch(page, /<h3>\$\{label\('Journey and address'/);
+});
+
+test('PIR form labels the optional attachment category as Others', () => {
+  assert.match(pirForm, /<span class="en">Others<\/span><span class="zh">其他附件<\/span>/);
+  assert.doesNotMatch(pirForm, />Other document<\/span>/);
 });
