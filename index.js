@@ -1582,9 +1582,13 @@ function buildCbsEmailHtml(record) {
   return cbsPassengerMessageHtml(record.language, record.caseType);
 }
 
+function cbsEmailIsChinese(record = {}) {
+  return /^zh(?:-|$)/i.test(String(record.language || '').trim());
+}
+
 function worldTracerUpdateEmail(record, fileNumber) {
   const reference = String(fileNumber || '').replace(/[&<>"']/g, (character) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character]));
-  if (record.language === 'zh') return {
+  if (cbsEmailIsChinese(record)) return {
     subject: `行李案件更新通知 – WorldTracer 案件编号：${fileNumber}`,
     html: `<p>尊敬的旅客：</p><p>您好！</p><p>您的行李案件现已更新至 WorldTracer 全球行李查询系统。</p><p><strong>WorldTracer 案件编号：${reference}</strong></p><p>请妥善保存此案件编号，以便后续查询或跟进行李处理进度时使用。</p><p>我们将继续跟进您的行李案件。如有进一步信息或进展，我们会及时与您联系。</p><p>感谢您的耐心与理解。</p><p>此致<br>中国东方航空</p>`
   };
@@ -1596,7 +1600,7 @@ function worldTracerUpdateEmail(record, fileNumber) {
 
 function requestedBagsUpdateEmail(record, fileNumber) {
   const reference = String(fileNumber || '').replace(/[&<>"']/g, (character) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character]));
-  if (record.language === 'zh') return {
+  if (cbsEmailIsChinese(record)) return {
     subject: `行李案件更新通知 – WorldTracer 案件编号：${fileNumber}`,
     html: `<p>尊敬的旅客：</p><p>您好！</p><p>我们很高兴地通知您，您的行李已找到，目前正在安排转运中。</p><p><strong>WorldTracer 案件编号：${reference}</strong></p><p>我们将持续跟进行李的转运情况。如有下一步进展，包括行李抵达或后续领取/配送安排，我们会尽快与您联系并向您提供最新信息。</p><p>如您有任何问题或需要进一步协助，请直接回复此邮件与我们联系。</p><p>感谢您的耐心与理解。</p><p>此致<br>中国东方航空</p>`
   };
@@ -1939,11 +1943,6 @@ function buildCbsUpdateFields(update = {}) {
     const location = sanitizeCbsText(update.location, 160).toUpperCase();
     if (!location) return null;
     return { status: 'Bag Location Update', updateNote: `BAG LOCATION UPDATE | Location: ${location}${comment ? ` | Comment: ${comment}` : ''}`, updateEvent: { key: 'location', title: 'Update Bag Location', fields: [['Location', location], ...(comment ? [['Comment', comment]] : [])] } };
-  }
-  if (type === 'forward_mu') {
-    const forwardDate = sanitizeCbsText(update.forwardDate, 40);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(forwardDate)) return null;
-    return { status: 'Closed - Forward to MU', updateNote: `FORWARD TO MU | Date: ${forwardDate}`, updateEvent: { key: 'forward_mu', title: 'Forward to MU', fields: [['Date', forwardDate]] } };
   }
   if (type === 'closed') {
     return { status: 'Closed', updateNote: `CASE CLOSE${comment ? ` | Comment: ${comment}` : ''}`, updateEvent: { key: 'closed', title: 'Case Close', fields: comment ? [['Comment', comment]] : [] } };

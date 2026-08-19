@@ -17,6 +17,8 @@ test('CBS passenger information keeps all operationally required fields visible'
 test('CBS tracking offers the requested bags stage', () => {
   assert.match(page, /key:'requested_bags', text:'Requested Bags'/);
   assert.match(page, /if \(key === 'requested_bags'\) return ''/);
+  assert.match(page, /requested\[\\s_-\]\*bags\?/);
+  assert.match(page, /event\.key === 'requested_bags' \? 'Update'/);
 });
 
 test('CBS tracking no longer offers Forward to MU', () => {
@@ -25,6 +27,10 @@ test('CBS tracking no longer offers Forward to MU', () => {
 
 test('CBS passenger detail view can recover values from the original form snapshot', () => {
   assert.match(page, /JSON\.parse\(row\.originalFormData \|\| '\{\}'\)/);
+});
+
+test('CBS baggage information displays baggage details from sheet column N', () => {
+  assert.match(page, /label\('Baggage Details', '行李详情'\), row\.baggageDetails \|\| row\.ahlBagDescription/);
 });
 
 test('CBS detail view omits the redundant journey and address section', () => {

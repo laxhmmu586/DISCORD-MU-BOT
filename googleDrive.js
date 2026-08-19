@@ -3144,12 +3144,17 @@ function cbsRecordFromSheet(values, rowNumber) {
     row[key] = values[index] || '';
   });
   // These operational fields have fixed columns in the CBS sheet. Read them
-  // directly so a stale or manually edited header row cannot hide passenger
-  // details that are present in columns C, F, H, and J.
+  // directly so a stale or manually edited header row cannot hide details.
   row.passengerName = values[2] || row.passengerName || '';
   row.ticketNumber = values[5] || row.ticketNumber || '';
   row.flightRoute = values[7] || row.flightRoute || '';
   row.permanentAddress = values[9] || row.permanentAddress || '';
+  // Column N is the sheet's baggage-details field. Keep a neutral alias for
+  // the case view and retain the AHL name used by form submissions/PIR files.
+  row.baggageDetails = values[13] || row.baggageDetails || row.ahlBagDescription || '';
+  row.ahlBagDescription = row.ahlBagDescription || row.baggageDetails;
+  // WorldTracer file numbers are always stored in column AH.
+  row.worldTracerFileNumber = values[33] || row.worldTracerFileNumber || '';
   row.caseType = row.caseType || values.find((value) => /^(AHL|DPR)$/i.test(String(value || '').trim())) || '';
   row.bagTag = row.bagTag || values[8] || extractCbsBagTagFromUpdateNote(row.updateNote) || values.find((value) => /^[A-Z]{2}\d{6,}(\s*\/\s*[A-Z]{2}\d{6,})*$/i.test(String(value || '').trim())) || '';
   row.submittedAt = row.submittedAt || row.submitDate || values[26] || '';
@@ -3589,7 +3594,6 @@ async function updateCbsCase(rowNumber, update = {}) {
   const rowIndex = Number(rowNumber) - 1;
   if (!Number.isInteger(rowIndex) || rowIndex < 1 || !rows[rowIndex]) return { notFound: true };
   const current = cbsRecordFromSheet(rows[rowIndex] || [], rowIndex + 1);
-  if (update.updateEvent?.key === 'forward_mu' && String(current.caseType || '').toUpperCase() !== 'DPR') return { invalidCaseType: true };
   const now = new Date().toISOString();
   const incomingNote = sanitizeSheetText(update.updateNote, 1000);
   const closesDprWorldTracer = update.updateEvent?.key === 'worldtracer' && String(current.caseType || '').toUpperCase() === 'DPR';
