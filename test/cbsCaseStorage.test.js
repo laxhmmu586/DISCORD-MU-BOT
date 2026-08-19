@@ -17,6 +17,9 @@ test('CBS reads required passenger details from their fixed sheet columns', () =
   assert.match(drive, /row\.ticketNumber = values\[5\]/);
   assert.match(drive, /row\.flightRoute = values\[7\]/);
   assert.match(drive, /row\.permanentAddress = values\[9\]/);
+  assert.match(drive, /row\.baggageDetails = values\[13\]/);
+  assert.match(drive, /row\.ahlBagDescription = row\.ahlBagDescription \|\| row\.baggageDetails/);
+  assert.match(drive, /row\.worldTracerFileNumber = values\[33\]/);
 });
 
 test('DPR WorldTracer updates close the case automatically', () => {

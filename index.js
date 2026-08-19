@@ -1362,8 +1362,7 @@ function normalizeCbsBagTags(value) {
 
 function pdfSafeText(value) {
   return String(value || '')
-    .replace(/[\u3400-\u9FFF\uF900-\uFAFF\u3000-\u303F\uFF00-\uFFEF]/g, '')
-    .replace(/[^\x20-\x7E]/g, ' ')
+    .replace(/[\u0000-\u001F\u007F]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -1373,7 +1372,12 @@ function pdfEscape(value) {
 }
 
 function pdfText(content, x, y, size = 9) {
-  return `BT /F1 ${size} Tf ${x} ${y} Td (${pdfEscape(content)}) Tj ET`;
+  const safe = pdfSafeText(content);
+  if (/[^\x20-\x7E]/.test(safe)) {
+    const utf16Hex = Buffer.from(safe, 'utf16le').swap16().toString('hex').toUpperCase();
+    return `BT /F2 ${size} Tf ${x} ${y} Td <${utf16Hex}> Tj ET`;
+  }
+  return `BT /F1 ${size} Tf ${x} ${y} Td (${pdfEscape(safe)}) Tj ET`;
 }
 
 function pdfBoxText(content, x, y, w, h, size = 8) {
@@ -1509,8 +1513,9 @@ function createPirPdf(record) {
     contentPages.push(page);
   });
   const fontId = addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
+  const unicodeFontId = addObject('<< /Type /Font /Subtype /Type0 /BaseFont /STSong-Light /Encoding /UniGB-UCS2-H /DescendantFonts [ << /Type /Font /Subtype /CIDFontType0 /BaseFont /STSong-Light /CIDSystemInfo << /Registry (Adobe) /Ordering (GB1) /Supplement 4 >> >> ] >>');
   const xObjectEntries = [imageRefs.Damage ? `/Damage ${imageRefs.Damage} 0 R` : '', imageRefs.Signature ? `/Signature ${imageRefs.Signature} 0 R` : ''].filter(Boolean).join(' ');
-  const resources = `<< /Font << /F1 ${fontId} 0 R >> ${xObjectEntries ? `/XObject << ${xObjectEntries} >>` : ''} >>`;
+  const resources = `<< /Font << /F1 ${fontId} 0 R /F2 ${unicodeFontId} 0 R >> ${xObjectEntries ? `/XObject << ${xObjectEntries} >>` : ''} >>`;
   const streamIds = contentPages.map((page) => {
     const stream = page.join('\n');
     return addObject(`<< /Length ${Buffer.byteLength(stream, 'binary')} >>\nstream\n${stream}\nendstream`);
@@ -1582,9 +1587,17 @@ function buildCbsEmailHtml(record) {
   return cbsPassengerMessageHtml(record.language, record.caseType);
 }
 
+function cbsEmailIsChinese(record = {}) {
+  return /^zh(?:-|$)/i.test(String(record.language || '').trim());
+}
+
+function cbsPlainTextEmailHtml(text = '') {
+  return String(text).split(/\n{2,}/).map((paragraph) => `<p>${paragraph.replace(/\n/g, '<br>')}</p>`).join('');
+}
+
 function worldTracerUpdateEmail(record, fileNumber) {
   const reference = String(fileNumber || '').replace(/[&<>"']/g, (character) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character]));
-  if (record.language === 'zh') return {
+  if (cbsEmailIsChinese(record)) return {
     subject: `行李案件更新通知 – WorldTracer 案件编号：${fileNumber}`,
     html: `<p>尊敬的旅客：</p><p>您好！</p><p>您的行李案件现已更新至 WorldTracer 全球行李查询系统。</p><p><strong>WorldTracer 案件编号：${reference}</strong></p><p>请妥善保存此案件编号，以便后续查询或跟进行李处理进度时使用。</p><p>我们将继续跟进您的行李案件。如有进一步信息或进展，我们会及时与您联系。</p><p>感谢您的耐心与理解。</p><p>此致<br>中国东方航空</p>`
   };
@@ -1596,14 +1609,12 @@ function worldTracerUpdateEmail(record, fileNumber) {
 
 function requestedBagsUpdateEmail(record, fileNumber) {
   const reference = String(fileNumber || '').replace(/[&<>"']/g, (character) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character]));
-  if (record.language === 'zh') return {
-    subject: `行李案件更新通知 – WorldTracer 案件编号：${fileNumber}`,
-    html: `<p>尊敬的旅客：</p><p>您好！</p><p>我们很高兴地通知您，您的行李已找到，目前正在安排转运中。</p><p><strong>WorldTracer 案件编号：${reference}</strong></p><p>我们将持续跟进行李的转运情况。如有下一步进展，包括行李抵达或后续领取/配送安排，我们会尽快与您联系并向您提供最新信息。</p><p>如您有任何问题或需要进一步协助，请直接回复此邮件与我们联系。</p><p>感谢您的耐心与理解。</p><p>此致<br>中国东方航空</p>`
-  };
-  return {
-    subject: `Baggage Case Update – WorldTracer Reference: ${fileNumber}`,
-    html: `<p>Dear Passenger,</p><p>We are pleased to inform you that your baggage has been located and is currently being arranged for transfer.</p><p><strong>WorldTracer Reference Number: ${reference}</strong></p><p>We will continue to monitor the transfer status of your baggage. Once there are any further updates, including its arrival or pickup/delivery arrangements, we will contact you as soon as possible and provide you with the latest information.</p><p>If you have any questions or need further assistance, please feel free to reply directly to this email.</p><p>Thank you for your patience and understanding.</p><p>Sincerely,<br>China Eastern Airlines</p>`
-  };
+  const chinese = cbsEmailIsChinese(record);
+  const subject = chinese ? `行李案件更新通知 – WorldTracer 案件编号：${fileNumber}` : `Baggage Case Update – WorldTracer Reference: ${fileNumber}`;
+  const text = chinese
+    ? `尊敬的旅客：\n\n您好！\n\n我们很高兴地通知您，您的行李已找到，目前正在安排转运中。\n\nWorldTracer 案件编号：${fileNumber}\n\n我们将持续跟进行李的转运情况。如有下一步进展，包括行李抵达或后续领取/配送安排，我们会尽快与您联系并向您提供最新信息。\n\n如您有任何问题或需要进一步协助，请直接回复此邮件与我们联系。\n\n感谢您的耐心与理解。\n\n此致\n中国东方航空`
+    : `Dear Passenger,\n\nWe are pleased to inform you that your baggage has been located and is currently being arranged for transfer.\n\nWorldTracer Reference Number: ${fileNumber}\n\nWe will continue to monitor the transfer status of your baggage. Once there are any further updates, including its arrival or pickup/delivery arrangements, we will contact you as soon as possible and provide you with the latest information.\n\nIf you have any questions or need further assistance, please feel free to reply directly to this email.\n\nThank you for your patience and understanding.\n\nSincerely,\nChina Eastern Airlines`;
+  return { subject, text, html: cbsPlainTextEmailHtml(text.replace(fileNumber, reference)) };
 }
 
 function buildCbsFlightRoute(body) {
@@ -1939,11 +1950,6 @@ function buildCbsUpdateFields(update = {}) {
     const location = sanitizeCbsText(update.location, 160).toUpperCase();
     if (!location) return null;
     return { status: 'Bag Location Update', updateNote: `BAG LOCATION UPDATE | Location: ${location}${comment ? ` | Comment: ${comment}` : ''}`, updateEvent: { key: 'location', title: 'Update Bag Location', fields: [['Location', location], ...(comment ? [['Comment', comment]] : [])] } };
-  }
-  if (type === 'forward_mu') {
-    const forwardDate = sanitizeCbsText(update.forwardDate, 40);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(forwardDate)) return null;
-    return { status: 'Closed - Forward to MU', updateNote: `FORWARD TO MU | Date: ${forwardDate}`, updateEvent: { key: 'forward_mu', title: 'Forward to MU', fields: [['Date', forwardDate]] } };
   }
   if (type === 'closed') {
     return { status: 'Closed', updateNote: `CASE CLOSE${comment ? ` | Comment: ${comment}` : ''}`, updateEvent: { key: 'closed', title: 'Case Close', fields: comment ? [['Comment', comment]] : [] } };
@@ -2568,6 +2574,7 @@ app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
           passengerEmail: record.email,
           subject: message.subject,
           html: message.html,
+          text: message.text,
           ccOperations: false
         });
       } catch (mailErr) {
