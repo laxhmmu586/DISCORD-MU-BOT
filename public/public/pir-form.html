@@ -77,6 +77,7 @@
     .attachment-tile input[type="file"] { position:absolute; inline-size:1px; block-size:1px; opacity:0; overflow:hidden; pointer-events:none; }
     .attachment-preview { position:relative; display:grid; place-items:center; height:76px; border-radius:10px; overflow:hidden; background:#eef5fe; color:var(--brand); font-weight:900; }
     .attachment-upload .attachment-preview::before { content:"+"; display:grid; place-items:center; width:34px; height:34px; border-radius:999px; background:#fff; border:1px solid var(--line); color:var(--brand); font-size:28px; line-height:1; box-shadow:0 8px 18px rgba(22,48,76,.1); }
+    .attachment-upload[hidden] { display:none; }
     .attachment-preview img { width:100%; height:100%; object-fit:cover; display:block; }
     .attachment-remove { position:absolute; top:2px; right:2px; z-index:2; display:grid; place-items:center; width:24px; height:24px; border:1px solid rgba(255,255,255,.85); border-radius:999px; padding:0; background:#d92d20; color:#fff; font-size:16px; line-height:1; box-shadow:0 4px 10px rgba(22,48,76,.22); }
     .attachment-document { display:grid; place-items:center; width:48px; height:48px; border-radius:999px; background:#fff; border:1px solid var(--line); color:var(--brand); font-size:13px; letter-spacing:.06em; box-shadow:0 8px 18px rgba(22,48,76,.1); }
@@ -232,13 +233,13 @@
         <section class="case-fields is-active wide">
           <h3><span class="en">Attachments</span><span class="zh">附件</span><span class="required-mark">*</span></h3>
           <div class="attachment-grid">
-            <div class="attachment-group" data-attachment-group data-attachment-type="boardingPass" data-required-attachment="true">
+            <div class="attachment-group" data-attachment-group data-attachment-type="boardingPass" data-required-attachment="true" data-max-attachments="1">
               <div class="attachment-items" data-attachment-items></div>
-              <label class="attachment-tile attachment-upload"><span class="attachment-preview"></span><span class="attachment-title"><span class="en">Boarding pass</span><span class="zh">登机牌</span><span class="required-mark">*</span></span><span class="attachment-filename"></span><input name="boardingPassAttachment" data-attachment-input data-attachment-type="boardingPass" type="file" accept="image/*,.pdf" multiple /></label>
+              <label class="attachment-tile attachment-upload"><span class="attachment-preview"></span><span class="attachment-title"><span class="en">Boarding pass</span><span class="zh">登机牌</span><span class="required-mark">*</span></span><span class="attachment-filename"></span><input name="boardingPassAttachment" data-attachment-input data-attachment-type="boardingPass" type="file" accept="image/*,.pdf" /></label>
             </div>
-            <div class="attachment-group" data-attachment-group data-attachment-type="bagTag" data-required-attachment="true">
+            <div class="attachment-group" data-attachment-group data-attachment-type="bagTag" data-required-attachment="true" data-max-attachments="1">
               <div class="attachment-items" data-attachment-items></div>
-              <label class="attachment-tile attachment-upload"><span class="attachment-preview"></span><span class="attachment-title"><span class="en">Bag tag receipt</span><span class="zh">行李票</span><span class="required-mark">*</span></span><span class="attachment-filename"></span><input name="bagTagAttachment" data-attachment-input data-attachment-type="bagTag" type="file" accept="image/*,.pdf" multiple /></label>
+              <label class="attachment-tile attachment-upload"><span class="attachment-preview"></span><span class="attachment-title"><span class="en">Bag tag receipt</span><span class="zh">行李票</span><span class="required-mark">*</span></span><span class="attachment-filename"></span><input name="bagTagAttachment" data-attachment-input data-attachment-type="bagTag" type="file" accept="image/*,.pdf" /></label>
             </div>
             <div class="attachment-group" data-attachment-group data-attachment-type="other">
               <div class="attachment-items" data-attachment-items></div>
@@ -673,13 +674,17 @@
       const items = group.querySelector('[data-attachment-items]');
       const files = selectedAttachments.get(attachmentKey(input)) || [];
       files.forEach((file, index) => items?.appendChild(createAttachmentTile(file, index, input)));
+      const maxAttachments = Number(group.dataset.maxAttachments) || Infinity;
+      const uploadTile = group.querySelector('.attachment-upload');
+      if (uploadTile) uploadTile.hidden = files.length >= maxAttachments;
     }
 
     function updateAttachmentPreview(input) {
       const files = Array.from(input.files || []);
       if (!files.length) return;
       const key = attachmentKey(input);
-      selectedAttachments.set(key, [...(selectedAttachments.get(key) || []), ...files]);
+      const maxAttachments = Number(input.closest('[data-attachment-group]')?.dataset.maxAttachments) || Infinity;
+      selectedAttachments.set(key, [...(selectedAttachments.get(key) || []), ...files].slice(0, maxAttachments));
       renderAttachmentGroup(input);
       input.value = '';
     }
@@ -688,6 +693,7 @@
     function clearAttachmentPreviews() {
       document.querySelectorAll('[data-attachment-group]').forEach(clearAttachmentGroup);
       selectedAttachments.clear();
+      attachmentInputs.forEach(renderAttachmentGroup);
     }
 
     async function collectRequiredAttachments() {
