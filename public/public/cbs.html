@@ -518,7 +518,7 @@
       if (/location/.test(text)) return 'location';
       if (/rush/.test(text)) return 'rush';
       if (/world\s*tracer|worldtracer/.test(text)) return 'worldtracer';
-      if (/requested\s*bags?/.test(text)) return 'requested_bags';
+      if (/requested[\s_-]*bags?/.test(text)) return 'requested_bags';
       if (/update/.test(text)) return 'update';
       return 'create';
     }
@@ -803,7 +803,7 @@
         .sort((a, b) => (Date.parse(a.at || '') || 0) - (Date.parse(b.at || '') || 0))
         .map((event) => {
           const time = formatEventTime(event.at);
-          const title = TRACKING_STAGES.find((stage) => stage.key === event.key)?.text || event.title || 'Update';
+          const title = event.key === 'requested_bags' ? 'Update' : (TRACKING_STAGES.find((stage) => stage.key === event.key)?.text || event.title || 'Update');
           const detailFields = (event.fields || []).filter(([, value]) => hasValue(value));
           const detailHtml = detailFields.map(([fieldKey, value]) => `<span class="tracking-chip-detail">${escapeHtml(fieldKey)}: ${escapeHtml(renderValue(value))}</span>`).join('');
           const noteHtml = !detailFields.length && hasValue(event.note) ? `<span class="tracking-chip-detail">${escapeHtml(event.note)}</span>` : '';

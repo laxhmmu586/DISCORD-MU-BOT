@@ -17,6 +17,8 @@ test('CBS passenger information keeps all operationally required fields visible'
 test('CBS tracking offers the requested bags stage', () => {
   assert.match(page, /key:'requested_bags', text:'Requested Bags'/);
   assert.match(page, /if \(key === 'requested_bags'\) return ''/);
+  assert.match(page, /requested\[\\s_-\]\*bags\?/);
+  assert.match(page, /event\.key === 'requested_bags' \? 'Update'/);
 });
 
 test('CBS tracking no longer offers Forward to MU', () => {
