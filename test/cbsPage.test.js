@@ -27,6 +27,10 @@ test('CBS passenger detail view can recover values from the original form snapsh
   assert.match(page, /JSON\.parse\(row\.originalFormData \|\| '\{\}'\)/);
 });
 
+test('CBS baggage information displays baggage details from sheet column N', () => {
+  assert.match(page, /label\('Baggage Details', '行李详情'\), row\.baggageDetails \|\| row\.ahlBagDescription/);
+});
+
 test('CBS detail view omits the redundant journey and address section', () => {
   assert.doesNotMatch(page, /<h3>\$\{label\('Journey and address'/);
 });

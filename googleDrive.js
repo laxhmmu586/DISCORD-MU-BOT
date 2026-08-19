@@ -3150,6 +3150,10 @@ function cbsRecordFromSheet(values, rowNumber) {
   row.ticketNumber = values[5] || row.ticketNumber || '';
   row.flightRoute = values[7] || row.flightRoute || '';
   row.permanentAddress = values[9] || row.permanentAddress || '';
+  // Column N is the sheet's baggage-details field. Keep a neutral alias for
+  // the case view and retain the AHL name used by form submissions/PIR files.
+  row.baggageDetails = values[13] || row.baggageDetails || row.ahlBagDescription || '';
+  row.ahlBagDescription = row.ahlBagDescription || row.baggageDetails;
   row.caseType = row.caseType || values.find((value) => /^(AHL|DPR)$/i.test(String(value || '').trim())) || '';
   row.bagTag = row.bagTag || values[8] || extractCbsBagTagFromUpdateNote(row.updateNote) || values.find((value) => /^[A-Z]{2}\d{6,}(\s*\/\s*[A-Z]{2}\d{6,})*$/i.test(String(value || '').trim())) || '';
   row.submittedAt = row.submittedAt || row.submitDate || values[26] || '';
