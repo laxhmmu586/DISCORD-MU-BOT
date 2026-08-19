@@ -42,3 +42,12 @@ test('PIR form labels the optional attachment category as Others', () => {
   assert.match(pirForm, /<span class="en">Others<\/span><span class="zh">其他附件<\/span>/);
   assert.doesNotMatch(pirForm, />Other document<\/span>/);
 });
+
+test('expanded CBS cases show passenger email notification status', () => {
+  assert.match(page, /function passengerNotificationHtml\(row\)/);
+  assert.match(page, /Create report email/);
+  assert.match(page, /WorldTracer update email/);
+  assert.match(page, /Baggage request from other station email/);
+  assert.match(page, /passenger-notify-item\$\{sent \? ' is-sent'/);
+  assert.match(page, /passengerNotificationHtml\(row\)/);
+});
