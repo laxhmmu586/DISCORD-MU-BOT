@@ -27,3 +27,10 @@ test('DPR WorldTracer updates close the case automatically', () => {
   assert.match(drive, /closesDprWorldTracer \? 'Closed - WorldTracer'/);
   assert.doesNotMatch(drive, /update\.updateEvent\?\.key === 'forward_mu'/);
 });
+
+test('requested bags updates store the requesting station in case history', () => {
+  const server = fs.readFileSync(path.join(__dirname, '..', 'index.js'), 'utf8');
+  assert.match(server, /const fromStation = sanitizeCbsText\(update\.fromStation, 120\)\.toUpperCase\(\)/);
+  assert.match(server, /REQUESTED BAGS \| From station: \$\{fromStation\}/);
+  assert.match(server, /fields: \[\['From Station', fromStation\]\]/);
+});

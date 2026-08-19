@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const page = fs.readFileSync(path.join(__dirname, '..', 'public', 'public', 'cbs.html'), 'utf8');
+const pirForm = fs.readFileSync(path.join(__dirname, '..', 'public', 'public', 'pir-form.html'), 'utf8');
 
 test('CBS passenger information keeps all operationally required fields visible', () => {
   const requiredFields = page.match(/const requiredPassengerFields = \[([\s\S]*?)\n\s*\];/)?.[1] || '';
@@ -16,9 +17,14 @@ test('CBS passenger information keeps all operationally required fields visible'
 
 test('CBS tracking offers the requested bags stage', () => {
   assert.match(page, /key:'requested_bags', text:'Requested Bags'/);
-  assert.match(page, /if \(key === 'requested_bags'\) return ''/);
+  assert.match(page, /if \(key === 'requested_bags'\) return input\('From which station\?', 'fromStation'\)/);
   assert.match(page, /requested\[\\s_-\]\*bags\?/);
-  assert.match(page, /event\.key === 'requested_bags' \? 'Update'/);
+  assert.doesNotMatch(page, /event\.key === 'requested_bags' \? 'Update'/);
+  assert.match(page, /tracking-step-number/);
+  assert.match(page, /index === sortedEvents\.length - 1 \? ' is-latest'/);
+  assert.match(page, /content:"➜"/);
+  assert.match(page, /label\('Case Progress', '案件进度'\)/);
+  assert.match(page, /content:"CURRENT"/);
 });
 
 test('CBS tracking no longer offers Forward to MU', () => {
@@ -35,4 +41,21 @@ test('CBS baggage information displays baggage details from sheet column N', () 
 
 test('CBS detail view omits the redundant journey and address section', () => {
   assert.doesNotMatch(page, /<h3>\$\{label\('Journey and address'/);
+});
+
+test('PIR form labels the optional attachment category as Others', () => {
+  assert.match(pirForm, /<span class="en">Others<\/span><span class="zh">其他附件<\/span>/);
+  assert.doesNotMatch(pirForm, />Other document<\/span>/);
+});
+
+test('expanded CBS cases show passenger email notification status', () => {
+  assert.match(page, /function passengerNotificationHtml\(row\)/);
+  assert.match(page, /Create report email/);
+  assert.match(page, /WorldTracer update email/);
+  assert.match(page, /Baggage request from other station email/);
+  assert.match(page, /\.filter\(\(\[key\]\) => sentKeys\.has\(key\)\)/);
+  assert.match(page, /passenger-notify-item is-sent/);
+  assert.doesNotMatch(page, /sent \? ' is-sent'/);
+  assert.doesNotMatch(page, /label\('Sent', '已发送'\)/);
+  assert.match(page, /passengerNotificationHtml\(row\)/);
 });
