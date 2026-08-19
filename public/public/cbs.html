@@ -570,7 +570,7 @@
       ];
       return `<aside class="passenger-notify"><h3>${label('Notify Passenger', '旅客邮件通知')}</h3><ul class="passenger-notify-list">${notifications.map(([key, text]) => {
         const sent = sentKeys.has(key);
-        return `<li class="passenger-notify-item${sent ? ' is-sent' : ''}"><span class="passenger-notify-check" aria-hidden="true">✓</span><span>${escapeHtml(text)}${sent ? ` <small>(${label('Sent', '已发送')})</small>` : ''}</span></li>`;
+        return `<li class="passenger-notify-item${sent ? ' is-sent' : ''}"><span class="passenger-notify-check" aria-hidden="true">✓</span><span>${escapeHtml(text)}</span></li>`;
       }).join('')}</ul></aside>`;
     }
     function detailRows(row) {
@@ -788,7 +788,7 @@
     function inlineUpdateFieldsHtml(key) {
       const input = (placeholder, name, required = true) => `<input name="${escapeHtml(name)}" placeholder="${escapeHtml(placeholder)}" ${required ? 'required' : ''} />`;
       if (key === 'worldtracer') return input('File number', 'fileNumber');
-      if (key === 'requested_bags') return '';
+      if (key === 'requested_bags') return input('From which station?', 'fromStation');
       if (key === 'rush') return [input('Rush tag number', 'rushTagNumber'), input('Rush to where?', 'rushToWhere'), input('AKE number?', 'akeNumber'), input('World Tracer file # (optional)', 'worldTracerFileNumber', false), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
       if (key === 'location') return [input('Bag location', 'location'), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
       if (key === 'shipping') return [input('Tracking number', 'trackingNumber'), input('Shipping to where?', 'shippingTo'), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');

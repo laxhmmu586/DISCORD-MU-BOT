@@ -17,7 +17,7 @@ test('CBS passenger information keeps all operationally required fields visible'
 
 test('CBS tracking offers the requested bags stage', () => {
   assert.match(page, /key:'requested_bags', text:'Requested Bags'/);
-  assert.match(page, /if \(key === 'requested_bags'\) return ''/);
+  assert.match(page, /if \(key === 'requested_bags'\) return input\('From which station\?', 'fromStation'\)/);
   assert.match(page, /requested\[\\s_-\]\*bags\?/);
   assert.match(page, /event\.key === 'requested_bags' \? 'Update'/);
 });
@@ -49,5 +49,6 @@ test('expanded CBS cases show passenger email notification status', () => {
   assert.match(page, /WorldTracer update email/);
   assert.match(page, /Baggage request from other station email/);
   assert.match(page, /passenger-notify-item\$\{sent \? ' is-sent'/);
+  assert.doesNotMatch(page, /label\('Sent', '已发送'\)/);
   assert.match(page, /passengerNotificationHtml\(row\)/);
 });

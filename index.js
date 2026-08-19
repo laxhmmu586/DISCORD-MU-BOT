@@ -1945,7 +1945,9 @@ function buildCbsUpdateFields(update = {}) {
     return { status: 'WorldTracer', updateNote: `WORLDTRACER | File number: ${fileNumber}`, updateEvent: { key: 'worldtracer', title: 'Update WorldTracer', fields: [['File Number', fileNumber]] } };
   }
   if (type === 'requested_bags') {
-    return { status: 'Requested Bags', updateNote: 'REQUESTED BAGS', updateEvent: { key: 'requested_bags', title: 'Requested Bags', fields: [] } };
+    const fromStation = sanitizeCbsText(update.fromStation, 120).toUpperCase();
+    if (!fromStation) return null;
+    return { status: 'Requested Bags', updateNote: `REQUESTED BAGS | From station: ${fromStation}`, updateEvent: { key: 'requested_bags', title: 'Requested Bags', fields: [['From Station', fromStation]] } };
   }
   if (type === 'rush') {
     const rushTagNumber = sanitizeCbsText(update.rushTagNumber, 80).toUpperCase();
