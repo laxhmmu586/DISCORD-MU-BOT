@@ -22,6 +22,9 @@ test('CBS tracking offers the requested bags stage', () => {
   assert.doesNotMatch(page, /event\.key === 'requested_bags' \? 'Update'/);
   assert.match(page, /tracking-step-number/);
   assert.match(page, /index === sortedEvents\.length - 1 \? ' is-latest'/);
+  assert.match(page, /content:"➜"/);
+  assert.match(page, /label\('Case Progress', '案件进度'\)/);
+  assert.match(page, /content:"CURRENT"/);
 });
 
 test('CBS tracking no longer offers Forward to MU', () => {
