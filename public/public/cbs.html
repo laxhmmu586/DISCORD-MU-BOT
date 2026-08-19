@@ -663,7 +663,7 @@
         [label('DPR Bag Type', 'DPR行李类型'), row.dprBagType], [label('DPR Inner Damage', 'DPR内物破损'), row.dprInnerDamage],
         [label('Contents Details', '包内物品详情'), row.contentsDetails]
       ]) : sharedBaggageFields.concat([
-        [label('AHL Bag Description', 'AHL行李描述'), row.ahlBagDescription], [label('AHL Bag Brand Tag', 'AHL行李品牌牌'), row.ahlBagBrandTag],
+        [label('Baggage Details', '行李详情'), row.baggageDetails || row.ahlBagDescription], [label('AHL Bag Brand Tag', 'AHL行李品牌牌'), row.ahlBagBrandTag],
         [label('AHL Bag Type', 'AHL行李类型'), row.ahlBagType], [label('AHL Features', 'AHL特征'), row.ahlFeatures],
         [label('AHL Other Features', 'AHL其他特征'), row.ahlOtherFeatures], [label('AHL Contents', 'AHL包内物品'), row.ahlContents],
         [label('Contents Details', '包内物品详情'), row.contentsDetails]
