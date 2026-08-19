@@ -20,11 +20,14 @@ test('requested bags update emails the passenger without an operations CC', () =
   assert.match(server, /subject: `Baggage Case Update – WorldTracer Reference: \$\{fileNumber\}`/);
   assert.match(server, /WorldTracer Reference Number: \$\{reference\}/);
   assert.match(server, /WorldTracer 案件编号：\$\{reference\}/);
+  assert.match(server, /Dear Passenger,\\n\\nWe are pleased to inform you/);
+  assert.match(server, /Sincerely,\\nChina Eastern Airlines/);
   assert.match(server, /function cbsEmailIsChinese[\s\S]*?\^zh\(\?:-\|\$\)/);
   const block = server.match(/if \(updateFields\.updateEvent\?\.key === 'requested_bags'\) \{([\s\S]*?)\n\s*\}/)?.[1] || '';
   assert.match(block, /sendCbsCaseEmail/);
   assert.match(block, /ccOperations: false/);
   assert.match(block, /record\.worldTracerFileNumber \|\| ''/);
+  assert.match(block, /text: message\.text/);
 });
 
 test('DPR WorldTracer updates notify the damaged-baggage Discord channel', () => {

@@ -3920,8 +3920,9 @@ function cbsAttachmentPart({ filename, mimeType, contentBase64 }) {
   ];
 }
 
-function buildRawCbsEmail({ to, cc = [], subject, html, pdfBuffer, filename, attachments = [] }) {
+function buildRawCbsEmail({ to, cc = [], subject, html, text, pdfBuffer, filename, attachments = [] }) {
   const boundary = `cbs_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+  const alternativeBoundary = `${boundary}_alternative`;
   const ccList = Array.isArray(cc) ? cc.filter(Boolean) : [];
   const headers = [
     `To: ${encodeEmailHeader(to)}`,
@@ -3932,10 +3933,19 @@ function buildRawCbsEmail({ to, cc = [], subject, html, pdfBuffer, filename, att
   ];
   const body = [
     `--${boundary}`,
+    `Content-Type: multipart/alternative; boundary="${alternativeBoundary}"`,
+    '',
+    `--${alternativeBoundary}`,
+    'Content-Type: text/plain; charset="UTF-8"',
+    'Content-Transfer-Encoding: base64',
+    '',
+    cbsBase64Lines(Buffer.from(String(text || '').trim() || String(html || '').replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>/gi, '\n\n').replace(/<[^>]+>/g, ''), 'utf8').toString('base64')),
+    `--${alternativeBoundary}`,
     'Content-Type: text/html; charset="UTF-8"',
     'Content-Transfer-Encoding: quoted-printable',
     '',
-    String(html || '').replace(/=/g, '=3D')
+    String(html || '').replace(/=/g, '=3D'),
+    `--${alternativeBoundary}--`
   ];
   if (pdfBuffer?.length) {
     body.push(
@@ -3995,11 +4005,11 @@ async function sendNextDayInfoEmail({ to = 'laxhmmu@gmail.com', cc = [], subject
   return { to: Array.isArray(to) ? to : [to], cc: Array.isArray(cc) ? cc : [cc].filter(Boolean), id: sent.data.id || '', userId, authMode };
 }
 
-async function sendCbsCaseEmail({ passengerEmail, subject, html, pdfBuffer, filename, attachments = [], ccOperations = true }) {
+async function sendCbsCaseEmail({ passengerEmail, subject, html, text, pdfBuffer, filename, attachments = [], ccOperations = true }) {
   const { gmail, userId } = getNextDayInfoGmailClient();
   const to = String(passengerEmail || '').trim();
   const cc = ccOperations && to.toLowerCase() !== 'laxhmmu@gmail.com' ? ['laxhmmu@gmail.com'] : [];
-  const raw = buildRawCbsEmail({ to, cc, subject, html, pdfBuffer, filename, attachments });
+  const raw = buildRawCbsEmail({ to, cc, subject, html, text, pdfBuffer, filename, attachments });
   const sent = await gmail.users.messages.send({
     userId,
     requestBody: { raw: base64UrlEncode(raw) }

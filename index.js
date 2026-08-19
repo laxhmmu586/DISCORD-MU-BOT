@@ -1586,6 +1586,10 @@ function cbsEmailIsChinese(record = {}) {
   return /^zh(?:-|$)/i.test(String(record.language || '').trim());
 }
 
+function cbsPlainTextEmailHtml(text = '') {
+  return String(text).split(/\n{2,}/).map((paragraph) => `<p>${paragraph.replace(/\n/g, '<br>')}</p>`).join('');
+}
+
 function worldTracerUpdateEmail(record, fileNumber) {
   const reference = String(fileNumber || '').replace(/[&<>"']/g, (character) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character]));
   if (cbsEmailIsChinese(record)) return {
@@ -1600,14 +1604,12 @@ function worldTracerUpdateEmail(record, fileNumber) {
 
 function requestedBagsUpdateEmail(record, fileNumber) {
   const reference = String(fileNumber || '').replace(/[&<>"']/g, (character) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character]));
-  if (cbsEmailIsChinese(record)) return {
-    subject: `行李案件更新通知 – WorldTracer 案件编号：${fileNumber}`,
-    html: `<p>尊敬的旅客：</p><p>您好！</p><p>我们很高兴地通知您，您的行李已找到，目前正在安排转运中。</p><p><strong>WorldTracer 案件编号：${reference}</strong></p><p>我们将持续跟进行李的转运情况。如有下一步进展，包括行李抵达或后续领取/配送安排，我们会尽快与您联系并向您提供最新信息。</p><p>如您有任何问题或需要进一步协助，请直接回复此邮件与我们联系。</p><p>感谢您的耐心与理解。</p><p>此致<br>中国东方航空</p>`
-  };
-  return {
-    subject: `Baggage Case Update – WorldTracer Reference: ${fileNumber}`,
-    html: `<p>Dear Passenger,</p><p>We are pleased to inform you that your baggage has been located and is currently being arranged for transfer.</p><p><strong>WorldTracer Reference Number: ${reference}</strong></p><p>We will continue to monitor the transfer status of your baggage. Once there are any further updates, including its arrival or pickup/delivery arrangements, we will contact you as soon as possible and provide you with the latest information.</p><p>If you have any questions or need further assistance, please feel free to reply directly to this email.</p><p>Thank you for your patience and understanding.</p><p>Sincerely,<br>China Eastern Airlines</p>`
-  };
+  const chinese = cbsEmailIsChinese(record);
+  const subject = chinese ? `行李案件更新通知 – WorldTracer 案件编号：${fileNumber}` : `Baggage Case Update – WorldTracer Reference: ${fileNumber}`;
+  const text = chinese
+    ? `尊敬的旅客：\n\n您好！\n\n我们很高兴地通知您，您的行李已找到，目前正在安排转运中。\n\nWorldTracer 案件编号：${fileNumber}\n\n我们将持续跟进行李的转运情况。如有下一步进展，包括行李抵达或后续领取/配送安排，我们会尽快与您联系并向您提供最新信息。\n\n如您有任何问题或需要进一步协助，请直接回复此邮件与我们联系。\n\n感谢您的耐心与理解。\n\n此致\n中国东方航空`
+    : `Dear Passenger,\n\nWe are pleased to inform you that your baggage has been located and is currently being arranged for transfer.\n\nWorldTracer Reference Number: ${fileNumber}\n\nWe will continue to monitor the transfer status of your baggage. Once there are any further updates, including its arrival or pickup/delivery arrangements, we will contact you as soon as possible and provide you with the latest information.\n\nIf you have any questions or need further assistance, please feel free to reply directly to this email.\n\nThank you for your patience and understanding.\n\nSincerely,\nChina Eastern Airlines`;
+  return { subject, text, html: cbsPlainTextEmailHtml(text.replace(fileNumber, reference)) };
 }
 
 function buildCbsFlightRoute(body) {
@@ -2567,6 +2569,7 @@ app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
           passengerEmail: record.email,
           subject: message.subject,
           html: message.html,
+          text: message.text,
           ccOperations: false
         });
       } catch (mailErr) {
