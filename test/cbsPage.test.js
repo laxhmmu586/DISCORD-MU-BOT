@@ -48,7 +48,9 @@ test('expanded CBS cases show passenger email notification status', () => {
   assert.match(page, /Create report email/);
   assert.match(page, /WorldTracer update email/);
   assert.match(page, /Baggage request from other station email/);
-  assert.match(page, /passenger-notify-item\$\{sent \? ' is-sent'/);
+  assert.match(page, /\.filter\(\(\[key\]\) => sentKeys\.has\(key\)\)/);
+  assert.match(page, /passenger-notify-item is-sent/);
+  assert.doesNotMatch(page, /sent \? ' is-sent'/);
   assert.doesNotMatch(page, /label\('Sent', '已发送'\)/);
   assert.match(page, /passengerNotificationHtml\(row\)/);
 });
