@@ -426,7 +426,8 @@
     function unresolvedUpdateFieldsHtml(action, bagTag) {
       if (action === 'worldtracer') return `<label class="wide"><span>WorldTracer File Number</span><input name="worldTracerFileNumber" required /></label>`;
       if (action === 'on-hand-rush') return `<label><span>WorldTracer File Number (Optional)</span><input name="worldTracerFileNumber" placeholder="Can be added later" /></label><label><span>Original Tag Number</span><input name="originalTagNumber" value="${escapeHtml(bagTag)}" required /></label><label><span>RUSH Tag Number</span><input name="rushTagNumber" required /></label><div class="rush-itinerary wide"><div class="rush-itinerary-head"><h2>RUSH Itinerary</h2><button class="secondary" type="button" data-add-unresolved-flight>+ Add Flight</button></div><div data-unresolved-flight-rows>${rushFlightRowHtml()}</div></div>`;
-      const placeholder = action === 'passenger-collected' ? 'Who collected the bag?' : (action === 'shipped' ? 'Tracking number and destination' : 'Describe how this case was resolved');
+      if (action === 'shipped') return `<label><span>Delivery method</span><select name="shippingMethod" data-shipping-method required><option value="">Select delivery method</option><option>ADC - All Day Courier</option><option>FedEx Delivery</option><option>Pick Up at Airport</option><option>Passenger Pay for Shipping</option></select></label><label data-shipping-tracking hidden><span>Tracking number</span><input name="trackingNumber" disabled /></label><label data-shipping-address hidden><span>Shipping to where?</span><input name="shippingTo" disabled /></label><label class="wide"><span>Comment</span><textarea name="comment"></textarea></label>`;
+      const placeholder = action === 'passenger-collected' ? 'Who collected the bag?' : 'Describe how this case was resolved';
       return `<label class="wide"><span>Resolution Note</span><textarea name="note" placeholder="${placeholder}" required></textarea></label>`;
     }
     function unresolvedProgressHtml(row) {
@@ -1211,6 +1212,25 @@
       event.target.click();
     });
     unresolvedBaggageOutput?.addEventListener('change', (event) => {
+      const shippingMethod = event.target.closest('[data-shipping-method]');
+      if (shippingMethod) {
+        const form = shippingMethod.closest('form');
+        const trackingField = form.querySelector('[data-shipping-tracking]');
+        const trackingInput = trackingField.querySelector('input');
+        const addressField = form.querySelector('[data-shipping-address]');
+        const addressInput = addressField.querySelector('input');
+        const needsTracking = shippingMethod.value === 'FedEx Delivery';
+        const showsAddress = shippingMethod.value === 'ADC - All Day Courier' || shippingMethod.value === 'FedEx Delivery';
+        trackingField.hidden = !needsTracking;
+        trackingInput.disabled = !needsTracking;
+        trackingInput.required = needsTracking;
+        if (!needsTracking) trackingInput.value = '';
+        addressField.hidden = !showsAddress;
+        addressInput.disabled = !showsAddress;
+        addressInput.required = false;
+        if (!showsAddress) addressInput.value = '';
+        return;
+      }
       const select = event.target.closest('[data-unresolved-action]');
       if (!select) return;
       const form = select.closest('.unresolved-update');

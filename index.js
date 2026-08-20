@@ -2547,8 +2547,23 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
       if (!originalTagNumber || !rushTagNumber || !flightRows.length || flightRows.some((flight) => Object.values(flight).some((value) => !value))) return res.status(400).json({ error: 'Original tag, RUSH tag, and complete flight segments are required' });
       await appendCbsWorldTracerCase({ worldTracerFileNumber, originalTagNumber, rushTagNumber, flightRows, createdAt: new Date().toISOString() });
     }
-    if (action !== 'on-hand-rush' && !note) return res.status(400).json({ error: 'A resolution note is required' });
-    const result = await resolveCbsUnresolvedBaggageCase(req.params.rowNumber, action, note);
+    let resolutionNote = note;
+    if (action === 'shipped') {
+      const shippingMethods = ['ADC - All Day Courier', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping'];
+      const shippingMethod = shippingMethods.find((method) => method === sanitizeCbsText(req.body?.shippingMethod, 80));
+      const trackingNumber = sanitizeCbsText(req.body?.trackingNumber, 160);
+      const shippingTo = sanitizeCbsText(req.body?.shippingTo, 500);
+      const comment = sanitizeCbsText(req.body?.comment, 500);
+      if (!shippingMethod) return res.status(400).json({ error: 'A valid delivery method is required' });
+      if (shippingMethod === 'FedEx Delivery' && !trackingNumber) return res.status(400).json({ error: 'A tracking number is required for FedEx Delivery' });
+      const details = [`Method: ${shippingMethod}`];
+      if (trackingNumber) details.push(`Tracking: ${trackingNumber}`);
+      if (shippingTo) details.push(`Ship to: ${shippingTo}`);
+      if (comment) details.push(`Comment: ${comment}`);
+      resolutionNote = details.join(' | ');
+    }
+    if (action !== 'on-hand-rush' && !resolutionNote) return res.status(400).json({ error: 'A resolution note is required' });
+    const result = await resolveCbsUnresolvedBaggageCase(req.params.rowNumber, action, resolutionNote);
     if (result.notFound) return res.status(404).json({ error: 'Unresolved baggage case not found' });
     return res.json(result);
   } catch (err) {

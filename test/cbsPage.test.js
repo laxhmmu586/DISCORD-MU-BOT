@@ -27,6 +27,15 @@ test('On-hand cases match the passenger case layout and support WorldTracer prog
   assert.match(server, /action === 'worldtracer'/);
 });
 
+test('On-hand shipping uses the Passenger Filed delivery methods without email handling', () => {
+  const onHandFields = page.match(/if \(action === 'shipped'\) return `([\s\S]*?)`;/)?.[1] || '';
+  for (const method of ['ADC - All Day Courier', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping']) assert.match(onHandFields, new RegExp(method));
+  assert.match(onHandFields, /data-shipping-tracking hidden/);
+  assert.match(onHandFields, /data-shipping-address hidden/);
+  assert.match(server, /if \(action === 'shipped'\) \{/);
+  assert.match(server, /A tracking number is required for FedEx Delivery/);
+});
+
 test('CBS passenger information keeps all operationally required fields visible', () => {
   const requiredFields = page.match(/const requiredPassengerFields = \[([\s\S]*?)\n\s*\];/)?.[1] || '';
   for (const label of ['Passenger Name', 'Email', 'Phone', 'Ticket Number', 'Flight Route', 'Permanent Address']) {
