@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { normalizeOperationalFlightNo, normalizeJcsyFlightNo, sectionMatchesFlightOperationDate, matchesSyFlightRecord, hasUnclearedApiSourceRisk } = require('../syParser');
+const { normalizeOperationalFlightNo, normalizeJcsyFlightNo, sectionMatchesFlightOperationDate, matchesSyFlightRecord, hasUnclearedApiSourceRisk, extractPassportCountryCodes } = require('../syParser');
 
 test('normalizes delayed-flight numbers across SY and passenger record formats', () => {
   assert.equal(normalizeOperationalFlightNo('MU586D'), 'MU586D');
@@ -44,4 +44,10 @@ test('uses the latest API operation when checking the agent whitelist', () => {
   ].join('\n');
 
   assert.equal(hasUnclearedApiSourceRisk(section), false);
+});
+
+test('extracts the issuing country after the passport expiry date', () => {
+  const section = 'PASSPORT :EP5073319/P/NAT/CHN/250409/350408/CHN/N/A';
+
+  assert.deepEqual(extractPassportCountryCodes(section), ['CHN', 'CHN']);
 });
