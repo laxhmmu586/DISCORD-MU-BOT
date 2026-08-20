@@ -47,6 +47,16 @@ test('requested bags update emails the passenger without an operations CC', () =
   assert.match(block, /text: message\.text/);
 });
 
+test('Rush to LAX information emails the passenger using the ETA stored in AK', () => {
+  assert.match(server, /function rushToLaxInformationEmail/);
+  assert.match(server, /请勿回复 – 行李转运状态更新 – WorldTracer 案件编号：\$\{fileNumber\}/);
+  assert.match(server, /DO NOT REPLY – Baggage Transfer Status Update – WorldTracer Case: \$\{fileNumber\}/);
+  assert.match(server, /预计于 \$\{arrival\} 运抵洛杉矶（LAX）/);
+  assert.match(server, /expected to arrive in Los Angeles \(LAX\) on \$\{arrival\}/);
+  assert.match(server, /rushToLaxInformationEmail\(record, fileNumber, record\.estimatedArrivalTime\)/);
+  assert.match(server, /CBS Rush to LAX information email error/);
+});
+
 test('DPR WorldTracer updates notify the damaged-baggage Discord channel', () => {
   assert.match(server, /CBS_DAMAGED_DISCORD_CHANNEL_ID[^\n]*'1527344986075693167'/);
   const helper = server.match(/async function sendDprWorldTracerUpdateToDiscord[\s\S]*?\n\}/)?.[0] || '';

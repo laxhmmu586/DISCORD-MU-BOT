@@ -82,8 +82,9 @@
     .cbs-sheet .sheet-event small { display:block; color:var(--muted); font-weight:700; }
     .cbs-sheet .sheet-detail-row td { background:#fbfdff; }
     .cbs-sheet .sheet-detail-cell { padding:12px; }
-    .case-detail-layout { display:grid; gap:18px; }
-    .case-detail-content { display:grid; grid-template-columns:minmax(0,1fr) minmax(230px,280px); gap:18px; align-items:start; }
+    .case-detail-layout { display:grid; grid-template-columns:minmax(280px,360px) minmax(0,1fr); gap:24px; align-items:start; }
+    .case-detail-right { display:grid; gap:18px; min-width:0; }
+    .case-detail-content { display:grid; gap:18px; align-items:start; }
     .passenger-notify { padding:16px; border:1px solid #cfe1d7; border-radius:16px; background:#f5fbf7; box-shadow:0 8px 20px rgba(8,116,67,.08); }
     .passenger-notify h3 { margin:0 0 12px; color:#075d38; font-size:15px; }
     .passenger-notify-list { display:grid; gap:10px; margin:0; padding:0; list-style:none; }
@@ -95,10 +96,12 @@
     .sheet-detail-grid p { margin:0; min-width:0; color:#172033; }
     .sheet-detail-grid strong { color:#475467; }
     .sheet-actions { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:12px; }
-    .tracking-workspace { display:grid; gap:14px; align-items:start; }
-    .tracking-history { display:flex; gap:56px; align-items:stretch; overflow-x:auto; padding:16px 4px 14px; }
-    .tracking-chip { position:relative; display:inline-grid; grid-template-columns:28px minmax(130px,1fr); align-content:start; gap:4px 10px; min-width:190px; padding:14px 16px; border-radius:16px; background:#eef4ff; color:var(--brand); font-weight:850; box-shadow:inset 0 0 0 1px rgba(18,58,115,.08),0 5px 12px rgba(18,58,115,.06); }
-    .tracking-chip:not(:last-child)::after { content:"➜"; position:absolute; z-index:2; left:calc(100% + 11px); top:50%; display:grid; place-items:center; width:34px; height:34px; border:2px solid #12b76a; border-radius:999px; background:#fff; color:#12b76a; font-size:22px; font-weight:950; line-height:1; box-shadow:0 3px 8px rgba(18,183,106,.18); transform:translateY(-50%); }
+    .tracking-workspace { display:grid; gap:14px; align-items:start; min-width:0; }
+    .tracking-workspace > * { min-width:0; }
+    .tracking-history { display:grid; gap:22px; width:100%; max-width:100%; padding:12px 4px 8px; }
+    .tracking-history:focus-visible { outline:2px solid #75a7e3; outline-offset:4px; border-radius:12px; }
+    .tracking-chip { position:relative; display:grid; grid-template-columns:28px minmax(0,1fr); align-content:start; gap:4px 10px; width:100%; min-width:0; padding:14px 16px; border-radius:16px; background:#eef4ff; color:var(--brand); font-weight:850; box-shadow:inset 0 0 0 1px rgba(18,58,115,.08),0 5px 12px rgba(18,58,115,.06); }
+    .tracking-chip:not(:last-child)::after { content:""; position:absolute; z-index:0; left:29px; top:100%; width:2px; height:22px; background:#9fc4ef; }
     .tracking-chip.is-latest::before { content:"CURRENT"; position:absolute; right:10px; top:-12px; padding:3px 8px; border-radius:999px; background:#12b76a; color:#fff; font-size:9px; font-weight:950; letter-spacing:.08em; }
     .tracking-chip.is-latest { background:#e8f8ee; color:#067647; box-shadow:inset 0 0 0 2px #75d8a0; }
     .tracking-chip.is-closed { background:#dcfae6; color:#067647; }
@@ -117,6 +120,7 @@
     [data-shipping-tracking][hidden],[data-shipping-address][hidden] { display:none; }
     .inline-update textarea { min-height:58px; resize:vertical; grid-column:1/-1; }
     .inline-update button { width:max-content; padding:8px 13px; border-radius:12px; font-size:12px; grid-column:1/-1; }
+    .inline-update.case-update[data-update-mode="information"] { grid-template-columns:minmax(220px,320px); }
     .baggage-search-card { margin:14px 0 0; padding:16px; border:1px solid var(--line); border-radius:18px; background:#fbfdff; display:grid; gap:10px; }
     .baggage-search-card h3 { margin:0; color:var(--brand); }
     .baggage-search-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px 18px; }
@@ -227,7 +231,7 @@
     .baggage-chart-image { display:block; width:100%; height:auto; border:1px solid #c9d9ec; border-radius:16px; background:#fff; box-shadow:0 10px 28px rgba(18,58,115,.08); }
     .baggage-chart-link { display:block; color:inherit; text-decoration:none; }
     .baggage-chart-link span { display:block; margin:0 0 8px; color:var(--brand); font-weight:900; }
-    @media (max-width:840px){ body,body.sidebar-collapsed{padding-left:0}header,body.sidebar-collapsed header{position:sticky;inset:auto;top:0;width:100%;height:auto;display:flex;flex-direction:row;align-items:center;gap:10px;padding:12px 16px;overflow:visible;background:rgba(18,58,115,.98)}.brand,body.sidebar-collapsed .brand{padding:0;width:auto;font-size:18px;overflow:visible}.brand::after,body.sidebar-collapsed .brand::after{display:none}.nav-kicker{display:none}.page-tabs{order:3;position:absolute;top:100%;left:0;width:100%;display:flex;gap:4px;padding:7px 10px;overflow-x:auto;background:#fff;border-bottom:1px solid var(--line);box-shadow:0 8px 20px rgba(18,58,115,.08)}.page-tab,body.sidebar-collapsed .page-tab{display:flex;gap:7px;width:auto;min-width:max-content;padding:9px 11px;border-radius:10px;color:#52677f}.page-tab-label,body.sidebar-collapsed .page-tab-label{display:inline}.page-tab-icon svg,body.sidebar-collapsed .page-tab-icon svg{width:17px;height:17px}.page-tab:hover{background:#f0f5fb;color:var(--brand)}.page-tab.is-active{border-color:#c9d9ec;background:#e8f1ff;color:var(--brand);box-shadow:none}.page-tab.is-active .page-tab-icon{color:var(--brand)}.header-spacer{display:block}.sidebar-actions{display:flex;gap:2px}.sidebar-action,body.sidebar-collapsed .sidebar-action{display:grid;grid-template-columns:1fr;padding:9px;color:#d8e8fb}.sidebar-action-label,body.sidebar-collapsed .sidebar-action-label{display:none}.sidebar-toggle{display:none}.wrap,body.sidebar-collapsed .wrap{width:100%;margin:50px 0 0;padding:16px 12px 40px}.card{padding:18px;min-height:calc(100vh - 150px)}.case-update-grid,.detail-grid,.baggage-search-grid,.sheet-detail-grid,.inline-update.case-update,.worldtracer-form,.unresolved-update,.add-baggage-form,.add-baggage-search,.case-detail-content{grid-template-columns:1fr}.unresolved-summary{grid-template-columns:1fr 1fr}.rush-flight-row{grid-template-columns:1fr 1fr}.rush-route-arrow{display:none}.rush-flight-row button{grid-column:1/-1}.tracking-event{grid-template-columns:86px 1fr;gap:12px}.tracking-event-card{font-size:12px}.tracking-event-field{grid-template-columns:1fr}.case-update{min-width:0}table{display:block;overflow-x:auto;white-space:nowrap} }
+    @media (max-width:840px){ body,body.sidebar-collapsed{padding-left:0}header,body.sidebar-collapsed header{position:sticky;inset:auto;top:0;width:100%;height:auto;display:flex;flex-direction:row;align-items:center;gap:10px;padding:12px 16px;overflow:visible;background:rgba(18,58,115,.98)}.brand,body.sidebar-collapsed .brand{padding:0;width:auto;font-size:18px;overflow:visible}.brand::after,body.sidebar-collapsed .brand::after{display:none}.nav-kicker{display:none}.page-tabs{order:3;position:absolute;top:100%;left:0;width:100%;display:flex;gap:4px;padding:7px 10px;overflow-x:auto;background:#fff;border-bottom:1px solid var(--line);box-shadow:0 8px 20px rgba(18,58,115,.08)}.page-tab,body.sidebar-collapsed .page-tab{display:flex;gap:7px;width:auto;min-width:max-content;padding:9px 11px;border-radius:10px;color:#52677f}.page-tab-label,body.sidebar-collapsed .page-tab-label{display:inline}.page-tab-icon svg,body.sidebar-collapsed .page-tab-icon svg{width:17px;height:17px}.page-tab:hover{background:#f0f5fb;color:var(--brand)}.page-tab.is-active{border-color:#c9d9ec;background:#e8f1ff;color:var(--brand);box-shadow:none}.page-tab.is-active .page-tab-icon{color:var(--brand)}.header-spacer{display:block}.sidebar-actions{display:flex;gap:2px}.sidebar-action,body.sidebar-collapsed .sidebar-action{display:grid;grid-template-columns:1fr;padding:9px;color:#d8e8fb}.sidebar-action-label,body.sidebar-collapsed .sidebar-action-label{display:none}.sidebar-toggle{display:none}.wrap,body.sidebar-collapsed .wrap{width:100%;margin:50px 0 0;padding:16px 12px 40px}.card{padding:18px;min-height:calc(100vh - 150px)}.case-detail-layout,.case-update-grid,.detail-grid,.baggage-search-grid,.sheet-detail-grid,.inline-update.case-update,.inline-update.case-update[data-update-mode="information"],.worldtracer-form,.unresolved-update,.add-baggage-form,.add-baggage-search,.case-detail-content{grid-template-columns:1fr}.unresolved-summary{grid-template-columns:1fr 1fr}.rush-flight-row{grid-template-columns:1fr 1fr}.rush-route-arrow{display:none}.rush-flight-row button{grid-column:1/-1}.tracking-event{grid-template-columns:86px 1fr;gap:12px}.tracking-event-card{font-size:12px}.tracking-event-field{grid-template-columns:1fr}.case-update{min-width:0}table{display:block;overflow-x:auto;white-space:nowrap} }
     @media (max-width:520px){ .rush-itinerary{padding:12px;overflow:hidden}.rush-itinerary-head{align-items:stretch}.rush-itinerary-head button{width:100%}.rush-flight-row{grid-template-columns:minmax(0,1fr);width:100%;min-width:0}.rush-flight-row label{width:100%;min-width:0;overflow:hidden}.rush-flight-row input[type="date"]{width:calc(100% - 24px);justify-self:start}.rush-flight-row button{grid-column:1}.worldtracer-form{width:100%;min-width:0} }
   </style>
 </head>
@@ -469,6 +473,7 @@
     const TRACKING_STAGES = [
       { key:'create', text:'Create' },
       { key:'update', text:'Update' },
+      { key:'information', text:'Information' },
       { key:'worldtracer', text:'WorldTracer' },
       { key:'requested_bags', text:'Requested Bags' },
       { key:'rush', text:'Rush' },
@@ -536,6 +541,7 @@
       if (/rush/.test(text)) return 'rush';
       if (/world\s*tracer|worldtracer/.test(text)) return 'worldtracer';
       if (/requested[\s_-]*bags?/.test(text)) return 'requested_bags';
+      if (/information/.test(text)) return 'information';
       if (/update/.test(text)) return 'update';
       return 'create';
     }
@@ -582,6 +588,7 @@
         ['create', label('Create report email', '建案报告邮件')],
         ['worldtracer', label('WorldTracer update email', 'WorldTracer 更新邮件')],
         ['requested_bags', label('Baggage request from other station email', '外站行李查询邮件')],
+        ['information', label('Baggage Transfer Status Update email', '行李转运状态更新邮件')],
         ['adc_shipping', label('ADC baggage delivery email', 'ADC 行李配送邮件')],
         ['fedex_shipping', label('FedEx baggage delivery email', 'FedEx 行李配送邮件')],
         ['airport_pickup', label('Airport pickup closure email', '机场领取结案邮件')],
@@ -816,6 +823,7 @@
       const shippingTrackingInput = '<input name="trackingNumber" data-shipping-tracking placeholder="Tracking number" disabled hidden />';
       const shippingAddressInput = '<input name="shippingTo" data-shipping-address placeholder="Shipping to where?" disabled hidden />';
       if (key === 'worldtracer') return input('File number', 'fileNumber');
+      if (key === 'information') return ['<select name="informationType" required><option value="rush_to_lax">Baggage Transfer Status Update</option></select>', '<label><span>Estimated arrival date</span><input name="estimatedArrivalTime" type="date" required /></label>'].join('');
       if (key === 'requested_bags') return input('From which station?', 'fromStation');
       if (key === 'rush') return [input('Rush tag number', 'rushTagNumber'), input('Rush to where?', 'rushToWhere'), input('AKE number?', 'akeNumber'), input('World Tracer file # (optional)', 'worldTracerFileNumber', false), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
       if (key === 'location') return [input('Bag location', 'location'), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
@@ -833,7 +841,7 @@
       if (current === 'shipping') return 'closed';
       return 'worldtracer';
     }
-    function trackingControlHtml(row) {
+    function trackingControlHtml(row, part = 'all') {
       const events = parseUpdateNoteEvents(row);
       if (row?.source === 'wrongBaggage') {
         const historyHtml = events.map((event, index) => {
@@ -842,6 +850,7 @@
           const stateClass = `${event.key === 'closed' ? ' is-closed' : ''}${index === events.length - 1 ? ' is-latest' : ''}`;
           return `<span class="tracking-chip${stateClass}"><span class="tracking-step-number">${index + 1}</span><span class="tracking-chip-title">${escapeHtml(event.title || 'Update')}</span><small>${escapeHtml(time.date)} ${escapeHtml(time.time)}</small>${details}</span>`;
         }).join('');
+        if (part === 'current') return '';
         if (isClosedCase(row)) return `<div class="tracking-workspace"><div><div class="tracking-history">${historyHtml}</div></div><form class="inline-update case-update" data-row-number="${escapeHtml(row.rowNumber)}" data-case-source="wrongBaggage" data-update-mode="reopen"><textarea name="comment" placeholder="${label('Reopen note (optional)', '重新开启备注（可选）')}"></textarea><button type="submit">${label('Reopen', '重新开启')}</button></form></div>`;
         return `<div class="tracking-workspace"><div><div class="tracking-history">${historyHtml}</div></div><form class="inline-update case-update" data-row-number="${escapeHtml(row.rowNumber)}" data-case-source="wrongBaggage" data-update-mode="update"><div data-cbs-inline-fields><textarea name="comment" placeholder="${label('Enter any update', '输入更新内容')}" required></textarea></div><div class="actions"><button type="submit">${label('Save Update', '保存更新')}</button><button type="submit" class="secondary" name="type" value="closed" formnovalidate>${label('Case Close', '关闭案件')}</button></div></form></div>`;
       }
@@ -865,8 +874,13 @@
         }).join('') || '<span class="sheet-empty">No tracking updates yet</span>';
       if (!row.rowNumber) return historyHtml;
       const progressHeader = `<p class="tracking-current-time"><strong>${label('Case Progress', '案件进度')}</strong><span>${label('Last update', '最后更新')}: ${escapeHtml(latestTime.date || '-')} ${escapeHtml(latestTime.time || '')}</span></p>`;
-      if (isClosedCase(row)) return `<div class="tracking-workspace"><div>${progressHeader}<div class="tracking-history">${historyHtml}</div></div><form class="inline-update case-update" data-row-number="${escapeHtml(row.rowNumber)}" data-update-mode="reopen"><textarea name="comment" placeholder="${label('Reopen note (optional)', '重新开启备注（可选）')}"></textarea><button type="submit">${label('Reopen', '重新开启')}</button></form></div>`;
-      return `<div class="tracking-workspace"><div>${progressHeader}<div class="tracking-history">${historyHtml}</div></div><div><label class="tracking-stage-picker"><span>${label('Current stage', '当前阶段')}</span><select data-cbs-stage-select>${updateKeys.map((stage) => `<option value="${escapeHtml(stage.key)}" ${stage.key === active ? 'selected' : ''}>${escapeHtml(stage.text)}</option>`).join('')}</select></label><form class="inline-update case-update" data-row-number="${escapeHtml(row.rowNumber)}" data-update-mode="${escapeHtml(active)}"><div data-cbs-inline-fields>${inlineUpdateFieldsHtml(active)}</div><button type="submit">${label('Update Tracking', '更新进度')}</button></form></div></div>`;
+      const progress = `<div class="tracking-workspace"><div>${progressHeader}<div class="tracking-history">${historyHtml}</div></div></div>`;
+      const current = isClosedCase(row)
+        ? `<form class="inline-update case-update" data-row-number="${escapeHtml(row.rowNumber)}" data-update-mode="reopen"><textarea name="comment" placeholder="${label('Reopen note (optional)', '重新开启备注（可选）')}"></textarea><button type="submit">${label('Reopen', '重新开启')}</button></form>`
+        : `<div><label class="tracking-stage-picker"><span>${label('Current stage', '当前阶段')}</span><select data-cbs-stage-select>${updateKeys.map((stage) => `<option value="${escapeHtml(stage.key)}" ${stage.key === active ? 'selected' : ''}>${escapeHtml(stage.text)}</option>`).join('')}</select></label><form class="inline-update case-update" data-row-number="${escapeHtml(row.rowNumber)}" data-update-mode="${escapeHtml(active)}"><div data-cbs-inline-fields>${inlineUpdateFieldsHtml(active)}</div><button type="submit">${label('Update Tracking', '更新进度')}</button></form></div>`;
+      if (part === 'progress') return progress;
+      if (part === 'current') return current;
+      return `<div class="tracking-workspace">${progress}${current}</div>`;
     }
     function renderCases() {
       const query = String(caseSearch?.value || '').trim().toLowerCase();
@@ -884,7 +898,7 @@
         const details = detailRows(row).filter(([, value]) => hasValue(value));
         const detailHtml = isOriginalFormCase(row) ? fullPassengerFileHtml(row) : (details.length ? `<div class="sheet-detail-grid">${details.map(([key, value]) => `<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(renderValue(value))}</p>`).join('')}</div>` : `<p class="muted">${label('No extra details.', '没有更多详情。')}</p>`);
         const isExpanded = expandedCases.has(detailKey);
-        return `<tr class="case-summary-row${closedClass}" data-toggle-case="${escapeHtml(detailKey)}" aria-expanded="${isExpanded ? 'true' : 'false'}"><td class="sheet-meta">${escapeHtml(displayWorldTracerFile(row) || '-')}</td><td class="sheet-meta">${escapeHtml(caseType || '-')}</td><td class="sheet-meta"><span class="bag-tag-value">${escapeHtml(displayBagTag(row) || '-')}</span></td></tr><tr class="case-detail-row${closedClass}" data-detail-case="${escapeHtml(detailKey)}" ${isExpanded ? '' : 'hidden'}><td colspan="3"><div class="case-detail-layout">${trackingControlHtml(row)}<div class="case-detail-content">${detailHtml}${passengerNotificationHtml(row)}</div></div></td></tr>`;
+        return `<tr class="case-summary-row${closedClass}" data-toggle-case="${escapeHtml(detailKey)}" aria-expanded="${isExpanded ? 'true' : 'false'}"><td class="sheet-meta">${escapeHtml(displayWorldTracerFile(row) || '-')}</td><td class="sheet-meta">${escapeHtml(caseType || '-')}</td><td class="sheet-meta"><span class="bag-tag-value">${escapeHtml(displayBagTag(row) || '-')}</span></td></tr><tr class="case-detail-row${closedClass}" data-detail-case="${escapeHtml(detailKey)}" ${isExpanded ? '' : 'hidden'}><td colspan="3"><div class="case-detail-layout"><div class="case-progress-column">${trackingControlHtml(row, 'progress')}</div><div class="case-detail-right">${trackingControlHtml(row, 'current')}<div class="case-detail-content">${detailHtml}</div>${passengerNotificationHtml(row)}</div></div></td></tr>`;
       }).join('')}</tbody></table></div>${baggageHtml}`;
     }
     async function loadCases() {
@@ -988,8 +1002,11 @@
       }
       const select = event.target.closest('[data-cbs-stage-select]');
       if (!select) return;
-      const workspace = select.closest('.tracking-workspace');
-      const form = workspace?.querySelector('.case-update');
+      // The progress timeline now lives in the left column while Current Stage
+      // and its form live in the right column. Resolve the form from that right
+      // column so switching stages always replaces the previous stage's fields.
+      const controls = select.closest('.case-detail-right') || select.closest('.tracking-workspace');
+      const form = controls?.querySelector('.case-update');
       const fields = form?.querySelector('[data-cbs-inline-fields]');
       if (!form || !fields) return;
       form.dataset.updateMode = select.value;

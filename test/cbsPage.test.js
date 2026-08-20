@@ -22,9 +22,40 @@ test('CBS tracking offers the requested bags stage', () => {
   assert.doesNotMatch(page, /event\.key === 'requested_bags' \? 'Update'/);
   assert.match(page, /tracking-step-number/);
   assert.match(page, /index === sortedEvents\.length - 1 \? ' is-latest'/);
-  assert.match(page, /content:"➜"/);
+  assert.match(page, /tracking-chip:not\(:last-child\)::after \{ content:""/);
   assert.match(page, /label\('Case Progress', '案件进度'\)/);
   assert.match(page, /content:"CURRENT"/);
+});
+
+test('CBS tracking offers a compact baggage transfer update with a required arrival date', () => {
+  assert.match(page, /key:'information', text:'Information'/);
+  assert.match(page, /name="informationType" required><option value="rush_to_lax">Baggage Transfer Status Update/);
+  assert.match(page, /name="estimatedArrivalTime" type="date" required/);
+  assert.match(page, /data-update-mode="information"/);
+  assert.match(page, /Baggage Transfer Status Update email/);
+  assert.match(page, /data-update-mode="information"\] \{ grid-template-columns:minmax\(220px,320px\); \}/);
+});
+
+test('changing Current Stage replaces the form with fields for that stage', () => {
+  assert.match(page, /const controls = select\.closest\('\.case-detail-right'\) \|\| select\.closest\('\.tracking-workspace'\)/);
+  assert.match(page, /form\.dataset\.updateMode = select\.value/);
+  assert.match(page, /fields\.innerHTML = inlineUpdateFieldsHtml\(select\.value\)/);
+  assert.match(page, /if \(key === 'worldtracer'\) return input\('File number', 'fileNumber'\)/);
+  assert.match(page, /if \(key === 'information'\).*Baggage Transfer Status Update/);
+  assert.match(page, /if \(key === 'requested_bags'\) return input\('From which station\?', 'fromStation'\)/);
+  assert.match(page, /if \(key === 'shipping'\) return \[shippingMethodSelect/);
+});
+
+test('case progress uses a vertical left column with case controls and details on the right', () => {
+  assert.match(page, /\.case-detail-layout \{[^}]*grid-template-columns:minmax\(280px,360px\) minmax\(0,1fr\)/);
+  assert.match(page, /\.tracking-history \{ display:grid/);
+  assert.doesNotMatch(page, /scroll-snap-type|scrollbar-gutter|history\.scrollLeft/);
+  assert.match(page, /tracking-chip:not\(:last-child\)::after \{ content:""/);
+  assert.match(page, /case-progress-column/);
+  assert.match(page, /case-detail-right/);
+  assert.match(page, /trackingControlHtml\(row, 'progress'\)/);
+  assert.match(page, /trackingControlHtml\(row, 'current'\)/);
+  assert.match(page, /<div class="case-detail-content">\$\{detailHtml\}<\/div>\$\{passengerNotificationHtml\(row\)\}/);
 });
 
 test('CBS tracking offers a Lost update with no extra fields', () => {
