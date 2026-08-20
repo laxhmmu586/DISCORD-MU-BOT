@@ -5,6 +5,17 @@ const path = require('node:path');
 
 const page = fs.readFileSync(path.join(__dirname, '..', 'public', 'public', 'cbs.html'), 'utf8');
 const pirForm = fs.readFileSync(path.join(__dirname, '..', 'public', 'public', 'pir-form.html'), 'utf8');
+const drive = fs.readFileSync(path.join(__dirname, '..', 'googleDrive.js'), 'utf8');
+
+test('Add On-hand records are added to and displayed in Open Case', () => {
+  assert.match(drive, /CBS_UNRESOLVED_BAGGAGE_SHEET_GID = Number\(process\.env\.CBS_UNRESOLVED_BAGGAGE_SHEET_GID \|\| 523026916\)/);
+  assert.match(page, /title="Add On-hand"/);
+  assert.match(page, /id="open-cases-tab"[\s\S]*id="closed-cases-tab"[\s\S]*id="add-baggage-tab"[\s\S]*id="worldtracer-tab"/);
+  assert.match(page, /<h1>Add On-hand<\/h1>/);
+  assert.doesNotMatch(page, />Add Baggage</);
+  assert.match(drive, /await appendCbsUnresolvedBaggageCase\(cleanRecord\);/);
+  assert.match(page, /await loadUnresolvedBaggage\(\);\s*showSection\('open'\);/);
+});
 
 test('CBS passenger information keeps all operationally required fields visible', () => {
   const requiredFields = page.match(/const requiredPassengerFields = \[([\s\S]*?)\n\s*\];/)?.[1] || '';
