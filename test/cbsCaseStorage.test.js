@@ -46,4 +46,5 @@ test('shipping updates validate and store the selected delivery method', () => {
   assert.match(server, /trackingNumber \? \[\['Tracking Number', trackingNumber\]\] : \[\]/);
   assert.match(drive, /next\.trackingNumber = sanitizeSheetText/);
   assert.match(drive, /next\.shippingAddress = sanitizeSheetText/);
+  assert.match(server, /airportPickup \? 'Closed - Pick Up at Airport' : 'Shipping'/);
 });

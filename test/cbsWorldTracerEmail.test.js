@@ -80,3 +80,13 @@ test('FedEx shipping updates email tracking details from the stored shipping col
   assert.match(server, /fedexShippingUpdateEmail\(record, fileNumber, record\.trackingNumber, record\.shippingAddress\)/);
   assert.match(server, /CBS FedEx shipping update email error/);
 });
+
+test('airport pickup sends a bilingual closure email', () => {
+  assert.match(server, /function airportPickupClosureEmail/);
+  assert.match(server, /行李案件结案通知 – WorldTracer 案件编号：\$\{fileNumber\}/);
+  assert.match(server, /Baggage Case Closure Notification – WorldTracer Reference: \$\{fileNumber\}/);
+  assert.match(server, /您的行李已于机场领取完毕/);
+  assert.match(server, /baggage has been successfully picked up at the airport/);
+  assert.match(server, /airportPickupClosureEmail\(record, fileNumber\)/);
+  assert.match(server, /CBS airport pickup closure email error/);
+});
