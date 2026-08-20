@@ -33,6 +33,16 @@ test('CBS tracking offers a compact baggage transfer update with a required arri
   assert.match(page, /name="estimatedArrivalTime" type="date" required/);
   assert.match(page, /data-update-mode="information"/);
   assert.match(page, /Baggage Transfer Status Update email/);
+  assert.match(page, /data-update-mode="information"\] \{ grid-template-columns:minmax\(220px,320px\); \}/);
+});
+
+test('case progress stays inside the case and scrolls when updates accumulate', () => {
+  assert.match(page, /\.tracking-workspace \{[^}]*min-width:0/);
+  assert.match(page, /\.tracking-history \{[^}]*max-width:100%;[^}]*overflow-x:auto/);
+  assert.match(page, /scroll-snap-type:x proximity/);
+  assert.match(page, /Case progress; scroll horizontally for more updates/);
+  assert.match(page, /class="tracking-history" tabindex="0" aria-label=/);
+  assert.match(page, /history\.scrollLeft = history\.scrollWidth/);
 });
 
 test('CBS tracking offers a Lost update with no extra fields', () => {
