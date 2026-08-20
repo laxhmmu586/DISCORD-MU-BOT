@@ -10,6 +10,7 @@ const drive = fs.readFileSync(path.join(__dirname, '..', 'googleDrive.js'), 'utf
 test('Add On-hand records are added to and displayed in Open Case', () => {
   assert.match(drive, /CBS_UNRESOLVED_BAGGAGE_SHEET_GID = Number\(process\.env\.CBS_UNRESOLVED_BAGGAGE_SHEET_GID \|\| 523026916\)/);
   assert.match(page, /title="Add On-hand"/);
+  assert.match(page, /id="open-cases-tab"[\s\S]*id="closed-cases-tab"[\s\S]*id="add-baggage-tab"[\s\S]*id="worldtracer-tab"/);
   assert.match(page, /<h1>Add On-hand<\/h1>/);
   assert.doesNotMatch(page, />Add Baggage</);
   assert.match(drive, /await appendCbsUnresolvedBaggageCase\(cleanRecord\);/);
