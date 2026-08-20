@@ -39,8 +39,8 @@ test('requested bags updates store the requesting station in case history', () =
 
 test('lost updates persist the Delayed to Lost status transition', () => {
   const server = fs.readFileSync(path.join(__dirname, '..', 'index.js'), 'utf8');
-  assert.match(server, /status: 'Lost'/);
-  assert.match(server, /fields: \[\['Status Change', 'DELAYED → LOST'\]\]/);
+  assert.match(server, /status: 'Closed - Lost'/);
+  assert.match(server, /fields: \[\['Status Change', 'DELAYED → LOST'\], \['Case Status', 'CLOSED'\]\]/);
 });
 
 test('shipping updates validate and store the selected delivery method', () => {
