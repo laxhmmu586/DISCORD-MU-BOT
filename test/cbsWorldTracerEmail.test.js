@@ -90,3 +90,13 @@ test('airport pickup sends a bilingual closure email', () => {
   assert.match(server, /airportPickupClosureEmail\(record, fileNumber\)/);
   assert.match(server, /CBS airport pickup closure email error/);
 });
+
+test('passenger-paid shipping sends a bilingual carrier-responsibility email', () => {
+  assert.match(server, /function passengerPaidShippingEmail/);
+  assert.match(server, /行李配送通知 – WorldTracer 案件编号：\$\{fileNumber\}/);
+  assert.match(server, /Baggage Shipping Notification – WorldTracer Reference: \$\{fileNumber\}/);
+  assert.match(server, /您的行李已按照您所提供的配送方式安排寄出/);
+  assert.match(server, /baggage has been shipped using the shipping method provided by you/);
+  assert.match(server, /passengerPaidShippingEmail\(record, fileNumber\)/);
+  assert.match(server, /CBS passenger-paid shipping email error/);
+});

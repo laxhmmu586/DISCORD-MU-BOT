@@ -1665,6 +1665,16 @@ function airportPickupClosureEmail(record, fileNumber) {
   return { subject, text, html: cbsPlainTextEmailHtml(text.replace(fileNumber, reference)) };
 }
 
+function passengerPaidShippingEmail(record, fileNumber) {
+  const reference = String(fileNumber || '').replace(/[&<>"']/g, (character) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character]));
+  const chinese = cbsEmailIsChinese(record);
+  const subject = chinese ? `行李配送通知 – WorldTracer 案件编号：${fileNumber}` : `Baggage Shipping Notification – WorldTracer Reference: ${fileNumber}`;
+  const text = chinese
+    ? `尊敬的旅客：\n\n您好！\n\n我们通知您，您的行李已按照您所提供的配送方式安排寄出。\n\nWorldTracer 案件编号：${fileNumber}\n\n由于本次配送方式由您提供，请您通过相应的承运商或配送服务查询后续运输及配送进度。\n\n行李交付给您所指定的承运商后，如有运输延误、配送状态或其他与运输相关的问题，请直接与相应承运商联系。\n\n感谢您的耐心与配合。\n\n此致\n中国东方航空`
+    : `Dear Passenger,\n\nWe would like to inform you that your baggage has been shipped using the shipping method provided by you.\n\nWorldTracer Reference Number: ${fileNumber}\n\nAs the shipping method was provided by you, please check the shipment and delivery status directly with the applicable carrier or delivery service.\n\nOnce the baggage has been handed over to your designated carrier, please contact the carrier directly regarding any shipping delays, delivery status, or other transportation-related matters.\n\nThank you for your patience and cooperation.\n\nSincerely,\nChina Eastern Airlines`;
+  return { subject, text, html: cbsPlainTextEmailHtml(text.replace(fileNumber, reference)) };
+}
+
 function adcShippingUpdateEmail(record, fileNumber, shippingAddress = '') {
   const reference = String(fileNumber || '').replace(/[&<>"']/g, (character) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character]));
   const chinese = cbsEmailIsChinese(record);
@@ -2735,6 +2745,17 @@ app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
       } catch (mailErr) {
         result.emailError = cbsEmailErrorMessage(mailErr);
         console.error('CBS airport pickup closure email error:', mailErr);
+      }
+    }
+    if (updateFields.updateEvent?.key === 'shipping' && updateFields.updateEvent.fields.some(([key, value]) => key === 'Shipping Method' && value === 'Passenger Pay for Shipping')) {
+      const record = result.record;
+      const fileNumber = record.worldTracerFileNumber || '';
+      const message = passengerPaidShippingEmail(record, fileNumber);
+      try {
+        result.email = await sendCbsCaseEmail({ passengerEmail: record.email, subject: message.subject, html: message.html, text: message.text, ccOperations: false });
+      } catch (mailErr) {
+        result.emailError = cbsEmailErrorMessage(mailErr);
+        console.error('CBS passenger-paid shipping email error:', mailErr);
       }
     }
     return res.json(result);

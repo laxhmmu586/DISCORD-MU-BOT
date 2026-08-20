@@ -573,6 +573,7 @@
       if (events.some((event) => event.key === 'shipping' && (event.fields || []).some(([key, value]) => key === 'Shipping Method' && value === 'ADC - All Day Courier'))) sentKeys.add('adc_shipping');
       if (events.some((event) => event.key === 'shipping' && (event.fields || []).some(([key, value]) => key === 'Shipping Method' && value === 'FedEx Delivery'))) sentKeys.add('fedex_shipping');
       if (events.some((event) => event.key === 'shipping' && (event.fields || []).some(([key, value]) => key === 'Shipping Method' && value === 'Pick Up at Airport'))) sentKeys.add('airport_pickup');
+      if (events.some((event) => event.key === 'shipping' && (event.fields || []).some(([key, value]) => key === 'Shipping Method' && value === 'Passenger Pay for Shipping'))) sentKeys.add('passenger_paid_shipping');
       sentKeys.add('create');
       const notifications = [
         ['create', label('Create report email', '建案报告邮件')],
@@ -580,7 +581,8 @@
         ['requested_bags', label('Baggage request from other station email', '外站行李查询邮件')],
         ['adc_shipping', label('ADC baggage delivery email', 'ADC 行李配送邮件')],
         ['fedex_shipping', label('FedEx baggage delivery email', 'FedEx 行李配送邮件')],
-        ['airport_pickup', label('Airport pickup closure email', '机场领取结案邮件')]
+        ['airport_pickup', label('Airport pickup closure email', '机场领取结案邮件')],
+        ['passenger_paid_shipping', label('Passenger-paid shipping email', '旅客自付配送邮件')]
       ].filter(([key]) => sentKeys.has(key));
       return `<aside class="passenger-notify"><h3>${label('Notify Passenger', '旅客邮件通知')}</h3><ul class="passenger-notify-list">${notifications.map(([, text]) => {
         return `<li class="passenger-notify-item is-sent"><span class="passenger-notify-check" aria-hidden="true">✓</span><span>${escapeHtml(text)}</span></li>`;
