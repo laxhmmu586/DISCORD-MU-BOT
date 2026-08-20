@@ -111,7 +111,9 @@ const CBS_HEADERS = [
   'Departure Origin',
   'Update History',
   'Original Form Data',
-  'WorldTracer File Number'
+  'WorldTracer File Number',
+  'Tracking Number',
+  'Shipping Address'
 ];
 let cbsSheetTitle = '';
 let cbsWorldTracerSheetTitle = '';
@@ -3070,7 +3072,7 @@ async function getCbsSheetRows(options = {}) {
   const title = await getCbsSheetTitle();
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A:AH`
+    range: `${escapeSheetTitle(title)}!A:AJ`
   });
   const rows = res.data.values || [];
   cbsSheetCache = { loadedAt: Date.now(), rows };
@@ -3092,7 +3094,7 @@ async function ensureCbsSheetHeaders(rows) {
   const title = await getCbsSheetTitle();
   await sheets.spreadsheets.values.update({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A1:AH1`,
+    range: `${escapeSheetTitle(title)}!A1:AJ1`,
     valueInputOption: 'RAW',
     requestBody: { values: [CBS_HEADERS] }
   });
@@ -3155,6 +3157,8 @@ function cbsRecordFromSheet(values, rowNumber) {
   row.ahlBagDescription = row.ahlBagDescription || row.baggageDetails;
   // WorldTracer file numbers are always stored in column AH.
   row.worldTracerFileNumber = values[33] || row.worldTracerFileNumber || '';
+  row.trackingNumber = values[34] || row.trackingNumber || '';
+  row.shippingAddress = values[35] || row.shippingAddress || '';
   row.caseType = row.caseType || values.find((value) => /^(AHL|DPR)$/i.test(String(value || '').trim())) || '';
   row.bagTag = row.bagTag || values[8] || extractCbsBagTagFromUpdateNote(row.updateNote) || values.find((value) => /^[A-Z]{2}\d{6,}(\s*\/\s*[A-Z]{2}\d{6,})*$/i.test(String(value || '').trim())) || '';
   row.submittedAt = row.submittedAt || row.submitDate || values[26] || '';
@@ -3215,7 +3219,9 @@ function cbsValuesFromRecord(record) {
     record.departureOrigin,
     record.updateHistory || '',
     record.originalFormData || cbsOriginalFormData(record),
-    record.worldTracerFileNumber || ''
+    record.worldTracerFileNumber || '',
+    record.trackingNumber || '',
+    record.shippingAddress || ''
   ];
 }
 
@@ -3225,7 +3231,7 @@ async function appendCbsCase(record) {
   await ensureCbsSheetHeaders(rows);
   await sheets.spreadsheets.values.append({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A:AH`,
+    range: `${escapeSheetTitle(title)}!A:AJ`,
     valueInputOption: 'RAW',
     insertDataOption: 'INSERT_ROWS',
     requestBody: { values: [cbsValuesFromRecord(record)] }
@@ -3604,6 +3610,11 @@ async function updateCbsCase(rowNumber, update = {}) {
     updateNote: incomingNote || current.updateNote || ''
   };
   if (update.updateEvent?.key === 'worldtracer') next.worldTracerFileNumber = sanitizeSheetText(update.updateEvent.fields?.[0]?.[1], 120).toUpperCase();
+  if (update.updateEvent?.key === 'shipping') {
+    const shippingFields = new Map(update.updateEvent.fields || []);
+    next.trackingNumber = sanitizeSheetText(shippingFields.get('Tracking Number'), 160).toUpperCase();
+    next.shippingAddress = sanitizeSheetText(shippingFields.get('Ship To'), 300);
+  }
   const historyEvent = sanitizeCbsUpdateEvent(update.updateEvent, {
     status: next.status,
     at: now,
@@ -3616,7 +3627,7 @@ async function updateCbsCase(rowNumber, update = {}) {
   const title = await getCbsSheetTitle();
   await sheets.spreadsheets.values.update({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A${rowIndex + 1}:AH${rowIndex + 1}`,
+    range: `${escapeSheetTitle(title)}!A${rowIndex + 1}:AJ${rowIndex + 1}`,
     valueInputOption: 'RAW',
     requestBody: { values: [cbsValuesFromRecord(next)] }
   });
