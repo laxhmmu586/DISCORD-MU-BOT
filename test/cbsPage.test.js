@@ -27,6 +27,14 @@ test('CBS tracking offers the requested bags stage', () => {
   assert.match(page, /content:"CURRENT"/);
 });
 
+test('CBS tracking offers a compact baggage transfer update with a required arrival date', () => {
+  assert.match(page, /key:'information', text:'Information'/);
+  assert.match(page, /name="informationType" required><option value="rush_to_lax">Baggage Transfer Status Update/);
+  assert.match(page, /name="estimatedArrivalTime" type="date" required/);
+  assert.match(page, /data-update-mode="information"/);
+  assert.match(page, /Baggage Transfer Status Update email/);
+});
+
 test('CBS tracking offers a Lost update with no extra fields', () => {
   assert.match(page, /key:'lost', text:'Lost'/);
   assert.match(page, /if \(key === 'lost'\) return ''/);

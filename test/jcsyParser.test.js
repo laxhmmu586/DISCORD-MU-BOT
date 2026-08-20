@@ -61,3 +61,39 @@ MU5359 /SZX/   2145+1 00/002/008 00/000/000+00`;
   assert.equal(info.jcsy.groups.international.reduce((sum, row) => sum + row.total, 0), 8);
   assert.equal(info.jcsy.groups.domestic.reduce((sum, row) => sum + row.total, 0), 39);
 });
+
+test('parses the latest RET and transfer totals from a paged operational report', () => {
+  const log = `2026 August 20, Thursday, 10:03:32
+> SY
+SY: MU586/21AUG26 LAX/0 OP/NAM
+CNF/F6J52Y258 CAP/F4J46Y251 AV/F4J45Y249
+*LAXPVG R003/050/238 C000/001/002 B0000/000000
+RET002/049/230 CET000/001/002
+
+2026 August 20, Thursday, 10:04:02
+> JCSY:,O
+JCSY:MU0586/21AUG/LAX,O
+MU1129 /NBD/            00/00/001 00/00/000+00
+MU0547 /BKK/     2115+1 00/00/002 00/00/000+00
+MU5163 /PEK/     1930+1 00/03/021 00/00/000+00
+MU0541 /BKK/     0905+2 00/00/001 00/00/000+00
+
+2026 August 20, Thursday, 10:04:04
+> PN1
+JCSY:MU0586/21AUG/LAX,O
+MU0281 /SGN/     2215+1 00/00/004 00/00/001+00
+MU5343 /SZX/     1500+2 00/01/002 00/00/000+00
+##TOTAL##  /            00/04/031 00/00/001+00`;
+
+  const info = findSYInfo(log, '21AUG', {
+    preferredFlightNo: 'MU586',
+    strictPreferredFlight: true
+  });
+
+  assert.deepEqual(info.reservationTicketed.slice(1), ['002', '049', '230']);
+  assert.equal(info.jcsy.rows.length, 6);
+  assert.equal(info.jcsy.groups.pvgOnly.reduce((sum, row) => sum + row.total, 0), 1);
+  assert.equal(info.jcsy.groups.international.reduce((sum, row) => sum + row.total, 0), 6);
+  assert.equal(info.jcsy.groups.domestic.reduce((sum, row) => sum + row.total, 0), 24);
+  assert.equal(info.jcsy.groups.overnight.reduce((sum, row) => sum + row.total, 0), 4);
+});
