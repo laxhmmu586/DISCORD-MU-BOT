@@ -1635,6 +1635,31 @@ function requestedBagsUpdateEmail(record, fileNumber) {
   return { subject, text, html: cbsPlainTextEmailHtml(text.replace(fileNumber, reference)) };
 }
 
+function formatRushArrivalTime(value, chinese = false) {
+  const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);
+  if (!match) return String(value || '');
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = match[5];
+  if (chinese) return `${month} 月 ${day} 日 ${String(hour).padStart(2, '0')}:${minute}`;
+  const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const hour12 = hour % 12 || 12;
+  return `${months[month - 1]} ${day} at ${hour12}:${minute} ${hour < 12 ? 'AM' : 'PM'}`;
+}
+
+function rushToLaxInformationEmail(record, fileNumber, estimatedArrivalTime) {
+  const chinese = cbsEmailIsChinese(record);
+  const arrival = formatRushArrivalTime(estimatedArrivalTime, chinese);
+  const subject = chinese
+    ? `请勿回复 – 行李转运状态更新 – WorldTracer 案件编号：${fileNumber}`
+    : `DO NOT REPLY – Baggage Transfer Status Update – WorldTracer Case: ${fileNumber}`;
+  const text = chinese
+    ? `尊敬的旅客：\n\n您好！\n\n这是一封关于您延误行李的系统自动状态更新邮件。\n\nWorldTracer 案件编号：${fileNumber}\n\n目前，您的行李正在安排转运，预计于 ${arrival} 运抵洛杉矶（LAX）。\n\n待行李抵达洛杉矶并由我们的工作人员接收后，我们将根据您案件中所提供的地址安排后续配送。\n\n请注意，预计抵达时间可能根据实际运输情况发生变化。如您的行李状态有进一步更新，我们将及时通知您。\n\n感谢您的耐心与理解，并对行李延误给您带来的不便深表歉意。\n\n此邮件由系统自动发送，请勿直接回复。\n\n中国东方航空`
+    : `Dear Passenger,\n\nThis is an automated update regarding your delayed baggage.\n\nWorldTracer Case Number: ${fileNumber}\n\nYour baggage is currently being arranged for transfer and is expected to arrive in Los Angeles (LAX) on ${arrival}.\n\nOnce your baggage arrives in Los Angeles and is received by our team, delivery will be arranged to the address provided in your case.\n\nPlease note that the estimated arrival date is subject to change depending on actual transportation arrangements. You will receive further updates if there are any changes to your baggage status.\n\nWe sincerely apologize for the inconvenience and appreciate your patience and understanding.\n\nThis is an automatically generated email. Please do not reply to this message.\n\nSincerely,\nChina Eastern Airlines`;
+  return { subject, text, html: cbsPlainTextEmailHtml(text) };
+}
+
 function adcShippingUpdateEmail(record, fileNumber, shippingAddress = '') {
   const reference = String(fileNumber || '').replace(/[&<>"']/g, (character) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character]));
   const chinese = cbsEmailIsChinese(record);
@@ -2044,8 +2069,14 @@ app.get('/miss-connection-report', async (req, res) => {
 
 function buildCbsUpdateFields(update = {}) {
   const type = sanitizeCbsText(update.type, 40).toLowerCase();
-  if (!['worldtracer', 'requested_bags', 'rush', 'location', 'shipping', 'lost', 'closed', 'reopen'].includes(type)) return null;
+  if (!['information', 'worldtracer', 'requested_bags', 'rush', 'location', 'shipping', 'lost', 'closed', 'reopen'].includes(type)) return null;
   const comment = sanitizeCbsText(update.comment, 500);
+  if (type === 'information') {
+    const informationType = sanitizeCbsText(update.informationType, 40).toLowerCase();
+    const estimatedArrivalTime = sanitizeCbsText(update.estimatedArrivalTime, 40);
+    if (informationType !== 'rush_to_lax' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(estimatedArrivalTime)) return null;
+    return { status: 'Information - Rush to LAX', updateNote: `INFORMATION | Rush to LAX | Estimated arrival: ${estimatedArrivalTime}`, updateEvent: { key: 'information', title: 'Rush to LAX', fields: [['Information', 'Rush to LAX'], ['Estimated Arrival Time', estimatedArrivalTime]] } };
+  }
   if (type === 'worldtracer') {
     const fileNumber = sanitizeCbsText(update.fileNumber || update.worldTracerFileNumber, 120).toUpperCase();
     if (!fileNumber) return null;
@@ -2662,7 +2693,7 @@ app.post('/cbs-cases', async (req, res) => {
 app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
   try {
     const updateFields = buildCbsUpdateFields(req.body || {});
-    if (!updateFields) return res.status(400).json({ error: 'Valid WORLDTRACER, REQUESTED BAGS, RUSH, BAG LOCATION UPDATE, SHIPPING, LOST, CASE CLOSE, or REOPEN details are required' });
+    if (!updateFields) return res.status(400).json({ error: 'Valid INFORMATION, WORLDTRACER, REQUESTED BAGS, RUSH, BAG LOCATION UPDATE, SHIPPING, LOST, CASE CLOSE, or REOPEN details are required' });
     const result = await updateCbsCase(req.params.rowNumber, updateFields);
     if (result.notFound) return res.status(404).json({ error: 'Case not found' });
     if (updateFields.updateEvent?.key === 'worldtracer') {
@@ -2704,6 +2735,17 @@ app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
       } catch (mailErr) {
         result.emailError = cbsEmailErrorMessage(mailErr);
         console.error('CBS requested bags update email error:', mailErr);
+      }
+    }
+    if (updateFields.updateEvent?.key === 'information') {
+      const record = result.record;
+      const fileNumber = record.worldTracerFileNumber || '';
+      const message = rushToLaxInformationEmail(record, fileNumber, record.estimatedArrivalTime);
+      try {
+        result.email = await sendCbsCaseEmail({ passengerEmail: record.email, subject: message.subject, html: message.html, text: message.text, ccOperations: false });
+      } catch (mailErr) {
+        result.emailError = cbsEmailErrorMessage(mailErr);
+        console.error('CBS Rush to LAX information email error:', mailErr);
       }
     }
     if (updateFields.updateEvent?.key === 'shipping' && updateFields.updateEvent.fields.some(([key, value]) => key === 'Shipping Method' && value === 'ADC - All Day Courier')) {
