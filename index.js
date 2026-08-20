@@ -1597,6 +1597,15 @@ function cbsPlainTextEmailHtml(text = '') {
 
 function worldTracerUpdateEmail(record, fileNumber) {
   const reference = String(fileNumber || '').replace(/[&<>"']/g, (character) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character]));
+  const isDpr = String(record?.caseType || '').toUpperCase() === 'DPR';
+  if (isDpr && cbsEmailIsChinese(record)) return {
+    subject: `【请勿回复】行李案件建案确认通知 – WorldTracer 案件编号：${fileNumber}`,
+    html: `<p>尊敬的旅客：</p><p>您好！</p><p>您的行李案件已成功建立。</p><p><strong>WorldTracer 案件编号：${reference}</strong></p><p>我们将根据您所提供的信息进行后续查询及跟进。如案件有进一步进展，我们会主动与您联系并提供最新信息，请您耐心等候。</p><p><strong>如果您在建案后 7 天内仍未收到我们的进一步通知，请发送邮件至 <a href="mailto:laxllmu@chinaeastern-usa.com">laxllmu@chinaeastern-usa.com</a> 与我们联系，以便我们进一步跟进您的案件。</strong></p><p><strong>此邮件为系统自动发送，请勿直接回复此邮件。</strong></p><p>感谢您的耐心与理解。</p><p>此致<br><strong>中国东方航空</strong></p>`
+  };
+  if (isDpr) return {
+    subject: `[DO NOT REPLY] Baggage Case Confirmation – WorldTracer Reference: ${fileNumber}`,
+    html: `<p>Dear Passenger,</p><p>Your baggage case has been successfully created.</p><p><strong>WorldTracer Reference Number: ${reference}</strong></p><p>We will continue to trace and follow up on your case based on the information provided. We will contact you and provide further updates as soon as additional information becomes available.</p><p><strong>If you have not received any further updates from us within 7 days after your case was created, please contact us at <a href="mailto:laxllmu@chinaeastern-usa.com">laxllmu@chinaeastern-usa.com</a> so that we can further follow up on your case.</strong></p><p><strong>This is an automatically generated email. Please do not reply to this message.</strong></p><p>Thank you for your patience and understanding.</p><p>Sincerely,<br><strong>China Eastern Airlines</strong></p>`
+  };
   if (cbsEmailIsChinese(record)) return {
     subject: `行李案件更新通知 – WorldTracer 案件编号：${fileNumber}`,
     html: `<p>尊敬的旅客：</p><p>您好！</p><p>您的行李案件现已更新至 WorldTracer 全球行李查询系统。</p><p><strong>WorldTracer 案件编号：${reference}</strong></p><p>请妥善保存此案件编号，以便后续查询或跟进行李处理进度时使用。</p><p>我们将继续跟进您的行李案件。如有进一步信息或进展，我们会及时与您联系。</p><p>感谢您的耐心与理解。</p><p>此致<br>中国东方航空</p>`
@@ -1612,9 +1621,25 @@ function requestedBagsUpdateEmail(record, fileNumber) {
   const chinese = cbsEmailIsChinese(record);
   const subject = chinese ? `行李案件更新通知 – WorldTracer 案件编号：${fileNumber}` : `Baggage Case Update – WorldTracer Reference: ${fileNumber}`;
   const text = chinese
-    ? `尊敬的旅客：\n\n您好！\n\n我们很高兴地通知您，您的行李已找到，目前正在安排转运中。\n\nWorldTracer 案件编号：${fileNumber}\n\n我们将持续跟进行李的转运情况。如有下一步进展，包括行李抵达或后续领取/配送安排，我们会尽快与您联系并向您提供最新信息。\n\n如您有任何问题或需要进一步协助，请直接回复此邮件与我们联系。\n\n感谢您的耐心与理解。\n\n此致\n中国东方航空`
-    : `Dear Passenger,\n\nWe are pleased to inform you that your baggage has been located and is currently being arranged for transfer.\n\nWorldTracer Reference Number: ${fileNumber}\n\nWe will continue to monitor the transfer status of your baggage. Once there are any further updates, including its arrival or pickup/delivery arrangements, we will contact you as soon as possible and provide you with the latest information.\n\nIf you have any questions or need further assistance, please feel free to reply directly to this email.\n\nThank you for your patience and understanding.\n\nSincerely,\nChina Eastern Airlines`;
+    ? `尊敬的旅客：\n\n您好！\n\n我们很高兴地通知您，您的行李已找到，目前正在安排转运中。\n\nWorldTracer 案件编号：${fileNumber}\n\n我们将持续跟进行李的转运情况。如有下一步进展，包括行李抵达或后续配送安排，我们会尽快与您联系并向您提供最新信息。\n\n后续行李将按照您在行李报失记录（Report）中登记的地址安排配送。\n\n如果您需要将行李配送至 Report 中登记地址以外的其他地址，请直接回复此邮件，并提供完整的新配送地址。\n\n如无需更改配送地址，则无需回复此邮件。\n\n感谢您的耐心与理解。\n\n此致\n中国东方航空`
+    : `Dear Passenger,\n\nWe are pleased to inform you that your baggage has been located and is currently being arranged for transfer.\n\nWorldTracer Reference Number: ${fileNumber}\n\nWe will continue to monitor the transfer status of your baggage. Once further information becomes available, including its arrival and delivery arrangements, we will contact you as soon as possible with an update.\n\nYour baggage will be delivered to the address currently listed in your baggage report.\n\nIf you would like your baggage to be delivered to a different address, please reply directly to this email and provide the complete new delivery address.\n\nIf no address change is needed, no reply is required.\n\nThank you for your patience and understanding.\n\nSincerely,\nChina Eastern Airlines`;
   return { subject, text, html: cbsPlainTextEmailHtml(text.replace(fileNumber, reference)) };
+}
+
+function adcShippingUpdateEmail(record, fileNumber, shippingAddress = '') {
+  const reference = String(fileNumber || '').replace(/[&<>"']/g, (character) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character]));
+  const chinese = cbsEmailIsChinese(record);
+  const subject = chinese ? `行李配送通知 – WorldTracer 案件编号：${fileNumber}` : `Baggage Delivery Notification – WorldTracer Reference: ${fileNumber}`;
+  const address = sanitizeCbsText(shippingAddress, 300);
+  const text = address
+    ? (chinese
+      ? `尊敬的旅客：\n\n您好！\n\n我们通知您，您的行李已安排寄出，并将配送至以下地址：\n\nWorldTracer 案件编号：${fileNumber}\n\n配送地址：${address}\n\n请留意后续配送情况，并确保上述地址可以正常接收行李。\n\n如您发现配送地址有误，或配送过程中有任何问题，请尽快回复此邮件与我们联系。\n\n感谢您的耐心与配合。\n\n此致\n中国东方航空`
+      : `Dear Passenger,\n\nWe would like to inform you that your baggage has been shipped and will be delivered to the following address:\n\nWorldTracer Reference Number: ${fileNumber}\n\nDelivery Address: ${address}\n\nPlease monitor the delivery status and ensure that the above address is available to receive your baggage.\n\nIf you notice any issues with the delivery address or experience any problems during the delivery process, please reply to this email as soon as possible.\n\nThank you for your patience and cooperation.\n\nSincerely,\nChina Eastern Airlines`)
+    : (chinese
+      ? `尊敬的旅客：\n\n您好！\n\n我们通知您，您的行李已安排寄出，并将配送至您在行李案件中所提供的地址。\n\nWorldTracer 案件编号：${fileNumber}\n\n请留意后续配送情况，并确保您所提供的地址可以正常接收行李。\n\n如配送过程中有任何更新或需要进一步确认的信息，我们会与您联系。\n\n如您有任何问题，请直接回复此邮件与我们联系。\n\n感谢您的耐心与配合。\n\n此致\n中国东方航空`
+      : `Dear Passenger,\n\nWe would like to inform you that your baggage has been shipped and is being delivered to the address you provided for your baggage case.\n\nWorldTracer Reference Number: ${fileNumber}\n\nPlease monitor the delivery and ensure that the address provided is available to receive the baggage.\n\nIf there are any updates or if additional information is required during the delivery process, we will contact you accordingly.\n\nIf you have any questions, please feel free to reply directly to this email.\n\nThank you for your patience and cooperation.\n\nSincerely,\nChina Eastern Airlines`);
+  const escapedText = text.replace(fileNumber, reference).replace(address, String(address).replace(/[&<>"']/g, (character) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character])));
+  return { subject, text, html: cbsPlainTextEmailHtml(escapedText) };
 }
 
 function buildCbsFlightRoute(body) {
@@ -1936,7 +1961,9 @@ function buildCbsUpdateFields(update = {}) {
     return { status: 'WorldTracer', updateNote: `WORLDTRACER | File number: ${fileNumber}`, updateEvent: { key: 'worldtracer', title: 'Update WorldTracer', fields: [['File Number', fileNumber]] } };
   }
   if (type === 'requested_bags') {
-    return { status: 'Requested Bags', updateNote: 'REQUESTED BAGS', updateEvent: { key: 'requested_bags', title: 'Requested Bags', fields: [] } };
+    const fromStation = sanitizeCbsText(update.fromStation, 120).toUpperCase();
+    if (!fromStation) return null;
+    return { status: 'Requested Bags', updateNote: `REQUESTED BAGS | From station: ${fromStation}`, updateEvent: { key: 'requested_bags', title: 'Requested Bags', fields: [['From Station', fromStation]] } };
   }
   if (type === 'rush') {
     const rushTagNumber = sanitizeCbsText(update.rushTagNumber, 80).toUpperCase();
@@ -1959,8 +1986,10 @@ function buildCbsUpdateFields(update = {}) {
   }
   const trackingNumber = sanitizeCbsText(update.trackingNumber, 160).toUpperCase();
   const shippingTo = sanitizeCbsText(update.shippingTo, 300);
-  if (!trackingNumber || !shippingTo) return null;
-  return { status: 'Shipping', updateNote: `SHIPPING | Tracking: ${trackingNumber} | Ship to: ${shippingTo}${comment ? ` | Comment: ${comment}` : ''}`, updateEvent: { key: 'shipping', title: 'Update Shipping', fields: [['Tracking Number', trackingNumber], ['Ship To', shippingTo], ...(comment ? [['Comment', comment]] : [])] } };
+  const shippingMethods = ['ADC - All Day Courier', 'FedEx Delivery', 'Pick Up at Airport'];
+  const shippingMethod = shippingMethods.find((method) => method === sanitizeCbsText(update.shippingMethod, 80));
+  if (!shippingMethod || (shippingMethod === 'FedEx Delivery' && (!trackingNumber || !shippingTo))) return null;
+  return { status: 'Shipping', updateNote: `SHIPPING | Method: ${shippingMethod}${trackingNumber ? ` | Tracking: ${trackingNumber}` : ''} | Ship to: ${shippingTo}${comment ? ` | Comment: ${comment}` : ''}`, updateEvent: { key: 'shipping', title: 'Update Shipping', fields: [['Shipping Method', shippingMethod], ...(trackingNumber ? [['Tracking Number', trackingNumber]] : []), ['Ship To', shippingTo], ...(comment ? [['Comment', comment]] : [])] } };
 }
 
 
@@ -2580,6 +2609,18 @@ app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
       } catch (mailErr) {
         result.emailError = cbsEmailErrorMessage(mailErr);
         console.error('CBS requested bags update email error:', mailErr);
+      }
+    }
+    if (updateFields.updateEvent?.key === 'shipping' && updateFields.updateEvent.fields.some(([key, value]) => key === 'Shipping Method' && value === 'ADC - All Day Courier')) {
+      const record = result.record;
+      const fileNumber = record.worldTracerFileNumber || '';
+      const shippingAddress = updateFields.updateEvent.fields.find(([key]) => key === 'Ship To')?.[1] || '';
+      const message = adcShippingUpdateEmail(record, fileNumber, shippingAddress);
+      try {
+        result.email = await sendCbsCaseEmail({ passengerEmail: record.email, subject: message.subject, html: message.html, text: message.text, ccOperations: false });
+      } catch (mailErr) {
+        result.emailError = cbsEmailErrorMessage(mailErr);
+        console.error('CBS ADC shipping update email error:', mailErr);
       }
     }
     return res.json(result);
