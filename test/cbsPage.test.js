@@ -22,7 +22,7 @@ test('CBS tracking offers the requested bags stage', () => {
   assert.doesNotMatch(page, /event\.key === 'requested_bags' \? 'Update'/);
   assert.match(page, /tracking-step-number/);
   assert.match(page, /index === sortedEvents\.length - 1 \? ' is-latest'/);
-  assert.match(page, /content:"➜"/);
+  assert.match(page, /tracking-chip:not\(:last-child\)::after \{ content:""/);
   assert.match(page, /label\('Case Progress', '案件进度'\)/);
   assert.match(page, /content:"CURRENT"/);
 });
@@ -36,13 +36,16 @@ test('CBS tracking offers a compact baggage transfer update with a required arri
   assert.match(page, /data-update-mode="information"\] \{ grid-template-columns:minmax\(220px,320px\); \}/);
 });
 
-test('case progress stays inside the case and scrolls when updates accumulate', () => {
-  assert.match(page, /\.tracking-workspace \{[^}]*min-width:0/);
-  assert.match(page, /\.tracking-history \{[^}]*max-width:100%;[^}]*overflow-x:auto/);
-  assert.match(page, /scroll-snap-type:x proximity/);
-  assert.match(page, /Case progress; scroll horizontally for more updates/);
-  assert.match(page, /class="tracking-history" tabindex="0" aria-label=/);
-  assert.match(page, /history\.scrollLeft = history\.scrollWidth/);
+test('case progress uses a vertical left column with case controls and details on the right', () => {
+  assert.match(page, /\.case-detail-layout \{[^}]*grid-template-columns:minmax\(280px,360px\) minmax\(0,1fr\)/);
+  assert.match(page, /\.tracking-history \{ display:grid/);
+  assert.doesNotMatch(page, /scroll-snap-type|scrollbar-gutter|history\.scrollLeft/);
+  assert.match(page, /tracking-chip:not\(:last-child\)::after \{ content:""/);
+  assert.match(page, /case-progress-column/);
+  assert.match(page, /case-detail-right/);
+  assert.match(page, /trackingControlHtml\(row, 'progress'\)/);
+  assert.match(page, /trackingControlHtml\(row, 'current'\)/);
+  assert.match(page, /<div class="case-detail-content">\$\{detailHtml\}<\/div>\$\{passengerNotificationHtml\(row\)\}/);
 });
 
 test('CBS tracking offers a Lost update with no extra fields', () => {
