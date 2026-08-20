@@ -1636,16 +1636,13 @@ function requestedBagsUpdateEmail(record, fileNumber) {
 }
 
 function formatRushArrivalTime(value, chinese = false) {
-  const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);
+  const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!match) return String(value || '');
   const month = Number(match[2]);
   const day = Number(match[3]);
-  const hour = Number(match[4]);
-  const minute = match[5];
-  if (chinese) return `${month} 月 ${day} 日 ${String(hour).padStart(2, '0')}:${minute}`;
+  if (chinese) return `${month} 月 ${day} 日`;
   const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-  const hour12 = hour % 12 || 12;
-  return `${months[month - 1]} ${day} at ${hour12}:${minute} ${hour < 12 ? 'AM' : 'PM'}`;
+  return `${months[month - 1]} ${day}`;
 }
 
 function rushToLaxInformationEmail(record, fileNumber, estimatedArrivalTime) {
@@ -2074,8 +2071,8 @@ function buildCbsUpdateFields(update = {}) {
   if (type === 'information') {
     const informationType = sanitizeCbsText(update.informationType, 40).toLowerCase();
     const estimatedArrivalTime = sanitizeCbsText(update.estimatedArrivalTime, 40);
-    if (informationType !== 'rush_to_lax' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(estimatedArrivalTime)) return null;
-    return { status: 'Information - Rush to LAX', updateNote: `INFORMATION | Rush to LAX | Estimated arrival: ${estimatedArrivalTime}`, updateEvent: { key: 'information', title: 'Rush to LAX', fields: [['Information', 'Rush to LAX'], ['Estimated Arrival Time', estimatedArrivalTime]] } };
+    if (informationType !== 'rush_to_lax' || !/^\d{4}-\d{2}-\d{2}$/.test(estimatedArrivalTime)) return null;
+    return { status: 'Information - Baggage Transfer Status Update', updateNote: `INFORMATION | Baggage Transfer Status Update | Estimated arrival date: ${estimatedArrivalTime}`, updateEvent: { key: 'information', title: 'Baggage Transfer Status Update', fields: [['Information', 'Baggage Transfer Status Update'], ['Estimated Arrival Time', estimatedArrivalTime]] } };
   }
   if (type === 'worldtracer') {
     const fileNumber = sanitizeCbsText(update.fileNumber || update.worldTracerFileNumber, 120).toUpperCase();
