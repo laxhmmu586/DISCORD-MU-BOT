@@ -73,7 +73,7 @@ const WRONG_BAGGAGE_HEADERS = ['Submitted At', 'Status', 'Name', 'Seat Number', 
 const CONTACT_FORM_SHEET_ID = process.env.CONTACT_FORM_SHEET_ID || '1JqRnDx_uLc2m2SzyZOuHWWJsbkKenlKo60U9zwV9uMQ';
 const CONTACT_FORM_SHEET_GID = Number(process.env.CONTACT_FORM_SHEET_GID || 1889354016);
 const CBS_WORLDTRACER_SHEET_GID = Number(process.env.CBS_WORLDTRACER_SHEET_GID || 944289437);
-const CBS_UNRESOLVED_BAGGAGE_SHEET_GID = Number(process.env.CBS_UNRESOLVED_BAGGAGE_SHEET_GID || 1279643787);
+const CBS_UNRESOLVED_BAGGAGE_SHEET_GID = Number(process.env.CBS_UNRESOLVED_BAGGAGE_SHEET_GID || 523026916);
 const CBS_MISSING_BAG_EMAIL_SENDER = String(
   process.env.CBS_MISSING_BAG_EMAIL_SENDER || 'VIBES-NO-REPLY@lawa.org'
 ).trim();
@@ -822,10 +822,7 @@ async function appendTestBaggageRecord(record) {
   await ensureTestBaggageSheetHeaders(rows);
   const existing = await findTestBaggageByTag(normalizedTag);
   if (existing) {
-    const existingDirection = String(existing.direction || '').toLowerCase();
-    const shouldSyncExisting = (existingDirection === 'inbound' && String(existing.bagType || '').toLowerCase() === 'passenger bag')
-      || (existingDirection === 'outbound' && String(existing.status || '').toLowerCase() === 'not load bags');
-    if (shouldSyncExisting) await appendCbsUnresolvedBaggageCase(existing);
+    await appendCbsUnresolvedBaggageCase(existing);
     return { created: false, record: existing };
   }
   const now = new Date().toISOString();
@@ -877,9 +874,7 @@ async function appendTestBaggageRecord(record) {
     requestBody: { values: [testBaggageValuesFromRecord(cleanRecord)] }
   });
   testBaggageSheetCache = { loadedAt: 0, rows: [] };
-  const isUnresolvedInbound = direction === 'Inbound' && cleanRecord.bagType.toLowerCase() === 'passenger bag';
-  const isUnresolvedOutbound = direction === 'Outbound' && cleanRecord.status.toLowerCase() === 'not load bags';
-  if (isUnresolvedInbound || isUnresolvedOutbound) await appendCbsUnresolvedBaggageCase(cleanRecord);
+  await appendCbsUnresolvedBaggageCase(cleanRecord);
   return { created: true, record: await findTestBaggageByTag(normalizedTag) };
 }
 
