@@ -6,6 +6,7 @@ const path = require('node:path');
 const page = fs.readFileSync(path.join(__dirname, '..', 'public', 'public', 'cbs.html'), 'utf8');
 const pirForm = fs.readFileSync(path.join(__dirname, '..', 'public', 'public', 'pir-form.html'), 'utf8');
 const drive = fs.readFileSync(path.join(__dirname, '..', 'googleDrive.js'), 'utf8');
+const server = fs.readFileSync(path.join(__dirname, '..', 'index.js'), 'utf8');
 
 test('Add On-hand records are added to and displayed in Open Case', () => {
   assert.match(drive, /CBS_UNRESOLVED_BAGGAGE_SHEET_GID = Number\(process\.env\.CBS_UNRESOLVED_BAGGAGE_SHEET_GID \|\| 523026916\)/);
@@ -15,6 +16,15 @@ test('Add On-hand records are added to and displayed in Open Case', () => {
   assert.doesNotMatch(page, />Add Baggage</);
   assert.match(drive, /await appendCbsUnresolvedBaggageCase\(cleanRecord\);/);
   assert.match(page, /await loadUnresolvedBaggage\(\);\s*showSection\('open'\);/);
+});
+
+test('On-hand cases match the passenger case layout and support WorldTracer progress', () => {
+  assert.match(page, /<th>WorldTracer File<\/th><th>Bag Tag<\/th><th>Direction<\/th>/);
+  assert.match(page, /class="case-detail-layout"><div class="case-progress-column">\$\{unresolvedProgressHtml\(progressRow\)\}/);
+  assert.match(page, /<option value="worldtracer">WorldTracer<\/option>/);
+  assert.match(drive, /worldTracerFileNumber: values\[11\]/);
+  assert.match(drive, /!L\$\{target\.rowNumber\}/);
+  assert.match(server, /action === 'worldtracer'/);
 });
 
 test('CBS passenger information keeps all operationally required fields visible', () => {

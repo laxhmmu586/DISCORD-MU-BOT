@@ -69,6 +69,7 @@ const {
   getCbsWorldTracerCases,
   updateCbsWorldTracerCase,
   getCbsUnresolvedBaggageCases,
+  updateCbsUnresolvedBaggageWorldTracer,
   resolveCbsUnresolvedBaggageCase,
   getCbsCases,
   updateCbsCase,
@@ -2526,8 +2527,15 @@ app.get('/cbs-unresolved-baggage', async (req, res) => {
 app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
   try {
     const action = sanitizeCbsText(req.body?.action, 40).toLowerCase();
-    if (!['on-hand-rush', 'passenger-collected', 'shipped', 'other'].includes(action)) return res.status(400).json({ error: 'A valid resolution is required' });
+    if (!['worldtracer', 'on-hand-rush', 'passenger-collected', 'shipped', 'other'].includes(action)) return res.status(400).json({ error: 'A valid resolution is required' });
     const note = sanitizeCbsText(req.body?.note, 500);
+    if (action === 'worldtracer') {
+      const worldTracerFileNumber = sanitizeCbsText(req.body?.worldTracerFileNumber, 120).toUpperCase();
+      if (!worldTracerFileNumber) return res.status(400).json({ error: 'WorldTracer file number is required' });
+      const result = await updateCbsUnresolvedBaggageWorldTracer(req.params.rowNumber, worldTracerFileNumber);
+      if (result.notFound) return res.status(404).json({ error: 'Unresolved baggage case not found' });
+      return res.json(result);
+    }
     if (action === 'on-hand-rush') {
       const flightRows = (Array.isArray(req.body?.flightRows) ? req.body.flightRows : []).slice(0, 20).map((flight) => ({
         flightDate: sanitizeCbsText(flight?.flightDate, 40), flightNumber: sanitizeCbsText(flight?.flightNumber, 40).toUpperCase(),
