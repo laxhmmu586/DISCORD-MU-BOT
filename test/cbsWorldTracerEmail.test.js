@@ -66,4 +66,7 @@ test('ADC shipping updates email the passenger a bilingual delivery notification
   assert.match(server, /your baggage has been shipped and is being delivered to the address you provided/);
   assert.match(server, /value === 'ADC - All Day Courier'/);
   assert.match(server, /CBS ADC shipping update email error/);
+  assert.match(server, /配送地址：\$\{address\}/);
+  assert.match(server, /Delivery Address: \$\{address\}/);
+  assert.match(server, /adcShippingUpdateEmail\(record, fileNumber, shippingAddress\)/);
 });

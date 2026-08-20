@@ -114,7 +114,7 @@
     .inline-update.case-update { display:grid; grid-template-columns:repeat(2,minmax(150px,1fr)); gap:8px; margin:8px 0 0; padding:0; border:0; border-radius:0; background:transparent; box-shadow:none; }
     .inline-update [data-cbs-inline-fields] { display:contents; }
     .inline-update input,.inline-update select,.inline-update textarea { min-height:32px; padding:7px 9px; border:1px solid var(--line); border-radius:8px; background:#fff; font:inherit; font-size:12px; }
-    [data-shipping-tracking][hidden] { display:none; }
+    [data-shipping-tracking][hidden],[data-shipping-address][hidden] { display:none; }
     .inline-update textarea { min-height:58px; resize:vertical; grid-column:1/-1; }
     .inline-update button { width:max-content; padding:8px 13px; border-radius:12px; font-size:12px; grid-column:1/-1; }
     .baggage-search-card { margin:14px 0 0; padding:16px; border:1px solid var(--line); border-radius:18px; background:#fbfdff; display:grid; gap:10px; }
@@ -705,6 +705,7 @@
       const input = (title, name, attrs = 'required') => `<label><span>${escapeHtml(title)}</span><input name="${escapeHtml(name)}" ${attrs} /></label>`;
       const shippingMethodSelect = `<label><span>Delivery method</span><select name="shippingMethod" data-shipping-method required><option value="">Select delivery method</option><option>ADC - All Day Courier</option><option>FedEx Delivery</option><option>Pick Up at Airport</option></select></label>`;
       const shippingTrackingInput = `<label data-shipping-tracking hidden><span>Tracking number</span><input name="trackingNumber" disabled /></label>`;
+      const shippingAddressInput = `<label data-shipping-address hidden><span>Shipping to where?</span><input name="shippingTo" disabled /></label>`;
       const fields = active === 'worldtracer'
         ? input('File number', 'fileNumber')
         : active === 'rush'
@@ -718,7 +719,7 @@
           : active === 'location'
           ? [input('Bag location', 'location'), `<label class="wide"><span>Comment</span><textarea name="comment"></textarea></label>`].join('')
           : active === 'shipping'
-          ? [shippingMethodSelect, shippingTrackingInput, input('Shipping to where?', 'shippingTo'), `<label class="wide"><span>Comment</span><textarea name="comment"></textarea></label>`].join('')
+          ? [shippingMethodSelect, shippingTrackingInput, shippingAddressInput, `<label class="wide"><span>Comment</span><textarea name="comment"></textarea></label>`].join('')
           : `<label class="wide"><span>Comment</span><textarea name="comment" placeholder="Optional close note"></textarea></label>`;
       return `<form class="case-update" data-row-number="${escapeHtml(row.rowNumber)}" data-update-mode="${escapeHtml(active)}">
         <h2>${label('Update', '更新')}</h2>
@@ -800,11 +801,12 @@
       const input = (placeholder, name, required = true) => `<input name="${escapeHtml(name)}" placeholder="${escapeHtml(placeholder)}" ${required ? 'required' : ''} />`;
       const shippingMethodSelect = '<select name="shippingMethod" data-shipping-method required><option value="">Select delivery method</option><option>ADC - All Day Courier</option><option>FedEx Delivery</option><option>Pick Up at Airport</option></select>';
       const shippingTrackingInput = '<input name="trackingNumber" data-shipping-tracking placeholder="Tracking number" disabled hidden />';
+      const shippingAddressInput = '<input name="shippingTo" data-shipping-address placeholder="Shipping to where?" disabled hidden />';
       if (key === 'worldtracer') return input('File number', 'fileNumber');
       if (key === 'requested_bags') return input('From which station?', 'fromStation');
       if (key === 'rush') return [input('Rush tag number', 'rushTagNumber'), input('Rush to where?', 'rushToWhere'), input('AKE number?', 'akeNumber'), input('World Tracer file # (optional)', 'worldTracerFileNumber', false), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
       if (key === 'location') return [input('Bag location', 'location'), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
-      if (key === 'shipping') return [shippingMethodSelect, shippingTrackingInput, input('Shipping to where?', 'shippingTo'), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
+      if (key === 'shipping') return [shippingMethodSelect, shippingTrackingInput, shippingAddressInput, '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
       if (key === 'closed') return '<textarea name="comment" placeholder="Close note (optional)"></textarea>';
       return '';
     }
@@ -957,11 +959,17 @@
     casesOutput.addEventListener('change', (event) => {
       const shippingMethod = event.target.closest('[data-shipping-method]');
       if (shippingMethod) {
-        const trackingField = shippingMethod.closest('form')?.querySelector('[data-shipping-tracking]');
+        const form = shippingMethod.closest('form');
+        const trackingField = form?.querySelector('[data-shipping-tracking]');
         const trackingInput = trackingField?.matches('input') ? trackingField : trackingField?.querySelector('input');
+        const addressField = form?.querySelector('[data-shipping-address]');
+        const addressInput = addressField?.matches('input') ? addressField : addressField?.querySelector('input');
         const needsTracking = shippingMethod.value === 'FedEx Delivery';
+        const showsAddress = shippingMethod.value === 'ADC - All Day Courier' || needsTracking;
         if (trackingField) trackingField.hidden = !needsTracking;
         if (trackingInput) { trackingInput.disabled = !needsTracking; trackingInput.required = needsTracking; if (!needsTracking) trackingInput.value = ''; }
+        if (addressField) addressField.hidden = !showsAddress;
+        if (addressInput) { addressInput.disabled = !showsAddress; addressInput.required = needsTracking; if (!showsAddress) addressInput.value = ''; }
         return;
       }
       const select = event.target.closest('[data-cbs-stage-select]');

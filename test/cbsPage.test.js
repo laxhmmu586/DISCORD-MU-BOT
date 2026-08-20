@@ -37,6 +37,8 @@ test('shipping updates offer all supported delivery methods', () => {
   assert.match(page, /data-shipping-tracking placeholder="Tracking number" disabled hidden/);
   assert.match(page, /needsTracking = shippingMethod\.value === 'FedEx Delivery'/);
   assert.match(page, /trackingInput\.required = needsTracking/);
+  assert.match(page, /showsAddress = shippingMethod\.value === 'ADC - All Day Courier' \|\| needsTracking/);
+  assert.match(page, /addressInput\.required = needsTracking/);
 });
 
 test('CBS passenger detail view can recover values from the original form snapshot', () => {
