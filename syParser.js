@@ -306,7 +306,7 @@ function subtractMinutesFromTime(hhmm, minutes) {
 }
 
 const MAINLAND_CHINA_DESTINATIONS = new Set([
-  'AAT','AKA','AKU','AQG','AVA','BAV','BHY','BPX','BSD','CAN','CGD','CGO','CGQ','CIF','CIH','CKG','CSX','CTU','CZX','DAT','DAX','DDG','DIG','DLC','DLU','DNH','DOY','DSN','DYG','ENH','FOC','FUG','FUO','HAK','HDG','HEK','HET','HFE','HGH','HIA','HJJ','HLD','HLH','HRB','HSN','HTN','HYN','INC','IQM','JDZ','JGN','JHG','JIC','JIL','JIU','JJN','JMU','JNG','JNZ','JSJ','JUZ','KHG','KHN','KMG','KOW','KRL','KRY','KWE','KWL','LCX','LHW','LJG','LLB','LLF','LNJ','LUM','LXA','LYA','LYG','LYI','LZH','LZO','MDG','MIG','MXZ','NAO','NBS','NDG','NGB','NKG','NLT','NNG','NNY','NTG','NZH','PEK','PKX','PVG','SHA','SHE','SIA','SJW','SWA','SYM','SYX','SZX','TAO','TCG','TEN','TNA','TSN','TVS','TXN','TYN','URC','UYN','WEF','WEH','WHA','WNH','WNZ','WUA','WUH','WUS','WUX','WUZ','XFN','XIC','XIY','XMN','XNN','XUZ','YBP','YCU','YIC','YIH','YIN','YIW','YNJ','YNT','YNZ','YTY','YUS','ZAT','ZHA','ZUH','ZYI'
+  'AAT','AKA','AKU','AQG','AVA','BAV','BHY','BPX','BSD','CAN','CGD','CGO','CGQ','CIF','CIH','CKG','CSX','CTU','CZX','DAT','DAX','DDG','DIG','DLC','DLU','DNH','DOY','DSN','DYG','ENH','FOC','FUG','FUO','HAK','HDG','HEK','HET','HFE','HGH','HIA','HJJ','HLD','HLH','HRB','HSN','HTN','HYN','INC','IQM','JDZ','JGN','JHG','JIC','JIL','JIU','JJN','JMU','JNG','JNZ','JSJ','JUZ','KHG','KHN','KMG','KOW','KRL','KRY','KWE','KWL','LCX','LHW','LJG','LLB','LLF','LNJ','LUM','LXA','LYA','LYG','LYI','LZH','LZO','MDG','MIG','MXZ','NAO','NBS','NDG','NGB','NKG','NLT','NNG','NNY','NTG','NZH','PEK','PKX','PVG','SHA','SHE','SIA','SJW','SWA','SYM','SYX','SZX','TAO','TCG','TEN','TFU','TNA','TSN','TVS','TXN','TYN','URC','UYN','WEF','WEH','WHA','WNH','WNZ','WUA','WUH','WUS','WUX','WUZ','XFN','XIC','XIY','XMN','XNN','XUZ','YBP','YCU','YIC','YIH','YIN','YIW','YNJ','YNT','YNZ','YTY','YUS','ZAT','ZHA','ZUH','ZYI'
 ]);
 
 function normalizeOperationalFlightNo(flightNo) {
@@ -410,7 +410,10 @@ function findJcsyInfo(sections, flightNo, flightYmd, formatTime, fallbackYmd = '
     return Boolean(jcsyFlightNo && flightDatePattern) ? sections.filter((sectionObj) => {
       const content = String(sectionObj.content || '').toUpperCase();
       return /^>\s*JCSY\s*:/im.test(content)
-        && /##TOTAL##/i.test(content)
+        // JCSY only prints ##TOTAL## after the final page. Operators commonly
+        // paste the displayed JCSY page(s) before that footer, so requiring it
+        // discarded the current rows and left the UI showing older figures.
+        && parseJcsyRows(content).length > 0
         && new RegExp(`\\bJCSY:\\s*${flightNoPattern}/${flightDatePattern}/LAX,O\\b`, 'im').test(content);
     }) : [];
   };
