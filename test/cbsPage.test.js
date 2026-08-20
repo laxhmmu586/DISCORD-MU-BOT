@@ -27,6 +27,24 @@ test('CBS tracking offers the requested bags stage', () => {
   assert.match(page, /content:"CURRENT"/);
 });
 
+test('CBS tracking offers a compact baggage transfer update with a required arrival date', () => {
+  assert.match(page, /key:'information', text:'Information'/);
+  assert.match(page, /name="informationType" required><option value="rush_to_lax">Baggage Transfer Status Update/);
+  assert.match(page, /name="estimatedArrivalTime" type="date" required/);
+  assert.match(page, /data-update-mode="information"/);
+  assert.match(page, /Baggage Transfer Status Update email/);
+  assert.match(page, /data-update-mode="information"\] \{ grid-template-columns:minmax\(220px,320px\); \}/);
+});
+
+test('case progress stays inside the case and scrolls when updates accumulate', () => {
+  assert.match(page, /\.tracking-workspace \{[^}]*min-width:0/);
+  assert.match(page, /\.tracking-history \{[^}]*max-width:100%;[^}]*overflow-x:auto/);
+  assert.match(page, /scroll-snap-type:x proximity/);
+  assert.match(page, /Case progress; scroll horizontally for more updates/);
+  assert.match(page, /class="tracking-history" tabindex="0" aria-label=/);
+  assert.match(page, /history\.scrollLeft = history\.scrollWidth/);
+});
+
 test('CBS tracking offers a Lost update with no extra fields', () => {
   assert.match(page, /key:'lost', text:'Lost'/);
   assert.match(page, /if \(key === 'lost'\) return ''/);
