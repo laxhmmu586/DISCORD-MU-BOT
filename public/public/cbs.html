@@ -969,7 +969,7 @@
         const addressField = form?.querySelector('[data-shipping-address]');
         const addressInput = addressField?.matches('input') ? addressField : addressField?.querySelector('input');
         const needsTracking = shippingMethod.value === 'FedEx Delivery';
-        const showsAddress = ['ADC - All Day Courier', 'FedEx Delivery', 'Passenger Pay for Shipping'].includes(shippingMethod.value);
+        const showsAddress = shippingMethod.value === 'ADC - All Day Courier' || shippingMethod.value === 'FedEx Delivery';
         if (trackingField) trackingField.hidden = !needsTracking;
         if (trackingInput) { trackingInput.disabled = !needsTracking; trackingInput.required = needsTracking; if (!needsTracking) trackingInput.value = ''; }
         if (addressField) addressField.hidden = !showsAddress;

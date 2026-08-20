@@ -37,7 +37,8 @@ test('shipping updates offer all supported delivery methods', () => {
   assert.match(page, /data-shipping-tracking placeholder="Tracking number" disabled hidden/);
   assert.match(page, /needsTracking = shippingMethod\.value === 'FedEx Delivery'/);
   assert.match(page, /trackingInput\.required = needsTracking/);
-  assert.match(page, /'Passenger Pay for Shipping'\]\.includes\(shippingMethod\.value\)/);
+  assert.match(page, /showsAddress = shippingMethod\.value === 'ADC - All Day Courier' \|\| shippingMethod\.value === 'FedEx Delivery'/);
+  assert.doesNotMatch(page, /\['ADC - All Day Courier', 'FedEx Delivery', 'Passenger Pay for Shipping'\]\.includes/);
   assert.match(page, /addressInput\.required = false/);
 });
 
