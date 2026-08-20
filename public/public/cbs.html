@@ -469,6 +469,7 @@
     const TRACKING_STAGES = [
       { key:'create', text:'Create' },
       { key:'update', text:'Update' },
+      { key:'information', text:'Information' },
       { key:'worldtracer', text:'WorldTracer' },
       { key:'requested_bags', text:'Requested Bags' },
       { key:'rush', text:'Rush' },
@@ -536,6 +537,7 @@
       if (/rush/.test(text)) return 'rush';
       if (/world\s*tracer|worldtracer/.test(text)) return 'worldtracer';
       if (/requested[\s_-]*bags?/.test(text)) return 'requested_bags';
+      if (/information/.test(text)) return 'information';
       if (/update/.test(text)) return 'update';
       return 'create';
     }
@@ -582,6 +584,7 @@
         ['create', label('Create report email', '建案报告邮件')],
         ['worldtracer', label('WorldTracer update email', 'WorldTracer 更新邮件')],
         ['requested_bags', label('Baggage request from other station email', '外站行李查询邮件')],
+        ['information', label('Rush to LAX status email', '转运至 LAX 状态邮件')],
         ['adc_shipping', label('ADC baggage delivery email', 'ADC 行李配送邮件')],
         ['fedex_shipping', label('FedEx baggage delivery email', 'FedEx 行李配送邮件')],
         ['airport_pickup', label('Airport pickup closure email', '机场领取结案邮件')],
@@ -816,6 +819,7 @@
       const shippingTrackingInput = '<input name="trackingNumber" data-shipping-tracking placeholder="Tracking number" disabled hidden />';
       const shippingAddressInput = '<input name="shippingTo" data-shipping-address placeholder="Shipping to where?" disabled hidden />';
       if (key === 'worldtracer') return input('File number', 'fileNumber');
+      if (key === 'information') return ['<select name="informationType" required><option value="rush_to_lax">Rush to LAX</option></select>', '<label><span>Estimated arrival time</span><input name="estimatedArrivalTime" type="datetime-local" required /></label>'].join('');
       if (key === 'requested_bags') return input('From which station?', 'fromStation');
       if (key === 'rush') return [input('Rush tag number', 'rushTagNumber'), input('Rush to where?', 'rushToWhere'), input('AKE number?', 'akeNumber'), input('World Tracer file # (optional)', 'worldTracerFileNumber', false), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
       if (key === 'location') return [input('Bag location', 'location'), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');

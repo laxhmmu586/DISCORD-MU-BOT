@@ -113,7 +113,8 @@ const CBS_HEADERS = [
   'Original Form Data',
   'WorldTracer File Number',
   'Tracking Number',
-  'Shipping Address'
+  'Shipping Address',
+  'Estimated Arrival Time'
 ];
 let cbsSheetTitle = '';
 let cbsWorldTracerSheetTitle = '';
@@ -3072,7 +3073,7 @@ async function getCbsSheetRows(options = {}) {
   const title = await getCbsSheetTitle();
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A:AJ`
+    range: `${escapeSheetTitle(title)}!A:AK`
   });
   const rows = res.data.values || [];
   cbsSheetCache = { loadedAt: Date.now(), rows };
@@ -3094,7 +3095,7 @@ async function ensureCbsSheetHeaders(rows) {
   const title = await getCbsSheetTitle();
   await sheets.spreadsheets.values.update({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A1:AJ1`,
+    range: `${escapeSheetTitle(title)}!A1:AK1`,
     valueInputOption: 'RAW',
     requestBody: { values: [CBS_HEADERS] }
   });
@@ -3159,6 +3160,8 @@ function cbsRecordFromSheet(values, rowNumber) {
   row.worldTracerFileNumber = values[33] || row.worldTracerFileNumber || '';
   row.trackingNumber = values[34] || row.trackingNumber || '';
   row.shippingAddress = values[35] || row.shippingAddress || '';
+  // The RUSH-to-LAX estimated arrival time is always stored in column AK.
+  row.estimatedArrivalTime = values[36] || row.estimatedArrivalTime || '';
   row.caseType = row.caseType || values.find((value) => /^(AHL|DPR)$/i.test(String(value || '').trim())) || '';
   row.bagTag = row.bagTag || values[8] || extractCbsBagTagFromUpdateNote(row.updateNote) || values.find((value) => /^[A-Z]{2}\d{6,}(\s*\/\s*[A-Z]{2}\d{6,})*$/i.test(String(value || '').trim())) || '';
   row.submittedAt = row.submittedAt || row.submitDate || values[26] || '';
@@ -3221,7 +3224,8 @@ function cbsValuesFromRecord(record) {
     record.originalFormData || cbsOriginalFormData(record),
     record.worldTracerFileNumber || '',
     record.trackingNumber || '',
-    record.shippingAddress || ''
+    record.shippingAddress || '',
+    record.estimatedArrivalTime || ''
   ];
 }
 
@@ -3231,7 +3235,7 @@ async function appendCbsCase(record) {
   await ensureCbsSheetHeaders(rows);
   await sheets.spreadsheets.values.append({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A:AJ`,
+    range: `${escapeSheetTitle(title)}!A:AK`,
     valueInputOption: 'RAW',
     insertDataOption: 'INSERT_ROWS',
     requestBody: { values: [cbsValuesFromRecord(record)] }
@@ -3558,7 +3562,7 @@ function cbsEventsFromUpdateNote(row = {}) {
     const body = match ? match[2] : part;
     const pieces = body.split('|').map((item) => item.trim()).filter(Boolean);
     const type = pieces.shift() || 'Update';
-    const key = /rush/i.test(type) ? 'rush' : (/location/i.test(type) ? 'location' : (/ship/i.test(type) ? 'shipping' : (/world\s*tracer|worldtracer/i.test(type) ? 'worldtracer' : 'update')));
+    const key = /information/i.test(type) ? 'information' : (/rush/i.test(type) ? 'rush' : (/location/i.test(type) ? 'location' : (/ship/i.test(type) ? 'shipping' : (/world\s*tracer|worldtracer/i.test(type) ? 'worldtracer' : 'update'))));
     const fields = pieces.map((piece) => {
       const split = piece.split(/:\s*/);
       return split.length > 1 ? [split.shift(), split.join(': ')] : ['Detail', piece];
@@ -3615,6 +3619,10 @@ async function updateCbsCase(rowNumber, update = {}) {
     next.trackingNumber = sanitizeSheetText(shippingFields.get('Tracking Number'), 160).toUpperCase();
     next.shippingAddress = sanitizeSheetText(shippingFields.get('Ship To'), 300);
   }
+  if (update.updateEvent?.key === 'information') {
+    const informationFields = new Map(update.updateEvent.fields || []);
+    next.estimatedArrivalTime = sanitizeSheetText(informationFields.get('Estimated Arrival Time'), 40);
+  }
   const historyEvent = sanitizeCbsUpdateEvent(update.updateEvent, {
     status: next.status,
     at: now,
@@ -3627,7 +3635,7 @@ async function updateCbsCase(rowNumber, update = {}) {
   const title = await getCbsSheetTitle();
   await sheets.spreadsheets.values.update({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A${rowIndex + 1}:AJ${rowIndex + 1}`,
+    range: `${escapeSheetTitle(title)}!A${rowIndex + 1}:AK${rowIndex + 1}`,
     valueInputOption: 'RAW',
     requestBody: { values: [cbsValuesFromRecord(next)] }
   });
