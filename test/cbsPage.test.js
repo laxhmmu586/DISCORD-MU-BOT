@@ -5,6 +5,36 @@ const path = require('node:path');
 
 const page = fs.readFileSync(path.join(__dirname, '..', 'public', 'public', 'cbs.html'), 'utf8');
 const pirForm = fs.readFileSync(path.join(__dirname, '..', 'public', 'public', 'pir-form.html'), 'utf8');
+const drive = fs.readFileSync(path.join(__dirname, '..', 'googleDrive.js'), 'utf8');
+const server = fs.readFileSync(path.join(__dirname, '..', 'index.js'), 'utf8');
+
+test('Add On-hand records are added to and displayed in Open Case', () => {
+  assert.match(drive, /CBS_UNRESOLVED_BAGGAGE_SHEET_GID = Number\(process\.env\.CBS_UNRESOLVED_BAGGAGE_SHEET_GID \|\| 523026916\)/);
+  assert.match(page, /title="Add On-hand"/);
+  assert.match(page, /id="open-cases-tab"[\s\S]*id="closed-cases-tab"[\s\S]*id="add-baggage-tab"[\s\S]*id="worldtracer-tab"/);
+  assert.match(page, /<h1>Add On-hand<\/h1>/);
+  assert.doesNotMatch(page, />Add Baggage</);
+  assert.match(drive, /await appendCbsUnresolvedBaggageCase\(cleanRecord\);/);
+  assert.match(page, /await loadUnresolvedBaggage\(\);\s*showSection\('open'\);/);
+});
+
+test('On-hand cases match the passenger case layout and support WorldTracer progress', () => {
+  assert.match(page, /<th>WorldTracer File<\/th><th>Bag Tag<\/th><th>Direction<\/th>/);
+  assert.match(page, /class="case-detail-layout"><div class="case-progress-column">\$\{unresolvedProgressHtml\(progressRow\)\}/);
+  assert.match(page, /<option value="worldtracer">WorldTracer<\/option>/);
+  assert.match(drive, /worldTracerFileNumber: values\[11\]/);
+  assert.match(drive, /!L\$\{target\.rowNumber\}/);
+  assert.match(server, /action === 'worldtracer'/);
+});
+
+test('On-hand shipping uses the Passenger Filed delivery methods without email handling', () => {
+  const onHandFields = page.match(/if \(action === 'shipped'\) return `([\s\S]*?)`;/)?.[1] || '';
+  for (const method of ['ADC - All Day Courier', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping']) assert.match(onHandFields, new RegExp(method));
+  assert.match(onHandFields, /data-shipping-tracking hidden/);
+  assert.match(onHandFields, /data-shipping-address hidden/);
+  assert.match(server, /if \(action === 'shipped'\) \{/);
+  assert.match(server, /A tracking number is required for FedEx Delivery/);
+});
 
 test('CBS passenger information keeps all operationally required fields visible', () => {
   const requiredFields = page.match(/const requiredPassengerFields = \[([\s\S]*?)\n\s*\];/)?.[1] || '';
