@@ -34,6 +34,11 @@ test('requested bags update emails the passenger without an operations CC', () =
   assert.match(server, /WorldTracer 案件编号：\$\{reference\}/);
   assert.match(server, /Dear Passenger,\\n\\nWe are pleased to inform you/);
   assert.match(server, /Sincerely,\\nChina Eastern Airlines/);
+  assert.match(server, /后续行李将按照您在行李报失记录（Report）中登记的地址安排配送/);
+  assert.match(server, /如无需更改配送地址，则无需回复此邮件/);
+  assert.match(server, /Your baggage will be delivered to the address currently listed in your baggage report/);
+  assert.match(server, /If no address change is needed, no reply is required/);
+  assert.doesNotMatch(server, /including its arrival or pickup\/delivery arrangements/);
   assert.match(server, /function cbsEmailIsChinese[\s\S]*?\^zh\(\?:-\|\$\)/);
   const block = server.match(/if \(updateFields\.updateEvent\?\.key === 'requested_bags'\) \{([\s\S]*?)\n\s*\}/)?.[1] || '';
   assert.match(block, /sendCbsCaseEmail/);
