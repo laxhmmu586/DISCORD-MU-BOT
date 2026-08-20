@@ -45,6 +45,13 @@ test('requested bags updates store the requesting station in case history', () =
   assert.match(server, /fields: \[\['From Station', fromStation\]\]/);
 });
 
+test('Rush updates no longer require or store an AKE number', () => {
+  const server = fs.readFileSync(path.join(__dirname, '..', 'index.js'), 'utf8');
+  const rushBlock = server.match(/if \(type === 'rush'\) \{([\s\S]*?)\n  \}/)?.[1] || '';
+  assert.match(rushBlock, /if \(!rushTagNumber \|\| !rushToWhere\) return null/);
+  assert.doesNotMatch(rushBlock, /akeNumber|AKE Number|AKE:/);
+});
+
 test('lost updates persist the Delayed to Lost status transition', () => {
   const server = fs.readFileSync(path.join(__dirname, '..', 'index.js'), 'utf8');
   assert.match(server, /status: 'Closed - Lost'/);

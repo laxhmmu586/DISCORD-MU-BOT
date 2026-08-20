@@ -99,6 +99,9 @@
     .tracking-workspace { display:grid; gap:14px; align-items:start; min-width:0; }
     .tracking-workspace > * { min-width:0; }
     .tracking-history { display:grid; gap:22px; width:100%; max-width:100%; padding:12px 4px 8px; }
+    .case-progress-column .tracking-history { max-height:var(--case-progress-height,none); overflow-y:auto; overscroll-behavior:contain; scrollbar-width:none; }
+    .case-progress-column .tracking-history::-webkit-scrollbar { display:none; }
+    @media (max-width:840px) { .case-progress-column .tracking-history { max-height:none; overflow-y:visible; } }
     .tracking-history:focus-visible { outline:2px solid #75a7e3; outline-offset:4px; border-radius:12px; }
     .tracking-chip { position:relative; display:grid; grid-template-columns:28px minmax(0,1fr); align-content:start; gap:4px 10px; width:100%; min-width:0; padding:14px 16px; border-radius:16px; background:#eef4ff; color:var(--brand); font-weight:850; box-shadow:inset 0 0 0 1px rgba(18,58,115,.08),0 5px 12px rgba(18,58,115,.06); }
     .tracking-chip:not(:last-child)::after { content:""; position:absolute; z-index:0; left:29px; top:100%; width:2px; height:22px; background:#9fc4ef; }
@@ -729,7 +732,6 @@
           ? [
               input('Rush tag number', 'rushTagNumber'),
               input('Rush to where?', 'rushToWhere'),
-              input('AKE number?', 'akeNumber'),
               input('Option: World Tracer file #', 'worldTracerFileNumber', ''),
               `<label class="wide"><span>Comment</span><textarea name="comment"></textarea></label>`
             ].join('')
@@ -825,7 +827,7 @@
       if (key === 'worldtracer') return input('File number', 'fileNumber');
       if (key === 'information') return ['<select name="informationType" required><option value="rush_to_lax">Baggage Transfer Status Update</option></select>', '<label><span>Estimated arrival date</span><input name="estimatedArrivalTime" type="date" required /></label>'].join('');
       if (key === 'requested_bags') return input('From which station?', 'fromStation');
-      if (key === 'rush') return [input('Rush tag number', 'rushTagNumber'), input('Rush to where?', 'rushToWhere'), input('AKE number?', 'akeNumber'), input('World Tracer file # (optional)', 'worldTracerFileNumber', false), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
+      if (key === 'rush') return [input('Rush tag number', 'rushTagNumber'), input('Rush to where?', 'rushToWhere'), input('World Tracer file # (optional)', 'worldTracerFileNumber', false), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
       if (key === 'location') return [input('Bag location', 'location'), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
       if (key === 'shipping') return [shippingMethodSelect, shippingTrackingInput, shippingAddressInput, '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
       if (key === 'lost') return '';
@@ -844,11 +846,11 @@
     function trackingControlHtml(row, part = 'all') {
       const events = parseUpdateNoteEvents(row);
       if (row?.source === 'wrongBaggage') {
-        const historyHtml = events.map((event, index) => {
+        const historyHtml = events.map((event, index) => ({ event, stepNumber:index + 1 })).reverse().map(({ event, stepNumber }, index) => {
           const time = formatEventTime(event.at);
           const details = (event.fields || []).filter(([, value]) => hasValue(value)).map(([key, value]) => `<span class="tracking-chip-detail">${escapeHtml(key)}: ${escapeHtml(renderValue(value))}</span>`).join('');
-          const stateClass = `${event.key === 'closed' ? ' is-closed' : ''}${index === events.length - 1 ? ' is-latest' : ''}`;
-          return `<span class="tracking-chip${stateClass}"><span class="tracking-step-number">${index + 1}</span><span class="tracking-chip-title">${escapeHtml(event.title || 'Update')}</span><small>${escapeHtml(time.date)} ${escapeHtml(time.time)}</small>${details}</span>`;
+          const stateClass = `${event.key === 'closed' ? ' is-closed' : ''}${index === 0 ? ' is-latest' : ''}`;
+          return `<span class="tracking-chip${stateClass}"><span class="tracking-step-number">${stepNumber}</span><span class="tracking-chip-title">${escapeHtml(event.title || 'Update')}</span><small>${escapeHtml(time.date)} ${escapeHtml(time.time)}</small>${details}</span>`;
         }).join('');
         if (part === 'current') return '';
         if (isClosedCase(row)) return `<div class="tracking-workspace"><div><div class="tracking-history">${historyHtml}</div></div><form class="inline-update case-update" data-row-number="${escapeHtml(row.rowNumber)}" data-case-source="wrongBaggage" data-update-mode="reopen"><textarea name="comment" placeholder="${label('Reopen note (optional)', '重新开启备注（可选）')}"></textarea><button type="submit">${label('Reopen', '重新开启')}</button></form></div>`;
@@ -860,17 +862,19 @@
       const updateKeys = TRACKING_STAGES.filter((stage) => !['create', 'reopen'].includes(stage.key));
       const sortedEvents = events
         .slice()
-        .sort((a, b) => (Date.parse(a.at || '') || 0) - (Date.parse(b.at || '') || 0));
+        .sort((a, b) => (Date.parse(a.at || '') || 0) - (Date.parse(b.at || '') || 0))
+        .map((event, index) => ({ event, stepNumber:index + 1 }))
+        .reverse();
       const historyHtml = sortedEvents
-        .map((event, index) => {
+        .map(({ event, stepNumber }, index) => {
           const time = formatEventTime(event.at);
           const title = TRACKING_STAGES.find((stage) => stage.key === event.key)?.text || event.title || 'Update';
           const detailFields = (event.fields || []).filter(([, value]) => hasValue(value));
           const detailHtml = detailFields.map(([fieldKey, value]) => `<span class="tracking-chip-detail">${escapeHtml(fieldKey)}: ${escapeHtml(renderValue(value))}</span>`).join('');
           const noteHtml = !detailFields.length && hasValue(event.note) ? `<span class="tracking-chip-detail">${escapeHtml(event.note)}</span>` : '';
           const closedClass = event.key === 'closed' ? ' is-closed' : '';
-          const latestClass = index === sortedEvents.length - 1 ? ' is-latest' : '';
-          return `<span class="tracking-chip${closedClass}${latestClass}"><span class="tracking-step-number">${index + 1}</span><span class="tracking-chip-title">${escapeHtml(title)}</span><small>${escapeHtml(time.date || '')} ${escapeHtml(time.time || '')}</small>${detailHtml}${noteHtml}</span>`;
+          const latestClass = index === 0 ? ' is-latest' : '';
+          return `<span class="tracking-chip${closedClass}${latestClass}"><span class="tracking-step-number">${stepNumber}</span><span class="tracking-chip-title">${escapeHtml(title)}</span><small>${escapeHtml(time.date || '')} ${escapeHtml(time.time || '')}</small>${detailHtml}${noteHtml}</span>`;
         }).join('') || '<span class="sheet-empty">No tracking updates yet</span>';
       if (!row.rowNumber) return historyHtml;
       const progressHeader = `<p class="tracking-current-time"><strong>${label('Case Progress', '案件进度')}</strong><span>${label('Last update', '最后更新')}: ${escapeHtml(latestTime.date || '-')} ${escapeHtml(latestTime.time || '')}</span></p>`;
@@ -900,12 +904,21 @@
         const isExpanded = expandedCases.has(detailKey);
         return `<tr class="case-summary-row${closedClass}" data-toggle-case="${escapeHtml(detailKey)}" aria-expanded="${isExpanded ? 'true' : 'false'}"><td class="sheet-meta">${escapeHtml(displayWorldTracerFile(row) || '-')}</td><td class="sheet-meta">${escapeHtml(caseType || '-')}</td><td class="sheet-meta"><span class="bag-tag-value">${escapeHtml(displayBagTag(row) || '-')}</span></td></tr><tr class="case-detail-row${closedClass}" data-detail-case="${escapeHtml(detailKey)}" ${isExpanded ? '' : 'hidden'}><td colspan="3"><div class="case-detail-layout"><div class="case-progress-column">${trackingControlHtml(row, 'progress')}</div><div class="case-detail-right">${trackingControlHtml(row, 'current')}<div class="case-detail-content">${detailHtml}</div>${passengerNotificationHtml(row)}</div></div></td></tr>`;
       }).join('')}</tbody></table></div>${baggageHtml}`;
-      requestAnimationFrame(() => {
-        casesOutput.querySelectorAll('.case-detail-row:not([hidden]) .tracking-history').forEach((history) => {
-          history.scrollLeft = history.scrollWidth;
-        });
+      requestAnimationFrame(syncCaseProgressHeights);
+    }
+
+    function syncCaseProgressHeights() {
+      casesOutput.querySelectorAll('.case-detail-row:not([hidden]) .case-detail-layout').forEach((layout) => {
+        const progress = layout.querySelector('.case-progress-column');
+        const history = progress?.querySelector('.tracking-history');
+        const header = progress?.querySelector('.tracking-current-time');
+        const right = layout.querySelector('.case-detail-right');
+        if (!history || !right) return;
+        const headerHeight = header ? header.getBoundingClientRect().height + 4 : 0;
+        history.style.setProperty('--case-progress-height', `${Math.max(160, right.getBoundingClientRect().height - headerHeight)}px`);
       });
     }
+    window.addEventListener('resize', syncCaseProgressHeights);
     async function loadCases() {
       casesOutput.innerHTML = '<p class="muted">Loading cases...</p>';
       try {

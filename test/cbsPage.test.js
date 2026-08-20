@@ -21,7 +21,7 @@ test('CBS tracking offers the requested bags stage', () => {
   assert.match(page, /requested\[\\s_-\]\*bags\?/);
   assert.doesNotMatch(page, /event\.key === 'requested_bags' \? 'Update'/);
   assert.match(page, /tracking-step-number/);
-  assert.match(page, /index === sortedEvents\.length - 1 \? ' is-latest'/);
+  assert.match(page, /const latestClass = index === 0 \? ' is-latest'/);
   assert.match(page, /tracking-chip:not\(:last-child\)::after \{ content:""/);
   assert.match(page, /label\('Case Progress', '案件进度'\)/);
   assert.match(page, /content:"CURRENT"/);
@@ -44,12 +44,18 @@ test('changing Current Stage replaces the form with fields for that stage', () =
   assert.match(page, /if \(key === 'information'\).*Baggage Transfer Status Update/);
   assert.match(page, /if \(key === 'requested_bags'\) return input\('From which station\?', 'fromStation'\)/);
   assert.match(page, /if \(key === 'shipping'\) return \[shippingMethodSelect/);
+  assert.doesNotMatch(page, /input\('AKE number\?', 'akeNumber'\)/);
 });
 
 test('case progress uses a vertical left column with case controls and details on the right', () => {
   assert.match(page, /\.case-detail-layout \{[^}]*grid-template-columns:minmax\(280px,360px\) minmax\(0,1fr\)/);
   assert.match(page, /\.tracking-history \{ display:grid/);
   assert.doesNotMatch(page, /scroll-snap-type|scrollbar-gutter|history\.scrollLeft/);
+  assert.match(page, /overflow-y:auto/);
+  assert.match(page, /scrollbar-width:none/);
+  assert.match(page, /tracking-history::-webkit-scrollbar \{ display:none; \}/);
+  assert.match(page, /requestAnimationFrame\(syncCaseProgressHeights\)/);
+  assert.match(page, /\.reverse\(\);/);
   assert.match(page, /tracking-chip:not\(:last-child\)::after \{ content:""/);
   assert.match(page, /case-progress-column/);
   assert.match(page, /case-detail-right/);

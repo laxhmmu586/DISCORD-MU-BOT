@@ -1382,11 +1382,23 @@ function pdfEscape(value) {
 
 function pdfText(content, x, y, size = 9) {
   const safe = pdfSafeText(content);
-  if (/[^\x20-\x7E]/.test(safe)) {
-    const utf16Hex = Buffer.from(safe, 'utf16le').swap16().toString('hex').toUpperCase();
-    return `BT /F2 ${size} Tf ${x} ${y} Td <${utf16Hex}> Tj ET`;
-  }
-  return `BT /F1 ${size} Tf ${x} ${y} Td (${pdfEscape(safe)}) Tj ET`;
+  if (!/[^\x20-\x7E]/.test(safe)) return `BT /F1 ${size} Tf ${x} ${y} Td (${pdfEscape(safe)}) Tj ET`;
+
+  // Keep Latin text in Helvetica even when the same field contains Chinese.
+  // Sending a whole mixed-language line through the CJK font makes its Latin
+  // glyphs look wider and visibly different from the rest of the report.
+  let cursorX = x;
+  return (safe.match(/[\x20-\x7E]+|[^\x20-\x7E]+/g) || []).map((run) => {
+    if (/^[\x20-\x7E]+$/.test(run)) {
+      const command = `BT /F1 ${size} Tf ${cursorX.toFixed(2)} ${y} Td (${pdfEscape(run)}) Tj ET`;
+      cursorX += run.length * size * 0.52;
+      return command;
+    }
+    const utf16Hex = Buffer.from(run, 'utf16le').swap16().toString('hex').toUpperCase();
+    const command = `BT /F2 ${size} Tf ${cursorX.toFixed(2)} ${y} Td <${utf16Hex}> Tj ET`;
+    cursorX += Array.from(run).length * size;
+    return command;
+  }).join('\n');
 }
 
 function pdfBoxText(content, x, y, w, h, size = 8) {
@@ -2087,10 +2099,9 @@ function buildCbsUpdateFields(update = {}) {
   if (type === 'rush') {
     const rushTagNumber = sanitizeCbsText(update.rushTagNumber, 80).toUpperCase();
     const rushToWhere = sanitizeCbsText(update.rushToWhere, 120).toUpperCase();
-    const akeNumber = sanitizeCbsText(update.akeNumber, 80).toUpperCase();
     const worldTracerFileNumber = sanitizeCbsText(update.worldTracerFileNumber, 120).toUpperCase();
-    if (!rushTagNumber || !rushToWhere || !akeNumber) return null;
-    return { status: 'Rush', updateNote: `RUSH | Rush tag: ${rushTagNumber} | Rush to: ${rushToWhere} | AKE: ${akeNumber}${worldTracerFileNumber ? ` | WorldTracer: ${worldTracerFileNumber}` : ''}${comment ? ` | Comment: ${comment}` : ''}`, updateEvent: { key: 'rush', title: 'Update Rush', fields: [['Rush Tag Number', rushTagNumber], ['Rush To Where', rushToWhere], ['AKE Number', akeNumber], ...(worldTracerFileNumber ? [['WorldTracer', worldTracerFileNumber]] : []), ...(comment ? [['Comment', comment]] : [])] } };
+    if (!rushTagNumber || !rushToWhere) return null;
+    return { status: 'Rush', updateNote: `RUSH | Rush tag: ${rushTagNumber} | Rush to: ${rushToWhere}${worldTracerFileNumber ? ` | WorldTracer: ${worldTracerFileNumber}` : ''}${comment ? ` | Comment: ${comment}` : ''}`, updateEvent: { key: 'rush', title: 'Update Rush', fields: [['Rush Tag Number', rushTagNumber], ['Rush To Where', rushToWhere], ...(worldTracerFileNumber ? [['WorldTracer', worldTracerFileNumber]] : []), ...(comment ? [['Comment', comment]] : [])] } };
   }
   if (type === 'location') {
     const location = sanitizeCbsText(update.location, 160).toUpperCase();
