@@ -216,6 +216,14 @@ function transferCountsFromJcsy(jcsy) {
   }, { internationalTransfer: 0, domesticTransfer: 0, overnightPassengers: 0 });
 }
 
+function nextDayInfoDetailsFromSyInfo(syInfo) {
+  const cabinCounts = retCountsFromSyInfo(syInfo);
+  const transferCounts = transferCountsFromJcsy(syInfo?.jcsy);
+  if (!cabinCounts || !transferCounts) return null;
+  return Object.fromEntries(Object.entries({ ...cabinCounts, ...transferCounts })
+    .map(([key, value]) => [key, String(value)]));
+}
+
 
 function buildNextDayInfoDetailLines(details = {}) {
   return [
@@ -3386,17 +3394,6 @@ function settleWithin(promise, timeoutMs, label) {
   ]).finally(() => clearTimeout(timer));
 }
 
-function nextDayInfoDetailsFromRequest(value) {
-  const keys = ['firstClass', 'businessClass', 'economyClass', 'internationalTransfer', 'domesticTransfer', 'overnightPassengers'];
-  const details = {};
-  for (const key of keys) {
-    const text = String(value?.[key] ?? '').trim();
-    if (!/^\d+$/.test(text)) return null;
-    details[key] = text;
-  }
-  return details;
-}
-
 // ===============================
 // NEXTDAY INFO Email API
 // ===============================
@@ -3406,11 +3403,17 @@ app.post('/nextday-info/send', async (req, res) => {
     const nextIso = addIsoDays(todayIsoUtc(), 1);
     const subjectDate = isoDateToEmailSubjectDate(nextIso);
     const subject = `${flightNo} ${subjectDate} flight information details`;
-    // The browser already has the exact figures shown in the confirmation card.
-    // Use them directly so clicking Send does not first block on another Drive log
-    // download (the actual source of the request hanging before either delivery).
-    const details = nextDayInfoDetailsFromRequest(req.body?.details);
-    if (!details) return res.status(400).json({ error: 'Missing or invalid NEXTDAY INFO figures. Refresh SY and try again.' });
+    // Re-read the operational log immediately before delivery. The page may have
+    // retained an earlier SY/JCSY response while new figures were entered, and an
+    // email must never be sent with those stale browser-side totals.
+    const log = await getLatestFlightLog();
+    const syDate = isoDateToSyDate(nextIso);
+    const syInfo = log && syDate ? findSYInfo(log, syDate, {
+      preferredFlightNo: flightNo,
+      strictPreferredFlight: true
+    }) : null;
+    const details = nextDayInfoDetailsFromSyInfo(syInfo);
+    if (!details) return res.status(400).json({ error: 'Current SY or JCSY figures are incomplete. Run SY and JCSY again, then retry.' });
     const text = buildNextDayInfoEmailBody(subjectDate, details);
     const to = ['LAXHMXH@hallmark-aviation.com', 'dg-lax-lounge@qantas.com.au'];
     const cc = ['lax.mupax@hallmark-aviation.com', 'laxhmmu@gmail.com'];
