@@ -44,6 +44,7 @@ test('changing Current Stage replaces the form with fields for that stage', () =
   assert.match(page, /if \(key === 'information'\).*Baggage Transfer Status Update/);
   assert.match(page, /if \(key === 'requested_bags'\) return input\('From which station\?', 'fromStation'\)/);
   assert.match(page, /if \(key === 'shipping'\) return \[shippingMethodSelect/);
+  assert.doesNotMatch(page, /input\('AKE number\?', 'akeNumber'\)/);
 });
 
 test('case progress uses a vertical left column with case controls and details on the right', () => {

@@ -732,7 +732,6 @@
           ? [
               input('Rush tag number', 'rushTagNumber'),
               input('Rush to where?', 'rushToWhere'),
-              input('AKE number?', 'akeNumber'),
               input('Option: World Tracer file #', 'worldTracerFileNumber', ''),
               `<label class="wide"><span>Comment</span><textarea name="comment"></textarea></label>`
             ].join('')
@@ -828,7 +827,7 @@
       if (key === 'worldtracer') return input('File number', 'fileNumber');
       if (key === 'information') return ['<select name="informationType" required><option value="rush_to_lax">Baggage Transfer Status Update</option></select>', '<label><span>Estimated arrival date</span><input name="estimatedArrivalTime" type="date" required /></label>'].join('');
       if (key === 'requested_bags') return input('From which station?', 'fromStation');
-      if (key === 'rush') return [input('Rush tag number', 'rushTagNumber'), input('Rush to where?', 'rushToWhere'), input('AKE number?', 'akeNumber'), input('World Tracer file # (optional)', 'worldTracerFileNumber', false), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
+      if (key === 'rush') return [input('Rush tag number', 'rushTagNumber'), input('Rush to where?', 'rushToWhere'), input('World Tracer file # (optional)', 'worldTracerFileNumber', false), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
       if (key === 'location') return [input('Bag location', 'location'), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
       if (key === 'shipping') return [shippingMethodSelect, shippingTrackingInput, shippingAddressInput, '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
       if (key === 'lost') return '';

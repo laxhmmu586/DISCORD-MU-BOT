@@ -2099,10 +2099,9 @@ function buildCbsUpdateFields(update = {}) {
   if (type === 'rush') {
     const rushTagNumber = sanitizeCbsText(update.rushTagNumber, 80).toUpperCase();
     const rushToWhere = sanitizeCbsText(update.rushToWhere, 120).toUpperCase();
-    const akeNumber = sanitizeCbsText(update.akeNumber, 80).toUpperCase();
     const worldTracerFileNumber = sanitizeCbsText(update.worldTracerFileNumber, 120).toUpperCase();
-    if (!rushTagNumber || !rushToWhere || !akeNumber) return null;
-    return { status: 'Rush', updateNote: `RUSH | Rush tag: ${rushTagNumber} | Rush to: ${rushToWhere} | AKE: ${akeNumber}${worldTracerFileNumber ? ` | WorldTracer: ${worldTracerFileNumber}` : ''}${comment ? ` | Comment: ${comment}` : ''}`, updateEvent: { key: 'rush', title: 'Update Rush', fields: [['Rush Tag Number', rushTagNumber], ['Rush To Where', rushToWhere], ['AKE Number', akeNumber], ...(worldTracerFileNumber ? [['WorldTracer', worldTracerFileNumber]] : []), ...(comment ? [['Comment', comment]] : [])] } };
+    if (!rushTagNumber || !rushToWhere) return null;
+    return { status: 'Rush', updateNote: `RUSH | Rush tag: ${rushTagNumber} | Rush to: ${rushToWhere}${worldTracerFileNumber ? ` | WorldTracer: ${worldTracerFileNumber}` : ''}${comment ? ` | Comment: ${comment}` : ''}`, updateEvent: { key: 'rush', title: 'Update Rush', fields: [['Rush Tag Number', rushTagNumber], ['Rush To Where', rushToWhere], ...(worldTracerFileNumber ? [['WorldTracer', worldTracerFileNumber]] : []), ...(comment ? [['Comment', comment]] : [])] } };
   }
   if (type === 'location') {
     const location = sanitizeCbsText(update.location, 160).toUpperCase();
