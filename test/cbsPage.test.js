@@ -36,6 +36,16 @@ test('CBS tracking offers a compact baggage transfer update with a required arri
   assert.match(page, /data-update-mode="information"\] \{ grid-template-columns:minmax\(220px,320px\); \}/);
 });
 
+test('changing Current Stage replaces the form with fields for that stage', () => {
+  assert.match(page, /const controls = select\.closest\('\.case-detail-right'\) \|\| select\.closest\('\.tracking-workspace'\)/);
+  assert.match(page, /form\.dataset\.updateMode = select\.value/);
+  assert.match(page, /fields\.innerHTML = inlineUpdateFieldsHtml\(select\.value\)/);
+  assert.match(page, /if \(key === 'worldtracer'\) return input\('File number', 'fileNumber'\)/);
+  assert.match(page, /if \(key === 'information'\).*Baggage Transfer Status Update/);
+  assert.match(page, /if \(key === 'requested_bags'\) return input\('From which station\?', 'fromStation'\)/);
+  assert.match(page, /if \(key === 'shipping'\) return \[shippingMethodSelect/);
+});
+
 test('case progress uses a vertical left column with case controls and details on the right', () => {
   assert.match(page, /\.case-detail-layout \{[^}]*grid-template-columns:minmax\(280px,360px\) minmax\(0,1fr\)/);
   assert.match(page, /\.tracking-history \{ display:grid/);

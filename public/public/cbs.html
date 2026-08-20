@@ -1007,8 +1007,11 @@
       }
       const select = event.target.closest('[data-cbs-stage-select]');
       if (!select) return;
-      const workspace = select.closest('.tracking-workspace');
-      const form = workspace?.querySelector('.case-update');
+      // The progress timeline now lives in the left column while Current Stage
+      // and its form live in the right column. Resolve the form from that right
+      // column so switching stages always replaces the previous stage's fields.
+      const controls = select.closest('.case-detail-right') || select.closest('.tracking-workspace');
+      const form = controls?.querySelector('.case-update');
       const fields = form?.querySelector('[data-cbs-inline-fields]');
       if (!form || !fields) return;
       form.dataset.updateMode = select.value;
