@@ -40,4 +40,6 @@ test('shipping updates validate and store the selected delivery method', () => {
   for (const method of ['ADC - All Day Courier', 'FedEx Delivery', 'Pick Up at Airport']) assert.match(server, new RegExp(method));
   assert.match(server, /fields: \[\['Shipping Method', shippingMethod\]/);
   assert.match(server, /SHIPPING \| Method: \$\{shippingMethod\}/);
+  assert.match(server, /shippingMethod === 'FedEx Delivery' && !trackingNumber/);
+  assert.match(server, /trackingNumber \? \[\['Tracking Number', trackingNumber\]\] : \[\]/);
 });

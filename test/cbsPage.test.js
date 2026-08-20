@@ -32,8 +32,11 @@ test('CBS tracking no longer offers Forward to MU', () => {
 });
 
 test('shipping updates offer all supported delivery methods', () => {
-  assert.match(page, /select name="shippingMethod" required/);
+  assert.match(page, /select name="shippingMethod" data-shipping-method required/);
   for (const method of ['ADC - All Day Courier', 'FedEx Delivery', 'Pick Up at Airport']) assert.match(page, new RegExp(`<option>${method}<\\/option>`));
+  assert.match(page, /data-shipping-tracking placeholder="Tracking number" disabled hidden/);
+  assert.match(page, /needsTracking = shippingMethod\.value === 'FedEx Delivery'/);
+  assert.match(page, /trackingInput\.required = needsTracking/);
 });
 
 test('CBS passenger detail view can recover values from the original form snapshot', () => {
