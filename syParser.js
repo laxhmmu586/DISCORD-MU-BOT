@@ -836,7 +836,17 @@ function extractPassportCountryFields(section) {
       fields.passportNatCode = parts[natIndex + 1];
     }
 
-    const expiryIndex = parts.findIndex((x) => /^\d{6}$/.test(x));
+    // The host passport layout contains both the document issue date and the
+    // expiry date before the issuing-country code.  Looking at the first
+    // six-digit field therefore mistakes the issue date for the expiry date
+    // and leaves otherwise valid records stuck in WEB/EDI/RS.
+    let expiryIndex = -1;
+    for (let index = parts.length - 2; index >= 0; index -= 1) {
+      if (/^\d{6}$/.test(parts[index]) && /^[A-Z]{3}$/.test(parts[index + 1] || '')) {
+        expiryIndex = index;
+        break;
+      }
+    }
     if (expiryIndex >= 0 && /^[A-Z]{3}$/.test(parts[expiryIndex + 1] || '')) {
       fields.passportIssueCode = parts[expiryIndex + 1];
     }
