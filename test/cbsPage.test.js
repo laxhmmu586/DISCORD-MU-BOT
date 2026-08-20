@@ -38,6 +38,12 @@ test('On-hand shipping uses the Passenger Filed delivery methods without email h
   assert.match(server, /A tracking number is required for FedEx Delivery/);
 });
 
+test('Create Rush only asks for a WorldTracer file when the On-hand case has none', () => {
+  assert.match(page, /worldTracerFileNumber \? `<input type="hidden" name="worldTracerFileNumber"/);
+  assert.match(page, /data-world-tracer-file="\$\{escapeHtml\(active\.worldTracerFileNumber\)\}"/);
+  assert.match(page, /unresolvedUpdateFieldsHtml\(select\.value, form\.dataset\.bagTag, form\.dataset\.worldTracerFile\)/);
+});
+
 test('CBS passenger information keeps all operationally required fields visible', () => {
   const requiredFields = page.match(/const requiredPassengerFields = \[([\s\S]*?)\n\s*\];/)?.[1] || '';
   for (const label of ['Passenger Name', 'Email', 'Phone', 'Ticket Number', 'Flight Route', 'Permanent Address']) {
