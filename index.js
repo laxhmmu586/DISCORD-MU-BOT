@@ -1970,8 +1970,10 @@ function buildCbsUpdateFields(update = {}) {
   }
   const trackingNumber = sanitizeCbsText(update.trackingNumber, 160).toUpperCase();
   const shippingTo = sanitizeCbsText(update.shippingTo, 300);
-  if (!trackingNumber || !shippingTo) return null;
-  return { status: 'Shipping', updateNote: `SHIPPING | Tracking: ${trackingNumber} | Ship to: ${shippingTo}${comment ? ` | Comment: ${comment}` : ''}`, updateEvent: { key: 'shipping', title: 'Update Shipping', fields: [['Tracking Number', trackingNumber], ['Ship To', shippingTo], ...(comment ? [['Comment', comment]] : [])] } };
+  const shippingMethods = ['ADC - All Day Courier', 'FedEx Delivery', 'Pick Up at Airport'];
+  const shippingMethod = shippingMethods.find((method) => method === sanitizeCbsText(update.shippingMethod, 80));
+  if (!trackingNumber || !shippingTo || !shippingMethod) return null;
+  return { status: 'Shipping', updateNote: `SHIPPING | Method: ${shippingMethod} | Tracking: ${trackingNumber} | Ship to: ${shippingTo}${comment ? ` | Comment: ${comment}` : ''}`, updateEvent: { key: 'shipping', title: 'Update Shipping', fields: [['Shipping Method', shippingMethod], ['Tracking Number', trackingNumber], ['Ship To', shippingTo], ...(comment ? [['Comment', comment]] : [])] } };
 }
 
 

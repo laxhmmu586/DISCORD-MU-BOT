@@ -31,6 +31,11 @@ test('CBS tracking no longer offers Forward to MU', () => {
   assert.doesNotMatch(page, /forward_mu|Forward to MU/);
 });
 
+test('shipping updates offer all supported delivery methods', () => {
+  assert.match(page, /select name="shippingMethod" required/);
+  for (const method of ['ADC - All Day Courier', 'FedEx Delivery', 'Pick Up at Airport']) assert.match(page, new RegExp(`<option>${method}<\\/option>`));
+});
+
 test('CBS passenger detail view can recover values from the original form snapshot', () => {
   assert.match(page, /JSON\.parse\(row\.originalFormData \|\| '\{\}'\)/);
 });

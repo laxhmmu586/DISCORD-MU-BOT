@@ -34,3 +34,10 @@ test('requested bags updates store the requesting station in case history', () =
   assert.match(server, /REQUESTED BAGS \| From station: \$\{fromStation\}/);
   assert.match(server, /fields: \[\['From Station', fromStation\]\]/);
 });
+
+test('shipping updates validate and store the selected delivery method', () => {
+  const server = fs.readFileSync(path.join(__dirname, '..', 'index.js'), 'utf8');
+  for (const method of ['ADC - All Day Courier', 'FedEx Delivery', 'Pick Up at Airport']) assert.match(server, new RegExp(method));
+  assert.match(server, /fields: \[\['Shipping Method', shippingMethod\]/);
+  assert.match(server, /SHIPPING \| Method: \$\{shippingMethod\}/);
+});
