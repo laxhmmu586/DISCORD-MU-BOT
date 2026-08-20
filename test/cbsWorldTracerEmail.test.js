@@ -57,3 +57,13 @@ test('DPR WorldTracer updates notify the damaged-baggage Discord channel', () =>
   assert.match(server, /if \(String\(record\.caseType \|\| ''\)\.toUpperCase\(\) === 'DPR'\)/);
   assert.match(server, /sendDprWorldTracerUpdateToDiscord\(record, fileNumber\)/);
 });
+
+test('ADC shipping updates email the passenger a bilingual delivery notification', () => {
+  assert.match(server, /function adcShippingUpdateEmail/);
+  assert.match(server, /行李配送通知 – WorldTracer 案件编号：\$\{fileNumber\}/);
+  assert.match(server, /Baggage Delivery Notification – WorldTracer Reference: \$\{fileNumber\}/);
+  assert.match(server, /您的行李已安排寄出，并将配送至您在行李案件中所提供的地址/);
+  assert.match(server, /your baggage has been shipped and is being delivered to the address you provided/);
+  assert.match(server, /value === 'ADC - All Day Courier'/);
+  assert.match(server, /CBS ADC shipping update email error/);
+});

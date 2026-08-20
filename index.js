@@ -1626,6 +1626,16 @@ function requestedBagsUpdateEmail(record, fileNumber) {
   return { subject, text, html: cbsPlainTextEmailHtml(text.replace(fileNumber, reference)) };
 }
 
+function adcShippingUpdateEmail(record, fileNumber) {
+  const reference = String(fileNumber || '').replace(/[&<>"']/g, (character) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character]));
+  const chinese = cbsEmailIsChinese(record);
+  const subject = chinese ? `行李配送通知 – WorldTracer 案件编号：${fileNumber}` : `Baggage Delivery Notification – WorldTracer Reference: ${fileNumber}`;
+  const text = chinese
+    ? `尊敬的旅客：\n\n您好！\n\n我们通知您，您的行李已安排寄出，并将配送至您在行李案件中所提供的地址。\n\nWorldTracer 案件编号：${fileNumber}\n\n请留意后续配送情况，并确保您所提供的地址可以正常接收行李。\n\n如配送过程中有任何更新或需要进一步确认的信息，我们会与您联系。\n\n如您有任何问题，请直接回复此邮件与我们联系。\n\n感谢您的耐心与配合。\n\n此致\n中国东方航空`
+    : `Dear Passenger,\n\nWe would like to inform you that your baggage has been shipped and is being delivered to the address you provided for your baggage case.\n\nWorldTracer Reference Number: ${fileNumber}\n\nPlease monitor the delivery and ensure that the address provided is available to receive the baggage.\n\nIf there are any updates or if additional information is required during the delivery process, we will contact you accordingly.\n\nIf you have any questions, please feel free to reply directly to this email.\n\nThank you for your patience and cooperation.\n\nSincerely,\nChina Eastern Airlines`;
+  return { subject, text, html: cbsPlainTextEmailHtml(text.replace(fileNumber, reference)) };
+}
+
 function buildCbsFlightRoute(body) {
   const rows = Array.isArray(body.flightRows) ? body.flightRows : [];
   const normalizedRows = rows.map((row) => ({
@@ -2593,6 +2603,17 @@ app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
       } catch (mailErr) {
         result.emailError = cbsEmailErrorMessage(mailErr);
         console.error('CBS requested bags update email error:', mailErr);
+      }
+    }
+    if (updateFields.updateEvent?.key === 'shipping' && updateFields.updateEvent.fields.some(([key, value]) => key === 'Shipping Method' && value === 'ADC - All Day Courier')) {
+      const record = result.record;
+      const fileNumber = record.worldTracerFileNumber || '';
+      const message = adcShippingUpdateEmail(record, fileNumber);
+      try {
+        result.email = await sendCbsCaseEmail({ passengerEmail: record.email, subject: message.subject, html: message.html, text: message.text, ccOperations: false });
+      } catch (mailErr) {
+        result.emailError = cbsEmailErrorMessage(mailErr);
+        console.error('CBS ADC shipping update email error:', mailErr);
       }
     }
     return res.json(result);
