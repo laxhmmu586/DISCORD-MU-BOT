@@ -474,6 +474,7 @@
       { key:'rush', text:'Rush' },
       { key:'location', text:'Location' },
       { key:'shipping', text:'Shipping' },
+      { key:'lost', text:'Lost' },
       { key:'closed', text:'Closed' },
       { key:'reopen', text:'Reopened' }
     ];
@@ -530,6 +531,7 @@
       if (/close/.test(text)) return 'closed';
       if (/reopen/.test(text)) return 'reopen';
       if (/ship/.test(text)) return 'shipping';
+      if (/lost/.test(text)) return 'lost';
       if (/location/.test(text)) return 'location';
       if (/rush/.test(text)) return 'rush';
       if (/world\s*tracer|worldtracer/.test(text)) return 'worldtracer';
@@ -574,6 +576,7 @@
       if (events.some((event) => event.key === 'shipping' && (event.fields || []).some(([key, value]) => key === 'Shipping Method' && value === 'FedEx Delivery'))) sentKeys.add('fedex_shipping');
       if (events.some((event) => event.key === 'shipping' && (event.fields || []).some(([key, value]) => key === 'Shipping Method' && value === 'Pick Up at Airport'))) sentKeys.add('airport_pickup');
       if (events.some((event) => event.key === 'shipping' && (event.fields || []).some(([key, value]) => key === 'Shipping Method' && value === 'Passenger Pay for Shipping'))) sentKeys.add('passenger_paid_shipping');
+      if (events.some((event) => event.key === 'lost')) sentKeys.add('lost');
       sentKeys.add('create');
       const notifications = [
         ['create', label('Create report email', '建案报告邮件')],
@@ -582,7 +585,8 @@
         ['adc_shipping', label('ADC baggage delivery email', 'ADC 行李配送邮件')],
         ['fedex_shipping', label('FedEx baggage delivery email', 'FedEx 行李配送邮件')],
         ['airport_pickup', label('Airport pickup closure email', '机场领取结案邮件')],
-        ['passenger_paid_shipping', label('Passenger-paid shipping email', '旅客自付配送邮件')]
+        ['passenger_paid_shipping', label('Passenger-paid shipping email', '旅客自付配送邮件')],
+        ['lost', label('Lost baggage notification email', '行李遗失通知邮件')]
       ].filter(([key]) => sentKeys.has(key));
       return `<aside class="passenger-notify"><h3>${label('Notify Passenger', '旅客邮件通知')}</h3><ul class="passenger-notify-list">${notifications.map(([, text]) => {
         return `<li class="passenger-notify-item is-sent"><span class="passenger-notify-check" aria-hidden="true">✓</span><span>${escapeHtml(text)}</span></li>`;
@@ -707,7 +711,7 @@
     }
     function updateFormHtml(row, mode = 'worldtracer') {
       if (!row.rowNumber) return `<p class="status err">${label('A saved row is required before this case can be updated.', '案件保存后才能更新。')}</p>`;
-      const active = ['worldtracer', 'requested_bags', 'rush', 'location', 'shipping', 'closed'].includes(mode) ? mode : 'worldtracer';
+      const active = ['worldtracer', 'requested_bags', 'rush', 'location', 'shipping', 'lost', 'closed'].includes(mode) ? mode : 'worldtracer';
       const input = (title, name, attrs = 'required') => `<label><span>${escapeHtml(title)}</span><input name="${escapeHtml(name)}" ${attrs} /></label>`;
       const shippingMethodSelect = `<label><span>Delivery method</span><select name="shippingMethod" data-shipping-method required><option value="">Select delivery method</option><option>ADC - All Day Courier</option><option>FedEx Delivery</option><option>Pick Up at Airport</option><option>Passenger Pay for Shipping</option></select></label>`;
       const shippingTrackingInput = `<label data-shipping-tracking hidden><span>Tracking number</span><input name="trackingNumber" disabled /></label>`;
@@ -726,6 +730,8 @@
           ? [input('Bag location', 'location'), `<label class="wide"><span>Comment</span><textarea name="comment"></textarea></label>`].join('')
           : active === 'shipping'
           ? [shippingMethodSelect, shippingTrackingInput, shippingAddressInput, `<label class="wide"><span>Comment</span><textarea name="comment"></textarea></label>`].join('')
+          : active === 'lost'
+          ? ''
           : `<label class="wide"><span>Comment</span><textarea name="comment" placeholder="Optional close note"></textarea></label>`;
       return `<form class="case-update" data-row-number="${escapeHtml(row.rowNumber)}" data-update-mode="${escapeHtml(active)}">
         <h2>${label('Update', '更新')}</h2>
@@ -734,6 +740,7 @@
           <button type="button" data-cbs-update-mode="rush" class="${active === 'rush' ? 'is-active' : ''}">RUSH</button>
           <button type="button" data-cbs-update-mode="location" class="${active === 'location' ? 'is-active' : ''}">BAG LOCATION UPDATE</button>
           <button type="button" data-cbs-update-mode="shipping" class="${active === 'shipping' ? 'is-active' : ''}">SHIPPING</button>
+          <button type="button" data-cbs-update-mode="lost" class="${active === 'lost' ? 'is-active' : ''}">LOST</button>
           <button type="button" data-cbs-update-mode="closed" class="${active === 'closed' ? 'is-active' : ''}">CASE CLOSE</button>
         </div>
         <div class="case-update-grid">${fields}</div>
@@ -813,6 +820,7 @@
       if (key === 'rush') return [input('Rush tag number', 'rushTagNumber'), input('Rush to where?', 'rushToWhere'), input('AKE number?', 'akeNumber'), input('World Tracer file # (optional)', 'worldTracerFileNumber', false), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
       if (key === 'location') return [input('Bag location', 'location'), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
       if (key === 'shipping') return [shippingMethodSelect, shippingTrackingInput, shippingAddressInput, '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
+      if (key === 'lost') return '';
       if (key === 'closed') return '<textarea name="comment" placeholder="Close note (optional)"></textarea>';
       return '';
     }

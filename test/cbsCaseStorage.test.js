@@ -37,6 +37,12 @@ test('requested bags updates store the requesting station in case history', () =
   assert.match(server, /fields: \[\['From Station', fromStation\]\]/);
 });
 
+test('lost updates persist the Delayed to Lost status transition', () => {
+  const server = fs.readFileSync(path.join(__dirname, '..', 'index.js'), 'utf8');
+  assert.match(server, /status: 'Lost'/);
+  assert.match(server, /fields: \[\['Status Change', 'DELAYED → LOST'\]\]/);
+});
+
 test('shipping updates validate and store the selected delivery method', () => {
   const server = fs.readFileSync(path.join(__dirname, '..', 'index.js'), 'utf8');
   for (const method of ['ADC - All Day Courier', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping']) assert.match(server, new RegExp(method));

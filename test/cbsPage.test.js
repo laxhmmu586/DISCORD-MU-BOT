@@ -27,6 +27,13 @@ test('CBS tracking offers the requested bags stage', () => {
   assert.match(page, /content:"CURRENT"/);
 });
 
+test('CBS tracking offers a Lost update with no extra fields', () => {
+  assert.match(page, /key:'lost', text:'Lost'/);
+  assert.match(page, /if \(key === 'lost'\) return ''/);
+  assert.match(page, /data-cbs-update-mode="lost"/);
+  assert.match(page, /Lost baggage notification email/);
+});
+
 test('CBS tracking no longer offers Forward to MU', () => {
   assert.doesNotMatch(page, /forward_mu|Forward to MU/);
 });

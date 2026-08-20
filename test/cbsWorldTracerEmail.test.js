@@ -100,3 +100,15 @@ test('passenger-paid shipping sends a bilingual carrier-responsibility email', (
   assert.match(server, /passengerPaidShippingEmail\(record, fileNumber\)/);
   assert.match(server, /CBS passenger-paid shipping email error/);
 });
+
+test('Lost updates send the passenger email and alert the delayed-baggage Discord role', () => {
+  assert.match(server, /function lostBaggageUpdateEmail/);
+  assert.match(server, /【请勿回复 】行李遗失案件通知 – WorldTracer 案件编号：\$\{fileNumber\}/);
+  assert.match(server, /\[DO NOT REPLY\] Lost Baggage Case Notification – WorldTracer Reference: \$\{fileNumber\}/);
+  assert.match(server, /您的行李案件现已由延误行李（Delayed Baggage）转为遗失行李（Lost Baggage）案件/);
+  assert.match(server, /changed from a Delayed Baggage case to a Lost Baggage case/);
+  assert.match(server, /CBS_LOST_DISCORD_ROLE_ID[^\n]*'1268619386948685877'/);
+  assert.match(server, /⚠️ BAGGAGE CASE – LOST/);
+  assert.match(server, /Baggage has not been located and the case has been updated from DELAYED → LOST/);
+  assert.match(server, /allowedMentions: \{ parse: \[\], roles: \[CBS_LOST_DISCORD_ROLE_ID\] \}/);
+});
