@@ -571,12 +571,14 @@
       const events = parseUpdateNoteEvents(row);
       const sentKeys = new Set(events.map((event) => event.key));
       if (events.some((event) => event.key === 'shipping' && (event.fields || []).some(([key, value]) => key === 'Shipping Method' && value === 'ADC - All Day Courier'))) sentKeys.add('adc_shipping');
+      if (events.some((event) => event.key === 'shipping' && (event.fields || []).some(([key, value]) => key === 'Shipping Method' && value === 'FedEx Delivery'))) sentKeys.add('fedex_shipping');
       sentKeys.add('create');
       const notifications = [
         ['create', label('Create report email', '建案报告邮件')],
         ['worldtracer', label('WorldTracer update email', 'WorldTracer 更新邮件')],
         ['requested_bags', label('Baggage request from other station email', '外站行李查询邮件')],
-        ['adc_shipping', label('Baggage delivery email', '行李配送邮件')]
+        ['adc_shipping', label('ADC baggage delivery email', 'ADC 行李配送邮件')],
+        ['fedex_shipping', label('FedEx baggage delivery email', 'FedEx 行李配送邮件')]
       ].filter(([key]) => sentKeys.has(key));
       return `<aside class="passenger-notify"><h3>${label('Notify Passenger', '旅客邮件通知')}</h3><ul class="passenger-notify-list">${notifications.map(([, text]) => {
         return `<li class="passenger-notify-item is-sent"><span class="passenger-notify-check" aria-hidden="true">✓</span><span>${escapeHtml(text)}</span></li>`;
@@ -969,7 +971,7 @@
         if (trackingField) trackingField.hidden = !needsTracking;
         if (trackingInput) { trackingInput.disabled = !needsTracking; trackingInput.required = needsTracking; if (!needsTracking) trackingInput.value = ''; }
         if (addressField) addressField.hidden = !showsAddress;
-        if (addressInput) { addressInput.disabled = !showsAddress; addressInput.required = needsTracking; if (!showsAddress) addressInput.value = ''; }
+        if (addressInput) { addressInput.disabled = !showsAddress; addressInput.required = false; if (!showsAddress) addressInput.value = ''; }
         return;
       }
       const select = event.target.closest('[data-cbs-stage-select]');

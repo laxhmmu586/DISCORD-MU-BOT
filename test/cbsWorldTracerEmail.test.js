@@ -70,3 +70,13 @@ test('ADC shipping updates email the passenger a bilingual delivery notification
   assert.match(server, /Delivery Address: \$\{address\}/);
   assert.match(server, /adcShippingUpdateEmail\(record, fileNumber, shippingAddress\)/);
 });
+
+test('FedEx shipping updates email tracking details from the stored shipping columns', () => {
+  assert.match(server, /function fedexShippingUpdateEmail/);
+  assert.match(server, /您的行李已通过 FedEx 安排寄出/);
+  assert.match(server, /your baggage has been shipped via FedEx/);
+  assert.match(server, /FedEx Tracking Number：\$\{tracking\}/);
+  assert.match(server, /Delivery Address: \$\{address\}/);
+  assert.match(server, /fedexShippingUpdateEmail\(record, fileNumber, record\.trackingNumber, record\.shippingAddress\)/);
+  assert.match(server, /CBS FedEx shipping update email error/);
+});

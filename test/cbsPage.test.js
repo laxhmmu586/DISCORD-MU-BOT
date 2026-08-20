@@ -38,7 +38,7 @@ test('shipping updates offer all supported delivery methods', () => {
   assert.match(page, /needsTracking = shippingMethod\.value === 'FedEx Delivery'/);
   assert.match(page, /trackingInput\.required = needsTracking/);
   assert.match(page, /'Passenger Pay for Shipping'\]\.includes\(shippingMethod\.value\)/);
-  assert.match(page, /addressInput\.required = needsTracking/);
+  assert.match(page, /addressInput\.required = false/);
 });
 
 test('CBS passenger detail view can recover values from the original form snapshot', () => {
@@ -63,7 +63,8 @@ test('expanded CBS cases show passenger email notification status', () => {
   assert.match(page, /Create report email/);
   assert.match(page, /WorldTracer update email/);
   assert.match(page, /Baggage request from other station email/);
-  assert.match(page, /Baggage delivery email/);
+  assert.match(page, /ADC baggage delivery email/);
+  assert.match(page, /FedEx baggage delivery email/);
   assert.match(page, /sentKeys\.add\('adc_shipping'\)/);
   assert.match(page, /\.filter\(\(\[key\]\) => sentKeys\.has\(key\)\)/);
   assert.match(page, /passenger-notify-item is-sent/);

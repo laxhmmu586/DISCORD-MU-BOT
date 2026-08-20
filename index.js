@@ -1642,6 +1642,19 @@ function adcShippingUpdateEmail(record, fileNumber, shippingAddress = '') {
   return { subject, text, html: cbsPlainTextEmailHtml(escapedText) };
 }
 
+function fedexShippingUpdateEmail(record, fileNumber, trackingNumber, shippingAddress = '') {
+  const escapeHtml = (value) => String(value || '').replace(/[&<>"']/g, (character) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character]));
+  const chinese = cbsEmailIsChinese(record);
+  const subject = chinese ? `行李配送通知 – WorldTracer 案件编号：${fileNumber}` : `Baggage Delivery Notification – WorldTracer Reference: ${fileNumber}`;
+  const tracking = sanitizeCbsText(trackingNumber, 160).toUpperCase();
+  const address = sanitizeCbsText(shippingAddress, 300);
+  const text = chinese
+    ? `尊敬的旅客：\n\n您好！\n\n我们通知您，您的行李已通过 FedEx 安排寄出${address ? '，并将配送至以下地址：' : '。'}\n\nWorldTracer 案件编号：${fileNumber}\nFedEx Tracking Number：${tracking}${address ? `\n配送地址：${address}` : ''}\n\n您可以使用上述 FedEx Tracking Number 查询最新配送进度。\n\n请留意后续配送情况${address ? '，并确保上述地址可以正常接收行李' : ''}。\n\n${address ? '如您发现配送地址有误，或配送过程中有任何问题' : '如配送过程中有任何问题'}，请尽快回复此邮件与我们联系。\n\n感谢您的耐心与配合。\n\n此致\n中国东方航空`
+    : `Dear Passenger,\n\nWe would like to inform you that your baggage has been shipped via FedEx${address ? ' and will be delivered to the following address:' : '.'}\n\nWorldTracer Reference Number: ${fileNumber}\nFedEx Tracking Number: ${tracking}${address ? `\nDelivery Address: ${address}` : ''}\n\nYou may use the FedEx tracking number above to check the latest delivery status of your baggage.\n\nPlease monitor the delivery status${address ? ' and ensure that the above address is available to receive your baggage' : ''}.\n\n${address ? 'If you notice any issues with the delivery address or experience any problems with the delivery' : 'If you experience any problems with the delivery'}, please reply to this email as soon as possible.\n\nThank you for your patience and cooperation.\n\nSincerely,\nChina Eastern Airlines`;
+  const htmlText = text.replace(fileNumber, escapeHtml(fileNumber)).replace(tracking, escapeHtml(tracking)).replace(address, escapeHtml(address));
+  return { subject, text, html: cbsPlainTextEmailHtml(htmlText) };
+}
+
 function buildCbsFlightRoute(body) {
   const rows = Array.isArray(body.flightRows) ? body.flightRows : [];
   const normalizedRows = rows.map((row) => ({
@@ -1988,7 +2001,7 @@ function buildCbsUpdateFields(update = {}) {
   const shippingTo = sanitizeCbsText(update.shippingTo, 300);
   const shippingMethods = ['ADC - All Day Courier', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping'];
   const shippingMethod = shippingMethods.find((method) => method === sanitizeCbsText(update.shippingMethod, 80));
-  if (!shippingMethod || (shippingMethod === 'FedEx Delivery' && (!trackingNumber || !shippingTo))) return null;
+  if (!shippingMethod || (shippingMethod === 'FedEx Delivery' && !trackingNumber)) return null;
   return { status: 'Shipping', updateNote: `SHIPPING | Method: ${shippingMethod}${trackingNumber ? ` | Tracking: ${trackingNumber}` : ''} | Ship to: ${shippingTo}${comment ? ` | Comment: ${comment}` : ''}`, updateEvent: { key: 'shipping', title: 'Update Shipping', fields: [['Shipping Method', shippingMethod], ...(trackingNumber ? [['Tracking Number', trackingNumber]] : []), ['Ship To', shippingTo], ...(comment ? [['Comment', comment]] : [])] } };
 }
 
@@ -2621,6 +2634,17 @@ app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
       } catch (mailErr) {
         result.emailError = cbsEmailErrorMessage(mailErr);
         console.error('CBS ADC shipping update email error:', mailErr);
+      }
+    }
+    if (updateFields.updateEvent?.key === 'shipping' && updateFields.updateEvent.fields.some(([key, value]) => key === 'Shipping Method' && value === 'FedEx Delivery')) {
+      const record = result.record;
+      const fileNumber = record.worldTracerFileNumber || '';
+      const message = fedexShippingUpdateEmail(record, fileNumber, record.trackingNumber, record.shippingAddress);
+      try {
+        result.email = await sendCbsCaseEmail({ passengerEmail: record.email, subject: message.subject, html: message.html, text: message.text, ccOperations: false });
+      } catch (mailErr) {
+        result.emailError = cbsEmailErrorMessage(mailErr);
+        console.error('CBS FedEx shipping update email error:', mailErr);
       }
     }
     return res.json(result);
