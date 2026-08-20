@@ -822,10 +822,7 @@ async function appendTestBaggageRecord(record) {
   await ensureTestBaggageSheetHeaders(rows);
   const existing = await findTestBaggageByTag(normalizedTag);
   if (existing) {
-    const existingDirection = String(existing.direction || '').toLowerCase();
-    const shouldSyncExisting = (existingDirection === 'inbound' && String(existing.bagType || '').toLowerCase() === 'passenger bag')
-      || (existingDirection === 'outbound' && String(existing.status || '').toLowerCase() === 'not load bags');
-    if (shouldSyncExisting) await appendCbsUnresolvedBaggageCase(existing);
+    await appendCbsUnresolvedBaggageCase(existing);
     return { created: false, record: existing };
   }
   const now = new Date().toISOString();
@@ -877,9 +874,7 @@ async function appendTestBaggageRecord(record) {
     requestBody: { values: [testBaggageValuesFromRecord(cleanRecord)] }
   });
   testBaggageSheetCache = { loadedAt: 0, rows: [] };
-  const isUnresolvedInbound = direction === 'Inbound' && cleanRecord.bagType.toLowerCase() === 'passenger bag';
-  const isUnresolvedOutbound = direction === 'Outbound' && cleanRecord.status.toLowerCase() === 'not load bags';
-  if (isUnresolvedInbound || isUnresolvedOutbound) await appendCbsUnresolvedBaggageCase(cleanRecord);
+  await appendCbsUnresolvedBaggageCase(cleanRecord);
   return { created: true, record: await findTestBaggageByTag(normalizedTag) };
 }
 
