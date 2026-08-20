@@ -451,7 +451,7 @@
       window._unresolvedBaggageRows = rows;
       window._unresolvedBaggageLoaded = true;
       if (!rows.length) { unresolvedBaggageOutput.innerHTML = '<p class="muted">No On-hand baggage cases.</p>'; return; }
-      unresolvedBaggageOutput.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:190px"><col style="width:150px"><col style="width:120px"><col style="width:130px"><col style="width:180px"><col></colgroup><thead><tr><th>WorldTracer File</th><th>Bag Tag</th><th>Direction</th><th>Date</th><th>Type / Status</th><th>Location</th></tr></thead><tbody>${rows.map((row) => {
+      unresolvedBaggageOutput.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:190px"><col style="width:150px"><col style="width:120px"><col style="width:130px"><col style="width:180px"><col></colgroup><thead><tr><th>WorldTracer File Number</th><th>Bag Tag</th><th>Direction</th><th>Date</th><th>Type / Status</th><th>Location</th></tr></thead><tbody>${rows.map((row) => {
         const resolvedHistory = row.history.filter((item) => item.resolvedAt);
         const active = row.history.find((item) => !item.resolvedAt);
         const historyHtml = resolvedHistory.length ? `<section class="unresolved-history"><h3>History</h3>${resolvedHistory.map((item) => `<p><strong>${escapeHtml(item.resolution || 'Completed')}</strong> · ${escapeHtml(item.resolvedAt ? new Date(item.resolvedAt).toLocaleString() : '')}${item.resolutionNote ? `<br>${escapeHtml(item.resolutionNote)}` : ''}</p>`).join('')}</section>` : '';

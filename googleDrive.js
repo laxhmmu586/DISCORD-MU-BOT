@@ -3413,7 +3413,7 @@ async function getCbsUnresolvedBaggageSheetTitle() {
   return cbsUnresolvedBaggageSheetTitle || 'Sheet1';
 }
 
-const CBS_UNRESOLVED_BAGGAGE_HEADERS = ['Bag Tag', 'Direction', 'Flight Number', 'Flight Date', 'Bag Type', 'Status', 'Location', 'Created At', 'Resolution', 'Resolution Note', 'Resolved At', 'WorldTracer File'];
+const CBS_UNRESOLVED_BAGGAGE_HEADERS = ['Bag Tag', 'Direction', 'Flight Number', 'Flight Date', 'Bag Type', 'Status', 'Location', 'Created At', 'Resolution', 'Resolution Note', 'Resolved At', 'WorldTracer File Number'];
 
 async function getCbsUnresolvedBaggageCases(options = {}) {
   const title = await getCbsUnresolvedBaggageSheetTitle();
@@ -3472,6 +3472,10 @@ async function updateCbsUnresolvedBaggageWorldTracer(rowNumber, worldTracerFileN
   if (!target) return { updated: false, notFound: true };
   const title = await getCbsUnresolvedBaggageSheetTitle();
   const value = sanitizeSheetText(worldTracerFileNumber, 120).toUpperCase();
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!L1`, valueInputOption: 'RAW',
+    requestBody: { values: [[CBS_UNRESOLVED_BAGGAGE_HEADERS[11]]] }
+  });
   await sheets.spreadsheets.values.update({
     spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!L${target.rowNumber}`, valueInputOption: 'RAW',
     requestBody: { values: [[value]] }

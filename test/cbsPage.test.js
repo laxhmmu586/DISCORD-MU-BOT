@@ -19,11 +19,13 @@ test('Add On-hand records are added to and displayed in Open Case', () => {
 });
 
 test('On-hand cases match the passenger case layout and support WorldTracer progress', () => {
-  assert.match(page, /<th>WorldTracer File<\/th><th>Bag Tag<\/th><th>Direction<\/th>/);
+  assert.match(page, /<th>WorldTracer File Number<\/th><th>Bag Tag<\/th><th>Direction<\/th>/);
   assert.match(page, /class="case-detail-layout"><div class="case-progress-column">\$\{unresolvedProgressHtml\(progressRow\)\}/);
   assert.match(page, /<option value="worldtracer">WorldTracer<\/option>/);
   assert.match(drive, /worldTracerFileNumber: values\[11\]/);
+  assert.match(drive, /'WorldTracer File Number'/);
   assert.match(drive, /!L\$\{target\.rowNumber\}/);
+  assert.match(drive, /!L1`[\s\S]*CBS_UNRESOLVED_BAGGAGE_HEADERS\[11\]/);
   assert.match(server, /action === 'worldtracer'/);
 });
 
