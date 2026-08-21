@@ -313,6 +313,10 @@
   <script src="/__/firebase/init.js"></script>
   <script>
     const apiBase = (window.MU_API_BASE || 'https://api.mufcapp.net').replace(/\/$/, '');
+    function currentUpdater() {
+      const user = window.firebase?.auth?.()?.currentUser;
+      return String(user?.displayName || user?.email || '').trim();
+    }
     document.querySelectorAll('[data-baggage-chart-image]').forEach((image) => { image.src = `${apiBase}/cbs-baggage-chart/${image.dataset.baggageChartImage}`; });
     document.querySelectorAll('[data-baggage-chart-link]').forEach((link) => { link.href = `${apiBase}/cbs-baggage-chart/${link.dataset.baggageChartLink}`; });
     const casesOutput = document.querySelector('#cases-output');
@@ -440,9 +444,9 @@
     }
     function unresolvedProgressHtml(row) {
       const events = [{ title:'On-hand created', at:row.createdAt, detail:row.location ? `Location: ${row.location}` : '' }];
-      if (row.worldTracerFileNumber) events.push({ title:'WorldTracer', at:'', detail:`File: ${row.worldTracerFileNumber}` });
+      if (row.worldTracerFileNumber) events.push({ title:'WorldTracer', at:'', by:row.worldTracerUpdatedBy || '', detail:`File: ${row.worldTracerFileNumber}` });
       if (row.resolvedAt) events.push({ title:row.resolution || 'Resolved', at:row.resolvedAt, detail:row.resolutionNote || '' });
-      return `<div class="tracking-workspace"><p class="tracking-current-time"><strong>${label('Case Progress', '案件进度')}</strong></p><div class="tracking-history">${events.slice().reverse().map((item, index) => `<span class="tracking-chip${index === 0 ? ' is-latest' : ''}${row.resolvedAt && index === 0 ? ' is-closed' : ''}"><span class="tracking-step-number">${events.length - index}</span><span class="tracking-chip-title">${escapeHtml(item.title)}</span>${item.at ? `<small>${escapeHtml(new Date(item.at).toLocaleString())}</small>` : ''}${item.detail ? `<span class="tracking-chip-detail">${escapeHtml(item.detail)}</span>` : ''}</span>`).join('')}</div></div>`;
+      return `<div class="tracking-workspace"><p class="tracking-current-time"><strong>${label('Case Progress', '案件进度')}</strong></p><div class="tracking-history">${events.slice().reverse().map((item, index) => `<span class="tracking-chip${index === 0 ? ' is-latest' : ''}${row.resolvedAt && index === 0 ? ' is-closed' : ''}"><span class="tracking-step-number">${events.length - index}</span><span class="tracking-chip-title">${escapeHtml(item.title)}</span>${item.at || item.by ? `<small>${item.at ? escapeHtml(new Date(item.at).toLocaleString()) : ''}${item.by ? ` · Updated by: ${escapeHtml(item.by)}` : ''}</small>` : ''}${item.detail ? `<span class="tracking-chip-detail">${escapeHtml(item.detail)}</span>` : ''}</span>`).join('')}</div></div>`;
     }
     function renderUnresolvedBaggage(rows = []) {
       window._unresolvedBaggageSourceRows = rows;
@@ -884,7 +888,7 @@
           const time = formatEventTime(event.at);
           const details = (event.fields || []).filter(([, value]) => hasValue(value)).map(([key, value]) => `<span class="tracking-chip-detail">${escapeHtml(key)}: ${escapeHtml(renderValue(value))}</span>`).join('');
           const stateClass = `${event.key === 'closed' ? ' is-closed' : ''}${index === 0 ? ' is-latest' : ''}`;
-          return `<span class="tracking-chip${stateClass}"><span class="tracking-step-number">${stepNumber}</span><span class="tracking-chip-title">${escapeHtml(event.title || 'Update')}</span><small>${escapeHtml(time.date)} ${escapeHtml(time.time)}</small>${details}</span>`;
+          return `<span class="tracking-chip${stateClass}"><span class="tracking-step-number">${stepNumber}</span><span class="tracking-chip-title">${escapeHtml(event.title || 'Update')}</span><small>${escapeHtml(time.date)} ${escapeHtml(time.time)}${event.by ? ` · Updated by: ${escapeHtml(event.by)}` : ''}</small>${details}</span>`;
         }).join('');
         if (part === 'current') return '';
         if (isClosedCase(row)) return `<div class="tracking-workspace"><div><div class="tracking-history">${historyHtml}</div></div><form class="inline-update case-update" data-row-number="${escapeHtml(row.rowNumber)}" data-case-source="wrongBaggage" data-update-mode="reopen"><textarea name="comment" placeholder="${label('Reopen note (optional)', '重新开启备注（可选）')}"></textarea><button type="submit">${label('Reopen', '重新开启')}</button></form></div>`;
@@ -908,7 +912,7 @@
           const noteHtml = !detailFields.length && hasValue(event.note) ? `<span class="tracking-chip-detail">${escapeHtml(event.note)}</span>` : '';
           const closedClass = event.key === 'closed' ? ' is-closed' : '';
           const latestClass = index === 0 ? ' is-latest' : '';
-          return `<span class="tracking-chip${closedClass}${latestClass}"><span class="tracking-step-number">${stepNumber}</span><span class="tracking-chip-title">${escapeHtml(title)}</span><small>${escapeHtml(time.date || '')} ${escapeHtml(time.time || '')}</small>${detailHtml}${noteHtml}</span>`;
+          return `<span class="tracking-chip${closedClass}${latestClass}"><span class="tracking-step-number">${stepNumber}</span><span class="tracking-chip-title">${escapeHtml(title)}</span><small>${escapeHtml(time.date || '')} ${escapeHtml(time.time || '')}${event.by ? ` · Updated by: ${escapeHtml(event.by)}` : ''}</small>${detailHtml}${noteHtml}</span>`;
         }).join('') || '<span class="sheet-empty">No tracking updates yet</span>';
       if (!row.rowNumber) return historyHtml;
       const progressHeader = `<p class="tracking-current-time"><strong>${label('Case Progress', '案件进度')}</strong><span>${label('Last update', '最后更新')}: ${escapeHtml(latestTime.date || '-')} ${escapeHtml(latestTime.time || '')}</span></p>`;
@@ -1034,6 +1038,7 @@
       event.preventDefault();
       const payload = Object.fromEntries(new FormData(updateForm, event.submitter).entries());
       payload.type = payload.type || updateForm.dataset.updateMode || 'worldtracer';
+      payload.updatedBy = currentUpdater();
       await updateCase(updateForm.dataset.rowNumber, payload, updateForm.dataset.caseSource || 'pir');
     });
     casesOutput.addEventListener('change', (event) => {
@@ -1276,6 +1281,7 @@
       event.preventDefault();
       const button = form.querySelector('button[type="submit"]');
       const payload = Object.fromEntries(new FormData(form).entries());
+      payload.updatedBy = currentUpdater();
       if (payload.action === 'on-hand-rush') payload.flightRows = Array.from(form.querySelectorAll('[data-unresolved-flight-rows] [data-rush-flight-row]')).map((row) => ({
         flightDate:row.querySelector('[data-flight-date]').value,
         flightNumber:row.querySelector('[data-flight-number]').value,

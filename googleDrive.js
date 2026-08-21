@@ -3417,17 +3417,17 @@ async function getCbsUnresolvedBaggageSheetTitle() {
   return cbsUnresolvedBaggageSheetTitle || 'Sheet1';
 }
 
-const CBS_UNRESOLVED_BAGGAGE_HEADERS = ['Bag Tag', 'Direction', 'Flight Number', 'Flight Date', 'Bag Type', 'Status', 'Location', 'Created At', 'Resolution', 'Resolution Note', 'Resolved At', 'WorldTracer File Number'];
+const CBS_UNRESOLVED_BAGGAGE_HEADERS = ['Bag Tag', 'Direction', 'Flight Number', 'Flight Date', 'Bag Type', 'Status', 'Location', 'Created At', 'Resolution', 'Resolution Note', 'Resolved At', 'WorldTracer File Number', 'WorldTracer Updated By'];
 
 async function getCbsUnresolvedBaggageCases(options = {}) {
   const title = await getCbsUnresolvedBaggageSheetTitle();
-  const response = await sheets.spreadsheets.values.get({ spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!A:L` });
+  const response = await sheets.spreadsheets.values.get({ spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!A:M` });
   const rows = response.data.values || [];
   const start = String(rows[0]?.[0] || '').trim() === CBS_UNRESOLVED_BAGGAGE_HEADERS[0] ? 1 : 0;
   return rows.slice(start).map((values, index) => ({
     bagTag: values[0] || '', direction: values[1] || '', flightNumber: values[2] || '', flightDate: values[3] || '',
     bagType: values[4] || '', status: values[5] || '', location: values[6] || '', createdAt: values[7] || '',
-    resolution: values[8] || '', resolutionNote: values[9] || '', resolvedAt: values[10] || '', worldTracerFileNumber: values[11] || '', rowNumber: start + index + 1
+    resolution: values[8] || '', resolutionNote: values[9] || '', resolvedAt: values[10] || '', worldTracerFileNumber: values[11] || '', worldTracerUpdatedBy: values[12] || '', rowNumber: start + index + 1
   })).filter((row) => options.includeResolved || !row.resolvedAt).sort((a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0));
 }
 
@@ -3436,9 +3436,9 @@ async function appendCbsUnresolvedBaggageCase(record = {}) {
   const existing = await getCbsUnresolvedBaggageCases();
   const bagTag = sanitizeSheetText(record.bagTag, 80).toUpperCase();
   if (existing.some((row) => row.bagTag.toUpperCase() === bagTag)) return { created: false };
-  const header = await sheets.spreadsheets.values.get({ spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!A1:L1` });
-  if (!header.data.values?.length || String(header.data.values[0]?.[11] || '').trim() !== CBS_UNRESOLVED_BAGGAGE_HEADERS[11]) {
-    await sheets.spreadsheets.values.update({ spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!A1:L1`, valueInputOption: 'RAW', requestBody: { values: [CBS_UNRESOLVED_BAGGAGE_HEADERS] } });
+  const header = await sheets.spreadsheets.values.get({ spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!A1:M1` });
+  if (!header.data.values?.length || String(header.data.values[0]?.[12] || '').trim() !== CBS_UNRESOLVED_BAGGAGE_HEADERS[12]) {
+    await sheets.spreadsheets.values.update({ spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!A1:M1`, valueInputOption: 'RAW', requestBody: { values: [CBS_UNRESOLVED_BAGGAGE_HEADERS] } });
   }
   const saved = {
     bagTag,
@@ -3451,8 +3451,8 @@ async function appendCbsUnresolvedBaggageCase(record = {}) {
     createdAt: sanitizeSheetText(record.submittedAt || new Date().toISOString(), 40)
   };
   await sheets.spreadsheets.values.append({
-    spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!A:L`, valueInputOption: 'RAW', insertDataOption: 'INSERT_ROWS',
-    requestBody: { values: [[saved.bagTag, saved.direction, saved.flightNumber, saved.flightDate, saved.bagType, saved.status, saved.location, saved.createdAt, '', '', '', sanitizeSheetText(record.worldTracerFileNumber, 120).toUpperCase()]] }
+    spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!A:M`, valueInputOption: 'RAW', insertDataOption: 'INSERT_ROWS',
+    requestBody: { values: [[saved.bagTag, saved.direction, saved.flightNumber, saved.flightDate, saved.bagType, saved.status, saved.location, saved.createdAt, '', '', '', sanitizeSheetText(record.worldTracerFileNumber, 120).toUpperCase(), '']] }
   });
   return { created: true, record: saved };
 }
@@ -3482,19 +3482,19 @@ async function reopenCbsUnresolvedBaggageCase(rowNumber) {
   return { updated: true, record: { ...target, resolution: '', resolutionNote: '', resolvedAt: '' } };
 }
 
-async function updateCbsUnresolvedBaggageWorldTracer(rowNumber, worldTracerFileNumber) {
+async function updateCbsUnresolvedBaggageWorldTracer(rowNumber, worldTracerFileNumber, updatedBy = '') {
   const rows = await getCbsUnresolvedBaggageCases({ includeResolved: true });
   const target = rows.find((row) => Number(row.rowNumber) === Number(rowNumber));
   if (!target) return { updated: false, notFound: true };
   const title = await getCbsUnresolvedBaggageSheetTitle();
   const value = sanitizeSheetText(worldTracerFileNumber, 120).toUpperCase();
   await sheets.spreadsheets.values.update({
-    spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!L1`, valueInputOption: 'RAW',
-    requestBody: { values: [[CBS_UNRESOLVED_BAGGAGE_HEADERS[11]]] }
+    spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!L1:M1`, valueInputOption: 'RAW',
+    requestBody: { values: [[CBS_UNRESOLVED_BAGGAGE_HEADERS[11], CBS_UNRESOLVED_BAGGAGE_HEADERS[12]]] }
   });
   await sheets.spreadsheets.values.update({
-    spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!L${target.rowNumber}`, valueInputOption: 'RAW',
-    requestBody: { values: [[value]] }
+    spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!L${target.rowNumber}:M${target.rowNumber}`, valueInputOption: 'RAW',
+    requestBody: { values: [[value, sanitizeSheetText(updatedBy, 160)]] }
   });
   return { updated: true, record: { ...target, worldTracerFileNumber: value } };
 }
@@ -3561,6 +3561,7 @@ function sanitizeCbsUpdateEvent(event = {}, fallback = {}) {
     title: sanitizeSheetText(event.title || fallback.title || 'Update', 120),
     status: sanitizeSheetText(fallback.status || event.status, 80),
     at: sanitizeSheetText(fallback.at || event.at || new Date().toISOString(), 40),
+    by: sanitizeSheetText(fallback.by || event.by, 160),
     fields: fields.map((field) => Array.isArray(field) ? [sanitizeSheetText(field[0], 120), sanitizeSheetText(field[1], 500)] : null).filter((field) => field && field[0] && field[1]),
     note: sanitizeSheetText(fallback.note || event.note, 1000)
   };

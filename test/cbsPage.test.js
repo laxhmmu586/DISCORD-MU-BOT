@@ -30,7 +30,7 @@ test('On-hand cases match the passenger case layout and support WorldTracer prog
   assert.match(drive, /worldTracerFileNumber: values\[11\]/);
   assert.match(drive, /'WorldTracer File Number'/);
   assert.match(drive, /!L\$\{target\.rowNumber\}/);
-  assert.match(drive, /!L1`[\s\S]*CBS_UNRESOLVED_BAGGAGE_HEADERS\[11\]/);
+  assert.match(drive, /!L1:M1`[\s\S]*CBS_UNRESOLVED_BAGGAGE_HEADERS\[12\]/);
   assert.match(server, /action === 'worldtracer'/);
 });
 
@@ -49,6 +49,17 @@ test('Other On-hand updates remain actionable in Open Case', () => {
   assert.match(page, /const active = row\.history\.find\(\(item\) => !item\.resolvedAt \|\| String\(item\.resolution \|\| ''\)\.toLowerCase\(\) === 'other'\)/);
   assert.match(page, /const formHtml = active/);
   assert.match(page, /<option value="other">Other resolution<\/option>/);
+});
+
+test('case progress identifies the staff member who made each update', () => {
+  assert.match(page, /function currentUpdater\(\)/);
+  assert.match(page, /payload\.updatedBy = currentUpdater\(\)/);
+  assert.match(page, /Updated by: \$\{escapeHtml\(event\.by\)\}/);
+  assert.match(page, /Updated by: \$\{escapeHtml\(item\.by\)\}/);
+  assert.match(server, /updateFields\.updateEvent\.by = sanitizeCbsText\(req\.body\?\.updatedBy, 160\)/);
+  assert.match(server, /Updated by: \$\{updatedBy\}/);
+  assert.match(drive, /by: sanitizeSheetText\(fallback\.by \|\| event\.by, 160\)/);
+  assert.match(drive, /'WorldTracer Updated By'/);
 });
 
 test('Closed On-hand cases can update WorldTracer or reopen', () => {

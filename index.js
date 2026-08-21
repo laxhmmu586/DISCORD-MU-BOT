@@ -2539,7 +2539,7 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
     if (action === 'worldtracer') {
       const worldTracerFileNumber = sanitizeCbsText(req.body?.worldTracerFileNumber, 120).toUpperCase();
       if (!worldTracerFileNumber) return res.status(400).json({ error: 'WorldTracer file number is required' });
-      const result = await updateCbsUnresolvedBaggageWorldTracer(req.params.rowNumber, worldTracerFileNumber);
+      const result = await updateCbsUnresolvedBaggageWorldTracer(req.params.rowNumber, worldTracerFileNumber, sanitizeCbsText(req.body?.updatedBy, 160));
       if (result.notFound) return res.status(404).json({ error: 'Unresolved baggage case not found' });
       return res.json(result);
     }
@@ -2554,6 +2554,7 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
       if (!originalTagNumber || !rushTagNumber || !flightRows.length || flightRows.some((flight) => Object.values(flight).some((value) => !value))) return res.status(400).json({ error: 'Original tag, RUSH tag, and complete flight segments are required' });
       await appendCbsWorldTracerCase({ worldTracerFileNumber, originalTagNumber, rushTagNumber, flightRows, createdAt: new Date().toISOString() });
     }
+    const updatedBy = sanitizeCbsText(req.body?.updatedBy, 160);
     let resolutionNote = note;
     if (action === 'shipped') {
       const shippingMethods = ['ADC - All Day Courier', 'BDO', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping'];
@@ -2573,6 +2574,7 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
       resolutionNote = details.join(' | ');
     }
     if (action !== 'on-hand-rush' && !resolutionNote) return res.status(400).json({ error: 'A resolution note is required' });
+    if (updatedBy) resolutionNote = `${resolutionNote} | Updated by: ${updatedBy}`;
     const result = await resolveCbsUnresolvedBaggageCase(req.params.rowNumber, action, resolutionNote);
     if (result.notFound) return res.status(404).json({ error: 'Unresolved baggage case not found' });
     return res.json(result);
@@ -2734,6 +2736,7 @@ app.post('/cbs-cases', async (req, res) => {
 app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
   try {
     const updateFields = buildCbsUpdateFields(req.body || {});
+    if (updateFields?.updateEvent) updateFields.updateEvent.by = sanitizeCbsText(req.body?.updatedBy, 160);
     if (!updateFields) return res.status(400).json({ error: 'Valid INFORMATION, WORLDTRACER, REQUESTED BAGS, RUSH, BAG LOCATION UPDATE, SHIPPING, LOST, CASE CLOSE, or REOPEN details are required' });
     const result = await updateCbsCase(req.params.rowNumber, updateFields);
     if (result.notFound) return res.status(404).json({ error: 'Case not found' });
