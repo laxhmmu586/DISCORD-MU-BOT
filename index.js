@@ -2584,7 +2584,7 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
     const updatedBy = sanitizeCbsText(req.body?.updatedBy, 160);
     let resolutionNote = note;
     if (action === 'shipped') {
-      const shippingMethods = ['ADC - All Day Courier', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping'];
+      const shippingMethods = ['ADC - All Day Courier', 'BDO', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping'];
       const shippingMethod = shippingMethods.find((method) => method === sanitizeCbsText(req.body?.shippingMethod, 80));
       const trackingNumber = sanitizeCbsText(req.body?.trackingNumber, 160);
       const shippingTo = sanitizeCbsText(req.body?.shippingTo, 500);
