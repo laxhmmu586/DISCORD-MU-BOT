@@ -2120,7 +2120,7 @@ function buildCbsUpdateFields(update = {}) {
   }
   const trackingNumber = sanitizeCbsText(update.trackingNumber, 160).toUpperCase();
   const shippingTo = sanitizeCbsText(update.shippingTo, 300);
-  const shippingMethods = ['ADC - All Day Courier', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping'];
+  const shippingMethods = ['ADC - All Day Courier', 'BDO', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping'];
   const shippingMethod = shippingMethods.find((method) => method === sanitizeCbsText(update.shippingMethod, 80));
   if (!shippingMethod || (shippingMethod === 'FedEx Delivery' && !trackingNumber)) return null;
   const airportPickup = shippingMethod === 'Pick Up at Airport';
@@ -2549,7 +2549,7 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
     }
     let resolutionNote = note;
     if (action === 'shipped') {
-      const shippingMethods = ['ADC - All Day Courier', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping'];
+      const shippingMethods = ['ADC - All Day Courier', 'BDO', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping'];
       const shippingMethod = shippingMethods.find((method) => method === sanitizeCbsText(req.body?.shippingMethod, 80));
       const trackingNumber = sanitizeCbsText(req.body?.trackingNumber, 160);
       const shippingTo = sanitizeCbsText(req.body?.shippingTo, 500);
