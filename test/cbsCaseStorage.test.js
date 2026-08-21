@@ -9,7 +9,7 @@ test('CBS updates persist their note, timestamp, and WorldTracer file number', (
   assert.match(drive, /updateNote: incomingNote \|\| current\.updateNote \|\| ''/);
   assert.match(drive, /next\.worldTracerFileNumber = sanitizeSheetText/);
   assert.match(drive, /'WorldTracer File Number'/);
-  assert.match(drive, /A\$\{rowIndex \+ 1\}:AK\$\{rowIndex \+ 1\}/);
+  assert.match(drive, /A\$\{rowIndex \+ 1\}:AL\$\{rowIndex \+ 1\}/);
 });
 
 test('CBS reads required passenger details from their fixed sheet columns', () => {
@@ -23,13 +23,14 @@ test('CBS reads required passenger details from their fixed sheet columns', () =
   assert.match(drive, /row\.trackingNumber = values\[34\]/);
   assert.match(drive, /row\.shippingAddress = values\[35\]/);
   assert.match(drive, /row\.estimatedArrivalTime = values\[36\]/);
+  assert.match(drive, /row\.bdo = values\[37\]/);
 });
 
 test('Rush to LAX information updates persist their ETA in column AK', () => {
   assert.match(drive, /'Estimated Arrival Time'/);
   assert.match(drive, /record\.estimatedArrivalTime \|\| ''/);
   assert.match(drive, /informationFields\.get\('Estimated Arrival Time'\)/);
-  assert.match(drive, /!A:AK/);
+  assert.match(drive, /!A:AL/);
 });
 
 test('DPR WorldTracer updates close the case automatically', () => {
@@ -67,5 +68,9 @@ test('shipping updates validate and store the selected delivery method', () => {
   assert.match(server, /trackingNumber \? \[\['Tracking Number', trackingNumber\]\] : \[\]/);
   assert.match(drive, /next\.trackingNumber = sanitizeSheetText/);
   assert.match(drive, /next\.shippingAddress = sanitizeSheetText/);
+  assert.match(drive, /next\.bdo = sanitizeSheetText/);
+  assert.match(drive, /'BDO'/);
+  assert.match(server, /needsBdo && !bdo/);
+  assert.match(server, /\[\['BDO', bdo\]\]/);
   assert.match(server, /airportPickup \? 'Closed - Pick Up at Airport' : 'Shipping'/);
 });
