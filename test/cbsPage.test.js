@@ -8,6 +8,11 @@ const pirForm = fs.readFileSync(path.join(__dirname, '..', 'public', 'public', '
 const drive = fs.readFileSync(path.join(__dirname, '..', 'googleDrive.js'), 'utf8');
 const server = fs.readFileSync(path.join(__dirname, '..', 'index.js'), 'utf8');
 
+test('CBS page uses the Lake Baggage System browser title', () => {
+  assert.match(page, /<title>Lake Baggage System<\/title>/);
+  assert.doesNotMatch(page, /<title>CBS Cases<\/title>/);
+});
+
 test('Add On-hand records are added to and displayed in Open Case', () => {
   assert.match(drive, /CBS_UNRESOLVED_BAGGAGE_SHEET_GID = Number\(process\.env\.CBS_UNRESOLVED_BAGGAGE_SHEET_GID \|\| 523026916\)/);
   assert.match(page, /title="Add On-hand"/);
@@ -25,8 +30,59 @@ test('On-hand cases match the passenger case layout and support WorldTracer prog
   assert.match(drive, /worldTracerFileNumber: values\[11\]/);
   assert.match(drive, /'WorldTracer File Number'/);
   assert.match(drive, /!L\$\{target\.rowNumber\}/);
-  assert.match(drive, /!L1`[\s\S]*CBS_UNRESOLVED_BAGGAGE_HEADERS\[11\]/);
+  assert.match(drive, /!L1:M1`[\s\S]*CBS_UNRESOLVED_BAGGAGE_HEADERS\[12\]/);
   assert.match(server, /action === 'worldtracer'/);
+});
+
+test('completed On-hand cases move from Open Case to Closed Case', () => {
+  assert.match(page, /new Set\(\['on-hand-rush', 'shipped', 'passenger-collected'\]\)/);
+  assert.match(page, /const archived = Boolean\(row\.resolvedAt\) && archivedResolutions\.has\(String\(row\.resolution \|\| ''\)\.toLowerCase\(\)\)/);
+  assert.match(page, /return showClosed \? archived : !archived/);
+  assert.match(page, /onHandGroup\.hidden = false/);
+  assert.match(page, /section === 'closed' \? 'Closed On-hand' : 'On-hand'/);
+  assert.match(page, /renderUnresolvedBaggage\(window\._unresolvedBaggageSourceRows \|\| \[\]\)/);
+  assert.match(server, /return res\.json\(\{ rows \}\)/);
+  assert.doesNotMatch(server, /rows\.filter\(\(row\) => String\(row\.resolution \|\| ''\)\.toLowerCase\(\) !== 'on-hand-rush'/);
+});
+
+test('On-hand progress updates sync to the home-page baggage search', () => {
+  assert.match(server, /async function syncOnHandStatusToBaggage\(record, action, body = \{\}\)/);
+  for (const status of ['WorldTracer Updated', 'Reopened', 'Create Rush', 'Passenger Collected / Case Closed', 'Shipped', 'Other']) {
+    assert.match(server, new RegExp(status.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+  assert.match(server, /await updateTestBaggageRecord\(record\.bagTag, \{/);
+  assert.match(server, /type: 'cbs'/);
+  assert.equal((server.match(/await syncOnHandStatusToBaggage\(result\.record, action, req\.body\)/g) || []).length, 3);
+  assert.match(drive, /else if \(updateType === 'cbs'\)/);
+  assert.match(drive, /next\.status = sanitizeSheetText\(update\.status, 120\)/);
+  assert.match(drive, /type: sanitizeSheetText\(update\.eventType, 80\) \|\| updateType/);
+});
+
+test('Other On-hand updates remain actionable in Open Case', () => {
+  assert.match(page, /const active = row\.history\.find\(\(item\) => !item\.resolvedAt \|\| String\(item\.resolution \|\| ''\)\.toLowerCase\(\) === 'other'\)/);
+  assert.match(page, /const formHtml = active/);
+  assert.match(page, /<option value="other">Other resolution<\/option>/);
+});
+
+test('case progress identifies the staff member who made each update', () => {
+  assert.match(page, /function currentUpdater\(\)/);
+  assert.match(page, /payload\.updatedBy = currentUpdater\(\)/);
+  assert.match(page, /Updated by: \$\{escapeHtml\(event\.by\)\}/);
+  assert.match(page, /Updated by: \$\{escapeHtml\(item\.by\)\}/);
+  assert.match(server, /updateFields\.updateEvent\.by = sanitizeCbsText\(req\.body\?\.updatedBy, 160\)/);
+  assert.match(server, /Updated by: \$\{updatedBy\}/);
+  assert.match(drive, /by: sanitizeSheetText\(fallback\.by \|\| event\.by, 160\)/);
+  assert.match(drive, /'WorldTracer Updated By'/);
+});
+
+test('Closed On-hand cases can update WorldTracer or reopen', () => {
+  assert.match(page, /<option value="worldtracer">Update WorldTracer<\/option><option value="reopen">Reopen<\/option>/);
+  assert.match(page, /if \(action === 'reopen'\) return '<p class="muted wide">Reopen this case and return it to Open Case\.<\/p>'/);
+  assert.match(page, /value="\$\{escapeHtml\(worldTracerFileNumber\)\}" required/);
+  assert.match(server, /if \(action === 'reopen'\) \{/);
+  assert.match(server, /reopenCbsUnresolvedBaggageCase\(req\.params\.rowNumber\)/);
+  assert.match(drive, /async function reopenCbsUnresolvedBaggageCase\(rowNumber\)/);
+  assert.match(drive, /!I\$\{target\.rowNumber\}:K\$\{target\.rowNumber\}/);
 });
 
 test('On-hand shipping uses the Passenger Filed delivery methods without email handling', () => {
@@ -116,12 +172,16 @@ test('CBS tracking no longer offers Forward to MU', () => {
 test('shipping updates offer all supported delivery methods', () => {
   assert.match(page, /select name="shippingMethod" data-shipping-method required/);
   for (const method of ['ADC - All Day Courier', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping']) assert.match(page, new RegExp(`<option>${method}<\\/option>`));
+  assert.doesNotMatch(page, /<option>BDO<\/option>/);
+  assert.match(page, /data-shipping-bdo/);
+  assert.match(page, /name="bdo"/);
   assert.match(page, /data-shipping-tracking placeholder="Tracking number" disabled hidden/);
   assert.match(page, /needsTracking = shippingMethod\.value === 'FedEx Delivery'/);
   assert.match(page, /trackingInput\.required = needsTracking/);
   assert.match(page, /showsAddress = shippingMethod\.value === 'ADC - All Day Courier' \|\| shippingMethod\.value === 'FedEx Delivery'/);
   assert.doesNotMatch(page, /\['ADC - All Day Courier', 'FedEx Delivery', 'Passenger Pay for Shipping'\]\.includes/);
   assert.match(page, /addressInput\.required = false/);
+  assert.match(page, /bdoInput\.required = showsAddress/);
 });
 
 test('CBS passenger detail view can recover values from the original form snapshot', () => {
