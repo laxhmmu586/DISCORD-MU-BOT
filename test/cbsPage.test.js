@@ -45,6 +45,12 @@ test('completed On-hand cases move from Open Case to Closed Case', () => {
   assert.doesNotMatch(server, /rows\.filter\(\(row\) => String\(row\.resolution \|\| ''\)\.toLowerCase\(\) !== 'on-hand-rush'/);
 });
 
+test('Other On-hand updates remain actionable in Open Case', () => {
+  assert.match(page, /const active = row\.history\.find\(\(item\) => !item\.resolvedAt \|\| String\(item\.resolution \|\| ''\)\.toLowerCase\(\) === 'other'\)/);
+  assert.match(page, /const formHtml = active/);
+  assert.match(page, /<option value="other">Other resolution<\/option>/);
+});
+
 test('Closed On-hand cases can update WorldTracer or reopen', () => {
   assert.match(page, /<option value="worldtracer">Update WorldTracer<\/option><option value="reopen">Reopen<\/option>/);
   assert.match(page, /if \(action === 'reopen'\) return '<p class="muted wide">Reopen this case and return it to Open Case\.<\/p>'/);
