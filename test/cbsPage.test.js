@@ -42,7 +42,7 @@ test('completed On-hand cases move from Open Case to Closed Case', () => {
 
 test('On-hand shipping uses the Passenger Filed delivery methods without email handling', () => {
   const onHandFields = page.match(/if \(action === 'shipped'\) return `([\s\S]*?)`;/)?.[1] || '';
-  for (const method of ['ADC - All Day Courier', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping']) assert.match(onHandFields, new RegExp(method));
+  for (const method of ['ADC - All Day Courier', 'BDO', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping']) assert.match(onHandFields, new RegExp(method));
   assert.match(onHandFields, /data-shipping-tracking hidden/);
   assert.match(onHandFields, /data-shipping-address hidden/);
   assert.match(server, /if \(action === 'shipped'\) \{/);
