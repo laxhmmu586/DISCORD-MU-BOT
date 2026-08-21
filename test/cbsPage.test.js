@@ -116,12 +116,16 @@ test('CBS tracking no longer offers Forward to MU', () => {
 test('shipping updates offer all supported delivery methods', () => {
   assert.match(page, /select name="shippingMethod" data-shipping-method required/);
   for (const method of ['ADC - All Day Courier', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping']) assert.match(page, new RegExp(`<option>${method}<\\/option>`));
+  assert.doesNotMatch(page, /<option>BDO<\/option>/);
+  assert.match(page, /data-shipping-bdo/);
+  assert.match(page, /name="bdo"/);
   assert.match(page, /data-shipping-tracking placeholder="Tracking number" disabled hidden/);
   assert.match(page, /needsTracking = shippingMethod\.value === 'FedEx Delivery'/);
   assert.match(page, /trackingInput\.required = needsTracking/);
   assert.match(page, /showsAddress = shippingMethod\.value === 'ADC - All Day Courier' \|\| shippingMethod\.value === 'FedEx Delivery'/);
   assert.doesNotMatch(page, /\['ADC - All Day Courier', 'FedEx Delivery', 'Passenger Pay for Shipping'\]\.includes/);
   assert.match(page, /addressInput\.required = false/);
+  assert.match(page, /bdoInput\.required = showsAddress/);
 });
 
 test('CBS passenger detail view can recover values from the original form snapshot', () => {

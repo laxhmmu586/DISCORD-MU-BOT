@@ -114,7 +114,8 @@ const CBS_HEADERS = [
   'WorldTracer File Number',
   'Tracking Number',
   'Shipping Address',
-  'Estimated Arrival Time'
+  'Estimated Arrival Time',
+  'BDO'
 ];
 let cbsSheetTitle = '';
 let cbsWorldTracerSheetTitle = '';
@@ -3068,7 +3069,7 @@ async function getCbsSheetRows(options = {}) {
   const title = await getCbsSheetTitle();
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A:AK`
+    range: `${escapeSheetTitle(title)}!A:AL`
   });
   const rows = res.data.values || [];
   cbsSheetCache = { loadedAt: Date.now(), rows };
@@ -3090,7 +3091,7 @@ async function ensureCbsSheetHeaders(rows) {
   const title = await getCbsSheetTitle();
   await sheets.spreadsheets.values.update({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A1:AK1`,
+    range: `${escapeSheetTitle(title)}!A1:AL1`,
     valueInputOption: 'RAW',
     requestBody: { values: [CBS_HEADERS] }
   });
@@ -3157,6 +3158,8 @@ function cbsRecordFromSheet(values, rowNumber) {
   row.shippingAddress = values[35] || row.shippingAddress || '';
   // The RUSH-to-LAX estimated arrival time is always stored in column AK.
   row.estimatedArrivalTime = values[36] || row.estimatedArrivalTime || '';
+  // The courier BDO reference is stored in column AL.
+  row.bdo = values[37] || row.bdo || '';
   row.caseType = row.caseType || values.find((value) => /^(AHL|DPR)$/i.test(String(value || '').trim())) || '';
   row.bagTag = row.bagTag || values[8] || extractCbsBagTagFromUpdateNote(row.updateNote) || values.find((value) => /^[A-Z]{2}\d{6,}(\s*\/\s*[A-Z]{2}\d{6,})*$/i.test(String(value || '').trim())) || '';
   row.submittedAt = row.submittedAt || row.submitDate || values[26] || '';
@@ -3220,7 +3223,8 @@ function cbsValuesFromRecord(record) {
     record.worldTracerFileNumber || '',
     record.trackingNumber || '',
     record.shippingAddress || '',
-    record.estimatedArrivalTime || ''
+    record.estimatedArrivalTime || '',
+    record.bdo || ''
   ];
 }
 
@@ -3230,7 +3234,7 @@ async function appendCbsCase(record) {
   await ensureCbsSheetHeaders(rows);
   await sheets.spreadsheets.values.append({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A:AK`,
+    range: `${escapeSheetTitle(title)}!A:AL`,
     valueInputOption: 'RAW',
     insertDataOption: 'INSERT_ROWS',
     requestBody: { values: [cbsValuesFromRecord(record)] }
@@ -3630,6 +3634,7 @@ async function updateCbsCase(rowNumber, update = {}) {
     const shippingFields = new Map(update.updateEvent.fields || []);
     next.trackingNumber = sanitizeSheetText(shippingFields.get('Tracking Number'), 160).toUpperCase();
     next.shippingAddress = sanitizeSheetText(shippingFields.get('Ship To'), 300);
+    next.bdo = sanitizeSheetText(shippingFields.get('BDO'), 160).toUpperCase();
   }
   if (update.updateEvent?.key === 'information') {
     const informationFields = new Map(update.updateEvent.fields || []);
@@ -3647,7 +3652,7 @@ async function updateCbsCase(rowNumber, update = {}) {
   const title = await getCbsSheetTitle();
   await sheets.spreadsheets.values.update({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A${rowIndex + 1}:AK${rowIndex + 1}`,
+    range: `${escapeSheetTitle(title)}!A${rowIndex + 1}:AL${rowIndex + 1}`,
     valueInputOption: 'RAW',
     requestBody: { values: [cbsValuesFromRecord(next)] }
   });
