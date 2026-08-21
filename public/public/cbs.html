@@ -426,7 +426,7 @@
     function unresolvedUpdateFieldsHtml(action, bagTag, worldTracerFileNumber = '') {
       if (action === 'worldtracer') return `<label class="wide"><span>WorldTracer File Number</span><input name="worldTracerFileNumber" required /></label>`;
       if (action === 'on-hand-rush') return `${worldTracerFileNumber ? `<input type="hidden" name="worldTracerFileNumber" value="${escapeHtml(worldTracerFileNumber)}" />` : '<label><span>WorldTracer File Number (Optional)</span><input name="worldTracerFileNumber" placeholder="Can be added later" /></label>'}<label><span>Original Tag Number</span><input name="originalTagNumber" value="${escapeHtml(bagTag)}" required /></label><label><span>RUSH Tag Number</span><input name="rushTagNumber" required /></label><div class="rush-itinerary wide"><div class="rush-itinerary-head"><h2>RUSH Itinerary</h2><button class="secondary" type="button" data-add-unresolved-flight>+ Add Flight</button></div><div data-unresolved-flight-rows>${rushFlightRowHtml()}</div></div>`;
-      if (action === 'shipped') return `<label><span>Delivery method</span><select name="shippingMethod" data-shipping-method required><option value="">Select delivery method</option><option>ADC - All Day Courier</option><option>BDO</option><option>FedEx Delivery</option><option>Pick Up at Airport</option><option>Passenger Pay for Shipping</option></select></label><label data-shipping-tracking hidden><span>Tracking number</span><input name="trackingNumber" disabled /></label><label data-shipping-address hidden><span>Shipping to where?</span><input name="shippingTo" disabled /></label><label class="wide"><span>Comment</span><textarea name="comment"></textarea></label>`;
+      if (action === 'shipped') return `<label><span>Delivery method</span><select name="shippingMethod" data-shipping-method required><option value="">Select delivery method</option><option>ADC - All Day Courier</option><option>FedEx Delivery</option><option>Pick Up at Airport</option><option>Passenger Pay for Shipping</option></select></label><label data-shipping-tracking hidden><span>Tracking number</span><input name="trackingNumber" disabled /></label><label data-shipping-address hidden><span>Shipping to where?</span><input name="shippingTo" disabled /></label><label data-shipping-bdo hidden><span>BDO</span><input name="bdo" disabled /></label><label class="wide"><span>Comment</span><textarea name="comment"></textarea></label>`;
       const placeholder = action === 'passenger-collected' ? 'Who collected the bag?' : 'Describe how this case was resolved';
       return `<label class="wide"><span>Resolution Note</span><textarea name="note" placeholder="${placeholder}" required></textarea></label>`;
     }
@@ -736,6 +736,7 @@
       const shippingMethodSelect = `<label><span>Delivery method</span><select name="shippingMethod" data-shipping-method required><option value="">Select delivery method</option><option>ADC - All Day Courier</option><option>BDO</option><option>FedEx Delivery</option><option>Pick Up at Airport</option><option>Passenger Pay for Shipping</option></select></label>`;
       const shippingTrackingInput = `<label data-shipping-tracking hidden><span>Tracking number</span><input name="trackingNumber" disabled /></label>`;
       const shippingAddressInput = `<label data-shipping-address hidden><span>Shipping to where?</span><input name="shippingTo" disabled /></label>`;
+      const shippingBdoInput = `<label data-shipping-bdo hidden><span>BDO</span><input name="bdo" disabled /></label>`;
       const fields = active === 'worldtracer'
         ? input('File number', 'fileNumber')
         : active === 'rush'
@@ -748,7 +749,7 @@
           : active === 'location'
           ? [input('Bag location', 'location'), `<label class="wide"><span>Comment</span><textarea name="comment"></textarea></label>`].join('')
           : active === 'shipping'
-          ? [shippingMethodSelect, shippingTrackingInput, shippingAddressInput, `<label class="wide"><span>Comment</span><textarea name="comment"></textarea></label>`].join('')
+          ? [shippingMethodSelect, shippingTrackingInput, shippingAddressInput, shippingBdoInput, `<label class="wide"><span>Comment</span><textarea name="comment"></textarea></label>`].join('')
           : active === 'lost'
           ? ''
           : `<label class="wide"><span>Comment</span><textarea name="comment" placeholder="Optional close note"></textarea></label>`;
@@ -834,12 +835,13 @@
       const shippingMethodSelect = '<select name="shippingMethod" data-shipping-method required><option value="">Select delivery method</option><option>ADC - All Day Courier</option><option>BDO</option><option>FedEx Delivery</option><option>Pick Up at Airport</option><option>Passenger Pay for Shipping</option></select>';
       const shippingTrackingInput = '<input name="trackingNumber" data-shipping-tracking placeholder="Tracking number" disabled hidden />';
       const shippingAddressInput = '<input name="shippingTo" data-shipping-address placeholder="Shipping to where?" disabled hidden />';
+      const shippingBdoInput = '<input name="bdo" data-shipping-bdo placeholder="BDO" disabled hidden />';
       if (key === 'worldtracer') return input('File number', 'fileNumber');
       if (key === 'information') return ['<select name="informationType" required><option value="rush_to_lax">Baggage Transfer Status Update</option></select>', '<label><span>Estimated arrival date</span><input name="estimatedArrivalTime" type="date" required /></label>'].join('');
       if (key === 'requested_bags') return input('From which station?', 'fromStation');
       if (key === 'rush') return [input('Rush tag number', 'rushTagNumber'), input('Rush to where?', 'rushToWhere'), input('World Tracer file # (optional)', 'worldTracerFileNumber', false), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
       if (key === 'location') return [input('Bag location', 'location'), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
-      if (key === 'shipping') return [shippingMethodSelect, shippingTrackingInput, shippingAddressInput, '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
+      if (key === 'shipping') return [shippingMethodSelect, shippingTrackingInput, shippingAddressInput, shippingBdoInput, '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
       if (key === 'lost') return '';
       if (key === 'closed') return '<textarea name="comment" placeholder="Close note (optional)"></textarea>';
       return '';
@@ -1020,12 +1022,16 @@
         const trackingInput = trackingField?.matches('input') ? trackingField : trackingField?.querySelector('input');
         const addressField = form?.querySelector('[data-shipping-address]');
         const addressInput = addressField?.matches('input') ? addressField : addressField?.querySelector('input');
+        const bdoField = form?.querySelector('[data-shipping-bdo]');
+        const bdoInput = bdoField?.matches('input') ? bdoField : bdoField?.querySelector('input');
         const needsTracking = shippingMethod.value === 'FedEx Delivery';
         const showsAddress = shippingMethod.value === 'ADC - All Day Courier' || shippingMethod.value === 'FedEx Delivery';
         if (trackingField) trackingField.hidden = !needsTracking;
         if (trackingInput) { trackingInput.disabled = !needsTracking; trackingInput.required = needsTracking; if (!needsTracking) trackingInput.value = ''; }
         if (addressField) addressField.hidden = !showsAddress;
         if (addressInput) { addressInput.disabled = !showsAddress; addressInput.required = false; if (!showsAddress) addressInput.value = ''; }
+        if (bdoField) bdoField.hidden = !showsAddress;
+        if (bdoInput) { bdoInput.disabled = !showsAddress; bdoInput.required = showsAddress; if (!showsAddress) bdoInput.value = ''; }
         return;
       }
       const select = event.target.closest('[data-cbs-stage-select]');
@@ -1219,6 +1225,8 @@
         const trackingInput = trackingField.querySelector('input');
         const addressField = form.querySelector('[data-shipping-address]');
         const addressInput = addressField.querySelector('input');
+        const bdoField = form.querySelector('[data-shipping-bdo]');
+        const bdoInput = bdoField.querySelector('input');
         const needsTracking = shippingMethod.value === 'FedEx Delivery';
         const showsAddress = shippingMethod.value === 'ADC - All Day Courier' || shippingMethod.value === 'FedEx Delivery';
         trackingField.hidden = !needsTracking;
@@ -1229,6 +1237,10 @@
         addressInput.disabled = !showsAddress;
         addressInput.required = false;
         if (!showsAddress) addressInput.value = '';
+        bdoField.hidden = !showsAddress;
+        bdoInput.disabled = !showsAddress;
+        bdoInput.required = showsAddress;
+        if (!showsAddress) bdoInput.value = '';
         return;
       }
       const select = event.target.closest('[data-unresolved-action]');

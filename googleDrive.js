@@ -115,7 +115,7 @@ const CBS_HEADERS = [
   'Tracking Number',
   'Shipping Address',
   'Estimated Arrival Time',
-  'Shipping Method'
+  'BDO'
 ];
 let cbsSheetTitle = '';
 let cbsWorldTracerSheetTitle = '';
@@ -3158,8 +3158,8 @@ function cbsRecordFromSheet(values, rowNumber) {
   row.shippingAddress = values[35] || row.shippingAddress || '';
   // The RUSH-to-LAX estimated arrival time is always stored in column AK.
   row.estimatedArrivalTime = values[36] || row.estimatedArrivalTime || '';
-  // The selected delivery method is stored in column AL.
-  row.shippingMethod = values[37] || row.shippingMethod || '';
+  // The courier BDO reference is stored in column AL.
+  row.bdo = values[37] || row.bdo || '';
   row.caseType = row.caseType || values.find((value) => /^(AHL|DPR)$/i.test(String(value || '').trim())) || '';
   row.bagTag = row.bagTag || values[8] || extractCbsBagTagFromUpdateNote(row.updateNote) || values.find((value) => /^[A-Z]{2}\d{6,}(\s*\/\s*[A-Z]{2}\d{6,})*$/i.test(String(value || '').trim())) || '';
   row.submittedAt = row.submittedAt || row.submitDate || values[26] || '';
@@ -3224,7 +3224,7 @@ function cbsValuesFromRecord(record) {
     record.trackingNumber || '',
     record.shippingAddress || '',
     record.estimatedArrivalTime || '',
-    record.shippingMethod || ''
+    record.bdo || ''
   ];
 }
 
@@ -3634,7 +3634,7 @@ async function updateCbsCase(rowNumber, update = {}) {
     const shippingFields = new Map(update.updateEvent.fields || []);
     next.trackingNumber = sanitizeSheetText(shippingFields.get('Tracking Number'), 160).toUpperCase();
     next.shippingAddress = sanitizeSheetText(shippingFields.get('Ship To'), 300);
-    next.shippingMethod = sanitizeSheetText(shippingFields.get('Shipping Method'), 80);
+    next.bdo = sanitizeSheetText(shippingFields.get('BDO'), 160).toUpperCase();
   }
   if (update.updateEvent?.key === 'information') {
     const informationFields = new Map(update.updateEvent.fields || []);
