@@ -31,7 +31,7 @@ test('On-hand cases match the passenger case layout and support WorldTracer prog
 
 test('On-hand shipping uses the Passenger Filed delivery methods without email handling', () => {
   const onHandFields = page.match(/if \(action === 'shipped'\) return `([\s\S]*?)`;/)?.[1] || '';
-  for (const method of ['ADC - All Day Courier', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping']) assert.match(onHandFields, new RegExp(method));
+  for (const method of ['ADC - All Day Courier', 'BDO', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping']) assert.match(onHandFields, new RegExp(method));
   assert.match(onHandFields, /data-shipping-tracking hidden/);
   assert.match(onHandFields, /data-shipping-address hidden/);
   assert.match(server, /if \(action === 'shipped'\) \{/);
@@ -115,7 +115,8 @@ test('CBS tracking no longer offers Forward to MU', () => {
 
 test('shipping updates offer all supported delivery methods', () => {
   assert.match(page, /select name="shippingMethod" data-shipping-method required/);
-  for (const method of ['ADC - All Day Courier', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping']) assert.match(page, new RegExp(`<option>${method}<\\/option>`));
+  for (const method of ['ADC - All Day Courier', 'BDO', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping']) assert.match(page, new RegExp(`<option>${method}<\\/option>`));
+  assert.match(page, /<option>ADC - All Day Courier<\/option><option>BDO<\/option>/);
   assert.match(page, /data-shipping-tracking placeholder="Tracking number" disabled hidden/);
   assert.match(page, /needsTracking = shippingMethod\.value === 'FedEx Delivery'/);
   assert.match(page, /trackingInput\.required = needsTracking/);
