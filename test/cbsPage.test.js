@@ -8,6 +8,11 @@ const pirForm = fs.readFileSync(path.join(__dirname, '..', 'public', 'public', '
 const drive = fs.readFileSync(path.join(__dirname, '..', 'googleDrive.js'), 'utf8');
 const server = fs.readFileSync(path.join(__dirname, '..', 'index.js'), 'utf8');
 
+test('CBS page uses the Lake Baggage System browser title', () => {
+  assert.match(page, /<title>Lake Baggage System<\/title>/);
+  assert.doesNotMatch(page, /<title>CBS Cases<\/title>/);
+});
+
 test('Add On-hand records are added to and displayed in Open Case', () => {
   assert.match(drive, /CBS_UNRESOLVED_BAGGAGE_SHEET_GID = Number\(process\.env\.CBS_UNRESOLVED_BAGGAGE_SHEET_GID \|\| 523026916\)/);
   assert.match(page, /title="Add On-hand"/);
