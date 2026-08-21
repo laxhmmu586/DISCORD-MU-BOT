@@ -755,7 +755,7 @@
       if (!row.rowNumber) return `<p class="status err">${label('A saved row is required before this case can be updated.', '案件保存后才能更新。')}</p>`;
       const active = ['worldtracer', 'requested_bags', 'rush', 'location', 'shipping', 'lost', 'closed'].includes(mode) ? mode : 'worldtracer';
       const input = (title, name, attrs = 'required') => `<label><span>${escapeHtml(title)}</span><input name="${escapeHtml(name)}" ${attrs} /></label>`;
-      const shippingMethodSelect = `<label><span>Delivery method</span><select name="shippingMethod" data-shipping-method required><option value="">Select delivery method</option><option>ADC - All Day Courier</option><option>FedEx Delivery</option><option>Pick Up at Airport</option><option>Passenger Pay for Shipping</option></select></label>`;
+      const shippingMethodSelect = `<label><span>Delivery method</span><select name="shippingMethod" data-shipping-method required><option value="">Select delivery method</option><option>ADC - All Day Courier</option><option>BDO</option><option>FedEx Delivery</option><option>Pick Up at Airport</option><option>Passenger Pay for Shipping</option></select></label>`;
       const shippingTrackingInput = `<label data-shipping-tracking hidden><span>Tracking number</span><input name="trackingNumber" disabled /></label>`;
       const shippingAddressInput = `<label data-shipping-address hidden><span>Shipping to where?</span><input name="shippingTo" disabled /></label>`;
       const shippingBdoInput = `<label data-shipping-bdo hidden><span>BDO</span><input name="bdo" disabled /></label>`;
@@ -854,7 +854,7 @@
     }
     function inlineUpdateFieldsHtml(key) {
       const input = (placeholder, name, required = true) => `<input name="${escapeHtml(name)}" placeholder="${escapeHtml(placeholder)}" ${required ? 'required' : ''} />`;
-      const shippingMethodSelect = '<select name="shippingMethod" data-shipping-method required><option value="">Select delivery method</option><option>ADC - All Day Courier</option><option>FedEx Delivery</option><option>Pick Up at Airport</option><option>Passenger Pay for Shipping</option></select>';
+      const shippingMethodSelect = '<select name="shippingMethod" data-shipping-method required><option value="">Select delivery method</option><option>ADC - All Day Courier</option><option>BDO</option><option>FedEx Delivery</option><option>Pick Up at Airport</option><option>Passenger Pay for Shipping</option></select>';
       const shippingTrackingInput = '<input name="trackingNumber" data-shipping-tracking placeholder="Tracking number" disabled hidden />';
       const shippingAddressInput = '<input name="shippingTo" data-shipping-address placeholder="Shipping to where?" disabled hidden />';
       const shippingBdoInput = '<input name="bdo" data-shipping-bdo placeholder="BDO" disabled hidden />';
