@@ -3470,6 +3470,18 @@ async function resolveCbsUnresolvedBaggageCase(rowNumber, resolution, resolution
   return { updated: true, record: { ...target, resolution, resolutionNote, resolvedAt } };
 }
 
+async function reopenCbsUnresolvedBaggageCase(rowNumber) {
+  const rows = await getCbsUnresolvedBaggageCases({ includeResolved: true });
+  const target = rows.find((row) => Number(row.rowNumber) === Number(rowNumber));
+  if (!target) return { updated: false, notFound: true };
+  const title = await getCbsUnresolvedBaggageSheetTitle();
+  await sheets.spreadsheets.values.clear({
+    spreadsheetId: CBS_SHEET_ID,
+    range: `${escapeSheetTitle(title)}!I${target.rowNumber}:K${target.rowNumber}`
+  });
+  return { updated: true, record: { ...target, resolution: '', resolutionNote: '', resolvedAt: '' } };
+}
+
 async function updateCbsUnresolvedBaggageWorldTracer(rowNumber, worldTracerFileNumber) {
   const rows = await getCbsUnresolvedBaggageCases({ includeResolved: true });
   const target = rows.find((row) => Number(row.rowNumber) === Number(rowNumber));
@@ -4183,6 +4195,7 @@ module.exports = {
   getCbsUnresolvedBaggageCases,
   updateCbsUnresolvedBaggageWorldTracer,
   resolveCbsUnresolvedBaggageCase,
+  reopenCbsUnresolvedBaggageCase,
   getCbsCases,
   updateCbsCase,
   getCbsMissingBagReports,

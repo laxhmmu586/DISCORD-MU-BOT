@@ -71,6 +71,7 @@ const {
   getCbsUnresolvedBaggageCases,
   updateCbsUnresolvedBaggageWorldTracer,
   resolveCbsUnresolvedBaggageCase,
+  reopenCbsUnresolvedBaggageCase,
   getCbsCases,
   updateCbsCase,
   getCbsMissingBagReports,
@@ -2528,8 +2529,13 @@ app.get('/cbs-unresolved-baggage', async (req, res) => {
 app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
   try {
     const action = sanitizeCbsText(req.body?.action, 40).toLowerCase();
-    if (!['worldtracer', 'on-hand-rush', 'passenger-collected', 'shipped', 'other'].includes(action)) return res.status(400).json({ error: 'A valid resolution is required' });
+    if (!['worldtracer', 'reopen', 'on-hand-rush', 'passenger-collected', 'shipped', 'other'].includes(action)) return res.status(400).json({ error: 'A valid resolution is required' });
     const note = sanitizeCbsText(req.body?.note, 500);
+    if (action === 'reopen') {
+      const result = await reopenCbsUnresolvedBaggageCase(req.params.rowNumber);
+      if (result.notFound) return res.status(404).json({ error: 'On-hand case not found' });
+      return res.json(result);
+    }
     if (action === 'worldtracer') {
       const worldTracerFileNumber = sanitizeCbsText(req.body?.worldTracerFileNumber, 120).toUpperCase();
       if (!worldTracerFileNumber) return res.status(400).json({ error: 'WorldTracer file number is required' });

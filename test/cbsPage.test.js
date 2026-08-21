@@ -40,6 +40,16 @@ test('completed On-hand cases move from Open Case to Closed Case', () => {
   assert.doesNotMatch(server, /rows\.filter\(\(row\) => String\(row\.resolution \|\| ''\)\.toLowerCase\(\) !== 'on-hand-rush'/);
 });
 
+test('Closed On-hand cases can update WorldTracer or reopen', () => {
+  assert.match(page, /<option value="worldtracer">Update WorldTracer<\/option><option value="reopen">Reopen<\/option>/);
+  assert.match(page, /if \(action === 'reopen'\) return '<p class="muted wide">Reopen this case and return it to Open Case\.<\/p>'/);
+  assert.match(page, /value="\$\{escapeHtml\(worldTracerFileNumber\)\}" required/);
+  assert.match(server, /if \(action === 'reopen'\) \{/);
+  assert.match(server, /reopenCbsUnresolvedBaggageCase\(req\.params\.rowNumber\)/);
+  assert.match(drive, /async function reopenCbsUnresolvedBaggageCase\(rowNumber\)/);
+  assert.match(drive, /!I\$\{target\.rowNumber\}:K\$\{target\.rowNumber\}/);
+});
+
 test('On-hand shipping uses the Passenger Filed delivery methods without email handling', () => {
   const onHandFields = page.match(/if \(action === 'shipped'\) return `([\s\S]*?)`;/)?.[1] || '';
   for (const method of ['ADC - All Day Courier', 'BDO', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping']) assert.match(onHandFields, new RegExp(method));
