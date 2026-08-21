@@ -29,12 +29,15 @@ test('On-hand cases match the passenger case layout and support WorldTracer prog
   assert.match(server, /action === 'worldtracer'/);
 });
 
-test('Passenger-collected On-hand cases move from Open Case to Closed Case', () => {
-  assert.match(page, /const passengerCollected = Boolean\(row\.resolvedAt\) && String\(row\.resolution \|\| ''\)\.toLowerCase\(\) === 'passenger-collected'/);
-  assert.match(page, /return showClosed \? passengerCollected : !passengerCollected/);
+test('completed On-hand cases move from Open Case to Closed Case', () => {
+  assert.match(page, /new Set\(\['on-hand-rush', 'shipped', 'passenger-collected'\]\)/);
+  assert.match(page, /const archived = Boolean\(row\.resolvedAt\) && archivedResolutions\.has\(String\(row\.resolution \|\| ''\)\.toLowerCase\(\)\)/);
+  assert.match(page, /return showClosed \? archived : !archived/);
   assert.match(page, /onHandGroup\.hidden = false/);
   assert.match(page, /section === 'closed' \? 'Closed On-hand' : 'On-hand'/);
   assert.match(page, /renderUnresolvedBaggage\(window\._unresolvedBaggageSourceRows \|\| \[\]\)/);
+  assert.match(server, /return res\.json\(\{ rows \}\)/);
+  assert.doesNotMatch(server, /rows\.filter\(\(row\) => String\(row\.resolution \|\| ''\)\.toLowerCase\(\) !== 'on-hand-rush'/);
 });
 
 test('On-hand shipping uses the Passenger Filed delivery methods without email handling', () => {

@@ -366,11 +366,11 @@
       if (isCaseSection) {
         window._caseView = section;
         casePageTitle.innerHTML = section === 'closed' ? '<span class="en">Closed Case</span><span class="zh">已结案件</span>' : '<span class="en">Open Case</span><span class="zh">未结案件</span>';
-        casePageDescription.textContent = section === 'closed' ? 'Closed Passenger Filed and Passenger-collected On-hand cases are shown here.' : 'Passenger Filed and On-hand files are shown together on this page.';
+        casePageDescription.textContent = section === 'closed' ? 'Closed Passenger Filed and completed On-hand cases are shown here.' : 'Passenger Filed and On-hand files are shown together on this page.';
         onHandGroup.hidden = false;
         onHandTitle.textContent = section === 'closed' ? 'Closed On-hand' : 'On-hand';
         onHandDescription.textContent = section === 'closed'
-          ? 'On-hand cases closed with Passenger collected are archived here.'
+          ? 'On-hand cases completed by Create Rush, Shipping, or Passenger collected are archived here.'
           : 'Passenger bags entered as inbound and not-loaded outbound bags remain here until resolved.';
         if (window._unresolvedBaggageLoaded) renderUnresolvedBaggage(window._unresolvedBaggageSourceRows || []);
         renderCases();
@@ -447,8 +447,9 @@
       window._unresolvedBaggageSourceRows = rows;
       const showClosed = window._caseView === 'closed';
       rows = rows.filter((row) => {
-        const passengerCollected = Boolean(row.resolvedAt) && String(row.resolution || '').toLowerCase() === 'passenger-collected';
-        return showClosed ? passengerCollected : !passengerCollected;
+        const archivedResolutions = new Set(['on-hand-rush', 'shipped', 'passenger-collected']);
+        const archived = Boolean(row.resolvedAt) && archivedResolutions.has(String(row.resolution || '').toLowerCase());
+        return showClosed ? archived : !archived;
       });
       const rowsByTag = new Map();
       rows.forEach((row) => {
