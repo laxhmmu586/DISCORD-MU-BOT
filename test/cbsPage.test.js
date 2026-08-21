@@ -29,6 +29,14 @@ test('On-hand cases match the passenger case layout and support WorldTracer prog
   assert.match(server, /action === 'worldtracer'/);
 });
 
+test('Passenger-collected On-hand cases move from Open Case to Closed Case', () => {
+  assert.match(page, /const passengerCollected = Boolean\(row\.resolvedAt\) && String\(row\.resolution \|\| ''\)\.toLowerCase\(\) === 'passenger-collected'/);
+  assert.match(page, /return showClosed \? passengerCollected : !passengerCollected/);
+  assert.match(page, /onHandGroup\.hidden = false/);
+  assert.match(page, /section === 'closed' \? 'Closed On-hand' : 'On-hand'/);
+  assert.match(page, /renderUnresolvedBaggage\(window\._unresolvedBaggageSourceRows \|\| \[\]\)/);
+});
+
 test('On-hand shipping uses the Passenger Filed delivery methods without email handling', () => {
   const onHandFields = page.match(/if \(action === 'shipped'\) return `([\s\S]*?)`;/)?.[1] || '';
   for (const method of ['ADC - All Day Courier', 'BDO', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping']) assert.match(onHandFields, new RegExp(method));
