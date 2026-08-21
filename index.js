@@ -2526,6 +2526,31 @@ app.get('/cbs-unresolved-baggage', async (req, res) => {
   }
 });
 
+async function syncOnHandStatusToBaggage(record, action, body = {}) {
+  if (!record?.bagTag) return;
+  const statuses = {
+    worldtracer: 'WorldTracer Updated',
+    reopen: 'Reopened',
+    'on-hand-rush': 'Create Rush',
+    'passenger-collected': 'Passenger Collected / Case Closed',
+    shipped: 'Shipped',
+    other: 'Other'
+  };
+  try {
+    await updateTestBaggageRecord(record.bagTag, {
+      type: 'cbs',
+      eventType: action,
+      status: statuses[action] || action,
+      updatedBy: sanitizeCbsText(body.updatedBy, 160),
+      worldTracerFileNumber: sanitizeCbsText(body.worldTracerFileNumber, 120).toUpperCase(),
+      trackingNumber: sanitizeCbsText(body.trackingNumber, 160).toUpperCase(),
+      comment: sanitizeCbsText(body.note || body.comment, 500)
+    });
+  } catch (err) {
+    console.warn('CBS On-hand baggage status sync skipped:', err?.message || err);
+  }
+}
+
 app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
   try {
     const action = sanitizeCbsText(req.body?.action, 40).toLowerCase();
@@ -2534,6 +2559,7 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
     if (action === 'reopen') {
       const result = await reopenCbsUnresolvedBaggageCase(req.params.rowNumber);
       if (result.notFound) return res.status(404).json({ error: 'On-hand case not found' });
+      await syncOnHandStatusToBaggage(result.record, action, req.body);
       return res.json(result);
     }
     if (action === 'worldtracer') {
@@ -2541,6 +2567,7 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
       if (!worldTracerFileNumber) return res.status(400).json({ error: 'WorldTracer file number is required' });
       const result = await updateCbsUnresolvedBaggageWorldTracer(req.params.rowNumber, worldTracerFileNumber, sanitizeCbsText(req.body?.updatedBy, 160));
       if (result.notFound) return res.status(404).json({ error: 'Unresolved baggage case not found' });
+      await syncOnHandStatusToBaggage(result.record, action, req.body);
       return res.json(result);
     }
     if (action === 'on-hand-rush') {
@@ -2577,6 +2604,7 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
     if (updatedBy) resolutionNote = `${resolutionNote} | Updated by: ${updatedBy}`;
     const result = await resolveCbsUnresolvedBaggageCase(req.params.rowNumber, action, resolutionNote);
     if (result.notFound) return res.status(404).json({ error: 'Unresolved baggage case not found' });
+    await syncOnHandStatusToBaggage(result.record, action, req.body);
     return res.json(result);
   } catch (err) {
     console.error('CBS unresolved baggage update error:', err);

@@ -45,6 +45,19 @@ test('completed On-hand cases move from Open Case to Closed Case', () => {
   assert.doesNotMatch(server, /rows\.filter\(\(row\) => String\(row\.resolution \|\| ''\)\.toLowerCase\(\) !== 'on-hand-rush'/);
 });
 
+test('On-hand progress updates sync to the home-page baggage search', () => {
+  assert.match(server, /async function syncOnHandStatusToBaggage\(record, action, body = \{\}\)/);
+  for (const status of ['WorldTracer Updated', 'Reopened', 'Create Rush', 'Passenger Collected / Case Closed', 'Shipped', 'Other']) {
+    assert.match(server, new RegExp(status.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+  assert.match(server, /await updateTestBaggageRecord\(record\.bagTag, \{/);
+  assert.match(server, /type: 'cbs'/);
+  assert.equal((server.match(/await syncOnHandStatusToBaggage\(result\.record, action, req\.body\)/g) || []).length, 3);
+  assert.match(drive, /else if \(updateType === 'cbs'\)/);
+  assert.match(drive, /next\.status = sanitizeSheetText\(update\.status, 120\)/);
+  assert.match(drive, /type: sanitizeSheetText\(update\.eventType, 80\) \|\| updateType/);
+});
+
 test('Other On-hand updates remain actionable in Open Case', () => {
   assert.match(page, /const active = row\.history\.find\(\(item\) => !item\.resolvedAt \|\| String\(item\.resolution \|\| ''\)\.toLowerCase\(\) === 'other'\)/);
   assert.match(page, /const formHtml = active/);

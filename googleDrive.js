@@ -920,6 +920,17 @@ async function updateTestBaggageRecord(bagTag, update) {
       trackingNumber: next.trackingNumber,
       shippingFee: next.shippingFee
     });
+  } else if (updateType === 'cbs') {
+    next.status = sanitizeSheetText(update.status, 120) || next.status;
+    next.worldTracerFileNumber = sanitizeSheetText(update.worldTracerFileNumber, 120) || next.worldTracerFileNumber;
+    next.trackingNumber = sanitizeSheetText(update.trackingNumber, 160) || next.trackingNumber;
+    next.comment = sanitizeSheetText(update.comment, 500);
+    Object.assign(details, {
+      status: next.status,
+      worldTracerFileNumber: next.worldTracerFileNumber,
+      trackingNumber: next.trackingNumber,
+      comment: next.comment
+    });
   } else {
     throw new Error('Invalid update type');
   }
@@ -929,7 +940,7 @@ async function updateTestBaggageRecord(bagTag, update) {
   next.history = [
     ...next.history,
     {
-      type: updateType,
+      type: sanitizeSheetText(update.eventType, 80) || updateType,
       by: updatedBy,
       at: now,
       details
