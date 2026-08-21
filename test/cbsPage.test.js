@@ -29,6 +29,17 @@ test('On-hand cases match the passenger case layout and support WorldTracer prog
   assert.match(server, /action === 'worldtracer'/);
 });
 
+test('completed On-hand cases move from Open Case to Closed Case', () => {
+  assert.match(page, /new Set\(\['on-hand-rush', 'shipped', 'passenger-collected'\]\)/);
+  assert.match(page, /const archived = Boolean\(row\.resolvedAt\) && archivedResolutions\.has\(String\(row\.resolution \|\| ''\)\.toLowerCase\(\)\)/);
+  assert.match(page, /return showClosed \? archived : !archived/);
+  assert.match(page, /onHandGroup\.hidden = false/);
+  assert.match(page, /section === 'closed' \? 'Closed On-hand' : 'On-hand'/);
+  assert.match(page, /renderUnresolvedBaggage\(window\._unresolvedBaggageSourceRows \|\| \[\]\)/);
+  assert.match(server, /return res\.json\(\{ rows \}\)/);
+  assert.doesNotMatch(server, /rows\.filter\(\(row\) => String\(row\.resolution \|\| ''\)\.toLowerCase\(\) !== 'on-hand-rush'/);
+});
+
 test('On-hand shipping uses the Passenger Filed delivery methods without email handling', () => {
   const onHandFields = page.match(/if \(action === 'shipped'\) return `([\s\S]*?)`;/)?.[1] || '';
   for (const method of ['ADC - All Day Courier', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping']) assert.match(onHandFields, new RegExp(method));
@@ -116,12 +127,16 @@ test('CBS tracking no longer offers Forward to MU', () => {
 test('shipping updates offer all supported delivery methods', () => {
   assert.match(page, /select name="shippingMethod" data-shipping-method required/);
   for (const method of ['ADC - All Day Courier', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping']) assert.match(page, new RegExp(`<option>${method}<\\/option>`));
+  assert.doesNotMatch(page, /<option>BDO<\/option>/);
+  assert.match(page, /data-shipping-bdo/);
+  assert.match(page, /name="bdo"/);
   assert.match(page, /data-shipping-tracking placeholder="Tracking number" disabled hidden/);
   assert.match(page, /needsTracking = shippingMethod\.value === 'FedEx Delivery'/);
   assert.match(page, /trackingInput\.required = needsTracking/);
   assert.match(page, /showsAddress = shippingMethod\.value === 'ADC - All Day Courier' \|\| shippingMethod\.value === 'FedEx Delivery'/);
   assert.doesNotMatch(page, /\['ADC - All Day Courier', 'FedEx Delivery', 'Passenger Pay for Shipping'\]\.includes/);
   assert.match(page, /addressInput\.required = false/);
+  assert.match(page, /bdoInput\.required = showsAddress/);
 });
 
 test('CBS passenger detail view can recover values from the original form snapshot', () => {

@@ -268,8 +268,8 @@
         <div id="cases-output"><p class="muted">Loading passenger files...</p></div>
       </section>
       <section class="open-case-group" id="on-hand-group">
-        <h2>On-hand</h2>
-        <p class="muted">Passenger bags entered as inbound and not-loaded outbound bags remain here until resolved.</p>
+        <h2 id="on-hand-title">On-hand</h2>
+        <p class="muted" id="on-hand-description">Passenger bags entered as inbound and not-loaded outbound bags remain here until resolved.</p>
         <div id="unresolved-baggage-output"><p class="muted">Loading On-hand cases...</p></div>
       </section>
     </section>
@@ -340,6 +340,8 @@
     const addBaggageOutput = document.querySelector('#add-baggage-output');
     const baggageChartTab = document.querySelector('#baggage-chart-tab');
     const baggageChartCard = document.querySelector('#baggage-chart-card');
+    const onHandTitle = document.querySelector('#on-hand-title');
+    const onHandDescription = document.querySelector('#on-hand-description');
     const backToCases = document.querySelector('#back-to-cases');
     const sidebarToggle = document.querySelector('#sidebar-toggle');
     const sidebarRefresh = document.querySelector('#sidebar-refresh');
@@ -364,8 +366,13 @@
       if (isCaseSection) {
         window._caseView = section;
         casePageTitle.innerHTML = section === 'closed' ? '<span class="en">Closed Case</span><span class="zh">已结案件</span>' : '<span class="en">Open Case</span><span class="zh">未结案件</span>';
-        casePageDescription.textContent = section === 'closed' ? 'All closed Passenger Filed cases are shown here.' : 'Passenger Filed and On-hand files are shown together on this page.';
-        onHandGroup.hidden = section === 'closed';
+        casePageDescription.textContent = section === 'closed' ? 'Closed Passenger Filed and completed On-hand cases are shown here.' : 'Passenger Filed and On-hand files are shown together on this page.';
+        onHandGroup.hidden = false;
+        onHandTitle.textContent = section === 'closed' ? 'Closed On-hand' : 'On-hand';
+        onHandDescription.textContent = section === 'closed'
+          ? 'On-hand cases completed by Create Rush, Shipping, or Passenger collected are archived here.'
+          : 'Passenger bags entered as inbound and not-loaded outbound bags remain here until resolved.';
+        if (window._unresolvedBaggageLoaded) renderUnresolvedBaggage(window._unresolvedBaggageSourceRows || []);
         renderCases();
       }
     }
@@ -426,7 +433,7 @@
     function unresolvedUpdateFieldsHtml(action, bagTag, worldTracerFileNumber = '') {
       if (action === 'worldtracer') return `<label class="wide"><span>WorldTracer File Number</span><input name="worldTracerFileNumber" required /></label>`;
       if (action === 'on-hand-rush') return `${worldTracerFileNumber ? `<input type="hidden" name="worldTracerFileNumber" value="${escapeHtml(worldTracerFileNumber)}" />` : '<label><span>WorldTracer File Number (Optional)</span><input name="worldTracerFileNumber" placeholder="Can be added later" /></label>'}<label><span>Original Tag Number</span><input name="originalTagNumber" value="${escapeHtml(bagTag)}" required /></label><label><span>RUSH Tag Number</span><input name="rushTagNumber" required /></label><div class="rush-itinerary wide"><div class="rush-itinerary-head"><h2>RUSH Itinerary</h2><button class="secondary" type="button" data-add-unresolved-flight>+ Add Flight</button></div><div data-unresolved-flight-rows>${rushFlightRowHtml()}</div></div>`;
-      if (action === 'shipped') return `<label><span>Delivery method</span><select name="shippingMethod" data-shipping-method required><option value="">Select delivery method</option><option>ADC - All Day Courier</option><option>FedEx Delivery</option><option>Pick Up at Airport</option><option>Passenger Pay for Shipping</option></select></label><label data-shipping-tracking hidden><span>Tracking number</span><input name="trackingNumber" disabled /></label><label data-shipping-address hidden><span>Shipping to where?</span><input name="shippingTo" disabled /></label><label class="wide"><span>Comment</span><textarea name="comment"></textarea></label>`;
+      if (action === 'shipped') return `<label><span>Delivery method</span><select name="shippingMethod" data-shipping-method required><option value="">Select delivery method</option><option>ADC - All Day Courier</option><option>FedEx Delivery</option><option>Pick Up at Airport</option><option>Passenger Pay for Shipping</option></select></label><label data-shipping-tracking hidden><span>Tracking number</span><input name="trackingNumber" disabled /></label><label data-shipping-address hidden><span>Shipping to where?</span><input name="shippingTo" disabled /></label><label data-shipping-bdo hidden><span>BDO</span><input name="bdo" disabled /></label><label class="wide"><span>Comment</span><textarea name="comment"></textarea></label>`;
       const placeholder = action === 'passenger-collected' ? 'Who collected the bag?' : 'Describe how this case was resolved';
       return `<label class="wide"><span>Resolution Note</span><textarea name="note" placeholder="${placeholder}" required></textarea></label>`;
     }
@@ -437,6 +444,13 @@
       return `<div class="tracking-workspace"><p class="tracking-current-time"><strong>${label('Case Progress', '案件进度')}</strong></p><div class="tracking-history">${events.slice().reverse().map((item, index) => `<span class="tracking-chip${index === 0 ? ' is-latest' : ''}${row.resolvedAt && index === 0 ? ' is-closed' : ''}"><span class="tracking-step-number">${events.length - index}</span><span class="tracking-chip-title">${escapeHtml(item.title)}</span>${item.at ? `<small>${escapeHtml(new Date(item.at).toLocaleString())}</small>` : ''}${item.detail ? `<span class="tracking-chip-detail">${escapeHtml(item.detail)}</span>` : ''}</span>`).join('')}</div></div>`;
     }
     function renderUnresolvedBaggage(rows = []) {
+      window._unresolvedBaggageSourceRows = rows;
+      const showClosed = window._caseView === 'closed';
+      rows = rows.filter((row) => {
+        const archivedResolutions = new Set(['on-hand-rush', 'shipped', 'passenger-collected']);
+        const archived = Boolean(row.resolvedAt) && archivedResolutions.has(String(row.resolution || '').toLowerCase());
+        return showClosed ? archived : !archived;
+      });
       const rowsByTag = new Map();
       rows.forEach((row) => {
         const tag = String(row.bagTag || '').trim().toUpperCase();
@@ -450,7 +464,7 @@
       }).sort((a, b) => Number(Boolean(a.history.find((item) => !item.resolvedAt))) === Number(Boolean(b.history.find((item) => !item.resolvedAt))) ? 0 : (a.history.find((item) => !item.resolvedAt) ? -1 : 1));
       window._unresolvedBaggageRows = rows;
       window._unresolvedBaggageLoaded = true;
-      if (!rows.length) { unresolvedBaggageOutput.innerHTML = '<p class="muted">No On-hand baggage cases.</p>'; return; }
+      if (!rows.length) { unresolvedBaggageOutput.innerHTML = `<p class="muted">${showClosed ? 'No closed On-hand baggage cases.' : 'No On-hand baggage cases.'}</p>`; return; }
       unresolvedBaggageOutput.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:190px"><col style="width:150px"><col style="width:120px"><col style="width:130px"><col style="width:180px"><col></colgroup><thead><tr><th>WorldTracer File Number</th><th>Bag Tag</th><th>Direction</th><th>Date</th><th>Type / Status</th><th>Location</th></tr></thead><tbody>${rows.map((row) => {
         const resolvedHistory = row.history.filter((item) => item.resolvedAt);
         const active = row.history.find((item) => !item.resolvedAt);
@@ -736,6 +750,7 @@
       const shippingMethodSelect = `<label><span>Delivery method</span><select name="shippingMethod" data-shipping-method required><option value="">Select delivery method</option><option>ADC - All Day Courier</option><option>FedEx Delivery</option><option>Pick Up at Airport</option><option>Passenger Pay for Shipping</option></select></label>`;
       const shippingTrackingInput = `<label data-shipping-tracking hidden><span>Tracking number</span><input name="trackingNumber" disabled /></label>`;
       const shippingAddressInput = `<label data-shipping-address hidden><span>Shipping to where?</span><input name="shippingTo" disabled /></label>`;
+      const shippingBdoInput = `<label data-shipping-bdo hidden><span>BDO</span><input name="bdo" disabled /></label>`;
       const fields = active === 'worldtracer'
         ? input('File number', 'fileNumber')
         : active === 'rush'
@@ -748,7 +763,7 @@
           : active === 'location'
           ? [input('Bag location', 'location'), `<label class="wide"><span>Comment</span><textarea name="comment"></textarea></label>`].join('')
           : active === 'shipping'
-          ? [shippingMethodSelect, shippingTrackingInput, shippingAddressInput, `<label class="wide"><span>Comment</span><textarea name="comment"></textarea></label>`].join('')
+          ? [shippingMethodSelect, shippingTrackingInput, shippingAddressInput, shippingBdoInput, `<label class="wide"><span>Comment</span><textarea name="comment"></textarea></label>`].join('')
           : active === 'lost'
           ? ''
           : `<label class="wide"><span>Comment</span><textarea name="comment" placeholder="Optional close note"></textarea></label>`;
@@ -834,12 +849,13 @@
       const shippingMethodSelect = '<select name="shippingMethod" data-shipping-method required><option value="">Select delivery method</option><option>ADC - All Day Courier</option><option>FedEx Delivery</option><option>Pick Up at Airport</option><option>Passenger Pay for Shipping</option></select>';
       const shippingTrackingInput = '<input name="trackingNumber" data-shipping-tracking placeholder="Tracking number" disabled hidden />';
       const shippingAddressInput = '<input name="shippingTo" data-shipping-address placeholder="Shipping to where?" disabled hidden />';
+      const shippingBdoInput = '<input name="bdo" data-shipping-bdo placeholder="BDO" disabled hidden />';
       if (key === 'worldtracer') return input('File number', 'fileNumber');
       if (key === 'information') return ['<select name="informationType" required><option value="rush_to_lax">Baggage Transfer Status Update</option></select>', '<label><span>Estimated arrival date</span><input name="estimatedArrivalTime" type="date" required /></label>'].join('');
       if (key === 'requested_bags') return input('From which station?', 'fromStation');
       if (key === 'rush') return [input('Rush tag number', 'rushTagNumber'), input('Rush to where?', 'rushToWhere'), input('World Tracer file # (optional)', 'worldTracerFileNumber', false), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
       if (key === 'location') return [input('Bag location', 'location'), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
-      if (key === 'shipping') return [shippingMethodSelect, shippingTrackingInput, shippingAddressInput, '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
+      if (key === 'shipping') return [shippingMethodSelect, shippingTrackingInput, shippingAddressInput, shippingBdoInput, '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
       if (key === 'lost') return '';
       if (key === 'closed') return '<textarea name="comment" placeholder="Close note (optional)"></textarea>';
       return '';
@@ -1020,12 +1036,16 @@
         const trackingInput = trackingField?.matches('input') ? trackingField : trackingField?.querySelector('input');
         const addressField = form?.querySelector('[data-shipping-address]');
         const addressInput = addressField?.matches('input') ? addressField : addressField?.querySelector('input');
+        const bdoField = form?.querySelector('[data-shipping-bdo]');
+        const bdoInput = bdoField?.matches('input') ? bdoField : bdoField?.querySelector('input');
         const needsTracking = shippingMethod.value === 'FedEx Delivery';
         const showsAddress = shippingMethod.value === 'ADC - All Day Courier' || shippingMethod.value === 'FedEx Delivery';
         if (trackingField) trackingField.hidden = !needsTracking;
         if (trackingInput) { trackingInput.disabled = !needsTracking; trackingInput.required = needsTracking; if (!needsTracking) trackingInput.value = ''; }
         if (addressField) addressField.hidden = !showsAddress;
         if (addressInput) { addressInput.disabled = !showsAddress; addressInput.required = false; if (!showsAddress) addressInput.value = ''; }
+        if (bdoField) bdoField.hidden = !showsAddress;
+        if (bdoInput) { bdoInput.disabled = !showsAddress; bdoInput.required = showsAddress; if (!showsAddress) bdoInput.value = ''; }
         return;
       }
       const select = event.target.closest('[data-cbs-stage-select]');
@@ -1219,6 +1239,8 @@
         const trackingInput = trackingField.querySelector('input');
         const addressField = form.querySelector('[data-shipping-address]');
         const addressInput = addressField.querySelector('input');
+        const bdoField = form.querySelector('[data-shipping-bdo]');
+        const bdoInput = bdoField.querySelector('input');
         const needsTracking = shippingMethod.value === 'FedEx Delivery';
         const showsAddress = shippingMethod.value === 'ADC - All Day Courier' || shippingMethod.value === 'FedEx Delivery';
         trackingField.hidden = !needsTracking;
@@ -1229,6 +1251,10 @@
         addressInput.disabled = !showsAddress;
         addressInput.required = false;
         if (!showsAddress) addressInput.value = '';
+        bdoField.hidden = !showsAddress;
+        bdoInput.disabled = !showsAddress;
+        bdoInput.required = showsAddress;
+        if (!showsAddress) bdoInput.value = '';
         return;
       }
       const select = event.target.closest('[data-unresolved-action]');

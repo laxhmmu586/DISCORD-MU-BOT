@@ -2120,11 +2120,13 @@ function buildCbsUpdateFields(update = {}) {
   }
   const trackingNumber = sanitizeCbsText(update.trackingNumber, 160).toUpperCase();
   const shippingTo = sanitizeCbsText(update.shippingTo, 300);
+  const bdo = sanitizeCbsText(update.bdo, 160).toUpperCase();
   const shippingMethods = ['ADC - All Day Courier', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping'];
   const shippingMethod = shippingMethods.find((method) => method === sanitizeCbsText(update.shippingMethod, 80));
-  if (!shippingMethod || (shippingMethod === 'FedEx Delivery' && !trackingNumber)) return null;
+  const needsBdo = shippingMethod === 'ADC - All Day Courier' || shippingMethod === 'FedEx Delivery';
+  if (!shippingMethod || (shippingMethod === 'FedEx Delivery' && !trackingNumber) || (needsBdo && !bdo)) return null;
   const airportPickup = shippingMethod === 'Pick Up at Airport';
-  return { status: airportPickup ? 'Closed - Pick Up at Airport' : 'Shipping', updateNote: `SHIPPING | Method: ${shippingMethod}${trackingNumber ? ` | Tracking: ${trackingNumber}` : ''} | Ship to: ${shippingTo}${comment ? ` | Comment: ${comment}` : ''}`, updateEvent: { key: 'shipping', title: airportPickup ? 'Airport Pick Up - Case Closed' : 'Update Shipping', fields: [['Shipping Method', shippingMethod], ...(trackingNumber ? [['Tracking Number', trackingNumber]] : []), ['Ship To', shippingTo], ...(comment ? [['Comment', comment]] : [])] } };
+  return { status: airportPickup ? 'Closed - Pick Up at Airport' : 'Shipping', updateNote: `SHIPPING | Method: ${shippingMethod}${trackingNumber ? ` | Tracking: ${trackingNumber}` : ''} | Ship to: ${shippingTo}${bdo ? ` | BDO: ${bdo}` : ''}${comment ? ` | Comment: ${comment}` : ''}`, updateEvent: { key: 'shipping', title: airportPickup ? 'Airport Pick Up - Case Closed' : 'Update Shipping', fields: [['Shipping Method', shippingMethod], ...(trackingNumber ? [['Tracking Number', trackingNumber]] : []), ['Ship To', shippingTo], ...(bdo ? [['BDO', bdo]] : []), ...(comment ? [['Comment', comment]] : [])] } };
 }
 
 
@@ -2514,10 +2516,9 @@ app.post('/cbs-worldtracer-cases/update', async (req, res) => {
 app.get('/cbs-unresolved-baggage', async (req, res) => {
   try {
     const rows = await getCbsUnresolvedBaggageCases({ includeResolved: true });
-    // A Create Rush resolution is represented by the new Rush Bag record. Do not
-    // also keep a duplicate copy in On-hand; other completed resolutions remain
-    // available there as history.
-    return res.json({ rows: rows.filter((row) => String(row.resolution || '').toLowerCase() !== 'on-hand-rush') });
+    // Return completed On-hand records as well so the client can archive Create
+    // Rush, Shipped, and Passenger collected cases in the Closed Case view.
+    return res.json({ rows });
   } catch (err) {
     console.error('CBS On-hand baggage list error:', err);
     return res.status(500).json({ error: err?.message || 'On-hand baggage lookup failed' });
@@ -2553,12 +2554,15 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
       const shippingMethod = shippingMethods.find((method) => method === sanitizeCbsText(req.body?.shippingMethod, 80));
       const trackingNumber = sanitizeCbsText(req.body?.trackingNumber, 160);
       const shippingTo = sanitizeCbsText(req.body?.shippingTo, 500);
+      const bdo = sanitizeCbsText(req.body?.bdo, 160).toUpperCase();
       const comment = sanitizeCbsText(req.body?.comment, 500);
       if (!shippingMethod) return res.status(400).json({ error: 'A valid delivery method is required' });
       if (shippingMethod === 'FedEx Delivery' && !trackingNumber) return res.status(400).json({ error: 'A tracking number is required for FedEx Delivery' });
+      if ((shippingMethod === 'ADC - All Day Courier' || shippingMethod === 'FedEx Delivery') && !bdo) return res.status(400).json({ error: 'BDO is required for courier delivery' });
       const details = [`Method: ${shippingMethod}`];
       if (trackingNumber) details.push(`Tracking: ${trackingNumber}`);
       if (shippingTo) details.push(`Ship to: ${shippingTo}`);
+      if (bdo) details.push(`BDO: ${bdo}`);
       if (comment) details.push(`Comment: ${comment}`);
       resolutionNote = details.join(' | ');
     }
