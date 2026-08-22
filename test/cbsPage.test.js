@@ -128,6 +128,21 @@ test('CBS tracking offers the requested bags stage', () => {
   assert.match(page, /content:"CURRENT"/);
 });
 
+test('CBS tracking can request PVG open-bag authorization with the PDF form', () => {
+  assert.match(page, /key:'open_bag_authorization_pvg', text:'Require Open Bag Authorization at PVG'/);
+  assert.match(page, /The authorization form will be attached and emailed to the passenger/);
+  assert.match(page, /PVG open-bag authorization email/);
+  assert.match(server, /【需要您的授权】行李开箱检查通知/);
+  assert.match(server, /Authorization Required for Baggage Inspection at PVG/);
+  assert.match(server, /getCbsOpenBagAuthorizationPdf\(\)/);
+  assert.match(server, /pdfBuffer: authorizationForm\.buffer/);
+  assert.match(server, /filename: authorizationForm\.name/);
+  assert.match(drive, /\['0-Form', 'lost and found'\]/);
+  assert.match(drive, /name = '\$\{name\}' and mimeType = 'application\/pdf' and trashed = false and '\$\{parentId\}' in parents/);
+  assert.match(drive, /CBS_OPEN_BAG_AUTHORIZATION_FILE_ID/);
+  assert.doesNotMatch(server, /assets', 'Letter of Authorization\.pdf'/);
+});
+
 test('CBS tracking offers a compact baggage transfer update with a required arrival date', () => {
   assert.match(page, /key:'information', text:'Information'/);
   assert.match(page, /name="informationType" required><option value="rush_to_lax">Baggage Transfer Status Update/);
@@ -177,9 +192,10 @@ test('CBS tracking no longer offers Forward to MU', () => {
 });
 
 test('shipping updates offer all supported delivery methods', () => {
+  const passengerCaseShipping = page.match(/const shippingMethodSelect = '([^']+)'/)?.[1] || '';
   assert.match(page, /select name="shippingMethod" data-shipping-method required/);
   for (const method of ['ADC - All Day Courier', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping']) assert.match(page, new RegExp(`<option>${method}<\\/option>`));
-  assert.doesNotMatch(page, /<option>BDO<\/option>/);
+  assert.doesNotMatch(passengerCaseShipping, /<option>BDO<\/option>/);
   assert.match(page, /data-shipping-bdo/);
   assert.match(page, /name="bdo"/);
   assert.match(page, /data-shipping-tracking placeholder="Tracking number" disabled hidden/);
