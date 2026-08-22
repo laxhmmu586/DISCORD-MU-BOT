@@ -81,6 +81,7 @@ const {
   sendWrongBaggageCaseEmail,
   sendMisconnectionAssistanceEmail,
   getCbsBaggageChartImage,
+  getCbsOpenBagAuthorizationPdf,
   appendTransit240Record,
   appendCbsScanRecord,
   appendRecordScanRecord,
@@ -2826,14 +2827,14 @@ app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
       const record = result.record;
       const message = openBagAuthorizationPvgEmail(record);
       try {
-        const pdfBuffer = await fs.readFile(path.join(__dirname, 'assets', 'Letter of Authorization.pdf'));
+        const authorizationForm = await getCbsOpenBagAuthorizationPdf();
         result.email = await sendCbsCaseEmail({
           passengerEmail: record.email,
           subject: message.subject,
           html: message.html,
           text: message.text,
-          pdfBuffer,
-          filename: 'Letter of Authorization.pdf',
+          pdfBuffer: authorizationForm.buffer,
+          filename: authorizationForm.name,
           ccOperations: false
         });
       } catch (mailErr) {

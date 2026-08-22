@@ -4160,6 +4160,34 @@ async function getCbsBaggageChartImage(page) {
   return { buffer:Buffer.from(response.data), mimeType:file.mimeType || 'image/png', name:file.name || name };
 }
 
+async function getCbsOpenBagAuthorizationPdf() {
+  const name = 'Letter of Authorization.pdf';
+  let fileId = String(process.env.CBS_OPEN_BAG_AUTHORIZATION_FILE_ID || '').trim();
+  if (!fileId) {
+    let parentId = '';
+    for (const folderName of ['0-Form', 'lost and found']) {
+      const folder = await drive.files.list({
+        q: `name = '${folderName}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false${parentId ? ` and '${parentId}' in parents` : ''}`,
+        fields: 'files(id)',
+        pageSize: 1,
+        spaces: 'drive'
+      });
+      parentId = folder.data.files?.[0]?.id || '';
+      if (!parentId) throw new Error(`Google Drive folder ${folderName} was not found.`);
+    }
+    const file = await drive.files.list({
+      q: `name = '${name}' and mimeType = 'application/pdf' and trashed = false and '${parentId}' in parents`,
+      fields: 'files(id)',
+      pageSize: 1,
+      spaces: 'drive'
+    });
+    fileId = file.data.files?.[0]?.id || '';
+  }
+  if (!fileId) throw new Error(`${name} was not found in Google Drive.`);
+  const response = await drive.files.get({ fileId, alt:'media' }, { responseType:'arraybuffer' });
+  return { buffer:Buffer.from(response.data), mimeType:'application/pdf', name };
+}
+
 // ===============================
 // Exports
 // ===============================
@@ -4217,6 +4245,7 @@ module.exports = {
   sendWrongBaggageCaseEmail,
   sendMisconnectionAssistanceEmail,
   getCbsBaggageChartImage,
+  getCbsOpenBagAuthorizationPdf,
   appendTransit240Record,
   appendCbsScanRecord,
   appendRecordScanRecord,

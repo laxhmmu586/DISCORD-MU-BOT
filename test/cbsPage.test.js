@@ -134,9 +134,13 @@ test('CBS tracking can request PVG open-bag authorization with the PDF form', ()
   assert.match(page, /PVG open-bag authorization email/);
   assert.match(server, /【需要您的授权】行李开箱检查通知/);
   assert.match(server, /Authorization Required for Baggage Inspection at PVG/);
-  assert.match(server, /assets', 'Letter of Authorization\.pdf'/);
-  assert.match(server, /filename: 'Letter of Authorization\.pdf'/);
-  assert.ok(fs.statSync(path.join(__dirname, '..', 'assets', 'Letter of Authorization.pdf')).size > 0);
+  assert.match(server, /getCbsOpenBagAuthorizationPdf\(\)/);
+  assert.match(server, /pdfBuffer: authorizationForm\.buffer/);
+  assert.match(server, /filename: authorizationForm\.name/);
+  assert.match(drive, /\['0-Form', 'lost and found'\]/);
+  assert.match(drive, /name = '\$\{name\}' and mimeType = 'application\/pdf' and trashed = false and '\$\{parentId\}' in parents/);
+  assert.match(drive, /CBS_OPEN_BAG_AUTHORIZATION_FILE_ID/);
+  assert.doesNotMatch(server, /assets', 'Letter of Authorization\.pdf'/);
 });
 
 test('CBS tracking offers a compact baggage transfer update with a required arrival date', () => {
