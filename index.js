@@ -1649,6 +1649,15 @@ function requestedBagsUpdateEmail(record, fileNumber) {
   return { subject, text, html: cbsPlainTextEmailHtml(text.replace(fileNumber, reference)) };
 }
 
+function openBagAuthorizationPvgEmail(record) {
+  const chinese = cbsEmailIsChinese(record);
+  const subject = chinese ? '【需要您的授权】行李开箱检查通知' : 'Authorization Required for Baggage Inspection at PVG';
+  const text = chinese
+    ? '尊敬的旅客：\n\n您好！\n\n您的行李目前暂扣于上海浦东国际机场（PVG），需要进行开箱检查后方可继续安排后续运输。\n\n由于开箱检查需要获得您的本人授权，请您填写并签署附件中的授权表格，并尽快将填写完整的表格发送回给我们。\n\n收到您的授权后，我们会将相关文件转交上海浦东机场工作人员，以便尽快完成行李检查并安排后续运输。\n\n给您带来的不便，我们深表歉意，也感谢您的理解与配合。\n\n此致\n中国东方航空'
+    : 'Dear Passenger,\n\nYour baggage is currently being held at Shanghai Pudong International Airport (PVG) and requires an open-bag inspection before it can be released for further transportation.\n\nTo proceed with the inspection, your authorization is required.\n\nPlease complete and sign the attached authorization form and return the completed form to us as soon as possible. Once we receive your authorization, we will forward it to the appropriate team at PVG so they can proceed with the baggage inspection.\n\nWe appreciate your prompt cooperation and apologize for any inconvenience this may cause.\n\nSincerely,\nChina Eastern Airlines';
+  return { subject, text, html: cbsPlainTextEmailHtml(text) };
+}
+
 function formatRushArrivalTime(value, chinese = false) {
   const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!match) return String(value || '');
@@ -2080,7 +2089,7 @@ app.get('/miss-connection-report', async (req, res) => {
 
 function buildCbsUpdateFields(update = {}) {
   const type = sanitizeCbsText(update.type, 40).toLowerCase();
-  if (!['information', 'worldtracer', 'requested_bags', 'rush', 'location', 'shipping', 'lost', 'closed', 'reopen'].includes(type)) return null;
+  if (!['information', 'worldtracer', 'requested_bags', 'open_bag_authorization_pvg', 'rush', 'location', 'shipping', 'lost', 'closed', 'reopen'].includes(type)) return null;
   const comment = sanitizeCbsText(update.comment, 500);
   if (type === 'information') {
     const informationType = sanitizeCbsText(update.informationType, 40).toLowerCase();
@@ -2097,6 +2106,9 @@ function buildCbsUpdateFields(update = {}) {
     const fromStation = sanitizeCbsText(update.fromStation, 120).toUpperCase();
     if (!fromStation) return null;
     return { status: 'Requested Bags', updateNote: `REQUESTED BAGS | From station: ${fromStation}`, updateEvent: { key: 'requested_bags', title: 'Requested Bags', fields: [['From Station', fromStation]] } };
+  }
+  if (type === 'open_bag_authorization_pvg') {
+    return { status: 'Require Open Bag Authorization at PVG', updateNote: 'REQUIRE OPEN BAG AUTHORIZATION AT PVG | Authorization form emailed to passenger', updateEvent: { key: 'open_bag_authorization_pvg', title: 'Require Open Bag Authorization at PVG', fields: [['Airport', 'PVG'], ['Attachment', 'Letter of Authorization.pdf']] } };
   }
   if (type === 'rush') {
     const rushTagNumber = sanitizeCbsText(update.rushTagNumber, 80).toUpperCase();
@@ -2808,6 +2820,25 @@ app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
       } catch (mailErr) {
         result.emailError = cbsEmailErrorMessage(mailErr);
         console.error('CBS requested bags update email error:', mailErr);
+      }
+    }
+    if (updateFields.updateEvent?.key === 'open_bag_authorization_pvg') {
+      const record = result.record;
+      const message = openBagAuthorizationPvgEmail(record);
+      try {
+        const pdfBuffer = await fs.readFile(path.join(__dirname, 'assets', 'Letter of Authorization.pdf'));
+        result.email = await sendCbsCaseEmail({
+          passengerEmail: record.email,
+          subject: message.subject,
+          html: message.html,
+          text: message.text,
+          pdfBuffer,
+          filename: 'Letter of Authorization.pdf',
+          ccOperations: false
+        });
+      } catch (mailErr) {
+        result.emailError = cbsEmailErrorMessage(mailErr);
+        console.error('CBS PVG open-bag authorization email error:', mailErr);
       }
     }
     if (updateFields.updateEvent?.key === 'information') {

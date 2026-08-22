@@ -128,6 +128,17 @@ test('CBS tracking offers the requested bags stage', () => {
   assert.match(page, /content:"CURRENT"/);
 });
 
+test('CBS tracking can request PVG open-bag authorization with the PDF form', () => {
+  assert.match(page, /key:'open_bag_authorization_pvg', text:'Require Open Bag Authorization at PVG'/);
+  assert.match(page, /The authorization form will be attached and emailed to the passenger/);
+  assert.match(page, /PVG open-bag authorization email/);
+  assert.match(server, /【需要您的授权】行李开箱检查通知/);
+  assert.match(server, /Authorization Required for Baggage Inspection at PVG/);
+  assert.match(server, /assets', 'Letter of Authorization\.pdf'/);
+  assert.match(server, /filename: 'Letter of Authorization\.pdf'/);
+  assert.ok(fs.statSync(path.join(__dirname, '..', 'assets', 'Letter of Authorization.pdf')).size > 0);
+});
+
 test('CBS tracking offers a compact baggage transfer update with a required arrival date', () => {
   assert.match(page, /key:'information', text:'Information'/);
   assert.match(page, /name="informationType" required><option value="rush_to_lax">Baggage Transfer Status Update/);
@@ -177,9 +188,10 @@ test('CBS tracking no longer offers Forward to MU', () => {
 });
 
 test('shipping updates offer all supported delivery methods', () => {
+  const passengerCaseShipping = page.match(/const shippingMethodSelect = '([^']+)'/)?.[1] || '';
   assert.match(page, /select name="shippingMethod" data-shipping-method required/);
   for (const method of ['ADC - All Day Courier', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping']) assert.match(page, new RegExp(`<option>${method}<\\/option>`));
-  assert.doesNotMatch(page, /<option>BDO<\/option>/);
+  assert.doesNotMatch(passengerCaseShipping, /<option>BDO<\/option>/);
   assert.match(page, /data-shipping-bdo/);
   assert.match(page, /name="bdo"/);
   assert.match(page, /data-shipping-tracking placeholder="Tracking number" disabled hidden/);
