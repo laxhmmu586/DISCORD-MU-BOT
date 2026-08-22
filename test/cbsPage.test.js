@@ -35,7 +35,7 @@ test('On-hand cases match the passenger case layout and support WorldTracer prog
 });
 
 test('completed On-hand cases move from Open Case to Closed Case', () => {
-  assert.match(page, /new Set\(\['on-hand-rush', 'shipped', 'passenger-collected'\]\)/);
+  assert.match(page, /new Set\(\['on-hand-rush', 'shipped', 'passenger-collected', 'case-close'\]\)/);
   assert.match(page, /const archived = Boolean\(row\.resolvedAt\) && archivedResolutions\.has\(String\(row\.resolution \|\| ''\)\.toLowerCase\(\)\)/);
   assert.match(page, /return showClosed \? archived : !archived/);
   assert.match(page, /onHandGroup\.hidden = false/);
@@ -47,7 +47,7 @@ test('completed On-hand cases move from Open Case to Closed Case', () => {
 
 test('On-hand progress updates sync to the home-page baggage search', () => {
   assert.match(server, /async function syncOnHandStatusToBaggage\(record, action, body = \{\}\)/);
-  for (const status of ['WorldTracer Updated', 'Reopened', 'Create Rush', 'Passenger Collected / Case Closed', 'Shipped', 'Other']) {
+  for (const status of ['WorldTracer Updated', 'Reopened', 'Create Rush', 'Passenger Collected / Case Closed', 'Case Closed', 'Shipped', 'Other']) {
     assert.match(server, new RegExp(status.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }
   assert.match(server, /await updateTestBaggageRecord\(record\.bagTag, \{/);
@@ -62,6 +62,13 @@ test('Other On-hand updates remain actionable in Open Case', () => {
   assert.match(page, /const active = row\.history\.find\(\(item\) => !item\.resolvedAt \|\| String\(item\.resolution \|\| ''\)\.toLowerCase\(\) === 'other'\)/);
   assert.match(page, /const formHtml = active/);
   assert.match(page, /<option value="other">Other resolution<\/option>/);
+});
+
+test('On-hand Case Close requires notes and archives the case', () => {
+  assert.match(page, /<option value="case-close">Case Close<\/option>/);
+  assert.match(page, /if \(action === 'case-close'\) return '<label class="wide"><span>Notes<\/span><textarea name="note" placeholder="Enter case close notes" required><\/textarea><\/label>'/);
+  assert.match(server, /'passenger-collected', 'case-close', 'shipped'/);
+  assert.match(server, /'case-close': 'Case Closed'/);
 });
 
 test('case progress identifies the staff member who made each update', () => {

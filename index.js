@@ -2533,6 +2533,7 @@ async function syncOnHandStatusToBaggage(record, action, body = {}) {
     reopen: 'Reopened',
     'on-hand-rush': 'Create Rush',
     'passenger-collected': 'Passenger Collected / Case Closed',
+    'case-close': 'Case Closed',
     shipped: 'Shipped',
     other: 'Other'
   };
@@ -2554,7 +2555,7 @@ async function syncOnHandStatusToBaggage(record, action, body = {}) {
 app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
   try {
     const action = sanitizeCbsText(req.body?.action, 40).toLowerCase();
-    if (!['worldtracer', 'reopen', 'on-hand-rush', 'passenger-collected', 'shipped', 'other'].includes(action)) return res.status(400).json({ error: 'A valid resolution is required' });
+    if (!['worldtracer', 'reopen', 'on-hand-rush', 'passenger-collected', 'case-close', 'shipped', 'other'].includes(action)) return res.status(400).json({ error: 'A valid resolution is required' });
     const note = sanitizeCbsText(req.body?.note, 500);
     if (action === 'reopen') {
       const result = await reopenCbsUnresolvedBaggageCase(req.params.rowNumber);
