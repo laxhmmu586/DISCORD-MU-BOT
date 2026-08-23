@@ -109,10 +109,20 @@ async function upsert(collection, record) {
   return { ...record, firestoreId:id };
 }
 
+function dedupeRecords(records = []) {
+  const unique = new Map();
+  for (const record of records) unique.set(documentId(record), record);
+  return [...unique.values()];
+}
+
 async function upsertMany(collection, records = []) {
   if (!enabled || !records.length) return records;
-  for (let index = 0; index < records.length; index += 400) {
-    const writes = records.slice(index, index + 400).map((record) => {
+  // Firestore batchWrite rejects a request when two writes target the same
+  // document. Legacy sheets can contain duplicate logical rows, so collapse
+  // them before batching and keep the last copy as the current value.
+  const uniqueRecords = dedupeRecords(records);
+  for (let index = 0; index < uniqueRecords.length; index += 400) {
+    const writes = uniqueRecords.slice(index, index + 400).map((record) => {
       const id = documentId(record);
       return { update:{
         name:`projects/${projectId}/databases/${databaseId}/documents/${collection}/${id}`,
@@ -141,4 +151,4 @@ async function ensureMigrated(collection, legacyLoader) {
   return migrations.get(collection);
 }
 
-module.exports = { enabled, projectId, databaseId, list, get, upsert, upsertMany, ensureMigrated, _test:{ encodeValue, decodeValue, documentId } };
+module.exports = { enabled, projectId, databaseId, list, get, upsert, upsertMany, ensureMigrated, _test:{ encodeValue, decodeValue, documentId, dedupeRecords } };
