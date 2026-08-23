@@ -7,10 +7,34 @@ const page = fs.readFileSync(path.join(__dirname, '..', 'public', 'public', 'cbs
 const pirForm = fs.readFileSync(path.join(__dirname, '..', 'public', 'public', 'pir-form.html'), 'utf8');
 const drive = fs.readFileSync(path.join(__dirname, '..', 'googleDrive.js'), 'utf8');
 const server = fs.readFileSync(path.join(__dirname, '..', 'index.js'), 'utf8');
+const firestore = fs.readFileSync(path.join(__dirname, '..', 'cbsFirestore.js'), 'utf8');
+
+test('Firestore is the primary CBS store with automatic Sheet migration', () => {
+  for (const collection of ['cbsCases', 'cbsOnHandCases', 'cbsWorldTracerCases', 'cbsMissingBagReports', 'cbsWrongBaggageCases']) {
+    assert.match(drive, new RegExp(`ensureMigrated\\('${collection}'`));
+  }
+  assert.match(firestore, /CBS_FIRESTORE_ENABLED \|\| 'true'/);
+  assert.match(firestore, /await upsertMany\(collection, rows\)/);
+  assert.match(drive, /saveCbsFirestoreRecord\('cbsCases', record\)/);
+  assert.match(drive, /saveCbsFirestoreRecord\('cbsOnHandCases', record\)/);
+});
 
 test('CBS page uses the Lake Baggage System browser title', () => {
   assert.match(page, /<title>Lake Baggage System<\/title>/);
   assert.doesNotMatch(page, /<title>CBS Cases<\/title>/);
+});
+
+test('CBS case refresh reuses cached sheet data and does not restart the page sync', () => {
+  assert.match(drive, /let rows = await getCbsSheetRows\(\);\s*const headersReady = await ensureCbsSheetHeaders\(rows\);/);
+  assert.doesNotMatch(drive, /async function getCbsCases\(\) \{\s*let rows = await getCbsSheetRows\(\{ forceRefresh: true \}\)/);
+  assert.match(drive, /cbsSheetCache\.loadedAt && Date\.now\(\) - cbsSheetCache\.loadedAt < ttlMs/);
+  assert.match(page, /await Promise\.all\(\[loadCases\(\), loadMissingReports\(\), loadUnresolvedBaggage\(\)\]\)/);
+  assert.doesNotMatch(page, /sidebarRefresh\.addEventListener\('click', \(\) => window\.location\.reload\(\)\)/);
+});
+
+test('CBS cases no longer rely on stale browser storage', () => {
+  assert.doesNotMatch(page, /CASE_CACHE_KEY|readCaseCache|writeCaseCache/);
+  assert.match(page, /async function loadCases\(\) \{\s*casesOutput\.innerHTML = '<p class="muted">Loading cases/);
 });
 
 test('Add On-hand records are added to and displayed in Open Case', () => {
