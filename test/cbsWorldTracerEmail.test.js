@@ -6,7 +6,7 @@ const path = require('node:path');
 const server = fs.readFileSync(path.join(__dirname, '..', 'index.js'), 'utf8');
 
 test('WorldTracer update email does not regenerate or attach a PDF report', () => {
-  const updateEmailBlock = server.match(/if \(updateFields\.updateEvent\?\.key === 'worldtracer'\) \{([\s\S]*?)\n\s*\}\n\s*return res\.json/)?.[1] || '';
+  const updateEmailBlock = server.match(/if \(updateFields\.updateEvent\?\.key === 'worldtracer'\) \{([\s\S]*?)\n\s*if \(updateFields\.updateEvent\?\.key === 'requested_bags'\)/)?.[1] || '';
   assert.match(updateEmailBlock, /sendCbsCaseEmail/);
   assert.match(updateEmailBlock, /ccOperations: false/);
   assert.doesNotMatch(updateEmailBlock, /createPirPdf|pdfBuffer|filename/);
@@ -59,11 +59,13 @@ test('Rush to LAX information emails the passenger using the ETA stored in AK', 
 
 test('DPR WorldTracer updates notify the damaged-baggage Discord channel', () => {
   assert.match(server, /CBS_DAMAGED_DISCORD_CHANNEL_ID[^\n]*'1527344986075693167'/);
+  assert.match(server, /CBS_DPR_WORLDTRACER_DISCORD_ROLE_ID[^\n]*'1268619386948685877'/);
   const helper = server.match(/async function sendDprWorldTracerUpdateToDiscord[\s\S]*?\n\}/)?.[0] || '';
   for (const field of ['Passenger Name', 'Bag Tag', 'Email', 'Phone', 'WorldTracer File #']) {
     assert.match(helper, new RegExp(field.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }
-  assert.match(helper, /allowedMentions: \{ parse: \[\] \}/);
+  assert.match(helper, /`<@&\$\{CBS_DPR_WORLDTRACER_DISCORD_ROLE_ID\}>`/);
+  assert.match(helper, /allowedMentions: \{ parse: \[\], roles: \[CBS_DPR_WORLDTRACER_DISCORD_ROLE_ID\] \}/);
   assert.match(server, /if \(String\(record\.caseType \|\| ''\)\.toUpperCase\(\) === 'DPR'\)/);
   assert.match(server, /sendDprWorldTracerUpdateToDiscord\(record, fileNumber\)/);
 });
