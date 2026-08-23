@@ -1,9 +1,9 @@
-# CBS Firestore migration
+# CBS Firestore storage
 
-Firestore is the primary read store for CBS. On the first read of each CBS
-collection, a migration marker is checked and the legacy Google Sheet is
-batch-imported exactly once. Subsequent reads come from Firestore. Writes are persisted to
-Firestore and retained in Google Sheets as the operational backup/report.
+Firestore is the only read store for CBS. The legacy Google Sheet import has
+been completed and the runtime no longer checks migration markers or imports
+Sheet rows. New writes are persisted to Firestore first and then retained in
+Google Sheets as the operational backup/report.
 
 ## Required runtime configuration
 
@@ -26,10 +26,7 @@ Firestore rules; all access goes through the authenticated backend API.
 1. Deploy `public/firestore.rules` and `public/firestore.indexes.json` with the
    Firebase CLI from the `public` directory.
 2. Deploy the backend with the variables above.
-3. Open each CBS view once. This triggers idempotent import for Passenger Filed,
-   On-hand, WorldTracer, Missing Bag, and Wrong Baggage collections.
-4. Compare Firestore document counts with their legacy Sheet row counts before
-   removing any legacy data.
+3. Keep the Google Sheets available as write-only backup/report destinations.
 
-Set `CBS_FIRESTORE_ENABLED=false` for an emergency rollback to direct Sheet
-reads. Do not delete the Sheets; they remain the backup/report destination.
+The application does not fall back to importing or reading CBS collections
+from Sheets. Do not delete the Sheets; they remain the backup/report destination.
