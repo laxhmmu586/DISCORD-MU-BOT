@@ -127,6 +127,7 @@
     .inline-update.case-update[data-update-mode="email"] { grid-template-columns:minmax(240px,420px); }
     .authorization-upload { display:grid; gap:8px; padding:14px; border:1px dashed #9db8d8; border-radius:14px; background:#f8fbff; cursor:pointer; }
     [data-pvg-email-field][hidden] { display:none; }
+    [data-standalone-pvg-field][hidden],[data-standalone-pickup-field][hidden] { display:none; }
     .authorization-upload input { position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; }
     .authorization-upload-plus { display:grid; place-items:center; width:38px; height:38px; border-radius:999px; background:#fff; color:var(--brand); box-shadow:0 5px 14px #173b5d22; font-size:26px; font-weight:900; }
     .authorization-upload-title { color:var(--brand); font-size:13px; font-weight:900; }
@@ -258,6 +259,7 @@
       <button class="page-tab" id="add-baggage-tab" type="button" title="Add On-hand"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="13" height="12" rx="2"/><path d="M7 8V5h5v3m7-4v8m-4-4h8"/></svg></span><span class="page-tab-label">Add On-hand</span></button>
       <button class="page-tab" id="worldtracer-tab" type="button" title="Rush Bag"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m3 14 7-3V5l2-2 2 7 5-2 2 1-7 5v5l-2 2-2-6-4 2z"/></svg></span><span class="page-tab-label">Rush Bag</span></button>
       <button class="page-tab" id="missing-report-alert" type="button" title="Missing Bag Report"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="7" width="12" height="12" rx="2"/><path d="M8 7V5h4v2m5 10 4 4m-1-7a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg></span><span class="page-tab-label">Missing Bag Report</span></button>
+      <button class="page-tab" id="email-tab" type="button" title="Email"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg></span><span class="page-tab-label">Email</span></button>
       <button class="page-tab" id="baggage-chart-tab" type="button" title="Baggage Chart"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19V9m5 10V5m5 14v-7m5 7V3"/></svg></span><span class="page-tab-label">Baggage Chart</span></button>
     </nav>
     <span class="header-spacer"></span>
@@ -279,7 +281,7 @@
       </section>
       <section class="open-case-group" id="on-hand-group">
         <h2 id="on-hand-title">On-hand</h2>
-        <p class="muted" id="on-hand-description">Passenger bags entered as inbound and not-loaded outbound bags remain here until resolved.</p>
+        <p class="muted" id="on-hand-description">Passenger bags entered as inbound and not-loaded outbound bags remain here until resolved. Gate bags are not included.</p>
         <div id="unresolved-baggage-output"><p class="muted">Loading On-hand cases...</p></div>
       </section>
     </section>
@@ -303,6 +305,18 @@
       <div class="actions"><div><h1>MISSING BAG REPORT</h1><p class="muted">MU rows imported from Early Bag Storage missed bag email.</p></div></div>
       <div id="missing-report-output"><p class="muted">Loading missing bags...</p></div>
     </section>
+    <section class="card" id="email-card" hidden>
+      <h1>Email</h1>
+      <p class="muted">Select a subject and complete the required email details.</p>
+      <form class="worldtracer-form" id="standalone-email-form">
+        <label class="wide"><span>Subject</span><select name="emailAction" data-standalone-email-action required><option value="sent_open_bag_authorization_to_pvg">Sent Open Bag Authorization to PVG</option><option value="contact_pax_pickup_bags">Contact PAX to Pick-up Bags</option></select></label>
+        <label class="wide" data-standalone-pvg-field><span>Email To</span><select name="emailTo" required><option value="pd-bag-intl@ceair.com">pd-bag-intl@ceair.com</option><option value="pd-bag-dom@ceair.com">pd-bag-dom@ceair.com</option></select></label>
+        <label class="authorization-upload wide" data-standalone-pvg-field><input name="authorizationFile" type="file" accept="application/pdf,.pdf" required /><span class="authorization-upload-plus">+</span><span class="authorization-upload-title">Letter of Authorization</span><small data-authorization-filename>Select the signed PDF</small></label>
+        <label class="wide" data-standalone-pickup-field hidden><span>Email To</span><input name="passengerEmail" type="email" placeholder="Passenger email address" disabled required /></label>
+        <p class="status wide" id="standalone-email-status" aria-live="polite"></p>
+        <div class="actions wide"><button type="submit">Send</button></div>
+      </form>
+    </section>
     <section class="card" id="add-baggage-card" hidden>
       <h1>Add On-hand</h1>
       <p class="muted">Search a bag tag, then add the inbound or outbound On-hand record here.</p>
@@ -323,9 +337,25 @@
   <script src="/__/firebase/init.js"></script>
   <script>
     const apiBase = (window.MU_API_BASE || 'https://api.mufcapp.net').replace(/\/$/, '');
+    function updaterDisplayName(value) {
+      const updater = String(value || '').trim();
+      if (!updater.includes('@')) return updater;
+      return updater.split('@')[0]
+        .replace(/[._-]+/g, ' ')
+        .replace(/\b\w/g, (letter) => letter.toUpperCase());
+    }
+    function updaterDisplayText(value) {
+      return String(value || '').replace(/(Updated by:\s*)([^\s|]+@[^\s|]+)/gi, (_, prefix, email) => `${prefix}${updaterDisplayName(email)}`);
+    }
+    function updaterFromText(value) {
+      return String(value || '').match(/(?:^|\|)\s*Updated by:\s*([^|]+)/i)?.[1]?.trim() || '';
+    }
+    function withoutUpdaterText(value) {
+      return String(value || '').replace(/\s*\|?\s*Updated by:\s*[^|]+/i, '').trim();
+    }
     function currentUpdater() {
       const user = window.firebase?.auth?.()?.currentUser;
-      return String(user?.displayName || user?.email || '').trim();
+      return updaterDisplayName(user?.displayName || user?.email || '');
     }
     document.querySelectorAll('[data-baggage-chart-image]').forEach((image) => { image.src = `${apiBase}/cbs-baggage-chart/${image.dataset.baggageChartImage}`; });
     document.querySelectorAll('[data-baggage-chart-link]').forEach((link) => { link.href = `${apiBase}/cbs-baggage-chart/${link.dataset.baggageChartLink}`; });
@@ -347,6 +377,10 @@
     const missingAlert = document.querySelector('#missing-report-alert');
     const missingReportCard = document.querySelector('#missing-report-card');
     const missingReportOutput = document.querySelector('#missing-report-output');
+    const emailTab = document.querySelector('#email-tab');
+    const emailCard = document.querySelector('#email-card');
+    const standaloneEmailForm = document.querySelector('#standalone-email-form');
+    const standaloneEmailStatus = document.querySelector('#standalone-email-status');
     const unresolvedBaggageOutput = document.querySelector('#unresolved-baggage-output');
     const addBaggageTab = document.querySelector('#add-baggage-tab');
     const addBaggageCard = document.querySelector('#add-baggage-card');
@@ -371,12 +405,14 @@
       missingReportCard.hidden = section !== 'missing';
       addBaggageCard.hidden = section !== 'add-baggage';
       baggageChartCard.hidden = section !== 'baggage-chart';
+      emailCard.hidden = section !== 'email';
       openCasesTab.classList.toggle('is-active', section === 'open');
       closedCasesTab.classList.toggle('is-active', section === 'closed');
       worldTracerTab.classList.toggle('is-active', section === 'worldtracer');
       missingAlert.classList.toggle('is-active', section === 'missing');
       addBaggageTab.classList.toggle('is-active', section === 'add-baggage');
       baggageChartTab.classList.toggle('is-active', section === 'baggage-chart');
+      emailTab.classList.toggle('is-active', section === 'email');
       if (isCaseSection) {
         window._caseView = section;
         casePageTitle.innerHTML = section === 'closed' ? '<span class="en">Closed Case</span><span class="zh">已结案件</span>' : '<span class="en">Open Case</span><span class="zh">未结案件</span>';
@@ -385,7 +421,7 @@
         onHandTitle.textContent = section === 'closed' ? 'Closed On-hand' : 'On-hand';
         onHandDescription.textContent = section === 'closed'
           ? 'On-hand cases completed by Create Rush, Shipping, Passenger collected, or Case Close are archived here.'
-          : 'Passenger bags entered as inbound and not-loaded outbound bags remain here until resolved.';
+          : 'Passenger bags entered as inbound and not-loaded outbound bags remain here until resolved. Gate bags are not included.';
         if (window._unresolvedBaggageLoaded) renderUnresolvedBaggage(window._unresolvedBaggageSourceRows || []);
         renderCases();
       }
@@ -469,10 +505,10 @@
     }
     function unresolvedProgressHtml(row) {
       const resolutionTitle = String(row.resolution || '').toLowerCase() === 'email' ? 'Contact PAX to Pick-up Bags' : (row.resolution || 'Resolved');
-      const events = [{ title:'On-hand created', at:row.createdAt, detail:row.location ? `Location: ${row.location}` : '' }];
-      if (row.worldTracerFileNumber) events.push({ title:'WorldTracer', at:'', by:row.worldTracerUpdatedBy || '', detail:`File: ${row.worldTracerFileNumber}` });
-      if (row.resolvedAt) events.push({ title:resolutionTitle, at:row.resolvedAt, detail:row.resolutionNote || '' });
-      return `<div class="tracking-workspace"><p class="tracking-current-time"><strong>${label('Case Progress', '案件进度')}</strong></p><div class="tracking-history">${events.slice().reverse().map((item, index) => `<span class="tracking-chip${index === 0 ? ' is-latest' : ''}${row.resolvedAt && index === 0 ? ' is-closed' : ''}"><span class="tracking-step-number">${events.length - index}</span><span class="tracking-chip-title">${escapeHtml(item.title)}</span>${item.at || item.by ? `<small>${item.at ? escapeHtml(new Date(item.at).toLocaleString()) : ''}${item.by ? ` · Updated by: ${escapeHtml(item.by)}` : ''}</small>` : ''}${item.detail ? `<span class="tracking-chip-detail">${escapeHtml(item.detail)}</span>` : ''}</span>`).join('')}</div></div>`;
+      const events = [{ title:'On-hand created', at:row.createdAt, by:row.createdBy || row.submittedBy || 'System', detail:row.location ? `Location: ${row.location}` : '' }];
+      if (row.worldTracerFileNumber) events.push({ title:'WorldTracer', at:'', by:row.worldTracerUpdatedBy || 'System', detail:`File: ${row.worldTracerFileNumber}` });
+      if (row.resolvedAt) events.push({ title:resolutionTitle, at:row.resolvedAt, by:row.resolvedBy || updaterFromText(row.resolutionNote) || 'System', detail:withoutUpdaterText(row.resolutionNote) });
+      return `<div class="tracking-workspace"><p class="tracking-current-time"><strong>${label('Case Progress', '案件进度')}</strong></p><div class="tracking-history">${events.slice().reverse().map((item, index) => `<span class="tracking-chip${index === 0 ? ' is-latest' : ''}${row.resolvedAt && index === 0 ? ' is-closed' : ''}"><span class="tracking-step-number">${events.length - index}</span><span class="tracking-chip-title">${escapeHtml(item.title)}</span>${item.at || item.by ? `<small>${item.at ? escapeHtml(new Date(item.at).toLocaleString()) : ''}${item.by ? ` · Updated by: ${escapeHtml(updaterDisplayName(item.by))}` : ''}</small>` : ''}${item.detail ? `<span class="tracking-chip-detail">${escapeHtml(updaterDisplayText(item.detail))}</span>` : ''}</span>`).join('')}</div></div>`;
     }
     function renderUnresolvedBaggage(rows = []) {
       window._unresolvedBaggageSourceRows = rows;
@@ -555,6 +591,7 @@
         key: trackingKeyFromText(event.key || event.status || event.title),
         title: event.title || `Update ${event.status || 'Case'}`,
         at: event.at || event.updatedAt || row.updatedAt || row.submittedAt || '',
+        by: event.by || event.updatedBy || 'System',
         fields: Array.isArray(event.fields) ? event.fields : [],
         note: event.note || ''
       }));
@@ -563,7 +600,7 @@
       const note = String(row?.updateNote || '').trim();
       const events = [];
       if (row?.rowNumber || row?.firestoreId || row?.submittedAt || row?.createdAt) {
-        events.push({ key:'create', title:'Create Case', at:row.submittedAt || row.issueDate || '', fields:[] });
+        events.push({ key:'create', title:'Create Case', at:row.submittedAt || row.issueDate || '', by:row.submittedBy || row.createdBy || 'System', fields:[] });
       }
       const storedEvents = parseStoredUpdateEvents(row);
       if (storedEvents.length) return events.concat(storedEvents);
@@ -596,7 +633,9 @@
         const split = piece.split(/:\s*/);
         return split.length > 1 ? [split.shift(), split.join(': ')] : [label('Detail', '详情'), piece];
       });
-      return { key, title, at, fields:fields.length ? fields : [[label('Detail', '详情'), text]] };
+      const by = updaterFromText(text) || 'System';
+      const visibleFields = fields.filter(([field]) => !/^Updated by$/i.test(field));
+      return { key, title, at, by, fields:visibleFields.length ? visibleFields : [[label('Detail', '详情'), withoutUpdaterText(text)]] };
     }
     function trackingKeyFromText(value) {
       const text = String(value || '').toLowerCase();
@@ -924,7 +963,7 @@
           const time = formatEventTime(event.at);
           const details = (event.fields || []).filter(([, value]) => hasValue(value)).map(([key, value]) => `<span class="tracking-chip-detail">${escapeHtml(key)}: ${escapeHtml(renderValue(value))}</span>`).join('');
           const stateClass = `${event.key === 'closed' ? ' is-closed' : ''}${index === 0 ? ' is-latest' : ''}`;
-          return `<span class="tracking-chip${stateClass}"><span class="tracking-step-number">${stepNumber}</span><span class="tracking-chip-title">${escapeHtml(event.title || 'Update')}</span><small>${escapeHtml(time.date)} ${escapeHtml(time.time)}${event.by ? ` · Updated by: ${escapeHtml(event.by)}` : ''}</small>${details}</span>`;
+          return `<span class="tracking-chip${stateClass}"><span class="tracking-step-number">${stepNumber}</span><span class="tracking-chip-title">${escapeHtml(event.title || 'Update')}</span><small>${escapeHtml(time.date)} ${escapeHtml(time.time)}${event.by ? ` · Updated by: ${escapeHtml(updaterDisplayName(event.by))}` : ''}</small>${details}</span>`;
         }).join('');
         if (part === 'current') return '';
         if (isClosedCase(row)) return `<div class="tracking-workspace"><div><div class="tracking-history">${historyHtml}</div></div><form class="inline-update case-update" data-row-number="${escapeHtml(recordId)}" data-case-source="wrongBaggage" data-update-mode="reopen"><textarea name="comment" placeholder="${label('Reopen note (optional)', '重新开启备注（可选）')}"></textarea><button type="submit">${label('Reopen', '重新开启')}</button></form></div>`;
@@ -948,7 +987,7 @@
           const noteHtml = !detailFields.length && hasValue(event.note) ? `<span class="tracking-chip-detail">${escapeHtml(event.note)}</span>` : '';
           const closedClass = event.key === 'closed' ? ' is-closed' : '';
           const latestClass = index === 0 ? ' is-latest' : '';
-          return `<span class="tracking-chip tracking-chip--${escapeHtml(event.key)}${closedClass}${latestClass}"><span class="tracking-step-number">${stepNumber}</span><span class="tracking-chip-title">${escapeHtml(title)}</span><small>${escapeHtml(time.date || '')} ${escapeHtml(time.time || '')}${event.by ? ` · Updated by: ${escapeHtml(event.by)}` : ''}</small>${detailHtml}${noteHtml}</span>`;
+          return `<span class="tracking-chip tracking-chip--${escapeHtml(event.key)}${closedClass}${latestClass}"><span class="tracking-step-number">${stepNumber}</span><span class="tracking-chip-title">${escapeHtml(title)}</span><small>${escapeHtml(time.date || '')} ${escapeHtml(time.time || '')}${event.by ? ` · Updated by: ${escapeHtml(updaterDisplayName(event.by))}` : ''}</small>${detailHtml}${noteHtml}</span>`;
         }).join('') || '<span class="sheet-empty">No tracking updates yet</span>';
       if (!recordId) return historyHtml;
       const progressHeader = `<p class="tracking-current-time"><strong>${label('Case Progress', '案件进度')}</strong><span>${label('Last update', '最后更新')}: ${escapeHtml(latestTime.date || '-')} ${escapeHtml(latestTime.time || '')}</span></p>`;
@@ -1206,6 +1245,7 @@
       showSection('missing');
       if (window._missingReportLoaded) renderMissingReports(window._missingBagRows || []);
     });
+    emailTab?.addEventListener('click', () => showSection('email'));
     addBaggageTab?.addEventListener('click', () => { showSection('add-baggage'); addBaggageSearch.elements.bagTag.focus(); });
     baggageChartTab?.addEventListener('click', () => showSection('baggage-chart'));
     backToCases?.addEventListener('click', () => showSection('open'));
@@ -1403,6 +1443,7 @@
       const payload = Object.fromEntries(new FormData(form).entries());
       payload.direction = form.dataset.addBaggageDirection;
       payload.flight = payload.direction === 'outbound' ? 'MU586' : 'MU583';
+      payload.submittedBy = currentUpdater();
       const button = form.querySelector('button[type="submit"]');
       button.disabled = true;
       try {
@@ -1412,6 +1453,53 @@
         await loadUnresolvedBaggage();
         showSection('open');
       } catch (error) { alert(error.message); } finally { button.disabled = false; }
+    });
+    standaloneEmailForm?.addEventListener('change', (event) => {
+      if (event.target.matches('[data-standalone-email-action]')) {
+        const isPvg = event.target.value === 'sent_open_bag_authorization_to_pvg';
+        standaloneEmailForm.querySelectorAll('[data-standalone-pvg-field]').forEach((field) => {
+          field.hidden = !isPvg;
+          field.querySelectorAll('input, select').forEach((input) => { input.disabled = !isPvg; input.required = isPvg; });
+        });
+        standaloneEmailForm.querySelectorAll('[data-standalone-pickup-field]').forEach((field) => {
+          field.hidden = isPvg;
+          field.querySelectorAll('input').forEach((input) => { input.disabled = isPvg; input.required = !isPvg; });
+        });
+      }
+      const file = event.target.closest('input[name="authorizationFile"]');
+      const filename = file?.closest('.authorization-upload')?.querySelector('[data-authorization-filename]');
+      if (filename) filename.textContent = file.files?.[0]?.name || 'Select the signed PDF';
+    });
+    standaloneEmailForm?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const button = standaloneEmailForm.querySelector('button[type="submit"]');
+      const payload = Object.fromEntries(new FormData(standaloneEmailForm).entries());
+      if (payload.emailAction === 'sent_open_bag_authorization_to_pvg') {
+        const file = standaloneEmailForm.elements.authorizationFile.files?.[0];
+        if (!file) return alert('Please attach the signed Letter of Authorization PDF.');
+        const contentBase64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result || '').split(',')[1] || '');
+          reader.onerror = () => reject(new Error('The authorization PDF could not be read.'));
+          reader.readAsDataURL(file);
+        });
+        delete payload.authorizationFile;
+        payload.attachments = [{ filename:file.name, mimeType:file.type || 'application/pdf', contentBase64, attachmentType:'letterOfAuthorization' }];
+      }
+      button.disabled = true;
+      standaloneEmailStatus.classList.remove('err');
+      standaloneEmailStatus.textContent = 'Sending...';
+      try {
+        const res = await fetch(`${apiBase}/cbs-email`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+        const data = await parseJson(res);
+        if (!res.ok) throw new Error(data.error || 'Email failed');
+        standaloneEmailStatus.textContent = 'Email sent.';
+        standaloneEmailForm.reset();
+        standaloneEmailForm.querySelector('[data-standalone-email-action]').dispatchEvent(new Event('change', { bubbles:true }));
+      } catch (error) {
+        standaloneEmailStatus.classList.add('err');
+        standaloneEmailStatus.textContent = error.message;
+      } finally { button.disabled = false; }
     });
     missingReportOutput?.addEventListener('click', async (event) => {
       const rushButton = event.target.closest('[data-create-missing-rush]');

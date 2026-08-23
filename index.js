@@ -2186,6 +2186,32 @@ app.get('/cbs-missing-bags', async (req, res) => {
   }
 });
 
+app.post('/cbs-email', async (req, res) => {
+  try {
+    const emailAction = sanitizeCbsText(req.body?.emailAction, 80);
+    if (emailAction === 'sent_open_bag_authorization_to_pvg') {
+      const emailTo = sanitizeCbsText(req.body?.emailTo, 160).toLowerCase();
+      if (!['pd-bag-intl@ceair.com', 'pd-bag-dom@ceair.com'].includes(emailTo)) return res.status(400).json({ error:'A valid PVG email address is required' });
+      const attachments = sanitizeCbsAttachments(req.body?.attachments);
+      if (attachments.length !== 1 || attachments[0].mimeType !== 'application/pdf') return res.status(400).json({ error:'A signed Letter of Authorization PDF is required' });
+      const message = signedOpenBagAuthorizationToPvgEmail({});
+      const email = await sendCbsCaseEmail({ passengerEmail:emailTo, subject:message.subject, html:message.html, text:message.text, attachments, ccOperations:false });
+      return res.json({ sent:true, email });
+    }
+    if (emailAction === 'contact_pax_pickup_bags') {
+      const passengerEmail = sanitizeCbsText(req.body?.passengerEmail, 160).toLowerCase();
+      if (!isValidEmail(passengerEmail)) return res.status(400).json({ error:'A valid passenger email is required' });
+      const message = baggagePickupAtLaxEmail({});
+      const email = await sendCbsCaseEmail({ passengerEmail, subject:message.subject, html:message.html, text:message.text, ccOperations:false });
+      return res.json({ sent:true, email });
+    }
+    return res.status(400).json({ error:'A valid email subject is required' });
+  } catch (err) {
+    console.error('CBS standalone email error:', err);
+    return res.status(500).json({ error:cbsEmailErrorMessage(err) });
+  }
+});
+
 app.post('/cbs-missing-bags/sync', async (req, res) => {
   try {
     return res.json(await getCbsMissingBagReports({ sync: true }));
@@ -2613,7 +2639,7 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
       const email = await sendCbsCaseEmail({ passengerEmail:emailTo, subject:message.subject, html:message.html, text:message.text, ccOperations:false });
       const updatedBy = sanitizeCbsText(req.body?.updatedBy, 160);
       const resolutionNote = `Contact PAX to Pick-up Bags | Email To: ${emailTo}${updatedBy ? ` | Updated by: ${updatedBy}` : ''}`;
-      const result = await resolveCbsUnresolvedBaggageCase(req.params.rowNumber, action, resolutionNote);
+      const result = await resolveCbsUnresolvedBaggageCase(req.params.rowNumber, action, resolutionNote, updatedBy);
       await syncOnHandStatusToBaggage(result.record, action, req.body);
       return res.json({ ...result, email });
     }
@@ -2663,7 +2689,7 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
     }
     if (action !== 'on-hand-rush' && !resolutionNote) return res.status(400).json({ error: 'A resolution note is required' });
     if (updatedBy) resolutionNote = `${resolutionNote} | Updated by: ${updatedBy}`;
-    const result = await resolveCbsUnresolvedBaggageCase(req.params.rowNumber, action, resolutionNote);
+    const result = await resolveCbsUnresolvedBaggageCase(req.params.rowNumber, action, resolutionNote, updatedBy);
     if (result.notFound) return res.status(404).json({ error: 'Unresolved baggage case not found' });
     await syncOnHandStatusToBaggage(result.record, action, req.body);
     return res.json(result);
