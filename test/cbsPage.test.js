@@ -165,6 +165,7 @@ test('CBS Email stage sends a signed open-bag authorization PDF to PVG', () => {
   assert.doesNotMatch(page.match(/const notifications = \[([\s\S]*?)\]\.filter/)?.[1] || '', /Signed authorization sent to PVG/);
   assert.match(page, /tracking-chip--email,\.tracking-chip--email\.is-latest/);
   assert.match(page, /event\.key === 'email' \? event\.title/);
+  assert.match(page, /case-update\[data-update-mode="email"\] \{ grid-template-columns:minmax\(240px,420px\); \}/);
 });
 
 test('CBS tracking offers a compact baggage transfer update with a required arrival date', () => {
