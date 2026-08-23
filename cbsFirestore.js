@@ -138,17 +138,21 @@ async function ensureMigrated(collection, legacyLoader) {
   if (!enabled) return legacyLoader();
   if (!migrations.has(collection)) migrations.set(collection, (async () => {
     const marker = await get('_cbsMigrations', collection);
-    if (marker?.completedAt) return list(collection);
+    if (marker?.completedAt) return;
     const legacy = await legacyLoader();
     const rows = Array.isArray(legacy) ? legacy : (legacy?.rows || []);
     await upsertMany(collection, rows);
     await upsert('_cbsMigrations', { firestoreId:collection, collection, rowCount:rows.length, completedAt:new Date().toISOString() });
-    return list(collection);
-  })().catch((error) => {
+  })());
+  try {
+    await migrations.get(collection);
+  } catch (error) {
     migrations.delete(collection);
     throw error;
-  }));
-  return migrations.get(collection);
+  }
+  // Cache only the one-time migration work, never the collection snapshot.
+  // Newly-created and updated cases must be fetched on every subsequent load.
+  return list(collection);
 }
 
 module.exports = { enabled, projectId, databaseId, list, get, upsert, upsertMany, ensureMigrated, _test:{ encodeValue, decodeValue, documentId, dedupeRecords } };

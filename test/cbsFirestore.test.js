@@ -45,3 +45,9 @@ test('Firestore batch writes collapse duplicate document targets', () => {
     { firestoreId:'other-report-row', value:'other' }
   ]);
 });
+
+test('Firestore migration caching never caches collection results', () => {
+  const source = require('node:fs').readFileSync(require.resolve('../cbsFirestore'), 'utf8');
+  assert.match(source, /await migrations\.get\(collection\);[\s\S]*return list\(collection\);/);
+  assert.doesNotMatch(source, /return migrations\.get\(collection\)/);
+});
