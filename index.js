@@ -112,6 +112,7 @@ const WRONG_BAGGAGE_DISCORD_CHANNEL_ID = process.env.WRONG_BAGGAGE_DISCORD_CHANN
 const CBS_DELAYED_LOST_DISCORD_CHANNEL_ID = process.env.CBS_DELAYED_LOST_DISCORD_CHANNEL_ID || '1534758703369289821';
 const CBS_LOST_DISCORD_ROLE_ID = process.env.CBS_LOST_DISCORD_ROLE_ID || '1268619386948685877';
 const CBS_DAMAGED_DISCORD_CHANNEL_ID = process.env.CBS_DAMAGED_DISCORD_CHANNEL_ID || process.env.CBS_ATTACHMENTS_DISCORD_CHANNEL_ID || '1527344986075693167';
+const CBS_DPR_WORLDTRACER_DISCORD_ROLE_ID = process.env.CBS_DPR_WORLDTRACER_DISCORD_ROLE_ID || '1268619386948685877';
 const CONTACT_FORM_DISCORD_CHANNEL_ID = process.env.CONTACT_FORM_DISCORD_CHANNEL_ID || '1531867051755442266';
 const CONTACT_FORM_DISCORD_ROLE_ID = process.env.CONTACT_FORM_DISCORD_ROLE_ID || '1252026975279906876';
 
@@ -1914,6 +1915,7 @@ async function sendDprWorldTracerUpdateToDiscord(record, fileNumber) {
   }
   await channel.send({
     content: [
+      `<@&${CBS_DPR_WORLDTRACER_DISCORD_ROLE_ID}>`,
       'DPR WorldTracer update',
       `Passenger Name: ${sanitizeCbsText(record.passengerName, 160) || '—'}`,
       `Bag Tag: ${sanitizeCbsText(record.bagTag, 160) || '—'}`,
@@ -1921,7 +1923,7 @@ async function sendDprWorldTracerUpdateToDiscord(record, fileNumber) {
       `Phone: ${sanitizeCbsText(record.phone, 80) || '—'}`,
       `WorldTracer File #: ${sanitizeCbsText(fileNumber, 120) || '—'}`
     ].join('\n'),
-    allowedMentions: { parse: [] }
+    allowedMentions: { parse: [], roles: [CBS_DPR_WORLDTRACER_DISCORD_ROLE_ID] }
   });
   return { sent: true, channelId: CBS_DAMAGED_DISCORD_CHANNEL_ID };
 }
