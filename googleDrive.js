@@ -1,4 +1,5 @@
 const { google } = require('googleapis');
+const reportFirestore = require('./reportFirestore');
 const { Readable } = require('stream');
 const fs = require('fs/promises');
 const path = require('path');
@@ -1149,14 +1150,18 @@ function sheetValuesFromReportRow(type, row) {
 async function getStoredReportRows(type, isoDate) {
   const config = getReportSheetConfig(type);
   if (!config) return { rows: [], scanned: false };
-  const rows = await getReportSheetRows(type);
-  if (!config.readOnly) await ensureReportSheetHeaders(type, rows);
+  const normalizedType = normalizeReportSheetType(type);
+  const storedRows = await reportFirestore.load(normalizedType, async () => {
+    const rows = await getReportSheetRows(normalizedType);
+    if (!config.readOnly) await ensureReportSheetHeaders(normalizedType, rows);
+    const startIndex = rows.length && isReportHeaderRow(normalizedType, rows[0]) ? 1 : 0;
+    return rows.slice(startIndex)
+      .filter((values) => !isReportHeaderRow(normalizedType, values))
+      .map((values) => reportRowFromSheet(normalizedType, values));
+  });
   let scanned = false;
   const dataRows = [];
-  const startIndex = rows.length && isReportHeaderRow(type, rows[0]) ? 1 : 0;
-  for (let i = startIndex; i < rows.length; i += 1) {
-    if (isReportHeaderRow(type, rows[i])) continue;
-    const parsed = reportRowFromSheet(type, rows[i]);
+  for (const parsed of storedRows) {
     if (String(parsed.key || '').startsWith('__SCAN__') || parsed.passenger === '__SCAN_COMPLETE__') {
       if (!isoDate || parsed.key === scanMarkerKey(type, isoDate)) scanned = true;
       continue;
@@ -1209,28 +1214,16 @@ async function pruneStoredReportRows(type) {
 
 
 async function getVipReportRows(isoDate = '') {
-  const rows = await getReportSheetRows('vip');
-  const dataRows = [];
-  const startIndex = rows.length && isReportHeaderRow('vip', rows[0]) ? 1 : 0;
-  for (let i = startIndex; i < rows.length; i += 1) {
-    if (isReportHeaderRow('vip', rows[i])) continue;
-    const parsed = reportRowFromSheet('vip', rows[i]);
-    if (isoDate && parsed.date !== isoDate) continue;
-    dataRows.push(parsed);
-  }
+  const { rows:dataRows } = await getStoredReportRows('vip', isoDate);
   return dataRows.sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')) || String(a.flightNo || '').localeCompare(String(b.flightNo || '')) || Number(a.bn || 0) - Number(b.bn || 0) || String(a.passenger || '').localeCompare(String(b.passenger || '')));
 }
 
 async function getPsmMsgReportRows(fromIsoDate, toIsoDate = fromIsoDate) {
   const from = String(fromIsoDate || '').trim();
   const to = String(toIsoDate || from).trim();
-  const rows = await getReportSheetRows('psmMsg');
-  await ensureReportSheetHeaders('psmMsg', rows);
+  const { rows } = await getStoredReportRows('psmMsg', '');
   const dataRows = [];
-  const startIndex = rows.length && isReportHeaderRow('psmMsg', rows[0]) ? 1 : 0;
-  for (let i = startIndex; i < rows.length; i += 1) {
-    if (isReportHeaderRow('psmMsg', rows[i])) continue;
-    const parsed = reportRowFromSheet('psmMsg', rows[i]);
+  for (const parsed of rows) {
     if (from && parsed.date < from) continue;
     if (to && parsed.date > to) continue;
     dataRows.push(parsed);
@@ -1239,13 +1232,9 @@ async function getPsmMsgReportRows(fromIsoDate, toIsoDate = fromIsoDate) {
 }
 
 async function getInadReportRows() {
-  const rows = await getReportSheetRows('inad');
-  await ensureReportSheetHeaders('inad', rows);
+  const { rows } = await getStoredReportRows('inad', '');
   const dataRows = [];
-  const startIndex = rows.length && isReportHeaderRow('inad', rows[0]) ? 1 : 0;
-  for (let i = startIndex; i < rows.length; i += 1) {
-    if (isReportHeaderRow('inad', rows[i])) continue;
-    const parsed = reportRowFromSheet('inad', rows[i]);
+  for (const parsed of rows) {
     if (String(parsed.key || '').startsWith('__SCAN__') || parsed.passenger === '__SCAN_COMPLETE__') continue;
     dataRows.push(parsed);
   }
@@ -1255,13 +1244,9 @@ async function getInadReportRows() {
 async function getWheelchairReportRows(fromIsoDate, toIsoDate = fromIsoDate) {
   const from = String(fromIsoDate || '').trim();
   const to = String(toIsoDate || from).trim();
-  const rows = await getReportSheetRows('wheelchair');
-  await ensureReportSheetHeaders('wheelchair', rows);
+  const { rows } = await getStoredReportRows('wheelchair', '');
   const dataRows = [];
-  const startIndex = rows.length && isReportHeaderRow('wheelchair', rows[0]) ? 1 : 0;
-  for (let i = startIndex; i < rows.length; i += 1) {
-    if (isReportHeaderRow('wheelchair', rows[i])) continue;
-    const parsed = reportRowFromSheet('wheelchair', rows[i]);
+  for (const parsed of rows) {
     if (String(parsed.key || '').startsWith('__SCAN__') || parsed.passenger === '__SCAN_COMPLETE__') continue;
     if (from && parsed.date < from) continue;
     if (to && parsed.date > to) continue;
@@ -1270,7 +1255,7 @@ async function getWheelchairReportRows(fromIsoDate, toIsoDate = fromIsoDate) {
   return dataRows.sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')) || String(a.flightNo || '').localeCompare(String(b.flightNo || '')) || Number(a.bn || 0) - Number(b.bn || 0));
 }
 
-async function appendVipReportRows(rows) {
+async function appendVipReportRowsToSheet(rows) {
   if (reportSheetAccessBlocked) return { appended: 0 };
   const config = getReportSheetConfig('vip');
   const title = await getReportSheetTitle('vip');
@@ -1319,6 +1304,22 @@ async function appendVipReportRows(rows) {
   return { appended: values.length };
 }
 
+async function appendVipReportRows(rows) {
+  const normalized = (rows || []).map((row) => ({
+    ...row,
+    date:normalizeSheetDateToIso(row.date || row.flightDate) || String(row.date || row.flightDate || ''),
+    key:buildStoredReportKey('vip', row)
+  }));
+  await reportFirestore.upsertMany('vip', normalized);
+  try {
+    const backup = await appendVipReportRowsToSheet(rows);
+    return { ...backup, stored:normalized.length, source:'firestore' };
+  } catch (error) {
+    console.warn('VIP report Google Sheet backup skipped:', error?.message || error);
+    return { appended:0, stored:normalized.length, source:'firestore', backupError:error?.message || 'Sheet backup failed' };
+  }
+}
+
 
 function buildPsmMsgKey(row) {
   return [
@@ -1352,7 +1353,7 @@ function reportPsmMsgRowFromSheet(values) {
   return row;
 }
 
-async function appendPsmMsgReportRows(rows) {
+async function appendPsmMsgReportRowsToSheet(rows) {
   if (reportSheetAccessBlocked) return { appended: 0 };
   const config = getReportSheetConfig('psmMsg');
   const title = await getReportSheetTitle('psmMsg');
@@ -1399,7 +1400,23 @@ async function appendPsmMsgReportRows(rows) {
   return { appended: values.length };
 }
 
-async function appendStoredReportRows(type, isoDate, rows) {
+async function appendPsmMsgReportRows(rows) {
+  const normalized = (rows || []).map((row) => ({
+    ...row,
+    date:normalizeSheetDateToIso(row.date || row.flightDate) || String(row.date || row.flightDate || ''),
+    key:row.key || buildPsmMsgKey(row)
+  }));
+  await reportFirestore.upsertMany('psmMsg', normalized);
+  try {
+    const backup = await appendPsmMsgReportRowsToSheet(rows);
+    return { ...backup, stored:normalized.length, source:'firestore' };
+  } catch (error) {
+    console.warn('PSM/MSG report Google Sheet backup skipped:', error?.message || error);
+    return { appended:0, stored:normalized.length, source:'firestore', backupError:error?.message || 'Sheet backup failed' };
+  }
+}
+
+async function appendStoredReportRowsToSheet(type, isoDate, rows) {
   if (reportSheetAccessBlocked) return { appended: 0 };
   const config = getReportSheetConfig(type);
   if (!config || config.readOnly) return { appended: 0 };
@@ -1424,6 +1441,22 @@ async function appendStoredReportRows(type, isoDate, rows) {
     requestBody: { values }
   });
   return { appended: values.length };
+}
+
+async function appendStoredReportRows(type, isoDate, rows) {
+  const marker = {
+    recordedAt:new Date().toISOString(), date:isoDate, passenger:'__SCAN_COMPLETE__',
+    key:scanMarkerKey(type, isoDate)
+  };
+  const storedRows = [...(rows || []).map((row) => ({ ...row, key:buildStoredReportKey(type, row) })), marker];
+  await reportFirestore.upsertMany(type, storedRows);
+  try {
+    const backup = await appendStoredReportRowsToSheet(type, isoDate, storedRows);
+    return { ...backup, stored:storedRows.length, source:'firestore' };
+  } catch (error) {
+    console.warn(`${type} report Google Sheet backup skipped:`, error?.message || error);
+    return { appended:0, stored:storedRows.length, source:'firestore', backupError:error?.message || 'Sheet backup failed' };
+  }
 }
 
 function normalizeFlightCode(flightNo) {
@@ -1505,26 +1538,35 @@ function salesDetailRowsFromSourceValues(rows = []) {
 
 async function syncSalesDetailsFromSourceSheet(fromIsoDate, toIsoDate) {
   const sourceRows = await readSalesReportSourceValues();
-  const sheetRows = await getReportSheetRows('salesDetails');
-  await ensureReportSheetHeaders('salesDetails', sheetRows);
-  const existing = new Set(sheetRows.slice(1).map((row) => String(row[7] || '').trim()).filter(Boolean));
-  const values = [];
+  const stored = await getStoredReportRows('salesDetails', '');
+  const existing = new Set(stored.rows.map((row) => String(row.key || '').trim()).filter(Boolean));
+  const newRows = [];
   for (const row of salesDetailRowsFromSourceValues(sourceRows)) {
     if (!row || row.date < fromIsoDate || row.date > toIsoDate || existing.has(row.key)) continue;
     existing.add(row.key);
-    values.push(sheetValuesFromReportRow('salesDetails', row));
+    newRows.push(row);
   }
-  if (values.length) {
-    const title = await getReportSheetTitle('salesDetails');
-    await sheets.spreadsheets.values.append({
-      spreadsheetId: REPORT_SHEET_ID,
-      range: `${title}!A:H`,
-      valueInputOption: 'RAW',
-      insertDataOption: 'INSERT_ROWS',
-      requestBody: { values }
-    });
+  await reportFirestore.upsertMany('salesDetails', newRows);
+  let backupError = '';
+  if (newRows.length) {
+    try {
+      const sheetRows = await getReportSheetRows('salesDetails');
+      await ensureReportSheetHeaders('salesDetails', sheetRows);
+      const sheetKeys = new Set(sheetRows.slice(1).map((row) => String(row[7] || '').trim()).filter(Boolean));
+      const values = newRows.filter((row) => !sheetKeys.has(row.key)).map((row) => sheetValuesFromReportRow('salesDetails', row));
+      if (values.length) {
+        const title = await getReportSheetTitle('salesDetails');
+        await sheets.spreadsheets.values.append({
+          spreadsheetId:REPORT_SHEET_ID, range:`${title}!A:H`, valueInputOption:'RAW',
+          insertDataOption:'INSERT_ROWS', requestBody:{ values }
+        });
+      }
+    } catch (error) {
+      backupError = error?.message || 'Sheet backup failed';
+      console.warn('Sales details Google Sheet backup skipped:', backupError);
+    }
   }
-  return { source: 'dailySheet', appended: values.length };
+  return { source:'firestore', appended:newRows.length, ...(backupError ? { backupError } : {}) };
 }
 
 async function getSalesDetailsReportRows(fromIsoDate, toIsoDate, options = {}) {
@@ -1536,14 +1578,8 @@ async function getSalesDetailsReportRows(fromIsoDate, toIsoDate, options = {}) {
       sync = { source: 'dailySheet', appended: 0, errors: [err?.message || 'Sales details sync failed'] };
     }
   }
-  const rows = await getReportSheetRows('salesDetails');
-  await ensureReportSheetHeaders('salesDetails', rows);
-  const dataRows = [];
-  for (let i = rows.length && isReportHeaderRow('salesDetails', rows[0]) ? 1 : 0; i < rows.length; i += 1) {
-    if (isReportHeaderRow('salesDetails', rows[i])) continue;
-    const row = reportRowFromSheet('salesDetails', rows[i]);
-    if (row.date >= fromIsoDate && row.date <= toIsoDate) dataRows.push(row);
-  }
+  const stored = await getStoredReportRows('salesDetails', '');
+  const dataRows = stored.rows.filter((row) => row.date >= fromIsoDate && row.date <= toIsoDate);
   const totals = {};
   for (const row of dataRows) {
     const type = row.type || 'UNKNOWN';

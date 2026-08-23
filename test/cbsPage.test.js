@@ -9,6 +9,11 @@ const drive = fs.readFileSync(path.join(__dirname, '..', 'googleDrive.js'), 'utf
 const server = fs.readFileSync(path.join(__dirname, '..', 'index.js'), 'utf8');
 const firestore = fs.readFileSync(path.join(__dirname, '..', 'cbsFirestore.js'), 'utf8');
 
+test('CBS sidebar uses the MUBC brand', () => {
+  assert.match(page, /<a class="brand" href="index\.html">MUBC<\/a>/);
+  assert.doesNotMatch(page, /<a class="brand" href="index\.html">MUFC<\/a>/);
+});
+
 test('Firestore is the primary CBS store with automatic Sheet migration', () => {
   for (const collection of ['cbsCases', 'cbsOnHandCases', 'cbsWorldTracerCases', 'cbsMissingBagReports', 'cbsWrongBaggageCases']) {
     assert.match(drive, new RegExp(`ensureMigrated\\('${collection}'`));
