@@ -137,6 +137,12 @@ test('case progress identifies the staff member who made each update', () => {
   assert.match(page, /Updated by: \$\{escapeHtml\(updaterDisplayName\(event\.by\)\)\}/);
   assert.match(page, /Updated by: \$\{escapeHtml\(updaterDisplayName\(item\.by\)\)\}/);
   assert.match(page, /escapeHtml\(updaterDisplayText\(item\.detail\)\)/);
+  assert.match(page, /by: event\.by \|\| event\.updatedBy \|\| 'System'/);
+  assert.match(page, /by:row\.submittedBy \|\| row\.createdBy \|\| 'System'/);
+  assert.match(page, /by:row\.resolvedBy \|\| updaterFromText\(row\.resolutionNote\) \|\| 'System'/);
+  assert.match(drive, /createdBy: sanitizeSheetText\(record\.submittedBy, 160\)/);
+  assert.match(drive, /resolvedBy:sanitizeSheetText\(resolvedBy, 160\)/);
+  assert.match(drive, /worldTracerUpdatedBy:sanitizeSheetText\(updatedBy, 160\)/);
   assert.match(server, /updateFields\.updateEvent\.by = sanitizeCbsText\(req\.body\?\.updatedBy, 160\)/);
   assert.match(server, /Updated by: \$\{updatedBy\}/);
   assert.match(drive, /by: sanitizeSheetText\(fallback\.by \|\| event\.by, 160\)/);
@@ -348,5 +354,5 @@ test('On-hand Email asks for a recipient and sends the pickup notice there', () 
   assert.match(server, /if \(action === 'email'\) \{/);
   assert.match(server, /if \(!isValidEmail\(emailTo\)\)/);
   assert.match(server, /sendCbsCaseEmail\(\{ passengerEmail:emailTo/);
-  assert.match(server, /resolveCbsUnresolvedBaggageCase\(req\.params\.rowNumber, action, resolutionNote\)/);
+  assert.match(server, /resolveCbsUnresolvedBaggageCase\(req\.params\.rowNumber, action, resolutionNote, updatedBy\)/);
 });

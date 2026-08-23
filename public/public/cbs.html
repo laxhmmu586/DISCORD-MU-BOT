@@ -333,6 +333,12 @@
     function updaterDisplayText(value) {
       return String(value || '').replace(/(Updated by:\s*)([^\s|]+@[^\s|]+)/gi, (_, prefix, email) => `${prefix}${updaterDisplayName(email)}`);
     }
+    function updaterFromText(value) {
+      return String(value || '').match(/(?:^|\|)\s*Updated by:\s*([^|]+)/i)?.[1]?.trim() || '';
+    }
+    function withoutUpdaterText(value) {
+      return String(value || '').replace(/\s*\|?\s*Updated by:\s*[^|]+/i, '').trim();
+    }
     function currentUpdater() {
       const user = window.firebase?.auth?.()?.currentUser;
       return updaterDisplayName(user?.displayName || user?.email || '');
@@ -479,9 +485,9 @@
     }
     function unresolvedProgressHtml(row) {
       const resolutionTitle = String(row.resolution || '').toLowerCase() === 'email' ? 'Contact PAX to Pick-up Bags' : (row.resolution || 'Resolved');
-      const events = [{ title:'On-hand created', at:row.createdAt, detail:row.location ? `Location: ${row.location}` : '' }];
-      if (row.worldTracerFileNumber) events.push({ title:'WorldTracer', at:'', by:row.worldTracerUpdatedBy || '', detail:`File: ${row.worldTracerFileNumber}` });
-      if (row.resolvedAt) events.push({ title:resolutionTitle, at:row.resolvedAt, detail:row.resolutionNote || '' });
+      const events = [{ title:'On-hand created', at:row.createdAt, by:row.createdBy || row.submittedBy || 'System', detail:row.location ? `Location: ${row.location}` : '' }];
+      if (row.worldTracerFileNumber) events.push({ title:'WorldTracer', at:'', by:row.worldTracerUpdatedBy || 'System', detail:`File: ${row.worldTracerFileNumber}` });
+      if (row.resolvedAt) events.push({ title:resolutionTitle, at:row.resolvedAt, by:row.resolvedBy || updaterFromText(row.resolutionNote) || 'System', detail:withoutUpdaterText(row.resolutionNote) });
       return `<div class="tracking-workspace"><p class="tracking-current-time"><strong>${label('Case Progress', '案件进度')}</strong></p><div class="tracking-history">${events.slice().reverse().map((item, index) => `<span class="tracking-chip${index === 0 ? ' is-latest' : ''}${row.resolvedAt && index === 0 ? ' is-closed' : ''}"><span class="tracking-step-number">${events.length - index}</span><span class="tracking-chip-title">${escapeHtml(item.title)}</span>${item.at || item.by ? `<small>${item.at ? escapeHtml(new Date(item.at).toLocaleString()) : ''}${item.by ? ` · Updated by: ${escapeHtml(updaterDisplayName(item.by))}` : ''}</small>` : ''}${item.detail ? `<span class="tracking-chip-detail">${escapeHtml(updaterDisplayText(item.detail))}</span>` : ''}</span>`).join('')}</div></div>`;
     }
     function renderUnresolvedBaggage(rows = []) {
@@ -565,6 +571,7 @@
         key: trackingKeyFromText(event.key || event.status || event.title),
         title: event.title || `Update ${event.status || 'Case'}`,
         at: event.at || event.updatedAt || row.updatedAt || row.submittedAt || '',
+        by: event.by || event.updatedBy || 'System',
         fields: Array.isArray(event.fields) ? event.fields : [],
         note: event.note || ''
       }));
@@ -573,7 +580,7 @@
       const note = String(row?.updateNote || '').trim();
       const events = [];
       if (row?.rowNumber || row?.firestoreId || row?.submittedAt || row?.createdAt) {
-        events.push({ key:'create', title:'Create Case', at:row.submittedAt || row.issueDate || '', fields:[] });
+        events.push({ key:'create', title:'Create Case', at:row.submittedAt || row.issueDate || '', by:row.submittedBy || row.createdBy || 'System', fields:[] });
       }
       const storedEvents = parseStoredUpdateEvents(row);
       if (storedEvents.length) return events.concat(storedEvents);
@@ -606,7 +613,9 @@
         const split = piece.split(/:\s*/);
         return split.length > 1 ? [split.shift(), split.join(': ')] : [label('Detail', '详情'), piece];
       });
-      return { key, title, at, fields:fields.length ? fields : [[label('Detail', '详情'), text]] };
+      const by = updaterFromText(text) || 'System';
+      const visibleFields = fields.filter(([field]) => !/^Updated by$/i.test(field));
+      return { key, title, at, by, fields:visibleFields.length ? visibleFields : [[label('Detail', '详情'), withoutUpdaterText(text)]] };
     }
     function trackingKeyFromText(value) {
       const text = String(value || '').toLowerCase();

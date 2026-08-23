@@ -3549,7 +3549,8 @@ async function appendCbsUnresolvedBaggageCase(record = {}) {
     bagType: sanitizeSheetText(record.bagType, 80),
     status: sanitizeSheetText(record.status, 80),
     location: sanitizeSheetText(record.location, 120),
-    createdAt: sanitizeSheetText(record.submittedAt || new Date().toISOString(), 40)
+    createdAt: sanitizeSheetText(record.submittedAt || new Date().toISOString(), 40),
+    createdBy: sanitizeSheetText(record.submittedBy, 160)
   };
   const response = await sheets.spreadsheets.values.append({
     spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!A:M`, valueInputOption: 'RAW', insertDataOption: 'INSERT_ROWS',
@@ -3561,7 +3562,7 @@ async function appendCbsUnresolvedBaggageCase(record = {}) {
   return { created: true, record: saved };
 }
 
-async function resolveCbsUnresolvedBaggageCase(rowNumber, resolution, resolutionNote = '') {
+async function resolveCbsUnresolvedBaggageCase(rowNumber, resolution, resolutionNote = '', resolvedBy = '') {
   const rows = await getCbsUnresolvedBaggageCases({ includeResolved: true });
   const target = rows.find((row) => cbsRecordMatchesId(row, rowNumber));
   if (!target) return { updated: false, notFound: true };
@@ -3570,7 +3571,7 @@ async function resolveCbsUnresolvedBaggageCase(rowNumber, resolution, resolution
     const title = await getCbsUnresolvedBaggageSheetTitle();
     await sheets.spreadsheets.values.update({ spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!I${target.rowNumber}:K${target.rowNumber}`, valueInputOption: 'RAW', requestBody: { values: [[sanitizeSheetText(resolution, 80), sanitizeSheetText(resolutionNote, 500), resolvedAt]] } });
   }
-  const record = { ...target, resolution, resolutionNote, resolvedAt };
+  const record = { ...target, resolution, resolutionNote, resolvedAt, resolvedBy:sanitizeSheetText(resolvedBy, 160) };
   await saveCbsFirestoreRecord('cbsOnHandCases', record);
   return { updated: true, record };
 }
@@ -3598,7 +3599,7 @@ async function updateCbsUnresolvedBaggageWorldTracer(rowNumber, worldTracerFileN
     await sheets.spreadsheets.values.update({ spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!L1:M1`, valueInputOption: 'RAW', requestBody: { values: [[CBS_UNRESOLVED_BAGGAGE_HEADERS[11], CBS_UNRESOLVED_BAGGAGE_HEADERS[12]]] } });
     await sheets.spreadsheets.values.update({ spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!L${target.rowNumber}:M${target.rowNumber}`, valueInputOption: 'RAW', requestBody: { values: [[value, sanitizeSheetText(updatedBy, 160)]] } });
   }
-  const record = { ...target, worldTracerFileNumber: value };
+  const record = { ...target, worldTracerFileNumber: value, worldTracerUpdatedBy:sanitizeSheetText(updatedBy, 160) };
   await saveCbsFirestoreRecord('cbsOnHandCases', record);
   return { updated: true, record };
 }
