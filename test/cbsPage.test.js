@@ -130,9 +130,13 @@ test('On-hand Case Close requires notes and archives the case', () => {
 
 test('case progress identifies the staff member who made each update', () => {
   assert.match(page, /function currentUpdater\(\)/);
+  assert.match(page, /function updaterDisplayName\(value\)/);
+  assert.match(page, /updater\.split\('@'\)\[0\]/);
+  assert.match(page, /return updaterDisplayName\(user\?\.displayName \|\| user\?\.email \|\| ''\)/);
   assert.match(page, /payload\.updatedBy = currentUpdater\(\)/);
-  assert.match(page, /Updated by: \$\{escapeHtml\(event\.by\)\}/);
-  assert.match(page, /Updated by: \$\{escapeHtml\(item\.by\)\}/);
+  assert.match(page, /Updated by: \$\{escapeHtml\(updaterDisplayName\(event\.by\)\)\}/);
+  assert.match(page, /Updated by: \$\{escapeHtml\(updaterDisplayName\(item\.by\)\)\}/);
+  assert.match(page, /escapeHtml\(updaterDisplayText\(item\.detail\)\)/);
   assert.match(server, /updateFields\.updateEvent\.by = sanitizeCbsText\(req\.body\?\.updatedBy, 160\)/);
   assert.match(server, /Updated by: \$\{updatedBy\}/);
   assert.match(drive, /by: sanitizeSheetText\(fallback\.by \|\| event\.by, 160\)/);
