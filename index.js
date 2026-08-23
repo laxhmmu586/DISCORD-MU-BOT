@@ -1660,6 +1660,14 @@ function openBagAuthorizationPvgEmail(record) {
   return { subject, text, html: cbsPlainTextEmailHtml(text) };
 }
 
+function signedOpenBagAuthorizationToPvgEmail(record) {
+  const fileNumber = sanitizeCbsText(record?.worldTracerFileNumber, 120) || '—';
+  const bagTag = sanitizeCbsText(record?.bagTag, 120) || '—';
+  const subject = `行李开箱检查授权文件 – WorldTracer ${fileNumber}`;
+  const text = `同事您好，\n\n以下行李目前需要进行开箱检查：\n\nWorldTracer 案件编号：${fileNumber}\n行李牌号码：${bagTag}\n\n附件为旅客已签字的开箱检查授权页，烦请查收并协助后续开箱检查及行李转运安排。\n\n如需补充其他资料，请告知。\n\n谢谢！\n洛杉矶站 - 中国东方航空`;
+  return { subject, text, html:cbsPlainTextEmailHtml(text) };
+}
+
 function formatRushArrivalTime(value, chinese = false) {
   const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!match) return String(value || '');
@@ -2092,7 +2100,7 @@ app.get('/miss-connection-report', async (req, res) => {
 
 function buildCbsUpdateFields(update = {}) {
   const type = sanitizeCbsText(update.type, 40).toLowerCase();
-  if (!['information', 'worldtracer', 'requested_bags', 'open_bag_authorization_pvg', 'rush', 'location', 'shipping', 'lost', 'closed', 'reopen'].includes(type)) return null;
+  if (!['information', 'worldtracer', 'requested_bags', 'open_bag_authorization_pvg', 'email', 'rush', 'location', 'shipping', 'lost', 'closed', 'reopen'].includes(type)) return null;
   const comment = sanitizeCbsText(update.comment, 500);
   if (type === 'information') {
     const informationType = sanitizeCbsText(update.informationType, 40).toLowerCase();
@@ -2112,6 +2120,10 @@ function buildCbsUpdateFields(update = {}) {
   }
   if (type === 'open_bag_authorization_pvg') {
     return { status: 'Require Open Bag Authorization at PVG', updateNote: 'REQUIRE OPEN BAG AUTHORIZATION AT PVG | Authorization form emailed to passenger', updateEvent: { key: 'open_bag_authorization_pvg', title: 'Require Open Bag Authorization at PVG', fields: [['Airport', 'PVG'], ['Attachment', 'Letter of Authorization.pdf']] } };
+  }
+  if (type === 'email') {
+    if (sanitizeCbsText(update.emailAction, 80) !== 'sent_open_bag_authorization_to_pvg') return null;
+    return { status: 'Email - Sent Open Bag Authorization to PVG', updateNote: 'EMAIL | Sent Open Bag Authorization to PVG', updateEvent: { key:'email', title:'Sent Open Bag Authorization to PVG', fields:[['Attachment', 'Letter of Authorization']] } };
   }
   if (type === 'rush') {
     const rushTagNumber = sanitizeCbsText(update.rushTagNumber, 80).toUpperCase();
@@ -2781,7 +2793,11 @@ app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
   try {
     const updateFields = buildCbsUpdateFields(req.body || {});
     if (updateFields?.updateEvent) updateFields.updateEvent.by = sanitizeCbsText(req.body?.updatedBy, 160);
-    if (!updateFields) return res.status(400).json({ error: 'Valid INFORMATION, WORLDTRACER, REQUESTED BAGS, RUSH, BAG LOCATION UPDATE, SHIPPING, LOST, CASE CLOSE, or REOPEN details are required' });
+    if (!updateFields) return res.status(400).json({ error: 'Valid case update details are required' });
+    const emailAttachments = updateFields.updateEvent?.key === 'email' ? sanitizeCbsAttachments(req.body?.attachments) : [];
+    if (updateFields.updateEvent?.key === 'email' && (emailAttachments.length !== 1 || emailAttachments[0].mimeType !== 'application/pdf')) {
+      return res.status(400).json({ error: 'A signed Letter of Authorization PDF is required' });
+    }
     const result = await updateCbsCase(req.params.rowNumber, updateFields);
     if (result.notFound) return res.status(404).json({ error: 'Case not found' });
     if (updateFields.updateEvent?.key === 'worldtracer') {
@@ -2842,6 +2858,16 @@ app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
       } catch (mailErr) {
         result.emailError = cbsEmailErrorMessage(mailErr);
         console.error('CBS PVG open-bag authorization email error:', mailErr);
+      }
+    }
+    if (updateFields.updateEvent?.key === 'email') {
+      const record = result.record;
+      const message = signedOpenBagAuthorizationToPvgEmail(record);
+      try {
+        result.email = await sendCbsCaseEmail({ passengerEmail:'laxhm21@gmail.com', subject:message.subject, html:message.html, text:message.text, attachments:emailAttachments, ccOperations:false });
+      } catch (mailErr) {
+        result.emailError = cbsEmailErrorMessage(mailErr);
+        console.error('CBS signed PVG authorization email error:', mailErr);
       }
     }
     if (updateFields.updateEvent?.key === 'information') {

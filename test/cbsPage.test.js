@@ -142,6 +142,22 @@ test('CBS tracking can request PVG open-bag authorization with the PDF form', ()
   assert.doesNotMatch(server, /assets', 'Letter of Authorization\.pdf'/);
 });
 
+test('CBS Email stage sends a signed open-bag authorization PDF to PVG', () => {
+  assert.match(page, /key:'email', text:'Email'/);
+  assert.match(page, /Sent Open Bag Authorization to PVG/);
+  assert.match(page, /authorization-upload-plus">\+<\/span>/);
+  assert.match(page, /authorization-upload-title">Letter of Authorization<\/span>/);
+  assert.match(page, /accept="application\/pdf,\.pdf" required/);
+  assert.match(page, /reader\.readAsDataURL\(file\)/);
+  assert.match(page, /payload\.attachments = \[\{ filename:file\.name/);
+  assert.match(server, /行李开箱检查授权文件 – WorldTracer \$\{fileNumber\}/);
+  assert.match(server, /WorldTracer 案件编号：\$\{fileNumber\}/);
+  assert.match(server, /行李牌号码：\$\{bagTag\}/);
+  assert.match(server, /passengerEmail:'laxhm21@gmail\.com'/);
+  assert.match(server, /attachments:emailAttachments/);
+  assert.match(server, /A signed Letter of Authorization PDF is required/);
+});
+
 test('CBS tracking offers a compact baggage transfer update with a required arrival date', () => {
   assert.match(page, /key:'information', text:'Information'/);
   assert.match(page, /name="informationType" required><option value="rush_to_lax">Baggage Transfer Status Update/);
