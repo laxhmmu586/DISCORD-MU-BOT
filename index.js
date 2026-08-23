@@ -2613,7 +2613,7 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
       const email = await sendCbsCaseEmail({ passengerEmail:emailTo, subject:message.subject, html:message.html, text:message.text, ccOperations:false });
       const updatedBy = sanitizeCbsText(req.body?.updatedBy, 160);
       const resolutionNote = `Contact PAX to Pick-up Bags | Email To: ${emailTo}${updatedBy ? ` | Updated by: ${updatedBy}` : ''}`;
-      const result = await resolveCbsUnresolvedBaggageCase(req.params.rowNumber, action, resolutionNote);
+      const result = await resolveCbsUnresolvedBaggageCase(req.params.rowNumber, action, resolutionNote, updatedBy);
       await syncOnHandStatusToBaggage(result.record, action, req.body);
       return res.json({ ...result, email });
     }
@@ -2663,7 +2663,7 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
     }
     if (action !== 'on-hand-rush' && !resolutionNote) return res.status(400).json({ error: 'A resolution note is required' });
     if (updatedBy) resolutionNote = `${resolutionNote} | Updated by: ${updatedBy}`;
-    const result = await resolveCbsUnresolvedBaggageCase(req.params.rowNumber, action, resolutionNote);
+    const result = await resolveCbsUnresolvedBaggageCase(req.params.rowNumber, action, resolutionNote, updatedBy);
     if (result.notFound) return res.status(404).json({ error: 'Unresolved baggage case not found' });
     await syncOnHandStatusToBaggage(result.record, action, req.body);
     return res.json(result);

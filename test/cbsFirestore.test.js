@@ -46,8 +46,7 @@ test('Firestore batch writes collapse duplicate document targets', () => {
   ]);
 });
 
-test('Firestore migration caching never caches collection results', () => {
+test('Firestore adapter has no legacy Sheet migration path', () => {
   const source = require('node:fs').readFileSync(require.resolve('../cbsFirestore'), 'utf8');
-  assert.match(source, /await migrations\.get\(collection\);[\s\S]*return list\(collection\);/);
-  assert.doesNotMatch(source, /return migrations\.get\(collection\)/);
+  assert.doesNotMatch(source, /ensureMigrated|_cbsMigrations|legacyLoader/);
 });
