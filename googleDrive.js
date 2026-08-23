@@ -4162,28 +4162,7 @@ async function getCbsBaggageChartImage(page) {
 
 async function getCbsOpenBagAuthorizationPdf() {
   const name = 'Letter of Authorization.pdf';
-  let fileId = String(process.env.CBS_OPEN_BAG_AUTHORIZATION_FILE_ID || '').trim();
-  if (!fileId) {
-    let parentId = '';
-    for (const folderName of ['0-Form', 'lost and found']) {
-      const folder = await drive.files.list({
-        q: `name = '${folderName}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false${parentId ? ` and '${parentId}' in parents` : ''}`,
-        fields: 'files(id)',
-        pageSize: 1,
-        spaces: 'drive'
-      });
-      parentId = folder.data.files?.[0]?.id || '';
-      if (!parentId) throw new Error(`Google Drive folder ${folderName} was not found.`);
-    }
-    const file = await drive.files.list({
-      q: `name = '${name}' and mimeType = 'application/pdf' and trashed = false and '${parentId}' in parents`,
-      fields: 'files(id)',
-      pageSize: 1,
-      spaces: 'drive'
-    });
-    fileId = file.data.files?.[0]?.id || '';
-  }
-  if (!fileId) throw new Error(`${name} was not found in Google Drive.`);
+  const fileId = String(process.env.CBS_OPEN_BAG_AUTHORIZATION_FILE_ID || '1Nfs3j7DcXYezPgcyKz894PX8nNX3-GrA').trim();
   const response = await drive.files.get({ fileId, alt:'media' }, { responseType:'arraybuffer' });
   return { buffer:Buffer.from(response.data), mimeType:'application/pdf', name };
 }

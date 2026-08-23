@@ -137,9 +137,8 @@ test('CBS tracking can request PVG open-bag authorization with the PDF form', ()
   assert.match(server, /getCbsOpenBagAuthorizationPdf\(\)/);
   assert.match(server, /pdfBuffer: authorizationForm\.buffer/);
   assert.match(server, /filename: authorizationForm\.name/);
-  assert.match(drive, /\['0-Form', 'lost and found'\]/);
-  assert.match(drive, /name = '\$\{name\}' and mimeType = 'application\/pdf' and trashed = false and '\$\{parentId\}' in parents/);
-  assert.match(drive, /CBS_OPEN_BAG_AUTHORIZATION_FILE_ID/);
+  assert.match(drive, /CBS_OPEN_BAG_AUTHORIZATION_FILE_ID \|\| '1Nfs3j7DcXYezPgcyKz894PX8nNX3-GrA'/);
+  assert.match(drive, /drive\.files\.get\(\{ fileId, alt:'media' \}/);
   assert.doesNotMatch(server, /assets', 'Letter of Authorization\.pdf'/);
 });
 
