@@ -171,9 +171,8 @@ test('CBS tracking can request PVG open-bag authorization with the PDF form', ()
   assert.match(server, /getCbsOpenBagAuthorizationPdf\(\)/);
   assert.match(server, /pdfBuffer: authorizationForm\.buffer/);
   assert.match(server, /filename: authorizationForm\.name/);
-  assert.match(drive, /CBS_OPEN_BAG_AUTHORIZATION_FILE_ID \|\| ''/);
-  assert.match(drive, /if \(!fileId\) throw new Error\('CBS_OPEN_BAG_AUTHORIZATION_FILE_ID is required\.'\)/);
-  assert.doesNotMatch(drive, /CBS_OPEN_BAG_AUTHORIZATION_FILE_ID \|\| '[^']+'/);
+  assert.match(drive, /CBS_OPEN_BAG_AUTHORIZATION_FILE_ID \|\| '1Nfs3j7DcXYezPgcyKz894PX8nNX3-GrA'/);
+  assert.doesNotMatch(drive, /CBS_OPEN_BAG_AUTHORIZATION_FILE_ID is required/);
   assert.match(drive, /drive\.files\.get\(\{ fileId, alt:'media' \}/);
   assert.doesNotMatch(server, /assets', 'Letter of Authorization\.pdf'/);
 });

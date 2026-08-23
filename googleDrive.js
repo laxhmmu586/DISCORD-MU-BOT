@@ -4271,8 +4271,9 @@ async function getCbsBaggageChartImage(page) {
 
 async function getCbsOpenBagAuthorizationPdf() {
   const name = 'Letter of Authorization.pdf';
-  const fileId = String(process.env.CBS_OPEN_BAG_AUTHORIZATION_FILE_ID || '').trim();
-  if (!fileId) throw new Error('CBS_OPEN_BAG_AUTHORIZATION_FILE_ID is required.');
+  // Keep the established authorization form as the default while allowing an
+  // environment override if Operations replaces the document in the future.
+  const fileId = String(process.env.CBS_OPEN_BAG_AUTHORIZATION_FILE_ID || '1Nfs3j7DcXYezPgcyKz894PX8nNX3-GrA').trim();
   const response = await drive.files.get({ fileId, alt:'media' }, { responseType:'arraybuffer' });
   return { buffer:Buffer.from(response.data), mimeType:'application/pdf', name };
 }
