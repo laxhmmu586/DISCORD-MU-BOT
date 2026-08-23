@@ -29,13 +29,11 @@ function prepare(type, row) {
 
 async function load(type, legacyLoader) {
   const normalized = normalizeType(type);
-  const migratedRows = await firestore.ensureMigrated(collectionName(normalized), async () => {
-    const legacy = await legacyLoader();
-    return (legacy || []).map((row) => prepare(normalized, row));
-  });
-  // ensureMigrated intentionally caches the one-time migration promise. Always
-  // list again so writes made later in this process are visible to report reads.
-  const rows = firestore.enabled ? await firestore.list(collectionName(normalized)) : migratedRows;
+  // Report collections have already been migrated. Read Firestore directly;
+  // retain the legacy loader only for explicit Firestore-disabled rollback.
+  const rows = firestore.enabled
+    ? await firestore.list(collectionName(normalized))
+    : (await legacyLoader() || []).map((row) => prepare(normalized, row));
   return (rows || []).filter((row) => row.reportType === normalized);
 }
 
