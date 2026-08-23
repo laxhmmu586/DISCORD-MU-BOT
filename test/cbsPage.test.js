@@ -29,6 +29,7 @@ test('Firestore is the primary CBS store with automatic Sheet migration', () => 
   assert.match(drive, /saveCbsFirestoreRecord\('cbsOnHandCases', record\)/);
   assert.match(drive, /Object\.assign\(record, await saveCbsFirestoreRecord\('cbsCases', record\)\)[\s\S]*CBS case Sheet backup failed/);
   assert.match(drive, /Object\.assign\(saved, await saveCbsFirestoreRecord\('cbsWrongBaggageCases', saved\)\)[\s\S]*Wrong-baggage Sheet backup failed/);
+  assert.match(drive, /const savedRows = await cbsFirestore\.upsertMany\('cbsMissingBagReports', newRows\);[\s\S]*CBS missing bag Sheet backup failed/);
 });
 
 test('public CBS forms do not CC the operations Gmail account', () => {

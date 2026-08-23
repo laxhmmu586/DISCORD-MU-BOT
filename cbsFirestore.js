@@ -131,7 +131,7 @@ async function upsertMany(collection, records = []) {
     });
     await request('POST', `${baseUrl}:batchWrite`, { writes });
   }
-  return records;
+  return records.map((record) => ({ ...record, firestoreId:documentId(record) }));
 }
 
 async function ensureMigrated(collection, legacyLoader) {

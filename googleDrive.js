@@ -3922,12 +3922,11 @@ function parseCbsMissingBagRowsFromXlsx(buffer, meta = {}) {
 }
 
 async function appendCbsMissingBagRows(records = []) {
-  const rows = await getCbsMissingBagSheetRows({ forceRefresh: true });
-  await ensureCbsMissingBagHeaders(rows);
   const reportRowKey = (record = {}) => [record.bagTag, record.sourceEmailDate, record.sourceAttachment]
     .map((value) => String(value || '').trim().toUpperCase())
     .join('\u0000');
-  const existingRows = new Set(rows.slice(1).map((values) => reportRowKey(cbsMissingBagRecordFromSheet(values))));
+  const existing = await cbsFirestore.ensureMigrated('cbsMissingBagReports', () => getCbsMissingBagReportsFromSheet({ sync:false }));
+  const existingRows = new Set(existing.map(reportRowKey));
   const newRows = records.filter((record) => {
     const tag = String(record.bagTag || '').trim();
     const key = reportRowKey(record);
@@ -3936,16 +3935,22 @@ async function appendCbsMissingBagRows(records = []) {
     return true;
   });
   if (!newRows.length) return { appended: 0 };
-  const title = await getCbsMissingBagSheetTitle();
-  await sheets.spreadsheets.values.append({
-    spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A:I`,
-    valueInputOption: 'RAW',
-    insertDataOption: 'INSERT_ROWS',
-    requestBody: { values: newRows.map(cbsMissingBagValues) }
-  });
-  cbsMissingBagSheetCache = { loadedAt: 0, rows: [] };
-  await cbsFirestore.upsertMany('cbsMissingBagReports', newRows);
+  const savedRows = await cbsFirestore.upsertMany('cbsMissingBagReports', newRows);
+  try {
+    const rows = await getCbsMissingBagSheetRows({ forceRefresh: true });
+    await ensureCbsMissingBagHeaders(rows);
+    const title = await getCbsMissingBagSheetTitle();
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: CBS_SHEET_ID,
+      range: `${escapeSheetTitle(title)}!A:I`,
+      valueInputOption: 'RAW',
+      insertDataOption: 'INSERT_ROWS',
+      requestBody: { values: savedRows.map(cbsMissingBagValues) }
+    });
+    cbsMissingBagSheetCache = { loadedAt: 0, rows: [] };
+  } catch (error) {
+    console.error('CBS missing bag Sheet backup failed:', error?.message || error);
+  }
   return { appended: newRows.length };
 }
 
