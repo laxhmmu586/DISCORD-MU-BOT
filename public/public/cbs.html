@@ -923,7 +923,7 @@
       const historyHtml = sortedEvents
         .map(({ event, stepNumber }, index) => {
           const time = formatEventTime(event.at);
-          const title = TRACKING_STAGES.find((stage) => stage.key === event.key)?.text || event.title || 'Update';
+          const title = event.key === 'email' ? event.title : (TRACKING_STAGES.find((stage) => stage.key === event.key)?.text || event.title || 'Update');
           const detailFields = (event.fields || []).filter(([, value]) => hasValue(value));
           const detailHtml = detailFields.map(([fieldKey, value]) => `<span class="tracking-chip-detail">${escapeHtml(fieldKey)}: ${escapeHtml(renderValue(value))}</span>`).join('');
           const noteHtml = !detailFields.length && hasValue(event.note) ? `<span class="tracking-chip-detail">${escapeHtml(event.note)}</span>` : '';

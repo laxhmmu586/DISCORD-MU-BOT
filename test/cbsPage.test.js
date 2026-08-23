@@ -137,7 +137,9 @@ test('CBS tracking can request PVG open-bag authorization with the PDF form', ()
   assert.match(server, /getCbsOpenBagAuthorizationPdf\(\)/);
   assert.match(server, /pdfBuffer: authorizationForm\.buffer/);
   assert.match(server, /filename: authorizationForm\.name/);
-  assert.match(drive, /CBS_OPEN_BAG_AUTHORIZATION_FILE_ID \|\| '1Nfs3j7DcXYezPgcyKz894PX8nNX3-GrA'/);
+  assert.match(drive, /CBS_OPEN_BAG_AUTHORIZATION_FILE_ID \|\| ''/);
+  assert.match(drive, /if \(!fileId\) throw new Error\('CBS_OPEN_BAG_AUTHORIZATION_FILE_ID is required\.'\)/);
+  assert.doesNotMatch(drive, /CBS_OPEN_BAG_AUTHORIZATION_FILE_ID \|\| '[^']+'/);
   assert.match(drive, /drive\.files\.get\(\{ fileId, alt:'media' \}/);
   assert.doesNotMatch(server, /assets', 'Letter of Authorization\.pdf'/);
 });
@@ -162,6 +164,7 @@ test('CBS Email stage sends a signed open-bag authorization PDF to PVG', () => {
   assert.match(server, /A signed Letter of Authorization PDF is required/);
   assert.doesNotMatch(page.match(/const notifications = \[([\s\S]*?)\]\.filter/)?.[1] || '', /Signed authorization sent to PVG/);
   assert.match(page, /tracking-chip--email,\.tracking-chip--email\.is-latest/);
+  assert.match(page, /event\.key === 'email' \? event\.title/);
 });
 
 test('CBS tracking offers a compact baggage transfer update with a required arrival date', () => {
