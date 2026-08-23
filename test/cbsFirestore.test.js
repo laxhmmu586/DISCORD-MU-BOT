@@ -9,9 +9,21 @@ test('CBS targets the laxmufc Firestore database by default', () => {
 });
 
 test('Firestore codec preserves CBS records', () => {
-  const record = { rowNumber:2, status:'Open', active:true, flightRows:[{ from:'LAX', to:'PVG' }], empty:null };
+  const record = {
+    rowNumber:2,
+    status:'Open',
+    active:true,
+    flightRows:[{ from:'LAX', to:'PVG' }],
+    updateEvents:[{ title:'Update', fields:[['File Number', 'LAXMU12345'], ['Status', 'Open']] }],
+    empty:null
+  };
   const encoded = firestore._test.encodeValue(record);
   assert.deepEqual(firestore._test.decodeValue(encoded), record);
+});
+
+test('Firestore codec never emits an array directly inside another array', () => {
+  const encoded = firestore._test.encodeValue([[1, 2], ['label', 'value']]);
+  assert.ok(encoded.arrayValue.values.every((value) => value.mapValue));
 });
 
 test('legacy Sheet rows receive deterministic Firestore document IDs', () => {
