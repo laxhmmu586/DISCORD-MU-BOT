@@ -9,6 +9,16 @@ const drive = fs.readFileSync(path.join(__dirname, '..', 'googleDrive.js'), 'utf
 const server = fs.readFileSync(path.join(__dirname, '..', 'index.js'), 'utf8');
 const firestore = fs.readFileSync(path.join(__dirname, '..', 'cbsFirestore.js'), 'utf8');
 
+test('CBS sidebar uses the MUBC brand', () => {
+  assert.match(page, /<a class="brand" href="index\.html">MUBC<\/a>/);
+  assert.doesNotMatch(page, /<a class="brand" href="index\.html">MUFC<\/a>/);
+});
+
+test('updating one CBS case keeps the complete case list visible', () => {
+  assert.match(page, /window\._selectedCbsRow = 0;\s*window\._expandedCbsCases = window\._expandedCbsCases \|\| new Set\(\);\s*window\._expandedCbsCases\.add\(`row-\$\{rowNumber\}`\);\s*await loadCases\(\)/);
+  assert.doesNotMatch(page, /window\._selectedCbsRow = Number\(rowNumber\)/);
+});
+
 test('Firestore is the primary CBS store with automatic Sheet migration', () => {
   for (const collection of ['cbsCases', 'cbsOnHandCases', 'cbsWorldTracerCases', 'cbsMissingBagReports', 'cbsWrongBaggageCases']) {
     assert.match(drive, new RegExp(`ensureMigrated\\('${collection}'`));
@@ -161,9 +171,8 @@ test('CBS tracking can request PVG open-bag authorization with the PDF form', ()
   assert.match(server, /getCbsOpenBagAuthorizationPdf\(\)/);
   assert.match(server, /pdfBuffer: authorizationForm\.buffer/);
   assert.match(server, /filename: authorizationForm\.name/);
-  assert.match(drive, /CBS_OPEN_BAG_AUTHORIZATION_FILE_ID \|\| ''/);
-  assert.match(drive, /if \(!fileId\) throw new Error\('CBS_OPEN_BAG_AUTHORIZATION_FILE_ID is required\.'\)/);
-  assert.doesNotMatch(drive, /CBS_OPEN_BAG_AUTHORIZATION_FILE_ID \|\| '[^']+'/);
+  assert.match(drive, /CBS_OPEN_BAG_AUTHORIZATION_FILE_ID \|\| '1Nfs3j7DcXYezPgcyKz894PX8nNX3-GrA'/);
+  assert.doesNotMatch(drive, /CBS_OPEN_BAG_AUTHORIZATION_FILE_ID is required/);
   assert.match(drive, /drive\.files\.get\(\{ fileId, alt:'media' \}/);
   assert.doesNotMatch(server, /assets', 'Letter of Authorization\.pdf'/);
 });
