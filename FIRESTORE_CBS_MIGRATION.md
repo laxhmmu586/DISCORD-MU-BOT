@@ -9,12 +9,12 @@ Firestore and retained in Google Sheets as the operational backup/report.
 
 The existing Google service account must have `roles/datastore.user` on the
 Firebase project. The defaults target the existing `china-eastern` project and
-the `(default)` database:
+the named `laxmufc` database:
 
 ```env
 CBS_FIRESTORE_ENABLED=true
 FIREBASE_PROJECT_ID=china-eastern
-FIRESTORE_DATABASE_ID=(default)
+FIRESTORE_DATABASE_ID=laxmufc
 ```
 
 `GOOGLE_CLIENT_EMAIL` and `GOOGLE_PRIVATE_KEY` continue to provide server-only

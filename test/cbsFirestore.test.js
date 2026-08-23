@@ -4,6 +4,10 @@ const assert = require('node:assert/strict');
 process.env.CBS_FIRESTORE_ENABLED = 'false';
 const firestore = require('../cbsFirestore');
 
+test('CBS targets the laxmufc Firestore database by default', () => {
+  assert.equal(firestore.databaseId, 'laxmufc');
+});
+
 test('Firestore codec preserves CBS records', () => {
   const record = { rowNumber:2, status:'Open', active:true, flightRows:[{ from:'LAX', to:'PVG' }], empty:null };
   const encoded = firestore._test.encodeValue(record);

@@ -2,7 +2,7 @@ const crypto = require('crypto');
 const { google } = require('googleapis');
 
 const projectId = String(process.env.FIREBASE_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT || 'china-eastern').trim();
-const databaseId = String(process.env.FIRESTORE_DATABASE_ID || '(default)').trim();
+const databaseId = String(process.env.FIRESTORE_DATABASE_ID || 'laxmufc').trim();
 const enabled = String(process.env.CBS_FIRESTORE_ENABLED || 'true').toLowerCase() !== 'false';
 const auth = new google.auth.GoogleAuth({
   credentials: {
