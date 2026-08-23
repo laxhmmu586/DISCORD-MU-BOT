@@ -14,6 +14,11 @@ test('CBS sidebar uses the MUBC brand', () => {
   assert.doesNotMatch(page, /<a class="brand" href="index\.html">MUFC<\/a>/);
 });
 
+test('updating one CBS case keeps the complete case list visible', () => {
+  assert.match(page, /window\._selectedCbsRow = 0;\s*window\._expandedCbsCases = window\._expandedCbsCases \|\| new Set\(\);\s*window\._expandedCbsCases\.add\(`row-\$\{rowNumber\}`\);\s*await loadCases\(\)/);
+  assert.doesNotMatch(page, /window\._selectedCbsRow = Number\(rowNumber\)/);
+});
+
 test('Firestore is the primary CBS store with automatic Sheet migration', () => {
   for (const collection of ['cbsCases', 'cbsOnHandCases', 'cbsWorldTracerCases', 'cbsMissingBagReports', 'cbsWrongBaggageCases']) {
     assert.match(drive, new RegExp(`ensureMigrated\\('${collection}'`));

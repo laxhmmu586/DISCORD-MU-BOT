@@ -1187,7 +1187,11 @@
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || 'Update failed');
         if (data.emailError) alert(`Case updated, but the passenger email failed: ${data.emailError}`);
-        window._selectedCbsRow = Number(rowNumber);
+        // Keep the full case list visible after an update. Selecting only the
+        // updated row made the other open cases appear to have disappeared.
+        window._selectedCbsRow = 0;
+        window._expandedCbsCases = window._expandedCbsCases || new Set();
+        window._expandedCbsCases.add(`row-${rowNumber}`);
         await loadCases();
         if (window._missingReportLoaded || !missingReportCard.hidden) await loadMissingReports();
       } catch (error) { alert(error.message); } finally { casesOutput.style.opacity = '1'; }
