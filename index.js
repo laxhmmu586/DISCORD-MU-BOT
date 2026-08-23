@@ -3275,7 +3275,7 @@ app.get(
       }
 
       // An optional flight number keeps irregular operations isolated from the
-      // normal MU586 dashboard, for example: SY MU586D/09AUG26.
+      // normal MU586 dashboard, for example: SY MU9586/09AUG26.
       const syRawMatch = rawQuery.match(
         /^SY(\+)?(?:\s+([A-Z]{2}\d{1,4}[A-Z]?))?(?:\/(\d{2}[A-Z]{3})(\d{2})?)?$/i
       );

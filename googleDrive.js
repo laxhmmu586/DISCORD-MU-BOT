@@ -3031,7 +3031,7 @@ async function appendRecordScanRecord(record = {}) {
   const seat = String(record.seat || '').trim().toUpperCase();
   const flight = String(record.flight || '').trim().toUpperCase();
   const rawScan = String(record.rawScan || record.raw || '').trim();
-  if (!bn || !seat || !rawScan || !['MU586', 'MU586D'].includes(flight)) throw new Error('Invalid record scan.');
+  if (!bn || !seat || !rawScan || !['MU586', 'MU9586'].includes(flight)) throw new Error('Invalid record scan.');
 
   const title = await getRecordScanSheetTitle();
   const range = `${escapeSheetTitle(title)}!A:D`;
