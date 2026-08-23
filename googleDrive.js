@@ -3534,7 +3534,14 @@ async function getCbsUnresolvedBaggageCasesFromSheet(options = {}) {
 
 async function getCbsUnresolvedBaggageCases(options = {}) {
   const rows = await cbsFirestore.ensureMigrated('cbsOnHandCases', () => getCbsUnresolvedBaggageCasesFromSheet({ includeResolved:true }));
-  return rows.filter((row) => options.includeResolved || !row.resolvedAt).sort((a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0));
+  return rows
+    .filter((row) => !isCbsGateBag(row))
+    .filter((row) => options.includeResolved || !row.resolvedAt)
+    .sort((a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0));
+}
+
+function isCbsGateBag(record = {}) {
+  return [record.status, record.bagType].some((value) => sanitizeSheetText(value, 80).toLowerCase() === 'gate bag');
 }
 
 function cbsRecordMatchesId(row, identifier) {
@@ -3543,6 +3550,7 @@ function cbsRecordMatchesId(row, identifier) {
 }
 
 async function appendCbsUnresolvedBaggageCase(record = {}) {
+  if (isCbsGateBag(record)) return { created: false, excluded: true };
   const title = await getCbsUnresolvedBaggageSheetTitle();
   const existing = await getCbsUnresolvedBaggageCases();
   const bagTag = sanitizeSheetText(record.bagTag, 80).toUpperCase();
