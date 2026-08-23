@@ -73,6 +73,8 @@ test('On-hand cases match the passenger case layout and support WorldTracer prog
   assert.match(page, /class="case-detail-layout"><div class="case-progress-column">\$\{unresolvedProgressHtml\(progressRow\)\}/);
   assert.match(page, /<option value="worldtracer">WorldTracer<\/option>/);
   assert.match(drive, /worldTracerFileNumber: values\[11\]/);
+  assert.match(page, /active\.rowNumber \|\| active\.firestoreId/);
+  assert.match(drive, /rows\.find\(\(row\) => cbsRecordMatchesId\(row, rowNumber\)\)/);
   assert.match(drive, /'WorldTracer File Number'/);
   assert.match(drive, /!L\$\{target\.rowNumber\}/);
   assert.match(drive, /!L1:M1`[\s\S]*CBS_UNRESOLVED_BAGGAGE_HEADERS\[12\]/);
