@@ -52,14 +52,14 @@ test('On-hand progress updates sync to the home-page baggage search', () => {
   }
   assert.match(server, /await updateTestBaggageRecord\(record\.bagTag, \{/);
   assert.match(server, /type: 'cbs'/);
-  assert.equal((server.match(/await syncOnHandStatusToBaggage\(result\.record, action, req\.body\)/g) || []).length, 3);
+  assert.equal((server.match(/await syncOnHandStatusToBaggage\(result\.record, action, req\.body\)/g) || []).length, 4);
   assert.match(drive, /else if \(updateType === 'cbs'\)/);
   assert.match(drive, /next\.status = sanitizeSheetText\(update\.status, 120\)/);
   assert.match(drive, /type: sanitizeSheetText\(update\.eventType, 80\) \|\| updateType/);
 });
 
 test('Other On-hand updates remain actionable in Open Case', () => {
-  assert.match(page, /const active = row\.history\.find\(\(item\) => !item\.resolvedAt \|\| String\(item\.resolution \|\| ''\)\.toLowerCase\(\) === 'other'\)/);
+  assert.match(page, /const active = row\.history\.find\(\(item\) => !item\.resolvedAt \|\| \['other', 'email'\]\.includes/);
   assert.match(page, /const formHtml = active/);
   assert.match(page, /<option value="other">Other resolution<\/option>/);
 });
@@ -264,4 +264,27 @@ test('expanded CBS cases show passenger email notification status', () => {
   assert.doesNotMatch(page, /sent \? ' is-sent'/);
   assert.doesNotMatch(page, /label\('Sent', '已发送'\)/);
   assert.match(page, /passengerNotificationHtml\(row\)/);
+});
+
+
+test('Email can notify a Passenger Filed case that baggage is ready for LAX pickup', () => {
+  assert.match(page, /<option value="contact_pax_pickup_bags">Contact PAX to Pick-up Bags<\/option>/);
+  assert.match(page, /payload\.emailAction === 'sent_open_bag_authorization_to_pvg'/);
+  assert.match(page, /data-pvg-email-field/);
+  assert.match(server, /您的行李已可在洛杉矶机场领取 - 中国东方航空公司/);
+  assert.match(server, /Your Baggage Available for Pick-Up at LAX - China Eastern Airlines/);
+  assert.match(server, /Tom Bradley International Terminal（TBIT）A68 柜台办公室/);
+  assert.match(server, /Pick-up Hours: 8:00 AM – 2:00 PM/);
+  assert.match(server, /pickupEmail \? record\.email/);
+  assert.match(page, /event\.title === 'Contact PAX to Pick-up Bags'/);
+});
+
+test('On-hand Email asks for a recipient and sends the pickup notice there', () => {
+  assert.match(page, /<option value="email">Email<\/option>/);
+  assert.match(page, /if \(action === 'email'\) return .*Contact PAX to Pick-up Bags/);
+  assert.match(page, /<span>Email To<\/span><input name="emailTo" type="email"/);
+  assert.match(server, /if \(action === 'email'\) \{/);
+  assert.match(server, /if \(!isValidEmail\(emailTo\)\)/);
+  assert.match(server, /sendCbsCaseEmail\(\{ passengerEmail:emailTo/);
+  assert.match(server, /resolveCbsUnresolvedBaggageCase\(req\.params\.rowNumber, action, resolutionNote\)/);
 });
