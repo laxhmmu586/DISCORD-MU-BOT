@@ -33,3 +33,15 @@ test('legacy Sheet rows receive deterministic Firestore document IDs', () => {
     firestore._test.documentId({ bagTag:'MU123456', createdAt:'2026-08-23T00:00:00Z' })
   );
 });
+
+test('Firestore batch writes collapse duplicate document targets', () => {
+  const records = [
+    { firestoreId:'same-report-row', value:'old' },
+    { firestoreId:'other-report-row', value:'other' },
+    { firestoreId:'same-report-row', value:'new' }
+  ];
+  assert.deepEqual(firestore._test.dedupeRecords(records), [
+    { firestoreId:'same-report-row', value:'new' },
+    { firestoreId:'other-report-row', value:'other' }
+  ]);
+});

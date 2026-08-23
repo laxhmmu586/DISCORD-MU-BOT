@@ -126,6 +126,7 @@
     .inline-update.case-update[data-update-mode="information"] { grid-template-columns:minmax(220px,320px); }
     .inline-update.case-update[data-update-mode="email"] { grid-template-columns:minmax(240px,420px); }
     .authorization-upload { display:grid; gap:8px; padding:14px; border:1px dashed #9db8d8; border-radius:14px; background:#f8fbff; cursor:pointer; }
+    [data-pvg-email-field][hidden] { display:none; }
     .authorization-upload input { position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; }
     .authorization-upload-plus { display:grid; place-items:center; width:38px; height:38px; border-radius:999px; background:#fff; color:var(--brand); box-shadow:0 5px 14px #173b5d22; font-size:26px; font-weight:900; }
     .authorization-upload-title { color:var(--brand); font-size:13px; font-weight:900; }
@@ -249,7 +250,7 @@
 </head>
 <body>
   <header>
-    <a class="brand" href="index.html">MUFC</a>
+    <a class="brand" href="index.html">MUBC</a>
     <div class="nav-kicker">Baggage Operations</div>
     <nav class="page-tabs" aria-label="CBS sections">
       <button class="page-tab" id="open-cases-tab" type="button" title="Open Case"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h6l2 2h8v10H4zM4 7V5h6l2 2"/></svg></span><span class="page-tab-label"><span class="en">Open Case</span><span class="zh">未结案件</span></span></button>
@@ -1187,7 +1188,11 @@
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || 'Update failed');
         if (data.emailError) alert(`Case updated, but the passenger email failed: ${data.emailError}`);
-        window._selectedCbsRow = Number(rowNumber);
+        // Keep the full case list visible after an update. Selecting only the
+        // updated row made the other open cases appear to have disappeared.
+        window._selectedCbsRow = 0;
+        window._expandedCbsCases = window._expandedCbsCases || new Set();
+        window._expandedCbsCases.add(`row-${rowNumber}`);
         await loadCases();
         if (window._missingReportLoaded || !missingReportCard.hidden) await loadMissingReports();
       } catch (error) { alert(error.message); } finally { casesOutput.style.opacity = '1'; }
