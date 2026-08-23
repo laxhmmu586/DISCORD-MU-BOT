@@ -617,8 +617,8 @@ async function scanSyServiceReportRows(type, isoDate) {
 async function loadStoredReportRows(type, isoDate, options = {}) {
   const normalizedType = String(type || '').toLowerCase();
   const stored = await getStoredReportRows(normalizedType, isoDate);
-  if (normalizedType === 'vip') return { rows: stored.rows, source: 'sheet', scanned: true };
-  if (stored.scanned && !options.forceRefresh) return { rows: stored.rows, source: 'sheet', scanned: true };
+  if (normalizedType === 'vip') return { rows: stored.rows, source: 'firestore', scanned: true };
+  if (stored.scanned && !options.forceRefresh) return { rows: stored.rows, source: 'firestore', scanned: true };
   const rows = await scanSyServiceReportRows(normalizedType, isoDate);
   await appendStoredReportRows(normalizedType, isoDate, rows);
   const refreshed = await getStoredReportRows(normalizedType, isoDate);
@@ -3071,7 +3071,7 @@ app.get('/vip-report', async (req, res) => {
     const isoDate = String(req.query.date || '').trim();
     if (isoDate && !/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return res.status(400).json({ error: 'Invalid date' });
     const rows = await getVipReportRows(isoDate || '');
-    return res.json({ rows, source: 'sheet', scanned: true });
+    return res.json({ rows, source: 'firestore', scanned: true });
   } catch (err) {
     console.error('VIP report error:', err);
     return res.status(500).json({ error: err?.message || 'VIP report lookup failed' });
@@ -3091,7 +3091,7 @@ app.get('/psm-report', async (req, res) => {
       return res.status(400).json({ error: 'Invalid date range' });
     }
     const rows = await getPsmMsgReportRows(from, to);
-    return res.json({ rows, source: 'sheet' });
+    return res.json({ rows, source: 'firestore' });
   } catch (err) {
     console.error('PSM report error:', err);
     return res.status(500).json({ error: err?.message || 'PSM report lookup failed' });
@@ -3101,7 +3101,7 @@ app.get('/psm-report', async (req, res) => {
 app.get('/inad-report', async (req, res) => {
   try {
     const rows = await getInadReportRows();
-    return res.json({ rows, source: 'sheet' });
+    return res.json({ rows, source: 'firestore' });
   } catch (err) {
     console.error('INAD report error:', err);
     return res.status(500).json({ error: err?.message || 'INAD report lookup failed' });
@@ -3120,7 +3120,7 @@ app.get('/wch-report', async (req, res) => {
       return res.status(400).json({ error: 'Invalid date range' });
     }
     const rows = await getWheelchairReportRows(from, to);
-    return res.json({ rows, source: 'sheet' });
+    return res.json({ rows, source: 'firestore' });
   } catch (err) {
     console.error('WCH report error:', err);
     return res.status(500).json({ error: err?.message || 'WCH report lookup failed' });
@@ -3177,7 +3177,7 @@ app.get('/sales-details-report', async (req, res) => {
       return res.status(400).json({ error: 'Invalid date range' });
     }
     const result = await getSalesDetailsReportRows(from, to, { sync: String(req.query.sync || 'true').toLowerCase() !== 'false' });
-    return res.json({ ...result, source: 'sheet' });
+    return res.json({ ...result, source: 'firestore' });
   } catch (err) {
     console.error('Sales details report error:', err);
     return res.status(500).json({ error: err?.message || 'Sales details report lookup failed' });
