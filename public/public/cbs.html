@@ -398,7 +398,20 @@
     }
     sidebarToggle.addEventListener('click', () => setSidebarCollapsed(!document.body.classList.contains('sidebar-collapsed')));
     setSidebarCollapsed(localStorage.getItem('cbs-sidebar-collapsed') === '1');
-    sidebarRefresh.addEventListener('click', () => window.location.reload());
+    sidebarRefresh.addEventListener('click', async () => {
+      if (sidebarRefresh.disabled) return;
+      sidebarRefresh.disabled = true;
+      sidebarRefresh.classList.add('is-loading');
+      try {
+        // Refresh only the data used by this screen. Reloading the document also
+        // restarted the Google/Gmail synchronization and needlessly used quota.
+        await Promise.all([loadCases(), loadMissingReports(), loadUnresolvedBaggage()]);
+        if (!worldTracerCard.hidden) await loadWorldTracerCases();
+      } finally {
+        sidebarRefresh.disabled = false;
+        sidebarRefresh.classList.remove('is-loading');
+      }
+    });
     sidebarLogout.addEventListener('click', async () => {
       ['mufc_auth_session_started_at', 'mufc_auth_last_activity_at'].forEach((key) => {
         localStorage.removeItem(key);
@@ -429,7 +442,7 @@
         const routes = (row.flightRows || []).map((flight) => `<span>${escapeHtml(flight.flightDate || '-')} &nbsp; ${escapeHtml(flight.flightNumber || '-')} &nbsp; ${escapeHtml(flight.from || '-')} – ${escapeHtml(flight.to || '-')}</span>`).join('');
         const created = row.createdAt ? new Date(row.createdAt).toLocaleString() : '-';
         const editFlights = (row.flightRows || []).map((flight) => rushFlightRowHtml(flight)).join('');
-        return `<tr><td class="case-key">${escapeHtml(row.worldTracerFileNumber || '-')}</td><td><span class="bag-tag-value">${escapeHtml(row.originalTagNumber || '-')}</span></td><td><span class="bag-tag-value">${escapeHtml(row.rushTagNumber || '-')}</span></td><td><div class="worldtracer-route">${routes}</div></td><td class="sheet-meta">${escapeHtml(created)}</td><td><button type="button" data-toggle-onhand-update="${caseIndex}">Update</button></td></tr><tr data-onhand-update-row="${caseIndex}" hidden><td colspan="6"><form class="worldtracer-form onhand-update-form" data-row-numbers="${escapeHtml((row.rowNumbers || []).join(','))}" data-created-at="${escapeHtml(row.createdAt)}"><label><span>WorldTracer File Number (Optional)</span><input name="worldTracerFileNumber" value="${escapeHtml(row.worldTracerFileNumber)}" placeholder="Can be added later" /></label><label><span>Original Tag Number</span><input name="originalTagNumber" value="${escapeHtml(row.originalTagNumber)}" required /></label><label><span>RUSH Tag Number</span><input name="rushTagNumber" value="${escapeHtml(row.rushTagNumber)}" required /></label><div class="rush-itinerary wide"><div class="rush-itinerary-head"><h2>RUSH Itinerary</h2><button class="secondary" type="button" data-add-onhand-flight>+ Add Flight</button></div><div data-onhand-flight-rows>${editFlights}</div></div><div class="actions"><button type="submit">Save Update</button></div></form></td></tr>`;
+        return `<tr><td class="case-key">${escapeHtml(row.worldTracerFileNumber || '-')}</td><td><span class="bag-tag-value">${escapeHtml(row.originalTagNumber || '-')}</span></td><td><span class="bag-tag-value">${escapeHtml(row.rushTagNumber || '-')}</span></td><td><div class="worldtracer-route">${routes}</div></td><td class="sheet-meta">${escapeHtml(created)}</td><td><button type="button" data-toggle-onhand-update="${caseIndex}">Update</button></td></tr><tr data-onhand-update-row="${caseIndex}" hidden><td colspan="6"><form class="worldtracer-form onhand-update-form" data-row-numbers="${escapeHtml((row.rowNumbers || []).join(','))}" data-firestore-id="${escapeHtml(row.firestoreId || '')}" data-created-at="${escapeHtml(row.createdAt)}"><label><span>WorldTracer File Number (Optional)</span><input name="worldTracerFileNumber" value="${escapeHtml(row.worldTracerFileNumber)}" placeholder="Can be added later" /></label><label><span>Original Tag Number</span><input name="originalTagNumber" value="${escapeHtml(row.originalTagNumber)}" required /></label><label><span>RUSH Tag Number</span><input name="rushTagNumber" value="${escapeHtml(row.rushTagNumber)}" required /></label><div class="rush-itinerary wide"><div class="rush-itinerary-head"><h2>RUSH Itinerary</h2><button class="secondary" type="button" data-add-onhand-flight>+ Add Flight</button></div><div data-onhand-flight-rows>${editFlights}</div></div><div class="actions"><button type="submit">Save Update</button></div></form></td></tr>`;
       }).join('')}</tbody></table></div>`;
     }
     async function loadWorldTracerCases() {
@@ -1256,6 +1269,7 @@
       const payload = Object.fromEntries(new FormData(form).entries());
       payload.createdAt = form.dataset.createdAt;
       payload.rowNumbers = form.dataset.rowNumbers.split(',').filter(Boolean).map(Number);
+      payload.firestoreId = form.dataset.firestoreId || '';
       payload.flightRows = Array.from(form.querySelectorAll('[data-rush-flight-row]')).map((row) => ({ flightDate:row.querySelector('[data-flight-date]').value, flightNumber:row.querySelector('[data-flight-number]').value, from:row.querySelector('[data-flight-from]').value, to:row.querySelector('[data-flight-to]').value }));
       const button = form.querySelector('button[type="submit"]');
       button.disabled = true;
