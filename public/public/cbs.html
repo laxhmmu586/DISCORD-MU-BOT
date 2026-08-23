@@ -258,6 +258,7 @@
       <button class="page-tab" id="add-baggage-tab" type="button" title="Add On-hand"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="13" height="12" rx="2"/><path d="M7 8V5h5v3m7-4v8m-4-4h8"/></svg></span><span class="page-tab-label">Add On-hand</span></button>
       <button class="page-tab" id="worldtracer-tab" type="button" title="Rush Bag"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m3 14 7-3V5l2-2 2 7 5-2 2 1-7 5v5l-2 2-2-6-4 2z"/></svg></span><span class="page-tab-label">Rush Bag</span></button>
       <button class="page-tab" id="missing-report-alert" type="button" title="Missing Bag Report"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="7" width="12" height="12" rx="2"/><path d="M8 7V5h4v2m5 10 4 4m-1-7a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg></span><span class="page-tab-label">Missing Bag Report</span></button>
+      <button class="page-tab" id="email-tab" type="button" title="Email"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg></span><span class="page-tab-label">Email</span></button>
       <button class="page-tab" id="baggage-chart-tab" type="button" title="Baggage Chart"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19V9m5 10V5m5 14v-7m5 7V3"/></svg></span><span class="page-tab-label">Baggage Chart</span></button>
     </nav>
     <span class="header-spacer"></span>
@@ -302,6 +303,18 @@
     <section class="card" id="missing-report-card" hidden>
       <div class="actions"><div><h1>MISSING BAG REPORT</h1><p class="muted">MU rows imported from Early Bag Storage missed bag email.</p></div></div>
       <div id="missing-report-output"><p class="muted">Loading missing bags...</p></div>
+    </section>
+    <section class="card" id="email-card" hidden>
+      <h1>Email</h1>
+      <p class="muted">Select a subject and complete the required email details.</p>
+      <form class="worldtracer-form" id="standalone-email-form">
+        <label class="wide"><span>Subject</span><select name="emailAction" data-standalone-email-action required><option value="sent_open_bag_authorization_to_pvg">Sent Open Bag Authorization to PVG</option><option value="contact_pax_pickup_bags">Contact PAX to Pick-up Bags</option></select></label>
+        <label class="wide" data-standalone-pvg-field><span>Email To</span><select name="emailTo" required><option value="pd-bag-intl@ceair.com">pd-bag-intl@ceair.com</option><option value="pd-bag-dom@ceair.com">pd-bag-dom@ceair.com</option></select></label>
+        <label class="authorization-upload wide" data-standalone-pvg-field><input name="authorizationFile" type="file" accept="application/pdf,.pdf" required /><span class="authorization-upload-plus">+</span><span class="authorization-upload-title">Letter of Authorization</span><small data-authorization-filename>Select the signed PDF</small></label>
+        <label class="wide" data-standalone-pickup-field hidden><span>Email To</span><input name="passengerEmail" type="email" placeholder="Passenger email address" disabled required /></label>
+        <p class="status wide" id="standalone-email-status" aria-live="polite"></p>
+        <div class="actions wide"><button type="submit">Send</button></div>
+      </form>
     </section>
     <section class="card" id="add-baggage-card" hidden>
       <h1>Add On-hand</h1>
@@ -363,6 +376,10 @@
     const missingAlert = document.querySelector('#missing-report-alert');
     const missingReportCard = document.querySelector('#missing-report-card');
     const missingReportOutput = document.querySelector('#missing-report-output');
+    const emailTab = document.querySelector('#email-tab');
+    const emailCard = document.querySelector('#email-card');
+    const standaloneEmailForm = document.querySelector('#standalone-email-form');
+    const standaloneEmailStatus = document.querySelector('#standalone-email-status');
     const unresolvedBaggageOutput = document.querySelector('#unresolved-baggage-output');
     const addBaggageTab = document.querySelector('#add-baggage-tab');
     const addBaggageCard = document.querySelector('#add-baggage-card');
@@ -387,12 +404,14 @@
       missingReportCard.hidden = section !== 'missing';
       addBaggageCard.hidden = section !== 'add-baggage';
       baggageChartCard.hidden = section !== 'baggage-chart';
+      emailCard.hidden = section !== 'email';
       openCasesTab.classList.toggle('is-active', section === 'open');
       closedCasesTab.classList.toggle('is-active', section === 'closed');
       worldTracerTab.classList.toggle('is-active', section === 'worldtracer');
       missingAlert.classList.toggle('is-active', section === 'missing');
       addBaggageTab.classList.toggle('is-active', section === 'add-baggage');
       baggageChartTab.classList.toggle('is-active', section === 'baggage-chart');
+      emailTab.classList.toggle('is-active', section === 'email');
       if (isCaseSection) {
         window._caseView = section;
         casePageTitle.innerHTML = section === 'closed' ? '<span class="en">Closed Case</span><span class="zh">已结案件</span>' : '<span class="en">Open Case</span><span class="zh">未结案件</span>';
@@ -1225,6 +1244,7 @@
       showSection('missing');
       if (window._missingReportLoaded) renderMissingReports(window._missingBagRows || []);
     });
+    emailTab?.addEventListener('click', () => showSection('email'));
     addBaggageTab?.addEventListener('click', () => { showSection('add-baggage'); addBaggageSearch.elements.bagTag.focus(); });
     baggageChartTab?.addEventListener('click', () => showSection('baggage-chart'));
     backToCases?.addEventListener('click', () => showSection('open'));
@@ -1422,6 +1442,7 @@
       const payload = Object.fromEntries(new FormData(form).entries());
       payload.direction = form.dataset.addBaggageDirection;
       payload.flight = payload.direction === 'outbound' ? 'MU586' : 'MU583';
+      payload.submittedBy = currentUpdater();
       const button = form.querySelector('button[type="submit"]');
       button.disabled = true;
       try {
@@ -1431,6 +1452,53 @@
         await loadUnresolvedBaggage();
         showSection('open');
       } catch (error) { alert(error.message); } finally { button.disabled = false; }
+    });
+    standaloneEmailForm?.addEventListener('change', (event) => {
+      if (event.target.matches('[data-standalone-email-action]')) {
+        const isPvg = event.target.value === 'sent_open_bag_authorization_to_pvg';
+        standaloneEmailForm.querySelectorAll('[data-standalone-pvg-field]').forEach((field) => {
+          field.hidden = !isPvg;
+          field.querySelectorAll('input, select').forEach((input) => { input.disabled = !isPvg; input.required = isPvg; });
+        });
+        standaloneEmailForm.querySelectorAll('[data-standalone-pickup-field]').forEach((field) => {
+          field.hidden = isPvg;
+          field.querySelectorAll('input').forEach((input) => { input.disabled = isPvg; input.required = !isPvg; });
+        });
+      }
+      const file = event.target.closest('input[name="authorizationFile"]');
+      const filename = file?.closest('.authorization-upload')?.querySelector('[data-authorization-filename]');
+      if (filename) filename.textContent = file.files?.[0]?.name || 'Select the signed PDF';
+    });
+    standaloneEmailForm?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const button = standaloneEmailForm.querySelector('button[type="submit"]');
+      const payload = Object.fromEntries(new FormData(standaloneEmailForm).entries());
+      if (payload.emailAction === 'sent_open_bag_authorization_to_pvg') {
+        const file = standaloneEmailForm.elements.authorizationFile.files?.[0];
+        if (!file) return alert('Please attach the signed Letter of Authorization PDF.');
+        const contentBase64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result || '').split(',')[1] || '');
+          reader.onerror = () => reject(new Error('The authorization PDF could not be read.'));
+          reader.readAsDataURL(file);
+        });
+        delete payload.authorizationFile;
+        payload.attachments = [{ filename:file.name, mimeType:file.type || 'application/pdf', contentBase64, attachmentType:'letterOfAuthorization' }];
+      }
+      button.disabled = true;
+      standaloneEmailStatus.classList.remove('err');
+      standaloneEmailStatus.textContent = 'Sending...';
+      try {
+        const res = await fetch(`${apiBase}/cbs-email`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+        const data = await parseJson(res);
+        if (!res.ok) throw new Error(data.error || 'Email failed');
+        standaloneEmailStatus.textContent = 'Email sent.';
+        standaloneEmailForm.reset();
+        standaloneEmailForm.querySelector('[data-standalone-email-action]').dispatchEvent(new Event('change', { bubbles:true }));
+      } catch (error) {
+        standaloneEmailStatus.classList.add('err');
+        standaloneEmailStatus.textContent = error.message;
+      } finally { button.disabled = false; }
     });
     missingReportOutput?.addEventListener('click', async (event) => {
       const rushButton = event.target.closest('[data-create-missing-rush]');

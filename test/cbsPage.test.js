@@ -356,3 +356,21 @@ test('On-hand Email asks for a recipient and sends the pickup notice there', () 
   assert.match(server, /sendCbsCaseEmail\(\{ passengerEmail:emailTo/);
   assert.match(server, /resolveCbsUnresolvedBaggageCase\(req\.params\.rowNumber, action, resolutionNote, updatedBy\)/);
 });
+
+test('sidebar Email sends either a signed PVG authorization or a passenger pickup notice', () => {
+  assert.match(page, /id="missing-report-alert"[\s\S]*id="email-tab"[\s\S]*id="baggage-chart-tab"/);
+  assert.match(page, /id="standalone-email-form"/);
+  assert.match(page, /Sent Open Bag Authorization to PVG[\s\S]*Contact PAX to Pick-up Bags/);
+  assert.match(page, /pd-bag-intl@ceair\.com[\s\S]*pd-bag-dom@ceair\.com/);
+  assert.match(page, /name="authorizationFile" type="file" accept="application\/pdf,\.pdf"/);
+  assert.match(page, /name="passengerEmail" type="email" placeholder="Passenger email address"/);
+  assert.match(page, /fetch\(`\$\{apiBase\}\/cbs-email`/);
+  assert.match(server, /app\.post\('\/cbs-email'/);
+  assert.match(server, /signedOpenBagAuthorizationToPvgEmail\(\{\}\)/);
+  assert.match(server, /baggagePickupAtLaxEmail\(\{\}\)/);
+});
+
+test('Add On-hand records the signed-in account as creator', () => {
+  assert.match(page, /payload\.submittedBy = currentUpdater\(\)/);
+  assert.match(drive, /createdBy: sanitizeSheetText\(record\.submittedBy, 160\)/);
+});
