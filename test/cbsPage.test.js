@@ -52,14 +52,14 @@ test('On-hand progress updates sync to the home-page baggage search', () => {
   }
   assert.match(server, /await updateTestBaggageRecord\(record\.bagTag, \{/);
   assert.match(server, /type: 'cbs'/);
-  assert.equal((server.match(/await syncOnHandStatusToBaggage\(result\.record, action, req\.body\)/g) || []).length, 3);
+  assert.equal((server.match(/await syncOnHandStatusToBaggage\(result\.record, action, req\.body\)/g) || []).length, 4);
   assert.match(drive, /else if \(updateType === 'cbs'\)/);
   assert.match(drive, /next\.status = sanitizeSheetText\(update\.status, 120\)/);
   assert.match(drive, /type: sanitizeSheetText\(update\.eventType, 80\) \|\| updateType/);
 });
 
 test('Other On-hand updates remain actionable in Open Case', () => {
-  assert.match(page, /const active = row\.history\.find\(\(item\) => !item\.resolvedAt \|\| String\(item\.resolution \|\| ''\)\.toLowerCase\(\) === 'other'\)/);
+  assert.match(page, /const active = row\.history\.find\(\(item\) => !item\.resolvedAt \|\| \['other', 'email'\]\.includes/);
   assert.match(page, /const formHtml = active/);
   assert.match(page, /<option value="other">Other resolution<\/option>/);
 });
@@ -128,6 +128,46 @@ test('CBS tracking offers the requested bags stage', () => {
   assert.match(page, /content:"CURRENT"/);
 });
 
+test('CBS tracking can request PVG open-bag authorization with the PDF form', () => {
+  assert.match(page, /key:'open_bag_authorization_pvg', text:'Require Open Bag Authorization at PVG'/);
+  assert.match(page, /The authorization form will be attached and emailed to the passenger/);
+  assert.match(page, /PVG open-bag authorization email/);
+  assert.match(server, /【需要您的授权】行李开箱检查通知/);
+  assert.match(server, /Authorization Required for Baggage Inspection at PVG/);
+  assert.match(server, /getCbsOpenBagAuthorizationPdf\(\)/);
+  assert.match(server, /pdfBuffer: authorizationForm\.buffer/);
+  assert.match(server, /filename: authorizationForm\.name/);
+  assert.match(drive, /CBS_OPEN_BAG_AUTHORIZATION_FILE_ID \|\| ''/);
+  assert.match(drive, /if \(!fileId\) throw new Error\('CBS_OPEN_BAG_AUTHORIZATION_FILE_ID is required\.'\)/);
+  assert.doesNotMatch(drive, /CBS_OPEN_BAG_AUTHORIZATION_FILE_ID \|\| '[^']+'/);
+  assert.match(drive, /drive\.files\.get\(\{ fileId, alt:'media' \}/);
+  assert.doesNotMatch(server, /assets', 'Letter of Authorization\.pdf'/);
+});
+
+test('CBS Email stage sends a signed open-bag authorization PDF to PVG', () => {
+  assert.match(page, /key:'email', text:'Email'/);
+  assert.match(page, /Sent Open Bag Authorization to PVG/);
+  assert.match(page, /authorization-upload-plus">\+<\/span>/);
+  assert.match(page, /authorization-upload-title">Letter of Authorization<\/span>/);
+  assert.match(page, /<span>Email To<\/span><select name="emailTo" required>/);
+  assert.match(page, /pd-bag-intl@ceair\.com/);
+  assert.match(page, /pd-bag-dom@ceair\.com/);
+  assert.match(page, /accept="application\/pdf,\.pdf" required/);
+  assert.match(page, /reader\.readAsDataURL\(file\)/);
+  assert.match(page, /payload\.attachments = \[\{ filename:file\.name/);
+  assert.match(server, /行李开箱检查授权文件 – WorldTracer \$\{fileNumber\}/);
+  assert.match(server, /WorldTracer 案件编号：\$\{fileNumber\}/);
+  assert.match(server, /行李牌号码：\$\{bagTag\}/);
+  assert.match(server, /\['pd-bag-intl@ceair\.com', 'pd-bag-dom@ceair\.com'\]\.includes\(emailTo\)/);
+  assert.match(server, /passengerEmail:emailTo/);
+  assert.match(server, /attachments:emailAttachments/);
+  assert.match(server, /A signed Letter of Authorization PDF is required/);
+  assert.doesNotMatch(page.match(/const notifications = \[([\s\S]*?)\]\.filter/)?.[1] || '', /Signed authorization sent to PVG/);
+  assert.match(page, /tracking-chip--email,\.tracking-chip--email\.is-latest/);
+  assert.match(page, /event\.key === 'email' \? event\.title/);
+  assert.match(page, /case-update\[data-update-mode="email"\] \{ grid-template-columns:minmax\(240px,420px\); \}/);
+});
+
 test('CBS tracking offers a compact baggage transfer update with a required arrival date', () => {
   assert.match(page, /key:'information', text:'Information'/);
   assert.match(page, /name="informationType" required><option value="rush_to_lax">Baggage Transfer Status Update/);
@@ -177,9 +217,10 @@ test('CBS tracking no longer offers Forward to MU', () => {
 });
 
 test('shipping updates offer all supported delivery methods', () => {
+  const passengerCaseShipping = page.match(/const shippingMethodSelect = '([^']+)'/)?.[1] || '';
   assert.match(page, /select name="shippingMethod" data-shipping-method required/);
   for (const method of ['ADC - All Day Courier', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping']) assert.match(page, new RegExp(`<option>${method}<\\/option>`));
-  assert.doesNotMatch(page, /<option>BDO<\/option>/);
+  assert.doesNotMatch(passengerCaseShipping, /<option>BDO<\/option>/);
   assert.match(page, /data-shipping-bdo/);
   assert.match(page, /name="bdo"/);
   assert.match(page, /data-shipping-tracking placeholder="Tracking number" disabled hidden/);
@@ -223,4 +264,27 @@ test('expanded CBS cases show passenger email notification status', () => {
   assert.doesNotMatch(page, /sent \? ' is-sent'/);
   assert.doesNotMatch(page, /label\('Sent', '已发送'\)/);
   assert.match(page, /passengerNotificationHtml\(row\)/);
+});
+
+
+test('Email can notify a Passenger Filed case that baggage is ready for LAX pickup', () => {
+  assert.match(page, /<option value="contact_pax_pickup_bags">Contact PAX to Pick-up Bags<\/option>/);
+  assert.match(page, /payload\.emailAction === 'sent_open_bag_authorization_to_pvg'/);
+  assert.match(page, /data-pvg-email-field/);
+  assert.match(server, /您的行李已可在洛杉矶机场领取 - 中国东方航空公司/);
+  assert.match(server, /Your Baggage Available for Pick-Up at LAX - China Eastern Airlines/);
+  assert.match(server, /Tom Bradley International Terminal（TBIT）A68 柜台办公室/);
+  assert.match(server, /Pick-up Hours: 8:00 AM – 2:00 PM/);
+  assert.match(server, /pickupEmail \? record\.email/);
+  assert.match(page, /event\.title === 'Contact PAX to Pick-up Bags'/);
+});
+
+test('On-hand Email asks for a recipient and sends the pickup notice there', () => {
+  assert.match(page, /<option value="email">Email<\/option>/);
+  assert.match(page, /if \(action === 'email'\) return .*Contact PAX to Pick-up Bags/);
+  assert.match(page, /<span>Email To<\/span><input name="emailTo" type="email"/);
+  assert.match(server, /if \(action === 'email'\) \{/);
+  assert.match(server, /if \(!isValidEmail\(emailTo\)\)/);
+  assert.match(server, /sendCbsCaseEmail\(\{ passengerEmail:emailTo/);
+  assert.match(server, /resolveCbsUnresolvedBaggageCase\(req\.params\.rowNumber, action, resolutionNote\)/);
 });
