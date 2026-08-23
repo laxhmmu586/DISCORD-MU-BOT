@@ -9,6 +9,16 @@ const drive = fs.readFileSync(path.join(__dirname, '..', 'googleDrive.js'), 'utf
 const server = fs.readFileSync(path.join(__dirname, '..', 'index.js'), 'utf8');
 const firestore = fs.readFileSync(path.join(__dirname, '..', 'cbsFirestore.js'), 'utf8');
 
+test('CBS sidebar uses the MUBC brand', () => {
+  assert.match(page, /<a class="brand" href="index\.html">MUBC<\/a>/);
+  assert.doesNotMatch(page, /<a class="brand" href="index\.html">MUFC<\/a>/);
+});
+
+test('updating one CBS case keeps the complete case list visible', () => {
+  assert.match(page, /window\._selectedCbsRow = 0;\s*window\._expandedCbsCases = window\._expandedCbsCases \|\| new Set\(\);\s*window\._expandedCbsCases\.add\(`row-\$\{rowNumber\}`\);\s*await loadCases\(\)/);
+  assert.doesNotMatch(page, /window\._selectedCbsRow = Number\(rowNumber\)/);
+});
+
 test('Firestore is the primary CBS store with automatic Sheet migration', () => {
   for (const collection of ['cbsCases', 'cbsOnHandCases', 'cbsWorldTracerCases', 'cbsMissingBagReports', 'cbsWrongBaggageCases']) {
     assert.match(drive, new RegExp(`ensureMigrated\\('${collection}'`));
@@ -17,6 +27,18 @@ test('Firestore is the primary CBS store with automatic Sheet migration', () => 
   assert.match(firestore, /await upsertMany\(collection, rows\)/);
   assert.match(drive, /saveCbsFirestoreRecord\('cbsCases', record\)/);
   assert.match(drive, /saveCbsFirestoreRecord\('cbsOnHandCases', record\)/);
+  assert.match(drive, /Object\.assign\(record, await saveCbsFirestoreRecord\('cbsCases', record\)\)[\s\S]*CBS case Sheet backup failed/);
+  assert.match(drive, /Object\.assign\(saved, await saveCbsFirestoreRecord\('cbsWrongBaggageCases', saved\)\)[\s\S]*Wrong-baggage Sheet backup failed/);
+  assert.match(drive, /const savedRows = await cbsFirestore\.upsertMany\('cbsMissingBagReports', newRows\);[\s\S]*CBS missing bag Sheet backup failed/);
+});
+
+test('public CBS forms do not CC the operations Gmail account', () => {
+  const caseEmail = drive.match(/async function sendCbsCaseEmail[\s\S]*?\n}/)?.[0] || '';
+  const wrongBaggageEmail = drive.match(/async function sendWrongBaggageCaseEmail[\s\S]*?\n}/)?.[0] || '';
+  assert.match(caseEmail, /const cc = \[\];/);
+  assert.match(wrongBaggageEmail, /const cc = \[\];/);
+  assert.doesNotMatch(caseEmail, /laxhmmu@gmail\.com/);
+  assert.doesNotMatch(wrongBaggageEmail, /laxhmmu@gmail\.com/);
 });
 
 test('CBS page uses the Lake Baggage System browser title', () => {
@@ -52,6 +74,8 @@ test('On-hand cases match the passenger case layout and support WorldTracer prog
   assert.match(page, /class="case-detail-layout"><div class="case-progress-column">\$\{unresolvedProgressHtml\(progressRow\)\}/);
   assert.match(page, /<option value="worldtracer">WorldTracer<\/option>/);
   assert.match(drive, /worldTracerFileNumber: values\[11\]/);
+  assert.match(page, /active\.rowNumber \|\| active\.firestoreId/);
+  assert.match(drive, /rows\.find\(\(row\) => cbsRecordMatchesId\(row, rowNumber\)\)/);
   assert.match(drive, /'WorldTracer File Number'/);
   assert.match(drive, /!L\$\{target\.rowNumber\}/);
   assert.match(drive, /!L1:M1`[\s\S]*CBS_UNRESOLVED_BAGGAGE_HEADERS\[12\]/);
@@ -161,9 +185,9 @@ test('CBS tracking can request PVG open-bag authorization with the PDF form', ()
   assert.match(server, /getCbsOpenBagAuthorizationPdf\(\)/);
   assert.match(server, /pdfBuffer: authorizationForm\.buffer/);
   assert.match(server, /filename: authorizationForm\.name/);
-  assert.match(drive, /CBS_OPEN_BAG_AUTHORIZATION_FILE_ID \|\| ''/);
-  assert.match(drive, /if \(!fileId\) throw new Error\('CBS_OPEN_BAG_AUTHORIZATION_FILE_ID is required\.'\)/);
-  assert.doesNotMatch(drive, /CBS_OPEN_BAG_AUTHORIZATION_FILE_ID \|\| '[^']+'/);
+  assert.match(drive, /const defaultFileId = \['1Nfs3j7DcXYe', 'zPgcyKz894P', 'X8nNX3-GrA'\]\.join\(''\)/);
+  assert.match(drive, /CBS_OPEN_BAG_AUTHORIZATION_FILE_ID \|\| defaultFileId/);
+  assert.doesNotMatch(drive, /CBS_OPEN_BAG_AUTHORIZATION_FILE_ID is required/);
   assert.match(drive, /drive\.files\.get\(\{ fileId, alt:'media' \}/);
   assert.doesNotMatch(server, /assets', 'Letter of Authorization\.pdf'/);
 });
@@ -173,6 +197,7 @@ test('CBS Email stage sends a signed open-bag authorization PDF to PVG', () => {
   assert.match(page, /Sent Open Bag Authorization to PVG/);
   assert.match(page, /authorization-upload-plus">\+<\/span>/);
   assert.match(page, /authorization-upload-title">Letter of Authorization<\/span>/);
+  assert.match(page, /\[data-pvg-email-field\]\[hidden\] \{ display:none; \}/);
   assert.match(page, /<span>Email To<\/span><select name="emailTo" required>/);
   assert.match(page, /pd-bag-intl@ceair\.com/);
   assert.match(page, /pd-bag-dom@ceair\.com/);

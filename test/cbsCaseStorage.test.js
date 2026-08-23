@@ -9,7 +9,8 @@ test('CBS updates persist their note, timestamp, and WorldTracer file number', (
   assert.match(drive, /updateNote: incomingNote \|\| current\.updateNote \|\| ''/);
   assert.match(drive, /next\.worldTracerFileNumber = sanitizeSheetText/);
   assert.match(drive, /'WorldTracer File Number'/);
-  assert.match(drive, /A\$\{rowIndex \+ 1\}:AL\$\{rowIndex \+ 1\}/);
+  assert.match(drive, /A\$\{current\.rowNumber\}:AL\$\{current\.rowNumber\}/);
+  assert.match(drive, /cbsRecordMatchesId\(row, rowNumber\)/);
 });
 
 test('CBS reads required passenger details from their fixed sheet columns', () => {

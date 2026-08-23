@@ -126,6 +126,7 @@
     .inline-update.case-update[data-update-mode="information"] { grid-template-columns:minmax(220px,320px); }
     .inline-update.case-update[data-update-mode="email"] { grid-template-columns:minmax(240px,420px); }
     .authorization-upload { display:grid; gap:8px; padding:14px; border:1px dashed #9db8d8; border-radius:14px; background:#f8fbff; cursor:pointer; }
+    [data-pvg-email-field][hidden] { display:none; }
     .authorization-upload input { position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; }
     .authorization-upload-plus { display:grid; place-items:center; width:38px; height:38px; border-radius:999px; background:#fff; color:var(--brand); box-shadow:0 5px 14px #173b5d22; font-size:26px; font-weight:900; }
     .authorization-upload-title { color:var(--brand); font-size:13px; font-weight:900; }
@@ -249,7 +250,7 @@
 </head>
 <body>
   <header>
-    <a class="brand" href="index.html">MUFC</a>
+    <a class="brand" href="index.html">MUBC</a>
     <div class="nav-kicker">Baggage Operations</div>
     <nav class="page-tabs" aria-label="CBS sections">
       <button class="page-tab" id="open-cases-tab" type="button" title="Open Case"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h6l2 2h8v10H4zM4 7V5h6l2 2"/></svg></span><span class="page-tab-label"><span class="en">Open Case</span><span class="zh">未结案件</span></span></button>
@@ -503,9 +504,9 @@
         const historyHtml = resolvedHistory.length ? `<section class="unresolved-history"><h3>History</h3>${resolvedHistory.map((item) => `<p><strong>${escapeHtml(item.resolution || 'Completed')}</strong> · ${escapeHtml(item.resolvedAt ? new Date(item.resolvedAt).toLocaleString() : '')}${item.resolutionNote ? `<br>${escapeHtml(item.resolutionNote)}` : ''}</p>`).join('')}</section>` : '';
         const closed = !active && showClosed ? row : null;
         const formHtml = active
-          ? `<form class="unresolved-update" data-unresolved-row="${escapeHtml(active.rowNumber)}" data-bag-tag="${escapeHtml(active.bagTag)}" data-world-tracer-file="${escapeHtml(active.worldTracerFileNumber)}"><label class="wide"><span>Resolution</span><select name="action" data-unresolved-action><option value="worldtracer">WorldTracer</option><option value="email">Email</option><option value="on-hand-rush">Create Rush</option><option value="passenger-collected">Passenger collected / Case closed</option><option value="shipped">Shipped</option><option value="other">Other resolution</option><option value="case-close">Case Close</option></select></label><div class="unresolved-update-fields">${unresolvedUpdateFieldsHtml('worldtracer', active.bagTag, active.worldTracerFileNumber)}</div><div class="actions"><button type="submit">Update</button></div></form>`
+          ? `<form class="unresolved-update" data-unresolved-row="${escapeHtml(active.rowNumber || active.firestoreId)}" data-bag-tag="${escapeHtml(active.bagTag)}" data-world-tracer-file="${escapeHtml(active.worldTracerFileNumber)}"><label class="wide"><span>Resolution</span><select name="action" data-unresolved-action><option value="worldtracer">WorldTracer</option><option value="email">Email</option><option value="on-hand-rush">Create Rush</option><option value="passenger-collected">Passenger collected / Case closed</option><option value="shipped">Shipped</option><option value="other">Other resolution</option><option value="case-close">Case Close</option></select></label><div class="unresolved-update-fields">${unresolvedUpdateFieldsHtml('worldtracer', active.bagTag, active.worldTracerFileNumber)}</div><div class="actions"><button type="submit">Update</button></div></form>`
           : closed
-            ? `<form class="unresolved-update" data-unresolved-row="${escapeHtml(closed.rowNumber)}" data-bag-tag="${escapeHtml(closed.bagTag)}" data-world-tracer-file="${escapeHtml(closed.worldTracerFileNumber)}"><label class="wide"><span>Update</span><select name="action" data-unresolved-action><option value="worldtracer">Update WorldTracer</option><option value="reopen">Reopen</option></select></label><div class="unresolved-update-fields">${unresolvedUpdateFieldsHtml('worldtracer', closed.bagTag, closed.worldTracerFileNumber)}</div><div class="actions"><button type="submit">Update</button></div></form>`
+            ? `<form class="unresolved-update" data-unresolved-row="${escapeHtml(closed.rowNumber || closed.firestoreId)}" data-bag-tag="${escapeHtml(closed.bagTag)}" data-world-tracer-file="${escapeHtml(closed.worldTracerFileNumber)}"><label class="wide"><span>Update</span><select name="action" data-unresolved-action><option value="worldtracer">Update WorldTracer</option><option value="reopen">Reopen</option></select></label><div class="unresolved-update-fields">${unresolvedUpdateFieldsHtml('worldtracer', closed.bagTag, closed.worldTracerFileNumber)}</div><div class="actions"><button type="submit">Update</button></div></form>`
             : '';
         const progressRow = active || row;
         return `<tr class="case-summary-row" data-toggle-unresolved-update role="button" tabindex="0" aria-expanded="false"><td class="sheet-meta">${escapeHtml(row.worldTracerFileNumber || '-')}</td><td class="sheet-meta"><span class="bag-tag-value">${escapeHtml(row.bagTag)}</span></td><td class="sheet-meta">${escapeHtml(row.direction || '-')}</td><td class="sheet-meta">${escapeHtml(row.flightDate || '-')}</td><td class="sheet-meta">${escapeHtml(row.bagType || row.status || '-')}</td><td class="sheet-meta">${escapeHtml(row.location || '-')}</td></tr><tr class="case-detail-row" data-unresolved-detail hidden><td colspan="6"><div class="case-detail-layout"><div class="case-progress-column">${unresolvedProgressHtml(progressRow)}</div><div class="case-detail-right">${formHtml}${historyHtml}</div></div></td></tr>`;
@@ -561,7 +562,7 @@
     function parseUpdateNoteEvents(row) {
       const note = String(row?.updateNote || '').trim();
       const events = [];
-      if (row?.rowNumber) {
+      if (row?.rowNumber || row?.firestoreId || row?.submittedAt || row?.createdAt) {
         events.push({ key:'create', title:'Create Case', at:row.submittedAt || row.issueDate || '', fields:[] });
       }
       const storedEvents = parseStoredUpdateEvents(row);
@@ -916,6 +917,7 @@
       return 'worldtracer';
     }
     function trackingControlHtml(row, part = 'all') {
+      const recordId = row?.rowNumber || row?.firestoreId || '';
       const events = parseUpdateNoteEvents(row);
       if (row?.source === 'wrongBaggage') {
         const historyHtml = events.map((event, index) => ({ event, stepNumber:index + 1 })).reverse().map(({ event, stepNumber }, index) => {
@@ -925,8 +927,8 @@
           return `<span class="tracking-chip${stateClass}"><span class="tracking-step-number">${stepNumber}</span><span class="tracking-chip-title">${escapeHtml(event.title || 'Update')}</span><small>${escapeHtml(time.date)} ${escapeHtml(time.time)}${event.by ? ` · Updated by: ${escapeHtml(event.by)}` : ''}</small>${details}</span>`;
         }).join('');
         if (part === 'current') return '';
-        if (isClosedCase(row)) return `<div class="tracking-workspace"><div><div class="tracking-history">${historyHtml}</div></div><form class="inline-update case-update" data-row-number="${escapeHtml(row.rowNumber)}" data-case-source="wrongBaggage" data-update-mode="reopen"><textarea name="comment" placeholder="${label('Reopen note (optional)', '重新开启备注（可选）')}"></textarea><button type="submit">${label('Reopen', '重新开启')}</button></form></div>`;
-        return `<div class="tracking-workspace"><div><div class="tracking-history">${historyHtml}</div></div><form class="inline-update case-update" data-row-number="${escapeHtml(row.rowNumber)}" data-case-source="wrongBaggage" data-update-mode="update"><div data-cbs-inline-fields><textarea name="comment" placeholder="${label('Enter any update', '输入更新内容')}" required></textarea></div><div class="actions"><button type="submit">${label('Save Update', '保存更新')}</button><button type="submit" class="secondary" name="type" value="closed" formnovalidate>${label('Case Close', '关闭案件')}</button></div></form></div>`;
+        if (isClosedCase(row)) return `<div class="tracking-workspace"><div><div class="tracking-history">${historyHtml}</div></div><form class="inline-update case-update" data-row-number="${escapeHtml(recordId)}" data-case-source="wrongBaggage" data-update-mode="reopen"><textarea name="comment" placeholder="${label('Reopen note (optional)', '重新开启备注（可选）')}"></textarea><button type="submit">${label('Reopen', '重新开启')}</button></form></div>`;
+        return `<div class="tracking-workspace"><div><div class="tracking-history">${historyHtml}</div></div><form class="inline-update case-update" data-row-number="${escapeHtml(recordId)}" data-case-source="wrongBaggage" data-update-mode="update"><div data-cbs-inline-fields><textarea name="comment" placeholder="${label('Enter any update', '输入更新内容')}" required></textarea></div><div class="actions"><button type="submit">${label('Save Update', '保存更新')}</button><button type="submit" class="secondary" name="type" value="closed" formnovalidate>${label('Case Close', '关闭案件')}</button></div></form></div>`;
       }
       const latest = events[events.length - 1] || null;
       const latestTime = latest ? formatEventTime(latest.at) : { time:'--:--', date:'' };
@@ -948,12 +950,12 @@
           const latestClass = index === 0 ? ' is-latest' : '';
           return `<span class="tracking-chip tracking-chip--${escapeHtml(event.key)}${closedClass}${latestClass}"><span class="tracking-step-number">${stepNumber}</span><span class="tracking-chip-title">${escapeHtml(title)}</span><small>${escapeHtml(time.date || '')} ${escapeHtml(time.time || '')}${event.by ? ` · Updated by: ${escapeHtml(event.by)}` : ''}</small>${detailHtml}${noteHtml}</span>`;
         }).join('') || '<span class="sheet-empty">No tracking updates yet</span>';
-      if (!row.rowNumber) return historyHtml;
+      if (!recordId) return historyHtml;
       const progressHeader = `<p class="tracking-current-time"><strong>${label('Case Progress', '案件进度')}</strong><span>${label('Last update', '最后更新')}: ${escapeHtml(latestTime.date || '-')} ${escapeHtml(latestTime.time || '')}</span></p>`;
       const progress = `<div class="tracking-workspace"><div>${progressHeader}<div class="tracking-history">${historyHtml}</div></div></div>`;
       const current = isClosedCase(row)
-        ? `<form class="inline-update case-update" data-row-number="${escapeHtml(row.rowNumber)}" data-update-mode="reopen"><textarea name="comment" placeholder="${label('Reopen note (optional)', '重新开启备注（可选）')}"></textarea><button type="submit">${label('Reopen', '重新开启')}</button></form>`
-        : `<div><label class="tracking-stage-picker"><span>${label('Current stage', '当前阶段')}</span><select data-cbs-stage-select>${updateKeys.map((stage) => `<option value="${escapeHtml(stage.key)}" ${stage.key === active ? 'selected' : ''}>${escapeHtml(stage.text)}</option>`).join('')}</select></label><form class="inline-update case-update" data-row-number="${escapeHtml(row.rowNumber)}" data-update-mode="${escapeHtml(active)}"><div data-cbs-inline-fields>${inlineUpdateFieldsHtml(active)}</div><button type="submit" data-cbs-update-submit>${active === 'email' ? label('Send', '发送') : label('Update Tracking', '更新进度')}</button></form></div>`;
+        ? `<form class="inline-update case-update" data-row-number="${escapeHtml(recordId)}" data-update-mode="reopen"><textarea name="comment" placeholder="${label('Reopen note (optional)', '重新开启备注（可选）')}"></textarea><button type="submit">${label('Reopen', '重新开启')}</button></form>`
+        : `<div><label class="tracking-stage-picker"><span>${label('Current stage', '当前阶段')}</span><select data-cbs-stage-select>${updateKeys.map((stage) => `<option value="${escapeHtml(stage.key)}" ${stage.key === active ? 'selected' : ''}>${escapeHtml(stage.text)}</option>`).join('')}</select></label><form class="inline-update case-update" data-row-number="${escapeHtml(recordId)}" data-update-mode="${escapeHtml(active)}"><div data-cbs-inline-fields>${inlineUpdateFieldsHtml(active)}</div><button type="submit" data-cbs-update-submit>${active === 'email' ? label('Send', '发送') : label('Update Tracking', '更新进度')}</button></form></div>`;
       if (part === 'progress') return progress;
       if (part === 'current') return current;
       return `<div class="tracking-workspace">${progress}${current}</div>`;
@@ -1187,7 +1189,11 @@
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || 'Update failed');
         if (data.emailError) alert(`Case updated, but the passenger email failed: ${data.emailError}`);
-        window._selectedCbsRow = Number(rowNumber);
+        // Keep the full case list visible after an update. Selecting only the
+        // updated row made the other open cases appear to have disappeared.
+        window._selectedCbsRow = 0;
+        window._expandedCbsCases = window._expandedCbsCases || new Set();
+        window._expandedCbsCases.add(`row-${rowNumber}`);
         await loadCases();
         if (window._missingReportLoaded || !missingReportCard.hidden) await loadMissingReports();
       } catch (error) { alert(error.message); } finally { casesOutput.style.opacity = '1'; }

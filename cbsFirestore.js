@@ -109,10 +109,20 @@ async function upsert(collection, record) {
   return { ...record, firestoreId:id };
 }
 
+function dedupeRecords(records = []) {
+  const unique = new Map();
+  for (const record of records) unique.set(documentId(record), record);
+  return [...unique.values()];
+}
+
 async function upsertMany(collection, records = []) {
   if (!enabled || !records.length) return records;
-  for (let index = 0; index < records.length; index += 400) {
-    const writes = records.slice(index, index + 400).map((record) => {
+  // Firestore batchWrite rejects a request when two writes target the same
+  // document. Legacy sheets can contain duplicate logical rows, so collapse
+  // them before batching and keep the last copy as the current value.
+  const uniqueRecords = dedupeRecords(records);
+  for (let index = 0; index < uniqueRecords.length; index += 400) {
+    const writes = uniqueRecords.slice(index, index + 400).map((record) => {
       const id = documentId(record);
       return { update:{
         name:`projects/${projectId}/databases/${databaseId}/documents/${collection}/${id}`,
@@ -121,24 +131,28 @@ async function upsertMany(collection, records = []) {
     });
     await request('POST', `${baseUrl}:batchWrite`, { writes });
   }
-  return records;
+  return records.map((record) => ({ ...record, firestoreId:documentId(record) }));
 }
 
 async function ensureMigrated(collection, legacyLoader) {
   if (!enabled) return legacyLoader();
   if (!migrations.has(collection)) migrations.set(collection, (async () => {
     const marker = await get('_cbsMigrations', collection);
-    if (marker?.completedAt) return list(collection);
+    if (marker?.completedAt) return;
     const legacy = await legacyLoader();
     const rows = Array.isArray(legacy) ? legacy : (legacy?.rows || []);
     await upsertMany(collection, rows);
     await upsert('_cbsMigrations', { firestoreId:collection, collection, rowCount:rows.length, completedAt:new Date().toISOString() });
-    return list(collection);
-  })().catch((error) => {
+  })());
+  try {
+    await migrations.get(collection);
+  } catch (error) {
     migrations.delete(collection);
     throw error;
-  }));
-  return migrations.get(collection);
+  }
+  // Cache only the one-time migration work, never the collection snapshot.
+  // Newly-created and updated cases must be fetched on every subsequent load.
+  return list(collection);
 }
 
-module.exports = { enabled, projectId, databaseId, list, get, upsert, upsertMany, ensureMigrated, _test:{ encodeValue, decodeValue, documentId } };
+module.exports = { enabled, projectId, databaseId, list, get, upsert, upsertMany, ensureMigrated, _test:{ encodeValue, decodeValue, documentId, dedupeRecords } };
