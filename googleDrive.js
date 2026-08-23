@@ -3313,15 +3313,30 @@ function wrongBaggageRecordFromValues(values, rowNumber) {
 async function appendWrongBaggageSubmission(record = {}) {
   const title = await getWrongBaggageSheetTitle();
   await ensureWrongBaggageHeaders(title);
-  await sheets.spreadsheets.values.append({
+  const saved = {
+    ...record,
+    source: 'wrongBaggage',
+    caseType: 'WRONG BAGGAGE PICKUP',
+    status: 'Open',
+    passengerName: record.passengerName || record.name || '',
+    name: record.name || record.passengerName || '',
+    bagTag: record.bagTag || record.bagTagNumber || '',
+    bagTagNumber: record.bagTagNumber || record.bagTag || '',
+    updatedAt: record.updatedAt || record.submittedAt || '',
+    updateNote: record.updateNote || 'Case created',
+    updateEvents: Array.isArray(record.updateEvents) ? record.updateEvents : []
+  };
+  const response = await sheets.spreadsheets.values.append({
     spreadsheetId: CBS_SHEET_ID,
     range: `${escapeSheetTitle(title)}!A:L`,
     valueInputOption: 'RAW',
     insertDataOption: 'INSERT_ROWS',
-    requestBody: { values: [[record.submittedAt, 'Open', record.name, record.seatNumber, record.bagTagNumber, record.email, record.phone, record.language, record.submittedAt, 'Case created', '[]', record.additionalInformation || '']] }
+    requestBody: { values: [[saved.submittedAt, saved.status, saved.name, saved.seatNumber, saved.bagTagNumber, saved.email, saved.phone, saved.language, saved.updatedAt, saved.updateNote, JSON.stringify(saved.updateEvents), saved.additionalInformation || '']] }
   });
-  await saveCbsFirestoreRecord('cbsWrongBaggageCases', record);
-  return record;
+  const appendedRow = String(response.data?.updates?.updatedRange || '').match(/![A-Z]+(\d+)(?::[A-Z]+\d+)?$/i)?.[1];
+  if (appendedRow) saved.rowNumber = Number(appendedRow);
+  await saveCbsFirestoreRecord('cbsWrongBaggageCases', saved);
+  return saved;
 }
 
 async function getWrongBaggageSubmissionsFromSheet() {

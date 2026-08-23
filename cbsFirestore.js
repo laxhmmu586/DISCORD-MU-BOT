@@ -14,6 +14,11 @@ const auth = new google.auth.GoogleAuth({
 
 const baseUrl = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/databases/${encodeURIComponent(databaseId)}/documents`;
 const migrations = new Map();
+// Firestore rejects an array that directly contains another array. CBS update
+// events intentionally use two-dimensional arrays for label/value fields, so
+// wrap nested arrays in a map while encoding and transparently unwrap them on
+// reads.
+const nestedArrayKey = '__cbsNestedArray';
 
 function clean(value) {
   if (Array.isArray(value)) return value.map(clean);
@@ -21,12 +26,15 @@ function clean(value) {
   return value === undefined ? null : value;
 }
 
-function encodeValue(value) {
+function encodeValue(value, insideArray = false) {
   if (value === null || value === undefined) return { nullValue:null };
   if (typeof value === 'boolean') return { booleanValue:value };
   if (typeof value === 'number') return Number.isInteger(value) ? { integerValue:String(value) } : { doubleValue:value };
   if (typeof value === 'string') return { stringValue:value };
-  if (Array.isArray(value)) return { arrayValue:{ values:value.map(encodeValue) } };
+  if (Array.isArray(value)) {
+    const encoded = { arrayValue:{ values:value.map((item) => encodeValue(item, true)) } };
+    return insideArray ? { mapValue:{ fields:{ [nestedArrayKey]:encoded } } } : encoded;
+  }
   return { mapValue:{ fields:encodeFields(value) } };
 }
 
@@ -42,7 +50,11 @@ function decodeValue(value = {}) {
   if ('stringValue' in value) return value.stringValue;
   if ('timestampValue' in value) return value.timestampValue;
   if ('arrayValue' in value) return (value.arrayValue.values || []).map(decodeValue);
-  if ('mapValue' in value) return decodeFields(value.mapValue.fields || {});
+  if ('mapValue' in value) {
+    const fields = value.mapValue.fields || {};
+    if (Object.keys(fields).length === 1 && fields[nestedArrayKey]?.arrayValue) return decodeValue(fields[nestedArrayKey]);
+    return decodeFields(fields);
+  }
   return null;
 }
 
