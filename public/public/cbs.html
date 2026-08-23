@@ -124,11 +124,15 @@
     .inline-update textarea { min-height:58px; resize:vertical; grid-column:1/-1; }
     .inline-update button { width:max-content; padding:8px 13px; border-radius:12px; font-size:12px; grid-column:1/-1; }
     .inline-update.case-update[data-update-mode="information"] { grid-template-columns:minmax(220px,320px); }
-    .inline-update.case-update[data-update-mode="email"] { grid-template-columns:minmax(240px,420px); }
+    .inline-update.case-update[data-update-mode="email"] { grid-template-columns:repeat(2,minmax(240px,420px)); }
     .authorization-upload { display:grid; gap:8px; padding:14px; border:1px dashed #9db8d8; border-radius:14px; background:#f8fbff; cursor:pointer; }
     .authorization-upload input { position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; }
     .authorization-upload-plus { display:grid; place-items:center; width:38px; height:38px; border-radius:999px; background:#fff; color:var(--brand); box-shadow:0 5px 14px #173b5d22; font-size:26px; font-weight:900; }
     .authorization-upload-title { color:var(--brand); font-size:13px; font-weight:900; }
+    .email-recipient { display:grid; gap:8px; align-content:start; padding:14px; border:1px solid #d7c8f2; border-radius:14px; background:#faf8ff; color:#6941c6; font-size:13px; font-weight:900; }
+    .tracking-chip--email,.tracking-chip--email.is-latest { background:#f4edff; color:#6941c6; box-shadow:inset 0 0 0 2px #b692f6; }
+    .tracking-chip--email .tracking-step-number,.tracking-chip--email.is-latest .tracking-step-number { background:#7f56d9; }
+    .tracking-chip--email.is-latest::before { background:#7f56d9; }
     .baggage-search-card { margin:14px 0 0; padding:16px; border:1px solid var(--line); border-radius:18px; background:#fbfdff; display:grid; gap:10px; }
     .baggage-search-card h3 { margin:0; color:var(--brand); }
     .baggage-search-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px 18px; }
@@ -638,7 +642,6 @@
         ['worldtracer', label('WorldTracer update email', 'WorldTracer 更新邮件')],
         ['requested_bags', label('Baggage request from other station email', '外站行李查询邮件')],
         ['open_bag_authorization_pvg', label('PVG open-bag authorization email', '浦东机场开箱授权邮件')],
-        ['email', label('Signed authorization sent to PVG', '已发送签字授权书至浦东机场')],
         ['information', label('Baggage Transfer Status Update email', '行李转运状态更新邮件')],
         ['adc_shipping', label('ADC baggage delivery email', 'ADC 行李配送邮件')],
         ['fedex_shipping', label('FedEx baggage delivery email', 'FedEx 行李配送邮件')],
@@ -878,7 +881,7 @@
       if (key === 'information') return ['<select name="informationType" required><option value="rush_to_lax">Baggage Transfer Status Update</option></select>', '<label><span>Estimated arrival date</span><input name="estimatedArrivalTime" type="date" required /></label>'].join('');
       if (key === 'requested_bags') return input('From which station?', 'fromStation');
       if (key === 'open_bag_authorization_pvg') return '<p class="muted wide">The authorization form will be attached and emailed to the passenger.</p>';
-      if (key === 'email') return '<select name="emailAction" required><option value="sent_open_bag_authorization_to_pvg">Sent Open Bag Authorization to PVG</option></select><label class="authorization-upload"><input name="authorizationFile" type="file" accept="application/pdf,.pdf" required /><span class="authorization-upload-plus">+</span><span class="authorization-upload-title">Letter of Authorization</span><small data-authorization-filename>Select the signed PDF</small></label>';
+      if (key === 'email') return '<select name="emailAction" required><option value="sent_open_bag_authorization_to_pvg">Sent Open Bag Authorization to PVG</option></select><label class="email-recipient"><span>Email To</span><select name="emailTo" required><option value="pd-bag-intl@ceair.com">pd-bag-intl@ceair.com</option><option value="pd-bag-dom@ceair.com">pd-bag-dom@ceair.com</option></select></label><label class="authorization-upload"><input name="authorizationFile" type="file" accept="application/pdf,.pdf" required /><span class="authorization-upload-plus">+</span><span class="authorization-upload-title">Letter of Authorization</span><small data-authorization-filename>Select the signed PDF</small></label>';
       if (key === 'rush') return [input('Rush tag number', 'rushTagNumber'), input('Rush to where?', 'rushToWhere'), input('World Tracer file # (optional)', 'worldTracerFileNumber', false), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
       if (key === 'location') return [input('Bag location', 'location'), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
       if (key === 'shipping') return [shippingMethodSelect, shippingTrackingInput, shippingAddressInput, shippingBdoInput, '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
@@ -926,7 +929,7 @@
           const noteHtml = !detailFields.length && hasValue(event.note) ? `<span class="tracking-chip-detail">${escapeHtml(event.note)}</span>` : '';
           const closedClass = event.key === 'closed' ? ' is-closed' : '';
           const latestClass = index === 0 ? ' is-latest' : '';
-          return `<span class="tracking-chip${closedClass}${latestClass}"><span class="tracking-step-number">${stepNumber}</span><span class="tracking-chip-title">${escapeHtml(title)}</span><small>${escapeHtml(time.date || '')} ${escapeHtml(time.time || '')}${event.by ? ` · Updated by: ${escapeHtml(event.by)}` : ''}</small>${detailHtml}${noteHtml}</span>`;
+          return `<span class="tracking-chip tracking-chip--${escapeHtml(event.key)}${closedClass}${latestClass}"><span class="tracking-step-number">${stepNumber}</span><span class="tracking-chip-title">${escapeHtml(title)}</span><small>${escapeHtml(time.date || '')} ${escapeHtml(time.time || '')}${event.by ? ` · Updated by: ${escapeHtml(event.by)}` : ''}</small>${detailHtml}${noteHtml}</span>`;
         }).join('') || '<span class="sheet-empty">No tracking updates yet</span>';
       if (!row.rowNumber) return historyHtml;
       const progressHeader = `<p class="tracking-current-time"><strong>${label('Case Progress', '案件进度')}</strong><span>${label('Last update', '最后更新')}: ${escapeHtml(latestTime.date || '-')} ${escapeHtml(latestTime.time || '')}</span></p>`;

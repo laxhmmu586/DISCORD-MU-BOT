@@ -2123,7 +2123,9 @@ function buildCbsUpdateFields(update = {}) {
   }
   if (type === 'email') {
     if (sanitizeCbsText(update.emailAction, 80) !== 'sent_open_bag_authorization_to_pvg') return null;
-    return { status: 'Email - Sent Open Bag Authorization to PVG', updateNote: 'EMAIL | Sent Open Bag Authorization to PVG', updateEvent: { key:'email', title:'Sent Open Bag Authorization to PVG', fields:[['Attachment', 'Letter of Authorization']] } };
+    const emailTo = sanitizeCbsText(update.emailTo, 160).toLowerCase();
+    if (!['pd-bag-intl@ceair.com', 'pd-bag-dom@ceair.com'].includes(emailTo)) return null;
+    return { status: 'Email - Sent Open Bag Authorization to PVG', updateNote: `EMAIL | Sent Open Bag Authorization to PVG | Email To: ${emailTo}`, updateEvent: { key:'email', title:'Sent Open Bag Authorization to PVG', fields:[['Email To', emailTo], ['Attachment', 'Letter of Authorization']] } };
   }
   if (type === 'rush') {
     const rushTagNumber = sanitizeCbsText(update.rushTagNumber, 80).toUpperCase();
@@ -2863,8 +2865,9 @@ app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
     if (updateFields.updateEvent?.key === 'email') {
       const record = result.record;
       const message = signedOpenBagAuthorizationToPvgEmail(record);
+      const emailTo = updateFields.updateEvent.fields.find(([key]) => key === 'Email To')?.[1];
       try {
-        result.email = await sendCbsCaseEmail({ passengerEmail:'laxhm21@gmail.com', subject:message.subject, html:message.html, text:message.text, attachments:emailAttachments, ccOperations:false });
+        result.email = await sendCbsCaseEmail({ passengerEmail:emailTo, subject:message.subject, html:message.html, text:message.text, attachments:emailAttachments, ccOperations:false });
       } catch (mailErr) {
         result.emailError = cbsEmailErrorMessage(mailErr);
         console.error('CBS signed PVG authorization email error:', mailErr);

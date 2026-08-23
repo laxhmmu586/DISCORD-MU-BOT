@@ -147,15 +147,21 @@ test('CBS Email stage sends a signed open-bag authorization PDF to PVG', () => {
   assert.match(page, /Sent Open Bag Authorization to PVG/);
   assert.match(page, /authorization-upload-plus">\+<\/span>/);
   assert.match(page, /authorization-upload-title">Letter of Authorization<\/span>/);
+  assert.match(page, /<span>Email To<\/span><select name="emailTo" required>/);
+  assert.match(page, /pd-bag-intl@ceair\.com/);
+  assert.match(page, /pd-bag-dom@ceair\.com/);
   assert.match(page, /accept="application\/pdf,\.pdf" required/);
   assert.match(page, /reader\.readAsDataURL\(file\)/);
   assert.match(page, /payload\.attachments = \[\{ filename:file\.name/);
   assert.match(server, /行李开箱检查授权文件 – WorldTracer \$\{fileNumber\}/);
   assert.match(server, /WorldTracer 案件编号：\$\{fileNumber\}/);
   assert.match(server, /行李牌号码：\$\{bagTag\}/);
-  assert.match(server, /passengerEmail:'laxhm21@gmail\.com'/);
+  assert.match(server, /\['pd-bag-intl@ceair\.com', 'pd-bag-dom@ceair\.com'\]\.includes\(emailTo\)/);
+  assert.match(server, /passengerEmail:emailTo/);
   assert.match(server, /attachments:emailAttachments/);
   assert.match(server, /A signed Letter of Authorization PDF is required/);
+  assert.doesNotMatch(page.match(/const notifications = \[([\s\S]*?)\]\.filter/)?.[1] || '', /Signed authorization sent to PVG/);
+  assert.match(page, /tracking-chip--email,\.tracking-chip--email\.is-latest/);
 });
 
 test('CBS tracking offers a compact baggage transfer update with a required arrival date', () => {
