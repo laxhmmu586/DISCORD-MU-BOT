@@ -69,6 +69,15 @@ test('Add On-hand records are added to and displayed in Open Case', () => {
   assert.match(page, /await loadUnresolvedBaggage\(\);\s*showSection\('open'\);/);
 });
 
+test('On-hand excludes gate bags', () => {
+  const description = 'Passenger bags entered as inbound and not-loaded outbound bags remain here until resolved. Gate bags are not included.';
+  assert.equal((page.match(new RegExp(description.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length, 2);
+  assert.match(page, /<option>Gate bag<\/option>/);
+  assert.match(drive, /\.filter\(\(row\) => !isCbsGateBag\(row\)\)/);
+  assert.match(drive, /if \(isCbsGateBag\(record\)\) return \{ created: false, excluded: true \};/);
+  assert.match(drive, /\[record\.status, record\.bagType\][\s\S]*=== 'gate bag'/);
+});
+
 test('On-hand cases match the passenger case layout and support WorldTracer progress', () => {
   assert.match(page, /<th>WorldTracer File Number<\/th><th>Bag Tag<\/th><th>Direction<\/th>/);
   assert.match(page, /class="case-detail-layout"><div class="case-progress-column">\$\{unresolvedProgressHtml\(progressRow\)\}/);
@@ -121,9 +130,13 @@ test('On-hand Case Close requires notes and archives the case', () => {
 
 test('case progress identifies the staff member who made each update', () => {
   assert.match(page, /function currentUpdater\(\)/);
+  assert.match(page, /function updaterDisplayName\(value\)/);
+  assert.match(page, /updater\.split\('@'\)\[0\]/);
+  assert.match(page, /return updaterDisplayName\(user\?\.displayName \|\| user\?\.email \|\| ''\)/);
   assert.match(page, /payload\.updatedBy = currentUpdater\(\)/);
-  assert.match(page, /Updated by: \$\{escapeHtml\(event\.by\)\}/);
-  assert.match(page, /Updated by: \$\{escapeHtml\(item\.by\)\}/);
+  assert.match(page, /Updated by: \$\{escapeHtml\(updaterDisplayName\(event\.by\)\)\}/);
+  assert.match(page, /Updated by: \$\{escapeHtml\(updaterDisplayName\(item\.by\)\)\}/);
+  assert.match(page, /escapeHtml\(updaterDisplayText\(item\.detail\)\)/);
   assert.match(server, /updateFields\.updateEvent\.by = sanitizeCbsText\(req\.body\?\.updatedBy, 160\)/);
   assert.match(server, /Updated by: \$\{updatedBy\}/);
   assert.match(drive, /by: sanitizeSheetText\(fallback\.by \|\| event\.by, 160\)/);
