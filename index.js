@@ -971,6 +971,10 @@ app.use(
   express.static('public')
 );
 
+app.get('/attachment-drop.js', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'public', 'attachment-drop.js'));
+});
+
 app.get(['/scan.html', '/scan'], (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'public', 'scan.html'));
 });

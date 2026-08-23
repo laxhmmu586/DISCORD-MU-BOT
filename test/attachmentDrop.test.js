@@ -5,12 +5,14 @@ const path = require('node:path');
 
 const publicDir = path.join(__dirname, '..', 'public', 'public');
 const helper = fs.readFileSync(path.join(publicDir, 'attachment-drop.js'), 'utf8');
+const server = fs.readFileSync(path.join(__dirname, '..', 'index.js'), 'utf8');
 
 test('all attachment forms load the shared drag-and-drop helper', () => {
   for (const filename of ['cbs.html', 'pir-form.html', 'contact-form.html', 'wrong-baggage-form.html', '240.html']) {
     const page = fs.readFileSync(path.join(publicDir, filename), 'utf8');
-    assert.match(page, /<script src="\/public\/attachment-drop\.js"><\/script>/, filename);
+    assert.match(page, /<script src="\/attachment-drop\.js"><\/script>/, filename);
   }
+  assert.match(server, /app\.get\('\/attachment-drop\.js'/);
 });
 
 test('attachment drop helper transfers dropped files and triggers existing previews', () => {
