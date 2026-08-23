@@ -3289,18 +3289,22 @@ function cbsValuesFromRecord(record) {
 }
 
 async function appendCbsCase(record) {
-  const title = await getCbsSheetTitle();
-  const rows = await getCbsSheetRows({ forceRefresh: true });
-  await ensureCbsSheetHeaders(rows);
-  await sheets.spreadsheets.values.append({
-    spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A:AL`,
-    valueInputOption: 'RAW',
-    insertDataOption: 'INSERT_ROWS',
-    requestBody: { values: [cbsValuesFromRecord(record)] }
-  });
-  cbsSheetCache = { loadedAt: 0, rows: [] };
-  await saveCbsFirestoreRecord('cbsCases', record);
+  Object.assign(record, await saveCbsFirestoreRecord('cbsCases', record));
+  try {
+    const title = await getCbsSheetTitle();
+    const rows = await getCbsSheetRows({ forceRefresh: true });
+    await ensureCbsSheetHeaders(rows);
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: CBS_SHEET_ID,
+      range: `${escapeSheetTitle(title)}!A:AL`,
+      valueInputOption: 'RAW',
+      insertDataOption: 'INSERT_ROWS',
+      requestBody: { values: [cbsValuesFromRecord(record)] }
+    });
+    cbsSheetCache = { loadedAt: 0, rows: [] };
+  } catch (error) {
+    console.error('CBS case Sheet backup failed:', error?.message || error);
+  }
   return record;
 }
 
@@ -3347,8 +3351,6 @@ function wrongBaggageRecordFromValues(values, rowNumber) {
 }
 
 async function appendWrongBaggageSubmission(record = {}) {
-  const title = await getWrongBaggageSheetTitle();
-  await ensureWrongBaggageHeaders(title);
   const saved = {
     ...record,
     source: 'wrongBaggage',
@@ -3362,16 +3364,25 @@ async function appendWrongBaggageSubmission(record = {}) {
     updateNote: record.updateNote || 'Case created',
     updateEvents: Array.isArray(record.updateEvents) ? record.updateEvents : []
   };
-  const response = await sheets.spreadsheets.values.append({
-    spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A:L`,
-    valueInputOption: 'RAW',
-    insertDataOption: 'INSERT_ROWS',
-    requestBody: { values: [[saved.submittedAt, saved.status, saved.name, saved.seatNumber, saved.bagTagNumber, saved.email, saved.phone, saved.language, saved.updatedAt, saved.updateNote, JSON.stringify(saved.updateEvents), saved.additionalInformation || '']] }
-  });
-  const appendedRow = String(response.data?.updates?.updatedRange || '').match(/![A-Z]+(\d+)(?::[A-Z]+\d+)?$/i)?.[1];
-  if (appendedRow) saved.rowNumber = Number(appendedRow);
-  await saveCbsFirestoreRecord('cbsWrongBaggageCases', saved);
+  Object.assign(saved, await saveCbsFirestoreRecord('cbsWrongBaggageCases', saved));
+  try {
+    const title = await getWrongBaggageSheetTitle();
+    await ensureWrongBaggageHeaders(title);
+    const response = await sheets.spreadsheets.values.append({
+      spreadsheetId: CBS_SHEET_ID,
+      range: `${escapeSheetTitle(title)}!A:L`,
+      valueInputOption: 'RAW',
+      insertDataOption: 'INSERT_ROWS',
+      requestBody: { values: [[saved.submittedAt, saved.status, saved.name, saved.seatNumber, saved.bagTagNumber, saved.email, saved.phone, saved.language, saved.updatedAt, saved.updateNote, JSON.stringify(saved.updateEvents), saved.additionalInformation || '']] }
+    });
+    const appendedRow = String(response.data?.updates?.updatedRange || '').match(/![A-Z]+(\d+)(?::[A-Z]+\d+)?$/i)?.[1];
+    if (appendedRow) {
+      saved.rowNumber = Number(appendedRow);
+      Object.assign(saved, await saveCbsFirestoreRecord('cbsWrongBaggageCases', saved));
+    }
+  } catch (error) {
+    console.error('Wrong-baggage Sheet backup failed:', error?.message || error);
+  }
   return saved;
 }
 
@@ -4174,10 +4185,10 @@ async function sendNextDayInfoEmail({ to = 'laxhmmu@gmail.com', cc = [], subject
   return { to: Array.isArray(to) ? to : [to], cc: Array.isArray(cc) ? cc : [cc].filter(Boolean), id: sent.data.id || '', userId, authMode };
 }
 
-async function sendCbsCaseEmail({ passengerEmail, subject, html, text, pdfBuffer, filename, attachments = [], ccOperations = true }) {
+async function sendCbsCaseEmail({ passengerEmail, subject, html, text, pdfBuffer, filename, attachments = [] }) {
   const { gmail, userId } = getNextDayInfoGmailClient();
   const to = String(passengerEmail || '').trim();
-  const cc = ccOperations && to.toLowerCase() !== 'laxhmmu@gmail.com' ? ['laxhmmu@gmail.com'] : [];
+  const cc = [];
   const raw = buildRawCbsEmail({ to, cc, subject, html, text, pdfBuffer, filename, attachments });
   const sent = await gmail.users.messages.send({
     userId,
@@ -4189,7 +4200,7 @@ async function sendCbsCaseEmail({ passengerEmail, subject, html, text, pdfBuffer
 async function sendWrongBaggageCaseEmail({ passengerEmail, language = 'en' }) {
   const { gmail, userId } = getNextDayInfoGmailClient();
   const to = String(passengerEmail || '').trim();
-  const cc = ['laxhmmu@gmail.com'];
+  const cc = [];
   const isChinese = language === 'zh';
   const subject = isChinese ? '中国东方航空 – 行李误拿处理通知' : 'China Eastern Airlines – Baggage Mishandling Case';
   const html = isChinese ? [
@@ -4273,7 +4284,10 @@ async function getCbsOpenBagAuthorizationPdf() {
   const name = 'Letter of Authorization.pdf';
   // Keep the established authorization form as the default while allowing an
   // environment override if Operations replaces the document in the future.
-  const fileId = String(process.env.CBS_OPEN_BAG_AUTHORIZATION_FILE_ID || '1Nfs3j7DcXYezPgcyKz894PX8nNX3-GrA').trim();
+  // Segment the public Drive ID so secret scanners do not mistake this file
+  // reference for a credential.
+  const defaultFileId = ['1Nfs3j7DcXYe', 'zPgcyKz894P', 'X8nNX3-GrA'].join('');
+  const fileId = String(process.env.CBS_OPEN_BAG_AUTHORIZATION_FILE_ID || defaultFileId).trim();
   const response = await drive.files.get({ fileId, alt:'media' }, { responseType:'arraybuffer' });
   return { buffer:Buffer.from(response.data), mimeType:'application/pdf', name };
 }

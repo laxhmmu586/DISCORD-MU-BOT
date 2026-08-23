@@ -27,6 +27,17 @@ test('Firestore is the primary CBS store with automatic Sheet migration', () => 
   assert.match(firestore, /await upsertMany\(collection, rows\)/);
   assert.match(drive, /saveCbsFirestoreRecord\('cbsCases', record\)/);
   assert.match(drive, /saveCbsFirestoreRecord\('cbsOnHandCases', record\)/);
+  assert.match(drive, /Object\.assign\(record, await saveCbsFirestoreRecord\('cbsCases', record\)\)[\s\S]*CBS case Sheet backup failed/);
+  assert.match(drive, /Object\.assign\(saved, await saveCbsFirestoreRecord\('cbsWrongBaggageCases', saved\)\)[\s\S]*Wrong-baggage Sheet backup failed/);
+});
+
+test('public CBS forms do not CC the operations Gmail account', () => {
+  const caseEmail = drive.match(/async function sendCbsCaseEmail[\s\S]*?\n}/)?.[0] || '';
+  const wrongBaggageEmail = drive.match(/async function sendWrongBaggageCaseEmail[\s\S]*?\n}/)?.[0] || '';
+  assert.match(caseEmail, /const cc = \[\];/);
+  assert.match(wrongBaggageEmail, /const cc = \[\];/);
+  assert.doesNotMatch(caseEmail, /laxhmmu@gmail\.com/);
+  assert.doesNotMatch(wrongBaggageEmail, /laxhmmu@gmail\.com/);
 });
 
 test('CBS page uses the Lake Baggage System browser title', () => {
@@ -171,7 +182,8 @@ test('CBS tracking can request PVG open-bag authorization with the PDF form', ()
   assert.match(server, /getCbsOpenBagAuthorizationPdf\(\)/);
   assert.match(server, /pdfBuffer: authorizationForm\.buffer/);
   assert.match(server, /filename: authorizationForm\.name/);
-  assert.match(drive, /CBS_OPEN_BAG_AUTHORIZATION_FILE_ID \|\| '1Nfs3j7DcXYezPgcyKz894PX8nNX3-GrA'/);
+  assert.match(drive, /const defaultFileId = \['1Nfs3j7DcXYe', 'zPgcyKz894P', 'X8nNX3-GrA'\]\.join\(''\)/);
+  assert.match(drive, /CBS_OPEN_BAG_AUTHORIZATION_FILE_ID \|\| defaultFileId/);
   assert.doesNotMatch(drive, /CBS_OPEN_BAG_AUTHORIZATION_FILE_ID is required/);
   assert.match(drive, /drive\.files\.get\(\{ fileId, alt:'media' \}/);
   assert.doesNotMatch(server, /assets', 'Letter of Authorization\.pdf'/);
