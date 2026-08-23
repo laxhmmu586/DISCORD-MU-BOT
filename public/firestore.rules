@@ -8,6 +8,5 @@ service cloud.firestore {
     match /cbsWorldTracerCases/{document=**} { allow read, write: if false; }
     match /cbsMissingBagReports/{document=**} { allow read, write: if false; }
     match /cbsWrongBaggageCases/{document=**} { allow read, write: if false; }
-    match /_cbsMigrations/{document=**} { allow read, write: if false; }
   }
 }
