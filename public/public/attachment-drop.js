@@ -12,6 +12,23 @@
     zone.classList.toggle('is-file-dragging', dragging);
   }
 
+  function addDropHints(root = document) {
+    root.querySelectorAll?.('input[type="file"]').forEach((input) => {
+      const zone = input.closest('label') || input.closest('[data-attachment-group], .attachments');
+      if (!zone || zone.dataset.fileDropReady) return;
+      zone.dataset.fileDropReady = 'true';
+      const hint = document.createElement('span');
+      hint.className = 'file-drop-hint';
+      hint.textContent = input.multiple ? 'Drag & drop files here or click +' : 'Drag & drop file here or click +';
+      zone.appendChild(hint);
+    });
+  }
+
+  addDropHints();
+  new MutationObserver((mutations) => mutations.forEach((mutation) => mutation.addedNodes.forEach((node) => {
+    if (node.nodeType === Node.ELEMENT_NODE) addDropHints(node.matches?.('input[type="file"]') ? node.parentElement : node);
+  }))).observe(document.body, { childList:true, subtree:true });
+
   document.addEventListener('dragenter', (event) => {
     const target = fileInputFor(event.target);
     if (!target || !event.dataTransfer?.types?.includes('Files')) return;
@@ -47,6 +64,7 @@
   const style = document.createElement('style');
   style.textContent = `
     label:has(> input[type="file"]), [data-attachment-group], .attachments { transition:border-color .15s ease,box-shadow .15s ease,background .15s ease; }
+    .file-drop-hint { display:block; color:#667085; font-size:10px; font-weight:800; line-height:1.3; text-align:center; text-transform:none; letter-spacing:0; }
     .is-file-dragging { border-color:#245fce !important; background:#eaf4ff !important; box-shadow:0 0 0 4px rgba(36,95,206,.16) !important; }
     .is-file-dragging::after { content:"Drop attachment here"; color:#123a73; font-size:12px; font-weight:900; }
   `;

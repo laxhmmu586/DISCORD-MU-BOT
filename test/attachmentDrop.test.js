@@ -20,4 +20,8 @@ test('attachment drop helper transfers dropped files and triggers existing previ
   assert.match(helper, /target\.input\.files = transfer\.files/);
   assert.match(helper, /dispatchEvent\(new Event\('change', \{ bubbles:true \}\)\)/);
   assert.match(helper, /is-file-dragging/);
+  assert.match(helper, /Drag & drop files here or click \+/);
+  assert.match(helper, /Drag & drop file here or click \+/);
+  assert.match(helper, /new MutationObserver/);
+  assert.match(helper, /file-drop-hint/);
 });
