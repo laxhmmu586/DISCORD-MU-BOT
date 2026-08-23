@@ -182,6 +182,7 @@ test('CBS Email stage sends a signed open-bag authorization PDF to PVG', () => {
   assert.match(page, /Sent Open Bag Authorization to PVG/);
   assert.match(page, /authorization-upload-plus">\+<\/span>/);
   assert.match(page, /authorization-upload-title">Letter of Authorization<\/span>/);
+  assert.match(page, /\[data-pvg-email-field\]\[hidden\] \{ display:none; \}/);
   assert.match(page, /<span>Email To<\/span><select name="emailTo" required>/);
   assert.match(page, /pd-bag-intl@ceair\.com/);
   assert.match(page, /pd-bag-dom@ceair\.com/);
