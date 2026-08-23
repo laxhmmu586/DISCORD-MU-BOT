@@ -124,6 +124,11 @@
     .inline-update textarea { min-height:58px; resize:vertical; grid-column:1/-1; }
     .inline-update button { width:max-content; padding:8px 13px; border-radius:12px; font-size:12px; grid-column:1/-1; }
     .inline-update.case-update[data-update-mode="information"] { grid-template-columns:minmax(220px,320px); }
+    .inline-update.case-update[data-update-mode="email"] { grid-template-columns:minmax(240px,420px); }
+    .authorization-upload { display:grid; gap:8px; padding:14px; border:1px dashed #9db8d8; border-radius:14px; background:#f8fbff; cursor:pointer; }
+    .authorization-upload input { position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; }
+    .authorization-upload-plus { display:grid; place-items:center; width:38px; height:38px; border-radius:999px; background:#fff; color:var(--brand); box-shadow:0 5px 14px #173b5d22; font-size:26px; font-weight:900; }
+    .authorization-upload-title { color:var(--brand); font-size:13px; font-weight:900; }
     .baggage-search-card { margin:14px 0 0; padding:16px; border:1px solid var(--line); border-radius:18px; background:#fbfdff; display:grid; gap:10px; }
     .baggage-search-card h3 { margin:0; color:var(--brand); }
     .baggage-search-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px 18px; }
@@ -516,6 +521,8 @@
       { key:'information', text:'Information' },
       { key:'worldtracer', text:'WorldTracer' },
       { key:'requested_bags', text:'Requested Bags' },
+      { key:'open_bag_authorization_pvg', text:'Require Open Bag Authorization at PVG' },
+      { key:'email', text:'Email' },
       { key:'rush', text:'Rush' },
       { key:'location', text:'Location' },
       { key:'shipping', text:'Shipping' },
@@ -581,6 +588,8 @@
       if (/rush/.test(text)) return 'rush';
       if (/world\s*tracer|worldtracer/.test(text)) return 'worldtracer';
       if (/requested[\s_-]*bags?/.test(text)) return 'requested_bags';
+      if (/open[\s_-]*bag[\s_-]*authorization|authorization.*pvg/.test(text)) return 'open_bag_authorization_pvg';
+      if (/sent open bag authorization to pvg|^email$/.test(text)) return 'email';
       if (/information/.test(text)) return 'information';
       if (/update/.test(text)) return 'update';
       return 'create';
@@ -628,6 +637,8 @@
         ['create', label('Create report email', '建案报告邮件')],
         ['worldtracer', label('WorldTracer update email', 'WorldTracer 更新邮件')],
         ['requested_bags', label('Baggage request from other station email', '外站行李查询邮件')],
+        ['open_bag_authorization_pvg', label('PVG open-bag authorization email', '浦东机场开箱授权邮件')],
+        ['email', label('Signed authorization sent to PVG', '已发送签字授权书至浦东机场')],
         ['information', label('Baggage Transfer Status Update email', '行李转运状态更新邮件')],
         ['adc_shipping', label('ADC baggage delivery email', 'ADC 行李配送邮件')],
         ['fedex_shipping', label('FedEx baggage delivery email', 'FedEx 行李配送邮件')],
@@ -859,13 +870,15 @@
     }
     function inlineUpdateFieldsHtml(key) {
       const input = (placeholder, name, required = true) => `<input name="${escapeHtml(name)}" placeholder="${escapeHtml(placeholder)}" ${required ? 'required' : ''} />`;
-      const shippingMethodSelect = '<select name="shippingMethod" data-shipping-method required><option value="">Select delivery method</option><option>ADC - All Day Courier</option><option>BDO</option><option>FedEx Delivery</option><option>Pick Up at Airport</option><option>Passenger Pay for Shipping</option></select>';
+      const shippingMethodSelect = '<select name="shippingMethod" data-shipping-method required><option value="">Select delivery method</option><option>ADC - All Day Courier</option><option>FedEx Delivery</option><option>Pick Up at Airport</option><option>Passenger Pay for Shipping</option></select>';
       const shippingTrackingInput = '<input name="trackingNumber" data-shipping-tracking placeholder="Tracking number" disabled hidden />';
       const shippingAddressInput = '<input name="shippingTo" data-shipping-address placeholder="Shipping to where?" disabled hidden />';
       const shippingBdoInput = '<input name="bdo" data-shipping-bdo placeholder="BDO" disabled hidden />';
       if (key === 'worldtracer') return input('File number', 'fileNumber');
       if (key === 'information') return ['<select name="informationType" required><option value="rush_to_lax">Baggage Transfer Status Update</option></select>', '<label><span>Estimated arrival date</span><input name="estimatedArrivalTime" type="date" required /></label>'].join('');
       if (key === 'requested_bags') return input('From which station?', 'fromStation');
+      if (key === 'open_bag_authorization_pvg') return '<p class="muted wide">The authorization form will be attached and emailed to the passenger.</p>';
+      if (key === 'email') return '<select name="emailAction" required><option value="sent_open_bag_authorization_to_pvg">Sent Open Bag Authorization to PVG</option></select><label class="authorization-upload"><input name="authorizationFile" type="file" accept="application/pdf,.pdf" required /><span class="authorization-upload-plus">+</span><span class="authorization-upload-title">Letter of Authorization</span><small data-authorization-filename>Select the signed PDF</small></label>';
       if (key === 'rush') return [input('Rush tag number', 'rushTagNumber'), input('Rush to where?', 'rushToWhere'), input('World Tracer file # (optional)', 'worldTracerFileNumber', false), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
       if (key === 'location') return [input('Bag location', 'location'), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
       if (key === 'shipping') return [shippingMethodSelect, shippingTrackingInput, shippingAddressInput, shippingBdoInput, '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
@@ -920,7 +933,7 @@
       const progress = `<div class="tracking-workspace"><div>${progressHeader}<div class="tracking-history">${historyHtml}</div></div></div>`;
       const current = isClosedCase(row)
         ? `<form class="inline-update case-update" data-row-number="${escapeHtml(row.rowNumber)}" data-update-mode="reopen"><textarea name="comment" placeholder="${label('Reopen note (optional)', '重新开启备注（可选）')}"></textarea><button type="submit">${label('Reopen', '重新开启')}</button></form>`
-        : `<div><label class="tracking-stage-picker"><span>${label('Current stage', '当前阶段')}</span><select data-cbs-stage-select>${updateKeys.map((stage) => `<option value="${escapeHtml(stage.key)}" ${stage.key === active ? 'selected' : ''}>${escapeHtml(stage.text)}</option>`).join('')}</select></label><form class="inline-update case-update" data-row-number="${escapeHtml(row.rowNumber)}" data-update-mode="${escapeHtml(active)}"><div data-cbs-inline-fields>${inlineUpdateFieldsHtml(active)}</div><button type="submit">${label('Update Tracking', '更新进度')}</button></form></div>`;
+        : `<div><label class="tracking-stage-picker"><span>${label('Current stage', '当前阶段')}</span><select data-cbs-stage-select>${updateKeys.map((stage) => `<option value="${escapeHtml(stage.key)}" ${stage.key === active ? 'selected' : ''}>${escapeHtml(stage.text)}</option>`).join('')}</select></label><form class="inline-update case-update" data-row-number="${escapeHtml(row.rowNumber)}" data-update-mode="${escapeHtml(active)}"><div data-cbs-inline-fields>${inlineUpdateFieldsHtml(active)}</div><button type="submit" data-cbs-update-submit>${active === 'email' ? label('Send', '发送') : label('Update Tracking', '更新进度')}</button></form></div>`;
       if (part === 'progress') return progress;
       if (part === 'current') return current;
       return `<div class="tracking-workspace">${progress}${current}</div>`;
@@ -1040,6 +1053,18 @@
       const payload = Object.fromEntries(new FormData(updateForm, event.submitter).entries());
       payload.type = payload.type || updateForm.dataset.updateMode || 'worldtracer';
       payload.updatedBy = currentUpdater();
+      if (payload.type === 'email') {
+        const file = updateForm.elements.authorizationFile?.files?.[0];
+        if (!file) return alert('Please attach the signed Letter of Authorization PDF.');
+        const contentBase64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result || '').split(',')[1] || '');
+          reader.onerror = () => reject(new Error('The authorization PDF could not be read.'));
+          reader.readAsDataURL(file);
+        });
+        delete payload.authorizationFile;
+        payload.attachments = [{ filename:file.name, mimeType:file.type || 'application/pdf', contentBase64, attachmentType:'letterOfAuthorization' }];
+      }
       await updateCase(updateForm.dataset.rowNumber, payload, updateForm.dataset.caseSource || 'pir');
     });
     casesOutput.addEventListener('change', (event) => {
@@ -1073,6 +1098,13 @@
       if (!form || !fields) return;
       form.dataset.updateMode = select.value;
       fields.innerHTML = inlineUpdateFieldsHtml(select.value);
+      const submit = form.querySelector('[data-cbs-update-submit]');
+      if (submit) submit.textContent = select.value === 'email' ? label('Send', '发送') : label('Update Tracking', '更新进度');
+    });
+    casesOutput.addEventListener('change', (event) => {
+      const file = event.target.closest('input[name="authorizationFile"]');
+      const filename = file?.closest('.authorization-upload')?.querySelector('[data-authorization-filename]');
+      if (filename) filename.textContent = file.files?.[0]?.name || 'Select the signed PDF';
     });
     casesOutput.addEventListener('click', async (event) => {
       const createBaggageButton = event.target.closest('[data-create-baggage-case]');

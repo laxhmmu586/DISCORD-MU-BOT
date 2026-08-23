@@ -4160,6 +4160,13 @@ async function getCbsBaggageChartImage(page) {
   return { buffer:Buffer.from(response.data), mimeType:file.mimeType || 'image/png', name:file.name || name };
 }
 
+async function getCbsOpenBagAuthorizationPdf() {
+  const name = 'Letter of Authorization.pdf';
+  const fileId = String(process.env.CBS_OPEN_BAG_AUTHORIZATION_FILE_ID || '1Nfs3j7DcXYezPgcyKz894PX8nNX3-GrA').trim();
+  const response = await drive.files.get({ fileId, alt:'media' }, { responseType:'arraybuffer' });
+  return { buffer:Buffer.from(response.data), mimeType:'application/pdf', name };
+}
+
 // ===============================
 // Exports
 // ===============================
@@ -4217,6 +4224,7 @@ module.exports = {
   sendWrongBaggageCaseEmail,
   sendMisconnectionAssistanceEmail,
   getCbsBaggageChartImage,
+  getCbsOpenBagAuthorizationPdf,
   appendTransit240Record,
   appendCbsScanRecord,
   appendRecordScanRecord,
