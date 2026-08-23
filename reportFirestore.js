@@ -27,13 +27,11 @@ function prepare(type, row) {
   return { ...row, reportType:normalizeType(type), firestoreId:rowId(type, row) };
 }
 
-async function load(type, legacyLoader) {
+async function load(type) {
   const normalized = normalizeType(type);
-  // Report collections have already been migrated. Read Firestore directly;
-  // retain the legacy loader only for explicit Firestore-disabled rollback.
-  const rows = firestore.enabled
-    ? await firestore.list(collectionName(normalized))
-    : (await legacyLoader() || []).map((row) => prepare(normalized, row));
+  // Report collections have already been migrated. Google Sheets are backup
+  // destinations only and must never be imported during a report read.
+  const rows = await firestore.list(collectionName(normalized));
   return (rows || []).filter((row) => row.reportType === normalized);
 }
 

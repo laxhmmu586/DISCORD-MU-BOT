@@ -27,9 +27,11 @@ test('Report Center normalizes endpoint aliases to their stored report types', (
   assert.equal(reportFirestore.normalizeType('sales-detail'), 'salesDetails');
 });
 
-test('Report Center reads migrated collections without the removed CBS migration helper', () => {
-  assert.doesNotMatch(source, /ensureMigrated/);
+test('Report Center reads migrated collections without any Sheet import path', () => {
+  assert.doesNotMatch(source, /ensureMigrated|legacyLoader/);
   assert.match(source, /await firestore\.list\(collectionName\(normalized\)\)/);
+  assert.match(drive, /const storedRows = await reportFirestore\.load\(normalizedType\);/);
+  assert.doesNotMatch(drive, /reportFirestore\.load\(normalizedType,\s*async/);
 });
 
 test('every Report Center writer stores in Firestore before the Sheet backup', () => {

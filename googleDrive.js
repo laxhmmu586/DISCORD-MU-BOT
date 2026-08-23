@@ -1151,14 +1151,7 @@ async function getStoredReportRows(type, isoDate) {
   const config = getReportSheetConfig(type);
   if (!config) return { rows: [], scanned: false };
   const normalizedType = normalizeReportSheetType(type);
-  const storedRows = await reportFirestore.load(normalizedType, async () => {
-    const rows = await getReportSheetRows(normalizedType);
-    if (!config.readOnly) await ensureReportSheetHeaders(normalizedType, rows);
-    const startIndex = rows.length && isReportHeaderRow(normalizedType, rows[0]) ? 1 : 0;
-    return rows.slice(startIndex)
-      .filter((values) => !isReportHeaderRow(normalizedType, values))
-      .map((values) => reportRowFromSheet(normalizedType, values));
-  });
+  const storedRows = await reportFirestore.load(normalizedType);
   let scanned = false;
   const dataRows = [];
   for (const parsed of storedRows) {
