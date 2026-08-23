@@ -364,6 +364,7 @@ test('sidebar Email sends either a signed PVG authorization or a passenger picku
   assert.match(page, /pd-bag-intl@ceair\.com[\s\S]*pd-bag-dom@ceair\.com/);
   assert.match(page, /name="authorizationFile" type="file" accept="application\/pdf,\.pdf"/);
   assert.match(page, /name="passengerEmail" type="email" placeholder="Passenger email address"/);
+  assert.match(page, /\[data-standalone-pvg-field\]\[hidden\],\[data-standalone-pickup-field\]\[hidden\] \{ display:none; \}/);
   assert.match(page, /fetch\(`\$\{apiBase\}\/cbs-email`/);
   assert.match(server, /app\.post\('\/cbs-email'/);
   assert.match(server, /signedOpenBagAuthorizationToPvgEmail\(\{\}\)/);
