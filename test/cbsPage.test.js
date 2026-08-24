@@ -48,6 +48,13 @@ test('public CBS forms do not CC the operations Gmail account', () => {
   assert.match(wrongBaggageEmail, /const cc = \[\];/);
   assert.doesNotMatch(caseEmail, /laxhmmu@gmail\.com/);
   assert.doesNotMatch(wrongBaggageEmail, /laxhmmu@gmail\.com/);
+  assert.match(caseEmail, /CBS_EMAIL_TIMEOUT_MS/);
+  assert.match(caseEmail, /gmail\.users\.messages\.send\([\s\S]*\{ timeout \}\)/);
+});
+
+test('CBS email updates explain an interrupted server connection instead of showing Failed to fetch', () => {
+  assert.match(page, /The server connection was interrupted while sending the email/);
+  assert.match(page, /check the case history before trying again/);
 });
 
 test('CBS page uses the Lake Baggage System browser title', () => {

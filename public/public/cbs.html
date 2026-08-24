@@ -1335,7 +1335,12 @@
         window._expandedCbsCases.add(`row-${rowNumber}`);
         await loadCases();
         if (window._missingReportLoaded || !missingReportCard.hidden) await loadMissingReports();
-      } catch (error) { alert(error.message); } finally { casesOutput.style.opacity = '1'; }
+      } catch (error) {
+        const message = error instanceof TypeError && /failed to fetch/i.test(error.message)
+          ? 'The server connection was interrupted while sending the email. The case may already have been updated; check the case history before trying again.'
+          : error.message;
+        alert(message);
+      } finally { casesOutput.style.opacity = '1'; }
     }
     caseSearch?.addEventListener('input', () => { renderCases(); loadBaggageSearch(caseSearch.value); });
     openCasesTab?.addEventListener('click', () => showSection('open'));
