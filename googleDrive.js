@@ -4146,10 +4146,11 @@ async function sendCbsCaseEmail({ passengerEmail, subject, html, text, pdfBuffer
   const to = String(passengerEmail || '').trim();
   const cc = [];
   const raw = buildRawCbsEmail({ to, cc, subject, html, text, pdfBuffer, filename, attachments });
+  const timeout = Math.max(1000, Number(process.env.CBS_EMAIL_TIMEOUT_MS) || 30000);
   const sent = await gmail.users.messages.send({
     userId,
     requestBody: { raw: base64UrlEncode(raw) }
-  });
+  }, { timeout });
   return [{ to, cc, id: sent.data.id || '' }];
 }
 
