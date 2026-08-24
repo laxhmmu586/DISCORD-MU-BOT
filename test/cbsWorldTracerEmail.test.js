@@ -26,18 +26,16 @@ test('DPR WorldTracer update email confirms case creation and warns passengers n
 
 test('requested bags update emails the passenger without an operations CC', () => {
   assert.match(server, /function requestedBagsUpdateEmail/);
-  assert.match(server, /We are pleased to inform you that your baggage has been located/);
-  assert.match(server, /我们很高兴地通知您，您的行李已找到，目前正在安排转运中/);
+  assert.match(server, /your baggage has been located, and a transfer request has been arranged/);
+  assert.match(server, /您的行李已经找到，目前已提交转运申请并正在安排转运/);
   assert.match(server, /subject: `行李案件更新通知 – WorldTracer 案件编号：\$\{fileNumber\}`/);
   assert.match(server, /subject: `Baggage Case Update – WorldTracer Reference: \$\{fileNumber\}`/);
   assert.match(server, /WorldTracer Reference Number: \$\{reference\}/);
   assert.match(server, /WorldTracer 案件编号：\$\{reference\}/);
   assert.match(server, /Dear Passenger,\\n\\nWe are pleased to inform you/);
   assert.match(server, /Sincerely,\\nChina Eastern Airlines/);
-  assert.match(server, /后续行李将按照您在行李报失记录（Report）中登记的地址安排配送/);
-  assert.match(server, /如无需更改配送地址，则无需回复此邮件/);
-  assert.match(server, /Your baggage will be delivered to the address currently listed in your baggage report/);
-  assert.match(server, /If no address change is needed, no reply is required/);
+  assert.match(server, /我们将继续跟进行李的转运状态。如有进一步信息，我们会尽快与您联系并提供最新进展/);
+  assert.match(server, /Once further information becomes available, we will contact you as soon as possible with an update/);
   assert.doesNotMatch(server, /including its arrival or pickup\/delivery arrangements/);
   assert.match(server, /function cbsEmailIsChinese[\s\S]*?\^zh\(\?:-\|\$\)/);
   const block = server.match(/if \(updateFields\.updateEvent\?\.key === 'requested_bags'\) \{([\s\S]*?)\n\s*\}/)?.[1] || '';
@@ -47,14 +45,14 @@ test('requested bags update emails the passenger without an operations CC', () =
   assert.match(block, /text: message\.text/);
 });
 
-test('Rush to LAX information emails the passenger using the ETA stored in AK', () => {
+test('Baggage transfer ETA Email action emails the passenger using its selected date', () => {
   assert.match(server, /function rushToLaxInformationEmail/);
   assert.match(server, /请勿回复 – 行李转运状态更新 – WorldTracer 案件编号：\$\{fileNumber\}/);
   assert.match(server, /DO NOT REPLY – Baggage Transfer Status Update – WorldTracer Case: \$\{fileNumber\}/);
   assert.match(server, /预计于 \$\{arrival\} 运抵洛杉矶（LAX）/);
   assert.match(server, /expected to arrive in Los Angeles \(LAX\) on \$\{arrival\}/);
-  assert.match(server, /rushToLaxInformationEmail\(record, fileNumber, record\.estimatedArrivalTime\)/);
-  assert.match(server, /CBS Rush to LAX information email error/);
+  assert.match(server, /transferEtaEmail[\s\S]*?rushToLaxInformationEmail\(record, record\.worldTracerFileNumber \|\| '', estimatedArrivalTime\)/);
+  assert.match(server, /CBS baggage transfer ETA email error/);
 });
 
 test('DPR WorldTracer updates notify the damaged-baggage Discord channel', () => {

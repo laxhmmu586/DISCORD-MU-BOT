@@ -1151,14 +1151,7 @@ async function getStoredReportRows(type, isoDate) {
   const config = getReportSheetConfig(type);
   if (!config) return { rows: [], scanned: false };
   const normalizedType = normalizeReportSheetType(type);
-  const storedRows = await reportFirestore.load(normalizedType, async () => {
-    const rows = await getReportSheetRows(normalizedType);
-    if (!config.readOnly) await ensureReportSheetHeaders(normalizedType, rows);
-    const startIndex = rows.length && isReportHeaderRow(normalizedType, rows[0]) ? 1 : 0;
-    return rows.slice(startIndex)
-      .filter((values) => !isReportHeaderRow(normalizedType, values))
-      .map((values) => reportRowFromSheet(normalizedType, values));
-  });
+  const storedRows = await reportFirestore.load(normalizedType);
   let scanned = false;
   const dataRows = [];
   for (const parsed of storedRows) {
@@ -3031,7 +3024,7 @@ async function appendRecordScanRecord(record = {}) {
   const seat = String(record.seat || '').trim().toUpperCase();
   const flight = String(record.flight || '').trim().toUpperCase();
   const rawScan = String(record.rawScan || record.raw || '').trim();
-  if (!bn || !seat || !rawScan || !['MU586', 'MU586D'].includes(flight)) throw new Error('Invalid record scan.');
+  if (!bn || !seat || !rawScan || !['MU586', 'MU9586'].includes(flight)) throw new Error('Invalid record scan.');
 
   const title = await getRecordScanSheetTitle();
   const range = `${escapeSheetTitle(title)}!A:D`;
@@ -3391,14 +3384,8 @@ async function appendWrongBaggageSubmission(record = {}) {
   return saved;
 }
 
-async function getWrongBaggageSubmissionsFromSheet() {
-  const title = await getWrongBaggageSheetTitle();
-  const response = await sheets.spreadsheets.values.get({ spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!A:L` });
-  return (response.data.values || []).slice(1).map((values, index) => wrongBaggageRecordFromValues(values, index + 2));
-}
-
 async function getWrongBaggageSubmissions() {
-  return cbsFirestore.ensureMigrated('cbsWrongBaggageCases', getWrongBaggageSubmissionsFromSheet);
+  return (await cbsFirestore.list('cbsWrongBaggageCases')) || [];
 }
 
 async function updateWrongBaggageSubmission(rowNumber, update = {}) {
@@ -3520,21 +3507,16 @@ async function getCbsUnresolvedBaggageSheetTitle() {
 
 const CBS_UNRESOLVED_BAGGAGE_HEADERS = ['Bag Tag', 'Direction', 'Flight Number', 'Flight Date', 'Bag Type', 'Status', 'Location', 'Created At', 'Resolution', 'Resolution Note', 'Resolved At', 'WorldTracer File Number', 'WorldTracer Updated By'];
 
-async function getCbsUnresolvedBaggageCasesFromSheet(options = {}) {
-  const title = await getCbsUnresolvedBaggageSheetTitle();
-  const response = await sheets.spreadsheets.values.get({ spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!A:M` });
-  const rows = response.data.values || [];
-  const start = String(rows[0]?.[0] || '').trim() === CBS_UNRESOLVED_BAGGAGE_HEADERS[0] ? 1 : 0;
-  return rows.slice(start).map((values, index) => ({
-    bagTag: values[0] || '', direction: values[1] || '', flightNumber: values[2] || '', flightDate: values[3] || '',
-    bagType: values[4] || '', status: values[5] || '', location: values[6] || '', createdAt: values[7] || '',
-    resolution: values[8] || '', resolutionNote: values[9] || '', resolvedAt: values[10] || '', worldTracerFileNumber: values[11] || '', worldTracerUpdatedBy: values[12] || '', rowNumber: start + index + 1
-  })).filter((row) => options.includeResolved || !row.resolvedAt).sort((a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0));
+async function getCbsUnresolvedBaggageCases(options = {}) {
+  const rows = (await cbsFirestore.list('cbsOnHandCases')) || [];
+  return rows
+    .filter((row) => !isCbsGateBag(row))
+    .filter((row) => options.includeResolved || !row.resolvedAt)
+    .sort((a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0));
 }
 
-async function getCbsUnresolvedBaggageCases(options = {}) {
-  const rows = await cbsFirestore.ensureMigrated('cbsOnHandCases', () => getCbsUnresolvedBaggageCasesFromSheet({ includeResolved:true }));
-  return rows.filter((row) => options.includeResolved || !row.resolvedAt).sort((a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0));
+function isCbsGateBag(record = {}) {
+  return [record.status, record.bagType].some((value) => sanitizeSheetText(value, 80).toLowerCase() === 'gate bag');
 }
 
 function cbsRecordMatchesId(row, identifier) {
@@ -3543,6 +3525,7 @@ function cbsRecordMatchesId(row, identifier) {
 }
 
 async function appendCbsUnresolvedBaggageCase(record = {}) {
+  if (isCbsGateBag(record)) return { created: false, excluded: true };
   const title = await getCbsUnresolvedBaggageSheetTitle();
   const existing = await getCbsUnresolvedBaggageCases();
   const bagTag = sanitizeSheetText(record.bagTag, 80).toUpperCase();
@@ -3559,7 +3542,8 @@ async function appendCbsUnresolvedBaggageCase(record = {}) {
     bagType: sanitizeSheetText(record.bagType, 80),
     status: sanitizeSheetText(record.status, 80),
     location: sanitizeSheetText(record.location, 120),
-    createdAt: sanitizeSheetText(record.submittedAt || new Date().toISOString(), 40)
+    createdAt: sanitizeSheetText(record.submittedAt || new Date().toISOString(), 40),
+    createdBy: sanitizeSheetText(record.submittedBy, 160)
   };
   const response = await sheets.spreadsheets.values.append({
     spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!A:M`, valueInputOption: 'RAW', insertDataOption: 'INSERT_ROWS',
@@ -3571,7 +3555,7 @@ async function appendCbsUnresolvedBaggageCase(record = {}) {
   return { created: true, record: saved };
 }
 
-async function resolveCbsUnresolvedBaggageCase(rowNumber, resolution, resolutionNote = '') {
+async function resolveCbsUnresolvedBaggageCase(rowNumber, resolution, resolutionNote = '', resolvedBy = '') {
   const rows = await getCbsUnresolvedBaggageCases({ includeResolved: true });
   const target = rows.find((row) => cbsRecordMatchesId(row, rowNumber));
   if (!target) return { updated: false, notFound: true };
@@ -3580,7 +3564,7 @@ async function resolveCbsUnresolvedBaggageCase(rowNumber, resolution, resolution
     const title = await getCbsUnresolvedBaggageSheetTitle();
     await sheets.spreadsheets.values.update({ spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!I${target.rowNumber}:K${target.rowNumber}`, valueInputOption: 'RAW', requestBody: { values: [[sanitizeSheetText(resolution, 80), sanitizeSheetText(resolutionNote, 500), resolvedAt]] } });
   }
-  const record = { ...target, resolution, resolutionNote, resolvedAt };
+  const record = { ...target, resolution, resolutionNote, resolvedAt, resolvedBy:sanitizeSheetText(resolvedBy, 160) };
   await saveCbsFirestoreRecord('cbsOnHandCases', record);
   return { updated: true, record };
 }
@@ -3608,39 +3592,13 @@ async function updateCbsUnresolvedBaggageWorldTracer(rowNumber, worldTracerFileN
     await sheets.spreadsheets.values.update({ spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!L1:M1`, valueInputOption: 'RAW', requestBody: { values: [[CBS_UNRESOLVED_BAGGAGE_HEADERS[11], CBS_UNRESOLVED_BAGGAGE_HEADERS[12]]] } });
     await sheets.spreadsheets.values.update({ spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!L${target.rowNumber}:M${target.rowNumber}`, valueInputOption: 'RAW', requestBody: { values: [[value, sanitizeSheetText(updatedBy, 160)]] } });
   }
-  const record = { ...target, worldTracerFileNumber: value };
+  const record = { ...target, worldTracerFileNumber: value, worldTracerUpdatedBy:sanitizeSheetText(updatedBy, 160) };
   await saveCbsFirestoreRecord('cbsOnHandCases', record);
   return { updated: true, record };
 }
 
-async function getCbsWorldTracerCasesFromSheet() {
-  if (!cbsWorldTracerSheetTitle) cbsWorldTracerSheetTitle = await resolveSheetTitleByGid(CBS_SHEET_ID, CBS_WORLDTRACER_SHEET_GID);
-  const title = cbsWorldTracerSheetTitle || 'Sheet1';
-  const response = await sheets.spreadsheets.values.get({
-    spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A2:H`
-  });
-  const grouped = new Map();
-  for (const [index, values] of (response.data.values || []).entries()) {
-    const isLegacy = !values[7];
-    const [worldTracerFileNumber = '', originalTagNumber = ''] = values;
-    const rushTagNumber = isLegacy ? '' : (values[2] || '');
-    const flightNumber = values[isLegacy ? 2 : 3] || '';
-    const flightDate = values[isLegacy ? 3 : 4] || '';
-    const from = values[isLegacy ? 4 : 5] || '';
-    const to = values[isLegacy ? 5 : 6] || '';
-    const createdAt = values[isLegacy ? 6 : 7] || '';
-    if (!worldTracerFileNumber && !originalTagNumber) continue;
-    const key = `${worldTracerFileNumber}\u0000${originalTagNumber}\u0000${rushTagNumber}\u0000${createdAt}`;
-    if (!grouped.has(key)) grouped.set(key, { worldTracerFileNumber, originalTagNumber, rushTagNumber, createdAt, flightRows: [], rowNumbers: [] });
-    grouped.get(key).flightRows.push({ flightNumber, flightDate, from, to });
-    grouped.get(key).rowNumbers.push(index + 2);
-  }
-  return [...grouped.values()].sort((a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0));
-}
-
 async function getCbsWorldTracerCases() {
-  const rows = await cbsFirestore.ensureMigrated('cbsWorldTracerCases', getCbsWorldTracerCasesFromSheet);
+  const rows = (await cbsFirestore.list('cbsWorldTracerCases')) || [];
   return rows.sort((a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0));
 }
 
@@ -3736,20 +3694,8 @@ function attachCbsUpdateHistory(rows = []) {
   });
 }
 
-async function getCbsCasesFromSheet() {
-  let rows = await getCbsSheetRows();
-  const headersReady = await ensureCbsSheetHeaders(rows);
-  if (!headersReady) rows = await getCbsSheetRows({ forceRefresh: true });
-  const cases = rows
-    .map((values, index) => ({ values: values || [], rowNumber: index + 1 }))
-    .filter(({ values }) => !isCbsHeaderRow(values))
-    .map(({ values, rowNumber }) => cbsRecordFromSheet(values, rowNumber))
-    .filter((row) => row.caseType || row.passengerName || row.email || row.phone || row.bagTag || row.submittedAt);
-  return attachCbsUpdateHistory(cases);
-}
-
 async function getCbsCases() {
-  const rows = await cbsFirestore.ensureMigrated('cbsCases', getCbsCasesFromSheet);
+  const rows = (await cbsFirestore.list('cbsCases')) || [];
   return attachCbsUpdateHistory(rows);
 }
 
@@ -3772,10 +3718,8 @@ async function updateCbsCase(rowNumber, update = {}) {
     next.shippingAddress = sanitizeSheetText(shippingFields.get('Ship To'), 300);
     next.bdo = sanitizeSheetText(shippingFields.get('BDO'), 160).toUpperCase();
   }
-  if (update.updateEvent?.key === 'information') {
-    const informationFields = new Map(update.updateEvent.fields || []);
-    next.estimatedArrivalTime = sanitizeSheetText(informationFields.get('Estimated Arrival Time'), 40);
-  }
+  const estimatedArrivalTime = new Map(update.updateEvent?.fields || []).get('Estimated Arrival Time');
+  if (estimatedArrivalTime) next.estimatedArrivalTime = sanitizeSheetText(estimatedArrivalTime, 40);
   const historyEvent = sanitizeCbsUpdateEvent(update.updateEvent, {
     status: next.status,
     at: now,
@@ -3925,7 +3869,7 @@ async function appendCbsMissingBagRows(records = []) {
   const reportRowKey = (record = {}) => [record.bagTag, record.sourceEmailDate, record.sourceAttachment]
     .map((value) => String(value || '').trim().toUpperCase())
     .join('\u0000');
-  const existing = await cbsFirestore.ensureMigrated('cbsMissingBagReports', () => getCbsMissingBagReportsFromSheet({ sync:false }));
+  const existing = (await cbsFirestore.list('cbsMissingBagReports')) || [];
   const existingRows = new Set(existing.map(reportRowKey));
   const newRows = records.filter((record) => {
     const tag = String(record.bagTag || '').trim();
@@ -4000,34 +3944,9 @@ async function syncCbsMissingBagReportsFromGmail() {
   }
 }
 
-async function getCbsMissingBagReportsFromSheet(options = {}) {
-  let sync = null;
-  if (options.sync) sync = await syncCbsMissingBagReportsFromGmail();
-  const rows = await getCbsMissingBagSheetRows({ forceRefresh: true });
-  await ensureCbsMissingBagHeaders(rows);
-  const cbsCases = await getCbsCases();
-  const findLinkedCase = (missingRow) => cbsCases.find((row) => cbsBagTagsMatch(row.bagTag, missingRow.bagTag)) || null;
-  const records = rows
-    .map((values, index) => ({ values: values || [], rowNumber: index + 1 }))
-    .filter(({ rowNumber }) => rowNumber > 1)
-    .map(({ values, rowNumber }) => cbsMissingBagRecordFromSheet(values, rowNumber))
-    .filter((row) => row.bagTag || row.passengerName || row.destination || row.airline)
-    .map((row) => {
-      const linkedCase = findLinkedCase(row);
-      return {
-        ...row,
-        linkedCaseRowNumber: linkedCase?.rowNumber || '',
-        linkedCaseBagTag: linkedCase?.bagTag || '',
-        linkedCaseStatus: linkedCase?.status || '',
-        linkedCaseUpdated: Boolean(linkedCase && isCbsCaseUpdatedAfterMissingLink(linkedCase))
-      };
-    });
-  return { rows: records, sync };
-}
-
 async function getCbsMissingBagReports(options = {}) {
   if (options.sync) await syncCbsMissingBagReportsFromGmail();
-  const rows = await cbsFirestore.ensureMigrated('cbsMissingBagReports', () => getCbsMissingBagReportsFromSheet({ sync:false }));
+  const rows = (await cbsFirestore.list('cbsMissingBagReports')) || [];
   return { rows, sync:null };
 }
 
