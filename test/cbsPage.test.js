@@ -206,15 +206,15 @@ test('CBS tracking offers the requested bags stage', () => {
   assert.match(page, /content:"CURRENT"/);
 });
 
-test('CBS tracking can request PVG open-bag authorization with the PDF form', () => {
-  assert.match(page, /key:'open_bag_authorization_pvg', text:'Require Open Bag Authorization at PVG'/);
-  assert.match(page, /The authorization form will be attached and emailed to the passenger/);
+test('CBS tracking requests PVG open-bag authorization from Email', () => {
+  assert.doesNotMatch(page, /key:'open_bag_authorization_pvg', text:'Require Open Bag Authorization at PVG'/);
+  assert.match(page, /value="require_open_bag_authorization_pvg">Require Open Bag Authorization at PVG/);
   assert.match(page, /PVG open-bag authorization email/);
   assert.match(server, /【需要您的授权】行李开箱检查通知/);
   assert.match(server, /Authorization Required for Baggage Inspection at PVG/);
   assert.match(server, /getCbsOpenBagAuthorizationPdf\(\)/);
-  assert.match(server, /pdfBuffer: authorizationForm\.buffer/);
-  assert.match(server, /filename: authorizationForm\.name/);
+  assert.match(server, /pdfBuffer:\s*authorizationForm\.buffer/);
+  assert.match(server, /filename:\s*authorizationForm\.name/);
   assert.match(drive, /const defaultFileId = \['1Nfs3j7DcXYe', 'zPgcyKz894P', 'X8nNX3-GrA'\]\.join\(''\)/);
   assert.match(drive, /CBS_OPEN_BAG_AUTHORIZATION_FILE_ID \|\| defaultFileId/);
   assert.doesNotMatch(drive, /CBS_OPEN_BAG_AUTHORIZATION_FILE_ID is required/);
@@ -383,7 +383,7 @@ test('Email can notify a Passenger Filed case that baggage is ready for LAX pick
   assert.match(server, /Your Baggage Available for Pick-Up at LAX - China Eastern Airlines/);
   assert.match(server, /Tom Bradley International Terminal（TBIT）A68 柜台办公室/);
   assert.match(server, /Pick-up Hours: 8:00 AM – 2:00 PM/);
-  assert.match(server, /pickupEmail \|\| passengerRelatedEmail \|\| transferEtaEmail \|\| addressConfirmEmail \? record\.email/);
+  assert.match(server, /pickupEmail \|\| passengerRelatedEmail \|\| transferEtaEmail \|\| addressConfirmEmail \|\| requirePvgAuthorizationEmail \? record\.email/);
   assert.match(page, /event\.title === 'Contact PAX to Pick-up Bags'/);
 });
 
@@ -404,7 +404,7 @@ test('sidebar Email sends either a signed PVG authorization or a passenger picku
   assert.match(page, /pd-bag-intl@ceair\.com[\s\S]*pd-bag-dom@ceair\.com/);
   assert.match(page, /name="authorizationFile" type="file" accept="application\/pdf,\.pdf"/);
   assert.match(page, /name="passengerEmail" type="email" placeholder="Passenger email address"/);
-  assert.match(page, /\[data-standalone-pvg-field\]\[hidden\],\[data-standalone-pickup-field\]\[hidden\],\[data-standalone-passenger-related-field\]\[hidden\] \{ display:none; \}/);
+  assert.match(page, /\[data-standalone-pvg-field\]\[hidden\],\[data-standalone-pickup-field\]\[hidden\],\[data-standalone-passenger-related-field\]\[hidden\],\[data-standalone-eta-field\]\[hidden\] \{ display:none; \}/);
   assert.match(page, /fetch\(`\$\{apiBase\}\/cbs-email`/);
   assert.match(server, /app\.post\('\/cbs-email'/);
   assert.match(server, /signedOpenBagAuthorizationToPvgEmail\(\{\}\)/);
@@ -421,6 +421,14 @@ test('every CBS Email menu offers the passenger-related self-pickup or paid FedE
   assert.match(server, /CHINA EASTERN LAXMU[\s\S]*380 World Way TBIT[\s\S]*Departures – China Eastern A68/);
   assert.match(server, /8:00 AM – 3:00 PM/);
   assert.match(server, /emailAction === 'passenger_related_pickup_or_fedex'/);
+});
+
+test('standalone, Passenger Filed, and On-hand Email menus stay synchronized', () => {
+  for (const action of ['sent_open_bag_authorization_to_pvg', 'contact_pax_pickup_bags', 'passenger_related_pickup_or_fedex', 'baggage_transfer_status_eta', 'address_confirm_request', 'require_open_bag_authorization_pvg']) {
+    assert.equal((page.match(new RegExp(`value="${action}"`, 'g')) || []).length, 3, `${action} should appear in all three Email menus`);
+  }
+  assert.doesNotMatch(page, /\{ key:'open_bag_authorization_pvg'/);
+  assert.doesNotMatch(server, /type === 'open_bag_authorization_pvg'/);
 });
 
 test('PVG inspection authorization email includes the WorldTracer reference', () => {
