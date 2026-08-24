@@ -90,6 +90,17 @@ test('CBS email updates explain an interrupted server connection instead of show
   assert.match(page, /check the case history before trying again/);
 });
 
+test('CBS Gmail sends are not aborted by a short client timeout', () => {
+  const caseEmail = drive.match(/async function sendCbsCaseEmail[\s\S]*?\n}/)?.[0] || '';
+  assert.doesNotMatch(caseEmail, /CBS_EMAIL_TIMEOUT_MS/);
+  assert.doesNotMatch(caseEmail, /gmail\.users\.messages\.send\([\s\S]*\{ timeout \}\)/);
+});
+
+test('CBS email updates explain an interrupted server connection instead of showing Failed to fetch', () => {
+  assert.match(page, /The server connection was interrupted while sending the email/);
+  assert.match(page, /check the case history before trying again/);
+});
+
 test('CBS page uses the Lake Baggage System browser title', () => {
   assert.match(page, /<title>Lake Baggage System<\/title>/);
   assert.doesNotMatch(page, /<title>CBS Cases<\/title>/);
@@ -431,7 +442,7 @@ test('Email can notify a Passenger Filed case that baggage is ready for LAX pick
   assert.match(server, /Your Baggage Available for Pick-Up at LAX - China Eastern Airlines/);
   assert.match(server, /Tom Bradley International Terminal（TBIT）A68 柜台办公室/);
   assert.match(server, /Pick-up Hours: 8:00 AM – 2:00 PM/);
-  assert.match(server, /pickupEmail \|\| futurePickupEmail \|\| passengerRelatedEmail \|\| transferEtaEmail \|\| addressConfirmEmail \|\| requirePvgAuthorizationEmail \? record\.email/);
+  assert.match(server, /pickupEmail \|\| futurePickupEmail \|\| transferEtaEmail \|\| addressConfirmEmail \|\| requirePvgAuthorizationEmail \? record\.email/);
   assert.match(page, /'Pick-up Bags - available', 'Pick-up Bags - future available'/);
 });
 
@@ -459,20 +470,15 @@ test('sidebar Email sends either a signed PVG authorization or a passenger picku
   assert.match(server, /baggagePickupAtLaxEmail\(\{\}\)/);
 });
 
-test('every CBS Email menu offers the passenger-related self-pickup or paid FedEx notice', () => {
-  assert.ok((page.match(/value="passenger_related_pickup_or_fedex"/g) || []).length >= 3);
-  assert.match(page, /Passenger-related issue\. Self-pickup or delivery at passenger’s expense\./);
-  assert.match(page, /data-standalone-passenger-related-field/);
-  assert.match(server, /function passengerRelatedPickupOrFedexEmail\(record = \{\}\)/);
-  assert.match(server, /Baggage Collection \/ Shipping Options – WorldTracer/);
-  assert.match(server, /行李领取\/寄送方式确认 – WorldTracer/);
-  assert.match(server, /CHINA EASTERN LAXMU[\s\S]*380 World Way TBIT[\s\S]*Departures – China Eastern A68/);
-  assert.match(server, /8:00 AM – 3:00 PM/);
-  assert.match(server, /emailAction === 'passenger_related_pickup_or_fedex'/);
+test('CBS removes the passenger-related pickup option from Comment and Email menus', () => {
+  assert.doesNotMatch(page, /value="passenger_related_pickup_or_fedex"/);
+  assert.doesNotMatch(page, /<option value="Passenger-related issue\. Self-pickup or delivery at passenger’s expense\.">/);
+  assert.doesNotMatch(server, /passenger_related_pickup_or_fedex/);
+  assert.doesNotMatch(server, /function passengerRelatedPickupOrFedexEmail/);
 });
 
 test('standalone, Passenger Filed, and On-hand Email menus stay synchronized', () => {
-  for (const action of ['sent_open_bag_authorization_to_pvg', 'contact_pax_pickup_bags', 'pickup_bags_future_available', 'passenger_related_pickup_or_fedex', 'baggage_transfer_status_eta', 'address_confirm_request', 'require_open_bag_authorization_pvg']) {
+  for (const action of ['sent_open_bag_authorization_to_pvg', 'contact_pax_pickup_bags', 'pickup_bags_future_available', 'baggage_transfer_status_eta', 'address_confirm_request', 'require_open_bag_authorization_pvg']) {
     assert.equal((page.match(new RegExp(`value="${action}"`, 'g')) || []).length, 3, `${action} should appear in all three Email menus`);
   }
   assert.doesNotMatch(page, /\{ key:'open_bag_authorization_pvg'/);

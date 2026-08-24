@@ -1709,65 +1709,6 @@ function baggageFuturePickupAtLaxEmail(record = {}, availableDate = '') {
   return { subject, text, html: cbsPlainTextEmailHtml(text) };
 }
 
-function passengerRelatedPickupOrFedexEmail(record = {}) {
-  const fileNumber = sanitizeCbsText(record.worldTracerFileNumber, 120) || '—';
-  const chinese = cbsEmailIsChinese(record);
-  const subject = chinese ? `行李领取/寄送方式确认 – WorldTracer ${fileNumber}` : `Baggage Collection / Shipping Options – WorldTracer ${fileNumber}`;
-  const text = chinese
-    ? `尊敬的旅客：\n\n您好！\n\n由于本次行李延误是由旅客自身相关原因所导致，因此本次情况无法提供免费行李配送服务，敬请谅解。\n\n待您的行李可以领取后，我们将另行发送一封行李状态更新邮件通知您。在收到我们的确认通知之前，请勿前往机场领取行李，也请勿提前安排 FedEx 取件。\n\nWorldTracer 案件编号：${fileNumber}\n\n收到我们的行李可领取通知后，您可以选择以下其中一种方式：\n\n选项一：自行领取\n\n收到我们发送的行李可领取确认邮件后，您可以在以下时间前往我们的办公室自行领取行李：\n\n领取地点：\nChina Eastern Airlines – LAX TBIT\n出发层 A68 柜台办公室\n380 World Way\nLos Angeles, CA 90045\n\n可领取时间：\n上午 8:00 – 下午 3:00\n\n请务必等待收到我们的确认邮件后再前往机场领取行李。\n\n选项二：自费 FedEx 寄送\n\n如果您希望通过 FedEx 将行李寄送至您指定的地址，可以在收到我们确认行李可以领取的邮件后，自行安排 FedEx 寄送，相关费用需由您本人承担。\n\n在收到我们的确认邮件之前，请勿提前创建 FedEx 运单或预约取件。\n\n收到确认后，请使用以下地址作为 Ship From / Pick-Up Address（寄件/取件地址）：\n\nCHINA EASTERN LAXMU\n380 World Way TBIT\nDepartures – China Eastern A68\nLos Angeles, CA 90045\n\nFedEx 可取件时间：\n上午 8:00 – 下午 3:00\n\n完成 FedEx 寄送及取件预约后，请将以下信息发送给我们：\n\n• FedEx Shipping Label（FedEx 运单）\n• FedEx Pick-Up Confirmation（FedEx 取件预约确认）\n• WorldTracer 案件编号（${fileNumber}）\n\n收到以上信息后，我们将提前准备好您的行李，以便交付给 FedEx。\n\n感谢您的理解与配合。\n\n此致\n中国东方航空公司`
-    : `Dear Passenger,\n\nWe would like to inform you that, as the baggage delay was due to circumstances attributable to the passenger, complimentary baggage delivery is not available in this case.\n\nYou will receive a separate email from us once your baggage is available. Please wait for our confirmation before coming to collect your baggage or arranging a FedEx pick-up.\n\nWorldTracer Reference Number: ${fileNumber}\n\nOnce you receive our confirmation, you may choose one of the following options:\n\nOption 1: Self Pick-Up\n\nOnce you receive our email confirming that your baggage is available for pick-up, you may collect it in person from our office during the available hours below.\n\nPick-Up Location:\nChina Eastern Airlines – LAX TBIT\nDepartures, Counter A68 Office\n380 World Way\nLos Angeles, CA 90045\n\nAvailable Pick-Up Hours:\n8:00 AM – 3:00 PM\n\nPlease do not come to the airport to collect your baggage until you have received our confirmation email.\n\nOption 2: FedEx Shipping at Passenger's Expense\n\nIf you prefer to have your baggage shipped to an address of your choice via FedEx, you may arrange the shipment at your own expense after receiving our email confirming that your baggage is available.\n\nPlease do not create the FedEx shipment or schedule a pick-up before receiving our confirmation.\n\nOnce confirmed, please create the shipment and schedule a FedEx pick-up using the following address as the Ship From / Pick-Up Address:\n\nCHINA EASTERN LAXMU\n380 World Way TBIT\nDepartures – China Eastern A68\nLos Angeles, CA 90045\n\nAvailable FedEx Pick-Up Hours:\n8:00 AM – 3:00 PM\n\nAfter arranging the shipment, please send us the following:\n\n• FedEx Shipping Label\n• FedEx Pick-Up Confirmation\n• WorldTracer Reference Number (${fileNumber})\n\nOnce we receive the above information, we will prepare your baggage for FedEx pick-up.\n\nThank you for your understanding and cooperation.\n\nSincerely,\nChina Eastern Airlines`;
-  const paragraphs = chinese
-    ? [
-      '尊敬的旅客：', '您好！',
-      '由于本次行李延误是由<strong>旅客自身相关原因</strong>所导致，因此本次情况<strong>无法提供免费行李配送服务</strong>，敬请谅解。',
-      '待您的行李可以领取后，我们将另行发送一封<strong>行李状态更新邮件</strong>通知您。<strong>在收到我们的确认通知之前，请勿前往机场领取行李，也请勿提前安排 FedEx 取件。</strong>',
-      `<strong>WorldTracer 案件编号：${fileNumber}</strong>`,
-      '收到我们的行李可领取通知后，您可以选择以下其中一种方式：',
-      '<h2>选项一：自行领取</h2>',
-      '收到我们发送的<strong>行李可领取确认邮件</strong>后，您可以在以下时间前往我们的办公室自行领取行李：',
-      '<strong>领取地点：</strong><br>China Eastern Airlines – LAX TBIT<br>出发层 A68 柜台办公室<br>380 World Way<br>Los Angeles, CA 90045',
-      '<strong>可领取时间：</strong><br>上午 8:00 – 下午 3:00',
-      '<strong>请务必等待收到我们的确认邮件后再前往机场领取行李。</strong>',
-      '<h2>选项二：自费 FedEx 寄送</h2>',
-      '如果您希望通过 FedEx 将行李寄送至您指定的地址，可以在<strong>收到我们确认行李可以领取的邮件后</strong>，自行安排 FedEx 寄送，相关费用需由您本人承担。',
-      '<strong>在收到我们的确认邮件之前，请勿提前创建 FedEx 运单或预约取件。</strong>',
-      '收到确认后，请使用以下地址作为 <strong>Ship From / Pick-Up Address（寄件/取件地址）</strong>：',
-      '<strong>CHINA EASTERN LAXMU</strong><br>380 World Way TBIT<br>Departures – China Eastern A68<br>Los Angeles, CA 90045',
-      '<strong>FedEx 可取件时间：</strong><br>上午 8:00 – 下午 3:00',
-      '完成 FedEx 寄送及取件预约后，请将以下信息发送给我们：',
-      `<ul><li><strong>FedEx Shipping Label（FedEx 运单）</strong></li><li><strong>FedEx Pick-Up Confirmation（FedEx 取件预约确认）</strong></li><li><strong>WorldTracer 案件编号（${fileNumber}）</strong></li></ul>`,
-      '收到以上信息后，我们将提前准备好您的行李，以便交付给 FedEx。',
-      '感谢您的理解与配合。', '此致<br><strong>中国东方航空公司</strong>'
-    ] : [
-      'Dear Passenger,',
-      'We would like to inform you that, as the baggage delay was due to circumstances attributable to the passenger, <strong>complimentary baggage delivery is not available in this case</strong>.',
-      'You will receive a separate email from us once your baggage is available. <strong>Please wait for our confirmation before coming to collect your baggage or arranging a FedEx pick-up.</strong>',
-      `<strong>WorldTracer Reference Number: ${fileNumber}</strong>`,
-      'Once you receive our confirmation, you may choose one of the following options:',
-      '<h2>Option 1: Self Pick-Up</h2>',
-      'Once you receive our email confirming that your baggage is available for pick-up, you may collect it in person from our office during the available hours below.',
-      '<strong>Pick-Up Location:</strong><br>China Eastern Airlines – LAX TBIT<br>Departures, Counter A68 Office<br>380 World Way<br>Los Angeles, CA 90045',
-      '<strong>Available Pick-Up Hours:</strong><br>8:00 AM – 3:00 PM',
-      '<strong>Please do not come to the airport to collect your baggage until you have received our confirmation email.</strong>',
-      `<h2>Option 2: FedEx Shipping at Passenger's Expense</h2>`,
-      'If you prefer to have your baggage shipped to an address of your choice via FedEx, you may arrange the shipment <strong>at your own expense after receiving our email confirming that your baggage is available</strong>.',
-      'Please do not create the FedEx shipment or schedule a pick-up before receiving our confirmation.',
-      'Once confirmed, please create the shipment and schedule a FedEx pick-up using the following address as the <strong>Ship From / Pick-Up Address</strong>:',
-      '<strong>CHINA EASTERN LAXMU</strong><br>380 World Way TBIT<br>Departures – China Eastern A68<br>Los Angeles, CA 90045',
-      '<strong>Available FedEx Pick-Up Hours:</strong><br>8:00 AM – 3:00 PM',
-      'After arranging the shipment, please send us the following:',
-      `<ul><li><strong>FedEx Shipping Label</strong></li><li><strong>FedEx Pick-Up Confirmation</strong></li><li><strong>WorldTracer Reference Number (${fileNumber})</strong></li></ul>`,
-      'Once we receive the above information, we will prepare your baggage for FedEx pick-up.',
-      'Thank you for your understanding and cooperation.', 'Sincerely,<br><strong>China Eastern Airlines</strong>'
-    ];
-  const htmlBody = paragraphs.map((paragraph) => paragraph.startsWith('<h2>') || paragraph.startsWith('<ul>') ? paragraph : `<p>${paragraph}</p>`).join('');
-  const html = `<div style="font-family:Arial,'Helvetica Neue',sans-serif;font-size:15px;line-height:1.6;letter-spacing:0.1px;color:#202124;max-width:680px">${htmlBody}</div>`
-    .replaceAll('<p>', '<p style="margin:0 0 16px">')
-    .replaceAll('<h2>', '<h2 style="font-family:Arial,\'Helvetica Neue\',sans-serif;font-size:17px;line-height:1.4;letter-spacing:0;margin:24px 0 10px">')
-    .replaceAll('<ul>', '<ul style="margin:0 0 16px;padding-left:24px">');
-  return { subject, text, html };
-}
-
 function signedOpenBagAuthorizationToPvgEmail(record) {
   const fileNumber = sanitizeCbsText(record?.worldTracerFileNumber, 120) || '—';
   const bagTag = sanitizeCbsText(record?.bagTag, 120) || '—';
@@ -2239,7 +2180,6 @@ function buildCbsUpdateFields(update = {}) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(availableDate)) return null;
       return { status:'Email - Pick-up Bags - future available', updateNote:`EMAIL | Pick-up Bags - future available | Available date: ${availableDate}`, updateEvent:{ key:'email', title:'Pick-up Bags - future available', fields:[['Available Date', availableDate]] } };
     }
-    if (emailAction === 'passenger_related_pickup_or_fedex') return { status:'Email - Passenger-related Pick-Up / FedEx', updateNote:'EMAIL | Passenger-related issue. Self-pickup or delivery at passenger’s expense.', updateEvent:{ key:'email', title:'Passenger-related issue. Self-pickup or delivery at passenger’s expense.', fields:[['Email To', 'Passenger email on file']] } };
     if (emailAction !== 'sent_open_bag_authorization_to_pvg') return null;
     const emailTo = sanitizeCbsText(update.emailTo, 160).toLowerCase();
     if (!['pd-bag-intl@ceair.com', 'pd-bag-dom@ceair.com'].includes(emailTo)) return null;
@@ -2305,15 +2245,6 @@ app.post('/cbs-email', async (req, res) => {
       const passengerEmail = sanitizeCbsText(req.body?.passengerEmail, 160).toLowerCase();
       if (!isValidEmail(passengerEmail)) return res.status(400).json({ error:'A valid passenger email is required' });
       const message = withEditableCbsEmailBody(baggagePickupAtLaxEmail({}), req.body?.emailBody);
-      const email = await sendCbsCaseEmail({ passengerEmail, subject:message.subject, html:message.html, text:message.text, ccOperations:false });
-      return res.json({ sent:true, email });
-    }
-    if (emailAction === 'passenger_related_pickup_or_fedex') {
-      const passengerEmail = sanitizeCbsText(req.body?.passengerEmail, 160).toLowerCase();
-      const worldTracerFileNumber = sanitizeCbsText(req.body?.worldTracerFileNumber, 120).toUpperCase();
-      if (!isValidEmail(passengerEmail) || !worldTracerFileNumber) return res.status(400).json({ error:'A valid passenger email and WorldTracer file number are required' });
-      const language = sanitizeCbsText(req.body?.language, 5) === 'zh' ? 'zh' : 'en';
-      const message = passengerRelatedPickupOrFedexEmail({ worldTracerFileNumber, language });
       const email = await sendCbsCaseEmail({ passengerEmail, subject:message.subject, html:message.html, text:message.text, ccOperations:false });
       return res.json({ sent:true, email });
     }
@@ -2766,7 +2697,7 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
     const note = sanitizeCbsText(req.body?.note, 500);
     if (action === 'email') {
       const emailAction = sanitizeCbsText(req.body?.emailAction, 80);
-      const validEmailActions = ['sent_open_bag_authorization_to_pvg', 'contact_pax_pickup_bags', 'pickup_bags_future_available', 'passenger_related_pickup_or_fedex', 'baggage_transfer_status_eta', 'address_confirm_request', 'require_open_bag_authorization_pvg'];
+      const validEmailActions = ['sent_open_bag_authorization_to_pvg', 'contact_pax_pickup_bags', 'pickup_bags_future_available', 'baggage_transfer_status_eta', 'address_confirm_request', 'require_open_bag_authorization_pvg'];
       if (!validEmailActions.includes(emailAction)) return res.status(400).json({ error: 'A valid email action is required' });
       const emailTo = sanitizeCbsText(req.body?.emailTo, 160).toLowerCase();
       if (!isValidEmail(emailTo)) return res.status(400).json({ error: 'A valid passenger email is required' });
@@ -2788,8 +2719,7 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
         const availableDate = sanitizeCbsText(req.body?.availableDate, 40);
         if (!/^\d{4}-\d{2}-\d{2}$/.test(availableDate)) return res.status(400).json({ error:'A valid available date is required' });
         message = baggageFuturePickupAtLaxEmail(emailRecord, availableDate);
-      } else if (emailAction === 'passenger_related_pickup_or_fedex') message = passengerRelatedPickupOrFedexEmail(emailRecord);
-      else if (emailAction === 'baggage_transfer_status_eta') {
+      } else if (emailAction === 'baggage_transfer_status_eta') {
         const eta = sanitizeCbsText(req.body?.estimatedArrivalTime, 40);
         if (!/^\d{4}-\d{2}-\d{2}$/.test(eta)) return res.status(400).json({ error:'A valid estimated arrival date is required' });
         message = rushToLaxInformationEmail(emailRecord, worldTracerFileNumber, eta);
@@ -2798,7 +2728,7 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
       else message = withEditableCbsEmailBody(baggagePickupAtLaxEmail(emailRecord), req.body?.emailBody);
       const email = await sendCbsCaseEmail({ passengerEmail:emailTo, subject:message.subject, html:message.html, text:message.text, attachments, ...(authorizationForm ? { pdfBuffer:authorizationForm.buffer, filename:authorizationForm.name } : {}), ccOperations:false });
       const updatedBy = sanitizeCbsText(req.body?.updatedBy, 160);
-      const resolutionTitle = ({ sent_open_bag_authorization_to_pvg:'Sent Open Bag Authorization to PVG', contact_pax_pickup_bags:'Pick-up Bags - available', pickup_bags_future_available:'Pick-up Bags - future available', passenger_related_pickup_or_fedex:'Passenger-related issue. Self-pickup or delivery at passenger’s expense.', baggage_transfer_status_eta:'Baggage transfer status update - ETA', address_confirm_request:'Address Confirm Request Email', require_open_bag_authorization_pvg:'Require Open Bag Authorization at PVG' })[emailAction];
+      const resolutionTitle = ({ sent_open_bag_authorization_to_pvg:'Sent Open Bag Authorization to PVG', contact_pax_pickup_bags:'Pick-up Bags - available', pickup_bags_future_available:'Pick-up Bags - future available', baggage_transfer_status_eta:'Baggage transfer status update - ETA', address_confirm_request:'Address Confirm Request Email', require_open_bag_authorization_pvg:'Require Open Bag Authorization at PVG' })[emailAction];
       const resolutionNote = `${resolutionTitle} | Email To: ${emailTo}${updatedBy ? ` | Updated by: ${updatedBy}` : ''}`;
       const result = await resolveCbsUnresolvedBaggageCase(req.params.rowNumber, action, resolutionNote, updatedBy);
       await syncOnHandStatusToBaggage(result.record, action, req.body);
@@ -3066,7 +2996,6 @@ app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
       const record = result.record;
       const pickupEmail = updateFields.updateEvent.title === 'Pick-up Bags - available';
       const futurePickupEmail = updateFields.updateEvent.title === 'Pick-up Bags - future available';
-      const passengerRelatedEmail = updateFields.updateEvent.title === 'Passenger-related issue. Self-pickup or delivery at passenger’s expense.';
       const transferEtaEmail = updateFields.updateEvent.title === 'Baggage transfer status update - ETA';
       const addressConfirmEmail = updateFields.updateEvent.title === 'Address Confirm Request Email';
       const requirePvgAuthorizationEmail = updateFields.updateEvent.title === 'Require Open Bag Authorization at PVG';
@@ -3076,14 +3005,12 @@ app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
         ? baggagePickupAtLaxEmail(record)
         : (futurePickupEmail
           ? baggageFuturePickupAtLaxEmail(record, availableDate)
-          : (passengerRelatedEmail
-          ? passengerRelatedPickupOrFedexEmail(record)
           : (transferEtaEmail
             ? rushToLaxInformationEmail(record, record.worldTracerFileNumber || '', estimatedArrivalTime)
             : (addressConfirmEmail
               ? addressConfirmRequestEmail(record)
-              : (requirePvgAuthorizationEmail ? openBagAuthorizationPvgEmail(record) : signedOpenBagAuthorizationToPvgEmail(record))))));
-      const emailTo = pickupEmail || futurePickupEmail || passengerRelatedEmail || transferEtaEmail || addressConfirmEmail || requirePvgAuthorizationEmail ? record.email : updateFields.updateEvent.fields.find(([key]) => key === 'Email To')?.[1];
+              : (requirePvgAuthorizationEmail ? openBagAuthorizationPvgEmail(record) : signedOpenBagAuthorizationToPvgEmail(record)))));
+      const emailTo = pickupEmail || futurePickupEmail || transferEtaEmail || addressConfirmEmail || requirePvgAuthorizationEmail ? record.email : updateFields.updateEvent.fields.find(([key]) => key === 'Email To')?.[1];
       try {
         if (requirePvgAuthorizationEmail) {
           const authorizationForm = await getCbsOpenBagAuthorizationPdf();
