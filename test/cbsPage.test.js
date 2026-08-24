@@ -14,6 +14,14 @@ test('CBS sidebar uses the MUBC brand', () => {
   assert.doesNotMatch(page, /<a class="brand" href="index\.html">MUFC<\/a>/);
 });
 
+test('mobile CBS navigation spans the viewport without table content widening the page', () => {
+  assert.match(page, /html,body\{max-width:100%;overflow-x:hidden\}/);
+  assert.match(page, /header,body\.sidebar-collapsed header\{left:0;right:0;width:auto;max-width:100%\}/);
+  assert.match(page, /\.page-tabs\{left:0;right:0;width:auto;max-width:100%;overscroll-behavior-x:contain\}/);
+  assert.match(page, /\.wrap,\.card,\.open-case-group,\.sheet-shell\{min-width:0;max-width:100%\}/);
+  assert.match(page, /\.sheet-shell \.cbs-sheet\{display:table;min-width:980px;overflow:visible\}/);
+});
+
 test('updating one CBS case keeps the complete case list visible', () => {
   assert.match(page, /window\._selectedCbsRow = 0;\s*window\._expandedCbsCases = window\._expandedCbsCases \|\| new Set\(\);\s*window\._expandedCbsCases\.add\(`row-\$\{rowNumber\}`\);\s*await loadCases\(\)/);
   assert.doesNotMatch(page, /window\._selectedCbsRow = Number\(rowNumber\)/);
