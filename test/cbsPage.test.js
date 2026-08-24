@@ -14,17 +14,26 @@ test('CBS sidebar uses the MUBC brand', () => {
   assert.doesNotMatch(page, /<a class="brand" href="index\.html">MUFC<\/a>/);
 });
 
+test('mobile CBS navigation spans the viewport without table content widening the page', () => {
+  assert.match(page, /html,body\{max-width:100%;overflow-x:hidden\}/);
+  assert.match(page, /header,body\.sidebar-collapsed header\{left:0;right:0;width:auto;max-width:100%\}/);
+  assert.match(page, /\.page-tabs\{left:0;right:0;width:auto;max-width:100%;overscroll-behavior-x:contain\}/);
+  assert.match(page, /\.wrap,\.card,\.open-case-group,\.sheet-shell\{min-width:0;max-width:100%\}/);
+  assert.match(page, /\.sheet-shell \.cbs-sheet\{display:table;min-width:980px;overflow:visible\}/);
+});
+
 test('updating one CBS case keeps the complete case list visible', () => {
   assert.match(page, /window\._selectedCbsRow = 0;\s*window\._expandedCbsCases = window\._expandedCbsCases \|\| new Set\(\);\s*window\._expandedCbsCases\.add\(`row-\$\{rowNumber\}`\);\s*await loadCases\(\)/);
   assert.doesNotMatch(page, /window\._selectedCbsRow = Number\(rowNumber\)/);
 });
 
-test('Firestore is the primary CBS store with automatic Sheet migration', () => {
+test('Firestore is the CBS read store without automatic Sheet migration', () => {
   for (const collection of ['cbsCases', 'cbsOnHandCases', 'cbsWorldTracerCases', 'cbsMissingBagReports', 'cbsWrongBaggageCases']) {
-    assert.match(drive, new RegExp(`ensureMigrated\\('${collection}'`));
+    assert.match(drive, new RegExp(`cbsFirestore\\.list\\('${collection}'\\)`));
   }
+  assert.doesNotMatch(drive, /ensureMigrated/);
   assert.match(firestore, /CBS_FIRESTORE_ENABLED \|\| 'true'/);
-  assert.match(firestore, /await upsertMany\(collection, rows\)/);
+  assert.doesNotMatch(firestore, /_cbsMigrations|legacyLoader/);
   assert.match(drive, /saveCbsFirestoreRecord\('cbsCases', record\)/);
   assert.match(drive, /saveCbsFirestoreRecord\('cbsOnHandCases', record\)/);
   assert.match(drive, /Object\.assign\(record, await saveCbsFirestoreRecord\('cbsCases', record\)\)[\s\S]*CBS case Sheet backup failed/);
@@ -46,10 +55,9 @@ test('CBS page uses the Lake Baggage System browser title', () => {
   assert.doesNotMatch(page, /<title>CBS Cases<\/title>/);
 });
 
-test('CBS case refresh reuses cached sheet data and does not restart the page sync', () => {
-  assert.match(drive, /let rows = await getCbsSheetRows\(\);\s*const headersReady = await ensureCbsSheetHeaders\(rows\);/);
-  assert.doesNotMatch(drive, /async function getCbsCases\(\) \{\s*let rows = await getCbsSheetRows\(\{ forceRefresh: true \}\)/);
-  assert.match(drive, /cbsSheetCache\.loadedAt && Date\.now\(\) - cbsSheetCache\.loadedAt < ttlMs/);
+test('CBS case refresh reads Firestore and does not restart the page sync', () => {
+  assert.match(drive, /async function getCbsCases\(\) \{\s*const rows = \(await cbsFirestore\.list\('cbsCases'\)\) \|\| \[\]/);
+  assert.doesNotMatch(drive, /async function getCbsCases\(\)[\s\S]*?getCbsSheetRows[\s\S]*?\n\}/);
   assert.match(page, /await Promise\.all\(\[loadCases\(\), loadMissingReports\(\), loadUnresolvedBaggage\(\)\]\)/);
   assert.doesNotMatch(page, /sidebarRefresh\.addEventListener\('click', \(\) => window\.location\.reload\(\)\)/);
 });
@@ -69,11 +77,20 @@ test('Add On-hand records are added to and displayed in Open Case', () => {
   assert.match(page, /await loadUnresolvedBaggage\(\);\s*showSection\('open'\);/);
 });
 
+test('On-hand excludes gate bags', () => {
+  const description = 'Passenger bags entered as inbound and not-loaded outbound bags remain here until resolved. Gate bags are not included.';
+  assert.equal((page.match(new RegExp(description.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length, 2);
+  assert.match(page, /<option>Gate bag<\/option>/);
+  assert.match(drive, /\.filter\(\(row\) => !isCbsGateBag\(row\)\)/);
+  assert.match(drive, /if \(isCbsGateBag\(record\)\) return \{ created: false, excluded: true \};/);
+  assert.match(drive, /\[record\.status, record\.bagType\][\s\S]*=== 'gate bag'/);
+});
+
 test('On-hand cases match the passenger case layout and support WorldTracer progress', () => {
   assert.match(page, /<th>WorldTracer File Number<\/th><th>Bag Tag<\/th><th>Direction<\/th>/);
   assert.match(page, /class="case-detail-layout"><div class="case-progress-column">\$\{unresolvedProgressHtml\(progressRow\)\}/);
   assert.match(page, /<option value="worldtracer">WorldTracer<\/option>/);
-  assert.match(drive, /worldTracerFileNumber: values\[11\]/);
+  assert.match(drive, /cbsFirestore\.list\('cbsOnHandCases'\)/);
   assert.match(page, /active\.rowNumber \|\| active\.firestoreId/);
   assert.match(drive, /rows\.find\(\(row\) => cbsRecordMatchesId\(row, rowNumber\)\)/);
   assert.match(drive, /'WorldTracer File Number'/);
@@ -121,9 +138,22 @@ test('On-hand Case Close requires notes and archives the case', () => {
 
 test('case progress identifies the staff member who made each update', () => {
   assert.match(page, /function currentUpdater\(\)/);
-  assert.match(page, /payload\.updatedBy = currentUpdater\(\)/);
-  assert.match(page, /Updated by: \$\{escapeHtml\(event\.by\)\}/);
-  assert.match(page, /Updated by: \$\{escapeHtml\(item\.by\)\}/);
+  assert.match(page, /function updaterDisplayName\(value\)/);
+  assert.match(page, /updater\.split\('@'\)\[0\]/);
+  assert.match(page, /async function currentUpdater\(\)/);
+  assert.match(page, /auth\.onAuthStateChanged\(\(nextUser\)/);
+  assert.match(page, /return updaterDisplayName\(user\?\.email \|\| user\?\.displayName \|\| ''\)/);
+  assert.match(page, /payload\.updatedBy = await currentUpdater\(\)/);
+  assert.match(page, /if \(!payload\.updatedBy\) return alert\('Your signed-in account could not be identified/);
+  assert.match(page, /Updated by: \$\{escapeHtml\(updaterDisplayName\(event\.by\)\)\}/);
+  assert.match(page, /Updated by: \$\{escapeHtml\(updaterDisplayName\(item\.by\)\)\}/);
+  assert.match(page, /escapeHtml\(updaterDisplayText\(item\.detail\)\)/);
+  assert.match(page, /by: event\.by \|\| event\.updatedBy \|\| 'System'/);
+  assert.match(page, /by:row\.submittedBy \|\| row\.createdBy \|\| 'System'/);
+  assert.match(page, /by:row\.resolvedBy \|\| updaterFromText\(row\.resolutionNote\) \|\| 'System'/);
+  assert.match(drive, /createdBy: sanitizeSheetText\(record\.submittedBy, 160\)/);
+  assert.match(drive, /resolvedBy:sanitizeSheetText\(resolvedBy, 160\)/);
+  assert.match(drive, /worldTracerUpdatedBy:sanitizeSheetText\(updatedBy, 160\)/);
   assert.match(server, /updateFields\.updateEvent\.by = sanitizeCbsText\(req\.body\?\.updatedBy, 160\)/);
   assert.match(server, /Updated by: \$\{updatedBy\}/);
   assert.match(drive, /by: sanitizeSheetText\(fallback\.by \|\| event\.by, 160\)/);
@@ -197,7 +227,7 @@ test('CBS Email stage sends a signed open-bag authorization PDF to PVG', () => {
   assert.match(page, /Sent Open Bag Authorization to PVG/);
   assert.match(page, /authorization-upload-plus">\+<\/span>/);
   assert.match(page, /authorization-upload-title">Letter of Authorization<\/span>/);
-  assert.match(page, /\[data-pvg-email-field\]\[hidden\] \{ display:none; \}/);
+  assert.match(page, /\[data-pvg-email-field\]\[hidden\],\[data-email-eta-field\]\[hidden\] \{ display:none; \}/);
   assert.match(page, /<span>Email To<\/span><select name="emailTo" required>/);
   assert.match(page, /pd-bag-intl@ceair\.com/);
   assert.match(page, /pd-bag-dom@ceair\.com/);
@@ -217,13 +247,29 @@ test('CBS Email stage sends a signed open-bag authorization PDF to PVG', () => {
   assert.match(page, /case-update\[data-update-mode="email"\] \{ grid-template-columns:minmax\(240px,420px\); \}/);
 });
 
-test('CBS tracking offers a compact baggage transfer update with a required arrival date', () => {
-  assert.match(page, /key:'information', text:'Information'/);
-  assert.match(page, /name="informationType" required><option value="rush_to_lax">Baggage Transfer Status Update/);
-  assert.match(page, /name="estimatedArrivalTime" type="date" required/);
-  assert.match(page, /data-update-mode="information"/);
-  assert.match(page, /Baggage Transfer Status Update email/);
-  assert.match(page, /data-update-mode="information"\] \{ grid-template-columns:minmax\(220px,320px\); \}/);
+test('CBS tracking moves the baggage transfer ETA update under Email', () => {
+  assert.doesNotMatch(page, /key:'information', text:'Information'/);
+  assert.doesNotMatch(page, /name="informationType"/);
+  assert.match(page, /value="baggage_transfer_status_eta">Baggage transfer status update - ETA/);
+  assert.match(page, /name="estimatedArrivalTime" type="date" disabled required/);
+  assert.match(page, /data-email-eta-field/);
+  assert.doesNotMatch(page, /data-update-mode="information"/);
+  assert.match(page, /Baggage transfer status update - ETA email/);
+  assert.match(server, /emailAction === 'baggage_transfer_status_eta'/);
+  assert.match(server, /updateEvent:\{ key:'email', title:'Baggage transfer status update - ETA'/);
+});
+
+test('CBS Email offers a bilingual address confirmation request', () => {
+  assert.match(page, /value="address_confirm_request">Address Confirm Request Email/);
+  assert.match(server, /function addressConfirmRequestEmail\(record = \{\}\)/);
+  assert.match(server, /Baggage Pick-Up \/ Delivery Address Confirmation – WorldTracer/);
+  assert.match(server, /行李领取 \/ 配送地址确认 – WorldTracer/);
+  assert.match(server, /Delivery to the Address on File/);
+  assert.match(server, /配送至报失记录中的地址/);
+  assert.match(server, /If we do not receive a response from you/);
+  assert.match(server, /如果我们未收到您的回复/);
+  assert.match(server, /emailAction === 'address_confirm_request'/);
+  assert.match(server, /addressConfirmRequestEmail\(record\)/);
 });
 
 test('changing Current Stage replaces the form with fields for that stage', () => {
@@ -231,10 +277,23 @@ test('changing Current Stage replaces the form with fields for that stage', () =
   assert.match(page, /form\.dataset\.updateMode = select\.value/);
   assert.match(page, /fields\.innerHTML = inlineUpdateFieldsHtml\(select\.value\)/);
   assert.match(page, /if \(key === 'worldtracer'\) return input\('File number', 'fileNumber'\)/);
-  assert.match(page, /if \(key === 'information'\).*Baggage Transfer Status Update/);
+  assert.doesNotMatch(page, /if \(key === 'information'\)/);
   assert.match(page, /if \(key === 'requested_bags'\) return input\('From which station\?', 'fromStation'\)/);
   assert.match(page, /if \(key === 'shipping'\) return \[shippingMethodSelect/);
   assert.doesNotMatch(page, /input\('AKE number\?', 'akeNumber'\)/);
+});
+
+test('Current Stage comments appear in a red progress node and above Notify Passenger', () => {
+  assert.match(page, /\{ key:'comment', text:'Comment' \}/);
+  assert.match(page, /if \(key === 'comment'\) return '<select name="commentPreset" data-comment-preset>/);
+  assert.match(page, /Passenger-related issue\. Self-pickup or delivery at passenger’s expense\./);
+  assert.match(page, /<textarea name="comment" placeholder="Write a comment" required><\/textarea>'/);
+  assert.match(page, /if \(commentPreset\.value && comment\) comment\.value = commentPreset\.value/);
+  assert.match(page, /tracking-chip--comment,\.tracking-chip--comment\.is-latest/);
+  assert.match(page, /function caseCommentsHtml\(row\)/);
+  assert.match(page, /class="case-comment"[\s\S]*Comment by/);
+  assert.match(page, /\$\{trackingControlHtml\(row, 'current'\)\}\$\{caseCommentsHtml\(row\)\}<div class="case-detail-content">\$\{detailHtml\}<\/div>/);
+  assert.match(server, /updateEvent:\{ key:'comment', title:'Comment', fields:\[\['Comment', comment\]\] \}/);
 });
 
 test('case progress uses a vertical left column with case controls and details on the right', () => {
@@ -251,7 +310,7 @@ test('case progress uses a vertical left column with case controls and details o
   assert.match(page, /case-detail-right/);
   assert.match(page, /trackingControlHtml\(row, 'progress'\)/);
   assert.match(page, /trackingControlHtml\(row, 'current'\)/);
-  assert.match(page, /<div class="case-detail-content">\$\{detailHtml\}<\/div>\$\{passengerNotificationHtml\(row\)\}/);
+  assert.match(page, /\$\{caseCommentsHtml\(row\)\}<div class="case-detail-content">\$\{detailHtml\}<\/div>\$\{passengerNotificationHtml\(row\)\}/);
 });
 
 test('CBS tracking offers a Lost update with no extra fields', () => {
@@ -324,7 +383,7 @@ test('Email can notify a Passenger Filed case that baggage is ready for LAX pick
   assert.match(server, /Your Baggage Available for Pick-Up at LAX - China Eastern Airlines/);
   assert.match(server, /Tom Bradley International Terminal（TBIT）A68 柜台办公室/);
   assert.match(server, /Pick-up Hours: 8:00 AM – 2:00 PM/);
-  assert.match(server, /pickupEmail \? record\.email/);
+  assert.match(server, /pickupEmail \|\| passengerRelatedEmail \|\| transferEtaEmail \|\| addressConfirmEmail \? record\.email/);
   assert.match(page, /event\.title === 'Contact PAX to Pick-up Bags'/);
 });
 
@@ -335,5 +394,43 @@ test('On-hand Email asks for a recipient and sends the pickup notice there', () 
   assert.match(server, /if \(action === 'email'\) \{/);
   assert.match(server, /if \(!isValidEmail\(emailTo\)\)/);
   assert.match(server, /sendCbsCaseEmail\(\{ passengerEmail:emailTo/);
-  assert.match(server, /resolveCbsUnresolvedBaggageCase\(req\.params\.rowNumber, action, resolutionNote\)/);
+  assert.match(server, /resolveCbsUnresolvedBaggageCase\(req\.params\.rowNumber, action, resolutionNote, updatedBy\)/);
+});
+
+test('sidebar Email sends either a signed PVG authorization or a passenger pickup notice', () => {
+  assert.match(page, /id="missing-report-alert"[\s\S]*id="email-tab"[\s\S]*id="baggage-chart-tab"/);
+  assert.match(page, /id="standalone-email-form"/);
+  assert.match(page, /Sent Open Bag Authorization to PVG[\s\S]*Contact PAX to Pick-up Bags/);
+  assert.match(page, /pd-bag-intl@ceair\.com[\s\S]*pd-bag-dom@ceair\.com/);
+  assert.match(page, /name="authorizationFile" type="file" accept="application\/pdf,\.pdf"/);
+  assert.match(page, /name="passengerEmail" type="email" placeholder="Passenger email address"/);
+  assert.match(page, /\[data-standalone-pvg-field\]\[hidden\],\[data-standalone-pickup-field\]\[hidden\],\[data-standalone-passenger-related-field\]\[hidden\] \{ display:none; \}/);
+  assert.match(page, /fetch\(`\$\{apiBase\}\/cbs-email`/);
+  assert.match(server, /app\.post\('\/cbs-email'/);
+  assert.match(server, /signedOpenBagAuthorizationToPvgEmail\(\{\}\)/);
+  assert.match(server, /baggagePickupAtLaxEmail\(\{\}\)/);
+});
+
+test('every CBS Email menu offers the passenger-related self-pickup or paid FedEx notice', () => {
+  assert.ok((page.match(/value="passenger_related_pickup_or_fedex"/g) || []).length >= 3);
+  assert.match(page, /Passenger-related issue\. Self-pickup or delivery at passenger’s expense\./);
+  assert.match(page, /data-standalone-passenger-related-field/);
+  assert.match(server, /function passengerRelatedPickupOrFedexEmail\(record = \{\}\)/);
+  assert.match(server, /Baggage Pick-Up \/ FedEx Shipping Arrangement – WorldTracer/);
+  assert.match(server, /行李领取 \/ FedEx 取件安排 – WorldTracer/);
+  assert.match(server, /CHINA EASTERN LAXMU[\s\S]*380 World Way TBIT[\s\S]*Departures – China Eastern A68/);
+  assert.match(server, /8:00 AM – 3:00 PM/);
+  assert.match(server, /emailAction === 'passenger_related_pickup_or_fedex'/);
+});
+
+test('PVG inspection authorization email includes the WorldTracer reference', () => {
+  const template = server.match(/function openBagAuthorizationPvgEmail\(record\)[\s\S]*?\n}/)?.[0] || '';
+  assert.match(template, /WorldTracer \$\{fileNumber\}/);
+  assert.match(template, /WorldTracer 案件编号：\$\{fileNumber\}/);
+  assert.match(template, /WorldTracer Reference Number: \$\{fileNumber\}/);
+});
+
+test('Add On-hand records the signed-in account as creator', () => {
+  assert.match(page, /payload\.submittedBy = await currentUpdater\(\)/);
+  assert.match(drive, /createdBy: sanitizeSheetText\(record\.submittedBy, 160\)/);
 });

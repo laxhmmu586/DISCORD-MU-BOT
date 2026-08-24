@@ -3,11 +3,12 @@ function matchMuFlight(rawValue = '') {
 
   // PDF417 boarding-pass data is commonly a fixed-width BCBP string. The
   // carrier can therefore touch the preceding airport field, and the flight
-  // suffix can touch the three-digit Julian date (for example MU0586D221).
-  const supportedMatch = compact.match(/MU\s*0*(586)(D?)(?=\d{3}|[^A-Z0-9]|$)/i);
+  // number can touch the three-digit Julian date (for example
+  // MU9586221, where 221 is the Julian date).
+  const supportedMatch = compact.match(/MU\s*0*(9586|586)(?=\d{3}|[^A-Z0-9]|$)/i);
   if (supportedMatch) {
     return {
-      number: `${supportedMatch[1].padStart(4, '0')}${supportedMatch[2].toUpperCase()}`,
+      number: supportedMatch[1].padStart(4, '0'),
       supported: true
     };
   }
