@@ -92,6 +92,10 @@
     .passenger-notify-check { display:grid; place-items:center; width:18px; height:18px; border:2px solid #d0d5dd; border-radius:999px; color:transparent; font-size:12px; line-height:1; }
     .passenger-notify-item.is-sent { color:#075d38; }
     .passenger-notify-item.is-sent .passenger-notify-check { border-color:#12b76a; background:#12b76a; color:#fff; }
+    .case-comments { display:grid; gap:10px; padding:16px; border:1px solid #fedf89; border-radius:16px; background:#fffaeb; box-shadow:0 8px 20px rgba(181,71,8,.1); }
+    .case-comments h3 { margin:0; color:#b54708; font-size:15px; }
+    .case-comment { margin:0; color:#b54708; font-size:13px; font-weight:800; white-space:pre-wrap; }
+    .case-comment small { display:block; margin-top:5px; color:#dc6803; font-weight:750; }
     .sheet-detail-grid { display:grid; grid-template-columns:repeat(4,minmax(160px,1fr)); gap:8px 14px; }
     .sheet-detail-grid p { margin:0; min-width:0; color:#172033; }
     .sheet-detail-grid strong { color:#475467; }
@@ -123,10 +127,11 @@
     [data-shipping-tracking][hidden],[data-shipping-address][hidden] { display:none; }
     .inline-update textarea { min-height:58px; resize:vertical; grid-column:1/-1; }
     .inline-update button { width:max-content; padding:8px 13px; border-radius:12px; font-size:12px; grid-column:1/-1; }
-    .inline-update.case-update[data-update-mode="information"] { grid-template-columns:minmax(220px,320px); }
     .inline-update.case-update[data-update-mode="email"] { grid-template-columns:minmax(240px,420px); }
     .authorization-upload { display:grid; gap:8px; padding:14px; border:1px dashed #9db8d8; border-radius:14px; background:#f8fbff; cursor:pointer; }
-    [data-pvg-email-field][hidden] { display:none; }
+    [data-pvg-email-field][hidden],[data-email-eta-field][hidden] { display:none; }
+    [data-standalone-pvg-field][hidden],[data-standalone-pickup-field][hidden],[data-standalone-passenger-related-field][hidden],[data-standalone-eta-field][hidden] { display:none; }
+    [data-onhand-passenger-related][hidden],[data-onhand-passenger-email][hidden],[data-onhand-pvg-email][hidden],[data-onhand-eta][hidden] { display:none; }
     .authorization-upload input { position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; }
     .authorization-upload-plus { display:grid; place-items:center; width:38px; height:38px; border-radius:999px; background:#fff; color:var(--brand); box-shadow:0 5px 14px #173b5d22; font-size:26px; font-weight:900; }
     .authorization-upload-title { color:var(--brand); font-size:13px; font-weight:900; }
@@ -134,6 +139,10 @@
     .tracking-chip--email,.tracking-chip--email.is-latest { background:#f4edff; color:#6941c6; box-shadow:inset 0 0 0 2px #b692f6; }
     .tracking-chip--email .tracking-step-number,.tracking-chip--email.is-latest .tracking-step-number { background:#7f56d9; }
     .tracking-chip--email.is-latest::before { background:#7f56d9; }
+    .tracking-chip--comment,.tracking-chip--comment.is-latest { background:#fffaeb; color:#b54708; box-shadow:inset 0 0 0 2px #f79009; }
+    .tracking-chip--comment .tracking-step-number,.tracking-chip--comment.is-latest .tracking-step-number { background:#f79009; }
+    .tracking-chip--comment.is-latest::before { background:#f79009; }
+    .tracking-chip--comment small,.tracking-chip--comment .tracking-chip-detail { color:#b54708; }
     .baggage-search-card { margin:14px 0 0; padding:16px; border:1px solid var(--line); border-radius:18px; background:#fbfdff; display:grid; gap:10px; }
     .baggage-search-card h3 { margin:0; color:var(--brand); }
     .baggage-search-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px 18px; }
@@ -244,7 +253,15 @@
     .baggage-chart-image { display:block; width:100%; height:auto; border:1px solid #c9d9ec; border-radius:16px; background:#fff; box-shadow:0 10px 28px rgba(18,58,115,.08); }
     .baggage-chart-link { display:block; color:inherit; text-decoration:none; }
     .baggage-chart-link span { display:block; margin:0 0 8px; color:var(--brand); font-weight:900; }
-    @media (max-width:840px){ body,body.sidebar-collapsed{padding-left:0}header,body.sidebar-collapsed header{position:sticky;inset:auto;top:0;width:100%;height:auto;display:flex;flex-direction:row;align-items:center;gap:10px;padding:12px 16px;overflow:visible;background:rgba(18,58,115,.98)}.brand,body.sidebar-collapsed .brand{padding:0;width:auto;font-size:18px;overflow:visible}.brand::after,body.sidebar-collapsed .brand::after{display:none}.nav-kicker{display:none}.page-tabs{order:3;position:absolute;top:100%;left:0;width:100%;display:flex;gap:4px;padding:7px 10px;overflow-x:auto;background:#fff;border-bottom:1px solid var(--line);box-shadow:0 8px 20px rgba(18,58,115,.08)}.page-tab,body.sidebar-collapsed .page-tab{display:flex;gap:7px;width:auto;min-width:max-content;padding:9px 11px;border-radius:10px;color:#52677f}.page-tab-label,body.sidebar-collapsed .page-tab-label{display:inline}.page-tab-icon svg,body.sidebar-collapsed .page-tab-icon svg{width:17px;height:17px}.page-tab:hover{background:#f0f5fb;color:var(--brand)}.page-tab.is-active{border-color:#c9d9ec;background:#e8f1ff;color:var(--brand);box-shadow:none}.page-tab.is-active .page-tab-icon{color:var(--brand)}.header-spacer{display:block}.sidebar-actions{display:flex;gap:2px}.sidebar-action,body.sidebar-collapsed .sidebar-action{display:grid;grid-template-columns:1fr;padding:9px;color:#d8e8fb}.sidebar-action-label,body.sidebar-collapsed .sidebar-action-label{display:none}.sidebar-toggle{display:none}.wrap,body.sidebar-collapsed .wrap{width:100%;margin:50px 0 0;padding:16px 12px 40px}.card{padding:18px;min-height:calc(100vh - 150px)}.case-detail-layout,.case-update-grid,.detail-grid,.baggage-search-grid,.sheet-detail-grid,.inline-update.case-update,.inline-update.case-update[data-update-mode="information"],.worldtracer-form,.unresolved-update,.add-baggage-form,.add-baggage-search,.case-detail-content{grid-template-columns:1fr}.unresolved-summary{grid-template-columns:1fr 1fr}.rush-flight-row{grid-template-columns:1fr 1fr}.rush-route-arrow{display:none}.rush-flight-row button{grid-column:1/-1}.tracking-event{grid-template-columns:86px 1fr;gap:12px}.tracking-event-card{font-size:12px}.tracking-event-field{grid-template-columns:1fr}.case-update{min-width:0}table{display:block;overflow-x:auto;white-space:nowrap} }
+    @media (max-width:840px){ body,body.sidebar-collapsed{padding-left:0}header,body.sidebar-collapsed header{position:sticky;inset:auto;top:0;width:100%;height:auto;display:flex;flex-direction:row;align-items:center;gap:10px;padding:12px 16px;overflow:visible;background:rgba(18,58,115,.98)}.brand,body.sidebar-collapsed .brand{padding:0;width:auto;font-size:18px;overflow:visible}.brand::after,body.sidebar-collapsed .brand::after{display:none}.nav-kicker{display:none}.page-tabs{order:3;position:absolute;top:100%;left:0;width:100%;display:flex;gap:4px;padding:7px 10px;overflow-x:auto;background:#fff;border-bottom:1px solid var(--line);box-shadow:0 8px 20px rgba(18,58,115,.08)}.page-tab,body.sidebar-collapsed .page-tab{display:flex;gap:7px;width:auto;min-width:max-content;padding:9px 11px;border-radius:10px;color:#52677f}.page-tab-label,body.sidebar-collapsed .page-tab-label{display:inline}.page-tab-icon svg,body.sidebar-collapsed .page-tab-icon svg{width:17px;height:17px}.page-tab:hover{background:#f0f5fb;color:var(--brand)}.page-tab.is-active{border-color:#c9d9ec;background:#e8f1ff;color:var(--brand);box-shadow:none}.page-tab.is-active .page-tab-icon{color:var(--brand)}.header-spacer{display:block}.sidebar-actions{display:flex;gap:2px}.sidebar-action,body.sidebar-collapsed .sidebar-action{display:grid;grid-template-columns:1fr;padding:9px;color:#d8e8fb}.sidebar-action-label,body.sidebar-collapsed .sidebar-action-label{display:none}.sidebar-toggle{display:none}.wrap,body.sidebar-collapsed .wrap{width:100%;margin:50px 0 0;padding:16px 12px 40px}.card{padding:18px;min-height:calc(100vh - 150px)}.case-detail-layout,.case-update-grid,.detail-grid,.baggage-search-grid,.sheet-detail-grid,.inline-update.case-update,.worldtracer-form,.unresolved-update,.add-baggage-form,.add-baggage-search,.case-detail-content{grid-template-columns:1fr}.unresolved-summary{grid-template-columns:1fr 1fr}.rush-flight-row{grid-template-columns:1fr 1fr}.rush-route-arrow{display:none}.rush-flight-row button{grid-column:1/-1}.tracking-event{grid-template-columns:86px 1fr;gap:12px}.tracking-event-card{font-size:12px}.tracking-event-field{grid-template-columns:1fr}.case-update{min-width:0}table{display:block;overflow-x:auto;white-space:nowrap} }
+    @media (max-width:840px){
+      html,body{max-width:100%;overflow-x:hidden}
+      header,body.sidebar-collapsed header{left:0;right:0;width:auto;max-width:100%}
+      .page-tabs{left:0;right:0;width:auto;max-width:100%;overscroll-behavior-x:contain}
+      .wrap,.card,.open-case-group,.sheet-shell{min-width:0;max-width:100%}
+      .sheet-shell{width:100%;overflow-x:auto}
+      .sheet-shell .cbs-sheet{display:table;min-width:980px;overflow:visible}
+    }
     @media (max-width:520px){ .rush-itinerary{padding:12px;overflow:hidden}.rush-itinerary-head{align-items:stretch}.rush-itinerary-head button{width:100%}.rush-flight-row{grid-template-columns:minmax(0,1fr);width:100%;min-width:0}.rush-flight-row label{width:100%;min-width:0;overflow:hidden}.rush-flight-row input[type="date"]{width:calc(100% - 24px);justify-self:start}.rush-flight-row button{grid-column:1}.worldtracer-form{width:100%;min-width:0} }
   </style>
 </head>
@@ -258,6 +275,7 @@
       <button class="page-tab" id="add-baggage-tab" type="button" title="Add On-hand"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="13" height="12" rx="2"/><path d="M7 8V5h5v3m7-4v8m-4-4h8"/></svg></span><span class="page-tab-label">Add On-hand</span></button>
       <button class="page-tab" id="worldtracer-tab" type="button" title="Rush Bag"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m3 14 7-3V5l2-2 2 7 5-2 2 1-7 5v5l-2 2-2-6-4 2z"/></svg></span><span class="page-tab-label">Rush Bag</span></button>
       <button class="page-tab" id="missing-report-alert" type="button" title="Missing Bag Report"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="7" width="12" height="12" rx="2"/><path d="M8 7V5h4v2m5 10 4 4m-1-7a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg></span><span class="page-tab-label">Missing Bag Report</span></button>
+      <button class="page-tab" id="email-tab" type="button" title="Email"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg></span><span class="page-tab-label">Email</span></button>
       <button class="page-tab" id="baggage-chart-tab" type="button" title="Baggage Chart"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19V9m5 10V5m5 14v-7m5 7V3"/></svg></span><span class="page-tab-label">Baggage Chart</span></button>
     </nav>
     <span class="header-spacer"></span>
@@ -279,7 +297,7 @@
       </section>
       <section class="open-case-group" id="on-hand-group">
         <h2 id="on-hand-title">On-hand</h2>
-        <p class="muted" id="on-hand-description">Passenger bags entered as inbound and not-loaded outbound bags remain here until resolved.</p>
+        <p class="muted" id="on-hand-description">Passenger bags entered as inbound and not-loaded outbound bags remain here until resolved. Gate bags are not included.</p>
         <div id="unresolved-baggage-output"><p class="muted">Loading On-hand cases...</p></div>
       </section>
     </section>
@@ -303,6 +321,21 @@
       <div class="actions"><div><h1>MISSING BAG REPORT</h1><p class="muted">MU rows imported from Early Bag Storage missed bag email.</p></div></div>
       <div id="missing-report-output"><p class="muted">Loading missing bags...</p></div>
     </section>
+    <section class="card" id="email-card" hidden>
+      <h1>Email</h1>
+      <p class="muted">Select a subject and complete the required email details.</p>
+      <form class="worldtracer-form" id="standalone-email-form">
+        <label class="wide"><span>Subject</span><select name="emailAction" data-standalone-email-action required><option value="sent_open_bag_authorization_to_pvg">Sent Open Bag Authorization to PVG</option><option value="contact_pax_pickup_bags">Contact PAX to Pick-up Bags</option><option value="passenger_related_pickup_or_fedex">Passenger-related issue. Self-pickup or delivery at passenger’s expense.</option><option value="baggage_transfer_status_eta">Baggage transfer status update - ETA</option><option value="address_confirm_request">Address Confirm Request Email</option><option value="require_open_bag_authorization_pvg">Require Open Bag Authorization at PVG</option></select></label>
+        <label class="wide" data-standalone-pvg-field><span>Email To</span><select name="emailTo" required><option value="pd-bag-intl@ceair.com">pd-bag-intl@ceair.com</option><option value="pd-bag-dom@ceair.com">pd-bag-dom@ceair.com</option></select></label>
+        <label class="authorization-upload wide" data-standalone-pvg-field><input name="authorizationFile" type="file" accept="application/pdf,.pdf" required /><span class="authorization-upload-plus">+</span><span class="authorization-upload-title">Letter of Authorization</span><small data-authorization-filename>Select the signed PDF</small></label>
+        <label class="wide" data-standalone-pickup-field hidden><span>Email To</span><input name="passengerEmail" type="email" placeholder="Passenger email address" disabled required /></label>
+        <label class="wide" data-standalone-passenger-related-field hidden><span>WorldTracer File Number</span><input name="worldTracerFileNumber" placeholder="WorldTracer file number" disabled required /></label>
+        <label class="wide" data-standalone-eta-field hidden><span>Estimated arrival date</span><input name="estimatedArrivalTime" type="date" disabled required /></label>
+        <label class="wide" data-standalone-passenger-related-field hidden><span>Language</span><select name="language" disabled required><option value="en">English</option><option value="zh">中文</option></select></label>
+        <p class="status wide" id="standalone-email-status" aria-live="polite"></p>
+        <div class="actions wide"><button type="submit">Send</button></div>
+      </form>
+    </section>
     <section class="card" id="add-baggage-card" hidden>
       <h1>Add On-hand</h1>
       <p class="muted">Search a bag tag, then add the inbound or outbound On-hand record here.</p>
@@ -323,9 +356,41 @@
   <script src="/__/firebase/init.js"></script>
   <script>
     const apiBase = (window.MU_API_BASE || 'https://api.mufcapp.net').replace(/\/$/, '');
-    function currentUpdater() {
-      const user = window.firebase?.auth?.()?.currentUser;
-      return String(user?.displayName || user?.email || '').trim();
+    function updaterDisplayName(value) {
+      const updater = String(value || '').trim();
+      if (!updater.includes('@')) return updater;
+      return updater.split('@')[0]
+        .replace(/[._-]+/g, ' ')
+        .replace(/\b\w/g, (letter) => letter.toUpperCase());
+    }
+    function updaterDisplayText(value) {
+      return String(value || '').replace(/(Updated by:\s*)([^\s|]+@[^\s|]+)/gi, (_, prefix, email) => `${prefix}${updaterDisplayName(email)}`);
+    }
+    function updaterFromText(value) {
+      return String(value || '').match(/(?:^|\|)\s*Updated by:\s*([^|]+)/i)?.[1]?.trim() || '';
+    }
+    function withoutUpdaterText(value) {
+      return String(value || '').replace(/\s*\|?\s*Updated by:\s*[^|]+/i, '').trim();
+    }
+    let updaterAuthReady;
+    async function currentUpdater() {
+      const auth = window.firebase?.auth?.();
+      let user = auth?.currentUser || null;
+      if (!user && auth) {
+        updaterAuthReady ||= new Promise((resolve) => {
+          let unsubscribe = null;
+          const timeout = setTimeout(() => { unsubscribe?.(); resolve(null); }, 5000);
+          unsubscribe = auth.onAuthStateChanged((nextUser) => {
+            clearTimeout(timeout);
+            unsubscribe?.();
+            resolve(nextUser || null);
+          }, () => { clearTimeout(timeout); resolve(null); });
+        });
+        user = await updaterAuthReady;
+      }
+      // The authenticated email is the stable staff identity. Firebase display
+      // names may be unset or carry a generic value such as "System".
+      return updaterDisplayName(user?.email || user?.displayName || '');
     }
     document.querySelectorAll('[data-baggage-chart-image]').forEach((image) => { image.src = `${apiBase}/cbs-baggage-chart/${image.dataset.baggageChartImage}`; });
     document.querySelectorAll('[data-baggage-chart-link]').forEach((link) => { link.href = `${apiBase}/cbs-baggage-chart/${link.dataset.baggageChartLink}`; });
@@ -347,6 +412,10 @@
     const missingAlert = document.querySelector('#missing-report-alert');
     const missingReportCard = document.querySelector('#missing-report-card');
     const missingReportOutput = document.querySelector('#missing-report-output');
+    const emailTab = document.querySelector('#email-tab');
+    const emailCard = document.querySelector('#email-card');
+    const standaloneEmailForm = document.querySelector('#standalone-email-form');
+    const standaloneEmailStatus = document.querySelector('#standalone-email-status');
     const unresolvedBaggageOutput = document.querySelector('#unresolved-baggage-output');
     const addBaggageTab = document.querySelector('#add-baggage-tab');
     const addBaggageCard = document.querySelector('#add-baggage-card');
@@ -371,12 +440,14 @@
       missingReportCard.hidden = section !== 'missing';
       addBaggageCard.hidden = section !== 'add-baggage';
       baggageChartCard.hidden = section !== 'baggage-chart';
+      emailCard.hidden = section !== 'email';
       openCasesTab.classList.toggle('is-active', section === 'open');
       closedCasesTab.classList.toggle('is-active', section === 'closed');
       worldTracerTab.classList.toggle('is-active', section === 'worldtracer');
       missingAlert.classList.toggle('is-active', section === 'missing');
       addBaggageTab.classList.toggle('is-active', section === 'add-baggage');
       baggageChartTab.classList.toggle('is-active', section === 'baggage-chart');
+      emailTab.classList.toggle('is-active', section === 'email');
       if (isCaseSection) {
         window._caseView = section;
         casePageTitle.innerHTML = section === 'closed' ? '<span class="en">Closed Case</span><span class="zh">已结案件</span>' : '<span class="en">Open Case</span><span class="zh">未结案件</span>';
@@ -385,7 +456,7 @@
         onHandTitle.textContent = section === 'closed' ? 'Closed On-hand' : 'On-hand';
         onHandDescription.textContent = section === 'closed'
           ? 'On-hand cases completed by Create Rush, Shipping, Passenger collected, or Case Close are archived here.'
-          : 'Passenger bags entered as inbound and not-loaded outbound bags remain here until resolved.';
+          : 'Passenger bags entered as inbound and not-loaded outbound bags remain here until resolved. Gate bags are not included.';
         if (window._unresolvedBaggageLoaded) renderUnresolvedBaggage(window._unresolvedBaggageSourceRows || []);
         renderCases();
       }
@@ -462,17 +533,17 @@
       if (action === 'reopen') return '<p class="muted wide">Reopen this case and return it to Open Case.</p>';
       if (action === 'case-close') return '<label class="wide"><span>Notes</span><textarea name="note" placeholder="Enter case close notes" required></textarea></label>';
       if (action === 'on-hand-rush') return `${worldTracerFileNumber ? `<input type="hidden" name="worldTracerFileNumber" value="${escapeHtml(worldTracerFileNumber)}" />` : '<label><span>WorldTracer File Number (Optional)</span><input name="worldTracerFileNumber" placeholder="Can be added later" /></label>'}<label><span>Original Tag Number</span><input name="originalTagNumber" value="${escapeHtml(bagTag)}" required /></label><label><span>RUSH Tag Number</span><input name="rushTagNumber" required /></label><div class="rush-itinerary wide"><div class="rush-itinerary-head"><h2>RUSH Itinerary</h2><button class="secondary" type="button" data-add-unresolved-flight>+ Add Flight</button></div><div data-unresolved-flight-rows>${rushFlightRowHtml()}</div></div>`;
-      if (action === 'email') return '<label class="wide"><span>Email</span><select name="emailAction" required><option value="contact_pax_pickup_bags">Contact PAX to Pick-up Bags</option></select></label><label class="wide email-recipient"><span>Email To</span><input name="emailTo" type="email" placeholder="Passenger email address" required /></label>';
+      if (action === 'email') return `<label class="wide"><span>Email</span><select name="emailAction" data-onhand-email-action required><option value="sent_open_bag_authorization_to_pvg">Sent Open Bag Authorization to PVG</option><option value="contact_pax_pickup_bags">Contact PAX to Pick-up Bags</option><option value="passenger_related_pickup_or_fedex">Passenger-related issue. Self-pickup or delivery at passenger’s expense.</option><option value="baggage_transfer_status_eta">Baggage transfer status update - ETA</option><option value="address_confirm_request">Address Confirm Request Email</option><option value="require_open_bag_authorization_pvg">Require Open Bag Authorization at PVG</option></select></label><label class="wide" data-onhand-pvg-email><span>Email To</span><select name="emailTo" required><option value="pd-bag-intl@ceair.com">pd-bag-intl@ceair.com</option><option value="pd-bag-dom@ceair.com">pd-bag-dom@ceair.com</option></select></label><label class="authorization-upload wide" data-onhand-pvg-email><input name="authorizationFile" type="file" accept="application/pdf,.pdf" required /><span class="authorization-upload-title">Letter of Authorization</span><small>Select the signed PDF</small></label><label class="wide" data-onhand-passenger-email hidden><span>Email To</span><input name="emailTo" type="email" placeholder="Passenger email address" disabled required /></label><label class="wide" data-onhand-passenger-related hidden><span>WorldTracer File Number</span><input name="worldTracerFileNumber" value="${escapeHtml(worldTracerFileNumber)}" placeholder="WorldTracer file number" disabled required /></label><label class="wide" data-onhand-eta hidden><span>Estimated arrival date</span><input name="estimatedArrivalTime" type="date" disabled required /></label><label class="wide" data-onhand-passenger-related hidden><span>Language</span><select name="language" disabled required><option value="en">English</option><option value="zh">中文</option></select></label>`;
       if (action === 'shipped') return `<label><span>Delivery method</span><select name="shippingMethod" data-shipping-method required><option value="">Select delivery method</option><option>ADC - All Day Courier</option><option>FedEx Delivery</option><option>Pick Up at Airport</option><option>Passenger Pay for Shipping</option></select></label><label data-shipping-tracking hidden><span>Tracking number</span><input name="trackingNumber" disabled /></label><label data-shipping-address hidden><span>Shipping to where?</span><input name="shippingTo" disabled /></label><label data-shipping-bdo hidden><span>BDO</span><input name="bdo" disabled /></label><label class="wide"><span>Comment</span><textarea name="comment"></textarea></label>`;
       const placeholder = action === 'passenger-collected' ? 'Who collected the bag?' : 'Describe how this case was resolved';
       return `<label class="wide"><span>Resolution Note</span><textarea name="note" placeholder="${placeholder}" required></textarea></label>`;
     }
     function unresolvedProgressHtml(row) {
       const resolutionTitle = String(row.resolution || '').toLowerCase() === 'email' ? 'Contact PAX to Pick-up Bags' : (row.resolution || 'Resolved');
-      const events = [{ title:'On-hand created', at:row.createdAt, detail:row.location ? `Location: ${row.location}` : '' }];
-      if (row.worldTracerFileNumber) events.push({ title:'WorldTracer', at:'', by:row.worldTracerUpdatedBy || '', detail:`File: ${row.worldTracerFileNumber}` });
-      if (row.resolvedAt) events.push({ title:resolutionTitle, at:row.resolvedAt, detail:row.resolutionNote || '' });
-      return `<div class="tracking-workspace"><p class="tracking-current-time"><strong>${label('Case Progress', '案件进度')}</strong></p><div class="tracking-history">${events.slice().reverse().map((item, index) => `<span class="tracking-chip${index === 0 ? ' is-latest' : ''}${row.resolvedAt && index === 0 ? ' is-closed' : ''}"><span class="tracking-step-number">${events.length - index}</span><span class="tracking-chip-title">${escapeHtml(item.title)}</span>${item.at || item.by ? `<small>${item.at ? escapeHtml(new Date(item.at).toLocaleString()) : ''}${item.by ? ` · Updated by: ${escapeHtml(item.by)}` : ''}</small>` : ''}${item.detail ? `<span class="tracking-chip-detail">${escapeHtml(item.detail)}</span>` : ''}</span>`).join('')}</div></div>`;
+      const events = [{ title:'On-hand created', at:row.createdAt, by:row.createdBy || row.submittedBy || 'System', detail:row.location ? `Location: ${row.location}` : '' }];
+      if (row.worldTracerFileNumber) events.push({ title:'WorldTracer', at:'', by:row.worldTracerUpdatedBy || 'System', detail:`File: ${row.worldTracerFileNumber}` });
+      if (row.resolvedAt) events.push({ title:resolutionTitle, at:row.resolvedAt, by:row.resolvedBy || updaterFromText(row.resolutionNote) || 'System', detail:withoutUpdaterText(row.resolutionNote) });
+      return `<div class="tracking-workspace"><p class="tracking-current-time"><strong>${label('Case Progress', '案件进度')}</strong></p><div class="tracking-history">${events.slice().reverse().map((item, index) => `<span class="tracking-chip${index === 0 ? ' is-latest' : ''}${row.resolvedAt && index === 0 ? ' is-closed' : ''}"><span class="tracking-step-number">${events.length - index}</span><span class="tracking-chip-title">${escapeHtml(item.title)}</span>${item.at || item.by ? `<small>${item.at ? escapeHtml(new Date(item.at).toLocaleString()) : ''}${item.by ? ` · Updated by: ${escapeHtml(updaterDisplayName(item.by))}` : ''}</small>` : ''}${item.detail ? `<span class="tracking-chip-detail">${escapeHtml(updaterDisplayText(item.detail))}</span>` : ''}</span>`).join('')}</div></div>`;
     }
     function renderUnresolvedBaggage(rows = []) {
       window._unresolvedBaggageSourceRows = rows;
@@ -538,11 +609,10 @@
     const TRACKING_STAGES = [
       { key:'create', text:'Create' },
       { key:'update', text:'Update' },
-      { key:'information', text:'Information' },
       { key:'worldtracer', text:'WorldTracer' },
       { key:'requested_bags', text:'Requested Bags' },
-      { key:'open_bag_authorization_pvg', text:'Require Open Bag Authorization at PVG' },
       { key:'email', text:'Email' },
+      { key:'comment', text:'Comment' },
       { key:'rush', text:'Rush' },
       { key:'location', text:'Location' },
       { key:'shipping', text:'Shipping' },
@@ -555,6 +625,7 @@
         key: trackingKeyFromText(event.key || event.status || event.title),
         title: event.title || `Update ${event.status || 'Case'}`,
         at: event.at || event.updatedAt || row.updatedAt || row.submittedAt || '',
+        by: event.by || event.updatedBy || 'System',
         fields: Array.isArray(event.fields) ? event.fields : [],
         note: event.note || ''
       }));
@@ -563,7 +634,7 @@
       const note = String(row?.updateNote || '').trim();
       const events = [];
       if (row?.rowNumber || row?.firestoreId || row?.submittedAt || row?.createdAt) {
-        events.push({ key:'create', title:'Create Case', at:row.submittedAt || row.issueDate || '', fields:[] });
+        events.push({ key:'create', title:'Create Case', at:row.submittedAt || row.issueDate || '', by:row.submittedBy || row.createdBy || 'System', fields:[] });
       }
       const storedEvents = parseStoredUpdateEvents(row);
       if (storedEvents.length) return events.concat(storedEvents);
@@ -596,7 +667,9 @@
         const split = piece.split(/:\s*/);
         return split.length > 1 ? [split.shift(), split.join(': ')] : [label('Detail', '详情'), piece];
       });
-      return { key, title, at, fields:fields.length ? fields : [[label('Detail', '详情'), text]] };
+      const by = updaterFromText(text) || 'System';
+      const visibleFields = fields.filter(([field]) => !/^Updated by$/i.test(field));
+      return { key, title, at, by, fields:visibleFields.length ? visibleFields : [[label('Detail', '详情'), withoutUpdaterText(text)]] };
     }
     function trackingKeyFromText(value) {
       const text = String(value || '').toLowerCase();
@@ -608,9 +681,10 @@
       if (/rush/.test(text)) return 'rush';
       if (/world\s*tracer|worldtracer/.test(text)) return 'worldtracer';
       if (/requested[\s_-]*bags?/.test(text)) return 'requested_bags';
-      if (/open[\s_-]*bag[\s_-]*authorization|authorization.*pvg/.test(text)) return 'open_bag_authorization_pvg';
+      if (/open[\s_-]*bag[\s_-]*authorization|authorization.*pvg/.test(text)) return 'email';
       if (/sent open bag authorization to pvg|^email$/.test(text)) return 'email';
-      if (/information/.test(text)) return 'information';
+      if (/comment/.test(text)) return 'comment';
+      if (/information/.test(text)) return 'email';
       if (/update/.test(text)) return 'update';
       return 'create';
     }
@@ -653,23 +727,38 @@
       if (events.some((event) => event.key === 'shipping' && (event.fields || []).some(([key, value]) => key === 'Shipping Method' && value === 'Passenger Pay for Shipping'))) sentKeys.add('passenger_paid_shipping');
       if (events.some((event) => event.key === 'lost')) sentKeys.add('lost');
       if (events.some((event) => event.key === 'email' && event.title === 'Contact PAX to Pick-up Bags')) sentKeys.add('pickup_contact');
+      if (events.some((event) => event.key === 'email' && event.title === 'Passenger-related issue. Self-pickup or delivery at passenger’s expense.')) sentKeys.add('passenger_related_pickup');
+      if (events.some((event) => event.title === 'Baggage transfer status update - ETA' || event.key === 'information')) sentKeys.add('transfer_eta');
+      if (events.some((event) => event.key === 'email' && event.title === 'Address Confirm Request Email')) sentKeys.add('address_confirm');
+      if (events.some((event) => event.title === 'Require Open Bag Authorization at PVG')) sentKeys.add('open_bag_authorization_pvg');
       sentKeys.add('create');
       const notifications = [
         ['create', label('Create report email', '建案报告邮件')],
         ['worldtracer', label('WorldTracer update email', 'WorldTracer 更新邮件')],
         ['requested_bags', label('Baggage request from other station email', '外站行李查询邮件')],
         ['open_bag_authorization_pvg', label('PVG open-bag authorization email', '浦东机场开箱授权邮件')],
-        ['information', label('Baggage Transfer Status Update email', '行李转运状态更新邮件')],
+        ['transfer_eta', label('Baggage transfer status update - ETA email', '行李转运预计到达时间邮件')],
+        ['address_confirm', label('Address confirmation request email', '行李领取／配送地址确认邮件')],
         ['adc_shipping', label('ADC baggage delivery email', 'ADC 行李配送邮件')],
         ['fedex_shipping', label('FedEx baggage delivery email', 'FedEx 行李配送邮件')],
         ['airport_pickup', label('Airport pickup closure email', '机场领取结案邮件')],
         ['passenger_paid_shipping', label('Passenger-paid shipping email', '旅客自付配送邮件')],
         ['lost', label('Lost baggage notification email', '行李遗失通知邮件')],
-        ['pickup_contact', label('Baggage pick-up email', '行李领取通知邮件')]
+        ['pickup_contact', label('Baggage pick-up email', '行李领取通知邮件')],
+        ['passenger_related_pickup', label('Passenger-related self-pickup / paid FedEx email', '旅客原因自行领取／自费 FedEx 邮件')]
       ].filter(([key]) => sentKeys.has(key));
       return `<aside class="passenger-notify"><h3>${label('Notify Passenger', '旅客邮件通知')}</h3><ul class="passenger-notify-list">${notifications.map(([, text]) => {
         return `<li class="passenger-notify-item is-sent"><span class="passenger-notify-check" aria-hidden="true">✓</span><span>${escapeHtml(text)}</span></li>`;
       }).join('')}</ul></aside>`;
+    }
+    function caseCommentsHtml(row) {
+      const comments = parseUpdateNoteEvents(row).filter((event) => event.key === 'comment');
+      if (!comments.length) return '';
+      return `<section class="case-comments"><h3>${label('Comment', '备注')}</h3>${comments.slice().reverse().map((event) => {
+        const comment = (event.fields || []).find(([key]) => /^comment$/i.test(key))?.[1] || event.note || '';
+        const time = formatEventTime(event.at);
+        return `<p class="case-comment">${escapeHtml(comment)}<small>${label('Comment by', '留言人')}: ${escapeHtml(updaterDisplayName(event.by || 'System'))}${time.date ? ` · ${escapeHtml(time.date)} ${escapeHtml(time.time)}` : ''}</small></p>`;
+      }).join('')}</section>`;
     }
     function detailRows(row) {
       const caseType = inferCaseType(row);
@@ -896,10 +985,9 @@
       const shippingAddressInput = '<input name="shippingTo" data-shipping-address placeholder="Shipping to where?" disabled hidden />';
       const shippingBdoInput = '<input name="bdo" data-shipping-bdo placeholder="BDO" disabled hidden />';
       if (key === 'worldtracer') return input('File number', 'fileNumber');
-      if (key === 'information') return ['<select name="informationType" required><option value="rush_to_lax">Baggage Transfer Status Update</option></select>', '<label><span>Estimated arrival date</span><input name="estimatedArrivalTime" type="date" required /></label>'].join('');
       if (key === 'requested_bags') return input('From which station?', 'fromStation');
-      if (key === 'open_bag_authorization_pvg') return '<p class="muted wide">The authorization form will be attached and emailed to the passenger.</p>';
-      if (key === 'email') return '<select name="emailAction" data-email-action required><option value="sent_open_bag_authorization_to_pvg">Sent Open Bag Authorization to PVG</option><option value="contact_pax_pickup_bags">Contact PAX to Pick-up Bags</option></select><label class="email-recipient" data-pvg-email-field><span>Email To</span><select name="emailTo" required><option value="pd-bag-intl@ceair.com">pd-bag-intl@ceair.com</option><option value="pd-bag-dom@ceair.com">pd-bag-dom@ceair.com</option></select></label><label class="authorization-upload" data-pvg-email-field><input name="authorizationFile" type="file" accept="application/pdf,.pdf" required /><span class="authorization-upload-plus">+</span><span class="authorization-upload-title">Letter of Authorization</span><small data-authorization-filename>Select the signed PDF</small></label>';
+      if (key === 'email') return '<select name="emailAction" data-email-action required><option value="sent_open_bag_authorization_to_pvg">Sent Open Bag Authorization to PVG</option><option value="contact_pax_pickup_bags">Contact PAX to Pick-up Bags</option><option value="passenger_related_pickup_or_fedex">Passenger-related issue. Self-pickup or delivery at passenger’s expense.</option><option value="baggage_transfer_status_eta">Baggage transfer status update - ETA</option><option value="address_confirm_request">Address Confirm Request Email</option><option value="require_open_bag_authorization_pvg">Require Open Bag Authorization at PVG</option></select><label class="email-recipient" data-pvg-email-field><span>Email To</span><select name="emailTo" required><option value="pd-bag-intl@ceair.com">pd-bag-intl@ceair.com</option><option value="pd-bag-dom@ceair.com">pd-bag-dom@ceair.com</option></select></label><label class="authorization-upload" data-pvg-email-field><input name="authorizationFile" type="file" accept="application/pdf,.pdf" required /><span class="authorization-upload-plus">+</span><span class="authorization-upload-title">Letter of Authorization</span><small data-authorization-filename>Select the signed PDF</small></label><label data-email-eta-field hidden><span>Estimated arrival date</span><input name="estimatedArrivalTime" type="date" disabled required /></label>';
+      if (key === 'comment') return '<select name="commentPreset" data-comment-preset><option value="">Select a comment or enter your own below</option><option value="Passenger-related issue. Self-pickup or delivery at passenger’s expense.">Passenger-related issue. Self-pickup or delivery at passenger’s expense.</option><option value="Passenger request Pick up at LAX">Passenger request Pick up at LAX</option></select><textarea name="comment" placeholder="Write a comment" required></textarea>';
       if (key === 'rush') return [input('Rush tag number', 'rushTagNumber'), input('Rush to where?', 'rushToWhere'), input('World Tracer file # (optional)', 'worldTracerFileNumber', false), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
       if (key === 'location') return [input('Bag location', 'location'), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
       if (key === 'shipping') return [shippingMethodSelect, shippingTrackingInput, shippingAddressInput, shippingBdoInput, '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
@@ -914,6 +1002,7 @@
       if (current === 'rush') return 'location';
       if (current === 'location') return 'shipping';
       if (current === 'shipping') return 'closed';
+      if (current === 'comment') return 'comment';
       return 'worldtracer';
     }
     function trackingControlHtml(row, part = 'all') {
@@ -924,7 +1013,7 @@
           const time = formatEventTime(event.at);
           const details = (event.fields || []).filter(([, value]) => hasValue(value)).map(([key, value]) => `<span class="tracking-chip-detail">${escapeHtml(key)}: ${escapeHtml(renderValue(value))}</span>`).join('');
           const stateClass = `${event.key === 'closed' ? ' is-closed' : ''}${index === 0 ? ' is-latest' : ''}`;
-          return `<span class="tracking-chip${stateClass}"><span class="tracking-step-number">${stepNumber}</span><span class="tracking-chip-title">${escapeHtml(event.title || 'Update')}</span><small>${escapeHtml(time.date)} ${escapeHtml(time.time)}${event.by ? ` · Updated by: ${escapeHtml(event.by)}` : ''}</small>${details}</span>`;
+          return `<span class="tracking-chip${stateClass}"><span class="tracking-step-number">${stepNumber}</span><span class="tracking-chip-title">${escapeHtml(event.title || 'Update')}</span><small>${escapeHtml(time.date)} ${escapeHtml(time.time)}${event.by ? ` · Updated by: ${escapeHtml(updaterDisplayName(event.by))}` : ''}</small>${details}</span>`;
         }).join('');
         if (part === 'current') return '';
         if (isClosedCase(row)) return `<div class="tracking-workspace"><div><div class="tracking-history">${historyHtml}</div></div><form class="inline-update case-update" data-row-number="${escapeHtml(recordId)}" data-case-source="wrongBaggage" data-update-mode="reopen"><textarea name="comment" placeholder="${label('Reopen note (optional)', '重新开启备注（可选）')}"></textarea><button type="submit">${label('Reopen', '重新开启')}</button></form></div>`;
@@ -948,7 +1037,7 @@
           const noteHtml = !detailFields.length && hasValue(event.note) ? `<span class="tracking-chip-detail">${escapeHtml(event.note)}</span>` : '';
           const closedClass = event.key === 'closed' ? ' is-closed' : '';
           const latestClass = index === 0 ? ' is-latest' : '';
-          return `<span class="tracking-chip tracking-chip--${escapeHtml(event.key)}${closedClass}${latestClass}"><span class="tracking-step-number">${stepNumber}</span><span class="tracking-chip-title">${escapeHtml(title)}</span><small>${escapeHtml(time.date || '')} ${escapeHtml(time.time || '')}${event.by ? ` · Updated by: ${escapeHtml(event.by)}` : ''}</small>${detailHtml}${noteHtml}</span>`;
+          return `<span class="tracking-chip tracking-chip--${escapeHtml(event.key)}${closedClass}${latestClass}"><span class="tracking-step-number">${stepNumber}</span><span class="tracking-chip-title">${escapeHtml(title)}</span><small>${escapeHtml(time.date || '')} ${escapeHtml(time.time || '')}${event.by ? ` · Updated by: ${escapeHtml(updaterDisplayName(event.by))}` : ''}</small>${detailHtml}${noteHtml}</span>`;
         }).join('') || '<span class="sheet-empty">No tracking updates yet</span>';
       if (!recordId) return historyHtml;
       const progressHeader = `<p class="tracking-current-time"><strong>${label('Case Progress', '案件进度')}</strong><span>${label('Last update', '最后更新')}: ${escapeHtml(latestTime.date || '-')} ${escapeHtml(latestTime.time || '')}</span></p>`;
@@ -976,7 +1065,7 @@
         const details = detailRows(row).filter(([, value]) => hasValue(value));
         const detailHtml = isOriginalFormCase(row) ? fullPassengerFileHtml(row) : (details.length ? `<div class="sheet-detail-grid">${details.map(([key, value]) => `<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(renderValue(value))}</p>`).join('')}</div>` : `<p class="muted">${label('No extra details.', '没有更多详情。')}</p>`);
         const isExpanded = expandedCases.has(detailKey);
-        return `<tr class="case-summary-row${closedClass}" data-toggle-case="${escapeHtml(detailKey)}" aria-expanded="${isExpanded ? 'true' : 'false'}"><td class="sheet-meta">${escapeHtml(displayWorldTracerFile(row) || '-')}</td><td class="sheet-meta">${escapeHtml(caseType || '-')}</td><td class="sheet-meta"><span class="bag-tag-value">${escapeHtml(displayBagTag(row) || '-')}</span></td></tr><tr class="case-detail-row${closedClass}" data-detail-case="${escapeHtml(detailKey)}" ${isExpanded ? '' : 'hidden'}><td colspan="3"><div class="case-detail-layout"><div class="case-progress-column">${trackingControlHtml(row, 'progress')}</div><div class="case-detail-right">${trackingControlHtml(row, 'current')}<div class="case-detail-content">${detailHtml}</div>${passengerNotificationHtml(row)}</div></div></td></tr>`;
+        return `<tr class="case-summary-row${closedClass}" data-toggle-case="${escapeHtml(detailKey)}" aria-expanded="${isExpanded ? 'true' : 'false'}"><td class="sheet-meta">${escapeHtml(displayWorldTracerFile(row) || '-')}</td><td class="sheet-meta">${escapeHtml(caseType || '-')}</td><td class="sheet-meta"><span class="bag-tag-value">${escapeHtml(displayBagTag(row) || '-')}</span></td></tr><tr class="case-detail-row${closedClass}" data-detail-case="${escapeHtml(detailKey)}" ${isExpanded ? '' : 'hidden'}><td colspan="3"><div class="case-detail-layout"><div class="case-progress-column">${trackingControlHtml(row, 'progress')}</div><div class="case-detail-right">${trackingControlHtml(row, 'current')}${caseCommentsHtml(row)}<div class="case-detail-content">${detailHtml}</div>${passengerNotificationHtml(row)}</div></div></td></tr>`;
       }).join('')}</tbody></table></div>${baggageHtml}`;
       requestAnimationFrame(syncCaseProgressHeights);
     }
@@ -1074,7 +1163,20 @@
       event.preventDefault();
       const payload = Object.fromEntries(new FormData(updateForm, event.submitter).entries());
       payload.type = payload.type || updateForm.dataset.updateMode || 'worldtracer';
-      payload.updatedBy = currentUpdater();
+      payload.updatedBy = await currentUpdater();
+      if (!payload.updatedBy) return alert('Your signed-in account could not be identified. Refresh the page and try again.');
+      if (payload.action === 'email' && payload.emailAction === 'sent_open_bag_authorization_to_pvg') {
+        const file = form.elements.authorizationFile?.files?.[0];
+        if (!file) return alert('Please attach the signed Letter of Authorization PDF.');
+        const contentBase64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result || '').split(',')[1] || '');
+          reader.onerror = () => reject(new Error('The authorization PDF could not be read.'));
+          reader.readAsDataURL(file);
+        });
+        delete payload.authorizationFile;
+        payload.attachments = [{ filename:file.name, mimeType:file.type || 'application/pdf', contentBase64, attachmentType:'letterOfAuthorization' }];
+      }
       if (payload.type === 'email' && payload.emailAction === 'sent_open_bag_authorization_to_pvg') {
         const file = updateForm.elements.authorizationFile?.files?.[0];
         if (!file) return alert('Please attach the signed Letter of Authorization PDF.');
@@ -1090,10 +1192,22 @@
       await updateCase(updateForm.dataset.rowNumber, payload, updateForm.dataset.caseSource || 'pir');
     });
     casesOutput.addEventListener('change', (event) => {
+      const commentPreset = event.target.closest('[data-comment-preset]');
+      if (commentPreset) {
+        const comment = commentPreset.closest('form')?.querySelector('textarea[name="comment"]');
+        if (commentPreset.value && comment) comment.value = commentPreset.value;
+        return;
+      }
       const emailAction = event.target.closest('[data-email-action]');
       if (emailAction) {
-        emailAction.closest('form').querySelectorAll('[data-pvg-email-field]').forEach((field) => {
+        const form = emailAction.closest('form');
+        form.querySelectorAll('[data-pvg-email-field]').forEach((field) => {
           const show = emailAction.value === 'sent_open_bag_authorization_to_pvg';
+          field.hidden = !show;
+          field.querySelectorAll('input, select').forEach((input) => { input.disabled = !show; input.required = show; });
+        });
+        form.querySelectorAll('[data-email-eta-field]').forEach((field) => {
+          const show = emailAction.value === 'baggage_transfer_status_eta';
           field.hidden = !show;
           field.querySelectorAll('input, select').forEach((input) => { input.disabled = !show; input.required = show; });
         });
@@ -1206,6 +1320,7 @@
       showSection('missing');
       if (window._missingReportLoaded) renderMissingReports(window._missingBagRows || []);
     });
+    emailTab?.addEventListener('click', () => showSection('email'));
     addBaggageTab?.addEventListener('click', () => { showSection('add-baggage'); addBaggageSearch.elements.bagTag.focus(); });
     baggageChartTab?.addEventListener('click', () => showSection('baggage-chart'));
     backToCases?.addEventListener('click', () => showSection('open'));
@@ -1314,6 +1429,19 @@
       event.target.click();
     });
     unresolvedBaggageOutput?.addEventListener('change', (event) => {
+      const emailAction = event.target.closest('[data-onhand-email-action]');
+      if (emailAction) {
+        const form = emailAction.closest('form');
+        const sentPvg = emailAction.value === 'sent_open_bag_authorization_to_pvg';
+        const needsCaseDetails = ['passenger_related_pickup_or_fedex', 'baggage_transfer_status_eta', 'address_confirm_request', 'require_open_bag_authorization_pvg'].includes(emailAction.value);
+        [['[data-onhand-pvg-email]', sentPvg], ['[data-onhand-passenger-email]', !sentPvg], ['[data-onhand-passenger-related]', needsCaseDetails], ['[data-onhand-eta]', emailAction.value === 'baggage_transfer_status_eta']].forEach(([selector, show]) => {
+          form?.querySelectorAll(selector).forEach((field) => {
+            field.hidden = !show;
+            field.querySelectorAll('input, select').forEach((input) => { input.disabled = !show; input.required = show; });
+          });
+        });
+        return;
+      }
       const shippingMethod = event.target.closest('[data-shipping-method]');
       if (shippingMethod) {
         const form = shippingMethod.closest('form');
@@ -1351,7 +1479,8 @@
       event.preventDefault();
       const button = form.querySelector('button[type="submit"]');
       const payload = Object.fromEntries(new FormData(form).entries());
-      payload.updatedBy = currentUpdater();
+      payload.updatedBy = await currentUpdater();
+      if (!payload.updatedBy) return alert('Your signed-in account could not be identified. Refresh the page and try again.');
       if (payload.action === 'on-hand-rush') payload.flightRows = Array.from(form.querySelectorAll('[data-unresolved-flight-rows] [data-rush-flight-row]')).map((row) => ({
         flightDate:row.querySelector('[data-flight-date]').value,
         flightNumber:row.querySelector('[data-flight-number]').value,
@@ -1403,6 +1532,8 @@
       const payload = Object.fromEntries(new FormData(form).entries());
       payload.direction = form.dataset.addBaggageDirection;
       payload.flight = payload.direction === 'outbound' ? 'MU586' : 'MU583';
+      payload.submittedBy = await currentUpdater();
+      if (!payload.submittedBy) return alert('Your signed-in account could not be identified. Refresh the page and try again.');
       const button = form.querySelector('button[type="submit"]');
       button.disabled = true;
       try {
@@ -1412,6 +1543,63 @@
         await loadUnresolvedBaggage();
         showSection('open');
       } catch (error) { alert(error.message); } finally { button.disabled = false; }
+    });
+    standaloneEmailForm?.addEventListener('change', (event) => {
+      if (event.target.matches('[data-standalone-email-action]')) {
+        const isPvg = event.target.value === 'sent_open_bag_authorization_to_pvg';
+        const needsCaseDetails = ['passenger_related_pickup_or_fedex', 'baggage_transfer_status_eta', 'address_confirm_request', 'require_open_bag_authorization_pvg'].includes(event.target.value);
+        standaloneEmailForm.querySelectorAll('[data-standalone-pvg-field]').forEach((field) => {
+          field.hidden = !isPvg;
+          field.querySelectorAll('input, select').forEach((input) => { input.disabled = !isPvg; input.required = isPvg; });
+        });
+        standaloneEmailForm.querySelectorAll('[data-standalone-pickup-field]').forEach((field) => {
+          field.hidden = isPvg;
+          field.querySelectorAll('input').forEach((input) => { input.disabled = isPvg; input.required = !isPvg; });
+        });
+        standaloneEmailForm.querySelectorAll('[data-standalone-passenger-related-field]').forEach((field) => {
+          field.hidden = !needsCaseDetails;
+          field.querySelectorAll('input, select').forEach((input) => { input.disabled = !needsCaseDetails; input.required = needsCaseDetails; });
+        });
+        standaloneEmailForm.querySelectorAll('[data-standalone-eta-field]').forEach((field) => {
+          const show = event.target.value === 'baggage_transfer_status_eta';
+          field.hidden = !show;
+          field.querySelectorAll('input, select').forEach((input) => { input.disabled = !show; input.required = show; });
+        });
+      }
+      const file = event.target.closest('input[name="authorizationFile"]');
+      const filename = file?.closest('.authorization-upload')?.querySelector('[data-authorization-filename]');
+      if (filename) filename.textContent = file.files?.[0]?.name || 'Select the signed PDF';
+    });
+    standaloneEmailForm?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const button = standaloneEmailForm.querySelector('button[type="submit"]');
+      const payload = Object.fromEntries(new FormData(standaloneEmailForm).entries());
+      if (payload.emailAction === 'sent_open_bag_authorization_to_pvg') {
+        const file = standaloneEmailForm.elements.authorizationFile.files?.[0];
+        if (!file) return alert('Please attach the signed Letter of Authorization PDF.');
+        const contentBase64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result || '').split(',')[1] || '');
+          reader.onerror = () => reject(new Error('The authorization PDF could not be read.'));
+          reader.readAsDataURL(file);
+        });
+        delete payload.authorizationFile;
+        payload.attachments = [{ filename:file.name, mimeType:file.type || 'application/pdf', contentBase64, attachmentType:'letterOfAuthorization' }];
+      }
+      button.disabled = true;
+      standaloneEmailStatus.classList.remove('err');
+      standaloneEmailStatus.textContent = 'Sending...';
+      try {
+        const res = await fetch(`${apiBase}/cbs-email`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+        const data = await parseJson(res);
+        if (!res.ok) throw new Error(data.error || 'Email failed');
+        standaloneEmailStatus.textContent = 'Email sent.';
+        standaloneEmailForm.reset();
+        standaloneEmailForm.querySelector('[data-standalone-email-action]').dispatchEvent(new Event('change', { bubbles:true }));
+      } catch (error) {
+        standaloneEmailStatus.classList.add('err');
+        standaloneEmailStatus.textContent = error.message;
+      } finally { button.disabled = false; }
     });
     missingReportOutput?.addEventListener('click', async (event) => {
       const rushButton = event.target.closest('[data-create-missing-rush]');
