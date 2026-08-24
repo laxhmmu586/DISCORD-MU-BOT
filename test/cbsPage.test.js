@@ -434,17 +434,14 @@ test('standalone, Passenger Filed, and On-hand Email menus stay synchronized', (
   assert.doesNotMatch(server, /type === 'open_bag_authorization_pvg'/);
 });
 
-test('future pickup email offers an editable preset and available date in all three Email forms', () => {
+test('future pickup email requires an available date in all three Email forms', () => {
   assert.equal((page.match(/value="pickup_bags_future_available"/g) || []).length, 3);
   assert.match(page, /name="availableDate" type="date"/);
-  assert.match(page, /textarea name="emailBody"/);
-  assert.match(page, /function setFuturePickupTemplate\(form, force = false\)/);
-  assert.match(page, /expected to be available for pick-up starting \$\{available\}/);
-  assert.match(page, /预计将于\$\{available\}起可以领取/);
+  assert.doesNotMatch(page, /name="emailBody"/);
+  assert.doesNotMatch(server, /emailBody|withEditableCbsEmailBody|sanitizeCbsEmailBody/);
   assert.match(server, /function baggageFuturePickupAtLaxEmail/);
   assert.match(server, /Baggage Pick-Up Notice – WorldTracer \$\{fileNumber\}/);
   assert.match(server, /行李领取通知 – WorldTracer \$\{fileNumber\}/);
-  assert.match(server, /withEditableCbsEmailBody/);
   assert.match(page, /label\[hidden\] \{ display:none !important; \}/);
 });
 

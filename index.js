@@ -1709,11 +1709,6 @@ function baggageFuturePickupAtLaxEmail(record = {}, availableDate = '') {
   return { subject, text, html: cbsPlainTextEmailHtml(text) };
 }
 
-function withEditableCbsEmailBody(message, body) {
-  const text = sanitizeCbsEmailBody(body);
-  return text ? { ...message, text, html:cbsPlainTextEmailHtml(text) } : message;
-}
-
 function passengerRelatedPickupOrFedexEmail(record = {}) {
   const fileNumber = sanitizeCbsText(record.worldTracerFileNumber, 120) || '—';
   const chinese = cbsEmailIsChinese(record);
@@ -2287,7 +2282,7 @@ app.post('/cbs-email', async (req, res) => {
       if (emailAction === 'pickup_bags_future_available') {
         const availableDate = sanitizeCbsText(req.body?.availableDate, 40);
         if (!/^\d{4}-\d{2}-\d{2}$/.test(availableDate)) return res.status(400).json({ error:'A valid available date is required' });
-        message = withEditableCbsEmailBody(baggageFuturePickupAtLaxEmail(record, availableDate), req.body?.emailBody);
+        message = baggageFuturePickupAtLaxEmail(record, availableDate);
       } else if (emailAction === 'baggage_transfer_status_eta') {
         const estimatedArrivalTime = sanitizeCbsText(req.body?.estimatedArrivalTime, 40);
         if (!/^\d{4}-\d{2}-\d{2}$/.test(estimatedArrivalTime)) return res.status(400).json({ error:'A valid estimated arrival date is required' });
@@ -2747,7 +2742,7 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
       } else if (emailAction === 'pickup_bags_future_available') {
         const availableDate = sanitizeCbsText(req.body?.availableDate, 40);
         if (!/^\d{4}-\d{2}-\d{2}$/.test(availableDate)) return res.status(400).json({ error:'A valid available date is required' });
-        message = withEditableCbsEmailBody(baggageFuturePickupAtLaxEmail(emailRecord, availableDate), req.body?.emailBody);
+        message = baggageFuturePickupAtLaxEmail(emailRecord, availableDate);
       } else if (emailAction === 'passenger_related_pickup_or_fedex') message = passengerRelatedPickupOrFedexEmail(emailRecord);
       else if (emailAction === 'baggage_transfer_status_eta') {
         const eta = sanitizeCbsText(req.body?.estimatedArrivalTime, 40);
@@ -3033,9 +3028,9 @@ app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
       const estimatedArrivalTime = updateFields.updateEvent.fields.find(([key]) => key === 'Estimated Arrival Time')?.[1] || '';
       const availableDate = updateFields.updateEvent.fields.find(([key]) => key === 'Available Date')?.[1] || '';
       const message = pickupEmail
-        ? withEditableCbsEmailBody(baggagePickupAtLaxEmail(record), req.body?.emailBody)
+        ? baggagePickupAtLaxEmail(record)
         : (futurePickupEmail
-          ? withEditableCbsEmailBody(baggageFuturePickupAtLaxEmail(record, availableDate), req.body?.emailBody)
+          ? baggageFuturePickupAtLaxEmail(record, availableDate)
           : (passengerRelatedEmail
           ? passengerRelatedPickupOrFedexEmail(record)
           : (transferEtaEmail
