@@ -205,13 +205,15 @@ test('Add On-hand records are added to and displayed in Open Case', () => {
   assert.match(page, /await loadUnresolvedBaggage\(\);\s*showSection\('open'\);/);
 });
 
-test('On-hand excludes gate bags', () => {
-  const description = 'Passenger bags entered as inbound and not-loaded outbound bags remain here until resolved. Gate bags are not included.';
+test('On-hand excludes gate bags and Co-mail', () => {
+  const description = 'Passenger bags entered as inbound and not-loaded outbound bags remain here until resolved. Gate bags and Co-mail are not included.';
   assert.equal((page.match(new RegExp(description.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length, 2);
   assert.match(page, /<option>Gate bag<\/option>/);
-  assert.match(drive, /\.filter\(\(row\) => !isCbsGateBag\(row\)\)/);
-  assert.match(drive, /if \(isCbsGateBag\(record\)\) return \{ created: false, excluded: true \};/);
-  assert.match(drive, /\[record\.status, record\.bagType\][\s\S]*=== 'gate bag'/);
+  assert.match(page, /<option>Co-mail<\/option>/);
+  assert.match(drive, /\.filter\(\(row\) => !isCbsOnHandExcludedBag\(row\)\)/);
+  assert.match(drive, /if \(isCbsOnHandExcludedBag\(record\)\) return \{ created: false, excluded: true \};/);
+  assert.match(drive, /new Set\(\['gate bag', 'co-mail'\]\)/);
+  assert.match(drive, /\[record\.status, record\.bagType\][\s\S]*excludedTypes\.has/);
 });
 
 test('On-hand cases match the passenger case layout and support WorldTracer progress', () => {
