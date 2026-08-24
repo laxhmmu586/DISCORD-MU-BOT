@@ -430,6 +430,24 @@
     const sidebarToggle = document.querySelector('#sidebar-toggle');
     const sidebarRefresh = document.querySelector('#sidebar-refresh');
     const sidebarLogout = document.querySelector('#sidebar-logout');
+    function futurePickupDateText(value, chinese) {
+      const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (!match) return chinese ? '所选日期' : 'the selected date';
+      if (chinese) return `${Number(match[2])}月${Number(match[3])}日`;
+      return `${['January','February','March','April','May','June','July','August','September','October','November','December'][Number(match[2]) - 1]} ${Number(match[3])}`;
+    }
+    function setFuturePickupTemplate(form, force = false) {
+      const action = form?.querySelector('[name="emailAction"]')?.value;
+      const body = form?.querySelector('textarea[name="emailBody"]');
+      if (!body || action !== 'pickup_bags_future_available' || (!force && body.value)) return;
+      const language = form.querySelector('[name="language"]')?.value || form.dataset.emailLanguage || 'en';
+      const chinese = /^zh(?:-|$)/i.test(language);
+      const fileNumber = form.querySelector('[name="worldTracerFileNumber"]')?.value || form.dataset.worldTracer || 'XXXXX';
+      const available = futurePickupDateText(form.querySelector('[name="availableDate"]')?.value, chinese);
+      body.value = chinese
+        ? `尊敬的旅客：\n\n您好！\n\n我们通知您，您此前遗留在洛杉矶国际机场（LAX）的行李预计将于${available}起可以领取，届时行李将存放于 Tom Bradley International Terminal（TBIT）A68 柜台办公室。\n\n请您在以下工作时间内前来领取：\n\n领取地点：LAX TBIT A68 柜台办公室\n领取时间：上午 8:00 – 下午 2:00\n\n领取行李时，请携带有效的带照片身份证件，以便工作人员核实您的身份。\n\n感谢您的配合。\n\n此致\n中国东方航空公司`
+        : `Dear Passenger,\n\nWe would like to inform you that the baggage you previously left behind at Los Angeles International Airport (LAX) is expected to be available for pick-up starting ${available}.\n\nWorldTracer Reference Number: ${fileNumber || 'XXXXX'}\n\nYour baggage will be held at our office located at the Tom Bradley International Terminal (TBIT), Counter A68.\n\nPlease come to collect your baggage during the following hours:\n\nPick-Up Location: LAX TBIT, Counter A68 Office\nPick-Up Hours: 8:00 AM – 2:00 PM\n\nPlease bring a valid photo ID for identity verification when picking up your baggage.\n\nThank you for your cooperation.\n\nSincerely,\nChina Eastern Airlines`;
+    }
     function rushFlightRowHtml(flight = {}) {
       return `<div class="rush-flight-row" data-rush-flight-row><label><span>Date</span><input data-flight-date type="date" value="${escapeHtml(flight.flightDate || '')}" required /></label><label><span>Flight Number</span><input data-flight-number value="${escapeHtml(flight.flightNumber || '')}" required autocomplete="off" placeholder="MU586" /></label><label><span>From</span><input data-flight-from value="${escapeHtml(flight.from || '')}" required autocomplete="off" placeholder="LAX" /></label><span class="rush-route-arrow">–</span><label><span>To</span><input data-flight-to value="${escapeHtml(flight.to || '')}" required autocomplete="off" placeholder="PVG" /></label><button type="button" data-remove-rush-flight aria-label="Remove flight">Remove</button></div>`;
     }
@@ -1045,7 +1063,7 @@
       const progress = `<div class="tracking-workspace"><div>${progressHeader}<div class="tracking-history">${historyHtml}</div></div></div>`;
       const current = isClosedCase(row)
         ? `<form class="inline-update case-update" data-row-number="${escapeHtml(recordId)}" data-update-mode="reopen"><textarea name="comment" placeholder="${label('Reopen note (optional)', '重新开启备注（可选）')}"></textarea><button type="submit">${label('Reopen', '重新开启')}</button></form>`
-        : `<div><label class="tracking-stage-picker"><span>${label('Current stage', '当前阶段')}</span><select data-cbs-stage-select>${updateKeys.map((stage) => `<option value="${escapeHtml(stage.key)}" ${stage.key === active ? 'selected' : ''}>${escapeHtml(stage.text)}</option>`).join('')}</select></label><form class="inline-update case-update" data-row-number="${escapeHtml(recordId)}" data-update-mode="${escapeHtml(active)}"><div data-cbs-inline-fields>${inlineUpdateFieldsHtml(active)}</div><button type="submit" data-cbs-update-submit>${active === 'email' ? label('Send', '发送') : label('Update Tracking', '更新进度')}</button></form></div>`;
+        : `<div><label class="tracking-stage-picker"><span>${label('Current stage', '当前阶段')}</span><select data-cbs-stage-select>${updateKeys.map((stage) => `<option value="${escapeHtml(stage.key)}" ${stage.key === active ? 'selected' : ''}>${escapeHtml(stage.text)}</option>`).join('')}</select></label><form class="inline-update case-update" data-row-number="${escapeHtml(recordId)}" data-update-mode="${escapeHtml(active)}" data-email-language="${escapeHtml(row.language || 'en')}" data-world-tracer="${escapeHtml(displayWorldTracerFile(row) || '')}"><div data-cbs-inline-fields>${inlineUpdateFieldsHtml(active)}</div><button type="submit" data-cbs-update-submit>${active === 'email' ? label('Send', '发送') : label('Update Tracking', '更新进度')}</button></form></div>`;
       if (part === 'progress') return progress;
       if (part === 'current') return current;
       return `<div class="tracking-workspace">${progress}${current}</div>`;
@@ -1219,6 +1237,7 @@
         });
         return;
       }
+      if (event.target.matches('[name="availableDate"], [name="language"], [name="worldTracerFileNumber"]')) setFuturePickupTemplate(event.target.closest('form'), true);
       const shippingMethod = event.target.closest('[data-shipping-method]');
       if (shippingMethod) {
         const form = shippingMethod.closest('form');
@@ -1446,8 +1465,10 @@
             field.querySelectorAll('input, select, textarea').forEach((input) => { input.disabled = !show; input.required = show; });
           });
         });
+        setFuturePickupTemplate(form, true);
         return;
       }
+      if (event.target.matches('[name="availableDate"], [name="language"], [name="worldTracerFileNumber"]')) setFuturePickupTemplate(event.target.closest('form'), true);
       const shippingMethod = event.target.closest('[data-shipping-method]');
       if (shippingMethod) {
         const form = shippingMethod.closest('form');
@@ -1577,6 +1598,7 @@
           field.querySelectorAll('input, textarea').forEach((input) => { input.disabled = !show; input.required = show; });
         });
       }
+      if (event.target.matches('[name="availableDate"], [name="language"], [name="worldTracerFileNumber"]')) setFuturePickupTemplate(standaloneEmailForm, true);
       const file = event.target.closest('input[name="authorizationFile"]');
       const filename = file?.closest('.authorization-upload')?.querySelector('[data-authorization-filename]');
       if (filename) filename.textContent = file.files?.[0]?.name || 'Select the signed PDF';

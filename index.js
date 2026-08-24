@@ -1361,6 +1361,10 @@ function sanitizeCbsText(value, maxLength = 1000) {
   return String(value || '').replace(/[\u0000-\u001F\u007F]/g, ' ').trim().slice(0, maxLength);
 }
 
+function sanitizeCbsEmailBody(value, maxLength = 12000) {
+  return String(value || '').replace(/\r\n?/g, '\n').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '').trim().slice(0, maxLength);
+}
+
 function isValidEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
 }
@@ -2255,7 +2259,7 @@ app.post('/cbs-email', async (req, res) => {
     if (emailAction === 'contact_pax_pickup_bags') {
       const passengerEmail = sanitizeCbsText(req.body?.passengerEmail, 160).toLowerCase();
       if (!isValidEmail(passengerEmail)) return res.status(400).json({ error:'A valid passenger email is required' });
-      const message = baggagePickupAtLaxEmail({});
+      const message = withEditableCbsEmailBody(baggagePickupAtLaxEmail({}), req.body?.emailBody);
       const email = await sendCbsCaseEmail({ passengerEmail, subject:message.subject, html:message.html, text:message.text, ccOperations:false });
       return res.json({ sent:true, email });
     }
@@ -2746,7 +2750,7 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
         message = rushToLaxInformationEmail(emailRecord, worldTracerFileNumber, eta);
       } else if (emailAction === 'address_confirm_request') message = addressConfirmRequestEmail(emailRecord);
       else if (emailAction === 'require_open_bag_authorization_pvg') { message = openBagAuthorizationPvgEmail(emailRecord); authorizationForm = await getCbsOpenBagAuthorizationPdf(); }
-      else message = baggagePickupAtLaxEmail(emailRecord);
+      else message = withEditableCbsEmailBody(baggagePickupAtLaxEmail(emailRecord), req.body?.emailBody);
       const email = await sendCbsCaseEmail({ passengerEmail:emailTo, subject:message.subject, html:message.html, text:message.text, attachments, ...(authorizationForm ? { pdfBuffer:authorizationForm.buffer, filename:authorizationForm.name } : {}), ccOperations:false });
       const updatedBy = sanitizeCbsText(req.body?.updatedBy, 160);
       const resolutionTitle = ({ sent_open_bag_authorization_to_pvg:'Sent Open Bag Authorization to PVG', contact_pax_pickup_bags:'Pick-up Bags - available', pickup_bags_future_available:'Pick-up Bags - future available', passenger_related_pickup_or_fedex:'Passenger-related issue. Self-pickup or delivery at passenger’s expense.', baggage_transfer_status_eta:'Baggage transfer status update - ETA', address_confirm_request:'Address Confirm Request Email', require_open_bag_authorization_pvg:'Require Open Bag Authorization at PVG' })[emailAction];
