@@ -123,6 +123,17 @@ test('CBS email updates explain an interrupted server connection instead of show
   assert.match(page, /check the case history before trying again/);
 });
 
+test('CBS Gmail sends are not aborted by a short client timeout', () => {
+  const caseEmail = drive.match(/async function sendCbsCaseEmail[\s\S]*?\n}/)?.[0] || '';
+  assert.doesNotMatch(caseEmail, /CBS_EMAIL_TIMEOUT_MS/);
+  assert.doesNotMatch(caseEmail, /gmail\.users\.messages\.send\([\s\S]*\{ timeout \}\)/);
+});
+
+test('CBS email updates explain an interrupted server connection instead of showing Failed to fetch', () => {
+  assert.match(page, /The server connection was interrupted while sending the email/);
+  assert.match(page, /check the case history before trying again/);
+});
+
 test('CBS page uses the Lake Baggage System browser title', () => {
   assert.match(page, /<title>Lake Baggage System<\/title>/);
   assert.doesNotMatch(page, /<title>CBS Cases<\/title>/);
@@ -356,10 +367,15 @@ test('CBS Email offers baggage pickup or delivery method confirmation in all thr
   assert.match(server, /function baggagePickupDeliveryMethodConfirmationEmail\(record = \{\}\)/);
   assert.match(server, /Baggage Pick-Up \/ Delivery Method Confirmation – WorldTracer \$\{fileNumber\}/);
   assert.match(server, /行李领取 \/ 寄送方式确认 – WorldTracer \$\{fileNumber\}/);
+  assert.match(server, /Before your baggage becomes available, we would like to confirm your preferred method/);
+  assert.match(server, /Please select one of the following options/);
   assert.match(server, /You will pick up your baggage in person at Los Angeles International Airport \(LAX\)/);
-  assert.match(server, /您将自行前往洛杉矶国际机场领取行李/);
+  assert.match(server, /在您的行李可以领取或配送之前，我们希望提前确认您希望采用哪种方式接收行李/);
+  assert.match(server, /请选择以下其中一种方式/);
+  assert.match(server, /您将自行前往洛杉矶国际机场（LAX）领取行李/);
+  assert.match(server, /您希望我们将行李配送至您在行李报失记录（Report）中提供的地址/);
   assert.match(server, /If we do not receive a response from you, we will proceed with delivery/);
-  assert.match(server, /如果我们未收到您的回复，我们将默认按照您在行李报失记录（Report）中提供的地址安排邮寄/);
+  assert.match(server, /如果我们未收到您的回复，我们将默认按照您在行李报失记录（Report）中提供的地址安排配送/);
   assert.match(server, /baggagePickupDeliveryMethodConfirmationEmail\(record\)/);
   assert.match(server, /baggagePickupDeliveryMethodConfirmationEmail\(emailRecord\)/);
 });
