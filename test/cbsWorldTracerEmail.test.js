@@ -46,11 +46,15 @@ test('requested bags update emails the passenger without an operations CC', () =
 });
 
 test('Baggage transfer ETA Email action emails the passenger using its selected date', () => {
-  assert.match(server, /function rushToLaxInformationEmail/);
-  assert.match(server, /请勿回复 – 行李转运状态更新 – WorldTracer 案件编号：\$\{fileNumber\}/);
-  assert.match(server, /DO NOT REPLY – Baggage Transfer Status Update – WorldTracer Case: \$\{fileNumber\}/);
-  assert.match(server, /预计于 \$\{arrival\} 运抵洛杉矶（LAX）/);
-  assert.match(server, /expected to arrive in Los Angeles \(LAX\) on \$\{arrival\}/);
+  const helper = server.match(/function rushToLaxInformationEmail[\s\S]*?\n\}/)?.[0] || '';
+  assert.match(helper, /请勿回复 – 行李转运状态更新 – WorldTracer 案件编号：\$\{fileNumber\}/);
+  assert.match(helper, /DO NOT REPLY – Baggage Transfer Status Update – WorldTracer Case: \$\{fileNumber\}/);
+  assert.match(helper, /预计于 \$\{arrival\} 运抵洛杉矶（LAX）/);
+  assert.match(helper, /expected to arrive in Los Angeles \(LAX\) on \$\{arrival\}/);
+  assert.doesNotMatch(helper, /delivery will be arranged to the address provided in your case/);
+  assert.doesNotMatch(helper, /根据您案件中所提供的地址安排后续配送/);
+  assert.doesNotMatch(helper, /We sincerely apologize for the inconvenience/);
+  assert.doesNotMatch(helper, /感谢您的耐心与理解，并对行李延误给您带来的不便深表歉意/);
   assert.match(server, /transferEtaEmail[\s\S]*?rushToLaxInformationEmail\(record, record\.worldTracerFileNumber \|\| '', estimatedArrivalTime\)/);
   assert.match(server, /CBS baggage transfer ETA email error/);
 });
