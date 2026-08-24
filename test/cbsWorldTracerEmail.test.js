@@ -46,13 +46,31 @@ test('requested bags update emails the passenger without an operations CC', () =
 });
 
 test('Baggage transfer ETA Email action emails the passenger using its selected date', () => {
-  assert.match(server, /function rushToLaxInformationEmail/);
-  assert.match(server, /请勿回复 – 行李转运状态更新 – WorldTracer 案件编号：\$\{fileNumber\}/);
-  assert.match(server, /DO NOT REPLY – Baggage Transfer Status Update – WorldTracer Case: \$\{fileNumber\}/);
-  assert.match(server, /预计于 \$\{arrival\} 运抵洛杉矶（LAX）/);
-  assert.match(server, /expected to arrive in Los Angeles \(LAX\) on \$\{arrival\}/);
+  const helper = server.match(/function rushToLaxInformationEmail[\s\S]*?\n\}/)?.[0] || '';
+  assert.match(helper, /请勿回复 – 行李转运状态更新 – WorldTracer 案件编号：\$\{fileNumber\}/);
+  assert.match(helper, /DO NOT REPLY – Baggage Transfer Status Update – WorldTracer Case: \$\{fileNumber\}/);
+  assert.match(helper, /预计于 \$\{arrival\} 运抵洛杉矶（LAX）/);
+  assert.match(helper, /expected to arrive in Los Angeles \(LAX\) on \$\{arrival\}/);
+  assert.doesNotMatch(helper, /delivery will be arranged to the address provided in your case/);
+  assert.doesNotMatch(helper, /根据您案件中所提供的地址安排后续配送/);
+  assert.doesNotMatch(helper, /We sincerely apologize for the inconvenience/);
+  assert.doesNotMatch(helper, /感谢您的耐心与理解，并对行李延误给您带来的不便深表歉意/);
   assert.match(server, /transferEtaEmail[\s\S]*?rushToLaxInformationEmail\(record, record\.worldTracerFileNumber \|\| '', estimatedArrivalTime\)/);
   assert.match(server, /CBS baggage transfer ETA email error/);
+});
+
+test('passenger-related pickup email requires confirmation before collection or FedEx shipping', () => {
+  const helper = server.match(/function passengerRelatedPickupOrFedexEmail[\s\S]*?\n}\n\nfunction signedOpenBagAuthorizationToPvgEmail/)?.[0] || '';
+  assert.match(helper, /Baggage Collection \/ Shipping Options – WorldTracer \$\{fileNumber\}/);
+  assert.match(helper, /行李领取\/寄送方式确认 – WorldTracer \$\{fileNumber\}/);
+  assert.match(helper, /complimentary baggage delivery is not available in this case/);
+  assert.match(helper, /Please wait for our confirmation before coming to collect your baggage or arranging a FedEx pick-up/);
+  assert.match(helper, /在收到我们的确认通知之前，请勿前往机场领取行李，也请勿提前安排 FedEx 取件/);
+  assert.match(helper, /Option 2: FedEx Shipping at Passenger's Expense/);
+  assert.match(helper, /选项二：自费 FedEx 寄送/);
+  assert.match(helper, /Departures, Counter A68 Office/);
+  assert.match(helper, /font-family:Arial/);
+  assert.match(helper, /font-size:15px;line-height:1\.6;letter-spacing:0\.1px/);
 });
 
 test('DPR WorldTracer updates notify the damaged-baggage Discord channel', () => {
