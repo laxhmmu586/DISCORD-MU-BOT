@@ -101,6 +101,17 @@ test('CBS email updates explain an interrupted server connection instead of show
   assert.match(page, /check the case history before trying again/);
 });
 
+test('CBS Gmail sends are not aborted by a short client timeout', () => {
+  const caseEmail = drive.match(/async function sendCbsCaseEmail[\s\S]*?\n}/)?.[0] || '';
+  assert.doesNotMatch(caseEmail, /CBS_EMAIL_TIMEOUT_MS/);
+  assert.doesNotMatch(caseEmail, /gmail\.users\.messages\.send\([\s\S]*\{ timeout \}\)/);
+});
+
+test('CBS email updates explain an interrupted server connection instead of showing Failed to fetch', () => {
+  assert.match(page, /The server connection was interrupted while sending the email/);
+  assert.match(page, /check the case history before trying again/);
+});
+
 test('CBS page uses the Lake Baggage System browser title', () => {
   assert.match(page, /<title>Lake Baggage System<\/title>/);
   assert.doesNotMatch(page, /<title>CBS Cases<\/title>/);
@@ -328,6 +339,20 @@ test('CBS Email offers a bilingual address confirmation request', () => {
   assert.match(server, /addressConfirmRequestEmail\(record\)/);
 });
 
+test('CBS Email offers baggage pickup or delivery method confirmation in all three entries', () => {
+  assert.equal((page.match(/value="baggage_pickup_delivery_method_confirmation"/g) || []).length, 3);
+  assert.match(page, /Baggage Pick-Up \/ Delivery Method Confirmation/);
+  assert.match(server, /function baggagePickupDeliveryMethodConfirmationEmail\(record = \{\}\)/);
+  assert.match(server, /Baggage Pick-Up \/ Delivery Method Confirmation – WorldTracer \$\{fileNumber\}/);
+  assert.match(server, /行李领取 \/ 寄送方式确认 – WorldTracer \$\{fileNumber\}/);
+  assert.match(server, /You will pick up your baggage in person at Los Angeles International Airport \(LAX\)/);
+  assert.match(server, /您将自行前往洛杉矶国际机场领取行李/);
+  assert.match(server, /If we do not receive a response from you, we will proceed with delivery/);
+  assert.match(server, /如果我们未收到您的回复，我们将默认按照您在行李报失记录（Report）中提供的地址安排邮寄/);
+  assert.match(server, /baggagePickupDeliveryMethodConfirmationEmail\(record\)/);
+  assert.match(server, /baggagePickupDeliveryMethodConfirmationEmail\(emailRecord\)/);
+});
+
 test('changing Current Stage replaces the form with fields for that stage', () => {
   assert.match(page, /const controls = select\.closest\('\.case-detail-right'\) \|\| select\.closest\('\.tracking-workspace'\)/);
   assert.match(page, /form\.dataset\.updateMode = select\.value/);
@@ -442,7 +467,7 @@ test('Email can notify a Passenger Filed case that baggage is ready for LAX pick
   assert.match(server, /Your Baggage Available for Pick-Up at LAX - China Eastern Airlines/);
   assert.match(server, /Tom Bradley International Terminal（TBIT）A68 柜台办公室/);
   assert.match(server, /Pick-up Hours: 8:00 AM – 2:00 PM/);
-  assert.match(server, /pickupEmail \|\| futurePickupEmail \|\| transferEtaEmail \|\| addressConfirmEmail \|\| requirePvgAuthorizationEmail \? record\.email/);
+  assert.match(server, /pickupEmail \|\| futurePickupEmail \|\| transferEtaEmail \|\| addressConfirmEmail \|\| pickupDeliveryMethodEmail \|\| requirePvgAuthorizationEmail \? record\.email/);
   assert.match(page, /'Pick-up Bags - available', 'Pick-up Bags - future available'/);
 });
 
@@ -478,7 +503,7 @@ test('CBS removes the passenger-related pickup option from Comment and Email men
 });
 
 test('standalone, Passenger Filed, and On-hand Email menus stay synchronized', () => {
-  for (const action of ['sent_open_bag_authorization_to_pvg', 'contact_pax_pickup_bags', 'pickup_bags_future_available', 'baggage_transfer_status_eta', 'address_confirm_request', 'require_open_bag_authorization_pvg']) {
+  for (const action of ['sent_open_bag_authorization_to_pvg', 'contact_pax_pickup_bags', 'pickup_bags_future_available', 'baggage_transfer_status_eta', 'address_confirm_request', 'baggage_pickup_delivery_method_confirmation', 'require_open_bag_authorization_pvg']) {
     assert.equal((page.match(new RegExp(`value="${action}"`, 'g')) || []).length, 3, `${action} should appear in all three Email menus`);
   }
   assert.doesNotMatch(page, /\{ key:'open_bag_authorization_pvg'/);
