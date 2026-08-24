@@ -79,6 +79,17 @@ test('CBS email updates explain an interrupted server connection instead of show
   assert.match(page, /check the case history before trying again/);
 });
 
+test('CBS Gmail sends are not aborted by a short client timeout', () => {
+  const caseEmail = drive.match(/async function sendCbsCaseEmail[\s\S]*?\n}/)?.[0] || '';
+  assert.doesNotMatch(caseEmail, /CBS_EMAIL_TIMEOUT_MS/);
+  assert.doesNotMatch(caseEmail, /gmail\.users\.messages\.send\([\s\S]*\{ timeout \}\)/);
+});
+
+test('CBS email updates explain an interrupted server connection instead of showing Failed to fetch', () => {
+  assert.match(page, /The server connection was interrupted while sending the email/);
+  assert.match(page, /check the case history before trying again/);
+});
+
 test('CBS page uses the Lake Baggage System browser title', () => {
   assert.match(page, /<title>Lake Baggage System<\/title>/);
   assert.doesNotMatch(page, /<title>CBS Cases<\/title>/);
@@ -453,8 +464,8 @@ test('every CBS Email menu offers the passenger-related self-pickup or paid FedE
   assert.match(page, /Passenger-related issue\. Self-pickup or delivery at passenger’s expense\./);
   assert.match(page, /data-standalone-passenger-related-field/);
   assert.match(server, /function passengerRelatedPickupOrFedexEmail\(record = \{\}\)/);
-  assert.match(server, /Baggage Pick-Up \/ FedEx Shipping Arrangement – WorldTracer/);
-  assert.match(server, /行李领取 \/ FedEx 取件安排 – WorldTracer/);
+  assert.match(server, /Baggage Collection \/ Shipping Options – WorldTracer/);
+  assert.match(server, /行李领取\/寄送方式确认 – WorldTracer/);
   assert.match(server, /CHINA EASTERN LAXMU[\s\S]*380 World Way TBIT[\s\S]*Departures – China Eastern A68/);
   assert.match(server, /8:00 AM – 3:00 PM/);
   assert.match(server, /emailAction === 'passenger_related_pickup_or_fedex'/);
