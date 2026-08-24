@@ -50,6 +50,17 @@ test('public CBS forms do not CC the operations Gmail account', () => {
   assert.doesNotMatch(wrongBaggageEmail, /laxhmmu@gmail\.com/);
 });
 
+test('CBS Gmail sends are not aborted by a short client timeout', () => {
+  const caseEmail = drive.match(/async function sendCbsCaseEmail[\s\S]*?\n}/)?.[0] || '';
+  assert.doesNotMatch(caseEmail, /CBS_EMAIL_TIMEOUT_MS/);
+  assert.doesNotMatch(caseEmail, /gmail\.users\.messages\.send\([\s\S]*\{ timeout \}\)/);
+});
+
+test('CBS email updates explain an interrupted server connection instead of showing Failed to fetch', () => {
+  assert.match(page, /The server connection was interrupted while sending the email/);
+  assert.match(page, /check the case history before trying again/);
+});
+
 test('CBS page uses the Lake Baggage System browser title', () => {
   assert.match(page, /<title>Lake Baggage System<\/title>/);
   assert.doesNotMatch(page, /<title>CBS Cases<\/title>/);
@@ -379,20 +390,20 @@ test('expanded CBS cases show passenger email notification status', () => {
 
 
 test('Email can notify a Passenger Filed case that baggage is ready for LAX pickup', () => {
-  assert.match(page, /<option value="contact_pax_pickup_bags">Contact PAX to Pick-up Bags<\/option>/);
+  assert.match(page, /<option value="contact_pax_pickup_bags">Pick-up Bags - available<\/option>/);
   assert.match(page, /payload\.emailAction === 'sent_open_bag_authorization_to_pvg'/);
   assert.match(page, /data-pvg-email-field/);
   assert.match(server, /您的行李已可在洛杉矶机场领取 - 中国东方航空公司/);
   assert.match(server, /Your Baggage Available for Pick-Up at LAX - China Eastern Airlines/);
   assert.match(server, /Tom Bradley International Terminal（TBIT）A68 柜台办公室/);
   assert.match(server, /Pick-up Hours: 8:00 AM – 2:00 PM/);
-  assert.match(server, /pickupEmail \|\| passengerRelatedEmail \|\| transferEtaEmail \|\| addressConfirmEmail \|\| requirePvgAuthorizationEmail \? record\.email/);
-  assert.match(page, /event\.title === 'Contact PAX to Pick-up Bags'/);
+  assert.match(server, /pickupEmail \|\| futurePickupEmail \|\| passengerRelatedEmail \|\| transferEtaEmail \|\| addressConfirmEmail \|\| requirePvgAuthorizationEmail \? record\.email/);
+  assert.match(page, /'Pick-up Bags - available', 'Pick-up Bags - future available'/);
 });
 
 test('On-hand Email asks for a recipient and sends the pickup notice there', () => {
   assert.match(page, /<option value="email">Email<\/option>/);
-  assert.match(page, /if \(action === 'email'\) return .*Contact PAX to Pick-up Bags/);
+  assert.match(page, /if \(action === 'email'\) return .*Pick-up Bags - available/);
   assert.match(page, /<span>Email To<\/span><input name="emailTo" type="email"/);
   assert.match(server, /if \(action === 'email'\) \{/);
   assert.match(server, /if \(!isValidEmail\(emailTo\)\)/);
@@ -403,11 +414,11 @@ test('On-hand Email asks for a recipient and sends the pickup notice there', () 
 test('sidebar Email sends either a signed PVG authorization or a passenger pickup notice', () => {
   assert.match(page, /id="missing-report-alert"[\s\S]*id="email-tab"[\s\S]*id="baggage-chart-tab"/);
   assert.match(page, /id="standalone-email-form"/);
-  assert.match(page, /Sent Open Bag Authorization to PVG[\s\S]*Contact PAX to Pick-up Bags/);
+  assert.match(page, /Sent Open Bag Authorization to PVG[\s\S]*Pick-up Bags - available/);
   assert.match(page, /pd-bag-intl@ceair\.com[\s\S]*pd-bag-dom@ceair\.com/);
   assert.match(page, /name="authorizationFile" type="file" accept="application\/pdf,\.pdf"/);
   assert.match(page, /name="passengerEmail" type="email" placeholder="Passenger email address"/);
-  assert.match(page, /\[data-standalone-pvg-field\]\[hidden\],\[data-standalone-pickup-field\]\[hidden\],\[data-standalone-passenger-related-field\]\[hidden\],\[data-standalone-eta-field\]\[hidden\] \{ display:none; \}/);
+  assert.match(page, /label\[hidden\] \{ display:none !important; \}/);
   assert.match(page, /fetch\(`\$\{apiBase\}\/cbs-email`/);
   assert.match(server, /app\.post\('\/cbs-email'/);
   assert.match(server, /signedOpenBagAuthorizationToPvgEmail\(\{\}\)/);
@@ -427,11 +438,22 @@ test('every CBS Email menu offers the passenger-related self-pickup or paid FedE
 });
 
 test('standalone, Passenger Filed, and On-hand Email menus stay synchronized', () => {
-  for (const action of ['sent_open_bag_authorization_to_pvg', 'contact_pax_pickup_bags', 'passenger_related_pickup_or_fedex', 'baggage_transfer_status_eta', 'address_confirm_request', 'require_open_bag_authorization_pvg']) {
+  for (const action of ['sent_open_bag_authorization_to_pvg', 'contact_pax_pickup_bags', 'pickup_bags_future_available', 'passenger_related_pickup_or_fedex', 'baggage_transfer_status_eta', 'address_confirm_request', 'require_open_bag_authorization_pvg']) {
     assert.equal((page.match(new RegExp(`value="${action}"`, 'g')) || []).length, 3, `${action} should appear in all three Email menus`);
   }
   assert.doesNotMatch(page, /\{ key:'open_bag_authorization_pvg'/);
   assert.doesNotMatch(server, /type === 'open_bag_authorization_pvg'/);
+});
+
+test('future pickup email requires an available date in all three Email forms', () => {
+  assert.equal((page.match(/value="pickup_bags_future_available"/g) || []).length, 3);
+  assert.match(page, /name="availableDate" type="date"/);
+  assert.doesNotMatch(page, /name="emailBody"/);
+  assert.doesNotMatch(server, /emailBody|withEditableCbsEmailBody|sanitizeCbsEmailBody/);
+  assert.match(server, /function baggageFuturePickupAtLaxEmail/);
+  assert.match(server, /Baggage Pick-Up Notice – WorldTracer \$\{fileNumber\}/);
+  assert.match(server, /行李领取通知 – WorldTracer \$\{fileNumber\}/);
+  assert.match(page, /label\[hidden\] \{ display:none !important; \}/);
 });
 
 test('Email forms keep Language below all conditional detail fields', () => {
