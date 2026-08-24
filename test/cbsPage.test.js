@@ -283,13 +283,15 @@ test('changing Current Stage replaces the form with fields for that stage', () =
   assert.doesNotMatch(page, /input\('AKE number\?', 'akeNumber'\)/);
 });
 
-test('Current Stage comments appear in a red progress node and above Notify Passenger', () => {
+test('Current Stage comments appear in an orange progress node and above Notify Passenger', () => {
   assert.match(page, /\{ key:'comment', text:'Comment' \}/);
   assert.match(page, /if \(key === 'comment'\) return '<select name="commentPreset" data-comment-preset>/);
   assert.match(page, /Passenger-related issue\. Self-pickup or delivery at passenger’s expense\./);
   assert.match(page, /<textarea name="comment" placeholder="Write a comment" required><\/textarea>'/);
   assert.match(page, /if \(commentPreset\.value && comment\) comment\.value = commentPreset\.value/);
   assert.match(page, /tracking-chip--comment,\.tracking-chip--comment\.is-latest/);
+  assert.match(page, /tracking-chip--comment[^\n]*background:#fffaeb[^\n]*color:#b54708[^\n]*#f79009/);
+  assert.match(page, /\.case-comments \{[^\n]*border:1px solid #fedf89[^\n]*background:#fffaeb/);
   assert.match(page, /function caseCommentsHtml\(row\)/);
   assert.match(page, /class="case-comment"[\s\S]*Comment by/);
   assert.match(page, /\$\{trackingControlHtml\(row, 'current'\)\}\$\{caseCommentsHtml\(row\)\}<div class="case-detail-content">\$\{detailHtml\}<\/div>/);
