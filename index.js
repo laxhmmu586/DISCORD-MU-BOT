@@ -2113,8 +2113,12 @@ app.get('/miss-connection-report', async (req, res) => {
 
 function buildCbsUpdateFields(update = {}) {
   const type = sanitizeCbsText(update.type, 40).toLowerCase();
-  if (!['information', 'worldtracer', 'requested_bags', 'open_bag_authorization_pvg', 'email', 'rush', 'location', 'shipping', 'lost', 'closed', 'reopen'].includes(type)) return null;
+  if (!['information', 'worldtracer', 'requested_bags', 'open_bag_authorization_pvg', 'email', 'comment', 'rush', 'location', 'shipping', 'lost', 'closed', 'reopen'].includes(type)) return null;
   const comment = sanitizeCbsText(update.comment, 500);
+  if (type === 'comment') {
+    if (!comment) return null;
+    return { status:'', updateNote:`COMMENT | Comment: ${comment}`, updateEvent:{ key:'comment', title:'Comment', fields:[['Comment', comment]] } };
+  }
   if (type === 'information') {
     const informationType = sanitizeCbsText(update.informationType, 40).toLowerCase();
     const estimatedArrivalTime = sanitizeCbsText(update.estimatedArrivalTime, 40);
@@ -2183,6 +2187,32 @@ app.get('/cbs-missing-bags', async (req, res) => {
   } catch (err) {
     console.error('CBS missing bag report error:', err);
     return res.status(500).json({ error: err?.message || 'CBS missing bag report failed' });
+  }
+});
+
+app.post('/cbs-email', async (req, res) => {
+  try {
+    const emailAction = sanitizeCbsText(req.body?.emailAction, 80);
+    if (emailAction === 'sent_open_bag_authorization_to_pvg') {
+      const emailTo = sanitizeCbsText(req.body?.emailTo, 160).toLowerCase();
+      if (!['pd-bag-intl@ceair.com', 'pd-bag-dom@ceair.com'].includes(emailTo)) return res.status(400).json({ error:'A valid PVG email address is required' });
+      const attachments = sanitizeCbsAttachments(req.body?.attachments);
+      if (attachments.length !== 1 || attachments[0].mimeType !== 'application/pdf') return res.status(400).json({ error:'A signed Letter of Authorization PDF is required' });
+      const message = signedOpenBagAuthorizationToPvgEmail({});
+      const email = await sendCbsCaseEmail({ passengerEmail:emailTo, subject:message.subject, html:message.html, text:message.text, attachments, ccOperations:false });
+      return res.json({ sent:true, email });
+    }
+    if (emailAction === 'contact_pax_pickup_bags') {
+      const passengerEmail = sanitizeCbsText(req.body?.passengerEmail, 160).toLowerCase();
+      if (!isValidEmail(passengerEmail)) return res.status(400).json({ error:'A valid passenger email is required' });
+      const message = baggagePickupAtLaxEmail({});
+      const email = await sendCbsCaseEmail({ passengerEmail, subject:message.subject, html:message.html, text:message.text, ccOperations:false });
+      return res.json({ sent:true, email });
+    }
+    return res.status(400).json({ error:'A valid email subject is required' });
+  } catch (err) {
+    console.error('CBS standalone email error:', err);
+    return res.status(500).json({ error:cbsEmailErrorMessage(err) });
   }
 });
 
@@ -2613,7 +2643,7 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
       const email = await sendCbsCaseEmail({ passengerEmail:emailTo, subject:message.subject, html:message.html, text:message.text, ccOperations:false });
       const updatedBy = sanitizeCbsText(req.body?.updatedBy, 160);
       const resolutionNote = `Contact PAX to Pick-up Bags | Email To: ${emailTo}${updatedBy ? ` | Updated by: ${updatedBy}` : ''}`;
-      const result = await resolveCbsUnresolvedBaggageCase(req.params.rowNumber, action, resolutionNote);
+      const result = await resolveCbsUnresolvedBaggageCase(req.params.rowNumber, action, resolutionNote, updatedBy);
       await syncOnHandStatusToBaggage(result.record, action, req.body);
       return res.json({ ...result, email });
     }
@@ -2663,7 +2693,7 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
     }
     if (action !== 'on-hand-rush' && !resolutionNote) return res.status(400).json({ error: 'A resolution note is required' });
     if (updatedBy) resolutionNote = `${resolutionNote} | Updated by: ${updatedBy}`;
-    const result = await resolveCbsUnresolvedBaggageCase(req.params.rowNumber, action, resolutionNote);
+    const result = await resolveCbsUnresolvedBaggageCase(req.params.rowNumber, action, resolutionNote, updatedBy);
     if (result.notFound) return res.status(404).json({ error: 'Unresolved baggage case not found' });
     await syncOnHandStatusToBaggage(result.record, action, req.body);
     return res.json(result);
@@ -3249,7 +3279,7 @@ app.get(
       }
 
       // An optional flight number keeps irregular operations isolated from the
-      // normal MU586 dashboard, for example: SY MU586D/09AUG26.
+      // normal MU586 dashboard, for example: SY MU9586/09AUG26.
       const syRawMatch = rawQuery.match(
         /^SY(\+)?(?:\s+([A-Z]{2}\d{1,4}[A-Z]?))?(?:\/(\d{2}[A-Z]{3})(\d{2})?)?$/i
       );
