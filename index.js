@@ -1650,9 +1650,27 @@ function requestedBagsUpdateEmail(record, fileNumber) {
   const chinese = cbsEmailIsChinese(record);
   const subject = chinese ? `行李案件更新通知 – WorldTracer 案件编号：${fileNumber}` : `Baggage Case Update – WorldTracer Reference: ${fileNumber}`;
   const text = chinese
-    ? `尊敬的旅客：\n\n您好！\n\n我们很高兴地通知您，您的行李已找到，目前正在安排转运中。\n\nWorldTracer 案件编号：${fileNumber}\n\n我们将持续跟进行李的转运情况。如有下一步进展，包括行李抵达或后续配送安排，我们会尽快与您联系并向您提供最新信息。\n\n后续行李将按照您在行李报失记录（Report）中登记的地址安排配送。\n\n如果您需要将行李配送至 Report 中登记地址以外的其他地址，请直接回复此邮件，并提供完整的新配送地址。\n\n如无需更改配送地址，则无需回复此邮件。\n\n感谢您的耐心与理解。\n\n此致\n中国东方航空`
-    : `Dear Passenger,\n\nWe are pleased to inform you that your baggage has been located and is currently being arranged for transfer.\n\nWorldTracer Reference Number: ${fileNumber}\n\nWe will continue to monitor the transfer status of your baggage. Once further information becomes available, including its arrival and delivery arrangements, we will contact you as soon as possible with an update.\n\nYour baggage will be delivered to the address currently listed in your baggage report.\n\nIf you would like your baggage to be delivered to a different address, please reply directly to this email and provide the complete new delivery address.\n\nIf no address change is needed, no reply is required.\n\nThank you for your patience and understanding.\n\nSincerely,\nChina Eastern Airlines`;
-  return { subject, text, html: cbsPlainTextEmailHtml(text.replace(fileNumber, reference)) };
+    ? `尊敬的旅客：\n\n您好！\n\n我们很高兴地通知您，您的行李已经找到，目前已提交转运申请并正在安排转运。\n\nWorldTracer 案件编号：${fileNumber}\n\n我们将继续跟进行李的转运状态。如有进一步信息，我们会尽快与您联系并提供最新进展。\n\n感谢您的耐心与理解。\n\n此致\n中国东方航空`
+    : `Dear Passenger,\n\nWe are pleased to inform you that your baggage has been located, and a transfer request has been arranged.\n\nWorldTracer Reference Number: ${fileNumber}\n\nWe will continue to monitor the transfer status of your baggage. Once further information becomes available, we will contact you as soon as possible with an update.\n\nThank you for your patience and understanding.\n\nSincerely,\nChina Eastern Airlines`;
+  const html = cbsPlainTextEmailHtml(text.replace(fileNumber, reference))
+    .replace(chinese ? '目前已提交转运申请并正在安排转运' : 'transfer request has been arranged', (phrase) => `<strong>${phrase}</strong>`)
+    .replace(chinese ? `WorldTracer 案件编号：${reference}` : `WorldTracer Reference Number: ${reference}`, (phrase) => `<strong>${phrase}</strong>`)
+    .replace(chinese ? '中国东方航空' : 'China Eastern Airlines', (phrase) => `<strong>${phrase}</strong>`);
+  return { subject, text, html };
+}
+
+function addressConfirmRequestEmail(record = {}) {
+  const fileNumber = sanitizeCbsText(record.worldTracerFileNumber, 120) || '—';
+  const chinese = cbsEmailIsChinese(record);
+  const subject = chinese ? `行李领取 / 配送地址确认 – WorldTracer ${fileNumber}` : `Baggage Pick-Up / Delivery Address Confirmation – WorldTracer ${fileNumber}`;
+  const text = chinese
+    ? `尊敬的旅客：\n\n您好！\n\nWorldTracer 案件编号：${fileNumber}\n\n为便于我们后续安排您的行李，请确认您希望采用以下哪种方式：\n\n1. 自行领取 – 您将自行前往机场领取行李。\n2. 配送至报失记录中的地址 – 将行李配送至您在行李报失记录（Report）中提供的地址。\n3. 配送至其他地址 – 如果您希望配送至不同地址，请提供完整的收件地址及联系电话。\n\n如果我们未收到您的回复，我们将默认按照您在行李报失记录（Report）中提供的地址安排配送。\n\n感谢您的配合。\n\n此致\n中国东方航空`
+    : `Dear Passenger,\n\nWorldTracer Reference Number: ${fileNumber}\n\nTo help us make the appropriate arrangements for your baggage, please confirm which option you prefer:\n\n1. Self Pick-Up – You will pick up your baggage in person.\n2. Delivery to the Address on File – You would like the baggage delivered to the address provided in your baggage report.\n3. Delivery to a Different Address – You would like the baggage delivered to a different address. If so, please provide the complete delivery address and a contact phone number.\n\nIf we do not receive a response from you, we will proceed with delivery to the address provided in your baggage report.\n\nThank you for your cooperation.\n\nSincerely,\nChina Eastern Airlines`;
+  const emphasized = chinese
+    ? [`WorldTracer 案件编号：${fileNumber}`, '自行领取', '配送至报失记录中的地址', '配送至其他地址', '如果我们未收到您的回复，我们将默认按照您在行李报失记录（Report）中提供的地址安排配送。', '中国东方航空']
+    : [`WorldTracer Reference Number: ${fileNumber}`, 'Self Pick-Up', 'Delivery to the Address on File', 'Delivery to a Different Address', 'If we do not receive a response from you, we will proceed with delivery to the address provided in your baggage report.', 'China Eastern Airlines'];
+  const html = emphasized.reduce((body, phrase) => body.replaceAll(phrase, `<strong>${phrase}</strong>`), cbsPlainTextEmailHtml(text));
+  return { subject, text, html };
 }
 
 function openBagAuthorizationPvgEmail(record) {
@@ -2149,6 +2167,7 @@ function buildCbsUpdateFields(update = {}) {
   }
   if (type === 'email') {
     const emailAction = sanitizeCbsText(update.emailAction, 80);
+    if (emailAction === 'address_confirm_request') return { status:'Email - Address Confirm Request', updateNote:'EMAIL | Address Confirm Request Email', updateEvent:{ key:'email', title:'Address Confirm Request Email', fields:[['Email To', 'Passenger email on file']] } };
     if (emailAction === 'baggage_transfer_status_eta') {
       const estimatedArrivalTime = sanitizeCbsText(update.estimatedArrivalTime, 40);
       if (!/^\d{4}-\d{2}-\d{2}$/.test(estimatedArrivalTime)) return null;
@@ -2959,13 +2978,16 @@ app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
       const pickupEmail = updateFields.updateEvent.title === 'Contact PAX to Pick-up Bags';
       const passengerRelatedEmail = updateFields.updateEvent.title === 'Passenger-related issue. Self-pickup or delivery at passenger’s expense.';
       const transferEtaEmail = updateFields.updateEvent.title === 'Baggage transfer status update - ETA';
+      const addressConfirmEmail = updateFields.updateEvent.title === 'Address Confirm Request Email';
       const estimatedArrivalTime = updateFields.updateEvent.fields.find(([key]) => key === 'Estimated Arrival Time')?.[1] || '';
       const message = pickupEmail
         ? baggagePickupAtLaxEmail(record)
         : (passengerRelatedEmail
           ? passengerRelatedPickupOrFedexEmail(record)
-          : (transferEtaEmail ? rushToLaxInformationEmail(record, record.worldTracerFileNumber || '', estimatedArrivalTime) : signedOpenBagAuthorizationToPvgEmail(record)));
-      const emailTo = pickupEmail || passengerRelatedEmail || transferEtaEmail ? record.email : updateFields.updateEvent.fields.find(([key]) => key === 'Email To')?.[1];
+          : (transferEtaEmail
+            ? rushToLaxInformationEmail(record, record.worldTracerFileNumber || '', estimatedArrivalTime)
+            : (addressConfirmEmail ? addressConfirmRequestEmail(record) : signedOpenBagAuthorizationToPvgEmail(record))));
+      const emailTo = pickupEmail || passengerRelatedEmail || transferEtaEmail || addressConfirmEmail ? record.email : updateFields.updateEvent.fields.find(([key]) => key === 'Email To')?.[1];
       try {
         result.email = await sendCbsCaseEmail({ passengerEmail:emailTo, subject:message.subject, html:message.html, text:message.text, attachments:emailAttachments, ccOperations:false });
       } catch (mailErr) {

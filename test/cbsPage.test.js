@@ -259,6 +259,19 @@ test('CBS tracking moves the baggage transfer ETA update under Email', () => {
   assert.match(server, /updateEvent:\{ key:'email', title:'Baggage transfer status update - ETA'/);
 });
 
+test('CBS Email offers a bilingual address confirmation request', () => {
+  assert.match(page, /value="address_confirm_request">Address Confirm Request Email/);
+  assert.match(server, /function addressConfirmRequestEmail\(record = \{\}\)/);
+  assert.match(server, /Baggage Pick-Up \/ Delivery Address Confirmation – WorldTracer/);
+  assert.match(server, /行李领取 \/ 配送地址确认 – WorldTracer/);
+  assert.match(server, /Delivery to the Address on File/);
+  assert.match(server, /配送至报失记录中的地址/);
+  assert.match(server, /If we do not receive a response from you/);
+  assert.match(server, /如果我们未收到您的回复/);
+  assert.match(server, /emailAction === 'address_confirm_request'/);
+  assert.match(server, /addressConfirmRequestEmail\(record\)/);
+});
+
 test('changing Current Stage replaces the form with fields for that stage', () => {
   assert.match(page, /const controls = select\.closest\('\.case-detail-right'\) \|\| select\.closest\('\.tracking-workspace'\)/);
   assert.match(page, /form\.dataset\.updateMode = select\.value/);
@@ -370,7 +383,7 @@ test('Email can notify a Passenger Filed case that baggage is ready for LAX pick
   assert.match(server, /Your Baggage Available for Pick-Up at LAX - China Eastern Airlines/);
   assert.match(server, /Tom Bradley International Terminal（TBIT）A68 柜台办公室/);
   assert.match(server, /Pick-up Hours: 8:00 AM – 2:00 PM/);
-  assert.match(server, /pickupEmail \|\| passengerRelatedEmail \|\| transferEtaEmail \? record\.email/);
+  assert.match(server, /pickupEmail \|\| passengerRelatedEmail \|\| transferEtaEmail \|\| addressConfirmEmail \? record\.email/);
   assert.match(page, /event\.title === 'Contact PAX to Pick-up Bags'/);
 });
 
