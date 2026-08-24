@@ -2113,8 +2113,12 @@ app.get('/miss-connection-report', async (req, res) => {
 
 function buildCbsUpdateFields(update = {}) {
   const type = sanitizeCbsText(update.type, 40).toLowerCase();
-  if (!['information', 'worldtracer', 'requested_bags', 'open_bag_authorization_pvg', 'email', 'rush', 'location', 'shipping', 'lost', 'closed', 'reopen'].includes(type)) return null;
+  if (!['information', 'worldtracer', 'requested_bags', 'open_bag_authorization_pvg', 'email', 'comment', 'rush', 'location', 'shipping', 'lost', 'closed', 'reopen'].includes(type)) return null;
   const comment = sanitizeCbsText(update.comment, 500);
+  if (type === 'comment') {
+    if (!comment) return null;
+    return { status:'', updateNote:`COMMENT | Comment: ${comment}`, updateEvent:{ key:'comment', title:'Comment', fields:[['Comment', comment]] } };
+  }
   if (type === 'information') {
     const informationType = sanitizeCbsText(update.informationType, 40).toLowerCase();
     const estimatedArrivalTime = sanitizeCbsText(update.estimatedArrivalTime, 40);

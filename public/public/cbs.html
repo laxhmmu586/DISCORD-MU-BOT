@@ -92,6 +92,10 @@
     .passenger-notify-check { display:grid; place-items:center; width:18px; height:18px; border:2px solid #d0d5dd; border-radius:999px; color:transparent; font-size:12px; line-height:1; }
     .passenger-notify-item.is-sent { color:#075d38; }
     .passenger-notify-item.is-sent .passenger-notify-check { border-color:#12b76a; background:#12b76a; color:#fff; }
+    .case-comments { display:grid; gap:10px; padding:16px; border:1px solid #f3a7a7; border-radius:16px; background:#fff5f5; box-shadow:0 8px 20px rgba(180,35,24,.08); }
+    .case-comments h3 { margin:0; color:#b42318; font-size:15px; }
+    .case-comment { margin:0; color:#b42318; font-size:13px; font-weight:800; white-space:pre-wrap; }
+    .case-comment small { display:block; margin-top:5px; color:#d92d20; font-weight:750; }
     .sheet-detail-grid { display:grid; grid-template-columns:repeat(4,minmax(160px,1fr)); gap:8px 14px; }
     .sheet-detail-grid p { margin:0; min-width:0; color:#172033; }
     .sheet-detail-grid strong { color:#475467; }
@@ -135,6 +139,10 @@
     .tracking-chip--email,.tracking-chip--email.is-latest { background:#f4edff; color:#6941c6; box-shadow:inset 0 0 0 2px #b692f6; }
     .tracking-chip--email .tracking-step-number,.tracking-chip--email.is-latest .tracking-step-number { background:#7f56d9; }
     .tracking-chip--email.is-latest::before { background:#7f56d9; }
+    .tracking-chip--comment,.tracking-chip--comment.is-latest { background:#fff1f0; color:#b42318; box-shadow:inset 0 0 0 2px #f97066; }
+    .tracking-chip--comment .tracking-step-number,.tracking-chip--comment.is-latest .tracking-step-number { background:#d92d20; }
+    .tracking-chip--comment.is-latest::before { background:#d92d20; }
+    .tracking-chip--comment small,.tracking-chip--comment .tracking-chip-detail { color:#b42318; }
     .baggage-search-card { margin:14px 0 0; padding:16px; border:1px solid var(--line); border-radius:18px; background:#fbfdff; display:grid; gap:10px; }
     .baggage-search-card h3 { margin:0; color:var(--brand); }
     .baggage-search-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px 18px; }
@@ -603,6 +611,7 @@
       { key:'requested_bags', text:'Requested Bags' },
       { key:'open_bag_authorization_pvg', text:'Require Open Bag Authorization at PVG' },
       { key:'email', text:'Email' },
+      { key:'comment', text:'Comment' },
       { key:'rush', text:'Rush' },
       { key:'location', text:'Location' },
       { key:'shipping', text:'Shipping' },
@@ -673,6 +682,7 @@
       if (/requested[\s_-]*bags?/.test(text)) return 'requested_bags';
       if (/open[\s_-]*bag[\s_-]*authorization|authorization.*pvg/.test(text)) return 'open_bag_authorization_pvg';
       if (/sent open bag authorization to pvg|^email$/.test(text)) return 'email';
+      if (/comment/.test(text)) return 'comment';
       if (/information/.test(text)) return 'information';
       if (/update/.test(text)) return 'update';
       return 'create';
@@ -733,6 +743,15 @@
       return `<aside class="passenger-notify"><h3>${label('Notify Passenger', '旅客邮件通知')}</h3><ul class="passenger-notify-list">${notifications.map(([, text]) => {
         return `<li class="passenger-notify-item is-sent"><span class="passenger-notify-check" aria-hidden="true">✓</span><span>${escapeHtml(text)}</span></li>`;
       }).join('')}</ul></aside>`;
+    }
+    function caseCommentsHtml(row) {
+      const comments = parseUpdateNoteEvents(row).filter((event) => event.key === 'comment');
+      if (!comments.length) return '';
+      return `<section class="case-comments"><h3>${label('Comment', '备注')}</h3>${comments.slice().reverse().map((event) => {
+        const comment = (event.fields || []).find(([key]) => /^comment$/i.test(key))?.[1] || event.note || '';
+        const time = formatEventTime(event.at);
+        return `<p class="case-comment">${escapeHtml(comment)}<small>${label('Comment by', '留言人')}: ${escapeHtml(updaterDisplayName(event.by || 'System'))}${time.date ? ` · ${escapeHtml(time.date)} ${escapeHtml(time.time)}` : ''}</small></p>`;
+      }).join('')}</section>`;
     }
     function detailRows(row) {
       const caseType = inferCaseType(row);
@@ -963,6 +982,7 @@
       if (key === 'requested_bags') return input('From which station?', 'fromStation');
       if (key === 'open_bag_authorization_pvg') return '<p class="muted wide">The authorization form will be attached and emailed to the passenger.</p>';
       if (key === 'email') return '<select name="emailAction" data-email-action required><option value="sent_open_bag_authorization_to_pvg">Sent Open Bag Authorization to PVG</option><option value="contact_pax_pickup_bags">Contact PAX to Pick-up Bags</option></select><label class="email-recipient" data-pvg-email-field><span>Email To</span><select name="emailTo" required><option value="pd-bag-intl@ceair.com">pd-bag-intl@ceair.com</option><option value="pd-bag-dom@ceair.com">pd-bag-dom@ceair.com</option></select></label><label class="authorization-upload" data-pvg-email-field><input name="authorizationFile" type="file" accept="application/pdf,.pdf" required /><span class="authorization-upload-plus">+</span><span class="authorization-upload-title">Letter of Authorization</span><small data-authorization-filename>Select the signed PDF</small></label>';
+      if (key === 'comment') return '<textarea name="comment" placeholder="Write a comment" required></textarea>';
       if (key === 'rush') return [input('Rush tag number', 'rushTagNumber'), input('Rush to where?', 'rushToWhere'), input('World Tracer file # (optional)', 'worldTracerFileNumber', false), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
       if (key === 'location') return [input('Bag location', 'location'), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
       if (key === 'shipping') return [shippingMethodSelect, shippingTrackingInput, shippingAddressInput, shippingBdoInput, '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
@@ -977,6 +997,7 @@
       if (current === 'rush') return 'location';
       if (current === 'location') return 'shipping';
       if (current === 'shipping') return 'closed';
+      if (current === 'comment') return 'comment';
       return 'worldtracer';
     }
     function trackingControlHtml(row, part = 'all') {
@@ -1039,7 +1060,7 @@
         const details = detailRows(row).filter(([, value]) => hasValue(value));
         const detailHtml = isOriginalFormCase(row) ? fullPassengerFileHtml(row) : (details.length ? `<div class="sheet-detail-grid">${details.map(([key, value]) => `<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(renderValue(value))}</p>`).join('')}</div>` : `<p class="muted">${label('No extra details.', '没有更多详情。')}</p>`);
         const isExpanded = expandedCases.has(detailKey);
-        return `<tr class="case-summary-row${closedClass}" data-toggle-case="${escapeHtml(detailKey)}" aria-expanded="${isExpanded ? 'true' : 'false'}"><td class="sheet-meta">${escapeHtml(displayWorldTracerFile(row) || '-')}</td><td class="sheet-meta">${escapeHtml(caseType || '-')}</td><td class="sheet-meta"><span class="bag-tag-value">${escapeHtml(displayBagTag(row) || '-')}</span></td></tr><tr class="case-detail-row${closedClass}" data-detail-case="${escapeHtml(detailKey)}" ${isExpanded ? '' : 'hidden'}><td colspan="3"><div class="case-detail-layout"><div class="case-progress-column">${trackingControlHtml(row, 'progress')}</div><div class="case-detail-right">${trackingControlHtml(row, 'current')}<div class="case-detail-content">${detailHtml}</div>${passengerNotificationHtml(row)}</div></div></td></tr>`;
+        return `<tr class="case-summary-row${closedClass}" data-toggle-case="${escapeHtml(detailKey)}" aria-expanded="${isExpanded ? 'true' : 'false'}"><td class="sheet-meta">${escapeHtml(displayWorldTracerFile(row) || '-')}</td><td class="sheet-meta">${escapeHtml(caseType || '-')}</td><td class="sheet-meta"><span class="bag-tag-value">${escapeHtml(displayBagTag(row) || '-')}</span></td></tr><tr class="case-detail-row${closedClass}" data-detail-case="${escapeHtml(detailKey)}" ${isExpanded ? '' : 'hidden'}><td colspan="3"><div class="case-detail-layout"><div class="case-progress-column">${trackingControlHtml(row, 'progress')}</div><div class="case-detail-right">${trackingControlHtml(row, 'current')}<div class="case-detail-content">${detailHtml}</div>${caseCommentsHtml(row)}${passengerNotificationHtml(row)}</div></div></td></tr>`;
       }).join('')}</tbody></table></div>${baggageHtml}`;
       requestAnimationFrame(syncCaseProgressHeights);
     }

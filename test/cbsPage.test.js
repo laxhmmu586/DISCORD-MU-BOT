@@ -267,6 +267,16 @@ test('changing Current Stage replaces the form with fields for that stage', () =
   assert.doesNotMatch(page, /input\('AKE number\?', 'akeNumber'\)/);
 });
 
+test('Current Stage comments appear in a red progress node and above Notify Passenger', () => {
+  assert.match(page, /\{ key:'comment', text:'Comment' \}/);
+  assert.match(page, /if \(key === 'comment'\) return '<textarea name="comment" placeholder="Write a comment" required><\/textarea>'/);
+  assert.match(page, /tracking-chip--comment,\.tracking-chip--comment\.is-latest/);
+  assert.match(page, /function caseCommentsHtml\(row\)/);
+  assert.match(page, /class="case-comment"[\s\S]*Comment by/);
+  assert.match(page, /\$\{caseCommentsHtml\(row\)\}\$\{passengerNotificationHtml\(row\)\}/);
+  assert.match(server, /updateEvent:\{ key:'comment', title:'Comment', fields:\[\['Comment', comment\]\] \}/);
+});
+
 test('case progress uses a vertical left column with case controls and details on the right', () => {
   assert.match(page, /\.case-detail-layout \{[^}]*grid-template-columns:minmax\(280px,360px\) minmax\(0,1fr\)/);
   assert.match(page, /\.tracking-history \{ display:grid/);
@@ -281,7 +291,7 @@ test('case progress uses a vertical left column with case controls and details o
   assert.match(page, /case-detail-right/);
   assert.match(page, /trackingControlHtml\(row, 'progress'\)/);
   assert.match(page, /trackingControlHtml\(row, 'current'\)/);
-  assert.match(page, /<div class="case-detail-content">\$\{detailHtml\}<\/div>\$\{passengerNotificationHtml\(row\)\}/);
+  assert.match(page, /<div class="case-detail-content">\$\{detailHtml\}<\/div>\$\{caseCommentsHtml\(row\)\}\$\{passengerNotificationHtml\(row\)\}/);
 });
 
 test('CBS tracking offers a Lost update with no extra fields', () => {
