@@ -74,6 +74,7 @@ const {
   reopenCbsUnresolvedBaggageCase,
   getCbsCases,
   updateCbsCase,
+  deleteCbsCaseComment,
   getCbsMissingBagReports,
   markCbsMissingBagCase,
   acknowledgeCbsMissingBag,
@@ -3110,6 +3111,22 @@ app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
   } catch (err) {
     console.error('CBS case update error:', err);
     return res.status(500).json({ error: err?.message || 'CBS case update failed' });
+  }
+});
+
+app.post('/cbs-cases/:rowNumber/comments/delete', async (req, res) => {
+  try {
+    const at = sanitizeCbsText(req.body?.at, 40);
+    const comment = sanitizeCbsText(req.body?.comment, 500);
+    if (!at || !comment) return res.status(400).json({ error:'A comment identifier is required' });
+    const result = await deleteCbsCaseComment(req.params.rowNumber, { at, comment });
+    if (result.notFound) return res.status(404).json({ error:'Case not found' });
+    if (result.commentNotFound) return res.status(404).json({ error:'Comment not found or already deleted' });
+    if (result.invalid) return res.status(400).json({ error:'A valid comment is required' });
+    return res.json(result);
+  } catch (err) {
+    console.error('CBS comment delete error:', err);
+    return res.status(500).json({ error:err?.message || 'Comment delete failed' });
   }
 });
 

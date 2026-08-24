@@ -112,6 +112,17 @@ test('CBS email updates explain an interrupted server connection instead of show
   assert.match(page, /check the case history before trying again/);
 });
 
+test('CBS Gmail sends are not aborted by a short client timeout', () => {
+  const caseEmail = drive.match(/async function sendCbsCaseEmail[\s\S]*?\n}/)?.[0] || '';
+  assert.doesNotMatch(caseEmail, /CBS_EMAIL_TIMEOUT_MS/);
+  assert.doesNotMatch(caseEmail, /gmail\.users\.messages\.send\([\s\S]*\{ timeout \}\)/);
+});
+
+test('CBS email updates explain an interrupted server connection instead of showing Failed to fetch', () => {
+  assert.match(page, /The server connection was interrupted while sending the email/);
+  assert.match(page, /check the case history before trying again/);
+});
+
 test('CBS page uses the Lake Baggage System browser title', () => {
   assert.match(page, /<title>Lake Baggage System<\/title>/);
   assert.doesNotMatch(page, /<title>CBS Cases<\/title>/);
@@ -378,6 +389,20 @@ test('Current Stage comments appear in an orange progress node and above Notify 
   assert.match(page, /class="case-comment"[\s\S]*Comment by/);
   assert.match(page, /\$\{trackingControlHtml\(row, 'current'\)\}\$\{caseCommentsHtml\(row\)\}<div class="case-detail-content">\$\{detailHtml\}<\/div>/);
   assert.match(server, /updateEvent:\{ key:'comment', title:'Comment', fields:\[\['Comment', comment\]\] \}/);
+});
+
+test('each Passenger Filed comment can be deleted independently', () => {
+  assert.match(page, /data-delete-case-comment/);
+  assert.match(page, /data-comment-at="\$\{escapeHtml\(event\.at \|\| ''\)\}"/);
+  assert.match(page, /data-comment-text="\$\{escapeHtml\(comment\)\}"/);
+  assert.match(page, /Delete this comment\?/);
+  assert.match(page, /\/cbs-cases\/\$\{encodeURIComponent\(caseId\)\}\/comments\/delete/);
+  assert.match(server, /app\.post\('\/cbs-cases\/:rowNumber\/comments\/delete'/);
+  assert.match(server, /deleteCbsCaseComment\(req\.params\.rowNumber, \{ at, comment \}\)/);
+  assert.match(drive, /async function deleteCbsCaseComment\(rowNumber, target = \{\}\)/);
+  assert.match(drive, /event\.key === 'comment' && event\.at === targetAt && comment === targetComment/);
+  assert.match(drive, /currentEvents\.filter\(\(_, index\) => index !== eventIndex\)/);
+  assert.match(drive, /saveCbsFirestoreRecord\('cbsCases', next\)/);
 });
 
 test('case progress uses a vertical left column with case controls and details on the right', () => {

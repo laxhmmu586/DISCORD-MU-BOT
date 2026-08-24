@@ -96,6 +96,9 @@
     .case-comments h3 { margin:0; color:#b54708; font-size:15px; }
     .case-comment { margin:0; color:#b54708; font-size:13px; font-weight:800; white-space:pre-wrap; }
     .case-comment small { display:block; margin-top:5px; color:#dc6803; font-weight:750; }
+    .case-comment-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+    .case-comment-delete { flex:0 0 auto; min-height:30px; padding:5px 10px; border:1px solid #fda29b; border-radius:9px; background:#fff; color:#b42318; font-size:12px; font-weight:800; }
+    .case-comment-delete:hover { background:#fef3f2; }
     .sheet-detail-grid { display:grid; grid-template-columns:repeat(4,minmax(160px,1fr)); gap:8px 14px; }
     .sheet-detail-grid p { margin:0; min-width:0; color:#172033; }
     .sheet-detail-grid strong { color:#475467; }
@@ -776,7 +779,8 @@
       return `<section class="case-comments"><h3>${label('Comment', '备注')}</h3>${comments.slice().reverse().map((event) => {
         const comment = (event.fields || []).find(([key]) => /^comment$/i.test(key))?.[1] || event.note || '';
         const time = formatEventTime(event.at);
-        return `<p class="case-comment">${escapeHtml(comment)}<small>${label('Comment by', '留言人')}: ${escapeHtml(updaterDisplayName(event.by || 'System'))}${time.date ? ` · ${escapeHtml(time.date)} ${escapeHtml(time.time)}` : ''}</small></p>`;
+        const caseId = row.rowNumber || row.firestoreId || '';
+        return `<div class="case-comment"><div class="case-comment-head"><span>${escapeHtml(comment)}</span><button class="case-comment-delete" type="button" data-delete-case-comment data-case-id="${escapeHtml(caseId)}" data-comment-at="${escapeHtml(event.at || '')}" data-comment-text="${escapeHtml(comment)}">${label('Delete', '删除')}</button></div><small>${label('Comment by', '留言人')}: ${escapeHtml(updaterDisplayName(event.by || 'System'))}${time.date ? ` · ${escapeHtml(time.date)} ${escapeHtml(time.time)}` : ''}</small></div>`;
       }).join('')}</section>`;
     }
     function detailRows(row) {
@@ -1277,6 +1281,23 @@
       if (filename) filename.textContent = file.files?.[0]?.name || 'Select the signed file';
     });
     casesOutput.addEventListener('click', async (event) => {
+      const deleteCommentButton = event.target.closest('[data-delete-case-comment]');
+      if (deleteCommentButton) {
+        const comment = deleteCommentButton.dataset.commentText || '';
+        if (!confirm(`${label('Delete this comment?', '确认删除这条备注？')}\n\n${comment}`)) return;
+        deleteCommentButton.disabled = true;
+        try {
+          const caseId = deleteCommentButton.dataset.caseId || '';
+          const res = await fetch(`${apiBase}/cbs-cases/${encodeURIComponent(caseId)}/comments/delete`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ at:deleteCommentButton.dataset.commentAt || '', comment }) });
+          const data = await parseJson(res);
+          if (!res.ok) throw new Error(data.error || 'Comment delete failed');
+          await loadCases();
+        } catch (error) {
+          alert(error.message);
+          deleteCommentButton.disabled = false;
+        }
+        return;
+      }
       const createBaggageButton = event.target.closest('[data-create-baggage-case]');
       if (createBaggageButton) {
         const bagTag = createBaggageButton.dataset.createBaggageCase;
