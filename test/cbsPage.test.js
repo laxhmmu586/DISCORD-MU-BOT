@@ -407,7 +407,7 @@ test('sidebar Email sends either a signed PVG authorization or a passenger picku
   assert.match(page, /pd-bag-intl@ceair\.com[\s\S]*pd-bag-dom@ceair\.com/);
   assert.match(page, /name="authorizationFile" type="file" accept="application\/pdf,\.pdf"/);
   assert.match(page, /name="passengerEmail" type="email" placeholder="Passenger email address"/);
-  assert.match(page, /\[data-standalone-pvg-field\]\[hidden\],\[data-standalone-pickup-field\]\[hidden\],\[data-standalone-passenger-related-field\]\[hidden\],\[data-standalone-eta-field\]\[hidden\] \{ display:none; \}/);
+  assert.match(page, /label\[hidden\] \{ display:none !important; \}/);
   assert.match(page, /fetch\(`\$\{apiBase\}\/cbs-email`/);
   assert.match(server, /app\.post\('\/cbs-email'/);
   assert.match(server, /signedOpenBagAuthorizationToPvgEmail\(\{\}\)/);
@@ -445,6 +445,7 @@ test('future pickup email offers an editable preset and available date in all th
   assert.match(server, /Baggage Pick-Up Notice – WorldTracer \$\{fileNumber\}/);
   assert.match(server, /行李领取通知 – WorldTracer \$\{fileNumber\}/);
   assert.match(server, /withEditableCbsEmailBody/);
+  assert.match(page, /label\[hidden\] \{ display:none !important; \}/);
 });
 
 test('Email forms keep Language below all conditional detail fields', () => {
