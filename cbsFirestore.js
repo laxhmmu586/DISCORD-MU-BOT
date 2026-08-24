@@ -13,7 +13,6 @@ const auth = new google.auth.GoogleAuth({
 });
 
 const baseUrl = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/databases/${encodeURIComponent(databaseId)}/documents`;
-const migrations = new Map();
 // Firestore rejects an array that directly contains another array. CBS update
 // events intentionally use two-dimensional arrays for label/value fields, so
 // wrap nested arrays in a map while encoding and transparently unwrap them on
@@ -134,25 +133,4 @@ async function upsertMany(collection, records = []) {
   return records.map((record) => ({ ...record, firestoreId:documentId(record) }));
 }
 
-async function ensureMigrated(collection, legacyLoader) {
-  if (!enabled) return legacyLoader();
-  if (!migrations.has(collection)) migrations.set(collection, (async () => {
-    const marker = await get('_cbsMigrations', collection);
-    if (marker?.completedAt) return;
-    const legacy = await legacyLoader();
-    const rows = Array.isArray(legacy) ? legacy : (legacy?.rows || []);
-    await upsertMany(collection, rows);
-    await upsert('_cbsMigrations', { firestoreId:collection, collection, rowCount:rows.length, completedAt:new Date().toISOString() });
-  })());
-  try {
-    await migrations.get(collection);
-  } catch (error) {
-    migrations.delete(collection);
-    throw error;
-  }
-  // Cache only the one-time migration work, never the collection snapshot.
-  // Newly-created and updated cases must be fetched on every subsequent load.
-  return list(collection);
-}
-
-module.exports = { enabled, projectId, databaseId, list, get, upsert, upsertMany, ensureMigrated, _test:{ encodeValue, decodeValue, documentId, dedupeRecords } };
+module.exports = { enabled, projectId, databaseId, list, get, upsert, upsertMany, _test:{ encodeValue, decodeValue, documentId, dedupeRecords } };
