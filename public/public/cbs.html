@@ -982,7 +982,7 @@
       if (key === 'requested_bags') return input('From which station?', 'fromStation');
       if (key === 'open_bag_authorization_pvg') return '<p class="muted wide">The authorization form will be attached and emailed to the passenger.</p>';
       if (key === 'email') return '<select name="emailAction" data-email-action required><option value="sent_open_bag_authorization_to_pvg">Sent Open Bag Authorization to PVG</option><option value="contact_pax_pickup_bags">Contact PAX to Pick-up Bags</option></select><label class="email-recipient" data-pvg-email-field><span>Email To</span><select name="emailTo" required><option value="pd-bag-intl@ceair.com">pd-bag-intl@ceair.com</option><option value="pd-bag-dom@ceair.com">pd-bag-dom@ceair.com</option></select></label><label class="authorization-upload" data-pvg-email-field><input name="authorizationFile" type="file" accept="application/pdf,.pdf" required /><span class="authorization-upload-plus">+</span><span class="authorization-upload-title">Letter of Authorization</span><small data-authorization-filename>Select the signed PDF</small></label>';
-      if (key === 'comment') return '<textarea name="comment" placeholder="Write a comment" required></textarea>';
+      if (key === 'comment') return '<select name="commentPreset" data-comment-preset><option value="">Select a comment or enter your own below</option><option value="Passenger-related issue. Self-pickup or delivery at passenger’s expense.">Passenger-related issue. Self-pickup or delivery at passenger’s expense.</option></select><textarea name="comment" placeholder="Write a comment" required></textarea>';
       if (key === 'rush') return [input('Rush tag number', 'rushTagNumber'), input('Rush to where?', 'rushToWhere'), input('World Tracer file # (optional)', 'worldTracerFileNumber', false), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
       if (key === 'location') return [input('Bag location', 'location'), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
       if (key === 'shipping') return [shippingMethodSelect, shippingTrackingInput, shippingAddressInput, shippingBdoInput, '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
@@ -1060,7 +1060,7 @@
         const details = detailRows(row).filter(([, value]) => hasValue(value));
         const detailHtml = isOriginalFormCase(row) ? fullPassengerFileHtml(row) : (details.length ? `<div class="sheet-detail-grid">${details.map(([key, value]) => `<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(renderValue(value))}</p>`).join('')}</div>` : `<p class="muted">${label('No extra details.', '没有更多详情。')}</p>`);
         const isExpanded = expandedCases.has(detailKey);
-        return `<tr class="case-summary-row${closedClass}" data-toggle-case="${escapeHtml(detailKey)}" aria-expanded="${isExpanded ? 'true' : 'false'}"><td class="sheet-meta">${escapeHtml(displayWorldTracerFile(row) || '-')}</td><td class="sheet-meta">${escapeHtml(caseType || '-')}</td><td class="sheet-meta"><span class="bag-tag-value">${escapeHtml(displayBagTag(row) || '-')}</span></td></tr><tr class="case-detail-row${closedClass}" data-detail-case="${escapeHtml(detailKey)}" ${isExpanded ? '' : 'hidden'}><td colspan="3"><div class="case-detail-layout"><div class="case-progress-column">${trackingControlHtml(row, 'progress')}</div><div class="case-detail-right">${trackingControlHtml(row, 'current')}<div class="case-detail-content">${detailHtml}</div>${caseCommentsHtml(row)}${passengerNotificationHtml(row)}</div></div></td></tr>`;
+        return `<tr class="case-summary-row${closedClass}" data-toggle-case="${escapeHtml(detailKey)}" aria-expanded="${isExpanded ? 'true' : 'false'}"><td class="sheet-meta">${escapeHtml(displayWorldTracerFile(row) || '-')}</td><td class="sheet-meta">${escapeHtml(caseType || '-')}</td><td class="sheet-meta"><span class="bag-tag-value">${escapeHtml(displayBagTag(row) || '-')}</span></td></tr><tr class="case-detail-row${closedClass}" data-detail-case="${escapeHtml(detailKey)}" ${isExpanded ? '' : 'hidden'}><td colspan="3"><div class="case-detail-layout"><div class="case-progress-column">${trackingControlHtml(row, 'progress')}</div><div class="case-detail-right">${trackingControlHtml(row, 'current')}${caseCommentsHtml(row)}<div class="case-detail-content">${detailHtml}</div>${passengerNotificationHtml(row)}</div></div></td></tr>`;
       }).join('')}</tbody></table></div>${baggageHtml}`;
       requestAnimationFrame(syncCaseProgressHeights);
     }
@@ -1175,6 +1175,12 @@
       await updateCase(updateForm.dataset.rowNumber, payload, updateForm.dataset.caseSource || 'pir');
     });
     casesOutput.addEventListener('change', (event) => {
+      const commentPreset = event.target.closest('[data-comment-preset]');
+      if (commentPreset) {
+        const comment = commentPreset.closest('form')?.querySelector('textarea[name="comment"]');
+        if (commentPreset.value && comment) comment.value = commentPreset.value;
+        return;
+      }
       const emailAction = event.target.closest('[data-email-action]');
       if (emailAction) {
         emailAction.closest('form').querySelectorAll('[data-pvg-email-field]').forEach((field) => {
