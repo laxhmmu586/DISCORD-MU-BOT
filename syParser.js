@@ -320,7 +320,8 @@ function sameOperationalFlightNo(left, right) {
 }
 
 function isIrregularOperationalFlight(flightNo) {
-  return /[A-Z]$/.test(normalizeOperationalFlightNo(flightNo));
+  const normalized = normalizeOperationalFlightNo(flightNo);
+  return normalized === 'MU9586' || /[A-Z]$/.test(normalized);
 }
 
 function sectionMatchesFlightOperationDate(sectionObj, targetYmd, flightNo) {
@@ -331,8 +332,8 @@ function sectionMatchesFlightOperationDate(sectionObj, targetYmd, flightNo) {
 
 function matchesSyFlightRecord(recordFlightNo, recordFlightDate, syInfo) {
   if (!sameOperationalFlightNo(recordFlightNo, syInfo?.flightNo)) return false;
-  // A D-suffixed recovery flight can retain the original scheduled date in
-  // SY while subsequent PR/PD entries are stamped with the operating date.
+  // A recovery flight can retain the original scheduled date in SY while
+  // subsequent PR/PD entries are stamped with the operating date.
   return isIrregularOperationalFlight(syInfo?.flightNo)
     || String(recordFlightDate || '').toUpperCase() === String(syInfo?.flightDate || '').toUpperCase();
 }

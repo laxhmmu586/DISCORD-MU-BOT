@@ -27,10 +27,10 @@ test('CBS reads required passenger details from their fixed sheet columns', () =
   assert.match(drive, /row\.bdo = values\[37\]/);
 });
 
-test('Rush to LAX information updates persist their ETA in column AK', () => {
+test('Baggage transfer ETA email updates persist their ETA in column AK', () => {
   assert.match(drive, /'Estimated Arrival Time'/);
   assert.match(drive, /record\.estimatedArrivalTime \|\| ''/);
-  assert.match(drive, /informationFields\.get\('Estimated Arrival Time'\)/);
+  assert.match(drive, /new Map\(update\.updateEvent\?\.fields \|\| \[\]\)\.get\('Estimated Arrival Time'\)/);
   assert.match(drive, /!A:AL/);
 });
 
