@@ -59,6 +59,20 @@ test('Baggage transfer ETA Email action emails the passenger using its selected 
   assert.match(server, /CBS baggage transfer ETA email error/);
 });
 
+test('passenger-related pickup email requires confirmation before collection or FedEx shipping', () => {
+  const helper = server.match(/function passengerRelatedPickupOrFedexEmail[\s\S]*?\n}\n\nfunction signedOpenBagAuthorizationToPvgEmail/)?.[0] || '';
+  assert.match(helper, /Baggage Collection \/ Shipping Options – WorldTracer \$\{fileNumber\}/);
+  assert.match(helper, /行李领取\/寄送方式确认 – WorldTracer \$\{fileNumber\}/);
+  assert.match(helper, /complimentary baggage delivery is not available in this case/);
+  assert.match(helper, /Please wait for our confirmation before coming to collect your baggage or arranging a FedEx pick-up/);
+  assert.match(helper, /在收到我们的确认通知之前，请勿前往机场领取行李，也请勿提前安排 FedEx 取件/);
+  assert.match(helper, /Option 2: FedEx Shipping at Passenger's Expense/);
+  assert.match(helper, /选项二：自费 FedEx 寄送/);
+  assert.match(helper, /Departures, Counter A68 Office/);
+  assert.match(helper, /font-family:Arial/);
+  assert.match(helper, /font-size:15px;line-height:1\.6;letter-spacing:0\.1px/);
+});
+
 test('DPR WorldTracer updates notify the damaged-baggage Discord channel', () => {
   assert.match(server, /CBS_DAMAGED_DISCORD_CHANNEL_ID[^\n]*'1527344986075693167'/);
   assert.match(server, /CBS_DPR_WORLDTRACER_DISCORD_ROLE_ID[^\n]*'1268619386948685877'/);
