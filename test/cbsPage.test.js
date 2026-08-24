@@ -68,6 +68,17 @@ test('CBS email updates explain an interrupted server connection instead of show
   assert.match(page, /check the case history before trying again/);
 });
 
+test('CBS Gmail sends are not aborted by a short client timeout', () => {
+  const caseEmail = drive.match(/async function sendCbsCaseEmail[\s\S]*?\n}/)?.[0] || '';
+  assert.doesNotMatch(caseEmail, /CBS_EMAIL_TIMEOUT_MS/);
+  assert.doesNotMatch(caseEmail, /gmail\.users\.messages\.send\([\s\S]*\{ timeout \}\)/);
+});
+
+test('CBS email updates explain an interrupted server connection instead of showing Failed to fetch', () => {
+  assert.match(page, /The server connection was interrupted while sending the email/);
+  assert.match(page, /check the case history before trying again/);
+});
+
 test('CBS page uses the Lake Baggage System browser title', () => {
   assert.match(page, /<title>Lake Baggage System<\/title>/);
   assert.doesNotMatch(page, /<title>CBS Cases<\/title>/);
@@ -240,7 +251,7 @@ test('CBS tracking requests PVG open-bag authorization from Email', () => {
   assert.doesNotMatch(server, /assets', 'Letter of Authorization\.pdf'/);
 });
 
-test('CBS Email stage sends a signed open-bag authorization PDF to PVG', () => {
+test('CBS Email stage sends a signed open-bag authorization file to PVG', () => {
   assert.match(page, /key:'email', text:'Email'/);
   assert.match(page, /Sent Open Bag Authorization to PVG/);
   assert.match(page, /authorization-upload-plus">\+<\/span>/);
@@ -249,16 +260,21 @@ test('CBS Email stage sends a signed open-bag authorization PDF to PVG', () => {
   assert.match(page, /<span>Email To<\/span><select name="emailTo" required>/);
   assert.match(page, /pd-bag-intl@ceair\.com/);
   assert.match(page, /pd-bag-dom@ceair\.com/);
-  assert.match(page, /accept="application\/pdf,\.pdf" required/);
+  assert.doesNotMatch(page, /accept="application\/pdf,\.pdf"/);
+  assert.match(page, /Select the signed file/);
   assert.match(page, /reader\.readAsDataURL\(file\)/);
   assert.match(page, /payload\.attachments = \[\{ filename:file\.name/);
+  assert.match(page, /mimeType:file\.type \|\| 'application\/octet-stream'/);
+  assert.doesNotMatch(page, /const file = form\.elements\.authorizationFile/);
+  assert.match(server, /attachments\.length !== 1/);
+  assert.doesNotMatch(server, /attachments\[0\]\.mimeType !== 'application\/pdf'/);
   assert.match(server, /行李开箱检查授权文件 – WorldTracer \$\{fileNumber\}/);
   assert.match(server, /WorldTracer 案件编号：\$\{fileNumber\}/);
   assert.match(server, /行李牌号码：\$\{bagTag\}/);
   assert.match(server, /\['pd-bag-intl@ceair\.com', 'pd-bag-dom@ceair\.com'\]\.includes\(emailTo\)/);
   assert.match(server, /passengerEmail:emailTo/);
   assert.match(server, /attachments:emailAttachments/);
-  assert.match(server, /A signed Letter of Authorization PDF is required/);
+  assert.match(server, /A signed Letter of Authorization attachment is required/);
   assert.doesNotMatch(page.match(/const notifications = \[([\s\S]*?)\]\.filter/)?.[1] || '', /Signed authorization sent to PVG/);
   assert.match(page, /tracking-chip--email,\.tracking-chip--email\.is-latest/);
   assert.match(page, /event\.key === 'email' \? event\.title/);
@@ -423,7 +439,7 @@ test('sidebar Email sends either a signed PVG authorization or a passenger picku
   assert.match(page, /id="standalone-email-form"/);
   assert.match(page, /Sent Open Bag Authorization to PVG[\s\S]*Pick-up Bags - available/);
   assert.match(page, /pd-bag-intl@ceair\.com[\s\S]*pd-bag-dom@ceair\.com/);
-  assert.match(page, /name="authorizationFile" type="file" accept="application\/pdf,\.pdf"/);
+  assert.match(page, /name="authorizationFile" type="file" required/);
   assert.match(page, /name="passengerEmail" type="email" placeholder="Passenger email address"/);
   assert.match(page, /label\[hidden\] \{ display:none !important; \}/);
   assert.match(page, /fetch\(`\$\{apiBase\}\/cbs-email`/);

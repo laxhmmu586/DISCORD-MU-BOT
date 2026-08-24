@@ -2251,7 +2251,7 @@ app.post('/cbs-email', async (req, res) => {
       const emailTo = sanitizeCbsText(req.body?.emailTo, 160).toLowerCase();
       if (!['pd-bag-intl@ceair.com', 'pd-bag-dom@ceair.com'].includes(emailTo)) return res.status(400).json({ error:'A valid PVG email address is required' });
       const attachments = sanitizeCbsAttachments(req.body?.attachments);
-      if (attachments.length !== 1 || attachments[0].mimeType !== 'application/pdf') return res.status(400).json({ error:'A signed Letter of Authorization PDF is required' });
+      if (attachments.length !== 1) return res.status(400).json({ error:'A signed Letter of Authorization attachment is required' });
       const message = signedOpenBagAuthorizationToPvgEmail({});
       const email = await sendCbsCaseEmail({ passengerEmail:emailTo, subject:message.subject, html:message.html, text:message.text, attachments, ccOperations:false });
       return res.json({ sent:true, email });
@@ -2737,7 +2737,7 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
       let authorizationForm = null;
       if (emailAction === 'sent_open_bag_authorization_to_pvg') {
         attachments = sanitizeCbsAttachments(req.body?.attachments);
-        if (attachments.length !== 1 || attachments[0].mimeType !== 'application/pdf') return res.status(400).json({ error:'A signed Letter of Authorization PDF is required' });
+        if (attachments.length !== 1) return res.status(400).json({ error:'A signed Letter of Authorization attachment is required' });
         message = signedOpenBagAuthorizationToPvgEmail(emailRecord);
       } else if (emailAction === 'pickup_bags_future_available') {
         const availableDate = sanitizeCbsText(req.body?.availableDate, 40);
@@ -2971,8 +2971,8 @@ app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
     if (!updateFields) return res.status(400).json({ error: 'Valid case update details are required' });
     const isSignedPvgEmail = updateFields.updateEvent?.key === 'email' && updateFields.updateEvent.title === 'Sent Open Bag Authorization to PVG';
     const emailAttachments = isSignedPvgEmail ? sanitizeCbsAttachments(req.body?.attachments) : [];
-    if (isSignedPvgEmail && (emailAttachments.length !== 1 || emailAttachments[0].mimeType !== 'application/pdf')) {
-      return res.status(400).json({ error: 'A signed Letter of Authorization PDF is required' });
+    if (isSignedPvgEmail && emailAttachments.length !== 1) {
+      return res.status(400).json({ error: 'A signed Letter of Authorization attachment is required' });
     }
     const result = await updateCbsCase(req.params.rowNumber, updateFields);
     if (result.notFound) return res.status(404).json({ error: 'Case not found' });
