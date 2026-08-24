@@ -287,6 +287,7 @@ test('Current Stage comments appear in an orange progress node and above Notify 
   assert.match(page, /\{ key:'comment', text:'Comment' \}/);
   assert.match(page, /if \(key === 'comment'\) return '<select name="commentPreset" data-comment-preset>/);
   assert.match(page, /Passenger-related issue\. Self-pickup or delivery at passenger’s expense\./);
+  assert.match(page, /<option value="Passenger request Pick up at LAX">Passenger request Pick up at LAX<\/option>/);
   assert.match(page, /<textarea name="comment" placeholder="Write a comment" required><\/textarea>'/);
   assert.match(page, /if \(commentPreset\.value && comment\) comment\.value = commentPreset\.value/);
   assert.match(page, /tracking-chip--comment,\.tracking-chip--comment\.is-latest/);
