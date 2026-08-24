@@ -147,6 +147,10 @@
     .tracking-chip--comment .tracking-step-number,.tracking-chip--comment.is-latest .tracking-step-number { background:#f79009; }
     .tracking-chip--comment.is-latest::before { background:#f79009; }
     .tracking-chip--comment small,.tracking-chip--comment .tracking-chip-detail { color:#b54708; }
+    .tracking-chip--email-sent-pvg { border-color:#84caff; background:#eff8ff; box-shadow:0 8px 18px rgba(23,92,211,.12); }
+    .tracking-chip--email-sent-pvg .tracking-step-number { background:#175cd3; }
+    .tracking-chip--email-sent-pvg .tracking-chip-title { color:#1849a9; }
+    .tracking-chip--email-sent-pvg small,.tracking-chip--email-sent-pvg .tracking-chip-detail { color:#175cd3; }
     .baggage-search-card { margin:14px 0 0; padding:16px; border:1px solid var(--line); border-radius:18px; background:#fbfdff; display:grid; gap:10px; }
     .baggage-search-card h3 { margin:0; color:var(--brand); }
     .baggage-search-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px 18px; }
@@ -1078,8 +1082,9 @@
           }).join('');
           const noteHtml = !detailFields.length && hasValue(event.note) ? `<span class="tracking-chip-detail">${escapeHtml(event.note)}</span>` : '';
           const closedClass = event.key === 'closed' ? ' is-closed' : '';
+          const sentPvgClass = event.key === 'email' && event.title === 'Sent Open Bag Authorization to PVG' ? ' tracking-chip--email-sent-pvg' : '';
           const latestClass = index === 0 ? ' is-latest' : '';
-          return `<span class="tracking-chip tracking-chip--${escapeHtml(event.key)}${closedClass}${latestClass}"><span class="tracking-step-number">${stepNumber}</span><span class="tracking-chip-title">${escapeHtml(title)}</span><small>${escapeHtml(time.date || '')} ${escapeHtml(time.time || '')}${event.by ? ` · Updated by: ${escapeHtml(updaterDisplayName(event.by))}` : ''}</small>${detailHtml}${repeatHtml}${noteHtml}</span>`;
+          return `<span class="tracking-chip tracking-chip--${escapeHtml(event.key)}${sentPvgClass}${closedClass}${latestClass}"><span class="tracking-step-number">${stepNumber}</span><span class="tracking-chip-title">${escapeHtml(title)}</span><small>${escapeHtml(time.date || '')} ${escapeHtml(time.time || '')}${event.by ? ` · Updated by: ${escapeHtml(updaterDisplayName(event.by))}` : ''}</small>${detailHtml}${repeatHtml}${noteHtml}</span>`;
         }).join('') || '<span class="sheet-empty">No tracking updates yet</span>';
       if (!recordId) return historyHtml;
       const progressHeader = `<p class="tracking-current-time"><strong>${label('Case Progress', '案件进度')}</strong><span>${label('Last update', '最后更新')}: ${escapeHtml(latestTime.date || '-')} ${escapeHtml(latestTime.time || '')}</span></p>`;

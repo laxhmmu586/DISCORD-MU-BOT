@@ -145,6 +145,17 @@ test('CBS email updates explain an interrupted server connection instead of show
   assert.match(page, /check the case history before trying again/);
 });
 
+test('CBS Gmail sends are not aborted by a short client timeout', () => {
+  const caseEmail = drive.match(/async function sendCbsCaseEmail[\s\S]*?\n}/)?.[0] || '';
+  assert.doesNotMatch(caseEmail, /CBS_EMAIL_TIMEOUT_MS/);
+  assert.doesNotMatch(caseEmail, /gmail\.users\.messages\.send\([\s\S]*\{ timeout \}\)/);
+});
+
+test('CBS email updates explain an interrupted server connection instead of showing Failed to fetch', () => {
+  assert.match(page, /The server connection was interrupted while sending the email/);
+  assert.match(page, /check the case history before trying again/);
+});
+
 test('CBS page uses the Lake Baggage System browser title', () => {
   assert.match(page, /<title>Lake Baggage System<\/title>/);
   assert.doesNotMatch(page, /<title>CBS Cases<\/title>/);
@@ -458,6 +469,13 @@ test('repeated copies of the same email share one progress stage', () => {
   assert.match(page, /email sent/);
   assert.match(page, /第 \$\{ordinal\} 封邮件发送时间/);
   assert.match(page, /tracking-chip-repeat/);
+});
+
+test('Sent Open Bag Authorization to PVG uses a distinct blue progress stage', () => {
+  assert.match(page, /event\.title === 'Sent Open Bag Authorization to PVG' \? ' tracking-chip--email-sent-pvg'/);
+  assert.match(page, /\.tracking-chip--email-sent-pvg \{[^}]*border-color:#84caff; background:#eff8ff/);
+  assert.match(page, /\.tracking-chip--email-sent-pvg \.tracking-step-number \{ background:#175cd3; \}/);
+  assert.match(page, /\.tracking-chip--email-sent-pvg \.tracking-chip-title \{ color:#1849a9; \}/);
 });
 
 test('CBS tracking offers a Lost update with no extra fields', () => {
