@@ -6,6 +6,7 @@ const path = require('node:path');
 process.env.CBS_FIRESTORE_ENABLED = 'false';
 const reportFirestore = require('../reportFirestore');
 const drive = fs.readFileSync(path.join(__dirname, '..', 'googleDrive.js'), 'utf8');
+const source = fs.readFileSync(path.join(__dirname, '..', 'reportFirestore.js'), 'utf8');
 
 test('Report Center uses a separate Firestore collection for every report type', () => {
   assert.equal(reportFirestore.collectionName('VIP'), 'reportCenter_vip');
@@ -24,6 +25,13 @@ test('Report Center normalizes endpoint aliases to their stored report types', (
   assert.equal(reportFirestore.normalizeType('WCH'), 'wheelchair');
   assert.equal(reportFirestore.normalizeType('psm_msg'), 'psmMsg');
   assert.equal(reportFirestore.normalizeType('sales-detail'), 'salesDetails');
+});
+
+test('Report Center reads migrated collections without any Sheet import path', () => {
+  assert.doesNotMatch(source, /ensureMigrated|legacyLoader/);
+  assert.match(source, /await firestore\.list\(collectionName\(normalized\)\)/);
+  assert.match(drive, /const storedRows = await reportFirestore\.load\(normalizedType\);/);
+  assert.doesNotMatch(drive, /reportFirestore\.load\(normalizedType,\s*async/);
 });
 
 test('every Report Center writer stores in Firestore before the Sheet backup', () => {

@@ -4418,7 +4418,7 @@
               </button>
               <div class="flight-menu" aria-hidden="true">
                 <button id="normal-flight-button" type="button">MU586 (Normal)</button>
-                <button id="delayed-flight-button" type="button">MU586D (Delayed)</button>
+                <button id="delayed-flight-button" type="button">MU9586 (Delayed)</button>
                 <button id="sales-report-button" type="button">Sales Report</button>
                 <button id="seat-map-button" type="button">Seat Map</button>
               </div>
@@ -8003,7 +8003,7 @@
       }
 
       normalFlightButton?.addEventListener("click", () => openFlightDashboard("MU586"));
-      delayedFlightButton?.addEventListener("click", () => openFlightDashboard("MU586D"));
+      delayedFlightButton?.addEventListener("click", () => openFlightDashboard("MU9586"));
 
       document.addEventListener("click", (event) => {
         if (!event.target.closest(".flight-tools")) closeFlightMenu();
