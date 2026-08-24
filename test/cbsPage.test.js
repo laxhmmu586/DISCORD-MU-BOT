@@ -132,8 +132,11 @@ test('case progress identifies the staff member who made each update', () => {
   assert.match(page, /function currentUpdater\(\)/);
   assert.match(page, /function updaterDisplayName\(value\)/);
   assert.match(page, /updater\.split\('@'\)\[0\]/);
-  assert.match(page, /return updaterDisplayName\(user\?\.displayName \|\| user\?\.email \|\| ''\)/);
-  assert.match(page, /payload\.updatedBy = currentUpdater\(\)/);
+  assert.match(page, /async function currentUpdater\(\)/);
+  assert.match(page, /auth\.onAuthStateChanged\(\(nextUser\)/);
+  assert.match(page, /return updaterDisplayName\(user\?\.email \|\| user\?\.displayName \|\| ''\)/);
+  assert.match(page, /payload\.updatedBy = await currentUpdater\(\)/);
+  assert.match(page, /if \(!payload\.updatedBy\) return alert\('Your signed-in account could not be identified/);
   assert.match(page, /Updated by: \$\{escapeHtml\(updaterDisplayName\(event\.by\)\)\}/);
   assert.match(page, /Updated by: \$\{escapeHtml\(updaterDisplayName\(item\.by\)\)\}/);
   assert.match(page, /escapeHtml\(updaterDisplayText\(item\.detail\)\)/);
@@ -372,6 +375,6 @@ test('sidebar Email sends either a signed PVG authorization or a passenger picku
 });
 
 test('Add On-hand records the signed-in account as creator', () => {
-  assert.match(page, /payload\.submittedBy = currentUpdater\(\)/);
+  assert.match(page, /payload\.submittedBy = await currentUpdater\(\)/);
   assert.match(drive, /createdBy: sanitizeSheetText\(record\.submittedBy, 160\)/);
 });

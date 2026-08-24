@@ -353,9 +353,25 @@
     function withoutUpdaterText(value) {
       return String(value || '').replace(/\s*\|?\s*Updated by:\s*[^|]+/i, '').trim();
     }
-    function currentUpdater() {
-      const user = window.firebase?.auth?.()?.currentUser;
-      return updaterDisplayName(user?.displayName || user?.email || '');
+    let updaterAuthReady;
+    async function currentUpdater() {
+      const auth = window.firebase?.auth?.();
+      let user = auth?.currentUser || null;
+      if (!user && auth) {
+        updaterAuthReady ||= new Promise((resolve) => {
+          let unsubscribe = null;
+          const timeout = setTimeout(() => { unsubscribe?.(); resolve(null); }, 5000);
+          unsubscribe = auth.onAuthStateChanged((nextUser) => {
+            clearTimeout(timeout);
+            unsubscribe?.();
+            resolve(nextUser || null);
+          }, () => { clearTimeout(timeout); resolve(null); });
+        });
+        user = await updaterAuthReady;
+      }
+      // The authenticated email is the stable staff identity. Firebase display
+      // names may be unset or carry a generic value such as "System".
+      return updaterDisplayName(user?.email || user?.displayName || '');
     }
     document.querySelectorAll('[data-baggage-chart-image]').forEach((image) => { image.src = `${apiBase}/cbs-baggage-chart/${image.dataset.baggageChartImage}`; });
     document.querySelectorAll('[data-baggage-chart-link]').forEach((link) => { link.href = `${apiBase}/cbs-baggage-chart/${link.dataset.baggageChartLink}`; });
@@ -1113,7 +1129,8 @@
       event.preventDefault();
       const payload = Object.fromEntries(new FormData(updateForm, event.submitter).entries());
       payload.type = payload.type || updateForm.dataset.updateMode || 'worldtracer';
-      payload.updatedBy = currentUpdater();
+      payload.updatedBy = await currentUpdater();
+      if (!payload.updatedBy) return alert('Your signed-in account could not be identified. Refresh the page and try again.');
       if (payload.type === 'email' && payload.emailAction === 'sent_open_bag_authorization_to_pvg') {
         const file = updateForm.elements.authorizationFile?.files?.[0];
         if (!file) return alert('Please attach the signed Letter of Authorization PDF.');
@@ -1391,7 +1408,8 @@
       event.preventDefault();
       const button = form.querySelector('button[type="submit"]');
       const payload = Object.fromEntries(new FormData(form).entries());
-      payload.updatedBy = currentUpdater();
+      payload.updatedBy = await currentUpdater();
+      if (!payload.updatedBy) return alert('Your signed-in account could not be identified. Refresh the page and try again.');
       if (payload.action === 'on-hand-rush') payload.flightRows = Array.from(form.querySelectorAll('[data-unresolved-flight-rows] [data-rush-flight-row]')).map((row) => ({
         flightDate:row.querySelector('[data-flight-date]').value,
         flightNumber:row.querySelector('[data-flight-number]').value,
@@ -1443,7 +1461,8 @@
       const payload = Object.fromEntries(new FormData(form).entries());
       payload.direction = form.dataset.addBaggageDirection;
       payload.flight = payload.direction === 'outbound' ? 'MU586' : 'MU583';
-      payload.submittedBy = currentUpdater();
+      payload.submittedBy = await currentUpdater();
+      if (!payload.submittedBy) return alert('Your signed-in account could not be identified. Refresh the page and try again.');
       const button = form.querySelector('button[type="submit"]');
       button.disabled = true;
       try {
