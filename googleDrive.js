@@ -3670,7 +3670,7 @@ function cbsEventsFromUpdateNote(row = {}) {
     const body = match ? match[2] : part;
     const pieces = body.split('|').map((item) => item.trim()).filter(Boolean);
     const type = pieces.shift() || 'Update';
-    const key = /information/i.test(type) ? 'information' : (/rush/i.test(type) ? 'rush' : (/location/i.test(type) ? 'location' : (/ship/i.test(type) ? 'shipping' : (/world\s*tracer|worldtracer/i.test(type) ? 'worldtracer' : 'update'))));
+    const key = /comment/i.test(type) ? 'comment' : (/information/i.test(type) ? 'information' : (/rush/i.test(type) ? 'rush' : (/location/i.test(type) ? 'location' : (/ship/i.test(type) ? 'shipping' : (/world\s*tracer|worldtracer/i.test(type) ? 'worldtracer' : 'update')))));
     const fields = pieces.map((piece) => {
       const split = piece.split(/:\s*/);
       return split.length > 1 ? [split.shift(), split.join(': ')] : ['Detail', piece];
@@ -3726,7 +3726,8 @@ async function updateCbsCase(rowNumber, update = {}) {
     note: incomingNote,
     title: next.status ? `Update ${next.status}` : 'Update'
   });
-  const currentEvents = parseCbsUpdateHistory(current.updateHistory);
+  const storedEvents = parseCbsUpdateHistory(current.updateHistory);
+  const currentEvents = storedEvents.length ? storedEvents : cbsEventsFromUpdateNote(current);
   const updateEvents = incomingNote ? currentEvents.concat(historyEvent).slice(-100) : currentEvents;
   next.updateHistory = stringifyCbsUpdateHistory(updateEvents);
   if (current.rowNumber) {
@@ -3737,6 +3738,37 @@ async function updateCbsCase(rowNumber, update = {}) {
   const record = { ...next, updateEvents };
   await saveCbsFirestoreRecord('cbsCases', record);
   return { updated: true, record };
+}
+
+async function deleteCbsCaseComment(rowNumber, target = {}) {
+  const current = (await getCbsCases()).find((row) => cbsRecordMatchesId(row, rowNumber));
+  if (!current) return { notFound: true };
+  const targetAt = sanitizeSheetText(target.at, 40);
+  const targetComment = sanitizeSheetText(target.comment, 500);
+  if (!targetAt || !targetComment) return { invalid: true };
+  const storedEvents = parseCbsUpdateHistory(current.updateHistory);
+  const currentEvents = storedEvents.length ? storedEvents : cbsEventsFromUpdateNote(current);
+  const eventIndex = currentEvents.findIndex((event) => {
+    const comment = new Map(event.fields || []).get('Comment') || event.note || '';
+    return event.key === 'comment' && event.at === targetAt && comment === targetComment;
+  });
+  if (eventIndex < 0) return { commentNotFound: true };
+  const updateEvents = currentEvents.filter((_, index) => index !== eventIndex);
+  const latestEvent = updateEvents[updateEvents.length - 1];
+  const next = {
+    ...current,
+    updatedAt: latestEvent?.at || current.submittedAt || current.updatedAt,
+    updateNote: latestEvent?.note || 'Case created',
+    updateHistory: stringifyCbsUpdateHistory(updateEvents),
+    updateEvents
+  };
+  if (current.rowNumber) {
+    const title = await getCbsSheetTitle();
+    await sheets.spreadsheets.values.update({ spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!A${current.rowNumber}:AL${current.rowNumber}`, valueInputOption: 'RAW', requestBody: { values: [cbsValuesFromRecord(next)] } });
+    cbsSheetCache = { loadedAt: 0, rows: [] };
+  }
+  await saveCbsFirestoreRecord('cbsCases', next);
+  return { deleted: true, record: next };
 }
 
 async function getCbsMissingBagSheetTitle() {
@@ -4266,6 +4298,7 @@ module.exports = {
   reopenCbsUnresolvedBaggageCase,
   getCbsCases,
   updateCbsCase,
+  deleteCbsCaseComment,
   getCbsMissingBagReports,
   markCbsMissingBagCase,
   acknowledgeCbsMissingBag,
