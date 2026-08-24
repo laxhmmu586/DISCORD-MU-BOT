@@ -120,6 +120,7 @@
     .tracking-chip-title,.tracking-chip small { display:block; grid-column:2; }
     .tracking-chip small { color:var(--muted); font-weight:700; }
     .tracking-chip-detail { grid-column:2; color:#344054; font-size:11px; font-weight:750; line-height:1.35; }
+    .tracking-chip-repeat { margin-top:3px; padding-top:6px; border-top:1px dashed currentColor; }
     .tracking-current-time { display:flex; justify-content:space-between; gap:16px; margin:0 0 4px; color:var(--muted); font-weight:800; }
     .tracking-current-time strong { color:var(--brand); font-size:16px; }
     .tracking-stage-picker { display:grid; gap:6px; color:var(--muted); font-size:12px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }
@@ -1028,6 +1029,17 @@
       if (current === 'comment') return 'comment';
       return 'worldtracer';
     }
+    function groupRepeatedEmailEvents(events) {
+      return events.reduce((groups, event) => {
+        const existing = event.key === 'email' ? groups.find((group) => group.event.key === 'email' && group.event.title === event.title) : null;
+        if (existing) {
+          existing.repeats.push(event);
+        } else {
+          groups.push({ event, repeats:[] });
+        }
+        return groups;
+      }, []);
+    }
     function trackingControlHtml(row, part = 'all') {
       const recordId = row?.rowNumber || row?.firestoreId || '';
       const events = parseUpdateNoteEvents(row);
@@ -1046,21 +1058,28 @@
       const latestTime = latest ? formatEventTime(latest.at) : { time:'--:--', date:'' };
       const active = nextTrackingKey(row);
       const updateKeys = TRACKING_STAGES.filter((stage) => !['create', 'reopen'].includes(stage.key));
-      const sortedEvents = events
+      const sortedEvents = groupRepeatedEmailEvents(events
         .slice()
-        .sort((a, b) => (Date.parse(a.at || '') || 0) - (Date.parse(b.at || '') || 0))
-        .map((event, index) => ({ event, stepNumber:index + 1 }))
+        .sort((a, b) => (Date.parse(a.at || '') || 0) - (Date.parse(b.at || '') || 0)))
+        .sort((a, b) => (Date.parse((a.repeats.at(-1) || a.event).at || '') || 0) - (Date.parse((b.repeats.at(-1) || b.event).at || '') || 0))
+        .map((group, index) => ({ ...group, stepNumber:index + 1 }))
         .reverse();
       const historyHtml = sortedEvents
-        .map(({ event, stepNumber }, index) => {
+        .map(({ event, repeats, stepNumber }, index) => {
           const time = formatEventTime(event.at);
           const title = event.key === 'email' ? event.title : (TRACKING_STAGES.find((stage) => stage.key === event.key)?.text || event.title || 'Update');
           const detailFields = (event.fields || []).filter(([, value]) => hasValue(value));
           const detailHtml = detailFields.map(([fieldKey, value]) => `<span class="tracking-chip-detail">${escapeHtml(fieldKey)}: ${escapeHtml(renderValue(value))}</span>`).join('');
+          const repeatHtml = repeats.map((repeat, repeatIndex) => {
+            const repeatTime = formatEventTime(repeat.at);
+            const ordinal = repeatIndex + 2;
+            const ordinalSuffix = ordinal % 10 === 1 && ordinal % 100 !== 11 ? 'st' : (ordinal % 10 === 2 && ordinal % 100 !== 12 ? 'nd' : (ordinal % 10 === 3 && ordinal % 100 !== 13 ? 'rd' : 'th'));
+            return `<span class="tracking-chip-detail tracking-chip-repeat">${label(`${ordinal}${ordinalSuffix} email sent`, `第 ${ordinal} 封邮件发送时间`)}: ${escapeHtml(repeatTime.date || '')} ${escapeHtml(repeatTime.time || '')}${repeat.by ? ` · ${label('Updated by', '更新人')}: ${escapeHtml(updaterDisplayName(repeat.by))}` : ''}</span>`;
+          }).join('');
           const noteHtml = !detailFields.length && hasValue(event.note) ? `<span class="tracking-chip-detail">${escapeHtml(event.note)}</span>` : '';
           const closedClass = event.key === 'closed' ? ' is-closed' : '';
           const latestClass = index === 0 ? ' is-latest' : '';
-          return `<span class="tracking-chip tracking-chip--${escapeHtml(event.key)}${closedClass}${latestClass}"><span class="tracking-step-number">${stepNumber}</span><span class="tracking-chip-title">${escapeHtml(title)}</span><small>${escapeHtml(time.date || '')} ${escapeHtml(time.time || '')}${event.by ? ` · Updated by: ${escapeHtml(updaterDisplayName(event.by))}` : ''}</small>${detailHtml}${noteHtml}</span>`;
+          return `<span class="tracking-chip tracking-chip--${escapeHtml(event.key)}${closedClass}${latestClass}"><span class="tracking-step-number">${stepNumber}</span><span class="tracking-chip-title">${escapeHtml(title)}</span><small>${escapeHtml(time.date || '')} ${escapeHtml(time.time || '')}${event.by ? ` · Updated by: ${escapeHtml(updaterDisplayName(event.by))}` : ''}</small>${detailHtml}${repeatHtml}${noteHtml}</span>`;
         }).join('') || '<span class="sheet-empty">No tracking updates yet</span>';
       if (!recordId) return historyHtml;
       const progressHeader = `<p class="tracking-current-time"><strong>${label('Case Progress', '案件进度')}</strong><span>${label('Last update', '最后更新')}: ${escapeHtml(latestTime.date || '-')} ${escapeHtml(latestTime.time || '')}</span></p>`;
