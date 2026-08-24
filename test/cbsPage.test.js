@@ -367,7 +367,7 @@ test('Email can notify a Passenger Filed case that baggage is ready for LAX pick
   assert.match(server, /Your Baggage Available for Pick-Up at LAX - China Eastern Airlines/);
   assert.match(server, /Tom Bradley International Terminal（TBIT）A68 柜台办公室/);
   assert.match(server, /Pick-up Hours: 8:00 AM – 2:00 PM/);
-  assert.match(server, /pickupEmail \? record\.email/);
+  assert.match(server, /pickupEmail \|\| passengerRelatedEmail \? record\.email/);
   assert.match(page, /event\.title === 'Contact PAX to Pick-up Bags'/);
 });
 
@@ -388,11 +388,30 @@ test('sidebar Email sends either a signed PVG authorization or a passenger picku
   assert.match(page, /pd-bag-intl@ceair\.com[\s\S]*pd-bag-dom@ceair\.com/);
   assert.match(page, /name="authorizationFile" type="file" accept="application\/pdf,\.pdf"/);
   assert.match(page, /name="passengerEmail" type="email" placeholder="Passenger email address"/);
-  assert.match(page, /\[data-standalone-pvg-field\]\[hidden\],\[data-standalone-pickup-field\]\[hidden\] \{ display:none; \}/);
+  assert.match(page, /\[data-standalone-pvg-field\]\[hidden\],\[data-standalone-pickup-field\]\[hidden\],\[data-standalone-passenger-related-field\]\[hidden\] \{ display:none; \}/);
   assert.match(page, /fetch\(`\$\{apiBase\}\/cbs-email`/);
   assert.match(server, /app\.post\('\/cbs-email'/);
   assert.match(server, /signedOpenBagAuthorizationToPvgEmail\(\{\}\)/);
   assert.match(server, /baggagePickupAtLaxEmail\(\{\}\)/);
+});
+
+test('every CBS Email menu offers the passenger-related self-pickup or paid FedEx notice', () => {
+  assert.ok((page.match(/value="passenger_related_pickup_or_fedex"/g) || []).length >= 3);
+  assert.match(page, /Passenger-related issue\. Self-pickup or delivery at passenger’s expense\./);
+  assert.match(page, /data-standalone-passenger-related-field/);
+  assert.match(server, /function passengerRelatedPickupOrFedexEmail\(record = \{\}\)/);
+  assert.match(server, /Baggage Pick-Up \/ FedEx Shipping Arrangement – WorldTracer/);
+  assert.match(server, /行李领取 \/ FedEx 取件安排 – WorldTracer/);
+  assert.match(server, /CHINA EASTERN LAXMU[\s\S]*380 World Way TBIT[\s\S]*Departures – China Eastern A68/);
+  assert.match(server, /8:00 AM – 3:00 PM/);
+  assert.match(server, /emailAction === 'passenger_related_pickup_or_fedex'/);
+});
+
+test('PVG inspection authorization email includes the WorldTracer reference', () => {
+  const template = server.match(/function openBagAuthorizationPvgEmail\(record\)[\s\S]*?\n}/)?.[0] || '';
+  assert.match(template, /WorldTracer \$\{fileNumber\}/);
+  assert.match(template, /WorldTracer 案件编号：\$\{fileNumber\}/);
+  assert.match(template, /WorldTracer Reference Number: \$\{fileNumber\}/);
 });
 
 test('Add On-hand records the signed-in account as creator', () => {
