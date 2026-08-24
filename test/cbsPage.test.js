@@ -433,6 +433,13 @@ test('standalone, Passenger Filed, and On-hand Email menus stay synchronized', (
   assert.doesNotMatch(server, /type === 'open_bag_authorization_pvg'/);
 });
 
+test('Email forms keep Language below all conditional detail fields', () => {
+  const standaloneForm = page.match(/<form class="worldtracer-form" id="standalone-email-form">([\s\S]*?)<\/form>/)?.[1] || '';
+  assert.ok(standaloneForm.indexOf('Estimated arrival date') < standaloneForm.indexOf('<span>Language</span>'));
+  const onHandFields = page.match(/if \(action === 'email'\) return `([\s\S]*?)`;/)?.[1] || '';
+  assert.ok(onHandFields.indexOf('Estimated arrival date') < onHandFields.indexOf('<span>Language</span>'));
+});
+
 test('PVG inspection authorization email includes the WorldTracer reference', () => {
   const template = server.match(/function openBagAuthorizationPvgEmail\(record\)[\s\S]*?\n}/)?.[0] || '';
   assert.match(template, /WorldTracer \$\{fileNumber\}/);
