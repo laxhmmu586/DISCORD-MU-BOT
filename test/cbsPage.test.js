@@ -227,7 +227,7 @@ test('CBS Email stage sends a signed open-bag authorization PDF to PVG', () => {
   assert.match(page, /Sent Open Bag Authorization to PVG/);
   assert.match(page, /authorization-upload-plus">\+<\/span>/);
   assert.match(page, /authorization-upload-title">Letter of Authorization<\/span>/);
-  assert.match(page, /\[data-pvg-email-field\]\[hidden\] \{ display:none; \}/);
+  assert.match(page, /\[data-pvg-email-field\]\[hidden\],\[data-email-eta-field\]\[hidden\] \{ display:none; \}/);
   assert.match(page, /<span>Email To<\/span><select name="emailTo" required>/);
   assert.match(page, /pd-bag-intl@ceair\.com/);
   assert.match(page, /pd-bag-dom@ceair\.com/);
@@ -247,13 +247,16 @@ test('CBS Email stage sends a signed open-bag authorization PDF to PVG', () => {
   assert.match(page, /case-update\[data-update-mode="email"\] \{ grid-template-columns:minmax\(240px,420px\); \}/);
 });
 
-test('CBS tracking offers a compact baggage transfer update with a required arrival date', () => {
-  assert.match(page, /key:'information', text:'Information'/);
-  assert.match(page, /name="informationType" required><option value="rush_to_lax">Baggage Transfer Status Update/);
-  assert.match(page, /name="estimatedArrivalTime" type="date" required/);
-  assert.match(page, /data-update-mode="information"/);
-  assert.match(page, /Baggage Transfer Status Update email/);
-  assert.match(page, /data-update-mode="information"\] \{ grid-template-columns:minmax\(220px,320px\); \}/);
+test('CBS tracking moves the baggage transfer ETA update under Email', () => {
+  assert.doesNotMatch(page, /key:'information', text:'Information'/);
+  assert.doesNotMatch(page, /name="informationType"/);
+  assert.match(page, /value="baggage_transfer_status_eta">Baggage transfer status update - ETA/);
+  assert.match(page, /name="estimatedArrivalTime" type="date" disabled required/);
+  assert.match(page, /data-email-eta-field/);
+  assert.doesNotMatch(page, /data-update-mode="information"/);
+  assert.match(page, /Baggage transfer status update - ETA email/);
+  assert.match(server, /emailAction === 'baggage_transfer_status_eta'/);
+  assert.match(server, /updateEvent:\{ key:'email', title:'Baggage transfer status update - ETA'/);
 });
 
 test('changing Current Stage replaces the form with fields for that stage', () => {
@@ -261,7 +264,7 @@ test('changing Current Stage replaces the form with fields for that stage', () =
   assert.match(page, /form\.dataset\.updateMode = select\.value/);
   assert.match(page, /fields\.innerHTML = inlineUpdateFieldsHtml\(select\.value\)/);
   assert.match(page, /if \(key === 'worldtracer'\) return input\('File number', 'fileNumber'\)/);
-  assert.match(page, /if \(key === 'information'\).*Baggage Transfer Status Update/);
+  assert.doesNotMatch(page, /if \(key === 'information'\)/);
   assert.match(page, /if \(key === 'requested_bags'\) return input\('From which station\?', 'fromStation'\)/);
   assert.match(page, /if \(key === 'shipping'\) return \[shippingMethodSelect/);
   assert.doesNotMatch(page, /input\('AKE number\?', 'akeNumber'\)/);
@@ -367,7 +370,7 @@ test('Email can notify a Passenger Filed case that baggage is ready for LAX pick
   assert.match(server, /Your Baggage Available for Pick-Up at LAX - China Eastern Airlines/);
   assert.match(server, /Tom Bradley International Terminal（TBIT）A68 柜台办公室/);
   assert.match(server, /Pick-up Hours: 8:00 AM – 2:00 PM/);
-  assert.match(server, /pickupEmail \|\| passengerRelatedEmail \? record\.email/);
+  assert.match(server, /pickupEmail \|\| passengerRelatedEmail \|\| transferEtaEmail \? record\.email/);
   assert.match(page, /event\.title === 'Contact PAX to Pick-up Bags'/);
 });
 

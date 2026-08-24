@@ -2128,17 +2128,11 @@ app.get('/miss-connection-report', async (req, res) => {
 
 function buildCbsUpdateFields(update = {}) {
   const type = sanitizeCbsText(update.type, 40).toLowerCase();
-  if (!['information', 'worldtracer', 'requested_bags', 'open_bag_authorization_pvg', 'email', 'comment', 'rush', 'location', 'shipping', 'lost', 'closed', 'reopen'].includes(type)) return null;
+  if (!['worldtracer', 'requested_bags', 'open_bag_authorization_pvg', 'email', 'comment', 'rush', 'location', 'shipping', 'lost', 'closed', 'reopen'].includes(type)) return null;
   const comment = sanitizeCbsText(update.comment, 500);
   if (type === 'comment') {
     if (!comment) return null;
     return { status:'', updateNote:`COMMENT | Comment: ${comment}`, updateEvent:{ key:'comment', title:'Comment', fields:[['Comment', comment]] } };
-  }
-  if (type === 'information') {
-    const informationType = sanitizeCbsText(update.informationType, 40).toLowerCase();
-    const estimatedArrivalTime = sanitizeCbsText(update.estimatedArrivalTime, 40);
-    if (informationType !== 'rush_to_lax' || !/^\d{4}-\d{2}-\d{2}$/.test(estimatedArrivalTime)) return null;
-    return { status: 'Information - Baggage Transfer Status Update', updateNote: `INFORMATION | Baggage Transfer Status Update | Estimated arrival date: ${estimatedArrivalTime}`, updateEvent: { key: 'information', title: 'Baggage Transfer Status Update', fields: [['Information', 'Baggage Transfer Status Update'], ['Estimated Arrival Time', estimatedArrivalTime]] } };
   }
   if (type === 'worldtracer') {
     const fileNumber = sanitizeCbsText(update.fileNumber || update.worldTracerFileNumber, 120).toUpperCase();
@@ -2155,6 +2149,11 @@ function buildCbsUpdateFields(update = {}) {
   }
   if (type === 'email') {
     const emailAction = sanitizeCbsText(update.emailAction, 80);
+    if (emailAction === 'baggage_transfer_status_eta') {
+      const estimatedArrivalTime = sanitizeCbsText(update.estimatedArrivalTime, 40);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(estimatedArrivalTime)) return null;
+      return { status:'Email - Baggage Transfer Status Update - ETA', updateNote:`EMAIL | Baggage transfer status update - ETA | Estimated arrival date: ${estimatedArrivalTime}`, updateEvent:{ key:'email', title:'Baggage transfer status update - ETA', fields:[['Estimated Arrival Time', estimatedArrivalTime]] } };
+    }
     if (emailAction === 'contact_pax_pickup_bags') return { status: 'Email - Contact PAX to Pick-up Bags', updateNote: 'EMAIL | Contact PAX to Pick-up Bags', updateEvent: { key:'email', title:'Contact PAX to Pick-up Bags', fields:[['Email To', 'Passenger email on file']] } };
     if (emailAction === 'passenger_related_pickup_or_fedex') return { status:'Email - Passenger-related Pick-Up / FedEx', updateNote:'EMAIL | Passenger-related issue. Self-pickup or delivery at passenger’s expense.', updateEvent:{ key:'email', title:'Passenger-related issue. Self-pickup or delivery at passenger’s expense.', fields:[['Email To', 'Passenger email on file']] } };
     if (emailAction !== 'sent_open_bag_authorization_to_pvg') return null;
@@ -2959,24 +2958,19 @@ app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
       const record = result.record;
       const pickupEmail = updateFields.updateEvent.title === 'Contact PAX to Pick-up Bags';
       const passengerRelatedEmail = updateFields.updateEvent.title === 'Passenger-related issue. Self-pickup or delivery at passenger’s expense.';
-      const message = pickupEmail ? baggagePickupAtLaxEmail(record) : (passengerRelatedEmail ? passengerRelatedPickupOrFedexEmail(record) : signedOpenBagAuthorizationToPvgEmail(record));
-      const emailTo = pickupEmail || passengerRelatedEmail ? record.email : updateFields.updateEvent.fields.find(([key]) => key === 'Email To')?.[1];
+      const transferEtaEmail = updateFields.updateEvent.title === 'Baggage transfer status update - ETA';
+      const estimatedArrivalTime = updateFields.updateEvent.fields.find(([key]) => key === 'Estimated Arrival Time')?.[1] || '';
+      const message = pickupEmail
+        ? baggagePickupAtLaxEmail(record)
+        : (passengerRelatedEmail
+          ? passengerRelatedPickupOrFedexEmail(record)
+          : (transferEtaEmail ? rushToLaxInformationEmail(record, record.worldTracerFileNumber || '', estimatedArrivalTime) : signedOpenBagAuthorizationToPvgEmail(record)));
+      const emailTo = pickupEmail || passengerRelatedEmail || transferEtaEmail ? record.email : updateFields.updateEvent.fields.find(([key]) => key === 'Email To')?.[1];
       try {
         result.email = await sendCbsCaseEmail({ passengerEmail:emailTo, subject:message.subject, html:message.html, text:message.text, attachments:emailAttachments, ccOperations:false });
       } catch (mailErr) {
         result.emailError = cbsEmailErrorMessage(mailErr);
-        console.error(pickupEmail ? 'CBS baggage pickup passenger email error:' : 'CBS signed PVG authorization email error:', mailErr);
-      }
-    }
-    if (updateFields.updateEvent?.key === 'information') {
-      const record = result.record;
-      const fileNumber = record.worldTracerFileNumber || '';
-      const message = rushToLaxInformationEmail(record, fileNumber, record.estimatedArrivalTime);
-      try {
-        result.email = await sendCbsCaseEmail({ passengerEmail: record.email, subject: message.subject, html: message.html, text: message.text, ccOperations: false });
-      } catch (mailErr) {
-        result.emailError = cbsEmailErrorMessage(mailErr);
-        console.error('CBS Rush to LAX information email error:', mailErr);
+        console.error(transferEtaEmail ? 'CBS baggage transfer ETA email error:' : (pickupEmail ? 'CBS baggage pickup passenger email error:' : 'CBS signed PVG authorization email error:'), mailErr);
       }
     }
     if (updateFields.updateEvent?.key === 'shipping' && updateFields.updateEvent.fields.some(([key, value]) => key === 'Shipping Method' && value === 'ADC - All Day Courier')) {

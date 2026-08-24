@@ -3718,10 +3718,8 @@ async function updateCbsCase(rowNumber, update = {}) {
     next.shippingAddress = sanitizeSheetText(shippingFields.get('Ship To'), 300);
     next.bdo = sanitizeSheetText(shippingFields.get('BDO'), 160).toUpperCase();
   }
-  if (update.updateEvent?.key === 'information') {
-    const informationFields = new Map(update.updateEvent.fields || []);
-    next.estimatedArrivalTime = sanitizeSheetText(informationFields.get('Estimated Arrival Time'), 40);
-  }
+  const estimatedArrivalTime = new Map(update.updateEvent?.fields || []).get('Estimated Arrival Time');
+  if (estimatedArrivalTime) next.estimatedArrivalTime = sanitizeSheetText(estimatedArrivalTime, 40);
   const historyEvent = sanitizeCbsUpdateEvent(update.updateEvent, {
     status: next.status,
     at: now,
