@@ -2164,8 +2164,16 @@ app.get('/miss-connection-report', async (req, res) => {
 
 function buildCbsUpdateFields(update = {}) {
   const type = sanitizeCbsText(update.type, 40).toLowerCase();
-  if (!['worldtracer', 'requested_bags', 'email', 'comment', 'rush', 'location', 'shipping', 'lost', 'closed', 'reopen'].includes(type)) return null;
+  if (!['upcoming_rush', 'upcoming_rush_delete', 'worldtracer', 'requested_bags', 'email', 'comment', 'rush', 'location', 'shipping', 'lost', 'closed', 'reopen'].includes(type)) return null;
   const comment = sanitizeCbsText(update.comment, 500);
+  if (type === 'upcoming_rush_delete') return { deleteEventKey:'upcoming_rush' };
+  if (type === 'upcoming_rush') {
+    const rushFlight = sanitizeCbsText(update.rushFlight, 40).toUpperCase();
+    const rushDate = sanitizeCbsText(update.rushDate, 40);
+    const rushTagNumber = sanitizeCbsText(update.rushTagNumber, 80).toUpperCase();
+    if (!rushFlight || !/^\d{4}-\d{2}-\d{2}$/.test(rushDate) || !rushTagNumber) return null;
+    return { status:'Upcoming Rush', replaceEventKey:'upcoming_rush', updateNote:`UPCOMING RUSH | Rush Flight: ${rushFlight} | Rush Date: ${rushDate} | Rush Tag: ${rushTagNumber}`, updateEvent:{ key:'upcoming_rush', title:'Upcoming Rush', fields:[['Rush Flight', rushFlight], ['Rush Date', rushDate], ['Rush Tag', rushTagNumber]] } };
+  }
   if (type === 'comment') {
     if (!comment) return null;
     return { status:'', updateNote:`COMMENT | Comment: ${comment}`, updateEvent:{ key:'comment', title:'Comment', fields:[['Comment', comment]] } };
@@ -2233,6 +2241,20 @@ function buildCbsUpdateFields(update = {}) {
   return { status: airportPickup ? 'Closed - Pick Up at Airport' : 'Shipping', updateNote: `SHIPPING | Method: ${shippingMethod}${trackingNumber ? ` | Tracking: ${trackingNumber}` : ''} | Ship to: ${shippingTo}${bdo ? ` | BDO: ${bdo}` : ''}${comment ? ` | Comment: ${comment}` : ''}`, updateEvent: { key: 'shipping', title: airportPickup ? 'Airport Pick Up - Case Closed' : 'Update Shipping', fields: [['Shipping Method', shippingMethod], ...(trackingNumber ? [['Tracking Number', trackingNumber]] : []), ['Ship To', shippingTo], ...(bdo ? [['BDO', bdo]] : []), ...(comment ? [['Comment', comment]] : [])] } };
 }
 
+function normalizedCbsLinkTag(value) {
+  return sanitizeCbsText(value, 120).toUpperCase().replace(/[\s-]+/g, '');
+}
+
+async function syncUpcomingRushOnHand(record, updateEvent, updatedBy = '') {
+  const rushTag = new Map(updateEvent?.fields || []).get('Rush Tag');
+  const normalizedTag = normalizedCbsLinkTag(rushTag);
+  const worldTracerFileNumber = sanitizeCbsText(record?.worldTracerFileNumber, 120).toUpperCase();
+  if (!normalizedTag || !worldTracerFileNumber) return [];
+  const rows = await getCbsUnresolvedBaggageCases();
+  const matches = rows.filter((row) => !row.resolvedAt && normalizedCbsLinkTag(row.bagTag) === normalizedTag);
+  return Promise.all(matches.map((row) => updateCbsUnresolvedBaggageWorldTracer(row.rowNumber || row.firestoreId, worldTracerFileNumber, updatedBy)));
+}
+
 
 
 app.get('/cbs-missing-bags', async (req, res) => {
@@ -2242,6 +2264,24 @@ app.get('/cbs-missing-bags', async (req, res) => {
   } catch (err) {
     console.error('CBS missing bag report error:', err);
     return res.status(500).json({ error: err?.message || 'CBS missing bag report failed' });
+  }
+});
+
+// Keep report actions on the collection URL. Some production proxies only
+// forward the configured /cbs-missing-bags path and return an HTML 404 for
+// action suffixes such as /:rowNumber/acknowledge.
+app.post('/cbs-missing-bags', async (req, res) => {
+  try {
+    const action = sanitizeCbsText(req.body?.action, 40).toLowerCase();
+    if (action !== 'acknowledge') return res.status(400).json({ error: 'A valid missing bag action is required' });
+    const identifier = sanitizeCbsText(req.body?.identifier || req.body?.rowNumber, 120);
+    if (!identifier) return res.status(400).json({ error: 'Missing bag identifier is required' });
+    const result = await acknowledgeCbsMissingBag(identifier);
+    if (result.notFound) return res.status(404).json({ error: 'Missing bag row not found' });
+    return res.json(result);
+  } catch (err) {
+    console.error('CBS missing bag action error:', err);
+    return res.status(500).json({ error: err?.message || 'CBS missing bag action failed' });
   }
 });
 
@@ -2671,7 +2711,19 @@ app.post('/cbs-worldtracer-cases/update', async (req, res) => {
 
 app.get('/cbs-unresolved-baggage', async (req, res) => {
   try {
-    const rows = await getCbsUnresolvedBaggageCases({ includeResolved: true });
+    let rows = await getCbsUnresolvedBaggageCases({ includeResolved: true });
+    const cases = await getCbsCases();
+    for (const row of rows.filter((item) => !item.resolvedAt)) {
+      const matchedCase = cases.find((record) => {
+        const event = (record.updateEvents || []).filter((item) => item.key === 'upcoming_rush').at(-1);
+        return normalizedCbsLinkTag(new Map(event?.fields || []).get('Rush Tag')) === normalizedCbsLinkTag(row.bagTag);
+      });
+      const fileNumber = sanitizeCbsText(matchedCase?.worldTracerFileNumber, 120).toUpperCase();
+      if (fileNumber && fileNumber !== sanitizeCbsText(row.worldTracerFileNumber, 120).toUpperCase()) {
+        await updateCbsUnresolvedBaggageWorldTracer(row.rowNumber || row.firestoreId, fileNumber, 'Upcoming Rush match');
+      }
+    }
+    rows = await getCbsUnresolvedBaggageCases({ includeResolved: true });
     // Return completed On-hand records as well so the client can archive Create
     // Rush, Shipped, and Passenger collected cases in the Closed Case view.
     return res.json({ rows });
@@ -2970,6 +3022,9 @@ app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
     }
     const result = await updateCbsCase(req.params.rowNumber, updateFields);
     if (result.notFound) return res.status(404).json({ error: 'Case not found' });
+    if (updateFields.updateEvent?.key === 'upcoming_rush') {
+      result.onHandMatches = await syncUpcomingRushOnHand(result.record, updateFields.updateEvent, sanitizeCbsText(req.body?.updatedBy, 160));
+    }
     if (updateFields.updateEvent?.key === 'worldtracer') {
       const fileNumber = updateFields.updateEvent.fields[0][1];
       const record = { ...result.record, worldTracerFileNumber: fileNumber };
@@ -3111,6 +3166,31 @@ app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
   } catch (err) {
     console.error('CBS case update error:', err);
     return res.status(500).json({ error: err?.message || 'CBS case update failed' });
+  }
+});
+
+app.post('/cbs-cases/:rowNumber/link-on-hand', async (req, res) => {
+  try {
+    const onHandId = sanitizeCbsText(req.body?.onHandId, 120);
+    const updatedBy = sanitizeCbsText(req.body?.updatedBy, 160);
+    const record = (await getCbsCases()).find((row) => String(row.rowNumber || row.firestoreId) === String(req.params.rowNumber));
+    const onHand = (await getCbsUnresolvedBaggageCases()).find((row) => String(row.rowNumber || row.firestoreId) === onHandId && !row.resolvedAt);
+    if (!record || !onHand) return res.status(404).json({ error:'Passenger Filed or On-hand case not found' });
+    const upcomingEvent = (record.updateEvents || []).filter((event) => event.key === 'upcoming_rush').at(-1);
+    const rushTag = new Map(upcomingEvent?.fields || []).get('Rush Tag');
+    if (!rushTag || normalizedCbsLinkTag(rushTag) !== normalizedCbsLinkTag(onHand.bagTag)) return res.status(409).json({ error:'Rush Tag no longer matches this On-hand bag' });
+    const worldTracerFileNumber = sanitizeCbsText(record.worldTracerFileNumber, 120).toUpperCase();
+    if (worldTracerFileNumber) await updateCbsUnresolvedBaggageWorldTracer(onHandId, worldTracerFileNumber, updatedBy);
+    await resolveCbsUnresolvedBaggageCase(onHandId, 'linked-passenger-file', `Linked to ${worldTracerFileNumber || 'Passenger Filed'} | Bag tag: ${onHand.bagTag}`, updatedBy);
+    const result = await updateCbsCase(req.params.rowNumber, {
+      status:record.status,
+      updateNote:`ON-HAND MATCH | Bag Tag: ${onHand.bagTag}`,
+      updateEvent:{ key:'on_hand_match', title:'On-hand Match', by:updatedBy, fields:[['Bag Tag', onHand.bagTag], ...(worldTracerFileNumber ? [['WorldTracer', worldTracerFileNumber]] : [])] }
+    });
+    return res.json({ linked:true, record:result.record });
+  } catch (err) {
+    console.error('CBS On-hand link error:', err);
+    return res.status(500).json({ error:err?.message || 'On-hand link failed' });
   }
 });
 
