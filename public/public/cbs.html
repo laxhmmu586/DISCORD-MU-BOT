@@ -1188,7 +1188,8 @@
         const todayLabel = key === todayKey ? '<span>Today</span>' : '';
         return `<section class="missing-date-group"><h2 class="missing-date-heading">${todayLabel}${escapeHtml(dateLabel)}</h2><div class="sheet-shell"><table class="missing-report-table"><thead><tr><th>Bag Tag</th><th>Passenger</th><th>Destination</th><th>Airline</th><th>Source</th><th>Status</th><th></th></tr></thead><tbody>${group.rows.map((row) => {
           const status = row.acknowledgedAt ? 'Acknowledged' : (row.caseCreatedAt ? (row.linkedCaseUpdated ? 'Updated' : 'Rush Created') : 'Open');
-          const actionHtml = row.acknowledgedAt || row.caseCreatedAt ? '' : `<div class="missing-actions"><button type="button" data-create-missing-rush="${escapeHtml(row.rowNumber)}" data-missing-bag-tag="${escapeHtml(row.bagTag)}">Create Rush</button><button class="secondary" type="button" data-ack-missing="${escapeHtml(row.rowNumber)}">Acknowledge</button></div>`;
+          const identifier = row.rowNumber || row.firestoreId || '';
+          const actionHtml = row.acknowledgedAt || row.caseCreatedAt ? '' : `<div class="missing-actions"><button type="button" data-create-missing-rush="${escapeHtml(identifier)}" data-missing-bag-tag="${escapeHtml(row.bagTag)}">Create Rush</button><button class="secondary" type="button" data-ack-missing="${escapeHtml(identifier)}">Acknowledge</button></div>`;
           return `<tr><td>${escapeHtml(row.bagTag)}</td><td>${escapeHtml(row.passengerName)}</td><td>${escapeHtml(row.destination)}</td><td>${escapeHtml(row.airline)}</td><td>${escapeHtml(row.sourceAttachment || '-')}</td><td>${escapeHtml(status)}</td><td>${actionHtml}</td></tr>`;
         }).join('')}</tbody></table></div></section>`;
       }).join('')}</div>`;
@@ -1721,7 +1722,7 @@
         const rowNumber = createButton ? createButton.dataset.createMissingCase : ackButton.dataset.ackMissing;
         const fetchOptions = createButton
           ? { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ bagTag: createButton.dataset.missingBagTag || '' }) }
-          : { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ action:'acknowledge', rowNumber }) };
+          : { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ action:'acknowledge', identifier:rowNumber }) };
         const endpoint = createButton ? `/cbs-missing-bags/${encodeURIComponent(rowNumber)}/create-case` : '/cbs-missing-bags';
         const res = await fetch(`${apiBase}${endpoint}`, fetchOptions);
         const data = await parseJson(res);

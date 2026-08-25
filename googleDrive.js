@@ -4003,23 +4003,36 @@ async function markCbsMissingBagCase(rowNumber) {
   return { updated: true, record: next };
 }
 
-async function acknowledgeCbsMissingBag(rowNumber) {
-  const numericRow = Number(rowNumber);
-  if (!Number.isInteger(numericRow) || numericRow < 2) return { notFound: true };
-  const rows = await getCbsMissingBagSheetRows({ forceRefresh: true });
-  await ensureCbsMissingBagHeaders(rows);
-  const current = cbsMissingBagRecordFromSheet(rows[numericRow - 1] || [], numericRow);
-  if (!current.bagTag) return { notFound: true };
+async function acknowledgeCbsMissingBag(identifier) {
+  const firestoreRows = (await cbsFirestore.list('cbsMissingBagReports')) || [];
+  let current = firestoreRows.find((row) => cbsRecordMatchesId(row, identifier));
+  let numericRow = Number(current?.rowNumber || identifier);
+  let sheetRows = null;
+  if (!current) {
+    if (!Number.isInteger(numericRow) || numericRow < 2) return { notFound: true };
+    sheetRows = await getCbsMissingBagSheetRows({ forceRefresh: true });
+    current = cbsMissingBagRecordFromSheet(sheetRows[numericRow - 1] || [], numericRow);
+  }
+  if (!current?.bagTag) return { notFound: true };
   const next = { ...current, acknowledgedAt: new Date().toISOString() };
-  const title = await getCbsMissingBagSheetTitle();
-  await sheets.spreadsheets.values.update({
-    spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A${numericRow}:I${numericRow}`,
-    valueInputOption: 'RAW',
-    requestBody: { values: [cbsMissingBagValues(next)] }
-  });
-  cbsMissingBagSheetCache = { loadedAt: 0, rows: [] };
   await saveCbsFirestoreRecord('cbsMissingBagReports', next);
+  try {
+    sheetRows = sheetRows || await getCbsMissingBagSheetRows({ forceRefresh: true });
+    await ensureCbsMissingBagHeaders(sheetRows);
+    if (!Number.isInteger(numericRow) || numericRow < 2) {
+      const matches = (values) => String(values[0] || '').trim() === current.bagTag
+        && String(values[4] || '').trim() === String(current.sourceEmailDate || '').trim()
+        && String(values[5] || '').trim() === String(current.sourceAttachment || '').trim();
+      numericRow = sheetRows.findIndex(matches) + 1;
+    }
+    if (numericRow >= 2) {
+      const title = await getCbsMissingBagSheetTitle();
+      await sheets.spreadsheets.values.update({ spreadsheetId:CBS_SHEET_ID, range:`${escapeSheetTitle(title)}!A${numericRow}:I${numericRow}`, valueInputOption:'RAW', requestBody:{ values:[cbsMissingBagValues(next)] } });
+      cbsMissingBagSheetCache = { loadedAt: 0, rows: [] };
+    }
+  } catch (error) {
+    console.error('CBS missing bag acknowledgement Sheet backup failed:', error?.message || error);
+  }
   return { updated: true, record: next };
 }
 

@@ -28,10 +28,13 @@ test('updating one CBS case keeps the complete case list visible', () => {
 });
 
 test('Missing Bag Report acknowledgement uses the proxy-safe collection endpoint', () => {
-  assert.match(page, /body:JSON\.stringify\(\{ action:'acknowledge', rowNumber \}\)/);
+  assert.match(page, /const identifier = row\.rowNumber \|\| row\.firestoreId \|\| ''/);
+  assert.match(page, /body:JSON\.stringify\(\{ action:'acknowledge', identifier:rowNumber \}\)/);
   assert.match(page, /createButton \? `\/cbs-missing-bags\/\$\{encodeURIComponent\(rowNumber\)\}\/create-case` : '\/cbs-missing-bags'/);
   assert.doesNotMatch(page, /\$\{encodeURIComponent\(rowNumber\)\}\/\$\{action\}/);
-  assert.match(server, /app\.post\('\/cbs-missing-bags',[\s\S]*action !== 'acknowledge'[\s\S]*acknowledgeCbsMissingBag\(rowNumber\)/);
+  assert.match(server, /app\.post\('\/cbs-missing-bags',[\s\S]*action !== 'acknowledge'[\s\S]*acknowledgeCbsMissingBag\(identifier\)/);
+  assert.match(drive, /firestoreRows\.find\(\(row\) => cbsRecordMatchesId\(row, identifier\)\)/);
+  assert.match(drive, /saveCbsFirestoreRecord\('cbsMissingBagReports', next\)[\s\S]*acknowledgement Sheet backup failed/);
 });
 
 test('Firestore is the CBS read store without automatic Sheet migration', () => {
