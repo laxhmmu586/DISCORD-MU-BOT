@@ -452,6 +452,7 @@ test('Upcoming Rush updates populate the Passenger Filed summary', () => {
   assert.match(page, /name="rushFlight" value="\$\{escapeHtml\(values\.rushFlight \|\| 'MU583'\)\}"[\s\S]*name="rushDate" type="date"[\s\S]*name="rushTagNumber"[\s\S]*required/);
   assert.match(server, /type === 'upcoming_rush'[\s\S]*Rush Flight[\s\S]*Rush Date[\s\S]*Rush Tag/);
   assert.match(page, /showUpcomingRush = rows\.some[\s\S]*showUpcomingRush \? '<th>Rush Flight \/ Date<\/th><th>Rush Tag<\/th>' : ''/);
+  assert.match(page, /const bagTagColumn = showUpcomingRush \? '<col style="width:180px">' : '<col>'/);
   assert.match(page, /item\.key === 'upcoming_rush'/);
   assert.match(page, /rushDate === todayKey \? '<span class="rush-today">Today<\/span>' : ''/);
   assert.match(page, /@keyframes rush-today-hop/);
