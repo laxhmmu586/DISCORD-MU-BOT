@@ -2245,6 +2245,24 @@ app.get('/cbs-missing-bags', async (req, res) => {
   }
 });
 
+// Keep report actions on the collection URL. Some production proxies only
+// forward the configured /cbs-missing-bags path and return an HTML 404 for
+// action suffixes such as /:rowNumber/acknowledge.
+app.post('/cbs-missing-bags', async (req, res) => {
+  try {
+    const action = sanitizeCbsText(req.body?.action, 40).toLowerCase();
+    if (action !== 'acknowledge') return res.status(400).json({ error: 'A valid missing bag action is required' });
+    const rowNumber = sanitizeCbsText(req.body?.rowNumber, 80);
+    if (!rowNumber) return res.status(400).json({ error: 'Missing bag row number is required' });
+    const result = await acknowledgeCbsMissingBag(rowNumber);
+    if (result.notFound) return res.status(404).json({ error: 'Missing bag row not found' });
+    return res.json(result);
+  } catch (err) {
+    console.error('CBS missing bag action error:', err);
+    return res.status(500).json({ error: err?.message || 'CBS missing bag action failed' });
+  }
+});
+
 app.post('/cbs-email', async (req, res) => {
   try {
     const emailAction = sanitizeCbsText(req.body?.emailAction, 80);

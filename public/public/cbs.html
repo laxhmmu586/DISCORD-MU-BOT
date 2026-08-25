@@ -1705,11 +1705,11 @@
       button.textContent = createButton ? 'Creating...' : 'Acknowledging...';
       try {
         const rowNumber = createButton ? createButton.dataset.createMissingCase : ackButton.dataset.ackMissing;
-        const action = createButton ? 'create-case' : 'acknowledge';
         const fetchOptions = createButton
           ? { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ bagTag: createButton.dataset.missingBagTag || '' }) }
-          : { method:'POST' };
-        const res = await fetch(`${apiBase}/cbs-missing-bags/${encodeURIComponent(rowNumber)}/${action}`, fetchOptions);
+          : { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ action:'acknowledge', rowNumber }) };
+        const endpoint = createButton ? `/cbs-missing-bags/${encodeURIComponent(rowNumber)}/create-case` : '/cbs-missing-bags';
+        const res = await fetch(`${apiBase}${endpoint}`, fetchOptions);
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || (createButton ? 'Create case failed' : 'Acknowledge failed'));
         await loadMissingReports();

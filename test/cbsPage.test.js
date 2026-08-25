@@ -27,6 +27,13 @@ test('updating one CBS case keeps the complete case list visible', () => {
   assert.doesNotMatch(page, /window\._selectedCbsRow = Number\(rowNumber\)/);
 });
 
+test('Missing Bag Report acknowledgement uses the proxy-safe collection endpoint', () => {
+  assert.match(page, /body:JSON\.stringify\(\{ action:'acknowledge', rowNumber \}\)/);
+  assert.match(page, /createButton \? `\/cbs-missing-bags\/\$\{encodeURIComponent\(rowNumber\)\}\/create-case` : '\/cbs-missing-bags'/);
+  assert.doesNotMatch(page, /\$\{encodeURIComponent\(rowNumber\)\}\/\$\{action\}/);
+  assert.match(server, /app\.post\('\/cbs-missing-bags',[\s\S]*action !== 'acknowledge'[\s\S]*acknowledgeCbsMissingBag\(rowNumber\)/);
+});
+
 test('Firestore is the CBS read store without automatic Sheet migration', () => {
   for (const collection of ['cbsCases', 'cbsOnHandCases', 'cbsWorldTracerCases', 'cbsMissingBagReports', 'cbsWrongBaggageCases']) {
     assert.match(drive, new RegExp(`cbsFirestore\\.list\\('${collection}'\\)`));
