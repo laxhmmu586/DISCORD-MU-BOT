@@ -451,11 +451,12 @@ test('Upcoming Rush updates populate the Passenger Filed summary', () => {
   assert.match(page, /requested_bags', text:'Requested Bags'[\s\S]*upcoming_rush', text:'Upcoming Rush'/);
   assert.match(page, /name="rushFlight" value="\$\{escapeHtml\(values\.rushFlight \|\| 'MU583'\)\}"[\s\S]*name="rushDate" type="date"[\s\S]*name="rushTagNumber"[\s\S]*required/);
   assert.match(server, /type === 'upcoming_rush'[\s\S]*Rush Flight[\s\S]*Rush Date[\s\S]*Rush Tag/);
-  assert.match(page, /showUpcomingRush = rows\.some[\s\S]*showUpcomingRush \? '<th>Rush Flight \/ Date<\/th><th>Rush Tag<\/th>' : ''/);
+  assert.match(page, /showUpcomingRush = rows\.some[\s\S]*showUpcomingRush \? '<th class="rush-date-heading">Rush Flight \/ Date<\/th><th>Rush Tag<\/th>' : ''/);
   assert.match(page, /const bagTagColumn = showUpcomingRush \? '<col style="width:180px">' : '<col>'/);
   assert.match(page, /item\.key === 'upcoming_rush'/);
   assert.match(page, /rushDate === todayKey \? '<span class="rush-today">Today<\/span>' : ''/);
-  assert.match(page, /rush-today-slot \{ position:absolute;[\s\S]*right:calc\(100% \+ 8px\)/);
+  assert.match(page, /grid-template-columns:44px auto/);
+  assert.match(page, /rush-date-heading \{ padding-left:64px !important/);
   assert.match(page, /class="rush-today-slot">\$\{rushToday\}<\/span><span>\$\{escapeHtml/);
   assert.match(page, /@keyframes rush-today-hop/);
   assert.match(page, /replace\(\/\^\(\[A-Z\]\{2\}\)\\s\*\(\\d\+\)\$\/i, '\$1 \$2'\)/);
@@ -470,6 +471,7 @@ test('Upcoming Rush matches can link and close an On-hand case', () => {
   assert.match(page, /function normalizedRushTag[\s\S]*replace\(\/\[\\s-\]\+\/g, ''\)/);
   assert.match(page, /matchingOnHandForCase[\s\S]*normalizedRushTag\(item\.bagTag\) === tag/);
   assert.match(page, /matchingPassengerCaseForOnHand[\s\S]*normalizedRushTag\(upcomingRushDetails\(item\)\.rushTag\) === tag/);
+  assert.match(page, /if \(window\._unresolvedBaggageLoaded\) renderUnresolvedBaggage\(window\._unresolvedBaggageSourceRows \|\| \[\]\)/);
   assert.match(page, /class="rush-match on-hand-match">Match<\/span>/);
   assert.match(page, /<td class="sheet-meta">\$\{matchBadge\}<span class="bag-tag-value">/);
   assert.match(page, /<col style="width:190px"><col style="width:200px"><col style="width:120px">/);

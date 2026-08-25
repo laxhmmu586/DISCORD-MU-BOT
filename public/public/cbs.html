@@ -76,8 +76,9 @@
     .cbs-sheet .bag-subfield { color:#000; font-weight:700; }
     .cbs-sheet .sheet-meta { color:#344054; font-weight:850; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .cbs-sheet .bag-tag-value { display:inline-flex; padding:5px 10px; border-radius:999px; background:#e8f1ff; color:#0b4ea2; font-weight:950; letter-spacing:.02em; }
-    .upcoming-rush-summary { position:relative; display:inline-block; font-weight:850; white-space:nowrap; }
-    .rush-today-slot { position:absolute; top:50%; right:calc(100% + 8px); display:inline-flex; align-items:center; transform:translateY(-50%); }
+    .upcoming-rush-summary { display:inline-grid; grid-template-columns:44px auto; align-items:center; gap:6px; font-weight:850; white-space:nowrap; }
+    .rush-today-slot { display:inline-flex; justify-content:flex-end; overflow:visible; }
+    .rush-date-heading { padding-left:64px !important; }
     .rush-today { display:inline-block; color:#d92d20; font-size:11px; font-weight:950; text-transform:uppercase; animation:rush-today-hop .8s ease-in-out infinite alternate; }
     .rush-match { display:inline-block; margin-left:8px; color:#6941c6; font-size:11px; font-weight:950; text-transform:uppercase; animation:rush-today-hop .8s ease-in-out infinite alternate; }
     .on-hand-match { margin-right:6px; margin-left:0; }
@@ -1143,7 +1144,7 @@
       const showUpcomingRush = rows.some((row) => Boolean(upcomingRushDetails(row).event));
       const bagTagColumn = showUpcomingRush ? '<col style="width:180px">' : '<col>';
       const rushColumns = showUpcomingRush ? '<col style="width:240px"><col>' : '';
-      const rushHeaders = showUpcomingRush ? '<th>Rush Flight / Date</th><th>Rush Tag</th>' : '';
+      const rushHeaders = showUpcomingRush ? '<th class="rush-date-heading">Rush Flight / Date</th><th>Rush Tag</th>' : '';
       casesOutput.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:220px"><col style="width:150px">${bagTagColumn}${rushColumns}</colgroup><thead><tr><th>WorldTracer File</th><th>${label('Case Type', '类型')}</th><th>${label('Bag Tag', '行李牌')}</th>${rushHeaders}</tr></thead><tbody>${rows.map((row, index) => {
         const detailKey = `row-${row.rowNumber || index}`;
         const caseType = inferCaseType(row);
@@ -1186,6 +1187,7 @@
         if (!res.ok) throw new Error(data.error || 'Case loading failed');
         window._cbsRows = data.rows || [];
         renderCases();
+        if (window._unresolvedBaggageLoaded) renderUnresolvedBaggage(window._unresolvedBaggageSourceRows || []);
       } catch (error) { casesOutput.innerHTML = `<p class="status err">${escapeHtml(error.message)}</p>`; }
     }
     function renderMissingReports(rows = []) {
