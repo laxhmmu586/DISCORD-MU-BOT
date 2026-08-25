@@ -469,6 +469,14 @@ test('Upcoming Rush updates populate the Passenger Filed summary', () => {
   assert.match(drive, /currentEvents\.filter\(\(event\) => event\.key !== \(update\.replaceEventKey \|\| update\.deleteEventKey\)\)/);
 });
 
+test('Passenger Filed displays multiple bag tags on separate lines', () => {
+  assert.match(page, /function bagTagSummaryHtml\(value\)/);
+  assert.match(page, /split\(\/\\s\*\\\/\\s\*\/\)/);
+  assert.match(page, /class="bag-tag-list">\$\{tags\.map\(\(tag\) => `<span class="bag-tag-value">/);
+  assert.match(page, /<td class="sheet-meta">\$\{bagTagSummaryHtml\(displayBagTag\(row\)\)\}<\/td>/);
+  assert.match(page, /\.bag-tag-list \{ display:inline-grid; gap:5px/);
+});
+
 test('Upcoming Rush matches can link and close an On-hand case', () => {
   assert.match(page, /function normalizedRushTag[\s\S]*replace\(\/\[\\s-\]\+\/g, ''\)/);
   assert.match(page, /matchingOnHandForCase[\s\S]*normalizedRushTag\(item\.bagTag\) === tag/);

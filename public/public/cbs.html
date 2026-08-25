@@ -77,6 +77,7 @@
     .cbs-sheet .bag-subfield { color:#000; font-weight:700; }
     .cbs-sheet .sheet-meta { color:#344054; font-weight:850; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .cbs-sheet .bag-tag-value { display:inline-flex; padding:5px 10px; border-radius:999px; background:#e8f1ff; color:#0b4ea2; font-weight:950; letter-spacing:.02em; }
+    .bag-tag-list { display:inline-grid; gap:5px; justify-items:start; }
     .upcoming-rush-summary { display:inline-grid; grid-template-columns:44px auto; align-items:center; min-height:29px; gap:6px; font-weight:850; white-space:nowrap; }
     .rush-tag-summary,.on-hand-tag-summary { display:inline-flex; align-items:center; min-height:29px; white-space:nowrap; }
     .rush-today-slot { display:inline-flex; justify-content:flex-end; overflow:visible; }
@@ -1032,6 +1033,11 @@
       return { event, rushFlight:fields.get('Rush Flight') || '', rushDate:fields.get('Rush Date') || '', rushTag:fields.get('Rush Tag') || fields.get('Rush Tag Number') || '' };
     }
     function normalizedRushTag(value) { return String(value || '').trim().toUpperCase().replace(/[\s-]+/g, ''); }
+    function bagTagSummaryHtml(value) {
+      const tags = String(value || '').split(/\s*\/\s*/).map((tag) => tag.trim()).filter(Boolean);
+      if (!tags.length) tags.push('-');
+      return `<span class="bag-tag-list">${tags.map((tag) => `<span class="bag-tag-value">${escapeHtml(tag)}</span>`).join('')}</span>`;
+    }
     function matchingOnHandForCase(row) {
       const tag = normalizedRushTag(upcomingRushDetails(row).rushTag);
       if (!tag) return null;
@@ -1164,7 +1170,7 @@
         const rushFlightDateHtml = rushFlight || rushDate ? `<span class="upcoming-rush-summary"><span class="rush-today-slot">${rushToday}</span><span>${escapeHtml(`${formattedFlight}/ ${formattedDate}`)}</span></span>` : '';
         const matchBadge = matchedOnHand ? '<span class="rush-match">Match</span>' : '';
         const rushCells = showUpcomingRush ? `<td class="sheet-meta">${rushFlightDateHtml}</td><td class="sheet-meta"><span class="rush-tag-summary">${escapeHtml(rushTag)}${matchBadge}</span></td>` : '';
-        return `<tr class="case-summary-row${closedClass}" data-toggle-case="${escapeHtml(detailKey)}" aria-expanded="${isExpanded ? 'true' : 'false'}"><td class="sheet-meta">${escapeHtml(displayWorldTracerFile(row) || '-')}</td><td class="sheet-meta">${escapeHtml(caseType || '-')}</td><td class="sheet-meta"><span class="bag-tag-value">${escapeHtml(displayBagTag(row) || '-')}</span></td>${rushCells}</tr><tr class="case-detail-row${closedClass}" data-detail-case="${escapeHtml(detailKey)}" ${isExpanded ? '' : 'hidden'}><td colspan="${showUpcomingRush ? 5 : 3}"><div class="case-detail-layout"><div class="case-progress-column">${trackingControlHtml(row, 'progress')}</div><div class="case-detail-right">${trackingControlHtml(row, 'current')}${caseCommentsHtml(row)}<div class="case-detail-content">${detailHtml}</div>${passengerNotificationHtml(row)}</div></div></td></tr>`;
+        return `<tr class="case-summary-row${closedClass}" data-toggle-case="${escapeHtml(detailKey)}" aria-expanded="${isExpanded ? 'true' : 'false'}"><td class="sheet-meta">${escapeHtml(displayWorldTracerFile(row) || '-')}</td><td class="sheet-meta">${escapeHtml(caseType || '-')}</td><td class="sheet-meta">${bagTagSummaryHtml(displayBagTag(row))}</td>${rushCells}</tr><tr class="case-detail-row${closedClass}" data-detail-case="${escapeHtml(detailKey)}" ${isExpanded ? '' : 'hidden'}><td colspan="${showUpcomingRush ? 5 : 3}"><div class="case-detail-layout"><div class="case-progress-column">${trackingControlHtml(row, 'progress')}</div><div class="case-detail-right">${trackingControlHtml(row, 'current')}${caseCommentsHtml(row)}<div class="case-detail-content">${detailHtml}</div>${passengerNotificationHtml(row)}</div></div></td></tr>`;
       }).join('')}</tbody></table></div>${baggageHtml}`;
       requestAnimationFrame(syncCaseProgressHeights);
     }
