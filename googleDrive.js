@@ -4211,7 +4211,7 @@ async function sendWrongBaggageCaseEmail({ passengerEmail, language = 'en' }) {
 async function sendMisconnectionAssistanceEmail({ passengerEmail, language = 'en' }) {
   const { gmail, userId } = getNextDayInfoGmailClient();
   const to = String(passengerEmail || '').trim();
-  const cc = ['laxhmmu@gmail.com'];
+  const cc = [];
   const isChinese = language === 'zh';
   const subject = isChinese ? '中国东方航空 – 未能衔接后续航班旅客协助申请已收到' : 'China Eastern Airlines – Misconnection Passenger Assistance Request Received';
   const html = isChinese ? [

@@ -62,6 +62,12 @@ test('public CBS forms do not CC the operations Gmail account', () => {
   assert.match(caseEmail, /gmail\.users\.messages\.send\([\s\S]*\{ timeout \}\)/);
 });
 
+test('misconnection contact form acknowledgement does not CC the operations Gmail account', () => {
+  const email = drive.match(/async function sendMisconnectionAssistanceEmail[\s\S]*?\n}/)?.[0] || '';
+  assert.match(email, /const cc = \[\];/);
+  assert.doesNotMatch(email, /laxhmmu@gmail\.com/);
+});
+
 test('CBS email updates explain an interrupted server connection instead of showing Failed to fetch', () => {
   assert.match(page, /The server connection was interrupted while sending the email/);
   assert.match(page, /check the case history before trying again/);
@@ -630,6 +636,8 @@ test('Email can notify a Passenger Filed case that baggage is ready for LAX pick
   assert.match(server, /Pick-up Hours: 8:00 AM – 2:00 PM/);
   assert.match(server, /pickupEmail \|\| futurePickupEmail \|\| transferEtaEmail \|\| addressConfirmEmail \|\| pickupDeliveryMethodEmail \|\| requirePvgAuthorizationEmail \? record\.email/);
   assert.match(page, /'Pick-up Bags - available', 'Pick-up Bags - future available'/);
+  assert.match(page, /const pickupBagsEmail = event\.key === 'email' && \['Pick-up Bags - available', 'Pick-up Bags - future available'\]\.includes\(event\.title\)/);
+  assert.match(page, /pickupBagsEmail \? 'Pick-up Bags Email Sent'/);
 });
 
 test('On-hand Email asks for a recipient and sends the pickup notice there', () => {

@@ -1115,7 +1115,8 @@
       const historyHtml = sortedEvents
         .map(({ event, repeats, stepNumber }, index) => {
           const time = formatEventTime(event.at);
-          const title = event.key === 'email' ? event.title : (TRACKING_STAGES.find((stage) => stage.key === event.key)?.text || event.title || 'Update');
+          const pickupBagsEmail = event.key === 'email' && ['Pick-up Bags - available', 'Pick-up Bags - future available'].includes(event.title);
+          const title = pickupBagsEmail ? 'Pick-up Bags Email Sent' : (event.key === 'email' ? event.title : (TRACKING_STAGES.find((stage) => stage.key === event.key)?.text || event.title || 'Update'));
           const detailFields = (event.fields || []).filter(([, value]) => hasValue(value));
           const detailHtml = detailFields.map(([fieldKey, value]) => `<span class="tracking-chip-detail">${escapeHtml(fieldKey)}: ${escapeHtml(renderValue(value))}</span>`).join('');
           const repeatHtml = repeats.map((repeat, repeatIndex) => {
