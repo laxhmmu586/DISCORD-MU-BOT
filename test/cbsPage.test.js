@@ -455,6 +455,8 @@ test('Upcoming Rush updates populate the Passenger Filed summary', () => {
   assert.match(page, /const bagTagColumn = showUpcomingRush \? '<col style="width:180px">' : '<col>'/);
   assert.match(page, /item\.key === 'upcoming_rush'/);
   assert.match(page, /rushDate === todayKey \? '<span class="rush-today">Today<\/span>' : ''/);
+  assert.match(page, /rush-today-slot \{ position:absolute;[\s\S]*right:calc\(100% \+ 8px\)/);
+  assert.match(page, /class="rush-today-slot">\$\{rushToday\}<\/span><span>\$\{escapeHtml/);
   assert.match(page, /@keyframes rush-today-hop/);
   assert.match(page, /replace\(\/\^\(\[A-Z\]\{2\}\)\\s\*\(\\d\+\)\$\/i, '\$1 \$2'\)/);
   assert.match(page, /formattedFlight\}\/ \$\{formattedDate\}/);
@@ -470,6 +472,7 @@ test('Upcoming Rush matches can link and close an On-hand case', () => {
   assert.match(page, /matchingPassengerCaseForOnHand[\s\S]*normalizedRushTag\(upcomingRushDetails\(item\)\.rushTag\) === tag/);
   assert.match(page, /class="rush-match on-hand-match">Match<\/span>/);
   assert.match(page, /<td class="sheet-meta">\$\{matchBadge\}<span class="bag-tag-value">/);
+  assert.match(page, /<col style="width:190px"><col style="width:200px"><col style="width:120px">/);
   assert.match(page, /data-link-on-hand=[\s\S]*data-link-case=/);
   assert.match(page, /\/link-on-hand`[\s\S]*onHandId:link\.dataset\.linkOnHand/);
   assert.match(server, /syncUpcomingRushOnHand[\s\S]*updateCbsUnresolvedBaggageWorldTracer/);

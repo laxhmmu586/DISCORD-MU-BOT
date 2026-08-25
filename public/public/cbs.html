@@ -76,7 +76,8 @@
     .cbs-sheet .bag-subfield { color:#000; font-weight:700; }
     .cbs-sheet .sheet-meta { color:#344054; font-weight:850; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .cbs-sheet .bag-tag-value { display:inline-flex; padding:5px 10px; border-radius:999px; background:#e8f1ff; color:#0b4ea2; font-weight:950; letter-spacing:.02em; }
-    .upcoming-rush-summary { display:inline-flex; align-items:center; gap:8px; font-weight:850; white-space:nowrap; }
+    .upcoming-rush-summary { position:relative; display:inline-block; font-weight:850; white-space:nowrap; }
+    .rush-today-slot { position:absolute; top:50%; right:calc(100% + 8px); display:inline-flex; align-items:center; transform:translateY(-50%); }
     .rush-today { display:inline-block; color:#d92d20; font-size:11px; font-weight:950; text-transform:uppercase; animation:rush-today-hop .8s ease-in-out infinite alternate; }
     .rush-match { display:inline-block; margin-left:8px; color:#6941c6; font-size:11px; font-weight:950; text-transform:uppercase; animation:rush-today-hop .8s ease-in-out infinite alternate; }
     .on-hand-match { margin-right:6px; margin-left:0; }
@@ -602,7 +603,7 @@
       window._unresolvedBaggageLoaded = true;
       if (window._cbsRows) requestAnimationFrame(renderCases);
       if (!rows.length) { unresolvedBaggageOutput.innerHTML = `<p class="muted">${showClosed ? 'No closed On-hand baggage cases.' : 'No On-hand baggage cases.'}</p>`; return; }
-      unresolvedBaggageOutput.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:190px"><col style="width:150px"><col style="width:120px"><col style="width:130px"><col style="width:180px"><col></colgroup><thead><tr><th>WorldTracer File Number</th><th>Bag Tag</th><th>Direction</th><th>Date</th><th>Type / Status</th><th>Location</th></tr></thead><tbody>${rows.map((row) => {
+      unresolvedBaggageOutput.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:190px"><col style="width:200px"><col style="width:120px"><col style="width:130px"><col style="width:180px"><col></colgroup><thead><tr><th>WorldTracer File Number</th><th>Bag Tag</th><th>Direction</th><th>Date</th><th>Type / Status</th><th>Location</th></tr></thead><tbody>${rows.map((row) => {
         const resolvedHistory = row.history.filter((item) => item.resolvedAt);
         // "Other" records stay in Open Case and remain actionable so staff can
         // add WorldTracer details or apply a final resolution later.
@@ -1157,7 +1158,7 @@
         const rushToday = rushDate === todayKey ? '<span class="rush-today">Today</span>' : '';
         const formattedFlight = String(rushFlight).replace(/^([A-Z]{2})\s*(\d+)$/i, '$1 $2');
         const formattedDate = /^\d{4}-\d{2}-\d{2}$/.test(rushDate) ? `${rushDate.slice(8, 10)}${['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'][Number(rushDate.slice(5, 7)) - 1]}${rushDate.slice(2, 4)}` : rushDate;
-        const rushFlightDateHtml = rushFlight || rushDate ? `<span class="upcoming-rush-summary">${rushToday}<span>${escapeHtml(`${formattedFlight}/ ${formattedDate}`)}</span></span>` : '';
+        const rushFlightDateHtml = rushFlight || rushDate ? `<span class="upcoming-rush-summary"><span class="rush-today-slot">${rushToday}</span><span>${escapeHtml(`${formattedFlight}/ ${formattedDate}`)}</span></span>` : '';
         const matchBadge = matchedOnHand ? '<span class="rush-match">Match</span>' : '';
         const rushCells = showUpcomingRush ? `<td class="sheet-meta">${rushFlightDateHtml}</td><td class="sheet-meta">${escapeHtml(rushTag)}${matchBadge}</td>` : '';
         return `<tr class="case-summary-row${closedClass}" data-toggle-case="${escapeHtml(detailKey)}" aria-expanded="${isExpanded ? 'true' : 'false'}"><td class="sheet-meta">${escapeHtml(displayWorldTracerFile(row) || '-')}</td><td class="sheet-meta">${escapeHtml(caseType || '-')}</td><td class="sheet-meta"><span class="bag-tag-value">${escapeHtml(displayBagTag(row) || '-')}</span></td>${rushCells}</tr><tr class="case-detail-row${closedClass}" data-detail-case="${escapeHtml(detailKey)}" ${isExpanded ? '' : 'hidden'}><td colspan="${showUpcomingRush ? 5 : 3}"><div class="case-detail-layout"><div class="case-progress-column">${trackingControlHtml(row, 'progress')}</div><div class="case-detail-right">${trackingControlHtml(row, 'current')}${caseCommentsHtml(row)}<div class="case-detail-content">${detailHtml}</div>${passengerNotificationHtml(row)}</div></div></td></tr>`;
