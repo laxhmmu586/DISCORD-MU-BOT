@@ -444,6 +444,17 @@ test('changing Current Stage replaces the form with fields for that stage', () =
   assert.doesNotMatch(page, /input\('AKE number\?', 'akeNumber'\)/);
 });
 
+test('Upcoming Rush updates populate the Passenger Filed summary', () => {
+  assert.match(page, /\{ key:'upcoming_rush', text:'Upcoming Rush' \}/);
+  assert.match(page, /name="rushFlight"[\s\S]*name="rushDate" type="date" required[\s\S]*name="rushTagNumber"[\s\S]*required/);
+  assert.match(server, /type === 'upcoming_rush'[\s\S]*Rush Flight[\s\S]*Rush Date[\s\S]*Rush Tag/);
+  assert.match(page, /<th>Rush Flight \/ Date<\/th><th>Rush Tag<\/th>/);
+  assert.match(page, /event\.key === 'upcoming_rush'/);
+  assert.match(page, /rushDate === todayKey \? '<span class="rush-today">Today<\/span>' : ''/);
+  assert.match(page, /@keyframes rush-today-hop/);
+  assert.match(page, /<td class="sheet-meta">\$\{rushFlightDateHtml\}<\/td><td class="sheet-meta">\$\{escapeHtml\(rushTag\)\}<\/td>/);
+});
+
 test('Current Stage comments appear in an orange progress node and above Notify Passenger', () => {
   assert.match(page, /\{ key:'comment', text:'Comment' \}/);
   assert.match(page, /if \(key === 'comment'\) return '<select name="commentPreset" data-comment-preset>/);

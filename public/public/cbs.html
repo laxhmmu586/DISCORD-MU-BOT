@@ -76,6 +76,9 @@
     .cbs-sheet .bag-subfield { color:#000; font-weight:700; }
     .cbs-sheet .sheet-meta { color:#344054; font-weight:850; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .cbs-sheet .bag-tag-value { display:inline-flex; padding:5px 10px; border-radius:999px; background:#e8f1ff; color:#0b4ea2; font-weight:950; letter-spacing:.02em; }
+    .upcoming-rush-summary { display:inline-flex; align-items:center; gap:8px; font-weight:850; white-space:nowrap; }
+    .rush-today { display:inline-block; color:#d92d20; font-size:11px; font-weight:950; text-transform:uppercase; animation:rush-today-hop .8s ease-in-out infinite alternate; }
+    @keyframes rush-today-hop { from { transform:translateY(2px); } to { transform:translateY(-4px); } }
     .cbs-sheet .sheet-empty { color:#98a2b3; }
     .cbs-sheet .sheet-event { color:#344054; font-weight:800; line-height:1.35; white-space:normal; }
     .cbs-sheet .sheet-event b { display:block; color:var(--brand); font-size:11px; text-transform:uppercase; }
@@ -635,7 +638,7 @@
     function isBagTagSearch(value) { return /^[A-Z]{2}\d{6}$/.test(normalizeBagSearch(value)); }
     const TRACKING_STAGES = [
       { key:'create', text:'Create' },
-      { key:'update', text:'Update' },
+      { key:'upcoming_rush', text:'Upcoming Rush' },
       { key:'worldtracer', text:'WorldTracer' },
       { key:'requested_bags', text:'Requested Bags' },
       { key:'email', text:'Email' },
@@ -705,6 +708,7 @@
       if (/ship/.test(text)) return 'shipping';
       if (/lost/.test(text)) return 'lost';
       if (/location/.test(text)) return 'location';
+      if (/upcoming[\s_-]*rush/.test(text)) return 'upcoming_rush';
       if (/rush/.test(text)) return 'rush';
       if (/world\s*tracer|worldtracer/.test(text)) return 'worldtracer';
       if (/requested[\s_-]*bags?/.test(text)) return 'requested_bags';
@@ -1012,6 +1016,7 @@
       const shippingTrackingInput = '<input name="trackingNumber" data-shipping-tracking placeholder="Tracking number" disabled hidden />';
       const shippingAddressInput = '<input name="shippingTo" data-shipping-address placeholder="Shipping to where?" disabled hidden />';
       const shippingBdoInput = '<input name="bdo" data-shipping-bdo placeholder="BDO" disabled hidden />';
+      if (key === 'upcoming_rush') return '<label><span>Rush Flight</span><input name="rushFlight" placeholder="Rush flight" required /></label><label><span>Rush Date</span><input name="rushDate" type="date" required /></label><label><span>Rush Tag</span><input name="rushTagNumber" placeholder="Rush tag" required /></label>';
       if (key === 'worldtracer') return input('File number', 'fileNumber');
       if (key === 'requested_bags') return input('From which station?', 'fromStation');
       if (key === 'email') return '<select name="emailAction" data-email-action required><option value="sent_open_bag_authorization_to_pvg">Sent Open Bag Authorization to PVG</option><option value="contact_pax_pickup_bags">Pick-up Bags - available</option><option value="pickup_bags_future_available">Pick-up Bags - future available</option><option value="baggage_transfer_status_eta">Baggage transfer status update - ETA</option><option value="address_confirm_request">Address Confirm Request Email</option><option value="baggage_pickup_delivery_method_confirmation">Baggage Pick-Up / Delivery Method Confirmation</option><option value="require_open_bag_authorization_pvg">Require Open Bag Authorization at PVG</option></select><label class="email-recipient" data-pvg-email-field><span>Email To</span><select name="emailTo" required><option value="pd-bag-intl@ceair.com">pd-bag-intl@ceair.com</option><option value="pd-bag-dom@ceair.com">pd-bag-dom@ceair.com</option></select></label><label class="authorization-upload" data-pvg-email-field><input name="authorizationFile" type="file" required /><span class="authorization-upload-plus">+</span><span class="authorization-upload-title">Letter of Authorization</span><small data-authorization-filename>Select the signed file</small></label><label data-email-eta-field hidden><span>Estimated arrival date</span><input name="estimatedArrivalTime" type="date" disabled required /></label><label data-email-future-pickup-field hidden><span>Available starting date</span><input name="availableDate" type="date" disabled required /></label>';
@@ -1105,14 +1110,23 @@
       const baggageHtml = baggageSearchHtml();
       if (!rows.length) { casesOutput.innerHTML = `<p class="muted">No matching cases.</p>${baggageHtml}`; return; }
       const expandedCases = window._expandedCbsCases || new Set();
-      casesOutput.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:220px"><col style="width:150px"><col></colgroup><thead><tr><th>WorldTracer File</th><th>${label('Case Type', '类型')}</th><th>${label('Bag Tag', '行李牌')}</th></tr></thead><tbody>${rows.map((row, index) => {
+      casesOutput.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:220px"><col style="width:150px"><col style="width:180px"><col style="width:240px"><col></colgroup><thead><tr><th>WorldTracer File</th><th>${label('Case Type', '类型')}</th><th>${label('Bag Tag', '行李牌')}</th><th>Rush Flight / Date</th><th>Rush Tag</th></tr></thead><tbody>${rows.map((row, index) => {
         const detailKey = `row-${row.rowNumber || index}`;
         const caseType = inferCaseType(row);
         const closedClass = isClosedCase(row) ? ' is-closed' : '';
         const details = detailRows(row).filter(([, value]) => hasValue(value));
         const detailHtml = isOriginalFormCase(row) ? fullPassengerFileHtml(row) : (details.length ? `<div class="sheet-detail-grid">${details.map(([key, value]) => `<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(renderValue(value))}</p>`).join('')}</div>` : `<p class="muted">${label('No extra details.', '没有更多详情。')}</p>`);
         const isExpanded = expandedCases.has(detailKey);
-        return `<tr class="case-summary-row${closedClass}" data-toggle-case="${escapeHtml(detailKey)}" aria-expanded="${isExpanded ? 'true' : 'false'}"><td class="sheet-meta">${escapeHtml(displayWorldTracerFile(row) || '-')}</td><td class="sheet-meta">${escapeHtml(caseType || '-')}</td><td class="sheet-meta"><span class="bag-tag-value">${escapeHtml(displayBagTag(row) || '-')}</span></td></tr><tr class="case-detail-row${closedClass}" data-detail-case="${escapeHtml(detailKey)}" ${isExpanded ? '' : 'hidden'}><td colspan="3"><div class="case-detail-layout"><div class="case-progress-column">${trackingControlHtml(row, 'progress')}</div><div class="case-detail-right">${trackingControlHtml(row, 'current')}${caseCommentsHtml(row)}<div class="case-detail-content">${detailHtml}</div>${passengerNotificationHtml(row)}</div></div></td></tr>`;
+        const upcomingRush = parseUpdateNoteEvents(row).filter((event) => event.key === 'upcoming_rush').at(-1);
+        const rushFields = new Map(upcomingRush?.fields || []);
+        const rushFlight = rushFields.get('Rush Flight') || '';
+        const rushDate = rushFields.get('Rush Date') || '';
+        const rushTag = rushFields.get('Rush Tag') || rushFields.get('Rush Tag Number') || '';
+        const today = new Date();
+        const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+        const rushToday = rushDate === todayKey ? '<span class="rush-today">Today</span>' : '';
+        const rushFlightDateHtml = rushFlight || rushDate ? `<span class="upcoming-rush-summary">${rushToday}<span>${escapeHtml([rushFlight, rushDate].filter(Boolean).join(' / '))}</span></span>` : '';
+        return `<tr class="case-summary-row${closedClass}" data-toggle-case="${escapeHtml(detailKey)}" aria-expanded="${isExpanded ? 'true' : 'false'}"><td class="sheet-meta">${escapeHtml(displayWorldTracerFile(row) || '-')}</td><td class="sheet-meta">${escapeHtml(caseType || '-')}</td><td class="sheet-meta"><span class="bag-tag-value">${escapeHtml(displayBagTag(row) || '-')}</span></td><td class="sheet-meta">${rushFlightDateHtml}</td><td class="sheet-meta">${escapeHtml(rushTag)}</td></tr><tr class="case-detail-row${closedClass}" data-detail-case="${escapeHtml(detailKey)}" ${isExpanded ? '' : 'hidden'}><td colspan="5"><div class="case-detail-layout"><div class="case-progress-column">${trackingControlHtml(row, 'progress')}</div><div class="case-detail-right">${trackingControlHtml(row, 'current')}${caseCommentsHtml(row)}<div class="case-detail-content">${detailHtml}</div>${passengerNotificationHtml(row)}</div></div></td></tr>`;
       }).join('')}</tbody></table></div>${baggageHtml}`;
       requestAnimationFrame(syncCaseProgressHeights);
     }
