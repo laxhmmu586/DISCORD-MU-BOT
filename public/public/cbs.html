@@ -78,6 +78,8 @@
     .cbs-sheet .bag-tag-value { display:inline-flex; padding:5px 10px; border-radius:999px; background:#e8f1ff; color:#0b4ea2; font-weight:950; letter-spacing:.02em; }
     .upcoming-rush-summary { display:inline-flex; align-items:center; gap:8px; font-weight:850; white-space:nowrap; }
     .rush-today { display:inline-block; color:#d92d20; font-size:11px; font-weight:950; text-transform:uppercase; animation:rush-today-hop .8s ease-in-out infinite alternate; }
+    .rush-match { display:inline-block; margin-left:8px; color:#6941c6; font-size:11px; font-weight:950; text-transform:uppercase; animation:rush-today-hop .8s ease-in-out infinite alternate; }
+    .on-hand-location { display:flex; align-items:center; justify-content:space-between; gap:10px; }
     @keyframes rush-today-hop { from { transform:translateY(2px); } to { transform:translateY(-4px); } }
     .cbs-sheet .sheet-empty { color:#98a2b3; }
     .cbs-sheet .sheet-event { color:#344054; font-weight:800; line-height:1.35; white-space:normal; }
@@ -134,6 +136,7 @@
     [data-shipping-tracking][hidden],[data-shipping-address][hidden] { display:none; }
     .inline-update textarea { min-height:58px; resize:vertical; grid-column:1/-1; }
     .inline-update button { width:max-content; padding:8px 13px; border-radius:12px; font-size:12px; grid-column:1/-1; }
+    .inline-update button.delete-upcoming-rush { grid-column:2; align-self:end; }
     .inline-update.case-update[data-update-mode="email"] { grid-template-columns:minmax(240px,420px); }
     .authorization-upload { display:grid; gap:8px; padding:14px; border:1px dashed #9db8d8; border-radius:14px; background:#f8fbff; cursor:pointer; }
     [data-pvg-email-field][hidden],[data-email-eta-field][hidden] { display:none; }
@@ -579,7 +582,7 @@
       window._unresolvedBaggageSourceRows = rows;
       const showClosed = window._caseView === 'closed';
       rows = rows.filter((row) => {
-        const archivedResolutions = new Set(['on-hand-rush', 'shipped', 'passenger-collected', 'case-close']);
+        const archivedResolutions = new Set(['on-hand-rush', 'shipped', 'passenger-collected', 'case-close', 'linked-passenger-file']);
         const archived = Boolean(row.resolvedAt) && archivedResolutions.has(String(row.resolution || '').toLowerCase());
         return showClosed ? archived : !archived;
       });
@@ -596,6 +599,7 @@
       }).sort((a, b) => Number(Boolean(a.history.find((item) => !item.resolvedAt))) === Number(Boolean(b.history.find((item) => !item.resolvedAt))) ? 0 : (a.history.find((item) => !item.resolvedAt) ? -1 : 1));
       window._unresolvedBaggageRows = rows;
       window._unresolvedBaggageLoaded = true;
+      if (window._cbsRows) requestAnimationFrame(renderCases);
       if (!rows.length) { unresolvedBaggageOutput.innerHTML = `<p class="muted">${showClosed ? 'No closed On-hand baggage cases.' : 'No On-hand baggage cases.'}</p>`; return; }
       unresolvedBaggageOutput.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:190px"><col style="width:150px"><col style="width:120px"><col style="width:130px"><col style="width:180px"><col></colgroup><thead><tr><th>WorldTracer File Number</th><th>Bag Tag</th><th>Direction</th><th>Date</th><th>Type / Status</th><th>Location</th></tr></thead><tbody>${rows.map((row) => {
         const resolvedHistory = row.history.filter((item) => item.resolvedAt);
@@ -604,13 +608,18 @@
         const active = row.history.find((item) => !item.resolvedAt || ['other', 'email'].includes(String(item.resolution || '').toLowerCase()));
         const historyHtml = resolvedHistory.length ? `<section class="unresolved-history"><h3>History</h3>${resolvedHistory.map((item) => `<p><strong>${escapeHtml(item.resolution || 'Completed')}</strong> · ${escapeHtml(item.resolvedAt ? new Date(item.resolvedAt).toLocaleString() : '')}${item.resolutionNote ? `<br>${escapeHtml(item.resolutionNote)}` : ''}</p>`).join('')}</section>` : '';
         const closed = !active && showClosed ? row : null;
+        const matchedCase = active ? matchingPassengerCaseForOnHand(active) : null;
+        const onHandId = active?.rowNumber || active?.firestoreId || '';
+        const matchedCaseId = matchedCase?.rowNumber || matchedCase?.firestoreId || '';
+        const matchBadge = matchedCase ? '<span class="rush-match">Match</span>' : '';
+        const linkButton = matchedCase && onHandId && matchedCaseId ? `<button type="button" data-link-on-hand="${escapeHtml(onHandId)}" data-link-case="${escapeHtml(matchedCaseId)}">Link</button>` : '';
         const formHtml = active
           ? `<form class="unresolved-update" data-unresolved-row="${escapeHtml(active.rowNumber || active.firestoreId)}" data-bag-tag="${escapeHtml(active.bagTag)}" data-world-tracer-file="${escapeHtml(active.worldTracerFileNumber)}"><label class="wide"><span>Resolution</span><select name="action" data-unresolved-action><option value="worldtracer">WorldTracer</option><option value="email">Email</option><option value="on-hand-rush">Create Rush</option><option value="passenger-collected">Passenger collected / Case closed</option><option value="shipped">Shipped</option><option value="other">Other resolution</option><option value="case-close">Case Close</option></select></label><div class="unresolved-update-fields">${unresolvedUpdateFieldsHtml('worldtracer', active.bagTag, active.worldTracerFileNumber)}</div><div class="actions"><button type="submit">Update</button></div></form>`
           : closed
             ? `<form class="unresolved-update" data-unresolved-row="${escapeHtml(closed.rowNumber || closed.firestoreId)}" data-bag-tag="${escapeHtml(closed.bagTag)}" data-world-tracer-file="${escapeHtml(closed.worldTracerFileNumber)}"><label class="wide"><span>Update</span><select name="action" data-unresolved-action><option value="worldtracer">Update WorldTracer</option><option value="reopen">Reopen</option></select></label><div class="unresolved-update-fields">${unresolvedUpdateFieldsHtml('worldtracer', closed.bagTag, closed.worldTracerFileNumber)}</div><div class="actions"><button type="submit">Update</button></div></form>`
             : '';
         const progressRow = active || row;
-        return `<tr class="case-summary-row" data-toggle-unresolved-update role="button" tabindex="0" aria-expanded="false"><td class="sheet-meta">${escapeHtml(row.worldTracerFileNumber || '-')}</td><td class="sheet-meta"><span class="bag-tag-value">${escapeHtml(row.bagTag)}</span></td><td class="sheet-meta">${escapeHtml(row.direction || '-')}</td><td class="sheet-meta">${escapeHtml(row.flightDate || '-')}</td><td class="sheet-meta">${escapeHtml(row.bagType || row.status || '-')}</td><td class="sheet-meta">${escapeHtml(row.location || '-')}</td></tr><tr class="case-detail-row" data-unresolved-detail hidden><td colspan="6"><div class="case-detail-layout"><div class="case-progress-column">${unresolvedProgressHtml(progressRow)}</div><div class="case-detail-right">${formHtml}${historyHtml}</div></div></td></tr>`;
+        return `<tr class="case-summary-row" data-toggle-unresolved-update role="button" tabindex="0" aria-expanded="false"><td class="sheet-meta">${escapeHtml(row.worldTracerFileNumber || '-')}</td><td class="sheet-meta"><span class="bag-tag-value">${escapeHtml(row.bagTag)}</span>${matchBadge}</td><td class="sheet-meta">${escapeHtml(row.direction || '-')}</td><td class="sheet-meta">${escapeHtml(row.flightDate || '-')}</td><td class="sheet-meta">${escapeHtml(row.bagType || row.status || '-')}</td><td class="sheet-meta"><span class="on-hand-location"><span>${escapeHtml(row.location || '-')}</span>${linkButton}</span></td></tr><tr class="case-detail-row" data-unresolved-detail hidden><td colspan="6"><div class="case-detail-layout"><div class="case-progress-column">${unresolvedProgressHtml(progressRow)}</div><div class="case-detail-right">${formHtml}${historyHtml}</div></div></td></tr>`;
       }).join('')}</tbody></table></div>`;
       requestAnimationFrame(syncCaseProgressHeights);
     }
@@ -641,6 +650,7 @@
       { key:'worldtracer', text:'WorldTracer' },
       { key:'requested_bags', text:'Requested Bags' },
       { key:'upcoming_rush', text:'Upcoming Rush' },
+      { key:'on_hand_match', text:'On-hand Match' },
       { key:'email', text:'Email' },
       { key:'comment', text:'Comment' },
       { key:'rush', text:'Rush' },
@@ -708,6 +718,7 @@
       if (/ship/.test(text)) return 'shipping';
       if (/lost/.test(text)) return 'lost';
       if (/location/.test(text)) return 'location';
+      if (/on[\s_-]*hand[\s_-]*match/.test(text)) return 'on_hand_match';
       if (/upcoming[\s_-]*rush/.test(text)) return 'upcoming_rush';
       if (/rush/.test(text)) return 'rush';
       if (/world\s*tracer|worldtracer/.test(text)) return 'worldtracer';
@@ -1015,13 +1026,24 @@
       const fields = new Map(event?.fields || []);
       return { event, rushFlight:fields.get('Rush Flight') || '', rushDate:fields.get('Rush Date') || '', rushTag:fields.get('Rush Tag') || fields.get('Rush Tag Number') || '' };
     }
+    function normalizedRushTag(value) { return String(value || '').trim().toUpperCase().replace(/[\s-]+/g, ''); }
+    function matchingOnHandForCase(row) {
+      const tag = normalizedRushTag(upcomingRushDetails(row).rushTag);
+      if (!tag) return null;
+      return (window._unresolvedBaggageSourceRows || []).find((item) => !item.resolvedAt && normalizedRushTag(item.bagTag) === tag) || null;
+    }
+    function matchingPassengerCaseForOnHand(row) {
+      const tag = normalizedRushTag(row?.bagTag);
+      if (!tag) return null;
+      return (window._cbsRows || []).find((item) => normalizedRushTag(upcomingRushDetails(item).rushTag) === tag) || null;
+    }
     function inlineUpdateFieldsHtml(key, values = {}) {
       const input = (placeholder, name, required = true) => `<input name="${escapeHtml(name)}" placeholder="${escapeHtml(placeholder)}" ${required ? 'required' : ''} />`;
       const shippingMethodSelect = '<select name="shippingMethod" data-shipping-method required><option value="">Select delivery method</option><option>ADC - All Day Courier</option><option>FedEx Delivery</option><option>Pick Up at Airport</option><option>Passenger Pay for Shipping</option></select>';
       const shippingTrackingInput = '<input name="trackingNumber" data-shipping-tracking placeholder="Tracking number" disabled hidden />';
       const shippingAddressInput = '<input name="shippingTo" data-shipping-address placeholder="Shipping to where?" disabled hidden />';
       const shippingBdoInput = '<input name="bdo" data-shipping-bdo placeholder="BDO" disabled hidden />';
-      if (key === 'upcoming_rush') return `<label><span>Rush Flight</span><input name="rushFlight" value="${escapeHtml(values.rushFlight || 'MU583')}" placeholder="Rush flight" required /></label><label><span>Rush Date</span><input name="rushDate" type="date" value="${escapeHtml(values.rushDate || '')}" required /></label><label><span>Rush Tag</span><input name="rushTagNumber" value="${escapeHtml(values.rushTag || '')}" placeholder="Rush tag" required /></label>${values.event ? '<button class="danger" type="submit" name="type" value="upcoming_rush_delete" formnovalidate>Delete Upcoming Rush</button>' : ''}`;
+      if (key === 'upcoming_rush') return `<label><span>Rush Flight</span><input name="rushFlight" value="${escapeHtml(values.rushFlight || 'MU583')}" placeholder="Rush flight" required /></label><label><span>Rush Date</span><input name="rushDate" type="date" value="${escapeHtml(values.rushDate || '')}" required /></label><label><span>Rush Tag</span><input name="rushTagNumber" value="${escapeHtml(values.rushTag || '')}" placeholder="Rush tag" required /></label>${values.event ? '<button class="danger delete-upcoming-rush" type="submit" name="type" value="upcoming_rush_delete" formnovalidate>Delete Upcoming Rush</button>' : ''}`;
       if (key === 'worldtracer') return input('File number', 'fileNumber');
       if (key === 'requested_bags') return input('From which station?', 'fromStation');
       if (key === 'email') return '<select name="emailAction" data-email-action required><option value="sent_open_bag_authorization_to_pvg">Sent Open Bag Authorization to PVG</option><option value="contact_pax_pickup_bags">Pick-up Bags - available</option><option value="pickup_bags_future_available">Pick-up Bags - future available</option><option value="baggage_transfer_status_eta">Baggage transfer status update - ETA</option><option value="address_confirm_request">Address Confirm Request Email</option><option value="baggage_pickup_delivery_method_confirmation">Baggage Pick-Up / Delivery Method Confirmation</option><option value="require_open_bag_authorization_pvg">Require Open Bag Authorization at PVG</option></select><label class="email-recipient" data-pvg-email-field><span>Email To</span><select name="emailTo" required><option value="pd-bag-intl@ceair.com">pd-bag-intl@ceair.com</option><option value="pd-bag-dom@ceair.com">pd-bag-dom@ceair.com</option></select></label><label class="authorization-upload" data-pvg-email-field><input name="authorizationFile" type="file" required /><span class="authorization-upload-plus">+</span><span class="authorization-upload-title">Letter of Authorization</span><small data-authorization-filename>Select the signed file</small></label><label data-email-eta-field hidden><span>Estimated arrival date</span><input name="estimatedArrivalTime" type="date" disabled required /></label><label data-email-future-pickup-field hidden><span>Available starting date</span><input name="availableDate" type="date" disabled required /></label>';
@@ -1072,7 +1094,7 @@
       const latestTime = latest ? formatEventTime(latest.at) : { time:'--:--', date:'' };
       const active = nextTrackingKey(row);
       const upcomingRush = upcomingRushDetails(row);
-      const updateKeys = TRACKING_STAGES.filter((stage) => !['create', 'reopen'].includes(stage.key));
+      const updateKeys = TRACKING_STAGES.filter((stage) => !['create', 'reopen', 'on_hand_match'].includes(stage.key));
       const sortedEvents = groupRepeatedEmailEvents(events
         .slice()
         .sort((a, b) => (Date.parse(a.at || '') || 0) - (Date.parse(b.at || '') || 0)))
@@ -1128,13 +1150,15 @@
         const detailHtml = isOriginalFormCase(row) ? fullPassengerFileHtml(row) : (details.length ? `<div class="sheet-detail-grid">${details.map(([key, value]) => `<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(renderValue(value))}</p>`).join('')}</div>` : `<p class="muted">${label('No extra details.', '没有更多详情。')}</p>`);
         const isExpanded = expandedCases.has(detailKey);
         const { rushFlight, rushDate, rushTag } = upcomingRushDetails(row);
+        const matchedOnHand = matchingOnHandForCase(row);
         const today = new Date();
         const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
         const rushToday = rushDate === todayKey ? '<span class="rush-today">Today</span>' : '';
         const formattedFlight = String(rushFlight).replace(/^([A-Z]{2})\s*(\d+)$/i, '$1 $2');
         const formattedDate = /^\d{4}-\d{2}-\d{2}$/.test(rushDate) ? `${rushDate.slice(8, 10)}${['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'][Number(rushDate.slice(5, 7)) - 1]}${rushDate.slice(2, 4)}` : rushDate;
         const rushFlightDateHtml = rushFlight || rushDate ? `<span class="upcoming-rush-summary">${rushToday}<span>${escapeHtml(`${formattedFlight}/ ${formattedDate}`)}</span></span>` : '';
-        const rushCells = showUpcomingRush ? `<td class="sheet-meta">${rushFlightDateHtml}</td><td class="sheet-meta">${escapeHtml(rushTag)}</td>` : '';
+        const matchBadge = matchedOnHand ? '<span class="rush-match">Match</span>' : '';
+        const rushCells = showUpcomingRush ? `<td class="sheet-meta">${rushFlightDateHtml}</td><td class="sheet-meta">${escapeHtml(rushTag)}${matchBadge}</td>` : '';
         return `<tr class="case-summary-row${closedClass}" data-toggle-case="${escapeHtml(detailKey)}" aria-expanded="${isExpanded ? 'true' : 'false'}"><td class="sheet-meta">${escapeHtml(displayWorldTracerFile(row) || '-')}</td><td class="sheet-meta">${escapeHtml(caseType || '-')}</td><td class="sheet-meta"><span class="bag-tag-value">${escapeHtml(displayBagTag(row) || '-')}</span></td>${rushCells}</tr><tr class="case-detail-row${closedClass}" data-detail-case="${escapeHtml(detailKey)}" ${isExpanded ? '' : 'hidden'}><td colspan="${showUpcomingRush ? 5 : 3}"><div class="case-detail-layout"><div class="case-progress-column">${trackingControlHtml(row, 'progress')}</div><div class="case-detail-right">${trackingControlHtml(row, 'current')}${caseCommentsHtml(row)}<div class="case-detail-content">${detailHtml}</div>${passengerNotificationHtml(row)}</div></div></td></tr>`;
       }).join('')}</tbody></table></div>${baggageHtml}`;
       requestAnimationFrame(syncCaseProgressHeights);
@@ -1403,6 +1427,7 @@
         window._expandedCbsCases = window._expandedCbsCases || new Set();
         window._expandedCbsCases.add(`row-${rowNumber}`);
         await loadCases();
+        await loadUnresolvedBaggage();
         if (window._missingReportLoaded || !missingReportCard.hidden) await loadMissingReports();
       } catch (error) {
         const message = error instanceof TypeError && /failed to fetch/i.test(error.message)
@@ -1500,7 +1525,20 @@
         await loadWorldTracerCases();
       } catch (error) { alert(error.message); } finally { button.disabled = false; }
     });
-    unresolvedBaggageOutput?.addEventListener('click', (event) => {
+    unresolvedBaggageOutput?.addEventListener('click', async (event) => {
+      const link = event.target.closest('[data-link-on-hand]');
+      if (link) {
+        event.stopPropagation();
+        link.disabled = true;
+        link.textContent = 'Linking...';
+        try {
+          const res = await fetch(`${apiBase}/cbs-cases/${encodeURIComponent(link.dataset.linkCase)}/link-on-hand`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ onHandId:link.dataset.linkOnHand, updatedBy:await currentUpdater() }) });
+          const data = await parseJson(res);
+          if (!res.ok) throw new Error(data.error || 'On-hand link failed');
+          await Promise.all([loadCases(), loadUnresolvedBaggage()]);
+        } catch (error) { alert(error.message); link.disabled = false; link.textContent = 'Link'; }
+        return;
+      }
       const addFlight = event.target.closest('[data-add-unresolved-flight]');
       if (addFlight) {
         addFlight.closest('form').querySelector('[data-unresolved-flight-rows]').insertAdjacentHTML('beforeend', rushFlightRowHtml());

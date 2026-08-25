@@ -458,9 +458,23 @@ test('Upcoming Rush updates populate the Passenger Filed summary', () => {
   assert.match(page, /@keyframes rush-today-hop/);
   assert.match(page, /replace\(\/\^\(\[A-Z\]\{2\}\)\\s\*\(\\d\+\)\$\/i, '\$1 \$2'\)/);
   assert.match(page, /formattedFlight\}\/ \$\{formattedDate\}/);
-  assert.match(page, /value="upcoming_rush_delete" formnovalidate>Delete Upcoming Rush/);
+  assert.match(page, /class="danger delete-upcoming-rush"[\s\S]*value="upcoming_rush_delete" formnovalidate>Delete Upcoming Rush/);
+  assert.match(page, /button\.delete-upcoming-rush \{ grid-column:2/);
   assert.match(server, /deleteEventKey:'upcoming_rush'/);
   assert.match(drive, /currentEvents\.filter\(\(event\) => event\.key !== \(update\.replaceEventKey \|\| update\.deleteEventKey\)\)/);
+});
+
+test('Upcoming Rush matches can link and close an On-hand case', () => {
+  assert.match(page, /function normalizedRushTag[\s\S]*replace\(\/\[\\s-\]\+\/g, ''\)/);
+  assert.match(page, /matchingOnHandForCase[\s\S]*normalizedRushTag\(item\.bagTag\) === tag/);
+  assert.match(page, /matchingPassengerCaseForOnHand[\s\S]*normalizedRushTag\(upcomingRushDetails\(item\)\.rushTag\) === tag/);
+  assert.match(page, /class="rush-match">Match/);
+  assert.match(page, /data-link-on-hand=[\s\S]*data-link-case=/);
+  assert.match(page, /\/link-on-hand`[\s\S]*onHandId:link\.dataset\.linkOnHand/);
+  assert.match(server, /syncUpcomingRushOnHand[\s\S]*updateCbsUnresolvedBaggageWorldTracer/);
+  assert.match(server, /app\.get\('\/cbs-unresolved-baggage'[\s\S]*matchedCase[\s\S]*Upcoming Rush match/);
+  assert.match(server, /app\.post\('\/cbs-cases\/:rowNumber\/link-on-hand'[\s\S]*linked-passenger-file[\s\S]*key:'on_hand_match'/);
+  assert.match(page, /'linked-passenger-file'/);
 });
 
 test('Current Stage comments appear in an orange progress node and above Notify Passenger', () => {
