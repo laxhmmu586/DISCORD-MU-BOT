@@ -2164,14 +2164,15 @@ app.get('/miss-connection-report', async (req, res) => {
 
 function buildCbsUpdateFields(update = {}) {
   const type = sanitizeCbsText(update.type, 40).toLowerCase();
-  if (!['upcoming_rush', 'worldtracer', 'requested_bags', 'email', 'comment', 'rush', 'location', 'shipping', 'lost', 'closed', 'reopen'].includes(type)) return null;
+  if (!['upcoming_rush', 'upcoming_rush_delete', 'worldtracer', 'requested_bags', 'email', 'comment', 'rush', 'location', 'shipping', 'lost', 'closed', 'reopen'].includes(type)) return null;
   const comment = sanitizeCbsText(update.comment, 500);
+  if (type === 'upcoming_rush_delete') return { deleteEventKey:'upcoming_rush' };
   if (type === 'upcoming_rush') {
     const rushFlight = sanitizeCbsText(update.rushFlight, 40).toUpperCase();
     const rushDate = sanitizeCbsText(update.rushDate, 40);
     const rushTagNumber = sanitizeCbsText(update.rushTagNumber, 80).toUpperCase();
     if (!rushFlight || !/^\d{4}-\d{2}-\d{2}$/.test(rushDate) || !rushTagNumber) return null;
-    return { status:'Upcoming Rush', updateNote:`UPCOMING RUSH | Rush Flight: ${rushFlight} | Rush Date: ${rushDate} | Rush Tag: ${rushTagNumber}`, updateEvent:{ key:'upcoming_rush', title:'Upcoming Rush', fields:[['Rush Flight', rushFlight], ['Rush Date', rushDate], ['Rush Tag', rushTagNumber]] } };
+    return { status:'Upcoming Rush', replaceEventKey:'upcoming_rush', updateNote:`UPCOMING RUSH | Rush Flight: ${rushFlight} | Rush Date: ${rushDate} | Rush Tag: ${rushTagNumber}`, updateEvent:{ key:'upcoming_rush', title:'Upcoming Rush', fields:[['Rush Flight', rushFlight], ['Rush Date', rushDate], ['Rush Tag', rushTagNumber]] } };
   }
   if (type === 'comment') {
     if (!comment) return null;

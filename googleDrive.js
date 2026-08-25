@@ -3729,7 +3729,15 @@ async function updateCbsCase(rowNumber, update = {}) {
   });
   const storedEvents = parseCbsUpdateHistory(current.updateHistory);
   const currentEvents = storedEvents.length ? storedEvents : cbsEventsFromUpdateNote(current);
-  const updateEvents = incomingNote ? currentEvents.concat(historyEvent).slice(-100) : currentEvents;
+  const retainedEvents = update.replaceEventKey || update.deleteEventKey
+    ? currentEvents.filter((event) => event.key !== (update.replaceEventKey || update.deleteEventKey))
+    : currentEvents;
+  const updateEvents = incomingNote ? retainedEvents.concat(historyEvent).slice(-100) : retainedEvents;
+  if (update.deleteEventKey) {
+    const latestEvent = updateEvents[updateEvents.length - 1];
+    next.status = latestEvent?.status || 'Open';
+    next.updateNote = latestEvent?.note || 'Case created';
+  }
   next.updateHistory = stringifyCbsUpdateHistory(updateEvents);
   if (current.rowNumber) {
     const title = await getCbsSheetTitle();

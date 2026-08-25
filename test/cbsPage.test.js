@@ -439,7 +439,7 @@ test('CBS Email offers baggage pickup or delivery method confirmation in all thr
 test('changing Current Stage replaces the form with fields for that stage', () => {
   assert.match(page, /const controls = select\.closest\('\.case-detail-right'\) \|\| select\.closest\('\.tracking-workspace'\)/);
   assert.match(page, /form\.dataset\.updateMode = select\.value/);
-  assert.match(page, /fields\.innerHTML = inlineUpdateFieldsHtml\(select\.value\)/);
+  assert.match(page, /fields\.innerHTML = inlineUpdateFieldsHtml\(select\.value, \{ event:form\.dataset\.hasUpcomingRush/);
   assert.match(page, /if \(key === 'worldtracer'\) return input\('File number', 'fileNumber'\)/);
   assert.doesNotMatch(page, /if \(key === 'information'\)/);
   assert.match(page, /if \(key === 'requested_bags'\) return input\('From which station\?', 'fromStation'\)/);
@@ -448,14 +448,18 @@ test('changing Current Stage replaces the form with fields for that stage', () =
 });
 
 test('Upcoming Rush updates populate the Passenger Filed summary', () => {
-  assert.match(page, /\{ key:'upcoming_rush', text:'Upcoming Rush' \}/);
-  assert.match(page, /name="rushFlight"[\s\S]*name="rushDate" type="date" required[\s\S]*name="rushTagNumber"[\s\S]*required/);
+  assert.match(page, /requested_bags', text:'Requested Bags'[\s\S]*upcoming_rush', text:'Upcoming Rush'/);
+  assert.match(page, /name="rushFlight" value="\$\{escapeHtml\(values\.rushFlight \|\| 'MU583'\)\}"[\s\S]*name="rushDate" type="date"[\s\S]*name="rushTagNumber"[\s\S]*required/);
   assert.match(server, /type === 'upcoming_rush'[\s\S]*Rush Flight[\s\S]*Rush Date[\s\S]*Rush Tag/);
-  assert.match(page, /<th>Rush Flight \/ Date<\/th><th>Rush Tag<\/th>/);
-  assert.match(page, /event\.key === 'upcoming_rush'/);
+  assert.match(page, /showUpcomingRush = rows\.some[\s\S]*showUpcomingRush \? '<th>Rush Flight \/ Date<\/th><th>Rush Tag<\/th>' : ''/);
+  assert.match(page, /item\.key === 'upcoming_rush'/);
   assert.match(page, /rushDate === todayKey \? '<span class="rush-today">Today<\/span>' : ''/);
   assert.match(page, /@keyframes rush-today-hop/);
-  assert.match(page, /<td class="sheet-meta">\$\{rushFlightDateHtml\}<\/td><td class="sheet-meta">\$\{escapeHtml\(rushTag\)\}<\/td>/);
+  assert.match(page, /replace\(\/\^\(\[A-Z\]\{2\}\)\\s\*\(\\d\+\)\$\/i, '\$1 \$2'\)/);
+  assert.match(page, /formattedFlight\}\/ \$\{formattedDate\}/);
+  assert.match(page, /value="upcoming_rush_delete" formnovalidate>Delete Upcoming Rush/);
+  assert.match(server, /deleteEventKey:'upcoming_rush'/);
+  assert.match(drive, /currentEvents\.filter\(\(event\) => event\.key !== \(update\.replaceEventKey \|\| update\.deleteEventKey\)\)/);
 });
 
 test('Current Stage comments appear in an orange progress node and above Notify Passenger', () => {
