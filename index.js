@@ -2164,8 +2164,15 @@ app.get('/miss-connection-report', async (req, res) => {
 
 function buildCbsUpdateFields(update = {}) {
   const type = sanitizeCbsText(update.type, 40).toLowerCase();
-  if (!['worldtracer', 'requested_bags', 'email', 'comment', 'rush', 'location', 'shipping', 'lost', 'closed', 'reopen'].includes(type)) return null;
+  if (!['upcoming_rush', 'worldtracer', 'requested_bags', 'email', 'comment', 'rush', 'location', 'shipping', 'lost', 'closed', 'reopen'].includes(type)) return null;
   const comment = sanitizeCbsText(update.comment, 500);
+  if (type === 'upcoming_rush') {
+    const rushFlight = sanitizeCbsText(update.rushFlight, 40).toUpperCase();
+    const rushDate = sanitizeCbsText(update.rushDate, 40);
+    const rushTagNumber = sanitizeCbsText(update.rushTagNumber, 80).toUpperCase();
+    if (!rushFlight || !/^\d{4}-\d{2}-\d{2}$/.test(rushDate) || !rushTagNumber) return null;
+    return { status:'Upcoming Rush', updateNote:`UPCOMING RUSH | Rush Flight: ${rushFlight} | Rush Date: ${rushDate} | Rush Tag: ${rushTagNumber}`, updateEvent:{ key:'upcoming_rush', title:'Upcoming Rush', fields:[['Rush Flight', rushFlight], ['Rush Date', rushDate], ['Rush Tag', rushTagNumber]] } };
+  }
   if (type === 'comment') {
     if (!comment) return null;
     return { status:'', updateNote:`COMMENT | Comment: ${comment}`, updateEvent:{ key:'comment', title:'Comment', fields:[['Comment', comment]] } };
@@ -2242,6 +2249,24 @@ app.get('/cbs-missing-bags', async (req, res) => {
   } catch (err) {
     console.error('CBS missing bag report error:', err);
     return res.status(500).json({ error: err?.message || 'CBS missing bag report failed' });
+  }
+});
+
+// Keep report actions on the collection URL. Some production proxies only
+// forward the configured /cbs-missing-bags path and return an HTML 404 for
+// action suffixes such as /:rowNumber/acknowledge.
+app.post('/cbs-missing-bags', async (req, res) => {
+  try {
+    const action = sanitizeCbsText(req.body?.action, 40).toLowerCase();
+    if (action !== 'acknowledge') return res.status(400).json({ error: 'A valid missing bag action is required' });
+    const identifier = sanitizeCbsText(req.body?.identifier || req.body?.rowNumber, 120);
+    if (!identifier) return res.status(400).json({ error: 'Missing bag identifier is required' });
+    const result = await acknowledgeCbsMissingBag(identifier);
+    if (result.notFound) return res.status(404).json({ error: 'Missing bag row not found' });
+    return res.json(result);
+  } catch (err) {
+    console.error('CBS missing bag action error:', err);
+    return res.status(500).json({ error: err?.message || 'CBS missing bag action failed' });
   }
 });
 
