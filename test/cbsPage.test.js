@@ -468,7 +468,8 @@ test('Upcoming Rush matches can link and close an On-hand case', () => {
   assert.match(page, /function normalizedRushTag[\s\S]*replace\(\/\[\\s-\]\+\/g, ''\)/);
   assert.match(page, /matchingOnHandForCase[\s\S]*normalizedRushTag\(item\.bagTag\) === tag/);
   assert.match(page, /matchingPassengerCaseForOnHand[\s\S]*normalizedRushTag\(upcomingRushDetails\(item\)\.rushTag\) === tag/);
-  assert.match(page, /class="rush-match">Match/);
+  assert.match(page, /class="rush-match on-hand-match">Match<\/span>/);
+  assert.match(page, /<td class="sheet-meta">\$\{matchBadge\}<span class="bag-tag-value">/);
   assert.match(page, /data-link-on-hand=[\s\S]*data-link-case=/);
   assert.match(page, /\/link-on-hand`[\s\S]*onHandId:link\.dataset\.linkOnHand/);
   assert.match(server, /syncUpcomingRushOnHand[\s\S]*updateCbsUnresolvedBaggageWorldTracer/);

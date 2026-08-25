@@ -79,6 +79,7 @@
     .upcoming-rush-summary { display:inline-flex; align-items:center; gap:8px; font-weight:850; white-space:nowrap; }
     .rush-today { display:inline-block; color:#d92d20; font-size:11px; font-weight:950; text-transform:uppercase; animation:rush-today-hop .8s ease-in-out infinite alternate; }
     .rush-match { display:inline-block; margin-left:8px; color:#6941c6; font-size:11px; font-weight:950; text-transform:uppercase; animation:rush-today-hop .8s ease-in-out infinite alternate; }
+    .on-hand-match { margin-right:6px; margin-left:0; }
     .on-hand-location { display:flex; align-items:center; justify-content:space-between; gap:10px; }
     @keyframes rush-today-hop { from { transform:translateY(2px); } to { transform:translateY(-4px); } }
     .cbs-sheet .sheet-empty { color:#98a2b3; }
@@ -611,7 +612,7 @@
         const matchedCase = active ? matchingPassengerCaseForOnHand(active) : null;
         const onHandId = active?.rowNumber || active?.firestoreId || '';
         const matchedCaseId = matchedCase?.rowNumber || matchedCase?.firestoreId || '';
-        const matchBadge = matchedCase ? '<span class="rush-match">Match</span>' : '';
+        const matchBadge = matchedCase ? '<span class="rush-match on-hand-match">Match</span>' : '';
         const linkButton = matchedCase && onHandId && matchedCaseId ? `<button type="button" data-link-on-hand="${escapeHtml(onHandId)}" data-link-case="${escapeHtml(matchedCaseId)}">Link</button>` : '';
         const formHtml = active
           ? `<form class="unresolved-update" data-unresolved-row="${escapeHtml(active.rowNumber || active.firestoreId)}" data-bag-tag="${escapeHtml(active.bagTag)}" data-world-tracer-file="${escapeHtml(active.worldTracerFileNumber)}"><label class="wide"><span>Resolution</span><select name="action" data-unresolved-action><option value="worldtracer">WorldTracer</option><option value="email">Email</option><option value="on-hand-rush">Create Rush</option><option value="passenger-collected">Passenger collected / Case closed</option><option value="shipped">Shipped</option><option value="other">Other resolution</option><option value="case-close">Case Close</option></select></label><div class="unresolved-update-fields">${unresolvedUpdateFieldsHtml('worldtracer', active.bagTag, active.worldTracerFileNumber)}</div><div class="actions"><button type="submit">Update</button></div></form>`
@@ -619,7 +620,7 @@
             ? `<form class="unresolved-update" data-unresolved-row="${escapeHtml(closed.rowNumber || closed.firestoreId)}" data-bag-tag="${escapeHtml(closed.bagTag)}" data-world-tracer-file="${escapeHtml(closed.worldTracerFileNumber)}"><label class="wide"><span>Update</span><select name="action" data-unresolved-action><option value="worldtracer">Update WorldTracer</option><option value="reopen">Reopen</option></select></label><div class="unresolved-update-fields">${unresolvedUpdateFieldsHtml('worldtracer', closed.bagTag, closed.worldTracerFileNumber)}</div><div class="actions"><button type="submit">Update</button></div></form>`
             : '';
         const progressRow = active || row;
-        return `<tr class="case-summary-row" data-toggle-unresolved-update role="button" tabindex="0" aria-expanded="false"><td class="sheet-meta">${escapeHtml(row.worldTracerFileNumber || '-')}</td><td class="sheet-meta"><span class="bag-tag-value">${escapeHtml(row.bagTag)}</span>${matchBadge}</td><td class="sheet-meta">${escapeHtml(row.direction || '-')}</td><td class="sheet-meta">${escapeHtml(row.flightDate || '-')}</td><td class="sheet-meta">${escapeHtml(row.bagType || row.status || '-')}</td><td class="sheet-meta"><span class="on-hand-location"><span>${escapeHtml(row.location || '-')}</span>${linkButton}</span></td></tr><tr class="case-detail-row" data-unresolved-detail hidden><td colspan="6"><div class="case-detail-layout"><div class="case-progress-column">${unresolvedProgressHtml(progressRow)}</div><div class="case-detail-right">${formHtml}${historyHtml}</div></div></td></tr>`;
+        return `<tr class="case-summary-row" data-toggle-unresolved-update role="button" tabindex="0" aria-expanded="false"><td class="sheet-meta">${escapeHtml(row.worldTracerFileNumber || '-')}</td><td class="sheet-meta">${matchBadge}<span class="bag-tag-value">${escapeHtml(row.bagTag)}</span></td><td class="sheet-meta">${escapeHtml(row.direction || '-')}</td><td class="sheet-meta">${escapeHtml(row.flightDate || '-')}</td><td class="sheet-meta">${escapeHtml(row.bagType || row.status || '-')}</td><td class="sheet-meta"><span class="on-hand-location"><span>${escapeHtml(row.location || '-')}</span>${linkButton}</span></td></tr><tr class="case-detail-row" data-unresolved-detail hidden><td colspan="6"><div class="case-detail-layout"><div class="case-progress-column">${unresolvedProgressHtml(progressRow)}</div><div class="case-detail-right">${formHtml}${historyHtml}</div></div></td></tr>`;
       }).join('')}</tbody></table></div>`;
       requestAnimationFrame(syncCaseProgressHeights);
     }
