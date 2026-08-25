@@ -27,6 +27,16 @@ test('updating one CBS case keeps the complete case list visible', () => {
   assert.doesNotMatch(page, /window\._selectedCbsRow = Number\(rowNumber\)/);
 });
 
+test('Missing Bag Report acknowledgement uses the proxy-safe collection endpoint', () => {
+  assert.match(page, /const identifier = row\.rowNumber \|\| row\.firestoreId \|\| ''/);
+  assert.match(page, /body:JSON\.stringify\(\{ action:'acknowledge', identifier:rowNumber \}\)/);
+  assert.match(page, /createButton \? `\/cbs-missing-bags\/\$\{encodeURIComponent\(rowNumber\)\}\/create-case` : '\/cbs-missing-bags'/);
+  assert.doesNotMatch(page, /\$\{encodeURIComponent\(rowNumber\)\}\/\$\{action\}/);
+  assert.match(server, /app\.post\('\/cbs-missing-bags',[\s\S]*action !== 'acknowledge'[\s\S]*acknowledgeCbsMissingBag\(identifier\)/);
+  assert.match(drive, /firestoreRows\.find\(\(row\) => cbsRecordMatchesId\(row, identifier\)\)/);
+  assert.match(drive, /saveCbsFirestoreRecord\('cbsMissingBagReports', next\)[\s\S]*acknowledgement Sheet backup failed/);
+});
+
 test('Firestore is the CBS read store without automatic Sheet migration', () => {
   for (const collection of ['cbsCases', 'cbsOnHandCases', 'cbsWorldTracerCases', 'cbsMissingBagReports', 'cbsWrongBaggageCases']) {
     assert.match(drive, new RegExp(`cbsFirestore\\.list\\('${collection}'\\)`));
@@ -205,13 +215,15 @@ test('Add On-hand records are added to and displayed in Open Case', () => {
   assert.match(page, /await loadUnresolvedBaggage\(\);\s*showSection\('open'\);/);
 });
 
-test('On-hand excludes gate bags', () => {
-  const description = 'Passenger bags entered as inbound and not-loaded outbound bags remain here until resolved. Gate bags are not included.';
+test('On-hand excludes gate bags and Co-mail', () => {
+  const description = 'Passenger bags entered as inbound and not-loaded outbound bags remain here until resolved. Gate bags and Co-mail are not included.';
   assert.equal((page.match(new RegExp(description.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length, 2);
   assert.match(page, /<option>Gate bag<\/option>/);
-  assert.match(drive, /\.filter\(\(row\) => !isCbsGateBag\(row\)\)/);
-  assert.match(drive, /if \(isCbsGateBag\(record\)\) return \{ created: false, excluded: true \};/);
-  assert.match(drive, /\[record\.status, record\.bagType\][\s\S]*=== 'gate bag'/);
+  assert.match(page, /<option>Co-mail<\/option>/);
+  assert.match(drive, /\.filter\(\(row\) => !isCbsOnHandExcludedBag\(row\)\)/);
+  assert.match(drive, /if \(isCbsOnHandExcludedBag\(record\)\) return \{ created: false, excluded: true \};/);
+  assert.match(drive, /new Set\(\['gate bag', 'co-mail'\]\)/);
+  assert.match(drive, /\[record\.status, record\.bagType\][\s\S]*excludedTypes\.has/);
 });
 
 test('On-hand cases match the passenger case layout and support WorldTracer progress', () => {
@@ -427,12 +439,58 @@ test('CBS Email offers baggage pickup or delivery method confirmation in all thr
 test('changing Current Stage replaces the form with fields for that stage', () => {
   assert.match(page, /const controls = select\.closest\('\.case-detail-right'\) \|\| select\.closest\('\.tracking-workspace'\)/);
   assert.match(page, /form\.dataset\.updateMode = select\.value/);
-  assert.match(page, /fields\.innerHTML = inlineUpdateFieldsHtml\(select\.value\)/);
+  assert.match(page, /fields\.innerHTML = inlineUpdateFieldsHtml\(select\.value, \{ event:form\.dataset\.hasUpcomingRush/);
   assert.match(page, /if \(key === 'worldtracer'\) return input\('File number', 'fileNumber'\)/);
   assert.doesNotMatch(page, /if \(key === 'information'\)/);
   assert.match(page, /if \(key === 'requested_bags'\) return input\('From which station\?', 'fromStation'\)/);
   assert.match(page, /if \(key === 'shipping'\) return \[shippingMethodSelect/);
   assert.doesNotMatch(page, /input\('AKE number\?', 'akeNumber'\)/);
+});
+
+test('Upcoming Rush updates populate the Passenger Filed summary', () => {
+  assert.match(page, /requested_bags', text:'Requested Bags'[\s\S]*upcoming_rush', text:'Upcoming Rush'/);
+  assert.match(page, /name="rushFlight" value="\$\{escapeHtml\(values\.rushFlight \|\| 'MU583'\)\}"[\s\S]*name="rushDate" type="date"[\s\S]*name="rushTagNumber"[\s\S]*required/);
+  assert.match(server, /type === 'upcoming_rush'[\s\S]*Rush Flight[\s\S]*Rush Date[\s\S]*Rush Tag/);
+  assert.match(page, /showUpcomingRush = rows\.some[\s\S]*showUpcomingRush \? '<th class="rush-date-heading">Rush Flight \/ Date<\/th><th>Rush Tag<\/th>' : ''/);
+  assert.match(page, /const bagTagColumn = showUpcomingRush \? '<col style="width:180px">' : '<col>'/);
+  assert.match(page, /item\.key === 'upcoming_rush'/);
+  assert.match(page, /rushDate === todayKey \? '<span class="rush-today">Today<\/span>' : ''/);
+  assert.match(page, /grid-template-columns:44px auto/);
+  assert.match(page, /case-summary-row td \{ vertical-align:middle/);
+  assert.match(page, /rush-tag-summary,\.on-hand-tag-summary \{ display:inline-flex; align-items:center; min-height:29px/);
+  assert.match(page, /rush-date-heading \{ padding-left:64px !important/);
+  assert.match(page, /class="rush-today-slot">\$\{rushToday\}<\/span><span>\$\{escapeHtml/);
+  assert.match(page, /@keyframes rush-today-hop/);
+  assert.match(page, /replace\(\/\^\(\[A-Z\]\{2\}\)\\s\*\(\\d\+\)\$\/i, '\$1 \$2'\)/);
+  assert.match(page, /formattedFlight\}\/ \$\{formattedDate\}/);
+  assert.match(page, /class="danger delete-upcoming-rush"[\s\S]*value="upcoming_rush_delete" formnovalidate>Delete Upcoming Rush/);
+  assert.match(page, /button\.delete-upcoming-rush \{ grid-column:2/);
+  assert.match(server, /deleteEventKey:'upcoming_rush'/);
+  assert.match(drive, /currentEvents\.filter\(\(event\) => event\.key !== \(update\.replaceEventKey \|\| update\.deleteEventKey\)\)/);
+});
+
+test('Passenger Filed displays multiple bag tags on separate lines', () => {
+  assert.match(page, /function bagTagSummaryHtml\(value\)/);
+  assert.match(page, /split\(\/\\s\*\\\/\\s\*\/\)/);
+  assert.match(page, /class="bag-tag-list">\$\{tags\.map\(\(tag\) => `<span class="bag-tag-value">/);
+  assert.match(page, /<td class="sheet-meta">\$\{bagTagSummaryHtml\(displayBagTag\(row\)\)\}<\/td>/);
+  assert.match(page, /\.bag-tag-list \{ display:inline-grid; gap:5px/);
+});
+
+test('Upcoming Rush matches can link and close an On-hand case', () => {
+  assert.match(page, /function normalizedRushTag[\s\S]*replace\(\/\[\\s-\]\+\/g, ''\)/);
+  assert.match(page, /matchingOnHandForCase[\s\S]*normalizedRushTag\(item\.bagTag\) === tag/);
+  assert.match(page, /matchingPassengerCaseForOnHand[\s\S]*normalizedRushTag\(upcomingRushDetails\(item\)\.rushTag\) === tag/);
+  assert.match(page, /if \(window\._unresolvedBaggageLoaded\) renderUnresolvedBaggage\(window\._unresolvedBaggageSourceRows \|\| \[\]\)/);
+  assert.match(page, /class="rush-match on-hand-match">Match<\/span>/);
+  assert.match(page, /<span class="on-hand-tag-summary">\$\{matchBadge\}<span class="bag-tag-value">/);
+  assert.match(page, /<col style="width:190px"><col style="width:200px"><col style="width:120px">/);
+  assert.match(page, /data-link-on-hand=[\s\S]*data-link-case=/);
+  assert.match(page, /\/link-on-hand`[\s\S]*onHandId:link\.dataset\.linkOnHand/);
+  assert.match(server, /syncUpcomingRushOnHand[\s\S]*updateCbsUnresolvedBaggageWorldTracer/);
+  assert.match(server, /app\.get\('\/cbs-unresolved-baggage'[\s\S]*matchedCase[\s\S]*Upcoming Rush match/);
+  assert.match(server, /app\.post\('\/cbs-cases\/:rowNumber\/link-on-hand'[\s\S]*linked-passenger-file[\s\S]*key:'on_hand_match'/);
+  assert.match(page, /'linked-passenger-file'/);
 });
 
 test('Current Stage comments appear in an orange progress node and above Notify Passenger', () => {
