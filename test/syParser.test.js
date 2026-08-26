@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { normalizeOperationalFlightNo, normalizeJcsyFlightNo, sectionMatchesFlightOperationDate, matchesSyFlightRecord, hasUnclearedApiSourceRisk, extractPassportCountryCodes } = require('../syParser');
+const { normalizeOperationalFlightNo, normalizeJcsyFlightNo, sectionMatchesFlightOperationDate, matchesSyFlightRecord, hasUnclearedApiSourceRisk, extractPassportCountryCodes, extractInvoluntaryUpgrade } = require('../syParser');
 
 test('normalizes delayed-flight numbers across SY and passenger record formats', () => {
   assert.equal(normalizeOperationalFlightNo('MU9586'), 'MU9586');
@@ -50,4 +50,20 @@ test('extracts the issuing country after the passport expiry date', () => {
   const section = 'PASSPORT :EP5073319/P/NAT/CHN/250409/350408/CHN/N/A';
 
   assert.deepEqual(extractPassportCountryCodes(section), ['CHN', 'CHN']);
+});
+
+test('classifies upgrades into A or O as involuntary upgrades', () => {
+  assert.deepEqual(
+    extractInvoluntaryUpgrade('1. PEI/GANG BN072 2A A PVG WEB ASR UPGO OSR/7A AQQ/FCL/USA'),
+    { upgradedCabin: 'A', originalCabin: 'O', detail: 'Involuntary upgrade from O to A' }
+  );
+  assert.deepEqual(
+    extractInvoluntaryUpgrade('1. TEST/PAX BN140 6A O PVG ASR UPGX AQQ/FCL/USA'),
+    { upgradedCabin: 'O', originalCabin: 'X', detail: 'Involuntary upgrade from X to O' }
+  );
+});
+
+test('does not classify UPG records whose new cabin is outside A and O', () => {
+  assert.equal(extractInvoluntaryUpgrade('1. TEST/PAX BN140 31A Y PVG ASR UPGX'), null);
+  assert.equal(extractInvoluntaryUpgrade('1. TEST/PAX BN140 2A A PVG ASR'), null);
 });

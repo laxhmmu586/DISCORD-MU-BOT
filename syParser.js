@@ -131,6 +131,18 @@ function hasTargetPsm(line) {
   return /^\s*(?:PSM|MSG)/i.test(raw) && TARGET_PSM_MSG_CODES.some((code) => normalized.includes(code));
 }
 
+function extractInvoluntaryUpgrade(section) {
+  const passengerLine = getPassengerRecordLine(section);
+  const upgradedCabin = (passengerLine.match(/\b([AO])\s+PVG\b/i)?.[1] || '').toUpperCase();
+  const originalCabin = (passengerLine.match(/\bUPG([A-Z])\b/i)?.[1] || '').toUpperCase();
+  if (!upgradedCabin || !originalCabin) return null;
+  return {
+    upgradedCabin,
+    originalCabin,
+    detail: `Involuntary upgrade from ${originalCabin} to ${upgradedCabin}`
+  };
+}
+
 function formatPassportExpiryFromSection(section) {
   const passportRawLine = (String(section || '').match(/PASSPORT\s*:\s*([^\n\r]+)/i)?.[1] || '').trim().toUpperCase();
   const value = extractPassportExpiryKeyFromRawLine(passportRawLine);
@@ -1327,7 +1339,8 @@ function enrichPsmListFromLog(log, syInfo, targetYmd = null) {
     if (!matchesSyFlightRecord(prMatch[1], prMatch[2], syInfo)) continue;
 
     const psmLines = extractPsmLines(section).filter(hasTargetPsm);
-    if (!psmLines.length) continue;
+    const involuntaryUpgrade = extractInvoluntaryUpgrade(section);
+    if (!psmLines.length && !involuntaryUpgrade) continue;
 
     const bn = section.match(/\bBN\s*(\d{1,3})\b/i)?.[1]?.padStart(3, '0') || '';
     if (!bn) continue;
@@ -1344,17 +1357,20 @@ function enrichPsmListFromLog(log, syInfo, targetYmd = null) {
     const bagtags = [...bagLine.matchAll(/(?:^|\s)\/?\s*((?:[A-Z]{1,3}\s*)?\d{5,12})\s*\/\s*([A-Z]{3})\b/gi)]
       .map((m) => `${String(m[1] || '').replace(/\s+/g, ' ').trim()}/${String(m[2] || '').toUpperCase()}`);
     const ts = parseSectionTimestamp(sectionObj.timestamp);
-    const prev = latestByBn.get(bn);
-    if (prev && prev.ts > ts) continue;
-
-    latestByBn.set(bn, {
-      bn,
-      name: getPassengerNameFromSection(section),
-      seat: seat || '---',
-      bagtags,
-      psmLines,
-      ts
+    const baseRow = { bn, name: getPassengerNameFromSection(section), seat: seat || '---', bagtags, ts };
+    const candidates = [];
+    if (psmLines.length) candidates.push({ ...baseRow, psmLines });
+    if (involuntaryUpgrade) candidates.push({
+      ...baseRow,
+      type: 'Involuntary upgrade',
+      detail: involuntaryUpgrade.detail,
+      psmLines: []
     });
+    for (const candidate of candidates) {
+      const key = `${bn}|${candidate.type || 'PSM/MSG'}`;
+      const prev = latestByBn.get(key);
+      if (!prev || prev.ts <= ts) latestByBn.set(key, candidate);
+    }
   }
 
   return [...latestByBn.values()]
@@ -1892,4 +1908,4 @@ function findSYInfo(log, queryDate, options = {}) {
   return null;
 }
 
-module.exports = { findSYInfo, normalizeOperationalFlightNo, normalizeJcsyFlightNo, sectionMatchesFlightOperationDate, matchesSyFlightRecord, extractPassportCountryCodes, parseJcsyRows, hasUnclearedApiSourceRisk };
+module.exports = { findSYInfo, normalizeOperationalFlightNo, normalizeJcsyFlightNo, sectionMatchesFlightOperationDate, matchesSyFlightRecord, extractPassportCountryCodes, parseJcsyRows, hasUnclearedApiSourceRisk, extractInvoluntaryUpgrade };

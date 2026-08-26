@@ -2849,6 +2849,7 @@
 
       .report-close,
       .report-download,
+      .report-pdf-download,
       .report-run {
         min-height: 42px;
         min-width: 132px;
@@ -2866,6 +2867,8 @@
         cursor: not-allowed;
         opacity: 0.48;
       }
+
+      .report-pdf-download[hidden] { display: none; }
 
       .report-form.is-sales-mode .report-run {
         min-height: 34px;
@@ -4464,7 +4467,7 @@
             <label class="report-field report-keyword-field"><span>Search</span><input id="report-keyword" type="search" placeholder="Optional filter" /></label>
             <button class="report-run" type="submit">Search</button>
           </form>
-          <div class="report-actions-row"><button class="report-download" id="report-download" type="button" disabled>Download CSV</button></div>
+          <div class="report-actions-row"><button class="report-download" id="report-download" type="button" disabled>Download CSV</button><button class="report-pdf-download" id="report-pdf-download" type="button" hidden>Download Report</button></div>
           <div id="report-output"><p class="panel-muted">Choose a report type to continue.</p></div>
         </section>
 
@@ -4681,6 +4684,7 @@
       const reportKeywordInput = document.querySelector("#report-keyword");
       const reportOutput = document.querySelector("#report-output");
       const reportDownloadButton = document.querySelector("#report-download");
+      const reportPdfDownloadButton = document.querySelector("#report-pdf-download");
       const passwordPage = document.querySelector("#change-password-page");
       const closePasswordPageButton = document.querySelector("#close-password-page");
       const changePasswordForm = document.querySelector("#change-password-form");
@@ -6261,7 +6265,10 @@
           if (!silent) console.warn("Unable to load today's SY data.", error);
         } finally {
           window.clearTimeout(refreshTimeout);
-          if (showLoading && currentSy) setLoadingState(false);
+          // A failed, timed-out, or empty initial SY request must also dismiss
+          // the full-screen overlay. Requiring currentSy here left the app
+          // permanently stuck on THINKING whenever the first request failed.
+          if (showLoading) setLoadingState(false);
           syAutoRefreshInFlight = false;
           if (syAutoRefreshAbortController === refreshAbortController) syAutoRefreshAbortController = null;
         }
@@ -6857,6 +6864,7 @@
         const reportRunButton = reportForm?.querySelector(".report-run");
         if (reportRunButton) reportRunButton.textContent = activeReportMode === "sales" ? "Download" : "Search";
         if (reportDownloadButton) reportDownloadButton.hidden = activeReportMode === "sales" || activeReportMode === "baggage";
+        if (reportPdfDownloadButton) reportPdfDownloadButton.hidden = activeReportMode !== "psm";
         if (reportOutput && options.resetOutput) {
           reportOutput.innerHTML = activeReportMode === "vip"
             ? `<p class="panel-muted">Loading VIP Report...</p>`
@@ -7365,6 +7373,13 @@
         link.click();
         link.remove();
         URL.revokeObjectURL(url);
+      }
+
+      function downloadAuthorizationReportPdf() {
+        const from = reportFromInput?.value || "";
+        const to = reportToInput?.value || from;
+        if (!from || !to) return;
+        window.location.assign(`${resolveApiBase()}/psm-report/pdf?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
       }
 
 
@@ -8215,6 +8230,7 @@
       reportBaggageModeButton?.addEventListener("click", () => { setReportMode("baggage", { resetOutput: true }); renderBaggageTimelineReport({ latestOnly: true }); });
       reportForm.addEventListener("submit", generateReport);
       reportDownloadButton.addEventListener("click", downloadCurrentReportCsv);
+      reportPdfDownloadButton?.addEventListener("click", downloadAuthorizationReportPdf);
       securityCheckButton?.addEventListener("click", closeFlightMenuAfterAction(renderSecurityCheck));
       seatMapButton.addEventListener("click", closeFlightMenuAfterAction(renderSeatMap));
 
