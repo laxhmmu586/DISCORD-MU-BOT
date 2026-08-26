@@ -24,6 +24,18 @@ test('Report Center persists and reads rows through Google Sheets', () => {
   assert.match(drive, /async function syncSalesDetailsFromSourceSheet[\s\S]*sheets\.spreadsheets\.values\.append/);
 });
 
+test('Authorization Report remarks are stored in their Google Sheet row', () => {
+  const page = fs.readFileSync(path.join(root, 'public', 'public', 'index.html'), 'utf8');
+  assert.match(drive, /headers: \[[^\]]*'Detail', 'Key', 'Remark'\]/);
+  assert.match(drive, /async function updatePsmMsgReportRemark[\s\S]*sheets\.spreadsheets\.values\.update/);
+  assert.match(drive, /row\.key = String\(row\.key \|\| ''\)\.trim\(\) \|\| buildPsmMsgKey\(row\)/);
+  assert.match(server, /app\.post\('\/psm-report\/remark'/);
+  assert.doesNotMatch(server.match(/app\.post\('\/psm-report\/remark'[\s\S]*?\n}\);/)?.[0] || '', /cleanBodyText\(req\.body\?\.key/);
+  assert.match(page, />Authorization Report<\/button>/);
+  assert.match(page, /data-authorization-remark/);
+  assert.match(page, /method: "POST"/);
+});
+
 test('all CBS stores use Sheet rows as their identifiers', () => {
   for (const functionName of ['getCbsCases', 'getWrongBaggageSubmissions', 'getCbsUnresolvedBaggageCases', 'getCbsWorldTracerCases', 'getCbsMissingBagReports']) {
     const block = drive.match(new RegExp(`async function ${functionName}\\b[\\s\\S]*?\\n}`))?.[0] || '';

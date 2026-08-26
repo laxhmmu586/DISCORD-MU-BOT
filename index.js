@@ -51,6 +51,7 @@ const {
   appendStoredReportRows,
   appendVipReportRows,
   appendPsmMsgReportRows,
+  updatePsmMsgReportRemark,
   pruneStoredReportRows,
   findTestBaggageByTag,
   getTestBaggageReportRows,
@@ -3319,6 +3320,26 @@ app.get('/psm-report', async (req, res) => {
   } catch (err) {
     console.error('PSM report error:', err);
     return res.status(500).json({ error: err?.message || 'PSM report lookup failed' });
+  }
+});
+
+// Use POST because the production web app calls this API cross-origin and the
+// established CORS contract permits GET/POST/OPTIONS. A PATCH request is
+// rejected by the browser during preflight before it can reach this handler.
+app.post('/psm-report/remark', async (req, res) => {
+  try {
+    // The deterministic key can contain a newline when Detail has multiple
+    // PSM/MSG lines. Do not pass it through cleanBodyText, which replaces
+    // control characters and would prevent the Sheet row from matching.
+    const key = String(req.body?.key || '').trim().slice(0, 5000);
+    const remark = cleanBodyText(req.body?.remark, 1000);
+    if (!key) return res.status(400).json({ error: 'Missing report row key' });
+    const result = await updatePsmMsgReportRemark(key, remark);
+    if (result.notFound) return res.status(404).json({ error: 'Authorization Report row not found' });
+    return res.json(result);
+  } catch (err) {
+    console.error('Authorization Report remark update error:', err);
+    return res.status(500).json({ error: err?.message || 'Remark save failed' });
   }
 });
 

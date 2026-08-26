@@ -2967,6 +2967,20 @@
         outline: 0;
       }
 
+      .report-remark-input {
+        min-width: 190px;
+        width: 100%;
+        padding: 8px 10px;
+        color: #e8f2ff;
+        background: #0b1c2c;
+        border: 1px solid #31506a;
+        font: inherit;
+      }
+
+      .report-remark-input:focus { outline: 1px solid #4da3ff; border-color: #4da3ff; }
+      .report-remark-input.is-saving { opacity: .65; }
+      .report-remark-input.is-save-error { border-color: #ff6b6b; }
+
       .report-actions-row {
         display: flex;
         flex-wrap: wrap;
@@ -4438,7 +4452,7 @@
             <button class="detail-action" id="report-sales-mode" type="button" data-report-mode="sales">Sales Report</button>
             <button class="detail-action" id="report-sales-details-mode" type="button" data-report-mode="salesDetails">Sales Details</button>
             <button class="detail-action" id="report-vip-mode" type="button" data-report-mode="vip">VIP Report</button>
-            <button class="detail-action" id="report-psm-mode" type="button" data-report-mode="psm">PSM Report</button>
+            <button class="detail-action" id="report-psm-mode" type="button" data-report-mode="psm">Authorization Report</button>
             <button class="detail-action" id="report-inad-mode" type="button" data-report-mode="inad">INAD Report</button>
             <button class="detail-action" id="report-wch-mode" type="button" data-report-mode="wch">WCH Report</button>
             <button class="detail-action" id="report-miss-connection-mode" type="button" data-report-mode="missConnection">Misconnection</button>
@@ -5786,6 +5800,20 @@
         return `<table class="data-table"><thead><tr>${columns.map((col) => `<th>${escapeHtml(col.label)}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${columns.map((col) => `<td>${escapeHtml(col.value(row) || "-")}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
       }
 
+      function authorizationReportTable(rows) {
+        if (!rows.length) return `<p class="panel-muted">No Authorization Report rows found.</p>`;
+        const columns = [
+          ["Flight Date", (row) => row.displayDate || row.flightDate || row.date],
+          ["Flight #", (row) => row.flightNo],
+          ["Passenger Name", (row) => row.passenger],
+          ["BN", (row) => row.bn],
+          ["Seat", (row) => row.seat],
+          ["BAGS", (row) => row.bags],
+          ["Detail", (row) => row.detail],
+        ];
+        return `<table class="data-table"><thead><tr>${columns.map(([label]) => `<th>${escapeHtml(label)}</th>`).join("")}<th>Remark</th></tr></thead><tbody>${rows.map((row) => `<tr>${columns.map(([, value]) => `<td>${escapeHtml(value(row) || "-")}</td>`).join("")}<td><input class="report-remark-input" type="text" maxlength="1000" value="${escapeHtml(row.remark || "")}" data-authorization-remark="${escapeHtml(encodeURIComponent(row.key || ""))}" aria-label="Remark for ${escapeHtml(row.passenger || "passenger")}" placeholder="Enter remark" /></td></tr>`).join("")}</tbody></table>`;
+      }
+
       function moneyText(value) {
         return Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       }
@@ -6839,7 +6867,7 @@
               : (activeReportMode === "baggage"
                 ? `<p class="panel-muted">Select a submit-date range, optionally enter a bag tag, then click Search.</p>`
                 : (["psm", "wch"].includes(activeReportMode)
-                  ? `<p class="panel-muted">Choose a flight date range, then search ${activeReportMode === "wch" ? "WCH" : "PSM"} Report.</p>`
+                  ? `<p class="panel-muted">Choose a flight date range, then search ${activeReportMode === "wch" ? "WCH Report" : "Authorization Report"}.</p>`
                   : (activeReportMode === "salesDetails"
                     ? `<p class="panel-muted">Choose a date range, then search Sales Details totals by Type.</p>`
                     : `<p class="panel-muted">Choose a date, then download Sales Report.</p>`)))));
@@ -7586,7 +7614,7 @@
           : (type === "salesDetails"
             ? `<p class="panel-muted">Loading Sales Details for ${escapeHtml(from)}${from === to ? "" : ` to ${escapeHtml(to)}`}...</p>`
             : (type === "psm"
-            ? `<p class="panel-muted">Loading PSM Report for ${escapeHtml(from)}${from === to ? "" : ` to ${escapeHtml(to)}`}...</p>`
+            ? `<p class="panel-muted">Loading Authorization Report for ${escapeHtml(from)}${from === to ? "" : ` to ${escapeHtml(to)}`}...</p>`
             : (type === "wch"
               ? `<p class="panel-muted">Loading WCH Report for ${escapeHtml(from)}${from === to ? "" : ` to ${escapeHtml(to)}`}...</p>`
               : (type === "inad" ? `<p class="panel-muted">Loading INAD Report...</p>` : (type === "missConnection" ? `<p class="panel-muted">Loading Misconnection Report...</p>` : `<p class="panel-muted">Loading VIP Report...</p>`)))));
@@ -7665,15 +7693,7 @@
             { label: "Bags", value: (row) => row.bags },
           ], "No VIP passengers found.");
         } else if (type === "psm") {
-          tableHtml = rowsTable(rows, [
-            { label: "Flight Date", value: (row) => row.displayDate || row.flightDate || row.date },
-            { label: "Flight #", value: (row) => row.flightNo },
-            { label: "Passenger Name", value: (row) => row.passenger },
-            { label: "BN", value: (row) => row.bn },
-            { label: "Seat", value: (row) => row.seat },
-            { label: "BAGS", value: (row) => row.bags },
-            { label: "Detail", value: (row) => row.detail },
-          ], "No PSM/MSG rows found.");
+          tableHtml = authorizationReportTable(rows);
         } else if (type === "inad") {
           tableHtml = rowsTable(rows, [
             { label: "Date", value: (row) => row.displayDate || row.date },
@@ -7710,7 +7730,7 @@
           sales: `sales-report-${from}.csv`,
           salesDetails: `sales-details-${from}${from === to ? "" : `-to-${to}`}.csv`,
           vip: "vip-report.csv",
-          psm: `psm-report-${from}${from === to ? "" : `-to-${to}`}.csv`,
+          psm: `authorization-report-${from}${from === to ? "" : `-to-${to}`}.csv`,
           inad: "inad-report.csv",
           wch: `wch-report-${from}${from === to ? "" : `-to-${to}`}.csv`,
           missConnection: "miss-connection-report.csv",
@@ -8156,6 +8176,33 @@
           detail.hidden = false;
           detail.innerHTML = baggageNodeDetailHtml(nodes[nodeIndex], row);
         }
+      });
+
+      const authorizationRemarkTimers = new WeakMap();
+      reportOutput?.addEventListener("input", (event) => {
+        const input = event.target.closest("[data-authorization-remark]");
+        if (!input) return;
+        clearTimeout(authorizationRemarkTimers.get(input));
+        input.classList.remove("is-save-error");
+        input.classList.add("is-saving");
+        authorizationRemarkTimers.set(input, setTimeout(async () => {
+          try {
+            await apiJson("/psm-report/remark", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                key: decodeURIComponent(input.dataset.authorizationRemark || ""),
+                remark: input.value,
+              }),
+            });
+            input.classList.remove("is-saving", "is-save-error");
+            input.title = "Saved";
+          } catch (error) {
+            input.classList.remove("is-saving");
+            input.classList.add("is-save-error");
+            input.title = error?.message || "Remark save failed";
+          }
+        }, 600));
       });
 
       reportSalesModeButton?.addEventListener("click", () => setReportMode("sales", { forceToday: true, resetOutput: true }));
