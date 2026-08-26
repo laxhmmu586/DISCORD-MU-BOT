@@ -46,6 +46,34 @@ test('Firestore batch writes collapse duplicate document targets', () => {
   ]);
 });
 
+test('collection cache expires and returns defensive copies', () => {
+  const { collectionCache, cachedRows, clearCache } = firestore._test;
+  clearCache();
+  collectionCache.set('cases', { rows:[{ firestoreId:'case-1', nested:{ status:'Open' } }], loadedAt:Date.now() });
+
+  const first = cachedRows('cases');
+  first[0].nested.status = 'Closed';
+
+  assert.equal(cachedRows('cases')[0].nested.status, 'Open');
+  assert.equal(cachedRows('cases', Date.now() + firestore.cacheTtlMs + 1), null);
+  clearCache();
+});
+
+test('successful writes update an already populated collection cache', () => {
+  const { collectionCache, cachedRows, replaceCachedRow, clearCache } = firestore._test;
+  clearCache();
+  collectionCache.set('cases', { rows:[{ firestoreId:'case-1', status:'Open' }], loadedAt:0 });
+
+  replaceCachedRow('cases', { firestoreId:'case-1', status:'Closed' });
+  replaceCachedRow('cases', { firestoreId:'case-2', status:'Open' });
+
+  assert.deepEqual(cachedRows('cases'), [
+    { firestoreId:'case-1', status:'Closed' },
+    { firestoreId:'case-2', status:'Open' }
+  ]);
+  clearCache();
+});
+
 test('Firestore adapter has no legacy Sheet migration path', () => {
   const source = require('node:fs').readFileSync(require.resolve('../cbsFirestore'), 'utf8');
   assert.doesNotMatch(source, /ensureMigrated|_cbsMigrations|legacyLoader/);
