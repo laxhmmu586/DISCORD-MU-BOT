@@ -618,8 +618,8 @@ async function scanSyServiceReportRows(type, isoDate) {
 async function loadStoredReportRows(type, isoDate, options = {}) {
   const normalizedType = String(type || '').toLowerCase();
   const stored = await getStoredReportRows(normalizedType, isoDate);
-  if (normalizedType === 'vip') return { rows: stored.rows, source: 'firestore', scanned: true };
-  if (stored.scanned && !options.forceRefresh) return { rows: stored.rows, source: 'firestore', scanned: true };
+  if (normalizedType === 'vip') return { rows: stored.rows, source: 'googleSheet', scanned: true };
+  if (stored.scanned && !options.forceRefresh) return { rows: stored.rows, source: 'googleSheet', scanned: true };
   const rows = await scanSyServiceReportRows(normalizedType, isoDate);
   await appendStoredReportRows(normalizedType, isoDate, rows);
   const refreshed = await getStoredReportRows(normalizedType, isoDate);
@@ -2252,7 +2252,7 @@ async function syncUpcomingRushOnHand(record, updateEvent, updatedBy = '') {
   if (!normalizedTag || !worldTracerFileNumber) return [];
   const rows = await getCbsUnresolvedBaggageCases();
   const matches = rows.filter((row) => !row.resolvedAt && normalizedCbsLinkTag(row.bagTag) === normalizedTag);
-  return Promise.all(matches.map((row) => updateCbsUnresolvedBaggageWorldTracer(row.rowNumber || row.firestoreId, worldTracerFileNumber, updatedBy)));
+  return Promise.all(matches.map((row) => updateCbsUnresolvedBaggageWorldTracer(row.rowNumber, worldTracerFileNumber, updatedBy)));
 }
 
 
@@ -2696,7 +2696,7 @@ app.post('/cbs-worldtracer-cases/update', async (req, res) => {
   try {
     const body = req.body || {};
     const record = {
-      firestoreId: sanitizeCbsText(body.firestoreId, 80), worldTracerFileNumber: sanitizeCbsText(body.worldTracerFileNumber, 120).toUpperCase(), originalTagNumber: sanitizeCbsText(body.originalTagNumber, 120).toUpperCase(), rushTagNumber: sanitizeCbsText(body.rushTagNumber, 120).toUpperCase(), createdAt:sanitizeCbsText(body.createdAt, 40),
+      worldTracerFileNumber: sanitizeCbsText(body.worldTracerFileNumber, 120).toUpperCase(), originalTagNumber: sanitizeCbsText(body.originalTagNumber, 120).toUpperCase(), rushTagNumber: sanitizeCbsText(body.rushTagNumber, 120).toUpperCase(), createdAt:sanitizeCbsText(body.createdAt, 40),
       flightRows:(Array.isArray(body.flightRows) ? body.flightRows : []).slice(0, 20).map((flight) => ({ flightDate:sanitizeCbsText(flight?.flightDate, 40), flightNumber:sanitizeCbsText(flight?.flightNumber, 40).toUpperCase(), from:sanitizeCbsText(flight?.from, 40).toUpperCase(), to:sanitizeCbsText(flight?.to, 40).toUpperCase() }))
     };
     if (!record.originalTagNumber || !record.rushTagNumber || !record.flightRows.length || record.flightRows.some((flight) => Object.values(flight).some((value) => !value))) return res.status(400).json({ error:'Original tag, RUSH tag, and complete flight segments are required' });
@@ -2720,7 +2720,7 @@ app.get('/cbs-unresolved-baggage', async (req, res) => {
       });
       const fileNumber = sanitizeCbsText(matchedCase?.worldTracerFileNumber, 120).toUpperCase();
       if (fileNumber && fileNumber !== sanitizeCbsText(row.worldTracerFileNumber, 120).toUpperCase()) {
-        await updateCbsUnresolvedBaggageWorldTracer(row.rowNumber || row.firestoreId, fileNumber, 'Upcoming Rush match');
+        await updateCbsUnresolvedBaggageWorldTracer(row.rowNumber, fileNumber, 'Upcoming Rush match');
       }
     }
     rows = await getCbsUnresolvedBaggageCases({ includeResolved: true });
@@ -3173,8 +3173,8 @@ app.post('/cbs-cases/:rowNumber/link-on-hand', async (req, res) => {
   try {
     const onHandId = sanitizeCbsText(req.body?.onHandId, 120);
     const updatedBy = sanitizeCbsText(req.body?.updatedBy, 160);
-    const record = (await getCbsCases()).find((row) => String(row.rowNumber || row.firestoreId) === String(req.params.rowNumber));
-    const onHand = (await getCbsUnresolvedBaggageCases()).find((row) => String(row.rowNumber || row.firestoreId) === onHandId && !row.resolvedAt);
+    const record = (await getCbsCases()).find((row) => String(row.rowNumber) === String(req.params.rowNumber));
+    const onHand = (await getCbsUnresolvedBaggageCases()).find((row) => String(row.rowNumber) === onHandId && !row.resolvedAt);
     if (!record || !onHand) return res.status(404).json({ error:'Passenger Filed or On-hand case not found' });
     const upcomingEvent = (record.updateEvents || []).filter((event) => event.key === 'upcoming_rush').at(-1);
     const rushTag = new Map(upcomingEvent?.fields || []).get('Rush Tag');
@@ -3295,7 +3295,7 @@ app.get('/vip-report', async (req, res) => {
     const isoDate = String(req.query.date || '').trim();
     if (isoDate && !/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return res.status(400).json({ error: 'Invalid date' });
     const rows = await getVipReportRows(isoDate || '');
-    return res.json({ rows, source: 'firestore', scanned: true });
+    return res.json({ rows, source: 'googleSheet', scanned: true });
   } catch (err) {
     console.error('VIP report error:', err);
     return res.status(500).json({ error: err?.message || 'VIP report lookup failed' });
@@ -3315,7 +3315,7 @@ app.get('/psm-report', async (req, res) => {
       return res.status(400).json({ error: 'Invalid date range' });
     }
     const rows = await getPsmMsgReportRows(from, to);
-    return res.json({ rows, source: 'firestore' });
+    return res.json({ rows, source: 'googleSheet' });
   } catch (err) {
     console.error('PSM report error:', err);
     return res.status(500).json({ error: err?.message || 'PSM report lookup failed' });
@@ -3325,7 +3325,7 @@ app.get('/psm-report', async (req, res) => {
 app.get('/inad-report', async (req, res) => {
   try {
     const rows = await getInadReportRows();
-    return res.json({ rows, source: 'firestore' });
+    return res.json({ rows, source: 'googleSheet' });
   } catch (err) {
     console.error('INAD report error:', err);
     return res.status(500).json({ error: err?.message || 'INAD report lookup failed' });
@@ -3344,7 +3344,7 @@ app.get('/wch-report', async (req, res) => {
       return res.status(400).json({ error: 'Invalid date range' });
     }
     const rows = await getWheelchairReportRows(from, to);
-    return res.json({ rows, source: 'firestore' });
+    return res.json({ rows, source: 'googleSheet' });
   } catch (err) {
     console.error('WCH report error:', err);
     return res.status(500).json({ error: err?.message || 'WCH report lookup failed' });
@@ -3401,7 +3401,7 @@ app.get('/sales-details-report', async (req, res) => {
       return res.status(400).json({ error: 'Invalid date range' });
     }
     const result = await getSalesDetailsReportRows(from, to, { sync: String(req.query.sync || 'true').toLowerCase() !== 'false' });
-    return res.json({ ...result, source: 'firestore' });
+    return res.json({ ...result, source: 'googleSheet' });
   } catch (err) {
     console.error('Sales details report error:', err);
     return res.status(500).json({ error: err?.message || 'Sales details report lookup failed' });
