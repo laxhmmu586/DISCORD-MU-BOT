@@ -51,6 +51,7 @@ const {
   appendStoredReportRows,
   appendVipReportRows,
   appendPsmMsgReportRows,
+  updatePsmMsgReportRemark,
   pruneStoredReportRows,
   findTestBaggageByTag,
   getTestBaggageReportRows,
@@ -3319,6 +3320,20 @@ app.get('/psm-report', async (req, res) => {
   } catch (err) {
     console.error('PSM report error:', err);
     return res.status(500).json({ error: err?.message || 'PSM report lookup failed' });
+  }
+});
+
+app.patch('/psm-report/remark', async (req, res) => {
+  try {
+    const key = cleanBodyText(req.body?.key, 2000);
+    const remark = cleanBodyText(req.body?.remark, 1000);
+    if (!key) return res.status(400).json({ error: 'Missing report row key' });
+    const result = await updatePsmMsgReportRemark(key, remark);
+    if (result.notFound) return res.status(404).json({ error: 'Authorization Report row not found' });
+    return res.json(result);
+  } catch (err) {
+    console.error('Authorization Report remark update error:', err);
+    return res.status(500).json({ error: err?.message || 'Remark save failed' });
   }
 });
 

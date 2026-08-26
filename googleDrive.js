@@ -576,8 +576,8 @@ const REPORT_SHEETS = {
   },
   psmMsg: {
     gid: 101743110,
-    headers: ['Recorded At', 'Flight Date', 'Flight #', 'Passenger Name', 'BN', 'Seat', 'BAGS', 'Type', 'Detail', 'Key'],
-    fields: ['recordedAt', 'flightDate', 'flightNo', 'passenger', 'bn', 'seat', 'bags', 'type', 'detail', 'key']
+    headers: ['Recorded At', 'Flight Date', 'Flight #', 'Passenger Name', 'BN', 'Seat', 'BAGS', 'Type', 'Detail', 'Key', 'Remark'],
+    fields: ['recordedAt', 'flightDate', 'flightNo', 'passenger', 'bn', 'seat', 'bags', 'type', 'detail', 'key', 'remark']
   },
   salesDetails: {
     gid: 1069298005,
@@ -1215,6 +1215,28 @@ async function getPsmMsgReportRows(fromIsoDate, toIsoDate = fromIsoDate) {
   return dataRows.sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')) || String(a.flightNo || '').localeCompare(String(b.flightNo || '')) || Number(a.bn || 0) - Number(b.bn || 0));
 }
 
+async function updatePsmMsgReportRemark(key, remark) {
+  if (reportSheetAccessBlocked) return { updated: false };
+  const normalizedKey = String(key || '').trim().toUpperCase();
+  if (!normalizedKey) throw new Error('Missing report row key');
+  const config = getReportSheetConfig('psmMsg');
+  const title = await getReportSheetTitle('psmMsg');
+  if (!config || !title) throw new Error('Authorization Report sheet not found');
+  const sheetRows = await getReportSheetRows('psmMsg');
+  await ensureReportSheetHeaders('psmMsg', sheetRows);
+  const rowIndex = sheetRows.findIndex((values, index) => index > 0 && String(reportPsmMsgRowFromSheet(values).key || '').trim().toUpperCase() === normalizedKey);
+  if (rowIndex < 0) return { updated: false, notFound: true };
+  const remarkColumn = String.fromCharCode(65 + config.fields.indexOf('remark'));
+  const cleanRemark = sanitizeSheetText(remark, 1000);
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: REPORT_SHEET_ID,
+    range: `${title}!${remarkColumn}${rowIndex + 1}`,
+    valueInputOption: 'RAW',
+    requestBody: { values: [[cleanRemark]] }
+  });
+  return { updated: true, remark: cleanRemark };
+}
+
 async function getInadReportRows() {
   const { rows } = await getStoredReportRows('inad', '');
   const dataRows = [];
@@ -1321,6 +1343,7 @@ function reportPsmMsgRowFromSheet(values) {
   row.bags = String(row.bags || '').trim().toUpperCase();
   row.type = String(row.type || '').trim().toUpperCase();
   row.detail = String(row.detail || '').trim().toUpperCase();
+  row.remark = String(row.remark || '').trim();
   row.key = row.key || buildPsmMsgKey(row);
   return row;
 }
@@ -4207,6 +4230,7 @@ module.exports = {
   appendStoredReportRows,
   appendVipReportRows,
   appendPsmMsgReportRows,
+  updatePsmMsgReportRemark,
   pruneStoredReportRows,
   findTestBaggageByTag,
   getTestBaggageReportRows,
