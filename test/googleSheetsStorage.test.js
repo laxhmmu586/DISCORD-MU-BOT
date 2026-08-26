@@ -36,12 +36,27 @@ test('Authorization Report remarks are stored in their Google Sheet row', () => 
   assert.match(page, /method: "POST"/);
 });
 
-test('Authorization Report displays PSM and MSG together, separately from involuntary upgrades', () => {
+test('Authorization Report displays involuntary upgrades above the combined PSM and MSG group', () => {
   const page = fs.readFileSync(path.join(root, 'public', 'public', 'index.html'), 'utf8');
   const table = page.match(/function authorizationReportTable\(rows\)[\s\S]*?\n      }/)?.[0] || '';
-  assert.match(table, /renderGroup\("PSM \/ MSG", psmMsgRows\)/);
-  assert.match(table, /renderGroup\("Involuntary Upgrade", involuntaryUpgrades\)/);
+  assert.match(table, /renderGroup\("Involuntary Upgrade", involuntaryUpgrades\) \+ renderGroup\("PSM \/ MSG", psmMsgRows\)/);
   assert.match(table, /\^INVOLUNTARY UPGRADE/);
+});
+
+test('Authorization Report downloads as a branded, paginated PDF with manager approval', () => {
+  const page = fs.readFileSync(path.join(root, 'public', 'public', 'index.html'), 'utf8');
+  assert.match(page, /id="report-pdf-download"[^>]*>Download Report<\/button>/);
+  assert.match(page, /China Eastern Airlines LAX Authorization Report/);
+  assert.match(page, /CHINA EASTERN AIRLINES/);
+  assert.match(page, /LAX Authorization Report/);
+  assert.match(page, /STATION MANAGER APPROVAL/);
+  assert.match(page, /Station Manager Signature/);
+  assert.match(page, /PAGE \$\{index \+ 1\} OF \$\{pages\.length\}/);
+  assert.match(page, /Helvetica-Bold/);
+  assert.match(page, /\{ label: "BAGS", width: 82/);
+  assert.ok(page.indexOf('{ label: "INVOLUNTARY UPGRADE"') < page.indexOf('{ label: "PSM / MSG"'));
+  assert.match(page, /type: "application\/pdf"/);
+  assert.match(page, /activeReportMode !== "psm"/);
 });
 
 test('all CBS stores use Sheet rows as their identifiers', () => {
