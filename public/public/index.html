@@ -2984,6 +2984,19 @@
       .report-remark-input.is-saving { opacity: .65; }
       .report-remark-input.is-save-error { border-color: #ff6b6b; }
 
+      .authorization-report-groups {
+        display: grid;
+        gap: 28px;
+      }
+
+      .authorization-report-group-title {
+        margin: 0 0 10px;
+        color: white;
+        font-size: 18px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
       .report-actions-row {
         display: flex;
         flex-wrap: wrap;
@@ -4467,7 +4480,7 @@
             <label class="report-field report-keyword-field"><span>Search</span><input id="report-keyword" type="search" placeholder="Optional filter" /></label>
             <button class="report-run" type="submit">Search</button>
           </form>
-          <div class="report-actions-row"><button class="report-download" id="report-download" type="button" disabled>Download CSV</button><button class="report-pdf-download" id="report-pdf-download" type="button" hidden>Download Report</button></div>
+          <div class="report-actions-row"><button class="report-download" id="report-download" type="button" disabled>Download CSV</button><button class="report-pdf-download" id="report-pdf-download" type="button" aria-label="Download authorization report as PDF" hidden>Download Report</button></div>
           <div id="report-output"><p class="panel-muted">Choose a report type to continue.</p></div>
         </section>
 
@@ -5815,7 +5828,15 @@
           ["BAGS", (row) => row.bags],
           ["Detail", (row) => row.detail],
         ];
-        return `<table class="data-table"><thead><tr>${columns.map(([label]) => `<th>${escapeHtml(label)}</th>`).join("")}<th>Remark</th></tr></thead><tbody>${rows.map((row) => `<tr>${columns.map(([, value]) => `<td>${escapeHtml(value(row) || "-")}</td>`).join("")}<td><input class="report-remark-input" type="text" maxlength="1000" value="${escapeHtml(row.remark || "")}" data-authorization-remark="${escapeHtml(encodeURIComponent(row.key || ""))}" aria-label="Remark for ${escapeHtml(row.passenger || "passenger")}" placeholder="Enter remark" /></td></tr>`).join("")}</tbody></table>`;
+        const renderGroup = (title, groupRows) => {
+          if (!groupRows.length) return "";
+          const body = groupRows.map((row) => `<tr>${columns.map(([, value]) => `<td>${escapeHtml(value(row) || "-")}</td>`).join("")}<td><input class="report-remark-input" type="text" maxlength="1000" value="${escapeHtml(row.remark || "")}" data-authorization-remark="${escapeHtml(encodeURIComponent(row.key || ""))}" aria-label="Remark for ${escapeHtml(row.passenger || "passenger")}" placeholder="Enter remark" /></td></tr>`).join("");
+          return `<section class="authorization-report-group"><h3 class="authorization-report-group-title">${escapeHtml(title)}</h3><table class="data-table"><thead><tr>${columns.map(([label]) => `<th>${escapeHtml(label)}</th>`).join("")}<th>Remark</th></tr></thead><tbody>${body}</tbody></table></section>`;
+        };
+        const isInvoluntaryUpgrade = (row) => String(row.type || "").trim().toUpperCase() === "INVOLUNTARY UPGRADE";
+        const psmMsgRows = rows.filter((row) => !isInvoluntaryUpgrade(row));
+        const involuntaryUpgradeRows = rows.filter(isInvoluntaryUpgrade);
+        return `<div class="authorization-report-groups">${renderGroup("PSM / MSG", psmMsgRows)}${renderGroup("Involuntary Upgrade", involuntaryUpgradeRows)}</div>`;
       }
 
       function moneyText(value) {
@@ -7379,7 +7400,12 @@
         const from = reportFromInput?.value || "";
         const to = reportToInput?.value || from;
         if (!from || !to) return;
-        window.location.assign(`${resolveApiBase()}/psm-report/pdf?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+        const link = document.createElement("a");
+        link.href = `${resolveApiBase()}/psm-report/pdf?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+        link.download = `authorization-report-${from}${from === to ? "" : `-to-${to}`}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
       }
 
 
