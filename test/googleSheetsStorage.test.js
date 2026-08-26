@@ -82,6 +82,22 @@ test('Authorization Report downloads as a branded, paginated PDF with manager ap
   assert.match(page, /activeReportMode !== "psm"/);
 });
 
+test('Authorization Report downloads as a branded, paginated PDF with manager approval', () => {
+  const page = fs.readFileSync(path.join(root, 'public', 'public', 'index.html'), 'utf8');
+  assert.match(page, /id="report-pdf-download"[^>]*>Download Report<\/button>/);
+  assert.match(page, /China Eastern Airlines LAX Authorization Report/);
+  assert.match(page, /textCommand\(title, margin, 566, 13, "F2", "1 1 1"\)/);
+  assert.doesNotMatch(page, /textCommand\("LAX Authorization Report"/);
+  assert.match(page, /STATION MANAGER APPROVAL/);
+  assert.match(page, /Station Manager Signature/);
+  assert.match(page, /PAGE \$\{index \+ 1\} OF \$\{pages\.length\}/);
+  assert.match(page, /Helvetica-Bold/);
+  assert.match(page, /\{ label: "BAGS", width: 82/);
+  assert.ok(page.indexOf('{ label: "INVOLUNTARY UPGRADE"') < page.indexOf('{ label: "PSM / MSG"'));
+  assert.match(page, /type: "application\/pdf"/);
+  assert.match(page, /activeReportMode !== "psm"/);
+});
+
 test('all CBS stores use Sheet rows as their identifiers', () => {
   for (const functionName of ['getCbsCases', 'getWrongBaggageSubmissions', 'getCbsUnresolvedBaggageCases', 'getCbsWorldTracerCases', 'getCbsMissingBagReports']) {
     const block = drive.match(new RegExp(`async function ${functionName}\\b[\\s\\S]*?\\n}`))?.[0] || '';
