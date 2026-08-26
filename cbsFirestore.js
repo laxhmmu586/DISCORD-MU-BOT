@@ -13,6 +13,9 @@ const auth = new google.auth.GoogleAuth({
 });
 
 const baseUrl = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/databases/${encodeURIComponent(databaseId)}/documents`;
+const cacheTtlMs = Math.max(0, Number(process.env.FIRESTORE_CACHE_TTL_MS || 60_000) || 0);
+const collectionCache = new Map();
+const pendingLists = new Map();
 // Firestore rejects an array that directly contains another array. CBS update
 // events intentionally use two-dimensional arrays for label/value fields, so
 // wrap nested arrays in a map while encoding and transparently unwrap them on
@@ -74,8 +77,26 @@ async function request(method, url, data) {
   return response.data;
 }
 
-async function list(collection) {
-  if (!enabled) return null;
+function copyRows(rows) {
+  return rows.map((row) => structuredClone(row));
+}
+
+function cachedRows(collection, now = Date.now()) {
+  const cached = collectionCache.get(collection);
+  return cached && now - cached.loadedAt < cacheTtlMs ? copyRows(cached.rows) : null;
+}
+
+function replaceCachedRow(collection, row) {
+  const cached = collectionCache.get(collection);
+  if (!cached) return;
+  const id = documentId(row);
+  const index = cached.rows.findIndex((item) => documentId(item) === id);
+  if (index === -1) cached.rows.push(structuredClone(row));
+  else cached.rows[index] = structuredClone(row);
+  cached.loadedAt = Date.now();
+}
+
+async function fetchCollection(collection) {
   const rows = [];
   let pageToken = '';
   do {
@@ -85,7 +106,24 @@ async function list(collection) {
     for (const document of data.documents || []) rows.push({ ...decodeFields(document.fields), firestoreId:document.name.split('/').pop() });
     pageToken = data.nextPageToken || '';
   } while (pageToken);
+  collectionCache.set(collection, { rows:copyRows(rows), loadedAt:Date.now() });
   return rows;
+}
+
+async function list(collection, options = {}) {
+  if (!enabled) return null;
+  if (!options.forceRefresh) {
+    const cached = cachedRows(collection);
+    if (cached) return cached;
+    if (pendingLists.has(collection)) return copyRows(await pendingLists.get(collection));
+  }
+  const pending = fetchCollection(collection);
+  pendingLists.set(collection, pending);
+  try {
+    return copyRows(await pending);
+  } finally {
+    if (pendingLists.get(collection) === pending) pendingLists.delete(collection);
+  }
 }
 
 async function get(collection, id) {
@@ -105,7 +143,9 @@ async function upsert(collection, record) {
   await request('PATCH', `${baseUrl}/${encodeURIComponent(collection)}/${encodeURIComponent(id)}`, {
     fields:encodeFields({ ...record, firestoreId:id, firestoreUpdatedAt:new Date().toISOString() })
   });
-  return { ...record, firestoreId:id };
+  const saved = { ...record, firestoreId:id };
+  replaceCachedRow(collection, saved);
+  return saved;
 }
 
 function dedupeRecords(records = []) {
@@ -130,7 +170,14 @@ async function upsertMany(collection, records = []) {
     });
     await request('POST', `${baseUrl}:batchWrite`, { writes });
   }
-  return records.map((record) => ({ ...record, firestoreId:documentId(record) }));
+  const saved = records.map((record) => ({ ...record, firestoreId:documentId(record) }));
+  for (const record of saved) replaceCachedRow(collection, record);
+  return saved;
 }
 
-module.exports = { enabled, projectId, databaseId, list, get, upsert, upsertMany, _test:{ encodeValue, decodeValue, documentId, dedupeRecords } };
+function clearCache() {
+  collectionCache.clear();
+  pendingLists.clear();
+}
+
+module.exports = { enabled, projectId, databaseId, cacheTtlMs, list, get, upsert, upsertMany, _test:{ encodeValue, decodeValue, documentId, dedupeRecords, cachedRows, replaceCachedRow, clearCache, collectionCache } };
