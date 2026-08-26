@@ -1992,6 +1992,22 @@
         text-transform: uppercase;
       }
 
+      .authorization-report-group + .authorization-report-group {
+        margin-top: 30px;
+      }
+
+      .authorization-report-group h3 {
+        margin: 0 0 10px;
+        color: var(--blue);
+        font-size: 14px;
+        letter-spacing: 0.8px;
+        text-transform: uppercase;
+      }
+
+      .authorization-report-group .data-table {
+        table-layout: fixed;
+      }
+
 
 
       .bn-button-list {
@@ -5811,7 +5827,16 @@
           ["BAGS", (row) => row.bags],
           ["Detail", (row) => row.detail],
         ];
-        return `<table class="data-table"><thead><tr>${columns.map(([label]) => `<th>${escapeHtml(label)}</th>`).join("")}<th>Remark</th></tr></thead><tbody>${rows.map((row) => `<tr>${columns.map(([, value]) => `<td>${escapeHtml(value(row) || "-")}</td>`).join("")}<td><input class="report-remark-input" type="text" maxlength="1000" value="${escapeHtml(row.remark || "")}" data-authorization-remark="${escapeHtml(encodeURIComponent(row.key || ""))}" aria-label="Remark for ${escapeHtml(row.passenger || "passenger")}" placeholder="Enter remark" /></td></tr>`).join("")}</tbody></table>`;
+        const renderGroup = (title, groupRows) => {
+          if (!groupRows.length) return "";
+          const body = groupRows.map((row) => `<tr>${columns.map(([, value]) => `<td>${escapeHtml(value(row) || "-")}</td>`).join("")}<td><input class="report-remark-input" type="text" maxlength="1000" value="${escapeHtml(row.remark || "")}" data-authorization-remark="${escapeHtml(encodeURIComponent(row.key || ""))}" aria-label="Remark for ${escapeHtml(row.passenger || "passenger")}" placeholder="Enter remark" /></td></tr>`).join("");
+          const columnWidths = [9, 7, 12, 4, 5, 20, 21, 22];
+          const colgroup = `<colgroup>${columnWidths.map((width) => `<col style="width:${width}%">`).join("")}</colgroup>`;
+          return `<section class="authorization-report-group"><h3>${escapeHtml(title)}</h3><table class="data-table">${colgroup}<thead><tr>${columns.map(([label]) => `<th>${escapeHtml(label)}</th>`).join("")}<th>Remark</th></tr></thead><tbody>${body}</tbody></table></section>`;
+        };
+        const involuntaryUpgrades = rows.filter((row) => /^INVOLUNTARY UPGRADE$/i.test(String(row.type || "").trim()) || /^INVOLUNTARY UPGRADE\b/i.test(String(row.detail || "").trim()));
+        const psmMsgRows = rows.filter((row) => !involuntaryUpgrades.includes(row));
+        return renderGroup("Involuntary Upgrade", involuntaryUpgrades) + renderGroup("PSM / MSG", psmMsgRows);
       }
 
       function moneyText(value) {
