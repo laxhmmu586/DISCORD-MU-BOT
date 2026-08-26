@@ -537,7 +537,7 @@ function psmMsgRowsFromSyInfo(syInfo) {
       .filter(Boolean)
       .map((line) => String(line || '').trim())
       .filter((line) => /^\s*(?:PSM|MSG)(?:\b|-)/i.test(line));
-    const detail = lines.join('\n');
+    const detail = String(row.detail || '').trim() || lines.join('\n');
     return {
       flightDate: syInfo.flightDate,
       flightNo: syInfo.flightNo,
@@ -545,7 +545,7 @@ function psmMsgRowsFromSyInfo(syInfo) {
       bn: String(row.bn || '').padStart(3, '0'),
       seat: String(row.seat || '').toUpperCase(),
       bags: compactReportValue(row.bagtags || row.bagTags || row.bags),
-      type: lines.some((line) => /^\s*MSG/i.test(line)) ? 'MSG' : 'PSM',
+      type: row.type || (lines.some((line) => /^\s*MSG/i.test(line)) ? 'MSG' : 'PSM'),
       detail
     };
   }).filter((row) => row.passenger && row.detail);
