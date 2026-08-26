@@ -8188,7 +8188,7 @@
         authorizationRemarkTimers.set(input, setTimeout(async () => {
           try {
             await apiJson("/psm-report/remark", {
-              method: "PATCH",
+              method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 key: decodeURIComponent(input.dataset.authorizationRemark || ""),

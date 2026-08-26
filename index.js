@@ -3323,7 +3323,10 @@ app.get('/psm-report', async (req, res) => {
   }
 });
 
-app.patch('/psm-report/remark', async (req, res) => {
+// Use POST because the production web app calls this API cross-origin and the
+// established CORS contract permits GET/POST/OPTIONS. A PATCH request is
+// rejected by the browser during preflight before it can reach this handler.
+app.post('/psm-report/remark', async (req, res) => {
   try {
     // The deterministic key can contain a newline when Detail has multiple
     // PSM/MSG lines. Do not pass it through cleanBodyText, which replaces

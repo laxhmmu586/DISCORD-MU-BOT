@@ -29,11 +29,11 @@ test('Authorization Report remarks are stored in their Google Sheet row', () => 
   assert.match(drive, /headers: \[[^\]]*'Detail', 'Key', 'Remark'\]/);
   assert.match(drive, /async function updatePsmMsgReportRemark[\s\S]*sheets\.spreadsheets\.values\.update/);
   assert.match(drive, /row\.key = String\(row\.key \|\| ''\)\.trim\(\) \|\| buildPsmMsgKey\(row\)/);
-  assert.match(server, /app\.patch\('\/psm-report\/remark'/);
-  assert.doesNotMatch(server.match(/app\.patch\('\/psm-report\/remark'[\s\S]*?\n}\);/)?.[0] || '', /cleanBodyText\(req\.body\?\.key/);
+  assert.match(server, /app\.post\('\/psm-report\/remark'/);
+  assert.doesNotMatch(server.match(/app\.post\('\/psm-report\/remark'[\s\S]*?\n}\);/)?.[0] || '', /cleanBodyText\(req\.body\?\.key/);
   assert.match(page, />Authorization Report<\/button>/);
   assert.match(page, /data-authorization-remark/);
-  assert.match(page, /method: "PATCH"/);
+  assert.match(page, /method: "POST"/);
 });
 
 test('all CBS stores use Sheet rows as their identifiers', () => {
