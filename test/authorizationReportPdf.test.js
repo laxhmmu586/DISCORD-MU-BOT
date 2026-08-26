@@ -9,9 +9,10 @@ const page = fs.readFileSync(path.join(root, 'public/public/index.html'), 'utf8'
 const logo = fs.readFileSync(path.join(root, 'assets/china-eastern-logo.svg'), 'utf8');
 
 test('Authorization Report offers a PDF download beside CSV', () => {
-  assert.match(page, /id="report-download"[^>]*>Download CSV<\/button><button[^>]*id="report-pdf-download"[^>]*>Download Report<\/button>/);
+  assert.match(page, /id="report-download"[^>]*>Download CSV<\/button><button[^>]*id="report-pdf-download"[^>]*aria-label="Download authorization report as PDF"[^>]*>Download Report<\/button>/);
   assert.match(page, /reportPdfDownloadButton\.hidden = activeReportMode !== "psm"/);
   assert.match(page, /\/psm-report\/pdf\?from=/);
+  assert.match(page, /link\.download = `authorization-report-\$\{from\}.*\.pdf`/);
 });
 
 test('Authorization Report PDF has branded title, table, and signature line', () => {

@@ -4467,7 +4467,7 @@
             <label class="report-field report-keyword-field"><span>Search</span><input id="report-keyword" type="search" placeholder="Optional filter" /></label>
             <button class="report-run" type="submit">Search</button>
           </form>
-          <div class="report-actions-row"><button class="report-download" id="report-download" type="button" disabled>Download CSV</button><button class="report-pdf-download" id="report-pdf-download" type="button" hidden>Download Report</button></div>
+          <div class="report-actions-row"><button class="report-download" id="report-download" type="button" disabled>Download CSV</button><button class="report-pdf-download" id="report-pdf-download" type="button" aria-label="Download authorization report as PDF" hidden>Download Report</button></div>
           <div id="report-output"><p class="panel-muted">Choose a report type to continue.</p></div>
         </section>
 
@@ -7379,7 +7379,12 @@
         const from = reportFromInput?.value || "";
         const to = reportToInput?.value || from;
         if (!from || !to) return;
-        window.location.assign(`${resolveApiBase()}/psm-report/pdf?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+        const link = document.createElement("a");
+        link.href = `${resolveApiBase()}/psm-report/pdf?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+        link.download = `authorization-report-${from}${from === to ? "" : `-to-${to}`}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
       }
 
 
