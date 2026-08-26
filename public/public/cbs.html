@@ -553,7 +553,7 @@
         const routes = (row.flightRows || []).map((flight) => `<span>${escapeHtml(flight.flightDate || '-')} &nbsp; ${escapeHtml(flight.flightNumber || '-')} &nbsp; ${escapeHtml(flight.from || '-')} – ${escapeHtml(flight.to || '-')}</span>`).join('');
         const created = row.createdAt ? new Date(row.createdAt).toLocaleString() : '-';
         const editFlights = (row.flightRows || []).map((flight) => rushFlightRowHtml(flight)).join('');
-        return `<tr><td class="case-key">${escapeHtml(row.worldTracerFileNumber || '-')}</td><td><span class="bag-tag-value">${escapeHtml(row.originalTagNumber || '-')}</span></td><td><span class="bag-tag-value">${escapeHtml(row.rushTagNumber || '-')}</span></td><td><div class="worldtracer-route">${routes}</div></td><td class="sheet-meta">${escapeHtml(created)}</td><td><button type="button" data-toggle-onhand-update="${caseIndex}">Update</button></td></tr><tr data-onhand-update-row="${caseIndex}" hidden><td colspan="6"><form class="worldtracer-form onhand-update-form" data-row-numbers="${escapeHtml((row.rowNumbers || []).join(','))}" data-firestore-id="${escapeHtml(row.firestoreId || '')}" data-created-at="${escapeHtml(row.createdAt)}"><label><span>WorldTracer File Number (Optional)</span><input name="worldTracerFileNumber" value="${escapeHtml(row.worldTracerFileNumber)}" placeholder="Can be added later" /></label><label><span>Original Tag Number</span><input name="originalTagNumber" value="${escapeHtml(row.originalTagNumber)}" required /></label><label><span>RUSH Tag Number</span><input name="rushTagNumber" value="${escapeHtml(row.rushTagNumber)}" required /></label><div class="rush-itinerary wide"><div class="rush-itinerary-head"><h2>RUSH Itinerary</h2><button class="secondary" type="button" data-add-onhand-flight>+ Add Flight</button></div><div data-onhand-flight-rows>${editFlights}</div></div><div class="actions"><button type="submit">Save Update</button></div></form></td></tr>`;
+        return `<tr><td class="case-key">${escapeHtml(row.worldTracerFileNumber || '-')}</td><td><span class="bag-tag-value">${escapeHtml(row.originalTagNumber || '-')}</span></td><td><span class="bag-tag-value">${escapeHtml(row.rushTagNumber || '-')}</span></td><td><div class="worldtracer-route">${routes}</div></td><td class="sheet-meta">${escapeHtml(created)}</td><td><button type="button" data-toggle-onhand-update="${caseIndex}">Update</button></td></tr><tr data-onhand-update-row="${caseIndex}" hidden><td colspan="6"><form class="worldtracer-form onhand-update-form" data-row-numbers="${escapeHtml((row.rowNumbers || []).join(','))}" data-created-at="${escapeHtml(row.createdAt)}"><label><span>WorldTracer File Number (Optional)</span><input name="worldTracerFileNumber" value="${escapeHtml(row.worldTracerFileNumber)}" placeholder="Can be added later" /></label><label><span>Original Tag Number</span><input name="originalTagNumber" value="${escapeHtml(row.originalTagNumber)}" required /></label><label><span>RUSH Tag Number</span><input name="rushTagNumber" value="${escapeHtml(row.rushTagNumber)}" required /></label><div class="rush-itinerary wide"><div class="rush-itinerary-head"><h2>RUSH Itinerary</h2><button class="secondary" type="button" data-add-onhand-flight>+ Add Flight</button></div><div data-onhand-flight-rows>${editFlights}</div></div><div class="actions"><button type="submit">Save Update</button></div></form></td></tr>`;
       }).join('')}</tbody></table></div>`;
     }
     async function loadWorldTracerCases() {
@@ -615,14 +615,14 @@
         const historyHtml = resolvedHistory.length ? `<section class="unresolved-history"><h3>History</h3>${resolvedHistory.map((item) => `<p><strong>${escapeHtml(item.resolution || 'Completed')}</strong> · ${escapeHtml(item.resolvedAt ? new Date(item.resolvedAt).toLocaleString() : '')}${item.resolutionNote ? `<br>${escapeHtml(item.resolutionNote)}` : ''}</p>`).join('')}</section>` : '';
         const closed = !active && showClosed ? row : null;
         const matchedCase = active ? matchingPassengerCaseForOnHand(active) : null;
-        const onHandId = active?.rowNumber || active?.firestoreId || '';
-        const matchedCaseId = matchedCase?.rowNumber || matchedCase?.firestoreId || '';
+        const onHandId = active?.rowNumber || '';
+        const matchedCaseId = matchedCase?.rowNumber || '';
         const matchBadge = matchedCase ? '<span class="rush-match on-hand-match">Match</span>' : '';
         const linkButton = matchedCase && onHandId && matchedCaseId ? `<button type="button" data-link-on-hand="${escapeHtml(onHandId)}" data-link-case="${escapeHtml(matchedCaseId)}">Link</button>` : '';
         const formHtml = active
-          ? `<form class="unresolved-update" data-unresolved-row="${escapeHtml(active.rowNumber || active.firestoreId)}" data-bag-tag="${escapeHtml(active.bagTag)}" data-world-tracer-file="${escapeHtml(active.worldTracerFileNumber)}"><label class="wide"><span>Resolution</span><select name="action" data-unresolved-action><option value="worldtracer">WorldTracer</option><option value="email">Email</option><option value="on-hand-rush">Create Rush</option><option value="passenger-collected">Passenger collected / Case closed</option><option value="shipped">Shipped</option><option value="other">Other resolution</option><option value="case-close">Case Close</option></select></label><div class="unresolved-update-fields">${unresolvedUpdateFieldsHtml('worldtracer', active.bagTag, active.worldTracerFileNumber)}</div><div class="actions"><button type="submit">Update</button></div></form>`
+          ? `<form class="unresolved-update" data-unresolved-row="${escapeHtml(active.rowNumber)}" data-bag-tag="${escapeHtml(active.bagTag)}" data-world-tracer-file="${escapeHtml(active.worldTracerFileNumber)}"><label class="wide"><span>Resolution</span><select name="action" data-unresolved-action><option value="worldtracer">WorldTracer</option><option value="email">Email</option><option value="on-hand-rush">Create Rush</option><option value="passenger-collected">Passenger collected / Case closed</option><option value="shipped">Shipped</option><option value="other">Other resolution</option><option value="case-close">Case Close</option></select></label><div class="unresolved-update-fields">${unresolvedUpdateFieldsHtml('worldtracer', active.bagTag, active.worldTracerFileNumber)}</div><div class="actions"><button type="submit">Update</button></div></form>`
           : closed
-            ? `<form class="unresolved-update" data-unresolved-row="${escapeHtml(closed.rowNumber || closed.firestoreId)}" data-bag-tag="${escapeHtml(closed.bagTag)}" data-world-tracer-file="${escapeHtml(closed.worldTracerFileNumber)}"><label class="wide"><span>Update</span><select name="action" data-unresolved-action><option value="worldtracer">Update WorldTracer</option><option value="reopen">Reopen</option></select></label><div class="unresolved-update-fields">${unresolvedUpdateFieldsHtml('worldtracer', closed.bagTag, closed.worldTracerFileNumber)}</div><div class="actions"><button type="submit">Update</button></div></form>`
+            ? `<form class="unresolved-update" data-unresolved-row="${escapeHtml(closed.rowNumber)}" data-bag-tag="${escapeHtml(closed.bagTag)}" data-world-tracer-file="${escapeHtml(closed.worldTracerFileNumber)}"><label class="wide"><span>Update</span><select name="action" data-unresolved-action><option value="worldtracer">Update WorldTracer</option><option value="reopen">Reopen</option></select></label><div class="unresolved-update-fields">${unresolvedUpdateFieldsHtml('worldtracer', closed.bagTag, closed.worldTracerFileNumber)}</div><div class="actions"><button type="submit">Update</button></div></form>`
             : '';
         const progressRow = active || row;
         return `<tr class="case-summary-row" data-toggle-unresolved-update role="button" tabindex="0" aria-expanded="false"><td class="sheet-meta">${escapeHtml(row.worldTracerFileNumber || '-')}</td><td class="sheet-meta"><span class="on-hand-tag-summary">${matchBadge}<span class="bag-tag-value">${escapeHtml(row.bagTag)}</span></span></td><td class="sheet-meta">${escapeHtml(row.direction || '-')}</td><td class="sheet-meta">${escapeHtml(row.flightDate || '-')}</td><td class="sheet-meta">${escapeHtml(row.bagType || row.status || '-')}</td><td class="sheet-meta"><span class="on-hand-location"><span>${escapeHtml(row.location || '-')}</span>${linkButton}</span></td></tr><tr class="case-detail-row" data-unresolved-detail hidden><td colspan="6"><div class="case-detail-layout"><div class="case-progress-column">${unresolvedProgressHtml(progressRow)}</div><div class="case-detail-right">${formHtml}${historyHtml}</div></div></td></tr>`;
@@ -679,7 +679,7 @@
     function parseUpdateNoteEvents(row) {
       const note = String(row?.updateNote || '').trim();
       const events = [];
-      if (row?.rowNumber || row?.firestoreId || row?.submittedAt || row?.createdAt) {
+      if (row?.rowNumber || row?.submittedAt || row?.createdAt) {
         events.push({ key:'create', title:'Create Case', at:row.submittedAt || row.issueDate || '', by:row.submittedBy || row.createdBy || 'System', fields:[] });
       }
       const storedEvents = parseStoredUpdateEvents(row);
@@ -805,7 +805,7 @@
       return `<section class="case-comments"><h3>${label('Comment', '备注')}</h3>${comments.slice().reverse().map((event) => {
         const comment = (event.fields || []).find(([key]) => /^comment$/i.test(key))?.[1] || event.note || '';
         const time = formatEventTime(event.at);
-        const caseId = row.rowNumber || row.firestoreId || '';
+        const caseId = row.rowNumber || '';
         return `<div class="case-comment"><div class="case-comment-head"><span>${escapeHtml(comment)}</span><button class="case-comment-delete" type="button" data-delete-case-comment data-case-id="${escapeHtml(caseId)}" data-comment-at="${escapeHtml(event.at || '')}" data-comment-text="${escapeHtml(comment)}">${label('Delete', '删除')}</button></div><small>${label('Comment by', '留言人')}: ${escapeHtml(updaterDisplayName(event.by || 'System'))}${time.date ? ` · ${escapeHtml(time.date)} ${escapeHtml(time.time)}` : ''}</small></div>`;
       }).join('')}</section>`;
     }
@@ -1088,7 +1088,7 @@
       }, []);
     }
     function trackingControlHtml(row, part = 'all') {
-      const recordId = row?.rowNumber || row?.firestoreId || '';
+      const recordId = row?.rowNumber || '';
       const events = parseUpdateNoteEvents(row);
       if (row?.source === 'wrongBaggage') {
         const historyHtml = events.map((event, index) => ({ event, stepNumber:index + 1 })).reverse().map(({ event, stepNumber }, index) => {
@@ -1234,7 +1234,7 @@
         const todayLabel = key === todayKey ? '<span>Today</span>' : '';
         return `<section class="missing-date-group"><h2 class="missing-date-heading">${todayLabel}${escapeHtml(dateLabel)}</h2><div class="sheet-shell"><table class="missing-report-table"><thead><tr><th>Bag Tag</th><th>Passenger</th><th>Destination</th><th>Airline</th><th>Source</th><th>Status</th><th></th></tr></thead><tbody>${group.rows.map((row) => {
           const status = row.acknowledgedAt ? 'Acknowledged' : (row.caseCreatedAt ? (row.linkedCaseUpdated ? 'Updated' : 'Rush Created') : 'Open');
-          const identifier = row.rowNumber || row.firestoreId || '';
+          const identifier = row.rowNumber || '';
           const actionHtml = row.acknowledgedAt || row.caseCreatedAt ? '' : `<div class="missing-actions"><button type="button" data-create-missing-rush="${escapeHtml(identifier)}" data-missing-bag-tag="${escapeHtml(row.bagTag)}">Create Rush</button><button class="secondary" type="button" data-ack-missing="${escapeHtml(identifier)}">Acknowledge</button></div>`;
           return `<tr><td>${escapeHtml(row.bagTag)}</td><td>${escapeHtml(row.passengerName)}</td><td>${escapeHtml(row.destination)}</td><td>${escapeHtml(row.airline)}</td><td>${escapeHtml(row.sourceAttachment || '-')}</td><td>${escapeHtml(status)}</td><td>${actionHtml}</td></tr>`;
         }).join('')}</tbody></table></div></section>`;
@@ -1527,7 +1527,6 @@
       const payload = Object.fromEntries(new FormData(form).entries());
       payload.createdAt = form.dataset.createdAt;
       payload.rowNumbers = form.dataset.rowNumbers.split(',').filter(Boolean).map(Number);
-      payload.firestoreId = form.dataset.firestoreId || '';
       payload.flightRows = Array.from(form.querySelectorAll('[data-rush-flight-row]')).map((row) => ({ flightDate:row.querySelector('[data-flight-date]').value, flightNumber:row.querySelector('[data-flight-number]').value, from:row.querySelector('[data-flight-from]').value, to:row.querySelector('[data-flight-to]').value }));
       const button = form.querySelector('button[type="submit"]');
       button.disabled = true;

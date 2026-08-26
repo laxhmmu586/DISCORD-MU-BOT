@@ -7,7 +7,6 @@ const page = fs.readFileSync(path.join(__dirname, '..', 'public', 'public', 'cbs
 const pirForm = fs.readFileSync(path.join(__dirname, '..', 'public', 'public', 'pir-form.html'), 'utf8');
 const drive = fs.readFileSync(path.join(__dirname, '..', 'googleDrive.js'), 'utf8');
 const server = fs.readFileSync(path.join(__dirname, '..', 'index.js'), 'utf8');
-const firestore = fs.readFileSync(path.join(__dirname, '..', 'cbsFirestore.js'), 'utf8');
 
 test('CBS sidebar uses the MUBC brand', () => {
   assert.match(page, /<a class="brand" href="index\.html">MUBC<\/a>/);
@@ -27,30 +26,14 @@ test('updating one CBS case keeps the complete case list visible', () => {
   assert.doesNotMatch(page, /window\._selectedCbsRow = Number\(rowNumber\)/);
 });
 
-test('Missing Bag Report acknowledgement uses the proxy-safe collection endpoint', () => {
-  assert.match(page, /const identifier = row\.rowNumber \|\| row\.firestoreId \|\| ''/);
-  assert.match(page, /body:JSON\.stringify\(\{ action:'acknowledge', identifier:rowNumber \}\)/);
-  assert.match(page, /createButton \? `\/cbs-missing-bags\/\$\{encodeURIComponent\(rowNumber\)\}\/create-case` : '\/cbs-missing-bags'/);
-  assert.doesNotMatch(page, /\$\{encodeURIComponent\(rowNumber\)\}\/\$\{action\}/);
-  assert.match(server, /app\.post\('\/cbs-missing-bags',[\s\S]*action !== 'acknowledge'[\s\S]*acknowledgeCbsMissingBag\(identifier\)/);
-  assert.match(drive, /firestoreRows\.find\(\(row\) => cbsRecordMatchesId\(row, identifier\)\)/);
-  assert.match(drive, /saveCbsFirestoreRecord\('cbsMissingBagReports', next\)[\s\S]*acknowledgement Sheet backup failed/);
+test('CBS storage reads and writes Google Sheets only', () => {
+  assert.match(page, /const identifier = row\.rowNumber \|\| ''/);
+  assert.match(drive, /async function getCbsCases\(\) \{[\s\S]*getCbsSheetRows/);
+  assert.match(drive, /async function getCbsUnresolvedBaggageCases[\s\S]*spreadsheets\.values\.get/);
+  assert.match(drive, /async function getCbsWorldTracerCases[\s\S]*spreadsheets\.values\.get/);
+  assert.match(drive, /async function getCbsMissingBagReports[\s\S]*getCbsMissingBagSheetRows/);
+  assert.doesNotMatch(drive, /[Ff]irestore/);
 });
-
-test('Firestore is the CBS read store without automatic Sheet migration', () => {
-  for (const collection of ['cbsCases', 'cbsOnHandCases', 'cbsWorldTracerCases', 'cbsMissingBagReports', 'cbsWrongBaggageCases']) {
-    assert.match(drive, new RegExp(`cbsFirestore\\.list\\('${collection}'\\)`));
-  }
-  assert.doesNotMatch(drive, /ensureMigrated/);
-  assert.match(firestore, /CBS_FIRESTORE_ENABLED \|\| 'true'/);
-  assert.doesNotMatch(firestore, /_cbsMigrations|legacyLoader/);
-  assert.match(drive, /saveCbsFirestoreRecord\('cbsCases', record\)/);
-  assert.match(drive, /saveCbsFirestoreRecord\('cbsOnHandCases', record\)/);
-  assert.match(drive, /Object\.assign\(record, await saveCbsFirestoreRecord\('cbsCases', record\)\)[\s\S]*CBS case Sheet backup failed/);
-  assert.match(drive, /Object\.assign\(saved, await saveCbsFirestoreRecord\('cbsWrongBaggageCases', saved\)\)[\s\S]*Wrong-baggage Sheet backup failed/);
-  assert.match(drive, /const savedRows = await cbsFirestore\.upsertMany\('cbsMissingBagReports', newRows\);[\s\S]*CBS missing bag Sheet backup failed/);
-});
-
 test('public CBS forms do not CC the operations Gmail account', () => {
   const caseEmail = drive.match(/async function sendCbsCaseEmail[\s\S]*?\n}/)?.[0] || '';
   const wrongBaggageEmail = drive.match(/async function sendWrongBaggageCaseEmail[\s\S]*?\n}/)?.[0] || '';
@@ -199,13 +182,11 @@ test('CBS page uses the Lake Baggage System browser title', () => {
   assert.doesNotMatch(page, /<title>CBS Cases<\/title>/);
 });
 
-test('CBS case refresh reads Firestore and does not restart the page sync', () => {
-  assert.match(drive, /async function getCbsCases\(\) \{\s*const rows = \(await cbsFirestore\.list\('cbsCases'\)\) \|\| \[\]/);
-  assert.doesNotMatch(drive, /async function getCbsCases\(\)[\s\S]*?getCbsSheetRows[\s\S]*?\n\}/);
+test('CBS case refresh reads Google Sheets and does not restart the page', () => {
+  assert.match(drive, /async function getCbsCases\(\) \{[\s\S]*getCbsSheetRows/);
   assert.match(page, /await Promise\.all\(\[loadCases\(\), loadMissingReports\(\), loadUnresolvedBaggage\(\)\]\)/);
   assert.doesNotMatch(page, /sidebarRefresh\.addEventListener\('click', \(\) => window\.location\.reload\(\)\)/);
 });
-
 test('CBS cases no longer rely on stale browser storage', () => {
   assert.doesNotMatch(page, /CASE_CACHE_KEY|readCaseCache|writeCaseCache/);
   assert.match(page, /async function loadCases\(\) \{\s*casesOutput\.innerHTML = '<p class="muted">Loading cases/);
@@ -236,8 +217,8 @@ test('On-hand cases match the passenger case layout and support WorldTracer prog
   assert.match(page, /<th>WorldTracer File Number<\/th><th>Bag Tag<\/th><th>Direction<\/th>/);
   assert.match(page, /class="case-detail-layout"><div class="case-progress-column">\$\{unresolvedProgressHtml\(progressRow\)\}/);
   assert.match(page, /<option value="worldtracer">WorldTracer<\/option>/);
-  assert.match(drive, /cbsFirestore\.list\('cbsOnHandCases'\)/);
-  assert.match(page, /active\.rowNumber \|\| active\.firestoreId/);
+  assert.match(drive, /getCbsUnresolvedBaggageSheetTitle/);
+  assert.match(page, /active\.rowNumber/);
   assert.match(drive, /rows\.find\(\(row\) => cbsRecordMatchesId\(row, rowNumber\)\)/);
   assert.match(drive, /'WorldTracer File Number'/);
   assert.match(drive, /!L\$\{target\.rowNumber\}/);
@@ -526,7 +507,7 @@ test('each Passenger Filed comment can be deleted independently', () => {
   assert.match(drive, /async function deleteCbsCaseComment\(rowNumber, target = \{\}\)/);
   assert.match(drive, /event\.key === 'comment' && event\.at === targetAt && comment === targetComment/);
   assert.match(drive, /currentEvents\.filter\(\(_, index\) => index !== eventIndex\)/);
-  assert.match(drive, /saveCbsFirestoreRecord\('cbsCases', next\)/);
+  assert.match(drive, /spreadsheets\.values\.update/);
 });
 
 test('case progress uses a vertical left column with case controls and details on the right', () => {
