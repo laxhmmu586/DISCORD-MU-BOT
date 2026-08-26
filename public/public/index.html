@@ -7416,7 +7416,7 @@
         const pageWidth = 792;
         const pageHeight = 612;
         const margin = 36;
-        const tableTop = 476;
+        const tableTop = 448;
         const tableBottom = 68;
         const columns = [
           { label: "FLIGHT DATE", width: 70, value: (row) => row.displayDate || row.flightDate || row.date || "-" },
@@ -7424,16 +7424,16 @@
           { label: "PASSENGER NAME", width: 126, value: (row) => row.passenger || "-" },
           { label: "BN", width: 32, value: (row) => row.bn || "-" },
           { label: "SEAT", width: 38, value: (row) => row.seat || "-" },
-          { label: "BAGS", width: 38, value: (row) => row.bags || "-" },
-          { label: "DETAIL", width: 174, value: (row) => row.detail || "-" },
-          { label: "REMARK", width: 194, value: (row) => row._pdfRemark || "-" },
+          { label: "BAGS", width: 82, value: (row) => row.bags || "-" },
+          { label: "DETAIL", width: 154, value: (row) => row.detail || "-" },
+          { label: "REMARK", width: 170, value: (row) => row._pdfRemark || "-" },
         ];
         const tableWidth = columns.reduce((total, column) => total + column.width, 0);
         const pages = [];
         const upgrades = rows.filter((row) => /^INVOLUNTARY UPGRADE$/i.test(String(row.type || "").trim()) || /^INVOLUNTARY UPGRADE\b/i.test(String(row.detail || "").trim()));
         const groups = [
-          { label: "PSM / MSG", rows: rows.filter((row) => !upgrades.includes(row)) },
           { label: "INVOLUNTARY UPGRADE", rows: upgrades },
+          { label: "PSM / MSG", rows: rows.filter((row) => !upgrades.includes(row)) },
         ].filter((group) => group.rows.length);
 
         rows.forEach((row) => {
@@ -7477,10 +7477,10 @@
             fillRect(0, pageHeight - 82, pageWidth, 82, "0.035 0.15 0.29"),
             fillRect(0, pageHeight - 86, pageWidth, 4, "0.82 0.08 0.16"),
             textCommand("CHINA EASTERN AIRLINES", margin, 579, 9, "F2", "1 1 1"),
-            textCommand("LAX OPERATIONS", margin, 562, 7, "F1", "0.72 0.82 0.92"),
-            textCommand(title, margin, 526, 19, "F2", "0.035 0.15 0.29"),
-            textCommand(`REPORT PERIOD  ${reportFromInput?.value || "-"}  TO  ${reportToInput?.value || reportFromInput?.value || "-"}`, margin, 501, 7, "F2", "0.35 0.42 0.50"),
-            fillRect(margin, 486, tableWidth, 1.5, "0.82 0.08 0.16"),
+            textCommand("LAX Authorization Report", margin, 562, 7, "F1", "0.72 0.82 0.92"),
+            textCommand(title, margin, 495, 19, "F2", "0.035 0.15 0.29"),
+            textCommand(`REPORT PERIOD  ${reportFromInput?.value || "-"}  TO  ${reportToInput?.value || reportFromInput?.value || "-"}`, margin, 472, 7, "F2", "0.35 0.42 0.50"),
+            fillRect(margin, 458, tableWidth, 1.5, "0.82 0.08 0.16"),
           ];
           let x = margin;
           commands.push(fillRect(margin, tableTop - 22, tableWidth, 22, "0.08 0.25 0.43"));
