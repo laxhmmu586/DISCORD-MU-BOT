@@ -1102,6 +1102,13 @@ function reportRowFromSheet(type, values) {
     row.bags = String(row.bags || '').trim();
     row.type = String(row.type || '').trim().toUpperCase();
     row.detail = String(row.detail || '').trim();
+    if (normalizedType === 'psmMsg') {
+      // Older Authorization Report rows predate the Key column. Give those
+      // rows the same deterministic key used by the writer so remarks can be
+      // saved without requiring a sheet migration first.
+      row.key = String(row.key || '').trim() || buildPsmMsgKey(row);
+      row.remark = String(row.remark || '').trim();
+    }
   } else if (normalizedType === 'salesDetails') {
     row.date = normalizeSheetDateToIso(row.date) || String(row.date || '').trim();
     row.emd = String(row.emd || '').trim();

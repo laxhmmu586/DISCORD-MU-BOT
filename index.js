@@ -3325,7 +3325,10 @@ app.get('/psm-report', async (req, res) => {
 
 app.patch('/psm-report/remark', async (req, res) => {
   try {
-    const key = cleanBodyText(req.body?.key, 2000);
+    // The deterministic key can contain a newline when Detail has multiple
+    // PSM/MSG lines. Do not pass it through cleanBodyText, which replaces
+    // control characters and would prevent the Sheet row from matching.
+    const key = String(req.body?.key || '').trim().slice(0, 5000);
     const remark = cleanBodyText(req.body?.remark, 1000);
     if (!key) return res.status(400).json({ error: 'Missing report row key' });
     const result = await updatePsmMsgReportRemark(key, remark);
