@@ -6265,7 +6265,10 @@
           if (!silent) console.warn("Unable to load today's SY data.", error);
         } finally {
           window.clearTimeout(refreshTimeout);
-          if (showLoading && currentSy) setLoadingState(false);
+          // A failed, timed-out, or empty initial SY request must also dismiss
+          // the full-screen overlay. Requiring currentSy here left the app
+          // permanently stuck on THINKING whenever the first request failed.
+          if (showLoading) setLoadingState(false);
           syAutoRefreshInFlight = false;
           if (syAutoRefreshAbortController === refreshAbortController) syAutoRefreshAbortController = null;
         }

@@ -22,3 +22,8 @@ test('Authorization Report PDF has branded title, table, and signature line', ()
   assert.match(logo, /CHINA EASTERN/);
   assert.match(logo, /SKYTEAM/);
 });
+
+test('initial SY refresh always dismisses the THINKING overlay', () => {
+  assert.match(page, /if \(showLoading\) setLoadingState\(false\)/);
+  assert.doesNotMatch(page, /if \(showLoading && currentSy\) setLoadingState\(false\)/);
+});
