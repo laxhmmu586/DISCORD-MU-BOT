@@ -4480,7 +4480,10 @@
             <label class="report-field report-keyword-field"><span>Search</span><input id="report-keyword" type="search" placeholder="Optional filter" /></label>
             <button class="report-run" type="submit">Search</button>
           </form>
-          <div class="report-actions-row"><button class="report-download" id="report-download" type="button" disabled>Download CSV</button></div>
+          <div class="report-actions-row">
+            <button class="report-download" id="report-download" type="button" disabled>Download CSV</button>
+            <button class="report-download" id="report-pdf-download" type="button" disabled hidden>Download Report</button>
+          </div>
           <div id="report-output"><p class="panel-muted">Choose a report type to continue.</p></div>
         </section>
 
@@ -4697,6 +4700,7 @@
       const reportKeywordInput = document.querySelector("#report-keyword");
       const reportOutput = document.querySelector("#report-output");
       const reportDownloadButton = document.querySelector("#report-download");
+      const reportPdfDownloadButton = document.querySelector("#report-pdf-download");
       const passwordPage = document.querySelector("#change-password-page");
       const closePasswordPageButton = document.querySelector("#close-password-page");
       const changePasswordForm = document.querySelector("#change-password-form");
@@ -6882,6 +6886,7 @@
         const reportRunButton = reportForm?.querySelector(".report-run");
         if (reportRunButton) reportRunButton.textContent = activeReportMode === "sales" ? "Download" : "Search";
         if (reportDownloadButton) reportDownloadButton.hidden = activeReportMode === "sales" || activeReportMode === "baggage";
+        if (reportPdfDownloadButton) reportPdfDownloadButton.hidden = activeReportMode !== "psm";
         if (reportOutput && options.resetOutput) {
           reportOutput.innerHTML = activeReportMode === "vip"
             ? `<p class="panel-muted">Loading VIP Report...</p>`
@@ -7378,6 +7383,13 @@
         reportDownloadButton._fileName = fileName;
       }
 
+      function setAuthorizationReportPdf(rows, fileName) {
+        if (!reportPdfDownloadButton) return;
+        reportPdfDownloadButton.disabled = !rows.length;
+        reportPdfDownloadButton._rows = rows;
+        reportPdfDownloadButton._fileName = fileName;
+      }
+
       function downloadCurrentReportCsv() {
         const csv = reportDownloadButton?._csv || "";
         if (!csv) return;
@@ -7386,6 +7398,88 @@
         const link = document.createElement("a");
         link.href = url;
         link.download = reportDownloadButton._fileName || "report.csv";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+      }
+
+      function pdfText(value) {
+        return String(value ?? "")
+          .normalize("NFKD")
+          .replace(/[^\x20-\x7e]/g, "?")
+          .replace(/([\\()])/g, "\\$1");
+      }
+
+      function authorizationReportPdf(rows) {
+        const title = "China Eastern Airlines LAX Authorization Report";
+        const lines = [];
+        const addGroup = (label, groupRows) => {
+          if (!groupRows.length) return;
+          lines.push(label, "");
+          groupRows.forEach((row, index) => {
+            const remarkInput = row.key
+              ? reportOutput?.querySelector(`[data-authorization-remark="${CSS.escape(encodeURIComponent(row.key))}"]`)
+              : null;
+            const remark = remarkInput?.value ?? row.remark ?? "";
+            lines.push(
+              `${index + 1}. ${row.passenger || "-"} | Flight: ${row.flightNo || "-"} | Date: ${row.displayDate || row.flightDate || row.date || "-"}`,
+              `   BN: ${row.bn || "-"} | Seat: ${row.seat || "-"} | Bags: ${row.bags || "-"}`,
+              `   Detail: ${row.detail || "-"}`,
+              `   Remark: ${remark || "-"}`,
+              "",
+            );
+          });
+        };
+        const upgrades = rows.filter((row) => /^INVOLUNTARY UPGRADE$/i.test(String(row.type || "").trim()) || /^INVOLUNTARY UPGRADE\b/i.test(String(row.detail || "").trim()));
+        addGroup("PSM / MSG", rows.filter((row) => !upgrades.includes(row)));
+        addGroup("Involuntary Upgrade", upgrades);
+
+        const pageLines = [];
+        while (lines.length) pageLines.push(lines.splice(0, 42));
+        if (!pageLines.length) pageLines.push([]);
+        pageLines[pageLines.length - 1].push("", "Station Manager Signature: ______________________________");
+
+        const objects = ["", "", "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"];
+        const pageIds = [];
+        pageLines.forEach((bodyLines, pageIndex) => {
+          const pageId = objects.length + 1;
+          const contentId = pageId + 1;
+          pageIds.push(pageId);
+          const commands = [
+            "BT", "/F1 16 Tf", "48 750 Td", `(${pdfText(title)}) Tj`,
+            "/F1 9 Tf", "0 -18 Td", `(Page ${pageIndex + 1} of ${pageLines.length}) Tj`, "0 -20 Td",
+          ];
+          bodyLines.forEach((line) => commands.push(`(${pdfText(line).slice(0, 110)}) Tj`, "0 -15 Td"));
+          commands.push("ET");
+          const stream = commands.join("\n");
+          objects.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents ${contentId} 0 R >>`);
+          objects.push(`<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`);
+        });
+        objects[0] = "<< /Type /Catalog /Pages 2 0 R >>";
+        objects[1] = `<< /Type /Pages /Kids [${pageIds.map((id) => `${id} 0 R`).join(" ")}] /Count ${pageIds.length} >>`;
+
+        let pdf = "%PDF-1.4\n";
+        const offsets = [0];
+        objects.forEach((object, index) => {
+          offsets[index + 1] = pdf.length;
+          pdf += `${index + 1} 0 obj\n${object}\nendobj\n`;
+        });
+        const xref = pdf.length;
+        pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+        offsets.slice(1).forEach((offset) => { pdf += `${String(offset).padStart(10, "0")} 00000 n \n`; });
+        pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+        return pdf;
+      }
+
+      function downloadAuthorizationReportPdf() {
+        const rows = reportPdfDownloadButton?._rows || [];
+        if (!rows.length) return;
+        const blob = new Blob([authorizationReportPdf([...rows])], { type: "application/pdf" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = reportPdfDownloadButton._fileName || "authorization-report.pdf";
         document.body.appendChild(link);
         link.click();
         link.remove();
@@ -7632,6 +7726,7 @@
         } catch (error) {
           reportOutput.innerHTML = `<p class="panel-muted status-fail">${escapeHtml(error.message)}</p>`;
           setReportCsv([], "report.csv");
+          setAuthorizationReportPdf([], "authorization-report.pdf");
           return;
         }
         reportOutput.innerHTML = type === "sales"
@@ -7644,6 +7739,7 @@
               ? `<p class="panel-muted">Loading WCH Report for ${escapeHtml(from)}${from === to ? "" : ` to ${escapeHtml(to)}`}...</p>`
               : (type === "inad" ? `<p class="panel-muted">Loading INAD Report...</p>` : (type === "missConnection" ? `<p class="panel-muted">Loading Misconnection Report...</p>` : `<p class="panel-muted">Loading VIP Report...</p>`)))));
         setReportCsv([], "report.csv");
+        setAuthorizationReportPdf([], "authorization-report.pdf");
         const rows = [];
         const errors = [];
         if (type === "vip") {
@@ -7761,6 +7857,10 @@
           missConnection: "miss-connection-report.csv",
         };
         setReportCsv(type === "sales" ? rows.filter((row) => row.downloadUrl) : rows, reportFileNames[type] || "report.csv");
+        setAuthorizationReportPdf(
+          type === "psm" ? rows : [],
+          `authorization-report-${from}${from === to ? "" : `-to-${to}`}.pdf`,
+        );
       }
 
       function reviewPath() {
@@ -8240,6 +8340,7 @@
       reportBaggageModeButton?.addEventListener("click", () => { setReportMode("baggage", { resetOutput: true }); renderBaggageTimelineReport({ latestOnly: true }); });
       reportForm.addEventListener("submit", generateReport);
       reportDownloadButton.addEventListener("click", downloadCurrentReportCsv);
+      reportPdfDownloadButton?.addEventListener("click", downloadAuthorizationReportPdf);
       securityCheckButton?.addEventListener("click", closeFlightMenuAfterAction(renderSecurityCheck));
       seatMapButton.addEventListener("click", closeFlightMenuAfterAction(renderSeatMap));
 
