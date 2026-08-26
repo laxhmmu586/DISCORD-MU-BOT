@@ -36,6 +36,14 @@ test('Authorization Report remarks are stored in their Google Sheet row', () => 
   assert.match(page, /method: "POST"/);
 });
 
+test('Authorization Report displays PSM and MSG together, separately from involuntary upgrades', () => {
+  const page = fs.readFileSync(path.join(root, 'public', 'public', 'index.html'), 'utf8');
+  const table = page.match(/function authorizationReportTable\(rows\)[\s\S]*?\n      }/)?.[0] || '';
+  assert.match(table, /renderGroup\("PSM \/ MSG", psmMsgRows\)/);
+  assert.match(table, /renderGroup\("Involuntary Upgrade", involuntaryUpgrades\)/);
+  assert.match(table, /\^INVOLUNTARY UPGRADE/);
+});
+
 test('all CBS stores use Sheet rows as their identifiers', () => {
   for (const functionName of ['getCbsCases', 'getWrongBaggageSubmissions', 'getCbsUnresolvedBaggageCases', 'getCbsWorldTracerCases', 'getCbsMissingBagReports']) {
     const block = drive.match(new RegExp(`async function ${functionName}\\b[\\s\\S]*?\\n}`))?.[0] || '';
