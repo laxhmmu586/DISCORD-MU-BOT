@@ -3,6 +3,8 @@ require('dotenv').config();
 const express = require('express');
 const fs = require('fs/promises');
 const path = require('path');
+const PDFDocument = require('pdfkit');
+const SVGtoPDF = require('svg-to-pdfkit');
 
 const {
 
@@ -537,7 +539,7 @@ function psmMsgRowsFromSyInfo(syInfo) {
       .filter(Boolean)
       .map((line) => String(line || '').trim())
       .filter((line) => /^\s*(?:PSM|MSG)(?:\b|-)/i.test(line));
-    const detail = lines.join('\n');
+    const detail = String(row.detail || '').trim() || lines.join('\n');
     return {
       flightDate: syInfo.flightDate,
       flightNo: syInfo.flightNo,
@@ -545,7 +547,7 @@ function psmMsgRowsFromSyInfo(syInfo) {
       bn: String(row.bn || '').padStart(3, '0'),
       seat: String(row.seat || '').toUpperCase(),
       bags: compactReportValue(row.bagtags || row.bagTags || row.bags),
-      type: lines.some((line) => /^\s*MSG/i.test(line)) ? 'MSG' : 'PSM',
+      type: row.type || (lines.some((line) => /^\s*MSG/i.test(line)) ? 'MSG' : 'PSM'),
       detail
     };
   }).filter((row) => row.passenger && row.detail);
@@ -3320,6 +3322,60 @@ app.get('/psm-report', async (req, res) => {
   } catch (err) {
     console.error('PSM report error:', err);
     return res.status(500).json({ error: err?.message || 'PSM report lookup failed' });
+  }
+});
+
+app.get('/psm-report/pdf', async (req, res) => {
+  try {
+    const from = String(req.query.from || '').trim();
+    const to = String(req.query.to || from).trim();
+    const dateRe = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRe.test(from) || !dateRe.test(to) || from > to) return res.status(400).json({ error: 'Missing or invalid date range' });
+    const rows = await getPsmMsgReportRows(from, to);
+    const logo = await fs.readFile(path.join(__dirname, 'assets', 'china-eastern-logo.svg'), 'utf8');
+    const doc = new PDFDocument({ size: 'LETTER', layout: 'landscape', margin: 36, info: { Title: 'China Eastern Airlines LAX authorization report' } });
+    const fileName = `authorization-report-${from}${from === to ? '' : `-to-${to}`}.pdf`;
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    doc.pipe(res);
+
+    const columns = [['Flight Date', 68], ['Flight', 45], ['Passenger Name', 112], ['BN', 32], ['Seat', 35], ['Bags', 125], ['Category / Detail', 178], ['Remark', 83]];
+    const drawHeader = () => {
+      SVGtoPDF(doc, logo, 36, 28, { width: 255, height: 49, preserveAspectRatio: 'xMinYMid meet' });
+      doc.fillColor('#0b2878').font('Helvetica-Bold').fontSize(17).text('China Eastern Airlines LAX authorization report', 310, 38, { width: 440, align: 'right' });
+      doc.fillColor('#596579').font('Helvetica').fontSize(8).text(`Report period: ${from} to ${to}`, 310, 61, { width: 440, align: 'right' });
+      let x = 36;
+      doc.rect(36, 88, 720, 24).fill('#0b2878');
+      doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(7);
+      columns.forEach(([label, width]) => { doc.text(label, x + 4, 97, { width: width - 8 }); x += width; });
+      return 112;
+    };
+    let y = drawHeader();
+    rows.forEach((row, index) => {
+      const values = [row.flightDate || row.date, row.flightNo, row.passenger, row.bn, row.seat, row.bags, `${row.type || ''}${row.detail ? `\n${row.detail}` : ''}`, row.remark];
+      const height = Math.max(30, ...values.map((value, i) => doc.heightOfString(String(value || '-'), { width: columns[i][1] - 8, lineGap: 1 }) + 10));
+      if (y + height > 540) { doc.addPage(); y = drawHeader(); }
+      doc.rect(36, y, 720, height).fill(index % 2 ? '#f3f6fa' : '#ffffff');
+      let x = 36;
+      doc.fillColor('#172033').font('Helvetica').fontSize(7);
+      values.forEach((value, i) => {
+        doc.text(String(value || '-'), x + 4, y + 6, { width: columns[i][1] - 8, height: height - 8, ellipsis: true, lineGap: 1 });
+        doc.moveTo(x + columns[i][1], y).lineTo(x + columns[i][1], y + height).strokeColor('#d7deea').lineWidth(0.4).stroke();
+        x += columns[i][1];
+      });
+      doc.moveTo(36, y + height).lineTo(756, y + height).strokeColor('#d7deea').lineWidth(0.4).stroke();
+      y += height;
+    });
+    if (!rows.length) doc.fillColor('#596579').fontSize(10).text('No Authorization Report rows found for this period.', 36, y + 18);
+    if (y > 500) { doc.addPage(); y = drawHeader(); }
+    const signatureY = Math.max(y + 38, 470);
+    doc.fillColor('#172033').font('Helvetica-Bold').fontSize(10).text('Station Manager Signature:', 420, signatureY);
+    doc.moveTo(545, signatureY + 12).lineTo(740, signatureY + 12).strokeColor('#172033').lineWidth(0.8).stroke();
+    doc.end();
+  } catch (err) {
+    console.error('Authorization Report PDF error:', err);
+    if (!res.headersSent) return res.status(500).json({ error: err?.message || 'Authorization Report PDF failed' });
+    res.end();
   }
 });
 
