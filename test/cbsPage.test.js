@@ -572,6 +572,13 @@ test('shipping updates offer all supported delivery methods', () => {
   assert.match(page, /bdoInput\.required = showsAddress/);
 });
 
+test('Passenger Filed shipping automatically closes the case after recording shipping', () => {
+  assert.match(server, /status: airportPickup \? 'Closed - Pick Up at Airport' : 'Closed - Shipping'/);
+  assert.match(server, /followUpEvent: \{ key:'closed', title:'Case Closed', fields:\[\['Comment', 'shipped'\]\] \}/);
+  assert.match(server, /if \(updateFields\?\.followUpEvent\) updateFields\.followUpEvent\.by/);
+  assert.match(drive, /const appendedEvents = followUpEvent \? \[historyEvent, followUpEvent\] : \[historyEvent\]/);
+});
+
 test('CBS passenger detail view can recover values from the original form snapshot', () => {
   assert.match(page, /JSON\.parse\(row\.originalFormData \|\| '\{\}'\)/);
 });

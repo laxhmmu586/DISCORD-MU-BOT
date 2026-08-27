@@ -3701,12 +3701,18 @@ async function updateCbsCase(rowNumber, update = {}) {
     note: incomingNote,
     title: next.status ? `Update ${next.status}` : 'Update'
   });
+  const followUpEvent = update.followUpEvent ? sanitizeCbsUpdateEvent(update.followUpEvent, {
+    status: next.status,
+    at: now,
+    title: 'Case Closed'
+  }) : null;
   const storedEvents = parseCbsUpdateHistory(current.updateHistory);
   const currentEvents = storedEvents.length ? storedEvents : cbsEventsFromUpdateNote(current);
   const retainedEvents = update.replaceEventKey || update.deleteEventKey
     ? currentEvents.filter((event) => event.key !== (update.replaceEventKey || update.deleteEventKey))
     : currentEvents;
-  const updateEvents = incomingNote ? retainedEvents.concat(historyEvent).slice(-100) : retainedEvents;
+  const appendedEvents = followUpEvent ? [historyEvent, followUpEvent] : [historyEvent];
+  const updateEvents = incomingNote ? retainedEvents.concat(appendedEvents).slice(-100) : retainedEvents;
   if (update.deleteEventKey) {
     const latestEvent = updateEvents[updateEvents.length - 1];
     next.status = latestEvent?.status || 'Open';
