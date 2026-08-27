@@ -892,6 +892,45 @@ function extractLatestApiAgent(section) {
   return apiLines[apiLines.length - 1][1];
 }
 
+function enrichCheckinAgentStatsFromLog(log, syInfo, targetYmd = null) {
+  if (!log || !syInfo?.flightNo || !syInfo?.flightDate) return { agents: [], total: 0, expectedTotal: 0, matchesCheckin: false };
+  const latestByBn = new Map();
+
+  for (const sectionObj of splitLogicalSections(log)) {
+    const section = sectionObj.content || '';
+    if (!section.includes('PR:') || !sectionMatchesFlightOperationDate(sectionObj, targetYmd, syInfo.flightNo)) continue;
+    const prMatch = section.match(/PR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
+    const bnMatch = section.match(/\bBN(\d{1,3})\b/i);
+    if (!prMatch || !bnMatch || !matchesSyFlightRecord(prMatch[1], prMatch[2], syInfo)) continue;
+
+    const bn = bnMatch[1].padStart(3, '0');
+    const ts = parseSectionTimestamp(sectionObj.timestamp);
+    const previous = latestByBn.get(bn);
+    if (!previous || ts >= previous.ts) {
+      latestByBn.set(bn, {
+        ts,
+        deleted: isDeletedPassengerSection(section),
+        agent: extractLatestApiAgent(section)
+      });
+    }
+  }
+
+  const bnsByAgent = new Map();
+  for (const [bn, record] of latestByBn) {
+    if (record.deleted || !record.agent || record.agent.startsWith('9')) continue;
+    if (!bnsByAgent.has(record.agent)) bnsByAgent.set(record.agent, []);
+    bnsByAgent.get(record.agent).push(bn);
+  }
+  const agents = [...bnsByAgent.entries()]
+    .map(([agent, bns]) => ({ agent, count: bns.length, bns: bns.sort((a, b) => Number(a) - Number(b)) }))
+    .sort((a, b) => b.count - a.count || a.agent.localeCompare(b.agent));
+  const total = agents.reduce((sum, row) => sum + row.count, 0);
+  const expectedTotal = Array.isArray(syInfo.checkedInTicketed)
+    ? syInfo.checkedInTicketed.slice(1, 4).reduce((sum, value) => sum + (Number(value) || 0), 0)
+    : 0;
+  return { agents, total, expectedTotal, matchesCheckin: total === expectedTotal };
+}
+
 function hasUnclearedApiSourceRisk(section) {
   const latestApiAgent = extractLatestApiAgent(section);
   return Boolean(latestApiAgent) && !APPROVED_AGENT_CODES.has(latestApiAgent);
@@ -1847,6 +1886,7 @@ function findSYInfo(log, queryDate, options = {}) {
       info.membershipList = enrichMembershipListFromLog(log, info, targetYmd);
       info.seatMapRecords = enrichSeatMapRecordsFromLog(log, info, targetYmd);
       info.bnAudit = enrichBnAuditFromLog(log, info, targetYmd);
+      info.checkinAgentStats = enrichCheckinAgentStatsFromLog(log, info, targetYmd);
       info.psmList = enrichPsmListFromLog(log, info, targetYmd);
       info.crewApis = enrichCrewApisFromLog(log, info, targetYmd);
       info.jcsy = info.crewApis?.jcsy || null;
@@ -1899,6 +1939,7 @@ function findSYInfo(log, queryDate, options = {}) {
     info.membershipList = enrichMembershipListFromLog(log, info, targetYmd);
     info.seatMapRecords = enrichSeatMapRecordsFromLog(log, info, targetYmd);
     info.bnAudit = enrichBnAuditFromLog(log, info, targetYmd);
+    info.checkinAgentStats = enrichCheckinAgentStatsFromLog(log, info, targetYmd);
     info.psmList = enrichPsmListFromLog(log, info, targetYmd);
     info.crewApis = enrichCrewApisFromLog(log, info, targetYmd);
     info.jcsy = info.crewApis?.jcsy || null;
@@ -1908,4 +1949,4 @@ function findSYInfo(log, queryDate, options = {}) {
   return null;
 }
 
-module.exports = { findSYInfo, normalizeOperationalFlightNo, normalizeJcsyFlightNo, sectionMatchesFlightOperationDate, matchesSyFlightRecord, extractPassportCountryCodes, parseJcsyRows, hasUnclearedApiSourceRisk, extractInvoluntaryUpgrade };
+module.exports = { findSYInfo, normalizeOperationalFlightNo, normalizeJcsyFlightNo, sectionMatchesFlightOperationDate, matchesSyFlightRecord, extractPassportCountryCodes, parseJcsyRows, hasUnclearedApiSourceRisk, extractInvoluntaryUpgrade, enrichCheckinAgentStatsFromLog };
