@@ -6730,7 +6730,7 @@
         const summary = `<div class="panel-stats"><span class="${matched ? "status-pass" : "status-fail"}">Assigned total: ${escapeHtml(stats.total ?? 0)}</span><span>Check-In total: ${escapeHtml(stats.expectedTotal ?? 0)}</span><span>${matched ? "MATCH" : "NOT MATCHED"}</span></div>`;
         renderPanel("Agent Check-In", currentSy?.flightNo || "SY", summary + rowsTable(rows, [
           { label: "Agent", value: (row) => `AGT${row.agent}` },
-          { label: "Check-Ins", value: (row) => row.count },
+          { label: "TTL", value: (row) => row.count },
           { label: "BNs", value: (row) => (row.bns || []).map((bn) => `BN${bn}`).join(", ") },
         ], "No eligible agent check-ins found today."));
       }
