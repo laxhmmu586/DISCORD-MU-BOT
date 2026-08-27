@@ -1246,6 +1246,21 @@
         background: rgba(3, 13, 24, 0.76);
       }
 
+      button.manifest-section {
+        width: 100%;
+        color: inherit;
+        font: inherit;
+        cursor: pointer;
+      }
+
+      button.manifest-section:hover,
+      button.manifest-section:focus-visible {
+        border-color: rgba(88, 167, 255, 0.72);
+        background: rgba(15, 44, 72, 0.82);
+        box-shadow: inset 0 0 18px rgba(58, 151, 255, 0.12);
+        outline: none;
+      }
+
       .manifest-section h3 {
         margin: 0 0 7px;
         color: rgba(244, 250, 255, 0.96);
@@ -4533,14 +4548,14 @@
                     </div>
                   </div>
                 </div>
-                <div class="manifest-section is-checkin">
+                <button class="manifest-section is-checkin" id="checkin-agent-action" type="button" data-panel="checkin-agents" aria-label="Open today's agent check-in statistics">
                   <h3>Check-In</h3>
                   <div class="counts counts-inline">
                     <div class="count count-wide">
                       <div class="count-row"><span id="checkin-et">--- / --- / ---</span></div>
                     </div>
                   </div>
-                </div>
+                </button>
                 <button class="detail-action warning-action summary-warning-action" type="button" data-panel="warning" id="warning-action" hidden aria-label="Open warnings"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M16 5 29 27H3z"/><path d="M16 12v7"/><path d="M16 23h.01"/></svg></span><span class="detail-action-label">WARNING</span> <span class="detail-action-badge warning-badge" id="warning-count">0</span></button>
                 <button class="detail-action summary-security-action" type="button" data-panel="security" id="security-detail-action"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="10"/><circle cx="16" cy="16" r="3"/><path d="M16 4v5M16 23v5M4 16h5M23 16h5"/></svg></span><span class="detail-action-label">Security Check</span></button>
                 <button class="detail-action summary-jcsy-action" type="button" data-panel="jcsy" id="jcsy-detail-action"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="10" cy="10" r="3"/><circle cx="22" cy="10" r="3"/><circle cx="10" cy="22" r="3"/><circle cx="22" cy="22" r="3"/><path d="M16 10h.01M16 16h.01M16 22h.01"/></svg></span><span class="detail-action-label">JCSY</span></button>
@@ -6708,6 +6723,18 @@
         setPanelPassengerRows([]);
       }
 
+      function renderCheckinAgentPanel() {
+        const stats = currentSy?.checkinAgentStats || {};
+        const rows = Array.isArray(stats.agents) ? stats.agents : [];
+        const matched = Boolean(stats.matchesCheckin);
+        const summary = `<div class="panel-stats"><span class="${matched ? "status-pass" : "status-fail"}">Assigned total: ${escapeHtml(stats.total ?? 0)}</span><span>Check-In total: ${escapeHtml(stats.expectedTotal ?? 0)}</span><span>${matched ? "MATCH" : "NOT MATCHED"}</span></div>`;
+        renderPanel("Agent Check-In", currentSy?.flightNo || "SY", summary + rowsTable(rows, [
+          { label: "Agent", value: (row) => `AGT${row.agent}` },
+          { label: "Check-Ins", value: (row) => row.count },
+          { label: "BNs", value: (row) => (row.bns || []).map((bn) => `BN${bn}`).join(", ") },
+        ], "No eligible agent check-ins found today."));
+      }
+
       function renderPsmPanel() {
         const targetMsgCodes = ["TSXL", "JMSQ", "XCSQ", "TXLK", "QTQK", "EXBG0KG"];
         const rows = enrichRowsWithPassengerData((currentSy?.psmList || []).filter((row) => {
@@ -8290,6 +8317,11 @@
           if (panel === "security") renderSecurityCheck();
           if (panel === "jcsy") renderJcsyPanel();
         });
+      });
+
+      document.querySelector("#checkin-agent-action")?.addEventListener("click", (event) => {
+        event.stopPropagation();
+        renderCheckinAgentPanel();
       });
 
 

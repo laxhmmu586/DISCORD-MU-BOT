@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { normalizeOperationalFlightNo, normalizeJcsyFlightNo, sectionMatchesFlightOperationDate, matchesSyFlightRecord, hasUnclearedApiSourceRisk, extractPassportCountryCodes, extractInvoluntaryUpgrade } = require('../syParser');
+const { normalizeOperationalFlightNo, normalizeJcsyFlightNo, sectionMatchesFlightOperationDate, matchesSyFlightRecord, hasUnclearedApiSourceRisk, extractPassportCountryCodes, extractInvoluntaryUpgrade, enrichCheckinAgentStatsFromLog } = require('../syParser');
 
 test('normalizes delayed-flight numbers across SY and passenger record formats', () => {
   assert.equal(normalizeOperationalFlightNo('MU9586'), 'MU9586');
@@ -66,4 +66,40 @@ test('classifies upgrades into A or O as involuntary upgrades', () => {
 test('does not classify UPG records whose new cabin is outside A and O', () => {
   assert.equal(extractInvoluntaryUpgrade('1. TEST/PAX BN140 31A Y PVG ASR UPGX'), null);
   assert.equal(extractInvoluntaryUpgrade('1. TEST/PAX BN140 2A A PVG ASR'), null);
+});
+
+test('counts unique active BNs by latest API agent and excludes AGT9 records', () => {
+  const log = [
+    '2026 August 26, Wednesday, 11:21:02',
+    '> FB205',
+    '> PR: MU586/26AUG26*LAX,BN205',
+    '1. RUDERMAN/NOAHMR BN205 44B V PVG',
+    'API LAX49011 AGT23305/26AUG0949/P1',
+    'API LAX49019 AGT21451/26AUG1010/P1',
+    '2026 August 26, Wednesday, 11:22:02',
+    '> FB205',
+    '> PR: MU586/26AUG26*LAX,BN205',
+    '1. RUDERMAN/NOAHMR BN205 44B V PVG',
+    'API LAX49019 AGT21451/26AUG1010/P1',
+    '2026 August 26, Wednesday, 11:23:02',
+    '> FB206',
+    '> PR: MU586/26AUG26*LAX,BN206',
+    '1. TEST/EXCLUDED BN206 45B V PVG',
+    'API LAX49019 AGT93006/26AUG1011/P1',
+    '2026 August 26, Wednesday, 11:24:02',
+    '> FB207',
+    '> PR: MU586/26AUG26*LAX,BN207',
+    '1. TEST/DELETED BN207 DELETED',
+    'API LAX49019 AGT21451/26AUG1012/P1'
+  ].join('\n');
+  const result = enrichCheckinAgentStatsFromLog(log, {
+    flightNo: 'MU586', flightDate: '26AUG26', checkedInTicketed: ['', '000', '000', '001']
+  }, '2026-08-26');
+
+  assert.deepEqual(result, {
+    agents: [{ agent: '21451', count: 1, bns: ['205'] }],
+    total: 1,
+    expectedTotal: 1,
+    matchesCheckin: true
+  });
 });
