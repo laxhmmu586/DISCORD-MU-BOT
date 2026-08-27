@@ -73,5 +73,7 @@ test('shipping updates validate and store the selected delivery method', () => {
   assert.match(drive, /'BDO'/);
   assert.match(server, /needsBdo && !bdo/);
   assert.match(server, /\[\['BDO', bdo\]\]/);
-  assert.match(server, /airportPickup \? 'Closed - Pick Up at Airport' : 'Shipping'/);
+  assert.match(server, /airportPickup \? 'Closed - Pick Up at Airport' : 'Closed - Shipping'/);
+  assert.match(server, /status:'Shipping'/);
+  assert.match(server, /followUpEvent: \{ key:'closed', title:'Case Closed'/);
 });

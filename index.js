@@ -2239,7 +2239,7 @@ function buildCbsUpdateFields(update = {}) {
   const needsBdo = shippingMethod === 'ADC - All Day Courier' || shippingMethod === 'FedEx Delivery';
   if (!shippingMethod || (shippingMethod === 'FedEx Delivery' && !trackingNumber) || (needsBdo && !bdo)) return null;
   const airportPickup = shippingMethod === 'Pick Up at Airport';
-  return { status: airportPickup ? 'Closed - Pick Up at Airport' : 'Shipping', updateNote: `SHIPPING | Method: ${shippingMethod}${trackingNumber ? ` | Tracking: ${trackingNumber}` : ''} | Ship to: ${shippingTo}${bdo ? ` | BDO: ${bdo}` : ''}${comment ? ` | Comment: ${comment}` : ''}`, updateEvent: { key: 'shipping', title: airportPickup ? 'Airport Pick Up - Case Closed' : 'Update Shipping', fields: [['Shipping Method', shippingMethod], ...(trackingNumber ? [['Tracking Number', trackingNumber]] : []), ['Ship To', shippingTo], ...(bdo ? [['BDO', bdo]] : []), ...(comment ? [['Comment', comment]] : [])] } };
+  return { status: airportPickup ? 'Closed - Pick Up at Airport' : 'Closed - Shipping', updateNote: `SHIPPING | Method: ${shippingMethod}${trackingNumber ? ` | Tracking: ${trackingNumber}` : ''} | Ship to: ${shippingTo}${bdo ? ` | BDO: ${bdo}` : ''}${comment ? ` | Comment: ${comment}` : ''}`, updateEvent: { key: 'shipping', title: airportPickup ? 'Airport Pick Up' : 'Shipping', status:'Shipping', fields: [['Shipping Method', shippingMethod], ...(trackingNumber ? [['Tracking Number', trackingNumber]] : []), ['Ship To', shippingTo], ...(bdo ? [['BDO', bdo]] : []), ...(comment ? [['Comment', comment]] : [])] }, followUpEvent: { key:'closed', title:'Case Closed', fields:[['Comment', 'shipped']] } };
 }
 
 function normalizedCbsLinkTag(value) {
@@ -3015,6 +3015,7 @@ app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
   try {
     const updateFields = buildCbsUpdateFields(req.body || {});
     if (updateFields?.updateEvent) updateFields.updateEvent.by = sanitizeCbsText(req.body?.updatedBy, 160);
+    if (updateFields?.followUpEvent) updateFields.followUpEvent.by = sanitizeCbsText(req.body?.updatedBy, 160);
     if (!updateFields) return res.status(400).json({ error: 'Valid case update details are required' });
     const isSignedPvgEmail = updateFields.updateEvent?.key === 'email' && updateFields.updateEvent.title === 'Sent Open Bag Authorization to PVG';
     const emailAttachments = isSignedPvgEmail ? sanitizeCbsAttachments(req.body?.attachments) : [];
