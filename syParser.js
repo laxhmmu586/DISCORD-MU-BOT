@@ -771,6 +771,10 @@ function getAgeYearsAtDate(dob, atDateUtc) {
   return age;
 }
 
+function hasChdServiceCode(section) {
+  return /\bCHD1\/\d+\b/i.test(section || '');
+}
+
 function enrichCHDListFromLog(log, syInfo, targetYmd = null) {
   if (!log || !syInfo?.flightNo || !syInfo?.flightDate) return [];
   const sections = splitLogicalSections(log);
@@ -799,7 +803,7 @@ function enrichCHDListFromLog(log, syInfo, targetYmd = null) {
     const dobKey = String(dobRaw || '').toUpperCase();
     const dobDate = parseDobRaw(dobRaw, atDateUtc);
     const ageYears = getAgeYearsAtDate(dobDate, atDateUtc);
-    const hasChdCode = /\bCHD1\/0\b/i.test(section);
+    const hasChdCode = hasChdServiceCode(section);
     const isChdByAge = Number.isInteger(ageYears) && ageYears >= 2 && ageYears < 12;
     const isChd = isChdByAge || hasChdCode;
     if (!isChd) continue;
@@ -1310,7 +1314,7 @@ function enrichSeatMapRecordsFromLog(log, syInfo, targetYmd = null) {
     const dobKey = String(dobRaw || '').toUpperCase();
     const dobDate = parseDobRaw(dobRaw, atDateUtc);
     const ageYears = getAgeYearsAtDate(dobDate, atDateUtc);
-    const hasChdCode = /\bCHD1\/0\b/i.test(section);
+    const hasChdCode = hasChdServiceCode(section);
     const isChild = (Number.isInteger(ageYears) && ageYears >= 2 && ageYears < 12) || hasChdCode;
     const passportNo = section.match(/PASSPORT\s*:\s*([A-Z0-9]+)/i)?.[1]?.toUpperCase() || '';
     const passportRawLine = (section.match(/PASSPORT\s*:\s*([^\n\r]+)/i)?.[1] || '').trim().toUpperCase();
@@ -1564,7 +1568,7 @@ ${section}`,
     const dobKey = String(dobRaw || '').toUpperCase();
     const dobDate = parseDobRaw(dobRaw, atDateUtc);
     const ageYears = getAgeYearsAtDate(dobDate, atDateUtc);
-    const hasChdCode = /\bCHD1\/0\b/i.test(section);
+    const hasChdCode = hasChdServiceCode(section);
     const isChild = (Number.isInteger(ageYears) && ageYears >= 2 && ageYears < 12) || hasChdCode;
     const psmLines = extractPsmLines(section);
     const paidProductsShort = (section.match(/^\s*ASVC-[^\n\r]+/gim) || []).map((line) => {
@@ -1949,4 +1953,4 @@ function findSYInfo(log, queryDate, options = {}) {
   return null;
 }
 
-module.exports = { findSYInfo, normalizeOperationalFlightNo, normalizeJcsyFlightNo, sectionMatchesFlightOperationDate, matchesSyFlightRecord, extractPassportCountryCodes, parseJcsyRows, hasUnclearedApiSourceRisk, extractInvoluntaryUpgrade, enrichCheckinAgentStatsFromLog };
+module.exports = { findSYInfo, normalizeOperationalFlightNo, normalizeJcsyFlightNo, sectionMatchesFlightOperationDate, matchesSyFlightRecord, extractPassportCountryCodes, parseJcsyRows, hasUnclearedApiSourceRisk, extractInvoluntaryUpgrade, enrichCheckinAgentStatsFromLog, hasChdServiceCode };
