@@ -1,6 +1,14 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { normalizeOperationalFlightNo, normalizeJcsyFlightNo, sectionMatchesFlightOperationDate, matchesSyFlightRecord, hasUnclearedApiSourceRisk, extractPassportCountryCodes, extractInvoluntaryUpgrade, enrichCheckinAgentStatsFromLog } = require('../syParser');
+const { normalizeOperationalFlightNo, normalizeJcsyFlightNo, sectionMatchesFlightOperationDate, matchesSyFlightRecord, hasUnclearedApiSourceRisk, extractPassportCountryCodes, extractInvoluntaryUpgrade, enrichCheckinAgentStatsFromLog, hasChdServiceCode } = require('../syParser');
+
+test('accepts any numeric CHD1 service-code value', () => {
+  assert.equal(hasChdServiceCode('SSR CHD1/0'), true);
+  assert.equal(hasChdServiceCode('SSR CHD1/7'), true);
+  assert.equal(hasChdServiceCode('SSR CHD1/125'), true);
+  assert.equal(hasChdServiceCode('SSR CHD1/A'), false);
+  assert.equal(hasChdServiceCode('SSR CHD2/7'), false);
+});
 
 test('normalizes delayed-flight numbers across SY and passenger record formats', () => {
   assert.equal(normalizeOperationalFlightNo('MU9586'), 'MU9586');

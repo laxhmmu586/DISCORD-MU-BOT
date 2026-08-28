@@ -6361,8 +6361,8 @@
       function renderChdPanel() {
         const rows = enrichRowsWithPassengerData(currentSy?.chdList || []);
         const missing = rows.filter((row) => row.hasChdCode === false).length;
-        const stats = `<div class="panel-stats"><span>Total ${rows.length}</span><span class="status-ok">OK ${rows.length - missing}</span><span class="status-fail">Missing CHD1/0 ${missing}</span></div>`;
-        renderPanel("CHD List", currentSy?.flightNo || "SY", `${stats}${renderBnButtons(rows, "No CHD passenger found.", (row) => `${passengerName(row)} ${row.hasChdCode ? "OK" : "Missing CHD1/0"}`, null, (row) => row.hasChdCode === false ? "is-missing" : "is-pass")}`);
+        const stats = `<div class="panel-stats"><span>Total ${rows.length}</span><span class="status-ok">OK ${rows.length - missing}</span><span class="status-fail">Missing CHD1/# ${missing}</span></div>`;
+        renderPanel("CHD List", currentSy?.flightNo || "SY", `${stats}${renderBnButtons(rows, "No CHD passenger found.", (row) => `${passengerName(row)} ${row.hasChdCode ? "OK" : "Missing CHD1/#"}`, null, (row) => row.hasChdCode === false ? "is-missing" : "is-pass")}`);
         setPanelPassengerRows(rows);
       }
 
