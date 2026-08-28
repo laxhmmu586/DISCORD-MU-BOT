@@ -9,7 +9,7 @@ test('CBS updates persist their note, timestamp, and WorldTracer file number', (
   assert.match(drive, /updateNote: incomingNote \|\| current\.updateNote \|\| ''/);
   assert.match(drive, /next\.worldTracerFileNumber = sanitizeSheetText/);
   assert.match(drive, /'WorldTracer File Number'/);
-  assert.match(drive, /A\$\{current\.rowNumber\}:AL\$\{current\.rowNumber\}/);
+  assert.match(drive, /A\$\{current\.rowNumber\}:AM\$\{current\.rowNumber\}/);
   assert.match(drive, /cbsRecordMatchesId\(row, rowNumber\)/);
 });
 
@@ -25,13 +25,15 @@ test('CBS reads required passenger details from their fixed sheet columns', () =
   assert.match(drive, /row\.shippingAddress = values\[35\]/);
   assert.match(drive, /row\.estimatedArrivalTime = values\[36\]/);
   assert.match(drive, /row\.bdo = values\[37\]/);
+  assert.match(drive, /row\.language = values\[38\] \|\| row\.language \|\| ''/);
+  assert.match(drive, /record\.language \|\| ''/);
 });
 
 test('Baggage transfer ETA email updates persist their ETA in column AK', () => {
   assert.match(drive, /'Estimated Arrival Time'/);
   assert.match(drive, /record\.estimatedArrivalTime \|\| ''/);
   assert.match(drive, /new Map\(update\.updateEvent\?\.fields \|\| \[\]\)\.get\('Estimated Arrival Time'\)/);
-  assert.match(drive, /!A:AL/);
+  assert.match(drive, /!A:AM/);
 });
 
 test('DPR WorldTracer updates close the case automatically', () => {

@@ -115,7 +115,8 @@ const CBS_HEADERS = [
   'Tracking Number',
   'Shipping Address',
   'Estimated Arrival Time',
-  'BDO'
+  'BDO',
+  'Language'
 ];
 let cbsSheetTitle = '';
 let cbsWorldTracerSheetTitle = '';
@@ -3095,7 +3096,7 @@ async function getCbsSheetRows(options = {}) {
   const title = await getCbsSheetTitle();
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A:AL`
+    range: `${escapeSheetTitle(title)}!A:AM`
   });
   const rows = res.data.values || [];
   cbsSheetCache = { loadedAt: Date.now(), rows };
@@ -3117,7 +3118,7 @@ async function ensureCbsSheetHeaders(rows) {
   const title = await getCbsSheetTitle();
   await sheets.spreadsheets.values.update({
     spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A1:AL1`,
+    range: `${escapeSheetTitle(title)}!A1:AM1`,
     valueInputOption: 'RAW',
     requestBody: { values: [CBS_HEADERS] }
   });
@@ -3187,6 +3188,10 @@ function cbsRecordFromSheet(values, rowNumber) {
   row.estimatedArrivalTime = values[36] || row.estimatedArrivalTime || '';
   // The courier BDO reference is stored in column AL.
   row.bdo = values[37] || row.bdo || '';
+  // Keep the passenger's selected email language in its own column. It used
+  // to live only inside Original Form Data, so routine sheet edits could make
+  // later status emails silently fall back to English.
+  row.language = values[38] || row.language || '';
   row.caseType = row.caseType || values.find((value) => /^(AHL|DPR)$/i.test(String(value || '').trim())) || '';
   row.bagTag = row.bagTag || values[8] || extractCbsBagTagFromUpdateNote(row.updateNote) || values.find((value) => /^[A-Z]{2}\d{6,}(\s*\/\s*[A-Z]{2}\d{6,})*$/i.test(String(value || '').trim())) || '';
   row.submittedAt = row.submittedAt || row.submitDate || values[26] || '';
@@ -3251,7 +3256,8 @@ function cbsValuesFromRecord(record) {
     record.trackingNumber || '',
     record.shippingAddress || '',
     record.estimatedArrivalTime || '',
-    record.bdo || ''
+    record.bdo || '',
+    record.language || ''
   ];
 }
 
@@ -3259,7 +3265,7 @@ async function appendCbsCase(record) {
   const title = await getCbsSheetTitle();
   const rows = await getCbsSheetRows({ forceRefresh:true });
   await ensureCbsSheetHeaders(rows);
-  const response = await sheets.spreadsheets.values.append({ spreadsheetId:CBS_SHEET_ID, range:`${escapeSheetTitle(title)}!A:AL`, valueInputOption:'RAW', insertDataOption:'INSERT_ROWS', requestBody:{ values:[cbsValuesFromRecord(record)] } });
+  const response = await sheets.spreadsheets.values.append({ spreadsheetId:CBS_SHEET_ID, range:`${escapeSheetTitle(title)}!A:AM`, valueInputOption:'RAW', insertDataOption:'INSERT_ROWS', requestBody:{ values:[cbsValuesFromRecord(record)] } });
   const appendedRow = String(response.data?.updates?.updatedRange || '').match(/![A-Z]+(\d+)(?::[A-Z]+\d+)?$/i)?.[1];
   if (appendedRow) record.rowNumber = Number(appendedRow);
   cbsSheetCache = { loadedAt:0, rows:[] };
@@ -3721,7 +3727,7 @@ async function updateCbsCase(rowNumber, update = {}) {
   next.updateHistory = stringifyCbsUpdateHistory(updateEvents);
   if (current.rowNumber) {
     const title = await getCbsSheetTitle();
-    await sheets.spreadsheets.values.update({ spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!A${current.rowNumber}:AL${current.rowNumber}`, valueInputOption: 'RAW', requestBody: { values: [cbsValuesFromRecord(next)] } });
+    await sheets.spreadsheets.values.update({ spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!A${current.rowNumber}:AM${current.rowNumber}`, valueInputOption: 'RAW', requestBody: { values: [cbsValuesFromRecord(next)] } });
     cbsSheetCache = { loadedAt: 0, rows: [] };
   }
   const record = { ...next, updateEvents };
@@ -3752,7 +3758,7 @@ async function deleteCbsCaseComment(rowNumber, target = {}) {
   };
   if (current.rowNumber) {
     const title = await getCbsSheetTitle();
-    await sheets.spreadsheets.values.update({ spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!A${current.rowNumber}:AL${current.rowNumber}`, valueInputOption: 'RAW', requestBody: { values: [cbsValuesFromRecord(next)] } });
+    await sheets.spreadsheets.values.update({ spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!A${current.rowNumber}:AM${current.rowNumber}`, valueInputOption: 'RAW', requestBody: { values: [cbsValuesFromRecord(next)] } });
     cbsSheetCache = { loadedAt: 0, rows: [] };
   }
   return { deleted: true, record: next };

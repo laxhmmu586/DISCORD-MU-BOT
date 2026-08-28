@@ -5,6 +5,10 @@ const path = require('node:path');
 
 const server = fs.readFileSync(path.join(__dirname, '..', 'index.js'), 'utf8');
 
+test('case creation email subject warns passengers not to reply', () => {
+  assert.match(server, /subject: '\[DO NOT REPLY\] China Eastern Baggage Case'/);
+});
+
 test('WorldTracer update email does not regenerate or attach a PDF report', () => {
   const updateEmailBlock = server.match(/if \(updateFields\.updateEvent\?\.key === 'worldtracer'\) \{([\s\S]*?)\n\s*if \(updateFields\.updateEvent\?\.key === 'requested_bags'\)/)?.[1] || '';
   assert.match(updateEmailBlock, /sendCbsCaseEmail/);
