@@ -2986,7 +2986,7 @@ app.post('/cbs-cases', async (req, res) => {
     try {
       emailResults = await sendCbsCaseEmail({
         passengerEmail: record.email,
-        subject: 'China Eastern Baggage Case',
+        subject: '[DO NOT REPLY] China Eastern Baggage Case',
         html: buildCbsEmailHtml(record),
         pdfBuffer,
         filename: 'baggage-report.pdf',
