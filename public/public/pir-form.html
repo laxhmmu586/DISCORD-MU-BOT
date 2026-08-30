@@ -768,14 +768,18 @@
         if (!res.ok) throw new Error(data.error || 'Submit failed');
         const deliveryErrors = [data.emailError && `email failed: ${data.emailError}`, data.discordError && `Discord failed: ${data.discordError}`].filter(Boolean);
         formStatus.className = deliveryErrors.length ? 'status err' : 'status ok';
-        formStatus.textContent = deliveryErrors.length ? `Created, but ${deliveryErrors.join('; ')}` : 'Created, email sent, and attachments posted to Discord';
+        formStatus.textContent = deliveryErrors.length
+          ? `Created, but ${deliveryErrors.join('; ')}`
+          : data.deliveryPending
+            ? (document.documentElement.lang === 'en' ? 'Created. Attachments are still being delivered.' : '提交成功，附件仍在发送中。')
+            : (document.documentElement.lang === 'en' ? 'Created, email sent, and attachments posted to Discord' : '提交成功，邮件及附件已发送。');
         thanks.querySelectorAll('[data-thanks-message]').forEach((item) => { item.hidden = item.dataset.thanksMessage !== data.record.caseType; });
         thanks.classList.add('is-active');
         thanks.scrollIntoView({ behavior:'smooth', block:'center' });
         form.reset(); if (requestedType === 'AHL' || requestedType === 'DPR') typeSelect.value = requestedType; clearAttachmentPreviews(); sketchDirty = false; drawBagBase(); clearSignature(); contentsList.innerHTML = ''; addContentRow(); issueDateInput.valueAsDate = new Date(); setTypeFields(); setAddressFields();
       } catch (error) {
         formStatus.className = 'status err';
-        const failedFetch = /failed to fetch/i.test(error.message || '');
+        const failedFetch = /failed to fetch|load failed|network request failed/i.test(error.message || '');
         formStatus.textContent = failedFetch
           ? (document.documentElement.lang === 'en' ? 'Submit failed. Please check the network or try smaller attachment files.' : '提交失败。请检查网络，或尝试上传较小的附件文件。')
           : error.message;

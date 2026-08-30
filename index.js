@@ -3049,30 +3049,39 @@ app.post('/cbs-cases', async (req, res) => {
     };
     await appendCbsCase(record);
     const pdfBuffer = createPirPdf(record);
-    let emailResults = [];
-    let emailError = '';
-    try {
-      emailResults = await sendCbsCaseEmail({
+    // Email and Discord both receive the same attachments. Run the independent
+    // deliveries together so a multi-file submission does not have to keep the
+    // mobile request open for the sum of both upload times.
+    const emailDelivery = sendCbsCaseEmail({
         passengerEmail: record.email,
         subject: '[DO NOT REPLY] China Eastern Baggage Case',
         html: buildCbsEmailHtml(record),
         pdfBuffer,
         filename: 'baggage-report.pdf',
         attachments
+      })
+      .then((emailResults) => ({ emailResults, emailError: '' }))
+      .catch((mailErr) => {
+        console.error('CBS case email error:', mailErr);
+        return { emailResults: [], emailError: cbsEmailErrorMessage(mailErr) };
       });
-    } catch (mailErr) {
-      emailError = cbsEmailErrorMessage(mailErr);
-      console.error('CBS case email error:', mailErr);
-    }
-    let discord = null;
-    let discordError = '';
-    try {
-      discord = await sendCbsAttachmentsToDiscord(record, attachments, pdfBuffer);
-    } catch (discordErr) {
-      discordError = discordErr?.message || 'CBS attachments Discord post failed.';
-      console.error('CBS attachments Discord post failed:', discordErr);
-    }
-    return res.status(201).json({ created: true, record, emailResults, emailError, discord, discordError });
+    const discordDelivery = sendCbsAttachmentsToDiscord(record, attachments, pdfBuffer)
+      .then((discord) => ({ discord, discordError: '' }))
+      .catch((discordErr) => {
+        console.error('CBS attachments Discord post failed:', discordErr);
+        return { discord: null, discordError: discordErr?.message || 'CBS attachments Discord post failed.' };
+      });
+    const deliveryWaitMs = Math.max(1000, Number(process.env.CBS_CREATE_DELIVERY_WAIT_MS) || 15000);
+    let deliveryPending = false;
+    const completedDeliveries = await Promise.race([
+      Promise.all([emailDelivery, discordDelivery]),
+      new Promise((resolve) => setTimeout(() => {
+        deliveryPending = true;
+        resolve([{ emailResults: [], emailError: '' }, { discord: null, discordError: '' }]);
+      }, deliveryWaitMs))
+    ]);
+    const [{ emailResults, emailError }, { discord, discordError }] = completedDeliveries;
+    return res.status(201).json({ created: true, record, emailResults, emailError, discord, discordError, deliveryPending });
   } catch (err) {
     console.error('CBS case create error:', err);
     return res.status(500).json({ error: err?.message || 'CBS case save failed' });
