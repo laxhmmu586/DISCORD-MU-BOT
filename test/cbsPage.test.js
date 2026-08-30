@@ -405,6 +405,13 @@ test('CBS form accepts up to 20 optimized attachments and Discord posts them in 
   assert.match(server, /files: batches\[index\]/);
 });
 
+test('CBS form falls back to the original file when Safari cannot optimize an image', () => {
+  assert.match(pirForm, /function fileToDataUrl\(file\)/);
+  assert.match(pirForm, /imageFileToDataUrl\(file\)\.then\(\(result\) => \{/);
+  assert.match(pirForm, /\}, \(\) => fileToDataUrl\(file\)\)/);
+  assert.match(pirForm, /const mimeType = optimized \? 'image\/jpeg' : \(file\.type \|\| 'application\/octet-stream'\)/);
+});
+
 test('CBS tracking moves the baggage transfer ETA update under Email', () => {
   assert.doesNotMatch(page, /key:'information', text:'Information'/);
   assert.doesNotMatch(page, /name="informationType"/);
