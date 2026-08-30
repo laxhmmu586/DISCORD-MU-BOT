@@ -114,6 +114,7 @@ const WRONG_BAGGAGE_DISCORD_CHANNEL_ID = process.env.WRONG_BAGGAGE_DISCORD_CHANN
 const CBS_DELAYED_LOST_DISCORD_CHANNEL_ID = process.env.CBS_DELAYED_LOST_DISCORD_CHANNEL_ID || '1534758703369289821';
 const CBS_LOST_DISCORD_ROLE_ID = process.env.CBS_LOST_DISCORD_ROLE_ID || '1268619386948685877';
 const CBS_DAMAGED_DISCORD_CHANNEL_ID = process.env.CBS_DAMAGED_DISCORD_CHANNEL_ID || process.env.CBS_ATTACHMENTS_DISCORD_CHANNEL_ID || '1527344986075693167';
+const CBS_UPCOMING_RUSH_DISCORD_CHANNEL_ID = process.env.CBS_UPCOMING_RUSH_DISCORD_CHANNEL_ID || '1252032351131799654';
 const CBS_DPR_WORLDTRACER_DISCORD_ROLE_ID = process.env.CBS_DPR_WORLDTRACER_DISCORD_ROLE_ID || '1268619386948685877';
 const CONTACT_FORM_DISCORD_CHANNEL_ID = process.env.CONTACT_FORM_DISCORD_CHANNEL_ID || '1531867051755442266';
 const CONTACT_FORM_DISCORD_ROLE_ID = process.env.CONTACT_FORM_DISCORD_ROLE_ID || '1252026975279906876';
@@ -1902,7 +1903,7 @@ function cbsPdfLines(record) {
 
 function sanitizeCbsAttachments(value) {
   const list = Array.isArray(value) ? value : [];
-  const maxAttachments = 8;
+  const maxAttachments = 20;
   const maxTotalBytes = 22 * 1024 * 1024;
   let totalBytes = 0;
   return list.slice(0, maxAttachments).map((item, index) => {
@@ -1965,16 +1966,21 @@ async function sendCbsAttachmentsToDiscord(record, attachments = [], pdfBuffer =
     return counts;
   }, {});
   const summary = Object.entries(attachmentCounts).map(([type, count]) => `${type}: ${count}`).join(' / ') || '—';
-  await channel.send({
-    content: [
+  const content = [
       'CBS baggage case attachments',
       `Passenger: ${record.passengerName || '—'}`,
       `Bag tag: ${record.bagTag || '—'}`,
       `Type: ${record.caseType || '—'}`,
       `Files: PDF report + ${summary}`
-    ].join('\n'),
-    files
-  });
+    ].join('\n');
+  const batches = [];
+  for (let index = 0; index < files.length; index += 10) batches.push(files.slice(index, index + 10));
+  for (let index = 0; index < batches.length; index += 1) {
+    await channel.send({
+      content: index === 0 ? content : `CBS baggage case attachments (continued ${index + 1}/${batches.length})`,
+      files: batches[index]
+    });
+  }
   return { sent: true, channelId, fileCount: files.length };
 }
 
@@ -1999,6 +2005,26 @@ async function sendDprWorldTracerUpdateToDiscord(record, fileNumber) {
     allowedMentions: { parse: [], roles: [CBS_DPR_WORLDTRACER_DISCORD_ROLE_ID] }
   });
   return { sent: true, channelId: CBS_DAMAGED_DISCORD_CHANNEL_ID };
+}
+
+async function sendUpcomingRushToDiscord(record, updateEvent) {
+  const fields = new Map(updateEvent?.fields || []);
+  const channel = await client.channels.fetch(CBS_UPCOMING_RUSH_DISCORD_CHANNEL_ID);
+  if (!channel?.isTextBased()) {
+    throw new Error('Upcoming Rush Discord channel was not found or is not text based.');
+  }
+  await channel.send({
+    content: [
+      '**Upcoming Rush**',
+      `Passenger: ${sanitizeCbsText(record?.passengerName, 160) || '—'}`,
+      `WorldTracer: ${sanitizeCbsText(record?.worldTracerFileNumber, 120).toUpperCase() || '—'}`,
+      `Original bag tag: ${sanitizeCbsText(record?.bagTag, 160).toUpperCase() || '—'}`,
+      `Rush flight: ${fields.get('Rush Flight') || '—'}`,
+      `Rush date: ${fields.get('Rush Date') || '—'}`,
+      `Rush tag: ${fields.get('Rush Tag') || '—'}`
+    ].join('\n')
+  });
+  return { sent: true, channelId: CBS_UPCOMING_RUSH_DISCORD_CHANNEL_ID };
 }
 
 async function sendLostBaggageUpdateToDiscord(fileNumber) {
@@ -2939,6 +2965,9 @@ app.post('/cbs-cases', async (req, res) => {
     if (!body.passengerSignature) return res.status(400).json({ error: 'Passenger signature is required' });
     const now = new Date().toISOString();
     let attachments = sanitizeCbsAttachments(body.attachments);
+    if (!Array.isArray(body.attachments) || body.attachments.length > 20 || attachments.length !== body.attachments.length) {
+      return res.status(400).json({ error: 'Use no more than 20 attachments and no more than 22 MB total after photo optimization.' });
+    }
     const missingAttachmentTypes = missingRequiredCbsAttachmentTypes(attachments);
     if (missingAttachmentTypes.length) return res.status(400).json({ error: 'Boarding pass and bag tag receipt attachments are required' });
     const contentsRows = buildCbsContentsRows(body);
@@ -3026,6 +3055,12 @@ app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
     if (result.notFound) return res.status(404).json({ error: 'Case not found' });
     if (updateFields.updateEvent?.key === 'upcoming_rush') {
       result.onHandMatches = await syncUpcomingRushOnHand(result.record, updateFields.updateEvent, sanitizeCbsText(req.body?.updatedBy, 160));
+      try {
+        result.discord = await sendUpcomingRushToDiscord(result.record, updateFields.updateEvent);
+      } catch (discordErr) {
+        result.discordError = discordErr?.message || 'Upcoming Rush Discord notification failed.';
+        console.error('CBS Upcoming Rush Discord notification error:', discordErr);
+      }
     }
     if (updateFields.updateEvent?.key === 'worldtracer') {
       const fileNumber = updateFields.updateEvent.fields[0][1];
