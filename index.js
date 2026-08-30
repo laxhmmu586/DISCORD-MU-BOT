@@ -2021,8 +2021,7 @@ async function sendUpcomingRushToDiscord(record, updateEvent) {
       `Original bag tag: ${sanitizeCbsText(record?.bagTag, 160).toUpperCase() || '—'}`,
       `Rush flight: ${fields.get('Rush Flight') || '—'}`,
       `Rush date: ${fields.get('Rush Date') || '—'}`,
-      `Rush tag: ${fields.get('Rush Tag') || '—'}`,
-      `Updated by: ${sanitizeCbsText(updateEvent?.by, 160) || '—'}`
+      `Rush tag: ${fields.get('Rush Tag') || '—'}`
     ].join('\n')
   });
   return { sent: true, channelId: CBS_UPCOMING_RUSH_DISCORD_CHANNEL_ID };
