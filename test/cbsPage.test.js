@@ -379,6 +379,17 @@ test('CBS Email stage sends a signed open-bag authorization file to PVG', () => 
   assert.match(page, /case-update\[data-update-mode="email"\] \{ grid-template-columns:minmax\(240px,420px\); \}/);
 });
 
+test('CBS form accepts up to 20 optimized attachments and Discord posts them in batches', () => {
+  assert.match(pirForm, /You may upload up to 20 files \(22 MB after photo optimization\)/);
+  assert.match(pirForm, /if \(selectedCount > 20\)/);
+  assert.match(pirForm, /if \(totalBytes > 22 \* 1024 \* 1024\)/);
+  assert.match(pirForm, /try \{\s*payload\.attachments = await collectRequiredAttachments\(\)/);
+  assert.match(server, /const maxAttachments = 20/);
+  assert.match(server, /body\.attachments\.length > 20/);
+  assert.match(server, /index \+= 10/);
+  assert.match(server, /files: batches\[index\]/);
+});
+
 test('CBS tracking moves the baggage transfer ETA update under Email', () => {
   assert.doesNotMatch(page, /key:'information', text:'Information'/);
   assert.doesNotMatch(page, /name="informationType"/);
@@ -391,8 +402,8 @@ test('CBS tracking moves the baggage transfer ETA update under Email', () => {
   assert.match(server, /updateEvent:\{ key:'email', title:'Baggage transfer status update - ETA'/);
 });
 
-test('CBS Email offers a bilingual address confirmation request', () => {
-  assert.match(page, /value="address_confirm_request">Address Confirm Request Email/);
+test('CBS Email no longer offers the address confirmation request', () => {
+  assert.doesNotMatch(page, /value="address_confirm_request">Address Confirm Request Email/);
   assert.match(server, /function addressConfirmRequestEmail\(record = \{\}\)/);
   assert.match(server, /Baggage Pick-Up \/ Delivery Address Confirmation – WorldTracer/);
   assert.match(server, /行李领取 \/ 配送地址确认 – WorldTracer/);
@@ -454,6 +465,17 @@ test('Upcoming Rush updates populate the Passenger Filed summary', () => {
   assert.match(page, /button\.delete-upcoming-rush \{ grid-column:2/);
   assert.match(server, /deleteEventKey:'upcoming_rush'/);
   assert.match(drive, /currentEvents\.filter\(\(event\) => event\.key !== \(update\.replaceEventKey \|\| update\.deleteEventKey\)\)/);
+});
+
+test('Upcoming Rush updates notify the operations Discord channel', () => {
+  assert.match(server, /CBS_UPCOMING_RUSH_DISCORD_CHANNEL_ID = process\.env\.CBS_UPCOMING_RUSH_DISCORD_CHANNEL_ID \|\| '1252032351131799654'/);
+  assert.match(server, /async function sendUpcomingRushToDiscord\(record, updateEvent\)/);
+  for (const field of ['Passenger', 'WorldTracer', 'Original bag tag', 'Rush flight', 'Rush date', 'Rush tag']) {
+    assert.ok(server.includes(`\`${field}:`), field);
+  }
+  assert.doesNotMatch(server.match(/async function sendUpcomingRushToDiscord[\s\S]*?\n\}/)?.[0] || '', /Updated by:/);
+  assert.match(server, /updateFields\.updateEvent\?\.key === 'upcoming_rush'[\s\S]*sendUpcomingRushToDiscord\(result\.record, updateFields\.updateEvent\)/);
+  assert.match(server, /CBS Upcoming Rush Discord notification error/);
 });
 
 test('Passenger Filed displays multiple bag tags on separate lines', () => {
@@ -660,7 +682,7 @@ test('CBS removes the passenger-related pickup option from Comment and Email men
 });
 
 test('standalone, Passenger Filed, and On-hand Email menus stay synchronized', () => {
-  for (const action of ['sent_open_bag_authorization_to_pvg', 'contact_pax_pickup_bags', 'pickup_bags_future_available', 'baggage_transfer_status_eta', 'address_confirm_request', 'baggage_pickup_delivery_method_confirmation', 'require_open_bag_authorization_pvg']) {
+  for (const action of ['sent_open_bag_authorization_to_pvg', 'contact_pax_pickup_bags', 'pickup_bags_future_available', 'baggage_transfer_status_eta', 'baggage_pickup_delivery_method_confirmation', 'require_open_bag_authorization_pvg']) {
     assert.equal((page.match(new RegExp(`value="${action}"`, 'g')) || []).length, 3, `${action} should appear in all three Email menus`);
   }
   assert.doesNotMatch(page, /\{ key:'open_bag_authorization_pvg'/);
