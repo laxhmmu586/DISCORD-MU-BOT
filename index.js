@@ -3009,6 +3009,8 @@ app.post('/cbs-cases', async (req, res) => {
     }
     const missingAttachmentTypes = missingRequiredCbsAttachmentTypes(attachments);
     if (missingAttachmentTypes.length) return res.status(400).json({ error: 'Boarding pass and bag tag receipt attachments are required' });
+    const otherAttachmentCount = attachments.filter((attachment) => String(attachment.attachmentType || '').trim().toLowerCase() === 'other').length;
+    if (otherAttachmentCount > 4) return res.status(400).json({ error: 'Use no more than 4 Others attachments.' });
     const contentsRows = buildCbsContentsRows(body);
     const record = {
       caseType,
