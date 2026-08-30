@@ -394,8 +394,8 @@ test('CBS Email stage sends a signed open-bag authorization file to PVG', () => 
   assert.match(page, /case-update\[data-update-mode="email"\] \{ grid-template-columns:minmax\(240px,420px\); \}/);
 });
 
-test('CBS form accepts up to 20 optimized attachments and Discord posts them in batches', () => {
-  assert.match(pirForm, /You may upload up to 20 files \(22 MB after photo optimization\)/);
+test('CBS form accepts optimized attachments and Discord posts them in batches', () => {
+  assert.match(pirForm, /up to 4 files under Others \(22 MB total after photo optimization\)/);
   assert.match(pirForm, /if \(selectedCount > 20\)/);
   assert.match(pirForm, /if \(totalBytes > 22 \* 1024 \* 1024\)/);
   assert.match(pirForm, /try \{\s*payload\.attachments = await collectRequiredAttachments\(\)/);
@@ -665,6 +665,13 @@ test('CBS detail view omits the redundant journey and address section', () => {
 test('PIR form labels the optional attachment category as Others', () => {
   assert.match(pirForm, /<span class="en">Others<\/span><span class="zh">其他附件<\/span>/);
   assert.doesNotMatch(pirForm, />Other document<\/span>/);
+});
+
+test('PIR form limits Others attachments to 4 on the client and server', () => {
+  assert.match(pirForm, /data-attachment-type="other" data-max-attachments="4"/);
+  assert.match(pirForm, /You may upload up to 4 files under Others/);
+  assert.match(server, /if \(otherAttachmentCount > 4\)/);
+  assert.match(server, /Use no more than 4 Others attachments\./);
 });
 
 test('expanded CBS cases show passenger email notification status', () => {
