@@ -485,6 +485,20 @@ test('Upcoming Rush updates notify the operations Discord channel', () => {
   assert.match(server, /CBS Upcoming Rush Discord notification error/);
 });
 
+test('Rush Bag cases with MU586 notify Discord and treat WorldTracer as optional', () => {
+  assert.match(server, /CBS_RUSH_BAG_DISCORD_CHANNEL_ID = process\.env\.CBS_RUSH_BAG_DISCORD_CHANNEL_ID \|\| '1252033117280010291'/);
+  const sender = server.match(/async function sendRushBagToDiscord[\s\S]*?\n\}/)?.[0] || '';
+  assert.doesNotMatch(sender, /if \(!worldTracerFileNumber\)/);
+  assert.match(sender, /\.\.\.\(worldTracerFileNumber \? \[`WorldTracer File Number:/);
+  assert.match(sender, /flightNumber[\s\S]*=== 'MU586'/);
+  assert.match(sender, /Original Tag Number:/);
+  assert.match(sender, /RUSH Tag Number:/);
+  assert.match(sender, /RUSH Itinerary:/);
+  assert.doesNotMatch(sender, /Updated by|updatedBy|employee/i);
+  assert.match(server, /appendCbsWorldTracerCase\(record\)[\s\S]*addRushBagDiscordResult\(\{ created: true, record: saved \}, saved\)/);
+  assert.match(server, /updateCbsWorldTracerCase\(body\.rowNumbers, record\)[\s\S]*addRushBagDiscordResult\(result, result\.record\)/);
+});
+
 test('Passenger Filed displays multiple bag tags on separate lines', () => {
   assert.match(page, /function bagTagSummaryHtml\(value\)/);
   assert.match(page, /split\(\/\\s\*\\\/\\s\*\/\)/);
