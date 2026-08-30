@@ -114,6 +114,7 @@ const WRONG_BAGGAGE_DISCORD_CHANNEL_ID = process.env.WRONG_BAGGAGE_DISCORD_CHANN
 const CBS_DELAYED_LOST_DISCORD_CHANNEL_ID = process.env.CBS_DELAYED_LOST_DISCORD_CHANNEL_ID || '1534758703369289821';
 const CBS_LOST_DISCORD_ROLE_ID = process.env.CBS_LOST_DISCORD_ROLE_ID || '1268619386948685877';
 const CBS_DAMAGED_DISCORD_CHANNEL_ID = process.env.CBS_DAMAGED_DISCORD_CHANNEL_ID || process.env.CBS_ATTACHMENTS_DISCORD_CHANNEL_ID || '1527344986075693167';
+const CBS_UPCOMING_RUSH_DISCORD_CHANNEL_ID = process.env.CBS_UPCOMING_RUSH_DISCORD_CHANNEL_ID || '1252032351131799654';
 const CBS_DPR_WORLDTRACER_DISCORD_ROLE_ID = process.env.CBS_DPR_WORLDTRACER_DISCORD_ROLE_ID || '1268619386948685877';
 const CONTACT_FORM_DISCORD_CHANNEL_ID = process.env.CONTACT_FORM_DISCORD_CHANNEL_ID || '1531867051755442266';
 const CONTACT_FORM_DISCORD_ROLE_ID = process.env.CONTACT_FORM_DISCORD_ROLE_ID || '1252026975279906876';
@@ -2006,6 +2007,27 @@ async function sendDprWorldTracerUpdateToDiscord(record, fileNumber) {
   return { sent: true, channelId: CBS_DAMAGED_DISCORD_CHANNEL_ID };
 }
 
+async function sendUpcomingRushToDiscord(record, updateEvent) {
+  const fields = new Map(updateEvent?.fields || []);
+  const channel = await client.channels.fetch(CBS_UPCOMING_RUSH_DISCORD_CHANNEL_ID);
+  if (!channel?.isTextBased()) {
+    throw new Error('Upcoming Rush Discord channel was not found or is not text based.');
+  }
+  await channel.send({
+    content: [
+      '**Upcoming Rush**',
+      `Passenger: ${sanitizeCbsText(record?.passengerName, 160) || '—'}`,
+      `WorldTracer: ${sanitizeCbsText(record?.worldTracerFileNumber, 120).toUpperCase() || '—'}`,
+      `Original bag tag: ${sanitizeCbsText(record?.bagTag, 160).toUpperCase() || '—'}`,
+      `Rush flight: ${fields.get('Rush Flight') || '—'}`,
+      `Rush date: ${fields.get('Rush Date') || '—'}`,
+      `Rush tag: ${fields.get('Rush Tag') || '—'}`,
+      `Updated by: ${sanitizeCbsText(updateEvent?.by, 160) || '—'}`
+    ].join('\n')
+  });
+  return { sent: true, channelId: CBS_UPCOMING_RUSH_DISCORD_CHANNEL_ID };
+}
+
 async function sendLostBaggageUpdateToDiscord(fileNumber) {
   const channel = await client.channels.fetch(CBS_DELAYED_LOST_DISCORD_CHANNEL_ID);
   if (!channel?.isTextBased()) return { sent: false, reason: 'Delayed/lost baggage Discord channel was not found or is not text based.' };
@@ -3034,6 +3056,12 @@ app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
     if (result.notFound) return res.status(404).json({ error: 'Case not found' });
     if (updateFields.updateEvent?.key === 'upcoming_rush') {
       result.onHandMatches = await syncUpcomingRushOnHand(result.record, updateFields.updateEvent, sanitizeCbsText(req.body?.updatedBy, 160));
+      try {
+        result.discord = await sendUpcomingRushToDiscord(result.record, updateFields.updateEvent);
+      } catch (discordErr) {
+        result.discordError = discordErr?.message || 'Upcoming Rush Discord notification failed.';
+        console.error('CBS Upcoming Rush Discord notification error:', discordErr);
+      }
     }
     if (updateFields.updateEvent?.key === 'worldtracer') {
       const fileNumber = updateFields.updateEvent.fields[0][1];

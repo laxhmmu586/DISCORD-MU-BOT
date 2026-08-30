@@ -467,6 +467,16 @@ test('Upcoming Rush updates populate the Passenger Filed summary', () => {
   assert.match(drive, /currentEvents\.filter\(\(event\) => event\.key !== \(update\.replaceEventKey \|\| update\.deleteEventKey\)\)/);
 });
 
+test('Upcoming Rush updates notify the operations Discord channel', () => {
+  assert.match(server, /CBS_UPCOMING_RUSH_DISCORD_CHANNEL_ID = process\.env\.CBS_UPCOMING_RUSH_DISCORD_CHANNEL_ID \|\| '1252032351131799654'/);
+  assert.match(server, /async function sendUpcomingRushToDiscord\(record, updateEvent\)/);
+  for (const field of ['Passenger', 'WorldTracer', 'Original bag tag', 'Rush flight', 'Rush date', 'Rush tag', 'Updated by']) {
+    assert.ok(server.includes(`\`${field}:`), field);
+  }
+  assert.match(server, /updateFields\.updateEvent\?\.key === 'upcoming_rush'[\s\S]*sendUpcomingRushToDiscord\(result\.record, updateFields\.updateEvent\)/);
+  assert.match(server, /CBS Upcoming Rush Discord notification error/);
+});
+
 test('Passenger Filed displays multiple bag tags on separate lines', () => {
   assert.match(page, /function bagTagSummaryHtml\(value\)/);
   assert.match(page, /split\(\/\\s\*\\\/\\s\*\/\)/);
