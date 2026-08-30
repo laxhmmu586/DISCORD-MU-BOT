@@ -246,7 +246,7 @@
               <label class="attachment-tile attachment-upload"><span class="attachment-preview"></span><span class="attachment-title"><span class="en">Others</span><span class="zh">其他附件</span></span><span class="attachment-filename"></span><input name="otherAttachment" data-attachment-input data-attachment-type="other" type="file" accept="image/*,.pdf" multiple /></label>
             </div>
           </div>
-          <span class="attachment-hint"><span class="en">Boarding pass and bag tag receipt are required. Files are sent as email attachments only; they are not saved to Drive or the case sheet.</span><span class="zh">必须上传登机牌和行李票。附件只随邮件发送，不保存到网盘或表格。</span></span>
+          <span class="attachment-hint"><span class="en">Boarding pass and bag tag receipt are required. You may upload up to 20 files (22 MB after photo optimization). Files are sent as email attachments only; they are not saved to Drive or the case sheet.</span><span class="zh">必须上传登机牌和行李票。最多可上传 20 个文件（照片优化后总计不超过 22 MB）。附件只随邮件发送，不保存到网盘或表格。</span></span>
         </section>
 
         <section class="case-fields is-active">
@@ -698,6 +698,8 @@
 
     async function collectRequiredAttachments() {
       const output = [];
+      const selectedCount = Array.from(selectedAttachments.values()).reduce((total, files) => total + files.length, 0);
+      if (selectedCount > 20) throw new Error(document.documentElement.lang === 'en' ? 'You may upload up to 20 files.' : '最多可上传 20 个文件。');
       for (const input of attachmentInputs) {
         const files = selectedAttachments.get(attachmentKey(input)) || [];
         if (!files.length && input.closest('[data-attachment-group]')?.dataset.requiredAttachment === 'true') throw new Error(document.documentElement.lang === 'en' ? 'Boarding pass and bag tag receipt attachments are required.' : '必须上传登机牌和行李票附件。');
@@ -706,6 +708,8 @@
           if (attachment) output.push(attachment);
         }
       }
+      const totalBytes = output.reduce((total, attachment) => total + Math.floor(attachment.contentBase64.length * 3 / 4), 0);
+      if (totalBytes > 22 * 1024 * 1024) throw new Error(document.documentElement.lang === 'en' ? 'Attachments exceed 22 MB after photo optimization. Please remove a file or upload a smaller PDF.' : '附件经照片优化后仍超过 22 MB，请删除部分文件或上传较小的 PDF。');
       return output;
     }
 
@@ -738,8 +742,8 @@
       payload.language = document.documentElement.lang;
       payload.passengerSignature = signatureDirty ? signaturePad.toDataURL('image/jpeg', 0.75) : '';
       payload.damageSketch = sketchDirty ? canvas.toDataURL('image/jpeg', 0.6) : '';
-      payload.attachments = await collectRequiredAttachments();
       try {
+        payload.attachments = await collectRequiredAttachments();
         const res = await fetch(`${apiBase}/cbs-cases`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || 'Submit failed');

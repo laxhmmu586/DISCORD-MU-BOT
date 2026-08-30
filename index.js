@@ -1902,7 +1902,7 @@ function cbsPdfLines(record) {
 
 function sanitizeCbsAttachments(value) {
   const list = Array.isArray(value) ? value : [];
-  const maxAttachments = 8;
+  const maxAttachments = 20;
   const maxTotalBytes = 22 * 1024 * 1024;
   let totalBytes = 0;
   return list.slice(0, maxAttachments).map((item, index) => {
@@ -1965,16 +1965,21 @@ async function sendCbsAttachmentsToDiscord(record, attachments = [], pdfBuffer =
     return counts;
   }, {});
   const summary = Object.entries(attachmentCounts).map(([type, count]) => `${type}: ${count}`).join(' / ') || '—';
-  await channel.send({
-    content: [
+  const content = [
       'CBS baggage case attachments',
       `Passenger: ${record.passengerName || '—'}`,
       `Bag tag: ${record.bagTag || '—'}`,
       `Type: ${record.caseType || '—'}`,
       `Files: PDF report + ${summary}`
-    ].join('\n'),
-    files
-  });
+    ].join('\n');
+  const batches = [];
+  for (let index = 0; index < files.length; index += 10) batches.push(files.slice(index, index + 10));
+  for (let index = 0; index < batches.length; index += 1) {
+    await channel.send({
+      content: index === 0 ? content : `CBS baggage case attachments (continued ${index + 1}/${batches.length})`,
+      files: batches[index]
+    });
+  }
   return { sent: true, channelId, fileCount: files.length };
 }
 
@@ -2939,6 +2944,9 @@ app.post('/cbs-cases', async (req, res) => {
     if (!body.passengerSignature) return res.status(400).json({ error: 'Passenger signature is required' });
     const now = new Date().toISOString();
     let attachments = sanitizeCbsAttachments(body.attachments);
+    if (!Array.isArray(body.attachments) || body.attachments.length > 20 || attachments.length !== body.attachments.length) {
+      return res.status(400).json({ error: 'Use no more than 20 attachments and no more than 22 MB total after photo optimization.' });
+    }
     const missingAttachmentTypes = missingRequiredCbsAttachmentTypes(attachments);
     if (missingAttachmentTypes.length) return res.status(400).json({ error: 'Boarding pass and bag tag receipt attachments are required' });
     const contentsRows = buildCbsContentsRows(body);

@@ -379,6 +379,17 @@ test('CBS Email stage sends a signed open-bag authorization file to PVG', () => 
   assert.match(page, /case-update\[data-update-mode="email"\] \{ grid-template-columns:minmax\(240px,420px\); \}/);
 });
 
+test('CBS form accepts up to 20 optimized attachments and Discord posts them in batches', () => {
+  assert.match(pirForm, /You may upload up to 20 files \(22 MB after photo optimization\)/);
+  assert.match(pirForm, /if \(selectedCount > 20\)/);
+  assert.match(pirForm, /if \(totalBytes > 22 \* 1024 \* 1024\)/);
+  assert.match(pirForm, /try \{\s*payload\.attachments = await collectRequiredAttachments\(\)/);
+  assert.match(server, /const maxAttachments = 20/);
+  assert.match(server, /body\.attachments\.length > 20/);
+  assert.match(server, /index \+= 10/);
+  assert.match(server, /files: batches\[index\]/);
+});
+
 test('CBS tracking moves the baggage transfer ETA update under Email', () => {
   assert.doesNotMatch(page, /key:'information', text:'Information'/);
   assert.doesNotMatch(page, /name="informationType"/);
