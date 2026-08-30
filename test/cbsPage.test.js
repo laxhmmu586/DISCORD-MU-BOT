@@ -34,6 +34,13 @@ test('CBS storage reads and writes Google Sheets only', () => {
   assert.match(drive, /async function getCbsMissingBagReports[\s\S]*getCbsMissingBagSheetRows/);
   assert.doesNotMatch(drive, /[Ff]irestore/);
 });
+
+test('Rush Bag storage refreshes the sheet title after a tab rename', () => {
+  assert.match(drive, /async function getCbsWorldTracerSheetTitle\(\)[\s\S]*cbsWorldTracerSheetTitle = await resolveSheetTitleByGid/);
+  assert.match(drive, /async function getCbsWorldTracerCases\(\) \{\s*const title = await getCbsWorldTracerSheetTitle\(\)/);
+  assert.match(drive, /async function appendCbsWorldTracerCase\(record = \{\}\) \{\s*const title = await getCbsWorldTracerSheetTitle\(\)/);
+  assert.match(drive, /async function updateCbsWorldTracerCase\(rowNumbers = \[\], record = \{\}\) \{\s*const title = await getCbsWorldTracerSheetTitle\(\)/);
+});
 test('public CBS forms do not CC the operations Gmail account', () => {
   const caseEmail = drive.match(/async function sendCbsCaseEmail[\s\S]*?\n}/)?.[0] || '';
   const wrongBaggageEmail = drive.match(/async function sendWrongBaggageCaseEmail[\s\S]*?\n}/)?.[0] || '';
@@ -476,6 +483,20 @@ test('Upcoming Rush updates notify the operations Discord channel', () => {
   assert.doesNotMatch(server.match(/async function sendUpcomingRushToDiscord[\s\S]*?\n\}/)?.[0] || '', /Updated by:/);
   assert.match(server, /updateFields\.updateEvent\?\.key === 'upcoming_rush'[\s\S]*sendUpcomingRushToDiscord\(result\.record, updateFields\.updateEvent\)/);
   assert.match(server, /CBS Upcoming Rush Discord notification error/);
+});
+
+test('Rush Bag cases with MU586 notify Discord and treat WorldTracer as optional', () => {
+  assert.match(server, /CBS_RUSH_BAG_DISCORD_CHANNEL_ID = process\.env\.CBS_RUSH_BAG_DISCORD_CHANNEL_ID \|\| '1252033117280010291'/);
+  const sender = server.match(/async function sendRushBagToDiscord[\s\S]*?\n\}/)?.[0] || '';
+  assert.doesNotMatch(sender, /if \(!worldTracerFileNumber\)/);
+  assert.match(sender, /\.\.\.\(worldTracerFileNumber \? \[`WorldTracer File Number:/);
+  assert.match(sender, /flightNumber[\s\S]*=== 'MU586'/);
+  assert.match(sender, /Original Tag Number:/);
+  assert.match(sender, /RUSH Tag Number:/);
+  assert.match(sender, /RUSH Itinerary:/);
+  assert.doesNotMatch(sender, /Updated by|updatedBy|employee/i);
+  assert.match(server, /appendCbsWorldTracerCase\(record\)[\s\S]*addRushBagDiscordResult\(\{ created: true, record: saved \}, saved\)/);
+  assert.match(server, /updateCbsWorldTracerCase\(body\.rowNumbers, record\)[\s\S]*addRushBagDiscordResult\(result, result\.record\)/);
 });
 
 test('Passenger Filed displays multiple bag tags on separate lines', () => {

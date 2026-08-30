@@ -115,6 +115,7 @@ const CBS_DELAYED_LOST_DISCORD_CHANNEL_ID = process.env.CBS_DELAYED_LOST_DISCORD
 const CBS_LOST_DISCORD_ROLE_ID = process.env.CBS_LOST_DISCORD_ROLE_ID || '1268619386948685877';
 const CBS_DAMAGED_DISCORD_CHANNEL_ID = process.env.CBS_DAMAGED_DISCORD_CHANNEL_ID || process.env.CBS_ATTACHMENTS_DISCORD_CHANNEL_ID || '1527344986075693167';
 const CBS_UPCOMING_RUSH_DISCORD_CHANNEL_ID = process.env.CBS_UPCOMING_RUSH_DISCORD_CHANNEL_ID || '1252032351131799654';
+const CBS_RUSH_BAG_DISCORD_CHANNEL_ID = process.env.CBS_RUSH_BAG_DISCORD_CHANNEL_ID || '1252033117280010291';
 const CBS_DPR_WORLDTRACER_DISCORD_ROLE_ID = process.env.CBS_DPR_WORLDTRACER_DISCORD_ROLE_ID || '1268619386948685877';
 const CONTACT_FORM_DISCORD_CHANNEL_ID = process.env.CONTACT_FORM_DISCORD_CHANNEL_ID || '1531867051755442266';
 const CONTACT_FORM_DISCORD_ROLE_ID = process.env.CONTACT_FORM_DISCORD_ROLE_ID || '1252026975279906876';
@@ -2027,6 +2028,42 @@ async function sendUpcomingRushToDiscord(record, updateEvent) {
   return { sent: true, channelId: CBS_UPCOMING_RUSH_DISCORD_CHANNEL_ID };
 }
 
+async function sendRushBagToDiscord(record = {}) {
+  const worldTracerFileNumber = sanitizeCbsText(record.worldTracerFileNumber, 120).toUpperCase();
+  const flightRows = Array.isArray(record.flightRows) ? record.flightRows : [];
+  if (!flightRows.some((flight) => sanitizeCbsText(flight?.flightNumber, 40).toUpperCase().replace(/\s+/g, '') === 'MU586')) {
+    return { sent: false, reason: 'RUSH itinerary does not include MU586.' };
+  }
+  const channel = await client.channels.fetch(CBS_RUSH_BAG_DISCORD_CHANNEL_ID);
+  if (!channel?.isTextBased()) throw new Error('Rush Bag Discord channel was not found or is not text based.');
+  const itinerary = flightRows.map((flight) => [
+    sanitizeCbsText(flight?.flightDate, 40) || '—',
+    sanitizeCbsText(flight?.flightNumber, 40).toUpperCase() || '—',
+    `${sanitizeCbsText(flight?.from, 40).toUpperCase() || '—'} → ${sanitizeCbsText(flight?.to, 40).toUpperCase() || '—'}`
+  ].join(' | '));
+  await channel.send({
+    content: [
+      '**RUSH BAG**',
+      ...(worldTracerFileNumber ? [`WorldTracer File Number: ${worldTracerFileNumber}`] : []),
+      `Original Tag Number: ${sanitizeCbsText(record.originalTagNumber, 120).toUpperCase() || '—'}`,
+      `RUSH Tag Number: ${sanitizeCbsText(record.rushTagNumber, 120).toUpperCase() || '—'}`,
+      'RUSH Itinerary:',
+      ...itinerary.map((segment) => `• ${segment}`)
+    ].join('\n')
+  });
+  return { sent: true, channelId: CBS_RUSH_BAG_DISCORD_CHANNEL_ID };
+}
+
+async function addRushBagDiscordResult(result, record) {
+  try {
+    result.discord = await sendRushBagToDiscord(record);
+  } catch (err) {
+    result.discordError = err?.message || 'Rush Bag Discord notification failed.';
+    console.error('CBS Rush Bag Discord notification error:', err);
+  }
+  return result;
+}
+
 async function sendLostBaggageUpdateToDiscord(fileNumber) {
   const channel = await client.channels.fetch(CBS_DELAYED_LOST_DISCORD_CHANNEL_ID);
   if (!channel?.isTextBased()) return { sent: false, reason: 'Delayed/lost baggage Discord channel was not found or is not text based.' };
@@ -2703,7 +2740,8 @@ app.post('/cbs-worldtracer-cases', async (req, res) => {
       return res.status(400).json({ error: 'Original tag, RUSH tag, and complete flight segments are required' });
     }
     const saved = await appendCbsWorldTracerCase(record);
-    return res.status(201).json({ created: true, record: saved });
+    const result = await addRushBagDiscordResult({ created: true, record: saved }, saved);
+    return res.status(201).json(result);
   } catch (err) {
     console.error('CBS WorldTracer case create error:', err);
     return res.status(500).json({ error: err?.message || 'WorldTracer case save failed' });
@@ -2729,7 +2767,7 @@ app.post('/cbs-worldtracer-cases/update', async (req, res) => {
     if (!record.originalTagNumber || !record.rushTagNumber || !record.flightRows.length || record.flightRows.some((flight) => Object.values(flight).some((value) => !value))) return res.status(400).json({ error:'Original tag, RUSH tag, and complete flight segments are required' });
     const result = await updateCbsWorldTracerCase(body.rowNumbers, record);
     if (result.notFound) return res.status(404).json({ error:'On-hard case not found' });
-    return res.json(result);
+    return res.json(await addRushBagDiscordResult(result, result.record));
   } catch (err) {
     console.error('CBS On-hard update error:', err);
     return res.status(500).json({ error:err?.message || 'On-hard update failed' });
@@ -2855,7 +2893,8 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
       const originalTagNumber = sanitizeCbsText(req.body?.originalTagNumber || req.body?.bagTagNumber, 120).toUpperCase();
       const rushTagNumber = sanitizeCbsText(req.body?.rushTagNumber, 120).toUpperCase();
       if (!originalTagNumber || !rushTagNumber || !flightRows.length || flightRows.some((flight) => Object.values(flight).some((value) => !value))) return res.status(400).json({ error: 'Original tag, RUSH tag, and complete flight segments are required' });
-      await appendCbsWorldTracerCase({ worldTracerFileNumber, originalTagNumber, rushTagNumber, flightRows, createdAt: new Date().toISOString() });
+      const savedRushBag = await appendCbsWorldTracerCase({ worldTracerFileNumber, originalTagNumber, rushTagNumber, flightRows, createdAt: new Date().toISOString() });
+      await addRushBagDiscordResult({}, savedRushBag);
     }
     const updatedBy = sanitizeCbsText(req.body?.updatedBy, 160);
     let resolutionNote = note;
