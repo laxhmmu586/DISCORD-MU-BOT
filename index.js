@@ -2897,7 +2897,7 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
       await addRushBagDiscordResult({}, savedRushBag);
     }
     const updatedBy = sanitizeCbsText(req.body?.updatedBy, 160);
-    let resolutionNote = note;
+    let resolutionNote = action === 'passenger-collected' ? 'Passenger Collected / Case Closed' : note;
     if (action === 'shipped') {
       const shippingMethods = ['ADC - All Day Courier', 'BDO', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping'];
       const shippingMethod = shippingMethods.find((method) => method === sanitizeCbsText(req.body?.shippingMethod, 80));

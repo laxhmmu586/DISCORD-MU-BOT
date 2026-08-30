@@ -270,6 +270,14 @@ test('On-hand Case Close requires notes and archives the case', () => {
   assert.match(server, /'case-close': 'Case Closed'/);
 });
 
+test('Passenger Collected closes an On-hand case without requiring notes', () => {
+  assert.match(page, /if \(action === 'passenger-collected'\) return ''/);
+  assert.doesNotMatch(page, /action === 'passenger-collected' \? 'Who collected the bag\?'/);
+  assert.match(server, /let resolutionNote = action === 'passenger-collected' \? 'Passenger Collected \/ Case Closed' : note/);
+  assert.match(server, /'passenger-collected': 'Passenger Collected \/ Case Closed'/);
+  assert.match(server, /resolveCbsUnresolvedBaggageCase\(req\.params\.rowNumber, action, resolutionNote, updatedBy\)/);
+});
+
 test('case progress identifies the staff member who made each update', () => {
   assert.match(page, /function currentUpdater\(\)/);
   assert.match(page, /function updaterDisplayName\(value\)/);
