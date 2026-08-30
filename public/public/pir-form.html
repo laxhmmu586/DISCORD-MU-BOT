@@ -606,12 +606,31 @@
       }
     }
 
+    function fileToDataUrl(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ''));
+        reader.onerror = () => reject(reader.error || new Error('The attachment could not be read.'));
+        reader.readAsDataURL(file);
+      });
+    }
+
     async function fileToAttachment(file, attachmentType) {
-      const dataUrl = file.type?.startsWith('image/')
-        ? await imageFileToDataUrl(file)
-        : await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result || '')); reader.onerror = reject; reader.readAsDataURL(file); });
+      let optimized = false;
+      let dataUrl;
+      if (file.type?.startsWith('image/')) {
+        // Some iPhone photos (notably HEIC files) can be selected by Safari but
+        // cannot be decoded into a canvas. Keep those files as-is rather than
+        // aborting the entire submission when one of several files cannot be optimized.
+        dataUrl = await imageFileToDataUrl(file).then((result) => {
+          optimized = true;
+          return result;
+        }, () => fileToDataUrl(file));
+      } else {
+        dataUrl = await fileToDataUrl(file);
+      }
       const base64 = dataUrl.split(',')[1] || '';
-      const mimeType = file.type?.startsWith('image/') ? 'image/jpeg' : (file.type || 'application/octet-stream');
+      const mimeType = optimized ? 'image/jpeg' : (file.type || 'application/octet-stream');
       return base64 ? { filename:file.name, mimeType, contentBase64:base64, attachmentType } : null;
     }
 
@@ -749,14 +768,18 @@
         if (!res.ok) throw new Error(data.error || 'Submit failed');
         const deliveryErrors = [data.emailError && `email failed: ${data.emailError}`, data.discordError && `Discord failed: ${data.discordError}`].filter(Boolean);
         formStatus.className = deliveryErrors.length ? 'status err' : 'status ok';
-        formStatus.textContent = deliveryErrors.length ? `Created, but ${deliveryErrors.join('; ')}` : 'Created, email sent, and attachments posted to Discord';
+        formStatus.textContent = deliveryErrors.length
+          ? `Created, but ${deliveryErrors.join('; ')}`
+          : data.deliveryPending
+            ? (document.documentElement.lang === 'en' ? 'Created. Attachments are still being delivered.' : '提交成功，附件仍在发送中。')
+            : (document.documentElement.lang === 'en' ? 'Created, email sent, and attachments posted to Discord' : '提交成功，邮件及附件已发送。');
         thanks.querySelectorAll('[data-thanks-message]').forEach((item) => { item.hidden = item.dataset.thanksMessage !== data.record.caseType; });
         thanks.classList.add('is-active');
         thanks.scrollIntoView({ behavior:'smooth', block:'center' });
         form.reset(); if (requestedType === 'AHL' || requestedType === 'DPR') typeSelect.value = requestedType; clearAttachmentPreviews(); sketchDirty = false; drawBagBase(); clearSignature(); contentsList.innerHTML = ''; addContentRow(); issueDateInput.valueAsDate = new Date(); setTypeFields(); setAddressFields();
       } catch (error) {
         formStatus.className = 'status err';
-        const failedFetch = /failed to fetch/i.test(error.message || '');
+        const failedFetch = /failed to fetch|load failed|network request failed/i.test(error.message || '');
         formStatus.textContent = failedFetch
           ? (document.documentElement.lang === 'en' ? 'Submit failed. Please check the network or try smaller attachment files.' : '提交失败。请检查网络，或尝试上传较小的附件文件。')
           : error.message;

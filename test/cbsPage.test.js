@@ -405,6 +405,26 @@ test('CBS form accepts up to 20 optimized attachments and Discord posts them in 
   assert.match(server, /files: batches\[index\]/);
 });
 
+test('CBS form falls back to the original file when Safari cannot optimize an image', () => {
+  assert.match(pirForm, /function fileToDataUrl\(file\)/);
+  assert.match(pirForm, /imageFileToDataUrl\(file\)\.then\(\(result\) => \{/);
+  assert.match(pirForm, /\}, \(\) => fileToDataUrl\(file\)\)/);
+  assert.match(pirForm, /const mimeType = optimized \? 'image\/jpeg' : \(file\.type \|\| 'application\/octet-stream'\)/);
+});
+
+test('CBS form recognizes Safari Load failed as an interrupted request', () => {
+  assert.match(pirForm, /failed to fetch\|load failed\|network request failed/);
+});
+
+test('CBS case creation sends email and Discord attachments in parallel', () => {
+  assert.match(server, /const emailDelivery = sendCbsCaseEmail/);
+  assert.match(server, /const discordDelivery = sendCbsAttachmentsToDiscord/);
+  assert.match(server, /Promise\.all\(\[emailDelivery, discordDelivery\]\)/);
+  assert.match(server, /CBS_CREATE_DELIVERY_WAIT_MS/);
+  assert.match(server, /deliveryPending/);
+  assert.match(pirForm, /Attachments are still being delivered/);
+});
+
 test('CBS tracking moves the baggage transfer ETA update under Email', () => {
   assert.doesNotMatch(page, /key:'information', text:'Information'/);
   assert.doesNotMatch(page, /name="informationType"/);
