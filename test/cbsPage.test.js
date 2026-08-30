@@ -402,8 +402,8 @@ test('CBS tracking moves the baggage transfer ETA update under Email', () => {
   assert.match(server, /updateEvent:\{ key:'email', title:'Baggage transfer status update - ETA'/);
 });
 
-test('CBS Email offers a bilingual address confirmation request', () => {
-  assert.match(page, /value="address_confirm_request">Address Confirm Request Email/);
+test('CBS Email no longer offers the address confirmation request', () => {
+  assert.doesNotMatch(page, /value="address_confirm_request">Address Confirm Request Email/);
   assert.match(server, /function addressConfirmRequestEmail\(record = \{\}\)/);
   assert.match(server, /Baggage Pick-Up \/ Delivery Address Confirmation – WorldTracer/);
   assert.match(server, /行李领取 \/ 配送地址确认 – WorldTracer/);
@@ -682,7 +682,7 @@ test('CBS removes the passenger-related pickup option from Comment and Email men
 });
 
 test('standalone, Passenger Filed, and On-hand Email menus stay synchronized', () => {
-  for (const action of ['sent_open_bag_authorization_to_pvg', 'contact_pax_pickup_bags', 'pickup_bags_future_available', 'baggage_transfer_status_eta', 'address_confirm_request', 'baggage_pickup_delivery_method_confirmation', 'require_open_bag_authorization_pvg']) {
+  for (const action of ['sent_open_bag_authorization_to_pvg', 'contact_pax_pickup_bags', 'pickup_bags_future_available', 'baggage_transfer_status_eta', 'baggage_pickup_delivery_method_confirmation', 'require_open_bag_authorization_pvg']) {
     assert.equal((page.match(new RegExp(`value="${action}"`, 'g')) || []).length, 3, `${action} should appear in all three Email menus`);
   }
   assert.doesNotMatch(page, /\{ key:'open_bag_authorization_pvg'/);
