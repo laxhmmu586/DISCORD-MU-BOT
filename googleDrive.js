@@ -3418,8 +3418,7 @@ async function getContactFormSubmissions() {
 }
 
 async function appendCbsWorldTracerCase(record = {}) {
-  if (!cbsWorldTracerSheetTitle) cbsWorldTracerSheetTitle = await resolveSheetTitleByGid(CBS_SHEET_ID, CBS_WORLDTRACER_SHEET_GID);
-  const title = cbsWorldTracerSheetTitle || 'Sheet1';
+  const title = await getCbsWorldTracerSheetTitle();
   const headers = ['WorldTracer File Number', 'Original Tag Number', 'RUSH Tag Number', 'RUSH Flight Number', 'RUSH Flight Date', 'From', 'To', 'Created At'];
   const range = `${escapeSheetTitle(title)}!A:H`;
   const existing = await sheets.spreadsheets.values.get({ spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!A1:H1` });
@@ -3452,6 +3451,13 @@ async function appendCbsWorldTracerCase(record = {}) {
     requestBody: { values: saved.flightRows.map((flight) => [saved.worldTracerFileNumber, saved.originalTagNumber, saved.rushTagNumber, flight.flightNumber, flight.flightDate, flight.from, flight.to, saved.createdAt]) }
   });
   return saved;
+}
+
+async function getCbsWorldTracerSheetTitle() {
+  // Resolve by the stable sheet ID on every operation so a tab rename (for
+  // example, WTR to RUSH) takes effect without requiring an app restart.
+  cbsWorldTracerSheetTitle = await resolveSheetTitleByGid(CBS_SHEET_ID, CBS_WORLDTRACER_SHEET_GID);
+  return cbsWorldTracerSheetTitle || 'Sheet1';
 }
 
 async function getCbsUnresolvedBaggageSheetTitle() {
@@ -3557,8 +3563,7 @@ async function updateCbsUnresolvedBaggageWorldTracer(rowNumber, worldTracerFileN
 }
 
 async function getCbsWorldTracerCases() {
-  if (!cbsWorldTracerSheetTitle) cbsWorldTracerSheetTitle = await resolveSheetTitleByGid(CBS_SHEET_ID, CBS_WORLDTRACER_SHEET_GID);
-  const title = cbsWorldTracerSheetTitle || 'Sheet1';
+  const title = await getCbsWorldTracerSheetTitle();
   const response = await sheets.spreadsheets.values.get({ spreadsheetId:CBS_SHEET_ID, range:`${escapeSheetTitle(title)}!A2:H` });
   const grouped = new Map();
   for (const [index, values] of (response.data.values || []).entries()) {
@@ -3580,8 +3585,7 @@ async function getCbsWorldTracerCases() {
 }
 
 async function updateCbsWorldTracerCase(rowNumbers = [], record = {}) {
-  if (!cbsWorldTracerSheetTitle) cbsWorldTracerSheetTitle = await resolveSheetTitleByGid(CBS_SHEET_ID, CBS_WORLDTRACER_SHEET_GID);
-  const title = cbsWorldTracerSheetTitle || 'Sheet1';
+  const title = await getCbsWorldTracerSheetTitle();
   const rows = [...new Set((Array.isArray(rowNumbers) ? rowNumbers : []).map(Number).filter((value) => value >= 2))];
   if (!rows.length) return { updated: false, notFound: true };
   const saved = {
