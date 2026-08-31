@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const page = fs.readFileSync(path.join(__dirname, '..', 'public', 'public', 'cbs.html'), 'utf8');
+const indexPage = fs.readFileSync(path.join(__dirname, '..', 'public', 'public', 'index.html'), 'utf8');
 const pirForm = fs.readFileSync(path.join(__dirname, '..', 'public', 'public', 'pir-form.html'), 'utf8');
 const drive = fs.readFileSync(path.join(__dirname, '..', 'googleDrive.js'), 'utf8');
 const server = fs.readFileSync(path.join(__dirname, '..', 'index.js'), 'utf8');
@@ -209,14 +210,17 @@ test('Add On-hand records are added to and displayed in Open Case', () => {
   assert.match(page, /await loadUnresolvedBaggage\(\);\s*showSection\('open'\);/);
 });
 
-test('On-hand excludes gate bags and Co-mail', () => {
+test('On-hand only includes Office bags and excludes gate bags and Co-mail', () => {
   const description = 'Passenger bags entered as inbound and not-loaded outbound bags remain here until resolved. Gate bags and Co-mail are not included.';
   assert.equal((page.match(new RegExp(description.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length, 2);
   assert.match(page, /<option>Gate bag<\/option>/);
   assert.match(page, /<option>Co-mail<\/option>/);
+  assert.match(page, /<select name="location" required><option>Office<\/option><option>Transfer<\/option><\/select>/);
+  assert.match(indexPage, /<option value="Office"><\/option><option value="Transfer"><\/option><option value="CBS"><\/option>/);
   assert.match(drive, /\.filter\(\(row\) => !isCbsOnHandExcludedBag\(row\)\)/);
   assert.match(drive, /if \(isCbsOnHandExcludedBag\(record\)\) return \{ created: false, excluded: true \};/);
   assert.match(drive, /new Set\(\['gate bag', 'co-mail'\]\)/);
+  assert.match(drive, /location !== 'office'/);
   assert.match(drive, /\[record\.status, record\.bagType\][\s\S]*excludedTypes\.has/);
 });
 
