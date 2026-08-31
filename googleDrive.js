@@ -3483,7 +3483,9 @@ async function getCbsUnresolvedBaggageCases(options = {}) {
 
 function isCbsOnHandExcludedBag(record = {}) {
   const excludedTypes = new Set(['gate bag', 'co-mail']);
-  return [record.status, record.bagType].some((value) => excludedTypes.has(sanitizeSheetText(value, 80).toLowerCase()));
+  const location = sanitizeSheetText(record.location, 120).toLowerCase();
+  return location !== 'office'
+    || [record.status, record.bagType].some((value) => excludedTypes.has(sanitizeSheetText(value, 80).toLowerCase()));
 }
 
 function cbsRecordMatchesId(row, identifier) {
