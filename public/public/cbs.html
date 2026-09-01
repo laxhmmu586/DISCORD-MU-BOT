@@ -47,6 +47,9 @@
     .missing-date-group { display:grid; gap:10px; }
     .missing-date-heading { display:grid; gap:4px; margin:0; color:var(--brand); font-size:20px; }
     .missing-date-heading span { display:block; color:var(--muted); font-size:12px; font-weight:800; line-height:1; text-transform:uppercase; letter-spacing:.08em; }
+    .missing-report-contact { display:inline-flex; align-items:center; gap:9px; color:var(--brand); font-size:16px; font-weight:900; text-decoration:none; white-space:nowrap; }
+    .missing-report-contact:hover { text-decoration:underline; }
+    .missing-report-contact svg { width:21px; height:21px; fill:none; stroke:currentColor; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; }
     .actions { display:flex; gap:12px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
     button,a.button { border:0; border-radius:999px; padding:12px 18px; font-weight:850; cursor:pointer; background:var(--brand); color:white; text-decoration:none; }
     .sidebar-actions { display:grid; gap:5px; }
@@ -338,7 +341,7 @@
       <div class="worldtracer-list"><h2><span class="en">All Rush Bag Cases</span><span class="zh">所有 Rush Bag 案件</span></h2><div id="worldtracer-output"><p class="muted">Loading cases...</p></div></div>
     </section>
     <section class="card" id="missing-report-card" hidden>
-      <div class="actions"><div><h1>MISSING BAG REPORT</h1><p class="muted">MU rows imported from Early Bag Storage missed bag email.</p></div></div>
+      <div class="actions"><div><h1>MISSING BAG REPORT</h1><p class="muted">MU rows imported from Early Bag Storage missed bag email.</p></div><a class="missing-report-contact" href="tel:+14243121860" aria-label="Call LAXTEC at 424-312-1860"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M10 5h4M11 19h2"/></svg><span>LAXTEC: 424-312-1860</span></a></div>
       <div id="missing-report-output"><p class="muted">Loading missing bags...</p></div>
     </section>
     <section class="card" id="email-card" hidden>

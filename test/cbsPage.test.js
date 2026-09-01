@@ -532,6 +532,12 @@ test('Rush Bag cases with MU586 notify Discord and treat WorldTracer as optional
   assert.match(server, /updateCbsWorldTracerCase\(body\.rowNumbers, record\)[\s\S]*addRushBagDiscordResult\(result, result\.record\)/);
 });
 
+test('Missing Bag Report shows the LAXTEC phone contact', () => {
+  assert.match(page, /class="missing-report-contact" href="tel:\+14243121860"/);
+  assert.match(page, /LAXTEC: 424-312-1860/);
+  assert.match(page, /aria-label="Call LAXTEC at 424-312-1860"/);
+});
+
 test('Passenger Filed displays multiple bag tags on separate lines', () => {
   assert.match(page, /function bagTagSummaryHtml\(value\)/);
   assert.match(page, /split\(\/\\s\*\\\/\\s\*\/\)/);
