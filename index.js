@@ -1714,6 +1714,15 @@ function baggagePickupAtLaxEmail(record = {}) {
   return { subject, text, html: cbsPlainTextEmailHtml(text) };
 }
 
+function baggageInspectionExplanationEmail(record = {}) {
+  const chinese = cbsEmailIsChinese(record);
+  const subject = chinese ? '关于行李可能被开箱检查的说明' : 'Explanation Regarding Baggage Inspection';
+  const text = chinese
+    ? '尊敬的旅客：\n\n您好！\n\n您的行李在运输过程中可能因安全检查需要被相关部门开箱查验。该检查可能由中国机场安检部门进行，也可能由行李抵达美国后由美国海关及边境保护局（U.S. Customs and Border Protection）进行。\n\n如您的行李曾由美国相关部门开箱检查，行李箱内可能会留有检查通知单，建议您查看箱内是否有相关文件。\n\n需要说明的是，航空公司并不参与机场安检或海关的开箱检查，因此我们无法确认您的行李是否曾被开箱查验，也无法确认行李未上锁的情况是否由相关检查所导致。\n\n感谢您的理解。\n\n此致\n中国东方航空'
+    : 'Dear Passenger,\n\nYour baggage may have been opened for security inspection during your journey. The inspection may have been conducted by airport security authorities in China or by U.S. Customs and Border Protection upon arrival in the United States.\n\nIf your baggage was inspected by U.S. authorities, an inspection notice may have been placed inside your suitcase. We recommend checking the contents of your baggage for any such notice.\n\nPlease note that the airline is not involved in security or customs inspections. Therefore, we are unable to confirm whether an inspection was conducted or whether it resulted in your baggage being left unlocked.\n\nThank you for your understanding.\n\nSincerely,\nChina Eastern Airlines';
+  return { subject, text, html:cbsPlainTextEmailHtml(text) };
+}
+
 function baggageFuturePickupAtLaxEmail(record = {}, availableDate = '') {
   const chinese = cbsEmailIsChinese(record);
   const fileNumber = sanitizeCbsText(record.worldTracerFileNumber, 120) || '—';
@@ -2254,6 +2263,7 @@ function buildCbsUpdateFields(update = {}) {
   }
   if (type === 'email') {
     const emailAction = sanitizeCbsText(update.emailAction, 80);
+    if (emailAction === 'baggage_open_by_customs') return { status:'Email - Explanation - Baggage Open by Custom', updateNote:'EMAIL | Explanation - Baggage Open by Custom', updateEvent:{ key:'email', title:'Explanation - Baggage Open by Custom', fields:[['Email To', 'Passenger email on file']] } };
     if (emailAction === 'require_open_bag_authorization_pvg') return { status:'Email - Require Open Bag Authorization at PVG', updateNote:'EMAIL | Require Open Bag Authorization at PVG', updateEvent:{ key:'email', title:'Require Open Bag Authorization at PVG', fields:[['Airport', 'PVG'], ['Attachment', 'Letter of Authorization.pdf']] } };
     if (emailAction === 'address_confirm_request') return { status:'Email - Address Confirm Request', updateNote:'EMAIL | Address Confirm Request Email', updateEvent:{ key:'email', title:'Address Confirm Request Email', fields:[['Email To', 'Passenger email on file']] } };
     if (emailAction === 'baggage_pickup_delivery_method_confirmation') return { status:'Email - Baggage Pick-Up / Delivery Method Confirmation', updateNote:'EMAIL | Baggage Pick-Up / Delivery Method Confirmation', updateEvent:{ key:'email', title:'Baggage Pick-Up / Delivery Method Confirmation', fields:[['Email To', 'Passenger email on file']] } };
@@ -2365,6 +2375,14 @@ app.post('/cbs-email', async (req, res) => {
       const passengerEmail = sanitizeCbsText(req.body?.passengerEmail, 160).toLowerCase();
       if (!isValidEmail(passengerEmail)) return res.status(400).json({ error:'A valid passenger email is required' });
       const message = baggagePickupAtLaxEmail({});
+      const email = await sendCbsCaseEmail({ passengerEmail, subject:message.subject, html:message.html, text:message.text, ccOperations:false });
+      return res.json({ sent:true, email });
+    }
+    if (emailAction === 'baggage_open_by_customs') {
+      const passengerEmail = sanitizeCbsText(req.body?.passengerEmail, 160).toLowerCase();
+      if (!isValidEmail(passengerEmail)) return res.status(400).json({ error:'A valid passenger email is required' });
+      const record = { language:sanitizeCbsText(req.body?.language, 5) === 'zh' ? 'zh' : 'en' };
+      const message = baggageInspectionExplanationEmail(record);
       const email = await sendCbsCaseEmail({ passengerEmail, subject:message.subject, html:message.html, text:message.text, ccOperations:false });
       return res.json({ sent:true, email });
     }
@@ -2832,7 +2850,7 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
     const note = sanitizeCbsText(req.body?.note, 500);
     if (action === 'email') {
       const emailAction = sanitizeCbsText(req.body?.emailAction, 80);
-      const validEmailActions = ['sent_open_bag_authorization_to_pvg', 'contact_pax_pickup_bags', 'pickup_bags_future_available', 'baggage_transfer_status_eta', 'address_confirm_request', 'baggage_pickup_delivery_method_confirmation', 'require_open_bag_authorization_pvg'];
+      const validEmailActions = ['sent_open_bag_authorization_to_pvg', 'contact_pax_pickup_bags', 'pickup_bags_future_available', 'baggage_transfer_status_eta', 'address_confirm_request', 'baggage_pickup_delivery_method_confirmation', 'require_open_bag_authorization_pvg', 'baggage_open_by_customs'];
       if (!validEmailActions.includes(emailAction)) return res.status(400).json({ error: 'A valid email action is required' });
       const emailTo = sanitizeCbsText(req.body?.emailTo, 160).toLowerCase();
       if (!isValidEmail(emailTo)) return res.status(400).json({ error: 'A valid passenger email is required' });
@@ -2840,7 +2858,7 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
       const record = rows.find((row) => String(row.rowNumber) === String(req.params.rowNumber));
       if (!record) return res.status(404).json({ error: 'On-hand case not found' });
       const worldTracerFileNumber = sanitizeCbsText(req.body?.worldTracerFileNumber || record.worldTracerFileNumber, 120).toUpperCase();
-      const needsWorldTracer = !['sent_open_bag_authorization_to_pvg', 'contact_pax_pickup_bags'].includes(emailAction);
+      const needsWorldTracer = !['sent_open_bag_authorization_to_pvg', 'contact_pax_pickup_bags', 'baggage_open_by_customs'].includes(emailAction);
       if (needsWorldTracer && !worldTracerFileNumber) return res.status(400).json({ error:'A WorldTracer file number is required' });
       const emailRecord = { ...record, worldTracerFileNumber, language:sanitizeCbsText(req.body?.language, 5) === 'zh' ? 'zh' : 'en' };
       let message;
@@ -2861,10 +2879,11 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
       } else if (emailAction === 'address_confirm_request') message = addressConfirmRequestEmail(emailRecord);
       else if (emailAction === 'baggage_pickup_delivery_method_confirmation') message = baggagePickupDeliveryMethodConfirmationEmail(emailRecord);
       else if (emailAction === 'require_open_bag_authorization_pvg') { message = openBagAuthorizationPvgEmail(emailRecord); authorizationForm = await getCbsOpenBagAuthorizationPdf(); }
+      else if (emailAction === 'baggage_open_by_customs') message = baggageInspectionExplanationEmail(emailRecord);
       else message = withEditableCbsEmailBody(baggagePickupAtLaxEmail(emailRecord), req.body?.emailBody);
       const email = await sendCbsCaseEmail({ passengerEmail:emailTo, subject:message.subject, html:message.html, text:message.text, attachments, ...(authorizationForm ? { pdfBuffer:authorizationForm.buffer, filename:authorizationForm.name } : {}), ccOperations:false });
       const updatedBy = sanitizeCbsText(req.body?.updatedBy, 160);
-      const resolutionTitle = ({ sent_open_bag_authorization_to_pvg:'Sent Open Bag Authorization to PVG', contact_pax_pickup_bags:'Pick-up Bags - available', pickup_bags_future_available:'Pick-up Bags - future available', baggage_transfer_status_eta:'Baggage transfer status update - ETA', address_confirm_request:'Address Confirm Request Email', baggage_pickup_delivery_method_confirmation:'Baggage Pick-Up / Delivery Method Confirmation', require_open_bag_authorization_pvg:'Require Open Bag Authorization at PVG' })[emailAction];
+      const resolutionTitle = ({ sent_open_bag_authorization_to_pvg:'Sent Open Bag Authorization to PVG', contact_pax_pickup_bags:'Pick-up Bags - available', pickup_bags_future_available:'Pick-up Bags - future available', baggage_transfer_status_eta:'Baggage transfer status update - ETA', address_confirm_request:'Address Confirm Request Email', baggage_pickup_delivery_method_confirmation:'Baggage Pick-Up / Delivery Method Confirmation', require_open_bag_authorization_pvg:'Require Open Bag Authorization at PVG', baggage_open_by_customs:'Explanation - Baggage Open by Custom' })[emailAction];
       const resolutionNote = `${resolutionTitle} | Email To: ${emailTo}${updatedBy ? ` | Updated by: ${updatedBy}` : ''}`;
       const result = await resolveCbsUnresolvedBaggageCase(req.params.rowNumber, action, resolutionNote, updatedBy);
       await syncOnHandStatusToBaggage(result.record, action, req.body);
@@ -3161,6 +3180,7 @@ app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
       const addressConfirmEmail = updateFields.updateEvent.title === 'Address Confirm Request Email';
       const pickupDeliveryMethodEmail = updateFields.updateEvent.title === 'Baggage Pick-Up / Delivery Method Confirmation';
       const requirePvgAuthorizationEmail = updateFields.updateEvent.title === 'Require Open Bag Authorization at PVG';
+      const baggageInspectionEmail = updateFields.updateEvent.title === 'Explanation - Baggage Open by Custom';
       const estimatedArrivalTime = updateFields.updateEvent.fields.find(([key]) => key === 'Estimated Arrival Time')?.[1] || '';
       const availableDate = updateFields.updateEvent.fields.find(([key]) => key === 'Available Date')?.[1] || '';
       const message = pickupEmail
@@ -3173,8 +3193,10 @@ app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
               ? addressConfirmRequestEmail(record)
               : (pickupDeliveryMethodEmail
                 ? baggagePickupDeliveryMethodConfirmationEmail(record)
-                : (requirePvgAuthorizationEmail ? openBagAuthorizationPvgEmail(record) : signedOpenBagAuthorizationToPvgEmail(record))))));
-      const emailTo = pickupEmail || futurePickupEmail || transferEtaEmail || addressConfirmEmail || pickupDeliveryMethodEmail || requirePvgAuthorizationEmail ? record.email : updateFields.updateEvent.fields.find(([key]) => key === 'Email To')?.[1];
+                : (requirePvgAuthorizationEmail
+                  ? openBagAuthorizationPvgEmail(record)
+                  : (baggageInspectionEmail ? baggageInspectionExplanationEmail(record) : signedOpenBagAuthorizationToPvgEmail(record)))))));
+      const emailTo = pickupEmail || futurePickupEmail || transferEtaEmail || addressConfirmEmail || pickupDeliveryMethodEmail || requirePvgAuthorizationEmail || baggageInspectionEmail ? record.email : updateFields.updateEvent.fields.find(([key]) => key === 'Email To')?.[1];
       try {
         if (requirePvgAuthorizationEmail) {
           const authorizationForm = await getCbsOpenBagAuthorizationPdf();
