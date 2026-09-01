@@ -749,6 +749,17 @@ test('standalone, Passenger Filed, and On-hand Email menus stay synchronized', (
   assert.doesNotMatch(server, /type === 'open_bag_authorization_pvg'/);
 });
 
+test('Email menus offer the bilingual baggage inspection explanation', () => {
+  assert.equal((page.match(/<option value="baggage_open_by_customs">Explanation - Baggage Open by Custom<\/option>/g) || []).length, 3);
+  assert.match(server, /function baggageInspectionExplanationEmail\(record = \{\}\)/);
+  assert.match(server, /Explanation Regarding Baggage Inspection/);
+  assert.match(server, /关于行李可能被开箱检查的说明/);
+  assert.match(server, /U\.S\. Customs and Border Protection upon arrival in the United States/);
+  assert.match(server, /美国海关及边境保护局（U\.S\. Customs and Border Protection）/);
+  assert.match(server, /emailAction === 'baggage_open_by_customs'/);
+  assert.match(server, /needsWorldTracer = !\['sent_open_bag_authorization_to_pvg', 'contact_pax_pickup_bags', 'baggage_open_by_customs'\]/);
+});
+
 test('future pickup email requires an available date in all three Email forms', () => {
   assert.equal((page.match(/value="pickup_bags_future_available"/g) || []).length, 3);
   assert.match(page, /name="availableDate" type="date"/);
