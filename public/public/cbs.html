@@ -47,6 +47,9 @@
     .missing-date-group { display:grid; gap:10px; }
     .missing-date-heading { display:grid; gap:4px; margin:0; color:var(--brand); font-size:20px; }
     .missing-date-heading span { display:block; color:var(--muted); font-size:12px; font-weight:800; line-height:1; text-transform:uppercase; letter-spacing:.08em; }
+    .missing-report-contact { display:inline-flex; align-items:center; gap:9px; color:var(--brand); font-size:16px; font-weight:900; text-decoration:none; white-space:nowrap; }
+    .missing-report-contact:hover { text-decoration:underline; }
+    .missing-report-contact svg { width:21px; height:21px; fill:none; stroke:currentColor; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; }
     .actions { display:flex; gap:12px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
     button,a.button { border:0; border-radius:999px; padding:12px 18px; font-weight:850; cursor:pointer; background:var(--brand); color:white; text-decoration:none; }
     .sidebar-actions { display:grid; gap:5px; }
@@ -338,7 +341,7 @@
       <div class="worldtracer-list"><h2><span class="en">All Rush Bag Cases</span><span class="zh">所有 Rush Bag 案件</span></h2><div id="worldtracer-output"><p class="muted">Loading cases...</p></div></div>
     </section>
     <section class="card" id="missing-report-card" hidden>
-      <div class="actions"><div><h1>MISSING BAG REPORT</h1><p class="muted">MU rows imported from Early Bag Storage missed bag email.</p></div></div>
+      <div class="actions"><div><h1>MISSING BAG REPORT</h1><p class="muted">MU rows imported from Early Bag Storage missed bag email.</p></div><a class="missing-report-contact" href="tel:+14243121860" aria-label="Call LAXTEC at 424-312-1860"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M10 5h4M11 19h2"/></svg><span>LAXTEC: 424-312-1860</span></a></div>
       <div id="missing-report-output"><p class="muted">Loading missing bags...</p></div>
     </section>
     <section class="card" id="email-card" hidden>
@@ -575,7 +578,7 @@
       if (action === 'case-close') return '<label class="wide"><span>Notes</span><textarea name="note" placeholder="Enter case close notes" required></textarea></label>';
       if (action === 'on-hand-rush') return `${worldTracerFileNumber ? `<input type="hidden" name="worldTracerFileNumber" value="${escapeHtml(worldTracerFileNumber)}" />` : '<label><span>WorldTracer File Number (Optional)</span><input name="worldTracerFileNumber" placeholder="Can be added later" /></label>'}<label><span>Original Tag Number</span><input name="originalTagNumber" value="${escapeHtml(bagTag)}" required /></label><label><span>RUSH Tag Number</span><input name="rushTagNumber" required /></label><div class="rush-itinerary wide"><div class="rush-itinerary-head"><h2>RUSH Itinerary</h2><button class="secondary" type="button" data-add-unresolved-flight>+ Add Flight</button></div><div data-unresolved-flight-rows>${rushFlightRowHtml()}</div></div>`;
       if (action === 'email') return `<label class="wide"><span>Email</span><select name="emailAction" data-onhand-email-action required><option value="sent_open_bag_authorization_to_pvg">Sent Open Bag Authorization to PVG</option><option value="contact_pax_pickup_bags">Pick-up Bags - available</option><option value="pickup_bags_future_available">Pick-up Bags - future available</option><option value="baggage_transfer_status_eta">Baggage transfer status update - ETA</option><option value="baggage_pickup_delivery_method_confirmation">Baggage Pick-Up / Delivery Method Confirmation</option><option value="require_open_bag_authorization_pvg">Require Open Bag Authorization at PVG</option><option value="baggage_open_by_customs">Explanation - Baggage Open by Custom</option></select></label><label class="wide" data-onhand-pvg-email><span>Email To</span><select name="emailTo" required><option value="pd-bag-intl@ceair.com">pd-bag-intl@ceair.com</option><option value="pd-bag-dom@ceair.com">pd-bag-dom@ceair.com</option></select></label><label class="authorization-upload wide" data-onhand-pvg-email><input name="authorizationFile" type="file" required /><span class="authorization-upload-title">Letter of Authorization</span><small>Select the signed file</small></label><label class="wide" data-onhand-passenger-email hidden><span>Email To</span><input name="emailTo" type="email" placeholder="Passenger email address" disabled required /></label><label class="wide" data-onhand-passenger-related hidden><span>WorldTracer File Number</span><input name="worldTracerFileNumber" value="${escapeHtml(worldTracerFileNumber)}" placeholder="WorldTracer file number" disabled required /></label><label class="wide" data-onhand-eta hidden><span>Estimated arrival date</span><input name="estimatedArrivalTime" type="date" disabled required /></label><label class="wide" data-onhand-passenger-related hidden><span>Language</span><select name="language" disabled required><option value="en">English</option><option value="zh">中文</option></select></label><label class="wide" data-onhand-future-pickup hidden><span>Available starting date</span><input name="availableDate" type="date" disabled required /></label><label class="wide" data-onhand-customs-language hidden><span>Language</span><select name="language" disabled required><option value="en">English</option><option value="zh">中文</option></select></label>`;
-      if (action === 'shipped') return `<label><span>Delivery method</span><select name="shippingMethod" data-shipping-method required><option value="">Select delivery method</option><option>ADC - All Day Courier</option><option>FedEx Delivery</option><option>Pick Up at Airport</option><option>Passenger Pay for Shipping</option></select></label><label data-shipping-tracking hidden><span>Tracking number</span><input name="trackingNumber" disabled /></label><label data-shipping-address hidden><span>Shipping to where?</span><input name="shippingTo" disabled /></label><label data-shipping-bdo hidden><span>BDO</span><input name="bdo" disabled /></label><label class="wide"><span>Comment</span><textarea name="comment"></textarea></label>`;
+      if (action === 'shipped') return `<label><span>Delivery method</span><select name="shippingMethod" data-shipping-method required><option value="">Select delivery method</option><option>ADC - All Day Courier</option><option>MBI DELIVERY AND STORAGE - STANDARD</option><option>FedEx Delivery</option><option>Pick Up at Airport</option><option>Passenger Pay for Shipping</option></select></label><label data-shipping-tracking hidden><span>Tracking number</span><input name="trackingNumber" disabled /></label><label data-shipping-address hidden><span>Shipping to where?</span><input name="shippingTo" disabled /></label><label data-shipping-bdo hidden><span>BDO</span><input name="bdo" disabled /></label><label class="wide"><span>Comment</span><textarea name="comment"></textarea></label>`;
       return '<label class="wide"><span>Resolution Note</span><textarea name="note" placeholder="Describe how this case was resolved" required></textarea></label>';
     }
     function unresolvedProgressHtml(row) {
@@ -770,7 +773,7 @@
     function passengerNotificationHtml(row) {
       const events = parseUpdateNoteEvents(row);
       const sentKeys = new Set(events.map((event) => event.key));
-      if (events.some((event) => event.key === 'shipping' && (event.fields || []).some(([key, value]) => key === 'Shipping Method' && value === 'ADC - All Day Courier'))) sentKeys.add('adc_shipping');
+      if (events.some((event) => event.key === 'shipping' && (event.fields || []).some(([key, value]) => key === 'Shipping Method' && ['ADC - All Day Courier', 'MBI DELIVERY AND STORAGE - STANDARD'].includes(value)))) sentKeys.add('adc_shipping');
       if (events.some((event) => event.key === 'shipping' && (event.fields || []).some(([key, value]) => key === 'Shipping Method' && value === 'FedEx Delivery'))) sentKeys.add('fedex_shipping');
       if (events.some((event) => event.key === 'shipping' && (event.fields || []).some(([key, value]) => key === 'Shipping Method' && value === 'Pick Up at Airport'))) sentKeys.add('airport_pickup');
       if (events.some((event) => event.key === 'shipping' && (event.fields || []).some(([key, value]) => key === 'Shipping Method' && value === 'Passenger Pay for Shipping'))) sentKeys.add('passenger_paid_shipping');
@@ -931,7 +934,7 @@
       if (!row.rowNumber) return `<p class="status err">${label('A saved row is required before this case can be updated.', '案件保存后才能更新。')}</p>`;
       const active = ['worldtracer', 'requested_bags', 'rush', 'location', 'shipping', 'lost', 'closed'].includes(mode) ? mode : 'worldtracer';
       const input = (title, name, attrs = 'required') => `<label><span>${escapeHtml(title)}</span><input name="${escapeHtml(name)}" ${attrs} /></label>`;
-      const shippingMethodSelect = `<label><span>Delivery method</span><select name="shippingMethod" data-shipping-method required><option value="">Select delivery method</option><option>ADC - All Day Courier</option><option>BDO</option><option>FedEx Delivery</option><option>Pick Up at Airport</option><option>Passenger Pay for Shipping</option></select></label>`;
+      const shippingMethodSelect = `<label><span>Delivery method</span><select name="shippingMethod" data-shipping-method required><option value="">Select delivery method</option><option>ADC - All Day Courier</option><option>MBI DELIVERY AND STORAGE - STANDARD</option><option>BDO</option><option>FedEx Delivery</option><option>Pick Up at Airport</option><option>Passenger Pay for Shipping</option></select></label>`;
       const shippingTrackingInput = `<label data-shipping-tracking hidden><span>Tracking number</span><input name="trackingNumber" disabled /></label>`;
       const shippingAddressInput = `<label data-shipping-address hidden><span>Shipping to where?</span><input name="shippingTo" disabled /></label>`;
       const shippingBdoInput = `<label data-shipping-bdo hidden><span>BDO</span><input name="bdo" disabled /></label>`;
@@ -1051,7 +1054,7 @@
     }
     function inlineUpdateFieldsHtml(key, values = {}) {
       const input = (placeholder, name, required = true) => `<input name="${escapeHtml(name)}" placeholder="${escapeHtml(placeholder)}" ${required ? 'required' : ''} />`;
-      const shippingMethodSelect = '<select name="shippingMethod" data-shipping-method required><option value="">Select delivery method</option><option>ADC - All Day Courier</option><option>FedEx Delivery</option><option>Pick Up at Airport</option><option>Passenger Pay for Shipping</option></select>';
+      const shippingMethodSelect = '<select name="shippingMethod" data-shipping-method required><option value="">Select delivery method</option><option>ADC - All Day Courier</option><option>MBI DELIVERY AND STORAGE - STANDARD</option><option>FedEx Delivery</option><option>Pick Up at Airport</option><option>Passenger Pay for Shipping</option></select>';
       const shippingTrackingInput = '<input name="trackingNumber" data-shipping-tracking placeholder="Tracking number" disabled hidden />';
       const shippingAddressInput = '<input name="shippingTo" data-shipping-address placeholder="Shipping to where?" disabled hidden />';
       const shippingBdoInput = '<input name="bdo" data-shipping-bdo placeholder="BDO" disabled hidden />';
@@ -1338,7 +1341,7 @@
         const bdoField = form?.querySelector('[data-shipping-bdo]');
         const bdoInput = bdoField?.matches('input') ? bdoField : bdoField?.querySelector('input');
         const needsTracking = shippingMethod.value === 'FedEx Delivery';
-        const showsAddress = shippingMethod.value === 'ADC - All Day Courier' || shippingMethod.value === 'FedEx Delivery';
+        const showsAddress = ['ADC - All Day Courier', 'MBI DELIVERY AND STORAGE - STANDARD', 'FedEx Delivery'].includes(shippingMethod.value);
         if (trackingField) trackingField.hidden = !needsTracking;
         if (trackingInput) { trackingInput.disabled = !needsTracking; trackingInput.required = needsTracking; if (!needsTracking) trackingInput.value = ''; }
         if (addressField) addressField.hidden = !showsAddress;
@@ -1604,7 +1607,7 @@
         const bdoField = form.querySelector('[data-shipping-bdo]');
         const bdoInput = bdoField.querySelector('input');
         const needsTracking = shippingMethod.value === 'FedEx Delivery';
-        const showsAddress = shippingMethod.value === 'ADC - All Day Courier' || shippingMethod.value === 'FedEx Delivery';
+        const showsAddress = ['ADC - All Day Courier', 'MBI DELIVERY AND STORAGE - STANDARD', 'FedEx Delivery'].includes(shippingMethod.value);
         trackingField.hidden = !needsTracking;
         trackingInput.disabled = !needsTracking;
         trackingInput.required = needsTracking;

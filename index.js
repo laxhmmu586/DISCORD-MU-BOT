@@ -2073,6 +2073,23 @@ async function addRushBagDiscordResult(result, record) {
   return result;
 }
 
+function isRushBagWorldTracerOnlyUpdate(previousRecord = {}, nextRecord = {}) {
+  const comparable = (record) => ({
+    originalTagNumber: sanitizeCbsText(record.originalTagNumber, 120).toUpperCase(),
+    rushTagNumber: sanitizeCbsText(record.rushTagNumber, 120).toUpperCase(),
+    flightRows: (Array.isArray(record.flightRows) ? record.flightRows : []).map((flight) => ({
+      flightDate: sanitizeCbsText(flight?.flightDate, 40),
+      flightNumber: sanitizeCbsText(flight?.flightNumber, 40).toUpperCase(),
+      from: sanitizeCbsText(flight?.from, 40).toUpperCase(),
+      to: sanitizeCbsText(flight?.to, 40).toUpperCase()
+    }))
+  });
+  const previousFileNumber = sanitizeCbsText(previousRecord.worldTracerFileNumber, 120).toUpperCase();
+  const nextFileNumber = sanitizeCbsText(nextRecord.worldTracerFileNumber, 120).toUpperCase();
+  return previousFileNumber !== nextFileNumber
+    && JSON.stringify(comparable(previousRecord)) === JSON.stringify(comparable(nextRecord));
+}
+
 async function sendLostBaggageUpdateToDiscord(fileNumber) {
   const channel = await client.channels.fetch(CBS_DELAYED_LOST_DISCORD_CHANNEL_ID);
   if (!channel?.isTextBased()) return { sent: false, reason: 'Delayed/lost baggage Discord channel was not found or is not text based.' };
@@ -2307,9 +2324,9 @@ function buildCbsUpdateFields(update = {}) {
   const trackingNumber = sanitizeCbsText(update.trackingNumber, 160).toUpperCase();
   const shippingTo = sanitizeCbsText(update.shippingTo, 300);
   const bdo = sanitizeCbsText(update.bdo, 160).toUpperCase();
-  const shippingMethods = ['ADC - All Day Courier', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping'];
+  const shippingMethods = ['ADC - All Day Courier', 'MBI DELIVERY AND STORAGE - STANDARD', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping'];
   const shippingMethod = shippingMethods.find((method) => method === sanitizeCbsText(update.shippingMethod, 80));
-  const needsBdo = shippingMethod === 'ADC - All Day Courier' || shippingMethod === 'FedEx Delivery';
+  const needsBdo = ['ADC - All Day Courier', 'MBI DELIVERY AND STORAGE - STANDARD', 'FedEx Delivery'].includes(shippingMethod);
   if (!shippingMethod || (shippingMethod === 'FedEx Delivery' && !trackingNumber) || (needsBdo && !bdo)) return null;
   const airportPickup = shippingMethod === 'Pick Up at Airport';
   return { status: airportPickup ? 'Closed - Pick Up at Airport' : 'Closed - Shipping', updateNote: `SHIPPING | Method: ${shippingMethod}${trackingNumber ? ` | Tracking: ${trackingNumber}` : ''} | Ship to: ${shippingTo}${bdo ? ` | BDO: ${bdo}` : ''}${comment ? ` | Comment: ${comment}` : ''}`, updateEvent: { key: 'shipping', title: airportPickup ? 'Airport Pick Up' : 'Shipping', status:'Shipping', fields: [['Shipping Method', shippingMethod], ...(trackingNumber ? [['Tracking Number', trackingNumber]] : []), ['Ship To', shippingTo], ...(bdo ? [['BDO', bdo]] : []), ...(comment ? [['Comment', comment]] : [])] }, followUpEvent: { key:'closed', title:'Case Closed', fields:[['Comment', 'shipped']] } };
@@ -2783,8 +2800,15 @@ app.post('/cbs-worldtracer-cases/update', async (req, res) => {
       flightRows:(Array.isArray(body.flightRows) ? body.flightRows : []).slice(0, 20).map((flight) => ({ flightDate:sanitizeCbsText(flight?.flightDate, 40), flightNumber:sanitizeCbsText(flight?.flightNumber, 40).toUpperCase(), from:sanitizeCbsText(flight?.from, 40).toUpperCase(), to:sanitizeCbsText(flight?.to, 40).toUpperCase() }))
     };
     if (!record.originalTagNumber || !record.rushTagNumber || !record.flightRows.length || record.flightRows.some((flight) => Object.values(flight).some((value) => !value))) return res.status(400).json({ error:'Original tag, RUSH tag, and complete flight segments are required' });
+    const requestedRows = new Set((Array.isArray(body.rowNumbers) ? body.rowNumbers : []).map(Number));
+    const previousRecord = (await getCbsWorldTracerCases()).find((item) =>
+      (item.rowNumbers || []).some((rowNumber) => requestedRows.has(Number(rowNumber))));
     const result = await updateCbsWorldTracerCase(body.rowNumbers, record);
     if (result.notFound) return res.status(404).json({ error:'On-hard case not found' });
+    if (previousRecord && isRushBagWorldTracerOnlyUpdate(previousRecord, result.record)) {
+      result.discord = { sent:false, reason:'WorldTracer file number-only updates do not send another Rush Bag notification.' };
+      return res.json(result);
+    }
     return res.json(await addRushBagDiscordResult(result, result.record));
   } catch (err) {
     console.error('CBS On-hard update error:', err);
@@ -2918,7 +2942,7 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
     const updatedBy = sanitizeCbsText(req.body?.updatedBy, 160);
     let resolutionNote = action === 'passenger-collected' ? 'Passenger Collected / Case Closed' : note;
     if (action === 'shipped') {
-      const shippingMethods = ['ADC - All Day Courier', 'BDO', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping'];
+      const shippingMethods = ['ADC - All Day Courier', 'MBI DELIVERY AND STORAGE - STANDARD', 'BDO', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping'];
       const shippingMethod = shippingMethods.find((method) => method === sanitizeCbsText(req.body?.shippingMethod, 80));
       const trackingNumber = sanitizeCbsText(req.body?.trackingNumber, 160);
       const shippingTo = sanitizeCbsText(req.body?.shippingTo, 500);
@@ -2926,7 +2950,7 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
       const comment = sanitizeCbsText(req.body?.comment, 500);
       if (!shippingMethod) return res.status(400).json({ error: 'A valid delivery method is required' });
       if (shippingMethod === 'FedEx Delivery' && !trackingNumber) return res.status(400).json({ error: 'A tracking number is required for FedEx Delivery' });
-      if ((shippingMethod === 'ADC - All Day Courier' || shippingMethod === 'FedEx Delivery') && !bdo) return res.status(400).json({ error: 'BDO is required for courier delivery' });
+      if (['ADC - All Day Courier', 'MBI DELIVERY AND STORAGE - STANDARD', 'FedEx Delivery'].includes(shippingMethod) && !bdo) return res.status(400).json({ error: 'BDO is required for courier delivery' });
       const details = [`Method: ${shippingMethod}`];
       if (trackingNumber) details.push(`Tracking: ${trackingNumber}`);
       if (shippingTo) details.push(`Ship to: ${shippingTo}`);
@@ -3209,7 +3233,7 @@ app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
         console.error(transferEtaEmail ? 'CBS baggage transfer ETA email error:' : (pickupEmail ? 'CBS baggage pickup passenger email error:' : 'CBS signed PVG authorization email error:'), mailErr);
       }
     }
-    if (updateFields.updateEvent?.key === 'shipping' && updateFields.updateEvent.fields.some(([key, value]) => key === 'Shipping Method' && value === 'ADC - All Day Courier')) {
+    if (updateFields.updateEvent?.key === 'shipping' && updateFields.updateEvent.fields.some(([key, value]) => key === 'Shipping Method' && ['ADC - All Day Courier', 'MBI DELIVERY AND STORAGE - STANDARD'].includes(value))) {
       const record = result.record;
       const fileNumber = record.worldTracerFileNumber || '';
       const shippingAddress = updateFields.updateEvent.fields.find(([key]) => key === 'Ship To')?.[1] || '';
