@@ -2324,9 +2324,9 @@ function buildCbsUpdateFields(update = {}) {
   const trackingNumber = sanitizeCbsText(update.trackingNumber, 160).toUpperCase();
   const shippingTo = sanitizeCbsText(update.shippingTo, 300);
   const bdo = sanitizeCbsText(update.bdo, 160).toUpperCase();
-  const shippingMethods = ['ADC - All Day Courier', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping'];
+  const shippingMethods = ['ADC - All Day Courier', 'MBI DELIVERY AND STORAGE - STANDARD', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping'];
   const shippingMethod = shippingMethods.find((method) => method === sanitizeCbsText(update.shippingMethod, 80));
-  const needsBdo = shippingMethod === 'ADC - All Day Courier' || shippingMethod === 'FedEx Delivery';
+  const needsBdo = ['ADC - All Day Courier', 'MBI DELIVERY AND STORAGE - STANDARD', 'FedEx Delivery'].includes(shippingMethod);
   if (!shippingMethod || (shippingMethod === 'FedEx Delivery' && !trackingNumber) || (needsBdo && !bdo)) return null;
   const airportPickup = shippingMethod === 'Pick Up at Airport';
   return { status: airportPickup ? 'Closed - Pick Up at Airport' : 'Closed - Shipping', updateNote: `SHIPPING | Method: ${shippingMethod}${trackingNumber ? ` | Tracking: ${trackingNumber}` : ''} | Ship to: ${shippingTo}${bdo ? ` | BDO: ${bdo}` : ''}${comment ? ` | Comment: ${comment}` : ''}`, updateEvent: { key: 'shipping', title: airportPickup ? 'Airport Pick Up' : 'Shipping', status:'Shipping', fields: [['Shipping Method', shippingMethod], ...(trackingNumber ? [['Tracking Number', trackingNumber]] : []), ['Ship To', shippingTo], ...(bdo ? [['BDO', bdo]] : []), ...(comment ? [['Comment', comment]] : [])] }, followUpEvent: { key:'closed', title:'Case Closed', fields:[['Comment', 'shipped']] } };
@@ -2942,7 +2942,7 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
     const updatedBy = sanitizeCbsText(req.body?.updatedBy, 160);
     let resolutionNote = action === 'passenger-collected' ? 'Passenger Collected / Case Closed' : note;
     if (action === 'shipped') {
-      const shippingMethods = ['ADC - All Day Courier', 'BDO', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping'];
+      const shippingMethods = ['ADC - All Day Courier', 'MBI DELIVERY AND STORAGE - STANDARD', 'BDO', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping'];
       const shippingMethod = shippingMethods.find((method) => method === sanitizeCbsText(req.body?.shippingMethod, 80));
       const trackingNumber = sanitizeCbsText(req.body?.trackingNumber, 160);
       const shippingTo = sanitizeCbsText(req.body?.shippingTo, 500);
@@ -2950,7 +2950,7 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
       const comment = sanitizeCbsText(req.body?.comment, 500);
       if (!shippingMethod) return res.status(400).json({ error: 'A valid delivery method is required' });
       if (shippingMethod === 'FedEx Delivery' && !trackingNumber) return res.status(400).json({ error: 'A tracking number is required for FedEx Delivery' });
-      if ((shippingMethod === 'ADC - All Day Courier' || shippingMethod === 'FedEx Delivery') && !bdo) return res.status(400).json({ error: 'BDO is required for courier delivery' });
+      if (['ADC - All Day Courier', 'MBI DELIVERY AND STORAGE - STANDARD', 'FedEx Delivery'].includes(shippingMethod) && !bdo) return res.status(400).json({ error: 'BDO is required for courier delivery' });
       const details = [`Method: ${shippingMethod}`];
       if (trackingNumber) details.push(`Tracking: ${trackingNumber}`);
       if (shippingTo) details.push(`Ship to: ${shippingTo}`);
@@ -3233,7 +3233,7 @@ app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
         console.error(transferEtaEmail ? 'CBS baggage transfer ETA email error:' : (pickupEmail ? 'CBS baggage pickup passenger email error:' : 'CBS signed PVG authorization email error:'), mailErr);
       }
     }
-    if (updateFields.updateEvent?.key === 'shipping' && updateFields.updateEvent.fields.some(([key, value]) => key === 'Shipping Method' && value === 'ADC - All Day Courier')) {
+    if (updateFields.updateEvent?.key === 'shipping' && updateFields.updateEvent.fields.some(([key, value]) => key === 'Shipping Method' && ['ADC - All Day Courier', 'MBI DELIVERY AND STORAGE - STANDARD'].includes(value))) {
       const record = result.record;
       const fileNumber = record.worldTracerFileNumber || '';
       const shippingAddress = updateFields.updateEvent.fields.find(([key]) => key === 'Ship To')?.[1] || '';

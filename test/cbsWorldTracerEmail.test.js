@@ -96,7 +96,7 @@ test('ADC shipping updates email the passenger a bilingual delivery notification
   assert.match(server, /Baggage Delivery Notification – WorldTracer Reference: \$\{fileNumber\}/);
   assert.match(server, /您的行李已安排寄出，并将配送至您在行李案件中所提供的地址/);
   assert.match(server, /your baggage has been shipped and is being delivered to the address you provided/);
-  assert.match(server, /value === 'ADC - All Day Courier'/);
+  assert.match(server, /\['ADC - All Day Courier', 'MBI DELIVERY AND STORAGE - STANDARD'\]\.includes\(value\)/);
   assert.match(server, /CBS ADC shipping update email error/);
   assert.match(server, /配送地址：\$\{address\}/);
   assert.match(server, /Delivery Address: \$\{address\}/);
