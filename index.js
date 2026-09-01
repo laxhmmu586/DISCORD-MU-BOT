@@ -2073,6 +2073,23 @@ async function addRushBagDiscordResult(result, record) {
   return result;
 }
 
+function isRushBagWorldTracerOnlyUpdate(previousRecord = {}, nextRecord = {}) {
+  const comparable = (record) => ({
+    originalTagNumber: sanitizeCbsText(record.originalTagNumber, 120).toUpperCase(),
+    rushTagNumber: sanitizeCbsText(record.rushTagNumber, 120).toUpperCase(),
+    flightRows: (Array.isArray(record.flightRows) ? record.flightRows : []).map((flight) => ({
+      flightDate: sanitizeCbsText(flight?.flightDate, 40),
+      flightNumber: sanitizeCbsText(flight?.flightNumber, 40).toUpperCase(),
+      from: sanitizeCbsText(flight?.from, 40).toUpperCase(),
+      to: sanitizeCbsText(flight?.to, 40).toUpperCase()
+    }))
+  });
+  const previousFileNumber = sanitizeCbsText(previousRecord.worldTracerFileNumber, 120).toUpperCase();
+  const nextFileNumber = sanitizeCbsText(nextRecord.worldTracerFileNumber, 120).toUpperCase();
+  return previousFileNumber !== nextFileNumber
+    && JSON.stringify(comparable(previousRecord)) === JSON.stringify(comparable(nextRecord));
+}
+
 async function sendLostBaggageUpdateToDiscord(fileNumber) {
   const channel = await client.channels.fetch(CBS_DELAYED_LOST_DISCORD_CHANNEL_ID);
   if (!channel?.isTextBased()) return { sent: false, reason: 'Delayed/lost baggage Discord channel was not found or is not text based.' };
@@ -2783,8 +2800,15 @@ app.post('/cbs-worldtracer-cases/update', async (req, res) => {
       flightRows:(Array.isArray(body.flightRows) ? body.flightRows : []).slice(0, 20).map((flight) => ({ flightDate:sanitizeCbsText(flight?.flightDate, 40), flightNumber:sanitizeCbsText(flight?.flightNumber, 40).toUpperCase(), from:sanitizeCbsText(flight?.from, 40).toUpperCase(), to:sanitizeCbsText(flight?.to, 40).toUpperCase() }))
     };
     if (!record.originalTagNumber || !record.rushTagNumber || !record.flightRows.length || record.flightRows.some((flight) => Object.values(flight).some((value) => !value))) return res.status(400).json({ error:'Original tag, RUSH tag, and complete flight segments are required' });
+    const requestedRows = new Set((Array.isArray(body.rowNumbers) ? body.rowNumbers : []).map(Number));
+    const previousRecord = (await getCbsWorldTracerCases()).find((item) =>
+      (item.rowNumbers || []).some((rowNumber) => requestedRows.has(Number(rowNumber))));
     const result = await updateCbsWorldTracerCase(body.rowNumbers, record);
     if (result.notFound) return res.status(404).json({ error:'On-hard case not found' });
+    if (previousRecord && isRushBagWorldTracerOnlyUpdate(previousRecord, result.record)) {
+      result.discord = { sent:false, reason:'WorldTracer file number-only updates do not send another Rush Bag notification.' };
+      return res.json(result);
+    }
     return res.json(await addRushBagDiscordResult(result, result.record));
   } catch (err) {
     console.error('CBS On-hard update error:', err);

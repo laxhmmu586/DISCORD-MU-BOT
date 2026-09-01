@@ -528,7 +528,14 @@ test('Rush Bag cases with MU586 notify Discord and treat WorldTracer as optional
   assert.match(sender, /RUSH Itinerary:/);
   assert.doesNotMatch(sender, /Updated by|updatedBy|employee/i);
   assert.match(server, /appendCbsWorldTracerCase\(record\)[\s\S]*addRushBagDiscordResult\(\{ created: true, record: saved \}, saved\)/);
+  assert.match(server, /isRushBagWorldTracerOnlyUpdate\(previousRecord, result\.record\)[\s\S]*WorldTracer file number-only updates do not send another Rush Bag notification/);
   assert.match(server, /updateCbsWorldTracerCase\(body\.rowNumbers, record\)[\s\S]*addRushBagDiscordResult\(result, result\.record\)/);
+});
+
+test('Missing Bag Report shows the LAXTEC phone contact', () => {
+  assert.match(page, /class="missing-report-contact" href="tel:\+14243121860"/);
+  assert.match(page, /LAXTEC: 424-312-1860/);
+  assert.match(page, /aria-label="Call LAXTEC at 424-312-1860"/);
 });
 
 test('Passenger Filed displays multiple bag tags on separate lines', () => {
