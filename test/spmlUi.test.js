@@ -8,11 +8,18 @@ test('meal order card has date tabs without dashboard tiles', () => {
   assert.match(html, />Meal Order</);
   assert.match(html, /data-meal-day="today">---/);
   assert.match(html, /data-meal-day="tomorrow">---/);
-  assert.match(html, />ORDERED SPML</);
+  assert.equal((html.match(/class="reservation-head">SPML</g) || []).length, 2);
+  assert.doesNotMatch(html, />ORDERED SPML</);
   assert.match(html, /id="reservation-table-today"/);
   assert.match(html, /id="reservation-table-tomorrow"/);
   assert.doesNotMatch(html, /id="jcsy-detail-action"/);
   assert.doesNotMatch(html, /id="security-detail-action"/);
+});
+
+test('mobile meal table fits the viewport without a forced wide canvas', () => {
+  assert.match(html, /\.details-panel \{ width:calc\(100% - 24px\); \}/);
+  assert.match(html, /\.reservation-table \{ width:auto; min-width:0; grid-template-columns:22px 38px 58px minmax\(76px,1fr\) minmax\(62px,1fr\)/);
+  assert.doesNotMatch(html, /\.reservation-table \{ min-width:500px; \}/);
 });
 
 test('security check is available from the flight menu', () => {
