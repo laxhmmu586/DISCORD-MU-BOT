@@ -718,13 +718,12 @@
 
       .details-manifest {
         display: grid;
-        grid-template-columns: minmax(720px, 1fr);
+        grid-template-columns: minmax(600px, 760px) 124px;
         grid-template-areas:
-          "operations"
-          "operations";
-        grid-template-rows: minmax(58px, 1fr) minmax(58px, 1fr);
-        gap: 12px;
-        align-items: stretch;
+          "operations warning";
+        grid-template-rows: auto;
+        gap: 18px;
+        align-items: center;
         justify-content: center;
       }
 
@@ -738,20 +737,24 @@
       .meal-order-tab { position:relative; padding:12px; border:0; background:transparent; color:var(--muted); font-size:12px; font-weight:900; letter-spacing:.8px; cursor:pointer; }
       .meal-order-tab[aria-selected="true"] { color:#35d9a0; background:linear-gradient(180deg,rgba(22,104,91,.15),transparent); }
       .meal-order-tab[aria-selected="true"]::after { content:""; position:absolute; left:12px; right:12px; bottom:0; height:2px; background:#28d8a0; box-shadow:0 0 10px rgba(40,216,160,.55); }
+      .meal-order-tab.has-shortage { color:#ffbd48; }
+      .meal-order-tab.has-shortage::before { content:""; display:inline-block; width:6px; height:6px; margin:0 6px 1px 0; border-radius:50%; background:#ffad2f; box-shadow:0 0 9px rgba(255,173,47,.72); }
       .meal-order-days { display:block; }
-      .reservation-table { display:none; grid-template-columns:38px 70px 84px minmax(140px,1fr) minmax(140px,1fr); align-items:start; gap:10px 14px; min-height:174px; margin:0 18px; padding:20px 4px 24px; border:0; border-top:1px solid rgba(49,145,218,.26); border-radius:0; background:transparent; box-shadow:none; font-size:12px; }
+      .reservation-table { display:none; grid-template-columns:34px 64px 76px minmax(104px,1fr) minmax(104px,1fr); align-items:start; gap:10px 10px; min-height:174px; margin:0 18px; padding:20px 4px 24px; border:0; border-top:1px solid rgba(49,145,218,.26); border-radius:0; background:transparent; box-shadow:none; font-size:12px; }
       .reservation-table.is-active { display:grid; }
       .reservation-table .reservation-head { color:var(--muted); font-weight:850; letter-spacing:.35px; line-height:1.15; }
       .reservation-table .reservation-cabin { color:var(--muted); font-weight:900; }
       .reservation-table .meal-cell { white-space:pre-line; line-height:1.35; color:#e6f2ff; }
+      .reservation-table .column-divider { align-self:stretch; min-height:100%; padding-left:14px; border-left:1px solid rgba(71,183,236,.42); }
       .reservation-count.is-over { color:#43df91; font-weight:900; text-shadow:0 0 10px rgba(67,223,145,.28); }
       .reservation-count.is-under { color:#ff6c67; font-weight:900; text-shadow:0 0 10px rgba(255,108,103,.25); }
       .meal-cell.is-mismatch { color:#ff6c67; font-weight:850; }
       .summary-warning-action { grid-area: warning; }
+      .details-panel .details-manifest > .detail-action.summary-warning-action { width:124px; height:158px; min-height:158px; align-self:center; justify-self:center; }
       .summary-security-action { grid-area: security; }
       .summary-jcsy-action { grid-area: jcsy; }
       .details-manifest.is-warning-hidden {
-        grid-template-columns: minmax(720px, 1fr);
+        grid-template-columns: minmax(600px, 760px);
         grid-template-areas:
           "operations"
           "operations";
@@ -4061,8 +4064,8 @@
         }
 
         .details-panel .details-manifest > .detail-action.summary-warning-action {
-          align-self: start;
-          height: auto;
+          align-self: center;
+          height: 158px;
         }
 
         .detail-action-icon {
@@ -4602,20 +4605,21 @@
                     </div>
                     <div class="meal-order-days">
                     <div class="reservation-table is-active" id="reservation-table-today" role="tabpanel" aria-labelledby="meal-order-tab-today">
-                      <span></span><span class="reservation-head">RES</span><span class="reservation-head">ORDERED</span><span class="reservation-head">SPML</span><span class="reservation-head">PD</span>
-                      <span class="reservation-cabin">F</span><span id="reservation-f" class="reservation-count">---</span><span id="meal-email-f">---</span><span id="meal-spml-f" class="meal-cell">---</span><span id="meal-pd-f" class="meal-cell">---</span>
-                      <span class="reservation-cabin">C</span><span id="reservation-c" class="reservation-count">---</span><span id="meal-email-c">---</span><span id="meal-spml-c" class="meal-cell">---</span><span id="meal-pd-c" class="meal-cell">---</span>
-                      <span class="reservation-cabin">Y</span><span id="reservation-y" class="reservation-count">---</span><span id="meal-email-y">---</span><span id="meal-spml-y" class="meal-cell">---</span><span id="meal-pd-y" class="meal-cell">---</span>
+                      <span></span><span class="reservation-head">RES</span><span class="reservation-head column-divider">ORDERED</span><span class="reservation-head">SPML</span><span class="reservation-head column-divider">PD</span>
+                      <span class="reservation-cabin">F</span><span id="reservation-f" class="reservation-count">---</span><span id="meal-email-f" class="column-divider">---</span><span id="meal-spml-f" class="meal-cell">---</span><span id="meal-pd-f" class="meal-cell column-divider">---</span>
+                      <span class="reservation-cabin">C</span><span id="reservation-c" class="reservation-count">---</span><span id="meal-email-c" class="column-divider">---</span><span id="meal-spml-c" class="meal-cell">---</span><span id="meal-pd-c" class="meal-cell column-divider">---</span>
+                      <span class="reservation-cabin">Y</span><span id="reservation-y" class="reservation-count">---</span><span id="meal-email-y" class="column-divider">---</span><span id="meal-spml-y" class="meal-cell">---</span><span id="meal-pd-y" class="meal-cell column-divider">---</span>
                     </div>
                     <div class="reservation-table" id="reservation-table-tomorrow" role="tabpanel" aria-labelledby="meal-order-tab-tomorrow" hidden>
-                      <span></span><span class="reservation-head">RES</span><span class="reservation-head">ORDERED</span><span class="reservation-head">SPML</span><span class="reservation-head">PD</span>
-                      <span class="reservation-cabin">F</span><span id="tomorrow-reservation-f" class="reservation-count">---</span><span id="tomorrow-meal-email-f">---</span><span id="tomorrow-meal-spml-f" class="meal-cell">---</span><span id="tomorrow-meal-pd-f" class="meal-cell">---</span>
-                      <span class="reservation-cabin">C</span><span id="tomorrow-reservation-c" class="reservation-count">---</span><span id="tomorrow-meal-email-c">---</span><span id="tomorrow-meal-spml-c" class="meal-cell">---</span><span id="tomorrow-meal-pd-c" class="meal-cell">---</span>
-                      <span class="reservation-cabin">Y</span><span id="tomorrow-reservation-y" class="reservation-count">---</span><span id="tomorrow-meal-email-y">---</span><span id="tomorrow-meal-spml-y" class="meal-cell">---</span><span id="tomorrow-meal-pd-y" class="meal-cell">---</span>
+                      <span></span><span class="reservation-head">RES</span><span class="reservation-head column-divider">ORDERED</span><span class="reservation-head">SPML</span><span class="reservation-head column-divider">PD</span>
+                      <span class="reservation-cabin">F</span><span id="tomorrow-reservation-f" class="reservation-count">---</span><span id="tomorrow-meal-email-f" class="column-divider">---</span><span id="tomorrow-meal-spml-f" class="meal-cell">---</span><span id="tomorrow-meal-pd-f" class="meal-cell column-divider">---</span>
+                      <span class="reservation-cabin">C</span><span id="tomorrow-reservation-c" class="reservation-count">---</span><span id="tomorrow-meal-email-c" class="column-divider">---</span><span id="tomorrow-meal-spml-c" class="meal-cell">---</span><span id="tomorrow-meal-pd-c" class="meal-cell column-divider">---</span>
+                      <span class="reservation-cabin">Y</span><span id="tomorrow-reservation-y" class="reservation-count">---</span><span id="tomorrow-meal-email-y" class="column-divider">---</span><span id="tomorrow-meal-spml-y" class="meal-cell">---</span><span id="tomorrow-meal-pd-y" class="meal-cell column-divider">---</span>
                     </div>
                     </div>
                   </div>
                 </div>
+                <button class="detail-action warning-action summary-warning-action" type="button" data-panel="warning" id="warning-action" hidden aria-label="Open warnings"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M16 5 29 27H3z"/><path d="M16 12v7"/><path d="M16 23h.01"/></svg></span><span class="detail-action-label">WARNING</span> <span class="detail-action-badge warning-badge" id="warning-count">0</span></button>
               </div>
             </div>
             <div class="detail-actions" aria-label="Flight detail actions">
@@ -6261,7 +6265,9 @@
             }
           }
         });
-        document.querySelector(`#reservation-table-${prefix ? "tomorrow" : "today"}`)?.classList.toggle("has-shortage", hasShortage);
+        const day = prefix ? "tomorrow" : "today";
+        document.querySelector(`#reservation-table-${day}`)?.classList.toggle("has-shortage", hasShortage);
+        document.querySelector(`#meal-order-tab-${day}`)?.classList.toggle("has-shortage", hasShortage);
         updateMealOrderShellState();
       }
 

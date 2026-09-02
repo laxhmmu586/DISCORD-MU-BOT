@@ -36,6 +36,7 @@ test('meal order reconciliation colors reservation totals and SPML mismatches', 
   assert.match(html, /orderedTotal < reservation[\s\S]*classList\.add\("is-under"\)/);
   assert.match(html, /!mealCountsMatch\(orderedMeals, pdMeals\)[\s\S]*classList\.add\("is-mismatch"\)/);
   assert.match(html, /classList\.toggle\("has-shortage", hasShortage\)/);
+  assert.match(html, /meal-order-tab-\$\{day\}`\)\?\.classList\.toggle\("has-shortage", hasShortage\)/);
 });
 
 test('today and tomorrow use a tab switcher with one visible panel', () => {
@@ -47,6 +48,12 @@ test('today and tomorrow use a tab switcher with one visible panel', () => {
   assert.match(html, /nextMealFlightDate\(sy\.flightDate\)/);
 });
 
-test('warning is the first operational action before CHD', () => {
-  assert.match(html, /class="detail-actions" aria-label="Flight detail actions">\s*<button[^>]*id="warning-action"[\s\S]*id="chd-action"/);
+test('warning is fixed-height beside the meal order card', () => {
+  assert.match(html, /meal-order-shell[\s\S]*id="warning-action"[\s\S]*class="detail-actions" aria-label="Flight detail actions"/);
+  assert.match(html, /summary-warning-action \{ width:124px; height:158px; min-height:158px; align-self:center/);
+});
+
+test('meal table uses two styled vertical column dividers and compact columns', () => {
+  assert.match(html, /\.column-divider[^}]*border-left:1px solid rgba\(71,183,236,.42\)/);
+  assert.match(html, /grid-template-columns:34px 64px 76px minmax\(104px,1fr\) minmax\(104px,1fr\)/);
 });
