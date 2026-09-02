@@ -331,6 +331,26 @@ test('Create Rush only asks for a WorldTracer file when the On-hand case has non
   assert.match(page, /unresolvedUpdateFieldsHtml\(select\.value, form\.dataset\.bagTag, form\.dataset\.worldTracerFile\)/);
 });
 
+test('On-hand tags can be exchanged from Add On-hand and Resolution', () => {
+  assert.match(page, /data-start-add-exchange/);
+  assert.match(page, /Current Open On-hand/);
+  assert.match(page, /<option value="exchange">Exchange<\/option>/);
+  assert.match(page, /name="newTagNumber"/);
+  assert.match(page, /payload\.action = 'exchange'/);
+  assert.match(server, /if \(action === 'exchange'\)/);
+  assert.match(server, /exchangeCbsUnresolvedBaggageTag\(req\.params\.rowNumber, newTagNumber, updatedBy\)/);
+});
+
+test('On-hand exchange is saved to Google Sheets and shows old and new tags', () => {
+  assert.match(drive, /'Exchange History'/);
+  assert.match(drive, /async function exchangeCbsUnresolvedBaggageTag/);
+  assert.match(drive, /Tag exchanged: \$\{target\.bagTag\} -> \$\{nextTag\}/);
+  assert.match(drive, /JSON\.stringify\(exchangeHistory\)/);
+  assert.match(page, /exchange-tag-old/);
+  assert.match(page, /exchange-tag-new/);
+  assert.match(page, /detail:`\$\{exchange\.oldTag\} → \$\{exchange\.newTag\}`/);
+});
+
 test('CBS passenger information keeps all operationally required fields visible', () => {
   const requiredFields = page.match(/const requiredPassengerFields = \[([\s\S]*?)\n\s*\];/)?.[1] || '';
   for (const label of ['Passenger Name', 'Email', 'Phone', 'Ticket Number', 'Flight Route', 'Permanent Address']) {

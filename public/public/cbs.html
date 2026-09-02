@@ -89,6 +89,11 @@
     .rush-match { display:inline-block; margin-left:8px; color:#6941c6; font-size:11px; font-weight:950; text-transform:uppercase; animation:rush-today-hop .8s ease-in-out infinite alternate; }
     .on-hand-match { margin-right:6px; margin-left:0; }
     .on-hand-location { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .exchange-tag-flow { display:inline-flex; align-items:center; gap:7px; padding:5px 8px; border:1px solid #f4b740; border-radius:12px; background:#fff8e7; white-space:nowrap; }
+    .exchange-tag-old { color:#8a5a00; font-weight:850; text-decoration:line-through; }
+    .exchange-tag-arrow { color:#d97706; font-size:18px; font-weight:950; }
+    .exchange-tag-new { color:#087443; font-weight:950; }
+    .exchange-current-card { display:grid; gap:8px; padding:14px; border:1px solid #f4b740; border-radius:14px; background:#fffaf0; }
     @keyframes rush-today-hop { from { transform:translateY(2px); } to { transform:translateY(-4px); } }
     .cbs-sheet .sheet-empty { color:#98a2b3; }
     .cbs-sheet .sheet-event { color:#344054; font-weight:800; line-height:1.35; white-space:normal; }
@@ -549,7 +554,9 @@
       addBaggageOutput.innerHTML = `<div class="add-baggage-panel"><h2>${escapeHtml(bagTag)}</h2><p class="muted">No matching bag found. Choose the baggage direction.</p><div class="add-baggage-modes"><button type="button" data-add-baggage-mode="inbound">Inbound</button><button type="button" data-add-baggage-mode="outbound">Outbound</button></div></div>`;
     }
     function renderExistingBaggage(record) {
-      addBaggageOutput.innerHTML = `<div class="add-baggage-panel"><h2>${escapeHtml(record.bagTag)}</h2><p><strong>${escapeHtml(record.direction || '-')}</strong> · ${escapeHtml(record.flight || '-')} · ${escapeHtml(record.date || '-')}</p><p class="muted">${escapeHtml(record.bagType || record.status || '')}${record.location ? ` · ${escapeHtml(record.location)}` : ''}</p><button class="secondary" type="button" data-cancel-add-baggage>Search Another Bag</button></div>`;
+      const onHand = (window._unresolvedBaggageSourceRows || []).find((row) => !row.resolvedAt && normalizeBaggageTag(row.bagTag) === normalizeBaggageTag(record.bagTag));
+      const exchange = onHand ? `<div class="exchange-current-card"><strong>Current Open On-hand</strong><span>Tag: <span class="bag-tag-value">${escapeHtml(onHand.bagTag)}</span></span><span>${escapeHtml(onHand.bagType || onHand.status || '-')} · ${escapeHtml(onHand.location || '-')}</span><button type="button" data-start-add-exchange="${escapeHtml(onHand.rowNumber)}" data-current-tag="${escapeHtml(onHand.bagTag)}">Exchange tag</button></div>` : '';
+      addBaggageOutput.innerHTML = `<div class="add-baggage-panel"><h2>${escapeHtml(record.bagTag)}</h2><p><strong>${escapeHtml(record.direction || '-')}</strong> · ${escapeHtml(record.flight || '-')} · ${escapeHtml(record.date || '-')}</p><p class="muted">${escapeHtml(record.bagType || record.status || '')}${record.location ? ` · ${escapeHtml(record.location)}` : ''}</p>${exchange}<button class="secondary" type="button" data-cancel-add-baggage>Search Another Bag</button></div>`;
     }
     function renderWorldTracerCases(rows = []) {
       if (!rows.length) { worldTracerOutput.innerHTML = `<p class="muted">${label('No Rush Bag cases yet.', '暂无 Rush Bag 案件。')}</p>`; return; }
@@ -573,6 +580,7 @@
     }
     function unresolvedUpdateFieldsHtml(action, bagTag, worldTracerFileNumber = '') {
       if (action === 'worldtracer') return `<label class="wide"><span>WorldTracer File Number</span><input name="worldTracerFileNumber" value="${escapeHtml(worldTracerFileNumber)}" required /></label>`;
+      if (action === 'exchange') return `<div class="exchange-current-card wide"><strong>Current Open On-hand</strong><span class="exchange-tag-flow"><span class="exchange-tag-old">${escapeHtml(bagTag)}</span><span class="exchange-tag-arrow">→</span><span class="exchange-tag-new">New tag</span></span></div><label class="wide"><span>New Tag Number</span><input name="newTagNumber" pattern="[A-Za-z]{2}[0-9]{6}" placeholder="MU123456" required /></label>`;
       if (action === 'reopen') return '<p class="muted wide">Reopen this case and return it to Open Case.</p>';
       if (action === 'passenger-collected') return '';
       if (action === 'case-close') return '<label class="wide"><span>Notes</span><textarea name="note" placeholder="Enter case close notes" required></textarea></label>';
@@ -584,6 +592,7 @@
     function unresolvedProgressHtml(row) {
       const resolutionTitle = String(row.resolution || '').toLowerCase() === 'email' ? 'Pick-up Bags - available' : (row.resolution || 'Resolved');
       const events = [{ title:'On-hand created', at:row.createdAt, by:row.createdBy || row.submittedBy || 'System', detail:row.location ? `Location: ${row.location}` : '' }];
+      (row.exchangeHistory || []).forEach((exchange) => events.push({ title:'Exchange', at:exchange.exchangedAt, by:exchange.updatedBy || 'System', detail:`${exchange.oldTag} → ${exchange.newTag}` }));
       if (row.worldTracerFileNumber) events.push({ title:'WorldTracer', at:'', by:row.worldTracerUpdatedBy || 'System', detail:`File: ${row.worldTracerFileNumber}` });
       if (row.resolvedAt) events.push({ title:resolutionTitle, at:row.resolvedAt, by:row.resolvedBy || updaterFromText(row.resolutionNote) || 'System', detail:withoutUpdaterText(row.resolutionNote) });
       return `<div class="tracking-workspace"><p class="tracking-current-time"><strong>${label('Case Progress', '案件进度')}</strong></p><div class="tracking-history">${events.slice().reverse().map((item, index) => `<span class="tracking-chip${index === 0 ? ' is-latest' : ''}${row.resolvedAt && index === 0 ? ' is-closed' : ''}"><span class="tracking-step-number">${events.length - index}</span><span class="tracking-chip-title">${escapeHtml(item.title)}</span>${item.at || item.by ? `<small>${item.at ? escapeHtml(new Date(item.at).toLocaleString()) : ''}${item.by ? ` · Updated by: ${escapeHtml(updaterDisplayName(item.by))}` : ''}</small>` : ''}${item.detail ? `<span class="tracking-chip-detail">${escapeHtml(updaterDisplayText(item.detail))}</span>` : ''}</span>`).join('')}</div></div>`;
@@ -624,12 +633,14 @@
         const matchBadge = matchedCase ? '<span class="rush-match on-hand-match">Match</span>' : '';
         const linkButton = matchedCase && onHandId && matchedCaseId ? `<button type="button" data-link-on-hand="${escapeHtml(onHandId)}" data-link-case="${escapeHtml(matchedCaseId)}">Link</button>` : '';
         const formHtml = active
-          ? `<form class="unresolved-update" data-unresolved-row="${escapeHtml(active.rowNumber)}" data-bag-tag="${escapeHtml(active.bagTag)}" data-world-tracer-file="${escapeHtml(active.worldTracerFileNumber)}"><label class="wide"><span>Resolution</span><select name="action" data-unresolved-action><option value="worldtracer">WorldTracer</option><option value="email">Email</option><option value="on-hand-rush">Create Rush</option><option value="passenger-collected">Passenger collected / Case closed</option><option value="shipped">Shipped</option><option value="other">Other resolution</option><option value="case-close">Case Close</option></select></label><div class="unresolved-update-fields">${unresolvedUpdateFieldsHtml('worldtracer', active.bagTag, active.worldTracerFileNumber)}</div><div class="actions"><button type="submit">Update</button></div></form>`
+          ? `<form class="unresolved-update" data-unresolved-row="${escapeHtml(active.rowNumber)}" data-bag-tag="${escapeHtml(active.bagTag)}" data-world-tracer-file="${escapeHtml(active.worldTracerFileNumber)}"><label class="wide"><span>Resolution</span><select name="action" data-unresolved-action><option value="worldtracer">WorldTracer</option><option value="exchange">Exchange</option><option value="email">Email</option><option value="on-hand-rush">Create Rush</option><option value="passenger-collected">Passenger collected / Case closed</option><option value="shipped">Shipped</option><option value="other">Other resolution</option><option value="case-close">Case Close</option></select></label><div class="unresolved-update-fields">${unresolvedUpdateFieldsHtml('worldtracer', active.bagTag, active.worldTracerFileNumber)}</div><div class="actions"><button type="submit">Update</button></div></form>`
           : closed
             ? `<form class="unresolved-update" data-unresolved-row="${escapeHtml(closed.rowNumber)}" data-bag-tag="${escapeHtml(closed.bagTag)}" data-world-tracer-file="${escapeHtml(closed.worldTracerFileNumber)}"><label class="wide"><span>Update</span><select name="action" data-unresolved-action><option value="worldtracer">Update WorldTracer</option><option value="reopen">Reopen</option></select></label><div class="unresolved-update-fields">${unresolvedUpdateFieldsHtml('worldtracer', closed.bagTag, closed.worldTracerFileNumber)}</div><div class="actions"><button type="submit">Update</button></div></form>`
             : '';
         const progressRow = active || row;
-        return `<tr class="case-summary-row" data-toggle-unresolved-update role="button" tabindex="0" aria-expanded="false"><td class="sheet-meta">${escapeHtml(row.worldTracerFileNumber || '-')}</td><td class="sheet-meta"><span class="on-hand-tag-summary">${matchBadge}<span class="bag-tag-value">${escapeHtml(row.bagTag)}</span></span></td><td class="sheet-meta">${escapeHtml(row.direction || '-')}</td><td class="sheet-meta">${escapeHtml(row.flightDate || '-')}</td><td class="sheet-meta">${escapeHtml(row.bagType || row.status || '-')}</td><td class="sheet-meta"><span class="on-hand-location"><span>${escapeHtml(row.location || '-')}</span>${linkButton}</span></td></tr><tr class="case-detail-row" data-unresolved-detail hidden><td colspan="6"><div class="case-detail-layout"><div class="case-progress-column">${unresolvedProgressHtml(progressRow)}</div><div class="case-detail-right">${formHtml}${historyHtml}</div></div></td></tr>`;
+        const lastExchange = (row.exchangeHistory || []).at(-1);
+        const tagDisplay = lastExchange ? `<span class="exchange-tag-flow"><span class="exchange-tag-old">${escapeHtml(lastExchange.oldTag)}</span><span class="exchange-tag-arrow">→</span><span class="exchange-tag-new">${escapeHtml(lastExchange.newTag)}</span></span>` : `<span class="bag-tag-value">${escapeHtml(row.bagTag)}</span>`;
+        return `<tr class="case-summary-row" data-toggle-unresolved-update role="button" tabindex="0" aria-expanded="false"><td class="sheet-meta">${escapeHtml(row.worldTracerFileNumber || '-')}</td><td class="sheet-meta"><span class="on-hand-tag-summary">${matchBadge}${tagDisplay}</span></td><td class="sheet-meta">${escapeHtml(row.direction || '-')}</td><td class="sheet-meta">${escapeHtml(row.flightDate || '-')}</td><td class="sheet-meta">${escapeHtml(row.bagType || row.status || '-')}</td><td class="sheet-meta"><span class="on-hand-location"><span>${escapeHtml(row.location || '-')}</span>${linkButton}</span></td></tr><tr class="case-detail-row" data-unresolved-detail hidden><td colspan="6"><div class="case-detail-layout"><div class="case-progress-column">${unresolvedProgressHtml(progressRow)}</div><div class="case-detail-right">${formHtml}${historyHtml}</div></div></td></tr>`;
       }).join('')}</tbody></table></div>`;
       requestAnimationFrame(syncCaseProgressHeights);
     }
@@ -1668,6 +1679,11 @@
       } catch (error) { addBaggageOutput.innerHTML = `<p class="status err">${escapeHtml(error.message)}</p>`; }
     });
     addBaggageOutput?.addEventListener('click', (event) => {
+      const exchange = event.target.closest('[data-start-add-exchange]');
+      if (exchange) {
+        addBaggageOutput.innerHTML = `<div class="add-baggage-panel"><h2>Exchange On-hand Tag</h2><form class="add-exchange-form" data-unresolved-row="${escapeHtml(exchange.dataset.startAddExchange)}"><div class="exchange-current-card"><strong>Current Open On-hand</strong><span class="exchange-tag-flow"><span class="exchange-tag-old">${escapeHtml(exchange.dataset.currentTag)}</span><span class="exchange-tag-arrow">→</span><span class="exchange-tag-new">New tag</span></span></div><label><span>New Tag Number</span><input name="newTagNumber" pattern="[A-Za-z]{2}[0-9]{6}" placeholder="MU123456" required autofocus /></label><div class="actions"><button type="submit">Exchange</button><button class="secondary" type="button" data-cancel-add-baggage>Cancel</button></div></form></div>`;
+        return;
+      }
       const mode = event.target.closest('[data-add-baggage-mode]');
       if (mode) { const bagTag = normalizeBaggageTag(addBaggageSearch.elements.bagTag.value); addBaggageOutput.innerHTML = `<div class="add-baggage-panel"><h2>${escapeHtml(bagTag)}</h2>${addBaggageFormHtml(bagTag, mode.dataset.addBaggageMode)}</div>`; return; }
       if (event.target.closest('[data-cancel-add-baggage]')) { addBaggageOutput.innerHTML = '<p class="muted">Enter a bag tag number to search.</p>'; addBaggageSearch.elements.bagTag.focus(); }
@@ -1681,6 +1697,24 @@
       rushFields.querySelectorAll('input').forEach((input) => { input.required = isRush && input.name !== 'worldTracerFileNumber'; });
     });
     addBaggageOutput?.addEventListener('submit', async (event) => {
+      const exchangeForm = event.target.closest('.add-exchange-form');
+      if (exchangeForm) {
+        event.preventDefault();
+        const payload = Object.fromEntries(new FormData(exchangeForm).entries());
+        payload.action = 'exchange';
+        payload.updatedBy = await currentUpdater();
+        if (!payload.updatedBy) return alert('Your signed-in account could not be identified. Refresh the page and try again.');
+        const button = exchangeForm.querySelector('button[type="submit"]');
+        button.disabled = true;
+        try {
+          const res = await fetch(`${apiBase}/cbs-unresolved-baggage/${encodeURIComponent(exchangeForm.dataset.unresolvedRow)}/update`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+          const data = await parseJson(res);
+          if (!res.ok) throw new Error(data.error || 'On-hand baggage exchange failed');
+          await loadUnresolvedBaggage();
+          showSection('open');
+        } catch (error) { alert(error.message); } finally { button.disabled = false; }
+        return;
+      }
       const form = event.target.closest('[data-add-baggage-direction]');
       if (!form) return;
       event.preventDefault();
