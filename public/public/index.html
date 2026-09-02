@@ -720,8 +720,8 @@
         display: grid;
         grid-template-columns: minmax(174px, max-content) minmax(132px, 132px) repeat(2, minmax(124px, 124px));
         grid-template-areas:
-          "reservation warning security jcsy"
-          "checkin warning security jcsy";
+          "operations warning security jcsy"
+          "operations warning security jcsy";
         grid-template-rows: minmax(58px, 1fr) minmax(58px, 1fr);
         gap: 12px;
         align-items: stretch;
@@ -730,14 +730,19 @@
 
       .manifest-section.is-reservation { grid-area: reservation; }
       .manifest-section.is-checkin { grid-area: checkin; }
+      .manifest-section.is-operations { grid-area: operations; min-width: 250px; text-align: left; }
+      .operations-row { display:flex; justify-content:space-between; gap:16px; align-items:center; }
+      .operations-row + .operations-row { margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,.12); }
+      .meal-compare { margin-top:9px; padding-top:8px; border-top:1px solid rgba(255,255,255,.12); font-size:11px; line-height:1.5; }
+      .meal-compare span { display:block; }
       .summary-warning-action { grid-area: warning; }
       .summary-security-action { grid-area: security; }
       .summary-jcsy-action { grid-area: jcsy; }
       .details-manifest.is-warning-hidden {
         grid-template-columns: minmax(174px, max-content) repeat(2, minmax(124px, 124px));
         grid-template-areas:
-          "reservation security jcsy"
-          "checkin security jcsy";
+          "operations security jcsy"
+          "operations security jcsy";
       }
 
       .details-manifest.is-warning-hidden .summary-security-action { grid-area: security; }
@@ -3997,7 +4002,7 @@
         .details-manifest {
           grid-template-columns: 1fr 1fr;
           grid-template-areas:
-            "reservation checkin"
+            "operations operations"
             "warning security"
             "warning jcsy";
           grid-template-rows: auto minmax(132px, auto) minmax(132px, auto);
@@ -4005,7 +4010,7 @@
 
         .details-manifest.is-warning-hidden {
           grid-template-areas:
-            "reservation checkin"
+            "operations operations"
             "security jcsy";
           grid-template-rows: auto minmax(132px, auto);
         }
@@ -4510,6 +4515,7 @@
             <button class="detail-action" id="report-sales-mode" type="button" data-report-mode="sales">Sales Report</button>
             <button class="detail-action" id="report-sales-details-mode" type="button" data-report-mode="salesDetails">Sales Details</button>
             <button class="detail-action" id="report-vip-mode" type="button" data-report-mode="vip">VIP Report</button>
+            <button class="detail-action" id="report-spml-mode" type="button" data-report-mode="spml">SPML Report</button>
             <button class="detail-action" id="report-psm-mode" type="button" data-report-mode="psm">Authorization Report</button>
             <button class="detail-action" id="report-inad-mode" type="button" data-report-mode="inad">INAD Report</button>
             <button class="detail-action" id="report-wch-mode" type="button" data-report-mode="wch">WCH Report</button>
@@ -4567,21 +4573,10 @@
           <div class="details-inner">
             <div class="details-surface">
               <div class="details-manifest">
-                <div class="manifest-section is-reservation">
-                  <h3>Reservation</h3>
-                  <div class="counts counts-inline">
-                    <div class="count count-wide">
-                      <div class="count-row"><span id="reservation-et">--- / --- / ---</span></div>
-                    </div>
-                  </div>
-                </div>
-                <button class="manifest-section is-checkin" id="checkin-agent-action" type="button" data-panel="checkin-agents" aria-label="Open today's agent check-in statistics">
-                  <h3>Check-In</h3>
-                  <div class="counts counts-inline">
-                    <div class="count count-wide">
-                      <div class="count-row"><span id="checkin-et">--- / --- / ---</span></div>
-                    </div>
-                  </div>
+                <button class="manifest-section is-operations" id="checkin-agent-action" type="button" data-panel="checkin-agents" aria-label="Open today's agent check-in statistics">
+                  <span class="operations-row"><strong>Reservation</strong><span id="reservation-et">--- / --- / ---</span></span>
+                  <span class="operations-row"><strong>Check-In</strong><span id="checkin-et">--- / --- / ---</span></span>
+                  <span class="meal-compare" id="meal-compare"><span>Email order: ---</span><span>PD*,SPML: ---</span></span>
                 </button>
                 <button class="detail-action warning-action summary-warning-action" type="button" data-panel="warning" id="warning-action" hidden aria-label="Open warnings"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M16 5 29 27H3z"/><path d="M16 12v7"/><path d="M16 23h.01"/></svg></span><span class="detail-action-label">WARNING</span> <span class="detail-action-badge warning-badge" id="warning-count">0</span></button>
                 <button class="detail-action summary-security-action" type="button" data-panel="security" id="security-detail-action"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="10"/><circle cx="16" cy="16" r="3"/><path d="M16 4v5M16 23v5M4 16h5M23 16h5"/></svg></span><span class="detail-action-label">Security Check</span></button>
@@ -4732,6 +4727,7 @@
       const reportSalesModeButton = document.querySelector("#report-sales-mode");
       const reportSalesDetailsModeButton = document.querySelector("#report-sales-details-mode");
       const reportVipModeButton = document.querySelector("#report-vip-mode");
+      const reportSpmlModeButton = document.querySelector("#report-spml-mode");
       const reportPsmModeButton = document.querySelector("#report-psm-mode");
       const reportInadModeButton = document.querySelector("#report-inad-mode");
       const reportWchModeButton = document.querySelector("#report-wch-mode");
@@ -6156,7 +6152,7 @@
         ];
         const nbrdSignature = (sy.bnAudit || []).filter(rowHasCkinNbrdIssue).map((row) => [row.bn, row.seat, ckinNbrdDetails(row).join("|")]);
         const warningSignature = buildWarningRows(sy).map((row) => [row.bn, row.seat, row.warningType, row.warningReason, (row.acknowledgements || []).length]);
-        return JSON.stringify([sy.flightNo, sy.flightDate, sy.gate, sy.bdt, sy.sd, sy.reservation, sy.reservationTicketed, sy.checkedIn, sy.checkedInTicketed, sy.jcsy, steps, sy.chdList || [], govSignature, webEdiIssueBnList(sy), nbrdSignature, warningSignature, sy.psmList || [], sy.wchList || []]);
+        return JSON.stringify([sy.flightNo, sy.flightDate, sy.gate, sy.bdt, sy.sd, sy.reservation, sy.reservationTicketed, sy.checkedIn, sy.checkedInTicketed, sy.spml || {}, sy.jcsy, steps, sy.chdList || [], govSignature, webEdiIssueBnList(sy), nbrdSignature, warningSignature, sy.psmList || [], sy.wchList || []]);
       }
 
       function updateFlightFromSy(sy, options = {}) {
@@ -6183,6 +6179,9 @@
         const checkinAcceptedEl = document.querySelector("#checkin-accepted");
         if (checkinAcceptedEl) checkinAcceptedEl.innerHTML = tripleHtml(countTriple(sy.checkedIn));
         document.querySelector("#checkin-et").textContent = countTriple(sy.checkedInTicketed).join(" / ");
+        const mealCountsText = (counts) => Object.entries(counts || {}).sort(([a], [b]) => a.localeCompare(b)).map(([meal, count]) => `${count} ${meal}`).join(" + ") || "None";
+        const mealCompare = document.querySelector("#meal-compare");
+        if (mealCompare) mealCompare.innerHTML = `<span>Email order: ${escapeHtml(sy.spml?.email?.found ? mealCountsText(sy.spml.email.counts) : "Not found")}</span><span>PD*,SPML: ${escapeHtml(mealCountsText(sy.spml?.preorderCounts))}</span>`;
         const isClearLocked = (_key) => false;
         const chdIssues = isClearLocked("CHD") ? 0 : (sy.chdList || []).filter((row) => row.hasChdCode === false).length;
         const gov = sy.govAqq || {};
@@ -6954,7 +6953,7 @@
       }
 
       function setReportMode(mode, options = {}) {
-        activeReportMode = ["vip", "psm", "inad", "wch", "missConnection", "baggage", "salesDetails"].includes(mode) ? mode : "sales";
+        activeReportMode = ["vip", "spml", "psm", "inad", "wch", "missConnection", "baggage", "salesDetails"].includes(mode) ? mode : "sales";
         if (activeReportMode === "baggage") {
           if (options.forceToday) setReportDefaults(true);
         } else {
@@ -6979,6 +6978,7 @@
         reportSalesModeButton?.classList.toggle("is-active", activeReportMode === "sales");
         reportSalesDetailsModeButton?.classList.toggle("is-active", activeReportMode === "salesDetails");
         reportVipModeButton?.classList.toggle("is-active", activeReportMode === "vip");
+        reportSpmlModeButton?.classList.toggle("is-active", activeReportMode === "spml");
         reportPsmModeButton?.classList.toggle("is-active", activeReportMode === "psm");
         reportInadModeButton?.classList.toggle("is-active", activeReportMode === "inad");
         reportWchModeButton?.classList.toggle("is-active", activeReportMode === "wch");
@@ -7001,14 +7001,14 @@
                 ? `<p class="panel-muted">Loading Misconnection Report...</p>`
               : (activeReportMode === "baggage"
                 ? `<p class="panel-muted">Select a submit-date range, optionally enter a bag tag, then click Search.</p>`
-                : (["psm", "wch"].includes(activeReportMode)
-                  ? `<p class="panel-muted">Choose a flight date range, then search ${activeReportMode === "wch" ? "WCH Report" : "Authorization Report"}.</p>`
+                : (["spml", "psm", "wch"].includes(activeReportMode)
+                  ? `<p class="panel-muted">Choose a flight date range, then search ${activeReportMode === "wch" ? "WCH Report" : (activeReportMode === "spml" ? "SPML Report" : "Authorization Report")}.</p>`
                   : (activeReportMode === "salesDetails"
                     ? `<p class="panel-muted">Choose a date range, then search Sales Details totals by Type.</p>`
                     : `<p class="panel-muted">Choose a date, then download Sales Report.</p>`)))));
         }
         if (activeReportMode === "baggage") renderBaggageTimelineReport();
-        else if (["vip", "psm", "inad", "wch", "missConnection", "salesDetails"].includes(activeReportMode)) generateReport();
+        else if (["vip", "spml", "psm", "inad", "wch", "missConnection", "salesDetails"].includes(activeReportMode)) generateReport();
       }
 
       function resetPanelState() {
@@ -7980,7 +7980,7 @@
           await renderBaggageTimelineReport();
           return;
         }
-        const type = ["vip", "psm", "inad", "wch", "missConnection", "salesDetails"].includes(activeReportMode) ? activeReportMode : "sales";
+        const type = ["vip", "spml", "psm", "inad", "wch", "missConnection", "salesDetails"].includes(activeReportMode) ? activeReportMode : "sales";
         const today = ymdFromDate(new Date());
         const from = reportFromInput?.value || today;
         const keyword = type === "vip" ? (reportKeywordInput?.value || "") : "";
@@ -7989,7 +7989,7 @@
         try {
           dates = type === "sales" ? [from] : [];
           if (type === "sales" && !from) throw new Error("Please select a valid date.");
-          if (type === "psm" || type === "wch" || type === "salesDetails") reportDateRange(from, to);
+          if (type === "spml" || type === "psm" || type === "wch" || type === "salesDetails") reportDateRange(from, to);
         } catch (error) {
           reportOutput.innerHTML = `<p class="panel-muted status-fail">${escapeHtml(error.message)}</p>`;
           setReportCsv([], "report.csv");
@@ -8012,6 +8012,12 @@
         if (type === "vip") {
           try {
             rows.push(...await vipReportRows(keyword));
+          } catch (error) {
+            errors.push(error.message);
+          }
+        } else if (type === "spml") {
+          try {
+            for (const date of reportDateRange(from, to)) rows.push(...await storedReportRows("spml", date, reportKeywordInput?.value || ""));
           } catch (error) {
             errors.push(error.message);
           }
@@ -8080,6 +8086,17 @@
             { label: "Seat", value: (row) => row.seat },
             { label: "Bags", value: (row) => row.bags },
           ], "No VIP passengers found.");
+        } else if (type === "spml") {
+          tableHtml = rowsTable(rows, [
+            { label: "Date", value: (row) => row.date },
+            { label: "Flight", value: (row) => row.flightNo },
+            { label: "Passenger", value: (row) => row.passenger },
+            { label: "BN", value: (row) => row.bn },
+            { label: "Seat", value: (row) => row.seat },
+            { label: "SPML", value: (row) => row.meal },
+            { label: "Status", value: (row) => row.status },
+            { label: "HK1", value: (row) => row.confirmed ? "YES" : "NO" },
+          ], "No SPML passengers found.");
         } else if (type === "psm") {
           tableHtml = authorizationReportTable(rows);
         } else if (type === "inad") {
@@ -8118,6 +8135,7 @@
           sales: `sales-report-${from}.csv`,
           salesDetails: `sales-details-${from}${from === to ? "" : `-to-${to}`}.csv`,
           vip: "vip-report.csv",
+          spml: `spml-report-${from}${from === to ? "" : `-to-${to}`}.csv`,
           psm: `authorization-report-${from}${from === to ? "" : `-to-${to}`}.csv`,
           inad: "inad-report.csv",
           wch: `wch-report-${from}${from === to ? "" : `-to-${to}`}.csv`,
@@ -8619,6 +8637,7 @@
       reportSalesModeButton?.addEventListener("click", () => setReportMode("sales", { forceToday: true, resetOutput: true }));
       reportSalesDetailsModeButton?.addEventListener("click", () => setReportMode("salesDetails", { forceToday: true, resetOutput: true }));
       reportVipModeButton?.addEventListener("click", () => setReportMode("vip", { forceToday: true, resetOutput: true }));
+      reportSpmlModeButton?.addEventListener("click", () => setReportMode("spml", { forceToday: true, resetOutput: true }));
       reportPsmModeButton?.addEventListener("click", () => setReportMode("psm", { forceToday: true, resetOutput: true }));
       reportInadModeButton?.addEventListener("click", () => setReportMode("inad", { forceToday: true, resetOutput: true }));
       reportWchModeButton?.addEventListener("click", () => setReportMode("wch", { forceToday: true, resetOutput: true }));

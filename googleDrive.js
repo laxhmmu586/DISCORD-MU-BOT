@@ -3,6 +3,7 @@ const { Readable } = require('stream');
 const fs = require('fs/promises');
 const path = require('path');
 const zlib = require('zlib');
+const { parseMealOrderEmail } = require('./spmlParser');
 
 // ===============================
 // Google Auth
@@ -584,6 +585,11 @@ const REPORT_SHEETS = {
     gid: 1069298005,
     headers: ['Date', 'EMD', 'Value', 'Type', 'Flight', 'Report Date', 'File Name', 'Key'],
     fields: ['date', 'emd', 'value', 'type', 'flightNo', 'reportDate', 'fileName', 'key']
+  },
+  spml: {
+    gid: Number(process.env.SPML_REPORT_SHEET_GID || 895789899),
+    headers: ['Recorded At', 'Date', 'Flight', 'Flight Date', 'Passenger Name', 'BN', 'Seat', 'SPML', 'Status', 'Confirmed', 'Key'],
+    fields: ['recordedAt', 'date', 'flightNo', 'flightDate', 'passenger', 'bn', 'seat', 'meal', 'status', 'confirmed', 'key']
   }
 };
 const reportSheetTitles = {};
@@ -1001,7 +1007,9 @@ function buildStoredReportKey(type, row) {
     row?.seat || '',
     row?.wheelchairType || '',
     row?.ticketNumber || '',
-    row?.service || ''
+    row?.service || '',
+    row?.meal || '',
+    row?.status || ''
   ].map((value) => String(value || '').trim().toUpperCase()).join('|');
 }
 
@@ -1125,7 +1133,7 @@ function reportRowFromSheet(type, values) {
     row.flightNo = String(row.flightNo || '').trim().toUpperCase();
     row.reportDate = normalizeSheetDateToIso(row.reportDate) || String(row.reportDate || '').trim();
     row.fileName = String(row.fileName || '').trim();
-  } else if (normalizedType === 'wheelchair' || normalizedType === 'inad') {
+  } else if (normalizedType === 'wheelchair' || normalizedType === 'inad' || normalizedType === 'spml') {
     const isoDate = normalizeSheetDateToIso(row.date);
     row.date = isoDate || String(row.date || '').trim();
     row.displayDate = row.date;
@@ -1137,6 +1145,9 @@ function reportRowFromSheet(type, values) {
     row.wheelchairType = String(row.wheelchairType || '').trim().toUpperCase();
     row.ticketNumber = String(row.ticketNumber || '').trim().toUpperCase();
     row.service = String(row.service || '').trim().toUpperCase();
+    row.meal = String(row.meal || '').trim().toUpperCase();
+    row.status = String(row.status || '').trim().toUpperCase();
+    row.confirmed = /^(TRUE|YES|Y|1)$/i.test(String(row.confirmed || ''));
   }
   return row;
 }
@@ -1274,6 +1285,19 @@ async function getWheelchairReportRows(fromIsoDate, toIsoDate = fromIsoDate) {
     dataRows.push(parsed);
   }
   return dataRows.sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')) || String(a.flightNo || '').localeCompare(String(b.flightNo || '')) || Number(a.bn || 0) - Number(b.bn || 0));
+}
+
+async function getSpmlReportRows(fromIsoDate, toIsoDate = fromIsoDate) {
+  const from = String(fromIsoDate || '').trim();
+  const to = String(toIsoDate || from).trim();
+  const { rows } = await getStoredReportRows('spml', '');
+  return rows.filter((row) => (!from || row.date >= from) && (!to || row.date <= to));
+}
+
+async function appendSpmlReportRows(rows) {
+  const date = String(rows?.[0]?.date || '').trim();
+  if (!date) return { appended:0, stored:0, source:'googleSheet' };
+  return appendStoredReportRows('spml', date, rows);
 }
 
 async function appendVipReportRowsToSheet(rows) {
@@ -1782,6 +1806,36 @@ function normalizeGmailText(value = '') {
     .replace(/[ \t]+/g, ' ')
     .replace(/\n[ \t]+/g, '\n')
     .trim();
+}
+
+async function getLatestMealOrderEmail(flightNo, flightDate) {
+  const normalizedFlight = String(flightNo || '').trim().toUpperCase();
+  const normalizedDate = String(flightDate || '').trim().toUpperCase();
+  const empty = (extra = {}) => ({ found:false, flightNo:normalizedFlight, flightDate:normalizedDate, counts:{}, subject:'', sentAt:'', ...extra });
+  if (!normalizedFlight || !normalizedDate) return empty({ reason:'Missing flight number or flight date.' });
+  let userId = '';
+  let authMode = '';
+  try {
+    const client = getNextDayInfoGmailClient();
+    userId = client.userId;
+    authMode = client.authMode;
+    const q = `from:laxapmu@chinaeastern-usa.com subject:"Meal Order for ${normalizedFlight}/${normalizedDate}" newer_than:7d`;
+    const listed = await client.gmail.users.messages.list({ userId, q, maxResults:20, fields:'messages(id,internalDate)' });
+    const messages = [...(listed.data.messages || [])].sort((a, b) => Number(b.internalDate || 0) - Number(a.internalDate || 0));
+    for (const message of messages) {
+      const full = await client.gmail.users.messages.get({ userId, id:message.id, format:'full' });
+      const headers = full.data.payload?.headers || [];
+      const subject = headers.find((header) => String(header.name).toLowerCase() === 'subject')?.value || '';
+      const body = normalizeGmailText(extractGmailTextParts(full.data.payload).join('\n'));
+      const parsed = parseMealOrderEmail(`${subject}\n${body}`);
+      if (parsed.flightNo === normalizedFlight && parsed.flightDate === normalizedDate && Object.keys(parsed.counts).length) {
+        return { found:true, ...parsed, subject, sentAt:new Date(Number(full.data.internalDate || message.internalDate || 0)).toISOString(), messageId:full.data.id || message.id, authMode, userId, query:q };
+      }
+    }
+    return empty({ reason:'No matching meal-order email was found.', authMode, userId, query:q });
+  } catch (err) {
+    return empty({ reason:nextDayInfoGmailErrorReason(err, authMode, userId), authMode, userId });
+  }
 }
 
 function parseNextDayInfoDetails(text = '') {
@@ -4290,6 +4344,7 @@ module.exports = {
   syncSalesDetailsFromSourceSheet,
   hasNextDayInfoEmail,
   getNextDayInfoEmail,
+  getLatestMealOrderEmail,
   sendNextDayInfoEmail,
   getGdCheckEmail,
   getStoredReportRows,
@@ -4297,9 +4352,11 @@ module.exports = {
   getPsmMsgReportRows,
   getInadReportRows,
   getWheelchairReportRows,
+  getSpmlReportRows,
   appendStoredReportRows,
   appendVipReportRows,
   appendPsmMsgReportRows,
+  appendSpmlReportRows,
   updatePsmMsgReportRemark,
   pruneStoredReportRows,
   findTestBaggageByTag,
