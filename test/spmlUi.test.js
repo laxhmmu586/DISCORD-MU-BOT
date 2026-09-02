@@ -69,3 +69,8 @@ test('meal table uses two styled vertical column dividers and compact columns', 
   assert.match(html, /\.manifest-section\.is-operations \{[^}]*width:560px; max-width:100%/);
   assert.match(html, /grid-template-columns:34px 64px 76px 120px 90px/);
 });
+
+test('meal table centers every header and value consistently', () => {
+  assert.match(html, /\.reservation-table > span \{ width:100%; text-align:center; \}/);
+  assert.match(html, /\.column-divider \{[^}]*padding-left:0;/);
+});
