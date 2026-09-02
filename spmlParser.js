@@ -51,7 +51,9 @@ function parseMealRecord(record, source, flightNo, flightDate, timestamp) {
   const mealMatch = record.text.match(/\bSPML-([A-Z0-9]{4})\s+(?:\1\s+)?([A-Z]{2}\d+)\b/i);
   if (!mealMatch) return null;
   const status = mealMatch[2].toUpperCase();
-  return { source, flightNo, flightDate, date: flightDateToIso(flightDate), number: record.number, passenger: name, bn, seat, meal: mealMatch[1].toUpperCase(), status, confirmed: status === 'HK1', timestamp };
+  const seatRow = Number(seat.match(/\d+/)?.[0] || 0);
+  const cabin = seatRow >= 1 && seatRow <= 2 ? 'F' : (seatRow >= 6 && seatRow <= 20 ? 'C' : 'Y');
+  return { source, flightNo, flightDate, date: flightDateToIso(flightDate), number: record.number, passenger: name, bn, seat, cabin, meal: mealMatch[1].toUpperCase(), status, confirmed: status === 'HK1', timestamp };
 }
 
 function parseSpmlLog(log, options = {}) {
@@ -73,15 +75,25 @@ function parseSpmlLog(log, options = {}) {
   });
   const deduped = [...new Map(rows.map((row) => [`${row.source}|${row.flightNo}|${row.flightDate}|${row.passenger}|${row.bn}|${row.meal}`, row])).values()];
   const summarize = (source) => deduped.filter((row) => row.source === source).reduce((counts, row) => ({ ...counts, [row.meal]: (counts[row.meal] || 0) + 1 }), {});
-  return { preorder: deduped.filter((row) => row.source === 'PD'), report: deduped.filter((row) => row.source === 'FB'), preorderCounts: summarize('PD'), reportCounts: summarize('FB') };
+  const summarizeByCabin = (source) => deduped.filter((row) => row.source === source).reduce((cabins, row) => {
+    cabins[row.cabin] = cabins[row.cabin] || {};
+    cabins[row.cabin][row.meal] = (cabins[row.cabin][row.meal] || 0) + 1;
+    return cabins;
+  }, { F:{}, C:{}, Y:{} });
+  return { preorder: deduped.filter((row) => row.source === 'PD'), report: deduped.filter((row) => row.source === 'FB'), preorderCounts: summarize('PD'), reportCounts: summarize('FB'), preorderByCabin:summarizeByCabin('PD') };
 }
 
 function parseMealOrderEmail(text) {
   const flight = String(text || '').match(/\b([A-Z]{2}\d+)\/(\d{2}[A-Z]{3}\d{2})\b/i);
+  const cabinCounts = {};
+  for (const cabin of ['F', 'C', 'Y']) {
+    const match = String(text || '').match(new RegExp(`^\\s*${cabin}\\s*-\\s*(\\d+)`, 'im'));
+    cabinCounts[cabin] = Number(match?.[1] || 0);
+  }
   const economy = String(text || '').match(/^\s*Y\s*-\s*(\d+)([^\n\r]*)/im);
   const counts = {};
   String(economy?.[2] || '').replace(/\+\s*(\d+)\s+([A-Z0-9]{4})\b/gi, (_, count, meal) => { counts[meal.toUpperCase()] = Number(count); return _; });
-  return { flightNo: flight?.[1]?.toUpperCase() || '', flightDate: flight?.[2]?.toUpperCase() || '', economyBase: Number(economy?.[1] || 0), counts, economyTotal: Number(String(economy?.[2] || '').match(/=\s*(\d+)/)?.[1] || 0) };
+  return { flightNo: flight?.[1]?.toUpperCase() || '', flightDate: flight?.[2]?.toUpperCase() || '', cabinCounts, economyBase: Number(economy?.[1] || 0), counts, economyTotal: Number(String(economy?.[2] || '').match(/=\s*(\d+)/)?.[1] || 0) };
 }
 
 module.exports = { parseSpmlLog, parseMealOrderEmail, flightDateToIso };

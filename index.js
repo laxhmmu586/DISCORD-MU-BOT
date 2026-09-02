@@ -50,6 +50,7 @@ const {
   getPsmMsgReportRows,
   getInadReportRows,
   getWheelchairReportRows,
+  getSpmlReportRows,
   appendStoredReportRows,
   appendVipReportRows,
   appendPsmMsgReportRows,
@@ -1324,6 +1325,17 @@ app.get('/stored-report', async (req, res) => {
   } catch (err) {
     console.error('Stored report error:', err);
     return res.status(500).json({ error: err?.message || 'Stored report lookup failed' });
+  }
+});
+
+app.get('/spml-report', async (req, res) => {
+  try {
+    const from = String(req.query.from || '').trim();
+    const to = String(req.query.to || from).trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) return res.status(400).json({ error:'Missing or invalid date range' });
+    return res.json({ rows:await getSpmlReportRows(from, to), source:'googleSheet' });
+  } catch (err) {
+    return res.status(500).json({ error:err?.message || 'SPML report lookup failed' });
   }
 });
 

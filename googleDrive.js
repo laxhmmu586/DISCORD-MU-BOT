@@ -588,8 +588,8 @@ const REPORT_SHEETS = {
   },
   spml: {
     gid: Number(process.env.SPML_REPORT_SHEET_GID || 895789899),
-    headers: ['Recorded At', 'Date', 'Flight', 'Flight Date', 'Passenger Name', 'BN', 'Seat', 'SPML', 'Status', 'Confirmed', 'Key'],
-    fields: ['recordedAt', 'date', 'flightNo', 'flightDate', 'passenger', 'bn', 'seat', 'meal', 'status', 'confirmed', 'key']
+    headers: ['Recorded At', 'Date', 'Flight', 'Flight Date', 'Passenger Name', 'BN', 'Seat', 'SPML', 'Status', 'Key'],
+    fields: ['recordedAt', 'date', 'flightNo', 'flightDate', 'passenger', 'bn', 'seat', 'meal', 'status', 'key']
   }
 };
 const reportSheetTitles = {};
@@ -1105,6 +1105,10 @@ function reportRowFromSheet(type, values) {
     row[field] = values[index] || '';
   });
   const normalizedType = normalizeReportSheetType(type);
+  // Rows written by the first SPML implementation had separate Status and
+  // Confirmed columns. Preserve their key while reading the consolidated
+  // Status-only layout so existing 02SEP rows do not shift by one column.
+  if (normalizedType === 'spml' && values.length >= 11) row.key = values[10] || '';
   if (type === 'vip' || normalizedType === 'psmMsg') {
     const displayDate = row.flightDate || row.date || '';
     const isoDate = normalizeSheetDateToIso(displayDate);
@@ -1147,7 +1151,7 @@ function reportRowFromSheet(type, values) {
     row.service = String(row.service || '').trim().toUpperCase();
     row.meal = String(row.meal || '').trim().toUpperCase();
     row.status = String(row.status || '').trim().toUpperCase();
-    row.confirmed = /^(TRUE|YES|Y|1)$/i.test(String(row.confirmed || ''));
+    row.confirmed = row.status === 'HK1';
   }
   return row;
 }
