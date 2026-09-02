@@ -352,13 +352,11 @@ test('On-hand exchange is saved to Google Sheets and shows old and new tags', ()
   assert.match(drive, /JSON\.stringify\(exchangeHistory\)/);
   assert.match(page, /exchange-tag-old/);
   assert.match(page, /exchange-tag-new/);
-  assert.match(page, /exchange-tag-flow::before \{ content:"Exchange"/);
-  assert.match(page, /exchange-tag-flow"><span class="exchange-tag-new">\$\{escapeHtml\(lastExchange\.newTag\)\}<\/span><button class="exchange-tag-old"/);
-  assert.match(page, /exchange-old-number">\$\{escapeHtml\(lastExchange\.oldTag\)\}/);
-  assert.match(page, /\.exchange-tag-old \{ position:relative; z-index:1/);
-  assert.match(page, /\.exchange-tag-new \{ position:relative; z-index:2/);
-  assert.match(page, /data-exchange-old-toggle/);
-  assert.match(page, /classList\.toggle\('is-open'\)/);
+  assert.match(page, /grid-template-columns:max-content 74px max-content/);
+  assert.match(page, /exchange-tag-flow"><span class="exchange-tag-old">\$\{escapeHtml\(lastExchange\.oldTag\)\}<\/span><span class="exchange-tag-arrow"[^>]*>→/);
+  assert.match(page, /exchange-tag-arrow-label">Exchange<\/span>/);
+  assert.match(page, /<span class="exchange-tag-new">\$\{escapeHtml\(lastExchange\.newTag\)\}<\/span>/);
+  assert.match(page, /\.exchange-tag-arrow::before,\.exchange-tag-arrow::after/);
   assert.match(page, /detail:`\$\{exchange\.oldTag\} → \$\{exchange\.newTag\}`/);
 });
 
