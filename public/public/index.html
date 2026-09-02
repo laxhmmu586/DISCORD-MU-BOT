@@ -718,10 +718,10 @@
 
       .details-manifest {
         display: grid;
-        grid-template-columns: minmax(174px, max-content) minmax(132px, 132px) repeat(2, minmax(124px, 124px));
+        grid-template-columns: minmax(720px, 1fr);
         grid-template-areas:
-          "reservation warning security jcsy"
-          "checkin warning security jcsy";
+          "operations"
+          "operations";
         grid-template-rows: minmax(58px, 1fr) minmax(58px, 1fr);
         gap: 12px;
         align-items: stretch;
@@ -730,14 +730,31 @@
 
       .manifest-section.is-reservation { grid-area: reservation; }
       .manifest-section.is-checkin { grid-area: checkin; }
+      .manifest-section.is-operations { grid-area:operations; min-width:0; padding:0; text-align:left; border:0; background:transparent; box-shadow:none; backdrop-filter:none; }
+      .meal-order-title { display:block; margin:0 0 12px; text-align:center; font-size:17px; letter-spacing:.25px; text-transform:uppercase; }
+      .meal-order-shell { overflow:hidden; border:1px solid rgba(49,145,218,.52); border-radius:10px; background:linear-gradient(145deg,rgba(5,29,49,.90),rgba(2,17,31,.82)); box-shadow:none; }
+      .meal-order-shell.has-shortage { border-color:rgba(255,178,39,.95); box-shadow:inset 0 0 26px rgba(255,166,24,.08),0 0 0 1px rgba(255,199,44,.26),0 0 18px rgba(255,166,24,.28); }
+      .meal-order-tabs { display:grid; grid-template-columns:repeat(2,1fr); padding:0 18px; background:transparent; }
+      .meal-order-tab { position:relative; padding:12px; border:0; background:transparent; color:var(--muted); font-size:12px; font-weight:900; letter-spacing:.8px; cursor:pointer; }
+      .meal-order-tab[aria-selected="true"] { color:#35d9a0; background:linear-gradient(180deg,rgba(22,104,91,.15),transparent); }
+      .meal-order-tab[aria-selected="true"]::after { content:""; position:absolute; left:12px; right:12px; bottom:0; height:2px; background:#28d8a0; box-shadow:0 0 10px rgba(40,216,160,.55); }
+      .meal-order-days { display:block; }
+      .reservation-table { display:none; grid-template-columns:38px 70px 84px minmax(140px,1fr) minmax(140px,1fr); align-items:start; gap:10px 14px; min-height:174px; margin:0 18px; padding:20px 4px 24px; border:0; border-top:1px solid rgba(49,145,218,.26); border-radius:0; background:transparent; box-shadow:none; font-size:12px; }
+      .reservation-table.is-active { display:grid; }
+      .reservation-table .reservation-head { color:var(--muted); font-weight:850; letter-spacing:.35px; line-height:1.15; }
+      .reservation-table .reservation-cabin { color:var(--muted); font-weight:900; }
+      .reservation-table .meal-cell { white-space:pre-line; line-height:1.35; color:#e6f2ff; }
+      .reservation-count.is-over { color:#43df91; font-weight:900; text-shadow:0 0 10px rgba(67,223,145,.28); }
+      .reservation-count.is-under { color:#ff6c67; font-weight:900; text-shadow:0 0 10px rgba(255,108,103,.25); }
+      .meal-cell.is-mismatch { color:#ff6c67; font-weight:850; }
       .summary-warning-action { grid-area: warning; }
       .summary-security-action { grid-area: security; }
       .summary-jcsy-action { grid-area: jcsy; }
       .details-manifest.is-warning-hidden {
-        grid-template-columns: minmax(174px, max-content) repeat(2, minmax(124px, 124px));
+        grid-template-columns: minmax(720px, 1fr);
         grid-template-areas:
-          "reservation security jcsy"
-          "checkin security jcsy";
+          "operations"
+          "operations";
       }
 
       .details-manifest.is-warning-hidden .summary-security-action { grid-area: security; }
@@ -3995,20 +4012,27 @@
 
         .detail-top-actions,
         .details-manifest {
-          grid-template-columns: 1fr 1fr;
+          grid-template-columns: 1fr;
           grid-template-areas:
-            "reservation checkin"
-            "warning security"
-            "warning jcsy";
-          grid-template-rows: auto minmax(132px, auto) minmax(132px, auto);
+            "operations"
+            "warning";
+          grid-template-rows: auto minmax(100px, auto);
         }
 
         .details-manifest.is-warning-hidden {
           grid-template-areas:
-            "reservation checkin"
-            "security jcsy";
-          grid-template-rows: auto minmax(132px, auto);
+            "operations";
+          grid-template-rows: auto;
         }
+
+        .details-panel { width:calc(100% - 24px); }
+        .manifest-section.is-operations { width:100%; overflow:visible !important; }
+        .meal-order-title { margin-bottom:10px; font-size:16px; }
+        .meal-order-tabs { padding:0 8px; }
+        .meal-order-tab { padding:11px 4px; font-size:10px; letter-spacing:.35px; }
+        .reservation-table { width:auto; min-width:0; grid-template-columns:22px 38px 58px minmax(76px,1fr) minmax(62px,1fr); gap:9px 6px; margin:0 8px; padding:16px 0 20px; font-size:10px; }
+        .reservation-table .reservation-head { font-size:9px; letter-spacing:0; }
+        .reservation-table .meal-cell { overflow-wrap:anywhere; }
 
         .details-panel {
           overflow: visible;
@@ -4493,6 +4517,7 @@
                 <button id="delayed-flight-button" type="button">MU9586 (Delayed)</button>
                 <button id="sales-report-button" type="button">Sales Report</button>
                 <button id="seat-map-button" type="button">Seat Map</button>
+                <button id="security-check-button" type="button">Security Check</button>
               </div>
             </div>
           </div>
@@ -4510,6 +4535,7 @@
             <button class="detail-action" id="report-sales-mode" type="button" data-report-mode="sales">Sales Report</button>
             <button class="detail-action" id="report-sales-details-mode" type="button" data-report-mode="salesDetails">Sales Details</button>
             <button class="detail-action" id="report-vip-mode" type="button" data-report-mode="vip">VIP Report</button>
+            <button class="detail-action" id="report-spml-mode" type="button" data-report-mode="spml">SPML Report</button>
             <button class="detail-action" id="report-psm-mode" type="button" data-report-mode="psm">Authorization Report</button>
             <button class="detail-action" id="report-inad-mode" type="button" data-report-mode="inad">INAD Report</button>
             <button class="detail-action" id="report-wch-mode" type="button" data-report-mode="wch">WCH Report</button>
@@ -4567,28 +4593,33 @@
           <div class="details-inner">
             <div class="details-surface">
               <div class="details-manifest">
-                <div class="manifest-section is-reservation">
-                  <h3>Reservation</h3>
-                  <div class="counts counts-inline">
-                    <div class="count count-wide">
-                      <div class="count-row"><span id="reservation-et">--- / --- / ---</span></div>
+                <div class="manifest-section is-operations">
+                  <strong class="meal-order-title">Meal Order</strong>
+                  <div class="meal-order-shell" id="meal-order-shell">
+                    <div class="meal-order-tabs" role="tablist" aria-label="Meal order date">
+                      <button class="meal-order-tab" id="meal-order-tab-today" type="button" role="tab" aria-selected="true" aria-controls="reservation-table-today" data-meal-day="today">---</button>
+                      <button class="meal-order-tab" id="meal-order-tab-tomorrow" type="button" role="tab" aria-selected="false" aria-controls="reservation-table-tomorrow" data-meal-day="tomorrow">---</button>
+                    </div>
+                    <div class="meal-order-days">
+                    <div class="reservation-table is-active" id="reservation-table-today" role="tabpanel" aria-labelledby="meal-order-tab-today">
+                      <span></span><span class="reservation-head">RES</span><span class="reservation-head">ORDERED</span><span class="reservation-head">SPML</span><span class="reservation-head">PD</span>
+                      <span class="reservation-cabin">F</span><span id="reservation-f" class="reservation-count">---</span><span id="meal-email-f">---</span><span id="meal-spml-f" class="meal-cell">---</span><span id="meal-pd-f" class="meal-cell">---</span>
+                      <span class="reservation-cabin">C</span><span id="reservation-c" class="reservation-count">---</span><span id="meal-email-c">---</span><span id="meal-spml-c" class="meal-cell">---</span><span id="meal-pd-c" class="meal-cell">---</span>
+                      <span class="reservation-cabin">Y</span><span id="reservation-y" class="reservation-count">---</span><span id="meal-email-y">---</span><span id="meal-spml-y" class="meal-cell">---</span><span id="meal-pd-y" class="meal-cell">---</span>
+                    </div>
+                    <div class="reservation-table" id="reservation-table-tomorrow" role="tabpanel" aria-labelledby="meal-order-tab-tomorrow" hidden>
+                      <span></span><span class="reservation-head">RES</span><span class="reservation-head">ORDERED</span><span class="reservation-head">SPML</span><span class="reservation-head">PD</span>
+                      <span class="reservation-cabin">F</span><span id="tomorrow-reservation-f" class="reservation-count">---</span><span id="tomorrow-meal-email-f">---</span><span id="tomorrow-meal-spml-f" class="meal-cell">---</span><span id="tomorrow-meal-pd-f" class="meal-cell">---</span>
+                      <span class="reservation-cabin">C</span><span id="tomorrow-reservation-c" class="reservation-count">---</span><span id="tomorrow-meal-email-c">---</span><span id="tomorrow-meal-spml-c" class="meal-cell">---</span><span id="tomorrow-meal-pd-c" class="meal-cell">---</span>
+                      <span class="reservation-cabin">Y</span><span id="tomorrow-reservation-y" class="reservation-count">---</span><span id="tomorrow-meal-email-y">---</span><span id="tomorrow-meal-spml-y" class="meal-cell">---</span><span id="tomorrow-meal-pd-y" class="meal-cell">---</span>
+                    </div>
                     </div>
                   </div>
                 </div>
-                <button class="manifest-section is-checkin" id="checkin-agent-action" type="button" data-panel="checkin-agents" aria-label="Open today's agent check-in statistics">
-                  <h3>Check-In</h3>
-                  <div class="counts counts-inline">
-                    <div class="count count-wide">
-                      <div class="count-row"><span id="checkin-et">--- / --- / ---</span></div>
-                    </div>
-                  </div>
-                </button>
-                <button class="detail-action warning-action summary-warning-action" type="button" data-panel="warning" id="warning-action" hidden aria-label="Open warnings"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M16 5 29 27H3z"/><path d="M16 12v7"/><path d="M16 23h.01"/></svg></span><span class="detail-action-label">WARNING</span> <span class="detail-action-badge warning-badge" id="warning-count">0</span></button>
-                <button class="detail-action summary-security-action" type="button" data-panel="security" id="security-detail-action"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="10"/><circle cx="16" cy="16" r="3"/><path d="M16 4v5M16 23v5M4 16h5M23 16h5"/></svg></span><span class="detail-action-label">Security Check</span></button>
-                <button class="detail-action summary-jcsy-action" type="button" data-panel="jcsy" id="jcsy-detail-action"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="10" cy="10" r="3"/><circle cx="22" cy="10" r="3"/><circle cx="10" cy="22" r="3"/><circle cx="22" cy="22" r="3"/><path d="M16 10h.01M16 16h.01M16 22h.01"/></svg></span><span class="detail-action-label">JCSY</span></button>
               </div>
             </div>
             <div class="detail-actions" aria-label="Flight detail actions">
+              <button class="detail-action warning-action" type="button" data-panel="warning" id="warning-action" hidden aria-label="Open warnings"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M16 5 29 27H3z"/><path d="M16 12v7"/><path d="M16 23h.01"/></svg></span><span class="detail-action-label">WARNING</span> <span class="detail-action-badge warning-badge" id="warning-count">0</span></button>
               <button class="detail-action" type="button" data-panel="chd" id="chd-action"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M11 7h10"/><path d="M12 5h8l1 4h-10z"/><path d="M8 8h16v19H8z"/><path d="M12 15h8"/><path d="M12 20h8"/></svg></span><span class="detail-action-label">CHD List</span> <span class="detail-action-badge" id="chd-count"></span></button>
                 <button class="detail-action" type="button" data-panel="gov" id="gov-action"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="16" cy="11" r="5"/><path d="M7 27c1.2-6 4.4-9 9-9s7.8 3 9 9"/></svg></span><span class="detail-action-label">GOV/AQQ</span> <span class="detail-action-badge" id="gov-count"></span></button>
                 <button class="detail-action" type="button" data-panel="webedi" id="webedi-action"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="10"/><path d="M6 16h20"/><path d="M16 6c3 3 4.5 6.3 4.5 10S19 23 16 26"/><path d="M16 6c-3 3-4.5 6.3-4.5 10S13 23 16 26"/></svg></span><span class="detail-action-label">WEB/EDI/RS</span> <span class="detail-action-badge" id="webedi-count"></span></button>
@@ -4732,6 +4763,7 @@
       const reportSalesModeButton = document.querySelector("#report-sales-mode");
       const reportSalesDetailsModeButton = document.querySelector("#report-sales-details-mode");
       const reportVipModeButton = document.querySelector("#report-vip-mode");
+      const reportSpmlModeButton = document.querySelector("#report-spml-mode");
       const reportPsmModeButton = document.querySelector("#report-psm-mode");
       const reportInadModeButton = document.querySelector("#report-inad-mode");
       const reportWchModeButton = document.querySelector("#report-wch-mode");
@@ -4787,6 +4819,7 @@
       let lastDragX = 0;
       let didDrag = false;
       let currentSy = null;
+      let tomorrowMealRequestKey = "";
       let latestQuery = "SY";
       let activeReportMode = "sales";
       let activeSyQuery = "SY";
@@ -4838,10 +4871,11 @@
         setText("#metric-std", "----");
         const reservationBookedEl = document.querySelector("#reservation-booked");
         if (reservationBookedEl) reservationBookedEl.innerHTML = tripleHtml(["---", "---", "---"]);
-        document.querySelector("#reservation-et").textContent = "--- / --- / ---";
+        ["", "tomorrow-"].forEach((prefix) => ["reservation-f", "reservation-c", "reservation-y", "meal-email-f", "meal-email-c", "meal-email-y", "meal-spml-f", "meal-spml-c", "meal-spml-y", "meal-pd-f", "meal-pd-c", "meal-pd-y"].forEach((id) => setText(`#${prefix}${id}`, "---")));
+        setText("#meal-order-tab-today", "---");
+        setText("#meal-order-tab-tomorrow", "---");
         const checkinAcceptedEl = document.querySelector("#checkin-accepted");
         if (checkinAcceptedEl) checkinAcceptedEl.innerHTML = tripleHtml(["---", "---", "---"]);
-        document.querySelector("#checkin-et").textContent = "--- / --- / ---";
         setBadgeText("#chd-count", 0);
         setBadgeText("#gov-count", 0);
         setBadgeText("#webedi-count", 0);
@@ -6156,7 +6190,106 @@
         ];
         const nbrdSignature = (sy.bnAudit || []).filter(rowHasCkinNbrdIssue).map((row) => [row.bn, row.seat, ckinNbrdDetails(row).join("|")]);
         const warningSignature = buildWarningRows(sy).map((row) => [row.bn, row.seat, row.warningType, row.warningReason, (row.acknowledgements || []).length]);
-        return JSON.stringify([sy.flightNo, sy.flightDate, sy.gate, sy.bdt, sy.sd, sy.reservation, sy.reservationTicketed, sy.checkedIn, sy.checkedInTicketed, sy.jcsy, steps, sy.chdList || [], govSignature, webEdiIssueBnList(sy), nbrdSignature, warningSignature, sy.psmList || [], sy.wchList || []]);
+        return JSON.stringify([sy.flightNo, sy.flightDate, sy.gate, sy.bdt, sy.sd, sy.reservation, sy.reservationTicketed, sy.checkedIn, sy.checkedInTicketed, sy.spml || {}, sy.jcsy, steps, sy.chdList || [], govSignature, webEdiIssueBnList(sy), nbrdSignature, warningSignature, sy.psmList || [], sy.wchList || []]);
+      }
+
+      function mealCountsText(counts) {
+        return Object.entries(counts || {}).filter(([, count]) => Number(count) > 0).sort(([a], [b]) => a.localeCompare(b)).map(([meal, count]) => `${count} ${meal}`).join("\n") || "-";
+      }
+
+      function mealCountsTotal(counts) {
+        return Object.values(counts || {}).reduce((total, count) => total + (Number(count) || 0), 0);
+      }
+
+      function mealCountsMatch(left, right) {
+        const keys = new Set([...Object.keys(left || {}), ...Object.keys(right || {})]);
+        return [...keys].every((key) => (Number(left?.[key]) || 0) === (Number(right?.[key]) || 0));
+      }
+
+      function formatMealFlightDate(value) {
+        const match = String(value || "").toUpperCase().match(/^(\d{2})([A-Z]{3})(\d{2})$/);
+        return match ? `${match[1]} ${match[2]} 20${match[3]}` : "---";
+      }
+
+      function nextMealFlightDate(value) {
+        const match = String(value || "").toUpperCase().match(/^(\d{2})([A-Z]{3})(\d{2})$/);
+        const months = { JAN:0, FEB:1, MAR:2, APR:3, MAY:4, JUN:5, JUL:6, AUG:7, SEP:8, OCT:9, NOV:10, DEC:11 };
+        if (!match || months[match[2]] === undefined) return "---";
+        const date = new Date(Date.UTC(2000 + Number(match[3]), months[match[2]], Number(match[1]) + 1));
+        return `${String(date.getUTCDate()).padStart(2, "0")} ${Object.keys(months)[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
+      }
+
+      function updateMealOrderShellState() {
+        const activePanel = document.querySelector(".reservation-table.is-active");
+        document.querySelector("#meal-order-shell")?.classList.toggle("has-shortage", Boolean(activePanel?.classList.contains("has-shortage")));
+      }
+
+      function renderMealOrderColumns(sy, prefix = "") {
+        const reservationCounts = countTriple(sy?.reservationTicketed);
+        if (sy?.flightDate) {
+          setText(prefix ? "#meal-order-tab-tomorrow" : "#meal-order-tab-today", formatMealFlightDate(sy.flightDate));
+          if (!prefix) setText("#meal-order-tab-tomorrow", nextMealFlightDate(sy.flightDate));
+        }
+        let hasShortage = false;
+        ["F", "C", "Y"].forEach((cabin, index) => {
+          const key = cabin.toLowerCase();
+          const reservationElement = document.querySelector(`#${prefix}reservation-${key}`);
+          const orderedSpmlElement = document.querySelector(`#${prefix}meal-spml-${key}`);
+          const pdElement = document.querySelector(`#${prefix}meal-pd-${key}`);
+          const emailFound = Boolean(sy?.spml?.email?.found);
+          const orderedMeals = cabin === "Y" && emailFound ? (sy.spml.email.counts || {}) : {};
+          const pdMeals = sy?.spml?.preorderByCabin?.[cabin] || {};
+          const reservation = Number(reservationCounts[index]);
+          const ordered = Number(sy?.spml?.email?.cabinCounts?.[cabin]);
+          const orderedTotal = ordered + mealCountsTotal(orderedMeals);
+          setText(`#${prefix}reservation-${key}`, reservationCounts[index]);
+          setText(`#${prefix}meal-email-${key}`, emailFound ? (sy.spml.email.cabinCounts?.[cabin] ?? "-") : "-");
+          setText(`#${prefix}meal-spml-${key}`, mealCountsText(orderedMeals));
+          setText(`#${prefix}meal-pd-${key}`, mealCountsText(pdMeals));
+          reservationElement?.classList.remove("is-over", "is-under");
+          orderedSpmlElement?.classList.remove("is-mismatch");
+          pdElement?.classList.remove("is-mismatch");
+          if (emailFound && Number.isFinite(reservation)) {
+            if (orderedTotal >= reservation) reservationElement?.classList.add("is-over");
+            if (orderedTotal < reservation) {
+              reservationElement?.classList.add("is-under");
+              hasShortage = true;
+            }
+            if (!mealCountsMatch(orderedMeals, pdMeals)) {
+              orderedSpmlElement?.classList.add("is-mismatch");
+              pdElement?.classList.add("is-mismatch");
+            }
+          }
+        });
+        document.querySelector(`#reservation-table-${prefix ? "tomorrow" : "today"}`)?.classList.toggle("has-shortage", hasShortage);
+        updateMealOrderShellState();
+      }
+
+      function selectMealOrderDay(day) {
+        const selectedDay = day === "tomorrow" ? "tomorrow" : "today";
+        document.querySelectorAll("[data-meal-day]").forEach((tab) => tab.setAttribute("aria-selected", String(tab.dataset.mealDay === selectedDay)));
+        ["today", "tomorrow"].forEach((panelDay) => {
+          const panel = document.querySelector(`#reservation-table-${panelDay}`);
+          const active = panelDay === selectedDay;
+          panel?.classList.toggle("is-active", active);
+          if (panel) panel.hidden = !active;
+        });
+        updateMealOrderShellState();
+      }
+
+      async function refreshTomorrowMealOrder(todaySy) {
+        const flightNo = String(todaySy?.flightNo || "MU586").toUpperCase();
+        const requestKey = `${flightNo}|${todaySy?.flightDate || ""}`;
+        if (tomorrowMealRequestKey === requestKey) return;
+        tomorrowMealRequestKey = requestKey;
+        renderMealOrderColumns(null, "tomorrow-");
+        try {
+          const data = await fetchSearch(`SY+ ${flightNo}`);
+          if (tomorrowMealRequestKey !== requestKey || currentSy !== todaySy) return;
+          if (data?.sy) renderMealOrderColumns(data.sy, "tomorrow-");
+        } catch (_) {
+          if (tomorrowMealRequestKey === requestKey) renderMealOrderColumns(null, "tomorrow-");
+        }
       }
 
       function updateFlightFromSy(sy, options = {}) {
@@ -6179,10 +6312,10 @@
         setText("#metric-std", sy.sd || "----");
         const reservationBookedEl = document.querySelector("#reservation-booked");
         if (reservationBookedEl) reservationBookedEl.innerHTML = tripleHtml(countTriple(sy.reservation));
-        document.querySelector("#reservation-et").textContent = countTriple(sy.reservationTicketed).join(" / ");
+        renderMealOrderColumns(sy);
         const checkinAcceptedEl = document.querySelector("#checkin-accepted");
         if (checkinAcceptedEl) checkinAcceptedEl.innerHTML = tripleHtml(countTriple(sy.checkedIn));
-        document.querySelector("#checkin-et").textContent = countTriple(sy.checkedInTicketed).join(" / ");
+        refreshTomorrowMealOrder(sy);
         const isClearLocked = (_key) => false;
         const chdIssues = isClearLocked("CHD") ? 0 : (sy.chdList || []).filter((row) => row.hasChdCode === false).length;
         const gov = sy.govAqq || {};
@@ -6954,7 +7087,7 @@
       }
 
       function setReportMode(mode, options = {}) {
-        activeReportMode = ["vip", "psm", "inad", "wch", "missConnection", "baggage", "salesDetails"].includes(mode) ? mode : "sales";
+        activeReportMode = ["vip", "spml", "psm", "inad", "wch", "missConnection", "baggage", "salesDetails"].includes(mode) ? mode : "sales";
         if (activeReportMode === "baggage") {
           if (options.forceToday) setReportDefaults(true);
         } else {
@@ -6979,6 +7112,7 @@
         reportSalesModeButton?.classList.toggle("is-active", activeReportMode === "sales");
         reportSalesDetailsModeButton?.classList.toggle("is-active", activeReportMode === "salesDetails");
         reportVipModeButton?.classList.toggle("is-active", activeReportMode === "vip");
+        reportSpmlModeButton?.classList.toggle("is-active", activeReportMode === "spml");
         reportPsmModeButton?.classList.toggle("is-active", activeReportMode === "psm");
         reportInadModeButton?.classList.toggle("is-active", activeReportMode === "inad");
         reportWchModeButton?.classList.toggle("is-active", activeReportMode === "wch");
@@ -6995,20 +7129,22 @@
         if (reportOutput && options.resetOutput) {
           reportOutput.innerHTML = activeReportMode === "vip"
             ? `<p class="panel-muted">Loading VIP Report...</p>`
+            : (activeReportMode === "spml"
+              ? `<p class="panel-muted">Loading SPML Report...</p>`
             : (activeReportMode === "inad"
               ? `<p class="panel-muted">Loading INAD Report...</p>`
               : (activeReportMode === "missConnection"
                 ? `<p class="panel-muted">Loading Misconnection Report...</p>`
               : (activeReportMode === "baggage"
                 ? `<p class="panel-muted">Select a submit-date range, optionally enter a bag tag, then click Search.</p>`
-                : (["psm", "wch"].includes(activeReportMode)
-                  ? `<p class="panel-muted">Choose a flight date range, then search ${activeReportMode === "wch" ? "WCH Report" : "Authorization Report"}.</p>`
+                : (["spml", "psm", "wch"].includes(activeReportMode)
+                  ? `<p class="panel-muted">Choose a flight date range, then search ${activeReportMode === "wch" ? "WCH Report" : (activeReportMode === "spml" ? "SPML Report" : "Authorization Report")}.</p>`
                   : (activeReportMode === "salesDetails"
                     ? `<p class="panel-muted">Choose a date range, then search Sales Details totals by Type.</p>`
-                    : `<p class="panel-muted">Choose a date, then download Sales Report.</p>`)))));
+                    : `<p class="panel-muted">Choose a date, then download Sales Report.</p>`))))));
         }
         if (activeReportMode === "baggage") renderBaggageTimelineReport();
-        else if (["vip", "psm", "inad", "wch", "missConnection", "salesDetails"].includes(activeReportMode)) generateReport();
+        else if (["vip", "spml", "psm", "inad", "wch", "missConnection", "salesDetails"].includes(activeReportMode)) generateReport();
       }
 
       function resetPanelState() {
@@ -7830,6 +7966,11 @@
         return data?.rows || [];
       }
 
+      async function spmlReportRows(from, to) {
+        const data = await apiJson(`/spml-report?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+        return data?.rows || [];
+      }
+
       async function inadReportRows() {
         const data = await apiJson("/inad-report");
         return data?.rows || [];
@@ -7980,7 +8121,7 @@
           await renderBaggageTimelineReport();
           return;
         }
-        const type = ["vip", "psm", "inad", "wch", "missConnection", "salesDetails"].includes(activeReportMode) ? activeReportMode : "sales";
+        const type = ["vip", "spml", "psm", "inad", "wch", "missConnection", "salesDetails"].includes(activeReportMode) ? activeReportMode : "sales";
         const today = ymdFromDate(new Date());
         const from = reportFromInput?.value || today;
         const keyword = type === "vip" ? (reportKeywordInput?.value || "") : "";
@@ -7989,7 +8130,7 @@
         try {
           dates = type === "sales" ? [from] : [];
           if (type === "sales" && !from) throw new Error("Please select a valid date.");
-          if (type === "psm" || type === "wch" || type === "salesDetails") reportDateRange(from, to);
+          if (type === "spml" || type === "psm" || type === "wch" || type === "salesDetails") reportDateRange(from, to);
         } catch (error) {
           reportOutput.innerHTML = `<p class="panel-muted status-fail">${escapeHtml(error.message)}</p>`;
           setReportCsv([], "report.csv");
@@ -8000,11 +8141,13 @@
           ? `<p class="panel-muted">Checking Sales Report for ${escapeHtml(from)}...</p>`
           : (type === "salesDetails"
             ? `<p class="panel-muted">Loading Sales Details for ${escapeHtml(from)}${from === to ? "" : ` to ${escapeHtml(to)}`}...</p>`
+            : (type === "spml"
+              ? `<p class="panel-muted">Loading SPML Report for ${escapeHtml(from)}${from === to ? "" : ` to ${escapeHtml(to)}`}...</p>`
             : (type === "psm"
             ? `<p class="panel-muted">Loading Authorization Report for ${escapeHtml(from)}${from === to ? "" : ` to ${escapeHtml(to)}`}...</p>`
             : (type === "wch"
               ? `<p class="panel-muted">Loading WCH Report for ${escapeHtml(from)}${from === to ? "" : ` to ${escapeHtml(to)}`}...</p>`
-              : (type === "inad" ? `<p class="panel-muted">Loading INAD Report...</p>` : (type === "missConnection" ? `<p class="panel-muted">Loading Misconnection Report...</p>` : `<p class="panel-muted">Loading VIP Report...</p>`)))));
+              : (type === "inad" ? `<p class="panel-muted">Loading INAD Report...</p>` : (type === "missConnection" ? `<p class="panel-muted">Loading Misconnection Report...</p>` : `<p class="panel-muted">Loading VIP Report...</p>`))))));
         setReportCsv([], "report.csv");
         setAuthorizationReportPdf([], "authorization-report.pdf");
         const rows = [];
@@ -8012,6 +8155,13 @@
         if (type === "vip") {
           try {
             rows.push(...await vipReportRows(keyword));
+          } catch (error) {
+            errors.push(error.message);
+          }
+        } else if (type === "spml") {
+          try {
+            const needle = String(reportKeywordInput?.value || "").trim().toUpperCase();
+            rows.push(...(await spmlReportRows(from, to)).filter((row) => !needle || Object.values(row || {}).some((value) => String(value || "").toUpperCase().includes(needle))));
           } catch (error) {
             errors.push(error.message);
           }
@@ -8080,6 +8230,16 @@
             { label: "Seat", value: (row) => row.seat },
             { label: "Bags", value: (row) => row.bags },
           ], "No VIP passengers found.");
+        } else if (type === "spml") {
+          tableHtml = rowsTable(rows, [
+            { label: "Date", value: (row) => row.date },
+            { label: "Flight", value: (row) => row.flightNo },
+            { label: "Passenger", value: (row) => row.passenger },
+            { label: "BN", value: (row) => row.bn },
+            { label: "Seat", value: (row) => row.seat },
+            { label: "SPML", value: (row) => row.meal },
+            { label: "Status", value: (row) => row.status || (row.confirmed ? "HK1" : "") },
+          ], "No SPML passengers found.");
         } else if (type === "psm") {
           tableHtml = authorizationReportTable(rows);
         } else if (type === "inad") {
@@ -8118,6 +8278,7 @@
           sales: `sales-report-${from}.csv`,
           salesDetails: `sales-details-${from}${from === to ? "" : `-to-${to}`}.csv`,
           vip: "vip-report.csv",
+          spml: `spml-report-${from}${from === to ? "" : `-to-${to}`}.csv`,
           psm: `authorization-report-${from}${from === to ? "" : `-to-${to}`}.csv`,
           inad: "inad-report.csv",
           wch: `wch-report-${from}${from === to ? "" : `-to-${to}`}.csv`,
@@ -8466,12 +8627,6 @@
         });
       });
 
-      document.querySelector("#checkin-agent-action")?.addEventListener("click", (event) => {
-        event.stopPropagation();
-        renderCheckinAgentPanel();
-      });
-
-
       homeNavLink.addEventListener("click", (event) => { event.preventDefault(); showHomePage(); });
       bagReportButton?.addEventListener("click", closeFlightMenuAfterAction(renderBagReport));
       salesReportButton?.addEventListener("click", closeFlightMenuAfterAction(downloadSalesReport));
@@ -8619,6 +8774,7 @@
       reportSalesModeButton?.addEventListener("click", () => setReportMode("sales", { forceToday: true, resetOutput: true }));
       reportSalesDetailsModeButton?.addEventListener("click", () => setReportMode("salesDetails", { forceToday: true, resetOutput: true }));
       reportVipModeButton?.addEventListener("click", () => setReportMode("vip", { forceToday: true, resetOutput: true }));
+      reportSpmlModeButton?.addEventListener("click", () => setReportMode("spml", { forceToday: true, resetOutput: true }));
       reportPsmModeButton?.addEventListener("click", () => setReportMode("psm", { forceToday: true, resetOutput: true }));
       reportInadModeButton?.addEventListener("click", () => setReportMode("inad", { forceToday: true, resetOutput: true }));
       reportWchModeButton?.addEventListener("click", () => setReportMode("wch", { forceToday: true, resetOutput: true }));
@@ -8628,6 +8784,9 @@
       reportDownloadButton.addEventListener("click", downloadCurrentReportCsv);
       reportPdfDownloadButton?.addEventListener("click", downloadAuthorizationReportPdf);
       securityCheckButton?.addEventListener("click", closeFlightMenuAfterAction(renderSecurityCheck));
+      document.querySelectorAll("[data-meal-day]").forEach((tab) => {
+        tab.addEventListener("click", () => selectMealOrderDay(tab.dataset.mealDay));
+      });
       seatMapButton.addEventListener("click", closeFlightMenuAfterAction(renderSeatMap));
 
       mobilePanel.addEventListener("click", (event) => {
