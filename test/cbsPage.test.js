@@ -353,8 +353,12 @@ test('On-hand exchange is saved to Google Sheets and shows old and new tags', ()
   assert.match(page, /exchange-tag-old/);
   assert.match(page, /exchange-tag-new/);
   assert.match(page, /exchange-tag-flow::before \{ content:"Exchange"/);
-  assert.match(page, /exchange-tag-flow"><span class="exchange-tag-new">\$\{escapeHtml\(lastExchange\.newTag\)\}<\/span><span class="exchange-tag-old">\$\{escapeHtml\(lastExchange\.oldTag\)\}/);
-  assert.match(page, /\.exchange-tag-old \{ color:#667085; font-size:11px/);
+  assert.match(page, /exchange-tag-flow"><span class="exchange-tag-new">\$\{escapeHtml\(lastExchange\.newTag\)\}<\/span><button class="exchange-tag-old"/);
+  assert.match(page, /exchange-old-number">\$\{escapeHtml\(lastExchange\.oldTag\)\}/);
+  assert.match(page, /\.exchange-tag-old \{ position:relative; z-index:1/);
+  assert.match(page, /\.exchange-tag-new \{ position:relative; z-index:2/);
+  assert.match(page, /data-exchange-old-toggle/);
+  assert.match(page, /classList\.toggle\('is-open'\)/);
   assert.match(page, /detail:`\$\{exchange\.oldTag\} → \$\{exchange\.newTag\}`/);
 });
 
@@ -367,6 +371,15 @@ test('home Baggage add flow also supports On-hand Exchange', () => {
   assert.match(indexPage, /action:"exchange", newTagNumber, updatedBy:currentUserName\(\)/);
   assert.match(server, /latestExchange\?\.oldTag \|\| record\.bagTag/);
   assert.match(drive, /next\.bagTag = newBagTag/);
+});
+
+test('home Baggage Update menu supports Exchange', () => {
+  assert.match(indexPage, /data-test-update-mode="exchange"/);
+  assert.match(indexPage, /activeMode === "exchange"/);
+  assert.match(indexPage, /field\("New tag number", "newTagNumber"/);
+  assert.match(indexPage, /if \(mode === "exchange"\)/);
+  assert.match(indexPage, /This bag does not have an Open On-hand case/);
+  assert.match(indexPage, /action:"exchange", newTagNumber, updatedBy:currentUserName\(\)/);
 });
 
 test('CBS passenger information keeps all operationally required fields visible', () => {

@@ -3600,6 +3600,7 @@
       .test-exchange-summary b { color: #bcd8ff; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; }
       .test-exchange-summary strong { color: white; font-size: 20px; }
       .test-exchange-summary small { color: var(--muted); font-size: 13px; }
+      .test-exchange-summary.is-wide { grid-column: 1 / -1; }
 
       .test-field[hidden],
       [data-test-rush-field][hidden] {
@@ -7168,7 +7169,7 @@
       }
 
       function renderTestUpdateForm(record, mode = "rush", message = "") {
-        const activeMode = ["rush", "location", "shipping"].includes(mode) ? mode : "rush";
+        const activeMode = ["rush", "location", "shipping", "exchange"].includes(mode) ? mode : "rush";
         const field = (label, name, value = "", attrs = "") => `<label class="test-field"><span>${escapeHtml(label)}</span><input name="${escapeHtml(name)}" value="${escapeHtml(value)}" ${attrs} /></label>`;
         const fields = activeMode === "rush"
           ? [
@@ -7180,7 +7181,9 @@
             ].join("")
           : activeMode === "location"
             ? field("Current location", "location", record.location || "", "required")
-            : [
+            : activeMode === "exchange"
+              ? `<div class="test-exchange-summary is-wide"><b>Current tag</b><strong>${escapeHtml(record.bagTag)}</strong><small>The new tag will replace this tag.</small></div>${field("New tag number", "newTagNumber", "", 'maxlength="8" pattern="[A-Z]{2}[0-9]{6}" required')}`
+              : [
                 field("Tracking number", "trackingNumber", record.trackingNumber || "", "required"),
                 field("Shipping fee", "shippingFee", record.shippingFee || "", "required"),
               ].join("");
@@ -7189,6 +7192,7 @@
             <button type="button" data-test-update-mode="rush" class="${activeMode === "rush" ? "is-active" : ""}">Rush</button>
             <button type="button" data-test-update-mode="location" class="${activeMode === "location" ? "is-active" : ""}">Bag location update</button>
             <button type="button" data-test-update-mode="shipping" class="${activeMode === "shipping" ? "is-active" : ""}">Shipping</button>
+            <button type="button" data-test-update-mode="exchange" class="${activeMode === "exchange" ? "is-active" : ""}">Exchange</button>
           </div>
           <div class="test-form-grid">${fields}<div class="test-form-actions"><button class="test-submit" type="submit">Update</button><button class="test-back-button" type="button" data-test-close-update>Close</button><span class="panel-muted">${escapeHtml(message)}</span></div></div>
         </form>`;
@@ -7197,7 +7201,7 @@
       function renderTestRecord(record, mode = "", message = "") {
         if (!testOutput || !record) return;
         testOutput._record = record;
-        const showUpdateForm = ["rush", "location", "shipping"].includes(mode);
+        const showUpdateForm = ["rush", "location", "shipping", "exchange"].includes(mode);
         testOutput.innerHTML = `<article class="test-report-card">
           <div class="test-report-head">
             <div class="test-report-title"><strong>${escapeHtml(record.bagTag)}</strong><span class="panel-muted">${escapeHtml(record.direction || "Baggage report")}</span></div>
@@ -7404,6 +7408,21 @@
       async function submitTestUpdate(form) {
         const bagTag = form.dataset.bagTag;
         const mode = form.dataset.updateMode || "rush";
+        if (mode === "exchange") {
+          const newTagNumber = normalizeTestBagTag(formValue(form, "newTagNumber"));
+          if (!isValidTestBagTag(newTagNumber)) throw new Error("New tag must match MU123456 format.");
+          const unresolved = await apiJson('/cbs-unresolved-baggage');
+          const onHand = (unresolved?.rows || []).find((row) => !row.resolvedAt && normalizeTestBagTag(row.bagTag) === normalizeTestBagTag(bagTag));
+          if (!onHand) throw new Error("This bag does not have an Open On-hand case.");
+          await apiJson(`/cbs-unresolved-baggage/${encodeURIComponent(onHand.rowNumber)}/update`, {
+            method:"POST",
+            headers:{ "Content-Type":"application/json" },
+            body:JSON.stringify({ action:"exchange", newTagNumber, updatedBy:currentUserName() }),
+          });
+          const baggage = await apiJson(`/test-baggage/${encodeURIComponent(newTagNumber)}`);
+          if (baggage?.record) renderTestRecord(baggage.record, "", "Exchange completed.");
+          return;
+        }
         const payload = {
           type: mode,
           updatedBy: currentUserName(),
