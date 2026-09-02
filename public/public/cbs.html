@@ -89,18 +89,15 @@
     .rush-match { display:inline-block; margin-left:8px; color:#6941c6; font-size:11px; font-weight:950; text-transform:uppercase; animation:rush-today-hop .8s ease-in-out infinite alternate; }
     .on-hand-match { margin-right:6px; margin-left:0; }
     .on-hand-location { display:flex; align-items:center; justify-content:space-between; gap:10px; }
-    .exchange-tag-flow { position:relative; display:grid; width:100%; min-width:0; padding:0 3px 7px 0; white-space:normal; }
-    .exchange-tag-flow::before { content:"Exchange"; position:absolute; z-index:3; top:4px; left:10px; color:#175cd3; font-size:9px; font-weight:950; letter-spacing:.08em; text-transform:uppercase; pointer-events:none; }
-    .exchange-tag-new,.exchange-tag-old { display:flex; align-items:flex-end; min-width:0; overflow-wrap:anywhere; border:0; text-align:left; }
-    .exchange-tag-new { position:relative; z-index:2; min-height:43px; padding:18px 10px 6px; border-left:4px solid #2e90fa; border-radius:8px; background:#eaf4ff; color:#087443; font-size:14px; font-weight:950; box-shadow:0 4px 9px rgba(46,144,250,.13); }
-    .exchange-tag-new::before { content:"New"; margin-right:7px; color:#12b76a; font-size:8px; text-transform:uppercase; }
-    .exchange-tag-old { position:relative; z-index:1; width:calc(100% - 10px); min-height:27px; margin:-5px 0 0 10px; padding:8px 9px 4px; border-radius:0 0 7px 7px; background:#dfe7f0; color:#667085; font-size:10px; font-weight:800; cursor:pointer; transition:transform .16s ease,margin .16s ease; }
-    .exchange-tag-old::before { content:"Old"; margin-right:6px; color:#98a2b3; font-size:7px; text-transform:uppercase; }
-    .exchange-tag-old .exchange-old-number { display:none; }
-    .exchange-tag-old.is-open { z-index:1; margin-top:2px; transform:translateY(0); }
-    .exchange-tag-old.is-open .exchange-old-number { display:inline; }
-    .exchange-tag-old.is-open .exchange-old-hint { display:none; }
-    .exchange-tag-arrow { display:none; }
+    .exchange-tag-flow { display:inline-grid; grid-template-columns:max-content 74px max-content; align-items:center; min-width:270px; padding:3px 0 15px; white-space:nowrap; }
+    .exchange-tag-new,.exchange-tag-old { display:inline-flex; align-items:center; justify-content:center; min-width:96px; min-height:30px; padding:6px 13px; border:0; border-radius:10px; font-size:13px; font-weight:950; letter-spacing:.02em; }
+    .exchange-tag-old { background:#edf2f8; color:#667085; }
+    .exchange-tag-new { background:#edf8f0; color:#288843; }
+    .exchange-tag-arrow { position:relative; display:grid; place-items:center; width:28px; height:28px; margin:auto; border:1px solid #b9d7ff; border-radius:999px; background:#fff; color:#2878dc; font-size:20px; font-weight:700; line-height:1; box-shadow:0 2px 7px rgba(40,120,220,.1); }
+    .exchange-tag-arrow::before,.exchange-tag-arrow::after { content:""; position:absolute; top:50%; width:27px; border-top:2px dotted #a9c8ef; transform:translateY(-50%); }
+    .exchange-tag-arrow::before { right:100%; margin-right:5px; }
+    .exchange-tag-arrow::after { left:100%; margin-left:5px; }
+    .exchange-tag-arrow-label { position:absolute; top:31px; left:50%; color:#1769c2; font-size:8px; font-weight:950; letter-spacing:.04em; line-height:1; text-transform:uppercase; transform:translateX(-50%); }
     .exchange-current-card { display:grid; gap:8px; padding:14px; border:1px solid #f4b740; border-radius:14px; background:#fffaf0; }
     @keyframes rush-today-hop { from { transform:translateY(2px); } to { transform:translateY(-4px); } }
     .cbs-sheet .sheet-empty { color:#98a2b3; }
@@ -564,7 +561,9 @@
       return `<form class="add-baggage-form" data-add-baggage-direction="inbound"><label><span>Bag Tag Number</span><input name="bagTag" value="${escapeHtml(bagTag)}" readonly /></label><label><span>Date</span><input name="date" type="date" value="${today}" required /></label><label><span>Bag Type</span><select name="bagType"><option>Passenger bag</option><option>Inbound rush</option><option>Co-mail</option></select></label><label><span>Current Location</span><select name="location" required><option>Office</option><option>Transfer</option></select></label><div class="actions"><button type="submit">Submit</button><button class="secondary" type="button" data-cancel-add-baggage>Back</button></div></form>`;
     }
     function renderAddBaggageChoice(bagTag) {
-      addBaggageOutput.innerHTML = `<div class="add-baggage-panel"><h2>${escapeHtml(bagTag)}</h2><p class="muted">No matching bag found. Choose how to add this new tag.</p><div class="add-baggage-modes"><button type="button" data-add-baggage-mode="inbound">Inbound</button><button type="button" data-add-baggage-mode="outbound">Outbound</button><button type="button" data-add-baggage-mode="exchange">Exchange</button></div></div>`;
+      const hasOpenOnHand = (window._unresolvedBaggageSourceRows || []).some((row) => !row.resolvedAt);
+      const exchangeButton = hasOpenOnHand ? '<button type="button" data-add-baggage-mode="exchange">Exchange</button>' : '';
+      addBaggageOutput.innerHTML = `<div class="add-baggage-panel"><h2>${escapeHtml(bagTag)}</h2><p class="muted">No matching bag found. Choose how to add this new tag.</p><div class="add-baggage-modes"><button type="button" data-add-baggage-mode="inbound">Inbound</button><button type="button" data-add-baggage-mode="outbound">Outbound</button>${exchangeButton}</div></div>`;
     }
     function renderExistingBaggage(record) {
       const onHand = (window._unresolvedBaggageSourceRows || []).find((row) => !row.resolvedAt && normalizeBaggageTag(row.bagTag) === normalizeBaggageTag(record.bagTag));
@@ -593,7 +592,7 @@
     }
     function unresolvedUpdateFieldsHtml(action, bagTag, worldTracerFileNumber = '') {
       if (action === 'worldtracer') return `<label class="wide"><span>WorldTracer File Number</span><input name="worldTracerFileNumber" value="${escapeHtml(worldTracerFileNumber)}" required /></label>`;
-      if (action === 'exchange') return `<div class="exchange-current-card wide"><strong>Current Open On-hand</strong><span class="exchange-tag-flow"><span class="exchange-tag-new">Enter below</span><span class="exchange-tag-old">${escapeHtml(bagTag)}</span></span></div><label class="wide"><span>New Tag Number</span><input name="newTagNumber" pattern="[A-Za-z]{2}[0-9]{6}" placeholder="MU123456" required /></label>`;
+      if (action === 'exchange') return `<div class="exchange-current-card wide"><strong>Current Open On-hand</strong><span class="exchange-tag-flow"><span class="exchange-tag-old">${escapeHtml(bagTag)}</span><span class="exchange-tag-arrow" aria-hidden="true">→<span class="exchange-tag-arrow-label">Exchange</span></span><span class="exchange-tag-new">New tag</span></span></div><label class="wide"><span>New Tag Number</span><input name="newTagNumber" pattern="[A-Za-z]{2}[0-9]{6}" placeholder="MU123456" required /></label>`;
       if (action === 'reopen') return '<p class="muted wide">Reopen this case and return it to Open Case.</p>';
       if (action === 'passenger-collected') return '';
       if (action === 'case-close') return '<label class="wide"><span>Notes</span><textarea name="note" placeholder="Enter case close notes" required></textarea></label>';
@@ -633,7 +632,7 @@
       window._unresolvedBaggageLoaded = true;
       if (window._cbsRows) requestAnimationFrame(renderCases);
       if (!rows.length) { unresolvedBaggageOutput.innerHTML = `<p class="muted">${showClosed ? 'No closed On-hand baggage cases.' : 'No On-hand baggage cases.'}</p>`; return; }
-      unresolvedBaggageOutput.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:190px"><col style="width:200px"><col style="width:120px"><col style="width:130px"><col style="width:180px"><col></colgroup><thead><tr><th>WorldTracer File Number</th><th>Bag Tag</th><th>Direction</th><th>Date</th><th>Type / Status</th><th>Location</th></tr></thead><tbody>${rows.map((row) => {
+      unresolvedBaggageOutput.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:190px"><col style="width:310px"><col style="width:120px"><col style="width:130px"><col style="width:180px"><col></colgroup><thead><tr><th>WorldTracer File Number</th><th>Bag Tag</th><th>Direction</th><th>Date</th><th>Type / Status</th><th>Location</th></tr></thead><tbody>${rows.map((row) => {
         const resolvedHistory = row.history.filter((item) => item.resolvedAt);
         // "Other" records stay in Open Case and remain actionable so staff can
         // add WorldTracer details or apply a final resolution later.
@@ -652,7 +651,7 @@
             : '';
         const progressRow = active || row;
         const lastExchange = (row.exchangeHistory || []).at(-1);
-        const tagDisplay = lastExchange ? `<span class="exchange-tag-flow"><span class="exchange-tag-new">${escapeHtml(lastExchange.newTag)}</span><button class="exchange-tag-old" type="button" data-exchange-old-toggle aria-expanded="false"><span class="exchange-old-hint">Show old tag</span><span class="exchange-old-number">${escapeHtml(lastExchange.oldTag)}</span></button></span>` : `<span class="bag-tag-value">${escapeHtml(row.bagTag)}</span>`;
+        const tagDisplay = lastExchange ? `<span class="exchange-tag-flow"><span class="exchange-tag-old">${escapeHtml(lastExchange.oldTag)}</span><span class="exchange-tag-arrow" aria-hidden="true">→<span class="exchange-tag-arrow-label">Exchange</span></span><span class="exchange-tag-new">${escapeHtml(lastExchange.newTag)}</span></span>` : `<span class="bag-tag-value">${escapeHtml(row.bagTag)}</span>`;
         return `<tr class="case-summary-row" data-toggle-unresolved-update role="button" tabindex="0" aria-expanded="false"><td class="sheet-meta">${escapeHtml(row.worldTracerFileNumber || '-')}</td><td class="sheet-meta"><span class="on-hand-tag-summary">${matchBadge}${tagDisplay}</span></td><td class="sheet-meta">${escapeHtml(row.direction || '-')}</td><td class="sheet-meta">${escapeHtml(row.flightDate || '-')}</td><td class="sheet-meta">${escapeHtml(row.bagType || row.status || '-')}</td><td class="sheet-meta"><span class="on-hand-location"><span>${escapeHtml(row.location || '-')}</span>${linkButton}</span></td></tr><tr class="case-detail-row" data-unresolved-detail hidden><td colspan="6"><div class="case-detail-layout"><div class="case-progress-column">${unresolvedProgressHtml(progressRow)}</div><div class="case-detail-right">${formHtml}${historyHtml}</div></div></td></tr>`;
       }).join('')}</tbody></table></div>`;
       requestAnimationFrame(syncCaseProgressHeights);
@@ -1566,13 +1565,6 @@
       } catch (error) { alert(error.message); } finally { button.disabled = false; }
     });
     unresolvedBaggageOutput?.addEventListener('click', async (event) => {
-      const oldTagToggle = event.target.closest('[data-exchange-old-toggle]');
-      if (oldTagToggle) {
-        event.stopPropagation();
-        const open = oldTagToggle.classList.toggle('is-open');
-        oldTagToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-        return;
-      }
       const link = event.target.closest('[data-link-on-hand]');
       if (link) {
         event.stopPropagation();
@@ -1701,7 +1693,7 @@
     addBaggageOutput?.addEventListener('click', (event) => {
       const exchange = event.target.closest('[data-start-add-exchange]');
       if (exchange) {
-        addBaggageOutput.innerHTML = `<div class="add-baggage-panel"><h2>Exchange On-hand Tag</h2><form class="add-exchange-form" data-unresolved-row="${escapeHtml(exchange.dataset.startAddExchange)}"><div class="exchange-current-card"><strong>Current Open On-hand</strong><span class="exchange-tag-flow"><span class="exchange-tag-old">${escapeHtml(exchange.dataset.currentTag)}</span><span class="exchange-tag-arrow">→</span><span class="exchange-tag-new">New tag</span></span></div><label><span>New Tag Number</span><input name="newTagNumber" pattern="[A-Za-z]{2}[0-9]{6}" placeholder="MU123456" required autofocus /></label><div class="actions"><button type="submit">Exchange</button><button class="secondary" type="button" data-cancel-add-baggage>Cancel</button></div></form></div>`;
+        addBaggageOutput.innerHTML = `<div class="add-baggage-panel"><h2>Exchange On-hand Tag</h2><form class="add-exchange-form" data-unresolved-row="${escapeHtml(exchange.dataset.startAddExchange)}"><div class="exchange-current-card"><strong>Current Open On-hand</strong><span class="exchange-tag-flow"><span class="exchange-tag-old">${escapeHtml(exchange.dataset.currentTag)}</span><span class="exchange-tag-arrow" aria-hidden="true">→<span class="exchange-tag-arrow-label">Exchange</span></span><span class="exchange-tag-new">New tag</span></span></div><label><span>New Tag Number</span><input name="newTagNumber" pattern="[A-Za-z]{2}[0-9]{6}" placeholder="MU123456" required autofocus /></label><div class="actions"><button type="submit">Exchange</button><button class="secondary" type="button" data-cancel-add-baggage>Cancel</button></div></form></div>`;
         return;
       }
       const mode = event.target.closest('[data-add-baggage-mode]');

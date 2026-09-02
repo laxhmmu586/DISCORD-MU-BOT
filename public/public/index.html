@@ -3601,6 +3601,15 @@
       .test-exchange-summary strong { color: white; font-size: 20px; }
       .test-exchange-summary small { color: var(--muted); font-size: 13px; }
       .test-exchange-summary.is-wide { grid-column: 1 / -1; }
+      .test-exchange-flow { display:inline-grid; grid-template-columns:max-content 74px max-content; align-items:center; justify-content:start; min-width:270px; padding:3px 0 15px; white-space:nowrap; }
+      .test-exchange-old,.test-exchange-new { display:inline-flex; align-items:center; justify-content:center; min-width:96px; min-height:30px; padding:6px 13px; border-radius:10px; font-size:13px; font-weight:900; letter-spacing:.02em; }
+      .test-exchange-old { background:#edf2f8; color:#667085; }
+      .test-exchange-new { background:#edf8f0; color:#288843; }
+      .test-exchange-arrow { position:relative; display:grid; place-items:center; width:28px; height:28px; margin:auto; border:1px solid #b9d7ff; border-radius:999px; background:#fff; color:#2878dc; font-size:20px; font-weight:700; line-height:1; box-shadow:0 2px 7px rgba(40,120,220,.1); }
+      .test-exchange-arrow::before,.test-exchange-arrow::after { content:""; position:absolute; top:50%; width:27px; border-top:2px dotted #a9c8ef; transform:translateY(-50%); }
+      .test-exchange-arrow::before { right:100%; margin-right:5px; }
+      .test-exchange-arrow::after { left:100%; margin-left:5px; }
+      .test-exchange-arrow-label { position:absolute; top:31px; left:50%; color:#69a8ff; font-size:8px; font-weight:950; letter-spacing:.04em; line-height:1; text-transform:uppercase; transform:translateX(-50%); }
 
       .test-field[hidden],
       [data-test-rush-field][hidden] {
@@ -7182,7 +7191,7 @@
           : activeMode === "location"
             ? field("Current location", "location", record.location || "", "required")
             : activeMode === "exchange"
-              ? `<div class="test-exchange-summary is-wide"><b>Current tag</b><strong>${escapeHtml(record.bagTag)}</strong><small>The new tag will replace this tag.</small></div>${field("New tag number", "newTagNumber", "", 'maxlength="8" pattern="[A-Z]{2}[0-9]{6}" required')}`
+              ? `<div class="test-exchange-summary is-wide"><b>Current tag</b><span class="test-exchange-flow"><span class="test-exchange-old">${escapeHtml(record.bagTag)}</span><span class="test-exchange-arrow" aria-hidden="true">→<span class="test-exchange-arrow-label">Exchange</span></span><span class="test-exchange-new">New tag</span></span></div>${field("New tag number", "newTagNumber", "", 'maxlength="8" pattern="[A-Z]{2}[0-9]{6}" required')}`
               : [
                 field("Tracking number", "trackingNumber", record.trackingNumber || "", "required"),
                 field("Shipping fee", "shippingFee", record.shippingFee || "", "required"),
@@ -7192,7 +7201,7 @@
             <button type="button" data-test-update-mode="rush" class="${activeMode === "rush" ? "is-active" : ""}">Rush</button>
             <button type="button" data-test-update-mode="location" class="${activeMode === "location" ? "is-active" : ""}">Bag location update</button>
             <button type="button" data-test-update-mode="shipping" class="${activeMode === "shipping" ? "is-active" : ""}">Shipping</button>
-            <button type="button" data-test-update-mode="exchange" class="${activeMode === "exchange" ? "is-active" : ""}">Exchange</button>
+            ${window._testHasOpenOnHand ? `<button type="button" data-test-update-mode="exchange" class="${activeMode === "exchange" ? "is-active" : ""}">Exchange</button>` : ""}
           </div>
           <div class="test-form-grid">${fields}<div class="test-form-actions"><button class="test-submit" type="submit">Update</button><button class="test-back-button" type="button" data-test-close-update>Close</button><span class="panel-muted">${escapeHtml(message)}</span></div></div>
         </form>`;
@@ -7217,15 +7226,19 @@
         return `<span class="test-choice-icon" aria-hidden="true">${direction === "inbound" ? "🛬" : direction === "outbound" ? "🛫" : "⇄"}</span>`;
       }
 
-      function renderTestAddChoice(bagTag) {
+      async function renderTestAddChoice(bagTag) {
         if (!testOutput) return;
+        const onHandData = await apiJson('/cbs-unresolved-baggage');
+        const hasOpenOnHand = (onHandData?.rows || []).some((row) => !row.resolvedAt);
+        window._testHasOpenOnHand = hasOpenOnHand;
+        const exchangeButton = hasOpenOnHand ? `<button class="test-choice-card" type="button" data-test-create-mode="exchange">${testPlaneIcon("exchange")}<span>Exchange</span></button>` : '';
         testOutput._record = null;
         testOutput.innerHTML = `<article class="test-report-card">
           <div class="test-report-head"><div class="test-report-title"><strong>${escapeHtml(bagTag)}</strong><span class="panel-muted">No matching bag found.</span></div></div>
           <div class="test-choice-grid" aria-label="Create type">
             <button class="test-choice-card" type="button" data-test-create-mode="inbound">${testPlaneIcon("inbound")}<span>Inbound</span></button>
             <button class="test-choice-card" type="button" data-test-create-mode="outbound">${testPlaneIcon("outbound")}<span>Outbound</span></button>
-            <button class="test-choice-card" type="button" data-test-create-mode="exchange">${testPlaneIcon("exchange")}<span>Exchange</span></button>
+            ${exchangeButton}
           </div>
         </article>`;
         wireTestTimelineDrag();
@@ -7266,7 +7279,7 @@
         const exchange = data?.record?.exchangeHistory?.at(-1);
         const baggage = await apiJson(`/test-baggage/${encodeURIComponent(newTagNumber)}`);
         if (baggage?.record) return renderTestRecord(baggage.record, "", "Exchange completed.");
-        testOutput.innerHTML = `<article class="test-report-card"><div class="test-report-head"><div class="test-report-title"><strong>${escapeHtml(newTagNumber)}</strong><span class="panel-muted">Exchange completed.</span></div></div><div class="test-exchange-summary"><b>Exchange</b><strong>New · ${escapeHtml(newTagNumber)}</strong><small>Old · ${escapeHtml(exchange?.oldTag || "-")}</small></div></article>`;
+        testOutput.innerHTML = `<article class="test-report-card"><div class="test-report-head"><div class="test-report-title"><strong>${escapeHtml(newTagNumber)}</strong><span class="panel-muted">Exchange completed.</span></div></div><div class="test-exchange-summary"><b>Exchange</b><span class="test-exchange-flow"><span class="test-exchange-old">${escapeHtml(exchange?.oldTag || "-")}</span><span class="test-exchange-arrow" aria-hidden="true">→<span class="test-exchange-arrow-label">Exchange</span></span><span class="test-exchange-new">${escapeHtml(newTagNumber)}</span></span></div></article>`;
       }
 
       function renderTestBagEntry(mode, entry = {}, index = 0) {
@@ -7352,9 +7365,13 @@
         if (testBagSearchInput) testBagSearchInput.value = bagTag;
         testOutput.innerHTML = `<p class="panel-muted">Searching ${escapeHtml(bagTag)}...</p>`;
         try {
-          const data = await apiJson(`/test-baggage/${encodeURIComponent(bagTag)}`);
+          const [data, onHandData] = await Promise.all([
+            apiJson(`/test-baggage/${encodeURIComponent(bagTag)}`),
+            apiJson('/cbs-unresolved-baggage')
+          ]);
+          window._testHasOpenOnHand = (onHandData?.rows || []).some((row) => !row.resolvedAt);
           if (data?.found && data.record) renderTestRecord(data.record);
-          else renderTestAddChoice(bagTag);
+          else await renderTestAddChoice(bagTag);
         } catch (error) {
           testOutput.innerHTML = `<p class="panel-muted status-fail">${escapeHtml(error?.message || "Baggage lookup failed.")}</p>`;
         }
@@ -8431,7 +8448,9 @@
         }
         const backChoiceButton = event.target.closest("[data-test-back-choice]");
         if (backChoiceButton) {
-          renderTestAddChoice(normalizeTestBagTag(testBagSearchInput?.value));
+          renderTestAddChoice(normalizeTestBagTag(testBagSearchInput?.value)).catch((error) => {
+            testOutput.innerHTML = `<p class="panel-muted status-fail">${escapeHtml(error?.message || "Open On-hand lookup failed.")}</p>`;
+          });
           return;
         }
         const closeUpdateButton = event.target.closest("[data-test-close-update]");

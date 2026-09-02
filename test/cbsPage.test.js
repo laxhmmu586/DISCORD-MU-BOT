@@ -333,6 +333,8 @@ test('Create Rush only asks for a WorldTracer file when the On-hand case has non
 
 test('On-hand tags can be exchanged from Add On-hand and Resolution', () => {
   assert.match(page, /data-add-baggage-mode="exchange">Exchange/);
+  assert.match(page, /const hasOpenOnHand = .*\.some\(\(row\) => !row\.resolvedAt\)/);
+  assert.match(page, /const exchangeButton = hasOpenOnHand \?/);
   assert.match(page, /direction === 'exchange'/);
   assert.match(page, /Select Current Open On-hand/);
   assert.match(page, /name="onHandRowNumber"/);
@@ -352,19 +354,20 @@ test('On-hand exchange is saved to Google Sheets and shows old and new tags', ()
   assert.match(drive, /JSON\.stringify\(exchangeHistory\)/);
   assert.match(page, /exchange-tag-old/);
   assert.match(page, /exchange-tag-new/);
-  assert.match(page, /exchange-tag-flow::before \{ content:"Exchange"/);
-  assert.match(page, /exchange-tag-flow"><span class="exchange-tag-new">\$\{escapeHtml\(lastExchange\.newTag\)\}<\/span><button class="exchange-tag-old"/);
-  assert.match(page, /exchange-old-number">\$\{escapeHtml\(lastExchange\.oldTag\)\}/);
-  assert.match(page, /\.exchange-tag-old \{ position:relative; z-index:1/);
-  assert.match(page, /\.exchange-tag-new \{ position:relative; z-index:2/);
-  assert.match(page, /data-exchange-old-toggle/);
-  assert.match(page, /classList\.toggle\('is-open'\)/);
+  assert.match(page, /grid-template-columns:max-content 74px max-content/);
+  assert.match(page, /exchange-tag-flow"><span class="exchange-tag-old">\$\{escapeHtml\(lastExchange\.oldTag\)\}<\/span><span class="exchange-tag-arrow"[^>]*>→/);
+  assert.match(page, /exchange-tag-arrow-label">Exchange<\/span>/);
+  assert.match(page, /<span class="exchange-tag-new">\$\{escapeHtml\(lastExchange\.newTag\)\}<\/span>/);
+  assert.match(page, /\.exchange-tag-arrow::before,\.exchange-tag-arrow::after/);
   assert.match(page, /detail:`\$\{exchange\.oldTag\} → \$\{exchange\.newTag\}`/);
 });
 
 test('home Baggage add flow also supports On-hand Exchange', () => {
   assert.match(indexPage, /data-test-create-mode="exchange"/);
   assert.match(indexPage, /function renderTestExchangeForm\(newTag, rows = \[\]\)/);
+  assert.match(indexPage, /async function renderTestAddChoice\(bagTag\)/);
+  assert.match(indexPage, /const hasOpenOnHand = .*\.some\(\(row\) => !row\.resolvedAt\)/);
+  assert.match(indexPage, /const exchangeButton = hasOpenOnHand \?/);
   assert.match(indexPage, /Select current Open On-hand/);
   assert.match(indexPage, /data-test-exchange-form/);
   assert.match(indexPage, /submitTestExchange\(exchangeForm\)/);
@@ -375,8 +378,12 @@ test('home Baggage add flow also supports On-hand Exchange', () => {
 
 test('home Baggage Update menu supports Exchange', () => {
   assert.match(indexPage, /data-test-update-mode="exchange"/);
+  assert.match(indexPage, /window\._testHasOpenOnHand \? `<button type="button" data-test-update-mode="exchange"/);
+  assert.match(indexPage, /window\._testHasOpenOnHand = \(onHandData\?\.rows \|\| \[\]\)\.some/);
   assert.match(indexPage, /activeMode === "exchange"/);
   assert.match(indexPage, /field\("New tag number", "newTagNumber"/);
+  assert.match(indexPage, /test-exchange-old.*record\.bagTag/);
+  assert.match(indexPage, /test-exchange-arrow-label">Exchange/);
   assert.match(indexPage, /if \(mode === "exchange"\)/);
   assert.match(indexPage, /This bag does not have an Open On-hand case/);
   assert.match(indexPage, /action:"exchange", newTagNumber, updatedBy:currentUserName\(\)/);
