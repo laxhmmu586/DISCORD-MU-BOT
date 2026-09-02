@@ -567,7 +567,9 @@
       addBaggageOutput.innerHTML = `<div class="add-baggage-panel"><h2>${escapeHtml(bagTag)}</h2><p class="muted">No matching bag found. Choose how to add this new tag.</p><div class="add-baggage-modes"><button type="button" data-add-baggage-mode="inbound">Inbound</button><button type="button" data-add-baggage-mode="outbound">Outbound</button><button type="button" data-add-baggage-mode="exchange">Exchange</button></div></div>`;
     }
     function renderExistingBaggage(record) {
-      addBaggageOutput.innerHTML = `<div class="add-baggage-panel"><h2>${escapeHtml(record.bagTag)}</h2><p><strong>${escapeHtml(record.direction || '-')}</strong> · ${escapeHtml(record.flight || '-')} · ${escapeHtml(record.date || '-')}</p><p class="muted">${escapeHtml(record.bagType || record.status || '')}${record.location ? ` · ${escapeHtml(record.location)}` : ''}</p><button class="secondary" type="button" data-cancel-add-baggage>Search Another Bag</button></div>`;
+      const onHand = (window._unresolvedBaggageSourceRows || []).find((row) => !row.resolvedAt && normalizeBaggageTag(row.bagTag) === normalizeBaggageTag(record.bagTag));
+      const exchange = onHand ? `<div class="exchange-current-card"><strong>Current Open On-hand</strong><span>Tag: <span class="bag-tag-value">${escapeHtml(onHand.bagTag)}</span></span><span>${escapeHtml(onHand.bagType || onHand.status || '-')} · ${escapeHtml(onHand.location || '-')}</span><button type="button" data-start-add-exchange="${escapeHtml(onHand.rowNumber)}" data-current-tag="${escapeHtml(onHand.bagTag)}">Exchange tag</button></div>` : '';
+      addBaggageOutput.innerHTML = `<div class="add-baggage-panel"><h2>${escapeHtml(record.bagTag)}</h2><p><strong>${escapeHtml(record.direction || '-')}</strong> · ${escapeHtml(record.flight || '-')} · ${escapeHtml(record.date || '-')}</p><p class="muted">${escapeHtml(record.bagType || record.status || '')}${record.location ? ` · ${escapeHtml(record.location)}` : ''}</p>${exchange}<button class="secondary" type="button" data-cancel-add-baggage>Search Another Bag</button></div>`;
     }
     function renderWorldTracerCases(rows = []) {
       if (!rows.length) { worldTracerOutput.innerHTML = `<p class="muted">${label('No Rush Bag cases yet.', '暂无 Rush Bag 案件。')}</p>`; return; }
@@ -1697,6 +1699,11 @@
       } catch (error) { addBaggageOutput.innerHTML = `<p class="status err">${escapeHtml(error.message)}</p>`; }
     });
     addBaggageOutput?.addEventListener('click', (event) => {
+      const exchange = event.target.closest('[data-start-add-exchange]');
+      if (exchange) {
+        addBaggageOutput.innerHTML = `<div class="add-baggage-panel"><h2>Exchange On-hand Tag</h2><form class="add-exchange-form" data-unresolved-row="${escapeHtml(exchange.dataset.startAddExchange)}"><div class="exchange-current-card"><strong>Current Open On-hand</strong><span class="exchange-tag-flow"><span class="exchange-tag-old">${escapeHtml(exchange.dataset.currentTag)}</span><span class="exchange-tag-arrow">→</span><span class="exchange-tag-new">New tag</span></span></div><label><span>New Tag Number</span><input name="newTagNumber" pattern="[A-Za-z]{2}[0-9]{6}" placeholder="MU123456" required autofocus /></label><div class="actions"><button type="submit">Exchange</button><button class="secondary" type="button" data-cancel-add-baggage>Cancel</button></div></form></div>`;
+        return;
+      }
       const mode = event.target.closest('[data-add-baggage-mode]');
       if (mode) { const bagTag = normalizeBaggageTag(addBaggageSearch.elements.bagTag.value); addBaggageOutput.innerHTML = `<div class="add-baggage-panel"><h2>${escapeHtml(bagTag)}</h2>${addBaggageFormHtml(bagTag, mode.dataset.addBaggageMode)}</div>`; return; }
       if (event.target.closest('[data-cancel-add-baggage]')) { addBaggageOutput.innerHTML = '<p class="muted">Enter a bag tag number to search.</p>'; addBaggageSearch.elements.bagTag.focus(); }
