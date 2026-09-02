@@ -25,7 +25,11 @@ test('empty PD meal totals display a dash rather than None', () => {
 });
 
 test('meal order reconciliation colors reservation totals and SPML mismatches', () => {
-  assert.match(html, /orderedTotal > reservation[\s\S]*classList\.add\("is-over"\)/);
+  assert.match(html, /orderedTotal >= reservation[\s\S]*classList\.add\("is-over"\)/);
   assert.match(html, /orderedTotal < reservation[\s\S]*classList\.add\("is-under"\)/);
   assert.match(html, /!mealCountsMatch\(orderedMeals, pdMeals\)[\s\S]*classList\.add\("is-mismatch"\)/);
+});
+
+test('warning is the first operational action before CHD', () => {
+  assert.match(html, /class="detail-actions" aria-label="Flight detail actions">\s*<button[^>]*id="warning-action"[\s\S]*id="chd-action"/);
 });

@@ -718,10 +718,10 @@
 
       .details-manifest {
         display: grid;
-        grid-template-columns: minmax(720px, 1fr) minmax(132px, 132px);
+        grid-template-columns: minmax(720px, 1fr);
         grid-template-areas:
-          "operations warning"
-          "operations warning";
+          "operations"
+          "operations";
         grid-template-rows: minmax(58px, 1fr) minmax(58px, 1fr);
         gap: 12px;
         align-items: stretch;
@@ -4601,10 +4601,10 @@
                     </div>
                   </div>
                 </div>
-                <button class="detail-action warning-action summary-warning-action" type="button" data-panel="warning" id="warning-action" hidden aria-label="Open warnings"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M16 5 29 27H3z"/><path d="M16 12v7"/><path d="M16 23h.01"/></svg></span><span class="detail-action-label">WARNING</span> <span class="detail-action-badge warning-badge" id="warning-count">0</span></button>
               </div>
             </div>
             <div class="detail-actions" aria-label="Flight detail actions">
+              <button class="detail-action warning-action" type="button" data-panel="warning" id="warning-action" hidden aria-label="Open warnings"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M16 5 29 27H3z"/><path d="M16 12v7"/><path d="M16 23h.01"/></svg></span><span class="detail-action-label">WARNING</span> <span class="detail-action-badge warning-badge" id="warning-count">0</span></button>
               <button class="detail-action" type="button" data-panel="chd" id="chd-action"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M11 7h10"/><path d="M12 5h8l1 4h-10z"/><path d="M8 8h16v19H8z"/><path d="M12 15h8"/><path d="M12 20h8"/></svg></span><span class="detail-action-label">CHD List</span> <span class="detail-action-badge" id="chd-count"></span></button>
                 <button class="detail-action" type="button" data-panel="gov" id="gov-action"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="16" cy="11" r="5"/><path d="M7 27c1.2-6 4.4-9 9-9s7.8 3 9 9"/></svg></span><span class="detail-action-label">GOV/AQQ</span> <span class="detail-action-badge" id="gov-count"></span></button>
                 <button class="detail-action" type="button" data-panel="webedi" id="webedi-action"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="10"/><path d="M6 16h20"/><path d="M16 6c3 3 4.5 6.3 4.5 10S19 23 16 26"/><path d="M16 6c-3 3-4.5 6.3-4.5 10S13 23 16 26"/></svg></span><span class="detail-action-label">WEB/EDI/RS</span> <span class="detail-action-badge" id="webedi-count"></span></button>
@@ -6210,7 +6210,7 @@
           orderedSpmlElement?.classList.remove("is-mismatch");
           pdElement?.classList.remove("is-mismatch");
           if (emailFound && Number.isFinite(reservation)) {
-            if (orderedTotal > reservation) reservationElement?.classList.add("is-over");
+            if (orderedTotal >= reservation) reservationElement?.classList.add("is-over");
             if (orderedTotal < reservation) reservationElement?.classList.add("is-under");
             if (!mealCountsMatch(orderedMeals, pdMeals)) {
               orderedSpmlElement?.classList.add("is-mismatch");
