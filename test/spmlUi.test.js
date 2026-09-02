@@ -4,10 +4,10 @@ const fs = require('node:fs');
 
 const html = fs.readFileSync(require.resolve('../public/public/index.html'), 'utf8');
 
-test('meal order card shows today and tomorrow without dashboard tiles', () => {
+test('meal order card has date tabs without dashboard tiles', () => {
   assert.match(html, />Meal Order</);
-  assert.match(html, /data-meal-day="today">TODAY/);
-  assert.match(html, /data-meal-day="tomorrow">TOMORROW/);
+  assert.match(html, /data-meal-day="today">---/);
+  assert.match(html, /data-meal-day="tomorrow">---/);
   assert.match(html, />ORDERED SPML</);
   assert.match(html, /id="reservation-table-today"/);
   assert.match(html, /id="reservation-table-tomorrow"/);
@@ -36,6 +36,8 @@ test('today and tomorrow use a tab switcher with one visible panel', () => {
   assert.match(html, /id="meal-order-tab-today"[^>]*aria-selected="true"/);
   assert.match(html, /id="reservation-table-tomorrow"[^>]*hidden/);
   assert.match(html, /function selectMealOrderDay\(day\)/);
+  assert.match(html, /function formatMealFlightDate\(value\)/);
+  assert.match(html, /nextMealFlightDate\(sy\.flightDate\)/);
 });
 
 test('warning is the first operational action before CHD', () => {

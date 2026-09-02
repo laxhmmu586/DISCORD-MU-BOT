@@ -730,16 +730,17 @@
 
       .manifest-section.is-reservation { grid-area: reservation; }
       .manifest-section.is-checkin { grid-area: checkin; }
-      .manifest-section.is-operations { grid-area:operations; min-width:0; padding:18px; text-align:left; border:0; background:rgba(2,13,25,.48); box-shadow:inset 0 1px rgba(255,255,255,.04),0 15px 38px rgba(0,0,0,.26); }
-      .meal-order-title { display:block; margin:0 0 12px 3px; font-size:16px; letter-spacing:.25px; }
-      .meal-order-tabs { display:grid; grid-template-columns:repeat(2,1fr); margin-bottom:0; border:1px solid rgba(88,167,255,.42); border-bottom:0; border-radius:7px 7px 0 0; overflow:hidden; background:rgba(3,16,31,.82); }
+      .manifest-section.is-operations { grid-area:operations; min-width:0; padding:0; text-align:left; border:0; background:transparent; box-shadow:none; backdrop-filter:none; }
+      .meal-order-title { display:block; margin:0 0 12px; text-align:center; font-size:17px; letter-spacing:.25px; text-transform:uppercase; }
+      .meal-order-shell { overflow:hidden; border:1px solid rgba(49,145,218,.52); border-radius:10px; background:linear-gradient(145deg,rgba(5,29,49,.90),rgba(2,17,31,.82)); box-shadow:none; }
+      .meal-order-shell.has-shortage { border-color:rgba(255,178,39,.95); box-shadow:inset 0 0 26px rgba(255,166,24,.08),0 0 0 1px rgba(255,199,44,.26),0 0 18px rgba(255,166,24,.28); }
+      .meal-order-tabs { display:grid; grid-template-columns:repeat(2,1fr); padding:0 18px; background:transparent; }
       .meal-order-tab { position:relative; padding:12px; border:0; background:transparent; color:var(--muted); font-size:12px; font-weight:900; letter-spacing:.8px; cursor:pointer; }
       .meal-order-tab[aria-selected="true"] { color:#35d9a0; background:linear-gradient(180deg,rgba(22,104,91,.15),transparent); }
       .meal-order-tab[aria-selected="true"]::after { content:""; position:absolute; left:12px; right:12px; bottom:0; height:2px; background:#28d8a0; box-shadow:0 0 10px rgba(40,216,160,.55); }
       .meal-order-days { display:block; }
-      .reservation-table { display:none; grid-template-columns:38px 70px 84px minmax(140px,1fr) minmax(140px,1fr); align-items:start; gap:10px 14px; min-height:154px; padding:18px 20px 20px; border:1px solid rgba(88,167,255,.42); border-radius:0 0 7px 7px; background:linear-gradient(145deg,rgba(9,35,59,.88),rgba(3,16,31,.76)); box-shadow:inset 0 0 26px rgba(44,131,218,.08),0 9px 25px rgba(0,0,0,.22); font-size:12px; }
+      .reservation-table { display:none; grid-template-columns:38px 70px 84px minmax(140px,1fr) minmax(140px,1fr); align-items:start; gap:10px 14px; min-height:174px; margin:0 18px; padding:20px 4px 24px; border:0; border-top:1px solid rgba(49,145,218,.26); border-radius:0; background:transparent; box-shadow:none; font-size:12px; }
       .reservation-table.is-active { display:grid; }
-      .reservation-table.has-shortage { border-color:rgba(255,178,39,.95); box-shadow:inset 0 0 30px rgba(255,166,24,.10),0 0 0 1px rgba(255,199,44,.35),0 0 22px rgba(255,166,24,.34),0 9px 25px rgba(0,0,0,.25); }
       .reservation-table .reservation-head { color:var(--muted); font-weight:850; letter-spacing:.35px; line-height:1.15; }
       .reservation-table .reservation-cabin { color:var(--muted); font-weight:900; }
       .reservation-table .meal-cell { white-space:pre-line; line-height:1.35; color:#e6f2ff; }
@@ -4588,11 +4589,12 @@
               <div class="details-manifest">
                 <div class="manifest-section is-operations">
                   <strong class="meal-order-title">Meal Order</strong>
-                  <div class="meal-order-tabs" role="tablist" aria-label="Meal order day">
-                    <button class="meal-order-tab" id="meal-order-tab-today" type="button" role="tab" aria-selected="true" aria-controls="reservation-table-today" data-meal-day="today">TODAY</button>
-                    <button class="meal-order-tab" id="meal-order-tab-tomorrow" type="button" role="tab" aria-selected="false" aria-controls="reservation-table-tomorrow" data-meal-day="tomorrow">TOMORROW</button>
-                  </div>
-                  <div class="meal-order-days">
+                  <div class="meal-order-shell" id="meal-order-shell">
+                    <div class="meal-order-tabs" role="tablist" aria-label="Meal order date">
+                      <button class="meal-order-tab" id="meal-order-tab-today" type="button" role="tab" aria-selected="true" aria-controls="reservation-table-today" data-meal-day="today">---</button>
+                      <button class="meal-order-tab" id="meal-order-tab-tomorrow" type="button" role="tab" aria-selected="false" aria-controls="reservation-table-tomorrow" data-meal-day="tomorrow">---</button>
+                    </div>
+                    <div class="meal-order-days">
                     <div class="reservation-table is-active" id="reservation-table-today" role="tabpanel" aria-labelledby="meal-order-tab-today">
                       <span></span><span class="reservation-head">RES</span><span class="reservation-head">ORDERED</span><span class="reservation-head">ORDERED SPML</span><span class="reservation-head">PD</span>
                       <span class="reservation-cabin">F</span><span id="reservation-f" class="reservation-count">---</span><span id="meal-email-f">---</span><span id="meal-spml-f" class="meal-cell">---</span><span id="meal-pd-f" class="meal-cell">---</span>
@@ -4604,6 +4606,7 @@
                       <span class="reservation-cabin">F</span><span id="tomorrow-reservation-f" class="reservation-count">---</span><span id="tomorrow-meal-email-f">---</span><span id="tomorrow-meal-spml-f" class="meal-cell">---</span><span id="tomorrow-meal-pd-f" class="meal-cell">---</span>
                       <span class="reservation-cabin">C</span><span id="tomorrow-reservation-c" class="reservation-count">---</span><span id="tomorrow-meal-email-c">---</span><span id="tomorrow-meal-spml-c" class="meal-cell">---</span><span id="tomorrow-meal-pd-c" class="meal-cell">---</span>
                       <span class="reservation-cabin">Y</span><span id="tomorrow-reservation-y" class="reservation-count">---</span><span id="tomorrow-meal-email-y">---</span><span id="tomorrow-meal-spml-y" class="meal-cell">---</span><span id="tomorrow-meal-pd-y" class="meal-cell">---</span>
+                    </div>
                     </div>
                   </div>
                 </div>
@@ -4863,6 +4866,8 @@
         const reservationBookedEl = document.querySelector("#reservation-booked");
         if (reservationBookedEl) reservationBookedEl.innerHTML = tripleHtml(["---", "---", "---"]);
         ["", "tomorrow-"].forEach((prefix) => ["reservation-f", "reservation-c", "reservation-y", "meal-email-f", "meal-email-c", "meal-email-y", "meal-spml-f", "meal-spml-c", "meal-spml-y", "meal-pd-f", "meal-pd-c", "meal-pd-y"].forEach((id) => setText(`#${prefix}${id}`, "---")));
+        setText("#meal-order-tab-today", "---");
+        setText("#meal-order-tab-tomorrow", "---");
         const checkinAcceptedEl = document.querySelector("#checkin-accepted");
         if (checkinAcceptedEl) checkinAcceptedEl.innerHTML = tripleHtml(["---", "---", "---"]);
         setBadgeText("#chd-count", 0);
@@ -6195,8 +6200,30 @@
         return [...keys].every((key) => (Number(left?.[key]) || 0) === (Number(right?.[key]) || 0));
       }
 
+      function formatMealFlightDate(value) {
+        const match = String(value || "").toUpperCase().match(/^(\d{2})([A-Z]{3})(\d{2})$/);
+        return match ? `${match[1]} ${match[2]} 20${match[3]}` : "---";
+      }
+
+      function nextMealFlightDate(value) {
+        const match = String(value || "").toUpperCase().match(/^(\d{2})([A-Z]{3})(\d{2})$/);
+        const months = { JAN:0, FEB:1, MAR:2, APR:3, MAY:4, JUN:5, JUL:6, AUG:7, SEP:8, OCT:9, NOV:10, DEC:11 };
+        if (!match || months[match[2]] === undefined) return "---";
+        const date = new Date(Date.UTC(2000 + Number(match[3]), months[match[2]], Number(match[1]) + 1));
+        return `${String(date.getUTCDate()).padStart(2, "0")} ${Object.keys(months)[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
+      }
+
+      function updateMealOrderShellState() {
+        const activePanel = document.querySelector(".reservation-table.is-active");
+        document.querySelector("#meal-order-shell")?.classList.toggle("has-shortage", Boolean(activePanel?.classList.contains("has-shortage")));
+      }
+
       function renderMealOrderColumns(sy, prefix = "") {
         const reservationCounts = countTriple(sy?.reservationTicketed);
+        if (sy?.flightDate) {
+          setText(prefix ? "#meal-order-tab-tomorrow" : "#meal-order-tab-today", formatMealFlightDate(sy.flightDate));
+          if (!prefix) setText("#meal-order-tab-tomorrow", nextMealFlightDate(sy.flightDate));
+        }
         let hasShortage = false;
         ["F", "C", "Y"].forEach((cabin, index) => {
           const key = cabin.toLowerCase();
@@ -6229,6 +6256,7 @@
           }
         });
         document.querySelector(`#reservation-table-${prefix ? "tomorrow" : "today"}`)?.classList.toggle("has-shortage", hasShortage);
+        updateMealOrderShellState();
       }
 
       function selectMealOrderDay(day) {
@@ -6240,6 +6268,7 @@
           panel?.classList.toggle("is-active", active);
           if (panel) panel.hidden = !active;
         });
+        updateMealOrderShellState();
       }
 
       async function refreshTomorrowMealOrder(todaySy) {
