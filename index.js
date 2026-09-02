@@ -19,6 +19,7 @@ const {
   findByBagtag
 
 } = require('./flightParser');
+const { matchMuFlight } = require('./cbsScanParser');
 
 const {
 
@@ -38,6 +39,7 @@ const {
   getSalesReportMeta,
   downloadSalesReportByFlight,
   getSalesDetailsReportRows,
+  syncSalesDetailsFromSourceSheet,
   getNextDayInfoEmail,
   sendNextDayInfoEmail,
   getGdCheckEmail,
@@ -49,6 +51,7 @@ const {
   appendStoredReportRows,
   appendVipReportRows,
   appendPsmMsgReportRows,
+  updatePsmMsgReportRemark,
   pruneStoredReportRows,
   findTestBaggageByTag,
   getTestBaggageReportRows,
@@ -58,13 +61,33 @@ const {
   extractFscExchangeRate,
   updateSyBookingCounts,
   appendCbsCase,
+  appendWrongBaggageSubmission,
+  getWrongBaggageSubmissions,
+  updateWrongBaggageSubmission,
+  appendContactFormSubmission,
+  getContactFormSubmissions,
+  appendCbsWorldTracerCase,
+  getCbsWorldTracerCases,
+  updateCbsWorldTracerCase,
+  getCbsUnresolvedBaggageCases,
+  updateCbsUnresolvedBaggageWorldTracer,
+  exchangeCbsUnresolvedBaggageTag,
+  resolveCbsUnresolvedBaggageCase,
+  reopenCbsUnresolvedBaggageCase,
   getCbsCases,
   updateCbsCase,
+  deleteCbsCaseComment,
   getCbsMissingBagReports,
   markCbsMissingBagCase,
   acknowledgeCbsMissingBag,
   sendCbsCaseEmail,
+  sendWrongBaggageCaseEmail,
+  sendMisconnectionAssistanceEmail,
+  getCbsBaggageChartImage,
+  getCbsOpenBagAuthorizationPdf,
+  appendTransit240Record,
   appendCbsScanRecord,
+  appendRecordScanRecord,
   appendCbsScanNbrdBns,
   deleteCbsScanNbrdBn,
   getCbsScanRecords,
@@ -86,6 +109,18 @@ const {
 const fbLookup =
   require('./fbLookup');
 const { findSYInfo } = require('./syParser');
+const NEXTDAY_INFO_DISCORD_CHANNEL_ID = '1399400605742661702';
+const TRANSIT_240_DISCORD_CHANNEL_ID = process.env.TRANSIT_240_DISCORD_CHANNEL_ID || '1365773224276660257';
+const WRONG_BAGGAGE_DISCORD_CHANNEL_ID = process.env.WRONG_BAGGAGE_DISCORD_CHANNEL_ID || '1534758804535640227';
+const CBS_DELAYED_LOST_DISCORD_CHANNEL_ID = process.env.CBS_DELAYED_LOST_DISCORD_CHANNEL_ID || '1534758703369289821';
+const CBS_LOST_DISCORD_ROLE_ID = process.env.CBS_LOST_DISCORD_ROLE_ID || '1268619386948685877';
+const CBS_DAMAGED_DISCORD_CHANNEL_ID = process.env.CBS_DAMAGED_DISCORD_CHANNEL_ID || process.env.CBS_ATTACHMENTS_DISCORD_CHANNEL_ID || '1527344986075693167';
+const CBS_UPCOMING_RUSH_DISCORD_CHANNEL_ID = process.env.CBS_UPCOMING_RUSH_DISCORD_CHANNEL_ID || '1252032351131799654';
+const CBS_RUSH_BAG_DISCORD_CHANNEL_ID = process.env.CBS_RUSH_BAG_DISCORD_CHANNEL_ID || '1252033117280010291';
+const CBS_DPR_WORLDTRACER_DISCORD_ROLE_ID = process.env.CBS_DPR_WORLDTRACER_DISCORD_ROLE_ID || '1268619386948685877';
+const CONTACT_FORM_DISCORD_CHANNEL_ID = process.env.CONTACT_FORM_DISCORD_CHANNEL_ID || '1531867051755442266';
+const CONTACT_FORM_DISCORD_ROLE_ID = process.env.CONTACT_FORM_DISCORD_ROLE_ID || '1252026975279906876';
+
 const DEFAULT_PERMISSIONS = {
   canViewTravelDocs: true,
   canViewMembership: true,
@@ -190,6 +225,14 @@ function transferCountsFromJcsy(jcsy) {
   }, { internationalTransfer: 0, domesticTransfer: 0, overnightPassengers: 0 });
 }
 
+function nextDayInfoDetailsFromSyInfo(syInfo) {
+  const cabinCounts = retCountsFromSyInfo(syInfo);
+  const transferCounts = transferCountsFromJcsy(syInfo?.jcsy);
+  if (!cabinCounts || !transferCounts) return null;
+  return Object.fromEntries(Object.entries({ ...cabinCounts, ...transferCounts })
+    .map(([key, value]) => [key, String(value)]));
+}
+
 
 function buildNextDayInfoDetailLines(details = {}) {
   return [
@@ -218,7 +261,6 @@ function buildNextDayInfoEmailBody(subjectDate, details) {
     '',
     `International Transfer:  ${details.internationalTransfer}`,
     `Domestic Transfer:  ${details.domesticTransfer}`,
-    '',
     `Overnight passengers:  ${details.overnightPassengers}`,
     '',
     'Thank you,',
@@ -335,6 +377,8 @@ function isoDateToSyDate(isoDate) {
 
 const fscRateSheetSyncCache = new Map();
 const syBookingSheetSyncCache = new Map();
+const salesDetailsSheetSyncCache = new Map();
+const SALES_DETAILS_SYNC_RETRY_MS = 5 * 60 * 1000;
 const preflightStepCache = new Map();
 
 function preflightCacheKey(syInfo, isoDate, stepKey) {
@@ -411,6 +455,25 @@ async function syncSyBookingFromTodaySy(syInfo, isoDate) {
   }
 }
 
+
+async function syncSalesDetailsFromTodaySy(isoDate) {
+  if (isoDate !== todayIsoUtc()) return { skipped: true, reason: 'not today' };
+
+  const cached = salesDetailsSheetSyncCache.get(isoDate);
+  if (cached && Date.now() - cached.syncedAt < SALES_DETAILS_SYNC_RETRY_MS) {
+    return { ...cached, skipped: true, reason: cached.reason || 'recently synced' };
+  }
+
+  try {
+    const result = await syncSalesDetailsFromSourceSheet(isoDate, isoDate);
+    const synced = { ...result, skipped: false, syncedAt: Date.now() };
+    salesDetailsSheetSyncCache.set(isoDate, synced);
+    return synced;
+  } catch (err) {
+    return { skipped: true, error: err?.message || 'Sales details sync failed' };
+  }
+}
+
 function reportPassengerName(row) {
   return row?.name || row?.passengerName || row?.paxName || row?.passenger || '';
 }
@@ -477,7 +540,7 @@ function psmMsgRowsFromSyInfo(syInfo) {
       .filter(Boolean)
       .map((line) => String(line || '').trim())
       .filter((line) => /^\s*(?:PSM|MSG)(?:\b|-)/i.test(line));
-    const detail = lines.join('\n');
+    const detail = String(row.detail || '').trim() || lines.join('\n');
     return {
       flightDate: syInfo.flightDate,
       flightNo: syInfo.flightNo,
@@ -485,7 +548,7 @@ function psmMsgRowsFromSyInfo(syInfo) {
       bn: String(row.bn || '').padStart(3, '0'),
       seat: String(row.seat || '').toUpperCase(),
       bags: compactReportValue(row.bagtags || row.bagTags || row.bags),
-      type: lines.some((line) => /^\s*MSG/i.test(line)) ? 'MSG' : 'PSM',
+      type: row.type || (lines.some((line) => /^\s*MSG/i.test(line)) ? 'MSG' : 'PSM'),
       detail
     };
   }).filter((row) => row.passenger && row.detail);
@@ -559,8 +622,8 @@ async function scanSyServiceReportRows(type, isoDate) {
 async function loadStoredReportRows(type, isoDate, options = {}) {
   const normalizedType = String(type || '').toLowerCase();
   const stored = await getStoredReportRows(normalizedType, isoDate);
-  if (normalizedType === 'vip') return { rows: stored.rows, source: 'sheet', scanned: true };
-  if (stored.scanned && !options.forceRefresh) return { rows: stored.rows, source: 'sheet', scanned: true };
+  if (normalizedType === 'vip') return { rows: stored.rows, source: 'googleSheet', scanned: true };
+  if (stored.scanned && !options.forceRefresh) return { rows: stored.rows, source: 'googleSheet', scanned: true };
   const rows = await scanSyServiceReportRows(normalizedType, isoDate);
   await appendStoredReportRows(normalizedType, isoDate, rows);
   const refreshed = await getStoredReportRows(normalizedType, isoDate);
@@ -880,6 +943,7 @@ const app =
 
 const allowedOrigins = [
   "https://china-eastern.web.app",
+  "https://china-eastern.firebaseapp.com",
   "https://www.mufcapp.net",
   "https://mufcapp.net"
 ];
@@ -912,12 +976,24 @@ app.use(
   express.static('public')
 );
 
+app.get('/attachment-drop.js', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'public', 'attachment-drop.js'));
+});
+
 app.get(['/scan.html', '/scan'], (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'public', 'scan.html'));
 });
 
 app.get(['/m-board.html', '/m-board'], (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'public', 'm-board.html'));
+});
+
+app.get(['/240.html', '/240'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'public', '240.html'));
+});
+
+app.get(['/contact-form.html', '/contact-form'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'public', 'contact-form.html'));
 });
 
 const REVIEW_STORE_PATH = path.join(__dirname, 'securityReviews.json');
@@ -1290,6 +1366,10 @@ function sanitizeCbsText(value, maxLength = 1000) {
   return String(value || '').replace(/[\u0000-\u001F\u007F]/g, ' ').trim().slice(0, maxLength);
 }
 
+function sanitizeCbsEmailBody(value, maxLength = 12000) {
+  return String(value || '').replace(/\r\n?/g, '\n').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '').trim().slice(0, maxLength);
+}
+
 function isValidEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
 }
@@ -1306,30 +1386,9 @@ function normalizeCbsBagTags(value) {
   return source.map((item) => normalizeCbsBagTag(item)).filter(Boolean).join(' / ');
 }
 
-async function makeCbsCaseNumber() {
-  const today = todayIsoUtc();
-  const yy = today.slice(2, 4);
-  const mm = today.slice(5, 7);
-  const monthKey = today.slice(0, 7);
-  const prefix = `LAX MU${yy}${mm}`;
-  const cases = await getCbsCases().catch(() => []);
-  const usedSequences = new Set();
-  let sameMonthRows = 0;
-  cases.forEach((row) => {
-    const caseNumber = String(row.caseNumber || '').toUpperCase();
-    const match = caseNumber.match(new RegExp(`^${prefix}(\\d{2})$`));
-    if (match) usedSequences.add(Number(match[1]));
-    if (match || String(row.submittedAt || row.submitDate || '').startsWith(monthKey)) sameMonthRows += 1;
-  });
-  let nextSequence = Math.max(0, sameMonthRows, ...usedSequences) + 1;
-  while (usedSequences.has(nextSequence)) nextSequence += 1;
-  return `${prefix}${String(nextSequence).padStart(2, '0')}`;
-}
-
 function pdfSafeText(value) {
   return String(value || '')
-    .replace(/[\u3400-\u9FFF\uF900-\uFAFF\u3000-\u303F\uFF00-\uFFEF]/g, '')
-    .replace(/[^\x20-\x7E]/g, ' ')
+    .replace(/[\u0000-\u001F\u007F]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -1339,7 +1398,24 @@ function pdfEscape(value) {
 }
 
 function pdfText(content, x, y, size = 9) {
-  return `BT /F1 ${size} Tf ${x} ${y} Td (${pdfEscape(content)}) Tj ET`;
+  const safe = pdfSafeText(content);
+  if (!/[^\x20-\x7E]/.test(safe)) return `BT /F1 ${size} Tf ${x} ${y} Td (${pdfEscape(safe)}) Tj ET`;
+
+  // Keep Latin text in Helvetica even when the same field contains Chinese.
+  // Sending a whole mixed-language line through the CJK font makes its Latin
+  // glyphs look wider and visibly different from the rest of the report.
+  let cursorX = x;
+  return (safe.match(/[\x20-\x7E]+|[^\x20-\x7E]+/g) || []).map((run) => {
+    if (/^[\x20-\x7E]+$/.test(run)) {
+      const command = `BT /F1 ${size} Tf ${cursorX.toFixed(2)} ${y} Td (${pdfEscape(run)}) Tj ET`;
+      cursorX += run.length * size * 0.52;
+      return command;
+    }
+    const utf16Hex = Buffer.from(run, 'utf16le').swap16().toString('hex').toUpperCase();
+    const command = `BT /F2 ${size} Tf ${cursorX.toFixed(2)} ${y} Td <${utf16Hex}> Tj ET`;
+    cursorX += Array.from(run).length * size;
+    return command;
+  }).join('\n');
 }
 
 function pdfBoxText(content, x, y, w, h, size = 8) {
@@ -1376,10 +1452,10 @@ function createPirPdf(record) {
   content.push('0.97 0.98 1 rg 0 0 612 792 re f');
   content.push('0 0 0 RG 0 0 0 rg 1 w 36 36 540 720 re S');
   content.push(pdfText('PROPERTY IRREGULARITY REPORT (PIR)', 54, 724, 15));
-  content.push(pdfText(`CASE ID: ${record.caseNumber || ''}`, 410, 724, 10));
   content.push(pdfText(`CASE TYPE: ${record.caseType || ''}`, 410, 710, 10));
   content.push(pdfText('FOR INQUIRIES PLEASE EMAIL:', 390, 696, 9));
   content.push(pdfText('LAXHMMU@GMAIL.COM', 390, 682, 9));
+  if (record.worldTracerFileNumber) content.push(pdfText(`WORLDTRACER: ${record.worldTracerFileNumber}`, 390, 664, 10));
   const section = (title, y) => {
     content.push('0.78 0.78 0.78 rg');
     content.push(`44 ${y} 524 18 re f`);
@@ -1388,11 +1464,23 @@ function createPirPdf(record) {
   };
   const box = (x, y, w, h, text, size = 8) => {
     content.push(`0 0 0 RG 0.5 w ${x} ${y} ${w} ${h} re S`);
-    if (text) content.push(pdfText(text, x + 5, y + h - 13, size));
+    if (text) {
+      const safe = pdfSafeText(text);
+      const maxChars = Math.max(12, Math.floor((w - 10) / (size * 0.52)));
+      const words = safe.split(/\s+/);
+      const lines = [];
+      words.forEach((word) => {
+        const current = lines[lines.length - 1] || '';
+        if (!current || `${current} ${word}`.length > maxChars) lines.push(word);
+        else lines[lines.length - 1] = `${current} ${word}`;
+      });
+      const maxLines = Math.max(1, Math.floor((h - 8) / (size + 2)));
+      lines.slice(0, maxLines).forEach((line, index) => content.push(pdfText(line, x + 5, y + h - 13 - index * (size + 2), size)));
+    }
   };
   const coded = (code, label, value, x, y, w, h) => {
     box(x, y, 26, h, code, 8);
-    box(x + 26, y, w - 26, h, [label, value || ''].filter(Boolean).join(' ').slice(0, 95), 7.5);
+    box(x + 26, y, w - 26, h, [label, value || ''].filter(Boolean).join(' '), 7.5);
   };
   section('PASSENGER INFORMATION', 642);
   coded('NM', 'Passenger Name', record.passengerName, 52, 612, 318, 24);
@@ -1407,26 +1495,24 @@ function createPirPdf(record) {
   coded('BR', 'Baggage Routing', record.flightRoute, 52, 476, 500, 26);
   coded('TN', 'Bag Tag Number', record.bagTag, 52, 450, 500, 26);
   coded('DB', 'Destination on Bags', record.destinationOnBags, 52, 424, 500, 26);
-  coded('BD', 'Baggage Details', record.ahlBagDescription || record.dprBagInfo, 52, 386, 500, 38);
-  coded('CD', 'Contents / Inner Damage', record.contentsDetails || record.dprInnerDamage, 52, 348, 500, 38);
-  if (damageImage) {
-    box(52, 242, 500, 96, 'Damage Sketch', 8);
-    content.push(`q 280 0 0 78 166 252 cm /Damage Do Q`);
+  coded('BD', 'Baggage Details', record.ahlBagDescription || record.dprBagInfo, 52, 350, 500, 74);
+  if (String(record.caseType).toUpperCase() === 'DPR') {
+    coded('DL', 'Damage Level', record.dprDamageLevel, 52, 324, 500, 26);
+    coded('ID', 'Inner Damage', record.dprInnerDamage, 52, 286, 500, 38);
+    if (damageImage) {
+      box(52, 170, 500, 104, 'Damage Sketch', 8);
+      content.push(`q 280 0 0 82 166 180 cm /Damage Do Q`);
+    }
+  } else {
+    coded('BT', 'Bag Type', record.ahlBagType, 52, 324, 500, 26);
+    coded('BM', 'Bag Brand / Tag', record.ahlBagBrandTag, 52, 298, 500, 26);
+    coded('FT', 'Features', record.ahlFeatures, 52, 260, 500, 38);
+    coded('OF', 'Other Visible Features', record.ahlOtherFeatures, 52, 222, 500, 38);
   }
-  section('CONTENTS', 214);
-  box(52, 186, 160, 24, 'CATEGORY', 8);
-  box(212, 186, 340, 24, 'DESCRIPTION', 8);
   const items = Array.isArray(record.contentsRows) && record.contentsRows.length
     ? record.contentsRows
     : String(record.contentsDetails || '').split(/\s+\/\s+/).filter(Boolean).map((value) => ({ category: '', description: value }));
-  let itemY = 162;
-  for (let index = 0; index < 4; index += 1) {
-    const item = items[index] || {};
-    box(52, itemY, 160, 24, String(item.category || '').slice(0, 24), 8);
-    box(212, itemY, 340, 24, String(item.description || '').slice(0, 64), 8);
-    itemY -= 24;
-  }
-  section('SIGNATURE', 72);
+  section('SIGNATURE', 122);
   content.push(pdfText(`Date of issue ${record.issueDate || ''}`, 56, 50, 9));
   if (signatureImage) {
     box(390, 42, 160, 28, '', 8);
@@ -1434,13 +1520,47 @@ function createPirPdf(record) {
   } else {
     content.push(pdfText('Passenger Signature __________________________', 330, 50, 9));
   }
-  const stream = content.join('\n');
+  const contentPages = [content];
+  const chunkSize = 30;
+  const contentChunks = items.length ? Array.from({ length: Math.ceil(items.length / chunkSize) }, (_, index) => items.slice(index * chunkSize, (index + 1) * chunkSize)) : [[]];
+  contentChunks.forEach((chunk, pageIndex) => {
+    const page = [];
+    page.push('0.97 0.98 1 rg 0 0 612 792 re f');
+    page.push('0 0 0 RG 0 0 0 rg 1 w 36 36 540 720 re S');
+    page.push(pdfText('PROPERTY IRREGULARITY REPORT (PIR)', 54, 724, 15));
+    page.push(pdfText(pageIndex ? `CONTENTS CONTINUED (${pageIndex + 1})` : 'CONTENTS / PACKED ITEMS', 54, 706, 12));
+    page.push(pdfText(`Passenger: ${record.passengerName || ''}`, 54, 686, 10));
+    page.push(pdfText(`Bag Tag: ${record.bagTag || ''}`, 54, 672, 10));
+    page.push('0.78 0.78 0.78 rg');
+    page.push('44 642 524 18 re f');
+    page.push('0 0 0 rg');
+    page.push(pdfText(pageIndex ? `CONTENTS CONTINUED (${pageIndex + 1})` : 'CONTENTS / PACKED ITEMS', 50, 647, 10));
+    page.push('0 0 0 RG 0.5 w 52 614 160 22 re S');
+    page.push(pdfText('CATEGORY', 58, 622, 8));
+    page.push('0 0 0 RG 0.5 w 212 614 340 22 re S');
+    page.push(pdfText('DESCRIPTION', 218, 622, 8));
+    let y = 592;
+    chunk.forEach((item) => {
+      page.push(`0 0 0 RG 0.5 w 52 ${y} 160 18 re S`);
+      page.push(pdfText(String(item.category || '').slice(0, 28), 58, y + 6, 7.5));
+      page.push(`0 0 0 RG 0.5 w 212 ${y} 340 18 re S`);
+      page.push(pdfText(String(item.description || '').slice(0, 80), 218, y + 6, 7.5));
+      y -= 18;
+    });
+    if (!chunk.length) page.push(pdfText('No contents entered.', 58, 610, 9));
+    contentPages.push(page);
+  });
   const fontId = addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
-  const streamId = addObject(`<< /Length ${Buffer.byteLength(stream, 'binary')} >>\nstream\n${stream}\nendstream`);
+  const unicodeFontId = addObject('<< /Type /Font /Subtype /Type0 /BaseFont /STSong-Light /Encoding /UniGB-UCS2-H /DescendantFonts [ << /Type /Font /Subtype /CIDFontType0 /BaseFont /STSong-Light /CIDSystemInfo << /Registry (Adobe) /Ordering (GB1) /Supplement 4 >> >> ] >>');
   const xObjectEntries = [imageRefs.Damage ? `/Damage ${imageRefs.Damage} 0 R` : '', imageRefs.Signature ? `/Signature ${imageRefs.Signature} 0 R` : ''].filter(Boolean).join(' ');
-  const resources = `<< /Font << /F1 ${fontId} 0 R >> ${xObjectEntries ? `/XObject << ${xObjectEntries} >>` : ''} >>`;
-  const pageId = addObject(`<< /Type /Page /Parent ${objects.length + 2} 0 R /MediaBox [0 0 612 792] /Resources ${resources} /Contents ${streamId} 0 R >>`);
-  const pagesId = addObject(`<< /Type /Pages /Kids [${pageId} 0 R] /Count 1 >>`);
+  const resources = `<< /Font << /F1 ${fontId} 0 R /F2 ${unicodeFontId} 0 R >> ${xObjectEntries ? `/XObject << ${xObjectEntries} >>` : ''} >>`;
+  const streamIds = contentPages.map((page) => {
+    const stream = page.join('\n');
+    return addObject(`<< /Length ${Buffer.byteLength(stream, 'binary')} >>\nstream\n${stream}\nendstream`);
+  });
+  const parentId = objects.length + streamIds.length + 1;
+  const pageIds = streamIds.map((streamId) => addObject(`<< /Type /Page /Parent ${parentId} 0 R /MediaBox [0 0 612 792] /Resources ${resources} /Contents ${streamId} 0 R >>`));
+  const pagesId = addObject(`<< /Type /Pages /Kids [${pageIds.map((pageId) => `${pageId} 0 R`).join(' ')}] /Count ${pageIds.length} >>`);
   const catalogId = addObject(`<< /Type /Catalog /Pages ${pagesId} 0 R >>`);
   let pdf = '%PDF-1.4\n';
   const offsets = [0];
@@ -1476,14 +1596,14 @@ function cbsPassengerMessageHtml(language, caseType = 'AHL') {
       '<p>Should further inspection, repair assessment, or additional documentation be required, our staff will contact you and provide the necessary assistance. You may also contact our local office at any time to inquire about the status of your claim. Our ground service staff will be pleased to assist you with any information you may need.</p>',
       '<p>If you authorize another person to handle the claim on your behalf, the authorized representative must present your signed authorization letter, the baggage damage report, your passport (or a copy of your passport), and the representative\'s valid identification document.</p>',
       '<p>Once again, we sincerely apologize for the inconvenience caused by the damage to your baggage. We will make every effort to assist you with the resolution of this matter and appreciate your patience and understanding.</p>',
-      '<p>China Eastern Airlines</p>'
+      '<p>China Eastern Airlines - LAX</p>'
     ].join('');
   }
   if (language === 'zh') {
     return [
       '<h2>亲爱的旅客：</h2>',
       '<p>我们对您到达目的地后未能即时领回所交运的行李深表歉意，并谨此保证本公司将竭尽所能找回您的行李。</p>',
-      '<p>从您报失开始，我们立即采用已接驳全球各航空公司之电脑行李查询系统展开追查服务，并将于寻获后告知您。我们会尽力向您报告进展情况。如欲查询，您也可致电我们在各地的办事处，我们的地勤人员当乐意提供所需资料。</p>',
+      '<p>从您报失开始，我们立即采用已接驳全球各航空公司之电脑行李查询系统展开追查服务，并将于寻获后告知您。我们会尽力向您报告进展情况。</p>',
       '<p>一旦您的行李安然寻回，我们会立即通知您，并在当地政府有关当局许可之情况下尽快安排送回。如果行李由于海关问题或因破损需您来提取时，请带好行李报失单和护照。</p>',
       '<p>如果您委托他人前来领取您的行李，必须让受委托人带上您的亲笔委托书、行李报失单、您的护照、（或影印本）及其本人的身份证。</p>',
       '<p>再次对由于行李意外引致的不便表示歉意。</p>',
@@ -1492,18 +1612,247 @@ function cbsPassengerMessageHtml(language, caseType = 'AHL') {
   }
   return [
     '<h2>Dear Passenger,</h2>',
-    '<p>We sincerely apologize that your checked baggage was not available upon your arrival. Please be assured that every possible step is being taken to locate your missing baggage or articles.</p>',
-    '<p>Tracing efforts began as soon as you reported the delay to our Baggage Service Agent using the IATA WorldTracer worldwide baggage tracing computer system.</p>',
-    '<p>Our ground staff will keep you informed of the progress. If you have any questions, please feel free to contact us at any time. We will be pleased to provide any further information you may require.</p>',
-    '<p>As soon as your baggage is located, we will notify you and arrange delivery where permitted by local government authorities. If your baggage requires customs clearance or must be collected because of damage, please bring the P.I.R. form and your passport to the airport.</p>',
-    '<p>If someone else collects the baggage on your behalf, they should bring a letter of authorization, your passport or a photocopy of it, the P.I.R. form, and their ID card.</p>',
-    '<p>Once again, please accept our sincere apologies for this unfortunate incident and the inconvenience it has caused.</p>',
-    '<p>Yours sincerely,<br>China Eastern Airlines</p>'
+    '<p>We sincerely apologize that your checked baggage was not available for collection upon your arrival at your destination. Please be assured that we will make every effort to locate and return your baggage as soon as possible.</p>',
+    '<p>Once your baggage was reported missing, we immediately initiated a tracing process through the worldwide computerized baggage tracing system used by participating airlines. We will notify you as soon as your baggage is located and will do our best to keep you informed of any updates regarding the tracing process.</p>',
+    '<p>Once your baggage has been located, we will contact you immediately and, subject to local government and customs regulations, arrange for delivery as soon as possible. If you are required to collect your baggage in person due to customs requirements or because the baggage has been damaged, please bring your Property Irregularity Report (PIR)/baggage claim report and your passport with you.</p>',
+    '<p>If you authorize another person to collect the baggage on your behalf, the authorized person must present the following documents: your signed authorization letter, your baggage claim report, your passport or a copy of your passport, and the authorized person’s valid identification.</p>',
+    '<p>Once again, we sincerely apologize for the inconvenience caused by this baggage irregularity and appreciate your patience and understanding.</p>',
+    '<p>Sincerely,<br>China Eastern Airlines</p>'
   ].join('');
 }
 
 function buildCbsEmailHtml(record) {
-  return `${cbsPassengerMessageHtml(record.language, record.caseType)}<p><strong>Case ID:</strong> ${record.caseNumber}</p>`;
+  return cbsPassengerMessageHtml(record.language, record.caseType);
+}
+
+function cbsEmailIsChinese(record = {}) {
+  return /^zh(?:-|$)/i.test(String(record.language || '').trim());
+}
+
+function cbsPlainTextEmailHtml(text = '') {
+  return String(text).split(/\n{2,}/).map((paragraph) => `<p>${paragraph.replace(/\n/g, '<br>')}</p>`).join('');
+}
+
+function worldTracerUpdateEmail(record, fileNumber) {
+  const reference = String(fileNumber || '').replace(/[&<>"']/g, (character) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character]));
+  const isDpr = String(record?.caseType || '').toUpperCase() === 'DPR';
+  if (isDpr && cbsEmailIsChinese(record)) return {
+    subject: `【请勿回复】行李案件建案确认通知 – WorldTracer 案件编号：${fileNumber}`,
+    html: `<p>尊敬的旅客：</p><p>您好！</p><p>您的行李案件已成功建立。</p><p><strong>WorldTracer 案件编号：${reference}</strong></p><p>我们将根据您所提供的信息进行后续查询及跟进。如案件有进一步进展，我们会主动与您联系并提供最新信息，请您耐心等候。</p><p><strong>如果您在建案后 7 天内仍未收到我们的进一步通知，请发送邮件至 <a href="mailto:laxllmu@chinaeastern-usa.com">laxllmu@chinaeastern-usa.com</a> 与我们联系，以便我们进一步跟进您的案件。</strong></p><p><strong>此邮件为系统自动发送，请勿直接回复此邮件。</strong></p><p>感谢您的耐心与理解。</p><p>此致<br><strong>中国东方航空</strong></p>`
+  };
+  if (isDpr) return {
+    subject: `[DO NOT REPLY] Baggage Case Confirmation – WorldTracer Reference: ${fileNumber}`,
+    html: `<p>Dear Passenger,</p><p>Your baggage case has been successfully created.</p><p><strong>WorldTracer Reference Number: ${reference}</strong></p><p>We will continue to trace and follow up on your case based on the information provided. We will contact you and provide further updates as soon as additional information becomes available.</p><p><strong>If you have not received any further updates from us within 7 days after your case was created, please contact us at <a href="mailto:laxllmu@chinaeastern-usa.com">laxllmu@chinaeastern-usa.com</a> so that we can further follow up on your case.</strong></p><p><strong>This is an automatically generated email. Please do not reply to this message.</strong></p><p>Thank you for your patience and understanding.</p><p>Sincerely,<br><strong>China Eastern Airlines</strong></p>`
+  };
+  if (cbsEmailIsChinese(record)) return {
+    subject: `行李案件更新通知 – WorldTracer 案件编号：${fileNumber}`,
+    html: `<p>尊敬的旅客：</p><p>您好！</p><p>您的行李案件现已更新至 WorldTracer 全球行李查询系统。</p><p><strong>WorldTracer 案件编号：${reference}</strong></p><p>请妥善保存此案件编号，以便后续查询或跟进行李处理进度时使用。</p><p>我们将继续跟进您的行李案件。如有进一步信息或进展，我们会及时与您联系。</p><p>感谢您的耐心与理解。</p><p>此致<br>中国东方航空</p>`
+  };
+  return {
+    subject: `Baggage Case Update – WorldTracer Reference: ${fileNumber}`,
+    html: `<p>Dear Passenger,</p><p>We would like to inform you that your baggage case has been updated in the WorldTracer baggage tracing system.</p><p><strong>WorldTracer Reference Number: ${reference}</strong></p><p>Please keep this reference number for your records, as it may be required for future inquiries or updates regarding your baggage case.</p><p>We will continue to follow up on your case and provide further updates when additional information becomes available.</p><p>Thank you for your patience and understanding.</p><p>Sincerely,<br>China Eastern Airlines</p>`
+  };
+}
+
+function requestedBagsUpdateEmail(record, fileNumber) {
+  const reference = String(fileNumber || '').replace(/[&<>"']/g, (character) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character]));
+  const chinese = cbsEmailIsChinese(record);
+  const subject = chinese ? `行李案件更新通知 – WorldTracer 案件编号：${fileNumber}` : `Baggage Case Update – WorldTracer Reference: ${fileNumber}`;
+  const text = chinese
+    ? `尊敬的旅客：\n\n您好！\n\n我们很高兴地通知您，您的行李已经找到，目前已提交转运申请并正在安排转运。\n\nWorldTracer 案件编号：${fileNumber}\n\n我们将继续跟进行李的转运状态。如有进一步信息，我们会尽快与您联系并提供最新进展。\n\n感谢您的耐心与理解。\n\n此致\n中国东方航空`
+    : `Dear Passenger,\n\nWe are pleased to inform you that your baggage has been located, and a transfer request has been arranged.\n\nWorldTracer Reference Number: ${fileNumber}\n\nWe will continue to monitor the transfer status of your baggage. Once further information becomes available, we will contact you as soon as possible with an update.\n\nThank you for your patience and understanding.\n\nSincerely,\nChina Eastern Airlines`;
+  const html = cbsPlainTextEmailHtml(text.replace(fileNumber, reference))
+    .replace(chinese ? '目前已提交转运申请并正在安排转运' : 'transfer request has been arranged', (phrase) => `<strong>${phrase}</strong>`)
+    .replace(chinese ? `WorldTracer 案件编号：${reference}` : `WorldTracer Reference Number: ${reference}`, (phrase) => `<strong>${phrase}</strong>`)
+    .replace(chinese ? '中国东方航空' : 'China Eastern Airlines', (phrase) => `<strong>${phrase}</strong>`);
+  return { subject, text, html };
+}
+
+function addressConfirmRequestEmail(record = {}) {
+  const fileNumber = sanitizeCbsText(record.worldTracerFileNumber, 120) || '—';
+  const chinese = cbsEmailIsChinese(record);
+  const subject = chinese ? `行李领取 / 配送地址确认 – WorldTracer ${fileNumber}` : `Baggage Pick-Up / Delivery Address Confirmation – WorldTracer ${fileNumber}`;
+  const text = chinese
+    ? `尊敬的旅客：\n\n您好！\n\nWorldTracer 案件编号：${fileNumber}\n\n为便于我们后续安排您的行李，请确认您希望采用以下哪种方式：\n\n1. 自行领取 – 您将自行前往机场领取行李。\n2. 配送至报失记录中的地址 – 将行李配送至您在行李报失记录（Report）中提供的地址。\n3. 配送至其他地址 – 如果您希望配送至不同地址，请提供完整的收件地址及联系电话。\n\n如果我们未收到您的回复，我们将默认按照您在行李报失记录（Report）中提供的地址安排配送。\n\n感谢您的配合。\n\n此致\n中国东方航空`
+    : `Dear Passenger,\n\nWorldTracer Reference Number: ${fileNumber}\n\nTo help us make the appropriate arrangements for your baggage, please confirm which option you prefer:\n\n1. Self Pick-Up – You will pick up your baggage in person.\n2. Delivery to the Address on File – You would like the baggage delivered to the address provided in your baggage report.\n3. Delivery to a Different Address – You would like the baggage delivered to a different address. If so, please provide the complete delivery address and a contact phone number.\n\nIf we do not receive a response from you, we will proceed with delivery to the address provided in your baggage report.\n\nThank you for your cooperation.\n\nSincerely,\nChina Eastern Airlines`;
+  const emphasized = chinese
+    ? [`WorldTracer 案件编号：${fileNumber}`, '自行领取', '配送至报失记录中的地址', '配送至其他地址', '如果我们未收到您的回复，我们将默认按照您在行李报失记录（Report）中提供的地址安排配送。', '中国东方航空']
+    : [`WorldTracer Reference Number: ${fileNumber}`, 'Self Pick-Up', 'Delivery to the Address on File', 'Delivery to a Different Address', 'If we do not receive a response from you, we will proceed with delivery to the address provided in your baggage report.', 'China Eastern Airlines'];
+  const html = emphasized.reduce((body, phrase) => body.replaceAll(phrase, `<strong>${phrase}</strong>`), cbsPlainTextEmailHtml(text));
+  return { subject, text, html };
+}
+
+function baggagePickupDeliveryMethodConfirmationEmail(record = {}) {
+  const fileNumber = sanitizeCbsText(record.worldTracerFileNumber, 120) || '—';
+  const chinese = cbsEmailIsChinese(record);
+  const subject = chinese ? `行李领取 / 寄送方式确认 – WorldTracer ${fileNumber}` : `Baggage Pick-Up / Delivery Method Confirmation – WorldTracer ${fileNumber}`;
+  const text = chinese
+    ? `尊敬的旅客：\n\n您好！\n\nWorldTracer 案件编号：${fileNumber}\n\n在您的行李可以领取或配送之前，我们希望提前确认您希望采用哪种方式接收行李，以便我们提前做好相应安排。\n\n请选择以下其中一种方式：\n\n1. 自行领取\n您将自行前往洛杉矶国际机场（LAX）领取行李。\n\n2. 配送\n您希望我们将行李配送至您在行李报失记录（Report）中提供的地址。\n\n请回复此邮件并告知您选择的方式。\n\n如果我们未收到您的回复，我们将默认按照您在行李报失记录（Report）中提供的地址安排配送。\n\n感谢您的配合。\n\n此致\n中国东方航空公司`
+    : `Dear Passenger,\n\nWorldTracer Reference Number: ${fileNumber}\n\nBefore your baggage becomes available, we would like to confirm your preferred method of receiving your baggage so that we can make the necessary arrangements in advance.\n\nPlease select one of the following options:\n\n1. Self Pick-Up\nYou will pick up your baggage in person at Los Angeles International Airport (LAX).\n\n2. Delivery\nYou would like us to deliver your baggage to the address provided in your baggage report.\n\nPlease reply to this email and let us know your preferred option.\n\nIf we do not receive a response from you, we will proceed with delivery to the address provided in your baggage report.\n\nThank you for your cooperation.\n\nSincerely,\nChina Eastern Airlines`;
+  const emphasized = chinese
+    ? [`WorldTracer 案件编号：${fileNumber}`, '自行领取', '2. 配送', '如果我们未收到您的回复，我们将默认按照您在行李报失记录（Report）中提供的地址安排配送。', '中国东方航空公司']
+    : [`WorldTracer Reference Number: ${fileNumber}`, 'Self Pick-Up', '2. Delivery', 'If we do not receive a response from you, we will proceed with delivery to the address provided in your baggage report.', 'China Eastern Airlines'];
+  const html = emphasized.reduce((body, phrase) => body.replaceAll(phrase, `<strong>${phrase}</strong>`), cbsPlainTextEmailHtml(text));
+  return { subject, text, html };
+}
+
+function openBagAuthorizationPvgEmail(record) {
+  const chinese = cbsEmailIsChinese(record);
+  const fileNumber = sanitizeCbsText(record?.worldTracerFileNumber, 120) || '—';
+  const subject = chinese ? `【需要您的授权】行李开箱检查通知 – WorldTracer ${fileNumber}` : `Authorization Required for Baggage Inspection at PVG – WorldTracer ${fileNumber}`;
+  const text = chinese
+    ? `尊敬的旅客：\n\n您好！\n\nWorldTracer 案件编号：${fileNumber}\n\n您的行李目前暂扣于上海浦东国际机场（PVG），需要进行开箱检查后方可继续安排后续运输。\n\n由于开箱检查需要获得您的本人授权，请您填写并签署附件中的授权表格，并尽快将填写完整的表格发送回给我们。\n\n收到您的授权后，我们会将相关文件转交上海浦东机场工作人员，以便尽快完成行李检查并安排后续运输。\n\n给您带来的不便，我们深表歉意，也感谢您的理解与配合。\n\n此致\n中国东方航空`
+    : `Dear Passenger,\n\nWorldTracer Reference Number: ${fileNumber}\n\nYour baggage is currently being held at Shanghai Pudong International Airport (PVG) and requires an open-bag inspection before it can be released for further transportation.\n\nTo proceed with the inspection, your authorization is required.\n\nPlease complete and sign the attached authorization form and return the completed form to us as soon as possible. Once we receive your authorization, we will forward it to the appropriate team at PVG so they can proceed with the baggage inspection.\n\nWe appreciate your prompt cooperation and apologize for any inconvenience this may cause.\n\nSincerely,\nChina Eastern Airlines`;
+  return { subject, text, html: cbsPlainTextEmailHtml(text) };
+}
+
+function baggagePickupAtLaxEmail(record = {}) {
+  const chinese = cbsEmailIsChinese(record);
+  const subject = chinese ? '您的行李已可在洛杉矶机场领取 - 中国东方航空公司' : 'Your Baggage Available for Pick-Up at LAX - China Eastern Airlines';
+  const text = chinese
+    ? '尊敬的旅客：\n\n您好！\n\n我们通知您，您此前遗留在洛杉矶国际机场（LAX）的行李目前已由我们保管，并存放于 Tom Bradley International Terminal（TBIT）A68 柜台办公室。\n\n请您在以下工作时间内前来领取：\n\n领取地点：LAX TBIT A68 柜台办公室\n领取时间：上午 8:00 – 下午 2:00\n\n领取行李时，请携带有效的带照片身份证件，以便工作人员核实您的身份。\n\n感谢您的配合。\n\n此致\n中国东方航空公司'
+    : 'Dear Passenger,\n\nWe would like to inform you that the baggage you left behind at LAX is currently being held at our office at the Tom Bradley International Terminal (TBIT), Counter A68.\n\nPlease come to collect your baggage during the following office hours:\n\nPick-up Location: LAX TBIT, Counter A68 Office\nPick-up Hours: 8:00 AM – 2:00 PM\n\nPlease bring a valid photo ID for verification when collecting your baggage.\n\nThank you for your cooperation.\n\nSincerely,\nChina Eastern Airlines';
+  return { subject, text, html: cbsPlainTextEmailHtml(text) };
+}
+
+function baggageInspectionExplanationEmail(record = {}) {
+  const chinese = cbsEmailIsChinese(record);
+  const subject = chinese ? '关于行李可能被开箱检查的说明' : 'Explanation Regarding Baggage Inspection';
+  const text = chinese
+    ? '尊敬的旅客：\n\n您好！\n\n您的行李在运输过程中可能因安全检查需要被相关部门开箱查验。该检查可能由中国机场安检部门进行，也可能由行李抵达美国后由美国海关及边境保护局（U.S. Customs and Border Protection）进行。\n\n如您的行李曾由美国相关部门开箱检查，行李箱内可能会留有检查通知单，建议您查看箱内是否有相关文件。\n\n需要说明的是，航空公司并不参与机场安检或海关的开箱检查，因此我们无法确认您的行李是否曾被开箱查验，也无法确认行李未上锁的情况是否由相关检查所导致。\n\n感谢您的理解。\n\n此致\n中国东方航空'
+    : 'Dear Passenger,\n\nYour baggage may have been opened for security inspection during your journey. The inspection may have been conducted by airport security authorities in China or by U.S. Customs and Border Protection upon arrival in the United States.\n\nIf your baggage was inspected by U.S. authorities, an inspection notice may have been placed inside your suitcase. We recommend checking the contents of your baggage for any such notice.\n\nPlease note that the airline is not involved in security or customs inspections. Therefore, we are unable to confirm whether an inspection was conducted or whether it resulted in your baggage being left unlocked.\n\nThank you for your understanding.\n\nSincerely,\nChina Eastern Airlines';
+  return { subject, text, html:cbsPlainTextEmailHtml(text) };
+}
+
+function baggageFuturePickupAtLaxEmail(record = {}, availableDate = '') {
+  const chinese = cbsEmailIsChinese(record);
+  const fileNumber = sanitizeCbsText(record.worldTracerFileNumber, 120) || '—';
+  const available = chinese
+    ? String(availableDate).replace(/^\d{4}-(\d{2})-(\d{2})$/, (_, month, day) => `${Number(month)}月${Number(day)}日`)
+    : formatRushArrivalTime(availableDate, false);
+  const subject = chinese ? `行李领取通知 – WorldTracer ${fileNumber}` : `Baggage Pick-Up Notice – WorldTracer ${fileNumber}`;
+  const text = chinese
+    ? `尊敬的旅客：\n\n您好！\n\n我们通知您，您此前遗留在洛杉矶国际机场（LAX）的行李预计将于${available}起可以领取，届时行李将存放于 Tom Bradley International Terminal（TBIT）A68 柜台办公室。\n\n请您在以下工作时间内前来领取：\n\n领取地点：LAX TBIT A68 柜台办公室\n领取时间：上午 8:00 – 下午 2:00\n\n领取行李时，请携带有效的带照片身份证件，以便工作人员核实您的身份。\n\n感谢您的配合。\n\n此致\n中国东方航空公司`
+    : `Dear Passenger,\n\nWe would like to inform you that the baggage you previously left behind at Los Angeles International Airport (LAX) is expected to be available for pick-up starting ${available}.\n\nWorldTracer Reference Number: ${fileNumber}\n\nYour baggage will be held at our office located at the Tom Bradley International Terminal (TBIT), Counter A68.\n\nPlease come to collect your baggage during the following hours:\n\nPick-Up Location: LAX TBIT, Counter A68 Office\nPick-Up Hours: 8:00 AM – 2:00 PM\n\nPlease bring a valid photo ID for identity verification when picking up your baggage.\n\nThank you for your cooperation.\n\nSincerely,\nChina Eastern Airlines`;
+  return { subject, text, html: cbsPlainTextEmailHtml(text) };
+}
+
+function signedOpenBagAuthorizationToPvgEmail(record) {
+  const fileNumber = sanitizeCbsText(record?.worldTracerFileNumber, 120) || '—';
+  const bagTag = sanitizeCbsText(record?.bagTag, 120) || '—';
+  const subject = `行李开箱检查授权文件 – WorldTracer ${fileNumber}`;
+  const text = `同事您好，\n\n以下行李目前需要进行开箱检查：\n\nWorldTracer 案件编号：${fileNumber}\n行李牌号码：${bagTag}\n\n附件为旅客已签字的开箱检查授权页，烦请查收并协助后续开箱检查及行李转运安排。\n\n如需补充其他资料，请告知。\n\n谢谢！\n洛杉矶站 - 中国东方航空`;
+  return { subject, text, html:cbsPlainTextEmailHtml(text) };
+}
+
+function formatRushArrivalTime(value, chinese = false) {
+  const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return String(value || '');
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (chinese) return `${month} 月 ${day} 日`;
+  const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  return `${months[month - 1]} ${day}`;
+}
+
+function rushToLaxInformationEmail(record, fileNumber, estimatedArrivalTime) {
+  const chinese = cbsEmailIsChinese(record);
+  const arrival = formatRushArrivalTime(estimatedArrivalTime, chinese);
+  const subject = chinese
+    ? `请勿回复 – 行李转运状态更新 – WorldTracer 案件编号：${fileNumber}`
+    : `DO NOT REPLY – Baggage Transfer Status Update – WorldTracer Case: ${fileNumber}`;
+  const text = chinese
+    ? `尊敬的旅客：\n\n您好！\n\n这是一封关于您延误行李的系统自动状态更新邮件。\n\nWorldTracer 案件编号：${fileNumber}\n\n目前，您的行李正在安排转运，预计于 ${arrival} 运抵洛杉矶（LAX）。\n\n请注意，预计抵达时间可能根据实际运输情况发生变化。如您的行李状态有进一步更新，我们将及时通知您。\n\n此邮件由系统自动发送，请勿直接回复。\n\n中国东方航空`
+    : `Dear Passenger,\n\nThis is an automated update regarding your delayed baggage.\n\nWorldTracer Case Number: ${fileNumber}\n\nYour baggage is currently being arranged for transfer and is expected to arrive in Los Angeles (LAX) on ${arrival}.\n\nPlease note that the estimated arrival date is subject to change depending on actual transportation arrangements. You will receive further updates if there are any changes to your baggage status.\n\nThis is an automatically generated email. Please do not reply to this message.\n\nSincerely,\nChina Eastern Airlines`;
+  return { subject, text, html: cbsPlainTextEmailHtml(text) };
+}
+
+function adcShippingUpdateEmail(record, fileNumber, shippingAddress = '') {
+  const reference = String(fileNumber || '').replace(/[&<>"']/g, (character) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character]));
+  const chinese = cbsEmailIsChinese(record);
+  const subject = chinese ? `行李配送通知 – WorldTracer 案件编号：${fileNumber}` : `Baggage Delivery Notification – WorldTracer Reference: ${fileNumber}`;
+  const address = sanitizeCbsText(shippingAddress, 300);
+  const text = address
+    ? (chinese
+      ? `尊敬的旅客：\n\n您好！\n\n我们通知您，您的行李已安排寄出，并将配送至以下地址：\n\nWorldTracer 案件编号：${fileNumber}\n\n配送地址：${address}\n\n请留意后续配送情况，并确保上述地址可以正常接收行李。\n\n如您发现配送地址有误，或配送过程中有任何问题，请尽快回复此邮件与我们联系。\n\n感谢您的耐心与配合。\n\n此致\n中国东方航空`
+      : `Dear Passenger,\n\nWe would like to inform you that your baggage has been shipped and will be delivered to the following address:\n\nWorldTracer Reference Number: ${fileNumber}\n\nDelivery Address: ${address}\n\nPlease monitor the delivery status and ensure that the above address is available to receive your baggage.\n\nIf you notice any issues with the delivery address or experience any problems during the delivery process, please reply to this email as soon as possible.\n\nThank you for your patience and cooperation.\n\nSincerely,\nChina Eastern Airlines`)
+    : (chinese
+      ? `尊敬的旅客：\n\n您好！\n\n我们通知您，您的行李已安排寄出，并将配送至您在行李案件中所提供的地址。\n\nWorldTracer 案件编号：${fileNumber}\n\n请留意后续配送情况，并确保您所提供的地址可以正常接收行李。\n\n如配送过程中有任何更新或需要进一步确认的信息，我们会与您联系。\n\n如您有任何问题，请直接回复此邮件与我们联系。\n\n感谢您的耐心与配合。\n\n此致\n中国东方航空`
+      : `Dear Passenger,\n\nWe would like to inform you that your baggage has been shipped and is being delivered to the address you provided for your baggage case.\n\nWorldTracer Reference Number: ${fileNumber}\n\nPlease monitor the delivery and ensure that the address provided is available to receive the baggage.\n\nIf there are any updates or if additional information is required during the delivery process, we will contact you accordingly.\n\nIf you have any questions, please feel free to reply directly to this email.\n\nThank you for your patience and cooperation.\n\nSincerely,\nChina Eastern Airlines`);
+  const escapedText = text.replace(fileNumber, reference).replace(address, String(address).replace(/[&<>"']/g, (character) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character])));
+  return { subject, text, html: cbsPlainTextEmailHtml(escapedText) };
+}
+
+function fedexShippingUpdateEmail(record, fileNumber, trackingNumber, shippingAddress = '') {
+  const escapeHtml = (value) => String(value || '').replace(/[&<>"']/g, (character) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character]));
+  const chinese = cbsEmailIsChinese(record);
+  const subject = chinese ? `行李配送通知 – WorldTracer 案件编号：${fileNumber}` : `Baggage Delivery Notification – WorldTracer Reference: ${fileNumber}`;
+  const tracking = sanitizeCbsText(trackingNumber, 160).toUpperCase();
+  const address = sanitizeCbsText(shippingAddress, 300);
+  const text = chinese
+    ? `尊敬的旅客：\n\n您好！\n\n我们通知您，您的行李已通过 FedEx 安排寄出${address ? '，并将配送至以下地址：' : '。'}\n\nWorldTracer 案件编号：${fileNumber}\nFedEx Tracking Number：${tracking}${address ? `\n配送地址：${address}` : ''}\n\n您可以使用上述 FedEx Tracking Number 查询最新配送进度。\n\n请留意后续配送情况${address ? '，并确保上述地址可以正常接收行李' : ''}。\n\n${address ? '如您发现配送地址有误，或配送过程中有任何问题' : '如配送过程中有任何问题'}，请尽快回复此邮件与我们联系。\n\n感谢您的耐心与配合。\n\n此致\n中国东方航空`
+    : `Dear Passenger,\n\nWe would like to inform you that your baggage has been shipped via FedEx${address ? ' and will be delivered to the following address:' : '.'}\n\nWorldTracer Reference Number: ${fileNumber}\nFedEx Tracking Number: ${tracking}${address ? `\nDelivery Address: ${address}` : ''}\n\nYou may use the FedEx tracking number above to check the latest delivery status of your baggage.\n\nPlease monitor the delivery status${address ? ' and ensure that the above address is available to receive your baggage' : ''}.\n\n${address ? 'If you notice any issues with the delivery address or experience any problems with the delivery' : 'If you experience any problems with the delivery'}, please reply to this email as soon as possible.\n\nThank you for your patience and cooperation.\n\nSincerely,\nChina Eastern Airlines`;
+  const htmlText = text.replace(fileNumber, escapeHtml(fileNumber)).replace(tracking, escapeHtml(tracking)).replace(address, escapeHtml(address));
+  return { subject, text, html: cbsPlainTextEmailHtml(htmlText) };
+}
+
+function airportPickupClosureEmail(record, fileNumber) {
+  const reference = String(fileNumber || '').replace(/[&<>"']/g, (character) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character]));
+  const chinese = cbsEmailIsChinese(record);
+  const subject = chinese ? `行李案件结案通知 – WorldTracer 案件编号：${fileNumber}` : `Baggage Case Closure Notification – WorldTracer Reference: ${fileNumber}`;
+  const text = chinese
+    ? `尊敬的旅客：\n\n您好！\n\n我们确认您的行李已于机场领取完毕。\n\nWorldTracer 案件编号：${fileNumber}\n\n由于您的行李已成功领取，本次行李案件现已结案（Closed），我们将不再对该案件进行后续追踪。\n\n如您对本次行李案件仍有任何问题，请回复此邮件与我们联系。\n\n感谢您的耐心与配合，也再次对行李问题给您的旅程带来的不便表示歉意。\n\n此致\n中国东方航空`
+    : `Dear Passenger,\n\nWe confirm that your baggage has been successfully picked up at the airport.\n\nWorldTracer Reference Number: ${fileNumber}\n\nAs your baggage has been successfully collected, your baggage case is now closed, and no further tracing action is required.\n\nIf you have any remaining questions regarding this baggage case, please reply to this email and contact us.\n\nThank you for your patience and cooperation. We sincerely apologize again for any inconvenience caused by the baggage issue.\n\nSincerely,\nChina Eastern Airlines`;
+  return { subject, text, html: cbsPlainTextEmailHtml(text.replace(fileNumber, reference)) };
+}
+
+function passengerPaidShippingEmail(record, fileNumber) {
+  const reference = String(fileNumber || '').replace(/[&<>"']/g, (character) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character]));
+  const chinese = cbsEmailIsChinese(record);
+  const subject = chinese ? `行李配送通知 – WorldTracer 案件编号：${fileNumber}` : `Baggage Shipping Notification – WorldTracer Reference: ${fileNumber}`;
+  const text = chinese
+    ? `尊敬的旅客：\n\n您好！\n\n我们通知您，您的行李已按照您所提供的配送方式安排寄出。\n\nWorldTracer 案件编号：${fileNumber}\n\n由于本次配送方式由您提供，请您通过相应的承运商或配送服务查询后续运输及配送进度。\n\n行李交付给您所指定的承运商后，如有运输延误、配送状态或其他与运输相关的问题，请直接与相应承运商联系。\n\n感谢您的耐心与配合。\n\n此致\n中国东方航空`
+    : `Dear Passenger,\n\nWe would like to inform you that your baggage has been shipped using the shipping method provided by you.\n\nWorldTracer Reference Number: ${fileNumber}\n\nAs the shipping method was provided by you, please check the shipment and delivery status directly with the applicable carrier or delivery service.\n\nOnce the baggage has been handed over to your designated carrier, please contact the carrier directly regarding any shipping delays, delivery status, or other transportation-related matters.\n\nThank you for your patience and cooperation.\n\nSincerely,\nChina Eastern Airlines`;
+  return { subject, text, html: cbsPlainTextEmailHtml(text.replace(fileNumber, reference)) };
+}
+
+function lostBaggageUpdateEmail(record, fileNumber) {
+  const reference = String(fileNumber || '').replace(/[&<>"']/g, (character) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character]));
+  const chinese = cbsEmailIsChinese(record);
+  const subject = chinese ? `【请勿回复 】行李遗失案件通知 – WorldTracer 案件编号：${fileNumber}` : `[DO NOT REPLY] Lost Baggage Case Notification – WorldTracer Reference: ${fileNumber}`;
+  const text = chinese
+    ? `尊敬的旅客：\n\n您好！\n\n我们非常遗憾地通知您，经过持续查询与追踪，目前仍未能找到您的行李。您的行李案件现已由延误行李（Delayed Baggage）转为遗失行李（Lost Baggage）案件。\n\nWorldTracer 案件编号：${fileNumber}\n\n对于行李遗失给您的旅程带来的不便，我们深表歉意。\n\n后续我们将根据遗失行李案件的处理流程继续跟进。如您在案件转为 Lost 后 7 天内仍未收到我们的进一步通知，请发送邮件至 laxllmu@chinaeastern-usa.com 与我们联系，以便我们进一步跟进您的案件。\n\n此邮件为系统自动发送，请勿直接回复此邮件。\n\n感谢您的耐心与理解。\n\n此致\n中国东方航空`
+    : `Dear Passenger,\n\nWe regret to inform you that despite our continued tracing efforts, we have not been able to locate your baggage. Your baggage case has now been changed from a Delayed Baggage case to a Lost Baggage case.\n\nWorldTracer Reference Number: ${fileNumber}\n\nWe sincerely apologize for the inconvenience caused by the loss of your baggage.\n\nWe will continue to follow up on your case in accordance with the lost baggage handling process. If you have not received any further updates from us within 7 days after your case was changed to Lost, please contact us at laxllmu@chinaeastern-usa.com so that we can further follow up on your case.\n\nThis is an automatically generated email. Please do not reply to this message.\n\nThank you for your patience and understanding.\n\nSincerely,\nChina Eastern Airlines`;
+  return { subject, text, html: cbsPlainTextEmailHtml(text.replace(fileNumber, reference)) };
+}
+
+function adcShippingUpdateEmail(record, fileNumber, shippingAddress = '') {
+  const reference = String(fileNumber || '').replace(/[&<>"']/g, (character) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character]));
+  const chinese = cbsEmailIsChinese(record);
+  const subject = chinese ? `行李配送通知 – WorldTracer 案件编号：${fileNumber}` : `Baggage Delivery Notification – WorldTracer Reference: ${fileNumber}`;
+  const address = sanitizeCbsText(shippingAddress, 300);
+  const text = address
+    ? (chinese
+      ? `尊敬的旅客：\n\n您好！\n\n我们通知您，您的行李已安排寄出，并将配送至以下地址：\n\nWorldTracer 案件编号：${fileNumber}\n\n配送地址：${address}\n\n请留意后续配送情况，并确保上述地址可以正常接收行李。\n\n如您发现配送地址有误，或配送过程中有任何问题，请尽快回复此邮件与我们联系。\n\n感谢您的耐心与配合。\n\n此致\n中国东方航空`
+      : `Dear Passenger,\n\nWe would like to inform you that your baggage has been shipped and will be delivered to the following address:\n\nWorldTracer Reference Number: ${fileNumber}\n\nDelivery Address: ${address}\n\nPlease monitor the delivery status and ensure that the above address is available to receive your baggage.\n\nIf you notice any issues with the delivery address or experience any problems during the delivery process, please reply to this email as soon as possible.\n\nThank you for your patience and cooperation.\n\nSincerely,\nChina Eastern Airlines`)
+    : (chinese
+      ? `尊敬的旅客：\n\n您好！\n\n我们通知您，您的行李已安排寄出，并将配送至您在行李案件中所提供的地址。\n\nWorldTracer 案件编号：${fileNumber}\n\n请留意后续配送情况，并确保您所提供的地址可以正常接收行李。\n\n如配送过程中有任何更新或需要进一步确认的信息，我们会与您联系。\n\n如您有任何问题，请直接回复此邮件与我们联系。\n\n感谢您的耐心与配合。\n\n此致\n中国东方航空`
+      : `Dear Passenger,\n\nWe would like to inform you that your baggage has been shipped and is being delivered to the address you provided for your baggage case.\n\nWorldTracer Reference Number: ${fileNumber}\n\nPlease monitor the delivery and ensure that the address provided is available to receive the baggage.\n\nIf there are any updates or if additional information is required during the delivery process, we will contact you accordingly.\n\nIf you have any questions, please feel free to reply directly to this email.\n\nThank you for your patience and cooperation.\n\nSincerely,\nChina Eastern Airlines`);
+  const escapedText = text.replace(fileNumber, reference).replace(address, String(address).replace(/[&<>"']/g, (character) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character])));
+  return { subject, text, html: cbsPlainTextEmailHtml(escapedText) };
+}
+
+function fedexShippingUpdateEmail(record, fileNumber, trackingNumber, shippingAddress = '') {
+  const escapeHtml = (value) => String(value || '').replace(/[&<>"']/g, (character) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character]));
+  const chinese = cbsEmailIsChinese(record);
+  const subject = chinese ? `行李配送通知 – WorldTracer 案件编号：${fileNumber}` : `Baggage Delivery Notification – WorldTracer Reference: ${fileNumber}`;
+  const tracking = sanitizeCbsText(trackingNumber, 160).toUpperCase();
+  const address = sanitizeCbsText(shippingAddress, 300);
+  const text = chinese
+    ? `尊敬的旅客：\n\n您好！\n\n我们通知您，您的行李已通过 FedEx 安排寄出${address ? '，并将配送至以下地址：' : '。'}\n\nWorldTracer 案件编号：${fileNumber}\nFedEx Tracking Number：${tracking}${address ? `\n配送地址：${address}` : ''}\n\n您可以使用上述 FedEx Tracking Number 查询最新配送进度。\n\n请留意后续配送情况${address ? '，并确保上述地址可以正常接收行李' : ''}。\n\n${address ? '如您发现配送地址有误，或配送过程中有任何问题' : '如配送过程中有任何问题'}，请尽快回复此邮件与我们联系。\n\n感谢您的耐心与配合。\n\n此致\n中国东方航空`
+    : `Dear Passenger,\n\nWe would like to inform you that your baggage has been shipped via FedEx${address ? ' and will be delivered to the following address:' : '.'}\n\nWorldTracer Reference Number: ${fileNumber}\nFedEx Tracking Number: ${tracking}${address ? `\nDelivery Address: ${address}` : ''}\n\nYou may use the FedEx tracking number above to check the latest delivery status of your baggage.\n\nPlease monitor the delivery status${address ? ' and ensure that the above address is available to receive your baggage' : ''}.\n\n${address ? 'If you notice any issues with the delivery address or experience any problems with the delivery' : 'If you experience any problems with the delivery'}, please reply to this email as soon as possible.\n\nThank you for your patience and cooperation.\n\nSincerely,\nChina Eastern Airlines`;
+  const htmlText = text.replace(fileNumber, escapeHtml(fileNumber)).replace(tracking, escapeHtml(tracking)).replace(address, escapeHtml(address));
+  return { subject, text, html: cbsPlainTextEmailHtml(htmlText) };
 }
 
 function buildCbsFlightRoute(body) {
@@ -1511,10 +1860,11 @@ function buildCbsFlightRoute(body) {
   const normalizedRows = rows.map((row) => ({
     flightNo: sanitizeCbsText(row?.flightNo, 20).toUpperCase(),
     flightDate: sanitizeCbsText(row?.flightDate, 20).toUpperCase(),
+    origin: sanitizeCbsText(row?.origin, 20).toUpperCase(),
     destination: sanitizeCbsText(row?.destination, 20).toUpperCase()
-  })).filter((row) => row.flightNo || row.flightDate || row.destination);
+  })).filter((row) => row.flightNo || row.flightDate || row.origin || row.destination);
   if (normalizedRows.length) {
-    return normalizedRows.map((row) => [row.flightNo, row.flightDate, row.destination].filter(Boolean).join(' ')).join(' / ');
+    return normalizedRows.map((row) => [row.flightNo, row.flightDate, row.origin, row.destination].filter(Boolean).join(' ')).join(' / ');
   }
   return sanitizeCbsText(body.flightRoute, 240).toUpperCase();
 }
@@ -1542,7 +1892,6 @@ function cbsEmailErrorMessage(err) {
 
 function cbsPdfLines(record) {
   return [
-    ['Reference Number', record.caseNumber],
     ['Case Type', record.caseType],
     ['Status', record.status],
     ['Passenger name', record.passengerName],
@@ -1565,8 +1914,8 @@ function cbsPdfLines(record) {
 
 function sanitizeCbsAttachments(value) {
   const list = Array.isArray(value) ? value : [];
-  const maxAttachments = 8;
-  const maxTotalBytes = 10 * 1024 * 1024;
+  const maxAttachments = 20;
+  const maxTotalBytes = 22 * 1024 * 1024;
   let totalBytes = 0;
   return list.slice(0, maxAttachments).map((item, index) => {
     const filename = sanitizeCbsText(item?.filename, 120) || `attachment-${index + 1}`;
@@ -1584,26 +1933,380 @@ function sanitizeCbsAttachments(value) {
 
 function missingRequiredCbsAttachmentTypes(attachments = []) {
   const uploadedTypes = new Set(attachments.map((item) => String(item.attachmentType || '').trim().toLowerCase()));
-  return ['passport', 'boardingpass', 'bagtag'].filter((type) => !uploadedTypes.has(type));
+  return ['boardingpass', 'bagtag'].filter((type) => !uploadedTypes.has(type));
 }
 
 
+
+function sanitizeCbsDiscordAttachmentName(attachment = {}, index = 0) {
+  const rawType = sanitizeCbsText(attachment.attachmentType, 40).toLowerCase() || 'document';
+  const safeType = rawType.replace(/[^a-z0-9_-]/gi, '_') || 'document';
+  const fallback = `cbs-${safeType}-${index + 1}`;
+  const original = sanitizeCbsText(attachment.filename, 120) || fallback;
+  return String(original).replace(/[^a-z0-9_.-]/gi, '_').slice(0, 80) || fallback;
+}
+
+function buildCbsDiscordAttachmentFiles(attachments = []) {
+  if (!Array.isArray(attachments)) return [];
+  return attachments
+    .map((attachment, index) => {
+      const contentBase64 = String(attachment?.contentBase64 || '').replace(/\s/g, '');
+      if (!contentBase64) return null;
+      return {
+        attachment: Buffer.from(contentBase64, 'base64'),
+        name: sanitizeCbsDiscordAttachmentName(attachment, index)
+      };
+    })
+    .filter(Boolean);
+}
+
+async function sendCbsAttachmentsToDiscord(record, attachments = [], pdfBuffer = null) {
+  const files = buildCbsDiscordAttachmentFiles(attachments);
+  if (pdfBuffer?.length) {
+    files.unshift({ attachment: pdfBuffer, name: 'baggage-report.pdf' });
+  }
+  if (!files.length) return { sent: false, reason: 'No CBS attachments to post.' };
+  const channelId = String(record?.caseType || '').toUpperCase() === 'DPR'
+    ? CBS_DAMAGED_DISCORD_CHANNEL_ID
+    : CBS_DELAYED_LOST_DISCORD_CHANNEL_ID;
+  const channel = await client.channels.fetch(channelId);
+  if (!channel) return { sent: false, reason: 'Discord channel not found.' };
+  const attachmentCounts = attachments.reduce((counts, attachment) => {
+    const type = sanitizeCbsText(attachment?.attachmentType, 40) || 'document';
+    counts[type] = (counts[type] || 0) + 1;
+    return counts;
+  }, {});
+  const summary = Object.entries(attachmentCounts).map(([type, count]) => `${type}: ${count}`).join(' / ') || '—';
+  const content = [
+      'CBS baggage case attachments',
+      `Passenger: ${record.passengerName || '—'}`,
+      `Bag tag: ${record.bagTag || '—'}`,
+      `Type: ${record.caseType || '—'}`,
+      `Files: PDF report + ${summary}`
+    ].join('\n');
+  const batches = [];
+  for (let index = 0; index < files.length; index += 10) batches.push(files.slice(index, index + 10));
+  for (let index = 0; index < batches.length; index += 1) {
+    await channel.send({
+      content: index === 0 ? content : `CBS baggage case attachments (continued ${index + 1}/${batches.length})`,
+      files: batches[index]
+    });
+  }
+  return { sent: true, channelId, fileCount: files.length };
+}
+
+async function sendDprWorldTracerUpdateToDiscord(record, fileNumber) {
+  if (String(record?.caseType || '').trim().toUpperCase() !== 'DPR') {
+    return { sent: false, reason: 'Discord WorldTracer updates are only sent for DPR cases.' };
+  }
+  const channel = await client.channels.fetch(CBS_DAMAGED_DISCORD_CHANNEL_ID);
+  if (!channel?.isTextBased()) {
+    return { sent: false, reason: 'DPR Discord channel was not found or is not text based.' };
+  }
+  await channel.send({
+    content: [
+      `<@&${CBS_DPR_WORLDTRACER_DISCORD_ROLE_ID}>`,
+      'DPR WorldTracer update',
+      `Passenger Name: ${sanitizeCbsText(record.passengerName, 160) || '—'}`,
+      `Bag Tag: ${sanitizeCbsText(record.bagTag, 160) || '—'}`,
+      `Email: ${sanitizeCbsText(record.email, 160) || '—'}`,
+      `Phone: ${sanitizeCbsText(record.phone, 80) || '—'}`,
+      `WorldTracer File #: ${sanitizeCbsText(fileNumber, 120) || '—'}`
+    ].join('\n'),
+    allowedMentions: { parse: [], roles: [CBS_DPR_WORLDTRACER_DISCORD_ROLE_ID] }
+  });
+  return { sent: true, channelId: CBS_DAMAGED_DISCORD_CHANNEL_ID };
+}
+
+async function sendUpcomingRushToDiscord(record, updateEvent) {
+  const fields = new Map(updateEvent?.fields || []);
+  const channel = await client.channels.fetch(CBS_UPCOMING_RUSH_DISCORD_CHANNEL_ID);
+  if (!channel?.isTextBased()) {
+    throw new Error('Upcoming Rush Discord channel was not found or is not text based.');
+  }
+  await channel.send({
+    content: [
+      '**Upcoming Rush**',
+      `Passenger: ${sanitizeCbsText(record?.passengerName, 160) || '—'}`,
+      `WorldTracer: ${sanitizeCbsText(record?.worldTracerFileNumber, 120).toUpperCase() || '—'}`,
+      `Original bag tag: ${sanitizeCbsText(record?.bagTag, 160).toUpperCase() || '—'}`,
+      `Rush flight: ${fields.get('Rush Flight') || '—'}`,
+      `Rush date: ${fields.get('Rush Date') || '—'}`,
+      `Rush tag: ${fields.get('Rush Tag') || '—'}`
+    ].join('\n')
+  });
+  return { sent: true, channelId: CBS_UPCOMING_RUSH_DISCORD_CHANNEL_ID };
+}
+
+async function sendRushBagToDiscord(record = {}) {
+  const worldTracerFileNumber = sanitizeCbsText(record.worldTracerFileNumber, 120).toUpperCase();
+  const flightRows = Array.isArray(record.flightRows) ? record.flightRows : [];
+  if (!flightRows.some((flight) => sanitizeCbsText(flight?.flightNumber, 40).toUpperCase().replace(/\s+/g, '') === 'MU586')) {
+    return { sent: false, reason: 'RUSH itinerary does not include MU586.' };
+  }
+  const channel = await client.channels.fetch(CBS_RUSH_BAG_DISCORD_CHANNEL_ID);
+  if (!channel?.isTextBased()) throw new Error('Rush Bag Discord channel was not found or is not text based.');
+  const itinerary = flightRows.map((flight) => [
+    sanitizeCbsText(flight?.flightDate, 40) || '—',
+    sanitizeCbsText(flight?.flightNumber, 40).toUpperCase() || '—',
+    `${sanitizeCbsText(flight?.from, 40).toUpperCase() || '—'} → ${sanitizeCbsText(flight?.to, 40).toUpperCase() || '—'}`
+  ].join(' | '));
+  await channel.send({
+    content: [
+      '**RUSH BAG**',
+      ...(worldTracerFileNumber ? [`WorldTracer File Number: ${worldTracerFileNumber}`] : []),
+      `Original Tag Number: ${sanitizeCbsText(record.originalTagNumber, 120).toUpperCase() || '—'}`,
+      `RUSH Tag Number: ${sanitizeCbsText(record.rushTagNumber, 120).toUpperCase() || '—'}`,
+      'RUSH Itinerary:',
+      ...itinerary.map((segment) => `• ${segment}`)
+    ].join('\n')
+  });
+  return { sent: true, channelId: CBS_RUSH_BAG_DISCORD_CHANNEL_ID };
+}
+
+async function addRushBagDiscordResult(result, record) {
+  try {
+    result.discord = await sendRushBagToDiscord(record);
+  } catch (err) {
+    result.discordError = err?.message || 'Rush Bag Discord notification failed.';
+    console.error('CBS Rush Bag Discord notification error:', err);
+  }
+  return result;
+}
+
+function isRushBagWorldTracerOnlyUpdate(previousRecord = {}, nextRecord = {}) {
+  const comparable = (record) => ({
+    originalTagNumber: sanitizeCbsText(record.originalTagNumber, 120).toUpperCase(),
+    rushTagNumber: sanitizeCbsText(record.rushTagNumber, 120).toUpperCase(),
+    flightRows: (Array.isArray(record.flightRows) ? record.flightRows : []).map((flight) => ({
+      flightDate: sanitizeCbsText(flight?.flightDate, 40),
+      flightNumber: sanitizeCbsText(flight?.flightNumber, 40).toUpperCase(),
+      from: sanitizeCbsText(flight?.from, 40).toUpperCase(),
+      to: sanitizeCbsText(flight?.to, 40).toUpperCase()
+    }))
+  });
+  const previousFileNumber = sanitizeCbsText(previousRecord.worldTracerFileNumber, 120).toUpperCase();
+  const nextFileNumber = sanitizeCbsText(nextRecord.worldTracerFileNumber, 120).toUpperCase();
+  return previousFileNumber !== nextFileNumber
+    && JSON.stringify(comparable(previousRecord)) === JSON.stringify(comparable(nextRecord));
+}
+
+async function sendLostBaggageUpdateToDiscord(fileNumber) {
+  const channel = await client.channels.fetch(CBS_DELAYED_LOST_DISCORD_CHANNEL_ID);
+  if (!channel?.isTextBased()) return { sent: false, reason: 'Delayed/lost baggage Discord channel was not found or is not text based.' };
+  await channel.send({
+    content: [`<@&${CBS_LOST_DISCORD_ROLE_ID}>`, '⚠️ BAGGAGE CASE – LOST', '', `WorldTracer Ref: ${sanitizeCbsText(fileNumber, 120) || '—'}`, '', 'Baggage has not been located and the case has been updated from DELAYED → LOST.', '', 'Passenger has been notified by email'].join('\n'),
+    allowedMentions: { parse: [], roles: [CBS_LOST_DISCORD_ROLE_ID] }
+  });
+  return { sent: true, channelId: CBS_DELAYED_LOST_DISCORD_CHANNEL_ID };
+}
+
+function sanitizeContactAttachments(value) {
+  const input = Array.isArray(value) ? value : [];
+  const maxFileBytes = 8 * 1024 * 1024;
+  let totalBytes = 0;
+  return input.slice(0, 10).map((item, index) => {
+    const contentBase64 = String(item?.contentBase64 || '').replace(/\s/g, '');
+    if (!contentBase64 || !/^[A-Za-z0-9+/]*={0,2}$/.test(contentBase64)) return null;
+    const bytes = Buffer.byteLength(contentBase64, 'base64');
+    totalBytes += bytes;
+    if (bytes > maxFileBytes || totalBytes > 22 * 1024 * 1024) return null;
+    return {
+      filename: sanitizeCbsText(item?.filename, 120) || `attachment-${index + 1}`,
+      mimeType: sanitizeCbsText(item?.mimeType, 120) || 'application/octet-stream',
+      contentBase64
+    };
+  }).filter(Boolean);
+}
+
+async function sendContactFormToDiscord(record, attachments) {
+  const channel = await client.channels.fetch(CONTACT_FORM_DISCORD_CHANNEL_ID);
+  if (!channel?.isTextBased()) throw new Error('Contact form Discord channel was not found or is not text based.');
+  const files = buildCbsDiscordAttachmentFiles(attachments);
+  const content = record.language === 'en'
+    ? [`<@&${CONTACT_FORM_DISCORD_ROLE_ID}>`, '**Misconnection Passenger Assistance Request**', `Date: ${record.date}`, `Name: ${record.name}`, `Seat number: ${record.seatNumber}`, `Passport number: ${record.ticketNumber}`, `Email: ${record.email}`, `Mobile Number: ${record.phone}`, `Attachments: ${record.attachmentNames || 'None'}`]
+    : [`<@&${CONTACT_FORM_DISCORD_ROLE_ID}>`, '**未能衔接后续航班旅客协助请求**', `日期：${record.date}`, `姓名：${record.name}`, `座位号：${record.seatNumber}`, `护照号：${record.ticketNumber}`, `电子邮箱：${record.email}`, `手机号码：${record.phone}`, `附件：${record.attachmentNames || '无'}`];
+  await channel.send({
+    content: content.join('\n'),
+    files,
+    allowedMentions: { parse: [], roles: [CONTACT_FORM_DISCORD_ROLE_ID] }
+  });
+  return { sent: true, channelId: CONTACT_FORM_DISCORD_CHANNEL_ID, fileCount: files.length };
+}
+
+async function sendWrongBaggageFormToDiscord(record, attachments) {
+  const channel = await client.channels.fetch(WRONG_BAGGAGE_DISCORD_CHANNEL_ID);
+  if (!channel?.isTextBased()) throw new Error('CBS attachments Discord channel was not found or is not text based.');
+  await channel.send({
+    content: [
+      '**Wrong Baggage Pick-up Report / 误取行李申报**',
+      `Name / 姓名: ${record.name}`,
+      `Seat number / 座位号: ${record.seatNumber}`,
+      `Baggage tag / 行李牌号码: ${record.bagTagNumber}`,
+      `Email / 电子邮箱: ${record.email}`,
+      `Mobile number / 手机号码: ${record.phone}`,
+      `Additional information / 其他信息: ${record.additionalInformation || '—'}`,
+      `Language / 语言: ${record.language}`
+    ].join('\n'),
+    files: buildCbsDiscordAttachmentFiles(attachments),
+    allowedMentions: { parse: [] }
+  });
+  return { sent: true, channelId: WRONG_BAGGAGE_DISCORD_CHANNEL_ID, fileCount: attachments.length };
+}
+
+app.post('/wrong-baggage-submissions', async (req, res) => {
+  try {
+    const body = req.body || {};
+    const record = {
+      submittedAt: new Date().toISOString(),
+      name: sanitizeCbsText(body.name, 160),
+      seatNumber: sanitizeCbsText(body.seatNumber, 20).toUpperCase(),
+      bagTagNumber: sanitizeCbsText(body.bagTagNumber, 40).toUpperCase(),
+      email: sanitizeCbsText(body.email, 160).toLowerCase(),
+      phone: sanitizeCbsText(body.phone, 80),
+      additionalInformation: sanitizeCbsText(body.additionalInformation, 1000),
+      language: sanitizeCbsText(body.language, 5) === 'en' ? 'en' : 'zh'
+    };
+    if (!record.name || !record.seatNumber || !record.bagTagNumber || !record.phone || !isValidEmail(record.email)) {
+      return res.status(400).json({ error: 'Name, seat number, baggage tag number, valid email, and mobile number are required.' });
+    }
+    const attachments = sanitizeContactAttachments(body.attachments);
+    if (!attachments.length) return res.status(400).json({ error: 'At least one baggage photo is required.' });
+    if ((Array.isArray(body.attachments) ? body.attachments.length : 0) !== attachments.length || attachments.some((item) => !String(item.mimeType).startsWith('image/'))) {
+      return res.status(400).json({ error: 'Upload up to 10 images, no more than 8 MB each and 22 MB total.' });
+    }
+    await appendWrongBaggageSubmission(record);
+    let email = null;
+    let emailError = '';
+    try {
+      email = await sendWrongBaggageCaseEmail({ passengerEmail: record.email, language: record.language });
+    } catch (mailErr) {
+      emailError = cbsEmailErrorMessage(mailErr);
+      console.error('Wrong baggage passenger email error:', mailErr);
+    }
+    let discord = null;
+    let discordError = '';
+    try {
+      discord = await sendWrongBaggageFormToDiscord(record, attachments);
+    } catch (discordErr) {
+      discordError = discordErr?.message || 'Discord notification failed.';
+      console.error('Wrong baggage Discord notification error:', discordErr);
+    }
+    return res.status(201).json({ created: true, record, email, emailError, discord, discordError });
+  } catch (err) {
+    console.error('Wrong baggage form submission error:', err);
+    return res.status(500).json({ error: 'The form could not be submitted. Please try again or contact a staff member.' });
+  }
+});
+
+app.post('/contact-form-submissions', async (req, res) => {
+  try {
+    const body = req.body || {};
+    const date = sanitizeCbsText(body.date, 10);
+    const name = sanitizeCbsText(body.name, 160);
+    const seatNumber = sanitizeCbsText(body.seatNumber, 20).toUpperCase();
+    const ticketNumber = sanitizeCbsText(body.ticketNumber, 40);
+    const email = sanitizeCbsText(body.email, 160).toLowerCase();
+    const phone = sanitizeCbsText(body.phone, 80);
+    const language = sanitizeCbsText(body.language, 5) === 'en' ? 'en' : 'zh';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'A valid date is required.' });
+    if (!name || !seatNumber || !ticketNumber || !phone || !isValidEmail(email)) return res.status(400).json({ error: 'Name, seat number, passport number, valid email, and mobile number are required.' });
+    const attachments = sanitizeContactAttachments(body.attachments);
+    if ((Array.isArray(body.attachments) ? body.attachments.length : 0) !== attachments.length) {
+      return res.status(400).json({ error: 'Use no more than 10 attachments, no more than 22 MB total, and no file larger than 8 MB.' });
+    }
+    const record = {
+      submittedAt: new Date().toISOString(), date, name, seatNumber, ticketNumber, email, phone, language,
+      attachmentNames: attachments.map((attachment) => attachment.filename).join(', ')
+    };
+    await appendContactFormSubmission(record);
+    let emailResult = null;
+    let emailError = '';
+    try {
+      emailResult = await sendMisconnectionAssistanceEmail({ passengerEmail: record.email, language: record.language });
+    } catch (mailErr) {
+      emailError = cbsEmailErrorMessage(mailErr);
+      console.error('Misconnection passenger email error:', mailErr);
+    }
+    let discord = null;
+    let discordError = '';
+    try {
+      discord = await sendContactFormToDiscord(record, attachments);
+    } catch (discordErr) {
+      discordError = discordErr?.message || 'Discord notification failed.';
+      console.error('Contact form Discord notification error:', discordErr);
+    }
+    return res.status(201).json({ created: true, record, email: emailResult, emailError, discord, discordError });
+  } catch (err) {
+    console.error('Contact form submission error:', err);
+    return res.status(500).json({ error: 'The form could not be submitted. Please try again or contact a staff member.' });
+  }
+});
+
+app.get('/miss-connection-report', async (req, res) => {
+  try {
+    const rows = await getContactFormSubmissions();
+    return res.json({ rows, source: 'sheet' });
+  } catch (err) {
+    console.error('Miss connection report error:', err);
+    return res.status(500).json({ error: err?.message || 'Miss connection report lookup failed.' });
+  }
+});
+
 function buildCbsUpdateFields(update = {}) {
   const type = sanitizeCbsText(update.type, 40).toLowerCase();
-  if (!['worldtracer', 'rush', 'location', 'shipping', 'closed'].includes(type)) return null;
+  if (!['upcoming_rush', 'upcoming_rush_delete', 'worldtracer', 'requested_bags', 'email', 'comment', 'rush', 'location', 'shipping', 'lost', 'closed', 'reopen'].includes(type)) return null;
   const comment = sanitizeCbsText(update.comment, 500);
+  if (type === 'upcoming_rush_delete') return { deleteEventKey:'upcoming_rush' };
+  if (type === 'upcoming_rush') {
+    const rushFlight = sanitizeCbsText(update.rushFlight, 40).toUpperCase();
+    const rushDate = sanitizeCbsText(update.rushDate, 40);
+    const rushTagNumber = sanitizeCbsText(update.rushTagNumber, 80).toUpperCase();
+    if (!rushFlight || !/^\d{4}-\d{2}-\d{2}$/.test(rushDate) || !rushTagNumber) return null;
+    return { status:'Upcoming Rush', replaceEventKey:'upcoming_rush', updateNote:`UPCOMING RUSH | Rush Flight: ${rushFlight} | Rush Date: ${rushDate} | Rush Tag: ${rushTagNumber}`, updateEvent:{ key:'upcoming_rush', title:'Upcoming Rush', fields:[['Rush Flight', rushFlight], ['Rush Date', rushDate], ['Rush Tag', rushTagNumber]] } };
+  }
+  if (type === 'comment') {
+    if (!comment) return null;
+    return { status:'', updateNote:`COMMENT | Comment: ${comment}`, updateEvent:{ key:'comment', title:'Comment', fields:[['Comment', comment]] } };
+  }
   if (type === 'worldtracer') {
     const fileNumber = sanitizeCbsText(update.fileNumber || update.worldTracerFileNumber, 120).toUpperCase();
     if (!fileNumber) return null;
     return { status: 'WorldTracer', updateNote: `WORLDTRACER | File number: ${fileNumber}`, updateEvent: { key: 'worldtracer', title: 'Update WorldTracer', fields: [['File Number', fileNumber]] } };
   }
+  if (type === 'requested_bags') {
+    const fromStation = sanitizeCbsText(update.fromStation, 120).toUpperCase();
+    if (!fromStation) return null;
+    return { status: 'Requested Bags', updateNote: `REQUESTED BAGS | From station: ${fromStation}`, updateEvent: { key: 'requested_bags', title: 'Requested Bags', fields: [['From Station', fromStation]] } };
+  }
+  if (type === 'email') {
+    const emailAction = sanitizeCbsText(update.emailAction, 80);
+    if (emailAction === 'baggage_open_by_customs') return { status:'Email - Explanation - Baggage Open by Custom', updateNote:'EMAIL | Explanation - Baggage Open by Custom', updateEvent:{ key:'email', title:'Explanation - Baggage Open by Custom', fields:[['Email To', 'Passenger email on file']] } };
+    if (emailAction === 'require_open_bag_authorization_pvg') return { status:'Email - Require Open Bag Authorization at PVG', updateNote:'EMAIL | Require Open Bag Authorization at PVG', updateEvent:{ key:'email', title:'Require Open Bag Authorization at PVG', fields:[['Airport', 'PVG'], ['Attachment', 'Letter of Authorization.pdf']] } };
+    if (emailAction === 'address_confirm_request') return { status:'Email - Address Confirm Request', updateNote:'EMAIL | Address Confirm Request Email', updateEvent:{ key:'email', title:'Address Confirm Request Email', fields:[['Email To', 'Passenger email on file']] } };
+    if (emailAction === 'baggage_pickup_delivery_method_confirmation') return { status:'Email - Baggage Pick-Up / Delivery Method Confirmation', updateNote:'EMAIL | Baggage Pick-Up / Delivery Method Confirmation', updateEvent:{ key:'email', title:'Baggage Pick-Up / Delivery Method Confirmation', fields:[['Email To', 'Passenger email on file']] } };
+    if (emailAction === 'baggage_transfer_status_eta') {
+      const estimatedArrivalTime = sanitizeCbsText(update.estimatedArrivalTime, 40);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(estimatedArrivalTime)) return null;
+      return { status:'Email - Baggage Transfer Status Update - ETA', updateNote:`EMAIL | Baggage transfer status update - ETA | Estimated arrival date: ${estimatedArrivalTime}`, updateEvent:{ key:'email', title:'Baggage transfer status update - ETA', fields:[['Estimated Arrival Time', estimatedArrivalTime]] } };
+    }
+    if (emailAction === 'contact_pax_pickup_bags') return { status: 'Email - Pick-up Bags - available', updateNote: 'EMAIL | Pick-up Bags - available', updateEvent: { key:'email', title:'Pick-up Bags - available', fields:[['Email To', 'Passenger email on file']] } };
+    if (emailAction === 'pickup_bags_future_available') {
+      const availableDate = sanitizeCbsText(update.availableDate, 40);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(availableDate)) return null;
+      return { status:'Email - Pick-up Bags - future available', updateNote:`EMAIL | Pick-up Bags - future available | Available date: ${availableDate}`, updateEvent:{ key:'email', title:'Pick-up Bags - future available', fields:[['Available Date', availableDate]] } };
+    }
+    if (emailAction !== 'sent_open_bag_authorization_to_pvg') return null;
+    const emailTo = sanitizeCbsText(update.emailTo, 160).toLowerCase();
+    if (!['pd-bag-intl@ceair.com', 'pd-bag-dom@ceair.com'].includes(emailTo)) return null;
+    return { status: 'Email - Sent Open Bag Authorization to PVG', updateNote: `EMAIL | Sent Open Bag Authorization to PVG | Email To: ${emailTo}`, updateEvent: { key:'email', title:'Sent Open Bag Authorization to PVG', fields:[['Email To', emailTo], ['Attachment', 'Letter of Authorization']] } };
+  }
   if (type === 'rush') {
     const rushTagNumber = sanitizeCbsText(update.rushTagNumber, 80).toUpperCase();
     const rushToWhere = sanitizeCbsText(update.rushToWhere, 120).toUpperCase();
-    const akeNumber = sanitizeCbsText(update.akeNumber, 80).toUpperCase();
     const worldTracerFileNumber = sanitizeCbsText(update.worldTracerFileNumber, 120).toUpperCase();
-    if (!rushTagNumber || !rushToWhere || !akeNumber) return null;
-    return { status: 'Rush', updateNote: `RUSH | Rush tag: ${rushTagNumber} | Rush to: ${rushToWhere} | AKE: ${akeNumber}${worldTracerFileNumber ? ` | WorldTracer: ${worldTracerFileNumber}` : ''}${comment ? ` | Comment: ${comment}` : ''}`, updateEvent: { key: 'rush', title: 'Update Rush', fields: [['Rush Tag Number', rushTagNumber], ['Rush To Where', rushToWhere], ['AKE Number', akeNumber], ...(worldTracerFileNumber ? [['WorldTracer', worldTracerFileNumber]] : []), ...(comment ? [['Comment', comment]] : [])] } };
+    if (!rushTagNumber || !rushToWhere) return null;
+    return { status: 'Rush', updateNote: `RUSH | Rush tag: ${rushTagNumber} | Rush to: ${rushToWhere}${worldTracerFileNumber ? ` | WorldTracer: ${worldTracerFileNumber}` : ''}${comment ? ` | Comment: ${comment}` : ''}`, updateEvent: { key: 'rush', title: 'Update Rush', fields: [['Rush Tag Number', rushTagNumber], ['Rush To Where', rushToWhere], ...(worldTracerFileNumber ? [['WorldTracer', worldTracerFileNumber]] : []), ...(comment ? [['Comment', comment]] : [])] } };
   }
   if (type === 'location') {
     const location = sanitizeCbsText(update.location, 160).toUpperCase();
@@ -1613,22 +2316,133 @@ function buildCbsUpdateFields(update = {}) {
   if (type === 'closed') {
     return { status: 'Closed', updateNote: `CASE CLOSE${comment ? ` | Comment: ${comment}` : ''}`, updateEvent: { key: 'closed', title: 'Case Close', fields: comment ? [['Comment', comment]] : [] } };
   }
+  if (type === 'lost') {
+    return { status: 'Closed - Lost', updateNote: 'LOST BAGGAGE | Case changed from Delayed to Lost and closed', updateEvent: { key: 'lost', title: 'Lost Baggage - Case Closed', fields: [['Status Change', 'DELAYED → LOST'], ['Case Status', 'CLOSED']] } };
+  }
+  if (type === 'reopen') {
+    return { status: 'Open', updateNote: `CASE REOPEN${comment ? ` | Comment: ${comment}` : ''}`, updateEvent: { key: 'reopen', title: 'Case Reopened', fields: comment ? [['Comment', comment]] : [] } };
+  }
   const trackingNumber = sanitizeCbsText(update.trackingNumber, 160).toUpperCase();
   const shippingTo = sanitizeCbsText(update.shippingTo, 300);
-  if (!trackingNumber || !shippingTo) return null;
-  return { status: 'Shipping', updateNote: `SHIPPING | Tracking: ${trackingNumber} | Ship to: ${shippingTo}${comment ? ` | Comment: ${comment}` : ''}`, updateEvent: { key: 'shipping', title: 'Update Shipping', fields: [['Tracking Number', trackingNumber], ['Ship To', shippingTo], ...(comment ? [['Comment', comment]] : [])] } };
+  const bdo = sanitizeCbsText(update.bdo, 160).toUpperCase();
+  const shippingMethods = ['ADC - All Day Courier', 'MBI DELIVERY AND STORAGE - STANDARD', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping'];
+  const shippingMethod = shippingMethods.find((method) => method === sanitizeCbsText(update.shippingMethod, 80));
+  const needsBdo = ['ADC - All Day Courier', 'MBI DELIVERY AND STORAGE - STANDARD', 'FedEx Delivery'].includes(shippingMethod);
+  if (!shippingMethod || (shippingMethod === 'FedEx Delivery' && !trackingNumber) || (needsBdo && !bdo)) return null;
+  const airportPickup = shippingMethod === 'Pick Up at Airport';
+  return { status: airportPickup ? 'Closed - Pick Up at Airport' : 'Closed - Shipping', updateNote: `SHIPPING | Method: ${shippingMethod}${trackingNumber ? ` | Tracking: ${trackingNumber}` : ''} | Ship to: ${shippingTo}${bdo ? ` | BDO: ${bdo}` : ''}${comment ? ` | Comment: ${comment}` : ''}`, updateEvent: { key: 'shipping', title: airportPickup ? 'Airport Pick Up' : 'Shipping', status:'Shipping', fields: [['Shipping Method', shippingMethod], ...(trackingNumber ? [['Tracking Number', trackingNumber]] : []), ['Ship To', shippingTo], ...(bdo ? [['BDO', bdo]] : []), ...(comment ? [['Comment', comment]] : [])] }, followUpEvent: { key:'closed', title:'Case Closed', fields:[['Comment', 'shipped']] } };
+}
+
+function normalizedCbsLinkTag(value) {
+  return sanitizeCbsText(value, 120).toUpperCase().replace(/[\s-]+/g, '');
+}
+
+async function syncUpcomingRushOnHand(record, updateEvent, updatedBy = '') {
+  const rushTag = new Map(updateEvent?.fields || []).get('Rush Tag');
+  const normalizedTag = normalizedCbsLinkTag(rushTag);
+  const worldTracerFileNumber = sanitizeCbsText(record?.worldTracerFileNumber, 120).toUpperCase();
+  if (!normalizedTag || !worldTracerFileNumber) return [];
+  const rows = await getCbsUnresolvedBaggageCases();
+  const matches = rows.filter((row) => !row.resolvedAt && normalizedCbsLinkTag(row.bagTag) === normalizedTag);
+  return Promise.all(matches.map((row) => updateCbsUnresolvedBaggageWorldTracer(row.rowNumber, worldTracerFileNumber, updatedBy)));
 }
 
 
 
 app.get('/cbs-missing-bags', async (req, res) => {
   try {
-    const sync = String(req.query?.sync || 'true').toLowerCase() !== 'false';
-    const result = await getCbsMissingBagReports({ sync });
+    const result = await getCbsMissingBagReports({ sync: false });
     return res.json(result);
   } catch (err) {
     console.error('CBS missing bag report error:', err);
     return res.status(500).json({ error: err?.message || 'CBS missing bag report failed' });
+  }
+});
+
+// Keep report actions on the collection URL. Some production proxies only
+// forward the configured /cbs-missing-bags path and return an HTML 404 for
+// action suffixes such as /:rowNumber/acknowledge.
+app.post('/cbs-missing-bags', async (req, res) => {
+  try {
+    const action = sanitizeCbsText(req.body?.action, 40).toLowerCase();
+    if (action !== 'acknowledge') return res.status(400).json({ error: 'A valid missing bag action is required' });
+    const identifier = sanitizeCbsText(req.body?.identifier || req.body?.rowNumber, 120);
+    if (!identifier) return res.status(400).json({ error: 'Missing bag identifier is required' });
+    const result = await acknowledgeCbsMissingBag(identifier);
+    if (result.notFound) return res.status(404).json({ error: 'Missing bag row not found' });
+    return res.json(result);
+  } catch (err) {
+    console.error('CBS missing bag action error:', err);
+    return res.status(500).json({ error: err?.message || 'CBS missing bag action failed' });
+  }
+});
+
+app.post('/cbs-email', async (req, res) => {
+  try {
+    const emailAction = sanitizeCbsText(req.body?.emailAction, 80);
+    if (emailAction === 'sent_open_bag_authorization_to_pvg') {
+      const emailTo = sanitizeCbsText(req.body?.emailTo, 160).toLowerCase();
+      if (!['pd-bag-intl@ceair.com', 'pd-bag-dom@ceair.com'].includes(emailTo)) return res.status(400).json({ error:'A valid PVG email address is required' });
+      const attachments = sanitizeCbsAttachments(req.body?.attachments);
+      if (attachments.length !== 1) return res.status(400).json({ error:'A signed Letter of Authorization attachment is required' });
+      const message = signedOpenBagAuthorizationToPvgEmail({});
+      const email = await sendCbsCaseEmail({ passengerEmail:emailTo, subject:message.subject, html:message.html, text:message.text, attachments, ccOperations:false });
+      return res.json({ sent:true, email });
+    }
+    if (emailAction === 'contact_pax_pickup_bags') {
+      const passengerEmail = sanitizeCbsText(req.body?.passengerEmail, 160).toLowerCase();
+      if (!isValidEmail(passengerEmail)) return res.status(400).json({ error:'A valid passenger email is required' });
+      const message = baggagePickupAtLaxEmail({});
+      const email = await sendCbsCaseEmail({ passengerEmail, subject:message.subject, html:message.html, text:message.text, ccOperations:false });
+      return res.json({ sent:true, email });
+    }
+    if (emailAction === 'baggage_open_by_customs') {
+      const passengerEmail = sanitizeCbsText(req.body?.passengerEmail, 160).toLowerCase();
+      if (!isValidEmail(passengerEmail)) return res.status(400).json({ error:'A valid passenger email is required' });
+      const record = { language:sanitizeCbsText(req.body?.language, 5) === 'zh' ? 'zh' : 'en' };
+      const message = baggageInspectionExplanationEmail(record);
+      const email = await sendCbsCaseEmail({ passengerEmail, subject:message.subject, html:message.html, text:message.text, ccOperations:false });
+      return res.json({ sent:true, email });
+    }
+    if (['pickup_bags_future_available', 'baggage_transfer_status_eta', 'address_confirm_request', 'baggage_pickup_delivery_method_confirmation', 'require_open_bag_authorization_pvg'].includes(emailAction)) {
+      const passengerEmail = sanitizeCbsText(req.body?.passengerEmail, 160).toLowerCase();
+      const worldTracerFileNumber = sanitizeCbsText(req.body?.worldTracerFileNumber, 120).toUpperCase();
+      const language = sanitizeCbsText(req.body?.language, 5) === 'zh' ? 'zh' : 'en';
+      if (!isValidEmail(passengerEmail) || !worldTracerFileNumber) return res.status(400).json({ error:'A valid passenger email and WorldTracer file number are required' });
+      const record = { worldTracerFileNumber, language };
+      let message;
+      if (emailAction === 'pickup_bags_future_available') {
+        const availableDate = sanitizeCbsText(req.body?.availableDate, 40);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(availableDate)) return res.status(400).json({ error:'A valid available date is required' });
+        message = baggageFuturePickupAtLaxEmail(record, availableDate);
+      } else if (emailAction === 'baggage_transfer_status_eta') {
+        const estimatedArrivalTime = sanitizeCbsText(req.body?.estimatedArrivalTime, 40);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(estimatedArrivalTime)) return res.status(400).json({ error:'A valid estimated arrival date is required' });
+        message = rushToLaxInformationEmail(record, worldTracerFileNumber, estimatedArrivalTime);
+      } else if (emailAction === 'address_confirm_request') {
+        message = addressConfirmRequestEmail(record);
+      } else if (emailAction === 'baggage_pickup_delivery_method_confirmation') {
+        message = baggagePickupDeliveryMethodConfirmationEmail(record);
+      } else {
+        message = openBagAuthorizationPvgEmail(record);
+      }
+      const authorizationForm = emailAction === 'require_open_bag_authorization_pvg' ? await getCbsOpenBagAuthorizationPdf() : null;
+      const email = await sendCbsCaseEmail({ passengerEmail, subject:message.subject, html:message.html, text:message.text, ...(authorizationForm ? { pdfBuffer:authorizationForm.buffer, filename:authorizationForm.name } : {}), ccOperations:false });
+      return res.json({ sent:true, email });
+    }
+    return res.status(400).json({ error:'A valid email subject is required' });
+  } catch (err) {
+    console.error('CBS standalone email error:', err);
+    return res.status(500).json({ error:cbsEmailErrorMessage(err) });
+  }
+});
+
+app.post('/cbs-missing-bags/sync', async (req, res) => {
+  try {
+    return res.json(await getCbsMissingBagReports({ sync: true }));
+  } catch (err) {
+    console.error('CBS missing bag sync error:', err);
+    return res.status(500).json({ error: err?.message || 'CBS missing bag sync failed' });
   }
 });
 
@@ -1638,13 +2452,11 @@ app.post('/cbs-missing-bags/:rowNumber/create-case', async (req, res) => {
     const report = await getCbsMissingBagReports({ sync: false });
     const missing = (report.rows || []).find((row) => Number(row.rowNumber) === rowNumber);
     if (!missing) return res.status(404).json({ error: 'Missing bag row not found' });
-    if (missing.caseNumber) return res.json({ created: false, caseNumber: missing.caseNumber, record: missing });
+    if (missing.caseCreatedAt) return res.json({ created: false, record: missing });
     if (!normalizeCbsBagTags(missing.bagTag || req.body?.bagTag)) return res.status(400).json({ error: 'Bag tag is required to create a case' });
     const now = new Date().toISOString();
-    const caseNumber = await makeCbsCaseNumber();
     const bagTag = normalizeCbsBagTags(missing.bagTag || req.body?.bagTag);
     const record = {
-      caseNumber,
       caseType: 'AHL',
       status: 'Open',
       passengerName: sanitizeCbsText(missing.passengerName, 160) || 'UNKNOWN',
@@ -1682,8 +2494,8 @@ app.post('/cbs-missing-bags/:rowNumber/create-case', async (req, res) => {
       updateNote: `Created from Missing Bag Report row ${rowNumber} | Bag tag: ${bagTag}`
     };
     await appendCbsCase(record);
-    await markCbsMissingBagCase(rowNumber, caseNumber);
-    return res.status(201).json({ created: true, caseNumber, record });
+    await markCbsMissingBagCase(rowNumber);
+    return res.status(201).json({ created: true, record });
   } catch (err) {
     console.error('CBS missing bag create case error:', err);
     return res.status(500).json({ error: err?.message || 'CBS missing bag case creation failed' });
@@ -1702,17 +2514,26 @@ app.post('/cbs-missing-bags/:rowNumber/acknowledge', async (req, res) => {
   }
 });
 
+app.post('/cbs-missing-bags/:rowNumber/link-on-hand-rush', async (req, res) => {
+  try {
+    const worldTracerFileNumber = sanitizeCbsText(req.body?.worldTracerFileNumber, 120).toUpperCase();
+    await markCbsMissingBagCase(req.params.rowNumber, worldTracerFileNumber ? `RUSH ${worldTracerFileNumber}` : 'RUSH');
+    return res.json({ linked:true, worldTracerFileNumber });
+  } catch (err) {
+    console.error('CBS missing bag On-hard link error:', err);
+    return res.status(500).json({ error:err?.message || 'Missing bag On-hard link failed' });
+  }
+});
+
 
 function parseCbsPdf417(rawValue = '') {
   const rawScan = String(rawValue || '').trim();
-  const compact = rawScan.replace(/\s+/g, ' ');
-  const flightMatch = compact.match(/\b(?:[A-Z]{6})?MU\s*(\d{3,4})\b/i);
-  const flightNumber = flightMatch?.[1]?.padStart(4, '0') || '';
-  if (!flightNumber) throw new Error('Flight not found.');
-  if (flightNumber !== '0586') {
+  const flightMatch = matchMuFlight(rawScan);
+  if (!flightMatch) throw new Error('Flight not found.');
+  if (!flightMatch.supported) {
     const err = new Error('wrong flight');
     err.code = 'WRONG_FLIGHT';
-    err.flight = flightNumber;
+    err.flight = flightMatch.number;
     throw err;
   }
 
@@ -1723,7 +2544,7 @@ function parseCbsPdf417(rawValue = '') {
   const isInfant = normalizedSeatToken === 'INF';
   const seat = isInfant ? 'INF' : seatToken.replace(/^0+(?=\d)/, '');
   return {
-    flight: flightNumber,
+    flight: flightMatch.number,
     seat,
     bn: detailMatch[2],
     rawScan,
@@ -1731,14 +2552,129 @@ function parseCbsPdf417(rawValue = '') {
   };
 }
 
+function parseRecordPdf417(rawValue = '') {
+  const rawScan = String(rawValue || '').trim();
+  const flightMatch = matchMuFlight(rawScan);
+  if (!flightMatch?.supported) {
+    const err = new Error('wrong flight');
+    err.code = 'WRONG_FLIGHT';
+    throw err;
+  }
+  const detailMatch = rawScan.match(/(?:^|\D)(0*INF|0*\d{1,3}[A-Z])(\d{3,4})\b/i);
+  if (!detailMatch) throw new Error('Seat/BN segment not found.');
+  const seatToken = detailMatch[1].toUpperCase();
+  return {
+    flight: `MU${flightMatch.number.replace(/^0+/, '')}`,
+    seat: seatToken.replace(/^0+(?=\d)/, ''),
+    bn: detailMatch[2],
+    rawScan
+  };
+}
+
+function sanitizeTransit240AttachmentName(name, index) {
+  const fallback = `transit-240-${index + 1}.jpg`;
+  return String(name || fallback).replace(/[^a-z0-9_.-]/gi, '_').slice(0, 80) || fallback;
+}
+
+function buildTransit240DiscordFiles(attachments = []) {
+  if (!Array.isArray(attachments)) return [];
+  return attachments
+    .map((file, index) => {
+      const data = String(file?.data || '').trim();
+      if (!data) return null;
+      return {
+        attachment: Buffer.from(data, 'base64'),
+        name: sanitizeTransit240AttachmentName(file?.name, index)
+      };
+    })
+    .filter(Boolean);
+}
+
+function formatTransit240Date(value) {
+  const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return String(value || '').trim() || '—';
+  return `${Number(match[2])}/${Number(match[3])}/${match[1]}`;
+}
+
+async function sendTransit240ToDiscord(record) {
+  const channel = await client.channels.fetch(TRANSIT_240_DISCORD_CHANNEL_ID);
+  if (!channel) return { sent: false, reason: 'Discord channel not found.' };
+  const itinerary = Array.isArray(record.itinerary) ? record.itinerary : [];
+  const itineraryDates = Array.isArray(record.itineraryDates) ? record.itineraryDates : [];
+  const embed = {
+    color: 0x2ecc71,
+    title: '240 Record',
+    fields: [
+      { name: 'BN', value: record.bnNumber || '—', inline: true },
+      { name: 'Passenger', value: record.passengerName || '—', inline: true },
+      { name: 'Nationality', value: record.nationalityCode || '—', inline: true },
+      { name: 'Passport Exp', value: formatTransit240Date(record.passportExpiry), inline: true },
+      { name: 'Leave Date', value: formatTransit240Date(itineraryDates.at(-1)), inline: true },
+      { name: 'Itinerary', value: itinerary.length ? itinerary.join(' → ') : '—', inline: false }
+    ],
+    footer: { text: 'MUFC' }
+  };
+  const files = buildTransit240DiscordFiles(record.attachments);
+  await channel.send({ embeds: [embed], files });
+  return { sent: true, channelId: TRANSIT_240_DISCORD_CHANNEL_ID };
+}
+
+app.post('/transit-240', async (req, res) => {
+  try {
+    const record = {
+      passengerName: String(req.body?.passengerName || '').trim(),
+      seatNumber: String(req.body?.seatNumber || '').trim().toUpperCase(),
+      bnNumber: String(req.body?.bnNumber || '').trim(),
+      nationalityCode: String(req.body?.nationalityCode || '').trim().toUpperCase(),
+      passportExpiry: String(req.body?.passportExpiry || '').trim(),
+      itinerary: Array.isArray(req.body?.itinerary) ? req.body.itinerary.map((value) => String(value || '').trim().toUpperCase()).filter(Boolean) : [],
+      itineraryDates: Array.isArray(req.body?.itineraryDates) ? req.body.itineraryDates.map((value) => String(value || '').trim()).filter(Boolean) : [],
+      agent: String(req.body?.agent || '').trim(),
+      attachments: Array.isArray(req.body?.attachments) ? req.body.attachments.map((file) => ({
+        name: String(file?.name || '').trim(),
+        type: String(file?.type || '').trim(),
+        data: String(file?.data || '').trim()
+      })).filter((file) => file.data) : []
+    };
+    if (!record.passengerName || !record.seatNumber || !record.bnNumber || !record.nationalityCode || !record.passportExpiry || record.itinerary.length < 3) {
+      return res.status(400).json({ error: 'Missing required 240 transit fields.' });
+    }
+    record.submittedAt = new Date().toISOString();
+    const saved = await appendTransit240Record(record);
+    let discord = null;
+    let discordError = '';
+    try {
+      discord = await sendTransit240ToDiscord(record);
+    } catch (err) {
+      discordError = err?.message || 'Discord post failed.';
+      console.error('240 Transit Discord post failed:', err);
+    }
+    return res.json({ ok: true, ...saved, discord, discordError });
+  } catch (err) {
+    console.error('240 Transit submit failed:', err);
+    return res.status(500).json({ error: err?.message || '240 transit submit failed.' });
+  }
+});
+
 app.post('/cbs-scan', async (req, res) => {
   try {
     const parsed = parseCbsPdf417(req.body?.rawScan || req.body?.raw || req.body?.text || '');
     const saved = await appendCbsScanRecord(parsed);
     return res.json({ ok: true, ...saved });
   } catch (err) {
-    const status = err?.code === 'DUPLICATE_BN' || err?.code === 'NBRD_MESSAGE' ? 409 : (err?.code === 'WRONG_FLIGHT' ? 400 : 422);
+    const status = err?.code === 'DUPLICATE_BN' || err?.code === 'NBRD_MESSAGE' ? 409 : (err?.code === 'WRONG_FLIGHT' ? 400 : (err?.code === 'SHEETS_QUOTA' ? 503 : 422));
     return res.status(status).json({ error: err?.message || 'CBS scan save failed', code: err?.code || 'SCAN_ERROR', flight: err?.flight || '', bn: err?.bn || '', detail: err?.detail || '' });
+  }
+});
+
+app.post('/record-scan', async (req, res) => {
+  try {
+    const parsed = parseRecordPdf417(req.body?.rawScan || req.body?.raw || req.body?.text || '');
+    const saved = await appendRecordScanRecord(parsed);
+    return res.json({ ok: true, ...saved });
+  } catch (err) {
+    const status = err?.code === 'DUPLICATE_BN' ? 409 : (err?.code === 'WRONG_FLIGHT' ? 400 : (err?.code === 'SHEETS_QUOTA' ? 503 : 422));
+    return res.status(status).json({ error: err?.message || 'Record scan save failed', code: err?.code || 'SCAN_ERROR' });
   }
 });
 
@@ -1797,11 +2733,252 @@ app.delete('/cbs-scan/nbrd-bns/:rowNumber', handleCbsScanNbrdDelete);
 
 app.get('/cbs-cases', async (req, res) => {
   try {
-    const rows = await getCbsCases();
-    return res.json({ rows });
+    const [pirRows, wrongBaggageRows] = await Promise.all([getCbsCases(), getWrongBaggageSubmissions()]);
+    return res.json({ rows: [...pirRows, ...wrongBaggageRows] });
   } catch (err) {
     console.error('CBS case list error:', err);
     return res.status(500).json({ error: err?.message || 'CBS case lookup failed' });
+  }
+});
+
+app.post('/wrong-baggage-submissions/:rowNumber/update', async (req, res) => {
+  try {
+    const type = sanitizeCbsText(req.body?.type, 20).toLowerCase();
+    const comment = sanitizeCbsText(req.body?.comment, 1000);
+    if (!['update', 'closed', 'reopen'].includes(type) || (type === 'update' && !comment)) {
+      return res.status(400).json({ error: 'Enter an update comment or close the case.' });
+    }
+    const record = await updateWrongBaggageSubmission(req.params.rowNumber, { type, comment });
+    return res.json({ updated: true, record });
+  } catch (err) {
+    console.error('Wrong baggage update error:', err);
+    return res.status(500).json({ error: err?.message || 'Wrong baggage update failed' });
+  }
+});
+
+app.post('/cbs-worldtracer-cases', async (req, res) => {
+  try {
+    const body = req.body || {};
+    const record = {
+      worldTracerFileNumber: sanitizeCbsText(body.worldTracerFileNumber, 120).toUpperCase(),
+      originalTagNumber: sanitizeCbsText(body.originalTagNumber || body.bagTagNumber, 120).toUpperCase(),
+      rushTagNumber: sanitizeCbsText(body.rushTagNumber, 120).toUpperCase(),
+      flightRows: (Array.isArray(body.flightRows) ? body.flightRows : []).slice(0, 20).map((flight) => ({
+        flightDate: sanitizeCbsText(flight?.flightDate, 40),
+        flightNumber: sanitizeCbsText(flight?.flightNumber, 40).toUpperCase(),
+        from: sanitizeCbsText(flight?.from, 40).toUpperCase(),
+        to: sanitizeCbsText(flight?.to, 40).toUpperCase()
+      })),
+      createdAt: new Date().toISOString()
+    };
+    const invalidFlight = !record.flightRows.length || record.flightRows.some((flight) => Object.values(flight).some((value) => !value));
+    if (!record.originalTagNumber || !record.rushTagNumber || invalidFlight) {
+      return res.status(400).json({ error: 'Original tag, RUSH tag, and complete flight segments are required' });
+    }
+    const saved = await appendCbsWorldTracerCase(record);
+    const result = await addRushBagDiscordResult({ created: true, record: saved }, saved);
+    return res.status(201).json(result);
+  } catch (err) {
+    console.error('CBS WorldTracer case create error:', err);
+    return res.status(500).json({ error: err?.message || 'WorldTracer case save failed' });
+  }
+});
+
+app.get('/cbs-worldtracer-cases', async (req, res) => {
+  try {
+    return res.json({ rows: await getCbsWorldTracerCases() });
+  } catch (err) {
+    console.error('CBS WorldTracer case list error:', err);
+    return res.status(500).json({ error: err?.message || 'WorldTracer case lookup failed' });
+  }
+});
+
+app.post('/cbs-worldtracer-cases/update', async (req, res) => {
+  try {
+    const body = req.body || {};
+    const record = {
+      worldTracerFileNumber: sanitizeCbsText(body.worldTracerFileNumber, 120).toUpperCase(), originalTagNumber: sanitizeCbsText(body.originalTagNumber, 120).toUpperCase(), rushTagNumber: sanitizeCbsText(body.rushTagNumber, 120).toUpperCase(), createdAt:sanitizeCbsText(body.createdAt, 40),
+      flightRows:(Array.isArray(body.flightRows) ? body.flightRows : []).slice(0, 20).map((flight) => ({ flightDate:sanitizeCbsText(flight?.flightDate, 40), flightNumber:sanitizeCbsText(flight?.flightNumber, 40).toUpperCase(), from:sanitizeCbsText(flight?.from, 40).toUpperCase(), to:sanitizeCbsText(flight?.to, 40).toUpperCase() }))
+    };
+    if (!record.originalTagNumber || !record.rushTagNumber || !record.flightRows.length || record.flightRows.some((flight) => Object.values(flight).some((value) => !value))) return res.status(400).json({ error:'Original tag, RUSH tag, and complete flight segments are required' });
+    const requestedRows = new Set((Array.isArray(body.rowNumbers) ? body.rowNumbers : []).map(Number));
+    const previousRecord = (await getCbsWorldTracerCases()).find((item) =>
+      (item.rowNumbers || []).some((rowNumber) => requestedRows.has(Number(rowNumber))));
+    const result = await updateCbsWorldTracerCase(body.rowNumbers, record);
+    if (result.notFound) return res.status(404).json({ error:'On-hard case not found' });
+    if (previousRecord && isRushBagWorldTracerOnlyUpdate(previousRecord, result.record)) {
+      result.discord = { sent:false, reason:'WorldTracer file number-only updates do not send another Rush Bag notification.' };
+      return res.json(result);
+    }
+    return res.json(await addRushBagDiscordResult(result, result.record));
+  } catch (err) {
+    console.error('CBS On-hard update error:', err);
+    return res.status(500).json({ error:err?.message || 'On-hard update failed' });
+  }
+});
+
+app.get('/cbs-unresolved-baggage', async (req, res) => {
+  try {
+    let rows = await getCbsUnresolvedBaggageCases({ includeResolved: true });
+    const cases = await getCbsCases();
+    for (const row of rows.filter((item) => !item.resolvedAt)) {
+      const matchedCase = cases.find((record) => {
+        const event = (record.updateEvents || []).filter((item) => item.key === 'upcoming_rush').at(-1);
+        return normalizedCbsLinkTag(new Map(event?.fields || []).get('Rush Tag')) === normalizedCbsLinkTag(row.bagTag);
+      });
+      const fileNumber = sanitizeCbsText(matchedCase?.worldTracerFileNumber, 120).toUpperCase();
+      if (fileNumber && fileNumber !== sanitizeCbsText(row.worldTracerFileNumber, 120).toUpperCase()) {
+        await updateCbsUnresolvedBaggageWorldTracer(row.rowNumber, fileNumber, 'Upcoming Rush match');
+      }
+    }
+    rows = await getCbsUnresolvedBaggageCases({ includeResolved: true });
+    // Return completed On-hand records as well so the client can archive Create
+    // Rush, Shipped, and Passenger collected cases in the Closed Case view.
+    return res.json({ rows });
+  } catch (err) {
+    console.error('CBS On-hand baggage list error:', err);
+    return res.status(500).json({ error: err?.message || 'On-hand baggage lookup failed' });
+  }
+});
+
+async function syncOnHandStatusToBaggage(record, action, body = {}) {
+  if (!record?.bagTag) return;
+  const latestExchange = action === 'exchange' ? record.exchangeHistory?.at(-1) : null;
+  const statuses = {
+    worldtracer: 'WorldTracer Updated',
+    reopen: 'Reopened',
+    email: 'Pick-up Bags - available',
+    'on-hand-rush': 'Create Rush',
+    'passenger-collected': 'Passenger Collected / Case Closed',
+    'case-close': 'Case Closed',
+    shipped: 'Shipped',
+    other: 'Other',
+    exchange: 'Exchange'
+  };
+  try {
+    await updateTestBaggageRecord(latestExchange?.oldTag || record.bagTag, {
+      type: 'cbs',
+      eventType: action,
+      newBagTag: latestExchange?.newTag || '',
+      status: statuses[action] || action,
+      updatedBy: sanitizeCbsText(body.updatedBy, 160),
+      worldTracerFileNumber: sanitizeCbsText(body.worldTracerFileNumber, 120).toUpperCase(),
+      trackingNumber: sanitizeCbsText(body.trackingNumber, 160).toUpperCase(),
+      comment: sanitizeCbsText(body.note || body.comment, 500)
+    });
+  } catch (err) {
+    console.warn('CBS On-hand baggage status sync skipped:', err?.message || err);
+  }
+}
+
+app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
+  try {
+    const action = sanitizeCbsText(req.body?.action, 40).toLowerCase();
+    if (!['worldtracer', 'reopen', 'email', 'exchange', 'on-hand-rush', 'passenger-collected', 'case-close', 'shipped', 'other'].includes(action)) return res.status(400).json({ error: 'A valid resolution is required' });
+    const note = sanitizeCbsText(req.body?.note, 500);
+    if (action === 'email') {
+      const emailAction = sanitizeCbsText(req.body?.emailAction, 80);
+      const validEmailActions = ['sent_open_bag_authorization_to_pvg', 'contact_pax_pickup_bags', 'pickup_bags_future_available', 'baggage_transfer_status_eta', 'address_confirm_request', 'baggage_pickup_delivery_method_confirmation', 'require_open_bag_authorization_pvg', 'baggage_open_by_customs'];
+      if (!validEmailActions.includes(emailAction)) return res.status(400).json({ error: 'A valid email action is required' });
+      const emailTo = sanitizeCbsText(req.body?.emailTo, 160).toLowerCase();
+      if (!isValidEmail(emailTo)) return res.status(400).json({ error: 'A valid passenger email is required' });
+      const rows = await getCbsUnresolvedBaggageCases({ includeResolved: true });
+      const record = rows.find((row) => String(row.rowNumber) === String(req.params.rowNumber));
+      if (!record) return res.status(404).json({ error: 'On-hand case not found' });
+      const worldTracerFileNumber = sanitizeCbsText(req.body?.worldTracerFileNumber || record.worldTracerFileNumber, 120).toUpperCase();
+      const needsWorldTracer = !['sent_open_bag_authorization_to_pvg', 'contact_pax_pickup_bags', 'baggage_open_by_customs'].includes(emailAction);
+      if (needsWorldTracer && !worldTracerFileNumber) return res.status(400).json({ error:'A WorldTracer file number is required' });
+      const emailRecord = { ...record, worldTracerFileNumber, language:sanitizeCbsText(req.body?.language, 5) === 'zh' ? 'zh' : 'en' };
+      let message;
+      let attachments = [];
+      let authorizationForm = null;
+      if (emailAction === 'sent_open_bag_authorization_to_pvg') {
+        attachments = sanitizeCbsAttachments(req.body?.attachments);
+        if (attachments.length !== 1) return res.status(400).json({ error:'A signed Letter of Authorization attachment is required' });
+        message = signedOpenBagAuthorizationToPvgEmail(emailRecord);
+      } else if (emailAction === 'pickup_bags_future_available') {
+        const availableDate = sanitizeCbsText(req.body?.availableDate, 40);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(availableDate)) return res.status(400).json({ error:'A valid available date is required' });
+        message = baggageFuturePickupAtLaxEmail(emailRecord, availableDate);
+      } else if (emailAction === 'baggage_transfer_status_eta') {
+        const eta = sanitizeCbsText(req.body?.estimatedArrivalTime, 40);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(eta)) return res.status(400).json({ error:'A valid estimated arrival date is required' });
+        message = rushToLaxInformationEmail(emailRecord, worldTracerFileNumber, eta);
+      } else if (emailAction === 'address_confirm_request') message = addressConfirmRequestEmail(emailRecord);
+      else if (emailAction === 'baggage_pickup_delivery_method_confirmation') message = baggagePickupDeliveryMethodConfirmationEmail(emailRecord);
+      else if (emailAction === 'require_open_bag_authorization_pvg') { message = openBagAuthorizationPvgEmail(emailRecord); authorizationForm = await getCbsOpenBagAuthorizationPdf(); }
+      else if (emailAction === 'baggage_open_by_customs') message = baggageInspectionExplanationEmail(emailRecord);
+      else message = withEditableCbsEmailBody(baggagePickupAtLaxEmail(emailRecord), req.body?.emailBody);
+      const email = await sendCbsCaseEmail({ passengerEmail:emailTo, subject:message.subject, html:message.html, text:message.text, attachments, ...(authorizationForm ? { pdfBuffer:authorizationForm.buffer, filename:authorizationForm.name } : {}), ccOperations:false });
+      const updatedBy = sanitizeCbsText(req.body?.updatedBy, 160);
+      const resolutionTitle = ({ sent_open_bag_authorization_to_pvg:'Sent Open Bag Authorization to PVG', contact_pax_pickup_bags:'Pick-up Bags - available', pickup_bags_future_available:'Pick-up Bags - future available', baggage_transfer_status_eta:'Baggage transfer status update - ETA', address_confirm_request:'Address Confirm Request Email', baggage_pickup_delivery_method_confirmation:'Baggage Pick-Up / Delivery Method Confirmation', require_open_bag_authorization_pvg:'Require Open Bag Authorization at PVG', baggage_open_by_customs:'Explanation - Baggage Open by Custom' })[emailAction];
+      const resolutionNote = `${resolutionTitle} | Email To: ${emailTo}${updatedBy ? ` | Updated by: ${updatedBy}` : ''}`;
+      const result = await resolveCbsUnresolvedBaggageCase(req.params.rowNumber, action, resolutionNote, updatedBy);
+      await syncOnHandStatusToBaggage(result.record, action, req.body);
+      return res.json({ ...result, email });
+    }
+    if (action === 'reopen') {
+      const result = await reopenCbsUnresolvedBaggageCase(req.params.rowNumber);
+      if (result.notFound) return res.status(404).json({ error: 'On-hand case not found' });
+      await syncOnHandStatusToBaggage(result.record, action, req.body);
+      return res.json(result);
+    }
+    if (action === 'worldtracer') {
+      const worldTracerFileNumber = sanitizeCbsText(req.body?.worldTracerFileNumber, 120).toUpperCase();
+      if (!worldTracerFileNumber) return res.status(400).json({ error: 'WorldTracer file number is required' });
+      const result = await updateCbsUnresolvedBaggageWorldTracer(req.params.rowNumber, worldTracerFileNumber, sanitizeCbsText(req.body?.updatedBy, 160));
+      if (result.notFound) return res.status(404).json({ error: 'Unresolved baggage case not found' });
+      await syncOnHandStatusToBaggage(result.record, action, req.body);
+      return res.json(result);
+    }
+    if (action === 'exchange') {
+      const newTagNumber = sanitizeCbsText(req.body?.newTagNumber, 120).toUpperCase().replace(/\s+/g, '');
+      const updatedBy = sanitizeCbsText(req.body?.updatedBy, 160);
+      const result = await exchangeCbsUnresolvedBaggageTag(req.params.rowNumber, newTagNumber, updatedBy);
+      if (result.notFound) return res.status(404).json({ error:'On-hand case not found' });
+      await syncOnHandStatusToBaggage(result.record, action, { ...req.body, note:`${result.record.exchangeHistory.at(-1).oldTag} -> ${newTagNumber}` });
+      return res.json(result);
+    }
+    if (action === 'on-hand-rush') {
+      const flightRows = (Array.isArray(req.body?.flightRows) ? req.body.flightRows : []).slice(0, 20).map((flight) => ({
+        flightDate: sanitizeCbsText(flight?.flightDate, 40), flightNumber: sanitizeCbsText(flight?.flightNumber, 40).toUpperCase(),
+        from: sanitizeCbsText(flight?.from, 40).toUpperCase(), to: sanitizeCbsText(flight?.to, 40).toUpperCase()
+      }));
+      const worldTracerFileNumber = sanitizeCbsText(req.body?.worldTracerFileNumber, 120).toUpperCase();
+      const originalTagNumber = sanitizeCbsText(req.body?.originalTagNumber || req.body?.bagTagNumber, 120).toUpperCase();
+      const rushTagNumber = sanitizeCbsText(req.body?.rushTagNumber, 120).toUpperCase();
+      if (!originalTagNumber || !rushTagNumber || !flightRows.length || flightRows.some((flight) => Object.values(flight).some((value) => !value))) return res.status(400).json({ error: 'Original tag, RUSH tag, and complete flight segments are required' });
+      const savedRushBag = await appendCbsWorldTracerCase({ worldTracerFileNumber, originalTagNumber, rushTagNumber, flightRows, createdAt: new Date().toISOString() });
+      await addRushBagDiscordResult({}, savedRushBag);
+    }
+    const updatedBy = sanitizeCbsText(req.body?.updatedBy, 160);
+    let resolutionNote = action === 'passenger-collected' ? 'Passenger Collected / Case Closed' : note;
+    if (action === 'shipped') {
+      const shippingMethods = ['ADC - All Day Courier', 'MBI DELIVERY AND STORAGE - STANDARD', 'BDO', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping'];
+      const shippingMethod = shippingMethods.find((method) => method === sanitizeCbsText(req.body?.shippingMethod, 80));
+      const trackingNumber = sanitizeCbsText(req.body?.trackingNumber, 160);
+      const shippingTo = sanitizeCbsText(req.body?.shippingTo, 500);
+      const bdo = sanitizeCbsText(req.body?.bdo, 160).toUpperCase();
+      const comment = sanitizeCbsText(req.body?.comment, 500);
+      if (!shippingMethod) return res.status(400).json({ error: 'A valid delivery method is required' });
+      if (shippingMethod === 'FedEx Delivery' && !trackingNumber) return res.status(400).json({ error: 'A tracking number is required for FedEx Delivery' });
+      if (['ADC - All Day Courier', 'MBI DELIVERY AND STORAGE - STANDARD', 'FedEx Delivery'].includes(shippingMethod) && !bdo) return res.status(400).json({ error: 'BDO is required for courier delivery' });
+      const details = [`Method: ${shippingMethod}`];
+      if (trackingNumber) details.push(`Tracking: ${trackingNumber}`);
+      if (shippingTo) details.push(`Ship to: ${shippingTo}`);
+      if (bdo) details.push(`BDO: ${bdo}`);
+      if (comment) details.push(`Comment: ${comment}`);
+      resolutionNote = details.join(' | ');
+    }
+    if (action !== 'on-hand-rush' && !resolutionNote) return res.status(400).json({ error: 'A resolution note is required' });
+    if (updatedBy) resolutionNote = `${resolutionNote} | Updated by: ${updatedBy}`;
+    const result = await resolveCbsUnresolvedBaggageCase(req.params.rowNumber, action, resolutionNote, updatedBy);
+    if (result.notFound) return res.status(404).json({ error: 'Unresolved baggage case not found' });
+    await syncOnHandStatusToBaggage(result.record, action, req.body);
+    return res.json(result);
+  } catch (err) {
+    console.error('CBS unresolved baggage update error:', err);
+    return res.status(500).json({ error: err?.message || 'Unresolved baggage update failed' });
   }
 });
 
@@ -1813,12 +2990,10 @@ app.post('/cbs-cases/from-baggage/:bagTag', async (req, res) => {
     const baggage = await findTestBaggageByTag(bagTag);
     if (!baggage) return res.status(404).json({ error: 'Baggage record not found' });
     const existingCase = (await getCbsCases()).find((row) => String(row.bagTag || '').split(/\s*\/\s*/).some((tag) => normalizeCbsBagTag(tag) === bagTag));
-    if (existingCase?.caseNumber) return res.json({ created: false, caseNumber: existingCase.caseNumber, record: existingCase });
+    if (existingCase) return res.json({ created: false, record: existingCase });
     const now = new Date().toISOString();
-    const caseNumber = await makeCbsCaseNumber();
     const flightRoute = [baggage.flight, baggage.date].map((value) => sanitizeCbsText(value, 40)).filter(Boolean).join(' ');
     const record = {
-      caseNumber,
       caseType: 'AHL',
       status: 'Open',
       passengerName: 'UNKNOWN',
@@ -1856,7 +3031,7 @@ app.post('/cbs-cases/from-baggage/:bagTag', async (req, res) => {
       updateNote: `Created from Baggage search | Bag tag: ${bagTag} | Status: ${sanitizeCbsText(baggage.currentStatus || baggage.status, 120)} | Flight: ${flightRoute}`
     };
     await appendCbsCase(record);
-    return res.status(201).json({ created: true, caseNumber, record });
+    return res.status(201).json({ created: true, record });
   } catch (err) {
     console.error('CBS baggage create case error:', err);
     return res.status(500).json({ error: err?.message || 'CBS baggage case creation failed' });
@@ -1874,7 +3049,9 @@ app.post('/cbs-cases', async (req, res) => {
     if (!['AHL', 'DPR'].includes(caseType)) return res.status(400).json({ error: 'Case type must be AHL or DPR' });
     const firstFlight = Array.isArray(body.flightRows) ? body.flightRows[0] || {} : {};
     if (!sanitizeCbsText(body.phone, 80)) return res.status(400).json({ error: 'Phone is required' });
-    if (!sanitizeCbsText(firstFlight.flightNo, 20) || !sanitizeCbsText(firstFlight.flightDate, 20) || !sanitizeCbsText(firstFlight.destination, 20)) return res.status(400).json({ error: 'First baggage routing row is required' });
+    if (!sanitizeCbsText(body.ticketNumber, 80)) return res.status(400).json({ error: 'Ticket number is required' });
+    if (!sanitizeCbsText(firstFlight.flightNo, 20) || !sanitizeCbsText(firstFlight.flightDate, 20) || !sanitizeCbsText(firstFlight.origin, 20) || !sanitizeCbsText(firstFlight.destination, 20)) return res.status(400).json({ error: 'First flight row is required' });
+    if (!sanitizeCbsText(body.permanentAddress, 500)) return res.status(400).json({ error: 'Address is required' });
     const normalizedBagTags = normalizeCbsBagTags(body.bagTags || body.bagTag);
     if (!normalizedBagTags) return res.status(400).json({ error: 'Bag tag is required' });
     if (caseType === 'AHL' && !sanitizeCbsText(body.ahlBagDescription, 500)) return res.status(400).json({ error: 'AHL baggage description is required' });
@@ -1882,11 +3059,15 @@ app.post('/cbs-cases', async (req, res) => {
     if (!body.passengerSignature) return res.status(400).json({ error: 'Passenger signature is required' });
     const now = new Date().toISOString();
     let attachments = sanitizeCbsAttachments(body.attachments);
+    if (!Array.isArray(body.attachments) || body.attachments.length > 20 || attachments.length !== body.attachments.length) {
+      return res.status(400).json({ error: 'Use no more than 20 attachments and no more than 22 MB total after photo optimization.' });
+    }
     const missingAttachmentTypes = missingRequiredCbsAttachmentTypes(attachments);
-    if (missingAttachmentTypes.length) return res.status(400).json({ error: 'Passport, boarding pass, and bag tag receipt attachments are required' });
+    if (missingAttachmentTypes.length) return res.status(400).json({ error: 'Boarding pass and bag tag receipt attachments are required' });
+    const otherAttachmentCount = attachments.filter((attachment) => String(attachment.attachmentType || '').trim().toLowerCase() === 'other').length;
+    if (otherAttachmentCount > 4) return res.status(400).json({ error: 'Use no more than 4 Others attachments.' });
     const contentsRows = buildCbsContentsRows(body);
     const record = {
-      caseNumber: await makeCbsCaseNumber(),
       caseType,
       status: 'Open',
       passengerName,
@@ -1925,38 +3106,252 @@ app.post('/cbs-cases', async (req, res) => {
     };
     await appendCbsCase(record);
     const pdfBuffer = createPirPdf(record);
-    let emailResults = [];
-    let emailError = '';
-    try {
-      emailResults = await sendCbsCaseEmail({
+    // Email and Discord both receive the same attachments. Run the independent
+    // deliveries together so a multi-file submission does not have to keep the
+    // mobile request open for the sum of both upload times.
+    const emailDelivery = sendCbsCaseEmail({
         passengerEmail: record.email,
-        subject: `China Eastern Baggage Case ${record.caseNumber}`,
+        subject: '[DO NOT REPLY] China Eastern Baggage Case',
         html: buildCbsEmailHtml(record),
         pdfBuffer,
-        filename: `${record.caseNumber}.pdf`,
+        filename: 'baggage-report.pdf',
         attachments
+      })
+      .then((emailResults) => ({ emailResults, emailError: '' }))
+      .catch((mailErr) => {
+        console.error('CBS case email error:', mailErr);
+        return { emailResults: [], emailError: cbsEmailErrorMessage(mailErr) };
       });
-    } catch (mailErr) {
-      emailError = cbsEmailErrorMessage(mailErr);
-      console.error('CBS case email error:', mailErr);
-    }
-    return res.status(201).json({ created: true, record, emailResults, emailError });
+    const discordDelivery = sendCbsAttachmentsToDiscord(record, attachments, pdfBuffer)
+      .then((discord) => ({ discord, discordError: '' }))
+      .catch((discordErr) => {
+        console.error('CBS attachments Discord post failed:', discordErr);
+        return { discord: null, discordError: discordErr?.message || 'CBS attachments Discord post failed.' };
+      });
+    const deliveryWaitMs = Math.max(1000, Number(process.env.CBS_CREATE_DELIVERY_WAIT_MS) || 15000);
+    let deliveryPending = false;
+    const completedDeliveries = await Promise.race([
+      Promise.all([emailDelivery, discordDelivery]),
+      new Promise((resolve) => setTimeout(() => {
+        deliveryPending = true;
+        resolve([{ emailResults: [], emailError: '' }, { discord: null, discordError: '' }]);
+      }, deliveryWaitMs))
+    ]);
+    const [{ emailResults, emailError }, { discord, discordError }] = completedDeliveries;
+    return res.status(201).json({ created: true, record, emailResults, emailError, discord, discordError, deliveryPending });
   } catch (err) {
     console.error('CBS case create error:', err);
     return res.status(500).json({ error: err?.message || 'CBS case save failed' });
   }
 });
 
-app.post('/cbs-cases/:caseNumber/update', async (req, res) => {
+app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
   try {
     const updateFields = buildCbsUpdateFields(req.body || {});
-    if (!updateFields) return res.status(400).json({ error: 'Valid WORLDTRACER, RUSH, BAG LOCATION UPDATE, SHIPPING, or CASE CLOSE details are required' });
-    const result = await updateCbsCase(req.params.caseNumber, updateFields);
+    if (updateFields?.updateEvent) updateFields.updateEvent.by = sanitizeCbsText(req.body?.updatedBy, 160);
+    if (updateFields?.followUpEvent) updateFields.followUpEvent.by = sanitizeCbsText(req.body?.updatedBy, 160);
+    if (!updateFields) return res.status(400).json({ error: 'Valid case update details are required' });
+    const isSignedPvgEmail = updateFields.updateEvent?.key === 'email' && updateFields.updateEvent.title === 'Sent Open Bag Authorization to PVG';
+    const emailAttachments = isSignedPvgEmail ? sanitizeCbsAttachments(req.body?.attachments) : [];
+    if (isSignedPvgEmail && emailAttachments.length !== 1) {
+      return res.status(400).json({ error: 'A signed Letter of Authorization attachment is required' });
+    }
+    const result = await updateCbsCase(req.params.rowNumber, updateFields);
     if (result.notFound) return res.status(404).json({ error: 'Case not found' });
+    if (updateFields.updateEvent?.key === 'upcoming_rush') {
+      result.onHandMatches = await syncUpcomingRushOnHand(result.record, updateFields.updateEvent, sanitizeCbsText(req.body?.updatedBy, 160));
+      try {
+        result.discord = await sendUpcomingRushToDiscord(result.record, updateFields.updateEvent);
+      } catch (discordErr) {
+        result.discordError = discordErr?.message || 'Upcoming Rush Discord notification failed.';
+        console.error('CBS Upcoming Rush Discord notification error:', discordErr);
+      }
+    }
+    if (updateFields.updateEvent?.key === 'worldtracer') {
+      const fileNumber = updateFields.updateEvent.fields[0][1];
+      const record = { ...result.record, worldTracerFileNumber: fileNumber };
+      const message = worldTracerUpdateEmail(record, fileNumber);
+      try {
+        result.email = await sendCbsCaseEmail({
+          passengerEmail: record.email,
+          subject: message.subject,
+          html: message.html,
+          ccOperations: false
+        });
+      } catch (mailErr) {
+        result.emailError = cbsEmailErrorMessage(mailErr);
+        console.error('CBS WorldTracer update email error:', mailErr);
+      }
+      if (String(record.caseType || '').toUpperCase() === 'DPR') {
+        try {
+          result.discord = await sendDprWorldTracerUpdateToDiscord(record, fileNumber);
+        } catch (discordErr) {
+          result.discordError = discordErr?.message || 'DPR WorldTracer Discord notification failed.';
+          console.error('CBS DPR WorldTracer Discord notification error:', discordErr);
+        }
+      }
+    }
+    if (updateFields.updateEvent?.key === 'requested_bags') {
+      const record = result.record;
+      const fileNumber = record.worldTracerFileNumber || '';
+      const message = requestedBagsUpdateEmail(record, fileNumber);
+      try {
+        result.email = await sendCbsCaseEmail({
+          passengerEmail: record.email,
+          subject: message.subject,
+          html: message.html,
+          text: message.text,
+          ccOperations: false
+        });
+      } catch (mailErr) {
+        result.emailError = cbsEmailErrorMessage(mailErr);
+        console.error('CBS requested bags update email error:', mailErr);
+      }
+    }
+    if (updateFields.updateEvent?.key === 'email') {
+      const record = result.record;
+      const pickupEmail = updateFields.updateEvent.title === 'Pick-up Bags - available';
+      const futurePickupEmail = updateFields.updateEvent.title === 'Pick-up Bags - future available';
+      const transferEtaEmail = updateFields.updateEvent.title === 'Baggage transfer status update - ETA';
+      const addressConfirmEmail = updateFields.updateEvent.title === 'Address Confirm Request Email';
+      const pickupDeliveryMethodEmail = updateFields.updateEvent.title === 'Baggage Pick-Up / Delivery Method Confirmation';
+      const requirePvgAuthorizationEmail = updateFields.updateEvent.title === 'Require Open Bag Authorization at PVG';
+      const baggageInspectionEmail = updateFields.updateEvent.title === 'Explanation - Baggage Open by Custom';
+      const estimatedArrivalTime = updateFields.updateEvent.fields.find(([key]) => key === 'Estimated Arrival Time')?.[1] || '';
+      const availableDate = updateFields.updateEvent.fields.find(([key]) => key === 'Available Date')?.[1] || '';
+      const message = pickupEmail
+        ? baggagePickupAtLaxEmail(record)
+        : (futurePickupEmail
+          ? baggageFuturePickupAtLaxEmail(record, availableDate)
+          : (transferEtaEmail
+            ? rushToLaxInformationEmail(record, record.worldTracerFileNumber || '', estimatedArrivalTime)
+            : (addressConfirmEmail
+              ? addressConfirmRequestEmail(record)
+              : (pickupDeliveryMethodEmail
+                ? baggagePickupDeliveryMethodConfirmationEmail(record)
+                : (requirePvgAuthorizationEmail
+                  ? openBagAuthorizationPvgEmail(record)
+                  : (baggageInspectionEmail ? baggageInspectionExplanationEmail(record) : signedOpenBagAuthorizationToPvgEmail(record)))))));
+      const emailTo = pickupEmail || futurePickupEmail || transferEtaEmail || addressConfirmEmail || pickupDeliveryMethodEmail || requirePvgAuthorizationEmail || baggageInspectionEmail ? record.email : updateFields.updateEvent.fields.find(([key]) => key === 'Email To')?.[1];
+      try {
+        if (requirePvgAuthorizationEmail) {
+          const authorizationForm = await getCbsOpenBagAuthorizationPdf();
+          result.email = await sendCbsCaseEmail({ passengerEmail:emailTo, subject:message.subject, html:message.html, text:message.text, pdfBuffer:authorizationForm.buffer, filename:authorizationForm.name, ccOperations:false });
+        } else {
+          result.email = await sendCbsCaseEmail({ passengerEmail:emailTo, subject:message.subject, html:message.html, text:message.text, attachments:emailAttachments, ccOperations:false });
+        }
+      } catch (mailErr) {
+        result.emailError = cbsEmailErrorMessage(mailErr);
+        console.error(transferEtaEmail ? 'CBS baggage transfer ETA email error:' : (pickupEmail ? 'CBS baggage pickup passenger email error:' : 'CBS signed PVG authorization email error:'), mailErr);
+      }
+    }
+    if (updateFields.updateEvent?.key === 'shipping' && updateFields.updateEvent.fields.some(([key, value]) => key === 'Shipping Method' && ['ADC - All Day Courier', 'MBI DELIVERY AND STORAGE - STANDARD'].includes(value))) {
+      const record = result.record;
+      const fileNumber = record.worldTracerFileNumber || '';
+      const shippingAddress = updateFields.updateEvent.fields.find(([key]) => key === 'Ship To')?.[1] || '';
+      const message = adcShippingUpdateEmail(record, fileNumber, shippingAddress);
+      try {
+        result.email = await sendCbsCaseEmail({ passengerEmail: record.email, subject: message.subject, html: message.html, text: message.text, ccOperations: false });
+      } catch (mailErr) {
+        result.emailError = cbsEmailErrorMessage(mailErr);
+        console.error('CBS ADC shipping update email error:', mailErr);
+      }
+    }
+    if (updateFields.updateEvent?.key === 'shipping' && updateFields.updateEvent.fields.some(([key, value]) => key === 'Shipping Method' && value === 'FedEx Delivery')) {
+      const record = result.record;
+      const fileNumber = record.worldTracerFileNumber || '';
+      const message = fedexShippingUpdateEmail(record, fileNumber, record.trackingNumber, record.shippingAddress);
+      try {
+        result.email = await sendCbsCaseEmail({ passengerEmail: record.email, subject: message.subject, html: message.html, text: message.text, ccOperations: false });
+      } catch (mailErr) {
+        result.emailError = cbsEmailErrorMessage(mailErr);
+        console.error('CBS FedEx shipping update email error:', mailErr);
+      }
+    }
+    if (updateFields.updateEvent?.key === 'shipping' && updateFields.updateEvent.fields.some(([key, value]) => key === 'Shipping Method' && value === 'Pick Up at Airport')) {
+      const record = result.record;
+      const fileNumber = record.worldTracerFileNumber || '';
+      const message = airportPickupClosureEmail(record, fileNumber);
+      try {
+        result.email = await sendCbsCaseEmail({ passengerEmail: record.email, subject: message.subject, html: message.html, text: message.text, ccOperations: false });
+      } catch (mailErr) {
+        result.emailError = cbsEmailErrorMessage(mailErr);
+        console.error('CBS airport pickup closure email error:', mailErr);
+      }
+    }
+    if (updateFields.updateEvent?.key === 'shipping' && updateFields.updateEvent.fields.some(([key, value]) => key === 'Shipping Method' && value === 'Passenger Pay for Shipping')) {
+      const record = result.record;
+      const fileNumber = record.worldTracerFileNumber || '';
+      const message = passengerPaidShippingEmail(record, fileNumber);
+      try {
+        result.email = await sendCbsCaseEmail({ passengerEmail: record.email, subject: message.subject, html: message.html, text: message.text, ccOperations: false });
+      } catch (mailErr) {
+        result.emailError = cbsEmailErrorMessage(mailErr);
+        console.error('CBS passenger-paid shipping email error:', mailErr);
+      }
+    }
+    if (updateFields.updateEvent?.key === 'lost') {
+      const record = result.record;
+      const fileNumber = record.worldTracerFileNumber || '';
+      const message = lostBaggageUpdateEmail(record, fileNumber);
+      try {
+        result.email = await sendCbsCaseEmail({ passengerEmail: record.email, subject: message.subject, html: message.html, text: message.text, ccOperations: false });
+      } catch (mailErr) {
+        result.emailError = cbsEmailErrorMessage(mailErr);
+        console.error('CBS lost baggage email error:', mailErr);
+      }
+      try {
+        result.discord = await sendLostBaggageUpdateToDiscord(fileNumber);
+      } catch (discordErr) {
+        result.discordError = discordErr?.message || 'Lost baggage Discord notification failed.';
+        console.error('CBS lost baggage Discord notification error:', discordErr);
+      }
+    }
     return res.json(result);
   } catch (err) {
     console.error('CBS case update error:', err);
     return res.status(500).json({ error: err?.message || 'CBS case update failed' });
+  }
+});
+
+app.post('/cbs-cases/:rowNumber/link-on-hand', async (req, res) => {
+  try {
+    const onHandId = sanitizeCbsText(req.body?.onHandId, 120);
+    const updatedBy = sanitizeCbsText(req.body?.updatedBy, 160);
+    const record = (await getCbsCases()).find((row) => String(row.rowNumber) === String(req.params.rowNumber));
+    const onHand = (await getCbsUnresolvedBaggageCases()).find((row) => String(row.rowNumber) === onHandId && !row.resolvedAt);
+    if (!record || !onHand) return res.status(404).json({ error:'Passenger Filed or On-hand case not found' });
+    const upcomingEvent = (record.updateEvents || []).filter((event) => event.key === 'upcoming_rush').at(-1);
+    const rushTag = new Map(upcomingEvent?.fields || []).get('Rush Tag');
+    if (!rushTag || normalizedCbsLinkTag(rushTag) !== normalizedCbsLinkTag(onHand.bagTag)) return res.status(409).json({ error:'Rush Tag no longer matches this On-hand bag' });
+    const worldTracerFileNumber = sanitizeCbsText(record.worldTracerFileNumber, 120).toUpperCase();
+    if (worldTracerFileNumber) await updateCbsUnresolvedBaggageWorldTracer(onHandId, worldTracerFileNumber, updatedBy);
+    await resolveCbsUnresolvedBaggageCase(onHandId, 'linked-passenger-file', `Linked to ${worldTracerFileNumber || 'Passenger Filed'} | Bag tag: ${onHand.bagTag}`, updatedBy);
+    const result = await updateCbsCase(req.params.rowNumber, {
+      status:record.status,
+      updateNote:`ON-HAND MATCH | Bag Tag: ${onHand.bagTag}`,
+      updateEvent:{ key:'on_hand_match', title:'On-hand Match', by:updatedBy, fields:[['Bag Tag', onHand.bagTag], ...(worldTracerFileNumber ? [['WorldTracer', worldTracerFileNumber]] : [])] }
+    });
+    return res.json({ linked:true, record:result.record });
+  } catch (err) {
+    console.error('CBS On-hand link error:', err);
+    return res.status(500).json({ error:err?.message || 'On-hand link failed' });
+  }
+});
+
+app.post('/cbs-cases/:rowNumber/comments/delete', async (req, res) => {
+  try {
+    const at = sanitizeCbsText(req.body?.at, 40);
+    const comment = sanitizeCbsText(req.body?.comment, 500);
+    if (!at || !comment) return res.status(400).json({ error:'A comment identifier is required' });
+    const result = await deleteCbsCaseComment(req.params.rowNumber, { at, comment });
+    if (result.notFound) return res.status(404).json({ error:'Case not found' });
+    if (result.commentNotFound) return res.status(404).json({ error:'Comment not found or already deleted' });
+    if (result.invalid) return res.status(400).json({ error:'A valid comment is required' });
+    return res.json(result);
+  } catch (err) {
+    console.error('CBS comment delete error:', err);
+    return res.status(500).json({ error:err?.message || 'Comment delete failed' });
   }
 });
 
@@ -2045,7 +3440,7 @@ app.get('/vip-report', async (req, res) => {
     const isoDate = String(req.query.date || '').trim();
     if (isoDate && !/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return res.status(400).json({ error: 'Invalid date' });
     const rows = await getVipReportRows(isoDate || '');
-    return res.json({ rows, source: 'sheet', scanned: true });
+    return res.json({ rows, source: 'googleSheet', scanned: true });
   } catch (err) {
     console.error('VIP report error:', err);
     return res.status(500).json({ error: err?.message || 'VIP report lookup failed' });
@@ -2065,17 +3460,37 @@ app.get('/psm-report', async (req, res) => {
       return res.status(400).json({ error: 'Invalid date range' });
     }
     const rows = await getPsmMsgReportRows(from, to);
-    return res.json({ rows, source: 'sheet' });
+    return res.json({ rows, source: 'googleSheet' });
   } catch (err) {
     console.error('PSM report error:', err);
     return res.status(500).json({ error: err?.message || 'PSM report lookup failed' });
   }
 });
 
+// Use POST because the production web app calls this API cross-origin and the
+// established CORS contract permits GET/POST/OPTIONS. A PATCH request is
+// rejected by the browser during preflight before it can reach this handler.
+app.post('/psm-report/remark', async (req, res) => {
+  try {
+    // The deterministic key can contain a newline when Detail has multiple
+    // PSM/MSG lines. Do not pass it through cleanBodyText, which replaces
+    // control characters and would prevent the Sheet row from matching.
+    const key = String(req.body?.key || '').trim().slice(0, 5000);
+    const remark = cleanBodyText(req.body?.remark, 1000);
+    if (!key) return res.status(400).json({ error: 'Missing report row key' });
+    const result = await updatePsmMsgReportRemark(key, remark);
+    if (result.notFound) return res.status(404).json({ error: 'Authorization Report row not found' });
+    return res.json(result);
+  } catch (err) {
+    console.error('Authorization Report remark update error:', err);
+    return res.status(500).json({ error: err?.message || 'Remark save failed' });
+  }
+});
+
 app.get('/inad-report', async (req, res) => {
   try {
     const rows = await getInadReportRows();
-    return res.json({ rows, source: 'sheet' });
+    return res.json({ rows, source: 'googleSheet' });
   } catch (err) {
     console.error('INAD report error:', err);
     return res.status(500).json({ error: err?.message || 'INAD report lookup failed' });
@@ -2094,7 +3509,7 @@ app.get('/wch-report', async (req, res) => {
       return res.status(400).json({ error: 'Invalid date range' });
     }
     const rows = await getWheelchairReportRows(from, to);
-    return res.json({ rows, source: 'sheet' });
+    return res.json({ rows, source: 'googleSheet' });
   } catch (err) {
     console.error('WCH report error:', err);
     return res.status(500).json({ error: err?.message || 'WCH report lookup failed' });
@@ -2151,7 +3566,7 @@ app.get('/sales-details-report', async (req, res) => {
       return res.status(400).json({ error: 'Invalid date range' });
     }
     const result = await getSalesDetailsReportRows(from, to, { sync: String(req.query.sync || 'true').toLowerCase() !== 'false' });
-    return res.json({ ...result, source: 'sheet' });
+    return res.json({ ...result, source: 'googleSheet' });
   } catch (err) {
     console.error('Sales details report error:', err);
     return res.status(500).json({ error: err?.message || 'Sales details report lookup failed' });
@@ -2222,10 +3637,12 @@ app.get(
             .toUpperCase();
       }
 
-      const isSYRawQuery =
-        /^SY\+?(?:\/\d{2}[A-Z]{3}(?:\d{2})?)?$/.test(
-          rawQuery.replace(/\s+/g, '')
-        );
+      // An optional flight number keeps irregular operations isolated from the
+      // normal MU586 dashboard, for example: SY MU9586/09AUG26.
+      const syRawMatch = rawQuery.match(
+        /^SY(\+)?(?:\s+([A-Z]{2}\d{1,4}[A-Z]?))?(?:\/(\d{2}[A-Z]{3})(\d{2})?)?$/i
+      );
+      const isSYRawQuery = Boolean(syRawMatch);
 
       // =========================
       // Load Log
@@ -2271,14 +3688,18 @@ app.get(
 
       parsePDLog(log);
 
-      const normalizedRaw = rawQuery.replace(/\s+/g, '');
-      const syMatch = normalizedRaw.match(/^SY(\+)?(?:\/(\d{2}[A-Z]{3})(?:\d{2})?)?$/i);
+      const syMatch = syRawMatch;
       if (syMatch) {
         const preferNextDay = Boolean(syMatch[1]) && !date;
-        const syDate = syMatch[2] ? syMatch[2].toUpperCase() : date;
-        const syInfo = findSYInfo(log, syDate, { preferNextDay, preferredFlightNo: 'MU586' });
+        const requestedFlightNo = syMatch[2]?.toUpperCase() || 'MU586';
+        const syDate = syMatch[3] ? syMatch[3].toUpperCase() : date;
+        const syInfo = findSYInfo(log, syDate, {
+          preferNextDay,
+          preferredFlightNo: requestedFlightNo,
+          strictPreferredFlight: Boolean(syMatch[2])
+        });
         if (!syInfo) {
-          return res.json({ error: 'No SY section found for selected date.' });
+          return res.json({ error: `No SY section found for ${requestedFlightNo}${syDate ? `/${syDate}` : ''}.` });
         }
         const year = Number(yearSuffix || new Date().getUTCFullYear().toString().slice(-2));
         const fullYear = year >= 100 ? year : (year >= 70 ? 1900 + year : 2000 + year);
@@ -2291,6 +3712,7 @@ app.get(
         applyCachedCompletedPreflightSteps(syInfo, isoDate);
         syInfo.fscRateSheetSync = fscRateSheetSyncCache.get(isoDate) || { skipped: true, reason: 'sync pending' };
         syInfo.bookingSheetSync = syBookingSheetSyncCache.get(isoDate) || { skipped: true, reason: 'sync pending' };
+        syInfo.salesDetailsSheetSync = await syncSalesDetailsFromTodaySy(isoDate);
         if (!applyCachedPreflightStep(syInfo, isoDate, 'gdCheck')) {
           const gdStep = syInfo.crewApis?.steps?.find((step) => step.key === 'gdCheck');
           if (gdStep) {
@@ -2517,53 +3939,107 @@ app.get(
 
 
 
+
+
+const DISCORD_BOARDING_LINE_PATTERN = /^\s*(?:[^\p{L}\p{N}]*\s*)?Boarding\s*[:：]/iu;
+
+function removeBoardingLinesFromDiscordEmbedText(value) {
+  if (typeof value !== 'string') return value;
+  return value
+    .split(/\r?\n/)
+    .filter((line) => !DISCORD_BOARDING_LINE_PATTERN.test(line))
+    .join('\n')
+    .trimEnd();
+}
+
+function removeBoardingLinesFromDiscordValue(value) {
+  if (typeof value === 'string') return removeBoardingLinesFromDiscordEmbedText(value);
+  if (Array.isArray(value)) return value.map(removeBoardingLinesFromDiscordValue);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([key, nestedValue]) => [key, removeBoardingLinesFromDiscordValue(nestedValue)]));
+  }
+  return value;
+}
+
+function removeBoardingLinesFromDiscordEmbeds(embeds) {
+  if (!Array.isArray(embeds)) return embeds;
+  return embeds.map(removeBoardingLinesFromDiscordValue);
+}
+
+async function sendNextDayInfoToDiscord(content) {
+  const text = String(content || '').trim();
+  if (!text) return { sent: false, reason: 'No NEXTDAY INFO email body to post.' };
+  const channel = await client.channels.fetch(NEXTDAY_INFO_DISCORD_CHANNEL_ID);
+  if (!channel) return { sent: false, reason: 'Discord channel not found.' };
+  const chunks = text.match(/[\s\S]{1,1900}/g) || [text];
+  for (const chunk of chunks) {
+    await channel.send(chunk);
+  }
+  return { sent: true, channelId: NEXTDAY_INFO_DISCORD_CHANNEL_ID, chunks: chunks.length };
+}
+
+function deliveryError(result, fallback) {
+  if (result.status === 'rejected') return result.reason?.message || fallback;
+  if (result.value?.sent === false) return result.value.reason || fallback;
+  return '';
+}
+
+function settleWithin(promise, timeoutMs, label) {
+  let timer;
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`${label} timed out after ${Math.round(timeoutMs / 1000)} seconds.`)), timeoutMs);
+    })
+  ]).finally(() => clearTimeout(timer));
+}
+
 // ===============================
 // NEXTDAY INFO Email API
 // ===============================
 app.post('/nextday-info/send', async (req, res) => {
   try {
     const flightNo = String(req.body?.flightNo || 'MU586').trim().toUpperCase() || 'MU586';
-    const todayIso = todayIsoUtc();
-    const nextIso = addIsoDays(todayIso, 1);
-    const syDate = isoDateToSyDate(nextIso);
+    const nextIso = addIsoDays(todayIsoUtc(), 1);
     const subjectDate = isoDateToEmailSubjectDate(nextIso);
     const subject = `${flightNo} ${subjectDate} flight information details`;
+    // Re-read the operational log immediately before delivery. The page may have
+    // retained an earlier SY/JCSY response while new figures were entered, and an
+    // email must never be sent with those stale browser-side totals.
     const log = await getLatestFlightLog();
-    if (!log) return res.status(400).json({ error: 'Missing SY information: unable to load latest log.' });
-
-    const syInfo = findSYInfo(log, syDate, { preferredFlightNo: flightNo });
-    if (!syInfo) return res.status(400).json({ error: `Missing SY information for ${flightNo}/${syDate}.` });
-
-    const retCounts = retCountsFromSyInfo(syInfo);
-    if (!retCounts) return res.status(400).json({ error: `Missing SY information: RET counts not found for ${flightNo}/${syDate}.` });
-
-    const transferCounts = transferCountsFromJcsy(syInfo.crewApis?.jcsy);
-    if (!transferCounts) return res.status(400).json({ error: `Missing JCSY information for ${flightNo}/${subjectDate}.` });
-
-    const details = {
-      ...retCounts,
-      internationalTransfer: String(transferCounts.internationalTransfer),
-      domesticTransfer: String(transferCounts.domesticTransfer),
-      overnightPassengers: String(transferCounts.overnightPassengers)
-    };
+    const syDate = isoDateToSyDate(nextIso);
+    const syInfo = log && syDate ? findSYInfo(log, syDate, {
+      preferredFlightNo: flightNo,
+      strictPreferredFlight: true
+    }) : null;
+    const details = nextDayInfoDetailsFromSyInfo(syInfo);
+    if (!details) return res.status(400).json({ error: 'Current SY or JCSY figures are incomplete. Run SY and JCSY again, then retry.' });
     const text = buildNextDayInfoEmailBody(subjectDate, details);
     const to = ['LAXHMXH@hallmark-aviation.com', 'dg-lax-lounge@qantas.com.au'];
     const cc = ['lax.mupax@hallmark-aviation.com', 'laxhmmu@gmail.com'];
-    const email = await sendNextDayInfoEmail({ to, cc, subject, text });
+    // Do not make Discord wait for Gmail. A stalled Gmail request previously left
+    // the browser on SENDING forever and prevented the Discord attempt entirely.
+    const [emailResult, discordResult] = await Promise.allSettled([
+      settleWithin(sendNextDayInfoEmail({ to, cc, subject, text }), 35000, 'Email delivery'),
+      settleWithin(sendNextDayInfoToDiscord(text), 35000, 'Discord delivery')
+    ]);
+    const email = emailResult.status === 'fulfilled' ? emailResult.value : null;
+    const discordPost = discordResult.status === 'fulfilled' ? discordResult.value : null;
+    const emailError = deliveryError(emailResult, 'NEXTDAY INFO email send failed.');
+    const discordError = deliveryError(discordResult, 'Discord NEXTDAY INFO post failed.');
+    if (emailError) console.error('NEXTDAY INFO email send failed:', emailResult.reason);
+    if (discordError) console.error('NEXTDAY INFO Discord post failed:', discordResult.reason);
+    const delivered = Boolean(email && discordPost?.sent && !emailError && !discordError);
     const sentAt = new Date().toISOString();
-    const step = syInfo.crewApis?.steps?.find((item) => item.key === 'nextDayInfo') || null;
-    if (step) {
-      step.complete = true;
-      step.searched = true;
-      step.time = sentAt.slice(11, 19);
-      step.subject = subject;
-      step.details = details;
-      step.detailText = buildNextDayInfoDetailLines(details);
-      step.reason = '';
-      step.tooltip = `NEXTDAY INFO sent to ${to.join(', ')}; CC ${cc.join(', ')}: ${subject}`;
-    }
-    cacheCompletedPreflightStep(syInfo, todayIso, 'nextDayInfo');
-    return res.json({ ok: true, sentAt, subject, to: email.to, cc: email.cc, messageId: email.id, details, detailText: step?.detailText || buildNextDayInfoDetailLines(details), step });
+    const reason = [emailError && `Email: ${emailError}`, discordError && `Discord: ${discordError}`].filter(Boolean).join(' ');
+    const step = {
+      key: 'nextDayInfo', label: 'NEXTDAY INFO', complete: delivered, searched: true,
+      time: sentAt.slice(11, 19), subject, details, detailText: buildNextDayInfoDetailLines(details), reason,
+      tooltip: delivered
+        ? `NEXTDAY INFO sent to ${to.join(', ')}; CC ${cc.join(', ')}: ${subject}`
+        : `NEXTDAY INFO delivery failed. ${reason}`
+    };
+    return res.json({ ok: delivered, sentAt, subject, to, cc, messageId: email?.id || '', emailError, discordPost, discordError, details, detailText: step?.detailText || buildNextDayInfoDetailLines(details), step });
   } catch (err) {
     console.error('NEXTDAY INFO send failed:', err);
     return res.status(500).json({ error: err?.message || 'NEXTDAY INFO email send failed.' });
@@ -2581,6 +4057,7 @@ app.post('/send', async (req, res) => {
       channelId,
       message
     } = req.body;
+    const sanitizedMessage = removeBoardingLinesFromDiscordEmbedText(message);
 
     if (!channelId) {
 
@@ -2602,13 +4079,13 @@ app.post('/send', async (req, res) => {
     if (req.body.embeds) {
 
   await channel.send({
-    content: message || "",
-    embeds: req.body.embeds
+    content: sanitizedMessage || "",
+    embeds: removeBoardingLinesFromDiscordEmbeds(req.body.embeds)
   });
 
 } else {
 
-  await channel.send(message);
+  await channel.send(sanitizedMessage);
 }
 
     res.json({
