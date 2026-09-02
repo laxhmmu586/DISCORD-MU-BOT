@@ -6,8 +6,8 @@ const html = fs.readFileSync(require.resolve('../public/public/index.html'), 'ut
 
 test('meal order card shows today and tomorrow without dashboard tiles', () => {
   assert.match(html, />Meal Order</);
-  assert.match(html, /reservation-day today">TODAY/);
-  assert.match(html, /reservation-day tomorrow">TOMORROW/);
+  assert.match(html, /data-meal-day="today">TODAY/);
+  assert.match(html, /data-meal-day="tomorrow">TOMORROW/);
   assert.match(html, />ORDERED SPML</);
   assert.match(html, /id="reservation-table-today"/);
   assert.match(html, /id="reservation-table-tomorrow"/);
@@ -28,6 +28,14 @@ test('meal order reconciliation colors reservation totals and SPML mismatches', 
   assert.match(html, /orderedTotal >= reservation[\s\S]*classList\.add\("is-over"\)/);
   assert.match(html, /orderedTotal < reservation[\s\S]*classList\.add\("is-under"\)/);
   assert.match(html, /!mealCountsMatch\(orderedMeals, pdMeals\)[\s\S]*classList\.add\("is-mismatch"\)/);
+  assert.match(html, /classList\.toggle\("has-shortage", hasShortage\)/);
+});
+
+test('today and tomorrow use a tab switcher with one visible panel', () => {
+  assert.match(html, /role="tablist"/);
+  assert.match(html, /id="meal-order-tab-today"[^>]*aria-selected="true"/);
+  assert.match(html, /id="reservation-table-tomorrow"[^>]*hidden/);
+  assert.match(html, /function selectMealOrderDay\(day\)/);
 });
 
 test('warning is the first operational action before CHD', () => {
