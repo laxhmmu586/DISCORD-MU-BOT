@@ -51,7 +51,12 @@ test('today and tomorrow use a tab switcher with one visible panel', () => {
 test('meal title is outside the shell and aligned to its top left', () => {
   assert.match(html, /<strong class="meal-order-title">Meal Order<\/strong>\s*<div class="meal-order-shell"/);
   assert.doesNotMatch(html, /id="meal-order-shell">\s*<strong class="meal-order-title"/);
-  assert.match(html, /\.meal-order-title \{[^}]*text-align:left/);
+  assert.match(html, /\.meal-order-title \{[^}]*width:100%[^}]*text-align:left !important/);
+});
+
+test('selected date keeps its green line without a green glow', () => {
+  assert.match(html, /\.meal-order-tab\[aria-selected="true"\] \{[^}]*background:transparent; text-shadow:none/);
+  assert.match(html, /\.meal-order-tab\[aria-selected="true"\]::after \{[^}]*background:#28d8a0; box-shadow:none/);
 });
 
 test('warning is the first operational action before CHD', () => {

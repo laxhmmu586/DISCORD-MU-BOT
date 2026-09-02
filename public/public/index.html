@@ -730,13 +730,13 @@
       .manifest-section.is-reservation { grid-area: reservation; }
       .manifest-section.is-checkin { grid-area: checkin; }
       .manifest-section.is-operations { grid-area:operations; min-width:0; padding:0; text-align:left; border:0; background:transparent; box-shadow:none; backdrop-filter:none; }
-      .meal-order-title { display:block; margin:0 0 7px 2px; text-align:left; font-size:15px; letter-spacing:.25px; text-transform:uppercase; }
+      .meal-order-title { display:block; width:100%; margin:0 0 7px; text-align:left !important; font-size:15px; letter-spacing:.25px; text-transform:uppercase; }
       .meal-order-shell { overflow:hidden; border:1px solid rgba(49,145,218,.52); border-radius:10px; background:linear-gradient(145deg,rgba(5,29,49,.90),rgba(2,17,31,.82)); box-shadow:none; }
       .meal-order-shell.has-shortage { border-color:rgba(255,178,39,.95); box-shadow:inset 0 0 26px rgba(255,166,24,.08),0 0 0 1px rgba(255,199,44,.26),0 0 18px rgba(255,166,24,.28); }
       .meal-order-tabs { display:grid; grid-template-columns:repeat(2,1fr); padding:0 18px; background:transparent; }
       .meal-order-tab { position:relative; padding:12px; border:0; background:transparent; color:var(--muted); font-size:12px; font-weight:900; letter-spacing:.8px; cursor:pointer; }
-      .meal-order-tab[aria-selected="true"] { color:#35d9a0; background:linear-gradient(180deg,rgba(22,104,91,.15),transparent); }
-      .meal-order-tab[aria-selected="true"]::after { content:""; position:absolute; left:12px; right:12px; bottom:0; height:2px; background:#28d8a0; box-shadow:0 0 10px rgba(40,216,160,.55); }
+      .meal-order-tab[aria-selected="true"] { color:#35d9a0; background:transparent; text-shadow:none; }
+      .meal-order-tab[aria-selected="true"]::after { content:""; position:absolute; left:12px; right:12px; bottom:0; height:2px; background:#28d8a0; box-shadow:none; }
       .meal-order-tab.has-shortage { color:#ffbd48; }
       .meal-order-tab.has-shortage::before { content:""; display:inline-block; width:6px; height:6px; margin:0 6px 1px 0; border-radius:50%; background:#ffad2f; box-shadow:0 0 9px rgba(255,173,47,.72); }
       .meal-order-days { display:block; }
@@ -4029,7 +4029,7 @@
 
         .details-panel { width:calc(100% - 24px); }
         .manifest-section.is-operations { width:100%; overflow:visible !important; }
-        .meal-order-title { margin:0 0 6px 2px; font-size:14px; }
+        .meal-order-title { margin:0 0 6px; font-size:14px; }
         .meal-order-tabs { padding:0 8px; }
         .meal-order-tab { padding:11px 4px; font-size:10px; letter-spacing:.35px; }
         .reservation-table { width:auto; min-width:0; grid-template-columns:22px 38px 58px minmax(76px,1fr) minmax(62px,1fr); gap:9px 6px; margin:0 8px; padding:16px 0 20px; font-size:10px; }
