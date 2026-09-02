@@ -52,6 +52,7 @@ test('meal title is outside the shell and aligned to its top left', () => {
   assert.match(html, /<strong class="meal-order-title">Meal Order<\/strong>\s*<div class="meal-order-shell"/);
   assert.doesNotMatch(html, /id="meal-order-shell">\s*<strong class="meal-order-title"/);
   assert.match(html, /\.meal-order-title \{[^}]*width:100%[^}]*text-align:left !important/);
+  assert.match(html, /\.manifest-section\.is-operations \{[^}]*justify-items:stretch/);
 });
 
 test('selected date keeps its green line without a green glow', () => {
