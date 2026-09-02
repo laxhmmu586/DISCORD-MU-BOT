@@ -922,6 +922,13 @@ async function updateTestBaggageRecord(bagTag, update) {
       shippingFee: next.shippingFee
     });
   } else if (updateType === 'cbs') {
+    const newBagTag = normalizeTestBagTag(update.newBagTag);
+    if (newBagTag) {
+      if (!isValidTestBagTag(newBagTag)) throw new Error('New tag must match MU123456 format');
+      next.bagTag = newBagTag;
+      details.oldTag = existing.bagTag;
+      details.newTag = newBagTag;
+    }
     next.status = sanitizeSheetText(update.status, 120) || next.status;
     next.worldTracerFileNumber = sanitizeSheetText(update.worldTracerFileNumber, 120) || next.worldTracerFileNumber;
     next.trackingNumber = sanitizeSheetText(update.trackingNumber, 160) || next.trackingNumber;
@@ -955,7 +962,7 @@ async function updateTestBaggageRecord(bagTag, update) {
     requestBody: { values: [testBaggageValuesFromRecord(next)] }
   });
   testBaggageSheetCache = { loadedAt: 0, rows: [] };
-  return { updated: true, record: await findTestBaggageByTag(existing.bagTag) };
+  return { updated: true, record: await findTestBaggageByTag(next.bagTag) };
 }
 
 function normalizeReportSheetType(type) {
@@ -3544,6 +3551,7 @@ async function exchangeCbsUnresolvedBaggageTag(rowNumber, newBagTag, updatedBy =
   if (rows.some((row) => row.rowNumber !== target.rowNumber && !row.resolvedAt && row.bagTag.toUpperCase() === nextTag)) {
     throw Object.assign(new Error('New tag already has an open On-hand case'), { code:'DUPLICATE_BAG_TAG' });
   }
+  if (await findTestBaggageByTag(nextTag)) throw Object.assign(new Error('New tag already exists in Baggage'), { code:'DUPLICATE_BAG_TAG' });
   const exchangedAt = new Date().toISOString();
   const by = sanitizeSheetText(updatedBy, 160);
   const exchange = { oldTag:target.bagTag, newTag:nextTag, exchangedAt, updatedBy:by };

@@ -353,7 +353,20 @@ test('On-hand exchange is saved to Google Sheets and shows old and new tags', ()
   assert.match(page, /exchange-tag-old/);
   assert.match(page, /exchange-tag-new/);
   assert.match(page, /exchange-tag-flow::before \{ content:"Exchange"/);
+  assert.match(page, /exchange-tag-flow"><span class="exchange-tag-new">\$\{escapeHtml\(lastExchange\.newTag\)\}<\/span><span class="exchange-tag-old">\$\{escapeHtml\(lastExchange\.oldTag\)\}/);
+  assert.match(page, /\.exchange-tag-old \{ color:#667085; font-size:11px/);
   assert.match(page, /detail:`\$\{exchange\.oldTag\} → \$\{exchange\.newTag\}`/);
+});
+
+test('home Baggage add flow also supports On-hand Exchange', () => {
+  assert.match(indexPage, /data-test-create-mode="exchange"/);
+  assert.match(indexPage, /function renderTestExchangeForm\(newTag, rows = \[\]\)/);
+  assert.match(indexPage, /Select current Open On-hand/);
+  assert.match(indexPage, /data-test-exchange-form/);
+  assert.match(indexPage, /submitTestExchange\(exchangeForm\)/);
+  assert.match(indexPage, /action:"exchange", newTagNumber, updatedBy:currentUserName\(\)/);
+  assert.match(server, /latestExchange\?\.oldTag \|\| record\.bagTag/);
+  assert.match(drive, /next\.bagTag = newBagTag/);
 });
 
 test('CBS passenger information keeps all operationally required fields visible', () => {

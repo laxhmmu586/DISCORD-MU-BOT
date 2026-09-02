@@ -2843,6 +2843,7 @@ app.get('/cbs-unresolved-baggage', async (req, res) => {
 
 async function syncOnHandStatusToBaggage(record, action, body = {}) {
   if (!record?.bagTag) return;
+  const latestExchange = action === 'exchange' ? record.exchangeHistory?.at(-1) : null;
   const statuses = {
     worldtracer: 'WorldTracer Updated',
     reopen: 'Reopened',
@@ -2855,9 +2856,10 @@ async function syncOnHandStatusToBaggage(record, action, body = {}) {
     exchange: 'Exchange'
   };
   try {
-    await updateTestBaggageRecord(record.bagTag, {
+    await updateTestBaggageRecord(latestExchange?.oldTag || record.bagTag, {
       type: 'cbs',
       eventType: action,
+      newBagTag: latestExchange?.newTag || '',
       status: statuses[action] || action,
       updatedBy: sanitizeCbsText(body.updatedBy, 160),
       worldTracerFileNumber: sanitizeCbsText(body.worldTracerFileNumber, 120).toUpperCase(),
