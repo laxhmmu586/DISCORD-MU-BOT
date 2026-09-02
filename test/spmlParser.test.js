@@ -19,6 +19,7 @@ test('parses a continued PD SPML list and keeps the newest query', () => {
    SPML-VGML VGML HK1`;
   const result = parseSpmlLog(log, { flightNo: 'MU586', flightDate: '02SEP26' });
   assert.deepEqual(result.preorderCounts, { VOML: 1, SFML: 1, VGML: 2 });
+  assert.deepEqual(result.preorderByCabin, { F:{}, C:{}, Y:{ VOML:1, SFML:1, VGML:2 } });
   assert.deepEqual(result.preorder.map((row) => [row.passenger, row.seat, row.confirmed]), [['GAO/XIA', '34A', true], ['GUAN/LING', '71J', true], ['LI/AIGU', '65H', true], ['LIN/RUIQ', '39L', true]]);
 });
 

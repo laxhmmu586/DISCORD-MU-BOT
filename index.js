@@ -3757,9 +3757,7 @@ app.get(
           });
         }
         const spml = parseSpmlLog(log, { flightNo:syInfo.flightNo, flightDate:syInfo.flightDate });
-        spml.email = isoDate === todayIsoUtc()
-          ? await getLatestMealOrderEmail(syInfo.flightNo, syInfo.flightDate)
-          : { found:false, counts:{}, reason:'Meal-order email comparison is available for today only.' };
+        spml.email = await getLatestMealOrderEmail(syInfo.flightNo, syInfo.flightDate);
         if (spml.report.length) {
           try {
             spml.sheetSync = await appendSpmlReportRows(spml.report.map((row) => ({ ...row, key:`SPML|${row.date}|${row.flightNo}|${row.passenger}|${row.bn}|${row.meal}`.toUpperCase() })));

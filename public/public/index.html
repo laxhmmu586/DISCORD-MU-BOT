@@ -718,10 +718,10 @@
 
       .details-manifest {
         display: grid;
-        grid-template-columns: minmax(174px, max-content) minmax(132px, 132px) repeat(2, minmax(124px, 124px));
+        grid-template-columns: minmax(720px, 1fr) minmax(132px, 132px);
         grid-template-areas:
-          "operations warning security jcsy"
-          "operations warning security jcsy";
+          "operations warning"
+          "operations warning";
         grid-template-rows: minmax(58px, 1fr) minmax(58px, 1fr);
         gap: 12px;
         align-items: stretch;
@@ -730,21 +730,23 @@
 
       .manifest-section.is-reservation { grid-area: reservation; }
       .manifest-section.is-checkin { grid-area: checkin; }
-      .manifest-section.is-operations { grid-area: operations; min-width: 360px; text-align: left; }
-      .reservation-table { display:grid; grid-template-columns:36px 52px 60px minmax(80px,1fr) minmax(80px,1fr); align-items:center; gap:5px 8px; font-size:11px; }
+      .manifest-section.is-operations { grid-area: operations; min-width: 0; padding:18px 22px; text-align:left; border-color:rgba(88,167,255,.38); background:linear-gradient(135deg,rgba(7,28,48,.9),rgba(4,14,27,.72)); box-shadow:inset 0 1px rgba(255,255,255,.06),0 15px 38px rgba(0,0,0,.26); }
+      .reservation-table { display:grid; grid-template-columns:30px repeat(8,minmax(62px,1fr)); align-items:center; gap:7px 10px; font-size:11px; }
       .reservation-table .reservation-title { grid-column:1 / -1; font-size:15px; margin-bottom:3px; }
-      .reservation-table .reservation-day { grid-column:2 / -1; text-align:center; color:var(--muted); font-weight:850; letter-spacing:.7px; }
+      .reservation-table .reservation-day { text-align:center; color:#d7eaff; font-weight:900; letter-spacing:1px; padding-bottom:5px; border-bottom:1px solid rgba(88,167,255,.3); }
+      .reservation-table .reservation-day.today { grid-column:2 / span 4; }
+      .reservation-table .reservation-day.tomorrow { grid-column:6 / span 4; }
       .reservation-table .reservation-head { color:var(--muted); font-weight:850; letter-spacing:.4px; }
       .reservation-table .reservation-cabin { color:var(--muted); font-weight:900; }
-      .reservation-table .meal-cell { white-space:normal; line-height:1.25; }
+      .reservation-table .meal-cell { white-space:normal; line-height:1.25; color:#e6f2ff; }
       .summary-warning-action { grid-area: warning; }
       .summary-security-action { grid-area: security; }
       .summary-jcsy-action { grid-area: jcsy; }
       .details-manifest.is-warning-hidden {
-        grid-template-columns: minmax(174px, max-content) repeat(2, minmax(124px, 124px));
+        grid-template-columns: minmax(720px, 1fr);
         grid-template-areas:
-          "operations security jcsy"
-          "operations security jcsy";
+          "operations"
+          "operations";
       }
 
       .details-manifest.is-warning-hidden .summary-security-action { grid-area: security; }
@@ -4002,20 +4004,21 @@
 
         .detail-top-actions,
         .details-manifest {
-          grid-template-columns: 1fr 1fr;
+          grid-template-columns: 1fr;
           grid-template-areas:
-            "operations operations"
-            "warning security"
-            "warning jcsy";
-          grid-template-rows: auto minmax(132px, auto) minmax(132px, auto);
+            "operations"
+            "warning";
+          grid-template-rows: auto minmax(100px, auto);
         }
 
         .details-manifest.is-warning-hidden {
           grid-template-areas:
-            "operations operations"
-            "security jcsy";
-          grid-template-rows: auto minmax(132px, auto);
+            "operations";
+          grid-template-rows: auto;
         }
+
+        .reservation-table { min-width:680px; }
+        .manifest-section.is-operations { overflow-x:auto !important; }
 
         .details-panel {
           overflow: visible;
@@ -4500,6 +4503,7 @@
                 <button id="delayed-flight-button" type="button">MU9586 (Delayed)</button>
                 <button id="sales-report-button" type="button">Sales Report</button>
                 <button id="seat-map-button" type="button">Seat Map</button>
+                <button id="security-check-button" type="button">Security Check</button>
               </div>
             </div>
           </div>
@@ -4577,17 +4581,15 @@
               <div class="details-manifest">
                 <div class="manifest-section is-operations">
                   <div class="reservation-table" id="reservation-table">
-                    <strong class="reservation-title">Reservation</strong>
-                    <span></span><span class="reservation-day">TODAY</span>
-                    <span></span><span class="reservation-head">RES</span><span class="reservation-head">EMAIL</span><span class="reservation-head">SPML</span><span class="reservation-head">PD</span>
-                    <span class="reservation-cabin">F</span><span id="reservation-f">---</span><span id="meal-email-f">---</span><span id="meal-spml-f" class="meal-cell">---</span><span id="meal-pd-f" class="meal-cell">---</span>
-                    <span class="reservation-cabin">C</span><span id="reservation-c">---</span><span id="meal-email-c">---</span><span id="meal-spml-c" class="meal-cell">---</span><span id="meal-pd-c" class="meal-cell">---</span>
-                    <span class="reservation-cabin">Y</span><span id="reservation-y">---</span><span id="meal-email-y">---</span><span id="meal-spml-y" class="meal-cell">---</span><span id="meal-pd-y" class="meal-cell">---</span>
+                    <strong class="reservation-title">Meal Order</strong>
+                    <span></span><span class="reservation-day today">TODAY</span><span class="reservation-day tomorrow">TOMORROW</span>
+                    <span></span><span class="reservation-head">RES</span><span class="reservation-head">ORDERED</span><span class="reservation-head">ORDERED SPML</span><span class="reservation-head">PD</span><span class="reservation-head">RES</span><span class="reservation-head">ORDERED</span><span class="reservation-head">ORDERED SPML</span><span class="reservation-head">PD</span>
+                    <span class="reservation-cabin">F</span><span id="reservation-f">---</span><span id="meal-email-f">---</span><span id="meal-spml-f" class="meal-cell">---</span><span id="meal-pd-f" class="meal-cell">---</span><span id="tomorrow-reservation-f">---</span><span id="tomorrow-meal-email-f">---</span><span id="tomorrow-meal-spml-f" class="meal-cell">---</span><span id="tomorrow-meal-pd-f" class="meal-cell">---</span>
+                    <span class="reservation-cabin">C</span><span id="reservation-c">---</span><span id="meal-email-c">---</span><span id="meal-spml-c" class="meal-cell">---</span><span id="meal-pd-c" class="meal-cell">---</span><span id="tomorrow-reservation-c">---</span><span id="tomorrow-meal-email-c">---</span><span id="tomorrow-meal-spml-c" class="meal-cell">---</span><span id="tomorrow-meal-pd-c" class="meal-cell">---</span>
+                    <span class="reservation-cabin">Y</span><span id="reservation-y">---</span><span id="meal-email-y">---</span><span id="meal-spml-y" class="meal-cell">---</span><span id="meal-pd-y" class="meal-cell">---</span><span id="tomorrow-reservation-y">---</span><span id="tomorrow-meal-email-y">---</span><span id="tomorrow-meal-spml-y" class="meal-cell">---</span><span id="tomorrow-meal-pd-y" class="meal-cell">---</span>
                   </div>
                 </div>
                 <button class="detail-action warning-action summary-warning-action" type="button" data-panel="warning" id="warning-action" hidden aria-label="Open warnings"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M16 5 29 27H3z"/><path d="M16 12v7"/><path d="M16 23h.01"/></svg></span><span class="detail-action-label">WARNING</span> <span class="detail-action-badge warning-badge" id="warning-count">0</span></button>
-                <button class="detail-action summary-security-action" type="button" data-panel="security" id="security-detail-action"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="10"/><circle cx="16" cy="16" r="3"/><path d="M16 4v5M16 23v5M4 16h5M23 16h5"/></svg></span><span class="detail-action-label">Security Check</span></button>
-                <button class="detail-action summary-jcsy-action" type="button" data-panel="jcsy" id="jcsy-detail-action"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="10" cy="10" r="3"/><circle cx="22" cy="10" r="3"/><circle cx="10" cy="22" r="3"/><circle cx="22" cy="22" r="3"/><path d="M16 10h.01M16 16h.01M16 22h.01"/></svg></span><span class="detail-action-label">JCSY</span></button>
               </div>
             </div>
             <div class="detail-actions" aria-label="Flight detail actions">
@@ -4790,6 +4792,7 @@
       let lastDragX = 0;
       let didDrag = false;
       let currentSy = null;
+      let tomorrowMealRequestKey = "";
       let latestQuery = "SY";
       let activeReportMode = "sales";
       let activeSyQuery = "SY";
@@ -4841,7 +4844,7 @@
         setText("#metric-std", "----");
         const reservationBookedEl = document.querySelector("#reservation-booked");
         if (reservationBookedEl) reservationBookedEl.innerHTML = tripleHtml(["---", "---", "---"]);
-        ["#reservation-f", "#reservation-c", "#reservation-y", "#meal-email-f", "#meal-email-c", "#meal-email-y", "#meal-spml-f", "#meal-spml-c", "#meal-spml-y", "#meal-pd-f", "#meal-pd-c", "#meal-pd-y"].forEach((selector) => setText(selector, "---"));
+        ["", "tomorrow-"].forEach((prefix) => ["reservation-f", "reservation-c", "reservation-y", "meal-email-f", "meal-email-c", "meal-email-y", "meal-spml-f", "meal-spml-c", "meal-spml-y", "meal-pd-f", "meal-pd-c", "meal-pd-y"].forEach((id) => setText(`#${prefix}${id}`, "---")));
         const checkinAcceptedEl = document.querySelector("#checkin-accepted");
         if (checkinAcceptedEl) checkinAcceptedEl.innerHTML = tripleHtml(["---", "---", "---"]);
         setBadgeText("#chd-count", 0);
@@ -6161,6 +6164,36 @@
         return JSON.stringify([sy.flightNo, sy.flightDate, sy.gate, sy.bdt, sy.sd, sy.reservation, sy.reservationTicketed, sy.checkedIn, sy.checkedInTicketed, sy.spml || {}, sy.jcsy, steps, sy.chdList || [], govSignature, webEdiIssueBnList(sy), nbrdSignature, warningSignature, sy.psmList || [], sy.wchList || []]);
       }
 
+      function mealCountsText(counts) {
+        return Object.entries(counts || {}).filter(([, count]) => Number(count) > 0).sort(([a], [b]) => a.localeCompare(b)).map(([meal, count]) => `${count} ${meal}`).join(" + ") || "-";
+      }
+
+      function renderMealOrderColumns(sy, prefix = "") {
+        const reservationCounts = countTriple(sy?.reservationTicketed);
+        ["F", "C", "Y"].forEach((cabin, index) => {
+          const key = cabin.toLowerCase();
+          setText(`#${prefix}reservation-${key}`, reservationCounts[index]);
+          setText(`#${prefix}meal-email-${key}`, sy?.spml?.email?.found ? (sy.spml.email.cabinCounts?.[cabin] ?? "-") : "-");
+          setText(`#${prefix}meal-spml-${key}`, cabin === "Y" && sy?.spml?.email?.found ? mealCountsText(sy.spml.email.counts) : "-");
+          setText(`#${prefix}meal-pd-${key}`, mealCountsText(sy?.spml?.preorderByCabin?.[cabin]));
+        });
+      }
+
+      async function refreshTomorrowMealOrder(todaySy) {
+        const flightNo = String(todaySy?.flightNo || "MU586").toUpperCase();
+        const requestKey = `${flightNo}|${todaySy?.flightDate || ""}`;
+        if (tomorrowMealRequestKey === requestKey) return;
+        tomorrowMealRequestKey = requestKey;
+        renderMealOrderColumns(null, "tomorrow-");
+        try {
+          const data = await fetchSearch(`SY+ ${flightNo}`);
+          if (tomorrowMealRequestKey !== requestKey || currentSy !== todaySy) return;
+          if (data?.sy) renderMealOrderColumns(data.sy, "tomorrow-");
+        } catch (_) {
+          if (tomorrowMealRequestKey === requestKey) renderMealOrderColumns(null, "tomorrow-");
+        }
+      }
+
       function updateFlightFromSy(sy, options = {}) {
         const signature = syRenderSignature(sy);
         const unchanged = options.skipUnchanged && signature && signature === lastSyRenderSignature;
@@ -6181,17 +6214,10 @@
         setText("#metric-std", sy.sd || "----");
         const reservationBookedEl = document.querySelector("#reservation-booked");
         if (reservationBookedEl) reservationBookedEl.innerHTML = tripleHtml(countTriple(sy.reservation));
-        const reservationCounts = countTriple(sy.reservationTicketed);
-        ["f", "c", "y"].forEach((cabin, index) => setText(`#reservation-${cabin}`, reservationCounts[index]));
+        renderMealOrderColumns(sy);
         const checkinAcceptedEl = document.querySelector("#checkin-accepted");
         if (checkinAcceptedEl) checkinAcceptedEl.innerHTML = tripleHtml(countTriple(sy.checkedIn));
-        const mealCountsText = (counts) => Object.entries(counts || {}).sort(([a], [b]) => a.localeCompare(b)).map(([meal, count]) => `${count} ${meal}`).join(" + ") || "None";
-        ["F", "C", "Y"].forEach((cabin) => {
-          const key = cabin.toLowerCase();
-          setText(`#meal-email-${key}`, sy.spml?.email?.found ? (sy.spml.email.cabinCounts?.[cabin] ?? "---") : "Not found");
-          setText(`#meal-spml-${key}`, cabin === "Y" ? mealCountsText(sy.spml?.email?.counts) : "—");
-          setText(`#meal-pd-${key}`, mealCountsText(sy.spml?.preorderByCabin?.[cabin]));
-        });
+        refreshTomorrowMealOrder(sy);
         const isClearLocked = (_key) => false;
         const chdIssues = isClearLocked("CHD") ? 0 : (sy.chdList || []).filter((row) => row.hasChdCode === false).length;
         const gov = sy.govAqq || {};
