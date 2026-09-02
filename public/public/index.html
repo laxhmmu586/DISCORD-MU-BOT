@@ -718,9 +718,9 @@
 
       .details-manifest {
         display: grid;
-        grid-template-columns: minmax(600px, 760px) 124px;
+        grid-template-columns: minmax(600px, 760px);
         grid-template-areas:
-          "operations warning";
+          "operations";
         grid-template-rows: auto;
         gap: 18px;
         align-items: center;
@@ -730,7 +730,7 @@
       .manifest-section.is-reservation { grid-area: reservation; }
       .manifest-section.is-checkin { grid-area: checkin; }
       .manifest-section.is-operations { grid-area:operations; min-width:0; padding:0; text-align:left; border:0; background:transparent; box-shadow:none; backdrop-filter:none; }
-      .meal-order-title { display:block; margin:0 0 12px; text-align:center; font-size:17px; letter-spacing:.25px; text-transform:uppercase; }
+      .meal-order-title { display:block; padding:14px 18px 4px; text-align:left; font-size:15px; letter-spacing:.25px; text-transform:uppercase; }
       .meal-order-shell { overflow:hidden; border:1px solid rgba(49,145,218,.52); border-radius:10px; background:linear-gradient(145deg,rgba(5,29,49,.90),rgba(2,17,31,.82)); box-shadow:none; }
       .meal-order-shell.has-shortage { border-color:rgba(255,178,39,.95); box-shadow:inset 0 0 26px rgba(255,166,24,.08),0 0 0 1px rgba(255,199,44,.26),0 0 18px rgba(255,166,24,.28); }
       .meal-order-tabs { display:grid; grid-template-columns:repeat(2,1fr); padding:0 18px; background:transparent; }
@@ -4017,9 +4017,8 @@
         .details-manifest {
           grid-template-columns: 1fr;
           grid-template-areas:
-            "operations"
-            "warning";
-          grid-template-rows: auto minmax(100px, auto);
+            "operations";
+          grid-template-rows: auto;
         }
 
         .details-manifest.is-warning-hidden {
@@ -4030,7 +4029,7 @@
 
         .details-panel { width:calc(100% - 24px); }
         .manifest-section.is-operations { width:100%; overflow:visible !important; }
-        .meal-order-title { margin-bottom:10px; font-size:16px; }
+        .meal-order-title { padding:12px 12px 3px; font-size:14px; }
         .meal-order-tabs { padding:0 8px; }
         .meal-order-tab { padding:11px 4px; font-size:10px; letter-spacing:.35px; }
         .reservation-table { width:auto; min-width:0; grid-template-columns:22px 38px 58px minmax(76px,1fr) minmax(62px,1fr); gap:9px 6px; margin:0 8px; padding:16px 0 20px; font-size:10px; }
@@ -4061,11 +4060,6 @@
         .details-panel .details-manifest > .detail-action {
           min-height: 132px;
           padding: 18px 10px 12px;
-        }
-
-        .details-panel .details-manifest > .detail-action.summary-warning-action {
-          align-self: center;
-          height: 158px;
         }
 
         .detail-action-icon {
@@ -4597,8 +4591,8 @@
             <div class="details-surface">
               <div class="details-manifest">
                 <div class="manifest-section is-operations">
-                  <strong class="meal-order-title">Meal Order</strong>
                   <div class="meal-order-shell" id="meal-order-shell">
+                    <strong class="meal-order-title">Meal Order</strong>
                     <div class="meal-order-tabs" role="tablist" aria-label="Meal order date">
                       <button class="meal-order-tab" id="meal-order-tab-today" type="button" role="tab" aria-selected="true" aria-controls="reservation-table-today" data-meal-day="today">---</button>
                       <button class="meal-order-tab" id="meal-order-tab-tomorrow" type="button" role="tab" aria-selected="false" aria-controls="reservation-table-tomorrow" data-meal-day="tomorrow">---</button>
@@ -4619,7 +4613,6 @@
                     </div>
                   </div>
                 </div>
-                <button class="detail-action warning-action summary-warning-action" type="button" data-panel="warning" id="warning-action" hidden aria-label="Open warnings"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M16 5 29 27H3z"/><path d="M16 12v7"/><path d="M16 23h.01"/></svg></span><span class="detail-action-label">WARNING</span> <span class="detail-action-badge warning-badge" id="warning-count">0</span></button>
               </div>
             </div>
             <div class="detail-actions" aria-label="Flight detail actions">

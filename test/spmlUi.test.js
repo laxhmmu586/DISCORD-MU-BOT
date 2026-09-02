@@ -48,9 +48,13 @@ test('today and tomorrow use a tab switcher with one visible panel', () => {
   assert.match(html, /nextMealFlightDate\(sy\.flightDate\)/);
 });
 
-test('warning is fixed-height beside the meal order card', () => {
-  assert.match(html, /meal-order-shell[\s\S]*id="warning-action"[\s\S]*class="detail-actions" aria-label="Flight detail actions"/);
-  assert.match(html, /summary-warning-action \{ width:124px; height:158px; min-height:158px; align-self:center/);
+test('meal title is inside the shell and aligned to its top left', () => {
+  assert.match(html, /id="meal-order-shell">\s*<strong class="meal-order-title">Meal Order/);
+  assert.match(html, /\.meal-order-title \{[^}]*text-align:left/);
+});
+
+test('warning is the first operational action before CHD', () => {
+  assert.match(html, /class="detail-actions" aria-label="Flight detail actions">\s*<button[^>]*id="warning-action"[\s\S]*id="chd-action"/);
 });
 
 test('meal table uses two styled vertical column dividers and compact columns', () => {
