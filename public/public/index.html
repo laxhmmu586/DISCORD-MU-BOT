@@ -4631,14 +4631,15 @@
               <button class="node" type="button" data-index="2" data-key="FSC" data-label="FSC" data-status="pending" data-time="----"></button>
               <button class="node" type="button" data-index="3" data-key="NEXTDAY_INFO" data-label="NEXTDAY INFO" data-status="pending" data-time="----"></button>
               <button class="node" type="button" data-index="4" data-key="NET" data-label="NET" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="5" data-key="CHD" data-label="CHD" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="6" data-key="GOV" data-label="GOV" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="7" data-key="WEBEDI" data-label="WEB/EDI/RS" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="8" data-key="NBRD" data-label="NBRD" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="9" data-key="CCL" data-label="CCL" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="10" data-key="CC" data-label="CC" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="11" data-key="INITIAL_FLIGHT" data-label="INITIAL FLIGHT" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="12" data-key="BDT_CHG" data-label="BDT CHG" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="5" data-key="MISSING_BAG" data-label="MISSING BAG" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="6" data-key="CHD" data-label="CHD" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="7" data-key="GOV" data-label="GOV" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="8" data-key="WEBEDI" data-label="WEB/EDI/RS" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="9" data-key="NBRD" data-label="NBRD" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="10" data-key="CCL" data-label="CCL" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="11" data-key="CC" data-label="CC" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="12" data-key="INITIAL_FLIGHT" data-label="INITIAL FLIGHT" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="13" data-key="BDT_CHG" data-label="BDT CHG" data-status="pending" data-time="----"></button>
               <article class="node-card" aria-live="polite">
                 <h2>Crew APIs</h2>
                 <p>Crew manifest and reservation data are ready. This point can open deeper crew workflows later.</p>
@@ -4740,8 +4741,8 @@
       const newPasswordInput = document.querySelector("#new-password");
       const passwordStatus = document.querySelector("#password-status");
       const WARNING_ACK_STORAGE_KEY = "mufc_warning_acknowledgements";
-      const baseProgress = [0.05, 0.125, 0.2, 0.275, 0.35, 0.425, 0.5, 0.575, 0.65, 0.725, 0.8, 0.875, 0.95];
-      const mobileProgress = [-0.46, -0.30, -0.14, 0.02, 0.18, 0.34, 0.5, 0.66, 0.82, 0.98, 1.14, 1.30, 1.46];
+      const baseProgress = [0.05, 0.119, 0.188, 0.258, 0.327, 0.396, 0.465, 0.535, 0.604, 0.673, 0.742, 0.812, 0.881, 0.95];
+      const mobileProgress = [-0.54, -0.38, -0.22, -0.06, 0.10, 0.26, 0.42, 0.58, 0.74, 0.90, 1.06, 1.22, 1.38, 1.54];
       const desktopOrbitPath = "M-260 318 C 120 178, 390 142, 600 142 S 1080 178, 1460 318";
       const mobileOrbitPath = "M-240 296 C 130 210, 390 184, 600 184 S 1070 210, 1440 296";
       const mobileOrbitQuery = window.matchMedia("(max-width: 760px)");
@@ -4764,6 +4765,7 @@
       const SY_REFRESH_TIMEOUT_MS = 12 * 1000;
       const AUTH_INACTIVITY_LIMIT_MS = 60 * 60 * 1000;
       const SY_COMPLETED_NODE_CACHE_KEY = "mufc_sy_completed_nodes_v1";
+      const MISSING_BAG_STATUS_STORAGE_KEY = "mufc_missing_bag_status_v1";
       const PERSISTENT_GREEN_NODE_KEYS = ["GD_CHECK", "FSC", "NEXTDAY_INFO"];
       let inactivityTimer = null;
       let syAutoRefreshTimer = null;
@@ -5236,6 +5238,52 @@
         return res.json();
       }
 
+      async function refreshMissingBagNode() {
+        const node = document.querySelector('.node[data-key="MISSING_BAG"]');
+        if (!node) return;
+        try {
+          const data = await apiJson('/cbs-missing-bags', { authTimeoutMs: 3000 });
+          const uniqueRows = new Map();
+          (data.rows || []).forEach((row) => {
+            const tag = String(row.bagTag || '').trim().toUpperCase();
+            if (!tag) return;
+            const current = uniqueRows.get(tag);
+            const processed = Boolean(row.acknowledgedAt || row.caseCreatedAt);
+            const currentProcessed = Boolean(current?.acknowledgedAt || current?.caseCreatedAt);
+            const rowDate = Date.parse(row.sourceEmailDate) || 0;
+            const currentDate = Date.parse(current?.sourceEmailDate) || 0;
+            if (!current || (processed && !currentProcessed) || (processed === currentProcessed && rowDate > currentDate)) uniqueRows.set(tag, row);
+          });
+          const openCount = [...uniqueRows.values()].filter((row) => !row.acknowledgedAt && !row.caseCreatedAt).length;
+          applyMissingBagNodeStatus(openCount);
+          try {
+            localStorage.setItem(MISSING_BAG_STATUS_STORAGE_KEY, JSON.stringify({ openCount, updatedAt:Date.now() }));
+          } catch (_) {}
+        } catch (error) {
+          console.error('Missing bag status loading failed:', error);
+          node.dataset.status = 'pending';
+          node.dataset.time = '----';
+          node.removeAttribute('data-alert');
+        }
+      }
+
+      function applyMissingBagNodeStatus(openCount) {
+        const node = document.querySelector('.node[data-key="MISSING_BAG"]');
+        if (!node) return;
+        const count = Math.max(0, Number(openCount) || 0);
+        node.dataset.status = count ? 'issue' : 'done';
+        node.dataset.time = count ? String(count) : 'CLEAR';
+        if (count) node.dataset.alert = String(count);
+        else node.removeAttribute('data-alert');
+      }
+
+      function applyStoredMissingBagStatus() {
+        try {
+          const saved = JSON.parse(localStorage.getItem(MISSING_BAG_STATUS_STORAGE_KEY) || 'null');
+          if (saved && Number.isFinite(Number(saved.openCount))) applyMissingBagNodeStatus(saved.openCount);
+        } catch (_) {}
+      }
+
       function timeToMinutes(value) {
         const digits = String(value || "").replace(/\D/g, "").padStart(4, "0");
         return Number(digits.slice(0, 2)) * 60 + Number(digits.slice(2, 4));
@@ -5264,9 +5312,9 @@
 
       function stageGroupsForProgress(progress = progressStops()) {
         return [
-          { key: "preflight", start: progress[0] - 0.02, end: progress[4] + 0.02, labelAt: (progress[0] + progress[4]) / 2 },
-          { key: "operation", start: progress[5] - 0.02, end: progress[10] + 0.02, labelAt: (progress[5] + progress[10]) / 2 },
-          { key: "postflight", start: progress[11] - 0.02, end: progress[11] + 0.08, labelAt: progress[11] + 0.03 },
+          { key: "preflight", start: progress[0] - 0.02, end: progress[5] + 0.02, labelAt: (progress[0] + progress[5]) / 2 },
+          { key: "operation", start: progress[6] - 0.02, end: progress[11] + 0.02, labelAt: (progress[6] + progress[11]) / 2 },
+          { key: "postflight", start: progress[12] - 0.02, end: progress[12] + 0.08, labelAt: progress[12] + 0.03 },
         ];
       }
 
@@ -6171,6 +6219,9 @@
         const persistedGreenNodes = completedSyNodeState(sy);
         nodes.forEach((node) => {
           const key = node.dataset.key;
+          // Missing Bag is driven by its own report endpoint. Do not let the
+          // recurring SY refresh replace its last result with a locked node.
+          if (key === "MISSING_BAG") return;
           const step = stepByKey(key);
           const persistedGreenNode = PERSISTENT_GREEN_NODE_KEYS.includes(key) ? persistedGreenNodes[key] : null;
           let issueCount = 0;
@@ -6181,7 +6232,7 @@
           if (["GD_CHECK", "NEXTDAY_INFO"].includes(key)) { started = Boolean(step?.searched || step?.complete || step?.time); complete = Boolean(step?.complete); time = complete ? (step?.time || (key === "GD_CHECK" ? "MATCH" : "SENT")) : (started ? (key === "GD_CHECK" ? "ISSUE" : "MISSING") : "----"); }
           if (key === "FSC") { const sync = fscRateSyncInfo(); started = Boolean(sync.rate || sync.reason || sync.error); complete = isFscRateSheetFilled(sync); time = sync.rate || "----"; }
           if (key === "CHD") { issueCount = chdIssues; started = (sy.chdList || []).length > 0; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
-          if (key === "GOV") { issueCount = govCount; started = Boolean(sy.govAqq) && previousStarted; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
+          if (key === "GOV") { issueCount = govCount; started = Boolean(sy.govAqq); complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
           if (key === "WEBEDI") { issueCount = webediCount; started = Boolean(sy.govAqq) && previousStarted; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
           if (key === "NBRD") { issueCount = unackedNbrdCount; started = nbrdCount > 0 && previousStarted; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
           if (persistedGreenNode?.complete) {
@@ -8365,6 +8416,10 @@
         node.addEventListener("click", (event) => {
           event.preventDefault();
           didDrag = false;
+          if (node.dataset.key === "MISSING_BAG") {
+            window.location.href = "cbs.html?section=missing";
+            return;
+          }
           if (node.dataset.clearLocked === "true") return;
           resetTimelineCenter(node.dataset.key);
           if (node.dataset.key === "NEXTDAY_INFO") {
@@ -8727,6 +8782,7 @@
           }
           currentUser.textContent = user.email || "Authenticated user";
           startInactivityWatch();
+          refreshMissingBagNode();
           queryInput.value = "SY";
           mobileQueryInput.value = "SY";
           startSyAutoRefresh();
@@ -8735,6 +8791,10 @@
 
       resetTimelineCenter();
       document.addEventListener("visibilitychange", syncSyAutoRefreshWithVisibility);
+      window.addEventListener("pageshow", applyStoredMissingBagStatus);
+      window.addEventListener("storage", (event) => {
+        if (event.key === MISSING_BAG_STATUS_STORAGE_KEY) applyStoredMissingBagStatus();
+      });
       window.addEventListener("focus", () => {
         if (isTodaySyQuery(activeSyQuery) && !syAutoRefreshInFlight) refreshSy({ background: true });
       });
