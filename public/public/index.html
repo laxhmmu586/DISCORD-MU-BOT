@@ -3503,8 +3503,8 @@
 
       .test-choice-grid {
         display: grid;
-        grid-template-columns: repeat(2, minmax(240px, 1fr));
-        gap: clamp(18px, 5vw, 80px);
+        grid-template-columns: repeat(3, minmax(190px, 1fr));
+        gap: clamp(14px, 3vw, 34px);
         justify-content: center;
         margin: 28px auto 10px;
         max-width: 900px;
@@ -3583,6 +3583,24 @@
       .test-choice-card[data-test-create-mode="outbound"] {
         color: #c8ffd7;
       }
+
+      .test-choice-card[data-test-create-mode="exchange"] {
+        color: #c9dcff;
+      }
+
+      .test-exchange-summary {
+        display: grid;
+        gap: 5px;
+        border-left: 4px solid #69a8ff;
+        border-radius: 12px;
+        background: rgba(105, 168, 255, 0.13);
+        padding: 12px 14px;
+      }
+
+      .test-exchange-summary b { color: #bcd8ff; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; }
+      .test-exchange-summary strong { color: white; font-size: 20px; }
+      .test-exchange-summary small { color: var(--muted); font-size: 13px; }
+      .test-exchange-summary.is-wide { grid-column: 1 / -1; }
 
       .test-field[hidden],
       [data-test-rush-field][hidden] {
@@ -7151,7 +7169,7 @@
       }
 
       function renderTestUpdateForm(record, mode = "rush", message = "") {
-        const activeMode = ["rush", "location", "shipping"].includes(mode) ? mode : "rush";
+        const activeMode = ["rush", "location", "shipping", "exchange"].includes(mode) ? mode : "rush";
         const field = (label, name, value = "", attrs = "") => `<label class="test-field"><span>${escapeHtml(label)}</span><input name="${escapeHtml(name)}" value="${escapeHtml(value)}" ${attrs} /></label>`;
         const fields = activeMode === "rush"
           ? [
@@ -7163,7 +7181,9 @@
             ].join("")
           : activeMode === "location"
             ? field("Current location", "location", record.location || "", "required")
-            : [
+            : activeMode === "exchange"
+              ? `<div class="test-exchange-summary is-wide"><b>Current tag</b><strong>${escapeHtml(record.bagTag)}</strong><small>The new tag will replace this tag.</small></div>${field("New tag number", "newTagNumber", "", 'maxlength="8" pattern="[A-Z]{2}[0-9]{6}" required')}`
+              : [
                 field("Tracking number", "trackingNumber", record.trackingNumber || "", "required"),
                 field("Shipping fee", "shippingFee", record.shippingFee || "", "required"),
               ].join("");
@@ -7172,6 +7192,7 @@
             <button type="button" data-test-update-mode="rush" class="${activeMode === "rush" ? "is-active" : ""}">Rush</button>
             <button type="button" data-test-update-mode="location" class="${activeMode === "location" ? "is-active" : ""}">Bag location update</button>
             <button type="button" data-test-update-mode="shipping" class="${activeMode === "shipping" ? "is-active" : ""}">Shipping</button>
+            <button type="button" data-test-update-mode="exchange" class="${activeMode === "exchange" ? "is-active" : ""}">Exchange</button>
           </div>
           <div class="test-form-grid">${fields}<div class="test-form-actions"><button class="test-submit" type="submit">Update</button><button class="test-back-button" type="button" data-test-close-update>Close</button><span class="panel-muted">${escapeHtml(message)}</span></div></div>
         </form>`;
@@ -7180,7 +7201,7 @@
       function renderTestRecord(record, mode = "", message = "") {
         if (!testOutput || !record) return;
         testOutput._record = record;
-        const showUpdateForm = ["rush", "location", "shipping"].includes(mode);
+        const showUpdateForm = ["rush", "location", "shipping", "exchange"].includes(mode);
         testOutput.innerHTML = `<article class="test-report-card">
           <div class="test-report-head">
             <div class="test-report-title"><strong>${escapeHtml(record.bagTag)}</strong><span class="panel-muted">${escapeHtml(record.direction || "Baggage report")}</span></div>
@@ -7193,7 +7214,7 @@
       }
 
       function testPlaneIcon(direction) {
-        return `<span class="test-choice-icon" aria-hidden="true">${direction === "inbound" ? "🛬" : "🛫"}</span>`;
+        return `<span class="test-choice-icon" aria-hidden="true">${direction === "inbound" ? "🛬" : direction === "outbound" ? "🛫" : "⇄"}</span>`;
       }
 
       function renderTestAddChoice(bagTag) {
@@ -7204,9 +7225,48 @@
           <div class="test-choice-grid" aria-label="Create type">
             <button class="test-choice-card" type="button" data-test-create-mode="inbound">${testPlaneIcon("inbound")}<span>Inbound</span></button>
             <button class="test-choice-card" type="button" data-test-create-mode="outbound">${testPlaneIcon("outbound")}<span>Outbound</span></button>
+            <button class="test-choice-card" type="button" data-test-create-mode="exchange">${testPlaneIcon("exchange")}<span>Exchange</span></button>
           </div>
         </article>`;
         wireTestTimelineDrag();
+      }
+
+      function renderTestExchangeForm(newTag, rows = []) {
+        const openRows = rows.filter((row) => !row.resolvedAt);
+        const options = openRows.map((row) => `<option value="${escapeHtml(row.rowNumber)}">${escapeHtml(row.bagTag)} · ${escapeHtml(row.bagType || row.status || "On-hand")} · ${escapeHtml(row.location || "-")}</option>`).join("");
+        testOutput.innerHTML = `<article class="test-report-card">
+          <div class="test-report-head"><div class="test-report-title"><strong>${escapeHtml(newTag)}</strong><span class="panel-muted">Exchange with an existing Open On-hand bag.</span></div><div class="test-form-actions"><button class="test-back-button" type="button" data-test-back-choice>Back</button></div></div>
+          <form class="test-create-form" data-test-exchange-form>
+            <div class="test-form-grid">
+              <label class="test-field"><span>New tag number</span><input name="newTagNumber" value="${escapeHtml(newTag)}" readonly /></label>
+              <label class="test-field is-wide"><span>Select current Open On-hand</span><select name="onHandRowNumber" required ${openRows.length ? "" : "disabled"}><option value="">Select an On-hand tag</option>${options}</select></label>
+              ${openRows.length ? "" : '<p class="panel-muted status-fail">There are no Open On-hand cases available to exchange.</p>'}
+              <div class="test-form-actions"><button class="test-submit" type="submit" ${openRows.length ? "" : "disabled"}>Exchange</button><span class="panel-muted"></span></div>
+            </div>
+          </form>
+        </article>`;
+      }
+
+      async function openTestExchangeForm(newTag) {
+        testOutput.innerHTML = '<p class="panel-muted">Loading Open On-hand cases...</p>';
+        const data = await apiJson('/cbs-unresolved-baggage');
+        renderTestExchangeForm(newTag, data?.rows || []);
+      }
+
+      async function submitTestExchange(form) {
+        const newTagNumber = normalizeTestBagTag(formValue(form, "newTagNumber"));
+        const onHandRowNumber = formValue(form, "onHandRowNumber");
+        if (!isValidTestBagTag(newTagNumber)) throw new Error("New tag must match MU123456 format.");
+        if (!onHandRowNumber) throw new Error("Select an Open On-hand tag.");
+        const data = await apiJson(`/cbs-unresolved-baggage/${encodeURIComponent(onHandRowNumber)}/update`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action:"exchange", newTagNumber, updatedBy:currentUserName() }),
+        });
+        const exchange = data?.record?.exchangeHistory?.at(-1);
+        const baggage = await apiJson(`/test-baggage/${encodeURIComponent(newTagNumber)}`);
+        if (baggage?.record) return renderTestRecord(baggage.record, "", "Exchange completed.");
+        testOutput.innerHTML = `<article class="test-report-card"><div class="test-report-head"><div class="test-report-title"><strong>${escapeHtml(newTagNumber)}</strong><span class="panel-muted">Exchange completed.</span></div></div><div class="test-exchange-summary"><b>Exchange</b><strong>New · ${escapeHtml(newTagNumber)}</strong><small>Old · ${escapeHtml(exchange?.oldTag || "-")}</small></div></article>`;
       }
 
       function renderTestBagEntry(mode, entry = {}, index = 0) {
@@ -7348,6 +7408,21 @@
       async function submitTestUpdate(form) {
         const bagTag = form.dataset.bagTag;
         const mode = form.dataset.updateMode || "rush";
+        if (mode === "exchange") {
+          const newTagNumber = normalizeTestBagTag(formValue(form, "newTagNumber"));
+          if (!isValidTestBagTag(newTagNumber)) throw new Error("New tag must match MU123456 format.");
+          const unresolved = await apiJson('/cbs-unresolved-baggage');
+          const onHand = (unresolved?.rows || []).find((row) => !row.resolvedAt && normalizeTestBagTag(row.bagTag) === normalizeTestBagTag(bagTag));
+          if (!onHand) throw new Error("This bag does not have an Open On-hand case.");
+          await apiJson(`/cbs-unresolved-baggage/${encodeURIComponent(onHand.rowNumber)}/update`, {
+            method:"POST",
+            headers:{ "Content-Type":"application/json" },
+            body:JSON.stringify({ action:"exchange", newTagNumber, updatedBy:currentUserName() }),
+          });
+          const baggage = await apiJson(`/test-baggage/${encodeURIComponent(newTagNumber)}`);
+          if (baggage?.record) renderTestRecord(baggage.record, "", "Exchange completed.");
+          return;
+        }
         const payload = {
           type: mode,
           updatedBy: currentUserName(),
@@ -8343,6 +8418,12 @@
       testOutput?.addEventListener("click", (event) => {
         const createModeButton = event.target.closest("[data-test-create-mode]");
         if (createModeButton) {
+          if (createModeButton.dataset.testCreateMode === "exchange") {
+            openTestExchangeForm(normalizeTestBagTag(testBagSearchInput?.value)).catch((error) => {
+              testOutput.innerHTML = `<p class="panel-muted status-fail">${escapeHtml(error?.message || "Open On-hand lookup failed.")}</p>`;
+            });
+            return;
+          }
           const form = testOutput.querySelector("[data-test-create-form]");
           const entries = form ? collectCreateEntries(form) : [{ bagTag: normalizeTestBagTag(testBagSearchInput?.value) }];
           renderTestAddForm(entries[0]?.bagTag || normalizeTestBagTag(testBagSearchInput?.value), createModeButton.dataset.testCreateMode, entries);
@@ -8380,13 +8461,15 @@
       testOutput?.addEventListener("submit", async (event) => {
         const createForm = event.target.closest("[data-test-create-form]");
         const updateForm = event.target.closest("[data-test-update-form]");
-        if (!createForm && !updateForm) return;
+        const exchangeForm = event.target.closest("[data-test-exchange-form]");
+        if (!createForm && !updateForm && !exchangeForm) return;
         event.preventDefault();
-        const form = createForm || updateForm;
+        const form = createForm || updateForm || exchangeForm;
         const statusEl = form.querySelector(".test-form-actions .panel-muted");
-        if (statusEl) statusEl.textContent = createForm ? "Saving..." : "Updating...";
+        if (statusEl) statusEl.textContent = exchangeForm ? "Exchanging..." : createForm ? "Saving..." : "Updating...";
         try {
-          if (createForm) await submitTestCreate(createForm);
+          if (exchangeForm) await submitTestExchange(exchangeForm);
+          else if (createForm) await submitTestCreate(createForm);
           else await submitTestUpdate(updateForm);
         } catch (error) {
           if (statusEl) statusEl.textContent = error?.message || "Save failed.";

@@ -71,6 +71,7 @@ const {
   updateCbsWorldTracerCase,
   getCbsUnresolvedBaggageCases,
   updateCbsUnresolvedBaggageWorldTracer,
+  exchangeCbsUnresolvedBaggageTag,
   resolveCbsUnresolvedBaggageCase,
   reopenCbsUnresolvedBaggageCase,
   getCbsCases,
@@ -2842,6 +2843,7 @@ app.get('/cbs-unresolved-baggage', async (req, res) => {
 
 async function syncOnHandStatusToBaggage(record, action, body = {}) {
   if (!record?.bagTag) return;
+  const latestExchange = action === 'exchange' ? record.exchangeHistory?.at(-1) : null;
   const statuses = {
     worldtracer: 'WorldTracer Updated',
     reopen: 'Reopened',
@@ -2850,12 +2852,14 @@ async function syncOnHandStatusToBaggage(record, action, body = {}) {
     'passenger-collected': 'Passenger Collected / Case Closed',
     'case-close': 'Case Closed',
     shipped: 'Shipped',
-    other: 'Other'
+    other: 'Other',
+    exchange: 'Exchange'
   };
   try {
-    await updateTestBaggageRecord(record.bagTag, {
+    await updateTestBaggageRecord(latestExchange?.oldTag || record.bagTag, {
       type: 'cbs',
       eventType: action,
+      newBagTag: latestExchange?.newTag || '',
       status: statuses[action] || action,
       updatedBy: sanitizeCbsText(body.updatedBy, 160),
       worldTracerFileNumber: sanitizeCbsText(body.worldTracerFileNumber, 120).toUpperCase(),
@@ -2870,7 +2874,7 @@ async function syncOnHandStatusToBaggage(record, action, body = {}) {
 app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
   try {
     const action = sanitizeCbsText(req.body?.action, 40).toLowerCase();
-    if (!['worldtracer', 'reopen', 'email', 'on-hand-rush', 'passenger-collected', 'case-close', 'shipped', 'other'].includes(action)) return res.status(400).json({ error: 'A valid resolution is required' });
+    if (!['worldtracer', 'reopen', 'email', 'exchange', 'on-hand-rush', 'passenger-collected', 'case-close', 'shipped', 'other'].includes(action)) return res.status(400).json({ error: 'A valid resolution is required' });
     const note = sanitizeCbsText(req.body?.note, 500);
     if (action === 'email') {
       const emailAction = sanitizeCbsText(req.body?.emailAction, 80);
@@ -2925,6 +2929,14 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
       const result = await updateCbsUnresolvedBaggageWorldTracer(req.params.rowNumber, worldTracerFileNumber, sanitizeCbsText(req.body?.updatedBy, 160));
       if (result.notFound) return res.status(404).json({ error: 'Unresolved baggage case not found' });
       await syncOnHandStatusToBaggage(result.record, action, req.body);
+      return res.json(result);
+    }
+    if (action === 'exchange') {
+      const newTagNumber = sanitizeCbsText(req.body?.newTagNumber, 120).toUpperCase().replace(/\s+/g, '');
+      const updatedBy = sanitizeCbsText(req.body?.updatedBy, 160);
+      const result = await exchangeCbsUnresolvedBaggageTag(req.params.rowNumber, newTagNumber, updatedBy);
+      if (result.notFound) return res.status(404).json({ error:'On-hand case not found' });
+      await syncOnHandStatusToBaggage(result.record, action, { ...req.body, note:`${result.record.exchangeHistory.at(-1).oldTag} -> ${newTagNumber}` });
       return res.json(result);
     }
     if (action === 'on-hand-rush') {
