@@ -20,6 +20,7 @@ const {
 
 } = require('./flightParser');
 const { matchMuFlight } = require('./cbsScanParser');
+const { parseSpmlLog } = require('./spmlParser');
 
 const {
 
@@ -41,6 +42,7 @@ const {
   getSalesDetailsReportRows,
   syncSalesDetailsFromSourceSheet,
   getNextDayInfoEmail,
+  getLatestMealOrderEmail,
   sendNextDayInfoEmail,
   getGdCheckEmail,
   getStoredReportRows,
@@ -48,9 +50,11 @@ const {
   getPsmMsgReportRows,
   getInadReportRows,
   getWheelchairReportRows,
+  getSpmlReportRows,
   appendStoredReportRows,
   appendVipReportRows,
   appendPsmMsgReportRows,
+  appendSpmlReportRows,
   updatePsmMsgReportRemark,
   pruneStoredReportRows,
   findTestBaggageByTag,
@@ -1314,13 +1318,24 @@ app.get('/stored-report', async (req, res) => {
   try {
     const type = String(req.query.type || '').trim().toLowerCase();
     const isoDate = String(req.query.date || '').trim();
-    if (!['vip', 'wheelchair', 'inad'].includes(type)) return res.status(400).json({ error: 'Invalid report type' });
+    if (!['vip', 'wheelchair', 'inad', 'spml'].includes(type)) return res.status(400).json({ error: 'Invalid report type' });
     if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return res.status(400).json({ error: 'Missing or invalid date' });
     const result = await loadStoredReportRows(type, isoDate);
     return res.json(result);
   } catch (err) {
     console.error('Stored report error:', err);
     return res.status(500).json({ error: err?.message || 'Stored report lookup failed' });
+  }
+});
+
+app.get('/spml-report', async (req, res) => {
+  try {
+    const from = String(req.query.from || '').trim();
+    const to = String(req.query.to || from).trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) return res.status(400).json({ error:'Missing or invalid date range' });
+    return res.json({ rows:await getSpmlReportRows(from, to), source:'googleSheet' });
+  } catch (err) {
+    return res.status(500).json({ error:err?.message || 'SPML report lookup failed' });
   }
 });
 
@@ -3741,6 +3756,16 @@ app.get(
             });
           });
         }
+        const spml = parseSpmlLog(log, { flightNo:syInfo.flightNo, flightDate:syInfo.flightDate });
+        spml.email = await getLatestMealOrderEmail(syInfo.flightNo, syInfo.flightDate);
+        if (spml.report.length) {
+          try {
+            spml.sheetSync = await appendSpmlReportRows(spml.report.map((row) => ({ ...row, key:`SPML|${row.date}|${row.flightNo}|${row.passenger}|${row.bn}|${row.meal}`.toUpperCase() })));
+          } catch (err) {
+            spml.sheetSync = { appended:0, error:err?.message || 'SPML report sync failed' };
+          }
+        }
+        syInfo.spml = spml;
         const authContext = await resolveAuthContextFromRequest(req);
         return res.json({ sy: { ...syInfo, bagSheet: syBagInfo, permissions: authContext.permissions } });
       }
