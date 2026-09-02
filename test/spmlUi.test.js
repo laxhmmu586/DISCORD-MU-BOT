@@ -9,6 +9,8 @@ test('meal order card shows today and tomorrow without dashboard tiles', () => {
   assert.match(html, /reservation-day today">TODAY/);
   assert.match(html, /reservation-day tomorrow">TOMORROW/);
   assert.match(html, />ORDERED SPML</);
+  assert.match(html, /id="reservation-table-today"/);
+  assert.match(html, /id="reservation-table-tomorrow"/);
   assert.doesNotMatch(html, /id="jcsy-detail-action"/);
   assert.doesNotMatch(html, /id="security-detail-action"/);
 });
@@ -18,6 +20,12 @@ test('security check is available from the flight menu', () => {
 });
 
 test('empty PD meal totals display a dash rather than None', () => {
-  assert.match(html, /join\(" \+ "\) \|\| "-"/);
+  assert.match(html, /join\("\\n"\) \|\| "-"/);
   assert.doesNotMatch(html, /\|\| "None"/);
+});
+
+test('meal order reconciliation colors reservation totals and SPML mismatches', () => {
+  assert.match(html, /orderedTotal > reservation[\s\S]*classList\.add\("is-over"\)/);
+  assert.match(html, /orderedTotal < reservation[\s\S]*classList\.add\("is-under"\)/);
+  assert.match(html, /!mealCountsMatch\(orderedMeals, pdMeals\)[\s\S]*classList\.add\("is-mismatch"\)/);
 });

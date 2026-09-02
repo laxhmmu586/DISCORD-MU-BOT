@@ -730,15 +730,17 @@
 
       .manifest-section.is-reservation { grid-area: reservation; }
       .manifest-section.is-checkin { grid-area: checkin; }
-      .manifest-section.is-operations { grid-area: operations; min-width: 0; padding:18px 22px; text-align:left; border-color:rgba(88,167,255,.38); background:linear-gradient(135deg,rgba(7,28,48,.9),rgba(4,14,27,.72)); box-shadow:inset 0 1px rgba(255,255,255,.06),0 15px 38px rgba(0,0,0,.26); }
-      .reservation-table { display:grid; grid-template-columns:30px repeat(8,minmax(62px,1fr)); align-items:center; gap:7px 10px; font-size:11px; }
-      .reservation-table .reservation-title { grid-column:1 / -1; font-size:15px; margin-bottom:3px; }
-      .reservation-table .reservation-day { text-align:center; color:#d7eaff; font-weight:900; letter-spacing:1px; padding-bottom:5px; border-bottom:1px solid rgba(88,167,255,.3); }
-      .reservation-table .reservation-day.today { grid-column:2 / span 4; }
-      .reservation-table .reservation-day.tomorrow { grid-column:6 / span 4; }
-      .reservation-table .reservation-head { color:var(--muted); font-weight:850; letter-spacing:.4px; }
+      .manifest-section.is-operations { grid-area:operations; min-width:0; padding:18px; text-align:left; border:0; background:rgba(2,13,25,.48); box-shadow:inset 0 1px rgba(255,255,255,.04),0 15px 38px rgba(0,0,0,.26); }
+      .meal-order-title { display:block; margin:0 0 12px 3px; font-size:16px; letter-spacing:.25px; }
+      .meal-order-days { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+      .reservation-table { display:grid; grid-template-columns:28px 52px 62px minmax(100px,1fr) minmax(100px,1fr); align-items:start; gap:8px 10px; min-height:150px; padding:14px 15px 16px; border:1px solid rgba(88,167,255,.42); border-radius:7px; background:linear-gradient(145deg,rgba(9,35,59,.88),rgba(3,16,31,.76)); box-shadow:inset 0 0 26px rgba(44,131,218,.08),0 9px 25px rgba(0,0,0,.22); font-size:11px; }
+      .reservation-table .reservation-day { grid-column:1 / -1; text-align:center; color:#d7eaff; font-weight:900; letter-spacing:1px; padding-bottom:8px; border-bottom:1px solid rgba(88,167,255,.32); }
+      .reservation-table .reservation-head { color:var(--muted); font-weight:850; letter-spacing:.35px; line-height:1.15; }
       .reservation-table .reservation-cabin { color:var(--muted); font-weight:900; }
-      .reservation-table .meal-cell { white-space:normal; line-height:1.25; color:#e6f2ff; }
+      .reservation-table .meal-cell { white-space:pre-line; line-height:1.35; color:#e6f2ff; }
+      .reservation-count.is-over { color:#43df91; font-weight:900; text-shadow:0 0 10px rgba(67,223,145,.28); }
+      .reservation-count.is-under { color:#ff6c67; font-weight:900; text-shadow:0 0 10px rgba(255,108,103,.25); }
+      .meal-cell.is-mismatch { color:#ff6c67; font-weight:850; }
       .summary-warning-action { grid-area: warning; }
       .summary-security-action { grid-area: security; }
       .summary-jcsy-action { grid-area: jcsy; }
@@ -4017,7 +4019,8 @@
           grid-template-rows: auto;
         }
 
-        .reservation-table { min-width:680px; }
+        .meal-order-days { grid-template-columns:1fr; }
+        .reservation-table { min-width:500px; }
         .manifest-section.is-operations { overflow-x:auto !important; }
 
         .details-panel {
@@ -4580,13 +4583,22 @@
             <div class="details-surface">
               <div class="details-manifest">
                 <div class="manifest-section is-operations">
-                  <div class="reservation-table" id="reservation-table">
-                    <strong class="reservation-title">Meal Order</strong>
-                    <span></span><span class="reservation-day today">TODAY</span><span class="reservation-day tomorrow">TOMORROW</span>
-                    <span></span><span class="reservation-head">RES</span><span class="reservation-head">ORDERED</span><span class="reservation-head">ORDERED SPML</span><span class="reservation-head">PD</span><span class="reservation-head">RES</span><span class="reservation-head">ORDERED</span><span class="reservation-head">ORDERED SPML</span><span class="reservation-head">PD</span>
-                    <span class="reservation-cabin">F</span><span id="reservation-f">---</span><span id="meal-email-f">---</span><span id="meal-spml-f" class="meal-cell">---</span><span id="meal-pd-f" class="meal-cell">---</span><span id="tomorrow-reservation-f">---</span><span id="tomorrow-meal-email-f">---</span><span id="tomorrow-meal-spml-f" class="meal-cell">---</span><span id="tomorrow-meal-pd-f" class="meal-cell">---</span>
-                    <span class="reservation-cabin">C</span><span id="reservation-c">---</span><span id="meal-email-c">---</span><span id="meal-spml-c" class="meal-cell">---</span><span id="meal-pd-c" class="meal-cell">---</span><span id="tomorrow-reservation-c">---</span><span id="tomorrow-meal-email-c">---</span><span id="tomorrow-meal-spml-c" class="meal-cell">---</span><span id="tomorrow-meal-pd-c" class="meal-cell">---</span>
-                    <span class="reservation-cabin">Y</span><span id="reservation-y">---</span><span id="meal-email-y">---</span><span id="meal-spml-y" class="meal-cell">---</span><span id="meal-pd-y" class="meal-cell">---</span><span id="tomorrow-reservation-y">---</span><span id="tomorrow-meal-email-y">---</span><span id="tomorrow-meal-spml-y" class="meal-cell">---</span><span id="tomorrow-meal-pd-y" class="meal-cell">---</span>
+                  <strong class="meal-order-title">Meal Order</strong>
+                  <div class="meal-order-days">
+                    <div class="reservation-table" id="reservation-table-today">
+                      <span class="reservation-day today">TODAY</span>
+                      <span></span><span class="reservation-head">RES</span><span class="reservation-head">ORDERED</span><span class="reservation-head">ORDERED SPML</span><span class="reservation-head">PD</span>
+                      <span class="reservation-cabin">F</span><span id="reservation-f" class="reservation-count">---</span><span id="meal-email-f">---</span><span id="meal-spml-f" class="meal-cell">---</span><span id="meal-pd-f" class="meal-cell">---</span>
+                      <span class="reservation-cabin">C</span><span id="reservation-c" class="reservation-count">---</span><span id="meal-email-c">---</span><span id="meal-spml-c" class="meal-cell">---</span><span id="meal-pd-c" class="meal-cell">---</span>
+                      <span class="reservation-cabin">Y</span><span id="reservation-y" class="reservation-count">---</span><span id="meal-email-y">---</span><span id="meal-spml-y" class="meal-cell">---</span><span id="meal-pd-y" class="meal-cell">---</span>
+                    </div>
+                    <div class="reservation-table" id="reservation-table-tomorrow">
+                      <span class="reservation-day tomorrow">TOMORROW</span>
+                      <span></span><span class="reservation-head">RES</span><span class="reservation-head">ORDERED</span><span class="reservation-head">ORDERED SPML</span><span class="reservation-head">PD</span>
+                      <span class="reservation-cabin">F</span><span id="tomorrow-reservation-f" class="reservation-count">---</span><span id="tomorrow-meal-email-f">---</span><span id="tomorrow-meal-spml-f" class="meal-cell">---</span><span id="tomorrow-meal-pd-f" class="meal-cell">---</span>
+                      <span class="reservation-cabin">C</span><span id="tomorrow-reservation-c" class="reservation-count">---</span><span id="tomorrow-meal-email-c">---</span><span id="tomorrow-meal-spml-c" class="meal-cell">---</span><span id="tomorrow-meal-pd-c" class="meal-cell">---</span>
+                      <span class="reservation-cabin">Y</span><span id="tomorrow-reservation-y" class="reservation-count">---</span><span id="tomorrow-meal-email-y">---</span><span id="tomorrow-meal-spml-y" class="meal-cell">---</span><span id="tomorrow-meal-pd-y" class="meal-cell">---</span>
+                    </div>
                   </div>
                 </div>
                 <button class="detail-action warning-action summary-warning-action" type="button" data-panel="warning" id="warning-action" hidden aria-label="Open warnings"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M16 5 29 27H3z"/><path d="M16 12v7"/><path d="M16 23h.01"/></svg></span><span class="detail-action-label">WARNING</span> <span class="detail-action-badge warning-badge" id="warning-count">0</span></button>
@@ -6165,17 +6177,46 @@
       }
 
       function mealCountsText(counts) {
-        return Object.entries(counts || {}).filter(([, count]) => Number(count) > 0).sort(([a], [b]) => a.localeCompare(b)).map(([meal, count]) => `${count} ${meal}`).join(" + ") || "-";
+        return Object.entries(counts || {}).filter(([, count]) => Number(count) > 0).sort(([a], [b]) => a.localeCompare(b)).map(([meal, count]) => `${count} ${meal}`).join("\n") || "-";
+      }
+
+      function mealCountsTotal(counts) {
+        return Object.values(counts || {}).reduce((total, count) => total + (Number(count) || 0), 0);
+      }
+
+      function mealCountsMatch(left, right) {
+        const keys = new Set([...Object.keys(left || {}), ...Object.keys(right || {})]);
+        return [...keys].every((key) => (Number(left?.[key]) || 0) === (Number(right?.[key]) || 0));
       }
 
       function renderMealOrderColumns(sy, prefix = "") {
         const reservationCounts = countTriple(sy?.reservationTicketed);
         ["F", "C", "Y"].forEach((cabin, index) => {
           const key = cabin.toLowerCase();
+          const reservationElement = document.querySelector(`#${prefix}reservation-${key}`);
+          const orderedSpmlElement = document.querySelector(`#${prefix}meal-spml-${key}`);
+          const pdElement = document.querySelector(`#${prefix}meal-pd-${key}`);
+          const emailFound = Boolean(sy?.spml?.email?.found);
+          const orderedMeals = cabin === "Y" && emailFound ? (sy.spml.email.counts || {}) : {};
+          const pdMeals = sy?.spml?.preorderByCabin?.[cabin] || {};
+          const reservation = Number(reservationCounts[index]);
+          const ordered = Number(sy?.spml?.email?.cabinCounts?.[cabin]);
+          const orderedTotal = ordered + mealCountsTotal(orderedMeals);
           setText(`#${prefix}reservation-${key}`, reservationCounts[index]);
-          setText(`#${prefix}meal-email-${key}`, sy?.spml?.email?.found ? (sy.spml.email.cabinCounts?.[cabin] ?? "-") : "-");
-          setText(`#${prefix}meal-spml-${key}`, cabin === "Y" && sy?.spml?.email?.found ? mealCountsText(sy.spml.email.counts) : "-");
-          setText(`#${prefix}meal-pd-${key}`, mealCountsText(sy?.spml?.preorderByCabin?.[cabin]));
+          setText(`#${prefix}meal-email-${key}`, emailFound ? (sy.spml.email.cabinCounts?.[cabin] ?? "-") : "-");
+          setText(`#${prefix}meal-spml-${key}`, mealCountsText(orderedMeals));
+          setText(`#${prefix}meal-pd-${key}`, mealCountsText(pdMeals));
+          reservationElement?.classList.remove("is-over", "is-under");
+          orderedSpmlElement?.classList.remove("is-mismatch");
+          pdElement?.classList.remove("is-mismatch");
+          if (emailFound && Number.isFinite(reservation)) {
+            if (orderedTotal > reservation) reservationElement?.classList.add("is-over");
+            if (orderedTotal < reservation) reservationElement?.classList.add("is-under");
+            if (!mealCountsMatch(orderedMeals, pdMeals)) {
+              orderedSpmlElement?.classList.add("is-mismatch");
+              pdElement?.classList.add("is-mismatch");
+            }
+          }
         });
       }
 
