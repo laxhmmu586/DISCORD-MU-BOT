@@ -66,5 +66,6 @@ test('warning is the first operational action before CHD', () => {
 
 test('meal table uses two styled vertical column dividers and compact columns', () => {
   assert.match(html, /\.column-divider[^}]*border-left:1px solid rgba\(71,183,236,.42\)/);
-  assert.match(html, /grid-template-columns:34px 64px 76px minmax\(104px,1fr\) minmax\(104px,1fr\)/);
+  assert.match(html, /\.manifest-section\.is-operations \{[^}]*width:560px; max-width:100%/);
+  assert.match(html, /grid-template-columns:34px 64px 76px 120px 90px/);
 });

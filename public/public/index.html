@@ -718,7 +718,7 @@
 
       .details-manifest {
         display: grid;
-        grid-template-columns: minmax(600px, 760px);
+        grid-template-columns: minmax(0, 560px);
         grid-template-areas:
           "operations";
         grid-template-rows: auto;
@@ -729,7 +729,7 @@
 
       .manifest-section.is-reservation { grid-area: reservation; }
       .manifest-section.is-checkin { grid-area: checkin; }
-      .manifest-section.is-operations { grid-area:operations; min-width:0; padding:0; justify-items:stretch; text-align:left; border:0; background:transparent; box-shadow:none; backdrop-filter:none; }
+      .manifest-section.is-operations { grid-area:operations; width:560px; max-width:100%; min-width:0; padding:0; justify-items:stretch; text-align:left; border:0; background:transparent; box-shadow:none; backdrop-filter:none; }
       .meal-order-title { display:block; width:100%; margin:0 0 7px; text-align:left !important; font-size:15px; letter-spacing:.25px; text-transform:uppercase; }
       .meal-order-shell { overflow:hidden; border:1px solid rgba(49,145,218,.52); border-radius:10px; background:linear-gradient(145deg,rgba(5,29,49,.90),rgba(2,17,31,.82)); box-shadow:none; }
       .meal-order-shell.has-shortage { border-color:rgba(255,178,39,.95); box-shadow:inset 0 0 26px rgba(255,166,24,.08),0 0 0 1px rgba(255,199,44,.26),0 0 18px rgba(255,166,24,.28); }
@@ -740,7 +740,7 @@
       .meal-order-tab.has-shortage { color:#ffbd48; }
       .meal-order-tab.has-shortage::before { content:""; display:inline-block; width:6px; height:6px; margin:0 6px 1px 0; border-radius:50%; background:#ffad2f; box-shadow:0 0 9px rgba(255,173,47,.72); }
       .meal-order-days { display:block; }
-      .reservation-table { display:none; grid-template-columns:34px 64px 76px minmax(104px,1fr) minmax(104px,1fr); align-items:start; gap:10px 10px; min-height:174px; margin:0 18px; padding:20px 4px 24px; border:0; border-top:1px solid rgba(49,145,218,.26); border-radius:0; background:transparent; box-shadow:none; font-size:12px; }
+      .reservation-table { display:none; grid-template-columns:34px 64px 76px 120px 90px; align-items:start; justify-content:center; gap:10px 8px; min-height:174px; margin:0 14px; padding:20px 4px 24px; border:0; border-top:1px solid rgba(49,145,218,.26); border-radius:0; background:transparent; box-shadow:none; font-size:12px; }
       .reservation-table.is-active { display:grid; }
       .reservation-table .reservation-head { color:var(--muted); font-weight:850; letter-spacing:.35px; line-height:1.15; }
       .reservation-table .reservation-cabin { color:var(--muted); font-weight:900; }
@@ -754,7 +754,7 @@
       .summary-security-action { grid-area: security; }
       .summary-jcsy-action { grid-area: jcsy; }
       .details-manifest.is-warning-hidden {
-        grid-template-columns: minmax(600px, 760px);
+        grid-template-columns: minmax(0, 560px);
         grid-template-areas:
           "operations"
           "operations";
