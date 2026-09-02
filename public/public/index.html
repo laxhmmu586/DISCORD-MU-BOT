@@ -442,18 +442,29 @@
         text-transform: uppercase;
       }
 
-      .mobile-panel a {
+      .mobile-panel a,
+      .mobile-logout-button {
         display: block;
+        width: 100%;
         margin-top: 8px;
         padding: 14px 0;
+        border: 0;
         border-top: 1px solid rgba(255, 255, 255, 0.11);
         border-bottom: 1px solid rgba(255, 255, 255, 0.11);
+        background: transparent;
         color: white;
         font-size: 14px;
         font-weight: 800;
         text-align: center;
         text-decoration: none;
         text-transform: uppercase;
+        cursor: pointer;
+      }
+
+      .mobile-logout-button {
+        margin-top: 18px;
+        border-color: rgba(255, 98, 92, 0.38);
+        color: #ffb4ae;
       }
 
       main {
@@ -1922,7 +1933,7 @@
       }
 
       .gov-summary-grid {
-        grid-template-columns: repeat(7, minmax(0, 1fr));
+        grid-template-columns: repeat(8, minmax(116px, 1fr));
       }
 
       .gov-summary-grid .data-card {
@@ -2889,6 +2900,7 @@
 
       .report-form.is-vip-mode,
       .report-form.is-inad-mode,
+      .report-form.is-miss-connection-mode,
       .report-form.is-baggage-mode {
         display: none;
       }
@@ -3916,14 +3928,14 @@
             "reservation checkin"
             "warning security"
             "warning jcsy";
-          grid-template-rows: auto 66px 66px;
+          grid-template-rows: auto minmax(132px, auto) minmax(132px, auto);
         }
 
         .details-manifest.is-warning-hidden {
           grid-template-areas:
             "reservation checkin"
             "security jcsy";
-          grid-template-rows: auto 132px;
+          grid-template-rows: auto minmax(132px, auto);
         }
 
         .details-panel {
@@ -3952,100 +3964,9 @@
           padding: 18px 10px 12px;
         }
 
-        .detail-action-icon {
-          width: 40px;
-          height: 40px;
-        }
-
-        .details-manifest,
-        .details-manifest.is-warning-hidden {
-          grid-template-columns: 1fr 1fr;
-          grid-template-areas:
-            "reservation checkin"
-            "warning security"
-            "warning jcsy";
-          grid-template-rows: auto 66px 66px;
-        }
-
-        .details-manifest.is-warning-hidden {
-          grid-template-areas:
-            "reservation checkin"
-            "security jcsy";
-          grid-template-rows: auto 132px;
-        }
-
-        .details-panel {
-          overflow: visible;
-        }
-
-        .details-surface,
-        .details-panel .detail-actions {
-          min-width: 0;
-        }
-
-        .details-panel .detail-actions {
-          flex-wrap: wrap;
-          justify-content: center;
-          overflow: visible;
-        }
-
-        .details-panel .detail-actions .detail-action {
-          flex: 1 1 calc(50% - 14px);
-          max-width: calc(50% - 7px);
-        }
-
-        .details-panel .detail-actions .detail-action,
-        .details-panel .details-manifest > .detail-action {
-          min-height: 132px;
-          padding: 18px 10px 12px;
-        }
-
-        .detail-action-icon {
-          width: 40px;
-          height: 40px;
-        }
-
-        .details-manifest,
-        .details-manifest.is-warning-hidden {
-          grid-template-columns: 1fr 1fr;
-          grid-template-areas:
-            "reservation checkin"
-            "warning security"
-            "warning jcsy";
-          grid-template-rows: auto 66px 66px;
-        }
-
-        .details-manifest.is-warning-hidden {
-          grid-template-areas:
-            "reservation checkin"
-            "security jcsy";
-          grid-template-rows: auto 132px;
-        }
-
-        .details-panel {
-          overflow: visible;
-        }
-
-        .details-surface,
-        .details-panel .detail-actions {
-          min-width: 0;
-        }
-
-        .details-panel .detail-actions {
-          flex-wrap: wrap;
-          justify-content: center;
-          overflow: visible;
-        }
-
-        .details-panel .detail-actions .detail-action {
-          flex: 1 1 calc(50% - 14px);
-          max-width: calc(50% - 7px);
-        }
-
-        .details-panel .detail-actions .detail-action,
-        .details-panel .details-manifest > .detail-action {
-          min-height: 132px;
-          padding: 18px 10px 12px;
+        .details-panel .details-manifest > .detail-action.summary-warning-action {
+          align-self: start;
+          height: auto;
         }
 
         .detail-action-icon {
@@ -4378,9 +4299,48 @@
         }
 
       }
+
+      @media (max-width: 760px) {
+        .details-manifest .manifest-section {
+          min-width: 0;
+          overflow: hidden;
+          padding-inline: 8px;
+        }
+
+        .details-manifest .manifest-section .counts,
+        .details-manifest .manifest-section .count,
+        .details-manifest .manifest-section .count-row {
+          width: 100%;
+          min-width: 0;
+        }
+
+        .details-manifest .manifest-section .count-row {
+          display: block;
+          overflow: hidden;
+          font-size: clamp(13px, 4vw, 16px);
+          letter-spacing: 0;
+          line-height: 1.1;
+          text-align: center;
+          white-space: nowrap;
+        }
+
+        .details-manifest .manifest-section .count-row span:first-child,
+        .details-manifest .manifest-section .count-row span:last-child {
+          font-size: inherit;
+          white-space: nowrap;
+        }
+
+        .details-panel .details-manifest > .detail-action.summary-security-action {
+          justify-self: end;
+        }
+
+        .details-panel .details-manifest > .detail-action.summary-jcsy-action {
+          justify-self: start;
+        }
+      }
     </style>
   </head>
-  <body>
+  <body class="is-loading">
     <div class="loading-overlay" aria-live="polite"><span>THINKING</span></div>
     <header class="topbar">
       <a class="brand" id="home-nav-link" href="#home" aria-label="MUFC home"><span>MUFC</span></a>
@@ -4389,6 +4349,8 @@
         <a href="#test" id="test-nav-link">Baggage</a>
         <a href="cbs.html" id="cbs-nav-link">CBS</a>
         <a class="boarding-nav-link" href="scan.html" id="boarding-nav-link">Boarding</a>
+        <a class="boarding-nav-link" href="240.html" id="transit-240-nav-link">240</a>
+        <a class="boarding-nav-link" href="record.html" id="record-nav-link">Record</a>
       </nav>
       <div class="nav-row">
         <form class="search" id="mission-search" aria-label="Search mission">
@@ -4432,6 +4394,9 @@
       <a href="#test" id="mobile-test-nav-link">Baggage</a>
       <a href="cbs.html" id="mobile-cbs-nav-link">CBS</a>
       <a href="scan.html" id="mobile-boarding-nav-link">Boarding</a>
+      <a href="240.html" id="mobile-transit-240-nav-link">240</a>
+      <a href="record.html" id="mobile-record-nav-link">Record</a>
+      <button class="mobile-logout-button" id="mobile-logout" type="button">Logout</button>
     </aside>
 
     <main>
@@ -4452,6 +4417,8 @@
                 <span class="line-menu-icon" aria-hidden="true"><span></span><span></span><span></span></span>
               </button>
               <div class="flight-menu" aria-hidden="true">
+                <button id="normal-flight-button" type="button">MU586 (Normal)</button>
+                <button id="delayed-flight-button" type="button">MU586D (Delayed)</button>
                 <button id="sales-report-button" type="button">Sales Report</button>
                 <button id="seat-map-button" type="button">Seat Map</button>
               </div>
@@ -4463,7 +4430,7 @@
           <div class="report-hero">
             <div>
               <h2>Report Center</h2>
-              <p class="panel-muted">Use Sales Report to choose one date and download the file. Use Sales Details to search a date range and total amounts by type. Use VIP Report and INAD Report to show saved rows. Use PSM Report and WCH Report to search by flight date.</p>
+              <p class="panel-muted">Choose a report below to view saved rows, search by flight date, or download the current results. Misconnection displays passenger assistance submissions.</p>
             </div>
             <button class="report-close" id="report-close" type="button">Close</button>
           </div>
@@ -4474,6 +4441,7 @@
             <button class="detail-action" id="report-psm-mode" type="button" data-report-mode="psm">PSM Report</button>
             <button class="detail-action" id="report-inad-mode" type="button" data-report-mode="inad">INAD Report</button>
             <button class="detail-action" id="report-wch-mode" type="button" data-report-mode="wch">WCH Report</button>
+            <button class="detail-action" id="report-miss-connection-mode" type="button" data-report-mode="missConnection">Misconnection</button>
             <button class="detail-action" id="report-baggage-mode" type="button" data-report-mode="baggage">Baggage Report</button>
           </div>
           <form class="report-form" id="report-form">
@@ -4483,7 +4451,7 @@
             <button class="report-run" type="submit">Search</button>
           </form>
           <div class="report-actions-row"><button class="report-download" id="report-download" type="button" disabled>Download CSV</button></div>
-          <div id="report-output"><p class="panel-muted">Choose Sales Report, VIP Report, PSM Report, INAD Report, WCH Report, or Baggage Report.</p></div>
+          <div id="report-output"><p class="panel-muted">Choose a report type to continue.</p></div>
         </section>
 
         <section class="report-page" id="baggage-page" aria-label="Bag report" hidden>
@@ -4644,6 +4612,7 @@
       const currentUser = document.querySelector("#current-user");
       const changePasswordButton = document.querySelector("#change-password");
       const logoutButton = document.querySelector("#logout");
+      const mobileLogoutButton = document.querySelector("#mobile-logout");
       const flightMenuButton = document.querySelector(".flight-menu-button");
       const flightMenu = document.querySelector(".flight-menu");
       const nodeTime = document.querySelector("#node-time");
@@ -4662,6 +4631,8 @@
       const mobileQueryInput = document.querySelector("#mobile-query");
       const bagReportButton = document.querySelector("#bag-report-button");
       const salesReportButton = document.querySelector("#sales-report-button");
+      const normalFlightButton = document.querySelector("#normal-flight-button");
+      const delayedFlightButton = document.querySelector("#delayed-flight-button");
       const securityCheckButton = document.querySelector("#security-check-button");
       const seatMapButton = document.querySelector("#seat-map-button");
       const reportNavLink = document.querySelector("#report-nav-link");
@@ -4688,6 +4659,7 @@
       const reportPsmModeButton = document.querySelector("#report-psm-mode");
       const reportInadModeButton = document.querySelector("#report-inad-mode");
       const reportWchModeButton = document.querySelector("#report-wch-mode");
+      const reportMissConnectionModeButton = document.querySelector("#report-miss-connection-mode");
       const reportBaggageModeButton = document.querySelector("#report-baggage-mode");
       const reportFromInput = document.querySelector("#report-from");
       const reportFromLabel = document.querySelector("#report-from-label");
@@ -4721,9 +4693,9 @@
       const APP_ENTRY_KEY = "mufc_allow_app_entry";
       const AUTH_SESSION_STARTED_KEY = "mufc_auth_session_started_at";
       const AUTH_LAST_ACTIVITY_KEY = "mufc_auth_last_activity_at";
-      const AUTH_SESSION_LIMIT_MS = 60 * 60 * 1000;
-      const APP_ENTRY_GRACE_MS = 30 * 1000;
-      const SY_AUTO_REFRESH_MS = 30 * 1000;
+      const SY_AUTO_REFRESH_MS = 15 * 1000;
+      const SY_REFRESH_TIMEOUT_MS = 12 * 1000;
+      const AUTH_INACTIVITY_LIMIT_MS = 60 * 60 * 1000;
       const SY_COMPLETED_NODE_CACHE_KEY = "mufc_sy_completed_nodes_v1";
       const PERSISTENT_GREEN_NODE_KEYS = ["GD_CHECK", "FSC", "NEXTDAY_INFO"];
       let inactivityTimer = null;
@@ -4829,57 +4801,101 @@
         return url.href;
       }
 
-      function consumeAppEntry() {
-        const allowedAt = Number(sessionStorage.getItem(APP_ENTRY_KEY) || 0);
-        sessionStorage.removeItem(APP_ENTRY_KEY);
-        if (!allowedAt) return false;
-        return Date.now() - allowedAt <= APP_ENTRY_GRACE_MS;
+      function storageCandidates() {
+        return ["localStorage", "sessionStorage"].map((key) => {
+          try {
+            return window[key];
+          } catch (error) {
+            return null;
+          }
+        }).filter(Boolean);
       }
 
-      function authSessionAgeMs() {
-        const lastActivityAt = Number(sessionStorage.getItem(AUTH_LAST_ACTIVITY_KEY) || sessionStorage.getItem(AUTH_SESSION_STARTED_KEY) || 0);
-        return lastActivityAt ? Date.now() - lastActivityAt : Infinity;
+      function safeStorageWrite(key, value) {
+        for (const storage of storageCandidates()) {
+          try {
+            storage.setItem(key, value);
+          } catch (error) {
+            // Some mobile/private browsers expose storage but reject writes.
+          }
+        }
       }
 
-      function isAuthSessionExpired() {
-        return authSessionAgeMs() >= AUTH_SESSION_LIMIT_MS;
+      function safeStorageRemove(key) {
+        for (const storage of storageCandidates()) {
+          try {
+            storage.removeItem(key);
+          } catch (error) {
+            // Ignore storage cleanup failures.
+          }
+        }
       }
 
+      function safeStorageReadNumber(key) {
+        for (const storage of storageCandidates()) {
+          try {
+            const value = Number(storage.getItem(key));
+            if (Number.isFinite(value) && value > 0) return value;
+          } catch (error) {
+            // Ignore inaccessible storage.
+          }
+        }
+        return 0;
+      }
 
       function allowInternalPageRedirect() {
-        sessionStorage.setItem(APP_ENTRY_KEY, String(Date.now()));
+        safeStorageWrite(APP_ENTRY_KEY, String(Date.now()));
       }
       window.findNodeIndexByKey = findNodeIndexByKey;
 
       const canEnterApp = true;
 
       async function returnToLogin() {
-        sessionStorage.removeItem(APP_ENTRY_KEY);
-        sessionStorage.removeItem(AUTH_SESSION_STARTED_KEY);
-        sessionStorage.removeItem(AUTH_LAST_ACTIVITY_KEY);
+        safeStorageRemove(APP_ENTRY_KEY);
+        safeStorageRemove(AUTH_SESSION_STARTED_KEY);
+        safeStorageRemove(AUTH_LAST_ACTIVITY_KEY);
         if (inactivityTimer) clearTimeout(inactivityTimer);
-        const url = new URL(loginUrl());
-        url.searchParams.set("forceLogin", "1");
-        try {
-          if (auth?.currentUser) await auth.signOut();
-        } catch (error) {
-          console.warn("Unable to sign out before returning to login.", error);
+        inactivityTimer = null;
+        if (auth?.currentUser) {
+          try {
+            await auth.signOut();
+          } catch (error) {
+            // Redirect to login even if Firebase sign-out cannot complete.
+          }
         }
+        const url = new URL(loginUrl());
         window.location.replace(url.href);
       }
 
-      function resetInactivityTimer() {
-        sessionStorage.setItem(AUTH_LAST_ACTIVITY_KEY, String(Date.now()));
+      function scheduleInactivityLogout() {
         if (inactivityTimer) clearTimeout(inactivityTimer);
-        inactivityTimer = setTimeout(() => {
+        const lastActivity = safeStorageReadNumber(AUTH_LAST_ACTIVITY_KEY) || Date.now();
+        const remaining = AUTH_INACTIVITY_LIMIT_MS - (Date.now() - lastActivity);
+        if (remaining <= 0) {
           returnToLogin();
-        }, AUTH_SESSION_LIMIT_MS);
+          return;
+        }
+        inactivityTimer = setTimeout(returnToLogin, remaining);
+      }
+
+      function resetInactivityTimer() {
+        safeStorageWrite(AUTH_LAST_ACTIVITY_KEY, String(Date.now()));
+        scheduleInactivityLogout();
       }
 
       function startInactivityWatch() {
+        const previousActivity = safeStorageReadNumber(AUTH_LAST_ACTIVITY_KEY);
+        if (previousActivity && Date.now() - previousActivity >= AUTH_INACTIVITY_LIMIT_MS) {
+          returnToLogin();
+          return;
+        }
+        if (!safeStorageReadNumber(AUTH_SESSION_STARTED_KEY)) safeStorageWrite(AUTH_SESSION_STARTED_KEY, String(Date.now()));
         resetInactivityTimer();
-        ["pointerdown", "keydown", "touchstart", "scroll"].forEach((eventName) => {
+        ["pointerdown", "keydown", "touchstart", "scroll", "focus", "pageshow"].forEach((eventName) => {
           window.addEventListener(eventName, resetInactivityTimer, { passive: true });
+        });
+        document.addEventListener("visibilitychange", () => {
+          if (!document.hidden) scheduleInactivityLogout();
         });
       }
 
@@ -4930,6 +4946,16 @@
         }).length;
       }
 
+
+      function govWrongPassportBnList(sy = currentSy) {
+        const gov = sy?.govAqq || {};
+        const fromGov = Array.isArray(gov.wrongPassportBnList) ? gov.wrongPassportBnList : [];
+        const fromAudit = (sy?.bnAudit || [])
+          .filter((row) => /\bWrong Passport\b/i.test(String(row?.apiReason || "")))
+          .map((row) => row.bn);
+        return [...new Set([...fromGov, ...fromAudit].map(normalizedBn).filter(Boolean))].sort();
+      }
+
       function webEdiIssueBnList(sy = currentSy) {
         const gov = sy?.govAqq || {};
         const rawBns = [...new Set((gov.passportCodeIssues || []).map(normalizedBn).filter(Boolean))].sort();
@@ -4956,7 +4982,7 @@
         currentSy.bnAudit = rows;
         const passBnSet = securityReviewPassBnSet(currentSy);
         const gov = currentSy.govAqq || {};
-        const govGroups = [gov.duplicatePassports, gov.aqqTclBnList, gov.govDtaBnList, gov.passportExpBnList, gov.wrongPassportBnList, gov.missingApiBnList, gov.infApiBnList];
+        const govGroups = [gov.duplicatePassports, gov.aqqTclBnList, gov.govDtaBnList, gov.passportExpBnList, gov.passportExpiringSoonBnList, govWrongPassportBnList(currentSy), gov.missingApiBnList, gov.infApiBnList];
         const counts = {
           GOV: govGroups.reduce((sum, value) => sum + unresolvedReviewedBnCount(value, passBnSet), 0),
           WEBEDI: unresolvedReviewedBnCount(webEdiIssueBnList(currentSy), passBnSet),
@@ -5048,22 +5074,66 @@
         writeCompletedSyNodeCache(cache);
       }
 
+      function forgetCompletedSyNode(sy, key) {
+        if (!PERSISTENT_GREEN_NODE_KEYS.includes(key)) return;
+        const cache = readCompletedSyNodeCache();
+        const cacheKey = syCompletedNodeCacheKey(sy);
+        if (!cache[cacheKey]?.[key]) return;
+        delete cache[cacheKey][key];
+        if (!Object.keys(cache[cacheKey]).length) delete cache[cacheKey];
+        writeCompletedSyNodeCache(cache);
+      }
+
+      function nextDayInfoDetailsFromSy(sy) {
+        const ret = sy?.reservationTicketed;
+        const rows = Array.isArray(sy?.jcsy?.rows) ? sy.jcsy.rows : [];
+        if (!Array.isArray(ret) || ret.length < 4 || !sy?.jcsy?.complete || !rows.length) return null;
+        const transfers = rows.reduce((totals, row) => {
+          const total = Number(row?.total) || 0;
+          const hasDeparture = Boolean(String(row?.departure || row?.depart || "").trim());
+          if (!hasDeparture || row?.overnight || row?.category === "overnight" || row?.category === "pvgOnly") totals.overnightPassengers += total;
+          else if (row?.isDomestic || row?.market === "Domestic" || row?.category === "domestic") totals.domesticTransfer += total;
+          else totals.internationalTransfer += total;
+          return totals;
+        }, { internationalTransfer: 0, domesticTransfer: 0, overnightPassengers: 0 });
+        return {
+          firstClass: String(Number(ret[1]) || 0),
+          businessClass: String(Number(ret[2]) || 0),
+          economyClass: String(Number(ret[3]) || 0),
+          internationalTransfer: String(transfers.internationalTransfer),
+          domesticTransfer: String(transfers.domesticTransfer),
+          overnightPassengers: String(transfers.overnightPassengers),
+        };
+      }
+
       function resolveApiBase() {
         const fromWindow = window.MU_API_BASE || "";
         return (fromWindow.trim() || "https://api.mufcapp.net").replace(/\/$/, "");
       }
 
-      async function authHeaders() {
+      async function authHeaders(timeoutMs = 10000) {
         const headers = {};
         if (auth?.currentUser) {
-          headers.Authorization = `Bearer ${await auth.currentUser.getIdToken()}`;
+          let timer;
+          try {
+            const token = await Promise.race([
+              auth.currentUser.getIdToken(),
+              new Promise((_, reject) => {
+                timer = setTimeout(() => reject(new Error("Authentication timed out. Please reload the page and sign in again.")), timeoutMs);
+              }),
+            ]);
+            headers.Authorization = `Bearer ${token}`;
+          } finally {
+            clearTimeout(timer);
+          }
         }
         return headers;
       }
 
       async function fetchSearch(query, options = {}) {
         const apiBase = resolveApiBase();
-        const endpoint = `${apiBase}/search?q=${encodeURIComponent(query)}`;
+        const cacheBust = options.realtime ? `&_=${Date.now()}` : "";
+        const endpoint = `${apiBase}/search?q=${encodeURIComponent(query)}${cacheBust}`;
         const res = await fetch(endpoint, { cache: "no-store", headers: await authHeaders(), signal: options.signal });
         const type = res.headers.get("content-type") || "";
         if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
@@ -5073,11 +5143,12 @@
 
       async function apiJson(path, options = {}) {
         const apiBase = resolveApiBase();
+        const { authTimeoutMs = 10000, ...fetchOptions } = options;
         const res = await fetch(`${apiBase}${path}`, {
           cache: "no-store",
-          ...options,
+          ...fetchOptions,
           headers: {
-            ...(await authHeaders()),
+            ...(await authHeaders(authTimeoutMs)),
             ...(options.headers || {}),
           },
         });
@@ -5205,20 +5276,55 @@
         const ok = confirm("确认发送 NEXTDAY INFO 邮件到 LAXHMXH@hallmark-aviation.com 和 dg-lax-lounge@qantas.com.au？");
         if (!ok) return;
         const step = stepByKey("NEXTDAY_INFO");
+        const details = nextDayInfoDetailsFromSy(currentSy);
+        if (!details) {
+          alert("缺少 JCSY 转机数据：SY 的 RET 人数已经读取，但发送 NEXTDAY INFO 还需要先完成 JCSY 查询。");
+          return;
+        }
         if (step) {
+          // A previous successful send may still be green in both the live step
+          // and local cache. Clear it before displaying this new attempt.
+          step.complete = false;
           step.searched = true;
+          step.time = "";
+          step.reason = "";
+          step.details = details;
+          step.detailText = [
+            `First Class: ${details.firstClass}`,
+            `Business Class: ${details.businessClass}`,
+            `Economy Class: ${details.economyClass}`,
+            "",
+            `International Transfer: ${details.internationalTransfer}`,
+            `Domestic Transfer: ${details.domesticTransfer}`,
+            `Overnight passengers: ${details.overnightPassengers}`,
+          ].join("\n");
           step.tooltip = "NEXTDAY INFO sending email...";
         }
+        forgetCompletedSyNode(currentSy, "NEXTDAY_INFO");
         node.dataset.status = "pending";
         node.dataset.time = "SENDING";
         nodeTime.textContent = "SENDING";
         showTimelineNodeCard("NEXTDAY_INFO", step, "SENDING");
+        const sendController = new AbortController();
+        const sendTimeout = setTimeout(() => sendController.abort(), 45000);
         try {
           const data = await apiJson("/nextday-info/send", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ flightNo: currentSy.flightNo || "MU586" }),
+            body: JSON.stringify({
+              flightNo: currentSy.flightNo || "MU586",
+              details,
+            }),
+            signal: sendController.signal,
+            authTimeoutMs: 10000,
           });
+          if (!data?.ok) {
+            const failures = [
+              data?.emailError && `Email: ${data.emailError}`,
+              data?.discordError && `Discord: ${data.discordError}`,
+            ].filter(Boolean);
+            throw new Error(failures.join("; ") || "NEXTDAY INFO delivery failed.");
+          }
           if (data?.step) {
             currentSy.crewApis = currentSy.crewApis || {};
             currentSy.crewApis.steps = currentSy.crewApis.steps || [];
@@ -5234,13 +5340,15 @@
             updatedStep.subject = data.subject || updatedStep.subject || "";
             updatedStep.details = data.details || updatedStep.details || {};
             updatedStep.detailText = data.detailText || updatedStep.detailText || "";
-            updatedStep.tooltip = `NEXTDAY INFO sent to ${(data.to || []).join(", ") || "LAXHMXH@hallmark-aviation.com, dg-lax-lounge@qantas.com.au"}; CC ${(data.cc || []).join(", ") || "lax.mupax@hallmark-aviation.com, laxhmmu@gmail.com"}: ${data.subject || ""}`;
+            updatedStep.tooltip = `NEXTDAY INFO sent to ${(data.to || []).join(", ") || "LAXHMXH@hallmark-aviation.com, dg-lax-lounge@qantas.com.au"}; CC ${(data.cc || []).join(", ") || "lax.mupax@hallmark-aviation.com, laxhmmu@gmail.com"}: ${data.subject || ""}${data.discordError ? ` (Discord post failed: ${data.discordError})` : ""}`;
           }
           refreshSyBadges(currentSy);
           const sentStep = stepByKey("NEXTDAY_INFO");
           showTimelineNodeCard("NEXTDAY_INFO", sentStep, sentStep?.time || "SENT");
         } catch (err) {
-          const message = err?.message || "NEXTDAY INFO email send failed.";
+          const message = err?.name === "AbortError"
+            ? "NEXTDAY INFO delivery timed out after 45 seconds. Please check email and Discord before retrying."
+            : (err?.message || "NEXTDAY INFO email send failed.");
           if (step) {
             step.complete = false;
             step.searched = true;
@@ -5250,6 +5358,16 @@
           refreshSyBadges(currentSy);
           showTimelineNodeCard("NEXTDAY_INFO", stepByKey("NEXTDAY_INFO"), "MISSING");
           alert(message);
+        } finally {
+          clearTimeout(sendTimeout);
+          // Last-resort cleanup: no exit path may leave the node displaying
+          // SENDING after the request has settled or timed out.
+          if (node.dataset.time === "SENDING") {
+            node.dataset.status = "issue";
+            node.dataset.time = "MISSING";
+            nodeTime.textContent = "MISSING";
+            showTimelineNodeCard("NEXTDAY_INFO", stepByKey("NEXTDAY_INFO"), "MISSING");
+          }
         }
       }
 
@@ -5620,6 +5738,8 @@
         const overlay = document.createElement("div");
         overlay.className = "passenger-modal-backdrop";
         const modalBnNumber = data?.bn || data?.passengerRecord?.bn || "---";
+        overlay.dataset.passengerBn = String(modalBnNumber || "").replace(/^BN/i, "");
+        overlay.dataset.passengerTitle = title;
         overlay.innerHTML = `<article class="passenger-modal" role="dialog" aria-modal="true"><button class="panel-close" type="button" data-close-modal>×</button><div class="passenger-modal-mobile-title"><span>${escapeHtml(title)}</span><strong>BN${escapeHtml(String(modalBnNumber).replace(/^BN/i, "") || "---")}</strong></div>${passengerRecordCard(data || {}, title)}</article>`;
         document.body.appendChild(overlay);
         enablePassengerModalDragScroll(overlay);
@@ -5782,7 +5902,8 @@
       }
 
       function hasUnknownPassengerName(row) {
-        const name = String(row?.name || passengerName(row) || "").trim().toUpperCase();
+        const passenger = row?.passengerRecord || {};
+        const name = String(row?.name || row?.passengerName || row?.paxName || passenger.name || passenger.passengerName || passenger.paxName || "").trim().toUpperCase();
         return !name || name === "UNKNOWN" || name === "-";
       }
 
@@ -5875,15 +5996,25 @@
       function syRenderSignature(sy) {
         if (!sy) return "";
         const steps = (sy.crewApis?.steps || []).map((step) => [step.key || step.label, step.time || "", Boolean(step.complete), Boolean(step.searched)].join(":"));
-        return JSON.stringify([sy.flightNo, sy.flightDate, sy.gate, sy.bdt, sy.sd, sy.reservation, sy.reservationTicketed, sy.checkedIn, sy.checkedInTicketed, sy.jcsy, steps, (sy.chdList || []).length, (sy.psmList || []).length, (sy.wchList || []).length]);
+        const gov = sy.govAqq || {};
+        const govSignature = [
+          gov.duplicatePassports,
+          gov.aqqTclBnList,
+          gov.govDtaBnList,
+          gov.passportExpBnList,
+          gov.passportExpiringSoonBnList,
+          govWrongPassportBnList(sy),
+          gov.missingApiBnList,
+          gov.infApiIssueDetails || gov.infApiBnList,
+        ];
+        const nbrdSignature = (sy.bnAudit || []).filter(rowHasCkinNbrdIssue).map((row) => [row.bn, row.seat, ckinNbrdDetails(row).join("|")]);
+        const warningSignature = buildWarningRows(sy).map((row) => [row.bn, row.seat, row.warningType, row.warningReason, (row.acknowledgements || []).length]);
+        return JSON.stringify([sy.flightNo, sy.flightDate, sy.gate, sy.bdt, sy.sd, sy.reservation, sy.reservationTicketed, sy.checkedIn, sy.checkedInTicketed, sy.jcsy, steps, sy.chdList || [], govSignature, webEdiIssueBnList(sy), nbrdSignature, warningSignature, sy.psmList || [], sy.wchList || []]);
       }
 
       function updateFlightFromSy(sy, options = {}) {
         const signature = syRenderSignature(sy);
-        if (options.skipUnchanged && signature && signature === lastSyRenderSignature) {
-          currentSy = sy;
-          return;
-        }
+        const unchanged = options.skipUnchanged && signature && signature === lastSyRenderSignature;
         lastSyRenderSignature = signature;
         const sameFlight = currentSy?.flightNo === sy?.flightNo && currentSy?.flightDate === sy?.flightDate;
         currentSy = sy;
@@ -5909,7 +6040,7 @@
         const chdIssues = isClearLocked("CHD") ? 0 : (sy.chdList || []).filter((row) => row.hasChdCode === false).length;
         const gov = sy.govAqq || {};
         const passBnSet = securityReviewPassBnSet(sy);
-        const govIssueGroups = [gov.duplicatePassports, gov.aqqTclBnList, gov.govDtaBnList, gov.passportExpBnList, gov.wrongPassportBnList, gov.missingApiBnList, gov.infApiBnList];
+        const govIssueGroups = [gov.duplicatePassports, gov.aqqTclBnList, gov.govDtaBnList, gov.passportExpBnList, gov.passportExpiringSoonBnList, govWrongPassportBnList(sy), gov.missingApiBnList, gov.infApiBnList];
         const govCount = isClearLocked("GOV") ? 0 : govIssueGroups.reduce((sum, value) => sum + unresolvedReviewedBnCount(value, passBnSet), 0);
         const webediCount = isClearLocked("WEBEDI") ? 0 : unresolvedReviewedBnCount(webEdiIssueBnList(sy), passBnSet);
         const nbrdRows = nbrdRowsWithAcknowledgements(sy);
@@ -5979,10 +6110,23 @@
           previousStarted = previousStarted && (key === "FSC" ? true : started);
         });
         stopSyAutoRefreshWhenFinalNodesComplete();
-        resetTimelineCenter();
+        if (!unchanged) resetTimelineCenter();
         rerenderActiveRealtimePanel();
       }
 
+
+      function refreshOpenPassengerModal() {
+        const overlay = document.querySelector(".passenger-modal-backdrop[data-passenger-bn]");
+        if (!overlay || !currentSy) return;
+        const bn = normalizedBn(overlay.dataset.passengerBn || "");
+        const updatedRecord = allPassengerRecords(currentSy).find((row) => normalizedBn(row.bn || row.passengerRecord?.bn) === bn);
+        const modal = overlay.querySelector(".passenger-modal");
+        if (!updatedRecord || !modal) return;
+        const scrollTop = modal.scrollTop;
+        const title = overlay.dataset.passengerTitle || "Passenger Record";
+        modal.innerHTML = `<button class="panel-close" type="button" data-close-modal>×</button><div class="passenger-modal-mobile-title"><span>${escapeHtml(title)}</span><strong>BN${escapeHtml(String(updatedRecord.bn || bn || "---").replace(/^BN/i, ""))}</strong></div>${passengerRecordCard(updatedRecord, title)}`;
+        modal.scrollTop = scrollTop;
+      }
 
       function rerenderActiveRealtimePanel() {
         const title = resultPanel?.dataset?.panelTitle || "";
@@ -5990,6 +6134,8 @@
         else if (title === "GOV/AQQ") renderGovPanel();
         else if (title === "WEB/EDI/RS") renderWebEdiPanel();
         else if (title === "CKIN/NBRD") renderNbrdPanel();
+        else if (title === "WARNING") renderWarningPanel();
+        refreshOpenPassengerModal();
       }
 
       function renderSy(data) {
@@ -6000,7 +6146,7 @@
       }
 
       function isSyQuery(value) {
-        return /^SY\+?(?:\/\d{2}[A-Z]{3}(?:\d{2})?)?$/i.test(String(value || "").replace(/\s+/g, ""));
+        return /^SY\+?(?:\s+[A-Z]{2}\d{1,4}[A-Z]?)?(?:\/\d{2}[A-Z]{3}(?:\d{2})?)?$/i.test(String(value || "").trim());
       }
 
       const syMonthMap = {
@@ -6013,12 +6159,12 @@
       }
 
       function normalizeSyQuery(value) {
-        const normalized = String(value || "SY").replace(/\s+/g, "").toUpperCase();
+        const normalized = String(value || "SY").trim().replace(/\s+/g, " ").toUpperCase();
         return normalized === "SY+" ? "SY" : normalized;
       }
 
       function syQueryDateYmd(value) {
-        const match = normalizeSyQuery(value).match(/^SY\+?\/(\d{2})([A-Z]{3})(\d{0,2})$/);
+        const match = normalizeSyQuery(value).match(/^SY\+?(?:\s+[A-Z]{2}\d{1,4}[A-Z]?)?\/(\d{2})([A-Z]{3})(\d{0,2})$/);
         if (!match) return "";
         const month = syMonthMap[match[2]];
         if (month === undefined) return "";
@@ -6035,7 +6181,7 @@
 
       function isTodaySyQuery(value) {
         const normalized = normalizeSyQuery(value);
-        if (normalized === "SY") return true;
+        if (/^SY(?:\s+[A-Z]{2}\d{1,4}[A-Z]?)?$/.test(normalized)) return true;
         const queryYmd = syQueryDateYmd(normalized);
         return Boolean(queryYmd && queryYmd === ymdFromDate(new Date()));
       }
@@ -6053,25 +6199,27 @@
       }
 
       function stopSyAutoRefreshWhenFinalNodesComplete() {
-        if (finalTimelineNodesComplete()) stopSyAutoRefresh();
+        // Keep the home dashboard refreshing every 30 seconds even after final timeline nodes complete.
       }
 
       async function refreshSy({ silent = true, background = false } = {}) {
         if (document.hidden) return;
-        if (!isTodaySyQuery(activeSyQuery) || finalTimelineNodesComplete()) {
+        if (!isTodaySyQuery(activeSyQuery)) {
           stopSyAutoRefresh();
           return;
         }
         if (syAutoRefreshInFlight) return;
         syAutoRefreshAbortController?.abort();
         syAutoRefreshAbortController = new AbortController();
+        const refreshAbortController = syAutoRefreshAbortController;
+        const refreshTimeout = window.setTimeout(() => refreshAbortController.abort(), SY_REFRESH_TIMEOUT_MS);
         syAutoRefreshInFlight = true;
         const protectedView = isSyRefreshProtectedView();
         const showLoading = !currentSy && !protectedView;
         if (showLoading) setLoadingState(true);
         const refreshQuery = activeSyQuery || "SY";
         try {
-          const data = await fetchSearch(refreshQuery, { signal: syAutoRefreshAbortController.signal });
+          const data = await fetchSearch(refreshQuery, { signal: refreshAbortController.signal, realtime: true });
           if (refreshQuery !== activeSyQuery || !isTodaySyQuery(activeSyQuery)) return;
           if (!data?.sy) throw new Error(data?.error || "No SY payload returned.");
           if (isSyRefreshProtectedView()) {
@@ -6082,24 +6230,21 @@
           updateFlightFromSy(data.sy, { skipUnchanged: true });
         } catch (error) {
           if (error?.name === "AbortError") return;
-          if (refreshQuery === activeSyQuery && isTodaySyQuery(activeSyQuery) && !isSyRefreshProtectedView()) {
-            clearSyDashboard();
-            resultPanel.innerHTML = "";
-          }
           if (!silent) console.warn("Unable to load today's SY data.", error);
         } finally {
-          if (showLoading) setLoadingState(false);
+          window.clearTimeout(refreshTimeout);
+          if (showLoading && currentSy) setLoadingState(false);
           syAutoRefreshInFlight = false;
-          syAutoRefreshAbortController = null;
+          if (syAutoRefreshAbortController === refreshAbortController) syAutoRefreshAbortController = null;
         }
       }
 
       function startSyAutoRefresh(query = activeSyQuery, { immediate = true } = {}) {
         activeSyQuery = normalizeSyQuery(query || "SY");
         stopSyAutoRefresh();
-        if (!isTodaySyQuery(activeSyQuery) || finalTimelineNodesComplete()) return;
+        if (!isTodaySyQuery(activeSyQuery)) return;
         if (immediate) refreshSy({ background: true });
-        if (!document.hidden && !finalTimelineNodesComplete()) syAutoRefreshTimer = setInterval(refreshSy, SY_AUTO_REFRESH_MS);
+        if (!document.hidden) syAutoRefreshTimer = setInterval(refreshSy, SY_AUTO_REFRESH_MS);
       }
 
       function syncSyAutoRefreshWithVisibility() {
@@ -6107,7 +6252,7 @@
           stopSyAutoRefresh();
           return;
         }
-        if (isTodaySyQuery(activeSyQuery) && !finalTimelineNodesComplete() && !syAutoRefreshTimer) startSyAutoRefresh(activeSyQuery, { immediate: true });
+        if (isTodaySyQuery(activeSyQuery)) startSyAutoRefresh(activeSyQuery, { immediate: true });
       }
 
       async function searchPassenger() {
@@ -6126,7 +6271,7 @@
           if (data.sy || isSySearch) {
             renderSy(data);
             activeSyQuery = normalizeSyQuery(raw);
-            if (isTodaySyQuery(activeSyQuery)) startSyAutoRefresh(activeSyQuery, { immediate: false });
+            if (isTodaySyQuery(activeSyQuery)) startSyAutoRefresh(activeSyQuery, { immediate: true });
             else stopSyAutoRefresh();
           } else renderPassenger(data);
         } catch (error) {
@@ -6156,7 +6301,8 @@
           ["USA TIME OUT", (gov.aqqTclBnList || []).map((bn) => ({ bn, reason: "USA TIME OUT" }))],
           ["CHN GOV FAIL", (gov.govDtaBnList || []).map((bn) => ({ bn, reason: "CHN GOV FAIL" }))],
           ["Passport Exp", (gov.passportExpBnList || []).map((bn) => ({ bn, reason: "Passport Exp" }))],
-          ["Wrong Passport", (gov.wrongPassportBnList || []).map((bn) => ({ bn, reason: "Wrong Passport: passport number has fewer than 7 characters" }))],
+          ["Passport <3 Months", (gov.passportExpiringSoonBnList || []).map((bn) => ({ bn, reason: "Passport expires within 3 months" }))],
+          ["Wrong Passport", govWrongPassportBnList(currentSy).map((bn) => ({ bn, reason: "Wrong Passport: passport number has fewer than 7 characters" }))],
           ["Missing API", (gov.missingApiBnList || []).map((bn) => ({ bn, reason: "Missing API item" }))],
           ["INF API", (gov.infApiIssueDetails || gov.infApiBnList || []).map((item) => typeof item === "string" ? { bn: item, reason: "INF API not passed" } : item)],
         ];
@@ -6230,6 +6376,32 @@
           ...(passenger.specialMeals || []),
           ...(passenger.psmLines || []),
         ].join("/").toUpperCase();
+      }
+
+      function rowActiveServiceCodes(row) {
+        const passenger = row?.passengerRecord || {};
+        return [
+          ...(row?.specialServices || []),
+          ...(row?.codes || []),
+          ...(passenger.specialServices || []),
+          ...(passenger.codes || []),
+        ].join("/").toUpperCase();
+      }
+
+
+      function normalizedPassengerNameForCompare(value) {
+        return String(value || "").toUpperCase().replace(/[^A-Z]/g, "");
+      }
+
+      function infantDocumentMismatchReason(row) {
+        const passenger = row?.passengerRecord || {};
+        const hasInfant = row?.hasInfant || passenger.hasInfant || row?.infantTicketNo || passenger.infantTicketNo;
+        const age = Number(row?.ageYears ?? passenger.ageYears);
+        const paxListName = String(row?.paxListName || passenger.paxListName || "").trim().toUpperCase();
+        const adultName = String(passengerName(row) || passengerName(passenger) || "").trim().toUpperCase();
+        if (!hasInfant || !Number.isInteger(age) || age >= 2 || !paxListName || !adultName) return "";
+        if (normalizedPassengerNameForCompare(paxListName) === normalizedPassengerNameForCompare(adultName)) return "";
+        return `Adult passenger ${adultName} appears to have infant document/API data ${paxListName} (age ${age}). Please verify adult passport was swiped.`;
       }
 
       function hasTicket(row) {
@@ -6366,18 +6538,23 @@
         const rows = [];
         const addWarning = (row, type, reason) => rows.push({ ...row, warningType: type, warningReason: reason, _panelCard: "warning" });
         for (const row of warningRecordPools(sy)) {
-          if (isDeletedPassengerRecord(row)) continue;
+          if (isDeletedPassengerRecord(row) || hasUnknownPassengerName(row)) continue;
           const bn = normalizedBn(row.bn || row.passengerRecord?.bn);
           const seat = String(row.seat || row.passengerRecord?.seat || "").toUpperCase();
           const age = Number(row.ageYears ?? row.passengerRecord?.ageYears);
           const services = rowServices(row);
+          const activeServiceCodes = rowActiveServiceCodes(row);
           if (restrictedUnder15Seats.has(seat) && Number.isInteger(age) && age < 15) {
             addWarning(row, "EXIT/RESTRICTED SEAT", `${seat} passenger is under 15 by DOB/age (${age}).`);
           }
           if (hasKnownPassengerRecord(row) && !hasTicket(row)) {
             addWarning(row, "NO TICKET", "Passenger has no ticket number in the record.");
           }
-          if (/WCHC/.test(services)) {
+          const infantDocReason = infantDocumentMismatchReason(row);
+          if (infantDocReason) {
+            addWarning(row, "INF DOC", infantDocReason);
+          }
+          if (/WCHC/.test(activeServiceCodes)) {
             addWarning(row, "WCHC", "Passenger has WCHC wheelchair service.");
           }
           if (row.hasBadSeat || row.passengerRecord?.hasBadSeat) {
@@ -6615,7 +6792,7 @@
       }
 
       function setReportMode(mode, options = {}) {
-        activeReportMode = ["vip", "psm", "inad", "wch", "baggage", "salesDetails"].includes(mode) ? mode : "sales";
+        activeReportMode = ["vip", "psm", "inad", "wch", "missConnection", "baggage", "salesDetails"].includes(mode) ? mode : "sales";
         if (activeReportMode === "baggage") {
           if (options.forceToday) setReportDefaults(true);
         } else {
@@ -6635,6 +6812,7 @@
         reportForm?.classList.toggle("is-psm-mode", activeReportMode === "psm");
         reportForm?.classList.toggle("is-inad-mode", activeReportMode === "inad");
         reportForm?.classList.toggle("is-wch-mode", activeReportMode === "wch");
+        reportForm?.classList.toggle("is-miss-connection-mode", activeReportMode === "missConnection");
         reportForm?.classList.toggle("is-baggage-mode", activeReportMode === "baggage");
         reportSalesModeButton?.classList.toggle("is-active", activeReportMode === "sales");
         reportSalesDetailsModeButton?.classList.toggle("is-active", activeReportMode === "salesDetails");
@@ -6642,6 +6820,7 @@
         reportPsmModeButton?.classList.toggle("is-active", activeReportMode === "psm");
         reportInadModeButton?.classList.toggle("is-active", activeReportMode === "inad");
         reportWchModeButton?.classList.toggle("is-active", activeReportMode === "wch");
+        reportMissConnectionModeButton?.classList.toggle("is-active", activeReportMode === "missConnection");
         reportBaggageModeButton?.classList.toggle("is-active", activeReportMode === "baggage");
         if (reportFromLabel) reportFromLabel.textContent = activeReportMode === "sales" ? "Date" : "From";
         const reportKeywordLabel = reportForm?.querySelector(".report-keyword-field span");
@@ -6655,16 +6834,18 @@
             ? `<p class="panel-muted">Loading VIP Report...</p>`
             : (activeReportMode === "inad"
               ? `<p class="panel-muted">Loading INAD Report...</p>`
+              : (activeReportMode === "missConnection"
+                ? `<p class="panel-muted">Loading Misconnection Report...</p>`
               : (activeReportMode === "baggage"
                 ? `<p class="panel-muted">Select a submit-date range, optionally enter a bag tag, then click Search.</p>`
                 : (["psm", "wch"].includes(activeReportMode)
                   ? `<p class="panel-muted">Choose a flight date range, then search ${activeReportMode === "wch" ? "WCH" : "PSM"} Report.</p>`
                   : (activeReportMode === "salesDetails"
                     ? `<p class="panel-muted">Choose a date range, then search Sales Details totals by Type.</p>`
-                    : `<p class="panel-muted">Choose a date, then download Sales Report.</p>`))));
+                    : `<p class="panel-muted">Choose a date, then download Sales Report.</p>`)))));
         }
         if (activeReportMode === "baggage") renderBaggageTimelineReport();
-        else if (["vip", "psm", "inad", "wch", "salesDetails"].includes(activeReportMode)) generateReport();
+        else if (["vip", "psm", "inad", "wch", "missConnection", "salesDetails"].includes(activeReportMode)) generateReport();
       }
 
       function resetPanelState() {
@@ -6952,9 +7133,9 @@
           return `<fieldset class="test-create-entry" data-test-bag-entry>
             <legend><span>Outbound bag</span></legend>
             <div class="test-form-grid">${bagTagInput}
-              <label class="test-field"><span>Outbound flight number</span><input name="flight" value="${escapeHtml(entry.flight || "MU586")}" required /></label>
               <label class="test-field"><span>Date</span><input name="date" type="date" value="${escapeHtml(entry.date || today)}" required /></label>
               <label class="test-field"><span>Type</span><select name="status" data-test-outbound-status required><option value="Not load bags"${selected(status, "Not load bags")}>Not load bags</option><option value="Outbound rush"${selected(status, "Outbound rush")}>Outbound rush</option><option value="Gate bag"${selected(status, "Gate bag")}>Gate bag</option></select></label>
+              <label class="test-field"><span>Current location</span><input name="location" value="${escapeHtml(entry.location || "")}" list="test-location-options" required /></label>
               <label class="test-field" data-test-rush-field hidden><span>Rush tag number</span><input name="rushTagNumber" value="${escapeHtml(entry.rushTagNumber || "")}" /></label>
               <label class="test-field" data-test-rush-field hidden><span>Rush To where?</span><input name="rushToWhere" value="${escapeHtml(entry.rushToWhere || "")}" /></label>
               <label class="test-field" data-test-rush-field hidden><span>AKE number?</span><input name="akeNumber" value="${escapeHtml(entry.akeNumber || "")}" /></label>
@@ -6968,7 +7149,6 @@
         return `<fieldset class="test-create-entry" data-test-bag-entry>
           <legend><span>Inbound bag</span></legend>
           <div class="test-form-grid">${bagTagInput}
-            <label class="test-field"><span>Inbound flight number</span><input name="flight" value="${escapeHtml(entry.flight || "MU583")}" required /></label>
             <label class="test-field"><span>Date</span><input name="date" type="date" value="${escapeHtml(entry.date || today)}" required /></label>
             <label class="test-field"><span>Bag type</span><select name="bagType" required><option${selected(bagType, "Passenger bag")}>Passenger bag</option><option${selected(bagType, "Inbound rush")}>Inbound rush</option><option${selected(bagType, "Co-mail")}>Co-mail</option></select></label>
             <label class="test-field"><span>Current location</span><input name="location" value="${escapeHtml(location)}" list="test-location-options" required /></label>
@@ -6977,9 +7157,10 @@
       }
 
       function collectCreateEntries(form) {
+        const mode = form.dataset.createMode;
         return [...form.querySelectorAll("[data-test-bag-entry]")].map((entry) => ({
           bagTag: normalizeTestBagTag(formValue(entry, "bagTag")),
-          flight: formValue(entry, "flight"),
+          flight: mode === "outbound" ? "MU586" : "MU583",
           date: formValue(entry, "date"),
           bagType: formValue(entry, "bagType"),
           location: formValue(entry, "location"),
@@ -7060,7 +7241,7 @@
             flight: entry.flight,
             date: entry.date,
             bagType: mode === "inbound" ? entry.bagType : "",
-            location: mode === "inbound" ? entry.location : "",
+            location: entry.location,
             status: mode === "outbound" ? entry.status : "Bag location update",
             comment: mode === "outbound" ? entry.comment : "",
             rushTagNumber: isRush ? entry.rushTagNumber : "",
@@ -7245,6 +7426,11 @@
         return data?.rows || [];
       }
 
+      async function missConnectionReportRows() {
+        const data = await apiJson('/miss-connection-report');
+        return data?.rows || [];
+      }
+
       async function salesDetailsReport(from, to) {
         return apiJson(`/sales-details-report?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
       }
@@ -7380,7 +7566,7 @@
           await renderBaggageTimelineReport();
           return;
         }
-        const type = ["vip", "psm", "inad", "wch", "salesDetails"].includes(activeReportMode) ? activeReportMode : "sales";
+        const type = ["vip", "psm", "inad", "wch", "missConnection", "salesDetails"].includes(activeReportMode) ? activeReportMode : "sales";
         const today = ymdFromDate(new Date());
         const from = reportFromInput?.value || today;
         const keyword = type === "vip" ? (reportKeywordInput?.value || "") : "";
@@ -7403,7 +7589,7 @@
             ? `<p class="panel-muted">Loading PSM Report for ${escapeHtml(from)}${from === to ? "" : ` to ${escapeHtml(to)}`}...</p>`
             : (type === "wch"
               ? `<p class="panel-muted">Loading WCH Report for ${escapeHtml(from)}${from === to ? "" : ` to ${escapeHtml(to)}`}...</p>`
-              : (type === "inad" ? `<p class="panel-muted">Loading INAD Report...</p>` : `<p class="panel-muted">Loading VIP Report...</p>`))));
+              : (type === "inad" ? `<p class="panel-muted">Loading INAD Report...</p>` : (type === "missConnection" ? `<p class="panel-muted">Loading Misconnection Report...</p>` : `<p class="panel-muted">Loading VIP Report...</p>`)))));
         setReportCsv([], "report.csv");
         const rows = [];
         const errors = [];
@@ -7428,6 +7614,13 @@
         } else if (type === "wch") {
           try {
             rows.push(...await wchReportRows(from, to));
+          } catch (error) {
+            errors.push(error.message);
+          }
+        } else if (type === "missConnection") {
+          try {
+            const submissions = await missConnectionReportRows();
+            rows.push(...submissions.map((row) => ({ date: row.date, name: row.name, seatNumber: row.seatNumber, ticketNumber: row.ticketNumber, phone: row.phone })));
           } catch (error) {
             errors.push(error.message);
           }
@@ -7502,6 +7695,14 @@
             { label: "Seat", value: (row) => row.seat },
             { label: "WCH Type", value: (row) => row.wheelchairType },
           ], "No WCH rows found.");
+        } else if (type === "missConnection") {
+          tableHtml = rowsTable(rows, [
+            { label: "Date", value: (row) => row.date },
+            { label: "Passenger Name", value: (row) => row.name },
+            { label: "Seat", value: (row) => row.seatNumber },
+            { label: "Passport Number", value: (row) => row.ticketNumber },
+            { label: "Mobile Number", value: (row) => row.phone },
+          ], "No misconnection submissions found.");
         }
         const errorHtml = errors.length ? `<p class="panel-muted status-warn">${escapeHtml(errors.join(" | "))}</p>` : "";
         reportOutput.innerHTML = `${errorHtml}${tableHtml}`;
@@ -7512,6 +7713,7 @@
           psm: `psm-report-${from}${from === to ? "" : `-to-${to}`}.csv`,
           inad: "inad-report.csv",
           wch: `wch-report-${from}${from === to ? "" : `-to-${to}`}.csv`,
+          missConnection: "miss-connection-report.csv",
         };
         setReportCsv(type === "sales" ? rows.filter((row) => row.downloadUrl) : rows, reportFileNames[type] || "report.csv");
       }
@@ -7774,10 +7976,12 @@
         }
       });
 
-      logoutButton.addEventListener("click", async () => {
-        if (auth) await auth.signOut();
-        window.location.href = loginUrl();
-      });
+      async function logoutToLogin() {
+        await returnToLogin();
+      }
+
+      logoutButton.addEventListener("click", logoutToLogin);
+      mobileLogoutButton?.addEventListener("click", logoutToLogin);
 
       flightMenuButton.addEventListener("click", () => {
         const open = flightMenuButton.getAttribute("aria-expanded") === "true";
@@ -7790,6 +7994,16 @@
       flightMenu.addEventListener("click", (event) => {
         if (event.target.closest("button")) closeFlightMenu();
       });
+
+      function openFlightDashboard(flightNo) {
+        const query = `SY ${flightNo}`;
+        queryInput.value = query;
+        mobileQueryInput.value = query;
+        searchPassenger();
+      }
+
+      normalFlightButton?.addEventListener("click", () => openFlightDashboard("MU586"));
+      delayedFlightButton?.addEventListener("click", () => openFlightDashboard("MU586D"));
 
       document.addEventListener("click", (event) => {
         if (!event.target.closest(".flight-tools")) closeFlightMenu();
@@ -7950,6 +8164,7 @@
       reportPsmModeButton?.addEventListener("click", () => setReportMode("psm", { forceToday: true, resetOutput: true }));
       reportInadModeButton?.addEventListener("click", () => setReportMode("inad", { forceToday: true, resetOutput: true }));
       reportWchModeButton?.addEventListener("click", () => setReportMode("wch", { forceToday: true, resetOutput: true }));
+      reportMissConnectionModeButton?.addEventListener("click", () => setReportMode("missConnection", { resetOutput: true }));
       reportBaggageModeButton?.addEventListener("click", () => { setReportMode("baggage", { resetOutput: true }); renderBaggageTimelineReport({ latestOnly: true }); });
       reportForm.addEventListener("submit", generateReport);
       reportDownloadButton.addEventListener("click", downloadCurrentReportCsv);
@@ -8125,10 +8340,6 @@
             window.location.replace(loginUrl());
             return;
           }
-          if (isAuthSessionExpired()) {
-            returnToLogin();
-            return;
-          }
           currentUser.textContent = user.email || "Authenticated user";
           startInactivityWatch();
           queryInput.value = "SY";
@@ -8139,6 +8350,9 @@
 
       resetTimelineCenter();
       document.addEventListener("visibilitychange", syncSyAutoRefreshWithVisibility);
+      window.addEventListener("focus", () => {
+        if (isTodaySyQuery(activeSyQuery) && !syAutoRefreshInFlight) refreshSy({ background: true });
+      });
       window.addEventListener("pagehide", stopSyAutoRefresh);
       mobileOrbitQuery.addEventListener("change", () => resetTimelineCenter(nodes[selectedIndex]?.dataset?.key));
       new ResizeObserver(() => placeNodes()).observe(timelineShell);
