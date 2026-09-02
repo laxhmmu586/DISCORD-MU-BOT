@@ -92,17 +92,37 @@ function getPassengerNameFromSection(section) {
   const passengerLine = getPassengerRecordLine(section);
   const lineName = (passengerLine.match(/^\s*\d+\.\s*\d?([A-Z\/]+\+?)/i)?.[1] || '').replace(/\+$/, '').toUpperCase();
   if (lineName) return lineName;
-  const paxListName = (String(section || '').match(/PAXLST\s*:\s*([A-Z\/]+)\/?/i)?.[1] || '').replace(/\+$/, '').toUpperCase();
+  const paxListName = extractPaxListName(section);
   return paxListName || 'UNKNOWN';
+}
+
+function extractPaxListName(section) {
+  return (String(section || '').match(/PAXLST\s*:\s*([A-Z]+\/[A-Z]+)/i)?.[1] || '').toUpperCase();
 }
 
 const TARGET_PSM_MSG_CODES = ['TSXL', 'JMSQ', 'XCSQ', 'TXLK', 'QTQK', 'EXBG0KG'];
 
+function normalizedOperationalLine(line) {
+  return String(line || '').replace(/[\u0000-\u001f]/g, '').trim();
+}
+
+function isPsmOrMsgLine(line) {
+  return /^(?:PSM|MSG)(?:\b|-)/i.test(normalizedOperationalLine(line));
+}
+
+function isOperationalHistoryLine(line) {
+  return /^(?:ACC|API|BAB|BAG|BC|BDB|GOV|MOD)\b/i.test(normalizedOperationalLine(line));
+}
+
+function isServiceExtractionLine(line) {
+  return !isPsmOrMsgLine(line) && !isOperationalHistoryLine(line);
+}
+
 function extractPsmLines(section) {
   return [...new Set(String(section || '')
     .split(/\r?\n/)
-    .map((line) => line.replace(/[\u001c-\u001f]/g, '').trim())
-    .filter((line) => /^(?:PSM|MSG)(?:\b|-)/i.test(line)))];
+    .map(normalizedOperationalLine)
+    .filter(isPsmOrMsgLine))];
 }
 
 function hasTargetPsm(line) {
@@ -111,13 +131,79 @@ function hasTargetPsm(line) {
   return /^\s*(?:PSM|MSG)/i.test(raw) && TARGET_PSM_MSG_CODES.some((code) => normalized.includes(code));
 }
 
+function extractInvoluntaryUpgrade(section) {
+  const passengerLine = getPassengerRecordLine(section);
+  const upgradedCabin = (passengerLine.match(/\b([AO])\s+PVG\b/i)?.[1] || '').toUpperCase();
+  const originalCabin = (passengerLine.match(/\bUPG([A-Z])\b/i)?.[1] || '').toUpperCase();
+  if (!upgradedCabin || !originalCabin) return null;
+  return {
+    upgradedCabin,
+    originalCabin,
+    detail: `Involuntary upgrade from ${originalCabin} to ${upgradedCabin}`
+  };
+}
+
 function formatPassportExpiryFromSection(section) {
   const passportRawLine = (String(section || '').match(/PASSPORT\s*:\s*([^\n\r]+)/i)?.[1] || '').trim().toUpperCase();
-  const expField = passportRawLine.split('/').map((x) => x.trim()).find((part, index, parts) => /^\d{6}$/.test(part) && (parts[index - 1] || '').trim() === '');
-  const fallback = passportRawLine.split('/').map((x) => x.trim()).find((part) => /^\d{6}$/.test(part)) || '';
-  const value = expField || fallback;
+  const value = extractPassportExpiryKeyFromRawLine(passportRawLine);
   if (!value) return '';
   return `${value.slice(4, 6)}/${value.slice(2, 4)}/20${value.slice(0, 2)}`;
+}
+
+
+function extractPassportExpiryKeyFromRawLine(passportRawLine) {
+  const parts = String(passportRawLine || '').toUpperCase().split('/').map((x) => x.trim());
+  return parts.find((part, index) => index > 0 && /^\d{6}$/.test(part) && (parts[index - 1] || '') === '')
+    || parts.find((part, index) => /^\d{6}$/.test(part) && /^[A-Z]{3}$/.test(parts[index + 1] || ''))
+    || '';
+}
+
+function parsePassportExpiryKey(expField) {
+  const value = String(expField || '').trim();
+  if (!/^\d{6}$/.test(value)) return null;
+  const yy = Number(value.slice(0, 2));
+  const mm = Number(value.slice(2, 4));
+  const dd = Number(value.slice(4, 6));
+  if (mm < 1 || mm > 12 || dd < 1 || dd > 31) return null;
+  const date = new Date(Date.UTC(2000 + yy, mm - 1, dd));
+  if (date.getUTCFullYear() !== 2000 + yy || date.getUTCMonth() !== mm - 1 || date.getUTCDate() !== dd) return null;
+  return date;
+}
+
+function addUtcMonths(date, months) {
+  const result = new Date(date.getTime());
+  const targetMonth = result.getUTCMonth() + months;
+  const originalDay = result.getUTCDate();
+  result.setUTCDate(1);
+  result.setUTCMonth(targetMonth);
+  const lastDay = new Date(Date.UTC(result.getUTCFullYear(), result.getUTCMonth() + 1, 0)).getUTCDate();
+  result.setUTCDate(Math.min(originalDay, lastDay));
+  return result;
+}
+
+function isPassportExpiringWithinMonths(expField, referenceUtc, months) {
+  const expDate = parsePassportExpiryKey(expField);
+  if (!expDate || !Number.isFinite(referenceUtc)) return false;
+  const referenceDate = new Date(referenceUtc);
+  const referenceDayUtc = Date.UTC(referenceDate.getUTCFullYear(), referenceDate.getUTCMonth(), referenceDate.getUTCDate());
+  const expiryUtc = Date.UTC(expDate.getUTCFullYear(), expDate.getUTCMonth(), expDate.getUTCDate());
+  const thresholdUtc = addUtcMonths(new Date(referenceDayUtc), months).getTime();
+  return expiryUtc >= referenceDayUtc && expiryUtc < thresholdUtc;
+}
+
+function passportNationalityFromRawLine(passportRawLine) {
+  const raw = String(passportRawLine || '').toUpperCase();
+  return raw.match(/\/NAT\/([A-Z]{3})\//i)?.[1]?.toUpperCase()
+    || raw.split('/').map((x) => x.trim()).find((part, index, parts) => index > 0 && parts[index - 1] === 'NAT' && /^[A-Z]{3}$/.test(part))
+    || '';
+}
+
+function flightDateToUtc(flightDate) {
+  const match = String(flightDate || '').toUpperCase().match(/^(\d{2})([A-Z]{3})(\d{2})$/);
+  if (!match) return NaN;
+  const month = MONTH_INDEX[match[2]];
+  if (month === undefined) return NaN;
+  return Date.UTC(2000 + Number(match[3]), month, Number(match[1]));
 }
 
 function extractTicketNoFromSection(section) {
@@ -232,17 +318,46 @@ function subtractMinutesFromTime(hhmm, minutes) {
 }
 
 const MAINLAND_CHINA_DESTINATIONS = new Set([
-  'AAT','AKA','AKU','AQG','AVA','BAV','BHY','BPX','BSD','CAN','CGD','CGO','CGQ','CIF','CIH','CKG','CSX','CTU','CZX','DAT','DAX','DDG','DIG','DLC','DLU','DNH','DOY','DSN','DYG','ENH','FOC','FUG','FUO','HAK','HDG','HEK','HET','HFE','HGH','HIA','HJJ','HLD','HLH','HRB','HSN','HTN','HYN','INC','IQM','JDZ','JGN','JHG','JIC','JIL','JIU','JJN','JMU','JNG','JNZ','JSJ','JUZ','KHG','KHN','KMG','KOW','KRL','KRY','KWE','KWL','LCX','LHW','LJG','LLB','LLF','LNJ','LUM','LXA','LYA','LYG','LYI','LZH','LZO','MDG','MIG','MXZ','NAO','NBS','NDG','NGB','NKG','NLT','NNG','NNY','NTG','NZH','PEK','PKX','PVG','SHA','SHE','SIA','SJW','SWA','SYM','SYX','SZX','TAO','TCG','TEN','TNA','TSN','TVS','TXN','TYN','URC','UYN','WEF','WEH','WHA','WNH','WNZ','WUA','WUH','WUS','WUX','WUZ','XFN','XIC','XIY','XMN','XNN','XUZ','YBP','YCU','YIC','YIH','YIN','YIW','YNJ','YNT','YNZ','YTY','YUS','ZAT','ZHA','ZUH','ZYI'
+  'AAT','AKA','AKU','AQG','AVA','BAV','BHY','BPX','BSD','CAN','CGD','CGO','CGQ','CIF','CIH','CKG','CSX','CTU','CZX','DAT','DAX','DDG','DIG','DLC','DLU','DNH','DOY','DSN','DYG','ENH','FOC','FUG','FUO','HAK','HDG','HEK','HET','HFE','HGH','HIA','HJJ','HLD','HLH','HRB','HSN','HTN','HYN','INC','IQM','JDZ','JGN','JHG','JIC','JIL','JIU','JJN','JMU','JNG','JNZ','JSJ','JUZ','KHG','KHN','KMG','KOW','KRL','KRY','KWE','KWL','LCX','LHW','LJG','LLB','LLF','LNJ','LUM','LXA','LYA','LYG','LYI','LZH','LZO','MDG','MIG','MXZ','NAO','NBS','NDG','NGB','NKG','NLT','NNG','NNY','NTG','NZH','PEK','PKX','PVG','SHA','SHE','SIA','SJW','SWA','SYM','SYX','SZX','TAO','TCG','TEN','TFU','TNA','TSN','TVS','TXN','TYN','URC','UYN','WEF','WEH','WHA','WNH','WNZ','WUA','WUH','WUS','WUX','WUZ','XFN','XIC','XIY','XMN','XNN','XUZ','YBP','YCU','YIC','YIH','YIN','YIW','YNJ','YNT','YNZ','YTY','YUS','ZAT','ZHA','ZUH','ZYI'
 ]);
 
+function normalizeOperationalFlightNo(flightNo) {
+  const value = String(flightNo || '').trim().toUpperCase();
+  const m = value.match(/^([A-Z]+)0*(\d+)([A-Z]?)$/);
+  return m ? `${m[1]}${Number(m[2])}${m[3]}` : value;
+}
+
+function sameOperationalFlightNo(left, right) {
+  return normalizeOperationalFlightNo(left) === normalizeOperationalFlightNo(right);
+}
+
+function isIrregularOperationalFlight(flightNo) {
+  const normalized = normalizeOperationalFlightNo(flightNo);
+  return normalized === 'MU9586' || /[A-Z]$/.test(normalized);
+}
+
+function sectionMatchesFlightOperationDate(sectionObj, targetYmd, flightNo) {
+  if (!targetYmd || isIrregularOperationalFlight(flightNo)) return true;
+  const sectionYmd = getYmdFromTimestamp(sectionObj?.timestamp);
+  return !sectionYmd || sectionYmd === targetYmd;
+}
+
+function matchesSyFlightRecord(recordFlightNo, recordFlightDate, syInfo) {
+  if (!sameOperationalFlightNo(recordFlightNo, syInfo?.flightNo)) return false;
+  // A recovery flight can retain the original scheduled date in SY while
+  // subsequent PR/PD entries are stamped with the operating date.
+  return isIrregularOperationalFlight(syInfo?.flightNo)
+    || String(recordFlightDate || '').toUpperCase() === String(syInfo?.flightDate || '').toUpperCase();
+}
+
 function normalizeJcsyFlightNo(flightNo) {
-  const m = String(flightNo || '').trim().toUpperCase().match(/^([A-Z]+)(\d+)$/);
+  const m = String(flightNo || '').trim().toUpperCase().match(/^([A-Z]+)0*(\d+)([A-Z]?)$/);
   if (!m) return String(flightNo || '').trim().toUpperCase();
-  return `${m[1]}${m[2].padStart(4, '0')}`;
+  return `${m[1]}${m[2].padStart(4, '0')}${m[3]}`;
 }
 
 function parseJcsyCountTriple(value = '') {
-  const match = String(value || '').match(/^(\d{2})\/(\d{3})\/(\d{3})/);
+  const match = String(value || '').match(/^(\d{2})\/(\d{2,3})\/(\d{3})/);
   if (!match) return { first: 0, business: 0, economy: 0, total: 0 };
   const first = Number(match[1]) || 0;
   const business = Number(match[2]) || 0;
@@ -266,7 +381,7 @@ function parseJcsyDeparture(raw = '') {
 
 function parseJcsyRows(content) {
   return String(content || '').split(/\r?\n/).map((line) => {
-    const m = line.match(/^\s*([A-Z]{2}\d{3,4})\s+\/([A-Z]{3})\/\s+(?:(\d{4}(?:\+\d)?)\s+)?(\d{2}\/\d{3}\/\d{3})\b/i);
+    const m = line.match(/^\s*([A-Z]{2}\d{3,4})\s+\/([A-Z]{3})\/\s+(?:(\d{4}(?:\+\d)?)\s+)?(\d{2}\/\d{2,3}\/\d{3})\b/i);
     if (!m) return null;
     const booked = parseJcsyCountTriple(m[4]);
     const departure = parseJcsyDeparture(m[3] || '');
@@ -298,13 +413,20 @@ function findJcsyInfo(sections, flightNo, flightYmd, formatTime, fallbackYmd = '
     .filter(Boolean);
   const flightDate = dateCandidates[0] || '';
   const jcsyFlightNo = normalizeJcsyFlightNo(flightNo);
-  const flightNoPattern = escapeRegExp(jcsyFlightNo);
+  const canonicalFlight = normalizeOperationalFlightNo(flightNo);
+  const canonicalParts = canonicalFlight.match(/^([A-Z]+)(\d+)([A-Z]?)$/);
+  const flightNoPattern = canonicalParts
+    ? `${escapeRegExp(canonicalParts[1])}0*${escapeRegExp(canonicalParts[2])}${escapeRegExp(canonicalParts[3])}`
+    : escapeRegExp(jcsyFlightNo);
   const matchesForDate = (flightDateToken) => {
     const flightDatePattern = escapeRegExp(flightDateToken);
     return Boolean(jcsyFlightNo && flightDatePattern) ? sections.filter((sectionObj) => {
       const content = String(sectionObj.content || '').toUpperCase();
       return /^>\s*JCSY\s*:/im.test(content)
-        && /##TOTAL##/i.test(content)
+        // JCSY only prints ##TOTAL## after the final page. Operators commonly
+        // paste the displayed JCSY page(s) before that footer, so requiring it
+        // discarded the current rows and left the UI showing older figures.
+        && parseJcsyRows(content).length > 0
         && new RegExp(`\\bJCSY:\\s*${flightNoPattern}/${flightDatePattern}/LAX,O\\b`, 'im').test(content);
     }) : [];
   };
@@ -335,25 +457,21 @@ function findJcsyInfo(sections, flightNo, flightYmd, formatTime, fallbackYmd = '
   };
 }
 
-function parseCrewManifestRowsFromSections(sections, flightNo, flightYmd) {
+function parseCrewManifestRowsFromSections(sections, flightNo, flightYmd, operationYmd = flightYmd) {
   const rows = [];
   const seen = new Set();
-  const normalizeFlight = (value) => {
-    const match = String(value || '').toUpperCase().match(/^([A-Z]+)0*(\d+[A-Z]?)$/);
-    return match ? `${match[1]}${match[2]}` : String(value || '').toUpperCase();
-  };
-  const expectedFlight = normalizeFlight(flightNo);
+  const expectedFlight = normalizeOperationalFlightNo(flightNo);
   const expectedDate = flightYmd ? dateToDdMonYy(ymdToUtcDate(flightYmd)) : '';
   sections.forEach((sectionObj) => {
     const ymd = getYmdFromTimestamp(sectionObj.timestamp);
     const content = String(sectionObj.content || '');
-    if (flightYmd && ymd && ymd !== flightYmd) return;
+    if (operationYmd && ymd && ymd !== operationYmd) return;
     if (!/^>\s*CWD\b/im.test(content) && !/\bCWD\s*:/i.test(content)) return;
     let activeManifest = false;
     content.split(/\r?\n/).forEach((line) => {
       const header = line.match(/\bCWD\s*:\s*([A-Z]{2}0*\d+[A-Z]?)\/(\d{2}[A-Z]{3}\d{2})\b[^\n\r]*?CREW\s+NUMBER\s*:\s*(\d+)/i);
       if (header) {
-        const headerFlight = normalizeFlight(header[1]);
+        const headerFlight = normalizeOperationalFlightNo(header[1]);
         const headerDate = header[2].toUpperCase();
         activeManifest = (!expectedFlight || headerFlight === expectedFlight) && (!expectedDate || headerDate === expectedDate);
         return;
@@ -378,9 +496,10 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
   const sections = splitLogicalSections(log);
   const flightNo = String(info?.flightNo || '').trim().toUpperCase();
   const flightYmd = flightDateToYmd(info?.flightDate) || targetYmd || null;
+  const operationYmd = isIrregularOperationalFlight(flightNo) ? (targetYmd || flightYmd) : flightYmd;
   const sameDaySections = sections.filter((sectionObj) => {
     const ymd = getYmdFromTimestamp(sectionObj.timestamp);
-    return Boolean(flightYmd && ymd && ymd === flightYmd);
+    return Boolean(operationYmd && ymd && ymd === operationYmd);
   });
   const formatTime = (timestamp) => {
     const m = String(timestamp || '').match(/(\d{2}:\d{2}:\d{2})$/);
@@ -415,7 +534,7 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
   const crewApisComplete = Boolean(crewApisPrimaryCheck?.complete);
   const crewApisTime = crewApisPrimaryCheck?.time || '';
   const ccl = findAcceptedCommand(/^>\s*CCL\s*:/im);
-  const cc = findAcceptedCommand(/^>\s*CC\s*:/im);
+  const cc = findAcceptedCommand(/^>\s*CC(?:\s*:\s*[^\r\n]*)?\s*$/im);
   const jcsy = findJcsyInfo(sections, flightNo, flightYmd, formatTime, targetYmd);
   const baseYmd = targetYmd || flightYmd;
   const baseDateUtc = ymdToUtcDate(baseYmd);
@@ -434,7 +553,7 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
   const emailBaseDateUtc = ymdToUtcDate(flightYmd || baseYmd);
   const gdEmailDate = dateToDdMonYy(emailBaseDateUtc);
   const gdEmailSubject = flightNo && gdEmailDate ? `GD for ${flightNo}/${gdEmailDate}` : '';
-  const crewManifestRows = parseCrewManifestRowsFromSections(sections, flightNo, flightYmd);
+  const crewManifestRows = parseCrewManifestRowsFromSections(sections, flightNo, flightYmd, operationYmd);
   const nextDayDateUtc = addDaysUtc(emailBaseDateUtc, 1);
   const nextDayEmailDate = dateToEmailSubjectDate(nextDayDateUtc);
   const nextDayEmailSubject = flightNo && nextDayEmailDate ? `${flightNo} ${nextDayEmailDate} flight information details` : '';
@@ -459,7 +578,7 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
   const futureSy = sections
     .filter((sectionObj) => getYmdFromTimestamp(sectionObj.timestamp) === baseYmd)
     .map((sectionObj) => parseSYSection(sectionObj))
-    .filter((item) => item && item.flightNo === flightNo && item.flightDate === commandFlightDateFull)
+    .filter((item) => item && sameOperationalFlightNo(item.flightNo, flightNo) && item.flightDate === commandFlightDateFull)
     .sort((a, b) => String(b.statusDisplay || '').localeCompare(String(a.statusDisplay || '')))[0] || null;
   const commandFlightNo = escapeRegExp(flightNo);
   const commandFlightDate = escapeRegExp(commandDate);
@@ -652,6 +771,10 @@ function getAgeYearsAtDate(dob, atDateUtc) {
   return age;
 }
 
+function hasChdServiceCode(section) {
+  return /\bCHD1\/\d+\b/i.test(section || '');
+}
+
 function enrichCHDListFromLog(log, syInfo, targetYmd = null) {
   if (!log || !syInfo?.flightNo || !syInfo?.flightDate) return [];
   const sections = splitLogicalSections(log);
@@ -666,13 +789,10 @@ function enrichCHDListFromLog(log, syInfo, targetYmd = null) {
   for (const sectionObj of sections) {
     const section = sectionObj.content || '';
     if (!section.includes('PR:')) continue;
-    if (targetYmd) {
-      const sectionYmd = getYmdFromTimestamp(sectionObj.timestamp);
-      if (sectionYmd && sectionYmd !== targetYmd) continue;
-    }
+    if (!sectionMatchesFlightOperationDate(sectionObj, targetYmd, syInfo.flightNo)) continue;
     const prMatch = section.match(/PR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
     if (!prMatch) continue;
-    if (prMatch[1].toUpperCase() !== syInfo.flightNo || prMatch[2].toUpperCase() !== syInfo.flightDate) continue;
+    if (!matchesSyFlightRecord(prMatch[1], prMatch[2], syInfo)) continue;
 
     const paxMatch = section.match(/\n\s*\d+\.\s*([A-Z\/]+).*?\bBN(\d{1,3})\b.*?(?:\*?(\d+[A-Z]))?/i);
     if (!paxMatch) continue;
@@ -683,7 +803,7 @@ function enrichCHDListFromLog(log, syInfo, targetYmd = null) {
     const dobKey = String(dobRaw || '').toUpperCase();
     const dobDate = parseDobRaw(dobRaw, atDateUtc);
     const ageYears = getAgeYearsAtDate(dobDate, atDateUtc);
-    const hasChdCode = /\bCHD1\/0\b/i.test(section);
+    const hasChdCode = hasChdServiceCode(section);
     const isChdByAge = Number.isInteger(ageYears) && ageYears >= 2 && ageYears < 12;
     const isChd = isChdByAge || hasChdCode;
     if (!isChd) continue;
@@ -712,38 +832,44 @@ function enrichCHDListFromLog(log, syInfo, targetYmd = null) {
 }
 
 function extractPassportCountryCodes(section) {
-  const codes = [];
-  const paxInfo = (section.match(/PAX INFO\s*:\s*([^\n\r]+)/i)?.[1] || '').trim().toUpperCase();
-  const paxPassport = (section.match(/PASSPORT\s*:\s*([^\n\r]+)/i)?.[1] || '').trim().toUpperCase();
+  const passportCountryFields = extractPassportCountryFields(section);
+  return [
+    passportCountryFields.passportNatCode,
+    passportCountryFields.passportIssueCode
+  ].filter(Boolean);
+}
 
-  const paxInfoCode = paxInfo.match(/^([A-Z]{2,3})\//)?.[1];
-  if (paxInfoCode) codes.push(paxInfoCode);
+function extractPassportCountryFields(section) {
+  const paxPassport = (section.match(/PASSPORT\s*:\s*([^\n\r]+)/i)?.[1] || '').trim().toUpperCase();
+  const fields = {
+    passportNatCode: '',
+    passportIssueCode: ''
+  };
 
   if (paxPassport) {
     const parts = paxPassport.split('/').map((x) => x.trim());
     const natIndex = parts.indexOf('NAT');
-    if (natIndex >= 0 && /^[A-Z]{2,3}$/.test(parts[natIndex + 1] || '')) {
-      codes.push(parts[natIndex + 1]);
+    if (natIndex >= 0 && /^[A-Z]{3}$/.test(parts[natIndex + 1] || '')) {
+      fields.passportNatCode = parts[natIndex + 1];
     }
 
-    const expiryIndex = parts.findIndex((x) => /^\d{6}$/.test(x));
-    if (expiryIndex >= 0 && /^[A-Z]{2,3}$/.test(parts[expiryIndex + 1] || '')) {
-      codes.push(parts[expiryIndex + 1]);
+    // The host passport layout contains both the document issue date and the
+    // expiry date before the issuing-country code.  Looking at the first
+    // six-digit field therefore mistakes the issue date for the expiry date
+    // and leaves otherwise valid records stuck in WEB/EDI/RS.
+    let expiryIndex = -1;
+    for (let index = parts.length - 2; index >= 0; index -= 1) {
+      if (/^\d{6}$/.test(parts[index]) && /^[A-Z]{3}$/.test(parts[index + 1] || '')) {
+        expiryIndex = index;
+        break;
+      }
+    }
+    if (expiryIndex >= 0 && /^[A-Z]{3}$/.test(parts[expiryIndex + 1] || '')) {
+      fields.passportIssueCode = parts[expiryIndex + 1];
     }
   }
 
-  return codes;
-}
-
-function normalizeCountryCodeForRisk(code) {
-  const raw = String(code || '').toUpperCase();
-  const aliases = {
-    CN: 'CHN',
-    US: 'USA',
-    GB: 'GBR',
-    GBN: 'GBR'
-  };
-  return aliases[raw] || raw;
+  return fields;
 }
 
 function extractBookingName(section) {
@@ -770,18 +896,48 @@ function extractLatestApiAgent(section) {
   return apiLines[apiLines.length - 1][1];
 }
 
+function enrichCheckinAgentStatsFromLog(log, syInfo, targetYmd = null) {
+  if (!log || !syInfo?.flightNo || !syInfo?.flightDate) return { agents: [], total: 0, expectedTotal: 0, matchesCheckin: false };
+  const latestByBn = new Map();
+
+  for (const sectionObj of splitLogicalSections(log)) {
+    const section = sectionObj.content || '';
+    if (!section.includes('PR:') || !sectionMatchesFlightOperationDate(sectionObj, targetYmd, syInfo.flightNo)) continue;
+    const prMatch = section.match(/PR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
+    const bnMatch = section.match(/\bBN(\d{1,3})\b/i);
+    if (!prMatch || !bnMatch || !matchesSyFlightRecord(prMatch[1], prMatch[2], syInfo)) continue;
+
+    const bn = bnMatch[1].padStart(3, '0');
+    const ts = parseSectionTimestamp(sectionObj.timestamp);
+    const previous = latestByBn.get(bn);
+    if (!previous || ts >= previous.ts) {
+      latestByBn.set(bn, {
+        ts,
+        deleted: isDeletedPassengerSection(section),
+        agent: extractLatestApiAgent(section)
+      });
+    }
+  }
+
+  const bnsByAgent = new Map();
+  for (const [bn, record] of latestByBn) {
+    if (record.deleted || !record.agent || record.agent.startsWith('9')) continue;
+    if (!bnsByAgent.has(record.agent)) bnsByAgent.set(record.agent, []);
+    bnsByAgent.get(record.agent).push(bn);
+  }
+  const agents = [...bnsByAgent.entries()]
+    .map(([agent, bns]) => ({ agent, count: bns.length, bns: bns.sort((a, b) => Number(a) - Number(b)) }))
+    .sort((a, b) => b.count - a.count || a.agent.localeCompare(b.agent));
+  const total = agents.reduce((sum, row) => sum + row.count, 0);
+  const expectedTotal = Array.isArray(syInfo.checkedInTicketed)
+    ? syInfo.checkedInTicketed.slice(1, 4).reduce((sum, value) => sum + (Number(value) || 0), 0)
+    : 0;
+  return { agents, total, expectedTotal, matchesCheckin: total === expectedTotal };
+}
+
 function hasUnclearedApiSourceRisk(section) {
-  const operations = String(section || '')
-    .split(/\r?\n/)
-    .map((line, index) => {
-      const match = line.match(/^\s*(API|GOV|ACC|MOD|BAG|BC|BAB|RES)\s+[^\n\r]*?\bAGT(\d+)\//i);
-      return match ? { index, type: match[1].toUpperCase(), agent: match[2] } : null;
-    })
-    .filter(Boolean);
-  const apiOps = operations.filter((op) => op.type === 'API');
-  const latestApi = apiOps[apiOps.length - 1] || null;
-  if (!latestApi || APPROVED_AGENT_CODES.has(latestApi.agent)) return false;
-  return !operations.some((op) => op.index > latestApi.index);
+  const latestApiAgent = extractLatestApiAgent(section);
+  return Boolean(latestApiAgent) && !APPROVED_AGENT_CODES.has(latestApiAgent);
 }
 
 function infantApiIssueFromSection(section) {
@@ -810,13 +966,14 @@ function infantApiIssueFromSection(section) {
 
 function enrichGovAqqFromLog(log, syInfo, targetYmd = null) {
   if (!log || !syInfo?.flightNo || !syInfo?.flightDate) {
-    return { duplicatePassports: [], aqqTclBnList: [], govDtaBnList: [], passportExpBnList: [], wrongPassportBnList: [], missingApiBnList: [], infApiBnList: [], passportCodeIssues: [] };
+    return { duplicatePassports: [], aqqTclBnList: [], govDtaBnList: [], passportExpBnList: [], passportExpiringSoonBnList: [], wrongPassportBnList: [], missingApiBnList: [], infApiBnList: [], passportCodeIssues: [] };
   }
   const sections = splitLogicalSections(log);
   const paxRecords = [];
   const issueByBn = new Map();
   const latestSectionByBn = new Map();
   const passportExpBnList = [];
+  const passportExpiringSoonBnList = [];
   const infApiIssues = [];
   const sectionRichnessScore = (text) => {
     const raw = String(text || '');
@@ -829,18 +986,15 @@ function enrichGovAqqFromLog(log, syInfo, targetYmd = null) {
     return score;
   };
   const now = new Date();
-  const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const todayUtc = flightDateToUtc(syInfo.flightDate) || Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
 
   for (const sectionObj of sections) {
     const section = sectionObj.content || '';
     if (!section.includes('PR:')) continue;
-    if (targetYmd) {
-      const sectionYmd = getYmdFromTimestamp(sectionObj.timestamp);
-      if (sectionYmd && sectionYmd !== targetYmd) continue;
-    }
+    if (!sectionMatchesFlightOperationDate(sectionObj, targetYmd, syInfo.flightNo)) continue;
     const prMatch = section.match(/PR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
     if (!prMatch) continue;
-    if (prMatch[1].toUpperCase() !== syInfo.flightNo || prMatch[2].toUpperCase() !== syInfo.flightDate) continue;
+    if (!matchesSyFlightRecord(prMatch[1], prMatch[2], syInfo)) continue;
 
     const bnMatch = section.match(/PR:\s*[A-Z0-9]+\/\d{2}[A-Z]{3}\d{2}\*[A-Z]{3},BN(\d{1,3})/i);
     if (!bnMatch) continue;
@@ -875,28 +1029,19 @@ ${section}`,
     const latestApiAgent = extractLatestApiAgent(section);
     const hasApiOperation = /^\s*API\s+/im.test(section);
     const needsReswipeByAgent = hasUnclearedApiSourceRisk(section);
-    const hasPaxInfoLine = /PAX INFO\s*:/i.test(section);
     const hasPassportLine = /PASSPORT\s*:/i.test(section);
-    const countryCodes = extractPassportCountryCodes(section);
+    const countryFields = extractPassportCountryFields(section);
+    const passportLineCountryCodes = [countryFields.passportNatCode, countryFields.passportIssueCode].filter(Boolean);
     const issueReasons = [];
-    if (!hasPaxInfoLine || !hasPassportLine) {
-      issueReasons.push('missing PAX INFO or PASSPORT line');
+    if (!hasPassportLine) {
+      issueReasons.push('missing PASSPORT line');
     }
-    if (countryCodes.length !== 3) {
-      issueReasons.push(`country code count is ${countryCodes.length}, expected 3`);
-    }
-    const normalizedCountryCodes = countryCodes.map(normalizeCountryCodeForRisk);
-    if (normalizedCountryCodes.some((c) => !/^[A-Z]{3}$/.test(c))) {
-      issueReasons.push('contains invalid country code');
-    }
-    if (countryCodes.length === 3 && new Set(normalizedCountryCodes).size !== 1) {
-      issueReasons.push(`country codes not identical: ${countryCodes.join('/')}`);
+    if (passportLineCountryCodes.length !== 2) {
+      issueReasons.push(`PASSPORT country code count is ${passportLineCountryCodes.length}, expected 2`);
     }
     const hasCountryCodeRisk =
-      issueReasons.includes('missing PAX INFO or PASSPORT line') ||
-      issueReasons.some((x) => x.startsWith('country code count is')) ||
-      issueReasons.includes('contains invalid country code') ||
-      issueReasons.some((x) => x.startsWith('country codes not identical:'));
+      issueReasons.includes('missing PASSPORT line') ||
+      issueReasons.some((x) => x.startsWith('PASSPORT country code count is'));
 
     const hasApiSourceRisk = needsReswipeByAgent;
     if (!hasApiOperation) {
@@ -908,25 +1053,22 @@ ${section}`,
 
     const hasCodeIssue = hasCountryCodeRisk || hasApiSourceRisk || !hasApiOperation;
     const passportRawLine = (section.match(/PASSPORT\s*:\s*([^\n\r]+)/i)?.[1] || '').trim().toUpperCase();
-    const passportParts = passportRawLine.split('/').map((x) => x.trim());
-    const expField = passportParts.find((part) => /^\d{6}$/.test(part)) || '';
-    let hasPassportExpired = false;
-    if (expField) {
-      const yy = Number(expField.slice(0, 2));
-      const mm = Number(expField.slice(2, 4));
-      const dd = Number(expField.slice(4, 6));
-      if (mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31) {
-        const expDateUtc = Date.UTC(2000 + yy, mm - 1, dd);
-        hasPassportExpired = expDateUtc < todayUtc;
-      }
-    }
+    const expField = extractPassportExpiryKeyFromRawLine(passportRawLine);
+    const passportNat = passportNationalityFromRawLine(passportRawLine);
+    const expDate = parsePassportExpiryKey(expField);
+    const expDateUtc = expDate ? Date.UTC(expDate.getUTCFullYear(), expDate.getUTCMonth(), expDate.getUTCDate()) : 0;
+    const hasPassportExpired = Boolean(expDateUtc && expDateUtc < todayUtc);
+    const hasPassportExpiringSoon = passportNat !== 'CHN' && isPassportExpiringWithinMonths(expField, todayUtc, 3);
     if (hasPassportExpired) {
       issueReasons.push(`passport expired: ${expField}`);
       passportExpBnList.push(bn);
+    } else if (hasPassportExpiringSoon) {
+      issueReasons.push(`passport expires within 3 months: ${expField}`);
+      passportExpiringSoonBnList.push(bn);
     }
-    const hasWrongPassport = Boolean(passportNo) && passportNo.length < 7;
+    const hasWrongPassport = Boolean(passportNo) && passportNo.length < 6;
     if (hasWrongPassport) {
-      issueReasons.push(`wrong passport: ${passportNo} has fewer than 7 characters`);
+      issueReasons.push(`wrong passport: ${passportNo} has fewer than 6 characters`);
     }
     const infApiIssue = infantApiIssueFromSection(section);
     if (infApiIssue) {
@@ -947,10 +1089,11 @@ ${section}`,
       ticketNo: extractTicketNoFromSection(section),
       hasGovDta: /\bGOV\/DTA\/CHN\b/i.test(section),
       hasWrongPassport,
+      hasPassportExpiringSoon,
       hasInfApiIssue: Boolean(infApiIssue),
       hasPassportCodeIssue: hasCodeIssue
     });
-    if (hasCodeIssue || hasPassportExpired || hasWrongPassport || infApiIssue) {
+    if (hasCodeIssue || hasPassportExpired || hasPassportExpiringSoon || hasWrongPassport || infApiIssue) {
       issueByBn.set(bn, issueReasons.join('; '));
     }
   }
@@ -1002,6 +1145,7 @@ ${section}`,
     aqqTclBnList: [...new Set(paxRecords.filter((p) => p.hasAqqTcl).map((p) => p.bn))].sort(),
     govDtaBnList: [...new Set(paxRecords.filter((p) => p.hasGovDta).map((p) => p.bn))].sort(),
     passportExpBnList: [...new Set(passportExpBnList)].sort(),
+    passportExpiringSoonBnList: [...new Set(passportExpiringSoonBnList)].sort(),
     wrongPassportBnList: [...new Set(paxRecords.filter((p) => p.hasWrongPassport).map((p) => p.bn))].sort(),
     missingApiBnList: [...new Set(paxRecords.filter((p) => !p.hasApiOperation).map((p) => p.bn))].sort(),
     infApiBnList: [...new Set(paxRecords.filter((p) => p.hasInfApiIssue).map((p) => p.bn))].sort(),
@@ -1023,13 +1167,10 @@ function enrichWchListFromLog(log, syInfo, targetYmd = null) {
   for (const sectionObj of sections) {
     const section = sectionObj.content || '';
     if (!section.includes('PR:')) continue;
-    if (targetYmd) {
-      const sectionYmd = getYmdFromTimestamp(sectionObj.timestamp);
-      if (sectionYmd && sectionYmd !== targetYmd) continue;
-    }
+    if (!sectionMatchesFlightOperationDate(sectionObj, targetYmd, syInfo.flightNo)) continue;
     const prMatch = section.match(/PR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
     if (!prMatch) continue;
-    if (prMatch[1].toUpperCase() !== syInfo.flightNo || prMatch[2].toUpperCase() !== syInfo.flightDate) continue;
+    if (!matchesSyFlightRecord(prMatch[1], prMatch[2], syInfo)) continue;
 
     const bnMatch = section.match(/\bBN(\d{1,3})\b/i);
     if (!bnMatch) continue;
@@ -1042,7 +1183,7 @@ function enrichWchListFromLog(log, syInfo, targetYmd = null) {
     const seat = (seatFromPaxLine || seatFromSection || '').toUpperCase();
     const sectionWithoutPsm = section
       .split(/\r?\n/)
-      .filter((line) => !/^(?:PSM|MSG)(?:\b|-)/i.test(line.trim()))
+      .filter(isServiceExtractionLine)
       .join('\n');
     const codes = [...sectionWithoutPsm.matchAll(wchCodeRegex)].map((m) => m[1].toUpperCase());
     if (!codes.length) continue;
@@ -1077,13 +1218,10 @@ function enrichMembershipListFromLog(log, syInfo, targetYmd = null) {
   for (const sectionObj of sections) {
     const section = sectionObj.content || '';
     if (!section.includes('PR:')) continue;
-    if (targetYmd) {
-      const sectionYmd = getYmdFromTimestamp(sectionObj.timestamp);
-      if (sectionYmd !== targetYmd) continue;
-    }
+    if (!sectionMatchesFlightOperationDate(sectionObj, targetYmd, syInfo.flightNo)) continue;
     const prMatch = section.match(/PR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
     if (!prMatch) continue;
-    if (prMatch[1].toUpperCase() !== syInfo.flightNo || prMatch[2].toUpperCase() !== syInfo.flightDate) continue;
+    if (!matchesSyFlightRecord(prMatch[1], prMatch[2], syInfo)) continue;
 
     const paxLine = section.match(/\n\s*\d+\.\s*[^\n\r]*/)?.[0] || '';
     const bn = (paxLine.match(/\bBN(\d{1,3})\b/i)?.[1] || '').padStart(3, '0');
@@ -1143,17 +1281,15 @@ function enrichSeatMapRecordsFromLog(log, syInfo, targetYmd = null) {
     const seq = sectionSeq;
     sectionSeq += 1;
     if (!section.includes('PR:')) continue;
-    if (targetYmd) {
-      const sectionYmd = getYmdFromTimestamp(sectionObj.timestamp);
-      if (sectionYmd !== targetYmd) continue;
-    }
+    if (!sectionMatchesFlightOperationDate(sectionObj, targetYmd, syInfo.flightNo)) continue;
 
     const prMatch = section.match(/PR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
     if (!prMatch) continue;
-    if (prMatch[1].toUpperCase() !== syInfo.flightNo || prMatch[2].toUpperCase() !== syInfo.flightDate) continue;
+    if (!matchesSyFlightRecord(prMatch[1], prMatch[2], syInfo)) continue;
 
     const passengerLine = getPassengerRecordLine(section);
     const passengerName = (passengerLine.match(/^\s*\d+\.\s*\d?([A-Z\/]+\+?)/i)?.[1] || '').replace(/\+$/, '').toUpperCase();
+    const paxListName = extractPaxListName(section);
     const bn = section.match(/\bBN\s*(\d{1,3})\b/i)?.[1]?.padStart(3, '0') || '';
     const seat = (
       extractSeatAfterBn(passengerLine) ||
@@ -1165,7 +1301,7 @@ function enrichSeatMapRecordsFromLog(log, syInfo, targetYmd = null) {
     if (!seat) continue;
 
     const serviceCodes = ['VIP', 'AVIH', 'BLND', 'DEAF', 'INAD', 'PETC', 'UM', 'STCR', 'MAAS', 'PPOC', 'WCHR', 'WCHS', 'WCHC'];
-    const nonPsmSection = section.split(/\r?\n/).filter((line) => !/^(?:PSM|MSG)(?:\b|-)/i.test(line.trim())).join('\n');
+    const nonPsmSection = section.split(/\r?\n/).filter(isServiceExtractionLine).join('\n');
     const specialServices = serviceCodes.filter((code) => new RegExp(`(?:\\s|\\/|^)${code}(?:\\s|\\/|$)`, 'i').test(nonPsmSection));
     const specialMeals = [...section.matchAll(/\bSPML-([A-Z]{4})\b/gi)].map((m) => m[1].toUpperCase());
     const ffMatch = section.match(/\bFF\/([A-Z0-9]{2})\s+([A-Z0-9]+)\/([VGSPE])\b/i);
@@ -1178,11 +1314,11 @@ function enrichSeatMapRecordsFromLog(log, syInfo, targetYmd = null) {
     const dobKey = String(dobRaw || '').toUpperCase();
     const dobDate = parseDobRaw(dobRaw, atDateUtc);
     const ageYears = getAgeYearsAtDate(dobDate, atDateUtc);
-    const hasChdCode = /\bCHD1\/0\b/i.test(section);
+    const hasChdCode = hasChdServiceCode(section);
     const isChild = (Number.isInteger(ageYears) && ageYears >= 2 && ageYears < 12) || hasChdCode;
     const passportNo = section.match(/PASSPORT\s*:\s*([A-Z0-9]+)/i)?.[1]?.toUpperCase() || '';
     const passportRawLine = (section.match(/PASSPORT\s*:\s*([^\n\r]+)/i)?.[1] || '').trim().toUpperCase();
-    const expField = passportRawLine.split('/').map((x) => x.trim()).find((part) => /^\d{6}$/.test(part)) || '';
+    const expField = extractPassportExpiryKeyFromRawLine(passportRawLine);
     const isOffloaded = isDeletedPassengerLine(passengerLine);
     const ts = parseSectionTimestamp(sectionObj.timestamp);
     const identity = passportNo || passengerName || `${seat}:UNKNOWN`;
@@ -1192,6 +1328,7 @@ function enrichSeatMapRecordsFromLog(log, syInfo, targetYmd = null) {
     latestByKey.set(key, {
       bn,
       name: passengerName || 'UNKNOWN',
+      paxListName,
       seat,
       passportNo,
       passportExpiry: formatPassportExpiryFromSection(section),
@@ -1238,17 +1375,15 @@ function enrichPsmListFromLog(log, syInfo, targetYmd = null) {
   for (const sectionObj of sections) {
     const section = sectionObj.content || '';
     if (!section.includes('PR:')) continue;
-    if (targetYmd) {
-      const sectionYmd = getYmdFromTimestamp(sectionObj.timestamp);
-      if (sectionYmd !== targetYmd) continue;
-    }
+    if (!sectionMatchesFlightOperationDate(sectionObj, targetYmd, syInfo.flightNo)) continue;
 
     const prMatch = section.match(/PR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
     if (!prMatch) continue;
-    if (prMatch[1].toUpperCase() !== syInfo.flightNo || prMatch[2].toUpperCase() !== syInfo.flightDate) continue;
+    if (!matchesSyFlightRecord(prMatch[1], prMatch[2], syInfo)) continue;
 
     const psmLines = extractPsmLines(section).filter(hasTargetPsm);
-    if (!psmLines.length) continue;
+    const involuntaryUpgrade = extractInvoluntaryUpgrade(section);
+    if (!psmLines.length && !involuntaryUpgrade) continue;
 
     const bn = section.match(/\bBN\s*(\d{1,3})\b/i)?.[1]?.padStart(3, '0') || '';
     if (!bn) continue;
@@ -1265,17 +1400,20 @@ function enrichPsmListFromLog(log, syInfo, targetYmd = null) {
     const bagtags = [...bagLine.matchAll(/(?:^|\s)\/?\s*((?:[A-Z]{1,3}\s*)?\d{5,12})\s*\/\s*([A-Z]{3})\b/gi)]
       .map((m) => `${String(m[1] || '').replace(/\s+/g, ' ').trim()}/${String(m[2] || '').toUpperCase()}`);
     const ts = parseSectionTimestamp(sectionObj.timestamp);
-    const prev = latestByBn.get(bn);
-    if (prev && prev.ts > ts) continue;
-
-    latestByBn.set(bn, {
-      bn,
-      name: getPassengerNameFromSection(section),
-      seat: seat || '---',
-      bagtags,
-      psmLines,
-      ts
+    const baseRow = { bn, name: getPassengerNameFromSection(section), seat: seat || '---', bagtags, ts };
+    const candidates = [];
+    if (psmLines.length) candidates.push({ ...baseRow, psmLines });
+    if (involuntaryUpgrade) candidates.push({
+      ...baseRow,
+      type: 'Involuntary upgrade',
+      detail: involuntaryUpgrade.detail,
+      psmLines: []
     });
+    for (const candidate of candidates) {
+      const key = `${bn}|${candidate.type || 'PSM/MSG'}`;
+      const prev = latestByBn.get(key);
+      if (!prev || prev.ts <= ts) latestByBn.set(key, candidate);
+    }
   }
 
   return [...latestByBn.values()]
@@ -1322,13 +1460,10 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
   for (const sectionObj of sections) {
     const section = sectionObj.content || '';
     if (!section.includes('PR:')) continue;
-    if (targetYmd) {
-      const sectionYmd = getYmdFromTimestamp(sectionObj.timestamp);
-      if (sectionYmd !== targetYmd) continue;
-    }
+    if (!sectionMatchesFlightOperationDate(sectionObj, targetYmd, syInfo.flightNo)) continue;
     const prMatch = section.match(/PR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
     if (!prMatch) continue;
-    if (prMatch[1].toUpperCase() !== syInfo.flightNo || prMatch[2].toUpperCase() !== syInfo.flightDate) continue;
+    if (!matchesSyFlightRecord(prMatch[1], prMatch[2], syInfo)) continue;
     const bnMatch = section.match(/\bBN(\d{1,3})\b/i);
     if (!bnMatch) continue;
     const bn = bnMatch[1].padStart(3, '0');
@@ -1379,25 +1514,21 @@ ${section}`,
     const latestApiAgent = extractLatestApiAgent(section);
     const hasApiOperation = /^\s*API\s+/im.test(section);
     const apiNotWhitelisted = hasUnclearedApiSourceRisk(section);
-    const countryCodes = extractPassportCountryCodes(section);
-    const countryCodeCountZero = countryCodes.length === 0;
+    const passportCountryCodes = extractPassportCountryCodes(section);
+    const hasTwoPassportCountryCodes = passportCountryCodes.length === 2;
     const passportRawLine = (section.match(/PASSPORT\s*:\s*([^\n\r]+)/i)?.[1] || '').trim().toUpperCase();
     const passportNo = section.match(/PASSPORT\s*:\s*([A-Z0-9]+)/i)?.[1]?.toUpperCase() || '';
-    const expField = passportRawLine.split('/').map((x) => x.trim()).find((part) => /^\d{6}$/.test(part)) || '';
+    const expField = extractPassportExpiryKeyFromRawLine(passportRawLine);
     const now = new Date();
-    const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-    let isPassportExpired = false;
-    if (expField) {
-      const yy = Number(expField.slice(0, 2));
-      const mm = Number(expField.slice(2, 4));
-      const dd = Number(expField.slice(4, 6));
-      if (mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31) {
-        isPassportExpired = Date.UTC(2000 + yy, mm - 1, dd) < todayUtc;
-      }
-    }
-    const passportNat = passportRawLine.match(/\/NAT\/([A-Z]{3})\//i)?.[1]?.toUpperCase() || '';
+    const todayUtc = flightDateToUtc(syInfo.flightDate) || Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+    const expDate = parsePassportExpiryKey(expField);
+    const expDateUtc = expDate ? Date.UTC(expDate.getUTCFullYear(), expDate.getUTCMonth(), expDate.getUTCDate()) : 0;
+    const isPassportExpired = Boolean(expDateUtc && expDateUtc < todayUtc);
+    const passportNat = passportNationalityFromRawLine(passportRawLine);
+    const isPassportExpiringSoon = passportNat !== 'CHN' && isPassportExpiringWithinMonths(expField, todayUtc, 3);
     const passengerLine = getPassengerRecordLine(section);
     const passengerName = (passengerLine.match(/^\s*\d+\.\s*\d?([A-Z\/]+\+?)/i)?.[1] || '').replace(/\+$/, '').toUpperCase();
+    const paxListName = extractPaxListName(section);
     const passengerSeat = (
       extractSeatAfterBn(passengerLine) ||
       section.match(/\bSN\s*(\d{1,3}[A-Z])\b/i)?.[1] ||
@@ -1424,7 +1555,7 @@ ${section}`,
       status: /\bDELETED\b/i.test(outboundLineForRecord) ? 'DELETED' : ''
     } : null;
     const ssrCodes = ['VIP', 'AVIH', 'BLND', 'DEAF', 'INAD', 'PETC', 'UM', 'STCR', 'MAAS', 'PPOC', 'WCHR', 'WCHS', 'WCHC'];
-    const nonPsmSection = section.split(/\r?\n/).filter((line) => !/^(?:PSM|MSG)(?:\b|-)/i.test(line.trim())).join('\n');
+    const nonPsmSection = section.split(/\r?\n/).filter(isServiceExtractionLine).join('\n');
     const specialServices = ssrCodes.filter((code) => new RegExp(`(?:\\s|\\/|^)${code}(?:\\s|\\/|$)`, 'i').test(nonPsmSection));
     const umNumber = section.match(/\bUM(\d{1,2})\b/i)?.[1];
     if (umNumber && !specialServices.includes('UM')) specialServices.push('UM');
@@ -1437,7 +1568,7 @@ ${section}`,
     const dobKey = String(dobRaw || '').toUpperCase();
     const dobDate = parseDobRaw(dobRaw, atDateUtc);
     const ageYears = getAgeYearsAtDate(dobDate, atDateUtc);
-    const hasChdCode = /\bCHD1\/0\b/i.test(section);
+    const hasChdCode = hasChdServiceCode(section);
     const isChild = (Number.isInteger(ageYears) && ageYears >= 2 && ageYears < 12) || hasChdCode;
     const psmLines = extractPsmLines(section);
     const paidProductsShort = (section.match(/^\s*ASVC-[^\n\r]+/gim) || []).map((line) => {
@@ -1453,6 +1584,7 @@ ${section}`,
     const passengerRecord = {
       bn,
       name: passengerName || 'UNKNOWN',
+      paxListName,
       seat: passengerSeat || '---',
       cabin: cabinFromSeat(passengerSeat),
       flight: syInfo.flightNo || '',
@@ -1628,6 +1760,7 @@ ${section}`,
     if (hasTimeOut) { apiStatus = 'fail'; apiReasons.push('USA TIME OUT'); }
     if (hasGovFail) { apiStatus = 'fail'; apiReasons.push('CHN GOV FAIL'); }
     if (isPassportExpired) { apiStatus = 'fail'; apiReasons.push(`Passport expired: ${expField}`); }
+    else if (isPassportExpiringSoon) { apiStatus = 'fail'; apiReasons.push(`Passport expires within 3 months: ${expField}`); }
     if (passportNo && passportNo.length < 7) { apiStatus = 'fail'; apiReasons.push(`Wrong Passport: ${passportNo} has fewer than 7 characters`); }
     if (hasReview && apiStatus !== 'fail') { apiStatus = 'review'; apiReasons.push('WEB/EDI/Reswipe'); }
     if (!hasApiOperation && apiStatus !== 'fail') {
@@ -1638,9 +1771,9 @@ ${section}`,
       apiStatus = 'review';
       apiReasons.push(`latest API AGT${latestApiAgent} not in whitelist`);
     }
-    if (countryCodeCountZero && apiStatus !== 'fail') {
+    if (!hasTwoPassportCountryCodes && apiStatus !== 'fail') {
       apiStatus = 'review';
-      apiReasons.push('country code count is 0, expected 3');
+      apiReasons.push(`PASSPORT country code count is ${passportCountryCodes.length}, expected 2`);
     }
 
     if (isOffloaded) {
@@ -1693,13 +1826,10 @@ function enrichBadSeatListFromLog(log, syInfo, targetYmd = null) {
   for (const sectionObj of splitLogicalSections(log)) {
     const section = sectionObj.content || '';
     if (!/\bPD\s*:/i.test(section) || !/CKIN\/BAD/i.test(section)) continue;
-    if (targetYmd) {
-      const sectionYmd = getYmdFromTimestamp(sectionObj.timestamp);
-      if (sectionYmd && sectionYmd !== targetYmd) continue;
-    }
+    if (!sectionMatchesFlightOperationDate(sectionObj, targetYmd, syInfo.flightNo)) continue;
     const pdMatch = section.match(/PD:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
     if (!pdMatch) continue;
-    if (pdMatch[1].toUpperCase() !== syInfo.flightNo || pdMatch[2].toUpperCase() !== syInfo.flightDate) continue;
+    if (!matchesSyFlightRecord(pdMatch[1], pdMatch[2], syInfo)) continue;
     const ckinBadMatch = section.match(/^\s*CKIN\s+BAD\s+SEAT\s+([0-9]{1,3}[A-Z])\b/im);
     if (!ckinBadMatch) continue;
     const passengerLine = getPassengerRecordLine(section);
@@ -1726,8 +1856,8 @@ function sortSYMatches(matches, preferredFlightNo = '') {
   const preferred = String(preferredFlightNo || '').trim().toUpperCase();
   return matches.slice().sort((a, b) => {
     if (preferred) {
-      const aPreferred = a.info?.flightNo === preferred ? 1 : 0;
-      const bPreferred = b.info?.flightNo === preferred ? 1 : 0;
+      const aPreferred = sameOperationalFlightNo(a.info?.flightNo, preferred) ? 1 : 0;
+      const bPreferred = sameOperationalFlightNo(b.info?.flightNo, preferred) ? 1 : 0;
       if (aPreferred !== bPreferred) return bPreferred - aPreferred;
     }
     return parseSectionTimestamp(b.section.timestamp) - parseSectionTimestamp(a.section.timestamp);
@@ -1739,6 +1869,7 @@ function sortSYMatches(matches, preferredFlightNo = '') {
 function findSYInfo(log, queryDate, options = {}) {
   const sections = splitLogicalSections(log);
   const preferredFlightNo = String(options.preferredFlightNo || '').trim().toUpperCase();
+  const strictPreferredFlight = Boolean(options.strictPreferredFlight && preferredFlightNo);
   const sySections = sections.filter(s => /^>\s*SY(?:\/\d{2}[A-Z]{3}(?:\d{2})?)?/im.test(s.content || '') && /SY:\s*[A-Z0-9]+\/(\d{2}[A-Z]{3}\d{2})/i.test(s.content || ''));
 
   if (!sySections.length) return null;
@@ -1747,6 +1878,7 @@ function findSYInfo(log, queryDate, options = {}) {
     const matched = sortSYMatches(sySections
       .map(s => ({ section: s, info: parseSYSection(s) }))
       .filter(x => x.info)
+      .filter(x => !strictPreferredFlight || sameOperationalFlightNo(x.info.flightNo, preferredFlightNo))
       .filter(x => x.info.flightDate?.startsWith(queryDate)), preferredFlightNo);
     if (matched.length) {
       const info = matched[0].info;
@@ -1758,6 +1890,7 @@ function findSYInfo(log, queryDate, options = {}) {
       info.membershipList = enrichMembershipListFromLog(log, info, targetYmd);
       info.seatMapRecords = enrichSeatMapRecordsFromLog(log, info, targetYmd);
       info.bnAudit = enrichBnAuditFromLog(log, info, targetYmd);
+      info.checkinAgentStats = enrichCheckinAgentStatsFromLog(log, info, targetYmd);
       info.psmList = enrichPsmListFromLog(log, info, targetYmd);
       info.crewApis = enrichCrewApisFromLog(log, info, targetYmd);
       info.jcsy = info.crewApis?.jcsy || null;
@@ -1767,7 +1900,8 @@ function findSYInfo(log, queryDate, options = {}) {
 
   const parsed = sySections
     .map(s => ({ section: s, info: parseSYSection(s) }))
-    .filter(x => x.info);
+    .filter(x => x.info)
+    .filter(x => !strictPreferredFlight || sameOperationalFlightNo(x.info.flightNo, preferredFlightNo));
 
   const latestLogSection = sections
     .slice()
@@ -1809,6 +1943,7 @@ function findSYInfo(log, queryDate, options = {}) {
     info.membershipList = enrichMembershipListFromLog(log, info, targetYmd);
     info.seatMapRecords = enrichSeatMapRecordsFromLog(log, info, targetYmd);
     info.bnAudit = enrichBnAuditFromLog(log, info, targetYmd);
+    info.checkinAgentStats = enrichCheckinAgentStatsFromLog(log, info, targetYmd);
     info.psmList = enrichPsmListFromLog(log, info, targetYmd);
     info.crewApis = enrichCrewApisFromLog(log, info, targetYmd);
     info.jcsy = info.crewApis?.jcsy || null;
@@ -1818,4 +1953,4 @@ function findSYInfo(log, queryDate, options = {}) {
   return null;
 }
 
-module.exports = { findSYInfo };
+module.exports = { findSYInfo, normalizeOperationalFlightNo, normalizeJcsyFlightNo, sectionMatchesFlightOperationDate, matchesSyFlightRecord, extractPassportCountryCodes, parseJcsyRows, hasUnclearedApiSourceRisk, extractInvoluntaryUpgrade, enrichCheckinAgentStatsFromLog, hasChdServiceCode };
