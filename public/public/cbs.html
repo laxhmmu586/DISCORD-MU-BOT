@@ -89,10 +89,14 @@
     .rush-match { display:inline-block; margin-left:8px; color:#6941c6; font-size:11px; font-weight:950; text-transform:uppercase; animation:rush-today-hop .8s ease-in-out infinite alternate; }
     .on-hand-match { margin-right:6px; margin-left:0; }
     .on-hand-location { display:flex; align-items:center; justify-content:space-between; gap:10px; }
-    .exchange-tag-flow { display:inline-flex; align-items:center; gap:7px; padding:5px 8px; border:1px solid #f4b740; border-radius:12px; background:#fff8e7; white-space:nowrap; }
-    .exchange-tag-old { color:#8a5a00; font-weight:850; text-decoration:line-through; }
-    .exchange-tag-arrow { color:#d97706; font-size:18px; font-weight:950; }
-    .exchange-tag-new { color:#087443; font-weight:950; }
+    .exchange-tag-flow { display:grid; grid-template-columns:auto auto; gap:2px 9px; min-width:148px; padding:7px 10px; border-left:4px solid #2e90fa; border-radius:8px; background:#eef6ff; white-space:nowrap; }
+    .exchange-tag-flow::before { content:"Exchange"; grid-column:1/-1; color:#175cd3; font-size:10px; font-weight:950; letter-spacing:.08em; text-transform:uppercase; }
+    .exchange-tag-old,.exchange-tag-new { display:grid; grid-template-columns:28px auto; gap:5px; align-items:center; font-weight:900; }
+    .exchange-tag-old { color:#667085; }
+    .exchange-tag-old::before { content:"Old"; color:#98a2b3; font-size:9px; text-transform:uppercase; }
+    .exchange-tag-new { color:#087443; }
+    .exchange-tag-new::before { content:"New"; color:#12b76a; font-size:9px; text-transform:uppercase; }
+    .exchange-tag-arrow { display:none; }
     .exchange-current-card { display:grid; gap:8px; padding:14px; border:1px solid #f4b740; border-radius:14px; background:#fffaf0; }
     @keyframes rush-today-hop { from { transform:translateY(2px); } to { transform:translateY(-4px); } }
     .cbs-sheet .sheet-empty { color:#98a2b3; }
@@ -547,11 +551,16 @@
     function normalizeBaggageTag(value) { return String(value || '').trim().toUpperCase().replace(/\s+/g, ''); }
     function addBaggageFormHtml(bagTag, direction) {
       const today = new Date().toISOString().slice(0, 10);
+      if (direction === 'exchange') {
+        const openRows = (window._unresolvedBaggageSourceRows || []).filter((row) => !row.resolvedAt);
+        const options = openRows.map((row) => `<option value="${escapeHtml(row.rowNumber)}">${escapeHtml(row.bagTag)} · ${escapeHtml(row.bagType || row.status || 'On-hand')} · ${escapeHtml(row.location || '-')}</option>`).join('');
+        return `<form class="add-baggage-form add-exchange-form" data-add-baggage-direction="exchange"><label><span>New Tag Number</span><input name="newTagNumber" value="${escapeHtml(bagTag)}" readonly /></label><label class="wide"><span>Select Current Open On-hand</span><select name="onHandRowNumber" required ${openRows.length ? '' : 'disabled'}><option value="">Select an On-hand tag</option>${options}</select></label>${openRows.length ? '' : '<p class="status err wide">There are no Open On-hand cases available to exchange.</p>'}<div class="actions"><button type="submit" ${openRows.length ? '' : 'disabled'}>Exchange</button><button class="secondary" type="button" data-cancel-add-baggage>Back</button></div></form>`;
+      }
       if (direction === 'outbound') return `<form class="add-baggage-form" data-add-baggage-direction="outbound"><label><span>Bag Tag Number</span><input name="bagTag" value="${escapeHtml(bagTag)}" readonly /></label><label><span>Date</span><input name="date" type="date" value="${today}" required /></label><label><span>Status</span><select name="status" data-add-outbound-status><option>Not load bags</option><option>Outbound rush</option><option>Gate bag</option></select></label><label><span>Current Location</span><select name="location" required><option>Office</option><option>Transfer</option></select></label><div class="unresolved-update-fields" data-add-outbound-rush hidden><label><span>RUSH Tag Number</span><input name="rushTagNumber" /></label><label><span>Rush To Where</span><input name="rushToWhere" /></label><label><span>AKE Number</span><input name="akeNumber" /></label><label><span>WorldTracer File Number</span><input name="worldTracerFileNumber" /></label></div><label class="wide"><span>Comment</span><input name="comment" /></label><div class="actions"><button type="submit">Submit</button><button class="secondary" type="button" data-cancel-add-baggage>Back</button></div></form>`;
       return `<form class="add-baggage-form" data-add-baggage-direction="inbound"><label><span>Bag Tag Number</span><input name="bagTag" value="${escapeHtml(bagTag)}" readonly /></label><label><span>Date</span><input name="date" type="date" value="${today}" required /></label><label><span>Bag Type</span><select name="bagType"><option>Passenger bag</option><option>Inbound rush</option><option>Co-mail</option></select></label><label><span>Current Location</span><select name="location" required><option>Office</option><option>Transfer</option></select></label><div class="actions"><button type="submit">Submit</button><button class="secondary" type="button" data-cancel-add-baggage>Back</button></div></form>`;
     }
     function renderAddBaggageChoice(bagTag) {
-      addBaggageOutput.innerHTML = `<div class="add-baggage-panel"><h2>${escapeHtml(bagTag)}</h2><p class="muted">No matching bag found. Choose the baggage direction.</p><div class="add-baggage-modes"><button type="button" data-add-baggage-mode="inbound">Inbound</button><button type="button" data-add-baggage-mode="outbound">Outbound</button></div></div>`;
+      addBaggageOutput.innerHTML = `<div class="add-baggage-panel"><h2>${escapeHtml(bagTag)}</h2><p class="muted">No matching bag found. Choose how to add this new tag.</p><div class="add-baggage-modes"><button type="button" data-add-baggage-mode="inbound">Inbound</button><button type="button" data-add-baggage-mode="outbound">Outbound</button><button type="button" data-add-baggage-mode="exchange">Exchange</button></div></div>`;
     }
     function renderExistingBaggage(record) {
       const onHand = (window._unresolvedBaggageSourceRows || []).find((row) => !row.resolvedAt && normalizeBaggageTag(row.bagTag) === normalizeBaggageTag(record.bagTag));
@@ -1707,7 +1716,7 @@
         const button = exchangeForm.querySelector('button[type="submit"]');
         button.disabled = true;
         try {
-          const res = await fetch(`${apiBase}/cbs-unresolved-baggage/${encodeURIComponent(exchangeForm.dataset.unresolvedRow)}/update`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+          const res = await fetch(`${apiBase}/cbs-unresolved-baggage/${encodeURIComponent(payload.onHandRowNumber)}/update`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
           const data = await parseJson(res);
           if (!res.ok) throw new Error(data.error || 'On-hand baggage exchange failed');
           await loadUnresolvedBaggage();

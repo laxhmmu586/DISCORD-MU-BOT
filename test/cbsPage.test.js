@@ -332,11 +332,15 @@ test('Create Rush only asks for a WorldTracer file when the On-hand case has non
 });
 
 test('On-hand tags can be exchanged from Add On-hand and Resolution', () => {
-  assert.match(page, /data-start-add-exchange/);
-  assert.match(page, /Current Open On-hand/);
+  assert.match(page, /data-add-baggage-mode="exchange">Exchange/);
+  assert.match(page, /direction === 'exchange'/);
+  assert.match(page, /Select Current Open On-hand/);
+  assert.match(page, /name="onHandRowNumber"/);
+  assert.match(page, /newTagNumber[^>]+value="\$\{escapeHtml\(bagTag\)\}" readonly/);
   assert.match(page, /<option value="exchange">Exchange<\/option>/);
   assert.match(page, /name="newTagNumber"/);
   assert.match(page, /payload\.action = 'exchange'/);
+  assert.match(page, /encodeURIComponent\(payload\.onHandRowNumber\)/);
   assert.match(server, /if \(action === 'exchange'\)/);
   assert.match(server, /exchangeCbsUnresolvedBaggageTag\(req\.params\.rowNumber, newTagNumber, updatedBy\)/);
 });
@@ -348,6 +352,7 @@ test('On-hand exchange is saved to Google Sheets and shows old and new tags', ()
   assert.match(drive, /JSON\.stringify\(exchangeHistory\)/);
   assert.match(page, /exchange-tag-old/);
   assert.match(page, /exchange-tag-new/);
+  assert.match(page, /exchange-tag-flow::before \{ content:"Exchange"/);
   assert.match(page, /detail:`\$\{exchange\.oldTag\} → \$\{exchange\.newTag\}`/);
 });
 

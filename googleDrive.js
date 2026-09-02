@@ -3537,6 +3537,7 @@ async function exchangeCbsUnresolvedBaggageTag(rowNumber, newBagTag, updatedBy =
   const rows = await getCbsUnresolvedBaggageCases({ includeResolved: true });
   const target = rows.find((row) => cbsRecordMatchesId(row, rowNumber));
   if (!target) return { updated:false, notFound:true };
+  if (target.resolvedAt) throw Object.assign(new Error('Only an Open On-hand case can be exchanged'), { code:'CASE_CLOSED' });
   const nextTag = sanitizeSheetText(newBagTag, 80).toUpperCase().replace(/\s+/g, '');
   if (!/^[A-Z]{2}\d{6}$/.test(nextTag)) throw Object.assign(new Error('New tag must match MU123456 format'), { code:'INVALID_BAG_TAG' });
   if (nextTag === target.bagTag.toUpperCase()) throw Object.assign(new Error('New tag must be different from the current tag'), { code:'SAME_BAG_TAG' });
