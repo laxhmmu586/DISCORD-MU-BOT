@@ -48,8 +48,9 @@ test('today and tomorrow use a tab switcher with one visible panel', () => {
   assert.match(html, /nextMealFlightDate\(sy\.flightDate\)/);
 });
 
-test('meal title is inside the shell and aligned to its top left', () => {
-  assert.match(html, /id="meal-order-shell">\s*<strong class="meal-order-title">Meal Order/);
+test('meal title is outside the shell and aligned to its top left', () => {
+  assert.match(html, /<strong class="meal-order-title">Meal Order<\/strong>\s*<div class="meal-order-shell"/);
+  assert.doesNotMatch(html, /id="meal-order-shell">\s*<strong class="meal-order-title"/);
   assert.match(html, /\.meal-order-title \{[^}]*text-align:left/);
 });
 
