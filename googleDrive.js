@@ -3465,18 +3465,28 @@ async function getCbsUnresolvedBaggageSheetTitle() {
   return cbsUnresolvedBaggageSheetTitle || 'Sheet1';
 }
 
-const CBS_UNRESOLVED_BAGGAGE_HEADERS = ['Bag Tag', 'Direction', 'Flight Number', 'Flight Date', 'Bag Type', 'Status', 'Location', 'Created At', 'Resolution', 'Resolution Note', 'Resolved At', 'WorldTracer File Number', 'WorldTracer Updated By', 'Created By', 'Resolved By'];
+const CBS_UNRESOLVED_BAGGAGE_HEADERS = ['Bag Tag', 'Direction', 'Flight Number', 'Flight Date', 'Bag Type', 'Status', 'Location', 'Created At', 'Resolution', 'Resolution Note', 'Resolved At', 'WorldTracer File Number', 'WorldTracer Updated By', 'Created By', 'Resolved By', 'Exchange History'];
+
+function safeJsonArray(value) {
+  try {
+    const parsed = JSON.parse(String(value || '[]'));
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
 
 async function getCbsUnresolvedBaggageCases(options = {}) {
   const title = await getCbsUnresolvedBaggageSheetTitle();
-  const response = await sheets.spreadsheets.values.get({ spreadsheetId:CBS_SHEET_ID, range:`${escapeSheetTitle(title)}!A:O` });
+  const response = await sheets.spreadsheets.values.get({ spreadsheetId:CBS_SHEET_ID, range:`${escapeSheetTitle(title)}!A:P` });
   const valuesRows = response.data.values || [];
   const startIndex = String(valuesRows[0]?.[0] || '').trim() === CBS_UNRESOLVED_BAGGAGE_HEADERS[0] ? 1 : 0;
   return valuesRows.slice(startIndex).map((values, index) => ({
     bagTag:values[0] || '', direction:values[1] || '', flightNumber:values[2] || '', flightDate:values[3] || '',
     bagType:values[4] || '', status:values[5] || '', location:values[6] || '', createdAt:values[7] || '',
     resolution:values[8] || '', resolutionNote:values[9] || '', resolvedAt:values[10] || '',
-    worldTracerFileNumber:values[11] || '', worldTracerUpdatedBy:values[12] || '', createdBy:values[13] || '', resolvedBy:values[14] || '', rowNumber:startIndex + index + 1
+    worldTracerFileNumber:values[11] || '', worldTracerUpdatedBy:values[12] || '', createdBy:values[13] || '', resolvedBy:values[14] || '',
+    exchangeHistory:safeJsonArray(values[15]), rowNumber:startIndex + index + 1
   })).filter((row) => !isCbsOnHandExcludedBag(row)).filter((row) => options.includeResolved || !row.resolvedAt)
     .sort((a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0));
 }
@@ -3499,9 +3509,9 @@ async function appendCbsUnresolvedBaggageCase(record = {}) {
   const existing = await getCbsUnresolvedBaggageCases();
   const bagTag = sanitizeSheetText(record.bagTag, 80).toUpperCase();
   if (existing.some((row) => row.bagTag.toUpperCase() === bagTag)) return { created: false };
-  const header = await sheets.spreadsheets.values.get({ spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!A1:O1` });
-  if (!header.data.values?.length || String(header.data.values[0]?.[14] || '').trim() !== CBS_UNRESOLVED_BAGGAGE_HEADERS[14]) {
-    await sheets.spreadsheets.values.update({ spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!A1:O1`, valueInputOption: 'RAW', requestBody: { values: [CBS_UNRESOLVED_BAGGAGE_HEADERS] } });
+  const header = await sheets.spreadsheets.values.get({ spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!A1:P1` });
+  if (!header.data.values?.length || String(header.data.values[0]?.[15] || '').trim() !== CBS_UNRESOLVED_BAGGAGE_HEADERS[15]) {
+    await sheets.spreadsheets.values.update({ spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!A1:P1`, valueInputOption: 'RAW', requestBody: { values: [CBS_UNRESOLVED_BAGGAGE_HEADERS] } });
   }
   const saved = {
     bagTag,
@@ -3515,12 +3525,39 @@ async function appendCbsUnresolvedBaggageCase(record = {}) {
     createdBy: sanitizeSheetText(record.submittedBy, 160)
   };
   const response = await sheets.spreadsheets.values.append({
-    spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!A:O`, valueInputOption: 'RAW', insertDataOption: 'INSERT_ROWS',
-    requestBody: { values: [[saved.bagTag, saved.direction, saved.flightNumber, saved.flightDate, saved.bagType, saved.status, saved.location, saved.createdAt, '', '', '', sanitizeSheetText(record.worldTracerFileNumber, 120).toUpperCase(), '', saved.createdBy, '']] }
+    spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!A:P`, valueInputOption: 'RAW', insertDataOption: 'INSERT_ROWS',
+    requestBody: { values: [[saved.bagTag, saved.direction, saved.flightNumber, saved.flightDate, saved.bagType, saved.status, saved.location, saved.createdAt, '', '', '', sanitizeSheetText(record.worldTracerFileNumber, 120).toUpperCase(), '', saved.createdBy, '', '']] }
   });
   const appendedRow = String(response.data?.updates?.updatedRange || '').match(/![A-Z]+(\d+)(?::[A-Z]+\d+)?$/i)?.[1];
   if (appendedRow) saved.rowNumber = Number(appendedRow);
   return { created: true, record: saved };
+}
+
+async function exchangeCbsUnresolvedBaggageTag(rowNumber, newBagTag, updatedBy = '') {
+  const rows = await getCbsUnresolvedBaggageCases({ includeResolved: true });
+  const target = rows.find((row) => cbsRecordMatchesId(row, rowNumber));
+  if (!target) return { updated:false, notFound:true };
+  if (target.resolvedAt) throw Object.assign(new Error('Only an Open On-hand case can be exchanged'), { code:'CASE_CLOSED' });
+  const nextTag = sanitizeSheetText(newBagTag, 80).toUpperCase().replace(/\s+/g, '');
+  if (!/^[A-Z]{2}\d{6}$/.test(nextTag)) throw Object.assign(new Error('New tag must match MU123456 format'), { code:'INVALID_BAG_TAG' });
+  if (nextTag === target.bagTag.toUpperCase()) throw Object.assign(new Error('New tag must be different from the current tag'), { code:'SAME_BAG_TAG' });
+  if (rows.some((row) => row.rowNumber !== target.rowNumber && !row.resolvedAt && row.bagTag.toUpperCase() === nextTag)) {
+    throw Object.assign(new Error('New tag already has an open On-hand case'), { code:'DUPLICATE_BAG_TAG' });
+  }
+  const exchangedAt = new Date().toISOString();
+  const by = sanitizeSheetText(updatedBy, 160);
+  const exchange = { oldTag:target.bagTag, newTag:nextTag, exchangedAt, updatedBy:by };
+  const exchangeHistory = [...(target.exchangeHistory || []), exchange];
+  const title = await getCbsUnresolvedBaggageSheetTitle();
+  await sheets.spreadsheets.values.update({
+    spreadsheetId:CBS_SHEET_ID, range:`${escapeSheetTitle(title)}!A${target.rowNumber}:P${target.rowNumber}`, valueInputOption:'RAW',
+    requestBody:{ values:[[
+      nextTag, target.direction, target.flightNumber, target.flightDate, target.bagType, target.status, target.location, target.createdAt,
+      'exchange', `Tag exchanged: ${target.bagTag} -> ${nextTag}`, '', target.worldTracerFileNumber, target.worldTracerUpdatedBy,
+      target.createdBy, by, JSON.stringify(exchangeHistory)
+    ]] }
+  });
+  return { updated:true, record:{ ...target, bagTag:nextTag, resolution:'exchange', resolutionNote:`Tag exchanged: ${target.bagTag} -> ${nextTag}`, resolvedAt:'', resolvedBy:by, exchangeHistory } };
 }
 
 async function resolveCbsUnresolvedBaggageCase(rowNumber, resolution, resolutionNote = '', resolvedBy = '') {
@@ -4276,6 +4313,7 @@ module.exports = {
   updateCbsWorldTracerCase,
   getCbsUnresolvedBaggageCases,
   updateCbsUnresolvedBaggageWorldTracer,
+  exchangeCbsUnresolvedBaggageTag,
   resolveCbsUnresolvedBaggageCase,
   reopenCbsUnresolvedBaggageCase,
   getCbsCases,
