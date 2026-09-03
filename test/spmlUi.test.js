@@ -37,6 +37,13 @@ test('meal order reconciliation colors reservation totals and SPML mismatches', 
   assert.match(html, /!mealCountsMatch\(orderedMeals, pdMeals\)[\s\S]*classList\.add\("is-mismatch"\)/);
   assert.match(html, /classList\.toggle\("has-shortage", hasShortage\)/);
   assert.match(html, /meal-order-tab-\$\{day\}`\)\?\.classList\.toggle\("has-shortage", hasShortage\)/);
+  assert.match(html, /if \(!mealCountsMatch\(orderedMeals, pdMeals\)\) \{[\s\S]*hasShortage = true/);
+});
+
+test('meal order displays the physical business cabin as J', () => {
+  assert.equal((html.match(/class="reservation-cabin">J</g) || []).length, 2);
+  assert.doesNotMatch(html, /class="reservation-cabin">C</);
+  assert.match(html, /\["F", "J", "Y"\]\.forEach/);
 });
 
 test('today and tomorrow use a tab switcher with one visible panel', () => {

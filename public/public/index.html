@@ -4602,13 +4602,13 @@
                     <div class="reservation-table is-active" id="reservation-table-today" role="tabpanel" aria-labelledby="meal-order-tab-today">
                       <span></span><span class="reservation-head">RES</span><span class="reservation-head column-divider">ORDERED</span><span class="reservation-head">SPML</span><span class="reservation-head column-divider">PD</span>
                       <span class="reservation-cabin">F</span><span id="reservation-f" class="reservation-count">---</span><span id="meal-email-f" class="column-divider">---</span><span id="meal-spml-f" class="meal-cell">---</span><span id="meal-pd-f" class="meal-cell column-divider">---</span>
-                      <span class="reservation-cabin">C</span><span id="reservation-c" class="reservation-count">---</span><span id="meal-email-c" class="column-divider">---</span><span id="meal-spml-c" class="meal-cell">---</span><span id="meal-pd-c" class="meal-cell column-divider">---</span>
+                      <span class="reservation-cabin">J</span><span id="reservation-j" class="reservation-count">---</span><span id="meal-email-j" class="column-divider">---</span><span id="meal-spml-j" class="meal-cell">---</span><span id="meal-pd-j" class="meal-cell column-divider">---</span>
                       <span class="reservation-cabin">Y</span><span id="reservation-y" class="reservation-count">---</span><span id="meal-email-y" class="column-divider">---</span><span id="meal-spml-y" class="meal-cell">---</span><span id="meal-pd-y" class="meal-cell column-divider">---</span>
                     </div>
                     <div class="reservation-table" id="reservation-table-tomorrow" role="tabpanel" aria-labelledby="meal-order-tab-tomorrow" hidden>
                       <span></span><span class="reservation-head">RES</span><span class="reservation-head column-divider">ORDERED</span><span class="reservation-head">SPML</span><span class="reservation-head column-divider">PD</span>
                       <span class="reservation-cabin">F</span><span id="tomorrow-reservation-f" class="reservation-count">---</span><span id="tomorrow-meal-email-f" class="column-divider">---</span><span id="tomorrow-meal-spml-f" class="meal-cell">---</span><span id="tomorrow-meal-pd-f" class="meal-cell column-divider">---</span>
-                      <span class="reservation-cabin">C</span><span id="tomorrow-reservation-c" class="reservation-count">---</span><span id="tomorrow-meal-email-c" class="column-divider">---</span><span id="tomorrow-meal-spml-c" class="meal-cell">---</span><span id="tomorrow-meal-pd-c" class="meal-cell column-divider">---</span>
+                      <span class="reservation-cabin">J</span><span id="tomorrow-reservation-j" class="reservation-count">---</span><span id="tomorrow-meal-email-j" class="column-divider">---</span><span id="tomorrow-meal-spml-j" class="meal-cell">---</span><span id="tomorrow-meal-pd-j" class="meal-cell column-divider">---</span>
                       <span class="reservation-cabin">Y</span><span id="tomorrow-reservation-y" class="reservation-count">---</span><span id="tomorrow-meal-email-y" class="column-divider">---</span><span id="tomorrow-meal-spml-y" class="meal-cell">---</span><span id="tomorrow-meal-pd-y" class="meal-cell column-divider">---</span>
                     </div>
                     </div>
@@ -4869,7 +4869,7 @@
         setText("#metric-std", "----");
         const reservationBookedEl = document.querySelector("#reservation-booked");
         if (reservationBookedEl) reservationBookedEl.innerHTML = tripleHtml(["---", "---", "---"]);
-        ["", "tomorrow-"].forEach((prefix) => ["reservation-f", "reservation-c", "reservation-y", "meal-email-f", "meal-email-c", "meal-email-y", "meal-spml-f", "meal-spml-c", "meal-spml-y", "meal-pd-f", "meal-pd-c", "meal-pd-y"].forEach((id) => setText(`#${prefix}${id}`, "---")));
+        ["", "tomorrow-"].forEach((prefix) => ["reservation-f", "reservation-j", "reservation-y", "meal-email-f", "meal-email-j", "meal-email-y", "meal-spml-f", "meal-spml-j", "meal-spml-y", "meal-pd-f", "meal-pd-j", "meal-pd-y"].forEach((id) => setText(`#${prefix}${id}`, "---")));
         setText("#meal-order-tab-today", "---");
         setText("#meal-order-tab-tomorrow", "---");
         const checkinAcceptedEl = document.querySelector("#checkin-accepted");
@@ -6229,13 +6229,13 @@
           if (!prefix) setText("#meal-order-tab-tomorrow", nextMealFlightDate(sy.flightDate));
         }
         let hasShortage = false;
-        ["F", "C", "Y"].forEach((cabin, index) => {
+        ["F", "J", "Y"].forEach((cabin, index) => {
           const key = cabin.toLowerCase();
           const reservationElement = document.querySelector(`#${prefix}reservation-${key}`);
           const orderedSpmlElement = document.querySelector(`#${prefix}meal-spml-${key}`);
           const pdElement = document.querySelector(`#${prefix}meal-pd-${key}`);
           const emailFound = Boolean(sy?.spml?.email?.found);
-          const orderedMeals = cabin === "Y" && emailFound ? (sy.spml.email.counts || {}) : {};
+          const orderedMeals = emailFound ? (sy.spml.email.countsByCabin?.[cabin] || (cabin === "Y" ? sy.spml.email.counts : {}) || {}) : {};
           const pdMeals = sy?.spml?.preorderByCabin?.[cabin] || {};
           const reservation = Number(reservationCounts[index]);
           const ordered = Number(sy?.spml?.email?.cabinCounts?.[cabin]);
@@ -6253,10 +6253,11 @@
               reservationElement?.classList.add("is-under");
               hasShortage = true;
             }
-            if (!mealCountsMatch(orderedMeals, pdMeals)) {
-              orderedSpmlElement?.classList.add("is-mismatch");
-              pdElement?.classList.add("is-mismatch");
-            }
+          }
+          if (!mealCountsMatch(orderedMeals, pdMeals)) {
+            orderedSpmlElement?.classList.add("is-mismatch");
+            pdElement?.classList.add("is-mismatch");
+            hasShortage = true;
           }
         });
         const day = prefix ? "tomorrow" : "today";
