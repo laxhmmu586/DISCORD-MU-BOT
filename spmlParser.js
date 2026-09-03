@@ -1,8 +1,15 @@
 const MONTHS = { JAN: '01', FEB: '02', MAR: '03', APR: '04', MAY: '05', JUN: '06', JUL: '07', AUG: '08', SEP: '09', OCT: '10', NOV: '11', DEC: '12' };
 
 function flightDateToIso(value) {
-  const match = String(value || '').toUpperCase().match(/^(\d{2})([A-Z]{3})(\d{2})$/);
-  return match && MONTHS[match[2]] ? `20${match[3]}-${MONTHS[match[2]]}-${match[1]}` : '';
+  const match = String(value || '').toUpperCase().match(/^(\d{2})([A-Z]{3})(\d{4}|\d{2})$/);
+  if (!match || !MONTHS[match[2]]) return '';
+  const year = match[3].length === 4 ? match[3] : `20${match[3]}`;
+  return `${year}-${MONTHS[match[2]]}-${match[1]}`;
+}
+
+function normalizeFlightDate(value) {
+  const match = String(value || '').toUpperCase().match(/^(\d{2})([A-Z]{3})(\d{4}|\d{2})$/);
+  return match ? `${match[1]}${match[2]}${match[3].slice(-2)}` : '';
 }
 
 function timestampMs(value) {
@@ -15,7 +22,8 @@ function commandGroups(log) {
   const groups = [];
   let current = null;
   let pendingTimestamp = '';
-  for (const line of String(log || '').split(/\r?\n/)) {
+  const normalizedLog = String(log || '').replace(/\r\n/g, '\n').replace(/\\n/g, '\n');
+  for (const line of normalizedLog.split(/\r?\n/)) {
     if (/^\d{4}\s+\w+\s+\d{1,2},.*\d{2}:\d{2}:\d{2}\s*$/.test(line.trim())) {
       pendingTimestamp = line.trim();
       continue;
@@ -51,21 +59,28 @@ function parseMealRecord(record, source, flightNo, flightDate, timestamp) {
   const mealMatch = record.text.match(/\bSPML-([A-Z0-9]{4})\s+(?:\1\s+)?([A-Z]{2}\d+)\b/i);
   if (!mealMatch) return null;
   const status = mealMatch[2].toUpperCase();
+  const bookingClass = firstLine.match(/\b([A-Z])\s+PVG\b/i)?.[1]?.toUpperCase() || '';
+  const physicalCabins = {
+    F:'F', A:'F',
+    J:'J', C:'J', D:'J', Q:'J', I:'J', O:'J',
+    Y:'Y', B:'Y', M:'Y', E:'Y', H:'Y', K:'Y', L:'Y', N:'Y', R:'Y', S:'Y', V:'Y', T:'Y', G:'Y', Z:'Y', X:'Y'
+  };
   const seatRow = Number(seat.match(/\d+/)?.[0] || 0);
-  const cabin = seatRow >= 1 && seatRow <= 2 ? 'F' : (seatRow >= 6 && seatRow <= 20 ? 'C' : 'Y');
-  return { source, flightNo, flightDate, date: flightDateToIso(flightDate), number: record.number, passenger: name, bn, seat, cabin, meal: mealMatch[1].toUpperCase(), status, confirmed: status === 'HK1', timestamp };
+  const cabin = physicalCabins[bookingClass] || (seatRow >= 1 && seatRow <= 2 ? 'F' : (seatRow >= 6 && seatRow <= 20 ? 'J' : 'Y'));
+  return { source, flightNo, flightDate, date: flightDateToIso(flightDate), number: record.number, passenger: name, bn, seat, bookingClass, cabin, meal: mealMatch[1].toUpperCase(), status, confirmed: status === 'HK1', timestamp };
 }
 
 function parseSpmlLog(log, options = {}) {
   const groups = commandGroups(log);
   const selectedFlight = String(options.flightNo || '').toUpperCase();
-  const selectedDate = String(options.flightDate || '').toUpperCase();
+  const selectedDate = normalizeFlightDate(options.flightDate);
   const candidates = groups.flatMap((group) => {
-    const header = group.text.match(/\b(?:PD|PR):\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
+    const header = group.text.match(/\b(?:PD|PR)\s*:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}(?:\d{4}|\d{2}))/i);
     if (!header) return [];
     const source = /^PD\*,?SPML/i.test(group.command) ? 'PD' : (/^FB\b/i.test(group.command) ? 'FB' : '');
-    if (!source || (selectedFlight && header[1].toUpperCase() !== selectedFlight) || (selectedDate && header[2].toUpperCase() !== selectedDate)) return [];
-    return [{ ...group, source, flightNo: header[1].toUpperCase(), flightDate: header[2].toUpperCase() }];
+    const flightDate = normalizeFlightDate(header[2]);
+    if (!source || (selectedFlight && header[1].toUpperCase() !== selectedFlight) || (selectedDate && flightDate !== selectedDate)) return [];
+    return [{ ...group, source, flightNo: header[1].toUpperCase(), flightDate }];
   });
 
   const latestPd = Math.max(0, ...candidates.filter((item) => item.source === 'PD').map((item) => timestampMs(item.timestamp)));
@@ -79,21 +94,23 @@ function parseSpmlLog(log, options = {}) {
     cabins[row.cabin] = cabins[row.cabin] || {};
     cabins[row.cabin][row.meal] = (cabins[row.cabin][row.meal] || 0) + 1;
     return cabins;
-  }, { F:{}, C:{}, Y:{} });
+  }, { F:{}, J:{}, Y:{} });
   return { preorder: deduped.filter((row) => row.source === 'PD'), report: deduped.filter((row) => row.source === 'FB'), preorderCounts: summarize('PD'), reportCounts: summarize('FB'), preorderByCabin:summarizeByCabin('PD') };
 }
 
 function parseMealOrderEmail(text) {
-  const flight = String(text || '').match(/\b([A-Z]{2}\d+)\/(\d{2}[A-Z]{3}\d{2})\b/i);
+  const flight = String(text || '').match(/\b([A-Z]{2}\d+)\/(\d{2}[A-Z]{3}(?:\d{4}|\d{2}))\b/i);
   const cabinCounts = {};
-  for (const cabin of ['F', 'C', 'Y']) {
-    const match = String(text || '').match(new RegExp(`^\\s*${cabin}\\s*-\\s*(\\d+)`, 'im'));
+  const countsByCabin = {};
+  for (const cabin of ['F', 'J', 'Y']) {
+    const label = cabin === 'J' ? '[JC]' : cabin;
+    const match = String(text || '').match(new RegExp(`^\\s*${label}\\s*-\\s*(\\d+)([^\\n\\r]*)`, 'im'));
     cabinCounts[cabin] = Number(match?.[1] || 0);
+    countsByCabin[cabin] = {};
+    String(match?.[2] || '').replace(/\+\s*(\d+)\s+([A-Z0-9]{4})\b/gi, (_, count, meal) => { countsByCabin[cabin][meal.toUpperCase()] = Number(count); return _; });
   }
   const economy = String(text || '').match(/^\s*Y\s*-\s*(\d+)([^\n\r]*)/im);
-  const counts = {};
-  String(economy?.[2] || '').replace(/\+\s*(\d+)\s+([A-Z0-9]{4})\b/gi, (_, count, meal) => { counts[meal.toUpperCase()] = Number(count); return _; });
-  return { flightNo: flight?.[1]?.toUpperCase() || '', flightDate: flight?.[2]?.toUpperCase() || '', cabinCounts, economyBase: Number(economy?.[1] || 0), counts, economyTotal: Number(String(economy?.[2] || '').match(/=\s*(\d+)/)?.[1] || 0) };
+  return { flightNo: flight?.[1]?.toUpperCase() || '', flightDate: normalizeFlightDate(flight?.[2]), cabinCounts, countsByCabin, economyBase: cabinCounts.Y, counts: countsByCabin.Y, economyTotal: Number(String(economy?.[2] || '').match(/=\s*(\d+)/)?.[1] || 0) };
 }
 
 module.exports = { parseSpmlLog, parseMealOrderEmail, flightDateToIso };
