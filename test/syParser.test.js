@@ -54,6 +54,10 @@ test('uses the latest API operation when checking the agent whitelist', () => {
   assert.equal(hasUnclearedApiSourceRisk(section), false);
 });
 
+test('accepts AGT28398 as a whitelisted API agent', () => {
+  assert.equal(hasUnclearedApiSourceRisk('API LAX100996 AGT28398/03SEP1200/P1'), false);
+});
+
 test('extracts the issuing country after the passport expiry date', () => {
   const section = 'PASSPORT :EP5073319/P/NAT/CHN/250409/350408/CHN/N/A';
 
