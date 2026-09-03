@@ -21,6 +21,7 @@ const {
 } = require('./flightParser');
 const { matchMuFlight } = require('./cbsScanParser');
 const { parseSpmlLog } = require('./spmlParser');
+const { isWorldTracerOnlyRushBagUpdate } = require('./rushBagNotification');
 
 const {
 
@@ -2090,20 +2091,7 @@ async function addRushBagDiscordResult(result, record) {
 }
 
 function isRushBagWorldTracerOnlyUpdate(previousRecord = {}, nextRecord = {}) {
-  const comparable = (record) => ({
-    originalTagNumber: sanitizeCbsText(record.originalTagNumber, 120).toUpperCase(),
-    rushTagNumber: sanitizeCbsText(record.rushTagNumber, 120).toUpperCase(),
-    flightRows: (Array.isArray(record.flightRows) ? record.flightRows : []).map((flight) => ({
-      flightDate: sanitizeCbsText(flight?.flightDate, 40),
-      flightNumber: sanitizeCbsText(flight?.flightNumber, 40).toUpperCase(),
-      from: sanitizeCbsText(flight?.from, 40).toUpperCase(),
-      to: sanitizeCbsText(flight?.to, 40).toUpperCase()
-    }))
-  });
-  const previousFileNumber = sanitizeCbsText(previousRecord.worldTracerFileNumber, 120).toUpperCase();
-  const nextFileNumber = sanitizeCbsText(nextRecord.worldTracerFileNumber, 120).toUpperCase();
-  return previousFileNumber !== nextFileNumber
-    && JSON.stringify(comparable(previousRecord)) === JSON.stringify(comparable(nextRecord));
+  return isWorldTracerOnlyRushBagUpdate(previousRecord, nextRecord);
 }
 
 async function sendLostBaggageUpdateToDiscord(fileNumber) {
