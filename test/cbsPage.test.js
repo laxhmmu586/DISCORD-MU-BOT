@@ -333,8 +333,7 @@ test('Create Rush only asks for a WorldTracer file when the On-hand case has non
 
 test('On-hand tags can be exchanged from Add On-hand and Resolution', () => {
   assert.match(page, /data-add-baggage-mode="exchange">Exchange/);
-  assert.match(page, /const hasOpenOnHand = .*\.some\(\(row\) => !row\.resolvedAt\)/);
-  assert.match(page, /const exchangeButton = hasOpenOnHand \?/);
+  assert.match(page, /const exchangeButton = '<button type="button" data-add-baggage-mode="exchange">Exchange<\/button>'/);
   assert.match(page, /direction === 'exchange'/);
   assert.match(page, /Select Current Open On-hand/);
   assert.match(page, /name="onHandRowNumber"/);
@@ -366,8 +365,7 @@ test('home Baggage add flow also supports On-hand Exchange', () => {
   assert.match(indexPage, /data-test-create-mode="exchange"/);
   assert.match(indexPage, /function renderTestExchangeForm\(newTag, rows = \[\]\)/);
   assert.match(indexPage, /async function renderTestAddChoice\(bagTag\)/);
-  assert.match(indexPage, /const hasOpenOnHand = .*\.some\(\(row\) => !row\.resolvedAt\)/);
-  assert.match(indexPage, /const exchangeButton = hasOpenOnHand \?/);
+  assert.match(indexPage, /const exchangeButton = `<button class="test-choice-card" type="button" data-test-create-mode="exchange">/);
   assert.match(indexPage, /Select current Open On-hand/);
   assert.match(indexPage, /data-test-exchange-form/);
   assert.match(indexPage, /submitTestExchange\(exchangeForm\)/);
@@ -376,10 +374,34 @@ test('home Baggage add flow also supports On-hand Exchange', () => {
   assert.match(drive, /next\.bagTag = newBagTag/);
 });
 
+test('Not load bags hides and disables Current location', () => {
+  assert.match(indexPage, /data-test-outbound-location/);
+  assert.match(indexPage, /const needsLocation = status !== "Not load bags"/);
+  assert.match(indexPage, /locationInput\.disabled = !needsLocation/);
+  assert.match(page, /data-add-outbound-location hidden/);
+  assert.match(page, /const needsLocation = status\.value !== 'Not load bags'/);
+  assert.match(page, /locationInput\.disabled = !needsLocation/);
+});
+
+test('home Baggage search avoids duplicate requests and repeated submissions', () => {
+  assert.match(indexPage, /let testBagSearchPending = false/);
+  assert.match(indexPage, /if \(!testOutput \|\| testBagSearchPending\) return/);
+  assert.match(indexPage, /const data = await apiJson\(`\/test-baggage\/\$\{encodeURIComponent\(bagTag\)\}`\)/);
+  const searchBody = indexPage.match(/async function searchTestBag\(event\) \{([\s\S]*?)\n      \}/)?.[1] || '';
+  assert.doesNotMatch(searchBody, /cbs-unresolved-baggage/);
+  assert.match(searchBody, /searchButton\.disabled = true/);
+  assert.match(searchBody, /searchButton\.disabled = false/);
+});
+
+test('Baggage creation returns a clear retry response for Sheets quota limits', () => {
+  assert.match(server, /err\?\.code === 429 \|\| \/quota exceeded\|rate limit\/i/);
+  assert.match(server, /res\.set\('Retry-After', '60'\)/);
+  assert.match(server, /Google Sheets is temporarily busy\. Please wait 60 seconds and submit again\./);
+});
+
 test('home Baggage Update menu supports Exchange', () => {
   assert.match(indexPage, /data-test-update-mode="exchange"/);
-  assert.match(indexPage, /window\._testHasOpenOnHand \? `<button type="button" data-test-update-mode="exchange"/);
-  assert.match(indexPage, /window\._testHasOpenOnHand = \(onHandData\?\.rows \|\| \[\]\)\.some/);
+  assert.match(indexPage, /<button type="button" data-test-update-mode="exchange" class="\$\{activeMode === "exchange"/);
   assert.match(indexPage, /activeMode === "exchange"/);
   assert.match(indexPage, /field\("New tag number", "newTagNumber"/);
   assert.match(indexPage, /test-exchange-old.*record\.bagTag/);

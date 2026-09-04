@@ -24,6 +24,20 @@ test('Report Center persists and reads rows through Google Sheets', () => {
   assert.match(drive, /async function syncSalesDetailsFromSourceSheet[\s\S]*sheets\.spreadsheets\.values\.append/);
 });
 
+test('Baggage tag searches reuse the short-lived Google Sheets cache', () => {
+  const lookup = drive.match(/async function findTestBaggageByTag\(bagTag\) \{[\s\S]*?\n}/)?.[0] || '';
+  assert.match(lookup, /getTestBaggageSheetRows\(\)/);
+  assert.doesNotMatch(lookup, /forceRefresh/);
+});
+
+test('Baggage creation does not reread Sheets after the pre-submit lookup', () => {
+  const append = drive.match(/async function appendTestBaggageRecord\(record\) \{[\s\S]*?\n}/)?.[0] || '';
+  assert.match(append, /getTestBaggageSheetRows\(\)/);
+  assert.doesNotMatch(append, /getTestBaggageSheetRows\(\{ forceRefresh: true \}\)/);
+  assert.match(append, /record: cleanRecord/);
+  assert.doesNotMatch(append, /record: await findTestBaggageByTag/);
+});
+
 test('Authorization Report remarks are stored in their Google Sheet row', () => {
   const page = fs.readFileSync(path.join(root, 'public', 'public', 'index.html'), 'utf8');
   assert.match(drive, /headers: \[[^\]]*'Detail', 'Key', 'Remark'\]/);
