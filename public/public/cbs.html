@@ -40,6 +40,13 @@
     .muted { color:var(--muted); }
     .search-field { min-width:260px; max-width:360px; }
     .case-toolbar { display:flex; flex-wrap:nowrap; gap:10px; align-items:center; }
+    .case-overview { display:grid; grid-template-columns:repeat(3,minmax(0,260px)); gap:12px; justify-content:start; margin:18px 0 14px; }
+    .case-overview-card { min-width:0; display:grid; grid-template-columns:30px minmax(0,1fr); gap:8px; align-items:center; padding:13px 16px; border:1px solid currentColor; border-radius:12px; background:#f1f7ff; color:#0758b8; text-align:left; }
+    .case-overview-card:nth-child(2) { background:#effbf5; color:#087443; }
+    .case-overview-card:nth-child(3) { background:#fff7ed; color:#c4320a; }
+    .case-overview-card svg { width:24px; height:24px; fill:currentColor; }
+    .case-overview-card span { min-width:0; font-size:12px; font-weight:900; line-height:1.15; }
+    .case-overview-card strong { display:block; margin-top:3px; color:#08224a; font-size:22px; line-height:1; }
     .missing-actions { display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:flex-start; max-width:100%; }
     .missing-actions button { padding:10px 14px; white-space:normal; }
     .case-link-button { padding:0; border-radius:0; background:transparent; color:var(--brand); font-weight:900; text-decoration:underline; }
@@ -284,6 +291,9 @@
     .add-baggage-modes { display:flex; gap:12px; flex-wrap:wrap; margin:16px 0; }
     .add-baggage-form { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
     .add-baggage-form .wide,.add-baggage-form .actions { grid-column:1/-1; }
+    .add-outbound-bag-tags { grid-column:1/-1; display:grid; gap:10px; }
+    .add-outbound-bag-tag-row { display:grid; grid-template-columns:minmax(0,1fr) 42px; gap:8px; align-items:end; }
+    .add-outbound-bag-tag-row button { min-height:44px; padding:8px; }
     .baggage-chart-grid { display:grid; gap:24px; margin-top:22px; }
     .baggage-chart-image { display:block; width:100%; height:auto; border:1px solid #c9d9ec; border-radius:16px; background:#fff; box-shadow:0 10px 28px rgba(18,58,115,.08); }
     .baggage-chart-link { display:block; color:inherit; text-decoration:none; }
@@ -296,6 +306,11 @@
       .wrap,.card,.open-case-group,.sheet-shell{min-width:0;max-width:100%}
       .sheet-shell{width:100%;overflow-x:auto}
       .sheet-shell .cbs-sheet{display:table;min-width:980px;overflow:visible}
+      .case-overview{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+      .case-overview-card{grid-template-columns:1fr;justify-items:center;gap:4px;padding:9px 4px;text-align:center}
+      .case-overview-card svg{width:20px;height:20px}
+      .case-overview-card span{font-size:10px;overflow-wrap:anywhere}
+      .case-overview-card strong{font-size:19px}
     }
     @media (max-width:520px){ .rush-itinerary{padding:12px;overflow:hidden}.rush-itinerary-head{align-items:stretch}.rush-itinerary-head button{width:100%}.rush-flight-row{grid-template-columns:minmax(0,1fr);width:100%;min-width:0}.rush-flight-row label{width:100%;min-width:0;overflow:hidden}.rush-flight-row input[type="date"]{width:calc(100% - 24px);justify-self:start}.rush-flight-row button{grid-column:1}.worldtracer-form{width:100%;min-width:0} }
   </style>
@@ -307,7 +322,7 @@
     <nav class="page-tabs" aria-label="CBS sections">
       <button class="page-tab" id="open-cases-tab" type="button" title="Open Case"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h6l2 2h8v10H4zM4 7V5h6l2 2"/></svg></span><span class="page-tab-label"><span class="en">Open Case</span><span class="zh">未结案件</span></span></button>
       <button class="page-tab" id="closed-cases-tab" type="button" title="Closed Case"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h6l2 2h8v10H4z"/><path d="m8 14 2 2 5-5"/></svg></span><span class="page-tab-label"><span class="en">Closed Case</span><span class="zh">已结案件</span></span></button>
-      <button class="page-tab" id="add-baggage-tab" type="button" title="Add On-hand"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="13" height="12" rx="2"/><path d="M7 8V5h5v3m7-4v8m-4-4h8"/></svg></span><span class="page-tab-label">Add On-hand</span></button>
+      <button class="page-tab" id="add-baggage-tab" type="button" title="Add Baggage"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="13" height="12" rx="2"/><path d="M7 8V5h5v3m7-4v8m-4-4h8"/></svg></span><span class="page-tab-label">Add Baggage</span></button>
       <button class="page-tab" id="worldtracer-tab" type="button" title="Rush Bag"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m3 14 7-3V5l2-2 2 7 5-2 2 1-7 5v5l-2 2-2-6-4 2z"/></svg></span><span class="page-tab-label">Rush Bag</span></button>
       <button class="page-tab" id="missing-report-alert" type="button" title="Missing Bag Report"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="7" width="12" height="12" rx="2"/><path d="M8 7V5h4v2m5 10 4 4m-1-7a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg></span><span class="page-tab-label">Missing Bag Report</span></button>
       <button class="page-tab" id="email-tab" type="button" title="Email"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg></span><span class="page-tab-label">Email</span></button>
@@ -323,8 +338,13 @@
   <main class="wrap">
     <section class="card" id="open-cases-card" hidden>
       <div class="actions">
-        <div><h1 id="case-page-title"><span class="en">Open Case</span><span class="zh">未结案件</span></h1><p class="muted" id="case-page-description">Passenger Filed and On-hand files are shown together on this page.</p></div>
+        <div><h1 id="case-page-title"><span class="en">Open Case</span><span class="zh">未结案件</span></h1></div>
         <div class="case-toolbar"><input class="search-field" id="case-search" placeholder="Search case / bag tag / passenger" /></div>
+      </div>
+      <div class="case-overview" aria-label="Case totals">
+        <button class="case-overview-card" type="button" data-case-overview-target="cases-output"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="4"/><path d="M4 22v-4a8 8 0 0 1 16 0v4z"/></svg><span>Passenger Filed<strong data-case-overview-count="passenger">0</strong></span></button>
+        <button class="case-overview-card" type="button" data-case-overview-target="on-hand-group"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="6" width="16" height="16" rx="2"/><path d="M9 6V3h6v3"/></svg><span>On-hand<strong data-case-overview-count="on-hand">0</strong></span></button>
+        <button class="case-overview-card" type="button" data-case-overview-target="bag-room-unload-group"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 10 12 3l10 7v11h-6v-7H8v7H2z"/></svg><span>Bag Room<br>Unload Bag<strong data-case-overview-count="unload">0</strong></span></button>
       </div>
       <section class="open-case-group">
         <h2>Passenger Filed</h2>
@@ -332,18 +352,15 @@
       </section>
       <section class="open-case-group" id="on-hand-group">
         <h2 id="on-hand-title">On-hand</h2>
-        <p class="muted" id="on-hand-description">Passenger bags entered as inbound remain here until resolved. Gate bags, Co-mail, and not-loaded outbound bags are not included.</p>
         <div id="unresolved-baggage-output"><p class="muted">Loading On-hand cases...</p></div>
       </section>
       <section class="open-case-group" id="bag-room-unload-group">
         <h2 id="bag-room-unload-title">Bag Room Unload Bag</h2>
-        <p class="muted" id="bag-room-unload-description">Outbound bags registered as Not Load Bags remain here until resolved.</p>
         <div id="bag-room-unload-output"><p class="muted">Loading Bag Room Unload Bag cases...</p></div>
       </section>
     </section>
     <section class="card worldtracer-create" id="worldtracer-card" hidden>
       <h1>Rush Bag</h1>
-      <p class="muted"><span class="en">Create a Rush Bag case and save it to the operations sheet.</span><span class="zh">创建 Rush Bag 案件并保存到工作表。</span></p>
       <form class="worldtracer-form" id="worldtracer-form">
         <label><span>WorldTracer File Number (Optional)</span><input name="worldTracerFileNumber" autocomplete="off" placeholder="Can be added later" /></label>
         <label><span>Original Tag Number</span><input name="originalTagNumber" required autocomplete="off" /></label>
@@ -358,12 +375,11 @@
       <div class="worldtracer-list"><h2><span class="en">All Rush Bag Cases</span><span class="zh">所有 Rush Bag 案件</span></h2><div id="worldtracer-output"><p class="muted">Loading cases...</p></div></div>
     </section>
     <section class="card" id="missing-report-card" hidden>
-      <div class="actions"><div><h1>MISSING BAG REPORT</h1><p class="muted">MU rows imported from Early Bag Storage missed bag email.</p></div><a class="missing-report-contact" href="tel:+14243121860" aria-label="Call LAXTEC at 424-312-1860"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M10 5h4M11 19h2"/></svg><span>LAXTEC: 424-312-1860</span></a></div>
+      <div class="actions"><div><h1>MISSING BAG REPORT</h1></div><a class="missing-report-contact" href="tel:+14243121860" aria-label="Call LAXTEC at 424-312-1860"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M10 5h4M11 19h2"/></svg><span>LAXTEC: 424-312-1860</span></a></div>
       <div id="missing-report-output"><p class="muted">Loading missing bags...</p></div>
     </section>
     <section class="card" id="email-card" hidden>
       <h1>Email</h1>
-      <p class="muted">Select a subject and complete the required email details.</p>
       <form class="worldtracer-form" id="standalone-email-form">
         <label class="wide"><span>Subject</span><select name="emailAction" data-standalone-email-action required><option value="sent_open_bag_authorization_to_pvg">Sent Open Bag Authorization to PVG</option><option value="contact_pax_pickup_bags">Pick-up Bags - available</option><option value="pickup_bags_future_available">Pick-up Bags - future available</option><option value="baggage_transfer_status_eta">Baggage transfer status update - ETA</option><option value="baggage_pickup_delivery_method_confirmation">Baggage Pick-Up / Delivery Method Confirmation</option><option value="require_open_bag_authorization_pvg">Require Open Bag Authorization at PVG</option><option value="baggage_open_by_customs">Explanation - Baggage Open by Custom</option></select></label>
         <label class="wide" data-standalone-pvg-field><span>Email To</span><select name="emailTo" required><option value="pd-bag-intl@ceair.com">pd-bag-intl@ceair.com</option><option value="pd-bag-dom@ceair.com">pd-bag-dom@ceair.com</option></select></label>
@@ -379,14 +395,12 @@
       </form>
     </section>
     <section class="card" id="add-baggage-card" hidden>
-      <h1>Add On-hand</h1>
-      <p class="muted">Search a bag tag, then add the inbound or outbound On-hand record here.</p>
+      <h1>Add Baggage</h1>
       <form class="add-baggage-search" id="add-baggage-search"><label><span>Bag Tag Number</span><input name="bagTag" placeholder="MU123456" maxlength="8" pattern="[A-Za-z]{2}[0-9]{6}" required autocomplete="off" /></label><button type="submit">Search</button></form>
-      <div id="add-baggage-output"><p class="muted">Enter a bag tag number to search.</p></div>
+      <div id="add-baggage-output"></div>
     </section>
     <section class="card" id="baggage-chart-card" hidden>
       <h1>Baggage Identification Chart</h1>
-      <p class="muted">Select either chart to open the original high-resolution image.</p>
       <div class="baggage-chart-grid">
         <a class="baggage-chart-link" href="assets/640653098-BAGGAGE-CHART-11_01.png" target="_blank" rel="noopener"><span>Luggage / Bags</span><img class="baggage-chart-image" src="assets/640653098-BAGGAGE-CHART-11_01.png" alt="IATA baggage identification chart for luggage and bags" /></a>
         <a class="baggage-chart-link" href="assets/640653098-BAGGAGE-CHART-11_02.png" target="_blank" rel="noopener"><span>Miscellaneous Articles</span><img class="baggage-chart-image" src="assets/640653098-BAGGAGE-CHART-11_02.png" alt="IATA baggage identification chart for miscellaneous articles" /></a>
@@ -449,7 +463,6 @@
     const addRushFlight = document.querySelector('#add-rush-flight');
     const caseSearch = document.querySelector('#case-search');
     const casePageTitle = document.querySelector('#case-page-title');
-    const casePageDescription = document.querySelector('#case-page-description');
     const onHandGroup = document.querySelector('#on-hand-group');
     const missingAlert = document.querySelector('#missing-report-alert');
     const missingReportCard = document.querySelector('#missing-report-card');
@@ -467,9 +480,7 @@
     const baggageChartTab = document.querySelector('#baggage-chart-tab');
     const baggageChartCard = document.querySelector('#baggage-chart-card');
     const onHandTitle = document.querySelector('#on-hand-title');
-    const onHandDescription = document.querySelector('#on-hand-description');
     const bagRoomUnloadTitle = document.querySelector('#bag-room-unload-title');
-    const bagRoomUnloadDescription = document.querySelector('#bag-room-unload-description');
     const backToCases = document.querySelector('#back-to-cases');
     const sidebarToggle = document.querySelector('#sidebar-toggle');
     const sidebarRefresh = document.querySelector('#sidebar-refresh');
@@ -515,16 +526,9 @@
       if (isCaseSection) {
         window._caseView = section;
         casePageTitle.innerHTML = section === 'closed' ? '<span class="en">Closed Case</span><span class="zh">已结案件</span>' : '<span class="en">Open Case</span><span class="zh">未结案件</span>';
-        casePageDescription.textContent = section === 'closed' ? 'Closed Passenger Filed and completed On-hand cases are shown here.' : 'Passenger Filed and On-hand files are shown together on this page.';
         onHandGroup.hidden = false;
         onHandTitle.textContent = section === 'closed' ? 'Closed On-hand' : 'On-hand';
-        onHandDescription.textContent = section === 'closed'
-          ? 'On-hand cases completed by Create Rush, Shipping, Passenger collected, or Case Close are archived here.'
-          : 'Passenger bags entered as inbound remain here until resolved. Gate bags, Co-mail, and not-loaded outbound bags are not included.';
         bagRoomUnloadTitle.textContent = section === 'closed' ? 'Closed Bag Room Unload Bag' : 'Bag Room Unload Bag';
-        bagRoomUnloadDescription.textContent = section === 'closed'
-          ? 'Completed Not Load Bags cases are archived here.'
-          : 'Outbound bags registered as Not Load Bags remain here until resolved.';
         if (window._unresolvedBaggageLoaded) renderUnresolvedBaggage(window._unresolvedBaggageSourceRows || []);
         renderCases();
       }
@@ -545,7 +549,9 @@
       try {
         // Refresh only the data used by this screen. Reloading the document also
         // restarted the Google/Gmail synchronization and needlessly used quota.
-        await Promise.all([loadCases(), loadMissingReports(), loadUnresolvedBaggage()]);
+        await loadCases();
+        await loadUnresolvedBaggage();
+        await loadMissingReports();
         if (!worldTracerCard.hidden) await loadWorldTracerCases();
       } finally {
         sidebarRefresh.disabled = false;
@@ -572,7 +578,7 @@
         const options = openRows.map((row) => `<option value="${escapeHtml(row.rowNumber)}">${escapeHtml(row.bagTag)} · ${escapeHtml(row.bagType || row.status || 'On-hand')} · ${escapeHtml(row.location || '-')}</option>`).join('');
         return `<form class="add-baggage-form add-exchange-form" data-add-baggage-direction="exchange"><label><span>New Tag Number</span><input name="newTagNumber" value="${escapeHtml(bagTag)}" readonly /></label><label class="wide"><span>Select Current Open On-hand</span><select name="onHandRowNumber" required ${openRows.length ? '' : 'disabled'}><option value="">Select an On-hand tag</option>${options}</select></label>${openRows.length ? '' : '<p class="status err wide">There are no Open On-hand cases available to exchange.</p>'}<div class="actions"><button type="submit" ${openRows.length ? '' : 'disabled'}>Exchange</button><button class="secondary" type="button" data-cancel-add-baggage>Back</button></div></form>`;
       }
-      if (direction === 'outbound') return `<form class="add-baggage-form" data-add-baggage-direction="outbound"><label><span>Bag Tag Number</span><input name="bagTag" value="${escapeHtml(bagTag)}" readonly /></label><label><span>Date</span><input name="date" type="date" value="${today}" required /></label><label><span>Status</span><select name="status" data-add-outbound-status><option>Not load bags</option><option>Outbound rush</option><option>Gate bag</option></select></label><label data-add-outbound-location hidden><span>Current Location</span><select name="location" disabled><option>Office</option><option>Transfer</option></select></label><div class="unresolved-update-fields" data-add-outbound-rush hidden><label><span>RUSH Tag Number</span><input name="rushTagNumber" /></label><label><span>Rush To Where</span><input name="rushToWhere" /></label><label><span>AKE Number</span><input name="akeNumber" /></label><label><span>WorldTracer File Number</span><input name="worldTracerFileNumber" /></label></div><label class="wide"><span>Comment</span><input name="comment" /></label><div class="actions"><button type="submit">Submit</button><button class="secondary" type="button" data-cancel-add-baggage>Back</button></div></form>`;
+      if (direction === 'outbound') return `<form class="add-baggage-form" data-add-baggage-direction="outbound"><label><span>Date</span><input name="date" type="date" value="${today}" required /></label><label><span>Status</span><select name="status" data-add-outbound-status><option>Not load bags</option><option>Outbound rush</option><option>Gate bag</option></select></label><div class="add-outbound-bag-tags" data-add-outbound-bag-tags><div class="add-outbound-bag-tag-row"><label><span>Bag Tag Number</span><input name="bagTag" value="${escapeHtml(bagTag)}" maxlength="8" pattern="[A-Za-z]{2}[0-9]{6}" required /></label><button type="button" data-add-outbound-bag-tag aria-label="Add another bag tag">+</button></div></div><label data-add-outbound-location hidden><span>Current Location</span><select name="location" disabled><option>Office</option><option>Transfer</option></select></label><div class="unresolved-update-fields" data-add-outbound-rush hidden><label><span>RUSH Tag Number</span><input name="rushTagNumber" /></label><label><span>Rush To Where</span><input name="rushToWhere" /></label><label><span>AKE Number</span><input name="akeNumber" /></label><label><span>WorldTracer File Number</span><input name="worldTracerFileNumber" /></label></div><label class="wide"><span>Comment</span><input name="comment" /></label><div class="actions"><button type="submit">Submit</button><button class="secondary" type="button" data-cancel-add-baggage>Back</button></div></form>`;
       return `<form class="add-baggage-form" data-add-baggage-direction="inbound"><label><span>Bag Tag Number</span><input name="bagTag" value="${escapeHtml(bagTag)}" readonly /></label><label><span>Date</span><input name="date" type="date" value="${today}" required /></label><label><span>Bag Type</span><select name="bagType"><option>Passenger bag</option><option>Inbound rush</option><option>Co-mail</option></select></label><label><span>Current Location</span><select name="location" required><option>Office</option><option>Transfer</option></select></label><div class="actions"><button type="submit">Submit</button><button class="secondary" type="button" data-cancel-add-baggage>Back</button></div></form>`;
     }
     function renderAddBaggageChoice(bagTag) {
@@ -648,8 +654,18 @@
         history.sort((a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0));
         return { ...history[0], history };
       }).sort((a, b) => Number(Boolean(a.history.find((item) => !item.resolvedAt))) === Number(Boolean(b.history.find((item) => !item.resolvedAt))) ? 0 : (a.history.find((item) => !item.resolvedAt) ? -1 : 1));
+      const overviewKey = groupName === 'Bag Room Unload Bag' ? 'unload' : 'on-hand';
+      const overviewCount = document.querySelector(`[data-case-overview-count="${overviewKey}"]`);
+      if (overviewCount) overviewCount.textContent = String(rows.length);
       if (!rows.length) { output.innerHTML = `<p class="muted">${showClosed ? `No closed ${groupName} cases.` : `No ${groupName} cases.`}</p>`; return; }
-      output.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:190px"><col style="width:310px"><col style="width:120px"><col style="width:130px"><col style="width:180px"><col></colgroup><thead><tr><th>WorldTracer File Number</th><th>Bag Tag</th><th>Direction</th><th>Date</th><th>Type / Status</th><th>Location</th></tr></thead><tbody>${rows.map((row) => {
+      const showRushTag = rows.some((row) => String(row.rushTagNumber || '').trim());
+      const showLocation = groupName !== 'Bag Room Unload Bag';
+      const rushTagColumn = showRushTag ? '<col style="width:150px">' : '';
+      const rushTagHeader = showRushTag ? '<th>Rush Tag</th>' : '';
+      const locationColumn = showLocation ? '<col>' : '';
+      const locationHeader = showLocation ? '<th>Location</th>' : '';
+      const columnCount = 5 + Number(showRushTag) + Number(showLocation);
+      output.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:190px"><col style="width:310px">${rushTagColumn}<col style="width:120px"><col style="width:130px"><col style="width:180px">${locationColumn}</colgroup><thead><tr><th>WorldTracer File Number</th><th>Bag Tag</th>${rushTagHeader}<th>Direction</th><th>Date</th><th>Type / Status</th>${locationHeader}</tr></thead><tbody>${rows.map((row) => {
         const resolvedHistory = row.history.filter((item) => item.resolvedAt);
         // "Other" records stay in Open Case and remain actionable so staff can
         // add WorldTracer details or apply a final resolution later.
@@ -669,7 +685,9 @@
         const progressRow = active || row;
         const lastExchange = (row.exchangeHistory || []).at(-1);
         const tagDisplay = lastExchange ? `<span class="exchange-tag-flow"><span class="exchange-tag-old">${escapeHtml(lastExchange.oldTag)}</span><span class="exchange-tag-arrow" aria-hidden="true">→<span class="exchange-tag-arrow-label">Exchange</span></span><span class="exchange-tag-new">${escapeHtml(lastExchange.newTag)}</span></span>` : `<span class="bag-tag-value">${escapeHtml(row.bagTag)}</span>`;
-        return `<tr class="case-summary-row" data-toggle-unresolved-update role="button" tabindex="0" aria-expanded="false"><td class="sheet-meta">${escapeHtml(row.worldTracerFileNumber || '-')}</td><td class="sheet-meta"><span class="on-hand-tag-summary">${matchBadge}${tagDisplay}</span></td><td class="sheet-meta">${escapeHtml(row.direction || '-')}</td><td class="sheet-meta">${escapeHtml(row.flightDate || '-')}</td><td class="sheet-meta">${escapeHtml(row.bagType || row.status || '-')}</td><td class="sheet-meta"><span class="on-hand-location"><span>${escapeHtml(row.location || '-')}</span>${linkButton}</span></td></tr><tr class="case-detail-row" data-unresolved-detail hidden><td colspan="6"><div class="case-detail-layout"><div class="case-progress-column">${unresolvedProgressHtml(progressRow)}</div><div class="case-detail-right">${formHtml}${historyHtml}</div></div></td></tr>`;
+        const rushTagCell = showRushTag ? `<td class="sheet-meta">${escapeHtml(row.rushTagNumber || '-')}</td>` : '';
+        const locationCell = showLocation ? `<td class="sheet-meta"><span class="on-hand-location"><span>${escapeHtml(row.location || '-')}</span>${linkButton}</span></td>` : '';
+        return `<tr class="case-summary-row" data-toggle-unresolved-update role="button" tabindex="0" aria-expanded="false"><td class="sheet-meta">${escapeHtml(row.worldTracerFileNumber || '-')}</td><td class="sheet-meta"><span class="on-hand-tag-summary">${matchBadge}${tagDisplay}</span></td>${rushTagCell}<td class="sheet-meta">${escapeHtml(row.direction || '-')}</td><td class="sheet-meta">${escapeHtml(row.flightDate || '-')}</td><td class="sheet-meta">${escapeHtml(row.bagType || row.status || '-')}</td>${locationCell}</tr><tr class="case-detail-row" data-unresolved-detail hidden><td colspan="${columnCount}"><div class="case-detail-layout"><div class="case-progress-column">${unresolvedProgressHtml(progressRow)}</div><div class="case-detail-right">${formHtml}${historyHtml}</div></div></td></tr>`;
       }).join('')}</tbody></table></div>`;
       requestAnimationFrame(syncCaseProgressHeights);
     }
@@ -1203,6 +1221,8 @@
       const selectedRow = Number(window._selectedCbsRow || 0);
       const sourceRows = selectedRow ? (window._cbsRows || []).filter((row) => Number(row.rowNumber) === selectedRow) : (window._cbsRows || []);
       const showClosed = window._caseView === 'closed';
+      const passengerCount = document.querySelector('[data-case-overview-count="passenger"]');
+      if (passengerCount) passengerCount.textContent = String(sourceRows.filter((row) => isClosedCase(row) === showClosed).length);
       const rows = sortedCaseRows(sourceRows).filter((row) => isClosedCase(row) === showClosed).filter((row) => !query || rowSearchText(row).includes(query));
       const baggageHtml = baggageSearchHtml();
       if (!rows.length) { casesOutput.innerHTML = `<p class="muted">No matching cases.</p>${baggageHtml}`; return; }
@@ -1503,6 +1523,7 @@
         // Keep the full case list visible after an update. Selecting only the
         // updated row made the other open cases appear to have disappeared.
         window._selectedCbsRow = 0;
+        caseSearch.value = '';
         window._expandedCbsCases = window._expandedCbsCases || new Set();
         window._expandedCbsCases.add(`row-${rowNumber}`);
         await loadCases();
@@ -1517,6 +1538,10 @@
     }
     caseSearch?.addEventListener('input', () => { renderCases(); loadBaggageSearch(caseSearch.value); });
     openCasesTab?.addEventListener('click', () => showSection('open'));
+    document.querySelector('.case-overview')?.addEventListener('click', (event) => {
+      const card = event.target.closest('[data-case-overview-target]');
+      if (card) document.getElementById(card.dataset.caseOverviewTarget)?.scrollIntoView({ behavior:'smooth', block:'start' });
+    });
     closedCasesTab?.addEventListener('click', () => showSection('closed'));
     worldTracerTab?.addEventListener('click', async () => { delete worldTracerForm.dataset.missingRow; showSection('worldtracer'); await loadWorldTracerCases(); });
     missingAlert?.addEventListener('click', () => {
@@ -1709,7 +1734,11 @@
         const res = await fetch(`${apiBase}/cbs-unresolved-baggage/${encodeURIComponent(form.dataset.unresolvedRow)}/update`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || 'On-hand baggage update failed');
-        await Promise.all([loadUnresolvedBaggage(), loadWorldTracerCases()]);
+        window._selectedCbsRow = 0;
+        caseSearch.value = '';
+        await loadCases();
+        await loadUnresolvedBaggage();
+        await loadWorldTracerCases();
       } catch (error) {
         alert(error.message);
       } finally {
@@ -1730,6 +1759,14 @@
       } catch (error) { addBaggageOutput.innerHTML = `<p class="status err">${escapeHtml(error.message)}</p>`; }
     });
     addBaggageOutput?.addEventListener('click', (event) => {
+      const addTag = event.target.closest('[data-add-outbound-bag-tag]');
+      if (addTag) {
+        addTag.closest('[data-add-outbound-bag-tags]').insertAdjacentHTML('beforeend', '<div class="add-outbound-bag-tag-row"><label><span>Bag Tag Number</span><input name="bagTag" maxlength="8" pattern="[A-Za-z]{2}[0-9]{6}" required autofocus /></label><button class="secondary" type="button" data-remove-outbound-bag-tag aria-label="Remove bag tag">−</button></div>');
+        addTag.closest('form').querySelector('.add-outbound-bag-tag-row:last-child input').focus();
+        return;
+      }
+      const removeTag = event.target.closest('[data-remove-outbound-bag-tag]');
+      if (removeTag) { removeTag.closest('.add-outbound-bag-tag-row').remove(); return; }
       const exchange = event.target.closest('[data-start-add-exchange]');
       if (exchange) {
         addBaggageOutput.innerHTML = `<div class="add-baggage-panel"><h2>Exchange On-hand Tag</h2><form class="add-exchange-form" data-unresolved-row="${escapeHtml(exchange.dataset.startAddExchange)}"><div class="exchange-current-card"><strong>Current Open On-hand</strong><span class="exchange-tag-flow"><span class="exchange-tag-old">${escapeHtml(exchange.dataset.currentTag)}</span><span class="exchange-tag-arrow" aria-hidden="true">→<span class="exchange-tag-arrow-label">Exchange</span></span><span class="exchange-tag-new">New tag</span></span></div><label><span>New Tag Number</span><input name="newTagNumber" pattern="[A-Za-z]{2}[0-9]{6}" placeholder="MU123456" required autofocus /></label><div class="actions"><button type="submit">Exchange</button><button class="secondary" type="button" data-cancel-add-baggage>Cancel</button></div></form></div>`;
@@ -1737,7 +1774,7 @@
       }
       const mode = event.target.closest('[data-add-baggage-mode]');
       if (mode) { const bagTag = normalizeBaggageTag(addBaggageSearch.elements.bagTag.value); addBaggageOutput.innerHTML = `<div class="add-baggage-panel"><h2>${escapeHtml(bagTag)}</h2>${addBaggageFormHtml(bagTag, mode.dataset.addBaggageMode)}</div>`; return; }
-      if (event.target.closest('[data-cancel-add-baggage]')) { addBaggageOutput.innerHTML = '<p class="muted">Enter a bag tag number to search.</p>'; addBaggageSearch.elements.bagTag.focus(); }
+      if (event.target.closest('[data-cancel-add-baggage]')) { addBaggageOutput.innerHTML = ''; addBaggageSearch.elements.bagTag.focus(); }
     });
     addBaggageOutput?.addEventListener('change', (event) => {
       const status = event.target.closest('[data-add-outbound-status]');
@@ -1780,12 +1817,18 @@
       payload.flight = payload.direction === 'outbound' ? 'MU586' : 'MU583';
       payload.submittedBy = await currentUpdater();
       if (!payload.submittedBy) return alert('Your signed-in account could not be identified. Refresh the page and try again.');
+      const bagTags = payload.direction === 'outbound'
+        ? [...form.querySelectorAll('[data-add-outbound-bag-tags] input[name="bagTag"]')].map((input) => normalizeBaggageTag(input.value))
+        : [normalizeBaggageTag(payload.bagTag)];
+      if (!bagTags.length || bagTags.some((bagTag) => !/^[A-Z]{2}\d{6}$/.test(bagTag))) return alert('Each bag tag must match MU123456 format.');
       const button = form.querySelector('button[type="submit"]');
       button.disabled = true;
       try {
-        const res = await fetch(`${apiBase}/test-baggage`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
-        const data = await parseJson(res);
-        if (!res.ok) throw new Error(data.error || 'Baggage save failed');
+        for (const bagTag of bagTags) {
+          const res = await fetch(`${apiBase}/test-baggage`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ ...payload, bagTag }) });
+          const data = await parseJson(res);
+          if (!res.ok) throw new Error(data.error || 'Baggage save failed');
+        }
         await loadUnresolvedBaggage();
         showSection('open');
       } catch (error) { alert(error.message); } finally { button.disabled = false; }
@@ -1892,11 +1935,16 @@
     });
     addRushFlightRow();
     const initialSection = new URLSearchParams(window.location.search).get('section') === 'missing' ? 'missing' : 'open';
+    async function loadInitialCaseData() {
+      // These endpoints all read the operations workbook. Load them in sequence
+      // so simultaneous Sheets requests cannot prevent every case list loading.
+      await loadCases();
+      await loadUnresolvedBaggage();
+      await loadMissingReports();
+      await syncMissingReports();
+    }
     showSection(initialSection);
-    loadCases();
-    loadMissingReports();
-    syncMissingReports();
-    loadUnresolvedBaggage();
+    loadInitialCaseData();
   </script>
   <script src="/attachment-drop.js"></script>
 </body>

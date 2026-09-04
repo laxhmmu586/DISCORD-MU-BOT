@@ -23,8 +23,32 @@ test('mobile CBS navigation spans the viewport without table content widening th
 });
 
 test('updating one CBS case keeps the complete case list visible', () => {
-  assert.match(page, /window\._selectedCbsRow = 0;\s*window\._expandedCbsCases = window\._expandedCbsCases \|\| new Set\(\);\s*window\._expandedCbsCases\.add\(`row-\$\{rowNumber\}`\);\s*await loadCases\(\)/);
+  assert.match(page, /window\._selectedCbsRow = 0;\s*caseSearch\.value = '';\s*window\._expandedCbsCases = window\._expandedCbsCases \|\| new Set\(\);\s*window\._expandedCbsCases\.add\(`row-\$\{rowNumber\}`\);\s*await loadCases\(\);\s*await loadUnresolvedBaggage\(\)/);
   assert.doesNotMatch(page, /window\._selectedCbsRow = Number\(rowNumber\)/);
+});
+
+test('CBS removes requested helper descriptions', () => {
+  [
+    'Closed Passenger Filed and completed On-hand cases are shown here.',
+    'Passenger Filed and On-hand files are shown together on this page.',
+    'Create a Rush Bag case and save it to the operations sheet.',
+    'Search a bag tag, then add an inbound or outbound baggage record here.',
+    'Enter a bag tag number to search.',
+    'MU rows imported from Early Bag Storage missed bag email.',
+    'Select a subject and complete the required email details.',
+    'Select either chart to open the original high-resolution image.',
+    'Passenger bags entered as inbound remain here until resolved.',
+    'Outbound bags registered as Not Load Bags remain here until resolved.',
+    'On-hand cases completed by Create Rush, Shipping, Passenger collected, or Case Close are archived here.',
+    'Completed Not Load Bags cases are archived here.'
+  ].forEach((description) => assert.doesNotMatch(page, new RegExp(description.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))));
+});
+
+test('CBS updates clear stale filters and reload both case data sources', () => {
+  const passengerUpdate = page.match(/async function updateCase[\s\S]*?caseSearch\?\.addEventListener/)?.[0] || '';
+  assert.match(passengerUpdate, /window\._selectedCbsRow = 0;\s*caseSearch\.value = '';[\s\S]*await loadCases\(\);\s*await loadUnresolvedBaggage\(\)/);
+  const onHandUpdate = page.match(/openCasesCard\?\.addEventListener\('submit'[\s\S]*?addBaggageSearch\?\.addEventListener/)?.[0] || '';
+  assert.match(onHandUpdate, /window\._selectedCbsRow = 0;\s*caseSearch\.value = '';\s*await loadCases\(\);\s*await loadUnresolvedBaggage\(\);\s*await loadWorldTracerCases\(\)/);
 });
 
 test('CBS storage reads and writes Google Sheets only', () => {
@@ -190,9 +214,15 @@ test('CBS page uses the Lake Baggage System browser title', () => {
   assert.doesNotMatch(page, /<title>CBS Cases<\/title>/);
 });
 
+test('CBS loads all case lists sequentially to avoid concurrent Sheets failures', () => {
+  assert.match(page, /async function loadInitialCaseData\(\) \{[\s\S]*await loadCases\(\);\s*await loadUnresolvedBaggage\(\);\s*await loadMissingReports\(\);\s*await syncMissingReports\(\);/);
+  assert.match(page, /showSection\(initialSection\);\s*loadInitialCaseData\(\);/);
+  assert.doesNotMatch(page, /showSection\(initialSection\);\s*loadCases\(\);\s*loadMissingReports\(\);/);
+});
+
 test('CBS case refresh reads Google Sheets and does not restart the page', () => {
   assert.match(drive, /async function getCbsCases\(\) \{[\s\S]*getCbsSheetRows/);
-  assert.match(page, /await Promise\.all\(\[loadCases\(\), loadMissingReports\(\), loadUnresolvedBaggage\(\)\]\)/);
+  assert.match(page, /await loadCases\(\);\s*await loadUnresolvedBaggage\(\);\s*await loadMissingReports\(\);/);
   assert.doesNotMatch(page, /sidebarRefresh\.addEventListener\('click', \(\) => window\.location\.reload\(\)\)/);
 });
 test('CBS cases no longer rely on stale browser storage', () => {
@@ -200,19 +230,29 @@ test('CBS cases no longer rely on stale browser storage', () => {
   assert.match(page, /async function loadCases\(\) \{\s*casesOutput\.innerHTML = '<p class="muted">Loading cases/);
 });
 
-test('Add On-hand records are added to and displayed in Open Case', () => {
+test('case overview cards omit arrows and remain a three-column mobile grid', () => {
+  const overview = page.match(/<div class="case-overview"[\s\S]*?<\/div>/)?.[0] || '';
+  assert.match(overview, /Passenger Filed/);
+  assert.match(overview, /On-hand/);
+  assert.match(overview, /Bag Room<br>Unload Bag/);
+  assert.doesNotMatch(overview, /&gt;|>›<|case-overview-arrow/);
+  assert.match(page, /\.case-overview \{ display:grid; grid-template-columns:repeat\(3,minmax\(0,260px\)\); gap:12px; justify-content:start/);
+  assert.match(page, /\.case-overview\{grid-template-columns:repeat\(3,minmax\(0,1fr\)\);gap:6px\}/);
+  assert.match(page, /\.case-overview-card\{grid-template-columns:1fr;justify-items:center;gap:4px;padding:9px 4px;text-align:center\}/);
+});
+
+test('Add Baggage records are added to and displayed in Open Case', () => {
   assert.match(drive, /CBS_UNRESOLVED_BAGGAGE_SHEET_GID = Number\(process\.env\.CBS_UNRESOLVED_BAGGAGE_SHEET_GID \|\| 523026916\)/);
-  assert.match(page, /title="Add On-hand"/);
+  assert.match(page, /title="Add Baggage"/);
   assert.match(page, /id="open-cases-tab"[\s\S]*id="closed-cases-tab"[\s\S]*id="add-baggage-tab"[\s\S]*id="worldtracer-tab"/);
-  assert.match(page, /<h1>Add On-hand<\/h1>/);
-  assert.doesNotMatch(page, />Add Baggage</);
+  assert.match(page, /<h1>Add Baggage<\/h1>/);
+  assert.doesNotMatch(page, />Add On-hand</);
   assert.match(drive, /await appendCbsUnresolvedBaggageCase\(cleanRecord\);/);
   assert.match(page, /await loadUnresolvedBaggage\(\);\s*showSection\('open'\);/);
 });
 
 test('On-hand only includes Office bags and excludes gate bags and Co-mail', () => {
-  const description = 'Passenger bags entered as inbound remain here until resolved. Gate bags, Co-mail, and not-loaded outbound bags are not included.';
-  assert.equal((page.match(new RegExp(description.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length, 2);
+  assert.doesNotMatch(page, /id="on-hand-description"|id="bag-room-unload-description"/);
   assert.match(page, /<option>Gate bag<\/option>/);
   assert.match(page, /<option>Co-mail<\/option>/);
   assert.match(page, /<select name="location" required><option>Office<\/option><option>Transfer<\/option><\/select>/);
@@ -241,7 +281,7 @@ test('Not Load Bags are automatically copied to the Bag Room Unload Google Sheet
 });
 
 test('On-hand cases match the passenger case layout and support WorldTracer progress', () => {
-  assert.match(page, /<th>WorldTracer File Number<\/th><th>Bag Tag<\/th><th>Direction<\/th>/);
+  assert.match(page, /<th>WorldTracer File Number<\/th><th>Bag Tag<\/th>\$\{rushTagHeader\}<th>Direction<\/th>/);
   assert.match(page, /class="case-detail-layout"><div class="case-progress-column">\$\{unresolvedProgressHtml\(progressRow\)\}/);
   assert.match(page, /<option value="worldtracer">WorldTracer<\/option>/);
   assert.match(drive, /getCbsUnresolvedBaggageSheetTitle/);
@@ -251,6 +291,21 @@ test('On-hand cases match the passenger case layout and support WorldTracer prog
   assert.match(drive, /!L\$\{target\.rowNumber\}/);
   assert.match(drive, /!L1:M1`[\s\S]*CBS_UNRESOLVED_BAGGAGE_HEADERS\[12\]/);
   assert.match(server, /action === 'worldtracer'/);
+});
+
+test('On-hand tables hide the Rush Tag column when the group has no rush tags', () => {
+  assert.match(page, /const showRushTag = rows\.some\(\(row\) => String\(row\.rushTagNumber \|\| ''\)\.trim\(\)\)/);
+  assert.match(page, /const rushTagHeader = showRushTag \? '<th>Rush Tag<\/th>' : ''/);
+  assert.match(page, /const rushTagCell = showRushTag \? `<td class="sheet-meta">\$\{escapeHtml\(row\.rushTagNumber \|\| '-'\)\}<\/td>` : ''/);
+  assert.match(page, /const columnCount = 5 \+ Number\(showRushTag\) \+ Number\(showLocation\)/);
+  assert.match(page, /colspan="\$\{columnCount\}"/);
+});
+
+test('Bag Room Unload Bag tables do not display a Location column', () => {
+  assert.match(page, /const showLocation = groupName !== 'Bag Room Unload Bag'/);
+  assert.match(page, /const locationHeader = showLocation \? '<th>Location<\/th>' : ''/);
+  assert.match(page, /const locationCell = showLocation \? `<td class="sheet-meta"><span class="on-hand-location">/);
+  assert.match(page, /<th>Type \/ Status<\/th>\$\{locationHeader\}/);
 });
 
 test('On-hand cases support Passenger Name and Passenger Filed-style comments', () => {
@@ -423,6 +478,13 @@ test('Outbound form orders shared fields and supports adding multiple bag tags',
   assert.match(indexPage, /insertAdjacentHTML\("beforeend"/);
   assert.match(indexPage, /data-test-remove-bag-tag/);
   assert.match(indexPage, /for \(const entry of entries\)/);
+  const cbsOutbound = page.match(/if \(direction === 'outbound'\) return `([\s\S]*?)`;/)?.[1] || '';
+  assert.ok(cbsOutbound.indexOf('<span>Date</span>') < cbsOutbound.indexOf('<span>Status</span>'));
+  assert.ok(cbsOutbound.indexOf('<span>Status</span>') < cbsOutbound.indexOf('<span>Bag Tag Number</span>'));
+  assert.match(cbsOutbound, /data-add-outbound-bag-tags/);
+  assert.match(cbsOutbound, /data-add-outbound-bag-tag[^>]*aria-label="Add another bag tag">\+/);
+  assert.match(page, /data-remove-outbound-bag-tag/);
+  assert.match(page, /for \(const bagTag of bagTags\)/);
 });
 
 test('home Baggage search avoids duplicate requests and repeated submissions', () => {
