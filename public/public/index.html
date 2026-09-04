@@ -3301,6 +3301,27 @@
         align-items: center;
       }
 
+      .test-bag-tag-row {
+        display: grid;
+        grid-template-columns: minmax(0, 320px) 40px;
+        align-items: end;
+        gap: 8px;
+      }
+
+      .test-bag-tag-row + .test-bag-tag-row { margin-top: 8px; }
+
+      .test-bag-tag-add,
+      .test-bag-tag-remove {
+        width: 40px;
+        height: 40px;
+        border: 1px solid rgba(88, 167, 255, 0.5);
+        background: rgba(88, 167, 255, 0.14);
+        color: white;
+        font-size: 24px;
+        font-weight: 800;
+        cursor: pointer;
+      }
+
       .test-update-head {
         align-items: center;
         margin-bottom: 10px;
@@ -7475,9 +7496,10 @@
           const status = entry.status || "Not load bags";
           return `<fieldset class="test-create-entry" data-test-bag-entry>
             <legend><span>Outbound bag</span></legend>
-            <div class="test-form-grid">${bagTagInput}
+            <div class="test-form-grid">
               <label class="test-field"><span>Date</span><input name="date" type="date" value="${escapeHtml(entry.date || today)}" required /></label>
               <label class="test-field"><span>Type</span><select name="status" data-test-outbound-status required><option value="Not load bags"${selected(status, "Not load bags")}>Not load bags</option><option value="Outbound rush"${selected(status, "Outbound rush")}>Outbound rush</option><option value="Gate bag"${selected(status, "Gate bag")}>Gate bag</option></select></label>
+              <div data-test-outbound-bag-tags><div class="test-bag-tag-row">${bagTagInput}<button class="test-bag-tag-add" type="button" data-test-add-bag-tag aria-label="Add another bag tag">+</button></div></div>
               <label class="test-field" data-test-outbound-location><span>Current location</span><input name="location" value="${escapeHtml(entry.location || "")}" list="test-location-options" /></label>
               <label class="test-field" data-test-rush-field hidden><span>Rush tag number</span><input name="rushTagNumber" value="${escapeHtml(entry.rushTagNumber || "")}" /></label>
               <label class="test-field" data-test-rush-field hidden><span>Rush To where?</span><input name="rushToWhere" value="${escapeHtml(entry.rushToWhere || "")}" /></label>
@@ -7501,6 +7523,17 @@
 
       function collectCreateEntries(form) {
         const mode = form.dataset.createMode;
+        if (mode === "outbound") {
+          const entry = form.querySelector("[data-test-bag-entry]");
+          const shared = {
+            flight: "MU586", date: formValue(entry, "date"), location: formValue(entry, "location"),
+            status: formValue(entry, "status"), comment: formValue(entry, "comment"),
+            rushTagNumber: formValue(entry, "rushTagNumber"), rushToWhere: formValue(entry, "rushToWhere"),
+            akeNumber: formValue(entry, "akeNumber"), worldTracerFileNumber: formValue(entry, "worldTracerFileNumber"),
+          };
+          return [...entry.querySelectorAll('[data-test-outbound-bag-tags] input[name="bagTag"]')]
+            .map((input) => ({ ...shared, bagTag: normalizeTestBagTag(input.value) }));
+        }
         return [...form.querySelectorAll("[data-test-bag-entry]")].map((entry) => ({
           bagTag: normalizeTestBagTag(formValue(entry, "bagTag")),
           flight: mode === "outbound" ? "MU586" : "MU583",
@@ -8653,6 +8686,18 @@
         testBagSearchInput.value = normalizeTestBagTag(testBagSearchInput.value);
       });
       testOutput?.addEventListener("click", (event) => {
+        const addBagTagButton = event.target.closest("[data-test-add-bag-tag]");
+        if (addBagTagButton) {
+          const list = addBagTagButton.closest("[data-test-outbound-bag-tags]");
+          list.insertAdjacentHTML("beforeend", `<div class="test-bag-tag-row"><label class="test-field"><span>Bag tag number</span><input name="bagTag" maxlength="8" pattern="[A-Z]{2}[0-9]{6}" title="Use MU123456 format" autocomplete="off" required autofocus /></label><button class="test-bag-tag-remove" type="button" data-test-remove-bag-tag aria-label="Remove bag tag">−</button></div>`);
+          list.lastElementChild?.querySelector('input[name="bagTag"]')?.focus();
+          return;
+        }
+        const removeBagTagButton = event.target.closest("[data-test-remove-bag-tag]");
+        if (removeBagTagButton) {
+          removeBagTagButton.closest(".test-bag-tag-row")?.remove();
+          return;
+        }
         const createModeButton = event.target.closest("[data-test-create-mode]");
         if (createModeButton) {
           if (createModeButton.dataset.testCreateMode === "exchange") {

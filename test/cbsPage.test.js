@@ -412,6 +412,17 @@ test('Not load bags hides and disables Current location', () => {
   assert.match(page, /locationInput\.disabled = !needsLocation/);
 });
 
+test('Outbound form orders shared fields and supports adding multiple bag tags', () => {
+  const outbound = indexPage.match(/if \(mode === "outbound"\) \{([\s\S]*?)\n        \}/)?.[1] || '';
+  assert.ok(outbound.indexOf('<span>Date</span>') < outbound.indexOf('<span>Type</span>'));
+  assert.ok(outbound.indexOf('<span>Type</span>') < outbound.indexOf('${bagTagInput}'));
+  assert.match(outbound, /data-test-add-bag-tag[^>]*aria-label="Add another bag tag">\+/);
+  assert.match(indexPage, /data-test-outbound-bag-tags[^\n]*input\[name="bagTag"\]/);
+  assert.match(indexPage, /insertAdjacentHTML\("beforeend"/);
+  assert.match(indexPage, /data-test-remove-bag-tag/);
+  assert.match(indexPage, /for \(const entry of entries\)/);
+});
+
 test('home Baggage search avoids duplicate requests and repeated submissions', () => {
   assert.match(indexPage, /let testBagSearchPending = false/);
   assert.match(indexPage, /if \(!testOutput \|\| testBagSearchPending\) return/);
