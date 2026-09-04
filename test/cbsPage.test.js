@@ -200,6 +200,17 @@ test('CBS cases no longer rely on stale browser storage', () => {
   assert.match(page, /async function loadCases\(\) \{\s*casesOutput\.innerHTML = '<p class="muted">Loading cases/);
 });
 
+test('case overview cards omit arrows and remain a three-column mobile grid', () => {
+  const overview = page.match(/<div class="case-overview"[\s\S]*?<\/div>/)?.[0] || '';
+  assert.match(overview, /Passenger Filed/);
+  assert.match(overview, /On-hand/);
+  assert.match(overview, /Bag Room<br>Unload Bag/);
+  assert.doesNotMatch(overview, /&gt;|>›<|case-overview-arrow/);
+  assert.match(page, /\.case-overview \{ display:grid; grid-template-columns:repeat\(3,minmax\(0,1fr\)\); gap:12px/);
+  assert.match(page, /\.case-overview\{grid-template-columns:repeat\(3,minmax\(0,1fr\)\);gap:6px\}/);
+  assert.match(page, /\.case-overview-card\{grid-template-columns:1fr;justify-items:center;gap:4px;padding:9px 4px;text-align:center\}/);
+});
+
 test('Add Baggage records are added to and displayed in Open Case', () => {
   assert.match(drive, /CBS_UNRESOLVED_BAGGAGE_SHEET_GID = Number\(process\.env\.CBS_UNRESOLVED_BAGGAGE_SHEET_GID \|\| 523026916\)/);
   assert.match(page, /title="Add Baggage"/);
