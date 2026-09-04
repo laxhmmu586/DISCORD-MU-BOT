@@ -76,6 +76,7 @@ const {
   updateCbsWorldTracerCase,
   getCbsUnresolvedBaggageCases,
   updateCbsUnresolvedBaggageWorldTracer,
+  updateCbsUnresolvedBaggageDetails,
   exchangeCbsUnresolvedBaggageTag,
   resolveCbsUnresolvedBaggageCase,
   reopenCbsUnresolvedBaggageCase,
@@ -2849,6 +2850,8 @@ async function syncOnHandStatusToBaggage(record, action, body = {}) {
   const latestExchange = action === 'exchange' ? record.exchangeHistory?.at(-1) : null;
   const statuses = {
     worldtracer: 'WorldTracer Updated',
+    'passenger-name': 'Passenger Name Updated',
+    comment: 'Comment',
     reopen: 'Reopened',
     email: 'Pick-up Bags - available',
     'on-hand-rush': 'Create Rush',
@@ -2877,7 +2880,7 @@ async function syncOnHandStatusToBaggage(record, action, body = {}) {
 app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
   try {
     const action = sanitizeCbsText(req.body?.action, 40).toLowerCase();
-    if (!['worldtracer', 'reopen', 'email', 'exchange', 'on-hand-rush', 'passenger-collected', 'case-close', 'shipped', 'other'].includes(action)) return res.status(400).json({ error: 'A valid resolution is required' });
+    if (!['worldtracer', 'passenger-name', 'comment', 'reopen', 'email', 'exchange', 'on-hand-rush', 'passenger-collected', 'case-close', 'shipped', 'other'].includes(action)) return res.status(400).json({ error: 'A valid resolution is required' });
     const note = sanitizeCbsText(req.body?.note, 500);
     if (action === 'email') {
       const emailAction = sanitizeCbsText(req.body?.emailAction, 80);
@@ -2931,6 +2934,16 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
       if (!worldTracerFileNumber) return res.status(400).json({ error: 'WorldTracer file number is required' });
       const result = await updateCbsUnresolvedBaggageWorldTracer(req.params.rowNumber, worldTracerFileNumber, sanitizeCbsText(req.body?.updatedBy, 160));
       if (result.notFound) return res.status(404).json({ error: 'Unresolved baggage case not found' });
+      await syncOnHandStatusToBaggage(result.record, action, req.body);
+      return res.json(result);
+    }
+    if (action === 'passenger-name' || action === 'comment') {
+      const passengerName = sanitizeCbsText(req.body?.passengerName, 160);
+      const comment = sanitizeCbsText(req.body?.comment, 500);
+      if (action === 'passenger-name' && !passengerName) return res.status(400).json({ error:'Passenger name is required' });
+      if (action === 'comment' && !comment) return res.status(400).json({ error:'A comment is required' });
+      const result = await updateCbsUnresolvedBaggageDetails(req.params.rowNumber, { passengerName, comment, updatedBy:req.body?.updatedBy });
+      if (result.notFound) return res.status(404).json({ error:'On-hand case not found' });
       await syncOnHandStatusToBaggage(result.record, action, req.body);
       return res.json(result);
     }

@@ -11,6 +11,8 @@ not initialize, read, or write Cloud Firestore.
 - Passenger-filed CBS cases use `CBS_SHEET_ID` / `CBS_SHEET_GID`.
 - Wrong-baggage cases use `CBS_SHEET_ID` / `WRONG_BAGGAGE_SHEET_GID`.
 - On-hand cases use `CBS_SHEET_ID` / `CBS_UNRESOLVED_BAGGAGE_SHEET_GID`.
+- Outbound Not Load Bags are also copied automatically to the Bag Room Unload
+  tab selected by `CBS_NOT_LOAD_BAGGAGE_SHEET_GID` (default `1393047851`).
 - WorldTracer/RUSH cases use `CBS_SHEET_ID` / `CBS_WORLDTRACER_SHEET_GID`.
 - Missing-bag reports use `CBS_SHEET_ID` / `CBS_MISSING_BAG_SHEET_GID`.
 
