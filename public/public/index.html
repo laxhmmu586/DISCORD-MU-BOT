@@ -3301,6 +3301,27 @@
         align-items: center;
       }
 
+      .test-bag-tag-row {
+        display: grid;
+        grid-template-columns: minmax(0, 320px) 40px;
+        align-items: end;
+        gap: 8px;
+      }
+
+      .test-bag-tag-row + .test-bag-tag-row { margin-top: 8px; }
+
+      .test-bag-tag-add,
+      .test-bag-tag-remove {
+        width: 40px;
+        height: 40px;
+        border: 1px solid rgba(88, 167, 255, 0.5);
+        background: rgba(88, 167, 255, 0.14);
+        color: white;
+        font-size: 24px;
+        font-weight: 800;
+        cursor: pointer;
+      }
+
       .test-update-head {
         align-items: center;
         margin-bottom: 10px;
@@ -7389,7 +7410,7 @@
             <button type="button" data-test-update-mode="rush" class="${activeMode === "rush" ? "is-active" : ""}">Rush</button>
             <button type="button" data-test-update-mode="location" class="${activeMode === "location" ? "is-active" : ""}">Bag location update</button>
             <button type="button" data-test-update-mode="shipping" class="${activeMode === "shipping" ? "is-active" : ""}">Shipping</button>
-            ${window._testHasOpenOnHand ? `<button type="button" data-test-update-mode="exchange" class="${activeMode === "exchange" ? "is-active" : ""}">Exchange</button>` : ""}
+            <button type="button" data-test-update-mode="exchange" class="${activeMode === "exchange" ? "is-active" : ""}">Exchange</button>
           </div>
           <div class="test-form-grid">${fields}<div class="test-form-actions"><button class="test-submit" type="submit">Update</button><button class="test-back-button" type="button" data-test-close-update>Close</button><span class="panel-muted">${escapeHtml(message)}</span></div></div>
         </form>`;
@@ -7416,10 +7437,7 @@
 
       async function renderTestAddChoice(bagTag) {
         if (!testOutput) return;
-        const onHandData = await apiJson('/cbs-unresolved-baggage');
-        const hasOpenOnHand = (onHandData?.rows || []).some((row) => !row.resolvedAt);
-        window._testHasOpenOnHand = hasOpenOnHand;
-        const exchangeButton = hasOpenOnHand ? `<button class="test-choice-card" type="button" data-test-create-mode="exchange">${testPlaneIcon("exchange")}<span>Exchange</span></button>` : '';
+        const exchangeButton = `<button class="test-choice-card" type="button" data-test-create-mode="exchange">${testPlaneIcon("exchange")}<span>Exchange</span></button>`;
         testOutput._record = null;
         testOutput.innerHTML = `<article class="test-report-card">
           <div class="test-report-head"><div class="test-report-title"><strong>${escapeHtml(bagTag)}</strong><span class="panel-muted">No matching bag found.</span></div></div>
@@ -7478,10 +7496,11 @@
           const status = entry.status || "Not load bags";
           return `<fieldset class="test-create-entry" data-test-bag-entry>
             <legend><span>Outbound bag</span></legend>
-            <div class="test-form-grid">${bagTagInput}
+            <div class="test-form-grid">
               <label class="test-field"><span>Date</span><input name="date" type="date" value="${escapeHtml(entry.date || today)}" required /></label>
               <label class="test-field"><span>Type</span><select name="status" data-test-outbound-status required><option value="Not load bags"${selected(status, "Not load bags")}>Not load bags</option><option value="Outbound rush"${selected(status, "Outbound rush")}>Outbound rush</option><option value="Gate bag"${selected(status, "Gate bag")}>Gate bag</option></select></label>
-              <label class="test-field"><span>Current location</span><input name="location" value="${escapeHtml(entry.location || "")}" list="test-location-options" required /></label>
+              <div data-test-outbound-bag-tags><div class="test-bag-tag-row">${bagTagInput}<button class="test-bag-tag-add" type="button" data-test-add-bag-tag aria-label="Add another bag tag">+</button></div></div>
+              <label class="test-field" data-test-outbound-location><span>Current location</span><input name="location" value="${escapeHtml(entry.location || "")}" list="test-location-options" /></label>
               <label class="test-field" data-test-rush-field hidden><span>Rush tag number</span><input name="rushTagNumber" value="${escapeHtml(entry.rushTagNumber || "")}" /></label>
               <label class="test-field" data-test-rush-field hidden><span>Rush To where?</span><input name="rushToWhere" value="${escapeHtml(entry.rushToWhere || "")}" /></label>
               <label class="test-field" data-test-rush-field hidden><span>AKE number?</span><input name="akeNumber" value="${escapeHtml(entry.akeNumber || "")}" /></label>
@@ -7504,6 +7523,17 @@
 
       function collectCreateEntries(form) {
         const mode = form.dataset.createMode;
+        if (mode === "outbound") {
+          const entry = form.querySelector("[data-test-bag-entry]");
+          const shared = {
+            flight: "MU586", date: formValue(entry, "date"), location: formValue(entry, "location"),
+            status: formValue(entry, "status"), comment: formValue(entry, "comment"),
+            rushTagNumber: formValue(entry, "rushTagNumber"), rushToWhere: formValue(entry, "rushToWhere"),
+            akeNumber: formValue(entry, "akeNumber"), worldTracerFileNumber: formValue(entry, "worldTracerFileNumber"),
+          };
+          return [...entry.querySelectorAll('[data-test-outbound-bag-tags] input[name="bagTag"]')]
+            .map((input) => ({ ...shared, bagTag: normalizeTestBagTag(input.value) }));
+        }
         return [...form.querySelectorAll("[data-test-bag-entry]")].map((entry) => ({
           bagTag: normalizeTestBagTag(formValue(entry, "bagTag")),
           flight: mode === "outbound" ? "MU586" : "MU583",
@@ -7542,9 +7572,10 @@
         testOutput.querySelectorAll("[data-test-bag-entry]").forEach((entry) => updateOutboundFields(entry));
       }
 
+      let testBagSearchPending = false;
       async function searchTestBag(event) {
         event?.preventDefault();
-        if (!testOutput) return;
+        if (!testOutput || testBagSearchPending) return;
         const bagTag = normalizeTestBagTag(testBagSearchInput?.value);
         if (!isValidTestBagTag(bagTag)) {
           testOutput.innerHTML = `<p class="panel-muted status-fail">Bag tag must match MU123456 format.</p>`;
@@ -7552,22 +7583,33 @@
         }
         if (testBagSearchInput) testBagSearchInput.value = bagTag;
         testOutput.innerHTML = `<p class="panel-muted">Searching ${escapeHtml(bagTag)}...</p>`;
+        const searchButton = testSearchForm?.querySelector('button[type="submit"]');
+        testBagSearchPending = true;
+        if (searchButton) searchButton.disabled = true;
         try {
-          const [data, onHandData] = await Promise.all([
-            apiJson(`/test-baggage/${encodeURIComponent(bagTag)}`),
-            apiJson('/cbs-unresolved-baggage')
-          ]);
-          window._testHasOpenOnHand = (onHandData?.rows || []).some((row) => !row.resolvedAt);
+          const data = await apiJson(`/test-baggage/${encodeURIComponent(bagTag)}`);
           if (data?.found && data.record) renderTestRecord(data.record);
           else await renderTestAddChoice(bagTag);
         } catch (error) {
           testOutput.innerHTML = `<p class="panel-muted status-fail">${escapeHtml(error?.message || "Baggage lookup failed.")}</p>`;
+        } finally {
+          testBagSearchPending = false;
+          if (searchButton) searchButton.disabled = false;
         }
       }
 
       function updateOutboundFields(scope) {
         const status = scope?.querySelector("[data-test-outbound-status]")?.value || "";
         const rushMode = status === "Outbound rush";
+        const locationField = scope?.querySelector("[data-test-outbound-location]");
+        const locationInput = locationField?.querySelector("input");
+        const needsLocation = status !== "Not load bags";
+        if (locationField) locationField.hidden = !needsLocation;
+        if (locationInput) {
+          locationInput.disabled = !needsLocation;
+          locationInput.required = needsLocation;
+          if (!needsLocation) locationInput.value = "";
+        }
         scope?.querySelectorAll("[data-test-rush-field]").forEach((field) => { field.hidden = !rushMode; });
         scope?.querySelectorAll("[data-test-rush-field] input").forEach((input) => { input.required = rushMode && input.name !== "worldTracerFileNumber"; });
       }
@@ -8644,6 +8686,18 @@
         testBagSearchInput.value = normalizeTestBagTag(testBagSearchInput.value);
       });
       testOutput?.addEventListener("click", (event) => {
+        const addBagTagButton = event.target.closest("[data-test-add-bag-tag]");
+        if (addBagTagButton) {
+          const list = addBagTagButton.closest("[data-test-outbound-bag-tags]");
+          list.insertAdjacentHTML("beforeend", `<div class="test-bag-tag-row"><label class="test-field"><span>Bag tag number</span><input name="bagTag" maxlength="8" pattern="[A-Z]{2}[0-9]{6}" title="Use MU123456 format" autocomplete="off" required autofocus /></label><button class="test-bag-tag-remove" type="button" data-test-remove-bag-tag aria-label="Remove bag tag">−</button></div>`);
+          list.lastElementChild?.querySelector('input[name="bagTag"]')?.focus();
+          return;
+        }
+        const removeBagTagButton = event.target.closest("[data-test-remove-bag-tag]");
+        if (removeBagTagButton) {
+          removeBagTagButton.closest(".test-bag-tag-row")?.remove();
+          return;
+        }
         const createModeButton = event.target.closest("[data-test-create-mode]");
         if (createModeButton) {
           if (createModeButton.dataset.testCreateMode === "exchange") {
