@@ -255,10 +255,16 @@ test('Open Case uses selectable summary cards with live category counts', () => 
   assert.match(page, /function selectCaseGroup\(group\)/);
   assert.match(page, /function setCaseCount\(group, count\)/);
   assert.match(page, /Search case \/ bag tag\.\.\./);
+  assert.match(page, /grid-template-columns:repeat\(3,minmax\(220px,280px\)\)/);
+  assert.match(page, /case-summary-cards\{grid-template-columns:repeat\(3,minmax\(0,1fr\)\);width:100%;overflow:visible\}/);
+  assert.doesNotMatch(page, /case-stat-chevron/);
 });
 
-test('Bag Room rows replace Location with Rush Tag and Rush creation closes matching not-load cases', () => {
-  assert.match(page, /<th>Bag Tag<\/th><th>Rush Tag<\/th><th>Direction<\/th>/);
+test('On-hand and Bag Room rows only show Rush Tag when at least one row has one', () => {
+  assert.match(page, /const showRushTag = rows\.some\(\(row\) => String\(row\.rushTagNumber \|\| ''\)\.trim\(\)\)/);
+  assert.match(page, /const rushTagHeading = showRushTag \? '<th>Rush Tag<\/th>' : ''/);
+  assert.match(page, /const rushTagCell = showRushTag \?/);
+  assert.match(page, /const columnCount = showRushTag \? 6 : 5/);
   assert.doesNotMatch(page, /<th>Type \/ Status<\/th><th>Location<\/th>/);
   assert.match(page, /escapeHtml\(row\.rushTagNumber \|\| '-'\)/);
   assert.match(server, /async function closeMatchingBagRoomUnloadCasesForRush/);
@@ -275,7 +281,7 @@ test('Not Load Bags are automatically copied to the Bag Room Unload Google Sheet
 });
 
 test('On-hand cases match the passenger case layout and support WorldTracer progress', () => {
-  assert.match(page, /<th>WorldTracer File Number<\/th><th>Bag Tag<\/th><th>Rush Tag<\/th><th>Direction<\/th>/);
+  assert.match(page, /<th>WorldTracer File Number<\/th><th>Bag Tag<\/th>\$\{rushTagHeading\}<th>Direction<\/th>/);
   assert.match(page, /class="case-detail-layout"><div class="case-progress-column">\$\{unresolvedProgressHtml\(progressRow\)\}/);
   assert.match(page, /<option value="worldtracer">WorldTracer<\/option>/);
   assert.match(drive, /getCbsUnresolvedBaggageSheetTitle/);
