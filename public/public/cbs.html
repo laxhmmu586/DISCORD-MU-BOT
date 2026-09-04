@@ -699,10 +699,13 @@
       setCaseCount(groupName === 'On-hand' || groupName === 'Closed On-hand' ? 'on-hand' : 'bag-room', rows.length);
       if (!rows.length) { output.innerHTML = `<p class="muted">${showClosed ? `No closed ${groupName} cases.` : `No ${groupName} cases.`}</p>`; return; }
       const showRushTag = rows.some((row) => String(row.rushTagNumber || '').trim());
+      const showLocation = groupName !== 'Bag Room Unload Bag';
       const rushTagColumn = showRushTag ? '<col style="width:150px">' : '';
       const rushTagHeader = showRushTag ? '<th>Rush Tag</th>' : '';
-      const columnCount = showRushTag ? 7 : 6;
-      output.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:190px"><col style="width:310px">${rushTagColumn}<col style="width:120px"><col style="width:130px"><col style="width:180px"><col></colgroup><thead><tr><th>WorldTracer File Number</th><th>Bag Tag</th>${rushTagHeader}<th>Direction</th><th>Date</th><th>Type / Status</th><th>Location</th></tr></thead><tbody>${rows.map((row) => {
+      const locationColumn = showLocation ? '<col>' : '';
+      const locationHeader = showLocation ? '<th>Location</th>' : '';
+      const columnCount = 5 + Number(showRushTag) + Number(showLocation);
+      output.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:190px"><col style="width:310px">${rushTagColumn}<col style="width:120px"><col style="width:130px"><col style="width:180px">${locationColumn}</colgroup><thead><tr><th>WorldTracer File Number</th><th>Bag Tag</th>${rushTagHeader}<th>Direction</th><th>Date</th><th>Type / Status</th>${locationHeader}</tr></thead><tbody>${rows.map((row) => {
         const resolvedHistory = row.history.filter((item) => item.resolvedAt);
         // "Other" records stay in Open Case and remain actionable so staff can
         // add WorldTracer details or apply a final resolution later.
@@ -723,7 +726,8 @@
         const lastExchange = (row.exchangeHistory || []).at(-1);
         const tagDisplay = lastExchange ? `<span class="exchange-tag-flow"><span class="exchange-tag-old">${escapeHtml(lastExchange.oldTag)}</span><span class="exchange-tag-arrow" aria-hidden="true">→<span class="exchange-tag-arrow-label">Exchange</span></span><span class="exchange-tag-new">${escapeHtml(lastExchange.newTag)}</span></span>` : `<span class="bag-tag-value">${escapeHtml(row.bagTag)}</span>`;
         const rushTagCell = showRushTag ? `<td class="sheet-meta">${escapeHtml(row.rushTagNumber || '-')}</td>` : '';
-        return `<tr class="case-summary-row" data-toggle-unresolved-update role="button" tabindex="0" aria-expanded="false"><td class="sheet-meta">${escapeHtml(row.worldTracerFileNumber || '-')}</td><td class="sheet-meta"><span class="on-hand-tag-summary">${matchBadge}${tagDisplay}</span></td>${rushTagCell}<td class="sheet-meta">${escapeHtml(row.direction || '-')}</td><td class="sheet-meta">${escapeHtml(row.flightDate || '-')}</td><td class="sheet-meta">${escapeHtml(row.bagType || row.status || '-')}</td><td class="sheet-meta"><span class="on-hand-location"><span>${escapeHtml(row.location || '-')}</span>${linkButton}</span></td></tr><tr class="case-detail-row" data-unresolved-detail hidden><td colspan="${columnCount}"><div class="case-detail-layout"><div class="case-progress-column">${unresolvedProgressHtml(progressRow)}</div><div class="case-detail-right">${formHtml}${historyHtml}</div></div></td></tr>`;
+        const locationCell = showLocation ? `<td class="sheet-meta"><span class="on-hand-location"><span>${escapeHtml(row.location || '-')}</span>${linkButton}</span></td>` : '';
+        return `<tr class="case-summary-row" data-toggle-unresolved-update role="button" tabindex="0" aria-expanded="false"><td class="sheet-meta">${escapeHtml(row.worldTracerFileNumber || '-')}</td><td class="sheet-meta"><span class="on-hand-tag-summary">${matchBadge}${tagDisplay}</span></td>${rushTagCell}<td class="sheet-meta">${escapeHtml(row.direction || '-')}</td><td class="sheet-meta">${escapeHtml(row.flightDate || '-')}</td><td class="sheet-meta">${escapeHtml(row.bagType || row.status || '-')}</td>${locationCell}</tr><tr class="case-detail-row" data-unresolved-detail hidden><td colspan="${columnCount}"><div class="case-detail-layout"><div class="case-progress-column">${unresolvedProgressHtml(progressRow)}</div><div class="case-detail-right">${formHtml}${historyHtml}</div></div></td></tr>`;
       }).join('')}</tbody></table></div>`;
       requestAnimationFrame(syncCaseProgressHeights);
     }

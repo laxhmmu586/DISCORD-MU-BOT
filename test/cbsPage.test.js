@@ -277,8 +277,15 @@ test('On-hand tables hide the Rush Tag column when the group has no rush tags', 
   assert.match(page, /const showRushTag = rows\.some\(\(row\) => String\(row\.rushTagNumber \|\| ''\)\.trim\(\)\)/);
   assert.match(page, /const rushTagHeader = showRushTag \? '<th>Rush Tag<\/th>' : ''/);
   assert.match(page, /const rushTagCell = showRushTag \? `<td class="sheet-meta">\$\{escapeHtml\(row\.rushTagNumber \|\| '-'\)\}<\/td>` : ''/);
-  assert.match(page, /const columnCount = showRushTag \? 7 : 6/);
+  assert.match(page, /const columnCount = 5 \+ Number\(showRushTag\) \+ Number\(showLocation\)/);
   assert.match(page, /colspan="\$\{columnCount\}"/);
+});
+
+test('Bag Room Unload Bag tables do not display a Location column', () => {
+  assert.match(page, /const showLocation = groupName !== 'Bag Room Unload Bag'/);
+  assert.match(page, /const locationHeader = showLocation \? '<th>Location<\/th>' : ''/);
+  assert.match(page, /const locationCell = showLocation \? `<td class="sheet-meta"><span class="on-hand-location">/);
+  assert.match(page, /<th>Type \/ Status<\/th>\$\{locationHeader\}/);
 });
 
 test('On-hand cases support Passenger Name and Passenger Filed-style comments', () => {
