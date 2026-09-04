@@ -246,6 +246,19 @@ test('On-hand cases match the passenger case layout and support WorldTracer prog
   assert.match(server, /action === 'worldtracer'/);
 });
 
+test('On-hand cases support Passenger Name and Passenger Filed-style comments', () => {
+  assert.match(page, /<option value="passenger-name">Passenger Name<\/option><option value="comment">Comment<\/option>/);
+  assert.match(page, /action === 'passenger-name'[^\n]+name="passengerName"[^\n]+required/);
+  assert.match(page, /action === 'comment'[^\n]+name="commentPreset" data-comment-preset/);
+  assert.match(page, /Passenger request Pick up at LAX/);
+  assert.match(page, /row\.updateEvents \|\| \[\]/);
+  assert.match(page, /item\.key === 'comment' \? ' tracking-chip--comment'/);
+  assert.match(server, /action === 'passenger-name' \|\| action === 'comment'/);
+  assert.match(server, /updateCbsUnresolvedBaggageDetails/);
+  assert.match(drive, /'Passenger Name', 'Update Events'/);
+  assert.match(drive, /!Q\$\{target\.rowNumber\}:R\$\{target\.rowNumber\}/);
+});
+
 test('completed On-hand cases move from Open Case to Closed Case', () => {
   assert.match(page, /new Set\(\['on-hand-rush', 'shipped', 'passenger-collected', 'case-close'\]\)/);
   assert.match(page, /const archived = Boolean\(row\.resolvedAt\) && archivedResolutions\.has\(String\(row\.resolution \|\| ''\)\.toLowerCase\(\)\)/);
@@ -342,8 +355,7 @@ test('Create Rush only asks for a WorldTracer file when the On-hand case has non
 
 test('On-hand tags can be exchanged from Add On-hand and Resolution', () => {
   assert.match(page, /data-add-baggage-mode="exchange">Exchange/);
-  assert.match(page, /const hasOpenOnHand = .*\.some\(\(row\) => !row\.resolvedAt\)/);
-  assert.match(page, /const exchangeButton = hasOpenOnHand \?/);
+  assert.match(page, /const exchangeButton = '<button type="button" data-add-baggage-mode="exchange">Exchange<\/button>'/);
   assert.match(page, /direction === 'exchange'/);
   assert.match(page, /Select Current Open On-hand/);
   assert.match(page, /name="onHandRowNumber"/);
@@ -375,14 +387,22 @@ test('home Baggage add flow also supports On-hand Exchange', () => {
   assert.match(indexPage, /data-test-create-mode="exchange"/);
   assert.match(indexPage, /function renderTestExchangeForm\(newTag, rows = \[\]\)/);
   assert.match(indexPage, /async function renderTestAddChoice\(bagTag\)/);
-  assert.match(indexPage, /const hasOpenOnHand = .*\.some\(\(row\) => !row\.resolvedAt\)/);
-  assert.match(indexPage, /const exchangeButton = hasOpenOnHand \?/);
+  assert.match(indexPage, /const exchangeButton = `<button class="test-choice-card" type="button" data-test-create-mode="exchange">/);
   assert.match(indexPage, /Select current Open On-hand/);
   assert.match(indexPage, /data-test-exchange-form/);
   assert.match(indexPage, /submitTestExchange\(exchangeForm\)/);
   assert.match(indexPage, /action:"exchange", newTagNumber, updatedBy:currentUserName\(\)/);
   assert.match(server, /latestExchange\?\.oldTag \|\| record\.bagTag/);
   assert.match(drive, /next\.bagTag = newBagTag/);
+});
+
+test('Not load bags hides and disables Current location', () => {
+  assert.match(indexPage, /data-test-outbound-location/);
+  assert.match(indexPage, /const needsLocation = status !== "Not load bags"/);
+  assert.match(indexPage, /locationInput\.disabled = !needsLocation/);
+  assert.match(page, /data-add-outbound-location hidden/);
+  assert.match(page, /const needsLocation = status\.value !== 'Not load bags'/);
+  assert.match(page, /locationInput\.disabled = !needsLocation/);
 });
 
 test('home Baggage Update menu supports Exchange', () => {
