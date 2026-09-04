@@ -360,9 +360,9 @@
   <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Collapse sidebar" aria-expanded="true" title="Collapse sidebar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg></button>
   <main class="wrap">
     <section class="card" id="open-cases-card" hidden>
-      <div class="case-dashboard-head">
-        <div><h1 id="case-page-title"><span class="en">Open Case</span><span class="zh">未结案件</span></h1><p class="muted" id="case-page-description">Passenger Filed and On-hand files are shown together on this page.</p></div>
-        <label class="case-search-wrap"><input class="search-field" id="case-search" aria-label="Search cases" placeholder="Search case / bag tag..." /><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/></svg></label>
+      <div class="actions">
+        <div><h1 id="case-page-title"><span class="en">Open Case</span><span class="zh">未结案件</span></h1></div>
+        <div class="case-toolbar"><input class="search-field" id="case-search" placeholder="Search case / bag tag / passenger" /></div>
       </div>
       <div class="case-overview" aria-label="Case totals">
         <button class="case-overview-card" type="button" data-case-overview-target="cases-output"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="4"/><path d="M4 22v-4a8 8 0 0 1 16 0v4z"/></svg><span>Passenger Filed<strong data-case-overview-count="passenger">0</strong></span></button>
@@ -386,7 +386,6 @@
     </section>
     <section class="card worldtracer-create" id="worldtracer-card" hidden>
       <h1>Rush Bag</h1>
-      <p class="muted"><span class="en">Create a Rush Bag case and save it to the operations sheet.</span><span class="zh">创建 Rush Bag 案件并保存到工作表。</span></p>
       <form class="worldtracer-form" id="worldtracer-form">
         <label><span>WorldTracer File Number (Optional)</span><input name="worldTracerFileNumber" autocomplete="off" placeholder="Can be added later" /></label>
         <label><span>Original Tag Number</span><input name="originalTagNumber" required autocomplete="off" /></label>
@@ -401,12 +400,11 @@
       <div class="worldtracer-list"><h2><span class="en">All Rush Bag Cases</span><span class="zh">所有 Rush Bag 案件</span></h2><div id="worldtracer-output"><p class="muted">Loading cases...</p></div></div>
     </section>
     <section class="card" id="missing-report-card" hidden>
-      <div class="actions"><div><h1>MISSING BAG REPORT</h1><p class="muted">MU rows imported from Early Bag Storage missed bag email.</p></div><a class="missing-report-contact" href="tel:+14243121860" aria-label="Call LAXTEC at 424-312-1860"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M10 5h4M11 19h2"/></svg><span>LAXTEC: 424-312-1860</span></a></div>
+      <div class="actions"><div><h1>MISSING BAG REPORT</h1></div><a class="missing-report-contact" href="tel:+14243121860" aria-label="Call LAXTEC at 424-312-1860"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M10 5h4M11 19h2"/></svg><span>LAXTEC: 424-312-1860</span></a></div>
       <div id="missing-report-output"><p class="muted">Loading missing bags...</p></div>
     </section>
     <section class="card" id="email-card" hidden>
       <h1>Email</h1>
-      <p class="muted">Select a subject and complete the required email details.</p>
       <form class="worldtracer-form" id="standalone-email-form">
         <label class="wide"><span>Subject</span><select name="emailAction" data-standalone-email-action required><option value="sent_open_bag_authorization_to_pvg">Sent Open Bag Authorization to PVG</option><option value="contact_pax_pickup_bags">Pick-up Bags - available</option><option value="pickup_bags_future_available">Pick-up Bags - future available</option><option value="baggage_transfer_status_eta">Baggage transfer status update - ETA</option><option value="baggage_pickup_delivery_method_confirmation">Baggage Pick-Up / Delivery Method Confirmation</option><option value="require_open_bag_authorization_pvg">Require Open Bag Authorization at PVG</option><option value="baggage_open_by_customs">Explanation - Baggage Open by Custom</option></select></label>
         <label class="wide" data-standalone-pvg-field><span>Email To</span><select name="emailTo" required><option value="pd-bag-intl@ceair.com">pd-bag-intl@ceair.com</option><option value="pd-bag-dom@ceair.com">pd-bag-dom@ceair.com</option></select></label>
@@ -423,13 +421,11 @@
     </section>
     <section class="card" id="add-baggage-card" hidden>
       <h1>Add Baggage</h1>
-      <p class="muted">Search a bag tag, then add an inbound or outbound baggage record here.</p>
       <form class="add-baggage-search" id="add-baggage-search"><label><span>Bag Tag Number</span><input name="bagTag" placeholder="MU123456" maxlength="8" pattern="[A-Za-z]{2}[0-9]{6}" required autocomplete="off" /></label><button type="submit">Search</button></form>
-      <div id="add-baggage-output"><p class="muted">Enter a bag tag number to search.</p></div>
+      <div id="add-baggage-output"></div>
     </section>
     <section class="card" id="baggage-chart-card" hidden>
       <h1>Baggage Identification Chart</h1>
-      <p class="muted">Select either chart to open the original high-resolution image.</p>
       <div class="baggage-chart-grid">
         <a class="baggage-chart-link" href="assets/640653098-BAGGAGE-CHART-11_01.png" target="_blank" rel="noopener"><span>Luggage / Bags</span><img class="baggage-chart-image" src="assets/640653098-BAGGAGE-CHART-11_01.png" alt="IATA baggage identification chart for luggage and bags" /></a>
         <a class="baggage-chart-link" href="assets/640653098-BAGGAGE-CHART-11_02.png" target="_blank" rel="noopener"><span>Miscellaneous Articles</span><img class="baggage-chart-image" src="assets/640653098-BAGGAGE-CHART-11_02.png" alt="IATA baggage identification chart for miscellaneous articles" /></a>
@@ -492,7 +488,6 @@
     const addRushFlight = document.querySelector('#add-rush-flight');
     const caseSearch = document.querySelector('#case-search');
     const casePageTitle = document.querySelector('#case-page-title');
-    const casePageDescription = document.querySelector('#case-page-description');
     const onHandGroup = document.querySelector('#on-hand-group');
     const missingAlert = document.querySelector('#missing-report-alert');
     const missingReportCard = document.querySelector('#missing-report-card');
@@ -574,7 +569,6 @@
       if (isCaseSection) {
         window._caseView = section;
         casePageTitle.innerHTML = section === 'closed' ? '<span class="en">Closed Case</span><span class="zh">已结案件</span>' : '<span class="en">Open Case</span><span class="zh">未结案件</span>';
-        casePageDescription.textContent = section === 'closed' ? 'Closed Passenger Filed and completed On-hand cases are shown here.' : 'Passenger Filed and On-hand files are shown together on this page.';
         onHandGroup.hidden = false;
         onHandTitle.textContent = section === 'closed' ? 'Closed On-hand' : 'On-hand';
         onHandDescription.textContent = section === 'closed'
@@ -1579,10 +1573,10 @@
         // Keep the full case list visible after an update. Selecting only the
         // updated row made the other open cases appear to have disappeared.
         window._selectedCbsRow = 0;
+        caseSearch.value = '';
         window._expandedCbsCases = window._expandedCbsCases || new Set();
         window._expandedCbsCases.add(`row-${rowNumber}`);
-        await loadCases();
-        await loadUnresolvedBaggage();
+        await Promise.all([loadCases(), loadUnresolvedBaggage()]);
         if (window._missingReportLoaded || !missingReportCard.hidden) await loadMissingReports();
       } catch (error) {
         const message = error instanceof TypeError && /failed to fetch/i.test(error.message)
@@ -1790,7 +1784,9 @@
         const res = await fetch(`${apiBase}/cbs-unresolved-baggage/${encodeURIComponent(form.dataset.unresolvedRow)}/update`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || 'On-hand baggage update failed');
-        await Promise.all([loadUnresolvedBaggage(), loadWorldTracerCases()]);
+        window._selectedCbsRow = 0;
+        caseSearch.value = '';
+        await Promise.all([loadCases(), loadUnresolvedBaggage(), loadWorldTracerCases()]);
       } catch (error) {
         alert(error.message);
       } finally {
@@ -1826,7 +1822,7 @@
       }
       const mode = event.target.closest('[data-add-baggage-mode]');
       if (mode) { const bagTag = normalizeBaggageTag(addBaggageSearch.elements.bagTag.value); addBaggageOutput.innerHTML = `<div class="add-baggage-panel"><h2>${escapeHtml(bagTag)}</h2>${addBaggageFormHtml(bagTag, mode.dataset.addBaggageMode)}</div>`; return; }
-      if (event.target.closest('[data-cancel-add-baggage]')) { addBaggageOutput.innerHTML = '<p class="muted">Enter a bag tag number to search.</p>'; addBaggageSearch.elements.bagTag.focus(); }
+      if (event.target.closest('[data-cancel-add-baggage]')) { addBaggageOutput.innerHTML = ''; addBaggageSearch.elements.bagTag.focus(); }
     });
     addBaggageOutput?.addEventListener('change', (event) => {
       const status = event.target.closest('[data-add-outbound-status]');

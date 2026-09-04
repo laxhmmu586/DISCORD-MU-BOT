@@ -23,8 +23,28 @@ test('mobile CBS navigation spans the viewport without table content widening th
 });
 
 test('updating one CBS case keeps the complete case list visible', () => {
-  assert.match(page, /window\._selectedCbsRow = 0;\s*window\._expandedCbsCases = window\._expandedCbsCases \|\| new Set\(\);\s*window\._expandedCbsCases\.add\(`row-\$\{rowNumber\}`\);\s*await loadCases\(\)/);
+  assert.match(page, /window\._selectedCbsRow = 0;\s*caseSearch\.value = '';\s*window\._expandedCbsCases = window\._expandedCbsCases \|\| new Set\(\);\s*window\._expandedCbsCases\.add\(`row-\$\{rowNumber\}`\);\s*await Promise\.all\(\[loadCases\(\), loadUnresolvedBaggage\(\)\]\)/);
   assert.doesNotMatch(page, /window\._selectedCbsRow = Number\(rowNumber\)/);
+});
+
+test('CBS removes requested helper descriptions', () => {
+  [
+    'Closed Passenger Filed and completed On-hand cases are shown here.',
+    'Passenger Filed and On-hand files are shown together on this page.',
+    'Create a Rush Bag case and save it to the operations sheet.',
+    'Search a bag tag, then add an inbound or outbound baggage record here.',
+    'Enter a bag tag number to search.',
+    'MU rows imported from Early Bag Storage missed bag email.',
+    'Select a subject and complete the required email details.',
+    'Select either chart to open the original high-resolution image.'
+  ].forEach((description) => assert.doesNotMatch(page, new RegExp(description.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))));
+});
+
+test('CBS updates clear stale filters and reload both case data sources', () => {
+  const passengerUpdate = page.match(/async function updateCase[\s\S]*?caseSearch\?\.addEventListener/)?.[0] || '';
+  assert.match(passengerUpdate, /window\._selectedCbsRow = 0;\s*caseSearch\.value = '';[\s\S]*await Promise\.all\(\[loadCases\(\), loadUnresolvedBaggage\(\)\]\)/);
+  const onHandUpdate = page.match(/openCasesCard\?\.addEventListener\('submit'[\s\S]*?addBaggageSearch\?\.addEventListener/)?.[0] || '';
+  assert.match(onHandUpdate, /window\._selectedCbsRow = 0;\s*caseSearch\.value = '';\s*await Promise\.all\(\[loadCases\(\), loadUnresolvedBaggage\(\), loadWorldTracerCases\(\)\]\)/);
 });
 
 test('CBS storage reads and writes Google Sheets only', () => {
