@@ -210,9 +210,23 @@ test('Add On-hand records are added to and displayed in Open Case', () => {
   assert.match(page, /await loadUnresolvedBaggage\(\);\s*showSection\('open'\);/);
 });
 
+test('CBS sections omit auxiliary descriptions and Add On-hand starts blank', () => {
+  for (const description of [
+    'Passenger Filed and On-hand files are shown together on this page.',
+    'Closed Passenger Filed and completed On-hand cases are shown here.',
+    'Passenger bags entered as inbound remain here until resolved.',
+    'Create a Rush Bag case and save it to the operations sheet.',
+    'MU rows imported from Early Bag Storage missed bag email.',
+    'Select a subject and complete the required email details.',
+    'Search a bag tag, then add the inbound or outbound On-hand record here.',
+    'Select either chart to open the original high-resolution image.',
+    'Enter a bag tag number to search.'
+  ]) assert.doesNotMatch(page, new RegExp(description.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  assert.match(page, /<div id="add-baggage-output"><\/div>/);
+  assert.match(page, /addBaggageOutput\.replaceChildren\(\)/);
+});
+
 test('On-hand only includes Office bags and excludes gate bags and Co-mail', () => {
-  const description = 'Passenger bags entered as inbound remain here until resolved. Gate bags, Co-mail, and not-loaded outbound bags are not included.';
-  assert.equal((page.match(new RegExp(description.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length, 2);
   assert.match(page, /<option>Gate bag<\/option>/);
   assert.match(page, /<option>Co-mail<\/option>/);
   assert.match(page, /<select name="location" required><option>Office<\/option><option>Transfer<\/option><\/select>/);
