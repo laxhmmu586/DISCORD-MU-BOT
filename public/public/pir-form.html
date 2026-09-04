@@ -1,0 +1,797 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Property Irregularity Report (PIR)</title>
+  <style>
+    :root { --bg:#f4f8fb; --ink:#172033; --muted:#667085; --brand:#123a73; --line:#d7e1ec; --panel:#fff; --ok:#087443; }
+    * { box-sizing:border-box; }
+    html[lang="en"] .zh, html[lang="zh"] .en { display:none; }
+    [hidden] { display:none !important; }
+    body { margin:0; font-family:Inter,Arial,"Noto Sans SC",sans-serif; background:linear-gradient(135deg,#eaf4ff,#fdfefe); color:var(--ink); }
+    header { position:sticky; top:0; z-index:10; display:flex; justify-content:space-between; align-items:center; gap:14px; padding:18px clamp(18px,4vw,52px); background:rgba(255,255,255,.92); border-bottom:1px solid var(--line); backdrop-filter:blur(12px); }
+    .brand { font-weight:900; color:var(--brand); letter-spacing:.08em; text-decoration:none; }
+    .header-title { flex:1; text-align:right; font-weight:900; }
+    .lang-toggle { border:1px solid var(--line); border-radius:999px; padding:9px 13px; font-weight:850; cursor:pointer; background:#e8eef7; color:var(--brand); }
+    .wrap { width:min(980px,94vw); margin:28px auto 56px; display:grid; gap:24px; }
+    .page-title,.card { background:var(--panel); border:1px solid var(--line); border-radius:22px; box-shadow:0 18px 42px rgba(22,48,76,.08); }
+    .page-title { padding:28px; }
+    .page-title h1 { margin:0; font-size:clamp(26px,4vw,38px); }
+    .page-title p { margin:12px 0 0; color:var(--muted); }
+    .page-title a { color:var(--brand); font-weight:800; }
+    h2,h3 { margin:0 0 10px; }
+    p { line-height:1.65; }
+    .muted { color:var(--muted); }
+    .card { padding:24px; }
+    form { display:grid; gap:18px; }
+    .grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
+    .passenger-grid { grid-template-columns:repeat(4,minmax(0,1fr)); }
+    .flight-rows { display:grid; gap:10px; }
+    .flight-row, .flight-head { display:grid; grid-template-columns:1fr .8fr .8fr 1fr; gap:10px; align-items:end; }
+    .flight-row + .flight-row { margin-top:3px; }
+    .routing-layout { display:grid; grid-template-columns:290px minmax(0,1fr); column-gap:18px; align-items:start; }
+    .bag-report-row { grid-column:1/-1; display:grid; grid-template-columns:290px minmax(0,1fr); column-gap:18px; margin-top:-24px; }
+    .bag-report-fields { display:grid; grid-template-columns:1fr 1fr; gap:14px 18px; width:100%; align-items:end; }
+    .field-label { font-weight:750; font-size:13px; }
+    .required-mark { color:#d92d20; font-weight:900; margin-left:3px; }
+    label:has(input[required]) > span.en::after,
+    label:has(input[required]) > span.zh::after,
+    label:has(select[required]) > span.en::after,
+    label:has(select[required]) > span.zh::after,
+    label:has(textarea[required]) > span.en::after,
+    label:has(textarea[required]) > span.zh::after { content:" *"; color:#d92d20; font-weight:900; }
+    .bag-list { display:grid; grid-column:1/-1; gap:8px; max-width:650px; }
+    .bag-row { display:grid; grid-template-columns:minmax(260px, 420px) auto; gap:14px; align-items:center; justify-content:start; }
+    .bag-row input { min-width:0; }
+    .bag-row button { padding:10px 13px; }
+    .tag-example { border:1px dashed var(--line); border-radius:16px; padding:16px; background:#fbfdff; transform:rotate(-3deg); color:#202938; font-family:"Courier New",monospace; box-shadow:0 10px 24px rgba(22,48,76,.08); margin-bottom:10px; }
+    .tag-example strong { display:block; font-size:22px; letter-spacing:3px; margin-bottom:8px; }
+    .tag-barcode { height:44px; margin:10px 0; background:repeating-linear-gradient(90deg,#111 0 3px,transparent 3px 6px,#111 6px 8px,transparent 8px 12px); }
+    .tag-example .tag-route { display:grid; grid-template-columns:1fr .7fr .7fr; gap:8px; font-size:16px; }
+    .flight-head { color:var(--muted); font-size:12px; font-weight:850; text-transform:uppercase; }
+    .contents-row { display:grid; grid-template-columns:.8fr 1.2fr auto; gap:10px; align-items:center; }
+    .signature-pad { width:100%; max-width:560px; height:180px; border:1px solid var(--line); border-radius:14px; background:#fff; touch-action:none; display:block; }
+    label { display:grid; gap:7px; font-weight:750; font-size:13px; }
+    input,select,textarea,button { font:inherit; }
+    input,select,textarea { width:100%; border:1px solid var(--line); border-radius:12px; padding:11px 12px; background:#fff; color:var(--ink); }
+    textarea { min-height:88px; resize:vertical; }
+    .wide { grid-column:1/-1; }
+    .case-fields { display:none; border:1px dashed var(--line); border-radius:18px; padding:18px; background:#fbfdff; }
+    .case-fields.is-active { display:grid; gap:14px; }
+    .actions { display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+    button { border:0; border-radius:999px; padding:12px 18px; font-weight:850; cursor:pointer; background:var(--brand); color:white; }
+    button.secondary { background:#e8eef7; color:var(--brand); }
+    .status { min-height:24px; font-weight:800; }
+    .status.ok { color:var(--ok); } .status.err { color:#b42318; }
+    .thanks { display:none; padding:24px; border-radius:22px; background:#dff8ff; border:1px solid #9ce5f3; }
+    .thanks.is-active { display:block; }
+    .sketch-shell { display:grid; gap:10px; overflow:hidden; }
+    .sketch-board { width:100%; max-width:820px; border:1px solid var(--line); border-radius:14px; background:#fff; touch-action:none; display:block; }
+    .attachment-hint { font-size:12px; color:var(--muted); font-weight:600; }
+    .attachment-grid { display:grid; grid-template-columns:repeat(3,minmax(100px,1fr)); gap:10px; }
+    .attachment-group { display:grid; grid-template-columns:1fr; gap:8px; align-content:start; border:1px dashed #b8c7d9; border-radius:14px; padding:8px; background:#fbfdff; }
+    .attachment-items { display:contents; }
+    .attachment-tile { position:relative; display:grid; gap:5px; align-content:start; min-height:104px; border:1px dashed #c6d5e6; border-radius:12px; padding:6px; background:#fff; cursor:pointer; transition:border-color .2s ease, box-shadow .2s ease, transform .2s ease; }
+    .attachment-tile:hover, .attachment-tile:focus-within { border-color:var(--brand); box-shadow:0 10px 24px rgba(18,58,115,.12); transform:translateY(-1px); }
+    .attachment-tile input[type="file"] { position:absolute; inline-size:1px; block-size:1px; opacity:0; overflow:hidden; pointer-events:none; }
+    .attachment-preview { position:relative; display:grid; place-items:center; height:76px; border-radius:10px; overflow:hidden; background:#eef5fe; color:var(--brand); font-weight:900; }
+    .attachment-upload .attachment-preview::before { content:"+"; display:grid; place-items:center; width:34px; height:34px; border-radius:999px; background:#fff; border:1px solid var(--line); color:var(--brand); font-size:28px; line-height:1; box-shadow:0 8px 18px rgba(22,48,76,.1); }
+    .attachment-upload[hidden] { display:none; }
+    .attachment-preview img { width:100%; height:100%; object-fit:cover; display:block; }
+    .attachment-remove { position:absolute; top:2px; right:2px; z-index:2; display:grid; place-items:center; width:24px; height:24px; border:1px solid rgba(255,255,255,.85); border-radius:999px; padding:0; background:#d92d20; color:#fff; font-size:16px; line-height:1; box-shadow:0 4px 10px rgba(22,48,76,.22); }
+    .attachment-document { display:grid; place-items:center; width:48px; height:48px; border-radius:999px; background:#fff; border:1px solid var(--line); color:var(--brand); font-size:13px; letter-spacing:.06em; box-shadow:0 8px 18px rgba(22,48,76,.1); }
+    .attachment-title { display:flex; gap:4px; align-items:center; justify-content:center; text-align:center; font-weight:850; font-size:12px; }
+    .attachment-filename { min-height:16px; text-align:center; color:var(--muted); font-size:11px; font-weight:650; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .bag-identification { grid-column:1/-1; display:grid; gap:14px; }
+    .bag-identification-head { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+    .bag-identification-head p { margin:0; color:var(--muted); font-size:12px; font-weight:600; }
+    .bag-selector-grid { display:grid; gap:14px; }
+    .bag-selector { display:grid; gap:12px; padding:16px; border:1px solid var(--line); border-radius:15px; background:#fff; }
+    .bag-selector h4 { margin:0; color:var(--brand); font-size:17px; }
+    .bag-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+    .bag-fields .bag-tag-field,.bag-fields .descriptor-field { grid-column:1/-1; }
+    .picker { position:relative; display:grid; gap:7px; }
+    .picker-trigger { width:100%; min-height:43px; padding:10px 12px; border:1px solid var(--line); border-left:8px solid #294f36; border-radius:5px; background:#fff; color:var(--ink); text-align:left; font-weight:500; }
+    .picker-trigger.placeholder { color:var(--muted); }
+    .picker-panel { position:absolute; top:calc(100% + 5px); left:0; z-index:20; width:min(520px,88vw); max-height:390px; overflow:auto; padding:14px; border:1px solid var(--line); border-radius:12px; background:#fff; box-shadow:0 18px 45px rgba(12,35,61,.24); }
+    .picker-panel[hidden] { display:none; }
+    .picker-close { position:sticky; top:0; float:right; z-index:2; padding:2px 8px; background:#fff; color:var(--ink); font-size:20px; }
+    .option-grid { display:grid; grid-template-columns:repeat(6,minmax(48px,1fr)); gap:10px; clear:both; }
+    .picker-section { margin:10px 0 8px; clear:both; font-size:14px; }
+    .visual-option { display:grid; justify-items:center; gap:5px; padding:6px 3px; border:2px solid transparent; border-radius:8px; background:#fff; color:#342cff; font-weight:700; }
+    .visual-option:hover,.visual-option.is-selected { border-color:#342cff; background:#f3f3ff; }
+    .swatch { width:22px; height:16px; border:1px solid #aaa; background:var(--swatch); }
+    .type-icon { display:block; width:72px; height:72px; border-radius:5px; background-color:#fff; background-image:url('assets/640653098-BAGGAGE-CHART-11_01.png'); background-repeat:no-repeat; background-size:974px 640px; background-position:var(--icon-x) var(--icon-y); cursor:pointer; }
+    .type-icon--misc { background-image:url('assets/640653098-BAGGAGE-CHART-11_02.png'); }
+    .descriptor-icon { display:block; width:58px; height:48px; border:1px solid #1684d6; background-color:#fff; background-image:url('assets/640653098-BAGGAGE-CHART-11_01.png'); background-repeat:no-repeat; background-size:974px 640px; background-position:var(--icon-x) var(--icon-y); }
+    .descriptor-option small { line-height:1.2; }
+    .bag-card-actions { display:flex; justify-content:flex-end; }
+    .remove-bag { padding:7px 12px; background:#fff0f0; color:#b42318; }
+    .add-another-bag { justify-self:start; background:transparent; color:#342cff; padding:8px 2px; }
+    .chart-links { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+    .chart-button { overflow:hidden; padding:0; border:1px solid var(--line); border-radius:14px; background:#fff; color:var(--brand); text-align:left; }
+    .chart-button img { display:block; width:100%; height:120px; object-fit:cover; object-position:top; }
+    .chart-button span { display:block; padding:9px 11px; font-size:12px; }
+    .chart-dialog { width:min(1200px,96vw); max-width:none; padding:42px 12px 12px; border:0; border-radius:18px; background:#fff; box-shadow:0 24px 80px rgba(0,0,0,.35); }
+    .chart-dialog::backdrop { background:rgba(5,19,38,.78); }
+    .chart-dialog img { display:block; width:100%; height:auto; }
+    .chart-dialog.icon-preview { width:min(500px,94vw); height:min(500px,90vh); min-height:0; padding:50px 18px 18px; }
+    .chart-dialog.icon-preview img { width:100%; height:100%; object-fit:contain; object-position:center; }
+    .chart-dialog.icon-preview .enlarged-icon { width:100%; height:100%; background-size:var(--zoom-size); background-position:var(--zoom-position); }
+    .enlarged-icon { width:min(432px,100%); height:372px; margin:auto; border-radius:12px; background-color:#fff; background-repeat:no-repeat; background-size:5844px 3840px; }
+    .hover-image-preview { position:fixed; z-index:100; width:210px; height:190px; border:2px solid #1684d6; border-radius:8px; background-color:#fff; background-repeat:no-repeat; box-shadow:0 16px 42px rgba(12,35,61,.3); pointer-events:none; }
+    .hover-image-preview[hidden] { display:none; }
+    .chart-close { position:absolute; top:7px; right:9px; padding:6px 11px; font-size:20px; }
+    @media (max-width:840px){ .grid,.passenger-grid,.bag-selector-grid{grid-template-columns:1fr}.attachment-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.routing-layout,.bag-report-row,.bag-report-fields,.contents-row{grid-template-columns:1fr}.bag-report-row{margin-top:8px}.flight-row,.flight-head{grid-template-columns:1fr .8fr .8fr 1fr; gap:6px}.header-title{text-align:left}header{flex-wrap:wrap}.tag-example{transform:none} }
+    @media (max-width:600px){.bag-fields{grid-template-columns:1fr}.bag-fields .bag-tag-field,.bag-fields .descriptor-field{grid-column:auto}.option-grid{grid-template-columns:repeat(4,minmax(48px,1fr))}}
+    @media (max-width:520px){ .attachment-grid{grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px}.attachment-group{grid-template-columns:repeat(auto-fill,minmax(70px,1fr)); gap:6px; padding:6px}.attachment-tile{min-height:94px; padding:5px}.attachment-preview{height:66px}.attachment-upload .attachment-preview::before{width:30px;height:30px;font-size:24px}.attachment-title{font-size:11px}.attachment-filename{font-size:10px} }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="brand">MU</span>
+    <strong class="header-title">China Eastern Airlines - LAX</strong>
+    <button class="lang-toggle" id="language-toggle" type="button">中文</button>
+  </header>
+  <main class="wrap">
+    <section class="page-title">
+      <h1><span class="en">Property Irregularity Report (PIR)</span><span class="zh">行李运输事故记录单</span></h1>
+      <p><span class="en">If you encounter any difficulties while completing the form, please email us directly at <a href="mailto:laxhmmu@gmail.com">laxhmmu@gmail.com</a>, and we will be happy to assist you.</span><span class="zh">如果您在填写过程中遇到任何困难，请直接发送邮件至：<a href="mailto:laxhmmu@gmail.com">laxhmmu@gmail.com</a>，我们将尽快为您提供协助。</span></p>
+    </section>
+
+    <section class="card">
+      <h2><span class="en">New case</span><span class="zh">新建案</span></h2>
+      <form id="cbs-form">
+        <div class="grid passenger-grid">
+          <label><span class="en">Passenger name</span><span class="zh">旅客姓名</span><input name="passengerName" required placeholder="LAST/FIRST" /></label>
+          <label><span class="en">Email</span><span class="zh">电子邮箱</span><input name="email" type="email" required placeholder="passenger@example.com" /></label>
+          <label><span class="en">Mobile number - US</span><span class="zh">手机号码-美国</span><input name="phone" type="tel" autocomplete="tel-national" placeholder="US phone number" required /></label>
+          <label><span class="en">Ticket number</span><span class="zh">机票号码</span><input name="ticketNumber" placeholder="7816262626666" required /></label>
+          <div class="wide flight-rows" aria-label="Flight rows">
+            <strong><span class="en">Flights</span><span class="zh">航班</span><span class="required-mark">*</span></strong>
+            <div class="routing-layout">
+              <div class="tag-example" aria-label="Baggage tag example">
+                <strong>MU774870</strong>
+                <div class="tag-barcode" aria-hidden="true"></div>
+                <div class="tag-route"><span>MU583</span><span>11JUN</span><span>LAX</span><span>MU0840</span><span>11JUN</span><span>PVG</span></div>
+              </div>
+              <div>
+                <div class="flight-head"><span><span class="en">Flight No.</span><span class="zh">航班号</span></span><span><span class="en">Date</span><span class="zh">日期</span></span><span><span class="en">Origin</span><span class="zh">始发地</span></span><span><span class="en">Destination</span><span class="zh">目的地</span></span></div>
+                <div class="flight-row"><input name="flightNo1" placeholder="MU583" required /><input name="flightDate1" placeholder="11JUN" required /><input name="flightOrigin1" placeholder="PVG" required /><input name="destination1" placeholder="LAX" required /></div>
+                <div class="flight-row"><input name="flightNo2" placeholder="MU0840" /><input name="flightDate2" placeholder="11JUN" /><input name="flightOrigin2" placeholder="PVG" /><input name="destination2" placeholder="LAX" /></div>
+                <div class="flight-row"><input name="flightNo3" placeholder="" /><input name="flightDate3" placeholder="" /><input name="flightOrigin3" placeholder="" /><input name="destination3" placeholder="" /></div>
+              </div>
+            </div>
+          </div>
+          <div class="bag-report-row" id="standalone-bag-tags">
+            <span></span>
+            <div class="bag-report-fields">
+              <div class="bag-list">
+                <span class="field-label"><span class="en">Bag tag</span><span class="zh">行李牌号</span><span class="required-mark">*</span></span>
+                <div id="bag-tags-list">
+                  <div class="bag-row">
+                    <input name="bagTag" data-bag-tag placeholder="MU123456" required />
+                    <button class="secondary" id="add-bag-tag" type="button">+ <span class="en">Add bag</span><span class="zh">添加行李</span></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <input name="caseType" id="case-type" type="hidden" value="AHL" />
+          <label class="wide"><span class="en">Address</span><span class="zh">住址</span><textarea name="permanentAddress" required></textarea></label>
+          <label><span class="en">Temporary address available?</span><span class="zh">是否有临时地址？</span><select name="addressAvailable" id="address-available"><option value="No">No</option><option value="Yes">Yes</option></select></label>
+          <label id="valid-until-field" hidden><span class="en">Temporary address valid until</span><span class="zh">临时地址有效期至</span><input name="temporaryAddressValidUntil" type="date" /></label>
+          <label class="wide" id="temporary-address-field" hidden><span class="en">Temporary address</span><span class="zh">临时地址</span><textarea name="temporaryAddress"></textarea></label>
+        </div>
+
+        <section class="case-fields is-active" id="shared-baggage-fields">
+          <h3><span class="en">Baggage information</span><span class="zh">行李信息</span></h3>
+          <div class="bag-identification">
+            <div class="bag-identification-head"><strong><span class="en">Bag identification</span><span class="zh">行李识别信息</span></strong><p><span class="en">Select each field from the visual IATA guide.</span><span class="zh">请根据IATA图片指南选择每一项。</span></p></div>
+            <div class="bag-selector-grid" id="bag-selector-grid"></div>
+            <button class="add-another-bag" id="add-another-bag" type="button">⊕ <span class="en">Add another bag</span><span class="zh">添加另一个行李</span></button>
+          </div>
+        </section>
+
+        <section id="ahl-fields" class="case-fields is-active">
+          <h3><span class="en">AHL information</span><span class="zh">延误或丢失行李信息</span></h3>
+          <div class="grid">
+            <div class="bag-identification">
+              <div class="bag-identification-head"><strong><span class="en">Baggage information</span><span class="zh">行李信息</span></strong><p><span class="en">Select each field from the visual IATA guide.</span><span class="zh">请根据IATA图片指南选择每一项。</span></p></div>
+              <div class="bag-selector-grid" id="bag-selector-grid"></div>
+              <button class="add-another-bag" id="add-another-bag" type="button">⊕ <span class="en">Add another bag</span><span class="zh">添加另一个行李</span></button>
+            </div>
+            <label class="wide"><span class="en">Baggage description</span><span class="zh">行李描述</span><textarea name="ahlBagDescription" id="ahl-description" placeholder="Color, size, wheels, hard/soft shell..."></textarea></label>
+            <label><span class="en">Bag brand tag</span><span class="zh">行李箱品牌牌</span><input name="ahlBagBrandTag" /></label>
+            <label><span class="en">Features</span><span class="zh">特征</span><input name="ahlFeatures" placeholder="Sticker, ribbon, lock..." /></label>
+            <label class="wide"><span class="en">Other visible features</span><span class="zh">其他明显特征</span><textarea name="ahlOtherFeatures"></textarea></label>
+          </div>
+        </section>
+
+        <section class="case-fields is-active" id="contents-fields">
+          <h3><span class="en">Contents</span><span class="zh">包内物品</span></h3>
+          <div class="contents-row flight-head"><span><span class="en">Category</span><span class="zh">类别</span></span><span><span class="en">Description</span><span class="zh">描述</span></span><span></span></div>
+          <div id="contents-list"></div>
+          <button class="secondary" id="add-content-row" type="button">+ <span class="en">Add item</span><span class="zh">添加物品</span></button>
+        </section>
+
+        <section id="dpr-fields" class="case-fields">
+          <h3><span class="en">DPR information</span><span class="zh">破损行李信息</span></h3>
+          <div class="grid">
+            <label><span class="en">Damage level</span><span class="zh">破损程度</span><select name="dprDamageLevel"><option>Minor</option><option>Major</option><option>Total</option></select></label>
+            <label class="wide"><span class="en">Baggage information / damage location</span><span class="zh">行李信息 / 破损位置</span><textarea name="dprBagInfo" placeholder="Side 1, Side 2, End 1, wheel, handle..."></textarea></label>
+            <label class="wide"><span class="en">Inner damage</span><span class="zh">内物破损</span><textarea name="dprInnerDamage"></textarea></label>
+            <div class="wide sketch-shell">
+              <strong><span class="en">Circle damaged area</span><span class="zh">圈出破损部位</span></strong>
+              <canvas id="damage-sketch" class="sketch-board" width="900" height="260" aria-label="Baggage damage sketch canvas"></canvas>
+              <div class="actions"><button class="secondary" id="clear-sketch" type="button"><span class="en">Clear sketch</span><span class="zh">清除标记</span></button><span class="attachment-hint"><span class="en">Draw freely on the picture. The marked sketch is included in the PDF report.</span><span class="zh">可在图上自由绘制，标记图会显示在PDF报告中。</span></span></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="case-fields is-active wide">
+          <h3><span class="en">Attachments</span><span class="zh">附件</span><span class="required-mark">*</span></h3>
+          <div class="attachment-grid">
+            <div class="attachment-group" data-attachment-group data-attachment-type="boardingPass" data-required-attachment="true" data-max-attachments="1">
+              <div class="attachment-items" data-attachment-items></div>
+              <label class="attachment-tile attachment-upload"><span class="attachment-preview"></span><span class="attachment-title"><span class="en">Boarding pass</span><span class="zh">登机牌</span><span class="required-mark">*</span></span><span class="attachment-filename"></span><input name="boardingPassAttachment" data-attachment-input data-attachment-type="boardingPass" type="file" accept="image/*,.pdf" /></label>
+            </div>
+            <div class="attachment-group" data-attachment-group data-attachment-type="bagTag" data-required-attachment="true" data-max-attachments="1">
+              <div class="attachment-items" data-attachment-items></div>
+              <label class="attachment-tile attachment-upload"><span class="attachment-preview"></span><span class="attachment-title"><span class="en">Bag tag receipt</span><span class="zh">行李票</span><span class="required-mark">*</span></span><span class="attachment-filename"></span><input name="bagTagAttachment" data-attachment-input data-attachment-type="bagTag" type="file" accept="image/*,.pdf" /></label>
+            </div>
+            <div class="attachment-group" data-attachment-group data-attachment-type="other" data-max-attachments="4">
+              <div class="attachment-items" data-attachment-items></div>
+              <label class="attachment-tile attachment-upload"><span class="attachment-preview"></span><span class="attachment-title"><span class="en">Others</span><span class="zh">其他附件</span></span><span class="attachment-filename"></span><input name="otherAttachment" data-attachment-input data-attachment-type="other" type="file" accept="image/*,.pdf" multiple /></label>
+            </div>
+          </div>
+          <span class="attachment-hint"><span class="en">Boarding pass and bag tag receipt are required. You may upload up to 4 files under Others (22 MB total after photo optimization). Files are sent as email attachments only; they are not saved to Drive or the case sheet.</span><span class="zh">必须上传登机牌和行李票。“其他附件”最多可上传 4 个文件（照片优化后总计不超过 22 MB）。附件只随邮件发送，不保存到网盘或表格。</span></span>
+        </section>
+
+        <section class="case-fields is-active">
+          <h3><span class="en">Passenger signature and date</span><span class="zh">旅客签字和日期</span></h3>
+          <label><span class="en">Date of issue</span><span class="zh">填写日期</span><input name="issueDate" id="issue-date" type="date" required /></label>
+          <div class="wide">
+            <strong><span class="en">Passenger signature</span><span class="zh">旅客签字</span></strong>
+            <canvas id="signature-pad" class="signature-pad" width="560" height="180" aria-label="Passenger signature pad"></canvas>
+            <div class="actions"><button class="secondary" id="clear-signature" type="button"><span class="en">Clear signature</span><span class="zh">清除签名</span></button></div>
+          </div>
+        </section>
+
+        <div class="actions"><button type="submit"><span class="en">Submit</span><span class="zh">提交</span></button><button class="secondary" type="reset"><span class="en">Reset</span><span class="zh">重置</span></button><span id="form-status" class="status"></span></div>
+      </form>
+    </section>
+
+    <section id="thanks" class="thanks">
+      <div class="en" data-thanks-message="AHL">
+        <h2>Dear Passenger,</h2>
+        <p>We sincerely apologize that your checked baggage was not available for collection upon your arrival at your destination. Please be assured that we will make every effort to locate and return your baggage as soon as possible.</p>
+        <p>Once your baggage was reported missing, we immediately initiated a tracing process through the worldwide computerized baggage tracing system used by participating airlines. We will notify you as soon as your baggage is located and will do our best to keep you informed of any updates regarding the tracing process.</p>
+        <p>Once your baggage has been located, we will contact you immediately and, subject to local government and customs regulations, arrange for delivery as soon as possible. If you are required to collect your baggage in person due to customs requirements or because the baggage has been damaged, please bring your Property Irregularity Report (PIR)/baggage claim report and your passport with you.</p>
+        <p>If you authorize another person to collect the baggage on your behalf, the authorized person must present the following documents: your signed authorization letter, your baggage claim report, your passport or a copy of your passport, and the authorized person’s valid identification.</p>
+        <p>Once again, we sincerely apologize for the inconvenience caused by this baggage irregularity and appreciate your patience and understanding.</p>
+        <p>Sincerely,<br>China Eastern Airlines</p>
+      </div>
+      <div class="zh" data-thanks-message="AHL">
+        <h2>亲爱的旅客：</h2>
+        <p>我们对您到达目的地后未能即时领回所交运的行李深表歉意，并谨此保证本公司将竭尽所能找回您的行李。</p>
+        <p>从您报失开始，我们立即采用已接驳全球各航空公司之电脑行李查询系统展开追查服务，并将于寻获后告知您。我们会尽力向您报告进展情况。</p>
+        <p>一旦您的行李安然寻回，我们会立即通知您，并在当地政府有关当局许可之情况下尽快安排送回。如果行李由于海关问题或因破损需您来提取时，请带好行李报失单和护照。</p>
+        <p>如果您委托他人前来领取您的行李，必须让受委托人带上您的亲笔委托书、行李报失单、您的护照、（或影印本）及其本人的身份证。</p>
+        <p>再次对由于行李意外引致的不便表示歉意。</p>
+        <p>中国东方航空公司</p>
+      </div>
+      <div class="en" data-thanks-message="DPR">
+        <h2>Dear Passenger,</h2>
+        <p>We sincerely apologize for the damage to your checked baggage during transportation and appreciate your understanding and cooperation.</p>
+        <p>To assist you as quickly as possible, we will investigate and assess the damage to your baggage in accordance with applicable regulations and procedures. Please retain the damaged baggage, baggage claim tag (Bag Tag), boarding pass, and any other relevant documents for verification and processing purposes.</p>
+        <p>Should further inspection, repair assessment, or additional documentation be required, our staff will contact you and provide the necessary assistance. You may also contact our local office at any time to inquire about the status of your claim. Our ground service staff will be pleased to assist you with any information you may need.</p>
+        <p>If you authorize another person to handle the claim on your behalf, the authorized representative must present your signed authorization letter, the baggage damage report, your passport (or a copy of your passport), and the representative's valid identification document.</p>
+        <p>Once again, we sincerely apologize for the inconvenience caused by the damage to your baggage. We will make every effort to assist you with the resolution of this matter and appreciate your patience and understanding.</p>
+        <p>China Eastern Airlines - LAX</p>
+      </div>
+      <div class="zh" data-thanks-message="DPR">
+        <h2>尊敬的旅客：</h2>
+        <p>对于您的托运行李在运输过程中发生损坏，我们深表歉意，并感谢您的理解与配合。</p>
+        <p>为了尽快协助您处理此次行李损坏事件，本公司将根据相关规定对行李损坏情况进行调查及评估。请您妥善保留损坏行李、行李牌（Bag Tag）、登机牌及其他相关文件，以便后续核实及处理。</p>
+        <p>如需进一步检查、维修评估或提交补充资料，我们的工作人员将与您联系并提供协助。您也可随时致电本公司当地办事处查询处理进度，我们的地勤人员将竭诚为您提供所需信息。</p>
+        <p>若您委托他人代为办理相关手续，请确保受委托人携带您的亲笔授权委托书、行李损坏报告单、您的护照（或护照复印件）以及受委托人本人的有效身份证件。</p>
+        <p>再次对本次行李损坏给您带来的不便表示诚挚歉意。我们将尽最大努力协助您完成后续处理，并感谢您的理解与支持。</p>
+        <p>中国东方航空公司</p>
+      </div>
+    </section>
+  </main>
+  <dialog class="chart-dialog" id="chart-dialog"><button class="chart-close" id="chart-close" type="button" aria-label="Close">×</button><img id="chart-dialog-image" alt="" /><div class="enlarged-icon" id="enlarged-icon" hidden></div></dialog><div class="hover-image-preview" id="hover-image-preview" hidden></div>
+  <script>
+    const apiBase = (window.MU_API_BASE || 'https://api.mufcapp.net').replace(/\/$/, '');
+    const form = document.querySelector('#cbs-form');
+    const typeSelect = document.querySelector('#case-type');
+    const addressAvailable = document.querySelector('#address-available');
+    const validUntilField = document.querySelector('#valid-until-field');
+    const temporaryAddressField = document.querySelector('#temporary-address-field');
+    const ahlFields = document.querySelector('#ahl-fields');
+    const dprFields = document.querySelector('#dpr-fields');
+    const formStatus = document.querySelector('#form-status');
+    const thanks = document.querySelector('#thanks');
+    const attachmentInputs = Array.from(document.querySelectorAll('[data-attachment-input]'));
+    const bagTagsList = document.querySelector('#bag-tags-list');
+    const addBagTagButton = document.querySelector('#add-bag-tag');
+    const canvas = document.querySelector('#damage-sketch');
+    const ctx = canvas.getContext('2d');
+    const signaturePad = document.querySelector('#signature-pad');
+    const signatureCtx = signaturePad.getContext('2d');
+    const contentsList = document.querySelector('#contents-list');
+    const addContentRowButton = document.querySelector('#add-content-row');
+    const issueDateInput = document.querySelector('#issue-date');
+    const ahlDescriptionInput = document.querySelector('#ahl-description');
+    const languageToggle = document.querySelector('#language-toggle');
+    const bagSelectorGrid = document.querySelector('#bag-selector-grid');
+    const standaloneBagTags = document.querySelector('#standalone-bag-tags');
+    const chartDialog = document.querySelector('#chart-dialog');
+    const chartDialogImage = document.querySelector('#chart-dialog-image');
+    const enlargedIcon = document.querySelector('#enlarged-icon');
+    const hoverImagePreview = document.querySelector('#hover-image-preview');
+    let drawing = false;
+    let startPoint = null;
+    let sketchDirty = false;
+    let signatureDirty = false;
+    let signing = false;
+
+    function setLanguage(lang) {
+      document.documentElement.lang = lang;
+      languageToggle.textContent = lang === 'en' ? '中文' : 'English';
+      addressAvailable.options[0].textContent = lang === 'en' ? 'No' : '否';
+      addressAvailable.options[1].textContent = lang === 'en' ? 'Yes' : '是';
+    }
+    languageToggle.addEventListener('click', () => setLanguage(document.documentElement.lang === 'en' ? 'zh' : 'en'));
+
+    const bagColors = [
+      ['WT','White / clear','白色／透明','#fff'],['BK','Black','黑色','#111'],['GY','Grey','灰色','linear-gradient(90deg,#555,#aaa,#ddd)'],['BU','Blue','蓝色','#1684c7'],['RD','Red','红色','#c4143d'],['YW','Yellow','黄色','#f1c40f'],['BE','Beige','米色','#e7ddbd'],['BN','Brown','棕色','#9b3d0c'],['GN','Green','绿色','#46883f'],['MC','Multi-coloured','多色','linear-gradient(90deg,#222 0 25%,#fff 25% 50%,#d22 50% 75%,#3a6 75%)'],['PU','Purple','紫色','#8e4896'],['PR','Pattern','图案','repeating-linear-gradient(45deg,#657, #657 3px,#bd9 3px,#bd9 6px)']
+    ];
+    const bagTypes = [
+      ['01','Horizontal hard shell','横式硬壳箱',20,205,'unzipped'],['02','Upright design','直立式行李箱',137,205,'unzipped'],['03','Horizontal non-expandable suitcase','横式不可扩展箱',253,205,'unzipped'],['05','Horizontal expandable suitcase','横式可扩展箱',370,205,'unzipped'],['06','Briefcase','公文包',20,312,'unzipped'],['07','Document case','文件箱',370,312,'unzipped'],['08','Military-style bag','军用式行李袋',20,417,'unzipped'],['09','Plastic / laundry bag','塑料袋／洗衣袋',137,417,'unzipped'],['10','Box','箱盒',253,417,'unzipped'],['12','Storage container','储物箱',370,417,'unzipped'],['20','Garment / suit carrier','西装袋／衣物袋',503,205,'zipped'],['22','Soft upright bag','软质直立箱',652,205,'zipped'],['22D','Hard/soft upright bag','软硬结合直立箱',758,205,'zipped'],['22R','Hard upright bag','硬质直立箱',855,205,'zipped'],['23','Horizontal suitcase','横式行李箱',503,312,'zipped'],['25','Duffel / sport bag','旅行袋／运动包',845,312,'zipped'],['26','Laptop / overnight bag','电脑包／过夜包',503,417,'zipped'],['27','Expandable upright bag','可扩展直立包',620,417,'zipped'],['28','Matted woven bag','编织袋',735,417,'zipped'],['29','Backpack / rucksack','背包',846,417,'zipped'],
+      ...[['50','Hat box','帽盒'],['51','Courier bag / package','快递袋／包裹'],['52','Trunk / display case','旅行箱／展示箱'],['53','Art portfolio','艺术作品袋'],['54','Tube','长筒'],['55','Duty-free articles','免税品'],['56','Cosmetic case','化妆箱'],['57','Pet container','宠物箱'],['58','Ice chest / cooler','冰箱／冷藏箱'],['59','Tool box','工具箱'],['60','Fishing rods','钓鱼竿'],['61','Firearm case','枪械箱'],['62','Golf bag','高尔夫球袋'],['63','Bicycle','自行车'],['64','Sleeping bag / tent','睡袋／帐篷'],['65','Surf equipment','冲浪设备'],['66','Skis / ski poles','滑雪板／滑雪杖'],['67','Snowboard / sled','滑雪板／雪橇'],['68','Ski boots','滑雪靴'],['69','Sporting equipment','运动器材'],['71','Child car seat','儿童汽车座椅'],['72','Child equipment','儿童用品'],['73','Baby carriage','婴儿车'],['74','Umbrella stroller','伞车'],['75','Wheeled sporting item','带轮运动用品'],['81','Audio / video equipment','影音设备'],['82','Computer equipment','电脑设备'],['83','Electrical appliance','电器'],['85','Musical instrument','乐器'],['89','Folding chair','折叠椅'],['90','Baggage trolley','行李手推车'],['92','Security-removed item','安检取下物品'],['93','Shopping bag','购物袋'],['94','Wheelchair','轮椅'],['95','Orthopaedic device','矫形器具'],['96','Bedding bag','寝具袋'],['97','Dive equipment','潜水设备'],['98','Umbrella','雨伞'],['99','Article not shown','未列物品']].map((item,index) => [...item,15 + (index % 10) * 94,205 + Math.floor(index / 10) * 107,'other'])
+    ];
+    const typeImageCrops = {
+      '01':[190,710,245,250],'02':[610,720,195,240],'03':[1010,725,230,235],'05':[1415,710,230,250],
+      '06':[145,1080,285,230],'07':[1390,1080,255,230],'08':[180,1435,240,245],'09':[590,1440,245,245],
+      '10':[1000,1480,245,220],'12':[1400,1460,245,235],'20':[1810,710,370,250],'22':[2370,710,185,250],
+      '22D':[2720,710,180,250],'22R':[3100,710,190,250],'23':[1850,1080,290,230],'25':[3000,1040,290,270],
+      '26':[1800,1440,290,305],'27':[2220,1435,260,245],'28':[2600,1450,260,250],'29':[2990,1430,305,270]
+    };
+    const miscellaneousImageCrops = {
+      '53':[1140,680,230,245], '54':[1515,675,170,250], '55':[1760,675,260,250],
+      '62':[785,1040,240,250], '72':[425,1410,275,260], '73':[780,1395,245,275], '74':[1090,1400,245,265]
+    };
+    function cropStyle(crop, width, height) {
+      const [x,y,w,h] = crop; const scale = Math.min(width / w, height / h);
+      const left = (width - w * scale) / 2 - x * scale; const top = (height - h * scale) / 2 - y * scale;
+      return `background-size:${3360 * scale}px ${2208 * scale}px;background-position:${left}px ${top}px`;
+    }
+    const descriptors = [['D','Dual soft / hard','软硬混合',22,548,'material'],['L','Leather','皮革',82,548,'material'],['M','Metal','金属',139,548,'material'],['R','Rigid / hard','硬质',198,548,'material'],['T','Tweed / fabric','粗花呢／布料',255,548,'material'],['X-M','No material element','无材质特征',310,548,'material'],['B','Single item in a box','单件箱盒',337,548,'basic'],['K','Cabin size','登机尺寸',397,548,'basic'],['C','Combination lock','密码锁',525,548,'external'],['H','Retractable handles','伸缩手柄',610,548,'external'],['S','Straps to close / secure','固定带',711,548,'external'],['W','Wheels / rollers','轮子',808,548,'external'],['X-E','No external element','无外部特征',910,548,'external']];
+    const escapeAttribute = (value) => String(value).replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+    const picker = (kind, number, labelEn, labelZh) => `<div class="picker ${kind === 'descriptor' ? 'descriptor-field' : ''}" data-picker="${kind}"><span><span class="en">${labelEn}</span><span class="zh">${labelZh}</span>${number === 1 ? '<span class="required-mark">*</span>' : ''}</span><input type="hidden" name="ahlBag${kind[0].toUpperCase()+kind.slice(1)}${number}" ${kind === 'descriptor' ? 'data-bag-descriptors' : `data-bag-${kind}`}><button class="picker-trigger placeholder" type="button" data-picker-trigger><span class="en">Select ${labelEn.toLowerCase()}</span><span class="zh">选择${labelZh}</span></button><div class="picker-panel" data-picker-panel hidden><button class="picker-close" type="button" data-picker-close>×</button><div data-picker-options></div></div></div>`;
+    function pickerOptions(kind) {
+      if (kind === 'color') return `<div class="option-grid">${bagColors.map(([code,en,zh,swatch]) => `<button class="visual-option" type="button" data-option="${code}" data-label="${escapeAttribute(`${code} · ${en} / ${zh}`)}"><span>${code}</span><i class="swatch" style="--swatch:${swatch}"></i></button>`).join('')}</div>`;
+      if (kind === 'type') return ['unzipped','zipped','other'].map((group) => `<strong class="picker-section">${group === 'unzipped' ? 'Un-Zippered Bags / 无拉链行李' : group === 'zipped' ? 'Zippered Bags / 拉链行李' : 'Miscellaneous Articles / 其他物品'}</strong><div class="option-grid">${bagTypes.filter((item) => item[5] === group).map(([code,en,zh,x,y]) => `<button class="visual-option" type="button" data-option="${code}" data-label="${escapeAttribute(`${code} · ${en} / ${zh}`)}" title="${escapeAttribute(`${en} / ${zh}`)}"><span>${code}</span>${group === 'other' ? `<i data-icon-preview ${miscellaneousImageCrops[code] ? `data-misc-code="${code}"` : ''} aria-label="Enlarge ${escapeAttribute(code)} image" class="type-icon type-icon--misc" style="${miscellaneousImageCrops[code] ? cropStyle(miscellaneousImageCrops[code],72,72) : `--icon-x:-${x}px;--icon-y:-${y}px`}"></i>` : `<i data-icon-preview data-type-code="${code}" aria-label="Enlarge ${escapeAttribute(code)} image" class="type-icon" style="${cropStyle(typeImageCrops[code],72,72)}"></i>`}</button>`).join('')}</div>`).join('');
+      return `<p><strong><span class="en">Maximum of three descriptors can be selected.</span><span class="zh">最多可选择三个描述特征。</span></strong></p>${['material','basic','external'].map((group) => `<strong class="picker-section">${group === 'material' ? 'Material Elements / 材质特征' : group === 'basic' ? 'Basic Elements / 基本特征' : 'External Elements / 外部特征'}</strong><div class="option-grid">${descriptors.filter((item) => item[5] === group).map(([code,en,zh,x,y]) => `<button class="visual-option descriptor-option" type="button" data-option="${code}" data-label="${escapeAttribute(`${code} · ${en} / ${zh}`)}"><span>${code.replace(/-.*/, '')}</span><i class="descriptor-icon" style="--icon-x:-${x}px;--icon-y:-${y}px"></i><small>${en}<br>${zh}</small></button>`).join('')}</div>`).join('')}`;
+    }
+    let bagCounter = 0;
+    function addBag() {
+      const number = ++bagCounter;
+      const card = document.createElement('section');
+      card.className = 'bag-selector'; card.dataset.bagNumber = number;
+      card.innerHTML = `<h4><span class="en">Bag ${number}</span><span class="zh">行李 ${number}</span></h4><div class="bag-fields"><label class="bag-tag-field"><span class="en">Tag Number</span><span class="zh">行李牌号码</span><span class="required-mark">*</span><input data-bag-tag name="ahlBagTag${number}" placeholder="MU123456" required></label>${picker('color',number,'Color','颜色')}${picker('type',number,'Type','种类')}${picker('descriptor',number,'Descriptive Element(s)','描述特征')}</div>${number > 1 ? '<div class="bag-card-actions"><button class="remove-bag" type="button" data-remove-bag><span class="en">Remove bag</span><span class="zh">删除行李</span></button></div>' : ''}`;
+      card.querySelectorAll('[data-picker]').forEach((element) => { element.querySelector('[data-picker-options]').innerHTML = pickerOptions(element.dataset.picker); });
+      bagSelectorGrid.appendChild(card);
+    }
+    function resetBagCards() { bagSelectorGrid.innerHTML = ''; bagCounter = 0; addBag(); }
+    addBag();
+    document.querySelector('#add-another-bag').addEventListener('click', addBag);
+    bagSelectorGrid.addEventListener('click', (event) => {
+      const remove = event.target.closest('[data-remove-bag]'); if (remove) { remove.closest('.bag-selector').remove(); return; }
+      const pickerElement = event.target.closest('[data-picker]'); if (!pickerElement) return;
+      const panel = pickerElement.querySelector('[data-picker-panel]');
+      if (event.target.closest('[data-picker-trigger]')) { document.querySelectorAll('[data-picker-panel]').forEach((item) => { if (item !== panel) item.hidden = true; }); panel.hidden = !panel.hidden; return; }
+      if (event.target.closest('[data-picker-close]')) { panel.hidden = true; return; }
+      const option = event.target.closest('[data-option]'); if (!option) return;
+      const input = pickerElement.querySelector('input'); const multiple = pickerElement.dataset.picker === 'descriptor';
+      if (multiple) { let values = input.value ? input.value.split(',') : []; values = values.includes(option.dataset.option) ? values.filter((value) => value !== option.dataset.option) : (values.length < 3 ? [...values,option.dataset.option] : values); input.value = values.join(','); pickerElement.querySelectorAll('[data-option]').forEach((item) => item.classList.toggle('is-selected', values.includes(item.dataset.option))); pickerElement.querySelector('[data-picker-trigger]').textContent = values.join(', ') || 'Select descriptive elements'; }
+      else { input.value = option.dataset.option; pickerElement.querySelectorAll('[data-option]').forEach((item) => item.classList.toggle('is-selected', item === option)); const trigger = pickerElement.querySelector('[data-picker-trigger]'); trigger.textContent = option.dataset.label; trigger.classList.remove('placeholder'); panel.hidden = true; }
+    });
+    bagSelectorGrid.addEventListener('pointerover', (event) => {
+      const icon = event.target.closest('[data-icon-preview],.descriptor-icon'); if (!icon) return;
+      const sourceStyle = getComputedStyle(icon); const rect = icon.getBoundingClientRect();
+      hoverImagePreview.style.backgroundImage = sourceStyle.backgroundImage;
+      if (icon.dataset.typeCode) hoverImagePreview.style.cssText += cropStyle(typeImageCrops[icon.dataset.typeCode],210,190);
+      else if (icon.dataset.miscCode) hoverImagePreview.style.cssText += cropStyle(miscellaneousImageCrops[icon.dataset.miscCode],210,190);
+      else {
+        const factor = 3.5; const size = sourceStyle.backgroundSize.split(' ').map(parseFloat); const position = sourceStyle.backgroundPosition.split(' ').map(parseFloat);
+        hoverImagePreview.style.backgroundSize = `${size[0] * factor}px ${size[1] * factor}px`;
+        hoverImagePreview.style.backgroundPosition = `${position[0] * factor}px ${position[1] * factor}px`;
+      }
+      hoverImagePreview.style.left = `${Math.min(window.innerWidth - 220, Math.max(8, rect.right + 10))}px`;
+      hoverImagePreview.style.top = `${Math.min(window.innerHeight - 200, Math.max(8, rect.top - 55))}px`;
+      hoverImagePreview.hidden = false;
+    });
+    bagSelectorGrid.addEventListener('pointerout', (event) => { if (event.target.closest('[data-icon-preview],.descriptor-icon')) hoverImagePreview.hidden = true; });
+    document.addEventListener('click', (event) => { if (!event.target.closest('[data-picker]')) document.querySelectorAll('[data-picker-panel]').forEach((panel) => { panel.hidden = true; }); });
+    document.querySelectorAll('[data-chart-src]').forEach((button) => button.addEventListener('click', () => { chartDialog.classList.remove('icon-preview'); enlargedIcon.hidden = true; chartDialogImage.hidden = false; chartDialogImage.src = button.dataset.chartSrc; chartDialogImage.alt = button.querySelector('img').alt; chartDialog.showModal(); }));
+    document.querySelector('#chart-close').addEventListener('click', () => chartDialog.close());
+    chartDialog.addEventListener('click', (event) => { if (event.target === chartDialog) chartDialog.close(); });
+
+    function addContentRow(category = '', description = '') {
+      const row = document.createElement('div');
+      row.className = 'contents-row';
+      row.innerHTML = `<input name="contentCategory" placeholder="Category" value="${category.replace(/&/g, '&amp;').replace(/"/g, '&quot;')}" /><input name="contentDescription" placeholder="Description" value="${description.replace(/&/g, '&amp;').replace(/"/g, '&quot;')}" /><button class="secondary" type="button" data-remove-content>−</button>`;
+      contentsList.appendChild(row);
+    }
+    addContentRowButton.addEventListener('click', () => addContentRow());
+    contentsList.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-remove-content]');
+      if (button && contentsList.children.length > 1) button.closest('.contents-row')?.remove();
+    });
+
+    function addBagTagRow() {
+      const row = document.createElement('div');
+      row.className = 'bag-row';
+      row.innerHTML = '<input data-bag-tag placeholder="MU123456" /><button class="secondary" type="button" data-remove-bag-tag>-</button>';
+      bagTagsList.appendChild(row);
+    }
+    addBagTagButton.addEventListener('click', addBagTagRow);
+    bagTagsList.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-remove-bag-tag]');
+      if (button && bagTagsList.children.length > 1) button.closest('.bag-row')?.remove();
+    });
+    function collectBagTags() {
+      return Array.from(form.querySelectorAll('[data-bag-tag]:not(:disabled)')).map((input) => input.value.trim()).filter(Boolean);
+    }
+
+    function collectContentsRows() {
+      return Array.from(contentsList.querySelectorAll('.contents-row')).map((row) => ({
+        category: row.querySelector('[name="contentCategory"]')?.value || '',
+        description: row.querySelector('[name="contentDescription"]')?.value || ''
+      })).filter((row) => row.category.trim() || row.description.trim());
+    }
+
+    async function parseJson(res) { const text = await res.text(); try { return JSON.parse(text); } catch { throw new Error(`API returned non-JSON (${res.status}). Please check API base: ${apiBase}`); } }
+    function setTypeFields() { const isAhl = typeSelect.value === 'AHL'; ahlFields.classList.toggle('is-active', isAhl); dprFields.classList.toggle('is-active', !isAhl); standaloneBagTags.hidden = true; standaloneBagTags.querySelectorAll('input,button').forEach((control) => { control.disabled = true; }); typeSelect.disabled = false; bagSelectorGrid.querySelectorAll('input,button').forEach((control) => { control.disabled = false; }); ahlDescriptionInput.required = isAhl; thanks.classList.remove('is-active'); }
+    function setAddressFields() { const show = addressAvailable.value === 'Yes'; validUntilField.hidden = !show; temporaryAddressField.hidden = !show; if (!show) { validUntilField.querySelector('input').value = ''; temporaryAddressField.querySelector('textarea').value = ''; } }
+    typeSelect.addEventListener('change', setTypeFields);
+    addressAvailable.addEventListener('change', setAddressFields);
+    const requestedType = new URLSearchParams(window.location.search).get('type')?.toUpperCase();
+    if (requestedType === 'AHL' || requestedType === 'DPR') typeSelect.value = requestedType;
+    setTypeFields();
+
+    function drawBagBase() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const bg = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+      bg.addColorStop(0, '#f8fbff');
+      bg.addColorStop(1, '#eef5fe');
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+
+      const drawSuitcase = ({ x, y, w, h, label, side = false, horizontal = false }) => {
+        const edge = '#26384d';
+        const face = ctx.createLinearGradient(x, y, x + w, y + h);
+        face.addColorStop(0, '#ecf4fc');
+        face.addColorStop(0.5, '#c9d8e8');
+        face.addColorStop(1, '#98abc1');
+        ctx.save();
+        ctx.shadowColor = 'rgba(25,45,65,.2)';
+        ctx.shadowBlur = 14;
+        ctx.shadowOffsetY = 8;
+
+        if (!side && !horizontal) {
+          ctx.strokeStyle = edge;
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.roundRect(x + w * .34, y - 24, w * .32, 24, 10);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(x + w * .43, y - 1);
+          ctx.lineTo(x + w * .43, y + 10);
+          ctx.moveTo(x + w * .57, y - 1);
+          ctx.lineTo(x + w * .57, y + 10);
+          ctx.stroke();
+        }
+
+        ctx.fillStyle = face;
+        ctx.strokeStyle = edge;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.roundRect(x, y, w, h, horizontal ? 18 : 20);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.strokeStyle = 'rgba(38,56,77,.7)';
+        ctx.lineWidth = 2;
+        const insetX = side ? 9 : 12;
+        const insetY = horizontal ? 10 : 12;
+        ctx.beginPath();
+        ctx.roundRect(x + insetX, y + insetY, w - (insetX * 2), h - (insetY * 2), horizontal ? 12 : 14);
+        ctx.stroke();
+
+        ctx.strokeStyle = 'rgba(255,255,255,.75)';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(x + w * .18, y + h * .33);
+        ctx.lineTo(x + w * .66, y + h * .33);
+        ctx.stroke();
+
+        ctx.strokeStyle = 'rgba(38,56,77,.32)';
+        ctx.lineWidth = 2;
+        const seamCount = horizontal ? 2 : 3;
+        const seamLeft = x + insetX + 8;
+        const seamWidth = Math.max(8, w - ((insetX + 8) * 2));
+        for (let i = 1; i <= seamCount; i += 1) {
+          const sx = seamLeft + (seamWidth / (seamCount + 1)) * i;
+          ctx.beginPath();
+          ctx.moveTo(sx, y + insetY + 6);
+          ctx.lineTo(sx, y + h - insetY - 6);
+          ctx.stroke();
+        }
+
+        if (!side && !horizontal) {
+          ctx.fillStyle = edge;
+          [x + 28, x + w - 28].forEach((wheelX) => { ctx.beginPath(); ctx.arc(wheelX, y + h + 10, 8, 0, Math.PI * 2); ctx.fill(); });
+          ctx.fillRect(x + 24, y + h - 3, 10, 12);
+          ctx.fillRect(x + w - 34, y + h - 3, 10, 12);
+        }
+
+        ctx.fillStyle = edge;
+        ctx.font = '900 16px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(label, x + w / 2, y + h + (side || horizontal ? 38 : 50));
+        ctx.restore();
+      };
+
+      drawSuitcase({ x: 35, y: 78, w: 130, h: 86, label: 'SIDE 1' });
+      drawSuitcase({ x: 225, y: 78, w: 130, h: 86, label: 'SIDE 2' });
+      drawSuitcase({ x: 430, y: 72, w: 62, h: 108, label: 'END 1', side: true });
+      drawSuitcase({ x: 560, y: 72, w: 62, h: 108, label: 'END 2', side: true });
+      drawSuitcase({ x: 695, y: 58, w: 145, h: 56, label: 'TOP', horizontal: true });
+      drawSuitcase({ x: 695, y: 158, w: 145, h: 56, label: 'BOTTOM', horizontal: true });
+      ctx.textAlign = 'left';
+    }
+    function canvasPoint(event) { const rect = canvas.getBoundingClientRect(); return { x:(event.clientX-rect.left)*canvas.width/rect.width, y:(event.clientY-rect.top)*canvas.height/rect.height }; }
+    canvas.addEventListener('pointerdown', (event) => { drawing = true; const point = canvasPoint(event); canvas.setPointerCapture(event.pointerId); ctx.strokeStyle = '#d92d20'; ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(point.x, point.y); });
+    canvas.addEventListener('pointermove', (event) => { if (!drawing) return; const point = canvasPoint(event); ctx.lineTo(point.x, point.y); ctx.stroke(); sketchDirty = true; });
+    canvas.addEventListener('pointerup', () => { drawing = false; });
+    canvas.addEventListener('pointercancel', () => { drawing = false; });
+    document.querySelector('#clear-sketch').addEventListener('click', () => { sketchDirty = false; drawBagBase(); });
+    drawBagBase();
+
+    function clearSignature() {
+      signatureCtx.clearRect(0, 0, signaturePad.width, signaturePad.height);
+      signatureCtx.fillStyle = '#fff';
+      signatureCtx.fillRect(0, 0, signaturePad.width, signaturePad.height);
+      signatureCtx.strokeStyle = '#111827';
+      signatureCtx.lineWidth = 3;
+      signatureCtx.lineCap = 'round';
+      signatureDirty = false;
+    }
+    function signaturePoint(event) {
+      const rect = signaturePad.getBoundingClientRect();
+      return { x:(event.clientX-rect.left)*signaturePad.width/rect.width, y:(event.clientY-rect.top)*signaturePad.height/rect.height };
+    }
+    signaturePad.addEventListener('pointerdown', (event) => { signing = true; signaturePad.setPointerCapture(event.pointerId); const point = signaturePoint(event); signatureCtx.beginPath(); signatureCtx.moveTo(point.x, point.y); });
+    signaturePad.addEventListener('pointermove', (event) => { if (!signing) return; const point = signaturePoint(event); signatureCtx.lineTo(point.x, point.y); signatureCtx.stroke(); signatureDirty = true; });
+    signaturePad.addEventListener('pointerup', () => { signing = false; });
+    signaturePad.addEventListener('pointercancel', () => { signing = false; });
+    document.querySelector('#clear-signature').addEventListener('click', clearSignature);
+    clearSignature();
+
+    async function imageFileToDataUrl(file) {
+      const objectUrl = URL.createObjectURL(file);
+      try {
+        const image = await new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.onerror = reject;
+          img.src = objectUrl;
+        });
+        const maxSide = 1000;
+        const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
+        const canvasEl = document.createElement('canvas');
+        canvasEl.width = Math.max(1, Math.round(image.width * scale));
+        canvasEl.height = Math.max(1, Math.round(image.height * scale));
+        canvasEl.getContext('2d').drawImage(image, 0, 0, canvasEl.width, canvasEl.height);
+        return canvasEl.toDataURL('image/jpeg', 0.6);
+      } finally {
+        URL.revokeObjectURL(objectUrl);
+      }
+    }
+
+    function fileToDataUrl(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ''));
+        reader.onerror = () => reject(reader.error || new Error('The attachment could not be read.'));
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function fileToAttachment(file, attachmentType) {
+      let optimized = false;
+      let dataUrl;
+      if (file.type?.startsWith('image/')) {
+        // Some iPhone photos (notably HEIC files) can be selected by Safari but
+        // cannot be decoded into a canvas. Keep those files as-is rather than
+        // aborting the entire submission when one of several files cannot be optimized.
+        dataUrl = await imageFileToDataUrl(file).then((result) => {
+          optimized = true;
+          return result;
+        }, () => fileToDataUrl(file));
+      } else {
+        dataUrl = await fileToDataUrl(file);
+      }
+      const base64 = dataUrl.split(',')[1] || '';
+      const mimeType = optimized ? 'image/jpeg' : (file.type || 'application/octet-stream');
+      return base64 ? { filename:file.name, mimeType, contentBase64:base64, attachmentType } : null;
+    }
+
+
+    const selectedAttachments = new Map();
+
+    function attachmentKey(input) {
+      return input.dataset.attachmentType || 'document';
+    }
+
+    function createAttachmentTile(file, index, input) {
+      const tile = document.createElement('div');
+      tile.className = 'attachment-tile attachment-thumb';
+      const removeButton = document.createElement('button');
+      removeButton.className = 'attachment-remove';
+      removeButton.type = 'button';
+      removeButton.setAttribute('aria-label', `Remove ${file.name}`);
+      removeButton.textContent = '×';
+      removeButton.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const key = attachmentKey(input);
+        const files = selectedAttachments.get(key) || [];
+        files.splice(index, 1);
+        selectedAttachments.set(key, files);
+        renderAttachmentGroup(input);
+      });
+      const preview = document.createElement('span');
+      preview.className = 'attachment-preview';
+      if (file.type?.startsWith('image/')) {
+        const objectUrl = URL.createObjectURL(file);
+        const img = document.createElement('img');
+        img.alt = file.name;
+        img.dataset.objectUrl = objectUrl;
+        img.src = objectUrl;
+        preview.appendChild(img);
+      } else {
+        const icon = document.createElement('span');
+        icon.className = 'attachment-document';
+        icon.textContent = 'DOC';
+        preview.appendChild(icon);
+      }
+      const filename = document.createElement('span');
+      filename.className = 'attachment-filename';
+      filename.textContent = file.name;
+      tile.append(removeButton, preview, filename);
+      return tile;
+    }
+
+    function clearAttachmentGroup(group) {
+      group.querySelectorAll('[data-attachment-items] img[data-object-url]').forEach((img) => URL.revokeObjectURL(img.dataset.objectUrl));
+      const items = group.querySelector('[data-attachment-items]');
+      if (items) items.innerHTML = '';
+    }
+
+    function renderAttachmentGroup(input) {
+      const group = input.closest('[data-attachment-group]');
+      if (!group) return;
+      clearAttachmentGroup(group);
+      const items = group.querySelector('[data-attachment-items]');
+      const files = selectedAttachments.get(attachmentKey(input)) || [];
+      files.forEach((file, index) => items?.appendChild(createAttachmentTile(file, index, input)));
+      const maxAttachments = Number(group.dataset.maxAttachments) || Infinity;
+      const uploadTile = group.querySelector('.attachment-upload');
+      if (uploadTile) uploadTile.hidden = files.length >= maxAttachments;
+    }
+
+    function updateAttachmentPreview(input) {
+      const files = Array.from(input.files || []);
+      if (!files.length) return;
+      const key = attachmentKey(input);
+      const maxAttachments = Number(input.closest('[data-attachment-group]')?.dataset.maxAttachments) || Infinity;
+      selectedAttachments.set(key, [...(selectedAttachments.get(key) || []), ...files].slice(0, maxAttachments));
+      renderAttachmentGroup(input);
+      input.value = '';
+    }
+
+    attachmentInputs.forEach((input) => input.addEventListener('change', () => updateAttachmentPreview(input)));
+    function clearAttachmentPreviews() {
+      document.querySelectorAll('[data-attachment-group]').forEach(clearAttachmentGroup);
+      selectedAttachments.clear();
+      attachmentInputs.forEach(renderAttachmentGroup);
+    }
+
+    async function collectRequiredAttachments() {
+      const output = [];
+      const selectedCount = Array.from(selectedAttachments.values()).reduce((total, files) => total + files.length, 0);
+      if (selectedCount > 20) throw new Error(document.documentElement.lang === 'en' ? 'You may upload up to 20 files.' : '最多可上传 20 个文件。');
+      for (const input of attachmentInputs) {
+        const files = selectedAttachments.get(attachmentKey(input)) || [];
+        if (!files.length && input.closest('[data-attachment-group]')?.dataset.requiredAttachment === 'true') throw new Error(document.documentElement.lang === 'en' ? 'Boarding pass and bag tag receipt attachments are required.' : '必须上传登机牌和行李票附件。');
+        for (const file of files) {
+          const attachment = await fileToAttachment(file, input.dataset.attachmentType || 'document');
+          if (attachment) output.push(attachment);
+        }
+      }
+      const totalBytes = output.reduce((total, attachment) => total + Math.floor(attachment.contentBase64.length * 3 / 4), 0);
+      if (totalBytes > 22 * 1024 * 1024) throw new Error(document.documentElement.lang === 'en' ? 'Attachments exceed 22 MB after photo optimization. Please remove a file or upload a smaller PDF.' : '附件经照片优化后仍超过 22 MB，请删除部分文件或上传较小的 PDF。');
+      return output;
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      formStatus.className = 'status';
+      formStatus.textContent = document.documentElement.lang === 'en' ? 'Submitting...' : '提交中...';
+      if (!signatureDirty) { formStatus.className = 'status err'; formStatus.textContent = document.documentElement.lang === 'en' ? 'Passenger signature is required.' : '请旅客签字。'; return; }
+      if (Array.from(bagSelectorGrid.querySelectorAll('.bag-selector')).some((bag) => !bag.querySelector('[data-bag-color]').value || !bag.querySelector('[data-bag-type]').value)) { formStatus.className = 'status err'; formStatus.textContent = document.documentElement.lang === 'en' ? 'Please select a color and type for every bag.' : '请为每件行李选择颜色和种类。'; return; }
+      const payload = Object.fromEntries(new FormData(form).entries());
+      payload.caseType = typeSelect.value;
+      ['passportAttachment', 'boardingPassAttachment', 'bagTagAttachment', 'otherAttachment'].forEach((key) => delete payload[key]);
+      payload.flightRows = [1, 2, 3].map((index) => ({
+        flightNo: payload[`flightNo${index}`],
+        flightDate: payload[`flightDate${index}`],
+        origin: payload[`flightOrigin${index}`],
+        destination: payload[`destination${index}`]
+      }));
+      payload.bagTags = collectBagTags();
+      payload.bagTag = payload.bagTags.join(' / ');
+      const bagIdentifications = Array.from(bagSelectorGrid.querySelectorAll('.bag-selector')).map((bag, index) => ({ number:index + 1, tag:bag.querySelector('[data-bag-tag]').value, color:bag.querySelector('[data-bag-color]').value, type:bag.querySelector('[data-bag-type]').value, descriptors:bag.querySelector('[data-bag-descriptors]').value }));
+      const iataIdentification = bagIdentifications.map((bag) => `Bag ${bag.number} Tag ${bag.tag}, ${bag.color}-${bag.type}, elements ${bag.descriptors || '-'}`).join(' / ');
+      if (typeSelect.value === 'AHL') {
+        payload.ahlBagType = bagIdentifications.map((bag) => `Bag ${bag.number}: ${bag.type || '-'}`).join(' / ');
+        payload.ahlBagDescription = [`IATA identification: ${iataIdentification}`, payload.ahlBagDescription].filter(Boolean).join(' | ');
+      } else {
+        payload.dprBagInfo = [`IATA identification: ${iataIdentification}`, payload.dprBagInfo].filter(Boolean).join(' | ');
+      }
+      payload.contentsRows = collectContentsRows();
+      payload.language = document.documentElement.lang;
+      payload.passengerSignature = signatureDirty ? signaturePad.toDataURL('image/jpeg', 0.75) : '';
+      payload.damageSketch = sketchDirty ? canvas.toDataURL('image/jpeg', 0.6) : '';
+      try {
+        payload.attachments = await collectRequiredAttachments();
+        const res = await fetch(`${apiBase}/cbs-cases`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+        const data = await parseJson(res);
+        if (!res.ok) throw new Error(data.error || 'Submit failed');
+        const deliveryErrors = [data.emailError && `email failed: ${data.emailError}`, data.discordError && `Discord failed: ${data.discordError}`].filter(Boolean);
+        formStatus.className = deliveryErrors.length ? 'status err' : 'status ok';
+        formStatus.textContent = deliveryErrors.length
+          ? `Created, but ${deliveryErrors.join('; ')}`
+          : data.deliveryPending
+            ? (document.documentElement.lang === 'en' ? 'Created. Attachments are still being delivered.' : '提交成功，附件仍在发送中。')
+            : (document.documentElement.lang === 'en' ? 'Created, email sent, and attachments posted to Discord' : '提交成功，邮件及附件已发送。');
+        thanks.querySelectorAll('[data-thanks-message]').forEach((item) => { item.hidden = item.dataset.thanksMessage !== data.record.caseType; });
+        thanks.classList.add('is-active');
+        thanks.scrollIntoView({ behavior:'smooth', block:'center' });
+        form.reset(); if (requestedType === 'AHL' || requestedType === 'DPR') typeSelect.value = requestedType; clearAttachmentPreviews(); sketchDirty = false; drawBagBase(); clearSignature(); contentsList.innerHTML = ''; addContentRow(); issueDateInput.valueAsDate = new Date(); setTypeFields(); setAddressFields();
+      } catch (error) {
+        formStatus.className = 'status err';
+        const failedFetch = /failed to fetch|load failed|network request failed/i.test(error.message || '');
+        formStatus.textContent = failedFetch
+          ? (document.documentElement.lang === 'en' ? 'Submit failed. Please check the network or try smaller attachment files.' : '提交失败。请检查网络，或尝试上传较小的附件文件。')
+          : error.message;
+      }
+    });
+    form.addEventListener('reset', () => setTimeout(() => { if (requestedType === 'AHL' || requestedType === 'DPR') typeSelect.value = requestedType; clearAttachmentPreviews(); sketchDirty = false; drawBagBase(); clearSignature(); contentsList.innerHTML = ''; addContentRow(); resetBagCards(); issueDateInput.valueAsDate = new Date(); setTypeFields(); setAddressFields(); }, 0));
+    addContentRow();
+    issueDateInput.valueAsDate = new Date();
+    setLanguage('en');
+    setTypeFields();
+    setAddressFields();
+  </script>
+  <script src="/attachment-drop.js"></script>
+</body>
+</html>
