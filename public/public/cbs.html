@@ -332,8 +332,13 @@
       </section>
       <section class="open-case-group" id="on-hand-group">
         <h2 id="on-hand-title">On-hand</h2>
-        <p class="muted" id="on-hand-description">Passenger bags entered as inbound and not-loaded outbound bags remain here until resolved. Gate bags and Co-mail are not included.</p>
+        <p class="muted" id="on-hand-description">Passenger bags entered as inbound remain here until resolved. Gate bags, Co-mail, and not-loaded outbound bags are not included.</p>
         <div id="unresolved-baggage-output"><p class="muted">Loading On-hand cases...</p></div>
+      </section>
+      <section class="open-case-group" id="bag-room-unload-group">
+        <h2 id="bag-room-unload-title">Bag Room Unload Bag</h2>
+        <p class="muted" id="bag-room-unload-description">Outbound bags registered as Not Load Bags remain here until resolved.</p>
+        <div id="bag-room-unload-output"><p class="muted">Loading Bag Room Unload Bag cases...</p></div>
       </section>
     </section>
     <section class="card worldtracer-create" id="worldtracer-card" hidden>
@@ -454,6 +459,7 @@
     const standaloneEmailForm = document.querySelector('#standalone-email-form');
     const standaloneEmailStatus = document.querySelector('#standalone-email-status');
     const unresolvedBaggageOutput = document.querySelector('#unresolved-baggage-output');
+    const bagRoomUnloadOutput = document.querySelector('#bag-room-unload-output');
     const addBaggageTab = document.querySelector('#add-baggage-tab');
     const addBaggageCard = document.querySelector('#add-baggage-card');
     const addBaggageSearch = document.querySelector('#add-baggage-search');
@@ -462,6 +468,8 @@
     const baggageChartCard = document.querySelector('#baggage-chart-card');
     const onHandTitle = document.querySelector('#on-hand-title');
     const onHandDescription = document.querySelector('#on-hand-description');
+    const bagRoomUnloadTitle = document.querySelector('#bag-room-unload-title');
+    const bagRoomUnloadDescription = document.querySelector('#bag-room-unload-description');
     const backToCases = document.querySelector('#back-to-cases');
     const sidebarToggle = document.querySelector('#sidebar-toggle');
     const sidebarRefresh = document.querySelector('#sidebar-refresh');
@@ -512,7 +520,11 @@
         onHandTitle.textContent = section === 'closed' ? 'Closed On-hand' : 'On-hand';
         onHandDescription.textContent = section === 'closed'
           ? 'On-hand cases completed by Create Rush, Shipping, Passenger collected, or Case Close are archived here.'
-          : 'Passenger bags entered as inbound and not-loaded outbound bags remain here until resolved. Gate bags and Co-mail are not included.';
+          : 'Passenger bags entered as inbound remain here until resolved. Gate bags, Co-mail, and not-loaded outbound bags are not included.';
+        bagRoomUnloadTitle.textContent = section === 'closed' ? 'Closed Bag Room Unload Bag' : 'Bag Room Unload Bag';
+        bagRoomUnloadDescription.textContent = section === 'closed'
+          ? 'Completed Not Load Bags cases are archived here.'
+          : 'Outbound bags registered as Not Load Bags remain here until resolved.';
         if (window._unresolvedBaggageLoaded) renderUnresolvedBaggage(window._unresolvedBaggageSourceRows || []);
         renderCases();
       }
@@ -614,8 +626,11 @@
       if (row.resolvedAt) events.push({ title:resolutionTitle, at:row.resolvedAt, by:row.resolvedBy || updaterFromText(row.resolutionNote) || 'System', detail:withoutUpdaterText(row.resolutionNote) });
       return `<div class="tracking-workspace"><p class="tracking-current-time"><strong>${label('Case Progress', '案件进度')}</strong></p><div class="tracking-history">${events.slice().reverse().map((item, index) => `<span class="tracking-chip${item.key === 'comment' ? ' tracking-chip--comment' : ''}${index === 0 ? ' is-latest' : ''}${row.resolvedAt && index === 0 ? ' is-closed' : ''}"><span class="tracking-step-number">${events.length - index}</span><span class="tracking-chip-title">${escapeHtml(item.title)}</span>${item.at || item.by ? `<small>${item.at ? escapeHtml(new Date(item.at).toLocaleString()) : ''}${item.by ? ` · Updated by: ${escapeHtml(updaterDisplayName(item.by))}` : ''}</small>` : ''}${item.detail ? `<span class="tracking-chip-detail">${escapeHtml(updaterDisplayText(item.detail))}</span>` : ''}</span>`).join('')}</div></div>`;
     }
-    function renderUnresolvedBaggage(rows = []) {
-      window._unresolvedBaggageSourceRows = rows;
+    function isNotLoadBag(row = {}) {
+      return [row.status, row.bagType].some((value) => String(value || '').trim().toLowerCase() === 'not load bags');
+    }
+    const resolutionOptionsHtml = `<option value="worldtracer">WorldTracer</option><option value="exchange">Exchange</option><option value="email">Email</option><option value="on-hand-rush">Create Rush</option><option value="passenger-collected">Passenger collected / Case closed</option><option value="shipped">Shipped</option><option value="other">Other resolution</option><option value="case-close">Case Close</option>`;
+    function renderUnresolvedBaggageGroup(rows = [], output, groupName) {
       const showClosed = window._caseView === 'closed';
       rows = rows.filter((row) => {
         const archivedResolutions = new Set(['on-hand-rush', 'shipped', 'passenger-collected', 'case-close', 'linked-passenger-file']);
@@ -633,11 +648,8 @@
         history.sort((a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0));
         return { ...history[0], history };
       }).sort((a, b) => Number(Boolean(a.history.find((item) => !item.resolvedAt))) === Number(Boolean(b.history.find((item) => !item.resolvedAt))) ? 0 : (a.history.find((item) => !item.resolvedAt) ? -1 : 1));
-      window._unresolvedBaggageRows = rows;
-      window._unresolvedBaggageLoaded = true;
-      if (window._cbsRows) requestAnimationFrame(renderCases);
-      if (!rows.length) { unresolvedBaggageOutput.innerHTML = `<p class="muted">${showClosed ? 'No closed On-hand baggage cases.' : 'No On-hand baggage cases.'}</p>`; return; }
-      unresolvedBaggageOutput.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:190px"><col style="width:310px"><col style="width:120px"><col style="width:130px"><col style="width:180px"><col></colgroup><thead><tr><th>WorldTracer File Number</th><th>Bag Tag</th><th>Direction</th><th>Date</th><th>Type / Status</th><th>Location</th></tr></thead><tbody>${rows.map((row) => {
+      if (!rows.length) { output.innerHTML = `<p class="muted">${showClosed ? `No closed ${groupName} cases.` : `No ${groupName} cases.`}</p>`; return; }
+      output.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:190px"><col style="width:310px"><col style="width:120px"><col style="width:130px"><col style="width:180px"><col></colgroup><thead><tr><th>WorldTracer File Number</th><th>Bag Tag</th><th>Direction</th><th>Date</th><th>Type / Status</th><th>Location</th></tr></thead><tbody>${rows.map((row) => {
         const resolvedHistory = row.history.filter((item) => item.resolvedAt);
         // "Other" records stay in Open Case and remain actionable so staff can
         // add WorldTracer details or apply a final resolution later.
@@ -650,7 +662,7 @@
         const matchBadge = matchedCase ? '<span class="rush-match on-hand-match">Match</span>' : '';
         const linkButton = matchedCase && onHandId && matchedCaseId ? `<button type="button" data-link-on-hand="${escapeHtml(onHandId)}" data-link-case="${escapeHtml(matchedCaseId)}">Link</button>` : '';
         const formHtml = active
-          ? `<form class="unresolved-update" data-unresolved-row="${escapeHtml(active.rowNumber)}" data-bag-tag="${escapeHtml(active.bagTag)}" data-world-tracer-file="${escapeHtml(active.worldTracerFileNumber)}"><label class="wide"><span>Resolution</span><select name="action" data-unresolved-action><option value="worldtracer">WorldTracer</option><option value="passenger-name">Passenger Name</option><option value="comment">Comment</option><option value="exchange">Exchange</option><option value="email">Email</option><option value="on-hand-rush">Create Rush</option><option value="passenger-collected">Passenger collected / Case closed</option><option value="shipped">Shipped</option><option value="other">Other resolution</option><option value="case-close">Case Close</option></select></label><div class="unresolved-update-fields">${unresolvedUpdateFieldsHtml('worldtracer', active.bagTag, active.worldTracerFileNumber)}</div><div class="actions"><button type="submit">Update</button></div></form>`
+          ? `<form class="unresolved-update" data-unresolved-row="${escapeHtml(active.rowNumber)}" data-bag-tag="${escapeHtml(active.bagTag)}" data-world-tracer-file="${escapeHtml(active.worldTracerFileNumber)}"><label class="wide"><span>Resolution</span><select name="action" data-unresolved-action>${resolutionOptionsHtml}</select></label><div class="unresolved-update-fields">${unresolvedUpdateFieldsHtml('worldtracer', active.bagTag, active.worldTracerFileNumber)}</div><div class="actions"><button type="submit">Update</button></div></form>`
           : closed
             ? `<form class="unresolved-update" data-unresolved-row="${escapeHtml(closed.rowNumber)}" data-bag-tag="${escapeHtml(closed.bagTag)}" data-world-tracer-file="${escapeHtml(closed.worldTracerFileNumber)}"><label class="wide"><span>Update</span><select name="action" data-unresolved-action><option value="worldtracer">Update WorldTracer</option><option value="reopen">Reopen</option></select></label><div class="unresolved-update-fields">${unresolvedUpdateFieldsHtml('worldtracer', closed.bagTag, closed.worldTracerFileNumber)}</div><div class="actions"><button type="submit">Update</button></div></form>`
             : '';
@@ -661,15 +673,28 @@
       }).join('')}</tbody></table></div>`;
       requestAnimationFrame(syncCaseProgressHeights);
     }
+    function renderUnresolvedBaggage(rows = []) {
+      window._unresolvedBaggageSourceRows = rows;
+      const notLoadRows = rows.filter(isNotLoadBag);
+      const regularRows = rows.filter((row) => !isNotLoadBag(row));
+      renderUnresolvedBaggageGroup(regularRows, unresolvedBaggageOutput, 'On-hand');
+      renderUnresolvedBaggageGroup(notLoadRows, bagRoomUnloadOutput, 'Bag Room Unload Bag');
+      window._unresolvedBaggageRows = [...regularRows, ...notLoadRows];
+      window._unresolvedBaggageLoaded = true;
+      if (window._cbsRows) requestAnimationFrame(renderCases);
+    }
     async function loadUnresolvedBaggage() {
       unresolvedBaggageOutput.innerHTML = '<p class="muted">Loading cases...</p>';
+      bagRoomUnloadOutput.innerHTML = '<p class="muted">Loading cases...</p>';
       try {
         const res = await fetch(`${apiBase}/cbs-unresolved-baggage`);
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || 'On-hand baggage lookup failed');
         renderUnresolvedBaggage(data.rows || []);
       } catch (error) {
-        unresolvedBaggageOutput.innerHTML = `<p class="status err">${escapeHtml(error.message)}</p>`;
+        const errorHtml = `<p class="status err">${escapeHtml(error.message)}</p>`;
+        unresolvedBaggageOutput.innerHTML = errorHtml;
+        bagRoomUnloadOutput.innerHTML = errorHtml;
       }
     }
     function inferCaseType(row) {
@@ -1578,7 +1603,7 @@
         await loadWorldTracerCases();
       } catch (error) { alert(error.message); } finally { button.disabled = false; }
     });
-    unresolvedBaggageOutput?.addEventListener('click', async (event) => {
+    openCasesCard?.addEventListener('click', async (event) => {
       const link = event.target.closest('[data-link-on-hand]');
       if (link) {
         event.stopPropagation();
@@ -1613,12 +1638,12 @@
       toggle.setAttribute('aria-expanded', detail.hidden ? 'false' : 'true');
       if (!detail.hidden) requestAnimationFrame(syncCaseProgressHeights);
     });
-    unresolvedBaggageOutput?.addEventListener('keydown', (event) => {
+    openCasesCard?.addEventListener('keydown', (event) => {
       if (!event.target.matches('[data-toggle-unresolved-update]') || !['Enter', ' '].includes(event.key)) return;
       event.preventDefault();
       event.target.click();
     });
-    unresolvedBaggageOutput?.addEventListener('change', (event) => {
+    openCasesCard?.addEventListener('change', (event) => {
       const emailAction = event.target.closest('[data-onhand-email-action]');
       if (emailAction) {
         const form = emailAction.closest('form');
@@ -1665,7 +1690,7 @@
       form.querySelector('.unresolved-update-fields').innerHTML = unresolvedUpdateFieldsHtml(select.value, form.dataset.bagTag, form.dataset.worldTracerFile);
       form.querySelector('button[type="submit"]').textContent = select.value === 'email' ? 'Send' : 'Update';
     });
-    unresolvedBaggageOutput?.addEventListener('submit', async (event) => {
+    openCasesCard?.addEventListener('submit', async (event) => {
       const form = event.target.closest('.unresolved-update');
       if (!form) return;
       event.preventDefault();

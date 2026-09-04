@@ -211,7 +211,7 @@ test('Add On-hand records are added to and displayed in Open Case', () => {
 });
 
 test('On-hand only includes Office bags and excludes gate bags and Co-mail', () => {
-  const description = 'Passenger bags entered as inbound and not-loaded outbound bags remain here until resolved. Gate bags and Co-mail are not included.';
+  const description = 'Passenger bags entered as inbound remain here until resolved. Gate bags, Co-mail, and not-loaded outbound bags are not included.';
   assert.equal((page.match(new RegExp(description.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length, 2);
   assert.match(page, /<option>Gate bag<\/option>/);
   assert.match(page, /<option>Co-mail<\/option>/);
@@ -222,6 +222,15 @@ test('On-hand only includes Office bags and excludes gate bags and Co-mail', () 
   assert.match(drive, /new Set\(\['gate bag', 'co-mail'\]\)/);
   assert.match(drive, /location !== 'office'/);
   assert.match(drive, /\[record\.status, record\.bagType\][\s\S]*excludedTypes\.has/);
+});
+
+test('Not Load Bags have a separate Bag Room Unload Bag category with On-hand resolutions', () => {
+  assert.match(page, /<h2 id="bag-room-unload-title">Bag Room Unload Bag<\/h2>/);
+  assert.match(page, /function isNotLoadBag\(row = \{\}\)/);
+  assert.match(page, /renderUnresolvedBaggageGroup\(regularRows, unresolvedBaggageOutput, 'On-hand'\)/);
+  assert.match(page, /renderUnresolvedBaggageGroup\(notLoadRows, bagRoomUnloadOutput, 'Bag Room Unload Bag'\)/);
+  assert.match(page, /const resolutionOptionsHtml = `[^`]*WorldTracer[^`]*Exchange[^`]*Email[^`]*Create Rush[^`]*Passenger collected \/ Case closed[^`]*Shipped[^`]*Other resolution[^`]*Case Close[^`]*`/);
+  assert.match(page, /<select name="action" data-unresolved-action>\$\{resolutionOptionsHtml\}<\/select>/);
 });
 
 test('On-hand cases match the passenger case layout and support WorldTracer progress', () => {
