@@ -233,6 +233,16 @@ test('Not Load Bags have a separate Bag Room Unload Bag category with On-hand re
   assert.match(page, /<select name="action" data-unresolved-action>\$\{resolutionOptionsHtml\}<\/select>/);
 });
 
+test('Open Case uses selectable summary cards with live category counts', () => {
+  assert.match(page, /class="case-summary-cards"/);
+  assert.match(page, /data-case-group="passenger"/);
+  assert.match(page, /data-case-group="on-hand"/);
+  assert.match(page, /data-case-group="bag-room"/);
+  assert.match(page, /function selectCaseGroup\(group\)/);
+  assert.match(page, /function setCaseCount\(group, count\)/);
+  assert.match(page, /Search case \/ bag tag\.\.\./);
+});
+
 test('Bag Room rows replace Location with Rush Tag and Rush creation closes matching not-load cases', () => {
   assert.match(page, /<th>Bag Tag<\/th><th>Rush Tag<\/th><th>Direction<\/th>/);
   assert.doesNotMatch(page, /<th>Type \/ Status<\/th><th>Location<\/th>/);

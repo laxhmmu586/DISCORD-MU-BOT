@@ -275,6 +275,29 @@
     .open-case-list { display:grid; gap:10px; margin-top:12px; }
     .open-case-item { display:grid; grid-template-columns:180px 1fr 1fr auto; gap:14px; align-items:center; padding:14px; border:1px solid #d8e4f1; border-radius:14px; background:#fff; color:var(--ink); text-align:left; }
     .open-case-item strong { color:var(--brand); }
+    .case-dashboard-head { display:flex; align-items:center; justify-content:space-between; gap:18px; margin-bottom:14px; }
+    .case-dashboard-head h1 { color:#09275a; font-size:24px; }
+    .case-dashboard-head .search-field { width:min(100%,310px); padding:11px 38px 11px 14px; border:1px solid #cfdaea; border-radius:11px; background:#fff; color:var(--ink); font:inherit; box-shadow:0 3px 10px rgba(18,58,115,.04); }
+    .case-search-wrap { position:relative; display:block; width:min(100%,310px); }
+    .case-search-wrap svg { position:absolute; top:50%; right:13px; width:17px; height:17px; fill:none; stroke:#7185a0; stroke-width:2; transform:translateY(-50%); pointer-events:none; }
+    .case-summary-cards { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; margin:14px 0 16px; }
+    .case-stat-card { display:grid; grid-template-columns:42px minmax(0,1fr) 18px; grid-template-rows:auto auto; align-items:center; gap:4px 8px; min-height:108px; padding:15px 13px; border:1px solid #bad9ff; border-radius:10px; background:linear-gradient(135deg,#f5faff,#edf6ff); color:#0754b8; text-align:left; box-shadow:0 8px 18px rgba(30,105,190,.06); }
+    .case-stat-card[data-case-group="on-hand"] { border-color:#bfe8d3; background:linear-gradient(135deg,#f4fff9,#e9f8f0); color:#12654e; }
+    .case-stat-card[data-case-group="bag-room"] { border-color:#ffd0a4; background:linear-gradient(135deg,#fffaf3,#fff0e2); color:#bd350d; }
+    .case-stat-card.is-active { box-shadow:inset 0 0 0 2px currentColor,0 8px 20px rgba(18,58,115,.1); }
+    .case-stat-icon { grid-row:1/3; align-self:start; display:grid; place-items:center; width:38px; height:38px; }
+    .case-stat-icon svg { width:29px; height:29px; fill:currentColor; stroke:currentColor; stroke-width:1.5; }
+    .case-stat-label { align-self:end; font-size:13px; font-weight:900; line-height:1.22; }
+    .case-stat-count { align-self:start; color:#082b5d; font-size:29px; font-weight:900; line-height:1.15; }
+    .case-stat-chevron { grid-column:3; grid-row:1/3; font-size:25px; font-weight:400; }
+    .open-case-group { display:none; margin-top:0 !important; padding:0; overflow:hidden; background:#fff; }
+    .open-case-group.is-active { display:block; }
+    .open-case-group-head { display:flex; align-items:center; justify-content:space-between; min-height:44px; padding:10px 14px; background:linear-gradient(90deg,#dff0ff,#edf7ff); }
+    .open-case-group-head h2 { display:flex; align-items:center; gap:9px; margin:0; font-size:15px; }
+    .open-case-group-head svg { width:20px; height:20px; fill:currentColor; }
+    .case-view-all { margin-left:auto; padding:4px; border-radius:0; background:transparent; color:#0754b8; font-size:12px; }
+    .open-case-group > .muted { margin:10px 14px; font-size:13px; }
+    .open-case-group .sheet-shell { border:0; border-top:1px solid var(--line); border-radius:0; box-shadow:none; }
     .full-file { display:grid; gap:18px; }
     .full-file-section { padding:16px; border:1px solid #d8e4f1; border-radius:14px; background:#fff; }
     .full-file-section h3 { margin:0 0 12px; color:var(--brand); }
@@ -296,6 +319,7 @@
       .wrap,.card,.open-case-group,.sheet-shell{min-width:0;max-width:100%}
       .sheet-shell{width:100%;overflow-x:auto}
       .sheet-shell .cbs-sheet{display:table;min-width:980px;overflow:visible}
+      .case-dashboard-head{align-items:flex-start;flex-direction:column}.case-search-wrap{width:100%;max-width:none}.case-dashboard-head .search-field{width:100%;max-width:none}.case-summary-cards{grid-template-columns:repeat(3,minmax(145px,1fr));overflow-x:auto;padding-bottom:4px}.case-stat-card{min-height:94px}.open-case-group .sheet-shell .cbs-sheet{min-width:620px}
     }
     @media (max-width:520px){ .rush-itinerary{padding:12px;overflow:hidden}.rush-itinerary-head{align-items:stretch}.rush-itinerary-head button{width:100%}.rush-flight-row{grid-template-columns:minmax(0,1fr);width:100%;min-width:0}.rush-flight-row label{width:100%;min-width:0;overflow:hidden}.rush-flight-row input[type="date"]{width:calc(100% - 24px);justify-self:start}.rush-flight-row button{grid-column:1}.worldtracer-form{width:100%;min-width:0} }
   </style>
@@ -322,21 +346,26 @@
   <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Collapse sidebar" aria-expanded="true" title="Collapse sidebar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg></button>
   <main class="wrap">
     <section class="card" id="open-cases-card" hidden>
-      <div class="actions">
+      <div class="case-dashboard-head">
         <div><h1 id="case-page-title"><span class="en">Open Case</span><span class="zh">未结案件</span></h1><p class="muted" id="case-page-description">Passenger Filed and On-hand files are shown together on this page.</p></div>
-        <div class="case-toolbar"><input class="search-field" id="case-search" placeholder="Search case / bag tag / passenger" /></div>
+        <label class="case-search-wrap"><input class="search-field" id="case-search" aria-label="Search cases" placeholder="Search case / bag tag..." /><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/></svg></label>
       </div>
-      <section class="open-case-group">
-        <h2>Passenger Filed</h2>
+      <div class="case-summary-cards" role="tablist" aria-label="Case categories">
+        <button class="case-stat-card is-active" type="button" role="tab" aria-selected="true" data-case-group="passenger"><span class="case-stat-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="6" r="4"/><path d="M4 21v-3a8 8 0 0 1 16 0v3z"/></svg></span><span class="case-stat-label">Passenger Filed</span><strong class="case-stat-count" data-case-count="passenger">0</strong><span class="case-stat-chevron">›</span></button>
+        <button class="case-stat-card" type="button" role="tab" aria-selected="false" data-case-group="on-hand"><span class="case-stat-icon"><svg viewBox="0 0 24 24"><rect x="5" y="6" width="14" height="15" rx="2"/><path fill="none" d="M9 6V3h6v3M8 6v15m8-15v15"/></svg></span><span class="case-stat-label">On-hand</span><strong class="case-stat-count" data-case-count="on-hand">0</strong><span class="case-stat-chevron">›</span></button>
+        <button class="case-stat-card" type="button" role="tab" aria-selected="false" data-case-group="bag-room"><span class="case-stat-icon"><svg viewBox="0 0 24 24"><path d="M2 9 12 3l10 6v12h-4v-7H6v7H2z"/><path fill="#fff" stroke="none" d="M8 16h8v2H8z"/></svg></span><span class="case-stat-label">Bag Room<br>Unload Bag</span><strong class="case-stat-count" data-case-count="bag-room">0</strong><span class="case-stat-chevron">›</span></button>
+      </div>
+      <section class="open-case-group is-active" data-case-panel="passenger">
+        <div class="open-case-group-head"><h2><svg viewBox="0 0 24 24"><circle cx="12" cy="6" r="4"/><path d="M4 21v-3a8 8 0 0 1 16 0v3z"/></svg>Passenger Filed <span data-case-title-count="passenger">(0)</span></h2><button class="case-view-all" type="button">View All</button></div>
         <div id="cases-output"><p class="muted">Loading passenger files...</p></div>
       </section>
-      <section class="open-case-group" id="on-hand-group">
-        <h2 id="on-hand-title">On-hand</h2>
+      <section class="open-case-group" id="on-hand-group" data-case-panel="on-hand">
+        <div class="open-case-group-head"><h2 id="on-hand-title">On-hand</h2><span data-case-title-count="on-hand">(0)</span><button class="case-view-all" type="button">View All</button></div>
         <p class="muted" id="on-hand-description">Passenger bags entered as inbound remain here until resolved. Gate bags, Co-mail, and not-loaded outbound bags are not included.</p>
         <div id="unresolved-baggage-output"><p class="muted">Loading On-hand cases...</p></div>
       </section>
-      <section class="open-case-group" id="bag-room-unload-group">
-        <h2 id="bag-room-unload-title">Bag Room Unload Bag</h2>
+      <section class="open-case-group" id="bag-room-unload-group" data-case-panel="bag-room">
+        <div class="open-case-group-head"><h2 id="bag-room-unload-title">Bag Room Unload Bag</h2><span data-case-title-count="bag-room">(0)</span><button class="case-view-all" type="button">View All</button></div>
         <p class="muted" id="bag-room-unload-description">Outbound bags registered as Not Load Bags remain here until resolved.</p>
         <div id="bag-room-unload-output"><p class="muted">Loading Bag Room Unload Bag cases...</p></div>
       </section>
@@ -470,11 +499,27 @@
     const onHandDescription = document.querySelector('#on-hand-description');
     const bagRoomUnloadTitle = document.querySelector('#bag-room-unload-title');
     const bagRoomUnloadDescription = document.querySelector('#bag-room-unload-description');
+    const caseCategoryButtons = [...document.querySelectorAll('[data-case-group]')];
     const backToCases = document.querySelector('#back-to-cases');
     const sidebarToggle = document.querySelector('#sidebar-toggle');
     const sidebarRefresh = document.querySelector('#sidebar-refresh');
     const sidebarLogout = document.querySelector('#sidebar-logout');
     const MISSING_BAG_STATUS_STORAGE_KEY = 'mufc_missing_bag_status_v1';
+    function setCaseCount(group, count) {
+      document.querySelector(`[data-case-count="${group}"]`).textContent = String(count);
+      const titleCount = document.querySelector(`[data-case-title-count="${group}"]`);
+      if (titleCount) titleCount.textContent = `(${count})`;
+    }
+    function selectCaseGroup(group) {
+      caseCategoryButtons.forEach((button) => {
+        const active = button.dataset.caseGroup === group;
+        button.classList.toggle('is-active', active);
+        button.setAttribute('aria-selected', String(active));
+      });
+      document.querySelectorAll('[data-case-panel]').forEach((panel) => panel.classList.toggle('is-active', panel.dataset.casePanel === group));
+    }
+    caseCategoryButtons.forEach((button) => button.addEventListener('click', () => selectCaseGroup(button.dataset.caseGroup)));
+    document.querySelectorAll('.case-view-all').forEach((button) => button.addEventListener('click', () => button.closest('[data-case-panel]')?.querySelector('.sheet-shell')?.scrollIntoView({ behavior:'smooth', block:'nearest' })));
     function futurePickupDateText(value, chinese) {
       const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
       if (!match) return chinese ? '所选日期' : 'the selected date';
@@ -648,6 +693,7 @@
         history.sort((a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0));
         return { ...history[0], history };
       }).sort((a, b) => Number(Boolean(a.history.find((item) => !item.resolvedAt))) === Number(Boolean(b.history.find((item) => !item.resolvedAt))) ? 0 : (a.history.find((item) => !item.resolvedAt) ? -1 : 1));
+      setCaseCount(groupName === 'On-hand' || groupName === 'Closed On-hand' ? 'on-hand' : 'bag-room', rows.length);
       if (!rows.length) { output.innerHTML = `<p class="muted">${showClosed ? `No closed ${groupName} cases.` : `No ${groupName} cases.`}</p>`; return; }
       output.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:190px"><col style="width:250px"><col style="width:170px"><col style="width:120px"><col style="width:130px"><col></colgroup><thead><tr><th>WorldTracer File Number</th><th>Bag Tag</th><th>Rush Tag</th><th>Direction</th><th>Date</th><th>Type / Status</th></tr></thead><tbody>${rows.map((row) => {
         const resolvedHistory = row.history.filter((item) => item.resolvedAt);
@@ -675,6 +721,8 @@
     }
     function renderUnresolvedBaggage(rows = []) {
       window._unresolvedBaggageSourceRows = rows;
+      const query = String(caseSearch?.value || '').trim().toLowerCase();
+      if (query) rows = rows.filter((row) => rowSearchText(row).includes(query));
       const notLoadRows = rows.filter(isNotLoadBag);
       const regularRows = rows.filter((row) => !isNotLoadBag(row));
       renderUnresolvedBaggageGroup(regularRows, unresolvedBaggageOutput, 'On-hand');
@@ -1204,6 +1252,7 @@
       const sourceRows = selectedRow ? (window._cbsRows || []).filter((row) => Number(row.rowNumber) === selectedRow) : (window._cbsRows || []);
       const showClosed = window._caseView === 'closed';
       const rows = sortedCaseRows(sourceRows).filter((row) => isClosedCase(row) === showClosed).filter((row) => !query || rowSearchText(row).includes(query));
+      setCaseCount('passenger', rows.length);
       const baggageHtml = baggageSearchHtml();
       if (!rows.length) { casesOutput.innerHTML = `<p class="muted">No matching cases.</p>${baggageHtml}`; return; }
       const expandedCases = window._expandedCbsCases || new Set();
@@ -1515,7 +1564,7 @@
         alert(message);
       } finally { casesOutput.style.opacity = '1'; }
     }
-    caseSearch?.addEventListener('input', () => { renderCases(); loadBaggageSearch(caseSearch.value); });
+    caseSearch?.addEventListener('input', () => { renderCases(); if (window._unresolvedBaggageLoaded) renderUnresolvedBaggage(window._unresolvedBaggageSourceRows || []); loadBaggageSearch(caseSearch.value); });
     openCasesTab?.addEventListener('click', () => showSection('open'));
     closedCasesTab?.addEventListener('click', () => showSection('closed'));
     worldTracerTab?.addEventListener('click', async () => { delete worldTracerForm.dataset.missingRow; showSection('worldtracer'); await loadWorldTracerCases(); });
