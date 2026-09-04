@@ -595,6 +595,8 @@
     }
     function unresolvedUpdateFieldsHtml(action, bagTag, worldTracerFileNumber = '') {
       if (action === 'worldtracer') return `<label class="wide"><span>WorldTracer File Number</span><input name="worldTracerFileNumber" value="${escapeHtml(worldTracerFileNumber)}" required /></label>`;
+      if (action === 'passenger-name') return '<label class="wide"><span>Passenger Name</span><input name="passengerName" placeholder="Passenger name" required /></label>';
+      if (action === 'comment') return '<label class="wide"><span>Comment</span><select name="commentPreset" data-comment-preset><option value="">Select a comment or enter your own below</option><option value="Passenger request Pick up at LAX">Passenger request Pick up at LAX</option></select><textarea name="comment" placeholder="Write a comment" required></textarea></label>';
       if (action === 'exchange') return `<div class="exchange-current-card wide"><strong>Current Open On-hand</strong><span class="exchange-tag-flow"><span class="exchange-tag-old">${escapeHtml(bagTag)}</span><span class="exchange-tag-arrow" aria-hidden="true">→<span class="exchange-tag-arrow-label">Exchange</span></span><span class="exchange-tag-new">New tag</span></span></div><label class="wide"><span>New Tag Number</span><input name="newTagNumber" pattern="[A-Za-z]{2}[0-9]{6}" placeholder="MU123456" required /></label>`;
       if (action === 'reopen') return '<p class="muted wide">Reopen this case and return it to Open Case.</p>';
       if (action === 'passenger-collected') return '';
@@ -609,8 +611,9 @@
       const events = [{ title:'On-hand created', at:row.createdAt, by:row.createdBy || row.submittedBy || 'System', detail:row.location ? `Location: ${row.location}` : '' }];
       (row.exchangeHistory || []).forEach((exchange) => events.push({ title:'Exchange', at:exchange.exchangedAt, by:exchange.updatedBy || 'System', detail:`${exchange.oldTag} → ${exchange.newTag}` }));
       if (row.worldTracerFileNumber) events.push({ title:'WorldTracer', at:'', by:row.worldTracerUpdatedBy || 'System', detail:`File: ${row.worldTracerFileNumber}` });
+      (row.updateEvents || []).forEach((event) => events.push({ ...event, detail:(event.fields || []).map(([key, value]) => `${key}: ${value}`).join(' | ') }));
       if (row.resolvedAt) events.push({ title:resolutionTitle, at:row.resolvedAt, by:row.resolvedBy || updaterFromText(row.resolutionNote) || 'System', detail:withoutUpdaterText(row.resolutionNote) });
-      return `<div class="tracking-workspace"><p class="tracking-current-time"><strong>${label('Case Progress', '案件进度')}</strong></p><div class="tracking-history">${events.slice().reverse().map((item, index) => `<span class="tracking-chip${index === 0 ? ' is-latest' : ''}${row.resolvedAt && index === 0 ? ' is-closed' : ''}"><span class="tracking-step-number">${events.length - index}</span><span class="tracking-chip-title">${escapeHtml(item.title)}</span>${item.at || item.by ? `<small>${item.at ? escapeHtml(new Date(item.at).toLocaleString()) : ''}${item.by ? ` · Updated by: ${escapeHtml(updaterDisplayName(item.by))}` : ''}</small>` : ''}${item.detail ? `<span class="tracking-chip-detail">${escapeHtml(updaterDisplayText(item.detail))}</span>` : ''}</span>`).join('')}</div></div>`;
+      return `<div class="tracking-workspace"><p class="tracking-current-time"><strong>${label('Case Progress', '案件进度')}</strong></p><div class="tracking-history">${events.slice().reverse().map((item, index) => `<span class="tracking-chip${item.key === 'comment' ? ' tracking-chip--comment' : ''}${index === 0 ? ' is-latest' : ''}${row.resolvedAt && index === 0 ? ' is-closed' : ''}"><span class="tracking-step-number">${events.length - index}</span><span class="tracking-chip-title">${escapeHtml(item.title)}</span>${item.at || item.by ? `<small>${item.at ? escapeHtml(new Date(item.at).toLocaleString()) : ''}${item.by ? ` · Updated by: ${escapeHtml(updaterDisplayName(item.by))}` : ''}</small>` : ''}${item.detail ? `<span class="tracking-chip-detail">${escapeHtml(updaterDisplayText(item.detail))}</span>` : ''}</span>`).join('')}</div></div>`;
     }
     function renderUnresolvedBaggage(rows = []) {
       window._unresolvedBaggageSourceRows = rows;
@@ -648,7 +651,7 @@
         const matchBadge = matchedCase ? '<span class="rush-match on-hand-match">Match</span>' : '';
         const linkButton = matchedCase && onHandId && matchedCaseId ? `<button type="button" data-link-on-hand="${escapeHtml(onHandId)}" data-link-case="${escapeHtml(matchedCaseId)}">Link</button>` : '';
         const formHtml = active
-          ? `<form class="unresolved-update" data-unresolved-row="${escapeHtml(active.rowNumber)}" data-bag-tag="${escapeHtml(active.bagTag)}" data-world-tracer-file="${escapeHtml(active.worldTracerFileNumber)}"><label class="wide"><span>Resolution</span><select name="action" data-unresolved-action><option value="worldtracer">WorldTracer</option><option value="exchange">Exchange</option><option value="email">Email</option><option value="on-hand-rush">Create Rush</option><option value="passenger-collected">Passenger collected / Case closed</option><option value="shipped">Shipped</option><option value="other">Other resolution</option><option value="case-close">Case Close</option></select></label><div class="unresolved-update-fields">${unresolvedUpdateFieldsHtml('worldtracer', active.bagTag, active.worldTracerFileNumber)}</div><div class="actions"><button type="submit">Update</button></div></form>`
+          ? `<form class="unresolved-update" data-unresolved-row="${escapeHtml(active.rowNumber)}" data-bag-tag="${escapeHtml(active.bagTag)}" data-world-tracer-file="${escapeHtml(active.worldTracerFileNumber)}"><label class="wide"><span>Resolution</span><select name="action" data-unresolved-action><option value="worldtracer">WorldTracer</option><option value="passenger-name">Passenger Name</option><option value="comment">Comment</option><option value="exchange">Exchange</option><option value="email">Email</option><option value="on-hand-rush">Create Rush</option><option value="passenger-collected">Passenger collected / Case closed</option><option value="shipped">Shipped</option><option value="other">Other resolution</option><option value="case-close">Case Close</option></select></label><div class="unresolved-update-fields">${unresolvedUpdateFieldsHtml('worldtracer', active.bagTag, active.worldTracerFileNumber)}</div><div class="actions"><button type="submit">Update</button></div></form>`
           : closed
             ? `<form class="unresolved-update" data-unresolved-row="${escapeHtml(closed.rowNumber)}" data-bag-tag="${escapeHtml(closed.bagTag)}" data-world-tracer-file="${escapeHtml(closed.worldTracerFileNumber)}"><label class="wide"><span>Update</span><select name="action" data-unresolved-action><option value="worldtracer">Update WorldTracer</option><option value="reopen">Reopen</option></select></label><div class="unresolved-update-fields">${unresolvedUpdateFieldsHtml('worldtracer', closed.bagTag, closed.worldTracerFileNumber)}</div><div class="actions"><button type="submit">Update</button></div></form>`
             : '';
@@ -1392,6 +1395,12 @@
       fields.innerHTML = inlineUpdateFieldsHtml(select.value, { event:form.dataset.hasUpcomingRush === 'true', rushFlight:form.dataset.upcomingRushFlight, rushDate:form.dataset.upcomingRushDate, rushTag:form.dataset.upcomingRushTag });
       const submit = form.querySelector('[data-cbs-update-submit]');
       if (submit) submit.textContent = select.value === 'email' ? label('Send', '发送') : label('Update Tracking', '更新进度');
+    });
+    unresolvedBaggageOutput?.addEventListener('change', (event) => {
+      const commentPreset = event.target.closest('[data-comment-preset]');
+      if (!commentPreset) return;
+      const comment = commentPreset.closest('form')?.querySelector('textarea[name="comment"]');
+      if (commentPreset.value && comment) comment.value = commentPreset.value;
     });
     casesOutput.addEventListener('change', (event) => {
       const file = event.target.closest('input[name="authorizationFile"]');
