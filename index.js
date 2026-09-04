@@ -2091,6 +2091,26 @@ async function addRushBagDiscordResult(result, record) {
   return result;
 }
 
+async function closeMatchingBagRoomUnloadCasesForRush(rushBag = {}) {
+  const originalTag = normalizedCbsLinkTag(rushBag.originalTagNumber);
+  if (!originalTag) return [];
+  const rows = await getCbsUnresolvedBaggageCases({ includeResolved: true });
+  const matches = rows.filter((row) => !row.resolvedAt
+    && [row.status, row.bagType].some((value) => String(value || '').trim().toLowerCase() === 'not load bags')
+    && normalizedCbsLinkTag(row.bagTag) === originalTag);
+  const updated = [];
+  for (const row of matches) {
+    if (rushBag.worldTracerFileNumber) {
+      await updateCbsUnresolvedBaggageWorldTracer(row.rowNumber, rushBag.worldTracerFileNumber, 'Rush Bag automation');
+    }
+    const note = `RUSH UPDATE | Original Tag: ${rushBag.originalTagNumber} | Rush Tag: ${rushBag.rushTagNumber} | CASE CLOSE`;
+    const result = await resolveCbsUnresolvedBaggageCase(row.rowNumber, 'on-hand-rush', note, 'Rush Bag automation');
+    await syncOnHandStatusToBaggage(result.record, 'on-hand-rush', { comment:note, worldTracerFileNumber:rushBag.worldTracerFileNumber, updatedBy:'Rush Bag automation' });
+    updated.push(result.record);
+  }
+  return updated;
+}
+
 function isRushBagWorldTracerOnlyUpdate(previousRecord = {}, nextRecord = {}) {
   return isWorldTracerOnlyRushBagUpdate(previousRecord, nextRecord);
 }
@@ -2781,6 +2801,7 @@ app.post('/cbs-worldtracer-cases', async (req, res) => {
     }
     const saved = await appendCbsWorldTracerCase(record);
     const result = await addRushBagDiscordResult({ created: true, record: saved }, saved);
+    result.closedBagRoomUnloadCases = await closeMatchingBagRoomUnloadCasesForRush(saved);
     return res.status(201).json(result);
   } catch (err) {
     console.error('CBS WorldTracer case create error:', err);
@@ -2824,6 +2845,7 @@ app.post('/cbs-worldtracer-cases/update', async (req, res) => {
 app.get('/cbs-unresolved-baggage', async (req, res) => {
   try {
     let rows = await getCbsUnresolvedBaggageCases({ includeResolved: true });
+    const rushBags = await getCbsWorldTracerCases();
     const cases = await getCbsCases();
     for (const row of rows.filter((item) => !item.resolvedAt)) {
       const matchedCase = cases.find((record) => {
@@ -2836,6 +2858,10 @@ app.get('/cbs-unresolved-baggage', async (req, res) => {
       }
     }
     rows = await getCbsUnresolvedBaggageCases({ includeResolved: true });
+    rows = rows.map((row) => {
+      const rushBag = rushBags.filter((item) => normalizedCbsLinkTag(item.originalTagNumber) === normalizedCbsLinkTag(row.bagTag)).at(-1);
+      return rushBag ? { ...row, rushTagNumber:rushBag.rushTagNumber } : row;
+    });
     // Return completed On-hand records as well so the client can archive Create
     // Rush, Shipped, and Passenger collected cases in the Closed Case view.
     return res.json({ rows });
