@@ -416,6 +416,8 @@ test('Outbound form orders shared fields and supports adding multiple bag tags',
   const outbound = indexPage.match(/if \(mode === "outbound"\) \{([\s\S]*?)\n        \}/)?.[1] || '';
   assert.ok(outbound.indexOf('<span>Date</span>') < outbound.indexOf('<span>Type</span>'));
   assert.ok(outbound.indexOf('<span>Type</span>') < outbound.indexOf('${bagTagInput}'));
+  assert.match(outbound, /class="test-outbound-bag-tags" data-test-outbound-bag-tags/);
+  assert.match(indexPage, /\.test-outbound-bag-tags \{\s*grid-column: 1 \/ -1/);
   assert.match(outbound, /data-test-add-bag-tag[^>]*aria-label="Add another bag tag">\+/);
   assert.match(indexPage, /data-test-outbound-bag-tags[^\n]*input\[name="bagTag"\]/);
   assert.match(indexPage, /insertAdjacentHTML\("beforeend"/);
