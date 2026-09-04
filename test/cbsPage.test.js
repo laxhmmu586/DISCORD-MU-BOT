@@ -251,7 +251,7 @@ test('Not Load Bags are automatically copied to the Bag Room Unload Google Sheet
 });
 
 test('On-hand cases match the passenger case layout and support WorldTracer progress', () => {
-  assert.match(page, /<th>WorldTracer File Number<\/th><th>Bag Tag<\/th><th>Rush Tag<\/th><th>Direction<\/th>/);
+  assert.match(page, /<th>WorldTracer File Number<\/th><th>Bag Tag<\/th>\$\{rushTagHeader\}<th>Direction<\/th>/);
   assert.match(page, /class="case-detail-layout"><div class="case-progress-column">\$\{unresolvedProgressHtml\(progressRow\)\}/);
   assert.match(page, /<option value="worldtracer">WorldTracer<\/option>/);
   assert.match(drive, /getCbsUnresolvedBaggageSheetTitle/);
@@ -261,6 +261,14 @@ test('On-hand cases match the passenger case layout and support WorldTracer prog
   assert.match(drive, /!L\$\{target\.rowNumber\}/);
   assert.match(drive, /!L1:M1`[\s\S]*CBS_UNRESOLVED_BAGGAGE_HEADERS\[12\]/);
   assert.match(server, /action === 'worldtracer'/);
+});
+
+test('On-hand tables hide the Rush Tag column when the group has no rush tags', () => {
+  assert.match(page, /const showRushTag = rows\.some\(\(row\) => String\(row\.rushTagNumber \|\| ''\)\.trim\(\)\)/);
+  assert.match(page, /const rushTagHeader = showRushTag \? '<th>Rush Tag<\/th>' : ''/);
+  assert.match(page, /const rushTagCell = showRushTag \? `<td class="sheet-meta">\$\{escapeHtml\(row\.rushTagNumber \|\| '-'\)\}<\/td>` : ''/);
+  assert.match(page, /const columnCount = showRushTag \? 7 : 6/);
+  assert.match(page, /colspan="\$\{columnCount\}"/);
 });
 
 test('On-hand cases support Passenger Name and Passenger Filed-style comments', () => {
