@@ -200,12 +200,12 @@ test('CBS cases no longer rely on stale browser storage', () => {
   assert.match(page, /async function loadCases\(\) \{\s*casesOutput\.innerHTML = '<p class="muted">Loading cases/);
 });
 
-test('Add On-hand records are added to and displayed in Open Case', () => {
+test('Add Baggage records are added to and displayed in Open Case', () => {
   assert.match(drive, /CBS_UNRESOLVED_BAGGAGE_SHEET_GID = Number\(process\.env\.CBS_UNRESOLVED_BAGGAGE_SHEET_GID \|\| 523026916\)/);
-  assert.match(page, /title="Add On-hand"/);
+  assert.match(page, /title="Add Baggage"/);
   assert.match(page, /id="open-cases-tab"[\s\S]*id="closed-cases-tab"[\s\S]*id="add-baggage-tab"[\s\S]*id="worldtracer-tab"/);
-  assert.match(page, /<h1>Add On-hand<\/h1>/);
-  assert.doesNotMatch(page, />Add Baggage</);
+  assert.match(page, /<h1>Add Baggage<\/h1>/);
+  assert.doesNotMatch(page, />Add On-hand</);
   assert.match(drive, /await appendCbsUnresolvedBaggageCase\(cleanRecord\);/);
   assert.match(page, /await loadUnresolvedBaggage\(\);\s*showSection\('open'\);/);
 });
@@ -433,6 +433,13 @@ test('Outbound form orders shared fields and supports adding multiple bag tags',
   assert.match(indexPage, /insertAdjacentHTML\("beforeend"/);
   assert.match(indexPage, /data-test-remove-bag-tag/);
   assert.match(indexPage, /for \(const entry of entries\)/);
+  const cbsOutbound = page.match(/if \(direction === 'outbound'\) return `([\s\S]*?)`;/)?.[1] || '';
+  assert.ok(cbsOutbound.indexOf('<span>Date</span>') < cbsOutbound.indexOf('<span>Status</span>'));
+  assert.ok(cbsOutbound.indexOf('<span>Status</span>') < cbsOutbound.indexOf('<span>Bag Tag Number</span>'));
+  assert.match(cbsOutbound, /data-add-outbound-bag-tags/);
+  assert.match(cbsOutbound, /data-add-outbound-bag-tag[^>]*aria-label="Add another bag tag">\+/);
+  assert.match(page, /data-remove-outbound-bag-tag/);
+  assert.match(page, /for \(const bagTag of bagTags\)/);
 });
 
 test('home Baggage search avoids duplicate requests and repeated submissions', () => {
