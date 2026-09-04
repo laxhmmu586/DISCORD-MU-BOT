@@ -1572,6 +1572,7 @@
         addRushFlightRow();
         worldTracerStatus.textContent = label('Rush Bag case created and saved.', 'Rush Bag 案件已创建并保存。');
         await loadWorldTracerCases();
+        await loadUnresolvedBaggage();
       } catch (error) {
         worldTracerStatus.classList.add('err');
         worldTracerStatus.textContent = error.message;

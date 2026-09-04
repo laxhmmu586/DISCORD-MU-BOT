@@ -233,6 +233,16 @@ test('Not Load Bags have a separate Bag Room Unload Bag category with On-hand re
   assert.match(page, /<select name="action" data-unresolved-action>\$\{resolutionOptionsHtml\}<\/select>/);
 });
 
+test('Bag Room rows replace Location with Rush Tag and Rush creation closes matching not-load cases', () => {
+  assert.match(page, /<th>Bag Tag<\/th><th>Rush Tag<\/th><th>Direction<\/th>/);
+  assert.doesNotMatch(page, /<th>Type \/ Status<\/th><th>Location<\/th>/);
+  assert.match(page, /escapeHtml\(row\.rushTagNumber \|\| '-'\)/);
+  assert.match(server, /async function closeMatchingBagRoomUnloadCasesForRush/);
+  assert.match(server, /normalizedCbsLinkTag\(row\.bagTag\) === originalTag/);
+  assert.match(server, /resolveCbsUnresolvedBaggageCase\(row\.rowNumber, 'on-hand-rush'/);
+  assert.match(server, /result\.closedBagRoomUnloadCases = await closeMatchingBagRoomUnloadCasesForRush\(saved\)/);
+});
+
 test('Not Load Bags are automatically copied to the Bag Room Unload Google Sheet', () => {
   assert.match(drive, /CBS_NOT_LOAD_BAGGAGE_SHEET_GID = Number\(process\.env\.CBS_NOT_LOAD_BAGGAGE_SHEET_GID \|\| 1393047851\)/);
   assert.match(drive, /function isNotLoadBaggageRecord[\s\S]*not\\s\+load/);
