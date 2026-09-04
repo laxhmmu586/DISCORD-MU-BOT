@@ -1,0 +1,122 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+
+const root = path.join(__dirname, '..');
+const drive = fs.readFileSync(path.join(root, 'googleDrive.js'), 'utf8');
+const server = fs.readFileSync(path.join(root, 'index.js'), 'utf8');
+const firebaseConfig = JSON.parse(fs.readFileSync(path.join(root, 'public', 'firebase.json'), 'utf8'));
+
+test('backend has no Cloud Firestore adapter or calls', () => {
+  assert.equal(fs.existsSync(path.join(root, 'cbsFirestore.js')), false);
+  assert.equal(fs.existsSync(path.join(root, 'reportFirestore.js')), false);
+  assert.doesNotMatch(drive, /firestore/i);
+  assert.doesNotMatch(server, /firestore/i);
+  assert.equal(firebaseConfig.firestore, undefined);
+});
+
+test('Report Center persists and reads rows through Google Sheets', () => {
+  assert.match(drive, /async function getStoredReportRows[\s\S]*getReportSheetRows/);
+  assert.match(drive, /async function appendVipReportRows[\s\S]*appendVipReportRowsToSheet/);
+  assert.match(drive, /async function appendPsmMsgReportRows[\s\S]*appendPsmMsgReportRowsToSheet/);
+  assert.match(drive, /async function appendStoredReportRows[\s\S]*appendStoredReportRowsToSheet/);
+  assert.match(drive, /async function syncSalesDetailsFromSourceSheet[\s\S]*sheets\.spreadsheets\.values\.append/);
+});
+
+test('Baggage tag searches reuse the short-lived Google Sheets cache', () => {
+  const lookup = drive.match(/async function findTestBaggageByTag\(bagTag\) \{[\s\S]*?\n}/)?.[0] || '';
+  assert.match(lookup, /getTestBaggageSheetRows\(\)/);
+  assert.doesNotMatch(lookup, /forceRefresh/);
+});
+
+test('Baggage creation does not reread Sheets after the pre-submit lookup', () => {
+  const append = drive.match(/async function appendTestBaggageRecord\(record\) \{[\s\S]*?\n}/)?.[0] || '';
+  assert.match(append, /getTestBaggageSheetRows\(\)/);
+  assert.doesNotMatch(append, /getTestBaggageSheetRows\(\{ forceRefresh: true \}\)/);
+  assert.match(append, /record: cleanRecord/);
+  assert.doesNotMatch(append, /record: await findTestBaggageByTag/);
+});
+
+test('Authorization Report remarks are stored in their Google Sheet row', () => {
+  const page = fs.readFileSync(path.join(root, 'public', 'public', 'index.html'), 'utf8');
+  assert.match(drive, /headers: \[[^\]]*'Detail', 'Key', 'Remark'\]/);
+  assert.match(drive, /async function updatePsmMsgReportRemark[\s\S]*sheets\.spreadsheets\.values\.update/);
+  assert.match(drive, /row\.key = String\(row\.key \|\| ''\)\.trim\(\) \|\| buildPsmMsgKey\(row\)/);
+  assert.match(server, /app\.post\('\/psm-report\/remark'/);
+  assert.doesNotMatch(server.match(/app\.post\('\/psm-report\/remark'[\s\S]*?\n}\);/)?.[0] || '', /cleanBodyText\(req\.body\?\.key/);
+  assert.match(page, />Authorization Report<\/button>/);
+  assert.match(page, /data-authorization-remark/);
+  assert.match(page, /method: "POST"/);
+});
+
+test('Authorization Report displays involuntary upgrades above the combined PSM and MSG group', () => {
+  const page = fs.readFileSync(path.join(root, 'public', 'public', 'index.html'), 'utf8');
+  const table = page.match(/function authorizationReportTable\(rows\)[\s\S]*?\n      }/)?.[0] || '';
+  assert.match(table, /renderGroup\("Involuntary Upgrade", involuntaryUpgrades\) \+ renderGroup\("PSM \/ MSG", psmMsgRows\)/);
+  assert.match(table, /\^INVOLUNTARY UPGRADE/);
+  assert.match(table, /const columnWidths = \[9, 7, 12, 4, 5, 20, 21, 22\]/);
+});
+
+test('Authorization Report can be downloaded as a titled PDF with a station manager signature', () => {
+  const page = fs.readFileSync(path.join(root, 'public', 'public', 'index.html'), 'utf8');
+  assert.match(page, /id="report-pdf-download"[^>]*>Download Report<\/button>/);
+  assert.match(page, /China Eastern Airlines LAX Authorization Report/);
+  assert.match(page, /Station Manager Signature: ______________________________/);
+  assert.match(page, /type: "application\/pdf"/);
+  assert.match(page, /activeReportMode !== "psm"/);
+});
+
+test('Authorization Report downloads as a branded, paginated PDF with manager approval', () => {
+  const page = fs.readFileSync(path.join(root, 'public', 'public', 'index.html'), 'utf8');
+  assert.match(page, /id="report-pdf-download"[^>]*>Download Report<\/button>/);
+  assert.match(page, /China Eastern Airlines LAX Authorization Report/);
+  assert.match(page, /CHINA EASTERN AIRLINES/);
+  assert.match(page, /STATION MANAGER APPROVAL/);
+  assert.match(page, /Station Manager Signature/);
+  assert.match(page, /PAGE \$\{index \+ 1\} OF \$\{pages\.length\}/);
+  assert.match(page, /Helvetica-Bold/);
+  assert.match(page, /type: "application\/pdf"/);
+  assert.match(page, /activeReportMode !== "psm"/);
+});
+
+test('Authorization Report downloads as a branded, paginated PDF with manager approval', () => {
+  const page = fs.readFileSync(path.join(root, 'public', 'public', 'index.html'), 'utf8');
+  assert.match(page, /id="report-pdf-download"[^>]*>Download Report<\/button>/);
+  assert.match(page, /China Eastern Airlines LAX Authorization Report/);
+  assert.match(page, /CHINA EASTERN AIRLINES/);
+  assert.match(page, /LAX Authorization Report/);
+  assert.match(page, /STATION MANAGER APPROVAL/);
+  assert.match(page, /Station Manager Signature/);
+  assert.match(page, /PAGE \$\{index \+ 1\} OF \$\{pages\.length\}/);
+  assert.match(page, /Helvetica-Bold/);
+  assert.match(page, /\{ label: "BAGS", width: 82/);
+  assert.ok(page.indexOf('{ label: "INVOLUNTARY UPGRADE"') < page.indexOf('{ label: "PSM / MSG"'));
+  assert.match(page, /type: "application\/pdf"/);
+  assert.match(page, /activeReportMode !== "psm"/);
+});
+
+test('Authorization Report downloads as a branded, paginated PDF with manager approval', () => {
+  const page = fs.readFileSync(path.join(root, 'public', 'public', 'index.html'), 'utf8');
+  assert.match(page, /id="report-pdf-download"[^>]*>Download Report<\/button>/);
+  assert.match(page, /China Eastern Airlines LAX Authorization Report/);
+  assert.match(page, /textCommand\(title, margin, 566, 13, "F2", "1 1 1"\)/);
+  assert.doesNotMatch(page, /textCommand\("LAX Authorization Report"/);
+  assert.match(page, /STATION MANAGER APPROVAL/);
+  assert.match(page, /Station Manager Signature/);
+  assert.match(page, /PAGE \$\{index \+ 1\} OF \$\{pages\.length\}/);
+  assert.match(page, /Helvetica-Bold/);
+  assert.match(page, /\{ label: "BAGS", width: 82/);
+  assert.ok(page.indexOf('{ label: "INVOLUNTARY UPGRADE"') < page.indexOf('{ label: "PSM / MSG"'));
+  assert.match(page, /type: "application\/pdf"/);
+  assert.match(page, /activeReportMode !== "psm"/);
+});
+
+test('all CBS stores use Sheet rows as their identifiers', () => {
+  for (const functionName of ['getCbsCases', 'getWrongBaggageSubmissions', 'getCbsUnresolvedBaggageCases', 'getCbsWorldTracerCases', 'getCbsMissingBagReports']) {
+    const block = drive.match(new RegExp(`async function ${functionName}\\b[\\s\\S]*?\\n}`))?.[0] || '';
+    assert.match(block, /Sheet|sheet|spreadsheets/, `${functionName} must read Google Sheets`);
+  }
+  assert.match(drive, /record\.rowNumber = Number\(appendedRow\)/);
+  assert.match(drive, /saved\.rowNumber = Number\(appendedRow\)/);
+});
