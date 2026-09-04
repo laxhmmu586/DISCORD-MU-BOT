@@ -27,6 +27,7 @@
     .actions { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:14px; }
     .status { min-height:28px; font-weight:900; }
     .status.ok { color:var(--ok); } .status.err { color:var(--danger); }
+    .flight-support { margin:-8px 0 18px; color:var(--brand); font-size:13px; font-weight:950; letter-spacing:.12em; }
     .result { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
     .result div { padding:12px; border:1px solid var(--line); border-radius:14px; background:#fbfdff; }
     .result b { display:block; color:var(--muted); font-size:12px; text-transform:uppercase; }
@@ -57,6 +58,7 @@
   <main>
     <section class="card">
       <h1>Manual Boarding</h1>
+      <p class="flight-support">MU586 · MU9586</p>
       <div class="camera-wrap"><video id="preview" muted playsinline></video><div class="aim-box" aria-hidden="true"></div></div>
       <div class="actions"><button id="start" type="button">Start Scan</button><button class="secondary" id="stop" type="button">Stop</button></div>
       <p class="status" id="status">Ready.</p>
@@ -83,26 +85,18 @@
     const auth = window.firebase?.apps?.length && window.firebase?.auth ? firebase.auth() : null;
     const AUTH_SESSION_STARTED_KEY = 'mufc_auth_session_started_at';
     const AUTH_LAST_ACTIVITY_KEY = 'mufc_auth_last_activity_at';
-    const AUTH_SESSION_LIMIT_MS = 60 * 60 * 1000;
     function loginUrl() {
       const url = new URL('login.html', window.location.href);
       url.searchParams.set('next', `${window.location.pathname}${window.location.search}${window.location.hash}`);
       return url.href;
     }
-    function hasActiveAuthSession() {
-      const lastActivityAt = Number(sessionStorage.getItem(AUTH_LAST_ACTIVITY_KEY) || sessionStorage.getItem(AUTH_SESSION_STARTED_KEY) || 0);
-      return Boolean(lastActivityAt && Date.now() - lastActivityAt < AUTH_SESSION_LIMIT_MS);
-    }
     function markAuthActivity() {
-      sessionStorage.setItem(AUTH_LAST_ACTIVITY_KEY, String(Date.now()));
+      (window.localStorage || window.sessionStorage).setItem(AUTH_LAST_ACTIVITY_KEY, String(Date.now()));
     }
     function requireLogin() {
       if (!auth) { window.location.replace(loginUrl()); return; }
       auth.onAuthStateChanged(async (user) => {
-        if (!user || !hasActiveAuthSession()) {
-          sessionStorage.removeItem(AUTH_SESSION_STARTED_KEY);
-          sessionStorage.removeItem(AUTH_LAST_ACTIVITY_KEY);
-          if (user) await auth.signOut();
+        if (!user) {
           window.location.replace(loginUrl());
           return;
         }
@@ -201,18 +195,20 @@
       }
     });
     logoutButton.addEventListener('click', async () => {
+      localStorage.removeItem(AUTH_SESSION_STARTED_KEY);
+      localStorage.removeItem(AUTH_LAST_ACTIVITY_KEY);
       sessionStorage.removeItem(AUTH_SESSION_STARTED_KEY);
       sessionStorage.removeItem(AUTH_LAST_ACTIVITY_KEY);
       await auth?.signOut?.();
       window.location.replace(loginUrl());
     });
-    function renderResult(data) { resultEl.hidden = false; resultEl.innerHTML = `<div><b>Flight</b>${data.flight || '0586'}</div><div><b>Seat</b>${data.seat || ''}</div><div><b>BN</b>${data.bn || ''}</div>${data.isInfant ? '<div><b>Type</b>INFANT</div>' : ''}`; }
+    function renderResult(data) { resultEl.hidden = false; resultEl.innerHTML = `<div><b>Flight</b>${data.flight || ''}</div><div><b>Seat</b>${data.seat || ''}</div><div><b>BN</b>${data.bn || ''}</div>${data.isInfant ? '<div><b>Type</b>INFANT</div>' : ''}`; }
     async function saveScan(rawScan) {
       const res = await fetch(`${apiBase}/cbs-scan`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ rawScan }) });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const message = data.code === 'WRONG_FLIGHT' ? 'wrong flight' : (data.code === 'NBRD_MESSAGE' ? `NBRD message${data.detail ? `\n${data.detail}` : ''}` : (data.code === 'DUPLICATE_BN' ? `Duplicate BN: ${(String(rawScan).match(/(?:^|\D)(?:0*INF|0*\d{1,3}[A-Z])(\d{3,4})\b/i)?.[1] || '').slice(-3)}` : (data.error || 'Scan failed')));
-        const type = data.code === 'WRONG_FLIGHT' || data.code === 'DUPLICATE_BN' ? 'error' : (data.code === 'NBRD_MESSAGE' ? 'warning' : '');
+        const message = data.code === 'WRONG_FLIGHT' ? 'wrong flight' : (data.code === 'NBRD_MESSAGE' ? `NBRD message${data.detail ? `\n${data.detail}` : ''}` : (data.code === 'DUPLICATE_BN' ? `Duplicate BN: ${(String(rawScan).match(/(?:^|\D)(?:0*INF|0*\d{1,3}[A-Z])(\d{3,4})\b/i)?.[1] || '').slice(-3)}` : (data.code === 'SHEETS_QUOTA' ? 'Google Sheets quota is busy. Please wait a few seconds and scan again.' : (data.error || 'Scan failed'))));
+        const type = data.code === 'WRONG_FLIGHT' || data.code === 'DUPLICATE_BN' || data.code === 'SHEETS_QUOTA' ? 'error' : (data.code === 'NBRD_MESSAGE' ? 'warning' : '');
         showMessage(message, 'Message', type);
         throw new Error(message);
       }

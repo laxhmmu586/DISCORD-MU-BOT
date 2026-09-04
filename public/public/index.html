@@ -442,18 +442,29 @@
         text-transform: uppercase;
       }
 
-      .mobile-panel a {
+      .mobile-panel a,
+      .mobile-logout-button {
         display: block;
+        width: 100%;
         margin-top: 8px;
         padding: 14px 0;
+        border: 0;
         border-top: 1px solid rgba(255, 255, 255, 0.11);
         border-bottom: 1px solid rgba(255, 255, 255, 0.11);
+        background: transparent;
         color: white;
         font-size: 14px;
         font-weight: 800;
         text-align: center;
         text-decoration: none;
         text-transform: uppercase;
+        cursor: pointer;
+      }
+
+      .mobile-logout-button {
+        margin-top: 18px;
+        border-color: rgba(255, 98, 92, 0.38);
+        color: #ffb4ae;
       }
 
       main {
@@ -707,26 +718,47 @@
 
       .details-manifest {
         display: grid;
-        grid-template-columns: minmax(174px, max-content) minmax(132px, 132px) repeat(2, minmax(124px, 124px));
+        grid-template-columns: minmax(0, 560px);
         grid-template-areas:
-          "reservation warning security jcsy"
-          "checkin warning security jcsy";
-        grid-template-rows: minmax(58px, 1fr) minmax(58px, 1fr);
-        gap: 12px;
-        align-items: stretch;
+          "operations";
+        grid-template-rows: auto;
+        gap: 18px;
+        align-items: center;
         justify-content: center;
       }
 
       .manifest-section.is-reservation { grid-area: reservation; }
       .manifest-section.is-checkin { grid-area: checkin; }
+      .manifest-section.is-operations { grid-area:operations; width:560px; max-width:100%; min-width:0; padding:0; justify-items:stretch; text-align:left; border:0; background:transparent; box-shadow:none; backdrop-filter:none; }
+      .meal-order-title { display:block; width:100%; margin:0 0 7px; text-align:left !important; font-size:15px; letter-spacing:.25px; text-transform:uppercase; }
+      .meal-order-shell { overflow:hidden; border:1px solid rgba(49,145,218,.52); border-radius:10px; background:linear-gradient(145deg,rgba(5,29,49,.90),rgba(2,17,31,.82)); box-shadow:none; }
+      .meal-order-shell.has-shortage { border-color:rgba(255,178,39,.95); box-shadow:inset 0 0 26px rgba(255,166,24,.08),0 0 0 1px rgba(255,199,44,.26),0 0 18px rgba(255,166,24,.28); }
+      .meal-order-tabs { display:grid; grid-template-columns:repeat(2,1fr); padding:0 18px; background:transparent; }
+      .meal-order-tab { position:relative; padding:12px; border:0; background:transparent; color:var(--muted); font-size:12px; font-weight:900; letter-spacing:.8px; cursor:pointer; }
+      .meal-order-tab[aria-selected="true"] { color:#35d9a0; background:transparent; text-shadow:none; }
+      .meal-order-tab[aria-selected="true"]::after { content:""; position:absolute; left:12px; right:12px; bottom:0; height:2px; background:#28d8a0; box-shadow:none; }
+      .meal-order-tab.has-shortage { color:#ffbd48; }
+      .meal-order-tab.has-shortage::before { content:""; display:inline-block; width:6px; height:6px; margin:0 6px 1px 0; border-radius:50%; background:#ffad2f; box-shadow:0 0 9px rgba(255,173,47,.72); }
+      .meal-order-days { display:block; }
+      .reservation-table { display:none; grid-template-columns:34px 64px 76px 120px 90px; align-items:start; justify-content:center; gap:10px 8px; min-height:174px; margin:0 14px; padding:20px 4px 24px; border:0; border-top:1px solid rgba(49,145,218,.26); border-radius:0; background:transparent; box-shadow:none; font-size:12px; }
+      .reservation-table.is-active { display:grid; }
+      .reservation-table > span { width:100%; text-align:center; }
+      .reservation-table .reservation-head { color:var(--muted); font-weight:850; letter-spacing:.35px; line-height:1.15; }
+      .reservation-table .reservation-cabin { color:var(--muted); font-weight:900; }
+      .reservation-table .meal-cell { white-space:pre-line; line-height:1.35; color:#e6f2ff; }
+      .reservation-table .column-divider { align-self:stretch; min-height:100%; padding-left:0; border-left:1px solid rgba(71,183,236,.42); }
+      .reservation-count.is-over { color:#43df91; font-weight:900; text-shadow:0 0 10px rgba(67,223,145,.28); }
+      .reservation-count.is-under { color:#ff6c67; font-weight:900; text-shadow:0 0 10px rgba(255,108,103,.25); }
+      .meal-cell.is-mismatch { color:#ff6c67; font-weight:850; }
       .summary-warning-action { grid-area: warning; }
+      .details-panel .details-manifest > .detail-action.summary-warning-action { width:124px; height:158px; min-height:158px; align-self:center; justify-self:center; }
       .summary-security-action { grid-area: security; }
       .summary-jcsy-action { grid-area: jcsy; }
       .details-manifest.is-warning-hidden {
-        grid-template-columns: minmax(174px, max-content) repeat(2, minmax(124px, 124px));
+        grid-template-columns: minmax(0, 560px);
         grid-template-areas:
-          "reservation security jcsy"
-          "checkin security jcsy";
+          "operations"
+          "operations";
       }
 
       .details-manifest.is-warning-hidden .summary-security-action { grid-area: security; }
@@ -1233,6 +1265,21 @@
         border: 1px solid rgba(176, 216, 255, 0.22);
         padding: 4px 12px;
         background: rgba(3, 13, 24, 0.76);
+      }
+
+      button.manifest-section {
+        width: 100%;
+        color: inherit;
+        font: inherit;
+        cursor: pointer;
+      }
+
+      button.manifest-section:hover,
+      button.manifest-section:focus-visible {
+        border-color: rgba(88, 167, 255, 0.72);
+        background: rgba(15, 44, 72, 0.82);
+        box-shadow: inset 0 0 18px rgba(58, 151, 255, 0.12);
+        outline: none;
       }
 
       .manifest-section h3 {
@@ -1922,7 +1969,7 @@
       }
 
       .gov-summary-grid {
-        grid-template-columns: repeat(7, minmax(0, 1fr));
+        grid-template-columns: repeat(8, minmax(116px, 1fr));
       }
 
       .gov-summary-grid .data-card {
@@ -1979,6 +2026,22 @@
         font-size: 11px;
         letter-spacing: 0.8px;
         text-transform: uppercase;
+      }
+
+      .authorization-report-group + .authorization-report-group {
+        margin-top: 30px;
+      }
+
+      .authorization-report-group h3 {
+        margin: 0 0 10px;
+        color: var(--blue);
+        font-size: 14px;
+        letter-spacing: 0.8px;
+        text-transform: uppercase;
+      }
+
+      .authorization-report-group .data-table {
+        table-layout: fixed;
       }
 
 
@@ -2889,6 +2952,7 @@
 
       .report-form.is-vip-mode,
       .report-form.is-inad-mode,
+      .report-form.is-miss-connection-mode,
       .report-form.is-baggage-mode {
         display: none;
       }
@@ -2954,6 +3018,20 @@
         padding: 0 10px;
         outline: 0;
       }
+
+      .report-remark-input {
+        min-width: 190px;
+        width: 100%;
+        padding: 8px 10px;
+        color: #e8f2ff;
+        background: #0b1c2c;
+        border: 1px solid #31506a;
+        font: inherit;
+      }
+
+      .report-remark-input:focus { outline: 1px solid #4da3ff; border-color: #4da3ff; }
+      .report-remark-input.is-saving { opacity: .65; }
+      .report-remark-input.is-save-error { border-color: #ff6b6b; }
 
       .report-actions-row {
         display: flex;
@@ -3446,8 +3524,8 @@
 
       .test-choice-grid {
         display: grid;
-        grid-template-columns: repeat(2, minmax(240px, 1fr));
-        gap: clamp(18px, 5vw, 80px);
+        grid-template-columns: repeat(3, minmax(190px, 1fr));
+        gap: clamp(14px, 3vw, 34px);
         justify-content: center;
         margin: 28px auto 10px;
         max-width: 900px;
@@ -3526,6 +3604,33 @@
       .test-choice-card[data-test-create-mode="outbound"] {
         color: #c8ffd7;
       }
+
+      .test-choice-card[data-test-create-mode="exchange"] {
+        color: #c9dcff;
+      }
+
+      .test-exchange-summary {
+        display: grid;
+        gap: 5px;
+        border-left: 4px solid #69a8ff;
+        border-radius: 12px;
+        background: rgba(105, 168, 255, 0.13);
+        padding: 12px 14px;
+      }
+
+      .test-exchange-summary b { color: #bcd8ff; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; }
+      .test-exchange-summary strong { color: white; font-size: 20px; }
+      .test-exchange-summary small { color: var(--muted); font-size: 13px; }
+      .test-exchange-summary.is-wide { grid-column: 1 / -1; }
+      .test-exchange-flow { display:inline-grid; grid-template-columns:max-content 74px max-content; align-items:center; justify-content:start; min-width:270px; padding:3px 0 15px; white-space:nowrap; }
+      .test-exchange-old,.test-exchange-new { display:inline-flex; align-items:center; justify-content:center; min-width:96px; min-height:30px; padding:6px 13px; border-radius:10px; font-size:13px; font-weight:900; letter-spacing:.02em; }
+      .test-exchange-old { background:#edf2f8; color:#667085; }
+      .test-exchange-new { background:#edf8f0; color:#288843; }
+      .test-exchange-arrow { position:relative; display:grid; place-items:center; width:28px; height:28px; margin:auto; border:1px solid #b9d7ff; border-radius:999px; background:#fff; color:#2878dc; font-size:20px; font-weight:700; line-height:1; box-shadow:0 2px 7px rgba(40,120,220,.1); }
+      .test-exchange-arrow::before,.test-exchange-arrow::after { content:""; position:absolute; top:50%; width:27px; border-top:2px dotted #a9c8ef; transform:translateY(-50%); }
+      .test-exchange-arrow::before { right:100%; margin-right:5px; }
+      .test-exchange-arrow::after { left:100%; margin-left:5px; }
+      .test-exchange-arrow-label { position:absolute; top:31px; left:50%; color:#69a8ff; font-size:8px; font-weight:950; letter-spacing:.04em; line-height:1; text-transform:uppercase; transform:translateX(-50%); }
 
       .test-field[hidden],
       [data-test-rush-field][hidden] {
@@ -3911,116 +4016,26 @@
 
         .detail-top-actions,
         .details-manifest {
-          grid-template-columns: 1fr 1fr;
+          grid-template-columns: 1fr;
           grid-template-areas:
-            "reservation checkin"
-            "warning security"
-            "warning jcsy";
-          grid-template-rows: auto 66px 66px;
+            "operations";
+          grid-template-rows: auto;
         }
 
         .details-manifest.is-warning-hidden {
           grid-template-areas:
-            "reservation checkin"
-            "security jcsy";
-          grid-template-rows: auto 132px;
+            "operations";
+          grid-template-rows: auto;
         }
 
-        .details-panel {
-          overflow: visible;
-        }
-
-        .details-surface,
-        .details-panel .detail-actions {
-          min-width: 0;
-        }
-
-        .details-panel .detail-actions {
-          flex-wrap: wrap;
-          justify-content: center;
-          overflow: visible;
-        }
-
-        .details-panel .detail-actions .detail-action {
-          flex: 1 1 calc(50% - 14px);
-          max-width: calc(50% - 7px);
-        }
-
-        .details-panel .detail-actions .detail-action,
-        .details-panel .details-manifest > .detail-action {
-          min-height: 132px;
-          padding: 18px 10px 12px;
-        }
-
-        .detail-action-icon {
-          width: 40px;
-          height: 40px;
-        }
-
-        .details-manifest,
-        .details-manifest.is-warning-hidden {
-          grid-template-columns: 1fr 1fr;
-          grid-template-areas:
-            "reservation checkin"
-            "warning security"
-            "warning jcsy";
-          grid-template-rows: auto 66px 66px;
-        }
-
-        .details-manifest.is-warning-hidden {
-          grid-template-areas:
-            "reservation checkin"
-            "security jcsy";
-          grid-template-rows: auto 132px;
-        }
-
-        .details-panel {
-          overflow: visible;
-        }
-
-        .details-surface,
-        .details-panel .detail-actions {
-          min-width: 0;
-        }
-
-        .details-panel .detail-actions {
-          flex-wrap: wrap;
-          justify-content: center;
-          overflow: visible;
-        }
-
-        .details-panel .detail-actions .detail-action {
-          flex: 1 1 calc(50% - 14px);
-          max-width: calc(50% - 7px);
-        }
-
-        .details-panel .detail-actions .detail-action,
-        .details-panel .details-manifest > .detail-action {
-          min-height: 132px;
-          padding: 18px 10px 12px;
-        }
-
-        .detail-action-icon {
-          width: 40px;
-          height: 40px;
-        }
-
-        .details-manifest,
-        .details-manifest.is-warning-hidden {
-          grid-template-columns: 1fr 1fr;
-          grid-template-areas:
-            "reservation checkin"
-            "warning security"
-            "warning jcsy";
-          grid-template-rows: auto 66px 66px;
-        }
-
-        .details-manifest.is-warning-hidden {
-          grid-template-areas:
-            "reservation checkin"
-            "security jcsy";
-          grid-template-rows: auto 132px;
-        }
+        .details-panel { width:calc(100% - 24px); }
+        .manifest-section.is-operations { width:100%; overflow:visible !important; }
+        .meal-order-title { margin:0 0 6px; font-size:14px; }
+        .meal-order-tabs { padding:0 8px; }
+        .meal-order-tab { padding:11px 4px; font-size:10px; letter-spacing:.35px; }
+        .reservation-table { width:auto; min-width:0; grid-template-columns:22px 38px 58px minmax(76px,1fr) minmax(62px,1fr); gap:9px 6px; margin:0 8px; padding:16px 0 20px; font-size:10px; }
+        .reservation-table .reservation-head { font-size:9px; letter-spacing:0; }
+        .reservation-table .meal-cell { overflow-wrap:anywhere; }
 
         .details-panel {
           overflow: visible;
@@ -4378,9 +4393,48 @@
         }
 
       }
+
+      @media (max-width: 760px) {
+        .details-manifest .manifest-section {
+          min-width: 0;
+          overflow: hidden;
+          padding-inline: 8px;
+        }
+
+        .details-manifest .manifest-section .counts,
+        .details-manifest .manifest-section .count,
+        .details-manifest .manifest-section .count-row {
+          width: 100%;
+          min-width: 0;
+        }
+
+        .details-manifest .manifest-section .count-row {
+          display: block;
+          overflow: hidden;
+          font-size: clamp(13px, 4vw, 16px);
+          letter-spacing: 0;
+          line-height: 1.1;
+          text-align: center;
+          white-space: nowrap;
+        }
+
+        .details-manifest .manifest-section .count-row span:first-child,
+        .details-manifest .manifest-section .count-row span:last-child {
+          font-size: inherit;
+          white-space: nowrap;
+        }
+
+        .details-panel .details-manifest > .detail-action.summary-security-action {
+          justify-self: end;
+        }
+
+        .details-panel .details-manifest > .detail-action.summary-jcsy-action {
+          justify-self: start;
+        }
+      }
     </style>
   </head>
-  <body>
+  <body class="is-loading">
     <div class="loading-overlay" aria-live="polite"><span>THINKING</span></div>
     <header class="topbar">
       <a class="brand" id="home-nav-link" href="#home" aria-label="MUFC home"><span>MUFC</span></a>
@@ -4389,6 +4443,8 @@
         <a href="#test" id="test-nav-link">Baggage</a>
         <a href="cbs.html" id="cbs-nav-link">CBS</a>
         <a class="boarding-nav-link" href="scan.html" id="boarding-nav-link">Boarding</a>
+        <a class="boarding-nav-link" href="240.html" id="transit-240-nav-link">240</a>
+        <a class="boarding-nav-link" href="record.html" id="record-nav-link">Record</a>
       </nav>
       <div class="nav-row">
         <form class="search" id="mission-search" aria-label="Search mission">
@@ -4432,6 +4488,9 @@
       <a href="#test" id="mobile-test-nav-link">Baggage</a>
       <a href="cbs.html" id="mobile-cbs-nav-link">CBS</a>
       <a href="scan.html" id="mobile-boarding-nav-link">Boarding</a>
+      <a href="240.html" id="mobile-transit-240-nav-link">240</a>
+      <a href="record.html" id="mobile-record-nav-link">Record</a>
+      <button class="mobile-logout-button" id="mobile-logout" type="button">Logout</button>
     </aside>
 
     <main>
@@ -4452,8 +4511,11 @@
                 <span class="line-menu-icon" aria-hidden="true"><span></span><span></span><span></span></span>
               </button>
               <div class="flight-menu" aria-hidden="true">
+                <button id="normal-flight-button" type="button">MU586 (Normal)</button>
+                <button id="delayed-flight-button" type="button">MU9586 (Delayed)</button>
                 <button id="sales-report-button" type="button">Sales Report</button>
                 <button id="seat-map-button" type="button">Seat Map</button>
+                <button id="security-check-button" type="button">Security Check</button>
               </div>
             </div>
           </div>
@@ -4463,7 +4525,7 @@
           <div class="report-hero">
             <div>
               <h2>Report Center</h2>
-              <p class="panel-muted">Use Sales Report to choose one date and download the file. Use Sales Details to search a date range and total amounts by type. Use VIP Report and INAD Report to show saved rows. Use PSM Report and WCH Report to search by flight date.</p>
+              <p class="panel-muted">Choose a report below to view saved rows, search by flight date, or download the current results. Misconnection displays passenger assistance submissions.</p>
             </div>
             <button class="report-close" id="report-close" type="button">Close</button>
           </div>
@@ -4471,9 +4533,11 @@
             <button class="detail-action" id="report-sales-mode" type="button" data-report-mode="sales">Sales Report</button>
             <button class="detail-action" id="report-sales-details-mode" type="button" data-report-mode="salesDetails">Sales Details</button>
             <button class="detail-action" id="report-vip-mode" type="button" data-report-mode="vip">VIP Report</button>
-            <button class="detail-action" id="report-psm-mode" type="button" data-report-mode="psm">PSM Report</button>
+            <button class="detail-action" id="report-spml-mode" type="button" data-report-mode="spml">SPML Report</button>
+            <button class="detail-action" id="report-psm-mode" type="button" data-report-mode="psm">Authorization Report</button>
             <button class="detail-action" id="report-inad-mode" type="button" data-report-mode="inad">INAD Report</button>
             <button class="detail-action" id="report-wch-mode" type="button" data-report-mode="wch">WCH Report</button>
+            <button class="detail-action" id="report-miss-connection-mode" type="button" data-report-mode="missConnection">Misconnection</button>
             <button class="detail-action" id="report-baggage-mode" type="button" data-report-mode="baggage">Baggage Report</button>
           </div>
           <form class="report-form" id="report-form">
@@ -4482,8 +4546,11 @@
             <label class="report-field report-keyword-field"><span>Search</span><input id="report-keyword" type="search" placeholder="Optional filter" /></label>
             <button class="report-run" type="submit">Search</button>
           </form>
-          <div class="report-actions-row"><button class="report-download" id="report-download" type="button" disabled>Download CSV</button></div>
-          <div id="report-output"><p class="panel-muted">Choose Sales Report, VIP Report, PSM Report, INAD Report, WCH Report, or Baggage Report.</p></div>
+          <div class="report-actions-row">
+            <button class="report-download" id="report-download" type="button" disabled>Download CSV</button>
+            <button class="report-download" id="report-pdf-download" type="button" disabled hidden>Download Report</button>
+          </div>
+          <div id="report-output"><p class="panel-muted">Choose a report type to continue.</p></div>
         </section>
 
         <section class="report-page" id="baggage-page" aria-label="Bag report" hidden>
@@ -4524,28 +4591,33 @@
           <div class="details-inner">
             <div class="details-surface">
               <div class="details-manifest">
-                <div class="manifest-section is-reservation">
-                  <h3>Reservation</h3>
-                  <div class="counts counts-inline">
-                    <div class="count count-wide">
-                      <div class="count-row"><span id="reservation-et">--- / --- / ---</span></div>
+                <div class="manifest-section is-operations">
+                  <strong class="meal-order-title">Meal Order</strong>
+                  <div class="meal-order-shell" id="meal-order-shell">
+                    <div class="meal-order-tabs" role="tablist" aria-label="Meal order date">
+                      <button class="meal-order-tab" id="meal-order-tab-today" type="button" role="tab" aria-selected="true" aria-controls="reservation-table-today" data-meal-day="today">---</button>
+                      <button class="meal-order-tab" id="meal-order-tab-tomorrow" type="button" role="tab" aria-selected="false" aria-controls="reservation-table-tomorrow" data-meal-day="tomorrow">---</button>
+                    </div>
+                    <div class="meal-order-days">
+                    <div class="reservation-table is-active" id="reservation-table-today" role="tabpanel" aria-labelledby="meal-order-tab-today">
+                      <span></span><span class="reservation-head">RES</span><span class="reservation-head column-divider">ORDERED</span><span class="reservation-head">SPML</span><span class="reservation-head column-divider">PD</span>
+                      <span class="reservation-cabin">F</span><span id="reservation-f" class="reservation-count">---</span><span id="meal-email-f" class="column-divider">---</span><span id="meal-spml-f" class="meal-cell">---</span><span id="meal-pd-f" class="meal-cell column-divider">---</span>
+                      <span class="reservation-cabin">J</span><span id="reservation-j" class="reservation-count">---</span><span id="meal-email-j" class="column-divider">---</span><span id="meal-spml-j" class="meal-cell">---</span><span id="meal-pd-j" class="meal-cell column-divider">---</span>
+                      <span class="reservation-cabin">Y</span><span id="reservation-y" class="reservation-count">---</span><span id="meal-email-y" class="column-divider">---</span><span id="meal-spml-y" class="meal-cell">---</span><span id="meal-pd-y" class="meal-cell column-divider">---</span>
+                    </div>
+                    <div class="reservation-table" id="reservation-table-tomorrow" role="tabpanel" aria-labelledby="meal-order-tab-tomorrow" hidden>
+                      <span></span><span class="reservation-head">RES</span><span class="reservation-head column-divider">ORDERED</span><span class="reservation-head">SPML</span><span class="reservation-head column-divider">PD</span>
+                      <span class="reservation-cabin">F</span><span id="tomorrow-reservation-f" class="reservation-count">---</span><span id="tomorrow-meal-email-f" class="column-divider">---</span><span id="tomorrow-meal-spml-f" class="meal-cell">---</span><span id="tomorrow-meal-pd-f" class="meal-cell column-divider">---</span>
+                      <span class="reservation-cabin">J</span><span id="tomorrow-reservation-j" class="reservation-count">---</span><span id="tomorrow-meal-email-j" class="column-divider">---</span><span id="tomorrow-meal-spml-j" class="meal-cell">---</span><span id="tomorrow-meal-pd-j" class="meal-cell column-divider">---</span>
+                      <span class="reservation-cabin">Y</span><span id="tomorrow-reservation-y" class="reservation-count">---</span><span id="tomorrow-meal-email-y" class="column-divider">---</span><span id="tomorrow-meal-spml-y" class="meal-cell">---</span><span id="tomorrow-meal-pd-y" class="meal-cell column-divider">---</span>
+                    </div>
                     </div>
                   </div>
                 </div>
-                <div class="manifest-section is-checkin">
-                  <h3>Check-In</h3>
-                  <div class="counts counts-inline">
-                    <div class="count count-wide">
-                      <div class="count-row"><span id="checkin-et">--- / --- / ---</span></div>
-                    </div>
-                  </div>
-                </div>
-                <button class="detail-action warning-action summary-warning-action" type="button" data-panel="warning" id="warning-action" hidden aria-label="Open warnings"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M16 5 29 27H3z"/><path d="M16 12v7"/><path d="M16 23h.01"/></svg></span><span class="detail-action-label">WARNING</span> <span class="detail-action-badge warning-badge" id="warning-count">0</span></button>
-                <button class="detail-action summary-security-action" type="button" data-panel="security" id="security-detail-action"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="10"/><circle cx="16" cy="16" r="3"/><path d="M16 4v5M16 23v5M4 16h5M23 16h5"/></svg></span><span class="detail-action-label">Security Check</span></button>
-                <button class="detail-action summary-jcsy-action" type="button" data-panel="jcsy" id="jcsy-detail-action"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="10" cy="10" r="3"/><circle cx="22" cy="10" r="3"/><circle cx="10" cy="22" r="3"/><circle cx="22" cy="22" r="3"/><path d="M16 10h.01M16 16h.01M16 22h.01"/></svg></span><span class="detail-action-label">JCSY</span></button>
               </div>
             </div>
             <div class="detail-actions" aria-label="Flight detail actions">
+              <button class="detail-action warning-action" type="button" data-panel="warning" id="warning-action" hidden aria-label="Open warnings"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M16 5 29 27H3z"/><path d="M16 12v7"/><path d="M16 23h.01"/></svg></span><span class="detail-action-label">WARNING</span> <span class="detail-action-badge warning-badge" id="warning-count">0</span></button>
               <button class="detail-action" type="button" data-panel="chd" id="chd-action"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M11 7h10"/><path d="M12 5h8l1 4h-10z"/><path d="M8 8h16v19H8z"/><path d="M12 15h8"/><path d="M12 20h8"/></svg></span><span class="detail-action-label">CHD List</span> <span class="detail-action-badge" id="chd-count"></span></button>
                 <button class="detail-action" type="button" data-panel="gov" id="gov-action"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="16" cy="11" r="5"/><path d="M7 27c1.2-6 4.4-9 9-9s7.8 3 9 9"/></svg></span><span class="detail-action-label">GOV/AQQ</span> <span class="detail-action-badge" id="gov-count"></span></button>
                 <button class="detail-action" type="button" data-panel="webedi" id="webedi-action"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="10"/><path d="M6 16h20"/><path d="M16 6c3 3 4.5 6.3 4.5 10S19 23 16 26"/><path d="M16 6c-3 3-4.5 6.3-4.5 10S13 23 16 26"/></svg></span><span class="detail-action-label">WEB/EDI/RS</span> <span class="detail-action-badge" id="webedi-count"></span></button>
@@ -4597,14 +4669,15 @@
               <button class="node" type="button" data-index="2" data-key="FSC" data-label="FSC" data-status="pending" data-time="----"></button>
               <button class="node" type="button" data-index="3" data-key="NEXTDAY_INFO" data-label="NEXTDAY INFO" data-status="pending" data-time="----"></button>
               <button class="node" type="button" data-index="4" data-key="NET" data-label="NET" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="5" data-key="CHD" data-label="CHD" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="6" data-key="GOV" data-label="GOV" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="7" data-key="WEBEDI" data-label="WEB/EDI/RS" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="8" data-key="NBRD" data-label="NBRD" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="9" data-key="CCL" data-label="CCL" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="10" data-key="CC" data-label="CC" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="11" data-key="INITIAL_FLIGHT" data-label="INITIAL FLIGHT" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="12" data-key="BDT_CHG" data-label="BDT CHG" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="5" data-key="MISSING_BAG" data-label="MISSING BAG" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="6" data-key="CHD" data-label="CHD" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="7" data-key="GOV" data-label="GOV" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="8" data-key="WEBEDI" data-label="WEB/EDI/RS" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="9" data-key="NBRD" data-label="NBRD" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="10" data-key="CCL" data-label="CCL" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="11" data-key="CC" data-label="CC" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="12" data-key="INITIAL_FLIGHT" data-label="INITIAL FLIGHT" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="13" data-key="BDT_CHG" data-label="BDT CHG" data-status="pending" data-time="----"></button>
               <article class="node-card" aria-live="polite">
                 <h2>Crew APIs</h2>
                 <p>Crew manifest and reservation data are ready. This point can open deeper crew workflows later.</p>
@@ -4644,6 +4717,7 @@
       const currentUser = document.querySelector("#current-user");
       const changePasswordButton = document.querySelector("#change-password");
       const logoutButton = document.querySelector("#logout");
+      const mobileLogoutButton = document.querySelector("#mobile-logout");
       const flightMenuButton = document.querySelector(".flight-menu-button");
       const flightMenu = document.querySelector(".flight-menu");
       const nodeTime = document.querySelector("#node-time");
@@ -4662,6 +4736,8 @@
       const mobileQueryInput = document.querySelector("#mobile-query");
       const bagReportButton = document.querySelector("#bag-report-button");
       const salesReportButton = document.querySelector("#sales-report-button");
+      const normalFlightButton = document.querySelector("#normal-flight-button");
+      const delayedFlightButton = document.querySelector("#delayed-flight-button");
       const securityCheckButton = document.querySelector("#security-check-button");
       const seatMapButton = document.querySelector("#seat-map-button");
       const reportNavLink = document.querySelector("#report-nav-link");
@@ -4685,9 +4761,11 @@
       const reportSalesModeButton = document.querySelector("#report-sales-mode");
       const reportSalesDetailsModeButton = document.querySelector("#report-sales-details-mode");
       const reportVipModeButton = document.querySelector("#report-vip-mode");
+      const reportSpmlModeButton = document.querySelector("#report-spml-mode");
       const reportPsmModeButton = document.querySelector("#report-psm-mode");
       const reportInadModeButton = document.querySelector("#report-inad-mode");
       const reportWchModeButton = document.querySelector("#report-wch-mode");
+      const reportMissConnectionModeButton = document.querySelector("#report-miss-connection-mode");
       const reportBaggageModeButton = document.querySelector("#report-baggage-mode");
       const reportFromInput = document.querySelector("#report-from");
       const reportFromLabel = document.querySelector("#report-from-label");
@@ -4695,14 +4773,15 @@
       const reportKeywordInput = document.querySelector("#report-keyword");
       const reportOutput = document.querySelector("#report-output");
       const reportDownloadButton = document.querySelector("#report-download");
+      const reportPdfDownloadButton = document.querySelector("#report-pdf-download");
       const passwordPage = document.querySelector("#change-password-page");
       const closePasswordPageButton = document.querySelector("#close-password-page");
       const changePasswordForm = document.querySelector("#change-password-form");
       const newPasswordInput = document.querySelector("#new-password");
       const passwordStatus = document.querySelector("#password-status");
       const WARNING_ACK_STORAGE_KEY = "mufc_warning_acknowledgements";
-      const baseProgress = [0.05, 0.125, 0.2, 0.275, 0.35, 0.425, 0.5, 0.575, 0.65, 0.725, 0.8, 0.875, 0.95];
-      const mobileProgress = [-0.46, -0.30, -0.14, 0.02, 0.18, 0.34, 0.5, 0.66, 0.82, 0.98, 1.14, 1.30, 1.46];
+      const baseProgress = [0.05, 0.119, 0.188, 0.258, 0.327, 0.396, 0.465, 0.535, 0.604, 0.673, 0.742, 0.812, 0.881, 0.95];
+      const mobileProgress = [-0.54, -0.38, -0.22, -0.06, 0.10, 0.26, 0.42, 0.58, 0.74, 0.90, 1.06, 1.22, 1.38, 1.54];
       const desktopOrbitPath = "M-260 318 C 120 178, 390 142, 600 142 S 1080 178, 1460 318";
       const mobileOrbitPath = "M-240 296 C 130 210, 390 184, 600 184 S 1070 210, 1440 296";
       const mobileOrbitQuery = window.matchMedia("(max-width: 760px)");
@@ -4721,10 +4800,11 @@
       const APP_ENTRY_KEY = "mufc_allow_app_entry";
       const AUTH_SESSION_STARTED_KEY = "mufc_auth_session_started_at";
       const AUTH_LAST_ACTIVITY_KEY = "mufc_auth_last_activity_at";
-      const AUTH_SESSION_LIMIT_MS = 60 * 60 * 1000;
-      const APP_ENTRY_GRACE_MS = 30 * 1000;
-      const SY_AUTO_REFRESH_MS = 30 * 1000;
+      const SY_AUTO_REFRESH_MS = 15 * 1000;
+      const SY_REFRESH_TIMEOUT_MS = 12 * 1000;
+      const AUTH_INACTIVITY_LIMIT_MS = 60 * 60 * 1000;
       const SY_COMPLETED_NODE_CACHE_KEY = "mufc_sy_completed_nodes_v1";
+      const MISSING_BAG_STATUS_STORAGE_KEY = "mufc_missing_bag_status_v1";
       const PERSISTENT_GREEN_NODE_KEYS = ["GD_CHECK", "FSC", "NEXTDAY_INFO"];
       let inactivityTimer = null;
       let syAutoRefreshTimer = null;
@@ -4737,6 +4817,7 @@
       let lastDragX = 0;
       let didDrag = false;
       let currentSy = null;
+      let tomorrowMealRequestKey = "";
       let latestQuery = "SY";
       let activeReportMode = "sales";
       let activeSyQuery = "SY";
@@ -4788,10 +4869,11 @@
         setText("#metric-std", "----");
         const reservationBookedEl = document.querySelector("#reservation-booked");
         if (reservationBookedEl) reservationBookedEl.innerHTML = tripleHtml(["---", "---", "---"]);
-        document.querySelector("#reservation-et").textContent = "--- / --- / ---";
+        ["", "tomorrow-"].forEach((prefix) => ["reservation-f", "reservation-j", "reservation-y", "meal-email-f", "meal-email-j", "meal-email-y", "meal-spml-f", "meal-spml-j", "meal-spml-y", "meal-pd-f", "meal-pd-j", "meal-pd-y"].forEach((id) => setText(`#${prefix}${id}`, "---")));
+        setText("#meal-order-tab-today", "---");
+        setText("#meal-order-tab-tomorrow", "---");
         const checkinAcceptedEl = document.querySelector("#checkin-accepted");
         if (checkinAcceptedEl) checkinAcceptedEl.innerHTML = tripleHtml(["---", "---", "---"]);
-        document.querySelector("#checkin-et").textContent = "--- / --- / ---";
         setBadgeText("#chd-count", 0);
         setBadgeText("#gov-count", 0);
         setBadgeText("#webedi-count", 0);
@@ -4829,57 +4911,101 @@
         return url.href;
       }
 
-      function consumeAppEntry() {
-        const allowedAt = Number(sessionStorage.getItem(APP_ENTRY_KEY) || 0);
-        sessionStorage.removeItem(APP_ENTRY_KEY);
-        if (!allowedAt) return false;
-        return Date.now() - allowedAt <= APP_ENTRY_GRACE_MS;
+      function storageCandidates() {
+        return ["localStorage", "sessionStorage"].map((key) => {
+          try {
+            return window[key];
+          } catch (error) {
+            return null;
+          }
+        }).filter(Boolean);
       }
 
-      function authSessionAgeMs() {
-        const lastActivityAt = Number(sessionStorage.getItem(AUTH_LAST_ACTIVITY_KEY) || sessionStorage.getItem(AUTH_SESSION_STARTED_KEY) || 0);
-        return lastActivityAt ? Date.now() - lastActivityAt : Infinity;
+      function safeStorageWrite(key, value) {
+        for (const storage of storageCandidates()) {
+          try {
+            storage.setItem(key, value);
+          } catch (error) {
+            // Some mobile/private browsers expose storage but reject writes.
+          }
+        }
       }
 
-      function isAuthSessionExpired() {
-        return authSessionAgeMs() >= AUTH_SESSION_LIMIT_MS;
+      function safeStorageRemove(key) {
+        for (const storage of storageCandidates()) {
+          try {
+            storage.removeItem(key);
+          } catch (error) {
+            // Ignore storage cleanup failures.
+          }
+        }
       }
 
+      function safeStorageReadNumber(key) {
+        for (const storage of storageCandidates()) {
+          try {
+            const value = Number(storage.getItem(key));
+            if (Number.isFinite(value) && value > 0) return value;
+          } catch (error) {
+            // Ignore inaccessible storage.
+          }
+        }
+        return 0;
+      }
 
       function allowInternalPageRedirect() {
-        sessionStorage.setItem(APP_ENTRY_KEY, String(Date.now()));
+        safeStorageWrite(APP_ENTRY_KEY, String(Date.now()));
       }
       window.findNodeIndexByKey = findNodeIndexByKey;
 
       const canEnterApp = true;
 
       async function returnToLogin() {
-        sessionStorage.removeItem(APP_ENTRY_KEY);
-        sessionStorage.removeItem(AUTH_SESSION_STARTED_KEY);
-        sessionStorage.removeItem(AUTH_LAST_ACTIVITY_KEY);
+        safeStorageRemove(APP_ENTRY_KEY);
+        safeStorageRemove(AUTH_SESSION_STARTED_KEY);
+        safeStorageRemove(AUTH_LAST_ACTIVITY_KEY);
         if (inactivityTimer) clearTimeout(inactivityTimer);
-        const url = new URL(loginUrl());
-        url.searchParams.set("forceLogin", "1");
-        try {
-          if (auth?.currentUser) await auth.signOut();
-        } catch (error) {
-          console.warn("Unable to sign out before returning to login.", error);
+        inactivityTimer = null;
+        if (auth?.currentUser) {
+          try {
+            await auth.signOut();
+          } catch (error) {
+            // Redirect to login even if Firebase sign-out cannot complete.
+          }
         }
+        const url = new URL(loginUrl());
         window.location.replace(url.href);
       }
 
-      function resetInactivityTimer() {
-        sessionStorage.setItem(AUTH_LAST_ACTIVITY_KEY, String(Date.now()));
+      function scheduleInactivityLogout() {
         if (inactivityTimer) clearTimeout(inactivityTimer);
-        inactivityTimer = setTimeout(() => {
+        const lastActivity = safeStorageReadNumber(AUTH_LAST_ACTIVITY_KEY) || Date.now();
+        const remaining = AUTH_INACTIVITY_LIMIT_MS - (Date.now() - lastActivity);
+        if (remaining <= 0) {
           returnToLogin();
-        }, AUTH_SESSION_LIMIT_MS);
+          return;
+        }
+        inactivityTimer = setTimeout(returnToLogin, remaining);
+      }
+
+      function resetInactivityTimer() {
+        safeStorageWrite(AUTH_LAST_ACTIVITY_KEY, String(Date.now()));
+        scheduleInactivityLogout();
       }
 
       function startInactivityWatch() {
+        const previousActivity = safeStorageReadNumber(AUTH_LAST_ACTIVITY_KEY);
+        if (previousActivity && Date.now() - previousActivity >= AUTH_INACTIVITY_LIMIT_MS) {
+          returnToLogin();
+          return;
+        }
+        if (!safeStorageReadNumber(AUTH_SESSION_STARTED_KEY)) safeStorageWrite(AUTH_SESSION_STARTED_KEY, String(Date.now()));
         resetInactivityTimer();
-        ["pointerdown", "keydown", "touchstart", "scroll"].forEach((eventName) => {
+        ["pointerdown", "keydown", "touchstart", "scroll", "focus", "pageshow"].forEach((eventName) => {
           window.addEventListener(eventName, resetInactivityTimer, { passive: true });
+        });
+        document.addEventListener("visibilitychange", () => {
+          if (!document.hidden) scheduleInactivityLogout();
         });
       }
 
@@ -4930,6 +5056,16 @@
         }).length;
       }
 
+
+      function govWrongPassportBnList(sy = currentSy) {
+        const gov = sy?.govAqq || {};
+        const fromGov = Array.isArray(gov.wrongPassportBnList) ? gov.wrongPassportBnList : [];
+        const fromAudit = (sy?.bnAudit || [])
+          .filter((row) => /\bWrong Passport\b/i.test(String(row?.apiReason || "")))
+          .map((row) => row.bn);
+        return [...new Set([...fromGov, ...fromAudit].map(normalizedBn).filter(Boolean))].sort();
+      }
+
       function webEdiIssueBnList(sy = currentSy) {
         const gov = sy?.govAqq || {};
         const rawBns = [...new Set((gov.passportCodeIssues || []).map(normalizedBn).filter(Boolean))].sort();
@@ -4956,7 +5092,7 @@
         currentSy.bnAudit = rows;
         const passBnSet = securityReviewPassBnSet(currentSy);
         const gov = currentSy.govAqq || {};
-        const govGroups = [gov.duplicatePassports, gov.aqqTclBnList, gov.govDtaBnList, gov.passportExpBnList, gov.wrongPassportBnList, gov.missingApiBnList, gov.infApiBnList];
+        const govGroups = [gov.duplicatePassports, gov.aqqTclBnList, gov.govDtaBnList, gov.passportExpBnList, gov.passportExpiringSoonBnList, govWrongPassportBnList(currentSy), gov.missingApiBnList, gov.infApiBnList];
         const counts = {
           GOV: govGroups.reduce((sum, value) => sum + unresolvedReviewedBnCount(value, passBnSet), 0),
           WEBEDI: unresolvedReviewedBnCount(webEdiIssueBnList(currentSy), passBnSet),
@@ -5048,22 +5184,66 @@
         writeCompletedSyNodeCache(cache);
       }
 
+      function forgetCompletedSyNode(sy, key) {
+        if (!PERSISTENT_GREEN_NODE_KEYS.includes(key)) return;
+        const cache = readCompletedSyNodeCache();
+        const cacheKey = syCompletedNodeCacheKey(sy);
+        if (!cache[cacheKey]?.[key]) return;
+        delete cache[cacheKey][key];
+        if (!Object.keys(cache[cacheKey]).length) delete cache[cacheKey];
+        writeCompletedSyNodeCache(cache);
+      }
+
+      function nextDayInfoDetailsFromSy(sy) {
+        const ret = sy?.reservationTicketed;
+        const rows = Array.isArray(sy?.jcsy?.rows) ? sy.jcsy.rows : [];
+        if (!Array.isArray(ret) || ret.length < 4 || !sy?.jcsy?.complete || !rows.length) return null;
+        const transfers = rows.reduce((totals, row) => {
+          const total = Number(row?.total) || 0;
+          const hasDeparture = Boolean(String(row?.departure || row?.depart || "").trim());
+          if (!hasDeparture || row?.overnight || row?.category === "overnight" || row?.category === "pvgOnly") totals.overnightPassengers += total;
+          else if (row?.isDomestic || row?.market === "Domestic" || row?.category === "domestic") totals.domesticTransfer += total;
+          else totals.internationalTransfer += total;
+          return totals;
+        }, { internationalTransfer: 0, domesticTransfer: 0, overnightPassengers: 0 });
+        return {
+          firstClass: String(Number(ret[1]) || 0),
+          businessClass: String(Number(ret[2]) || 0),
+          economyClass: String(Number(ret[3]) || 0),
+          internationalTransfer: String(transfers.internationalTransfer),
+          domesticTransfer: String(transfers.domesticTransfer),
+          overnightPassengers: String(transfers.overnightPassengers),
+        };
+      }
+
       function resolveApiBase() {
         const fromWindow = window.MU_API_BASE || "";
         return (fromWindow.trim() || "https://api.mufcapp.net").replace(/\/$/, "");
       }
 
-      async function authHeaders() {
+      async function authHeaders(timeoutMs = 10000) {
         const headers = {};
         if (auth?.currentUser) {
-          headers.Authorization = `Bearer ${await auth.currentUser.getIdToken()}`;
+          let timer;
+          try {
+            const token = await Promise.race([
+              auth.currentUser.getIdToken(),
+              new Promise((_, reject) => {
+                timer = setTimeout(() => reject(new Error("Authentication timed out. Please reload the page and sign in again.")), timeoutMs);
+              }),
+            ]);
+            headers.Authorization = `Bearer ${token}`;
+          } finally {
+            clearTimeout(timer);
+          }
         }
         return headers;
       }
 
       async function fetchSearch(query, options = {}) {
         const apiBase = resolveApiBase();
-        const endpoint = `${apiBase}/search?q=${encodeURIComponent(query)}`;
+        const cacheBust = options.realtime ? `&_=${Date.now()}` : "";
+        const endpoint = `${apiBase}/search?q=${encodeURIComponent(query)}${cacheBust}`;
         const res = await fetch(endpoint, { cache: "no-store", headers: await authHeaders(), signal: options.signal });
         const type = res.headers.get("content-type") || "";
         if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
@@ -5073,11 +5253,12 @@
 
       async function apiJson(path, options = {}) {
         const apiBase = resolveApiBase();
+        const { authTimeoutMs = 10000, ...fetchOptions } = options;
         const res = await fetch(`${apiBase}${path}`, {
           cache: "no-store",
-          ...options,
+          ...fetchOptions,
           headers: {
-            ...(await authHeaders()),
+            ...(await authHeaders(authTimeoutMs)),
             ...(options.headers || {}),
           },
         });
@@ -5096,6 +5277,52 @@
         }
         if (!type.includes("application/json")) throw new Error(`API returned non-JSON from ${apiBase}.`);
         return res.json();
+      }
+
+      async function refreshMissingBagNode() {
+        const node = document.querySelector('.node[data-key="MISSING_BAG"]');
+        if (!node) return;
+        try {
+          const data = await apiJson('/cbs-missing-bags', { authTimeoutMs: 3000 });
+          const uniqueRows = new Map();
+          (data.rows || []).forEach((row) => {
+            const tag = String(row.bagTag || '').trim().toUpperCase();
+            if (!tag) return;
+            const current = uniqueRows.get(tag);
+            const processed = Boolean(row.acknowledgedAt || row.caseCreatedAt);
+            const currentProcessed = Boolean(current?.acknowledgedAt || current?.caseCreatedAt);
+            const rowDate = Date.parse(row.sourceEmailDate) || 0;
+            const currentDate = Date.parse(current?.sourceEmailDate) || 0;
+            if (!current || (processed && !currentProcessed) || (processed === currentProcessed && rowDate > currentDate)) uniqueRows.set(tag, row);
+          });
+          const openCount = [...uniqueRows.values()].filter((row) => !row.acknowledgedAt && !row.caseCreatedAt).length;
+          applyMissingBagNodeStatus(openCount);
+          try {
+            localStorage.setItem(MISSING_BAG_STATUS_STORAGE_KEY, JSON.stringify({ openCount, updatedAt:Date.now() }));
+          } catch (_) {}
+        } catch (error) {
+          console.error('Missing bag status loading failed:', error);
+          node.dataset.status = 'pending';
+          node.dataset.time = '----';
+          node.removeAttribute('data-alert');
+        }
+      }
+
+      function applyMissingBagNodeStatus(openCount) {
+        const node = document.querySelector('.node[data-key="MISSING_BAG"]');
+        if (!node) return;
+        const count = Math.max(0, Number(openCount) || 0);
+        node.dataset.status = count ? 'issue' : 'done';
+        node.dataset.time = count ? String(count) : 'CLEAR';
+        if (count) node.dataset.alert = String(count);
+        else node.removeAttribute('data-alert');
+      }
+
+      function applyStoredMissingBagStatus() {
+        try {
+          const saved = JSON.parse(localStorage.getItem(MISSING_BAG_STATUS_STORAGE_KEY) || 'null');
+          if (saved && Number.isFinite(Number(saved.openCount))) applyMissingBagNodeStatus(saved.openCount);
+        } catch (_) {}
       }
 
       function timeToMinutes(value) {
@@ -5126,9 +5353,9 @@
 
       function stageGroupsForProgress(progress = progressStops()) {
         return [
-          { key: "preflight", start: progress[0] - 0.02, end: progress[4] + 0.02, labelAt: (progress[0] + progress[4]) / 2 },
-          { key: "operation", start: progress[5] - 0.02, end: progress[10] + 0.02, labelAt: (progress[5] + progress[10]) / 2 },
-          { key: "postflight", start: progress[11] - 0.02, end: progress[11] + 0.08, labelAt: progress[11] + 0.03 },
+          { key: "preflight", start: progress[0] - 0.02, end: progress[5] + 0.02, labelAt: (progress[0] + progress[5]) / 2 },
+          { key: "operation", start: progress[6] - 0.02, end: progress[11] + 0.02, labelAt: (progress[6] + progress[11]) / 2 },
+          { key: "postflight", start: progress[12] - 0.02, end: progress[12] + 0.08, labelAt: progress[12] + 0.03 },
         ];
       }
 
@@ -5205,20 +5432,55 @@
         const ok = confirm("确认发送 NEXTDAY INFO 邮件到 LAXHMXH@hallmark-aviation.com 和 dg-lax-lounge@qantas.com.au？");
         if (!ok) return;
         const step = stepByKey("NEXTDAY_INFO");
+        const details = nextDayInfoDetailsFromSy(currentSy);
+        if (!details) {
+          alert("缺少 JCSY 转机数据：SY 的 RET 人数已经读取，但发送 NEXTDAY INFO 还需要先完成 JCSY 查询。");
+          return;
+        }
         if (step) {
+          // A previous successful send may still be green in both the live step
+          // and local cache. Clear it before displaying this new attempt.
+          step.complete = false;
           step.searched = true;
+          step.time = "";
+          step.reason = "";
+          step.details = details;
+          step.detailText = [
+            `First Class: ${details.firstClass}`,
+            `Business Class: ${details.businessClass}`,
+            `Economy Class: ${details.economyClass}`,
+            "",
+            `International Transfer: ${details.internationalTransfer}`,
+            `Domestic Transfer: ${details.domesticTransfer}`,
+            `Overnight passengers: ${details.overnightPassengers}`,
+          ].join("\n");
           step.tooltip = "NEXTDAY INFO sending email...";
         }
+        forgetCompletedSyNode(currentSy, "NEXTDAY_INFO");
         node.dataset.status = "pending";
         node.dataset.time = "SENDING";
         nodeTime.textContent = "SENDING";
         showTimelineNodeCard("NEXTDAY_INFO", step, "SENDING");
+        const sendController = new AbortController();
+        const sendTimeout = setTimeout(() => sendController.abort(), 45000);
         try {
           const data = await apiJson("/nextday-info/send", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ flightNo: currentSy.flightNo || "MU586" }),
+            body: JSON.stringify({
+              flightNo: currentSy.flightNo || "MU586",
+              details,
+            }),
+            signal: sendController.signal,
+            authTimeoutMs: 10000,
           });
+          if (!data?.ok) {
+            const failures = [
+              data?.emailError && `Email: ${data.emailError}`,
+              data?.discordError && `Discord: ${data.discordError}`,
+            ].filter(Boolean);
+            throw new Error(failures.join("; ") || "NEXTDAY INFO delivery failed.");
+          }
           if (data?.step) {
             currentSy.crewApis = currentSy.crewApis || {};
             currentSy.crewApis.steps = currentSy.crewApis.steps || [];
@@ -5234,13 +5496,15 @@
             updatedStep.subject = data.subject || updatedStep.subject || "";
             updatedStep.details = data.details || updatedStep.details || {};
             updatedStep.detailText = data.detailText || updatedStep.detailText || "";
-            updatedStep.tooltip = `NEXTDAY INFO sent to ${(data.to || []).join(", ") || "LAXHMXH@hallmark-aviation.com, dg-lax-lounge@qantas.com.au"}; CC ${(data.cc || []).join(", ") || "lax.mupax@hallmark-aviation.com, laxhmmu@gmail.com"}: ${data.subject || ""}`;
+            updatedStep.tooltip = `NEXTDAY INFO sent to ${(data.to || []).join(", ") || "LAXHMXH@hallmark-aviation.com, dg-lax-lounge@qantas.com.au"}; CC ${(data.cc || []).join(", ") || "lax.mupax@hallmark-aviation.com, laxhmmu@gmail.com"}: ${data.subject || ""}${data.discordError ? ` (Discord post failed: ${data.discordError})` : ""}`;
           }
           refreshSyBadges(currentSy);
           const sentStep = stepByKey("NEXTDAY_INFO");
           showTimelineNodeCard("NEXTDAY_INFO", sentStep, sentStep?.time || "SENT");
         } catch (err) {
-          const message = err?.message || "NEXTDAY INFO email send failed.";
+          const message = err?.name === "AbortError"
+            ? "NEXTDAY INFO delivery timed out after 45 seconds. Please check email and Discord before retrying."
+            : (err?.message || "NEXTDAY INFO email send failed.");
           if (step) {
             step.complete = false;
             step.searched = true;
@@ -5250,6 +5514,16 @@
           refreshSyBadges(currentSy);
           showTimelineNodeCard("NEXTDAY_INFO", stepByKey("NEXTDAY_INFO"), "MISSING");
           alert(message);
+        } finally {
+          clearTimeout(sendTimeout);
+          // Last-resort cleanup: no exit path may leave the node displaying
+          // SENDING after the request has settled or timed out.
+          if (node.dataset.time === "SENDING") {
+            node.dataset.status = "issue";
+            node.dataset.time = "MISSING";
+            nodeTime.textContent = "MISSING";
+            showTimelineNodeCard("NEXTDAY_INFO", stepByKey("NEXTDAY_INFO"), "MISSING");
+          }
         }
       }
 
@@ -5620,6 +5894,8 @@
         const overlay = document.createElement("div");
         overlay.className = "passenger-modal-backdrop";
         const modalBnNumber = data?.bn || data?.passengerRecord?.bn || "---";
+        overlay.dataset.passengerBn = String(modalBnNumber || "").replace(/^BN/i, "");
+        overlay.dataset.passengerTitle = title;
         overlay.innerHTML = `<article class="passenger-modal" role="dialog" aria-modal="true"><button class="panel-close" type="button" data-close-modal>×</button><div class="passenger-modal-mobile-title"><span>${escapeHtml(title)}</span><strong>BN${escapeHtml(String(modalBnNumber).replace(/^BN/i, "") || "---")}</strong></div>${passengerRecordCard(data || {}, title)}</article>`;
         document.body.appendChild(overlay);
         enablePassengerModalDragScroll(overlay);
@@ -5664,6 +5940,29 @@
       function rowsTable(rows, columns, emptyText) {
         if (!rows.length) return `<p class="panel-muted">${escapeHtml(emptyText || "No data found.")}</p>`;
         return `<table class="data-table"><thead><tr>${columns.map((col) => `<th>${escapeHtml(col.label)}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${columns.map((col) => `<td>${escapeHtml(col.value(row) || "-")}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+      }
+
+      function authorizationReportTable(rows) {
+        if (!rows.length) return `<p class="panel-muted">No Authorization Report rows found.</p>`;
+        const columns = [
+          ["Flight Date", (row) => row.displayDate || row.flightDate || row.date],
+          ["Flight #", (row) => row.flightNo],
+          ["Passenger Name", (row) => row.passenger],
+          ["BN", (row) => row.bn],
+          ["Seat", (row) => row.seat],
+          ["BAGS", (row) => row.bags],
+          ["Detail", (row) => row.detail],
+        ];
+        const renderGroup = (title, groupRows) => {
+          if (!groupRows.length) return "";
+          const body = groupRows.map((row) => `<tr>${columns.map(([, value]) => `<td>${escapeHtml(value(row) || "-")}</td>`).join("")}<td><input class="report-remark-input" type="text" maxlength="1000" value="${escapeHtml(row.remark || "")}" data-authorization-remark="${escapeHtml(encodeURIComponent(row.key || ""))}" aria-label="Remark for ${escapeHtml(row.passenger || "passenger")}" placeholder="Enter remark" /></td></tr>`).join("");
+          const columnWidths = [9, 7, 12, 4, 5, 20, 21, 22];
+          const colgroup = `<colgroup>${columnWidths.map((width) => `<col style="width:${width}%">`).join("")}</colgroup>`;
+          return `<section class="authorization-report-group"><h3>${escapeHtml(title)}</h3><table class="data-table">${colgroup}<thead><tr>${columns.map(([label]) => `<th>${escapeHtml(label)}</th>`).join("")}<th>Remark</th></tr></thead><tbody>${body}</tbody></table></section>`;
+        };
+        const involuntaryUpgrades = rows.filter((row) => /^INVOLUNTARY UPGRADE$/i.test(String(row.type || "").trim()) || /^INVOLUNTARY UPGRADE\b/i.test(String(row.detail || "").trim()));
+        const psmMsgRows = rows.filter((row) => !involuntaryUpgrades.includes(row));
+        return renderGroup("Involuntary Upgrade", involuntaryUpgrades) + renderGroup("PSM / MSG", psmMsgRows);
       }
 
       function moneyText(value) {
@@ -5782,7 +6081,8 @@
       }
 
       function hasUnknownPassengerName(row) {
-        const name = String(row?.name || passengerName(row) || "").trim().toUpperCase();
+        const passenger = row?.passengerRecord || {};
+        const name = String(row?.name || row?.passengerName || row?.paxName || passenger.name || passenger.passengerName || passenger.paxName || "").trim().toUpperCase();
         return !name || name === "UNKNOWN" || name === "-";
       }
 
@@ -5875,15 +6175,127 @@
       function syRenderSignature(sy) {
         if (!sy) return "";
         const steps = (sy.crewApis?.steps || []).map((step) => [step.key || step.label, step.time || "", Boolean(step.complete), Boolean(step.searched)].join(":"));
-        return JSON.stringify([sy.flightNo, sy.flightDate, sy.gate, sy.bdt, sy.sd, sy.reservation, sy.reservationTicketed, sy.checkedIn, sy.checkedInTicketed, sy.jcsy, steps, (sy.chdList || []).length, (sy.psmList || []).length, (sy.wchList || []).length]);
+        const gov = sy.govAqq || {};
+        const govSignature = [
+          gov.duplicatePassports,
+          gov.aqqTclBnList,
+          gov.govDtaBnList,
+          gov.passportExpBnList,
+          gov.passportExpiringSoonBnList,
+          govWrongPassportBnList(sy),
+          gov.missingApiBnList,
+          gov.infApiIssueDetails || gov.infApiBnList,
+        ];
+        const nbrdSignature = (sy.bnAudit || []).filter(rowHasCkinNbrdIssue).map((row) => [row.bn, row.seat, ckinNbrdDetails(row).join("|")]);
+        const warningSignature = buildWarningRows(sy).map((row) => [row.bn, row.seat, row.warningType, row.warningReason, (row.acknowledgements || []).length]);
+        return JSON.stringify([sy.flightNo, sy.flightDate, sy.gate, sy.bdt, sy.sd, sy.reservation, sy.reservationTicketed, sy.checkedIn, sy.checkedInTicketed, sy.spml || {}, sy.jcsy, steps, sy.chdList || [], govSignature, webEdiIssueBnList(sy), nbrdSignature, warningSignature, sy.psmList || [], sy.wchList || []]);
+      }
+
+      function mealCountsText(counts) {
+        return Object.entries(counts || {}).filter(([, count]) => Number(count) > 0).sort(([a], [b]) => a.localeCompare(b)).map(([meal, count]) => `${count} ${meal}`).join("\n") || "-";
+      }
+
+      function mealCountsTotal(counts) {
+        return Object.values(counts || {}).reduce((total, count) => total + (Number(count) || 0), 0);
+      }
+
+      function mealCountsMatch(left, right) {
+        const keys = new Set([...Object.keys(left || {}), ...Object.keys(right || {})]);
+        return [...keys].every((key) => (Number(left?.[key]) || 0) === (Number(right?.[key]) || 0));
+      }
+
+      function formatMealFlightDate(value) {
+        const match = String(value || "").toUpperCase().match(/^(\d{2})([A-Z]{3})(\d{2})$/);
+        return match ? `${match[1]} ${match[2]} 20${match[3]}` : "---";
+      }
+
+      function nextMealFlightDate(value) {
+        const match = String(value || "").toUpperCase().match(/^(\d{2})([A-Z]{3})(\d{2})$/);
+        const months = { JAN:0, FEB:1, MAR:2, APR:3, MAY:4, JUN:5, JUL:6, AUG:7, SEP:8, OCT:9, NOV:10, DEC:11 };
+        if (!match || months[match[2]] === undefined) return "---";
+        const date = new Date(Date.UTC(2000 + Number(match[3]), months[match[2]], Number(match[1]) + 1));
+        return `${String(date.getUTCDate()).padStart(2, "0")} ${Object.keys(months)[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
+      }
+
+      function updateMealOrderShellState() {
+        const activePanel = document.querySelector(".reservation-table.is-active");
+        document.querySelector("#meal-order-shell")?.classList.toggle("has-shortage", Boolean(activePanel?.classList.contains("has-shortage")));
+      }
+
+      function renderMealOrderColumns(sy, prefix = "") {
+        const reservationCounts = countTriple(sy?.reservationTicketed);
+        if (sy?.flightDate) {
+          setText(prefix ? "#meal-order-tab-tomorrow" : "#meal-order-tab-today", formatMealFlightDate(sy.flightDate));
+          if (!prefix) setText("#meal-order-tab-tomorrow", nextMealFlightDate(sy.flightDate));
+        }
+        let hasShortage = false;
+        ["F", "J", "Y"].forEach((cabin, index) => {
+          const key = cabin.toLowerCase();
+          const reservationElement = document.querySelector(`#${prefix}reservation-${key}`);
+          const orderedSpmlElement = document.querySelector(`#${prefix}meal-spml-${key}`);
+          const pdElement = document.querySelector(`#${prefix}meal-pd-${key}`);
+          const emailFound = Boolean(sy?.spml?.email?.found);
+          const orderedMeals = emailFound ? (sy.spml.email.countsByCabin?.[cabin] || (cabin === "Y" ? sy.spml.email.counts : {}) || {}) : {};
+          const pdMeals = sy?.spml?.preorderByCabin?.[cabin] || {};
+          const reservation = Number(reservationCounts[index]);
+          const ordered = Number(sy?.spml?.email?.cabinCounts?.[cabin]);
+          const orderedTotal = ordered + mealCountsTotal(orderedMeals);
+          setText(`#${prefix}reservation-${key}`, reservationCounts[index]);
+          setText(`#${prefix}meal-email-${key}`, emailFound ? (sy.spml.email.cabinCounts?.[cabin] ?? "-") : "-");
+          setText(`#${prefix}meal-spml-${key}`, mealCountsText(orderedMeals));
+          setText(`#${prefix}meal-pd-${key}`, mealCountsText(pdMeals));
+          reservationElement?.classList.remove("is-over", "is-under");
+          orderedSpmlElement?.classList.remove("is-mismatch");
+          pdElement?.classList.remove("is-mismatch");
+          if (emailFound && Number.isFinite(reservation)) {
+            if (orderedTotal >= reservation) reservationElement?.classList.add("is-over");
+            if (orderedTotal < reservation) {
+              reservationElement?.classList.add("is-under");
+              hasShortage = true;
+            }
+          }
+          if (!mealCountsMatch(orderedMeals, pdMeals)) {
+            orderedSpmlElement?.classList.add("is-mismatch");
+            pdElement?.classList.add("is-mismatch");
+            hasShortage = true;
+          }
+        });
+        const day = prefix ? "tomorrow" : "today";
+        document.querySelector(`#reservation-table-${day}`)?.classList.toggle("has-shortage", hasShortage);
+        document.querySelector(`#meal-order-tab-${day}`)?.classList.toggle("has-shortage", hasShortage);
+        updateMealOrderShellState();
+      }
+
+      function selectMealOrderDay(day) {
+        const selectedDay = day === "tomorrow" ? "tomorrow" : "today";
+        document.querySelectorAll("[data-meal-day]").forEach((tab) => tab.setAttribute("aria-selected", String(tab.dataset.mealDay === selectedDay)));
+        ["today", "tomorrow"].forEach((panelDay) => {
+          const panel = document.querySelector(`#reservation-table-${panelDay}`);
+          const active = panelDay === selectedDay;
+          panel?.classList.toggle("is-active", active);
+          if (panel) panel.hidden = !active;
+        });
+        updateMealOrderShellState();
+      }
+
+      async function refreshTomorrowMealOrder(todaySy) {
+        const flightNo = String(todaySy?.flightNo || "MU586").toUpperCase();
+        const requestKey = `${flightNo}|${todaySy?.flightDate || ""}`;
+        if (tomorrowMealRequestKey === requestKey) return;
+        tomorrowMealRequestKey = requestKey;
+        renderMealOrderColumns(null, "tomorrow-");
+        try {
+          const data = await fetchSearch(`SY+ ${flightNo}`);
+          if (tomorrowMealRequestKey !== requestKey || currentSy !== todaySy) return;
+          if (data?.sy) renderMealOrderColumns(data.sy, "tomorrow-");
+        } catch (_) {
+          if (tomorrowMealRequestKey === requestKey) renderMealOrderColumns(null, "tomorrow-");
+        }
       }
 
       function updateFlightFromSy(sy, options = {}) {
         const signature = syRenderSignature(sy);
-        if (options.skipUnchanged && signature && signature === lastSyRenderSignature) {
-          currentSy = sy;
-          return;
-        }
+        const unchanged = options.skipUnchanged && signature && signature === lastSyRenderSignature;
         lastSyRenderSignature = signature;
         const sameFlight = currentSy?.flightNo === sy?.flightNo && currentSy?.flightDate === sy?.flightDate;
         currentSy = sy;
@@ -5901,15 +6313,15 @@
         setText("#metric-std", sy.sd || "----");
         const reservationBookedEl = document.querySelector("#reservation-booked");
         if (reservationBookedEl) reservationBookedEl.innerHTML = tripleHtml(countTriple(sy.reservation));
-        document.querySelector("#reservation-et").textContent = countTriple(sy.reservationTicketed).join(" / ");
+        renderMealOrderColumns(sy);
         const checkinAcceptedEl = document.querySelector("#checkin-accepted");
         if (checkinAcceptedEl) checkinAcceptedEl.innerHTML = tripleHtml(countTriple(sy.checkedIn));
-        document.querySelector("#checkin-et").textContent = countTriple(sy.checkedInTicketed).join(" / ");
+        refreshTomorrowMealOrder(sy);
         const isClearLocked = (_key) => false;
         const chdIssues = isClearLocked("CHD") ? 0 : (sy.chdList || []).filter((row) => row.hasChdCode === false).length;
         const gov = sy.govAqq || {};
         const passBnSet = securityReviewPassBnSet(sy);
-        const govIssueGroups = [gov.duplicatePassports, gov.aqqTclBnList, gov.govDtaBnList, gov.passportExpBnList, gov.wrongPassportBnList, gov.missingApiBnList, gov.infApiBnList];
+        const govIssueGroups = [gov.duplicatePassports, gov.aqqTclBnList, gov.govDtaBnList, gov.passportExpBnList, gov.passportExpiringSoonBnList, govWrongPassportBnList(sy), gov.missingApiBnList, gov.infApiBnList];
         const govCount = isClearLocked("GOV") ? 0 : govIssueGroups.reduce((sum, value) => sum + unresolvedReviewedBnCount(value, passBnSet), 0);
         const webediCount = isClearLocked("WEBEDI") ? 0 : unresolvedReviewedBnCount(webEdiIssueBnList(sy), passBnSet);
         const nbrdRows = nbrdRowsWithAcknowledgements(sy);
@@ -5950,6 +6362,9 @@
         const persistedGreenNodes = completedSyNodeState(sy);
         nodes.forEach((node) => {
           const key = node.dataset.key;
+          // Missing Bag is driven by its own report endpoint. Do not let the
+          // recurring SY refresh replace its last result with a locked node.
+          if (key === "MISSING_BAG") return;
           const step = stepByKey(key);
           const persistedGreenNode = PERSISTENT_GREEN_NODE_KEYS.includes(key) ? persistedGreenNodes[key] : null;
           let issueCount = 0;
@@ -5960,7 +6375,7 @@
           if (["GD_CHECK", "NEXTDAY_INFO"].includes(key)) { started = Boolean(step?.searched || step?.complete || step?.time); complete = Boolean(step?.complete); time = complete ? (step?.time || (key === "GD_CHECK" ? "MATCH" : "SENT")) : (started ? (key === "GD_CHECK" ? "ISSUE" : "MISSING") : "----"); }
           if (key === "FSC") { const sync = fscRateSyncInfo(); started = Boolean(sync.rate || sync.reason || sync.error); complete = isFscRateSheetFilled(sync); time = sync.rate || "----"; }
           if (key === "CHD") { issueCount = chdIssues; started = (sy.chdList || []).length > 0; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
-          if (key === "GOV") { issueCount = govCount; started = Boolean(sy.govAqq) && previousStarted; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
+          if (key === "GOV") { issueCount = govCount; started = Boolean(sy.govAqq); complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
           if (key === "WEBEDI") { issueCount = webediCount; started = Boolean(sy.govAqq) && previousStarted; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
           if (key === "NBRD") { issueCount = unackedNbrdCount; started = nbrdCount > 0 && previousStarted; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
           if (persistedGreenNode?.complete) {
@@ -5979,10 +6394,23 @@
           previousStarted = previousStarted && (key === "FSC" ? true : started);
         });
         stopSyAutoRefreshWhenFinalNodesComplete();
-        resetTimelineCenter();
+        if (!unchanged) resetTimelineCenter();
         rerenderActiveRealtimePanel();
       }
 
+
+      function refreshOpenPassengerModal() {
+        const overlay = document.querySelector(".passenger-modal-backdrop[data-passenger-bn]");
+        if (!overlay || !currentSy) return;
+        const bn = normalizedBn(overlay.dataset.passengerBn || "");
+        const updatedRecord = allPassengerRecords(currentSy).find((row) => normalizedBn(row.bn || row.passengerRecord?.bn) === bn);
+        const modal = overlay.querySelector(".passenger-modal");
+        if (!updatedRecord || !modal) return;
+        const scrollTop = modal.scrollTop;
+        const title = overlay.dataset.passengerTitle || "Passenger Record";
+        modal.innerHTML = `<button class="panel-close" type="button" data-close-modal>×</button><div class="passenger-modal-mobile-title"><span>${escapeHtml(title)}</span><strong>BN${escapeHtml(String(updatedRecord.bn || bn || "---").replace(/^BN/i, ""))}</strong></div>${passengerRecordCard(updatedRecord, title)}`;
+        modal.scrollTop = scrollTop;
+      }
 
       function rerenderActiveRealtimePanel() {
         const title = resultPanel?.dataset?.panelTitle || "";
@@ -5990,6 +6418,8 @@
         else if (title === "GOV/AQQ") renderGovPanel();
         else if (title === "WEB/EDI/RS") renderWebEdiPanel();
         else if (title === "CKIN/NBRD") renderNbrdPanel();
+        else if (title === "WARNING") renderWarningPanel();
+        refreshOpenPassengerModal();
       }
 
       function renderSy(data) {
@@ -6000,7 +6430,7 @@
       }
 
       function isSyQuery(value) {
-        return /^SY\+?(?:\/\d{2}[A-Z]{3}(?:\d{2})?)?$/i.test(String(value || "").replace(/\s+/g, ""));
+        return /^SY\+?(?:\s+[A-Z]{2}\d{1,4}[A-Z]?)?(?:\/\d{2}[A-Z]{3}(?:\d{2})?)?$/i.test(String(value || "").trim());
       }
 
       const syMonthMap = {
@@ -6013,12 +6443,12 @@
       }
 
       function normalizeSyQuery(value) {
-        const normalized = String(value || "SY").replace(/\s+/g, "").toUpperCase();
+        const normalized = String(value || "SY").trim().replace(/\s+/g, " ").toUpperCase();
         return normalized === "SY+" ? "SY" : normalized;
       }
 
       function syQueryDateYmd(value) {
-        const match = normalizeSyQuery(value).match(/^SY\+?\/(\d{2})([A-Z]{3})(\d{0,2})$/);
+        const match = normalizeSyQuery(value).match(/^SY\+?(?:\s+[A-Z]{2}\d{1,4}[A-Z]?)?\/(\d{2})([A-Z]{3})(\d{0,2})$/);
         if (!match) return "";
         const month = syMonthMap[match[2]];
         if (month === undefined) return "";
@@ -6035,7 +6465,7 @@
 
       function isTodaySyQuery(value) {
         const normalized = normalizeSyQuery(value);
-        if (normalized === "SY") return true;
+        if (/^SY(?:\s+[A-Z]{2}\d{1,4}[A-Z]?)?$/.test(normalized)) return true;
         const queryYmd = syQueryDateYmd(normalized);
         return Boolean(queryYmd && queryYmd === ymdFromDate(new Date()));
       }
@@ -6053,25 +6483,27 @@
       }
 
       function stopSyAutoRefreshWhenFinalNodesComplete() {
-        if (finalTimelineNodesComplete()) stopSyAutoRefresh();
+        // Keep the home dashboard refreshing every 30 seconds even after final timeline nodes complete.
       }
 
       async function refreshSy({ silent = true, background = false } = {}) {
         if (document.hidden) return;
-        if (!isTodaySyQuery(activeSyQuery) || finalTimelineNodesComplete()) {
+        if (!isTodaySyQuery(activeSyQuery)) {
           stopSyAutoRefresh();
           return;
         }
         if (syAutoRefreshInFlight) return;
         syAutoRefreshAbortController?.abort();
         syAutoRefreshAbortController = new AbortController();
+        const refreshAbortController = syAutoRefreshAbortController;
+        const refreshTimeout = window.setTimeout(() => refreshAbortController.abort(), SY_REFRESH_TIMEOUT_MS);
         syAutoRefreshInFlight = true;
         const protectedView = isSyRefreshProtectedView();
         const showLoading = !currentSy && !protectedView;
         if (showLoading) setLoadingState(true);
         const refreshQuery = activeSyQuery || "SY";
         try {
-          const data = await fetchSearch(refreshQuery, { signal: syAutoRefreshAbortController.signal });
+          const data = await fetchSearch(refreshQuery, { signal: refreshAbortController.signal, realtime: true });
           if (refreshQuery !== activeSyQuery || !isTodaySyQuery(activeSyQuery)) return;
           if (!data?.sy) throw new Error(data?.error || "No SY payload returned.");
           if (isSyRefreshProtectedView()) {
@@ -6082,24 +6514,21 @@
           updateFlightFromSy(data.sy, { skipUnchanged: true });
         } catch (error) {
           if (error?.name === "AbortError") return;
-          if (refreshQuery === activeSyQuery && isTodaySyQuery(activeSyQuery) && !isSyRefreshProtectedView()) {
-            clearSyDashboard();
-            resultPanel.innerHTML = "";
-          }
           if (!silent) console.warn("Unable to load today's SY data.", error);
         } finally {
-          if (showLoading) setLoadingState(false);
+          window.clearTimeout(refreshTimeout);
+          if (showLoading && currentSy) setLoadingState(false);
           syAutoRefreshInFlight = false;
-          syAutoRefreshAbortController = null;
+          if (syAutoRefreshAbortController === refreshAbortController) syAutoRefreshAbortController = null;
         }
       }
 
       function startSyAutoRefresh(query = activeSyQuery, { immediate = true } = {}) {
         activeSyQuery = normalizeSyQuery(query || "SY");
         stopSyAutoRefresh();
-        if (!isTodaySyQuery(activeSyQuery) || finalTimelineNodesComplete()) return;
+        if (!isTodaySyQuery(activeSyQuery)) return;
         if (immediate) refreshSy({ background: true });
-        if (!document.hidden && !finalTimelineNodesComplete()) syAutoRefreshTimer = setInterval(refreshSy, SY_AUTO_REFRESH_MS);
+        if (!document.hidden) syAutoRefreshTimer = setInterval(refreshSy, SY_AUTO_REFRESH_MS);
       }
 
       function syncSyAutoRefreshWithVisibility() {
@@ -6107,7 +6536,7 @@
           stopSyAutoRefresh();
           return;
         }
-        if (isTodaySyQuery(activeSyQuery) && !finalTimelineNodesComplete() && !syAutoRefreshTimer) startSyAutoRefresh(activeSyQuery, { immediate: true });
+        if (isTodaySyQuery(activeSyQuery)) startSyAutoRefresh(activeSyQuery, { immediate: true });
       }
 
       async function searchPassenger() {
@@ -6126,7 +6555,7 @@
           if (data.sy || isSySearch) {
             renderSy(data);
             activeSyQuery = normalizeSyQuery(raw);
-            if (isTodaySyQuery(activeSyQuery)) startSyAutoRefresh(activeSyQuery, { immediate: false });
+            if (isTodaySyQuery(activeSyQuery)) startSyAutoRefresh(activeSyQuery, { immediate: true });
             else stopSyAutoRefresh();
           } else renderPassenger(data);
         } catch (error) {
@@ -6144,8 +6573,8 @@
       function renderChdPanel() {
         const rows = enrichRowsWithPassengerData(currentSy?.chdList || []);
         const missing = rows.filter((row) => row.hasChdCode === false).length;
-        const stats = `<div class="panel-stats"><span>Total ${rows.length}</span><span class="status-ok">OK ${rows.length - missing}</span><span class="status-fail">Missing CHD1/0 ${missing}</span></div>`;
-        renderPanel("CHD List", currentSy?.flightNo || "SY", `${stats}${renderBnButtons(rows, "No CHD passenger found.", (row) => `${passengerName(row)} ${row.hasChdCode ? "OK" : "Missing CHD1/0"}`, null, (row) => row.hasChdCode === false ? "is-missing" : "is-pass")}`);
+        const stats = `<div class="panel-stats"><span>Total ${rows.length}</span><span class="status-ok">OK ${rows.length - missing}</span><span class="status-fail">Missing CHD1/# ${missing}</span></div>`;
+        renderPanel("CHD List", currentSy?.flightNo || "SY", `${stats}${renderBnButtons(rows, "No CHD passenger found.", (row) => `${passengerName(row)} ${row.hasChdCode ? "OK" : "Missing CHD1/#"}`, null, (row) => row.hasChdCode === false ? "is-missing" : "is-pass")}`);
         setPanelPassengerRows(rows);
       }
 
@@ -6156,7 +6585,8 @@
           ["USA TIME OUT", (gov.aqqTclBnList || []).map((bn) => ({ bn, reason: "USA TIME OUT" }))],
           ["CHN GOV FAIL", (gov.govDtaBnList || []).map((bn) => ({ bn, reason: "CHN GOV FAIL" }))],
           ["Passport Exp", (gov.passportExpBnList || []).map((bn) => ({ bn, reason: "Passport Exp" }))],
-          ["Wrong Passport", (gov.wrongPassportBnList || []).map((bn) => ({ bn, reason: "Wrong Passport: passport number has fewer than 7 characters" }))],
+          ["Passport <3 Months", (gov.passportExpiringSoonBnList || []).map((bn) => ({ bn, reason: "Passport expires within 3 months" }))],
+          ["Wrong Passport", govWrongPassportBnList(currentSy).map((bn) => ({ bn, reason: "Wrong Passport: passport number has fewer than 7 characters" }))],
           ["Missing API", (gov.missingApiBnList || []).map((bn) => ({ bn, reason: "Missing API item" }))],
           ["INF API", (gov.infApiIssueDetails || gov.infApiBnList || []).map((item) => typeof item === "string" ? { bn: item, reason: "INF API not passed" } : item)],
         ];
@@ -6230,6 +6660,32 @@
           ...(passenger.specialMeals || []),
           ...(passenger.psmLines || []),
         ].join("/").toUpperCase();
+      }
+
+      function rowActiveServiceCodes(row) {
+        const passenger = row?.passengerRecord || {};
+        return [
+          ...(row?.specialServices || []),
+          ...(row?.codes || []),
+          ...(passenger.specialServices || []),
+          ...(passenger.codes || []),
+        ].join("/").toUpperCase();
+      }
+
+
+      function normalizedPassengerNameForCompare(value) {
+        return String(value || "").toUpperCase().replace(/[^A-Z]/g, "");
+      }
+
+      function infantDocumentMismatchReason(row) {
+        const passenger = row?.passengerRecord || {};
+        const hasInfant = row?.hasInfant || passenger.hasInfant || row?.infantTicketNo || passenger.infantTicketNo;
+        const age = Number(row?.ageYears ?? passenger.ageYears);
+        const paxListName = String(row?.paxListName || passenger.paxListName || "").trim().toUpperCase();
+        const adultName = String(passengerName(row) || passengerName(passenger) || "").trim().toUpperCase();
+        if (!hasInfant || !Number.isInteger(age) || age >= 2 || !paxListName || !adultName) return "";
+        if (normalizedPassengerNameForCompare(paxListName) === normalizedPassengerNameForCompare(adultName)) return "";
+        return `Adult passenger ${adultName} appears to have infant document/API data ${paxListName} (age ${age}). Please verify adult passport was swiped.`;
       }
 
       function hasTicket(row) {
@@ -6366,18 +6822,23 @@
         const rows = [];
         const addWarning = (row, type, reason) => rows.push({ ...row, warningType: type, warningReason: reason, _panelCard: "warning" });
         for (const row of warningRecordPools(sy)) {
-          if (isDeletedPassengerRecord(row)) continue;
+          if (isDeletedPassengerRecord(row) || hasUnknownPassengerName(row)) continue;
           const bn = normalizedBn(row.bn || row.passengerRecord?.bn);
           const seat = String(row.seat || row.passengerRecord?.seat || "").toUpperCase();
           const age = Number(row.ageYears ?? row.passengerRecord?.ageYears);
           const services = rowServices(row);
+          const activeServiceCodes = rowActiveServiceCodes(row);
           if (restrictedUnder15Seats.has(seat) && Number.isInteger(age) && age < 15) {
             addWarning(row, "EXIT/RESTRICTED SEAT", `${seat} passenger is under 15 by DOB/age (${age}).`);
           }
           if (hasKnownPassengerRecord(row) && !hasTicket(row)) {
             addWarning(row, "NO TICKET", "Passenger has no ticket number in the record.");
           }
-          if (/WCHC/.test(services)) {
+          const infantDocReason = infantDocumentMismatchReason(row);
+          if (infantDocReason) {
+            addWarning(row, "INF DOC", infantDocReason);
+          }
+          if (/WCHC/.test(activeServiceCodes)) {
             addWarning(row, "WCHC", "Passenger has WCHC wheelchair service.");
           }
           if (row.hasBadSeat || row.passengerRecord?.hasBadSeat) {
@@ -6472,6 +6933,18 @@
           { label: "Overnight", value: (row) => row.overnight ? "Yes" : "" },
         ], "No JCSY rows found."));
         setPanelPassengerRows([]);
+      }
+
+      function renderCheckinAgentPanel() {
+        const stats = currentSy?.checkinAgentStats || {};
+        const rows = Array.isArray(stats.agents) ? stats.agents : [];
+        const matched = Boolean(stats.matchesCheckin);
+        const summary = `<div class="panel-stats"><span class="${matched ? "status-pass" : "status-fail"}">Assigned total: ${escapeHtml(stats.total ?? 0)}</span><span>Check-In total: ${escapeHtml(stats.expectedTotal ?? 0)}</span><span>${matched ? "MATCH" : "NOT MATCHED"}</span></div>`;
+        renderPanel("Agent Check-In", currentSy?.flightNo || "SY", summary + rowsTable(rows, [
+          { label: "Agent", value: (row) => `AGT${row.agent}` },
+          { label: "TTL", value: (row) => row.count },
+          { label: "BNs", value: (row) => (row.bns || []).map((bn) => `BN${bn}`).join(", ") },
+        ], "No eligible agent check-ins found today."));
       }
 
       function renderPsmPanel() {
@@ -6615,7 +7088,7 @@
       }
 
       function setReportMode(mode, options = {}) {
-        activeReportMode = ["vip", "psm", "inad", "wch", "baggage", "salesDetails"].includes(mode) ? mode : "sales";
+        activeReportMode = ["vip", "spml", "psm", "inad", "wch", "missConnection", "baggage", "salesDetails"].includes(mode) ? mode : "sales";
         if (activeReportMode === "baggage") {
           if (options.forceToday) setReportDefaults(true);
         } else {
@@ -6635,13 +7108,16 @@
         reportForm?.classList.toggle("is-psm-mode", activeReportMode === "psm");
         reportForm?.classList.toggle("is-inad-mode", activeReportMode === "inad");
         reportForm?.classList.toggle("is-wch-mode", activeReportMode === "wch");
+        reportForm?.classList.toggle("is-miss-connection-mode", activeReportMode === "missConnection");
         reportForm?.classList.toggle("is-baggage-mode", activeReportMode === "baggage");
         reportSalesModeButton?.classList.toggle("is-active", activeReportMode === "sales");
         reportSalesDetailsModeButton?.classList.toggle("is-active", activeReportMode === "salesDetails");
         reportVipModeButton?.classList.toggle("is-active", activeReportMode === "vip");
+        reportSpmlModeButton?.classList.toggle("is-active", activeReportMode === "spml");
         reportPsmModeButton?.classList.toggle("is-active", activeReportMode === "psm");
         reportInadModeButton?.classList.toggle("is-active", activeReportMode === "inad");
         reportWchModeButton?.classList.toggle("is-active", activeReportMode === "wch");
+        reportMissConnectionModeButton?.classList.toggle("is-active", activeReportMode === "missConnection");
         reportBaggageModeButton?.classList.toggle("is-active", activeReportMode === "baggage");
         if (reportFromLabel) reportFromLabel.textContent = activeReportMode === "sales" ? "Date" : "From";
         const reportKeywordLabel = reportForm?.querySelector(".report-keyword-field span");
@@ -6650,21 +7126,26 @@
         const reportRunButton = reportForm?.querySelector(".report-run");
         if (reportRunButton) reportRunButton.textContent = activeReportMode === "sales" ? "Download" : "Search";
         if (reportDownloadButton) reportDownloadButton.hidden = activeReportMode === "sales" || activeReportMode === "baggage";
+        if (reportPdfDownloadButton) reportPdfDownloadButton.hidden = activeReportMode !== "psm";
         if (reportOutput && options.resetOutput) {
           reportOutput.innerHTML = activeReportMode === "vip"
             ? `<p class="panel-muted">Loading VIP Report...</p>`
+            : (activeReportMode === "spml"
+              ? `<p class="panel-muted">Loading SPML Report...</p>`
             : (activeReportMode === "inad"
               ? `<p class="panel-muted">Loading INAD Report...</p>`
+              : (activeReportMode === "missConnection"
+                ? `<p class="panel-muted">Loading Misconnection Report...</p>`
               : (activeReportMode === "baggage"
                 ? `<p class="panel-muted">Select a submit-date range, optionally enter a bag tag, then click Search.</p>`
-                : (["psm", "wch"].includes(activeReportMode)
-                  ? `<p class="panel-muted">Choose a flight date range, then search ${activeReportMode === "wch" ? "WCH" : "PSM"} Report.</p>`
+                : (["spml", "psm", "wch"].includes(activeReportMode)
+                  ? `<p class="panel-muted">Choose a flight date range, then search ${activeReportMode === "wch" ? "WCH Report" : (activeReportMode === "spml" ? "SPML Report" : "Authorization Report")}.</p>`
                   : (activeReportMode === "salesDetails"
                     ? `<p class="panel-muted">Choose a date range, then search Sales Details totals by Type.</p>`
-                    : `<p class="panel-muted">Choose a date, then download Sales Report.</p>`))));
+                    : `<p class="panel-muted">Choose a date, then download Sales Report.</p>`))))));
         }
         if (activeReportMode === "baggage") renderBaggageTimelineReport();
-        else if (["vip", "psm", "inad", "wch", "salesDetails"].includes(activeReportMode)) generateReport();
+        else if (["vip", "spml", "psm", "inad", "wch", "missConnection", "salesDetails"].includes(activeReportMode)) generateReport();
       }
 
       function resetPanelState() {
@@ -6885,7 +7366,7 @@
       }
 
       function renderTestUpdateForm(record, mode = "rush", message = "") {
-        const activeMode = ["rush", "location", "shipping"].includes(mode) ? mode : "rush";
+        const activeMode = ["rush", "location", "shipping", "exchange"].includes(mode) ? mode : "rush";
         const field = (label, name, value = "", attrs = "") => `<label class="test-field"><span>${escapeHtml(label)}</span><input name="${escapeHtml(name)}" value="${escapeHtml(value)}" ${attrs} /></label>`;
         const fields = activeMode === "rush"
           ? [
@@ -6897,7 +7378,9 @@
             ].join("")
           : activeMode === "location"
             ? field("Current location", "location", record.location || "", "required")
-            : [
+            : activeMode === "exchange"
+              ? `<div class="test-exchange-summary is-wide"><b>Current tag</b><span class="test-exchange-flow"><span class="test-exchange-old">${escapeHtml(record.bagTag)}</span><span class="test-exchange-arrow" aria-hidden="true">→<span class="test-exchange-arrow-label">Exchange</span></span><span class="test-exchange-new">New tag</span></span></div>${field("New tag number", "newTagNumber", "", 'maxlength="8" pattern="[A-Z]{2}[0-9]{6}" required')}`
+              : [
                 field("Tracking number", "trackingNumber", record.trackingNumber || "", "required"),
                 field("Shipping fee", "shippingFee", record.shippingFee || "", "required"),
               ].join("");
@@ -6906,6 +7389,7 @@
             <button type="button" data-test-update-mode="rush" class="${activeMode === "rush" ? "is-active" : ""}">Rush</button>
             <button type="button" data-test-update-mode="location" class="${activeMode === "location" ? "is-active" : ""}">Bag location update</button>
             <button type="button" data-test-update-mode="shipping" class="${activeMode === "shipping" ? "is-active" : ""}">Shipping</button>
+            <button type="button" data-test-update-mode="exchange" class="${activeMode === "exchange" ? "is-active" : ""}">Exchange</button>
           </div>
           <div class="test-form-grid">${fields}<div class="test-form-actions"><button class="test-submit" type="submit">Update</button><button class="test-back-button" type="button" data-test-close-update>Close</button><span class="panel-muted">${escapeHtml(message)}</span></div></div>
         </form>`;
@@ -6914,7 +7398,7 @@
       function renderTestRecord(record, mode = "", message = "") {
         if (!testOutput || !record) return;
         testOutput._record = record;
-        const showUpdateForm = ["rush", "location", "shipping"].includes(mode);
+        const showUpdateForm = ["rush", "location", "shipping", "exchange"].includes(mode);
         testOutput.innerHTML = `<article class="test-report-card">
           <div class="test-report-head">
             <div class="test-report-title"><strong>${escapeHtml(record.bagTag)}</strong><span class="panel-muted">${escapeHtml(record.direction || "Baggage report")}</span></div>
@@ -6927,20 +7411,60 @@
       }
 
       function testPlaneIcon(direction) {
-        return `<span class="test-choice-icon" aria-hidden="true">${direction === "inbound" ? "🛬" : "🛫"}</span>`;
+        return `<span class="test-choice-icon" aria-hidden="true">${direction === "inbound" ? "🛬" : direction === "outbound" ? "🛫" : "⇄"}</span>`;
       }
 
-      function renderTestAddChoice(bagTag) {
+      async function renderTestAddChoice(bagTag) {
         if (!testOutput) return;
+        const exchangeButton = `<button class="test-choice-card" type="button" data-test-create-mode="exchange">${testPlaneIcon("exchange")}<span>Exchange</span></button>`;
         testOutput._record = null;
         testOutput.innerHTML = `<article class="test-report-card">
           <div class="test-report-head"><div class="test-report-title"><strong>${escapeHtml(bagTag)}</strong><span class="panel-muted">No matching bag found.</span></div></div>
           <div class="test-choice-grid" aria-label="Create type">
             <button class="test-choice-card" type="button" data-test-create-mode="inbound">${testPlaneIcon("inbound")}<span>Inbound</span></button>
             <button class="test-choice-card" type="button" data-test-create-mode="outbound">${testPlaneIcon("outbound")}<span>Outbound</span></button>
+            ${exchangeButton}
           </div>
         </article>`;
         wireTestTimelineDrag();
+      }
+
+      function renderTestExchangeForm(newTag, rows = []) {
+        const openRows = rows.filter((row) => !row.resolvedAt);
+        const options = openRows.map((row) => `<option value="${escapeHtml(row.rowNumber)}">${escapeHtml(row.bagTag)} · ${escapeHtml(row.bagType || row.status || "On-hand")} · ${escapeHtml(row.location || "-")}</option>`).join("");
+        testOutput.innerHTML = `<article class="test-report-card">
+          <div class="test-report-head"><div class="test-report-title"><strong>${escapeHtml(newTag)}</strong><span class="panel-muted">Exchange with an existing Open On-hand bag.</span></div><div class="test-form-actions"><button class="test-back-button" type="button" data-test-back-choice>Back</button></div></div>
+          <form class="test-create-form" data-test-exchange-form>
+            <div class="test-form-grid">
+              <label class="test-field"><span>New tag number</span><input name="newTagNumber" value="${escapeHtml(newTag)}" readonly /></label>
+              <label class="test-field is-wide"><span>Select current Open On-hand</span><select name="onHandRowNumber" required ${openRows.length ? "" : "disabled"}><option value="">Select an On-hand tag</option>${options}</select></label>
+              ${openRows.length ? "" : '<p class="panel-muted status-fail">There are no Open On-hand cases available to exchange.</p>'}
+              <div class="test-form-actions"><button class="test-submit" type="submit" ${openRows.length ? "" : "disabled"}>Exchange</button><span class="panel-muted"></span></div>
+            </div>
+          </form>
+        </article>`;
+      }
+
+      async function openTestExchangeForm(newTag) {
+        testOutput.innerHTML = '<p class="panel-muted">Loading Open On-hand cases...</p>';
+        const data = await apiJson('/cbs-unresolved-baggage');
+        renderTestExchangeForm(newTag, data?.rows || []);
+      }
+
+      async function submitTestExchange(form) {
+        const newTagNumber = normalizeTestBagTag(formValue(form, "newTagNumber"));
+        const onHandRowNumber = formValue(form, "onHandRowNumber");
+        if (!isValidTestBagTag(newTagNumber)) throw new Error("New tag must match MU123456 format.");
+        if (!onHandRowNumber) throw new Error("Select an Open On-hand tag.");
+        const data = await apiJson(`/cbs-unresolved-baggage/${encodeURIComponent(onHandRowNumber)}/update`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action:"exchange", newTagNumber, updatedBy:currentUserName() }),
+        });
+        const exchange = data?.record?.exchangeHistory?.at(-1);
+        const baggage = await apiJson(`/test-baggage/${encodeURIComponent(newTagNumber)}`);
+        if (baggage?.record) return renderTestRecord(baggage.record, "", "Exchange completed.");
+        testOutput.innerHTML = `<article class="test-report-card"><div class="test-report-head"><div class="test-report-title"><strong>${escapeHtml(newTagNumber)}</strong><span class="panel-muted">Exchange completed.</span></div></div><div class="test-exchange-summary"><b>Exchange</b><span class="test-exchange-flow"><span class="test-exchange-old">${escapeHtml(exchange?.oldTag || "-")}</span><span class="test-exchange-arrow" aria-hidden="true">→<span class="test-exchange-arrow-label">Exchange</span></span><span class="test-exchange-new">${escapeHtml(newTagNumber)}</span></span></div></article>`;
       }
 
       function renderTestBagEntry(mode, entry = {}, index = 0) {
@@ -6952,9 +7476,9 @@
           return `<fieldset class="test-create-entry" data-test-bag-entry>
             <legend><span>Outbound bag</span></legend>
             <div class="test-form-grid">${bagTagInput}
-              <label class="test-field"><span>Outbound flight number</span><input name="flight" value="${escapeHtml(entry.flight || "MU586")}" required /></label>
               <label class="test-field"><span>Date</span><input name="date" type="date" value="${escapeHtml(entry.date || today)}" required /></label>
               <label class="test-field"><span>Type</span><select name="status" data-test-outbound-status required><option value="Not load bags"${selected(status, "Not load bags")}>Not load bags</option><option value="Outbound rush"${selected(status, "Outbound rush")}>Outbound rush</option><option value="Gate bag"${selected(status, "Gate bag")}>Gate bag</option></select></label>
+              <label class="test-field" data-test-outbound-location><span>Current location</span><input name="location" value="${escapeHtml(entry.location || "")}" list="test-location-options" /></label>
               <label class="test-field" data-test-rush-field hidden><span>Rush tag number</span><input name="rushTagNumber" value="${escapeHtml(entry.rushTagNumber || "")}" /></label>
               <label class="test-field" data-test-rush-field hidden><span>Rush To where?</span><input name="rushToWhere" value="${escapeHtml(entry.rushToWhere || "")}" /></label>
               <label class="test-field" data-test-rush-field hidden><span>AKE number?</span><input name="akeNumber" value="${escapeHtml(entry.akeNumber || "")}" /></label>
@@ -6968,7 +7492,6 @@
         return `<fieldset class="test-create-entry" data-test-bag-entry>
           <legend><span>Inbound bag</span></legend>
           <div class="test-form-grid">${bagTagInput}
-            <label class="test-field"><span>Inbound flight number</span><input name="flight" value="${escapeHtml(entry.flight || "MU583")}" required /></label>
             <label class="test-field"><span>Date</span><input name="date" type="date" value="${escapeHtml(entry.date || today)}" required /></label>
             <label class="test-field"><span>Bag type</span><select name="bagType" required><option${selected(bagType, "Passenger bag")}>Passenger bag</option><option${selected(bagType, "Inbound rush")}>Inbound rush</option><option${selected(bagType, "Co-mail")}>Co-mail</option></select></label>
             <label class="test-field"><span>Current location</span><input name="location" value="${escapeHtml(location)}" list="test-location-options" required /></label>
@@ -6977,9 +7500,10 @@
       }
 
       function collectCreateEntries(form) {
+        const mode = form.dataset.createMode;
         return [...form.querySelectorAll("[data-test-bag-entry]")].map((entry) => ({
           bagTag: normalizeTestBagTag(formValue(entry, "bagTag")),
-          flight: formValue(entry, "flight"),
+          flight: mode === "outbound" ? "MU586" : "MU583",
           date: formValue(entry, "date"),
           bagType: formValue(entry, "bagType"),
           location: formValue(entry, "location"),
@@ -6998,7 +7522,7 @@
         if (testOutput) testOutput._record = null;
         testOutput.innerHTML = `<article class="test-report-card">
           <div class="test-report-head"><div class="test-report-title"><strong>${escapeHtml(bagTag || "New bag")}</strong><span class="panel-muted">No matching bag found.</span></div><div class="test-form-actions"><button class="test-back-button" type="button" data-test-back-choice>Back</button></div></div>
-          <datalist id="test-location-options"><option value="Office"></option><option value="CBS"></option></datalist>
+          <datalist id="test-location-options"><option value="Office"></option><option value="Transfer"></option><option value="CBS"></option></datalist>
           <datalist id="test-outbound-comments">
             <option value="Expected"></option>
             <option value="Not Received"></option>
@@ -7015,9 +7539,10 @@
         testOutput.querySelectorAll("[data-test-bag-entry]").forEach((entry) => updateOutboundFields(entry));
       }
 
+      let testBagSearchPending = false;
       async function searchTestBag(event) {
         event?.preventDefault();
-        if (!testOutput) return;
+        if (!testOutput || testBagSearchPending) return;
         const bagTag = normalizeTestBagTag(testBagSearchInput?.value);
         if (!isValidTestBagTag(bagTag)) {
           testOutput.innerHTML = `<p class="panel-muted status-fail">Bag tag must match MU123456 format.</p>`;
@@ -7025,18 +7550,33 @@
         }
         if (testBagSearchInput) testBagSearchInput.value = bagTag;
         testOutput.innerHTML = `<p class="panel-muted">Searching ${escapeHtml(bagTag)}...</p>`;
+        const searchButton = testSearchForm?.querySelector('button[type="submit"]');
+        testBagSearchPending = true;
+        if (searchButton) searchButton.disabled = true;
         try {
           const data = await apiJson(`/test-baggage/${encodeURIComponent(bagTag)}`);
           if (data?.found && data.record) renderTestRecord(data.record);
-          else renderTestAddChoice(bagTag);
+          else await renderTestAddChoice(bagTag);
         } catch (error) {
           testOutput.innerHTML = `<p class="panel-muted status-fail">${escapeHtml(error?.message || "Baggage lookup failed.")}</p>`;
+        } finally {
+          testBagSearchPending = false;
+          if (searchButton) searchButton.disabled = false;
         }
       }
 
       function updateOutboundFields(scope) {
         const status = scope?.querySelector("[data-test-outbound-status]")?.value || "";
         const rushMode = status === "Outbound rush";
+        const locationField = scope?.querySelector("[data-test-outbound-location]");
+        const locationInput = locationField?.querySelector("input");
+        const needsLocation = status !== "Not load bags";
+        if (locationField) locationField.hidden = !needsLocation;
+        if (locationInput) {
+          locationInput.disabled = !needsLocation;
+          locationInput.required = needsLocation;
+          if (!needsLocation) locationInput.value = "";
+        }
         scope?.querySelectorAll("[data-test-rush-field]").forEach((field) => { field.hidden = !rushMode; });
         scope?.querySelectorAll("[data-test-rush-field] input").forEach((input) => { input.required = rushMode && input.name !== "worldTracerFileNumber"; });
       }
@@ -7060,7 +7600,7 @@
             flight: entry.flight,
             date: entry.date,
             bagType: mode === "inbound" ? entry.bagType : "",
-            location: mode === "inbound" ? entry.location : "",
+            location: entry.location,
             status: mode === "outbound" ? entry.status : "Bag location update",
             comment: mode === "outbound" ? entry.comment : "",
             rushTagNumber: isRush ? entry.rushTagNumber : "",
@@ -7082,6 +7622,21 @@
       async function submitTestUpdate(form) {
         const bagTag = form.dataset.bagTag;
         const mode = form.dataset.updateMode || "rush";
+        if (mode === "exchange") {
+          const newTagNumber = normalizeTestBagTag(formValue(form, "newTagNumber"));
+          if (!isValidTestBagTag(newTagNumber)) throw new Error("New tag must match MU123456 format.");
+          const unresolved = await apiJson('/cbs-unresolved-baggage');
+          const onHand = (unresolved?.rows || []).find((row) => !row.resolvedAt && normalizeTestBagTag(row.bagTag) === normalizeTestBagTag(bagTag));
+          if (!onHand) throw new Error("This bag does not have an Open On-hand case.");
+          await apiJson(`/cbs-unresolved-baggage/${encodeURIComponent(onHand.rowNumber)}/update`, {
+            method:"POST",
+            headers:{ "Content-Type":"application/json" },
+            body:JSON.stringify({ action:"exchange", newTagNumber, updatedBy:currentUserName() }),
+          });
+          const baggage = await apiJson(`/test-baggage/${encodeURIComponent(newTagNumber)}`);
+          if (baggage?.record) renderTestRecord(baggage.record, "", "Exchange completed.");
+          return;
+        }
         const payload = {
           type: mode,
           updatedBy: currentUserName(),
@@ -7144,6 +7699,13 @@
         reportDownloadButton._fileName = fileName;
       }
 
+      function setAuthorizationReportPdf(rows, fileName) {
+        if (!reportPdfDownloadButton) return;
+        reportPdfDownloadButton.disabled = !rows.length;
+        reportPdfDownloadButton._rows = rows;
+        reportPdfDownloadButton._fileName = fileName;
+      }
+
       function downloadCurrentReportCsv() {
         const csv = reportDownloadButton?._csv || "";
         if (!csv) return;
@@ -7152,6 +7714,185 @@
         const link = document.createElement("a");
         link.href = url;
         link.download = reportDownloadButton._fileName || "report.csv";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+      }
+
+      function pdfText(value) {
+        return String(value ?? "")
+          .normalize("NFKD")
+          .replace(/[^\x20-\x7e]/g, "?")
+          .replace(/([\\()])/g, "\\$1");
+      }
+
+      function authorizationReportPdf(rows) {
+        const title = "China Eastern Airlines LAX Authorization Report";
+        const pageWidth = 792;
+        const pageHeight = 612;
+        const margin = 36;
+        const tableTop = 482;
+        const tableBottom = 68;
+        const columns = [
+          { label: "FLIGHT DATE", width: 70, value: (row) => row.displayDate || row.flightDate || row.date || "-" },
+          { label: "FLIGHT", width: 48, value: (row) => row.flightNo || "-" },
+          { label: "PASSENGER NAME", width: 126, value: (row) => row.passenger || "-" },
+          { label: "BN", width: 32, value: (row) => row.bn || "-" },
+          { label: "SEAT", width: 38, value: (row) => row.seat || "-" },
+          { label: "BAGS", width: 82, value: (row) => row.bags || "-" },
+          { label: "DETAIL", width: 154, value: (row) => row.detail || "-" },
+          { label: "REMARK", width: 170, value: (row) => row._pdfRemark || "-" },
+        ];
+        const tableWidth = columns.reduce((total, column) => total + column.width, 0);
+        const pages = [];
+        const upgrades = rows.filter((row) => /^INVOLUNTARY UPGRADE$/i.test(String(row.type || "").trim()) || /^INVOLUNTARY UPGRADE\b/i.test(String(row.detail || "").trim()));
+        const groups = [
+          { label: "INVOLUNTARY UPGRADE", rows: upgrades },
+          { label: "PSM / MSG", rows: rows.filter((row) => !upgrades.includes(row)) },
+        ].filter((group) => group.rows.length);
+
+        rows.forEach((row) => {
+          const encodedKey = encodeURIComponent(row.key || "");
+          const remarkInput = row.key ? reportOutput?.querySelector(`[data-authorization-remark="${encodedKey}"]`) : null;
+          row._pdfRemark = remarkInput?.value ?? row.remark ?? "";
+        });
+
+        const cleanText = (value) => String(value ?? "").normalize("NFKD").replace(/[^\x20-\x7e]/g, "?").trim();
+        const wrapText = (value, width) => {
+          const text = cleanText(value) || "-";
+          const maxChars = Math.max(4, Math.floor((width - 10) / 4.15));
+          const words = text.split(/\s+/);
+          const output = [];
+          let line = "";
+          words.forEach((word) => {
+            while (word.length > maxChars) {
+              if (line) { output.push(line); line = ""; }
+              output.push(word.slice(0, maxChars));
+              word = word.slice(maxChars);
+            }
+            const candidate = line ? `${line} ${word}` : word;
+            if (candidate.length > maxChars && line) {
+              output.push(line);
+              line = word;
+            } else {
+              line = candidate;
+            }
+          });
+          if (line) output.push(line);
+          return output.slice(0, 5);
+        };
+        const textCommand = (text, x, y, size = 7, font = "F1", color = "0.12 0.17 0.24") =>
+          `BT /${font} ${size} Tf ${color} rg ${x} ${y} Td (${pdfText(text)}) Tj ET`;
+        const fillRect = (x, y, width, height, color) => `q ${color} rg ${x} ${y} ${width} ${height} re f Q`;
+        const strokeRect = (x, y, width, height, color = "0.82 0.86 0.91", lineWidth = 0.5) =>
+          `q ${color} RG ${lineWidth} w ${x} ${y} ${width} ${height} re S Q`;
+
+        const newPage = () => {
+          const commands = [
+            fillRect(0, pageHeight - 82, pageWidth, 82, "0.035 0.15 0.29"),
+            fillRect(0, pageHeight - 86, pageWidth, 4, "0.82 0.08 0.16"),
+            textCommand(title, margin, 566, 13, "F2", "1 1 1"),
+            textCommand(`REPORT PERIOD  ${reportFromInput?.value || "-"}  TO  ${reportToInput?.value || reportFromInput?.value || "-"}`, margin, 510, 7, "F2", "0.35 0.42 0.50"),
+            fillRect(margin, 496, tableWidth, 1.5, "0.82 0.08 0.16"),
+          ];
+          let x = margin;
+          commands.push(fillRect(margin, tableTop - 22, tableWidth, 22, "0.08 0.25 0.43"));
+          columns.forEach((column) => {
+            commands.push(textCommand(column.label, x + 5, tableTop - 14, 6.3, "F2", "1 1 1"));
+            x += column.width;
+          });
+          const page = { commands, y: tableTop - 22, rowIndex: 0 };
+          pages.push(page);
+          return page;
+        };
+
+        let page = newPage();
+        const addGroupHeading = (label) => {
+          if (page.y - 25 < tableBottom) page = newPage();
+          page.commands.push(fillRect(margin, page.y - 25, tableWidth, 25, "0.90 0.94 0.98"));
+          page.commands.push(textCommand(label, margin + 8, page.y - 16, 8, "F2", "0.035 0.15 0.29"));
+          page.y -= 25;
+        };
+        groups.forEach((group) => {
+          addGroupHeading(group.label);
+          group.rows.forEach((row) => {
+            const cellLines = columns.map((column) => wrapText(column.value(row), column.width));
+            const rowHeight = Math.max(25, 10 + Math.max(...cellLines.map((lines) => lines.length)) * 9);
+            if (page.y - rowHeight < tableBottom) {
+              page = newPage();
+              addGroupHeading(`${group.label}  (CONTINUED)`);
+            }
+            const rowBottom = page.y - rowHeight;
+            if (page.rowIndex % 2) page.commands.push(fillRect(margin, rowBottom, tableWidth, rowHeight, "0.965 0.975 0.985"));
+            page.commands.push(strokeRect(margin, rowBottom, tableWidth, rowHeight));
+            let x = margin;
+            columns.forEach((column, columnIndex) => {
+              if (columnIndex) page.commands.push(`q 0.86 0.89 0.93 RG 0.4 w ${x} ${rowBottom} m ${x} ${page.y} l S Q`);
+              cellLines[columnIndex].forEach((line, lineIndex) => {
+                page.commands.push(textCommand(line, x + 5, page.y - 14 - (lineIndex * 9), 6.8));
+              });
+              x += column.width;
+            });
+            page.y = rowBottom;
+            page.rowIndex += 1;
+          });
+        });
+
+        const signatureHeight = 50;
+        if (page.y - signatureHeight < tableBottom) page = newPage();
+        const signatureY = page.y - 39;
+        page.commands.push(textCommand("STATION MANAGER APPROVAL", margin, signatureY + 25, 7, "F2", "0.35 0.42 0.50"));
+        page.commands.push(`q 0.18 0.25 0.34 RG 0.8 w ${margin} ${signatureY} m ${margin + 260} ${signatureY} l S Q`);
+        page.commands.push(textCommand("Station Manager Signature", margin, signatureY - 12, 7, "F1", "0.35 0.42 0.50"));
+        page.commands.push(`q 0.18 0.25 0.34 RG 0.8 w ${margin + 310} ${signatureY} m ${margin + 470} ${signatureY} l S Q`);
+        page.commands.push(textCommand("Date", margin + 310, signatureY - 12, 7, "F1", "0.35 0.42 0.50"));
+
+        pages.forEach((currentPage, index) => {
+          currentPage.commands.push(fillRect(0, 0, pageWidth, 34, "0.035 0.15 0.29"));
+          currentPage.commands.push(textCommand("China Eastern Airlines  |  LAX Authorization Report", margin, 13, 6.5, "F1", "0.78 0.85 0.92"));
+          currentPage.commands.push(textCommand(`PAGE ${index + 1} OF ${pages.length}`, pageWidth - margin - 58, 13, 6.5, "F2", "1 1 1"));
+        });
+
+        const objects = [
+          "",
+          "",
+          "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+          "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>",
+        ];
+        const pageIds = [];
+        pages.forEach((currentPage) => {
+          const pageId = objects.length + 1;
+          const contentId = pageId + 1;
+          const stream = currentPage.commands.join("\n");
+          pageIds.push(pageId);
+          objects.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${contentId} 0 R >>`);
+          objects.push(`<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`);
+        });
+        objects[0] = "<< /Type /Catalog /Pages 2 0 R >>";
+        objects[1] = `<< /Type /Pages /Kids [${pageIds.map((id) => `${id} 0 R`).join(" ")}] /Count ${pageIds.length} >>`;
+
+        let pdf = "%PDF-1.4\n";
+        const offsets = [0];
+        objects.forEach((object, index) => {
+          offsets[index + 1] = pdf.length;
+          pdf += `${index + 1} 0 obj\n${object}\nendobj\n`;
+        });
+        const xref = pdf.length;
+        pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+        offsets.slice(1).forEach((offset) => { pdf += `${String(offset).padStart(10, "0")} 00000 n \n`; });
+        pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+        return pdf;
+      }
+
+      function downloadAuthorizationReportPdf() {
+        const rows = reportPdfDownloadButton?._rows || [];
+        if (!rows.length) return;
+        const blob = new Blob([authorizationReportPdf([...rows])], { type: "application/pdf" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = reportPdfDownloadButton._fileName || "authorization-report.pdf";
         document.body.appendChild(link);
         link.click();
         link.remove();
@@ -7235,6 +7976,11 @@
         return data?.rows || [];
       }
 
+      async function spmlReportRows(from, to) {
+        const data = await apiJson(`/spml-report?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+        return data?.rows || [];
+      }
+
       async function inadReportRows() {
         const data = await apiJson("/inad-report");
         return data?.rows || [];
@@ -7242,6 +7988,11 @@
 
       async function wchReportRows(from, to) {
         const data = await apiJson(`/wch-report?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+        return data?.rows || [];
+      }
+
+      async function missConnectionReportRows() {
+        const data = await apiJson('/miss-connection-report');
         return data?.rows || [];
       }
 
@@ -7380,7 +8131,7 @@
           await renderBaggageTimelineReport();
           return;
         }
-        const type = ["vip", "psm", "inad", "wch", "salesDetails"].includes(activeReportMode) ? activeReportMode : "sales";
+        const type = ["vip", "spml", "psm", "inad", "wch", "missConnection", "salesDetails"].includes(activeReportMode) ? activeReportMode : "sales";
         const today = ymdFromDate(new Date());
         const from = reportFromInput?.value || today;
         const keyword = type === "vip" ? (reportKeywordInput?.value || "") : "";
@@ -7389,27 +8140,38 @@
         try {
           dates = type === "sales" ? [from] : [];
           if (type === "sales" && !from) throw new Error("Please select a valid date.");
-          if (type === "psm" || type === "wch" || type === "salesDetails") reportDateRange(from, to);
+          if (type === "spml" || type === "psm" || type === "wch" || type === "salesDetails") reportDateRange(from, to);
         } catch (error) {
           reportOutput.innerHTML = `<p class="panel-muted status-fail">${escapeHtml(error.message)}</p>`;
           setReportCsv([], "report.csv");
+          setAuthorizationReportPdf([], "authorization-report.pdf");
           return;
         }
         reportOutput.innerHTML = type === "sales"
           ? `<p class="panel-muted">Checking Sales Report for ${escapeHtml(from)}...</p>`
           : (type === "salesDetails"
             ? `<p class="panel-muted">Loading Sales Details for ${escapeHtml(from)}${from === to ? "" : ` to ${escapeHtml(to)}`}...</p>`
+            : (type === "spml"
+              ? `<p class="panel-muted">Loading SPML Report for ${escapeHtml(from)}${from === to ? "" : ` to ${escapeHtml(to)}`}...</p>`
             : (type === "psm"
-            ? `<p class="panel-muted">Loading PSM Report for ${escapeHtml(from)}${from === to ? "" : ` to ${escapeHtml(to)}`}...</p>`
+            ? `<p class="panel-muted">Loading Authorization Report for ${escapeHtml(from)}${from === to ? "" : ` to ${escapeHtml(to)}`}...</p>`
             : (type === "wch"
               ? `<p class="panel-muted">Loading WCH Report for ${escapeHtml(from)}${from === to ? "" : ` to ${escapeHtml(to)}`}...</p>`
-              : (type === "inad" ? `<p class="panel-muted">Loading INAD Report...</p>` : `<p class="panel-muted">Loading VIP Report...</p>`))));
+              : (type === "inad" ? `<p class="panel-muted">Loading INAD Report...</p>` : (type === "missConnection" ? `<p class="panel-muted">Loading Misconnection Report...</p>` : `<p class="panel-muted">Loading VIP Report...</p>`))))));
         setReportCsv([], "report.csv");
+        setAuthorizationReportPdf([], "authorization-report.pdf");
         const rows = [];
         const errors = [];
         if (type === "vip") {
           try {
             rows.push(...await vipReportRows(keyword));
+          } catch (error) {
+            errors.push(error.message);
+          }
+        } else if (type === "spml") {
+          try {
+            const needle = String(reportKeywordInput?.value || "").trim().toUpperCase();
+            rows.push(...(await spmlReportRows(from, to)).filter((row) => !needle || Object.values(row || {}).some((value) => String(value || "").toUpperCase().includes(needle))));
           } catch (error) {
             errors.push(error.message);
           }
@@ -7428,6 +8190,13 @@
         } else if (type === "wch") {
           try {
             rows.push(...await wchReportRows(from, to));
+          } catch (error) {
+            errors.push(error.message);
+          }
+        } else if (type === "missConnection") {
+          try {
+            const submissions = await missConnectionReportRows();
+            rows.push(...submissions.map((row) => ({ date: row.date, name: row.name, seatNumber: row.seatNumber, ticketNumber: row.ticketNumber, phone: row.phone })));
           } catch (error) {
             errors.push(error.message);
           }
@@ -7471,16 +8240,18 @@
             { label: "Seat", value: (row) => row.seat },
             { label: "Bags", value: (row) => row.bags },
           ], "No VIP passengers found.");
-        } else if (type === "psm") {
+        } else if (type === "spml") {
           tableHtml = rowsTable(rows, [
-            { label: "Flight Date", value: (row) => row.displayDate || row.flightDate || row.date },
-            { label: "Flight #", value: (row) => row.flightNo },
-            { label: "Passenger Name", value: (row) => row.passenger },
+            { label: "Date", value: (row) => row.date },
+            { label: "Flight", value: (row) => row.flightNo },
+            { label: "Passenger", value: (row) => row.passenger },
             { label: "BN", value: (row) => row.bn },
             { label: "Seat", value: (row) => row.seat },
-            { label: "BAGS", value: (row) => row.bags },
-            { label: "Detail", value: (row) => row.detail },
-          ], "No PSM/MSG rows found.");
+            { label: "SPML", value: (row) => row.meal },
+            { label: "Status", value: (row) => row.status || (row.confirmed ? "HK1" : "") },
+          ], "No SPML passengers found.");
+        } else if (type === "psm") {
+          tableHtml = authorizationReportTable(rows);
         } else if (type === "inad") {
           tableHtml = rowsTable(rows, [
             { label: "Date", value: (row) => row.displayDate || row.date },
@@ -7502,6 +8273,14 @@
             { label: "Seat", value: (row) => row.seat },
             { label: "WCH Type", value: (row) => row.wheelchairType },
           ], "No WCH rows found.");
+        } else if (type === "missConnection") {
+          tableHtml = rowsTable(rows, [
+            { label: "Date", value: (row) => row.date },
+            { label: "Passenger Name", value: (row) => row.name },
+            { label: "Seat", value: (row) => row.seatNumber },
+            { label: "Passport Number", value: (row) => row.ticketNumber },
+            { label: "Mobile Number", value: (row) => row.phone },
+          ], "No misconnection submissions found.");
         }
         const errorHtml = errors.length ? `<p class="panel-muted status-warn">${escapeHtml(errors.join(" | "))}</p>` : "";
         reportOutput.innerHTML = `${errorHtml}${tableHtml}`;
@@ -7509,11 +8288,17 @@
           sales: `sales-report-${from}.csv`,
           salesDetails: `sales-details-${from}${from === to ? "" : `-to-${to}`}.csv`,
           vip: "vip-report.csv",
-          psm: `psm-report-${from}${from === to ? "" : `-to-${to}`}.csv`,
+          spml: `spml-report-${from}${from === to ? "" : `-to-${to}`}.csv`,
+          psm: `authorization-report-${from}${from === to ? "" : `-to-${to}`}.csv`,
           inad: "inad-report.csv",
           wch: `wch-report-${from}${from === to ? "" : `-to-${to}`}.csv`,
+          missConnection: "miss-connection-report.csv",
         };
         setReportCsv(type === "sales" ? rows.filter((row) => row.downloadUrl) : rows, reportFileNames[type] || "report.csv");
+        setAuthorizationReportPdf(
+          type === "psm" ? rows : [],
+          `authorization-report-${from}${from === to ? "" : `-to-${to}`}.pdf`,
+        );
       }
 
       function reviewPath() {
@@ -7774,10 +8559,12 @@
         }
       });
 
-      logoutButton.addEventListener("click", async () => {
-        if (auth) await auth.signOut();
-        window.location.href = loginUrl();
-      });
+      async function logoutToLogin() {
+        await returnToLogin();
+      }
+
+      logoutButton.addEventListener("click", logoutToLogin);
+      mobileLogoutButton?.addEventListener("click", logoutToLogin);
 
       flightMenuButton.addEventListener("click", () => {
         const open = flightMenuButton.getAttribute("aria-expanded") === "true";
@@ -7790,6 +8577,16 @@
       flightMenu.addEventListener("click", (event) => {
         if (event.target.closest("button")) closeFlightMenu();
       });
+
+      function openFlightDashboard(flightNo) {
+        const query = `SY ${flightNo}`;
+        queryInput.value = query;
+        mobileQueryInput.value = query;
+        searchPassenger();
+      }
+
+      normalFlightButton?.addEventListener("click", () => openFlightDashboard("MU586"));
+      delayedFlightButton?.addEventListener("click", () => openFlightDashboard("MU9586"));
 
       document.addEventListener("click", (event) => {
         if (!event.target.closest(".flight-tools")) closeFlightMenu();
@@ -7807,6 +8604,10 @@
         node.addEventListener("click", (event) => {
           event.preventDefault();
           didDrag = false;
+          if (node.dataset.key === "MISSING_BAG") {
+            window.location.href = "cbs.html?section=missing";
+            return;
+          }
           if (node.dataset.clearLocked === "true") return;
           resetTimelineCenter(node.dataset.key);
           if (node.dataset.key === "NEXTDAY_INFO") {
@@ -7836,7 +8637,6 @@
         });
       });
 
-
       homeNavLink.addEventListener("click", (event) => { event.preventDefault(); showHomePage(); });
       bagReportButton?.addEventListener("click", closeFlightMenuAfterAction(renderBagReport));
       salesReportButton?.addEventListener("click", closeFlightMenuAfterAction(downloadSalesReport));
@@ -7855,6 +8655,12 @@
       testOutput?.addEventListener("click", (event) => {
         const createModeButton = event.target.closest("[data-test-create-mode]");
         if (createModeButton) {
+          if (createModeButton.dataset.testCreateMode === "exchange") {
+            openTestExchangeForm(normalizeTestBagTag(testBagSearchInput?.value)).catch((error) => {
+              testOutput.innerHTML = `<p class="panel-muted status-fail">${escapeHtml(error?.message || "Open On-hand lookup failed.")}</p>`;
+            });
+            return;
+          }
           const form = testOutput.querySelector("[data-test-create-form]");
           const entries = form ? collectCreateEntries(form) : [{ bagTag: normalizeTestBagTag(testBagSearchInput?.value) }];
           renderTestAddForm(entries[0]?.bagTag || normalizeTestBagTag(testBagSearchInput?.value), createModeButton.dataset.testCreateMode, entries);
@@ -7862,7 +8668,9 @@
         }
         const backChoiceButton = event.target.closest("[data-test-back-choice]");
         if (backChoiceButton) {
-          renderTestAddChoice(normalizeTestBagTag(testBagSearchInput?.value));
+          renderTestAddChoice(normalizeTestBagTag(testBagSearchInput?.value)).catch((error) => {
+            testOutput.innerHTML = `<p class="panel-muted status-fail">${escapeHtml(error?.message || "Open On-hand lookup failed.")}</p>`;
+          });
           return;
         }
         const closeUpdateButton = event.target.closest("[data-test-close-update]");
@@ -7892,13 +8700,15 @@
       testOutput?.addEventListener("submit", async (event) => {
         const createForm = event.target.closest("[data-test-create-form]");
         const updateForm = event.target.closest("[data-test-update-form]");
-        if (!createForm && !updateForm) return;
+        const exchangeForm = event.target.closest("[data-test-exchange-form]");
+        if (!createForm && !updateForm && !exchangeForm) return;
         event.preventDefault();
-        const form = createForm || updateForm;
+        const form = createForm || updateForm || exchangeForm;
         const statusEl = form.querySelector(".test-form-actions .panel-muted");
-        if (statusEl) statusEl.textContent = createForm ? "Saving..." : "Updating...";
+        if (statusEl) statusEl.textContent = exchangeForm ? "Exchanging..." : createForm ? "Saving..." : "Updating...";
         try {
-          if (createForm) await submitTestCreate(createForm);
+          if (exchangeForm) await submitTestExchange(exchangeForm);
+          else if (createForm) await submitTestCreate(createForm);
           else await submitTestUpdate(updateForm);
         } catch (error) {
           if (statusEl) statusEl.textContent = error?.message || "Save failed.";
@@ -7944,16 +8754,49 @@
         }
       });
 
+      const authorizationRemarkTimers = new WeakMap();
+      reportOutput?.addEventListener("input", (event) => {
+        const input = event.target.closest("[data-authorization-remark]");
+        if (!input) return;
+        clearTimeout(authorizationRemarkTimers.get(input));
+        input.classList.remove("is-save-error");
+        input.classList.add("is-saving");
+        authorizationRemarkTimers.set(input, setTimeout(async () => {
+          try {
+            await apiJson("/psm-report/remark", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                key: decodeURIComponent(input.dataset.authorizationRemark || ""),
+                remark: input.value,
+              }),
+            });
+            input.classList.remove("is-saving", "is-save-error");
+            input.title = "Saved";
+          } catch (error) {
+            input.classList.remove("is-saving");
+            input.classList.add("is-save-error");
+            input.title = error?.message || "Remark save failed";
+          }
+        }, 600));
+      });
+
       reportSalesModeButton?.addEventListener("click", () => setReportMode("sales", { forceToday: true, resetOutput: true }));
       reportSalesDetailsModeButton?.addEventListener("click", () => setReportMode("salesDetails", { forceToday: true, resetOutput: true }));
       reportVipModeButton?.addEventListener("click", () => setReportMode("vip", { forceToday: true, resetOutput: true }));
+      reportSpmlModeButton?.addEventListener("click", () => setReportMode("spml", { forceToday: true, resetOutput: true }));
       reportPsmModeButton?.addEventListener("click", () => setReportMode("psm", { forceToday: true, resetOutput: true }));
       reportInadModeButton?.addEventListener("click", () => setReportMode("inad", { forceToday: true, resetOutput: true }));
       reportWchModeButton?.addEventListener("click", () => setReportMode("wch", { forceToday: true, resetOutput: true }));
+      reportMissConnectionModeButton?.addEventListener("click", () => setReportMode("missConnection", { resetOutput: true }));
       reportBaggageModeButton?.addEventListener("click", () => { setReportMode("baggage", { resetOutput: true }); renderBaggageTimelineReport({ latestOnly: true }); });
       reportForm.addEventListener("submit", generateReport);
       reportDownloadButton.addEventListener("click", downloadCurrentReportCsv);
+      reportPdfDownloadButton?.addEventListener("click", downloadAuthorizationReportPdf);
       securityCheckButton?.addEventListener("click", closeFlightMenuAfterAction(renderSecurityCheck));
+      document.querySelectorAll("[data-meal-day]").forEach((tab) => {
+        tab.addEventListener("click", () => selectMealOrderDay(tab.dataset.mealDay));
+      });
       seatMapButton.addEventListener("click", closeFlightMenuAfterAction(renderSeatMap));
 
       mobilePanel.addEventListener("click", (event) => {
@@ -8125,12 +8968,9 @@
             window.location.replace(loginUrl());
             return;
           }
-          if (isAuthSessionExpired()) {
-            returnToLogin();
-            return;
-          }
           currentUser.textContent = user.email || "Authenticated user";
           startInactivityWatch();
+          refreshMissingBagNode();
           queryInput.value = "SY";
           mobileQueryInput.value = "SY";
           startSyAutoRefresh();
@@ -8139,6 +8979,13 @@
 
       resetTimelineCenter();
       document.addEventListener("visibilitychange", syncSyAutoRefreshWithVisibility);
+      window.addEventListener("pageshow", applyStoredMissingBagStatus);
+      window.addEventListener("storage", (event) => {
+        if (event.key === MISSING_BAG_STATUS_STORAGE_KEY) applyStoredMissingBagStatus();
+      });
+      window.addEventListener("focus", () => {
+        if (isTodaySyQuery(activeSyQuery) && !syAutoRefreshInFlight) refreshSy({ background: true });
+      });
       window.addEventListener("pagehide", stopSyAutoRefresh);
       mobileOrbitQuery.addEventListener("change", () => resetTimelineCenter(nodes[selectedIndex]?.dataset?.key));
       new ResizeObserver(() => placeNodes()).observe(timelineShell);
