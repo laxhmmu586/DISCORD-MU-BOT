@@ -3421,6 +3421,10 @@ app.post('/test-baggage', async (req, res) => {
     return res.status(result.created ? 201 : 200).json(result);
   } catch (err) {
     console.error('Test baggage create error:', err);
+    if (err?.code === 429 || /quota exceeded|rate limit/i.test(String(err?.message || ''))) {
+      res.set('Retry-After', '60');
+      return res.status(429).json({ error: 'Google Sheets is temporarily busy. Please wait 60 seconds and submit again.' });
+    }
     return res.status(500).json({ error: err?.message || 'Baggage save failed' });
   }
 });

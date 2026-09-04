@@ -412,10 +412,25 @@ test('Not load bags hides and disables Current location', () => {
   assert.match(page, /locationInput\.disabled = !needsLocation/);
 });
 
+test('home Baggage search avoids duplicate requests and repeated submissions', () => {
+  assert.match(indexPage, /let testBagSearchPending = false/);
+  assert.match(indexPage, /if \(!testOutput \|\| testBagSearchPending\) return/);
+  assert.match(indexPage, /const data = await apiJson\(`\/test-baggage\/\$\{encodeURIComponent\(bagTag\)\}`\)/);
+  const searchBody = indexPage.match(/async function searchTestBag\(event\) \{([\s\S]*?)\n      \}/)?.[1] || '';
+  assert.doesNotMatch(searchBody, /cbs-unresolved-baggage/);
+  assert.match(searchBody, /searchButton\.disabled = true/);
+  assert.match(searchBody, /searchButton\.disabled = false/);
+});
+
+test('Baggage creation returns a clear retry response for Sheets quota limits', () => {
+  assert.match(server, /err\?\.code === 429 \|\| \/quota exceeded\|rate limit\/i/);
+  assert.match(server, /res\.set\('Retry-After', '60'\)/);
+  assert.match(server, /Google Sheets is temporarily busy\. Please wait 60 seconds and submit again\./);
+});
+
 test('home Baggage Update menu supports Exchange', () => {
   assert.match(indexPage, /data-test-update-mode="exchange"/);
-  assert.match(indexPage, /window\._testHasOpenOnHand \? `<button type="button" data-test-update-mode="exchange"/);
-  assert.match(indexPage, /window\._testHasOpenOnHand = \(onHandData\?\.rows \|\| \[\]\)\.some/);
+  assert.match(indexPage, /<button type="button" data-test-update-mode="exchange" class="\$\{activeMode === "exchange"/);
   assert.match(indexPage, /activeMode === "exchange"/);
   assert.match(indexPage, /field\("New tag number", "newTagNumber"/);
   assert.match(indexPage, /test-exchange-old.*record\.bagTag/);

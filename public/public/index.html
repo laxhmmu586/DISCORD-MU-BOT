@@ -7389,7 +7389,7 @@
             <button type="button" data-test-update-mode="rush" class="${activeMode === "rush" ? "is-active" : ""}">Rush</button>
             <button type="button" data-test-update-mode="location" class="${activeMode === "location" ? "is-active" : ""}">Bag location update</button>
             <button type="button" data-test-update-mode="shipping" class="${activeMode === "shipping" ? "is-active" : ""}">Shipping</button>
-            ${window._testHasOpenOnHand ? `<button type="button" data-test-update-mode="exchange" class="${activeMode === "exchange" ? "is-active" : ""}">Exchange</button>` : ""}
+            <button type="button" data-test-update-mode="exchange" class="${activeMode === "exchange" ? "is-active" : ""}">Exchange</button>
           </div>
           <div class="test-form-grid">${fields}<div class="test-form-actions"><button class="test-submit" type="submit">Update</button><button class="test-back-button" type="button" data-test-close-update>Close</button><span class="panel-muted">${escapeHtml(message)}</span></div></div>
         </form>`;
@@ -7416,8 +7416,6 @@
 
       async function renderTestAddChoice(bagTag) {
         if (!testOutput) return;
-        const onHandData = await apiJson('/cbs-unresolved-baggage');
-        window._testHasOpenOnHand = (onHandData?.rows || []).some((row) => !row.resolvedAt);
         const exchangeButton = `<button class="test-choice-card" type="button" data-test-create-mode="exchange">${testPlaneIcon("exchange")}<span>Exchange</span></button>`;
         testOutput._record = null;
         testOutput.innerHTML = `<article class="test-report-card">
@@ -7541,9 +7539,10 @@
         testOutput.querySelectorAll("[data-test-bag-entry]").forEach((entry) => updateOutboundFields(entry));
       }
 
+      let testBagSearchPending = false;
       async function searchTestBag(event) {
         event?.preventDefault();
-        if (!testOutput) return;
+        if (!testOutput || testBagSearchPending) return;
         const bagTag = normalizeTestBagTag(testBagSearchInput?.value);
         if (!isValidTestBagTag(bagTag)) {
           testOutput.innerHTML = `<p class="panel-muted status-fail">Bag tag must match MU123456 format.</p>`;
@@ -7551,16 +7550,18 @@
         }
         if (testBagSearchInput) testBagSearchInput.value = bagTag;
         testOutput.innerHTML = `<p class="panel-muted">Searching ${escapeHtml(bagTag)}...</p>`;
+        const searchButton = testSearchForm?.querySelector('button[type="submit"]');
+        testBagSearchPending = true;
+        if (searchButton) searchButton.disabled = true;
         try {
-          const [data, onHandData] = await Promise.all([
-            apiJson(`/test-baggage/${encodeURIComponent(bagTag)}`),
-            apiJson('/cbs-unresolved-baggage')
-          ]);
-          window._testHasOpenOnHand = (onHandData?.rows || []).some((row) => !row.resolvedAt);
+          const data = await apiJson(`/test-baggage/${encodeURIComponent(bagTag)}`);
           if (data?.found && data.record) renderTestRecord(data.record);
           else await renderTestAddChoice(bagTag);
         } catch (error) {
           testOutput.innerHTML = `<p class="panel-muted status-fail">${escapeHtml(error?.message || "Baggage lookup failed.")}</p>`;
+        } finally {
+          testBagSearchPending = false;
+          if (searchButton) searchButton.disabled = false;
         }
       }
 

@@ -712,7 +712,9 @@ function testBaggageValuesFromRecord(record) {
 async function findTestBaggageByTag(bagTag) {
   const normalizedTag = normalizeTestBagTag(bagTag);
   if (!isValidTestBagTag(normalizedTag)) return null;
-  const rows = await getTestBaggageSheetRows({ forceRefresh: true });
+  // Searches are frequent and may arrive back-to-back from the UI. Reuse the
+  // short-lived sheet cache; writes invalidate it before their next lookup.
+  const rows = await getTestBaggageSheetRows();
   await ensureTestBaggageSheetHeaders(rows);
   for (let i = 1; i < rows.length; i += 1) {
     if (normalizeTestBagTag(rows[i]?.[0]) === normalizedTag) {
@@ -828,7 +830,9 @@ async function appendTestBaggageRecord(record) {
   if (!isValidTestBagTag(normalizedTag)) throw new Error('Bag tag must match MU123456 format');
   const title = await getTestBaggageSheetTitle();
   if (!title) throw new Error('Test baggage sheet not found');
-  const rows = await getTestBaggageSheetRows({ forceRefresh: true });
+  // The add flow already looked this tag up immediately before submitting.
+  // Reuse that fresh cache instead of charging another Sheets read here.
+  const rows = await getTestBaggageSheetRows();
   await ensureTestBaggageSheetHeaders(rows);
   const existing = await findTestBaggageByTag(normalizedTag);
   if (existing) {
@@ -876,16 +880,18 @@ async function appendTestBaggageRecord(record) {
       }
     }]
   };
-  await sheets.spreadsheets.values.append({
+  const response = await sheets.spreadsheets.values.append({
     spreadsheetId: TEST_BAGGAGE_SHEET_ID,
     range: `${title}!A1`,
     valueInputOption: 'RAW',
     insertDataOption: 'INSERT_ROWS',
     requestBody: { values: [testBaggageValuesFromRecord(cleanRecord)] }
   });
+  const appendedRow = String(response.data?.updates?.updatedRange || '').match(/![A-Z]+(\d+)(?::[A-Z]+\d+)?$/i)?.[1];
+  if (appendedRow) cleanRecord.rowNumber = Number(appendedRow);
   testBaggageSheetCache = { loadedAt: 0, rows: [] };
   await appendCbsUnresolvedBaggageCase(cleanRecord);
-  return { created: true, record: await findTestBaggageByTag(normalizedTag) };
+  return { created: true, record: cleanRecord };
 }
 
 async function updateTestBaggageRecord(bagTag, update) {
