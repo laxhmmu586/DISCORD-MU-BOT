@@ -237,6 +237,19 @@ test('On-hand cases match the passenger case layout and support WorldTracer prog
   assert.match(server, /action === 'worldtracer'/);
 });
 
+test('On-hand cases support Passenger Name and Passenger Filed-style comments', () => {
+  assert.match(page, /<option value="passenger-name">Passenger Name<\/option><option value="comment">Comment<\/option>/);
+  assert.match(page, /action === 'passenger-name'[^\n]+name="passengerName"[^\n]+required/);
+  assert.match(page, /action === 'comment'[^\n]+name="commentPreset" data-comment-preset/);
+  assert.match(page, /Passenger request Pick up at LAX/);
+  assert.match(page, /row\.updateEvents \|\| \[\]/);
+  assert.match(page, /item\.key === 'comment' \? ' tracking-chip--comment'/);
+  assert.match(server, /action === 'passenger-name' \|\| action === 'comment'/);
+  assert.match(server, /updateCbsUnresolvedBaggageDetails/);
+  assert.match(drive, /'Passenger Name', 'Update Events'/);
+  assert.match(drive, /!Q\$\{target\.rowNumber\}:R\$\{target\.rowNumber\}/);
+});
+
 test('completed On-hand cases move from Open Case to Closed Case', () => {
   assert.match(page, /new Set\(\['on-hand-rush', 'shipped', 'passenger-collected', 'case-close'\]\)/);
   assert.match(page, /const archived = Boolean\(row\.resolvedAt\) && archivedResolutions\.has\(String\(row\.resolution \|\| ''\)\.toLowerCase\(\)\)/);
