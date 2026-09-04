@@ -333,8 +333,7 @@ test('Create Rush only asks for a WorldTracer file when the On-hand case has non
 
 test('On-hand tags can be exchanged from Add On-hand and Resolution', () => {
   assert.match(page, /data-add-baggage-mode="exchange">Exchange/);
-  assert.match(page, /const hasOpenOnHand = .*\.some\(\(row\) => !row\.resolvedAt\)/);
-  assert.match(page, /const exchangeButton = hasOpenOnHand \?/);
+  assert.match(page, /const exchangeButton = '<button type="button" data-add-baggage-mode="exchange">Exchange<\/button>'/);
   assert.match(page, /direction === 'exchange'/);
   assert.match(page, /Select Current Open On-hand/);
   assert.match(page, /name="onHandRowNumber"/);
@@ -366,14 +365,22 @@ test('home Baggage add flow also supports On-hand Exchange', () => {
   assert.match(indexPage, /data-test-create-mode="exchange"/);
   assert.match(indexPage, /function renderTestExchangeForm\(newTag, rows = \[\]\)/);
   assert.match(indexPage, /async function renderTestAddChoice\(bagTag\)/);
-  assert.match(indexPage, /const hasOpenOnHand = .*\.some\(\(row\) => !row\.resolvedAt\)/);
-  assert.match(indexPage, /const exchangeButton = hasOpenOnHand \?/);
+  assert.match(indexPage, /const exchangeButton = `<button class="test-choice-card" type="button" data-test-create-mode="exchange">/);
   assert.match(indexPage, /Select current Open On-hand/);
   assert.match(indexPage, /data-test-exchange-form/);
   assert.match(indexPage, /submitTestExchange\(exchangeForm\)/);
   assert.match(indexPage, /action:"exchange", newTagNumber, updatedBy:currentUserName\(\)/);
   assert.match(server, /latestExchange\?\.oldTag \|\| record\.bagTag/);
   assert.match(drive, /next\.bagTag = newBagTag/);
+});
+
+test('Not load bags hides and disables Current location', () => {
+  assert.match(indexPage, /data-test-outbound-location/);
+  assert.match(indexPage, /const needsLocation = status !== "Not load bags"/);
+  assert.match(indexPage, /locationInput\.disabled = !needsLocation/);
+  assert.match(page, /data-add-outbound-location hidden/);
+  assert.match(page, /const needsLocation = status\.value !== 'Not load bags'/);
+  assert.match(page, /locationInput\.disabled = !needsLocation/);
 });
 
 test('home Baggage Update menu supports Exchange', () => {
