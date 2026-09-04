@@ -211,7 +211,7 @@ test('Add On-hand records are added to and displayed in Open Case', () => {
 });
 
 test('On-hand only includes Office bags and excludes gate bags and Co-mail', () => {
-  const description = 'Passenger bags entered as inbound and not-loaded outbound bags remain here until resolved. Gate bags and Co-mail are not included.';
+  const description = 'Passenger bags entered as inbound remain here until resolved. Gate bags, Co-mail, and not-loaded outbound bags are not included.';
   assert.equal((page.match(new RegExp(description.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length, 2);
   assert.match(page, /<option>Gate bag<\/option>/);
   assert.match(page, /<option>Co-mail<\/option>/);
@@ -222,6 +222,22 @@ test('On-hand only includes Office bags and excludes gate bags and Co-mail', () 
   assert.match(drive, /new Set\(\['gate bag', 'co-mail'\]\)/);
   assert.match(drive, /location !== 'office'/);
   assert.match(drive, /\[record\.status, record\.bagType\][\s\S]*excludedTypes\.has/);
+});
+
+test('Not Load Bags have a separate Bag Room Unload Bag category with On-hand resolutions', () => {
+  assert.match(page, /<h2 id="bag-room-unload-title">Bag Room Unload Bag<\/h2>/);
+  assert.match(page, /function isNotLoadBag\(row = \{\}\)/);
+  assert.match(page, /renderUnresolvedBaggageGroup\(regularRows, unresolvedBaggageOutput, 'On-hand'\)/);
+  assert.match(page, /renderUnresolvedBaggageGroup\(notLoadRows, bagRoomUnloadOutput, 'Bag Room Unload Bag'\)/);
+  assert.match(page, /const resolutionOptionsHtml = `[^`]*WorldTracer[^`]*Exchange[^`]*Email[^`]*Create Rush[^`]*Passenger collected \/ Case closed[^`]*Shipped[^`]*Other resolution[^`]*Case Close[^`]*`/);
+  assert.match(page, /<select name="action" data-unresolved-action>\$\{resolutionOptionsHtml\}<\/select>/);
+});
+
+test('Not Load Bags are automatically copied to the Bag Room Unload Google Sheet', () => {
+  assert.match(drive, /CBS_NOT_LOAD_BAGGAGE_SHEET_GID = Number\(process\.env\.CBS_NOT_LOAD_BAGGAGE_SHEET_GID \|\| 1393047851\)/);
+  assert.match(drive, /function isNotLoadBaggageRecord[\s\S]*not\\s\+load/);
+  assert.match(drive, /async function appendCbsNotLoadBaggageCase[\s\S]*getCbsNotLoadBaggageSheetTitle/);
+  assert.match(drive, /await appendCbsNotLoadBaggageCase\(\{ \.\.\.record, \.\.\.saved \}\);/);
 });
 
 test('On-hand cases match the passenger case layout and support WorldTracer progress', () => {
@@ -235,6 +251,19 @@ test('On-hand cases match the passenger case layout and support WorldTracer prog
   assert.match(drive, /!L\$\{target\.rowNumber\}/);
   assert.match(drive, /!L1:M1`[\s\S]*CBS_UNRESOLVED_BAGGAGE_HEADERS\[12\]/);
   assert.match(server, /action === 'worldtracer'/);
+});
+
+test('On-hand cases support Passenger Name and Passenger Filed-style comments', () => {
+  assert.match(page, /<option value="passenger-name">Passenger Name<\/option><option value="comment">Comment<\/option>/);
+  assert.match(page, /action === 'passenger-name'[^\n]+name="passengerName"[^\n]+required/);
+  assert.match(page, /action === 'comment'[^\n]+name="commentPreset" data-comment-preset/);
+  assert.match(page, /Passenger request Pick up at LAX/);
+  assert.match(page, /row\.updateEvents \|\| \[\]/);
+  assert.match(page, /item\.key === 'comment' \? ' tracking-chip--comment'/);
+  assert.match(server, /action === 'passenger-name' \|\| action === 'comment'/);
+  assert.match(server, /updateCbsUnresolvedBaggageDetails/);
+  assert.match(drive, /'Passenger Name', 'Update Events'/);
+  assert.match(drive, /!Q\$\{target\.rowNumber\}:R\$\{target\.rowNumber\}/);
 });
 
 test('completed On-hand cases move from Open Case to Closed Case', () => {
