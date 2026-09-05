@@ -90,6 +90,8 @@ const {
   acknowledgeCbsMissingBag,
   sendCbsCaseEmail,
   sendBagRoomUnloadAlertEmail,
+  readBagRoomUnloadAlertState,
+  writeBagRoomUnloadAlertState,
   sendWrongBaggageCaseEmail,
   sendMisconnectionAssistanceEmail,
   getCbsBaggageChartImage,
@@ -2120,12 +2122,21 @@ async function closeMatchingBagRoomUnloadCasesForRush(rushBag = {}) {
 
 const bagRoomUnloadAlertInFlight = new Map();
 const bagRoomUnloadAlertCompleted = new Set();
+let bagRoomUnloadAlertStateLoaded = false;
+
+async function loadBagRoomUnloadAlertStateOnce() {
+  if (bagRoomUnloadAlertStateLoaded) return;
+  const state = await readBagRoomUnloadAlertState();
+  (state.sentDates || []).forEach((date) => bagRoomUnloadAlertCompleted.add(date));
+  bagRoomUnloadAlertStateLoaded = true;
+}
 
 async function notifyBagRoomUnloadAfterCc(syInfo, isoDate) {
   const ccComplete = syInfo?.crewApis?.steps?.some((step) => step.key === 'cc' && step.complete);
   if (!ccComplete || String(syInfo?.flightNo || '').toUpperCase() !== 'MU586' || isoDate !== todayIsoUtc()) {
     return { sent:false, reason:'Flight is not today’s MU586 in CC status.' };
   }
+  await loadBagRoomUnloadAlertStateOnce();
   if (bagRoomUnloadAlertCompleted.has(isoDate)) return { sent:false, duplicate:true };
   if (bagRoomUnloadAlertInFlight.has(isoDate)) return bagRoomUnloadAlertInFlight.get(isoDate);
   const pending = (async () => {
@@ -2149,7 +2160,15 @@ async function notifyBagRoomUnloadAfterCc(syInfo, isoDate) {
   bagRoomUnloadAlertInFlight.set(isoDate, pending);
   try {
     const result = await pending;
-    if (result.sent || result.duplicate) bagRoomUnloadAlertCompleted.add(isoDate);
+    if (result.sent) {
+      bagRoomUnloadAlertCompleted.add(isoDate);
+      try {
+        await writeBagRoomUnloadAlertState({ sentDates:[...bagRoomUnloadAlertCompleted] });
+      } catch (err) {
+        result.stateError = err?.message || 'Unable to persist the sent state.';
+        console.error('Bag Room Unload sent-state save error:', err);
+      }
+    }
     return result;
   } finally { bagRoomUnloadAlertInFlight.delete(isoDate); }
 }

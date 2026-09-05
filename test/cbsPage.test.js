@@ -304,12 +304,16 @@ test('todays MU586 Bag Room Unload bags trigger one CC alert at five or more bag
   assert.match(server, /row\.flightDate === isoDate/);
   assert.match(server, /if \(tags\.length < 5\) return \{ sent:false/);
   assert.match(server, /bagRoomUnloadAlertCompleted\.add\(isoDate\)/);
+  assert.match(server, /async function loadBagRoomUnloadAlertStateOnce\(\)/);
+  assert.match(server, /await writeBagRoomUnloadAlertState\(\{ sentDates:\[\.\.\.bagRoomUnloadAlertCompleted\] \}\)/);
   assert.match(server, /东航洛杉矶MU586\/\$\{flightDate\}不正常行李运输信息/);
   assert.match(drive, /to = '7X24bag@ceair\.com'/);
   assert.match(server, /syInfo\.bagRoomUnloadAlert = await notifyBagRoomUnloadAfterCc\(syInfo, isoDate\)/);
   assert.match(drive, /async function sendBagRoomUnloadAlertEmail/);
-  assert.match(drive, /in:sent to:\$\{to\} subject:/);
-  assert.match(drive, /if \(alreadySent\) return \{ sent:false, duplicate:true/);
+  assert.match(drive, /cbs-bag-room-alert-state\.json/);
+  assert.match(drive, /async function readBagRoomUnloadAlertState\(\)/);
+  assert.match(drive, /async function writeBagRoomUnloadAlertState\(state = \{\}\)/);
+  assert.doesNotMatch(drive, /in:sent to:\$\{to\} subject:/);
 });
 
 test('On-hand cases match the passenger case layout and support WorldTracer progress', () => {

@@ -165,6 +165,8 @@ let sheetAccessBlocked = false;
 const NOTES_DRIVE_FILE_ID = process.env.NOTES_DRIVE_FILE_ID || '';
 const NOTES_DRIVE_FILE_NAME = process.env.NOTES_DRIVE_FILE_NAME || 'mufc-notes-store.json';
 let notesDriveFileId = NOTES_DRIVE_FILE_ID;
+const BAG_ROOM_ALERT_DRIVE_FILE_NAME = process.env.BAG_ROOM_ALERT_DRIVE_FILE_NAME || 'cbs-bag-room-alert-state.json';
+let bagRoomAlertDriveFileId = '';
 
 async function resolveNotesDriveFileId() {
   if (notesDriveFileId) return notesDriveFileId;
@@ -203,6 +205,32 @@ async function writeNotesDriveStore(store) {
   });
   notesDriveFileId = created.data.id || '';
   return { fileId: notesDriveFileId };
+}
+
+async function resolveBagRoomAlertDriveFileId() {
+  if (bagRoomAlertDriveFileId) return bagRoomAlertDriveFileId;
+  const escapedName = BAG_ROOM_ALERT_DRIVE_FILE_NAME.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  const response = await drive.files.list({ q:`name='${escapedName}' and trashed=false`, fields:'files(id)', spaces:'drive', pageSize:1 });
+  bagRoomAlertDriveFileId = response.data.files?.[0]?.id || '';
+  return bagRoomAlertDriveFileId;
+}
+
+async function readBagRoomUnloadAlertState() {
+  const fileId = await resolveBagRoomAlertDriveFileId();
+  if (!fileId) return { sentDates:[] };
+  const response = await drive.files.get({ fileId, alt:'media' }, { responseType:'text' });
+  const parsed = JSON.parse(response.data || '{}');
+  return { sentDates:Array.isArray(parsed?.sentDates) ? parsed.sentDates.map(String) : [] };
+}
+
+async function writeBagRoomUnloadAlertState(state = {}) {
+  const body = JSON.stringify({ sentDates:[...new Set(state.sentDates || [])].slice(-31) }, null, 2) + '\n';
+  const media = { mimeType:'application/json', body:Readable.from([body]) };
+  const fileId = await resolveBagRoomAlertDriveFileId();
+  if (fileId) { await drive.files.update({ fileId, media }); return { fileId }; }
+  const created = await drive.files.create({ requestBody:{ name:BAG_ROOM_ALERT_DRIVE_FILE_NAME, mimeType:'application/json' }, media, fields:'id' });
+  bagRoomAlertDriveFileId = created.data.id || '';
+  return { fileId:bagRoomAlertDriveFileId };
 }
 
 
@@ -4336,19 +4364,9 @@ async function sendNextDayInfoEmail({ to = 'laxhmmu@gmail.com', cc = [], subject
 
 async function sendBagRoomUnloadAlertEmail({ subject, text, to = '7X24bag@ceair.com' }) {
   const { gmail, userId, authMode } = getNextDayInfoGmailClient();
-  const exactSubject = String(subject || '').replace(/"/g, '');
-  const searchDate = gmailSearchYmd(new Date());
-  const listed = await gmail.users.messages.list({
-    userId,
-    q:`in:sent to:${to} subject:"${exactSubject}" newer_than:2d`,
-    maxResults:10,
-    fields:'messages(id,internalDate)'
-  });
-  const alreadySent = (listed.data.messages || []).find((message) => gmailSearchYmd(Number(message.internalDate)) === searchDate);
-  if (alreadySent) return { sent:false, duplicate:true, id:alreadySent.id || '', to, subject, authMode };
   const raw = buildRawPlainEmail({ to, subject, text });
   const sent = await gmail.users.messages.send({ userId, requestBody:{ raw:base64UrlEncode(raw) } });
-  return { sent:true, duplicate:false, id:sent.data.id || '', to, subject, authMode };
+  return { sent:true, id:sent.data.id || '', to, subject, authMode };
 }
 
 async function sendCbsCaseEmail({ passengerEmail, subject, html, text, pdfBuffer, filename, attachments = [] }) {
@@ -4523,6 +4541,8 @@ module.exports = {
   acknowledgeCbsMissingBag,
   sendCbsCaseEmail,
   sendBagRoomUnloadAlertEmail,
+  readBagRoomUnloadAlertState,
+  writeBagRoomUnloadAlertState,
   sendWrongBaggageCaseEmail,
   sendMisconnectionAssistanceEmail,
   getCbsBaggageChartImage,
