@@ -272,11 +272,11 @@ test('On-hand and Bag Room rows only show Rush Tag when at least one row has one
   assert.match(page, /const columnCount = showRushTag \? 6 : 5/);
   assert.doesNotMatch(page, /<th>Type \/ Status<\/th><th>Location<\/th>/);
   assert.match(page, /escapeHtml\(row\.rushTagNumber \|\| '-'\)/);
-  assert.match(server, /async function closeMatchingBagRoomUnloadCasesForRush/);
+  assert.match(server, /async function matchBagRoomUnloadCasesForRush/);
   assert.match(server, /normalizedCbsLinkTag\(row\.bagTag\) === originalTag/);
-  assert.match(server, /resolveCbsUnresolvedBaggageCase\(row\.rowNumber, 'on-hand-rush'/);
-  assert.match(server, /result\.closedBagRoomUnloadCases = await closeMatchingBagRoomUnloadCasesForRush\(saved\)/);
-  assert.match(server, /result\.closedBagRoomUnloadCases = await closeMatchingBagRoomUnloadCasesForRush\(result\.record\)/);
+  assert.doesNotMatch(server, /resolveCbsUnresolvedBaggageCase\(row\.rowNumber, 'on-hand-rush'/);
+  assert.match(server, /result\.matchedBagRoomUnloadCases = await matchBagRoomUnloadCasesForRush\(saved\)/);
+  assert.match(server, /result\.matchedBagRoomUnloadCases = await matchBagRoomUnloadCasesForRush\(result\.record\)/);
 });
 
 test('growing Rush and case lists paginate by record count while Missing Reports paginate by month', () => {
