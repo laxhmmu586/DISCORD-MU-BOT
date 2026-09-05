@@ -3659,7 +3659,10 @@ async function updateCbsUnresolvedBaggageDetails(rowNumber, update = {}) {
     at:new Date().toISOString(), by:updatedBy || 'System',
     fields:[[passengerName ? 'Passenger Name' : (record ? 'Record' : 'Comment'), passengerName || record || comment]]
   };
-  const updateEvents = [...(target.updateEvents || []), event];
+  // Record is a single editable snapshot, not a running log. Replacing the
+  // prior event prevents multiple Record cards from accumulating in History.
+  const retainedEvents = record ? (target.updateEvents || []).filter((item) => item.key !== 'record') : (target.updateEvents || []);
+  const updateEvents = [...retainedEvents, event];
   const title = await getCbsUnresolvedBaggageSheetTitle();
   await sheets.spreadsheets.values.update({
     spreadsheetId:CBS_SHEET_ID, range:`${escapeSheetTitle(title)}!Q${target.rowNumber}:R${target.rowNumber}`, valueInputOption:'RAW',

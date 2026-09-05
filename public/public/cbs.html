@@ -697,10 +697,10 @@
         worldTracerOutput.innerHTML = `<p class="status err">${escapeHtml(error.message)}</p>`;
       }
     }
-    function unresolvedUpdateFieldsHtml(action, bagTag, worldTracerFileNumber = '') {
+    function unresolvedUpdateFieldsHtml(action, bagTag, worldTracerFileNumber = '', savedRecord = '') {
       if (action === 'worldtracer') return `<label class="wide"><span>WorldTracer File Number</span><input name="worldTracerFileNumber" value="${escapeHtml(worldTracerFileNumber)}" required /></label>`;
       if (action === 'passenger-name') return '<label class="wide"><span>Passenger Name</span><input name="passengerName" placeholder="Passenger name" required /></label>';
-      if (action === 'record') return '<label class="wide"><span>Record</span><textarea name="record" maxlength="5000" rows="8" placeholder="Enter detailed record information" required></textarea></label>';
+      if (action === 'record') return `<label class="wide"><span>Record</span><textarea name="record" maxlength="5000" rows="8" placeholder="Enter detailed record information" required>${escapeHtml(savedRecord)}</textarea><small>${savedRecord ? 'Updating will replace the existing Record.' : 'Only one Record is kept for each case.'}</small></label>`;
       if (action === 'change-type') return '<label class="wide"><span>Change Type</span><select name="bagType" required><option value="">Select new type</option><option value="Rush bag">Rush bag</option><option value="Gate Bag">Gate Bag</option></select><small>This will close the Bag Room case and remove it from Open Case.</small></label>';
       if (action === 'comment') return '<label class="wide"><span>Comment</span><select name="commentPreset" data-comment-preset><option value="">Select a comment or enter your own below</option><option value="Passenger request Pick up at LAX">Passenger request Pick up at LAX</option></select><textarea name="comment" placeholder="Write a comment" required></textarea></label>';
       if (action === 'exchange') return `<div class="exchange-current-card wide"><strong>Current Open On-hand</strong><span class="exchange-tag-flow"><span class="exchange-tag-old">${escapeHtml(bagTag)}</span><span class="exchange-tag-arrow" aria-hidden="true">→<span class="exchange-tag-arrow-label">Exchange</span></span><span class="exchange-tag-new">New tag</span></span></div><label class="wide"><span>New Tag Number</span><input name="newTagNumber" pattern="[A-Za-z]{2}[0-9]{6}" placeholder="MU123456" required /></label>`;
@@ -727,6 +727,11 @@
     function resolutionOptionsHtml(isBagRoom) {
       const specificOptions = isBagRoom ? '<option value="change-type">Change Type</option>' : '<option value="passenger-name">Passenger Name</option><option value="record">Record</option>';
       return `<option value="worldtracer">WorldTracer</option>${specificOptions}<option value="exchange">Exchange</option><option value="email">Email</option><option value="on-hand-rush">Create Rush</option><option value="passenger-collected">Passenger collected / Case closed</option><option value="shipped">Shipped</option><option value="other">Other resolution</option><option value="case-close">Case Close</option>`;
+    }
+    function savedOnHandRecord(rowNumber) {
+      const row = (window._unresolvedBaggageSourceRows || []).find((item) => String(item.rowNumber) === String(rowNumber));
+      const event = (row?.updateEvents || []).filter((item) => item.key === 'record').at(-1);
+      return new Map(event?.fields || []).get('Record') || '';
     }
     function renderUnresolvedBaggageGroup(rows = [], output, groupName) {
       const showClosed = window._caseView === 'closed';
@@ -1803,7 +1808,7 @@
       const select = event.target.closest('[data-unresolved-action]');
       if (!select) return;
       const form = select.closest('.unresolved-update');
-      form.querySelector('.unresolved-update-fields').innerHTML = unresolvedUpdateFieldsHtml(select.value, form.dataset.bagTag, form.dataset.worldTracerFile);
+      form.querySelector('.unresolved-update-fields').innerHTML = unresolvedUpdateFieldsHtml(select.value, form.dataset.bagTag, form.dataset.worldTracerFile, savedOnHandRecord(form.dataset.unresolvedRow));
       form.querySelector('button[type="submit"]').textContent = select.value === 'email' ? 'Send' : 'Update';
     });
     openCasesCard?.addEventListener('submit', async (event) => {
