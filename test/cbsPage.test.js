@@ -203,7 +203,7 @@ test('CBS cases no longer rely on stale browser storage', () => {
 test('Add Baggage records are added to and displayed in Open Case', () => {
   assert.match(drive, /CBS_UNRESOLVED_BAGGAGE_SHEET_GID = Number\(process\.env\.CBS_UNRESOLVED_BAGGAGE_SHEET_GID \|\| 523026916\)/);
   assert.match(page, /title="Add Baggage"/);
-  assert.match(page, /id="open-cases-tab"[\s\S]*id="closed-cases-tab"[\s\S]*id="add-baggage-tab"[\s\S]*id="worldtracer-tab"/);
+  assert.match(page, /id="open-cases-tab"[\s\S]*id="worldtracer-tab"[\s\S]*id="add-baggage-tab"[\s\S]*id="missing-report-alert"[\s\S]*id="email-tab"[\s\S]*id="baggage-chart-tab"[\s\S]*id="closed-cases-tab"/);
   assert.match(page, /<h1>Add Baggage<\/h1>/);
   assert.doesNotMatch(page, />Add On-hand</);
   assert.match(drive, /await appendCbsUnresolvedBaggageCase\(cleanRecord\);/);
@@ -275,6 +275,19 @@ test('On-hand and Bag Room rows only show Rush Tag when at least one row has one
   assert.match(server, /normalizedCbsLinkTag\(row\.bagTag\) === originalTag/);
   assert.match(server, /resolveCbsUnresolvedBaggageCase\(row\.rowNumber, 'on-hand-rush'/);
   assert.match(server, /result\.closedBagRoomUnloadCases = await closeMatchingBagRoomUnloadCasesForRush\(saved\)/);
+  assert.match(server, /result\.closedBagRoomUnloadCases = await closeMatchingBagRoomUnloadCasesForRush\(result\.record\)/);
+});
+
+test('growing Rush and case lists paginate by record count while Missing Reports paginate by month', () => {
+  assert.match(page, /const LIST_PAGE_SIZE = 20/);
+  assert.match(page, /function paginateRows\(rows, key\)/);
+  assert.match(page, /data-list-page=/);
+  assert.match(page, /paginateRows\(rows, 'rush-bags'\)/);
+  assert.match(page, /function paginateRowsByMonth\(rows, key\)/);
+  assert.match(page, /paginateRowsByMonth\(rows, 'missing-reports'\)/);
+  assert.match(page, /year:'numeric', month:'long'/);
+  assert.match(page, /paginateRows\(rows, `\$\{showClosed \? 'closed' : 'open'\}-passenger`\)/);
+  assert.match(page, /const listKey = `\$\{showClosed \? 'closed' : 'open'\}-\$\{isNotLoadBag\(rows\[0\]\) \? 'bag-room' : 'on-hand'\}`/);
 });
 
 test('Not Load Bags are automatically copied to the Bag Room Unload Google Sheet', () => {
@@ -704,6 +717,14 @@ test('Rush Bag cases with MU586 notify Discord and treat WorldTracer as optional
   assert.match(server, /appendCbsWorldTracerCase\(record\)[\s\S]*addRushBagDiscordResult\(\{ created: true, record: saved \}, saved\)/);
   assert.match(server, /isRushBagWorldTracerOnlyUpdate\(previousRecord, result\.record\)[\s\S]*WorldTracer file number-only updates do not send another Rush Bag notification/);
   assert.match(server, /updateCbsWorldTracerCase\(body\.rowNumbers, record\)[\s\S]*addRushBagDiscordResult\(result, result\.record\)/);
+});
+
+test('new Rush itineraries default to todays MU586 LAX-PVG flight while added flights stay blank', () => {
+  assert.match(page, /function defaultRushFlight\(\)/);
+  assert.match(page, /return \{ flightDate, flightNumber:'MU586', from:'LAX', to:'PVG' \}/);
+  assert.match(page, /addRushFlightRow\(defaultRushFlight\(\)\)/);
+  assert.match(page, /addRushFlight\?\.addEventListener\('click', \(\) => addRushFlightRow\(\)\)/);
+  assert.match(page, /input\[type="date"\]\{width:100%;height:52px;min-height:52px/);
 });
 
 test('Missing Bag Report shows the LAXTEC phone contact', () => {
