@@ -718,7 +718,7 @@
       }
     }
     function recordTextareaHtml(type, savedRecord = '') {
-      return `<textarea name="record" maxlength="5000" rows="8" wrap="off" spellcheck="false" placeholder="Paste the original formatted record" required>${escapeHtml(savedRecord)}</textarea>`;
+      return `<textarea class="record-textarea" name="record" maxlength="5000" rows="8" wrap="off" spellcheck="false" placeholder="Paste the original formatted record" required>${escapeHtml(savedRecord)}</textarea>`;
     }
     function unresolvedUpdateFieldsHtml(action, bagTag, worldTracerFileNumber = '', savedRecord = '') {
       if (action === 'worldtracer') return `<label class="wide"><span>WorldTracer File Number</span><input name="worldTracerFileNumber" value="${escapeHtml(worldTracerFileNumber)}" required /></label>`;
