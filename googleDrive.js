@@ -3672,6 +3672,26 @@ async function updateCbsUnresolvedBaggageDetails(rowNumber, update = {}) {
   return { updated:true, record:{ ...target, passengerName:passengerName || target.passengerName, updateEvents } };
 }
 
+async function deleteCbsUnresolvedBaggageComment(rowNumber, target = {}) {
+  const rows = await getCbsUnresolvedBaggageCases({ includeResolved:true });
+  const current = rows.find((row) => cbsRecordMatchesId(row, rowNumber));
+  if (!current) return { notFound:true };
+  const targetAt = sanitizeSheetText(target.at, 40);
+  const targetComment = sanitizeSheetText(target.comment, 500);
+  const eventIndex = (current.updateEvents || []).findIndex((event) => {
+    const comment = new Map(event.fields || []).get('Comment') || event.note || '';
+    return event.key === 'comment' && event.at === targetAt && comment === targetComment;
+  });
+  if (eventIndex < 0) return { commentNotFound:true };
+  const updateEvents = current.updateEvents.filter((_, index) => index !== eventIndex);
+  const title = await getCbsUnresolvedBaggageSheetTitle();
+  await sheets.spreadsheets.values.update({
+    spreadsheetId:CBS_SHEET_ID, range:`${escapeSheetTitle(title)}!R${current.rowNumber}`, valueInputOption:'RAW',
+    requestBody:{ values:[[JSON.stringify(updateEvents)]] }
+  });
+  return { deleted:true, record:{ ...current, updateEvents } };
+}
+
 async function changeCbsUnresolvedBaggageType(rowNumber, bagType, updatedBy = '') {
   const rows = await getCbsUnresolvedBaggageCases({ includeResolved:true });
   const target = rows.find((row) => cbsRecordMatchesId(row, rowNumber));
@@ -4472,6 +4492,7 @@ module.exports = {
   getCbsUnresolvedBaggageCases,
   updateCbsUnresolvedBaggageWorldTracer,
   updateCbsUnresolvedBaggageDetails,
+  deleteCbsUnresolvedBaggageComment,
   changeCbsUnresolvedBaggageType,
   exchangeCbsUnresolvedBaggageTag,
   resolveCbsUnresolvedBaggageCase,

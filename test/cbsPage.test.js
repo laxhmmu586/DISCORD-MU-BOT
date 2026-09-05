@@ -316,6 +316,8 @@ test('Passenger, On-hand, and Bag Room cases support replaceable PNR and TKT Rec
   assert.match(page, /<option value="record-pnr">Record - PNR<\/option><option value="record-tkt">Record - TKT<\/option>/);
   assert.match(page, /<option value="record-tkt">Record - TKT<\/option><option value="comment">Comment<\/option>/);
   assert.match(page, /action === 'record-pnr' \|\| action === 'record-tkt'/);
+  assert.match(page, /function recordTextareaHtml\(type, savedRecord = ''\)/);
+  assert.match(page, /if \(key === 'record-pnr' \|\| key === 'record-tkt'\) return recordTextareaHtml\(key, values\.savedRecord \|\| ''\)/);
   assert.match(page, /class="record-tab-panel unresolved-record"/);
   assert.match(page, /\.unresolved-record pre \{[^}]*overflow-x:hidden[^}]*font:12px[^}]*"Courier New"[^}]*overflow-wrap:anywhere[^}]*white-space:pre-wrap/);
   assert.match(page, /Record saved — view the original layout in History/);
@@ -341,8 +343,12 @@ test('Passenger, On-hand, and Bag Room cases support replaceable PNR and TKT Rec
   assert.match(page, /recordTabsHtml\(row\.updateEvents \|\| \[\], `passenger-/);
   assert.match(page, /\$\{passengerNotificationHtml\(row\)\}\$\{passengerRecordPanel\}/);
   assert.match(page, /const historyHtml = resolvedHistory\.length \?[^;]+<\/section>` : '';/);
-  assert.match(page, /\$\{formHtml\}\$\{historyHtml\}\$\{recordPanelHtml\}/);
+  assert.match(page, /\$\{formHtml\}\$\{commentsHtml\}\$\{historyHtml\}\$\{recordPanelHtml\}/);
   assert.match(page, /class="record-panel-card"><h3>Records<\/h3>/);
+  assert.match(page, /function unresolvedCommentsHtml\(events = \[\], rowNumber = ''\)/);
+  assert.match(page, /data-delete-unresolved-comment/);
+  assert.match(server, /app\.post\('\/cbs-unresolved-baggage\/:rowNumber\/comments\/delete'/);
+  assert.match(drive, /async function deleteCbsUnresolvedBaggageComment\(rowNumber, target = \{\}\)/);
   assert.match(page, /type === 'record-pnr' && item\.key === 'record'/);
   assert.match(page, /get\('Record'\) \|\| ''/);
 });

@@ -77,6 +77,7 @@ const {
   getCbsUnresolvedBaggageCases,
   updateCbsUnresolvedBaggageWorldTracer,
   updateCbsUnresolvedBaggageDetails,
+  deleteCbsUnresolvedBaggageComment,
   changeCbsUnresolvedBaggageType,
   exchangeCbsUnresolvedBaggageTag,
   resolveCbsUnresolvedBaggageCase,
@@ -3419,6 +3420,21 @@ app.post('/cbs-cases/:rowNumber/comments/delete', async (req, res) => {
   } catch (err) {
     console.error('CBS comment delete error:', err);
     return res.status(500).json({ error:err?.message || 'Comment delete failed' });
+  }
+});
+
+app.post('/cbs-unresolved-baggage/:rowNumber/comments/delete', async (req, res) => {
+  try {
+    const at = sanitizeCbsText(req.body?.at, 40);
+    const comment = sanitizeCbsText(req.body?.comment, 500);
+    if (!at || !comment) return res.status(400).json({ error:'A comment identifier is required' });
+    const result = await deleteCbsUnresolvedBaggageComment(req.params.rowNumber, { at, comment });
+    if (result.notFound) return res.status(404).json({ error:'On-hand case not found' });
+    if (result.commentNotFound) return res.status(404).json({ error:'Comment not found or already deleted' });
+    return res.json(result);
+  } catch (err) {
+    console.error('CBS On-hand comment delete error:', err);
+    return res.status(500).json({ error:err?.message || 'On-hand comment delete failed' });
   }
 });
 
