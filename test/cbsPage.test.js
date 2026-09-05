@@ -316,7 +316,7 @@ test('Passenger, On-hand, and Bag Room cases support replaceable PNR and TKT Rec
   assert.match(page, /<option value="record-pnr">Record - PNR<\/option><option value="record-tkt">Record - TKT<\/option>/);
   assert.match(page, /action === 'record-pnr' \|\| action === 'record-tkt'/);
   assert.match(page, /class="record-tab-panel unresolved-record"/);
-  assert.match(page, /\.unresolved-record pre \{[^}]*"Courier New"[^}]*white-space:pre/);
+  assert.match(page, /\.unresolved-record pre \{[^}]*font:12px[^}]*"Courier New"[^}]*white-space:pre/);
   assert.match(page, /Record saved — view the original layout in History/);
   assert.match(page, /function savedOnHandRecord\(rowNumber, type\)/);
   assert.match(page, /function recordTabsHtml\(events = \[\], key = ''\)/);
@@ -338,6 +338,10 @@ test('Passenger, On-hand, and Bag Room cases support replaceable PNR and TKT Rec
   assert.match(server, /const record = sanitizeCbsEmailBody\(req\.body\?\.record, 5000\)/);
   assert.match(server, /type === 'record-pnr' \|\| type === 'record-tkt'/);
   assert.match(page, /recordTabsHtml\(row\.updateEvents \|\| \[\], `passenger-/);
+  assert.match(page, /\$\{passengerNotificationHtml\(row\)\}\$\{passengerRecordPanel\}/);
+  assert.match(page, /const historyHtml = resolvedHistory\.length \?[^;]+<\/section>` : '';/);
+  assert.match(page, /\$\{formHtml\}\$\{historyHtml\}\$\{recordPanelHtml\}/);
+  assert.match(page, /class="record-panel-card"><h3>Records<\/h3>/);
   assert.match(page, /type === 'record-pnr' && item\.key === 'record'/);
   assert.match(page, /get\('Record'\) \|\| ''/);
 });
