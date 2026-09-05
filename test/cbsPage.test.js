@@ -311,27 +311,30 @@ test('On-hand cases match the passenger case layout and support WorldTracer prog
   assert.match(server, /action === 'worldtracer'/);
 });
 
-test('On-hand cases support Passenger Name, long Record entries, and comments', () => {
-  assert.match(page, /<option value="passenger-name">Passenger Name<\/option><option value="record">Record<\/option>/);
-  assert.match(page, /action === 'passenger-name'[^\n]+name="passengerName"[^\n]+required/);
-  assert.match(page, /action === 'record'[^\n]+textarea name="record" maxlength="5000"/);
-  assert.match(page, /class="unresolved-record"/);
-  assert.match(page, /class="unresolved-record"><strong>Record<\/strong><pre>/);
+test('Passenger, On-hand, and Bag Room cases support replaceable PNR and TKT Record tabs', () => {
+  assert.doesNotMatch(page, /<option value="passenger-name">Passenger Name<\/option>/);
+  assert.match(page, /<option value="record-pnr">Record - PNR<\/option><option value="record-tkt">Record - TKT<\/option>/);
+  assert.match(page, /action === 'record-pnr' \|\| action === 'record-tkt'/);
+  assert.match(page, /class="record-tab-panel unresolved-record"/);
   assert.match(page, /\.unresolved-record pre \{[^}]*"Courier New"[^}]*white-space:pre/);
   assert.match(page, /Record saved — view the original layout in History/);
-  assert.match(page, /function savedOnHandRecord\(rowNumber\)/);
-  assert.match(page, /Updating will replace the existing Record/);
+  assert.match(page, /function savedOnHandRecord\(rowNumber, type\)/);
+  assert.match(page, /function recordTabsHtml\(events = \[\], key = ''\)/);
+  assert.match(page, /data-record-tab=/);
+  assert.match(page, /Updating will replace this existing Record/);
   assert.match(page, /action === 'comment'[^\n]+name="commentPreset" data-comment-preset/);
   assert.match(page, /Passenger request Pick up at LAX/);
   assert.match(page, /row\.updateEvents \|\| \[\]/);
   assert.match(page, /item\.key === 'comment' \? ' tracking-chip--comment'/);
-  assert.match(server, /action === 'passenger-name' \|\| action === 'record' \|\| action === 'comment'/);
+  assert.match(server, /action === 'record-pnr' \|\| action === 'record-tkt' \|\| action === 'comment'/);
   assert.match(server, /updateCbsUnresolvedBaggageDetails/);
   assert.match(drive, /'Passenger Name', 'Update Events'/);
   assert.match(drive, /!Q\$\{target\.rowNumber\}:R\$\{target\.rowNumber\}/);
   assert.match(drive, /function sanitizeSheetMultilineText[\s\S]*replace\(\/\\r\\n\?\/g, '\\n'\)/);
-  assert.match(drive, /filter\(\(item\) => item\.key !== 'record'\)/);
+  assert.match(drive, /item\.key !== `record-\$\{recordType\}`/);
   assert.match(server, /const record = sanitizeCbsEmailBody\(req\.body\?\.record, 5000\)/);
+  assert.match(server, /type === 'record-pnr' \|\| type === 'record-tkt'/);
+  assert.match(page, /recordTabsHtml\(row\.updateEvents \|\| \[\], `passenger-/);
 });
 
 test('Bag Room cases can change type and close out of Open Case', () => {

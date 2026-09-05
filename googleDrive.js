@@ -3651,17 +3651,18 @@ async function updateCbsUnresolvedBaggageDetails(rowNumber, update = {}) {
   if (!target) return { updated:false, notFound:true };
   const updatedBy = sanitizeSheetText(update.updatedBy, 160);
   const passengerName = sanitizeSheetText(update.passengerName, 160);
+  const recordType = sanitizeSheetText(update.recordType, 20).toLowerCase() === 'tkt' ? 'tkt' : 'pnr';
   const record = sanitizeSheetMultilineText(update.record, 5000);
   const comment = sanitizeSheetText(update.comment, 500);
   const event = {
-    key: passengerName ? 'passenger-name' : (record ? 'record' : 'comment'),
-    title: passengerName ? 'Passenger Name' : (record ? 'Record' : 'Comment'),
+    key: passengerName ? 'passenger-name' : (record ? `record-${recordType}` : 'comment'),
+    title: passengerName ? 'Passenger Name' : (record ? `Record - ${recordType.toUpperCase()}` : 'Comment'),
     at:new Date().toISOString(), by:updatedBy || 'System',
-    fields:[[passengerName ? 'Passenger Name' : (record ? 'Record' : 'Comment'), passengerName || record || comment]]
+    fields:[[passengerName ? 'Passenger Name' : (record ? `Record - ${recordType.toUpperCase()}` : 'Comment'), passengerName || record || comment]]
   };
   // Record is a single editable snapshot, not a running log. Replacing the
   // prior event prevents multiple Record cards from accumulating in History.
-  const retainedEvents = record ? (target.updateEvents || []).filter((item) => item.key !== 'record') : (target.updateEvents || []);
+  const retainedEvents = record ? (target.updateEvents || []).filter((item) => item.key !== `record-${recordType}` && !(recordType === 'pnr' && item.key === 'record')) : (target.updateEvents || []);
   const updateEvents = [...retainedEvents, event];
   const title = await getCbsUnresolvedBaggageSheetTitle();
   await sheets.spreadsheets.values.update({
