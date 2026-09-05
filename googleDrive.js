@@ -611,7 +611,7 @@ function sanitizeSheetText(value, maxLength = 500) {
 }
 
 function sanitizeSheetMultilineText(value, maxLength = 5000) {
-  return String(value || '').replace(/\r\n?/g, '\n').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '').trim().slice(0, maxLength);
+  return String(value || '').replace(/\r\n?/g, '\n').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '').slice(0, maxLength);
 }
 
 function safeParseHistory(value) {
@@ -3672,6 +3672,26 @@ async function updateCbsUnresolvedBaggageDetails(rowNumber, update = {}) {
   return { updated:true, record:{ ...target, passengerName:passengerName || target.passengerName, updateEvents } };
 }
 
+async function deleteCbsUnresolvedBaggageComment(rowNumber, target = {}) {
+  const rows = await getCbsUnresolvedBaggageCases({ includeResolved:true });
+  const current = rows.find((row) => cbsRecordMatchesId(row, rowNumber));
+  if (!current) return { notFound:true };
+  const targetAt = sanitizeSheetText(target.at, 40);
+  const targetComment = sanitizeSheetText(target.comment, 500);
+  const eventIndex = (current.updateEvents || []).findIndex((event) => {
+    const comment = new Map(event.fields || []).get('Comment') || event.note || '';
+    return event.key === 'comment' && event.at === targetAt && comment === targetComment;
+  });
+  if (eventIndex < 0) return { commentNotFound:true };
+  const updateEvents = current.updateEvents.filter((_, index) => index !== eventIndex);
+  const title = await getCbsUnresolvedBaggageSheetTitle();
+  await sheets.spreadsheets.values.update({
+    spreadsheetId:CBS_SHEET_ID, range:`${escapeSheetTitle(title)}!R${current.rowNumber}`, valueInputOption:'RAW',
+    requestBody:{ values:[[JSON.stringify(updateEvents)]] }
+  });
+  return { deleted:true, record:{ ...current, updateEvents } };
+}
+
 async function changeCbsUnresolvedBaggageType(rowNumber, bagType, updatedBy = '') {
   const rows = await getCbsUnresolvedBaggageCases({ includeResolved:true });
   const target = rows.find((row) => cbsRecordMatchesId(row, rowNumber));
@@ -4313,6 +4333,23 @@ async function sendNextDayInfoEmail({ to = 'laxhmmu@gmail.com', cc = [], subject
   return { to: Array.isArray(to) ? to : [to], cc: Array.isArray(cc) ? cc : [cc].filter(Boolean), id: sent.data.id || '', userId, authMode };
 }
 
+async function sendBagRoomUnloadAlertEmail({ subject, text, to = '7X24bag@ceair.com' }) {
+  const { gmail, userId, authMode } = getNextDayInfoGmailClient();
+  const exactSubject = String(subject || '').replace(/"/g, '');
+  const searchDate = gmailSearchYmd(new Date());
+  const listed = await gmail.users.messages.list({
+    userId,
+    q:`in:sent to:${to} subject:"${exactSubject}" newer_than:2d`,
+    maxResults:10,
+    fields:'messages(id,internalDate)'
+  });
+  const alreadySent = (listed.data.messages || []).find((message) => gmailSearchYmd(Number(message.internalDate)) === searchDate);
+  if (alreadySent) return { sent:false, duplicate:true, id:alreadySent.id || '', to, subject, authMode };
+  const raw = buildRawPlainEmail({ to, subject, text });
+  const sent = await gmail.users.messages.send({ userId, requestBody:{ raw:base64UrlEncode(raw) } });
+  return { sent:true, duplicate:false, id:sent.data.id || '', to, subject, authMode };
+}
+
 async function sendCbsCaseEmail({ passengerEmail, subject, html, text, pdfBuffer, filename, attachments = [] }) {
   const { gmail, userId } = getNextDayInfoGmailClient();
   const to = String(passengerEmail || '').trim();
@@ -4472,6 +4509,7 @@ module.exports = {
   getCbsUnresolvedBaggageCases,
   updateCbsUnresolvedBaggageWorldTracer,
   updateCbsUnresolvedBaggageDetails,
+  deleteCbsUnresolvedBaggageComment,
   changeCbsUnresolvedBaggageType,
   exchangeCbsUnresolvedBaggageTag,
   resolveCbsUnresolvedBaggageCase,
@@ -4483,6 +4521,7 @@ module.exports = {
   markCbsMissingBagCase,
   acknowledgeCbsMissingBag,
   sendCbsCaseEmail,
+  sendBagRoomUnloadAlertEmail,
   sendWrongBaggageCaseEmail,
   sendMisconnectionAssistanceEmail,
   getCbsBaggageChartImage,
