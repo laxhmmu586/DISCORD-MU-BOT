@@ -269,7 +269,7 @@ test('On-hand and Bag Room rows only show Rush Tag when at least one row has one
   assert.match(page, /const showRushTag = rows\.some\(\(row\) => String\(row\.rushTagNumber \|\| ''\)\.trim\(\)\)/);
   assert.match(page, /const rushTagHeading = showRushTag \? '<th>Rush Tag<\/th>' : ''/);
   assert.match(page, /const rushTagCell = showRushTag \?/);
-  assert.match(page, /const columnCount = showRushTag \? 6 : 5/);
+  assert.match(page, /const columnCount = \(showRushTag \? 6 : 5\) \+ \(isBagRoomGroup \? 2 : 0\)/);
   assert.doesNotMatch(page, /<th>Type \/ Status<\/th><th>Location<\/th>/);
   assert.match(page, /escapeHtml\(row\.rushTagNumber \|\| '-'\)/);
   assert.match(server, /async function matchBagRoomUnloadCasesForRush/);
@@ -277,6 +277,19 @@ test('On-hand and Bag Room rows only show Rush Tag when at least one row has one
   assert.doesNotMatch(server, /resolveCbsUnresolvedBaggageCase\(row\.rowNumber, 'on-hand-rush'/);
   assert.match(server, /result\.matchedBagRoomUnloadCases = await matchBagRoomUnloadCasesForRush\(saved\)/);
   assert.match(server, /result\.matchedBagRoomUnloadCases = await matchBagRoomUnloadCasesForRush\(result\.record\)/);
+});
+
+test('Bag Room cases show a three-day status timer and automatically close when expired', () => {
+  assert.match(page, /function bagRoomTimerHtml\(row\)/);
+  assert.match(page, /Closing soon/);
+  assert.match(page, /timer-one/);
+  assert.match(page, /timer-two/);
+  assert.match(page, /<th>Type<\/th><th>Status<\/th><th>Timer<\/th>/);
+  assert.match(server, /async function closeExpiredBagRoomUnloadCases\(rows = \[\], today = todayIsoUtc\(\)\)/);
+  assert.match(server, /ageDays >= 3/);
+  assert.match(server, /resolveCbsUnresolvedBaggageCase\(row\.rowNumber, 'expired', 'AUTO CLOSE \| 3-day Bag Room limit reached', 'System'\)/);
+  assert.match(server, /const expiredCount = await closeExpiredBagRoomUnloadCases\(rows\)/);
+  assert.match(server, /setInterval\(\(\) => runBagRoomUnloadExpiration\(\)[^\n]+60 \* 60 \* 1000\)/);
 });
 
 test('growing Rush and case lists paginate by record count while Missing Reports paginate by month', () => {

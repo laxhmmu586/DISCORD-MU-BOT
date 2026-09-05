@@ -2117,6 +2117,25 @@ async function matchBagRoomUnloadCasesForRush(rushBag = {}) {
   return matched;
 }
 
+async function closeExpiredBagRoomUnloadCases(rows = [], today = todayIsoUtc()) {
+  const todayTime = Date.parse(`${today}T00:00:00Z`);
+  const expired = rows.filter((row) => {
+    if (row.resolvedAt || !/^\d{4}-\d{2}-\d{2}$/.test(String(row.flightDate || ''))) return false;
+    const bagRoom = [row.status, row.bagType].some((value) => String(value || '').trim().toLowerCase() === 'not load bags');
+    const ageDays = Math.floor((todayTime - Date.parse(`${row.flightDate}T00:00:00Z`)) / 86400000);
+    return bagRoom && ageDays >= 3;
+  });
+  for (const row of expired) {
+    await resolveCbsUnresolvedBaggageCase(row.rowNumber, 'expired', 'AUTO CLOSE | 3-day Bag Room limit reached', 'System');
+  }
+  return expired.length;
+}
+
+async function runBagRoomUnloadExpiration() {
+  const rows = await getCbsUnresolvedBaggageCases({ includeResolved:true });
+  return closeExpiredBagRoomUnloadCases(rows);
+}
+
 const bagRoomUnloadAlertInFlight = new Map();
 const bagRoomUnloadAlertCompleted = new Set();
 let bagRoomUnloadAlertStateLoaded = false;
@@ -2915,6 +2934,8 @@ app.post('/cbs-worldtracer-cases/update', async (req, res) => {
 app.get('/cbs-unresolved-baggage', async (req, res) => {
   try {
     let rows = await getCbsUnresolvedBaggageCases({ includeResolved: true });
+    const expiredCount = await closeExpiredBagRoomUnloadCases(rows);
+    if (expiredCount) rows = await getCbsUnresolvedBaggageCases({ includeResolved:true });
     const rushBags = await getCbsWorldTracerCases();
     const cases = await getCbsCases();
     for (const row of rows.filter((item) => !item.resolvedAt)) {
@@ -4280,5 +4301,7 @@ app.listen(
     );
     syncTodayReportSheets();
     setInterval(syncTodayReportSheets, 30 * 60 * 1000);
+    runBagRoomUnloadExpiration().catch((err) => console.error('Bag Room expiration error:', err));
+    setInterval(() => runBagRoomUnloadExpiration().catch((err) => console.error('Bag Room expiration error:', err)), 60 * 60 * 1000);
   }
 );

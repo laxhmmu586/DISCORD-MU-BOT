@@ -94,6 +94,10 @@
     .rush-match { display:inline-block; margin-left:8px; color:#6941c6; font-size:11px; font-weight:950; text-transform:uppercase; animation:rush-today-hop .8s ease-in-out infinite alternate; }
     .on-hand-match { margin-right:6px; margin-left:0; }
     .on-hand-location { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .bag-room-timer { display:inline-flex; align-items:center; gap:5px; font-weight:900; white-space:nowrap; }
+    .timer-two { color:#087443; }
+    .timer-one { color:#b54708; }
+    .timer-soon,.timer-expired { color:#b42318; }
     .exchange-tag-flow { display:inline-grid; grid-template-columns:max-content 74px max-content; align-items:center; min-width:270px; padding:3px 0 15px; white-space:nowrap; }
     .exchange-tag-new,.exchange-tag-old { display:inline-flex; align-items:center; justify-content:center; min-width:96px; min-height:30px; padding:6px 13px; border:0; border-radius:10px; font-size:13px; font-weight:950; letter-spacing:.02em; }
     .exchange-tag-old { background:#edf2f8; color:#667085; }
@@ -746,6 +750,14 @@
     function isNotLoadBag(row = {}) {
       return [row.status, row.bagType].some((value) => String(value || '').trim().toLowerCase() === 'not load bags');
     }
+    function bagRoomTimerHtml(row) {
+      if (row.resolvedAt) return '<span class="bag-room-timer timer-expired">◷ Closed</span>';
+      const today = new Date().toLocaleDateString('en-CA', { timeZone:'America/Los_Angeles' });
+      const ageDays = Math.max(0, Math.floor((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${row.flightDate}T00:00:00Z`)) / 86400000));
+      const daysLeft = Math.max(0, 2 - ageDays);
+      if (daysLeft === 0) return '<span class="bag-room-timer timer-soon">◷ Closing soon</span>';
+      return `<span class="bag-room-timer ${daysLeft === 1 ? 'timer-one' : 'timer-two'}">◷ ${daysLeft} day${daysLeft === 1 ? '' : 's'} left</span>`;
+    }
     function resolutionOptionsHtml(isBagRoom) {
       const specificOptions = isBagRoom ? '<option value="change-type">Change Type</option>' : '';
       return `<option value="worldtracer">WorldTracer</option><option value="record-pnr">Record - PNR</option><option value="record-tkt">Record - TKT</option><option value="comment">Comment</option>${specificOptions}<option value="exchange">Exchange</option><option value="email">Email</option><option value="on-hand-rush">Create Rush</option><option value="passenger-collected">Passenger collected / Case closed</option><option value="shipped">Shipped</option><option value="other">Other resolution</option><option value="case-close">Case Close</option>`;
@@ -776,7 +788,7 @@
     function renderUnresolvedBaggageGroup(rows = [], output, groupName) {
       const showClosed = window._caseView === 'closed';
       rows = rows.filter((row) => {
-        const archivedResolutions = new Set(['on-hand-rush', 'shipped', 'passenger-collected', 'case-close', 'linked-passenger-file', 'change-type']);
+        const archivedResolutions = new Set(['on-hand-rush', 'shipped', 'passenger-collected', 'case-close', 'linked-passenger-file', 'change-type', 'expired']);
         const archived = Boolean(row.resolvedAt) && archivedResolutions.has(String(row.resolution || '').toLowerCase());
         return showClosed ? archived : !archived;
       });
@@ -799,8 +811,10 @@
       const showRushTag = rows.some((row) => String(row.rushTagNumber || '').trim());
       const rushTagColumn = showRushTag ? '<col style="width:170px">' : '';
       const rushTagHeading = showRushTag ? '<th>Rush Tag</th>' : '';
-      const columnCount = showRushTag ? 6 : 5;
-      output.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:190px"><col style="width:250px">${rushTagColumn}<col style="width:120px"><col style="width:130px"><col></colgroup><thead><tr><th>WorldTracer File Number</th><th>Bag Tag</th>${rushTagHeading}<th>Direction</th><th>Date</th><th>Type / Status</th></tr></thead><tbody>${rows.map((row) => {
+      const isBagRoomGroup = rows.some(isNotLoadBag);
+      const statusHeadings = isBagRoomGroup ? '<th>Type</th><th>Status</th><th>Timer</th>' : '<th>Type / Status</th>';
+      const columnCount = (showRushTag ? 6 : 5) + (isBagRoomGroup ? 2 : 0);
+      output.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:190px"><col style="width:250px">${rushTagColumn}<col style="width:120px"><col style="width:130px"><col>${isBagRoomGroup ? '<col style="width:110px"><col style="width:160px">' : ''}</colgroup><thead><tr><th>WorldTracer File Number</th><th>Bag Tag</th>${rushTagHeading}<th>Direction</th><th>Date</th>${statusHeadings}</tr></thead><tbody>${rows.map((row) => {
         const resolvedHistory = row.history.filter((item) => item.resolvedAt);
         // "Other" records stay in Open Case and remain actionable so staff can
         // add WorldTracer details or apply a final resolution later.
@@ -826,7 +840,8 @@
         const tagDisplay = lastExchange ? `<span class="exchange-tag-flow"><span class="exchange-tag-old">${escapeHtml(lastExchange.oldTag)}</span><span class="exchange-tag-arrow" aria-hidden="true">→<span class="exchange-tag-arrow-label">Exchange</span></span><span class="exchange-tag-new">${escapeHtml(lastExchange.newTag)}</span></span>` : `<span class="bag-tag-value">${escapeHtml(row.bagTag)}</span>`;
         const rushTagCell = showRushTag ? `<td class="sheet-meta"><span class="bag-tag-value">${escapeHtml(row.rushTagNumber || '-')}</span>${linkButton}</td>` : '';
         const bagTagAction = showRushTag ? '' : linkButton;
-        return `<tr class="case-summary-row" data-toggle-unresolved-update role="button" tabindex="0" aria-expanded="false"><td class="sheet-meta">${escapeHtml(row.worldTracerFileNumber || '-')}</td><td class="sheet-meta"><span class="on-hand-tag-summary">${matchBadge}${tagDisplay}</span>${bagTagAction}</td>${rushTagCell}<td class="sheet-meta">${escapeHtml(row.direction || '-')}</td><td class="sheet-meta">${escapeHtml(row.flightDate || '-')}</td><td class="sheet-meta">${escapeHtml(row.bagType || row.status || '-')}</td></tr><tr class="case-detail-row" data-unresolved-detail hidden><td colspan="${columnCount}"><div class="case-detail-layout"><div class="case-progress-column">${unresolvedProgressHtml(progressRow)}</div><div class="case-detail-right">${formHtml}${commentsHtml}${historyHtml}${recordPanelHtml}</div></div></td></tr>`;
+        const statusCells = isBagRoomGroup ? `<td class="sheet-meta">${escapeHtml(row.bagType || '-')}</td><td class="sheet-meta">${row.resolvedAt ? 'Closed' : 'Open'}</td><td class="sheet-meta">${bagRoomTimerHtml(row)}</td>` : `<td class="sheet-meta">${escapeHtml(row.bagType || row.status || '-')}</td>`;
+        return `<tr class="case-summary-row" data-toggle-unresolved-update role="button" tabindex="0" aria-expanded="false"><td class="sheet-meta">${escapeHtml(row.worldTracerFileNumber || '-')}</td><td class="sheet-meta"><span class="on-hand-tag-summary">${matchBadge}${tagDisplay}</span>${bagTagAction}</td>${rushTagCell}<td class="sheet-meta">${escapeHtml(row.direction || '-')}</td><td class="sheet-meta">${escapeHtml(row.flightDate || '-')}</td>${statusCells}</tr><tr class="case-detail-row" data-unresolved-detail hidden><td colspan="${columnCount}"><div class="case-detail-layout"><div class="case-progress-column">${unresolvedProgressHtml(progressRow)}</div><div class="case-detail-right">${formHtml}${commentsHtml}${historyHtml}${recordPanelHtml}</div></div></td></tr>`;
       }).join('')}</tbody></table></div>${listPaginationHtml(listKey, pagination)}`;
       requestAnimationFrame(syncCaseProgressHeights);
     }
