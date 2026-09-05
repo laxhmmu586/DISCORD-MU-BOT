@@ -78,6 +78,7 @@ const {
   updateCbsUnresolvedBaggageWorldTracer,
   updateCbsUnresolvedBaggageDetails,
   exchangeCbsUnresolvedBaggageTag,
+  associateCbsUnresolvedBaggageRush,
   resolveCbsUnresolvedBaggageCase,
   reopenCbsUnresolvedBaggageCase,
   getCbsCases,
@@ -2100,12 +2101,8 @@ async function closeMatchingBagRoomUnloadCasesForRush(rushBag = {}) {
     && normalizedCbsLinkTag(row.bagTag) === originalTag);
   const updated = [];
   for (const row of matches) {
-    if (rushBag.worldTracerFileNumber) {
-      await updateCbsUnresolvedBaggageWorldTracer(row.rowNumber, rushBag.worldTracerFileNumber, 'Rush Bag automation');
-    }
-    const note = `RUSH UPDATE | Original Tag: ${rushBag.originalTagNumber} | Rush Tag: ${rushBag.rushTagNumber} | CASE CLOSE`;
-    const result = await resolveCbsUnresolvedBaggageCase(row.rowNumber, 'on-hand-rush', note, 'Rush Bag automation');
-    await syncOnHandStatusToBaggage(result.record, 'on-hand-rush', { comment:note, worldTracerFileNumber:rushBag.worldTracerFileNumber, updatedBy:'Rush Bag automation' });
+    const result = await associateCbsUnresolvedBaggageRush(row.rowNumber, rushBag, 'Rush Bag automation');
+    await syncOnHandStatusToBaggage(result.record, 'on-hand-rush', { comment:result.record.resolutionNote, worldTracerFileNumber:rushBag.worldTracerFileNumber, updatedBy:'Rush Bag automation' });
     updated.push(result.record);
   }
   return updated;

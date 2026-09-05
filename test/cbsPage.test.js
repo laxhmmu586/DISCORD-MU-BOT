@@ -273,8 +273,19 @@ test('On-hand and Bag Room rows only show Rush Tag when at least one row has one
   assert.match(page, /escapeHtml\(row\.rushTagNumber \|\| '-'\)/);
   assert.match(server, /async function closeMatchingBagRoomUnloadCasesForRush/);
   assert.match(server, /normalizedCbsLinkTag\(row\.bagTag\) === originalTag/);
-  assert.match(server, /resolveCbsUnresolvedBaggageCase\(row\.rowNumber, 'on-hand-rush'/);
+  assert.match(server, /associateCbsUnresolvedBaggageRush\(row\.rowNumber, rushBag, 'Rush Bag automation'\)/);
   assert.match(server, /result\.closedBagRoomUnloadCases = await closeMatchingBagRoomUnloadCasesForRush\(saved\)/);
+});
+
+test('Rush Bag creation links a matching Bag Room case, records Rush, and closes it', () => {
+  assert.match(drive, /'Update Events', 'Rush Tag Number'/);
+  assert.match(drive, /async function associateCbsUnresolvedBaggageRush\(rowNumber, rushBag = \{\}, updatedBy = ''\)/);
+  assert.match(drive, /key:'rush', title:'Rush', status:'Case Closed'/);
+  assert.match(drive, /range:`\$\{escapeSheetTitle\(title\)\}!I\$\{target\.rowNumber\}:S\$\{target\.rowNumber\}`/);
+  assert.match(drive, /'on-hand-rush', note, resolvedAt[\s\S]*JSON\.stringify\(updateEvents\), rushTagNumber/);
+  assert.match(server, /normalizedCbsLinkTag\(row\.bagTag\) === originalTag/);
+  assert.match(server, /syncOnHandStatusToBaggage\(result\.record, 'on-hand-rush'/);
+  assert.match(page, /resolutionKey === 'on-hand-rush' \? 'Case Close'/);
 });
 
 test('Not Load Bags are automatically copied to the Bag Room Unload Google Sheet', () => {

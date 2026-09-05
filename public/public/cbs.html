@@ -650,7 +650,8 @@
       return '<label class="wide"><span>Resolution Note</span><textarea name="note" placeholder="Describe how this case was resolved" required></textarea></label>';
     }
     function unresolvedProgressHtml(row) {
-      const resolutionTitle = String(row.resolution || '').toLowerCase() === 'email' ? 'Pick-up Bags - available' : (row.resolution || 'Resolved');
+      const resolutionKey = String(row.resolution || '').toLowerCase();
+      const resolutionTitle = resolutionKey === 'email' ? 'Pick-up Bags - available' : (resolutionKey === 'on-hand-rush' ? 'Case Close' : (row.resolution || 'Resolved'));
       const events = [{ title:'On-hand created', at:row.createdAt, by:row.createdBy || row.submittedBy || 'System', detail:row.location ? `Location: ${row.location}` : '' }];
       (row.exchangeHistory || []).forEach((exchange) => events.push({ title:'Exchange', at:exchange.exchangedAt, by:exchange.updatedBy || 'System', detail:`${exchange.oldTag} → ${exchange.newTag}` }));
       if (row.worldTracerFileNumber) events.push({ title:'WorldTracer', at:'', by:row.worldTracerUpdatedBy || 'System', detail:`File: ${row.worldTracerFileNumber}` });
