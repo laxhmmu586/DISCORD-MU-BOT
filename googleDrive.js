@@ -165,6 +165,8 @@ let sheetAccessBlocked = false;
 const NOTES_DRIVE_FILE_ID = process.env.NOTES_DRIVE_FILE_ID || '';
 const NOTES_DRIVE_FILE_NAME = process.env.NOTES_DRIVE_FILE_NAME || 'mufc-notes-store.json';
 let notesDriveFileId = NOTES_DRIVE_FILE_ID;
+const BAG_ROOM_ALERT_DRIVE_FILE_NAME = process.env.BAG_ROOM_ALERT_DRIVE_FILE_NAME || 'cbs-bag-room-alert-state.json';
+let bagRoomAlertDriveFileId = '';
 
 async function resolveNotesDriveFileId() {
   if (notesDriveFileId) return notesDriveFileId;
@@ -203,6 +205,32 @@ async function writeNotesDriveStore(store) {
   });
   notesDriveFileId = created.data.id || '';
   return { fileId: notesDriveFileId };
+}
+
+async function resolveBagRoomAlertDriveFileId() {
+  if (bagRoomAlertDriveFileId) return bagRoomAlertDriveFileId;
+  const escapedName = BAG_ROOM_ALERT_DRIVE_FILE_NAME.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  const response = await drive.files.list({ q:`name='${escapedName}' and trashed=false`, fields:'files(id)', spaces:'drive', pageSize:1 });
+  bagRoomAlertDriveFileId = response.data.files?.[0]?.id || '';
+  return bagRoomAlertDriveFileId;
+}
+
+async function readBagRoomUnloadAlertState() {
+  const fileId = await resolveBagRoomAlertDriveFileId();
+  if (!fileId) return { sentDates:[] };
+  const response = await drive.files.get({ fileId, alt:'media' }, { responseType:'text' });
+  const parsed = JSON.parse(response.data || '{}');
+  return { sentDates:Array.isArray(parsed?.sentDates) ? parsed.sentDates.map(String) : [] };
+}
+
+async function writeBagRoomUnloadAlertState(state = {}) {
+  const body = JSON.stringify({ sentDates:[...new Set(state.sentDates || [])].slice(-31) }, null, 2) + '\n';
+  const media = { mimeType:'application/json', body:Readable.from([body]) };
+  const fileId = await resolveBagRoomAlertDriveFileId();
+  if (fileId) { await drive.files.update({ fileId, media }); return { fileId }; }
+  const created = await drive.files.create({ requestBody:{ name:BAG_ROOM_ALERT_DRIVE_FILE_NAME, mimeType:'application/json' }, media, fields:'id' });
+  bagRoomAlertDriveFileId = created.data.id || '';
+  return { fileId:bagRoomAlertDriveFileId };
 }
 
 
@@ -611,7 +639,7 @@ function sanitizeSheetText(value, maxLength = 500) {
 }
 
 function sanitizeSheetMultilineText(value, maxLength = 5000) {
-  return String(value || '').replace(/\r\n?/g, '\n').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '').trim().slice(0, maxLength);
+  return String(value || '').replace(/\r\n?/g, '\n').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '').slice(0, maxLength);
 }
 
 function safeParseHistory(value) {
@@ -3672,6 +3700,26 @@ async function updateCbsUnresolvedBaggageDetails(rowNumber, update = {}) {
   return { updated:true, record:{ ...target, passengerName:passengerName || target.passengerName, updateEvents } };
 }
 
+async function deleteCbsUnresolvedBaggageComment(rowNumber, target = {}) {
+  const rows = await getCbsUnresolvedBaggageCases({ includeResolved:true });
+  const current = rows.find((row) => cbsRecordMatchesId(row, rowNumber));
+  if (!current) return { notFound:true };
+  const targetAt = sanitizeSheetText(target.at, 40);
+  const targetComment = sanitizeSheetText(target.comment, 500);
+  const eventIndex = (current.updateEvents || []).findIndex((event) => {
+    const comment = new Map(event.fields || []).get('Comment') || event.note || '';
+    return event.key === 'comment' && event.at === targetAt && comment === targetComment;
+  });
+  if (eventIndex < 0) return { commentNotFound:true };
+  const updateEvents = current.updateEvents.filter((_, index) => index !== eventIndex);
+  const title = await getCbsUnresolvedBaggageSheetTitle();
+  await sheets.spreadsheets.values.update({
+    spreadsheetId:CBS_SHEET_ID, range:`${escapeSheetTitle(title)}!R${current.rowNumber}`, valueInputOption:'RAW',
+    requestBody:{ values:[[JSON.stringify(updateEvents)]] }
+  });
+  return { deleted:true, record:{ ...current, updateEvents } };
+}
+
 async function changeCbsUnresolvedBaggageType(rowNumber, bagType, updatedBy = '') {
   const rows = await getCbsUnresolvedBaggageCases({ includeResolved:true });
   const target = rows.find((row) => cbsRecordMatchesId(row, rowNumber));
@@ -4313,6 +4361,13 @@ async function sendNextDayInfoEmail({ to = 'laxhmmu@gmail.com', cc = [], subject
   return { to: Array.isArray(to) ? to : [to], cc: Array.isArray(cc) ? cc : [cc].filter(Boolean), id: sent.data.id || '', userId, authMode };
 }
 
+async function sendBagRoomUnloadAlertEmail({ subject, text, to = '7X24bag@ceair.com' }) {
+  const { gmail, userId, authMode } = getNextDayInfoGmailClient();
+  const raw = buildRawPlainEmail({ to, subject, text });
+  const sent = await gmail.users.messages.send({ userId, requestBody:{ raw:base64UrlEncode(raw) } });
+  return { sent:true, id:sent.data.id || '', to, subject, authMode };
+}
+
 async function sendCbsCaseEmail({ passengerEmail, subject, html, text, pdfBuffer, filename, attachments = [] }) {
   const { gmail, userId } = getNextDayInfoGmailClient();
   const to = String(passengerEmail || '').trim();
@@ -4472,6 +4527,7 @@ module.exports = {
   getCbsUnresolvedBaggageCases,
   updateCbsUnresolvedBaggageWorldTracer,
   updateCbsUnresolvedBaggageDetails,
+  deleteCbsUnresolvedBaggageComment,
   changeCbsUnresolvedBaggageType,
   exchangeCbsUnresolvedBaggageTag,
   resolveCbsUnresolvedBaggageCase,
@@ -4483,6 +4539,9 @@ module.exports = {
   markCbsMissingBagCase,
   acknowledgeCbsMissingBag,
   sendCbsCaseEmail,
+  sendBagRoomUnloadAlertEmail,
+  readBagRoomUnloadAlertState,
+  writeBagRoomUnloadAlertState,
   sendWrongBaggageCaseEmail,
   sendMisconnectionAssistanceEmail,
   getCbsBaggageChartImage,

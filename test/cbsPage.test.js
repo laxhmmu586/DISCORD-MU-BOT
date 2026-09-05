@@ -298,6 +298,24 @@ test('Not Load Bags are automatically copied to the Bag Room Unload Google Sheet
   assert.match(drive, /await appendCbsNotLoadBaggageCase\(\{ \.\.\.record, \.\.\.saved \}\);/);
 });
 
+test('todays MU586 Bag Room Unload bags trigger one CC alert at five or more bags', () => {
+  assert.match(server, /async function notifyBagRoomUnloadAfterCc\(syInfo, isoDate\)/);
+  assert.match(server, /step\.key === 'cc' && step\.complete/);
+  assert.match(server, /row\.flightDate === isoDate/);
+  assert.match(server, /if \(tags\.length < 5\) return \{ sent:false/);
+  assert.match(server, /bagRoomUnloadAlertCompleted\.add\(isoDate\)/);
+  assert.match(server, /async function loadBagRoomUnloadAlertStateOnce\(\)/);
+  assert.match(server, /await writeBagRoomUnloadAlertState\(\{ sentDates:\[\.\.\.bagRoomUnloadAlertCompleted\] \}\)/);
+  assert.match(server, /东航洛杉矶MU586\/\$\{flightDate\}不正常行李运输信息/);
+  assert.match(drive, /to = '7X24bag@ceair\.com'/);
+  assert.match(server, /syInfo\.bagRoomUnloadAlert = await notifyBagRoomUnloadAfterCc\(syInfo, isoDate\)/);
+  assert.match(drive, /async function sendBagRoomUnloadAlertEmail/);
+  assert.match(drive, /cbs-bag-room-alert-state\.json/);
+  assert.match(drive, /async function readBagRoomUnloadAlertState\(\)/);
+  assert.match(drive, /async function writeBagRoomUnloadAlertState\(state = \{\}\)/);
+  assert.doesNotMatch(drive, /in:sent to:\$\{to\} subject:/);
+});
+
 test('On-hand cases match the passenger case layout and support WorldTracer progress', () => {
   assert.match(page, /<th>WorldTracer File Number<\/th><th>Bag Tag<\/th>\$\{rushTagHeading\}<th>Direction<\/th>/);
   assert.match(page, /class="case-detail-layout"><div class="case-progress-column">\$\{unresolvedProgressHtml\(progressRow\)\}/);
@@ -314,13 +332,20 @@ test('On-hand cases match the passenger case layout and support WorldTracer prog
 test('Passenger, On-hand, and Bag Room cases support replaceable PNR and TKT Record tabs', () => {
   assert.doesNotMatch(page, /<option value="passenger-name">Passenger Name<\/option>/);
   assert.match(page, /<option value="record-pnr">Record - PNR<\/option><option value="record-tkt">Record - TKT<\/option>/);
+  assert.match(page, /<option value="record-tkt">Record - TKT<\/option><option value="comment">Comment<\/option>/);
   assert.match(page, /action === 'record-pnr' \|\| action === 'record-tkt'/);
+  assert.match(page, /function recordTextareaHtml\(type, savedRecord = ''\)/);
+  assert.match(page, /if \(key === 'record-pnr' \|\| key === 'record-tkt'\) return recordTextareaHtml\(key, values\.savedRecord \|\| ''\)/);
   assert.match(page, /class="record-tab-panel unresolved-record"/);
-  assert.match(page, /\.unresolved-record pre \{[^}]*"Courier New"[^}]*white-space:pre/);
+  assert.match(page, /\.unresolved-record pre \{[^}]*overflow:auto[^}]*font:12px[^}]*"Courier New"[^}]*white-space:pre/);
+  assert.match(page, /name="record" maxlength="5000" rows="8" wrap="off" spellcheck="false"/);
   assert.match(page, /Record saved — view the original layout in History/);
   assert.match(page, /function savedOnHandRecord\(rowNumber, type\)/);
   assert.match(page, /function recordTabsHtml\(events = \[\], key = ''\)/);
   assert.match(page, /data-record-tab=/);
+  assert.match(page, /role="tablist" aria-label="Saved records"/);
+  assert.match(page, /role="tabpanel" data-record-panel=/);
+  assert.match(page, /button\.setAttribute\('aria-selected', String\(selected\)\)/);
   assert.match(page, /Updating will replace this existing Record/);
   assert.match(page, /action === 'comment'[^\n]+name="commentPreset" data-comment-preset/);
   assert.match(page, /Passenger request Pick up at LAX/);
@@ -332,9 +357,20 @@ test('Passenger, On-hand, and Bag Room cases support replaceable PNR and TKT Rec
   assert.match(drive, /!Q\$\{target\.rowNumber\}:R\$\{target\.rowNumber\}/);
   assert.match(drive, /function sanitizeSheetMultilineText[\s\S]*replace\(\/\\r\\n\?\/g, '\\n'\)/);
   assert.match(drive, /item\.key !== `record-\$\{recordType\}`/);
-  assert.match(server, /const record = sanitizeCbsEmailBody\(req\.body\?\.record, 5000\)/);
+  assert.match(server, /function sanitizeCbsRecord[\s\S]*\.slice\(0, maxLength\)/);
+  assert.match(server, /const record = sanitizeCbsRecord\(req\.body\?\.record, 5000\)/);
   assert.match(server, /type === 'record-pnr' \|\| type === 'record-tkt'/);
   assert.match(page, /recordTabsHtml\(row\.updateEvents \|\| \[\], `passenger-/);
+  assert.match(page, /\$\{passengerNotificationHtml\(row\)\}\$\{passengerRecordPanel\}/);
+  assert.match(page, /const historyHtml = resolvedHistory\.length \?[^;]+<\/section>` : '';/);
+  assert.match(page, /\$\{formHtml\}\$\{commentsHtml\}\$\{historyHtml\}\$\{recordPanelHtml\}/);
+  assert.match(page, /class="record-panel-card"><h3>Records<\/h3>/);
+  assert.match(page, /function unresolvedCommentsHtml\(events = \[\], rowNumber = ''\)/);
+  assert.match(page, /data-delete-unresolved-comment/);
+  assert.match(server, /app\.post\('\/cbs-unresolved-baggage\/:rowNumber\/comments\/delete'/);
+  assert.match(drive, /async function deleteCbsUnresolvedBaggageComment\(rowNumber, target = \{\}\)/);
+  assert.match(page, /type === 'record-pnr' && item\.key === 'record'/);
+  assert.match(page, /get\('Record'\) \|\| ''/);
 });
 
 test('Bag Room cases can change type and close out of Open Case', () => {
