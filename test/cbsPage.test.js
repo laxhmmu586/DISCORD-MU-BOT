@@ -275,6 +275,7 @@ test('On-hand and Bag Room rows only show Rush Tag when at least one row has one
   assert.match(server, /normalizedCbsLinkTag\(row\.bagTag\) === originalTag/);
   assert.match(server, /resolveCbsUnresolvedBaggageCase\(row\.rowNumber, 'on-hand-rush'/);
   assert.match(server, /result\.closedBagRoomUnloadCases = await closeMatchingBagRoomUnloadCasesForRush\(saved\)/);
+  assert.match(server, /result\.closedBagRoomUnloadCases = await closeMatchingBagRoomUnloadCasesForRush\(result\.record\)/);
 });
 
 test('Not Load Bags are automatically copied to the Bag Room Unload Google Sheet', () => {
