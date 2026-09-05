@@ -610,6 +610,10 @@ function sanitizeSheetText(value, maxLength = 500) {
   return String(value || '').replace(/[\u0000-\u001F\u007F]/g, ' ').trim().slice(0, maxLength);
 }
 
+function sanitizeSheetMultilineText(value, maxLength = 5000) {
+  return String(value || '').replace(/\r\n?/g, '\n').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '').trim().slice(0, maxLength);
+}
+
 function safeParseHistory(value) {
   try {
     const parsed = JSON.parse(String(value || '[]'));
@@ -3647,12 +3651,13 @@ async function updateCbsUnresolvedBaggageDetails(rowNumber, update = {}) {
   if (!target) return { updated:false, notFound:true };
   const updatedBy = sanitizeSheetText(update.updatedBy, 160);
   const passengerName = sanitizeSheetText(update.passengerName, 160);
+  const record = sanitizeSheetMultilineText(update.record, 5000);
   const comment = sanitizeSheetText(update.comment, 500);
   const event = {
-    key: passengerName ? 'passenger-name' : 'comment',
-    title: passengerName ? 'Passenger Name' : 'Comment',
+    key: passengerName ? 'passenger-name' : (record ? 'record' : 'comment'),
+    title: passengerName ? 'Passenger Name' : (record ? 'Record' : 'Comment'),
     at:new Date().toISOString(), by:updatedBy || 'System',
-    fields:[[passengerName ? 'Passenger Name' : 'Comment', passengerName || comment]]
+    fields:[[passengerName ? 'Passenger Name' : (record ? 'Record' : 'Comment'), passengerName || record || comment]]
   };
   const updateEvents = [...(target.updateEvents || []), event];
   const title = await getCbsUnresolvedBaggageSheetTitle();
@@ -3661,6 +3666,21 @@ async function updateCbsUnresolvedBaggageDetails(rowNumber, update = {}) {
     requestBody:{ values:[[passengerName || target.passengerName, JSON.stringify(updateEvents)]] }
   });
   return { updated:true, record:{ ...target, passengerName:passengerName || target.passengerName, updateEvents } };
+}
+
+async function changeCbsUnresolvedBaggageType(rowNumber, bagType, updatedBy = '') {
+  const rows = await getCbsUnresolvedBaggageCases({ includeResolved:true });
+  const target = rows.find((row) => cbsRecordMatchesId(row, rowNumber));
+  if (!target) return { updated:false, notFound:true };
+  if (target.resolvedAt && target.resolution !== 'change-type') throw Object.assign(new Error('Only an open Bag Room case can change type'), { code:'CASE_CLOSED' });
+  const nextType = ['Rush bag', 'Gate Bag'].find((value) => value.toLowerCase() === sanitizeSheetText(bagType, 80).toLowerCase());
+  if (!nextType) throw Object.assign(new Error('Type must be Rush bag or Gate Bag'), { code:'INVALID_TYPE' });
+  const title = await getCbsUnresolvedBaggageSheetTitle();
+  await sheets.spreadsheets.values.update({
+    spreadsheetId:CBS_SHEET_ID, range:`${escapeSheetTitle(title)}!E${target.rowNumber}:F${target.rowNumber}`, valueInputOption:'RAW',
+    requestBody:{ values:[[nextType, nextType]] }
+  });
+  return { updated:true, record:{ ...target, bagType:nextType, status:nextType, typeChangedBy:sanitizeSheetText(updatedBy, 160) } };
 }
 
 async function exchangeCbsUnresolvedBaggageTag(rowNumber, newBagTag, updatedBy = '') {
@@ -4448,6 +4468,7 @@ module.exports = {
   getCbsUnresolvedBaggageCases,
   updateCbsUnresolvedBaggageWorldTracer,
   updateCbsUnresolvedBaggageDetails,
+  changeCbsUnresolvedBaggageType,
   exchangeCbsUnresolvedBaggageTag,
   resolveCbsUnresolvedBaggageCase,
   reopenCbsUnresolvedBaggageCase,

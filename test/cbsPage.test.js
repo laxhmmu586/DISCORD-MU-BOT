@@ -203,7 +203,7 @@ test('CBS cases no longer rely on stale browser storage', () => {
 test('Add Baggage records are added to and displayed in Open Case', () => {
   assert.match(drive, /CBS_UNRESOLVED_BAGGAGE_SHEET_GID = Number\(process\.env\.CBS_UNRESOLVED_BAGGAGE_SHEET_GID \|\| 523026916\)/);
   assert.match(page, /title="Add Baggage"/);
-  assert.match(page, /id="open-cases-tab"[\s\S]*id="closed-cases-tab"[\s\S]*id="add-baggage-tab"[\s\S]*id="worldtracer-tab"/);
+  assert.match(page, /id="open-cases-tab"[\s\S]*id="worldtracer-tab"[\s\S]*id="add-baggage-tab"[\s\S]*id="missing-report-alert"[\s\S]*id="email-tab"[\s\S]*id="baggage-chart-tab"[\s\S]*id="closed-cases-tab"/);
   assert.match(page, /<h1>Add Baggage<\/h1>/);
   assert.doesNotMatch(page, />Add On-hand</);
   assert.match(drive, /await appendCbsUnresolvedBaggageCase\(cleanRecord\);/);
@@ -243,8 +243,9 @@ test('Not Load Bags have a separate Bag Room Unload Bag category with On-hand re
   assert.match(page, /function isNotLoadBag\(row = \{\}\)/);
   assert.match(page, /renderUnresolvedBaggageGroup\(regularRows, unresolvedBaggageOutput, 'On-hand'\)/);
   assert.match(page, /renderUnresolvedBaggageGroup\(notLoadRows, bagRoomUnloadOutput, 'Bag Room Unload Bag'\)/);
-  assert.match(page, /const resolutionOptionsHtml = `[^`]*WorldTracer[^`]*Exchange[^`]*Email[^`]*Create Rush[^`]*Passenger collected \/ Case closed[^`]*Shipped[^`]*Other resolution[^`]*Case Close[^`]*`/);
-  assert.match(page, /<select name="action" data-unresolved-action>\$\{resolutionOptionsHtml\}<\/select>/);
+  assert.match(page, /function resolutionOptionsHtml\(isBagRoom\)/);
+  assert.match(page, /isBagRoom \? '<option value="change-type">Change Type<\/option>'/);
+  assert.match(page, /resolutionOptionsHtml\(isNotLoadBag\(active\)\)/);
 });
 
 test('Open Case uses selectable summary cards with live category counts', () => {
@@ -275,6 +276,19 @@ test('On-hand and Bag Room rows only show Rush Tag when at least one row has one
   assert.match(server, /normalizedCbsLinkTag\(row\.bagTag\) === originalTag/);
   assert.match(server, /resolveCbsUnresolvedBaggageCase\(row\.rowNumber, 'on-hand-rush'/);
   assert.match(server, /result\.closedBagRoomUnloadCases = await closeMatchingBagRoomUnloadCasesForRush\(saved\)/);
+  assert.match(server, /result\.closedBagRoomUnloadCases = await closeMatchingBagRoomUnloadCasesForRush\(result\.record\)/);
+});
+
+test('growing Rush and case lists paginate by record count while Missing Reports paginate by month', () => {
+  assert.match(page, /const LIST_PAGE_SIZE = 20/);
+  assert.match(page, /function paginateRows\(rows, key\)/);
+  assert.match(page, /data-list-page=/);
+  assert.match(page, /paginateRows\(rows, 'rush-bags'\)/);
+  assert.match(page, /function paginateRowsByMonth\(rows, key\)/);
+  assert.match(page, /paginateRowsByMonth\(rows, 'missing-reports'\)/);
+  assert.match(page, /year:'numeric', month:'long'/);
+  assert.match(page, /paginateRows\(rows, `\$\{showClosed \? 'closed' : 'open'\}-passenger`\)/);
+  assert.match(page, /const listKey = `\$\{showClosed \? 'closed' : 'open'\}-\$\{isNotLoadBag\(rows\[0\]\) \? 'bag-room' : 'on-hand'\}`/);
 });
 
 test('Not Load Bags are automatically copied to the Bag Room Unload Google Sheet', () => {
@@ -297,17 +311,33 @@ test('On-hand cases match the passenger case layout and support WorldTracer prog
   assert.match(server, /action === 'worldtracer'/);
 });
 
-test('On-hand cases support Passenger Name and Passenger Filed-style comments', () => {
-  assert.match(page, /<option value="passenger-name">Passenger Name<\/option><option value="comment">Comment<\/option>/);
+test('On-hand cases support Passenger Name, long Record entries, and comments', () => {
+  assert.match(page, /<option value="passenger-name">Passenger Name<\/option><option value="record">Record<\/option>/);
   assert.match(page, /action === 'passenger-name'[^\n]+name="passengerName"[^\n]+required/);
+  assert.match(page, /action === 'record'[^\n]+textarea name="record" maxlength="5000"/);
+  assert.match(page, /class="unresolved-record"/);
+  assert.match(page, /class="unresolved-record"><strong>Record<\/strong><pre>/);
+  assert.match(page, /\.unresolved-record pre \{[^}]*"Courier New"[^}]*white-space:pre/);
+  assert.match(page, /Record saved — view the original layout in History/);
   assert.match(page, /action === 'comment'[^\n]+name="commentPreset" data-comment-preset/);
   assert.match(page, /Passenger request Pick up at LAX/);
   assert.match(page, /row\.updateEvents \|\| \[\]/);
   assert.match(page, /item\.key === 'comment' \? ' tracking-chip--comment'/);
-  assert.match(server, /action === 'passenger-name' \|\| action === 'comment'/);
+  assert.match(server, /action === 'passenger-name' \|\| action === 'record' \|\| action === 'comment'/);
   assert.match(server, /updateCbsUnresolvedBaggageDetails/);
   assert.match(drive, /'Passenger Name', 'Update Events'/);
   assert.match(drive, /!Q\$\{target\.rowNumber\}:R\$\{target\.rowNumber\}/);
+  assert.match(drive, /function sanitizeSheetMultilineText[\s\S]*replace\(\/\\r\\n\?\/g, '\\n'\)/);
+  assert.match(server, /const record = sanitizeCbsEmailBody\(req\.body\?\.record, 5000\)/);
+});
+
+test('Bag Room cases can change type and close out of Open Case', () => {
+  assert.match(page, /option value="Rush bag">Rush bag<\/option><option value="Gate Bag">Gate Bag<\/option>/);
+  assert.match(page, /'change-type'\]\)/);
+  assert.match(server, /action === 'change-type'/);
+  assert.match(server, /resolveCbsUnresolvedBaggageCase\(req\.params\.rowNumber, 'change-type'/);
+  assert.match(drive, /async function changeCbsUnresolvedBaggageType/);
+  assert.match(drive, /!E\$\{target\.rowNumber\}:F\$\{target\.rowNumber\}/);
 });
 
 test('completed On-hand cases move from Open Case to Closed Case', () => {
@@ -704,6 +734,14 @@ test('Rush Bag cases with MU586 notify Discord and treat WorldTracer as optional
   assert.match(server, /appendCbsWorldTracerCase\(record\)[\s\S]*addRushBagDiscordResult\(\{ created: true, record: saved \}, saved\)/);
   assert.match(server, /isRushBagWorldTracerOnlyUpdate\(previousRecord, result\.record\)[\s\S]*WorldTracer file number-only updates do not send another Rush Bag notification/);
   assert.match(server, /updateCbsWorldTracerCase\(body\.rowNumbers, record\)[\s\S]*addRushBagDiscordResult\(result, result\.record\)/);
+});
+
+test('new Rush itineraries default to todays MU586 LAX-PVG flight while added flights stay blank', () => {
+  assert.match(page, /function defaultRushFlight\(\)/);
+  assert.match(page, /return \{ flightDate, flightNumber:'MU586', from:'LAX', to:'PVG' \}/);
+  assert.match(page, /addRushFlightRow\(defaultRushFlight\(\)\)/);
+  assert.match(page, /addRushFlight\?\.addEventListener\('click', \(\) => addRushFlightRow\(\)\)/);
+  assert.match(page, /input\[type="date"\]\{width:100%;height:52px;min-height:52px/);
 });
 
 test('Missing Bag Report shows the LAXTEC phone contact', () => {
