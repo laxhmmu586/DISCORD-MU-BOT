@@ -610,6 +610,10 @@ function sanitizeSheetText(value, maxLength = 500) {
   return String(value || '').replace(/[\u0000-\u001F\u007F]/g, ' ').trim().slice(0, maxLength);
 }
 
+function sanitizeSheetMultilineText(value, maxLength = 5000) {
+  return String(value || '').replace(/\r\n?/g, '\n').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '').trim().slice(0, maxLength);
+}
+
 function safeParseHistory(value) {
   try {
     const parsed = JSON.parse(String(value || '[]'));
@@ -3647,7 +3651,7 @@ async function updateCbsUnresolvedBaggageDetails(rowNumber, update = {}) {
   if (!target) return { updated:false, notFound:true };
   const updatedBy = sanitizeSheetText(update.updatedBy, 160);
   const passengerName = sanitizeSheetText(update.passengerName, 160);
-  const record = sanitizeSheetText(update.record, 5000);
+  const record = sanitizeSheetMultilineText(update.record, 5000);
   const comment = sanitizeSheetText(update.comment, 500);
   const event = {
     key: passengerName ? 'passenger-name' : (record ? 'record' : 'comment'),

@@ -2971,7 +2971,7 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
     }
     if (action === 'passenger-name' || action === 'record' || action === 'comment') {
       const passengerName = sanitizeCbsText(req.body?.passengerName, 160);
-      const record = sanitizeCbsText(req.body?.record, 5000);
+      const record = sanitizeCbsEmailBody(req.body?.record, 5000);
       const comment = sanitizeCbsText(req.body?.comment, 500);
       if (action === 'passenger-name' && !passengerName) return res.status(400).json({ error:'Passenger name is required' });
       if (action === 'record' && !record) return res.status(400).json({ error:'Record information is required' });

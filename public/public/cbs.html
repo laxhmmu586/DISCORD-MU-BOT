@@ -271,7 +271,8 @@
     .unresolved-history { grid-column:1/-1; display:grid; gap:8px; margin-top:16px; padding:14px; border:1px solid #a6e3c1; border-radius:12px; background:#eafaf1; color:#06603a; }
     .unresolved-history h3 { margin:0; color:#067647; }
     .unresolved-history p { margin:0; }
-    .unresolved-record { margin-top:4px; padding:14px; border:1px solid #b9d2f3; border-radius:12px; background:#f3f7ff; color:#173b6c; white-space:pre-wrap; overflow-wrap:anywhere; }
+    .unresolved-record { min-width:0; margin-top:4px; padding:14px; border:1px solid #b9d2f3; border-radius:12px; background:#f3f7ff; color:#173b6c; }
+    .unresolved-record pre { max-width:100%; margin:8px 0 0; padding:14px; overflow:auto; border-radius:9px; background:#07110a; color:#32e65c; font:14px/1.35 "Courier New",ui-monospace,monospace; tab-size:8; white-space:pre; }
     .unresolved-record small { display:block; margin-top:8px; color:var(--muted); font-weight:700; }
     .open-case-groups { display:grid; gap:24px; margin-top:20px; }
     .open-case-group { padding:18px; border:1px solid var(--line); border-radius:18px; background:#fbfdff; }
@@ -716,7 +717,7 @@
       const events = [{ title:'On-hand created', at:row.createdAt, by:row.createdBy || row.submittedBy || 'System', detail:row.location ? `Location: ${row.location}` : '' }];
       (row.exchangeHistory || []).forEach((exchange) => events.push({ title:'Exchange', at:exchange.exchangedAt, by:exchange.updatedBy || 'System', detail:`${exchange.oldTag} → ${exchange.newTag}` }));
       if (row.worldTracerFileNumber) events.push({ title:'WorldTracer', at:'', by:row.worldTracerUpdatedBy || 'System', detail:`File: ${row.worldTracerFileNumber}` });
-      (row.updateEvents || []).forEach((event) => events.push({ ...event, detail:(event.fields || []).map(([key, value]) => `${key}: ${value}`).join(' | ') }));
+      (row.updateEvents || []).forEach((event) => events.push({ ...event, detail:event.key === 'record' ? 'Record saved — view the original layout in History' : (event.fields || []).map(([key, value]) => `${key}: ${value}`).join(' | ') }));
       if (row.resolvedAt) events.push({ title:resolutionTitle, at:row.resolvedAt, by:row.resolvedBy || updaterFromText(row.resolutionNote) || 'System', detail:withoutUpdaterText(row.resolutionNote) });
       return `<div class="tracking-workspace"><p class="tracking-current-time"><strong>${label('Case Progress', '案件进度')}</strong></p><div class="tracking-history">${events.slice().reverse().map((item, index) => `<span class="tracking-chip${item.key === 'comment' ? ' tracking-chip--comment' : ''}${index === 0 ? ' is-latest' : ''}${row.resolvedAt && index === 0 ? ' is-closed' : ''}"><span class="tracking-step-number">${events.length - index}</span><span class="tracking-chip-title">${escapeHtml(item.title)}</span>${item.at || item.by ? `<small>${item.at ? escapeHtml(new Date(item.at).toLocaleString()) : ''}${item.by ? ` · Updated by: ${escapeHtml(updaterDisplayName(item.by))}` : ''}</small>` : ''}${item.detail ? `<span class="tracking-chip-detail">${escapeHtml(updaterDisplayText(item.detail))}</span>` : ''}</span>`).join('')}</div></div>`;
     }
@@ -760,7 +761,7 @@
         // add WorldTracer details or apply a final resolution later.
         const active = row.history.find((item) => !item.resolvedAt || ['other', 'email'].includes(String(item.resolution || '').toLowerCase()));
         const recordEvents = row.history.flatMap((item) => item.updateEvents || []).filter((event) => event.key === 'record');
-        const historyHtml = resolvedHistory.length || recordEvents.length ? `<section class="unresolved-history"><h3>History</h3>${resolvedHistory.map((item) => `<p><strong>${escapeHtml(item.resolution || 'Completed')}</strong> · ${escapeHtml(item.resolvedAt ? new Date(item.resolvedAt).toLocaleString() : '')}${item.resolutionNote ? `<br>${escapeHtml(item.resolutionNote)}` : ''}</p>`).join('')}${recordEvents.map((event) => `<div class="unresolved-record"><strong>Record</strong><br>${escapeHtml(new Map(event.fields || []).get('Record') || '')}<small>${event.at ? escapeHtml(new Date(event.at).toLocaleString()) : ''}${event.by ? ` · Updated by: ${escapeHtml(updaterDisplayName(event.by))}` : ''}</small></div>`).join('')}</section>` : '';
+        const historyHtml = resolvedHistory.length || recordEvents.length ? `<section class="unresolved-history"><h3>History</h3>${resolvedHistory.map((item) => `<p><strong>${escapeHtml(item.resolution || 'Completed')}</strong> · ${escapeHtml(item.resolvedAt ? new Date(item.resolvedAt).toLocaleString() : '')}${item.resolutionNote ? `<br>${escapeHtml(item.resolutionNote)}` : ''}</p>`).join('')}${recordEvents.map((event) => `<div class="unresolved-record"><strong>Record</strong><pre>${escapeHtml(new Map(event.fields || []).get('Record') || '')}</pre><small>${event.at ? escapeHtml(new Date(event.at).toLocaleString()) : ''}${event.by ? ` · Updated by: ${escapeHtml(updaterDisplayName(event.by))}` : ''}</small></div>`).join('')}</section>` : '';
         const closed = !active && showClosed ? row : null;
         const matchedCase = active ? matchingPassengerCaseForOnHand(active) : null;
         const onHandId = active?.rowNumber || '';

@@ -316,6 +316,9 @@ test('On-hand cases support Passenger Name, long Record entries, and comments', 
   assert.match(page, /action === 'passenger-name'[^\n]+name="passengerName"[^\n]+required/);
   assert.match(page, /action === 'record'[^\n]+textarea name="record" maxlength="5000"/);
   assert.match(page, /class="unresolved-record"/);
+  assert.match(page, /class="unresolved-record"><strong>Record<\/strong><pre>/);
+  assert.match(page, /\.unresolved-record pre \{[^}]*"Courier New"[^}]*white-space:pre/);
+  assert.match(page, /Record saved — view the original layout in History/);
   assert.match(page, /action === 'comment'[^\n]+name="commentPreset" data-comment-preset/);
   assert.match(page, /Passenger request Pick up at LAX/);
   assert.match(page, /row\.updateEvents \|\| \[\]/);
@@ -324,6 +327,17 @@ test('On-hand cases support Passenger Name, long Record entries, and comments', 
   assert.match(server, /updateCbsUnresolvedBaggageDetails/);
   assert.match(drive, /'Passenger Name', 'Update Events'/);
   assert.match(drive, /!Q\$\{target\.rowNumber\}:R\$\{target\.rowNumber\}/);
+  assert.match(drive, /function sanitizeSheetMultilineText[\s\S]*replace\(\/\\r\\n\?\/g, '\\n'\)/);
+  assert.match(server, /const record = sanitizeCbsEmailBody\(req\.body\?\.record, 5000\)/);
+});
+
+test('Bag Room cases can change type and close out of Open Case', () => {
+  assert.match(page, /option value="Rush bag">Rush bag<\/option><option value="Gate Bag">Gate Bag<\/option>/);
+  assert.match(page, /'change-type'\]\)/);
+  assert.match(server, /action === 'change-type'/);
+  assert.match(server, /resolveCbsUnresolvedBaggageCase\(req\.params\.rowNumber, 'change-type'/);
+  assert.match(drive, /async function changeCbsUnresolvedBaggageType/);
+  assert.match(drive, /!E\$\{target\.rowNumber\}:F\$\{target\.rowNumber\}/);
 });
 
 test('Bag Room cases can change type and close out of Open Case', () => {
