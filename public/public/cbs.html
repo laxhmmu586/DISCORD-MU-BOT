@@ -812,9 +812,9 @@
       const rushTagColumn = showRushTag ? '<col style="width:170px">' : '';
       const rushTagHeading = showRushTag ? '<th>Rush Tag</th>' : '';
       const isBagRoomGroup = rows.some(isNotLoadBag);
-      const statusHeadings = isBagRoomGroup ? '<th>Type</th><th>Status</th><th>Timer</th>' : '<th>Type / Status</th>';
-      const columnCount = (showRushTag ? 6 : 5) + (isBagRoomGroup ? 2 : 0);
-      output.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:190px"><col style="width:250px">${rushTagColumn}<col style="width:120px"><col style="width:130px"><col>${isBagRoomGroup ? '<col style="width:110px"><col style="width:160px">' : ''}</colgroup><thead><tr><th>WorldTracer File Number</th><th>Bag Tag</th>${rushTagHeading}<th>Direction</th><th>Date</th>${statusHeadings}</tr></thead><tbody>${rows.map((row) => {
+      const statusHeadings = isBagRoomGroup ? '<th>Status</th><th>Timer</th>' : '<th>Type / Status</th>';
+      const columnCount = (showRushTag ? 6 : 5) + (isBagRoomGroup ? 1 : 0);
+      output.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:190px"><col style="width:250px">${rushTagColumn}<col style="width:120px"><col style="width:130px"><col>${isBagRoomGroup ? '<col style="width:160px">' : ''}</colgroup><thead><tr><th>WorldTracer File Number</th><th>Bag Tag</th>${rushTagHeading}<th>Direction</th><th>Date</th>${statusHeadings}</tr></thead><tbody>${rows.map((row) => {
         const resolvedHistory = row.history.filter((item) => item.resolvedAt);
         // "Other" records stay in Open Case and remain actionable so staff can
         // add WorldTracer details or apply a final resolution later.
@@ -840,7 +840,7 @@
         const tagDisplay = lastExchange ? `<span class="exchange-tag-flow"><span class="exchange-tag-old">${escapeHtml(lastExchange.oldTag)}</span><span class="exchange-tag-arrow" aria-hidden="true">→<span class="exchange-tag-arrow-label">Exchange</span></span><span class="exchange-tag-new">${escapeHtml(lastExchange.newTag)}</span></span>` : `<span class="bag-tag-value">${escapeHtml(row.bagTag)}</span>`;
         const rushTagCell = showRushTag ? `<td class="sheet-meta"><span class="bag-tag-value">${escapeHtml(row.rushTagNumber || '-')}</span>${linkButton}</td>` : '';
         const bagTagAction = showRushTag ? '' : linkButton;
-        const statusCells = isBagRoomGroup ? `<td class="sheet-meta">${escapeHtml(row.bagType || '-')}</td><td class="sheet-meta">${row.resolvedAt ? 'Closed' : 'Open'}</td><td class="sheet-meta">${bagRoomTimerHtml(row)}</td>` : `<td class="sheet-meta">${escapeHtml(row.bagType || row.status || '-')}</td>`;
+        const statusCells = isBagRoomGroup ? `<td class="sheet-meta">${row.resolvedAt ? 'Closed' : 'Open'}</td><td class="sheet-meta">${bagRoomTimerHtml(row)}</td>` : `<td class="sheet-meta">${escapeHtml(row.bagType || row.status || '-')}</td>`;
         return `<tr class="case-summary-row" data-toggle-unresolved-update role="button" tabindex="0" aria-expanded="false"><td class="sheet-meta">${escapeHtml(row.worldTracerFileNumber || '-')}</td><td class="sheet-meta"><span class="on-hand-tag-summary">${matchBadge}${tagDisplay}</span>${bagTagAction}</td>${rushTagCell}<td class="sheet-meta">${escapeHtml(row.direction || '-')}</td><td class="sheet-meta">${escapeHtml(row.flightDate || '-')}</td>${statusCells}</tr><tr class="case-detail-row" data-unresolved-detail hidden><td colspan="${columnCount}"><div class="case-detail-layout"><div class="case-progress-column">${unresolvedProgressHtml(progressRow)}</div><div class="case-detail-right">${formHtml}${commentsHtml}${historyHtml}${recordPanelHtml}</div></div></td></tr>`;
       }).join('')}</tbody></table></div>${listPaginationHtml(listKey, pagination)}`;
       requestAnimationFrame(syncCaseProgressHeights);
