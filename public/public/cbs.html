@@ -65,6 +65,9 @@
     .case-summary:hover { background:#f7fbff; }
 
     .sheet-shell { overflow:auto; border:1px solid #d8e4f1; border-radius:18px; background:#fff; box-shadow:0 12px 30px rgba(18,58,115,.06); }
+    .list-pagination { display:flex; align-items:center; justify-content:flex-end; gap:10px; padding:14px 4px 2px; color:var(--muted); font-size:13px; font-weight:700; }
+    .list-pagination button { min-width:82px; padding:8px 12px; }
+    .list-pagination button:disabled { cursor:not-allowed; opacity:.4; }
     .cbs-sheet { min-width:980px; border-collapse:separate; border-spacing:0 10px; table-layout:fixed; font-size:13px; }
     .cbs-sheet th,.cbs-sheet td { height:34px; padding:12px 14px; border:0; background:#fff; vertical-align:top; }
     .cbs-sheet th { position:sticky; top:0; z-index:2; background:#f8fbff; color:#344054; text-transform:none; font-size:13px; font-weight:900; box-shadow:inset 0 -1px 0 #d8e4f1; }
@@ -499,6 +502,18 @@
     const sidebarRefresh = document.querySelector('#sidebar-refresh');
     const sidebarLogout = document.querySelector('#sidebar-logout');
     const MISSING_BAG_STATUS_STORAGE_KEY = 'mufc_missing_bag_status_v1';
+    const LIST_PAGE_SIZE = 20;
+    function paginateRows(rows, key) {
+      window._cbsListPages ||= {};
+      const pageCount = Math.max(1, Math.ceil(rows.length / LIST_PAGE_SIZE));
+      const page = Math.min(Math.max(1, Number(window._cbsListPages[key]) || 1), pageCount);
+      window._cbsListPages[key] = page;
+      return { rows:rows.slice((page - 1) * LIST_PAGE_SIZE, page * LIST_PAGE_SIZE), page, pageCount, total:rows.length };
+    }
+    function listPaginationHtml(key, pagination) {
+      if (pagination.pageCount <= 1) return '';
+      return `<nav class="list-pagination" aria-label="List pages"><span>${label(`Page ${pagination.page} of ${pagination.pageCount} · ${pagination.total} records`, `第 ${pagination.page}/${pagination.pageCount} 页 · 共 ${pagination.total} 条`)}</span><button class="secondary" type="button" data-list-page="${escapeHtml(key)}" data-page-delta="-1" ${pagination.page === 1 ? 'disabled' : ''}>${label('Previous', '上一页')}</button><button class="secondary" type="button" data-list-page="${escapeHtml(key)}" data-page-delta="1" ${pagination.page === pagination.pageCount ? 'disabled' : ''}>${label('Next', '下一页')}</button></nav>`;
+    }
     function setCaseCount(group, count) {
       document.querySelector(`[data-case-count="${group}"]`).textContent = String(count);
       const titleCount = document.querySelector(`[data-case-title-count="${group}"]`);
@@ -514,6 +529,17 @@
     }
     caseCategoryButtons.forEach((button) => button.addEventListener('click', () => selectCaseGroup(button.dataset.caseGroup)));
     document.querySelectorAll('.case-view-all').forEach((button) => button.addEventListener('click', () => button.closest('[data-case-panel]')?.querySelector('.sheet-shell')?.scrollIntoView({ behavior:'smooth', block:'nearest' })));
+    document.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-list-page]');
+      if (!button || button.disabled) return;
+      const key = button.dataset.listPage;
+      window._cbsListPages ||= {};
+      window._cbsListPages[key] = Math.max(1, (Number(window._cbsListPages[key]) || 1) + Number(button.dataset.pageDelta || 0));
+      if (key === 'rush-bags') renderWorldTracerCases(window._worldTracerRows || []);
+      else if (key === 'missing-reports') renderMissingReports(window._missingBagRows || []);
+      else if (key.endsWith('-passenger')) renderCases();
+      else renderUnresolvedBaggage(window._unresolvedBaggageSourceRows || []);
+    });
     function futurePickupDateText(value, chinese) {
       const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
       if (!match) return chinese ? '所选日期' : 'the selected date';
@@ -618,12 +644,13 @@
     }
     function renderWorldTracerCases(rows = []) {
       if (!rows.length) { worldTracerOutput.innerHTML = `<p class="muted">${label('No Rush Bag cases yet.', '暂无 Rush Bag 案件。')}</p>`; return; }
-      worldTracerOutput.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:210px"><col style="width:170px"><col style="width:170px"><col><col style="width:170px"><col style="width:110px"></colgroup><thead><tr><th>WorldTracer File Number</th><th>Original Tag</th><th>RUSH Tag</th><th>RUSH Itinerary</th><th>${label('Created', '创建时间')}</th><th></th></tr></thead><tbody>${rows.map((row, caseIndex) => {
+      const pagination = paginateRows(rows, 'rush-bags');
+      worldTracerOutput.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:210px"><col style="width:170px"><col style="width:170px"><col><col style="width:170px"><col style="width:110px"></colgroup><thead><tr><th>WorldTracer File Number</th><th>Original Tag</th><th>RUSH Tag</th><th>RUSH Itinerary</th><th>${label('Created', '创建时间')}</th><th></th></tr></thead><tbody>${pagination.rows.map((row, caseIndex) => {
         const routes = (row.flightRows || []).map((flight) => `<span>${escapeHtml(flight.flightDate || '-')} &nbsp; ${escapeHtml(flight.flightNumber || '-')} &nbsp; ${escapeHtml(flight.from || '-')} – ${escapeHtml(flight.to || '-')}</span>`).join('');
         const created = row.createdAt ? new Date(row.createdAt).toLocaleString() : '-';
         const editFlights = (row.flightRows || []).map((flight) => rushFlightRowHtml(flight)).join('');
         return `<tr><td class="case-key">${escapeHtml(row.worldTracerFileNumber || '-')}</td><td><span class="bag-tag-value">${escapeHtml(row.originalTagNumber || '-')}</span></td><td><span class="bag-tag-value">${escapeHtml(row.rushTagNumber || '-')}</span></td><td><div class="worldtracer-route">${routes}</div></td><td class="sheet-meta">${escapeHtml(created)}</td><td><button type="button" data-toggle-onhand-update="${caseIndex}">Update</button></td></tr><tr data-onhand-update-row="${caseIndex}" hidden><td colspan="6"><form class="worldtracer-form onhand-update-form" data-row-numbers="${escapeHtml((row.rowNumbers || []).join(','))}" data-created-at="${escapeHtml(row.createdAt)}"><label><span>WorldTracer File Number (Optional)</span><input name="worldTracerFileNumber" value="${escapeHtml(row.worldTracerFileNumber)}" placeholder="Can be added later" /></label><label><span>Original Tag Number</span><input name="originalTagNumber" value="${escapeHtml(row.originalTagNumber)}" required /></label><label><span>RUSH Tag Number</span><input name="rushTagNumber" value="${escapeHtml(row.rushTagNumber)}" required /></label><div class="rush-itinerary wide"><div class="rush-itinerary-head"><h2>RUSH Itinerary</h2><button class="secondary" type="button" data-add-onhand-flight>+ Add Flight</button></div><div data-onhand-flight-rows>${editFlights}</div></div><div class="actions"><button type="submit">Save Update</button></div></form></td></tr>`;
-      }).join('')}</tbody></table></div>`;
+      }).join('')}</tbody></table></div>${listPaginationHtml('rush-bags', pagination)}`;
     }
     async function loadWorldTracerCases() {
       worldTracerOutput.innerHTML = `<p class="muted">${label('Loading cases...', '正在加载案件……')}</p>`;
@@ -631,7 +658,8 @@
         const res = await fetch(`${apiBase}/cbs-worldtracer-cases`);
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || 'Rush Bag case lookup failed');
-        renderWorldTracerCases(data.rows || []);
+        window._worldTracerRows = data.rows || [];
+        renderWorldTracerCases(window._worldTracerRows);
       } catch (error) {
         worldTracerOutput.innerHTML = `<p class="status err">${escapeHtml(error.message)}</p>`;
       }
@@ -682,6 +710,9 @@
       }).sort((a, b) => Number(Boolean(a.history.find((item) => !item.resolvedAt))) === Number(Boolean(b.history.find((item) => !item.resolvedAt))) ? 0 : (a.history.find((item) => !item.resolvedAt) ? -1 : 1));
       setCaseCount(groupName === 'On-hand' || groupName === 'Closed On-hand' ? 'on-hand' : 'bag-room', rows.length);
       if (!rows.length) { output.innerHTML = `<p class="muted">${showClosed ? `No closed ${groupName} cases.` : `No ${groupName} cases.`}</p>`; return; }
+      const listKey = `${showClosed ? 'closed' : 'open'}-${isNotLoadBag(rows[0]) ? 'bag-room' : 'on-hand'}`;
+      const pagination = paginateRows(rows, listKey);
+      rows = pagination.rows;
       const showRushTag = rows.some((row) => String(row.rushTagNumber || '').trim());
       const rushTagColumn = showRushTag ? '<col style="width:170px">' : '';
       const rushTagHeading = showRushTag ? '<th>Rush Tag</th>' : '';
@@ -709,7 +740,7 @@
         const rushTagCell = showRushTag ? `<td class="sheet-meta"><span class="bag-tag-value">${escapeHtml(row.rushTagNumber || '-')}</span>${linkButton}</td>` : '';
         const bagTagAction = showRushTag ? '' : linkButton;
         return `<tr class="case-summary-row" data-toggle-unresolved-update role="button" tabindex="0" aria-expanded="false"><td class="sheet-meta">${escapeHtml(row.worldTracerFileNumber || '-')}</td><td class="sheet-meta"><span class="on-hand-tag-summary">${matchBadge}${tagDisplay}</span>${bagTagAction}</td>${rushTagCell}<td class="sheet-meta">${escapeHtml(row.direction || '-')}</td><td class="sheet-meta">${escapeHtml(row.flightDate || '-')}</td><td class="sheet-meta">${escapeHtml(row.bagType || row.status || '-')}</td></tr><tr class="case-detail-row" data-unresolved-detail hidden><td colspan="${columnCount}"><div class="case-detail-layout"><div class="case-progress-column">${unresolvedProgressHtml(progressRow)}</div><div class="case-detail-right">${formHtml}${historyHtml}</div></div></td></tr>`;
-      }).join('')}</tbody></table></div>`;
+      }).join('')}</tbody></table></div>${listPaginationHtml(listKey, pagination)}`;
       requestAnimationFrame(syncCaseProgressHeights);
     }
     function renderUnresolvedBaggage(rows = []) {
@@ -1246,6 +1277,7 @@
       const showClosed = window._caseView === 'closed';
       const rows = sortedCaseRows(sourceRows).filter((row) => isClosedCase(row) === showClosed).filter((row) => !query || rowSearchText(row).includes(query));
       setCaseCount('passenger', rows.length);
+      const pagination = paginateRows(rows, `${showClosed ? 'closed' : 'open'}-passenger`);
       const baggageHtml = baggageSearchHtml();
       if (!rows.length) { casesOutput.innerHTML = `<p class="muted">No matching cases.</p>${baggageHtml}`; return; }
       const expandedCases = window._expandedCbsCases || new Set();
@@ -1253,7 +1285,7 @@
       const bagTagColumn = showUpcomingRush ? '<col style="width:180px">' : '<col>';
       const rushColumns = showUpcomingRush ? '<col style="width:240px"><col>' : '';
       const rushHeaders = showUpcomingRush ? '<th class="rush-date-heading">Rush Flight / Date</th><th>Rush Tag</th>' : '';
-      casesOutput.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:220px"><col style="width:150px">${bagTagColumn}${rushColumns}</colgroup><thead><tr><th>WorldTracer File</th><th>${label('Case Type', '类型')}</th><th>${label('Bag Tag', '行李牌')}</th>${rushHeaders}</tr></thead><tbody>${rows.map((row, index) => {
+      casesOutput.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:220px"><col style="width:150px">${bagTagColumn}${rushColumns}</colgroup><thead><tr><th>WorldTracer File</th><th>${label('Case Type', '类型')}</th><th>${label('Bag Tag', '行李牌')}</th>${rushHeaders}</tr></thead><tbody>${pagination.rows.map((row, index) => {
         const detailKey = `row-${row.rowNumber || index}`;
         const caseType = inferCaseType(row);
         const closedClass = isClosedCase(row) ? ' is-closed' : '';
@@ -1271,7 +1303,7 @@
         const matchBadge = matchedOnHand ? '<span class="rush-match">Match</span>' : '';
         const rushCells = showUpcomingRush ? `<td class="sheet-meta">${rushFlightDateHtml}</td><td class="sheet-meta"><span class="rush-tag-summary">${escapeHtml(rushTag)}${matchBadge}</span></td>` : '';
         return `<tr class="case-summary-row${closedClass}" data-toggle-case="${escapeHtml(detailKey)}" aria-expanded="${isExpanded ? 'true' : 'false'}"><td class="sheet-meta">${escapeHtml(displayWorldTracerFile(row) || '-')}</td><td class="sheet-meta">${escapeHtml(caseType || '-')}</td><td class="sheet-meta">${bagTagSummaryHtml(displayBagTag(row))}</td>${rushCells}</tr><tr class="case-detail-row${closedClass}" data-detail-case="${escapeHtml(detailKey)}" ${isExpanded ? '' : 'hidden'}><td colspan="${showUpcomingRush ? 5 : 3}"><div class="case-detail-layout"><div class="case-progress-column">${trackingControlHtml(row, 'progress')}</div><div class="case-detail-right">${trackingControlHtml(row, 'current')}${caseCommentsHtml(row)}<div class="case-detail-content">${detailHtml}</div>${passengerNotificationHtml(row)}</div></div></td></tr>`;
-      }).join('')}</tbody></table></div>${baggageHtml}`;
+      }).join('')}</tbody></table></div>${listPaginationHtml(`${showClosed ? 'closed' : 'open'}-passenger`, pagination)}${baggageHtml}`;
       requestAnimationFrame(syncCaseProgressHeights);
     }
 
@@ -1317,6 +1349,9 @@
         localStorage.setItem(MISSING_BAG_STATUS_STORAGE_KEY, JSON.stringify({ openCount:openRows.length, updatedAt:Date.now() }));
       } catch (_) {}
       if (!rows.length) { missingReportOutput.innerHTML = '<p class="muted">No MU missing bag rows found.</p>'; return; }
+      rows.sort((a, b) => (Date.parse(b.sourceEmailDate) || 0) - (Date.parse(a.sourceEmailDate) || 0));
+      const pagination = paginateRows(rows, 'missing-reports');
+      rows = pagination.rows;
       const dateKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
       const todayKey = dateKey(new Date());
       const groups = new Map();
@@ -1340,7 +1375,7 @@
           const actionHtml = row.acknowledgedAt || row.caseCreatedAt ? '' : `<div class="missing-actions"><button type="button" data-create-missing-rush="${escapeHtml(identifier)}" data-missing-bag-tag="${escapeHtml(row.bagTag)}">Create Rush</button><button class="secondary" type="button" data-ack-missing="${escapeHtml(identifier)}">Acknowledge</button></div>`;
           return `<tr><td>${escapeHtml(row.bagTag)}</td><td>${escapeHtml(row.passengerName)}</td><td>${escapeHtml(row.destination)}</td><td>${escapeHtml(row.airline)}</td><td>${escapeHtml(row.sourceAttachment || '-')}</td><td>${escapeHtml(status)}</td><td>${actionHtml}</td></tr>`;
         }).join('')}</tbody></table></div></section>`;
-      }).join('')}</div>`;
+      }).join('')}</div>${listPaginationHtml('missing-reports', pagination)}`;
     }
     async function loadMissingReports() {
       try {
