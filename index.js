@@ -1389,6 +1389,10 @@ function sanitizeCbsEmailBody(value, maxLength = 12000) {
   return String(value || '').replace(/\r\n?/g, '\n').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '').trim().slice(0, maxLength);
 }
 
+function sanitizeCbsRecord(value, maxLength = 5000) {
+  return String(value || '').replace(/\r\n?/g, '\n').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '').slice(0, maxLength);
+}
+
 function isValidEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
 }
@@ -2285,8 +2289,8 @@ function buildCbsUpdateFields(update = {}) {
   const comment = sanitizeCbsText(update.comment, 500);
   if (type === 'record-pnr' || type === 'record-tkt') {
     const recordType = type.slice(-3).toUpperCase();
-    const record = sanitizeCbsEmailBody(update.record, 5000);
-    if (!record) return null;
+    const record = sanitizeCbsRecord(update.record, 5000);
+    if (!record.trim()) return null;
     return { status:'', replaceEventKey:type, updateNote:`RECORD ${recordType}`, updateEvent:{ key:type, title:`Record - ${recordType}`, fields:[[ `Record - ${recordType}`, record ]] } };
   }
   if (type === 'upcoming_rush_delete') return { deleteEventKey:'upcoming_rush' };
@@ -2977,9 +2981,9 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
       return res.json(result);
     }
     if (action === 'record-pnr' || action === 'record-tkt' || action === 'comment') {
-      const record = sanitizeCbsEmailBody(req.body?.record, 5000);
+      const record = sanitizeCbsRecord(req.body?.record, 5000);
       const comment = sanitizeCbsText(req.body?.comment, 500);
-      if ((action === 'record-pnr' || action === 'record-tkt') && !record) return res.status(400).json({ error:'Record information is required' });
+      if ((action === 'record-pnr' || action === 'record-tkt') && !record.trim()) return res.status(400).json({ error:'Record information is required' });
       if (action === 'comment' && !comment) return res.status(400).json({ error:'A comment is required' });
       const result = await updateCbsUnresolvedBaggageDetails(req.params.rowNumber, { record, recordType:action.slice(-3), comment, updatedBy:req.body?.updatedBy });
       if (result.notFound) return res.status(404).json({ error:'On-hand case not found' });

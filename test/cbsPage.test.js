@@ -320,7 +320,7 @@ test('Passenger, On-hand, and Bag Room cases support replaceable PNR and TKT Rec
   assert.match(page, /if \(key === 'record-pnr' \|\| key === 'record-tkt'\) return recordTextareaHtml\(key, values\.savedRecord \|\| ''\)/);
   assert.match(page, /class="record-tab-panel unresolved-record"/);
   assert.match(page, /\.unresolved-record pre \{[^}]*overflow:auto[^}]*font:12px[^}]*"Courier New"[^}]*white-space:pre/);
-  assert.match(page, /name="record" maxlength="5000" rows="8" cols="120" wrap="hard"/);
+  assert.match(page, /name="record" maxlength="5000" rows="8" wrap="off" spellcheck="false"/);
   assert.match(page, /Record saved — view the original layout in History/);
   assert.match(page, /function savedOnHandRecord\(rowNumber, type\)/);
   assert.match(page, /function recordTabsHtml\(events = \[\], key = ''\)/);
@@ -339,7 +339,8 @@ test('Passenger, On-hand, and Bag Room cases support replaceable PNR and TKT Rec
   assert.match(drive, /!Q\$\{target\.rowNumber\}:R\$\{target\.rowNumber\}/);
   assert.match(drive, /function sanitizeSheetMultilineText[\s\S]*replace\(\/\\r\\n\?\/g, '\\n'\)/);
   assert.match(drive, /item\.key !== `record-\$\{recordType\}`/);
-  assert.match(server, /const record = sanitizeCbsEmailBody\(req\.body\?\.record, 5000\)/);
+  assert.match(server, /function sanitizeCbsRecord[\s\S]*\.slice\(0, maxLength\)/);
+  assert.match(server, /const record = sanitizeCbsRecord\(req\.body\?\.record, 5000\)/);
   assert.match(server, /type === 'record-pnr' \|\| type === 'record-tkt'/);
   assert.match(page, /recordTabsHtml\(row\.updateEvents \|\| \[\], `passenger-/);
   assert.match(page, /\$\{passengerNotificationHtml\(row\)\}\$\{passengerRecordPanel\}/);

@@ -611,7 +611,7 @@ function sanitizeSheetText(value, maxLength = 500) {
 }
 
 function sanitizeSheetMultilineText(value, maxLength = 5000) {
-  return String(value || '').replace(/\r\n?/g, '\n').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '').trim().slice(0, maxLength);
+  return String(value || '').replace(/\r\n?/g, '\n').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '').slice(0, maxLength);
 }
 
 function safeParseHistory(value) {
