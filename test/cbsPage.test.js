@@ -352,6 +352,8 @@ test('Passenger, On-hand, and Bag Room cases support replaceable PNR and TKT Rec
   assert.match(drive, /'Passenger Name', 'Update Events'/);
   assert.match(drive, /!Q\$\{target\.rowNumber\}:R\$\{target\.rowNumber\}/);
   assert.match(drive, /function sanitizeSheetMultilineText[\s\S]*replace\(\/\\r\\n\?\/g, '\\n'\)/);
+  assert.match(drive, /const isRecordEvent = key === 'record-pnr' \|\| key === 'record-tkt' \|\| key === 'record'/);
+  assert.match(drive, /isRecordEvent \? sanitizeSheetMultilineText\(field\[1\], 5000\) : sanitizeSheetText\(field\[1\], 500\)/);
   assert.match(drive, /item\.key !== `record-\$\{recordType\}`/);
   assert.match(server, /function sanitizeCbsRecord[\s\S]*\.slice\(0, maxLength\)/);
   assert.match(server, /const record = sanitizeCbsRecord\(req\.body\?\.record, 5000\)/);
