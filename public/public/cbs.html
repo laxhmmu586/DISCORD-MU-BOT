@@ -1896,7 +1896,16 @@
       }));
       button.disabled = true;
       try {
-        const res = await fetch(`${apiBase}/cbs-unresolved-baggage/${encodeURIComponent(form.dataset.unresolvedRow)}/update`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+        const requestUrl = `${apiBase}/cbs-unresolved-baggage/${encodeURIComponent(form.dataset.unresolvedRow)}/update`;
+        const requestOptions = { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) };
+        let res;
+        try {
+          res = await fetch(requestUrl, requestOptions);
+        } catch (firstError) {
+          await new Promise((resolve) => setTimeout(resolve, 750));
+          try { res = await fetch(requestUrl, requestOptions); }
+          catch { throw new Error('Unable to connect to the server. Your update was not confirmed; please refresh the case before trying again.'); }
+        }
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || 'On-hand baggage update failed');
         await Promise.all([loadUnresolvedBaggage(), loadWorldTracerCases()]);

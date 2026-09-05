@@ -375,6 +375,8 @@ test('Passenger, On-hand, and Bag Room cases support replaceable PNR and TKT Rec
   assert.match(drive, /async function deleteCbsUnresolvedBaggageComment\(rowNumber, target = \{\}\)/);
   assert.match(page, /type === 'record-pnr' && item\.key === 'record'/);
   assert.match(page, /get\('Record'\) \|\| ''/);
+  assert.match(page, /await new Promise\(\(resolve\) => setTimeout\(resolve, 750\)\)/);
+  assert.match(page, /Unable to connect to the server\. Your update was not confirmed/);
 });
 
 test('Bag Room cases can change type and close out of Open Case', () => {
