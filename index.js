@@ -2831,6 +2831,11 @@ app.post('/cbs-worldtracer-cases/update', async (req, res) => {
       (item.rowNumbers || []).some((rowNumber) => requestedRows.has(Number(rowNumber))));
     const result = await updateCbsWorldTracerCase(body.rowNumbers, record);
     if (result.notFound) return res.status(404).json({ error:'On-hard case not found' });
+    // An Original Tag can be added or corrected while editing a RUSH record.
+    // Run the same Bag Room association used at creation time so the matching
+    // Not Load case is moved to the RUSH stage regardless of how the tag was
+    // entered.
+    result.closedBagRoomUnloadCases = await closeMatchingBagRoomUnloadCasesForRush(result.record);
     if (previousRecord && isRushBagWorldTracerOnlyUpdate(previousRecord, result.record)) {
       result.discord = { sent:false, reason:'WorldTracer file number-only updates do not send another Rush Bag notification.' };
       return res.json(result);
