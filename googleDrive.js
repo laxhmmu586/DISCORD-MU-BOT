@@ -3828,13 +3828,14 @@ function isCbsHeaderRow(values = []) {
 function sanitizeCbsUpdateEvent(event = {}, fallback = {}) {
   const key = sanitizeSheetText(event.key || fallback.key, 40).toLowerCase() || 'update';
   const fields = Array.isArray(event.fields) ? event.fields : [];
+  const isRecordEvent = key === 'record-pnr' || key === 'record-tkt' || key === 'record';
   return {
     key,
     title: sanitizeSheetText(event.title || fallback.title || 'Update', 120),
     status: sanitizeSheetText(fallback.status || event.status, 80),
     at: sanitizeSheetText(fallback.at || event.at || new Date().toISOString(), 40),
     by: sanitizeSheetText(fallback.by || event.by, 160),
-    fields: fields.map((field) => Array.isArray(field) ? [sanitizeSheetText(field[0], 120), sanitizeSheetText(field[1], 500)] : null).filter((field) => field && field[0] && field[1]),
+    fields: fields.map((field) => Array.isArray(field) ? [sanitizeSheetText(field[0], 120), isRecordEvent ? sanitizeSheetMultilineText(field[1], 5000) : sanitizeSheetText(field[1], 500)] : null).filter((field) => field && field[0] && field[1]),
     note: sanitizeSheetText(fallback.note || event.note, 1000)
   };
 }
