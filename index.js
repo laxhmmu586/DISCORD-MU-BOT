@@ -77,6 +77,7 @@ const {
   getCbsUnresolvedBaggageCases,
   updateCbsUnresolvedBaggageWorldTracer,
   updateCbsUnresolvedBaggageDetails,
+  deleteCbsUnresolvedBaggageComment,
   changeCbsUnresolvedBaggageType,
   exchangeCbsUnresolvedBaggageTag,
   resolveCbsUnresolvedBaggageCase,
@@ -88,6 +89,9 @@ const {
   markCbsMissingBagCase,
   acknowledgeCbsMissingBag,
   sendCbsCaseEmail,
+  sendBagRoomUnloadAlertEmail,
+  readBagRoomUnloadAlertState,
+  writeBagRoomUnloadAlertState,
   sendWrongBaggageCaseEmail,
   sendMisconnectionAssistanceEmail,
   getCbsBaggageChartImage,
@@ -1388,6 +1392,10 @@ function sanitizeCbsEmailBody(value, maxLength = 12000) {
   return String(value || '').replace(/\r\n?/g, '\n').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '').trim().slice(0, maxLength);
 }
 
+function sanitizeCbsRecord(value, maxLength = 5000) {
+  return String(value || '').replace(/\r\n?/g, '\n').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '').slice(0, maxLength);
+}
+
 function isValidEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
 }
@@ -2092,24 +2100,74 @@ async function addRushBagDiscordResult(result, record) {
   return result;
 }
 
-async function closeMatchingBagRoomUnloadCasesForRush(rushBag = {}) {
+async function matchBagRoomUnloadCasesForRush(rushBag = {}) {
   const originalTag = normalizedCbsLinkTag(rushBag.originalTagNumber);
   if (!originalTag) return [];
   const rows = await getCbsUnresolvedBaggageCases({ includeResolved: true });
   const matches = rows.filter((row) => !row.resolvedAt
     && [row.status, row.bagType].some((value) => String(value || '').trim().toLowerCase() === 'not load bags')
     && normalizedCbsLinkTag(row.bagTag) === originalTag);
-  const updated = [];
+  const matched = [];
   for (const row of matches) {
     if (rushBag.worldTracerFileNumber) {
       await updateCbsUnresolvedBaggageWorldTracer(row.rowNumber, rushBag.worldTracerFileNumber, 'Rush Bag automation');
     }
-    const note = `RUSH UPDATE | Original Tag: ${rushBag.originalTagNumber} | Rush Tag: ${rushBag.rushTagNumber} | CASE CLOSE`;
-    const result = await resolveCbsUnresolvedBaggageCase(row.rowNumber, 'on-hand-rush', note, 'Rush Bag automation');
-    await syncOnHandStatusToBaggage(result.record, 'on-hand-rush', { comment:note, worldTracerFileNumber:rushBag.worldTracerFileNumber, updatedBy:'Rush Bag automation' });
-    updated.push(result.record);
+    matched.push({ ...row, rushTagNumber:rushBag.rushTagNumber, worldTracerFileNumber:rushBag.worldTracerFileNumber || row.worldTracerFileNumber });
   }
-  return updated;
+  return matched;
+}
+
+const bagRoomUnloadAlertInFlight = new Map();
+const bagRoomUnloadAlertCompleted = new Set();
+let bagRoomUnloadAlertStateLoaded = false;
+
+async function loadBagRoomUnloadAlertStateOnce() {
+  if (bagRoomUnloadAlertStateLoaded) return;
+  const state = await readBagRoomUnloadAlertState();
+  (state.sentDates || []).forEach((date) => bagRoomUnloadAlertCompleted.add(date));
+  bagRoomUnloadAlertStateLoaded = true;
+}
+
+async function notifyBagRoomUnloadAfterCc(syInfo, isoDate) {
+  const ccComplete = syInfo?.crewApis?.steps?.some((step) => step.key === 'cc' && step.complete);
+  if (!ccComplete || String(syInfo?.flightNo || '').toUpperCase() !== 'MU586' || isoDate !== todayIsoUtc()) {
+    return { sent:false, reason:'Flight is not today’s MU586 in CC status.' };
+  }
+  await loadBagRoomUnloadAlertStateOnce();
+  if (bagRoomUnloadAlertCompleted.has(isoDate)) return { sent:false, duplicate:true };
+  if (bagRoomUnloadAlertInFlight.has(isoDate)) return bagRoomUnloadAlertInFlight.get(isoDate);
+  const pending = (async () => {
+    const rows = await getCbsUnresolvedBaggageCases({ includeResolved:true });
+    const tags = [...new Set(rows.filter((row) => {
+      const visible = !row.resolvedAt || ['other', 'email'].includes(String(row.resolution || '').toLowerCase());
+      const bagRoom = [row.status, row.bagType].some((value) => String(value || '').trim().toLowerCase() === 'not load bags');
+      return visible && bagRoom && row.flightDate === isoDate;
+    }).map((row) => sanitizeCbsText(row.bagTag, 80).toUpperCase()).filter(Boolean))];
+    if (tags.length < 5) return { sent:false, reason:'Fewer than five Bag Room Unload bags today.', count:tags.length };
+    const flightDate = isoDateToLogDateParts(isoDate)?.date || String(syInfo.flightDate || '').slice(0, 5).toUpperCase();
+    const subject = `东航洛杉矶MU586/${flightDate}不正常行李运输信息`;
+    const text = [
+      '各位同事：', '您好！',
+      `关于东航洛杉矶 MU586/${flightDate} 航班不正常行李情况，由于洛杉矶机场行李分拣系统处理滞后，部分托运行李未能及时完成分拣及装机，未能随原航班正常运输。`,
+      '', '具体涉及的行李牌号码请参见如下：', '', ...tags, '',
+      '烦请相关部门协助关注并做好后续行李运输及交接工作。', '感谢配合！', '中国东方航空', '洛杉矶站'
+    ].join('\n');
+    return sendBagRoomUnloadAlertEmail({ subject, text });
+  })();
+  bagRoomUnloadAlertInFlight.set(isoDate, pending);
+  try {
+    const result = await pending;
+    if (result.sent) {
+      bagRoomUnloadAlertCompleted.add(isoDate);
+      try {
+        await writeBagRoomUnloadAlertState({ sentDates:[...bagRoomUnloadAlertCompleted] });
+      } catch (err) {
+        result.stateError = err?.message || 'Unable to persist the sent state.';
+        console.error('Bag Room Unload sent-state save error:', err);
+      }
+    }
+    return result;
+  } finally { bagRoomUnloadAlertInFlight.delete(isoDate); }
 }
 
 function isRushBagWorldTracerOnlyUpdate(previousRecord = {}, nextRecord = {}) {
@@ -2284,8 +2342,8 @@ function buildCbsUpdateFields(update = {}) {
   const comment = sanitizeCbsText(update.comment, 500);
   if (type === 'record-pnr' || type === 'record-tkt') {
     const recordType = type.slice(-3).toUpperCase();
-    const record = sanitizeCbsEmailBody(update.record, 5000);
-    if (!record) return null;
+    const record = sanitizeCbsRecord(update.record, 5000);
+    if (!record.trim()) return null;
     return { status:'', replaceEventKey:type, updateNote:`RECORD ${recordType}`, updateEvent:{ key:type, title:`Record - ${recordType}`, fields:[[ `Record - ${recordType}`, record ]] } };
   }
   if (type === 'upcoming_rush_delete') return { deleteEventKey:'upcoming_rush' };
@@ -2808,7 +2866,7 @@ app.post('/cbs-worldtracer-cases', async (req, res) => {
     }
     const saved = await appendCbsWorldTracerCase(record);
     const result = await addRushBagDiscordResult({ created: true, record: saved }, saved);
-    result.closedBagRoomUnloadCases = await closeMatchingBagRoomUnloadCasesForRush(saved);
+    result.matchedBagRoomUnloadCases = await matchBagRoomUnloadCasesForRush(saved);
     return res.status(201).json(result);
   } catch (err) {
     console.error('CBS WorldTracer case create error:', err);
@@ -2839,10 +2897,8 @@ app.post('/cbs-worldtracer-cases/update', async (req, res) => {
     const result = await updateCbsWorldTracerCase(body.rowNumbers, record);
     if (result.notFound) return res.status(404).json({ error:'On-hard case not found' });
     // An Original Tag can be added or corrected while editing a RUSH record.
-    // Run the same Bag Room association used at creation time so the matching
-    // Not Load case is moved to the RUSH stage regardless of how the tag was
-    // entered.
-    result.closedBagRoomUnloadCases = await closeMatchingBagRoomUnloadCasesForRush(result.record);
+    // Keep matching Not Load cases open while associating their Rush tag.
+    result.matchedBagRoomUnloadCases = await matchBagRoomUnloadCasesForRush(result.record);
     if (previousRecord && isRushBagWorldTracerOnlyUpdate(previousRecord, result.record)) {
       result.discord = { sent:false, reason:'WorldTracer file number-only updates do not send another Rush Bag notification.' };
       return res.json(result);
@@ -2976,9 +3032,9 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
       return res.json(result);
     }
     if (action === 'record-pnr' || action === 'record-tkt' || action === 'comment') {
-      const record = sanitizeCbsEmailBody(req.body?.record, 5000);
+      const record = sanitizeCbsRecord(req.body?.record, 5000);
       const comment = sanitizeCbsText(req.body?.comment, 500);
-      if ((action === 'record-pnr' || action === 'record-tkt') && !record) return res.status(400).json({ error:'Record information is required' });
+      if ((action === 'record-pnr' || action === 'record-tkt') && !record.trim()) return res.status(400).json({ error:'Record information is required' });
       if (action === 'comment' && !comment) return res.status(400).json({ error:'A comment is required' });
       const result = await updateCbsUnresolvedBaggageDetails(req.params.rowNumber, { record, recordType:action.slice(-3), comment, updatedBy:req.body?.updatedBy });
       if (result.notFound) return res.status(404).json({ error:'On-hand case not found' });
@@ -3422,6 +3478,21 @@ app.post('/cbs-cases/:rowNumber/comments/delete', async (req, res) => {
   }
 });
 
+app.post('/cbs-unresolved-baggage/:rowNumber/comments/delete', async (req, res) => {
+  try {
+    const at = sanitizeCbsText(req.body?.at, 40);
+    const comment = sanitizeCbsText(req.body?.comment, 500);
+    if (!at || !comment) return res.status(400).json({ error:'A comment identifier is required' });
+    const result = await deleteCbsUnresolvedBaggageComment(req.params.rowNumber, { at, comment });
+    if (result.notFound) return res.status(404).json({ error:'On-hand case not found' });
+    if (result.commentNotFound) return res.status(404).json({ error:'Comment not found or already deleted' });
+    return res.json(result);
+  } catch (err) {
+    console.error('CBS On-hand comment delete error:', err);
+    return res.status(500).json({ error:err?.message || 'On-hand comment delete failed' });
+  }
+});
+
 app.get('/test-baggage-report', async (req, res) => {
   try {
     const rows = await getTestBaggageReportRows({ from: req.query.from, to: req.query.to, bagTag: req.query.bagTag });
@@ -3779,6 +3850,12 @@ app.get(
         const yearFromFlight = m?.[3] ? (2000 + Number(m[3])) : fullYear;
         const isoDate = m ? `${yearFromFlight}-${months[m[2]] || '01'}-${m[1]}` : '';
         const syBagInfo = isoDate ? await getSyBagInfoByDate(isoDate, syInfo.flightDate) : null;
+        try {
+          syInfo.bagRoomUnloadAlert = await notifyBagRoomUnloadAfterCc(syInfo, isoDate);
+        } catch (err) {
+          syInfo.bagRoomUnloadAlert = { sent:false, error:err?.message || 'Bag Room Unload alert failed.' };
+          console.error('Bag Room Unload CC email error:', err);
+        }
         rememberCompletedPreflightSteps(syInfo, isoDate);
         applyCachedCompletedPreflightSteps(syInfo, isoDate);
         syInfo.fscRateSheetSync = fscRateSheetSyncCache.get(isoDate) || { skipped: true, reason: 'sync pending' };

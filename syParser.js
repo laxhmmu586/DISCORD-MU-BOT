@@ -17,7 +17,7 @@ function splitLogicalSections(log) {
     }
 
     const cmd = line.match(cmdRe)?.[1]?.toUpperCase() || null;
-    const isContinuation = cmd ? /^(PN\d*|PF\d*)$/.test(cmd) : false;
+    const isContinuation = cmd ? /^(?:PN\d*|PF\d*|ACCEPTED(?:\/|$))/.test(cmd) : false;
 
     if (cmd && !isContinuation) {
       if (current && current.content.trim()) sections.push(current);
@@ -41,6 +41,12 @@ function splitLogicalSections(log) {
 
   if (current && current.content.trim()) sections.push(current);
   return sections;
+}
+
+function isCcAirportClosedContent(content) {
+  const normalized = String(content || '').replace(/\\n/g, '\n').toUpperCase();
+  return /^>\s*CC(?:\s*:\s*[^\r\n]*)?\s*$/im.test(normalized)
+    && /^>\s*ACCEPTED\s*\/\s*AIRPORT CLOSED\s*$/im.test(normalized);
 }
 
 const MONTH_INDEX = {
@@ -534,7 +540,11 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
   const crewApisComplete = Boolean(crewApisPrimaryCheck?.complete);
   const crewApisTime = crewApisPrimaryCheck?.time || '';
   const ccl = findAcceptedCommand(/^>\s*CCL\s*:/im);
-  const cc = findAcceptedCommand(/^>\s*CC(?:\s*:\s*[^\r\n]*)?\s*$/im);
+  const ccSections = sameDaySections.filter((item) => isCcAirportClosedContent(item.content));
+  const ccSection = ccSections.sort((a, b) => parseSectionTimestamp(b.timestamp) - parseSectionTimestamp(a.timestamp))[0] || null;
+  const cc = ccSection
+    ? { complete:true, time:formatTime(ccSection.timestamp), timestamp:ccSection.timestamp || '' }
+    : { complete:false, time:'', timestamp:'' };
   const jcsy = findJcsyInfo(sections, flightNo, flightYmd, formatTime, targetYmd);
   const baseYmd = targetYmd || flightYmd;
   const baseDateUtc = ymdToUtcDate(baseYmd);
@@ -1953,4 +1963,4 @@ function findSYInfo(log, queryDate, options = {}) {
   return null;
 }
 
-module.exports = { findSYInfo, normalizeOperationalFlightNo, normalizeJcsyFlightNo, sectionMatchesFlightOperationDate, matchesSyFlightRecord, extractPassportCountryCodes, parseJcsyRows, hasUnclearedApiSourceRisk, extractInvoluntaryUpgrade, enrichCheckinAgentStatsFromLog, hasChdServiceCode };
+module.exports = { findSYInfo, normalizeOperationalFlightNo, normalizeJcsyFlightNo, sectionMatchesFlightOperationDate, matchesSyFlightRecord, extractPassportCountryCodes, parseJcsyRows, hasUnclearedApiSourceRisk, extractInvoluntaryUpgrade, enrichCheckinAgentStatsFromLog, hasChdServiceCode, isCcAirportClosedContent };
