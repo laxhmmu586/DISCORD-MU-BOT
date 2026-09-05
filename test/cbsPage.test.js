@@ -321,6 +321,8 @@ test('Passenger, On-hand, and Bag Room cases support replaceable PNR and TKT Rec
   assert.match(page, /class="record-tab-panel unresolved-record"/);
   assert.match(page, /\.unresolved-record pre \{[^}]*overflow:auto[^}]*font:12px[^}]*"Courier New"[^}]*white-space:pre/);
   assert.match(page, /name="record" maxlength="5000" rows="8" wrap="off" spellcheck="false"/);
+  assert.match(page, /textarea\.record-textarea \{[^}]*overflow:auto[^}]*font:700 14px[^}]*"Courier New"[^}]*white-space:pre/);
+  assert.match(page, /<textarea class="record-textarea" name="record"/);
   assert.match(page, /Record saved — view the original layout in History/);
   assert.match(page, /function savedOnHandRecord\(rowNumber, type\)/);
   assert.match(page, /function recordTabsHtml\(events = \[\], key = ''\)/);
