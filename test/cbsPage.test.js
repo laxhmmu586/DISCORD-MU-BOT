@@ -243,8 +243,9 @@ test('Not Load Bags have a separate Bag Room Unload Bag category with On-hand re
   assert.match(page, /function isNotLoadBag\(row = \{\}\)/);
   assert.match(page, /renderUnresolvedBaggageGroup\(regularRows, unresolvedBaggageOutput, 'On-hand'\)/);
   assert.match(page, /renderUnresolvedBaggageGroup\(notLoadRows, bagRoomUnloadOutput, 'Bag Room Unload Bag'\)/);
-  assert.match(page, /const resolutionOptionsHtml = `[^`]*WorldTracer[^`]*Exchange[^`]*Email[^`]*Create Rush[^`]*Passenger collected \/ Case closed[^`]*Shipped[^`]*Other resolution[^`]*Case Close[^`]*`/);
-  assert.match(page, /<select name="action" data-unresolved-action>\$\{resolutionOptionsHtml\}<\/select>/);
+  assert.match(page, /function resolutionOptionsHtml\(isBagRoom\)/);
+  assert.match(page, /isBagRoom \? '<option value="change-type">Change Type<\/option>'/);
+  assert.match(page, /resolutionOptionsHtml\(isNotLoadBag\(active\)\)/);
 });
 
 test('Open Case uses selectable summary cards with live category counts', () => {
@@ -310,17 +311,28 @@ test('On-hand cases match the passenger case layout and support WorldTracer prog
   assert.match(server, /action === 'worldtracer'/);
 });
 
-test('On-hand cases support Passenger Name and Passenger Filed-style comments', () => {
-  assert.match(page, /<option value="passenger-name">Passenger Name<\/option><option value="comment">Comment<\/option>/);
+test('On-hand cases support Passenger Name, long Record entries, and comments', () => {
+  assert.match(page, /<option value="passenger-name">Passenger Name<\/option><option value="record">Record<\/option>/);
   assert.match(page, /action === 'passenger-name'[^\n]+name="passengerName"[^\n]+required/);
+  assert.match(page, /action === 'record'[^\n]+textarea name="record" maxlength="5000"/);
+  assert.match(page, /class="unresolved-record"/);
   assert.match(page, /action === 'comment'[^\n]+name="commentPreset" data-comment-preset/);
   assert.match(page, /Passenger request Pick up at LAX/);
   assert.match(page, /row\.updateEvents \|\| \[\]/);
   assert.match(page, /item\.key === 'comment' \? ' tracking-chip--comment'/);
-  assert.match(server, /action === 'passenger-name' \|\| action === 'comment'/);
+  assert.match(server, /action === 'passenger-name' \|\| action === 'record' \|\| action === 'comment'/);
   assert.match(server, /updateCbsUnresolvedBaggageDetails/);
   assert.match(drive, /'Passenger Name', 'Update Events'/);
   assert.match(drive, /!Q\$\{target\.rowNumber\}:R\$\{target\.rowNumber\}/);
+});
+
+test('Bag Room cases can change type and close out of Open Case', () => {
+  assert.match(page, /option value="Rush bag">Rush bag<\/option><option value="Gate Bag">Gate Bag<\/option>/);
+  assert.match(page, /'change-type'\]\)/);
+  assert.match(server, /action === 'change-type'/);
+  assert.match(server, /resolveCbsUnresolvedBaggageCase\(req\.params\.rowNumber, 'change-type'/);
+  assert.match(drive, /async function changeCbsUnresolvedBaggageType/);
+  assert.match(drive, /!E\$\{target\.rowNumber\}:F\$\{target\.rowNumber\}/);
 });
 
 test('completed On-hand cases move from Open Case to Closed Case', () => {

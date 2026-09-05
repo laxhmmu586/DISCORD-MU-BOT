@@ -77,6 +77,7 @@ const {
   getCbsUnresolvedBaggageCases,
   updateCbsUnresolvedBaggageWorldTracer,
   updateCbsUnresolvedBaggageDetails,
+  changeCbsUnresolvedBaggageType,
   exchangeCbsUnresolvedBaggageTag,
   resolveCbsUnresolvedBaggageCase,
   reopenCbsUnresolvedBaggageCase,
@@ -2911,7 +2912,7 @@ async function syncOnHandStatusToBaggage(record, action, body = {}) {
 app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
   try {
     const action = sanitizeCbsText(req.body?.action, 40).toLowerCase();
-    if (!['worldtracer', 'passenger-name', 'comment', 'reopen', 'email', 'exchange', 'on-hand-rush', 'passenger-collected', 'case-close', 'shipped', 'other'].includes(action)) return res.status(400).json({ error: 'A valid resolution is required' });
+    if (!['worldtracer', 'passenger-name', 'record', 'comment', 'change-type', 'reopen', 'email', 'exchange', 'on-hand-rush', 'passenger-collected', 'case-close', 'shipped', 'other'].includes(action)) return res.status(400).json({ error: 'A valid resolution is required' });
     const note = sanitizeCbsText(req.body?.note, 500);
     if (action === 'email') {
       const emailAction = sanitizeCbsText(req.body?.emailAction, 80);
@@ -2968,14 +2969,29 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
       await syncOnHandStatusToBaggage(result.record, action, req.body);
       return res.json(result);
     }
-    if (action === 'passenger-name' || action === 'comment') {
+    if (action === 'passenger-name' || action === 'record' || action === 'comment') {
       const passengerName = sanitizeCbsText(req.body?.passengerName, 160);
+      const record = sanitizeCbsText(req.body?.record, 5000);
       const comment = sanitizeCbsText(req.body?.comment, 500);
       if (action === 'passenger-name' && !passengerName) return res.status(400).json({ error:'Passenger name is required' });
+      if (action === 'record' && !record) return res.status(400).json({ error:'Record information is required' });
       if (action === 'comment' && !comment) return res.status(400).json({ error:'A comment is required' });
-      const result = await updateCbsUnresolvedBaggageDetails(req.params.rowNumber, { passengerName, comment, updatedBy:req.body?.updatedBy });
+      const result = await updateCbsUnresolvedBaggageDetails(req.params.rowNumber, { passengerName, record, comment, updatedBy:req.body?.updatedBy });
       if (result.notFound) return res.status(404).json({ error:'On-hand case not found' });
       await syncOnHandStatusToBaggage(result.record, action, req.body);
+      return res.json(result);
+    }
+    if (action === 'change-type') {
+      const bagType = sanitizeCbsText(req.body?.bagType, 80);
+      const rows = await getCbsUnresolvedBaggageCases({ includeResolved:true });
+      const current = rows.find((row) => String(row.rowNumber) === String(req.params.rowNumber));
+      if (!current) return res.status(404).json({ error:'Bag Room case not found' });
+      const isBagRoomCase = [current.status, current.bagType].some((value) => String(value || '').trim().toLowerCase() === 'not load bags');
+      if (!isBagRoomCase) return res.status(400).json({ error:'Change Type is only available for Bag Room Unload Bag cases' });
+      const updatedBy = sanitizeCbsText(req.body?.updatedBy, 160);
+      const result = await resolveCbsUnresolvedBaggageCase(req.params.rowNumber, 'change-type', `TYPE CHANGED | Type: ${bagType}`, updatedBy);
+      const changed = await changeCbsUnresolvedBaggageType(req.params.rowNumber, bagType, updatedBy);
+      result.record = { ...result.record, bagType:changed.record.bagType, status:changed.record.status };
       return res.json(result);
     }
     if (action === 'exchange') {
