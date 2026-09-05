@@ -203,7 +203,7 @@ test('CBS cases no longer rely on stale browser storage', () => {
 test('Add Baggage records are added to and displayed in Open Case', () => {
   assert.match(drive, /CBS_UNRESOLVED_BAGGAGE_SHEET_GID = Number\(process\.env\.CBS_UNRESOLVED_BAGGAGE_SHEET_GID \|\| 523026916\)/);
   assert.match(page, /title="Add Baggage"/);
-  assert.match(page, /id="open-cases-tab"[\s\S]*id="closed-cases-tab"[\s\S]*id="add-baggage-tab"[\s\S]*id="worldtracer-tab"/);
+  assert.match(page, /id="open-cases-tab"[\s\S]*id="worldtracer-tab"[\s\S]*id="add-baggage-tab"[\s\S]*id="missing-report-alert"[\s\S]*id="email-tab"[\s\S]*id="baggage-chart-tab"[\s\S]*id="closed-cases-tab"/);
   assert.match(page, /<h1>Add Baggage<\/h1>/);
   assert.doesNotMatch(page, />Add On-hand</);
   assert.match(drive, /await appendCbsUnresolvedBaggageCase\(cleanRecord\);/);
