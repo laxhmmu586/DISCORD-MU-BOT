@@ -278,12 +278,14 @@ test('On-hand and Bag Room rows only show Rush Tag when at least one row has one
   assert.match(server, /result\.closedBagRoomUnloadCases = await closeMatchingBagRoomUnloadCasesForRush\(result\.record\)/);
 });
 
-test('growing Rush, Missing Report, and case lists are paginated', () => {
+test('growing Rush and case lists paginate by record count while Missing Reports paginate by month', () => {
   assert.match(page, /const LIST_PAGE_SIZE = 20/);
   assert.match(page, /function paginateRows\(rows, key\)/);
   assert.match(page, /data-list-page=/);
   assert.match(page, /paginateRows\(rows, 'rush-bags'\)/);
-  assert.match(page, /paginateRows\(rows, 'missing-reports'\)/);
+  assert.match(page, /function paginateRowsByMonth\(rows, key\)/);
+  assert.match(page, /paginateRowsByMonth\(rows, 'missing-reports'\)/);
+  assert.match(page, /year:'numeric', month:'long'/);
   assert.match(page, /paginateRows\(rows, `\$\{showClosed \? 'closed' : 'open'\}-passenger`\)/);
   assert.match(page, /const listKey = `\$\{showClosed \? 'closed' : 'open'\}-\$\{isNotLoadBag\(rows\[0\]\) \? 'bag-room' : 'on-hand'\}`/);
 });

@@ -510,9 +510,30 @@
       window._cbsListPages[key] = page;
       return { rows:rows.slice((page - 1) * LIST_PAGE_SIZE, page * LIST_PAGE_SIZE), page, pageCount, total:rows.length };
     }
+    function paginateRowsByMonth(rows, key) {
+      window._cbsListPages ||= {};
+      const months = new Map();
+      rows.forEach((row) => {
+        const date = row.sourceEmailDate ? new Date(row.sourceEmailDate) : null;
+        const validDate = date && !Number.isNaN(date.getTime());
+        const monthKey = validDate ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}` : 'unknown';
+        if (!months.has(monthKey)) months.set(monthKey, { date:validDate ? date : null, rows:[] });
+        months.get(monthKey).rows.push(row);
+      });
+      const monthGroups = [...months.values()].sort((a, b) => (b.date?.getTime() || 0) - (a.date?.getTime() || 0));
+      const pageCount = Math.max(1, monthGroups.length);
+      const page = Math.min(Math.max(1, Number(window._cbsListPages[key]) || 1), pageCount);
+      window._cbsListPages[key] = page;
+      const selected = monthGroups[page - 1] || { date:null, rows:[] };
+      const monthLabel = selected.date
+        ? selected.date.toLocaleDateString(document.documentElement.lang === 'zh' ? 'zh-CN' : 'en-US', { year:'numeric', month:'long' })
+        : label('Date unavailable', '日期未知');
+      return { rows:selected.rows, page, pageCount, total:rows.length, summary:`${monthLabel} · ${selected.rows.length} ${label('records', '条')}` };
+    }
     function listPaginationHtml(key, pagination) {
       if (pagination.pageCount <= 1) return '';
-      return `<nav class="list-pagination" aria-label="List pages"><span>${label(`Page ${pagination.page} of ${pagination.pageCount} · ${pagination.total} records`, `第 ${pagination.page}/${pagination.pageCount} 页 · 共 ${pagination.total} 条`)}</span><button class="secondary" type="button" data-list-page="${escapeHtml(key)}" data-page-delta="-1" ${pagination.page === 1 ? 'disabled' : ''}>${label('Previous', '上一页')}</button><button class="secondary" type="button" data-list-page="${escapeHtml(key)}" data-page-delta="1" ${pagination.page === pagination.pageCount ? 'disabled' : ''}>${label('Next', '下一页')}</button></nav>`;
+      const summary = pagination.summary || label(`Page ${pagination.page} of ${pagination.pageCount} · ${pagination.total} records`, `第 ${pagination.page}/${pagination.pageCount} 页 · 共 ${pagination.total} 条`);
+      return `<nav class="list-pagination" aria-label="List pages"><span>${escapeHtml(summary)}</span><button class="secondary" type="button" data-list-page="${escapeHtml(key)}" data-page-delta="-1" ${pagination.page === 1 ? 'disabled' : ''}>${label('Previous', '上一页')}</button><button class="secondary" type="button" data-list-page="${escapeHtml(key)}" data-page-delta="1" ${pagination.page === pagination.pageCount ? 'disabled' : ''}>${label('Next', '下一页')}</button></nav>`;
     }
     function setCaseCount(group, count) {
       document.querySelector(`[data-case-count="${group}"]`).textContent = String(count);
@@ -1350,7 +1371,7 @@
       } catch (_) {}
       if (!rows.length) { missingReportOutput.innerHTML = '<p class="muted">No MU missing bag rows found.</p>'; return; }
       rows.sort((a, b) => (Date.parse(b.sourceEmailDate) || 0) - (Date.parse(a.sourceEmailDate) || 0));
-      const pagination = paginateRows(rows, 'missing-reports');
+      const pagination = paginateRowsByMonth(rows, 'missing-reports');
       rows = pagination.rows;
       const dateKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
       const todayKey = dateKey(new Date());
