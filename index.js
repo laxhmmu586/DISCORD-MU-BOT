@@ -2120,6 +2120,7 @@ async function matchBagRoomUnloadCasesForRush(rushBag = {}) {
 const bagRoomUnloadAlertInFlight = new Map();
 const bagRoomUnloadAlertCompleted = new Set();
 let bagRoomUnloadAlertStateLoaded = false;
+const BAG_ROOM_UNLOAD_ALERT_ENABLED = String(process.env.BAG_ROOM_UNLOAD_ALERT_ENABLED || '').toLowerCase() === 'true';
 
 async function loadBagRoomUnloadAlertStateOnce() {
   if (bagRoomUnloadAlertStateLoaded) return;
@@ -2129,59 +2130,7 @@ async function loadBagRoomUnloadAlertStateOnce() {
 }
 
 async function notifyBagRoomUnloadAfterCc(syInfo, isoDate) {
-  const ccComplete = syInfo?.crewApis?.steps?.some((step) => step.key === 'cc' && step.complete);
-  if (!ccComplete || String(syInfo?.flightNo || '').toUpperCase() !== 'MU586' || isoDate !== todayIsoUtc()) {
-    return { sent:false, reason:'Flight is not today’s MU586 in CC status.' };
-  }
-  await loadBagRoomUnloadAlertStateOnce();
-  if (bagRoomUnloadAlertCompleted.has(isoDate)) return { sent:false, duplicate:true };
-  if (bagRoomUnloadAlertInFlight.has(isoDate)) return bagRoomUnloadAlertInFlight.get(isoDate);
-  const pending = (async () => {
-    const rows = await getCbsUnresolvedBaggageCases({ includeResolved:true });
-    const tags = [...new Set(rows.filter((row) => {
-      const visible = !row.resolvedAt || ['other', 'email'].includes(String(row.resolution || '').toLowerCase());
-      const bagRoom = [row.status, row.bagType].some((value) => String(value || '').trim().toLowerCase() === 'not load bags');
-      return visible && bagRoom && row.flightDate === isoDate;
-    }).map((row) => sanitizeCbsText(row.bagTag, 80).toUpperCase()).filter(Boolean))];
-    if (tags.length < 5) return { sent:false, reason:'Fewer than five Bag Room Unload bags today.', count:tags.length };
-    const flightDate = isoDateToLogDateParts(isoDate)?.date || String(syInfo.flightDate || '').slice(0, 5).toUpperCase();
-    const subject = `东航洛杉矶MU586/${flightDate}不正常行李运输信息`;
-    const text = [
-      '各位同事：', '您好！',
-      `关于东航洛杉矶 MU586/${flightDate} 航班不正常行李情况，由于洛杉矶机场行李分拣系统处理滞后，部分托运行李未能及时完成分拣及装机，未能随原航班正常运输。`,
-      '', '具体涉及的行李牌号码请参见如下：', '', ...tags, '',
-      '烦请相关部门协助关注并做好后续行李运输及交接工作。', '感谢配合！', '中国东方航空', '洛杉矶站'
-    ].join('\n');
-    return sendBagRoomUnloadAlertEmail({ subject, text });
-  })();
-  bagRoomUnloadAlertInFlight.set(isoDate, pending);
-  try {
-    const result = await pending;
-    if (result.sent) {
-      bagRoomUnloadAlertCompleted.add(isoDate);
-      try {
-        await writeBagRoomUnloadAlertState({ sentDates:[...bagRoomUnloadAlertCompleted] });
-      } catch (err) {
-        result.stateError = err?.message || 'Unable to persist the sent state.';
-        console.error('Bag Room Unload sent-state save error:', err);
-      }
-    }
-    return result;
-  } finally { bagRoomUnloadAlertInFlight.delete(isoDate); }
-}
-
-const bagRoomUnloadAlertInFlight = new Map();
-const bagRoomUnloadAlertCompleted = new Set();
-let bagRoomUnloadAlertStateLoaded = false;
-
-async function loadBagRoomUnloadAlertStateOnce() {
-  if (bagRoomUnloadAlertStateLoaded) return;
-  const state = await readBagRoomUnloadAlertState();
-  (state.sentDates || []).forEach((date) => bagRoomUnloadAlertCompleted.add(date));
-  bagRoomUnloadAlertStateLoaded = true;
-}
-
-async function notifyBagRoomUnloadAfterCc(syInfo, isoDate) {
+  if (!BAG_ROOM_UNLOAD_ALERT_ENABLED) return { sent:false, disabled:true, reason:'Bag Room Unload email alerts are temporarily disabled.' };
   const ccComplete = syInfo?.crewApis?.steps?.some((step) => step.key === 'cc' && step.complete);
   if (!ccComplete || String(syInfo?.flightNo || '').toUpperCase() !== 'MU586' || isoDate !== todayIsoUtc()) {
     return { sent:false, reason:'Flight is not today’s MU586 in CC status.' };

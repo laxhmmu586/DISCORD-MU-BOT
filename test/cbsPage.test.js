@@ -298,8 +298,10 @@ test('Not Load Bags are automatically copied to the Bag Room Unload Google Sheet
   assert.match(drive, /await appendCbsNotLoadBaggageCase\(\{ \.\.\.record, \.\.\.saved \}\);/);
 });
 
-test('todays MU586 Bag Room Unload bags trigger one CC alert at five or more bags', () => {
+test('MU586 Bag Room CC alerts stay disabled until explicitly enabled', () => {
+  assert.match(server, /const BAG_ROOM_UNLOAD_ALERT_ENABLED = String\(process\.env\.BAG_ROOM_UNLOAD_ALERT_ENABLED \|\| ''\)\.toLowerCase\(\) === 'true'/);
   assert.match(server, /async function notifyBagRoomUnloadAfterCc\(syInfo, isoDate\)/);
+  assert.match(server, /if \(!BAG_ROOM_UNLOAD_ALERT_ENABLED\) return \{ sent:false, disabled:true/);
   assert.match(server, /step\.key === 'cc' && step\.complete/);
   assert.match(server, /row\.flightDate === isoDate/);
   assert.match(server, /if \(tags\.length < 5\) return \{ sent:false/);
