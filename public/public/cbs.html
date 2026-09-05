@@ -744,7 +744,7 @@
     }
     function resolutionOptionsHtml(isBagRoom) {
       const specificOptions = isBagRoom ? '<option value="change-type">Change Type</option>' : '';
-      return `<option value="worldtracer">WorldTracer</option><option value="record-pnr">Record - PNR</option><option value="record-tkt">Record - TKT</option>${specificOptions}<option value="exchange">Exchange</option><option value="email">Email</option><option value="on-hand-rush">Create Rush</option><option value="passenger-collected">Passenger collected / Case closed</option><option value="shipped">Shipped</option><option value="other">Other resolution</option><option value="case-close">Case Close</option>`;
+      return `<option value="worldtracer">WorldTracer</option><option value="record-pnr">Record - PNR</option><option value="record-tkt">Record - TKT</option><option value="comment">Comment</option>${specificOptions}<option value="exchange">Exchange</option><option value="email">Email</option><option value="on-hand-rush">Create Rush</option><option value="passenger-collected">Passenger collected / Case closed</option><option value="shipped">Shipped</option><option value="other">Other resolution</option><option value="case-close">Case Close</option>`;
     }
     function savedOnHandRecord(rowNumber, type) {
       const row = (window._unresolvedBaggageSourceRows || []).find((item) => String(item.rowNumber) === String(rowNumber));

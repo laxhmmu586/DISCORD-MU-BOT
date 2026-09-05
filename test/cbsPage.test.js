@@ -314,6 +314,7 @@ test('On-hand cases match the passenger case layout and support WorldTracer prog
 test('Passenger, On-hand, and Bag Room cases support replaceable PNR and TKT Record tabs', () => {
   assert.doesNotMatch(page, /<option value="passenger-name">Passenger Name<\/option>/);
   assert.match(page, /<option value="record-pnr">Record - PNR<\/option><option value="record-tkt">Record - TKT<\/option>/);
+  assert.match(page, /<option value="record-tkt">Record - TKT<\/option><option value="comment">Comment<\/option>/);
   assert.match(page, /action === 'record-pnr' \|\| action === 'record-tkt'/);
   assert.match(page, /class="record-tab-panel unresolved-record"/);
   assert.match(page, /\.unresolved-record pre \{[^}]*font:12px[^}]*"Courier New"[^}]*white-space:pre/);
