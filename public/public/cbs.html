@@ -327,7 +327,7 @@
       .sheet-shell .cbs-sheet{display:table;min-width:980px;overflow:visible}
       .case-dashboard-head{align-items:flex-start;flex-direction:column}.case-search-wrap{width:100%;max-width:none}.case-dashboard-head .search-field{width:100%;max-width:none}.case-summary-cards{grid-template-columns:repeat(3,minmax(0,1fr));width:100%;overflow:visible}.case-stat-card{grid-template-columns:minmax(0,1fr);grid-template-rows:38px 48px auto;align-content:start;min-height:94px}.case-stat-icon{grid-row:1}.case-stat-label{align-self:start;min-width:0;overflow-wrap:anywhere}.case-stat-card[data-case-group="bag-room"] .case-stat-label{white-space:normal;font-size:13px;letter-spacing:0}.case-stat-count{align-self:start;min-width:0}.open-case-group .sheet-shell .cbs-sheet{min-width:620px}
     }
-    @media (max-width:520px){ .rush-itinerary{padding:12px;overflow:hidden}.rush-itinerary-head{align-items:stretch}.rush-itinerary-head button{width:100%}.rush-flight-row{grid-template-columns:minmax(0,1fr);width:100%;min-width:0}.rush-flight-row label{width:100%;min-width:0;overflow:hidden}.rush-flight-row input[type="date"]{width:calc(100% - 24px);justify-self:start}.rush-flight-row button{grid-column:1}.worldtracer-form{width:100%;min-width:0} }
+    @media (max-width:520px){ .rush-itinerary{padding:12px;overflow:hidden}.rush-itinerary-head{align-items:stretch}.rush-itinerary-head button{width:100%}.rush-flight-row{grid-template-columns:minmax(0,1fr);width:100%;min-width:0}.rush-flight-row label{width:100%;min-width:0;overflow:hidden}.rush-flight-row input[type="date"]{width:100%;height:52px;min-height:52px;padding:12px;line-height:24px;justify-self:stretch}.rush-flight-row input[type="date"]::-webkit-date-and-time-value{min-height:24px}.rush-flight-row button{grid-column:1}.worldtracer-form{width:100%;min-width:0} }
   </style>
 </head>
 <body>
@@ -582,7 +582,16 @@
     function rushFlightRowHtml(flight = {}) {
       return `<div class="rush-flight-row" data-rush-flight-row><label><span>Date</span><input data-flight-date type="date" value="${escapeHtml(flight.flightDate || '')}" required /></label><label><span>Flight Number</span><input data-flight-number value="${escapeHtml(flight.flightNumber || '')}" required autocomplete="off" placeholder="MU586" /></label><label><span>From</span><input data-flight-from value="${escapeHtml(flight.from || '')}" required autocomplete="off" placeholder="LAX" /></label><span class="rush-route-arrow">–</span><label><span>To</span><input data-flight-to value="${escapeHtml(flight.to || '')}" required autocomplete="off" placeholder="PVG" /></label><button type="button" data-remove-rush-flight aria-label="Remove flight">Remove</button></div>`;
     }
-    function addRushFlightRow() { rushFlightRows.insertAdjacentHTML('beforeend', rushFlightRowHtml()); }
+    function defaultRushFlight() {
+      const today = new Date();
+      const flightDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      return { flightDate, flightNumber:'MU586', from:'LAX', to:'PVG' };
+    }
+    function addRushFlightRow(flight = {}) { rushFlightRows.insertAdjacentHTML('beforeend', rushFlightRowHtml(flight)); }
+    function resetRushFlightRows() {
+      rushFlightRows.innerHTML = '';
+      addRushFlightRow(defaultRushFlight());
+    }
     function showSection(section) {
       const isCaseSection = section === 'open' || section === 'closed';
       openCasesCard.hidden = !isCaseSection;
@@ -1625,7 +1634,7 @@
     addBaggageTab?.addEventListener('click', () => { showSection('add-baggage'); addBaggageSearch.elements.bagTag.focus(); });
     baggageChartTab?.addEventListener('click', () => showSection('baggage-chart'));
     backToCases?.addEventListener('click', () => showSection('open'));
-    addRushFlight?.addEventListener('click', addRushFlightRow);
+    addRushFlight?.addEventListener('click', () => addRushFlightRow());
     rushFlightRows?.addEventListener('click', (event) => {
       const removeButton = event.target.closest('[data-remove-rush-flight]');
       if (!removeButton) return;
@@ -1658,8 +1667,7 @@
           await loadMissingReports();
         }
         worldTracerForm.reset();
-        rushFlightRows.innerHTML = '';
-        addRushFlightRow();
+        resetRushFlightRows();
         worldTracerStatus.textContent = label('Rush Bag case created and saved.', 'Rush Bag 案件已创建并保存。');
         await loadWorldTracerCases();
         await loadUnresolvedBaggage();
@@ -1976,8 +1984,7 @@
         worldTracerForm.reset();
         worldTracerForm.dataset.missingRow = rushButton.dataset.createMissingRush || '';
         worldTracerForm.elements.originalTagNumber.value = rushButton.dataset.missingBagTag || '';
-        rushFlightRows.innerHTML = '';
-        addRushFlightRow();
+        resetRushFlightRows();
         worldTracerForm.scrollIntoView({ behavior:'smooth', block:'start' });
         return;
       }
@@ -2001,7 +2008,7 @@
         await loadCases();
       } catch (error) { alert(error.message); } finally { button.disabled = false; button.textContent = originalText; }
     });
-    addRushFlightRow();
+    resetRushFlightRows();
     const initialSection = new URLSearchParams(window.location.search).get('section') === 'missing' ? 'missing' : 'open';
     showSection(initialSection);
     loadCases();

@@ -719,6 +719,14 @@ test('Rush Bag cases with MU586 notify Discord and treat WorldTracer as optional
   assert.match(server, /updateCbsWorldTracerCase\(body\.rowNumbers, record\)[\s\S]*addRushBagDiscordResult\(result, result\.record\)/);
 });
 
+test('new Rush itineraries default to todays MU586 LAX-PVG flight while added flights stay blank', () => {
+  assert.match(page, /function defaultRushFlight\(\)/);
+  assert.match(page, /return \{ flightDate, flightNumber:'MU586', from:'LAX', to:'PVG' \}/);
+  assert.match(page, /addRushFlightRow\(defaultRushFlight\(\)\)/);
+  assert.match(page, /addRushFlight\?\.addEventListener\('click', \(\) => addRushFlightRow\(\)\)/);
+  assert.match(page, /input\[type="date"\]\{width:100%;height:52px;min-height:52px/);
+});
+
 test('Missing Bag Report shows the LAXTEC phone contact', () => {
   assert.match(page, /class="missing-report-contact" href="tel:\+14243121860"/);
   assert.match(page, /LAXTEC: 424-312-1860/);
