@@ -1,6 +1,13 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { normalizeOperationalFlightNo, normalizeJcsyFlightNo, sectionMatchesFlightOperationDate, matchesSyFlightRecord, hasUnclearedApiSourceRisk, extractPassportCountryCodes, extractInvoluntaryUpgrade, enrichCheckinAgentStatsFromLog, hasChdServiceCode } = require('../syParser');
+const { normalizeOperationalFlightNo, normalizeJcsyFlightNo, sectionMatchesFlightOperationDate, matchesSyFlightRecord, hasUnclearedApiSourceRisk, extractPassportCountryCodes, extractInvoluntaryUpgrade, enrichCheckinAgentStatsFromLog, hasChdServiceCode, isCcAirportClosedContent } = require('../syParser');
+
+test('CC only completes after the ACCEPTED/AIRPORT CLOSED response', () => {
+  assert.equal(isCcAirportClosedContent('> CC:\\n> CC: MU586/04SEP26,Y\\n> WARNING - PAX/BAG NOT RECONCILED\\n> 4 BAGS TO BE REMOVED'), false);
+  assert.equal(isCcAirportClosedContent('> CC: MU586/04SEP26,Y\\n> ACCEPTED/AIRPORT CLOSED'), true);
+  assert.equal(isCcAirportClosedContent('> CC:\\n> ACCEPTED/AIRPORT CLOSED'), true);
+  assert.equal(isCcAirportClosedContent('> CC: MU586/04SEP26,Y\\n> ACCEPTED'), false);
+});
 
 test('accepts any numeric CHD1 service-code value', () => {
   assert.equal(hasChdServiceCode('SSR CHD1/0'), true);

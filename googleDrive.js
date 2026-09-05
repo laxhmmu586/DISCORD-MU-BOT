@@ -4333,6 +4333,23 @@ async function sendNextDayInfoEmail({ to = 'laxhmmu@gmail.com', cc = [], subject
   return { to: Array.isArray(to) ? to : [to], cc: Array.isArray(cc) ? cc : [cc].filter(Boolean), id: sent.data.id || '', userId, authMode };
 }
 
+async function sendBagRoomUnloadAlertEmail({ subject, text, to = '7X24bag@ceair.com' }) {
+  const { gmail, userId, authMode } = getNextDayInfoGmailClient();
+  const exactSubject = String(subject || '').replace(/"/g, '');
+  const searchDate = gmailSearchYmd(new Date());
+  const listed = await gmail.users.messages.list({
+    userId,
+    q:`in:sent to:${to} subject:"${exactSubject}" newer_than:2d`,
+    maxResults:10,
+    fields:'messages(id,internalDate)'
+  });
+  const alreadySent = (listed.data.messages || []).find((message) => gmailSearchYmd(Number(message.internalDate)) === searchDate);
+  if (alreadySent) return { sent:false, duplicate:true, id:alreadySent.id || '', to, subject, authMode };
+  const raw = buildRawPlainEmail({ to, subject, text });
+  const sent = await gmail.users.messages.send({ userId, requestBody:{ raw:base64UrlEncode(raw) } });
+  return { sent:true, duplicate:false, id:sent.data.id || '', to, subject, authMode };
+}
+
 async function sendCbsCaseEmail({ passengerEmail, subject, html, text, pdfBuffer, filename, attachments = [] }) {
   const { gmail, userId } = getNextDayInfoGmailClient();
   const to = String(passengerEmail || '').trim();
@@ -4504,6 +4521,7 @@ module.exports = {
   markCbsMissingBagCase,
   acknowledgeCbsMissingBag,
   sendCbsCaseEmail,
+  sendBagRoomUnloadAlertEmail,
   sendWrongBaggageCaseEmail,
   sendMisconnectionAssistanceEmail,
   getCbsBaggageChartImage,
