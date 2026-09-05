@@ -562,7 +562,12 @@
       const recordTab = event.target.closest('[data-record-tab]');
       if (recordTab) {
         const tabs = recordTab.closest('[data-record-tabs]');
-        tabs.querySelectorAll('[data-record-tab]').forEach((button) => button.classList.toggle('is-active', button === recordTab));
+        tabs.querySelectorAll('[data-record-tab]').forEach((button) => {
+          const selected = button === recordTab;
+          button.classList.toggle('is-active', selected);
+          button.setAttribute('aria-selected', String(selected));
+          button.tabIndex = selected ? 0 : -1;
+        });
         tabs.querySelectorAll('[data-record-panel]').forEach((panel) => { panel.hidden = panel.dataset.recordPanel !== recordTab.dataset.recordTab; });
         return;
       }
@@ -751,7 +756,7 @@
       });
       if (!records.some((item) => item.text)) return '';
       const activeType = records.find((item) => item.text)?.type || 'pnr';
-      return `<section class="record-tabs" data-record-tabs="${escapeHtml(key)}"><div class="record-tab-list" role="tablist">${records.map(({ type, text }) => `<button type="button" role="tab" data-record-tab="${type}" class="${type === activeType ? 'is-active' : ''}" ${text ? '' : 'disabled'}>Record - ${type.toUpperCase()}</button>`).join('')}</div>${records.map(({ type, event, text }) => `<div class="record-tab-panel unresolved-record" data-record-panel="${type}" ${type === activeType ? '' : 'hidden'}><pre>${escapeHtml(text || '')}</pre>${event ? `<small>${event.at ? escapeHtml(new Date(event.at).toLocaleString()) : ''}${event.by ? ` · Updated by: ${escapeHtml(updaterDisplayName(event.by))}` : ''}</small>` : ''}</div>`).join('')}</section>`;
+      return `<section class="record-tabs" data-record-tabs="${escapeHtml(key)}"><div class="record-tab-list" role="tablist" aria-label="Saved records">${records.map(({ type, text }) => `<button type="button" role="tab" data-record-tab="${type}" class="${type === activeType ? 'is-active' : ''}" aria-selected="${type === activeType}" tabindex="${type === activeType ? '0' : '-1'}" ${text ? '' : 'disabled'}>Record - ${type.toUpperCase()}</button>`).join('')}</div>${records.map(({ type, event, text }) => `<div class="record-tab-panel unresolved-record" role="tabpanel" data-record-panel="${type}" ${type === activeType ? '' : 'hidden'}><pre>${escapeHtml(text || '')}</pre>${event ? `<small>${event.at ? escapeHtml(new Date(event.at).toLocaleString()) : ''}${event.by ? ` · Updated by: ${escapeHtml(updaterDisplayName(event.by))}` : ''}</small>` : ''}</div>`).join('')}</section>`;
     }
     function renderUnresolvedBaggageGroup(rows = [], output, groupName) {
       const showClosed = window._caseView === 'closed';
@@ -1186,8 +1191,8 @@
       return '';
     }
     function savedPassengerRecord(row, type) {
-      const event = (row?.updateEvents || []).filter((item) => item.key === type).at(-1);
-      return new Map(event?.fields || []).get(type === 'record-tkt' ? 'Record - TKT' : 'Record - PNR') || '';
+      const event = (row?.updateEvents || []).filter((item) => item.key === type || (type === 'record-pnr' && item.key === 'record')).at(-1);
+      return new Map(event?.fields || []).get(type === 'record-tkt' ? 'Record - TKT' : 'Record - PNR') || new Map(event?.fields || []).get('Record') || '';
     }
     function baggageSearchHtml() {
       const result = window._cbsBaggageSearch;

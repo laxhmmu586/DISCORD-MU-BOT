@@ -321,6 +321,9 @@ test('Passenger, On-hand, and Bag Room cases support replaceable PNR and TKT Rec
   assert.match(page, /function savedOnHandRecord\(rowNumber, type\)/);
   assert.match(page, /function recordTabsHtml\(events = \[\], key = ''\)/);
   assert.match(page, /data-record-tab=/);
+  assert.match(page, /role="tablist" aria-label="Saved records"/);
+  assert.match(page, /role="tabpanel" data-record-panel=/);
+  assert.match(page, /button\.setAttribute\('aria-selected', String\(selected\)\)/);
   assert.match(page, /Updating will replace this existing Record/);
   assert.match(page, /action === 'comment'[^\n]+name="commentPreset" data-comment-preset/);
   assert.match(page, /Passenger request Pick up at LAX/);
@@ -335,6 +338,8 @@ test('Passenger, On-hand, and Bag Room cases support replaceable PNR and TKT Rec
   assert.match(server, /const record = sanitizeCbsEmailBody\(req\.body\?\.record, 5000\)/);
   assert.match(server, /type === 'record-pnr' \|\| type === 'record-tkt'/);
   assert.match(page, /recordTabsHtml\(row\.updateEvents \|\| \[\], `passenger-/);
+  assert.match(page, /type === 'record-pnr' && item\.key === 'record'/);
+  assert.match(page, /get\('Record'\) \|\| ''/);
 });
 
 test('Bag Room cases can change type and close out of Open Case', () => {
