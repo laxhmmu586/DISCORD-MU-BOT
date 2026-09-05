@@ -272,9 +272,11 @@
     .unresolved-history h3 { margin:0; color:#067647; }
     .unresolved-history p { margin:0; }
     .unresolved-record { min-width:0; margin-top:4px; padding:14px; border:1px solid #b9d2f3; border-radius:12px; background:#f3f7ff; color:#173b6c; }
-    .unresolved-record pre { max-width:100%; margin:8px 0 0; padding:14px; overflow:auto; border-radius:9px; background:#07110a; color:#32e65c; font:14px/1.35 "Courier New",ui-monospace,monospace; tab-size:8; white-space:pre; }
+    .unresolved-record pre { max-width:100%; margin:8px 0 0; padding:14px; overflow-x:hidden; border-radius:9px; background:#07110a; color:#32e65c; font:12px/1.35 "Courier New",ui-monospace,monospace; overflow-wrap:anywhere; tab-size:8; white-space:pre-wrap; }
     .unresolved-record small { display:block; margin-top:8px; color:var(--muted); font-weight:700; }
-    .record-tabs { min-width:0; margin-top:14px; }
+    .record-tabs { min-width:0; }
+    .record-panel-card { min-width:0; margin-top:16px; padding:16px; border:1px solid #c9d9ec; border-radius:14px; background:#fff; }
+    .record-panel-card h3 { margin:0 0 12px; color:var(--brand); }
     .record-tab-list { display:flex; gap:6px; }
     .record-tab-list button { border:1px solid #b9d2f3; border-radius:10px 10px 0 0; background:#e9f1fc; color:#173b6c; }
     .record-tab-list button.is-active { background:#07110a; color:#32e65c; }
@@ -562,7 +564,12 @@
       const recordTab = event.target.closest('[data-record-tab]');
       if (recordTab) {
         const tabs = recordTab.closest('[data-record-tabs]');
-        tabs.querySelectorAll('[data-record-tab]').forEach((button) => button.classList.toggle('is-active', button === recordTab));
+        tabs.querySelectorAll('[data-record-tab]').forEach((button) => {
+          const selected = button === recordTab;
+          button.classList.toggle('is-active', selected);
+          button.setAttribute('aria-selected', String(selected));
+          button.tabIndex = selected ? 0 : -1;
+        });
         tabs.querySelectorAll('[data-record-panel]').forEach((panel) => { panel.hidden = panel.dataset.recordPanel !== recordTab.dataset.recordTab; });
         return;
       }
@@ -737,7 +744,7 @@
     }
     function resolutionOptionsHtml(isBagRoom) {
       const specificOptions = isBagRoom ? '<option value="change-type">Change Type</option>' : '';
-      return `<option value="worldtracer">WorldTracer</option><option value="record-pnr">Record - PNR</option><option value="record-tkt">Record - TKT</option>${specificOptions}<option value="exchange">Exchange</option><option value="email">Email</option><option value="on-hand-rush">Create Rush</option><option value="passenger-collected">Passenger collected / Case closed</option><option value="shipped">Shipped</option><option value="other">Other resolution</option><option value="case-close">Case Close</option>`;
+      return `<option value="worldtracer">WorldTracer</option><option value="record-pnr">Record - PNR</option><option value="record-tkt">Record - TKT</option><option value="comment">Comment</option>${specificOptions}<option value="exchange">Exchange</option><option value="email">Email</option><option value="on-hand-rush">Create Rush</option><option value="passenger-collected">Passenger collected / Case closed</option><option value="shipped">Shipped</option><option value="other">Other resolution</option><option value="case-close">Case Close</option>`;
     }
     function savedOnHandRecord(rowNumber, type) {
       const row = (window._unresolvedBaggageSourceRows || []).find((item) => String(item.rowNumber) === String(rowNumber));
@@ -751,7 +758,7 @@
       });
       if (!records.some((item) => item.text)) return '';
       const activeType = records.find((item) => item.text)?.type || 'pnr';
-      return `<section class="record-tabs" data-record-tabs="${escapeHtml(key)}"><div class="record-tab-list" role="tablist">${records.map(({ type, text }) => `<button type="button" role="tab" data-record-tab="${type}" class="${type === activeType ? 'is-active' : ''}" ${text ? '' : 'disabled'}>Record - ${type.toUpperCase()}</button>`).join('')}</div>${records.map(({ type, event, text }) => `<div class="record-tab-panel unresolved-record" data-record-panel="${type}" ${type === activeType ? '' : 'hidden'}><pre>${escapeHtml(text || '')}</pre>${event ? `<small>${event.at ? escapeHtml(new Date(event.at).toLocaleString()) : ''}${event.by ? ` · Updated by: ${escapeHtml(updaterDisplayName(event.by))}` : ''}</small>` : ''}</div>`).join('')}</section>`;
+      return `<section class="record-tabs" data-record-tabs="${escapeHtml(key)}"><div class="record-tab-list" role="tablist" aria-label="Saved records">${records.map(({ type, text }) => `<button type="button" role="tab" data-record-tab="${type}" class="${type === activeType ? 'is-active' : ''}" aria-selected="${type === activeType}" tabindex="${type === activeType ? '0' : '-1'}" ${text ? '' : 'disabled'}>Record - ${type.toUpperCase()}</button>`).join('')}</div>${records.map(({ type, event, text }) => `<div class="record-tab-panel unresolved-record" role="tabpanel" data-record-panel="${type}" ${type === activeType ? '' : 'hidden'}><pre>${escapeHtml(text || '')}</pre>${event ? `<small>${event.at ? escapeHtml(new Date(event.at).toLocaleString()) : ''}${event.by ? ` · Updated by: ${escapeHtml(updaterDisplayName(event.by))}` : ''}</small>` : ''}</div>`).join('')}</section>`;
     }
     function renderUnresolvedBaggageGroup(rows = [], output, groupName) {
       const showClosed = window._caseView === 'closed';
@@ -787,7 +794,8 @@
         const active = row.history.find((item) => !item.resolvedAt || ['other', 'email'].includes(String(item.resolution || '').toLowerCase()));
         const allUpdateEvents = row.history.flatMap((item) => item.updateEvents || []);
         const recordTabs = recordTabsHtml(allUpdateEvents, `unresolved-${row.rowNumber}`);
-        const historyHtml = resolvedHistory.length || recordTabs ? `<section class="unresolved-history"><h3>History</h3>${resolvedHistory.map((item) => `<p><strong>${escapeHtml(item.resolution || 'Completed')}</strong> · ${escapeHtml(item.resolvedAt ? new Date(item.resolvedAt).toLocaleString() : '')}${item.resolutionNote ? `<br>${escapeHtml(item.resolutionNote)}` : ''}</p>`).join('')}${recordTabs}</section>` : '';
+        const historyHtml = resolvedHistory.length ? `<section class="unresolved-history"><h3>History</h3>${resolvedHistory.map((item) => `<p><strong>${escapeHtml(item.resolution || 'Completed')}</strong> · ${escapeHtml(item.resolvedAt ? new Date(item.resolvedAt).toLocaleString() : '')}${item.resolutionNote ? `<br>${escapeHtml(item.resolutionNote)}` : ''}</p>`).join('')}</section>` : '';
+        const recordPanelHtml = recordTabs ? `<section class="record-panel-card"><h3>Records</h3>${recordTabs}</section>` : '';
         const closed = !active && showClosed ? row : null;
         const matchedCase = active ? matchingPassengerCaseForOnHand(active) : null;
         const onHandId = active?.rowNumber || '';
@@ -804,7 +812,7 @@
         const tagDisplay = lastExchange ? `<span class="exchange-tag-flow"><span class="exchange-tag-old">${escapeHtml(lastExchange.oldTag)}</span><span class="exchange-tag-arrow" aria-hidden="true">→<span class="exchange-tag-arrow-label">Exchange</span></span><span class="exchange-tag-new">${escapeHtml(lastExchange.newTag)}</span></span>` : `<span class="bag-tag-value">${escapeHtml(row.bagTag)}</span>`;
         const rushTagCell = showRushTag ? `<td class="sheet-meta"><span class="bag-tag-value">${escapeHtml(row.rushTagNumber || '-')}</span>${linkButton}</td>` : '';
         const bagTagAction = showRushTag ? '' : linkButton;
-        return `<tr class="case-summary-row" data-toggle-unresolved-update role="button" tabindex="0" aria-expanded="false"><td class="sheet-meta">${escapeHtml(row.worldTracerFileNumber || '-')}</td><td class="sheet-meta"><span class="on-hand-tag-summary">${matchBadge}${tagDisplay}</span>${bagTagAction}</td>${rushTagCell}<td class="sheet-meta">${escapeHtml(row.direction || '-')}</td><td class="sheet-meta">${escapeHtml(row.flightDate || '-')}</td><td class="sheet-meta">${escapeHtml(row.bagType || row.status || '-')}</td></tr><tr class="case-detail-row" data-unresolved-detail hidden><td colspan="${columnCount}"><div class="case-detail-layout"><div class="case-progress-column">${unresolvedProgressHtml(progressRow)}</div><div class="case-detail-right">${formHtml}${historyHtml}</div></div></td></tr>`;
+        return `<tr class="case-summary-row" data-toggle-unresolved-update role="button" tabindex="0" aria-expanded="false"><td class="sheet-meta">${escapeHtml(row.worldTracerFileNumber || '-')}</td><td class="sheet-meta"><span class="on-hand-tag-summary">${matchBadge}${tagDisplay}</span>${bagTagAction}</td>${rushTagCell}<td class="sheet-meta">${escapeHtml(row.direction || '-')}</td><td class="sheet-meta">${escapeHtml(row.flightDate || '-')}</td><td class="sheet-meta">${escapeHtml(row.bagType || row.status || '-')}</td></tr><tr class="case-detail-row" data-unresolved-detail hidden><td colspan="${columnCount}"><div class="case-detail-layout"><div class="case-progress-column">${unresolvedProgressHtml(progressRow)}</div><div class="case-detail-right">${formHtml}${historyHtml}${recordPanelHtml}</div></div></td></tr>`;
       }).join('')}</tbody></table></div>${listPaginationHtml(listKey, pagination)}`;
       requestAnimationFrame(syncCaseProgressHeights);
     }
@@ -1186,8 +1194,8 @@
       return '';
     }
     function savedPassengerRecord(row, type) {
-      const event = (row?.updateEvents || []).filter((item) => item.key === type).at(-1);
-      return new Map(event?.fields || []).get(type === 'record-tkt' ? 'Record - TKT' : 'Record - PNR') || '';
+      const event = (row?.updateEvents || []).filter((item) => item.key === type || (type === 'record-pnr' && item.key === 'record')).at(-1);
+      return new Map(event?.fields || []).get(type === 'record-tkt' ? 'Record - TKT' : 'Record - PNR') || new Map(event?.fields || []).get('Record') || '';
     }
     function baggageSearchHtml() {
       const result = window._cbsBaggageSearch;
@@ -1376,7 +1384,9 @@
         const rushFlightDateHtml = rushFlight || rushDate ? `<span class="upcoming-rush-summary"><span class="rush-today-slot">${rushToday}</span><span>${escapeHtml(`${formattedFlight}/ ${formattedDate}`)}</span></span>` : '';
         const matchBadge = matchedOnHand ? '<span class="rush-match">Match</span>' : '';
         const rushCells = showUpcomingRush ? `<td class="sheet-meta">${rushFlightDateHtml}</td><td class="sheet-meta"><span class="rush-tag-summary">${escapeHtml(rushTag)}${matchBadge}</span></td>` : '';
-        return `<tr class="case-summary-row${closedClass}" data-toggle-case="${escapeHtml(detailKey)}" aria-expanded="${isExpanded ? 'true' : 'false'}"><td class="sheet-meta">${escapeHtml(displayWorldTracerFile(row) || '-')}</td><td class="sheet-meta">${escapeHtml(caseType || '-')}</td><td class="sheet-meta">${bagTagSummaryHtml(displayBagTag(row))}</td>${rushCells}</tr><tr class="case-detail-row${closedClass}" data-detail-case="${escapeHtml(detailKey)}" ${isExpanded ? '' : 'hidden'}><td colspan="${showUpcomingRush ? 5 : 3}"><div class="case-detail-layout"><div class="case-progress-column">${trackingControlHtml(row, 'progress')}</div><div class="case-detail-right">${trackingControlHtml(row, 'current')}${recordTabsHtml(row.updateEvents || [], `passenger-${row.rowNumber}`)}${caseCommentsHtml(row)}<div class="case-detail-content">${detailHtml}</div>${passengerNotificationHtml(row)}</div></div></td></tr>`;
+        const passengerRecords = recordTabsHtml(row.updateEvents || [], `passenger-${row.rowNumber}`);
+        const passengerRecordPanel = passengerRecords ? `<section class="record-panel-card"><h3>Records</h3>${passengerRecords}</section>` : '';
+        return `<tr class="case-summary-row${closedClass}" data-toggle-case="${escapeHtml(detailKey)}" aria-expanded="${isExpanded ? 'true' : 'false'}"><td class="sheet-meta">${escapeHtml(displayWorldTracerFile(row) || '-')}</td><td class="sheet-meta">${escapeHtml(caseType || '-')}</td><td class="sheet-meta">${bagTagSummaryHtml(displayBagTag(row))}</td>${rushCells}</tr><tr class="case-detail-row${closedClass}" data-detail-case="${escapeHtml(detailKey)}" ${isExpanded ? '' : 'hidden'}><td colspan="${showUpcomingRush ? 5 : 3}"><div class="case-detail-layout"><div class="case-progress-column">${trackingControlHtml(row, 'progress')}</div><div class="case-detail-right">${trackingControlHtml(row, 'current')}${caseCommentsHtml(row)}<div class="case-detail-content">${detailHtml}</div>${passengerNotificationHtml(row)}${passengerRecordPanel}</div></div></td></tr>`;
       }).join('')}</tbody></table></div>${listPaginationHtml(`${showClosed ? 'closed' : 'open'}-passenger`, pagination)}${baggageHtml}`;
       requestAnimationFrame(syncCaseProgressHeights);
     }
