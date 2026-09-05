@@ -257,6 +257,10 @@ test('Open Case uses selectable summary cards with live category counts', () => 
   assert.match(page, /Search case \/ bag tag\.\.\./);
   assert.match(page, /grid-template-columns:repeat\(3,minmax\(220px,280px\)\)/);
   assert.match(page, /case-summary-cards\{grid-template-columns:repeat\(3,minmax\(0,1fr\)\);width:100%;overflow:visible\}/);
+  assert.match(page, /grid-template-rows:38px 48px auto/);
+  assert.match(page, /data-case-group="bag-room"[^>]*>[\s\S]*?<span class="case-stat-label">Bag Room Unload Bag<\/span>/);
+  assert.match(page, /case-stat-card\[data-case-group="bag-room"\] \{ border-color:#ead88a; background:linear-gradient\(135deg,#fffdf2,#fff5c7\); color:#8a6500; \}/);
+  assert.match(page, /case-stat-card\[data-case-group="bag-room"\] \.case-stat-label \{ white-space:nowrap/);
   assert.doesNotMatch(page, /case-stat-chevron/);
 });
 
