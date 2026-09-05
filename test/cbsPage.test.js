@@ -298,6 +298,13 @@ test('Not Load Bags are automatically copied to the Bag Room Unload Google Sheet
   assert.match(drive, /await appendCbsNotLoadBaggageCase\(\{ \.\.\.record, \.\.\.saved \}\);/);
 });
 
+test('Not Load Bags are automatically copied to the Bag Room Unload Google Sheet', () => {
+  assert.match(drive, /CBS_NOT_LOAD_BAGGAGE_SHEET_GID = Number\(process\.env\.CBS_NOT_LOAD_BAGGAGE_SHEET_GID \|\| 1393047851\)/);
+  assert.match(drive, /function isNotLoadBaggageRecord[\s\S]*not\\s\+load/);
+  assert.match(drive, /async function appendCbsNotLoadBaggageCase[\s\S]*getCbsNotLoadBaggageSheetTitle/);
+  assert.match(drive, /await appendCbsNotLoadBaggageCase\(\{ \.\.\.record, \.\.\.saved \}\);/);
+});
+
 test('On-hand cases match the passenger case layout and support WorldTracer progress', () => {
   assert.match(page, /<th>WorldTracer File Number<\/th><th>Bag Tag<\/th>\$\{rushTagHeading\}<th>Direction<\/th>/);
   assert.match(page, /class="case-detail-layout"><div class="case-progress-column">\$\{unresolvedProgressHtml\(progressRow\)\}/);
