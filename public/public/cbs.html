@@ -272,7 +272,7 @@
     .unresolved-history h3 { margin:0; color:#067647; }
     .unresolved-history p { margin:0; }
     .unresolved-record { min-width:0; margin-top:4px; padding:14px; border:1px solid #b9d2f3; border-radius:12px; background:#f3f7ff; color:#173b6c; }
-    .unresolved-record pre { max-width:100%; margin:8px 0 0; padding:14px; overflow-x:hidden; border-radius:9px; background:#07110a; color:#32e65c; font:12px/1.35 "Courier New",ui-monospace,monospace; overflow-wrap:anywhere; tab-size:8; white-space:pre-wrap; }
+    .unresolved-record pre { max-width:100%; margin:8px 0 0; padding:14px; overflow:auto; border-radius:9px; background:#07110a; color:#32e65c; font:12px/1.35 "Courier New",ui-monospace,monospace; tab-size:8; white-space:pre; }
     .unresolved-record small { display:block; margin-top:8px; color:var(--muted); font-weight:700; }
     .record-tabs { min-width:0; }
     .record-panel-card { min-width:0; margin-top:16px; padding:16px; border:1px solid #c9d9ec; border-radius:14px; background:#fff; }
@@ -717,7 +717,7 @@
       }
     }
     function recordTextareaHtml(type, savedRecord = '') {
-      return `<textarea name="record" maxlength="5000" rows="8" placeholder="Paste the original formatted record" required>${escapeHtml(savedRecord)}</textarea>`;
+      return `<textarea name="record" maxlength="5000" rows="8" cols="120" wrap="hard" placeholder="Paste the original formatted record" required>${escapeHtml(savedRecord)}</textarea>`;
     }
     function unresolvedUpdateFieldsHtml(action, bagTag, worldTracerFileNumber = '', savedRecord = '') {
       if (action === 'worldtracer') return `<label class="wide"><span>WorldTracer File Number</span><input name="worldTracerFileNumber" value="${escapeHtml(worldTracerFileNumber)}" required /></label>`;
