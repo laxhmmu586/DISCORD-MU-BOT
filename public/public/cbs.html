@@ -65,6 +65,9 @@
     .case-summary:hover { background:#f7fbff; }
 
     .sheet-shell { overflow:auto; border:1px solid #d8e4f1; border-radius:18px; background:#fff; box-shadow:0 12px 30px rgba(18,58,115,.06); }
+    .list-pagination { display:flex; align-items:center; justify-content:flex-end; gap:10px; padding:14px 4px 2px; color:var(--muted); font-size:13px; font-weight:700; }
+    .list-pagination button { min-width:82px; padding:8px 12px; }
+    .list-pagination button:disabled { cursor:not-allowed; opacity:.4; }
     .cbs-sheet { min-width:980px; border-collapse:separate; border-spacing:0 10px; table-layout:fixed; font-size:13px; }
     .cbs-sheet th,.cbs-sheet td { height:34px; padding:12px 14px; border:0; background:#fff; vertical-align:top; }
     .cbs-sheet th { position:sticky; top:0; z-index:2; background:#f8fbff; color:#344054; text-transform:none; font-size:13px; font-weight:900; box-shadow:inset 0 -1px 0 #d8e4f1; }
@@ -268,6 +271,9 @@
     .unresolved-history { grid-column:1/-1; display:grid; gap:8px; margin-top:16px; padding:14px; border:1px solid #a6e3c1; border-radius:12px; background:#eafaf1; color:#06603a; }
     .unresolved-history h3 { margin:0; color:#067647; }
     .unresolved-history p { margin:0; }
+    .unresolved-record { min-width:0; margin-top:4px; padding:14px; border:1px solid #b9d2f3; border-radius:12px; background:#f3f7ff; color:#173b6c; }
+    .unresolved-record pre { max-width:100%; margin:8px 0 0; padding:14px; overflow:auto; border-radius:9px; background:#07110a; color:#32e65c; font:14px/1.35 "Courier New",ui-monospace,monospace; tab-size:8; white-space:pre; }
+    .unresolved-record small { display:block; margin-top:8px; color:var(--muted); font-weight:700; }
     .open-case-groups { display:grid; gap:24px; margin-top:20px; }
     .open-case-group { padding:18px; border:1px solid var(--line); border-radius:18px; background:#fbfdff; }
     .open-case-group + .open-case-group { margin-top:24px; }
@@ -324,7 +330,7 @@
       .sheet-shell .cbs-sheet{display:table;min-width:980px;overflow:visible}
       .case-dashboard-head{align-items:flex-start;flex-direction:column}.case-search-wrap{width:100%;max-width:none}.case-dashboard-head .search-field{width:100%;max-width:none}.case-summary-cards{grid-template-columns:repeat(3,minmax(0,1fr));width:100%;overflow:visible}.case-stat-card{grid-template-columns:minmax(0,1fr);grid-template-rows:38px 48px auto;align-content:start;min-height:94px}.case-stat-icon{grid-row:1}.case-stat-label{align-self:start;min-width:0;overflow-wrap:anywhere}.case-stat-card[data-case-group="bag-room"] .case-stat-label{white-space:normal;font-size:13px;letter-spacing:0}.case-stat-count{align-self:start;min-width:0}.open-case-group .sheet-shell .cbs-sheet{min-width:620px}
     }
-    @media (max-width:520px){ .rush-itinerary{padding:12px;overflow:hidden}.rush-itinerary-head{align-items:stretch}.rush-itinerary-head button{width:100%}.rush-flight-row{grid-template-columns:minmax(0,1fr);width:100%;min-width:0}.rush-flight-row label{width:100%;min-width:0;overflow:hidden}.rush-flight-row input[type="date"]{width:calc(100% - 24px);justify-self:start}.rush-flight-row button{grid-column:1}.worldtracer-form{width:100%;min-width:0} }
+    @media (max-width:520px){ .rush-itinerary{padding:12px;overflow:hidden}.rush-itinerary-head{align-items:stretch}.rush-itinerary-head button{width:100%}.rush-flight-row{grid-template-columns:minmax(0,1fr);width:100%;min-width:0}.rush-flight-row label{width:100%;min-width:0;overflow:hidden}.rush-flight-row input[type="date"]{width:100%;height:52px;min-height:52px;padding:12px;line-height:24px;justify-self:stretch}.rush-flight-row input[type="date"]::-webkit-date-and-time-value{min-height:24px}.rush-flight-row button{grid-column:1}.worldtracer-form{width:100%;min-width:0} }
   </style>
 </head>
 <body>
@@ -333,12 +339,12 @@
     <div class="nav-kicker">Baggage Operations</div>
     <nav class="page-tabs" aria-label="CBS sections">
       <button class="page-tab" id="open-cases-tab" type="button" title="Open Case"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h6l2 2h8v10H4zM4 7V5h6l2 2"/></svg></span><span class="page-tab-label"><span class="en">Open Case</span><span class="zh">未结案件</span></span></button>
-      <button class="page-tab" id="closed-cases-tab" type="button" title="Closed Case"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h6l2 2h8v10H4z"/><path d="m8 14 2 2 5-5"/></svg></span><span class="page-tab-label"><span class="en">Closed Case</span><span class="zh">已结案件</span></span></button>
-      <button class="page-tab" id="add-baggage-tab" type="button" title="Add Baggage"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="13" height="12" rx="2"/><path d="M7 8V5h5v3m7-4v8m-4-4h8"/></svg></span><span class="page-tab-label">Add Baggage</span></button>
       <button class="page-tab" id="worldtracer-tab" type="button" title="Rush Bag"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m3 14 7-3V5l2-2 2 7 5-2 2 1-7 5v5l-2 2-2-6-4 2z"/></svg></span><span class="page-tab-label">Rush Bag</span></button>
+      <button class="page-tab" id="add-baggage-tab" type="button" title="Add Baggage"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="13" height="12" rx="2"/><path d="M7 8V5h5v3m7-4v8m-4-4h8"/></svg></span><span class="page-tab-label">Add Baggage</span></button>
       <button class="page-tab" id="missing-report-alert" type="button" title="Missing Bag Report"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="7" width="12" height="12" rx="2"/><path d="M8 7V5h4v2m5 10 4 4m-1-7a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg></span><span class="page-tab-label">Missing Bag Report</span></button>
       <button class="page-tab" id="email-tab" type="button" title="Email"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg></span><span class="page-tab-label">Email</span></button>
       <button class="page-tab" id="baggage-chart-tab" type="button" title="Baggage Chart"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19V9m5 10V5m5 14v-7m5 7V3"/></svg></span><span class="page-tab-label">Baggage Chart</span></button>
+      <button class="page-tab" id="closed-cases-tab" type="button" title="Closed Case"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h6l2 2h8v10H4z"/><path d="m8 14 2 2 5-5"/></svg></span><span class="page-tab-label"><span class="en">Closed Case</span><span class="zh">已结案件</span></span></button>
     </nav>
     <span class="header-spacer"></span>
     <div class="sidebar-actions">
@@ -499,6 +505,39 @@
     const sidebarRefresh = document.querySelector('#sidebar-refresh');
     const sidebarLogout = document.querySelector('#sidebar-logout');
     const MISSING_BAG_STATUS_STORAGE_KEY = 'mufc_missing_bag_status_v1';
+    const LIST_PAGE_SIZE = 20;
+    function paginateRows(rows, key) {
+      window._cbsListPages ||= {};
+      const pageCount = Math.max(1, Math.ceil(rows.length / LIST_PAGE_SIZE));
+      const page = Math.min(Math.max(1, Number(window._cbsListPages[key]) || 1), pageCount);
+      window._cbsListPages[key] = page;
+      return { rows:rows.slice((page - 1) * LIST_PAGE_SIZE, page * LIST_PAGE_SIZE), page, pageCount, total:rows.length };
+    }
+    function paginateRowsByMonth(rows, key) {
+      window._cbsListPages ||= {};
+      const months = new Map();
+      rows.forEach((row) => {
+        const date = row.sourceEmailDate ? new Date(row.sourceEmailDate) : null;
+        const validDate = date && !Number.isNaN(date.getTime());
+        const monthKey = validDate ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}` : 'unknown';
+        if (!months.has(monthKey)) months.set(monthKey, { date:validDate ? date : null, rows:[] });
+        months.get(monthKey).rows.push(row);
+      });
+      const monthGroups = [...months.values()].sort((a, b) => (b.date?.getTime() || 0) - (a.date?.getTime() || 0));
+      const pageCount = Math.max(1, monthGroups.length);
+      const page = Math.min(Math.max(1, Number(window._cbsListPages[key]) || 1), pageCount);
+      window._cbsListPages[key] = page;
+      const selected = monthGroups[page - 1] || { date:null, rows:[] };
+      const monthLabel = selected.date
+        ? selected.date.toLocaleDateString(document.documentElement.lang === 'zh' ? 'zh-CN' : 'en-US', { year:'numeric', month:'long' })
+        : label('Date unavailable', '日期未知');
+      return { rows:selected.rows, page, pageCount, total:rows.length, summary:`${monthLabel} · ${selected.rows.length} ${label('records', '条')}` };
+    }
+    function listPaginationHtml(key, pagination) {
+      if (pagination.pageCount <= 1) return '';
+      const summary = pagination.summary || label(`Page ${pagination.page} of ${pagination.pageCount} · ${pagination.total} records`, `第 ${pagination.page}/${pagination.pageCount} 页 · 共 ${pagination.total} 条`);
+      return `<nav class="list-pagination" aria-label="List pages"><span>${escapeHtml(summary)}</span><button class="secondary" type="button" data-list-page="${escapeHtml(key)}" data-page-delta="-1" ${pagination.page === 1 ? 'disabled' : ''}>${label('Previous', '上一页')}</button><button class="secondary" type="button" data-list-page="${escapeHtml(key)}" data-page-delta="1" ${pagination.page === pagination.pageCount ? 'disabled' : ''}>${label('Next', '下一页')}</button></nav>`;
+    }
     function setCaseCount(group, count) {
       document.querySelector(`[data-case-count="${group}"]`).textContent = String(count);
       const titleCount = document.querySelector(`[data-case-title-count="${group}"]`);
@@ -514,6 +553,17 @@
     }
     caseCategoryButtons.forEach((button) => button.addEventListener('click', () => selectCaseGroup(button.dataset.caseGroup)));
     document.querySelectorAll('.case-view-all').forEach((button) => button.addEventListener('click', () => button.closest('[data-case-panel]')?.querySelector('.sheet-shell')?.scrollIntoView({ behavior:'smooth', block:'nearest' })));
+    document.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-list-page]');
+      if (!button || button.disabled) return;
+      const key = button.dataset.listPage;
+      window._cbsListPages ||= {};
+      window._cbsListPages[key] = Math.max(1, (Number(window._cbsListPages[key]) || 1) + Number(button.dataset.pageDelta || 0));
+      if (key === 'rush-bags') renderWorldTracerCases(window._worldTracerRows || []);
+      else if (key === 'missing-reports') renderMissingReports(window._missingBagRows || []);
+      else if (key.endsWith('-passenger')) renderCases();
+      else renderUnresolvedBaggage(window._unresolvedBaggageSourceRows || []);
+    });
     function futurePickupDateText(value, chinese) {
       const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
       if (!match) return chinese ? '所选日期' : 'the selected date';
@@ -535,7 +585,16 @@
     function rushFlightRowHtml(flight = {}) {
       return `<div class="rush-flight-row" data-rush-flight-row><label><span>Date</span><input data-flight-date type="date" value="${escapeHtml(flight.flightDate || '')}" required /></label><label><span>Flight Number</span><input data-flight-number value="${escapeHtml(flight.flightNumber || '')}" required autocomplete="off" placeholder="MU586" /></label><label><span>From</span><input data-flight-from value="${escapeHtml(flight.from || '')}" required autocomplete="off" placeholder="LAX" /></label><span class="rush-route-arrow">–</span><label><span>To</span><input data-flight-to value="${escapeHtml(flight.to || '')}" required autocomplete="off" placeholder="PVG" /></label><button type="button" data-remove-rush-flight aria-label="Remove flight">Remove</button></div>`;
     }
-    function addRushFlightRow() { rushFlightRows.insertAdjacentHTML('beforeend', rushFlightRowHtml()); }
+    function defaultRushFlight() {
+      const today = new Date();
+      const flightDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      return { flightDate, flightNumber:'MU586', from:'LAX', to:'PVG' };
+    }
+    function addRushFlightRow(flight = {}) { rushFlightRows.insertAdjacentHTML('beforeend', rushFlightRowHtml(flight)); }
+    function resetRushFlightRows() {
+      rushFlightRows.innerHTML = '';
+      addRushFlightRow(defaultRushFlight());
+    }
     function showSection(section) {
       const isCaseSection = section === 'open' || section === 'closed';
       openCasesCard.hidden = !isCaseSection;
@@ -618,12 +677,13 @@
     }
     function renderWorldTracerCases(rows = []) {
       if (!rows.length) { worldTracerOutput.innerHTML = `<p class="muted">${label('No Rush Bag cases yet.', '暂无 Rush Bag 案件。')}</p>`; return; }
-      worldTracerOutput.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:210px"><col style="width:170px"><col style="width:170px"><col><col style="width:170px"><col style="width:110px"></colgroup><thead><tr><th>WorldTracer File Number</th><th>Original Tag</th><th>RUSH Tag</th><th>RUSH Itinerary</th><th>${label('Created', '创建时间')}</th><th></th></tr></thead><tbody>${rows.map((row, caseIndex) => {
+      const pagination = paginateRows(rows, 'rush-bags');
+      worldTracerOutput.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:210px"><col style="width:170px"><col style="width:170px"><col><col style="width:170px"><col style="width:110px"></colgroup><thead><tr><th>WorldTracer File Number</th><th>Original Tag</th><th>RUSH Tag</th><th>RUSH Itinerary</th><th>${label('Created', '创建时间')}</th><th></th></tr></thead><tbody>${pagination.rows.map((row, caseIndex) => {
         const routes = (row.flightRows || []).map((flight) => `<span>${escapeHtml(flight.flightDate || '-')} &nbsp; ${escapeHtml(flight.flightNumber || '-')} &nbsp; ${escapeHtml(flight.from || '-')} – ${escapeHtml(flight.to || '-')}</span>`).join('');
         const created = row.createdAt ? new Date(row.createdAt).toLocaleString() : '-';
         const editFlights = (row.flightRows || []).map((flight) => rushFlightRowHtml(flight)).join('');
         return `<tr><td class="case-key">${escapeHtml(row.worldTracerFileNumber || '-')}</td><td><span class="bag-tag-value">${escapeHtml(row.originalTagNumber || '-')}</span></td><td><span class="bag-tag-value">${escapeHtml(row.rushTagNumber || '-')}</span></td><td><div class="worldtracer-route">${routes}</div></td><td class="sheet-meta">${escapeHtml(created)}</td><td><button type="button" data-toggle-onhand-update="${caseIndex}">Update</button></td></tr><tr data-onhand-update-row="${caseIndex}" hidden><td colspan="6"><form class="worldtracer-form onhand-update-form" data-row-numbers="${escapeHtml((row.rowNumbers || []).join(','))}" data-created-at="${escapeHtml(row.createdAt)}"><label><span>WorldTracer File Number (Optional)</span><input name="worldTracerFileNumber" value="${escapeHtml(row.worldTracerFileNumber)}" placeholder="Can be added later" /></label><label><span>Original Tag Number</span><input name="originalTagNumber" value="${escapeHtml(row.originalTagNumber)}" required /></label><label><span>RUSH Tag Number</span><input name="rushTagNumber" value="${escapeHtml(row.rushTagNumber)}" required /></label><div class="rush-itinerary wide"><div class="rush-itinerary-head"><h2>RUSH Itinerary</h2><button class="secondary" type="button" data-add-onhand-flight>+ Add Flight</button></div><div data-onhand-flight-rows>${editFlights}</div></div><div class="actions"><button type="submit">Save Update</button></div></form></td></tr>`;
-      }).join('')}</tbody></table></div>`;
+      }).join('')}</tbody></table></div>${listPaginationHtml('rush-bags', pagination)}`;
     }
     async function loadWorldTracerCases() {
       worldTracerOutput.innerHTML = `<p class="muted">${label('Loading cases...', '正在加载案件……')}</p>`;
@@ -631,14 +691,17 @@
         const res = await fetch(`${apiBase}/cbs-worldtracer-cases`);
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || 'Rush Bag case lookup failed');
-        renderWorldTracerCases(data.rows || []);
+        window._worldTracerRows = data.rows || [];
+        renderWorldTracerCases(window._worldTracerRows);
       } catch (error) {
         worldTracerOutput.innerHTML = `<p class="status err">${escapeHtml(error.message)}</p>`;
       }
     }
-    function unresolvedUpdateFieldsHtml(action, bagTag, worldTracerFileNumber = '') {
+    function unresolvedUpdateFieldsHtml(action, bagTag, worldTracerFileNumber = '', savedRecord = '') {
       if (action === 'worldtracer') return `<label class="wide"><span>WorldTracer File Number</span><input name="worldTracerFileNumber" value="${escapeHtml(worldTracerFileNumber)}" required /></label>`;
       if (action === 'passenger-name') return '<label class="wide"><span>Passenger Name</span><input name="passengerName" placeholder="Passenger name" required /></label>';
+      if (action === 'record') return `<label class="wide"><span>Record</span><textarea name="record" maxlength="5000" rows="8" placeholder="Enter detailed record information" required>${escapeHtml(savedRecord)}</textarea><small>${savedRecord ? 'Updating will replace the existing Record.' : 'Only one Record is kept for each case.'}</small></label>`;
+      if (action === 'change-type') return '<label class="wide"><span>Change Type</span><select name="bagType" required><option value="">Select new type</option><option value="Rush bag">Rush bag</option><option value="Gate Bag">Gate Bag</option></select><small>This will close the Bag Room case and remove it from Open Case.</small></label>';
       if (action === 'comment') return '<label class="wide"><span>Comment</span><select name="commentPreset" data-comment-preset><option value="">Select a comment or enter your own below</option><option value="Passenger request Pick up at LAX">Passenger request Pick up at LAX</option></select><textarea name="comment" placeholder="Write a comment" required></textarea></label>';
       if (action === 'exchange') return `<div class="exchange-current-card wide"><strong>Current Open On-hand</strong><span class="exchange-tag-flow"><span class="exchange-tag-old">${escapeHtml(bagTag)}</span><span class="exchange-tag-arrow" aria-hidden="true">→<span class="exchange-tag-arrow-label">Exchange</span></span><span class="exchange-tag-new">New tag</span></span></div><label class="wide"><span>New Tag Number</span><input name="newTagNumber" pattern="[A-Za-z]{2}[0-9]{6}" placeholder="MU123456" required /></label>`;
       if (action === 'reopen') return '<p class="muted wide">Reopen this case and return it to Open Case.</p>';
@@ -654,18 +717,26 @@
       const events = [{ title:'On-hand created', at:row.createdAt, by:row.createdBy || row.submittedBy || 'System', detail:row.location ? `Location: ${row.location}` : '' }];
       (row.exchangeHistory || []).forEach((exchange) => events.push({ title:'Exchange', at:exchange.exchangedAt, by:exchange.updatedBy || 'System', detail:`${exchange.oldTag} → ${exchange.newTag}` }));
       if (row.worldTracerFileNumber) events.push({ title:'WorldTracer', at:'', by:row.worldTracerUpdatedBy || 'System', detail:`File: ${row.worldTracerFileNumber}` });
-      (row.updateEvents || []).forEach((event) => events.push({ ...event, detail:(event.fields || []).map(([key, value]) => `${key}: ${value}`).join(' | ') }));
+      (row.updateEvents || []).forEach((event) => events.push({ ...event, detail:event.key === 'record' ? 'Record saved — view the original layout in History' : (event.fields || []).map(([key, value]) => `${key}: ${value}`).join(' | ') }));
       if (row.resolvedAt) events.push({ title:resolutionTitle, at:row.resolvedAt, by:row.resolvedBy || updaterFromText(row.resolutionNote) || 'System', detail:withoutUpdaterText(row.resolutionNote) });
       return `<div class="tracking-workspace"><p class="tracking-current-time"><strong>${label('Case Progress', '案件进度')}</strong></p><div class="tracking-history">${events.slice().reverse().map((item, index) => `<span class="tracking-chip${item.key === 'comment' ? ' tracking-chip--comment' : ''}${index === 0 ? ' is-latest' : ''}${row.resolvedAt && index === 0 ? ' is-closed' : ''}"><span class="tracking-step-number">${events.length - index}</span><span class="tracking-chip-title">${escapeHtml(item.title)}</span>${item.at || item.by ? `<small>${item.at ? escapeHtml(new Date(item.at).toLocaleString()) : ''}${item.by ? ` · Updated by: ${escapeHtml(updaterDisplayName(item.by))}` : ''}</small>` : ''}${item.detail ? `<span class="tracking-chip-detail">${escapeHtml(updaterDisplayText(item.detail))}</span>` : ''}</span>`).join('')}</div></div>`;
     }
     function isNotLoadBag(row = {}) {
       return [row.status, row.bagType].some((value) => String(value || '').trim().toLowerCase() === 'not load bags');
     }
-    const resolutionOptionsHtml = `<option value="worldtracer">WorldTracer</option><option value="exchange">Exchange</option><option value="email">Email</option><option value="on-hand-rush">Create Rush</option><option value="passenger-collected">Passenger collected / Case closed</option><option value="shipped">Shipped</option><option value="other">Other resolution</option><option value="case-close">Case Close</option>`;
+    function resolutionOptionsHtml(isBagRoom) {
+      const specificOptions = isBagRoom ? '<option value="change-type">Change Type</option>' : '<option value="passenger-name">Passenger Name</option><option value="record">Record</option>';
+      return `<option value="worldtracer">WorldTracer</option>${specificOptions}<option value="exchange">Exchange</option><option value="email">Email</option><option value="on-hand-rush">Create Rush</option><option value="passenger-collected">Passenger collected / Case closed</option><option value="shipped">Shipped</option><option value="other">Other resolution</option><option value="case-close">Case Close</option>`;
+    }
+    function savedOnHandRecord(rowNumber) {
+      const row = (window._unresolvedBaggageSourceRows || []).find((item) => String(item.rowNumber) === String(rowNumber));
+      const event = (row?.updateEvents || []).filter((item) => item.key === 'record').at(-1);
+      return new Map(event?.fields || []).get('Record') || '';
+    }
     function renderUnresolvedBaggageGroup(rows = [], output, groupName) {
       const showClosed = window._caseView === 'closed';
       rows = rows.filter((row) => {
-        const archivedResolutions = new Set(['on-hand-rush', 'shipped', 'passenger-collected', 'case-close', 'linked-passenger-file']);
+        const archivedResolutions = new Set(['on-hand-rush', 'shipped', 'passenger-collected', 'case-close', 'linked-passenger-file', 'change-type']);
         const archived = Boolean(row.resolvedAt) && archivedResolutions.has(String(row.resolution || '').toLowerCase());
         return showClosed ? archived : !archived;
       });
@@ -682,6 +753,9 @@
       }).sort((a, b) => Number(Boolean(a.history.find((item) => !item.resolvedAt))) === Number(Boolean(b.history.find((item) => !item.resolvedAt))) ? 0 : (a.history.find((item) => !item.resolvedAt) ? -1 : 1));
       setCaseCount(groupName === 'On-hand' || groupName === 'Closed On-hand' ? 'on-hand' : 'bag-room', rows.length);
       if (!rows.length) { output.innerHTML = `<p class="muted">${showClosed ? `No closed ${groupName} cases.` : `No ${groupName} cases.`}</p>`; return; }
+      const listKey = `${showClosed ? 'closed' : 'open'}-${isNotLoadBag(rows[0]) ? 'bag-room' : 'on-hand'}`;
+      const pagination = paginateRows(rows, listKey);
+      rows = pagination.rows;
       const showRushTag = rows.some((row) => String(row.rushTagNumber || '').trim());
       const rushTagColumn = showRushTag ? '<col style="width:170px">' : '';
       const rushTagHeading = showRushTag ? '<th>Rush Tag</th>' : '';
@@ -691,7 +765,8 @@
         // "Other" records stay in Open Case and remain actionable so staff can
         // add WorldTracer details or apply a final resolution later.
         const active = row.history.find((item) => !item.resolvedAt || ['other', 'email'].includes(String(item.resolution || '').toLowerCase()));
-        const historyHtml = resolvedHistory.length ? `<section class="unresolved-history"><h3>History</h3>${resolvedHistory.map((item) => `<p><strong>${escapeHtml(item.resolution || 'Completed')}</strong> · ${escapeHtml(item.resolvedAt ? new Date(item.resolvedAt).toLocaleString() : '')}${item.resolutionNote ? `<br>${escapeHtml(item.resolutionNote)}` : ''}</p>`).join('')}</section>` : '';
+        const recordEvents = row.history.flatMap((item) => item.updateEvents || []).filter((event) => event.key === 'record');
+        const historyHtml = resolvedHistory.length || recordEvents.length ? `<section class="unresolved-history"><h3>History</h3>${resolvedHistory.map((item) => `<p><strong>${escapeHtml(item.resolution || 'Completed')}</strong> · ${escapeHtml(item.resolvedAt ? new Date(item.resolvedAt).toLocaleString() : '')}${item.resolutionNote ? `<br>${escapeHtml(item.resolutionNote)}` : ''}</p>`).join('')}${recordEvents.map((event) => `<div class="unresolved-record"><strong>Record</strong><pre>${escapeHtml(new Map(event.fields || []).get('Record') || '')}</pre><small>${event.at ? escapeHtml(new Date(event.at).toLocaleString()) : ''}${event.by ? ` · Updated by: ${escapeHtml(updaterDisplayName(event.by))}` : ''}</small></div>`).join('')}</section>` : '';
         const closed = !active && showClosed ? row : null;
         const matchedCase = active ? matchingPassengerCaseForOnHand(active) : null;
         const onHandId = active?.rowNumber || '';
@@ -699,7 +774,7 @@
         const matchBadge = matchedCase ? '<span class="rush-match on-hand-match">Match</span>' : '';
         const linkButton = matchedCase && onHandId && matchedCaseId ? `<button type="button" data-link-on-hand="${escapeHtml(onHandId)}" data-link-case="${escapeHtml(matchedCaseId)}">Link</button>` : '';
         const formHtml = active
-          ? `<form class="unresolved-update" data-unresolved-row="${escapeHtml(active.rowNumber)}" data-bag-tag="${escapeHtml(active.bagTag)}" data-world-tracer-file="${escapeHtml(active.worldTracerFileNumber)}"><label class="wide"><span>Resolution</span><select name="action" data-unresolved-action>${resolutionOptionsHtml}</select></label><div class="unresolved-update-fields">${unresolvedUpdateFieldsHtml('worldtracer', active.bagTag, active.worldTracerFileNumber)}</div><div class="actions"><button type="submit">Update</button></div></form>`
+          ? `<form class="unresolved-update" data-unresolved-row="${escapeHtml(active.rowNumber)}" data-bag-tag="${escapeHtml(active.bagTag)}" data-world-tracer-file="${escapeHtml(active.worldTracerFileNumber)}"><label class="wide"><span>Resolution</span><select name="action" data-unresolved-action>${resolutionOptionsHtml(isNotLoadBag(active))}</select></label><div class="unresolved-update-fields">${unresolvedUpdateFieldsHtml('worldtracer', active.bagTag, active.worldTracerFileNumber)}</div><div class="actions"><button type="submit">Update</button></div></form>`
           : closed
             ? `<form class="unresolved-update" data-unresolved-row="${escapeHtml(closed.rowNumber)}" data-bag-tag="${escapeHtml(closed.bagTag)}" data-world-tracer-file="${escapeHtml(closed.worldTracerFileNumber)}"><label class="wide"><span>Update</span><select name="action" data-unresolved-action><option value="worldtracer">Update WorldTracer</option><option value="reopen">Reopen</option></select></label><div class="unresolved-update-fields">${unresolvedUpdateFieldsHtml('worldtracer', closed.bagTag, closed.worldTracerFileNumber)}</div><div class="actions"><button type="submit">Update</button></div></form>`
             : '';
@@ -709,7 +784,7 @@
         const rushTagCell = showRushTag ? `<td class="sheet-meta"><span class="bag-tag-value">${escapeHtml(row.rushTagNumber || '-')}</span>${linkButton}</td>` : '';
         const bagTagAction = showRushTag ? '' : linkButton;
         return `<tr class="case-summary-row" data-toggle-unresolved-update role="button" tabindex="0" aria-expanded="false"><td class="sheet-meta">${escapeHtml(row.worldTracerFileNumber || '-')}</td><td class="sheet-meta"><span class="on-hand-tag-summary">${matchBadge}${tagDisplay}</span>${bagTagAction}</td>${rushTagCell}<td class="sheet-meta">${escapeHtml(row.direction || '-')}</td><td class="sheet-meta">${escapeHtml(row.flightDate || '-')}</td><td class="sheet-meta">${escapeHtml(row.bagType || row.status || '-')}</td></tr><tr class="case-detail-row" data-unresolved-detail hidden><td colspan="${columnCount}"><div class="case-detail-layout"><div class="case-progress-column">${unresolvedProgressHtml(progressRow)}</div><div class="case-detail-right">${formHtml}${historyHtml}</div></div></td></tr>`;
-      }).join('')}</tbody></table></div>`;
+      }).join('')}</tbody></table></div>${listPaginationHtml(listKey, pagination)}`;
       requestAnimationFrame(syncCaseProgressHeights);
     }
     function renderUnresolvedBaggage(rows = []) {
@@ -1246,6 +1321,7 @@
       const showClosed = window._caseView === 'closed';
       const rows = sortedCaseRows(sourceRows).filter((row) => isClosedCase(row) === showClosed).filter((row) => !query || rowSearchText(row).includes(query));
       setCaseCount('passenger', rows.length);
+      const pagination = paginateRows(rows, `${showClosed ? 'closed' : 'open'}-passenger`);
       const baggageHtml = baggageSearchHtml();
       if (!rows.length) { casesOutput.innerHTML = `<p class="muted">No matching cases.</p>${baggageHtml}`; return; }
       const expandedCases = window._expandedCbsCases || new Set();
@@ -1253,7 +1329,7 @@
       const bagTagColumn = showUpcomingRush ? '<col style="width:180px">' : '<col>';
       const rushColumns = showUpcomingRush ? '<col style="width:240px"><col>' : '';
       const rushHeaders = showUpcomingRush ? '<th class="rush-date-heading">Rush Flight / Date</th><th>Rush Tag</th>' : '';
-      casesOutput.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:220px"><col style="width:150px">${bagTagColumn}${rushColumns}</colgroup><thead><tr><th>WorldTracer File</th><th>${label('Case Type', '类型')}</th><th>${label('Bag Tag', '行李牌')}</th>${rushHeaders}</tr></thead><tbody>${rows.map((row, index) => {
+      casesOutput.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:220px"><col style="width:150px">${bagTagColumn}${rushColumns}</colgroup><thead><tr><th>WorldTracer File</th><th>${label('Case Type', '类型')}</th><th>${label('Bag Tag', '行李牌')}</th>${rushHeaders}</tr></thead><tbody>${pagination.rows.map((row, index) => {
         const detailKey = `row-${row.rowNumber || index}`;
         const caseType = inferCaseType(row);
         const closedClass = isClosedCase(row) ? ' is-closed' : '';
@@ -1271,7 +1347,7 @@
         const matchBadge = matchedOnHand ? '<span class="rush-match">Match</span>' : '';
         const rushCells = showUpcomingRush ? `<td class="sheet-meta">${rushFlightDateHtml}</td><td class="sheet-meta"><span class="rush-tag-summary">${escapeHtml(rushTag)}${matchBadge}</span></td>` : '';
         return `<tr class="case-summary-row${closedClass}" data-toggle-case="${escapeHtml(detailKey)}" aria-expanded="${isExpanded ? 'true' : 'false'}"><td class="sheet-meta">${escapeHtml(displayWorldTracerFile(row) || '-')}</td><td class="sheet-meta">${escapeHtml(caseType || '-')}</td><td class="sheet-meta">${bagTagSummaryHtml(displayBagTag(row))}</td>${rushCells}</tr><tr class="case-detail-row${closedClass}" data-detail-case="${escapeHtml(detailKey)}" ${isExpanded ? '' : 'hidden'}><td colspan="${showUpcomingRush ? 5 : 3}"><div class="case-detail-layout"><div class="case-progress-column">${trackingControlHtml(row, 'progress')}</div><div class="case-detail-right">${trackingControlHtml(row, 'current')}${caseCommentsHtml(row)}<div class="case-detail-content">${detailHtml}</div>${passengerNotificationHtml(row)}</div></div></td></tr>`;
-      }).join('')}</tbody></table></div>${baggageHtml}`;
+      }).join('')}</tbody></table></div>${listPaginationHtml(`${showClosed ? 'closed' : 'open'}-passenger`, pagination)}${baggageHtml}`;
       requestAnimationFrame(syncCaseProgressHeights);
     }
 
@@ -1317,6 +1393,9 @@
         localStorage.setItem(MISSING_BAG_STATUS_STORAGE_KEY, JSON.stringify({ openCount:openRows.length, updatedAt:Date.now() }));
       } catch (_) {}
       if (!rows.length) { missingReportOutput.innerHTML = '<p class="muted">No MU missing bag rows found.</p>'; return; }
+      rows.sort((a, b) => (Date.parse(b.sourceEmailDate) || 0) - (Date.parse(a.sourceEmailDate) || 0));
+      const pagination = paginateRowsByMonth(rows, 'missing-reports');
+      rows = pagination.rows;
       const dateKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
       const todayKey = dateKey(new Date());
       const groups = new Map();
@@ -1340,7 +1419,7 @@
           const actionHtml = row.acknowledgedAt || row.caseCreatedAt ? '' : `<div class="missing-actions"><button type="button" data-create-missing-rush="${escapeHtml(identifier)}" data-missing-bag-tag="${escapeHtml(row.bagTag)}">Create Rush</button><button class="secondary" type="button" data-ack-missing="${escapeHtml(identifier)}">Acknowledge</button></div>`;
           return `<tr><td>${escapeHtml(row.bagTag)}</td><td>${escapeHtml(row.passengerName)}</td><td>${escapeHtml(row.destination)}</td><td>${escapeHtml(row.airline)}</td><td>${escapeHtml(row.sourceAttachment || '-')}</td><td>${escapeHtml(status)}</td><td>${actionHtml}</td></tr>`;
         }).join('')}</tbody></table></div></section>`;
-      }).join('')}</div>`;
+      }).join('')}</div>${listPaginationHtml('missing-reports', pagination)}`;
     }
     async function loadMissingReports() {
       try {
@@ -1569,7 +1648,7 @@
     addBaggageTab?.addEventListener('click', () => { showSection('add-baggage'); addBaggageSearch.elements.bagTag.focus(); });
     baggageChartTab?.addEventListener('click', () => showSection('baggage-chart'));
     backToCases?.addEventListener('click', () => showSection('open'));
-    addRushFlight?.addEventListener('click', addRushFlightRow);
+    addRushFlight?.addEventListener('click', () => addRushFlightRow());
     rushFlightRows?.addEventListener('click', (event) => {
       const removeButton = event.target.closest('[data-remove-rush-flight]');
       if (!removeButton) return;
@@ -1602,8 +1681,7 @@
           await loadMissingReports();
         }
         worldTracerForm.reset();
-        rushFlightRows.innerHTML = '';
-        addRushFlightRow();
+        resetRushFlightRows();
         worldTracerStatus.textContent = label('Rush Bag case created and saved.', 'Rush Bag 案件已创建并保存。');
         await loadWorldTracerCases();
         await loadUnresolvedBaggage();
@@ -1730,7 +1808,7 @@
       const select = event.target.closest('[data-unresolved-action]');
       if (!select) return;
       const form = select.closest('.unresolved-update');
-      form.querySelector('.unresolved-update-fields').innerHTML = unresolvedUpdateFieldsHtml(select.value, form.dataset.bagTag, form.dataset.worldTracerFile);
+      form.querySelector('.unresolved-update-fields').innerHTML = unresolvedUpdateFieldsHtml(select.value, form.dataset.bagTag, form.dataset.worldTracerFile, savedOnHandRecord(form.dataset.unresolvedRow));
       form.querySelector('button[type="submit"]').textContent = select.value === 'email' ? 'Send' : 'Update';
     });
     openCasesCard?.addEventListener('submit', async (event) => {
@@ -1920,8 +1998,7 @@
         worldTracerForm.reset();
         worldTracerForm.dataset.missingRow = rushButton.dataset.createMissingRush || '';
         worldTracerForm.elements.originalTagNumber.value = rushButton.dataset.missingBagTag || '';
-        rushFlightRows.innerHTML = '';
-        addRushFlightRow();
+        resetRushFlightRows();
         worldTracerForm.scrollIntoView({ behavior:'smooth', block:'start' });
         return;
       }
@@ -1945,7 +2022,7 @@
         await loadCases();
       } catch (error) { alert(error.message); } finally { button.disabled = false; button.textContent = originalText; }
     });
-    addRushFlightRow();
+    resetRushFlightRows();
     const initialSection = new URLSearchParams(window.location.search).get('section') === 'missing' ? 'missing' : 'open';
     showSection(initialSection);
     loadCases();
