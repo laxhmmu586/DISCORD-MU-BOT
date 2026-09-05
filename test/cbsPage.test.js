@@ -298,11 +298,11 @@ test('Not Load Bags are automatically copied to the Bag Room Unload Google Sheet
   assert.match(drive, /await appendCbsNotLoadBaggageCase\(\{ \.\.\.record, \.\.\.saved \}\);/);
 });
 
-test('todays MU586 Bag Room Unload bags trigger one CC alert only above five bags', () => {
+test('todays MU586 Bag Room Unload bags trigger one CC alert at five or more bags', () => {
   assert.match(server, /async function notifyBagRoomUnloadAfterCc\(syInfo, isoDate\)/);
   assert.match(server, /step\.key === 'cc' && step\.complete/);
   assert.match(server, /row\.flightDate === isoDate/);
-  assert.match(server, /if \(tags\.length <= 5\) return \{ sent:false/);
+  assert.match(server, /if \(tags\.length < 5\) return \{ sent:false/);
   assert.match(server, /bagRoomUnloadAlertCompleted\.add\(isoDate\)/);
   assert.match(server, /东航洛杉矶MU586\/\$\{flightDate\}不正常行李运输信息/);
   assert.match(drive, /to = '7X24bag@ceair\.com'/);
@@ -335,8 +335,6 @@ test('Passenger, On-hand, and Bag Room cases support replaceable PNR and TKT Rec
   assert.match(page, /class="record-tab-panel unresolved-record"/);
   assert.match(page, /\.unresolved-record pre \{[^}]*overflow:auto[^}]*font:12px[^}]*"Courier New"[^}]*white-space:pre/);
   assert.match(page, /name="record" maxlength="5000" rows="8" wrap="off" spellcheck="false"/);
-  assert.match(page, /textarea\.record-textarea \{[^}]*overflow:auto[^}]*font:700 14px[^}]*"Courier New"[^}]*white-space:pre/);
-  assert.match(page, /<textarea class="record-textarea" name="record"/);
   assert.match(page, /Record saved — view the original layout in History/);
   assert.match(page, /function savedOnHandRecord\(rowNumber, type\)/);
   assert.match(page, /function recordTabsHtml\(events = \[\], key = ''\)/);

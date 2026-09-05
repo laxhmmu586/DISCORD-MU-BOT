@@ -2135,7 +2135,7 @@ async function notifyBagRoomUnloadAfterCc(syInfo, isoDate) {
       const bagRoom = [row.status, row.bagType].some((value) => String(value || '').trim().toLowerCase() === 'not load bags');
       return visible && bagRoom && row.flightDate === isoDate;
     }).map((row) => sanitizeCbsText(row.bagTag, 80).toUpperCase()).filter(Boolean))];
-    if (tags.length <= 5) return { sent:false, reason:'Five or fewer Bag Room Unload bags today.', count:tags.length };
+    if (tags.length < 5) return { sent:false, reason:'Fewer than five Bag Room Unload bags today.', count:tags.length };
     const flightDate = isoDateToLogDateParts(isoDate)?.date || String(syInfo.flightDate || '').slice(0, 5).toUpperCase();
     const subject = `东航洛杉矶MU586/${flightDate}不正常行李运输信息`;
     const text = [
