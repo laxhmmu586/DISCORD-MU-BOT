@@ -340,6 +340,15 @@ test('Bag Room cases can change type and close out of Open Case', () => {
   assert.match(drive, /!E\$\{target\.rowNumber\}:F\$\{target\.rowNumber\}/);
 });
 
+test('Bag Room cases can change type and close out of Open Case', () => {
+  assert.match(page, /option value="Rush bag">Rush bag<\/option><option value="Gate Bag">Gate Bag<\/option>/);
+  assert.match(page, /'change-type'\]\)/);
+  assert.match(server, /action === 'change-type'/);
+  assert.match(server, /resolveCbsUnresolvedBaggageCase\(req\.params\.rowNumber, 'change-type'/);
+  assert.match(drive, /async function changeCbsUnresolvedBaggageType/);
+  assert.match(drive, /!E\$\{target\.rowNumber\}:F\$\{target\.rowNumber\}/);
+});
+
 test('completed On-hand cases move from Open Case to Closed Case', () => {
   assert.match(page, /new Set\(\['on-hand-rush', 'shipped', 'passenger-collected', 'case-close'\]\)/);
   assert.match(page, /const archived = Boolean\(row\.resolvedAt\) && archivedResolutions\.has\(String\(row\.resolution \|\| ''\)\.toLowerCase\(\)\)/);
