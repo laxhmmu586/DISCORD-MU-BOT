@@ -17,6 +17,22 @@ function notificationDetails(record = {}) {
   };
 }
 
+function notificationIdentity(record = {}) {
+  const details = notificationDetails(record);
+  return {
+    rushTagNumber: details.rushTagNumber.replace(/[\s-]+/g, ''),
+    flightRows: details.flightRows
+  };
+}
+
+function isDuplicateRushBagNotification(previousRecord = {}, nextRecord = {}) {
+  const previous = notificationIdentity(previousRecord);
+  const next = notificationIdentity(nextRecord);
+  return Boolean(previous.rushTagNumber)
+    && previous.rushTagNumber === next.rushTagNumber
+    && JSON.stringify(previous.flightRows) === JSON.stringify(next.flightRows);
+}
+
 function isWorldTracerOnlyRushBagUpdate(previousRecord = {}, nextRecord = {}) {
   const previousFileNumber = normalize(previousRecord.worldTracerFileNumber, 120);
   const nextFileNumber = normalize(nextRecord.worldTracerFileNumber, 120);
@@ -24,4 +40,4 @@ function isWorldTracerOnlyRushBagUpdate(previousRecord = {}, nextRecord = {}) {
     && JSON.stringify(notificationDetails(previousRecord)) === JSON.stringify(notificationDetails(nextRecord));
 }
 
-module.exports = { isWorldTracerOnlyRushBagUpdate };
+module.exports = { isDuplicateRushBagNotification, isWorldTracerOnlyRushBagUpdate };

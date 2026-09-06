@@ -831,6 +831,12 @@ test('Rush Bag cases with MU586 notify Discord and treat WorldTracer as optional
   assert.match(server, /updateCbsWorldTracerCase\(body\.rowNumbers, record\)[\s\S]*addRushBagDiscordResult\(result, result\.record\)/);
 });
 
+test('duplicate Rush Bag submissions do not notify Discord again', () => {
+  assert.match(server, /existingRushBags\.some\(\(existing\) => isDuplicateRushBagNotification\(existing, record\)\)/);
+  assert.match(server, /duplicateNotification[\s\S]*addDuplicateRushBagDiscordResult/);
+  assert.match(server, /isDuplicateRushBagNotification\(previousRecord, result\.record\)[\s\S]*addDuplicateRushBagDiscordResult/);
+});
+
 test('new Rush itineraries default to todays MU586 LAX-PVG flight while added flights stay blank', () => {
   assert.match(page, /function defaultRushFlight\(\)/);
   assert.match(page, /return \{ flightDate, flightNumber:'MU586', from:'LAX', to:'PVG' \}/);
