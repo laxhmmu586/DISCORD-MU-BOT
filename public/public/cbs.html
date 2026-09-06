@@ -702,7 +702,7 @@
     function renderWorldTracerCases(rows = []) {
       if (!rows.length) { worldTracerOutput.innerHTML = `<p class="muted">${label('No Rush Bag cases yet.', '暂无 Rush Bag 案件。')}</p>`; return; }
       const pagination = paginateRows(rows, 'rush-bags');
-      worldTracerOutput.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:210px"><col style="width:170px"><col style="width:170px"><col><col style="width:170px"><col style="width:110px"></colgroup><thead><tr><th>WorldTracer File Number</th><th>Original Tag</th><th>RUSH Tag</th><th>RUSH Itinerary</th><th>${label('Created', '创建时间')}</th><th></th></tr></thead><tbody>${pagination.rows.map((row, caseIndex) => {
+      worldTracerOutput.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:210px"><col style="width:170px"><col style="width:170px"><col><col style="width:170px"><col style="width:110px"></colgroup><thead><tr><th>WorldTracer #</th><th>Original Tag</th><th>RUSH Tag</th><th>RUSH Itinerary</th><th>${label('Created', '创建时间')}</th><th></th></tr></thead><tbody>${pagination.rows.map((row, caseIndex) => {
         const routes = (row.flightRows || []).map((flight) => `<span>${escapeHtml(flight.flightDate || '-')} &nbsp; ${escapeHtml(flight.flightNumber || '-')} &nbsp; ${escapeHtml(flight.from || '-')} – ${escapeHtml(flight.to || '-')}</span>`).join('');
         const created = row.createdAt ? new Date(row.createdAt).toLocaleString() : '-';
         const editFlights = (row.flightRows || []).map((flight) => rushFlightRowHtml(flight)).join('');
@@ -814,7 +814,7 @@
       const isBagRoomGroup = rows.some(isNotLoadBag);
       const statusHeadings = isBagRoomGroup ? '<th>Status</th><th>Timer</th>' : '<th>Type / Status</th>';
       const columnCount = (showRushTag ? 6 : 5) + (isBagRoomGroup ? 1 : 0);
-      output.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:190px"><col style="width:250px">${rushTagColumn}<col style="width:120px"><col style="width:130px"><col>${isBagRoomGroup ? '<col style="width:160px">' : ''}</colgroup><thead><tr><th>WorldTracer File Number</th><th>Bag Tag</th>${rushTagHeading}<th>Direction</th><th>Date</th>${statusHeadings}</tr></thead><tbody>${rows.map((row) => {
+      output.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:190px"><col style="width:250px">${rushTagColumn}<col style="width:120px"><col style="width:130px"><col>${isBagRoomGroup ? '<col style="width:160px">' : ''}</colgroup><thead><tr><th>WorldTracer #</th><th>Bag Tag</th>${rushTagHeading}<th>Direction</th><th>Date</th>${statusHeadings}</tr></thead><tbody>${rows.map((row) => {
         const resolvedHistory = row.history.filter((item) => item.resolvedAt);
         // "Other" records stay in Open Case and remain actionable so staff can
         // add WorldTracer details or apply a final resolution later.
@@ -1396,7 +1396,7 @@
       const bagTagColumn = showUpcomingRush ? '<col style="width:180px">' : '<col>';
       const rushColumns = showUpcomingRush ? '<col style="width:240px"><col>' : '';
       const rushHeaders = showUpcomingRush ? '<th class="rush-date-heading">Rush Flight / Date</th><th>Rush Tag</th>' : '';
-      casesOutput.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:220px"><col style="width:150px">${bagTagColumn}${rushColumns}</colgroup><thead><tr><th>WorldTracer File</th><th>${label('Case Type', '类型')}</th><th>${label('Bag Tag', '行李牌')}</th>${rushHeaders}</tr></thead><tbody>${pagination.rows.map((row, index) => {
+      casesOutput.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:220px"><col style="width:150px">${bagTagColumn}${rushColumns}</colgroup><thead><tr><th>WorldTracer #</th><th>${label('Case Type', '类型')}</th><th>${label('Bag Tag', '行李牌')}</th>${rushHeaders}</tr></thead><tbody>${pagination.rows.map((row, index) => {
         const detailKey = `row-${row.rowNumber || index}`;
         const caseType = inferCaseType(row);
         const closedClass = isClosedCase(row) ? ' is-closed' : '';
