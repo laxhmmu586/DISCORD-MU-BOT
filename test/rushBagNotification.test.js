@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { isDuplicateRushBagNotification, isWorldTracerOnlyRushBagUpdate } = require('../rushBagNotification');
+const { findLinkedRushBagRecords, isDuplicateRushBagNotification, isWorldTracerOnlyRushBagUpdate } = require('../rushBagNotification');
 
 const rushBag = (overrides = {}) => ({
   worldTracerFileNumber: '',
@@ -66,4 +66,16 @@ test('a changed RUSH tag or itinerary is not a duplicate notification', () => {
   assert.equal(isDuplicateRushBagNotification(rushBag(), rushBag({
     flightRows: [{ flightDate: '2026-09-04', flightNumber: 'MU586', from: 'LAX', to: 'PVG' }]
   })), false);
+});
+
+test('Rush records are linked transitively by original and RUSH tags', () => {
+  const records = [
+    rushBag({ originalTagNumber:'ORIGINAL-1', rushTagNumber:'RUSH-1' }),
+    rushBag({ originalTagNumber:'OTHER', rushTagNumber:' rush1 ' }),
+    rushBag({ originalTagNumber:'OTHER', rushTagNumber:'RUSH-2' }),
+    rushBag({ originalTagNumber:'UNRELATED', rushTagNumber:'RUSH-3' })
+  ];
+  const linked = findLinkedRushBagRecords(records, { originalTagNumber:'original1' });
+  assert.equal(linked.length, 3);
+  assert.deepEqual(new Set(linked.map((record) => record.rushTagNumber)), new Set(['RUSH-1', ' rush1 ', 'RUSH-2']));
 });

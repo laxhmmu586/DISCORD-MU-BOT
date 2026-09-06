@@ -309,7 +309,8 @@ test('Bag Room cases show a three-day status timer and automatically close when 
 
 test('Bag Room status changes from Open to Rush after a Rush bag is linked', () => {
   assert.match(page, /const bagRoomStatus = row\.resolvedAt \? 'Closed' : \(String\(row\.rushTagNumber \|\| ''\)\.trim\(\) \? 'Rush' : 'Open'\)/);
-  assert.match(page, /<td class="sheet-meta">\$\{bagRoomStatus\}<\/td>/);
+  assert.match(page, /bagRoomStatus === 'Rush' \? ' rush-status' : ''/);
+  assert.match(page, /\.cbs-sheet \.rush-status \{ color:#16803c; \}/);
 });
 
 test('On-hand and Bag Room cases can save and display PVG Filed information', () => {
@@ -826,21 +827,23 @@ test('Rush Bag cases with MU586 notify Discord and treat WorldTracer as optional
   assert.match(sender, /RUSH Tag Number:/);
   assert.match(sender, /RUSH Itinerary:/);
   assert.doesNotMatch(sender, /Updated by|updatedBy|employee/i);
-  assert.match(server, /appendCbsWorldTracerCase\(record\)[\s\S]*addRushBagDiscordResult\(\{ created: true, record: saved \}, saved\)/);
-  assert.match(server, /isRushBagWorldTracerOnlyUpdate\(previousRecord, result\.record\)[\s\S]*WorldTracer file number-only updates do not send another Rush Bag notification/);
-  assert.match(server, /updateCbsWorldTracerCase\(body\.rowNumbers, record\)[\s\S]*addRushBagDiscordResult\(result, result\.record\)/);
+  assert.match(server, /if \(!linked\.length\)[\s\S]*appendCbsWorldTracerCase\(record\)[\s\S]*addRushBagDiscordResult/);
+  assert.match(server, /for \(const current of linked\)[\s\S]*updateCbsWorldTracerCase\(current\.rowNumbers/);
+  assert.match(server, /linkedRecordsUpdated:linked\.length[\s\S]*addDuplicateRushBagDiscordResult/);
 });
 
 test('duplicate Rush Bag submissions do not notify Discord again', () => {
-  assert.match(server, /existingRushBags\.some\(\(existing\) => isDuplicateRushBagNotification\(existing, record\)\)/);
-  assert.match(server, /duplicateNotification[\s\S]*addDuplicateRushBagDiscordResult/);
-  assert.match(server, /isDuplicateRushBagNotification\(previousRecord, result\.record\)[\s\S]*addDuplicateRushBagDiscordResult/);
+  assert.match(server, /findLinkedRushBagRecords\(existing, record\)/);
+  assert.match(server, /withRushBagWriteLock/);
+  assert.match(server, /created:false[\s\S]*updated:true[\s\S]*addDuplicateRushBagDiscordResult/);
+  assert.match(server, /saveLinkedRushBag\(\{ worldTracerFileNumber, originalTagNumber, rushTagNumber, flightRows/);
 });
 
 test('new Rush itineraries default to todays MU586 LAX-PVG flight while added flights stay blank', () => {
   assert.match(page, /function defaultRushFlight\(\)/);
   assert.match(page, /return \{ flightDate, flightNumber:'MU586', from:'LAX', to:'PVG' \}/);
   assert.match(page, /addRushFlightRow\(defaultRushFlight\(\)\)/);
+  assert.match(page, /data-unresolved-flight-rows>\$\{rushFlightRowHtml\(defaultRushFlight\(\)\)\}/);
   assert.match(page, /addRushFlight\?\.addEventListener\('click', \(\) => addRushFlightRow\(\)\)/);
   assert.match(page, /input\[type="date"\]\{width:100%;height:52px;min-height:52px/);
 });
