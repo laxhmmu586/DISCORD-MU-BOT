@@ -3001,7 +3001,7 @@ async function syncOnHandStatusToBaggage(record, action, body = {}) {
 app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
   try {
     const action = sanitizeCbsText(req.body?.action, 40).toLowerCase();
-    if (!['worldtracer', 'record-pnr', 'record-tkt', 'comment', 'change-type', 'reopen', 'email', 'exchange', 'on-hand-rush', 'passenger-collected', 'case-close', 'shipped', 'other'].includes(action)) return res.status(400).json({ error: 'A valid resolution is required' });
+    if (!['worldtracer', 'pvg', 'record-pnr', 'record-tkt', 'comment', 'change-type', 'reopen', 'email', 'exchange', 'on-hand-rush', 'passenger-collected', 'case-close', 'shipped', 'other'].includes(action)) return res.status(400).json({ error: 'A valid resolution is required' });
     const note = sanitizeCbsText(req.body?.note, 500);
     if (action === 'email') {
       const emailAction = sanitizeCbsText(req.body?.emailAction, 80);
@@ -3058,12 +3058,14 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
       await syncOnHandStatusToBaggage(result.record, action, req.body);
       return res.json(result);
     }
-    if (action === 'record-pnr' || action === 'record-tkt' || action === 'comment') {
+    if (action === 'pvg' || action === 'record-pnr' || action === 'record-tkt' || action === 'comment') {
+      const pvg = sanitizeCbsText(req.body?.pvg, 500);
       const record = sanitizeCbsRecord(req.body?.record, 5000);
       const comment = sanitizeCbsText(req.body?.comment, 500);
+      if (action === 'pvg' && !pvg) return res.status(400).json({ error:'PVG Filed is required' });
       if ((action === 'record-pnr' || action === 'record-tkt') && !record.trim()) return res.status(400).json({ error:'Record information is required' });
       if (action === 'comment' && !comment) return res.status(400).json({ error:'A comment is required' });
-      const result = await updateCbsUnresolvedBaggageDetails(req.params.rowNumber, { record, recordType:action.slice(-3), comment, updatedBy:req.body?.updatedBy });
+      const result = await updateCbsUnresolvedBaggageDetails(req.params.rowNumber, { pvg, record, recordType:action.slice(-3), comment, updatedBy:req.body?.updatedBy });
       if (result.notFound) return res.status(404).json({ error:'On-hand case not found' });
       await syncOnHandStatusToBaggage(result.record, action, req.body);
       return res.json(result);
