@@ -281,7 +281,7 @@ test('On-hand and Bag Room rows only show Rush Tag when at least one row has one
   assert.match(page, /const showRushTag = rows\.some\(\(row\) => String\(row\.rushTagNumber \|\| ''\)\.trim\(\)\)/);
   assert.match(page, /const rushTagHeading = showRushTag \? '<th>Rush Tag<\/th>' : ''/);
   assert.match(page, /const rushTagCell = showRushTag \?/);
-  assert.match(page, /const columnCount = \(showRushTag \? 7 : 6\) \+ \(isBagRoomGroup \? 1 : 0\)/);
+  assert.match(page, /const columnCount = \(showRushTag \? 6 : 5\) \+ \(isBagRoomGroup \? 1 : 0\)/);
   assert.doesNotMatch(page, /<th>Type \/ Status<\/th><th>Location<\/th>/);
   assert.match(page, /escapeHtml\(row\.rushTagNumber \|\| '-'\)/);
   assert.match(server, /async function matchBagRoomUnloadCasesForRush/);
@@ -363,7 +363,12 @@ test('MU586 Bag Room CC alerts stay disabled until explicitly enabled', () => {
 });
 
 test('On-hand cases match the passenger case layout and support WorldTracer progress', () => {
-  assert.match(page, /<th>WorldTracer #<\/th><th>Bag Tag<\/th>\$\{rushTagHeading\}<th>Direction<\/th>/);
+  assert.match(page, /<th>WorldTracer #<\/th><th>PVG Filed<\/th><th>Bag Tag<\/th>\$\{rushTagHeading\}<th>Date<\/th>/);
+  assert.doesNotMatch(page, /\$\{rushTagHeading\}<th>Direction<\/th>/);
+  assert.match(page, /const dateBands = new Map\(\)/);
+  assert.match(page, /case-summary-row \$\{dateBand\}/);
+  assert.match(page, /\.case-summary-row\.date-band-a td \{ background:#f8fbff; \}/);
+  assert.match(page, /\.case-summary-row\.date-band-b td \{ background:#f7fbf8; \}/);
   assert.match(page, /class="case-detail-layout"><div class="case-progress-column">\$\{unresolvedProgressHtml\(progressRow\)\}/);
   assert.match(page, /<option value="worldtracer">WorldTracer<\/option>/);
   assert.match(drive, /getCbsUnresolvedBaggageSheetTitle/);
