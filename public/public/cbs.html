@@ -75,6 +75,10 @@
     .cbs-sheet .case-summary-row { cursor:pointer; }
     .cbs-sheet .case-summary-row td { vertical-align:middle; }
     .cbs-sheet .case-summary-row:hover td { background:#f8fbff; }
+    .cbs-sheet .case-summary-row.date-band-a td { background:#f8fbff; }
+    .cbs-sheet .case-summary-row.date-band-b td { background:#f7fbf8; }
+    .cbs-sheet .case-summary-row.date-band-a:hover td { background:#f1f7ff; }
+    .cbs-sheet .case-summary-row.date-band-b:hover td { background:#eff8f2; }
     .cbs-sheet .case-detail-row td { background:#fbfdff; padding:18px; }
     .cbs-sheet tbody tr.is-closed { box-shadow:0 8px 22px rgba(8,116,67,.08); }
     .cbs-sheet tbody tr.is-closed td { background:#f0fbf5; }
@@ -821,8 +825,13 @@
       const rushTagHeading = showRushTag ? '<th>Rush Tag</th>' : '';
       const isBagRoomGroup = rows.some(isNotLoadBag);
       const statusHeadings = isBagRoomGroup ? '<th>Status</th><th>Timer</th>' : '<th>Type / Status</th>';
-      const columnCount = (showRushTag ? 7 : 6) + (isBagRoomGroup ? 1 : 0);
-      output.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:190px"><col style="width:150px"><col style="width:250px">${rushTagColumn}<col style="width:120px"><col style="width:130px"><col>${isBagRoomGroup ? '<col style="width:160px">' : ''}</colgroup><thead><tr><th>WorldTracer #</th><th>PVG Filed</th><th>Bag Tag</th>${rushTagHeading}<th>Direction</th><th>Date</th>${statusHeadings}</tr></thead><tbody>${rows.map((row) => {
+      const columnCount = (showRushTag ? 6 : 5) + (isBagRoomGroup ? 1 : 0);
+      const dateBands = new Map();
+      rows.forEach((row) => {
+        const dateKey = String(row.flightDate || '').trim() || 'unknown';
+        if (!dateBands.has(dateKey)) dateBands.set(dateKey, dateBands.size % 2);
+      });
+      output.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:190px"><col style="width:150px"><col style="width:250px">${rushTagColumn}<col style="width:130px"><col>${isBagRoomGroup ? '<col style="width:160px">' : ''}</colgroup><thead><tr><th>WorldTracer #</th><th>PVG Filed</th><th>Bag Tag</th>${rushTagHeading}<th>Date</th>${statusHeadings}</tr></thead><tbody>${rows.map((row) => {
         const resolvedHistory = row.history.filter((item) => item.resolvedAt);
         // "Other" records stay in Open Case and remain actionable so staff can
         // add WorldTracer details or apply a final resolution later.
@@ -852,7 +861,8 @@
         const pvgFields = new Map(allUpdateEvents.filter((event) => event.key === 'pvg').at(-1)?.fields || []);
         const pvg = pvgFields.get('PVG Filed') || pvgFields.get('PVG') || '-';
         const statusCells = isBagRoomGroup ? `<td class="sheet-meta${bagRoomStatus === 'Rush' ? ' rush-status' : ''}">${bagRoomStatus}</td><td class="sheet-meta">${bagRoomTimerHtml(row)}</td>` : `<td class="sheet-meta">${escapeHtml(row.bagType || row.status || '-')}</td>`;
-        return `<tr class="case-summary-row" data-toggle-unresolved-update role="button" tabindex="0" aria-expanded="false"><td class="sheet-meta">${escapeHtml(row.worldTracerFileNumber || '-')}</td><td class="sheet-meta">${escapeHtml(pvg)}</td><td class="sheet-meta"><span class="on-hand-tag-summary">${matchBadge}${tagDisplay}</span>${bagTagAction}</td>${rushTagCell}<td class="sheet-meta">${escapeHtml(row.direction || '-')}</td><td class="sheet-meta">${escapeHtml(row.flightDate || '-')}</td>${statusCells}</tr><tr class="case-detail-row" data-unresolved-detail hidden><td colspan="${columnCount}"><div class="case-detail-layout"><div class="case-progress-column">${unresolvedProgressHtml(progressRow)}</div><div class="case-detail-right">${formHtml}${commentsHtml}${historyHtml}${recordPanelHtml}</div></div></td></tr>`;
+        const dateBand = dateBands.get(String(row.flightDate || '').trim() || 'unknown') === 0 ? 'date-band-a' : 'date-band-b';
+        return `<tr class="case-summary-row ${dateBand}" data-toggle-unresolved-update role="button" tabindex="0" aria-expanded="false"><td class="sheet-meta">${escapeHtml(row.worldTracerFileNumber || '-')}</td><td class="sheet-meta">${escapeHtml(pvg)}</td><td class="sheet-meta"><span class="on-hand-tag-summary">${matchBadge}${tagDisplay}</span>${bagTagAction}</td>${rushTagCell}<td class="sheet-meta">${escapeHtml(row.flightDate || '-')}</td>${statusCells}</tr><tr class="case-detail-row" data-unresolved-detail hidden><td colspan="${columnCount}"><div class="case-detail-layout"><div class="case-progress-column">${unresolvedProgressHtml(progressRow)}</div><div class="case-detail-right">${formHtml}${commentsHtml}${historyHtml}${recordPanelHtml}</div></div></td></tr>`;
       }).join('')}</tbody></table></div>${listPaginationHtml(listKey, pagination)}`;
       requestAnimationFrame(syncCaseProgressHeights);
     }
