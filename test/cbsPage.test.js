@@ -862,6 +862,12 @@ test('Missing Bag Report shows the LAXTEC phone contact', () => {
   assert.match(page, /aria-label="Call LAXTEC at 424-312-1860"/);
 });
 
+test('Missing Bag Report only offers Acknowledge for open rows', () => {
+  assert.match(page, /data-ack-missing="\$\{escapeHtml\(identifier\)\}">Acknowledge/);
+  assert.doesNotMatch(page, /data-create-missing-rush/);
+  assert.doesNotMatch(page, /worldTracerForm\.dataset\.missingRow/);
+});
+
 test('Passenger Filed displays multiple bag tags on separate lines', () => {
   assert.match(page, /function bagTagSummaryHtml\(value\)/);
   assert.match(page, /split\(\/\\s\*\\\/\\s\*\/\)/);
