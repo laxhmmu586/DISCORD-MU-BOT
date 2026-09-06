@@ -17,7 +17,7 @@ function splitLogicalSections(log) {
     }
 
     const cmd = line.match(cmdRe)?.[1]?.toUpperCase() || null;
-    const isContinuation = cmd ? /^(?:PN\d*|PF\d*|ACCEPTED(?:\/|$))/.test(cmd) : false;
+    const isContinuation = cmd ? /^(?:SY|PN\d*|PF\d*|ACCEPTED(?:\/|$))/.test(cmd) : false;
 
     if (cmd && !isContinuation) {
       if (current && current.content.trim()) sections.push(current);
@@ -542,9 +542,12 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
   const ccl = findAcceptedCommand(/^>\s*CCL\s*:/im);
   const ccSections = sameDaySections.filter((item) => isCcAirportClosedContent(item.content));
   const ccSection = ccSections.sort((a, b) => parseSectionTimestamp(b.timestamp) - parseSectionTimestamp(a.timestamp))[0] || null;
+  const syCcTime = info?.statusCode === 'CC' ? String(info.statusTime || '').trim() : '';
   const cc = ccSection
     ? { complete:true, time:formatTime(ccSection.timestamp), timestamp:ccSection.timestamp || '' }
-    : { complete:false, time:'', timestamp:'' };
+    : syCcTime
+      ? { complete:true, time:`${syCcTime.slice(0, 2)}:${syCcTime.slice(2)}`, timestamp:'' }
+      : { complete:false, time:'', timestamp:'' };
   const jcsy = findJcsyInfo(sections, flightNo, flightYmd, formatTime, targetYmd);
   const baseYmd = targetYmd || flightYmd;
   const baseDateUtc = ymdToUtcDate(baseYmd);
