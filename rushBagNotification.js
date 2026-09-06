@@ -40,4 +40,32 @@ function isWorldTracerOnlyRushBagUpdate(previousRecord = {}, nextRecord = {}) {
     && JSON.stringify(notificationDetails(previousRecord)) === JSON.stringify(notificationDetails(nextRecord));
 }
 
-module.exports = { isDuplicateRushBagNotification, isWorldTracerOnlyRushBagUpdate };
+function normalizedRushBagTags(record = {}) {
+  return [record.originalTagNumber, record.rushTagNumber]
+    .map((value) => normalize(value, 120).replace(/[\s-]+/g, ''))
+    .filter(Boolean);
+}
+
+function findLinkedRushBagRecords(records = [], seed = {}) {
+  const remaining = Array.isArray(records) ? [...records] : [];
+  const linked = [];
+  const tags = new Set(normalizedRushBagTags(seed));
+  let foundAnother = true;
+  while (foundAnother) {
+    foundAnother = false;
+    for (let index = remaining.length - 1; index >= 0; index -= 1) {
+      const recordTags = normalizedRushBagTags(remaining[index]);
+      if (!recordTags.some((tag) => tags.has(tag))) continue;
+      linked.push(...remaining.splice(index, 1));
+      recordTags.forEach((tag) => tags.add(tag));
+      foundAnother = true;
+    }
+  }
+  return linked;
+}
+
+module.exports = {
+  findLinkedRushBagRecords,
+  isDuplicateRushBagNotification,
+  isWorldTracerOnlyRushBagUpdate
+};
