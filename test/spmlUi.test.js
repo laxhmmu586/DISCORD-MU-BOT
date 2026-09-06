@@ -31,9 +31,12 @@ test('empty PD meal totals display a dash rather than None', () => {
   assert.doesNotMatch(html, /\|\| "None"/);
 });
 
-test('meal order reconciliation colors reservation totals and SPML mismatches', () => {
-  assert.match(html, /orderedTotal >= reservation[\s\S]*classList\.add\("is-over"\)/);
-  assert.match(html, /orderedTotal < reservation[\s\S]*classList\.add\("is-under"\)/);
+test('meal order reconciliation warns when combined F and J cannot cover ordered meals and SPML', () => {
+  assert.match(html, /premiumRequired = \["F", "J"\]\.reduce/);
+  assert.match(html, /premiumReservations = Number\(reservationCounts\[0\]\) \+ Number\(reservationCounts\[1\]\)/);
+  assert.match(html, /premiumReservations < premiumRequired/);
+  assert.match(html, /cabin !== "Y"[\s\S]*premiumHasShortage \? "is-under" : "is-over"/);
+  assert.match(html, /premiumHasShortage[\s\S]*hasShortage = true/);
   assert.match(html, /!mealCountsMatch\(orderedMeals, pdMeals\)[\s\S]*classList\.add\("is-mismatch"\)/);
   assert.match(html, /classList\.toggle\("has-shortage", hasShortage\)/);
   assert.match(html, /meal-order-tab-\$\{day\}`\)\?\.classList\.toggle\("has-shortage", hasShortage\)/);
