@@ -307,6 +307,11 @@ test('Bag Room cases show a three-day status timer and automatically close when 
   assert.match(server, /setInterval\(\(\) => runBagRoomUnloadExpiration\(\)[^\n]+60 \* 60 \* 1000\)/);
 });
 
+test('Bag Room status changes from Open to Rush after a Rush bag is linked', () => {
+  assert.match(page, /const bagRoomStatus = row\.resolvedAt \? 'Closed' : \(String\(row\.rushTagNumber \|\| ''\)\.trim\(\) \? 'Rush' : 'Open'\)/);
+  assert.match(page, /<td class="sheet-meta">\$\{bagRoomStatus\}<\/td>/);
+});
+
 test('growing Rush and case lists paginate by record count while Missing Reports paginate by month', () => {
   assert.match(page, /const LIST_PAGE_SIZE = 20/);
   assert.match(page, /function paginateRows\(rows, key\)/);
