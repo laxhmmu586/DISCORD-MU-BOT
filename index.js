@@ -21,7 +21,7 @@ const {
 } = require('./flightParser');
 const { matchMuFlight } = require('./cbsScanParser');
 const { parseSpmlLog } = require('./spmlParser');
-const { isWorldTracerOnlyRushBagUpdate } = require('./rushBagNotification');
+const { isDuplicateRushBagNotification, isWorldTracerOnlyRushBagUpdate } = require('./rushBagNotification');
 
 const {
 
@@ -2100,6 +2100,11 @@ async function addRushBagDiscordResult(result, record) {
   return result;
 }
 
+function addDuplicateRushBagDiscordResult(result) {
+  result.discord = { sent:false, reason:'An identical RUSH tag and itinerary was already notified.' };
+  return result;
+}
+
 async function matchBagRoomUnloadCasesForRush(rushBag = {}) {
   const originalTag = normalizedCbsLinkTag(rushBag.originalTagNumber);
   if (!originalTag) return [];
@@ -2889,8 +2894,12 @@ app.post('/cbs-worldtracer-cases', async (req, res) => {
     if (!record.originalTagNumber || !record.rushTagNumber || invalidFlight) {
       return res.status(400).json({ error: 'Original tag, RUSH tag, and complete flight segments are required' });
     }
+    const existingRushBags = await getCbsWorldTracerCases();
+    const duplicateNotification = existingRushBags.some((existing) => isDuplicateRushBagNotification(existing, record));
     const saved = await appendCbsWorldTracerCase(record);
-    const result = await addRushBagDiscordResult({ created: true, record: saved }, saved);
+    const result = duplicateNotification
+      ? addDuplicateRushBagDiscordResult({ created: true, record: saved })
+      : await addRushBagDiscordResult({ created: true, record: saved }, saved);
     result.matchedBagRoomUnloadCases = await matchBagRoomUnloadCasesForRush(saved);
     return res.status(201).json(result);
   } catch (err) {
@@ -2924,6 +2933,9 @@ app.post('/cbs-worldtracer-cases/update', async (req, res) => {
     // An Original Tag can be added or corrected while editing a RUSH record.
     // Keep matching Not Load cases open while associating their Rush tag.
     result.matchedBagRoomUnloadCases = await matchBagRoomUnloadCasesForRush(result.record);
+    if (previousRecord && isDuplicateRushBagNotification(previousRecord, result.record)) {
+      return res.json(addDuplicateRushBagDiscordResult(result));
+    }
     if (previousRecord && isRushBagWorldTracerOnlyUpdate(previousRecord, result.record)) {
       result.discord = { sent:false, reason:'WorldTracer file number-only updates do not send another Rush Bag notification.' };
       return res.json(result);
