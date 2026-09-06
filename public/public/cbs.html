@@ -752,6 +752,11 @@
     }
     function bagRoomTimerHtml(row) {
       if (row.resolvedAt) return '<span class="bag-room-timer timer-expired">◷ Closed</span>';
+      const timeLimitReleased = Boolean(String(row.worldTracerFileNumber || '').trim()
+        || String(row.rushTagNumber || '').trim()
+        || String(row.resolution || '').trim().toLowerCase() === 'on-hand-rush'
+        || (row.updateEvents || []).some((event) => ['worldtracer', 'on-hand-rush'].includes(String(event?.key || '').trim().toLowerCase())));
+      if (timeLimitReleased) return '<span class="bag-room-timer timer-two">No time limit</span>';
       const today = new Date().toLocaleDateString('en-CA', { timeZone:'America/Los_Angeles' });
       const ageDays = Math.max(0, Math.floor((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${row.flightDate}T00:00:00Z`)) / 86400000));
       const daysLeft = Math.max(0, 2 - ageDays);

@@ -2122,8 +2122,12 @@ async function closeExpiredBagRoomUnloadCases(rows = [], today = todayIsoUtc()) 
   const expired = rows.filter((row) => {
     if (row.resolvedAt || !/^\d{4}-\d{2}-\d{2}$/.test(String(row.flightDate || ''))) return false;
     const bagRoom = [row.status, row.bagType].some((value) => String(value || '').trim().toLowerCase() === 'not load bags');
+    const timeLimitReleased = Boolean(String(row.worldTracerFileNumber || '').trim()
+      || String(row.rushTagNumber || '').trim()
+      || String(row.resolution || '').trim().toLowerCase() === 'on-hand-rush'
+      || (row.updateEvents || []).some((event) => ['worldtracer', 'on-hand-rush'].includes(String(event?.key || '').trim().toLowerCase())));
     const ageDays = Math.floor((todayTime - Date.parse(`${row.flightDate}T00:00:00Z`)) / 86400000);
-    return bagRoom && ageDays >= 3;
+    return bagRoom && !timeLimitReleased && ageDays >= 3;
   });
   for (const row of expired) {
     await resolveCbsUnresolvedBaggageCase(row.rowNumber, 'expired', 'AUTO CLOSE | 3-day Bag Room limit reached', 'System');
