@@ -398,8 +398,8 @@
       <h1>Rush Bag</h1>
       <form class="worldtracer-form" id="worldtracer-form">
         <label><span>WorldTracer File Number (Optional)</span><input name="worldTracerFileNumber" autocomplete="off" placeholder="Can be added later" /></label>
-        <label><span>Original Tag Number</span><input name="originalTagNumber" required autocomplete="off" /></label>
-        <label><span>RUSH Tag Number</span><input name="rushTagNumber" required autocomplete="off" /></label>
+        <label><span>Original Tag Number</span><input name="originalTagNumber" pattern="[A-Za-z][A-Za-z0-9][0-9]{6}" minlength="8" maxlength="8" title="Enter an airline code followed by 6 digits, for example DL123456 or B6123456" required autocomplete="off" /></label>
+        <label><span>RUSH Tag Number</span><input name="rushTagNumber" pattern="[A-Za-z][A-Za-z0-9][0-9]{6}" minlength="8" maxlength="8" title="Enter an airline code followed by 6 digits, for example DL123456 or B6123456" required autocomplete="off" /></label>
         <div class="rush-itinerary">
           <div class="rush-itinerary-head"><h2>RUSH Itinerary</h2><button class="secondary" id="add-rush-flight" type="button">+ Add Flight</button></div>
           <div id="rush-flight-rows"></div>
@@ -685,6 +685,13 @@
     function escapeHtml(value) { return String(value || '').replace(/[&<>'"]/g, (ch) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch])); }
     async function parseJson(res) { const text = await res.text(); try { return JSON.parse(text); } catch { throw new Error(`API returned non-JSON (${res.status}). Please check API base: ${apiBase}`); } }
     function normalizeBaggageTag(value) { return String(value || '').trim().toUpperCase().replace(/\s+/g, ''); }
+    function rushBagTagNumber(value, airline = '') {
+      const tag = normalizeBaggageTag(value).replace(/[^A-Z0-9]/g, '');
+      if (/^[A-Z][A-Z0-9][0-9]{6}$/.test(tag)) return tag;
+      const airlineCode = normalizeBaggageTag(airline).replace(/[^A-Z0-9]/g, '');
+      return /^[A-Z][A-Z0-9]$/.test(airlineCode) && /^[0-9]{6,10}$/.test(tag) ? `${airlineCode}${tag.slice(-6)}` : tag;
+    }
+    const rushBagTagInputAttributes = 'pattern="[A-Za-z][A-Za-z0-9][0-9]{6}" minlength="8" maxlength="8" title="Enter an airline code followed by 6 digits, for example DL123456 or B6123456"';
     function addBaggageFormHtml(bagTag, direction) {
       const today = new Date().toISOString().slice(0, 10);
       if (direction === 'exchange') {
@@ -692,7 +699,7 @@
         const options = openRows.map((row) => `<option value="${escapeHtml(row.rowNumber)}">${escapeHtml(row.bagTag)} · ${escapeHtml(row.bagType || row.status || 'On-hand')} · ${escapeHtml(row.location || '-')}</option>`).join('');
         return `<form class="add-baggage-form add-exchange-form" data-add-baggage-direction="exchange"><label><span>New Tag Number</span><input name="newTagNumber" value="${escapeHtml(bagTag)}" readonly /></label><label class="wide"><span>Select Current Open On-hand</span><select name="onHandRowNumber" required ${openRows.length ? '' : 'disabled'}><option value="">Select an On-hand tag</option>${options}</select></label>${openRows.length ? '' : '<p class="status err wide">There are no Open On-hand cases available to exchange.</p>'}<div class="actions"><button type="submit" ${openRows.length ? '' : 'disabled'}>Exchange</button><button class="secondary" type="button" data-cancel-add-baggage>Back</button></div></form>`;
       }
-      if (direction === 'outbound') return `<form class="add-baggage-form" data-add-baggage-direction="outbound"><datalist id="add-baggage-location-options"><option value="Office"></option><option value="Transfer"></option><option value="CBS"></option></datalist><datalist id="add-baggage-outbound-comments"><option value="Expected"></option><option value="Not Received"></option><option value="Force loaded"></option><option value="Gate Bag"></option><option value="Bag Delete and Add back"></option><option value="Passenger Showed Up, but baggage not received"></option></datalist><label><span>Date</span><input name="date" type="date" value="${today}" required /></label><label><span>Type</span><select name="status" data-add-outbound-status required><option>Not load bags</option><option>Outbound rush</option><option>Gate bag</option></select></label><label data-add-outbound-location hidden><span>Current Location</span><input name="location" list="add-baggage-location-options" disabled /></label><div class="add-outbound-bag-tags" data-add-outbound-bag-tags><div class="add-outbound-tag-row"><label><span>Bag Tag Number</span><input name="bagTag" value="${escapeHtml(bagTag)}" maxlength="8" pattern="[A-Za-z]{2}[0-9]{6}" required autocomplete="off" /></label><button type="button" data-add-outbound-bag-tag aria-label="Add another bag tag">+</button></div></div><div class="unresolved-update-fields" data-add-outbound-rush hidden><label><span>RUSH Tag Number</span><input name="rushTagNumber" /></label><label><span>Rush To Where</span><input name="rushToWhere" /></label><label><span>AKE Number</span><input name="akeNumber" /></label><label><span>WorldTracer File Number</span><input name="worldTracerFileNumber" /></label></div><label class="wide"><span>Comment</span><input name="comment" list="add-baggage-outbound-comments" /></label><div class="actions"><button type="submit">Submit</button><button class="secondary" type="button" data-cancel-add-baggage>Back</button></div></form>`;
+      if (direction === 'outbound') return `<form class="add-baggage-form" data-add-baggage-direction="outbound"><datalist id="add-baggage-location-options"><option value="Office"></option><option value="Transfer"></option><option value="CBS"></option></datalist><datalist id="add-baggage-outbound-comments"><option value="Expected"></option><option value="Not Received"></option><option value="Force loaded"></option><option value="Gate Bag"></option><option value="Bag Delete and Add back"></option><option value="Passenger Showed Up, but baggage not received"></option></datalist><label><span>Date</span><input name="date" type="date" value="${today}" required /></label><label><span>Type</span><select name="status" data-add-outbound-status required><option>Not load bags</option><option>Outbound rush</option><option>Gate bag</option></select></label><label data-add-outbound-location hidden><span>Current Location</span><input name="location" list="add-baggage-location-options" disabled /></label><div class="add-outbound-bag-tags" data-add-outbound-bag-tags><div class="add-outbound-tag-row"><label><span>Bag Tag Number</span><input name="bagTag" value="${escapeHtml(bagTag)}" maxlength="8" pattern="[A-Za-z]{2}[0-9]{6}" required autocomplete="off" /></label><button type="button" data-add-outbound-bag-tag aria-label="Add another bag tag">+</button></div></div><div class="unresolved-update-fields" data-add-outbound-rush hidden><label><span>RUSH Tag Number</span><input name="rushTagNumber" ${rushBagTagInputAttributes} /></label><label><span>Rush To Where</span><input name="rushToWhere" /></label><label><span>AKE Number</span><input name="akeNumber" /></label><label><span>WorldTracer File Number</span><input name="worldTracerFileNumber" /></label></div><label class="wide"><span>Comment</span><input name="comment" list="add-baggage-outbound-comments" /></label><div class="actions"><button type="submit">Submit</button><button class="secondary" type="button" data-cancel-add-baggage>Back</button></div></form>`;
       return `<form class="add-baggage-form" data-add-baggage-direction="inbound"><label><span>Bag Tag Number</span><input name="bagTag" value="${escapeHtml(bagTag)}" readonly /></label><label><span>Date</span><input name="date" type="date" value="${today}" required /></label><label><span>Bag Type</span><select name="bagType"><option>Passenger bag</option><option>Inbound rush</option><option>Co-mail</option></select></label><label><span>Current Location</span><select name="location" required><option>Office</option><option>Transfer</option></select></label><div class="actions"><button type="submit">Submit</button><button class="secondary" type="button" data-cancel-add-baggage>Back</button></div></form>`;
     }
     function renderAddBaggageChoice(bagTag) {
@@ -711,7 +718,7 @@
         const routes = (row.flightRows || []).map((flight) => `<span>${escapeHtml(flight.flightDate || '-')} &nbsp; ${escapeHtml(flight.flightNumber || '-')} &nbsp; ${escapeHtml(flight.from || '-')} – ${escapeHtml(flight.to || '-')}</span>`).join('');
         const created = row.createdAt ? new Date(row.createdAt).toLocaleString() : '-';
         const editFlights = (row.flightRows || []).map((flight) => rushFlightRowHtml(flight)).join('');
-        return `<tr><td class="case-key">${escapeHtml(row.worldTracerFileNumber || '-')}</td><td><span class="bag-tag-value">${escapeHtml(row.originalTagNumber || '-')}</span></td><td><span class="bag-tag-value">${escapeHtml(row.rushTagNumber || '-')}</span></td><td><div class="worldtracer-route">${routes}</div></td><td class="sheet-meta">${escapeHtml(created)}</td><td><button type="button" data-toggle-onhand-update="${caseIndex}">Update</button></td></tr><tr data-onhand-update-row="${caseIndex}" hidden><td colspan="6"><form class="worldtracer-form onhand-update-form" data-row-numbers="${escapeHtml((row.rowNumbers || []).join(','))}" data-created-at="${escapeHtml(row.createdAt)}"><label><span>WorldTracer File Number (Optional)</span><input name="worldTracerFileNumber" value="${escapeHtml(row.worldTracerFileNumber)}" placeholder="Can be added later" /></label><label><span>Original Tag Number</span><input name="originalTagNumber" value="${escapeHtml(row.originalTagNumber)}" required /></label><label><span>RUSH Tag Number</span><input name="rushTagNumber" value="${escapeHtml(row.rushTagNumber)}" required /></label><div class="rush-itinerary wide"><div class="rush-itinerary-head"><h2>RUSH Itinerary</h2><button class="secondary" type="button" data-add-onhand-flight>+ Add Flight</button></div><div data-onhand-flight-rows>${editFlights}</div></div><div class="actions"><button type="submit">Save Update</button></div></form></td></tr>`;
+        return `<tr><td class="case-key">${escapeHtml(row.worldTracerFileNumber || '-')}</td><td><span class="bag-tag-value">${escapeHtml(row.originalTagNumber || '-')}</span></td><td><span class="bag-tag-value">${escapeHtml(row.rushTagNumber || '-')}</span></td><td><div class="worldtracer-route">${routes}</div></td><td class="sheet-meta">${escapeHtml(created)}</td><td><button type="button" data-toggle-onhand-update="${caseIndex}">Update</button></td></tr><tr data-onhand-update-row="${caseIndex}" hidden><td colspan="6"><form class="worldtracer-form onhand-update-form" data-row-numbers="${escapeHtml((row.rowNumbers || []).join(','))}" data-created-at="${escapeHtml(row.createdAt)}"><label><span>WorldTracer File Number (Optional)</span><input name="worldTracerFileNumber" value="${escapeHtml(row.worldTracerFileNumber)}" placeholder="Can be added later" /></label><label><span>Original Tag Number</span><input name="originalTagNumber" value="${escapeHtml(row.originalTagNumber)}" ${rushBagTagInputAttributes} required /></label><label><span>RUSH Tag Number</span><input name="rushTagNumber" value="${escapeHtml(row.rushTagNumber)}" ${rushBagTagInputAttributes} required /></label><div class="rush-itinerary wide"><div class="rush-itinerary-head"><h2>RUSH Itinerary</h2><button class="secondary" type="button" data-add-onhand-flight>+ Add Flight</button></div><div data-onhand-flight-rows>${editFlights}</div></div><div class="actions"><button type="submit">Save Update</button></div></form></td></tr>`;
       }).join('')}</tbody></table></div>${listPaginationHtml('rush-bags', pagination)}`;
     }
     async function loadWorldTracerCases() {
@@ -739,7 +746,7 @@
       if (action === 'reopen') return '<p class="muted wide">Reopen this case and return it to Open Case.</p>';
       if (action === 'passenger-collected') return '';
       if (action === 'case-close') return '<label class="wide"><span>Notes</span><textarea name="note" placeholder="Enter case close notes" required></textarea></label>';
-      if (action === 'on-hand-rush') return `${worldTracerFileNumber ? `<input type="hidden" name="worldTracerFileNumber" value="${escapeHtml(worldTracerFileNumber)}" />` : '<label><span>WorldTracer File Number (Optional)</span><input name="worldTracerFileNumber" placeholder="Can be added later" /></label>'}<label><span>Original Tag Number</span><input name="originalTagNumber" value="${escapeHtml(bagTag)}" required /></label><label><span>RUSH Tag Number</span><input name="rushTagNumber" required /></label><div class="rush-itinerary wide"><div class="rush-itinerary-head"><h2>RUSH Itinerary</h2><button class="secondary" type="button" data-add-unresolved-flight>+ Add Flight</button></div><div data-unresolved-flight-rows>${rushFlightRowHtml(defaultRushFlight())}</div></div>`;
+      if (action === 'on-hand-rush') return `${worldTracerFileNumber ? `<input type="hidden" name="worldTracerFileNumber" value="${escapeHtml(worldTracerFileNumber)}" />` : '<label><span>WorldTracer File Number (Optional)</span><input name="worldTracerFileNumber" placeholder="Can be added later" /></label>'}<label><span>Original Tag Number</span><input name="originalTagNumber" value="${escapeHtml(bagTag)}" ${rushBagTagInputAttributes} required /></label><label><span>RUSH Tag Number</span><input name="rushTagNumber" ${rushBagTagInputAttributes} required /></label><div class="rush-itinerary wide"><div class="rush-itinerary-head"><h2>RUSH Itinerary</h2><button class="secondary" type="button" data-add-unresolved-flight>+ Add Flight</button></div><div data-unresolved-flight-rows>${rushFlightRowHtml(defaultRushFlight())}</div></div>`;
       if (action === 'email') return `<label class="wide"><span>Email</span><select name="emailAction" data-onhand-email-action required><option value="sent_open_bag_authorization_to_pvg">Sent Open Bag Authorization to PVG</option><option value="contact_pax_pickup_bags">Pick-up Bags - available</option><option value="pickup_bags_future_available">Pick-up Bags - future available</option><option value="baggage_transfer_status_eta">Baggage transfer status update - ETA</option><option value="baggage_pickup_delivery_method_confirmation">Baggage Pick-Up / Delivery Method Confirmation</option><option value="require_open_bag_authorization_pvg">Require Open Bag Authorization at PVG</option><option value="baggage_open_by_customs">Explanation - Baggage Open by Custom</option></select></label><label class="wide" data-onhand-pvg-email><span>Email To</span><select name="emailTo" required><option value="pd-bag-intl@ceair.com">pd-bag-intl@ceair.com</option><option value="pd-bag-dom@ceair.com">pd-bag-dom@ceair.com</option></select></label><label class="authorization-upload wide" data-onhand-pvg-email><input name="authorizationFile" type="file" required /><span class="authorization-upload-title">Letter of Authorization</span><small>Select the signed file</small></label><label class="wide" data-onhand-passenger-email hidden><span>Email To</span><input name="emailTo" type="email" placeholder="Passenger email address" disabled required /></label><label class="wide" data-onhand-passenger-related hidden><span>WorldTracer File Number</span><input name="worldTracerFileNumber" value="${escapeHtml(worldTracerFileNumber)}" placeholder="WorldTracer file number" disabled required /></label><label class="wide" data-onhand-eta hidden><span>Estimated arrival date</span><input name="estimatedArrivalTime" type="date" disabled required /></label><label class="wide" data-onhand-passenger-related hidden><span>Language</span><select name="language" disabled required><option value="en">English</option><option value="zh">中文</option></select></label><label class="wide" data-onhand-future-pickup hidden><span>Available starting date</span><input name="availableDate" type="date" disabled required /></label><label class="wide" data-onhand-customs-language hidden><span>Language</span><select name="language" disabled required><option value="en">English</option><option value="zh">中文</option></select></label>`;
       if (action === 'shipped') return `<label><span>Delivery method</span><select name="shippingMethod" data-shipping-method required><option value="">Select delivery method</option><option>ADC - All Day Courier</option><option>MBI DELIVERY AND STORAGE - STANDARD</option><option>FedEx Delivery</option><option>Pick Up at Airport</option><option>Passenger Pay for Shipping</option></select></label><label data-shipping-tracking hidden><span>Tracking number</span><input name="trackingNumber" disabled /></label><label data-shipping-address hidden><span>Shipping to where?</span><input name="shippingTo" disabled /></label><label data-shipping-bdo hidden><span>BDO</span><input name="bdo" disabled /></label><label class="wide"><span>Comment</span><textarea name="comment"></textarea></label>`;
       return '<label class="wide"><span>Resolution Note</span><textarea name="note" placeholder="Describe how this case was resolved" required></textarea></label>';
@@ -1194,7 +1201,7 @@
         ? input('File number', 'fileNumber')
         : active === 'rush'
           ? [
-              input('Rush tag number', 'rushTagNumber'),
+              `<label><span>Rush tag number</span><input name="rushTagNumber" ${rushBagTagInputAttributes} required /></label>`,
               input('Rush to where?', 'rushToWhere'),
               input('Option: World Tracer file #', 'worldTracerFileNumber', ''),
               `<label class="wide"><span>Comment</span><textarea name="comment"></textarea></label>`
@@ -1314,13 +1321,13 @@
       const shippingTrackingInput = '<input name="trackingNumber" data-shipping-tracking placeholder="Tracking number" disabled hidden />';
       const shippingAddressInput = '<input name="shippingTo" data-shipping-address placeholder="Shipping to where?" disabled hidden />';
       const shippingBdoInput = '<input name="bdo" data-shipping-bdo placeholder="BDO" disabled hidden />';
-      if (key === 'upcoming_rush') return `<label><span>Rush Flight</span><input name="rushFlight" value="${escapeHtml(values.rushFlight || 'MU583')}" placeholder="Rush flight" required /></label><label><span>Rush Date</span><input name="rushDate" type="date" value="${escapeHtml(values.rushDate || '')}" required /></label><label><span>Rush Tag</span><input name="rushTagNumber" value="${escapeHtml(values.rushTag || '')}" placeholder="Rush tag" required /></label>${values.event ? '<button class="danger delete-upcoming-rush" type="submit" name="type" value="upcoming_rush_delete" formnovalidate>Delete Upcoming Rush</button>' : ''}`;
+      if (key === 'upcoming_rush') return `<label><span>Rush Flight</span><input name="rushFlight" value="${escapeHtml(values.rushFlight || 'MU583')}" placeholder="Rush flight" required /></label><label><span>Rush Date</span><input name="rushDate" type="date" value="${escapeHtml(values.rushDate || '')}" required /></label><label><span>Rush Tag</span><input name="rushTagNumber" value="${escapeHtml(values.rushTag || '')}" placeholder="Rush tag" ${rushBagTagInputAttributes} required /></label>${values.event ? '<button class="danger delete-upcoming-rush" type="submit" name="type" value="upcoming_rush_delete" formnovalidate>Delete Upcoming Rush</button>' : ''}`;
       if (key === 'worldtracer') return input('File number', 'fileNumber');
       if (key === 'requested_bags') return input('From which station?', 'fromStation');
       if (key === 'email') return '<select name="emailAction" data-email-action required><option value="sent_open_bag_authorization_to_pvg">Sent Open Bag Authorization to PVG</option><option value="contact_pax_pickup_bags">Pick-up Bags - available</option><option value="pickup_bags_future_available">Pick-up Bags - future available</option><option value="baggage_transfer_status_eta">Baggage transfer status update - ETA</option><option value="baggage_pickup_delivery_method_confirmation">Baggage Pick-Up / Delivery Method Confirmation</option><option value="require_open_bag_authorization_pvg">Require Open Bag Authorization at PVG</option><option value="baggage_open_by_customs">Explanation - Baggage Open by Custom</option></select><label class="email-recipient" data-pvg-email-field><span>Email To</span><select name="emailTo" required><option value="pd-bag-intl@ceair.com">pd-bag-intl@ceair.com</option><option value="pd-bag-dom@ceair.com">pd-bag-dom@ceair.com</option></select></label><label class="authorization-upload" data-pvg-email-field><input name="authorizationFile" type="file" required /><span class="authorization-upload-plus">+</span><span class="authorization-upload-title">Letter of Authorization</span><small data-authorization-filename>Select the signed file</small></label><label data-email-eta-field hidden><span>Estimated arrival date</span><input name="estimatedArrivalTime" type="date" disabled required /></label><label data-email-future-pickup-field hidden><span>Available starting date</span><input name="availableDate" type="date" disabled required /></label>';
       if (key === 'comment') return '<select name="commentPreset" data-comment-preset><option value="">Select a comment or enter your own below</option><option value="Passenger request Pick up at LAX">Passenger request Pick up at LAX</option></select><textarea name="comment" placeholder="Write a comment" required></textarea>';
       if (key === 'record-pnr' || key === 'record-tkt') return recordTextareaHtml(key, values.savedRecord || '');
-      if (key === 'rush') return [input('Rush tag number', 'rushTagNumber'), input('Rush to where?', 'rushToWhere'), input('World Tracer file # (optional)', 'worldTracerFileNumber', false), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
+      if (key === 'rush') return [`<label><span>Rush tag number</span><input name="rushTagNumber" ${rushBagTagInputAttributes} required /></label>`, input('Rush to where?', 'rushToWhere'), input('World Tracer file # (optional)', 'worldTracerFileNumber', false), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
       if (key === 'location') return [input('Bag location', 'location'), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
       if (key === 'shipping') return [shippingMethodSelect, shippingTrackingInput, shippingAddressInput, shippingBdoInput, '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
       if (key === 'lost') return '';
@@ -1506,7 +1513,8 @@
         return `<section class="missing-date-group"><h2 class="missing-date-heading">${todayLabel}${escapeHtml(dateLabel)}</h2><div class="sheet-shell"><table class="missing-report-table"><thead><tr><th>Bag Tag</th><th>Passenger</th><th>Destination</th><th>Airline</th><th>Source</th><th>Status</th><th></th></tr></thead><tbody>${group.rows.map((row) => {
           const status = row.acknowledgedAt ? 'Acknowledged' : (row.caseCreatedAt ? (row.linkedCaseUpdated ? 'Updated' : 'Rush Created') : 'Open');
           const identifier = row.rowNumber || '';
-          const actionHtml = row.acknowledgedAt || row.caseCreatedAt ? '' : `<div class="missing-actions"><button class="secondary" type="button" data-ack-missing="${escapeHtml(identifier)}">Acknowledge</button></div>`;
+          const originalTagNumber = rushBagTagNumber(row.bagTag, row.airline);
+          const actionHtml = row.acknowledgedAt || row.caseCreatedAt ? '' : `<div class="missing-actions"><button type="button" data-create-missing-rush="${escapeHtml(identifier)}" data-missing-original-tag="${escapeHtml(originalTagNumber)}">Create Rush</button><button class="secondary" type="button" data-ack-missing="${escapeHtml(identifier)}">Acknowledge</button></div>`;
           return `<tr><td>${escapeHtml(row.bagTag)}</td><td>${escapeHtml(row.passengerName)}</td><td>${escapeHtml(row.destination)}</td><td>${escapeHtml(row.airline)}</td><td>${escapeHtml(row.sourceAttachment || '-')}</td><td>${escapeHtml(status)}</td><td>${actionHtml}</td></tr>`;
         }).join('')}</tbody></table></div></section>`;
       }).join('')}</div>${listPaginationHtml('missing-reports', pagination)}`;
@@ -1541,6 +1549,7 @@
       if (!updateForm) return;
       event.preventDefault();
       const payload = Object.fromEntries(new FormData(updateForm, event.submitter).entries());
+      if (payload.rushTagNumber) payload.rushTagNumber = rushBagTagNumber(payload.rushTagNumber);
       payload.type = payload.type || updateForm.dataset.updateMode || 'worldtracer';
       payload.updatedBy = await currentUpdater();
       if (!payload.updatedBy) return alert('Your signed-in account could not be identified. Refresh the page and try again.');
@@ -1730,7 +1739,7 @@
     caseSearch?.addEventListener('input', () => { renderCases(); if (window._unresolvedBaggageLoaded) renderUnresolvedBaggage(window._unresolvedBaggageSourceRows || []); loadBaggageSearch(caseSearch.value); });
     openCasesTab?.addEventListener('click', () => showSection('open'));
     closedCasesTab?.addEventListener('click', () => showSection('closed'));
-    worldTracerTab?.addEventListener('click', async () => { showSection('worldtracer'); await loadWorldTracerCases(); });
+    worldTracerTab?.addEventListener('click', async () => { delete worldTracerForm.dataset.missingRow; showSection('worldtracer'); await loadWorldTracerCases(); });
     missingAlert?.addEventListener('click', () => {
       showSection('missing');
       if (window._missingReportLoaded) renderMissingReports(window._missingBagRows || []);
@@ -1751,6 +1760,8 @@
       event.preventDefault();
       const button = worldTracerForm.querySelector('button[type="submit"]');
       const payload = Object.fromEntries(new FormData(worldTracerForm).entries());
+      payload.originalTagNumber = rushBagTagNumber(payload.originalTagNumber);
+      payload.rushTagNumber = rushBagTagNumber(payload.rushTagNumber);
       payload.flightRows = Array.from(rushFlightRows.querySelectorAll('[data-rush-flight-row]')).map((row) => ({
         flightDate: row.querySelector('[data-flight-date]').value,
         flightNumber: row.querySelector('[data-flight-number]').value,
@@ -1764,6 +1775,13 @@
         const res = await fetch(`${apiBase}/cbs-worldtracer-cases`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || 'Rush Bag case save failed');
+        if (worldTracerForm.dataset.missingRow) {
+          const linkRes = await fetch(`${apiBase}/cbs-missing-bags`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ action:'link-rush', identifier:worldTracerForm.dataset.missingRow, worldTracerFileNumber:payload.worldTracerFileNumber }) });
+          const linkData = await parseJson(linkRes);
+          if (!linkRes.ok) throw new Error(linkData.error || 'Missing bag link failed');
+          delete worldTracerForm.dataset.missingRow;
+          await loadMissingReports();
+        }
         worldTracerForm.reset();
         resetRushFlightRows();
         worldTracerStatus.textContent = label('Rush Bag case created and saved.', 'Rush Bag 案件已创建并保存。');
@@ -1796,6 +1814,8 @@
       if (!form) return;
       event.preventDefault();
       const payload = Object.fromEntries(new FormData(form).entries());
+      payload.originalTagNumber = rushBagTagNumber(payload.originalTagNumber);
+      payload.rushTagNumber = rushBagTagNumber(payload.rushTagNumber);
       payload.createdAt = form.dataset.createdAt;
       payload.rowNumbers = form.dataset.rowNumbers.split(',').filter(Boolean).map(Number);
       payload.flightRows = Array.from(form.querySelectorAll('[data-rush-flight-row]')).map((row) => ({ flightDate:row.querySelector('[data-flight-date]').value, flightNumber:row.querySelector('[data-flight-number]').value, from:row.querySelector('[data-flight-from]').value, to:row.querySelector('[data-flight-to]').value }));
@@ -2016,7 +2036,7 @@
       const submittedBy = await currentUpdater();
       if (!submittedBy) return alert('Your signed-in account could not be identified. Refresh the page and try again.');
       const bagTags = direction === 'outbound' ? formData.getAll('bagTag') : [formData.get('bagTag')];
-      const payloads = bagTags.map((tag) => ({ ...Object.fromEntries(formData.entries()), bagTag:normalizeBaggageTag(tag), direction, flight:direction === 'outbound' ? 'MU586' : 'MU583', submittedBy }));
+      const payloads = bagTags.map((tag) => ({ ...Object.fromEntries(formData.entries()), bagTag:normalizeBaggageTag(tag), rushTagNumber:rushBagTagNumber(formData.get('rushTagNumber')), direction, flight:direction === 'outbound' ? 'MU586' : 'MU583', submittedBy }));
       const button = form.querySelector('button[type="submit"]');
       button.disabled = true;
       try {
@@ -2099,6 +2119,16 @@
       } finally { button.disabled = false; }
     });
     missingReportOutput?.addEventListener('click', async (event) => {
+      const rushButton = event.target.closest('[data-create-missing-rush]');
+      if (rushButton) {
+        showSection('worldtracer');
+        worldTracerForm.reset();
+        worldTracerForm.dataset.missingRow = rushButton.dataset.createMissingRush || '';
+        worldTracerForm.elements.originalTagNumber.value = rushButton.dataset.missingOriginalTag || '';
+        resetRushFlightRows();
+        worldTracerForm.scrollIntoView({ behavior:'smooth', block:'start' });
+        return;
+      }
       const createButton = event.target.closest('[data-create-missing-case]');
       const ackButton = event.target.closest('[data-ack-missing]');
       const button = createButton || ackButton;

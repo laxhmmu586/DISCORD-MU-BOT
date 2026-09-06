@@ -878,10 +878,23 @@ test('Missing Bag Report shows the LAXTEC phone contact', () => {
   assert.match(page, /aria-label="Call LAXTEC at 424-312-1860"/);
 });
 
-test('Missing Bag Report only offers Acknowledge for open rows', () => {
+test('Missing Bag Report offers Create Rush and Acknowledge for open rows', () => {
   assert.match(page, /data-ack-missing="\$\{escapeHtml\(identifier\)\}">Acknowledge/);
-  assert.doesNotMatch(page, /data-create-missing-rush/);
-  assert.doesNotMatch(page, /worldTracerForm\.dataset\.missingRow/);
+  assert.match(page, /data-create-missing-rush="\$\{escapeHtml\(identifier\)\}"/);
+  assert.match(page, /worldTracerForm\.dataset\.missingRow/);
+  assert.match(page, /data-missing-original-tag="\$\{escapeHtml\(originalTagNumber\)\}"/);
+  assert.match(server, /action === 'link-rush'/);
+});
+
+test('Rush Bag tag fields require an airline designator and six digits, including B6', () => {
+  assert.match(page, /function rushBagTagNumber\(value, airline = ''\)/);
+  assert.match(page, /\^\[A-Z\]\[A-Z0-9\]\[0-9\]\{6\}\$/);
+  assert.match(page, /`\$\{airlineCode\}\$\{tag\.slice\(-6\)\}`/);
+  assert.match(page, /pattern="\[A-Za-z\]\[A-Za-z0-9\]\[0-9\]\{6\}" minlength="8" maxlength="8"/);
+  assert.match(page, /DL123456 or B6123456/);
+  assert.match(server, /function isValidRushBagTag\(value\)/);
+  assert.match(server, /isValidRushBagTag\(record\.originalTagNumber\)/);
+  assert.match(server, /isValidRushBagTag\(record\.rushTagNumber\)/);
 });
 
 test('Passenger Filed displays multiple bag tags on separate lines', () => {

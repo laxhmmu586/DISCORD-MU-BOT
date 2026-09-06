@@ -1389,6 +1389,10 @@ function sanitizeCbsText(value, maxLength = 1000) {
   return String(value || '').replace(/[\u0000-\u001F\u007F]/g, ' ').trim().slice(0, maxLength);
 }
 
+function isValidRushBagTag(value) {
+  return /^[A-Z][A-Z0-9][0-9]{6}$/.test(String(value || '').trim().toUpperCase());
+}
+
 function sanitizeCbsEmailBody(value, maxLength = 12000) {
   return String(value || '').replace(/\r\n?/g, '\n').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '').trim().slice(0, maxLength);
 }
@@ -2415,7 +2419,7 @@ function buildCbsUpdateFields(update = {}) {
     const rushFlight = sanitizeCbsText(update.rushFlight, 40).toUpperCase();
     const rushDate = sanitizeCbsText(update.rushDate, 40);
     const rushTagNumber = sanitizeCbsText(update.rushTagNumber, 80).toUpperCase();
-    if (!rushFlight || !/^\d{4}-\d{2}-\d{2}$/.test(rushDate) || !rushTagNumber) return null;
+    if (!rushFlight || !/^\d{4}-\d{2}-\d{2}$/.test(rushDate) || !isValidRushBagTag(rushTagNumber)) return null;
     return { status:'Upcoming Rush', replaceEventKey:'upcoming_rush', updateNote:`UPCOMING RUSH | Rush Flight: ${rushFlight} | Rush Date: ${rushDate} | Rush Tag: ${rushTagNumber}`, updateEvent:{ key:'upcoming_rush', title:'Upcoming Rush', fields:[['Rush Flight', rushFlight], ['Rush Date', rushDate], ['Rush Tag', rushTagNumber]] } };
   }
   if (type === 'comment') {
@@ -2458,7 +2462,7 @@ function buildCbsUpdateFields(update = {}) {
     const rushTagNumber = sanitizeCbsText(update.rushTagNumber, 80).toUpperCase();
     const rushToWhere = sanitizeCbsText(update.rushToWhere, 120).toUpperCase();
     const worldTracerFileNumber = sanitizeCbsText(update.worldTracerFileNumber, 120).toUpperCase();
-    if (!rushTagNumber || !rushToWhere) return null;
+    if (!isValidRushBagTag(rushTagNumber) || !rushToWhere) return null;
     return { status: 'Rush', updateNote: `RUSH | Rush tag: ${rushTagNumber} | Rush to: ${rushToWhere}${worldTracerFileNumber ? ` | WorldTracer: ${worldTracerFileNumber}` : ''}${comment ? ` | Comment: ${comment}` : ''}`, updateEvent: { key: 'rush', title: 'Update Rush', fields: [['Rush Tag Number', rushTagNumber], ['Rush To Where', rushToWhere], ...(worldTracerFileNumber ? [['WorldTracer', worldTracerFileNumber]] : []), ...(comment ? [['Comment', comment]] : [])] } };
   }
   if (type === 'location') {
@@ -2532,9 +2536,14 @@ app.get('/cbs-missing-bags', async (req, res) => {
 app.post('/cbs-missing-bags', async (req, res) => {
   try {
     const action = sanitizeCbsText(req.body?.action, 40).toLowerCase();
-    if (action !== 'acknowledge') return res.status(400).json({ error: 'A valid missing bag action is required' });
     const identifier = sanitizeCbsText(req.body?.identifier || req.body?.rowNumber, 120);
     if (!identifier) return res.status(400).json({ error: 'Missing bag identifier is required' });
+    if (action === 'link-rush') {
+      const worldTracerFileNumber = sanitizeCbsText(req.body?.worldTracerFileNumber, 120).toUpperCase();
+      await markCbsMissingBagCase(identifier, worldTracerFileNumber ? `RUSH ${worldTracerFileNumber}` : 'RUSH');
+      return res.json({ linked:true, worldTracerFileNumber });
+    }
+    if (action !== 'acknowledge') return res.status(400).json({ error: 'A valid missing bag action is required' });
     const result = await acknowledgeCbsMissingBag(identifier);
     if (result.notFound) return res.status(404).json({ error: 'Missing bag row not found' });
     return res.json(result);
@@ -2939,8 +2948,8 @@ app.post('/cbs-worldtracer-cases', async (req, res) => {
       createdAt: new Date().toISOString()
     };
     const invalidFlight = !record.flightRows.length || record.flightRows.some((flight) => Object.values(flight).some((value) => !value));
-    if (!record.originalTagNumber || !record.rushTagNumber || invalidFlight) {
-      return res.status(400).json({ error: 'Original tag, RUSH tag, and complete flight segments are required' });
+    if (!isValidRushBagTag(record.originalTagNumber) || !isValidRushBagTag(record.rushTagNumber) || invalidFlight) {
+      return res.status(400).json({ error: 'Original and RUSH tags must use an airline code followed by 6 digits (for example DL123456 or B6123456), and complete flight segments are required' });
     }
     const result = await saveLinkedRushBag(record);
     result.matchedBagRoomUnloadCases = await matchBagRoomUnloadCasesForRush(result.record);
@@ -2967,7 +2976,7 @@ app.post('/cbs-worldtracer-cases/update', async (req, res) => {
       worldTracerFileNumber: sanitizeCbsText(body.worldTracerFileNumber, 120).toUpperCase(), originalTagNumber: sanitizeCbsText(body.originalTagNumber, 120).toUpperCase(), rushTagNumber: sanitizeCbsText(body.rushTagNumber, 120).toUpperCase(), createdAt:sanitizeCbsText(body.createdAt, 40),
       flightRows:(Array.isArray(body.flightRows) ? body.flightRows : []).slice(0, 20).map((flight) => ({ flightDate:sanitizeCbsText(flight?.flightDate, 40), flightNumber:sanitizeCbsText(flight?.flightNumber, 40).toUpperCase(), from:sanitizeCbsText(flight?.from, 40).toUpperCase(), to:sanitizeCbsText(flight?.to, 40).toUpperCase() }))
     };
-    if (!record.originalTagNumber || !record.rushTagNumber || !record.flightRows.length || record.flightRows.some((flight) => Object.values(flight).some((value) => !value))) return res.status(400).json({ error:'Original tag, RUSH tag, and complete flight segments are required' });
+    if (!isValidRushBagTag(record.originalTagNumber) || !isValidRushBagTag(record.rushTagNumber) || !record.flightRows.length || record.flightRows.some((flight) => Object.values(flight).some((value) => !value))) return res.status(400).json({ error:'Original and RUSH tags must use an airline code followed by 6 digits (for example DL123456 or B6123456), and complete flight segments are required' });
     const requestedRows = new Set((Array.isArray(body.rowNumbers) ? body.rowNumbers : []).map(Number));
     const allRushBags = await getCbsWorldTracerCases();
     const previousRecord = allRushBags.find((item) =>
@@ -3155,7 +3164,7 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
       const worldTracerFileNumber = sanitizeCbsText(req.body?.worldTracerFileNumber, 120).toUpperCase();
       const originalTagNumber = sanitizeCbsText(req.body?.originalTagNumber || req.body?.bagTagNumber, 120).toUpperCase();
       const rushTagNumber = sanitizeCbsText(req.body?.rushTagNumber, 120).toUpperCase();
-      if (!originalTagNumber || !rushTagNumber || !flightRows.length || flightRows.some((flight) => Object.values(flight).some((value) => !value))) return res.status(400).json({ error: 'Original tag, RUSH tag, and complete flight segments are required' });
+      if (!isValidRushBagTag(originalTagNumber) || !isValidRushBagTag(rushTagNumber) || !flightRows.length || flightRows.some((flight) => Object.values(flight).some((value) => !value))) return res.status(400).json({ error: 'Original and RUSH tags must use an airline code followed by 6 digits (for example DL123456 or B6123456), and complete flight segments are required' });
       await saveLinkedRushBag({ worldTracerFileNumber, originalTagNumber, rushTagNumber, flightRows, createdAt: new Date().toISOString() });
     }
     const updatedBy = sanitizeCbsText(req.body?.updatedBy, 160);
@@ -3609,6 +3618,8 @@ app.post('/test-baggage', async (req, res) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'Missing or invalid date' });
     const flight = cleanBodyText(req.body?.flight, 20).toUpperCase();
     if (!/^[A-Z]{2}\d{1,4}[A-Z]?$/.test(flight)) return res.status(400).json({ error: 'Missing or invalid flight number' });
+    const rushTagNumber = cleanBodyText(req.body?.rushTagNumber, 80).toUpperCase();
+    if (rushTagNumber && !isValidRushBagTag(rushTagNumber)) return res.status(400).json({ error: 'RUSH tag must use an airline code followed by 6 digits, for example DL123456 or B6123456' });
     const result = await appendTestBaggageRecord({
       bagTag,
       direction,
@@ -3618,7 +3629,7 @@ app.post('/test-baggage', async (req, res) => {
       location: cleanBodyText(req.body?.location, 120),
       status: cleanBodyText(req.body?.status, 80) || (direction === 'inbound' ? 'Bag location update' : ''),
       comment: cleanBodyText(req.body?.comment, 500),
-      rushTagNumber: cleanBodyText(req.body?.rushTagNumber, 80),
+      rushTagNumber,
       rushToWhere: cleanBodyText(req.body?.rushToWhere, 120),
       akeNumber: cleanBodyText(req.body?.akeNumber, 80),
       worldTracerFileNumber: cleanBodyText(req.body?.worldTracerFileNumber, 120),
