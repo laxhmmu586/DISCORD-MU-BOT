@@ -6250,6 +6250,13 @@
 
       function renderMealOrderColumns(sy, prefix = "") {
         const reservationCounts = countTriple(sy?.reservationTicketed);
+        const emailFound = Boolean(sy?.spml?.email?.found);
+        const premiumRequired = ["F", "J"].reduce((total, cabin) => {
+          const orderedMeals = sy?.spml?.email?.countsByCabin?.[cabin] || {};
+          return total + Number(sy?.spml?.email?.cabinCounts?.[cabin] || 0) + mealCountsTotal(orderedMeals);
+        }, 0);
+        const premiumReservations = Number(reservationCounts[0]) + Number(reservationCounts[1]);
+        const premiumHasShortage = emailFound && Number.isFinite(premiumReservations) && premiumReservations < premiumRequired;
         if (sy?.flightDate) {
           setText(prefix ? "#meal-order-tab-tomorrow" : "#meal-order-tab-today", formatMealFlightDate(sy.flightDate));
           if (!prefix) setText("#meal-order-tab-tomorrow", nextMealFlightDate(sy.flightDate));
@@ -6260,7 +6267,6 @@
           const reservationElement = document.querySelector(`#${prefix}reservation-${key}`);
           const orderedSpmlElement = document.querySelector(`#${prefix}meal-spml-${key}`);
           const pdElement = document.querySelector(`#${prefix}meal-pd-${key}`);
-          const emailFound = Boolean(sy?.spml?.email?.found);
           const orderedMeals = emailFound ? (sy.spml.email.countsByCabin?.[cabin] || (cabin === "Y" ? sy.spml.email.counts : {}) || {}) : {};
           const pdMeals = sy?.spml?.preorderByCabin?.[cabin] || {};
           const reservation = Number(reservationCounts[index]);
@@ -6274,8 +6280,12 @@
           orderedSpmlElement?.classList.remove("is-mismatch");
           pdElement?.classList.remove("is-mismatch");
           if (emailFound && Number.isFinite(reservation)) {
-            if (orderedTotal >= reservation) reservationElement?.classList.add("is-over");
-            if (orderedTotal < reservation) {
+            if (cabin !== "Y") {
+              reservationElement?.classList.add(premiumHasShortage ? "is-under" : "is-over");
+              if (premiumHasShortage) hasShortage = true;
+            } else if (orderedTotal >= reservation) {
+              reservationElement?.classList.add("is-over");
+            } else {
               reservationElement?.classList.add("is-under");
               hasShortage = true;
             }
