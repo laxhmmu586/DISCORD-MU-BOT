@@ -302,7 +302,8 @@ test('Bag Room cases show a three-day status timer and automatically close when 
   assert.match(server, /return bagRoom && !timeLimitReleased && ageDays >= 3/);
   assert.match(server, /\['worldtracer', 'pvg', 'on-hand-rush'\]\.includes/);
   assert.match(page, /\['worldtracer', 'pvg', 'on-hand-rush'\]\.includes/);
-  assert.match(page, /if \(timeLimitReleased\) return '<span class="bag-room-timer timer-two">No time limit<\/span>'/);
+  assert.match(page, /if \(timeLimitReleased\) return '-'/);
+  assert.doesNotMatch(page, /No time limit/);
   assert.match(server, /resolveCbsUnresolvedBaggageCase\(row\.rowNumber, 'expired', 'AUTO CLOSE \| 3-day Bag Room limit reached', 'System'\)/);
   assert.match(server, /const expiredCount = await closeExpiredBagRoomUnloadCases\(rows\)/);
   assert.match(server, /setInterval\(\(\) => runBagRoomUnloadExpiration\(\)[^\n]+60 \* 60 \* 1000\)/);
