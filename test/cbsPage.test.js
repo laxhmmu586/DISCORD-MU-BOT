@@ -457,6 +457,13 @@ test('creating a Rush update keeps the On-hand case open', () => {
   assert.match(rushBlock, /return res\.json\(result\)/);
 });
 
+test('On-hand WorldTracer updates sync to the matching Rush Bag case', () => {
+  assert.match(server, /async function syncOnHandWorldTracerToRushBag\(record, updatedBy = ''\)/);
+  assert.match(server, /normalizedCbsLinkTag\(rushBag\.originalTagNumber\) === originalTag/);
+  assert.match(server, /updateCbsWorldTracerCase\(rushBag\.rowNumbers, \{/);
+  assert.match(server, /result\.syncedRushBagCases = await syncOnHandWorldTracerToRushBag\(result\.record, updatedBy\)/);
+});
+
 test('On-hand progress updates sync to the home-page baggage search', () => {
   assert.match(server, /async function syncOnHandStatusToBaggage\(record, action, body = \{\}\)/);
   for (const status of ['WorldTracer Updated', 'Reopened', 'Create Rush', 'Passenger Collected / Case Closed', 'Case Closed', 'Shipped', 'Other']) {
