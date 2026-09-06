@@ -21,7 +21,7 @@ const {
 } = require('./flightParser');
 const { matchMuFlight } = require('./cbsScanParser');
 const { parseSpmlLog } = require('./spmlParser');
-const { isWorldTracerOnlyRushBagUpdate } = require('./rushBagNotification');
+const { findLinkedRushBagRecords } = require('./rushBagNotification');
 
 const {
 
@@ -2101,6 +2101,48 @@ async function addRushBagDiscordResult(result, record) {
   return result;
 }
 
+function addDuplicateRushBagDiscordResult(result) {
+  result.discord = { sent:false, reason:'This linked RUSH already exists and was previously notified.' };
+  return result;
+}
+
+let rushBagWriteQueue = Promise.resolve();
+
+function withRushBagWriteLock(operation) {
+  const pending = rushBagWriteQueue.then(operation, operation);
+  rushBagWriteQueue = pending.catch(() => {});
+  return pending;
+}
+
+async function saveLinkedRushBag(record) {
+  return withRushBagWriteLock(async () => {
+    const existing = await getCbsWorldTracerCases();
+    const linked = findLinkedRushBagRecords(existing, record);
+    if (!linked.length) {
+      const saved = await appendCbsWorldTracerCase(record);
+      return addRushBagDiscordResult({ created:true, record:saved }, saved);
+    }
+
+    // Original and RUSH tags identify one logical RUSH across every workflow.
+    // Update every historically linked sheet record instead of appending another
+    // case, and never emit a second Discord notification for that logical RUSH.
+    let saved = record;
+    for (const current of linked) {
+      const result = await updateCbsWorldTracerCase(current.rowNumbers, {
+        ...record,
+        createdAt:current.createdAt || record.createdAt
+      });
+      if (result.record) saved = result.record;
+    }
+    return addDuplicateRushBagDiscordResult({
+      created:false,
+      updated:true,
+      linkedRecordsUpdated:linked.length,
+      record:saved
+    });
+  });
+}
+
 async function matchBagRoomUnloadCasesForRush(rushBag = {}) {
   const originalTag = normalizedCbsLinkTag(rushBag.originalTagNumber);
   if (!originalTag) return [];
@@ -2194,10 +2236,6 @@ async function notifyBagRoomUnloadAfterCc(syInfo, isoDate) {
     }
     return result;
   } finally { bagRoomUnloadAlertInFlight.delete(isoDate); }
-}
-
-function isRushBagWorldTracerOnlyUpdate(previousRecord = {}, nextRecord = {}) {
-  return isWorldTracerOnlyRushBagUpdate(previousRecord, nextRecord);
 }
 
 async function sendLostBaggageUpdateToDiscord(fileNumber) {
@@ -2890,10 +2928,9 @@ app.post('/cbs-worldtracer-cases', async (req, res) => {
     if (!record.originalTagNumber || !record.rushTagNumber || invalidFlight) {
       return res.status(400).json({ error: 'Original tag, RUSH tag, and complete flight segments are required' });
     }
-    const saved = await appendCbsWorldTracerCase(record);
-    const result = await addRushBagDiscordResult({ created: true, record: saved }, saved);
-    result.matchedBagRoomUnloadCases = await matchBagRoomUnloadCasesForRush(saved);
-    return res.status(201).json(result);
+    const result = await saveLinkedRushBag(record);
+    result.matchedBagRoomUnloadCases = await matchBagRoomUnloadCasesForRush(result.record);
+    return res.status(result.created ? 201 : 200).json(result);
   } catch (err) {
     console.error('CBS WorldTracer case create error:', err);
     return res.status(500).json({ error: err?.message || 'WorldTracer case save failed' });
@@ -2918,18 +2955,20 @@ app.post('/cbs-worldtracer-cases/update', async (req, res) => {
     };
     if (!record.originalTagNumber || !record.rushTagNumber || !record.flightRows.length || record.flightRows.some((flight) => Object.values(flight).some((value) => !value))) return res.status(400).json({ error:'Original tag, RUSH tag, and complete flight segments are required' });
     const requestedRows = new Set((Array.isArray(body.rowNumbers) ? body.rowNumbers : []).map(Number));
-    const previousRecord = (await getCbsWorldTracerCases()).find((item) =>
+    const allRushBags = await getCbsWorldTracerCases();
+    const previousRecord = allRushBags.find((item) =>
       (item.rowNumbers || []).some((rowNumber) => requestedRows.has(Number(rowNumber))));
-    const result = await updateCbsWorldTracerCase(body.rowNumbers, record);
-    if (result.notFound) return res.status(404).json({ error:'On-hard case not found' });
+    if (!previousRecord) return res.status(404).json({ error:'On-hard case not found' });
+    const linked = findLinkedRushBagRecords(allRushBags, previousRecord);
+    let result;
+    for (const current of linked) {
+      result = await updateCbsWorldTracerCase(current.rowNumbers, { ...record, createdAt:current.createdAt || record.createdAt });
+    }
     // An Original Tag can be added or corrected while editing a RUSH record.
     // Keep matching Not Load cases open while associating their Rush tag.
     result.matchedBagRoomUnloadCases = await matchBagRoomUnloadCasesForRush(result.record);
-    if (previousRecord && isRushBagWorldTracerOnlyUpdate(previousRecord, result.record)) {
-      result.discord = { sent:false, reason:'WorldTracer file number-only updates do not send another Rush Bag notification.' };
-      return res.json(result);
-    }
-    return res.json(await addRushBagDiscordResult(result, result.record));
+    result.linkedRecordsUpdated = linked.length;
+    return res.json(addDuplicateRushBagDiscordResult(result));
   } catch (err) {
     console.error('CBS On-hard update error:', err);
     return res.status(500).json({ error:err?.message || 'On-hard update failed' });

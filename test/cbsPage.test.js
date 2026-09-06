@@ -836,9 +836,16 @@ test('Rush Bag cases with MU586 notify Discord and treat WorldTracer as optional
   assert.match(sender, /RUSH Tag Number:/);
   assert.match(sender, /RUSH Itinerary:/);
   assert.doesNotMatch(sender, /Updated by|updatedBy|employee/i);
-  assert.match(server, /appendCbsWorldTracerCase\(record\)[\s\S]*addRushBagDiscordResult\(\{ created: true, record: saved \}, saved\)/);
-  assert.match(server, /isRushBagWorldTracerOnlyUpdate\(previousRecord, result\.record\)[\s\S]*WorldTracer file number-only updates do not send another Rush Bag notification/);
-  assert.match(server, /updateCbsWorldTracerCase\(body\.rowNumbers, record\)[\s\S]*addRushBagDiscordResult\(result, result\.record\)/);
+  assert.match(server, /if \(!linked\.length\)[\s\S]*appendCbsWorldTracerCase\(record\)[\s\S]*addRushBagDiscordResult/);
+  assert.match(server, /for \(const current of linked\)[\s\S]*updateCbsWorldTracerCase\(current\.rowNumbers/);
+  assert.match(server, /linkedRecordsUpdated:linked\.length[\s\S]*addDuplicateRushBagDiscordResult/);
+});
+
+test('duplicate Rush Bag submissions do not notify Discord again', () => {
+  assert.match(server, /findLinkedRushBagRecords\(existing, record\)/);
+  assert.match(server, /withRushBagWriteLock/);
+  assert.match(server, /created:false[\s\S]*updated:true[\s\S]*addDuplicateRushBagDiscordResult/);
+  assert.match(server, /saveLinkedRushBag\(\{ worldTracerFileNumber, originalTagNumber, rushTagNumber, flightRows/);
 });
 
 test('new Rush itineraries default to todays MU586 LAX-PVG flight while added flights stay blank', () => {
