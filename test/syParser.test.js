@@ -9,6 +9,28 @@ test('CC only completes after the ACCEPTED/AIRPORT CLOSED response', () => {
   assert.equal(isCcAirportClosedContent('> CC: MU586/04SEP26,Y\\n> ACCEPTED'), false);
 });
 
+test('restores CC completion from the latest SY CC status', () => {
+  const log = [
+    '2026 September 05, Saturday, 13:42:37',
+    '> sy',
+    '> SY: MU586/05SEP26 LAX/0  CL1219/NAM',
+    '> 777/773L/B7367      GTD/130  POS/GATE BN299 AK00000 CD00000',
+    '> BDT1145   SD1230   ED1230   CI1219',
+    '2026 September 05, Saturday, 13:42:45',
+    '> sy',
+    '> SY: MU586/05SEP26 LAX/0  CC1342/NAM',
+    '> 777/773L/B7367      GTD/130  POS/GATE BN299 AK00000 CD00000',
+    '> BDT1145   SD1230   ED1230   CI1219   CC1342'
+  ].join('\n');
+
+  const info = require('../syParser').findSYInfo(log, '05SEP26', { preferredFlightNo: 'MU586' });
+  const cc = info.crewApis.steps.find((step) => step.key === 'cc');
+
+  assert.equal(cc.complete, true);
+  assert.equal(cc.time, '13:42');
+  assert.equal(cc.tooltip, 'CC 13:42');
+});
+
 test('accepts any numeric CHD1 service-code value', () => {
   assert.equal(hasChdServiceCode('SSR CHD1/0'), true);
   assert.equal(hasChdServiceCode('SSR CHD1/7'), true);

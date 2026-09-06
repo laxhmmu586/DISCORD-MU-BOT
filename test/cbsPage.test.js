@@ -287,7 +287,9 @@ test('Bag Room cases show a three-day status timer and automatically close when 
   assert.match(page, /isBagRoomGroup \? '<th>Status<\/th><th>Timer<\/th>'/);
   assert.doesNotMatch(page, /isBagRoomGroup \? '<th>Type<\/th>/);
   assert.match(server, /async function closeExpiredBagRoomUnloadCases\(rows = \[\], today = todayIsoUtc\(\)\)/);
-  assert.match(server, /ageDays >= 3/);
+  assert.match(server, /return bagRoom && !timeLimitReleased && ageDays >= 3/);
+  assert.match(server, /\['worldtracer', 'on-hand-rush'\]\.includes/);
+  assert.match(page, /if \(timeLimitReleased\) return '<span class="bag-room-timer timer-two">No time limit<\/span>'/);
   assert.match(server, /resolveCbsUnresolvedBaggageCase\(row\.rowNumber, 'expired', 'AUTO CLOSE \| 3-day Bag Room limit reached', 'System'\)/);
   assert.match(server, /const expiredCount = await closeExpiredBagRoomUnloadCases\(rows\)/);
   assert.match(server, /setInterval\(\(\) => runBagRoomUnloadExpiration\(\)[^\n]+60 \* 60 \* 1000\)/);
@@ -333,7 +335,7 @@ test('MU586 Bag Room CC alerts stay disabled until explicitly enabled', () => {
 });
 
 test('On-hand cases match the passenger case layout and support WorldTracer progress', () => {
-  assert.match(page, /<th>WorldTracer File Number<\/th><th>Bag Tag<\/th>\$\{rushTagHeading\}<th>Direction<\/th>/);
+  assert.match(page, /<th>WorldTracer #<\/th><th>Bag Tag<\/th>\$\{rushTagHeading\}<th>Direction<\/th>/);
   assert.match(page, /class="case-detail-layout"><div class="case-progress-column">\$\{unresolvedProgressHtml\(progressRow\)\}/);
   assert.match(page, /<option value="worldtracer">WorldTracer<\/option>/);
   assert.match(drive, /getCbsUnresolvedBaggageSheetTitle/);
@@ -343,6 +345,11 @@ test('On-hand cases match the passenger case layout and support WorldTracer prog
   assert.match(drive, /!L\$\{target\.rowNumber\}/);
   assert.match(drive, /!L1:M1`[\s\S]*CBS_UNRESOLVED_BAGGAGE_HEADERS\[12\]/);
   assert.match(server, /action === 'worldtracer'/);
+});
+
+test('case list first columns use the abbreviated WorldTracer heading', () => {
+  assert.equal((page.match(/<th>WorldTracer #<\/th>/g) || []).length, 3);
+  assert.doesNotMatch(page, /<th>WorldTracer (?:File Number|File)<\/th>/);
 });
 
 test('Passenger, On-hand, and Bag Room cases support replaceable PNR and TKT Record tabs', () => {
