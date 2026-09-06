@@ -281,7 +281,7 @@ test('On-hand and Bag Room rows only show Rush Tag when at least one row has one
   assert.match(page, /const showRushTag = rows\.some\(\(row\) => String\(row\.rushTagNumber \|\| ''\)\.trim\(\)\)/);
   assert.match(page, /const rushTagHeading = showRushTag \? '<th>Rush Tag<\/th>' : ''/);
   assert.match(page, /const rushTagCell = showRushTag \?/);
-  assert.match(page, /const columnCount = \(showRushTag \? 7 : 6\) \+ \(isBagRoomGroup \? 1 : 0\)/);
+  assert.match(page, /const columnCount = \(showRushTag \? 6 : 5\) \+ \(isBagRoomGroup \? 1 : 0\)/);
   assert.doesNotMatch(page, /<th>Type \/ Status<\/th><th>Location<\/th>/);
   assert.match(page, /escapeHtml\(row\.rushTagNumber \|\| '-'\)/);
   assert.match(server, /async function matchBagRoomUnloadCasesForRush/);
@@ -302,7 +302,8 @@ test('Bag Room cases show a three-day status timer and automatically close when 
   assert.match(server, /return bagRoom && !timeLimitReleased && ageDays >= 3/);
   assert.match(server, /\['worldtracer', 'pvg', 'on-hand-rush'\]\.includes/);
   assert.match(page, /\['worldtracer', 'pvg', 'on-hand-rush'\]\.includes/);
-  assert.match(page, /if \(timeLimitReleased\) return '<span class="bag-room-timer timer-two">No time limit<\/span>'/);
+  assert.match(page, /if \(timeLimitReleased\) return '-'/);
+  assert.doesNotMatch(page, /No time limit/);
   assert.match(server, /resolveCbsUnresolvedBaggageCase\(row\.rowNumber, 'expired', 'AUTO CLOSE \| 3-day Bag Room limit reached', 'System'\)/);
   assert.match(server, /const expiredCount = await closeExpiredBagRoomUnloadCases\(rows\)/);
   assert.match(server, /setInterval\(\(\) => runBagRoomUnloadExpiration\(\)[^\n]+60 \* 60 \* 1000\)/);
@@ -363,7 +364,12 @@ test('MU586 Bag Room CC alerts stay disabled until explicitly enabled', () => {
 });
 
 test('On-hand cases match the passenger case layout and support WorldTracer progress', () => {
-  assert.match(page, /<th>WorldTracer #<\/th><th>Bag Tag<\/th>\$\{rushTagHeading\}<th>Direction<\/th>/);
+  assert.match(page, /<th>WorldTracer #<\/th><th>PVG Filed<\/th><th>Bag Tag<\/th>\$\{rushTagHeading\}<th>Date<\/th>/);
+  assert.doesNotMatch(page, /\$\{rushTagHeading\}<th>Direction<\/th>/);
+  assert.match(page, /const dateBands = new Map\(\)/);
+  assert.match(page, /case-summary-row \$\{dateBand\}/);
+  assert.match(page, /\.case-summary-row\.date-band-a td \{ background:#f8fbff; \}/);
+  assert.match(page, /\.case-summary-row\.date-band-b td \{ background:#f7fbf8; \}/);
   assert.match(page, /class="case-detail-layout"><div class="case-progress-column">\$\{unresolvedProgressHtml\(progressRow\)\}/);
   assert.match(page, /<option value="worldtracer">WorldTracer<\/option>/);
   assert.match(drive, /getCbsUnresolvedBaggageSheetTitle/);
@@ -872,10 +878,23 @@ test('Missing Bag Report shows the LAXTEC phone contact', () => {
   assert.match(page, /aria-label="Call LAXTEC at 424-312-1860"/);
 });
 
-test('Missing Bag Report only offers Acknowledge for open rows', () => {
+test('Missing Bag Report offers Create Rush and Acknowledge for open rows', () => {
   assert.match(page, /data-ack-missing="\$\{escapeHtml\(identifier\)\}">Acknowledge/);
-  assert.doesNotMatch(page, /data-create-missing-rush/);
-  assert.doesNotMatch(page, /worldTracerForm\.dataset\.missingRow/);
+  assert.match(page, /data-create-missing-rush="\$\{escapeHtml\(identifier\)\}"/);
+  assert.match(page, /worldTracerForm\.dataset\.missingRow/);
+  assert.match(page, /data-missing-original-tag="\$\{escapeHtml\(originalTagNumber\)\}"/);
+  assert.match(server, /action === 'link-rush'/);
+});
+
+test('Rush Bag tag fields require an airline designator and six digits, including B6', () => {
+  assert.match(page, /function rushBagTagNumber\(value, airline = ''\)/);
+  assert.match(page, /\^\[A-Z\]\[A-Z0-9\]\[0-9\]\{6\}\$/);
+  assert.match(page, /`\$\{airlineCode\}\$\{tag\.slice\(-6\)\}`/);
+  assert.match(page, /pattern="\[A-Za-z\]\[A-Za-z0-9\]\[0-9\]\{6\}" minlength="8" maxlength="8"/);
+  assert.match(page, /DL123456 or B6123456/);
+  assert.match(server, /function isValidRushBagTag\(value\)/);
+  assert.match(server, /isValidRushBagTag\(record\.originalTagNumber\)/);
+  assert.match(server, /isValidRushBagTag\(record\.rushTagNumber\)/);
 });
 
 test('Passenger Filed displays multiple bag tags on separate lines', () => {
