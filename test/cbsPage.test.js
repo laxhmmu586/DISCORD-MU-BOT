@@ -42,6 +42,18 @@ test('Rush Bag storage refreshes the sheet title after a tab rename', () => {
   assert.match(drive, /async function appendCbsWorldTracerCase\(record = \{\}\) \{\s*const title = await getCbsWorldTracerSheetTitle\(\)/);
   assert.match(drive, /async function updateCbsWorldTracerCase\(rowNumbers = \[\], record = \{\}\) \{\s*const title = await getCbsWorldTracerSheetTitle\(\)/);
 });
+
+test('CBS sheets automatically remove data older than two years', () => {
+  assert.match(drive, /async function pruneExpiredCbsRows\(\{ title, sheetId, range, dateIndexes, rowOffset = 0 \}, now = new Date\(\)\)/);
+  assert.match(drive, /cutoff\.setUTCFullYear\(cutoff\.getUTCFullYear\(\) - 2\)/);
+  assert.match(drive, /dateIndexes\.map\(\(dateIndex\) => row\[dateIndex\]\)/);
+  assert.match(drive, /createdTime < cutoff\.getTime\(\)/);
+  assert.match(drive, /sheetId, dimension:'ROWS'/);
+  assert.match(drive, /expiredIndexes\.slice\(\)\.reverse\(\)\.map/);
+  for (const gid of ['CBS_SHEET_GID', 'CBS_MISSING_BAG_SHEET_GID', 'CBS_UNRESOLVED_BAGGAGE_SHEET_GID', 'CBS_NOT_LOAD_BAGGAGE_SHEET_GID', 'CBS_WORLDTRACER_SHEET_GID']) {
+    assert.match(drive, new RegExp(`getCbsRetainedSheetRows\\(\\{ title, sheetId:${gid},`));
+  }
+});
 test('public CBS forms do not CC the operations Gmail account', () => {
   const caseEmail = drive.match(/async function sendCbsCaseEmail[\s\S]*?\n}/)?.[0] || '';
   const wrongBaggageEmail = drive.match(/async function sendWrongBaggageCaseEmail[\s\S]*?\n}/)?.[0] || '';

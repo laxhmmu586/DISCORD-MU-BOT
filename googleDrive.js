@@ -122,6 +122,7 @@ const CBS_HEADERS = [
 ];
 let cbsSheetTitle = '';
 let cbsWorldTracerSheetTitle = '';
+const cbsRetentionPromises = new Map();
 let cbsUnresolvedBaggageSheetTitle = '';
 let cbsNotLoadBaggageSheetTitle = '';
 let cbsSheetCache = { loadedAt: 0, rows: [] };
@@ -3199,11 +3200,7 @@ async function getCbsSheetRows(options = {}) {
   // empty immediately consumes another Sheets read request.
   if (!options.forceRefresh && cbsSheetCache.loadedAt && Date.now() - cbsSheetCache.loadedAt < ttlMs) return cbsSheetCache.rows;
   const title = await getCbsSheetTitle();
-  const res = await sheets.spreadsheets.values.get({
-    spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A:AM`
-  });
-  const rows = res.data.values || [];
+  const rows = await getCbsRetainedSheetRows({ title, sheetId:CBS_SHEET_GID, range:'A:AM', dateIndexes:[26] });
   cbsSheetCache = { loadedAt: Date.now(), rows };
   return rows;
 }
@@ -3588,8 +3585,11 @@ function safeJsonArray(value) {
 
 async function getCbsUnresolvedBaggageCases(options = {}) {
   const title = await getCbsUnresolvedBaggageSheetTitle();
-  const response = await sheets.spreadsheets.values.get({ spreadsheetId:CBS_SHEET_ID, range:`${escapeSheetTitle(title)}!A:R` });
-  const valuesRows = response.data.values || [];
+  const notLoadTitle = await getCbsNotLoadBaggageSheetTitle();
+  const [valuesRows] = await Promise.all([
+    getCbsRetainedSheetRows({ title, sheetId:CBS_UNRESOLVED_BAGGAGE_SHEET_GID, range:'A:R', dateIndexes:[7] }),
+    getCbsRetainedSheetRows({ title:notLoadTitle, sheetId:CBS_NOT_LOAD_BAGGAGE_SHEET_GID, range:'A:R', dateIndexes:[7] })
+  ]);
   const startIndex = String(valuesRows[0]?.[0] || '').trim() === CBS_UNRESOLVED_BAGGAGE_HEADERS[0] ? 1 : 0;
   return valuesRows.slice(startIndex).map((values, index) => ({
     bagTag:values[0] || '', direction:values[1] || '', flightNumber:values[2] || '', flightDate:values[3] || '',
@@ -3617,8 +3617,7 @@ async function appendCbsNotLoadBaggageCase(record = {}) {
   if (!isNotLoadBaggageRecord(record)) return { created: false, excluded: true };
   const title = await getCbsNotLoadBaggageSheetTitle();
   const bagTag = sanitizeSheetText(record.bagTag, 80).toUpperCase();
-  const rowsResponse = await sheets.spreadsheets.values.get({ spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!A:R` });
-  const rows = rowsResponse.data.values || [];
+  const rows = await getCbsRetainedSheetRows({ title, sheetId:CBS_NOT_LOAD_BAGGAGE_SHEET_GID, range:'A:R', dateIndexes:[7] });
   const startIndex = String(rows[0]?.[0] || '').trim() === CBS_UNRESOLVED_BAGGAGE_HEADERS[0] ? 1 : 0;
   if (rows.slice(startIndex).some((row) => sanitizeSheetText(row?.[0], 80).toUpperCase() === bagTag && !sanitizeSheetText(row?.[10], 40))) {
     return { created: false };
@@ -3804,11 +3803,43 @@ async function updateCbsUnresolvedBaggageWorldTracer(rowNumber, worldTracerFileN
   return { updated: true, record };
 }
 
+async function pruneExpiredCbsRows({ title, sheetId, range, dateIndexes, rowOffset = 0 }, now = new Date()) {
+  const response = await sheets.spreadsheets.values.get({ spreadsheetId:CBS_SHEET_ID, range:`${escapeSheetTitle(title)}!${range}` });
+  const values = response.data.values || [];
+  const cutoff = new Date(now);
+  cutoff.setUTCFullYear(cutoff.getUTCFullYear() - 2);
+  const expiredIndexes = [];
+  values.forEach((row, index) => {
+    const createdAt = dateIndexes.map((dateIndex) => row[dateIndex]).find((value) => Number.isFinite(Date.parse(value))) || '';
+    const createdTime = Date.parse(createdAt);
+    if (Number.isFinite(createdTime) && createdTime < cutoff.getTime()) expiredIndexes.push(index);
+  });
+  if (expiredIndexes.length) {
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId:CBS_SHEET_ID,
+      requestBody:{ requests:expiredIndexes.slice().reverse().map((index) => ({
+        deleteDimension:{ range:{ sheetId, dimension:'ROWS', startIndex:index + rowOffset, endIndex:index + rowOffset + 1 } }
+      })) }
+    });
+  }
+  const expired = new Set(expiredIndexes);
+  return values.filter((_, index) => !expired.has(index));
+}
+
+async function getCbsRetainedSheetRows(config) {
+  const key = String(config.sheetId);
+  if (!cbsRetentionPromises.has(key)) {
+    const pending = pruneExpiredCbsRows(config).finally(() => cbsRetentionPromises.delete(key));
+    cbsRetentionPromises.set(key, pending);
+  }
+  return cbsRetentionPromises.get(key);
+}
+
 async function getCbsWorldTracerCases() {
   const title = await getCbsWorldTracerSheetTitle();
-  const response = await sheets.spreadsheets.values.get({ spreadsheetId:CBS_SHEET_ID, range:`${escapeSheetTitle(title)}!A2:H` });
+  const valuesRows = await getCbsRetainedSheetRows({ title, sheetId:CBS_WORLDTRACER_SHEET_GID, range:'A2:H', dateIndexes:[7, 6], rowOffset:1 });
   const grouped = new Map();
-  for (const [index, values] of (response.data.values || []).entries()) {
+  for (const [index, values] of valuesRows.entries()) {
     const isLegacy = !values[7];
     const [worldTracerFileNumber = '', originalTagNumber = ''] = values;
     const rushTagNumber = isLegacy ? '' : (values[2] || '');
@@ -4020,11 +4051,7 @@ async function getCbsMissingBagSheetRows(options = {}) {
   const ttlMs = Number(options.ttlMs || 30000);
   if (!options.forceRefresh && Date.now() - cbsMissingBagSheetCache.loadedAt < ttlMs && cbsMissingBagSheetCache.rows.length) return cbsMissingBagSheetCache.rows;
   const title = await getCbsMissingBagSheetTitle();
-  const res = await sheets.spreadsheets.values.get({
-    spreadsheetId: CBS_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A:J`
-  });
-  const rows = res.data.values || [];
+  const rows = await getCbsRetainedSheetRows({ title, sheetId:CBS_MISSING_BAG_SHEET_GID, range:'A:J', dateIndexes:[6] });
   cbsMissingBagSheetCache = { loadedAt: Date.now(), rows };
   return rows;
 }
