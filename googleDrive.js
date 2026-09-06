@@ -3702,6 +3702,27 @@ async function updateCbsUnresolvedBaggageDetails(rowNumber, update = {}) {
   return { updated:true, record:{ ...target, passengerName:passengerName || target.passengerName, updateEvents } };
 }
 
+async function updateCbsUnresolvedBaggageRush(rowNumber, rush = {}, updatedBy = '') {
+  const rows = await getCbsUnresolvedBaggageCases({ includeResolved:true });
+  const target = rows.find((row) => cbsRecordMatchesId(row, rowNumber));
+  if (!target) return { updated:false, notFound:true };
+  const event = {
+    key:'on-hand-rush', title:'Create Rush', at:new Date().toISOString(),
+    by:sanitizeSheetText(updatedBy, 160) || 'System',
+    fields:[
+      ['Original Tag', sanitizeSheetText(rush.originalTagNumber, 120).toUpperCase()],
+      ['Rush Tag', sanitizeSheetText(rush.rushTagNumber, 120).toUpperCase()]
+    ].filter(([, value]) => value)
+  };
+  const updateEvents = [...(target.updateEvents || []), event];
+  const title = await getCbsUnresolvedBaggageSheetTitle();
+  await sheets.spreadsheets.values.update({
+    spreadsheetId:CBS_SHEET_ID, range:`${escapeSheetTitle(title)}!R${target.rowNumber}`, valueInputOption:'RAW',
+    requestBody:{ values:[[JSON.stringify(updateEvents)]] }
+  });
+  return { updated:true, record:{ ...target, updateEvents } };
+}
+
 async function deleteCbsUnresolvedBaggageComment(rowNumber, target = {}) {
   const rows = await getCbsUnresolvedBaggageCases({ includeResolved:true });
   const current = rows.find((row) => cbsRecordMatchesId(row, rowNumber));
@@ -4558,6 +4579,7 @@ module.exports = {
   getCbsUnresolvedBaggageCases,
   updateCbsUnresolvedBaggageWorldTracer,
   updateCbsUnresolvedBaggageDetails,
+  updateCbsUnresolvedBaggageRush,
   deleteCbsUnresolvedBaggageComment,
   changeCbsUnresolvedBaggageType,
   exchangeCbsUnresolvedBaggageTag,

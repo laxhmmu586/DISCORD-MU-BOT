@@ -446,6 +446,16 @@ test('completed On-hand cases move from Open Case to Closed Case', () => {
   assert.doesNotMatch(server, /rows\.filter\(\(row\) => String\(row\.resolution \|\| ''\)\.toLowerCase\(\) !== 'on-hand-rush'/);
 });
 
+test('creating a Rush update keeps the On-hand case open', () => {
+  assert.match(server, /updateCbsUnresolvedBaggageRush\(req\.params\.rowNumber, \{ originalTagNumber, rushTagNumber \}, updatedBy\)/);
+  assert.match(drive, /async function updateCbsUnresolvedBaggageRush\(rowNumber, rush = \{\}, updatedBy = ''\)/);
+  assert.match(drive, /key:'on-hand-rush', title:'Create Rush'/);
+  assert.match(drive, /!R\$\{target\.rowNumber\}/);
+  const rushBlock = server.match(/if \(action === 'on-hand-rush'\) \{([\s\S]*?)\n    \}/)?.[1] || '';
+  assert.doesNotMatch(rushBlock, /resolveCbsUnresolvedBaggageCase/);
+  assert.match(rushBlock, /return res\.json\(result\)/);
+});
+
 test('On-hand progress updates sync to the home-page baggage search', () => {
   assert.match(server, /async function syncOnHandStatusToBaggage\(record, action, body = \{\}\)/);
   for (const status of ['WorldTracer Updated', 'Reopened', 'Create Rush', 'Passenger Collected / Case Closed', 'Case Closed', 'Shipped', 'Other']) {
