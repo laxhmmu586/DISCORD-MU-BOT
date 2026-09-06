@@ -2130,7 +2130,7 @@ async function closeExpiredBagRoomUnloadCases(rows = [], today = todayIsoUtc()) 
     const timeLimitReleased = Boolean(String(row.worldTracerFileNumber || '').trim()
       || String(row.rushTagNumber || '').trim()
       || String(row.resolution || '').trim().toLowerCase() === 'on-hand-rush'
-      || (row.updateEvents || []).some((event) => ['worldtracer', 'on-hand-rush'].includes(String(event?.key || '').trim().toLowerCase())));
+      || (row.updateEvents || []).some((event) => ['worldtracer', 'pvg', 'on-hand-rush'].includes(String(event?.key || '').trim().toLowerCase())));
     const ageDays = Math.floor((todayTime - Date.parse(`${row.flightDate}T00:00:00Z`)) / 86400000);
     return bagRoom && !timeLimitReleased && ageDays >= 3;
   });
