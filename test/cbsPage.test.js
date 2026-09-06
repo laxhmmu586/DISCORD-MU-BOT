@@ -333,7 +333,7 @@ test('MU586 Bag Room CC alerts stay disabled until explicitly enabled', () => {
 });
 
 test('On-hand cases match the passenger case layout and support WorldTracer progress', () => {
-  assert.match(page, /<th>WorldTracer File Number<\/th><th>Bag Tag<\/th>\$\{rushTagHeading\}<th>Direction<\/th>/);
+  assert.match(page, /<th>WorldTracer #<\/th><th>Bag Tag<\/th>\$\{rushTagHeading\}<th>Direction<\/th>/);
   assert.match(page, /class="case-detail-layout"><div class="case-progress-column">\$\{unresolvedProgressHtml\(progressRow\)\}/);
   assert.match(page, /<option value="worldtracer">WorldTracer<\/option>/);
   assert.match(drive, /getCbsUnresolvedBaggageSheetTitle/);
@@ -343,6 +343,11 @@ test('On-hand cases match the passenger case layout and support WorldTracer prog
   assert.match(drive, /!L\$\{target\.rowNumber\}/);
   assert.match(drive, /!L1:M1`[\s\S]*CBS_UNRESOLVED_BAGGAGE_HEADERS\[12\]/);
   assert.match(server, /action === 'worldtracer'/);
+});
+
+test('case list first columns use the abbreviated WorldTracer heading', () => {
+  assert.equal((page.match(/<th>WorldTracer #<\/th>/g) || []).length, 3);
+  assert.doesNotMatch(page, /<th>WorldTracer (?:File Number|File)<\/th>/);
 });
 
 test('Passenger, On-hand, and Bag Room cases support replaceable PNR and TKT Record tabs', () => {
