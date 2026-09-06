@@ -6256,7 +6256,7 @@
           return total + Number(sy?.spml?.email?.cabinCounts?.[cabin] || 0) + mealCountsTotal(orderedMeals);
         }, 0);
         const premiumReservations = Number(reservationCounts[0]) + Number(reservationCounts[1]);
-        const premiumHasShortage = emailFound && Number.isFinite(premiumReservations) && premiumReservations < premiumRequired;
+        const premiumHasShortage = emailFound && Number.isFinite(premiumReservations) && premiumRequired < premiumReservations;
         if (sy?.flightDate) {
           setText(prefix ? "#meal-order-tab-tomorrow" : "#meal-order-tab-today", formatMealFlightDate(sy.flightDate));
           if (!prefix) setText("#meal-order-tab-tomorrow", nextMealFlightDate(sy.flightDate));
