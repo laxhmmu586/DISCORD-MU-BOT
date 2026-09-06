@@ -77,6 +77,7 @@ const {
   getCbsUnresolvedBaggageCases,
   updateCbsUnresolvedBaggageWorldTracer,
   updateCbsUnresolvedBaggageDetails,
+  updateCbsUnresolvedBaggageRush,
   deleteCbsUnresolvedBaggageComment,
   changeCbsUnresolvedBaggageType,
   exchangeCbsUnresolvedBaggageTag,
@@ -2461,6 +2462,20 @@ async function syncUpcomingRushOnHand(record, updateEvent, updatedBy = '') {
   return Promise.all(matches.map((row) => updateCbsUnresolvedBaggageWorldTracer(row.rowNumber, worldTracerFileNumber, updatedBy)));
 }
 
+async function syncOnHandWorldTracerToRushBag(record, updatedBy = '') {
+  const originalTag = normalizedCbsLinkTag(record?.bagTag);
+  const worldTracerFileNumber = sanitizeCbsText(record?.worldTracerFileNumber, 120).toUpperCase();
+  if (!originalTag || !worldTracerFileNumber) return [];
+  const rushBags = await getCbsWorldTracerCases();
+  const matches = rushBags.filter((rushBag) => normalizedCbsLinkTag(rushBag.originalTagNumber) === originalTag
+    && sanitizeCbsText(rushBag.worldTracerFileNumber, 120).toUpperCase() !== worldTracerFileNumber);
+  return Promise.all(matches.map((rushBag) => updateCbsWorldTracerCase(rushBag.rowNumbers, {
+    ...rushBag,
+    worldTracerFileNumber,
+    updatedBy
+  })));
+}
+
 
 
 app.get('/cbs-missing-bags', async (req, res) => {
@@ -3053,8 +3068,10 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
     if (action === 'worldtracer') {
       const worldTracerFileNumber = sanitizeCbsText(req.body?.worldTracerFileNumber, 120).toUpperCase();
       if (!worldTracerFileNumber) return res.status(400).json({ error: 'WorldTracer file number is required' });
-      const result = await updateCbsUnresolvedBaggageWorldTracer(req.params.rowNumber, worldTracerFileNumber, sanitizeCbsText(req.body?.updatedBy, 160));
+      const updatedBy = sanitizeCbsText(req.body?.updatedBy, 160);
+      const result = await updateCbsUnresolvedBaggageWorldTracer(req.params.rowNumber, worldTracerFileNumber, updatedBy);
       if (result.notFound) return res.status(404).json({ error: 'Unresolved baggage case not found' });
+      result.syncedRushBagCases = await syncOnHandWorldTracerToRushBag(result.record, updatedBy);
       await syncOnHandStatusToBaggage(result.record, action, req.body);
       return res.json(result);
     }
@@ -3102,6 +3119,11 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
       if (!originalTagNumber || !rushTagNumber || !flightRows.length || flightRows.some((flight) => Object.values(flight).some((value) => !value))) return res.status(400).json({ error: 'Original tag, RUSH tag, and complete flight segments are required' });
       const savedRushBag = await appendCbsWorldTracerCase({ worldTracerFileNumber, originalTagNumber, rushTagNumber, flightRows, createdAt: new Date().toISOString() });
       await addRushBagDiscordResult({}, savedRushBag);
+      const updatedBy = sanitizeCbsText(req.body?.updatedBy, 160);
+      const result = await updateCbsUnresolvedBaggageRush(req.params.rowNumber, { originalTagNumber, rushTagNumber }, updatedBy);
+      if (result.notFound) return res.status(404).json({ error: 'Unresolved baggage case not found' });
+      await syncOnHandStatusToBaggage(result.record, action, req.body);
+      return res.json(result);
     }
     const updatedBy = sanitizeCbsText(req.body?.updatedBy, 160);
     let resolutionNote = action === 'passenger-collected' ? 'Passenger Collected / Case Closed' : note;

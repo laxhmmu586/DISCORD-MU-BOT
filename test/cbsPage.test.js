@@ -446,6 +446,23 @@ test('completed On-hand cases move from Open Case to Closed Case', () => {
   assert.doesNotMatch(server, /rows\.filter\(\(row\) => String\(row\.resolution \|\| ''\)\.toLowerCase\(\) !== 'on-hand-rush'/);
 });
 
+test('creating a Rush update keeps the On-hand case open', () => {
+  assert.match(server, /updateCbsUnresolvedBaggageRush\(req\.params\.rowNumber, \{ originalTagNumber, rushTagNumber \}, updatedBy\)/);
+  assert.match(drive, /async function updateCbsUnresolvedBaggageRush\(rowNumber, rush = \{\}, updatedBy = ''\)/);
+  assert.match(drive, /key:'on-hand-rush', title:'Create Rush'/);
+  assert.match(drive, /!R\$\{target\.rowNumber\}/);
+  const rushBlock = server.match(/if \(action === 'on-hand-rush'\) \{([\s\S]*?)\n    \}/)?.[1] || '';
+  assert.doesNotMatch(rushBlock, /resolveCbsUnresolvedBaggageCase/);
+  assert.match(rushBlock, /return res\.json\(result\)/);
+});
+
+test('On-hand WorldTracer updates sync to the matching Rush Bag case', () => {
+  assert.match(server, /async function syncOnHandWorldTracerToRushBag\(record, updatedBy = ''\)/);
+  assert.match(server, /normalizedCbsLinkTag\(rushBag\.originalTagNumber\) === originalTag/);
+  assert.match(server, /updateCbsWorldTracerCase\(rushBag\.rowNumbers, \{/);
+  assert.match(server, /result\.syncedRushBagCases = await syncOnHandWorldTracerToRushBag\(result\.record, updatedBy\)/);
+});
+
 test('On-hand progress updates sync to the home-page baggage search', () => {
   assert.match(server, /async function syncOnHandStatusToBaggage\(record, action, body = \{\}\)/);
   for (const status of ['WorldTracer Updated', 'Reopened', 'Create Rush', 'Passenger Collected / Case Closed', 'Case Closed', 'Shipped', 'Other']) {
@@ -843,6 +860,12 @@ test('Missing Bag Report shows the LAXTEC phone contact', () => {
   assert.match(page, /class="missing-report-contact" href="tel:\+14243121860"/);
   assert.match(page, /LAXTEC: 424-312-1860/);
   assert.match(page, /aria-label="Call LAXTEC at 424-312-1860"/);
+});
+
+test('Missing Bag Report only offers Acknowledge for open rows', () => {
+  assert.match(page, /data-ack-missing="\$\{escapeHtml\(identifier\)\}">Acknowledge/);
+  assert.doesNotMatch(page, /data-create-missing-rush/);
+  assert.doesNotMatch(page, /worldTracerForm\.dataset\.missingRow/);
 });
 
 test('Passenger Filed displays multiple bag tags on separate lines', () => {

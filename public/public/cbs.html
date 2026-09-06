@@ -1495,7 +1495,7 @@
         return `<section class="missing-date-group"><h2 class="missing-date-heading">${todayLabel}${escapeHtml(dateLabel)}</h2><div class="sheet-shell"><table class="missing-report-table"><thead><tr><th>Bag Tag</th><th>Passenger</th><th>Destination</th><th>Airline</th><th>Source</th><th>Status</th><th></th></tr></thead><tbody>${group.rows.map((row) => {
           const status = row.acknowledgedAt ? 'Acknowledged' : (row.caseCreatedAt ? (row.linkedCaseUpdated ? 'Updated' : 'Rush Created') : 'Open');
           const identifier = row.rowNumber || '';
-          const actionHtml = row.acknowledgedAt || row.caseCreatedAt ? '' : `<div class="missing-actions"><button type="button" data-create-missing-rush="${escapeHtml(identifier)}" data-missing-bag-tag="${escapeHtml(row.bagTag)}">Create Rush</button><button class="secondary" type="button" data-ack-missing="${escapeHtml(identifier)}">Acknowledge</button></div>`;
+          const actionHtml = row.acknowledgedAt || row.caseCreatedAt ? '' : `<div class="missing-actions"><button class="secondary" type="button" data-ack-missing="${escapeHtml(identifier)}">Acknowledge</button></div>`;
           return `<tr><td>${escapeHtml(row.bagTag)}</td><td>${escapeHtml(row.passengerName)}</td><td>${escapeHtml(row.destination)}</td><td>${escapeHtml(row.airline)}</td><td>${escapeHtml(row.sourceAttachment || '-')}</td><td>${escapeHtml(status)}</td><td>${actionHtml}</td></tr>`;
         }).join('')}</tbody></table></div></section>`;
       }).join('')}</div>${listPaginationHtml('missing-reports', pagination)}`;
@@ -1719,7 +1719,7 @@
     caseSearch?.addEventListener('input', () => { renderCases(); if (window._unresolvedBaggageLoaded) renderUnresolvedBaggage(window._unresolvedBaggageSourceRows || []); loadBaggageSearch(caseSearch.value); });
     openCasesTab?.addEventListener('click', () => showSection('open'));
     closedCasesTab?.addEventListener('click', () => showSection('closed'));
-    worldTracerTab?.addEventListener('click', async () => { delete worldTracerForm.dataset.missingRow; showSection('worldtracer'); await loadWorldTracerCases(); });
+    worldTracerTab?.addEventListener('click', async () => { showSection('worldtracer'); await loadWorldTracerCases(); });
     missingAlert?.addEventListener('click', () => {
       showSection('missing');
       if (window._missingReportLoaded) renderMissingReports(window._missingBagRows || []);
@@ -1753,13 +1753,6 @@
         const res = await fetch(`${apiBase}/cbs-worldtracer-cases`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || 'Rush Bag case save failed');
-        if (worldTracerForm.dataset.missingRow) {
-          const linkRes = await fetch(`${apiBase}/cbs-missing-bags/${encodeURIComponent(worldTracerForm.dataset.missingRow)}/link-on-hand-rush`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ worldTracerFileNumber:payload.worldTracerFileNumber }) });
-          const linkData = await parseJson(linkRes);
-          if (!linkRes.ok) throw new Error(linkData.error || 'Missing bag link failed');
-          delete worldTracerForm.dataset.missingRow;
-          await loadMissingReports();
-        }
         worldTracerForm.reset();
         resetRushFlightRows();
         worldTracerStatus.textContent = label('Rush Bag case created and saved.', 'Rush Bag 案件已创建并保存。');
@@ -2095,16 +2088,6 @@
       } finally { button.disabled = false; }
     });
     missingReportOutput?.addEventListener('click', async (event) => {
-      const rushButton = event.target.closest('[data-create-missing-rush]');
-      if (rushButton) {
-        showSection('worldtracer');
-        worldTracerForm.reset();
-        worldTracerForm.dataset.missingRow = rushButton.dataset.createMissingRush || '';
-        worldTracerForm.elements.originalTagNumber.value = rushButton.dataset.missingBagTag || '';
-        resetRushFlightRows();
-        worldTracerForm.scrollIntoView({ behavior:'smooth', block:'start' });
-        return;
-      }
       const createButton = event.target.closest('[data-create-missing-case]');
       const ackButton = event.target.closest('[data-ack-missing]');
       const button = createButton || ackButton;
