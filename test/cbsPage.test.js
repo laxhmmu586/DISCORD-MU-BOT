@@ -333,11 +333,19 @@ test('growing Rush and case lists paginate by record count while Missing Reports
   assert.match(page, /const listKey = `\$\{showClosed \? 'closed' : 'open'\}-\$\{isNotLoadBag\(rows\[0\]\) \? 'bag-room' : 'on-hand'\}`/);
 });
 
-test('Not Load Bags are automatically copied to the Bag Room Unload Google Sheet', () => {
+test('Not Load Bags are automatically saved to the Bag Room Unload Google Sheet', () => {
   assert.match(drive, /CBS_NOT_LOAD_BAGGAGE_SHEET_GID = Number\(process\.env\.CBS_NOT_LOAD_BAGGAGE_SHEET_GID \|\| 1393047851\)/);
   assert.match(drive, /function isNotLoadBaggageRecord[\s\S]*not\\s\+load/);
   assert.match(drive, /async function appendCbsNotLoadBaggageCase[\s\S]*getCbsNotLoadBaggageSheetTitle/);
-  assert.match(drive, /await appendCbsNotLoadBaggageCase\(\{ \.\.\.record, \.\.\.saved \}\);/);
+  assert.match(drive, /if \(isNotLoadBaggageRecord\(record\)\) return appendCbsNotLoadBaggageCase\(record\)/);
+});
+
+test('Bag Room Unload updates stay in the dedicated unload sheet', () => {
+  assert.match(drive, /const \[valuesRows, notLoadRows\] = await Promise\.all/);
+  assert.match(drive, /rowNumber:source === 'not-load' \? `unload-\$\{startIndex \+ index \+ 1\}`/);
+  assert.match(drive, /if \(isNotLoadBaggageRecord\(record\)\) return appendCbsNotLoadBaggageCase\(record\)/);
+  assert.match(drive, /row\.source === 'not-load' \? getCbsNotLoadBaggageSheetTitle\(\) : getCbsUnresolvedBaggageSheetTitle\(\)/);
+  assert.match(drive, /range:`\$\{escapeSheetTitle\(title\)\}!Q\$\{cbsRecordSheetRow\(target\)\}:R\$\{cbsRecordSheetRow\(target\)\}`/);
 });
 
 test('MU586 Bag Room CC alerts stay disabled until explicitly enabled', () => {
