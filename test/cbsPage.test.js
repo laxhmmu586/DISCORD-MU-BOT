@@ -310,7 +310,8 @@ test('Bag Room cases show a three-day status timer and automatically close when 
 
 test('Bag Room status changes from Open to Rush after a Rush bag is linked', () => {
   assert.match(page, /const bagRoomStatus = row\.resolvedAt \? 'Closed' : \(String\(row\.rushTagNumber \|\| ''\)\.trim\(\) \? 'Rush' : 'Open'\)/);
-  assert.match(page, /<td class="sheet-meta">\$\{bagRoomStatus\}<\/td>/);
+  assert.match(page, /bagRoomStatus === 'Rush' \? ' rush-status' : ''/);
+  assert.match(page, /\.cbs-sheet \.rush-status \{ color:#16803c; \}/);
 });
 
 test('On-hand and Bag Room cases can save and display PVG Filed information', () => {
@@ -860,6 +861,7 @@ test('new Rush itineraries default to todays MU586 LAX-PVG flight while added fl
   assert.match(page, /function defaultRushFlight\(\)/);
   assert.match(page, /return \{ flightDate, flightNumber:'MU586', from:'LAX', to:'PVG' \}/);
   assert.match(page, /addRushFlightRow\(defaultRushFlight\(\)\)/);
+  assert.match(page, /data-unresolved-flight-rows>\$\{rushFlightRowHtml\(defaultRushFlight\(\)\)\}/);
   assert.match(page, /addRushFlight\?\.addEventListener\('click', \(\) => addRushFlightRow\(\)\)/);
   assert.match(page, /input\[type="date"\]\{width:100%;height:52px;min-height:52px/);
 });

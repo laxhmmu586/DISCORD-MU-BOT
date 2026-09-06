@@ -3156,13 +3156,7 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
       const originalTagNumber = sanitizeCbsText(req.body?.originalTagNumber || req.body?.bagTagNumber, 120).toUpperCase();
       const rushTagNumber = sanitizeCbsText(req.body?.rushTagNumber, 120).toUpperCase();
       if (!originalTagNumber || !rushTagNumber || !flightRows.length || flightRows.some((flight) => Object.values(flight).some((value) => !value))) return res.status(400).json({ error: 'Original tag, RUSH tag, and complete flight segments are required' });
-      const savedRushBag = await appendCbsWorldTracerCase({ worldTracerFileNumber, originalTagNumber, rushTagNumber, flightRows, createdAt: new Date().toISOString() });
-      await addRushBagDiscordResult({}, savedRushBag);
-      const updatedBy = sanitizeCbsText(req.body?.updatedBy, 160);
-      const result = await updateCbsUnresolvedBaggageRush(req.params.rowNumber, { originalTagNumber, rushTagNumber }, updatedBy);
-      if (result.notFound) return res.status(404).json({ error: 'Unresolved baggage case not found' });
-      await syncOnHandStatusToBaggage(result.record, action, req.body);
-      return res.json(result);
+      await saveLinkedRushBag({ worldTracerFileNumber, originalTagNumber, rushTagNumber, flightRows, createdAt: new Date().toISOString() });
     }
     const updatedBy = sanitizeCbsText(req.body?.updatedBy, 160);
     let resolutionNote = action === 'passenger-collected' ? 'Passenger Collected / Case Closed' : note;
