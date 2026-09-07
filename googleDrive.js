@@ -3552,6 +3552,7 @@ async function appendCbsWorldTracerCase(record = {}) {
     insertDataOption: 'INSERT_ROWS',
     requestBody: { values: saved.flightRows.map((flight) => [saved.worldTracerFileNumber, saved.originalTagNumber, saved.rushTagNumber, flight.flightNumber, flight.flightDate, flight.from, flight.to, saved.createdAt]) }
   });
+  invalidateCbsWorldTracerCaseCache();
   return saved;
 }
 
@@ -3859,26 +3860,52 @@ async function getCbsRetainedSheetRows(config) {
   return cbsRetentionPromises.get(key);
 }
 
+const CBS_WORLDTRACER_CACHE_TTL_MS = Math.max(1000, Number(process.env.CBS_WORLDTRACER_CACHE_TTL_MS) || 30000);
+let cbsWorldTracerCaseCache = { expiresAt:0, rows:null, pending:null };
+
+function copyCbsWorldTracerCases(rows = []) {
+  return rows.map((row) => ({
+    ...row,
+    flightRows:(row.flightRows || []).map((flight) => ({ ...flight })),
+    rowNumbers:[...(row.rowNumbers || [])]
+  }));
+}
+
+function invalidateCbsWorldTracerCaseCache() {
+  cbsWorldTracerCaseCache = { expiresAt:0, rows:null, pending:null };
+}
+
 async function getCbsWorldTracerCases() {
   const title = await getCbsWorldTracerSheetTitle();
-  const valuesRows = await getCbsRetainedSheetRows({ title, sheetId:CBS_WORLDTRACER_SHEET_GID, range:'A2:H', dateIndexes:[7, 6], rowOffset:1 });
-  const grouped = new Map();
-  for (const [index, values] of valuesRows.entries()) {
-    const isLegacy = !values[7];
-    const [worldTracerFileNumber = '', originalTagNumber = ''] = values;
-    const rushTagNumber = isLegacy ? '' : (values[2] || '');
-    const flightNumber = values[isLegacy ? 2 : 3] || '';
-    const flightDate = values[isLegacy ? 3 : 4] || '';
-    const from = values[isLegacy ? 4 : 5] || '';
-    const to = values[isLegacy ? 5 : 6] || '';
-    const createdAt = values[isLegacy ? 6 : 7] || '';
-    if (!worldTracerFileNumber && !originalTagNumber) continue;
-    const key = `${worldTracerFileNumber}\u0000${originalTagNumber}\u0000${rushTagNumber}\u0000${createdAt}`;
-    if (!grouped.has(key)) grouped.set(key, { worldTracerFileNumber, originalTagNumber, rushTagNumber, createdAt, flightRows:[], rowNumbers:[] });
-    grouped.get(key).flightRows.push({ flightNumber, flightDate, from, to });
-    grouped.get(key).rowNumbers.push(index + 2);
+  if (cbsWorldTracerCaseCache.rows && cbsWorldTracerCaseCache.expiresAt > Date.now()) return copyCbsWorldTracerCases(cbsWorldTracerCaseCache.rows);
+  if (!cbsWorldTracerCaseCache.pending) {
+    cbsWorldTracerCaseCache.pending = (async () => {
+      const valuesRows = await getCbsRetainedSheetRows({ title, sheetId:CBS_WORLDTRACER_SHEET_GID, range:'A2:H', dateIndexes:[7, 6], rowOffset:1 });
+      const grouped = new Map();
+      for (const [index, values] of valuesRows.entries()) {
+        const isLegacy = !values[7];
+        const [worldTracerFileNumber = '', originalTagNumber = ''] = values;
+        const rushTagNumber = isLegacy ? '' : (values[2] || '');
+        const flightNumber = values[isLegacy ? 2 : 3] || '';
+        const flightDate = values[isLegacy ? 3 : 4] || '';
+        const from = values[isLegacy ? 4 : 5] || '';
+        const to = values[isLegacy ? 5 : 6] || '';
+        const createdAt = values[isLegacy ? 6 : 7] || '';
+        if (!worldTracerFileNumber && !originalTagNumber) continue;
+        const key = `${worldTracerFileNumber}\u0000${originalTagNumber}\u0000${rushTagNumber}\u0000${createdAt}`;
+        if (!grouped.has(key)) grouped.set(key, { worldTracerFileNumber, originalTagNumber, rushTagNumber, createdAt, flightRows:[], rowNumbers:[] });
+        grouped.get(key).flightRows.push({ flightNumber, flightDate, from, to });
+        grouped.get(key).rowNumbers.push(index + 2);
+      }
+      const rows = [...grouped.values()].sort((a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0));
+      cbsWorldTracerCaseCache = { expiresAt:Date.now() + CBS_WORLDTRACER_CACHE_TTL_MS, rows, pending:null };
+      return rows;
+    })().catch((error) => {
+      invalidateCbsWorldTracerCaseCache();
+      throw error;
+    });
   }
-  return [...grouped.values()].sort((a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0));
+  return copyCbsWorldTracerCases(await cbsWorldTracerCaseCache.pending);
 }
 
 async function updateCbsWorldTracerCase(rowNumbers = [], record = {}) {
@@ -3900,6 +3927,7 @@ async function updateCbsWorldTracerCase(rowNumbers = [], record = {}) {
       await sheets.spreadsheets.values.append({ spreadsheetId:CBS_SHEET_ID, range:`${escapeSheetTitle(title)}!A:H`, valueInputOption:'RAW', insertDataOption:'INSERT_ROWS', requestBody:{ values:[[saved.worldTracerFileNumber, saved.originalTagNumber, saved.rushTagNumber, flight.flightNumber, flight.flightDate, flight.from, flight.to, saved.createdAt]] } });
     }
   }
+  invalidateCbsWorldTracerCaseCache();
   return { updated:true, record:saved };
 }
 
