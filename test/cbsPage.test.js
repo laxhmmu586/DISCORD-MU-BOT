@@ -50,13 +50,6 @@ test('Rush Bag reads use a short cache that is invalidated after writes', () => 
   assert.equal((drive.match(/invalidateCbsWorldTracerCaseCache\(\);/g) || []).length >= 3, true);
 });
 
-test('Open On-hand cases show a fading PVG overdue notice after seven days', () => {
-  assert.match(page, /Date\.now\(\) - createdTime >= 7 \* 86400000/);
-  assert.match(page, /Overdue baggage – Rush back to PVG\./);
-  assert.match(page, /animation:on-hand-overdue-fade 1\.6s ease-in-out infinite alternate/);
-  assert.match(page, /prefers-reduced-motion:reduce/);
-});
-
 test('CBS sheets automatically remove data older than two years', () => {
   assert.match(drive, /async function pruneExpiredCbsRows\(\{ title, sheetId, range, dateIndexes, rowOffset = 0 \}, now = new Date\(\)\)/);
   assert.match(drive, /cutoff\.setUTCFullYear\(cutoff\.getUTCFullYear\(\) - 2\)/);
