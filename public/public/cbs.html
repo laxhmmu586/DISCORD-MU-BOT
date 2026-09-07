@@ -89,6 +89,10 @@
     .cbs-sheet .bag-subfield { color:#000; font-weight:700; }
     .cbs-sheet .sheet-meta { color:#344054; font-weight:850; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .cbs-sheet .rush-status { color:#16803c; }
+    .on-hand-status { display:flex; align-items:center; justify-content:space-between; gap:12px; overflow:visible; }
+    .on-hand-overdue { color:#d92d20; font-size:11px; font-weight:950; line-height:1.25; white-space:normal; text-align:right; animation:on-hand-overdue-fade 1.6s ease-in-out infinite alternate; }
+    @keyframes on-hand-overdue-fade { from { opacity:.28; } to { opacity:1; } }
+    @media (prefers-reduced-motion:reduce) { .on-hand-overdue { animation:none; opacity:1; } }
     .cbs-sheet .bag-tag-value { display:inline-flex; padding:5px 10px; border-radius:999px; background:#e8f1ff; color:#0b4ea2; font-weight:950; letter-spacing:.02em; }
     .bag-tag-list { display:inline-grid; gap:5px; justify-items:start; }
     .upcoming-rush-summary { display:inline-grid; grid-template-columns:44px auto; align-items:center; min-height:29px; gap:6px; font-weight:850; white-space:nowrap; }
@@ -838,6 +842,11 @@
         const dateKey = String(row.flightDate || '').trim() || 'unknown';
         if (!dateBands.has(dateKey)) dateBands.set(dateKey, dateBands.size % 2);
       });
+      const isOpenOnHandOverdue = (row) => {
+        if (showClosed || isBagRoomGroup || row.resolvedAt) return false;
+        const createdTime = Date.parse(row.createdAt);
+        return Number.isFinite(createdTime) && Date.now() - createdTime >= 7 * 86400000;
+      };
       output.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:190px"><col style="width:150px"><col style="width:250px">${rushTagColumn}<col style="width:130px"><col>${isBagRoomGroup ? '<col style="width:160px">' : ''}</colgroup><thead><tr><th>WorldTracer #</th><th>PVG Filed</th><th>Bag Tag</th>${rushTagHeading}<th>Date</th>${statusHeadings}</tr></thead><tbody>${rows.map((row) => {
         const resolvedHistory = row.history.filter((item) => item.resolvedAt);
         // "Other" records stay in Open Case and remain actionable so staff can
@@ -867,7 +876,8 @@
         const bagRoomStatus = row.resolvedAt ? 'Closed' : (String(row.rushTagNumber || '').trim() ? 'Rush' : 'Open');
         const pvgFields = new Map(allUpdateEvents.filter((event) => event.key === 'pvg').at(-1)?.fields || []);
         const pvg = pvgFields.get('PVG Filed') || pvgFields.get('PVG') || '-';
-        const statusCells = isBagRoomGroup ? `<td class="sheet-meta${bagRoomStatus === 'Rush' ? ' rush-status' : ''}">${bagRoomStatus}</td><td class="sheet-meta">${bagRoomTimerHtml(row)}</td>` : `<td class="sheet-meta">${escapeHtml(row.bagType || row.status || '-')}</td>`;
+        const overdueNotice = isOpenOnHandOverdue(active || row) ? '<span class="on-hand-overdue" role="status">Overdue baggage – Rush back to PVG.</span>' : '';
+        const statusCells = isBagRoomGroup ? `<td class="sheet-meta${bagRoomStatus === 'Rush' ? ' rush-status' : ''}">${bagRoomStatus}</td><td class="sheet-meta">${bagRoomTimerHtml(row)}</td>` : `<td class="sheet-meta"><span class="on-hand-status"><span>${escapeHtml(row.bagType || row.status || '-')}</span>${overdueNotice}</span></td>`;
         const dateBand = dateBands.get(String(row.flightDate || '').trim() || 'unknown') === 0 ? 'date-band-a' : 'date-band-b';
         return `<tr class="case-summary-row ${dateBand}" data-toggle-unresolved-update role="button" tabindex="0" aria-expanded="false"><td class="sheet-meta">${escapeHtml(row.worldTracerFileNumber || '-')}</td><td class="sheet-meta">${escapeHtml(pvg)}</td><td class="sheet-meta"><span class="on-hand-tag-summary">${matchBadge}${tagDisplay}</span>${bagTagAction}</td>${rushTagCell}<td class="sheet-meta">${escapeHtml(row.flightDate || '-')}</td>${statusCells}</tr><tr class="case-detail-row" data-unresolved-detail hidden><td colspan="${columnCount}"><div class="case-detail-layout"><div class="case-progress-column">${unresolvedProgressHtml(progressRow)}</div><div class="case-detail-right">${formHtml}${commentsHtml}${historyHtml}${recordPanelHtml}</div></div></td></tr>`;
       }).join('')}</tbody></table></div>${listPaginationHtml(listKey, pagination)}`;
