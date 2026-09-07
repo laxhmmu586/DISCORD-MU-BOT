@@ -31,7 +31,7 @@ test('CBS storage reads and writes Google Sheets only', () => {
   assert.match(page, /const identifier = row\.rowNumber \|\| ''/);
   assert.match(drive, /async function getCbsCases\(\) \{[\s\S]*getCbsSheetRows/);
   assert.match(drive, /async function getCbsUnresolvedBaggageCases[\s\S]*spreadsheets\.values\.get/);
-  assert.match(drive, /async function getCbsWorldTracerCases[\s\S]*spreadsheets\.values\.get/);
+  assert.match(drive, /async function getCbsWorldTracerCases[\s\S]*getCbsRetainedSheetRows/);
   assert.match(drive, /async function getCbsMissingBagReports[\s\S]*getCbsMissingBagSheetRows/);
   assert.doesNotMatch(drive, /[Ff]irestore/);
 });
@@ -41,6 +41,13 @@ test('Rush Bag storage refreshes the sheet title after a tab rename', () => {
   assert.match(drive, /async function getCbsWorldTracerCases\(\) \{\s*const title = await getCbsWorldTracerSheetTitle\(\)/);
   assert.match(drive, /async function appendCbsWorldTracerCase\(record = \{\}\) \{\s*const title = await getCbsWorldTracerSheetTitle\(\)/);
   assert.match(drive, /async function updateCbsWorldTracerCase\(rowNumbers = \[\], record = \{\}\) \{\s*const title = await getCbsWorldTracerSheetTitle\(\)/);
+});
+
+test('Rush Bag reads use a short cache that is invalidated after writes', () => {
+  assert.match(drive, /CBS_WORLDTRACER_CACHE_TTL_MS/);
+  assert.match(drive, /cbsWorldTracerCaseCache\.expiresAt > Date\.now\(\)/);
+  assert.match(drive, /cbsWorldTracerCaseCache\.pending/);
+  assert.equal((drive.match(/invalidateCbsWorldTracerCaseCache\(\);/g) || []).length >= 3, true);
 });
 
 test('CBS sheets automatically remove data older than two years', () => {
