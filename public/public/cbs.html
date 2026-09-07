@@ -1523,7 +1523,9 @@
         return `<section class="missing-date-group"><h2 class="missing-date-heading">${todayLabel}${escapeHtml(dateLabel)}</h2><div class="sheet-shell"><table class="missing-report-table"><thead><tr><th>Bag Tag</th><th>Passenger</th><th>Destination</th><th>Airline</th><th>Source</th><th>Status</th><th></th></tr></thead><tbody>${group.rows.map((row) => {
           const status = row.acknowledgedAt ? 'Acknowledged' : (row.caseCreatedAt ? (row.linkedCaseUpdated ? 'Updated' : 'Rush Created') : 'Open');
           const identifier = row.rowNumber || '';
-          const originalTagNumber = rushBagTagNumber(row.bagTag, row.airline);
+          // Keep the source report value visible so an agent can verify and
+          // correct it instead of silently replacing its prefix/digits.
+          const originalTagNumber = String(row.bagTag || '').trim().toUpperCase();
           const actionHtml = row.acknowledgedAt || row.caseCreatedAt ? '' : `<div class="missing-actions"><button type="button" data-create-missing-rush="${escapeHtml(identifier)}" data-missing-original-tag="${escapeHtml(originalTagNumber)}">Create Rush</button><button class="secondary" type="button" data-ack-missing="${escapeHtml(identifier)}">Acknowledge</button></div>`;
           return `<tr><td>${escapeHtml(row.bagTag)}</td><td>${escapeHtml(row.passengerName)}</td><td>${escapeHtml(row.destination)}</td><td>${escapeHtml(row.airline)}</td><td>${escapeHtml(row.sourceAttachment || '-')}</td><td>${escapeHtml(status)}</td><td>${actionHtml}</td></tr>`;
         }).join('')}</tbody></table></div></section>`;
@@ -2135,6 +2137,8 @@
         worldTracerForm.reset();
         worldTracerForm.dataset.missingRow = rushButton.dataset.createMissingRush || '';
         worldTracerForm.elements.originalTagNumber.value = rushButton.dataset.missingOriginalTag || '';
+        worldTracerStatus.classList.add('err');
+        worldTracerStatus.textContent = 'Original tag number retained from the Missing Bag Report. Please update it to an airline code followed by 6 digits (for example MU123456).';
         resetRushFlightRows();
         worldTracerForm.scrollIntoView({ behavior:'smooth', block:'start' });
         return;
