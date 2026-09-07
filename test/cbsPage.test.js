@@ -890,6 +890,8 @@ test('Missing Bag Report offers Create Rush and Acknowledge for open rows', () =
   assert.match(page, /data-create-missing-rush="\$\{escapeHtml\(identifier\)\}"/);
   assert.match(page, /worldTracerForm\.dataset\.missingRow/);
   assert.match(page, /data-missing-original-tag="\$\{escapeHtml\(originalTagNumber\)\}"/);
+  assert.match(page, /const originalTagNumber = String\(row\.bagTag \|\| ''\)\.trim\(\)\.toUpperCase\(\)/);
+  assert.match(page, /Original tag number retained from the Missing Bag Report\. Please update it/);
   assert.match(server, /action === 'link-rush'/);
 });
 
