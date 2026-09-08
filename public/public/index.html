@@ -6217,8 +6217,8 @@
         return JSON.stringify([sy.flightNo, sy.flightDate, sy.gate, sy.bdt, sy.sd, sy.reservation, sy.reservationTicketed, sy.checkedIn, sy.checkedInTicketed, sy.spml || {}, sy.jcsy, steps, sy.chdList || [], govSignature, webEdiIssueBnList(sy), nbrdSignature, warningSignature, sy.psmList || [], sy.wchList || []]);
       }
 
-      function mealCountsText(counts) {
-        return Object.entries(counts || {}).filter(([meal, count]) => meal.toUpperCase() !== "BBML" && Number(count) > 0).sort(([a], [b]) => a.localeCompare(b)).map(([meal, count]) => `${count} ${meal}`).join("\n") || "-";
+      function mealCountsText(counts, showNonMeals = false) {
+        return Object.entries(counts || {}).filter(([meal, count]) => (showNonMeals || meal.toUpperCase() !== "BBML") && Number(count) > 0).sort(([a], [b]) => a.localeCompare(b)).map(([meal, count]) => `${count} ${meal}`).join("\n") || "-";
       }
 
       function mealCountsTotal(counts) {
@@ -6275,7 +6275,7 @@
           setText(`#${prefix}reservation-${key}`, reservationCounts[index]);
           setText(`#${prefix}meal-email-${key}`, emailFound ? (sy.spml.email.cabinCounts?.[cabin] ?? "-") : "-");
           setText(`#${prefix}meal-spml-${key}`, mealCountsText(orderedMeals));
-          setText(`#${prefix}meal-pd-${key}`, mealCountsText(pdMeals));
+          setText(`#${prefix}meal-pd-${key}`, mealCountsText(pdMeals, true));
           reservationElement?.classList.remove("is-over", "is-under");
           orderedSpmlElement?.classList.remove("is-mismatch");
           pdElement?.classList.remove("is-mismatch");

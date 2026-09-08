@@ -58,7 +58,7 @@ test('extracts special meals per F/J/Y line and accepts a four-digit year', () =
   assert.deepEqual(result.countsByCabin, { F:{ FPML:1 }, J:{ MOML:2 }, Y:{ VGML:3 } });
 });
 
-test('excludes BBML from meal-order and PD reconciliation counts', () => {
+test('excludes BBML from totals but keeps it in PD cabin details', () => {
   const email = parseMealOrderEmail('MU586/08SEP2026\nF - 2\nJ - 50 + 2 BBML = 52\nY - 230');
   assert.deepEqual(email.countsByCabin, { F:{}, J:{}, Y:{} });
 
@@ -69,7 +69,7 @@ test('excludes BBML from meal-order and PD reconciliation counts', () => {
    SPML-BBML BBML HK1
 2. 1ADULT/PAX          BN230  34A    Y PVG
    SPML-LFML LFML HK1`);
-  assert.deepEqual(result.preorderByCabin, { F:{}, J:{}, Y:{ LFML:1 } });
+  assert.deepEqual(result.preorderByCabin, { F:{}, J:{ BBML:1 }, Y:{ LFML:1 } });
   assert.deepEqual(result.preorderCounts, { LFML:1 });
   assert.equal(result.preorder.length, 2);
 });

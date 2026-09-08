@@ -92,7 +92,7 @@ function parseSpmlLog(log, options = {}) {
   const deduped = [...new Map(rows.map((row) => [`${row.source}|${row.flightNo}|${row.flightDate}|${row.passenger}|${row.bn}|${row.meal}`, row])).values()];
   const countableRows = deduped.filter((row) => !NON_MEAL_CODES.has(row.meal));
   const summarize = (source) => countableRows.filter((row) => row.source === source).reduce((counts, row) => ({ ...counts, [row.meal]: (counts[row.meal] || 0) + 1 }), {});
-  const summarizeByCabin = (source) => countableRows.filter((row) => row.source === source).reduce((cabins, row) => {
+  const summarizeByCabin = (source) => deduped.filter((row) => row.source === source).reduce((cabins, row) => {
     cabins[row.cabin] = cabins[row.cabin] || {};
     cabins[row.cabin][row.meal] = (cabins[row.cabin][row.meal] || 0) + 1;
     return cabins;

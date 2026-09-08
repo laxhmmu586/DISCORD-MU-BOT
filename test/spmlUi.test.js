@@ -31,8 +31,9 @@ test('empty PD meal totals display a dash rather than None', () => {
   assert.doesNotMatch(html, /\|\| "None"/);
 });
 
-test('BBML is hidden from meal quantities and ignored by meal warnings', () => {
-  assert.match(html, /meal\.toUpperCase\(\) !== "BBML" && Number\(count\) > 0/);
+test('BBML remains visible in PD but is ignored by meal totals and warnings', () => {
+  assert.match(html, /\(showNonMeals \|\| meal\.toUpperCase\(\) !== "BBML"\) && Number\(count\) > 0/);
+  assert.match(html, /mealCountsText\(pdMeals, true\)/);
   assert.match(html, /meal\.toUpperCase\(\) === "BBML" \? 0/);
   assert.match(html, /filter\(\(meal\) => meal\.toUpperCase\(\) !== "BBML"\)/);
 });
