@@ -6218,15 +6218,15 @@
       }
 
       function mealCountsText(counts) {
-        return Object.entries(counts || {}).filter(([, count]) => Number(count) > 0).sort(([a], [b]) => a.localeCompare(b)).map(([meal, count]) => `${count} ${meal}`).join("\n") || "-";
+        return Object.entries(counts || {}).filter(([meal, count]) => meal.toUpperCase() !== "BBML" && Number(count) > 0).sort(([a], [b]) => a.localeCompare(b)).map(([meal, count]) => `${count} ${meal}`).join("\n") || "-";
       }
 
       function mealCountsTotal(counts) {
-        return Object.values(counts || {}).reduce((total, count) => total + (Number(count) || 0), 0);
+        return Object.entries(counts || {}).reduce((total, [meal, count]) => total + (meal.toUpperCase() === "BBML" ? 0 : (Number(count) || 0)), 0);
       }
 
       function mealCountsMatch(left, right) {
-        const keys = new Set([...Object.keys(left || {}), ...Object.keys(right || {})]);
+        const keys = new Set([...Object.keys(left || {}), ...Object.keys(right || {})].filter((meal) => meal.toUpperCase() !== "BBML"));
         return [...keys].every((key) => (Number(left?.[key]) || 0) === (Number(right?.[key]) || 0));
       }
 

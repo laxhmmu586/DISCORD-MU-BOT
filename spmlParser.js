@@ -1,4 +1,5 @@
 const MONTHS = { JAN: '01', FEB: '02', MAR: '03', APR: '04', MAY: '05', JUN: '06', JUL: '07', AUG: '08', SEP: '09', OCT: '10', NOV: '11', DEC: '12' };
+const NON_MEAL_CODES = new Set(['BBML']);
 
 function flightDateToIso(value) {
   const match = String(value || '').toUpperCase().match(/^(\d{2})([A-Z]{3})(\d{4}|\d{2})$/);
@@ -89,8 +90,9 @@ function parseSpmlLog(log, options = {}) {
     return numberedRecords(item.text).map((record) => parseMealRecord(record, item.source, item.flightNo, item.flightDate, item.timestamp)).filter(Boolean);
   });
   const deduped = [...new Map(rows.map((row) => [`${row.source}|${row.flightNo}|${row.flightDate}|${row.passenger}|${row.bn}|${row.meal}`, row])).values()];
-  const summarize = (source) => deduped.filter((row) => row.source === source).reduce((counts, row) => ({ ...counts, [row.meal]: (counts[row.meal] || 0) + 1 }), {});
-  const summarizeByCabin = (source) => deduped.filter((row) => row.source === source).reduce((cabins, row) => {
+  const countableRows = deduped.filter((row) => !NON_MEAL_CODES.has(row.meal));
+  const summarize = (source) => countableRows.filter((row) => row.source === source).reduce((counts, row) => ({ ...counts, [row.meal]: (counts[row.meal] || 0) + 1 }), {});
+  const summarizeByCabin = (source) => countableRows.filter((row) => row.source === source).reduce((cabins, row) => {
     cabins[row.cabin] = cabins[row.cabin] || {};
     cabins[row.cabin][row.meal] = (cabins[row.cabin][row.meal] || 0) + 1;
     return cabins;
@@ -107,7 +109,11 @@ function parseMealOrderEmail(text) {
     const match = String(text || '').match(new RegExp(`^\\s*${label}\\s*-\\s*(\\d+)([^\\n\\r]*)`, 'im'));
     cabinCounts[cabin] = Number(match?.[1] || 0);
     countsByCabin[cabin] = {};
-    String(match?.[2] || '').replace(/\+\s*(\d+)\s+([A-Z0-9]{4})\b/gi, (_, count, meal) => { countsByCabin[cabin][meal.toUpperCase()] = Number(count); return _; });
+    String(match?.[2] || '').replace(/\+\s*(\d+)\s+([A-Z0-9]{4})\b/gi, (_, count, meal) => {
+      const code = meal.toUpperCase();
+      if (!NON_MEAL_CODES.has(code)) countsByCabin[cabin][code] = Number(count);
+      return _;
+    });
   }
   const economy = String(text || '').match(/^\s*Y\s*-\s*(\d+)([^\n\r]*)/im);
   return { flightNo: flight?.[1]?.toUpperCase() || '', flightDate: normalizeFlightDate(flight?.[2]), cabinCounts, countsByCabin, economyBase: cabinCounts.Y, counts: countsByCabin.Y, economyTotal: Number(String(economy?.[2] || '').match(/=\s*(\d+)/)?.[1] || 0) };
