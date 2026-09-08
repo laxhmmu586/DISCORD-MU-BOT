@@ -31,6 +31,13 @@ test('empty PD meal totals display a dash rather than None', () => {
   assert.doesNotMatch(html, /\|\| "None"/);
 });
 
+test('BBML remains visible in PD but is ignored by meal totals and warnings', () => {
+  assert.match(html, /\(showNonMeals \|\| meal\.toUpperCase\(\) !== "BBML"\) && Number\(count\) > 0/);
+  assert.match(html, /mealCountsText\(pdMeals, true\)/);
+  assert.match(html, /meal\.toUpperCase\(\) === "BBML" \? 0/);
+  assert.match(html, /filter\(\(meal\) => meal\.toUpperCase\(\) !== "BBML"\)/);
+});
+
 test('meal order reconciliation warns when ordered F and J plus SPML is below combined reservations', () => {
   assert.match(html, /premiumRequired = \["F", "J"\]\.reduce/);
   assert.match(html, /premiumReservations = Number\(reservationCounts\[0\]\) \+ Number\(reservationCounts\[1\]\)/);
