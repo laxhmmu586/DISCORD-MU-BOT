@@ -1078,7 +1078,8 @@ test('Email can notify a Passenger Filed case that baggage is ready for LAX pick
   assert.match(server, /您的行李已可在洛杉矶机场领取 - 中国东方航空公司/);
   assert.match(server, /Your Baggage Available for Pick-Up at LAX - China Eastern Airlines/);
   assert.match(server, /Tom Bradley International Terminal（TBIT）A68 柜台办公室/);
-  assert.match(server, /Pick-up Hours: 8:00 AM – 2:00 PM/);
+  assert.match(server, /领取时间：上午 7:00 – 下午 3:00/);
+  assert.match(server, /Pick-up Hours: 7:00 AM – 3:00 PM/);
   assert.match(server, /pickupEmail \|\| futurePickupEmail \|\| transferEtaEmail \|\| addressConfirmEmail \|\| pickupDeliveryMethodEmail \|\| requirePvgAuthorizationEmail \? record\.email/);
   assert.match(page, /'Pick-up Bags - available', 'Pick-up Bags - future available'/);
   assert.match(page, /const pickupBagsEmail = event\.key === 'email' && \['Pick-up Bags - available', 'Pick-up Bags - future available'\]\.includes\(event\.title\)/);
