@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { normalizeOperationalFlightNo, normalizeJcsyFlightNo, sectionMatchesFlightOperationDate, matchesSyFlightRecord, hasUnclearedApiSourceRisk, extractPassportCountryCodes, extractInvoluntaryUpgrade, enrichCheckinAgentStatsFromLog, hasChdServiceCode, isCcAirportClosedContent } = require('../syParser');
+const { normalizeOperationalFlightNo, normalizeJcsyFlightNo, sectionMatchesFlightOperationDate, matchesSyFlightRecord, hasUnclearedApiSourceRisk, extractPassportCountryCodes, extractInvoluntaryUpgrade, enrichCheckinAgentStatsFromLog, hasChdServiceCode, isCcAirportClosedContent, isOperationalStatusTimeReached } = require('../syParser');
 
 test('CC only completes after the ACCEPTED/AIRPORT CLOSED response', () => {
   assert.equal(isCcAirportClosedContent('> CC:\\n> CC: MU586/04SEP26,Y\\n> WARNING - PAX/BAG NOT RECONCILED\\n> 4 BAGS TO BE REMOVED'), false);
@@ -29,6 +29,14 @@ test('restores CC completion from the latest SY CC status', () => {
   assert.equal(cc.complete, true);
   assert.equal(cc.time, '13:42');
   assert.equal(cc.tooltip, 'CC 13:42');
+});
+
+test('does not show a future CC status time for the current station day', () => {
+  const now = new Date('2026-09-10T17:15:00Z'); // 10:15 in Los Angeles
+
+  assert.equal(isOperationalStatusTimeReached('1014', '2026-09-10', now), true);
+  assert.equal(isOperationalStatusTimeReached('1816', '2026-09-10', now), false);
+  assert.equal(isOperationalStatusTimeReached('1816', '2026-09-09', now), true);
 });
 
 test('accepts any numeric CHD1 service-code value', () => {
