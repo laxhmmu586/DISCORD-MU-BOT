@@ -63,6 +63,30 @@ const MONTH_NUMBER = {
   NOV: '11', NOVEMBER: '11', DEC: '12', DECEMBER: '12'
 };
 
+const APP_TIME_ZONE = process.env.APP_TIME_ZONE || 'America/Los_Angeles';
+
+function zonedDateTimeParts(date = new Date(), timeZone = APP_TIME_ZONE) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23'
+  }).formatToParts(date);
+  return Object.fromEntries(parts.map((part) => [part.type, part.value]));
+}
+
+function isOperationalStatusTimeReached(statusTime, operationYmd, now = new Date(), timeZone = APP_TIME_ZONE) {
+  const match = String(statusTime || '').match(/^(\d{2})(\d{2})$/);
+  if (!match || Number(match[1]) > 23 || Number(match[2]) > 59) return false;
+  const parts = zonedDateTimeParts(now, timeZone);
+  const todayYmd = `${parts.year}-${parts.month}-${parts.day}`;
+  if (!operationYmd || operationYmd !== todayYmd) return true;
+  return Number(statusTime) <= Number(`${parts.hour}${parts.minute}`);
+}
+
 function normalizeMonthName(monthName) {
   return String(monthName || '').trim().toUpperCase();
 }
@@ -542,7 +566,11 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
   const ccl = findAcceptedCommand(/^>\s*CCL\s*:/im);
   const ccSections = sameDaySections.filter((item) => isCcAirportClosedContent(item.content));
   const ccSection = ccSections.sort((a, b) => parseSectionTimestamp(b.timestamp) - parseSectionTimestamp(a.timestamp))[0] || null;
-  const syCcTime = info?.statusCode === 'CC' ? String(info.statusTime || '').trim() : '';
+  // A cached/future SY response can advertise CC with a status clock time that
+  // has not happened yet.  Do not turn the live timeline green until that time
+  // has actually been reached in the station time zone.
+  const rawSyCcTime = info?.statusCode === 'CC' ? String(info.statusTime || '').trim() : '';
+  const syCcTime = isOperationalStatusTimeReached(rawSyCcTime, operationYmd) ? rawSyCcTime : '';
   const cc = ccSection
     ? { complete:true, time:formatTime(ccSection.timestamp), timestamp:ccSection.timestamp || '' }
     : syCcTime
@@ -1966,4 +1994,4 @@ function findSYInfo(log, queryDate, options = {}) {
   return null;
 }
 
-module.exports = { findSYInfo, normalizeOperationalFlightNo, normalizeJcsyFlightNo, sectionMatchesFlightOperationDate, matchesSyFlightRecord, extractPassportCountryCodes, parseJcsyRows, hasUnclearedApiSourceRisk, extractInvoluntaryUpgrade, enrichCheckinAgentStatsFromLog, hasChdServiceCode, isCcAirportClosedContent };
+module.exports = { findSYInfo, normalizeOperationalFlightNo, normalizeJcsyFlightNo, sectionMatchesFlightOperationDate, matchesSyFlightRecord, extractPassportCountryCodes, parseJcsyRows, hasUnclearedApiSourceRisk, extractInvoluntaryUpgrade, enrichCheckinAgentStatsFromLog, hasChdServiceCode, isCcAirportClosedContent, isOperationalStatusTimeReached };
