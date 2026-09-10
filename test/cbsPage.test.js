@@ -589,6 +589,7 @@ test('On-hand exchange is saved to Google Sheets and shows old and new tags', ()
   assert.match(page, /<span class="exchange-tag-new">\$\{escapeHtml\(lastExchange\.newTag\)\}<\/span>/);
   assert.match(page, /\.exchange-tag-arrow::before,\.exchange-tag-arrow::after/);
   assert.match(page, /detail:`\$\{exchange\.oldTag\} → \$\{exchange\.newTag\}`/);
+  assert.match(page, /<col style="width:310px">\$\{rushTagColumn\}/);
 });
 
 test('home Baggage add flow also supports On-hand Exchange', () => {
