@@ -427,8 +427,7 @@
         <label class="wide" data-standalone-passenger-related-field hidden><span>WorldTracer File Number</span><input name="worldTracerFileNumber" placeholder="WorldTracer file number" disabled required /></label>
         <label class="wide" data-standalone-eta-field hidden><span>Estimated arrival date</span><input name="estimatedArrivalTime" type="date" disabled required /></label>
         <label class="wide" data-standalone-future-pickup-field hidden><span>Available starting date</span><input name="availableDate" type="date" disabled required /></label>
-        <label class="wide" data-standalone-passenger-related-field hidden><span>Language</span><select name="language" disabled required><option value="en">English</option><option value="zh">中文</option></select></label>
-        <label class="wide" data-standalone-customs-field hidden><span>Language</span><select name="language" disabled required><option value="en">English</option><option value="zh">中文</option></select></label>
+        <label class="wide" data-standalone-language-field hidden><span>Language</span><select name="language" disabled required><option value="en">English</option><option value="zh">中文</option></select></label>
         <p class="status wide" id="standalone-email-status" aria-live="polite"></p>
         <div class="actions wide"><button type="submit">Send</button></div>
       </form>
@@ -2083,8 +2082,8 @@
           field.hidden = !show;
           field.querySelectorAll('input, select').forEach((input) => { input.disabled = !show; input.required = show; });
         });
-        standaloneEmailForm.querySelectorAll('[data-standalone-customs-field]').forEach((field) => {
-          const show = event.target.value === 'baggage_open_by_customs';
+        standaloneEmailForm.querySelectorAll('[data-standalone-language-field]').forEach((field) => {
+          const show = !isPvg;
           field.hidden = !show;
           field.querySelectorAll('select').forEach((input) => { input.disabled = !show; input.required = show; });
         });

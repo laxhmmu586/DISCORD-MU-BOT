@@ -1429,6 +1429,28 @@ function pdfEscape(value) {
   return pdfSafeText(value).replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
 }
 
+// Widths from the built-in PDF Helvetica font, expressed in 1/1000 em. Using
+// the former average-character estimate placed CJK text on top of wide Latin
+// runs (especially uppercase addresses).
+const PDF_HELVETICA_WIDTHS = {
+  ' ': 278, '!': 278, '"': 355, '#': 556, '$': 556, '%': 889, '&': 667, "'": 191,
+  '(': 333, ')': 333, '*': 389, '+': 584, ',': 278, '-': 333, '.': 278, '/': 278,
+  '0': 556, '1': 556, '2': 556, '3': 556, '4': 556, '5': 556, '6': 556, '7': 556,
+  '8': 556, '9': 556, ':': 278, ';': 278, '<': 584, '=': 584, '>': 584, '?': 556,
+  '@': 1015, A: 667, B: 667, C: 722, D: 722, E: 667, F: 611, G: 778, H: 722,
+  I: 278, J: 500, K: 667, L: 556, M: 833, N: 722, O: 778, P: 667, Q: 778,
+  R: 722, S: 667, T: 611, U: 722, V: 667, W: 944, X: 667, Y: 667, Z: 611,
+  '[': 278, '\\': 278, ']': 278, '^': 469, _: 556, '`': 333,
+  a: 556, b: 556, c: 500, d: 556, e: 556, f: 278, g: 556, h: 556, i: 222,
+  j: 222, k: 500, l: 222, m: 833, n: 556, o: 556, p: 556, q: 556, r: 333,
+  s: 500, t: 278, u: 556, v: 500, w: 722, x: 500, y: 500, z: 500,
+  '{': 334, '|': 260, '}': 334, '~': 584
+};
+
+function pdfHelveticaTextWidth(value, size) {
+  return Array.from(value).reduce((width, character) => width + (PDF_HELVETICA_WIDTHS[character] || 556), 0) * size / 1000;
+}
+
 function pdfText(content, x, y, size = 9) {
   const safe = pdfSafeText(content);
   if (!/[^\x20-\x7E]/.test(safe)) return `BT /F1 ${size} Tf ${x} ${y} Td (${pdfEscape(safe)}) Tj ET`;
@@ -1437,10 +1459,13 @@ function pdfText(content, x, y, size = 9) {
   // Sending a whole mixed-language line through the CJK font makes its Latin
   // glyphs look wider and visibly different from the rest of the report.
   let cursorX = x;
-  return (safe.match(/[\x20-\x7E]+|[^\x20-\x7E]+/g) || []).map((run) => {
+  return (safe.match(/[\x20-\x7E]+|[^\x20-\x7E]+/g) || []).map((run, index) => {
+    // A small explicit gutter makes a script boundary readable even when the
+    // submitted value has no space (for example "AVENUE浦东新区").
+    if (index) cursorX += size * 0.25;
     if (/^[\x20-\x7E]+$/.test(run)) {
       const command = `BT /F1 ${size} Tf ${cursorX.toFixed(2)} ${y} Td (${pdfEscape(run)}) Tj ET`;
-      cursorX += run.length * size * 0.52;
+      cursorX += pdfHelveticaTextWidth(run, size);
       return command;
     }
     const utf16Hex = Buffer.from(run, 'utf16le').swap16().toString('hex').toUpperCase();
@@ -2573,7 +2598,8 @@ app.post('/cbs-email', async (req, res) => {
     if (emailAction === 'contact_pax_pickup_bags') {
       const passengerEmail = sanitizeCbsText(req.body?.passengerEmail, 160).toLowerCase();
       if (!isValidEmail(passengerEmail)) return res.status(400).json({ error:'A valid passenger email is required' });
-      const message = baggagePickupAtLaxEmail({});
+      const record = { language:sanitizeCbsText(req.body?.language, 5) === 'zh' ? 'zh' : 'en' };
+      const message = baggagePickupAtLaxEmail(record);
       const email = await sendCbsCaseEmail({ passengerEmail, subject:message.subject, html:message.html, text:message.text, ccOperations:false });
       return res.json({ sent:true, email });
     }

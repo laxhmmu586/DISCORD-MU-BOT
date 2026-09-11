@@ -1047,6 +1047,14 @@ test('PIR form labels the optional attachment category as Others', () => {
   assert.doesNotMatch(pirForm, />Other document<\/span>/);
 });
 
+test('AHL and DPR forms prefill the first flight with todays MU583 PVG-LAX service', () => {
+  assert.match(pirForm, /name="flightNo1" value="MU583"/);
+  assert.match(pirForm, /name="flightOrigin1" value="PVG"/);
+  assert.match(pirForm, /name="destination1" value="LAX"/);
+  assert.match(pirForm, /function setDefaultFirstFlight\(\)/);
+  assert.match(pirForm, /form\.elements\.flightDate1\.value = `\$\{String\(today\.getDate\(\)\)\.padStart\(2, '0'\)\}\$\{month\}`/);
+});
+
 test('PIR form limits Others attachments to 4 on the client and server', () => {
   assert.match(pirForm, /data-attachment-type="other" data-max-attachments="4"/);
   assert.match(pirForm, /You may upload up to 4 files under Others/);
@@ -1153,6 +1161,12 @@ test('Email forms keep Language below all conditional detail fields', () => {
   assert.ok(standaloneForm.indexOf('Estimated arrival date') < standaloneForm.indexOf('<span>Language</span>'));
   const onHandFields = page.match(/if \(action === 'email'\) return `([\s\S]*?)`;/)?.[1] || '';
   assert.ok(onHandFields.indexOf('Estimated arrival date') < onHandFields.indexOf('<span>Language</span>'));
+});
+
+test('standalone available pickup email offers English and Chinese', () => {
+  assert.match(page, /data-standalone-language-field hidden><span>Language<\/span><select name="language" disabled required><option value="en">English<\/option><option value="zh">中文<\/option>/);
+  assert.match(page, /const show = !isPvg/);
+  assert.match(server, /const record = \{ language:sanitizeCbsText\(req\.body\?\.language, 5\) === 'zh' \? 'zh' : 'en' \};\s*const message = baggagePickupAtLaxEmail\(record\)/);
 });
 
 test('PVG inspection authorization email includes the WorldTracer reference', () => {
