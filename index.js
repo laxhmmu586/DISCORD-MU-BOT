@@ -1419,6 +1419,7 @@ function normalizeCbsBagTags(value) {
 
 function pdfSafeText(value) {
   return String(value || '')
+    .normalize('NFC')
     .replace(/[\u0000-\u001F\u007F]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -1582,7 +1583,11 @@ function createPirPdf(record) {
     contentPages.push(page);
   });
   const fontId = addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
-  const unicodeFontId = addObject('<< /Type /Font /Subtype /Type0 /BaseFont /STSong-Light /Encoding /UniGB-UCS2-H /DescendantFonts [ << /Type /Font /Subtype /CIDFontType0 /BaseFont /STSong-Light /CIDSystemInfo << /Registry (Adobe) /Ordering (GB1) /Supplement 4 >> >> ] >>');
+  // A descendant CID font must be an indirect object. Keeping this dictionary
+  // inline happens to work in some desktop readers, but PDFium (used by Chrome
+  // and Discord's preview) can ignore it and render UTF-16 bytes as mojibake.
+  const unicodeCidFontId = addObject('<< /Type /Font /Subtype /CIDFontType0 /BaseFont /STSong-Light /CIDSystemInfo << /Registry (Adobe) /Ordering (GB1) /Supplement 4 >> /DW 1000 >>');
+  const unicodeFontId = addObject(`<< /Type /Font /Subtype /Type0 /BaseFont /STSong-Light /Encoding /UniGB-UCS2-H /DescendantFonts [ ${unicodeCidFontId} 0 R ] >>`);
   const xObjectEntries = [imageRefs.Damage ? `/Damage ${imageRefs.Damage} 0 R` : '', imageRefs.Signature ? `/Signature ${imageRefs.Signature} 0 R` : ''].filter(Boolean).join(' ');
   const resources = `<< /Font << /F1 ${fontId} 0 R /F2 ${unicodeFontId} 0 R >> ${xObjectEntries ? `/XObject << ${xObjectEntries} >>` : ''} >>`;
   const streamIds = contentPages.map((page) => {
