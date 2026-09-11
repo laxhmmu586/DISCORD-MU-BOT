@@ -5,18 +5,17 @@ const path = require('node:path');
 
 const server = fs.readFileSync(path.join(__dirname, '..', 'index.js'), 'utf8');
 
-test('PIR PDF preserves Chinese and other Unicode passenger names', () => {
+test('PIR PDF draws Chinese and other Unicode names as portable glyph outlines', () => {
   assert.doesNotMatch(server, /replace\(\/\[\\u3400-\\u9FFF/);
-  assert.match(server, /Buffer\.from\(run, 'utf16le'\)\.swap16\(\)\.toString\('hex'\)/);
-  assert.match(server, /\/F2 \$\{size\} Tf/);
-  assert.match(server, /\/BaseFont \/STSong-Light/);
-  assert.match(server, /\/Encoding \/UniGB-UCS2-H/);
-  assert.match(server, /\/F2 \$\{unicodeFontId\} 0 R/);
+  assert.match(server, /require\('@fontsource\/noto-sans-sc\/unicode\.json'\)/);
+  assert.match(server, /fontkit\.openSync/);
+  assert.match(server, /font\.glyphForCodePoint/);
+  assert.match(server, /glyph\.path\.commands/);
+  assert.doesNotMatch(server, /\/BaseFont \/STSong-Light/);
 });
 
 test('PIR PDF keeps Latin runs in Helvetica inside mixed-language fields', () => {
   assert.match(server, /safe\.match\(\/\[\\x20-\\x7E\]\+\|\[\^\\x20-\\x7E\]\+\/g\)/);
   assert.match(server, /command = `BT \/F1 \$\{size\} Tf/);
-  assert.match(server, /command = `BT \/F2 \$\{size\} Tf/);
-  assert.match(server, /\.join\('\\n'\)/);
+  assert.match(server, /pdfGlyphPath\(character, cursorX, y, size\)/);
 });

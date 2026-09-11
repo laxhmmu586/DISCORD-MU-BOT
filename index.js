@@ -3,6 +3,7 @@ require('dotenv').config();
 const express = require('express');
 const fs = require('fs/promises');
 const path = require('path');
+const fontkit = require('fontkit');
 
 const {
 
@@ -1428,6 +1429,57 @@ function pdfEscape(value) {
   return pdfSafeText(value).replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
 }
 
+const cjkFontDirectory = path.join(path.dirname(require.resolve('@fontsource/noto-sans-sc/package.json')), 'files');
+const cjkUnicodeRanges = Object.entries(require('@fontsource/noto-sans-sc/unicode.json')).flatMap(([slice, ranges]) =>
+  ranges.split(',').map((range) => {
+    const [start, end = start] = range.replace(/^U\+/i, '').split('-').map((value) => parseInt(value, 16));
+    return { start, end, slice: slice.replace(/\D/g, '') };
+  })
+);
+const cjkFontCache = new Map();
+
+function cjkFontForCodePoint(codePoint) {
+  const match = cjkUnicodeRanges.find((range) => codePoint >= range.start && codePoint <= range.end);
+  if (!match) return null;
+  if (!cjkFontCache.has(match.slice)) {
+    cjkFontCache.set(match.slice, fontkit.openSync(path.join(cjkFontDirectory, `noto-sans-sc-${match.slice}-400-normal.woff`)));
+  }
+  return cjkFontCache.get(match.slice);
+}
+
+function pdfGlyphPath(character, x, baseline, size) {
+  const font = cjkFontForCodePoint(character.codePointAt(0));
+  if (!font) return { command: '', width: size };
+  const glyph = font.glyphForCodePoint(character.codePointAt(0));
+  const scale = size / font.unitsPerEm;
+  let currentX = 0;
+  let currentY = 0;
+  const point = (gx, gy) => `${(x + gx * scale).toFixed(2)} ${(baseline + gy * scale).toFixed(2)}`;
+  const commands = glyph.path.commands.map(({ command, args }) => {
+    if (command === 'moveTo' || command === 'lineTo') {
+      [currentX, currentY] = args;
+      return `${point(args[0], args[1])} ${command === 'moveTo' ? 'm' : 'l'}`;
+    }
+    if (command === 'quadraticCurveTo') {
+      const [controlX, controlY, endX, endY] = args;
+      const firstX = currentX + (2 / 3) * (controlX - currentX);
+      const firstY = currentY + (2 / 3) * (controlY - currentY);
+      const secondX = endX + (2 / 3) * (controlX - endX);
+      const secondY = endY + (2 / 3) * (controlY - endY);
+      currentX = endX;
+      currentY = endY;
+      return `${point(firstX, firstY)} ${point(secondX, secondY)} ${point(endX, endY)} c`;
+    }
+    if (command === 'bezierCurveTo') {
+      currentX = args[4];
+      currentY = args[5];
+      return `${point(args[0], args[1])} ${point(args[2], args[3])} ${point(args[4], args[5])} c`;
+    }
+    return command === 'closePath' ? 'h' : '';
+  }).filter(Boolean);
+  return { command: commands.length ? `q 0 0 0 rg ${commands.join(' ')} f Q` : '', width: glyph.advanceWidth * scale };
+}
+
 function pdfText(content, x, y, size = 9) {
   const safe = pdfSafeText(content);
   if (!/[^\x20-\x7E]/.test(safe)) return `BT /F1 ${size} Tf ${x} ${y} Td (${pdfEscape(safe)}) Tj ET`;
@@ -1442,10 +1494,11 @@ function pdfText(content, x, y, size = 9) {
       cursorX += run.length * size * 0.52;
       return command;
     }
-    const utf16Hex = Buffer.from(run, 'utf16le').swap16().toString('hex').toUpperCase();
-    const command = `BT /F2 ${size} Tf ${cursorX.toFixed(2)} ${y} Td <${utf16Hex}> Tj ET`;
-    cursorX += Array.from(run).length * size;
-    return command;
+    return Array.from(run).map((character) => {
+      const glyph = pdfGlyphPath(character, cursorX, y, size);
+      cursorX += glyph.width;
+      return glyph.command;
+    }).filter(Boolean).join('\n');
   }).join('\n');
 }
 
@@ -1582,9 +1635,8 @@ function createPirPdf(record) {
     contentPages.push(page);
   });
   const fontId = addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
-  const unicodeFontId = addObject('<< /Type /Font /Subtype /Type0 /BaseFont /STSong-Light /Encoding /UniGB-UCS2-H /DescendantFonts [ << /Type /Font /Subtype /CIDFontType0 /BaseFont /STSong-Light /CIDSystemInfo << /Registry (Adobe) /Ordering (GB1) /Supplement 4 >> >> ] >>');
   const xObjectEntries = [imageRefs.Damage ? `/Damage ${imageRefs.Damage} 0 R` : '', imageRefs.Signature ? `/Signature ${imageRefs.Signature} 0 R` : ''].filter(Boolean).join(' ');
-  const resources = `<< /Font << /F1 ${fontId} 0 R /F2 ${unicodeFontId} 0 R >> ${xObjectEntries ? `/XObject << ${xObjectEntries} >>` : ''} >>`;
+  const resources = `<< /Font << /F1 ${fontId} 0 R >> ${xObjectEntries ? `/XObject << ${xObjectEntries} >>` : ''} >>`;
   const streamIds = contentPages.map((page) => {
     const stream = page.join('\n');
     return addObject(`<< /Length ${Buffer.byteLength(stream, 'binary')} >>\nstream\n${stream}\nendstream`);
