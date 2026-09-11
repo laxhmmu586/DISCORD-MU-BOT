@@ -11,7 +11,13 @@ test('PIR PDF preserves Chinese and other Unicode passenger names', () => {
   assert.match(server, /\/F2 \$\{size\} Tf/);
   assert.match(server, /\/BaseFont \/STSong-Light/);
   assert.match(server, /\/Encoding \/UniGB-UCS2-H/);
+  assert.match(server, /unicodeCidFontId = addObject/);
+  assert.match(server, /\/DescendantFonts \[ \$\{unicodeCidFontId\} 0 R \]/);
   assert.match(server, /\/F2 \$\{unicodeFontId\} 0 R/);
+});
+
+test('PIR PDF normalizes decomposed Unicode before encoding it', () => {
+  assert.match(server, /String\(value \|\| ''\)\s*\.normalize\('NFC'\)/);
 });
 
 test('PIR PDF keeps Latin runs in Helvetica inside mixed-language fields', () => {
