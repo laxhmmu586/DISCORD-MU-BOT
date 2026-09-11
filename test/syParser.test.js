@@ -31,6 +31,28 @@ test('restores CC completion from the latest SY CC status', () => {
   assert.equal(cc.tooltip, 'CC 13:42');
 });
 
+test('does not merge another flight SY status into the preferred flight', () => {
+  const log = [
+    '2026 September 10, Thursday, 08:13:15',
+    '>sy mu583/10sep26pvg',
+    '> SY: MU583/10SEP26 PVG/0  CC1816/NAM',
+    '> 777/773L/B2002      GTD/G118 POS/GATE BN304 AK00000 CD00000',
+    '> BDT1705   SD1310   ED1750   CI1640   CC1816',
+    '2026 September 10, Thursday, 08:14:15',
+    '>sy mu586/10sep26lax',
+    '> SY: MU586/10SEP26 LAX/0  CI1014/NAM',
+    '> 777/773L/B7367      GTD/130 POS/GATE BN299 AK00000 CD00000',
+    '> BDT1145   SD1230   ED1230   CI1014'
+  ].join('\n');
+
+  const info = require('../syParser').findSYInfo(log, '10SEP26', { preferredFlightNo: 'MU586' });
+  const cc = info.crewApis.steps.find((step) => step.key === 'cc');
+
+  assert.equal(info.flightNo, 'MU586');
+  assert.equal(cc.complete, false);
+  assert.equal(cc.time, '');
+});
+
 test('accepts any numeric CHD1 service-code value', () => {
   assert.equal(hasChdServiceCode('SSR CHD1/0'), true);
   assert.equal(hasChdServiceCode('SSR CHD1/7'), true);

@@ -17,7 +17,12 @@ function splitLogicalSections(log) {
     }
 
     const cmd = line.match(cmdRe)?.[1]?.toUpperCase() || null;
-    const isContinuation = cmd ? /^(?:SY|PN\d*|PF\d*|ACCEPTED(?:\/|$))/.test(cmd) : false;
+    // `> SY:` is a response line belonging to the current query, while
+    // `> sy ...` is a new query and must start its own logical section. Treating
+    // both as continuations merged results for different flights and could make
+    // (for example) MU583's CC1816 appear on the MU586 dashboard.
+    const isSyResponse = /^>\s*SY\s*:/i.test(line);
+    const isContinuation = cmd ? (isSyResponse || /^(?:PN\d*|PF\d*|ACCEPTED(?:\/|$))/.test(cmd)) : false;
 
     if (cmd && !isContinuation) {
       if (current && current.content.trim()) sections.push(current);
