@@ -158,7 +158,7 @@
               </div>
               <div>
                 <div class="flight-head"><span><span class="en">Flight No.</span><span class="zh">航班号</span></span><span><span class="en">Date</span><span class="zh">日期</span></span><span><span class="en">Origin</span><span class="zh">始发地</span></span><span><span class="en">Destination</span><span class="zh">目的地</span></span></div>
-                <div class="flight-row"><input name="flightNo1" placeholder="MU583" required /><input name="flightDate1" placeholder="11JUN" required /><input name="flightOrigin1" placeholder="PVG" required /><input name="destination1" placeholder="LAX" required /></div>
+                <div class="flight-row"><input name="flightNo1" value="MU583" placeholder="MU583" required /><input name="flightDate1" placeholder="11JUN" required /><input name="flightOrigin1" value="PVG" placeholder="PVG" required /><input name="destination1" value="LAX" placeholder="LAX" required /></div>
                 <div class="flight-row"><input name="flightNo2" placeholder="MU0840" /><input name="flightDate2" placeholder="11JUN" /><input name="flightOrigin2" placeholder="PVG" /><input name="destination2" placeholder="LAX" /></div>
                 <div class="flight-row"><input name="flightNo3" placeholder="" /><input name="flightDate3" placeholder="" /><input name="flightOrigin3" placeholder="" /><input name="destination3" placeholder="" /></div>
               </div>
@@ -337,6 +337,15 @@
     let sketchDirty = false;
     let signatureDirty = false;
     let signing = false;
+
+    function setDefaultFirstFlight() {
+      const today = new Date();
+      const month = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'][today.getMonth()];
+      form.elements.flightNo1.value = 'MU583';
+      form.elements.flightDate1.value = `${String(today.getDate()).padStart(2, '0')}${month}`;
+      form.elements.flightOrigin1.value = 'PVG';
+      form.elements.destination1.value = 'LAX';
+    }
 
     function setLanguage(lang) {
       document.documentElement.lang = lang;
@@ -776,7 +785,7 @@
         thanks.querySelectorAll('[data-thanks-message]').forEach((item) => { item.hidden = item.dataset.thanksMessage !== data.record.caseType; });
         thanks.classList.add('is-active');
         thanks.scrollIntoView({ behavior:'smooth', block:'center' });
-        form.reset(); if (requestedType === 'AHL' || requestedType === 'DPR') typeSelect.value = requestedType; clearAttachmentPreviews(); sketchDirty = false; drawBagBase(); clearSignature(); contentsList.innerHTML = ''; addContentRow(); issueDateInput.valueAsDate = new Date(); setTypeFields(); setAddressFields();
+        form.reset(); if (requestedType === 'AHL' || requestedType === 'DPR') typeSelect.value = requestedType; clearAttachmentPreviews(); sketchDirty = false; drawBagBase(); clearSignature(); contentsList.innerHTML = ''; addContentRow(); issueDateInput.valueAsDate = new Date(); setDefaultFirstFlight(); setTypeFields(); setAddressFields();
       } catch (error) {
         formStatus.className = 'status err';
         const failedFetch = /failed to fetch|load failed|network request failed/i.test(error.message || '');
@@ -785,9 +794,10 @@
           : error.message;
       }
     });
-    form.addEventListener('reset', () => setTimeout(() => { if (requestedType === 'AHL' || requestedType === 'DPR') typeSelect.value = requestedType; clearAttachmentPreviews(); sketchDirty = false; drawBagBase(); clearSignature(); contentsList.innerHTML = ''; addContentRow(); resetBagCards(); issueDateInput.valueAsDate = new Date(); setTypeFields(); setAddressFields(); }, 0));
+    form.addEventListener('reset', () => setTimeout(() => { if (requestedType === 'AHL' || requestedType === 'DPR') typeSelect.value = requestedType; clearAttachmentPreviews(); sketchDirty = false; drawBagBase(); clearSignature(); contentsList.innerHTML = ''; addContentRow(); resetBagCards(); issueDateInput.valueAsDate = new Date(); setDefaultFirstFlight(); setTypeFields(); setAddressFields(); }, 0));
     addContentRow();
     issueDateInput.valueAsDate = new Date();
+    setDefaultFirstFlight();
     setLanguage('en');
     setTypeFields();
     setAddressFields();

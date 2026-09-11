@@ -26,3 +26,10 @@ test('PIR PDF keeps Latin runs in Helvetica inside mixed-language fields', () =>
   assert.match(server, /command = `BT \/F2 \$\{size\} Tf/);
   assert.match(server, /\.join\('\\n'\)/);
 });
+
+test('PIR PDF measures Latin runs and leaves a gutter before adjacent Chinese text', () => {
+  assert.match(server, /const PDF_HELVETICA_WIDTHS = \{/);
+  assert.match(server, /cursorX \+= pdfHelveticaTextWidth\(run, size\)/);
+  assert.match(server, /if \(index\) cursorX \+= size \* 0\.25/);
+  assert.doesNotMatch(server, /cursorX \+= run\.length \* size \* 0\.52/);
+});
