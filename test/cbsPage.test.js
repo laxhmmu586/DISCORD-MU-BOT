@@ -1163,6 +1163,12 @@ test('Email forms keep Language below all conditional detail fields', () => {
   assert.ok(onHandFields.indexOf('Estimated arrival date') < onHandFields.indexOf('<span>Language</span>'));
 });
 
+test('standalone available pickup email offers English and Chinese', () => {
+  assert.match(page, /data-standalone-language-field hidden><span>Language<\/span><select name="language" disabled required><option value="en">English<\/option><option value="zh">中文<\/option>/);
+  assert.match(page, /const show = !isPvg/);
+  assert.match(server, /const record = \{ language:sanitizeCbsText\(req\.body\?\.language, 5\) === 'zh' \? 'zh' : 'en' \};\s*const message = baggagePickupAtLaxEmail\(record\)/);
+});
+
 test('PVG inspection authorization email includes the WorldTracer reference', () => {
   const template = server.match(/function openBagAuthorizationPvgEmail\(record\)[\s\S]*?\n}/)?.[0] || '';
   assert.match(template, /WorldTracer \$\{fileNumber\}/);

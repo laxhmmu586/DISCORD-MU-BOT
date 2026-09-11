@@ -2598,7 +2598,8 @@ app.post('/cbs-email', async (req, res) => {
     if (emailAction === 'contact_pax_pickup_bags') {
       const passengerEmail = sanitizeCbsText(req.body?.passengerEmail, 160).toLowerCase();
       if (!isValidEmail(passengerEmail)) return res.status(400).json({ error:'A valid passenger email is required' });
-      const message = baggagePickupAtLaxEmail({});
+      const record = { language:sanitizeCbsText(req.body?.language, 5) === 'zh' ? 'zh' : 'en' };
+      const message = baggagePickupAtLaxEmail(record);
       const email = await sendCbsCaseEmail({ passengerEmail, subject:message.subject, html:message.html, text:message.text, ccOperations:false });
       return res.json({ sent:true, email });
     }
