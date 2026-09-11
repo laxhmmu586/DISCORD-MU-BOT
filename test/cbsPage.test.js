@@ -1047,6 +1047,14 @@ test('PIR form labels the optional attachment category as Others', () => {
   assert.doesNotMatch(pirForm, />Other document<\/span>/);
 });
 
+test('AHL and DPR forms prefill the first flight with todays MU583 PVG-LAX service', () => {
+  assert.match(pirForm, /name="flightNo1" value="MU583"/);
+  assert.match(pirForm, /name="flightOrigin1" value="PVG"/);
+  assert.match(pirForm, /name="destination1" value="LAX"/);
+  assert.match(pirForm, /function setDefaultFirstFlight\(\)/);
+  assert.match(pirForm, /form\.elements\.flightDate1\.value = `\$\{String\(today\.getDate\(\)\)\.padStart\(2, '0'\)\}\$\{month\}`/);
+});
+
 test('PIR form limits Others attachments to 4 on the client and server', () => {
   assert.match(pirForm, /data-attachment-type="other" data-max-attachments="4"/);
   assert.match(pirForm, /You may upload up to 4 files under Others/);
