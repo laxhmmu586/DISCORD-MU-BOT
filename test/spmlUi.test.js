@@ -26,6 +26,11 @@ test('security check is available from the flight menu', () => {
   assert.match(html, /class="flight-menu"[\s\S]*id="security-check-button"[^>]*>Security Check</);
 });
 
+test('desktop and mobile navigation label the baggage system as LBS', () => {
+  assert.match(html, /<a href="cbs\.html" id="cbs-nav-link">LBS<\/a>/);
+  assert.match(html, /<a href="cbs\.html" id="mobile-cbs-nav-link">LBS<\/a>/);
+});
+
 test('empty PD meal totals display a dash rather than None', () => {
   assert.match(html, /join\("\\n"\) \|\| "-"/);
   assert.doesNotMatch(html, /\|\| "None"/);
