@@ -303,6 +303,8 @@
     .open-case-item { display:grid; grid-template-columns:180px 1fr 1fr auto; gap:14px; align-items:center; padding:14px; border:1px solid #d8e4f1; border-radius:14px; background:#fff; color:var(--ink); text-align:left; }
     .open-case-item strong { color:var(--brand); }
     .case-dashboard-head { display:flex; align-items:center; justify-content:space-between; gap:18px; margin-bottom:14px; }
+    .case-dashboard-controls { display:flex; align-items:center; gap:10px; }
+    .month-filter { width:170px; min-width:170px; padding:10px 12px; border:1px solid #cfdaea; border-radius:11px; background:#fff; color:var(--brand); font:inherit; font-weight:800; }
     .case-dashboard-head h1 { color:#09275a; font-size:24px; }
     .case-dashboard-head .search-field { width:min(100%,310px); padding:11px 38px 11px 14px; border:1px solid #cfdaea; border-radius:11px; background:#fff; color:var(--ink); font:inherit; box-shadow:0 3px 10px rgba(18,58,115,.04); }
     .case-search-wrap { position:relative; display:block; width:min(100%,310px); }
@@ -311,12 +313,17 @@
     .case-stat-card { display:grid; grid-template-columns:42px minmax(0,1fr); grid-template-rows:auto auto; align-items:center; gap:4px 8px; min-width:0; min-height:108px; padding:15px 13px; border:1px solid #bad9ff; border-radius:10px; background:linear-gradient(135deg,#f5faff,#edf6ff); color:#0754b8; text-align:left; box-shadow:0 8px 18px rgba(30,105,190,.06); }
     .case-stat-card[data-case-group="on-hand"] { border-color:#bfe8d3; background:linear-gradient(135deg,#f4fff9,#e9f8f0); color:#12654e; }
     .case-stat-card[data-case-group="bag-room"] { border-color:#ead88a; background:linear-gradient(135deg,#fffdf2,#fff5c7); color:#8a6500; }
+    .shipment-summary-cards .case-stat-card[data-shipment-method="adc"] { border-color:#bfe8d3; background:linear-gradient(135deg,#f4fff9,#e9f8f0); color:#12654e; }
+    .shipment-summary-cards .case-stat-card[data-shipment-method="mbi"] { border-color:#ead88a; background:linear-gradient(135deg,#fffdf2,#fff5c7); color:#8a6500; }
+    .shipment-summary-cards .case-stat-card[data-shipment-method="fedex"] { border-color:#d7c8f2; background:linear-gradient(135deg,#faf8ff,#f2edff); color:#6941c6; }
+    .shipment-summary-cards .case-stat-card { grid-template-columns:minmax(0,1fr); }
+    .shipment-summary-cards .case-stat-label,.shipment-summary-cards .case-stat-count { grid-column:1; }
     .case-stat-card.is-active { box-shadow:inset 0 0 0 2px currentColor,0 8px 20px rgba(18,58,115,.1); }
     .case-stat-icon { grid-row:1/3; align-self:start; display:grid; place-items:center; width:38px; height:38px; }
     .case-stat-icon svg { width:29px; height:29px; fill:currentColor; stroke:currentColor; stroke-width:1.5; }
     .case-stat-label { align-self:end; font-size:13px; font-weight:900; line-height:1.22; }
     .case-stat-card[data-case-group="bag-room"] .case-stat-label { white-space:nowrap; font-size:12px; letter-spacing:-.01em; }
-    .case-stat-count { align-self:start; color:#082b5d; font-size:29px; font-weight:900; line-height:1.15; }
+    .case-stat-count { align-self:start; justify-self:end; width:100%; color:#082b5d; font-size:29px; font-weight:900; line-height:1.15; text-align:right; }
     .open-case-group { display:none; margin-top:0 !important; padding:0; overflow:hidden; background:#fff; }
     .open-case-group.is-active { display:block; }
     .open-case-group-head { display:flex; align-items:center; justify-content:space-between; min-height:44px; padding:10px 14px; background:linear-gradient(90deg,#dff0ff,#edf7ff); }
@@ -349,7 +356,7 @@
       .wrap,.card,.open-case-group,.sheet-shell{min-width:0;max-width:100%}
       .sheet-shell{width:100%;overflow-x:auto}
       .sheet-shell .cbs-sheet{display:table;min-width:980px;overflow:visible}
-      .case-dashboard-head{align-items:flex-start;flex-direction:column}.case-search-wrap{width:100%;max-width:none}.case-dashboard-head .search-field{width:100%;max-width:none}.case-summary-cards{grid-template-columns:repeat(3,minmax(0,1fr));width:100%;overflow:visible}.case-stat-card{grid-template-columns:minmax(0,1fr);grid-template-rows:38px 48px auto;align-content:start;min-height:94px}.case-stat-icon{grid-row:1}.case-stat-label{align-self:start;min-width:0;overflow-wrap:anywhere}.case-stat-card[data-case-group="bag-room"] .case-stat-label{white-space:normal;font-size:13px;letter-spacing:0}.case-stat-count{align-self:start;min-width:0}.open-case-group .sheet-shell .cbs-sheet{min-width:620px}
+      .case-dashboard-head{align-items:flex-start;flex-direction:column}.case-dashboard-controls{width:100%;flex-wrap:wrap}.month-filter{width:100%;min-width:0}.case-search-wrap{width:100%;max-width:none}.case-dashboard-head .search-field{width:100%;max-width:none}.case-summary-cards{grid-template-columns:repeat(3,minmax(0,1fr));width:100%;overflow:visible}.case-stat-card{grid-template-columns:minmax(0,1fr);grid-template-rows:38px 48px auto;align-content:start;min-height:94px}.case-stat-icon{grid-row:1}.case-stat-label{align-self:start;min-width:0;overflow-wrap:anywhere}.case-stat-card[data-case-group="bag-room"] .case-stat-label{white-space:normal;font-size:13px;letter-spacing:0}.case-stat-count{align-self:start;min-width:0}.open-case-group .sheet-shell .cbs-sheet{min-width:620px}
     }
     @media (max-width:520px){ .rush-itinerary{padding:12px;overflow:hidden}.rush-itinerary-head{align-items:stretch}.rush-itinerary-head button{width:100%}.rush-flight-row{grid-template-columns:minmax(0,1fr);width:100%;min-width:0}.rush-flight-row label{width:100%;min-width:0;overflow:hidden}.rush-flight-row input[type="date"]{width:100%;height:52px;min-height:52px;padding:12px;line-height:24px;justify-self:stretch}.rush-flight-row input[type="date"]::-webkit-date-and-time-value{min-height:24px}.rush-flight-row button{grid-column:1}.worldtracer-form{width:100%;min-width:0} }
   </style>
@@ -365,6 +372,7 @@
       <button class="page-tab" id="missing-report-alert" type="button" title="Missing Bag Report"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="7" width="12" height="12" rx="2"/><path d="M8 7V5h4v2m5 10 4 4m-1-7a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg></span><span class="page-tab-label">Missing Bag Report</span></button>
       <button class="page-tab" id="email-tab" type="button" title="Email"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg></span><span class="page-tab-label">Email</span></button>
       <button class="page-tab" id="baggage-chart-tab" type="button" title="Baggage Chart"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19V9m5 10V5m5 14v-7m5 7V3"/></svg></span><span class="page-tab-label">Baggage Chart</span></button>
+      <button class="page-tab" id="shipment-tab" type="button" title="Shipment"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 7h11v10H3zM14 10h4l3 3v4h-7z"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg></span><span class="page-tab-label">Shipment</span></button>
       <button class="page-tab" id="closed-cases-tab" type="button" title="Closed Case"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h6l2 2h8v10H4z"/><path d="m8 14 2 2 5-5"/></svg></span><span class="page-tab-label"><span class="en">Closed Case</span><span class="zh">已结案件</span></span></button>
     </nav>
     <span class="header-spacer"></span>
@@ -378,7 +386,7 @@
     <section class="card" id="open-cases-card" hidden>
       <div class="case-dashboard-head">
         <div><h1 id="case-page-title"><span class="en">Open Case</span><span class="zh">未结案件</span></h1></div>
-        <label class="case-search-wrap"><input class="search-field" id="case-search" aria-label="Search cases" placeholder="Search case / bag tag..." /><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/></svg></label>
+        <div class="case-dashboard-controls"><input class="month-filter" id="closed-month" type="month" aria-label="Closed case month" hidden /><label class="case-search-wrap"><input class="search-field" id="case-search" aria-label="Search cases" placeholder="Search case / bag tag..." /><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/></svg></label></div>
       </div>
       <div class="case-summary-cards" role="tablist" aria-label="Case categories">
         <button class="case-stat-card is-active" type="button" role="tab" aria-selected="true" data-case-group="passenger"><span class="case-stat-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="6" r="4"/><path d="M4 21v-3a8 8 0 0 1 16 0v3z"/></svg></span><span class="case-stat-label">Passenger Filed</span><strong class="case-stat-count" data-case-count="passenger">0</strong></button>
@@ -397,6 +405,15 @@
         <div class="open-case-group-head"><h2 id="bag-room-unload-title">Bag Room Unload Bag</h2><span data-case-title-count="bag-room">(0)</span><button class="case-view-all" type="button">View All</button></div>
         <div id="bag-room-unload-output"><p class="muted">Loading Bag Room Unload Bag cases...</p></div>
       </section>
+    </section>
+    <section class="card" id="shipment-card" hidden>
+      <div class="case-dashboard-head"><div><h1>Shipment</h1></div><div class="case-dashboard-controls"><input class="month-filter" id="shipment-month" type="month" aria-label="Shipment month" /><label class="case-search-wrap"><input class="search-field" id="shipment-search" aria-label="Search shipments" placeholder="Search case / bag tag..." /><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/></svg></label></div></div>
+      <div class="case-summary-cards shipment-summary-cards" role="tablist" aria-label="Shipment methods">
+        <button class="case-stat-card is-active" type="button" role="tab" aria-selected="true" data-shipment-method="adc"><span class="case-stat-label">ADC - All Day Courier</span><strong class="case-stat-count" data-shipment-count="adc">0</strong></button>
+        <button class="case-stat-card" type="button" role="tab" aria-selected="false" data-shipment-method="mbi"><span class="case-stat-label">MBI DELIVERY</span><strong class="case-stat-count" data-shipment-count="mbi">0</strong></button>
+        <button class="case-stat-card" type="button" role="tab" aria-selected="false" data-shipment-method="fedex"><span class="case-stat-label">FedEx Delivery</span><strong class="case-stat-count" data-shipment-count="fedex">0</strong></button>
+      </div>
+      <div id="shipment-output"><p class="muted">Loading shipments...</p></div>
     </section>
     <section class="card worldtracer-create" id="worldtracer-card" hidden>
       <h1>Rush Bag</h1>
@@ -491,6 +508,13 @@
     const casesOutput = document.querySelector('#cases-output');
     const openCasesTab = document.querySelector('#open-cases-tab');
     const closedCasesTab = document.querySelector('#closed-cases-tab');
+    const shipmentTab = document.querySelector('#shipment-tab');
+    const shipmentCard = document.querySelector('#shipment-card');
+    const shipmentOutput = document.querySelector('#shipment-output');
+    const shipmentSearch = document.querySelector('#shipment-search');
+    const shipmentMonth = document.querySelector('#shipment-month');
+    const closedMonth = document.querySelector('#closed-month');
+    const shipmentMethodButtons = [...document.querySelectorAll('[data-shipment-method]')];
     const openCasesCard = document.querySelector('#open-cases-card');
     const worldTracerTab = document.querySelector('#worldtracer-tab');
     const worldTracerCard = document.querySelector('#worldtracer-card');
@@ -593,6 +617,7 @@
       window._cbsListPages[key] = Math.max(1, (Number(window._cbsListPages[key]) || 1) + Number(button.dataset.pageDelta || 0));
       if (key === 'rush-bags') renderWorldTracerCases(window._worldTracerRows || []);
       else if (key === 'missing-reports') renderMissingReports(window._missingBagRows || []);
+      else if (key === 'shipments') { window._shipmentMonth = ''; renderShipments(); }
       else if (key.endsWith('-passenger')) renderCases();
       else renderUnresolvedBaggage(window._unresolvedBaggageSourceRows || []);
     });
@@ -635,6 +660,7 @@
       addBaggageCard.hidden = section !== 'add-baggage';
       baggageChartCard.hidden = section !== 'baggage-chart';
       emailCard.hidden = section !== 'email';
+      shipmentCard.hidden = section !== 'shipment';
       openCasesTab.classList.toggle('is-active', section === 'open');
       closedCasesTab.classList.toggle('is-active', section === 'closed');
       worldTracerTab.classList.toggle('is-active', section === 'worldtracer');
@@ -642,8 +668,10 @@
       addBaggageTab.classList.toggle('is-active', section === 'add-baggage');
       baggageChartTab.classList.toggle('is-active', section === 'baggage-chart');
       emailTab.classList.toggle('is-active', section === 'email');
+      shipmentTab.classList.toggle('is-active', section === 'shipment');
       if (isCaseSection) {
         window._caseView = section;
+        closedMonth.hidden = section !== 'closed';
         casePageTitle.innerHTML = section === 'closed' ? '<span class="en">Closed Case</span><span class="zh">已结案件</span>' : '<span class="en">Open Case</span><span class="zh">未结案件</span>';
         onHandGroup.hidden = false;
         onHandTitle.textContent = section === 'closed' ? 'Closed On-hand' : 'On-hand';
@@ -651,6 +679,7 @@
         if (window._unresolvedBaggageLoaded) renderUnresolvedBaggage(window._unresolvedBaggageSourceRows || []);
         renderCases();
       }
+      if (section === 'shipment') renderShipments();
     }
     function setSidebarCollapsed(collapsed) {
       document.body.classList.toggle('sidebar-collapsed', collapsed);
@@ -751,7 +780,7 @@
       if (action === 'case-close') return '<label class="wide"><span>Notes</span><textarea name="note" placeholder="Enter case close notes" required></textarea></label>';
       if (action === 'on-hand-rush') return `${worldTracerFileNumber ? `<input type="hidden" name="worldTracerFileNumber" value="${escapeHtml(worldTracerFileNumber)}" />` : '<label><span>WorldTracer File Number (Optional)</span><input name="worldTracerFileNumber" placeholder="Can be added later" /></label>'}<label><span>Original Tag Number</span><input name="originalTagNumber" value="${escapeHtml(bagTag)}" ${rushBagTagInputAttributes} required /></label><label><span>RUSH Tag Number</span><input name="rushTagNumber" ${rushBagTagInputAttributes} required /></label><div class="rush-itinerary wide"><div class="rush-itinerary-head"><h2>RUSH Itinerary</h2><button class="secondary" type="button" data-add-unresolved-flight>+ Add Flight</button></div><div data-unresolved-flight-rows>${rushFlightRowHtml(defaultRushFlight())}</div></div>`;
       if (action === 'email') return `<label class="wide"><span>Email</span><select name="emailAction" data-onhand-email-action required><option value="sent_open_bag_authorization_to_pvg">Sent Open Bag Authorization to PVG</option><option value="contact_pax_pickup_bags">Pick-up Bags - available</option><option value="pickup_bags_future_available">Pick-up Bags - future available</option><option value="baggage_transfer_status_eta">Baggage transfer status update - ETA</option><option value="baggage_pickup_delivery_method_confirmation">Baggage Pick-Up / Delivery Method Confirmation</option><option value="require_open_bag_authorization_pvg">Require Open Bag Authorization at PVG</option><option value="baggage_open_by_customs">Explanation - Baggage Open by Custom</option></select></label><label class="wide" data-onhand-pvg-email><span>Email To</span><select name="emailTo" required><option value="pd-bag-intl@ceair.com">pd-bag-intl@ceair.com</option><option value="pd-bag-dom@ceair.com">pd-bag-dom@ceair.com</option></select></label><label class="authorization-upload wide" data-onhand-pvg-email><input name="authorizationFile" type="file" required /><span class="authorization-upload-title">Letter of Authorization</span><small>Select the signed file</small></label><label class="wide" data-onhand-passenger-email hidden><span>Email To</span><input name="emailTo" type="email" placeholder="Passenger email address" disabled required /></label><label class="wide" data-onhand-passenger-related hidden><span>WorldTracer File Number</span><input name="worldTracerFileNumber" value="${escapeHtml(worldTracerFileNumber)}" placeholder="WorldTracer file number" disabled required /></label><label class="wide" data-onhand-eta hidden><span>Estimated arrival date</span><input name="estimatedArrivalTime" type="date" disabled required /></label><label class="wide" data-onhand-passenger-related hidden><span>Language</span><select name="language" disabled required><option value="en">English</option><option value="zh">中文</option></select></label><label class="wide" data-onhand-future-pickup hidden><span>Available starting date</span><input name="availableDate" type="date" disabled required /></label><label class="wide" data-onhand-customs-language hidden><span>Language</span><select name="language" disabled required><option value="en">English</option><option value="zh">中文</option></select></label>`;
-      if (action === 'shipped') return `<label><span>Delivery method</span><select name="shippingMethod" data-shipping-method required><option value="">Select delivery method</option><option>ADC - All Day Courier</option><option>MBI DELIVERY AND STORAGE - STANDARD</option><option>FedEx Delivery</option><option>Pick Up at Airport</option><option>Passenger Pay for Shipping</option></select></label><label data-shipping-tracking hidden><span>Tracking number</span><input name="trackingNumber" disabled /></label><label data-shipping-address hidden><span>Shipping to where?</span><input name="shippingTo" disabled /></label><label data-shipping-bdo hidden><span>BDO</span><input name="bdo" disabled /></label><label class="wide"><span>Comment</span><textarea name="comment"></textarea></label>`;
+      if (action === 'shipped') return `<label><span>Delivery method</span><select name="shippingMethod" data-shipping-method required><option value="">Select delivery method</option><option>ADC - All Day Courier</option><option>MBI DELIVERY</option><option>FedEx Delivery</option><option>Pick Up at Airport</option><option>Passenger Pay for Shipping</option></select></label><label data-shipping-tracking hidden><span>Tracking number</span><input name="trackingNumber" disabled /></label><label data-shipping-address hidden><span>Shipping to where?</span><input name="shippingTo" disabled /></label><label data-shipping-bdo hidden><span>BDO</span><input name="bdo" disabled /></label><label class="wide"><span>Comment</span><textarea name="comment"></textarea></label>`;
       return '<label class="wide"><span>Resolution Note</span><textarea name="note" placeholder="Describe how this case was resolved" required></textarea></label>';
     }
     function unresolvedProgressHtml(row) {
@@ -809,10 +838,11 @@
     }
     function renderUnresolvedBaggageGroup(rows = [], output, groupName) {
       const showClosed = window._caseView === 'closed';
+      const selectedClosedMonth = showClosed ? ensureClosedMonth() : '';
       rows = rows.filter((row) => {
         const archivedResolutions = new Set(['on-hand-rush', 'shipped', 'passenger-collected', 'case-close', 'linked-passenger-file', 'change-type', 'expired']);
         const archived = Boolean(row.resolvedAt) && archivedResolutions.has(String(row.resolution || '').toLowerCase());
-        return showClosed ? archived : !archived;
+        return showClosed ? archived && monthKeyForDate(row.resolvedAt) === selectedClosedMonth : !archived;
       });
       const rowsByTag = new Map();
       rows.forEach((row) => {
@@ -893,6 +923,7 @@
       window._unresolvedBaggageRows = [...regularRows, ...notLoadRows];
       window._unresolvedBaggageLoaded = true;
       if (window._cbsRows) requestAnimationFrame(renderCases);
+      if (!shipmentCard.hidden) requestAnimationFrame(renderShipments);
     }
     async function loadUnresolvedBaggage() {
       unresolvedBaggageOutput.innerHTML = '<p class="muted">Loading cases...</p>';
@@ -916,7 +947,11 @@
       return '';
     }
     function hasValue(value) { return value != null && String(value).trim() !== ''; }
-    function renderValue(value) { return hasValue(value) ? value : '-'; }
+    function normalizeShippingMethodLabel(value) {
+      const text = String(value || '').trim();
+      return /^MBI\b/i.test(text) ? 'MBI DELIVERY' : value;
+    }
+    function renderValue(value) { return hasValue(value) ? normalizeShippingMethodLabel(value) : '-'; }
     function normalizeBagSearch(value) { return String(value || '').trim().toUpperCase().replace(/\s+/g, ''); }
     function isBagTagSearch(value) { return /^[A-Z]{2}\d{6}$/.test(normalizeBagSearch(value)); }
     const TRACKING_STAGES = [
@@ -1041,7 +1076,7 @@
     function passengerNotificationHtml(row) {
       const events = parseUpdateNoteEvents(row);
       const sentKeys = new Set(events.map((event) => event.key));
-      if (events.some((event) => event.key === 'shipping' && (event.fields || []).some(([key, value]) => key === 'Shipping Method' && ['ADC - All Day Courier', 'MBI DELIVERY AND STORAGE - STANDARD'].includes(value)))) sentKeys.add('adc_shipping');
+      if (events.some((event) => event.key === 'shipping' && (event.fields || []).some(([key, value]) => key === 'Shipping Method' && ['ADC - All Day Courier', 'MBI DELIVERY'].includes(value)))) sentKeys.add('adc_shipping');
       if (events.some((event) => event.key === 'shipping' && (event.fields || []).some(([key, value]) => key === 'Shipping Method' && value === 'FedEx Delivery'))) sentKeys.add('fedex_shipping');
       if (events.some((event) => event.key === 'shipping' && (event.fields || []).some(([key, value]) => key === 'Shipping Method' && value === 'Pick Up at Airport'))) sentKeys.add('airport_pickup');
       if (events.some((event) => event.key === 'shipping' && (event.fields || []).some(([key, value]) => key === 'Shipping Method' && value === 'Passenger Pay for Shipping'))) sentKeys.add('passenger_paid_shipping');
@@ -1202,7 +1237,7 @@
       if (!row.rowNumber) return `<p class="status err">${label('A saved row is required before this case can be updated.', '案件保存后才能更新。')}</p>`;
       const active = ['worldtracer', 'requested_bags', 'rush', 'location', 'shipping', 'lost', 'closed'].includes(mode) ? mode : 'worldtracer';
       const input = (title, name, attrs = 'required') => `<label><span>${escapeHtml(title)}</span><input name="${escapeHtml(name)}" ${attrs} /></label>`;
-      const shippingMethodSelect = `<label><span>Delivery method</span><select name="shippingMethod" data-shipping-method required><option value="">Select delivery method</option><option>ADC - All Day Courier</option><option>MBI DELIVERY AND STORAGE - STANDARD</option><option>BDO</option><option>FedEx Delivery</option><option>Pick Up at Airport</option><option>Passenger Pay for Shipping</option></select></label>`;
+      const shippingMethodSelect = `<label><span>Delivery method</span><select name="shippingMethod" data-shipping-method required><option value="">Select delivery method</option><option>ADC - All Day Courier</option><option>MBI DELIVERY</option><option>BDO</option><option>FedEx Delivery</option><option>Pick Up at Airport</option><option>Passenger Pay for Shipping</option></select></label>`;
       const shippingTrackingInput = `<label data-shipping-tracking hidden><span>Tracking number</span><input name="trackingNumber" disabled /></label>`;
       const shippingAddressInput = `<label data-shipping-address hidden><span>Shipping to where?</span><input name="shippingTo" disabled /></label>`;
       const shippingBdoInput = `<label data-shipping-bdo hidden><span>BDO</span><input name="bdo" disabled /></label>`;
@@ -1237,6 +1272,91 @@
       </form>`;
     }
     function isClosedCase(row) { return /close|forward\s+to\s+mu/i.test(String(row?.status || '')); }
+    function monthKeyForDate(value) {
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? '' : `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    }
+    function closedCaseDate(row) {
+      return parseUpdateNoteEvents(row).filter((event) => event.key === 'closed').at(-1)?.at || row?.resolvedAt || row?.updatedAt || row?.submittedAt || '';
+    }
+    function ensureClosedMonth() {
+      if (window._closedMonth) return window._closedMonth;
+      const monthKeys = [...(window._cbsRows || []), ...(window._unresolvedBaggageSourceRows || [])].filter((row) => isClosedCase(row) || row.resolvedAt).map((row) => monthKeyForDate(closedCaseDate(row))).filter(Boolean).sort().reverse();
+      window._closedMonth = monthKeys[0] || monthKeyForDate(new Date());
+      if (closedMonth) closedMonth.value = window._closedMonth;
+      return window._closedMonth;
+    }
+    function shipmentDetails(row) {
+      const historyEvents = (Array.isArray(row?.history) ? row.history : []).flatMap((entry) => entry.updateEvents || []).map((event) => ({
+        ...event,
+        key:trackingKeyFromText(event.key || event.status || event.title),
+        at:event.at || event.updatedAt || row.updatedAt || row.submittedAt || '',
+        fields:Array.isArray(event.fields) ? event.fields : []
+      }));
+      const event = [...parseUpdateNoteEvents(row), ...historyEvents].filter((item) => item.key === 'shipping').sort((a, b) => (Date.parse(a.at) || 0) - (Date.parse(b.at) || 0)).at(-1);
+      if (!event) return null;
+      const fields = new Map(event.fields || []);
+      const method = normalizeShippingMethodLabel(fields.get('Shipping Method') || fields.get('Delivery method') || fields.get('Delivery Method') || '');
+      const category = /^ADC\b/i.test(method) ? 'adc' : /^MBI\b/i.test(method) ? 'mbi' : /FedEx/i.test(method) ? 'fedex' : '';
+      if (!category) return null;
+      return { event, method, category, date:event.at || row.updatedAt || row.submittedAt || '' };
+    }
+    function paginateShipmentsByMonth(shipments) {
+      window._cbsListPages ||= {};
+      const months = new Map();
+      shipments.forEach((item) => {
+        const date = new Date(item.shipment.date);
+        const validDate = !Number.isNaN(date.getTime());
+        const monthKey = validDate ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}` : 'unknown';
+        if (!months.has(monthKey)) months.set(monthKey, { date:validDate ? date : null, rows:[] });
+        months.get(monthKey).rows.push(item);
+      });
+      const monthGroups = [...months.values()].sort((a, b) => (b.date?.getTime() || 0) - (a.date?.getTime() || 0));
+      const pageCount = Math.max(1, monthGroups.length);
+      const page = Math.min(Math.max(1, Number(window._cbsListPages.shipments) || 1), pageCount);
+      window._cbsListPages.shipments = page;
+      const selected = monthGroups[page - 1] || { date:null, rows:[] };
+      if (window._shipmentMonth) {
+        const selectedIndex = monthGroups.findIndex((group) => monthKeyForDate(group.date) === window._shipmentMonth);
+        if (selectedIndex >= 0 && selectedIndex + 1 !== page) {
+          window._cbsListPages.shipments = selectedIndex + 1;
+          return paginateShipmentsByMonth(shipments);
+        }
+      }
+      const monthLabel = selected.date ? selected.date.toLocaleDateString(document.documentElement.lang === 'zh' ? 'zh-CN' : 'en-US', { year:'numeric', month:'long' }) : label('Date unavailable', '日期未知');
+      window._shipmentMonth = monthKeyForDate(selected.date);
+      if (shipmentMonth) shipmentMonth.value = window._shipmentMonth;
+      return { rows:selected.rows, page, pageCount, total:shipments.length, summary:`${monthLabel} · ${selected.rows.length} ${label('records', '条')}` };
+    }
+    function renderShipments() {
+      const sourceRows = [...(window._cbsRows || []), ...(window._unresolvedBaggageSourceRows || [])];
+      const shipments = sourceRows.map((row) => ({ row, shipment:shipmentDetails(row) })).filter((item) => item.shipment);
+      const query = String(shipmentSearch?.value || '').trim().toLowerCase();
+      const searchedShipments = shipments.filter(({ row, shipment }) => !query || `${rowSearchText(row)} ${shipment.method}`.toLowerCase().includes(query));
+      const pagination = paginateShipmentsByMonth(searchedShipments);
+      const counts = { adc:0, mbi:0, fedex:0 };
+      pagination.rows.forEach(({ shipment }) => { counts[shipment.category] += 1; });
+      Object.entries(counts).forEach(([key, count]) => { const output = document.querySelector(`[data-shipment-count="${key}"]`); if (output) output.textContent = String(count); });
+      const selectedMethod = window._shipmentMethod || 'adc';
+      shipmentMethodButtons.forEach((button) => { const active = button.dataset.shipmentMethod === selectedMethod; button.classList.toggle('is-active', active); button.setAttribute('aria-selected', String(active)); });
+      const rows = pagination.rows.filter(({ shipment }) => shipment.category === selectedMethod).sort((a, b) => (Date.parse(b.shipment.date) || 0) - (Date.parse(a.shipment.date) || 0));
+      window._expandedShipments ||= new Set();
+      const body = rows.map(({ row, shipment }, index) => {
+        const detailKey = `shipment-${shipment.category}-${row.rowNumber || index}`;
+        const expanded = window._expandedShipments.has(detailKey);
+        const bdo = (shipment.event.fields || []).find(([key]) => /^BDO$/i.test(String(key)))?.[1];
+        const time = formatEventTime(shipment.date);
+        const details = detailRows(row).filter(([, value]) => hasValue(value));
+        const caseDetails = isOriginalFormCase(row)
+          ? fullPassengerFileHtml(row)
+          : (details.length ? `<div class="sheet-detail-grid">${details.map(([key, value]) => `<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(renderValue(value))}</p>`).join('')}</div>` : `<p class="muted">${label('No extra details.', '没有更多详情。')}</p>`);
+        const progress = trackingControlHtml(row, 'progress');
+        return `<tr class="case-summary-row" data-toggle-shipment="${escapeHtml(detailKey)}" role="button" tabindex="0" aria-expanded="${expanded}"><td class="sheet-meta">${escapeHtml(displayWorldTracerFile(row) || '-')}</td><td class="sheet-meta">${bagTagSummaryHtml(displayBagTag(row))}</td><td class="sheet-meta">${escapeHtml(time.date || '-')} ${escapeHtml(time.time || '')}</td><td class="sheet-meta">${escapeHtml(shipment.method)}</td><td>${hasValue(bdo) ? `<span class="sheet-event"><b>BDO</b>${escapeHtml(renderValue(bdo))}</span>` : '<span class="sheet-empty">-</span>'}</td></tr><tr class="case-detail-row" data-shipment-detail="${escapeHtml(detailKey)}" ${expanded ? '' : 'hidden'}><td colspan="5"><div class="case-detail-layout"><div class="case-progress-column">${progress}</div><div class="case-detail-right"><div class="case-detail-content">${caseDetails}</div>${caseCommentsHtml(row)}</div></div></td></tr>`;
+      }).join('');
+      const list = rows.length ? `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:210px"><col style="width:170px"><col style="width:190px"><col style="width:180px"><col></colgroup><thead><tr><th>WorldTracer #</th><th>${label('Bag Tag', '行李牌')}</th><th>${label('Shipment Date', '寄送日期')}</th><th>${label('Method', '方式')}</th><th>${label('Shipment Details', '寄送详情')}</th></tr></thead><tbody>${body}</tbody></table></div>` : '<p class="muted">No matching shipped cases for this courier in the selected month.</p>';
+      shipmentOutput.innerHTML = `${list}${listPaginationHtml('shipments', pagination)}`;
+      requestAnimationFrame(syncCaseProgressHeights);
+    }
     function rowSearchText(row) { return Object.values(row || {}).join(' ').toLowerCase(); }
     function sortedCaseRows(rows) {
       return [...rows].sort((a, b) => {
@@ -1326,7 +1446,7 @@
     }
     function inlineUpdateFieldsHtml(key, values = {}) {
       const input = (placeholder, name, required = true) => `<input name="${escapeHtml(name)}" placeholder="${escapeHtml(placeholder)}" ${required ? 'required' : ''} />`;
-      const shippingMethodSelect = '<select name="shippingMethod" data-shipping-method required><option value="">Select delivery method</option><option>ADC - All Day Courier</option><option>MBI DELIVERY AND STORAGE - STANDARD</option><option>FedEx Delivery</option><option>Pick Up at Airport</option><option>Passenger Pay for Shipping</option></select>';
+      const shippingMethodSelect = '<select name="shippingMethod" data-shipping-method required><option value="">Select delivery method</option><option>ADC - All Day Courier</option><option>MBI DELIVERY</option><option>FedEx Delivery</option><option>Pick Up at Airport</option><option>Passenger Pay for Shipping</option></select>';
       const shippingTrackingInput = '<input name="trackingNumber" data-shipping-tracking placeholder="Tracking number" disabled hidden />';
       const shippingAddressInput = '<input name="shippingTo" data-shipping-address placeholder="Shipping to where?" disabled hidden />';
       const shippingBdoInput = '<input name="bdo" data-shipping-bdo placeholder="BDO" disabled hidden />';
@@ -1423,7 +1543,8 @@
       const selectedRow = Number(window._selectedCbsRow || 0);
       const sourceRows = selectedRow ? (window._cbsRows || []).filter((row) => Number(row.rowNumber) === selectedRow) : (window._cbsRows || []);
       const showClosed = window._caseView === 'closed';
-      const rows = sortedCaseRows(sourceRows).filter((row) => isClosedCase(row) === showClosed).filter((row) => !query || rowSearchText(row).includes(query));
+      const selectedClosedMonth = showClosed ? ensureClosedMonth() : '';
+      const rows = sortedCaseRows(sourceRows).filter((row) => isClosedCase(row) === showClosed).filter((row) => !showClosed || monthKeyForDate(closedCaseDate(row)) === selectedClosedMonth).filter((row) => !query || rowSearchText(row).includes(query));
       setCaseCount('passenger', rows.length);
       const pagination = paginateRows(rows, `${showClosed ? 'closed' : 'open'}-passenger`);
       const baggageHtml = baggageSearchHtml();
@@ -1477,6 +1598,7 @@
         if (!res.ok) throw new Error(data.error || 'Case loading failed');
         window._cbsRows = data.rows || [];
         renderCases();
+        if (!shipmentCard.hidden) renderShipments();
         if (window._unresolvedBaggageLoaded) renderUnresolvedBaggage(window._unresolvedBaggageSourceRows || []);
       } catch (error) { casesOutput.innerHTML = `<p class="status err">${escapeHtml(error.message)}</p>`; }
     }
@@ -1628,7 +1750,7 @@
         const bdoField = form?.querySelector('[data-shipping-bdo]');
         const bdoInput = bdoField?.matches('input') ? bdoField : bdoField?.querySelector('input');
         const needsTracking = shippingMethod.value === 'FedEx Delivery';
-        const showsAddress = ['ADC - All Day Courier', 'MBI DELIVERY AND STORAGE - STANDARD', 'FedEx Delivery'].includes(shippingMethod.value);
+        const showsAddress = ['ADC - All Day Courier', 'MBI DELIVERY', 'FedEx Delivery'].includes(shippingMethod.value);
         if (trackingField) trackingField.hidden = !needsTracking;
         if (trackingInput) { trackingInput.disabled = !needsTracking; trackingInput.required = needsTracking; if (!needsTracking) trackingInput.value = ''; }
         if (addressField) addressField.hidden = !showsAddress;
@@ -1724,6 +1846,22 @@
       }
       renderCases();
     });
+    function toggleShipmentDetails(summary) {
+      if (!summary) return;
+      window._expandedShipments ||= new Set();
+      const detailKey = summary.dataset.toggleShipment;
+      if (window._expandedShipments.has(detailKey)) window._expandedShipments.delete(detailKey);
+      else window._expandedShipments.add(detailKey);
+      renderShipments();
+    }
+    shipmentOutput?.addEventListener('click', (event) => toggleShipmentDetails(event.target.closest('[data-toggle-shipment]')));
+    shipmentOutput?.addEventListener('keydown', (event) => {
+      if (!['Enter', ' '].includes(event.key)) return;
+      const summary = event.target.closest('[data-toggle-shipment]');
+      if (!summary) return;
+      event.preventDefault();
+      toggleShipmentDetails(summary);
+    });
     async function updateCase(rowNumber, payload, source = 'pir') {
       casesOutput.style.opacity = '.65';
       try {
@@ -1750,6 +1888,17 @@
     caseSearch?.addEventListener('input', () => { renderCases(); if (window._unresolvedBaggageLoaded) renderUnresolvedBaggage(window._unresolvedBaggageSourceRows || []); loadBaggageSearch(caseSearch.value); });
     openCasesTab?.addEventListener('click', () => showSection('open'));
     closedCasesTab?.addEventListener('click', () => showSection('closed'));
+    shipmentTab?.addEventListener('click', () => showSection('shipment'));
+    shipmentSearch?.addEventListener('input', () => { window._cbsListPages ||= {}; window._cbsListPages.shipments = 1; renderShipments(); });
+    shipmentMonth?.addEventListener('change', () => { window._shipmentMonth = shipmentMonth.value; renderShipments(); });
+    shipmentMethodButtons.forEach((button) => button.addEventListener('click', () => { window._shipmentMethod = button.dataset.shipmentMethod; renderShipments(); }));
+    closedMonth?.addEventListener('change', () => {
+      window._closedMonth = closedMonth.value;
+      window._cbsListPages ||= {};
+      ['closed-passenger', 'closed-on-hand', 'closed-bag-room'].forEach((key) => { window._cbsListPages[key] = 1; });
+      renderCases();
+      if (window._unresolvedBaggageLoaded) renderUnresolvedBaggage(window._unresolvedBaggageSourceRows || []);
+    });
     worldTracerTab?.addEventListener('click', async () => { delete worldTracerForm.dataset.missingRow; showSection('worldtracer'); await loadWorldTracerCases(); });
     missingAlert?.addEventListener('click', () => {
       showSection('missing');
@@ -1919,7 +2068,7 @@
         const bdoField = form.querySelector('[data-shipping-bdo]');
         const bdoInput = bdoField.querySelector('input');
         const needsTracking = shippingMethod.value === 'FedEx Delivery';
-        const showsAddress = ['ADC - All Day Courier', 'MBI DELIVERY AND STORAGE - STANDARD', 'FedEx Delivery'].includes(shippingMethod.value);
+        const showsAddress = ['ADC - All Day Courier', 'MBI DELIVERY', 'FedEx Delivery'].includes(shippingMethod.value);
         trackingField.hidden = !needsTracking;
         trackingInput.disabled = !needsTracking;
         trackingInput.required = needsTracking;
