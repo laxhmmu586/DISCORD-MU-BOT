@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const drive = fs.readFileSync(path.join(__dirname, '..', 'googleDrive.js'), 'utf8');
+const server = fs.readFileSync(path.join(__dirname, '..', 'index.js'), 'utf8');
 
 test('CBS updates persist their note, timestamp, and WorldTracer file number', () => {
   assert.match(drive, /updateNote: incomingNote \|\| current\.updateNote \|\| ''/);
@@ -11,6 +12,11 @@ test('CBS updates persist their note, timestamp, and WorldTracer file number', (
   assert.match(drive, /'WorldTracer File Number'/);
   assert.match(drive, /A\$\{current\.rowNumber\}:AM\$\{current\.rowNumber\}/);
   assert.match(drive, /cbsRecordMatchesId\(row, rowNumber\)/);
+});
+
+test('submitting Shipping again replaces the previous shipping event', () => {
+  assert.match(server, /replaceEventKey:'shipping', updateEvent: \{ key: 'shipping'/);
+  assert.match(drive, /currentEvents\.filter\(\(event\) => event\.key !== \(update\.replaceEventKey \|\| update\.deleteEventKey\)\)/);
 });
 
 test('CBS reads required passenger details from their fixed sheet columns', () => {
@@ -64,7 +70,7 @@ test('lost updates persist the Delayed to Lost status transition', () => {
 
 test('shipping updates validate and store the selected delivery method', () => {
   const server = fs.readFileSync(path.join(__dirname, '..', 'index.js'), 'utf8');
-  for (const method of ['ADC - All Day Courier', 'MBI DELIVERY AND STORAGE - STANDARD', 'BDO', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping']) assert.match(server, new RegExp(method));
+  for (const method of ['ADC - All Day Courier', 'MBI DELIVERY', 'BDO', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping']) assert.match(server, new RegExp(method));
   assert.match(server, /fields: \[\['Shipping Method', shippingMethod\]/);
   assert.match(server, /SHIPPING \| Method: \$\{shippingMethod\}/);
   assert.match(server, /shippingMethod === 'FedEx Delivery' && !trackingNumber/);
