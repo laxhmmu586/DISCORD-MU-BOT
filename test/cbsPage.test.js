@@ -226,6 +226,13 @@ test('Shipment sits above Closed Case and groups shipped cases by courier and mo
   assert.match(page, /\.\.\.\(window\._unresolvedBaggageSourceRows \|\| \[\]\)/);
   assert.match(page, /find\(\(\[key\]\) => \/\^BDO\$\/i\.test\(String\(key\)\)\)/);
   assert.doesNotMatch(page, /const fields = \(shipment\.event\.fields \|\| \[\]\).*shipping method/);
+  assert.match(page, /data-toggle-shipment="\$\{escapeHtml\(detailKey\)\}" role="button" tabindex="0" aria-expanded="\$\{expanded\}"/);
+  assert.match(page, /data-shipment-detail="\$\{escapeHtml\(detailKey\)\}"/);
+  assert.match(page, /function toggleShipmentDetails\(summary\)/);
+  assert.match(page, /shipmentOutput\?\.addEventListener\('click'/);
+  assert.match(page, /shipmentOutput\?\.addEventListener\('keydown'/);
+  assert.match(page, /trackingControlHtml\(row, 'progress'\)/);
+  assert.match(page, /fullPassengerFileHtml\(row\)/);
 });
 
 test('CBS case refresh reads Google Sheets and does not restart the page', () => {

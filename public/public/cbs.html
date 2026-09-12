@@ -1289,7 +1289,21 @@
       const rows = shipments.filter(({ row, shipment }) => shipment.category === selectedMethod && (!query || `${rowSearchText(row)} ${shipment.method}`.toLowerCase().includes(query))).sort((a, b) => (Date.parse(b.shipment.date) || 0) - (Date.parse(a.shipment.date) || 0)).map((item) => ({ ...item, sourceEmailDate:item.shipment.date }));
       const pagination = paginateRowsByMonth(rows, 'shipments');
       if (!pagination.rows.length) { shipmentOutput.innerHTML = '<p class="muted">No matching shipped cases.</p>'; return; }
-      shipmentOutput.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:210px"><col style="width:170px"><col style="width:190px"><col style="width:180px"><col></colgroup><thead><tr><th>WorldTracer #</th><th>${label('Bag Tag', '行李牌')}</th><th>${label('Shipment Date', '寄送日期')}</th><th>${label('Method', '方式')}</th><th>${label('Shipment Details', '寄送详情')}</th></tr></thead><tbody>${pagination.rows.map(({ row, shipment }) => { const bdo = (shipment.event.fields || []).find(([key]) => /^BDO$/i.test(String(key)))?.[1]; const time = formatEventTime(shipment.date); return `<tr class="case-summary-row"><td class="sheet-meta">${escapeHtml(displayWorldTracerFile(row) || '-')}</td><td class="sheet-meta">${bagTagSummaryHtml(displayBagTag(row))}</td><td class="sheet-meta">${escapeHtml(time.date || '-')} ${escapeHtml(time.time || '')}</td><td class="sheet-meta">${escapeHtml(shipment.method)}</td><td>${hasValue(bdo) ? `<span class="sheet-event"><b>BDO</b>${escapeHtml(renderValue(bdo))}</span>` : '<span class="sheet-empty">-</span>'}</td></tr>`; }).join('')}</tbody></table></div>${listPaginationHtml('shipments', pagination)}`;
+      window._expandedShipments ||= new Set();
+      const body = pagination.rows.map(({ row, shipment }, index) => {
+        const detailKey = `shipment-${shipment.category}-${row.rowNumber || index}`;
+        const expanded = window._expandedShipments.has(detailKey);
+        const bdo = (shipment.event.fields || []).find(([key]) => /^BDO$/i.test(String(key)))?.[1];
+        const time = formatEventTime(shipment.date);
+        const details = detailRows(row).filter(([, value]) => hasValue(value));
+        const caseDetails = isOriginalFormCase(row)
+          ? fullPassengerFileHtml(row)
+          : (details.length ? `<div class="sheet-detail-grid">${details.map(([key, value]) => `<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(renderValue(value))}</p>`).join('')}</div>` : `<p class="muted">${label('No extra details.', '没有更多详情。')}</p>`);
+        const progress = trackingControlHtml(row, 'progress');
+        return `<tr class="case-summary-row" data-toggle-shipment="${escapeHtml(detailKey)}" role="button" tabindex="0" aria-expanded="${expanded}"><td class="sheet-meta">${escapeHtml(displayWorldTracerFile(row) || '-')}</td><td class="sheet-meta">${bagTagSummaryHtml(displayBagTag(row))}</td><td class="sheet-meta">${escapeHtml(time.date || '-')} ${escapeHtml(time.time || '')}</td><td class="sheet-meta">${escapeHtml(shipment.method)}</td><td>${hasValue(bdo) ? `<span class="sheet-event"><b>BDO</b>${escapeHtml(renderValue(bdo))}</span>` : '<span class="sheet-empty">-</span>'}</td></tr><tr class="case-detail-row" data-shipment-detail="${escapeHtml(detailKey)}" ${expanded ? '' : 'hidden'}><td colspan="5"><div class="case-detail-layout"><div class="case-progress-column">${progress}</div><div class="case-detail-right"><div class="case-detail-content">${caseDetails}</div>${caseCommentsHtml(row)}</div></div></td></tr>`;
+      }).join('');
+      shipmentOutput.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:210px"><col style="width:170px"><col style="width:190px"><col style="width:180px"><col></colgroup><thead><tr><th>WorldTracer #</th><th>${label('Bag Tag', '行李牌')}</th><th>${label('Shipment Date', '寄送日期')}</th><th>${label('Method', '方式')}</th><th>${label('Shipment Details', '寄送详情')}</th></tr></thead><tbody>${body}</tbody></table></div>${listPaginationHtml('shipments', pagination)}`;
+      requestAnimationFrame(syncCaseProgressHeights);
     }
     function rowSearchText(row) { return Object.values(row || {}).join(' ').toLowerCase(); }
     function sortedCaseRows(rows) {
@@ -1778,6 +1792,22 @@
         window._expandedCbsCases.add(detailKey);
       }
       renderCases();
+    });
+    function toggleShipmentDetails(summary) {
+      if (!summary) return;
+      window._expandedShipments ||= new Set();
+      const detailKey = summary.dataset.toggleShipment;
+      if (window._expandedShipments.has(detailKey)) window._expandedShipments.delete(detailKey);
+      else window._expandedShipments.add(detailKey);
+      renderShipments();
+    }
+    shipmentOutput?.addEventListener('click', (event) => toggleShipmentDetails(event.target.closest('[data-toggle-shipment]')));
+    shipmentOutput?.addEventListener('keydown', (event) => {
+      if (!['Enter', ' '].includes(event.key)) return;
+      const summary = event.target.closest('[data-toggle-shipment]');
+      if (!summary) return;
+      event.preventDefault();
+      toggleShipmentDetails(summary);
     });
     async function updateCase(rowNumber, payload, source = 'pir') {
       casesOutput.style.opacity = '.65';
