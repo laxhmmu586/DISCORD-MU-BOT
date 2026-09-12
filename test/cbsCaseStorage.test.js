@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const drive = fs.readFileSync(path.join(__dirname, '..', 'googleDrive.js'), 'utf8');
+const server = fs.readFileSync(path.join(__dirname, '..', 'index.js'), 'utf8');
 
 test('CBS updates persist their note, timestamp, and WorldTracer file number', () => {
   assert.match(drive, /updateNote: incomingNote \|\| current\.updateNote \|\| ''/);
@@ -11,6 +12,11 @@ test('CBS updates persist their note, timestamp, and WorldTracer file number', (
   assert.match(drive, /'WorldTracer File Number'/);
   assert.match(drive, /A\$\{current\.rowNumber\}:AM\$\{current\.rowNumber\}/);
   assert.match(drive, /cbsRecordMatchesId\(row, rowNumber\)/);
+});
+
+test('submitting Shipping again replaces the previous shipping event', () => {
+  assert.match(server, /replaceEventKey:'shipping', updateEvent: \{ key: 'shipping'/);
+  assert.match(drive, /currentEvents\.filter\(\(event\) => event\.key !== \(update\.replaceEventKey \|\| update\.deleteEventKey\)\)/);
 });
 
 test('CBS reads required passenger details from their fixed sheet columns', () => {

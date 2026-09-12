@@ -1853,6 +1853,18 @@ function normalizeGmailText(value = '') {
     .trim();
 }
 
+const MEAL_ORDER_EMAIL_SENDERS = [
+  'laxapmu@chinaeastern-usa.com',
+  'laxhmmu@gmail.com'
+];
+
+function buildMealOrderGmailQuery(flightNo, flightDate) {
+  const senders = MEAL_ORDER_EMAIL_SENDERS.map((sender) => `from:${sender}`).join(' ');
+  const subjectFlight = String(flightNo || '').replace(/"/g, '');
+  const subjectDate = String(flightDate || '').replace(/"/g, '');
+  return `{${senders}} subject:"Meal Order for ${subjectFlight}/${subjectDate}" newer_than:7d`;
+}
+
 async function getLatestMealOrderEmail(flightNo, flightDate) {
   const normalizedFlight = String(flightNo || '').trim().toUpperCase();
   const normalizedDate = String(flightDate || '').trim().toUpperCase();
@@ -1864,7 +1876,7 @@ async function getLatestMealOrderEmail(flightNo, flightDate) {
     const client = getNextDayInfoGmailClient();
     userId = client.userId;
     authMode = client.authMode;
-    const q = `from:laxapmu@chinaeastern-usa.com subject:"Meal Order for ${normalizedFlight}/${normalizedDate}" newer_than:7d`;
+    const q = buildMealOrderGmailQuery(normalizedFlight, normalizedDate);
     const listed = await client.gmail.users.messages.list({ userId, q, maxResults:20, fields:'messages(id,internalDate)' });
     const messages = [...(listed.data.messages || [])].sort((a, b) => Number(b.internalDate || 0) - Number(a.internalDate || 0));
     for (const message of messages) {
@@ -4573,6 +4585,7 @@ module.exports = {
   hasNextDayInfoEmail,
   getNextDayInfoEmail,
   getLatestMealOrderEmail,
+  buildMealOrderGmailQuery,
   sendNextDayInfoEmail,
   getGdCheckEmail,
   getStoredReportRows,
