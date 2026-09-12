@@ -1691,7 +1691,12 @@ function cbsEmailIsChinese(record = {}) {
 }
 
 function cbsPlainTextEmailHtml(text = '') {
-  return String(text).split(/\n{2,}/).map((paragraph) => `<p>${paragraph.replace(/\n/g, '<br>')}</p>`).join('');
+  const paragraphs = String(text).split(/\n{2,}/);
+  const content = paragraphs.map((paragraph) => {
+    const lines = paragraph.replace(/\n/g, '<br>');
+    return `<p style="margin:0 0 16px;">${lines}</p>`;
+  }).join('');
+  return `<div style="font-family:Arial,'Microsoft YaHei',sans-serif;font-size:15px;line-height:1.75;letter-spacing:0.15px;color:#222;">${content}</div>`;
 }
 
 function worldTracerUpdateEmail(record, fileNumber) {
