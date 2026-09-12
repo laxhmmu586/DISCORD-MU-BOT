@@ -216,7 +216,9 @@ test('Shipment sits above Closed Case and groups shipped cases by courier and mo
     assert.match(page, new RegExp(`data-shipment-count="${method}"`));
   }
   assert.match(page, /data-shipment-method="adc"[^>]*>[\s\S]*?ADC - All Day Courier/);
-  assert.match(page, /data-shipment-method="mbi"[^>]*>[\s\S]*?MBI Delivery and Storage/);
+  assert.match(page, /data-shipment-method="mbi"[^>]*>[\s\S]*?MBI DELIVERY/);
+  assert.match(page, /function normalizeShippingMethodLabel\(value\)/);
+  assert.match(page, /return \/\^MBI\\b\/i\.test\(text\) \? 'MBI DELIVERY' : value/);
   assert.match(page, /data-shipment-method="fedex"[^>]*>[\s\S]*?FedEx Delivery/);
   assert.doesNotMatch(page, /class="case-stat-icon">(?:ADC|MBI|FX)<\/span>/);
   assert.match(page, /function shipmentDetails\(row\)/);
@@ -577,7 +579,7 @@ test('Closed On-hand cases can update WorldTracer or reopen', () => {
 
 test('On-hand shipping uses the Passenger Filed delivery methods without email handling', () => {
   const onHandFields = page.match(/if \(action === 'shipped'\) return `([\s\S]*?)`;/)?.[1] || '';
-  for (const method of ['ADC - All Day Courier', 'MBI DELIVERY AND STORAGE - STANDARD', 'BDO', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping']) assert.match(onHandFields, new RegExp(method));
+  for (const method of ['ADC - All Day Courier', 'MBI DELIVERY', 'BDO', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping']) assert.match(onHandFields, new RegExp(method));
   assert.match(onHandFields, /data-shipping-tracking hidden/);
   assert.match(onHandFields, /data-shipping-address hidden/);
   assert.match(server, /if \(action === 'shipped'\) \{/);
@@ -1039,15 +1041,15 @@ test('CBS tracking no longer offers Forward to MU', () => {
 test('shipping updates offer all supported delivery methods', () => {
   const passengerCaseShipping = page.match(/const shippingMethodSelect = '([^']+)'/)?.[1] || '';
   assert.match(page, /select name="shippingMethod" data-shipping-method required/);
-  for (const method of ['ADC - All Day Courier', 'MBI DELIVERY AND STORAGE - STANDARD', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping']) assert.match(page, new RegExp(`<option>${method}<\\/option>`));
+  for (const method of ['ADC - All Day Courier', 'MBI DELIVERY', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping']) assert.match(page, new RegExp(`<option>${method}<\\/option>`));
   assert.doesNotMatch(passengerCaseShipping, /<option>BDO<\/option>/);
   assert.match(page, /data-shipping-bdo/);
   assert.match(page, /name="bdo"/);
   assert.match(page, /data-shipping-tracking placeholder="Tracking number" disabled hidden/);
   assert.match(page, /needsTracking = shippingMethod\.value === 'FedEx Delivery'/);
   assert.match(page, /trackingInput\.required = needsTracking/);
-  assert.match(page, /showsAddress = \['ADC - All Day Courier', 'MBI DELIVERY AND STORAGE - STANDARD', 'FedEx Delivery'\]\.includes\(shippingMethod\.value\)/);
-  assert.doesNotMatch(page, /\['ADC - All Day Courier', 'MBI DELIVERY AND STORAGE - STANDARD', 'FedEx Delivery', 'Passenger Pay for Shipping'\]\.includes/);
+  assert.match(page, /showsAddress = \['ADC - All Day Courier', 'MBI DELIVERY', 'FedEx Delivery'\]\.includes\(shippingMethod\.value\)/);
+  assert.doesNotMatch(page, /\['ADC - All Day Courier', 'MBI DELIVERY', 'FedEx Delivery', 'Passenger Pay for Shipping'\]\.includes/);
   assert.match(page, /addressInput\.required = false/);
   assert.match(page, /bdoInput\.required = showsAddress/);
 });
