@@ -100,11 +100,13 @@ test('ADC shipping updates email the passenger a bilingual delivery notification
   assert.match(server, /Regarding Delivery Time:/);
   assert.match(server, /第三方配送服务负责后续运输/);
   assert.match(server, /handled by a third-party delivery service/);
-  assert.match(server, /\['ADC - All Day Courier', 'MBI DELIVERY'\]\.includes\(value\)/);
+  assert.match(server, /const shippedMethod = updateFields\.updateEvent\?\.key === 'shipping'/);
+  assert.match(server, /const courierDeliveryMethods = \['ADC - All Day Courier', 'MBI DELIVERY'\]/);
+  assert.match(server, /if \(courierDeliveryMethods\.includes\(shippedMethod\)\)/);
   assert.match(server, /CBS ADC shipping update email error/);
   assert.match(server, /line-height:1\.75;letter-spacing:0\.15px/);
   assert.match(server, /`<strong>\$\{escapedPhrase\}<\/strong>`/);
-  assert.match(server, /adcShippingUpdateEmail\(record, fileNumber, shippingAddress\)/);
+  assert.match(server, /adcShippingUpdateEmail\(record, fileNumber\)/);
 });
 
 test('FedEx shipping updates email tracking details from the stored shipping columns', () => {
