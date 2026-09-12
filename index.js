@@ -1828,22 +1828,24 @@ function rushToLaxInformationEmail(record, fileNumber, estimatedArrivalTime) {
   return { subject, text, html: cbsPlainTextEmailHtml(text) };
 }
 
-function adcShippingUpdateEmail(record, fileNumber, shippingAddress = '') {
-  const reference = String(fileNumber || '').replace(/[&<>"']/g, (character) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character]));
+function adcShippingUpdateEmail(record, fileNumber) {
+  const escapeHtml = (value) => String(value || '').replace(/[&<>"']/g, (character) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character]));
   const chinese = cbsEmailIsChinese(record);
   const subject = chinese ? `行李配送通知 – WorldTracer 案件编号：${fileNumber}` : `Baggage Delivery Notification – WorldTracer Reference: ${fileNumber}`;
-  const address = sanitizeCbsText(shippingAddress, 300);
-  const text = address
-    ? (chinese
-      ? `尊敬的旅客：\n\n您好！\n\n我们通知您，您的行李已安排寄出，并将配送至以下地址：\n\nWorldTracer 案件编号：${fileNumber}\n\n配送地址：${address}\n\n请留意后续配送情况，并确保上述地址可以正常接收行李。\n\n如您发现配送地址有误，或配送过程中有任何问题，请尽快回复此邮件与我们联系。\n\n感谢您的耐心与配合。\n\n此致\n中国东方航空`
-      : `Dear Passenger,\n\nWe would like to inform you that your baggage has been shipped and will be delivered to the following address:\n\nWorldTracer Reference Number: ${fileNumber}\n\nDelivery Address: ${address}\n\nPlease monitor the delivery status and ensure that the above address is available to receive your baggage.\n\nIf you notice any issues with the delivery address or experience any problems during the delivery process, please reply to this email as soon as possible.\n\nThank you for your patience and cooperation.\n\nSincerely,\nChina Eastern Airlines`)
-    : (chinese
-      ? `尊敬的旅客：\n\n您好！\n\n我们通知您，您的行李已安排寄出，并将配送至您在行李案件中所提供的地址。\n\nWorldTracer 案件编号：${fileNumber}\n\n请留意后续配送情况，并确保您所提供的地址可以正常接收行李。\n\n如配送过程中有任何更新或需要进一步确认的信息，我们会与您联系。\n\n如您有任何问题，请直接回复此邮件与我们联系。\n\n感谢您的耐心与配合。\n\n此致\n中国东方航空`
-      : `Dear Passenger,\n\nWe would like to inform you that your baggage has been shipped and is being delivered to the address you provided for your baggage case.\n\nWorldTracer Reference Number: ${fileNumber}\n\nPlease monitor the delivery and ensure that the address provided is available to receive the baggage.\n\nIf there are any updates or if additional information is required during the delivery process, we will contact you accordingly.\n\nIf you have any questions, please feel free to reply directly to this email.\n\nThank you for your patience and cooperation.\n\nSincerely,\nChina Eastern Airlines`);
-  const escapedText = text.replace(fileNumber, reference).replace(address, String(address).replace(/[&<>"']/g, (character) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character])));
-  return { subject, text, html: cbsPlainTextEmailHtml(escapedText) };
+  const text = chinese
+    ? `尊敬的旅客：\n\n您好！\n\n现通知您，您的行李已完成相关处理并安排配送，将送至您在行李案件中所提供的地址。\n\nWorldTracer 案件编号：${fileNumber}\n\n请您留意接收行李，并确保所提供的地址及联系方式准确且可以正常接收配送。\n\n关于配送时间：\n\n行李交付配送后，将由第三方配送服务负责后续运输。受当地配送方式及实际运营情况影响，我们无法提供实时配送进度，也无法查询、确认或预估具体送达时间。实际送达时间可能根据当日配送安排、交通状况及其他实际情况有所调整，敬请耐心等待。\n\n感谢您的耐心、理解与配合。\n\n此致\n中国东方航空`
+    : `Dear Passenger,\n\nWe are writing to inform you that your baggage has been processed and dispatched for delivery to the address provided in your baggage report.\n\nWorldTracer Reference: ${fileNumber}\n\nPlease ensure that the delivery address and contact information provided are accurate and that the baggage can be received at the designated address.\n\nRegarding Delivery Time:\n\nOnce the baggage has been handed over for delivery, the delivery will be handled by a third-party delivery service. Due to local delivery procedures and operational conditions, we are unable to provide real-time delivery updates or confirm or estimate a specific delivery time. The actual delivery time may vary depending on the delivery schedule, traffic conditions, and other operational circumstances on the day of delivery.\n\nThank you for your patience, understanding, and cooperation.\n\nSincerely,\nChina Eastern Airlines`;
+  let html = cbsPlainTextEmailHtml(escapeHtml(text)).replaceAll('<p>', '<p style="margin:0 0 16px;">');
+  const emphasized = chinese
+    ? [`WorldTracer 案件编号：${fileNumber}`, '关于配送时间：', '中国东方航空']
+    : [`WorldTracer Reference: ${fileNumber}`, 'Regarding Delivery Time:', 'China Eastern Airlines'];
+  for (const phrase of emphasized) {
+    const escapedPhrase = escapeHtml(phrase);
+    html = html.replace(escapedPhrase, `<strong>${escapedPhrase}</strong>`);
+  }
+  html = `<div style="font-family:Arial,'Microsoft YaHei',sans-serif;font-size:15px;line-height:1.75;letter-spacing:0.15px;color:#222;">${html}</div>`;
+  return { subject, text, html };
 }
-
 function fedexShippingUpdateEmail(record, fileNumber, trackingNumber, shippingAddress = '') {
   const escapeHtml = (value) => String(value || '').replace(/[&<>"']/g, (character) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character]));
   const chinese = cbsEmailIsChinese(record);
@@ -1887,22 +1889,24 @@ function lostBaggageUpdateEmail(record, fileNumber) {
   return { subject, text, html: cbsPlainTextEmailHtml(text.replace(fileNumber, reference)) };
 }
 
-function adcShippingUpdateEmail(record, fileNumber, shippingAddress = '') {
-  const reference = String(fileNumber || '').replace(/[&<>"']/g, (character) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character]));
+function adcShippingUpdateEmail(record, fileNumber) {
+  const escapeHtml = (value) => String(value || '').replace(/[&<>"']/g, (character) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character]));
   const chinese = cbsEmailIsChinese(record);
   const subject = chinese ? `行李配送通知 – WorldTracer 案件编号：${fileNumber}` : `Baggage Delivery Notification – WorldTracer Reference: ${fileNumber}`;
-  const address = sanitizeCbsText(shippingAddress, 300);
-  const text = address
-    ? (chinese
-      ? `尊敬的旅客：\n\n您好！\n\n我们通知您，您的行李已安排寄出，并将配送至以下地址：\n\nWorldTracer 案件编号：${fileNumber}\n\n配送地址：${address}\n\n请留意后续配送情况，并确保上述地址可以正常接收行李。\n\n如您发现配送地址有误，或配送过程中有任何问题，请尽快回复此邮件与我们联系。\n\n感谢您的耐心与配合。\n\n此致\n中国东方航空`
-      : `Dear Passenger,\n\nWe would like to inform you that your baggage has been shipped and will be delivered to the following address:\n\nWorldTracer Reference Number: ${fileNumber}\n\nDelivery Address: ${address}\n\nPlease monitor the delivery status and ensure that the above address is available to receive your baggage.\n\nIf you notice any issues with the delivery address or experience any problems during the delivery process, please reply to this email as soon as possible.\n\nThank you for your patience and cooperation.\n\nSincerely,\nChina Eastern Airlines`)
-    : (chinese
-      ? `尊敬的旅客：\n\n您好！\n\n我们通知您，您的行李已安排寄出，并将配送至您在行李案件中所提供的地址。\n\nWorldTracer 案件编号：${fileNumber}\n\n请留意后续配送情况，并确保您所提供的地址可以正常接收行李。\n\n如配送过程中有任何更新或需要进一步确认的信息，我们会与您联系。\n\n如您有任何问题，请直接回复此邮件与我们联系。\n\n感谢您的耐心与配合。\n\n此致\n中国东方航空`
-      : `Dear Passenger,\n\nWe would like to inform you that your baggage has been shipped and is being delivered to the address you provided for your baggage case.\n\nWorldTracer Reference Number: ${fileNumber}\n\nPlease monitor the delivery and ensure that the address provided is available to receive the baggage.\n\nIf there are any updates or if additional information is required during the delivery process, we will contact you accordingly.\n\nIf you have any questions, please feel free to reply directly to this email.\n\nThank you for your patience and cooperation.\n\nSincerely,\nChina Eastern Airlines`);
-  const escapedText = text.replace(fileNumber, reference).replace(address, String(address).replace(/[&<>"']/g, (character) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character])));
-  return { subject, text, html: cbsPlainTextEmailHtml(escapedText) };
+  const text = chinese
+    ? `尊敬的旅客：\n\n您好！\n\n现通知您，您的行李已完成相关处理并安排配送，将送至您在行李案件中所提供的地址。\n\nWorldTracer 案件编号：${fileNumber}\n\n请您留意接收行李，并确保所提供的地址及联系方式准确且可以正常接收配送。\n\n关于配送时间：\n\n行李交付配送后，将由第三方配送服务负责后续运输。受当地配送方式及实际运营情况影响，我们无法提供实时配送进度，也无法查询、确认或预估具体送达时间。实际送达时间可能根据当日配送安排、交通状况及其他实际情况有所调整，敬请耐心等待。\n\n感谢您的耐心、理解与配合。\n\n此致\n中国东方航空`
+    : `Dear Passenger,\n\nWe are writing to inform you that your baggage has been processed and dispatched for delivery to the address provided in your baggage report.\n\nWorldTracer Reference: ${fileNumber}\n\nPlease ensure that the delivery address and contact information provided are accurate and that the baggage can be received at the designated address.\n\nRegarding Delivery Time:\n\nOnce the baggage has been handed over for delivery, the delivery will be handled by a third-party delivery service. Due to local delivery procedures and operational conditions, we are unable to provide real-time delivery updates or confirm or estimate a specific delivery time. The actual delivery time may vary depending on the delivery schedule, traffic conditions, and other operational circumstances on the day of delivery.\n\nThank you for your patience, understanding, and cooperation.\n\nSincerely,\nChina Eastern Airlines`;
+  let html = cbsPlainTextEmailHtml(escapeHtml(text)).replaceAll('<p>', '<p style="margin:0 0 16px;">');
+  const emphasized = chinese
+    ? [`WorldTracer 案件编号：${fileNumber}`, '关于配送时间：', '中国东方航空']
+    : [`WorldTracer Reference: ${fileNumber}`, 'Regarding Delivery Time:', 'China Eastern Airlines'];
+  for (const phrase of emphasized) {
+    const escapedPhrase = escapeHtml(phrase);
+    html = html.replace(escapedPhrase, `<strong>${escapedPhrase}</strong>`);
+  }
+  html = `<div style="font-family:Arial,'Microsoft YaHei',sans-serif;font-size:15px;line-height:1.75;letter-spacing:0.15px;color:#222;">${html}</div>`;
+  return { subject, text, html };
 }
-
 function fedexShippingUpdateEmail(record, fileNumber, trackingNumber, shippingAddress = '') {
   const escapeHtml = (value) => String(value || '').replace(/[&<>"']/g, (character) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character]));
   const chinese = cbsEmailIsChinese(record);
@@ -3492,11 +3496,14 @@ app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
         console.error(transferEtaEmail ? 'CBS baggage transfer ETA email error:' : (pickupEmail ? 'CBS baggage pickup passenger email error:' : 'CBS signed PVG authorization email error:'), mailErr);
       }
     }
-    if (updateFields.updateEvent?.key === 'shipping' && updateFields.updateEvent.fields.some(([key, value]) => key === 'Shipping Method' && ['ADC - All Day Courier', 'MBI DELIVERY'].includes(value))) {
+    const shippedMethod = updateFields.updateEvent?.key === 'shipping'
+      ? new Map(updateFields.updateEvent.fields || []).get('Shipping Method')
+      : '';
+    const courierDeliveryMethods = ['ADC - All Day Courier', 'MBI DELIVERY'];
+    if (courierDeliveryMethods.includes(shippedMethod)) {
       const record = result.record;
       const fileNumber = record.worldTracerFileNumber || '';
-      const shippingAddress = updateFields.updateEvent.fields.find(([key]) => key === 'Ship To')?.[1] || '';
-      const message = adcShippingUpdateEmail(record, fileNumber, shippingAddress);
+      const message = adcShippingUpdateEmail(record, fileNumber);
       try {
         result.email = await sendCbsCaseEmail({ passengerEmail: record.email, subject: message.subject, html: message.html, text: message.text, ccOperations: false });
       } catch (mailErr) {

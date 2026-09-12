@@ -94,13 +94,19 @@ test('ADC shipping updates email the passenger a bilingual delivery notification
   assert.match(server, /function adcShippingUpdateEmail/);
   assert.match(server, /行李配送通知 – WorldTracer 案件编号：\$\{fileNumber\}/);
   assert.match(server, /Baggage Delivery Notification – WorldTracer Reference: \$\{fileNumber\}/);
-  assert.match(server, /您的行李已安排寄出，并将配送至您在行李案件中所提供的地址/);
-  assert.match(server, /your baggage has been shipped and is being delivered to the address you provided/);
-  assert.match(server, /\['ADC - All Day Courier', 'MBI DELIVERY'\]\.includes\(value\)/);
+  assert.match(server, /您的行李已完成相关处理并安排配送，将送至您在行李案件中所提供的地址/);
+  assert.match(server, /your baggage has been processed and dispatched for delivery to the address provided/);
+  assert.match(server, /关于配送时间：/);
+  assert.match(server, /Regarding Delivery Time:/);
+  assert.match(server, /第三方配送服务负责后续运输/);
+  assert.match(server, /handled by a third-party delivery service/);
+  assert.match(server, /const shippedMethod = updateFields\.updateEvent\?\.key === 'shipping'/);
+  assert.match(server, /const courierDeliveryMethods = \['ADC - All Day Courier', 'MBI DELIVERY'\]/);
+  assert.match(server, /if \(courierDeliveryMethods\.includes\(shippedMethod\)\)/);
   assert.match(server, /CBS ADC shipping update email error/);
-  assert.match(server, /配送地址：\$\{address\}/);
-  assert.match(server, /Delivery Address: \$\{address\}/);
-  assert.match(server, /adcShippingUpdateEmail\(record, fileNumber, shippingAddress\)/);
+  assert.match(server, /line-height:1\.75;letter-spacing:0\.15px/);
+  assert.match(server, /`<strong>\$\{escapedPhrase\}<\/strong>`/);
+  assert.match(server, /adcShippingUpdateEmail\(record, fileNumber\)/);
 });
 
 test('FedEx shipping updates email tracking details from the stored shipping columns', () => {
