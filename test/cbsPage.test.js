@@ -209,6 +209,19 @@ test('CBS page uses the Lake Baggage System browser title', () => {
   assert.doesNotMatch(page, /<title>CBS Cases<\/title>/);
 });
 
+test('Shipment sits above Closed Case and groups shipped cases by courier and month', () => {
+  assert.match(page, /id="shipment-tab"[\s\S]*>Shipment<\/span><\/button>\s*<button[^>]*id="closed-cases-tab"/);
+  for (const method of ['adc', 'mbi', 'fedex']) {
+    assert.match(page, new RegExp(`data-shipment-method="${method}"`));
+    assert.match(page, new RegExp(`data-shipment-count="${method}"`));
+  }
+  assert.match(page, /function shipmentDetails\(row\)/);
+  assert.match(page, /filter\(\(item\) => item\.key === 'shipping'\)/);
+  assert.match(page, /sort\(\(a, b\) => \(Date\.parse\(b\.shipment\.date\) \|\| 0\) - \(Date\.parse\(a\.shipment\.date\) \|\| 0\)\)/);
+  assert.match(page, /paginateRowsByMonth\(rows, 'shipments'\)/);
+  assert.match(page, /\.\.\.\(window\._unresolvedBaggageSourceRows \|\| \[\]\)/);
+});
+
 test('CBS case refresh reads Google Sheets and does not restart the page', () => {
   assert.match(drive, /async function getCbsCases\(\) \{[\s\S]*getCbsSheetRows/);
   assert.match(page, /await Promise\.all\(\[loadCases\(\), loadMissingReports\(\), loadUnresolvedBaggage\(\)\]\)/);
