@@ -226,6 +226,7 @@ test('Shipment sits above Closed Case and groups shipped cases by courier and mo
   assert.match(page, /sort\(\(a, b\) => \(Date\.parse\(b\.shipment\.date\) \|\| 0\) - \(Date\.parse\(a\.shipment\.date\) \|\| 0\)\)/);
   assert.match(page, /function paginateShipmentsByMonth\(shipments\)/);
   assert.match(page, /id="shipment-month" type="month" aria-label="Shipment month"/);
+  assert.match(page, /\.month-filter \{[^}]*flex:0 0 220px;[^}]*width:220px;[^}]*min-width:220px;/);
   assert.match(page, /shipmentMonth\?\.addEventListener\('change'/);
   assert.match(page, /const pagination = paginateShipmentsByMonth\(searchedShipments\)/);
   assert.match(page, /pagination\.rows\.forEach\(\(\{ shipment \}\) => \{ counts\[shipment\.category\] \+= 1; \}\)/);
