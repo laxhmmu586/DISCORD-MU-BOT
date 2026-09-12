@@ -311,6 +311,11 @@
     .case-stat-card { display:grid; grid-template-columns:42px minmax(0,1fr); grid-template-rows:auto auto; align-items:center; gap:4px 8px; min-width:0; min-height:108px; padding:15px 13px; border:1px solid #bad9ff; border-radius:10px; background:linear-gradient(135deg,#f5faff,#edf6ff); color:#0754b8; text-align:left; box-shadow:0 8px 18px rgba(30,105,190,.06); }
     .case-stat-card[data-case-group="on-hand"] { border-color:#bfe8d3; background:linear-gradient(135deg,#f4fff9,#e9f8f0); color:#12654e; }
     .case-stat-card[data-case-group="bag-room"] { border-color:#ead88a; background:linear-gradient(135deg,#fffdf2,#fff5c7); color:#8a6500; }
+    .shipment-summary-cards .case-stat-card[data-shipment-method="adc"] { border-color:#bfe8d3; background:linear-gradient(135deg,#f4fff9,#e9f8f0); color:#12654e; }
+    .shipment-summary-cards .case-stat-card[data-shipment-method="mbi"] { border-color:#ead88a; background:linear-gradient(135deg,#fffdf2,#fff5c7); color:#8a6500; }
+    .shipment-summary-cards .case-stat-card[data-shipment-method="fedex"] { border-color:#d7c8f2; background:linear-gradient(135deg,#faf8ff,#f2edff); color:#6941c6; }
+    .shipment-summary-cards .case-stat-card { grid-template-columns:minmax(0,1fr); }
+    .shipment-summary-cards .case-stat-label,.shipment-summary-cards .case-stat-count { grid-column:1; }
     .case-stat-card.is-active { box-shadow:inset 0 0 0 2px currentColor,0 8px 20px rgba(18,58,115,.1); }
     .case-stat-icon { grid-row:1/3; align-self:start; display:grid; place-items:center; width:38px; height:38px; }
     .case-stat-icon svg { width:29px; height:29px; fill:currentColor; stroke:currentColor; stroke-width:1.5; }
@@ -365,6 +370,7 @@
       <button class="page-tab" id="missing-report-alert" type="button" title="Missing Bag Report"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="7" width="12" height="12" rx="2"/><path d="M8 7V5h4v2m5 10 4 4m-1-7a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg></span><span class="page-tab-label">Missing Bag Report</span></button>
       <button class="page-tab" id="email-tab" type="button" title="Email"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg></span><span class="page-tab-label">Email</span></button>
       <button class="page-tab" id="baggage-chart-tab" type="button" title="Baggage Chart"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19V9m5 10V5m5 14v-7m5 7V3"/></svg></span><span class="page-tab-label">Baggage Chart</span></button>
+      <button class="page-tab" id="shipment-tab" type="button" title="Shipment"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 7h11v10H3zM14 10h4l3 3v4h-7z"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg></span><span class="page-tab-label">Shipment</span></button>
       <button class="page-tab" id="closed-cases-tab" type="button" title="Closed Case"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h6l2 2h8v10H4z"/><path d="m8 14 2 2 5-5"/></svg></span><span class="page-tab-label"><span class="en">Closed Case</span><span class="zh">已结案件</span></span></button>
     </nav>
     <span class="header-spacer"></span>
@@ -397,6 +403,15 @@
         <div class="open-case-group-head"><h2 id="bag-room-unload-title">Bag Room Unload Bag</h2><span data-case-title-count="bag-room">(0)</span><button class="case-view-all" type="button">View All</button></div>
         <div id="bag-room-unload-output"><p class="muted">Loading Bag Room Unload Bag cases...</p></div>
       </section>
+    </section>
+    <section class="card" id="shipment-card" hidden>
+      <div class="case-dashboard-head"><div><h1>Shipment</h1></div><label class="case-search-wrap"><input class="search-field" id="shipment-search" aria-label="Search shipments" placeholder="Search case / bag tag..." /><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/></svg></label></div>
+      <div class="case-summary-cards shipment-summary-cards" role="tablist" aria-label="Shipment methods">
+        <button class="case-stat-card is-active" type="button" role="tab" aria-selected="true" data-shipment-method="adc"><span class="case-stat-label">ADC - All Day Courier</span><strong class="case-stat-count" data-shipment-count="adc">0</strong></button>
+        <button class="case-stat-card" type="button" role="tab" aria-selected="false" data-shipment-method="mbi"><span class="case-stat-label">MBI Delivery and Storage</span><strong class="case-stat-count" data-shipment-count="mbi">0</strong></button>
+        <button class="case-stat-card" type="button" role="tab" aria-selected="false" data-shipment-method="fedex"><span class="case-stat-label">FedEx Delivery</span><strong class="case-stat-count" data-shipment-count="fedex">0</strong></button>
+      </div>
+      <div id="shipment-output"><p class="muted">Loading shipments...</p></div>
     </section>
     <section class="card worldtracer-create" id="worldtracer-card" hidden>
       <h1>Rush Bag</h1>
@@ -491,6 +506,11 @@
     const casesOutput = document.querySelector('#cases-output');
     const openCasesTab = document.querySelector('#open-cases-tab');
     const closedCasesTab = document.querySelector('#closed-cases-tab');
+    const shipmentTab = document.querySelector('#shipment-tab');
+    const shipmentCard = document.querySelector('#shipment-card');
+    const shipmentOutput = document.querySelector('#shipment-output');
+    const shipmentSearch = document.querySelector('#shipment-search');
+    const shipmentMethodButtons = [...document.querySelectorAll('[data-shipment-method]')];
     const openCasesCard = document.querySelector('#open-cases-card');
     const worldTracerTab = document.querySelector('#worldtracer-tab');
     const worldTracerCard = document.querySelector('#worldtracer-card');
@@ -593,6 +613,7 @@
       window._cbsListPages[key] = Math.max(1, (Number(window._cbsListPages[key]) || 1) + Number(button.dataset.pageDelta || 0));
       if (key === 'rush-bags') renderWorldTracerCases(window._worldTracerRows || []);
       else if (key === 'missing-reports') renderMissingReports(window._missingBagRows || []);
+      else if (key === 'shipments') renderShipments();
       else if (key.endsWith('-passenger')) renderCases();
       else renderUnresolvedBaggage(window._unresolvedBaggageSourceRows || []);
     });
@@ -635,6 +656,7 @@
       addBaggageCard.hidden = section !== 'add-baggage';
       baggageChartCard.hidden = section !== 'baggage-chart';
       emailCard.hidden = section !== 'email';
+      shipmentCard.hidden = section !== 'shipment';
       openCasesTab.classList.toggle('is-active', section === 'open');
       closedCasesTab.classList.toggle('is-active', section === 'closed');
       worldTracerTab.classList.toggle('is-active', section === 'worldtracer');
@@ -642,6 +664,7 @@
       addBaggageTab.classList.toggle('is-active', section === 'add-baggage');
       baggageChartTab.classList.toggle('is-active', section === 'baggage-chart');
       emailTab.classList.toggle('is-active', section === 'email');
+      shipmentTab.classList.toggle('is-active', section === 'shipment');
       if (isCaseSection) {
         window._caseView = section;
         casePageTitle.innerHTML = section === 'closed' ? '<span class="en">Closed Case</span><span class="zh">已结案件</span>' : '<span class="en">Open Case</span><span class="zh">未结案件</span>';
@@ -651,6 +674,7 @@
         if (window._unresolvedBaggageLoaded) renderUnresolvedBaggage(window._unresolvedBaggageSourceRows || []);
         renderCases();
       }
+      if (section === 'shipment') renderShipments();
     }
     function setSidebarCollapsed(collapsed) {
       document.body.classList.toggle('sidebar-collapsed', collapsed);
@@ -893,6 +917,7 @@
       window._unresolvedBaggageRows = [...regularRows, ...notLoadRows];
       window._unresolvedBaggageLoaded = true;
       if (window._cbsRows) requestAnimationFrame(renderCases);
+      if (!shipmentCard.hidden) requestAnimationFrame(renderShipments);
     }
     async function loadUnresolvedBaggage() {
       unresolvedBaggageOutput.innerHTML = '<p class="muted">Loading cases...</p>';
@@ -1237,6 +1262,35 @@
       </form>`;
     }
     function isClosedCase(row) { return /close|forward\s+to\s+mu/i.test(String(row?.status || '')); }
+    function shipmentDetails(row) {
+      const historyEvents = (Array.isArray(row?.history) ? row.history : []).flatMap((entry) => entry.updateEvents || []).map((event) => ({
+        ...event,
+        key:trackingKeyFromText(event.key || event.status || event.title),
+        at:event.at || event.updatedAt || row.updatedAt || row.submittedAt || '',
+        fields:Array.isArray(event.fields) ? event.fields : []
+      }));
+      const event = [...parseUpdateNoteEvents(row), ...historyEvents].filter((item) => item.key === 'shipping').sort((a, b) => (Date.parse(a.at) || 0) - (Date.parse(b.at) || 0)).at(-1);
+      if (!event) return null;
+      const fields = new Map(event.fields || []);
+      const method = String(fields.get('Shipping Method') || fields.get('Delivery method') || fields.get('Delivery Method') || '').trim();
+      const category = /^ADC\b/i.test(method) ? 'adc' : /^MBI\b/i.test(method) ? 'mbi' : /FedEx/i.test(method) ? 'fedex' : '';
+      if (!category) return null;
+      return { event, method, category, date:event.at || row.updatedAt || row.submittedAt || '' };
+    }
+    function renderShipments() {
+      const sourceRows = [...(window._cbsRows || []), ...(window._unresolvedBaggageSourceRows || [])];
+      const counts = { adc:0, mbi:0, fedex:0 };
+      const shipments = sourceRows.map((row) => ({ row, shipment:shipmentDetails(row) })).filter((item) => item.shipment);
+      shipments.forEach(({ shipment }) => { counts[shipment.category] += 1; });
+      Object.entries(counts).forEach(([key, count]) => { const output = document.querySelector(`[data-shipment-count="${key}"]`); if (output) output.textContent = String(count); });
+      const selectedMethod = window._shipmentMethod || 'adc';
+      shipmentMethodButtons.forEach((button) => { const active = button.dataset.shipmentMethod === selectedMethod; button.classList.toggle('is-active', active); button.setAttribute('aria-selected', String(active)); });
+      const query = String(shipmentSearch?.value || '').trim().toLowerCase();
+      const rows = shipments.filter(({ row, shipment }) => shipment.category === selectedMethod && (!query || `${rowSearchText(row)} ${shipment.method}`.toLowerCase().includes(query))).sort((a, b) => (Date.parse(b.shipment.date) || 0) - (Date.parse(a.shipment.date) || 0)).map((item) => ({ ...item, sourceEmailDate:item.shipment.date }));
+      const pagination = paginateRowsByMonth(rows, 'shipments');
+      if (!pagination.rows.length) { shipmentOutput.innerHTML = '<p class="muted">No matching shipped cases.</p>'; return; }
+      shipmentOutput.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:210px"><col style="width:170px"><col style="width:190px"><col style="width:180px"><col></colgroup><thead><tr><th>WorldTracer #</th><th>${label('Bag Tag', '行李牌')}</th><th>${label('Shipment Date', '寄送日期')}</th><th>${label('Method', '方式')}</th><th>${label('Shipment Details', '寄送详情')}</th></tr></thead><tbody>${pagination.rows.map(({ row, shipment }) => { const bdo = (shipment.event.fields || []).find(([key]) => /^BDO$/i.test(String(key)))?.[1]; const time = formatEventTime(shipment.date); return `<tr class="case-summary-row"><td class="sheet-meta">${escapeHtml(displayWorldTracerFile(row) || '-')}</td><td class="sheet-meta">${bagTagSummaryHtml(displayBagTag(row))}</td><td class="sheet-meta">${escapeHtml(time.date || '-')} ${escapeHtml(time.time || '')}</td><td class="sheet-meta">${escapeHtml(shipment.method)}</td><td>${hasValue(bdo) ? `<span class="sheet-event"><b>BDO</b>${escapeHtml(renderValue(bdo))}</span>` : '<span class="sheet-empty">-</span>'}</td></tr>`; }).join('')}</tbody></table></div>${listPaginationHtml('shipments', pagination)}`;
+    }
     function rowSearchText(row) { return Object.values(row || {}).join(' ').toLowerCase(); }
     function sortedCaseRows(rows) {
       return [...rows].sort((a, b) => {
@@ -1477,6 +1531,7 @@
         if (!res.ok) throw new Error(data.error || 'Case loading failed');
         window._cbsRows = data.rows || [];
         renderCases();
+        if (!shipmentCard.hidden) renderShipments();
         if (window._unresolvedBaggageLoaded) renderUnresolvedBaggage(window._unresolvedBaggageSourceRows || []);
       } catch (error) { casesOutput.innerHTML = `<p class="status err">${escapeHtml(error.message)}</p>`; }
     }
@@ -1750,6 +1805,9 @@
     caseSearch?.addEventListener('input', () => { renderCases(); if (window._unresolvedBaggageLoaded) renderUnresolvedBaggage(window._unresolvedBaggageSourceRows || []); loadBaggageSearch(caseSearch.value); });
     openCasesTab?.addEventListener('click', () => showSection('open'));
     closedCasesTab?.addEventListener('click', () => showSection('closed'));
+    shipmentTab?.addEventListener('click', () => showSection('shipment'));
+    shipmentSearch?.addEventListener('input', () => { window._cbsListPages ||= {}; window._cbsListPages.shipments = 1; renderShipments(); });
+    shipmentMethodButtons.forEach((button) => button.addEventListener('click', () => { window._shipmentMethod = button.dataset.shipmentMethod; window._cbsListPages ||= {}; window._cbsListPages.shipments = 1; renderShipments(); }));
     worldTracerTab?.addEventListener('click', async () => { delete worldTracerForm.dataset.missingRow; showSection('worldtracer'); await loadWorldTracerCases(); });
     missingAlert?.addEventListener('click', () => {
       showSection('missing');
