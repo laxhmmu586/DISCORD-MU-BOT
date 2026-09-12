@@ -303,6 +303,8 @@
     .open-case-item { display:grid; grid-template-columns:180px 1fr 1fr auto; gap:14px; align-items:center; padding:14px; border:1px solid #d8e4f1; border-radius:14px; background:#fff; color:var(--ink); text-align:left; }
     .open-case-item strong { color:var(--brand); }
     .case-dashboard-head { display:flex; align-items:center; justify-content:space-between; gap:18px; margin-bottom:14px; }
+    .case-dashboard-controls { display:flex; align-items:center; gap:10px; }
+    .month-filter { width:170px; min-width:170px; padding:10px 12px; border:1px solid #cfdaea; border-radius:11px; background:#fff; color:var(--brand); font:inherit; font-weight:800; }
     .case-dashboard-head h1 { color:#09275a; font-size:24px; }
     .case-dashboard-head .search-field { width:min(100%,310px); padding:11px 38px 11px 14px; border:1px solid #cfdaea; border-radius:11px; background:#fff; color:var(--ink); font:inherit; box-shadow:0 3px 10px rgba(18,58,115,.04); }
     .case-search-wrap { position:relative; display:block; width:min(100%,310px); }
@@ -354,7 +356,7 @@
       .wrap,.card,.open-case-group,.sheet-shell{min-width:0;max-width:100%}
       .sheet-shell{width:100%;overflow-x:auto}
       .sheet-shell .cbs-sheet{display:table;min-width:980px;overflow:visible}
-      .case-dashboard-head{align-items:flex-start;flex-direction:column}.case-search-wrap{width:100%;max-width:none}.case-dashboard-head .search-field{width:100%;max-width:none}.case-summary-cards{grid-template-columns:repeat(3,minmax(0,1fr));width:100%;overflow:visible}.case-stat-card{grid-template-columns:minmax(0,1fr);grid-template-rows:38px 48px auto;align-content:start;min-height:94px}.case-stat-icon{grid-row:1}.case-stat-label{align-self:start;min-width:0;overflow-wrap:anywhere}.case-stat-card[data-case-group="bag-room"] .case-stat-label{white-space:normal;font-size:13px;letter-spacing:0}.case-stat-count{align-self:start;min-width:0}.open-case-group .sheet-shell .cbs-sheet{min-width:620px}
+      .case-dashboard-head{align-items:flex-start;flex-direction:column}.case-dashboard-controls{width:100%;flex-wrap:wrap}.month-filter{width:100%;min-width:0}.case-search-wrap{width:100%;max-width:none}.case-dashboard-head .search-field{width:100%;max-width:none}.case-summary-cards{grid-template-columns:repeat(3,minmax(0,1fr));width:100%;overflow:visible}.case-stat-card{grid-template-columns:minmax(0,1fr);grid-template-rows:38px 48px auto;align-content:start;min-height:94px}.case-stat-icon{grid-row:1}.case-stat-label{align-self:start;min-width:0;overflow-wrap:anywhere}.case-stat-card[data-case-group="bag-room"] .case-stat-label{white-space:normal;font-size:13px;letter-spacing:0}.case-stat-count{align-self:start;min-width:0}.open-case-group .sheet-shell .cbs-sheet{min-width:620px}
     }
     @media (max-width:520px){ .rush-itinerary{padding:12px;overflow:hidden}.rush-itinerary-head{align-items:stretch}.rush-itinerary-head button{width:100%}.rush-flight-row{grid-template-columns:minmax(0,1fr);width:100%;min-width:0}.rush-flight-row label{width:100%;min-width:0;overflow:hidden}.rush-flight-row input[type="date"]{width:100%;height:52px;min-height:52px;padding:12px;line-height:24px;justify-self:stretch}.rush-flight-row input[type="date"]::-webkit-date-and-time-value{min-height:24px}.rush-flight-row button{grid-column:1}.worldtracer-form{width:100%;min-width:0} }
   </style>
@@ -384,7 +386,7 @@
     <section class="card" id="open-cases-card" hidden>
       <div class="case-dashboard-head">
         <div><h1 id="case-page-title"><span class="en">Open Case</span><span class="zh">未结案件</span></h1></div>
-        <label class="case-search-wrap"><input class="search-field" id="case-search" aria-label="Search cases" placeholder="Search case / bag tag..." /><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/></svg></label>
+        <div class="case-dashboard-controls"><input class="month-filter" id="closed-month" type="month" aria-label="Closed case month" hidden /><label class="case-search-wrap"><input class="search-field" id="case-search" aria-label="Search cases" placeholder="Search case / bag tag..." /><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/></svg></label></div>
       </div>
       <div class="case-summary-cards" role="tablist" aria-label="Case categories">
         <button class="case-stat-card is-active" type="button" role="tab" aria-selected="true" data-case-group="passenger"><span class="case-stat-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="6" r="4"/><path d="M4 21v-3a8 8 0 0 1 16 0v3z"/></svg></span><span class="case-stat-label">Passenger Filed</span><strong class="case-stat-count" data-case-count="passenger">0</strong></button>
@@ -405,7 +407,7 @@
       </section>
     </section>
     <section class="card" id="shipment-card" hidden>
-      <div class="case-dashboard-head"><div><h1>Shipment</h1></div><label class="case-search-wrap"><input class="search-field" id="shipment-search" aria-label="Search shipments" placeholder="Search case / bag tag..." /><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/></svg></label></div>
+      <div class="case-dashboard-head"><div><h1>Shipment</h1></div><div class="case-dashboard-controls"><input class="month-filter" id="shipment-month" type="month" aria-label="Shipment month" /><label class="case-search-wrap"><input class="search-field" id="shipment-search" aria-label="Search shipments" placeholder="Search case / bag tag..." /><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/></svg></label></div></div>
       <div class="case-summary-cards shipment-summary-cards" role="tablist" aria-label="Shipment methods">
         <button class="case-stat-card is-active" type="button" role="tab" aria-selected="true" data-shipment-method="adc"><span class="case-stat-label">ADC - All Day Courier</span><strong class="case-stat-count" data-shipment-count="adc">0</strong></button>
         <button class="case-stat-card" type="button" role="tab" aria-selected="false" data-shipment-method="mbi"><span class="case-stat-label">MBI DELIVERY</span><strong class="case-stat-count" data-shipment-count="mbi">0</strong></button>
@@ -510,6 +512,8 @@
     const shipmentCard = document.querySelector('#shipment-card');
     const shipmentOutput = document.querySelector('#shipment-output');
     const shipmentSearch = document.querySelector('#shipment-search');
+    const shipmentMonth = document.querySelector('#shipment-month');
+    const closedMonth = document.querySelector('#closed-month');
     const shipmentMethodButtons = [...document.querySelectorAll('[data-shipment-method]')];
     const openCasesCard = document.querySelector('#open-cases-card');
     const worldTracerTab = document.querySelector('#worldtracer-tab');
@@ -613,7 +617,7 @@
       window._cbsListPages[key] = Math.max(1, (Number(window._cbsListPages[key]) || 1) + Number(button.dataset.pageDelta || 0));
       if (key === 'rush-bags') renderWorldTracerCases(window._worldTracerRows || []);
       else if (key === 'missing-reports') renderMissingReports(window._missingBagRows || []);
-      else if (key === 'shipments') renderShipments();
+      else if (key === 'shipments') { window._shipmentMonth = ''; renderShipments(); }
       else if (key.endsWith('-passenger')) renderCases();
       else renderUnresolvedBaggage(window._unresolvedBaggageSourceRows || []);
     });
@@ -667,6 +671,7 @@
       shipmentTab.classList.toggle('is-active', section === 'shipment');
       if (isCaseSection) {
         window._caseView = section;
+        closedMonth.hidden = section !== 'closed';
         casePageTitle.innerHTML = section === 'closed' ? '<span class="en">Closed Case</span><span class="zh">已结案件</span>' : '<span class="en">Open Case</span><span class="zh">未结案件</span>';
         onHandGroup.hidden = false;
         onHandTitle.textContent = section === 'closed' ? 'Closed On-hand' : 'On-hand';
@@ -833,10 +838,11 @@
     }
     function renderUnresolvedBaggageGroup(rows = [], output, groupName) {
       const showClosed = window._caseView === 'closed';
+      const selectedClosedMonth = showClosed ? ensureClosedMonth() : '';
       rows = rows.filter((row) => {
         const archivedResolutions = new Set(['on-hand-rush', 'shipped', 'passenger-collected', 'case-close', 'linked-passenger-file', 'change-type', 'expired']);
         const archived = Boolean(row.resolvedAt) && archivedResolutions.has(String(row.resolution || '').toLowerCase());
-        return showClosed ? archived : !archived;
+        return showClosed ? archived && monthKeyForDate(row.resolvedAt) === selectedClosedMonth : !archived;
       });
       const rowsByTag = new Map();
       rows.forEach((row) => {
@@ -1266,6 +1272,20 @@
       </form>`;
     }
     function isClosedCase(row) { return /close|forward\s+to\s+mu/i.test(String(row?.status || '')); }
+    function monthKeyForDate(value) {
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? '' : `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    }
+    function closedCaseDate(row) {
+      return parseUpdateNoteEvents(row).filter((event) => event.key === 'closed').at(-1)?.at || row?.resolvedAt || row?.updatedAt || row?.submittedAt || '';
+    }
+    function ensureClosedMonth() {
+      if (window._closedMonth) return window._closedMonth;
+      const monthKeys = [...(window._cbsRows || []), ...(window._unresolvedBaggageSourceRows || [])].filter((row) => isClosedCase(row) || row.resolvedAt).map((row) => monthKeyForDate(closedCaseDate(row))).filter(Boolean).sort().reverse();
+      window._closedMonth = monthKeys[0] || monthKeyForDate(new Date());
+      if (closedMonth) closedMonth.value = window._closedMonth;
+      return window._closedMonth;
+    }
     function shipmentDetails(row) {
       const historyEvents = (Array.isArray(row?.history) ? row.history : []).flatMap((entry) => entry.updateEvents || []).map((event) => ({
         ...event,
@@ -1296,7 +1316,16 @@
       const page = Math.min(Math.max(1, Number(window._cbsListPages.shipments) || 1), pageCount);
       window._cbsListPages.shipments = page;
       const selected = monthGroups[page - 1] || { date:null, rows:[] };
+      if (window._shipmentMonth) {
+        const selectedIndex = monthGroups.findIndex((group) => monthKeyForDate(group.date) === window._shipmentMonth);
+        if (selectedIndex >= 0 && selectedIndex + 1 !== page) {
+          window._cbsListPages.shipments = selectedIndex + 1;
+          return paginateShipmentsByMonth(shipments);
+        }
+      }
       const monthLabel = selected.date ? selected.date.toLocaleDateString(document.documentElement.lang === 'zh' ? 'zh-CN' : 'en-US', { year:'numeric', month:'long' }) : label('Date unavailable', '日期未知');
+      window._shipmentMonth = monthKeyForDate(selected.date);
+      if (shipmentMonth) shipmentMonth.value = window._shipmentMonth;
       return { rows:selected.rows, page, pageCount, total:shipments.length, summary:`${monthLabel} · ${selected.rows.length} ${label('records', '条')}` };
     }
     function renderShipments() {
@@ -1514,7 +1543,8 @@
       const selectedRow = Number(window._selectedCbsRow || 0);
       const sourceRows = selectedRow ? (window._cbsRows || []).filter((row) => Number(row.rowNumber) === selectedRow) : (window._cbsRows || []);
       const showClosed = window._caseView === 'closed';
-      const rows = sortedCaseRows(sourceRows).filter((row) => isClosedCase(row) === showClosed).filter((row) => !query || rowSearchText(row).includes(query));
+      const selectedClosedMonth = showClosed ? ensureClosedMonth() : '';
+      const rows = sortedCaseRows(sourceRows).filter((row) => isClosedCase(row) === showClosed).filter((row) => !showClosed || monthKeyForDate(closedCaseDate(row)) === selectedClosedMonth).filter((row) => !query || rowSearchText(row).includes(query));
       setCaseCount('passenger', rows.length);
       const pagination = paginateRows(rows, `${showClosed ? 'closed' : 'open'}-passenger`);
       const baggageHtml = baggageSearchHtml();
@@ -1860,7 +1890,15 @@
     closedCasesTab?.addEventListener('click', () => showSection('closed'));
     shipmentTab?.addEventListener('click', () => showSection('shipment'));
     shipmentSearch?.addEventListener('input', () => { window._cbsListPages ||= {}; window._cbsListPages.shipments = 1; renderShipments(); });
+    shipmentMonth?.addEventListener('change', () => { window._shipmentMonth = shipmentMonth.value; renderShipments(); });
     shipmentMethodButtons.forEach((button) => button.addEventListener('click', () => { window._shipmentMethod = button.dataset.shipmentMethod; renderShipments(); }));
+    closedMonth?.addEventListener('change', () => {
+      window._closedMonth = closedMonth.value;
+      window._cbsListPages ||= {};
+      ['closed-passenger', 'closed-on-hand', 'closed-bag-room'].forEach((key) => { window._cbsListPages[key] = 1; });
+      renderCases();
+      if (window._unresolvedBaggageLoaded) renderUnresolvedBaggage(window._unresolvedBaggageSourceRows || []);
+    });
     worldTracerTab?.addEventListener('click', async () => { delete worldTracerForm.dataset.missingRow; showSection('worldtracer'); await loadWorldTracerCases(); });
     missingAlert?.addEventListener('click', () => {
       showSection('missing');

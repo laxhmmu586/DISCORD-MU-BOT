@@ -225,6 +225,8 @@ test('Shipment sits above Closed Case and groups shipped cases by courier and mo
   assert.match(page, /filter\(\(item\) => item\.key === 'shipping'\)/);
   assert.match(page, /sort\(\(a, b\) => \(Date\.parse\(b\.shipment\.date\) \|\| 0\) - \(Date\.parse\(a\.shipment\.date\) \|\| 0\)\)/);
   assert.match(page, /function paginateShipmentsByMonth\(shipments\)/);
+  assert.match(page, /id="shipment-month" type="month" aria-label="Shipment month"/);
+  assert.match(page, /shipmentMonth\?\.addEventListener\('change'/);
   assert.match(page, /const pagination = paginateShipmentsByMonth\(searchedShipments\)/);
   assert.match(page, /pagination\.rows\.forEach\(\(\{ shipment \}\) => \{ counts\[shipment\.category\] \+= 1; \}\)/);
   assert.match(page, /\.case-stat-count \{[^}]*justify-self:end;[^}]*text-align:right;/);
@@ -238,6 +240,11 @@ test('Shipment sits above Closed Case and groups shipped cases by courier and mo
   assert.match(page, /shipmentOutput\?\.addEventListener\('keydown'/);
   assert.match(page, /trackingControlHtml\(row, 'progress'\)/);
   assert.match(page, /fullPassengerFileHtml\(row\)/);
+  assert.match(page, /id="closed-month" type="month" aria-label="Closed case month" hidden/);
+  assert.match(page, /function ensureClosedMonth\(\)/);
+  assert.match(page, /monthKeyForDate\(closedCaseDate\(row\)\) === selectedClosedMonth/);
+  assert.match(page, /archived && monthKeyForDate\(row\.resolvedAt\) === selectedClosedMonth/);
+  assert.match(page, /closedMonth\?\.addEventListener\('change'/);
 });
 
 test('CBS case refresh reads Google Sheets and does not restart the page', () => {
