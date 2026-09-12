@@ -209,6 +209,45 @@ test('CBS page uses the Lake Baggage System browser title', () => {
   assert.doesNotMatch(page, /<title>CBS Cases<\/title>/);
 });
 
+test('Shipment sits above Closed Case and groups shipped cases by courier and month', () => {
+  assert.match(page, /id="shipment-tab"[\s\S]*>Shipment<\/span><\/button>\s*<button[^>]*id="closed-cases-tab"/);
+  for (const method of ['adc', 'mbi', 'fedex']) {
+    assert.match(page, new RegExp(`data-shipment-method="${method}"`));
+    assert.match(page, new RegExp(`data-shipment-count="${method}"`));
+  }
+  assert.match(page, /data-shipment-method="adc"[^>]*>[\s\S]*?ADC - All Day Courier/);
+  assert.match(page, /data-shipment-method="mbi"[^>]*>[\s\S]*?MBI DELIVERY/);
+  assert.match(page, /function normalizeShippingMethodLabel\(value\)/);
+  assert.match(page, /return \/\^MBI\\b\/i\.test\(text\) \? 'MBI DELIVERY' : value/);
+  assert.match(page, /data-shipment-method="fedex"[^>]*>[\s\S]*?FedEx Delivery/);
+  assert.doesNotMatch(page, /class="case-stat-icon">(?:ADC|MBI|FX)<\/span>/);
+  assert.match(page, /function shipmentDetails\(row\)/);
+  assert.match(page, /filter\(\(item\) => item\.key === 'shipping'\)/);
+  assert.match(page, /sort\(\(a, b\) => \(Date\.parse\(b\.shipment\.date\) \|\| 0\) - \(Date\.parse\(a\.shipment\.date\) \|\| 0\)\)/);
+  assert.match(page, /function paginateShipmentsByMonth\(shipments\)/);
+  assert.match(page, /id="shipment-month" type="month" aria-label="Shipment month"/);
+  assert.match(page, /\.month-filter \{[^}]*flex:0 0 220px;[^}]*width:220px;[^}]*min-width:220px;/);
+  assert.match(page, /shipmentMonth\?\.addEventListener\('change'/);
+  assert.match(page, /const pagination = paginateShipmentsByMonth\(searchedShipments\)/);
+  assert.match(page, /pagination\.rows\.forEach\(\(\{ shipment \}\) => \{ counts\[shipment\.category\] \+= 1; \}\)/);
+  assert.match(page, /\.case-stat-count \{[^}]*justify-self:end;[^}]*text-align:right;/);
+  assert.match(page, /\.\.\.\(window\._unresolvedBaggageSourceRows \|\| \[\]\)/);
+  assert.match(page, /find\(\(\[key\]\) => \/\^BDO\$\/i\.test\(String\(key\)\)\)/);
+  assert.doesNotMatch(page, /const fields = \(shipment\.event\.fields \|\| \[\]\).*shipping method/);
+  assert.match(page, /data-toggle-shipment="\$\{escapeHtml\(detailKey\)\}" role="button" tabindex="0" aria-expanded="\$\{expanded\}"/);
+  assert.match(page, /data-shipment-detail="\$\{escapeHtml\(detailKey\)\}"/);
+  assert.match(page, /function toggleShipmentDetails\(summary\)/);
+  assert.match(page, /shipmentOutput\?\.addEventListener\('click'/);
+  assert.match(page, /shipmentOutput\?\.addEventListener\('keydown'/);
+  assert.match(page, /trackingControlHtml\(row, 'progress'\)/);
+  assert.match(page, /fullPassengerFileHtml\(row\)/);
+  assert.match(page, /id="closed-month" type="month" aria-label="Closed case month" hidden/);
+  assert.match(page, /function ensureClosedMonth\(\)/);
+  assert.match(page, /monthKeyForDate\(closedCaseDate\(row\)\) === selectedClosedMonth/);
+  assert.match(page, /archived && monthKeyForDate\(row\.resolvedAt\) === selectedClosedMonth/);
+  assert.match(page, /closedMonth\?\.addEventListener\('change'/);
+});
+
 test('CBS case refresh reads Google Sheets and does not restart the page', () => {
   assert.match(drive, /async function getCbsCases\(\) \{[\s\S]*getCbsSheetRows/);
   assert.match(page, /await Promise\.all\(\[loadCases\(\), loadMissingReports\(\), loadUnresolvedBaggage\(\)\]\)/);
@@ -548,7 +587,7 @@ test('Closed On-hand cases can update WorldTracer or reopen', () => {
 
 test('On-hand shipping uses the Passenger Filed delivery methods without email handling', () => {
   const onHandFields = page.match(/if \(action === 'shipped'\) return `([\s\S]*?)`;/)?.[1] || '';
-  for (const method of ['ADC - All Day Courier', 'MBI DELIVERY AND STORAGE - STANDARD', 'BDO', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping']) assert.match(onHandFields, new RegExp(method));
+  for (const method of ['ADC - All Day Courier', 'MBI DELIVERY', 'BDO', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping']) assert.match(onHandFields, new RegExp(method));
   assert.match(onHandFields, /data-shipping-tracking hidden/);
   assert.match(onHandFields, /data-shipping-address hidden/);
   assert.match(server, /if \(action === 'shipped'\) \{/);
@@ -1010,15 +1049,15 @@ test('CBS tracking no longer offers Forward to MU', () => {
 test('shipping updates offer all supported delivery methods', () => {
   const passengerCaseShipping = page.match(/const shippingMethodSelect = '([^']+)'/)?.[1] || '';
   assert.match(page, /select name="shippingMethod" data-shipping-method required/);
-  for (const method of ['ADC - All Day Courier', 'MBI DELIVERY AND STORAGE - STANDARD', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping']) assert.match(page, new RegExp(`<option>${method}<\\/option>`));
+  for (const method of ['ADC - All Day Courier', 'MBI DELIVERY', 'FedEx Delivery', 'Pick Up at Airport', 'Passenger Pay for Shipping']) assert.match(page, new RegExp(`<option>${method}<\\/option>`));
   assert.doesNotMatch(passengerCaseShipping, /<option>BDO<\/option>/);
   assert.match(page, /data-shipping-bdo/);
   assert.match(page, /name="bdo"/);
   assert.match(page, /data-shipping-tracking placeholder="Tracking number" disabled hidden/);
   assert.match(page, /needsTracking = shippingMethod\.value === 'FedEx Delivery'/);
   assert.match(page, /trackingInput\.required = needsTracking/);
-  assert.match(page, /showsAddress = \['ADC - All Day Courier', 'MBI DELIVERY AND STORAGE - STANDARD', 'FedEx Delivery'\]\.includes\(shippingMethod\.value\)/);
-  assert.doesNotMatch(page, /\['ADC - All Day Courier', 'MBI DELIVERY AND STORAGE - STANDARD', 'FedEx Delivery', 'Passenger Pay for Shipping'\]\.includes/);
+  assert.match(page, /showsAddress = \['ADC - All Day Courier', 'MBI DELIVERY', 'FedEx Delivery'\]\.includes\(shippingMethod\.value\)/);
+  assert.doesNotMatch(page, /\['ADC - All Day Courier', 'MBI DELIVERY', 'FedEx Delivery', 'Passenger Pay for Shipping'\]\.includes/);
   assert.match(page, /addressInput\.required = false/);
   assert.match(page, /bdoInput\.required = showsAddress/);
 });
