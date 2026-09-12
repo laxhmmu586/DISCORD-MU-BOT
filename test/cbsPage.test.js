@@ -215,11 +215,17 @@ test('Shipment sits above Closed Case and groups shipped cases by courier and mo
     assert.match(page, new RegExp(`data-shipment-method="${method}"`));
     assert.match(page, new RegExp(`data-shipment-count="${method}"`));
   }
+  assert.match(page, /data-shipment-method="adc"[^>]*>[\s\S]*?ADC - All Day Courier/);
+  assert.match(page, /data-shipment-method="mbi"[^>]*>[\s\S]*?MBI Delivery and Storage/);
+  assert.match(page, /data-shipment-method="fedex"[^>]*>[\s\S]*?FedEx Delivery/);
+  assert.doesNotMatch(page, /class="case-stat-icon">(?:ADC|MBI|FX)<\/span>/);
   assert.match(page, /function shipmentDetails\(row\)/);
   assert.match(page, /filter\(\(item\) => item\.key === 'shipping'\)/);
   assert.match(page, /sort\(\(a, b\) => \(Date\.parse\(b\.shipment\.date\) \|\| 0\) - \(Date\.parse\(a\.shipment\.date\) \|\| 0\)\)/);
   assert.match(page, /paginateRowsByMonth\(rows, 'shipments'\)/);
   assert.match(page, /\.\.\.\(window\._unresolvedBaggageSourceRows \|\| \[\]\)/);
+  assert.match(page, /find\(\(\[key\]\) => \/\^BDO\$\/i\.test\(String\(key\)\)\)/);
+  assert.doesNotMatch(page, /const fields = \(shipment\.event\.fields \|\| \[\]\).*shipping method/);
 });
 
 test('CBS case refresh reads Google Sheets and does not restart the page', () => {
