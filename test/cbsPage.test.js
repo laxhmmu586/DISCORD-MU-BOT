@@ -222,7 +222,10 @@ test('Shipment sits above Closed Case and groups shipped cases by courier and mo
   assert.match(page, /function shipmentDetails\(row\)/);
   assert.match(page, /filter\(\(item\) => item\.key === 'shipping'\)/);
   assert.match(page, /sort\(\(a, b\) => \(Date\.parse\(b\.shipment\.date\) \|\| 0\) - \(Date\.parse\(a\.shipment\.date\) \|\| 0\)\)/);
-  assert.match(page, /paginateRowsByMonth\(rows, 'shipments'\)/);
+  assert.match(page, /function paginateShipmentsByMonth\(shipments\)/);
+  assert.match(page, /const pagination = paginateShipmentsByMonth\(searchedShipments\)/);
+  assert.match(page, /pagination\.rows\.forEach\(\(\{ shipment \}\) => \{ counts\[shipment\.category\] \+= 1; \}\)/);
+  assert.match(page, /\.case-stat-count \{[^}]*justify-self:end;[^}]*text-align:right;/);
   assert.match(page, /\.\.\.\(window\._unresolvedBaggageSourceRows \|\| \[\]\)/);
   assert.match(page, /find\(\(\[key\]\) => \/\^BDO\$\/i\.test\(String\(key\)\)\)/);
   assert.doesNotMatch(page, /const fields = \(shipment\.event\.fields \|\| \[\]\).*shipping method/);

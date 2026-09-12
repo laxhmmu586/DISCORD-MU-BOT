@@ -321,7 +321,7 @@
     .case-stat-icon svg { width:29px; height:29px; fill:currentColor; stroke:currentColor; stroke-width:1.5; }
     .case-stat-label { align-self:end; font-size:13px; font-weight:900; line-height:1.22; }
     .case-stat-card[data-case-group="bag-room"] .case-stat-label { white-space:nowrap; font-size:12px; letter-spacing:-.01em; }
-    .case-stat-count { align-self:start; color:#082b5d; font-size:29px; font-weight:900; line-height:1.15; }
+    .case-stat-count { align-self:start; justify-self:end; width:100%; color:#082b5d; font-size:29px; font-weight:900; line-height:1.15; text-align:right; }
     .open-case-group { display:none; margin-top:0 !important; padding:0; overflow:hidden; background:#fff; }
     .open-case-group.is-active { display:block; }
     .open-case-group-head { display:flex; align-items:center; justify-content:space-between; min-height:44px; padding:10px 14px; background:linear-gradient(90deg,#dff0ff,#edf7ff); }
@@ -1277,20 +1277,38 @@
       if (!category) return null;
       return { event, method, category, date:event.at || row.updatedAt || row.submittedAt || '' };
     }
+    function paginateShipmentsByMonth(shipments) {
+      window._cbsListPages ||= {};
+      const months = new Map();
+      shipments.forEach((item) => {
+        const date = new Date(item.shipment.date);
+        const validDate = !Number.isNaN(date.getTime());
+        const monthKey = validDate ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}` : 'unknown';
+        if (!months.has(monthKey)) months.set(monthKey, { date:validDate ? date : null, rows:[] });
+        months.get(monthKey).rows.push(item);
+      });
+      const monthGroups = [...months.values()].sort((a, b) => (b.date?.getTime() || 0) - (a.date?.getTime() || 0));
+      const pageCount = Math.max(1, monthGroups.length);
+      const page = Math.min(Math.max(1, Number(window._cbsListPages.shipments) || 1), pageCount);
+      window._cbsListPages.shipments = page;
+      const selected = monthGroups[page - 1] || { date:null, rows:[] };
+      const monthLabel = selected.date ? selected.date.toLocaleDateString(document.documentElement.lang === 'zh' ? 'zh-CN' : 'en-US', { year:'numeric', month:'long' }) : label('Date unavailable', '日期未知');
+      return { rows:selected.rows, page, pageCount, total:shipments.length, summary:`${monthLabel} · ${selected.rows.length} ${label('records', '条')}` };
+    }
     function renderShipments() {
       const sourceRows = [...(window._cbsRows || []), ...(window._unresolvedBaggageSourceRows || [])];
-      const counts = { adc:0, mbi:0, fedex:0 };
       const shipments = sourceRows.map((row) => ({ row, shipment:shipmentDetails(row) })).filter((item) => item.shipment);
-      shipments.forEach(({ shipment }) => { counts[shipment.category] += 1; });
+      const query = String(shipmentSearch?.value || '').trim().toLowerCase();
+      const searchedShipments = shipments.filter(({ row, shipment }) => !query || `${rowSearchText(row)} ${shipment.method}`.toLowerCase().includes(query));
+      const pagination = paginateShipmentsByMonth(searchedShipments);
+      const counts = { adc:0, mbi:0, fedex:0 };
+      pagination.rows.forEach(({ shipment }) => { counts[shipment.category] += 1; });
       Object.entries(counts).forEach(([key, count]) => { const output = document.querySelector(`[data-shipment-count="${key}"]`); if (output) output.textContent = String(count); });
       const selectedMethod = window._shipmentMethod || 'adc';
       shipmentMethodButtons.forEach((button) => { const active = button.dataset.shipmentMethod === selectedMethod; button.classList.toggle('is-active', active); button.setAttribute('aria-selected', String(active)); });
-      const query = String(shipmentSearch?.value || '').trim().toLowerCase();
-      const rows = shipments.filter(({ row, shipment }) => shipment.category === selectedMethod && (!query || `${rowSearchText(row)} ${shipment.method}`.toLowerCase().includes(query))).sort((a, b) => (Date.parse(b.shipment.date) || 0) - (Date.parse(a.shipment.date) || 0)).map((item) => ({ ...item, sourceEmailDate:item.shipment.date }));
-      const pagination = paginateRowsByMonth(rows, 'shipments');
-      if (!pagination.rows.length) { shipmentOutput.innerHTML = '<p class="muted">No matching shipped cases.</p>'; return; }
+      const rows = pagination.rows.filter(({ shipment }) => shipment.category === selectedMethod).sort((a, b) => (Date.parse(b.shipment.date) || 0) - (Date.parse(a.shipment.date) || 0));
       window._expandedShipments ||= new Set();
-      const body = pagination.rows.map(({ row, shipment }, index) => {
+      const body = rows.map(({ row, shipment }, index) => {
         const detailKey = `shipment-${shipment.category}-${row.rowNumber || index}`;
         const expanded = window._expandedShipments.has(detailKey);
         const bdo = (shipment.event.fields || []).find(([key]) => /^BDO$/i.test(String(key)))?.[1];
@@ -1302,7 +1320,8 @@
         const progress = trackingControlHtml(row, 'progress');
         return `<tr class="case-summary-row" data-toggle-shipment="${escapeHtml(detailKey)}" role="button" tabindex="0" aria-expanded="${expanded}"><td class="sheet-meta">${escapeHtml(displayWorldTracerFile(row) || '-')}</td><td class="sheet-meta">${bagTagSummaryHtml(displayBagTag(row))}</td><td class="sheet-meta">${escapeHtml(time.date || '-')} ${escapeHtml(time.time || '')}</td><td class="sheet-meta">${escapeHtml(shipment.method)}</td><td>${hasValue(bdo) ? `<span class="sheet-event"><b>BDO</b>${escapeHtml(renderValue(bdo))}</span>` : '<span class="sheet-empty">-</span>'}</td></tr><tr class="case-detail-row" data-shipment-detail="${escapeHtml(detailKey)}" ${expanded ? '' : 'hidden'}><td colspan="5"><div class="case-detail-layout"><div class="case-progress-column">${progress}</div><div class="case-detail-right"><div class="case-detail-content">${caseDetails}</div>${caseCommentsHtml(row)}</div></div></td></tr>`;
       }).join('');
-      shipmentOutput.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:210px"><col style="width:170px"><col style="width:190px"><col style="width:180px"><col></colgroup><thead><tr><th>WorldTracer #</th><th>${label('Bag Tag', '行李牌')}</th><th>${label('Shipment Date', '寄送日期')}</th><th>${label('Method', '方式')}</th><th>${label('Shipment Details', '寄送详情')}</th></tr></thead><tbody>${body}</tbody></table></div>${listPaginationHtml('shipments', pagination)}`;
+      const list = rows.length ? `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:210px"><col style="width:170px"><col style="width:190px"><col style="width:180px"><col></colgroup><thead><tr><th>WorldTracer #</th><th>${label('Bag Tag', '行李牌')}</th><th>${label('Shipment Date', '寄送日期')}</th><th>${label('Method', '方式')}</th><th>${label('Shipment Details', '寄送详情')}</th></tr></thead><tbody>${body}</tbody></table></div>` : '<p class="muted">No matching shipped cases for this courier in the selected month.</p>';
+      shipmentOutput.innerHTML = `${list}${listPaginationHtml('shipments', pagination)}`;
       requestAnimationFrame(syncCaseProgressHeights);
     }
     function rowSearchText(row) { return Object.values(row || {}).join(' ').toLowerCase(); }
@@ -1837,7 +1856,7 @@
     closedCasesTab?.addEventListener('click', () => showSection('closed'));
     shipmentTab?.addEventListener('click', () => showSection('shipment'));
     shipmentSearch?.addEventListener('input', () => { window._cbsListPages ||= {}; window._cbsListPages.shipments = 1; renderShipments(); });
-    shipmentMethodButtons.forEach((button) => button.addEventListener('click', () => { window._shipmentMethod = button.dataset.shipmentMethod; window._cbsListPages ||= {}; window._cbsListPages.shipments = 1; renderShipments(); }));
+    shipmentMethodButtons.forEach((button) => button.addEventListener('click', () => { window._shipmentMethod = button.dataset.shipmentMethod; renderShipments(); }));
     worldTracerTab?.addEventListener('click', async () => { delete worldTracerForm.dataset.missingRow; showSection('worldtracer'); await loadWorldTracerCases(); });
     missingAlert?.addEventListener('click', () => {
       showSection('missing');
