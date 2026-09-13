@@ -22,6 +22,7 @@ const {
 const { matchMuFlight } = require('./cbsScanParser');
 const { parseSpmlLog } = require('./spmlParser');
 const { findLinkedRushBagRecords } = require('./rushBagNotification');
+const { createWchcNotifier } = require('./wchcNotification');
 
 const {
 
@@ -1198,6 +1199,17 @@ const client =
 // FB Lookup
 // ===============================
 fbLookup(client);
+const reconcileWchcAlerts = createWchcNotifier(client, {
+  channelIds: (process.env.WCHC_DISCORD_CHANNEL_IDS || '1252031811970666618,1252032370920656907').split(',').map((id) => id.trim()).filter(Boolean),
+  roleId: process.env.WCHC_DISCORD_ROLE_ID || '1252026975279906876'
+});
+
+async function refreshWchcAlerts() {
+  const log = await getLatestFlightLog();
+  if (!log) return;
+  parseIncrementalLog(log);
+  await reconcileWchcAlerts(passengers);
+}
 
 // ===============================
 // Discord Login
@@ -1215,6 +1227,8 @@ client.once(
     console.log(
       `Logged in as ${client.user.tag}`
     );
+    refreshWchcAlerts().catch((err) => console.error('WCHC alert refresh failed:', err));
+    setInterval(() => refreshWchcAlerts().catch((err) => console.error('WCHC alert refresh failed:', err)), 60 * 1000);
   }
 );
 
