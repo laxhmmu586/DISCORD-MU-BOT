@@ -48,6 +48,8 @@
     button:disabled { cursor:wait; opacity:.65; } #status { color:var(--muted); font-size:13px; font-weight:650; } #status.error { color:#b42318; }
     dialog { width:min(500px,calc(100% - 32px)); padding:0; border:0; border-radius:24px; box-shadow:0 30px 80px #071b3155; } dialog::backdrop { background:#071b3180; backdrop-filter:blur(4px); }
     .modal { padding:32px; text-align:center; } .check { display:grid; place-items:center; width:62px; height:62px; margin:0 auto 18px; border-radius:50%; color:#fff; font-size:30px; background:#16835b; } .modal h2 { margin:0 0 12px; color:var(--navy); } .modal p { color:var(--muted); line-height:1.7; } .modal button { margin-top:8px; }
+    .spinner { width:54px; height:54px; margin:0 auto 20px; border:5px solid #dbe7f4; border-top-color:var(--blue); border-radius:50%; animation:spin .8s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
     @media (max-width:600px) {
       .grid { grid-template-columns:minmax(0,1fr); width:100%; }
       .grid label { width:100%; min-width:0; overflow:hidden; }
@@ -86,6 +88,7 @@
       </form>
     </section>
   </main>
+  <dialog id="submitting-dialog" aria-labelledby="submitting-title"><div class="modal"><div class="spinner" aria-hidden="true"></div><div class="zh"><h2 id="submitting-title">正在提交</h2><p>请稍候，请勿重复提交。</p></div><div class="en"><h2>Submitting</h2><p>Please wait. Do not submit again.</p></div></div></dialog>
   <dialog id="success-dialog"><div class="modal"><div class="check">✓</div><div class="zh"><h2>提交成功</h2><p>请耐心等待工作人员与您取得联系。</p></div><div class="en"><h2>Submitted</h2><p>Please wait for a China Eastern Airlines - LAX representative to contact you.</p></div><button id="close-dialog" type="button"><span class="zh">好的</span><span class="en">OK</span></button></div></dialog>
   <script>
     const apiBase = (window.MU_API_BASE || 'https://api.mufcapp.net').replace(/\/$/, '');
@@ -94,8 +97,10 @@
     const submitButton = document.querySelector('#submit');
     const status = document.querySelector('#status');
     const dialog = document.querySelector('#success-dialog');
+    const submittingDialog = document.querySelector('#submitting-dialog');
     const languageToggle = document.querySelector('#language-toggle');
     const selectedFiles = new Map(fileInputs.map((input) => [input, []]));
+    let submitting = false;
     function localToday() { const now = new Date(); return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`; }
     function setLanguage(language) { document.documentElement.lang = language; languageToggle.textContent = language === 'zh-CN' ? 'English' : '中文'; }
     languageToggle.addEventListener('click', () => setLanguage(document.documentElement.lang === 'zh-CN' ? 'en' : 'zh-CN'));
@@ -134,19 +139,22 @@
     fileInputs.forEach((input) => input.addEventListener('change', () => { selectedFiles.set(input, [...selectedFiles.get(input), ...Array.from(input.files || [])]); input.value = ''; renderAttachments(input); }));
     function clearAttachments() { fileInputs.forEach((input) => { selectedFiles.set(input, []); renderAttachments(input); }); }
     form.addEventListener('submit', async (event) => {
-      event.preventDefault(); const isEnglish = document.documentElement.lang === 'en'; status.className = ''; status.textContent = isEnglish ? 'Submitting…' : '正在提交…'; submitButton.disabled = true;
+      event.preventDefault();
+      if (submitting) return;
+      const isEnglish = document.documentElement.lang === 'en'; status.className = '';
       try {
         const files = fileInputs.flatMap((input) => selectedFiles.get(input));
         if (!files.length) throw new Error(isEnglish ? 'Please upload at least one baggage photo.' : '请至少上传一张行李照片。');
         if (files.length > 10 || files.some((file) => file.size > 8 * 1024 * 1024) || files.reduce((sum, file) => sum + file.size, 0) > 22 * 1024 * 1024) throw new Error(isEnglish ? 'Up to 10 files, 8 MB each and 22 MB total.' : '附件最多 10 个，每个不超过 8 MB，总计不超过 22 MB。');
+        submitting = true; submitButton.disabled = true; status.textContent = isEnglish ? 'Submitting…' : '正在提交…'; submittingDialog.showModal();
         const fields = Object.fromEntries(new FormData(form).entries()); delete fields.attachments; fields.language = document.documentElement.lang === 'en' ? 'en' : 'zh';
         fields.attachments = await Promise.all(files.map(fileToAttachment));
         const response = await fetch(`${apiBase}/wrong-baggage-submissions`, { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(fields) });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(isEnglish ? (data.error || 'Submission failed; please try again.') : '提交失败，请稍后重试。');
-        form.reset(); clearAttachments(); status.textContent = ''; dialog.showModal();
+        form.reset(); clearAttachments(); status.textContent = ''; submittingDialog.close(); dialog.showModal();
       } catch (error) { status.className = 'error'; status.textContent = /load failed|failed to fetch|networkerror/i.test(error.message || '') ? (isEnglish ? 'Unable to reach the server. Please check your connection and try again.' : '无法连接服务器，请检查网络后重试。') : error.message; }
-      finally { submitButton.disabled = false; }
+      finally { if (submittingDialog.open) submittingDialog.close(); submitting = false; submitButton.disabled = false; }
     });
     document.querySelector('#close-dialog').addEventListener('click', () => dialog.close());
   </script>
