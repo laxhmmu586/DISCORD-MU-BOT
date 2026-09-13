@@ -1221,6 +1221,7 @@
       ];
       const sharedBaggageFields = [[label('Case Type', '类型'), inferCaseType(row)], [label('Bag Tag', '行李牌'), row.bagTag]];
       const baggageFields = inferCaseType(row) === 'DPR' ? sharedBaggageFields.concat([
+        [label('Baggage Details', '行李详情'), row.baggageDetails || row.dprBagInfo],
         [label('DPR Damage Level', 'DPR破损程度'), row.dprDamageLevel], [label('DPR Bag Info', 'DPR行李信息'), row.dprBagInfo],
         [label('DPR Bag Type', 'DPR行李类型'), row.dprBagType], [label('DPR Inner Damage', 'DPR内物破损'), row.dprInnerDamage],
         [label('Contents Details', '包内物品详情'), row.contentsDetails]

@@ -1095,7 +1095,8 @@ test('CBS passenger detail view can recover values from the original form snapsh
   assert.match(page, /JSON\.parse\(row\.originalFormData \|\| '\{\}'\)/);
 });
 
-test('CBS baggage information displays baggage details from sheet column N', () => {
+test('CBS baggage information displays baggage details from sheet column N for AHL and DPR cases', () => {
+  assert.match(page, /inferCaseType\(row\) === 'DPR' \? sharedBaggageFields\.concat\(\[\s*\[label\('Baggage Details', '行李详情'\), row\.baggageDetails \|\| row\.dprBagInfo\]/);
   assert.match(page, /label\('Baggage Details', '行李详情'\), row\.baggageDetails \|\| row\.ahlBagDescription/);
 });
 
