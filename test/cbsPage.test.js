@@ -7,8 +7,19 @@ const page = fs.readFileSync(path.join(__dirname, '..', 'public', 'public', 'cbs
 const indexPage = fs.readFileSync(path.join(__dirname, '..', 'public', 'public', 'index.html'), 'utf8');
 const pirForm = fs.readFileSync(path.join(__dirname, '..', 'public', 'public', 'pir-form.html'), 'utf8');
 const wrongBaggageForm = fs.readFileSync(path.join(__dirname, '..', 'public', 'public', 'wrong-baggage-form.html'), 'utf8');
+const transitForm = fs.readFileSync(path.join(__dirname, '..', 'public', 'public', '240.html'), 'utf8');
 const drive = fs.readFileSync(path.join(__dirname, '..', 'googleDrive.js'), 'utf8');
 const server = fs.readFileSync(path.join(__dirname, '..', 'index.js'), 'utf8');
+
+test('240 nationality list keeps USA and CAN first and alphabetizes all other codes', () => {
+  assert.match(transitForm, /const priorityCountryCodes=\['USA','CAN'\]/);
+  assert.match(transitForm, /\.split\(' '\)\.sort\(\)/);
+  const remainingCodes = transitForm.match(/\.\.\.'([^']+)'\.split\(' '\)\.sort\(\)/)?.[1].split(' ') || [];
+  const renderedCodes = ['USA', 'CAN', ...remainingCodes.sort()];
+  assert.deepEqual(renderedCodes.slice(0, 2), ['USA', 'CAN']);
+  assert.deepEqual(renderedCodes.slice(2), renderedCodes.slice(2).sort());
+  assert.equal(new Set(renderedCodes).size, renderedCodes.length);
+});
 
 test('public baggage forms block duplicate submissions with a wait dialog', () => {
   for (const formPage of [pirForm, wrongBaggageForm]) {
