@@ -122,11 +122,30 @@ function isPsmOrMsgLine(line) {
 }
 
 function isOperationalHistoryLine(line) {
-  return /^(?:ACC|API|BAB|BAG|BC|BDB|GOV|MOD)\b/i.test(normalizedOperationalLine(line));
+  // History entries use a command followed by whitespace (`GOV LAX...`).
+  // Passenger attributes can instead begin with `GOV/FCL/...`; treating the
+  // slash as a generic word boundary discarded that whole continuation line,
+  // including any WCHR/WCHS/WCHC code later on it.
+  return /^(?:ACC|API|BAB|BAG|BC|BDB|GOV|MOD)(?:\s|$)/i.test(normalizedOperationalLine(line));
 }
 
 function isServiceExtractionLine(line) {
   return !isPsmOrMsgLine(line) && !isOperationalHistoryLine(line);
+}
+
+function extractWheelchairCodes(section) {
+  // FB passenger attributes are display-wrapped.  In particular, the WCH code
+  // can be on a following `*...*` line rather than on the numbered passenger
+  // line (for example `*GOV/FCL/CHN ... WCHR FBA/2PC*`).  Search the complete
+  // active passenger payload, excluding history/PSM lines, so those wrapped
+  // SSRs are not lost.
+  const activePayload = String(section || '')
+    .split(/\r?\n/)
+    .filter(isServiceExtractionLine)
+    .join('\n');
+  return [...new Set(
+    [...activePayload.matchAll(/\b(WCHR|WCHS|WCHC)\b/ig)].map((match) => match[1].toUpperCase())
+  )];
 }
 
 function extractPsmLines(section) {
@@ -1180,7 +1199,6 @@ function enrichWchListFromLog(log, syInfo, targetYmd = null) {
   if (!log || !syInfo?.flightNo || !syInfo?.flightDate) return [];
   const sections = splitLogicalSections(log);
   const latestByBn = new Map();
-  const wchCodeRegex = /\b(WCHR|WCHS|WCHC)\b/ig;
 
   for (const sectionObj of sections) {
     const section = sectionObj.content || '';
@@ -1199,13 +1217,8 @@ function enrichWchListFromLog(log, syInfo, targetYmd = null) {
     const seatFromPaxLine = extractSeatAfterBn(paxLine);
     const seatFromSection = extractSeatAfterBn(section);
     const seat = (seatFromPaxLine || seatFromSection || '').toUpperCase();
-    const sectionWithoutPsm = section
-      .split(/\r?\n/)
-      .filter(isServiceExtractionLine)
-      .join('\n');
-    const codes = [...sectionWithoutPsm.matchAll(wchCodeRegex)].map((m) => m[1].toUpperCase());
+    const codes = extractWheelchairCodes(section);
     if (!codes.length) continue;
-    const uniqueCodes = [...new Set(codes)];
     const ts = parseSectionTimestamp(sectionObj.timestamp);
     const prev = latestByBn.get(bn);
     if (prev && prev.ts > ts) continue;
@@ -1213,7 +1226,7 @@ function enrichWchListFromLog(log, syInfo, targetYmd = null) {
       bn,
       name: nameMatch?.[1] || '-',
       seat: seat || '-',
-      codes: uniqueCodes,
+      codes,
       ts
     });
   }

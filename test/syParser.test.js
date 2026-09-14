@@ -166,3 +166,32 @@ test('counts unique active BNs by latest API agent and excludes AGT9 records', (
     matchesCheckin: true
   });
 });
+
+test('keeps WCHR codes on unstarred GOV/FCL passenger continuation lines', () => {
+  const log = [
+    '2026 September 14, Monday, 14:00:00',
+    '> sy',
+    '> SY: MU586/14SEP26 LAX/0  CI1200/NAM',
+    '> 777/773L/B7367 GTD/130 POS/GATE BN299 AK00000 CD00000',
+    '> BDT1145 SD1230 ED1230 CI1200',
+    '2026 September 14, Monday, 14:21:57',
+    '> fb 203',
+    '> PR: MU586/14SEP26*LAX,BN203 PNR RL NL00CL',
+    '1. XU/HUITONG K2 BN203 *11D I PVG ASR OSR AQQ/FCL/USA ESTA/A/USA*',
+    '   GOV/FCL/CHN ESTA/Z/CHN WCHR FBA/2PC',
+    '   *ET TKNE/7817539017626/1 SNR11D*',
+    '2026 September 14, Monday, 14:22:05',
+    '> fb 238',
+    '> PR: MU586/14SEP26*LAX,BN238 PNR RL NZN93Z',
+    '1. LAM/CHINGYEE L2 BN238 *9D I PVG ASR OSR AQQ/FCL/USA ESTA/Z/USA*',
+    '   GOV/FCL/CHN ESTA/Z/CHN WCHR FBA/2PC',
+    '   *ET TKNE/7817451316735/1 SNR9D*'
+  ].join('\n');
+
+  const info = require('../syParser').findSYInfo(log, '14SEP26', { preferredFlightNo: 'MU586' });
+
+  assert.deepEqual(info.wchList, [
+    { bn: '203', name: 'XU/HUITONG', seat: '11D', codes: ['WCHR'] },
+    { bn: '238', name: 'LAM/CHINGYEE', seat: '9D', codes: ['WCHR'] }
+  ]);
+});
