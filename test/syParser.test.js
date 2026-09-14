@@ -167,7 +167,7 @@ test('counts unique active BNs by latest API agent and excludes AGT9 records', (
   });
 });
 
-test('keeps WCHR codes shown on wrapped FB passenger attribute lines', () => {
+test('keeps WCHR codes on unstarred GOV/FCL passenger continuation lines', () => {
   const log = [
     '2026 September 14, Monday, 14:00:00',
     '> sy',
@@ -178,13 +178,13 @@ test('keeps WCHR codes shown on wrapped FB passenger attribute lines', () => {
     '> fb 203',
     '> PR: MU586/14SEP26*LAX,BN203 PNR RL NL00CL',
     '1. XU/HUITONG K2 BN203 *11D I PVG ASR OSR AQQ/FCL/USA ESTA/A/USA*',
-    '   *GOV/FCL/CHN ESTA/Z/CHN WCHR FBA/2PC*',
+    '   GOV/FCL/CHN ESTA/Z/CHN WCHR FBA/2PC',
     '   *ET TKNE/7817539017626/1 SNR11D*',
     '2026 September 14, Monday, 14:22:05',
     '> fb 238',
     '> PR: MU586/14SEP26*LAX,BN238 PNR RL NZN93Z',
     '1. LAM/CHINGYEE L2 BN238 *9D I PVG ASR OSR AQQ/FCL/USA ESTA/Z/USA*',
-    '   *GOV/FCL/CHN ESTA/Z/CHN WCHR FBA/2PC*',
+    '   GOV/FCL/CHN ESTA/Z/CHN WCHR FBA/2PC',
     '   *ET TKNE/7817451316735/1 SNR9D*'
   ].join('\n');
 

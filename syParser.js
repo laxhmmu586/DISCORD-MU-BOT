@@ -122,7 +122,11 @@ function isPsmOrMsgLine(line) {
 }
 
 function isOperationalHistoryLine(line) {
-  return /^(?:ACC|API|BAB|BAG|BC|BDB|GOV|MOD)\b/i.test(normalizedOperationalLine(line));
+  // History entries use a command followed by whitespace (`GOV LAX...`).
+  // Passenger attributes can instead begin with `GOV/FCL/...`; treating the
+  // slash as a generic word boundary discarded that whole continuation line,
+  // including any WCHR/WCHS/WCHC code later on it.
+  return /^(?:ACC|API|BAB|BAG|BC|BDB|GOV|MOD)(?:\s|$)/i.test(normalizedOperationalLine(line));
 }
 
 function isServiceExtractionLine(line) {
