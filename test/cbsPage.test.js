@@ -565,6 +565,14 @@ test('Other On-hand updates remain actionable in Open Case', () => {
   assert.match(page, /<option value="other">Other resolution<\/option>/);
 });
 
+test('On-hand progress sorts Other resolutions with later comments by timestamp', () => {
+  const progress = page.match(/function unresolvedProgressHtml\(row\) \{[\s\S]*?\n    \}/)?.[0] || '';
+  assert.match(progress, /timestamp:Date\.parse\(event\.at \|\| ''\)/);
+  assert.match(progress, /if \(aHasTime && bHasTime\) return a\.timestamp - b\.timestamp/);
+  assert.match(progress, /sortedEvents\.slice\(\)\.reverse\(\)/);
+  assert.doesNotMatch(progress, /events\.slice\(\)\.reverse\(\)/);
+});
+
 test('On-hand Case Close requires notes and archives the case', () => {
   assert.match(page, /<option value="case-close">Case Close<\/option>/);
   assert.match(page, /if \(action === 'case-close'\) return '<label class="wide"><span>Notes<\/span><textarea name="note" placeholder="Enter case close notes" required><\/textarea><\/label>'/);
