@@ -21,6 +21,13 @@ test('240 nationality list keeps USA and CAN first and alphabetizes all other co
   assert.equal(new Set(renderedCodes).size, renderedCodes.length);
 });
 
+test('240 nationality requires an explicit selection instead of defaulting to USA', () => {
+  assert.match(transitForm, /new Option\('Please select one','',true,true\)/);
+  assert.match(transitForm, /nationality\.options\[0\]\.disabled=true/);
+  assert.match(transitForm, /id="nationalityError">Please select one\.<\/span>/);
+  assert.match(transitForm, /if\(!validateNationality\(\)\|!validatePassport\(\)\|!validateItinerary\(\)\)return/);
+});
+
 test('public baggage forms block duplicate submissions with a wait dialog', () => {
   for (const formPage of [pirForm, wrongBaggageForm]) {
     assert.match(formPage, /Please wait\. Do not submit again\./);
