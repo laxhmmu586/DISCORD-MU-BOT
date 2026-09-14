@@ -830,15 +830,18 @@ function parseIncrementalLog(log) {
       passenger.ffTier =
         passenger.ffTier || existingPassenger.ffTier || null;
 
+      const changeLogLines = [];
+      const sameOrNewer = !existingPassenger.sectionTimestampMs || !sectionTimestampMs || sectionTimestampMs >= existingPassenger.sectionTimestampMs;
+      const wheelchairCodes = new Set(['WCHR', 'WCHS', 'WCHC']);
+      // Wheelchair SSRs are state, not history.  A newer passenger record must
+      // replace (or remove) the prior wheelchair code so alert consumers do
+      // not continue to see a superseded WCHC service.
       passenger.specialServices = [
         ...new Set([
-          ...(existingPassenger.specialServices || []),
+          ...(existingPassenger.specialServices || []).filter((code) => !sameOrNewer || !wheelchairCodes.has(code)),
           ...(passenger.specialServices || [])
         ])
       ];
-
-      const changeLogLines = [];
-      const sameOrNewer = !existingPassenger.sectionTimestampMs || !sectionTimestampMs || sectionTimestampMs >= existingPassenger.sectionTimestampMs;
       if (sameOrNewer) {
         if (existingPassenger.seat && passenger.seat && existingPassenger.seat !== passenger.seat) {
           changeLogLines.push(`CHG SEAT ${existingPassenger.seat} -> ${passenger.seat}`);
