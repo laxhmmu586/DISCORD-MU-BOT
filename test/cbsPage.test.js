@@ -340,6 +340,9 @@ test('Open Case uses selectable summary cards with live category counts', () => 
   assert.match(page, /data-case-group="passenger"/);
   assert.match(page, /data-case-group="on-hand"/);
   assert.match(page, /data-case-group="bag-room"/);
+  assert.match(page, /data-case-group="passenger"[^>]*>[\s\S]*?<span class="case-stat-subtitle">AHL \/ DPR<\/span>/);
+  assert.match(page, /data-case-group="on-hand"[^>]*>[\s\S]*?<span class="case-stat-subtitle">OHL<\/span>/);
+  assert.match(page, /\.case-stat-label,\.case-stat-subtitle \{ color:inherit;/);
   assert.match(page, /function selectCaseGroup\(group\)/);
   assert.match(page, /function setCaseCount\(group, count\)/);
   assert.match(page, /Search case \/ bag tag\.\.\./);
