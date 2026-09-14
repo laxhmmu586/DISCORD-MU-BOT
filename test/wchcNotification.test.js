@@ -41,3 +41,37 @@ test('reconciler deletes an alert after WCHC changes or is removed', async () =>
   await createWchcNotifier(client, { channelIds: ['one'] })({ 107: { ...passenger, specialServices: ['WCHR'] } });
   assert.equal(deleted, 1);
 });
+
+test('reconciler edits the original embed when passenger details change', async () => {
+  let editedPayload = null;
+  let sent = 0;
+  const originalEmbed = createAlertEmbed({ ...passenger, seat: '66A' });
+  const oldMessage = {
+    author: { id: 'bot' }, content: '<@&role>', embeds: [originalEmbed],
+    edit: async (payload) => { editedPayload = payload; },
+    delete: async () => assert.fail('active WCHC alert must not be deleted')
+  };
+  const client = { user: { id: 'bot' }, channels: { fetch: async () => ({
+    isTextBased: () => true,
+    messages: { fetch: async () => new Map([['message', oldMessage]]) },
+    send: async () => { sent += 1; }
+  }) } };
+  await createWchcNotifier(client, { channelIds: ['one'], roleId: 'role' })({ 107: passenger });
+  assert.equal(sent, 0);
+  assert.match(editedPayload.embeds[0].fields.map((field) => field.value).join('\n'), /67C/);
+});
+
+test('reconciler leaves an unchanged embed untouched', async () => {
+  let edits = 0;
+  const oldMessage = {
+    author: { id: 'bot' }, content: '<@&role>', embeds: [createAlertEmbed(passenger)],
+    edit: async () => { edits += 1; }, delete: async () => assert.fail('must not delete')
+  };
+  const client = { user: { id: 'bot' }, channels: { fetch: async () => ({
+    isTextBased: () => true,
+    messages: { fetch: async () => new Map([['message', oldMessage]]) },
+    send: async () => assert.fail('must not send')
+  }) } };
+  await createWchcNotifier(client, { channelIds: ['one'], roleId: 'role' })({ 107: passenger });
+  assert.equal(edits, 0);
+});

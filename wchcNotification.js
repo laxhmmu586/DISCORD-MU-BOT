@@ -38,6 +38,21 @@ function alertKeyFromMessage(message, botUserId) {
   return footer.startsWith(FOOTER_PREFIX) ? footer.slice(FOOTER_PREFIX.length) : '';
 }
 
+function comparableEmbed(embed) {
+  const data = typeof embed?.toJSON === 'function' ? embed.toJSON() : (embed || {});
+  return {
+    color: data.color,
+    title: data.title || '',
+    fields: (data.fields || []).map(({ name, value, inline }) => ({ name, value, inline: Boolean(inline) })),
+    footer: { text: data.footer?.text || '' }
+  };
+}
+
+function alertNeedsUpdate(message, passenger, roleId) {
+  if (message.content !== `<@&${roleId}>`) return true;
+  return JSON.stringify(comparableEmbed(message.embeds?.[0])) !== JSON.stringify(comparableEmbed(createAlertEmbed(passenger)));
+}
+
 function createWchcNotifier(client, options = {}) {
   const channelIds = options.channelIds || DEFAULT_CHANNEL_IDS;
   const roleId = options.roleId || DEFAULT_ROLE_ID;
@@ -64,12 +79,14 @@ function createWchcNotifier(client, options = {}) {
           if (!active.has(key)) await message.delete();
         }
         for (const [key, passenger] of active) {
-          if (existing.has(key)) continue;
-          await channel.send({
+          const payload = {
             content: `<@&${roleId}>`,
             embeds: [createAlertEmbed(passenger)],
             allowedMentions: { parse: [], roles: [roleId] }
-          });
+          };
+          const existingMessage = existing.get(key);
+          if (!existingMessage) await channel.send(payload);
+          else if (alertNeedsUpdate(existingMessage, passenger, roleId)) await existingMessage.edit(payload);
         }
       }
     } finally {
@@ -78,4 +95,4 @@ function createWchcNotifier(client, options = {}) {
   };
 }
 
-module.exports = { createAlertEmbed, createWchcNotifier, passengerKey, alertKeyFromMessage, FOOTER_PREFIX };
+module.exports = { createAlertEmbed, createWchcNotifier, passengerKey, alertKeyFromMessage, alertNeedsUpdate, FOOTER_PREFIX };
