@@ -3013,6 +3013,51 @@ app.post('/cbs-record-check', async (req, res) => {
   }
 });
 
+function cbsRecordLookupDate(row = {}) {
+  for (const value of [row.flightDate, row.issueDate, row.submittedAt, row.submitDate, row.createdAt]) {
+    const direct = String(value || '').match(/^(\d{4}-\d{2}-\d{2})/);
+    if (direct) return direct[1];
+    const parsed = Date.parse(value);
+    if (Number.isFinite(parsed)) return new Date(parsed).toISOString().slice(0, 10);
+  }
+  return '';
+}
+
+function caseHasPnrRecord(row = {}) {
+  return (row.updateEvents || []).some((event) => event.key === 'record-pnr' || event.key === 'record');
+}
+
+app.post('/cbs-record-sync', async (req, res) => {
+  try {
+    const updatedBy = sanitizeCbsText(req.body?.updatedBy, 160) || 'System';
+    const [passengerCases, unresolvedCases] = await Promise.all([getCbsCases(), getCbsUnresolvedBaggageCases()]);
+    const candidates = [
+      ...passengerCases.filter((row) => !caseHasPnrRecord(row)).map((row) => ({ source:'passenger', row })),
+      ...unresolvedCases.filter((row) => !caseHasPnrRecord(row)).map((row) => ({ source:'unresolved', row }))
+    ];
+    const lookupCache = new Map();
+    const updates = [];
+    for (const candidate of candidates) {
+      const tag = normalizeRecordCheckBagTag(candidate.row.bagTag);
+      const date = cbsRecordLookupDate(candidate.row);
+      if (!tag || !date) continue;
+      const cacheKey = `${date}:${tag.serial}`;
+      if (!lookupCache.has(cacheKey)) lookupCache.set(cacheKey, findCbsPnrRecordsByBagTag(tag.serial, date));
+      const lookup = await lookupCache.get(cacheKey);
+      const record = (lookup.records || []).map((item) => item.content).filter(Boolean).join('\n\n===== RECORD =====\n\n').slice(0, 5000);
+      if (!record) continue;
+      const result = candidate.source === 'unresolved'
+        ? await updateCbsUnresolvedBaggageDetails(candidate.row.rowNumber, { record, recordType:'pnr', updatedBy })
+        : await updateCbsCase(candidate.row.rowNumber, { status:candidate.row.status, updateEvent:{ key:'record-pnr', title:'Update Record - PNR', fields:[['Record - PNR', record]], by:updatedBy } });
+      if (!result.notFound) updates.push({ source:candidate.source, rowNumber:candidate.row.rowNumber, bagTag:candidate.row.bagTag });
+    }
+    return res.json({ checked:candidates.length, updated:updates.length, updates });
+  } catch (err) {
+    console.error('CBS automatic record sync error:', err);
+    return res.status(500).json({ error:err?.message || 'Automatic record sync failed' });
+  }
+});
+
 app.post('/wrong-baggage-submissions/:rowNumber/update', async (req, res) => {
   try {
     const type = sanitizeCbsText(req.body?.type, 20).toLowerCase();
