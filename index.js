@@ -2227,10 +2227,10 @@ async function closeExpiredBagRoomUnloadCases(rows = [], today = todayIsoUtc()) 
       || String(row.resolution || '').trim().toLowerCase() === 'on-hand-rush'
       || (row.updateEvents || []).some((event) => ['worldtracer', 'pvg', 'on-hand-rush'].includes(String(event?.key || '').trim().toLowerCase())));
     const ageDays = Math.floor((todayTime - Date.parse(`${row.flightDate}T00:00:00Z`)) / 86400000);
-    return bagRoom && !timeLimitReleased && ageDays >= 3;
+    return bagRoom && !timeLimitReleased && ageDays >= 4;
   });
   for (const row of expired) {
-    await resolveCbsUnresolvedBaggageCase(row.rowNumber, 'expired', 'AUTO CLOSE | 3-day Bag Room limit reached', 'System');
+    await resolveCbsUnresolvedBaggageCase(row.rowNumber, 'expired', 'AUTO CLOSE | 4-day Bag Room limit reached', 'System');
   }
   return expired.length;
 }
