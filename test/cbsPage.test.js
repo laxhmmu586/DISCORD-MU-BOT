@@ -88,6 +88,17 @@ test('Rush Bag reads use a short cache that is invalidated after writes', () => 
   assert.equal((drive.match(/invalidateCbsWorldTracerCaseCache\(\);/g) || []).length >= 3, true);
 });
 
+test('Rush Bag navigation turns yellow when any case is missing a WorldTracer number', () => {
+  const sharedWarningStyle = page.match(/\.page-tab:is\(\[data-has-open-reports="true"\],\[data-has-missing-worldtracer="true"\]\) \{([^}]*)\}/)?.[1] || '';
+  for (const declaration of ['border-color:#f2c94c !important', 'background:#f7d154 !important', 'color:#3d3100 !important', 'box-shadow:inset 3px 0 0 #fff0a6,0 6px 18px rgba(242,201,76,.28) !important']) {
+    assert.match(sharedWarningStyle, new RegExp(declaration.replace(/[().]/g, '\\$&')));
+  }
+  assert.match(page, /\.page-tab:is\(\[data-has-open-reports="true"\],\[data-has-missing-worldtracer="true"\]\) \.page-tab-icon \{ color:#3d3100 !important; \}/);
+  assert.match(page, /const hasMissingWorldTracer = rows\.some\(\(row\) => !String\(row\.worldTracerFileNumber \|\| ''\)\.trim\(\)\)/);
+  assert.match(page, /worldTracerTab\.dataset\.hasMissingWorldtracer = String\(hasMissingWorldTracer\)/);
+  assert.match(page, /loadMissingReports\(\);\s*loadWorldTracerCases\(\);\s*syncMissingReports\(\)/);
+});
+
 test('CBS sheets automatically remove data older than two years', () => {
   assert.match(drive, /async function pruneExpiredCbsRows\(\{ title, sheetId, range, dateIndexes, rowOffset = 0 \}, now = new Date\(\)\)/);
   assert.match(drive, /cutoff\.setUTCFullYear\(cutoff\.getUTCFullYear\(\) - 2\)/);
@@ -378,7 +389,7 @@ test('On-hand and Bag Room rows only show Rush Tag when at least one row has one
   assert.match(server, /result\.matchedBagRoomUnloadCases = await matchBagRoomUnloadCasesForRush\(result\.record\)/);
 });
 
-test('Bag Room cases show a three-day status timer and automatically close when expired', () => {
+test('Bag Room cases show a four-day status timer and automatically close when expired', () => {
   assert.match(page, /function bagRoomTimerHtml\(row\)/);
   assert.match(page, /Closing soon/);
   assert.match(page, /timer-one/);
@@ -386,12 +397,13 @@ test('Bag Room cases show a three-day status timer and automatically close when 
   assert.match(page, /isBagRoomGroup \? '<th>Status<\/th><th>Timer<\/th>'/);
   assert.doesNotMatch(page, /isBagRoomGroup \? '<th>Type<\/th>/);
   assert.match(server, /async function closeExpiredBagRoomUnloadCases\(rows = \[\], today = todayIsoUtc\(\)\)/);
-  assert.match(server, /return bagRoom && !timeLimitReleased && ageDays >= 3/);
+  assert.match(page, /const daysLeft = Math\.max\(0, 3 - ageDays\)/);
+  assert.match(server, /return bagRoom && !timeLimitReleased && ageDays >= 4/);
   assert.match(server, /\['worldtracer', 'pvg', 'on-hand-rush'\]\.includes/);
   assert.match(page, /\['worldtracer', 'pvg', 'on-hand-rush'\]\.includes/);
   assert.match(page, /if \(timeLimitReleased\) return '-'/);
   assert.doesNotMatch(page, /No time limit/);
-  assert.match(server, /resolveCbsUnresolvedBaggageCase\(row\.rowNumber, 'expired', 'AUTO CLOSE \| 3-day Bag Room limit reached', 'System'\)/);
+  assert.match(server, /resolveCbsUnresolvedBaggageCase\(row\.rowNumber, 'expired', 'AUTO CLOSE \| 4-day Bag Room limit reached', 'System'\)/);
   assert.match(server, /const expiredCount = await closeExpiredBagRoomUnloadCases\(rows\)/);
   assert.match(server, /setInterval\(\(\) => runBagRoomUnloadExpiration\(\)[^\n]+60 \* 60 \* 1000\)/);
 });
