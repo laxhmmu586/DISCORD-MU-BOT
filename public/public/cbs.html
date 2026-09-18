@@ -825,7 +825,7 @@
       if (timeLimitReleased) return '-';
       const today = new Date().toLocaleDateString('en-CA', { timeZone:'America/Los_Angeles' });
       const ageDays = Math.max(0, Math.floor((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${row.flightDate}T00:00:00Z`)) / 86400000));
-      const daysLeft = Math.max(0, 2 - ageDays);
+      const daysLeft = Math.max(0, 3 - ageDays);
       if (daysLeft === 0) return '<span class="bag-room-timer timer-soon">◷ Closing soon</span>';
       return `<span class="bag-room-timer ${daysLeft === 1 ? 'timer-one' : 'timer-two'}">◷ ${daysLeft} day${daysLeft === 1 ? '' : 's'} left</span>`;
     }

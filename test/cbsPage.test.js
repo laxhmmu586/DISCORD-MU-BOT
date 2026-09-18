@@ -380,7 +380,7 @@ test('On-hand and Bag Room rows only show Rush Tag when at least one row has one
   assert.match(server, /result\.matchedBagRoomUnloadCases = await matchBagRoomUnloadCasesForRush\(result\.record\)/);
 });
 
-test('Bag Room cases show a three-day status timer and automatically close when expired', () => {
+test('Bag Room cases show a four-day status timer and automatically close when expired', () => {
   assert.match(page, /function bagRoomTimerHtml\(row\)/);
   assert.match(page, /Closing soon/);
   assert.match(page, /timer-one/);
@@ -388,12 +388,13 @@ test('Bag Room cases show a three-day status timer and automatically close when 
   assert.match(page, /isBagRoomGroup \? '<th>Status<\/th><th>Timer<\/th>'/);
   assert.doesNotMatch(page, /isBagRoomGroup \? '<th>Type<\/th>/);
   assert.match(server, /async function closeExpiredBagRoomUnloadCases\(rows = \[\], today = todayIsoUtc\(\)\)/);
-  assert.match(server, /return bagRoom && !timeLimitReleased && ageDays >= 3/);
+  assert.match(page, /const daysLeft = Math\.max\(0, 3 - ageDays\)/);
+  assert.match(server, /return bagRoom && !timeLimitReleased && ageDays >= 4/);
   assert.match(server, /\['worldtracer', 'pvg', 'on-hand-rush'\]\.includes/);
   assert.match(page, /\['worldtracer', 'pvg', 'on-hand-rush'\]\.includes/);
   assert.match(page, /if \(timeLimitReleased\) return '-'/);
   assert.doesNotMatch(page, /No time limit/);
-  assert.match(server, /resolveCbsUnresolvedBaggageCase\(row\.rowNumber, 'expired', 'AUTO CLOSE \| 3-day Bag Room limit reached', 'System'\)/);
+  assert.match(server, /resolveCbsUnresolvedBaggageCase\(row\.rowNumber, 'expired', 'AUTO CLOSE \| 4-day Bag Room limit reached', 'System'\)/);
   assert.match(server, /const expiredCount = await closeExpiredBagRoomUnloadCases\(rows\)/);
   assert.match(server, /setInterval\(\(\) => runBagRoomUnloadExpiration\(\)[^\n]+60 \* 60 \* 1000\)/);
 });
