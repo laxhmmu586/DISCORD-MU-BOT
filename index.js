@@ -98,6 +98,7 @@ const {
   sendMisconnectionAssistanceEmail,
   getCbsBaggageChartImage,
   getCbsOpenBagAuthorizationPdf,
+  findCbsPnrRecordsByBagTag,
   appendTransit240Record,
   appendCbsScanRecord,
   appendRecordScanRecord,
@@ -2971,6 +2972,90 @@ app.get('/cbs-cases', async (req, res) => {
   }
 });
 
+const CBS_BAG_TAG_AIRLINES = Object.freeze({ '001':'AA', '006':'DL', '016':'UA', '027':'AS', '279':'B6', '526':'WN', '781':'MU' });
+
+function normalizeRecordCheckBagTag(value) {
+  const compact = String(value || '').trim().toUpperCase().replace(/[\s-]+/g, '');
+  if (/^[A-Z][A-Z0-9]\d{6}$/.test(compact)) return { display:compact, serial:compact.slice(-6) };
+  const digits = compact.replace(/\D/g, '');
+  if (digits.length === 10) return { display:`${CBS_BAG_TAG_AIRLINES[digits.slice(1, 4)] || digits.slice(1, 4)}${digits.slice(-6)}`, serial:digits.slice(-6) };
+  if (digits.length === 6) return { display:digits, serial:digits };
+  return null;
+}
+
+function cbsRecordLookupDate(row = {}) {
+  for (const value of [row.flightDate, row.issueDate, row.submittedAt, row.submitDate, row.createdAt]) {
+    const direct = String(value || '').match(/^(\d{4}-\d{2}-\d{2})/);
+    if (direct) return direct[1];
+    const parsed = Date.parse(value);
+    if (Number.isFinite(parsed)) return new Date(parsed).toISOString().slice(0, 10);
+  }
+  return '';
+}
+
+function caseHasPnrRecord(row = {}) {
+  return (row.updateEvents || []).some((event) => event.key === 'record-pnr' || event.key === 'record');
+}
+
+const cbsPnrMissCache = new Map();
+let cbsPnrSyncPending = null;
+async function syncMissingCbsPnrRecords(passengerCases = [], unresolvedCases = [], updatedBy = 'System') {
+  const candidates = [
+    ...passengerCases.filter((row) => !caseHasPnrRecord(row)).map((row) => ({ source:'passenger', row })),
+    ...unresolvedCases.filter((row) => !row.resolvedAt && !caseHasPnrRecord(row)).map((row) => ({ source:'unresolved', row }))
+  ];
+  const lookupCache = new Map();
+  const updates = [];
+  const errors = [];
+  for (const candidate of candidates) {
+    const tag = normalizeRecordCheckBagTag(candidate.row.bagTag);
+    const date = cbsRecordLookupDate(candidate.row);
+    if (!tag || !date) continue;
+    const cacheKey = `${date}:${tag.serial}`;
+    if ((cbsPnrMissCache.get(cacheKey) || 0) > Date.now()) continue;
+    try {
+      if (!lookupCache.has(cacheKey)) lookupCache.set(cacheKey, findCbsPnrRecordsByBagTag(tag.serial, date));
+      const lookup = await lookupCache.get(cacheKey);
+      const record = (lookup.records || []).map((item) => item.content).filter(Boolean).join('\n\n===== RECORD =====\n\n').slice(0, 5000);
+      if (!record) {
+        cbsPnrMissCache.set(cacheKey, Date.now() + 5 * 60 * 1000);
+        continue;
+      }
+      cbsPnrMissCache.delete(cacheKey);
+      const result = candidate.source === 'unresolved'
+        ? await updateCbsUnresolvedBaggageDetails(candidate.row.rowNumber, { record, recordType:'pnr', updatedBy })
+        : await updateCbsCase(candidate.row.rowNumber, { status:candidate.row.status, updateEvent:{ key:'record-pnr', title:'Update Record - PNR', fields:[['Record - PNR', record]], by:updatedBy } });
+      if (!result.notFound) updates.push({ source:candidate.source, rowNumber:candidate.row.rowNumber, bagTag:candidate.row.bagTag });
+    } catch (err) {
+      errors.push({ source:candidate.source, rowNumber:candidate.row.rowNumber, bagTag:candidate.row.bagTag, error:err?.message || 'Record lookup failed' });
+      console.error(`CBS automatic PNR sync skipped ${candidate.source} row ${candidate.row.rowNumber}:`, err);
+    }
+  }
+  return { checked:candidates.length, updated:updates.length, updates, errors };
+}
+
+function startCbsPnrRecordSync(passengerCases, unresolvedCases, updatedBy = 'System') {
+  if (cbsPnrSyncPending) return cbsPnrSyncPending;
+  cbsPnrSyncPending = syncMissingCbsPnrRecords(passengerCases, unresolvedCases, updatedBy)
+    .catch((err) => {
+      console.error('CBS background PNR sync error:', err);
+      return { checked:0, updated:0, updates:[], errors:[{ error:err?.message || 'Background PNR sync failed' }] };
+    })
+    .finally(() => { cbsPnrSyncPending = null; });
+  return cbsPnrSyncPending;
+}
+
+app.post('/cbs-record-sync', async (req, res) => {
+  try {
+    const updatedBy = sanitizeCbsText(req.body?.updatedBy, 160) || 'System';
+    const [passengerCases, unresolvedCases] = await Promise.all([getCbsCases(), getCbsUnresolvedBaggageCases()]);
+    return res.json(await syncMissingCbsPnrRecords(passengerCases, unresolvedCases, updatedBy));
+  } catch (err) {
+    console.error('CBS automatic record sync error:', err);
+    return res.status(500).json({ error:err?.message || 'Automatic record sync failed' });
+  }
+});
+
 app.post('/wrong-baggage-submissions/:rowNumber/update', async (req, res) => {
   try {
     const type = sanitizeCbsText(req.body?.type, 20).toLowerCase();
@@ -3076,7 +3161,12 @@ app.get('/cbs-unresolved-baggage', async (req, res) => {
     });
     // Return completed On-hand records as well so the client can archive Create
     // Rush, Shipped, and Passenger collected cases in the Closed Case view.
-    return res.json({ rows });
+    res.json({ rows });
+    // Drive folders can contain large flight files. Never make the case-list
+    // response wait for that I/O; update matching PNRs in the background so
+    // the current list renders immediately and appears on the next refresh.
+    setImmediate(() => { startCbsPnrRecordSync(cases, rows, 'System'); });
+    return;
   } catch (err) {
     console.error('CBS On-hand baggage list error:', err);
     return res.status(500).json({ error: err?.message || 'On-hand baggage lookup failed' });

@@ -11,6 +11,17 @@ const transitForm = fs.readFileSync(path.join(__dirname, '..', 'public', 'public
 const drive = fs.readFileSync(path.join(__dirname, '..', 'googleDrive.js'), 'utf8');
 const server = fs.readFileSync(path.join(__dirname, '..', 'index.js'), 'utf8');
 
+test('CBS automatically finds Drive records and saves matching PNRs without a Check Record button', () => {
+  assert.doesNotMatch(page, /id="record-check-(?:tab|form|card)"/);
+  assert.doesNotMatch(page, /Check Record/);
+  assert.match(server, /CBS_BAG_TAG_AIRLINES[\s\S]*'006':'DL'[\s\S]*'526':'WN'[\s\S]*'781':'MU'/);
+  assert.match(server, /syncMissingCbsPnrRecords[\s\S]*updateCbsUnresolvedBaggageDetails[\s\S]*key:'record-pnr'/);
+  assert.match(server, /app\.post\('\/cbs-record-sync'/);
+  assert.match(server, /app\.get\('\/cbs-unresolved-baggage'[\s\S]*res\.json\(\{ rows \}\)[\s\S]*setImmediate\(\(\) => \{ startCbsPnrRecordSync\(cases, rows, 'System'\)/);
+  assert.match(drive, /1QbP-_qSoyIfv_H6NG8fSTxpTK8vfYSvR/);
+  assert.match(drive, /1cKMKdeW4BbBY47_hMAW_N_lxnCt0Pulo/);
+  assert.match(drive, /findCbsPnrRecordsByBagTag[\s\S]*slice\(-6\)/);
+});
 test('240 nationality list keeps USA and CAN first and alphabetizes all other codes', () => {
   assert.match(transitForm, /const priorityCountryCodes=\['USA','CAN'\]/);
   assert.match(transitForm, /\.split\(' '\)\.sort\(\)/);
