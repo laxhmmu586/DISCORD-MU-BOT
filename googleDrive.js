@@ -41,6 +41,90 @@ const drive =
     auth
   });
 
+const CBS_RECORD_ARCHIVE_FOLDER_ID = process.env.CBS_RECORD_ARCHIVE_FOLDER_ID || '1QbP-_qSoyIfv_H6NG8fSTxpTK8vfYSvR';
+const CBS_RECORD_TODAY_FOLDER_ID = process.env.CBS_RECORD_TODAY_FOLDER_ID || '1cKMKdeW4BbBY47_hMAW_N_lxnCt0Pulo';
+const GOOGLE_FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder';
+
+function cbsRecordDateKeys(value) {
+  const match = String(value || '').trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return [];
+  const [, year, month, day] = match;
+  const date = new Date(`${year}-${month}-${day}T12:00:00Z`);
+  if (Number.isNaN(date.getTime())) return [];
+  const shortMonth = date.toLocaleString('en-US', { month:'short', timeZone:'UTC' }).toUpperCase();
+  const longMonth = date.toLocaleString('en-US', { month:'long', timeZone:'UTC' }).toUpperCase();
+  return [
+    `${year}${month}${day}`, `${year}-${month}-${day}`, `${month}-${day}-${year}`,
+    `${day}${shortMonth}${year.slice(-2)}`, `${day}${shortMonth}${year}`,
+    `${longMonth}${day}${year}`, `${day}${longMonth}${year}`, `${year}${longMonth}${day}`, `${year}${shortMonth}${day}`
+  ].map((item) => item.replace(/[^A-Z0-9]/gi, '').toUpperCase());
+}
+
+async function listDriveChildren(folderId, foldersOnly = false) {
+  const files = [];
+  let pageToken;
+  do {
+    const result = await drive.files.list({
+      q:`'${folderId}' in parents and trashed = false${foldersOnly ? ` and mimeType = '${GOOGLE_FOLDER_MIME_TYPE}'` : ''}`,
+      fields:'nextPageToken,files(id,name,mimeType,modifiedTime,size)', pageSize:1000, pageToken
+    });
+    files.push(...(result.data.files || []));
+    pageToken = result.data.nextPageToken || undefined;
+  } while (pageToken);
+  return files;
+}
+
+async function readCbsRecordFile(file) {
+  if (file.mimeType === GOOGLE_FOLDER_MIME_TYPE) return '';
+  let response;
+  if (file.mimeType === 'application/vnd.google-apps.document') {
+    response = await drive.files.export({ fileId:file.id, mimeType:'text/plain' }, { responseType:'text' });
+  } else if (file.mimeType === 'application/vnd.google-apps.spreadsheet') {
+    response = await drive.files.export({ fileId:file.id, mimeType:'text/csv' }, { responseType:'text' });
+  } else if (file.mimeType?.startsWith('application/vnd.google-apps.')) {
+    return '';
+  } else {
+    response = await drive.files.get({ fileId:file.id, alt:'media' }, { responseType:'text' });
+  }
+  return typeof response.data === 'string' ? response.data : Buffer.from(response.data || '').toString('utf8');
+}
+
+/** Find full PNR records by the six-digit bag-tag serial number. */
+async function findCbsPnrRecordsByBagTag(bagTag, flightDate) {
+  const serial = String(bagTag || '').replace(/\D/g, '').slice(-6);
+  const dateKeys = cbsRecordDateKeys(flightDate);
+  if (!/^\d{6}$/.test(serial)) throw new Error('Bag tag must contain a six-digit serial number');
+  if (!dateKeys.length) throw new Error('DATE must use YYYY-MM-DD format');
+
+  const dateFolders = await listDriveChildren(CBS_RECORD_ARCHIVE_FOLDER_ID, true);
+  const matchingFolders = dateFolders.filter((folder) => {
+    const normalized = String(folder.name || '').replace(/[^A-Z0-9]/gi, '').toUpperCase();
+    return dateKeys.some((key) => normalized === key || normalized.includes(key));
+  });
+  const sources = [{ id:CBS_RECORD_TODAY_FOLDER_ID, label:'Today' }, ...matchingFolders.map((folder) => ({ id:folder.id, label:folder.name }))];
+  const uniqueSources = [...new Map(sources.map((source) => [source.id, source])).values()];
+  const candidates = (await Promise.all(uniqueSources.map(async (source) => (await listDriveChildren(source.id)).map((file) => ({ ...file, source:source.label }))))).flat();
+  const records = [];
+  for (const file of candidates) {
+    try {
+      const content = await readCbsRecordFile(file);
+      if (!String(file.name || '').includes(serial) && !content.includes(serial)) continue;
+      records.push({ fileId:file.id, fileName:file.name || '', source:file.source, modifiedTime:file.modifiedTime || '', content:content.trim() });
+    } catch (err) {
+      console.warn(`CBS record file skipped (${file.name || file.id}):`, err?.message || err);
+    }
+  }
+  const deduped = [];
+  const seen = new Set();
+  for (const record of records) {
+    const key = record.content.replace(/\s+/g, ' ').trim().toUpperCase() || record.fileName.toUpperCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(record);
+  }
+  return { bagTagSerial:serial, date:flightDate, searchedFolders:uniqueSources.map((source) => source.label), records:deduped };
+}
+
 const sheets =
   google.sheets({
     version: 'v4',
@@ -4640,6 +4724,7 @@ module.exports = {
   sendMisconnectionAssistanceEmail,
   getCbsBaggageChartImage,
   getCbsOpenBagAuthorizationPdf,
+  findCbsPnrRecordsByBagTag,
   appendTransit240Record,
   appendCbsScanRecord,
   appendRecordScanRecord,

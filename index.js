@@ -98,6 +98,7 @@ const {
   sendMisconnectionAssistanceEmail,
   getCbsBaggageChartImage,
   getCbsOpenBagAuthorizationPdf,
+  findCbsPnrRecordsByBagTag,
   appendTransit240Record,
   appendCbsScanRecord,
   appendRecordScanRecord,
@@ -2968,6 +2969,47 @@ app.get('/cbs-cases', async (req, res) => {
   } catch (err) {
     console.error('CBS case list error:', err);
     return res.status(500).json({ error: err?.message || 'CBS case lookup failed' });
+  }
+});
+
+const CBS_BAG_TAG_AIRLINES = Object.freeze({ '001':'AA', '006':'DL', '016':'UA', '027':'AS', '279':'B6', '526':'WN' });
+
+function normalizeRecordCheckBagTag(value) {
+  const compact = String(value || '').trim().toUpperCase().replace(/[\s-]+/g, '');
+  if (/^[A-Z][A-Z0-9]\d{6}$/.test(compact)) return { display:compact, serial:compact.slice(-6) };
+  const digits = compact.replace(/\D/g, '');
+  if (digits.length === 10) return { display:`${CBS_BAG_TAG_AIRLINES[digits.slice(1, 4)] || digits.slice(1, 4)}${digits.slice(-6)}`, serial:digits.slice(-6) };
+  if (digits.length === 6) return { display:digits, serial:digits };
+  return null;
+}
+
+app.post('/cbs-record-check', async (req, res) => {
+  try {
+    const tag = normalizeRecordCheckBagTag(req.body?.bagTag);
+    const date = sanitizeCbsText(req.body?.date, 10);
+    if (!tag) return res.status(400).json({ error:'Enter an airline bag tag (DL684563), a 10-digit tag, or the last six digits.' });
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error:'DATE is required.' });
+    const lookup = await findCbsPnrRecordsByBagTag(tag.serial, date);
+    const records = lookup.records || [];
+    const cases = await getCbsCases();
+    const matchingCases = cases.filter((row) => String(row.bagTag || '').split(/\s*\/\s*/).some((item) => String(item).replace(/\D/g, '').slice(-6) === tag.serial));
+    const recordText = records.map((record) => record.content).filter(Boolean).join('\n\n===== RECORD =====\n\n').slice(0, 5000);
+    const updatedCases = [];
+    if (recordText) {
+      for (const row of matchingCases) {
+        const alreadySaved = (row.updateEvents || []).some((event) => event.key === 'record-pnr' && new Map(event.fields || []).get('Record - PNR') === recordText);
+        if (alreadySaved) continue;
+        const result = await updateCbsCase(row.rowNumber, {
+          status:row.status,
+          updateEvent:{ key:'record-pnr', title:'Update Record - PNR', fields:[['Record - PNR', recordText]], by:sanitizeCbsText(req.body?.updatedBy, 160) || 'System' }
+        });
+        if (!result.notFound) updatedCases.push(row.rowNumber);
+      }
+    }
+    return res.json({ ...lookup, bagTag:tag.display, matchedCases:matchingCases.map((row) => row.rowNumber), updatedCases });
+  } catch (err) {
+    console.error('CBS record check error:', err);
+    return res.status(500).json({ error:err?.message || 'Record check failed' });
   }
 });
 
