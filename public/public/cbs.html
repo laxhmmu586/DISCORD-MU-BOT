@@ -941,15 +941,20 @@
     async function loadUnresolvedBaggage() {
       unresolvedBaggageOutput.innerHTML = '<p class="muted">Loading cases...</p>';
       bagRoomUnloadOutput.innerHTML = '<p class="muted">Loading cases...</p>';
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 20000);
       try {
-        const res = await fetch(`${apiBase}/cbs-unresolved-baggage`);
+        const res = await fetch(`${apiBase}/cbs-unresolved-baggage`, { signal:controller.signal, cache:'no-store' });
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || 'On-hand baggage lookup failed');
         renderUnresolvedBaggage(data.rows || []);
       } catch (error) {
-        const errorHtml = `<p class="status err">${escapeHtml(error.message)}</p>`;
+        const message = error.name === 'AbortError' ? 'Case loading timed out. Please use Refresh to try again.' : error.message;
+        const errorHtml = `<p class="status err">${escapeHtml(message)}</p>`;
         unresolvedBaggageOutput.innerHTML = errorHtml;
         bagRoomUnloadOutput.innerHTML = errorHtml;
+      } finally {
+        clearTimeout(timeout);
       }
     }
     function inferCaseType(row) {
