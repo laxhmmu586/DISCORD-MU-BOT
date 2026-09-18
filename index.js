@@ -2998,6 +2998,7 @@ function caseHasPnrRecord(row = {}) {
 }
 
 const cbsPnrMissCache = new Map();
+let cbsPnrSyncPending = null;
 async function syncMissingCbsPnrRecords(passengerCases = [], unresolvedCases = [], updatedBy = 'System') {
   const candidates = [
     ...passengerCases.filter((row) => !caseHasPnrRecord(row)).map((row) => ({ source:'passenger', row })),
@@ -3031,6 +3032,17 @@ async function syncMissingCbsPnrRecords(passengerCases = [], unresolvedCases = [
     }
   }
   return { checked:candidates.length, updated:updates.length, updates, errors };
+}
+
+function startCbsPnrRecordSync(passengerCases, unresolvedCases, updatedBy = 'System') {
+  if (cbsPnrSyncPending) return cbsPnrSyncPending;
+  cbsPnrSyncPending = syncMissingCbsPnrRecords(passengerCases, unresolvedCases, updatedBy)
+    .catch((err) => {
+      console.error('CBS background PNR sync error:', err);
+      return { checked:0, updated:0, updates:[], errors:[{ error:err?.message || 'Background PNR sync failed' }] };
+    })
+    .finally(() => { cbsPnrSyncPending = null; });
+  return cbsPnrSyncPending;
 }
 
 app.post('/cbs-record-sync', async (req, res) => {
@@ -3150,7 +3162,12 @@ app.get('/cbs-unresolved-baggage', async (req, res) => {
     });
     // Return completed On-hand records as well so the client can archive Create
     // Rush, Shipped, and Passenger collected cases in the Closed Case view.
-    return res.json({ rows });
+    res.json({ rows });
+    // Drive folders can contain large flight files. Never make the case-list
+    // response wait for that I/O; update matching PNRs in the background so
+    // the current list renders immediately and appears on the next refresh.
+    setImmediate(() => { startCbsPnrRecordSync(cases, rows, 'System'); });
+    return;
   } catch (err) {
     console.error('CBS On-hand baggage list error:', err);
     return res.status(500).json({ error: err?.message || 'On-hand baggage lookup failed' });
