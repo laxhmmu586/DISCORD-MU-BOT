@@ -3153,37 +3153,46 @@ app.post('/cbs-worldtracer-cases/update', async (req, res) => {
   }
 });
 
+const cbsUnresolvedRushTagCache = new Map();
+let cbsUnresolvedMaintenancePending = null;
+
+async function runCbsUnresolvedBackgroundMaintenance(rows = []) {
+  const expiredCount = await closeExpiredBagRoomUnloadCases(rows);
+  if (expiredCount) rows = await getCbsUnresolvedBaggageCases({ includeResolved:true });
+  const [rushBags, cases] = await Promise.all([getCbsWorldTracerCases(), getCbsCases()]);
+  for (const row of rows.filter((item) => !item.resolvedAt)) {
+    const matchedCase = cases.find((record) => {
+      const event = (record.updateEvents || []).filter((item) => item.key === 'upcoming_rush').at(-1);
+      return normalizedCbsLinkTag(new Map(event?.fields || []).get('Rush Tag')) === normalizedCbsLinkTag(row.bagTag);
+    });
+    const fileNumber = sanitizeCbsText(matchedCase?.worldTracerFileNumber, 120).toUpperCase();
+    if (fileNumber && fileNumber !== sanitizeCbsText(row.worldTracerFileNumber, 120).toUpperCase()) {
+      await updateCbsUnresolvedBaggageWorldTracer(row.rowNumber, fileNumber, 'Upcoming Rush match');
+    }
+    const rushBag = rushBags.filter((item) => normalizedCbsLinkTag(item.originalTagNumber) === normalizedCbsLinkTag(row.bagTag)).at(-1);
+    if (rushBag?.rushTagNumber) cbsUnresolvedRushTagCache.set(String(row.rowNumber), rushBag.rushTagNumber);
+  }
+  await startCbsPnrRecordSync(cases, rows, 'System');
+}
+
+function startCbsUnresolvedBackgroundMaintenance(rows) {
+  if (cbsUnresolvedMaintenancePending) return;
+  cbsUnresolvedMaintenancePending = runCbsUnresolvedBackgroundMaintenance(rows)
+    .catch((err) => console.error('CBS On-hand background maintenance error:', err))
+    .finally(() => { cbsUnresolvedMaintenancePending = null; });
+}
+
 app.get('/cbs-unresolved-baggage', async (req, res) => {
   try {
     res.setHeader('Cache-Control', 'no-store');
-    let rows = await getCbsUnresolvedBaggageCases({ includeResolved: true });
-    const expiredCount = await closeExpiredBagRoomUnloadCases(rows);
-    if (expiredCount) rows = await getCbsUnresolvedBaggageCases({ includeResolved:true });
-    const rushBags = await getCbsWorldTracerCases();
-    const cases = await getCbsCases();
-    for (const row of rows.filter((item) => !item.resolvedAt)) {
-      const matchedCase = cases.find((record) => {
-        const event = (record.updateEvents || []).filter((item) => item.key === 'upcoming_rush').at(-1);
-        return normalizedCbsLinkTag(new Map(event?.fields || []).get('Rush Tag')) === normalizedCbsLinkTag(row.bagTag);
-      });
-      const fileNumber = sanitizeCbsText(matchedCase?.worldTracerFileNumber, 120).toUpperCase();
-      if (fileNumber && fileNumber !== sanitizeCbsText(row.worldTracerFileNumber, 120).toUpperCase()) {
-        await updateCbsUnresolvedBaggageWorldTracer(row.rowNumber, fileNumber, 'Upcoming Rush match');
-      }
-    }
-    await syncMissingCbsPnrRecords(cases, rows, 'System');
-    rows = await getCbsUnresolvedBaggageCases({ includeResolved: true });
-    rows = rows.map((row) => {
-      const rushBag = rushBags.filter((item) => normalizedCbsLinkTag(item.originalTagNumber) === normalizedCbsLinkTag(row.bagTag)).at(-1);
-      return rushBag ? { ...row, rushTagNumber:rushBag.rushTagNumber } : row;
+    const rows = (await getCbsUnresolvedBaggageCases({ includeResolved:true })).map((row) => {
+      const rushTagNumber = cbsUnresolvedRushTagCache.get(String(row.rowNumber));
+      return rushTagNumber ? { ...row, rushTagNumber } : row;
     });
-    // Return completed On-hand records as well so the client can archive Create
-    // Rush, Shipped, and Passenger collected cases in the Closed Case view.
+    // Only the sheet read is part of this request. Expiry checks, cross-sheet
+    // linking, and Drive PNR scans run after the response so cases render fast.
     res.json({ rows });
-    // Drive folders can contain large flight files. Never make the case-list
-    // response wait for that I/O; update matching PNRs in the background so
-    // the current list renders immediately and appears on the next refresh.
-    setImmediate(() => { startCbsPnrRecordSync(cases, rows, 'System'); });
+    setImmediate(() => { startCbsUnresolvedBackgroundMaintenance(rows); });
     return;
   } catch (err) {
     console.error('CBS On-hand baggage list error:', err);

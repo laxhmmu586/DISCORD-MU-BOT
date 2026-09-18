@@ -977,7 +977,7 @@
       unresolvedBaggageOutput.innerHTML = '<p class="muted">Loading cases...</p>';
       bagRoomUnloadOutput.innerHTML = '<p class="muted">Loading cases...</p>';
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 20000);
+      const timeout = setTimeout(() => controller.abort(), 45000);
       try {
         const res = await fetch(`${apiBase}/cbs-unresolved-baggage`, { signal:controller.signal, cache:'no-store' });
         const data = await parseJson(res);
@@ -991,18 +991,6 @@
         bagRoomUnloadOutput.innerHTML = errorHtml;
       } finally {
         clearTimeout(timeout);
-      }
-    }
-    async function syncCbsPnrRecords() {
-      if (window._cbsPnrSyncStarted) return;
-      window._cbsPnrSyncStarted = true;
-      try {
-        const res = await fetch(`${apiBase}/cbs-record-sync`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ updatedBy:await currentUpdater() }) });
-        const data = await parseJson(res);
-        if (!res.ok) throw new Error(data.error || 'Automatic PNR record sync failed');
-        if (Number(data.updated) > 0) await Promise.all([loadCases(), loadUnresolvedBaggage()]);
-      } catch (error) {
-        console.error('Automatic PNR record sync failed:', error);
       }
     }
     function inferCaseType(row) {
