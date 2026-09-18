@@ -79,6 +79,17 @@ test('Rush Bag reads use a short cache that is invalidated after writes', () => 
   assert.equal((drive.match(/invalidateCbsWorldTracerCaseCache\(\);/g) || []).length >= 3, true);
 });
 
+test('Rush Bag navigation turns yellow when any case is missing a WorldTracer number', () => {
+  const sharedWarningStyle = page.match(/\.page-tab:is\(\[data-has-open-reports="true"\],\[data-has-missing-worldtracer="true"\]\) \{([^}]*)\}/)?.[1] || '';
+  for (const declaration of ['border-color:#f2c94c !important', 'background:#f7d154 !important', 'color:#3d3100 !important', 'box-shadow:inset 3px 0 0 #fff0a6,0 6px 18px rgba(242,201,76,.28) !important']) {
+    assert.match(sharedWarningStyle, new RegExp(declaration.replace(/[().]/g, '\\$&')));
+  }
+  assert.match(page, /\.page-tab:is\(\[data-has-open-reports="true"\],\[data-has-missing-worldtracer="true"\]\) \.page-tab-icon \{ color:#3d3100 !important; \}/);
+  assert.match(page, /const hasMissingWorldTracer = rows\.some\(\(row\) => !String\(row\.worldTracerFileNumber \|\| ''\)\.trim\(\)\)/);
+  assert.match(page, /worldTracerTab\.dataset\.hasMissingWorldtracer = String\(hasMissingWorldTracer\)/);
+  assert.match(page, /loadMissingReports\(\);\s*loadWorldTracerCases\(\);\s*syncMissingReports\(\)/);
+});
+
 test('CBS sheets automatically remove data older than two years', () => {
   assert.match(drive, /async function pruneExpiredCbsRows\(\{ title, sheetId, range, dateIndexes, rowOffset = 0 \}, now = new Date\(\)\)/);
   assert.match(drive, /cutoff\.setUTCFullYear\(cutoff\.getUTCFullYear\(\) - 2\)/);
