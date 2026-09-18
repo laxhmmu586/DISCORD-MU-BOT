@@ -946,10 +946,23 @@
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || 'On-hand baggage lookup failed');
         renderUnresolvedBaggage(data.rows || []);
+        syncCbsPnrRecords();
       } catch (error) {
         const errorHtml = `<p class="status err">${escapeHtml(error.message)}</p>`;
         unresolvedBaggageOutput.innerHTML = errorHtml;
         bagRoomUnloadOutput.innerHTML = errorHtml;
+      }
+    }
+    async function syncCbsPnrRecords() {
+      if (window._cbsPnrSyncStarted) return;
+      window._cbsPnrSyncStarted = true;
+      try {
+        const res = await fetch(`${apiBase}/cbs-record-sync`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ updatedBy:await currentUpdater() }) });
+        const data = await parseJson(res);
+        if (!res.ok) throw new Error(data.error || 'Automatic PNR record sync failed');
+        if (Number(data.updated) > 0) await Promise.all([loadCases(), loadUnresolvedBaggage()]);
+      } catch (error) {
+        console.error('Automatic PNR record sync failed:', error);
       }
     }
     function inferCaseType(row) {
