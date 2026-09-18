@@ -27,4 +27,18 @@ function extractPnrRecordsForBagTag(content, serial) {
   }).filter((record) => bagTagSectionHasSerial(record, serial));
 }
 
-module.exports = { bagTagSectionHasSerial, extractPnrRecordsForBagTag };
+function splitPnrAndTicketRecord(record) {
+  const text = String(record || '').replace(/\r\n?/g, '\n').trim();
+  const bagTagIndex = text.search(/(?:^|\n)\s*BAGTAG\//i);
+  if (bagTagIndex < 0) return { pnr:text, ticket:'' };
+  const transactionPattern = /^\d{4}\s+[A-Za-z]+\s+\d{1,2},[^\n]*\n\s*>\s*([^\n]+)/gim;
+  const transactions = [...text.matchAll(transactionPattern)].filter((match) => match.index > bagTagIndex);
+  const firstTransaction = transactions[0];
+  const pnr = text.slice(0, firstTransaction?.index ?? text.length).trim();
+  const ticketStart = transactions.find((match) => /^ETKD\b/i.test(match[1]))?.index;
+  if (ticketStart == null) return { pnr, ticket:'' };
+  const ticketEnd = transactions.find((match) => match.index > ticketStart)?.index ?? text.length;
+  return { pnr, ticket:text.slice(ticketStart, ticketEnd).trim() };
+}
+
+module.exports = { bagTagSectionHasSerial, extractPnrRecordsForBagTag, splitPnrAndTicketRecord };

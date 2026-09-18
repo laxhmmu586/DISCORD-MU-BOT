@@ -4,7 +4,7 @@ const fs = require('fs/promises');
 const path = require('path');
 const zlib = require('zlib');
 const { parseMealOrderEmail } = require('./spmlParser');
-const { extractPnrRecordsForBagTag } = require('./cbsRecordParser');
+const { extractPnrRecordsForBagTag, splitPnrAndTicketRecord } = require('./cbsRecordParser');
 
 // ===============================
 // Google Auth
@@ -112,7 +112,10 @@ async function findCbsPnrRecordsByBagTag(bagTag, flightDate) {
       const matchedRecords = extractPnrRecordsForBagTag(content, serial);
       if (!matchedRecords.length && !String(file.name || '').includes(serial)) continue;
       const previews = matchedRecords.length ? matchedRecords : [content.trim()];
-      previews.filter(Boolean).forEach((recordContent) => records.push({ fileId:file.id, fileName:file.name || '', source:file.source, modifiedTime:file.modifiedTime || '', content:recordContent }));
+      previews.filter(Boolean).forEach((recordContent) => {
+        const separated = splitPnrAndTicketRecord(recordContent);
+        records.push({ fileId:file.id, fileName:file.name || '', source:file.source, modifiedTime:file.modifiedTime || '', content:separated.pnr, ticketContent:separated.ticket });
+      });
     } catch (err) {
       console.warn(`CBS record file skipped (${file.name || file.id}):`, err?.message || err);
     }

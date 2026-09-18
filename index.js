@@ -3000,17 +3000,19 @@ function casePnrRecord(row = {}) {
 
 function caseNeedsPnrSync(row = {}) {
   const record = casePnrRecord(row);
-  return !record || record.includes('===== RECORD =====');
+  return !record || record.includes('===== RECORD =====') || /^\s*>\s*(?:ETKD|PD\*?|PU1|SY)\b/im.test(record);
 }
 
 function bestCbsPnrRecord(records = []) {
   return [...records].filter((item) => String(item?.content || '').trim()).sort((a, b) => {
     const complete = (item) => /\n\s*(?:I\/|O\/|ACC\b|GOV\b|MOD\b)/im.test(item.content) ? 1 : 0;
+    const hasTicket = (item) => String(item?.ticketContent || '').trim() ? 1 : 0;
     return complete(b) - complete(a)
+      || hasTicket(b) - hasTicket(a)
       || String(b.content).split('\n').filter((line) => line.trim()).length - String(a.content).split('\n').filter((line) => line.trim()).length
       || String(b.content).length - String(a.content).length
       || (Date.parse(b.modifiedTime) || 0) - (Date.parse(a.modifiedTime) || 0);
-  })[0]?.content?.trim() || '';
+  })[0] || null;
 }
 
 const cbsPnrMissCache = new Map();
@@ -3032,7 +3034,9 @@ async function syncMissingCbsPnrRecords(passengerCases = [], unresolvedCases = [
     try {
       if (!lookupCache.has(cacheKey)) lookupCache.set(cacheKey, findCbsPnrRecordsByBagTag(tag.serial, date));
       const lookup = await lookupCache.get(cacheKey);
-      const record = bestCbsPnrRecord(lookup.records).slice(0, 5000);
+      const selectedRecord = bestCbsPnrRecord(lookup.records);
+      const record = String(selectedRecord?.content || '').slice(0, 5000);
+      const ticketRecord = String(selectedRecord?.ticketContent || '').slice(0, 5000);
       if (!record) {
         cbsPnrMissCache.set(cacheKey, Date.now() + 5 * 60 * 1000);
         continue;
@@ -3041,6 +3045,10 @@ async function syncMissingCbsPnrRecords(passengerCases = [], unresolvedCases = [
       const result = candidate.source === 'unresolved'
         ? await updateCbsUnresolvedBaggageDetails(candidate.row.rowNumber, { record, recordType:'pnr', updatedBy })
         : await updateCbsCase(candidate.row.rowNumber, { status:candidate.row.status, replaceEventKey:'record-pnr', updateEvent:{ key:'record-pnr', title:'Update Record - PNR', fields:[['Record - PNR', record]], by:updatedBy } });
+      if (ticketRecord) {
+        if (candidate.source === 'unresolved') await updateCbsUnresolvedBaggageDetails(candidate.row.rowNumber, { record:ticketRecord, recordType:'tkt', updatedBy });
+        else await updateCbsCase(candidate.row.rowNumber, { status:candidate.row.status, replaceEventKey:'record-tkt', updateEvent:{ key:'record-tkt', title:'Update Record - TKT', fields:[['Record - TKT', ticketRecord]], by:updatedBy } });
+      }
       if (!result.notFound) updates.push({ source:candidate.source, rowNumber:candidate.row.rowNumber, bagTag:candidate.row.bagTag });
     } catch (err) {
       errors.push({ source:candidate.source, rowNumber:candidate.row.rowNumber, bagTag:candidate.row.bagTag, error:err?.message || 'Record lookup failed' });

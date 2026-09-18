@@ -16,7 +16,8 @@ test('CBS automatically finds Drive records and saves matching PNRs without a Ch
   assert.doesNotMatch(page, /Check Record/);
   assert.match(server, /CBS_BAG_TAG_AIRLINES[\s\S]*'006':'DL'[\s\S]*'526':'WN'[\s\S]*'781':'MU'/);
   assert.match(server, /syncMissingCbsPnrRecords[\s\S]*updateCbsUnresolvedBaggageDetails[\s\S]*key:'record-pnr'/);
-  assert.match(server, /bestCbsPnrRecord\(lookup\.records\)\.slice\(0, 5000\)/);
+  assert.match(server, /selectedRecord = bestCbsPnrRecord\(lookup\.records\)/);
+  assert.match(server, /ticketContent[\s\S]*recordType:'tkt'/);
   assert.match(server, /record\.includes\('===== RECORD ====='\)/);
   assert.match(server, /replaceEventKey:'record-pnr'/);
   assert.match(server, /app\.post\('\/cbs-record-sync'/);

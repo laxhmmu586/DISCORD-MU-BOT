@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { bagTagSectionHasSerial, extractPnrRecordsForBagTag } = require('../cbsRecordParser');
+const { bagTagSectionHasSerial, extractPnrRecordsForBagTag, splitPnrAndTicketRecord } = require('../cbsRecordParser');
 
 const records = `2026 September 17, Thursday, 09:05:39
 >fb3
@@ -36,4 +36,35 @@ test('matches spaced airline tags and MU 781 numeric tags by their last six digi
 
 test('does not treat a matching phone or ticket number outside BAGTAG as a bag tag', () => {
   assert.equal(bagTagSectionHasSerial('PR: TEST\nCTC-123684563\nBAGTAG/5006708023/HRB', '684563'), false);
+});
+
+test('moves ETKD to TKT and removes PD, PU, and SY command output from PNR', () => {
+  const source = `2026 September 18, Friday, 13:01:23
+PR: MU583/18SEP26*LAX,BN131 PNR RL QHGVYK
+1. LIU/XIAOFENG BN131
+BAGTAG/3781764663/LAX /3781426503/LAX
+I/MU5442/18SEP BN119 J TFU
+2026 September 18, Friday, 13:01:55
+>etkd 1
+ET PROCESSING IN PROGRESS
+ETKD:1
+ISSUED BY: CHINA EASTERN AIRLINES
+PASSENGER: LIU/XIAOFENG
+2026 September 18, Friday, 13:02:00
+>pn1
+FARE: CNY19300.00
+2026 September 18, Friday, 13:02:09
+>PD*,EDI,NAPI
+PD: MU583
+2026 September 18, Friday, 13:02:20
+>PU1,PSMEXBG0PCQTQK EDI
+PU: MU583
+2026 September 18, Friday, 13:02:30
+>SY
+SY: MU583`;
+  const result = splitPnrAndTicketRecord(source);
+  assert.match(result.pnr, /BAGTAG\/3781764663/);
+  assert.doesNotMatch(result.pnr, />etkd|>PD|>PU1|>SY/i);
+  assert.match(result.ticket, />etkd 1[\s\S]*ISSUED BY:[\s\S]*PASSENGER:/i);
+  assert.doesNotMatch(result.ticket, />pn1|>PD|>PU1|>SY/i);
 });
