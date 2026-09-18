@@ -2983,36 +2983,6 @@ function normalizeRecordCheckBagTag(value) {
   return null;
 }
 
-app.post('/cbs-record-check', async (req, res) => {
-  try {
-    const tag = normalizeRecordCheckBagTag(req.body?.bagTag);
-    const date = sanitizeCbsText(req.body?.date, 10);
-    if (!tag) return res.status(400).json({ error:'Enter an airline bag tag (DL684563), a 10-digit tag, or the last six digits.' });
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error:'DATE is required.' });
-    const lookup = await findCbsPnrRecordsByBagTag(tag.serial, date);
-    const records = lookup.records || [];
-    const cases = await getCbsCases();
-    const matchingCases = cases.filter((row) => String(row.bagTag || '').split(/\s*\/\s*/).some((item) => String(item).replace(/\D/g, '').slice(-6) === tag.serial));
-    const recordText = records.map((record) => record.content).filter(Boolean).join('\n\n===== RECORD =====\n\n').slice(0, 5000);
-    const updatedCases = [];
-    if (recordText) {
-      for (const row of matchingCases) {
-        const alreadySaved = (row.updateEvents || []).some((event) => event.key === 'record-pnr' && new Map(event.fields || []).get('Record - PNR') === recordText);
-        if (alreadySaved) continue;
-        const result = await updateCbsCase(row.rowNumber, {
-          status:row.status,
-          updateEvent:{ key:'record-pnr', title:'Update Record - PNR', fields:[['Record - PNR', recordText]], by:sanitizeCbsText(req.body?.updatedBy, 160) || 'System' }
-        });
-        if (!result.notFound) updatedCases.push(row.rowNumber);
-      }
-    }
-    return res.json({ ...lookup, bagTag:tag.display, matchedCases:matchingCases.map((row) => row.rowNumber), updatedCases });
-  } catch (err) {
-    console.error('CBS record check error:', err);
-    return res.status(500).json({ error:err?.message || 'Record check failed' });
-  }
-});
-
 function cbsRecordLookupDate(row = {}) {
   for (const value of [row.flightDate, row.issueDate, row.submittedAt, row.submitDate, row.createdAt]) {
     const direct = String(value || '').match(/^(\d{4}-\d{2}-\d{2})/);
@@ -3027,31 +2997,47 @@ function caseHasPnrRecord(row = {}) {
   return (row.updateEvents || []).some((event) => event.key === 'record-pnr' || event.key === 'record');
 }
 
-app.post('/cbs-record-sync', async (req, res) => {
-  try {
-    const updatedBy = sanitizeCbsText(req.body?.updatedBy, 160) || 'System';
-    const [passengerCases, unresolvedCases] = await Promise.all([getCbsCases(), getCbsUnresolvedBaggageCases()]);
-    const candidates = [
-      ...passengerCases.filter((row) => !caseHasPnrRecord(row)).map((row) => ({ source:'passenger', row })),
-      ...unresolvedCases.filter((row) => !caseHasPnrRecord(row)).map((row) => ({ source:'unresolved', row }))
-    ];
-    const lookupCache = new Map();
-    const updates = [];
-    for (const candidate of candidates) {
-      const tag = normalizeRecordCheckBagTag(candidate.row.bagTag);
-      const date = cbsRecordLookupDate(candidate.row);
-      if (!tag || !date) continue;
-      const cacheKey = `${date}:${tag.serial}`;
+const cbsPnrMissCache = new Map();
+async function syncMissingCbsPnrRecords(passengerCases = [], unresolvedCases = [], updatedBy = 'System') {
+  const candidates = [
+    ...passengerCases.filter((row) => !caseHasPnrRecord(row)).map((row) => ({ source:'passenger', row })),
+    ...unresolvedCases.filter((row) => !row.resolvedAt && !caseHasPnrRecord(row)).map((row) => ({ source:'unresolved', row }))
+  ];
+  const lookupCache = new Map();
+  const updates = [];
+  const errors = [];
+  for (const candidate of candidates) {
+    const tag = normalizeRecordCheckBagTag(candidate.row.bagTag);
+    const date = cbsRecordLookupDate(candidate.row);
+    if (!tag || !date) continue;
+    const cacheKey = `${date}:${tag.serial}`;
+    if ((cbsPnrMissCache.get(cacheKey) || 0) > Date.now()) continue;
+    try {
       if (!lookupCache.has(cacheKey)) lookupCache.set(cacheKey, findCbsPnrRecordsByBagTag(tag.serial, date));
       const lookup = await lookupCache.get(cacheKey);
       const record = (lookup.records || []).map((item) => item.content).filter(Boolean).join('\n\n===== RECORD =====\n\n').slice(0, 5000);
-      if (!record) continue;
+      if (!record) {
+        cbsPnrMissCache.set(cacheKey, Date.now() + 5 * 60 * 1000);
+        continue;
+      }
+      cbsPnrMissCache.delete(cacheKey);
       const result = candidate.source === 'unresolved'
         ? await updateCbsUnresolvedBaggageDetails(candidate.row.rowNumber, { record, recordType:'pnr', updatedBy })
         : await updateCbsCase(candidate.row.rowNumber, { status:candidate.row.status, updateEvent:{ key:'record-pnr', title:'Update Record - PNR', fields:[['Record - PNR', record]], by:updatedBy } });
       if (!result.notFound) updates.push({ source:candidate.source, rowNumber:candidate.row.rowNumber, bagTag:candidate.row.bagTag });
+    } catch (err) {
+      errors.push({ source:candidate.source, rowNumber:candidate.row.rowNumber, bagTag:candidate.row.bagTag, error:err?.message || 'Record lookup failed' });
+      console.error(`CBS automatic PNR sync skipped ${candidate.source} row ${candidate.row.rowNumber}:`, err);
     }
-    return res.json({ checked:candidates.length, updated:updates.length, updates });
+  }
+  return { checked:candidates.length, updated:updates.length, updates, errors };
+}
+
+app.post('/cbs-record-sync', async (req, res) => {
+  try {
+    const updatedBy = sanitizeCbsText(req.body?.updatedBy, 160) || 'System';
+    const [passengerCases, unresolvedCases] = await Promise.all([getCbsCases(), getCbsUnresolvedBaggageCases()]);
+    return res.json(await syncMissingCbsPnrRecords(passengerCases, unresolvedCases, updatedBy));
   } catch (err) {
     console.error('CBS automatic record sync error:', err);
     return res.status(500).json({ error:err?.message || 'Automatic record sync failed' });
@@ -3156,6 +3142,7 @@ app.get('/cbs-unresolved-baggage', async (req, res) => {
         await updateCbsUnresolvedBaggageWorldTracer(row.rowNumber, fileNumber, 'Upcoming Rush match');
       }
     }
+    await syncMissingCbsPnrRecords(cases, rows, 'System');
     rows = await getCbsUnresolvedBaggageCases({ includeResolved: true });
     rows = rows.map((row) => {
       const rushBag = rushBags.filter((item) => normalizedCbsLinkTag(item.originalTagNumber) === normalizedCbsLinkTag(row.bagTag)).at(-1);

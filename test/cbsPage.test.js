@@ -13,9 +13,11 @@ const server = fs.readFileSync(path.join(__dirname, '..', 'index.js'), 'utf8');
 
 test('CBS automatically finds Drive records and saves matching PNRs without a Check Record button', () => {
   assert.doesNotMatch(page, /id="record-check-(?:tab|form|card)"/);
-  assert.match(page, /\/cbs-record-sync/);
+  assert.doesNotMatch(page, /Check Record/);
   assert.match(server, /CBS_BAG_TAG_AIRLINES[\s\S]*'006':'DL'[\s\S]*'526':'WN'[\s\S]*'781':'MU'/);
-  assert.match(server, /app\.post\('\/cbs-record-sync'[\s\S]*updateCbsUnresolvedBaggageDetails[\s\S]*key:'record-pnr'/);
+  assert.match(server, /syncMissingCbsPnrRecords[\s\S]*updateCbsUnresolvedBaggageDetails[\s\S]*key:'record-pnr'/);
+  assert.match(server, /app\.post\('\/cbs-record-sync'/);
+  assert.match(server, /app\.get\('\/cbs-unresolved-baggage'[\s\S]*syncMissingCbsPnrRecords\(cases, rows, 'System'\)/);
   assert.match(drive, /1QbP-_qSoyIfv_H6NG8fSTxpTK8vfYSvR/);
   assert.match(drive, /1cKMKdeW4BbBY47_hMAW_N_lxnCt0Pulo/);
   assert.match(drive, /findCbsPnrRecordsByBagTag[\s\S]*slice\(-6\)/);
