@@ -2993,16 +2993,32 @@ function cbsRecordLookupDate(row = {}) {
   return '';
 }
 
-function caseHasPnrRecord(row = {}) {
-  return (row.updateEvents || []).some((event) => event.key === 'record-pnr' || event.key === 'record');
+function casePnrRecord(row = {}) {
+  const event = (row.updateEvents || []).filter((item) => item.key === 'record-pnr' || item.key === 'record').at(-1);
+  return new Map(event?.fields || []).get('Record - PNR') || new Map(event?.fields || []).get('Record') || '';
+}
+
+function caseNeedsPnrSync(row = {}) {
+  const record = casePnrRecord(row);
+  return !record || record.includes('===== RECORD =====');
+}
+
+function bestCbsPnrRecord(records = []) {
+  return [...records].filter((item) => String(item?.content || '').trim()).sort((a, b) => {
+    const complete = (item) => /\n\s*(?:I\/|O\/|ACC\b|GOV\b|MOD\b)/im.test(item.content) ? 1 : 0;
+    return complete(b) - complete(a)
+      || String(b.content).split('\n').filter((line) => line.trim()).length - String(a.content).split('\n').filter((line) => line.trim()).length
+      || String(b.content).length - String(a.content).length
+      || (Date.parse(b.modifiedTime) || 0) - (Date.parse(a.modifiedTime) || 0);
+  })[0]?.content?.trim() || '';
 }
 
 const cbsPnrMissCache = new Map();
 let cbsPnrSyncPending = null;
 async function syncMissingCbsPnrRecords(passengerCases = [], unresolvedCases = [], updatedBy = 'System') {
   const candidates = [
-    ...passengerCases.filter((row) => !caseHasPnrRecord(row)).map((row) => ({ source:'passenger', row })),
-    ...unresolvedCases.filter((row) => !row.resolvedAt && !caseHasPnrRecord(row)).map((row) => ({ source:'unresolved', row }))
+    ...passengerCases.filter(caseNeedsPnrSync).map((row) => ({ source:'passenger', row })),
+    ...unresolvedCases.filter((row) => !row.resolvedAt && caseNeedsPnrSync(row)).map((row) => ({ source:'unresolved', row }))
   ];
   const lookupCache = new Map();
   const updates = [];
@@ -3016,7 +3032,7 @@ async function syncMissingCbsPnrRecords(passengerCases = [], unresolvedCases = [
     try {
       if (!lookupCache.has(cacheKey)) lookupCache.set(cacheKey, findCbsPnrRecordsByBagTag(tag.serial, date));
       const lookup = await lookupCache.get(cacheKey);
-      const record = (lookup.records || []).map((item) => item.content).filter(Boolean).join('\n\n===== RECORD =====\n\n').slice(0, 5000);
+      const record = bestCbsPnrRecord(lookup.records).slice(0, 5000);
       if (!record) {
         cbsPnrMissCache.set(cacheKey, Date.now() + 5 * 60 * 1000);
         continue;
@@ -3024,7 +3040,7 @@ async function syncMissingCbsPnrRecords(passengerCases = [], unresolvedCases = [
       cbsPnrMissCache.delete(cacheKey);
       const result = candidate.source === 'unresolved'
         ? await updateCbsUnresolvedBaggageDetails(candidate.row.rowNumber, { record, recordType:'pnr', updatedBy })
-        : await updateCbsCase(candidate.row.rowNumber, { status:candidate.row.status, updateEvent:{ key:'record-pnr', title:'Update Record - PNR', fields:[['Record - PNR', record]], by:updatedBy } });
+        : await updateCbsCase(candidate.row.rowNumber, { status:candidate.row.status, replaceEventKey:'record-pnr', updateEvent:{ key:'record-pnr', title:'Update Record - PNR', fields:[['Record - PNR', record]], by:updatedBy } });
       if (!result.notFound) updates.push({ source:candidate.source, rowNumber:candidate.row.rowNumber, bagTag:candidate.row.bagTag });
     } catch (err) {
       errors.push({ source:candidate.source, rowNumber:candidate.row.rowNumber, bagTag:candidate.row.bagTag, error:err?.message || 'Record lookup failed' });
@@ -3139,6 +3155,7 @@ app.post('/cbs-worldtracer-cases/update', async (req, res) => {
 
 app.get('/cbs-unresolved-baggage', async (req, res) => {
   try {
+    res.setHeader('Cache-Control', 'no-store');
     let rows = await getCbsUnresolvedBaggageCases({ includeResolved: true });
     const expiredCount = await closeExpiredBagRoomUnloadCases(rows);
     if (expiredCount) rows = await getCbsUnresolvedBaggageCases({ includeResolved:true });
