@@ -410,6 +410,7 @@ function parseJcsyDeparture(raw = '') {
 }
 
 function parseJcsyRows(content) {
+  const seen = new Set();
   return String(content || '').split(/\r?\n/).map((line) => {
     const m = line.match(/^\s*([A-Z]{2}\d{3,4})\s+\/([A-Z]{3})\/\s+(?:(\d{4}(?:\+\d)?)\s+)?(\d{2}\/\d{2,3}\/\d{3})\b/i);
     if (!m) return null;
@@ -417,7 +418,7 @@ function parseJcsyRows(content) {
     const departure = parseJcsyDeparture(m[3] || '');
     const destination = m[2].toUpperCase();
     const isDomestic = MAINLAND_CHINA_DESTINATIONS.has(destination);
-    return {
+    const row = {
       flightNo: m[1].toUpperCase(),
       destination,
       dest: destination,
@@ -434,6 +435,14 @@ function parseJcsyRows(content) {
       sameDayTransfer: departure.sameDayTransfer,
       overnight: departure.overnight
     };
+    // Terminal logs can contain the same PN page more than once (for example,
+    // when an operator copies the response again).  A JCSY itinerary has one
+    // row per onward flight, so counting an identical row twice inflates the
+    // transfer totals even though the report's ##TOTAL## remains unchanged.
+    const signature = [row.flightNo, row.destination, row.departure, row.first, row.business, row.economy].join('|');
+    if (seen.has(signature)) return null;
+    seen.add(signature);
+    return row;
   }).filter(Boolean);
 }
 
