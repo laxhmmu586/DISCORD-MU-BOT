@@ -195,3 +195,36 @@ test('keeps WCHR codes on unstarred GOV/FCL passenger continuation lines', () =>
     { bn: '238', name: 'LAM/CHINGYEE', seat: '9D', codes: ['WCHR'] }
   ]);
 });
+
+test('latest passenger display clears an earlier false WCHC advisory match', () => {
+  const log = [
+    '2026 September 22, Tuesday, 12:50:00',
+    '> sy',
+    '> SY: MU586/22SEP26 LAX/0 CI1200/NAM',
+    '> 777/773L/B7367 GTD/130 POS/GATE BN299 AK00000 CD00000',
+    '> BDT1145 SD1230 ED1230 CI1200',
+    '2026 September 22, Tuesday, 12:51:29',
+    '> fb 291',
+    '> PR: MU586/22SEP26*LAX,BN291 PNR RL NG8118',
+    '1. JIANG/CHANGRAN BN291 *34H S PVG',
+    '\u001cMSG-*** CHECK PAX CONDITION FOR WCHC OR CTC LAKE ***\u001d',
+    '2026 September 22, Tuesday, 12:51:33',
+    '> pn1',
+    '> PR: MU586/22SEP26*LAX,BN291 PNR RL NG8118',
+    '> MOD LAX49020 AGT24102/22SEP1057/PSM',
+    '2026 September 22, Tuesday, 12:52:00',
+    '> fb 293',
+    '> PR: MU586/22SEP26*LAX,BN293 PNR RL REALWC',
+    '1. TEST/WHEELCHAIR BN293 *35A S PVG WCHC',
+    '2026 September 22, Tuesday, 12:52:03',
+    '> pn1',
+    '> PR: MU586/22SEP26*LAX,BN293 PNR RL REALWC',
+    '> MOD LAX49020 AGT24102/22SEP1057/PSM'
+  ].join('\n');
+
+  const info = require('../syParser').findSYInfo(log, '22SEP26', { preferredFlightNo: 'MU586' });
+
+  assert.deepEqual(info.wchList, [
+    { bn: '293', name: 'TEST/WHEELCHAIR', seat: '35A', codes: ['WCHC'] }
+  ]);
+});

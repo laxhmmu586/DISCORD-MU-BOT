@@ -602,9 +602,16 @@ function parseIncrementalLog(log) {
       'UM', 'STCR', 'MAAS', 'PPOC', 'WCHR', 'WCHS', 'WCHC'
     ];
 
+    const isServiceExtractionLine = (line) => {
+      const normalized = String(line || '').replace(/[\u0000-\u001f]/g, '').trim();
+      if (/^(?:PSM|MSG)(?:\b|-)/i.test(normalized)) return false;
+      // Operational history can mention a service that was modified or removed;
+      // it is not the passenger's current SSR payload.
+      return !/^(?:ACC|API|BAB|BAG|BC|BDB|GOV|MOD)(?:\s|$)/i.test(normalized);
+    };
     const nonPsmSection = section
       .split(/\r?\n/)
-      .filter(line => !/^(?:PSM|MSG)(?:\b|-)/i.test(line.trim()))
+      .filter(isServiceExtractionLine)
       .join('\n');
 
     for (const code of ssrCodes) {

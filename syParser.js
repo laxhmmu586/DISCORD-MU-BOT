@@ -1227,7 +1227,9 @@ function enrichWchListFromLog(log, syInfo, targetYmd = null) {
     const seatFromSection = extractSeatAfterBn(section);
     const seat = (seatFromPaxLine || seatFromSection || '').toUpperCase();
     const codes = extractWheelchairCodes(section);
-    if (!codes.length) continue;
+    // PN/PF pages only continue the preceding FB record's history. An empty
+    // continuation must not clear a genuine active wheelchair SSR.
+    if (!codes.length && /^(?:PN\d*|PF\d*)$/i.test(sectionObj.command || '')) continue;
     const ts = parseSectionTimestamp(sectionObj.timestamp);
     const prev = latestByBn.get(bn);
     if (prev && prev.ts > ts) continue;
@@ -1241,6 +1243,7 @@ function enrichWchListFromLog(log, syInfo, targetYmd = null) {
   }
 
   return [...latestByBn.values()]
+    .filter(({ codes }) => codes.length)
     .sort((a, b) => Number(a.bn) - Number(b.bn))
     .map(({ bn, name, seat, codes }) => ({ bn, name, seat, codes }));
 }
