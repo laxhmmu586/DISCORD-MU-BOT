@@ -42,6 +42,32 @@ test('reconciler deletes an alert after WCHC changes or is removed', async () =>
   assert.equal(deleted, 1);
 });
 
+test('reconciler pages past 100 newer messages to delete an older alert', async () => {
+  let deleted = 0;
+  const newerMessages = Array.from({ length: 100 }, (_, index) => ({
+    id: String(200 - index), author: { id: index === 0 ? 'bot' : 'someone-else' }, embeds: []
+  }));
+  const oldMessage = {
+    id: '99', author: { id: 'bot' },
+    embeds: [{ footer: { text: 'WCHC Alert • MU586|13SEP|107' } }],
+    delete: async () => { deleted += 1; }
+  };
+  const fetches = [];
+  const client = { user: { id: 'bot' }, channels: { fetch: async () => ({
+    isTextBased: () => true,
+    messages: { fetch: async (options) => {
+      fetches.push(options);
+      return new Map((options.before ? [oldMessage] : newerMessages).map((message) => [message.id, message]));
+    } },
+    send: async () => assert.fail('must not send a replacement alert')
+  }) } };
+
+  await createWchcNotifier(client, { channelIds: ['one'] })({});
+
+  assert.deepEqual(fetches, [{ limit: 100 }, { limit: 100, before: '101' }]);
+  assert.equal(deleted, 1);
+});
+
 test('reconciler edits the original embed when passenger details change', async () => {
   let editedPayload = null;
   let sent = 0;
