@@ -18,6 +18,22 @@ test('parses JCSY rows whose business count uses two digits', () => {
   ]);
 });
 
+test('does not count an identical pasted JCSY page twice', () => {
+  const firstPage = [
+    'MU1113 /HZD/            00/00/002 00/00/000+00 00/00/000+00 00/00/002 000/0000',
+    'MU5163 /PEK/     1930+1 00/00/009 00/00/000+00 00/00/000+00 00/00/009 000/0000'
+  ];
+  const repeatedPage = [
+    'MU5359 /SZX/     2145+1 00/00/003 00/00/000+00 00/00/000+00 00/00/003 000/0000',
+    'MU5651 /YNJ/     0640+2 00/01/000 00/00/000+00 00/00/000+00 00/01/000 000/0000'
+  ];
+  const rows = parseJcsyRows([...firstPage, ...repeatedPage, ...repeatedPage].join('\n'));
+
+  assert.equal(rows.length, 4);
+  assert.deepEqual(rows.map((row) => row.flightNo), ['MU1113', 'MU5163', 'MU5359', 'MU5651']);
+  assert.equal(rows.reduce((sum, row) => sum + row.total, 0), 15);
+});
+
 test('uses RET cabin counts and all pasted JCSY pages even without a total footer', () => {
   const log = `2026 August 20, Thursday, 05:25:48
 >SY
