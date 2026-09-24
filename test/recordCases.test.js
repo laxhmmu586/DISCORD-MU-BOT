@@ -99,7 +99,10 @@ test('IRR summary rows keep destination in details and show recognized member ti
   assert.equal((admin.match(/<span class="label">Destination<\/span>/g) || []).length, 1);
   assert.match(admin, /function membershipHtml\(row\)/);
   for (const tier of ['Platinum', 'Gold', 'Silver', 'Elite Plus', 'Elite']) assert.match(admin, new RegExp(`type='${tier}'`));
-  assert.match(admin, /class="passenger-name">\$\{membershipHtml\(row\)\}/);
+  assert.match(admin, /class="member-cell"><span class="label">Member<\/span>\$\{membershipHtml\(row\)\}/);
+  assert.match(admin, /member-badge[\s\S]*<svg viewBox=/);
+  assert.doesNotMatch(admin, /short='(?:P|G|S|E)'/);
+  assert.match(admin, /<div class="side-bottom"><span class="live-status reconnecting" id="live-status"/);
 });
 
 test('IRR dashboard uses MUIRR navigation and separates operational queues', () => {
