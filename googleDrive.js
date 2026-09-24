@@ -265,7 +265,7 @@ const RECORD_SCAN_SHEET_GID = Number(process.env.RECORD_SCAN_SHEET_GID || 621930
 const RECORD_SCAN_HEADERS = ['BN', 'SEAT', 'FLIGHT NUMBER', 'RAW SCAN'];
 const RECORD_CASE_SHEET_ID = process.env.RECORD_CASE_SHEET_ID || '1t0TS3__Im1tyLy7Hj7CGF8zet_-5TT1986QCodhvYbo';
 const RECORD_CASE_SHEET_GID = Number(process.env.RECORD_CASE_SHEET_GID || 1472152106);
-const RECORD_CASE_HEADERS = ['Submitted At', 'Status', 'BN', 'Passenger Name', 'Phone', 'Email', 'Travel Party', 'Companion BNs', 'Companion PNR Records', 'Intention', 'Final Destination', 'PNR Record', 'New Ticket Number', 'Comment', 'Updated At', 'Updated By', 'Hotel Name', 'Hotel Address', 'Hotel Confirmation', 'Hotel Check-in', 'Hotel Check-out', 'Case History'];
+const RECORD_CASE_HEADERS = ['Submitted At', 'Status', 'BN', 'Passenger Name', 'Phone', 'Email', 'Travel Party', 'Companion BNs', 'Companion PNR Records', 'Intention', 'Final Destination', 'PNR Record', 'New Ticket Number', 'Comment', 'Updated At', 'Updated By', 'Hotel Reservation Number', 'Hotel Price', 'Passenger Wants Refund', 'Reserved', 'Reserved', 'Case History'];
 const TRANSIT_240_SHEET_ID = process.env.TRANSIT_240_SHEET_ID || '1JqRnDx_uLc2m2SzyZOuHWWJsbkKenlKo60U9zwV9uMQ';
 const TRANSIT_240_SHEET_GID = Number(process.env.TRANSIT_240_SHEET_GID || 527537258);
 const TRANSIT_240_HEADERS = ['Submit Date', 'Passenger Name', 'Seat Number', 'BN Number', 'Passport Nationality Code', 'Passport Expiration Date', 'Itinerary'];
@@ -3301,8 +3301,8 @@ function recordCaseFromRow(values, rowNumber) {
     rowNumber, submittedAt:row['Submitted At'], status:row.Status, bn:row.BN, passengerName:row['Passenger Name'], phone:row.Phone,
     email:row.Email, travelParty:row['Travel Party'], companionBns:row['Companion BNs'], companionPnrRecords:row['Companion PNR Records'],
     intention:row.Intention, finalDestination:row['Final Destination'], pnrRecord:row['PNR Record'], newTicketNumber:row['New Ticket Number'],
-    comment:row.Comment, updatedAt:row['Updated At'], updatedBy:row['Updated By'], hotelName:row['Hotel Name'],
-    hotelAddress:row['Hotel Address'], hotelConfirmation:row['Hotel Confirmation'], hotelCheckIn:row['Hotel Check-in'], hotelCheckOut:row['Hotel Check-out'],
+    comment:row.Comment, updatedAt:row['Updated At'], updatedBy:row['Updated By'], hotelReservationNumber:row['Hotel Reservation Number'],
+    hotelPrice:row['Hotel Price'], passengerWantsRefund:row['Passenger Wants Refund'],
     caseHistory:parseRecordCaseHistory(row['Case History'])
   };
 }
@@ -3350,27 +3350,44 @@ async function updateRecordCase(rowNumber, update = {}) {
   const existing = (await getRecordCases({ forceRefresh:true })).find((row) => row.rowNumber === number);
   if (!existing) throw new Error('Record case not found');
   const now = new Date().toISOString();
-  const requestedStatus = String(update.status || existing.status).slice(0,80);
-  // Once staff performs any action on a waiting case, it is being handled.
-  // Explicit operational destinations (Hotel/Case Closed/In Progress) win.
-  const nextStatus = existing.status === 'Waiting' && requestedStatus === 'Waiting' ? 'In Progress' : requestedStatus;
+  if (update.expectedUpdatedAt !== undefined && String(update.expectedUpdatedAt) !== String(existing.updatedAt || '')) {
+    const error = new Error('This case was updated by another agent. Refresh it and try again.');
+    error.code = 'EDIT_CONFLICT';
+    throw error;
+  }
+  const action = String(update.action || '');
+  const operationalActions = new Set(['newTicket', 'hotel', 'comment', 'refund']);
+  const nextStatus = action === 'caseClose' ? 'Case Closed' : (operationalActions.has(action) ? 'In Progress' : existing.status);
   const values = [nextStatus, String(update.newTicketNumber ?? existing.newTicketNumber).slice(0,160), String(update.comment ?? existing.comment).slice(0,1000), now, String(update.updatedBy || '').slice(0,160)];
-  const hotelValues = [String(update.hotelName ?? existing.hotelName).slice(0,200), String(update.hotelAddress ?? existing.hotelAddress).slice(0,500), String(update.hotelConfirmation ?? existing.hotelConfirmation).slice(0,160), String(update.hotelCheckIn ?? existing.hotelCheckIn).slice(0,40), String(update.hotelCheckOut ?? existing.hotelCheckOut).slice(0,40)];
+  const hotelReservationNumber = String(update.hotelReservationNumber ?? existing.hotelReservationNumber).slice(0,160);
+  const hotelPrice = String(update.hotelPrice ?? existing.hotelPrice).slice(0,80);
+  const passengerWantsRefund = String(update.passengerWantsRefund ?? existing.passengerWantsRefund).slice(0,20);
   let history = Array.isArray(existing.caseHistory) ? [...existing.caseHistory] : [];
   const by = values[4] || 'Agent';
   const chatMessage = String(update.chatMessage || '').trim().slice(0, 1000);
-  if (values[0] !== existing.status) history.push({ type:'status', status:values[0], message:String(update.comment || '').trim().slice(0,1000), at:now, by });
+  const actionLabels = { newTicket:'New ticket number updated', hotel:'Hotel reservation updated', comment:'Comment updated', refund:'Passenger refund preference updated', caseClose:'Case closed' };
+  if (actionLabels[action]) {
+    const detail = action === 'newTicket' ? values[1] : action === 'hotel' ? [hotelReservationNumber, hotelPrice].filter(Boolean).join(' · ') : action === 'comment' ? values[2] : action === 'refund' ? passengerWantsRefund : '';
+    history.push({ type:'status', status:values[0], message:[actionLabels[action], detail].filter(Boolean).join(': '), at:now, by });
+  }
   if (chatMessage) history.push({ id:`${Date.now()}-${Math.random().toString(36).slice(2, 9)}`, type:'message', message:chatMessage, at:now, by });
   const deleteMessageIndex = Number(update.deleteMessageIndex);
   if (Number.isInteger(deleteMessageIndex) && deleteMessageIndex >= 0 && history[deleteMessageIndex]?.type === 'message') history = history.filter((_, index) => index !== deleteMessageIndex);
-  await sheets.spreadsheets.values.batchUpdate({ spreadsheetId:RECORD_CASE_SHEET_ID, requestBody:{ valueInputOption:'RAW', data:[
+  // Write only fields supplied by this action. This avoids one agent replacing
+  // unrelated values that another agent has just saved.
+  const data = [
     { range:`${escapeSheetTitle(title)}!B${number}`, values:[[values[0]]] },
-    { range:`${escapeSheetTitle(title)}!M${number}:P${number}`, values:[[...values.slice(1)]] },
-    { range:`${escapeSheetTitle(title)}!Q${number}:U${number}`, values:[[...hotelValues]] },
+    { range:`${escapeSheetTitle(title)}!O${number}:P${number}`, values:[[now, values[4]]] },
     { range:`${escapeSheetTitle(title)}!V${number}`, values:[[JSON.stringify(history)]] }
-  ] } });
+  ];
+  if (update.newTicketNumber !== undefined) data.push({ range:`${escapeSheetTitle(title)}!M${number}`, values:[[values[1]]] });
+  if (update.comment !== undefined) data.push({ range:`${escapeSheetTitle(title)}!N${number}`, values:[[values[2]]] });
+  if (update.hotelReservationNumber !== undefined) data.push({ range:`${escapeSheetTitle(title)}!Q${number}`, values:[[hotelReservationNumber]] });
+  if (update.hotelPrice !== undefined) data.push({ range:`${escapeSheetTitle(title)}!R${number}`, values:[[hotelPrice]] });
+  if (update.passengerWantsRefund !== undefined) data.push({ range:`${escapeSheetTitle(title)}!S${number}`, values:[[passengerWantsRefund]] });
+  await sheets.spreadsheets.values.batchUpdate({ spreadsheetId:RECORD_CASE_SHEET_ID, requestBody:{ valueInputOption:'RAW', data } });
   recordCaseCache.expiresAt = 0;
-  return { ...existing, status:values[0], newTicketNumber:values[1], comment:values[2], updatedAt:now, updatedBy:values[4], hotelName:hotelValues[0], hotelAddress:hotelValues[1], hotelConfirmation:hotelValues[2], hotelCheckIn:hotelValues[3], hotelCheckOut:hotelValues[4], caseHistory:history };
+  return { ...existing, status:values[0], newTicketNumber:values[1], comment:values[2], updatedAt:now, updatedBy:values[4], hotelReservationNumber, hotelPrice, passengerWantsRefund, caseHistory:history };
 }
 
 async function getTransit240SheetTitle() {
