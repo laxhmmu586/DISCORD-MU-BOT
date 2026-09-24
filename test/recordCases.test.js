@@ -33,11 +33,27 @@ test('IRR cases are archived in the requested Google Sheet and cached for live m
   assert.match(drive, /recordCaseCache = \{ expiresAt:0/);
   assert.match(drive, /Date\.now\(\) \+ 5000/);
   assert.match(drive, /spreadsheets\.values\.append/);
-  assert.doesNotMatch(admin, /setInterval\(load/);
+  assert.match(admin, /setInterval\(\(\)=>load\(\),60000\)/);
   assert.match(admin, /expectedUpdatedAt/);
   assert.match(admin, /New ticket number/);
   assert.match(admin, /New Ticket Number/);
   assert.match(admin, /Comment \/ 留言/);
+});
+
+test('IRR tracks the passenger confirmation, handling, document delivery, and closure workflow', () => {
+  assert.doesNotMatch(admin, /data-view="Print Queue"/);
+  assert.match(admin, /Confirm with Passenger/);
+  assert.match(admin, /Change Ticket \/ New Ticket Number/);
+  assert.match(admin, /New Itinerary Provided/);
+  assert.match(admin, /Hotel Confirmation Provided/);
+  assert.match(admin, /Refund Completed & Close/);
+  assert.match(admin, /Case Workflow/);
+  assert.match(drive, /'Case Workflow'/);
+  assert.match(drive, /passengerConfirmed/);
+  assert.match(drive, /itineraryDelivered/);
+  assert.match(drive, /hotelConfirmationDelivered/);
+  assert.match(drive, /refundCompleted/);
+  assert.match(drive, /!W\$\{number\}/);
 });
 
 test('IRR dashboard uses MUIRR navigation and separates operational queues', () => {

@@ -265,7 +265,7 @@ const RECORD_SCAN_SHEET_GID = Number(process.env.RECORD_SCAN_SHEET_GID || 621930
 const RECORD_SCAN_HEADERS = ['BN', 'SEAT', 'FLIGHT NUMBER', 'RAW SCAN'];
 const RECORD_CASE_SHEET_ID = process.env.RECORD_CASE_SHEET_ID || '1t0TS3__Im1tyLy7Hj7CGF8zet_-5TT1986QCodhvYbo';
 const RECORD_CASE_SHEET_GID = Number(process.env.RECORD_CASE_SHEET_GID || 1472152106);
-const RECORD_CASE_HEADERS = ['Submitted At', 'Status', 'BN', 'Passenger Name', 'Phone', 'Email', 'Travel Party', 'Companion BNs', 'Companion PNR Records', 'Intention', 'Final Destination', 'PNR Record', 'New Ticket Number', 'Comment', 'Updated At', 'Updated By', 'Hotel Reservation Number', 'Hotel Price', 'Passenger Wants Refund', 'Reserved', 'Reserved', 'Case History'];
+const RECORD_CASE_HEADERS = ['Submitted At', 'Status', 'BN', 'Passenger Name', 'Phone', 'Email', 'Travel Party', 'Companion BNs', 'Companion PNR Records', 'Intention', 'Final Destination', 'PNR Record', 'New Ticket Number', 'Comment', 'Updated At', 'Updated By', 'Hotel Reservation Number', 'Hotel Price', 'Passenger Wants Refund', 'Reserved', 'Reserved', 'Case History', 'Case Workflow', 'Reserved', 'Reserved', 'Reserved'];
 const TRANSIT_240_SHEET_ID = process.env.TRANSIT_240_SHEET_ID || '1JqRnDx_uLc2m2SzyZOuHWWJsbkKenlKo60U9zwV9uMQ';
 const TRANSIT_240_SHEET_GID = Number(process.env.TRANSIT_240_SHEET_GID || 527537258);
 const TRANSIT_240_HEADERS = ['Submit Date', 'Passenger Name', 'Seat Number', 'BN Number', 'Passport Nationality Code', 'Passport Expiration Date', 'Itinerary'];
@@ -3295,6 +3295,15 @@ function parseRecordCaseHistory(value) {
   }
 }
 
+function parseRecordCaseWorkflow(value) {
+  try {
+    const parsed = JSON.parse(String(value || '{}'));
+    return parsed && !Array.isArray(parsed) && typeof parsed === 'object' ? parsed : {};
+  } catch (_) {
+    return {};
+  }
+}
+
 function recordCaseFromRow(values, rowNumber) {
   const row = Object.fromEntries(RECORD_CASE_HEADERS.map((header, index) => [header, String(values[index] || '')]));
   return {
@@ -3302,7 +3311,7 @@ function recordCaseFromRow(values, rowNumber) {
     email:row.Email, travelParty:row['Travel Party'], companionBns:row['Companion BNs'], companionPnrRecords:row['Companion PNR Records'],
     intention:row.Intention, finalDestination:row['Final Destination'], pnrRecord:row['PNR Record'], newTicketNumber:row['New Ticket Number'],
     comment:row.Comment, updatedAt:row['Updated At'], updatedBy:row['Updated By'], hotelReservationNumber:row['Hotel Reservation Number'],
-    hotelPrice:row['Hotel Price'], passengerWantsRefund:row['Passenger Wants Refund'],
+    hotelPrice:row['Hotel Price'], passengerWantsRefund:row['Passenger Wants Refund'], caseWorkflow:parseRecordCaseWorkflow(row['Case Workflow']),
     caseHistory:parseRecordCaseHistory(row['Case History'])
   };
 }
@@ -3312,7 +3321,7 @@ async function getRecordCases(options = {}) {
   if (recordCaseCache.pending) return recordCaseCache.pending;
   recordCaseCache.pending = (async () => {
     const title = await getRecordCaseSheetTitle();
-    const response = await sheets.spreadsheets.values.get({ spreadsheetId:RECORD_CASE_SHEET_ID, range:`${escapeSheetTitle(title)}!A:V` });
+    const response = await sheets.spreadsheets.values.get({ spreadsheetId:RECORD_CASE_SHEET_ID, range:`${escapeSheetTitle(title)}!A:Z` });
     const values = response.data.values || [];
     // Accept the original A:P header set while the new hotel columns are being
     // introduced, so an existing sheet never exposes its header as a case row.
@@ -3325,17 +3334,17 @@ async function getRecordCases(options = {}) {
 }
 
 async function ensureRecordCaseHeaders(title) {
-  const response = await sheets.spreadsheets.values.get({ spreadsheetId:RECORD_CASE_SHEET_ID, range:`${escapeSheetTitle(title)}!A1:V1` });
+  const response = await sheets.spreadsheets.values.get({ spreadsheetId:RECORD_CASE_SHEET_ID, range:`${escapeSheetTitle(title)}!A1:Z1` });
   if (RECORD_CASE_HEADERS.every((header, index) => String(response.data.values?.[0]?.[index] || '').trim() === header)) return;
-  await sheets.spreadsheets.values.update({ spreadsheetId:RECORD_CASE_SHEET_ID, range:`${escapeSheetTitle(title)}!A1:V1`, valueInputOption:'RAW', requestBody:{ values:[RECORD_CASE_HEADERS] } });
+  await sheets.spreadsheets.values.update({ spreadsheetId:RECORD_CASE_SHEET_ID, range:`${escapeSheetTitle(title)}!A1:Z1`, valueInputOption:'RAW', requestBody:{ values:[RECORD_CASE_HEADERS] } });
 }
 
 async function appendRecordCase(record = {}) {
   const title = await getRecordCaseSheetTitle();
   await ensureRecordCaseHeaders(title);
   const row = [record.submittedAt, record.status, record.bn, record.passengerName, record.phone, record.email, record.travelParty,
-    record.companionBns, record.companionPnrRecords, record.intention, record.finalDestination, record.pnrRecord, '', '', record.submittedAt, 'Passenger', '', '', '', '', '', JSON.stringify([{ type:'status', status:'Waiting', message:'Passenger submitted the IRR form', at:record.submittedAt, by:'Passenger' }])];
-  const response = await sheets.spreadsheets.values.append({ spreadsheetId:RECORD_CASE_SHEET_ID, range:`${escapeSheetTitle(title)}!A:V`, valueInputOption:'RAW', insertDataOption:'INSERT_ROWS', requestBody:{ values:[row] } });
+    record.companionBns, record.companionPnrRecords, record.intention, record.finalDestination, record.pnrRecord, '', '', record.submittedAt, 'Passenger', '', '', '', '', '', JSON.stringify([{ type:'status', status:'Waiting', message:'Passenger submitted the IRR form', at:record.submittedAt, by:'Passenger' }]), '', '', '', ''];
+  const response = await sheets.spreadsheets.values.append({ spreadsheetId:RECORD_CASE_SHEET_ID, range:`${escapeSheetTitle(title)}!A:Z`, valueInputOption:'RAW', insertDataOption:'INSERT_ROWS', requestBody:{ values:[row] } });
   const rowNumber = Number(String(response.data?.updates?.updatedRange || '').match(/![A-Z]+(\d+)/i)?.[1] || 0);
   const saved = recordCaseFromRow(row, rowNumber);
   // Force the next dashboard poll to merge this append with rows written by
@@ -3356,18 +3365,33 @@ async function updateRecordCase(rowNumber, update = {}) {
     throw error;
   }
   const action = String(update.action || '');
-  const operationalActions = new Set(['newTicket', 'hotel', 'comment', 'refund']);
-  const nextStatus = action === 'caseClose' ? 'Case Closed' : (operationalActions.has(action) ? 'In Progress' : existing.status);
+  const operationalActions = new Set(['confirmPassenger', 'newTicket', 'itineraryDelivered', 'hotel', 'hotelDelivered', 'comment', 'refund']);
+  const closesCase = action === 'caseClose' || action === 'refundComplete';
+  const nextStatus = closesCase ? 'Case Closed' : (operationalActions.has(action) ? 'In Progress' : existing.status);
   const values = [nextStatus, String(update.newTicketNumber ?? existing.newTicketNumber).slice(0,160), String(update.comment ?? existing.comment).slice(0,1000), now, String(update.updatedBy || '').slice(0,160)];
   const hotelReservationNumber = String(update.hotelReservationNumber ?? existing.hotelReservationNumber).slice(0,160);
   const hotelPrice = String(update.hotelPrice ?? existing.hotelPrice).slice(0,80);
-  const passengerWantsRefund = String(update.passengerWantsRefund ?? existing.passengerWantsRefund).slice(0,20);
-  let history = Array.isArray(existing.caseHistory) ? [...existing.caseHistory] : [];
+  const passengerWantsRefund = String(action === 'refund' || action === 'refundComplete' ? 'Yes' : (update.passengerWantsRefund ?? existing.passengerWantsRefund)).slice(0,20);
   const by = values[4] || 'Agent';
+  const caseWorkflow = { ...(existing.caseWorkflow || {}) };
+  if (['newTicket', 'hotel', 'refund'].includes(action) && !caseWorkflow.passengerConfirmed) throw new Error('Confirm the passenger details before handling the request.');
+  if (action === 'itineraryDelivered' && !caseWorkflow.ticketChanged) throw new Error('Change the ticket before providing the new itinerary.');
+  if (action === 'hotelDelivered' && !caseWorkflow.hotelProvided) throw new Error('Add the hotel reservation before providing its confirmation.');
+  if (action === 'refundComplete' && !caseWorkflow.refundRequested) throw new Error('Record the refund request before completing it.');
+  const completeStep = (name) => { caseWorkflow[name] = { at:now, by }; };
+  if (action === 'confirmPassenger') completeStep('passengerConfirmed');
+  if (action === 'newTicket') completeStep('ticketChanged');
+  if (action === 'itineraryDelivered') completeStep('itineraryDelivered');
+  if (action === 'hotel') completeStep('hotelProvided');
+  if (action === 'hotelDelivered') completeStep('hotelConfirmationDelivered');
+  if (action === 'refund') completeStep('refundRequested');
+  if (action === 'refundComplete') completeStep('refundCompleted');
+  if (action === 'caseClose') completeStep('caseClosed');
+  let history = Array.isArray(existing.caseHistory) ? [...existing.caseHistory] : [];
   const chatMessage = String(update.chatMessage || '').trim().slice(0, 1000);
-  const actionLabels = { newTicket:'New ticket number updated', hotel:'Hotel reservation updated', comment:'Comment updated', refund:'Passenger refund preference updated', caseClose:'Case closed' };
+  const actionLabels = { confirmPassenger:'Passenger details confirmed', newTicket:'Ticket changed', itineraryDelivered:'New itinerary provided to passenger', hotel:'Hotel provided', hotelDelivered:'Hotel confirmation provided to passenger', comment:'Comment updated', refund:'Passenger requested a refund', refundComplete:'Refund handled and case closed', caseClose:'Case closed' };
   if (actionLabels[action]) {
-    const detail = action === 'newTicket' ? values[1] : action === 'hotel' ? [hotelReservationNumber, hotelPrice].filter(Boolean).join(' · ') : action === 'comment' ? values[2] : action === 'refund' ? passengerWantsRefund : '';
+    const detail = action === 'confirmPassenger' ? String(update.confirmationNote || '').trim().slice(0,1000) : action === 'newTicket' ? values[1] : action === 'hotel' ? [hotelReservationNumber, hotelPrice].filter(Boolean).join(' · ') : action === 'comment' ? values[2] : action === 'refund' ? passengerWantsRefund : '';
     history.push({ type:'status', status:values[0], message:[actionLabels[action], detail].filter(Boolean).join(': '), at:now, by });
   }
   if (chatMessage) history.push({ id:`${Date.now()}-${Math.random().toString(36).slice(2, 9)}`, type:'message', message:chatMessage, at:now, by });
@@ -3385,9 +3409,10 @@ async function updateRecordCase(rowNumber, update = {}) {
   if (update.hotelReservationNumber !== undefined) data.push({ range:`${escapeSheetTitle(title)}!Q${number}`, values:[[hotelReservationNumber]] });
   if (update.hotelPrice !== undefined) data.push({ range:`${escapeSheetTitle(title)}!R${number}`, values:[[hotelPrice]] });
   if (update.passengerWantsRefund !== undefined) data.push({ range:`${escapeSheetTitle(title)}!S${number}`, values:[[passengerWantsRefund]] });
+  if (actionLabels[action] && action !== 'comment') data.push({ range:`${escapeSheetTitle(title)}!W${number}`, values:[[JSON.stringify(caseWorkflow)]] });
   await sheets.spreadsheets.values.batchUpdate({ spreadsheetId:RECORD_CASE_SHEET_ID, requestBody:{ valueInputOption:'RAW', data } });
   recordCaseCache.expiresAt = 0;
-  return { ...existing, status:values[0], newTicketNumber:values[1], comment:values[2], updatedAt:now, updatedBy:values[4], hotelReservationNumber, hotelPrice, passengerWantsRefund, caseHistory:history };
+  return { ...existing, status:values[0], newTicketNumber:values[1], comment:values[2], updatedAt:now, updatedBy:values[4], hotelReservationNumber, hotelPrice, passengerWantsRefund, caseWorkflow, caseHistory:history };
 }
 
 async function getTransit240SheetTitle() {
