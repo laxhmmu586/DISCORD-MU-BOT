@@ -35,7 +35,52 @@ test('IRR cases are archived in the requested Google Sheet and cached for live m
   assert.match(drive, /spreadsheets\.values\.append/);
   assert.match(admin, /setInterval\(load,5000\)/);
   assert.match(admin, /New ticket number/);
-  assert.match(admin, /Comment \/ 留言/);
+  assert.match(admin, /Update note \/ 留言/);
+});
+
+test('IRR dashboard uses MUIRR navigation and separates operational queues', () => {
+  assert.match(admin, /class="brand" href="index\.html">MUIRR</);
+  assert.match(admin, /data-view="Waiting"/);
+  assert.match(admin, /data-view="In Progress"/);
+  assert.match(admin, /data-view="Hotel"/);
+  assert.match(admin, /data-view="Case Closed"/);
+  assert.match(admin, /normalizedStatus/);
+  assert.doesNotMatch(admin, /Passenger filed|Being handled|Accommodation/);
+});
+
+test('IRR is linked below Security Check instead of the primary navigation', () => {
+  assert.match(home, /id="security-check-button"[^>]*>Security Check<\/button>\s*<button id="irr-button"[^>]*>IRR<\/button>/);
+  assert.doesNotMatch(home, /id="record-nav-link"/);
+  assert.doesNotMatch(home, /href="record\.html"/);
+  assert.match(home, /location\.href='irr\.html'/);
+});
+
+test('hotel assignments collect and persist the required accommodation details', () => {
+  assert.match(admin, /name="hotelName"/);
+  assert.match(admin, /name="hotelAddress"/);
+  assert.match(admin, /name="hotelConfirmation"/);
+  assert.match(admin, /name="hotelCheckIn"/);
+  assert.match(admin, /name="hotelCheckOut"/);
+  assert.match(drive, /'Hotel Name'.*'Hotel Address'.*'Hotel Confirmation'.*'Hotel Check-in'.*'Hotel Check-out'/);
+  assert.match(drive, /Q\$\{number\}:U\$\{number\}/);
+});
+
+test('IRR cases keep a progress timeline and persistent conversation history', () => {
+  assert.match(admin, /Case Progress/);
+  assert.match(admin, /Case Conversation/);
+  assert.match(admin, /name="chatMessage"/);
+  assert.match(admin, /PAGE_SIZE=8/);
+  assert.match(drive, /'Case History'/);
+  assert.match(drive, /type:'status'/);
+  assert.match(drive, /type:'message'/);
+  assert.match(drive, /V\$\{number\}/);
+});
+
+test('IRR form illustrates both sections of the China Eastern boarding pass', () => {
+  assert.match(form, /CHINA EASTERN/);
+  assert.match(form, /BOARDING PASS/);
+  assert.match(form, /SERIAL NO\./);
+  assert.match(form, /class="pass-stub"/);
 });
 
 test('IRR dashboard uses MUFC navigation and separates operational queues', () => {
