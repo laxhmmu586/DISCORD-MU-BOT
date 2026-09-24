@@ -55,7 +55,8 @@ test('IRR tracks the passenger confirmation, handling, document delivery, and cl
   assert.match(admin, /option value="rebooking">Rebooking/);
   assert.match(admin, /option value="refund">Refund/);
   assert.match(admin, /Provide New Itinerary \/ New Ticket Number/);
-  assert.match(admin, /Hotel Confirmation Provided/);
+  assert.match(admin, /Provide Hotel Confirmation/);
+  assert.doesNotMatch(admin, /Hotel Confirmation Provided/);
   assert.doesNotMatch(admin, /Refund Completed & Close/);
   assert.match(admin, /Provide refund information/);
   assert.match(admin, /workflow-step \${step\.done\?'done':step\.key===current\?'current':''}/);
@@ -92,20 +93,20 @@ test('agents can manually correct mismatched PNR and TKT records', () => {
   assert.match(admin, /row\.tktRecord/);
 });
 
-test('case rows show the new ticket number between passenger and status', () => {
-  const passenger = admin.indexOf('<span class="label">Passenger</span>');
-  const ticket = admin.indexOf('<span class="label">New Ticket Number</span>');
-  const status = admin.indexOf('<span class="label">Status</span>');
-  assert.ok(passenger < ticket && ticket < status);
+test('case rows align passengers and show room number instead of status in Hotel', () => {
+  assert.match(admin, /class="head has-member"/);
+  assert.match(admin, /class="member-cell"/);
+  assert.match(admin, /currentView==='Hotel'\?'Room #'\:'Status'/);
+  assert.match(admin, /row\.roomNumber/);
 });
 
 test('IRR removes destination and groups Waiting cases by membership', () => {
   assert.doesNotMatch(admin, /<span class="label">(?:Submitted|Destination)<\/span>/);
   assert.doesNotMatch(admin, /Search BN, name, destination/);
   assert.match(admin, /if\(currentView==='Waiting'\)all=\[\.\.\.all\.filter\(membershipType\),\.\.\.all\.filter\(row=>!membershipType\(row\)\)\]/);
-  assert.doesNotMatch(admin, /case-group-title|Members \(\$\{|Regular \(\$\{/);
+  assert.doesNotMatch(admin, /Members \(\$\{|Regular \(\$\{/);
   assert.match(admin, /member=membershipType\(row\)/);
-  assert.match(admin, /\$\{member\?`<div class="member-cell"[\s\S]*:''\}/);
+  assert.match(admin, /<div class="member-cell"><span class="label">Member<\/span>\$\{membershipHtml\(row\)\}/);
   assert.match(admin, /function membershipHtml\(row\)/);
   for (const tier of ['Platinum', 'Gold', 'Silver', 'Elite Plus', 'Elite']) assert.match(admin, new RegExp(`return '${tier}'`));
   assert.match(admin, /class="member-cell"><span class="label">Member<\/span>\$\{membershipHtml\(row\)\}/);
@@ -142,7 +143,7 @@ test('IRR is linked below Security Check instead of the primary navigation', () 
 
 test('hotel requests move to the Hotel queue before a hotel agent adds the reservation', () => {
   assert.match(admin, /value="requestHotel">Request Hotel/);
-  assert.match(admin, /currentView==='Hotel'\?'<option value="hotel">Provide Hotel/);
+  assert.match(admin, /currentView==='Hotel'\?'<option value="hotel">Provide Hotel Confirmation/);
   assert.match(admin, /body\.action==='requestHotel'\?'Hotel'/);
   assert.match(drive, /if \(action === 'requestHotel'\) completeStep\('hotelRequested'\)/);
   assert.match(drive, /requestHotel:'Hotel requested'/);
@@ -154,6 +155,11 @@ test('hotel requests move to the Hotel queue before a hotel agent adds the reser
   assert.match(drive, /'Hotel Reservation Number'.*'Hotel Price'.*'Passenger Wants Refund'/);
   assert.match(drive, /!Q\$\{number\}/);
   assert.match(drive, /!R\$\{number\}/);
+  assert.match(admin, /value="updateRoom">Update Room/);
+  assert.match(admin, /name="hotelName"/);
+  assert.match(admin, /name="roomNumber"/);
+  assert.match(drive, /!Y\$\{number\}/);
+  assert.match(drive, /!Z\$\{number\}/);
 });
 
 test('IRR cases show workflow progress and persistent conversation history', () => {
@@ -179,4 +185,21 @@ test('IRR cases show workflow progress and persistent conversation history', () 
 test('IRR form displays the supplied China Eastern boarding pass image', () => {
   assert.match(form, /src="assets\/china-eastern-boarding-pass-example\.png\.png"/);
   assert.doesNotMatch(form, /class="pass-stub"/);
+});
+
+
+test('Rebook and hotel reports download separately with complete passenger details', () => {
+  assert.match(admin, /id="download-hotel">Download Hotel List/);
+  assert.match(admin, /hotel-passenger-list\.csv/);
+  assert.match(admin, /\['Passenger Name','Phone','Email','Hotel Name','Room #'\]/);
+  assert.match(admin, /data-view="Report"[\s\S]*data-view="Case Closed"/);
+  assert.match(admin, /Rebook Passengers/);
+  assert.match(admin, /New Ticket Number/);
+  assert.match(admin, /Hotel Passengers/);
+  assert.match(admin, /Download Rebook Report/);
+  assert.match(admin, /rebook-report\.csv/);
+  assert.match(admin, /Download Hotel Report/);
+  assert.match(admin, /hotel-report\.csv/);
+  assert.doesNotMatch(admin, /operations-report\.csv|id="download-report"/);
+  assert.match(admin, /view==='Hotel'\|\|view==='Report'/);
 });
