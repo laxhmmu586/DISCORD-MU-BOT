@@ -993,6 +993,53 @@ app.use(
   express.static('public')
 );
 
+const cbsStreamClients = new Set();
+let cbsKeepAliveTimer = null;
+
+function broadcastCbsRefresh(reason = 'update') {
+  const payload = `event: refresh\ndata: ${JSON.stringify({ reason, at:new Date().toISOString() })}\n\n`;
+  for (const stream of cbsStreamClients) stream.write(payload);
+}
+
+function startCbsKeepAlive() {
+  if (cbsKeepAliveTimer) return;
+  cbsKeepAliveTimer = setInterval(() => {
+    for (const stream of cbsStreamClients) stream.write(': keep-alive\n\n');
+  }, 15000);
+  cbsKeepAliveTimer.unref?.();
+}
+
+function stopCbsKeepAliveIfIdle() {
+  if (cbsStreamClients.size || !cbsKeepAliveTimer) return;
+  clearInterval(cbsKeepAliveTimer);
+  cbsKeepAliveTimer = null;
+}
+
+app.get('/cbs-live-stream', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders?.();
+  cbsStreamClients.add(res);
+  res.write(`event: connected\ndata: ${JSON.stringify({ at:new Date().toISOString() })}\n\n`);
+  startCbsKeepAlive();
+  req.on('close', () => {
+    cbsStreamClients.delete(res);
+    stopCbsKeepAliveIfIdle();
+  });
+});
+
+// Notify every CBS dashboard after a successful mutation. A single event lets
+// each browser refresh all related queues together without manual reloading.
+app.use((req, res, next) => {
+  const isCbsMutation = req.method !== 'GET' && req.path !== '/cbs-record-sync' && /^\/(?:cbs-|wrong-baggage-submissions)/.test(req.path);
+  if (isCbsMutation) res.on('finish', () => {
+    if (res.statusCode >= 200 && res.statusCode < 300) broadcastCbsRefresh(req.path);
+  });
+  next();
+});
+
 app.get('/attachment-drop.js', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'public', 'attachment-drop.js'));
 });
@@ -2923,6 +2970,70 @@ async function recordPassengerByBn(bn) {
   return passengers[bn] || null;
 }
 
+const irrCaseStreamClients = new Set();
+let irrCaseStreamTimer = null;
+let irrCaseStreamSignature = '';
+
+function writeIrrCaseEvent(res, event, data) {
+  res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+}
+
+function broadcastIrrCaseUpdate(record) {
+  for (const client of irrCaseStreamClients) writeIrrCaseEvent(client, 'case-update', { record });
+}
+
+async function pollIrrCaseStreams() {
+  if (!irrCaseStreamClients.size) return;
+  try {
+    // One shared Sheets read serves every connected dashboard and also detects
+    // writes handled by another API instance.
+    const rows = await getRecordCases({ forceRefresh:true });
+    const signature = JSON.stringify(rows.map((row) => [row.rowNumber, row.updatedAt, row.status]));
+    if (signature !== irrCaseStreamSignature) {
+      irrCaseStreamSignature = signature;
+      for (const client of irrCaseStreamClients) writeIrrCaseEvent(client, 'cases', { rows });
+    } else {
+      for (const client of irrCaseStreamClients) client.write(': keep-alive\n\n');
+    }
+  } catch (err) {
+    console.error('IRR live sync failed:', err);
+  }
+}
+
+function startIrrCaseStreamTimer() {
+  if (irrCaseStreamTimer) return;
+  irrCaseStreamTimer = setInterval(pollIrrCaseStreams, 5000);
+  irrCaseStreamTimer.unref?.();
+}
+
+function stopIrrCaseStreamTimerIfIdle() {
+  if (irrCaseStreamClients.size || !irrCaseStreamTimer) return;
+  clearInterval(irrCaseStreamTimer);
+  irrCaseStreamTimer = null;
+  irrCaseStreamSignature = '';
+}
+
+app.get('/irr-cases/stream', async (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders?.();
+  irrCaseStreamClients.add(res);
+  startIrrCaseStreamTimer();
+  try {
+    const rows = await getRecordCases();
+    irrCaseStreamSignature = JSON.stringify(rows.map((row) => [row.rowNumber, row.updatedAt, row.status]));
+    writeIrrCaseEvent(res, 'cases', { rows });
+  } catch (err) {
+    writeIrrCaseEvent(res, 'sync-error', { error:err?.message || 'Live sync could not be started.' });
+  }
+  req.on('close', () => {
+    irrCaseStreamClients.delete(res);
+    stopIrrCaseStreamTimerIfIdle();
+  });
+});
+
 app.post('/irr-form-submissions', async (req, res) => {
   try {
     const bn = normalizeRecordBn(req.body?.bn);
@@ -2931,8 +3042,7 @@ app.post('/irr-form-submissions', async (req, res) => {
     const phone = String(req.body?.phone || '').trim().slice(0, 80);
     const email = String(req.body?.email || '').trim().slice(0, 180);
     const intention = String(req.body?.intention || '').trim().slice(0, 1000);
-    const finalDestination = String(req.body?.finalDestination || '').trim().toUpperCase().slice(0, 120);
-    if (!bn || !phone || !isValidEmail(email) || !intention || !finalDestination || (travelParty === 'companions' && !companionBns.length)) return res.status(400).json({ error:'Please complete all required fields.' });
+    if (!bn || !phone || !isValidEmail(email) || !intention || (travelParty === 'companions' && !companionBns.length)) return res.status(400).json({ error:'Please complete all required fields.' });
     const passenger = await recordPassengerByBn(bn);
     if (!passenger) return res.status(404).json({ error:'BN was not found in today’s flight record.', code:'BN_NOT_FOUND' });
     // The main lookup has already refreshed today's record. Reuse the parsed
@@ -2943,7 +3053,8 @@ app.post('/irr-form-submissions', async (req, res) => {
     const submittedAt = new Date().toISOString();
     const saved = await appendRecordCase({ submittedAt, status:'Waiting', bn, passengerName:passenger.name || '', phone, email, travelParty,
       companionBns:companionBns.join(', '), companionPnrRecords:companions.map((item) => `BN ${item.bn} — ${item.passenger.name || ''}\n${item.passenger.sourceText || ''}`).join('\n\n'),
-      intention, finalDestination, pnrRecord:passenger.sourceText || '' });
+      intention, finalDestination:'', pnrRecord:passenger.sourceText || '' });
+    broadcastIrrCaseUpdate(saved);
     return res.status(201).json({ created:true, record:saved });
   } catch (err) {
     console.error('Record form submission failed:', err);
@@ -2957,8 +3068,11 @@ app.get('/irr-cases', async (_req, res) => {
 });
 
 app.post('/irr-cases/:rowNumber', async (req, res) => {
-  try { return res.json({ updated:true, record:await updateRecordCase(req.params.rowNumber, req.body || {}) }); }
-  catch (err) { return res.status(err?.code === 'EDIT_CONFLICT' ? 409 : 422).json({ error:err?.message || 'Case could not be updated.', code:err?.code }); }
+  try {
+    const record = await updateRecordCase(req.params.rowNumber, req.body || {});
+    broadcastIrrCaseUpdate(record);
+    return res.json({ updated:true, record });
+  } catch (err) { return res.status(err?.code === 'EDIT_CONFLICT' ? 409 : 422).json({ error:err?.message || 'Case could not be updated.', code:err?.code }); }
 });
 
 
