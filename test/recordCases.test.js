@@ -33,7 +33,13 @@ test('IRR cases are archived in the requested Google Sheet and cached for live m
   assert.match(drive, /recordCaseCache = \{ expiresAt:0/);
   assert.match(drive, /Date\.now\(\) \+ 5000/);
   assert.match(drive, /spreadsheets\.values\.append/);
-  assert.match(admin, /setInterval\(\(\)=>load\(\),60000\)/);
+  assert.match(server, /app\.get\('\/irr-cases\/stream'/);
+  assert.match(server, /Content-Type', 'text\/event-stream'/);
+  assert.match(server, /broadcastIrrCaseUpdate\(record\)/);
+  assert.match(server, /setInterval\(pollIrrCaseStreams, 5000\)/);
+  assert.match(admin, /new EventSource\(`\$\{apiBase\}\/irr-cases\/stream`\)/);
+  assert.match(admin, /stream\.addEventListener\('case-update'/);
+  assert.match(admin, />Connecting…<\/span>/);
   assert.match(admin, /expectedUpdatedAt/);
   assert.match(admin, /New ticket number/);
   assert.match(admin, /New Ticket Number/);
