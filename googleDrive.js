@@ -4733,11 +4733,11 @@ async function sendNextDayInfoEmail({ to = 'laxhmmu@gmail.com', cc = [], subject
   return { to: Array.isArray(to) ? to : [to], cc: Array.isArray(cc) ? cc : [cc].filter(Boolean), id: sent.data.id || '', userId, authMode };
 }
 
-async function sendBagRoomUnloadAlertEmail({ subject, text, to = '7X24bag@ceair.com' }) {
+async function sendBagRoomUnloadAlertEmail({ subject, text, to = '7X24bag@ceair.com', cc = ['xldou@ceair.com', 'laxapmu@chinaeastern-usa.com'] }) {
   const { gmail, userId, authMode } = getNextDayInfoGmailClient();
-  const raw = buildRawPlainEmail({ to, subject, text });
+  const raw = buildRawPlainEmail({ to, cc, subject, text });
   const sent = await gmail.users.messages.send({ userId, requestBody:{ raw:base64UrlEncode(raw) } });
-  return { sent:true, id:sent.data.id || '', to, subject, authMode };
+  return { sent:true, id:sent.data.id || '', to, cc, subject, authMode };
 }
 
 async function sendCbsCaseEmail({ passengerEmail, subject, html, text, pdfBuffer, filename, attachments = [] }) {
