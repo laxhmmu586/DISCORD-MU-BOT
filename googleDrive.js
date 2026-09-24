@@ -765,7 +765,7 @@ function normalizeTestBagTag(value) {
 }
 
 function isValidTestBagTag(value) {
-  return /^[A-Z]{2}\d{6}$/.test(normalizeTestBagTag(value));
+  return /^[A-Z0-9]{2}\d{6}$/.test(normalizeTestBagTag(value));
 }
 
 function sanitizeSheetText(value, maxLength = 500) {
@@ -993,7 +993,7 @@ async function getTestBaggageReportRows(options = {}) {
 async function appendTestBaggageRecord(record) {
   if (testBaggageSheetAccessBlocked) return { created: false };
   const normalizedTag = normalizeTestBagTag(record?.bagTag);
-  if (!isValidTestBagTag(normalizedTag)) throw new Error('Bag tag must match MU123456 format');
+  if (!isValidTestBagTag(normalizedTag)) throw new Error('Bag tag must match MU123456, B6123456, or 3U515289 format');
   const title = await getTestBaggageSheetTitle();
   if (!title) throw new Error('Test baggage sheet not found');
   // The add flow already looked this tag up immediately before submitting.
@@ -1104,7 +1104,7 @@ async function updateTestBaggageRecord(bagTag, update) {
   } else if (updateType === 'cbs') {
     const newBagTag = normalizeTestBagTag(update.newBagTag);
     if (newBagTag) {
-      if (!isValidTestBagTag(newBagTag)) throw new Error('New tag must match MU123456 format');
+      if (!isValidTestBagTag(newBagTag)) throw new Error('New tag must match MU123456, B6123456, or 3U515289 format');
       next.bagTag = newBagTag;
       details.oldTag = existing.bagTag;
       details.newTag = newBagTag;
@@ -4057,7 +4057,7 @@ async function exchangeCbsUnresolvedBaggageTag(rowNumber, newBagTag, updatedBy =
   if (!target) return { updated:false, notFound:true };
   if (target.resolvedAt) throw Object.assign(new Error('Only an Open On-hand case can be exchanged'), { code:'CASE_CLOSED' });
   const nextTag = sanitizeSheetText(newBagTag, 80).toUpperCase().replace(/\s+/g, '');
-  if (!/^[A-Z]{2}\d{6}$/.test(nextTag)) throw Object.assign(new Error('New tag must match MU123456 format'), { code:'INVALID_BAG_TAG' });
+  if (!/^[A-Z0-9]{2}\d{6}$/.test(nextTag)) throw Object.assign(new Error('New tag must match MU123456, B6123456, or 3U515289 format'), { code:'INVALID_BAG_TAG' });
   if (nextTag === target.bagTag.toUpperCase()) throw Object.assign(new Error('New tag must be different from the current tag'), { code:'SAME_BAG_TAG' });
   if (rows.some((row) => row.rowNumber !== target.rowNumber && !row.resolvedAt && row.bagTag.toUpperCase() === nextTag)) {
     throw Object.assign(new Error('New tag already has an open On-hand case'), { code:'DUPLICATE_BAG_TAG' });
@@ -4733,11 +4733,11 @@ async function sendNextDayInfoEmail({ to = 'laxhmmu@gmail.com', cc = [], subject
   return { to: Array.isArray(to) ? to : [to], cc: Array.isArray(cc) ? cc : [cc].filter(Boolean), id: sent.data.id || '', userId, authMode };
 }
 
-async function sendBagRoomUnloadAlertEmail({ subject, text, to = '7X24bag@ceair.com' }) {
+async function sendBagRoomUnloadAlertEmail({ subject, text, to = '7X24bag@ceair.com', cc = ['xldou@ceair.com', 'laxapmu@chinaeastern-usa.com'] }) {
   const { gmail, userId, authMode } = getNextDayInfoGmailClient();
-  const raw = buildRawPlainEmail({ to, subject, text });
+  const raw = buildRawPlainEmail({ to, cc, subject, text });
   const sent = await gmail.users.messages.send({ userId, requestBody:{ raw:base64UrlEncode(raw) } });
-  return { sent:true, id:sent.data.id || '', to, subject, authMode };
+  return { sent:true, id:sent.data.id || '', to, cc, subject, authMode };
 }
 
 async function sendCbsCaseEmail({ passengerEmail, subject, html, text, pdfBuffer, filename, attachments = [] }) {
