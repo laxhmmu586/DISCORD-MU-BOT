@@ -1307,6 +1307,8 @@ test('Add On-hand records the signed-in account as creator', () => {
 test('Bag Room shows and sends the daily MU586 unload notice only above five bags', () => {
   assert.match(page, /id="bag-room-notice-button"[^>]*hidden>Send Unload Notice Email/);
   assert.match(page, /todayBagRoomTags\.size <= 5/);
+  assert.match(page, /background:#d92d20[\s\S]*animation:bagRoomNoticePulse/);
+  assert.match(page, /window\._bagRoomNoticeSent = true;\s*bagRoomNoticeButton\.hidden = true/);
   assert.match(page, /fetch\(`\$\{apiBase\}\/cbs-bag-room-unload-notice`/);
   assert.match(server, /app\.post\('\/cbs-bag-room-unload-notice'/);
   assert.match(server, /if \(tags\.length <= 5\)/);
