@@ -92,10 +92,19 @@ test('IRR dashboard uses MUIRR navigation and separates operational queues', () 
   assert.match(admin, /class="brand" href="index\.html">MUIRR</);
   assert.match(admin, /data-view="Waiting"/);
   assert.match(admin, /data-view="In Progress"/);
-  assert.doesNotMatch(admin, /data-view="Hotel"/);
+  assert.match(admin, /data-view="Hotel"/);
+  assert.match(admin, /const hasHotel=row=>Boolean\(row\.hotelReservationNumber\|\|row\.caseWorkflow\?\.hotelProvided\)/);
+  assert.match(admin, /rows\.filter\(hasHotel\)\.length/);
   assert.match(admin, /data-view="Case Closed"/);
   assert.match(admin, /normalizedStatus/);
   assert.doesNotMatch(admin, /Passenger filed|Being handled|Accommodation/);
+});
+
+test('IRR sidebar can collapse and remembers the selected width', () => {
+  assert.match(admin, /id="sidebar-toggle"/);
+  assert.match(admin, /body\.sidebar-collapsed\{padding-left:76px\}/);
+  assert.match(admin, /localStorage\.setItem\('muirr-sidebar-collapsed'/);
+  assert.match(admin, /aria-label',collapsed\?'Expand sidebar':'Collapse sidebar'/);
 });
 
 test('IRR is linked below Security Check instead of the primary navigation', () => {
