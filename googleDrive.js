@@ -75,6 +75,46 @@ async function listDriveChildren(folderId, foldersOnly = false) {
   return files;
 }
 
+async function listDriveDescendantFiles(folderId, maxDepth = 3) {
+  const files = [];
+  let folders = [{ id:folderId, depth:0 }];
+  while (folders.length) {
+    const current = folders;
+    folders = [];
+    const childrenByFolder = await Promise.all(current.map((folder) => listDriveChildren(folder.id)));
+    childrenByFolder.forEach((children, index) => {
+      const parent = current[index];
+      children.forEach((file) => {
+        if (file.mimeType === GOOGLE_FOLDER_MIME_TYPE) {
+          if (parent.depth < maxDepth) folders.push({ id:file.id, depth:parent.depth + 1 });
+        } else {
+          files.push(file);
+        }
+      });
+    });
+  }
+  return files;
+}
+
+async function findCbsRecordDateFolders(dateKeys, maxDepth = 3) {
+  const matches = [];
+  let folders = [{ id:CBS_RECORD_ARCHIVE_FOLDER_ID, depth:0 }];
+  while (folders.length) {
+    const current = folders;
+    folders = [];
+    const childrenByFolder = await Promise.all(current.map((folder) => listDriveChildren(folder.id, true)));
+    childrenByFolder.forEach((children, index) => {
+      const parent = current[index];
+      children.forEach((folder) => {
+        const normalized = String(folder.name || '').replace(/[^A-Z0-9]/gi, '').toUpperCase();
+        if (dateKeys.some((key) => normalized === key || normalized.includes(key))) matches.push(folder);
+        else if (parent.depth < maxDepth) folders.push({ id:folder.id, depth:parent.depth + 1 });
+      });
+    });
+  }
+  return matches;
+}
+
 async function readCbsRecordFile(file) {
   if (file.mimeType === GOOGLE_FOLDER_MIME_TYPE) return '';
   let response;
@@ -97,14 +137,12 @@ async function findCbsPnrRecordsByBagTag(bagTag, flightDate) {
   if (!/^\d{6}$/.test(serial)) throw new Error('Bag tag must contain a six-digit serial number');
   if (!dateKeys.length) throw new Error('DATE must use YYYY-MM-DD format');
 
-  const dateFolders = await listDriveChildren(CBS_RECORD_ARCHIVE_FOLDER_ID, true);
-  const matchingFolders = dateFolders.filter((folder) => {
-    const normalized = String(folder.name || '').replace(/[^A-Z0-9]/gi, '').toUpperCase();
-    return dateKeys.some((key) => normalized === key || normalized.includes(key));
-  });
+  const matchingFolders = await findCbsRecordDateFolders(dateKeys);
   const sources = [{ id:CBS_RECORD_TODAY_FOLDER_ID, label:'Today' }, ...matchingFolders.map((folder) => ({ id:folder.id, label:folder.name }))];
   const uniqueSources = [...new Map(sources.map((source) => [source.id, source])).values()];
-  const candidates = (await Promise.all(uniqueSources.map(async (source) => (await listDriveChildren(source.id)).map((file) => ({ ...file, source:source.label }))))).flat();
+  // Record exports are sometimes placed inside an extra batch/date folder.
+  // Walk descendants instead of assuming every file is an immediate child.
+  const candidates = (await Promise.all(uniqueSources.map(async (source) => (await listDriveDescendantFiles(source.id)).map((file) => ({ ...file, source:source.label }))))).flat();
   const records = [];
   for (const file of candidates) {
     try {
