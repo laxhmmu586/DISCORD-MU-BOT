@@ -1303,3 +1303,17 @@ test('Add On-hand records the signed-in account as creator', () => {
   assert.match(page, /payload\.submittedBy = await currentUpdater\(\)/);
   assert.match(drive, /createdBy: sanitizeSheetText\(record\.submittedBy, 160\)/);
 });
+
+test('Bag Room shows and sends the daily MU586 unload notice only above five bags', () => {
+  assert.match(page, /id="bag-room-notice-button"[^>]*hidden>Send Unload Notice Email/);
+  assert.match(page, /todayBagRoomTags\.size <= 5/);
+  assert.match(page, /background:#d92d20[\s\S]*animation:bagRoomNoticePulse/);
+  assert.match(page, /window\._bagRoomNoticeSent = true;\s*bagRoomNoticeButton\.hidden = true/);
+  assert.match(page, /fetch\(`\$\{apiBase\}\/cbs-bag-room-unload-notice`/);
+  assert.match(server, /app\.post\('\/cbs-bag-room-unload-notice'/);
+  assert.match(server, /if \(tags\.length <= 5\)/);
+  assert.match(server, /subject:`MU586\/\$\{flightDate\}行李未装运通知`/);
+  assert.match(drive, /to = '7X24bag@ceair\.com'/);
+  assert.match(drive, /cc = \['xldou@ceair\.com', 'laxapmu@chinaeastern-usa\.com'\]/);
+  assert.match(server, /机场行李分拣延误/);
+});

@@ -2346,6 +2346,33 @@ async function notifyBagRoomUnloadAfterCc(syInfo, isoDate) {
   } finally { bagRoomUnloadAlertInFlight.delete(isoDate); }
 }
 
+function todaysBagRoomUnloadTags(rows, isoDate = todayIsoUtc()) {
+  return [...new Set(rows.filter((row) => {
+    const visible = !row.resolvedAt || ['other', 'email'].includes(String(row.resolution || '').toLowerCase());
+    const bagRoom = [row.status, row.bagType].some((value) => String(value || '').trim().toLowerCase() === 'not load bags');
+    return visible && bagRoom && row.flightDate === isoDate;
+  }).map((row) => sanitizeCbsText(row.bagTag, 80).toUpperCase()).filter(Boolean))];
+}
+
+function bagRoomUnloadNotice(isoDate, tags) {
+  const flightDate = isoDateToLogDateParts(isoDate)?.date || '';
+  return {
+    subject:`MU586/${flightDate}行李未装运通知`,
+    text:[
+      '各位好：', '',
+      `请注意，以下行李可能因以下原因未能随今日 MU586 航班一同装运：`, '',
+      '- 机场行李分拣延误；',
+      '- 达美航空（Delta）Check-in/Carry-on 行李未能及时完成分拣；',
+      '- 联程转运行李未能及时交运；',
+      '- 达美航空 Check-in/Carry-on 行李已由旅客提取。', '',
+      ...tags, '',
+      '请相关人员留意，并及时关注后续行李状态及更新信息。', '',
+      '如有进一步消息，我们将及时通知。', '',
+      '谢谢。'
+    ].join('\n')
+  };
+}
+
 async function sendLostBaggageUpdateToDiscord(fileNumber) {
   const channel = await client.channels.fetch(CBS_DELAYED_LOST_DISCORD_CHANNEL_ID);
   if (!channel?.isTextBased()) return { sent: false, reason: 'Delayed/lost baggage Discord channel was not found or is not text based.' };
@@ -3367,6 +3394,21 @@ app.get('/cbs-unresolved-baggage', async (req, res) => {
   } catch (err) {
     console.error('CBS On-hand baggage list error:', err);
     return res.status(500).json({ error: err?.message || 'On-hand baggage lookup failed' });
+  }
+});
+
+app.post('/cbs-bag-room-unload-notice', async (req, res) => {
+  try {
+    const isoDate = todayIsoUtc();
+    const rows = await getCbsUnresolvedBaggageCases({ includeResolved:true });
+    const tags = todaysBagRoomUnloadTags(rows, isoDate);
+    if (tags.length <= 5) return res.status(400).json({ error:'More than five Bag Room Unload bags are required today.', count:tags.length });
+    const message = bagRoomUnloadNotice(isoDate, tags);
+    const email = await sendBagRoomUnloadAlertEmail(message);
+    return res.json({ sent:true, count:tags.length, tags, email });
+  } catch (err) {
+    console.error('Bag Room Unload notice email error:', err);
+    return res.status(500).json({ error:cbsEmailErrorMessage(err) });
   }
 });
 

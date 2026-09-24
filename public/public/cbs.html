@@ -337,6 +337,12 @@
     .open-case-group-head h2 { display:flex; align-items:center; gap:9px; margin:0; font-size:15px; }
     .open-case-group-head svg { width:20px; height:20px; fill:currentColor; }
     .case-view-all { margin-left:auto; padding:4px; border-radius:0; background:transparent; color:#0754b8; font-size:12px; }
+    .bag-room-notice-actions { display:flex; align-items:center; gap:10px; margin-left:auto; }
+    .bag-room-notice-button { padding:7px 12px; border-radius:8px; background:#d92d20; color:#fff; font-size:12px; box-shadow:0 0 0 rgba(217,45,32,0); animation:bagRoomNoticePulse 1s ease-in-out infinite; }
+    .bag-room-notice-button:hover,.bag-room-notice-button:focus-visible { background:#b42318; }
+    @keyframes bagRoomNoticePulse { 50% { background:#f04438; box-shadow:0 0 0 6px rgba(217,45,32,.2); } }
+    @media (prefers-reduced-motion:reduce) { .bag-room-notice-button { animation:none; } }
+    .bag-room-notice-status { font-size:12px; font-weight:800; }
     .open-case-group > .muted { margin:10px 14px; font-size:13px; }
     .open-case-group .sheet-shell { border:0; border-top:1px solid var(--line); border-radius:0; box-shadow:none; }
     .full-file { display:grid; gap:18px; }
@@ -410,7 +416,7 @@
         <div id="unresolved-baggage-output"><p class="muted">Loading On-hand cases...</p></div>
       </section>
       <section class="open-case-group" id="bag-room-unload-group" data-case-panel="bag-room">
-        <div class="open-case-group-head"><h2 id="bag-room-unload-title">Bag Room Unload Bag</h2><span data-case-title-count="bag-room">(0)</span><button class="case-view-all" type="button">View All</button></div>
+        <div class="open-case-group-head"><h2 id="bag-room-unload-title">Bag Room Unload Bag</h2><span data-case-title-count="bag-room">(0)</span><div class="bag-room-notice-actions"><span class="bag-room-notice-status" id="bag-room-notice-status" role="status"></span><button class="bag-room-notice-button" id="bag-room-notice-button" type="button" hidden>Send Unload Notice Email</button><button class="case-view-all" type="button">View All</button></div></div>
         <div id="bag-room-unload-output"><p class="muted">Loading Bag Room Unload Bag cases...</p></div>
       </section>
     </section>
@@ -551,6 +557,8 @@
     const baggageChartCard = document.querySelector('#baggage-chart-card');
     const onHandTitle = document.querySelector('#on-hand-title');
     const bagRoomUnloadTitle = document.querySelector('#bag-room-unload-title');
+    const bagRoomNoticeButton = document.querySelector('#bag-room-notice-button');
+    const bagRoomNoticeStatus = document.querySelector('#bag-room-notice-status');
     const caseCategoryButtons = [...document.querySelectorAll('[data-case-group]')];
     const backToCases = document.querySelector('#back-to-cases');
     const sidebarToggle = document.querySelector('#sidebar-toggle');
@@ -942,6 +950,10 @@
     }
     function renderUnresolvedBaggage(rows = []) {
       window._unresolvedBaggageSourceRows = rows;
+      const today = new Date().toLocaleDateString('en-CA', { timeZone:'America/Los_Angeles' });
+      const todayBagRoomTags = new Set(rows.filter((row) => isNotLoadBag(row) && row.flightDate === today && (!row.resolvedAt || ['other', 'email'].includes(String(row.resolution || '').toLowerCase()))).map((row) => String(row.bagTag || '').trim().toUpperCase()).filter(Boolean));
+      bagRoomNoticeButton.hidden = Boolean(window._bagRoomNoticeSent) || todayBagRoomTags.size <= 5 || window._caseView === 'closed';
+      bagRoomNoticeButton.dataset.count = String(todayBagRoomTags.size);
       const query = String(caseSearch?.value || '').trim().toLowerCase();
       if (query) rows = rows.filter((row) => rowSearchText(row).includes(query));
       const notLoadRows = rows.filter(isNotLoadBag);
@@ -953,6 +965,25 @@
       if (window._cbsRows) requestAnimationFrame(renderCases);
       if (!shipmentCard.hidden) requestAnimationFrame(renderShipments);
     }
+    bagRoomNoticeButton.addEventListener('click', async () => {
+      const count = Number(bagRoomNoticeButton.dataset.count) || 0;
+      if (!confirm(`Send the MU586 unload notice email with today's ${count} baggage tags?`)) return;
+      bagRoomNoticeButton.disabled = true;
+      bagRoomNoticeStatus.className = 'bag-room-notice-status';
+      bagRoomNoticeStatus.textContent = 'Sending...';
+      try {
+        const res = await fetch(`${apiBase}/cbs-bag-room-unload-notice`, { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' });
+        const data = await parseJson(res);
+        if (!res.ok) throw new Error(data.error || 'Email send failed');
+        window._bagRoomNoticeSent = true;
+        bagRoomNoticeButton.hidden = true;
+        bagRoomNoticeStatus.className = 'bag-room-notice-status status ok';
+        bagRoomNoticeStatus.textContent = `Sent (${data.count} bags)`;
+      } catch (error) {
+        bagRoomNoticeStatus.className = 'bag-room-notice-status status err';
+        bagRoomNoticeStatus.textContent = error.message;
+      } finally { bagRoomNoticeButton.disabled = false; }
+    });
     async function loadUnresolvedBaggage() {
       unresolvedBaggageOutput.innerHTML = '<p class="muted">Loading cases...</p>';
       bagRoomUnloadOutput.innerHTML = '<p class="muted">Loading cases...</p>';
