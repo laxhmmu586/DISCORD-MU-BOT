@@ -337,6 +337,12 @@
     .open-case-group-head h2 { display:flex; align-items:center; gap:9px; margin:0; font-size:15px; }
     .open-case-group-head svg { width:20px; height:20px; fill:currentColor; }
     .case-view-all { margin-left:auto; padding:4px; border-radius:0; background:transparent; color:#0754b8; font-size:12px; }
+    .bag-room-notice-actions { display:flex; align-items:center; gap:10px; margin-left:auto; }
+    .bag-room-notice-button { padding:7px 12px; border-radius:8px; background:#d92d20; color:#fff; font-size:12px; box-shadow:0 0 0 rgba(217,45,32,0); animation:bagRoomNoticePulse 1s ease-in-out infinite; }
+    .bag-room-notice-button:hover,.bag-room-notice-button:focus-visible { background:#b42318; }
+    @keyframes bagRoomNoticePulse { 50% { background:#f04438; box-shadow:0 0 0 6px rgba(217,45,32,.2); } }
+    @media (prefers-reduced-motion:reduce) { .bag-room-notice-button { animation:none; } }
+    .bag-room-notice-status { font-size:12px; font-weight:800; }
     .open-case-group > .muted { margin:10px 14px; font-size:13px; }
     .open-case-group .sheet-shell { border:0; border-top:1px solid var(--line); border-radius:0; box-shadow:none; }
     .full-file { display:grid; gap:18px; }
@@ -410,7 +416,7 @@
         <div id="unresolved-baggage-output"><p class="muted">Loading On-hand cases...</p></div>
       </section>
       <section class="open-case-group" id="bag-room-unload-group" data-case-panel="bag-room">
-        <div class="open-case-group-head"><h2 id="bag-room-unload-title">Bag Room Unload Bag</h2><span data-case-title-count="bag-room">(0)</span><button class="case-view-all" type="button">View All</button></div>
+        <div class="open-case-group-head"><h2 id="bag-room-unload-title">Bag Room Unload Bag</h2><span data-case-title-count="bag-room">(0)</span><div class="bag-room-notice-actions"><span class="bag-room-notice-status" id="bag-room-notice-status" role="status"></span><button class="bag-room-notice-button" id="bag-room-notice-button" type="button" hidden>Send Unload Notice Email</button><button class="case-view-all" type="button">View All</button></div></div>
         <div id="bag-room-unload-output"><p class="muted">Loading Bag Room Unload Bag cases...</p></div>
       </section>
     </section>
@@ -427,8 +433,8 @@
       <h1>Rush Bag</h1>
       <form class="worldtracer-form" id="worldtracer-form">
         <label><span>WorldTracer File Number (Optional)</span><input name="worldTracerFileNumber" autocomplete="off" placeholder="Can be added later" /></label>
-        <label><span>Original Tag Number</span><input name="originalTagNumber" pattern="[A-Za-z][A-Za-z0-9][0-9]{6}" minlength="8" maxlength="8" title="Enter an airline code followed by 6 digits, for example DL123456 or B6123456" required autocomplete="off" /></label>
-        <label><span>RUSH Tag Number</span><input name="rushTagNumber" pattern="[A-Za-z][A-Za-z0-9][0-9]{6}" minlength="8" maxlength="8" title="Enter an airline code followed by 6 digits, for example DL123456 or B6123456" required autocomplete="off" /></label>
+        <label><span>Original Tag Number</span><input name="originalTagNumber" pattern="[A-Za-z0-9]{2}[0-9]{6}" minlength="8" maxlength="8" title="Enter an airline code followed by 6 digits, for example DL123456, B6123456, or 3U515289" required autocomplete="off" /></label>
+        <label><span>RUSH Tag Number</span><input name="rushTagNumber" pattern="[A-Za-z0-9]{2}[0-9]{6}" minlength="8" maxlength="8" title="Enter an airline code followed by 6 digits, for example DL123456, B6123456, or 3U515289" required autocomplete="off" /></label>
         <div class="rush-itinerary">
           <div class="rush-itinerary-head"><h2>RUSH Itinerary</h2><button class="secondary" id="add-rush-flight" type="button">+ Add Flight</button></div>
           <div id="rush-flight-rows"></div>
@@ -459,7 +465,7 @@
     </section>
     <section class="card" id="add-baggage-card" hidden>
       <h1>Add Baggage</h1>
-      <form class="add-baggage-search" id="add-baggage-search"><label><span>Bag Tag Number</span><input name="bagTag" placeholder="MU123456" maxlength="8" pattern="[A-Za-z]{2}[0-9]{6}" required autocomplete="off" /></label><button type="submit">Search</button></form>
+      <form class="add-baggage-search" id="add-baggage-search"><label><span>Bag Tag Number</span><input name="bagTag" placeholder="MU123456" maxlength="8" pattern="[A-Za-z0-9]{2}[0-9]{6}" required autocomplete="off" /></label><button type="submit">Search</button></form>
       <div id="add-baggage-output"></div>
     </section>
     <section class="card" id="baggage-chart-card" hidden>
@@ -551,6 +557,8 @@
     const baggageChartCard = document.querySelector('#baggage-chart-card');
     const onHandTitle = document.querySelector('#on-hand-title');
     const bagRoomUnloadTitle = document.querySelector('#bag-room-unload-title');
+    const bagRoomNoticeButton = document.querySelector('#bag-room-notice-button');
+    const bagRoomNoticeStatus = document.querySelector('#bag-room-notice-status');
     const caseCategoryButtons = [...document.querySelectorAll('[data-case-group]')];
     const backToCases = document.querySelector('#back-to-cases');
     const sidebarToggle = document.querySelector('#sidebar-toggle');
@@ -727,11 +735,11 @@
     function normalizeBaggageTag(value) { return String(value || '').trim().toUpperCase().replace(/\s+/g, ''); }
     function rushBagTagNumber(value, airline = '') {
       const tag = normalizeBaggageTag(value).replace(/[^A-Z0-9]/g, '');
-      if (/^[A-Z][A-Z0-9][0-9]{6}$/.test(tag)) return tag;
+      if (/^[A-Z0-9]{2}[0-9]{6}$/.test(tag)) return tag;
       const airlineCode = normalizeBaggageTag(airline).replace(/[^A-Z0-9]/g, '');
-      return /^[A-Z][A-Z0-9]$/.test(airlineCode) && /^[0-9]{6,10}$/.test(tag) ? `${airlineCode}${tag.slice(-6)}` : tag;
+      return /^[A-Z0-9]{2}$/.test(airlineCode) && /^[0-9]{6,10}$/.test(tag) ? `${airlineCode}${tag.slice(-6)}` : tag;
     }
-    const rushBagTagInputAttributes = 'pattern="[A-Za-z][A-Za-z0-9][0-9]{6}" minlength="8" maxlength="8" title="Enter an airline code followed by 6 digits, for example DL123456 or B6123456"';
+    const rushBagTagInputAttributes = 'pattern="[A-Za-z0-9]{2}[0-9]{6}" minlength="8" maxlength="8" title="Enter an airline code followed by 6 digits, for example DL123456, B6123456, or 3U515289"';
     function addBaggageFormHtml(bagTag, direction) {
       const today = new Date().toISOString().slice(0, 10);
       if (direction === 'exchange') {
@@ -739,7 +747,7 @@
         const options = openRows.map((row) => `<option value="${escapeHtml(row.rowNumber)}">${escapeHtml(row.bagTag)} · ${escapeHtml(row.bagType || row.status || 'On-hand')} · ${escapeHtml(row.location || '-')}</option>`).join('');
         return `<form class="add-baggage-form add-exchange-form" data-add-baggage-direction="exchange"><label><span>New Tag Number</span><input name="newTagNumber" value="${escapeHtml(bagTag)}" readonly /></label><label class="wide"><span>Select Current Open On-hand</span><select name="onHandRowNumber" required ${openRows.length ? '' : 'disabled'}><option value="">Select an On-hand tag</option>${options}</select></label>${openRows.length ? '' : '<p class="status err wide">There are no Open On-hand cases available to exchange.</p>'}<div class="actions"><button type="submit" ${openRows.length ? '' : 'disabled'}>Exchange</button><button class="secondary" type="button" data-cancel-add-baggage>Back</button></div></form>`;
       }
-      if (direction === 'outbound') return `<form class="add-baggage-form" data-add-baggage-direction="outbound"><datalist id="add-baggage-location-options"><option value="Office"></option><option value="Transfer"></option><option value="CBS"></option></datalist><datalist id="add-baggage-outbound-comments"><option value="Expected"></option><option value="Not Received"></option><option value="Force loaded"></option><option value="Gate Bag"></option><option value="Bag Delete and Add back"></option><option value="Passenger Showed Up, but baggage not received"></option></datalist><label><span>Date</span><input name="date" type="date" value="${today}" required /></label><label><span>Type</span><select name="status" data-add-outbound-status required><option>Not load bags</option><option>Outbound rush</option><option>Gate bag</option></select></label><label data-add-outbound-location hidden><span>Current Location</span><input name="location" list="add-baggage-location-options" disabled /></label><div class="add-outbound-bag-tags" data-add-outbound-bag-tags><div class="add-outbound-tag-row"><label><span>Bag Tag Number</span><input name="bagTag" value="${escapeHtml(bagTag)}" maxlength="8" pattern="[A-Za-z]{2}[0-9]{6}" required autocomplete="off" /></label><button type="button" data-add-outbound-bag-tag aria-label="Add another bag tag">+</button></div></div><div class="unresolved-update-fields" data-add-outbound-rush hidden><label><span>RUSH Tag Number</span><input name="rushTagNumber" ${rushBagTagInputAttributes} /></label><label><span>Rush To Where</span><input name="rushToWhere" /></label><label><span>AKE Number</span><input name="akeNumber" /></label><label><span>WorldTracer File Number</span><input name="worldTracerFileNumber" /></label></div><label class="wide"><span>Comment</span><input name="comment" list="add-baggage-outbound-comments" /></label><div class="actions"><button type="submit">Submit</button><button class="secondary" type="button" data-cancel-add-baggage>Back</button></div></form>`;
+      if (direction === 'outbound') return `<form class="add-baggage-form" data-add-baggage-direction="outbound"><datalist id="add-baggage-location-options"><option value="Office"></option><option value="Transfer"></option><option value="CBS"></option></datalist><datalist id="add-baggage-outbound-comments"><option value="Expected"></option><option value="Not Received"></option><option value="Force loaded"></option><option value="Gate Bag"></option><option value="Bag Delete and Add back"></option><option value="Passenger Showed Up, but baggage not received"></option></datalist><label><span>Date</span><input name="date" type="date" value="${today}" required /></label><label><span>Type</span><select name="status" data-add-outbound-status required><option>Not load bags</option><option>Outbound rush</option><option>Gate bag</option></select></label><label data-add-outbound-location hidden><span>Current Location</span><input name="location" list="add-baggage-location-options" disabled /></label><div class="add-outbound-bag-tags" data-add-outbound-bag-tags><div class="add-outbound-tag-row"><label><span>Bag Tag Number</span><input name="bagTag" value="${escapeHtml(bagTag)}" maxlength="8" pattern="[A-Za-z0-9]{2}[0-9]{6}" required autocomplete="off" /></label><button type="button" data-add-outbound-bag-tag aria-label="Add another bag tag">+</button></div></div><div class="unresolved-update-fields" data-add-outbound-rush hidden><label><span>RUSH Tag Number</span><input name="rushTagNumber" ${rushBagTagInputAttributes} /></label><label><span>Rush To Where</span><input name="rushToWhere" /></label><label><span>AKE Number</span><input name="akeNumber" /></label><label><span>WorldTracer File Number</span><input name="worldTracerFileNumber" /></label></div><label class="wide"><span>Comment</span><input name="comment" list="add-baggage-outbound-comments" /></label><div class="actions"><button type="submit">Submit</button><button class="secondary" type="button" data-cancel-add-baggage>Back</button></div></form>`;
       return `<form class="add-baggage-form" data-add-baggage-direction="inbound"><label><span>Bag Tag Number</span><input name="bagTag" value="${escapeHtml(bagTag)}" readonly /></label><label><span>Date</span><input name="date" type="date" value="${today}" required /></label><label><span>Bag Type</span><select name="bagType"><option>Passenger bag</option><option>Inbound rush</option><option>Co-mail</option></select></label><label><span>Current Location</span><select name="location" required><option>Office</option><option>Transfer</option></select></label><div class="actions"><button type="submit">Submit</button><button class="secondary" type="button" data-cancel-add-baggage>Back</button></div></form>`;
     }
     function renderAddBaggageChoice(bagTag) {
@@ -790,7 +798,7 @@
       if (action === 'record-pnr' || action === 'record-tkt') return `<label class="wide"><span>${action === 'record-pnr' ? 'Record - PNR' : 'Record - TKT'}</span>${recordTextareaHtml(action, savedRecord)}<small>${savedRecord ? 'Updating will replace this existing Record.' : 'One Record is kept for this tab.'}</small></label>`;
       if (action === 'change-type') return '<label class="wide"><span>Change Type</span><select name="bagType" required><option value="">Select new type</option><option value="Rush bag">Rush bag</option><option value="Gate Bag">Gate Bag</option></select><small>This will close the Bag Room case and remove it from Open Case.</small></label>';
       if (action === 'comment') return '<label class="wide"><span>Comment</span><select name="commentPreset" data-comment-preset><option value="">Select a comment or enter your own below</option><option value="Passenger request Pick up at LAX">Passenger request Pick up at LAX</option></select><textarea name="comment" placeholder="Write a comment" required></textarea></label>';
-      if (action === 'exchange') return `<div class="exchange-current-card wide"><strong>Current Open On-hand</strong><span class="exchange-tag-flow"><span class="exchange-tag-old">${escapeHtml(bagTag)}</span><span class="exchange-tag-arrow" aria-hidden="true">→<span class="exchange-tag-arrow-label">Exchange</span></span><span class="exchange-tag-new">New tag</span></span></div><label class="wide"><span>New Tag Number</span><input name="newTagNumber" pattern="[A-Za-z]{2}[0-9]{6}" placeholder="MU123456" required /></label>`;
+      if (action === 'exchange') return `<div class="exchange-current-card wide"><strong>Current Open On-hand</strong><span class="exchange-tag-flow"><span class="exchange-tag-old">${escapeHtml(bagTag)}</span><span class="exchange-tag-arrow" aria-hidden="true">→<span class="exchange-tag-arrow-label">Exchange</span></span><span class="exchange-tag-new">New tag</span></span></div><label class="wide"><span>New Tag Number</span><input name="newTagNumber" pattern="[A-Za-z0-9]{2}[0-9]{6}" placeholder="MU123456" required /></label>`;
       if (action === 'reopen') return '<p class="muted wide">Reopen this case and return it to Open Case.</p>';
       if (action === 'passenger-collected') return '';
       if (action === 'case-close') return '<label class="wide"><span>Notes</span><textarea name="note" placeholder="Enter case close notes" required></textarea></label>';
@@ -940,8 +948,13 @@
       }).join('')}</tbody></table></div>${listPaginationHtml(listKey, pagination)}`;
       requestAnimationFrame(syncCaseProgressHeights);
     }
-    function renderUnresolvedBaggage(rows = []) {
+    function renderUnresolvedBaggage(rows = [], bagRoomUnloadNoticeSent = false) {
       window._unresolvedBaggageSourceRows = rows;
+      if (bagRoomUnloadNoticeSent) window._bagRoomNoticeSent = true;
+      const today = new Date().toLocaleDateString('en-CA', { timeZone:'America/Los_Angeles' });
+      const todayBagRoomTags = new Set(rows.filter((row) => isNotLoadBag(row) && row.flightDate === today && (!row.resolvedAt || ['other', 'email'].includes(String(row.resolution || '').toLowerCase()))).map((row) => String(row.bagTag || '').trim().toUpperCase()).filter(Boolean));
+      bagRoomNoticeButton.hidden = Boolean(window._bagRoomNoticeSent) || todayBagRoomTags.size <= 5 || window._caseView === 'closed';
+      bagRoomNoticeButton.dataset.count = String(todayBagRoomTags.size);
       const query = String(caseSearch?.value || '').trim().toLowerCase();
       if (query) rows = rows.filter((row) => rowSearchText(row).includes(query));
       const notLoadRows = rows.filter(isNotLoadBag);
@@ -953,6 +966,25 @@
       if (window._cbsRows) requestAnimationFrame(renderCases);
       if (!shipmentCard.hidden) requestAnimationFrame(renderShipments);
     }
+    bagRoomNoticeButton.addEventListener('click', async () => {
+      const count = Number(bagRoomNoticeButton.dataset.count) || 0;
+      if (!confirm(`Send the MU586 unload notice email with today's ${count} baggage tags?`)) return;
+      bagRoomNoticeButton.disabled = true;
+      bagRoomNoticeStatus.className = 'bag-room-notice-status';
+      bagRoomNoticeStatus.textContent = 'Sending...';
+      try {
+        const res = await fetch(`${apiBase}/cbs-bag-room-unload-notice`, { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' });
+        const data = await parseJson(res);
+        if (!res.ok) throw new Error(data.error || 'Email send failed');
+        window._bagRoomNoticeSent = true;
+        bagRoomNoticeButton.hidden = true;
+        bagRoomNoticeStatus.className = 'bag-room-notice-status status ok';
+        bagRoomNoticeStatus.textContent = `Sent (${data.count} bags)`;
+      } catch (error) {
+        bagRoomNoticeStatus.className = 'bag-room-notice-status status err';
+        bagRoomNoticeStatus.textContent = error.message;
+      } finally { bagRoomNoticeButton.disabled = false; }
+    });
     async function loadUnresolvedBaggage() {
       unresolvedBaggageOutput.innerHTML = '<p class="muted">Loading cases...</p>';
       bagRoomUnloadOutput.innerHTML = '<p class="muted">Loading cases...</p>';
@@ -962,7 +994,7 @@
         const res = await fetch(`${apiBase}/cbs-unresolved-baggage`, { signal:controller.signal, cache:'no-store' });
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || 'On-hand baggage lookup failed');
-        renderUnresolvedBaggage(data.rows || []);
+        renderUnresolvedBaggage(data.rows || [], Boolean(data.bagRoomUnloadNoticeSent));
         syncCbsPnrRecords();
       } catch (error) {
         const message = error.name === 'AbortError' ? 'Case loading timed out. Please use Refresh to try again.' : error.message;
@@ -1007,7 +1039,7 @@
     }
     function renderValue(value) { return hasValue(value) ? normalizeShippingMethodLabel(value) : '-'; }
     function normalizeBagSearch(value) { return String(value || '').trim().toUpperCase().replace(/\s+/g, ''); }
-    function isBagTagSearch(value) { return /^[A-Z]{2}\d{6}$/.test(normalizeBagSearch(value)); }
+    function isBagTagSearch(value) { return /^[A-Z0-9]{2}\d{6}$/.test(normalizeBagSearch(value)); }
     const TRACKING_STAGES = [
       { key:'create', text:'Create' },
       { key:'worldtracer', text:'WorldTracer' },
@@ -2183,7 +2215,7 @@
       event.preventDefault();
       const bagTag = normalizeBaggageTag(new FormData(addBaggageSearch).get('bagTag'));
       addBaggageSearch.elements.bagTag.value = bagTag;
-      if (!/^[A-Z]{2}\d{6}$/.test(bagTag)) { addBaggageOutput.innerHTML = '<p class="status err">Bag tag must match MU123456 format.</p>'; return; }
+      if (!/^[A-Z0-9]{2}\d{6}$/.test(bagTag)) { addBaggageOutput.innerHTML = '<p class="status err">Bag tag must match MU123456, B6123456, or 3U515289 format.</p>'; return; }
       addBaggageOutput.innerHTML = `<p class="muted">Searching ${escapeHtml(bagTag)}...</p>`;
       try {
         const res = await fetch(`${apiBase}/test-baggage/${encodeURIComponent(bagTag)}`);
@@ -2195,14 +2227,14 @@
     addBaggageOutput?.addEventListener('click', (event) => {
       const addTag = event.target.closest('[data-add-outbound-bag-tag]');
       if (addTag) {
-        addTag.closest('[data-add-outbound-bag-tags]').insertAdjacentHTML('beforeend', '<div class="add-outbound-tag-row"><label><span>Bag Tag Number</span><input name="bagTag" maxlength="8" pattern="[A-Za-z]{2}[0-9]{6}" required autocomplete="off" /></label><button class="secondary" type="button" data-remove-add-outbound-bag-tag aria-label="Remove bag tag">−</button></div>');
+        addTag.closest('[data-add-outbound-bag-tags]').insertAdjacentHTML('beforeend', '<div class="add-outbound-tag-row"><label><span>Bag Tag Number</span><input name="bagTag" maxlength="8" pattern="[A-Za-z0-9]{2}[0-9]{6}" required autocomplete="off" /></label><button class="secondary" type="button" data-remove-add-outbound-bag-tag aria-label="Remove bag tag">−</button></div>');
         return;
       }
       const removeTag = event.target.closest('[data-remove-add-outbound-bag-tag]');
       if (removeTag) { removeTag.closest('.add-outbound-tag-row').remove(); return; }
       const exchange = event.target.closest('[data-start-add-exchange]');
       if (exchange) {
-        addBaggageOutput.innerHTML = `<div class="add-baggage-panel"><h2>Exchange On-hand Tag</h2><form class="add-exchange-form" data-unresolved-row="${escapeHtml(exchange.dataset.startAddExchange)}"><div class="exchange-current-card"><strong>Current Open On-hand</strong><span class="exchange-tag-flow"><span class="exchange-tag-old">${escapeHtml(exchange.dataset.currentTag)}</span><span class="exchange-tag-arrow" aria-hidden="true">→<span class="exchange-tag-arrow-label">Exchange</span></span><span class="exchange-tag-new">New tag</span></span></div><label><span>New Tag Number</span><input name="newTagNumber" pattern="[A-Za-z]{2}[0-9]{6}" placeholder="MU123456" required autofocus /></label><div class="actions"><button type="submit">Exchange</button><button class="secondary" type="button" data-cancel-add-baggage>Cancel</button></div></form></div>`;
+        addBaggageOutput.innerHTML = `<div class="add-baggage-panel"><h2>Exchange On-hand Tag</h2><form class="add-exchange-form" data-unresolved-row="${escapeHtml(exchange.dataset.startAddExchange)}"><div class="exchange-current-card"><strong>Current Open On-hand</strong><span class="exchange-tag-flow"><span class="exchange-tag-old">${escapeHtml(exchange.dataset.currentTag)}</span><span class="exchange-tag-arrow" aria-hidden="true">→<span class="exchange-tag-arrow-label">Exchange</span></span><span class="exchange-tag-new">New tag</span></span></div><label><span>New Tag Number</span><input name="newTagNumber" pattern="[A-Za-z0-9]{2}[0-9]{6}" placeholder="MU123456" required autofocus /></label><div class="actions"><button type="submit">Exchange</button><button class="secondary" type="button" data-cancel-add-baggage>Cancel</button></div></form></div>`;
         return;
       }
       const mode = event.target.closest('[data-add-baggage-mode]');
@@ -2256,7 +2288,7 @@
       button.disabled = true;
       try {
         for (const payload of payloads) {
-          if (!/^[A-Z]{2}\d{6}$/.test(payload.bagTag)) throw new Error('Each bag tag must match MU123456 format.');
+          if (!/^[A-Z0-9]{2}\d{6}$/.test(payload.bagTag)) throw new Error('Each bag tag must match MU123456, B6123456, or 3U515289 format.');
           const res = await fetch(`${apiBase}/test-baggage`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
           const data = await parseJson(res);
           if (!res.ok) throw new Error(data.error || 'Baggage save failed');

@@ -253,7 +253,8 @@ let cbsWorldTracerSheetTitle = '';
 const cbsRetentionPromises = new Map();
 let cbsUnresolvedBaggageSheetTitle = '';
 let cbsNotLoadBaggageSheetTitle = '';
-let cbsSheetCache = { loadedAt: 0, rows: [] };
+let cbsSheetCache = { loadedAt:0, rows:[], pending:null, hasLoaded:false };
+let wrongBaggageCache = { loadedAt:0, rows:[], pending:null, hasLoaded:false };
 const CBS_UPDATE_HISTORY_FILE = process.env.CBS_UPDATE_HISTORY_FILE || path.join(__dirname, 'data', 'cbs-update-history.json');
 let cbsUpdateHistoryCache = { loadedAt: 0, data: null };
 const CBS_MISSING_BAG_SHEET_GID = Number(process.env.CBS_MISSING_BAG_SHEET_GID || 1145829442);
@@ -765,7 +766,7 @@ function normalizeTestBagTag(value) {
 }
 
 function isValidTestBagTag(value) {
-  return /^[A-Z]{2}\d{6}$/.test(normalizeTestBagTag(value));
+  return /^[A-Z0-9]{2}\d{6}$/.test(normalizeTestBagTag(value));
 }
 
 function sanitizeSheetText(value, maxLength = 500) {
@@ -993,7 +994,7 @@ async function getTestBaggageReportRows(options = {}) {
 async function appendTestBaggageRecord(record) {
   if (testBaggageSheetAccessBlocked) return { created: false };
   const normalizedTag = normalizeTestBagTag(record?.bagTag);
-  if (!isValidTestBagTag(normalizedTag)) throw new Error('Bag tag must match MU123456 format');
+  if (!isValidTestBagTag(normalizedTag)) throw new Error('Bag tag must match MU123456, B6123456, or 3U515289 format');
   const title = await getTestBaggageSheetTitle();
   if (!title) throw new Error('Test baggage sheet not found');
   // The add flow already looked this tag up immediately before submitting.
@@ -1104,7 +1105,7 @@ async function updateTestBaggageRecord(bagTag, update) {
   } else if (updateType === 'cbs') {
     const newBagTag = normalizeTestBagTag(update.newBagTag);
     if (newBagTag) {
-      if (!isValidTestBagTag(newBagTag)) throw new Error('New tag must match MU123456 format');
+      if (!isValidTestBagTag(newBagTag)) throw new Error('New tag must match MU123456, B6123456, or 3U515289 format');
       next.bagTag = newBagTag;
       details.oldTag = existing.bagTag;
       details.newTag = newBagTag;
@@ -3490,11 +3491,20 @@ async function getCbsSheetRows(options = {}) {
   const ttlMs = Number(options.ttlMs || 30 * 1000);
   // Cache an empty sheet too. Without this, every request made while the sheet is
   // empty immediately consumes another Sheets read request.
-  if (!options.forceRefresh && cbsSheetCache.loadedAt && Date.now() - cbsSheetCache.loadedAt < ttlMs) return cbsSheetCache.rows;
-  const title = await getCbsSheetTitle();
-  const rows = await getCbsRetainedSheetRows({ title, sheetId:CBS_SHEET_GID, range:'A:AM', dateIndexes:[26] });
-  cbsSheetCache = { loadedAt: Date.now(), rows };
-  return rows;
+  if (!options.forceRefresh && cbsSheetCache.hasLoaded && Date.now() - cbsSheetCache.loadedAt < ttlMs) return cbsSheetCache.rows;
+  if (cbsSheetCache.pending) return cbsSheetCache.pending;
+  cbsSheetCache.pending = (async () => {
+    const title = await getCbsSheetTitle();
+    const rows = await getCbsRetainedSheetRows({ title, sheetId:CBS_SHEET_GID, range:'A:AM', dateIndexes:[26] });
+    cbsSheetCache.loadedAt = Date.now();
+    cbsSheetCache.rows = rows;
+    cbsSheetCache.hasLoaded = true;
+    return rows;
+  })().catch((err) => {
+    if (cbsSheetCache.hasLoaded && /quota|rate limit|429/i.test(String(err?.message || ''))) return cbsSheetCache.rows;
+    throw err;
+  }).finally(() => { cbsSheetCache.pending = null; });
+  return cbsSheetCache.pending;
 }
 
 async function ensureCbsSheetHeaders(rows) {
@@ -3516,7 +3526,7 @@ async function ensureCbsSheetHeaders(rows) {
     valueInputOption: 'RAW',
     requestBody: { values: [CBS_HEADERS] }
   });
-  cbsSheetCache = { loadedAt: 0, rows: [] };
+  cbsSheetCache.loadedAt = 0;
   return false;
 }
 
@@ -3662,7 +3672,7 @@ async function appendCbsCase(record) {
   const response = await sheets.spreadsheets.values.append({ spreadsheetId:CBS_SHEET_ID, range:`${escapeSheetTitle(title)}!A:AM`, valueInputOption:'RAW', insertDataOption:'INSERT_ROWS', requestBody:{ values:[cbsValuesFromRecord(record)] } });
   const appendedRow = String(response.data?.updates?.updatedRange || '').match(/![A-Z]+(\d+)(?::[A-Z]+\d+)?$/i)?.[1];
   if (appendedRow) record.rowNumber = Number(appendedRow);
-  cbsSheetCache = { loadedAt:0, rows:[] };
+  cbsSheetCache.loadedAt = 0;
   return record;
 }
 
@@ -3730,13 +3740,26 @@ async function appendWrongBaggageSubmission(record = {}) {
   });
   const appendedRow = String(response.data?.updates?.updatedRange || '').match(/![A-Z]+(\d+)(?::[A-Z]+\d+)?$/i)?.[1];
   if (appendedRow) saved.rowNumber = Number(appendedRow);
+  wrongBaggageCache.loadedAt = 0;
   return saved;
 }
 
 async function getWrongBaggageSubmissions() {
-  const title = await getWrongBaggageSheetTitle();
-  const response = await sheets.spreadsheets.values.get({ spreadsheetId:CBS_SHEET_ID, range:`${escapeSheetTitle(title)}!A:L` });
-  return (response.data.values || []).slice(1).map((values, index) => wrongBaggageRecordFromValues(values, index + 2));
+  if (wrongBaggageCache.hasLoaded && Date.now() - wrongBaggageCache.loadedAt < 30000) return wrongBaggageCache.rows;
+  if (wrongBaggageCache.pending) return wrongBaggageCache.pending;
+  wrongBaggageCache.pending = (async () => {
+    const title = await getWrongBaggageSheetTitle();
+    const response = await sheets.spreadsheets.values.get({ spreadsheetId:CBS_SHEET_ID, range:`${escapeSheetTitle(title)}!A:L` });
+    const rows = (response.data.values || []).slice(1).map((values, index) => wrongBaggageRecordFromValues(values, index + 2));
+    wrongBaggageCache.loadedAt = Date.now();
+    wrongBaggageCache.rows = rows;
+    wrongBaggageCache.hasLoaded = true;
+    return rows;
+  })().catch((err) => {
+    if (wrongBaggageCache.hasLoaded && /quota|rate limit|429/i.test(String(err?.message || ''))) return wrongBaggageCache.rows;
+    throw err;
+  }).finally(() => { wrongBaggageCache.pending = null; });
+  return wrongBaggageCache.pending;
 }
 
 async function updateWrongBaggageSubmission(rowNumber, update = {}) {
@@ -3764,6 +3787,7 @@ async function updateWrongBaggageSubmission(rowNumber, update = {}) {
   values[10] = JSON.stringify(history);
   await sheets.spreadsheets.values.update({ spreadsheetId: CBS_SHEET_ID, range, valueInputOption: 'RAW', requestBody: { values: [values] } });
   const record = wrongBaggageRecordFromValues(values, row);
+  wrongBaggageCache.loadedAt = 0;
   return record;
 }
 
@@ -3866,6 +3890,21 @@ async function getCbsNotLoadBaggageSheetTitle() {
 }
 
 const CBS_UNRESOLVED_BAGGAGE_HEADERS = ['Bag Tag', 'Direction', 'Flight Number', 'Flight Date', 'Bag Type', 'Status', 'Location', 'Created At', 'Resolution', 'Resolution Note', 'Resolved At', 'WorldTracer File Number', 'WorldTracer Updated By', 'Created By', 'Resolved By', 'Exchange History', 'Passenger Name', 'Update Events'];
+const CBS_UNRESOLVED_CACHE_TTL_MS = Math.max(5000, Number(process.env.CBS_UNRESOLVED_CACHE_TTL_MS) || 30000);
+let cbsUnresolvedBaggageCache = { expiresAt:0, rows:null, pending:null, generation:0 };
+
+function invalidateCbsUnresolvedBaggageCache() {
+  cbsUnresolvedBaggageCache.expiresAt = 0;
+  cbsUnresolvedBaggageCache.generation += 1;
+}
+
+function copyCbsUnresolvedBaggageRows(rows = []) {
+  return rows.map((row) => ({
+    ...row,
+    exchangeHistory:[...(row.exchangeHistory || [])],
+    updateEvents:[...(row.updateEvents || [])]
+  }));
+}
 
 function safeJsonArray(value) {
   try {
@@ -3877,21 +3916,40 @@ function safeJsonArray(value) {
 }
 
 async function getCbsUnresolvedBaggageCases(options = {}) {
-  const title = await getCbsUnresolvedBaggageSheetTitle();
-  const notLoadTitle = await getCbsNotLoadBaggageSheetTitle();
-  const [valuesRows] = await Promise.all([
-    getCbsRetainedSheetRows({ title, sheetId:CBS_UNRESOLVED_BAGGAGE_SHEET_GID, range:'A:R', dateIndexes:[7] }),
-    getCbsRetainedSheetRows({ title:notLoadTitle, sheetId:CBS_NOT_LOAD_BAGGAGE_SHEET_GID, range:'A:R', dateIndexes:[7] })
-  ]);
-  const startIndex = String(valuesRows[0]?.[0] || '').trim() === CBS_UNRESOLVED_BAGGAGE_HEADERS[0] ? 1 : 0;
-  return valuesRows.slice(startIndex).map((values, index) => ({
-    bagTag:values[0] || '', direction:values[1] || '', flightNumber:values[2] || '', flightDate:values[3] || '',
-    bagType:values[4] || '', status:values[5] || '', location:values[6] || '', createdAt:values[7] || '',
-    resolution:values[8] || '', resolutionNote:values[9] || '', resolvedAt:values[10] || '',
-    worldTracerFileNumber:values[11] || '', worldTracerUpdatedBy:values[12] || '', createdBy:values[13] || '', resolvedBy:values[14] || '',
-    exchangeHistory:safeJsonArray(values[15]), passengerName:values[16] || '', updateEvents:safeJsonArray(values[17]), rowNumber:startIndex + index + 1
-  })).filter((row) => !isCbsOnHandExcludedBag(row)).filter((row) => options.includeResolved || !row.resolvedAt)
-    .sort((a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0));
+  if (!cbsUnresolvedBaggageCache.pending && cbsUnresolvedBaggageCache.rows && cbsUnresolvedBaggageCache.expiresAt > Date.now()) {
+    const rows = copyCbsUnresolvedBaggageRows(cbsUnresolvedBaggageCache.rows);
+    return options.includeResolved ? rows : rows.filter((row) => !row.resolvedAt);
+  }
+  if (!cbsUnresolvedBaggageCache.pending) {
+    const generation = cbsUnresolvedBaggageCache.generation;
+    cbsUnresolvedBaggageCache.pending = (async () => {
+      const title = await getCbsUnresolvedBaggageSheetTitle();
+      // Not-load records are also stored in the unresolved sheet. Reading the
+      // archive copy here doubled Sheets traffic without adding any rows.
+      const valuesRows = await getCbsRetainedSheetRows({ title, sheetId:CBS_UNRESOLVED_BAGGAGE_SHEET_GID, range:'A:R', dateIndexes:[7] });
+      const startIndex = String(valuesRows[0]?.[0] || '').trim() === CBS_UNRESOLVED_BAGGAGE_HEADERS[0] ? 1 : 0;
+      const rows = valuesRows.slice(startIndex).map((values, index) => ({
+        bagTag:values[0] || '', direction:values[1] || '', flightNumber:values[2] || '', flightDate:values[3] || '',
+        bagType:values[4] || '', status:values[5] || '', location:values[6] || '', createdAt:values[7] || '',
+        resolution:values[8] || '', resolutionNote:values[9] || '', resolvedAt:values[10] || '',
+        worldTracerFileNumber:values[11] || '', worldTracerUpdatedBy:values[12] || '', createdBy:values[13] || '', resolvedBy:values[14] || '',
+        exchangeHistory:safeJsonArray(values[15]), passengerName:values[16] || '', updateEvents:safeJsonArray(values[17]), rowNumber:startIndex + index + 1
+      })).filter((row) => !isCbsOnHandExcludedBag(row))
+        .sort((a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0));
+      if (cbsUnresolvedBaggageCache.generation === generation) {
+        cbsUnresolvedBaggageCache.rows = rows;
+        cbsUnresolvedBaggageCache.expiresAt = Date.now() + CBS_UNRESOLVED_CACHE_TTL_MS;
+      }
+      return rows;
+    })().catch((err) => {
+      if (cbsUnresolvedBaggageCache.rows && /quota|rate limit|429/i.test(String(err?.message || ''))) {
+        return cbsUnresolvedBaggageCache.rows;
+      }
+      throw err;
+    }).finally(() => { cbsUnresolvedBaggageCache.pending = null; });
+  }
+  const rows = copyCbsUnresolvedBaggageRows(await cbsUnresolvedBaggageCache.pending);
+  return options.includeResolved ? rows : rows.filter((row) => !row.resolvedAt);
 }
 
 function isCbsOnHandExcludedBag(record = {}) {
@@ -3962,6 +4020,7 @@ async function appendCbsUnresolvedBaggageCase(record = {}) {
   const appendedRow = String(response.data?.updates?.updatedRange || '').match(/![A-Z]+(\d+)(?::[A-Z]+\d+)?$/i)?.[1];
   if (appendedRow) saved.rowNumber = Number(appendedRow);
   await appendCbsNotLoadBaggageCase({ ...record, ...saved });
+  invalidateCbsUnresolvedBaggageCache();
   return { created: true, record: saved };
 }
 
@@ -3992,6 +4051,7 @@ async function updateCbsUnresolvedBaggageDetails(rowNumber, update = {}) {
     spreadsheetId:CBS_SHEET_ID, range:`${escapeSheetTitle(title)}!Q${target.rowNumber}:R${target.rowNumber}`, valueInputOption:'RAW',
     requestBody:{ values:[[passengerName || target.passengerName, JSON.stringify(updateEvents)]] }
   });
+  invalidateCbsUnresolvedBaggageCache();
   return { updated:true, record:{ ...target, passengerName:passengerName || target.passengerName, updateEvents } };
 }
 
@@ -4013,6 +4073,7 @@ async function updateCbsUnresolvedBaggageRush(rowNumber, rush = {}, updatedBy = 
     spreadsheetId:CBS_SHEET_ID, range:`${escapeSheetTitle(title)}!R${target.rowNumber}`, valueInputOption:'RAW',
     requestBody:{ values:[[JSON.stringify(updateEvents)]] }
   });
+  invalidateCbsUnresolvedBaggageCache();
   return { updated:true, record:{ ...target, updateEvents } };
 }
 
@@ -4033,6 +4094,7 @@ async function deleteCbsUnresolvedBaggageComment(rowNumber, target = {}) {
     spreadsheetId:CBS_SHEET_ID, range:`${escapeSheetTitle(title)}!R${current.rowNumber}`, valueInputOption:'RAW',
     requestBody:{ values:[[JSON.stringify(updateEvents)]] }
   });
+  invalidateCbsUnresolvedBaggageCache();
   return { deleted:true, record:{ ...current, updateEvents } };
 }
 
@@ -4048,6 +4110,7 @@ async function changeCbsUnresolvedBaggageType(rowNumber, bagType, updatedBy = ''
     spreadsheetId:CBS_SHEET_ID, range:`${escapeSheetTitle(title)}!E${target.rowNumber}:F${target.rowNumber}`, valueInputOption:'RAW',
     requestBody:{ values:[[nextType, nextType]] }
   });
+  invalidateCbsUnresolvedBaggageCache();
   return { updated:true, record:{ ...target, bagType:nextType, status:nextType, typeChangedBy:sanitizeSheetText(updatedBy, 160) } };
 }
 
@@ -4057,7 +4120,7 @@ async function exchangeCbsUnresolvedBaggageTag(rowNumber, newBagTag, updatedBy =
   if (!target) return { updated:false, notFound:true };
   if (target.resolvedAt) throw Object.assign(new Error('Only an Open On-hand case can be exchanged'), { code:'CASE_CLOSED' });
   const nextTag = sanitizeSheetText(newBagTag, 80).toUpperCase().replace(/\s+/g, '');
-  if (!/^[A-Z]{2}\d{6}$/.test(nextTag)) throw Object.assign(new Error('New tag must match MU123456 format'), { code:'INVALID_BAG_TAG' });
+  if (!/^[A-Z0-9]{2}\d{6}$/.test(nextTag)) throw Object.assign(new Error('New tag must match MU123456, B6123456, or 3U515289 format'), { code:'INVALID_BAG_TAG' });
   if (nextTag === target.bagTag.toUpperCase()) throw Object.assign(new Error('New tag must be different from the current tag'), { code:'SAME_BAG_TAG' });
   if (rows.some((row) => row.rowNumber !== target.rowNumber && !row.resolvedAt && row.bagTag.toUpperCase() === nextTag)) {
     throw Object.assign(new Error('New tag already has an open On-hand case'), { code:'DUPLICATE_BAG_TAG' });
@@ -4076,6 +4139,7 @@ async function exchangeCbsUnresolvedBaggageTag(rowNumber, newBagTag, updatedBy =
       target.createdBy, by, JSON.stringify(exchangeHistory)
     ]] }
   });
+  invalidateCbsUnresolvedBaggageCache();
   return { updated:true, record:{ ...target, bagTag:nextTag, resolution:'exchange', resolutionNote:`Tag exchanged: ${target.bagTag} -> ${nextTag}`, resolvedAt:'', resolvedBy:by, exchangeHistory } };
 }
 
@@ -4089,6 +4153,7 @@ async function resolveCbsUnresolvedBaggageCase(rowNumber, resolution, resolution
     await sheets.spreadsheets.values.update({ spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!I${target.rowNumber}:K${target.rowNumber}`, valueInputOption: 'RAW', requestBody: { values: [[sanitizeSheetText(resolution, 80), sanitizeSheetText(resolutionNote, 500), resolvedAt]] } });
     await sheets.spreadsheets.values.update({ spreadsheetId:CBS_SHEET_ID, range:`${escapeSheetTitle(title)}!O${target.rowNumber}`, valueInputOption:'RAW', requestBody:{ values:[[sanitizeSheetText(resolvedBy, 160)]] } });
   }
+  invalidateCbsUnresolvedBaggageCache();
   const record = { ...target, resolution, resolutionNote, resolvedAt, resolvedBy:sanitizeSheetText(resolvedBy, 160) };
   return { updated: true, record };
 }
@@ -4102,6 +4167,7 @@ async function reopenCbsUnresolvedBaggageCase(rowNumber) {
     await sheets.spreadsheets.values.clear({ spreadsheetId:CBS_SHEET_ID, range:`${escapeSheetTitle(title)}!I${target.rowNumber}:K${target.rowNumber}` });
     await sheets.spreadsheets.values.clear({ spreadsheetId:CBS_SHEET_ID, range:`${escapeSheetTitle(title)}!O${target.rowNumber}` });
   }
+  invalidateCbsUnresolvedBaggageCache();
   const record = { ...target, resolution: '', resolutionNote: '', resolvedAt: '' };
   return { updated: true, record };
 }
@@ -4116,6 +4182,7 @@ async function updateCbsUnresolvedBaggageWorldTracer(rowNumber, worldTracerFileN
     await sheets.spreadsheets.values.update({ spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!L1:M1`, valueInputOption: 'RAW', requestBody: { values: [[CBS_UNRESOLVED_BAGGAGE_HEADERS[11], CBS_UNRESOLVED_BAGGAGE_HEADERS[12]]] } });
     await sheets.spreadsheets.values.update({ spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!L${target.rowNumber}:M${target.rowNumber}`, valueInputOption: 'RAW', requestBody: { values: [[value, sanitizeSheetText(updatedBy, 160)]] } });
   }
+  invalidateCbsUnresolvedBaggageCache();
   const record = { ...target, worldTracerFileNumber: value, worldTracerUpdatedBy:sanitizeSheetText(updatedBy, 160) };
   return { updated: true, record };
 }
@@ -4292,9 +4359,8 @@ function attachCbsUpdateHistory(rows = []) {
 }
 
 async function getCbsCases() {
-  let rows = await getCbsSheetRows({ forceRefresh:true });
-  await ensureCbsSheetHeaders(rows);
-  rows = await getCbsSheetRows({ forceRefresh:true });
+  let rows = await getCbsSheetRows();
+  if (!await ensureCbsSheetHeaders(rows)) rows = await getCbsSheetRows({ forceRefresh:true });
   const cases = rows.map((values, index) => ({ values:values || [], rowNumber:index + 1 }))
     .filter(({ values }) => !isCbsHeaderRow(values))
     .map(({ values, rowNumber }) => cbsRecordFromSheet(values, rowNumber))
@@ -4350,7 +4416,7 @@ async function updateCbsCase(rowNumber, update = {}) {
   if (current.rowNumber) {
     const title = await getCbsSheetTitle();
     await sheets.spreadsheets.values.update({ spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!A${current.rowNumber}:AM${current.rowNumber}`, valueInputOption: 'RAW', requestBody: { values: [cbsValuesFromRecord(next)] } });
-    cbsSheetCache = { loadedAt: 0, rows: [] };
+    cbsSheetCache.loadedAt = 0;
   }
   const record = { ...next, updateEvents };
   return { updated: true, record };
@@ -4381,7 +4447,7 @@ async function deleteCbsCaseComment(rowNumber, target = {}) {
   if (current.rowNumber) {
     const title = await getCbsSheetTitle();
     await sheets.spreadsheets.values.update({ spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!A${current.rowNumber}:AM${current.rowNumber}`, valueInputOption: 'RAW', requestBody: { values: [cbsValuesFromRecord(next)] } });
-    cbsSheetCache = { loadedAt: 0, rows: [] };
+    cbsSheetCache.loadedAt = 0;
   }
   return { deleted: true, record: next };
 }
@@ -4733,11 +4799,27 @@ async function sendNextDayInfoEmail({ to = 'laxhmmu@gmail.com', cc = [], subject
   return { to: Array.isArray(to) ? to : [to], cc: Array.isArray(cc) ? cc : [cc].filter(Boolean), id: sent.data.id || '', userId, authMode };
 }
 
-async function sendBagRoomUnloadAlertEmail({ subject, text, to = '7X24bag@ceair.com' }) {
+async function sendBagRoomUnloadAlertEmail({ subject, text, to = '7X24bag@ceair.com', cc = ['xldou@ceair.com', 'laxapmu@chinaeastern-usa.com'] }) {
   const { gmail, userId, authMode } = getNextDayInfoGmailClient();
-  const raw = buildRawPlainEmail({ to, subject, text });
+  const raw = buildRawPlainEmail({ to, cc, subject, text });
   const sent = await gmail.users.messages.send({ userId, requestBody:{ raw:base64UrlEncode(raw) } });
-  return { sent:true, id:sent.data.id || '', to, subject, authMode };
+  return { sent:true, id:sent.data.id || '', to, cc, subject, authMode };
+}
+
+async function hasSentBagRoomUnloadAlertEmail(subject) {
+  const { gmail, userId } = getNextDayInfoGmailClient();
+  const exactSubject = String(subject || '').replace(/"/g, '').trim();
+  if (!exactSubject) return false;
+  const result = await gmail.users.messages.list({
+    userId,
+    q:`in:sent subject:"${exactSubject}" newer_than:2d`,
+    maxResults:10,
+    fields:'messages(id,internalDate)'
+  });
+  // The subject contains the operation date (for example 24SEP), so a recent
+  // exact-subject match is sufficient. Gmail's list response does not always
+  // include internalDate unless each message is fetched separately.
+  return Boolean(result.data.messages?.length);
 }
 
 async function sendCbsCaseEmail({ passengerEmail, subject, html, text, pdfBuffer, filename, attachments = [] }) {
@@ -4914,6 +4996,7 @@ module.exports = {
   acknowledgeCbsMissingBag,
   sendCbsCaseEmail,
   sendBagRoomUnloadAlertEmail,
+  hasSentBagRoomUnloadAlertEmail,
   readBagRoomUnloadAlertState,
   writeBagRoomUnloadAlertState,
   sendWrongBaggageCaseEmail,
