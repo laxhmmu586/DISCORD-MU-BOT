@@ -3015,7 +3015,6 @@ function bestCbsPnrRecord(records = []) {
   })[0] || null;
 }
 
-const cbsPnrMissCache = new Map();
 let cbsPnrSyncPending = null;
 async function syncMissingCbsPnrRecords(passengerCases = [], unresolvedCases = [], updatedBy = 'System') {
   const candidates = [
@@ -3030,18 +3029,15 @@ async function syncMissingCbsPnrRecords(passengerCases = [], unresolvedCases = [
     const date = cbsRecordLookupDate(candidate.row);
     if (!tag || !date) continue;
     const cacheKey = `${date}:${tag.serial}`;
-    if ((cbsPnrMissCache.get(cacheKey) || 0) > Date.now()) continue;
     try {
       if (!lookupCache.has(cacheKey)) lookupCache.set(cacheKey, findCbsPnrRecordsByBagTag(tag.serial, date));
       const lookup = await lookupCache.get(cacheKey);
       const selectedRecord = bestCbsPnrRecord(lookup.records);
       const record = String(selectedRecord?.content || '').slice(0, 5000);
       const ticketRecord = String(selectedRecord?.ticketContent || '').slice(0, 5000);
-      if (!record) {
-        cbsPnrMissCache.set(cacheKey, Date.now() + 5 * 60 * 1000);
-        continue;
-      }
-      cbsPnrMissCache.delete(cacheKey);
+      // Do not cache a miss: record files may be uploaded after the case first
+      // loads, and Refresh must be able to discover them immediately.
+      if (!record) continue;
       const result = candidate.source === 'unresolved'
         ? await updateCbsUnresolvedBaggageDetails(candidate.row.rowNumber, { record, recordType:'pnr', updatedBy })
         : await updateCbsCase(candidate.row.rowNumber, { status:candidate.row.status, replaceEventKey:'record-pnr', updateEvent:{ key:'record-pnr', title:'Update Record - PNR', fields:[['Record - PNR', record]], by:updatedBy } });

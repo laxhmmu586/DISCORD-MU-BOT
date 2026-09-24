@@ -29,6 +29,8 @@ test('CBS automatically finds Drive records and saves matching PNRs without a Ch
   assert.match(drive, /1QbP-_qSoyIfv_H6NG8fSTxpTK8vfYSvR/);
   assert.match(drive, /1cKMKdeW4BbBY47_hMAW_N_lxnCt0Pulo/);
   assert.match(drive, /findCbsPnrRecordsByBagTag[\s\S]*slice\(-6\)/);
+  assert.match(drive, /findCbsRecordDateFolders[\s\S]*listDriveDescendantFiles/);
+  assert.doesNotMatch(server, /cbsPnrMissCache/);
 });
 test('240 nationality list keeps USA and CAN first and alphabetizes all other codes', () => {
   assert.match(transitForm, /const priorityCountryCodes=\['USA','CAN'\]/);
