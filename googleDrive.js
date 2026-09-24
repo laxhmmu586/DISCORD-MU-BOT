@@ -265,7 +265,7 @@ const RECORD_SCAN_SHEET_GID = Number(process.env.RECORD_SCAN_SHEET_GID || 621930
 const RECORD_SCAN_HEADERS = ['BN', 'SEAT', 'FLIGHT NUMBER', 'RAW SCAN'];
 const RECORD_CASE_SHEET_ID = process.env.RECORD_CASE_SHEET_ID || '1t0TS3__Im1tyLy7Hj7CGF8zet_-5TT1986QCodhvYbo';
 const RECORD_CASE_SHEET_GID = Number(process.env.RECORD_CASE_SHEET_GID || 1472152106);
-const RECORD_CASE_HEADERS = ['Submitted At', 'Status', 'BN', 'Passenger Name', 'Phone', 'Email', 'Travel Party', 'Companion BNs', 'Companion PNR Records', 'Intention', 'Final Destination', 'PNR Record', 'New Ticket Number', 'Comment', 'Updated At', 'Updated By'];
+const RECORD_CASE_HEADERS = ['Submitted At', 'Status', 'BN', 'Passenger Name', 'Phone', 'Email', 'Travel Party', 'Companion BNs', 'Companion PNR Records', 'Intention', 'Final Destination', 'PNR Record', 'New Ticket Number', 'Comment', 'Updated At', 'Updated By', 'Hotel Name', 'Hotel Address', 'Hotel Confirmation', 'Hotel Check-in', 'Hotel Check-out'];
 const TRANSIT_240_SHEET_ID = process.env.TRANSIT_240_SHEET_ID || '1JqRnDx_uLc2m2SzyZOuHWWJsbkKenlKo60U9zwV9uMQ';
 const TRANSIT_240_SHEET_GID = Number(process.env.TRANSIT_240_SHEET_GID || 527537258);
 const TRANSIT_240_HEADERS = ['Submit Date', 'Passenger Name', 'Seat Number', 'BN Number', 'Passport Nationality Code', 'Passport Expiration Date', 'Itinerary'];
@@ -3292,7 +3292,8 @@ function recordCaseFromRow(values, rowNumber) {
     rowNumber, submittedAt:row['Submitted At'], status:row.Status, bn:row.BN, passengerName:row['Passenger Name'], phone:row.Phone,
     email:row.Email, travelParty:row['Travel Party'], companionBns:row['Companion BNs'], companionPnrRecords:row['Companion PNR Records'],
     intention:row.Intention, finalDestination:row['Final Destination'], pnrRecord:row['PNR Record'], newTicketNumber:row['New Ticket Number'],
-    comment:row.Comment, updatedAt:row['Updated At'], updatedBy:row['Updated By']
+    comment:row.Comment, updatedAt:row['Updated At'], updatedBy:row['Updated By'], hotelName:row['Hotel Name'],
+    hotelAddress:row['Hotel Address'], hotelConfirmation:row['Hotel Confirmation'], hotelCheckIn:row['Hotel Check-in'], hotelCheckOut:row['Hotel Check-out']
   };
 }
 
@@ -3301,9 +3302,11 @@ async function getRecordCases(options = {}) {
   if (recordCaseCache.pending) return recordCaseCache.pending;
   recordCaseCache.pending = (async () => {
     const title = await getRecordCaseSheetTitle();
-    const response = await sheets.spreadsheets.values.get({ spreadsheetId:RECORD_CASE_SHEET_ID, range:`${escapeSheetTitle(title)}!A:P` });
+    const response = await sheets.spreadsheets.values.get({ spreadsheetId:RECORD_CASE_SHEET_ID, range:`${escapeSheetTitle(title)}!A:U` });
     const values = response.data.values || [];
-    const hasHeaders = RECORD_CASE_HEADERS.every((header, index) => String(values[0]?.[index] || '').trim() === header);
+    // Accept the original A:P header set while the new hotel columns are being
+    // introduced, so an existing sheet never exposes its header as a case row.
+    const hasHeaders = RECORD_CASE_HEADERS.slice(0, 16).every((header, index) => String(values[0]?.[index] || '').trim() === header);
     const rows = values.slice(hasHeaders ? 1 : 0).map((row, index) => recordCaseFromRow(row, index + (hasHeaders ? 2 : 1))).filter((row) => row.bn);
     recordCaseCache = { expiresAt:Date.now() + 5000, rows, pending:null };
     return rows;
@@ -3312,17 +3315,17 @@ async function getRecordCases(options = {}) {
 }
 
 async function ensureRecordCaseHeaders(title) {
-  const response = await sheets.spreadsheets.values.get({ spreadsheetId:RECORD_CASE_SHEET_ID, range:`${escapeSheetTitle(title)}!A1:P1` });
+  const response = await sheets.spreadsheets.values.get({ spreadsheetId:RECORD_CASE_SHEET_ID, range:`${escapeSheetTitle(title)}!A1:U1` });
   if (RECORD_CASE_HEADERS.every((header, index) => String(response.data.values?.[0]?.[index] || '').trim() === header)) return;
-  await sheets.spreadsheets.values.update({ spreadsheetId:RECORD_CASE_SHEET_ID, range:`${escapeSheetTitle(title)}!A1:P1`, valueInputOption:'RAW', requestBody:{ values:[RECORD_CASE_HEADERS] } });
+  await sheets.spreadsheets.values.update({ spreadsheetId:RECORD_CASE_SHEET_ID, range:`${escapeSheetTitle(title)}!A1:U1`, valueInputOption:'RAW', requestBody:{ values:[RECORD_CASE_HEADERS] } });
 }
 
 async function appendRecordCase(record = {}) {
   const title = await getRecordCaseSheetTitle();
   await ensureRecordCaseHeaders(title);
   const row = [record.submittedAt, record.status, record.bn, record.passengerName, record.phone, record.email, record.travelParty,
-    record.companionBns, record.companionPnrRecords, record.intention, record.finalDestination, record.pnrRecord, '', '', record.submittedAt, 'Passenger'];
-  const response = await sheets.spreadsheets.values.append({ spreadsheetId:RECORD_CASE_SHEET_ID, range:`${escapeSheetTitle(title)}!A:P`, valueInputOption:'RAW', insertDataOption:'INSERT_ROWS', requestBody:{ values:[row] } });
+    record.companionBns, record.companionPnrRecords, record.intention, record.finalDestination, record.pnrRecord, '', '', record.submittedAt, 'Passenger', '', '', '', '', ''];
+  const response = await sheets.spreadsheets.values.append({ spreadsheetId:RECORD_CASE_SHEET_ID, range:`${escapeSheetTitle(title)}!A:U`, valueInputOption:'RAW', insertDataOption:'INSERT_ROWS', requestBody:{ values:[row] } });
   const rowNumber = Number(String(response.data?.updates?.updatedRange || '').match(/![A-Z]+(\d+)/i)?.[1] || 0);
   const saved = recordCaseFromRow(row, rowNumber);
   // Force the next dashboard poll to merge this append with rows written by
@@ -3338,12 +3341,14 @@ async function updateRecordCase(rowNumber, update = {}) {
   if (!existing) throw new Error('Record case not found');
   const now = new Date().toISOString();
   const values = [String(update.status || existing.status).slice(0,80), String(update.newTicketNumber ?? existing.newTicketNumber).slice(0,160), String(update.comment ?? existing.comment).slice(0,1000), now, String(update.updatedBy || '').slice(0,160)];
+  const hotelValues = [String(update.hotelName ?? existing.hotelName).slice(0,200), String(update.hotelAddress ?? existing.hotelAddress).slice(0,500), String(update.hotelConfirmation ?? existing.hotelConfirmation).slice(0,160), String(update.hotelCheckIn ?? existing.hotelCheckIn).slice(0,40), String(update.hotelCheckOut ?? existing.hotelCheckOut).slice(0,40)];
   await sheets.spreadsheets.values.batchUpdate({ spreadsheetId:RECORD_CASE_SHEET_ID, requestBody:{ valueInputOption:'RAW', data:[
     { range:`${escapeSheetTitle(title)}!B${number}`, values:[[values[0]]] },
-    { range:`${escapeSheetTitle(title)}!M${number}:P${number}`, values:[[...values.slice(1)]] }
+    { range:`${escapeSheetTitle(title)}!M${number}:P${number}`, values:[[...values.slice(1)]] },
+    { range:`${escapeSheetTitle(title)}!Q${number}:U${number}`, values:[[...hotelValues]] }
   ] } });
   recordCaseCache.expiresAt = 0;
-  return { ...existing, status:values[0], newTicketNumber:values[1], comment:values[2], updatedAt:now, updatedBy:values[4] };
+  return { ...existing, status:values[0], newTicketNumber:values[1], comment:values[2], updatedAt:now, updatedBy:values[4], hotelName:hotelValues[0], hotelAddress:hotelValues[1], hotelConfirmation:hotelValues[2], hotelCheckIn:hotelValues[3], hotelCheckOut:hotelValues[4] };
 }
 
 async function getTransit240SheetTitle() {
