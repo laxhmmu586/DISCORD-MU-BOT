@@ -253,7 +253,8 @@ let cbsWorldTracerSheetTitle = '';
 const cbsRetentionPromises = new Map();
 let cbsUnresolvedBaggageSheetTitle = '';
 let cbsNotLoadBaggageSheetTitle = '';
-let cbsSheetCache = { loadedAt: 0, rows: [] };
+let cbsSheetCache = { loadedAt:0, rows:[], pending:null, hasLoaded:false };
+let wrongBaggageCache = { loadedAt:0, rows:[], pending:null, hasLoaded:false };
 const CBS_UPDATE_HISTORY_FILE = process.env.CBS_UPDATE_HISTORY_FILE || path.join(__dirname, 'data', 'cbs-update-history.json');
 let cbsUpdateHistoryCache = { loadedAt: 0, data: null };
 const CBS_MISSING_BAG_SHEET_GID = Number(process.env.CBS_MISSING_BAG_SHEET_GID || 1145829442);
@@ -3490,11 +3491,20 @@ async function getCbsSheetRows(options = {}) {
   const ttlMs = Number(options.ttlMs || 30 * 1000);
   // Cache an empty sheet too. Without this, every request made while the sheet is
   // empty immediately consumes another Sheets read request.
-  if (!options.forceRefresh && cbsSheetCache.loadedAt && Date.now() - cbsSheetCache.loadedAt < ttlMs) return cbsSheetCache.rows;
-  const title = await getCbsSheetTitle();
-  const rows = await getCbsRetainedSheetRows({ title, sheetId:CBS_SHEET_GID, range:'A:AM', dateIndexes:[26] });
-  cbsSheetCache = { loadedAt: Date.now(), rows };
-  return rows;
+  if (!options.forceRefresh && cbsSheetCache.hasLoaded && Date.now() - cbsSheetCache.loadedAt < ttlMs) return cbsSheetCache.rows;
+  if (cbsSheetCache.pending) return cbsSheetCache.pending;
+  cbsSheetCache.pending = (async () => {
+    const title = await getCbsSheetTitle();
+    const rows = await getCbsRetainedSheetRows({ title, sheetId:CBS_SHEET_GID, range:'A:AM', dateIndexes:[26] });
+    cbsSheetCache.loadedAt = Date.now();
+    cbsSheetCache.rows = rows;
+    cbsSheetCache.hasLoaded = true;
+    return rows;
+  })().catch((err) => {
+    if (cbsSheetCache.hasLoaded && /quota|rate limit|429/i.test(String(err?.message || ''))) return cbsSheetCache.rows;
+    throw err;
+  }).finally(() => { cbsSheetCache.pending = null; });
+  return cbsSheetCache.pending;
 }
 
 async function ensureCbsSheetHeaders(rows) {
@@ -3516,7 +3526,7 @@ async function ensureCbsSheetHeaders(rows) {
     valueInputOption: 'RAW',
     requestBody: { values: [CBS_HEADERS] }
   });
-  cbsSheetCache = { loadedAt: 0, rows: [] };
+  cbsSheetCache.loadedAt = 0;
   return false;
 }
 
@@ -3662,7 +3672,7 @@ async function appendCbsCase(record) {
   const response = await sheets.spreadsheets.values.append({ spreadsheetId:CBS_SHEET_ID, range:`${escapeSheetTitle(title)}!A:AM`, valueInputOption:'RAW', insertDataOption:'INSERT_ROWS', requestBody:{ values:[cbsValuesFromRecord(record)] } });
   const appendedRow = String(response.data?.updates?.updatedRange || '').match(/![A-Z]+(\d+)(?::[A-Z]+\d+)?$/i)?.[1];
   if (appendedRow) record.rowNumber = Number(appendedRow);
-  cbsSheetCache = { loadedAt:0, rows:[] };
+  cbsSheetCache.loadedAt = 0;
   return record;
 }
 
@@ -3730,13 +3740,26 @@ async function appendWrongBaggageSubmission(record = {}) {
   });
   const appendedRow = String(response.data?.updates?.updatedRange || '').match(/![A-Z]+(\d+)(?::[A-Z]+\d+)?$/i)?.[1];
   if (appendedRow) saved.rowNumber = Number(appendedRow);
+  wrongBaggageCache.loadedAt = 0;
   return saved;
 }
 
 async function getWrongBaggageSubmissions() {
-  const title = await getWrongBaggageSheetTitle();
-  const response = await sheets.spreadsheets.values.get({ spreadsheetId:CBS_SHEET_ID, range:`${escapeSheetTitle(title)}!A:L` });
-  return (response.data.values || []).slice(1).map((values, index) => wrongBaggageRecordFromValues(values, index + 2));
+  if (wrongBaggageCache.hasLoaded && Date.now() - wrongBaggageCache.loadedAt < 30000) return wrongBaggageCache.rows;
+  if (wrongBaggageCache.pending) return wrongBaggageCache.pending;
+  wrongBaggageCache.pending = (async () => {
+    const title = await getWrongBaggageSheetTitle();
+    const response = await sheets.spreadsheets.values.get({ spreadsheetId:CBS_SHEET_ID, range:`${escapeSheetTitle(title)}!A:L` });
+    const rows = (response.data.values || []).slice(1).map((values, index) => wrongBaggageRecordFromValues(values, index + 2));
+    wrongBaggageCache.loadedAt = Date.now();
+    wrongBaggageCache.rows = rows;
+    wrongBaggageCache.hasLoaded = true;
+    return rows;
+  })().catch((err) => {
+    if (wrongBaggageCache.hasLoaded && /quota|rate limit|429/i.test(String(err?.message || ''))) return wrongBaggageCache.rows;
+    throw err;
+  }).finally(() => { wrongBaggageCache.pending = null; });
+  return wrongBaggageCache.pending;
 }
 
 async function updateWrongBaggageSubmission(rowNumber, update = {}) {
@@ -3764,6 +3787,7 @@ async function updateWrongBaggageSubmission(rowNumber, update = {}) {
   values[10] = JSON.stringify(history);
   await sheets.spreadsheets.values.update({ spreadsheetId: CBS_SHEET_ID, range, valueInputOption: 'RAW', requestBody: { values: [values] } });
   const record = wrongBaggageRecordFromValues(values, row);
+  wrongBaggageCache.loadedAt = 0;
   return record;
 }
 
@@ -4335,9 +4359,8 @@ function attachCbsUpdateHistory(rows = []) {
 }
 
 async function getCbsCases() {
-  let rows = await getCbsSheetRows({ forceRefresh:true });
-  await ensureCbsSheetHeaders(rows);
-  rows = await getCbsSheetRows({ forceRefresh:true });
+  let rows = await getCbsSheetRows();
+  if (!await ensureCbsSheetHeaders(rows)) rows = await getCbsSheetRows({ forceRefresh:true });
   const cases = rows.map((values, index) => ({ values:values || [], rowNumber:index + 1 }))
     .filter(({ values }) => !isCbsHeaderRow(values))
     .map(({ values, rowNumber }) => cbsRecordFromSheet(values, rowNumber))
@@ -4393,7 +4416,7 @@ async function updateCbsCase(rowNumber, update = {}) {
   if (current.rowNumber) {
     const title = await getCbsSheetTitle();
     await sheets.spreadsheets.values.update({ spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!A${current.rowNumber}:AM${current.rowNumber}`, valueInputOption: 'RAW', requestBody: { values: [cbsValuesFromRecord(next)] } });
-    cbsSheetCache = { loadedAt: 0, rows: [] };
+    cbsSheetCache.loadedAt = 0;
   }
   const record = { ...next, updateEvents };
   return { updated: true, record };
@@ -4424,7 +4447,7 @@ async function deleteCbsCaseComment(rowNumber, target = {}) {
   if (current.rowNumber) {
     const title = await getCbsSheetTitle();
     await sheets.spreadsheets.values.update({ spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!A${current.rowNumber}:AM${current.rowNumber}`, valueInputOption: 'RAW', requestBody: { values: [cbsValuesFromRecord(next)] } });
-    cbsSheetCache = { loadedAt: 0, rows: [] };
+    cbsSheetCache.loadedAt = 0;
   }
   return { deleted: true, record: next };
 }

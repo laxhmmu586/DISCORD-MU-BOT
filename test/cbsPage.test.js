@@ -143,6 +143,16 @@ test('On-hand and Bag Room reads share a short cache and tolerate Sheets quota b
   assert.doesNotMatch(reader, /CBS_NOT_LOAD_BAGGAGE_SHEET_GID/);
   assert.equal((drive.match(/invalidateCbsUnresolvedBaggageCache\(\);/g) || []).length >= 9, true);
 });
+
+test('Passenger Filed reads share cached Sheets results and fall back during quota bursts', () => {
+  assert.match(drive, /if \(cbsSheetCache\.pending\) return cbsSheetCache\.pending/);
+  assert.match(drive, /cbsSheetCache\.hasLoaded && \/quota\|rate limit\|429\/i/);
+  const casesReader = drive.match(/async function getCbsCases\(\)[\s\S]*?\n}/)?.[0] || '';
+  assert.match(casesReader, /getCbsSheetRows\(\)/);
+  assert.doesNotMatch(casesReader, /getCbsSheetRows\(\{ forceRefresh:true \}\);\s*await ensureCbsSheetHeaders[\s\S]*getCbsSheetRows\(\{ forceRefresh:true \}\)/);
+  assert.match(drive, /if \(wrongBaggageCache\.pending\) return wrongBaggageCache\.pending/);
+  assert.match(drive, /wrongBaggageCache\.hasLoaded && \/quota\|rate limit\|429\/i/);
+});
 test('public CBS forms do not CC the operations Gmail account', () => {
   const caseEmail = drive.match(/async function sendCbsCaseEmail[\s\S]*?\n}/)?.[0] || '';
   const wrongBaggageEmail = drive.match(/async function sendWrongBaggageCaseEmail[\s\S]*?\n}/)?.[0] || '';
