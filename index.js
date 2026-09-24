@@ -102,6 +102,9 @@ const {
   appendTransit240Record,
   appendCbsScanRecord,
   appendRecordScanRecord,
+  appendRecordCase,
+  getRecordCases,
+  updateRecordCase,
   appendCbsScanNbrdBns,
   deleteCbsScanNbrdBn,
   getCbsScanRecords,
@@ -2907,6 +2910,55 @@ app.post('/record-scan', async (req, res) => {
     const status = err?.code === 'DUPLICATE_BN' ? 409 : (err?.code === 'WRONG_FLIGHT' ? 400 : (err?.code === 'SHEETS_QUOTA' ? 503 : 422));
     return res.status(status).json({ error: err?.message || 'Record scan save failed', code: err?.code || 'SCAN_ERROR' });
   }
+});
+
+function normalizeRecordBn(value) {
+  const digits = String(value || '').replace(/\D/g, '');
+  return digits && digits.length <= 3 ? digits.padStart(3, '0') : '';
+}
+
+async function recordPassengerByBn(bn) {
+  const log = await getLatestFlightLog();
+  if (log) parseIncrementalLog(log);
+  return passengers[bn] || null;
+}
+
+app.post('/record-form-submissions', async (req, res) => {
+  try {
+    const bn = normalizeRecordBn(req.body?.bn);
+    const companionBns = [...new Set((Array.isArray(req.body?.companionBns) ? req.body.companionBns : String(req.body?.companionBns || '').split(/[,\s]+/)).map(normalizeRecordBn).filter(Boolean))];
+    const travelParty = req.body?.travelParty === 'companions' ? 'companions' : 'individual';
+    const phone = String(req.body?.phone || '').trim().slice(0, 80);
+    const email = String(req.body?.email || '').trim().slice(0, 180);
+    const intention = String(req.body?.intention || '').trim().slice(0, 1000);
+    const finalDestination = String(req.body?.finalDestination || '').trim().toUpperCase().slice(0, 120);
+    if (!bn || !phone || !isValidEmail(email) || !intention || !finalDestination || (travelParty === 'companions' && !companionBns.length)) return res.status(400).json({ error:'Please complete all required fields.' });
+    const passenger = await recordPassengerByBn(bn);
+    if (!passenger) return res.status(404).json({ error:'BN was not found in today’s flight record.', code:'BN_NOT_FOUND' });
+    // The main lookup has already refreshed today's record. Reuse the parsed
+    // in-memory passenger map for every companion in this submission.
+    const companions = companionBns.map((number) => ({ bn:number, passenger:passengers[number] || null }));
+    const missing = companions.filter((item) => !item.passenger).map((item) => item.bn);
+    if (missing.length) return res.status(404).json({ error:`Companion BN not found: ${missing.join(', ')}`, code:'COMPANION_BN_NOT_FOUND' });
+    const submittedAt = new Date().toISOString();
+    const saved = await appendRecordCase({ submittedAt, status:'Waiting', bn, passengerName:passenger.name || '', phone, email, travelParty,
+      companionBns:companionBns.join(', '), companionPnrRecords:companions.map((item) => `BN ${item.bn} — ${item.passenger.name || ''}\n${item.passenger.sourceText || ''}`).join('\n\n'),
+      intention, finalDestination, pnrRecord:passenger.sourceText || '' });
+    return res.status(201).json({ created:true, record:saved });
+  } catch (err) {
+    console.error('Record form submission failed:', err);
+    return res.status(500).json({ error:err?.message || 'Submission failed.' });
+  }
+});
+
+app.get('/record-cases', async (_req, res) => {
+  try { return res.json({ rows:await getRecordCases() }); }
+  catch (err) { return res.status(500).json({ error:err?.message || 'Cases could not be loaded.' }); }
+});
+
+app.post('/record-cases/:rowNumber', async (req, res) => {
+  try { return res.json({ updated:true, record:await updateRecordCase(req.params.rowNumber, req.body || {}) }); }
+  catch (err) { return res.status(422).json({ error:err?.message || 'Case could not be updated.' }); }
 });
 
 

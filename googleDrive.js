@@ -263,6 +263,9 @@ const CBS_SCAN_SHEET_GID = Number(process.env.CBS_SCAN_SHEET_GID || 0);
 const RECORD_SCAN_SHEET_ID = process.env.RECORD_SCAN_SHEET_ID || '1bfIeytT6UMdvWXimeg4s1HVuXHqmpYZx53ufsbes6Ms';
 const RECORD_SCAN_SHEET_GID = Number(process.env.RECORD_SCAN_SHEET_GID || 621930495);
 const RECORD_SCAN_HEADERS = ['BN', 'SEAT', 'FLIGHT NUMBER', 'RAW SCAN'];
+const RECORD_CASE_SHEET_ID = process.env.RECORD_CASE_SHEET_ID || '1t0TS3__Im1tyLy7Hj7CGF8zet_-5TT1986QCodhvYbo';
+const RECORD_CASE_SHEET_GID = Number(process.env.RECORD_CASE_SHEET_GID || 1472152106);
+const RECORD_CASE_HEADERS = ['Submitted At', 'Status', 'BN', 'Passenger Name', 'Phone', 'Email', 'Travel Party', 'Companion BNs', 'Companion PNR Records', 'Intention', 'Final Destination', 'PNR Record', 'New Ticket Number', 'Comment', 'Updated At', 'Updated By'];
 const TRANSIT_240_SHEET_ID = process.env.TRANSIT_240_SHEET_ID || '1JqRnDx_uLc2m2SzyZOuHWWJsbkKenlKo60U9zwV9uMQ';
 const TRANSIT_240_SHEET_GID = Number(process.env.TRANSIT_240_SHEET_GID || 527537258);
 const TRANSIT_240_HEADERS = ['Submit Date', 'Passenger Name', 'Seat Number', 'BN Number', 'Passport Nationality Code', 'Passport Expiration Date', 'Itinerary'];
@@ -271,6 +274,8 @@ const CBS_SCAN_HEADERS = ['BN', 'Seat', 'Flight', 'Raw Scan', 'Scanned At'];
 const CBS_SCAN_INFANT_HEADERS = ['Infant BN', 'Infant Seat', 'Infant Flight', 'Infant Raw Scan', 'Infant Scanned At'];
 let cbsScanSheetTitle = '';
 let recordScanSheetTitle = '';
+let recordCaseSheetTitle = '';
+let recordCaseCache = { expiresAt:0, rows:[], pending:null };
 let cbsScanSheetCache = { loadedAt: 0, rows: [] };
 let cbsScanAppendPending = [];
 let cbsScanAppendTimer = null;
@@ -3276,6 +3281,71 @@ async function appendRecordScanRecord(record = {}) {
   return { bn, seat, flight };
 }
 
+async function getRecordCaseSheetTitle() {
+  if (!recordCaseSheetTitle) recordCaseSheetTitle = await resolveSheetTitleByGid(RECORD_CASE_SHEET_ID, RECORD_CASE_SHEET_GID);
+  return recordCaseSheetTitle || 'Sheet1';
+}
+
+function recordCaseFromRow(values, rowNumber) {
+  const row = Object.fromEntries(RECORD_CASE_HEADERS.map((header, index) => [header, String(values[index] || '')]));
+  return {
+    rowNumber, submittedAt:row['Submitted At'], status:row.Status, bn:row.BN, passengerName:row['Passenger Name'], phone:row.Phone,
+    email:row.Email, travelParty:row['Travel Party'], companionBns:row['Companion BNs'], companionPnrRecords:row['Companion PNR Records'],
+    intention:row.Intention, finalDestination:row['Final Destination'], pnrRecord:row['PNR Record'], newTicketNumber:row['New Ticket Number'],
+    comment:row.Comment, updatedAt:row['Updated At'], updatedBy:row['Updated By']
+  };
+}
+
+async function getRecordCases(options = {}) {
+  if (!options.forceRefresh && recordCaseCache.expiresAt > Date.now()) return recordCaseCache.rows;
+  if (recordCaseCache.pending) return recordCaseCache.pending;
+  recordCaseCache.pending = (async () => {
+    const title = await getRecordCaseSheetTitle();
+    const response = await sheets.spreadsheets.values.get({ spreadsheetId:RECORD_CASE_SHEET_ID, range:`${escapeSheetTitle(title)}!A:P` });
+    const values = response.data.values || [];
+    const hasHeaders = RECORD_CASE_HEADERS.every((header, index) => String(values[0]?.[index] || '').trim() === header);
+    const rows = values.slice(hasHeaders ? 1 : 0).map((row, index) => recordCaseFromRow(row, index + (hasHeaders ? 2 : 1))).filter((row) => row.bn);
+    recordCaseCache = { expiresAt:Date.now() + 5000, rows, pending:null };
+    return rows;
+  })();
+  try { return await recordCaseCache.pending; } finally { recordCaseCache.pending = null; }
+}
+
+async function ensureRecordCaseHeaders(title) {
+  const response = await sheets.spreadsheets.values.get({ spreadsheetId:RECORD_CASE_SHEET_ID, range:`${escapeSheetTitle(title)}!A1:P1` });
+  if (RECORD_CASE_HEADERS.every((header, index) => String(response.data.values?.[0]?.[index] || '').trim() === header)) return;
+  await sheets.spreadsheets.values.update({ spreadsheetId:RECORD_CASE_SHEET_ID, range:`${escapeSheetTitle(title)}!A1:P1`, valueInputOption:'RAW', requestBody:{ values:[RECORD_CASE_HEADERS] } });
+}
+
+async function appendRecordCase(record = {}) {
+  const title = await getRecordCaseSheetTitle();
+  await ensureRecordCaseHeaders(title);
+  const row = [record.submittedAt, record.status, record.bn, record.passengerName, record.phone, record.email, record.travelParty,
+    record.companionBns, record.companionPnrRecords, record.intention, record.finalDestination, record.pnrRecord, '', '', record.submittedAt, 'Passenger'];
+  const response = await sheets.spreadsheets.values.append({ spreadsheetId:RECORD_CASE_SHEET_ID, range:`${escapeSheetTitle(title)}!A:P`, valueInputOption:'RAW', insertDataOption:'INSERT_ROWS', requestBody:{ values:[row] } });
+  const rowNumber = Number(String(response.data?.updates?.updatedRange || '').match(/![A-Z]+(\d+)/i)?.[1] || 0);
+  const saved = recordCaseFromRow(row, rowNumber);
+  // Force the next dashboard poll to merge this append with rows written by
+  // other server instances instead of temporarily exposing a partial cache.
+  recordCaseCache.expiresAt = 0;
+  return saved;
+}
+
+async function updateRecordCase(rowNumber, update = {}) {
+  const number = Number(rowNumber); if (!Number.isInteger(number) || number < 2) throw new Error('Invalid row number');
+  const title = await getRecordCaseSheetTitle();
+  const existing = (await getRecordCases({ forceRefresh:true })).find((row) => row.rowNumber === number);
+  if (!existing) throw new Error('Record case not found');
+  const now = new Date().toISOString();
+  const values = [String(update.status || existing.status).slice(0,80), String(update.newTicketNumber ?? existing.newTicketNumber).slice(0,160), String(update.comment ?? existing.comment).slice(0,1000), now, String(update.updatedBy || '').slice(0,160)];
+  await sheets.spreadsheets.values.batchUpdate({ spreadsheetId:RECORD_CASE_SHEET_ID, requestBody:{ valueInputOption:'RAW', data:[
+    { range:`${escapeSheetTitle(title)}!B${number}`, values:[[values[0]]] },
+    { range:`${escapeSheetTitle(title)}!M${number}:P${number}`, values:[[...values.slice(1)]] }
+  ] } });
+  recordCaseCache.expiresAt = 0;
+  return { ...existing, status:values[0], newTicketNumber:values[1], comment:values[2], updatedAt:now, updatedBy:values[4] };
+}
+
 async function getTransit240SheetTitle() {
   if (!transit240SheetTitle) transit240SheetTitle = await resolveSheetTitleByGid(TRANSIT_240_SHEET_ID, TRANSIT_240_SHEET_GID);
   return transit240SheetTitle || 'Sheet1';
@@ -4772,6 +4842,9 @@ module.exports = {
   appendTransit240Record,
   appendCbsScanRecord,
   appendRecordScanRecord,
+  appendRecordCase,
+  getRecordCases,
+  updateRecordCase,
   appendCbsScanNbrdBns,
   deleteCbsScanNbrdBn,
   getCbsScanRecords,
