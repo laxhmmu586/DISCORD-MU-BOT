@@ -100,7 +100,9 @@ test('IRR removes destination and groups Waiting cases by membership', () => {
   assert.doesNotMatch(admin, /<span class="label">(?:Submitted|Destination)<\/span>/);
   assert.doesNotMatch(admin, /Search BN, name, destination/);
   assert.match(admin, /if\(currentView==='Waiting'\)all=\[\.\.\.all\.filter\(membershipType\),\.\.\.all\.filter\(row=>!membershipType\(row\)\)\]/);
-  assert.match(admin, /case-group-title[\s\S]*Members[\s\S]*Regular/);
+  assert.doesNotMatch(admin, /case-group-title|Members \(\$\{|Regular \(\$\{/);
+  assert.match(admin, /member=membershipType\(row\)/);
+  assert.match(admin, /\$\{member\?`<div class="member-cell"[\s\S]*:''\}/);
   assert.match(admin, /function membershipHtml\(row\)/);
   for (const tier of ['Platinum', 'Gold', 'Silver', 'Elite Plus', 'Elite']) assert.match(admin, new RegExp(`return '${tier}'`));
   assert.match(admin, /class="member-cell"><span class="label">Member<\/span>\$\{membershipHtml\(row\)\}/);
