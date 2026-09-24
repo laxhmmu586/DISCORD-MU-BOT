@@ -188,7 +188,7 @@ test('IRR form displays the supplied China Eastern boarding pass image', () => {
 });
 
 
-test('Hotel list and operations report expose complete downloadable passenger details', () => {
+test('Rebook and hotel reports download separately with complete passenger details', () => {
   assert.match(admin, /id="download-hotel">Download Hotel List/);
   assert.match(admin, /hotel-passenger-list\.csv/);
   assert.match(admin, /\['Passenger Name','Phone','Email','Hotel Name','Room #'\]/);
@@ -196,6 +196,10 @@ test('Hotel list and operations report expose complete downloadable passenger de
   assert.match(admin, /Rebook Passengers/);
   assert.match(admin, /New Ticket Number/);
   assert.match(admin, /Hotel Passengers/);
-  assert.match(admin, /operations-report\.csv/);
+  assert.match(admin, /Download Rebook Report/);
+  assert.match(admin, /rebook-report\.csv/);
+  assert.match(admin, /Download Hotel Report/);
+  assert.match(admin, /hotel-report\.csv/);
+  assert.doesNotMatch(admin, /operations-report\.csv|id="download-report"/);
   assert.match(admin, /view==='Hotel'\|\|view==='Report'/);
 });
