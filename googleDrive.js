@@ -3350,13 +3350,19 @@ async function updateRecordCase(rowNumber, update = {}) {
   const existing = (await getRecordCases({ forceRefresh:true })).find((row) => row.rowNumber === number);
   if (!existing) throw new Error('Record case not found');
   const now = new Date().toISOString();
-  const values = [String(update.status || existing.status).slice(0,80), String(update.newTicketNumber ?? existing.newTicketNumber).slice(0,160), String(update.comment ?? existing.comment).slice(0,1000), now, String(update.updatedBy || '').slice(0,160)];
+  const requestedStatus = String(update.status || existing.status).slice(0,80);
+  // Once staff performs any action on a waiting case, it is being handled.
+  // Explicit operational destinations (Hotel/Case Closed/In Progress) win.
+  const nextStatus = existing.status === 'Waiting' && requestedStatus === 'Waiting' ? 'In Progress' : requestedStatus;
+  const values = [nextStatus, String(update.newTicketNumber ?? existing.newTicketNumber).slice(0,160), String(update.comment ?? existing.comment).slice(0,1000), now, String(update.updatedBy || '').slice(0,160)];
   const hotelValues = [String(update.hotelName ?? existing.hotelName).slice(0,200), String(update.hotelAddress ?? existing.hotelAddress).slice(0,500), String(update.hotelConfirmation ?? existing.hotelConfirmation).slice(0,160), String(update.hotelCheckIn ?? existing.hotelCheckIn).slice(0,40), String(update.hotelCheckOut ?? existing.hotelCheckOut).slice(0,40)];
-  const history = Array.isArray(existing.caseHistory) ? [...existing.caseHistory] : [];
+  let history = Array.isArray(existing.caseHistory) ? [...existing.caseHistory] : [];
   const by = values[4] || 'Agent';
   const chatMessage = String(update.chatMessage || '').trim().slice(0, 1000);
   if (values[0] !== existing.status) history.push({ type:'status', status:values[0], message:String(update.comment || '').trim().slice(0,1000), at:now, by });
-  if (chatMessage) history.push({ type:'message', message:chatMessage, at:now, by });
+  if (chatMessage) history.push({ id:`${Date.now()}-${Math.random().toString(36).slice(2, 9)}`, type:'message', message:chatMessage, at:now, by });
+  const deleteMessageIndex = Number(update.deleteMessageIndex);
+  if (Number.isInteger(deleteMessageIndex) && deleteMessageIndex >= 0 && history[deleteMessageIndex]?.type === 'message') history = history.filter((_, index) => index !== deleteMessageIndex);
   await sheets.spreadsheets.values.batchUpdate({ spreadsheetId:RECORD_CASE_SHEET_ID, requestBody:{ valueInputOption:'RAW', data:[
     { range:`${escapeSheetTitle(title)}!B${number}`, values:[[values[0]]] },
     { range:`${escapeSheetTitle(title)}!M${number}:P${number}`, values:[[...values.slice(1)]] },

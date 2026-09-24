@@ -33,7 +33,7 @@ test('IRR cases are archived in the requested Google Sheet and cached for live m
   assert.match(drive, /recordCaseCache = \{ expiresAt:0/);
   assert.match(drive, /Date\.now\(\) \+ 5000/);
   assert.match(drive, /spreadsheets\.values\.append/);
-  assert.match(admin, /setInterval\(load,5000\)/);
+  assert.match(admin, /setInterval\(load,30000\)/);
   assert.match(admin, /New ticket number/);
   assert.match(admin, /Update New TKT/);
   assert.match(admin, /Comment \/ 留言/);
@@ -78,6 +78,11 @@ test('IRR cases keep a progress timeline and persistent conversation history', (
   assert.match(drive, /type:'status'/);
   assert.match(drive, /type:'message'/);
   assert.match(drive, /V\$\{number\}/);
+  assert.match(admin, /data-delete-message/);
+  assert.match(admin, /deleteMessageIndex/);
+  assert.match(drive, /deleteMessageIndex/);
+  assert.match(drive, /existing\.status === 'Waiting'.*'In Progress'/);
+  assert.ok(admin.indexOf('Case Conversation') < admin.indexOf('${recordsHtml(row)}'), 'Records should render after the conversation');
 });
 
 test('IRR form illustrates both sections of the China Eastern boarding pass', () => {
