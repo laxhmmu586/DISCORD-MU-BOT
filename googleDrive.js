@@ -265,7 +265,7 @@ const RECORD_SCAN_SHEET_GID = Number(process.env.RECORD_SCAN_SHEET_GID || 621930
 const RECORD_SCAN_HEADERS = ['BN', 'SEAT', 'FLIGHT NUMBER', 'RAW SCAN'];
 const RECORD_CASE_SHEET_ID = process.env.RECORD_CASE_SHEET_ID || '1t0TS3__Im1tyLy7Hj7CGF8zet_-5TT1986QCodhvYbo';
 const RECORD_CASE_SHEET_GID = Number(process.env.RECORD_CASE_SHEET_GID || 1472152106);
-const RECORD_CASE_HEADERS = ['Submitted At', 'Status', 'BN', 'Passenger Name', 'Phone', 'Email', 'Travel Party', 'Companion BNs', 'Companion PNR Records', 'Intention', 'Final Destination', 'PNR Record', 'New Ticket Number', 'Comment', 'Updated At', 'Updated By', 'Hotel Reservation Number', 'Hotel Price', 'Passenger Wants Refund', 'Reserved', 'Reserved', 'Case History', 'Case Workflow', 'Reserved', 'Reserved', 'Reserved'];
+const RECORD_CASE_HEADERS = ['Submitted At', 'Status', 'BN', 'Passenger Name', 'Phone', 'Email', 'Travel Party', 'Companion BNs', 'Companion PNR Records', 'Intention', 'Final Destination', 'PNR Record', 'New Ticket Number', 'Comment', 'Updated At', 'Updated By', 'Hotel Reservation Number', 'Hotel Price', 'Passenger Wants Refund', 'Reserved', 'Reserved', 'Case History', 'Case Workflow', 'TKT Record', 'Reserved', 'Reserved'];
 const TRANSIT_240_SHEET_ID = process.env.TRANSIT_240_SHEET_ID || '1JqRnDx_uLc2m2SzyZOuHWWJsbkKenlKo60U9zwV9uMQ';
 const TRANSIT_240_SHEET_GID = Number(process.env.TRANSIT_240_SHEET_GID || 527537258);
 const TRANSIT_240_HEADERS = ['Submit Date', 'Passenger Name', 'Seat Number', 'BN Number', 'Passport Nationality Code', 'Passport Expiration Date', 'Itinerary'];
@@ -3311,7 +3311,7 @@ function recordCaseFromRow(values, rowNumber) {
     email:row.Email, travelParty:row['Travel Party'], companionBns:row['Companion BNs'], companionPnrRecords:row['Companion PNR Records'],
     intention:row.Intention, finalDestination:row['Final Destination'], pnrRecord:row['PNR Record'], newTicketNumber:row['New Ticket Number'],
     comment:row.Comment, updatedAt:row['Updated At'], updatedBy:row['Updated By'], hotelReservationNumber:row['Hotel Reservation Number'],
-    hotelPrice:row['Hotel Price'], passengerWantsRefund:row['Passenger Wants Refund'], caseWorkflow:parseRecordCaseWorkflow(row['Case Workflow']),
+    hotelPrice:row['Hotel Price'], passengerWantsRefund:row['Passenger Wants Refund'], tktRecord:row['TKT Record'], caseWorkflow:parseRecordCaseWorkflow(row['Case Workflow']),
     caseHistory:parseRecordCaseHistory(row['Case History'])
   };
 }
@@ -3370,6 +3370,7 @@ async function updateRecordCase(rowNumber, update = {}) {
   const nextStatus = closesCase ? 'Case Closed' : (operationalActions.has(action) ? 'In Progress' : existing.status);
   const values = [nextStatus, String(update.newTicketNumber ?? existing.newTicketNumber).slice(0,160), String(update.comment ?? existing.comment).slice(0,1000), now, String(update.updatedBy || '').slice(0,160)];
   const pnrRecord = String(update.pnrRecord ?? existing.pnrRecord).slice(0,10000);
+  const tktRecord = String(update.tktRecord ?? existing.tktRecord).slice(0,10000);
   const hotelReservationNumber = String(update.hotelReservationNumber ?? existing.hotelReservationNumber).slice(0,160);
   const hotelPrice = String(update.hotelPrice ?? existing.hotelPrice).slice(0,80);
   const passengerWantsRefund = String(action === 'refund' ? 'Yes' : (update.passengerWantsRefund ?? existing.passengerWantsRefund)).slice(0,20);
@@ -3398,7 +3399,7 @@ async function updateRecordCase(rowNumber, update = {}) {
   const chatMessage = String(update.chatMessage || '').trim().slice(0, 1000);
   const actionLabels = { confirmPassenger:'Passenger details and requested handling confirmed', newTicket:'New itinerary provided to passenger', manualPnr:'PNR record manually corrected', manualTkt:'TKT record manually corrected', requestHotel:'Hotel requested', hotel:'Hotel provided', hotelDelivered:'Hotel confirmation provided to passenger', comment:'Comment updated', refund:'Refund information provided / passenger referred to original ticketing channel', caseClose:'Case closed' };
   if (actionLabels[action]) {
-    const detail = action === 'confirmPassenger' ? [requestType, String(update.confirmationNote || '').trim().slice(0,1000)].filter(Boolean).join(' · ') : action === 'newTicket' || action === 'manualTkt' ? values[1] : action === 'manualPnr' ? pnrRecord : action === 'hotel' ? [hotelReservationNumber, hotelPrice].filter(Boolean).join(' · ') : action === 'comment' ? values[2] : action === 'refund' ? passengerWantsRefund : '';
+    const detail = action === 'confirmPassenger' ? [requestType, String(update.confirmationNote || '').trim().slice(0,1000)].filter(Boolean).join(' · ') : action === 'newTicket' ? values[1] : action === 'manualTkt' ? tktRecord : action === 'manualPnr' ? pnrRecord : action === 'hotel' ? [hotelReservationNumber, hotelPrice].filter(Boolean).join(' · ') : action === 'comment' ? values[2] : action === 'refund' ? passengerWantsRefund : '';
     history.push({ type:'status', status:values[0], message:[actionLabels[action], detail].filter(Boolean).join(': '), at:now, by });
   }
   if (chatMessage) history.push({ id:`${Date.now()}-${Math.random().toString(36).slice(2, 9)}`, type:'message', message:chatMessage, at:now, by });
@@ -3412,6 +3413,7 @@ async function updateRecordCase(rowNumber, update = {}) {
     { range:`${escapeSheetTitle(title)}!V${number}`, values:[[JSON.stringify(history)]] }
   ];
   if (update.pnrRecord !== undefined) data.push({ range:`${escapeSheetTitle(title)}!L${number}`, values:[[pnrRecord]] });
+  if (update.tktRecord !== undefined) data.push({ range:`${escapeSheetTitle(title)}!X${number}`, values:[[tktRecord]] });
   if (update.newTicketNumber !== undefined) data.push({ range:`${escapeSheetTitle(title)}!M${number}`, values:[[values[1]]] });
   if (update.comment !== undefined) data.push({ range:`${escapeSheetTitle(title)}!N${number}`, values:[[values[2]]] });
   if (update.hotelReservationNumber !== undefined) data.push({ range:`${escapeSheetTitle(title)}!Q${number}`, values:[[hotelReservationNumber]] });
@@ -3420,7 +3422,7 @@ async function updateRecordCase(rowNumber, update = {}) {
   if (actionLabels[action] && action !== 'comment') data.push({ range:`${escapeSheetTitle(title)}!W${number}`, values:[[JSON.stringify(caseWorkflow)]] });
   await sheets.spreadsheets.values.batchUpdate({ spreadsheetId:RECORD_CASE_SHEET_ID, requestBody:{ valueInputOption:'RAW', data } });
   recordCaseCache.expiresAt = 0;
-  return { ...existing, status:values[0], pnrRecord, newTicketNumber:values[1], comment:values[2], updatedAt:now, updatedBy:values[4], hotelReservationNumber, hotelPrice, passengerWantsRefund, caseWorkflow, caseHistory:history };
+  return { ...existing, status:values[0], pnrRecord, tktRecord, newTicketNumber:values[1], comment:values[2], updatedAt:now, updatedBy:values[4], hotelReservationNumber, hotelPrice, passengerWantsRefund, caseWorkflow, caseHistory:history };
 }
 
 async function getTransit240SheetTitle() {

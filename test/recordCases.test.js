@@ -87,7 +87,9 @@ test('agents can manually correct mismatched PNR and TKT records', () => {
   assert.match(drive, /manualPnr:'PNR record manually corrected'/);
   assert.match(drive, /manualTkt:'TKT record manually corrected'/);
   assert.match(drive, /!L\$\{number\}/);
-  assert.match(drive, /!M\$\{number\}/);
+  assert.match(drive, /!X\$\{number\}/);
+  assert.match(admin, /body\.tktRecord=body\.manualTicketNumber/);
+  assert.match(admin, /row\.tktRecord/);
 });
 
 test('case rows show the new ticket number between passenger and status', () => {
@@ -145,7 +147,8 @@ test('hotel requests move to the Hotel queue before a hotel agent adds the reser
   assert.match(drive, /if \(action === 'requestHotel'\) completeStep\('hotelRequested'\)/);
   assert.match(drive, /requestHotel:'Hotel requested'/);
   assert.match(drive, /caseWorkflow\.hotelRequested && !caseWorkflow\.hotelProvided/);
-  assert.match(admin, /name="hotelReservationNumber"/);
+  assert.match(admin, /Reservation Number \(optional\)/);
+  assert.doesNotMatch(admin, /body\.action==='hotel'&&!body\.hotelReservationNumber\.trim/);
   assert.match(admin, /name="hotelPrice"/);
   assert.doesNotMatch(admin, /name="hotelAddress"|name="hotelCheckIn"/);
   assert.match(drive, /'Hotel Reservation Number'.*'Hotel Price'.*'Passenger Wants Refund'/);
