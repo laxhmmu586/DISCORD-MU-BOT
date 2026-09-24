@@ -132,6 +132,17 @@ test('CBS sheets automatically remove data older than two years', () => {
     assert.match(drive, new RegExp(`getCbsRetainedSheetRows\\(\\{ title, sheetId:${gid},`));
   }
 });
+
+test('On-hand and Bag Room reads share a short cache and tolerate Sheets quota bursts', () => {
+  assert.match(drive, /CBS_UNRESOLVED_CACHE_TTL_MS/);
+  assert.match(drive, /cbsUnresolvedBaggageCache\.expiresAt > Date\.now\(\)/);
+  assert.match(drive, /cbsUnresolvedBaggageCache\.pending/);
+  assert.match(drive, /\/quota\|rate limit\|429\/i[\s\S]*return cbsUnresolvedBaggageCache\.rows/);
+  const reader = drive.match(/async function getCbsUnresolvedBaggageCases[\s\S]*?\n}/)?.[0] || '';
+  assert.match(reader, /CBS_UNRESOLVED_BAGGAGE_SHEET_GID/);
+  assert.doesNotMatch(reader, /CBS_NOT_LOAD_BAGGAGE_SHEET_GID/);
+  assert.equal((drive.match(/invalidateCbsUnresolvedBaggageCache\(\);/g) || []).length >= 9, true);
+});
 test('public CBS forms do not CC the operations Gmail account', () => {
   const caseEmail = drive.match(/async function sendCbsCaseEmail[\s\S]*?\n}/)?.[0] || '';
   const wrongBaggageEmail = drive.match(/async function sendWrongBaggageCaseEmail[\s\S]*?\n}/)?.[0] || '';
