@@ -64,7 +64,8 @@ test('IRR tracks the passenger confirmation, handling, document delivery, and cl
   assert.doesNotMatch(admin, /Handle rebooking or refund request/);
   assert.match(admin, /if\(flow\.requestType==='rebooking'\)steps\.push/);
   assert.match(admin, /if\(flow\.requestType==='refund'\)steps\.push/);
-  assert.match(admin, /if\(flow\.hotelProvided\)\{steps\.push/);
+  assert.match(admin, /if\(flow\.hotelRequested\|\|flow\.hotelProvided\)\{steps\.push/);
+  assert.match(admin, /label:'Request hotel'/);
   assert.match(admin, /Select rebooking or refund/);
   assert.match(drive, /'Case Workflow'/);
   assert.match(drive, /passengerConfirmed/);
@@ -116,7 +117,7 @@ test('IRR dashboard uses MUIRR navigation and separates operational queues', () 
   assert.match(admin, /data-view="Waiting"/);
   assert.match(admin, /data-view="In Progress"/);
   assert.match(admin, /data-view="Hotel"/);
-  assert.match(admin, /const hasHotel=row=>Boolean\(row\.hotelReservationNumber\|\|row\.caseWorkflow\?\.hotelProvided\)/);
+  assert.match(admin, /const hasHotel=row=>Boolean\(row\.hotelReservationNumber\|\|row\.caseWorkflow\?\.hotelRequested\|\|row\.caseWorkflow\?\.hotelProvided\)/);
   assert.match(admin, /rows\.filter\(hasHotel\)\.length/);
   assert.match(admin, /data-view="Case Closed"/);
   assert.match(admin, /normalizedStatus/);
@@ -137,7 +138,13 @@ test('IRR is linked below Security Check instead of the primary navigation', () 
   assert.match(home, /location\.href='irr\.html'/);
 });
 
-test('hotel assignments store only reservation number and optional price', () => {
+test('hotel requests move to the Hotel queue before a hotel agent adds the reservation', () => {
+  assert.match(admin, /value="requestHotel">Request Hotel/);
+  assert.match(admin, /currentView==='Hotel'\?'<option value="hotel">Provide Hotel/);
+  assert.match(admin, /body\.action==='requestHotel'\?'Hotel'/);
+  assert.match(drive, /if \(action === 'requestHotel'\) completeStep\('hotelRequested'\)/);
+  assert.match(drive, /requestHotel:'Hotel requested'/);
+  assert.match(drive, /caseWorkflow\.hotelRequested && !caseWorkflow\.hotelProvided/);
   assert.match(admin, /name="hotelReservationNumber"/);
   assert.match(admin, /name="hotelPrice"/);
   assert.doesNotMatch(admin, /name="hotelAddress"|name="hotelCheckIn"/);

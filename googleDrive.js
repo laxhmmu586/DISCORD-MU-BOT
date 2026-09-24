@@ -3365,7 +3365,7 @@ async function updateRecordCase(rowNumber, update = {}) {
     throw error;
   }
   const action = String(update.action || '');
-  const operationalActions = new Set(['confirmPassenger', 'newTicket', 'manualPnr', 'manualTkt', 'hotel', 'hotelDelivered', 'comment', 'refund']);
+  const operationalActions = new Set(['confirmPassenger', 'newTicket', 'manualPnr', 'manualTkt', 'requestHotel', 'hotel', 'hotelDelivered', 'comment', 'refund']);
   const closesCase = action === 'caseClose';
   const nextStatus = closesCase ? 'Case Closed' : (operationalActions.has(action) ? 'In Progress' : existing.status);
   const values = [nextStatus, String(update.newTicketNumber ?? existing.newTicketNumber).slice(0,160), String(update.comment ?? existing.comment).slice(0,1000), now, String(update.updatedBy || '').slice(0,160)];
@@ -3377,24 +3377,26 @@ async function updateRecordCase(rowNumber, update = {}) {
   const caseWorkflow = { ...(existing.caseWorkflow || {}) };
   const requestType = String(update.requestType || '').toLowerCase();
   if (action === 'confirmPassenger' && !['rebooking', 'refund'].includes(requestType)) throw new Error('Select rebooking or refund when confirming with the passenger.');
-  if (['newTicket', 'hotel', 'refund'].includes(action) && !caseWorkflow.passengerConfirmed) throw new Error('Confirm the passenger details before handling the request.');
+  if (['newTicket', 'requestHotel', 'hotel', 'refund'].includes(action) && !caseWorkflow.passengerConfirmed) throw new Error('Confirm the passenger details before handling the request.');
   if (action === 'newTicket' && caseWorkflow.requestType !== 'rebooking') throw new Error('The passenger must select rebooking before a new itinerary is provided.');
   if (action === 'refund' && caseWorkflow.requestType !== 'refund') throw new Error('The passenger must select refund before refund information is provided.');
   if (action === 'hotelDelivered' && !caseWorkflow.hotelProvided) throw new Error('Add the hotel reservation before providing its confirmation.');
   if (action === 'caseClose' && !caseWorkflow.passengerConfirmed) throw new Error('Confirm the passenger details before closing the case.');
   if (action === 'caseClose' && caseWorkflow.requestType === 'rebooking' && !caseWorkflow.itineraryDelivered) throw new Error('Provide the new itinerary before closing the case.');
   if (action === 'caseClose' && caseWorkflow.requestType === 'refund' && !caseWorkflow.refundRequested) throw new Error('Provide refund information before closing the case.');
+  if (action === 'caseClose' && caseWorkflow.hotelRequested && !caseWorkflow.hotelProvided) throw new Error('Provide the requested hotel before closing the case.');
   if (action === 'caseClose' && caseWorkflow.hotelProvided && !caseWorkflow.hotelConfirmationDelivered) throw new Error('Provide the hotel confirmation before closing the case.');
   const completeStep = (name) => { caseWorkflow[name] = { at:now, by }; };
   if (action === 'confirmPassenger') { completeStep('passengerConfirmed'); caseWorkflow.requestType = requestType; }
   if (action === 'newTicket') { completeStep('ticketChanged'); completeStep('itineraryDelivered'); }
+  if (action === 'requestHotel') completeStep('hotelRequested');
   if (action === 'hotel') completeStep('hotelProvided');
   if (action === 'hotelDelivered') completeStep('hotelConfirmationDelivered');
   if (action === 'refund') completeStep('refundRequested');
   if (action === 'caseClose') completeStep('caseClosed');
   let history = Array.isArray(existing.caseHistory) ? [...existing.caseHistory] : [];
   const chatMessage = String(update.chatMessage || '').trim().slice(0, 1000);
-  const actionLabels = { confirmPassenger:'Passenger details and requested handling confirmed', newTicket:'New itinerary provided to passenger', manualPnr:'PNR record manually corrected', manualTkt:'TKT record manually corrected', hotel:'Hotel provided', hotelDelivered:'Hotel confirmation provided to passenger', comment:'Comment updated', refund:'Refund information provided / passenger referred to original ticketing channel', caseClose:'Case closed' };
+  const actionLabels = { confirmPassenger:'Passenger details and requested handling confirmed', newTicket:'New itinerary provided to passenger', manualPnr:'PNR record manually corrected', manualTkt:'TKT record manually corrected', requestHotel:'Hotel requested', hotel:'Hotel provided', hotelDelivered:'Hotel confirmation provided to passenger', comment:'Comment updated', refund:'Refund information provided / passenger referred to original ticketing channel', caseClose:'Case closed' };
   if (actionLabels[action]) {
     const detail = action === 'confirmPassenger' ? [requestType, String(update.confirmationNote || '').trim().slice(0,1000)].filter(Boolean).join(' · ') : action === 'newTicket' || action === 'manualTkt' ? values[1] : action === 'manualPnr' ? pnrRecord : action === 'hotel' ? [hotelReservationNumber, hotelPrice].filter(Boolean).join(' · ') : action === 'comment' ? values[2] : action === 'refund' ? passengerWantsRefund : '';
     history.push({ type:'status', status:values[0], message:[actionLabels[action], detail].filter(Boolean).join(': '), at:now, by });
