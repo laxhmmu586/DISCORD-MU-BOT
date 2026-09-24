@@ -4605,7 +4605,7 @@
           <form class="test-search-form" id="test-search-form">
             <label class="test-search-field">
               <span>Bag tag number</span>
-              <input id="test-bag-search" type="search" placeholder="MU123456" autocomplete="off" maxlength="8" pattern="[A-Z]{2}[0-9]{6}" required />
+              <input id="test-bag-search" type="search" placeholder="MU123456" autocomplete="off" maxlength="8" pattern="[A-Z0-9]{2}[0-9]{6}" required />
             </label>
             <button class="report-run" type="submit">Search</button>
           </form>
@@ -7307,7 +7307,7 @@
       }
 
       function isValidTestBagTag(value) {
-        return /^[A-Z]{2}\d{6}$/.test(normalizeTestBagTag(value));
+        return /^[A-Z0-9]{2}\d{6}$/.test(normalizeTestBagTag(value));
       }
 
       function currentUserName() {
@@ -7414,7 +7414,7 @@
           : activeMode === "location"
             ? field("Current location", "location", record.location || "", "required")
             : activeMode === "exchange"
-              ? `<div class="test-exchange-summary is-wide"><b>Current tag</b><span class="test-exchange-flow"><span class="test-exchange-old">${escapeHtml(record.bagTag)}</span><span class="test-exchange-arrow" aria-hidden="true">→<span class="test-exchange-arrow-label">Exchange</span></span><span class="test-exchange-new">New tag</span></span></div>${field("New tag number", "newTagNumber", "", 'maxlength="8" pattern="[A-Z]{2}[0-9]{6}" required')}`
+              ? `<div class="test-exchange-summary is-wide"><b>Current tag</b><span class="test-exchange-flow"><span class="test-exchange-old">${escapeHtml(record.bagTag)}</span><span class="test-exchange-arrow" aria-hidden="true">→<span class="test-exchange-arrow-label">Exchange</span></span><span class="test-exchange-new">New tag</span></span></div>${field("New tag number", "newTagNumber", "", 'maxlength="8" pattern="[A-Z0-9]{2}[0-9]{6}" required')}`
               : [
                 field("Tracking number", "trackingNumber", record.trackingNumber || "", "required"),
                 field("Shipping fee", "shippingFee", record.shippingFee || "", "required"),
@@ -7489,7 +7489,7 @@
       async function submitTestExchange(form) {
         const newTagNumber = normalizeTestBagTag(formValue(form, "newTagNumber"));
         const onHandRowNumber = formValue(form, "onHandRowNumber");
-        if (!isValidTestBagTag(newTagNumber)) throw new Error("New tag must match MU123456 format.");
+        if (!isValidTestBagTag(newTagNumber)) throw new Error("New tag must match MU123456, B6123456, or 3U515289 format.");
         if (!onHandRowNumber) throw new Error("Select an Open On-hand tag.");
         const data = await apiJson(`/cbs-unresolved-baggage/${encodeURIComponent(onHandRowNumber)}/update`, {
           method: "POST",
@@ -7505,7 +7505,7 @@
       function renderTestBagEntry(mode, entry = {}, index = 0) {
         const today = ymdFromDate(new Date());
         const selected = (value, target) => value === target ? " selected" : "";
-        const bagTagInput = `<label class="test-field"><span>Bag tag number</span><input name="bagTag" value="${escapeHtml(entry.bagTag || "")}" maxlength="8" pattern="[A-Z]{2}[0-9]{6}" title="Use MU123456 format" autocomplete="off" required /></label>`;
+        const bagTagInput = `<label class="test-field"><span>Bag tag number</span><input name="bagTag" value="${escapeHtml(entry.bagTag || "")}" maxlength="8" pattern="[A-Z0-9]{2}[0-9]{6}" title="Use MU123456, B6123456, or 3U515289 format" autocomplete="off" required /></label>`;
         if (mode === "outbound") {
           const status = entry.status || "Not load bags";
           return `<fieldset class="test-create-entry" data-test-bag-entry>
@@ -7592,7 +7592,7 @@
         if (!testOutput || testBagSearchPending) return;
         const bagTag = normalizeTestBagTag(testBagSearchInput?.value);
         if (!isValidTestBagTag(bagTag)) {
-          testOutput.innerHTML = `<p class="panel-muted status-fail">Bag tag must match MU123456 format.</p>`;
+          testOutput.innerHTML = `<p class="panel-muted status-fail">Bag tag must match MU123456, B6123456, or 3U515289 format.</p>`;
           return;
         }
         if (testBagSearchInput) testBagSearchInput.value = bagTag;
@@ -7639,7 +7639,7 @@
         const saved = [];
         for (const entry of entries) {
           const bagTag = normalizeTestBagTag(entry.bagTag);
-          if (!isValidTestBagTag(bagTag)) throw new Error("Each bag tag must match MU123456 format.");
+          if (!isValidTestBagTag(bagTag)) throw new Error("Each bag tag must match MU123456, B6123456, or 3U515289 format.");
           const isRush = mode === "outbound" && entry.status === "Outbound rush";
           const payload = {
             direction: mode,
@@ -7671,7 +7671,7 @@
         const mode = form.dataset.updateMode || "rush";
         if (mode === "exchange") {
           const newTagNumber = normalizeTestBagTag(formValue(form, "newTagNumber"));
-          if (!isValidTestBagTag(newTagNumber)) throw new Error("New tag must match MU123456 format.");
+          if (!isValidTestBagTag(newTagNumber)) throw new Error("New tag must match MU123456, B6123456, or 3U515289 format.");
           const unresolved = await apiJson('/cbs-unresolved-baggage');
           const onHand = (unresolved?.rows || []).find((row) => !row.resolvedAt && normalizeTestBagTag(row.bagTag) === normalizeTestBagTag(bagTag));
           if (!onHand) throw new Error("This bag does not have an Open On-hand case.");
@@ -8703,7 +8703,7 @@
         const addBagTagButton = event.target.closest("[data-test-add-bag-tag]");
         if (addBagTagButton) {
           const list = addBagTagButton.closest("[data-test-outbound-bag-tags]");
-          list.insertAdjacentHTML("beforeend", `<div class="test-bag-tag-row"><label class="test-field"><span>Bag tag number</span><input name="bagTag" maxlength="8" pattern="[A-Z]{2}[0-9]{6}" title="Use MU123456 format" autocomplete="off" required autofocus /></label><button class="test-bag-tag-remove" type="button" data-test-remove-bag-tag aria-label="Remove bag tag">−</button></div>`);
+          list.insertAdjacentHTML("beforeend", `<div class="test-bag-tag-row"><label class="test-field"><span>Bag tag number</span><input name="bagTag" maxlength="8" pattern="[A-Z0-9]{2}[0-9]{6}" title="Use MU123456, B6123456, or 3U515289 format" autocomplete="off" required autofocus /></label><button class="test-bag-tag-remove" type="button" data-test-remove-bag-tag aria-label="Remove bag tag">−</button></div>`);
           list.lastElementChild?.querySelector('input[name="bagTag"]')?.focus();
           return;
         }
