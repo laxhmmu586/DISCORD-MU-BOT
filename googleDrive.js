@@ -3366,18 +3366,17 @@ async function updateRecordCase(rowNumber, update = {}) {
   }
   const action = String(update.action || '');
   const operationalActions = new Set(['confirmPassenger', 'newTicket', 'itineraryDelivered', 'hotel', 'hotelDelivered', 'comment', 'refund']);
-  const closesCase = action === 'caseClose' || action === 'refundComplete';
+  const closesCase = action === 'caseClose';
   const nextStatus = closesCase ? 'Case Closed' : (operationalActions.has(action) ? 'In Progress' : existing.status);
   const values = [nextStatus, String(update.newTicketNumber ?? existing.newTicketNumber).slice(0,160), String(update.comment ?? existing.comment).slice(0,1000), now, String(update.updatedBy || '').slice(0,160)];
   const hotelReservationNumber = String(update.hotelReservationNumber ?? existing.hotelReservationNumber).slice(0,160);
   const hotelPrice = String(update.hotelPrice ?? existing.hotelPrice).slice(0,80);
-  const passengerWantsRefund = String(action === 'refund' || action === 'refundComplete' ? 'Yes' : (update.passengerWantsRefund ?? existing.passengerWantsRefund)).slice(0,20);
+  const passengerWantsRefund = String(action === 'refund' ? 'Yes' : (update.passengerWantsRefund ?? existing.passengerWantsRefund)).slice(0,20);
   const by = values[4] || 'Agent';
   const caseWorkflow = { ...(existing.caseWorkflow || {}) };
   if (['newTicket', 'hotel', 'refund'].includes(action) && !caseWorkflow.passengerConfirmed) throw new Error('Confirm the passenger details before handling the request.');
   if (action === 'itineraryDelivered' && !caseWorkflow.ticketChanged) throw new Error('Change the ticket before providing the new itinerary.');
   if (action === 'hotelDelivered' && !caseWorkflow.hotelProvided) throw new Error('Add the hotel reservation before providing its confirmation.');
-  if (action === 'refundComplete' && !caseWorkflow.refundRequested) throw new Error('Record the refund request before completing it.');
   const completeStep = (name) => { caseWorkflow[name] = { at:now, by }; };
   if (action === 'confirmPassenger') completeStep('passengerConfirmed');
   if (action === 'newTicket') completeStep('ticketChanged');
@@ -3385,11 +3384,10 @@ async function updateRecordCase(rowNumber, update = {}) {
   if (action === 'hotel') completeStep('hotelProvided');
   if (action === 'hotelDelivered') completeStep('hotelConfirmationDelivered');
   if (action === 'refund') completeStep('refundRequested');
-  if (action === 'refundComplete') completeStep('refundCompleted');
   if (action === 'caseClose') completeStep('caseClosed');
   let history = Array.isArray(existing.caseHistory) ? [...existing.caseHistory] : [];
   const chatMessage = String(update.chatMessage || '').trim().slice(0, 1000);
-  const actionLabels = { confirmPassenger:'Passenger details confirmed', newTicket:'Ticket changed', itineraryDelivered:'New itinerary provided to passenger', hotel:'Hotel provided', hotelDelivered:'Hotel confirmation provided to passenger', comment:'Comment updated', refund:'Passenger requested a refund', refundComplete:'Refund handled and case closed', caseClose:'Case closed' };
+  const actionLabels = { confirmPassenger:'Passenger details confirmed', newTicket:'Ticket changed', itineraryDelivered:'New itinerary provided to passenger', hotel:'Hotel provided', hotelDelivered:'Hotel confirmation provided to passenger', comment:'Comment updated', refund:'Refund information provided / passenger referred to original ticketing channel', caseClose:'Case closed' };
   if (actionLabels[action]) {
     const detail = action === 'confirmPassenger' ? String(update.confirmationNote || '').trim().slice(0,1000) : action === 'newTicket' ? values[1] : action === 'hotel' ? [hotelReservationNumber, hotelPrice].filter(Boolean).join(' · ') : action === 'comment' ? values[2] : action === 'refund' ? passengerWantsRefund : '';
     history.push({ type:'status', status:values[0], message:[actionLabels[action], detail].filter(Boolean).join(': '), at:now, by });

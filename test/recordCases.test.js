@@ -46,13 +46,16 @@ test('IRR tracks the passenger confirmation, handling, document delivery, and cl
   assert.match(admin, /Change Ticket \/ New Ticket Number/);
   assert.match(admin, /New Itinerary Provided/);
   assert.match(admin, /Hotel Confirmation Provided/);
-  assert.match(admin, /Refund Completed & Close/);
+  assert.doesNotMatch(admin, /Refund Completed & Close/);
+  assert.match(admin, /original-channel guidance/);
+  assert.match(admin, /workflow-step \${step\.done\?'done':step\.key===current\?'current':''}/);
   assert.match(admin, /Case Workflow/);
   assert.match(drive, /'Case Workflow'/);
   assert.match(drive, /passengerConfirmed/);
   assert.match(drive, /itineraryDelivered/);
   assert.match(drive, /hotelConfirmationDelivered/);
-  assert.match(drive, /refundCompleted/);
+  assert.doesNotMatch(drive, /refundComplete/);
+  assert.match(drive, /original ticketing channel/);
   assert.match(drive, /!W\$\{number\}/);
 });
 
@@ -82,8 +85,9 @@ test('hotel assignments store only reservation number and optional price', () =>
   assert.match(drive, /!R\$\{number\}/);
 });
 
-test('IRR cases keep a progress timeline and persistent conversation history', () => {
-  assert.match(admin, /Case Progress/);
+test('IRR cases show workflow progress and persistent conversation history', () => {
+  assert.match(admin, /Case Workflow/);
+  assert.match(admin, /workflow-step\.current/);
   assert.match(admin, /Case Conversation/);
   assert.match(admin, /name="chatMessage"/);
   assert.match(admin, /Record - PNR/);
