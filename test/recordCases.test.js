@@ -33,7 +33,13 @@ test('IRR cases are archived in the requested Google Sheet and cached for live m
   assert.match(drive, /recordCaseCache = \{ expiresAt:0/);
   assert.match(drive, /Date\.now\(\) \+ 5000/);
   assert.match(drive, /spreadsheets\.values\.append/);
-  assert.match(admin, /setInterval\(\(\)=>load\(\),60000\)/);
+  assert.match(server, /app\.get\('\/irr-cases\/stream'/);
+  assert.match(server, /Content-Type', 'text\/event-stream'/);
+  assert.match(server, /broadcastIrrCaseUpdate\(record\)/);
+  assert.match(server, /setInterval\(pollIrrCaseStreams, 5000\)/);
+  assert.match(admin, /new EventSource\(`\$\{apiBase\}\/irr-cases\/stream`\)/);
+  assert.match(admin, /stream\.addEventListener\('case-update'/);
+  assert.match(admin, />Connecting…<\/span>/);
   assert.match(admin, /expectedUpdatedAt/);
   assert.match(admin, /New ticket number/);
   assert.match(admin, /New Ticket Number/);
@@ -88,14 +94,31 @@ test('case rows show the new ticket number between passenger and status', () => 
   assert.ok(passenger < ticket && ticket < status);
 });
 
+test('IRR summary rows keep destination in details and show recognized member tiers', () => {
+  assert.doesNotMatch(admin, /<span class="label">Submitted<\/span>/);
+  assert.equal((admin.match(/<span class="label">Destination<\/span>/g) || []).length, 1);
+  assert.match(admin, /function membershipHtml\(row\)/);
+  for (const tier of ['Platinum', 'Gold', 'Silver', 'Elite Plus', 'Elite']) assert.match(admin, new RegExp(`type='${tier}'`));
+  assert.match(admin, /class="passenger-name">\$\{membershipHtml\(row\)\}/);
+});
+
 test('IRR dashboard uses MUIRR navigation and separates operational queues', () => {
   assert.match(admin, /class="brand" href="index\.html">MUIRR</);
   assert.match(admin, /data-view="Waiting"/);
   assert.match(admin, /data-view="In Progress"/);
-  assert.doesNotMatch(admin, /data-view="Hotel"/);
+  assert.match(admin, /data-view="Hotel"/);
+  assert.match(admin, /const hasHotel=row=>Boolean\(row\.hotelReservationNumber\|\|row\.caseWorkflow\?\.hotelProvided\)/);
+  assert.match(admin, /rows\.filter\(hasHotel\)\.length/);
   assert.match(admin, /data-view="Case Closed"/);
   assert.match(admin, /normalizedStatus/);
   assert.doesNotMatch(admin, /Passenger filed|Being handled|Accommodation/);
+});
+
+test('IRR sidebar can collapse and remembers the selected width', () => {
+  assert.match(admin, /id="sidebar-toggle"/);
+  assert.match(admin, /body\.sidebar-collapsed\{padding-left:76px\}/);
+  assert.match(admin, /localStorage\.setItem\('muirr-sidebar-collapsed'/);
+  assert.match(admin, /aria-label',collapsed\?'Expand sidebar':'Collapse sidebar'/);
 });
 
 test('IRR is linked below Security Check instead of the primary navigation', () => {
