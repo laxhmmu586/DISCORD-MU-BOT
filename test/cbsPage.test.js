@@ -21,11 +21,11 @@ test('CBS automatically finds Drive records and saves matching PNRs without a Ch
   assert.match(server, /record\.includes\('===== RECORD ====='\)/);
   assert.match(server, /replaceEventKey:'record-pnr'/);
   assert.match(server, /app\.post\('\/cbs-record-sync'/);
-  assert.match(server, /app\.get\('\/cbs-unresolved-baggage'[\s\S]*res\.json\(\{ rows \}\)[\s\S]*setImmediate\(\(\) => \{ startCbsUnresolvedBackgroundMaintenance\(rows\)/);
+  assert.match(server, /app\.get\('\/cbs-unresolved-baggage'[\s\S]*res\.json\(\{ rows, bagRoomUnloadNoticeSent \}\)[\s\S]*setImmediate\(\(\) => \{ startCbsUnresolvedBackgroundMaintenance\(rows\)/);
   assert.match(server, /runCbsUnresolvedBackgroundMaintenance[\s\S]*startCbsPnrRecordSync\(cases, rows, 'System'\)/);
   assert.match(page, /fetch\(`\$\{apiBase\}\/cbs-unresolved-baggage`, \{ signal:controller\.signal, cache:'no-store' \}\)/);
   assert.match(page, /async function syncCbsPnrRecords[\s\S]*\/cbs-record-sync[\s\S]*Number\(data\.updated\) > 0/);
-  assert.match(page, /renderUnresolvedBaggage\(data\.rows \|\| \[\]\);\s*syncCbsPnrRecords\(\)/);
+  assert.match(page, /renderUnresolvedBaggage\(data\.rows \|\| \[\], Boolean\(data\.bagRoomUnloadNoticeSent\)\);\s*syncCbsPnrRecords\(\)/);
   assert.match(drive, /1QbP-_qSoyIfv_H6NG8fSTxpTK8vfYSvR/);
   assert.match(drive, /1cKMKdeW4BbBY47_hMAW_N_lxnCt0Pulo/);
   assert.match(drive, /findCbsPnrRecordsByBagTag[\s\S]*slice\(-6\)/);
@@ -1328,6 +1328,11 @@ test('Bag Room shows and sends the daily MU586 unload notice only above five bag
   assert.match(page, /window\._bagRoomNoticeSent = true;\s*bagRoomNoticeButton\.hidden = true/);
   assert.match(page, /fetch\(`\$\{apiBase\}\/cbs-bag-room-unload-notice`/);
   assert.match(server, /app\.post\('\/cbs-bag-room-unload-notice'/);
+  assert.match(server, /bagRoomUnloadNoticeWasSent\(isoDate\)/);
+  assert.match(server, /bagRoomUnloadAlertCompleted\.add\(isoDate\);[\s\S]*writeBagRoomUnloadAlertState/);
+  assert.match(server, /res\.json\(\{ rows, bagRoomUnloadNoticeSent \}\)/);
+  assert.match(page, /renderUnresolvedBaggage\(data\.rows \|\| \[\], Boolean\(data\.bagRoomUnloadNoticeSent\)\)/);
+  assert.match(drive, /async function hasSentBagRoomUnloadAlertEmail\(subject\)/);
   assert.match(server, /if \(tags\.length <= 5\)/);
   assert.match(server, /subject:`MU586\/\$\{flightDate\}行李未装运通知`/);
   assert.match(drive, /to = '7X24bag@ceair\.com'/);

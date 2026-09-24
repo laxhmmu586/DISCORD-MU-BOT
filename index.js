@@ -92,6 +92,7 @@ const {
   acknowledgeCbsMissingBag,
   sendCbsCaseEmail,
   sendBagRoomUnloadAlertEmail,
+  hasSentBagRoomUnloadAlertEmail,
   readBagRoomUnloadAlertState,
   writeBagRoomUnloadAlertState,
   sendWrongBaggageCaseEmail,
@@ -2293,6 +2294,7 @@ async function runBagRoomUnloadExpiration() {
 
 const bagRoomUnloadAlertInFlight = new Map();
 const bagRoomUnloadAlertCompleted = new Set();
+const bagRoomUnloadAlertStatusChecked = new Set();
 let bagRoomUnloadAlertStateLoaded = false;
 const BAG_ROOM_UNLOAD_ALERT_ENABLED = String(process.env.BAG_ROOM_UNLOAD_ALERT_ENABLED || '').toLowerCase() === 'true';
 
@@ -2301,6 +2303,18 @@ async function loadBagRoomUnloadAlertStateOnce() {
   const state = await readBagRoomUnloadAlertState();
   (state.sentDates || []).forEach((date) => bagRoomUnloadAlertCompleted.add(date));
   bagRoomUnloadAlertStateLoaded = true;
+}
+
+async function bagRoomUnloadNoticeWasSent(isoDate = todayIsoUtc()) {
+  await loadBagRoomUnloadAlertStateOnce();
+  if (bagRoomUnloadAlertCompleted.has(isoDate)) return true;
+  if (bagRoomUnloadAlertStatusChecked.has(isoDate)) return false;
+  bagRoomUnloadAlertStatusChecked.add(isoDate);
+  const subject = bagRoomUnloadNotice(isoDate, []).subject;
+  if (!await hasSentBagRoomUnloadAlertEmail(subject)) return false;
+  bagRoomUnloadAlertCompleted.add(isoDate);
+  await writeBagRoomUnloadAlertState({ sentDates:[...bagRoomUnloadAlertCompleted] });
+  return true;
 }
 
 async function notifyBagRoomUnloadAfterCc(syInfo, isoDate) {
@@ -3388,7 +3402,10 @@ app.get('/cbs-unresolved-baggage', async (req, res) => {
     });
     // Only the sheet read is part of this request. Expiry checks, cross-sheet
     // linking, and Drive PNR scans run after the response so cases render fast.
-    res.json({ rows });
+    let bagRoomUnloadNoticeSent = false;
+    try { bagRoomUnloadNoticeSent = await bagRoomUnloadNoticeWasSent(); }
+    catch (err) { console.error('Bag Room Unload notice status error:', err); }
+    res.json({ rows, bagRoomUnloadNoticeSent });
     setImmediate(() => { startCbsUnresolvedBackgroundMaintenance(rows); });
     return;
   } catch (err) {
@@ -3400,11 +3417,14 @@ app.get('/cbs-unresolved-baggage', async (req, res) => {
 app.post('/cbs-bag-room-unload-notice', async (req, res) => {
   try {
     const isoDate = todayIsoUtc();
+    if (await bagRoomUnloadNoticeWasSent(isoDate)) return res.json({ sent:false, duplicate:true });
     const rows = await getCbsUnresolvedBaggageCases({ includeResolved:true });
     const tags = todaysBagRoomUnloadTags(rows, isoDate);
     if (tags.length <= 5) return res.status(400).json({ error:'More than five Bag Room Unload bags are required today.', count:tags.length });
     const message = bagRoomUnloadNotice(isoDate, tags);
     const email = await sendBagRoomUnloadAlertEmail(message);
+    bagRoomUnloadAlertCompleted.add(isoDate);
+    await writeBagRoomUnloadAlertState({ sentDates:[...bagRoomUnloadAlertCompleted] });
     return res.json({ sent:true, count:tags.length, tags, email });
   } catch (err) {
     console.error('Bag Room Unload notice email error:', err);

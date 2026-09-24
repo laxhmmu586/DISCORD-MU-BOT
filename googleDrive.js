@@ -4783,6 +4783,22 @@ async function sendBagRoomUnloadAlertEmail({ subject, text, to = '7X24bag@ceair.
   return { sent:true, id:sent.data.id || '', to, cc, subject, authMode };
 }
 
+async function hasSentBagRoomUnloadAlertEmail(subject) {
+  const { gmail, userId } = getNextDayInfoGmailClient();
+  const exactSubject = String(subject || '').replace(/"/g, '').trim();
+  if (!exactSubject) return false;
+  const result = await gmail.users.messages.list({
+    userId,
+    q:`in:sent subject:"${exactSubject}" newer_than:2d`,
+    maxResults:10,
+    fields:'messages(id,internalDate)'
+  });
+  // The subject contains the operation date (for example 24SEP), so a recent
+  // exact-subject match is sufficient. Gmail's list response does not always
+  // include internalDate unless each message is fetched separately.
+  return Boolean(result.data.messages?.length);
+}
+
 async function sendCbsCaseEmail({ passengerEmail, subject, html, text, pdfBuffer, filename, attachments = [] }) {
   const { gmail, userId } = getNextDayInfoGmailClient();
   const to = String(passengerEmail || '').trim();
@@ -4957,6 +4973,7 @@ module.exports = {
   acknowledgeCbsMissingBag,
   sendCbsCaseEmail,
   sendBagRoomUnloadAlertEmail,
+  hasSentBagRoomUnloadAlertEmail,
   readBagRoomUnloadAlertState,
   writeBagRoomUnloadAlertState,
   sendWrongBaggageCaseEmail,

@@ -948,8 +948,9 @@
       }).join('')}</tbody></table></div>${listPaginationHtml(listKey, pagination)}`;
       requestAnimationFrame(syncCaseProgressHeights);
     }
-    function renderUnresolvedBaggage(rows = []) {
+    function renderUnresolvedBaggage(rows = [], bagRoomUnloadNoticeSent = false) {
       window._unresolvedBaggageSourceRows = rows;
+      if (bagRoomUnloadNoticeSent) window._bagRoomNoticeSent = true;
       const today = new Date().toLocaleDateString('en-CA', { timeZone:'America/Los_Angeles' });
       const todayBagRoomTags = new Set(rows.filter((row) => isNotLoadBag(row) && row.flightDate === today && (!row.resolvedAt || ['other', 'email'].includes(String(row.resolution || '').toLowerCase()))).map((row) => String(row.bagTag || '').trim().toUpperCase()).filter(Boolean));
       bagRoomNoticeButton.hidden = Boolean(window._bagRoomNoticeSent) || todayBagRoomTags.size <= 5 || window._caseView === 'closed';
@@ -993,7 +994,7 @@
         const res = await fetch(`${apiBase}/cbs-unresolved-baggage`, { signal:controller.signal, cache:'no-store' });
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || 'On-hand baggage lookup failed');
-        renderUnresolvedBaggage(data.rows || []);
+        renderUnresolvedBaggage(data.rows || [], Boolean(data.bagRoomUnloadNoticeSent));
         syncCbsPnrRecords();
       } catch (error) {
         const message = error.name === 'AbortError' ? 'Case loading timed out. Please use Refresh to try again.' : error.message;
