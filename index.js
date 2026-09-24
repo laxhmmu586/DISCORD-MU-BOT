@@ -3042,8 +3042,7 @@ app.post('/irr-form-submissions', async (req, res) => {
     const phone = String(req.body?.phone || '').trim().slice(0, 80);
     const email = String(req.body?.email || '').trim().slice(0, 180);
     const intention = String(req.body?.intention || '').trim().slice(0, 1000);
-    const finalDestination = String(req.body?.finalDestination || '').trim().toUpperCase().slice(0, 120);
-    if (!bn || !phone || !isValidEmail(email) || !intention || !finalDestination || (travelParty === 'companions' && !companionBns.length)) return res.status(400).json({ error:'Please complete all required fields.' });
+    if (!bn || !phone || !isValidEmail(email) || !intention || (travelParty === 'companions' && !companionBns.length)) return res.status(400).json({ error:'Please complete all required fields.' });
     const passenger = await recordPassengerByBn(bn);
     if (!passenger) return res.status(404).json({ error:'BN was not found in today’s flight record.', code:'BN_NOT_FOUND' });
     // The main lookup has already refreshed today's record. Reuse the parsed
@@ -3054,7 +3053,7 @@ app.post('/irr-form-submissions', async (req, res) => {
     const submittedAt = new Date().toISOString();
     const saved = await appendRecordCase({ submittedAt, status:'Waiting', bn, passengerName:passenger.name || '', phone, email, travelParty,
       companionBns:companionBns.join(', '), companionPnrRecords:companions.map((item) => `BN ${item.bn} — ${item.passenger.name || ''}\n${item.passenger.sourceText || ''}`).join('\n\n'),
-      intention, finalDestination, pnrRecord:passenger.sourceText || '' });
+      intention, finalDestination:'', pnrRecord:passenger.sourceText || '' });
     broadcastIrrCaseUpdate(saved);
     return res.status(201).json({ created:true, record:saved });
   } catch (err) {

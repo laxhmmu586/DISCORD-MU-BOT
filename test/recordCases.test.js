@@ -13,7 +13,7 @@ test('IRR form is bilingual, conditionally collects companions, and prevents dup
   assert.match(form, /Flight Irregularity Assistance/);
   assert.match(form, /航班异常特殊处理/);
   assert.match(form, /Boarding number \(BN\)/);
-  assert.match(form, /本次旅途最终目的地/);
+  assert.doesNotMatch(form, /本次旅途最终目的地|Final destination|name="finalDestination"/);
   assert.match(form, /name="travelParty" value="companions"/);
   assert.match(form, /companionInput\.required=show/);
   assert.match(form, /if\(submitting\)return/);
@@ -24,7 +24,9 @@ test('IRR submissions resolve main and companion BNs from the current flight rec
   assert.match(server, /app\.post\('\/irr-form-submissions'/);
   assert.match(server, /recordPassengerByBn\(bn\)/);
   assert.match(server, /Companion BN not found/);
-  assert.match(server, /pnrRecord:passenger\.sourceText/);
+  assert.match(server, /status:'Waiting'/);
+  assert.match(server, /intention, finalDestination:'', pnrRecord:passenger\.sourceText/);
+  assert.doesNotMatch(server.match(/app\.post\('\/irr-form-submissions'[\s\S]*?app\.get\('\/irr-cases'/)?.[0] || '', /req\.body\?\.finalDestination/);
 });
 
 test('IRR cases are archived in the requested Google Sheet and cached for live multi-user reads', () => {
@@ -94,11 +96,13 @@ test('case rows show the new ticket number between passenger and status', () => 
   assert.ok(passenger < ticket && ticket < status);
 });
 
-test('IRR summary rows keep destination in details and show recognized member tiers', () => {
-  assert.doesNotMatch(admin, /<span class="label">Submitted<\/span>/);
-  assert.equal((admin.match(/<span class="label">Destination<\/span>/g) || []).length, 1);
+test('IRR removes destination and groups Waiting cases by membership', () => {
+  assert.doesNotMatch(admin, /<span class="label">(?:Submitted|Destination)<\/span>/);
+  assert.doesNotMatch(admin, /Search BN, name, destination/);
+  assert.match(admin, /if\(currentView==='Waiting'\)all=\[\.\.\.all\.filter\(membershipType\),\.\.\.all\.filter\(row=>!membershipType\(row\)\)\]/);
+  assert.match(admin, /case-group-title[\s\S]*Members[\s\S]*Regular/);
   assert.match(admin, /function membershipHtml\(row\)/);
-  for (const tier of ['Platinum', 'Gold', 'Silver', 'Elite Plus', 'Elite']) assert.match(admin, new RegExp(`type='${tier}'`));
+  for (const tier of ['Platinum', 'Gold', 'Silver', 'Elite Plus', 'Elite']) assert.match(admin, new RegExp(`return '${tier}'`));
   assert.match(admin, /class="member-cell"><span class="label">Member<\/span>\$\{membershipHtml\(row\)\}/);
   assert.match(admin, /member-badge[\s\S]*<svg viewBox=/);
   assert.doesNotMatch(admin, /short='(?:P|G|S|E)'/);
