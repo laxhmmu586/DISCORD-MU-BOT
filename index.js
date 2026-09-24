@@ -2958,7 +2958,7 @@ app.get('/irr-cases', async (_req, res) => {
 
 app.post('/irr-cases/:rowNumber', async (req, res) => {
   try { return res.json({ updated:true, record:await updateRecordCase(req.params.rowNumber, req.body || {}) }); }
-  catch (err) { return res.status(422).json({ error:err?.message || 'Case could not be updated.' }); }
+  catch (err) { return res.status(err?.code === 'EDIT_CONFLICT' ? 409 : 422).json({ error:err?.message || 'Case could not be updated.', code:err?.code }); }
 });
 
 

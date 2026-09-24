@@ -33,17 +33,47 @@ test('IRR cases are archived in the requested Google Sheet and cached for live m
   assert.match(drive, /recordCaseCache = \{ expiresAt:0/);
   assert.match(drive, /Date\.now\(\) \+ 5000/);
   assert.match(drive, /spreadsheets\.values\.append/);
-  assert.match(admin, /setInterval\(load,30000\)/);
+  assert.match(admin, /setInterval\(\(\)=>load\(\),60000\)/);
+  assert.match(admin, /expectedUpdatedAt/);
   assert.match(admin, /New ticket number/);
-  assert.match(admin, /Update New TKT/);
+  assert.match(admin, /New Ticket Number/);
   assert.match(admin, /Comment \/ 留言/);
+});
+
+test('IRR tracks the passenger confirmation, handling, document delivery, and closure workflow', () => {
+  assert.doesNotMatch(admin, /data-view="Print Queue"/);
+  assert.match(admin, /Confirm with Passenger/);
+  assert.match(admin, /Passenger selected \*/);
+  assert.match(admin, /option value="rebooking">Rebooking/);
+  assert.match(admin, /option value="refund">Refund/);
+  assert.match(admin, /Provide New Itinerary \/ New Ticket Number/);
+  assert.match(admin, /Hotel Confirmation Provided/);
+  assert.doesNotMatch(admin, /Refund Completed & Close/);
+  assert.match(admin, /Provide refund information/);
+  assert.match(admin, /workflow-step \${step\.done\?'done':step\.key===current\?'current':''}/);
+  assert.match(admin, /Case Workflow/);
+  assert.doesNotMatch(admin, /Confirm the passenger, complete the applicable/);
+  assert.doesNotMatch(admin, /Handle rebooking or refund request/);
+  assert.match(admin, /if\(flow\.requestType==='rebooking'\)steps\.push/);
+  assert.match(admin, /if\(flow\.requestType==='refund'\)steps\.push/);
+  assert.match(admin, /if\(flow\.hotelProvided\)\{steps\.push/);
+  assert.match(drive, /'Case Workflow'/);
+  assert.match(drive, /passengerConfirmed/);
+  assert.match(drive, /itineraryDelivered/);
+  assert.match(drive, /hotelConfirmationDelivered/);
+  assert.match(drive, /Provide the new itinerary before closing the case/);
+  assert.match(drive, /Provide refund information before closing the case/);
+  assert.match(drive, /Provide the hotel confirmation before closing the case/);
+  assert.doesNotMatch(drive, /refundComplete/);
+  assert.match(drive, /original ticketing channel/);
+  assert.match(drive, /!W\$\{number\}/);
 });
 
 test('IRR dashboard uses MUIRR navigation and separates operational queues', () => {
   assert.match(admin, /class="brand" href="index\.html">MUIRR</);
   assert.match(admin, /data-view="Waiting"/);
   assert.match(admin, /data-view="In Progress"/);
-  assert.match(admin, /data-view="Hotel"/);
+  assert.doesNotMatch(admin, /data-view="Hotel"/);
   assert.match(admin, /data-view="Case Closed"/);
   assert.match(admin, /normalizedStatus/);
   assert.doesNotMatch(admin, /Passenger filed|Being handled|Accommodation/);
@@ -56,18 +86,18 @@ test('IRR is linked below Security Check instead of the primary navigation', () 
   assert.match(home, /location\.href='irr\.html'/);
 });
 
-test('hotel assignments collect and persist the required accommodation details', () => {
-  assert.match(admin, /name="hotelName"/);
-  assert.match(admin, /name="hotelAddress"/);
-  assert.match(admin, /name="hotelConfirmation"/);
-  assert.match(admin, /name="hotelCheckIn"/);
-  assert.match(admin, /name="hotelCheckOut"/);
-  assert.match(drive, /'Hotel Name'.*'Hotel Address'.*'Hotel Confirmation'.*'Hotel Check-in'.*'Hotel Check-out'/);
-  assert.match(drive, /Q\$\{number\}:U\$\{number\}/);
+test('hotel assignments store only reservation number and optional price', () => {
+  assert.match(admin, /name="hotelReservationNumber"/);
+  assert.match(admin, /name="hotelPrice"/);
+  assert.doesNotMatch(admin, /name="hotelAddress"|name="hotelCheckIn"/);
+  assert.match(drive, /'Hotel Reservation Number'.*'Hotel Price'.*'Passenger Wants Refund'/);
+  assert.match(drive, /!Q\$\{number\}/);
+  assert.match(drive, /!R\$\{number\}/);
 });
 
-test('IRR cases keep a progress timeline and persistent conversation history', () => {
-  assert.match(admin, /Case Progress/);
+test('IRR cases show workflow progress and persistent conversation history', () => {
+  assert.match(admin, /Case Workflow/);
+  assert.match(admin, /workflow-step\.current/);
   assert.match(admin, /Case Conversation/);
   assert.match(admin, /name="chatMessage"/);
   assert.match(admin, /Record - PNR/);
@@ -81,13 +111,11 @@ test('IRR cases keep a progress timeline and persistent conversation history', (
   assert.match(admin, /data-delete-message/);
   assert.match(admin, /deleteMessageIndex/);
   assert.match(drive, /deleteMessageIndex/);
-  assert.match(drive, /existing\.status === 'Waiting'.*'In Progress'/);
+  assert.match(drive, /operationalActions\.has\(action\).*'In Progress'/);
   assert.ok(admin.indexOf('Case Conversation') < admin.indexOf('${recordsHtml(row)}'), 'Records should render after the conversation');
 });
 
-test('IRR form illustrates both sections of the China Eastern boarding pass', () => {
-  assert.match(form, /CHINA EASTERN/);
-  assert.match(form, /BOARDING PASS/);
-  assert.match(form, /SERIAL NO\./);
-  assert.match(form, /class="pass-stub"/);
+test('IRR form displays the supplied China Eastern boarding pass image', () => {
+  assert.match(form, /src="assets\/china-eastern-boarding-pass-example\.png\.png"/);
+  assert.doesNotMatch(form, /class="pass-stub"/);
 });
