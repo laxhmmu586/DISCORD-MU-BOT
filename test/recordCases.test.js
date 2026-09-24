@@ -57,6 +57,7 @@ test('IRR tracks the passenger confirmation, handling, document delivery, and cl
   assert.match(admin, /if\(flow\.requestType==='rebooking'\)steps\.push/);
   assert.match(admin, /if\(flow\.requestType==='refund'\)steps\.push/);
   assert.match(admin, /if\(flow\.hotelProvided\)\{steps\.push/);
+  assert.match(admin, /Select rebooking or refund/);
   assert.match(drive, /'Case Workflow'/);
   assert.match(drive, /passengerConfirmed/);
   assert.match(drive, /itineraryDelivered/);
@@ -67,6 +68,24 @@ test('IRR tracks the passenger confirmation, handling, document delivery, and cl
   assert.doesNotMatch(drive, /refundComplete/);
   assert.match(drive, /original ticketing channel/);
   assert.match(drive, /!W\$\{number\}/);
+});
+
+test('agents can manually correct mismatched PNR and TKT records', () => {
+  assert.match(admin, /Manually Update PNR Record/);
+  assert.match(admin, /Manually Update TKT Record/);
+  assert.match(admin, /name="pnrRecord"/);
+  assert.match(admin, /name="manualTicketNumber"/);
+  assert.match(drive, /manualPnr:'PNR record manually corrected'/);
+  assert.match(drive, /manualTkt:'TKT record manually corrected'/);
+  assert.match(drive, /!L\$\{number\}/);
+  assert.match(drive, /!M\$\{number\}/);
+});
+
+test('case rows show the new ticket number between passenger and status', () => {
+  const passenger = admin.indexOf('<span class="label">Passenger</span>');
+  const ticket = admin.indexOf('<span class="label">New Ticket Number</span>');
+  const status = admin.indexOf('<span class="label">Status</span>');
+  assert.ok(passenger < ticket && ticket < status);
 });
 
 test('IRR dashboard uses MUIRR navigation and separates operational queues', () => {

@@ -3365,10 +3365,11 @@ async function updateRecordCase(rowNumber, update = {}) {
     throw error;
   }
   const action = String(update.action || '');
-  const operationalActions = new Set(['confirmPassenger', 'newTicket', 'hotel', 'hotelDelivered', 'comment', 'refund']);
+  const operationalActions = new Set(['confirmPassenger', 'newTicket', 'manualPnr', 'manualTkt', 'hotel', 'hotelDelivered', 'comment', 'refund']);
   const closesCase = action === 'caseClose';
   const nextStatus = closesCase ? 'Case Closed' : (operationalActions.has(action) ? 'In Progress' : existing.status);
   const values = [nextStatus, String(update.newTicketNumber ?? existing.newTicketNumber).slice(0,160), String(update.comment ?? existing.comment).slice(0,1000), now, String(update.updatedBy || '').slice(0,160)];
+  const pnrRecord = String(update.pnrRecord ?? existing.pnrRecord).slice(0,10000);
   const hotelReservationNumber = String(update.hotelReservationNumber ?? existing.hotelReservationNumber).slice(0,160);
   const hotelPrice = String(update.hotelPrice ?? existing.hotelPrice).slice(0,80);
   const passengerWantsRefund = String(action === 'refund' ? 'Yes' : (update.passengerWantsRefund ?? existing.passengerWantsRefund)).slice(0,20);
@@ -3393,9 +3394,9 @@ async function updateRecordCase(rowNumber, update = {}) {
   if (action === 'caseClose') completeStep('caseClosed');
   let history = Array.isArray(existing.caseHistory) ? [...existing.caseHistory] : [];
   const chatMessage = String(update.chatMessage || '').trim().slice(0, 1000);
-  const actionLabels = { confirmPassenger:'Passenger details and requested handling confirmed', newTicket:'New itinerary provided to passenger', hotel:'Hotel provided', hotelDelivered:'Hotel confirmation provided to passenger', comment:'Comment updated', refund:'Refund information provided / passenger referred to original ticketing channel', caseClose:'Case closed' };
+  const actionLabels = { confirmPassenger:'Passenger details and requested handling confirmed', newTicket:'New itinerary provided to passenger', manualPnr:'PNR record manually corrected', manualTkt:'TKT record manually corrected', hotel:'Hotel provided', hotelDelivered:'Hotel confirmation provided to passenger', comment:'Comment updated', refund:'Refund information provided / passenger referred to original ticketing channel', caseClose:'Case closed' };
   if (actionLabels[action]) {
-    const detail = action === 'confirmPassenger' ? [requestType, String(update.confirmationNote || '').trim().slice(0,1000)].filter(Boolean).join(' · ') : action === 'newTicket' ? values[1] : action === 'hotel' ? [hotelReservationNumber, hotelPrice].filter(Boolean).join(' · ') : action === 'comment' ? values[2] : action === 'refund' ? passengerWantsRefund : '';
+    const detail = action === 'confirmPassenger' ? [requestType, String(update.confirmationNote || '').trim().slice(0,1000)].filter(Boolean).join(' · ') : action === 'newTicket' || action === 'manualTkt' ? values[1] : action === 'manualPnr' ? pnrRecord : action === 'hotel' ? [hotelReservationNumber, hotelPrice].filter(Boolean).join(' · ') : action === 'comment' ? values[2] : action === 'refund' ? passengerWantsRefund : '';
     history.push({ type:'status', status:values[0], message:[actionLabels[action], detail].filter(Boolean).join(': '), at:now, by });
   }
   if (chatMessage) history.push({ id:`${Date.now()}-${Math.random().toString(36).slice(2, 9)}`, type:'message', message:chatMessage, at:now, by });
@@ -3408,6 +3409,7 @@ async function updateRecordCase(rowNumber, update = {}) {
     { range:`${escapeSheetTitle(title)}!O${number}:P${number}`, values:[[now, values[4]]] },
     { range:`${escapeSheetTitle(title)}!V${number}`, values:[[JSON.stringify(history)]] }
   ];
+  if (update.pnrRecord !== undefined) data.push({ range:`${escapeSheetTitle(title)}!L${number}`, values:[[pnrRecord]] });
   if (update.newTicketNumber !== undefined) data.push({ range:`${escapeSheetTitle(title)}!M${number}`, values:[[values[1]]] });
   if (update.comment !== undefined) data.push({ range:`${escapeSheetTitle(title)}!N${number}`, values:[[values[2]]] });
   if (update.hotelReservationNumber !== undefined) data.push({ range:`${escapeSheetTitle(title)}!Q${number}`, values:[[hotelReservationNumber]] });
@@ -3416,7 +3418,7 @@ async function updateRecordCase(rowNumber, update = {}) {
   if (actionLabels[action] && action !== 'comment') data.push({ range:`${escapeSheetTitle(title)}!W${number}`, values:[[JSON.stringify(caseWorkflow)]] });
   await sheets.spreadsheets.values.batchUpdate({ spreadsheetId:RECORD_CASE_SHEET_ID, requestBody:{ valueInputOption:'RAW', data } });
   recordCaseCache.expiresAt = 0;
-  return { ...existing, status:values[0], newTicketNumber:values[1], comment:values[2], updatedAt:now, updatedBy:values[4], hotelReservationNumber, hotelPrice, passengerWantsRefund, caseWorkflow, caseHistory:history };
+  return { ...existing, status:values[0], pnrRecord, newTicketNumber:values[1], comment:values[2], updatedAt:now, updatedBy:values[4], hotelReservationNumber, hotelPrice, passengerWantsRefund, caseWorkflow, caseHistory:history };
 }
 
 async function getTransit240SheetTitle() {
