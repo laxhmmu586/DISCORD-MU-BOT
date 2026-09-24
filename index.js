@@ -3585,7 +3585,7 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
 app.post('/cbs-cases/from-baggage/:bagTag', async (req, res) => {
   try {
     const bagTag = normalizeTestBagTag(req.params.bagTag || req.body?.bagTag);
-    if (!isValidTestBagTag(bagTag)) return res.status(400).json({ error: 'Bag tag must match MU123456 format' });
+    if (!isValidTestBagTag(bagTag)) return res.status(400).json({ error: 'Bag tag must match MU123456, B6123456, or 3U515289 format' });
     const baggage = await findTestBaggageByTag(bagTag);
     if (!baggage) return res.status(404).json({ error: 'Baggage record not found' });
     const existingCase = (await getCbsCases()).find((row) => String(row.bagTag || '').split(/\s*\/\s*/).some((tag) => normalizeCbsBagTag(tag) === bagTag));
@@ -3985,7 +3985,7 @@ app.get('/test-baggage-report', async (req, res) => {
 app.get('/test-baggage/:bagTag', async (req, res) => {
   try {
     const bagTag = normalizeTestBagTag(req.params.bagTag);
-    if (!isValidTestBagTag(bagTag)) return res.status(400).json({ error: 'Bag tag must match MU123456 format' });
+    if (!isValidTestBagTag(bagTag)) return res.status(400).json({ error: 'Bag tag must match MU123456, B6123456, or 3U515289 format' });
     const record = await findTestBaggageByTag(bagTag);
     return res.json({ found: Boolean(record), record });
   } catch (err) {
@@ -3997,7 +3997,7 @@ app.get('/test-baggage/:bagTag', async (req, res) => {
 app.post('/test-baggage', async (req, res) => {
   try {
     const bagTag = normalizeTestBagTag(req.body?.bagTag);
-    if (!isValidTestBagTag(bagTag)) return res.status(400).json({ error: 'Bag tag must match MU123456 format' });
+    if (!isValidTestBagTag(bagTag)) return res.status(400).json({ error: 'Bag tag must match MU123456, B6123456, or 3U515289 format' });
     const direction = cleanBodyText(req.body?.direction, 20).toLowerCase();
     if (!['inbound', 'outbound'].includes(direction)) return res.status(400).json({ error: 'Direction must be inbound or outbound' });
     const date = cleanBodyText(req.body?.date, 20);
@@ -4035,7 +4035,7 @@ app.post('/test-baggage', async (req, res) => {
 app.post('/test-baggage/:bagTag/update', async (req, res) => {
   try {
     const bagTag = normalizeTestBagTag(req.params.bagTag);
-    if (!isValidTestBagTag(bagTag)) return res.status(400).json({ error: 'Bag tag must match MU123456 format' });
+    if (!isValidTestBagTag(bagTag)) return res.status(400).json({ error: 'Bag tag must match MU123456, B6123456, or 3U515289 format' });
     const type = cleanBodyText(req.body?.type, 40).toLowerCase();
     if (!['rush', 'location', 'shipping'].includes(type)) return res.status(400).json({ error: 'Invalid update type' });
     const result = await updateTestBaggageRecord(bagTag, {

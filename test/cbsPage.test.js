@@ -1030,6 +1030,9 @@ test('baggage tag fields accept alphanumeric airline designators including B6 an
   assert.match(server, /isValidRushBagTag\(record\.rushTagNumber\)/);
   assert.match(server, /normalized\.match\(\/\^\(\[A-Z0-9\]\{2\}\)\(\\d\{6,\}\)\$\//);
   assert.match(indexPage, /pattern="\[A-Z0-9\]\{2\}\[0-9\]\{6\}"/);
+  assert.match(drive, /function isValidTestBagTag\(value\)[\s\S]*?\^\[A-Z0-9\]\{2\}\\d\{6\}\$/);
+  assert.match(drive, /exchangeCbsUnresolvedBaggageTag[\s\S]*?\^\[A-Z0-9\]\{2\}\\d\{6\}\$/);
+  assert.doesNotMatch(drive, /Bag tag must match MU123456 format/);
 });
 
 test('Passenger Filed displays multiple bag tags on separate lines', () => {
