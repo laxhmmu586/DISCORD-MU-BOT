@@ -2923,7 +2923,7 @@ async function recordPassengerByBn(bn) {
   return passengers[bn] || null;
 }
 
-app.post('/record-form-submissions', async (req, res) => {
+app.post('/irr-form-submissions', async (req, res) => {
   try {
     const bn = normalizeRecordBn(req.body?.bn);
     const companionBns = [...new Set((Array.isArray(req.body?.companionBns) ? req.body.companionBns : String(req.body?.companionBns || '').split(/[,\s]+/)).map(normalizeRecordBn).filter(Boolean))];
@@ -2951,12 +2951,12 @@ app.post('/record-form-submissions', async (req, res) => {
   }
 });
 
-app.get('/record-cases', async (_req, res) => {
+app.get('/irr-cases', async (_req, res) => {
   try { return res.json({ rows:await getRecordCases() }); }
   catch (err) { return res.status(500).json({ error:err?.message || 'Cases could not be loaded.' }); }
 });
 
-app.post('/record-cases/:rowNumber', async (req, res) => {
+app.post('/irr-cases/:rowNumber', async (req, res) => {
   try { return res.json({ updated:true, record:await updateRecordCase(req.params.rowNumber, req.body || {}) }); }
   catch (err) { return res.status(422).json({ error:err?.message || 'Case could not be updated.' }); }
 });
