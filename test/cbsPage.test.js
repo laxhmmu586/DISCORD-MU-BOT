@@ -64,6 +64,16 @@ test('CBS sidebar uses the MUBC brand', () => {
   assert.doesNotMatch(page, /<a class="brand" href="index\.html">MUFC<\/a>/);
 });
 
+test('CBS dashboards use a shared SSE connection for multi-user updates', () => {
+  assert.match(server, /app\.get\('\/cbs-live-stream'/);
+  assert.match(server, /const cbsStreamClients = new Set\(\)/);
+  assert.match(server, /broadcastCbsRefresh\(req\.path\)/);
+  assert.match(page, /new EventSource\(`\$\{apiBase\}\/cbs-live-stream`\)/);
+  assert.match(page, /stream\.addEventListener\('refresh', scheduleCbsLiveRefresh\)/);
+  assert.match(page, /document\.activeElement\?\.closest\('form'\)/);
+  assert.match(page, /id="cbs-live-status"/);
+});
+
 test('mobile CBS navigation spans the viewport without table content widening the page', () => {
   assert.match(page, /html,body\{max-width:100%;overflow-x:hidden\}/);
   assert.match(page, /header,body\.sidebar-collapsed header\{left:0;right:0;width:auto;max-width:100%\}/);

@@ -94,6 +94,14 @@ test('case rows show the new ticket number between passenger and status', () => 
   assert.ok(passenger < ticket && ticket < status);
 });
 
+test('IRR summary rows keep destination in details and show recognized member tiers', () => {
+  assert.doesNotMatch(admin, /<span class="label">Submitted<\/span>/);
+  assert.equal((admin.match(/<span class="label">Destination<\/span>/g) || []).length, 1);
+  assert.match(admin, /function membershipHtml\(row\)/);
+  for (const tier of ['Platinum', 'Gold', 'Silver', 'Elite Plus', 'Elite']) assert.match(admin, new RegExp(`type='${tier}'`));
+  assert.match(admin, /class="passenger-name">\$\{membershipHtml\(row\)\}/);
+});
+
 test('IRR dashboard uses MUIRR navigation and separates operational queues', () => {
   assert.match(admin, /class="brand" href="index\.html">MUIRR</);
   assert.match(admin, /data-view="Waiting"/);

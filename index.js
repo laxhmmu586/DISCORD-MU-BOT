@@ -993,6 +993,53 @@ app.use(
   express.static('public')
 );
 
+const cbsStreamClients = new Set();
+let cbsKeepAliveTimer = null;
+
+function broadcastCbsRefresh(reason = 'update') {
+  const payload = `event: refresh\ndata: ${JSON.stringify({ reason, at:new Date().toISOString() })}\n\n`;
+  for (const stream of cbsStreamClients) stream.write(payload);
+}
+
+function startCbsKeepAlive() {
+  if (cbsKeepAliveTimer) return;
+  cbsKeepAliveTimer = setInterval(() => {
+    for (const stream of cbsStreamClients) stream.write(': keep-alive\n\n');
+  }, 15000);
+  cbsKeepAliveTimer.unref?.();
+}
+
+function stopCbsKeepAliveIfIdle() {
+  if (cbsStreamClients.size || !cbsKeepAliveTimer) return;
+  clearInterval(cbsKeepAliveTimer);
+  cbsKeepAliveTimer = null;
+}
+
+app.get('/cbs-live-stream', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders?.();
+  cbsStreamClients.add(res);
+  res.write(`event: connected\ndata: ${JSON.stringify({ at:new Date().toISOString() })}\n\n`);
+  startCbsKeepAlive();
+  req.on('close', () => {
+    cbsStreamClients.delete(res);
+    stopCbsKeepAliveIfIdle();
+  });
+});
+
+// Notify every CBS dashboard after a successful mutation. A single event lets
+// each browser refresh all related queues together without manual reloading.
+app.use((req, res, next) => {
+  const isCbsMutation = req.method !== 'GET' && req.path !== '/cbs-record-sync' && /^\/(?:cbs-|wrong-baggage-submissions)/.test(req.path);
+  if (isCbsMutation) res.on('finish', () => {
+    if (res.statusCode >= 200 && res.statusCode < 300) broadcastCbsRefresh(req.path);
+  });
+  next();
+});
+
 app.get('/attachment-drop.js', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'public', 'attachment-drop.js'));
 });
