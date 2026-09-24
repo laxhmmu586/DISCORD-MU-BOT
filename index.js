@@ -2923,6 +2923,70 @@ async function recordPassengerByBn(bn) {
   return passengers[bn] || null;
 }
 
+const irrCaseStreamClients = new Set();
+let irrCaseStreamTimer = null;
+let irrCaseStreamSignature = '';
+
+function writeIrrCaseEvent(res, event, data) {
+  res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+}
+
+function broadcastIrrCaseUpdate(record) {
+  for (const client of irrCaseStreamClients) writeIrrCaseEvent(client, 'case-update', { record });
+}
+
+async function pollIrrCaseStreams() {
+  if (!irrCaseStreamClients.size) return;
+  try {
+    // One shared Sheets read serves every connected dashboard and also detects
+    // writes handled by another API instance.
+    const rows = await getRecordCases({ forceRefresh:true });
+    const signature = JSON.stringify(rows.map((row) => [row.rowNumber, row.updatedAt, row.status]));
+    if (signature !== irrCaseStreamSignature) {
+      irrCaseStreamSignature = signature;
+      for (const client of irrCaseStreamClients) writeIrrCaseEvent(client, 'cases', { rows });
+    } else {
+      for (const client of irrCaseStreamClients) client.write(': keep-alive\n\n');
+    }
+  } catch (err) {
+    console.error('IRR live sync failed:', err);
+  }
+}
+
+function startIrrCaseStreamTimer() {
+  if (irrCaseStreamTimer) return;
+  irrCaseStreamTimer = setInterval(pollIrrCaseStreams, 5000);
+  irrCaseStreamTimer.unref?.();
+}
+
+function stopIrrCaseStreamTimerIfIdle() {
+  if (irrCaseStreamClients.size || !irrCaseStreamTimer) return;
+  clearInterval(irrCaseStreamTimer);
+  irrCaseStreamTimer = null;
+  irrCaseStreamSignature = '';
+}
+
+app.get('/irr-cases/stream', async (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders?.();
+  irrCaseStreamClients.add(res);
+  startIrrCaseStreamTimer();
+  try {
+    const rows = await getRecordCases();
+    irrCaseStreamSignature = JSON.stringify(rows.map((row) => [row.rowNumber, row.updatedAt, row.status]));
+    writeIrrCaseEvent(res, 'cases', { rows });
+  } catch (err) {
+    writeIrrCaseEvent(res, 'sync-error', { error:err?.message || 'Live sync could not be started.' });
+  }
+  req.on('close', () => {
+    irrCaseStreamClients.delete(res);
+    stopIrrCaseStreamTimerIfIdle();
+  });
+});
+
 app.post('/irr-form-submissions', async (req, res) => {
   try {
     const bn = normalizeRecordBn(req.body?.bn);
@@ -2944,6 +3008,7 @@ app.post('/irr-form-submissions', async (req, res) => {
     const saved = await appendRecordCase({ submittedAt, status:'Waiting', bn, passengerName:passenger.name || '', phone, email, travelParty,
       companionBns:companionBns.join(', '), companionPnrRecords:companions.map((item) => `BN ${item.bn} — ${item.passenger.name || ''}\n${item.passenger.sourceText || ''}`).join('\n\n'),
       intention, finalDestination, pnrRecord:passenger.sourceText || '' });
+    broadcastIrrCaseUpdate(saved);
     return res.status(201).json({ created:true, record:saved });
   } catch (err) {
     console.error('Record form submission failed:', err);
@@ -2957,8 +3022,11 @@ app.get('/irr-cases', async (_req, res) => {
 });
 
 app.post('/irr-cases/:rowNumber', async (req, res) => {
-  try { return res.json({ updated:true, record:await updateRecordCase(req.params.rowNumber, req.body || {}) }); }
-  catch (err) { return res.status(err?.code === 'EDIT_CONFLICT' ? 409 : 422).json({ error:err?.message || 'Case could not be updated.', code:err?.code }); }
+  try {
+    const record = await updateRecordCase(req.params.rowNumber, req.body || {});
+    broadcastIrrCaseUpdate(record);
+    return res.json({ updated:true, record });
+  } catch (err) { return res.status(err?.code === 'EDIT_CONFLICT' ? 409 : 422).json({ error:err?.message || 'Case could not be updated.', code:err?.code }); }
 });
 
 
