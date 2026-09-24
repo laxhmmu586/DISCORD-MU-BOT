@@ -24,6 +24,8 @@ test('CBS automatically finds Drive records and saves matching PNRs without a Ch
   assert.match(server, /app\.get\('\/cbs-unresolved-baggage'[\s\S]*res\.json\(\{ rows \}\)[\s\S]*setImmediate\(\(\) => \{ startCbsUnresolvedBackgroundMaintenance\(rows\)/);
   assert.match(server, /runCbsUnresolvedBackgroundMaintenance[\s\S]*startCbsPnrRecordSync\(cases, rows, 'System'\)/);
   assert.match(page, /fetch\(`\$\{apiBase\}\/cbs-unresolved-baggage`, \{ signal:controller\.signal, cache:'no-store' \}\)/);
+  assert.match(page, /async function syncCbsPnrRecords[\s\S]*\/cbs-record-sync[\s\S]*Number\(data\.updated\) > 0/);
+  assert.match(page, /renderUnresolvedBaggage\(data\.rows \|\| \[\]\);\s*syncCbsPnrRecords\(\)/);
   assert.match(drive, /1QbP-_qSoyIfv_H6NG8fSTxpTK8vfYSvR/);
   assert.match(drive, /1cKMKdeW4BbBY47_hMAW_N_lxnCt0Pulo/);
   assert.match(drive, /findCbsPnrRecordsByBagTag[\s\S]*slice\(-6\)/);
