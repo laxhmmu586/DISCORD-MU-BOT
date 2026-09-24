@@ -22,6 +22,12 @@
     .page-tab:is([data-has-open-reports="true"],[data-has-missing-worldtracer="true"]) { border-color:#f2c94c !important; background:#f7d154 !important; color:#3d3100 !important; box-shadow:inset 3px 0 0 #fff0a6,0 6px 18px rgba(242,201,76,.28) !important; }
     .page-tab:is([data-has-open-reports="true"],[data-has-missing-worldtracer="true"]) .page-tab-icon { color:#3d3100 !important; }
     .header-spacer { flex:1; }
+    .cbs-live-status { display:flex; align-items:center; gap:8px; padding:0 14px; color:#c9ddf4; font-size:11px; font-weight:850; }
+    .cbs-live-status::before { content:""; width:8px; height:8px; border-radius:50%; background:#efb72d; box-shadow:0 0 0 3px rgba(239,183,45,.16); }
+    .cbs-live-status.connected::before { background:#45d39b; box-shadow:0 0 0 3px rgba(69,211,155,.15); }
+    .cbs-live-status.reconnecting::before { animation:cbs-live-pulse 1.2s ease-in-out infinite; }
+    @keyframes cbs-live-pulse { 50% { opacity:.35; } }
+    body.sidebar-collapsed .cbs-live-status { justify-content:center; padding:0; font-size:0; }
     .sidebar-toggle { position:fixed; z-index:11; left:229px; top:50%; display:grid; place-items:center; width:38px; height:38px; padding:0; border:3px solid #eaf4ff; border-radius:999px; background:#245fce; color:#fff; box-shadow:0 7px 18px rgba(11,46,93,.28); transform:translateY(-50%); transition:left .2s ease,transform .2s ease; }
     .sidebar-toggle svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
     body.sidebar-collapsed { padding-left:76px; }
@@ -377,6 +383,7 @@
       <button class="page-tab" id="closed-cases-tab" type="button" title="Closed Case"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h6l2 2h8v10H4z"/><path d="m8 14 2 2 5-5"/></svg></span><span class="page-tab-label"><span class="en">Closed Case</span><span class="zh">已结案件</span></span></button>
     </nav>
     <span class="header-spacer"></span>
+    <span class="cbs-live-status reconnecting" id="cbs-live-status" role="status">Connecting…</span>
     <div class="sidebar-actions">
       <button class="sidebar-action" id="sidebar-refresh" type="button" title="Refresh"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6v5h-5M4 18v-5h5M6.1 9A7 7 0 0 1 18 6l2 5M4 13l2 5a7 7 0 0 0 11.9-3"/></svg><span class="sidebar-action-label">Refresh</span></button>
       <button class="sidebar-action" id="sidebar-logout" type="button" title="Logout"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 5H5v14h5m4-4 4-3-4-3m4 3H9"/></svg><span class="sidebar-action-label">Logout</span></button>
@@ -2359,6 +2366,41 @@
         await loadCases();
       } catch (error) { alert(error.message); } finally { button.disabled = false; button.textContent = originalText; }
     });
+    const cbsLiveStatus = document.querySelector('#cbs-live-status');
+    let cbsLiveConnected = false;
+    let cbsLiveRefreshTimer = null;
+    let cbsLiveRefreshPending = false;
+    function setCbsLiveStatus(text, state = '') {
+      cbsLiveStatus.textContent = text;
+      cbsLiveStatus.className = `cbs-live-status ${state}`.trim();
+    }
+    async function refreshCbsLiveData() {
+      if (document.activeElement?.closest('form')) {
+        cbsLiveRefreshPending = true;
+        clearTimeout(cbsLiveRefreshTimer);
+        cbsLiveRefreshTimer = setTimeout(refreshCbsLiveData, 2000);
+        return;
+      }
+      if (cbsLiveRefreshPending === 'loading') return;
+      cbsLiveRefreshPending = 'loading';
+      try {
+        await Promise.all([loadCases(), loadMissingReports(), loadUnresolvedBaggage(), loadWorldTracerCases()]);
+      } finally {
+        cbsLiveRefreshPending = false;
+      }
+    }
+    function scheduleCbsLiveRefresh() {
+      cbsLiveRefreshPending = true;
+      clearTimeout(cbsLiveRefreshTimer);
+      cbsLiveRefreshTimer = setTimeout(refreshCbsLiveData, 250);
+    }
+    function connectCbsLiveSync() {
+      if (!window.EventSource) { setCbsLiveStatus('Periodic sync'); return; }
+      const stream = new EventSource(`${apiBase}/cbs-live-stream`);
+      stream.addEventListener('connected', () => { cbsLiveConnected = true; setCbsLiveStatus('Live', 'connected'); });
+      stream.addEventListener('refresh', scheduleCbsLiveRefresh);
+      stream.onerror = () => { cbsLiveConnected = false; setCbsLiveStatus('Reconnecting…', 'reconnecting'); };
+    }
     resetRushFlightRows();
     const initialSection = new URLSearchParams(window.location.search).get('section') === 'missing' ? 'missing' : 'open';
     showSection(initialSection);
@@ -2367,6 +2409,8 @@
     loadWorldTracerCases();
     syncMissingReports();
     loadUnresolvedBaggage();
+    connectCbsLiveSync();
+    setInterval(() => { if (!cbsLiveConnected) scheduleCbsLiveRefresh(); }, 30000);
   </script>
   <script src="/attachment-drop.js"></script>
 </body>
