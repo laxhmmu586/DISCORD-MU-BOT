@@ -1018,15 +1018,18 @@ test('Missing Bag Report offers Create Rush and Acknowledge for open rows', () =
   assert.match(server, /action === 'link-rush'/);
 });
 
-test('Rush Bag tag fields require an airline designator and six digits, including B6', () => {
+test('baggage tag fields accept alphanumeric airline designators including B6 and 3U', () => {
   assert.match(page, /function rushBagTagNumber\(value, airline = ''\)/);
-  assert.match(page, /\^\[A-Z\]\[A-Z0-9\]\[0-9\]\{6\}\$/);
+  assert.match(page, /\^\[A-Z0-9\]\{2\}\[0-9\]\{6\}\$/);
   assert.match(page, /`\$\{airlineCode\}\$\{tag\.slice\(-6\)\}`/);
-  assert.match(page, /pattern="\[A-Za-z\]\[A-Za-z0-9\]\[0-9\]\{6\}" minlength="8" maxlength="8"/);
-  assert.match(page, /DL123456 or B6123456/);
+  assert.match(page, /pattern="\[A-Za-z0-9\]\{2\}\[0-9\]\{6\}" minlength="8" maxlength="8"/);
+  assert.match(page, /DL123456, B6123456, or 3U515289/);
   assert.match(server, /function isValidRushBagTag\(value\)/);
+  assert.match(server, /\^\[A-Z0-9\]\{2\}\[0-9\]\{6\}\$/);
   assert.match(server, /isValidRushBagTag\(record\.originalTagNumber\)/);
   assert.match(server, /isValidRushBagTag\(record\.rushTagNumber\)/);
+  assert.match(server, /normalized\.match\(\/\^\(\[A-Z0-9\]\{2\}\)\(\\d\{6,\}\)\$\//);
+  assert.match(indexPage, /pattern="\[A-Z0-9\]\{2\}\[0-9\]\{6\}"/);
 });
 
 test('Passenger Filed displays multiple bag tags on separate lines', () => {

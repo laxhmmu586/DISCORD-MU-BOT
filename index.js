@@ -1442,7 +1442,7 @@ function normalizeTestBagTag(value) {
 }
 
 function isValidTestBagTag(value) {
-  return /^[A-Z]{2}\d{6}$/.test(normalizeTestBagTag(value));
+  return /^[A-Z0-9]{2}\d{6}$/.test(normalizeTestBagTag(value));
 }
 
 function cleanBodyText(value, maxLength = 500) {
@@ -1455,7 +1455,7 @@ function sanitizeCbsText(value, maxLength = 1000) {
 }
 
 function isValidRushBagTag(value) {
-  return /^[A-Z][A-Z0-9][0-9]{6}$/.test(String(value || '').trim().toUpperCase());
+  return /^[A-Z0-9]{2}[0-9]{6}$/.test(String(value || '').trim().toUpperCase());
 }
 
 function sanitizeCbsEmailBody(value, maxLength = 12000) {
@@ -1472,7 +1472,7 @@ function isValidEmail(value) {
 
 function normalizeCbsBagTag(value) {
   const normalized = String(value || '').trim().toUpperCase().replace(/\s+/g, '');
-  const match = normalized.match(/^([A-Z]{2})(\d{6,})$/);
+  const match = normalized.match(/^([A-Z0-9]{2})(\d{6,})$/);
   if (match) return `${match[1]}${match[2].slice(-6)}`;
   return normalized;
 }
@@ -3169,7 +3169,7 @@ const CBS_BAG_TAG_AIRLINES = Object.freeze({ '001':'AA', '006':'DL', '016':'UA',
 
 function normalizeRecordCheckBagTag(value) {
   const compact = String(value || '').trim().toUpperCase().replace(/[\s-]+/g, '');
-  if (/^[A-Z][A-Z0-9]\d{6}$/.test(compact)) return { display:compact, serial:compact.slice(-6) };
+  if (/^[A-Z0-9]{2}\d{6}$/.test(compact)) return { display:compact, serial:compact.slice(-6) };
   const digits = compact.replace(/\D/g, '');
   if (digits.length === 10) return { display:`${CBS_BAG_TAG_AIRLINES[digits.slice(1, 4)] || digits.slice(1, 4)}${digits.slice(-6)}`, serial:digits.slice(-6) };
   if (digits.length === 6) return { display:digits, serial:digits };
@@ -3301,7 +3301,7 @@ app.post('/cbs-worldtracer-cases', async (req, res) => {
     };
     const invalidFlight = !record.flightRows.length || record.flightRows.some((flight) => Object.values(flight).some((value) => !value));
     if (!isValidRushBagTag(record.originalTagNumber) || !isValidRushBagTag(record.rushTagNumber) || invalidFlight) {
-      return res.status(400).json({ error: 'Original and RUSH tags must use an airline code followed by 6 digits (for example DL123456 or B6123456), and complete flight segments are required' });
+      return res.status(400).json({ error: 'Original and RUSH tags must use an airline code followed by 6 digits (for example DL123456, B6123456, or 3U515289), and complete flight segments are required' });
     }
     const result = await saveLinkedRushBag(record);
     result.matchedBagRoomUnloadCases = await matchBagRoomUnloadCasesForRush(result.record);
@@ -3328,7 +3328,7 @@ app.post('/cbs-worldtracer-cases/update', async (req, res) => {
       worldTracerFileNumber: sanitizeCbsText(body.worldTracerFileNumber, 120).toUpperCase(), originalTagNumber: sanitizeCbsText(body.originalTagNumber, 120).toUpperCase(), rushTagNumber: sanitizeCbsText(body.rushTagNumber, 120).toUpperCase(), createdAt:sanitizeCbsText(body.createdAt, 40),
       flightRows:(Array.isArray(body.flightRows) ? body.flightRows : []).slice(0, 20).map((flight) => ({ flightDate:sanitizeCbsText(flight?.flightDate, 40), flightNumber:sanitizeCbsText(flight?.flightNumber, 40).toUpperCase(), from:sanitizeCbsText(flight?.from, 40).toUpperCase(), to:sanitizeCbsText(flight?.to, 40).toUpperCase() }))
     };
-    if (!isValidRushBagTag(record.originalTagNumber) || !isValidRushBagTag(record.rushTagNumber) || !record.flightRows.length || record.flightRows.some((flight) => Object.values(flight).some((value) => !value))) return res.status(400).json({ error:'Original and RUSH tags must use an airline code followed by 6 digits (for example DL123456 or B6123456), and complete flight segments are required' });
+    if (!isValidRushBagTag(record.originalTagNumber) || !isValidRushBagTag(record.rushTagNumber) || !record.flightRows.length || record.flightRows.some((flight) => Object.values(flight).some((value) => !value))) return res.status(400).json({ error:'Original and RUSH tags must use an airline code followed by 6 digits (for example DL123456, B6123456, or 3U515289), and complete flight segments are required' });
     const requestedRows = new Set((Array.isArray(body.rowNumbers) ? body.rowNumbers : []).map(Number));
     const allRushBags = await getCbsWorldTracerCases();
     const previousRecord = allRushBags.find((item) =>
@@ -3547,7 +3547,7 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
       const worldTracerFileNumber = sanitizeCbsText(req.body?.worldTracerFileNumber, 120).toUpperCase();
       const originalTagNumber = sanitizeCbsText(req.body?.originalTagNumber || req.body?.bagTagNumber, 120).toUpperCase();
       const rushTagNumber = sanitizeCbsText(req.body?.rushTagNumber, 120).toUpperCase();
-      if (!isValidRushBagTag(originalTagNumber) || !isValidRushBagTag(rushTagNumber) || !flightRows.length || flightRows.some((flight) => Object.values(flight).some((value) => !value))) return res.status(400).json({ error: 'Original and RUSH tags must use an airline code followed by 6 digits (for example DL123456 or B6123456), and complete flight segments are required' });
+      if (!isValidRushBagTag(originalTagNumber) || !isValidRushBagTag(rushTagNumber) || !flightRows.length || flightRows.some((flight) => Object.values(flight).some((value) => !value))) return res.status(400).json({ error: 'Original and RUSH tags must use an airline code followed by 6 digits (for example DL123456, B6123456, or 3U515289), and complete flight segments are required' });
       await saveLinkedRushBag({ worldTracerFileNumber, originalTagNumber, rushTagNumber, flightRows, createdAt: new Date().toISOString() });
     }
     const updatedBy = sanitizeCbsText(req.body?.updatedBy, 160);
@@ -4005,7 +4005,7 @@ app.post('/test-baggage', async (req, res) => {
     const flight = cleanBodyText(req.body?.flight, 20).toUpperCase();
     if (!/^[A-Z]{2}\d{1,4}[A-Z]?$/.test(flight)) return res.status(400).json({ error: 'Missing or invalid flight number' });
     const rushTagNumber = cleanBodyText(req.body?.rushTagNumber, 80).toUpperCase();
-    if (rushTagNumber && !isValidRushBagTag(rushTagNumber)) return res.status(400).json({ error: 'RUSH tag must use an airline code followed by 6 digits, for example DL123456 or B6123456' });
+    if (rushTagNumber && !isValidRushBagTag(rushTagNumber)) return res.status(400).json({ error: 'RUSH tag must use an airline code followed by 6 digits, for example DL123456, B6123456, or 3U515289' });
     const result = await appendTestBaggageRecord({
       bagTag,
       direction,
