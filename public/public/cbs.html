@@ -783,7 +783,7 @@
         if (!res.ok) throw new Error(data.error || 'Rush Bag case lookup failed');
         const nextRows = data.rows || [];
         const signature = JSON.stringify(nextRows);
-        if (window._worldTracerSignature === signature) return;
+        if (window._silentCbsRefresh && window._worldTracerSignature === signature) return;
         window._worldTracerSignature = signature;
         window._worldTracerRows = nextRows;
         updateRushBagAttention(window._worldTracerRows);
@@ -1002,7 +1002,7 @@
         if (!res.ok) throw new Error(data.error || 'On-hand baggage lookup failed');
         const nextRows = data.rows || [];
         const signature = JSON.stringify([nextRows, Boolean(data.bagRoomUnloadNoticeSent)]);
-        if (window._unresolvedBaggageSignature !== signature) {
+        if (!window._silentCbsRefresh || window._unresolvedBaggageSignature !== signature) {
           window._unresolvedBaggageSignature = signature;
           renderUnresolvedBaggage(nextRows, Boolean(data.bagRoomUnloadNoticeSent));
         }
@@ -1699,7 +1699,7 @@
         if (!res.ok) throw new Error(data.error || 'Case loading failed');
         const nextRows = data.rows || [];
         const signature = JSON.stringify(nextRows);
-        if (window._cbsRowsSignature === signature) return;
+        if (window._silentCbsRefresh && window._cbsRowsSignature === signature) return;
         window._cbsRowsSignature = signature;
         window._cbsRows = nextRows;
         renderCases();
@@ -1768,7 +1768,7 @@
         window._missingReportLoaded = true;
         const nextRows = data.rows || [];
         const signature = JSON.stringify(nextRows);
-        if (window._missingBagSignature === signature) return;
+        if (window._silentCbsRefresh && window._missingBagSignature === signature) return;
         window._missingBagSignature = signature;
         window._missingBagRows = nextRows;
         renderMissingReports(window._missingBagRows);

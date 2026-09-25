@@ -77,8 +77,8 @@ test('CBS dashboards use SSE updates with a 90-second reconciliation fallback', 
   assert.match(page, /_forceCbsRefresh[\s\S]*\?refresh=1/);
   assert.match(page, /window\._silentCbsRefresh = true/);
   assert.match(page, /if \(!window\._silentCbsRefresh\) casesOutput\.innerHTML/);
-  assert.match(page, /window\._cbsRowsSignature === signature/);
-  assert.match(page, /window\._unresolvedBaggageSignature !== signature/);
+  assert.match(page, /window\._silentCbsRefresh && window\._cbsRowsSignature === signature/);
+  assert.match(page, /!window\._silentCbsRefresh \|\| window\._unresolvedBaggageSignature !== signature/);
   assert.match(page, /cbsLiveConnected[\s\S]*90 \* 1000/);
   assert.match(server, /req\.path !== '\/cbs-record-sync'/);
   assert.match(server, /cbsPnrSyncRecent[\s\S]*reason:'recently synced'/);
