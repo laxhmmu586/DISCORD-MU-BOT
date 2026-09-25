@@ -97,6 +97,13 @@ test('CBS storage reads and writes Google Sheets only', () => {
   assert.doesNotMatch(drive, /[Ff]irestore/);
 });
 
+test('Rush Bag list does not display the Created column', () => {
+  const renderer = page.match(/function renderWorldTracerCases[\s\S]*?function updateRushBagAttention/)?.[0] || '';
+  assert.doesNotMatch(renderer, /<th>Created<\/th>|创建时间|toLocaleString\(\)/);
+  assert.match(renderer, /<td colspan="5"><form class="worldtracer-form onhand-update-form"/);
+  assert.match(renderer, /data-created-at=/);
+});
+
 test('Rush Bag storage refreshes the sheet title after a tab rename', () => {
   assert.match(drive, /async function getCbsWorldTracerSheetTitle\(\)[\s\S]*cbsWorldTracerSheetTitle = await resolveSheetTitleByGid/);
   assert.match(drive, /async function getCbsWorldTracerCases\(\) \{\s*const title = await getCbsWorldTracerSheetTitle\(\)/);
