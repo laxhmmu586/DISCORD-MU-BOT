@@ -276,6 +276,7 @@ const CBS_SCAN_INFANT_HEADERS = ['Infant BN', 'Infant Seat', 'Infant Flight', 'I
 let cbsScanSheetTitle = '';
 let recordScanSheetTitle = '';
 let recordCaseSheetTitle = '';
+const RECORD_CASE_CACHE_TTL_MS = Math.max(30000, Number(process.env.RECORD_CASE_CACHE_TTL_MS) || 55000);
 let recordCaseCache = { expiresAt:0, rows:[], pending:null };
 let cbsScanSheetCache = { loadedAt: 0, rows: [] };
 let cbsScanAppendPending = [];
@@ -3328,7 +3329,7 @@ async function getRecordCases(options = {}) {
     // introduced, so an existing sheet never exposes its header as a case row.
     const hasHeaders = RECORD_CASE_HEADERS.slice(0, 16).every((header, index) => String(values[0]?.[index] || '').trim() === header);
     const rows = values.slice(hasHeaders ? 1 : 0).map((row, index) => recordCaseFromRow(row, index + (hasHeaders ? 2 : 1))).filter((row) => row.bn);
-    recordCaseCache = { expiresAt:Date.now() + 5000, rows, pending:null };
+    recordCaseCache = { expiresAt:Date.now() + RECORD_CASE_CACHE_TTL_MS, rows, pending:null };
     return rows;
   })();
   try { return await recordCaseCache.pending; } finally { recordCaseCache.pending = null; }

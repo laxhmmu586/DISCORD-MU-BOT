@@ -2964,6 +2964,32 @@ async function recordPassengerByBn(bn) {
   return passengers[bn] || null;
 }
 
+const irrCaseStreamClients = new Set();
+
+function writeIrrCaseEvent(res, event, data) {
+  res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+}
+
+function broadcastIrrCaseUpdate(record) {
+  for (const client of irrCaseStreamClients) writeIrrCaseEvent(client, 'case-update', { record });
+}
+
+app.get('/irr-cases/stream', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders?.();
+  irrCaseStreamClients.add(res);
+  writeIrrCaseEvent(res, 'connected', { at:new Date().toISOString() });
+  const keepAlive = setInterval(() => res.write(': keep-alive\n\n'), 15000);
+  keepAlive.unref?.();
+  req.on('close', () => {
+    clearInterval(keepAlive);
+    irrCaseStreamClients.delete(res);
+  });
+});
+
 app.post('/irr-form-submissions', async (req, res) => {
   try {
     const bn = normalizeRecordBn(req.body?.bn);

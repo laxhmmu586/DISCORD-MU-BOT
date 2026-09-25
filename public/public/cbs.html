@@ -2418,8 +2418,8 @@
     loadWorldTracerCases();
     syncMissingReports();
     loadUnresolvedBaggage();
-    cbsLiveStatus.textContent = 'Sync every 1 min';
-    setInterval(refreshCbsData, 60000);
+    connectCbsLiveSync();
+    setInterval(scheduleCbsLiveRefresh, 60000);
   </script>
   <script src="/attachment-drop.js"></script>
 </body>
