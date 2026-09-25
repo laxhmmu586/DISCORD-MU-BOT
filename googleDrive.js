@@ -276,6 +276,7 @@ const CBS_SCAN_INFANT_HEADERS = ['Infant BN', 'Infant Seat', 'Infant Flight', 'I
 let cbsScanSheetTitle = '';
 let recordScanSheetTitle = '';
 let recordCaseSheetTitle = '';
+const RECORD_CASE_CACHE_TTL_MS = Math.max(30000, Number(process.env.RECORD_CASE_CACHE_TTL_MS) || 55000);
 let recordCaseCache = { expiresAt:0, rows:[], pending:null };
 let cbsScanSheetCache = { loadedAt: 0, rows: [] };
 let cbsScanAppendPending = [];
@@ -3328,7 +3329,7 @@ async function getRecordCases(options = {}) {
     // introduced, so an existing sheet never exposes its header as a case row.
     const hasHeaders = RECORD_CASE_HEADERS.slice(0, 16).every((header, index) => String(values[0]?.[index] || '').trim() === header);
     const rows = values.slice(hasHeaders ? 1 : 0).map((row, index) => recordCaseFromRow(row, index + (hasHeaders ? 2 : 1))).filter((row) => row.bn);
-    recordCaseCache = { expiresAt:Date.now() + 5000, rows, pending:null };
+    recordCaseCache = { expiresAt:Date.now() + RECORD_CASE_CACHE_TTL_MS, rows, pending:null };
     return rows;
   })();
   try { return await recordCaseCache.pending; } finally { recordCaseCache.pending = null; }
@@ -3915,6 +3916,11 @@ function safeJsonArray(value) {
   }
 }
 
+function cbsUnresolvedRushTag(updateEvents = []) {
+  const event = updateEvents.filter((item) => item?.key === 'on-hand-rush').at(-1);
+  return sanitizeSheetText(new Map(event?.fields || []).get('Rush Tag'), 120).toUpperCase();
+}
+
 async function getCbsUnresolvedBaggageCases(options = {}) {
   if (!cbsUnresolvedBaggageCache.pending && cbsUnresolvedBaggageCache.rows && cbsUnresolvedBaggageCache.expiresAt > Date.now()) {
     const rows = copyCbsUnresolvedBaggageRows(cbsUnresolvedBaggageCache.rows);
@@ -3928,13 +3934,17 @@ async function getCbsUnresolvedBaggageCases(options = {}) {
       // archive copy here doubled Sheets traffic without adding any rows.
       const valuesRows = await getCbsRetainedSheetRows({ title, sheetId:CBS_UNRESOLVED_BAGGAGE_SHEET_GID, range:'A:R', dateIndexes:[7] });
       const startIndex = String(valuesRows[0]?.[0] || '').trim() === CBS_UNRESOLVED_BAGGAGE_HEADERS[0] ? 1 : 0;
-      const rows = valuesRows.slice(startIndex).map((values, index) => ({
-        bagTag:values[0] || '', direction:values[1] || '', flightNumber:values[2] || '', flightDate:values[3] || '',
-        bagType:values[4] || '', status:values[5] || '', location:values[6] || '', createdAt:values[7] || '',
-        resolution:values[8] || '', resolutionNote:values[9] || '', resolvedAt:values[10] || '',
-        worldTracerFileNumber:values[11] || '', worldTracerUpdatedBy:values[12] || '', createdBy:values[13] || '', resolvedBy:values[14] || '',
-        exchangeHistory:safeJsonArray(values[15]), passengerName:values[16] || '', updateEvents:safeJsonArray(values[17]), rowNumber:startIndex + index + 1
-      })).filter((row) => !isCbsOnHandExcludedBag(row))
+      const rows = valuesRows.slice(startIndex).map((values, index) => {
+        const updateEvents = safeJsonArray(values[17]);
+        return {
+          bagTag:values[0] || '', direction:values[1] || '', flightNumber:values[2] || '', flightDate:values[3] || '',
+          bagType:values[4] || '', status:values[5] || '', location:values[6] || '', createdAt:values[7] || '',
+          resolution:values[8] || '', resolutionNote:values[9] || '', resolvedAt:values[10] || '',
+          worldTracerFileNumber:values[11] || '', worldTracerUpdatedBy:values[12] || '', createdBy:values[13] || '', resolvedBy:values[14] || '',
+          exchangeHistory:safeJsonArray(values[15]), passengerName:values[16] || '', updateEvents,
+          rushTagNumber:cbsUnresolvedRushTag(updateEvents), rowNumber:startIndex + index + 1
+        };
+      }).filter((row) => !isCbsOnHandExcludedBag(row))
         .sort((a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0));
       if (cbsUnresolvedBaggageCache.generation === generation) {
         cbsUnresolvedBaggageCache.rows = rows;
@@ -4055,10 +4065,14 @@ async function updateCbsUnresolvedBaggageDetails(rowNumber, update = {}) {
   return { updated:true, record:{ ...target, passengerName:passengerName || target.passengerName, updateEvents } };
 }
 
-async function updateCbsUnresolvedBaggageRush(rowNumber, rush = {}, updatedBy = '') {
-  const rows = await getCbsUnresolvedBaggageCases({ includeResolved:true });
-  const target = rows.find((row) => cbsRecordMatchesId(row, rowNumber));
+async function updateCbsUnresolvedBaggageRush(rowNumber, rush = {}, updatedBy = '', knownTarget = null) {
+  const rows = knownTarget ? [] : await getCbsUnresolvedBaggageCases({ includeResolved:true });
+  const target = knownTarget || rows.find((row) => cbsRecordMatchesId(row, rowNumber));
   if (!target) return { updated:false, notFound:true };
+  return linkCbsUnresolvedBaggageRush(target, rush, updatedBy);
+}
+
+async function linkCbsUnresolvedBaggageRush(target, rush = {}, updatedBy = '') {
   const event = {
     key:'on-hand-rush', title:'Create Rush', at:new Date().toISOString(),
     by:sanitizeSheetText(updatedBy, 160) || 'System',
@@ -4067,14 +4081,16 @@ async function updateCbsUnresolvedBaggageRush(rowNumber, rush = {}, updatedBy = 
       ['Rush Tag', sanitizeSheetText(rush.rushTagNumber, 120).toUpperCase()]
     ].filter(([, value]) => value)
   };
-  const updateEvents = [...(target.updateEvents || []), event];
+  // A bag can only have one current RUSH link. Replace an older link so edits
+  // do not leave a stale tag in history or create duplicate automation events.
+  const updateEvents = [...(target.updateEvents || []).filter((item) => item?.key !== 'on-hand-rush'), event];
   const title = await getCbsUnresolvedBaggageSheetTitle();
   await sheets.spreadsheets.values.update({
     spreadsheetId:CBS_SHEET_ID, range:`${escapeSheetTitle(title)}!R${target.rowNumber}`, valueInputOption:'RAW',
     requestBody:{ values:[[JSON.stringify(updateEvents)]] }
   });
   invalidateCbsUnresolvedBaggageCache();
-  return { updated:true, record:{ ...target, updateEvents } };
+  return { updated:true, record:{ ...target, rushTagNumber:cbsUnresolvedRushTag(updateEvents), updateEvents } };
 }
 
 async function deleteCbsUnresolvedBaggageComment(rowNumber, target = {}) {

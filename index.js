@@ -2264,7 +2264,12 @@ async function matchBagRoomUnloadCasesForRush(rushBag = {}) {
     if (rushBag.worldTracerFileNumber) {
       await updateCbsUnresolvedBaggageWorldTracer(row.rowNumber, rushBag.worldTracerFileNumber, 'Rush Bag automation');
     }
-    matched.push({ ...row, rushTagNumber:rushBag.rushTagNumber, worldTracerFileNumber:rushBag.worldTracerFileNumber || row.worldTracerFileNumber });
+    const linked = await updateCbsUnresolvedBaggageRush(row.rowNumber, {
+      originalTagNumber:rushBag.originalTagNumber,
+      rushTagNumber:rushBag.rushTagNumber
+    }, 'Rush Bag automation', row);
+    cbsUnresolvedRushTagCache.set(String(row.rowNumber), rushBag.rushTagNumber);
+    matched.push({ ...(linked.record || row), worldTracerFileNumber:rushBag.worldTracerFileNumber || row.worldTracerFileNumber });
   }
   return matched;
 }
@@ -3012,8 +3017,6 @@ async function recordPassengerByBn(bn) {
 }
 
 const irrCaseStreamClients = new Set();
-let irrCaseStreamTimer = null;
-let irrCaseStreamSignature = '';
 
 function writeIrrCaseEvent(res, event, data) {
   res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
@@ -3023,55 +3026,19 @@ function broadcastIrrCaseUpdate(record) {
   for (const client of irrCaseStreamClients) writeIrrCaseEvent(client, 'case-update', { record });
 }
 
-async function pollIrrCaseStreams() {
-  if (!irrCaseStreamClients.size) return;
-  try {
-    // One shared Sheets read serves every connected dashboard and also detects
-    // writes handled by another API instance.
-    const rows = await getRecordCases({ forceRefresh:true });
-    const signature = JSON.stringify(rows.map((row) => [row.rowNumber, row.updatedAt, row.status]));
-    if (signature !== irrCaseStreamSignature) {
-      irrCaseStreamSignature = signature;
-      for (const client of irrCaseStreamClients) writeIrrCaseEvent(client, 'cases', { rows });
-    } else {
-      for (const client of irrCaseStreamClients) client.write(': keep-alive\n\n');
-    }
-  } catch (err) {
-    console.error('IRR live sync failed:', err);
-  }
-}
-
-function startIrrCaseStreamTimer() {
-  if (irrCaseStreamTimer) return;
-  irrCaseStreamTimer = setInterval(pollIrrCaseStreams, 5000);
-  irrCaseStreamTimer.unref?.();
-}
-
-function stopIrrCaseStreamTimerIfIdle() {
-  if (irrCaseStreamClients.size || !irrCaseStreamTimer) return;
-  clearInterval(irrCaseStreamTimer);
-  irrCaseStreamTimer = null;
-  irrCaseStreamSignature = '';
-}
-
-app.get('/irr-cases/stream', async (req, res) => {
+app.get('/irr-cases/stream', (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache, no-transform');
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('X-Accel-Buffering', 'no');
   res.flushHeaders?.();
   irrCaseStreamClients.add(res);
-  startIrrCaseStreamTimer();
-  try {
-    const rows = await getRecordCases();
-    irrCaseStreamSignature = JSON.stringify(rows.map((row) => [row.rowNumber, row.updatedAt, row.status]));
-    writeIrrCaseEvent(res, 'cases', { rows });
-  } catch (err) {
-    writeIrrCaseEvent(res, 'sync-error', { error:err?.message || 'Live sync could not be started.' });
-  }
+  writeIrrCaseEvent(res, 'connected', { at:new Date().toISOString() });
+  const keepAlive = setInterval(() => res.write(': keep-alive\n\n'), 15000);
+  keepAlive.unref?.();
   req.on('close', () => {
+    clearInterval(keepAlive);
     irrCaseStreamClients.delete(res);
-    stopIrrCaseStreamTimerIfIdle();
   });
 });
 
@@ -3381,7 +3348,15 @@ async function runCbsUnresolvedBackgroundMaintenance(rows = []) {
       await updateCbsUnresolvedBaggageWorldTracer(row.rowNumber, fileNumber, 'Upcoming Rush match');
     }
     const rushBag = rushBags.filter((item) => normalizedCbsLinkTag(item.originalTagNumber) === normalizedCbsLinkTag(row.bagTag)).at(-1);
-    if (rushBag?.rushTagNumber) cbsUnresolvedRushTagCache.set(String(row.rowNumber), rushBag.rushTagNumber);
+    if (rushBag?.rushTagNumber) {
+      cbsUnresolvedRushTagCache.set(String(row.rowNumber), rushBag.rushTagNumber);
+      if (normalizedCbsLinkTag(row.rushTagNumber) !== normalizedCbsLinkTag(rushBag.rushTagNumber)) {
+        await updateCbsUnresolvedBaggageRush(row.rowNumber, {
+          originalTagNumber:rushBag.originalTagNumber,
+          rushTagNumber:rushBag.rushTagNumber
+        }, 'Rush Bag reconciliation', row);
+      }
+    }
   }
   await startCbsPnrRecordSync(cases, rows, 'System');
 }
@@ -3569,6 +3544,12 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
       const rushTagNumber = sanitizeCbsText(req.body?.rushTagNumber, 120).toUpperCase();
       if (!isValidRushBagTag(originalTagNumber) || !isValidRushBagTag(rushTagNumber) || !flightRows.length || flightRows.some((flight) => Object.values(flight).some((value) => !value))) return res.status(400).json({ error: 'Original and RUSH tags must use an airline code followed by 6 digits (for example DL123456, B6123456, or 3U515289), and complete flight segments are required' });
       await saveLinkedRushBag({ worldTracerFileNumber, originalTagNumber, rushTagNumber, flightRows, createdAt: new Date().toISOString() });
+      const updatedBy = sanitizeCbsText(req.body?.updatedBy, 160);
+      if (worldTracerFileNumber) await updateCbsUnresolvedBaggageWorldTracer(req.params.rowNumber, worldTracerFileNumber, updatedBy);
+      const result = await updateCbsUnresolvedBaggageRush(req.params.rowNumber, { originalTagNumber, rushTagNumber }, updatedBy);
+      if (result.notFound) return res.status(404).json({ error: 'Unresolved baggage case not found' });
+      await syncOnHandStatusToBaggage(result.record, action, req.body);
+      return res.json(result);
     }
     const updatedBy = sanitizeCbsText(req.body?.updatedBy, 160);
     let resolutionNote = action === 'passenger-collected' ? 'Passenger Collected / Case Closed' : note;
