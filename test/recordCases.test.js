@@ -47,9 +47,19 @@ test('IRR pushes saved records live and uses a one-minute reconciliation fallbac
   assert.match(admin, /setTimeout\(\(\)=>applyLiveRecord\(record\),2000\)/);
   assert.match(admin, />Connecting…<\/span>/);
   assert.match(admin, /expectedUpdatedAt/);
+  assert.match(server, /broadcastIrrCaseUpdate\(saved\)/);
+  assert.match(server, /serializeIrrCaseUpdate\(req\.params\.rowNumber/);
+  assert.match(server, /const irrCaseUpdateQueues = new Map\(\)/);
   assert.match(admin, /New ticket number/);
   assert.match(admin, /New Ticket Number/);
   assert.match(admin, /Comment \/ 留言/);
+});
+
+test('IRR serializes edits per case without blocking work on other cases', () => {
+  assert.match(server, /const key = String\(rowNumber\)/);
+  assert.match(server, /irrCaseUpdateQueues\.get\(key\)/);
+  assert.match(server, /irrCaseUpdateQueues\.set\(key, current\)/);
+  assert.match(drive, /update\.expectedUpdatedAt[\s\S]*EDIT_CONFLICT/);
 });
 
 test('IRR tracks the passenger confirmation, handling, document delivery, and closure workflow', () => {

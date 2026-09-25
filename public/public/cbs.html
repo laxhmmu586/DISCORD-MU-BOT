@@ -778,7 +778,7 @@
     async function loadWorldTracerCases() {
       worldTracerOutput.innerHTML = `<p class="muted">${label('Loading cases...', '正在加载案件……')}</p>`;
       try {
-        const res = await fetch(`${apiBase}/cbs-worldtracer-cases`);
+        const res = await fetch(`${apiBase}/cbs-worldtracer-cases${window._forceCbsRefresh?'?refresh=1':''}`);
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || 'Rush Bag case lookup failed');
         window._worldTracerRows = data.rows || [];
@@ -990,7 +990,7 @@
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 45000);
       try {
-        const res = await fetch(`${apiBase}/cbs-unresolved-baggage`, { signal:controller.signal, cache:'no-store' });
+        const res = await fetch(`${apiBase}/cbs-unresolved-baggage${window._forceCbsRefresh?'?refresh=1':''}`, { signal:controller.signal, cache:'no-store' });
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || 'On-hand baggage lookup failed');
         renderUnresolvedBaggage(data.rows || [], Boolean(data.bagRoomUnloadNoticeSent));
@@ -1679,7 +1679,7 @@
     async function loadCases() {
       casesOutput.innerHTML = '<p class="muted">Loading cases...</p>';
       try {
-        const res = await fetch(`${apiBase}/cbs-cases`);
+        const res = await fetch(`${apiBase}/cbs-cases${window._forceCbsRefresh?'?refresh=1':''}`);
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || 'Case loading failed');
         window._cbsRows = data.rows || [];
@@ -1740,7 +1740,7 @@
     }
     async function loadMissingReports() {
       try {
-        const res = await fetch(`${apiBase}/cbs-missing-bags`);
+        const res = await fetch(`${apiBase}/cbs-missing-bags${window._forceCbsRefresh?'?refresh=1':''}`);
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || 'Missing bag report loading failed');
         window._missingReportLoaded = true;
@@ -2399,15 +2399,50 @@
     });
     const cbsLiveStatus = document.querySelector('#cbs-live-status');
     let cbsRefreshInProgress = false;
+    let cbsRefreshTimer = null;
+    let cbsLiveConnected = false;
+    let cbsLastReconciliation = 0;
+    let cbsRefreshQueued = false;
     async function refreshCbsData() {
       // Do not replace controls while an agent is entering or submitting data.
-      if (document.activeElement?.closest('form') || cbsRefreshInProgress) return;
+      if (document.activeElement?.closest('form') || cbsRefreshInProgress) {
+        cbsRefreshQueued = true;
+        clearTimeout(cbsRefreshTimer);
+        cbsRefreshTimer = setTimeout(refreshCbsData, 1000);
+        return;
+      }
       cbsRefreshInProgress = true;
+      cbsRefreshQueued = false;
+      window._forceCbsRefresh = true;
       try {
         await Promise.all([loadCases(), loadMissingReports(), loadUnresolvedBaggage(), loadWorldTracerCases()]);
       } finally {
+        window._forceCbsRefresh = false;
         cbsRefreshInProgress = false;
+        cbsLastReconciliation = Date.now();
       }
+    }
+    function scheduleCbsLiveRefresh(event) {
+      const isLiveInvalidation = event?.type === 'refresh';
+      if (!isLiveInvalidation && cbsLiveConnected && Date.now() - cbsLastReconciliation < 5 * 60 * 1000) return;
+      clearTimeout(cbsRefreshTimer);
+      cbsRefreshTimer = setTimeout(refreshCbsData, 250);
+    }
+    document.addEventListener('focusout', () => { if (cbsRefreshQueued) scheduleCbsLiveRefresh({ type:'refresh' }); });
+    function connectCbsLiveSync() {
+      if (!window.EventSource) return;
+      const stream = new EventSource(`${apiBase}/cbs-live-stream`);
+      stream.addEventListener('connected', () => {
+        cbsLiveConnected = true;
+        cbsLiveStatus.textContent = 'Live · 5 min backup';
+        cbsLiveStatus.className = 'cbs-live-status connected';
+      });
+      stream.addEventListener('refresh', scheduleCbsLiveRefresh);
+      stream.onerror = () => {
+        cbsLiveConnected = false;
+        cbsLiveStatus.textContent = 'Reconnecting…';
+        cbsLiveStatus.className = 'cbs-live-status reconnecting';
+      };
     }
     resetRushFlightRows();
     const initialSection = new URLSearchParams(window.location.search).get('section') === 'missing' ? 'missing' : 'open';
