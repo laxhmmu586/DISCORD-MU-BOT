@@ -428,8 +428,11 @@ test('On-hand and Bag Room rows only show Rush Tag when at least one row has one
   assert.match(page, /escapeHtml\(row\.rushTagNumber \|\| '-'\)/);
   assert.match(server, /async function matchBagRoomUnloadCasesForRush/);
   assert.match(server, /normalizedCbsLinkTag\(row\.bagTag\) === originalTag/);
+  assert.match(server, /updateCbsUnresolvedBaggageRush\(row\.rowNumber, \{/);
+  assert.match(server, /'Rush Bag automation'/);
+  assert.match(drive, /rushTagNumber:cbsUnresolvedRushTag\(updateEvents\)/);
+  assert.match(drive, /filter\(\(item\) => item\?\.key !== 'on-hand-rush'\)/);
   assert.doesNotMatch(server, /resolveCbsUnresolvedBaggageCase\(row\.rowNumber, 'on-hand-rush'/);
-  assert.match(server, /result\.matchedBagRoomUnloadCases = await matchBagRoomUnloadCasesForRush\(saved\)/);
   assert.match(server, /result\.matchedBagRoomUnloadCases = await matchBagRoomUnloadCasesForRush\(result\.record\)/);
 });
 
@@ -599,7 +602,7 @@ test('completed On-hand cases move from Open Case to Closed Case', () => {
 
 test('creating a Rush update keeps the On-hand case open', () => {
   assert.match(server, /updateCbsUnresolvedBaggageRush\(req\.params\.rowNumber, \{ originalTagNumber, rushTagNumber \}, updatedBy\)/);
-  assert.match(drive, /async function updateCbsUnresolvedBaggageRush\(rowNumber, rush = \{\}, updatedBy = ''\)/);
+  assert.match(drive, /async function updateCbsUnresolvedBaggageRush\(rowNumber, rush = \{\}, updatedBy = '', knownTarget = null\)/);
   assert.match(drive, /key:'on-hand-rush', title:'Create Rush'/);
   assert.match(drive, /!R\$\{target\.rowNumber\}/);
   const rushBlock = server.match(/if \(action === 'on-hand-rush'\) \{([\s\S]*?)\n    \}/)?.[1] || '';
