@@ -29,19 +29,17 @@ test('IRR submissions resolve main and companion BNs from the current flight rec
   assert.doesNotMatch(server.match(/app\.post\('\/irr-form-submissions'[\s\S]*?app\.get\('\/irr-cases'/)?.[0] || '', /req\.body\?\.finalDestination/);
 });
 
-test('IRR cases are archived in the requested Google Sheet and cached for live multi-user reads', () => {
+test('IRR cases are archived in Google Sheets and refresh once per minute without SSE', () => {
   assert.match(drive, /1t0TS3__Im1tyLy7Hj7CGF8zet_-5TT1986QCodhvYbo/);
   assert.match(drive, /1472152106/);
   assert.match(drive, /recordCaseCache = \{ expiresAt:0/);
   assert.match(drive, /Date\.now\(\) \+ 5000/);
   assert.match(drive, /spreadsheets\.values\.append/);
-  assert.match(server, /app\.get\('\/irr-cases\/stream'/);
-  assert.match(server, /Content-Type', 'text\/event-stream'/);
-  assert.match(server, /broadcastIrrCaseUpdate\(record\)/);
-  assert.match(server, /setInterval\(pollIrrCaseStreams, 5000\)/);
-  assert.match(admin, /new EventSource\(`\$\{apiBase\}\/irr-cases\/stream`\)/);
-  assert.match(admin, /stream\.addEventListener\('case-update'/);
-  assert.match(admin, />Connecting…<\/span>/);
+  assert.doesNotMatch(server, /app\.get\('\/irr-cases\/stream'/);
+  assert.doesNotMatch(admin, /new EventSource/);
+  assert.match(admin, /setInterval\(refreshIrrCases,60000\)/);
+  assert.match(admin, /document\.activeElement\?\.closest\('form'\)/);
+  assert.match(admin, />Sync every 1 min<\/span>/);
   assert.match(admin, /expectedUpdatedAt/);
   assert.match(admin, /New ticket number/);
   assert.match(admin, /New Ticket Number/);
