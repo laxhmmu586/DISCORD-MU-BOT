@@ -990,6 +990,34 @@ app.use(
   express.json({ limit: JSON_BODY_LIMIT })
 );
 
+// Publish lightweight invalidations instead of making every open dashboard
+// poll Sheets. Storage caches coalesce the reads that arrive after an update.
+const cbsStreamClients = new Set();
+function writeDashboardEvent(res, event, data) { res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`); }
+function broadcastCbsRefresh(pathname) {
+  for (const client of cbsStreamClients) writeDashboardEvent(client, 'refresh', { path:pathname, at:new Date().toISOString() });
+}
+app.use((req, res, next) => {
+  const changesCbsData = (req.path.startsWith('/cbs-') && req.path !== '/cbs-record-sync')
+    || req.path.startsWith('/wrong-baggage-submissions/');
+  if (req.method !== 'GET' && changesCbsData) {
+    res.on('finish', () => { if (res.statusCode >= 200 && res.statusCode < 300) broadcastCbsRefresh(req.path); });
+  }
+  next();
+});
+app.get('/cbs-live-stream', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders?.();
+  cbsStreamClients.add(res);
+  writeDashboardEvent(res, 'connected', { at:new Date().toISOString() });
+  const keepAlive = setInterval(() => res.write(': keep-alive\n\n'), 15000);
+  keepAlive.unref?.();
+  req.on('close', () => { clearInterval(keepAlive); cbsStreamClients.delete(res); });
+});
+
 app.use(
   express.static('public')
 );
@@ -2625,7 +2653,7 @@ async function syncOnHandWorldTracerToRushBag(record, updatedBy = '') {
 
 app.get('/cbs-missing-bags', async (req, res) => {
   try {
-    const result = await getCbsMissingBagReports({ sync: false });
+    const result = await getCbsMissingBagReports({ sync:false, forceRefresh:req.query.refresh === '1' });
     return res.json(result);
   } catch (err) {
     console.error('CBS missing bag report error:', err);
@@ -2729,7 +2757,7 @@ app.post('/cbs-missing-bags/sync', async (req, res) => {
 app.post('/cbs-missing-bags/:rowNumber/create-case', async (req, res) => {
   try {
     const rowNumber = Number(req.params.rowNumber);
-    const report = await getCbsMissingBagReports({ sync: false });
+    const report = await getCbsMissingBagReports({ sync:false, forceRefresh:req.query.refresh === '1' });
     const missing = (report.rows || []).find((row) => Number(row.rowNumber) === rowNumber);
     if (!missing) return res.status(404).json({ error: 'Missing bag row not found' });
     if (missing.caseCreatedAt) return res.json({ created: false, record: missing });
@@ -3015,6 +3043,7 @@ app.post('/irr-form-submissions', async (req, res) => {
     const saved = await appendRecordCase({ submittedAt, status:'Waiting', bn, passengerName:passenger.name || '', phone, email, travelParty,
       companionBns:companionBns.join(', '), companionPnrRecords:companions.map((item) => `BN ${item.bn} — ${item.passenger.name || ''}\n${item.passenger.sourceText || ''}`).join('\n\n'),
       intention, finalDestination:'', pnrRecord:passenger.sourceText || '' });
+    broadcastIrrCaseUpdate(saved);
     return res.status(201).json({ created:true, record:saved });
   } catch (err) {
     console.error('Record form submission failed:', err);
@@ -3027,9 +3056,22 @@ app.get('/irr-cases', async (_req, res) => {
   catch (err) { return res.status(500).json({ error:err?.message || 'Cases could not be loaded.' }); }
 });
 
+const irrCaseUpdateQueues = new Map();
+function serializeIrrCaseUpdate(rowNumber, operation) {
+  const key = String(rowNumber);
+  const previous = irrCaseUpdateQueues.get(key) || Promise.resolve();
+  const current = previous.catch(() => {}).then(operation);
+  irrCaseUpdateQueues.set(key, current);
+  current.finally(() => { if (irrCaseUpdateQueues.get(key) === current) irrCaseUpdateQueues.delete(key); }).catch(() => {});
+  return current;
+}
+
 app.post('/irr-cases/:rowNumber', async (req, res) => {
   try {
-    const record = await updateRecordCase(req.params.rowNumber, req.body || {});
+    // Only serialize the same row: different cases can still be handled at the
+    // same time, while stale edits to one case are rejected deterministically.
+    const record = await serializeIrrCaseUpdate(req.params.rowNumber, () => updateRecordCase(req.params.rowNumber, req.body || {}));
+    broadcastIrrCaseUpdate(record);
     return res.json({ updated:true, record });
   } catch (err) { return res.status(err?.code === 'EDIT_CONFLICT' ? 409 : 422).json({ error:err?.message || 'Case could not be updated.', code:err?.code }); }
 });
@@ -3089,7 +3131,8 @@ app.delete('/cbs-scan/nbrd-bns/:rowNumber', handleCbsScanNbrdDelete);
 
 app.get('/cbs-cases', async (req, res) => {
   try {
-    const [pirRows, wrongBaggageRows] = await Promise.all([getCbsCases(), getWrongBaggageSubmissions()]);
+    const options = { forceRefresh:req.query.refresh === '1' };
+    const [pirRows, wrongBaggageRows] = await Promise.all([getCbsCases(options), getWrongBaggageSubmissions(options)]);
     return res.json({ rows: [...pirRows, ...wrongBaggageRows] });
   } catch (err) {
     console.error('CBS case list error:', err);
@@ -3141,6 +3184,7 @@ function bestCbsPnrRecord(records = []) {
 }
 
 let cbsPnrSyncPending = null;
+let cbsPnrSyncRecent = { at:0, result:null };
 async function syncMissingCbsPnrRecords(passengerCases = [], unresolvedCases = [], updatedBy = 'System') {
   const candidates = [
     ...passengerCases.filter(caseNeedsPnrSync).map((row) => ({ source:'passenger', row })),
@@ -3193,8 +3237,13 @@ function startCbsPnrRecordSync(passengerCases, unresolvedCases, updatedBy = 'Sys
 app.post('/cbs-record-sync', async (req, res) => {
   try {
     const updatedBy = sanitizeCbsText(req.body?.updatedBy, 160) || 'System';
+    if (cbsPnrSyncRecent.result && Date.now() - cbsPnrSyncRecent.at < 5 * 60 * 1000) {
+      return res.json({ ...cbsPnrSyncRecent.result, skipped:true, reason:'recently synced' });
+    }
     const [passengerCases, unresolvedCases] = await Promise.all([getCbsCases(), getCbsUnresolvedBaggageCases()]);
-    return res.json(await syncMissingCbsPnrRecords(passengerCases, unresolvedCases, updatedBy));
+    const result = await startCbsPnrRecordSync(passengerCases, unresolvedCases, updatedBy);
+    cbsPnrSyncRecent = { at:Date.now(), result };
+    return res.json(result);
   } catch (err) {
     console.error('CBS automatic record sync error:', err);
     return res.status(500).json({ error:err?.message || 'Automatic record sync failed' });
@@ -3246,7 +3295,7 @@ app.post('/cbs-worldtracer-cases', async (req, res) => {
 
 app.get('/cbs-worldtracer-cases', async (req, res) => {
   try {
-    return res.json({ rows: await getCbsWorldTracerCases() });
+    return res.json({ rows: await getCbsWorldTracerCases({ forceRefresh:req.query.refresh === '1' }) });
   } catch (err) {
     console.error('CBS WorldTracer case list error:', err);
     return res.status(500).json({ error: err?.message || 'WorldTracer case lookup failed' });
@@ -3322,7 +3371,7 @@ function startCbsUnresolvedBackgroundMaintenance(rows) {
 app.get('/cbs-unresolved-baggage', async (req, res) => {
   try {
     res.setHeader('Cache-Control', 'no-store');
-    const rows = (await getCbsUnresolvedBaggageCases({ includeResolved:true })).map((row) => {
+    const rows = (await getCbsUnresolvedBaggageCases({ includeResolved:true, forceRefresh:req.query.refresh === '1' })).map((row) => {
       const rushTagNumber = cbsUnresolvedRushTagCache.get(String(row.rowNumber));
       return rushTagNumber ? { ...row, rushTagNumber } : row;
     });
