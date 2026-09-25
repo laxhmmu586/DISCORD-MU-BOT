@@ -23,7 +23,7 @@ test('CBS automatically finds Drive records and saves matching PNRs without a Ch
   assert.match(server, /app\.post\('\/cbs-record-sync'/);
   assert.match(server, /app\.get\('\/cbs-unresolved-baggage'[\s\S]*res\.json\(\{ rows, bagRoomUnloadNoticeSent \}\)[\s\S]*setImmediate\(\(\) => \{ startCbsUnresolvedBackgroundMaintenance\(rows\)/);
   assert.match(server, /runCbsUnresolvedBackgroundMaintenance[\s\S]*startCbsPnrRecordSync\(cases, rows, 'System'\)/);
-  assert.match(page, /fetch\(`\$\{apiBase\}\/cbs-unresolved-baggage`, \{ signal:controller\.signal, cache:'no-store' \}\)/);
+  assert.match(page, /cbs-unresolved-baggage\$\{window\._forceCbsRefresh[\s\S]*signal:controller\.signal/);
   assert.match(page, /async function syncCbsPnrRecords[\s\S]*\/cbs-record-sync[\s\S]*Number\(data\.updated\) > 0/);
   assert.match(page, /renderUnresolvedBaggage\(data\.rows \|\| \[\], Boolean\(data\.bagRoomUnloadNoticeSent\)\);\s*syncCbsPnrRecords\(\)/);
   assert.match(drive, /1QbP-_qSoyIfv_H6NG8fSTxpTK8vfYSvR/);
@@ -64,15 +64,20 @@ test('CBS sidebar uses the MUBC brand', () => {
   assert.doesNotMatch(page, /<a class="brand" href="index\.html">MUFC<\/a>/);
 });
 
-test('CBS dashboards use SSE updates with a one-minute reconciliation fallback', () => {
+test('CBS dashboards use SSE updates with a 90-second reconciliation fallback', () => {
   assert.match(server, /app\.get\('\/cbs-live-stream'/);
   assert.match(server, /const cbsStreamClients = new Set\(\)/);
   assert.match(server, /broadcastCbsRefresh\(req\.path\)/);
   assert.match(page, /new EventSource\(`\$\{apiBase\}\/cbs-live-stream`\)/);
   assert.match(page, /stream\.addEventListener\('refresh', scheduleCbsLiveRefresh\)/);
   assert.match(page, /document\.activeElement\?\.closest\('form'\)/);
-  assert.match(page, /setInterval\(scheduleCbsLiveRefresh, 60000\)/);
+  assert.match(page, /setInterval\(scheduleCbsLiveRefresh, 30000\)/);
   assert.match(page, /id="cbs-live-status"/);
+  assert.match(page, /cbsRefreshQueued = true[\s\S]*setTimeout\(refreshCbsData, 1000\)/);
+  assert.match(page, /_forceCbsRefresh[\s\S]*\?refresh=1/);
+  assert.match(page, /cbsLiveConnected[\s\S]*90 \* 1000/);
+  assert.match(server, /req\.path !== '\/cbs-record-sync'/);
+  assert.match(server, /cbsPnrSyncRecent[\s\S]*reason:'recently synced'/);
 });
 
 test('mobile CBS navigation spans the viewport without table content widening the page', () => {
@@ -106,7 +111,7 @@ test('Rush Bag list does not display the Created column', () => {
 
 test('Rush Bag storage refreshes the sheet title after a tab rename', () => {
   assert.match(drive, /async function getCbsWorldTracerSheetTitle\(\)[\s\S]*cbsWorldTracerSheetTitle = await resolveSheetTitleByGid/);
-  assert.match(drive, /async function getCbsWorldTracerCases\(\) \{\s*const title = await getCbsWorldTracerSheetTitle\(\)/);
+  assert.match(drive, /async function getCbsWorldTracerCases\(\) \{[\s\S]*const title = await getCbsWorldTracerSheetTitle\(\)/);
   assert.match(drive, /async function appendCbsWorldTracerCase\(record = \{\}\) \{\s*const title = await getCbsWorldTracerSheetTitle\(\)/);
   assert.match(drive, /async function updateCbsWorldTracerCase\(rowNumbers = \[\], record = \{\}\) \{\s*const title = await getCbsWorldTracerSheetTitle\(\)/);
 });
