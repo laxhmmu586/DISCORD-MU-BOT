@@ -64,18 +64,18 @@ test('CBS sidebar uses the MUBC brand', () => {
   assert.doesNotMatch(page, /<a class="brand" href="index\.html">MUFC<\/a>/);
 });
 
-test('CBS dashboards use SSE updates with a one-minute reconciliation fallback', () => {
+test('CBS dashboards use SSE updates with a 90-second reconciliation fallback', () => {
   assert.match(server, /app\.get\('\/cbs-live-stream'/);
   assert.match(server, /const cbsStreamClients = new Set\(\)/);
   assert.match(server, /broadcastCbsRefresh\(req\.path\)/);
   assert.match(page, /new EventSource\(`\$\{apiBase\}\/cbs-live-stream`\)/);
   assert.match(page, /stream\.addEventListener\('refresh', scheduleCbsLiveRefresh\)/);
   assert.match(page, /document\.activeElement\?\.closest\('form'\)/);
-  assert.match(page, /setInterval\(scheduleCbsLiveRefresh, 60000\)/);
+  assert.match(page, /setInterval\(scheduleCbsLiveRefresh, 30000\)/);
   assert.match(page, /id="cbs-live-status"/);
   assert.match(page, /cbsRefreshQueued = true[\s\S]*setTimeout\(refreshCbsData, 1000\)/);
   assert.match(page, /_forceCbsRefresh[\s\S]*\?refresh=1/);
-  assert.match(page, /cbsLiveConnected[\s\S]*5 \* 60 \* 1000/);
+  assert.match(page, /cbsLiveConnected[\s\S]*90 \* 1000/);
   assert.match(server, /req\.path !== '\/cbs-record-sync'/);
   assert.match(server, /cbsPnrSyncRecent[\s\S]*reason:'recently synced'/);
 });

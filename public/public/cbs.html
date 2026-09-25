@@ -2424,7 +2424,7 @@
     }
     function scheduleCbsLiveRefresh(event) {
       const isLiveInvalidation = event?.type === 'refresh';
-      if (!isLiveInvalidation && cbsLiveConnected && Date.now() - cbsLastReconciliation < 5 * 60 * 1000) return;
+      if (!isLiveInvalidation && cbsLiveConnected && Date.now() - cbsLastReconciliation < 90 * 1000) return;
       clearTimeout(cbsRefreshTimer);
       cbsRefreshTimer = setTimeout(refreshCbsData, 250);
     }
@@ -2434,7 +2434,7 @@
       const stream = new EventSource(`${apiBase}/cbs-live-stream`);
       stream.addEventListener('connected', () => {
         cbsLiveConnected = true;
-        cbsLiveStatus.textContent = 'Live · 5 min backup';
+        cbsLiveStatus.textContent = 'Live · 1 min 30 sec backup';
         cbsLiveStatus.className = 'cbs-live-status connected';
       });
       stream.addEventListener('refresh', scheduleCbsLiveRefresh);
@@ -2453,7 +2453,7 @@
     syncMissingReports();
     loadUnresolvedBaggage();
     connectCbsLiveSync();
-    setInterval(scheduleCbsLiveRefresh, 60000);
+    setInterval(scheduleCbsLiveRefresh, 30000);
   </script>
   <script src="/attachment-drop.js"></script>
 </body>
