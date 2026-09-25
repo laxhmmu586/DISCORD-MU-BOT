@@ -64,14 +64,13 @@ test('CBS sidebar uses the MUBC brand', () => {
   assert.doesNotMatch(page, /<a class="brand" href="index\.html">MUFC<\/a>/);
 });
 
-test('CBS dashboards use a shared SSE connection for multi-user updates', () => {
-  assert.match(server, /app\.get\('\/cbs-live-stream'/);
-  assert.match(server, /const cbsStreamClients = new Set\(\)/);
-  assert.match(server, /broadcastCbsRefresh\(req\.path\)/);
-  assert.match(page, /new EventSource\(`\$\{apiBase\}\/cbs-live-stream`\)/);
-  assert.match(page, /stream\.addEventListener\('refresh', scheduleCbsLiveRefresh\)/);
+test('CBS dashboards refresh once per minute without SSE', () => {
+  assert.doesNotMatch(server, /app\.get\('\/cbs-live-stream'/);
+  assert.doesNotMatch(server, /const cbsStreamClients = new Set\(\)/);
+  assert.doesNotMatch(page, /new EventSource/);
+  assert.match(page, /setInterval\(refreshCbsData, 60000\)/);
   assert.match(page, /document\.activeElement\?\.closest\('form'\)/);
-  assert.match(page, /id="cbs-live-status"/);
+  assert.match(page, />Sync every 1 min<\/span>/);
 });
 
 test('mobile CBS navigation spans the viewport without table content widening the page', () => {

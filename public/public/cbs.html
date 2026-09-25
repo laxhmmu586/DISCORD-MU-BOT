@@ -389,7 +389,7 @@
       <button class="page-tab" id="closed-cases-tab" type="button" title="Closed Case"><span class="page-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h6l2 2h8v10H4z"/><path d="m8 14 2 2 5-5"/></svg></span><span class="page-tab-label"><span class="en">Closed Case</span><span class="zh">已结案件</span></span></button>
     </nav>
     <span class="header-spacer"></span>
-    <span class="cbs-live-status reconnecting" id="cbs-live-status" role="status">Connecting…</span>
+    <span class="cbs-live-status" id="cbs-live-status" role="status">Sync every 1 min</span>
     <div class="sidebar-actions">
       <button class="sidebar-action" id="sidebar-refresh" type="button" title="Refresh"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6v5h-5M4 18v-5h5M6.1 9A7 7 0 0 1 18 6l2 5M4 13l2 5a7 7 0 0 0 11.9-3"/></svg><span class="sidebar-action-label">Refresh</span></button>
       <button class="sidebar-action" id="sidebar-logout" type="button" title="Logout"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 5H5v14h5m4-4 4-3-4-3m4 3H9"/></svg><span class="sidebar-action-label">Logout</span></button>
@@ -2399,39 +2399,16 @@
       } catch (error) { alert(error.message); } finally { button.disabled = false; button.textContent = originalText; }
     });
     const cbsLiveStatus = document.querySelector('#cbs-live-status');
-    let cbsLiveConnected = false;
-    let cbsLiveRefreshTimer = null;
-    let cbsLiveRefreshPending = false;
-    function setCbsLiveStatus(text, state = '') {
-      cbsLiveStatus.textContent = text;
-      cbsLiveStatus.className = `cbs-live-status ${state}`.trim();
-    }
-    async function refreshCbsLiveData() {
-      if (document.activeElement?.closest('form')) {
-        cbsLiveRefreshPending = true;
-        clearTimeout(cbsLiveRefreshTimer);
-        cbsLiveRefreshTimer = setTimeout(refreshCbsLiveData, 2000);
-        return;
-      }
-      if (cbsLiveRefreshPending === 'loading') return;
-      cbsLiveRefreshPending = 'loading';
+    let cbsRefreshInProgress = false;
+    async function refreshCbsData() {
+      // Do not replace controls while an agent is entering or submitting data.
+      if (document.activeElement?.closest('form') || cbsRefreshInProgress) return;
+      cbsRefreshInProgress = true;
       try {
         await Promise.all([loadCases(), loadMissingReports(), loadUnresolvedBaggage(), loadWorldTracerCases()]);
       } finally {
-        cbsLiveRefreshPending = false;
+        cbsRefreshInProgress = false;
       }
-    }
-    function scheduleCbsLiveRefresh() {
-      cbsLiveRefreshPending = true;
-      clearTimeout(cbsLiveRefreshTimer);
-      cbsLiveRefreshTimer = setTimeout(refreshCbsLiveData, 250);
-    }
-    function connectCbsLiveSync() {
-      if (!window.EventSource) { setCbsLiveStatus('Periodic sync'); return; }
-      const stream = new EventSource(`${apiBase}/cbs-live-stream`);
-      stream.addEventListener('connected', () => { cbsLiveConnected = true; setCbsLiveStatus('Live', 'connected'); });
-      stream.addEventListener('refresh', scheduleCbsLiveRefresh);
-      stream.onerror = () => { cbsLiveConnected = false; setCbsLiveStatus('Reconnecting…', 'reconnecting'); };
     }
     resetRushFlightRows();
     const initialSection = new URLSearchParams(window.location.search).get('section') === 'missing' ? 'missing' : 'open';
@@ -2441,8 +2418,8 @@
     loadWorldTracerCases();
     syncMissingReports();
     loadUnresolvedBaggage();
-    connectCbsLiveSync();
-    setInterval(() => { if (!cbsLiveConnected) scheduleCbsLiveRefresh(); }, 30000);
+    cbsLiveStatus.textContent = 'Sync every 1 min';
+    setInterval(refreshCbsData, 60000);
   </script>
   <script src="/attachment-drop.js"></script>
 </body>
