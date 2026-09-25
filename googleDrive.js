@@ -3745,8 +3745,8 @@ async function appendWrongBaggageSubmission(record = {}) {
   return saved;
 }
 
-async function getWrongBaggageSubmissions() {
-  if (wrongBaggageCache.hasLoaded && Date.now() - wrongBaggageCache.loadedAt < 30000) return wrongBaggageCache.rows;
+async function getWrongBaggageSubmissions(options = {}) {
+  if (!options.forceRefresh && wrongBaggageCache.hasLoaded && Date.now() - wrongBaggageCache.loadedAt < 30000) return wrongBaggageCache.rows;
   if (wrongBaggageCache.pending) return wrongBaggageCache.pending;
   wrongBaggageCache.pending = (async () => {
     const title = await getWrongBaggageSheetTitle();
@@ -3922,7 +3922,7 @@ function cbsUnresolvedRushTag(updateEvents = []) {
 }
 
 async function getCbsUnresolvedBaggageCases(options = {}) {
-  if (!cbsUnresolvedBaggageCache.pending && cbsUnresolvedBaggageCache.rows && cbsUnresolvedBaggageCache.expiresAt > Date.now()) {
+  if (!options.forceRefresh && !cbsUnresolvedBaggageCache.pending && cbsUnresolvedBaggageCache.rows && cbsUnresolvedBaggageCache.expiresAt > Date.now()) {
     const rows = copyCbsUnresolvedBaggageRows(cbsUnresolvedBaggageCache.rows);
     return options.includeResolved ? rows : rows.filter((row) => !row.resolvedAt);
   }
@@ -4251,8 +4251,9 @@ function invalidateCbsWorldTracerCaseCache() {
 }
 
 async function getCbsWorldTracerCases() {
+  const options = arguments[0] || {};
   const title = await getCbsWorldTracerSheetTitle();
-  if (cbsWorldTracerCaseCache.rows && cbsWorldTracerCaseCache.expiresAt > Date.now()) return copyCbsWorldTracerCases(cbsWorldTracerCaseCache.rows);
+  if (!options.forceRefresh && cbsWorldTracerCaseCache.rows && cbsWorldTracerCaseCache.expiresAt > Date.now()) return copyCbsWorldTracerCases(cbsWorldTracerCaseCache.rows);
   if (!cbsWorldTracerCaseCache.pending) {
     cbsWorldTracerCaseCache.pending = (async () => {
       const valuesRows = await getCbsRetainedSheetRows({ title, sheetId:CBS_WORLDTRACER_SHEET_GID, range:'A2:H', dateIndexes:[7, 6], rowOffset:1 });
@@ -4375,7 +4376,8 @@ function attachCbsUpdateHistory(rows = []) {
 }
 
 async function getCbsCases() {
-  let rows = await getCbsSheetRows();
+  const options = arguments[0] || {};
+  let rows = options.forceRefresh ? await getCbsSheetRows({ forceRefresh:true }) : await getCbsSheetRows();
   if (!await ensureCbsSheetHeaders(rows)) rows = await getCbsSheetRows({ forceRefresh:true });
   const cases = rows.map((values, index) => ({ values:values || [], rowNumber:index + 1 }))
     .filter(({ values }) => !isCbsHeaderRow(values))
@@ -4657,7 +4659,7 @@ async function syncCbsMissingBagReportsFromGmail() {
 
 async function getCbsMissingBagReports(options = {}) {
   if (options.sync) await syncCbsMissingBagReportsFromGmail();
-  const valuesRows = await getCbsMissingBagSheetRows({ forceRefresh:Boolean(options.sync) });
+  const valuesRows = await getCbsMissingBagSheetRows({ forceRefresh:Boolean(options.sync || options.forceRefresh) });
   await ensureCbsMissingBagHeaders(valuesRows);
   const rows = valuesRows.slice(1).map((values, index) => cbsMissingBagRecordFromSheet(values, index + 2)).filter((row) => row.bagTag);
   return { rows, sync:null };
