@@ -64,13 +64,14 @@ test('CBS sidebar uses the MUBC brand', () => {
   assert.doesNotMatch(page, /<a class="brand" href="index\.html">MUFC<\/a>/);
 });
 
-test('CBS dashboards use a shared SSE connection for multi-user updates', () => {
+test('CBS dashboards use SSE updates with a one-minute reconciliation fallback', () => {
   assert.match(server, /app\.get\('\/cbs-live-stream'/);
   assert.match(server, /const cbsStreamClients = new Set\(\)/);
   assert.match(server, /broadcastCbsRefresh\(req\.path\)/);
   assert.match(page, /new EventSource\(`\$\{apiBase\}\/cbs-live-stream`\)/);
   assert.match(page, /stream\.addEventListener\('refresh', scheduleCbsLiveRefresh\)/);
   assert.match(page, /document\.activeElement\?\.closest\('form'\)/);
+  assert.match(page, /setInterval\(scheduleCbsLiveRefresh, 60000\)/);
   assert.match(page, /id="cbs-live-status"/);
 });
 
@@ -94,6 +95,13 @@ test('CBS storage reads and writes Google Sheets only', () => {
   assert.match(drive, /async function getCbsWorldTracerCases[\s\S]*getCbsRetainedSheetRows/);
   assert.match(drive, /async function getCbsMissingBagReports[\s\S]*getCbsMissingBagSheetRows/);
   assert.doesNotMatch(drive, /[Ff]irestore/);
+});
+
+test('Rush Bag list does not display the Created column', () => {
+  const renderer = page.match(/function renderWorldTracerCases[\s\S]*?function updateRushBagAttention/)?.[0] || '';
+  assert.doesNotMatch(renderer, /<th>Created<\/th>|创建时间|toLocaleString\(\)/);
+  assert.match(renderer, /<td colspan="5"><form class="worldtracer-form onhand-update-form"/);
+  assert.match(renderer, /data-created-at=/);
 });
 
 test('Rush Bag storage refreshes the sheet title after a tab rename', () => {
@@ -427,8 +435,11 @@ test('On-hand and Bag Room rows only show Rush Tag when at least one row has one
   assert.match(page, /escapeHtml\(row\.rushTagNumber \|\| '-'\)/);
   assert.match(server, /async function matchBagRoomUnloadCasesForRush/);
   assert.match(server, /normalizedCbsLinkTag\(row\.bagTag\) === originalTag/);
+  assert.match(server, /updateCbsUnresolvedBaggageRush\(row\.rowNumber, \{/);
+  assert.match(server, /'Rush Bag automation'/);
+  assert.match(drive, /rushTagNumber:cbsUnresolvedRushTag\(updateEvents\)/);
+  assert.match(drive, /filter\(\(item\) => item\?\.key !== 'on-hand-rush'\)/);
   assert.doesNotMatch(server, /resolveCbsUnresolvedBaggageCase\(row\.rowNumber, 'on-hand-rush'/);
-  assert.match(server, /result\.matchedBagRoomUnloadCases = await matchBagRoomUnloadCasesForRush\(saved\)/);
   assert.match(server, /result\.matchedBagRoomUnloadCases = await matchBagRoomUnloadCasesForRush\(result\.record\)/);
 });
 
@@ -598,7 +609,7 @@ test('completed On-hand cases move from Open Case to Closed Case', () => {
 
 test('creating a Rush update keeps the On-hand case open', () => {
   assert.match(server, /updateCbsUnresolvedBaggageRush\(req\.params\.rowNumber, \{ originalTagNumber, rushTagNumber \}, updatedBy\)/);
-  assert.match(drive, /async function updateCbsUnresolvedBaggageRush\(rowNumber, rush = \{\}, updatedBy = ''\)/);
+  assert.match(drive, /async function updateCbsUnresolvedBaggageRush\(rowNumber, rush = \{\}, updatedBy = '', knownTarget = null\)/);
   assert.match(drive, /key:'on-hand-rush', title:'Create Rush'/);
   assert.match(drive, /!R\$\{target\.rowNumber\}/);
   const rushBlock = server.match(/if \(action === 'on-hand-rush'\) \{([\s\S]*?)\n    \}/)?.[1] || '';
