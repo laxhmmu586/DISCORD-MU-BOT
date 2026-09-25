@@ -2442,7 +2442,7 @@
     syncMissingReports();
     loadUnresolvedBaggage();
     connectCbsLiveSync();
-    setInterval(() => { if (!cbsLiveConnected) scheduleCbsLiveRefresh(); }, 30000);
+    setInterval(scheduleCbsLiveRefresh, 60000);
   </script>
   <script src="/attachment-drop.js"></script>
 </body>
