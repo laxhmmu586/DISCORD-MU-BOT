@@ -4350,18 +4350,11 @@ app.get(
         const months = { JAN:'01', FEB:'02', MAR:'03', APR:'04', MAY:'05', JUN:'06', JUL:'07', AUG:'08', SEP:'09', OCT:'10', NOV:'11', DEC:'12' };
         const yearFromFlight = m?.[3] ? (2000 + Number(m[3])) : fullYear;
         const isoDate = m ? `${yearFromFlight}-${months[m[2]] || '01'}-${m[1]}` : '';
-        const syBagInfo = isoDate ? await getSyBagInfoByDate(isoDate, syInfo.flightDate) : null;
-        try {
-          syInfo.bagRoomUnloadAlert = await notifyBagRoomUnloadAfterCc(syInfo, isoDate);
-        } catch (err) {
-          syInfo.bagRoomUnloadAlert = { sent:false, error:err?.message || 'Bag Room Unload alert failed.' };
-          console.error('Bag Room Unload CC email error:', err);
-        }
         rememberCompletedPreflightSteps(syInfo, isoDate);
         applyCachedCompletedPreflightSteps(syInfo, isoDate);
         syInfo.fscRateSheetSync = fscRateSheetSyncCache.get(isoDate) || { skipped: true, reason: 'sync pending' };
         syInfo.bookingSheetSync = syBookingSheetSyncCache.get(isoDate) || { skipped: true, reason: 'sync pending' };
-        syInfo.salesDetailsSheetSync = await syncSalesDetailsFromTodaySy(isoDate);
+        syInfo.salesDetailsSheetSync = salesDetailsSheetSyncCache.get(isoDate) || { skipped: true, reason: 'sync pending' };
         if (!applyCachedPreflightStep(syInfo, isoDate, 'gdCheck')) {
           const gdStep = syInfo.crewApis?.steps?.find((step) => step.key === 'gdCheck');
           if (gdStep) {
@@ -4376,6 +4369,11 @@ app.get(
             nextDayStep.tooltip = 'NEXTDAY INFO will update in the background.';
           }
         }
+        const spml = parseSpmlLog(log, { flightNo:syInfo.flightNo, flightDate:syInfo.flightDate });
+        const bagInfoPromise = isoDate ? getSyBagInfoByDate(isoDate, syInfo.flightDate) : Promise.resolve(null);
+        const mealEmailPromise = getLatestMealOrderEmail(syInfo.flightNo, syInfo.flightDate);
+        const authContextPromise = resolveAuthContextFromRequest(req);
+
         if (isoDate && isoDate !== todayIsoUtc()) {
           await refreshDeferredSyData(syInfo, log, isoDate);
           rememberCompletedPreflightSteps(syInfo, isoDate);
@@ -4390,17 +4388,25 @@ app.get(
             });
           });
         }
-        const spml = parseSpmlLog(log, { flightNo:syInfo.flightNo, flightDate:syInfo.flightDate });
-        spml.email = await getLatestMealOrderEmail(syInfo.flightNo, syInfo.flightDate);
+        const [syBagInfo, mealEmail, authContext] = await Promise.all([
+          bagInfoPromise,
+          mealEmailPromise,
+          authContextPromise
+        ]);
+        try {
+          syInfo.bagRoomUnloadAlert = await notifyBagRoomUnloadAfterCc(syInfo, isoDate);
+        } catch (err) {
+          syInfo.bagRoomUnloadAlert = { sent:false, error:err?.message || 'Bag Room Unload alert failed.' };
+          console.error('Bag Room Unload CC email error:', err);
+        }
+        spml.email = mealEmail;
         if (spml.report.length) {
-          try {
-            spml.sheetSync = await appendSpmlReportRows(spml.report.map((row) => ({ ...row, key:`SPML|${row.date}|${row.flightNo}|${row.passenger}|${row.bn}|${row.meal}`.toUpperCase() })));
-          } catch (err) {
-            spml.sheetSync = { appended:0, error:err?.message || 'SPML report sync failed' };
-          }
+          setImmediate(() => appendSpmlReportRows(spml.report.map((row) => ({ ...row, key:`SPML|${row.date}|${row.flightNo}|${row.passenger}|${row.bn}|${row.meal}`.toUpperCase() })))
+            .catch((err) => console.warn('SPML report sync skipped:', err?.message || err)));
         }
         syInfo.spml = spml;
-        const authContext = await resolveAuthContextFromRequest(req);
+        setImmediate(() => syncSalesDetailsFromTodaySy(isoDate)
+          .catch((err) => console.warn('Sales details sync skipped:', err?.message || err)));
         return res.json({ sy: { ...syInfo, bagSheet: syBagInfo, permissions: authContext.permissions } });
       }
       if (isSYRawQuery) {
