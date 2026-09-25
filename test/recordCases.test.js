@@ -29,7 +29,7 @@ test('IRR submissions resolve main and companion BNs from the current flight rec
   assert.doesNotMatch(server.match(/app\.post\('\/irr-form-submissions'[\s\S]*?app\.get\('\/irr-cases'/)?.[0] || '', /req\.body\?\.finalDestination/);
 });
 
-test('IRR pushes saved records live and uses a one-minute reconciliation fallback', () => {
+test('IRR pushes saved records live and uses a silent 90-second reconciliation fallback', () => {
   assert.match(drive, /1t0TS3__Im1tyLy7Hj7CGF8zet_-5TT1986QCodhvYbo/);
   assert.match(drive, /1472152106/);
   assert.match(drive, /recordCaseCache = \{ expiresAt:0/);
@@ -42,9 +42,12 @@ test('IRR pushes saved records live and uses a one-minute reconciliation fallbac
   assert.match(server, /writeIrrCaseEvent\(res, 'connected'/);
   assert.match(admin, /new EventSource\(`\$\{apiBase\}\/irr-cases\/stream`\)/);
   assert.match(admin, /stream\.addEventListener\('case-update'/);
-  assert.match(admin, /setInterval\(refreshIrrCases,60000\)/);
+  assert.match(admin, /setInterval\(refreshIrrCases,30000\)/);
+  assert.match(admin, /Date\.now\(\)-irrLastReconciliation<90\*1000/);
+  assert.match(admin, /load\(\{silent:true\}\)/);
+  assert.match(admin, /irrRowsSignature===signature/);
   assert.match(admin, /document\.activeElement\?\.closest\('form'\)/);
-  assert.match(admin, /setTimeout\(\(\)=>applyLiveRecord\(record\),2000\)/);
+  assert.match(admin, /setTimeout\(\(\)=>applyLiveRecord\(record\),1000\)/);
   assert.match(admin, />Connecting…<\/span>/);
   assert.match(admin, /expectedUpdatedAt/);
   assert.match(server, /broadcastIrrCaseUpdate\(saved\)/);
