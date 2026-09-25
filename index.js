@@ -994,53 +994,6 @@ app.use(
   express.static('public')
 );
 
-const cbsStreamClients = new Set();
-let cbsKeepAliveTimer = null;
-
-function broadcastCbsRefresh(reason = 'update') {
-  const payload = `event: refresh\ndata: ${JSON.stringify({ reason, at:new Date().toISOString() })}\n\n`;
-  for (const stream of cbsStreamClients) stream.write(payload);
-}
-
-function startCbsKeepAlive() {
-  if (cbsKeepAliveTimer) return;
-  cbsKeepAliveTimer = setInterval(() => {
-    for (const stream of cbsStreamClients) stream.write(': keep-alive\n\n');
-  }, 15000);
-  cbsKeepAliveTimer.unref?.();
-}
-
-function stopCbsKeepAliveIfIdle() {
-  if (cbsStreamClients.size || !cbsKeepAliveTimer) return;
-  clearInterval(cbsKeepAliveTimer);
-  cbsKeepAliveTimer = null;
-}
-
-app.get('/cbs-live-stream', (req, res) => {
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache, no-transform');
-  res.setHeader('Connection', 'keep-alive');
-  res.setHeader('X-Accel-Buffering', 'no');
-  res.flushHeaders?.();
-  cbsStreamClients.add(res);
-  res.write(`event: connected\ndata: ${JSON.stringify({ at:new Date().toISOString() })}\n\n`);
-  startCbsKeepAlive();
-  req.on('close', () => {
-    cbsStreamClients.delete(res);
-    stopCbsKeepAliveIfIdle();
-  });
-});
-
-// Notify every CBS dashboard after a successful mutation. A single event lets
-// each browser refresh all related queues together without manual reloading.
-app.use((req, res, next) => {
-  const isCbsMutation = req.method !== 'GET' && req.path !== '/cbs-record-sync' && /^\/(?:cbs-|wrong-baggage-submissions)/.test(req.path);
-  if (isCbsMutation) res.on('finish', () => {
-    if (res.statusCode >= 200 && res.statusCode < 300) broadcastCbsRefresh(req.path);
-  });
-  next();
-});
-
 app.get('/attachment-drop.js', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'public', 'attachment-drop.js'));
 });
@@ -3057,7 +3010,6 @@ app.post('/irr-form-submissions', async (req, res) => {
     const saved = await appendRecordCase({ submittedAt, status:'Waiting', bn, passengerName:passenger.name || '', phone, email, travelParty,
       companionBns:companionBns.join(', '), companionPnrRecords:companions.map((item) => `BN ${item.bn} — ${item.passenger.name || ''}\n${item.passenger.sourceText || ''}`).join('\n\n'),
       intention, finalDestination:'', pnrRecord:passenger.sourceText || '' });
-    broadcastIrrCaseUpdate(saved);
     return res.status(201).json({ created:true, record:saved });
   } catch (err) {
     console.error('Record form submission failed:', err);
@@ -3073,7 +3025,6 @@ app.get('/irr-cases', async (_req, res) => {
 app.post('/irr-cases/:rowNumber', async (req, res) => {
   try {
     const record = await updateRecordCase(req.params.rowNumber, req.body || {});
-    broadcastIrrCaseUpdate(record);
     return res.json({ updated:true, record });
   } catch (err) { return res.status(err?.code === 'EDIT_CONFLICT' ? 409 : 422).json({ error:err?.message || 'Case could not be updated.', code:err?.code }); }
 });
@@ -4312,18 +4263,11 @@ app.get(
         const months = { JAN:'01', FEB:'02', MAR:'03', APR:'04', MAY:'05', JUN:'06', JUL:'07', AUG:'08', SEP:'09', OCT:'10', NOV:'11', DEC:'12' };
         const yearFromFlight = m?.[3] ? (2000 + Number(m[3])) : fullYear;
         const isoDate = m ? `${yearFromFlight}-${months[m[2]] || '01'}-${m[1]}` : '';
-        const syBagInfo = isoDate ? await getSyBagInfoByDate(isoDate, syInfo.flightDate) : null;
-        try {
-          syInfo.bagRoomUnloadAlert = await notifyBagRoomUnloadAfterCc(syInfo, isoDate);
-        } catch (err) {
-          syInfo.bagRoomUnloadAlert = { sent:false, error:err?.message || 'Bag Room Unload alert failed.' };
-          console.error('Bag Room Unload CC email error:', err);
-        }
         rememberCompletedPreflightSteps(syInfo, isoDate);
         applyCachedCompletedPreflightSteps(syInfo, isoDate);
         syInfo.fscRateSheetSync = fscRateSheetSyncCache.get(isoDate) || { skipped: true, reason: 'sync pending' };
         syInfo.bookingSheetSync = syBookingSheetSyncCache.get(isoDate) || { skipped: true, reason: 'sync pending' };
-        syInfo.salesDetailsSheetSync = await syncSalesDetailsFromTodaySy(isoDate);
+        syInfo.salesDetailsSheetSync = salesDetailsSheetSyncCache.get(isoDate) || { skipped: true, reason: 'sync pending' };
         if (!applyCachedPreflightStep(syInfo, isoDate, 'gdCheck')) {
           const gdStep = syInfo.crewApis?.steps?.find((step) => step.key === 'gdCheck');
           if (gdStep) {
@@ -4338,6 +4282,11 @@ app.get(
             nextDayStep.tooltip = 'NEXTDAY INFO will update in the background.';
           }
         }
+        const spml = parseSpmlLog(log, { flightNo:syInfo.flightNo, flightDate:syInfo.flightDate });
+        const bagInfoPromise = isoDate ? getSyBagInfoByDate(isoDate, syInfo.flightDate) : Promise.resolve(null);
+        const mealEmailPromise = getLatestMealOrderEmail(syInfo.flightNo, syInfo.flightDate);
+        const authContextPromise = resolveAuthContextFromRequest(req);
+
         if (isoDate && isoDate !== todayIsoUtc()) {
           await refreshDeferredSyData(syInfo, log, isoDate);
           rememberCompletedPreflightSteps(syInfo, isoDate);
@@ -4352,17 +4301,25 @@ app.get(
             });
           });
         }
-        const spml = parseSpmlLog(log, { flightNo:syInfo.flightNo, flightDate:syInfo.flightDate });
-        spml.email = await getLatestMealOrderEmail(syInfo.flightNo, syInfo.flightDate);
+        const [syBagInfo, mealEmail, authContext] = await Promise.all([
+          bagInfoPromise,
+          mealEmailPromise,
+          authContextPromise
+        ]);
+        try {
+          syInfo.bagRoomUnloadAlert = await notifyBagRoomUnloadAfterCc(syInfo, isoDate);
+        } catch (err) {
+          syInfo.bagRoomUnloadAlert = { sent:false, error:err?.message || 'Bag Room Unload alert failed.' };
+          console.error('Bag Room Unload CC email error:', err);
+        }
+        spml.email = mealEmail;
         if (spml.report.length) {
-          try {
-            spml.sheetSync = await appendSpmlReportRows(spml.report.map((row) => ({ ...row, key:`SPML|${row.date}|${row.flightNo}|${row.passenger}|${row.bn}|${row.meal}`.toUpperCase() })));
-          } catch (err) {
-            spml.sheetSync = { appended:0, error:err?.message || 'SPML report sync failed' };
-          }
+          setImmediate(() => appendSpmlReportRows(spml.report.map((row) => ({ ...row, key:`SPML|${row.date}|${row.flightNo}|${row.passenger}|${row.bn}|${row.meal}`.toUpperCase() })))
+            .catch((err) => console.warn('SPML report sync skipped:', err?.message || err)));
         }
         syInfo.spml = spml;
-        const authContext = await resolveAuthContextFromRequest(req);
+        setImmediate(() => syncSalesDetailsFromTodaySy(isoDate)
+          .catch((err) => console.warn('Sales details sync skipped:', err?.message || err)));
         return res.json({ sy: { ...syInfo, bagSheet: syBagInfo, permissions: authContext.permissions } });
       }
       if (isSYRawQuery) {
