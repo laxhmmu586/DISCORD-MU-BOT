@@ -776,16 +776,21 @@
       worldTracerTab.setAttribute('aria-label', hasMissingWorldTracer ? `Rush Bag. ${attentionText}` : 'Rush Bag');
     }
     async function loadWorldTracerCases() {
-      worldTracerOutput.innerHTML = `<p class="muted">${label('Loading cases...', '正在加载案件……')}</p>`;
+      if (!window._silentCbsRefresh) worldTracerOutput.innerHTML = `<p class="muted">${label('Loading cases...', '正在加载案件……')}</p>`;
       try {
         const res = await fetch(`${apiBase}/cbs-worldtracer-cases${window._forceCbsRefresh?'?refresh=1':''}`);
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || 'Rush Bag case lookup failed');
-        window._worldTracerRows = data.rows || [];
+        const nextRows = data.rows || [];
+        const signature = JSON.stringify(nextRows);
+        if (window._worldTracerSignature === signature) return;
+        window._worldTracerSignature = signature;
+        window._worldTracerRows = nextRows;
         updateRushBagAttention(window._worldTracerRows);
         renderWorldTracerCases(window._worldTracerRows);
       } catch (error) {
-        worldTracerOutput.innerHTML = `<p class="status err">${escapeHtml(error.message)}</p>`;
+        if (window._silentCbsRefresh) console.error('Live Rush Bag refresh failed:', error);
+        else worldTracerOutput.innerHTML = `<p class="status err">${escapeHtml(error.message)}</p>`;
       }
     }
     function recordTextareaHtml(type, savedRecord = '') {
@@ -985,21 +990,31 @@
       } finally { bagRoomNoticeButton.disabled = false; }
     });
     async function loadUnresolvedBaggage() {
-      unresolvedBaggageOutput.innerHTML = '<p class="muted">Loading cases...</p>';
-      bagRoomUnloadOutput.innerHTML = '<p class="muted">Loading cases...</p>';
+      if (!window._silentCbsRefresh) {
+        unresolvedBaggageOutput.innerHTML = '<p class="muted">Loading cases...</p>';
+        bagRoomUnloadOutput.innerHTML = '<p class="muted">Loading cases...</p>';
+      }
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 45000);
       try {
         const res = await fetch(`${apiBase}/cbs-unresolved-baggage${window._forceCbsRefresh?'?refresh=1':''}`, { signal:controller.signal, cache:'no-store' });
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || 'On-hand baggage lookup failed');
-        renderUnresolvedBaggage(data.rows || [], Boolean(data.bagRoomUnloadNoticeSent));
+        const nextRows = data.rows || [];
+        const signature = JSON.stringify([nextRows, Boolean(data.bagRoomUnloadNoticeSent)]);
+        if (window._unresolvedBaggageSignature !== signature) {
+          window._unresolvedBaggageSignature = signature;
+          renderUnresolvedBaggage(nextRows, Boolean(data.bagRoomUnloadNoticeSent));
+        }
         syncCbsPnrRecords();
       } catch (error) {
         const message = error.name === 'AbortError' ? 'Case loading timed out. Please use Refresh to try again.' : error.message;
         const errorHtml = `<p class="status err">${escapeHtml(message)}</p>`;
-        unresolvedBaggageOutput.innerHTML = errorHtml;
-        bagRoomUnloadOutput.innerHTML = errorHtml;
+        if (window._silentCbsRefresh) console.error('Live On-hand refresh failed:', error);
+        else {
+          unresolvedBaggageOutput.innerHTML = errorHtml;
+          bagRoomUnloadOutput.innerHTML = errorHtml;
+        }
       } finally {
         clearTimeout(timeout);
       }
@@ -1677,16 +1692,23 @@
     }
     window.addEventListener('resize', syncCaseProgressHeights);
     async function loadCases() {
-      casesOutput.innerHTML = '<p class="muted">Loading cases...</p>';
+      if (!window._silentCbsRefresh) casesOutput.innerHTML = '<p class="muted">Loading cases...</p>';
       try {
         const res = await fetch(`${apiBase}/cbs-cases${window._forceCbsRefresh?'?refresh=1':''}`);
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || 'Case loading failed');
-        window._cbsRows = data.rows || [];
+        const nextRows = data.rows || [];
+        const signature = JSON.stringify(nextRows);
+        if (window._cbsRowsSignature === signature) return;
+        window._cbsRowsSignature = signature;
+        window._cbsRows = nextRows;
         renderCases();
         if (!shipmentCard.hidden) renderShipments();
         if (window._unresolvedBaggageLoaded) renderUnresolvedBaggage(window._unresolvedBaggageSourceRows || []);
-      } catch (error) { casesOutput.innerHTML = `<p class="status err">${escapeHtml(error.message)}</p>`; }
+      } catch (error) {
+        if (window._silentCbsRefresh) console.error('Live CBS case refresh failed:', error);
+        else casesOutput.innerHTML = `<p class="status err">${escapeHtml(error.message)}</p>`;
+      }
     }
     function renderMissingReports(rows = []) {
       const uniqueRows = new Map();
@@ -1744,9 +1766,14 @@
         const data = await parseJson(res);
         if (!res.ok) throw new Error(data.error || 'Missing bag report loading failed');
         window._missingReportLoaded = true;
-        window._missingBagRows = data.rows || [];
+        const nextRows = data.rows || [];
+        const signature = JSON.stringify(nextRows);
+        if (window._missingBagSignature === signature) return;
+        window._missingBagSignature = signature;
+        window._missingBagRows = nextRows;
         renderMissingReports(window._missingBagRows);
       } catch (error) {
+        if (window._silentCbsRefresh) { console.error('Live missing bag refresh failed:', error); return; }
         delete missingAlert.dataset.hasOpenReports;
         missingReportOutput.innerHTML = `<p class="status err">${escapeHtml(error.message)}</p>`;
       }
@@ -2414,10 +2441,12 @@
       cbsRefreshInProgress = true;
       cbsRefreshQueued = false;
       window._forceCbsRefresh = true;
+      window._silentCbsRefresh = true;
       try {
         await Promise.all([loadCases(), loadMissingReports(), loadUnresolvedBaggage(), loadWorldTracerCases()]);
       } finally {
         window._forceCbsRefresh = false;
+        window._silentCbsRefresh = false;
         cbsRefreshInProgress = false;
         cbsLastReconciliation = Date.now();
       }
