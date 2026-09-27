@@ -87,6 +87,16 @@ test('warning is the first operational action before CHD', () => {
   assert.match(html, /class="detail-actions" aria-label="Flight detail actions">\s*<button[^>]*id="warning-action"[\s\S]*id="chd-action"/);
 });
 
+test('mission timeline uses status cards connected to indicator nodes', () => {
+  assert.equal((html.match(/class="node-indicator"/g) || []).length, 14);
+  assert.equal((html.match(/class="node-label"/g) || []).length, 14);
+  assert.match(html, /\.node \{[\s\S]*width: 112px;[\s\S]*border-radius: 5px;/);
+  assert.match(html, /\.node\[data-status="done"\] \{[\s\S]*border-color: rgba\(53, 212, 137, 0\.92\)/);
+  assert.match(html, /\.node\[data-status="issue"\] \{[\s\S]*border-color: rgba\(242, 201, 76, 0\.94\)/);
+  assert.match(html, /\.node\[data-status="pending"\] \.node-indicator \{[\s\S]*animation: pendingNodePulse/);
+  assert.match(html, /\.node-card \{[\s\S]*transform: translate\(-50%, calc\(-100% - 30px\)\)/);
+});
+
 test('meal table uses two styled vertical column dividers and compact columns', () => {
   assert.match(html, /\.column-divider[^}]*border-left:1px solid rgba\(71,183,236,.42\)/);
   assert.match(html, /\.manifest-section\.is-operations \{[^}]*width:560px; max-width:100%/);

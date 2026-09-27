@@ -1009,80 +1009,134 @@
       .node {
         position: absolute;
         z-index: 6;
-        width: 17px;
-        height: 17px;
-        border: 2px solid white;
-        border-radius: 50%;
-        background: #05070d;
-        box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.08), 0 0 18px rgba(0, 0, 0, 0.78);
-        transform: translate(-50%, -50%);
+        width: 112px;
+        min-height: 58px;
+        border: 1px solid rgba(222, 239, 255, 0.62);
+        border-radius: 5px;
+        background: linear-gradient(155deg, rgba(10, 28, 44, 0.96), rgba(3, 13, 23, 0.94));
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04), 0 12px 28px rgba(0, 0, 0, 0.42);
+        padding: 21px 8px 9px;
+        transform: translate(-50%, 13px);
         transition:
           left 420ms cubic-bezier(0.2, 0.8, 0.2, 1),
           top 420ms cubic-bezier(0.2, 0.8, 0.2, 1),
+          border-color 180ms ease,
           background 180ms ease,
           box-shadow 180ms ease;
         cursor: pointer;
       }
 
-      .node::after {
-        content: attr(data-label);
+      .node .node-indicator {
         position: absolute;
         left: 50%;
-        top: 22px;
+        top: -21px;
+        width: 17px;
+        height: 17px;
+        border: 2px solid #fff;
+        border-radius: 50%;
+        background: #05070d;
+        box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.08), 0 0 18px rgba(0, 0, 0, 0.78);
         transform: translateX(-50%);
-        min-width: max-content;
-        color: white;
+      }
+
+      .node .node-indicator::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 15px;
+        width: 1px;
+        height: 17px;
+        background: currentColor;
+        opacity: 0.72;
+        transform: translateX(-50%);
+      }
+
+      .node::after {
+        content: "";
+      }
+
+      .node .node-label {
+        display: block;
+        color: rgba(246, 251, 255, 0.96);
         font-size: 11px;
         font-weight: 900;
+        line-height: 1.15;
+        letter-spacing: 0.45px;
+        text-align: center;
         text-transform: uppercase;
-        text-shadow: 0 2px 8px black;
+        text-shadow: 0 2px 8px #000;
       }
 
       .node[data-alert]::before {
         content: attr(data-alert);
         position: absolute;
-        left: 50%;
-        bottom: 24px;
-        transform: translateX(-50%);
+        top: 5px;
+        right: 6px;
         min-width: 18px;
-        height: 20px;
+        height: 18px;
         display: grid;
         place-items: center;
-        color: #ff5d67;
-        font-size: 20px;
+        border-radius: 999px;
+        background: #a92d36;
+        color: #fff;
+        font-size: 10px;
         font-weight: 900;
         line-height: 1;
         text-shadow: 0 0 18px rgba(255, 93, 103, 0.42), 0 2px 8px rgba(0, 0, 0, 0.72);
       }
 
       .node.is-active {
-        background: white;
-        box-shadow: 0 0 0 6px rgba(88, 167, 255, 0.24), 0 0 28px rgba(88, 167, 255, 0.86);
+        border-color: #8fcaff;
+        box-shadow: inset 0 0 24px rgba(88, 167, 255, 0.13), 0 0 0 2px rgba(88, 167, 255, 0.18), 0 14px 32px rgba(0, 0, 0, 0.48);
       }
 
       .node[data-status="done"] {
+        border-color: rgba(53, 212, 137, 0.92);
+        background: linear-gradient(155deg, rgba(20, 104, 68, 0.94), rgba(4, 43, 31, 0.96));
+        box-shadow: inset 0 0 24px rgba(53, 212, 137, 0.12), 0 0 20px rgba(53, 212, 137, 0.22), 0 12px 28px rgba(0, 0, 0, 0.42);
+      }
+
+      .node[data-status="done"] .node-indicator {
         background: var(--green);
+        border-color: #b9ffdc;
+        color: var(--green);
         box-shadow: 0 0 0 5px rgba(53, 212, 137, 0.14), 0 0 22px rgba(53, 212, 137, 0.72);
       }
 
       .node[data-status="issue"] {
+        border-color: rgba(242, 201, 76, 0.94);
+        background: linear-gradient(155deg, rgba(101, 76, 15, 0.94), rgba(41, 30, 3, 0.96));
+        box-shadow: inset 0 0 24px rgba(242, 201, 76, 0.1), 0 0 20px rgba(242, 201, 76, 0.2), 0 12px 28px rgba(0, 0, 0, 0.42);
+      }
+
+      .node[data-status="issue"] .node-indicator {
         background: #f2c94c;
-        box-shadow: 0 0 0 5px rgba(242, 201, 76, 0.15), 0 0 22px rgba(242, 201, 76, 0.72);
+        border-color: #fff0a6;
+        color: #f2c94c;
         animation: nodePulse 1.1s ease-in-out infinite;
       }
 
       .node[data-status="pending"] {
-        background: #05070d;
-        box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.08), 0 0 18px rgba(0, 0, 0, 0.78);
         animation: none;
+      }
+
+      .node[data-status="pending"] .node-indicator {
+        background: #f7fbff;
+        color: rgba(247, 251, 255, 0.9);
+        animation: pendingNodePulse 1.4s ease-in-out infinite;
       }
 
       .node[data-status="locked"] {
         background: #05070d;
         border-color: rgba(255, 255, 255, 0.38);
-        box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.04), 0 0 14px rgba(0, 0, 0, 0.58);
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.38);
         opacity: 0.72;
         animation: none;
+      }
+
+      .node[data-status="locked"] .node-indicator {
+        border-color: rgba(255, 255, 255, 0.38);
+        color: rgba(255, 255, 255, 0.38);
       }
 
       .node[data-clear-locked="true"] {
@@ -1099,6 +1153,11 @@
         }
       }
 
+      @keyframes pendingNodePulse {
+        0%, 100% { opacity: 0.48; box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.06), 0 0 10px rgba(255, 255, 255, 0.3); }
+        50% { opacity: 1; box-shadow: 0 0 0 7px rgba(255, 255, 255, 0.15), 0 0 26px rgba(255, 255, 255, 0.86); }
+      }
+
       .node-card {
         position: absolute;
         z-index: 80;
@@ -1106,7 +1165,7 @@
         max-height: min(320px, calc(100vh - 220px));
         overflow-y: auto;
         display: none;
-        transform: translate(-50%, calc(-100% - 24px));
+        transform: translate(-50%, calc(-100% - 30px));
         border: 1px solid rgba(176, 216, 255, 0.32);
         background: linear-gradient(150deg, rgba(7, 22, 36, 0.94), rgba(2, 12, 22, 0.9));
         box-shadow: 0 18px 54px rgba(0, 0, 0, 0.42);
@@ -1120,7 +1179,7 @@
       }
 
       .node-card.is-below {
-        transform: translate(-50%, 24px);
+        transform: translate(-50%, calc(-100% - 30px));
       }
 
       .node-card small {
@@ -4689,20 +4748,20 @@
                 <path class="orbit-base" data-orbit-path="main" d="M-260 318 C 120 178, 390 142, 600 142 S 1080 178, 1460 318" />
                 <path class="orbit-dash" d="M-46 292 C 224 164, 410 134, 600 134 S 976 164, 1246 292" />
               </svg>
-              <button class="node" type="button" data-index="0" data-key="CREW_APIS" data-label="CREW APIS" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="1" data-key="GD_CHECK" data-label="GD CHECK" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="2" data-key="FSC" data-label="FSC" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="3" data-key="NEXTDAY_INFO" data-label="NEXTDAY INFO" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="4" data-key="NET" data-label="NET" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="5" data-key="MISSING_BAG" data-label="MISSING BAG" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="6" data-key="CHD" data-label="CHD" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="7" data-key="GOV" data-label="GOV" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="8" data-key="WEBEDI" data-label="WEB/EDI/RS" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="9" data-key="NBRD" data-label="NBRD" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="10" data-key="CCL" data-label="CCL" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="11" data-key="CC" data-label="CC" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="12" data-key="INITIAL_FLIGHT" data-label="INITIAL FLIGHT" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="13" data-key="BDT_CHG" data-label="BDT CHG" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="0" data-key="CREW_APIS" data-label="CREW APIS" data-status="pending" data-time="----"><span class="node-indicator" aria-hidden="true"></span><span class="node-label">CREW APIS</span></button>
+              <button class="node" type="button" data-index="1" data-key="GD_CHECK" data-label="GD CHECK" data-status="pending" data-time="----"><span class="node-indicator" aria-hidden="true"></span><span class="node-label">GD CHECK</span></button>
+              <button class="node" type="button" data-index="2" data-key="FSC" data-label="FSC" data-status="pending" data-time="----"><span class="node-indicator" aria-hidden="true"></span><span class="node-label">FSC</span></button>
+              <button class="node" type="button" data-index="3" data-key="NEXTDAY_INFO" data-label="NEXTDAY INFO" data-status="pending" data-time="----"><span class="node-indicator" aria-hidden="true"></span><span class="node-label">NEXTDAY INFO</span></button>
+              <button class="node" type="button" data-index="4" data-key="NET" data-label="NET" data-status="pending" data-time="----"><span class="node-indicator" aria-hidden="true"></span><span class="node-label">NET</span></button>
+              <button class="node" type="button" data-index="5" data-key="MISSING_BAG" data-label="MISSING BAG" data-status="pending" data-time="----"><span class="node-indicator" aria-hidden="true"></span><span class="node-label">MISSING BAG</span></button>
+              <button class="node" type="button" data-index="6" data-key="CHD" data-label="CHD" data-status="pending" data-time="----"><span class="node-indicator" aria-hidden="true"></span><span class="node-label">CHD</span></button>
+              <button class="node" type="button" data-index="7" data-key="GOV" data-label="GOV" data-status="pending" data-time="----"><span class="node-indicator" aria-hidden="true"></span><span class="node-label">GOV</span></button>
+              <button class="node" type="button" data-index="8" data-key="WEBEDI" data-label="WEB/EDI/RS" data-status="pending" data-time="----"><span class="node-indicator" aria-hidden="true"></span><span class="node-label">WEB/EDI/RS</span></button>
+              <button class="node" type="button" data-index="9" data-key="NBRD" data-label="NBRD" data-status="pending" data-time="----"><span class="node-indicator" aria-hidden="true"></span><span class="node-label">NBRD</span></button>
+              <button class="node" type="button" data-index="10" data-key="CCL" data-label="CCL" data-status="pending" data-time="----"><span class="node-indicator" aria-hidden="true"></span><span class="node-label">CCL</span></button>
+              <button class="node" type="button" data-index="11" data-key="CC" data-label="CC" data-status="pending" data-time="----"><span class="node-indicator" aria-hidden="true"></span><span class="node-label">CC</span></button>
+              <button class="node" type="button" data-index="12" data-key="INITIAL_FLIGHT" data-label="INITIAL FLIGHT" data-status="pending" data-time="----"><span class="node-indicator" aria-hidden="true"></span><span class="node-label">INITIAL FLIGHT</span></button>
+              <button class="node" type="button" data-index="13" data-key="BDT_CHG" data-label="BDT CHG" data-status="pending" data-time="----"><span class="node-indicator" aria-hidden="true"></span><span class="node-label">BDT CHG</span></button>
               <article class="node-card" aria-live="polite">
                 <h2>Crew APIs</h2>
                 <p>Crew manifest and reservation data are ready. This point can open deeper crew workflows later.</p>
