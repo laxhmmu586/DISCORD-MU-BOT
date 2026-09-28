@@ -1369,3 +1369,11 @@ test('Bag Room shows and sends the daily MU586 unload notice only above five bag
   assert.match(drive, /cc = \['xldou@ceair\.com', 'laxapmu@chinaeastern-usa\.com'\]/);
   assert.match(server, /机场行李分拣延误/);
 });
+
+test('Bag Room notice succeeds when a service account cannot create optional Drive state', () => {
+  assert.match(drive, /service accounts do not have storage quota\|storage quota/);
+  assert.match(drive, /Gmail sent history will be used instead/);
+  assert.match(drive, /return \{ fileId:'', skipped:true, reason:'service-account-storage' \}/);
+  assert.match(server, /async function persistBagRoomUnloadAlertState\(\)/);
+  assert.match(server, /const stateSaved = await persistBagRoomUnloadAlertState\(\);[\s\S]*res\.json\(\{ sent:true, count:tags\.length, tags, email, stateSaved \}\)/);
+});
