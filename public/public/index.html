@@ -4849,6 +4849,7 @@
       const PERSISTENT_GREEN_NODE_KEYS = ["GD_CHECK", "FSC", "NEXTDAY_INFO"];
       let inactivityTimer = null;
       let syAutoRefreshTimer = null;
+      let syBackupIdleCallback = null;
       let syLiveStream = null;
       let syAutoRefreshInFlight = false;
       let syAutoRefreshAbortController = null;
@@ -6351,6 +6352,10 @@
         lastSyRenderSignature = signature;
         const sameFlight = currentSy?.flightNo === sy?.flightNo && currentSy?.flightDate === sy?.flightDate;
         currentSy = sy;
+        // A backup reconciliation still replaces the in-memory payload, but it
+        // should not rewrite the entire dashboard when nothing visible changed.
+        // Repeated DOM updates were the main source of the periodic page hitch.
+        if (unchanged) return;
         if (!sameFlight) {
           currentWarningAckMap = {};
           nodes.forEach((node) => node.removeAttribute("data-clear-locked"));
@@ -6552,6 +6557,8 @@
       function stopSyAutoRefresh() {
         if (syAutoRefreshTimer) clearInterval(syAutoRefreshTimer);
         syAutoRefreshTimer = null;
+        if (syBackupIdleCallback !== null && window.cancelIdleCallback) window.cancelIdleCallback(syBackupIdleCallback);
+        syBackupIdleCallback = null;
         syLiveStream?.close();
         syLiveStream = null;
         syAutoRefreshAbortController?.abort();
@@ -6573,6 +6580,18 @@
             // EventSource reconnects automatically; the backup timer remains active.
           }
         });
+      }
+
+      function scheduleSyBackupRefresh() {
+        if (document.hidden || syAutoRefreshInFlight || syBackupIdleCallback !== null) return;
+        if (!window.requestIdleCallback) {
+          refreshSy({ background: true });
+          return;
+        }
+        syBackupIdleCallback = window.requestIdleCallback(() => {
+          syBackupIdleCallback = null;
+          refreshSy({ background: true });
+        }, { timeout: 10000 });
       }
 
       function finalTimelineNodesComplete() {
@@ -6627,7 +6646,7 @@
         if (immediate) refreshSy({ background: true });
         if (!document.hidden) {
           connectSyLiveStream();
-          syAutoRefreshTimer = setInterval(refreshSy, SY_BACKUP_REFRESH_MS);
+          syAutoRefreshTimer = setInterval(scheduleSyBackupRefresh, SY_BACKUP_REFRESH_MS);
         }
       }
 

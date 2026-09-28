@@ -8,7 +8,8 @@ const server = fs.readFileSync(require.resolve('../index.js'), 'utf8');
 test('home page uses SY server events with a 30-second backup refresh', () => {
   assert.match(page, /new EventSource\(`\$\{resolveApiBase\(\)\}\/sy-live-stream`\)/);
   assert.match(page, /const SY_BACKUP_REFRESH_MS = 30 \* 1000/);
-  assert.match(page, /setInterval\(refreshSy, SY_BACKUP_REFRESH_MS\)/);
+  assert.match(page, /setInterval\(scheduleSyBackupRefresh, SY_BACKUP_REFRESH_MS\)/);
+  assert.match(page, /window\.requestIdleCallback/);
   assert.doesNotMatch(page, /SY_AUTO_REFRESH_MS/);
 });
 
