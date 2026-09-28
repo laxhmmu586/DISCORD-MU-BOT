@@ -2286,6 +2286,18 @@ const bagRoomUnloadAlertStatusChecked = new Set();
 let bagRoomUnloadAlertStateLoaded = false;
 const BAG_ROOM_UNLOAD_ALERT_ENABLED = String(process.env.BAG_ROOM_UNLOAD_ALERT_ENABLED || '').toLowerCase() === 'true';
 
+async function persistBagRoomUnloadAlertState() {
+  try {
+    await writeBagRoomUnloadAlertState({ sentDates:[...bagRoomUnloadAlertCompleted] });
+    return true;
+  } catch (err) {
+    // Persistence is only an optimization. Gmail sent history is checked on a
+    // cold start, so a Drive state failure must not fail an already sent email.
+    console.error('Bag Room Unload sent-state save error:', err);
+    return false;
+  }
+}
+
 async function loadBagRoomUnloadAlertStateOnce() {
   if (bagRoomUnloadAlertStateLoaded) return;
   const state = await readBagRoomUnloadAlertState();
@@ -2301,7 +2313,7 @@ async function bagRoomUnloadNoticeWasSent(isoDate = todayIsoUtc()) {
   const subject = bagRoomUnloadNotice(isoDate, []).subject;
   if (!await hasSentBagRoomUnloadAlertEmail(subject)) return false;
   bagRoomUnloadAlertCompleted.add(isoDate);
-  await writeBagRoomUnloadAlertState({ sentDates:[...bagRoomUnloadAlertCompleted] });
+  await persistBagRoomUnloadAlertState();
   return true;
 }
 
@@ -2337,12 +2349,7 @@ async function notifyBagRoomUnloadAfterCc(syInfo, isoDate) {
     const result = await pending;
     if (result.sent) {
       bagRoomUnloadAlertCompleted.add(isoDate);
-      try {
-        await writeBagRoomUnloadAlertState({ sentDates:[...bagRoomUnloadAlertCompleted] });
-      } catch (err) {
-        result.stateError = err?.message || 'Unable to persist the sent state.';
-        console.error('Bag Room Unload sent-state save error:', err);
-      }
+      if (!await persistBagRoomUnloadAlertState()) result.statePersistence = 'gmail-history';
     }
     return result;
   } finally { bagRoomUnloadAlertInFlight.delete(isoDate); }
@@ -3401,8 +3408,8 @@ app.post('/cbs-bag-room-unload-notice', async (req, res) => {
     const message = bagRoomUnloadNotice(isoDate, tags);
     const email = await sendBagRoomUnloadAlertEmail(message);
     bagRoomUnloadAlertCompleted.add(isoDate);
-    await writeBagRoomUnloadAlertState({ sentDates:[...bagRoomUnloadAlertCompleted] });
-    return res.json({ sent:true, count:tags.length, tags, email });
+    const stateSaved = await persistBagRoomUnloadAlertState();
+    return res.json({ sent:true, count:tags.length, tags, email, stateSaved });
   } catch (err) {
     console.error('Bag Room Unload notice email error:', err);
     return res.status(500).json({ error:cbsEmailErrorMessage(err) });
