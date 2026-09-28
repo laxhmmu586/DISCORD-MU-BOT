@@ -65,6 +65,12 @@ test('rail meteor is measured from the shared timeline rail',()=>{
  assert.match(css,/\.rail-scanner::after \{[^}]*left:0; right:0; top:9px; height:2px/);
  assert.match(css,/\.timeline::before \{\s*display:none;/);
 });
+test('timeline stays horizontally scrollable without showing a scrollbar',()=>{
+ const css=fs.readFileSync(require.resolve('../public/public/assets/mission-dashboard.css'),'utf8');
+ assert.match(css,/\.timeline \{[^}]*overflow-x:auto;[^}]*scrollbar-width:none;[^}]*-ms-overflow-style:none;/);
+ assert.match(css,/\.timeline::\-webkit-scrollbar \{[^}]*display:none;[^}]*height:0;/);
+ assert.doesNotMatch(css,/scrollbar-width:thin/);
+});
 test('NEXTDAY INFO and NET keep same-row spacing while INF TKT renders its ticket count',()=>{
  const css=fs.readFileSync(require.resolve('../public/public/assets/mission-dashboard.css'),'utf8');
  const compactRule=css.match(/\.timeline \.node\[data-key="MEAL_ORDER"\],[\s\S]*?\{ margin-left:-54px; \}/)?.[0] || '';

@@ -11,7 +11,8 @@ main { padding-top:66px; }
 .status-metric::after { inset:-7px; border:2px solid #249fff; clip-path:polygon(0 0,75% 0,100% 65%,100% 100%,40% 100%,0 35%); box-shadow:0 0 12px #2699ff; }
 .mission-stage { margin-top:auto; min-height:260px; height:260px; display:block; padding-bottom:32px; }
 .timeline-shell { position:relative; inset:auto; display:block; padding:0; transform:none; }
-.timeline { display:flex; align-items:flex-start; gap:18px; width:100%; height:255px; padding:48px max(24px,3.7vw) 28px; overflow-x:auto; overflow-y:hidden; touch-action:pan-x pan-y; scroll-behavior:smooth; scrollbar-width:thin; scrollbar-color:#27749a55 transparent; }
+.timeline { display:flex; align-items:flex-start; gap:18px; width:100%; height:255px; padding:48px max(24px,3.7vw) 28px; overflow-x:auto; overflow-y:hidden; touch-action:pan-x pan-y; scroll-behavior:smooth; scrollbar-width:none; -ms-overflow-style:none; }
+.timeline::-webkit-scrollbar { display:none; width:0; height:0; }
 .timeline.is-dragging { scroll-behavior:auto; }
 .timeline > svg, .timeline-time { display:none; }
 .timeline .node { --node-color:#e9f5ff; position:relative; flex:0 0 122px; width:122px; height:166px; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:12px; padding:17px 6px 16px; border:1px solid var(--node-color); border-radius:15px; transform:none; color:white; background:linear-gradient(145deg,rgba(28,42,58,.72),rgba(1,9,18,.9)); box-shadow:inset 0 0 14px #a7d7ff33,0 0 10px #a7d7ff44,0 3px 2px var(--node-color); animation:none; opacity:1; transition:box-shadow .2s,background .2s; }
