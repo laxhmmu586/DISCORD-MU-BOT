@@ -130,6 +130,16 @@ test('missing bags hide at zero and NBRD retains total after acknowledgement',()
 test('dashboard script parses',()=>{
  for(const match of html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)) new vm.Script(match[1]);
 });
+test('homepage avoids continuous mobile effects and skips unchanged refresh rendering',()=>{
+ const css=fs.readFileSync(require.resolve('../public/public/assets/mission-dashboard.css'),'utf8');
+ const update=source('updateFlightFromSy');
+ assert.match(html,/const SY_AUTO_REFRESH_MS = 30 \* 1000/);
+ assert.match(update,/if \(unchanged\)[\s\S]*loadWarningAcknowledgements\(sy\);[\s\S]*return;/);
+ assert.match(css,/-webkit-box-reflect:none/);
+ assert.match(css,/backdrop-filter:none/);
+ assert.match(css,/@media\(max-width:760px\)[\s\S]*\.rail-meteor \{ display:none; \}/);
+ assert.doesNotMatch(css,/data-status="pending"\],\[data-status="locked"\][^\n]*animation:led-breathe/);
+});
 test('horizontal rail lays out every node without fixed orbit coordinates',()=>{
  const nodes = keys.map(key=>({dataset:{key,label:key,time:'0'},setAttribute(){}}));
  const context = {nodes};vm.createContext(context);
