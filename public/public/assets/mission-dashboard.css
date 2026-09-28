@@ -210,24 +210,23 @@ body.is-report-view #warning-action { display:none; }
 .timeline .node[data-key="TKT"],
 .timeline .node[data-key="NET"] { margin-left:-54px; }
 .timeline .node:is([data-key="GOV"],[data-key="WEBEDI"],[data-key="NBRD"],[data-key="WCH"],[data-key="PSM"]) .node-value { width:auto; min-width:32px; padding:0 5px; border:0; background:transparent; color:var(--node-color); box-shadow:none; }
-.timeline .node[data-key="INF_TKT"][data-status="done"] .node-value {
+.timeline .node[data-key="INF_TKT"] .node-value {
   width:31px;
   min-width:31px;
   height:31px;
   padding:0;
-  border:1px solid #9affd9;
   border-radius:50%;
-  background:#35eda1;
-  color:#00170f;
-  box-shadow:0 0 10px #00ee8866;
 }
-.timeline .node[data-key="INF_TKT"][data-status="done"] .node-value::after {
-  content:"";
+.timeline .node[data-key="INF_TKT"] .node-value::after {
+  content:attr(data-value);
   display:block;
-  width:18px;
-  height:18px;
-  background:#003d28;
-  mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m5 12 4.5 4.5L19 7' fill='none' stroke='black' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat;
+  width:auto;
+  height:auto;
+  background:none;
+  mask:none;
+  font-size:20px;
+  font-weight:900;
+  line-height:1;
 }
 
 @media(max-width:760px) {

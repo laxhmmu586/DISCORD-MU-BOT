@@ -51,12 +51,21 @@ test('rail meteor is measured from the shared timeline rail',()=>{
  assert.match(orbit,/getPropertyValue\('--timeline-rail-y'\)/);
  assert.match(orbit,/scanner\.style\.top=\(railY-10\)/);
 });
-test('NEXTDAY INFO and NET keep same-row spacing while INF TKT uses the standard done marker',()=>{
+test('NEXTDAY INFO and NET keep same-row spacing while INF TKT renders its ticket count',()=>{
  const css=fs.readFileSync(require.resolve('../public/public/assets/mission-dashboard.css'),'utf8');
  const compactRule=css.match(/\.timeline \.node\[data-key="MEAL_ORDER"\],[\s\S]*?\{ margin-left:-54px; \}/)?.[0] || '';
  assert.doesNotMatch(compactRule,/NEXTDAY_INFO/);
- assert.match(css,/data-key="INF_TKT"\]\[data-status="done"\] \.node-value/);
- assert.match(css,/data-key="INF_TKT"\]\[data-status="done"\] \.node-value::after/);
+ assert.match(css,/data-key="INF_TKT"\] \.node-value::after[\s\S]*?content:attr\(data-value\)/);
+});
+test('INF TKT value is the number of infant tickets, not passenger rows or missing tickets',()=>{
+ const {context:c,node}=harness();
+ c.updateFlightFromSy({infTicketAudit:[{infantTicketNo:'7811'},{infantTicketNo:'7812'},{infantTicketNo:''}]});
+ assert.equal(node('INF_TKT').dataset.time,'2');
+ assert.equal(node('INF_TKT').dataset.status,'issue');
+ assert.equal(node('INF_TKT').dataset.alert,'1');
+ c.updateFlightFromSy({infTicketAudit:[{infantTicketNo:'7811'},{infantTicketNo:'7812'}]});
+ assert.equal(node('INF_TKT').dataset.time,'2');
+ assert.equal(node('INF_TKT').dataset.status,'done');
 });
 test('warning disappears only when every row has been acknowledged by the current user',()=>{
  const action={hidden:false,classList:{toggle(){}}},manifest={classList:{toggle(){}}};
