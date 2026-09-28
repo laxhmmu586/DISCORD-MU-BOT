@@ -38,6 +38,13 @@ test('rail meteor is measured from the shared timeline rail',()=>{
  assert.match(orbit,/getPropertyValue\('--timeline-rail-y'\)/);
  assert.match(orbit,/scanner\.style\.top=\(railY-10\)/);
 });
+test('NEXTDAY INFO and NET keep same-row spacing while INF TKT uses the standard done marker',()=>{
+ const css=fs.readFileSync(require.resolve('../public/public/assets/mission-dashboard.css'),'utf8');
+ const compactRule=css.match(/\.timeline \.node\[data-key="MEAL_ORDER"\],[\s\S]*?\{ margin-left:-54px; \}/)?.[0] || '';
+ assert.doesNotMatch(compactRule,/NEXTDAY_INFO/);
+ assert.match(css,/data-key="INF_TKT"\]\[data-status="done"\] \.node-value/);
+ assert.match(css,/data-key="INF_TKT"\]\[data-status="done"\] \.node-value::after/);
+});
 test('warning disappears only when every row has been acknowledged by the current user',()=>{
  const action={hidden:false,classList:{toggle(){}}},manifest={classList:{toggle(){}}};
  const c={document:{querySelector:s=>s==='#warning-action'?action:manifest},setText(){},currentUserName:()=> 'lake'};
