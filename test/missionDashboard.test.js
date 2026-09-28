@@ -14,14 +14,49 @@ function harness() {
     unresolvedReviewedBnCount:xs=>(xs||[]).length,webEdiIssueBnList:sy=>sy.govAqq?.passportCodeIssues||[],
     nbrdRowsWithAcknowledgements:sy=>sy.nbrd||[],unacknowledgedNbrdCount:(sy,rows)=>rows.filter(r=>!r.acked).length,
     buildWarningRows:()=>[],duplicateBagRows:()=>[],duplicateNameRows:()=>[],completedSyNodeState:()=>({}),stepByKey:()=>({complete:true,time:'1200'}),
-    fscRateSyncInfo:()=>({}),isFscRateSheetFilled:()=>true,normalizeStatus:(done,count,locked)=>locked?'locked':done?'done':count?'issue':'pending'};
+    fscRateSyncInfo:()=>({}),isFscRateSheetFilled:()=>true,ticketMatchAudit:()=>({ready:false,match:false,differences:[0,0,0]}),normalizeStatus:(done,count,locked)=>locked?'locked':done?'done':count?'issue':'pending'};
   for(const name of ['setSyDetailsVisible','setText','renderMealOrderColumns','selectMealOrderDay','syncCkinNbrdBnsToBoardingSheet','setBadgeText','setActionIssueState','updateWarningActionState','loadWarningAcknowledgements','refreshSalesReportButton','rememberCompletedSyNode','stopSyAutoRefreshWhenFinalNodesComplete','resetTimelineCenter','rerenderActiveRealtimePanel']) context[name]=()=>{};
   vm.createContext(context);
   vm.runInContext(source('updateFlightFromSy')+'\n'+source('applyMissingBagNodeStatus')+'\n'+source('applyNbrdAcknowledgementState'),context);
   return {context,node:key=>nodes.find(n=>n.dataset.key===key)};
 }
 test('all dashboard nodes follow the requested order',()=>{
- assert.deepEqual(keys,['CREW_APIS','GD_CHECK','FSC','NEXTDAY_INFO','MEAL_ORDER','NET','MISSING_BAG','CHD','GOV','WEBEDI','NBRD','WCH','PSM','CCL','CC','INITIAL_FLIGHT','BDT_CHG']);
+ assert.deepEqual(keys,['CREW_APIS','GD_CHECK','MEAL_ORDER','FSC','INF_TKT','NEXTDAY_INFO','TKT','NET','MISSING_BAG','CHD','GOV','WEBEDI','NBRD','WCH','PSM','CCL','CC','INITIAL_FLIGHT','BDT_CHG']);
+ for (const key of ['MEAL_ORDER','INF_TKT','TKT']) assert.match(html,new RegExp(`data-key="${key}"[^>]*data-timeline-side="top"`));
+});
+test('TKT matches C against CET plus unticketed INAD by cabin',()=>{
+ const rows=[
+  {cabin:'Economy',specialServices:['INAD'],ticketNo:''},
+  {cabin:'Business',specialServices:['INAD'],ticketNo:'7810000000001'},
+ ];
+ const c={warningRecordPools:()=>rows,isDeletedPassengerRecord:()=>false,hasTicket:r=>Boolean(r.ticketNo),rowActiveServiceCodes:r=>(r.specialServices||[]).join('/'),currentSy:null};
+ vm.createContext(c);vm.runInContext(source('countTriple')+'\n'+source('ticketMatchAudit'),c);
+ const audit=c.ticketMatchAudit({checkedIn:['','002','021','096'],checkedInTicketed:['','002','021','095']});
+ assert.equal(audit.match,true);
+ assert.deepEqual(Array.from(audit.inad),[0,0,1]);
+ assert.deepEqual(Array.from(audit.adjustedTicketed),[2,21,96]);
+ assert.equal(c.ticketMatchAudit({checkedIn:['','002','021','096'],checkedInTicketed:['','002','020','095']}).match,false);
+});
+test('INF TKT click panel renders passenger and ticket details instead of generic timeline status',()=>{
+ const detail=source('infTicketNodeDetailHtml');
+ const popup=source('showTimelineNodeCard');
+ assert.match(detail,/Adult ticket/);
+ assert.match(detail,/Infant ticket/);
+ assert.doesNotMatch(detail,/<b>Infant<\/b>/);
+ assert.match(detail,/MISSING — added to WARNING/);
+ assert.match(popup,/key === "INF_TKT"[\s\S]*infTicketNodeDetailHtml\(\)/);
+});
+test('rail meteor is measured from the shared timeline rail',()=>{
+ const orbit=fs.readFileSync(require.resolve('../public/public/assets/orbit-interface.js'),'utf8');
+ assert.match(orbit,/getPropertyValue\('--timeline-rail-y'\)/);
+ assert.match(orbit,/scanner\.style\.top=\(railY-10\)/);
+});
+test('NEXTDAY INFO and NET keep same-row spacing while INF TKT uses the standard done marker',()=>{
+ const css=fs.readFileSync(require.resolve('../public/public/assets/mission-dashboard.css'),'utf8');
+ const compactRule=css.match(/\.timeline \.node\[data-key="MEAL_ORDER"\],[\s\S]*?\{ margin-left:-54px; \}/)?.[0] || '';
+ assert.doesNotMatch(compactRule,/NEXTDAY_INFO/);
+ assert.match(css,/data-key="INF_TKT"\]\[data-status="done"\] \.node-value/);
+ assert.match(css,/data-key="INF_TKT"\]\[data-status="done"\] \.node-value::after/);
 });
 test('warning disappears only when every row has been acknowledged by the current user',()=>{
  const action={hidden:false,classList:{toggle(){}}},manifest={classList:{toggle(){}}};
