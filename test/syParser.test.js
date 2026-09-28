@@ -196,6 +196,37 @@ test('keeps WCHR codes on unstarred GOV/FCL passenger continuation lines', () =>
   ]);
 });
 
+test('audits infant tickets from PD and PR displays', () => {
+  const log = [
+    '2026 September 28, Monday, 07:20:00',
+    '> sy',
+    '> SY: MU586/28SEP26 LAX/0 CI0700/NAM',
+    '> 777/773L/B7367 GTD/130 POS/GATE BN299 AK00000 CD00000',
+    '> BDT1145 SD1230 ED1230 CI0700',
+    '2026 September 28, Monday, 07:25:15',
+    '>pd*,inf,etwn',
+    ' PD: MU586/28SEP26*LAX,INF,ETWN OP/NAM',
+    ' 1. 1DU/YU 35J R PVG IFBA FBA/2PC INF',
+    ' ET NUMBER:7819485677257/1 ET NUMBER:INF7812581123635/1',
+    ' 2. 1REN/YUEY+ 31D V PVG IFBA FBA/1PC INF',
+    ' ET NUMBER:7819474603239/1',
+    '2026 September 28, Monday, 07:26:00',
+    '>fb 218',
+    ' PR: MU586/28SEP26*LAX,BN218 PNR RL PHBVD2',
+    ' 1. LIU/XUEYAN BN218 61D V PVG INF1/10 FBA/2PC IFBA/1PC',
+    ' ET TKNE/7819443528883/1',
+    ' ET TKNE/INF7812419955191/1 SNR61D',
+    'INF-WANG/EVELYN'
+  ].join('\n');
+
+  const info = require('../syParser').findSYInfo(log, '28SEP26', { preferredFlightNo: 'MU586' });
+  assert.deepEqual(info.infTicketAudit, [
+    { adultName: 'DU/YU', adultTicketNo: '7819485677257', infantName: '', infantTicketNo: '7812581123635', hasInfant: true },
+    { adultName: 'LIU/XUEYAN', adultTicketNo: '7819443528883', infantName: 'WANG/EVELYN', infantTicketNo: '7812419955191', hasInfant: true },
+    { adultName: 'REN/YUEY', adultTicketNo: '7819474603239', infantName: '', infantTicketNo: '', hasInfant: true }
+  ]);
+});
+
 test('latest passenger display clears an earlier false WCHC advisory match', () => {
   const log = [
     '2026 September 22, Tuesday, 12:50:00',

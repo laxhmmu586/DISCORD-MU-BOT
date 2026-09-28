@@ -162,3 +162,49 @@ body.is-report-view #warning-action { display:none; }
 .rail-ready .node[data-status="done"] .rail-pulse { animation:rail-node-pulse 7s linear infinite; animation-delay:var(--pulse-delay); }
 @keyframes rail-node-pulse { 0% { opacity:.65; transform:scale(1); box-shadow:0 0 9px #00ffa760; } 5.714% { opacity:0; transform:scale(2.6); } 100% { opacity:0; transform:scale(2.6); } }
 @media(prefers-reduced-motion:reduce) { .node .node-led,.rail-ready .rail-meteor,.rail-ready .node .rail-pulse { animation:none; } }
+
+/* Compact, locally staggered operation timeline. One rail serves both card rows. */
+.mission-stage { height:450px; min-height:450px; }
+.timeline {
+  --timeline-rail-y:210px;
+  --rail-gap:14px;
+  align-items:flex-start;
+  gap:var(--rail-gap);
+  height:430px;
+  padding-top:22px;
+  padding-bottom:24px;
+}
+.timeline::before {
+  content:"";
+  position:absolute;
+  left:0;
+  right:0;
+  top:var(--timeline-rail-y);
+  height:2px;
+  background:linear-gradient(90deg,transparent 0,#dff6ff 4%,#dff6ff 96%,transparent 100%);
+  box-shadow:0 0 10px #bcecffaa;
+  pointer-events:none;
+}
+.timeline .node { margin-top:210px; }
+.timeline .node::after { display:none; }
+.timeline .node::before { top:-31px; }
+.timeline .node-icon::before { height:22px; top:-40px; }
+.timeline .node:is([data-key="MEAL_ORDER"],[data-key="INF_TKT"]) { margin-top:0; }
+.timeline .node:is([data-key="MEAL_ORDER"],[data-key="INF_TKT"])::before { top:auto; bottom:-31px; }
+.timeline .node:is([data-key="MEAL_ORDER"],[data-key="INF_TKT"]) .node-icon::before {
+  top:auto;
+  bottom:-67px;
+  height:22px;
+}
+/* Pull opposite rows into each other's horizontal space without overlapping peers. */
+.timeline .node[data-key="MEAL_ORDER"],
+.timeline .node[data-key="NET"] { margin-left:-54px; }
+.timeline .node:is([data-key="GOV"],[data-key="WEBEDI"],[data-key="NBRD"],[data-key="WCH"],[data-key="PSM"],[data-key="INF_TKT"]) .node-value { width:auto; min-width:32px; padding:0 5px; border:0; background:transparent; color:var(--node-color); box-shadow:none; }
+.timeline .node[data-key="INF_TKT"] .node-value::after { content:attr(data-value); font-size:22px; font-weight:850; }
+
+@media(max-width:760px) {
+  .mission-stage { height:430px; min-height:430px; padding-top:0; }
+  .timeline { --timeline-rail-y:200px; height:415px; padding-top:20px; }
+  .timeline .node { margin-top:200px; }
+  .timeline .node[data-key="MEAL_ORDER"],.timeline .node[data-key="NET"] { margin-left:-42px; }
+}

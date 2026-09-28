@@ -21,7 +21,7 @@ function harness() {
   return {context,node:key=>nodes.find(n=>n.dataset.key===key)};
 }
 test('all dashboard nodes follow the requested order',()=>{
- assert.deepEqual(keys,['CREW_APIS','GD_CHECK','FSC','NEXTDAY_INFO','MEAL_ORDER','NET','MISSING_BAG','CHD','GOV','WEBEDI','NBRD','WCH','PSM','CCL','CC','INITIAL_FLIGHT','BDT_CHG']);
+ assert.deepEqual(keys,['CREW_APIS','GD_CHECK','FSC','NEXTDAY_INFO','MEAL_ORDER','INF_TKT','NET','MISSING_BAG','CHD','GOV','WEBEDI','NBRD','WCH','PSM','CCL','CC','INITIAL_FLIGHT','BDT_CHG']);
 });
 test('warning disappears only when every row has been acknowledged by the current user',()=>{
  const action={hidden:false,classList:{toggle(){}}},manifest={classList:{toggle(){}}};
