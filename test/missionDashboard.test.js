@@ -22,6 +22,15 @@ function harness() {
 }
 test('all dashboard nodes follow the requested order',()=>{
  assert.deepEqual(keys,['CREW_APIS','GD_CHECK','FSC','NEXTDAY_INFO','MEAL_ORDER','INF_TKT','NET','MISSING_BAG','CHD','GOV','WEBEDI','NBRD','WCH','PSM','CCL','CC','INITIAL_FLIGHT','BDT_CHG']);
+ for (const key of ['MEAL_ORDER','INF_TKT']) assert.match(html,new RegExp(`data-key="${key}"[^>]*data-timeline-side="top"`));
+});
+test('INF TKT click panel renders passenger and ticket details instead of generic timeline status',()=>{
+ const detail=source('infTicketNodeDetailHtml');
+ const popup=source('showTimelineNodeCard');
+ assert.match(detail,/Adult ticket/);
+ assert.match(detail,/Infant ticket/);
+ assert.match(detail,/MISSING — added to WARNING/);
+ assert.match(popup,/key === "INF_TKT"[\s\S]*infTicketNodeDetailHtml\(\)/);
 });
 test('warning disappears only when every row has been acknowledged by the current user',()=>{
  const action={hidden:false,classList:{toggle(){}}},manifest={classList:{toggle(){}}};

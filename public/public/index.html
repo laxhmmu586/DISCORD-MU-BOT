@@ -4459,7 +4459,7 @@
         }
       }
     </style>
-  <link rel="stylesheet" href="assets/mission-dashboard.css?v=20260927-scanner-white" />
+  <link rel="stylesheet" href="assets/mission-dashboard.css?v=20260928-staggered-infant-tickets" />
   <script defer src="assets/orbit-interface.js?v=6"></script>
   </head>
   <body class="is-loading">
@@ -4689,8 +4689,8 @@
               <button class="node" type="button" data-index="1" data-key="GD_CHECK" data-label="GD CHECK" data-status="pending" data-time="----"><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 3h10l4 4v14H5z M14 3v5h5 M8 14l3 3 5-6"/></svg></span><span class="node-label">GD CHECK</span><span class="node-value" aria-hidden="true"></span></button>
               <button class="node" type="button" data-index="2" data-key="FSC" data-label="FSC" data-status="pending" data-time="----"><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 6h15l-3-3 M21 18H6l3 3 M12 7v10 M15 9c-1-2-6-2-6 1 0 3 6 1 6 4 0 3-5 3-6 1"/></svg></span><span class="node-label">FSC</span><span class="node-value" aria-hidden="true"></span></button>
               <button class="node" type="button" data-index="3" data-key="NEXTDAY_INFO" data-label="NEXTDAY INFO" data-status="pending" data-time="----"><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 3h14v18H5z M8 7h8 M8 12h8 M8 17h5"/></svg></span><span class="node-label">NEXTDAY INFO</span><span class="node-value" aria-hidden="true"></span></button>
-              <button class="node" type="button" data-index="4" data-key="MEAL_ORDER" data-label="MEAL ORDER" data-status="pending" data-time="----"><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="3.5"/><path d="M2 3v6c0 2 3 2 3 0V3 M3.5 3v18 M21 3c-3 2-3 7 0 8v10 M21 3v8"/></svg></span><span class="node-label">MEAL ORDER</span><span class="node-value" aria-hidden="true"></span></button>
-              <button class="node" type="button" data-index="5" data-key="INF_TKT" data-label="INF TKT" data-status="pending" data-time="----"><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 3h10l4 4v14H5z M14 3v5h5"/><circle cx="10" cy="13" r="2"/><path d="M7 19c.5-2.4 1.5-3.5 3-3.5s2.5 1.1 3 3.5 M15 12h2 M15 16h2"/></svg></span><span class="node-label">INF TKT</span><span class="node-value" aria-hidden="true"></span></button>
+              <button class="node" type="button" data-index="4" data-key="MEAL_ORDER" data-timeline-side="top" data-label="MEAL ORDER" data-status="pending" data-time="----"><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="3.5"/><path d="M2 3v6c0 2 3 2 3 0V3 M3.5 3v18 M21 3c-3 2-3 7 0 8v10 M21 3v8"/></svg></span><span class="node-label">MEAL ORDER</span><span class="node-value" aria-hidden="true"></span></button>
+              <button class="node" type="button" data-index="5" data-key="INF_TKT" data-timeline-side="top" data-label="INF TKT" data-status="pending" data-time="----"><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 3h10l4 4v14H5z M14 3v5h5"/><circle cx="10" cy="13" r="2"/><path d="M7 19c.5-2.4 1.5-3.5 3-3.5s2.5 1.1 3 3.5 M15 12h2 M15 16h2"/></svg></span><span class="node-label">INF TKT</span><span class="node-value" aria-hidden="true"></span></button>
               <button class="node" type="button" data-index="6" data-key="NET" data-label="NET" data-status="pending" data-time="----"><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><ellipse cx="12" cy="12" rx="4" ry="10"/><path d="M2 12h20"/></svg></span><span class="node-label">NET</span><span class="node-value" aria-hidden="true"></span></button>
               <button class="node" type="button" data-index="7" data-key="MISSING_BAG" data-label="MISSING BAG" data-status="pending" data-time="----" hidden><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="15" rx="1"/><path d="M9 6V2h6v4 M8 6v15 M16 6v15"/></svg></span><span class="node-label">MISSING BAG</span><span class="node-value" aria-hidden="true"></span></button>
               <button class="node" type="button" data-index="8" data-key="CHD" data-label="CHD LIST" data-status="pending" data-time="----"><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="3"/><path d="M6 21v-5a6 6 0 0 1 12 0v5"/></svg></span><span class="node-label">CHD LIST</span><span class="node-value" aria-hidden="true"></span></button>
@@ -5428,6 +5428,16 @@
         return `<b>Rate</b> ${escapeHtml(rate)}<br><b>Sheet</b> ${escapeHtml(status)}<br><b>Cell</b> ${escapeHtml(cell)}<br>${escapeHtml(reason)}`;
       }
 
+      function infTicketNodeDetailHtml(rows = currentSy?.infTicketAudit || []) {
+        if (!rows.length) return "No infant passenger record found.";
+        return rows.map((row) => {
+          const adultName = row.adultName || "Adult name unavailable";
+          const infantName = row.infantName || "Infant name unavailable";
+          const infantTicket = row.infantTicketNo || "MISSING — added to WARNING";
+          return `<span class="node-card-detail"><b>Adult</b> ${escapeHtml(adultName)}<br><b>Adult ticket</b> ${escapeHtml(row.adultTicketNo || "Missing")}<br><b>Infant</b> ${escapeHtml(infantName)}<br><b>Infant ticket</b> ${escapeHtml(infantTicket)}</span>`;
+        }).join("");
+      }
+
       function updateNodeCard(index) {
         const node = nodes[index];
         if (!node) return;
@@ -5442,10 +5452,7 @@
           return;
         }
         if (key === "INF_TKT") {
-          const rows = currentSy?.infTicketAudit || [];
-          nodeCard.querySelector("p").innerHTML = rows.length
-            ? rows.map((row) => `<b>${escapeHtml(row.adultName || "Adult")}</b> ${escapeHtml(row.adultTicketNo || "Adult ticket missing")}<br><b>${escapeHtml(row.infantName || "Infant")}</b> ${escapeHtml(row.infantTicketNo || "Infant ticket missing")}`).join("<br><br>")
-            : "No infant passenger record found.";
+          nodeCard.querySelector("p").innerHTML = infTicketNodeDetailHtml();
           return;
         }
         const detailText = step?.detailText ? `<span class="node-card-detail">${escapeHtml(step.detailText)}</span>` : "";
@@ -5466,6 +5473,11 @@
         nodeCard.querySelector("h2").textContent = label;
         if (key === "FSC") {
           nodeCard.querySelector("p").innerHTML = fscNodeDetailHtml();
+          nodeCard.classList.add("is-open");
+          return;
+        }
+        if (key === "INF_TKT") {
+          nodeCard.querySelector("p").innerHTML = infTicketNodeDetailHtml();
           nodeCard.classList.add("is-open");
           return;
         }

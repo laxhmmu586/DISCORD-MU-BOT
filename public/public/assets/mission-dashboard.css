@@ -189,12 +189,19 @@ body.is-report-view #warning-action { display:none; }
 .timeline .node::after { display:none; }
 .timeline .node::before { top:-31px; }
 .timeline .node-icon::before { height:22px; top:-40px; }
-.timeline .node:is([data-key="MEAL_ORDER"],[data-key="INF_TKT"]) { margin-top:0; }
-.timeline .node:is([data-key="MEAL_ORDER"],[data-key="INF_TKT"])::before { top:auto; bottom:-31px; }
-.timeline .node:is([data-key="MEAL_ORDER"],[data-key="INF_TKT"]) .node-icon::before {
-  top:auto;
-  bottom:-67px;
+.timeline .node[data-timeline-side="top"] { margin-top:0 !important; }
+.timeline .node[data-timeline-side="top"]::before { top:auto; bottom:-31px; }
+.timeline .node[data-timeline-side="top"] .node-icon::before { display:none; }
+.timeline .node[data-timeline-side="top"] .node-glass::after {
+  content:"";
+  position:absolute;
+  left:50%;
+  bottom:-23px;
+  width:2px;
   height:22px;
+  transform:translateX(-50%);
+  background:var(--node-color);
+  box-shadow:0 0 8px var(--node-color);
 }
 /* Pull opposite rows into each other's horizontal space without overlapping peers. */
 .timeline .node[data-key="MEAL_ORDER"],
