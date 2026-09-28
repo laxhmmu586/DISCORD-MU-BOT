@@ -1020,6 +1020,34 @@ app.get('/cbs-live-stream', (req, res) => {
   req.on('close', () => { clearInterval(keepAlive); cbsStreamClients.delete(res); });
 });
 
+// The home page used to run the full SY search every 15 seconds in every open
+// browser.  Keep the stream payload deliberately small: a completed SY read
+// publishes an invalidation only when its result changed, and connected pages
+// then silently reconcile their own authenticated view.
+const syStreamClients = new Set();
+const syStreamSignatures = new Map();
+function publishSyRefresh(query, payload) {
+  const normalizedQuery = String(query || 'SY').trim().replace(/\s+/g, ' ').toUpperCase();
+  const signature = JSON.stringify(payload);
+  if (syStreamSignatures.get(normalizedQuery) === signature) return;
+  syStreamSignatures.set(normalizedQuery, signature);
+  for (const client of syStreamClients) {
+    writeDashboardEvent(client, 'refresh', { query:normalizedQuery, at:new Date().toISOString() });
+  }
+}
+app.get('/sy-live-stream', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders?.();
+  syStreamClients.add(res);
+  writeDashboardEvent(res, 'connected', { at:new Date().toISOString() });
+  const keepAlive = setInterval(() => res.write(': keep-alive\n\n'), 15000);
+  keepAlive.unref?.();
+  req.on('close', () => { clearInterval(keepAlive); syStreamClients.delete(res); });
+});
+
 app.use(
   express.static('public')
 );
@@ -4397,7 +4425,11 @@ app.get(
         syInfo.spml = spml;
         setImmediate(() => syncSalesDetailsFromTodaySy(isoDate)
           .catch((err) => console.warn('Sales details sync skipped:', err?.message || err)));
-        return res.json({ sy: { ...syInfo, bagSheet: syBagInfo, permissions: authContext.permissions } });
+        const syPayload = { ...syInfo, bagSheet: syBagInfo, permissions: authContext.permissions };
+        // Exclude per-user permissions from the shared change signature.  The
+        // event contains no flight data and merely asks clients to reconcile.
+        publishSyRefresh(rawQuery, { ...syPayload, permissions: undefined });
+        return res.json({ sy: syPayload });
       }
       if (isSYRawQuery) {
         return res.json({ error: 'SY query did not return SY payload.' });
