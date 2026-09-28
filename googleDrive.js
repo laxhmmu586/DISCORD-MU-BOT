@@ -364,9 +364,21 @@ async function writeBagRoomUnloadAlertState(state = {}) {
   const media = { mimeType:'application/json', body:Readable.from([body]) };
   const fileId = await resolveBagRoomAlertDriveFileId();
   if (fileId) { await drive.files.update({ fileId, media }); return { fileId }; }
-  const created = await drive.files.create({ requestBody:{ name:BAG_ROOM_ALERT_DRIVE_FILE_NAME, mimeType:'application/json' }, media, fields:'id' });
-  bagRoomAlertDriveFileId = created.data.id || '';
-  return { fileId:bagRoomAlertDriveFileId };
+  try {
+    const created = await drive.files.create({ requestBody:{ name:BAG_ROOM_ALERT_DRIVE_FILE_NAME, mimeType:'application/json' }, media, fields:'id' });
+    bagRoomAlertDriveFileId = created.data.id || '';
+    return { fileId:bagRoomAlertDriveFileId };
+  } catch (err) {
+    // Service accounts cannot own files and therefore cannot create this small
+    // optional state file in My Drive. The sent-message lookup remains the
+    // durable source of truth, so an unavailable state file must not turn a
+    // successfully sent unload notice into a dashboard error.
+    if (/service accounts do not have storage quota|storage quota/i.test(String(err?.message || ''))) {
+      console.warn('Bag Room alert state file was not created; Gmail sent history will be used instead.');
+      return { fileId:'', skipped:true, reason:'service-account-storage' };
+    }
+    throw err;
+  }
 }
 
 
