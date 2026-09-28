@@ -1,3 +1,5 @@
+const { filterUnavailablePassengerSections } = require('./passengerRecordValidity');
+
 function splitLogicalSections(log) {
   const normalizedLog = String(log || '')
     .replace(/\r\n/g, '\n')
@@ -21,7 +23,7 @@ function splitLogicalSections(log) {
     // `> sy ...` is a new query and must start its own logical section. Treating
     // both as continuations merged results for different flights and could make
     // (for example) MU583's CC1816 appear on the MU586 dashboard.
-    const isSyResponse = /^>\s*SY\s*:/i.test(line);
+    const isSyResponse = /^>\s*(?:SY|PR)\s*:/i.test(line);
     const isContinuation = cmd ? (isSyResponse || /^(?:PN\d*|PF\d*|ACCEPTED(?:\/|$))/.test(cmd)) : false;
 
     if (cmd && !isContinuation) {
@@ -45,7 +47,7 @@ function splitLogicalSections(log) {
   }
 
   if (current && current.content.trim()) sections.push(current);
-  return sections;
+  return filterUnavailablePassengerSections(sections, parseSectionTimestamp);
 }
 
 function isCcAirportClosedContent(content) {

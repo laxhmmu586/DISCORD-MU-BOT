@@ -6178,7 +6178,7 @@
       }
 
       function renderPassenger(data) {
-        resultPanel.innerHTML = "";
+        resetPanelState();
         showPassengerModal(data, "Passenger Record");
       }
 
@@ -6440,7 +6440,11 @@
         const bn = normalizedBn(overlay.dataset.passengerBn || "");
         const updatedRecord = allPassengerRecords(currentSy).find((row) => normalizedBn(row.bn || row.passengerRecord?.bn) === bn);
         const modal = overlay.querySelector(".passenger-modal");
-        if (!updatedRecord || !modal) return;
+        if (!updatedRecord) {
+          closePassengerModal();
+          return;
+        }
+        if (!modal) return;
         const scrollTop = modal.scrollTop;
         const title = overlay.dataset.passengerTitle || "Passenger Record";
         modal.innerHTML = `<button class="panel-close" type="button" data-close-modal>×</button><div class="passenger-modal-mobile-title"><span>${escapeHtml(title)}</span><strong>BN${escapeHtml(String(updatedRecord.bn || bn || "---").replace(/^BN/i, ""))}</strong></div>${passengerRecordCard(updatedRecord, title)}`;
@@ -6448,7 +6452,7 @@
       }
 
       function rerenderActiveRealtimePanel() {
-        const title = resultPanel?.dataset?.panelTitle || "";
+        const title = resultPanel?.innerHTML?.trim() ? resultPanel.dataset.panelTitle || "" : "";
         if (title === "CHD List") renderChdPanel();
         else if (title === "GOV/AQQ") renderGovPanel();
         else if (title === "WEB/EDI/RS") renderWebEdiPanel();
@@ -6459,8 +6463,9 @@
 
       function renderSy(data) {
         if (!data?.sy) throw new Error(data?.error || "No SY payload returned.");
+        resetPanelState();
         updateFlightFromSy(data.sy);
-        resultPanel.innerHTML = "";
+        resetPanelState();
         resultPanel.className = "result-panel";
       }
 
@@ -6583,7 +6588,7 @@
         if (isSySearch) {
           activeSyQuery = normalizeSyQuery(raw);
           if (!isTodaySyQuery(activeSyQuery)) stopSyAutoRefresh();
-        } else resultPanel.innerHTML = "";
+        } else resetPanelState();
         try {
           const data = await fetchSearch(raw);
           if (data.error) throw new Error(data.error);
@@ -6596,7 +6601,7 @@
         } catch (error) {
           if (isSySearch) {
             clearSyDashboard();
-            resultPanel.innerHTML = "";
+            resetPanelState();
             return;
           }
           renderPanel("Search Error", raw, `<p class="panel-muted status-fail">${escapeHtml(error?.message || "Search failed.")}</p>`);
@@ -8511,7 +8516,7 @@
         const node = Array.from(nodes).find((item) => item.dataset.key === key);
         if (node?.dataset.clearLocked === "true") {
           hideTimelineNodeCard();
-          resultPanel.innerHTML = "";
+          resetPanelState();
           nodeTime.textContent = nodeDisplayTime(key);
           return;
         }
@@ -8522,7 +8527,7 @@
         const step = stepByKey(key);
         const inputTime = nodeDisplayTime(key);
         nodeTime.textContent = inputTime;
-        resultPanel.innerHTML = "";
+        resetPanelState();
         if (key === "NET") {
           hideTimelineNodeCard();
           return;
@@ -8581,7 +8586,7 @@
         closeFlightMenu();
         passwordPage.hidden = false;
         passwordStatus.textContent = "";
-        resultPanel.innerHTML = "";
+        resetPanelState();
         newPasswordInput.focus();
       });
 
@@ -8864,7 +8869,7 @@
 
       resultPanel.addEventListener("click", async (event) => {
         if (event.target.closest("[data-close-panel]")) {
-          resultPanel.innerHTML = "";
+          resetPanelState();
           resultPanel.className = "result-panel";
           resultPanel.style.top = "";
           delete resultPanel.dataset.panelTitle;
@@ -8961,7 +8966,7 @@
         if (modalBackdrop?.dataset.dragging === "true") return;
         if (event.target.closest("[data-close-modal]") || modalBackdrop) closePassengerModal();
         if (mobileOrbitQuery.matches && resultPanel.classList.contains("is-mobile-popup")) {
-          resultPanel.innerHTML = "";
+          resetPanelState();
           resultPanel.className = "result-panel";
           resultPanel.style.top = "";
           resultPanel._passengerRows = [];
