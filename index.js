@@ -10,6 +10,8 @@ const {
 
   parseIncrementalLog,
 
+  splitLogicalSections,
+
   findBySeat,
 
   findByName,
@@ -793,7 +795,7 @@ function applyPermissionFilter(pax, permissions, info240) {
 function findPassengerByFFFromRecord(log, query) {
   const ff = query.replace(/\s+/g, '').toUpperCase();
   const sections =
-    log.split(/\d{4}\s+\w+\s+\d{2},.*?\d{2}:\d{2}:\d{2}/g);
+    splitLogicalSections(log).map(section => section.content);
 
   for (const section of sections) {
 
@@ -846,7 +848,7 @@ function findPassengerFromPRRecord(log, mode, query) {
   const normalizedBN = normalized.replace(/^0+/, '') || '0';
 
   const sections =
-    log.split(/\d{4}\s+\w+\s+\d{2},.*?\d{2}:\d{2}:\d{2}/g);
+    splitLogicalSections(log).map(section => section.content);
 
   const targetSection = sections.find(section => {
     const prLine = section.split(/\r?\n/).find(line => line.includes('PR:')) || '';

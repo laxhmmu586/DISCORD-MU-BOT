@@ -108,10 +108,10 @@ function splitLogicalSections(log) {
     }
 
     const cmd = line.match(cmdRe)?.[1]?.toUpperCase() || null;
-    const isContinuation = cmd ? /^(PN\d*|PF\d*)$/.test(cmd) : false;
+    const isContinuation = cmd ? /^>\s*PR\s*:/i.test(line) || /^(PN\d*|PF\d*)$/.test(cmd) : false;
 
     if (cmd && !isContinuation) {
-      if (current && current.content.trim()) sections.push(current.content);
+      if (current && current.content.trim()) sections.push(current);
       current = { content: line + '\n', timestamp: pendingTimestamp || null };
       pendingTimestamp = null;
       continue;
@@ -125,8 +125,10 @@ function splitLogicalSections(log) {
     current.content += line + '\n';
   }
 
-  if (current && current.content.trim()) sections.push(current.content);
-  return sections;
+  if (current && current.content.trim()) sections.push(current);
+  return require('./passengerRecordValidity')
+    .filterUnavailablePassengerSections(sections, timestampToMs)
+    .map(section => section.content);
 }
 
 function getMembershipStatus(tier) {
