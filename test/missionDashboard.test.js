@@ -21,7 +21,29 @@ function harness() {
   return {context,node:key=>nodes.find(n=>n.dataset.key===key)};
 }
 test('all dashboard nodes follow the requested order',()=>{
- assert.deepEqual(keys,['CREW_APIS','GD_CHECK','FSC','NEXTDAY_INFO','MEAL_ORDER','NET','MISSING_BAG','CHD','GOV','WEBEDI','NBRD','WCH','PSM','CCL','CC','INITIAL_FLIGHT','BDT_CHG']);
+ assert.deepEqual(keys,['CREW_APIS','GD_CHECK','MEAL_ORDER','FSC','INF_TKT','NEXTDAY_INFO','NET','MISSING_BAG','CHD','GOV','WEBEDI','NBRD','WCH','PSM','CCL','CC','INITIAL_FLIGHT','BDT_CHG']);
+ for (const key of ['MEAL_ORDER','INF_TKT']) assert.match(html,new RegExp(`data-key="${key}"[^>]*data-timeline-side="top"`));
+});
+test('INF TKT click panel renders passenger and ticket details instead of generic timeline status',()=>{
+ const detail=source('infTicketNodeDetailHtml');
+ const popup=source('showTimelineNodeCard');
+ assert.match(detail,/Adult ticket/);
+ assert.match(detail,/Infant ticket/);
+ assert.doesNotMatch(detail,/<b>Infant<\/b>/);
+ assert.match(detail,/MISSING — added to WARNING/);
+ assert.match(popup,/key === "INF_TKT"[\s\S]*infTicketNodeDetailHtml\(\)/);
+});
+test('rail meteor is measured from the shared timeline rail',()=>{
+ const orbit=fs.readFileSync(require.resolve('../public/public/assets/orbit-interface.js'),'utf8');
+ assert.match(orbit,/getPropertyValue\('--timeline-rail-y'\)/);
+ assert.match(orbit,/scanner\.style\.top=\(railY-10\)/);
+});
+test('NEXTDAY INFO and NET keep same-row spacing while INF TKT uses the standard done marker',()=>{
+ const css=fs.readFileSync(require.resolve('../public/public/assets/mission-dashboard.css'),'utf8');
+ const compactRule=css.match(/\.timeline \.node\[data-key="MEAL_ORDER"\],[\s\S]*?\{ margin-left:-54px; \}/)?.[0] || '';
+ assert.doesNotMatch(compactRule,/NEXTDAY_INFO/);
+ assert.match(css,/data-key="INF_TKT"\]\[data-status="done"\] \.node-value/);
+ assert.match(css,/data-key="INF_TKT"\]\[data-status="done"\] \.node-value::after/);
 });
 test('warning disappears only when every row has been acknowledged by the current user',()=>{
  const action={hidden:false,classList:{toggle(){}}},manifest={classList:{toggle(){}}};
