@@ -94,6 +94,19 @@ test('CCL, CC and initial-flight timestamps survive SY refresh',()=>{
  const {context:c,node}=harness();c.stepByKey=key=>({complete:true,time:({CCL:'1140',CC:'1210',INITIAL_FLIGHT:'1220'})[key]||'0900'});
  c.updateFlightFromSy({});for(const [key,time] of [['CCL','1140'],['CC','1210'],['INITIAL_FLIGHT','1220']])assert.equal(node(key).dataset.time,time);
 });
+test('unchanged background reconciliation updates data without repainting the dashboard',()=>{
+ const {context:c}=harness();let writes=0;
+ c.syRenderSignature=()=> 'same-visible-data';
+ c.setText=()=>{writes+=1;};
+ const first={flightNo:'MU586',flightDate:'28SEP26'};
+ c.updateFlightFromSy(first,{skipUnchanged:true});
+ assert.ok(writes>0);
+ const writesAfterFirstRender=writes;
+ const reconciled={flightNo:'MU586',flightDate:'28SEP26',serverOnlyValue:'new'};
+ c.updateFlightFromSy(reconciled,{skipUnchanged:true});
+ assert.equal(writes,writesAfterFirstRender);
+ assert.equal(c.currentSy,reconciled);
+});
 test('conditional nodes hide, appear with counts, and hide again on refresh',()=>{
  const {context:c,node}=harness();
  c.updateFlightFromSy({});
