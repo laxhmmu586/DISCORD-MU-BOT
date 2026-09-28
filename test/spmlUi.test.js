@@ -4,14 +4,14 @@ const fs = require('node:fs');
 
 const html = fs.readFileSync(require.resolve('../public/public/index.html'), 'utf8');
 
-test('meal order card has date tabs without dashboard tiles', () => {
+test('meal order opens from its dashboard node with the current flight table', () => {
   assert.match(html, />Meal Order</);
   assert.match(html, /data-meal-day="today">---/);
-  assert.match(html, /data-meal-day="tomorrow">---/);
-  assert.equal((html.match(/class="reservation-head">SPML</g) || []).length, 2);
+  assert.match(html, /data-key="MEAL_ORDER"/);
+  assert.equal((html.match(/class="reservation-head">SPML</g) || []).length, 1);
   assert.doesNotMatch(html, />ORDERED SPML</);
   assert.match(html, /id="reservation-table-today"/);
-  assert.match(html, /id="reservation-table-tomorrow"/);
+  assert.doesNotMatch(html, /id="reservation-table-tomorrow"/);
   assert.doesNotMatch(html, /id="jcsy-detail-action"/);
   assert.doesNotMatch(html, /id="security-detail-action"/);
 });
@@ -57,15 +57,15 @@ test('meal order reconciliation warns when ordered F and J plus SPML is below co
 });
 
 test('meal order displays the physical business cabin as J', () => {
-  assert.equal((html.match(/class="reservation-cabin">J</g) || []).length, 2);
+  assert.equal((html.match(/class="reservation-cabin">J</g) || []).length, 1);
   assert.doesNotMatch(html, /class="reservation-cabin">C</);
   assert.match(html, /\["F", "J", "Y"\]\.forEach/);
 });
 
-test('today and tomorrow use a tab switcher with one visible panel', () => {
+test('the current flight meal table is the visible panel', () => {
   assert.match(html, /role="tablist"/);
   assert.match(html, /id="meal-order-tab-today"[^>]*aria-selected="true"/);
-  assert.match(html, /id="reservation-table-tomorrow"[^>]*hidden/);
+  assert.match(html, /class="reservation-table is-active" id="reservation-table-today"/);
   assert.match(html, /function selectMealOrderDay\(day\)/);
   assert.match(html, /function formatMealFlightDate\(value\)/);
   assert.match(html, /nextMealFlightDate\(sy\.flightDate\)/);
@@ -83,8 +83,8 @@ test('selected date keeps its green line without a green glow', () => {
   assert.match(html, /\.meal-order-tab\[aria-selected="true"\]::after \{[^}]*background:#28d8a0; box-shadow:none/);
 });
 
-test('warning is the first operational action before CHD', () => {
-  assert.match(html, /class="detail-actions" aria-label="Flight detail actions">\s*<button[^>]*id="warning-action"[\s\S]*id="chd-action"/);
+test('warning remains in the summary before the operational CHD action', () => {
+  assert.match(html, /id="warning-action"[^>]*hidden[\s\S]*id="chd-action"/);
 });
 
 test('meal table uses two styled vertical column dividers and compact columns', () => {
