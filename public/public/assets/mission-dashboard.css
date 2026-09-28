@@ -154,6 +154,7 @@ body.is-report-view #warning-action { display:none; }
 .timeline > :nth-last-child(1 of .node:not([hidden])) { margin-right:auto; }
 .timeline-shell::after { display:none; }
 .rail-scanner { position:absolute; height:20px; pointer-events:none; z-index:1; overflow:visible; }
+.rail-scanner::after { content:""; position:absolute; left:0; right:0; top:9px; height:2px; background:#dff6ff; box-shadow:0 0 10px #bcecffaa; }
 .rail-meteor { position:absolute; left:-3px; top:4px; width:12px; height:12px; border-radius:50%; background:#fff; box-shadow:0 0 7px 2px #fff,0 0 20px 5px #ffffffcc,0 0 30px #ffffff90; opacity:0; }
 .rail-meteor::before { content:""; position:absolute; right:6px; top:4px; width:180px; height:4px; border-radius:50%; background:linear-gradient(90deg,transparent,#ffffff80 25%,#ffffffd9 70%,#fff); filter:drop-shadow(0 0 4px #fff); }
 .rail-ready .rail-meteor { animation:rail-meteor 7s linear infinite; }
@@ -175,15 +176,7 @@ body.is-report-view #warning-action { display:none; }
   padding-bottom:24px;
 }
 .timeline::before {
-  content:"";
-  position:absolute;
-  left:0;
-  right:0;
-  top:var(--timeline-rail-y);
-  height:2px;
-  background:linear-gradient(90deg,transparent 0,#dff6ff 4%,#dff6ff 96%,transparent 100%);
-  box-shadow:0 0 10px #bcecffaa;
-  pointer-events:none;
+  display:none;
 }
 .timeline .node { margin-top:210px; }
 .timeline .node::after { display:none; }

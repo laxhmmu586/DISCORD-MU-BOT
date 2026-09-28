@@ -58,8 +58,12 @@ test('INF TKT click panel renders passenger and ticket details instead of generi
 });
 test('rail meteor is measured from the shared timeline rail',()=>{
  const orbit=fs.readFileSync(require.resolve('../public/public/assets/orbit-interface.js'),'utf8');
+ const css=fs.readFileSync(require.resolve('../public/public/assets/mission-dashboard.css'),'utf8');
  assert.match(orbit,/getPropertyValue\('--timeline-rail-y'\)/);
  assert.match(orbit,/scanner\.style\.top=\(railY-10\)/);
+ assert.match(orbit,/scanner\.style\.width=distance\+'px'/);
+ assert.match(css,/\.rail-scanner::after \{[^}]*left:0; right:0; top:9px; height:2px/);
+ assert.match(css,/\.timeline::before \{\s*display:none;/);
 });
 test('NEXTDAY INFO and NET keep same-row spacing while INF TKT renders its ticket count',()=>{
  const css=fs.readFileSync(require.resolve('../public/public/assets/mission-dashboard.css'),'utf8');
