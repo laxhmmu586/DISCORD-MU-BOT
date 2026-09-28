@@ -4841,7 +4841,7 @@
       const APP_ENTRY_KEY = "mufc_allow_app_entry";
       const AUTH_SESSION_STARTED_KEY = "mufc_auth_session_started_at";
       const AUTH_LAST_ACTIVITY_KEY = "mufc_auth_last_activity_at";
-      const SY_AUTO_REFRESH_MS = 15 * 1000;
+      const SY_BACKUP_REFRESH_MS = 30 * 1000;
       const SY_REFRESH_TIMEOUT_MS = 12 * 1000;
       const AUTH_INACTIVITY_LIMIT_MS = 60 * 60 * 1000;
       const SY_COMPLETED_NODE_CACHE_KEY = "mufc_sy_completed_nodes_v1";
@@ -4849,6 +4849,7 @@
       const PERSISTENT_GREEN_NODE_KEYS = ["GD_CHECK", "FSC", "NEXTDAY_INFO"];
       let inactivityTimer = null;
       let syAutoRefreshTimer = null;
+      let syLiveStream = null;
       let syAutoRefreshInFlight = false;
       let syAutoRefreshAbortController = null;
       let pendingSyRefresh = null;
@@ -6551,9 +6552,27 @@
       function stopSyAutoRefresh() {
         if (syAutoRefreshTimer) clearInterval(syAutoRefreshTimer);
         syAutoRefreshTimer = null;
+        syLiveStream?.close();
+        syLiveStream = null;
         syAutoRefreshAbortController?.abort();
         syAutoRefreshAbortController = null;
         syAutoRefreshInFlight = false;
+      }
+
+      function connectSyLiveStream() {
+        if (!window.EventSource || document.hidden || !isTodaySyQuery(activeSyQuery)) return;
+        syLiveStream?.close();
+        syLiveStream = new EventSource(`${resolveApiBase()}/sy-live-stream`);
+        syLiveStream.addEventListener("refresh", (event) => {
+          if (document.hidden || syAutoRefreshInFlight) return;
+          try {
+            const update = JSON.parse(event.data || "{}");
+            if (normalizeSyQuery(update.query) !== normalizeSyQuery(activeSyQuery)) return;
+            refreshSy({ background: true });
+          } catch (_) {
+            // EventSource reconnects automatically; the backup timer remains active.
+          }
+        });
       }
 
       function finalTimelineNodesComplete() {
@@ -6606,7 +6625,10 @@
         stopSyAutoRefresh();
         if (!isTodaySyQuery(activeSyQuery)) return;
         if (immediate) refreshSy({ background: true });
-        if (!document.hidden) syAutoRefreshTimer = setInterval(refreshSy, SY_AUTO_REFRESH_MS);
+        if (!document.hidden) {
+          connectSyLiveStream();
+          syAutoRefreshTimer = setInterval(refreshSy, SY_BACKUP_REFRESH_MS);
+        }
       }
 
       function syncSyAutoRefreshWithVisibility() {
