@@ -205,13 +205,14 @@ body.is-report-view #warning-action { display:none; }
 }
 /* Pull opposite rows into each other's horizontal space without overlapping peers. */
 .timeline .node[data-key="MEAL_ORDER"],
-.timeline .node[data-key="NET"] { margin-left:-54px; }
-.timeline .node:is([data-key="GOV"],[data-key="WEBEDI"],[data-key="NBRD"],[data-key="WCH"],[data-key="PSM"],[data-key="INF_TKT"]) .node-value { width:auto; min-width:32px; padding:0 5px; border:0; background:transparent; color:var(--node-color); box-shadow:none; }
-.timeline .node[data-key="INF_TKT"] .node-value::after { content:attr(data-value); font-size:22px; font-weight:850; }
+.timeline .node[data-key="FSC"],
+.timeline .node[data-key="INF_TKT"],
+.timeline .node[data-key="NEXTDAY_INFO"] { margin-left:-54px; }
+.timeline .node:is([data-key="GOV"],[data-key="WEBEDI"],[data-key="NBRD"],[data-key="WCH"],[data-key="PSM"]) .node-value { width:auto; min-width:32px; padding:0 5px; border:0; background:transparent; color:var(--node-color); box-shadow:none; }
 
 @media(max-width:760px) {
   .mission-stage { height:430px; min-height:430px; padding-top:0; }
   .timeline { --timeline-rail-y:200px; height:415px; padding-top:20px; }
   .timeline .node { margin-top:200px; }
-  .timeline .node[data-key="MEAL_ORDER"],.timeline .node[data-key="NET"] { margin-left:-42px; }
+  .timeline .node:is([data-key="MEAL_ORDER"],[data-key="FSC"],[data-key="INF_TKT"],[data-key="NEXTDAY_INFO"]) { margin-left:-42px; }
 }

@@ -14,7 +14,8 @@ if(rail){
   scanner.hidden=false;rail.classList.remove('rail-ready');
   const first=nodes[0],last=nodes[nodes.length-1],gap=parseFloat(getComputedStyle(rail).columnGap)||18;
   const start=first.offsetLeft-gap/2,end=last.offsetLeft+last.offsetWidth+gap/2,distance=end-start;
-  scanner.style.left=(start-3)+'px';scanner.style.top=(first.offsetTop-38)+'px';scanner.style.width=distance+'px';scanner.style.setProperty('--rail-distance',distance+'px');
+  const railY=parseFloat(getComputedStyle(rail).getPropertyValue('--timeline-rail-y'))||first.offsetTop-28;
+  scanner.style.left=(start-3)+'px';scanner.style.top=(railY-10)+'px';scanner.style.width=distance+'px';scanner.style.setProperty('--rail-distance',distance+'px');
   nodes.forEach(n=>n.style.setProperty('--pulse-delay',((n.offsetLeft+n.offsetWidth/2-start)/distance*5)+'s'));
   requestAnimationFrame(()=>rail.classList.add('rail-ready'));
  }
