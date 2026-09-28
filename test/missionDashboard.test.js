@@ -21,8 +21,18 @@ function harness() {
   return {context,node:key=>nodes.find(n=>n.dataset.key===key)};
 }
 test('all dashboard nodes follow the requested order',()=>{
- assert.deepEqual(keys,['CREW_APIS','GD_CHECK','MEAL_ORDER','FSC','INF_TKT','NEXTDAY_INFO','TKT','NET','MISSING_BAG','CHD','GOV','WEBEDI','NBRD','WCH','PSM','CCL','CC','INITIAL_FLIGHT','BDT_CHG']);
+ assert.deepEqual(keys,['CREW_APIS','GD_CHECK','MEAL_ORDER','FSC','INF_TKT','NEXTDAY_INFO','TKT','NET','MISSING_BAG','CHD','GOV','WEBEDI','NBRD','DUP_BAG','WCH','PSM','CCL','CC','INITIAL_FLIGHT','BDT_CHG']);
  for (const key of ['MEAL_ORDER','INF_TKT','TKT']) assert.match(html,new RegExp(`data-key="${key}"[^>]*data-timeline-side="top"`));
+});
+test('DUP BAG is a conditional timeline node after NBRD and is not moved into the flight menu',()=>{
+ const {context:c,node}=harness();
+ c.duplicateBagRows=()=>[{},{}];
+ c.updateFlightFromSy({});
+ assert.equal(node('DUP_BAG').hidden,false);
+ assert.equal(node('DUP_BAG').dataset.status,'issue');
+ assert.equal(node('DUP_BAG').dataset.time,'2');
+ assert.doesNotMatch(html,/\["duplicate-bags-action", "duplicate-names-action"\]/);
+ assert.match(source('renderStepPanel'),/key === "DUP_BAG"[\s\S]*renderDuplicateBagsPanel/);
 });
 test('TKT matches C against CET plus unticketed INAD by cabin',()=>{
  const rows=[
