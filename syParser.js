@@ -1012,6 +1012,56 @@ function infantApiIssueFromSection(section) {
   };
 }
 
+function enrichInfantTicketAuditFromLog(log, syInfo, targetYmd = null) {
+  if (!log || !syInfo?.flightNo || !syInfo?.flightDate) return [];
+  const rows = new Map();
+  const put = (row) => {
+    const adultName = String(row.adultName || '').replace(/\+$/, '').trim().toUpperCase();
+    const infantName = String(row.infantName || '').trim().toUpperCase();
+    const adultTicketNo = String(row.adultTicketNo || '').trim();
+    const infantTicketNo = String(row.infantTicketNo || '').trim();
+    if (!adultName && !adultTicketNo) return;
+    const key = `${adultName}|${adultTicketNo}`;
+    const previous = rows.get(key) || {};
+    rows.set(key, {
+      adultName: adultName || previous.adultName || 'UNKNOWN',
+      adultTicketNo: adultTicketNo || previous.adultTicketNo || '',
+      infantName: infantName || previous.infantName || '',
+      infantTicketNo: infantTicketNo || previous.infantTicketNo || '',
+      hasInfant: true
+    });
+  };
+
+  for (const sectionObj of splitLogicalSections(log)) {
+    const section = sectionObj.content || '';
+    if (!sectionMatchesFlightOperationDate(sectionObj, targetYmd, syInfo.flightNo)) continue;
+    const flight = section.match(/\bP[DR]:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
+    if (!flight || !matchesSyFlightRecord(flight[1], flight[2], syInfo)) continue;
+
+    if (/\bPD:/i.test(section) && /(?:^|[\s,])INF(?:[\s,]|$)/i.test(section)) {
+      const lines = section.split(/\r?\n/);
+      let adultName = '';
+      for (const line of lines) {
+        const passenger = line.match(/^\s*\d+\.\s*\d?([A-Z][A-Z/]+\+?)/i);
+        if (passenger) adultName = passenger[1];
+        const tickets = line.match(/ET\s+NUMBER:\s*(\d{10,})\/\d+(?:\s+ET\s+NUMBER:\s*INF(\d{10,})\/\d+)?/i);
+        if (tickets && adultName) put({ adultName, adultTicketNo: tickets[1], infantTicketNo: tickets[2] || '' });
+      }
+    }
+
+    const infantName = section.match(/^\s*INF-\s*([^\s]+(?:\s+[^\s]+)?)/im)?.[1]?.replace(/\s+\d{1,2}[A-Z]{3}\d{2,4}.*$/i, '') || '';
+    const infantMarker = infantName || /\bINF1\/\d+\b/i.test(section);
+    if (infantMarker) {
+      const passengerLine = getPassengerRecordLine(section);
+      const adultName = (passengerLine.match(/^\s*\d+\.\s*\d?([A-Z/]+\+?)/i)?.[1] || '').replace(/\+$/, '');
+      const adultTicketNo = section.match(/\bET\s+TKNE\/(?!INF)(\d{10,})\/\d+\b/i)?.[1] || '';
+      const infantTicketNo = section.match(/\bET\s+TKNE\/INF(\d{10,})\/\d+\b/i)?.[1] || '';
+      put({ adultName, adultTicketNo, infantName, infantTicketNo });
+    }
+  }
+  return [...rows.values()].sort((a, b) => a.adultName.localeCompare(b.adultName));
+}
+
 function enrichGovAqqFromLog(log, syInfo, targetYmd = null) {
   if (!log || !syInfo?.flightNo || !syInfo?.flightDate) {
     return { duplicatePassports: [], aqqTclBnList: [], govDtaBnList: [], passportExpBnList: [], passportExpiringSoonBnList: [], wrongPassportBnList: [], missingApiBnList: [], infApiBnList: [], passportCodeIssues: [] };
@@ -1937,6 +1987,7 @@ function findSYInfo(log, queryDate, options = {}) {
       info.bnAudit = enrichBnAuditFromLog(log, info, targetYmd);
       info.checkinAgentStats = enrichCheckinAgentStatsFromLog(log, info, targetYmd);
       info.psmList = enrichPsmListFromLog(log, info, targetYmd);
+      info.infTicketAudit = enrichInfantTicketAuditFromLog(log, info, targetYmd);
       info.crewApis = enrichCrewApisFromLog(log, info, targetYmd);
       info.jcsy = info.crewApis?.jcsy || null;
       return info;
@@ -1990,6 +2041,7 @@ function findSYInfo(log, queryDate, options = {}) {
     info.bnAudit = enrichBnAuditFromLog(log, info, targetYmd);
     info.checkinAgentStats = enrichCheckinAgentStatsFromLog(log, info, targetYmd);
     info.psmList = enrichPsmListFromLog(log, info, targetYmd);
+    info.infTicketAudit = enrichInfantTicketAuditFromLog(log, info, targetYmd);
     info.crewApis = enrichCrewApisFromLog(log, info, targetYmd);
     info.jcsy = info.crewApis?.jcsy || null;
     return info;
