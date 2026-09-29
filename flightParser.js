@@ -350,6 +350,8 @@ function parseIncrementalLog(log) {
     const flightDate =
       rawFlightDate.substring(0, 5);
 
+    const pnr = section.match(/\bPNR\s+RL\s+([A-Z0-9]{5,8})\b/i)?.[1]?.toUpperCase() || null;
+
     // =========================
     // Passenger + BN
     // Handles:
@@ -728,6 +730,8 @@ function parseIncrementalLog(log) {
 
       flightDate,
 
+      pnr,
+
       ffCarrier,
 
       ffNumber,
@@ -826,6 +830,9 @@ function parseIncrementalLog(log) {
 
       passenger.ticketNumber =
         passenger.ticketNumber || existingPassenger.ticketNumber || null;
+
+      passenger.pnr =
+        passenger.pnr || existingPassenger.pnr || null;
 
       passenger.seat =
         passenger.seat || existingPassenger.seat || null;
