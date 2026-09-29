@@ -130,6 +130,8 @@ const {
 const fbLookup =
   require('./fbLookup');
 const { findSYInfo } = require('./syParser');
+const bwipjs = require('bwip-js');
+const { parseManualBoardingLog } = require('./manualBoarding');
 const NEXTDAY_INFO_DISCORD_CHANNEL_ID = '1399400605742661702';
 const TRANSIT_240_DISCORD_CHANNEL_ID = process.env.TRANSIT_240_DISCORD_CHANNEL_ID || '1365773224276660257';
 const WRONG_BAGGAGE_DISCORD_CHANNEL_ID = process.env.WRONG_BAGGAGE_DISCORD_CHANNEL_ID || '1534758804535640227';
