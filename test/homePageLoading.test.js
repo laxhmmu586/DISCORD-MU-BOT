@@ -4,12 +4,13 @@ const fs = require('node:fs');
 
 const html = fs.readFileSync(require.resolve('../public/public/index.html'), 'utf8');
 
-test('home page keeps THINKING visible until currentSy is available', () => {
+test('home page removes THINKING when the initial SY request completes', () => {
   assert.match(html, /const showLoading = !currentSy && !protectedView/);
-  assert.match(html, /finally \{[\s\S]*?if \(showLoading && currentSy\) setLoadingState\(false\)/);
+  assert.match(html, /finally \{[\s\S]*?if \(showLoading\) setLoadingState\(false\)/);
 });
 
-test('home page continues showing THINKING while an initial SY retry is pending', () => {
-  assert.doesNotMatch(html, /initialSyLoadAttempted/);
-  assert.doesNotMatch(html, /Unable to load SY\. Retrying automatically/);
+test('home page reports an initial SY failure while automatic retries continue', () => {
+  assert.match(html, /function showInitialSyLoadFailure\(error\)/);
+  assert.match(html, /Unable to load SY · retrying automatically/);
+  assert.match(html, /if \(showLoading\) showInitialSyLoadFailure\(error\)/);
 });

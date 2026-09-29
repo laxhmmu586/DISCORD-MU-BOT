@@ -263,6 +263,9 @@ const CBS_SCAN_SHEET_ID = process.env.CBS_SCAN_SHEET_ID || '1bfIeytT6UMdvWXimeg4
 const CBS_SCAN_SHEET_GID = Number(process.env.CBS_SCAN_SHEET_GID || 0);
 const RECORD_SCAN_SHEET_ID = process.env.RECORD_SCAN_SHEET_ID || '1bfIeytT6UMdvWXimeg4s1HVuXHqmpYZx53ufsbes6Ms';
 const RECORD_SCAN_SHEET_GID = Number(process.env.RECORD_SCAN_SHEET_GID || 621930495);
+const MANUAL_BOARDING_SHEET_ID = process.env.MANUAL_BOARDING_SHEET_ID || '1bfIeytT6UMdvWXimeg4s1HVuXHqmpYZx53ufsbes6Ms';
+const MANUAL_BOARDING_SHEET_GID = Number(process.env.MANUAL_BOARDING_SHEET_GID || 1102230555);
+const MANUAL_BOARDING_HEADERS = ['Name', 'BN', 'Seat', 'Ticket Number', 'Membership Number', 'PNR', 'Flight', 'Flight Date', 'Gate', 'BDT', 'Barcode', 'Updated At'];
 const RECORD_SCAN_HEADERS = ['BN', 'SEAT', 'FLIGHT NUMBER', 'RAW SCAN'];
 const RECORD_CASE_SHEET_ID = process.env.RECORD_CASE_SHEET_ID || '1t0TS3__Im1tyLy7Hj7CGF8zet_-5TT1986QCodhvYbo';
 const RECORD_CASE_SHEET_GID = Number(process.env.RECORD_CASE_SHEET_GID || 1472152106);
@@ -275,6 +278,7 @@ const CBS_SCAN_HEADERS = ['BN', 'Seat', 'Flight', 'Raw Scan', 'Scanned At'];
 const CBS_SCAN_INFANT_HEADERS = ['Infant BN', 'Infant Seat', 'Infant Flight', 'Infant Raw Scan', 'Infant Scanned At'];
 let cbsScanSheetTitle = '';
 let recordScanSheetTitle = '';
+let manualBoardingSheetTitle = '';
 let recordCaseSheetTitle = '';
 const RECORD_CASE_CACHE_TTL_MS = Math.max(30000, Number(process.env.RECORD_CASE_CACHE_TTL_MS) || 55000);
 let recordCaseCache = { expiresAt:0, rows:[], pending:null };
@@ -2915,6 +2919,45 @@ async function getCbsScanSheetTitle() {
   return cbsScanSheetTitle || 'Sheet1';
 }
 
+async function syncManualBoardingRecords(records = []) {
+  if (!manualBoardingSheetTitle) {
+    manualBoardingSheetTitle = await resolveSheetTitleByGid(MANUAL_BOARDING_SHEET_ID, MANUAL_BOARDING_SHEET_GID);
+  }
+  if (!manualBoardingSheetTitle) throw new Error(`Manual sheet gid ${MANUAL_BOARDING_SHEET_GID} was not found.`);
+  const title = escapeSheetTitle(manualBoardingSheetTitle);
+  const current = await cbsScanSheetsCall(() => sheets.spreadsheets.values.get({
+    spreadsheetId:MANUAL_BOARDING_SHEET_ID, range:`${title}!A:L`
+  }), 'Manual boarding sheet read');
+  const rows = current.data.values || [];
+  if (MANUAL_BOARDING_HEADERS.some((header, index) => String(rows[0]?.[index] || '') !== header)) {
+    await cbsScanSheetsCall(() => sheets.spreadsheets.values.update({
+      spreadsheetId:MANUAL_BOARDING_SHEET_ID, range:`${title}!A1:L1`, valueInputOption:'RAW',
+      requestBody:{ values:[MANUAL_BOARDING_HEADERS] }
+    }), 'Manual boarding header update');
+  }
+  const existing = new Map(rows.slice(1).map((row, index) => [`${row[6]}|${row[7]}|${String(row[1]).padStart(3, '0')}`, index + 2]));
+  const updatedAt = new Date().toISOString();
+  const updates = [];
+  const appends = [];
+  for (const record of records) {
+    const values = [record.name, record.bn, record.seat, record.ticketNumber, record.membershipNumber, record.pnr, record.flight, record.flightDate, record.gate, record.bdt, record.barcode, updatedAt];
+    const key = `${record.flight}|${record.flightDate}|${record.bn}`;
+    const rowNumber = existing.get(key);
+    if (rowNumber) {
+      updates.push({ range:`${title}!A${rowNumber}:L${rowNumber}`, values:[values] });
+    } else {
+      appends.push(values);
+    }
+  }
+  if (updates.length) await cbsScanSheetsCall(() => sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId:MANUAL_BOARDING_SHEET_ID, requestBody:{ valueInputOption:'RAW', data:updates }
+  }), 'Manual boarding rows update');
+  if (appends.length) await cbsScanSheetsCall(() => sheets.spreadsheets.values.append({
+    spreadsheetId:MANUAL_BOARDING_SHEET_ID, range:`${title}!A:L`, valueInputOption:'RAW', insertDataOption:'INSERT_ROWS', requestBody:{ values:appends }
+  }), 'Manual boarding rows append');
+  return { saved:records.length };
+}
+
 async function getCbsScanSheetRows(options = {}) {
   const ttlMs = 5 * 1000;
   if (!options.forceRefresh && Date.now() - cbsScanSheetCache.loadedAt < ttlMs && cbsScanSheetCache.rows.length) return cbsScanSheetCache.rows;
@@ -5037,6 +5080,7 @@ module.exports = {
   appendTransit240Record,
   appendCbsScanRecord,
   appendRecordScanRecord,
+  syncManualBoardingRecords,
   appendRecordCase,
   getRecordCases,
   updateRecordCase,
