@@ -1057,7 +1057,7 @@
     const TRACKING_STAGES = [
       { key:'create', text:'Create' },
       { key:'worldtracer', text:'WorldTracer' },
-      { key:'requested_bags', text:'Requested Bags' },
+      { key:'requested_bags', text:'Request Bags' },
       { key:'upcoming_rush', text:'Upcoming Rush' },
       { key:'on_hand_match', text:'On-hand Match' },
       { key:'email', text:'Email' },
@@ -1585,6 +1585,28 @@
         return groups;
       }, []);
     }
+    function orderedCaseProgressEvents(row, sourceEvents) {
+      const caseType = inferCaseType(row);
+      const chronological = sourceEvents.slice().sort((a, b) => (Date.parse(a.at || '') || 0) - (Date.parse(b.at || '') || 0));
+      if (caseType === 'DPR') {
+        const created = chronological.find((event) => event.key === 'create');
+        const worldTracer = chronological.filter((event) => event.key === 'worldtracer').at(-1);
+        const fixed = [created, worldTracer].filter(Boolean);
+        if (worldTracer && isClosedCase(row)) fixed.push({ key:'closed', title:'Case Closed', at:worldTracer.at, by:worldTracer.by || 'System', fields:[['Comment', 'Closed automatically after WorldTracer update']] });
+        return fixed;
+      }
+      if (caseType !== 'AHL') return chronological;
+      return chronological.map((event, sourceIndex) => {
+        let workflowOrder = 50;
+        if (event.key === 'create') workflowOrder = 0;
+        else if (event.key === 'worldtracer') workflowOrder = 10;
+        else if (event.key === 'email' && ['Sent authorization form to passenger', 'Require Open Bag Authorization at PVG', 'Sent Open Bag Authorization to PVG'].includes(event.title)) workflowOrder = 20;
+        else if (event.key === 'requested_bags') workflowOrder = 30;
+        else if (event.key === 'email' && event.title === 'Baggage transfer status update - ETA') workflowOrder = 40;
+        else if (event.key === 'closed') workflowOrder = 90;
+        return { event, workflowOrder, sourceIndex };
+      }).sort((a, b) => a.workflowOrder - b.workflowOrder || a.sourceIndex - b.sourceIndex).map(({ event }) => event);
+    }
     function trackingControlHtml(row, part = 'all') {
       const recordId = row?.rowNumber || '';
       const events = parseUpdateNoteEvents(row);
@@ -1609,11 +1631,9 @@
       const active = nextTrackingKey(row);
       const upcomingRush = upcomingRushDetails(row);
       const updateKeys = TRACKING_STAGES.filter((stage) => !['create', 'reopen', 'on_hand_match'].includes(stage.key));
-      const sortedEvents = groupRepeatedEmailEvents(events
-        .slice()
-        .sort((a, b) => (Date.parse(a.at || '') || 0) - (Date.parse(b.at || '') || 0)))
-        .sort((a, b) => (Date.parse((a.repeats.at(-1) || a.event).at || '') || 0) - (Date.parse((b.repeats.at(-1) || b.event).at || '') || 0))
-        .map((group, index) => ({ ...group, stepNumber:index + 1 }));
+      const sortedEvents = groupRepeatedEmailEvents(orderedCaseProgressEvents(row, events))
+        .map((group, index) => ({ ...group, stepNumber:index + 1 }))
+        .reverse();
       const historyHtml = sortedEvents
         .map(({ event, repeats, stepNumber }, index) => {
           const time = formatEventTime(event.at);
