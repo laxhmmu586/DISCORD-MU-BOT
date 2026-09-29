@@ -21,7 +21,7 @@ function harness() {
   return {context,node:key=>nodes.find(n=>n.dataset.key===key)};
 }
 test('all dashboard nodes follow the requested order',()=>{
- assert.deepEqual(keys,['CREW_APIS','GD_CHECK','MEAL_ORDER','FSC','INF_TKT','NEXTDAY_INFO','TKT','NET','MISSING_BAG','CHD','GOV','WEBEDI','NBRD','DUP_BAG','WCH','PSM','CCL','CC','INITIAL_FLIGHT','BDT_CHG']);
+ assert.deepEqual(keys,['CREW_APIS','GD_CHECK','MEAL_ORDER','FSC','INF_TKT','NEXTDAY_INFO','TKT','NET','MISSING_BAG','CHD','GOV','WEBEDI','NBRD','DUP_BAG','WCH','DUP_NAME','PSM','CCL','CC','INITIAL_FLIGHT','BDT_CHG']);
  for (const key of ['MEAL_ORDER','INF_TKT','TKT']) assert.match(html,new RegExp(`data-key="${key}"[^>]*data-timeline-side="top"`));
 });
 test('DUP BAG is a conditional timeline node after NBRD and is not moved into the flight menu',()=>{
@@ -116,13 +116,15 @@ test('unchanged background reconciliation updates data without repainting the da
 test('conditional nodes hide, appear with counts, and hide again on refresh',()=>{
  const {context:c,node}=harness();
  c.updateFlightFromSy({});
- for(const key of ['WCH','PSM','NBRD']) assert.equal(node(key).hidden,true);
+ for(const key of ['WCH','DUP_NAME','PSM','NBRD']) assert.equal(node(key).hidden,true);
+ c.duplicateNameRows=()=>[{}, {}, {}];
  c.updateFlightFromSy({wchList:[{},{}],psmList:[{}],nbrd:[{}],govAqq:{duplicatePassports:['001'],passportCodeIssues:['002','003']}});
- for(const [key,count] of [['WCH','2'],['PSM','1']]) {assert.equal(node(key).hidden,false);assert.equal(node(key).dataset.status,'done');assert.equal(node(key).dataset.time,count);}
+ for(const [key,count] of [['WCH','2'],['DUP_NAME','3'],['PSM','1']]) {assert.equal(node(key).hidden,false);assert.equal(node(key).dataset.status,'done');assert.equal(node(key).dataset.time,count);}
  assert.equal(node('NBRD').dataset.time,'1');assert.equal(node('NBRD').hidden,false);
  assert.equal(node('GOV').dataset.time,'1');assert.equal(node('WEBEDI').dataset.time,'2');
+ c.duplicateNameRows=()=>[];
  c.updateFlightFromSy({wchList:[],psmList:[],nbrd:[],govAqq:{}});
- for(const key of ['WCH','PSM','NBRD']) assert.equal(node(key).hidden,true);
+ for(const key of ['WCH','DUP_NAME','PSM','NBRD']) assert.equal(node(key).hidden,true);
  assert.equal(node('GOV').dataset.time,'0');assert.equal(node('WEBEDI').dataset.time,'0');
 });
 test('missing bags hide at zero and NBRD retains total after acknowledgement',()=>{
