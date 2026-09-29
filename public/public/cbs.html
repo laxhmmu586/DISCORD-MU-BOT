@@ -1623,6 +1623,11 @@
     function trackingControlHtml(row, part = 'all') {
       const recordId = row?.rowNumber || '';
       const events = parseUpdateNoteEvents(row);
+      const isDpr = inferCaseType(row) === 'DPR';
+      if (isDpr && isClosedCase(row) && events.at(-1)?.key === 'worldtracer') {
+        const worldTracerEvent = events.at(-1);
+        events.push({ key:'closed', title:'Case Closed', at:worldTracerEvent.at, by:worldTracerEvent.by || 'System', fields:[['Comment', 'Closed automatically after WorldTracer update']] });
+      }
       if (row?.source === 'wrongBaggage') {
         const historyHtml = events.map((event, index) => ({ event, stepNumber:index + 1 })).reverse().map(({ event, stepNumber }, index) => {
           const time = formatEventTime(event.at);
