@@ -24,10 +24,18 @@ test('all dashboard nodes follow the requested order',()=>{
  assert.deepEqual(keys,['CREW_APIS','GD_CHECK','MEAL_ORDER','FSC','INF_TKT','NEXTDAY_INFO','TKT','NET','MISSING_BAG','CHD','GOV','WEBEDI','NBRD','DUP_BAG','WCH','DUP_NAME','PSM','CCL','CC','INITIAL_FLIGHT','BDT_CHG']);
  for (const key of ['MEAL_ORDER','INF_TKT','TKT']) assert.match(html,new RegExp(`data-key="${key}"[^>]*data-timeline-side="top"`));
 });
-test('DUP NAME loads count styling instead of the completed check mark',()=>{
+test('DUP NAME and CHD LIST load count styling instead of the completed check mark',()=>{
  const css=fs.readFileSync(require.resolve('../public/public/assets/mission-dashboard.css'),'utf8');
- assert.match(html,/mission-dashboard\.css\?v=20260929-dup-name-count/);
+ assert.match(html,/mission-dashboard\.css\?v=20260929-node-counts/);
+ assert.match(css,/data-key="CHD"[^}]*\) \.node-value::after \{ content:attr\(data-value\)/);
  assert.match(css,/data-key="DUP_NAME"[^}]*\) \.node-value::after \{ content:attr\(data-value\)/);
+});
+test('CHD LIST displays the total child count while retaining missing-code status',()=>{
+ const {context:c,node}=harness();
+ c.updateFlightFromSy({chdList:[{hasChdCode:true},{hasChdCode:true}]});
+ assert.equal(node('CHD').dataset.status,'done');assert.equal(node('CHD').dataset.time,'2');
+ c.updateFlightFromSy({chdList:[{hasChdCode:true},{hasChdCode:false},{hasChdCode:true}]});
+ assert.equal(node('CHD').dataset.status,'issue');assert.equal(node('CHD').dataset.time,'3');assert.equal(node('CHD').dataset.alert,'1');
 });
 test('DUP BAG is a conditional timeline node after NBRD and is not moved into the flight menu',()=>{
  const {context:c,node}=harness();

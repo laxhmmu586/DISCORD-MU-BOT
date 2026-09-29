@@ -4459,7 +4459,7 @@
         }
       }
     </style>
-  <link rel="stylesheet" href="assets/mission-dashboard.css?v=20260929-dup-name-count" />
+  <link rel="stylesheet" href="assets/mission-dashboard.css?v=20260929-node-counts" />
   <script defer src="assets/orbit-interface.js?v=7-rail-alignment"></script>
   </head>
   <body class="is-loading">
@@ -6525,7 +6525,7 @@
           }
           const locked = !complete && !previousStarted && !["GD_CHECK", "FSC", "NEXTDAY_INFO", "CHD", "GOV", "WEBEDI", "NBRD"].includes(key);
           node.dataset.status = key === "FSC" ? (complete ? "done" : "pending") : normalizeStatus(Boolean(complete), issueCount || (started && !complete ? 1 : 0), locked);
-          node.dataset.time = String(key === "GOV" ? govCount : key === "WEBEDI" ? webediCount : key === "NBRD" ? nbrdCount : time);
+          node.dataset.time = String(key === "CHD" ? (sy.chdList || []).length : key === "GOV" ? govCount : key === "WEBEDI" ? webediCount : key === "NBRD" ? nbrdCount : time);
           if (complete && PERSISTENT_GREEN_NODE_KEYS.includes(key)) rememberCompletedSyNode(sy, key, time);
           if (["CHD", "GOV", "WEBEDI", "NBRD"].includes(key)) node.removeAttribute("data-clear-locked");
           if (issueCount) node.dataset.alert = String(issueCount);
