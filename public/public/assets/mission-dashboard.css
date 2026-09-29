@@ -29,8 +29,8 @@ main { padding-top:66px; }
 .node[data-status="done"] .node-value,.node[data-status="issue"] .node-value { border:1px solid #eaffef; background:var(--node-color); color:#00170f; box-shadow:0 0 15px var(--node-color); }
 .node[data-status="done"] .node-value::after { content:""; display:block; width:18px; height:18px; background:#003d28; mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m5 12 4.5 4.5L19 7' fill='none' stroke='black' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat; }
 .node[data-status="issue"] .node-value::after { content:"!"; font-size:24px; font-weight:900; }
-.timeline .node:is([data-key="GOV"],[data-key="WEBEDI"],[data-key="NBRD"],[data-key="DUP_BAG"],[data-key="WCH"],[data-key="PSM"]) .node-value { width:auto; min-width:32px; padding:0 5px; border:0; background:transparent; color:var(--node-color); box-shadow:none; }
-.timeline .node:is([data-key="GOV"],[data-key="WEBEDI"],[data-key="NBRD"],[data-key="DUP_BAG"],[data-key="WCH"],[data-key="PSM"]) .node-value::after { content:attr(data-value); font-size:25px; font-weight:850; mask:none; background:none; width:auto; height:auto; }
+.timeline .node:is([data-key="CHD"],[data-key="GOV"],[data-key="WEBEDI"],[data-key="NBRD"],[data-key="DUP_BAG"],[data-key="WCH"],[data-key="DUP_NAME"],[data-key="PSM"]) .node-value { width:auto; min-width:32px; padding:0 5px; border:0; background:transparent; color:var(--node-color); box-shadow:none; }
+.timeline .node:is([data-key="CHD"],[data-key="GOV"],[data-key="WEBEDI"],[data-key="NBRD"],[data-key="DUP_BAG"],[data-key="WCH"],[data-key="DUP_NAME"],[data-key="PSM"]) .node-value::after { content:attr(data-value); font-size:25px; font-weight:850; mask:none; background:none; width:auto; height:auto; }
 .node:is(:hover,:focus-visible) { outline:2px solid var(--node-color); outline-offset:4px; }
 .node-card { position:fixed; left:50% !important; top:auto !important; bottom:285px; transform:translateX(-50%) !important; width:min(420px,90vw); }
 .details-panel { position:absolute; z-index:90; top:180px; right:4.5vw; width:min(440px,91vw); margin:0; }
@@ -60,7 +60,7 @@ body.is-report-view #warning-action { display:none; }
 .timeline .node { cursor:grab; }
 .timeline.is-dragging, .timeline.is-dragging .node { cursor:grabbing; }
 .node[data-status="done"] .node-value { border:1px solid #9affd9; background:#35eda1; box-shadow:0 0 10px #00ee8866; }
-.timeline .node:is([data-key="GOV"],[data-key="WEBEDI"],[data-key="NBRD"],[data-key="DUP_BAG"],[data-key="WCH"],[data-key="PSM"]) .node-value { border:0; background:none; box-shadow:none; }
+.timeline .node:is([data-key="CHD"],[data-key="GOV"],[data-key="WEBEDI"],[data-key="NBRD"],[data-key="DUP_BAG"],[data-key="WCH"],[data-key="DUP_NAME"],[data-key="PSM"]) .node-value { border:0; background:none; box-shadow:none; }
 
 /* Glass faces, illuminated footlights and a short floor reflection. */
 .mission-stage { height:310px; min-height:310px; }
@@ -203,7 +203,7 @@ body.is-report-view #warning-action { display:none; }
 .timeline .node[data-key="INF_TKT"],
 .timeline .node[data-key="TKT"],
 .timeline .node[data-key="NET"] { margin-left:-54px; }
-.timeline .node:is([data-key="GOV"],[data-key="WEBEDI"],[data-key="NBRD"],[data-key="DUP_BAG"],[data-key="WCH"],[data-key="PSM"]) .node-value { width:auto; min-width:32px; padding:0 5px; border:0; background:transparent; color:var(--node-color); box-shadow:none; }
+.timeline .node:is([data-key="CHD"],[data-key="GOV"],[data-key="WEBEDI"],[data-key="NBRD"],[data-key="DUP_BAG"],[data-key="WCH"],[data-key="DUP_NAME"],[data-key="PSM"]) .node-value { width:auto; min-width:32px; padding:0 5px; border:0; background:transparent; color:var(--node-color); box-shadow:none; }
 .timeline .node[data-key="INF_TKT"] .node-value {
   width:31px;
   min-width:31px;
