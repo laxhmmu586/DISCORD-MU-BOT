@@ -105,6 +105,7 @@ const {
   appendTransit240Record,
   appendCbsScanRecord,
   appendRecordScanRecord,
+  syncManualBoardingRecords,
   appendRecordCase,
   getRecordCases,
   updateRecordCase,
@@ -1070,6 +1071,41 @@ app.get(['/240.html', '/240'], (req, res) => {
 
 app.get(['/contact-form.html', '/contact-form'], (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'public', 'contact-form.html'));
+});
+
+app.get(['/manual.html', '/manual'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'public', 'manual.html'));
+});
+
+app.post('/manual/records', async (_req, res) => {
+  try {
+    // Keep Manual optional: loading the main API and serving /search must not
+    // depend on the Manual parser or its barcode package being available.
+    const { parseManualBoardingLog } = require('./manualBoarding');
+    const log = await getLatestFlightLog();
+    if (!log) return res.status(404).json({ error:'Unable to load today\'s flight log.' });
+    const sy = findSYInfo(log, null, { preferredFlightNo:'MU586', strictPreferredFlight:false }) || {};
+    const records = parseManualBoardingLog(log, {
+      flight:sy.flightNo || 'MU586', flightDate:sy.flightDate || '', gate:sy.gate || '', bdt:sy.bdt || ''
+    });
+    const sheet = await syncManualBoardingRecords(records);
+    return res.json({ enabled:true, gate:sy.gate || '', bdt:sy.bdt || '', flight:sy.flightNo || records[0]?.flight || 'MU586', records, sheet });
+  } catch (err) {
+    console.error('Manual boarding sync failed:', err);
+    return res.status(500).json({ error:err?.message || 'Manual boarding sync failed.' });
+  }
+});
+
+app.get('/manual/barcode', (req, res) => {
+  try {
+    const bwipjs = require('bwip-js');
+    const text = String(req.query.data || '');
+    if (!text || text.length > 512) return res.status(400).send('Invalid barcode data.');
+    const svg = bwipjs.toSVG({ bcid:'pdf417', text, scale:2, height:12, includetext:false, padding:0, columns:7 });
+    res.type('image/svg+xml').set('Cache-Control', 'private, max-age=3600').send(svg);
+  } catch (err) {
+    res.status(422).send(err?.message || 'Barcode generation failed.');
+  }
 });
 
 const REVIEW_STORE_PATH = path.join(__dirname, 'securityReviews.json');
