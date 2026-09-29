@@ -163,6 +163,8 @@
     .tracking-chip.is-latest::before { content:"CURRENT"; position:absolute; right:10px; top:-12px; padding:3px 8px; border-radius:999px; background:#12b76a; color:#fff; font-size:9px; font-weight:950; letter-spacing:.08em; }
     .tracking-chip.is-latest { background:#e8f8ee; color:#067647; box-shadow:inset 0 0 0 2px #75d8a0; }
     .tracking-chip.is-closed { background:#dcfae6; color:#067647; }
+    .tracking-chip.is-pending { opacity:.62; box-shadow:inset 0 0 0 1px currentColor; }
+    .tracking-chip.is-pending small { font-style:italic; }
     .tracking-step-number { grid-row:1/4; display:grid; place-items:center; width:28px; height:28px; border-radius:999px; background:var(--brand); color:#fff; font-size:12px; }
     .tracking-chip.is-latest .tracking-step-number,.tracking-chip.is-closed .tracking-step-number { background:#12b76a; }
     .tracking-chip-title,.tracking-chip small { display:block; grid-column:2; }
@@ -451,7 +453,7 @@
     <section class="card" id="email-card" hidden>
       <h1>Email</h1>
       <form class="worldtracer-form" id="standalone-email-form">
-        <label class="wide"><span>Subject</span><select name="emailAction" data-standalone-email-action required><option value="sent_open_bag_authorization_to_pvg">Sent Open Bag Authorization to PVG</option><option value="contact_pax_pickup_bags">Pick-up Bags - available</option><option value="pickup_bags_future_available">Pick-up Bags - future available</option><option value="baggage_transfer_status_eta">Baggage transfer status update - ETA</option><option value="baggage_pickup_delivery_method_confirmation">Baggage Pick-Up / Delivery Method Confirmation</option><option value="require_open_bag_authorization_pvg">Require Open Bag Authorization at PVG</option><option value="baggage_open_by_customs">Explanation - Baggage Open by Custom</option></select></label>
+        <label class="wide"><span>Subject</span><select name="emailAction" data-standalone-email-action required><option value="sent_open_bag_authorization_to_pvg">Sent Open Bag Authorization to PVG</option><option value="contact_pax_pickup_bags">Pick-up Bags - available</option><option value="pickup_bags_future_available">Pick-up Bags - future available</option><option value="baggage_transfer_status_eta">Baggage transfer status update - ETA</option><option value="baggage_pickup_delivery_method_confirmation">Baggage Pick-Up / Delivery Method Confirmation</option><option value="require_open_bag_authorization_pvg">Sent authorization form to passenger</option><option value="baggage_open_by_customs">Explanation - Baggage Open by Custom</option></select></label>
         <label class="wide" data-standalone-pvg-field><span>Email To</span><select name="emailTo" required><option value="pd-bag-intl@ceair.com">pd-bag-intl@ceair.com</option><option value="pd-bag-dom@ceair.com">pd-bag-dom@ceair.com</option></select></label>
         <label class="authorization-upload wide" data-standalone-pvg-field><input name="authorizationFile" type="file" required /><span class="authorization-upload-plus">+</span><span class="authorization-upload-title">Letter of Authorization</span><small data-authorization-filename>Select the signed file</small></label>
         <label class="wide" data-standalone-pickup-field hidden><span>Email To</span><input name="passengerEmail" type="email" placeholder="Passenger email address" disabled required /></label>
@@ -807,7 +809,7 @@
       if (action === 'passenger-collected') return '';
       if (action === 'case-close') return '<label class="wide"><span>Notes</span><textarea name="note" placeholder="Enter case close notes" required></textarea></label>';
       if (action === 'on-hand-rush') return `${worldTracerFileNumber ? `<input type="hidden" name="worldTracerFileNumber" value="${escapeHtml(worldTracerFileNumber)}" />` : '<label><span>WorldTracer File Number (Optional)</span><input name="worldTracerFileNumber" placeholder="Can be added later" /></label>'}<label><span>Original Tag Number</span><input name="originalTagNumber" value="${escapeHtml(bagTag)}" ${rushBagTagInputAttributes} required /></label><label><span>RUSH Tag Number</span><input name="rushTagNumber" ${rushBagTagInputAttributes} required /></label><div class="rush-itinerary wide"><div class="rush-itinerary-head"><h2>RUSH Itinerary</h2><button class="secondary" type="button" data-add-unresolved-flight>+ Add Flight</button></div><div data-unresolved-flight-rows>${rushFlightRowHtml(defaultRushFlight())}</div></div>`;
-      if (action === 'email') return `<label class="wide"><span>Email</span><select name="emailAction" data-onhand-email-action required><option value="sent_open_bag_authorization_to_pvg">Sent Open Bag Authorization to PVG</option><option value="contact_pax_pickup_bags">Pick-up Bags - available</option><option value="pickup_bags_future_available">Pick-up Bags - future available</option><option value="baggage_transfer_status_eta">Baggage transfer status update - ETA</option><option value="baggage_pickup_delivery_method_confirmation">Baggage Pick-Up / Delivery Method Confirmation</option><option value="require_open_bag_authorization_pvg">Require Open Bag Authorization at PVG</option><option value="baggage_open_by_customs">Explanation - Baggage Open by Custom</option></select></label><label class="wide" data-onhand-pvg-email><span>Email To</span><select name="emailTo" required><option value="pd-bag-intl@ceair.com">pd-bag-intl@ceair.com</option><option value="pd-bag-dom@ceair.com">pd-bag-dom@ceair.com</option></select></label><label class="authorization-upload wide" data-onhand-pvg-email><input name="authorizationFile" type="file" required /><span class="authorization-upload-title">Letter of Authorization</span><small>Select the signed file</small></label><label class="wide" data-onhand-passenger-email hidden><span>Email To</span><input name="emailTo" type="email" placeholder="Passenger email address" disabled required /></label><label class="wide" data-onhand-passenger-related hidden><span>WorldTracer File Number</span><input name="worldTracerFileNumber" value="${escapeHtml(worldTracerFileNumber)}" placeholder="WorldTracer file number" disabled required /></label><label class="wide" data-onhand-eta hidden><span>Estimated arrival date</span><input name="estimatedArrivalTime" type="date" disabled required /></label><label class="wide" data-onhand-passenger-related hidden><span>Language</span><select name="language" disabled required><option value="en">English</option><option value="zh">中文</option></select></label><label class="wide" data-onhand-future-pickup hidden><span>Available starting date</span><input name="availableDate" type="date" disabled required /></label><label class="wide" data-onhand-customs-language hidden><span>Language</span><select name="language" disabled required><option value="en">English</option><option value="zh">中文</option></select></label>`;
+      if (action === 'email') return `<label class="wide"><span>Email</span><select name="emailAction" data-onhand-email-action required><option value="sent_open_bag_authorization_to_pvg">Sent Open Bag Authorization to PVG</option><option value="contact_pax_pickup_bags">Pick-up Bags - available</option><option value="pickup_bags_future_available">Pick-up Bags - future available</option><option value="baggage_transfer_status_eta">Baggage transfer status update - ETA</option><option value="baggage_pickup_delivery_method_confirmation">Baggage Pick-Up / Delivery Method Confirmation</option><option value="require_open_bag_authorization_pvg">Sent authorization form to passenger</option><option value="baggage_open_by_customs">Explanation - Baggage Open by Custom</option></select></label><label class="wide" data-onhand-pvg-email><span>Email To</span><select name="emailTo" required><option value="pd-bag-intl@ceair.com">pd-bag-intl@ceair.com</option><option value="pd-bag-dom@ceair.com">pd-bag-dom@ceair.com</option></select></label><label class="authorization-upload wide" data-onhand-pvg-email><input name="authorizationFile" type="file" required /><span class="authorization-upload-title">Letter of Authorization</span><small>Select the signed file</small></label><label class="wide" data-onhand-passenger-email hidden><span>Email To</span><input name="emailTo" type="email" placeholder="Passenger email address" disabled required /></label><label class="wide" data-onhand-passenger-related hidden><span>WorldTracer File Number</span><input name="worldTracerFileNumber" value="${escapeHtml(worldTracerFileNumber)}" placeholder="WorldTracer file number" disabled required /></label><label class="wide" data-onhand-eta hidden><span>Estimated arrival date</span><input name="estimatedArrivalTime" type="date" disabled required /></label><label class="wide" data-onhand-passenger-related hidden><span>Language</span><select name="language" disabled required><option value="en">English</option><option value="zh">中文</option></select></label><label class="wide" data-onhand-future-pickup hidden><span>Available starting date</span><input name="availableDate" type="date" disabled required /></label><label class="wide" data-onhand-customs-language hidden><span>Language</span><select name="language" disabled required><option value="en">English</option><option value="zh">中文</option></select></label>`;
       if (action === 'shipped') return `<label><span>Delivery method</span><select name="shippingMethod" data-shipping-method required><option value="">Select delivery method</option><option>ADC - All Day Courier</option><option>MBI DELIVERY</option><option>FedEx Delivery</option><option>Pick Up at Airport</option><option>Passenger Pay for Shipping</option></select></label><label data-shipping-tracking hidden><span>Tracking number</span><input name="trackingNumber" disabled /></label><label data-shipping-address hidden><span>Shipping to where?</span><input name="shippingTo" disabled /></label><label data-shipping-bdo hidden><span>BDO</span><input name="bdo" disabled /></label><label class="wide"><span>Comment</span><textarea name="comment"></textarea></label>`;
       return '<label class="wide"><span>Resolution Note</span><textarea name="note" placeholder="Describe how this case was resolved" required></textarea></label>';
     }
@@ -1057,7 +1059,7 @@
     const TRACKING_STAGES = [
       { key:'create', text:'Create' },
       { key:'worldtracer', text:'WorldTracer' },
-      { key:'requested_bags', text:'Requested Bags' },
+      { key:'requested_bags', text:'Request Bags' },
       { key:'upcoming_rush', text:'Upcoming Rush' },
       { key:'on_hand_match', text:'On-hand Match' },
       { key:'email', text:'Email' },
@@ -1185,7 +1187,7 @@
       if (events.some((event) => event.key === 'email' && event.title === 'Passenger-related issue. Self-pickup or delivery at passenger’s expense.')) sentKeys.add('passenger_related_pickup');
       if (events.some((event) => event.title === 'Baggage transfer status update - ETA' || event.key === 'information')) sentKeys.add('transfer_eta');
       if (events.some((event) => event.key === 'email' && event.title === 'Address Confirm Request Email')) sentKeys.add('address_confirm');
-      if (events.some((event) => event.title === 'Require Open Bag Authorization at PVG')) sentKeys.add('open_bag_authorization_pvg');
+      if (events.some((event) => ['Sent authorization form to passenger', 'Require Open Bag Authorization at PVG'].includes(event.title))) sentKeys.add('open_bag_authorization_pvg');
       sentKeys.add('create');
       const notifications = [
         ['create', label('Create report email', '建案报告邮件')],
@@ -1554,7 +1556,7 @@
       if (key === 'upcoming_rush') return `<label><span>Rush Flight</span><input name="rushFlight" value="${escapeHtml(values.rushFlight || 'MU583')}" placeholder="Rush flight" required /></label><label><span>Rush Date</span><input name="rushDate" type="date" value="${escapeHtml(values.rushDate || '')}" required /></label><label><span>Rush Tag</span><input name="rushTagNumber" value="${escapeHtml(values.rushTag || '')}" placeholder="Rush tag" ${rushBagTagInputAttributes} required /></label>${values.event ? '<button class="danger delete-upcoming-rush" type="submit" name="type" value="upcoming_rush_delete" formnovalidate>Delete Upcoming Rush</button>' : ''}`;
       if (key === 'worldtracer') return input('File number', 'fileNumber');
       if (key === 'requested_bags') return input('From which station?', 'fromStation');
-      if (key === 'email') return '<select name="emailAction" data-email-action required><option value="sent_open_bag_authorization_to_pvg">Sent Open Bag Authorization to PVG</option><option value="contact_pax_pickup_bags">Pick-up Bags - available</option><option value="pickup_bags_future_available">Pick-up Bags - future available</option><option value="baggage_transfer_status_eta">Baggage transfer status update - ETA</option><option value="baggage_pickup_delivery_method_confirmation">Baggage Pick-Up / Delivery Method Confirmation</option><option value="require_open_bag_authorization_pvg">Require Open Bag Authorization at PVG</option><option value="baggage_open_by_customs">Explanation - Baggage Open by Custom</option></select><label class="email-recipient" data-pvg-email-field><span>Email To</span><select name="emailTo" required><option value="pd-bag-intl@ceair.com">pd-bag-intl@ceair.com</option><option value="pd-bag-dom@ceair.com">pd-bag-dom@ceair.com</option></select></label><label class="authorization-upload" data-pvg-email-field><input name="authorizationFile" type="file" required /><span class="authorization-upload-plus">+</span><span class="authorization-upload-title">Letter of Authorization</span><small data-authorization-filename>Select the signed file</small></label><label data-email-eta-field hidden><span>Estimated arrival date</span><input name="estimatedArrivalTime" type="date" disabled required /></label><label data-email-future-pickup-field hidden><span>Available starting date</span><input name="availableDate" type="date" disabled required /></label>';
+      if (key === 'email') return '<select name="emailAction" data-email-action required><option value="sent_open_bag_authorization_to_pvg">Sent Open Bag Authorization to PVG</option><option value="contact_pax_pickup_bags">Pick-up Bags - available</option><option value="pickup_bags_future_available">Pick-up Bags - future available</option><option value="baggage_transfer_status_eta">Baggage transfer status update - ETA</option><option value="baggage_pickup_delivery_method_confirmation">Baggage Pick-Up / Delivery Method Confirmation</option><option value="require_open_bag_authorization_pvg">Sent authorization form to passenger</option><option value="baggage_open_by_customs">Explanation - Baggage Open by Custom</option></select><label class="email-recipient" data-pvg-email-field><span>Email To</span><select name="emailTo" required><option value="pd-bag-intl@ceair.com">pd-bag-intl@ceair.com</option><option value="pd-bag-dom@ceair.com">pd-bag-dom@ceair.com</option></select></label><label class="authorization-upload" data-pvg-email-field><input name="authorizationFile" type="file" required /><span class="authorization-upload-plus">+</span><span class="authorization-upload-title">Letter of Authorization</span><small data-authorization-filename>Select the signed file</small></label><label data-email-eta-field hidden><span>Estimated arrival date</span><input name="estimatedArrivalTime" type="date" disabled required /></label><label data-email-future-pickup-field hidden><span>Available starting date</span><input name="availableDate" type="date" disabled required /></label>';
       if (key === 'comment') return '<select name="commentPreset" data-comment-preset><option value="">Select a comment or enter your own below</option><option value="Passenger request Pick up at LAX">Passenger request Pick up at LAX</option></select><textarea name="comment" placeholder="Write a comment" required></textarea>';
       if (key === 'record-pnr' || key === 'record-tkt') return recordTextareaHtml(key, values.savedRecord || '');
       if (key === 'rush') return [`<label><span>Rush tag number</span><input name="rushTagNumber" ${rushBagTagInputAttributes} required /></label>`, input('Rush to where?', 'rushToWhere'), input('World Tracer file # (optional)', 'worldTracerFileNumber', false), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
@@ -1585,6 +1587,39 @@
         return groups;
       }, []);
     }
+    function orderedCaseProgressEvents(row, sourceEvents) {
+      const caseType = inferCaseType(row);
+      const chronological = sourceEvents.slice().sort((a, b) => (Date.parse(a.at || '') || 0) - (Date.parse(b.at || '') || 0));
+      const pending = (key, title) => ({ key, title, planned:true, at:'', by:'', fields:[] });
+      if (caseType === 'DPR') {
+        const created = chronological.find((event) => event.key === 'create');
+        const worldTracer = chronological.filter((event) => event.key === 'worldtracer').at(-1);
+        const closed = worldTracer && isClosedCase(row) ? { key:'closed', title:'Case Closed', at:worldTracer.at, by:worldTracer.by || 'System', fields:[['Comment', 'Closed automatically after WorldTracer update']] } : null;
+        return [created || pending('create', 'Create Case'), worldTracer || pending('worldtracer', 'Update WorldTracer'), closed || pending('closed', 'Case Close')];
+      }
+      if (caseType !== 'AHL') return chronological;
+      const take = (predicate) => chronological.filter(predicate);
+      const create = take((event) => event.key === 'create');
+      const worldTracer = take((event) => event.key === 'worldtracer');
+      const passengerAuthorization = take((event) => event.key === 'email' && ['Sent authorization form to passenger', 'Require Open Bag Authorization at PVG'].includes(event.title));
+      const pvgAuthorization = take((event) => event.key === 'email' && event.title === 'Sent Open Bag Authorization to PVG');
+      const requestedBags = take((event) => event.key === 'requested_bags');
+      const transferEta = take((event) => event.key === 'email' && event.title === 'Baggage transfer status update - ETA');
+      const closed = take((event) => event.key === 'closed');
+      const fixedEvents = new Set([...create, ...worldTracer, ...passengerAuthorization, ...pvgAuthorization, ...requestedBags, ...transferEta, ...closed]);
+      const operationalUpdates = chronological.filter((event) => !fixedEvents.has(event));
+      const stage = (events, key, title) => events.length ? events : [pending(key, title)];
+      return [
+        ...stage(create, 'create', 'Create Case'),
+        ...stage(worldTracer, 'worldtracer', 'Update WorldTracer'),
+        ...stage(passengerAuthorization, 'email', 'Sent authorization form to passenger'),
+        ...stage(pvgAuthorization, 'email', 'Sent Open Bag Authorization to PVG'),
+        ...stage(requestedBags, 'requested_bags', 'Request Bags'),
+        ...stage(transferEta, 'email', 'Baggage transfer status update - ETA'),
+        ...stage(operationalUpdates, 'update', 'Shipping / Pick-up Bags / Other Update'),
+        ...stage(closed, 'closed', 'Case Close')
+      ];
+    }
     function trackingControlHtml(row, part = 'all') {
       const recordId = row?.rowNumber || '';
       const events = parseUpdateNoteEvents(row);
@@ -1604,17 +1639,15 @@
       const active = nextTrackingKey(row);
       const upcomingRush = upcomingRushDetails(row);
       const updateKeys = TRACKING_STAGES.filter((stage) => !['create', 'reopen', 'on_hand_match'].includes(stage.key));
-      const sortedEvents = groupRepeatedEmailEvents(events
-        .slice()
-        .sort((a, b) => (Date.parse(a.at || '') || 0) - (Date.parse(b.at || '') || 0)))
-        .sort((a, b) => (Date.parse((a.repeats.at(-1) || a.event).at || '') || 0) - (Date.parse((b.repeats.at(-1) || b.event).at || '') || 0))
+      const sortedEvents = groupRepeatedEmailEvents(orderedCaseProgressEvents(row, events))
         .map((group, index) => ({ ...group, stepNumber:index + 1 }))
         .reverse();
+      const currentEventIndex = sortedEvents.findIndex(({ event }) => !event.planned);
       const historyHtml = sortedEvents
         .map(({ event, repeats, stepNumber }, index) => {
           const time = formatEventTime(event.at);
           const pickupBagsEmail = event.key === 'email' && ['Pick-up Bags - available', 'Pick-up Bags - future available'].includes(event.title);
-          const title = pickupBagsEmail ? 'Pick-up Bags Email Sent' : (event.key === 'email' ? event.title : (TRACKING_STAGES.find((stage) => stage.key === event.key)?.text || event.title || 'Update'));
+          const title = event.planned ? event.title : (pickupBagsEmail ? 'Pick-up Bags Email Sent' : (event.key === 'email' ? event.title : (TRACKING_STAGES.find((stage) => stage.key === event.key)?.text || event.title || 'Update')));
           const detailFields = (event.fields || []).filter(([, value]) => hasValue(value));
           const detailHtml = String(event.key || '').startsWith('record-') ? '<span class="tracking-chip-detail">Record saved — use the PNR/TKT tabs to view it.</span>' : detailFields.map(([fieldKey, value]) => `<span class="tracking-chip-detail">${escapeHtml(fieldKey)}: ${escapeHtml(renderValue(value))}</span>`).join('');
           const repeatHtml = repeats.map((repeat, repeatIndex) => {
@@ -1626,8 +1659,10 @@
           const noteHtml = !detailFields.length && hasValue(event.note) ? `<span class="tracking-chip-detail">${escapeHtml(event.note)}</span>` : '';
           const closedClass = event.key === 'closed' ? ' is-closed' : '';
           const sentPvgClass = event.key === 'email' && event.title === 'Sent Open Bag Authorization to PVG' ? ' tracking-chip--email-sent-pvg' : '';
-          const latestClass = index === 0 ? ' is-latest' : '';
-          return `<span class="tracking-chip tracking-chip--${escapeHtml(event.key)}${sentPvgClass}${closedClass}${latestClass}"><span class="tracking-step-number">${stepNumber}</span><span class="tracking-chip-title">${escapeHtml(title)}</span><small>${escapeHtml(time.date || '')} ${escapeHtml(time.time || '')}${event.by ? ` · Updated by: ${escapeHtml(updaterDisplayName(event.by))}` : ''}</small>${detailHtml}${repeatHtml}${noteHtml}</span>`;
+          const pendingClass = event.planned ? ' is-pending' : '';
+          const latestClass = index === currentEventIndex ? ' is-latest' : '';
+          const statusHtml = event.planned ? `<small>${label('Not started', '尚未开始')}</small>` : `<small>${escapeHtml(time.date || '')} ${escapeHtml(time.time || '')}${event.by ? ` · Updated by: ${escapeHtml(updaterDisplayName(event.by))}` : ''}</small>`;
+          return `<span class="tracking-chip tracking-chip--${escapeHtml(event.key)}${sentPvgClass}${closedClass}${pendingClass}${latestClass}"><span class="tracking-step-number">${stepNumber}</span><span class="tracking-chip-title">${escapeHtml(title)}</span>${statusHtml}${detailHtml}${repeatHtml}${noteHtml}</span>`;
         }).join('') || '<span class="sheet-empty">No tracking updates yet</span>';
       if (!recordId) return historyHtml;
       const progressHeader = `<p class="tracking-current-time"><strong>${label('Case Progress', '案件进度')}</strong><span>${label('Last update', '最后更新')}: ${escapeHtml(latestTime.date || '-')} ${escapeHtml(latestTime.time || '')}</span></p>`;

@@ -835,21 +835,22 @@ test('CBS passenger information keeps all operationally required fields visible'
   assert.match(page, /requiredFieldGrid\(requiredPassengerFields\)/);
 });
 
-test('CBS tracking offers the requested bags stage', () => {
-  assert.match(page, /key:'requested_bags', text:'Requested Bags'/);
+test('CBS tracking offers the request bags stage', () => {
+  assert.match(page, /key:'requested_bags', text:'Request Bags'/);
   assert.match(page, /if \(key === 'requested_bags'\) return input\('From which station\?', 'fromStation'\)/);
   assert.match(page, /requested\[\\s_-\]\*bags\?/);
   assert.doesNotMatch(page, /event\.key === 'requested_bags' \? 'Update'/);
   assert.match(page, /tracking-step-number/);
-  assert.match(page, /const latestClass = index === 0 \? ' is-latest'/);
+  assert.match(page, /const latestClass = index === currentEventIndex \? ' is-latest'/);
   assert.match(page, /tracking-chip:not\(:last-child\)::after \{ content:""/);
   assert.match(page, /label\('Case Progress', '案件进度'\)/);
   assert.match(page, /content:"CURRENT"/);
 });
 
-test('CBS tracking requests PVG open-bag authorization from Email', () => {
+test('CBS tracking sends the authorization form to the passenger from Email', () => {
   assert.doesNotMatch(page, /key:'open_bag_authorization_pvg', text:'Require Open Bag Authorization at PVG'/);
-  assert.match(page, /value="require_open_bag_authorization_pvg">Require Open Bag Authorization at PVG/);
+  assert.match(page, /value="require_open_bag_authorization_pvg">Sent authorization form to passenger/);
+  assert.match(server, /title:'Sent authorization form to passenger'/);
   assert.match(page, /PVG open-bag authorization email/);
   assert.match(server, /【需要您的授权】行李开箱检查通知/);
   assert.match(server, /Authorization Required for Baggage Inspection at PVG/);
@@ -861,6 +862,32 @@ test('CBS tracking requests PVG open-bag authorization from Email', () => {
   assert.doesNotMatch(drive, /CBS_OPEN_BAG_AUTHORIZATION_FILE_ID is required/);
   assert.match(drive, /drive\.files\.get\(\{ fileId, alt:'media' \}/);
   assert.doesNotMatch(server, /assets', 'Letter of Authorization\.pdf'/);
+});
+
+test('CBS case progress runs newest-to-oldest and shows DPR automatic closure', () => {
+  assert.match(page, /map\(\(group, index\) => \(\{ \.\.\.group, stepNumber:index \+ 1 \}\)\)\s*\.reverse\(\)/);
+  assert.match(page, /caseType === 'DPR'/);
+  assert.match(page, /Closed automatically after WorldTracer update/);
+});
+
+test('AHL case progress follows the fixed baggage workflow', () => {
+  const workflow = page.match(/function orderedCaseProgressEvents[\s\S]*?function trackingControlHtml/)?.[0] || '';
+  assert.match(workflow, /caseType !== 'AHL'/);
+  const labels = ['Create Case', 'Update WorldTracer', 'Sent authorization form to passenger', 'Sent Open Bag Authorization to PVG', 'Request Bags', 'Baggage transfer status update - ETA', 'Shipping / Pick-up Bags / Other Update', 'Case Close'];
+  let previous = -1;
+  labels.forEach((label) => {
+    const position = workflow.indexOf(`'${label}'`, previous + 1);
+    assert.ok(position > previous, `${label} should follow the previous AHL stage`);
+    previous = position;
+  });
+  assert.match(workflow, /const operationalUpdates = chronological\.filter\(\(event\) => !fixedEvents\.has\(event\)\)/);
+});
+
+test('DPR and AHL progress display stages that have not started', () => {
+  assert.match(page, /const pending = \(key, title\) => \(\{ key, title, planned:true/);
+  assert.match(page, /closed \|\| pending\('closed', 'Case Close'\)/);
+  assert.match(page, /event\.planned \? `<small>\$\{label\('Not started', '尚未开始'\)\}<\/small>`/);
+  assert.match(page, /const currentEventIndex = sortedEvents\.findIndex\(\(\{ event \}\) => !event\.planned\)/);
 });
 
 test('CBS Email stage sends a signed open-bag authorization file to PVG', () => {
