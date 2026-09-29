@@ -841,15 +841,16 @@ test('CBS tracking offers the requested bags stage', () => {
   assert.match(page, /requested\[\\s_-\]\*bags\?/);
   assert.doesNotMatch(page, /event\.key === 'requested_bags' \? 'Update'/);
   assert.match(page, /tracking-step-number/);
-  assert.match(page, /const latestClass = index === 0 \? ' is-latest'/);
+  assert.match(page, /const latestClass = index === sortedEvents\.length - 1 \? ' is-latest'/);
   assert.match(page, /tracking-chip:not\(:last-child\)::after \{ content:""/);
   assert.match(page, /label\('Case Progress', '案件进度'\)/);
   assert.match(page, /content:"CURRENT"/);
 });
 
-test('CBS tracking requests PVG open-bag authorization from Email', () => {
+test('CBS tracking sends the authorization form to the passenger from Email', () => {
   assert.doesNotMatch(page, /key:'open_bag_authorization_pvg', text:'Require Open Bag Authorization at PVG'/);
-  assert.match(page, /value="require_open_bag_authorization_pvg">Require Open Bag Authorization at PVG/);
+  assert.match(page, /value="require_open_bag_authorization_pvg">Sent authorization form to passenger/);
+  assert.match(server, /title:'Sent authorization form to passenger'/);
   assert.match(page, /PVG open-bag authorization email/);
   assert.match(server, /【需要您的授权】行李开箱检查通知/);
   assert.match(server, /Authorization Required for Baggage Inspection at PVG/);
@@ -861,6 +862,12 @@ test('CBS tracking requests PVG open-bag authorization from Email', () => {
   assert.doesNotMatch(drive, /CBS_OPEN_BAG_AUTHORIZATION_FILE_ID is required/);
   assert.match(drive, /drive\.files\.get\(\{ fileId, alt:'media' \}/);
   assert.doesNotMatch(server, /assets', 'Letter of Authorization\.pdf'/);
+});
+
+test('CBS case progress runs downward and shows DPR automatic closure', () => {
+  assert.doesNotMatch(page, /map\(\(group, index\) => \(\{ \.\.\.group, stepNumber:index \+ 1 \}\)\)\s*\.reverse\(\)/);
+  assert.match(page, /isDpr && isClosedCase\(row\) && events\.at\(-1\)\?\.key === 'worldtracer'/);
+  assert.match(page, /Closed automatically after WorldTracer update/);
 });
 
 test('CBS Email stage sends a signed open-bag authorization file to PVG', () => {
