@@ -163,6 +163,8 @@
     .tracking-chip.is-latest::before { content:"CURRENT"; position:absolute; right:10px; top:-12px; padding:3px 8px; border-radius:999px; background:#12b76a; color:#fff; font-size:9px; font-weight:950; letter-spacing:.08em; }
     .tracking-chip.is-latest { background:#e8f8ee; color:#067647; box-shadow:inset 0 0 0 2px #75d8a0; }
     .tracking-chip.is-closed { background:#dcfae6; color:#067647; }
+    .tracking-chip.is-pending { opacity:.62; box-shadow:inset 0 0 0 1px currentColor; }
+    .tracking-chip.is-pending small { font-style:italic; }
     .tracking-step-number { grid-row:1/4; display:grid; place-items:center; width:28px; height:28px; border-radius:999px; background:var(--brand); color:#fff; font-size:12px; }
     .tracking-chip.is-latest .tracking-step-number,.tracking-chip.is-closed .tracking-step-number { background:#12b76a; }
     .tracking-chip-title,.tracking-chip small { display:block; grid-column:2; }
@@ -1588,24 +1590,35 @@
     function orderedCaseProgressEvents(row, sourceEvents) {
       const caseType = inferCaseType(row);
       const chronological = sourceEvents.slice().sort((a, b) => (Date.parse(a.at || '') || 0) - (Date.parse(b.at || '') || 0));
+      const pending = (key, title) => ({ key, title, planned:true, at:'', by:'', fields:[] });
       if (caseType === 'DPR') {
         const created = chronological.find((event) => event.key === 'create');
         const worldTracer = chronological.filter((event) => event.key === 'worldtracer').at(-1);
-        const fixed = [created, worldTracer].filter(Boolean);
-        if (worldTracer && isClosedCase(row)) fixed.push({ key:'closed', title:'Case Closed', at:worldTracer.at, by:worldTracer.by || 'System', fields:[['Comment', 'Closed automatically after WorldTracer update']] });
-        return fixed;
+        const closed = worldTracer && isClosedCase(row) ? { key:'closed', title:'Case Closed', at:worldTracer.at, by:worldTracer.by || 'System', fields:[['Comment', 'Closed automatically after WorldTracer update']] } : null;
+        return [created || pending('create', 'Create Case'), worldTracer || pending('worldtracer', 'Update WorldTracer'), closed || pending('closed', 'Case Close')];
       }
       if (caseType !== 'AHL') return chronological;
-      return chronological.map((event, sourceIndex) => {
-        let workflowOrder = 50;
-        if (event.key === 'create') workflowOrder = 0;
-        else if (event.key === 'worldtracer') workflowOrder = 10;
-        else if (event.key === 'email' && ['Sent authorization form to passenger', 'Require Open Bag Authorization at PVG', 'Sent Open Bag Authorization to PVG'].includes(event.title)) workflowOrder = 20;
-        else if (event.key === 'requested_bags') workflowOrder = 30;
-        else if (event.key === 'email' && event.title === 'Baggage transfer status update - ETA') workflowOrder = 40;
-        else if (event.key === 'closed') workflowOrder = 90;
-        return { event, workflowOrder, sourceIndex };
-      }).sort((a, b) => a.workflowOrder - b.workflowOrder || a.sourceIndex - b.sourceIndex).map(({ event }) => event);
+      const take = (predicate) => chronological.filter(predicate);
+      const create = take((event) => event.key === 'create');
+      const worldTracer = take((event) => event.key === 'worldtracer');
+      const passengerAuthorization = take((event) => event.key === 'email' && ['Sent authorization form to passenger', 'Require Open Bag Authorization at PVG'].includes(event.title));
+      const pvgAuthorization = take((event) => event.key === 'email' && event.title === 'Sent Open Bag Authorization to PVG');
+      const requestedBags = take((event) => event.key === 'requested_bags');
+      const transferEta = take((event) => event.key === 'email' && event.title === 'Baggage transfer status update - ETA');
+      const closed = take((event) => event.key === 'closed');
+      const fixedEvents = new Set([...create, ...worldTracer, ...passengerAuthorization, ...pvgAuthorization, ...requestedBags, ...transferEta, ...closed]);
+      const operationalUpdates = chronological.filter((event) => !fixedEvents.has(event));
+      const stage = (events, key, title) => events.length ? events : [pending(key, title)];
+      return [
+        ...stage(create, 'create', 'Create Case'),
+        ...stage(worldTracer, 'worldtracer', 'Update WorldTracer'),
+        ...stage(passengerAuthorization, 'email', 'Sent authorization form to passenger'),
+        ...stage(pvgAuthorization, 'email', 'Sent Open Bag Authorization to PVG'),
+        ...stage(requestedBags, 'requested_bags', 'Request Bags'),
+        ...stage(transferEta, 'email', 'Baggage transfer status update - ETA'),
+        ...stage(operationalUpdates, 'update', 'Shipping / Pick-up Bags / Other Update'),
+        ...stage(closed, 'closed', 'Case Close')
+      ];
     }
     function trackingControlHtml(row, part = 'all') {
       const recordId = row?.rowNumber || '';
@@ -1634,11 +1647,12 @@
       const sortedEvents = groupRepeatedEmailEvents(orderedCaseProgressEvents(row, events))
         .map((group, index) => ({ ...group, stepNumber:index + 1 }))
         .reverse();
+      const currentEventIndex = sortedEvents.findIndex(({ event }) => !event.planned);
       const historyHtml = sortedEvents
         .map(({ event, repeats, stepNumber }, index) => {
           const time = formatEventTime(event.at);
           const pickupBagsEmail = event.key === 'email' && ['Pick-up Bags - available', 'Pick-up Bags - future available'].includes(event.title);
-          const title = pickupBagsEmail ? 'Pick-up Bags Email Sent' : (event.key === 'email' ? event.title : (TRACKING_STAGES.find((stage) => stage.key === event.key)?.text || event.title || 'Update'));
+          const title = event.planned ? event.title : (pickupBagsEmail ? 'Pick-up Bags Email Sent' : (event.key === 'email' ? event.title : (TRACKING_STAGES.find((stage) => stage.key === event.key)?.text || event.title || 'Update')));
           const detailFields = (event.fields || []).filter(([, value]) => hasValue(value));
           const detailHtml = String(event.key || '').startsWith('record-') ? '<span class="tracking-chip-detail">Record saved — use the PNR/TKT tabs to view it.</span>' : detailFields.map(([fieldKey, value]) => `<span class="tracking-chip-detail">${escapeHtml(fieldKey)}: ${escapeHtml(renderValue(value))}</span>`).join('');
           const repeatHtml = repeats.map((repeat, repeatIndex) => {
@@ -1650,8 +1664,10 @@
           const noteHtml = !detailFields.length && hasValue(event.note) ? `<span class="tracking-chip-detail">${escapeHtml(event.note)}</span>` : '';
           const closedClass = event.key === 'closed' ? ' is-closed' : '';
           const sentPvgClass = event.key === 'email' && event.title === 'Sent Open Bag Authorization to PVG' ? ' tracking-chip--email-sent-pvg' : '';
-          const latestClass = index === sortedEvents.length - 1 ? ' is-latest' : '';
-          return `<span class="tracking-chip tracking-chip--${escapeHtml(event.key)}${sentPvgClass}${closedClass}${latestClass}"><span class="tracking-step-number">${stepNumber}</span><span class="tracking-chip-title">${escapeHtml(title)}</span><small>${escapeHtml(time.date || '')} ${escapeHtml(time.time || '')}${event.by ? ` · Updated by: ${escapeHtml(updaterDisplayName(event.by))}` : ''}</small>${detailHtml}${repeatHtml}${noteHtml}</span>`;
+          const pendingClass = event.planned ? ' is-pending' : '';
+          const latestClass = index === currentEventIndex ? ' is-latest' : '';
+          const statusHtml = event.planned ? `<small>${label('Not started', '尚未开始')}</small>` : `<small>${escapeHtml(time.date || '')} ${escapeHtml(time.time || '')}${event.by ? ` · Updated by: ${escapeHtml(updaterDisplayName(event.by))}` : ''}</small>`;
+          return `<span class="tracking-chip tracking-chip--${escapeHtml(event.key)}${sentPvgClass}${closedClass}${pendingClass}${latestClass}"><span class="tracking-step-number">${stepNumber}</span><span class="tracking-chip-title">${escapeHtml(title)}</span>${statusHtml}${detailHtml}${repeatHtml}${noteHtml}</span>`;
         }).join('') || '<span class="sheet-empty">No tracking updates yet</span>';
       if (!recordId) return historyHtml;
       const progressHeader = `<p class="tracking-current-time"><strong>${label('Case Progress', '案件进度')}</strong><span>${label('Last update', '最后更新')}: ${escapeHtml(latestTime.date || '-')} ${escapeHtml(latestTime.time || '')}</span></p>`;

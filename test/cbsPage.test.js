@@ -841,7 +841,7 @@ test('CBS tracking offers the request bags stage', () => {
   assert.match(page, /requested\[\\s_-\]\*bags\?/);
   assert.doesNotMatch(page, /event\.key === 'requested_bags' \? 'Update'/);
   assert.match(page, /tracking-step-number/);
-  assert.match(page, /const latestClass = index === sortedEvents\.length - 1 \? ' is-latest'/);
+  assert.match(page, /const latestClass = index === currentEventIndex \? ' is-latest'/);
   assert.match(page, /tracking-chip:not\(:last-child\)::after \{ content:""/);
   assert.match(page, /label\('Case Progress', '案件进度'\)/);
   assert.match(page, /content:"CURRENT"/);
@@ -873,11 +873,21 @@ test('CBS case progress runs newest-to-oldest and shows DPR automatic closure', 
 test('AHL case progress follows the fixed baggage workflow', () => {
   const workflow = page.match(/function orderedCaseProgressEvents[\s\S]*?function trackingControlHtml/)?.[0] || '';
   assert.match(workflow, /caseType !== 'AHL'/);
-  assert.match(workflow, /Sent authorization form to passenger[\s\S]*Sent Open Bag Authorization to PVG'[\s\S]*workflowOrder = 20/);
-  assert.match(workflow, /event\.key === 'requested_bags'\) workflowOrder = 30/);
-  assert.match(workflow, /Baggage transfer status update - ETA'[\s\S]*workflowOrder = 40/);
-  assert.match(workflow, /let workflowOrder = 50/);
-  assert.match(workflow, /event\.key === 'closed'\) workflowOrder = 90/);
+  const labels = ['Create Case', 'Update WorldTracer', 'Sent authorization form to passenger', 'Sent Open Bag Authorization to PVG', 'Request Bags', 'Baggage transfer status update - ETA', 'Shipping / Pick-up Bags / Other Update', 'Case Close'];
+  let previous = -1;
+  labels.forEach((label) => {
+    const position = workflow.indexOf(`'${label}'`, previous + 1);
+    assert.ok(position > previous, `${label} should follow the previous AHL stage`);
+    previous = position;
+  });
+  assert.match(workflow, /const operationalUpdates = chronological\.filter\(\(event\) => !fixedEvents\.has\(event\)\)/);
+});
+
+test('DPR and AHL progress display stages that have not started', () => {
+  assert.match(page, /const pending = \(key, title\) => \(\{ key, title, planned:true/);
+  assert.match(page, /closed \|\| pending\('closed', 'Case Close'\)/);
+  assert.match(page, /event\.planned \? `<small>\$\{label\('Not started', '尚未开始'\)\}<\/small>`/);
+  assert.match(page, /const currentEventIndex = sortedEvents\.findIndex\(\(\{ event \}\) => !event\.planned\)/);
 });
 
 test('CBS Email stage sends a signed open-bag authorization file to PVG', () => {
