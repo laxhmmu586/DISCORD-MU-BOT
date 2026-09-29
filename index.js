@@ -105,6 +105,7 @@ const {
   appendTransit240Record,
   appendCbsScanRecord,
   appendRecordScanRecord,
+  syncManualBoardingRecords,
   appendRecordCase,
   getRecordCases,
   updateRecordCase,
@@ -129,6 +130,8 @@ const {
 const fbLookup =
   require('./fbLookup');
 const { findSYInfo } = require('./syParser');
+const bwipjs = require('bwip-js');
+const { buildManualRecords } = require('./manualBoarding');
 const NEXTDAY_INFO_DISCORD_CHANNEL_ID = '1399400605742661702';
 const TRANSIT_240_DISCORD_CHANNEL_ID = process.env.TRANSIT_240_DISCORD_CHANNEL_ID || '1365773224276660257';
 const WRONG_BAGGAGE_DISCORD_CHANNEL_ID = process.env.WRONG_BAGGAGE_DISCORD_CHANNEL_ID || '1534758804535640227';
@@ -1070,6 +1073,38 @@ app.get(['/240.html', '/240'], (req, res) => {
 
 app.get(['/contact-form.html', '/contact-form'], (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'public', 'contact-form.html'));
+});
+
+app.get(['/manual.html', '/manual'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'public', 'manual.html'));
+});
+
+app.post('/manual/records', async (_req, res) => {
+  try {
+    const log = await getLatestFlightLog();
+    if (!log) return res.status(404).json({ error:'Unable to load today\'s flight log.' });
+    parseIncrementalLog(log);
+    const sy = findSYInfo(log, null, { preferredFlightNo:'MU586', strictPreferredFlight:false }) || {};
+    const records = buildManualRecords(passengers, {
+      flight:sy.flightNo || 'MU586', flightDate:sy.flightDate || '', gate:sy.gate || '', bdt:sy.bdt || ''
+    });
+    const sheet = await syncManualBoardingRecords(records);
+    return res.json({ enabled:true, gate:sy.gate || '', bdt:sy.bdt || '', flight:sy.flightNo || records[0]?.flight || 'MU586', records, sheet });
+  } catch (err) {
+    console.error('Manual boarding sync failed:', err);
+    return res.status(500).json({ error:err?.message || 'Manual boarding sync failed.' });
+  }
+});
+
+app.get('/manual/barcode', (req, res) => {
+  try {
+    const text = String(req.query.data || '');
+    if (!text || text.length > 512) return res.status(400).send('Invalid barcode data.');
+    const svg = bwipjs.toSVG({ bcid:'pdf417', text, scale:2, height:12, includetext:false, padding:0, columns:7 });
+    res.type('image/svg+xml').set('Cache-Control', 'private, max-age=3600').send(svg);
+  } catch (err) {
+    res.status(422).send(err?.message || 'Barcode generation failed.');
+  }
 });
 
 const REVIEW_STORE_PATH = path.join(__dirname, 'securityReviews.json');
@@ -4397,9 +4432,10 @@ app.get(
           rememberCompletedPreflightSteps(syInfo, isoDate);
           applyCachedCompletedPreflightSteps(syInfo, isoDate);
         } else {
-          await refreshSyPreflightEmailChecks(syInfo, isoDate);
-          rememberCompletedPreflightSteps(syInfo, isoDate);
-          applyCachedCompletedPreflightSteps(syInfo, isoDate);
+          // Gmail and report-sheet reconciliation are supplementary dashboard
+          // data. Waiting for two Gmail searches here delayed the core SY
+          // response and could push the browser beyond its 12-second timeout.
+          // Cached results above remain visible while this refresh completes.
           setImmediate(() => {
             refreshDeferredSyData(syInfo, log, isoDate).catch((err) => {
               console.warn('Deferred SY refresh skipped:', err?.message || err);
@@ -4411,12 +4447,9 @@ app.get(
           mealEmailPromise,
           authContextPromise
         ]);
-        try {
-          syInfo.bagRoomUnloadAlert = await notifyBagRoomUnloadAfterCc(syInfo, isoDate);
-        } catch (err) {
-          syInfo.bagRoomUnloadAlert = { sent:false, error:err?.message || 'Bag Room Unload alert failed.' };
-          console.error('Bag Room Unload CC email error:', err);
-        }
+        syInfo.bagRoomUnloadAlert = { pending:true };
+        setImmediate(() => notifyBagRoomUnloadAfterCc(syInfo, isoDate)
+          .catch((err) => console.error('Bag Room Unload CC email error:', err)));
         spml.email = mealEmail;
         if (spml.report.length) {
           setImmediate(() => appendSpmlReportRows(spml.report.map((row) => ({ ...row, key:`SPML|${row.date}|${row.flightNo}|${row.passenger}|${row.bn}|${row.meal}`.toUpperCase() })))

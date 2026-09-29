@@ -263,6 +263,9 @@ const CBS_SCAN_SHEET_ID = process.env.CBS_SCAN_SHEET_ID || '1bfIeytT6UMdvWXimeg4
 const CBS_SCAN_SHEET_GID = Number(process.env.CBS_SCAN_SHEET_GID || 0);
 const RECORD_SCAN_SHEET_ID = process.env.RECORD_SCAN_SHEET_ID || '1bfIeytT6UMdvWXimeg4s1HVuXHqmpYZx53ufsbes6Ms';
 const RECORD_SCAN_SHEET_GID = Number(process.env.RECORD_SCAN_SHEET_GID || 621930495);
+const MANUAL_BOARDING_SHEET_ID = process.env.MANUAL_BOARDING_SHEET_ID || '1bfIeytT6UMdvWXimeg4s1HVuXHqmpYZx53ufsbes6Ms';
+const MANUAL_BOARDING_SHEET_GID = Number(process.env.MANUAL_BOARDING_SHEET_GID || 1102230555);
+const MANUAL_BOARDING_HEADERS = ['Name', 'BN', 'Seat', 'Ticket Number', 'Membership Number', 'PNR', 'Flight', 'Flight Date', 'Gate', 'BDT', 'Barcode', 'Updated At'];
 const RECORD_SCAN_HEADERS = ['BN', 'SEAT', 'FLIGHT NUMBER', 'RAW SCAN'];
 const RECORD_CASE_SHEET_ID = process.env.RECORD_CASE_SHEET_ID || '1t0TS3__Im1tyLy7Hj7CGF8zet_-5TT1986QCodhvYbo';
 const RECORD_CASE_SHEET_GID = Number(process.env.RECORD_CASE_SHEET_GID || 1472152106);
@@ -275,6 +278,7 @@ const CBS_SCAN_HEADERS = ['BN', 'Seat', 'Flight', 'Raw Scan', 'Scanned At'];
 const CBS_SCAN_INFANT_HEADERS = ['Infant BN', 'Infant Seat', 'Infant Flight', 'Infant Raw Scan', 'Infant Scanned At'];
 let cbsScanSheetTitle = '';
 let recordScanSheetTitle = '';
+let manualBoardingSheetTitle = '';
 let recordCaseSheetTitle = '';
 const RECORD_CASE_CACHE_TTL_MS = Math.max(30000, Number(process.env.RECORD_CASE_CACHE_TTL_MS) || 55000);
 let recordCaseCache = { expiresAt:0, rows:[], pending:null };
@@ -1848,44 +1852,54 @@ async function downloadLogsInFolder(folderId, label) {
 
   files.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
 
-  const logs = [];
-
-  for (const file of files) {
-    console.log(
-      `Using ${label} log ${file.name}:`,
-      file.modifiedTime || ''
-    );
-
-    const content =
-      await downloadLog(file.id);
-
-    logs.push(content);
-  }
+  // A TODAY folder can contain many split log files. Downloading each file in
+  // series made the first SY request progressively slower during the day and
+  // eventually exceeded the dashboard's 12-second request timeout. Keep the
+  // final concatenation ordered, while downloading a small number in parallel.
+  const logs = new Array(files.length);
+  let nextFileIndex = 0;
+  const workerCount = Math.min(6, files.length);
+  await Promise.all(Array.from({ length:workerCount }, async () => {
+    while (nextFileIndex < files.length) {
+      const index = nextFileIndex;
+      nextFileIndex += 1;
+      const file = files[index];
+      console.log(`Using ${label} log ${file.name}:`, file.modifiedTime || '');
+      logs[index] = await downloadLog(file.id);
+    }
+  }));
 
   return logs.join('\n');
 }
 
+const LATEST_FLIGHT_LOG_CACHE_MS = Math.max(1000, Number(process.env.LATEST_FLIGHT_LOG_CACHE_MS) || 15000);
+let latestFlightLogCache = { folderId:'', loadedAt:0, value:null, pending:null };
+
 async function getLatestFlightLog() {
-
-  try {
-
-    const folderId =
-      process.env.TODAY_FOLDER_ID;
-
-    return await downloadLogsInFolder(
-      folderId,
-      'TODAY'
-    );
-
-  } catch (err) {
-
-    console.error(
-      'Today Log Error:',
-      err
-    );
-
-    return null;
+  const folderId = process.env.TODAY_FOLDER_ID;
+  const now = Date.now();
+  if (latestFlightLogCache.folderId === folderId
+      && latestFlightLogCache.value
+      && now - latestFlightLogCache.loadedAt < LATEST_FLIGHT_LOG_CACHE_MS) {
+    return latestFlightLogCache.value;
   }
+  if (latestFlightLogCache.folderId === folderId && latestFlightLogCache.pending) {
+    return latestFlightLogCache.pending;
+  }
+
+  const previousValue = latestFlightLogCache.folderId === folderId ? latestFlightLogCache.value : null;
+  const pending = downloadLogsInFolder(folderId, 'TODAY')
+    .then((value) => {
+      latestFlightLogCache = { folderId, loadedAt:Date.now(), value, pending:null };
+      return value;
+    })
+    .catch((err) => {
+      console.error('Today Log Error:', err);
+      latestFlightLogCache = { folderId, loadedAt:previousValue ? Date.now() : 0, value:previousValue, pending:null };
+      return previousValue;
+    });
+  latestFlightLogCache = { folderId, loadedAt:latestFlightLogCache.loadedAt, value:previousValue, pending };
+  return pending;
 }
 
 
@@ -2913,6 +2927,45 @@ async function cbsScanSheetsCall(fn, label = 'Google Sheets request') {
 async function getCbsScanSheetTitle() {
   if (!cbsScanSheetTitle) cbsScanSheetTitle = await resolveSheetTitleByGid(CBS_SCAN_SHEET_ID, CBS_SCAN_SHEET_GID);
   return cbsScanSheetTitle || 'Sheet1';
+}
+
+async function syncManualBoardingRecords(records = []) {
+  if (!manualBoardingSheetTitle) {
+    manualBoardingSheetTitle = await resolveSheetTitleByGid(MANUAL_BOARDING_SHEET_ID, MANUAL_BOARDING_SHEET_GID);
+  }
+  if (!manualBoardingSheetTitle) throw new Error(`Manual sheet gid ${MANUAL_BOARDING_SHEET_GID} was not found.`);
+  const title = escapeSheetTitle(manualBoardingSheetTitle);
+  const current = await cbsScanSheetsCall(() => sheets.spreadsheets.values.get({
+    spreadsheetId:MANUAL_BOARDING_SHEET_ID, range:`${title}!A:L`
+  }), 'Manual boarding sheet read');
+  const rows = current.data.values || [];
+  if (MANUAL_BOARDING_HEADERS.some((header, index) => String(rows[0]?.[index] || '') !== header)) {
+    await cbsScanSheetsCall(() => sheets.spreadsheets.values.update({
+      spreadsheetId:MANUAL_BOARDING_SHEET_ID, range:`${title}!A1:L1`, valueInputOption:'RAW',
+      requestBody:{ values:[MANUAL_BOARDING_HEADERS] }
+    }), 'Manual boarding header update');
+  }
+  const existing = new Map(rows.slice(1).map((row, index) => [`${row[6]}|${row[7]}|${String(row[1]).padStart(3, '0')}`, index + 2]));
+  const updatedAt = new Date().toISOString();
+  const updates = [];
+  const appends = [];
+  for (const record of records) {
+    const values = [record.name, record.bn, record.seat, record.ticketNumber, record.membershipNumber, record.pnr, record.flight, record.flightDate, record.gate, record.bdt, record.barcode, updatedAt];
+    const key = `${record.flight}|${record.flightDate}|${record.bn}`;
+    const rowNumber = existing.get(key);
+    if (rowNumber) {
+      updates.push({ range:`${title}!A${rowNumber}:L${rowNumber}`, values:[values] });
+    } else {
+      appends.push(values);
+    }
+  }
+  if (updates.length) await cbsScanSheetsCall(() => sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId:MANUAL_BOARDING_SHEET_ID, requestBody:{ valueInputOption:'RAW', data:updates }
+  }), 'Manual boarding rows update');
+  if (appends.length) await cbsScanSheetsCall(() => sheets.spreadsheets.values.append({
+    spreadsheetId:MANUAL_BOARDING_SHEET_ID, range:`${title}!A:L`, valueInputOption:'RAW', insertDataOption:'INSERT_ROWS', requestBody:{ values:appends }
+  }), 'Manual boarding rows append');
+  return { saved:records.length };
 }
 
 async function getCbsScanSheetRows(options = {}) {
@@ -5037,6 +5090,7 @@ module.exports = {
   appendTransit240Record,
   appendCbsScanRecord,
   appendRecordScanRecord,
+  syncManualBoardingRecords,
   appendRecordCase,
   getRecordCases,
   updateRecordCase,
