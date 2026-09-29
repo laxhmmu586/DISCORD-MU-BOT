@@ -4892,6 +4892,18 @@
         document.body.classList.toggle("is-loading", Boolean(loading));
       }
 
+      function showInitialSyLoadFailure(error) {
+        if (currentSy) return;
+        setLoadingState(false);
+        setSyDetailsVisible(false);
+        const timedOut = error?.name === "AbortError";
+        setText("#flight-kicker", timedOut ? "SY request timed out · retrying automatically" : "Unable to load SY · retrying automatically");
+        setText("#active-flight", "SY UNAVAILABLE");
+        setText("#metric-gate", "---");
+        setText("#metric-bdt", "----");
+        setText("#metric-std", "----");
+      }
+
       function isSyRefreshProtectedView() {
         const protectedPanelTitles = ["Security Check", "Seat Map"];
         return document.body.classList.contains("is-report-view") || protectedPanelTitles.includes(resultPanel?.dataset?.panelTitle || "");
@@ -6681,11 +6693,12 @@
           pendingSyRefresh = null;
           updateFlightFromSy(data.sy, { skipUnchanged: true });
         } catch (error) {
+          if (showLoading) showInitialSyLoadFailure(error);
           if (error?.name === "AbortError") return;
           if (!silent) console.warn("Unable to load today's SY data.", error);
         } finally {
           window.clearTimeout(refreshTimeout);
-          if (showLoading && currentSy) setLoadingState(false);
+          if (showLoading) setLoadingState(false);
           syAutoRefreshInFlight = false;
           if (syAutoRefreshAbortController === refreshAbortController) syAutoRefreshAbortController = null;
         }
