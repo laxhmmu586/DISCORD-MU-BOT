@@ -31,6 +31,9 @@ test('parses emergency BN and infant barcodes through shared flight matching', (
   assert.deepEqual(parseEmergencyBoardScan('MU 09586 221|INF|INF01'), {
     flight: '9586', seat: 'INF', bn: '1', rawScan: 'MU 09586 221|INF|INF01', isInfant: true
   });
+  assert.deepEqual(parseEmergencyBoardScan('MU0586|INF|BN001'), {
+    flight: '0586', seat: 'INF', bn: '1', rawScan: 'MU0586|INF|BN001', isInfant: true
+  });
 });
 
 test('emergency barcodes reject unsupported flights and malformed identifiers', () => {

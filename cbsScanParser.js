@@ -38,7 +38,10 @@ function parseEmergencyBoardScan(rawValue = '') {
   const payload = flightPart >= 0 ? parts.slice(flightPart + 1) : [];
   const isInfant = /^INF$/i.test(payload[0] || '');
   const bnToken = isInfant ? payload[1] : payload[0];
-  const bnMatch = String(bnToken || '').match(isInfant ? /^INF0*(\d{1,4})$/i : /^BN0*(\d{1,4})$/i);
+  // Emergency infant labels have existed in both forms: INF01 and BN001.
+  // Accept either token after the explicit INF marker while keeping regular
+  // boarding labels restricted to BN-prefixed identifiers.
+  const bnMatch = String(bnToken || '').match(isInfant ? /^(?:INF|BN)0*(\d{1,4})$/i : /^BN0*(\d{1,4})$/i);
   if (!bnMatch) {
     const err = new Error(isInfant ? 'INF number not found.' : 'BN number not found.');
     err.code = 'SCAN_FORMAT';

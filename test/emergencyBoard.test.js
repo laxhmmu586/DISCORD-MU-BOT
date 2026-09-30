@@ -11,6 +11,9 @@ test('emergency scanner and board use their isolated endpoints and multi-format 
   assert.match(scan, /BrowserMultiFormatReader/);
   assert.match(scan, /MU0586\|BN001/);
   assert.match(scan, /MU0586\|INF\|INF01/);
+  assert.match(scan, /MU0586\|INF\|BN001/);
+  assert.match(scan, /<h1>EMERGENCY BOARDING<\/h1>/);
+  assert.match(scan, /href="m-board2\.html">Manual Board<\/a>/);
   assert.match(scan, /\/cbs-scan2/);
   assert.match(board, /<h2>NBRD<\/h2>/);
   assert.match(board, /\/cbs-scan2\/records/);
