@@ -138,8 +138,10 @@
     };
     function setStatus(text, cls = '') { statusEl.textContent = text; statusEl.className = `status ${cls}`.trim(); }
     function isEmergencyBarcode(value) {
-      const text = String(value || '').normalize('NFKC').replace(/[\u0000-\u001f\u007f]/g, '').trim();
-      return /MU\s*[0O]*(?:9586|586)(?:\d{3})?\s*\|\s*(?:BN0*\d{1,4}|INF\s*\|\s*(?:INF|BN)0*\d{1,4})$/i.test(text);
+      const text = String(value || '').normalize('NFKC').replace(/[｜¦]/g, '|').replace(/[\u0000-\u001f\u007f]/g, '').trim();
+      const hasFlight = /MU\s*[0O]*(?:9586|586)(?:\d{3})?\s*\|/i.test(text);
+      const hasPayload = /\|\s*(?:BN0*\d{1,4}|INF\s*\|\s*(?:INF|BN)0*\d{1,4})(?=$|[^0-9])/i.test(text);
+      return hasFlight && hasPayload;
     }
     async function applyCameraFocus() {
       const track = preview.srcObject?.getVideoTracks?.()[0];

@@ -22,7 +22,7 @@ function matchMuFlight(rawValue = '') {
 }
 
 function parseEmergencyBoardScan(rawValue = '') {
-  const rawScan = String(rawValue || '').normalize('NFKC').replace(/[\u0000-\u001f\u007f]/g, '').trim();
+  const rawScan = String(rawValue || '').normalize('NFKC').replace(/[｜¦]/g, '|').replace(/[\u0000-\u001f\u007f]/g, '').trim();
   // Keep flight recognition in one place so the emergency scanner accepts the
   // same supported flight variants as the regular PDF417 scanner.
   let flightMatch = matchMuFlight(rawScan);
@@ -44,15 +44,16 @@ function parseEmergencyBoardScan(rawValue = '') {
     throw err;
   }
 
-  const parts = scanForParsing.split('|').map((part) => part.trim()).filter(Boolean);
-  const flightPart = parts.findIndex((part) => matchMuFlight(part)?.supported);
-  const payload = flightPart >= 0 ? parts.slice(flightPart + 1) : [];
-  const isInfant = /^INF$/i.test(payload[0] || '');
-  const bnToken = isInfant ? payload[1] : payload[0];
+  // Parse the payload directly instead of relying on an exact array length.
+  // Mobile PDF417 readers may retain symbology or macro metadata before/after
+  // the printed value, which must not prevent an infant label from scanning.
+  const payloadMatch = scanForParsing.match(/\|\s*(?:(INF)\s*\|\s*)?(BN|INF)0*(\d{1,4})(?=$|[^0-9])/i);
+  const isInfant = Boolean(payloadMatch?.[1]);
+  const bnToken = payloadMatch ? `${payloadMatch[2]}${payloadMatch[3]}` : '';
   // Emergency infant labels have existed in both forms: INF01 and BN001.
   // Accept either token after the explicit INF marker while keeping regular
   // boarding labels restricted to BN-prefixed identifiers.
-  const bnMatch = String(bnToken || '').match(isInfant ? /^(?:INF|BN)0*(\d{1,4})$/i : /^BN0*(\d{1,4})$/i);
+  const bnMatch = String(bnToken || '').match(isInfant ? /^(?:INF|BN)(\d{1,4})$/i : /^BN(\d{1,4})$/i);
   if (!bnMatch) {
     const err = new Error(isInfant ? 'INF number not found.' : 'BN number not found.');
     err.code = 'SCAN_FORMAT';
