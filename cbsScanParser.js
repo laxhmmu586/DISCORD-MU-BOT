@@ -22,10 +22,21 @@ function matchMuFlight(rawValue = '') {
 }
 
 function parseEmergencyBoardScan(rawValue = '') {
-  const rawScan = String(rawValue || '').trim();
+  const rawScan = String(rawValue || '').normalize('NFKC').replace(/[\u0000-\u001f\u007f]/g, '').trim();
   // Keep flight recognition in one place so the emergency scanner accepts the
   // same supported flight variants as the regular PDF417 scanner.
-  const flightMatch = matchMuFlight(rawScan);
+  let flightMatch = matchMuFlight(rawScan);
+  let scanForParsing = rawScan;
+  // Some mobile PDF417 decoders expose the zero in the carrier/flight field as
+  // the visually identical letter O. Only repair it inside the emergency
+  // flight token, then run the shared matcher again.
+  if (!flightMatch?.supported) {
+    const repairedScan = rawScan.replace(/MU\s*O(?=\d{3,4}(?:\d{3})?(?:\||$))/i, 'MU0');
+    if (repairedScan !== rawScan) {
+      flightMatch = matchMuFlight(repairedScan);
+      if (flightMatch?.supported) scanForParsing = repairedScan;
+    }
+  }
   if (!flightMatch?.supported) {
     const err = new Error('wrong flight');
     err.code = 'WRONG_FLIGHT';
@@ -33,7 +44,7 @@ function parseEmergencyBoardScan(rawValue = '') {
     throw err;
   }
 
-  const parts = rawScan.split('|').map((part) => part.trim()).filter(Boolean);
+  const parts = scanForParsing.split('|').map((part) => part.trim()).filter(Boolean);
   const flightPart = parts.findIndex((part) => matchMuFlight(part)?.supported);
   const payload = flightPart >= 0 ? parts.slice(flightPart + 1) : [];
   const isInfant = /^INF$/i.test(payload[0] || '');

@@ -58,7 +58,6 @@
   <main>
     <section class="card">
       <h1>EMERGENCY BOARDING</h1>
-      <p>Scan <strong>MU0586|BN001</strong>, <strong>MU0586|INF|INF01</strong>, or <strong>MU0586|INF|BN001</strong> emergency barcodes.</p>
       <p class="flight-support">MU586 · MU9586</p>
       <div class="camera-wrap"><video id="preview" muted playsinline></video><div class="aim-box" aria-hidden="true"></div></div>
       <div class="actions"><button id="start" type="button">Start Scan</button><button class="secondary" id="stop" type="button">Stop</button></div>
@@ -138,6 +137,10 @@
       audio: false
     };
     function setStatus(text, cls = '') { statusEl.textContent = text; statusEl.className = `status ${cls}`.trim(); }
+    function isEmergencyBarcode(value) {
+      const text = String(value || '').normalize('NFKC').replace(/[\u0000-\u001f\u007f]/g, '').trim();
+      return /MU\s*[0O]*(?:9586|586)(?:\d{3})?\s*\|\s*(?:BN0*\d{1,4}|INF\s*\|\s*(?:INF|BN)0*\d{1,4})$/i.test(text);
+    }
     async function applyCameraFocus() {
       const track = preview.srcObject?.getVideoTracks?.()[0];
       if (!track?.applyConstraints) return;
@@ -253,6 +256,10 @@
         controls = await decode(preview, (result, error) => {
           if (!result || scanBusy) return;
           const text = result.getText();
+          // A camera may see other PDF417 codes elsewhere on a monitor or
+          // document. Ignore them instead of reporting a misleading wrong
+          // flight error; only emergency labels are sent to this endpoint.
+          if (!isEmergencyBarcode(text)) return;
           const now = Date.now();
           if (text === lastScanText && now - lastScanAt < 2500) return;
           scanBusy = true;
