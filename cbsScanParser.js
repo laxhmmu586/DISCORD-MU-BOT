@@ -21,4 +21,50 @@ function matchMuFlight(rawValue = '') {
   };
 }
 
-module.exports = { matchMuFlight };
+function parseEmergencyBoardScan(rawValue = '') {
+  const rawScan = String(rawValue || '').normalize('NFKC').replace(/[\u0000-\u001f\u007f]/g, '').trim();
+  // Keep flight recognition in one place so the emergency scanner accepts the
+  // same supported flight variants as the regular PDF417 scanner.
+  let flightMatch = matchMuFlight(rawScan);
+  let scanForParsing = rawScan;
+  // Some mobile PDF417 decoders expose the zero in the carrier/flight field as
+  // the visually identical letter O. Only repair it inside the emergency
+  // flight token, then run the shared matcher again.
+  if (!flightMatch?.supported) {
+    const repairedScan = rawScan.replace(/MU\s*O(?=\d{3,4}(?:\d{3})?(?:\||$))/i, 'MU0');
+    if (repairedScan !== rawScan) {
+      flightMatch = matchMuFlight(repairedScan);
+      if (flightMatch?.supported) scanForParsing = repairedScan;
+    }
+  }
+  if (!flightMatch?.supported) {
+    const err = new Error('wrong flight');
+    err.code = 'WRONG_FLIGHT';
+    err.flight = flightMatch?.number || '';
+    throw err;
+  }
+
+  const parts = scanForParsing.split('|').map((part) => part.trim()).filter(Boolean);
+  const flightPart = parts.findIndex((part) => matchMuFlight(part)?.supported);
+  const payload = flightPart >= 0 ? parts.slice(flightPart + 1) : [];
+  const isInfant = /^INF$/i.test(payload[0] || '');
+  const bnToken = isInfant ? payload[1] : payload[0];
+  // Emergency infant labels have existed in both forms: INF01 and BN001.
+  // Accept either token after the explicit INF marker while keeping regular
+  // boarding labels restricted to BN-prefixed identifiers.
+  const bnMatch = String(bnToken || '').match(isInfant ? /^(?:INF|BN)0*(\d{1,4})$/i : /^BN0*(\d{1,4})$/i);
+  if (!bnMatch) {
+    const err = new Error(isInfant ? 'INF number not found.' : 'BN number not found.');
+    err.code = 'SCAN_FORMAT';
+    throw err;
+  }
+  return {
+    flight: flightMatch.number,
+    seat: isInfant ? 'INF' : '',
+    bn: bnMatch[1],
+    rawScan,
+    isInfant
+  };
+}
+
+module.exports = { matchMuFlight, parseEmergencyBoardScan };
