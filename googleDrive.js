@@ -276,7 +276,9 @@ let transit240SheetTitle = '';
 const CBS_SCAN_HEADERS = ['BN', 'Seat', 'Flight', 'Raw Scan', 'Scanned At'];
 const CBS_SCAN_INFANT_HEADERS = ['Infant BN', 'Infant Seat', 'Infant Flight', 'Infant Raw Scan', 'Infant Scanned At'];
 let cbsScanSheetTitle = '';
+let cbsScanSheetTitlePending = null;
 let emergencyBoardSheetTitle = '';
+let emergencyBoardSheetTitlePending = null;
 let emergencyBoardSheetCache = { loadedAt: 0, rows: [] };
 let emergencyBoardAppendPending = [];
 let emergencyBoardAppendTimer = null;
@@ -2898,11 +2900,32 @@ function isCbsScanQuotaError(err) {
   return status === 429 || (status === 403 && /quota|ratelimit|rate limit|user-rate|usage limits/.test(reasonText));
 }
 
+// scan.html and scan2.html share the same Sheets credential and therefore the
+// same per-user quota. Run their reads/writes through one paced queue so a few
+// agents scanning together are batched rather than producing quota bursts.
+const CBS_SCAN_SHEETS_MIN_INTERVAL_MS = Math.max(0, Number(process.env.CBS_SCAN_SHEETS_MIN_INTERVAL_MS) || 1050);
+let cbsScanSheetsRequestChain = Promise.resolve();
+let cbsScanSheetsLastRequestAt = 0;
+
+function scheduleCbsScanSheetsRequest(fn) {
+  const scheduled = cbsScanSheetsRequestChain.catch(() => {}).then(async () => {
+    const waitMs = Math.max(0, CBS_SCAN_SHEETS_MIN_INTERVAL_MS - (Date.now() - cbsScanSheetsLastRequestAt));
+    if (waitMs) await new Promise((resolve) => setTimeout(resolve, waitMs));
+    try {
+      return await fn();
+    } finally {
+      cbsScanSheetsLastRequestAt = Date.now();
+    }
+  });
+  cbsScanSheetsRequestChain = scheduled.then(() => undefined, () => undefined);
+  return scheduled;
+}
+
 async function cbsScanSheetsCall(fn, label = 'Google Sheets request') {
   const delays = [750, 1500, 3000, 5000];
   for (let attempt = 0; attempt <= delays.length; attempt += 1) {
     try {
-      return await fn();
+      return await scheduleCbsScanSheetsRequest(fn);
     } catch (err) {
       if (!isCbsScanQuotaError(err) || attempt === delays.length) {
         if (isCbsScanQuotaError(err)) {
@@ -2918,7 +2941,12 @@ async function cbsScanSheetsCall(fn, label = 'Google Sheets request') {
 }
 
 async function getCbsScanSheetTitle() {
-  if (!cbsScanSheetTitle) cbsScanSheetTitle = await resolveSheetTitleByGid(CBS_SCAN_SHEET_ID, CBS_SCAN_SHEET_GID);
+  if (!cbsScanSheetTitle && !cbsScanSheetTitlePending) {
+    cbsScanSheetTitlePending = cbsScanSheetsCall(() => resolveSheetTitleByGid(CBS_SCAN_SHEET_ID, CBS_SCAN_SHEET_GID), 'CBS scan sheet title')
+      .then((title) => { cbsScanSheetTitle = title; return title; })
+      .finally(() => { cbsScanSheetTitlePending = null; });
+  }
+  if (!cbsScanSheetTitle) await cbsScanSheetTitlePending;
   return cbsScanSheetTitle || 'Sheet1';
 }
 
@@ -3262,7 +3290,12 @@ async function appendCbsScanRecord(record = {}) {
 }
 
 async function getEmergencyBoardSheetTitle() {
-  if (!emergencyBoardSheetTitle) emergencyBoardSheetTitle = await resolveSheetTitleByGid(EMERGENCY_BOARD_SHEET_ID, EMERGENCY_BOARD_SHEET_GID);
+  if (!emergencyBoardSheetTitle && !emergencyBoardSheetTitlePending) {
+    emergencyBoardSheetTitlePending = cbsScanSheetsCall(() => resolveSheetTitleByGid(EMERGENCY_BOARD_SHEET_ID, EMERGENCY_BOARD_SHEET_GID), 'Emergency board sheet title')
+      .then((title) => { emergencyBoardSheetTitle = title; return title; })
+      .finally(() => { emergencyBoardSheetTitlePending = null; });
+  }
+  if (!emergencyBoardSheetTitle) await emergencyBoardSheetTitlePending;
   return emergencyBoardSheetTitle || 'Sheet1';
 }
 

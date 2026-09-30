@@ -34,6 +34,9 @@ test('emergency backend targets the requested sheet tab and exposes matching rou
   const drive = read('googleDrive.js');
   const server = read('index.js');
   assert.match(drive, /EMERGENCY_BOARD_SHEET_GID = Number\(process\.env\.EMERGENCY_BOARD_SHEET_GID \|\| 1102230555\)/);
+  assert.match(drive, /function scheduleCbsScanSheetsRequest\(fn\)/);
+  assert.match(drive, /return await scheduleCbsScanSheetsRequest\(fn\)/);
+  assert.match(drive, /emergencyBoardSheetTitlePending = cbsScanSheetsCall/);
   assert.match(server, /app\.post\('\/cbs-scan2'/);
   assert.match(server, /parseEmergencyBoardScan/);
   assert.match(server, /app\.get\('\/cbs-scan2\/records'/);
