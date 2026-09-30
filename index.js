@@ -21,7 +21,7 @@ const {
   findByBagtag
 
 } = require('./flightParser');
-const { matchMuFlight } = require('./cbsScanParser');
+const { matchMuFlight, parseEmergencyBoardScan } = require('./cbsScanParser');
 const { parseSpmlLog } = require('./spmlParser');
 const { findLinkedRushBagRecords } = require('./rushBagNotification');
 const { createWchcNotifier } = require('./wchcNotification');
@@ -104,6 +104,7 @@ const {
   findCbsPnrRecordsByBagTag,
   appendTransit240Record,
   appendCbsScanRecord,
+  appendEmergencyBoardRecord,
   appendRecordScanRecord,
   appendRecordCase,
   getRecordCases,
@@ -113,6 +114,11 @@ const {
   getCbsScanRecords,
   setCbsScanRecordEntered,
   setCbsScanRecordsEntered,
+  appendEmergencyBoardNbrdBns,
+  deleteEmergencyBoardNbrdBn,
+  getEmergencyBoardRecords,
+  setEmergencyBoardRecordEntered,
+  setEmergencyBoardRecordsEntered,
   readNotesDriveStore,
   writeNotesDriveStore
 
@@ -1066,6 +1072,14 @@ app.get(['/scan2.html', '/scan2'], (req, res) => {
 
 app.get(['/m-board.html', '/m-board'], (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'public', 'm-board.html'));
+});
+
+app.get(['/scan2.html', '/scan2'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'public', 'scan2.html'));
+});
+
+app.get(['/m-board2.html', '/m-board2'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'public', 'm-board2.html'));
 });
 
 app.get(['/240.html', '/240'], (req, res) => {
@@ -3016,6 +3030,17 @@ app.post('/cbs-scan', async (req, res) => {
   }
 });
 
+app.post('/cbs-scan2', async (req, res) => {
+  try {
+    const parsed = parseEmergencyBoardScan(req.body?.rawScan || req.body?.raw || req.body?.text || '');
+    const saved = await appendEmergencyBoardRecord(parsed);
+    return res.json({ ok: true, ...saved });
+  } catch (err) {
+    const status = err?.code === 'DUPLICATE_BN' || err?.code === 'NBRD_MESSAGE' ? 409 : (err?.code === 'WRONG_FLIGHT' || err?.code === 'SCAN_FORMAT' ? 400 : (err?.code === 'SHEETS_QUOTA' ? 503 : 422));
+    return res.status(status).json({ error: err?.message || 'Emergency scan save failed', code: err?.code || 'SCAN_ERROR', flight: err?.flight || '', bn: err?.bn || '', detail: err?.detail || '' });
+  }
+});
+
 app.post('/record-scan', async (req, res) => {
   try {
     const parsed = parseRecordPdf417(req.body?.rawScan || req.body?.raw || req.body?.text || '');
@@ -3117,6 +3142,30 @@ app.post('/irr-cases/:rowNumber', async (req, res) => {
   } catch (err) { return res.status(err?.code === 'EDIT_CONFLICT' ? 409 : 422).json({ error:err?.message || 'Case could not be updated.', code:err?.code }); }
 });
 
+
+app.get('/cbs-scan2/records', async (_req, res) => {
+  try { return res.json({ ok: true, rows: await getEmergencyBoardRecords() }); }
+  catch (err) { return res.status(422).json({ error: err?.message || 'Emergency board records load failed', code: err?.code || 'EMERGENCY_BOARD_RECORDS_ERROR' }); }
+});
+
+app.post('/cbs-scan2/records/entered', async (req, res) => {
+  try { return res.json({ ok: true, ...await setEmergencyBoardRecordsEntered(req.body?.rowNumbers || [], req.body?.entered === true) }); }
+  catch (err) { return res.status(422).json({ error: err?.message || 'Emergency board rows update failed', code: err?.code || 'EMERGENCY_BOARD_ROWS_UPDATE_ERROR' }); }
+});
+
+app.post('/cbs-scan2/nbrd-bns', async (req, res) => {
+  try {
+    const entries = Array.isArray(req.body?.entries) ? req.body.entries : (Array.isArray(req.body?.bns) ? req.body.bns : [req.body?.bn].filter(Boolean));
+    return res.json({ ok: true, ...await appendEmergencyBoardNbrdBns(entries, { replace: req.body?.replace === true }) });
+  } catch (err) { return res.status(422).json({ error: err?.message || 'Emergency NBRD save failed', code: err?.code || 'NBRD_SAVE_ERROR' }); }
+});
+
+async function handleEmergencyBoardNbrdDelete(req, res) {
+  try { return res.json({ ok: true, ...await deleteEmergencyBoardNbrdBn(req.params.rowNumber, req.body?.bn || req.query?.bn || '') }); }
+  catch (err) { return res.status(err?.code === 'NBRD_NOT_FOUND' || err?.code === 'NBRD_MISMATCH' ? 404 : 422).json({ error: err?.message || 'Emergency NBRD delete failed', code: err?.code || 'NBRD_DELETE_ERROR' }); }
+}
+app.post('/cbs-scan2/nbrd-bns/:rowNumber/delete', handleEmergencyBoardNbrdDelete);
+app.delete('/cbs-scan2/nbrd-bns/:rowNumber', handleEmergencyBoardNbrdDelete);
 
 app.get('/cbs-scan/records', async (req, res) => {
   try {
