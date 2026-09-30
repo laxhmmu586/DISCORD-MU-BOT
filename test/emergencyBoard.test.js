@@ -24,9 +24,9 @@ test('emergency scanner and board use their isolated endpoints and multi-format 
   assert.match(board, /records\/entered/);
 });
 
-test('emergency M-BOARD replaces DUP NAME below IRR in the flight menu', () => {
+test('Emergency Boarding replaces DUP NAME below IRR in the flight menu', () => {
   const home = read('public/public/index.html');
-  assert.match(home, /id="irr-button"[^>]*>IRR<\/button>\s*<button id="emergency-board-button"[^>]*>M-BOARD<\/button>/);
+  assert.match(home, /id="irr-button"[^>]*>IRR<\/button>\s*<button id="emergency-board-button"[^>]*>Emergency Boarding<\/button>/);
   assert.doesNotMatch(home, /flight-menu"\)\?\.appendChild\(action\)/);
 });
 
