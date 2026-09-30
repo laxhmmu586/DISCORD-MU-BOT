@@ -261,6 +261,8 @@ const CBS_MISSING_BAG_SHEET_GID = Number(process.env.CBS_MISSING_BAG_SHEET_GID |
 const CBS_MISSING_BAG_HEADERS = ['Bag Tag', 'Passenger Name', 'Destination', 'Airline', 'Source Email Date', 'Source Attachment', 'Recorded At', 'Case Created At', 'Acknowledged At'];
 const CBS_SCAN_SHEET_ID = process.env.CBS_SCAN_SHEET_ID || '1bfIeytT6UMdvWXimeg4s1HVuXHqmpYZx53ufsbes6Ms';
 const CBS_SCAN_SHEET_GID = Number(process.env.CBS_SCAN_SHEET_GID || 0);
+const EMERGENCY_BOARD_SHEET_ID = process.env.EMERGENCY_BOARD_SHEET_ID || '1bfIeytT6UMdvWXimeg4s1HVuXHqmpYZx53ufsbes6Ms';
+const EMERGENCY_BOARD_SHEET_GID = Number(process.env.EMERGENCY_BOARD_SHEET_GID || 1102230555);
 const RECORD_SCAN_SHEET_ID = process.env.RECORD_SCAN_SHEET_ID || '1bfIeytT6UMdvWXimeg4s1HVuXHqmpYZx53ufsbes6Ms';
 const RECORD_SCAN_SHEET_GID = Number(process.env.RECORD_SCAN_SHEET_GID || 621930495);
 const RECORD_SCAN_HEADERS = ['BN', 'SEAT', 'FLIGHT NUMBER', 'RAW SCAN'];
@@ -274,6 +276,11 @@ let transit240SheetTitle = '';
 const CBS_SCAN_HEADERS = ['BN', 'Seat', 'Flight', 'Raw Scan', 'Scanned At'];
 const CBS_SCAN_INFANT_HEADERS = ['Infant BN', 'Infant Seat', 'Infant Flight', 'Infant Raw Scan', 'Infant Scanned At'];
 let cbsScanSheetTitle = '';
+let emergencyBoardSheetTitle = '';
+let emergencyBoardSheetCache = { loadedAt: 0, rows: [] };
+let emergencyBoardAppendPending = [];
+let emergencyBoardAppendTimer = null;
+let emergencyBoardAppendBatchChain = Promise.resolve();
 let recordScanSheetTitle = '';
 let recordCaseSheetTitle = '';
 const RECORD_CASE_CACHE_TTL_MS = Math.max(30000, Number(process.env.RECORD_CASE_CACHE_TTL_MS) || 55000);
@@ -3254,6 +3261,351 @@ async function appendCbsScanRecord(record = {}) {
   });
 }
 
+async function getEmergencyBoardSheetTitle() {
+  if (!emergencyBoardSheetTitle) emergencyBoardSheetTitle = await resolveSheetTitleByGid(EMERGENCY_BOARD_SHEET_ID, EMERGENCY_BOARD_SHEET_GID);
+  return emergencyBoardSheetTitle || 'Sheet1';
+}
+
+async function getEmergencyBoardSheetRows(options = {}) {
+  const ttlMs = 5 * 1000;
+  if (!options.forceRefresh && Date.now() - emergencyBoardSheetCache.loadedAt < ttlMs && emergencyBoardSheetCache.rows.length) return emergencyBoardSheetCache.rows;
+  const title = await getEmergencyBoardSheetTitle();
+  const res = await cbsScanSheetsCall(() => sheets.spreadsheets.values.get({
+    spreadsheetId: EMERGENCY_BOARD_SHEET_ID,
+    range: `${escapeSheetTitle(title)}!A:R`
+  }), 'CBS scan sheet read');
+  const rows = res.data.values || [];
+  emergencyBoardSheetCache = { loadedAt: Date.now(), rows };
+  return rows;
+}
+
+async function ensureEmergencyBoardSheetHeaders(rows) {
+  const firstRow = rows?.[0] || [];
+  const hasHeaders = CBS_SCAN_HEADERS.every((header, index) => String(firstRow[index] || '').trim() === header);
+  const hasNbrdHeaders = ['NBRD BN', 'CKIN NBRD Detail'].every((header, index) => String(firstRow[index + 11] || '').trim() === header);
+  const hasInfantHeaders = CBS_SCAN_INFANT_HEADERS.every((header, index) => String(firstRow[index + 13] || '').trim() === header);
+  const title = await getEmergencyBoardSheetTitle();
+  let updated = false;
+  if (!hasHeaders) {
+    await cbsScanSheetsCall(() => sheets.spreadsheets.values.update({
+      spreadsheetId: EMERGENCY_BOARD_SHEET_ID,
+      range: `${escapeSheetTitle(title)}!A1:E1`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [CBS_SCAN_HEADERS] }
+    }), 'CBS scan header update');
+    updated = true;
+  }
+  if (!hasNbrdHeaders) {
+    await cbsScanSheetsCall(() => sheets.spreadsheets.values.update({
+      spreadsheetId: EMERGENCY_BOARD_SHEET_ID,
+      range: `${escapeSheetTitle(title)}!L1:M1`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [['NBRD BN', 'CKIN NBRD Detail']] }
+    }), 'CBS scan header update');
+    updated = true;
+  }
+  if (!hasInfantHeaders) {
+    await cbsScanSheetsCall(() => sheets.spreadsheets.values.update({
+      spreadsheetId: EMERGENCY_BOARD_SHEET_ID,
+      range: `${escapeSheetTitle(title)}!N1:R1`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [CBS_SCAN_INFANT_HEADERS] }
+    }), 'CBS scan header update');
+    updated = true;
+  }
+  if (updated) emergencyBoardSheetCache = { loadedAt: 0, rows: [] };
+  return updated;
+}
+
+function normalizeEmergencyBoardBn(value) {
+  const digits = String(value || '').replace(/\D/g, '');
+  return digits ? digits.padStart(4, '0') : '';
+}
+
+function formatEmergencyBoardSheetBn(value) {
+  const normalized = normalizeEmergencyBoardBn(value);
+  return normalized ? normalized.slice(-3) : '';
+}
+
+function normalizeEmergencyBoardNbrdDetail(value = '') {
+  return String(value || '').trim().replace(/^CKIN\/NBRD:\s*/i, '').trim();
+}
+
+function normalizeEmergencyBoardNbrdEntry(value) {
+  if (value && typeof value === 'object') {
+    return {
+      bn: normalizeEmergencyBoardBn(value.bn),
+      detail: normalizeEmergencyBoardNbrdDetail(value.detail || value.message || value.info || '')
+    };
+  }
+  return { bn: normalizeEmergencyBoardBn(value), detail: '' };
+}
+
+async function writeEmergencyBoardNbrdDetail(title, rowNumber, bn, detail = '') {
+  await cbsScanSheetsCall(() => sheets.spreadsheets.values.update({
+    spreadsheetId: EMERGENCY_BOARD_SHEET_ID,
+    range: `${escapeSheetTitle(title)}!L${rowNumber}:M${rowNumber}`,
+    valueInputOption: 'RAW',
+    requestBody: { values: [[formatEmergencyBoardSheetBn(bn), detail]] }
+  }), 'CBS scan NBRD update');
+  emergencyBoardSheetCache = { loadedAt: 0, rows: [] };
+}
+
+async function appendEmergencyBoardNbrdBn(title, bn, dataRows, detail = '') {
+  const existingIndex = dataRows.findIndex((row) => normalizeEmergencyBoardBn(row[11]) === bn);
+  if (existingIndex !== -1) {
+    const rowNumber = existingIndex + 2;
+    if (detail && normalizeEmergencyBoardNbrdDetail(dataRows[existingIndex][12]) !== detail) await writeEmergencyBoardNbrdDetail(title, rowNumber, bn, detail);
+    return false;
+  }
+  const nextOffset = dataRows.findIndex((row) => !normalizeEmergencyBoardBn(row[11]));
+  const rowNumber = nextOffset === -1 ? dataRows.length + 2 : nextOffset + 2;
+  await writeEmergencyBoardNbrdDetail(title, rowNumber, bn, detail);
+  return true;
+}
+
+async function clearEmergencyBoardNbrdRows(title) {
+  await cbsScanSheetsCall(() => sheets.spreadsheets.values.clear({
+    spreadsheetId: EMERGENCY_BOARD_SHEET_ID,
+    range: `${escapeSheetTitle(title)}!L2:M`
+  }), 'CBS scan NBRD clear');
+  emergencyBoardSheetCache = { loadedAt: 0, rows: [] };
+}
+
+async function deleteEmergencyBoardNbrdBn(rowNumber, bn = '') {
+  const targetRow = Number(rowNumber);
+  if (!Number.isInteger(targetRow) || targetRow < 2) throw new Error('Invalid NBRD row number.');
+  const expectedBn = normalizeEmergencyBoardBn(bn);
+  const title = await getEmergencyBoardSheetTitle();
+  const rows = await getEmergencyBoardSheetRows({ forceRefresh: true });
+  await ensureEmergencyBoardSheetHeaders(rows);
+  const freshRows = await getEmergencyBoardSheetRows({ forceRefresh: true });
+  const row = freshRows[targetRow - 1] || [];
+  const rowBn = normalizeEmergencyBoardBn(row[11]);
+  if (!rowBn) {
+    const err = new Error('NBRD row not found.');
+    err.code = 'NBRD_NOT_FOUND';
+    throw err;
+  }
+  if (expectedBn && rowBn !== expectedBn) {
+    const err = new Error('NBRD row does not match requested BN.');
+    err.code = 'NBRD_MISMATCH';
+    throw err;
+  }
+  await cbsScanSheetsCall(() => sheets.spreadsheets.values.clear({
+    spreadsheetId: EMERGENCY_BOARD_SHEET_ID,
+    range: `${escapeSheetTitle(title)}!L${targetRow}:M${targetRow}`
+  }), 'CBS scan NBRD delete');
+  emergencyBoardSheetCache = { loadedAt: 0, rows: [] };
+  return { deleted: true, rowNumber: targetRow, bn: formatEmergencyBoardSheetBn(rowBn) };
+}
+
+async function appendEmergencyBoardNbrdBns(values = [], options = {}) {
+  const entriesByBn = new Map();
+  for (const value of (Array.isArray(values) ? values : [values])) {
+    const entry = normalizeEmergencyBoardNbrdEntry(value);
+    if (entry.bn) entriesByBn.set(entry.bn, entry);
+  }
+  const entries = [...entriesByBn.values()];
+  const title = await getEmergencyBoardSheetTitle();
+  const rows = await getEmergencyBoardSheetRows({ forceRefresh: true });
+  await ensureEmergencyBoardSheetHeaders(rows);
+  if (options.replace) await clearEmergencyBoardNbrdRows(title);
+  if (!entries.length) return { added: [], existing: [], cleared: Boolean(options.replace) };
+  let dataRows = (await getEmergencyBoardSheetRows({ forceRefresh: true })).slice(1);
+  const added = [];
+  const existing = [];
+  for (const entry of entries) {
+    const didAdd = await appendEmergencyBoardNbrdBn(title, entry.bn, dataRows, entry.detail);
+    (didAdd ? added : existing).push(entry.bn);
+    dataRows = (await getEmergencyBoardSheetRows({ forceRefresh: true })).slice(1);
+  }
+  return { added, existing, cleared: Boolean(options.replace) };
+}
+
+function isEmergencyBoardEnteredCell(cell = {}) {
+  const color = cell.userEnteredFormat?.backgroundColor || cell.effectiveFormat?.backgroundColor || {};
+  const red = Number(color.red || 0);
+  const green = Number(color.green || 0);
+  const blue = Number(color.blue || 0);
+  return green > red + 0.03 && green > blue + 0.03;
+}
+
+async function getEmergencyBoardEnteredRowNumbers(title) {
+  const res = await cbsScanSheetsCall(() => sheets.spreadsheets.get({
+    spreadsheetId: EMERGENCY_BOARD_SHEET_ID,
+    ranges: [`${escapeSheetTitle(title)}!A2:C`],
+    includeGridData: true,
+    fields: 'sheets(data(rowData(values(userEnteredFormat(backgroundColor),effectiveFormat(backgroundColor)))))'
+  }), 'CBS scan entered-state read');
+  const rowData = res.data.sheets?.[0]?.data?.[0]?.rowData || [];
+  const entered = new Set();
+  rowData.forEach((row, index) => {
+    if ((row.values || []).some(isEmergencyBoardEnteredCell)) entered.add(index + 2);
+  });
+  return entered;
+}
+
+async function getEmergencyBoardRecords() {
+  const rows = await getEmergencyBoardSheetRows({ forceRefresh: true });
+  await ensureEmergencyBoardSheetHeaders(rows);
+  const title = await getEmergencyBoardSheetTitle();
+  const freshRows = await getEmergencyBoardSheetRows({ forceRefresh: true });
+  const enteredRows = await getEmergencyBoardEnteredRowNumbers(title);
+  return freshRows.slice(1).map((row, index) => ({
+    rowNumber: index + 2,
+    bn: formatEmergencyBoardSheetBn(row[0]),
+    seat: String(row[1] || '').trim(),
+    flight: String(row[2] || '').trim(),
+    scannedAt: String(row[4] || '').trim(),
+    entered: enteredRows.has(index + 2),
+    nbrdBn: formatEmergencyBoardSheetBn(row[11]),
+    nbrdDetail: normalizeEmergencyBoardNbrdDetail(row[12]),
+    infantBn: formatEmergencyBoardSheetBn(row[13]),
+    infantSeat: String(row[14] || '').trim(),
+    infantFlight: String(row[15] || '').trim(),
+    infantScannedAt: String(row[17] || '').trim(),
+  })).filter((row) => row.bn || row.seat || row.flight || row.scannedAt || row.nbrdBn || row.nbrdDetail || row.infantBn || row.infantSeat || row.infantFlight || row.infantScannedAt);
+}
+
+function emergencyBoardEnteredRepeatCellRequest(rowNumber, entered = false) {
+  const targetRow = Number(rowNumber);
+  if (!Number.isInteger(targetRow) || targetRow < 2) throw new Error('Invalid scan row number.');
+  const backgroundColor = entered ? { red: 0.91, green: 0.97, blue: 0.93 } : { red: 1, green: 1, blue: 1 };
+  return {
+    repeatCell: {
+      range: {
+        sheetId: EMERGENCY_BOARD_SHEET_GID,
+        startRowIndex: targetRow - 1,
+        endRowIndex: targetRow,
+        startColumnIndex: 0,
+        endColumnIndex: 3
+      },
+      cell: { userEnteredFormat: { backgroundColor } },
+      fields: 'userEnteredFormat.backgroundColor'
+    }
+  };
+}
+
+async function setEmergencyBoardRecordsEntered(rowNumbers = [], entered = false) {
+  const uniqueRows = [...new Set((Array.isArray(rowNumbers) ? rowNumbers : [rowNumbers]).map(Number))]
+    .filter((rowNumber) => Number.isInteger(rowNumber) && rowNumber >= 2);
+  if (!uniqueRows.length) throw new Error('No valid scan row numbers.');
+  await cbsScanSheetsCall(() => sheets.spreadsheets.batchUpdate({
+    spreadsheetId: EMERGENCY_BOARD_SHEET_ID,
+    requestBody: { requests: uniqueRows.map((rowNumber) => emergencyBoardEnteredRepeatCellRequest(rowNumber, entered)) }
+  }), 'CBS scan entered-state update');
+  emergencyBoardSheetCache = { loadedAt: 0, rows: [] };
+  return { rowNumbers: uniqueRows, entered: Boolean(entered) };
+}
+
+async function setEmergencyBoardRecordEntered(rowNumber, entered = false) {
+  const result = await setEmergencyBoardRecordsEntered([rowNumber], entered);
+  return { rowNumber: result.rowNumbers[0], entered: result.entered };
+}
+
+function throwEmergencyBoardNbrdMessage(bn, detail = '') {
+  const message = detail ? `NBRD message: ${detail}` : 'NBRD message';
+  const err = new Error(message);
+  err.code = 'NBRD_MESSAGE';
+  err.bn = formatEmergencyBoardSheetBn(bn);
+  err.detail = detail;
+  throw err;
+}
+
+function makeEmergencyBoardDuplicateError(bn) {
+  const err = new Error(`Duplicate BN ${formatEmergencyBoardSheetBn(bn)}.`);
+  err.code = 'DUPLICATE_BN';
+  return err;
+}
+
+function applyEmergencyBoardWorkingRow(workingRows, rowNumber, scanColumnStart, values) {
+  const rowIndex = rowNumber - 2;
+  while (workingRows.length <= rowIndex) workingRows.push([]);
+  const row = workingRows[rowIndex];
+  values.forEach((value, index) => { row[scanColumnStart + index] = value; });
+}
+
+function prepareEmergencyBoardAppend(record = {}, workingRows = []) {
+  const bn = normalizeEmergencyBoardBn(record.bn);
+  if (!bn) throw new Error('Invalid BN.');
+  const seat = String(record.seat || '').trim().toUpperCase();
+  const flight = String(record.flight || '').trim().toUpperCase();
+  const rawScan = String(record.rawScan || record.raw || '').trim();
+  const scannedAt = record.scannedAt || new Date().toISOString();
+  const nbrdExisting = workingRows.find((row) => normalizeEmergencyBoardBn(row[11]) === bn);
+  if (nbrdExisting) throwEmergencyBoardNbrdMessage(bn, String(nbrdExisting[12] || '').trim());
+  const isInfant = record.isInfant === true || seat === 'INF';
+  const bnColumnIndex = isInfant ? 13 : 0;
+  const existing = workingRows.find((row) => normalizeEmergencyBoardBn(row[bnColumnIndex]) === bn);
+  if (existing) throw makeEmergencyBoardDuplicateError(bn);
+  const scanColumnStart = isInfant ? 13 : 0;
+  const scanRangeColumns = isInfant ? 'N:R' : 'A:E';
+  const lastScanOffset = workingRows.reduce((lastIndex, row, index) => (
+    row.slice(scanColumnStart, scanColumnStart + 5).some((cell) => String(cell || '').trim()) ? index : lastIndex
+  ), -1);
+  const rowNumber = lastScanOffset + 3;
+  const values = [formatEmergencyBoardSheetBn(bn), seat, flight, rawScan, scannedAt];
+  applyEmergencyBoardWorkingRow(workingRows, rowNumber, scanColumnStart, values);
+  return { values, scanRangeColumns, rowNumber, result: { bn: formatEmergencyBoardSheetBn(bn), seat, flight, rowNumber, scannedAt, isInfant } };
+}
+
+async function processEmergencyBoardAppendBatch(batch = []) {
+  if (!batch.length) return;
+  let title = '';
+  let dataRows = [];
+  try {
+    title = await getEmergencyBoardSheetTitle();
+    const rows = await getEmergencyBoardSheetRows({ forceRefresh: true });
+    const headersUpdated = await ensureEmergencyBoardSheetHeaders(rows);
+    dataRows = (headersUpdated ? await getEmergencyBoardSheetRows({ forceRefresh: true }) : rows).slice(1).map((row) => [...row]);
+  } catch (err) {
+    batch.forEach((item) => item.reject(err));
+    return;
+  }
+  const updates = [];
+  const prepared = [];
+  for (const item of batch) {
+    try {
+      const next = prepareEmergencyBoardAppend(item.record, dataRows);
+      updates.push({
+        range: `${escapeSheetTitle(title)}!${next.scanRangeColumns.replace(':', `${next.rowNumber}:`)}${next.rowNumber}`,
+        values: [next.values]
+      });
+      prepared.push({ item, result: next.result });
+    } catch (err) {
+      item.reject(err);
+    }
+  }
+  if (!updates.length) return;
+  try {
+    await cbsScanSheetsCall(() => sheets.spreadsheets.values.batchUpdate({
+      spreadsheetId: EMERGENCY_BOARD_SHEET_ID,
+      requestBody: { valueInputOption: 'RAW', data: updates }
+    }), 'CBS scan batch row write');
+    emergencyBoardSheetCache = { loadedAt: 0, rows: [] };
+    prepared.forEach(({ item, result }) => item.resolve(result));
+  } catch (err) {
+    prepared.forEach(({ item }) => item.reject(err));
+  }
+}
+
+function flushEmergencyBoardAppendBatch() {
+  const batch = emergencyBoardAppendPending.splice(0);
+  emergencyBoardAppendTimer = null;
+  emergencyBoardAppendBatchChain = emergencyBoardAppendBatchChain
+    .catch(() => {})
+    .then(() => processEmergencyBoardAppendBatch(batch));
+}
+
+async function appendEmergencyBoardRecord(record = {}) {
+  return new Promise((resolve, reject) => {
+    emergencyBoardAppendPending.push({ record, resolve, reject });
+    if (!emergencyBoardAppendTimer) emergencyBoardAppendTimer = setTimeout(flushEmergencyBoardAppendBatch, 300);
+  });
+}
+
+
 async function getRecordScanSheetTitle() {
   if (!recordScanSheetTitle) recordScanSheetTitle = await resolveSheetTitleByGid(RECORD_SCAN_SHEET_ID, RECORD_SCAN_SHEET_GID);
   return recordScanSheetTitle || 'Sheet1';
@@ -5036,6 +5388,7 @@ module.exports = {
   findCbsPnrRecordsByBagTag,
   appendTransit240Record,
   appendCbsScanRecord,
+  appendEmergencyBoardRecord,
   appendRecordScanRecord,
   appendRecordCase,
   getRecordCases,
@@ -5045,6 +5398,11 @@ module.exports = {
   getCbsScanRecords,
   setCbsScanRecordEntered,
   setCbsScanRecordsEntered,
+  appendEmergencyBoardNbrdBns,
+  deleteEmergencyBoardNbrdBn,
+  getEmergencyBoardRecords,
+  setEmergencyBoardRecordEntered,
+  setEmergencyBoardRecordsEntered,
   readNotesDriveStore,
   writeNotesDriveStore
 };
