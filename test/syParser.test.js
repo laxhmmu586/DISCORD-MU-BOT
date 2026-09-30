@@ -1,6 +1,31 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { normalizeOperationalFlightNo, normalizeJcsyFlightNo, sectionMatchesFlightOperationDate, matchesSyFlightRecord, hasUnclearedApiSourceRisk, extractPassportCountryCodes, extractInvoluntaryUpgrade, enrichCheckinAgentStatsFromLog, hasChdServiceCode, isCcAirportClosedContent } = require('../syParser');
+const { normalizeOperationalFlightNo, normalizeJcsyFlightNo, sectionMatchesFlightOperationDate, matchesSyFlightRecord, hasUnclearedApiSourceRisk, extractPassportCountryCodes, extractInvoluntaryUpgrade, enrichCheckinAgentStatsFromLog, hasChdServiceCode, isCcAirportClosedContent, isCclClosedContent } = require('../syParser');
+
+test('CCL completes for the FLIGHT CLOSED FOR LDP response', () => {
+  assert.equal(isCclClosedContent('>CCL:\nFLIGHT CLOSED FOR LDP'), true);
+  assert.equal(isCclClosedContent('> CCL:\n> ACCEPTED'), true);
+  assert.equal(isCclClosedContent('> CCL:'), false);
+});
+
+test('CCL timeline step uses the FLIGHT CLOSED FOR LDP timestamp', () => {
+  const log = [
+    '2026 September 30, Wednesday, 11:55:00',
+    '> sy',
+    '> SY: MU586/30SEP26 LAX/0  CI1145/NAM',
+    '> 777/773L/B7367      GTD/130 POS/GATE BN299 AK00000 CD00000',
+    '> BDT1145   SD1230   ED1230   CI1145',
+    '2026 September 30, Wednesday, 12:08:58',
+    '>CCL:',
+    'FLIGHT CLOSED FOR LDP'
+  ].join('\n');
+
+  const info = require('../syParser').findSYInfo(log, '30SEP26', { preferredFlightNo: 'MU586' });
+  const ccl = info.crewApis.steps.find((step) => step.key === 'ccl');
+
+  assert.equal(ccl.complete, true);
+  assert.equal(ccl.time, '12:08:58');
+});
 
 test('CC only completes after the ACCEPTED/AIRPORT CLOSED response', () => {
   assert.equal(isCcAirportClosedContent('> CC:\\n> CC: MU586/04SEP26,Y\\n> WARNING - PAX/BAG NOT RECONCILED\\n> 4 BAGS TO BE REMOVED'), false);

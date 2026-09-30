@@ -6509,9 +6509,9 @@
           node.dataset.inputTime = step?.time || "";
           if (["GD_CHECK", "NEXTDAY_INFO"].includes(key)) { started = Boolean(step?.searched || step?.complete || step?.time); complete = Boolean(step?.complete); time = complete ? (step?.time || (key === "GD_CHECK" ? "MATCH" : "SENT")) : (started ? (key === "GD_CHECK" ? "ISSUE" : "MISSING") : "----"); }
           if (key === "FSC") { const sync = fscRateSyncInfo(); started = Boolean(sync.rate || sync.reason || sync.error); complete = isFscRateSheetFilled(sync); time = sync.rate || "----"; }
-          if (key === "CHD") { issueCount = chdIssues; started = (sy.chdList || []).length > 0; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
+          if (key === "CHD") { issueCount = chdIssues; started = Array.isArray(sy.chdList); complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
           if (key === "GOV") { issueCount = govCount; started = Boolean(sy.govAqq); complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
-          if (key === "WEBEDI") { issueCount = webediCount; started = Boolean(sy.govAqq) && previousStarted; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
+          if (key === "WEBEDI") { issueCount = webediCount; started = Boolean(sy.govAqq); complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
           if (key === "NBRD") { issueCount = unackedNbrdCount; started = nbrdCount > 0; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
           if (persistedGreenNode?.complete) {
             complete = true;

@@ -56,6 +56,12 @@ function isCcAirportClosedContent(content) {
     && /^>\s*ACCEPTED\s*\/\s*AIRPORT CLOSED\s*$/im.test(normalized);
 }
 
+function isCclClosedContent(content) {
+  const normalized = String(content || '').replace(/\\n/g, '\n').toUpperCase();
+  return /^>\s*CCL\s*:/im.test(normalized)
+    && (/\bACCEPTED\b/.test(normalized) || /\bFLIGHT\s+CLOSED\s+FOR\s+LDP\b/.test(normalized));
+}
+
 const MONTH_INDEX = {
   JAN: 0, JANUARY: 0, FEB: 1, FEBRUARY: 1, MAR: 2, MARCH: 2,
   APR: 3, APRIL: 3, MAY: 4, JUN: 5, JUNE: 5, JUL: 6, JULY: 6,
@@ -547,11 +553,13 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
     return m?.[1] || '';
   };
   const findCommand = (regex, options = {}) => {
-    const { requireAccepted = false } = options;
+    const { requireAccepted = false, isSuccessful = null } = options;
     const matches = sameDaySections.filter((item) => {
       const content = String(item.content || '').toUpperCase();
       regex.lastIndex = 0;
-      return regex.test(content) && (!requireAccepted || /\bACCEPTED\b/.test(content));
+      return regex.test(content)
+        && (!requireAccepted || /\bACCEPTED\b/.test(content))
+        && (!isSuccessful || isSuccessful(content));
     });
     if (!matches.length) return { complete: false, time: '', timestamp: '' };
     const sectionObj = matches.reduce((latest, item) => (
@@ -574,7 +582,7 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
   const crewApisPrimaryCheck = checks.find((item) => item.key === 'crew2') || null;
   const crewApisComplete = Boolean(crewApisPrimaryCheck?.complete);
   const crewApisTime = crewApisPrimaryCheck?.time || '';
-  const ccl = findAcceptedCommand(/^>\s*CCL\s*:/im);
+  const ccl = findCommand(/^>\s*CCL\s*:/im, { isSuccessful: isCclClosedContent });
   const ccSections = sameDaySections.filter((item) => isCcAirportClosedContent(item.content));
   const ccSection = ccSections.sort((a, b) => parseSectionTimestamp(b.timestamp) - parseSectionTimestamp(a.timestamp))[0] || null;
   const syCcTime = info?.statusCode === 'CC' ? String(info.statusTime || '').trim() : '';
@@ -2050,4 +2058,4 @@ function findSYInfo(log, queryDate, options = {}) {
   return null;
 }
 
-module.exports = { findSYInfo, normalizeOperationalFlightNo, normalizeJcsyFlightNo, sectionMatchesFlightOperationDate, matchesSyFlightRecord, extractPassportCountryCodes, parseJcsyRows, hasUnclearedApiSourceRisk, extractInvoluntaryUpgrade, enrichCheckinAgentStatsFromLog, hasChdServiceCode, isCcAirportClosedContent };
+module.exports = { findSYInfo, normalizeOperationalFlightNo, normalizeJcsyFlightNo, sectionMatchesFlightOperationDate, matchesSyFlightRecord, extractPassportCountryCodes, parseJcsyRows, hasUnclearedApiSourceRisk, extractInvoluntaryUpgrade, enrichCheckinAgentStatsFromLog, hasChdServiceCode, isCcAirportClosedContent, isCclClosedContent };
