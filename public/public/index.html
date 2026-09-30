@@ -4544,6 +4544,7 @@
                 <button id="seat-map-button" type="button">Seat Map</button>
                 <button id="security-check-button" type="button">Security Check</button>
                 <button id="irr-button" type="button" onclick="location.href='irr.html'">IRR</button>
+                <button id="emergency-board-button" type="button" onclick="location.href='scan2.html'">Emergency Boarding</button>
               </div>
             </div>
           </div>
@@ -4752,11 +4753,6 @@
       const nodes = document.querySelectorAll(".node");
       nodes.forEach((node) => node.insertAdjacentHTML("beforeend", '<span class="node-glass" aria-hidden="true"></span><span class="node-led" aria-hidden="true"></span>'));
       document.querySelector("#warning-action")?.insertAdjacentHTML("beforeend", '<span class="warning-open" aria-hidden="true"></span>');
-      // Keep secondary diagnostics accessible from the flight menu.
-      ["duplicate-names-action"].forEach((id) => {
-        const action = document.getElementById(id);
-        if (action) document.querySelector(".flight-menu")?.appendChild(action);
-      });
       const refreshNodeLabels = () => nodes.forEach((node) => {
         node.querySelector(".node-value")?.setAttribute("data-value", node.dataset.time || "0");
         node.setAttribute("aria-label", `${node.dataset.label}: ${node.dataset.time || "Pending"}`);
