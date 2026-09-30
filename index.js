@@ -1066,6 +1066,10 @@ app.get(['/scan.html', '/scan'], (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'public', 'scan.html'));
 });
 
+app.get(['/scan2.html', '/scan2'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'public', 'scan2.html'));
+});
+
 app.get(['/m-board.html', '/m-board'], (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'public', 'm-board.html'));
 });
