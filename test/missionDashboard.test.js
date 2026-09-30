@@ -37,6 +37,14 @@ test('CHD LIST displays the total child count while retaining missing-code statu
  c.updateFlightFromSy({chdList:[{hasChdCode:true},{hasChdCode:false},{hasChdCode:true}]});
  assert.equal(node('CHD').dataset.status,'issue');assert.equal(node('CHD').dataset.time,'3');assert.equal(node('CHD').dataset.alert,'1');
 });
+test('CHD LIST and WEB/EDI/RS display zero as a completed check',()=>{
+ const {context:c,node}=harness();
+ c.updateFlightFromSy({chdList:[],govAqq:{}});
+ for(const key of ['CHD','WEBEDI']) {
+  assert.equal(node(key).dataset.status,'done');
+  assert.equal(node(key).dataset.time,'0');
+ }
+});
 test('DUP BAG is a conditional timeline node after NBRD and is not moved into the flight menu',()=>{
  const {context:c,node}=harness();
  c.duplicateBagRows=()=>[{},{}];
