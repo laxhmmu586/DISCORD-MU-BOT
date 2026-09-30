@@ -9,6 +9,10 @@ test('emergency scanner and board use their isolated endpoints and multi-format 
   const scan = read('public/public/scan2.html');
   const board = read('public/public/m-board2.html');
   assert.match(scan, /BrowserMultiFormatReader/);
+  assert.match(scan, /BrowserPDF417Reader \|\| ZXingBrowser\.BrowserMultiFormatReader/);
+  assert.match(scan, /\.camera-wrap \{[^}]*aspect-ratio:4\/3/);
+  assert.match(scan, /video \{[^}]*position:absolute;[^}]*width:100%; height:100%;[^}]*object-fit:cover/);
+  assert.match(scan, /focusTimer = setInterval\(applyCameraFocus, 2500\)/);
   assert.match(scan, /MU0586\|BN001/);
   assert.match(scan, /MU0586\|INF\|INF01/);
   assert.match(scan, /MU0586\|INF\|BN001/);
