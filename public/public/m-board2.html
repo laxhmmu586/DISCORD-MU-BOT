@@ -98,11 +98,11 @@
     }
     function renderScanRows(rows, newKeys) {
       if (!rows.length) { tableWrap.innerHTML = '<div class="empty">No boarding scan rows found.</div>'; return; }
-      tableWrap.innerHTML = `<table><thead><tr><th>BN</th><th>Seat</th></tr></thead><tbody>${rows.map((row, index) => {
+      tableWrap.innerHTML = `<table><thead><tr><th>BN</th></tr></thead><tbody>${rows.map((row, index) => {
         const checked = Boolean(row.entered);
         const key = recordKey('scan', row);
         const classes = [checked ? 'is-entered' : '', newKeys.has(key) ? 'is-new' : ''].filter(Boolean).join(' ');
-        return `<tr class="${classes}" data-record-key="${escapeHtml(key)}" data-row-number="${escapeHtml(row.rowNumber)}" data-row-index="${index}"><td>${escapeHtml(row.bn)}</td><td>${escapeHtml(row.seat)}</td></tr>`;
+        return `<tr class="${classes}" data-record-key="${escapeHtml(key)}" data-row-number="${escapeHtml(row.rowNumber)}" data-row-index="${index}"><td>${escapeHtml(row.bn)}</td></tr>`;
       }).join('')}</tbody></table>`;
     }
     function renderInfantRows(rows, newKeys) {

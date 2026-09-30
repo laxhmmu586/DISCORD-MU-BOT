@@ -20,6 +20,8 @@ test('emergency scanner and board use their isolated endpoints and multi-format 
   assert.match(scan, /href="m-board2\.html">Manual Board<\/a>/);
   assert.match(scan, /\/cbs-scan2/);
   assert.match(board, /<h2>NBRD<\/h2>/);
+  assert.match(board, /<table><thead><tr><th>BN<\/th><\/tr><\/thead><tbody>\$\{rows\.map/);
+  assert.doesNotMatch(board, /<td>\$\{escapeHtml\(row\.seat\)\}<\/td>/);
   assert.match(board, /\/cbs-scan2\/records/);
   assert.match(board, /records\/entered/);
 });
