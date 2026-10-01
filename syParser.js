@@ -80,6 +80,24 @@ function normalizeMonthName(monthName) {
   return String(monthName || '').trim().toUpperCase();
 }
 
+const MONTH_INDEX = {
+  JAN: 0, JANUARY: 0, FEB: 1, FEBRUARY: 1, MAR: 2, MARCH: 2,
+  APR: 3, APRIL: 3, MAY: 4, JUN: 5, JUNE: 5, JUL: 6, JULY: 6,
+  AUG: 7, AUGUST: 7, SEP: 8, SEPTEMBER: 8, OCT: 9, OCTOBER: 9,
+  NOV: 10, NOVEMBER: 10, DEC: 11, DECEMBER: 11
+};
+
+const MONTH_NUMBER = {
+  JAN: '01', JANUARY: '01', FEB: '02', FEBRUARY: '02', MAR: '03', MARCH: '03',
+  APR: '04', APRIL: '04', MAY: '05', JUN: '06', JUNE: '06', JUL: '07', JULY: '07',
+  AUG: '08', AUGUST: '08', SEP: '09', SEPTEMBER: '09', OCT: '10', OCTOBER: '10',
+  NOV: '11', NOVEMBER: '11', DEC: '12', DECEMBER: '12'
+};
+
+function normalizeMonthName(monthName) {
+  return String(monthName || '').trim().toUpperCase();
+}
+
 function parseSectionTimestamp(timestamp) {
   if (!timestamp) return 0;
   const m = timestamp.match(/^(\d{4})\s+([A-Za-z]+)\s+(\d{2}),\s+(\w+),\s+(\d{2}):(\d{2}):(\d{2})$/);
