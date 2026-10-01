@@ -109,7 +109,7 @@ function parseMealOrderEmail(text) {
     const match = String(text || '').match(new RegExp(`^\\s*${label}\\s*-\\s*(\\d+)([^\\n\\r]*)`, 'im'));
     cabinCounts[cabin] = Number(match?.[1] || 0);
     countsByCabin[cabin] = {};
-    String(match?.[2] || '').replace(/\+\s*(\d+)\s+([A-Z0-9]{4})\b/gi, (_, count, meal) => {
+    String(match?.[2] || '').replace(/\+\s*(\d+)\s*([A-Z][A-Z0-9]{3})\b/gi, (_, count, meal) => {
       const code = meal.toUpperCase();
       if (!NON_MEAL_CODES.has(code)) countsByCabin[cabin][code] = Number(count);
       return _;
