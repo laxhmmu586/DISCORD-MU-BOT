@@ -7164,7 +7164,7 @@
         return ckinNbrdLines(row).length > 0;
       }
 
-      const lastNbrdSheetSyncKeys = new Map();
+      let lastNbrdSheetSyncKey = "";
       function syncCkinNbrdBnsToBoardingSheet(sy = currentSy) {
         const entriesByBn = new Map();
         for (const row of (enrichRowsWithPassengerData((sy?.bnAudit || []).filter(rowHasCkinNbrdIssue)) || [])) {
@@ -7175,18 +7175,16 @@
         }
         const entries = [...entriesByBn.values()];
         const syncKey = [sy?.flightNo || "SY", sy?.flightDate || "", entries.map((entry) => `${entry.bn}:${entry.detail}`).join(",")].join("|");
-        for (const endpoint of ["/cbs-scan/nbrd-bns", "/cbs-scan2/nbrd-bns"]) {
-          if (syncKey === lastNbrdSheetSyncKeys.get(endpoint)) continue;
-          lastNbrdSheetSyncKeys.set(endpoint, syncKey);
-          apiJson(endpoint, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ entries, replace: true }),
-          }).catch((error) => {
-            if (lastNbrdSheetSyncKeys.get(endpoint) === syncKey) lastNbrdSheetSyncKeys.delete(endpoint);
-            console.warn(`Unable to sync CKIN/NBRD BN list to ${endpoint}.`, error);
-          });
-        }
+        if (syncKey === lastNbrdSheetSyncKey) return;
+        lastNbrdSheetSyncKey = syncKey;
+        apiJson("/cbs-scan/nbrd-bns", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ entries, replace: true }),
+        }).catch((error) => {
+          lastNbrdSheetSyncKey = "";
+          console.warn("Unable to sync CKIN/NBRD BN list to boarding sheet.", error);
+        });
       }
 
       function nbrdRowsWithAcknowledgements(sy = currentSy) {
