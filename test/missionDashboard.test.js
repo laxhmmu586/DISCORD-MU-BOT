@@ -24,6 +24,46 @@ test('all dashboard nodes follow the requested order',()=>{
  assert.deepEqual(keys,['CREW_APIS','GD_CHECK','MEAL_ORDER','FSC','INF_TKT','NEXTDAY_INFO','TKT','NET','MISSING_BAG','CHD','GOV','WEBEDI','NBRD','DUP_BAG','WCH','DUP_NAME','PSM','CCL','CC','INITIAL_FLIGHT','BDT_CHG']);
  for (const key of ['MEAL_ORDER','INF_TKT','TKT']) assert.match(html,new RegExp(`data-key="${key}"[^>]*data-timeline-side="top"`));
 });
+
+test('CKIN NBRD sync reaches both boards, deduplicates refreshes and clears resolved rows', async () => {
+ const calls=[];
+ const c={currentSy:null,enrichRowsWithPassengerData:rows=>rows,console,
+  apiJson:async(endpoint,options)=>{calls.push({endpoint,...JSON.parse(options.body)});}};
+ vm.createContext(c);
+ vm.runInContext(['ckinNbrdLines','ckinNbrdDetails','rowHasCkinNbrdIssue','syncCkinNbrdBnsToBoardingSheet'].map(source).join('\n'),c);
+ const sy={flightNo:'MU586',flightDate:'01OCT26',bnAudit:[
+  {bn:'12',passengerRecord:{gateComments:['CKIN NBRD CHECK DOCUMENT']}},
+  {bn:'13',offloaded:true,passengerRecord:{gateComments:['CKIN NBRD OFFLOADED']}},
+  {bn:'14',passengerRecord:{gateComments:['CKIN OK']}},
+ ]};
+ c.syncCkinNbrdBnsToBoardingSheet(sy);
+ assert.deepEqual(calls.map(x=>x.endpoint),['/cbs-scan/nbrd-bns','/cbs-scan2/nbrd-bns']);
+ for(const call of calls) {
+  assert.deepEqual(call.entries,[{bn:'0012',detail:'CKIN NBRD CHECK DOCUMENT'}]);
+  assert.equal(call.replace,true);
+ }
+ c.syncCkinNbrdBnsToBoardingSheet(sy);
+ assert.equal(calls.length,2);
+ c.syncCkinNbrdBnsToBoardingSheet({...sy,bnAudit:[]});
+ assert.equal(calls.length,4);
+ assert.deepEqual(calls.slice(2).map(x=>x.entries),[[],[]]);
+});
+
+test('a failed NBRD destination retries without rewriting the successful board', async () => {
+ const calls=[];let fail=true;
+ const c={currentSy:null,enrichRowsWithPassengerData:rows=>rows,console:{warn(){}},
+  apiJson:async(endpoint)=>{calls.push(endpoint);if(endpoint.includes('scan2') && fail) throw new Error('temporary failure');}};
+ vm.createContext(c);
+ vm.runInContext(['ckinNbrdLines','ckinNbrdDetails','rowHasCkinNbrdIssue','syncCkinNbrdBnsToBoardingSheet'].map(source).join('\n'),c);
+ const sy={flightNo:'MU586',flightDate:'01OCT26',bnAudit:[]};
+ c.syncCkinNbrdBnsToBoardingSheet(sy);
+ await new Promise(resolve=>setImmediate(resolve));
+ fail=false;
+ c.syncCkinNbrdBnsToBoardingSheet(sy);
+ assert.deepEqual(calls,['/cbs-scan/nbrd-bns','/cbs-scan2/nbrd-bns','/cbs-scan2/nbrd-bns']);
+ c.syncCkinNbrdBnsToBoardingSheet({...sy,flightDate:'02OCT26'});
+ assert.equal(calls.length,5);
+});
 test('DUP NAME and CHD LIST load count styling instead of the completed check mark',()=>{
  const css=fs.readFileSync(require.resolve('../public/public/assets/mission-dashboard.css'),'utf8');
  assert.match(html,/mission-dashboard\.css\?v=20260929-node-counts/);

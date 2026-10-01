@@ -2,6 +2,32 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { parseSpmlLog, parseMealOrderEmail } = require('../spmlParser');
 
+test('parses the 01OCT26 final meal order with compact 1SFML and ignores booking counts', () => {
+  const result = parseMealOrderEmail(`Reviced: CHINA EASTERN AIRLINES - FINAL Meal Order For MU586/01OCT26
+MU586/01OCT26 (THU) A/C773 CFG F6/C52/Y255
+F - 6 ***
+C - 52
+Y - 245 + 2 CHML + 2 MOML + 1SFML = 250 ***
+INF - 5
+CREW - 22
+PASSENGER BOOKING FOR MU586/01OCT26:
+F - 0
+C - 56
+Y - 236
+INF - 5`);
+  assert.equal(result.flightDate, '01OCT26');
+  assert.deepEqual(result.cabinCounts, { F:6, J:52, Y:245 });
+  assert.deepEqual(result.counts, { CHML:2, MOML:2, SFML:1 });
+  assert.equal(result.economyTotal, 250);
+});
+
+test('accepts compact, spaced, tabbed and nonbreaking-space meal quantities in all cabins', () => {
+  for (const space of ['', ' ', '   ', '\t', '\u00a0']) {
+    const result = parseMealOrderEmail(`MU586/01OCT26\nF - 6 + 12${space}SFML\nC - 52 + 2${space}MOML\nY - 245 + 1${space}CHML + 2${space}BBML`);
+    assert.deepEqual(result.countsByCabin, { F:{ SFML:12 }, J:{ MOML:2 }, Y:{ CHML:1 } });
+  }
+});
+
 test('parses a continued PD SPML list and keeps the newest query', () => {
   const log = `2026 September 02, Wednesday, 09:14:05
 > pd*,spml
