@@ -25,7 +25,7 @@ test('all dashboard nodes follow the requested order',()=>{
  for (const key of ['MEAL_ORDER','INF_TKT','TKT']) assert.match(html,new RegExp(`data-key="${key}"[^>]*data-timeline-side="top"`));
 });
 
-test('CKIN NBRD sync reaches the regular board, deduplicates refreshes and clears resolved rows', async () => {
+test('CKIN NBRD sync is deduplicated and clears resolved rows on both sheets', async () => {
  const calls=[];
  const c={currentSy:null,enrichRowsWithPassengerData:rows=>rows,console,
   apiJson:async(endpoint,options)=>{calls.push({endpoint,...JSON.parse(options.body)});}};
@@ -47,7 +47,7 @@ test('CKIN NBRD sync reaches the regular board, deduplicates refreshes and clear
  assert.deepEqual(calls[1].entries,[]);
 });
 
-test('a failed NBRD board sync retries on the next refresh', async () => {
+test('a failed mirrored NBRD sync retries on the next refresh', async () => {
  const calls=[];let fail=true;
  const c={currentSy:null,enrichRowsWithPassengerData:rows=>rows,console:{warn(){}},
   apiJson:async(endpoint)=>{calls.push(endpoint);if(fail) throw new Error('temporary failure');}};

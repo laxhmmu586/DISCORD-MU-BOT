@@ -2900,32 +2900,40 @@ function isCbsScanQuotaError(err) {
   return status === 429 || (status === 403 && /quota|ratelimit|rate limit|user-rate|usage limits/.test(reasonText));
 }
 
-// scan.html and scan2.html share the same Sheets credential and therefore the
-// same per-user quota. Run their reads/writes through one paced queue so a few
-// agents scanning together are batched rather than producing quota bursts.
-const CBS_SCAN_SHEETS_MIN_INTERVAL_MS = Math.max(0, Number(process.env.CBS_SCAN_SHEETS_MIN_INTERVAL_MS) || 1050);
-let cbsScanSheetsRequestChain = Promise.resolve();
-let cbsScanSheetsLastRequestAt = 0;
+const cbsScanSheetsPendingRequests = [];
+let cbsScanSheetsRequestRunning = false;
+let cbsScanSheetsRequestSequence = 0;
 
-function scheduleCbsScanSheetsRequest(fn) {
-  const scheduled = cbsScanSheetsRequestChain.catch(() => {}).then(async () => {
-    const waitMs = Math.max(0, CBS_SCAN_SHEETS_MIN_INTERVAL_MS - (Date.now() - cbsScanSheetsLastRequestAt));
-    if (waitMs) await new Promise((resolve) => setTimeout(resolve, waitMs));
-    try {
-      return await fn();
-    } finally {
-      cbsScanSheetsLastRequestAt = Date.now();
-    }
+function drainCbsScanSheetsRequests() {
+  if (cbsScanSheetsRequestRunning || !cbsScanSheetsPendingRequests.length) return;
+  cbsScanSheetsRequestRunning = true;
+  const request = cbsScanSheetsPendingRequests.shift();
+  Promise.resolve().then(request.fn).then(request.resolve, request.reject).finally(() => {
+    cbsScanSheetsRequestRunning = false;
+    drainCbsScanSheetsRequests();
   });
-  cbsScanSheetsRequestChain = scheduled.then(() => undefined, () => undefined);
-  return scheduled;
 }
 
-async function cbsScanSheetsCall(fn, label = 'Google Sheets request') {
+function scheduleCbsScanSheetsRequest(fn, priority = 'normal') {
+  const priorityOrder = { scan: 0, normal: 1, background: 2 };
+  return new Promise((resolve, reject) => {
+    cbsScanSheetsPendingRequests.push({
+      fn,
+      priority: priorityOrder[priority] ?? priorityOrder.normal,
+      sequence: ++cbsScanSheetsRequestSequence,
+      resolve,
+      reject
+    });
+    cbsScanSheetsPendingRequests.sort((a, b) => a.priority - b.priority || a.sequence - b.sequence);
+    drainCbsScanSheetsRequests();
+  });
+}
+
+async function cbsScanSheetsCall(fn, label = 'Google Sheets request', priority = 'normal') {
   const delays = [750, 1500, 3000, 5000];
   for (let attempt = 0; attempt <= delays.length; attempt += 1) {
     try {
-      return await scheduleCbsScanSheetsRequest(fn);
+      return await scheduleCbsScanSheetsRequest(fn, priority);
     } catch (err) {
       if (!isCbsScanQuotaError(err) || attempt === delays.length) {
         if (isCbsScanQuotaError(err)) {
@@ -2940,9 +2948,9 @@ async function cbsScanSheetsCall(fn, label = 'Google Sheets request') {
   throw new Error(`${label} failed.`);
 }
 
-async function getCbsScanSheetTitle() {
+async function getCbsScanSheetTitle(priority = 'normal') {
   if (!cbsScanSheetTitle && !cbsScanSheetTitlePending) {
-    cbsScanSheetTitlePending = cbsScanSheetsCall(() => resolveSheetTitleByGid(CBS_SCAN_SHEET_ID, CBS_SCAN_SHEET_GID), 'CBS scan sheet title')
+    cbsScanSheetTitlePending = cbsScanSheetsCall(() => resolveSheetTitleByGid(CBS_SCAN_SHEET_ID, CBS_SCAN_SHEET_GID), 'CBS scan sheet title', priority)
       .then((title) => { cbsScanSheetTitle = title; return title; })
       .finally(() => { cbsScanSheetTitlePending = null; });
   }
@@ -2953,22 +2961,23 @@ async function getCbsScanSheetTitle() {
 async function getCbsScanSheetRows(options = {}) {
   const ttlMs = 5 * 1000;
   if (!options.forceRefresh && Date.now() - cbsScanSheetCache.loadedAt < ttlMs && cbsScanSheetCache.rows.length) return cbsScanSheetCache.rows;
-  const title = await getCbsScanSheetTitle();
+  const priority = options.priority || 'normal';
+  const title = await getCbsScanSheetTitle(priority);
   const res = await cbsScanSheetsCall(() => sheets.spreadsheets.values.get({
     spreadsheetId: CBS_SCAN_SHEET_ID,
     range: `${escapeSheetTitle(title)}!A:R`
-  }), 'CBS scan sheet read');
+  }), 'CBS scan sheet read', priority);
   const rows = res.data.values || [];
   cbsScanSheetCache = { loadedAt: Date.now(), rows };
   return rows;
 }
 
-async function ensureCbsScanSheetHeaders(rows) {
+async function ensureCbsScanSheetHeaders(rows, priority = 'normal') {
   const firstRow = rows?.[0] || [];
   const hasHeaders = CBS_SCAN_HEADERS.every((header, index) => String(firstRow[index] || '').trim() === header);
   const hasNbrdHeaders = ['NBRD BN', 'CKIN NBRD Detail'].every((header, index) => String(firstRow[index + 11] || '').trim() === header);
   const hasInfantHeaders = CBS_SCAN_INFANT_HEADERS.every((header, index) => String(firstRow[index + 13] || '').trim() === header);
-  const title = await getCbsScanSheetTitle();
+  const title = await getCbsScanSheetTitle(priority);
   let updated = false;
   if (!hasHeaders) {
     await cbsScanSheetsCall(() => sheets.spreadsheets.values.update({
@@ -2976,7 +2985,7 @@ async function ensureCbsScanSheetHeaders(rows) {
       range: `${escapeSheetTitle(title)}!A1:E1`,
       valueInputOption: 'RAW',
       requestBody: { values: [CBS_SCAN_HEADERS] }
-    }), 'CBS scan header update');
+    }), 'CBS scan header update', priority);
     updated = true;
   }
   if (!hasNbrdHeaders) {
@@ -2985,7 +2994,7 @@ async function ensureCbsScanSheetHeaders(rows) {
       range: `${escapeSheetTitle(title)}!L1:M1`,
       valueInputOption: 'RAW',
       requestBody: { values: [['NBRD BN', 'CKIN NBRD Detail']] }
-    }), 'CBS scan header update');
+    }), 'CBS scan header update', priority);
     updated = true;
   }
   if (!hasInfantHeaders) {
@@ -2994,7 +3003,7 @@ async function ensureCbsScanSheetHeaders(rows) {
       range: `${escapeSheetTitle(title)}!N1:R1`,
       valueInputOption: 'RAW',
       requestBody: { values: [CBS_SCAN_INFANT_HEADERS] }
-    }), 'CBS scan header update');
+    }), 'CBS scan header update', priority);
     updated = true;
   }
   if (updated) cbsScanSheetCache = { loadedAt: 0, rows: [] };
@@ -3025,34 +3034,34 @@ function normalizeCbsScanNbrdEntry(value) {
   return { bn: normalizeCbsScanBn(value), detail: '' };
 }
 
-async function writeCbsScanNbrdDetail(title, rowNumber, bn, detail = '') {
+async function writeCbsScanNbrdDetail(title, rowNumber, bn, detail = '', priority = 'normal') {
   await cbsScanSheetsCall(() => sheets.spreadsheets.values.update({
     spreadsheetId: CBS_SCAN_SHEET_ID,
     range: `${escapeSheetTitle(title)}!L${rowNumber}:M${rowNumber}`,
     valueInputOption: 'RAW',
     requestBody: { values: [[formatCbsScanSheetBn(bn), detail]] }
-  }), 'CBS scan NBRD update');
+  }), 'CBS scan NBRD update', priority);
   cbsScanSheetCache = { loadedAt: 0, rows: [] };
 }
 
-async function appendCbsScanNbrdBn(title, bn, dataRows, detail = '') {
+async function appendCbsScanNbrdBn(title, bn, dataRows, detail = '', priority = 'normal') {
   const existingIndex = dataRows.findIndex((row) => normalizeCbsScanBn(row[11]) === bn);
   if (existingIndex !== -1) {
     const rowNumber = existingIndex + 2;
-    if (detail && normalizeCbsScanNbrdDetail(dataRows[existingIndex][12]) !== detail) await writeCbsScanNbrdDetail(title, rowNumber, bn, detail);
+    if (detail && normalizeCbsScanNbrdDetail(dataRows[existingIndex][12]) !== detail) await writeCbsScanNbrdDetail(title, rowNumber, bn, detail, priority);
     return false;
   }
   const nextOffset = dataRows.findIndex((row) => !normalizeCbsScanBn(row[11]));
   const rowNumber = nextOffset === -1 ? dataRows.length + 2 : nextOffset + 2;
-  await writeCbsScanNbrdDetail(title, rowNumber, bn, detail);
+  await writeCbsScanNbrdDetail(title, rowNumber, bn, detail, priority);
   return true;
 }
 
-async function clearCbsScanNbrdRows(title) {
+async function clearCbsScanNbrdRows(title, priority = 'normal') {
   await cbsScanSheetsCall(() => sheets.spreadsheets.values.clear({
     spreadsheetId: CBS_SCAN_SHEET_ID,
     range: `${escapeSheetTitle(title)}!L2:M`
-  }), 'CBS scan NBRD clear');
+  }), 'CBS scan NBRD clear', priority);
   cbsScanSheetCache = { loadedAt: 0, rows: [] };
 }
 
@@ -3091,18 +3100,39 @@ async function appendCbsScanNbrdBns(values = [], options = {}) {
     if (entry.bn) entriesByBn.set(entry.bn, entry);
   }
   const entries = [...entriesByBn.values()];
-  const title = await getCbsScanSheetTitle();
-  const rows = await getCbsScanSheetRows({ forceRefresh: true });
-  await ensureCbsScanSheetHeaders(rows);
-  if (options.replace) await clearCbsScanNbrdRows(title);
+  const priority = 'background';
+  const title = await getCbsScanSheetTitle(priority);
+  const rows = await getCbsScanSheetRows({ forceRefresh: true, priority });
+  await ensureCbsScanSheetHeaders(rows, priority);
+  if (options.replace) {
+    const currentEntries = rows.slice(1).map((row) => ({ bn: normalizeCbsScanBn(row[11]), detail: normalizeCbsScanNbrdDetail(row[12]) })).filter((entry) => entry.bn);
+    const currentByBn = new Map(currentEntries.map((entry) => [entry.bn, entry.detail]));
+    const hasOrphanDetails = rows.slice(1).some((row) => !normalizeCbsScanBn(row[11]) && normalizeCbsScanNbrdDetail(row[12]));
+    const unchanged = currentEntries.length === entries.length && new Set(currentEntries.map((entry) => entry.bn)).size === entries.length &&
+      !hasOrphanDetails && entries.every((entry) => currentByBn.get(entry.bn) === entry.detail);
+    if (unchanged) return { added: [], existing: entries.map((entry) => entry.bn), cleared: false, unchanged: true };
+    const lastCurrentNbrdIndex = rows.slice(1).reduce((lastIndex, row, index) => normalizeCbsScanBn(row[11]) || normalizeCbsScanNbrdDetail(row[12]) ? index : lastIndex, -1);
+    const replaceRowCount = Math.max(entries.length, lastCurrentNbrdIndex + 1);
+    const values = Array.from({ length: replaceRowCount }, (_, index) => entries[index]
+      ? [formatCbsScanSheetBn(entries[index].bn), entries[index].detail]
+      : ['', '']);
+    if (values.length) await cbsScanSheetsCall(() => sheets.spreadsheets.values.update({
+      spreadsheetId: CBS_SCAN_SHEET_ID,
+      range: `${escapeSheetTitle(title)}!L2:M${replaceRowCount + 1}`,
+      valueInputOption: 'RAW',
+      requestBody: { values }
+    }), 'CBS scan NBRD replace', 'background');
+    cbsScanSheetCache = { loadedAt: 0, rows: [] };
+    return { added: entries.map((entry) => entry.bn), existing: [], cleared: true };
+  }
   if (!entries.length) return { added: [], existing: [], cleared: Boolean(options.replace) };
-  let dataRows = (await getCbsScanSheetRows({ forceRefresh: true })).slice(1);
+  let dataRows = (await getCbsScanSheetRows({ forceRefresh: true, priority })).slice(1);
   const added = [];
   const existing = [];
   for (const entry of entries) {
-    const didAdd = await appendCbsScanNbrdBn(title, entry.bn, dataRows, entry.detail);
+    const didAdd = await appendCbsScanNbrdBn(title, entry.bn, dataRows, entry.detail, priority);
     (didAdd ? added : existing).push(entry.bn);
-    dataRows = (await getCbsScanSheetRows({ forceRefresh: true })).slice(1);
+    dataRows = (await getCbsScanSheetRows({ forceRefresh: true, priority })).slice(1);
   }
   return { added, existing, cleared: Boolean(options.replace) };
 }
@@ -3239,10 +3269,10 @@ async function processCbsScanAppendBatch(batch = []) {
   let title = '';
   let dataRows = [];
   try {
-    title = await getCbsScanSheetTitle();
-    const rows = await getCbsScanSheetRows({ forceRefresh: true });
-    const headersUpdated = await ensureCbsScanSheetHeaders(rows);
-    dataRows = (headersUpdated ? await getCbsScanSheetRows({ forceRefresh: true }) : rows).slice(1).map((row) => [...row]);
+    title = await getCbsScanSheetTitle('scan');
+    const rows = await getCbsScanSheetRows({ forceRefresh: true, priority: 'scan' });
+    const headersUpdated = await ensureCbsScanSheetHeaders(rows, 'scan');
+    dataRows = (headersUpdated ? await getCbsScanSheetRows({ forceRefresh: true, priority: 'scan' }) : rows).slice(1).map((row) => [...row]);
   } catch (err) {
     batch.forEach((item) => item.reject(err));
     return;
@@ -3266,7 +3296,7 @@ async function processCbsScanAppendBatch(batch = []) {
     await cbsScanSheetsCall(() => sheets.spreadsheets.values.batchUpdate({
       spreadsheetId: CBS_SCAN_SHEET_ID,
       requestBody: { valueInputOption: 'RAW', data: updates }
-    }), 'CBS scan batch row write');
+    }), 'CBS scan batch row write', 'scan');
     cbsScanSheetCache = { loadedAt: 0, rows: [] };
     prepared.forEach(({ item, result }) => item.resolve(result));
   } catch (err) {
@@ -3289,9 +3319,9 @@ async function appendCbsScanRecord(record = {}) {
   });
 }
 
-async function getEmergencyBoardSheetTitle() {
+async function getEmergencyBoardSheetTitle(priority = 'normal') {
   if (!emergencyBoardSheetTitle && !emergencyBoardSheetTitlePending) {
-    emergencyBoardSheetTitlePending = cbsScanSheetsCall(() => resolveSheetTitleByGid(EMERGENCY_BOARD_SHEET_ID, EMERGENCY_BOARD_SHEET_GID), 'Emergency board sheet title')
+    emergencyBoardSheetTitlePending = cbsScanSheetsCall(() => resolveSheetTitleByGid(EMERGENCY_BOARD_SHEET_ID, EMERGENCY_BOARD_SHEET_GID), 'Emergency board sheet title', priority)
       .then((title) => { emergencyBoardSheetTitle = title; return title; })
       .finally(() => { emergencyBoardSheetTitlePending = null; });
   }
@@ -3302,22 +3332,23 @@ async function getEmergencyBoardSheetTitle() {
 async function getEmergencyBoardSheetRows(options = {}) {
   const ttlMs = 5 * 1000;
   if (!options.forceRefresh && Date.now() - emergencyBoardSheetCache.loadedAt < ttlMs && emergencyBoardSheetCache.rows.length) return emergencyBoardSheetCache.rows;
-  const title = await getEmergencyBoardSheetTitle();
+  const priority = options.priority || 'normal';
+  const title = await getEmergencyBoardSheetTitle(priority);
   const res = await cbsScanSheetsCall(() => sheets.spreadsheets.values.get({
     spreadsheetId: EMERGENCY_BOARD_SHEET_ID,
     range: `${escapeSheetTitle(title)}!A:R`
-  }), 'CBS scan sheet read');
+  }), 'CBS scan sheet read', priority);
   const rows = res.data.values || [];
   emergencyBoardSheetCache = { loadedAt: Date.now(), rows };
   return rows;
 }
 
-async function ensureEmergencyBoardSheetHeaders(rows) {
+async function ensureEmergencyBoardSheetHeaders(rows, priority = 'normal') {
   const firstRow = rows?.[0] || [];
   const hasHeaders = CBS_SCAN_HEADERS.every((header, index) => String(firstRow[index] || '').trim() === header);
   const hasNbrdHeaders = ['NBRD BN', 'CKIN NBRD Detail'].every((header, index) => String(firstRow[index + 11] || '').trim() === header);
   const hasInfantHeaders = CBS_SCAN_INFANT_HEADERS.every((header, index) => String(firstRow[index + 13] || '').trim() === header);
-  const title = await getEmergencyBoardSheetTitle();
+  const title = await getEmergencyBoardSheetTitle(priority);
   let updated = false;
   if (!hasHeaders) {
     await cbsScanSheetsCall(() => sheets.spreadsheets.values.update({
@@ -3325,7 +3356,7 @@ async function ensureEmergencyBoardSheetHeaders(rows) {
       range: `${escapeSheetTitle(title)}!A1:E1`,
       valueInputOption: 'RAW',
       requestBody: { values: [CBS_SCAN_HEADERS] }
-    }), 'CBS scan header update');
+    }), 'CBS scan header update', priority);
     updated = true;
   }
   if (!hasNbrdHeaders) {
@@ -3334,7 +3365,7 @@ async function ensureEmergencyBoardSheetHeaders(rows) {
       range: `${escapeSheetTitle(title)}!L1:M1`,
       valueInputOption: 'RAW',
       requestBody: { values: [['NBRD BN', 'CKIN NBRD Detail']] }
-    }), 'CBS scan header update');
+    }), 'CBS scan header update', priority);
     updated = true;
   }
   if (!hasInfantHeaders) {
@@ -3343,7 +3374,7 @@ async function ensureEmergencyBoardSheetHeaders(rows) {
       range: `${escapeSheetTitle(title)}!N1:R1`,
       valueInputOption: 'RAW',
       requestBody: { values: [CBS_SCAN_INFANT_HEADERS] }
-    }), 'CBS scan header update');
+    }), 'CBS scan header update', priority);
     updated = true;
   }
   if (updated) emergencyBoardSheetCache = { loadedAt: 0, rows: [] };
@@ -3374,34 +3405,34 @@ function normalizeEmergencyBoardNbrdEntry(value) {
   return { bn: normalizeEmergencyBoardBn(value), detail: '' };
 }
 
-async function writeEmergencyBoardNbrdDetail(title, rowNumber, bn, detail = '') {
+async function writeEmergencyBoardNbrdDetail(title, rowNumber, bn, detail = '', priority = 'normal') {
   await cbsScanSheetsCall(() => sheets.spreadsheets.values.update({
     spreadsheetId: EMERGENCY_BOARD_SHEET_ID,
     range: `${escapeSheetTitle(title)}!L${rowNumber}:M${rowNumber}`,
     valueInputOption: 'RAW',
     requestBody: { values: [[formatEmergencyBoardSheetBn(bn), detail]] }
-  }), 'CBS scan NBRD update');
+  }), 'CBS scan NBRD update', priority);
   emergencyBoardSheetCache = { loadedAt: 0, rows: [] };
 }
 
-async function appendEmergencyBoardNbrdBn(title, bn, dataRows, detail = '') {
+async function appendEmergencyBoardNbrdBn(title, bn, dataRows, detail = '', priority = 'normal') {
   const existingIndex = dataRows.findIndex((row) => normalizeEmergencyBoardBn(row[11]) === bn);
   if (existingIndex !== -1) {
     const rowNumber = existingIndex + 2;
-    if (detail && normalizeEmergencyBoardNbrdDetail(dataRows[existingIndex][12]) !== detail) await writeEmergencyBoardNbrdDetail(title, rowNumber, bn, detail);
+    if (detail && normalizeEmergencyBoardNbrdDetail(dataRows[existingIndex][12]) !== detail) await writeEmergencyBoardNbrdDetail(title, rowNumber, bn, detail, priority);
     return false;
   }
   const nextOffset = dataRows.findIndex((row) => !normalizeEmergencyBoardBn(row[11]));
   const rowNumber = nextOffset === -1 ? dataRows.length + 2 : nextOffset + 2;
-  await writeEmergencyBoardNbrdDetail(title, rowNumber, bn, detail);
+  await writeEmergencyBoardNbrdDetail(title, rowNumber, bn, detail, priority);
   return true;
 }
 
-async function clearEmergencyBoardNbrdRows(title) {
+async function clearEmergencyBoardNbrdRows(title, priority = 'normal') {
   await cbsScanSheetsCall(() => sheets.spreadsheets.values.clear({
     spreadsheetId: EMERGENCY_BOARD_SHEET_ID,
     range: `${escapeSheetTitle(title)}!L2:M`
-  }), 'CBS scan NBRD clear');
+  }), 'CBS scan NBRD clear', priority);
   emergencyBoardSheetCache = { loadedAt: 0, rows: [] };
 }
 
@@ -3433,6 +3464,41 @@ async function deleteEmergencyBoardNbrdBn(rowNumber, bn = '') {
   return { deleted: true, rowNumber: targetRow, bn: formatEmergencyBoardSheetBn(rowBn) };
 }
 
+async function deleteCkinNbrdFromBothSheets(value = '') {
+  const targetBn = formatCbsScanSheetBn(value);
+  if (!targetBn) throw new Error('NBRD BN is required.');
+  const [regularRows, emergencyRows] = await Promise.all([
+    getCbsScanSheetRows({ forceRefresh: true, priority: 'background' }),
+    getEmergencyBoardSheetRows({ forceRefresh: true, priority: 'background' })
+  ]);
+  const regularIndex = regularRows.slice(1).findIndex((row) => formatCbsScanSheetBn(row[11]) === targetBn);
+  const emergencyIndex = emergencyRows.slice(1).findIndex((row) => formatEmergencyBoardSheetBn(row[11]) === targetBn);
+  if (regularIndex < 0 && emergencyIndex < 0) {
+    const err = new Error('NBRD row not found.');
+    err.code = 'NBRD_NOT_FOUND';
+    throw err;
+  }
+  const [regularTitle, emergencyTitle] = await Promise.all([getCbsScanSheetTitle('background'), getEmergencyBoardSheetTitle('background')]);
+  const clears = [];
+  if (regularIndex >= 0) clears.push(cbsScanSheetsCall(() => sheets.spreadsheets.values.clear({
+    spreadsheetId: CBS_SCAN_SHEET_ID,
+    range: `${escapeSheetTitle(regularTitle)}!L${regularIndex + 2}:M${regularIndex + 2}`
+  }), 'CBS scan NBRD delete', 'background'));
+  if (emergencyIndex >= 0) clears.push(cbsScanSheetsCall(() => sheets.spreadsheets.values.clear({
+    spreadsheetId: EMERGENCY_BOARD_SHEET_ID,
+    range: `${escapeSheetTitle(emergencyTitle)}!L${emergencyIndex + 2}:M${emergencyIndex + 2}`
+  }), 'Emergency board NBRD delete', 'background'));
+  await Promise.all(clears);
+  cbsScanSheetCache = { loadedAt: 0, rows: [] };
+  emergencyBoardSheetCache = { loadedAt: 0, rows: [] };
+  return {
+    deleted: true,
+    bn: formatCbsScanSheetBn(targetBn),
+    regularDeleted: regularIndex >= 0,
+    emergencyDeleted: emergencyIndex >= 0
+  };
+}
+
 async function appendEmergencyBoardNbrdBns(values = [], options = {}) {
   const entriesByBn = new Map();
   for (const value of (Array.isArray(values) ? values : [values])) {
@@ -3440,18 +3506,39 @@ async function appendEmergencyBoardNbrdBns(values = [], options = {}) {
     if (entry.bn) entriesByBn.set(entry.bn, entry);
   }
   const entries = [...entriesByBn.values()];
-  const title = await getEmergencyBoardSheetTitle();
-  const rows = await getEmergencyBoardSheetRows({ forceRefresh: true });
-  await ensureEmergencyBoardSheetHeaders(rows);
-  if (options.replace) await clearEmergencyBoardNbrdRows(title);
+  const priority = 'background';
+  const title = await getEmergencyBoardSheetTitle(priority);
+  const rows = await getEmergencyBoardSheetRows({ forceRefresh: true, priority });
+  await ensureEmergencyBoardSheetHeaders(rows, priority);
+  if (options.replace) {
+    const currentEntries = rows.slice(1).map((row) => ({ bn: normalizeEmergencyBoardBn(row[11]), detail: normalizeEmergencyBoardNbrdDetail(row[12]) })).filter((entry) => entry.bn);
+    const currentByBn = new Map(currentEntries.map((entry) => [entry.bn, entry.detail]));
+    const hasOrphanDetails = rows.slice(1).some((row) => !normalizeEmergencyBoardBn(row[11]) && normalizeEmergencyBoardNbrdDetail(row[12]));
+    const unchanged = currentEntries.length === entries.length && new Set(currentEntries.map((entry) => entry.bn)).size === entries.length &&
+      !hasOrphanDetails && entries.every((entry) => currentByBn.get(entry.bn) === entry.detail);
+    if (unchanged) return { added: [], existing: entries.map((entry) => entry.bn), cleared: false, unchanged: true };
+    const lastCurrentNbrdIndex = rows.slice(1).reduce((lastIndex, row, index) => normalizeEmergencyBoardBn(row[11]) || normalizeEmergencyBoardNbrdDetail(row[12]) ? index : lastIndex, -1);
+    const replaceRowCount = Math.max(entries.length, lastCurrentNbrdIndex + 1);
+    const values = Array.from({ length: replaceRowCount }, (_, index) => entries[index]
+      ? [formatEmergencyBoardSheetBn(entries[index].bn), entries[index].detail]
+      : ['', '']);
+    if (values.length) await cbsScanSheetsCall(() => sheets.spreadsheets.values.update({
+      spreadsheetId: EMERGENCY_BOARD_SHEET_ID,
+      range: `${escapeSheetTitle(title)}!L2:M${replaceRowCount + 1}`,
+      valueInputOption: 'RAW',
+      requestBody: { values }
+    }), 'Emergency board NBRD replace', 'background');
+    emergencyBoardSheetCache = { loadedAt: 0, rows: [] };
+    return { added: entries.map((entry) => entry.bn), existing: [], cleared: true };
+  }
   if (!entries.length) return { added: [], existing: [], cleared: Boolean(options.replace) };
-  let dataRows = (await getEmergencyBoardSheetRows({ forceRefresh: true })).slice(1);
+  let dataRows = (await getEmergencyBoardSheetRows({ forceRefresh: true, priority })).slice(1);
   const added = [];
   const existing = [];
   for (const entry of entries) {
-    const didAdd = await appendEmergencyBoardNbrdBn(title, entry.bn, dataRows, entry.detail);
+    const didAdd = await appendEmergencyBoardNbrdBn(title, entry.bn, dataRows, entry.detail, priority);
     (didAdd ? added : existing).push(entry.bn);
-    dataRows = (await getEmergencyBoardSheetRows({ forceRefresh: true })).slice(1);
+    dataRows = (await getEmergencyBoardSheetRows({ forceRefresh: true, priority })).slice(1);
   }
   return { added, existing, cleared: Boolean(options.replace) };
 }
@@ -3588,10 +3675,10 @@ async function processEmergencyBoardAppendBatch(batch = []) {
   let title = '';
   let dataRows = [];
   try {
-    title = await getEmergencyBoardSheetTitle();
-    const rows = await getEmergencyBoardSheetRows({ forceRefresh: true });
-    const headersUpdated = await ensureEmergencyBoardSheetHeaders(rows);
-    dataRows = (headersUpdated ? await getEmergencyBoardSheetRows({ forceRefresh: true }) : rows).slice(1).map((row) => [...row]);
+    title = await getEmergencyBoardSheetTitle('scan');
+    const rows = await getEmergencyBoardSheetRows({ forceRefresh: true, priority: 'scan' });
+    const headersUpdated = await ensureEmergencyBoardSheetHeaders(rows, 'scan');
+    dataRows = (headersUpdated ? await getEmergencyBoardSheetRows({ forceRefresh: true, priority: 'scan' }) : rows).slice(1).map((row) => [...row]);
   } catch (err) {
     batch.forEach((item) => item.reject(err));
     return;
@@ -3615,7 +3702,7 @@ async function processEmergencyBoardAppendBatch(batch = []) {
     await cbsScanSheetsCall(() => sheets.spreadsheets.values.batchUpdate({
       spreadsheetId: EMERGENCY_BOARD_SHEET_ID,
       requestBody: { valueInputOption: 'RAW', data: updates }
-    }), 'CBS scan batch row write');
+    }), 'CBS scan batch row write', 'scan');
     emergencyBoardSheetCache = { loadedAt: 0, rows: [] };
     prepared.forEach(({ item, result }) => item.resolve(result));
   } catch (err) {
@@ -5428,6 +5515,7 @@ module.exports = {
   updateRecordCase,
   appendCbsScanNbrdBns,
   deleteCbsScanNbrdBn,
+  deleteCkinNbrdFromBothSheets,
   getCbsScanRecords,
   setCbsScanRecordEntered,
   setCbsScanRecordsEntered,

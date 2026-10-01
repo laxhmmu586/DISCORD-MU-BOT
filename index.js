@@ -110,12 +110,11 @@ const {
   getRecordCases,
   updateRecordCase,
   appendCbsScanNbrdBns,
-  deleteCbsScanNbrdBn,
+  deleteCkinNbrdFromBothSheets,
   getCbsScanRecords,
   setCbsScanRecordEntered,
   setCbsScanRecordsEntered,
   appendEmergencyBoardNbrdBns,
-  deleteEmergencyBoardNbrdBn,
   getEmergencyBoardRecords,
   setEmergencyBoardRecordEntered,
   setEmergencyBoardRecordsEntered,
@@ -3143,6 +3142,14 @@ app.post('/irr-cases/:rowNumber', async (req, res) => {
 });
 
 
+async function saveCkinNbrdEntriesToBothSheets(entries, options = {}) {
+  const [regular, emergency] = await Promise.all([
+    appendCbsScanNbrdBns(entries, options),
+    appendEmergencyBoardNbrdBns(entries, options)
+  ]);
+  return { regular, emergency };
+}
+
 app.get('/cbs-scan2/records', async (_req, res) => {
   try { return res.json({ ok: true, rows: await getEmergencyBoardRecords() }); }
   catch (err) { return res.status(422).json({ error: err?.message || 'Emergency board records load failed', code: err?.code || 'EMERGENCY_BOARD_RECORDS_ERROR' }); }
@@ -3156,12 +3163,12 @@ app.post('/cbs-scan2/records/entered', async (req, res) => {
 app.post('/cbs-scan2/nbrd-bns', async (req, res) => {
   try {
     const entries = Array.isArray(req.body?.entries) ? req.body.entries : (Array.isArray(req.body?.bns) ? req.body.bns : [req.body?.bn].filter(Boolean));
-    return res.json({ ok: true, ...await appendEmergencyBoardNbrdBns(entries, { replace: req.body?.replace === true }) });
+    return res.json({ ok: true, ...await saveCkinNbrdEntriesToBothSheets(entries, { replace: req.body?.replace === true }) });
   } catch (err) { return res.status(422).json({ error: err?.message || 'Emergency NBRD save failed', code: err?.code || 'NBRD_SAVE_ERROR' }); }
 });
 
 async function handleEmergencyBoardNbrdDelete(req, res) {
-  try { return res.json({ ok: true, ...await deleteEmergencyBoardNbrdBn(req.params.rowNumber, req.body?.bn || req.query?.bn || '') }); }
+  try { return res.json({ ok: true, ...await deleteCkinNbrdFromBothSheets(req.body?.bn || req.query?.bn || '') }); }
   catch (err) { return res.status(err?.code === 'NBRD_NOT_FOUND' || err?.code === 'NBRD_MISMATCH' ? 404 : 422).json({ error: err?.message || 'Emergency NBRD delete failed', code: err?.code || 'NBRD_DELETE_ERROR' }); }
 }
 app.post('/cbs-scan2/nbrd-bns/:rowNumber/delete', handleEmergencyBoardNbrdDelete);
@@ -3199,7 +3206,7 @@ app.post('/cbs-scan/records/:rowNumber/entered', async (req, res) => {
 app.post('/cbs-scan/nbrd-bns', async (req, res) => {
   try {
     const entries = Array.isArray(req.body?.entries) ? req.body.entries : (Array.isArray(req.body?.bns) ? req.body.bns : [req.body?.bn].filter(Boolean));
-    const result = await appendCbsScanNbrdBns(entries, { replace: req.body?.replace === true });
+    const result = await saveCkinNbrdEntriesToBothSheets(entries, { replace: req.body?.replace === true });
     return res.json({ ok: true, ...result });
   } catch (err) {
     return res.status(422).json({ error: err?.message || 'NBRD BN save failed', code: err?.code || 'NBRD_SAVE_ERROR' });
@@ -3208,7 +3215,7 @@ app.post('/cbs-scan/nbrd-bns', async (req, res) => {
 
 async function handleCbsScanNbrdDelete(req, res) {
   try {
-    const result = await deleteCbsScanNbrdBn(req.params.rowNumber, req.body?.bn || req.query?.bn || '');
+    const result = await deleteCkinNbrdFromBothSheets(req.body?.bn || req.query?.bn || '');
     return res.json({ ok: true, ...result });
   } catch (err) {
     const status = err?.code === 'NBRD_NOT_FOUND' || err?.code === 'NBRD_MISMATCH' ? 404 : 422;

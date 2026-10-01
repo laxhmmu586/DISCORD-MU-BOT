@@ -36,11 +36,38 @@ test('emergency backend targets the requested sheet tab and exposes matching rou
   const drive = read('googleDrive.js');
   const server = read('index.js');
   assert.match(drive, /EMERGENCY_BOARD_SHEET_GID = Number\(process\.env\.EMERGENCY_BOARD_SHEET_GID \|\| 1102230555\)/);
-  assert.match(drive, /function scheduleCbsScanSheetsRequest\(fn\)/);
-  assert.match(drive, /return await scheduleCbsScanSheetsRequest\(fn\)/);
+  assert.match(drive, /function scheduleCbsScanSheetsRequest\(fn, priority = 'normal'\)/);
+  assert.match(drive, /return await scheduleCbsScanSheetsRequest\(fn, priority\)/);
+  assert.match(drive, /const priorityOrder = \{ scan: 0, normal: 1, background: 2 \}/);
+  assert.doesNotMatch(drive, /CBS_SCAN_SHEETS_MIN_INTERVAL_MS/);
   assert.match(drive, /emergencyBoardSheetTitlePending = cbsScanSheetsCall/);
   assert.match(server, /app\.post\('\/cbs-scan2'/);
   assert.match(server, /parseEmergencyBoardScan/);
   assert.match(server, /app\.get\('\/cbs-scan2\/records'/);
   assert.match(server, /app\.post\('\/cbs-scan2\/nbrd-bns'/);
+  assert.match(server, /appendCbsScanNbrdBns\(entries, options\)/);
+  assert.match(server, /appendEmergencyBoardNbrdBns\(entries, options\)/);
+  assert.match(server, /deleteCkinNbrdFromBothSheets\(req\.body\?\.bn/);
+  assert.match(drive, /async function deleteCkinNbrdFromBothSheets/);
+  assert.match(drive, /regularIndex >= 0/);
+  assert.match(drive, /emergencyIndex >= 0/);
+});
+
+test('regular and emergency scans both batch saves and show the same successful scan details', () => {
+  const drive = read('googleDrive.js');
+  for (const [page, enqueueName, flushName, processName, prepareName] of [
+    ['scan.html', 'appendCbsScanRecord', 'flushCbsScanAppendBatch', 'processCbsScanAppendBatch', 'prepareCbsScanAppend'],
+    ['scan2.html', 'appendEmergencyBoardRecord', 'flushEmergencyBoardAppendBatch', 'processEmergencyBoardAppendBatch', 'prepareEmergencyBoardAppend']
+  ]) {
+    const html = read(`public/public/${page}`);
+    assert.match(drive, new RegExp(`async function ${enqueueName}\\(record = \\{\\}\\) \\{[\\s\\S]*?setTimeout\\(${flushName}, 300\\)`));
+    const processor = drive.slice(drive.indexOf(`async function ${processName}(`)).split('\n}\n')[0];
+    assert.match(processor, /forceRefresh: true, priority: 'scan'/);
+    assert.match(processor, new RegExp(`${prepareName}\\(item\\.record, dataRows\\)`));
+    assert.match(processor, /values\.batchUpdate/);
+    assert.match(html, /<div><b>Flight<\/b>\$\{data\.flight/);
+    assert.match(html, /<div><b>Seat<\/b>\$\{data\.seat/);
+    assert.match(html, /<div><b>BN<\/b>\$\{data\.bn/);
+    assert.match(html, /data\.isInfant \? '<div><b>Type<\/b>INFANT<\/div>'/);
+  }
 });
