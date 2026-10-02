@@ -4744,7 +4744,7 @@ function settleWithin(promise, timeoutMs, label) {
 // ===============================
 // NEXTDAY INFO Email API
 // ===============================
-app.post('/nextday-info/send', async (req, res) => {
+app.post(['/nextday-info/send', '/desktop-nextday-info/send'], async (req, res) => {
   try {
     const flightNo = String(req.body?.flightNo || 'MU586').trim().toUpperCase() || 'MU586';
     const nextIso = addIsoDays(todayIsoUtc(), 1);
@@ -4753,13 +4753,29 @@ app.post('/nextday-info/send', async (req, res) => {
     // Re-read the operational log immediately before delivery. The page may have
     // retained an earlier SY/JCSY response while new figures were entered, and an
     // email must never be sent with those stale browser-side totals.
-    const log = await getLatestFlightLog();
     const syDate = isoDateToSyDate(nextIso);
-    const syInfo = log && syDate ? findSYInfo(log, syDate, {
-      preferredFlightNo: flightNo,
-      strictPreferredFlight: true
-    }) : null;
-    const details = nextDayInfoDetailsFromSyInfo(syInfo);
+    let details;
+    if (req.path === '/desktop-nextday-info/send') {
+      if (!await require('./desktopNextDayAuth').verifyDesktopToken(req.headers.authorization)) {
+        return res.status(401).json({ error: 'Please sign in with Firebase.' });
+      }
+      // Desktop rereads its local logs immediately before calling this endpoint.
+      // Keep the existing Gmail account, recipients and delivery handling.
+      const keys = ['firstClass', 'businessClass', 'economyClass', 'internationalTransfer', 'domesticTransfer', 'overnightPassengers'];
+      if (req.body?.source !== 'desktop-local' || req.body?.flightDate !== syDate ||
+          !/^[A-Z]{2}\d{1,4}$/.test(flightNo) ||
+          keys.some(key => !/^\d{1,4}$/.test(String(req.body?.details?.[key] ?? '')))) {
+        return res.status(400).json({ error: 'Current local SY/JCSY figures and the next flight date are required.' });
+      }
+      details = Object.fromEntries(keys.map(key => [key, String(req.body.details[key])]));
+    } else {
+      const log = await getLatestFlightLog();
+      const syInfo = log && syDate ? findSYInfo(log, syDate, {
+        preferredFlightNo: flightNo,
+        strictPreferredFlight: true
+      }) : null;
+      details = nextDayInfoDetailsFromSyInfo(syInfo);
+    }
     if (!details) return res.status(400).json({ error: 'Current SY or JCSY figures are incomplete. Run SY and JCSY again, then retry.' });
     const text = buildNextDayInfoEmailBody(subjectDate, details);
     const to = ['LAXHMXH@hallmark-aviation.com', 'dg-lax-lounge@qantas.com.au'];
