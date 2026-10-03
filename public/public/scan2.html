@@ -80,7 +80,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="/__/firebase/init.js"></script>
-  <script src="https://unpkg.com/@zxing/browser@latest"></script>
+  <script src="https://unpkg.com/@zxing/browser@0.1.5/umd/zxing-browser.min.js"></script>
   <script>
     const auth = window.firebase?.apps?.length && window.firebase?.auth ? firebase.auth() : null;
     const AUTH_SESSION_STARTED_KEY = 'mufc_auth_session_started_at';
@@ -126,6 +126,42 @@
     let scanBusy = false;
     let lastScanText = '';
     let lastScanAt = 0;
+    let starting = false;
+    let scanGeneration = 0;
+    const capture = document.createElement('canvas');
+    const captureContext = capture.getContext('2d', { willReadFrequently: true });
+    function stopScanner() {
+      ++scanGeneration;
+      controls?.stop();
+      controls = null;
+      preview.srcObject?.getTracks().forEach(track => track.stop());
+      preview.srcObject = null;
+      clearInterval(focusTimer);
+      focusTimer = null;
+    }
+    // Map the visible guide back to camera pixels: object-fit:cover hides
+    // much of a landscape camera frame on a portrait phone screen.
+    function captureFrame(fullFrame = false) {
+      const width = preview.videoWidth, height = preview.videoHeight;
+      if (!width || !height) return false;
+      let x = 0, y = 0, w = width, h = height;
+      if (!fullFrame) {
+        const view = preview.getBoundingClientRect();
+        const guide = document.querySelector('.aim-box').getBoundingClientRect();
+        const scale = Math.max(view.width / width, view.height / height);
+        const offsetX = (width * scale - view.width) / 2;
+        const offsetY = (height * scale - view.height) / 2;
+        // Keep a margin around the guide for PDF417 start/stop patterns.
+        x = Math.max(0, (guide.left - view.left + offsetX - guide.width * .1) / scale);
+        y = Math.max(0, (guide.top - view.top + offsetY - guide.height * .2) / scale);
+        w = Math.min(width - x, guide.width * 1.2 / scale);
+        h = Math.min(height - y, guide.height * 1.4 / scale);
+      }
+      capture.width = Math.ceil(w);
+      capture.height = Math.ceil(h);
+      captureContext.drawImage(preview, x, y, w, h, 0, 0, capture.width, capture.height);
+      return true;
+    }
     const cameraConstraints = {
       video: {
         facingMode: { ideal: 'environment' },
@@ -246,17 +282,26 @@
       }
     });
     document.querySelector('#start').addEventListener('click', async () => {
+      if (starting || controls) return;
+      starting = true;
+      const generation = ++scanGeneration;
+      let stream;
       try {
         if (!window.ZXingBrowser) throw new Error('ZXing library did not load.');
         // These dedicated labels are PDF417. Prefer the specialized reader for
         // faster detection and steadier autofocus, while retaining a fallback.
         const Reader = ZXingBrowser.BrowserPDF417Reader || ZXingBrowser.BrowserMultiFormatReader;
         const reader = new Reader();
-        const decode = typeof reader.decodeFromConstraints === 'function'
-          ? reader.decodeFromConstraints.bind(reader, cameraConstraints)
-          : reader.decodeFromVideoDevice.bind(reader, undefined);
-        controls = await decode(preview, (result, error) => {
-          if (!result || scanBusy) return;
+        setStatus('Starting camera...');
+        stream = await navigator.mediaDevices.getUserMedia(cameraConstraints);
+        if (generation !== scanGeneration) { stream.getTracks().forEach(track => track.stop()); return; }
+        preview.srcObject = stream;
+        await preview.play();
+        if (generation !== scanGeneration) { stream.getTracks().forEach(track => track.stop()); return; }
+        let timer = null;
+        controls = { stop() { clearTimeout(timer); stream.getTracks().forEach(track => track.stop()); } };
+        const acceptResult = (result) => {
+          if (!result || scanBusy || !dialog.hidden) return;
           const text = result.getText();
           // A camera may see other PDF417 codes elsewhere on a monitor or
           // document. Ignore them instead of reporting a misleading wrong
@@ -268,15 +313,42 @@
           lastScanText = text;
           lastScanAt = now;
           setStatus('Code detected. Saving before next scan...');
-          handleText(text).finally(() => { setTimeout(() => { scanBusy = false; if (controls) setStatus('Scanning'); }, 1500); });
-        });
+          handleText(text).finally(() => { scanBusy = false; });
+        };
+        let attempts = 0;
+        const scanFrame = () => {
+          if (generation !== scanGeneration) return;
+          if (!scanBusy && dialog.hidden && preview.readyState >= 2) {
+            try {
+              // Scan native-resolution guide pixels first; periodically search
+              // the entire frame for a code just outside the guide.
+              if (captureFrame(++attempts % 5 === 0)) acceptResult(reader.decodeFromCanvas(capture));
+            } catch (error) {
+              const kind = error.getKind?.() || error.constructor?.kind || error.name;
+              if (kind === 'ChecksumException' || kind === 'FormatException') {
+                setStatus('Barcode found but unreadable. Move closer, avoid glare, or use the original boarding pass.');
+              }
+              if (!['NotFoundException', 'ChecksumException', 'FormatException'].includes(kind)) {
+                stopScanner();
+                setStatus(error.message || 'Scanner failed. Please restart.', 'err');
+                return;
+              }
+            }
+          }
+          if (generation === scanGeneration) timer = setTimeout(scanFrame, 100);
+        };
         await applyCameraFocus();
         clearInterval(focusTimer);
         focusTimer = setInterval(applyCameraFocus, 2500);
         setStatus('Scanning');
-      } catch (err) { setStatus(err.message, 'err'); showMessage(err.message); }
+        scanFrame();
+      } catch (err) {
+        stream?.getTracks().forEach(track => track.stop());
+        if (generation === scanGeneration) { stopScanner(); setStatus(err.message, 'err'); showMessage(err.message); }
+      } finally { starting = false; }
     });
-    document.querySelector('#stop').addEventListener('click', () => { controls?.stop(); controls = null; clearInterval(focusTimer); focusTimer = null; setStatus('Stopped.'); });
+    document.querySelector('#stop').addEventListener('click', () => { stopScanner(); setStatus('Stopped.'); });
+    window.addEventListener('pagehide', stopScanner);
   </script>
 </body>
 </html>
