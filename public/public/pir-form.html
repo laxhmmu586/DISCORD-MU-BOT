@@ -90,6 +90,7 @@
     .bag-identification-head p { margin:0; color:var(--muted); font-size:12px; font-weight:600; }
     .bag-selector-grid { display:grid; gap:14px; }
     .bag-selector { display:grid; gap:12px; padding:16px; border:1px solid var(--line); border-radius:15px; background:#fff; }
+    .bag-selector-grid[data-case-type="DPR"] .ahl-detail-field { display:none; }
     .bag-selector h4 { margin:0; color:var(--brand); font-size:17px; }
     .bag-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
     .bag-fields .bag-tag-field,.bag-fields .descriptor-field { grid-column:1/-1; }
@@ -204,21 +205,6 @@
           </div>
         </section>
 
-        <section id="ahl-fields" class="case-fields is-active">
-          <h3><span class="en">AHL information</span><span class="zh">延误或丢失行李信息</span></h3>
-          <div class="grid">
-            <div class="bag-identification">
-              <div class="bag-identification-head"><strong><span class="en">Baggage information</span><span class="zh">行李信息</span></strong><p><span class="en">Select each field from the visual IATA guide.</span><span class="zh">请根据IATA图片指南选择每一项。</span></p></div>
-              <div class="bag-selector-grid" id="bag-selector-grid"></div>
-              <button class="add-another-bag" id="add-another-bag" type="button">⊕ <span class="en">Add another bag</span><span class="zh">添加另一个行李</span></button>
-            </div>
-            <label class="wide"><span class="en">Baggage description</span><span class="zh">行李描述</span><textarea name="ahlBagDescription" id="ahl-description" placeholder="Color, size, wheels, hard/soft shell..."></textarea></label>
-            <label><span class="en">Bag brand tag</span><span class="zh">行李箱品牌牌</span><input name="ahlBagBrandTag" /></label>
-            <label><span class="en">Features</span><span class="zh">特征</span><input name="ahlFeatures" placeholder="Sticker, ribbon, lock..." /></label>
-            <label class="wide"><span class="en">Other visible features</span><span class="zh">其他明显特征</span><textarea name="ahlOtherFeatures"></textarea></label>
-          </div>
-        </section>
-
         <section class="case-fields is-active" id="contents-fields">
           <h3><span class="en">Contents</span><span class="zh">包内物品</span></h3>
           <div class="contents-row flight-head"><span><span class="en">Category</span><span class="zh">类别</span></span><span><span class="en">Description</span><span class="zh">描述</span></span><span></span></div>
@@ -325,7 +311,6 @@
     const deliveryNote = document.querySelector('#delivery-note');
     const validUntilField = document.querySelector('#valid-until-field');
     const temporaryAddressField = document.querySelector('#temporary-address-field');
-    const ahlFields = document.querySelector('#ahl-fields');
     const dprFields = document.querySelector('#dpr-fields');
     const formStatus = document.querySelector('#form-status');
     const submittingDialog = document.querySelector('#submitting-dialog');
@@ -340,7 +325,6 @@
     const contentsList = document.querySelector('#contents-list');
     const addContentRowButton = document.querySelector('#add-content-row');
     const issueDateInput = document.querySelector('#issue-date');
-    const ahlDescriptionInput = document.querySelector('#ahl-description');
     const languageToggle = document.querySelector('#language-toggle');
     const bagSelectorGrid = document.querySelector('#bag-selector-grid');
     const standaloneBagTags = document.querySelector('#standalone-bag-tags');
@@ -409,7 +393,7 @@
       const number = ++bagCounter;
       const card = document.createElement('section');
       card.className = 'bag-selector'; card.dataset.bagNumber = number;
-      card.innerHTML = `<h4><span class="en">Bag ${number}</span><span class="zh">行李 ${number}</span></h4><div class="bag-fields"><label class="bag-tag-field"><span class="en">Tag Number</span><span class="zh">行李牌号码</span><span class="required-mark">*</span><input data-bag-tag name="ahlBagTag${number}" placeholder="MU123456" required></label>${picker('color',number,'Color','颜色')}${picker('type',number,'Type','种类')}${picker('descriptor',number,'Descriptive Element(s)','描述特征')}</div>${number > 1 ? '<div class="bag-card-actions"><button class="remove-bag" type="button" data-remove-bag><span class="en">Remove bag</span><span class="zh">删除行李</span></button></div>' : ''}`;
+      card.innerHTML = `<h4><span class="en">Bag ${number}</span><span class="zh">行李 ${number}</span></h4><div class="bag-fields"><label class="bag-tag-field"><span class="en">Tag Number</span><span class="zh">行李牌号码</span><span class="required-mark">*</span><input data-bag-tag name="ahlBagTag${number}" placeholder="MU123456" required></label>${picker('color',number,'Color','颜色')}${picker('type',number,'Type','种类')}${picker('descriptor',number,'Descriptive Element(s)','描述特征')}<label class="wide ahl-detail-field"><span class="en">Baggage description</span><span class="zh">行李描述</span><textarea data-bag-description maxlength="500"></textarea></label><label class="wide ahl-detail-field"><span class="en">Other visible features</span><span class="zh">其他明显特征</span><textarea data-bag-other-features maxlength="500"></textarea></label></div>${number > 1 ? '<div class="bag-card-actions"><button class="remove-bag" type="button" data-remove-bag><span class="en">Remove bag</span><span class="zh">删除行李</span></button></div>' : ''}`;
       card.querySelectorAll('[data-picker]').forEach((element) => { element.querySelector('[data-picker-options]').innerHTML = pickerOptions(element.dataset.picker); });
       bagSelectorGrid.appendChild(card);
     }
@@ -483,7 +467,7 @@
     }
 
     async function parseJson(res) { const text = await res.text(); try { return JSON.parse(text); } catch { throw new Error(`API returned non-JSON (${res.status}). Please check API base: ${apiBase}`); } }
-    function setTypeFields() { const isAhl = typeSelect.value === 'AHL'; ahlFields.classList.toggle('is-active', isAhl); dprFields.classList.toggle('is-active', !isAhl); standaloneBagTags.hidden = true; standaloneBagTags.querySelectorAll('input,button').forEach((control) => { control.disabled = true; }); typeSelect.disabled = false; bagSelectorGrid.querySelectorAll('input,button').forEach((control) => { control.disabled = false; }); ahlDescriptionInput.required = isAhl; thanks.classList.remove('is-active'); }
+    function setTypeFields() { const isAhl = typeSelect.value === 'AHL'; bagSelectorGrid.dataset.caseType = typeSelect.value; dprFields.classList.toggle('is-active', !isAhl); standaloneBagTags.hidden = true; standaloneBagTags.querySelectorAll('input,button').forEach((control) => { control.disabled = true; }); typeSelect.disabled = false; bagSelectorGrid.querySelectorAll('input,button').forEach((control) => { control.disabled = false; }); thanks.classList.remove('is-active'); }
     function setAddressFields() {
       const method = deliveryPreference.value;
       [[permanentAddressField, method === 'permanent', true], [temporaryAddressField, method === 'temporary', true], [validUntilField, method === 'temporary', false]].forEach(([field, show, required]) => {
@@ -793,11 +777,12 @@
       }));
       payload.bagTags = collectBagTags();
       payload.bagTag = payload.bagTags.join(' / ');
-      const bagIdentifications = Array.from(bagSelectorGrid.querySelectorAll('.bag-selector')).map((bag, index) => ({ number:index + 1, tag:bag.querySelector('[data-bag-tag]').value, color:bag.querySelector('[data-bag-color]').value, type:bag.querySelector('[data-bag-type]').value, descriptors:bag.querySelector('[data-bag-descriptors]').value }));
+      const bagIdentifications = Array.from(bagSelectorGrid.querySelectorAll('.bag-selector')).map((bag, index) => ({ number:index + 1, tag:bag.querySelector('[data-bag-tag]').value, color:bag.querySelector('[data-bag-color]').value, type:bag.querySelector('[data-bag-type]').value, descriptors:bag.querySelector('[data-bag-descriptors]').value, description:bag.querySelector('[data-bag-description]').value.trim(), otherFeatures:bag.querySelector('[data-bag-other-features]').value.trim() }));
       const iataIdentification = bagIdentifications.map((bag) => `Bag ${bag.number} Tag ${bag.tag}, ${bag.color}-${bag.type}, elements ${bag.descriptors || '-'}`).join(' / ');
       if (typeSelect.value === 'AHL') {
         payload.ahlBagType = bagIdentifications.map((bag) => `Bag ${bag.number}: ${bag.type || '-'}`).join(' / ');
-        payload.ahlBagDescription = [`IATA identification: ${iataIdentification}`, payload.ahlBagDescription].filter(Boolean).join(' | ');
+        payload.ahlBagDescription = [`IATA identification: ${iataIdentification}`, ...bagIdentifications.filter((bag) => bag.description).map((bag) => `Bag ${bag.number}: ${bag.description}`)].join(' | ');
+        payload.ahlOtherFeatures = bagIdentifications.filter((bag) => bag.otherFeatures).map((bag) => `Bag ${bag.number}: ${bag.otherFeatures}`).join(' / ');
       } else {
         payload.dprBagInfo = [`IATA identification: ${iataIdentification}`, payload.dprBagInfo].filter(Boolean).join(' | ');
       }
