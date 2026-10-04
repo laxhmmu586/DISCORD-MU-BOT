@@ -72,6 +72,16 @@ test('CBS renders delivery before passenger information and escapes passenger ad
   assert.ok(html.indexOf('Delivery Information') < html.indexOf('Passenger information'));
   assert.ok(html.includes('&lt;img'));
   assert.ok(!html.includes('<img'));
-  assert.ok(html.includes(PirDelivery.hints.temporary[0]));
+  assert.ok(!html.includes(PirDelivery.hints.temporary[0]));
+  assert.ok(!html.includes(PirDelivery.notice[0]));
+  assert.ok(!html.includes('Instructions:'));
+  context.document.documentElement.lang = 'zh';
+  context.label = (en, zh) => zh;
+  const chinese = context.fullPassengerFileHtml({ deliveryPreference: 'temporary', temporaryAddress: '测试地址', temporaryAddressValidUntil: '2026-10-10' });
+  assert.ok(chinese.includes('测试地址'));
+  assert.ok(chinese.includes('2026-10-10'));
+  assert.ok(chinese.includes('寄件，提供临时地址'));
+  assert.ok(!chinese.includes(PirDelivery.hints.temporary[1]));
+  assert.ok(!chinese.includes(PirDelivery.notice[1]));
   assert.match(page, /\.full-file-section\.delivery-information \{ background:#fff3e6/);
 });
