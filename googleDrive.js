@@ -2906,10 +2906,22 @@ let cbsScanSheetsRequestSequence = 0;
 let cbsScanSheetsRetryAt = 0;
 let cbsScanSheetsRetryTimer = null;
 let cbsScanSheetsQuotaBackoffMs = 0;
+// Reserve headroom for other Sheets features sharing the same credentials.
+// Reads and writes have separate quotas; do not slow ordinary saves by combining
+// their budgets. Count failed attempts too, across both boarding queues.
+const cbsScanSheetsRequestStarts = { read: [], write: [] };
+const CBS_SCAN_SHEETS_REQUESTS_PER_MINUTE = 50;
 
 function drainCbsScanSheetsRequests() {
   if (cbsScanSheetsRequestRunning || !cbsScanSheetsPendingRequests.length) return;
-  const waitMs = cbsScanSheetsRetryAt - Date.now();
+  const now = Date.now();
+  const starts = cbsScanSheetsRequestStarts[cbsScanSheetsPendingRequests[0].requestType];
+  while (starts.length && starts[0] <= now - 60000) {
+    starts.shift();
+  }
+  const budgetReadyAt = starts.length >= CBS_SCAN_SHEETS_REQUESTS_PER_MINUTE
+    ? starts[0] + 60000 : now;
+  const waitMs = Math.max(cbsScanSheetsRetryAt, budgetReadyAt) - now;
   if (waitMs > 0) {
     if (!cbsScanSheetsRetryTimer) cbsScanSheetsRetryTimer = setTimeout(() => {
       cbsScanSheetsRetryTimer = null;
@@ -2919,17 +2931,19 @@ function drainCbsScanSheetsRequests() {
   }
   cbsScanSheetsRequestRunning = true;
   const request = cbsScanSheetsPendingRequests.shift();
+  starts.push(now);
   Promise.resolve().then(request.fn).then(request.resolve, request.reject).finally(() => {
     cbsScanSheetsRequestRunning = false;
     drainCbsScanSheetsRequests();
   });
 }
 
-function scheduleCbsScanSheetsRequest(fn, priority = 'normal') {
+function scheduleCbsScanSheetsRequest(fn, priority = 'normal', requestType = 'write') {
   const priorityOrder = { scan: 0, normal: 1, background: 2 };
   return new Promise((resolve, reject) => {
     cbsScanSheetsPendingRequests.push({
       fn,
+      requestType,
       priority: priorityOrder[priority] ?? priorityOrder.normal,
       sequence: ++cbsScanSheetsRequestSequence,
       resolve,
@@ -2940,7 +2954,7 @@ function scheduleCbsScanSheetsRequest(fn, priority = 'normal') {
   });
 }
 
-async function cbsScanSheetsCall(fn, label = 'Google Sheets request', priority = 'normal') {
+async function cbsScanSheetsCall(fn, label = 'Google Sheets request', priority = 'normal', requestType = 'write') {
   // Sheets quotas refill each minute. Coordinate the cooldown across callers so
   // background reads cannot keep hammering Sheets while a scan is backing off.
   const maxRetries = 6;
@@ -2963,7 +2977,7 @@ async function cbsScanSheetsCall(fn, label = 'Google Sheets request', priority =
           }
           throw err;
         }
-      }, priority);
+      }, priority, requestType);
     } catch (err) {
       if (!isCbsScanQuotaError(err) || attempt === maxRetries) {
         if (isCbsScanQuotaError(err)) {
@@ -2979,7 +2993,7 @@ async function cbsScanSheetsCall(fn, label = 'Google Sheets request', priority =
 
 async function getCbsScanSheetTitle(priority = 'normal') {
   if (!cbsScanSheetTitle && !cbsScanSheetTitlePending) {
-    cbsScanSheetTitlePending = cbsScanSheetsCall(() => resolveSheetTitleByGid(CBS_SCAN_SHEET_ID, CBS_SCAN_SHEET_GID), 'CBS scan sheet title', priority)
+    cbsScanSheetTitlePending = cbsScanSheetsCall(() => resolveSheetTitleByGid(CBS_SCAN_SHEET_ID, CBS_SCAN_SHEET_GID), 'CBS scan sheet title', priority, 'read')
       .then((title) => { cbsScanSheetTitle = title; return title; })
       .finally(() => { cbsScanSheetTitlePending = null; });
   }
@@ -2995,7 +3009,7 @@ async function getCbsScanSheetRows(options = {}) {
   const res = await cbsScanSheetsCall(() => sheets.spreadsheets.values.get({
     spreadsheetId: CBS_SCAN_SHEET_ID,
     range: `${escapeSheetTitle(title)}!A:R`
-  }), 'CBS scan sheet read', priority);
+  }), 'CBS scan sheet read', priority, 'read');
   const rows = res.data.values || [];
   cbsScanSheetCache = { loadedAt: Date.now(), rows };
   return rows;
@@ -3180,7 +3194,7 @@ async function getCbsScanEnteredRowNumbers(title) {
     ranges: [`${escapeSheetTitle(title)}!A2:C`],
     includeGridData: true,
     fields: 'sheets(data(rowData(values(userEnteredFormat(backgroundColor),effectiveFormat(backgroundColor)))))'
-  }), 'CBS scan entered-state read');
+  }), 'CBS scan entered-state read', 'normal', 'read');
   const rowData = res.data.sheets?.[0]?.data?.[0]?.rowData || [];
   const entered = new Set();
   rowData.forEach((row, index) => {
@@ -3342,20 +3356,20 @@ async function flushCbsScanAppendBatch() {
     await processCbsScanAppendBatch(batch);
   } finally {
     cbsScanAppendRunning = false;
-    if (cbsScanAppendPending.length) cbsScanAppendTimer = setTimeout(flushCbsScanAppendBatch, 300);
+    if (cbsScanAppendPending.length) cbsScanAppendTimer = setTimeout(flushCbsScanAppendBatch, 750);
   }
 }
 
 async function appendCbsScanRecord(record = {}) {
   return new Promise((resolve, reject) => {
     cbsScanAppendPending.push({ record, resolve, reject });
-    if (!cbsScanAppendRunning && !cbsScanAppendTimer) cbsScanAppendTimer = setTimeout(flushCbsScanAppendBatch, 300);
+    if (!cbsScanAppendRunning && !cbsScanAppendTimer) cbsScanAppendTimer = setTimeout(flushCbsScanAppendBatch, 750);
   });
 }
 
 async function getEmergencyBoardSheetTitle(priority = 'normal') {
   if (!emergencyBoardSheetTitle && !emergencyBoardSheetTitlePending) {
-    emergencyBoardSheetTitlePending = cbsScanSheetsCall(() => resolveSheetTitleByGid(EMERGENCY_BOARD_SHEET_ID, EMERGENCY_BOARD_SHEET_GID), 'Emergency board sheet title', priority)
+    emergencyBoardSheetTitlePending = cbsScanSheetsCall(() => resolveSheetTitleByGid(EMERGENCY_BOARD_SHEET_ID, EMERGENCY_BOARD_SHEET_GID), 'Emergency board sheet title', priority, 'read')
       .then((title) => { emergencyBoardSheetTitle = title; return title; })
       .finally(() => { emergencyBoardSheetTitlePending = null; });
   }
@@ -3371,7 +3385,7 @@ async function getEmergencyBoardSheetRows(options = {}) {
   const res = await cbsScanSheetsCall(() => sheets.spreadsheets.values.get({
     spreadsheetId: EMERGENCY_BOARD_SHEET_ID,
     range: `${escapeSheetTitle(title)}!A:R`
-  }), 'CBS scan sheet read', priority);
+  }), 'CBS scan sheet read', priority, 'read');
   const rows = res.data.values || [];
   emergencyBoardSheetCache = { loadedAt: Date.now(), rows };
   return rows;
@@ -3591,7 +3605,7 @@ async function getEmergencyBoardEnteredRowNumbers(title) {
     ranges: [`${escapeSheetTitle(title)}!A2:C`],
     includeGridData: true,
     fields: 'sheets(data(rowData(values(userEnteredFormat(backgroundColor),effectiveFormat(backgroundColor)))))'
-  }), 'CBS scan entered-state read');
+  }), 'CBS scan entered-state read', 'normal', 'read');
   const rowData = res.data.sheets?.[0]?.data?.[0]?.rowData || [];
   const entered = new Set();
   rowData.forEach((row, index) => {
@@ -3753,14 +3767,14 @@ async function flushEmergencyBoardAppendBatch() {
     await processEmergencyBoardAppendBatch(batch);
   } finally {
     emergencyBoardAppendRunning = false;
-    if (emergencyBoardAppendPending.length) emergencyBoardAppendTimer = setTimeout(flushEmergencyBoardAppendBatch, 300);
+    if (emergencyBoardAppendPending.length) emergencyBoardAppendTimer = setTimeout(flushEmergencyBoardAppendBatch, 750);
   }
 }
 
 async function appendEmergencyBoardRecord(record = {}) {
   return new Promise((resolve, reject) => {
     emergencyBoardAppendPending.push({ record, resolve, reject });
-    if (!emergencyBoardAppendRunning && !emergencyBoardAppendTimer) emergencyBoardAppendTimer = setTimeout(flushEmergencyBoardAppendBatch, 300);
+    if (!emergencyBoardAppendRunning && !emergencyBoardAppendTimer) emergencyBoardAppendTimer = setTimeout(flushEmergencyBoardAppendBatch, 750);
   });
 }
 
@@ -3782,7 +3796,7 @@ async function appendRecordScanRecord(record = {}) {
   const response = await cbsScanSheetsCall(() => sheets.spreadsheets.values.get({
     spreadsheetId: RECORD_SCAN_SHEET_ID,
     range
-  }), 'Record scan sheet read');
+  }), 'Record scan sheet read', 'normal', 'read');
   const rows = response.data.values || [];
   const firstRow = rows[0] || [];
   const hasHeaders = RECORD_SCAN_HEADERS.every((header, index) => String(firstRow[index] || '').trim().toUpperCase() === header);

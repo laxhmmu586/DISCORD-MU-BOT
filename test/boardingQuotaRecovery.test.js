@@ -48,6 +48,69 @@ function quotaHarness() {
 }
 const quotaError = () => Object.assign(new Error('Read quota exceeded'), { code: 429 });
 
+test('ten concurrent scanners stay within the shared rolling minute budget', async () => {
+  const h = quotaHarness();
+  const calls = [];
+  const scanners = Array.from({ length: 10 }, (_, scanner) => (async () => {
+    for (let scan = 0; scan < 6; scan++) {
+      await h.context.cbsScanSheetsCall(async () => calls.push({ at: h.now(), scanner, scan, type: 'read' }), 'board read', 'scan', 'read');
+      await h.context.cbsScanSheetsCall(async () => calls.push({ at: h.now(), scanner, scan, type: 'write' }), 'board write', 'scan');
+    }
+  })());
+  await settle();
+  for (let turn = 0; calls.length < 120 && turn < 100; turn++) {
+    await settle();
+    if (h.timers.size) await h.next();
+  }
+  assert.equal(calls.length, 120);
+  await Promise.all(scanners);
+  for (const call of calls) {
+    assert.ok(calls.filter(other => other.type === call.type && other.at > call.at - 60000 && other.at <= call.at).length <= 50);
+  }
+  assert.equal(calls.filter(call => call.type === 'write').length, 60);
+  assert.equal(h.timers.size, 0);
+});
+
+test('a full budget waits for refill and keeps scans ahead of background refreshes', async () => {
+  const h = quotaHarness();
+  for (let i = 0; i < 50; i++) await h.context.cbsScanSheetsCall(async () => {});
+  const calls = [];
+  const background = h.context.cbsScanSheetsCall(async () => calls.push('background'), 'board read', 'background');
+  const scan = h.context.cbsScanSheetsCall(async () => calls.push('scan'), 'board write', 'scan');
+  await settle();
+  assert.deepEqual(calls, []);
+  assert.equal(h.timers.size, 1);
+  await h.next();
+  await Promise.all([background, scan]);
+  assert.equal(h.now(), 60000);
+  assert.deepEqual(calls, ['scan', 'background']);
+});
+
+test('normal reads and writes use independent budgets without artificial delays', async () => {
+  const h = quotaHarness();
+  for (let i = 0; i < 50; i++) {
+    await h.context.cbsScanSheetsCall(async () => {}, 'read', 'scan', 'read');
+    await h.context.cbsScanSheetsCall(async () => {}, 'write', 'scan');
+  }
+  assert.equal(h.now(), 0);
+  assert.equal(h.timers.size, 0);
+});
+
+test('failed attempts also consume the proactive request budget', async () => {
+  const h = quotaHarness();
+  for (let i = 0; i < 50; i++) {
+    await assert.rejects(h.context.cbsScanSheetsCall(async () => { throw new Error('Permission denied'); }));
+  }
+  let saved = false;
+  const pending = h.context.cbsScanSheetsCall(async () => { saved = true; });
+  await settle();
+  assert.equal(saved, false);
+  await h.next();
+  await pending;
+  assert.equal(h.now(), 60000);
+  assert.equal(saved, true);
+});
+
 test('scan retries survive a minute-long quota window and only resolve after Sheets succeeds', async () => {
   const h = quotaHarness();
   const calls = [];
@@ -108,6 +171,55 @@ test('persistent quota failure is bounded and reports SHEETS_QUOTA', async () =>
 });
 
 for (const [prefix, name] of [['cbsScan', 'CbsScan'], ['emergencyBoard', 'EmergencyBoard']]) {
+  for (const scannerCount of [6, 10]) {
+    test(`${name} batches ${scannerCount} simultaneous scanners within the shared quota`, async () => {
+      const rows = [[]], writes = [], calls = [];
+      const h = clockHarness({
+        CBS_SCAN_SHEET_ID: 'regular', EMERGENCY_BOARD_SHEET_ID: 'emergency',
+        escapeSheetTitle: value => value,
+        [`get${name}SheetTitle`]: async () => 'Board',
+        [`ensure${name}SheetHeaders`]: async () => false,
+        sheets: { spreadsheets: { values: { batchUpdate: async ({ requestBody }) => {
+          calls.push({ at: h.now(), type: 'write' });
+          writes.push(requestBody.data);
+          for (const update of requestBody.data) {
+            const number = Number(update.range.match(/![AN](\d+)/)[1]);
+            const start = update.range.includes('!N') ? 13 : 0;
+            while (rows.length < number) rows.push([]);
+            update.values[0].forEach((value, index) => { rows[number - 1][start + index] = value; });
+          }
+        } } } }
+      });
+      vm.runInContext(drive.slice(drive.indexOf('function isCbsScanQuotaError('), drive.indexOf('async function getCbsScanSheetTitle(')), h.context);
+      h.context[`get${name}SheetRows`] = () => h.context.cbsScanSheetsCall(async () => {
+        calls.push({ at: h.now(), type: 'read' });
+        return rows.map(row => [...row]);
+      }, 'scan read', 'scan', 'read');
+      vm.runInContext(`let ${prefix}AppendPending = [], ${prefix}AppendTimer = null, ${prefix}AppendRunning = false, ${prefix}SheetCache = {};`, h.context);
+      for (const fn of [`normalize${name}Bn`, `format${name}SheetBn`, `throw${name}NbrdMessage`, `make${name}DuplicateError`, `apply${name}WorkingRow`, `prepare${name}Append`, `process${name}AppendBatch`, `flush${name}AppendBatch`, `append${name}Record`]) {
+        vm.runInContext(sourceFunction(drive, fn), h.context);
+      }
+      const saved = [];
+      // More than one minute of API budget: verify actual batches also queue
+      // through the proactive limiter without dropping or overwriting records.
+      for (let round = 0; round < 60; round++) {
+        let done = false;
+        const pending = Promise.all(Array.from({ length: scannerCount }, (_, scanner) =>
+          h.context[`append${name}Record`]({ bn: String(round * scannerCount + scanner + 1), seat: '10A', flight: 'MU586' })
+        )).then(results => { saved.push(...results); done = true; });
+        while (!done) await h.next();
+        await pending;
+        if (round === 0) assert.equal(h.now(), 750, 'ordinary scans only wait for the batching window');
+      }
+      assert.equal(saved.length, scannerCount * 60);
+      assert.equal(new Set(saved.map(record => record.rowNumber)).size, saved.length);
+      assert.equal(writes.length, 60);
+      assert.ok(writes.every(batch => batch.length === scannerCount));
+      for (const call of calls) assert.ok(calls.filter(other => other.type === call.type && other.at > call.at - 60000 && other.at <= call.at).length <= 50);
+      assert.equal(h.timers.size, 0);
+    });
+  }
+
   test(`${name} merges scans waiting behind a slow write and keeps duplicate/NBRD checks`, async () => {
     const gate = deferred();
     const rows = [[]];
@@ -175,6 +287,17 @@ for (const [prefix, name] of [['cbsScan', 'CbsScan'], ['emergencyBoard', 'Emerge
 }
 
 for (const file of ['scan.html', 'scan2.html']) {
+  test(`${file} ignores identical barcodes for 2500ms and accepts other barcodes`, () => {
+    const html = fs.readFileSync(path.join(__dirname, '..', 'public/public', file), 'utf8');
+    const guard = html.match(/if \(text === lastScanText[^\n]+/)[0];
+    const context = vm.createContext({ lastScanText: 'pass', lastScanAt: 1000 });
+    vm.runInContext(`function accepts(text, now) { ${guard} return true; }`, context);
+    assert.equal(context.accepts('pass', 3499), undefined);
+    assert.equal(context.accepts('pass', 3500), true);
+    assert.equal(context.accepts('other pass', 1001), true);
+    assert.match(html, /lastScanText = text;\s*lastScanAt = now;/);
+  });
+
   test(`${file} keeps a pending save visible and clears the waiting timer on completion`, async () => {
     const html = fs.readFileSync(path.join(__dirname, '..', 'public/public', file), 'utf8');
     const handler = html.match(/    async function handleText\(text\) \{[\s\S]*?\n    }/)[0];
