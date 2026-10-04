@@ -37,7 +37,7 @@ test('emergency backend targets the requested sheet tab and exposes matching rou
   const server = read('index.js');
   assert.match(drive, /EMERGENCY_BOARD_SHEET_GID = Number\(process\.env\.EMERGENCY_BOARD_SHEET_GID \|\| 1102230555\)/);
   assert.match(drive, /function scheduleCbsScanSheetsRequest\(fn, priority = 'normal'\)/);
-  assert.match(drive, /return await scheduleCbsScanSheetsRequest\(fn, priority\)/);
+  assert.match(drive, /return await scheduleCbsScanSheetsRequest\(async \(\) =>/);
   assert.match(drive, /const priorityOrder = \{ scan: 0, normal: 1, background: 2 \}/);
   assert.doesNotMatch(drive, /CBS_SCAN_SHEETS_MIN_INTERVAL_MS/);
   assert.match(drive, /emergencyBoardSheetTitlePending = cbsScanSheetsCall/);
