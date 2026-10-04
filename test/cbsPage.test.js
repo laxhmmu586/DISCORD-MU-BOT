@@ -1339,7 +1339,7 @@ test('Email menus offer the bilingual baggage inspection explanation', () => {
   assert.match(server, /U\.S\. Customs and Border Protection upon arrival in the United States/);
   assert.match(server, /美国海关及边境保护局（U\.S\. Customs and Border Protection）/);
   assert.match(server, /emailAction === 'baggage_open_by_customs'/);
-  assert.match(server, /needsWorldTracer = !\['sent_open_bag_authorization_to_pvg', 'contact_pax_pickup_bags', 'baggage_open_by_customs', 'pickup_wrong_bags'\]/);
+  assert.match(server, /needsWorldTracer = !\['sent_open_bag_authorization_to_pvg', 'contact_pax_pickup_bags', 'baggage_open_by_customs', 'pickup_wrong_bags', 'baggage_picked_up_by_another_passenger'\]/);
 });
 
 test('future pickup email requires an available date in all three Email forms', () => {
