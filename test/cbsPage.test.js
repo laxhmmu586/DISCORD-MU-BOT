@@ -1324,7 +1324,7 @@ test('CBS removes the passenger-related pickup option from Comment and Email men
 });
 
 test('standalone, Passenger Filed, and On-hand Email menus stay synchronized', () => {
-  for (const action of ['sent_open_bag_authorization_to_pvg', 'contact_pax_pickup_bags', 'pickup_bags_future_available', 'baggage_transfer_status_eta', 'baggage_pickup_delivery_method_confirmation', 'require_open_bag_authorization_pvg']) {
+  for (const action of ['pickup_wrong_bags', 'sent_open_bag_authorization_to_pvg', 'contact_pax_pickup_bags', 'pickup_bags_future_available', 'baggage_transfer_status_eta', 'baggage_pickup_delivery_method_confirmation', 'require_open_bag_authorization_pvg']) {
     assert.equal((page.match(new RegExp(`value="${action}"`, 'g')) || []).length, 3, `${action} should appear in all three Email menus`);
   }
   assert.doesNotMatch(page, /\{ key:'open_bag_authorization_pvg'/);
@@ -1339,7 +1339,7 @@ test('Email menus offer the bilingual baggage inspection explanation', () => {
   assert.match(server, /U\.S\. Customs and Border Protection upon arrival in the United States/);
   assert.match(server, /美国海关及边境保护局（U\.S\. Customs and Border Protection）/);
   assert.match(server, /emailAction === 'baggage_open_by_customs'/);
-  assert.match(server, /needsWorldTracer = !\['sent_open_bag_authorization_to_pvg', 'contact_pax_pickup_bags', 'baggage_open_by_customs'\]/);
+  assert.match(server, /needsWorldTracer = !\['sent_open_bag_authorization_to_pvg', 'contact_pax_pickup_bags', 'baggage_open_by_customs', 'pickup_wrong_bags'\]/);
 });
 
 test('future pickup email requires an available date in all three Email forms', () => {
