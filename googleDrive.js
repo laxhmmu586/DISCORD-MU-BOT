@@ -4118,6 +4118,12 @@ function cbsRecordFromSheet(values, rowNumber) {
   row.ticketNumber = values[5] || row.ticketNumber || '';
   row.flightRoute = values[7] || row.flightRoute || '';
   row.permanentAddress = values[9] || row.permanentAddress || '';
+  row.temporaryAddress = values[10] || row.temporaryAddress || '';
+  row.temporaryAddressValidUntil = values[11] || row.temporaryAddressValidUntil || '';
+  row.addressAvailable = values[12] || row.addressAvailable || '';
+  // Restore the original submission explicitly: header-derived keys may lose
+  // their capital letters, and deliveryPreference is stored in this JSON.
+  row.originalFormData = values[32] || row.originalFormData || '';
   // Column N is the sheet's baggage-details field. Keep a neutral alias for
   // the case view and retain the AHL name used by form submissions/PIR files.
   row.baggageDetails = values[13] || row.baggageDetails || row.ahlBagDescription || '';
@@ -4154,7 +4160,7 @@ function cbsOriginalFormData(record = {}) {
     'permanentAddress', 'temporaryAddress', 'temporaryAddressValidUntil', 'addressAvailable', 'ahlBagDescription',
     'ahlBagBrandTag', 'ahlBagType', 'ahlFeatures', 'ahlOtherFeatures', 'ahlContents', 'dprDamageLevel', 'dprBagInfo',
     'dprBagType', 'dprInnerDamage', 'contentsDetails', 'issueDate', 'passengerSignature', 'submittedAt',
-    'destinationOnBags', 'departureOrigin', 'language'
+    'destinationOnBags', 'departureOrigin', 'language', 'deliveryPreference'
   ];
   return JSON.stringify(Object.fromEntries(keys.filter((key) => record[key] != null && String(record[key]).trim()).map((key) => [key, record[key]])));
 }

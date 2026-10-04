@@ -350,6 +350,8 @@
     .full-file { display:grid; gap:18px; }
     .full-file-section { padding:16px; border:1px solid #d8e4f1; border-radius:14px; background:#fff; }
     .full-file-section h3 { margin:0 0 12px; color:var(--brand); }
+    .full-file-section.delivery-information { background:#fff3e6; border-color:#f4cda4; }
+    .delivery-information .delivery-note { color:#b42318; }
     .add-baggage-search { display:grid; grid-template-columns:minmax(260px,1fr) auto; gap:12px; max-width:900px; margin:28px auto; align-items:end; }
     .add-baggage-search label,.add-baggage-form label { display:grid; gap:7px; color:#475467; font-size:12px; font-weight:900; letter-spacing:.05em; text-transform:uppercase; }
     .add-baggage-panel { max-width:900px; margin:0 auto; padding:22px; border:1px solid #c9d9ec; border-radius:20px; background:#f8fbff; }
@@ -481,6 +483,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="/__/firebase/init.js"></script>
+  <script src="/pir-delivery.js"></script>
   <script>
     const apiBase = (window.MU_API_BASE || 'https://api.mufcapp.net').replace(/\/$/, '');
     function updaterDisplayName(value) {
@@ -1232,10 +1235,7 @@
         [label('Flight Route', '行李航程'), row.flightRoute],
         [label('Bag Tag', '行李牌'), row.bagTag],
         [label('Destination on Bags', '行李牌目的地'), row.destinationOnBags],
-        [label('Permanent Address', '住址'), row.permanentAddress],
-        [label('Temporary Address Available', '是否有临时地址'), row.addressAvailable],
-        [label('Temporary Address Valid Until', '临时地址有效期至'), row.temporaryAddressValidUntil],
-        [label('Temporary Address', '临时地址'), row.temporaryAddress],
+        ...PirDelivery.fields(row, document.documentElement.lang),
         [label('AHL Bag Description', 'AHL行李描述'), row.ahlBagDescription],
         [label('AHL Bag Brand Tag', 'AHL行李品牌牌'), row.ahlBagBrandTag],
         [label('AHL Bag Type', 'AHL行李类型'), row.ahlBagType],
@@ -1265,7 +1265,6 @@
         [label('Ticket Number', '机票号码'), row?.ticketNumber],
         [label('Flights*', '航班*'), flights],
         [label('Bag Tag', '行李牌'), row?.bagTag],
-        [label('Address', '地址'), row?.permanentAddress || row?.address || row?.temporaryAddress],
         ...detailRows(row).filter(([key]) => !new Set([
           label('Passenger Name', '旅客姓名'), label('Email', '邮箱'), label('Phone', '电话'),
           label('Ticket Number', '机票号码'), label('Flight Route', '行李航程'), label('Bag Tag', '行李牌'),
@@ -1286,10 +1285,7 @@
         [label('Flight Route', '行李航程'), row.flightRoute],
         [label('Bag Tag', '行李牌'), row.bagTag],
         [label('Destination on Bags', '行李牌目的地'), row.destinationOnBags],
-        [label('Permanent Address', '住址'), row.permanentAddress],
-        [label('Temporary Address Available', '是否有临时地址'), row.addressAvailable],
-        [label('Temporary Address Valid Until', '临时地址有效期至'), row.temporaryAddressValidUntil],
-        [label('Temporary Address', '临时地址'), row.temporaryAddress],
+        ...PirDelivery.fields(row, document.documentElement.lang),
         [label('AHL Bag Description', 'AHL行李描述'), row.ahlBagDescription],
         [label('AHL Bag Brand Tag', 'AHL行李品牌牌'), row.ahlBagBrandTag],
         [label('AHL Bag Type', 'AHL行李类型'), row.ahlBagType],
@@ -1318,8 +1314,7 @@
       const requiredPassengerFields = [
         [label('Passenger Name', '旅客姓名'), row.passengerName], [label('Email', '邮箱'), row.email],
         [label('Phone', '电话'), row.phoneNumber || row.phone], [label('Ticket Number', '机票号码'), row.ticketNumber],
-        [label('Flight Route', '行李航程'), row.flightRoute],
-        [label('Permanent Address', '住址'), row.permanentAddress]
+        [label('Flight Route', '行李航程'), row.flightRoute]
       ];
       const sharedBaggageFields = [[label('Case Type', '类型'), inferCaseType(row)], [label('Bag Tag', '行李牌'), row.bagTag]];
       const baggageFields = inferCaseType(row) === 'DPR' ? sharedBaggageFields.concat([
@@ -1334,7 +1329,9 @@
         [label('Contents Details', '包内物品详情'), row.contentsDetails]
       ]);
       const submissionFields = [[label('Issue Date', '填写日期'), row.issueDate], [label('Passenger Signature', '旅客签字'), row.passengerSignature], [label('Submitted At', '提交时间'), row.submittedAt || row.submitDate]];
-      return `<div class="full-file"><section class="full-file-section"><h3>${label('Passenger information', '旅客资料')}</h3>${requiredFieldGrid(requiredPassengerFields)}</section><section class="full-file-section"><h3>${label('Baggage information', '行李资料')}</h3>${fieldGrid(baggageFields)}</section><section class="full-file-section"><h3>${label('Submission information', '提交资料')}</h3>${fieldGrid(submissionFields)}</section></div>`;
+      const deliveryFields = PirDelivery.fields(row, document.documentElement.lang);
+      const deliveryNotice = ['permanent', 'temporary'].includes(row.deliveryPreference) ? `<p class="delivery-note">${escapeHtml(PirDelivery.pick(PirDelivery.notice, document.documentElement.lang))}</p>` : '';
+      return `<div class="full-file"><section class="full-file-section delivery-information"><h3>${label('Delivery Information', '配送信息')}</h3>${fieldGrid(deliveryFields)}${deliveryNotice}</section><section class="full-file-section"><h3>${label('Passenger information', '旅客资料')}</h3>${requiredFieldGrid(requiredPassengerFields)}</section><section class="full-file-section"><h3>${label('Baggage information', '行李资料')}</h3>${fieldGrid(baggageFields)}</section><section class="full-file-section"><h3>${label('Submission information', '提交资料')}</h3>${fieldGrid(submissionFields)}</section></div>`;
     }
     function updateFormHtml(row, mode = 'worldtracer') {
       if (!row.rowNumber) return `<p class="status err">${label('A saved row is required before this case can be updated.', '案件保存后才能更新。')}</p>`;

@@ -23,6 +23,8 @@
     h2,h3 { margin:0 0 10px; }
     p { line-height:1.65; }
     .muted { color:var(--muted); }
+    .delivery-note { margin:0; color:#b42318; font-weight:700; }
+    .delivery-hint { margin:0; }
     .card { padding:24px; }
     form { display:grid; gap:18px; }
     .grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
@@ -185,10 +187,12 @@
             </div>
           </div>
           <input name="caseType" id="case-type" type="hidden" value="AHL" />
-          <label class="wide"><span class="en">Address</span><span class="zh">住址</span><textarea name="permanentAddress" required></textarea></label>
-          <label><span class="en">Temporary address available?</span><span class="zh">是否有临时地址？</span><select name="addressAvailable" id="address-available"><option value="No">No</option><option value="Yes">Yes</option></select></label>
+          <label class="wide"><span class="en">Collection / delivery method</span><span class="zh">取件方式</span><select name="deliveryPreference" id="delivery-preference" required><option value="">Select a method</option><option value="permanent">Delivery to a permanent address</option><option value="temporary">Delivery to a temporary address</option><option value="pickup">Collect at the airport</option></select></label>
+          <label class="wide" id="permanent-address-field" hidden><span class="en">Permanent address</span><span class="zh">永久地址</span><textarea name="permanentAddress" maxlength="500" disabled aria-describedby="delivery-hint"></textarea></label>
           <label id="valid-until-field" hidden><span class="en">Temporary address valid until</span><span class="zh">临时地址有效期至</span><input name="temporaryAddressValidUntil" type="date" /></label>
-          <label class="wide" id="temporary-address-field" hidden><span class="en">Temporary address</span><span class="zh">临时地址</span><textarea name="temporaryAddress"></textarea></label>
+          <label class="wide" id="temporary-address-field" hidden><span class="en">Temporary address</span><span class="zh">临时地址</span><textarea name="temporaryAddress" maxlength="500" disabled aria-describedby="delivery-hint"></textarea></label>
+          <p class="wide delivery-hint" id="delivery-hint" aria-live="polite" hidden></p>
+          <p class="wide delivery-note" id="delivery-note" hidden></p>
         </div>
 
         <section class="case-fields is-active" id="shared-baggage-fields">
@@ -310,11 +314,15 @@
   </main>
   <dialog class="submitting-dialog" id="submitting-dialog" aria-labelledby="submitting-title"><div class="submitting-spinner" aria-hidden="true"></div><div class="en"><h2 id="submitting-title">Submitting</h2><p>Please wait. Do not submit again.</p></div><div class="zh"><h2>正在提交</h2><p>请稍候，请勿重复提交。</p></div></dialog>
   <dialog class="chart-dialog" id="chart-dialog"><button class="chart-close" id="chart-close" type="button" aria-label="Close">×</button><img id="chart-dialog-image" alt="" /><div class="enlarged-icon" id="enlarged-icon" hidden></div></dialog><div class="hover-image-preview" id="hover-image-preview" hidden></div>
+  <script src="/pir-delivery.js"></script>
   <script>
     const apiBase = (window.MU_API_BASE || 'https://api.mufcapp.net').replace(/\/$/, '');
     const form = document.querySelector('#cbs-form');
     const typeSelect = document.querySelector('#case-type');
-    const addressAvailable = document.querySelector('#address-available');
+    const deliveryPreference = document.querySelector('#delivery-preference');
+    const permanentAddressField = document.querySelector('#permanent-address-field');
+    const deliveryHint = document.querySelector('#delivery-hint');
+    const deliveryNote = document.querySelector('#delivery-note');
     const validUntilField = document.querySelector('#valid-until-field');
     const temporaryAddressField = document.querySelector('#temporary-address-field');
     const ahlFields = document.querySelector('#ahl-fields');
@@ -359,8 +367,9 @@
     function setLanguage(lang) {
       document.documentElement.lang = lang;
       languageToggle.textContent = lang === 'en' ? '中文' : 'English';
-      addressAvailable.options[0].textContent = lang === 'en' ? 'No' : '否';
-      addressAvailable.options[1].textContent = lang === 'en' ? 'Yes' : '是';
+      deliveryPreference.options[0].textContent = lang === 'en' ? 'Select a method' : '请选择取件方式';
+      Array.from(deliveryPreference.options).slice(1).forEach((option) => { option.textContent = PirDelivery.pick(PirDelivery.methods[option.value], lang); });
+      setAddressFields();
     }
     languageToggle.addEventListener('click', () => setLanguage(document.documentElement.lang === 'en' ? 'zh' : 'en'));
 
@@ -475,9 +484,22 @@
 
     async function parseJson(res) { const text = await res.text(); try { return JSON.parse(text); } catch { throw new Error(`API returned non-JSON (${res.status}). Please check API base: ${apiBase}`); } }
     function setTypeFields() { const isAhl = typeSelect.value === 'AHL'; ahlFields.classList.toggle('is-active', isAhl); dprFields.classList.toggle('is-active', !isAhl); standaloneBagTags.hidden = true; standaloneBagTags.querySelectorAll('input,button').forEach((control) => { control.disabled = true; }); typeSelect.disabled = false; bagSelectorGrid.querySelectorAll('input,button').forEach((control) => { control.disabled = false; }); ahlDescriptionInput.required = isAhl; thanks.classList.remove('is-active'); }
-    function setAddressFields() { const show = addressAvailable.value === 'Yes'; validUntilField.hidden = !show; temporaryAddressField.hidden = !show; if (!show) { validUntilField.querySelector('input').value = ''; temporaryAddressField.querySelector('textarea').value = ''; } }
+    function setAddressFields() {
+      const method = deliveryPreference.value;
+      [[permanentAddressField, method === 'permanent', true], [temporaryAddressField, method === 'temporary', true], [validUntilField, method === 'temporary', false]].forEach(([field, show, required]) => {
+        field.hidden = !show;
+        const control = field.querySelector('input,textarea');
+        control.disabled = !show;
+        control.required = show && required;
+      });
+      const lang = document.documentElement.lang;
+      deliveryHint.hidden = !method;
+      deliveryHint.textContent = method ? PirDelivery.pick(PirDelivery.hints[method], lang) : '';
+      deliveryNote.hidden = !['permanent', 'temporary'].includes(method);
+      deliveryNote.textContent = PirDelivery.pick(PirDelivery.notice, lang);
+    }
     typeSelect.addEventListener('change', setTypeFields);
-    addressAvailable.addEventListener('change', setAddressFields);
+    deliveryPreference.addEventListener('change', setAddressFields);
     const requestedType = new URLSearchParams(window.location.search).get('type')?.toUpperCase();
     if (requestedType === 'AHL' || requestedType === 'DPR') typeSelect.value = requestedType;
     setTypeFields();
