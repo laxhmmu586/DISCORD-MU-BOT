@@ -156,7 +156,7 @@
       dialog.hidden = false;
       dialogOk.focus();
     }
-    function hideMessage() { dialog.hidden = true; }
+    function hideMessage() { dialog.hidden = true; if (controls && !scanBusy) setStatus('Scanning'); }
     dialogOk.addEventListener('click', hideMessage);
     userMenuButton.addEventListener('click', () => {
       const isOpen = userMenu.hidden;
@@ -202,7 +202,7 @@
       const res = await fetch(`${apiBase}/cbs-scan`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ rawScan }) });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const message = data.code === 'WRONG_FLIGHT' ? 'wrong flight' : (data.code === 'NBRD_MESSAGE' ? `NBRD message${data.detail ? `\n${data.detail}` : ''}` : (data.code === 'DUPLICATE_BN' ? `Duplicate BN: ${(String(rawScan).match(/(?:^|\D)(?:0*INF|0*\d{1,3}[A-Z])(\d{3,4})\b/i)?.[1] || '').slice(-3)}` : (data.code === 'SHEETS_QUOTA' ? 'Google Sheets quota is busy. Please wait a few seconds and scan again.' : (data.error || 'Scan failed'))));
+        const message = data.code === 'WRONG_FLIGHT' ? 'wrong flight' : (data.code === 'NBRD_MESSAGE' ? `NBRD message${data.detail ? `\n${data.detail}` : ''}` : (data.code === 'DUPLICATE_BN' ? `Duplicate BN: ${(String(rawScan).match(/(?:^|\D)(?:0*INF|0*\d{1,3}[A-Z])(\d{3,4})\b/i)?.[1] || '').slice(-3)}` : (data.code === 'SHEETS_QUOTA' ? 'Not saved: Google Sheets is still busy after automatic retries. Please wait a minute and scan again.' : (data.error || 'Scan failed'))));
         const type = data.code === 'WRONG_FLIGHT' || data.code === 'DUPLICATE_BN' || data.code === 'SHEETS_QUOTA' ? 'error' : (data.code === 'NBRD_MESSAGE' ? 'warning' : '');
         showMessage(message, 'Message', type);
         throw new Error(message);
@@ -212,7 +212,23 @@
       setStatus(data.isInfant ? `Saved INFANT BN ${data.bn}` : `Saved BN ${data.bn} / Seat ${data.seat}`, 'ok');
       showMessage(data.isInfant ? `Input successful infant BN ${data.bn}` : `Input successful BN ${data.bn}`, data.isInfant ? 'Infant' : 'Success', scanType);
     }
-    async function handleText(text) { try { setStatus('Saving...'); await saveScan(text); } catch (err) { setStatus(err.message, 'err'); } finally { setTimeout(() => { if (controls) setStatus('Scanning'); }, 900); } }
+    async function handleText(text) {
+      const startButton = document.querySelector('#start');
+      startButton.disabled = true;
+      resultEl.hidden = true;
+      setStatus('Saving...');
+      const waitingTimer = setTimeout(() => {
+        setStatus('Still saving. Please keep this page open and wait for confirmation before scanning again.');
+      }, 3000);
+      try {
+        await saveScan(text);
+      } catch (err) {
+        setStatus(err.message, 'err');
+      } finally {
+        clearTimeout(waitingTimer);
+        startButton.disabled = false;
+      }
+    }
     document.querySelector('#nbrd-form').addEventListener('submit', async (event) => {
       event.preventDefault();
       const bnInput = document.querySelector('#nbrd-bn');
@@ -244,7 +260,7 @@
           ? reader.decodeFromConstraints.bind(reader, cameraConstraints)
           : reader.decodeFromVideoDevice.bind(reader, undefined);
         controls = await decode(preview, (result, error) => {
-          if (!result || scanBusy) return;
+          if (!result || scanBusy || !dialog.hidden) return;
           const text = result.getText();
           const now = Date.now();
           if (text === lastScanText && now - lastScanAt < 2500) return;
@@ -252,7 +268,7 @@
           lastScanText = text;
           lastScanAt = now;
           setStatus('Code detected. Saving before next scan...');
-          handleText(text).finally(() => { setTimeout(() => { scanBusy = false; if (controls) setStatus('Scanning'); }, 1500); });
+          handleText(text).finally(() => { setTimeout(() => { scanBusy = false; if (controls && dialog.hidden) setStatus('Scanning'); }, 1500); });
         });
         await applyCameraFocus();
         setStatus('Scanning');

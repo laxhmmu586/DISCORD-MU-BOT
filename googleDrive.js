@@ -282,7 +282,7 @@ let emergencyBoardSheetTitlePending = null;
 let emergencyBoardSheetCache = { loadedAt: 0, rows: [] };
 let emergencyBoardAppendPending = [];
 let emergencyBoardAppendTimer = null;
-let emergencyBoardAppendBatchChain = Promise.resolve();
+let emergencyBoardAppendRunning = false;
 let recordScanSheetTitle = '';
 let recordCaseSheetTitle = '';
 const RECORD_CASE_CACHE_TTL_MS = Math.max(30000, Number(process.env.RECORD_CASE_CACHE_TTL_MS) || 55000);
@@ -290,7 +290,7 @@ let recordCaseCache = { expiresAt:0, rows:[], pending:null };
 let cbsScanSheetCache = { loadedAt: 0, rows: [] };
 let cbsScanAppendPending = [];
 let cbsScanAppendTimer = null;
-let cbsScanAppendBatchChain = Promise.resolve();
+let cbsScanAppendRunning = false;
 let cbsMissingBagSheetTitle = '';
 let cbsMissingBagSheetCache = { loadedAt: 0, rows: [] };
 
@@ -2903,22 +2903,47 @@ function isCbsScanQuotaError(err) {
 const cbsScanSheetsPendingRequests = [];
 let cbsScanSheetsRequestRunning = false;
 let cbsScanSheetsRequestSequence = 0;
+let cbsScanSheetsRetryAt = 0;
+let cbsScanSheetsRetryTimer = null;
+let cbsScanSheetsQuotaBackoffMs = 0;
+// Reserve headroom for other Sheets features sharing the same credentials.
+// Reads and writes have separate quotas; do not slow ordinary saves by combining
+// their budgets. Count failed attempts too, across both boarding queues.
+const cbsScanSheetsRequestStarts = { read: [], write: [] };
+const CBS_SCAN_SHEETS_REQUESTS_PER_MINUTE = 50;
 
 function drainCbsScanSheetsRequests() {
   if (cbsScanSheetsRequestRunning || !cbsScanSheetsPendingRequests.length) return;
+  const now = Date.now();
+  const starts = cbsScanSheetsRequestStarts[cbsScanSheetsPendingRequests[0].requestType];
+  while (starts.length && starts[0] <= now - 60000) {
+    starts.shift();
+  }
+  const budgetReadyAt = starts.length >= CBS_SCAN_SHEETS_REQUESTS_PER_MINUTE
+    ? starts[0] + 60000 : now;
+  const waitMs = Math.max(cbsScanSheetsRetryAt, budgetReadyAt) - now;
+  if (waitMs > 0) {
+    if (!cbsScanSheetsRetryTimer) cbsScanSheetsRetryTimer = setTimeout(() => {
+      cbsScanSheetsRetryTimer = null;
+      drainCbsScanSheetsRequests();
+    }, waitMs);
+    return;
+  }
   cbsScanSheetsRequestRunning = true;
   const request = cbsScanSheetsPendingRequests.shift();
+  starts.push(now);
   Promise.resolve().then(request.fn).then(request.resolve, request.reject).finally(() => {
     cbsScanSheetsRequestRunning = false;
     drainCbsScanSheetsRequests();
   });
 }
 
-function scheduleCbsScanSheetsRequest(fn, priority = 'normal') {
+function scheduleCbsScanSheetsRequest(fn, priority = 'normal', requestType = 'write') {
   const priorityOrder = { scan: 0, normal: 1, background: 2 };
   return new Promise((resolve, reject) => {
     cbsScanSheetsPendingRequests.push({
       fn,
+      requestType,
       priority: priorityOrder[priority] ?? priorityOrder.normal,
       sequence: ++cbsScanSheetsRequestSequence,
       resolve,
@@ -2929,20 +2954,38 @@ function scheduleCbsScanSheetsRequest(fn, priority = 'normal') {
   });
 }
 
-async function cbsScanSheetsCall(fn, label = 'Google Sheets request', priority = 'normal') {
-  const delays = [750, 1500, 3000, 5000];
-  for (let attempt = 0; attempt <= delays.length; attempt += 1) {
+async function cbsScanSheetsCall(fn, label = 'Google Sheets request', priority = 'normal', requestType = 'write') {
+  // Sheets quotas refill each minute. Coordinate the cooldown across callers so
+  // background reads cannot keep hammering Sheets while a scan is backing off.
+  const maxRetries = 6;
+  for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
     try {
-      return await scheduleCbsScanSheetsRequest(fn, priority);
+      return await scheduleCbsScanSheetsRequest(async () => {
+        try {
+          const result = await fn();
+          cbsScanSheetsQuotaBackoffMs = 0;
+          return result;
+        } catch (err) {
+          if (isCbsScanQuotaError(err)) {
+            cbsScanSheetsQuotaBackoffMs = Math.min(32000, (cbsScanSheetsQuotaBackoffMs || 500) * 2);
+            const headers = err?.response?.headers;
+            const retryAfter = headers?.get?.('retry-after') ?? headers?.['retry-after'];
+            const retryAfterMs = /^\d+(\.\d+)?$/.test(String(retryAfter))
+              ? Number(retryAfter) * 1000 : Math.max(0, Date.parse(retryAfter) - Date.now()) || 0;
+            const delay = Math.max(cbsScanSheetsQuotaBackoffMs + Math.floor(Math.random() * 1000), Math.min(60000, retryAfterMs));
+            cbsScanSheetsRetryAt = Date.now() + delay;
+          }
+          throw err;
+        }
+      }, priority, requestType);
     } catch (err) {
-      if (!isCbsScanQuotaError(err) || attempt === delays.length) {
+      if (!isCbsScanQuotaError(err) || attempt === maxRetries) {
         if (isCbsScanQuotaError(err)) {
           err.code = 'SHEETS_QUOTA';
-          err.message = `${label} hit Google Sheets quota. Please wait a few seconds and scan again.`;
+          err.message = `${label} could not complete after retrying Google Sheets quota. Please wait a minute and try again.`;
         }
         throw err;
       }
-      await new Promise((resolve) => setTimeout(resolve, delays[attempt]));
     }
   }
   throw new Error(`${label} failed.`);
@@ -2950,7 +2993,7 @@ async function cbsScanSheetsCall(fn, label = 'Google Sheets request', priority =
 
 async function getCbsScanSheetTitle(priority = 'normal') {
   if (!cbsScanSheetTitle && !cbsScanSheetTitlePending) {
-    cbsScanSheetTitlePending = cbsScanSheetsCall(() => resolveSheetTitleByGid(CBS_SCAN_SHEET_ID, CBS_SCAN_SHEET_GID), 'CBS scan sheet title', priority)
+    cbsScanSheetTitlePending = cbsScanSheetsCall(() => resolveSheetTitleByGid(CBS_SCAN_SHEET_ID, CBS_SCAN_SHEET_GID), 'CBS scan sheet title', priority, 'read')
       .then((title) => { cbsScanSheetTitle = title; return title; })
       .finally(() => { cbsScanSheetTitlePending = null; });
   }
@@ -2966,7 +3009,7 @@ async function getCbsScanSheetRows(options = {}) {
   const res = await cbsScanSheetsCall(() => sheets.spreadsheets.values.get({
     spreadsheetId: CBS_SCAN_SHEET_ID,
     range: `${escapeSheetTitle(title)}!A:R`
-  }), 'CBS scan sheet read', priority);
+  }), 'CBS scan sheet read', priority, 'read');
   const rows = res.data.values || [];
   cbsScanSheetCache = { loadedAt: Date.now(), rows };
   return rows;
@@ -3151,7 +3194,7 @@ async function getCbsScanEnteredRowNumbers(title) {
     ranges: [`${escapeSheetTitle(title)}!A2:C`],
     includeGridData: true,
     fields: 'sheets(data(rowData(values(userEnteredFormat(backgroundColor),effectiveFormat(backgroundColor)))))'
-  }), 'CBS scan entered-state read');
+  }), 'CBS scan entered-state read', 'normal', 'read');
   const rowData = res.data.sheets?.[0]?.data?.[0]?.rowData || [];
   const entered = new Set();
   rowData.forEach((row, index) => {
@@ -3162,9 +3205,9 @@ async function getCbsScanEnteredRowNumbers(title) {
 
 async function getCbsScanRecords() {
   const rows = await getCbsScanSheetRows({ forceRefresh: true });
-  await ensureCbsScanSheetHeaders(rows);
+  const headersUpdated = await ensureCbsScanSheetHeaders(rows);
   const title = await getCbsScanSheetTitle();
-  const freshRows = await getCbsScanSheetRows({ forceRefresh: true });
+  const freshRows = headersUpdated ? await getCbsScanSheetRows({ forceRefresh: true }) : rows;
   const enteredRows = await getCbsScanEnteredRowNumbers(title);
   return freshRows.slice(1).map((row, index) => ({
     rowNumber: index + 2,
@@ -3304,24 +3347,29 @@ async function processCbsScanAppendBatch(batch = []) {
   }
 }
 
-function flushCbsScanAppendBatch() {
-  const batch = cbsScanAppendPending.splice(0);
+async function flushCbsScanAppendBatch() {
   cbsScanAppendTimer = null;
-  cbsScanAppendBatchChain = cbsScanAppendBatchChain
-    .catch(() => {})
-    .then(() => processCbsScanAppendBatch(batch));
+  if (cbsScanAppendRunning) return;
+  cbsScanAppendRunning = true;
+  const batch = cbsScanAppendPending.splice(0);
+  try {
+    await processCbsScanAppendBatch(batch);
+  } finally {
+    cbsScanAppendRunning = false;
+    if (cbsScanAppendPending.length) cbsScanAppendTimer = setTimeout(flushCbsScanAppendBatch, 750);
+  }
 }
 
 async function appendCbsScanRecord(record = {}) {
   return new Promise((resolve, reject) => {
     cbsScanAppendPending.push({ record, resolve, reject });
-    if (!cbsScanAppendTimer) cbsScanAppendTimer = setTimeout(flushCbsScanAppendBatch, 300);
+    if (!cbsScanAppendRunning && !cbsScanAppendTimer) cbsScanAppendTimer = setTimeout(flushCbsScanAppendBatch, 750);
   });
 }
 
 async function getEmergencyBoardSheetTitle(priority = 'normal') {
   if (!emergencyBoardSheetTitle && !emergencyBoardSheetTitlePending) {
-    emergencyBoardSheetTitlePending = cbsScanSheetsCall(() => resolveSheetTitleByGid(EMERGENCY_BOARD_SHEET_ID, EMERGENCY_BOARD_SHEET_GID), 'Emergency board sheet title', priority)
+    emergencyBoardSheetTitlePending = cbsScanSheetsCall(() => resolveSheetTitleByGid(EMERGENCY_BOARD_SHEET_ID, EMERGENCY_BOARD_SHEET_GID), 'Emergency board sheet title', priority, 'read')
       .then((title) => { emergencyBoardSheetTitle = title; return title; })
       .finally(() => { emergencyBoardSheetTitlePending = null; });
   }
@@ -3337,7 +3385,7 @@ async function getEmergencyBoardSheetRows(options = {}) {
   const res = await cbsScanSheetsCall(() => sheets.spreadsheets.values.get({
     spreadsheetId: EMERGENCY_BOARD_SHEET_ID,
     range: `${escapeSheetTitle(title)}!A:R`
-  }), 'CBS scan sheet read', priority);
+  }), 'CBS scan sheet read', priority, 'read');
   const rows = res.data.values || [];
   emergencyBoardSheetCache = { loadedAt: Date.now(), rows };
   return rows;
@@ -3557,7 +3605,7 @@ async function getEmergencyBoardEnteredRowNumbers(title) {
     ranges: [`${escapeSheetTitle(title)}!A2:C`],
     includeGridData: true,
     fields: 'sheets(data(rowData(values(userEnteredFormat(backgroundColor),effectiveFormat(backgroundColor)))))'
-  }), 'CBS scan entered-state read');
+  }), 'CBS scan entered-state read', 'normal', 'read');
   const rowData = res.data.sheets?.[0]?.data?.[0]?.rowData || [];
   const entered = new Set();
   rowData.forEach((row, index) => {
@@ -3568,9 +3616,9 @@ async function getEmergencyBoardEnteredRowNumbers(title) {
 
 async function getEmergencyBoardRecords() {
   const rows = await getEmergencyBoardSheetRows({ forceRefresh: true });
-  await ensureEmergencyBoardSheetHeaders(rows);
+  const headersUpdated = await ensureEmergencyBoardSheetHeaders(rows);
   const title = await getEmergencyBoardSheetTitle();
-  const freshRows = await getEmergencyBoardSheetRows({ forceRefresh: true });
+  const freshRows = headersUpdated ? await getEmergencyBoardSheetRows({ forceRefresh: true }) : rows;
   const enteredRows = await getEmergencyBoardEnteredRowNumbers(title);
   return freshRows.slice(1).map((row, index) => ({
     rowNumber: index + 2,
@@ -3710,18 +3758,23 @@ async function processEmergencyBoardAppendBatch(batch = []) {
   }
 }
 
-function flushEmergencyBoardAppendBatch() {
-  const batch = emergencyBoardAppendPending.splice(0);
+async function flushEmergencyBoardAppendBatch() {
   emergencyBoardAppendTimer = null;
-  emergencyBoardAppendBatchChain = emergencyBoardAppendBatchChain
-    .catch(() => {})
-    .then(() => processEmergencyBoardAppendBatch(batch));
+  if (emergencyBoardAppendRunning) return;
+  emergencyBoardAppendRunning = true;
+  const batch = emergencyBoardAppendPending.splice(0);
+  try {
+    await processEmergencyBoardAppendBatch(batch);
+  } finally {
+    emergencyBoardAppendRunning = false;
+    if (emergencyBoardAppendPending.length) emergencyBoardAppendTimer = setTimeout(flushEmergencyBoardAppendBatch, 750);
+  }
 }
 
 async function appendEmergencyBoardRecord(record = {}) {
   return new Promise((resolve, reject) => {
     emergencyBoardAppendPending.push({ record, resolve, reject });
-    if (!emergencyBoardAppendTimer) emergencyBoardAppendTimer = setTimeout(flushEmergencyBoardAppendBatch, 300);
+    if (!emergencyBoardAppendRunning && !emergencyBoardAppendTimer) emergencyBoardAppendTimer = setTimeout(flushEmergencyBoardAppendBatch, 750);
   });
 }
 
@@ -3743,7 +3796,7 @@ async function appendRecordScanRecord(record = {}) {
   const response = await cbsScanSheetsCall(() => sheets.spreadsheets.values.get({
     spreadsheetId: RECORD_SCAN_SHEET_ID,
     range
-  }), 'Record scan sheet read');
+  }), 'Record scan sheet read', 'normal', 'read');
   const rows = response.data.values || [];
   const firstRow = rows[0] || [];
   const hasHeaders = RECORD_SCAN_HEADERS.every((header, index) => String(firstRow[index] || '').trim().toUpperCase() === header);
