@@ -3846,7 +3846,6 @@ app.post('/cbs-cases', async (req, res) => {
     catch (error) { return res.status(400).json({ error: error.message }); }
     const normalizedBagTags = normalizeCbsBagTags(body.bagTags || body.bagTag);
     if (!normalizedBagTags) return res.status(400).json({ error: 'Bag tag is required' });
-    if (caseType === 'AHL' && !sanitizeCbsText(body.ahlBagDescription, 500)) return res.status(400).json({ error: 'AHL baggage description is required' });
     if (!sanitizeCbsText(body.issueDate, 40)) return res.status(400).json({ error: 'Issue date is required' });
     if (!body.passengerSignature) return res.status(400).json({ error: 'Passenger signature is required' });
     const now = new Date().toISOString();
