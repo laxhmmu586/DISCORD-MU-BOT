@@ -789,7 +789,7 @@ test('Outbound form orders shared fields and supports adding multiple bag tags',
   assert.match(indexPage, /insertAdjacentHTML\("beforeend"/);
   assert.match(indexPage, /data-test-remove-bag-tag/);
   assert.match(indexPage, /for \(const entry of entries\)/);
-  const cbsOutbound = page.match(/if \(direction === 'outbound'\) return `([\s\S]*?)`;\n/)?.[1] || '';
+  const cbsOutbound = page.match(/if \(direction === 'outbound'\) return `([\s\S]*?)`;\r?\n/)?.[1] || '';
   assert.ok(cbsOutbound.indexOf('<span>Date</span>') < cbsOutbound.indexOf('<span>Type</span>'));
   assert.ok(cbsOutbound.indexOf('<span>Type</span>') < cbsOutbound.indexOf('<span>Bag Tag Number</span>'));
   assert.match(cbsOutbound, /data-add-outbound-bag-tags/);
@@ -828,11 +828,13 @@ test('home Baggage Update menu supports Exchange', () => {
 
 test('CBS passenger information keeps all operationally required fields visible', () => {
   const requiredFields = page.match(/const requiredPassengerFields = \[([\s\S]*?)\n\s*\];/)?.[1] || '';
-  for (const label of ['Passenger Name', 'Email', 'Phone', 'Ticket Number', 'Flight Route', 'Permanent Address']) {
+  for (const label of ['Passenger Name', 'Email', 'Phone', 'Ticket Number', 'Flight Route']) {
     assert.match(requiredFields, new RegExp(`label\\('${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}'`));
   }
   assert.doesNotMatch(requiredFields, /label\('Bag Tag'/);
   assert.match(page, /requiredFieldGrid\(requiredPassengerFields\)/);
+  assert.match(page, /PirDelivery.fields\(row, document.documentElement.lang\)/);
+  assert.match(page, /fieldGrid\(deliveryFields\)/);
 });
 
 test('CBS tracking offers the request bags stage', () => {

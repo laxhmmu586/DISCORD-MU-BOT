@@ -3,6 +3,7 @@ require('dotenv').config();
 const express = require('express');
 const fs = require('fs/promises');
 const path = require('path');
+const PirDelivery = require('./public/public/pir-delivery');
 
 const {
 
@@ -1631,8 +1632,13 @@ function createPirPdf(record) {
   };
   section('PASSENGER INFORMATION', 642);
   coded('NM', 'Passenger Name', record.passengerName, 52, 612, 318, 24);
-  coded('PA', 'Address', record.permanentAddress, 52, 574, 318, 38);
-  coded('TA', 'Temporary Address', record.temporaryAddress, 52, 536, 318, 38);
+  if (record.deliveryPreference) {
+    coded('DL', 'Collection / delivery:', PirDelivery.pick(PirDelivery.methods[record.deliveryPreference], record.language), 52, 574, 318, 38);
+    coded('AD', 'See Delivery Information page for address and instructions.', '', 52, 536, 318, 38);
+  } else {
+    coded('PA', 'Address', record.permanentAddress, 52, 574, 318, 38);
+    coded('TA', 'Temporary Address', record.temporaryAddress, 52, 536, 318, 38);
+  }
   coded('PN', 'Phone', record.phone, 382, 602, 170, 22);
   coded('TK', 'Ticket', record.ticketNumber, 382, 580, 170, 22);
   coded('CL', '', record.classOfTravel, 382, 558, 84, 22);
@@ -1668,6 +1674,37 @@ function createPirPdf(record) {
     content.push(pdfText('Passenger Signature __________________________', 330, 50, 9));
   }
   const contentPages = [content];
+  if (record.deliveryPreference) {
+    // Keep delivery details on their own page so long addresses and the complete
+    // bilingual notice cannot be clipped by the original fixed-height boxes.
+    const page = ['0.97 0.98 1 rg 0 0 612 792 re f', '0 0 0 RG 0 0 0 rg 1 w 36 36 540 720 re S'];
+    const language = record.language === 'zh' ? 'zh' : 'en';
+    page.push(pdfText(PirDelivery.pick(['DELIVERY INFORMATION', '配送信息'], language), 54, 724, 15));
+    let y = 692;
+    const paragraph = (value, size = 10) => {
+      // Measure each candidate using the same font runs as pdfText (including
+      // CJK gutters), and wrap even addresses with no spaces.
+      const width = (text) => (text.match(/[\x20-\x7E]+|[^\x20-\x7E]+/g) || []).reduce((total, run, index) => total + (index ? size * 0.25 : 0) + (/^[\x20-\x7E]+$/.test(run) ? pdfHelveticaTextWidth(run, size) : Array.from(run).length * size), 0);
+      let line = '';
+      const flush = () => { page.push(pdfText(line, 54, y, size)); y -= size + 5; line = ''; };
+      for (const token of pdfSafeText(value).match(/[\x21-\x7E]+|[^\x21-\x7E]/gu) || []) {
+        if (line && width(line + token) > 500) flush();
+        for (const character of Array.from(token)) {
+          if (line && width(line + character) > 500) flush();
+          if (line || character !== ' ') line += character;
+        }
+      }
+      if (line) { page.push(pdfText(line, 54, y, size)); y -= size + 5; }
+      y -= 12;
+    };
+    paragraph(`${PirDelivery.pick(['Passenger', '旅客姓名'], language)}: ${record.passengerName || ''}`);
+    PirDelivery.fields(record, language).forEach(([key, value]) => paragraph(`${key}: ${value}`));
+    if (['permanent', 'temporary'].includes(record.deliveryPreference)) {
+      page.push('0.7 0.05 0.04 rg');
+      paragraph(PirDelivery.pick(PirDelivery.notice, language));
+    }
+    contentPages.push(page);
+  }
   const chunkSize = 30;
   const contentChunks = items.length ? Array.from({ length: Math.ceil(items.length / chunkSize) }, (_, index) => items.slice(index * chunkSize, (index + 1) * chunkSize)) : [[]];
   contentChunks.forEach((chunk, pageIndex) => {
@@ -2102,8 +2139,7 @@ function cbsPdfLines(record) {
     ['Flight routing', record.flightRoute],
     ['Baggage tag number', record.bagTag],
     ['Destination on Bags', record.destinationOnBags],
-    ['Permanent address', record.permanentAddress],
-    ['Temporary address', record.temporaryAddress],
+    ...PirDelivery.fields(record, record.language),
     ['Bag description', record.ahlBagDescription || record.dprBagInfo],
     ['Bag type', record.ahlBagType || record.dprBagType],
     ['Damage level', record.dprDamageLevel],
@@ -3805,7 +3841,9 @@ app.post('/cbs-cases', async (req, res) => {
     if (!sanitizeCbsText(body.phone, 80)) return res.status(400).json({ error: 'Phone is required' });
     if (!sanitizeCbsText(body.ticketNumber, 80)) return res.status(400).json({ error: 'Ticket number is required' });
     if (!sanitizeCbsText(firstFlight.flightNo, 20) || !sanitizeCbsText(firstFlight.flightDate, 20) || !sanitizeCbsText(firstFlight.origin, 20) || !sanitizeCbsText(firstFlight.destination, 20)) return res.status(400).json({ error: 'First flight row is required' });
-    if (!sanitizeCbsText(body.permanentAddress, 500)) return res.status(400).json({ error: 'Address is required' });
+    let delivery;
+    try { delivery = PirDelivery.normalize(body); }
+    catch (error) { return res.status(400).json({ error: error.message }); }
     const normalizedBagTags = normalizeCbsBagTags(body.bagTags || body.bagTag);
     if (!normalizedBagTags) return res.status(400).json({ error: 'Bag tag is required' });
     if (caseType === 'AHL' && !sanitizeCbsText(body.ahlBagDescription, 500)) return res.status(400).json({ error: 'AHL baggage description is required' });
@@ -3834,10 +3872,7 @@ app.post('/cbs-cases', async (req, res) => {
       flightRoute: buildCbsFlightRoute(body),
       bagTag: normalizedBagTags,
       destinationOnBags: sanitizeCbsText(body.destinationOnBags, 80).toUpperCase(),
-      permanentAddress: sanitizeCbsText(body.permanentAddress, 500),
-      temporaryAddress: sanitizeCbsText(body.temporaryAddress, 500),
-      temporaryAddressValidUntil: sanitizeCbsText(body.temporaryAddressValidUntil, 40),
-      addressAvailable: sanitizeCbsText(body.addressAvailable, 20),
+      ...delivery,
       ahlBagDescription: sanitizeCbsText(body.ahlBagDescription, 500),
       ahlBagBrandTag: sanitizeCbsText(body.ahlBagBrandTag, 200),
       ahlBagType: sanitizeCbsText(body.ahlBagType, 160),
