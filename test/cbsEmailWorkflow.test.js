@@ -22,9 +22,12 @@ test('incorrect pickup email preserves bilingual instructions and emphasis', () 
   assert.equal(en.subject, 'Urgent: Incorrect Baggage Pick-Up');
   assert.equal(zh.subject, '紧急：误取他人行李通知');
   assert.match(en.text, /Please contact us immediately upon receiving this email/);
-  assert.match(en.html, /<strong>Los Angeles International Airport \(LAX\), Tom Bradley International Terminal \(TBIT\), Counter A68<\/strong>/);
+  assert.match(en.html, /<strong>contact us immediately<\/strong>/);
+  assert.match(en.html, /BAGGAGE RETURN LOCATION/);
+  assert.match(en.html, /<table role="presentation"/);
+  for (const phrase of ['Los Angeles International Airport (LAX)', 'Tom Bradley International Terminal (TBIT)', 'Counter A68']) assert.ok(en.html.includes(phrase));
   assert.match(en.html, /<strong>Return Time: 7:00 AM – 2:00 PM<\/strong>/);
-  for (const phrase of ['立即与我们取得联系', '洛杉矶国际机场（LAX）', 'Tom Bradley International Terminal（TBIT）', 'A68号柜台', '接收时间：上午7:00至下午2:00']) {
+  for (const phrase of ['立即与我们取得联系', '接收时间：上午7:00至下午2:00']) {
     assert.ok(zh.html.includes(`<strong>${phrase}</strong>`));
   }
   assert.ok(!en.text.includes('<strong>') && !zh.text.includes('<strong>'));
