@@ -58,6 +58,48 @@ test('legacy submissions retain address compatibility without inferring a delive
   assert.match(pdfContext.createPirPdf(old).toString('binary'), /\/Count 2\b/);
 });
 
+test('DPR submissions do not require or retain delivery information', () => {
+  const empty = PirDelivery.normalize({ caseType: 'DPR' });
+  assert.deepEqual(empty, { deliveryPreference: '', permanentAddress: '', temporaryAddress: '', temporaryAddressValidUntil: '', addressAvailable: '' });
+  assert.deepEqual(PirDelivery.normalize({ caseType: 'DPR', deliveryPreference: 'temporary', temporaryAddress: 'Hotel' }), empty);
+});
+
+test('delivery controls follow the case type, including previously selected addresses', () => {
+  const page = read('public/public/pir-form.html');
+  const control = () => ({ disabled: false, required: false });
+  const field = () => ({ hidden: false, control: control(), querySelector() { return this.control; } });
+  const label = { hidden: false };
+  const context = {
+    PirDelivery, typeSelect: { value: 'AHL' },
+    deliveryPreference: { value: 'temporary', closest: () => label },
+    permanentAddressField: field(), temporaryAddressField: field(), validUntilField: field(),
+    deliveryHint: {}, deliveryNote: {}, document: { documentElement: { lang: 'en' } }
+  };
+  vm.createContext(context);
+  vm.runInContext(page.slice(page.indexOf('    function setAddressFields()'), page.indexOf('    typeSelect.addEventListener')), context);
+  context.setAddressFields();
+  assert.equal(label.hidden, false);
+  assert.equal(context.deliveryPreference.required, true);
+  assert.equal(context.temporaryAddressField.control.required, true);
+  context.typeSelect.value = 'DPR';
+  context.setAddressFields();
+  assert.equal(label.hidden, true);
+  assert.equal(context.deliveryPreference.disabled, true);
+  assert.equal(context.deliveryPreference.required, false);
+  for (const name of ['permanentAddressField', 'temporaryAddressField', 'validUntilField']) {
+    assert.equal(context[name].hidden, true);
+    assert.equal(context[name].control.disabled, true);
+    assert.equal(context[name].control.required, false);
+  }
+  assert.equal(context.deliveryHint.hidden, true);
+  assert.equal(context.deliveryNote.hidden, true);
+  context.typeSelect.value = 'AHL';
+  context.setAddressFields();
+  assert.equal(label.hidden, false);
+  assert.equal(context.deliveryPreference.disabled, false);
+  assert.equal(context.temporaryAddressField.hidden, false);
+});
+
 test('both languages preserve the exact requested third-party notice', () => {
   assert.equal(PirDelivery.notice[0], 'Please note: Once the baggage is handed over for delivery, it will be handled by a third-party delivery service. Due to delivery arrangements and actual operating conditions, we are unable to provide or confirm a specific delivery time.');
   assert.equal(PirDelivery.notice[1], '请注意：行李交付配送后，由第三方配送服务负责后续运输。由于配送安排及实际情况，我们无法提供或确认具体送达时间。');
