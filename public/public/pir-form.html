@@ -469,7 +469,11 @@
     async function parseJson(res) { const text = await res.text(); try { return JSON.parse(text); } catch { throw new Error(`API returned non-JSON (${res.status}). Please check API base: ${apiBase}`); } }
     function setTypeFields() { const isAhl = typeSelect.value === 'AHL'; bagSelectorGrid.dataset.caseType = typeSelect.value; dprFields.classList.toggle('is-active', !isAhl); standaloneBagTags.hidden = true; standaloneBagTags.querySelectorAll('input,button').forEach((control) => { control.disabled = true; }); typeSelect.disabled = false; bagSelectorGrid.querySelectorAll('input,button').forEach((control) => { control.disabled = false; }); thanks.classList.remove('is-active'); }
     function setAddressFields() {
-      const method = deliveryPreference.value;
+      const isAhl = typeSelect.value === 'AHL';
+      deliveryPreference.closest('label').hidden = !isAhl;
+      deliveryPreference.disabled = !isAhl;
+      deliveryPreference.required = isAhl;
+      const method = isAhl ? deliveryPreference.value : '';
       [[permanentAddressField, method === 'permanent', true], [temporaryAddressField, method === 'temporary', true], [validUntilField, method === 'temporary', false]].forEach(([field, show, required]) => {
         field.hidden = !show;
         const control = field.querySelector('input,textarea');
@@ -482,7 +486,7 @@
       deliveryNote.hidden = !['permanent', 'temporary'].includes(method);
       deliveryNote.textContent = PirDelivery.pick(PirDelivery.notice, lang);
     }
-    typeSelect.addEventListener('change', setTypeFields);
+    typeSelect.addEventListener('change', () => { setTypeFields(); setAddressFields(); });
     deliveryPreference.addEventListener('change', setAddressFields);
     const requestedType = new URLSearchParams(window.location.search).get('type')?.toUpperCase();
     if (requestedType === 'AHL' || requestedType === 'DPR') typeSelect.value = requestedType;

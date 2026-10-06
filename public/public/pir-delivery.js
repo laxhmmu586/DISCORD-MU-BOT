@@ -31,6 +31,9 @@
     return rows;
   }
   function normalize(body) {
+    if (String(body.caseType || '').trim().toUpperCase() === 'DPR') {
+      return { deliveryPreference: '', permanentAddress: '', temporaryAddress: '', temporaryAddressValidUntil: '', addressAvailable: '' };
+    }
     const method = String(body.deliveryPreference || '').trim();
     const clean = (value, max) => String(value || '').trim().slice(0, max);
     if (method && !Object.hasOwn(methods, method)) throw new Error('Invalid collection / delivery method');
