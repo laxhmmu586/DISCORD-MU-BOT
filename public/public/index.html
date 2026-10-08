@@ -4467,7 +4467,7 @@
   <body class="is-loading">
     <div class="loading-overlay" aria-live="polite"><span>THINKING</span></div>
     <header class="topbar">
-      <a class="brand" id="home-nav-link" href="#home" aria-label="MUFC home"><span>MUFC</span></a>
+      <a class="brand" id="home-nav-link" href="/flights.html" aria-label="MUFC - Select Flight"><span>MUFC</span></a>
       <nav class="nav-links" aria-label="Primary navigation">
         <a href="#reports" id="report-nav-link">Report</a>
         <a href="#test" id="test-nav-link">Baggage</a>
@@ -4739,7 +4739,6 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="/__/firebase/init.js"></script>
     <script>
-      const homeNavLink = document.querySelector("#home-nav-link");
       const menuButton = document.querySelector(".menu-button");
       const fallbackMenuButton = document.querySelector(".mobile-menu-fallback");
       const mobilePanel = document.querySelector(".mobile-panel");
@@ -8846,7 +8845,6 @@
         });
       });
 
-      homeNavLink.addEventListener("click", (event) => { event.preventDefault(); showHomePage(); });
       bagReportButton?.addEventListener("click", closeFlightMenuAfterAction(renderBagReport));
       salesReportButton?.addEventListener("click", closeFlightMenuAfterAction(downloadSalesReport));
       reportNavLink.addEventListener("click", (event) => { event.preventDefault(); showReportPage("sales"); });
