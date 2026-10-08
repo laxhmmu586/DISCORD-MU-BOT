@@ -1329,7 +1329,8 @@
       ]);
       const submissionFields = [[label('Issue Date', '填写日期'), row.issueDate], [label('Passenger Signature', '旅客签字'), row.passengerSignature], [label('Submitted At', '提交时间'), row.submittedAt || row.submitDate]];
       const deliveryFields = PirDelivery.fields(row, document.documentElement.lang).filter(([key]) => key !== label('Instructions', '提示'));
-      return `<div class="full-file"><section class="full-file-section delivery-information"><h3>${label('Delivery Information', '配送信息')}</h3>${fieldGrid(deliveryFields)}</section><section class="full-file-section"><h3>${label('Passenger information', '旅客资料')}</h3>${requiredFieldGrid(requiredPassengerFields)}</section><section class="full-file-section"><h3>${label('Baggage information', '行李资料')}</h3>${fieldGrid(baggageFields)}</section><section class="full-file-section"><h3>${label('Submission information', '提交资料')}</h3>${fieldGrid(submissionFields)}</section></div>`;
+      const deliverySection = inferCaseType(row) === 'DPR' ? '' : `<section class="full-file-section delivery-information"><h3>${label('Delivery Information', '配送信息')}</h3>${fieldGrid(deliveryFields)}</section>`;
+      return `<div class="full-file">${deliverySection}<section class="full-file-section"><h3>${label('Passenger information', '旅客资料')}</h3>${requiredFieldGrid(requiredPassengerFields)}</section><section class="full-file-section"><h3>${label('Baggage information', '行李资料')}</h3>${fieldGrid(baggageFields)}</section><section class="full-file-section"><h3>${label('Submission information', '提交资料')}</h3>${fieldGrid(submissionFields)}</section></div>`;
     }
     function updateFormHtml(row, mode = 'worldtracer') {
       if (!row.rowNumber) return `<p class="status err">${label('A saved row is required before this case can be updated.', '案件保存后才能更新。')}</p>`;
