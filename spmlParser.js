@@ -101,12 +101,15 @@ function parseSpmlLog(log, options = {}) {
 }
 
 function parseMealOrderEmail(text) {
+  const orderText = String(text || '').split(/PASSENGER\s+BOOKING\s+FOR\b/i)[0];
   const flight = String(text || '').match(/\b([A-Z]{2}\d+)\/(\d{2}[A-Z]{3}(?:\d{4}|\d{2}))\b/i);
   const cabinCounts = {};
   const countsByCabin = {};
+  let hasCabinCounts = true;
   for (const cabin of ['F', 'J', 'Y']) {
     const label = cabin === 'J' ? '[JC]' : cabin;
-    const match = String(text || '').match(new RegExp(`^\\s*${label}\\s*-\\s*(\\d+)([^\\n\\r]*)`, 'im'));
+    const match = orderText.match(new RegExp(`^\\s*${label}\\s*-\\s*(\\d+)([^\\n\\r]*)`, 'im'));
+    if (!match) hasCabinCounts = false;
     cabinCounts[cabin] = Number(match?.[1] || 0);
     countsByCabin[cabin] = {};
     String(match?.[2] || '').replace(/\+\s*(\d+)\s*([A-Z][A-Z0-9]{3})\b/gi, (_, count, meal) => {
@@ -115,8 +118,8 @@ function parseMealOrderEmail(text) {
       return _;
     });
   }
-  const economy = String(text || '').match(/^\s*Y\s*-\s*(\d+)([^\n\r]*)/im);
-  return { flightNo: flight?.[1]?.toUpperCase() || '', flightDate: normalizeFlightDate(flight?.[2]), cabinCounts, countsByCabin, economyBase: cabinCounts.Y, counts: countsByCabin.Y, economyTotal: Number(String(economy?.[2] || '').match(/=\s*(\d+)/)?.[1] || 0) };
+  const economy = orderText.match(/^\s*Y\s*-\s*(\d+)([^\n\r]*)/im);
+  return { flightNo: flight?.[1]?.toUpperCase() || '', flightDate: normalizeFlightDate(flight?.[2]), hasCabinCounts, cabinCounts, countsByCabin, economyBase: cabinCounts.Y, counts: countsByCabin.Y, economyTotal: Number(String(economy?.[2] || '').match(/=\s*(\d+)/)?.[1] || 0) };
 }
 
 module.exports = { parseSpmlLog, parseMealOrderEmail, flightDateToIso };

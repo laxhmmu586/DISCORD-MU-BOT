@@ -59,7 +59,7 @@ SPML-VOML VOML HK1`);
 });
 
 test('extracts the emailed economy special-meal totals', () => {
-  assert.deepEqual(parseMealOrderEmail('MU586/02SEP26\nF - 4\nC - 50\nY - 231 + 6 VOML + 1 SFML + 2 VGML = 240'), { flightNo:'MU586', flightDate:'02SEP26', cabinCounts:{ F:4, J:50, Y:231 }, countsByCabin:{ F:{}, J:{}, Y:{ VOML:6, SFML:1, VGML:2 } }, economyBase:231, counts:{ VOML:6, SFML:1, VGML:2 }, economyTotal:240 });
+  assert.deepEqual(parseMealOrderEmail('MU586/02SEP26\nF - 4\nC - 50\nY - 231 + 6 VOML + 1 SFML + 2 VGML = 240'), { flightNo:'MU586', flightDate:'02SEP26', hasCabinCounts:true, cabinCounts:{ F:4, J:50, Y:231 }, countsByCabin:{ F:{}, J:{}, Y:{ VOML:6, SFML:1, VGML:2 } }, economyBase:231, counts:{ VOML:6, SFML:1, VGML:2 }, economyTotal:240 });
 });
 
 test('uses booking class rather than seat row to assign the physical cabin', () => {
