@@ -14,11 +14,15 @@ app.whenReady().then(async()=>{
   const today=operationalDate();
   let log=['MU586','MU9586','MU578','MU583','MU577'].map(f=>sample.replaceAll('MU586',f).replaceAll('08OCT26',today).replace('GTD/????','GTD/132')).join('\n');
   let origin; const calls=[];
+  let pendingFlights, holdFlights=true, failFlights=false;
   server=http.createServer(async(req,res)=>{
     const url=new URL(req.url,origin);
     if(url.pathname==='/mock-firebase.js'){res.setHeader('Content-Type','text/javascript');return res.end(`window.firebase={apps:[{}],auth:()=>({currentUser:{email:'fixture@example.test',getIdToken:async()=> 'fixture'},onAuthStateChanged:fn=>fn({email:'fixture@example.test',getIdToken:async()=> 'fixture'})})};`);}
     if(url.pathname==='/__/firebase/init.js'){res.setHeader('Content-Type','text/javascript');return res.end('');}
-    if(url.pathname==='/flights'){res.setHeader('Content-Type','application/json');return res.end(JSON.stringify({flights:discoverFlights(log,{date:today})}));}
+    if(url.pathname==='/flights'){
+      const send=()=>{res.setHeader('Content-Type','application/json');res.statusCode=failFlights?503:200;res.end(JSON.stringify(failFlights?{error:'Fixture unavailable'}:{flights:discoverFlights(log,{date:today})}));};
+      if(holdFlights)pendingFlights=send;else send();return;
+    }
     if(url.pathname==='/search'||url.pathname.startsWith('/cbs-scan')){calls.push({path:url.pathname,flight:url.searchParams.get('flightNo'),date:url.searchParams.get('flightDate')});res.setHeader('Content-Type','application/json');return res.end(JSON.stringify({ok:true,rows:[],error:'fixture'}));}
     try{
       let content=await fs.readFile(path.join(root,url.pathname==='/'?'index.html':url.pathname.slice(1)));
@@ -36,7 +40,21 @@ app.whenReady().then(async()=>{
   win=new BrowserWindow({show:false,width:1440,height:960,webPreferences:{session:ses,contextIsolation:true}});
   const run=code=>win.webContents.executeJavaScript(code);
   const wait=async code=>{for(let i=0;i<100;i++){if(await run(code))return;await new Promise(r=>setTimeout(r,100));}throw Error('UI timeout: '+code);};
-  await win.loadURL(origin+'/flights.html');await wait('document.querySelectorAll(".flight-card").length===3');
+  await win.loadURL(origin+'/flights.html');
+  await wait('getComputedStyle(document.querySelector(".flight-loading")).display==="grid"');
+  assert.equal(await run('getComputedStyle(document.querySelector("main")).visibility'),'hidden');
+  await run('new Promise(resolve=>{const i=new Image();i.onload=resolve;i.onerror=resolve;i.src="/assets/mission-earth.png"})');
+  await new Promise(r=>setTimeout(r,300));
+  await fs.writeFile(path.join(out,'online-thinking.png'),(await win.webContents.capturePage()).toPNG());
+  for(let i=0;!pendingFlights&&i<100;i++)await new Promise(r=>setTimeout(r,20));
+  assert.ok(pendingFlights);holdFlights=false;pendingFlights();
+  await wait('document.querySelectorAll(".flight-card").length===3 && !document.body.classList.contains("is-loading")');
+  failFlights=true;
+  await run('document.querySelector("#flight-reload").click()');
+  await wait('document.querySelector("#flight-status").textContent==="Fixture unavailable" && !document.body.classList.contains("is-loading")');
+  failFlights=false;
+  await run('document.querySelector("#flight-reload").click()');
+  await wait('document.querySelectorAll(".flight-card").length===3 && !document.body.classList.contains("is-loading")');
   assert.deepEqual(await run('[...document.querySelectorAll(".flight-card")].map(c=>c.dataset.flight)'),['MU586','MU9586','MU578']);
   assert.equal(await run('getComputedStyle(document.querySelector(".flight-card")).webkitBoxReflect'),'none');
   assert.deepEqual(await run('[...document.querySelectorAll(".flight-services b")].map(e=>e.textContent)'),['REPORT','BAGGAGE','LBS','BOARDING','240']);

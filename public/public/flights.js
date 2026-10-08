@@ -4,8 +4,11 @@
   const city = code => ({LAX:'LOS ANGELES',PVG:'SHANGHAI',SHA:'SHANGHAI'}[code] || code || '—');
   const enter = flight => { window.setMufcFlight({...flight, source:'current'}); const next = new URLSearchParams(location.search).get('next'); const allowed = ['/index.html','/scan.html','/scan2.html','/m-board.html','/m-board2.html']; const url = new URL(next || '/index.html', location.origin); location.replace(url.origin === location.origin && allowed.includes(url.pathname) ? url.href : '/index.html'); };
   let running = false, signature = '';
-  async function refresh() {
+  const finishLoading = () => { document.body.classList.remove('is-loading'); cards.setAttribute('aria-busy','false'); };
+  async function refresh(showLoading = false) {
     if (running) return; running = true; reload.disabled = true;
+    cards.setAttribute('aria-busy','true');
+    if (showLoading) document.body.classList.add('is-loading');
     try {
       const response = await fetch((window.MU_API_BASE || 'https://api.mufcapp.net').replace(/\/$/,'') + '/flights', {cache:'no-store', headers:{Authorization:'Bearer '+await firebase.auth().currentUser.getIdToken()}}), data = await response.json();
       if (!response.ok || data.error) throw new Error(data.error || 'Unable to read flight logs.');
@@ -25,15 +28,15 @@
       status.textContent = flights.length ? `${flights.length} flight${flights.length === 1 ? '' : 's'} departing LAX today` : 'No LAX departure SY record found for today. Refresh after today’s logs are available.';
       if (!flights.length) cards.innerHTML = `<div class="flight-empty"><h2>No flights detected</h2><p>MU586 · MU9586 · MU578<br>Only today's LAX departures found in today’s SY logs appear here.</p></div>`;
     } catch (error) { signature = ''; cards.innerHTML = '<div class="flight-empty"><h2>Flights unavailable</h2><p>Please refresh to try again.</p></div>'; status.textContent = error.message; }
-    finally { running = false; reload.disabled = false; cards.setAttribute('aria-busy','false'); }
+    finally { running = false; reload.disabled = false; finishLoading(); }
   }
-  reload.onclick = refresh;
-  if (!window.firebase?.apps?.length) { status.textContent = 'Unable to initialize sign-in. Please reload.'; return; }
+  reload.onclick = () => refresh(true);
+  if (!window.firebase?.apps?.length) { status.textContent = 'Unable to initialize sign-in. Please reload.'; finishLoading(); return; }
   let timer;
   firebase.auth().onAuthStateChanged(user => {
     clearInterval(timer);
     if (!user) { location.replace('/login.html?next='+encodeURIComponent(location.pathname+location.search)); return; }
     document.querySelector('#flight-user').textContent = user.email || 'MUFC';
     refresh(); timer=setInterval(() => { if (!document.hidden) refresh(); },15000);
-  });
+  }, error => { status.textContent = error.message || 'Unable to check sign-in. Please reload.'; finishLoading(); });
 })();
