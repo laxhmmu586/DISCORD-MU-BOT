@@ -439,7 +439,7 @@ test('On-hand and Bag Room rows only show Rush Tag when at least one row has one
   assert.match(page, /const showRushTag = rows\.some\(\(row\) => String\(row\.rushTagNumber \|\| ''\)\.trim\(\)\)/);
   assert.match(page, /const rushTagHeading = showRushTag \? '<th>Rush Tag<\/th>' : ''/);
   assert.match(page, /const rushTagCell = showRushTag \?/);
-  assert.match(page, /const columnCount = \(showRushTag \? 6 : 5\) \+ \(isBagRoomGroup \? 1 : 0\)/);
+  assert.match(page, /const columnCount = \(showRushTag \? 6 : 5\) \+ \(isBagRoomGroup \? 2 : 0\)/);
   assert.doesNotMatch(page, /<th>Type \/ Status<\/th><th>Location<\/th>/);
   assert.match(page, /escapeHtml\(row\.rushTagNumber \|\| '-'\)/);
   assert.match(server, /async function matchBagRoomUnloadCasesForRush/);
@@ -526,7 +526,7 @@ test('MU586 Bag Room CC alerts stay disabled until explicitly enabled', () => {
 });
 
 test('On-hand cases match the passenger case layout and support WorldTracer progress', () => {
-  assert.match(page, /<th>WorldTracer #<\/th><th>PVG Filed<\/th><th>Bag Tag<\/th>\$\{rushTagHeading\}<th>Date<\/th>/);
+  assert.match(page, /<th>WorldTracer #<\/th><th>PVG Filed<\/th><th>Bag Tag<\/th>\$\{rushTagHeading\}\$\{isBagRoomGroup \? \'<th>Flight<\/th>\' : \'\'\}<th>Date<\/th>/);
   assert.doesNotMatch(page, /\$\{rushTagHeading\}<th>Direction<\/th>/);
   assert.match(page, /const dateBands = new Map\(\)/);
   assert.match(page, /case-summary-row \$\{dateBand\}/);
@@ -752,7 +752,7 @@ test('On-hand exchange is saved to Google Sheets and shows old and new tags', ()
   assert.match(page, /<span class="exchange-tag-new">\$\{escapeHtml\(lastExchange\.newTag\)\}<\/span>/);
   assert.match(page, /\.exchange-tag-arrow::before,\.exchange-tag-arrow::after/);
   assert.match(page, /detail:`\$\{exchange\.oldTag\} → \$\{exchange\.newTag\}`/);
-  assert.match(page, /<col style="width:310px">\$\{rushTagColumn\}/);
+  assert.match(page, /<col style="width:\$\{isBagRoomGroup \? 200 : 310\}px">\$\{rushTagColumn\}/);
 });
 
 test('home Baggage add flow also supports On-hand Exchange', () => {

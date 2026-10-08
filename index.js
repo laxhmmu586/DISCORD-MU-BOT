@@ -2616,6 +2616,8 @@ app.post('/contact-form-submissions', async (req, res) => {
     const date = sanitizeCbsText(body.date, 10);
     const name = sanitizeCbsText(body.name, 160);
     const seatNumber = sanitizeCbsText(body.seatNumber, 20).toUpperCase();
+    const flightNo = sanitizeCbsText(body.flightNo, 20).toUpperCase();
+    if (flightNo && !/^MU\d{3,4}$/.test(flightNo)) return res.status(400).json({ error: 'Invalid flight number.' });
     const ticketNumber = sanitizeCbsText(body.ticketNumber, 40);
     const email = sanitizeCbsText(body.email, 160).toLowerCase();
     const phone = sanitizeCbsText(body.phone, 80);
@@ -2627,7 +2629,7 @@ app.post('/contact-form-submissions', async (req, res) => {
       return res.status(400).json({ error: 'Use no more than 10 attachments, no more than 22 MB total, and no file larger than 8 MB.' });
     }
     const record = {
-      submittedAt: new Date().toISOString(), date, name, seatNumber, ticketNumber, email, phone, language,
+      submittedAt: new Date().toISOString(), date, name, flightNo, seatNumber, ticketNumber, email, phone, language,
       attachmentNames: attachments.map((attachment) => attachment.filename).join(', ')
     };
     await appendContactFormSubmission(record);
@@ -3060,6 +3062,7 @@ async function sendTransit240ToDiscord(record) {
     color: 0x2ecc71,
     title: '240 Record',
     fields: [
+      { name: 'Flight', value: record.flightNo || '—', inline: true },
       { name: 'BN', value: record.bnNumber || '—', inline: true },
       { name: 'Passenger', value: record.passengerName || '—', inline: true },
       { name: 'Nationality', value: record.nationalityCode || '—', inline: true },
@@ -3076,7 +3079,10 @@ async function sendTransit240ToDiscord(record) {
 
 app.post('/transit-240', async (req, res) => {
   try {
+    const flightNo = String(req.body?.flightNo || 'MU586').trim().toUpperCase();
+    if (!['MU586', 'MU578'].includes(flightNo)) return res.status(400).json({ error: 'Choose MU586 or MU578.' });
     const record = {
+      flightNo,
       passengerName: String(req.body?.passengerName || '').trim(),
       seatNumber: String(req.body?.seatNumber || '').trim().toUpperCase(),
       bnNumber: String(req.body?.bnNumber || '').trim(),

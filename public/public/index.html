@@ -1,6 +1,10 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <script>
+      const serviceRoute = {"#reports":"/report.html", "#test":"/baggage.html"}[location.hash];
+      if (serviceRoute) location.replace(serviceRoute);
+    </script>
     <script src="/flight-session.js"></script>
     <link rel="stylesheet" href="/flight-navigation.css" />
     <meta charset="utf-8" />
@@ -4469,8 +4473,8 @@
     <header class="topbar">
       <a class="brand" id="home-nav-link" href="/flights.html" aria-label="MUFC - Select Flight"><span>MUFC</span></a>
       <nav class="nav-links" aria-label="Primary navigation">
-        <a href="#reports" id="report-nav-link">Report</a>
-        <a href="#test" id="test-nav-link">Baggage</a>
+        <a href="/report.html" id="report-nav-link">Report</a>
+        <a href="/baggage.html" id="test-nav-link">Baggage</a>
         <a href="cbs.html" id="cbs-nav-link">LBS</a>
         <a class="boarding-nav-link" href="scan.html" id="boarding-nav-link">Boarding</a>
         <a class="boarding-nav-link" href="240.html" id="transit-240-nav-link">240</a>
@@ -4514,8 +4518,8 @@
         <input id="mobile-query" type="search" value="SY" autocomplete="off" />
         <button type="submit">Search</button>
       </form>
-      <a href="#reports" id="mobile-report-nav-link">Report</a>
-      <a href="#test" id="mobile-test-nav-link">Baggage</a>
+      <a href="/report.html" id="mobile-report-nav-link">Report</a>
+      <a href="/baggage.html" id="mobile-test-nav-link">Baggage</a>
       <a href="cbs.html" id="mobile-cbs-nav-link">LBS</a>
       <a href="scan.html" id="mobile-boarding-nav-link">Boarding</a>
       <a href="240.html" id="mobile-transit-240-nav-link">240</a>
@@ -7365,17 +7369,7 @@
       }
 
       function showReportPage(mode = activeReportMode) {
-        resetPanelState();
-        if (passwordPage) passwordPage.hidden = true;
-        if (baggagePage) baggagePage.hidden = true;
-        if (testPage) testPage.hidden = true;
-        if (reportPage) reportPage.hidden = false;
-        document.body.classList.add("is-report-view");
-        setReportMode(mode, { forceToday: true, resetOutput: true });
-        closeLoginMenu();
-        closeFlightMenu();
-        closeMobilePanel();
-        reportPage?.scrollTo({ top: 0, left: 0, behavior: "auto" });
+        location.assign(`/report.html?mode=${encodeURIComponent(mode)}`);
       }
 
       function hideReportPage() {
@@ -7383,18 +7377,7 @@
       }
 
       function openTestPage() {
-        resetPanelState();
-        if (passwordPage) passwordPage.hidden = true;
-        if (reportPage) reportPage.hidden = true;
-        if (baggagePage) baggagePage.hidden = true;
-        if (testPage) testPage.hidden = false;
-        document.body.classList.add("is-report-view");
-        closeLoginMenu();
-        closeFlightMenu();
-        closeMobilePanel();
-        if (testOutput) testOutput.innerHTML = `<p class="panel-muted test-search-hint">Enter a bag tag number to search</p>`;
-        testBagSearchInput?.focus();
-        testPage?.scrollTo({ top: 0, left: 0, behavior: "auto" });
+        location.assign("/baggage.html");
       }
 
       function setBaggageDefaults(forceToday = false) {
@@ -8847,10 +8830,6 @@
 
       bagReportButton?.addEventListener("click", closeFlightMenuAfterAction(renderBagReport));
       salesReportButton?.addEventListener("click", closeFlightMenuAfterAction(downloadSalesReport));
-      reportNavLink.addEventListener("click", (event) => { event.preventDefault(); showReportPage("sales"); });
-      mobileReportNavLink.addEventListener("click", (event) => { event.preventDefault(); showReportPage("sales"); });
-      testNavLink?.addEventListener("click", (event) => { event.preventDefault(); openTestPage(); });
-      mobileTestNavLink?.addEventListener("click", (event) => { event.preventDefault(); openTestPage(); });
       reportCloseButton.addEventListener("click", hideReportPage);
       baggageCloseButton?.addEventListener("click", hideReportPage);
       testCloseButton?.addEventListener("click", hideReportPage);

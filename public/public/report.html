@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MUFC · Report</title><link rel="stylesheet" href="/services.css">
+<script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script defer src="/__/firebase/init.js"></script><script defer src="/flight-account.js"></script>
+<script defer src="/service-common.js"></script><script defer src="/report.js"></script></head>
+<body class="service-page"><header class="service-topbar"><a class="brand" href="/flights.html">MUFC</a><nav><a href="/report.html">Report</a><a href="/baggage.html">Baggage</a></nav><div class="flight-account" id="flight-account"></div></header><main>        <section class="report-page" id="report-page" aria-label="Report center">
+          <div class="report-hero">
+            <div>
+              <h2>Report Center</h2>
+              <p class="panel-muted">Choose a report below to view saved rows, search by flight date, or download the current results. Misconnection displays passenger assistance submissions.</p>
+            </div>
+            <a class="report-close" href="/flights.html">Select Flight</a>
+          </div>
+          <div class="detail-actions report-mode-actions" aria-label="Report shortcuts">
+            <button class="detail-action" id="report-sales-mode" type="button" data-report-mode="sales">Sales Report</button>
+            <button class="detail-action" id="report-sales-details-mode" type="button" data-report-mode="salesDetails">Sales Details</button>
+            <button class="detail-action" id="report-vip-mode" type="button" data-report-mode="vip">VIP Report</button>
+            <button class="detail-action" id="report-spml-mode" type="button" data-report-mode="spml">SPML Report</button>
+            <button class="detail-action" id="report-psm-mode" type="button" data-report-mode="psm">Authorization Report</button>
+            <button class="detail-action" id="report-inad-mode" type="button" data-report-mode="inad">INAD Report</button>
+            <button class="detail-action" id="report-wch-mode" type="button" data-report-mode="wch">WCH Report</button>
+            <button class="detail-action" id="report-miss-connection-mode" type="button" data-report-mode="missConnection">Misconnection</button>
+            <button class="detail-action" id="report-baggage-mode" type="button" data-report-mode="baggage">Baggage Report</button>
+          </div>
+          <form class="report-form" id="report-form">
+<label class="report-field"><span>Flight</span><select id="report-flight"><option value="MU586">MU586</option><option value="MU9586">MU9586</option><option value="MU578">MU578</option><option value="MU583">MU583</option><option value="MU577">MU577</option><option value="">All flights</option></select></label>
+            <label class="report-field report-from-field"><span id="report-from-label">From</span><input id="report-from" type="date" required /></label>
+            <label class="report-field report-to-field"><span>To</span><input id="report-to" type="date" required /></label>
+            <label class="report-field report-keyword-field"><span>Search</span><input id="report-keyword" type="search" placeholder="Optional filter" /></label>
+            <button class="report-run" type="submit">Search</button>
+          </form>
+          <div class="report-actions-row">
+            <button class="report-download" id="report-download" type="button" disabled>Download CSV</button>
+            <button class="report-download" id="report-pdf-download" type="button" disabled hidden>Download Report</button>
+          </div>
+          <div id="report-output"><p class="panel-muted">Choose a report type to continue.</p></div>
+        </section></main></body></html>

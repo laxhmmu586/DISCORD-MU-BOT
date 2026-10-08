@@ -271,7 +271,7 @@ const RECORD_CASE_SHEET_GID = Number(process.env.RECORD_CASE_SHEET_GID || 147215
 const RECORD_CASE_HEADERS = ['Submitted At', 'Status', 'BN', 'Passenger Name', 'Phone', 'Email', 'Travel Party', 'Companion BNs', 'Companion PNR Records', 'Intention', 'Final Destination', 'PNR Record', 'New Ticket Number', 'Comment', 'Updated At', 'Updated By', 'Hotel Reservation Number', 'Hotel Price', 'Passenger Wants Refund', 'Reserved', 'Reserved', 'Case History', 'Case Workflow', 'TKT Record', 'Hotel Name', 'Room Number'];
 const TRANSIT_240_SHEET_ID = process.env.TRANSIT_240_SHEET_ID || '1JqRnDx_uLc2m2SzyZOuHWWJsbkKenlKo60U9zwV9uMQ';
 const TRANSIT_240_SHEET_GID = Number(process.env.TRANSIT_240_SHEET_GID || 527537258);
-const TRANSIT_240_HEADERS = ['Submit Date', 'Passenger Name', 'Seat Number', 'BN Number', 'Passport Nationality Code', 'Passport Expiration Date', 'Itinerary'];
+const TRANSIT_240_HEADERS = ['Submit Date', 'Passenger Name', 'Seat Number', 'BN Number', 'Passport Nationality Code', 'Passport Expiration Date', 'Itinerary', 'Flight'];
 let transit240SheetTitle = '';
 const CBS_SCAN_HEADERS = ['BN', 'Seat', 'Flight', 'Raw Scan', 'Scanned At'];
 const CBS_SCAN_INFANT_HEADERS = ['Infant BN', 'Infant Seat', 'Infant Flight', 'Infant Raw Scan', 'Infant Scanned At'];
@@ -3983,14 +3983,14 @@ async function getTransit240SheetTitle() {
 async function ensureTransit240Headers(title) {
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: TRANSIT_240_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A1:G1`
+    range: `${escapeSheetTitle(title)}!A1:H1`
   }).catch(() => ({ data: { values: [] } }));
   const firstRow = res.data.values?.[0] || [];
   const hasHeaders = TRANSIT_240_HEADERS.every((header, index) => String(firstRow[index] || '').trim() === header);
   if (!hasHeaders) {
     await sheets.spreadsheets.values.update({
       spreadsheetId: TRANSIT_240_SHEET_ID,
-      range: `${escapeSheetTitle(title)}!A1:G1`,
+      range: `${escapeSheetTitle(title)}!A1:H1`,
       valueInputOption: 'RAW',
       requestBody: { values: [TRANSIT_240_HEADERS] }
     });
@@ -4016,11 +4016,12 @@ async function appendTransit240Record(record = {}) {
     String(record.bnNumber || '').trim(),
     String(record.nationalityCode || '').trim().toUpperCase(),
     String(record.passportExpiry || '').trim(),
-    itinerary
+    itinerary,
+    String(record.flightNo || '').trim().toUpperCase()
   ]];
   await sheets.spreadsheets.values.append({
     spreadsheetId: TRANSIT_240_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A:G`,
+    range: `${escapeSheetTitle(title)}!A:H`,
     valueInputOption: 'RAW',
     insertDataOption: 'INSERT_ROWS',
     requestBody: { values }
@@ -4345,8 +4346,8 @@ async function updateWrongBaggageSubmission(rowNumber, update = {}) {
 
 async function appendContactFormSubmission(record = {}) {
   const title = await resolveSheetTitleByGid(CONTACT_FORM_SHEET_ID, CONTACT_FORM_SHEET_GID) || 'Sheet1';
-  const headers = ['Submitted At', 'Date', 'Name', 'Seat Number', 'Passport Number', 'Mobile Number', 'Attachments', 'Language', 'Email'];
-  const headerRange = `${escapeSheetTitle(title)}!A1:I1`;
+  const headers = ['Submitted At', 'Date', 'Name', 'Seat Number', 'Passport Number', 'Mobile Number', 'Attachments', 'Language', 'Email', 'Flight'];
+  const headerRange = `${escapeSheetTitle(title)}!A1:J1`;
   const existing = await sheets.spreadsheets.values.get({ spreadsheetId: CONTACT_FORM_SHEET_ID, range: headerRange });
   const currentHeaders = existing.data.values?.[0] || [];
   if (headers.some((header, index) => currentHeaders[index] !== header)) {
@@ -4359,10 +4360,10 @@ async function appendContactFormSubmission(record = {}) {
   }
   await sheets.spreadsheets.values.append({
     spreadsheetId: CONTACT_FORM_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A:I`,
+    range: `${escapeSheetTitle(title)}!A:J`,
     valueInputOption: 'RAW',
     insertDataOption: 'INSERT_ROWS',
-    requestBody: { values: [[record.submittedAt, record.date, record.name, record.seatNumber, record.ticketNumber, record.phone, record.attachmentNames || '', record.language || '', record.email || '']] }
+    requestBody: { values: [[record.submittedAt, record.date, record.name, record.seatNumber, record.ticketNumber, record.phone, record.attachmentNames || '', record.language || '', record.email || '', record.flightNo || '']] }
   });
   return record;
 }
@@ -4371,7 +4372,7 @@ async function getContactFormSubmissions() {
   const title = await resolveSheetTitleByGid(CONTACT_FORM_SHEET_ID, CONTACT_FORM_SHEET_GID) || 'Sheet1';
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: CONTACT_FORM_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A:I`
+    range: `${escapeSheetTitle(title)}!A:J`
   });
   const rows = response.data.values || [];
   return rows.slice(1).map((values) => ({
@@ -4383,7 +4384,8 @@ async function getContactFormSubmissions() {
     phone: values[5] || '',
     attachments: values[6] || '',
     language: values[7] || '',
-    email: values[8] || ''
+    email: values[8] || '',
+    flightNo: values[9] || ''
   })).filter((row) => row.submittedAt || row.date || row.name).reverse();
 }
 
