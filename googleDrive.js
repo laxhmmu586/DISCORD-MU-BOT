@@ -2041,7 +2041,8 @@ async function getLatestMealOrderEmail(flightNo, flightDate) {
       const subject = headers.find((header) => String(header.name).toLowerCase() === 'subject')?.value || '';
       const body = normalizeGmailText(extractGmailTextParts(full.data.payload).join('\n'));
       const parsed = parseMealOrderEmail(`${subject}\n${body}`);
-      if (parsed.flightNo === normalizedFlight && parsed.flightDate === normalizedDate && Object.keys(parsed.counts).length) {
+      // A complete regular-meal order is valid even when no special meals were ordered.
+      if (parsed.flightNo === normalizedFlight && parsed.flightDate === normalizedDate && parsed.hasCabinCounts) {
         return { found:true, ...parsed, subject, sentAt:new Date(Number(full.data.internalDate || message.internalDate || 0)).toISOString(), messageId:full.data.id || message.id, authMode, userId, query:q };
       }
     }
