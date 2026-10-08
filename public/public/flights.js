@@ -2,7 +2,7 @@
   const cards = document.querySelector('.flight-cards'), status = document.querySelector('#flight-status'), reload = document.querySelector('#flight-reload');
   const escape = value => String(value || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const city = code => ({LAX:'LOS ANGELES',PVG:'SHANGHAI',SHA:'SHANGHAI'}[code] || code || '—');
-  const enter = flight => { window.setMufcFlight({...flight, source:'current'}); const next = new URLSearchParams(location.search).get('next'); const allowed = ['/index.html','/scan.html','/scan2.html','/m-board.html','/m-board2.html']; const url = new URL(next || '/index.html', location.origin); location.replace(url.origin === location.origin && allowed.includes(url.pathname) ? url.href : '/index.html'); };
+  const enter = flight => { window.setMufcFlight({...flight, source:'current'}); location.assign('/index.html'); };
   let running = false, signature = '';
   const loader = document.querySelector('.flight-loading');
   const finishLoading = () => { loader.hidden = true; document.body.classList.remove('is-loading'); cards.setAttribute('aria-busy','false'); };

@@ -29,9 +29,16 @@
     .status { min-height:28px; font-weight:900; }
     .status.ok { color:var(--ok); } .status.err { color:var(--danger); }
     .flight-support { margin:-8px 0 18px; color:var(--brand); font-size:13px; font-weight:950; letter-spacing:.12em; }
-    .boarding-heading { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin:16px 0 24px; }
-    .boarding-heading h1 { margin:0; }
-    .boarding-heading .button { flex:none; margin-left:auto; font-size:13px; white-space:nowrap; }
+    .boarding-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:16px 0 24px; }
+    .boarding-heading h1 { margin:0; min-width:0; font-size:clamp(22px,5.8vw,32px); }
+    .boarding-menu { position:relative; flex:none; }
+    .boarding-menu summary { display:grid; place-items:center; width:44px; height:44px; border-radius:50%; cursor:pointer; color:var(--brand); list-style:none; }
+    .boarding-menu summary::-webkit-details-marker { display:none; }
+    .boarding-menu summary:hover,.boarding-menu[open] summary { background:#e8eef7; }
+    .boarding-menu summary:focus-visible { outline:2px solid var(--brand); outline-offset:2px; }
+    .boarding-menu svg { width:24px; height:24px; fill:currentColor; }
+    .boarding-menu a { position:absolute; right:0; top:calc(100% + 6px); z-index:30; min-width:160px; padding:15px 18px; border:1px solid var(--line); border-radius:12px; background:white; box-shadow:0 10px 28px #16304c22; color:var(--brand); font-size:14px; font-weight:800; text-decoration:none; white-space:nowrap; }
+    .boarding-menu a:hover { background:#eef4fb; }
     .result { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
     .result div { padding:12px; border:1px solid var(--line); border-radius:14px; background:#fbfdff; }
     .result b { display:block; color:var(--muted); font-size:12px; text-transform:uppercase; }
@@ -61,7 +68,7 @@
   <header><a class="brand" href="index.html">MUFC</a><div class="header-actions"><a class="button" href="m-board.html">M-board</a><button class="avatar-button" id="user-menu-button" type="button" aria-label="Account menu" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/><path d="M4 21c1.6-4.4 4.3-6.6 8-6.6s6.4 2.2 8 6.6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button><div class="user-menu" id="user-menu" hidden><button id="change-password" type="button">Change password</button><button id="logout" type="button">Logout</button></div></div></header>
   <main>
     <section class="card">
-      <div class="boarding-heading"><h1>Manual Boarding</h1><a class="button" id="boarding-select-flight" href="/flights.html?next=%2Fscan.html">Select Flight</a></div>
+      <div class="boarding-heading"><h1>Manual Boarding</h1><details class="boarding-menu" id="boarding-options"><summary aria-label="Boarding options"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></summary><a id="boarding-select-flight" href="/flights.html">Select Flight</a></details></div>
       <p class="flight-support"><span data-selected-flight>MU586 · MU9586 · MU578</span></p>
       <div class="camera-wrap"><video id="preview" muted playsinline></video><div class="aim-box" aria-hidden="true"></div></div>
       <div class="actions"><button id="start" type="button">Start Scan</button><button class="secondary" id="stop" type="button">Stop</button></div>
@@ -121,6 +128,9 @@
     const passwordCancel = document.querySelector('#password-cancel');
     const newPasswordInput = document.querySelector('#new-password');
     const confirmPasswordInput = document.querySelector('#confirm-password');
+    const boardingOptions = document.querySelector('#boarding-options');
+    document.addEventListener('click', event => { if (!boardingOptions.contains(event.target)) boardingOptions.open = false; });
+    document.addEventListener('keydown', event => { if (event.key === 'Escape' && boardingOptions.open) { boardingOptions.open = false; boardingOptions.querySelector('summary').focus(); } });
     const userMenuButton = document.querySelector('#user-menu-button');
     const userMenu = document.querySelector('#user-menu');
     const changePasswordButton = document.querySelector('#change-password');

@@ -84,12 +84,25 @@ app.whenReady().then(async()=>{
     await run(`document.querySelector('.flight-card[data-flight="${flight}"] .flight-enter-boarding').click()`);
     await wait('location.pathname==="/scan.html" && document.querySelector("[data-selected-flight]")?.textContent.includes("'+flight+'")');
     assert.equal(await run('window.mufcFlight.flightNo'),flight);
+    assert.equal(await run('document.querySelector("#boarding-options").open'),false);
+    assert.equal(await run('(()=>{const h=document.querySelector(".boarding-heading h1").getBoundingClientRect(),b=document.querySelector("#boarding-options summary").getBoundingClientRect();return b.left>=h.right && Math.abs(h.top+h.height/2-b.top-b.height/2)<2})()'),true);
+    await run('document.querySelector("#boarding-options summary").click()');
+    assert.equal(await run('document.querySelector("#boarding-options").open'),true);
+    if(flight==='MU586') {
+      await new Promise(r=>setTimeout(r,300));
+      await fs.writeFile(path.join(out,'boarding-menu-mobile.png'),(await win.webContents.capturePage()).toPNG());
+    }
+    await run('document.dispatchEvent(new KeyboardEvent("keydown",{key:"Escape"}))');
+    assert.equal(await run('document.querySelector("#boarding-options").open'),false);
+    await run('document.querySelector("#boarding-options summary").click();document.querySelector("h1").click()');
+    assert.equal(await run('document.querySelector("#boarding-options").open'),false);
+    await run('document.querySelector("#boarding-options summary").click()');
     await run('document.querySelector("#boarding-select-flight").click()');
     await wait('location.pathname==="/flights.html" && document.querySelectorAll(".flight-card").length===3');
-    assert.equal(await run('new URLSearchParams(location.search).get("next")'),'/scan.html');
+    assert.equal(await run('new URLSearchParams(location.search).get("next")'),null);
     const nextFlight=flight==='MU586'?'MU9586':'MU586';
     await run(`document.querySelector('.flight-card[data-flight="${nextFlight}"] .flight-enter').click()`);
-    await wait('location.pathname==="/scan.html" && document.querySelector("[data-selected-flight]")?.textContent.includes("'+nextFlight+'")');
+    await wait('location.pathname==="/index.html" && window.mufcFlight?.flightNo==="'+nextFlight+'"');
     assert.equal(await run('document.documentElement.scrollWidth<=innerWidth'),true);
   }
   win.setContentSize(1440,900);
@@ -98,7 +111,7 @@ app.whenReady().then(async()=>{
   assert.equal(await run('location.pathname'),'/flights.html');
   await run('window.setMufcFlight(null)');await win.loadURL(origin+'/scan.html');await wait('location.pathname==="/flights.html" && document.querySelectorAll(".flight-card").length===1');
   assert.equal(await run('new URLSearchParams(location.search).get("next")'),'/scan.html');
-  await run('document.querySelector(".flight-enter").click()');await wait('location.pathname==="/scan.html" && document.querySelector("[data-selected-flight]")?.textContent.includes("MU586")');
+  await run('document.querySelector(".flight-enter").click()');await wait('location.pathname==="/index.html" && window.mufcFlight?.flightNo==="MU586"');
   await win.loadURL(origin+'/index.html');await wait('document.querySelector("#header-select-flight")');
   await run('document.body.classList.remove("is-loading")');
   assert.equal(await run('(()=>{const a=document.querySelector("#header-select-flight").getBoundingClientRect(), b=document.querySelector("#mission-search").getBoundingClientRect();return a.width>0&&a.x>innerWidth/2&&a.right<=b.left})()'),true);
@@ -109,7 +122,7 @@ app.whenReady().then(async()=>{
   await new Promise(r=>setTimeout(r,500));
   await fs.writeFile(path.join(out,'online-mobile.png'),(await win.webContents.capturePage()).toPNG());
   assert.equal(await run('document.documentElement.scrollWidth<=innerWidth'),true);
-  await fs.writeFile(path.join(out,'online-ui.json'),JSON.stringify({threeFlights:true,arrivalsExcluded:true,singleFlightRequiresChoice:true,noReflection:true,bottomServices:true,scopedRequests:calls,headerFlightSwitch:true,guardAndReturnToScanner:true,mobileNoOverflow:true},null,2));
+  await fs.writeFile(path.join(out,'online-ui.json'),JSON.stringify({threeFlights:true,arrivalsExcluded:true,singleFlightRequiresChoice:true,noReflection:true,bottomServices:true,scopedRequests:calls,headerFlightSwitch:true,boardingMenu:true,dashboardIgnoresReturnTarget:true,mobileNoOverflow:true},null,2));
   await run('document.querySelector(".login-button").click();document.querySelector("#logout").click()');
   await wait('location.pathname==="/login.html"');
   assert.equal(await run('sessionStorage.getItem("fixture-signed-out")'),'yes');
