@@ -539,7 +539,7 @@ function parseCrewManifestRowsFromSections(sections, flightNo, flightYmd, operat
   return rows.sort((a, b) => a.no - b.no);
 }
 
-function enrichCrewApisFromLog(log, info, targetYmd) {
+function enrichCrewApisFromLog(log, info, targetYmd, preparationLog = log) {
   const sections = splitLogicalSections(log);
   const flightNo = String(info?.flightNo || '').trim().toUpperCase();
   const flightYmd = flightDateToYmd(info?.flightDate) || targetYmd || null;
@@ -617,7 +617,9 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
   const commandDateUtc = addDaysUtc(commandBaseDateUtc, 2);
   const commandDate = dateToDdMon(commandDateUtc);
   const commandFlightDateFull = commandDate && commandDateUtc ? `${commandDate}${String(commandDateUtc.getUTCFullYear()).slice(-2)}` : '';
-  const commandSections = sections.filter((sectionObj) => {
+  // Preparation commands target a future flight date, so read them before dashboard date scoping.
+  const preparationSections = preparationLog === log ? sections : splitLogicalSections(preparationLog);
+  const commandSections = preparationSections.filter((sectionObj) => {
     const ymd = getYmdFromTimestamp(sectionObj.timestamp);
     return Boolean(baseYmd && ymd && ymd === baseYmd);
   });
@@ -631,10 +633,10 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
     const sectionObj = matches.sort((a, b) => parseSectionTimestamp(b.timestamp) - parseSectionTimestamp(a.timestamp))[0];
     return { complete: true, time: formatTime(sectionObj.timestamp), timestamp: sectionObj.timestamp || '' };
   };
-  const futureSy = sections
+  const futureSy = preparationSections
     .filter((sectionObj) => getYmdFromTimestamp(sectionObj.timestamp) === baseYmd)
     .map((sectionObj) => parseSYSection(sectionObj))
-    .filter((item) => item && sameOperationalFlightNo(item.flightNo, flightNo) && item.flightDate === commandFlightDateFull)
+    .filter((item) => item && item.flightNo === flightNo && item.flightDate === commandFlightDateFull)
     .sort((a, b) => String(b.statusDisplay || '').localeCompare(String(a.statusDisplay || '')))[0] || null;
   const commandFlightNo = escapeRegExp(flightNo);
   const commandFlightDate = escapeRegExp(commandDate);
@@ -1996,7 +1998,7 @@ function findSYInfo(log, queryDate, options = {}) {
       info.checkinAgentStats = enrichCheckinAgentStatsFromLog(log, info, targetYmd);
       info.psmList = enrichPsmListFromLog(log, info, targetYmd);
       info.infTicketAudit = enrichInfantTicketAuditFromLog(log, info, targetYmd);
-      info.crewApis = enrichCrewApisFromLog(log, info, targetYmd);
+      info.crewApis = enrichCrewApisFromLog(log, info, targetYmd, options.preparationLog);
       info.jcsy = info.crewApis?.jcsy || null;
       return info;
     }
@@ -2050,7 +2052,7 @@ function findSYInfo(log, queryDate, options = {}) {
     info.checkinAgentStats = enrichCheckinAgentStatsFromLog(log, info, targetYmd);
     info.psmList = enrichPsmListFromLog(log, info, targetYmd);
     info.infTicketAudit = enrichInfantTicketAuditFromLog(log, info, targetYmd);
-    info.crewApis = enrichCrewApisFromLog(log, info, targetYmd);
+    info.crewApis = enrichCrewApisFromLog(log, info, targetYmd, options.preparationLog);
     info.jcsy = info.crewApis?.jcsy || null;
     return info;
   }

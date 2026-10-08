@@ -4514,6 +4514,7 @@ app.get(
       const selectedFlight = normalizeBoardingFlight(req.query.flightNo || syRawMatch?.[2] || 'MU586');
       if (!selectedFlight || (syRawMatch?.[2] && syRawMatch[2] !== selectedFlight)) return res.status(400).json({ error: 'Flight does not match selection.' });
       const selectedDate = date ? date + yearSuffix : String(req.query.flightDate || operationalDate()).toUpperCase();
+      const preparationLog = log;
       log = scopedLog(log, selectedFlight, selectedDate);
       parseIncrementalLog(log);
 
@@ -4526,6 +4527,7 @@ app.get(
         const syDate = syMatch[3] ? syMatch[3].toUpperCase() : date;
         const syInfo = findSYInfo(log, syDate, {
           preferNextDay,
+          preparationLog,
           preferredFlightNo: requestedFlightNo,
           strictPreferredFlight: true
         });
