@@ -281,10 +281,12 @@ function parseIncrementalLog(log) {
       /^(PN\d*|PF\d*)$/i.test(sectionObj.command || '');
 
     if (isContinuationCommand) {
+      const headerBn = section.match(/\bPR:[^\r\n]*,BN\s*(\d{1,3})\b/i)?.[1];
+      if (headerBn) lastPassengerBn = headerBn.padStart(3, '0');
       section =
         section.replace(
           /(?:^|\r?\n)\s*PR:\s+[^\n\r]*(?:\r?\n|$)/i,
-          ''
+          '\n'
         );
     }
     const sectionTimestampMs =

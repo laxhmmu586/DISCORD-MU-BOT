@@ -20,7 +20,9 @@ const deferred = () => {
 function clockHarness(extra = {}) {
   let now = 0, sequence = 0;
   const timers = new Map();
+  const state = { cbsScanAppendPending: [], cbsScanAppendTimer: null, cbsScanAppendRunning: false, cbsScanSheetCache: {} };
   const context = vm.createContext({
+    ...require('../boardingContext'), boardingState: () => state,
     Date: class extends Date { static now() { return now; } },
     Math: Object.assign(Object.create(Math), { random: () => 0 }),
     setTimeout(fn, delay) { const id = ++sequence; timers.set(id, { at: now + delay, fn }); return id; },
@@ -254,8 +256,8 @@ for (const [prefix, name] of [['cbsScan', 'CbsScan'], ['emergencyBoard', 'Emerge
     assert.equal(acknowledged, false, 'receiving or batching a scan is not a successful save');
     const second = append({ bn: '2', seat: '10B', flight: 'MU586' });
     const infant = append({ bn: '3', seat: 'INF', flight: 'MU586' });
-    const duplicate = append({ bn: '2', seat: '10B' }).catch(err => err);
-    const blocked = append({ bn: '4', seat: '10C' }).catch(err => err);
+    const duplicate = append({ bn: '2', seat: '10B', flight: 'MU586' }).catch(err => err);
+    const blocked = append({ bn: '4', seat: '10C', flight: 'MU586' }).catch(err => err);
     assert.equal(h.timers.size, 0, 'do not create separate batches during the slow write');
     gate.resolve();
     await first;
@@ -272,6 +274,7 @@ for (const [prefix, name] of [['cbsScan', 'CbsScan'], ['emergencyBoard', 'Emerge
   test(`${name} board refresh avoids rereading unchanged headers`, async () => {
     let reads = 0, headersChanged = false;
     const context = vm.createContext({
+      ...require('../boardingContext'),
       [`get${name}SheetRows`]: async () => { reads++; return [[]]; },
       [`ensure${name}SheetHeaders`]: async () => headersChanged,
       [`get${name}SheetTitle`]: async () => 'Board',

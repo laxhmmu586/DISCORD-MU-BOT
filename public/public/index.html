@@ -1,6 +1,8 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <script src="/flight-session.js"></script>
+    <link rel="stylesheet" href="/flight-navigation.css" />
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>MUFC</title>
@@ -4474,6 +4476,7 @@
         <a class="boarding-nav-link" href="240.html" id="transit-240-nav-link">240</a>
       </nav>
       <div class="nav-row">
+        <a class="flight-select-link" id="header-select-flight" href="/flights.html" aria-label="Select Flight" title="Select Flight"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h15l-4-4M20 17H5l4 4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Select Flight</span></a>
         <form class="search" id="mission-search" aria-label="Search mission">
           <input id="query" type="search" value="SY" autocomplete="off" />
           <button type="submit" aria-label="Search">
@@ -4538,8 +4541,7 @@
                 <span class="line-menu-icon" aria-hidden="true"><span></span><span></span><span></span></span>
               </button>
               <div class="flight-menu" aria-hidden="true">
-                <button id="normal-flight-button" type="button">MU586 (Normal)</button>
-                <button id="delayed-flight-button" type="button">MU9586 (Delayed)</button>
+                <button id="select-flight-button" type="button">Select Flight</button>
                 <button id="sales-report-button" type="button">Sales Report</button>
                 <button id="seat-map-button" type="button">Seat Map</button>
                 <button id="security-check-button" type="button">Security Check</button>
@@ -4776,8 +4778,6 @@
       const mobileQueryInput = document.querySelector("#mobile-query");
       const bagReportButton = document.querySelector("#bag-report-button");
       const salesReportButton = document.querySelector("#sales-report-button");
-      const normalFlightButton = document.querySelector("#normal-flight-button");
-      const delayedFlightButton = document.querySelector("#delayed-flight-button");
       const securityCheckButton = document.querySelector("#security-check-button");
       const seatMapButton = document.querySelector("#seat-map-button");
       const reportNavLink = document.querySelector("#report-nav-link");
@@ -6582,7 +6582,7 @@
 
       function normalizeSyQuery(value) {
         const normalized = String(value || "SY").trim().replace(/\s+/g, " ").toUpperCase();
-        return normalized === "SY+" ? "SY" : normalized;
+        return /^(?:SY|SY\+)$/.test(normalized) && window.mufcFlight ? `SY ${window.mufcFlight.flightNo}` : (normalized === "SY+" ? "SY" : normalized);
       }
 
       function syQueryDateYmd(value) {
@@ -8795,8 +8795,7 @@
         searchPassenger();
       }
 
-      normalFlightButton?.addEventListener("click", () => openFlightDashboard("MU586"));
-      delayedFlightButton?.addEventListener("click", () => openFlightDashboard("MU9586"));
+      document.querySelector("#select-flight-button")?.addEventListener("click", () => location.assign("/flights.html"));
 
       document.addEventListener("click", (event) => {
         if (!event.target.closest(".flight-tools")) closeFlightMenu();

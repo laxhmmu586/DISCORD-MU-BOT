@@ -1,0 +1,25 @@
+.flight-select-link {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 14px;
+  border: 1px solid #467590;
+  border-radius: 8px;
+  background: #102940;
+  color: #edf7ff;
+  font: 600 13px/1 system-ui, sans-serif;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.flight-select-link svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.7; }
+.flight-select-link:hover, .flight-select-link:focus-visible { background: #225475; border-color: #9accfa; }
+@media (max-width: 760px) {
+  .topbar .nav-row { display: flex; gap: 6px; }
+  .flight-select-link { width: 34px; padding: 0; }
+  .flight-select-link span { display: none; }
+  .topbar .nav-row .search { flex: 1; min-width: 0; }
+  .topbar .nav-row #mufc-settings-button { padding: 8px !important; font-size: 12px; }
+}

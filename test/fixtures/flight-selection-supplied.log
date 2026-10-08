@@ -1,0 +1,65 @@
+2026 October 08, Thursday, 05:25:27
+>SY
+ SY: MU586/08OCT26 LAX/0  OP/NAM                                                
+CWT200000 UWT189443 CAW063150 UAW052593 WTN4 KG TCI                             
+777/773L/B7367      GTD/???? POS/GATE BN133 AK00000 CD00000                     
+BDT1145   SD1230   ED1230                                                       
+CNF/F6J52Y258  CAP/F4J48Y247   AV/F3J28Y136                                     
+CAT/000/000/000 *** CREW 32J 61C 74C ***                                      
+*LAXPVG R002/056/259   C001/020/111  B0024/000393 WCH001                        
+        SB000/000/000  B0000                                                    
+        SA000/000/000                EXST00/00/00 XCR00/00/00 ZCR00/00/00       
+        RET002/056/252               CET001/020/111
+
+2026 October 08, Thursday, 11:21:15
+>FB14
+ PR: MU586/08OCT26*LAX,BN14         PNR RL  ABC123                              
+                                    CRS RL  DEF456                              
+  1. SAMPLE/PASSENGER           BN014  35J    L PVG WEB ASR BAG2/31/0 OSR             
+                                        AQQ/FCL/USA ESTA/Z/USA GOV/FCL/CHN      
+                                        ESTA/Z/CHN                              
+                                        FF/MU 000000000000/G/*2 FBA/2PC         
+                                        ET TKNE/0000000000000/1 R35J            
+ASVC- A/0B5/SEAT/A 35J CNY450-0 A/EMDA-0000000000000/1-C                        
+CTC-/CTC  00000000000/CTC  CAN623-28SEP26-0929-T CAN/CAN/T 020-00000000/GD      
+    EXAMPLE TRAVEL LTD/ /CTC  T CAN/EXAMPLE                          
+PSPT-XX0000000/CHN/01JAN90/F/                                                   
+ PAXLST   :SAMPLE/PASSENGER/                                                          
+ PAX INFO :CHN/DOB/900101/POB//GENDER/F                                         
+ PASSPORT :XX0000000/P/NAT/CHN//300101/CHN/N/A                                  
+ ORIG ADDR:123EXAMPLESTREET/LOSANGELES/CA/USA/90001/                    
+SEC TXT-CHN OK TO BOARD                                                         
+CKIN STSP                                                                       
+CKIN MTCK/MAP/MU                                                                
+CKIN BY YUIKA                                                                   
+     BAGTAG/0000000000/PVG /0000000000/PVG                                      
+     RES AUTO 06OCT1230                                                         
+     API LAX100857 AGT9940/07OCT1332/P1                                         
+     GOV LAX104928 AGT93006/07OCT1332/ALL                                      +
+                                                                                
+
+2026 October 08, Thursday, 11:21:17
+>PN1
+ PR: MU586/08OCT26*LAX,BN14         PNR RL  ABC123                             -
+     ACC LAX104925 AGT93006/07OCT1332 R35J                                      
+     BC  LAX104709 AGT93006/08OCT0717                                           
+     BC  LAX104710 AGT93006/08OCT0718                                           
+     BC  LAX104736 AGT93006/08OCT0918                                           
+     BC  LAX104726 AGT93006/08OCT0918                                           
+     BC  LAX104734 AGT93006/08OCT0919                                           
+     BC  LAX104712 AGT93006/08OCT0919                                           
+     BC  LAX104705 AGT93006/08OCT0919                                           
+     BC  LAX104708 AGT93006/08OCT1043                                           
+     BC  LAX104712 AGT93006/08OCT1043                                           
+     BC  LAX104716 AGT93006/08OCT1043                                           
+     BC  LAX104714 AGT93006/08OCT1043                                           
+     BC  LAX104707 AGT93006/08OCT1045                                           
+     BC  LAX104726 AGT93006/08OCT1045                                           
+     API LAX49014 AGT24102/08OCT1048/P1                                         
+     GOV LAX49014 AGT24102/08OCT1048/ALL                                        
+     GOV LAX49014 AGT24102/08OCT1048/CN                                         
+     BC  LAX49014 AGT24102/08OCT1048                                            
+     MOD LAX49014 AGT24102/08OCT1049/CKIN                                       
+     MOD LAX49014 AGT24102/08OCT1049                                            
+     BAG LAX49014 AGT24102/08OCT1049/060/18/PVG                                 
+     MOD LAX49014 AGT24102/08OCT1049

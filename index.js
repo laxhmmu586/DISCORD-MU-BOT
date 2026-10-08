@@ -1,3 +1,5 @@
+const { runWithBoardingFlight, normalizeBoardingFlight } = require('./boardingContext');
+const { scopedLog, discoverFlights, operationalDate } = require('./flightContext');
 require('dotenv').config();
 
 const express = require('express');
@@ -3109,6 +3111,17 @@ app.post('/transit-240', async (req, res) => {
   }
 });
 
+app.use(['/cbs-scan', '/cbs-scan2'], (req, res, next) => {
+  const flight = normalizeBoardingFlight(req.query.flightNo || req.body?.flightNo || 'MU586');
+  if (!flight) return res.status(400).json({ error: 'Choose MU586, MU9586 or MU578.', code: 'WRONG_FLIGHT' });
+  return runWithBoardingFlight(flight, next);
+});
+
+app.get('/flights', async (_req, res) => {
+  try { return res.json({ flights: discoverFlights(await getLatestFlightLog(), { date: operationalDate() }) }); }
+  catch (err) { return res.status(503).json({ error: 'Unable to read flight logs.' }); }
+});
+
 app.post('/cbs-scan', async (req, res) => {
   try {
     const parsed = parseCbsPdf417(req.body?.rawScan || req.body?.raw || req.body?.text || '');
@@ -4498,6 +4511,10 @@ app.get(
       // =========================
       // Parse
       // =========================
+      const selectedFlight = normalizeBoardingFlight(req.query.flightNo || syRawMatch?.[2] || 'MU586');
+      if (!selectedFlight || (syRawMatch?.[2] && syRawMatch[2] !== selectedFlight)) return res.status(400).json({ error: 'Flight does not match selection.' });
+      const selectedDate = date ? date + yearSuffix : String(req.query.flightDate || operationalDate()).toUpperCase();
+      log = scopedLog(log, selectedFlight, selectedDate);
       parseIncrementalLog(log);
 
       parsePDLog(log);
@@ -4505,12 +4522,12 @@ app.get(
       const syMatch = syRawMatch;
       if (syMatch) {
         const preferNextDay = Boolean(syMatch[1]) && !date;
-        const requestedFlightNo = syMatch[2]?.toUpperCase() || 'MU586';
+        const requestedFlightNo = selectedFlight;
         const syDate = syMatch[3] ? syMatch[3].toUpperCase() : date;
         const syInfo = findSYInfo(log, syDate, {
           preferNextDay,
           preferredFlightNo: requestedFlightNo,
-          strictPreferredFlight: Boolean(syMatch[2])
+          strictPreferredFlight: true
         });
         if (!syInfo) {
           return res.json({ error: `No SY section found for ${requestedFlightNo}${syDate ? `/${syDate}` : ''}.` });
