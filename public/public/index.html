@@ -4707,8 +4707,8 @@
               <button class="node" type="button" data-index="16" data-key="PSM" data-label="PSM/MSG" data-status="pending" data-time="----" hidden><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 3h18v14H9l-6 4z M7 7h10 M7 11h7"/></svg></span><span class="node-label">PSM/MSG</span><span class="node-value" aria-hidden="true"></span></button>
               <button class="node" type="button" data-index="17" data-key="CCL" data-label="CCL" data-status="pending" data-time="----"><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 4h11v16H3z M7 8h3 M7 12h3 M7 16h3 M16 10h5 M18 7l3 3-3 3 M16 17l2 2 4-4"/></svg></span><span class="node-label">CCL</span><span class="node-value" aria-hidden="true"></span></button>
               <button class="node" type="button" data-index="18" data-key="CC" data-label="CC" data-status="pending" data-time="----"><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 3h12v18H4z M12 3v18 M8 12h.01 M16 12h6 M19 9l-3 3 3 3"/></svg></span><span class="node-label">CC</span><span class="node-value" aria-hidden="true"></span></button>
-              <button class="node" type="button" data-index="19" data-key="INITIAL_FLIGHT" data-label="INITIAL FLIGHT" data-status="pending" data-time="----"><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 3h12v4 M4 3v18h12v-4 M4 3l8 3v12l-8 3 M9 12h.01 M15 12h7 M19 9l3 3-3 3"/></svg></span><span class="node-label">INITIAL FLIGHT</span><span class="node-value" aria-hidden="true"></span></button>
-              <button class="node" type="button" data-index="20" data-key="BDT_CHG" data-label="BDT CHG" data-status="pending" data-time="----"><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 21a9 9 0 1 1 9-9 M12 7v5l-3 2 M14 18l6-6 3 3-6 6-4 1z M19 13l3 3"/></svg></span><span class="node-label">BDT CHG</span><span class="node-value" aria-hidden="true"></span></button>
+              <button class="node" type="button" data-index="19" data-key="INITIAL_FLIGHT" hidden data-label="INITIAL FLIGHT" data-status="pending" data-time="----"><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 3h12v4 M4 3v18h12v-4 M4 3l8 3v12l-8 3 M9 12h.01 M15 12h7 M19 9l3 3-3 3"/></svg></span><span class="node-label">INITIAL FLIGHT</span><span class="node-value" aria-hidden="true"></span></button>
+              <button class="node" type="button" data-index="20" data-key="BDT_CHG" hidden data-label="BDT CHG" data-status="pending" data-time="----"><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 21a9 9 0 1 1 9-9 M12 7v5l-3 2 M14 18l6-6 3 3-6 6-4 1z M19 13l3 3"/></svg></span><span class="node-label">BDT CHG</span><span class="node-value" aria-hidden="true"></span></button>
               <article class="node-card" aria-live="polite">
                 <h2>Crew APIs</h2>
                 <p>Crew manifest and reservation data are ready. This point can open deeper crew workflows later.</p>
@@ -4941,7 +4941,7 @@
         if (salesReportButton) salesReportButton.hidden = true;
         nodes.forEach((node) => {
           node.dataset.status = "pending";
-          if (["WCH", "DUP_NAME", "PSM", "NBRD", "MISSING_BAG"].includes(node.dataset.key)) node.hidden = true;
+          if (["WCH", "DUP_NAME", "PSM", "NBRD", "MISSING_BAG", "INITIAL_FLIGHT", "BDT_CHG"].includes(node.dataset.key)) node.hidden = true;
           node.dataset.time = "----";
           node.dataset.inputTime = "";
           node.removeAttribute("data-alert");
@@ -6449,6 +6449,10 @@
         const persistedGreenNodes = completedSyNodeState(sy);
         nodes.forEach((node) => {
           const key = node.dataset.key;
+          if (["INITIAL_FLIGHT", "BDT_CHG"].includes(key)) {
+            node.hidden = !["MU586", "MU578"].includes(String(sy.flightNo || "").trim().toUpperCase());
+            if (node.hidden) return;
+          }
           // Missing Bag is driven by its own report endpoint. Do not let the
           // recurring SY refresh replace its last result with a locked node.
           if (key === "MISSING_BAG") return;
