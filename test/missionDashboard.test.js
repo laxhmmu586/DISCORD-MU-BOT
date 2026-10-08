@@ -157,7 +157,7 @@ test('warning disappears only when every row has been acknowledged by the curren
 });
 test('CCL, CC and initial-flight timestamps survive SY refresh',()=>{
  const {context:c,node}=harness();c.stepByKey=key=>({complete:true,time:({CCL:'1140',CC:'1210',INITIAL_FLIGHT:'1220'})[key]||'0900'});
- c.updateFlightFromSy({});for(const [key,time] of [['CCL','1140'],['CC','1210'],['INITIAL_FLIGHT','1220']])assert.equal(node(key).dataset.time,time);
+ c.updateFlightFromSy({flightNo:'MU586'});for(const [key,time] of [['CCL','1140'],['CC','1210'],['INITIAL_FLIGHT','1220']])assert.equal(node(key).dataset.time,time);
 });
 test('unchanged background reconciliation updates data without repainting the dashboard',()=>{
  const {context:c}=harness();let writes=0;
@@ -219,3 +219,14 @@ test('normal details center on desktop and mobile while full-page tools keep the
  assert.equal(c.positionMobileResultPanel(),true);assert.equal(classes.has('is-centered-popup'),true);
  assert.equal(c.positionMobileResultPanel({panelClass:'is-full-page'}),false);assert.equal(classes.has('is-centered-popup'),false);
 });
+
+ test('final command nodes only appear for MU586 and MU578 across refresh and flight switches',()=>{
+ const {context:c,node}=harness();
+ for (const flightNo of ['MU586','MU9586','MU578','MU9578','MU586A','', 'MU586']) {
+   for(let refresh=0;refresh<2;refresh++) {
+     c.updateFlightFromSy({flightNo});
+     for(const key of ['INITIAL_FLIGHT','BDT_CHG']) assert.equal(node(key).hidden,!['MU586','MU578'].includes(flightNo),flightNo+' '+key);
+   }
+ }
+ for(const key of ['INITIAL_FLIGHT','BDT_CHG']) assert.match(html,new RegExp('data-key="'+key+'" hidden'));
+ });

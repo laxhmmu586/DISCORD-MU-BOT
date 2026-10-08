@@ -284,3 +284,11 @@ test('latest passenger display clears an earlier false WCHC advisory match', () 
     { bn: '293', name: 'TEST/WHEELCHAIR', seat: '35A', codes: ['WCHC'] }
   ]);
 });
+
+test('supplied October 8 IF and BDT commands complete MU586 October 10 preparation',()=>{
+ const log = '2026 October 08, Thursday, 12:00:00\n> SY: MU586/08OCT26 LAX/0  CI1145/NAM\n777/773L/B7367      GTD/130 POS/GATE BN299 AK00000 CD00000\nBDT1145   SD1230   ED1230   CI1145\n\n2026 October 08, Thursday, 12:30:21\n>IF MU586/10OCT\nCKI TIME 1233                                                                   \n                                                                                \n\n2026 October 08, Thursday, 12:30:26\n>FU MU586/10OCT/LAX/BDT/1145';
+ const info=require('../syParser').findSYInfo(log,'08OCT26',{preferredFlightNo:'MU586'});
+ for(const [key,time] of [['initialFlight','12:30:21'],['bdtChg','12:30:26']]) {
+ const step=info.crewApis.steps.find(s=>s.key===key);assert.equal(step.complete,true);assert.equal(step.time,time);
+ }
+});
