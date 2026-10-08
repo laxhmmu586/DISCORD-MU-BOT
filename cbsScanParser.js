@@ -5,7 +5,7 @@ function matchMuFlight(rawValue = '') {
   // carrier can therefore touch the preceding airport field, and the flight
   // number can touch the three-digit Julian date (for example
   // MU9586221, where 221 is the Julian date).
-  const supportedMatch = compact.match(/MU\s*0*(9586|586)(?=\d{3}|[^A-Z0-9]|$)/i);
+  const supportedMatch = compact.match(/MU\s*0*(9586|586|578)(?=\d{3}|[^A-Z0-9]|$)/i);
   if (supportedMatch) {
     return {
       number: supportedMatch[1].padStart(4, '0'),
