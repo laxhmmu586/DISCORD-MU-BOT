@@ -1,4 +1,5 @@
 (() => {
+  if (["/", "/index.html"].includes(location.pathname) && ["#reports", "#test"].includes(location.hash)) return;
   const key = 'mufc-online-flight';
   const today = () => {
     const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone:'America/Los_Angeles', day:'2-digit', month:'short', year:'2-digit' }).formatToParts(new Date()).map(p => [p.type,p.value]));
