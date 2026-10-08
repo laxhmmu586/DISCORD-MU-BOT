@@ -29,6 +29,9 @@
     .status { min-height:28px; font-weight:900; }
     .status.ok { color:var(--ok); } .status.err { color:var(--danger); }
     .flight-support { margin:-8px 0 18px; color:var(--brand); font-size:13px; font-weight:950; letter-spacing:.12em; }
+    .boarding-heading { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin:16px 0 24px; }
+    .boarding-heading h1 { margin:0; }
+    .boarding-heading .button { flex:none; margin-left:auto; font-size:13px; white-space:nowrap; }
     .result { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
     .result div { padding:12px; border:1px solid var(--line); border-radius:14px; background:#fbfdff; }
     .result b { display:block; color:var(--muted); font-size:12px; text-transform:uppercase; }
@@ -58,7 +61,7 @@
   <header><a class="brand" href="index.html">MUFC</a><div class="header-actions"><a class="button" href="m-board.html">M-board</a><button class="avatar-button" id="user-menu-button" type="button" aria-label="Account menu" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/><path d="M4 21c1.6-4.4 4.3-6.6 8-6.6s6.4 2.2 8 6.6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button><div class="user-menu" id="user-menu" hidden><button id="change-password" type="button">Change password</button><button id="logout" type="button">Logout</button></div></div></header>
   <main>
     <section class="card">
-      <h1>Manual Boarding</h1>
+      <div class="boarding-heading"><h1>Manual Boarding</h1><a class="button" id="boarding-select-flight" href="/flights.html?next=%2Fscan.html">Select Flight</a></div>
       <p class="flight-support"><span data-selected-flight>MU586 · MU9586 · MU578</span></p>
       <div class="camera-wrap"><video id="preview" muted playsinline></video><div class="aim-box" aria-hidden="true"></div></div>
       <div class="actions"><button id="start" type="button">Start Scan</button><button class="secondary" id="stop" type="button">Stop</button></div>

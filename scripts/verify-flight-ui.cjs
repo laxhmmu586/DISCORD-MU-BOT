@@ -84,6 +84,13 @@ app.whenReady().then(async()=>{
     await run(`document.querySelector('.flight-card[data-flight="${flight}"] .flight-enter-boarding').click()`);
     await wait('location.pathname==="/scan.html" && document.querySelector("[data-selected-flight]")?.textContent.includes("'+flight+'")');
     assert.equal(await run('window.mufcFlight.flightNo'),flight);
+    await run('document.querySelector("#boarding-select-flight").click()');
+    await wait('location.pathname==="/flights.html" && document.querySelectorAll(".flight-card").length===3');
+    assert.equal(await run('new URLSearchParams(location.search).get("next")'),'/scan.html');
+    const nextFlight=flight==='MU586'?'MU9586':'MU586';
+    await run(`document.querySelector('.flight-card[data-flight="${nextFlight}"] .flight-enter').click()`);
+    await wait('location.pathname==="/scan.html" && document.querySelector("[data-selected-flight]")?.textContent.includes("'+nextFlight+'")');
+    assert.equal(await run('document.documentElement.scrollWidth<=innerWidth'),true);
   }
   win.setContentSize(1440,900);
   log=sample.replaceAll('08OCT26',today);
