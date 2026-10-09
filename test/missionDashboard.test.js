@@ -136,6 +136,19 @@ test('NEXTDAY INFO and NET keep same-row spacing while INF TKT renders its ticke
  assert.doesNotMatch(compactRule,/NEXTDAY_INFO/);
  assert.match(css,/data-key="INF_TKT"\] \.node-value::after[\s\S]*?content:attr\(data-value\)/);
 });
+test('INF TKT displays zero as complete when there are no infant tickets to check',()=>{
+ const {context:c,node}=harness();
+ c.updateFlightFromSy({infTicketAudit:[]});
+ assert.equal(node('INF_TKT').dataset.time,'0');
+ assert.equal(node('INF_TKT').dataset.status,'done');
+ c.updateFlightFromSy({infTicketAudit:[{infantTicketNo:''}]});
+ assert.equal(node('INF_TKT').dataset.time,'0');
+ assert.equal(node('INF_TKT').dataset.status,'issue');
+ assert.equal(node('INF_TKT').dataset.alert,'1');
+ c.updateFlightFromSy({infTicketAudit:[]});
+ assert.equal(node('INF_TKT').dataset.status,'done');
+});
+
 test('INF TKT value is the number of infant tickets, not passenger rows or missing tickets',()=>{
  const {context:c,node}=harness();
  c.updateFlightFromSy({infTicketAudit:[{infantTicketNo:'7811'},{infantTicketNo:'7812'},{infantTicketNo:''}]});

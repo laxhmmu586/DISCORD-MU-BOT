@@ -6489,7 +6489,7 @@
             const rows = sy.infTicketAudit || [];
             const missing = rows.filter((row) => !row.infantTicketNo).length;
             const infantTicketCount = rows.filter((row) => Boolean(row.infantTicketNo)).length;
-            node.dataset.status = missing ? "issue" : (rows.length ? "done" : "pending");
+            node.dataset.status = missing ? "issue" : "done";
             node.dataset.time = String(infantTicketCount);
             if (missing) node.dataset.alert = String(missing);
             else node.removeAttribute("data-alert");
