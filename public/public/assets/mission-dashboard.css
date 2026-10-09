@@ -160,10 +160,7 @@ body.is-report-view #warning-action { display:none; }
 .rail-meteor::before { content:""; position:absolute; right:6px; top:4px; width:180px; height:4px; border-radius:50%; background:linear-gradient(90deg,transparent,#ffffff80 25%,#ffffffd9 70%,#fff); filter:drop-shadow(0 0 4px #fff); }
 .rail-ready .rail-meteor { animation:rail-meteor 7s linear infinite; }
 @keyframes rail-meteor { 0% { transform:translateX(0); opacity:0; } 1% { opacity:1; } 71.42% { transform:translateX(var(--rail-distance)); opacity:1; } 71.43%,100% { transform:translateX(var(--rail-distance)); opacity:0; } }
-.rail-pulse { position:absolute; top:-38px; left:50%; width:16px; height:16px; margin-left:-8px; border:1px solid #79ffcd; border-radius:50%; pointer-events:none; opacity:0; z-index:3; }
-.rail-ready .node[data-status="done"] .rail-pulse { animation:rail-node-pulse 7s linear infinite; animation-delay:var(--pulse-delay); }
-@keyframes rail-node-pulse { 0% { opacity:.65; transform:scale(1); box-shadow:0 0 9px #00ffa760; } 5.714% { opacity:0; transform:scale(2.6); } 100% { opacity:0; transform:scale(2.6); } }
-@media(prefers-reduced-motion:reduce) { .node .node-led,.rail-ready .rail-meteor,.rail-ready .node .rail-pulse { animation:none; } }
+@media(prefers-reduced-motion:reduce) { .node .node-led,.rail-ready .rail-meteor { animation:none; } }
 
 /* Compact, locally staggered operation timeline. One rail serves both card rows. */
 .mission-stage { height:450px; min-height:450px; }
@@ -229,3 +226,8 @@ body.is-report-view #warning-action { display:none; }
   .timeline .node { margin-top:200px; }
   .timeline .node:is([data-key="MEAL_ORDER"],[data-key="FSC"],[data-key="INF_TKT"],[data-key="TKT"],[data-key="NET"]) { margin-left:-42px; }
 }
+
+/* Clear security counts use the same completion badge as other completed nodes. */
+.timeline .node:is([data-key="GOV"],[data-key="WEBEDI"])[data-status="done"][data-time="0"] .node-value { width:31px; min-width:31px; height:31px; padding:0; border:1px solid #eaffef; border-radius:50%; background:var(--node-color); color:#00170f; box-shadow:0 0 15px var(--node-color); }
+.timeline .node:is([data-key="GOV"],[data-key="WEBEDI"])[data-status="done"][data-time="0"] .node-value::after { content:""; display:block; width:18px; height:18px; background:#003d28; mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m5 12 4.5 4.5L19 7' fill='none' stroke='black' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat; }
+.mission-title #flight-kicker { font-size:14px; }

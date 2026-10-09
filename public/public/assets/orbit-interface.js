@@ -7,7 +7,6 @@ document.querySelectorAll('.status-metric').forEach((metric,index)=>{
 const rail=document.querySelector('.timeline');
 if(rail){
  const scanner=document.createElement('div');scanner.className='rail-scanner';scanner.setAttribute('aria-hidden','true');scanner.innerHTML='<i class="rail-meteor"></i>';rail.append(scanner);
- rail.querySelectorAll('.node').forEach(n=>n.insertAdjacentHTML('beforeend','<i class="rail-pulse" aria-hidden="true"></i>'));
  let layoutFrame=0;
  function measureRail(){
   layoutFrame=0;const nodes=[...rail.querySelectorAll('.node')].filter(n=>!n.hidden);if(!nodes.length){scanner.hidden=true;return;}
@@ -16,7 +15,6 @@ if(rail){
   const start=first.offsetLeft-gap/2,end=last.offsetLeft+last.offsetWidth+gap/2,distance=end-start;
   const railY=parseFloat(getComputedStyle(rail).getPropertyValue('--timeline-rail-y'))||first.offsetTop-28;
   scanner.style.left=(start-3)+'px';scanner.style.top=(railY-10)+'px';scanner.style.width=distance+'px';scanner.style.setProperty('--rail-distance',distance+'px');
-  nodes.forEach(n=>n.style.setProperty('--pulse-delay',((n.offsetLeft+n.offsetWidth/2-start)/distance*5)+'s'));
   requestAnimationFrame(()=>rail.classList.add('rail-ready'));
  }
  const schedule=()=>{if(!layoutFrame)layoutFrame=requestAnimationFrame(measureRail);};

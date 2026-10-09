@@ -64,7 +64,7 @@ test('a failed mirrored NBRD sync retries on the next refresh', async () => {
 });
 test('DUP NAME and CHD LIST load count styling instead of the completed check mark',()=>{
  const css=fs.readFileSync(require.resolve('../public/public/assets/mission-dashboard.css'),'utf8');
- assert.match(html,/mission-dashboard\.css\?v=20260929-node-counts/);
+ assert.match(html,/mission-dashboard\.css\?v=20261008-zero-checks/);
  assert.match(css,/data-key="CHD"[^}]*\) \.node-value::after \{ content:attr\(data-value\)/);
  assert.match(css,/data-key="DUP_NAME"[^}]*\) \.node-value::after \{ content:attr\(data-value\)/);
 });
