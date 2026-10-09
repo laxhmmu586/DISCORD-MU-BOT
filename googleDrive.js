@@ -4169,7 +4169,7 @@ function cbsOriginalFormData(record = {}) {
     'permanentAddress', 'temporaryAddress', 'temporaryAddressValidUntil', 'addressAvailable', 'ahlBagDescription',
     'ahlBagBrandTag', 'ahlBagType', 'ahlFeatures', 'ahlOtherFeatures', 'ahlContents', 'dprDamageLevel', 'dprBagInfo',
     'dprBagType', 'dprInnerDamage', 'contentsDetails', 'issueDate', 'passengerSignature', 'submittedAt',
-    'destinationOnBags', 'departureOrigin', 'language', 'deliveryPreference'
+    'destinationOnBags', 'departureOrigin', 'language', 'deliveryPreference', 'additionalInformation'
   ];
   return JSON.stringify(Object.fromEntries(keys.filter((key) => record[key] != null && String(record[key]).trim()).map((key) => [key, record[key]])));
 }
