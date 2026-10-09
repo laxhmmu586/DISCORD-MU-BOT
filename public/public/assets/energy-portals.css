@@ -2,9 +2,9 @@
 .status-metric--energy {
   --energy: 20 135 255;
   --edge: 36 138 255;
-  --energy-texture: url("gate-energy-edge.svg?v=20261008-layered-filaments");
-  --filaments-inner: url("gate-filaments-inner.svg?v=20261008-layered-filaments");
-  --filaments-outer: url("gate-filaments-outer.svg?v=20261008-layered-filaments");
+  --energy-texture: url("gate-energy-edge.svg?v=20261008-orbit-no-highlights");
+  --filaments-inner: url("gate-filaments-inner.svg?v=20261008-orbit-no-highlights");
+  --filaments-outer: url("gate-filaments-outer.svg?v=20261008-orbit-no-highlights");
   background: transparent;
   box-shadow: none;
   overflow: visible;
@@ -43,7 +43,7 @@
   box-shadow: none;
   opacity: 1;
   pointer-events: none;
-  animation: energy-breathe 12s ease-in-out infinite;
+  animation: energy-orbit 84s linear -8s infinite, energy-breathe 12s ease-in-out infinite;
   transform-origin: center;
   transition: none;
 }
@@ -84,16 +84,16 @@
 .status-metric--bdt {
   --energy: 0 210 255;
   --edge: 20 226 255;
-  --energy-texture: url("bdt-energy-edge.svg?v=20261008-layered-filaments");
-  --filaments-inner: url("bdt-filaments-inner.svg?v=20261008-layered-filaments");
-  --filaments-outer: url("bdt-filaments-outer.svg?v=20261008-layered-filaments");
+  --energy-texture: url("bdt-energy-edge.svg?v=20261008-orbit-no-highlights");
+  --filaments-inner: url("bdt-filaments-inner.svg?v=20261008-orbit-no-highlights");
+  --filaments-outer: url("bdt-filaments-outer.svg?v=20261008-orbit-no-highlights");
 }
 .status-metric--std {
   --energy: 255 85 28;
   --edge: 255 126 42;
-  --energy-texture: url("std-energy-edge.svg?v=20261008-layered-filaments");
-  --filaments-inner: url("std-filaments-inner.svg?v=20261008-layered-filaments");
-  --filaments-outer: url("std-filaments-outer.svg?v=20261008-layered-filaments");
+  --energy-texture: url("std-energy-edge.svg?v=20261008-orbit-no-highlights");
+  --filaments-inner: url("std-filaments-inner.svg?v=20261008-orbit-no-highlights");
+  --filaments-outer: url("std-filaments-outer.svg?v=20261008-orbit-no-highlights");
 }
 
 @keyframes energy-orbit { to { transform: rotate(360deg); } }
@@ -119,11 +119,11 @@
   inset: 0;
   background: var(--filaments-inner) center / contain no-repeat;
   transform-origin: center;
-  animation: energy-orbit 96s linear -7s infinite, energy-breathe 19s ease-in-out -3s infinite;
+  animation: energy-orbit 48s linear -3.5s infinite, energy-breathe 19s ease-in-out -3s infinite;
 }
 .energy-filaments::after {
   background-image: var(--filaments-outer);
-  animation: energy-orbit 144s linear -22s infinite reverse, energy-breathe 23s ease-in-out -9s infinite;
+  animation: energy-orbit 72s linear -11s infinite, energy-breathe 23s ease-in-out -9s infinite;
 }
 @media (min-width: 761px) and (max-width: 1299px) {
   .status-strip { gap: 28px; }
@@ -137,4 +137,19 @@
 @media (prefers-reduced-motion: reduce) {
   .energy-filaments::before,
   .energy-filaments::after { animation: none; transform: none; opacity: 1; }
+}
+
+/* A quieter middle layer adds depth without rotating its siblings or the text. */
+.energy-filaments > .energy-filaments-middle {
+  position: absolute;
+  inset: 1px;
+  display: block;
+  background: var(--filaments-outer) center / contain no-repeat;
+  opacity: .46;
+  transform-origin: center;
+  pointer-events: none;
+  animation: energy-orbit 60s linear -23s infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .energy-filaments > .energy-filaments-middle { animation: none; transform: none; }
 }
