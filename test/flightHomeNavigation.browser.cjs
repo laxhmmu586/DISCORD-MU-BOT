@@ -19,7 +19,11 @@ await context.route('**/*',async route=>{
 });
 const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
 await page.goto('http://localhost/flights.html');await page.locator('.flight-card').waitFor();
-assert.deepEqual(await page.locator('.flight-services b').allTextContents(),['REPORT','BAGGAGE','LBS','NEXT DAY','IRR']);
+assert.deepEqual(await page.locator('.flight-services b').allTextContents(),['REPORT','BAGGAGE','LBS','240','IRR']);
+assert.equal(await page.locator('#flight-status').isVisible(),false);
+assert.equal(await page.locator('.flight-services').evaluate(e=>getComputedStyle(e).backgroundColor),'rgba(0, 0, 0, 0)');
+await page.locator('.flight-services a').first().hover();
+assert.equal(await page.locator('.flight-services a').first().evaluate(e=>getComputedStyle(e).backgroundColor),'rgba(0, 0, 0, 0)');
 assert.equal(await page.locator('.flight-services a').last().getAttribute('href'),'https://www.mufcapp.net/irr.html');
 fs.mkdirSync('.verification',{recursive:true});await page.screenshot({path:'.verification/flights-desktop.png',fullPage:true});
 for(const width of [390,320]){
