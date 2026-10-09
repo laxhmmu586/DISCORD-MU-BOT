@@ -3901,6 +3901,7 @@ app.post('/cbs-cases', async (req, res) => {
       dprBagInfo: sanitizeCbsText(body.dprBagInfo, 500),
       dprBagType: sanitizeCbsText(body.dprBagType, 160),
       dprInnerDamage: sanitizeCbsText(body.dprInnerDamage, 1000),
+      additionalInformation: sanitizeCbsText(body.additionalInformation, 1000),
       contentsRows,
       contentsDetails: cbsContentsText(contentsRows),
       issueDate: sanitizeCbsText(body.issueDate, 40),
