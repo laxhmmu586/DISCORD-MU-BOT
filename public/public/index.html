@@ -4466,7 +4466,7 @@
       }
     </style>
   <link rel="stylesheet" href="assets/mission-dashboard.css?v=20261008-rail-dot-glow" />
-  <link rel="stylesheet" href="assets/energy-portals.css?v=20261008-orbit-no-highlights" />
+  <link rel="stylesheet" href="assets/energy-portals.css?v=20261009-gradient-glow" />
   <script defer src="assets/orbit-interface.js?v=9-full-width-rail"></script>
   </head>
   <body class="is-loading">
@@ -4536,9 +4536,9 @@
           </div>
           <div class="mission-side">
             <div class="status-strip" aria-label="Current flight metrics">
-              <div class="status-metric status-metric--energy"><i class="energy-filaments" aria-hidden="true"><span class="energy-filaments-middle"></span></i><span>Gate</span><strong id="metric-gate">---</strong></div>
-              <div class="status-metric status-metric--energy status-metric--bdt"><i class="energy-filaments" aria-hidden="true"><span class="energy-filaments-middle"></span></i><span>BDT</span><strong id="metric-bdt">----</strong></div>
-              <div class="status-metric status-metric--energy status-metric--std"><i class="energy-filaments" aria-hidden="true"><span class="energy-filaments-middle"></span></i><span>STD</span><strong id="metric-std">----</strong></div>
+              <div class="status-metric status-metric--energy"><i class="energy-glow" aria-hidden="true"></i><i class="energy-ring" aria-hidden="true"></i><span>GATE</span><strong id="metric-gate">---</strong></div>
+              <div class="status-metric status-metric--energy status-metric--bdt"><i class="energy-glow" aria-hidden="true"></i><i class="energy-ring" aria-hidden="true"></i><span>BDT</span><strong id="metric-bdt">----</strong></div>
+              <div class="status-metric status-metric--energy status-metric--etd"><i class="energy-glow" aria-hidden="true"></i><i class="energy-ring" aria-hidden="true"></i><span>ETD</span><strong id="metric-etd">----</strong></div>
             </div>
             <div class="flight-tools" aria-label="Flight data">
               <button class="flight-menu-button" type="button" aria-label="Open flight data menu" aria-expanded="false">
@@ -4910,7 +4910,7 @@
         setText("#active-flight", "SY");
         setText("#metric-gate", "---");
         setText("#metric-bdt", "----");
-        setText("#metric-std", "----");
+        setText("#metric-etd", "----");
         const reservationBookedEl = document.querySelector("#reservation-booked");
         if (reservationBookedEl) reservationBookedEl.innerHTML = tripleHtml(["---", "---", "---"]);
         ["", "tomorrow-"].forEach((prefix) => ["reservation-f", "reservation-j", "reservation-y", "meal-email-f", "meal-email-j", "meal-email-y", "meal-spml-f", "meal-spml-j", "meal-spml-y", "meal-pd-f", "meal-pd-j", "meal-pd-y"].forEach((id) => setText(`#${prefix}${id}`, "---")));
@@ -6277,7 +6277,7 @@
         ];
         const nbrdSignature = (sy.bnAudit || []).filter(rowHasCkinNbrdIssue).map((row) => [row.bn, row.seat, ckinNbrdDetails(row).join("|")]);
         const warningSignature = buildWarningRows(sy).map((row) => [row.bn, row.seat, row.warningType, row.warningReason, (row.acknowledgements || []).length]);
-        return JSON.stringify([sy.flightNo, sy.flightDate, sy.gate, sy.bdt, sy.sd, sy.reservation, sy.reservationTicketed, sy.checkedIn, sy.checkedInTicketed, sy.spml || {}, sy.jcsy, steps, sy.chdList || [], govSignature, webEdiIssueBnList(sy), nbrdSignature, warningSignature, sy.psmList || [], sy.wchList || [], sy.infTicketAudit || [], ticketMatchAudit(sy)]);
+        return JSON.stringify([sy.flightNo, sy.flightDate, sy.gate, sy.bdt, sy.sd, sy.ed, sy.reservation, sy.reservationTicketed, sy.checkedIn, sy.checkedInTicketed, sy.spml || {}, sy.jcsy, steps, sy.chdList || [], govSignature, webEdiIssueBnList(sy), nbrdSignature, warningSignature, sy.psmList || [], sy.wchList || [], sy.infTicketAudit || [], ticketMatchAudit(sy)]);
       }
 
       function mealCountsText(counts, showNonMeals = false) {
@@ -6399,7 +6399,7 @@
         setText("#active-flight", `${sy.flightNo || "SY"} / ${sy.flightDate || "TODAY"}`);
         setText("#metric-gate", sy.gate || "---");
         setText("#metric-bdt", sy.bdt || "----");
-        setText("#metric-std", sy.sd || "----");
+        setText("#metric-etd", sy.ed || "----");
         const reservationBookedEl = document.querySelector("#reservation-booked");
         if (reservationBookedEl) reservationBookedEl.innerHTML = tripleHtml(countTriple(sy.reservation));
         renderMealOrderColumns(sy);
