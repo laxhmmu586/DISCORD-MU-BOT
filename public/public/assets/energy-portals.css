@@ -1,0 +1,97 @@
+/* Shared energy portal: geometry and material are identical; only the palette changes. */
+.status-metric--energy {
+  --energy: 20 135 255;
+  --edge: 36 138 255;
+  --energy-texture: url("gate-energy-edge.svg?v=20261008-transparent-portals");
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+  animation: none;
+}
+
+.status-metric--energy .metric-rings { display: none; }
+
+.status-metric--energy::before {
+  content: "";
+  display: block;
+  position: absolute;
+  inset: -6px;
+  z-index: -1;
+  border: 1px solid rgb(var(--edge));
+  border-radius: 50%;
+  opacity: 1;
+  background: transparent;
+  box-shadow:
+    0 0 7px 2px rgb(var(--energy) / .67),
+    0 0 19px 5px rgb(var(--energy) / .47),
+    0 0 38px 10px rgb(var(--energy) / .19),
+    inset 0 0 7px rgb(var(--energy) / .20);
+  pointer-events: none;
+}
+
+.status-metric--energy::after {
+  content: "";
+  display: block;
+  position: absolute;
+  inset: -23px;
+  border: 0;
+  border-radius: 0;
+  clip-path: none;
+  background: var(--energy-texture) center / 100% 100% no-repeat;
+  box-shadow: none;
+  opacity: 1;
+  pointer-events: none;
+  animation: energy-orbit 96s linear infinite, energy-breathe 12s ease-in-out infinite;
+  transform-origin: center;
+  transition: none;
+}
+
+/* Keep the center, text and hover state fixed; only the decorative edge moves. */
+.status-metric--energy,
+.status-metric--energy::before,
+.status-metric--energy > * {
+  animation: none;
+  transition: none;
+}
+
+.status-metric--energy > span {
+  top: 30px;
+  color: #c1edff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-shadow: none;
+}
+
+.status-metric--energy > strong {
+  top: 56%;
+  color: #f5faff;
+  font-size: 32px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  text-shadow: 0 2px 5px #000b;
+}
+
+@media (max-width: 760px) {
+  .status-metric--energy::after { inset: -19px; }
+  .status-metric--energy > span { top: 21px; font-size: 9px; }
+  .status-metric--energy > strong { font-size: 26px; }
+}
+
+.status-metric--bdt {
+  --energy: 0 210 255;
+  --edge: 20 226 255;
+  --energy-texture: url("bdt-energy-edge.svg?v=20261008-transparent-portals");
+}
+.status-metric--std {
+  --energy: 255 85 28;
+  --edge: 255 126 42;
+  --energy-texture: url("std-energy-edge.svg?v=20261008-transparent-portals");
+}
+
+@keyframes energy-orbit { to { transform: rotate(360deg); } }
+@keyframes energy-breathe { 0%, 100% { opacity: .82; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .status-metric--energy::after { animation: none; transform: none; opacity: 1; }
+}
