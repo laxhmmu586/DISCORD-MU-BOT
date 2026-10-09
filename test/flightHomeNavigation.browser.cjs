@@ -19,12 +19,14 @@ await context.route('**/*',async route=>{
 });
 const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
 await page.goto('http://localhost/flights.html');await page.locator('.flight-card').waitFor();
-assert.deepEqual(await page.locator('.flight-services b').allTextContents(),['REPORT','BAGGAGE','LBS','240','IRR']);
+assert.deepEqual(await page.locator('.flight-services b').allTextContents(),['REPORT','BAGGAGE','LBS','240','IRR','MISS FLT','CBS Form']);
 assert.equal(await page.locator('#flight-status').isVisible(),false);
 assert.equal(await page.locator('.flight-services').evaluate(e=>getComputedStyle(e).backgroundColor),'rgba(0, 0, 0, 0)');
 await page.locator('.flight-services a').first().hover();
 assert.equal(await page.locator('.flight-services a').first().evaluate(e=>getComputedStyle(e).backgroundColor),'rgba(0, 0, 0, 0)');
-assert.equal(await page.locator('.flight-services a').last().getAttribute('href'),'https://www.mufcapp.net/irr.html');
+assert.equal(await page.locator('.flight-services a').nth(4).getAttribute('href'),'https://www.mufcapp.net/irr.html');
+assert.equal(await page.getByRole('link',{name:'MISS FLT',exact:true}).getAttribute('href'),'/contact-form.html');
+assert.equal(await page.getByRole('link',{name:'CBS Form',exact:true}).getAttribute('href'),'/cbs-form.html');
 fs.mkdirSync('.verification',{recursive:true});await page.screenshot({path:'.verification/flights-desktop.png',fullPage:true});
 for(const width of [390,320]){
  await page.setViewportSize({width,height:844});
@@ -45,5 +47,9 @@ for(const [file,brand] of [['irr.html','MUIRR'],['cbs.html','MUBC']]){
  await page.goto('http://localhost/'+file);assert.equal(await page.getByRole('link',{name:brand,exact:true}).getAttribute('href'),'/flights.html');
  await page.getByRole('link',{name:brand,exact:true}).click();await page.waitForURL('**/flights.html');
 }
-assert.deepEqual(errors,[]);await browser.close();console.log('PASS login, selected-flight dashboard route, five services, desktop/mobile overflow, keyboard scrolling, MUIRR/MUBC return links');
+await page.setViewportSize({width:1365,height:900});await page.goto('http://localhost/cbs.html');
+const formLink=page.getByRole('link',{name:'Form',exact:true});assert.equal(await formLink.getAttribute('href'),'/cbs-form.html');
+assert(await page.evaluate(()=>Boolean(document.querySelector('#sidebar-form').compareDocumentPosition(document.querySelector('#sidebar-refresh')) & Node.DOCUMENT_POSITION_FOLLOWING)));
+await page.screenshot({path:'.verification/cbs-form-shortcut.png',fullPage:true});await formLink.click();await page.waitForURL('**/cbs-form.html');
+assert.deepEqual(errors,[]);await browser.close();console.log('PASS login, selected-flight dashboard route, seven services, CBS form link, desktop/mobile overflow, keyboard scrolling, MUIRR/MUBC return links');
 })().catch(e=>{console.error(e);process.exit(1)});

@@ -61,7 +61,7 @@
     .actions { display:flex; gap:12px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
     button,a.button { border:0; border-radius:999px; padding:12px 18px; font-weight:850; cursor:pointer; background:var(--brand); color:white; text-decoration:none; }
     .sidebar-actions { display:grid; gap:5px; }
-    .sidebar-action { display:grid; grid-template-columns:26px 1fr; align-items:center; width:100%; padding:10px 13px; border-radius:10px; background:transparent; color:#c6dcf7; font-size:14px; font-weight:750; text-align:left; }
+    .sidebar-action { text-decoration:none; display:grid; grid-template-columns:26px 1fr; align-items:center; width:100%; padding:10px 13px; border-radius:10px; background:transparent; color:#c6dcf7; font-size:14px; font-weight:750; text-align:left; }
     .sidebar-action:hover { background:rgba(255,255,255,.09); color:#fff; }
     .sidebar-action svg { width:19px; height:19px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
     body.sidebar-collapsed .sidebar-action { grid-template-columns:1fr; justify-items:center; padding:11px 8px; }
@@ -395,6 +395,7 @@
     <span class="header-spacer"></span>
     <span class="cbs-live-status" id="cbs-live-status" role="status">Sync every 1 min</span>
     <div class="sidebar-actions">
+      <a class="sidebar-action" id="sidebar-form" href="/cbs-form.html" title="Form" aria-label="Form"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6zM15 3v5h4M9 12h7M9 16h7"/></svg><span class="sidebar-action-label">Form</span></a>
       <button class="sidebar-action" id="sidebar-refresh" type="button" title="Refresh"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6v5h-5M4 18v-5h5M6.1 9A7 7 0 0 1 18 6l2 5M4 13l2 5a7 7 0 0 0 11.9-3"/></svg><span class="sidebar-action-label">Refresh</span></button>
       <button class="sidebar-action" id="sidebar-logout" type="button" title="Logout"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 5H5v14h5m4-4 4-3-4-3m4 3H9"/></svg><span class="sidebar-action-label">Logout</span></button>
     </div>
