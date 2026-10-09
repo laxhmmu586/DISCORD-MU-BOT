@@ -133,7 +133,7 @@ test('IRR removes destination and groups Waiting cases by membership', () => {
 });
 
 test('IRR dashboard uses MUIRR navigation and separates operational queues', () => {
-  assert.match(admin, /class="brand" href="index\.html">MUIRR</);
+  assert.match(admin, /class="brand" href="\/flights\.html">MUIRR</);
   assert.match(admin, /data-view="Waiting"/);
   assert.match(admin, /data-view="In Progress"/);
   assert.match(admin, /data-view="Hotel"/);
@@ -151,11 +151,12 @@ test('IRR sidebar can collapse and remembers the selected width', () => {
   assert.match(admin, /aria-label',collapsed\?'Expand sidebar':'Collapse sidebar'/);
 });
 
-test('IRR is linked below Security Check instead of the primary navigation', () => {
-  assert.match(home, /id="security-check-button"[^>]*>Security Check<\/button>\s*<button id="irr-button"[^>]*>IRR<\/button>/);
+test('IRR is linked from flight services and removed from the dashboard menu', () => {
+  assert.doesNotMatch(home, /id="irr-button"/);
   assert.doesNotMatch(home, /id="record-nav-link"/);
   assert.doesNotMatch(home, /href="record\.html"/);
-  assert.match(home, /location\.href='irr\.html'/);
+  const flights = fs.readFileSync(path.join(root, 'public/public/flights.html'), 'utf8');
+  assert.match(flights, /href="https:\/\/www\.mufcapp\.net\/irr\.html"/);
 });
 
 test('hotel requests move to the Hotel queue before a hotel agent adds the reservation', () => {
