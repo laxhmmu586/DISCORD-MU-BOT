@@ -6,7 +6,7 @@
       if (serviceRoute) location.replace(serviceRoute);
     </script>
     <script src="/flight-session.js"></script>
-    <link rel="stylesheet" href="/flight-navigation.css" />
+    <link rel="stylesheet" href="/flight-navigation.css?v=20261009-vertical-switch" />
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>MUFC</title>
@@ -4480,7 +4480,6 @@
         <a class="boarding-nav-link" href="240.html" id="transit-240-nav-link">240</a>
       </nav>
       <div class="nav-row">
-        <a class="flight-select-link" id="header-select-flight" href="/flights.html" aria-label="Select Flight" title="Select Flight"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h15l-4-4M20 17H5l4 4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Select Flight</span></a>
         <form class="search" id="mission-search" aria-label="Search mission">
           <input id="query" type="search" value="SY" autocomplete="off" />
           <button type="submit" aria-label="Search">
@@ -4532,7 +4531,7 @@
         <div class="mission-head">
           <div class="mission-title">
             <p class="kicker" id="flight-kicker">Loading SY...</p>
-            <h1 id="active-flight">SY</h1>
+            <div class="mission-flight-heading"><a class="flight-switch" id="mission-switch-flight" href="/flights.html" aria-label="Switch flight" title="Switch flight"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v17m-4-4 4 4 4-4M17 21V4m-4 4 4-4 4 4"/></svg></a><h1 id="active-flight">SY</h1></div>
           </div>
           <div class="mission-side">
             <div class="status-strip" aria-label="Current flight metrics">
@@ -4545,7 +4544,6 @@
                 <span class="line-menu-icon" aria-hidden="true"><span></span><span></span><span></span></span>
               </button>
               <div class="flight-menu" aria-hidden="true">
-                <button id="select-flight-button" type="button">Select Flight</button>
                 <button id="sales-report-button" type="button">Sales Report</button>
                 <button id="seat-map-button" type="button">Seat Map</button>
                 <button id="security-check-button" type="button">Security Check</button>
@@ -8780,7 +8778,6 @@
         searchPassenger();
       }
 
-      document.querySelector("#select-flight-button")?.addEventListener("click", () => location.assign("/flights.html"));
 
       document.addEventListener("click", (event) => {
         if (!event.target.closest(".flight-tools")) closeFlightMenu();

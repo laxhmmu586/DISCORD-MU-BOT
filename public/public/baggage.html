@@ -1,17 +1,17 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>MUFC · Baggage</title><link rel="stylesheet" href="/services.css">
+<title>MUFC · Baggage</title><link rel="stylesheet" href="/services.css"><link rel="stylesheet" href="/flight-navigation.css?v=20261009-vertical-switch">
 <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script defer src="/__/firebase/init.js"></script><script defer src="/flight-account.js"></script>
 <script defer src="/service-common.js"></script><script defer src="/baggage.js"></script></head>
-<body class="service-page"><header class="service-topbar"><a class="brand" href="/flights.html">MUFC</a><nav><a href="/report.html">Report</a><a href="/baggage.html">Baggage</a></nav><div class="flight-account" id="flight-account"></div></header><main>        <section class="report-page test-page" id="test-page" aria-label="Baggage">
+<body class="service-page"><header class="service-topbar"><a class="brand" href="/flights.html">MUFC</a><nav><a href="/report.html">Report</a><a href="/baggage.html">Baggage</a></nav><a class="flight-switch" href="/flights.html" aria-label="Switch flight" title="Switch flight"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v17m-4-4 4 4 4-4M17 21V4m-4 4 4-4 4 4"/></svg></a><div class="flight-account" id="flight-account"></div></header><main>        <section class="report-page test-page" id="test-page" aria-label="Baggage">
           <div class="report-hero">
             <div>
               <h2>Baggage</h2>
               <p class="panel-muted">Format must be MU123456.</p>
             </div>
-            <a class="report-close" href="/flights.html">Select Flight</a>
+
           </div>
           <form class="test-search-form" id="test-search-form">
             <label class="test-search-field">
