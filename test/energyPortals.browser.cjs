@@ -34,26 +34,26 @@ assert.equal(portals.length,3);for(const p of portals){assert.equal(p.width,port
 const data=await page.locator('.status-metric--energy:first-child').evaluate(e=>({value:e.querySelector('strong').textContent,width:e.offsetWidth,ring:getComputedStyle(e,'::before').boxShadow,clip:getComputedStyle(e,'::after').clipPath,animation:getComputedStyle(e).animationName,scroll:document.documentElement.scrollWidth,viewport:innerWidth}));
  assert.equal(data.value,'132'); assert.equal(data.clip,'none'); assert.equal(data.animation,'none'); assert.notEqual(data.ring,'none'); assert(data.scroll<=data.viewport+1);
  assert.equal(await page.locator('#metric-gate').evaluate(e=>getComputedStyle(e).filter),'none'); assert.equal(await page.locator('.status-metric--energy:first-child').evaluate(e=>getComputedStyle(e).filter),'none');
- await page.screenshot({path:'.verification/layered-portals-'+width+'.png',fullPage:true});
+ await page.screenshot({path:'.verification/clean-portals-'+width+'.png',fullPage:true});
 }
 await page.setViewportSize({width:1920,height:940});
 await page.waitForTimeout(100);
 const box=await page.locator('.mission-side').boundingBox();
-await page.screenshot({path:'.verification/layered-portals-detail.png',clip:{x:box.x-40,y:box.y-35,width:box.width+80,height:box.height+70}});
+await page.screenshot({path:'.verification/clean-portals-detail.png',clip:{x:box.x-40,y:box.y-35,width:box.width+80,height:box.height+70}});
 const layout=()=>page.locator('.mission-head').evaluate(e=>Array.from(e.querySelectorAll('.mission-title,.status-metric,.flight-menu-button')).map(n=>{const r=n.getBoundingClientRect();return [r.x,r.y,r.width,r.height]}));
 const textRect=await page.locator('#metric-gate').boundingBox();
 const energy=()=>page.locator('.status-metric--energy:first-child').evaluate(e=>{const s=getComputedStyle(e,'::after');return {transform:s.transform,opacity:s.opacity,animation:s.animationName,duration:s.animationDuration}});
 const clip={x:box.x-40,y:box.y-35,width:box.width+80,height:box.height+70};
 const readLayers=()=>page.locator('.status-metric--energy').evaluateAll(es=>es.map(e=>{const f=e.querySelector('.energy-filaments');const angle=s=>{const m=new DOMMatrixReadOnly(s.transform);return Math.atan2(m.b,m.a)*180/Math.PI};const inner=getComputedStyle(f,'::before'),outer=getComputedStyle(f,'::after');return {background:getComputedStyle(e,'::before').backgroundImage,rimTransform:getComputedStyle(e,'::after').transform,inner:angle(inner),outer:angle(outer),innerDuration:inner.animationDuration,outerDuration:outer.animationDuration,outerDirection:outer.animationDirection,centerAnimation:getComputedStyle(e,'::before').animationName,textAnimation:getComputedStyle(e.querySelector('strong')).animationName}}));
-const first=await readLayers();for(const p of first){assert.equal(p.background,'none');assert.equal(p.centerAnimation,'none');assert.equal(p.textAnimation,'none');assert.equal(p.rimTransform,'none');assert.equal(p.innerDuration,'96s, 19s');assert.equal(p.outerDuration,'144s, 23s');assert.match(p.outerDirection,/reverse/);}
-await page.waitForTimeout(600);const moved=await readLayers();for(let i=0;i<3;i++){assert(moved[i].inner>first[i].inner);assert(moved[i].outer<first[i].outer);}
+const first=await readLayers();for(const p of first){assert.equal(p.background,'none');assert.equal(p.centerAnimation,'none');assert.equal(p.textAnimation,'none');assert.equal(p.rimTransform,'none');assert.equal(p.innerDuration,'48s, 19s');assert.equal(p.outerDuration,'72s, 23s');assert.equal(p.outerDirection,'normal, normal');}
+await page.waitForTimeout(600);const moved=await readLayers();for(let i=0;i<3;i++){assert(moved[i].inner>first[i].inner);assert(moved[i].outer>first[i].outer);assert(moved[i].inner-first[i].inner>moved[i].outer-first[i].outer);}
 assert.deepEqual(await page.locator('#metric-gate').boundingBox(),textRect);
 if(process.env.PORTAL_MOTION_PREVIEW){
- fs.mkdirSync('.verification/layered-portals-frames',{recursive:true});
+ fs.mkdirSync('.verification/clean-portals-frames',{recursive:true});
  await page.evaluate(()=>document.querySelectorAll('.status-metric--energy').forEach(e=>e.getAnimations({subtree:true}).forEach(a=>a.pause())));
  for(let i=0;i<300;i++){
   await page.evaluate(time=>document.querySelectorAll('.status-metric--energy').forEach(e=>e.getAnimations({subtree:true}).forEach(a=>a.currentTime=time)),i*40);
-  await page.screenshot({path:'.verification/layered-portals-frames/'+String(i).padStart(3,'0')+'.png',clip});
+  await page.screenshot({path:'.verification/clean-portals-frames/'+String(i).padStart(3,'0')+'.png',clip});
  }
 }
 await page.emulateMedia({reducedMotion:'reduce'});
