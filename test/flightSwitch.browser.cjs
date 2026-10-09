@@ -32,6 +32,7 @@ for(const width of [1365,390]){
   if(file==='index'){
    await page.locator('body:not(.is-loading)').waitFor();
    assert.equal(await page.locator('#header-select-flight,#select-flight-button,#irr-button').count(),0);
+   const alignment=await page.evaluate(()=>Math.abs(document.querySelector('#flight-kicker').getBoundingClientRect().left-document.querySelector('#active-flight').getBoundingClientRect().left));assert(alignment<1);
    const color=await control.evaluate(e=>getComputedStyle(e).color);assert.equal(color,'rgb(255, 255, 255)');
    const boxes=await page.locator('.mission-flight-heading').evaluate(e=>{const a=e.querySelector('a').getBoundingClientRect(),h=e.querySelector('h1').getBoundingClientRect();return {right:a.right,left:h.left}});assert(boxes.right<=boxes.left);
    await page.locator('.flight-menu-button').click();assert.doesNotMatch(await page.locator('.flight-menu').innerText(),/IRR|Select Flight/i);
