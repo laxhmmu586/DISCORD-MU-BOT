@@ -1,130 +1,71 @@
-/* Shared energy portal: geometry and material are identical; only the palette changes. */
+/* Rotating gradient rings with an unmasked outer glow wrapper. */
 .status-metric--energy {
-  --energy: 20 135 255;
-  --edge: 36 138 255;
-  --energy-texture: url("gate-energy-edge.svg?v=20261008-orbit-no-highlights");
-  --filaments-inner: url("gate-filaments-inner.svg?v=20261008-orbit-no-highlights");
-  --filaments-outer: url("gate-filaments-outer.svg?v=20261008-orbit-no-highlights");
+  --energy-color: #00d9ff;
+  --energy-partner: #207cff;
+  --energy-speed: 1.4s;
   background: transparent;
   box-shadow: none;
   overflow: visible;
   animation: none;
+  transition: none;
 }
-
+.status-metric--bdt { --energy-color: #ba54ff; --energy-partner: #7358ff; }
+.status-metric--etd { --energy-color: #ffb13b; --energy-partner: #ff663c; }
+.status-metric--energy::before,
+.status-metric--energy::after,
 .status-metric--energy .metric-rings { display: none; }
 
-.status-metric--energy::before {
-  content: "";
-  display: block;
+.status-metric--energy .energy-ring,
+.status-metric--energy .energy-glow {
   position: absolute;
-  inset: -6px;
-  z-index: -1;
-  border: 1px solid rgb(var(--edge));
-  border-radius: 50%;
-  opacity: 1;
-  background: transparent;
-  box-shadow:
-    0 0 7px 2px rgb(var(--energy) / .67),
-    0 0 19px 5px rgb(var(--energy) / .47),
-    0 0 38px 10px rgb(var(--energy) / .19),
-    inset 0 0 7px rgb(var(--energy) / .20);
-  pointer-events: none;
-}
-
-.status-metric--energy::after {
-  content: "";
-  display: block;
-  position: absolute;
-  inset: -23px;
-  border: 0;
-  border-radius: 0;
-  clip-path: none;
-  background: var(--energy-texture) center / 100% 100% no-repeat;
-  box-shadow: none;
-  opacity: 1;
-  pointer-events: none;
-  animation: energy-orbit 84s linear -8s infinite, energy-breathe 12s ease-in-out infinite;
-  transform-origin: center;
-  transition: none;
-}
-
-/* Keep the center, text and hover state fixed; only the decorative edge moves. */
-.status-metric--energy,
-.status-metric--energy::before,
-.status-metric--energy > * {
-  animation: none;
-  transition: none;
-}
-
-.status-metric--energy > span {
-  top: 30px;
-  color: #c1edff;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  text-shadow: none;
-}
-
-.status-metric--energy > strong {
-  top: 56%;
-  color: #f5faff;
-  font-size: 32px;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-  text-shadow: 0 2px 5px #000b;
-}
-
-@media (max-width: 760px) {
-  .status-metric--energy::after { inset: -19px; }
-  .status-metric--energy > span { top: 21px; font-size: 9px; }
-  .status-metric--energy > strong { font-size: 26px; }
-}
-
-.status-metric--bdt {
-  --energy: 0 210 255;
-  --edge: 20 226 255;
-  --energy-texture: url("bdt-energy-edge.svg?v=20261008-orbit-no-highlights");
-  --filaments-inner: url("bdt-filaments-inner.svg?v=20261008-orbit-no-highlights");
-  --filaments-outer: url("bdt-filaments-outer.svg?v=20261008-orbit-no-highlights");
-}
-.status-metric--std {
-  --energy: 255 85 28;
-  --edge: 255 126 42;
-  --energy-texture: url("std-energy-edge.svg?v=20261008-orbit-no-highlights");
-  --filaments-inner: url("std-filaments-inner.svg?v=20261008-orbit-no-highlights");
-  --filaments-outer: url("std-filaments-outer.svg?v=20261008-orbit-no-highlights");
-}
-
-@keyframes energy-orbit { to { transform: rotate(360deg); } }
-@keyframes energy-breathe { 0%, 100% { opacity: .82; } 50% { opacity: 1; } }
-@media (prefers-reduced-motion: reduce) {
-  .status-metric--energy::after { animation: none; transform: none; opacity: 1; }
-}
-
-/* Space the portals and flight menu slightly farther apart. */
-.status-strip { gap: 32px; }
-.mission-side { gap: 44px; }
-.energy-filaments {
-  position: absolute;
-  inset: -23px;
+  inset: 0;
   z-index: 0;
   display: block;
+  border-radius: 50%;
   pointer-events: none;
+  animation: energy-orbit var(--energy-speed) linear infinite;
 }
-.energy-filaments::before,
-.energy-filaments::after {
+.status-metric--energy .energy-ring,
+.status-metric--energy .energy-glow::before,
+.status-metric--energy .energy-glow::after {
+  background: linear-gradient(35deg, var(--energy-color) 35%, var(--energy-partner));
+  mask: radial-gradient(circle, transparent 64%, #000 66%);
+  -webkit-mask: radial-gradient(circle, transparent 64%, #000 66%);
+}
+.status-metric--energy .energy-glow { inset: -2px; filter: blur(8px); }
+.status-metric--energy .energy-glow::before,
+.status-metric--energy .energy-glow::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: var(--filaments-inner) center / contain no-repeat;
-  transform-origin: center;
-  animation: energy-orbit 48s linear -3.5s infinite, energy-breathe 19s ease-in-out -3s infinite;
+  border-radius: 50%;
 }
-.energy-filaments::after {
-  background-image: var(--filaments-outer);
-  animation: energy-orbit 72s linear -11s infinite, energy-breathe 23s ease-in-out -9s infinite;
+.status-metric--energy .energy-glow::after { inset: -5px; opacity: .65; }
+
+/* Operational labels and values stay stationary and sharp. */
+.status-metric--energy > span {
+  top: 30px;
+  color: #bbd0df;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-shadow: none;
 }
+.status-metric--energy > strong {
+  top: 56%;
+  color: #f5faff;
+  font-size: 28px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  text-shadow: none;
+}
+.status-metric--energy > span,
+.status-metric--energy > strong { animation: none; transition: none; }
+
+/* Preserve the online dashboard's ring sizes and spacing. */
+.status-strip { gap: 32px; }
+.mission-side { gap: 44px; }
 @media (min-width: 761px) and (max-width: 1299px) {
   .status-strip { gap: 28px; }
   .mission-side { gap: 36px; }
@@ -132,24 +73,11 @@
 @media (max-width: 760px) {
   .status-strip { gap: 22px; }
   .mission-side { gap: 18px; }
-  .energy-filaments { inset: -19px; }
+  .status-metric--energy > span { top: 21px; font-size: 9px; letter-spacing: 1px; }
+  .status-metric--energy > strong { font-size: 23px; }
 }
+@keyframes energy-orbit { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) {
-  .energy-filaments::before,
-  .energy-filaments::after { animation: none; transform: none; opacity: 1; }
-}
-
-/* A quieter middle layer adds depth without rotating its siblings or the text. */
-.energy-filaments > .energy-filaments-middle {
-  position: absolute;
-  inset: 1px;
-  display: block;
-  background: var(--filaments-outer) center / contain no-repeat;
-  opacity: .46;
-  transform-origin: center;
-  pointer-events: none;
-  animation: energy-orbit 60s linear -23s infinite;
-}
-@media (prefers-reduced-motion: reduce) {
-  .energy-filaments > .energy-filaments-middle { animation: none; transform: none; }
+  .status-metric--energy .energy-ring,
+  .status-metric--energy .energy-glow { animation: none; }
 }
