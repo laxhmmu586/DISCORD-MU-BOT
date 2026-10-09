@@ -153,7 +153,7 @@ body.is-report-view #warning-action { display:none; }
 .timeline { position:relative; }
 .timeline > :nth-child(1 of .node:not([hidden])) { margin-left:auto; }
 .timeline > :nth-last-child(1 of .node:not([hidden])) { margin-right:auto; }
-.timeline-shell::after { display:block; content:""; position:absolute; left:50%; right:auto; top:var(--rail-screen-y,209px); bottom:auto; width:100vw; height:2px; transform:translateX(-50%); background:#dff6ff; box-shadow:0 0 10px #bcecffaa; pointer-events:none; z-index:1; }
+.timeline-shell::after { display:block; content:""; position:absolute; left:50%; right:auto; top:var(--rail-screen-y,209px); bottom:auto; width:100vw; height:2px; transform:translateX(-50%); background:#effcff; box-shadow:0 0 4px 1px #dff6ff99,0 0 12px 3px #8edfff66; pointer-events:none; z-index:0; }
 .rail-scanner { position:absolute; height:20px; pointer-events:none; z-index:1; overflow:visible; }
 .rail-meteor { position:absolute; left:-3px; top:4px; width:12px; height:12px; border-radius:50%; background:#fff; box-shadow:0 0 7px 2px #fff,0 0 20px 5px #ffffffcc,0 0 30px #ffffff90; opacity:0; }
 .rail-meteor::before { content:""; position:absolute; right:6px; top:4px; width:180px; height:4px; border-radius:50%; background:linear-gradient(90deg,transparent,#ffffff80 25%,#ffffffd9 70%,#fff); filter:drop-shadow(0 0 4px #fff); }
@@ -230,3 +230,6 @@ body.is-report-view #warning-action { display:none; }
 .timeline .node:is([data-key="GOV"],[data-key="WEBEDI"])[data-status="done"][data-time="0"] .node-value { width:31px; min-width:31px; height:31px; padding:0; border:1px solid #eaffef; border-radius:50%; background:var(--node-color); color:#00170f; box-shadow:0 0 15px var(--node-color); }
 .timeline .node:is([data-key="GOV"],[data-key="WEBEDI"])[data-status="done"][data-time="0"] .node-value::after { content:""; display:block; width:18px; height:18px; background:#003d28; mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m5 12 4.5 4.5L19 7' fill='none' stroke='black' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat; }
 .mission-title #flight-kicker { font-size:14px; }
+
+/* Keep opaque node dots above the rail with a glow matching their status. */
+.timeline .node::before { box-shadow:0 0 4px 1px var(--node-color),0 0 12px 3px color-mix(in srgb,var(--node-color) 65%,transparent),0 0 22px 5px color-mix(in srgb,var(--node-color) 30%,transparent); }

@@ -32,10 +32,12 @@ for(const width of [1920,1365,390]){
   for(const right of [false,true]){
    await page.locator('.timeline').evaluate((e,right)=>e.scrollLeft=right?e.scrollWidth:0,right);
    const metrics=await page.locator('.timeline-shell').evaluate(e=>{const s=getComputedStyle(e,'::after'),r=e.getBoundingClientRect(),t=e.querySelector('.timeline'),scanner=t.querySelector('.rail-scanner');return {width:parseFloat(s.width),left:r.left+parseFloat(s.left)-parseFloat(s.width)/2,top:parseFloat(s.top),scannerTop:t.offsetTop+parseFloat(scanner.style.top)+9,display:s.display,scroll:document.documentElement.scrollWidth,viewport:innerWidth}});
+   const layers=await page.evaluate(()=>({line:getComputedStyle(document.querySelector('.timeline-shell'),'::after').zIndex,timeline:getComputedStyle(document.querySelector('.timeline')).zIndex,dot:getComputedStyle(document.querySelector('.node'),'::before').backgroundColor,glow:getComputedStyle(document.querySelector('.node'),'::before').boxShadow}));assert(Number(layers.line)<Number(layers.timeline));assert.notEqual(layers.dot,'rgba(0, 0, 0, 0)');assert.notEqual(layers.glow,'none');
    assert.equal(metrics.width,width);assert(Math.abs(metrics.left)<1);assert(Math.abs(metrics.top-metrics.scannerTop)<1);assert.equal(metrics.display,'block');assert(metrics.scroll<=metrics.viewport+1);
   }
  }
  await page.evaluate(()=>document.querySelectorAll('.node').forEach(n=>n.hidden=false));await page.waitForTimeout(100);
+ await page.evaluate(()=>document.querySelectorAll('.node').forEach((n,i)=>n.dataset.status=['done','issue','pending'][i%3]));
  await page.screenshot({path:'.verification/full-rail-'+width+'.png',fullPage:true});
 }
 assert.deepEqual(errors,[]);await browser.close();console.log('PASS MU9578 selection/reload/dashboard and full-viewport rail on short/long timelines and both scroll ends at 1920/1365/390px');
