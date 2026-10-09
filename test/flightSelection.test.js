@@ -2,7 +2,7 @@ const test=require('node:test'), assert=require('node:assert/strict'), fs=requir
 const {discoverFlights,scopedLog,operationalDate,FILE_BOUNDARY}=require('../flightContext');
 const parser=require('../flightParser');
 const sample=fs.readFileSync(require.resolve('./fixtures/flight-selection-supplied.log'),'utf8');
-const flights=['MU586','MU9586','MU578'];
+const flights=['MU586','MU9586','MU578','MU9578'];
 test('today uses Los Angeles date and excludes tomorrow, arrivals and non-LAX origins',()=>{
   assert.equal(operationalDate(new Date('2026-10-09T02:00:00Z')),'08OCT26');
   assert.equal(operationalDate(new Date('2026-10-09T07:00:00Z')),'09OCT26');
@@ -26,4 +26,23 @@ test('mixed flight FB14 and PN1 retain only the selected passenger and continuat
 test('terminal boundaries prevent an unlabelled continuation inheriting another file flight',()=>{
   const log=sample+FILE_BOUNDARY+'>PN1\n MOD OTHER-TERMINAL\n';
   assert.doesNotMatch(scopedLog(log,'MU586','08OCT26'),/OTHER-TERMINAL/);
+});
+
+test('MU9578 is parsed as the selected SY flight without mixing existing flights',()=>{
+ const {findSYInfo}=require('../syParser');
+ const log=flights.map(f=>sample.replaceAll('MU586',f)).join('\n');
+ const selected=scopedLog(log,'MU9578','08OCT26');
+ const sy=findSYInfo(selected,'08OCT26',{preferredFlightNo:'MU9578',strictPreferredFlight:true});
+ assert.equal(sy.flightNo,'MU9578');assert.equal(sy.flightDate,'08OCT26');
+});
+
+test('SY route accepts MU9578 independently of boarding sheet configuration',()=>{
+ const vm=require('node:vm'),{normalizeSupportedFlight}=require('../flightContext');
+ const server=fs.readFileSync(require.resolve('../index.js'),'utf8');
+ const selection=server.match(/const selectedFlight = normalizeSupportedFlight[^\n]+;\r?\n[^\n]+Flight does not match selection[^\n]+/)[0];
+ for(const flightNo of ['MU9578','mu9578','09578']){
+  const context={req:{query:{flightNo}},syRawMatch:null,normalizeSupportedFlight};
+  assert.equal(vm.runInNewContext('(function(){'+selection+';return selectedFlight;})()',context),'MU9578');
+ }
+ assert.equal(normalizeSupportedFlight('MU577'),'');
 });

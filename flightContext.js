@@ -1,5 +1,9 @@
 'use strict';
-const SUPPORTED_FLIGHTS = ['MU586', 'MU9586', 'MU578'];
+const SUPPORTED_FLIGHTS = ['MU586', 'MU9586', 'MU578', 'MU9578'];
+function normalizeSupportedFlight(value) {
+  const flight = 'MU' + String(value || '').trim().toUpperCase().replace(/^MU/, '').replace(/^0+/, '');
+  return SUPPORTED_FLIGHTS.includes(flight) ? flight : '';
+}
 const FILE_BOUNDARY = '\n\u241eMUFC_FILE_BOUNDARY\u241e\n';
 const months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
 function timestamp(value) {
@@ -41,7 +45,7 @@ function sections(log) {
   return result.sort((a,b) => a.ts-b.ts || a.file-b.file || a.seq-b.seq);
 }
 function scopedLog(log, flightNo, flightDate = '') {
-  if (!SUPPORTED_FLIGHTS.includes(flightNo)) throw new Error('Choose MU586, MU9586 or MU578.');
+  if (!SUPPORTED_FLIGHTS.includes(flightNo)) throw new Error('Choose MU586, MU9586, MU578 or MU9578.');
   return sections(log).filter(s => s.global || (s.flightNo === flightNo && (!flightDate || s.flightDate === flightDate)))
     .map(s => (s.stamp ? s.stamp+'\n' : '')+s.text).join('\n');
 }
@@ -52,7 +56,7 @@ function operationalDate(now = new Date()) {
 function discoverFlights(log, { date = '' } = {}) {
   const found = new Map();
   for (const section of sections(log)) {
-    const m = section.text.match(/(?:^|\n)\s*(?:>\s*)?SY:\s*(MU586|MU9586|MU578)\/(\d{2}[A-Z]{3}\d{2})\b/i);
+    const m = section.text.match(/(?:^|\n)\s*(?:>\s*)?SY:\s*(MU586|MU9586|MU578|MU9578)\/(\d{2}[A-Z]{3}\d{2})\b/i);
     if (!m) continue;
     const flightNo = m[1].toUpperCase(), flightDate = m[2].toUpperCase();
     if (date && flightDate !== date) continue;
@@ -64,4 +68,4 @@ function discoverFlights(log, { date = '' } = {}) {
   }
   return [...found.values()].sort((a,b) => SUPPORTED_FLIGHTS.indexOf(a.flightNo)-SUPPORTED_FLIGHTS.indexOf(b.flightNo) || b.latest-a.latest);
 }
-module.exports = { SUPPORTED_FLIGHTS, FILE_BOUNDARY, sections, scopedLog, discoverFlights, operationalDate };
+module.exports = { SUPPORTED_FLIGHTS, normalizeSupportedFlight, FILE_BOUNDARY, sections, scopedLog, discoverFlights, operationalDate };

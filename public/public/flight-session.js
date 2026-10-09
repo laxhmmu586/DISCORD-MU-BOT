@@ -7,7 +7,7 @@
   };
   let selected;
   try { selected = JSON.parse(sessionStorage.getItem(key)); } catch {}
-  if (!['MU586','MU9586','MU578'].includes(selected?.flightNo) || selected.flightDate !== today()) selected = null;
+  if (!['MU586','MU9586','MU578','MU9578'].includes(selected?.flightNo) || selected.flightDate !== today()) selected = null;
   window.mufcFlight = selected;
   window.setMufcFlight = value => {
     window.mufcFlight = value;
