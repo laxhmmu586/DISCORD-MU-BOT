@@ -2,7 +2,9 @@
 .status-metric--energy {
   --energy: 20 135 255;
   --edge: 36 138 255;
-  --energy-texture: url("gate-energy-edge.svg?v=20261008-transparent-portals");
+  --energy-texture: url("gate-energy-edge.svg?v=20261008-layered-filaments");
+  --filaments-inner: url("gate-filaments-inner.svg?v=20261008-layered-filaments");
+  --filaments-outer: url("gate-filaments-outer.svg?v=20261008-layered-filaments");
   background: transparent;
   box-shadow: none;
   overflow: visible;
@@ -41,7 +43,7 @@
   box-shadow: none;
   opacity: 1;
   pointer-events: none;
-  animation: energy-orbit 96s linear infinite, energy-breathe 12s ease-in-out infinite;
+  animation: energy-breathe 12s ease-in-out infinite;
   transform-origin: center;
   transition: none;
 }
@@ -82,16 +84,57 @@
 .status-metric--bdt {
   --energy: 0 210 255;
   --edge: 20 226 255;
-  --energy-texture: url("bdt-energy-edge.svg?v=20261008-transparent-portals");
+  --energy-texture: url("bdt-energy-edge.svg?v=20261008-layered-filaments");
+  --filaments-inner: url("bdt-filaments-inner.svg?v=20261008-layered-filaments");
+  --filaments-outer: url("bdt-filaments-outer.svg?v=20261008-layered-filaments");
 }
 .status-metric--std {
   --energy: 255 85 28;
   --edge: 255 126 42;
-  --energy-texture: url("std-energy-edge.svg?v=20261008-transparent-portals");
+  --energy-texture: url("std-energy-edge.svg?v=20261008-layered-filaments");
+  --filaments-inner: url("std-filaments-inner.svg?v=20261008-layered-filaments");
+  --filaments-outer: url("std-filaments-outer.svg?v=20261008-layered-filaments");
 }
 
 @keyframes energy-orbit { to { transform: rotate(360deg); } }
 @keyframes energy-breathe { 0%, 100% { opacity: .82; } 50% { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
   .status-metric--energy::after { animation: none; transform: none; opacity: 1; }
+}
+
+/* Space the portals and flight menu slightly farther apart. */
+.status-strip { gap: 32px; }
+.mission-side { gap: 44px; }
+.energy-filaments {
+  position: absolute;
+  inset: -23px;
+  z-index: 0;
+  display: block;
+  pointer-events: none;
+}
+.energy-filaments::before,
+.energy-filaments::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--filaments-inner) center / contain no-repeat;
+  transform-origin: center;
+  animation: energy-orbit 96s linear -7s infinite, energy-breathe 19s ease-in-out -3s infinite;
+}
+.energy-filaments::after {
+  background-image: var(--filaments-outer);
+  animation: energy-orbit 144s linear -22s infinite reverse, energy-breathe 23s ease-in-out -9s infinite;
+}
+@media (min-width: 761px) and (max-width: 1299px) {
+  .status-strip { gap: 28px; }
+  .mission-side { gap: 36px; }
+}
+@media (max-width: 760px) {
+  .status-strip { gap: 22px; }
+  .mission-side { gap: 18px; }
+  .energy-filaments { inset: -19px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .energy-filaments::before,
+  .energy-filaments::after { animation: none; transform: none; opacity: 1; }
 }
