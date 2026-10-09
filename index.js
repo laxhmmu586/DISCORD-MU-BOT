@@ -1,5 +1,5 @@
 const { runWithBoardingFlight, normalizeBoardingFlight } = require('./boardingContext');
-const { scopedLog, discoverFlights, operationalDate } = require('./flightContext');
+const { scopedLog, discoverFlights, operationalDate, normalizeSupportedFlight } = require('./flightContext');
 require('dotenv').config();
 
 const express = require('express');
@@ -4517,7 +4517,7 @@ app.get(
       // =========================
       // Parse
       // =========================
-      const selectedFlight = normalizeBoardingFlight(req.query.flightNo || syRawMatch?.[2] || 'MU586');
+      const selectedFlight = normalizeSupportedFlight(req.query.flightNo || syRawMatch?.[2] || 'MU586');
       if (!selectedFlight || (syRawMatch?.[2] && syRawMatch[2] !== selectedFlight)) return res.status(400).json({ error: 'Flight does not match selection.' });
       const selectedDate = date ? date + yearSuffix : String(req.query.flightDate || operationalDate()).toUpperCase();
       const preparationLog = log;

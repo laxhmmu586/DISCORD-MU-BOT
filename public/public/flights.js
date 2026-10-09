@@ -29,7 +29,7 @@
       }
       status.hidden = flights.length > 0;
       status.textContent = flights.length ? `${flights.length} flight${flights.length === 1 ? '' : 's'} departing LAX today` : 'No LAX departure SY record found for today. Refresh after today’s logs are available.';
-      if (!flights.length) cards.innerHTML = `<div class="flight-empty"><h2>No flights detected</h2><p>MU586 · MU9586 · MU578<br>Only today's LAX departures found in today’s SY logs appear here.</p></div>`;
+      if (!flights.length) cards.innerHTML = `<div class="flight-empty"><h2>No flights detected</h2><p>MU586 · MU9586 · MU578 · MU9578<br>Only today's LAX departures found in today’s SY logs appear here.</p></div>`;
     } catch (error) { status.hidden = false; signature = ''; cards.innerHTML = '<div class="flight-empty"><h2>Flights unavailable</h2><p>Please refresh to try again.</p></div>'; status.textContent = error.message; }
     finally { running = false; reload.disabled = false; finishLoading(); }
   }

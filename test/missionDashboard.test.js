@@ -64,7 +64,7 @@ test('a failed mirrored NBRD sync retries on the next refresh', async () => {
 });
 test('DUP NAME and CHD LIST load count styling instead of the completed check mark',()=>{
  const css=fs.readFileSync(require.resolve('../public/public/assets/mission-dashboard.css'),'utf8');
- assert.match(html,/mission-dashboard\.css\?v=20261008-zero-checks/);
+ assert.match(html,/mission-dashboard\.css\?v=20261008-full-width-rail/);
  assert.match(css,/data-key="CHD"[^}]*\) \.node-value::after \{ content:attr\(data-value\)/);
  assert.match(css,/data-key="DUP_NAME"[^}]*\) \.node-value::after \{ content:attr\(data-value\)/);
 });
@@ -121,7 +121,7 @@ test('rail meteor is measured from the shared timeline rail',()=>{
  assert.match(orbit,/getPropertyValue\('--timeline-rail-y'\)/);
  assert.match(orbit,/scanner\.style\.top=\(railY-10\)/);
  assert.match(orbit,/scanner\.style\.width=distance\+'px'/);
- assert.match(css,/\.rail-scanner::after \{[^}]*left:0; right:0; top:9px; height:2px/);
+ assert.match(css,/\.timeline-shell::after \{[^}]*width:100vw; height:2px/);
  assert.match(css,/\.timeline::before \{\s*display:none;/);
 });
 test('timeline stays horizontally scrollable without showing a scrollbar',()=>{
