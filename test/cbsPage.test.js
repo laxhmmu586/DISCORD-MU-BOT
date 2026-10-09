@@ -60,7 +60,7 @@ test('public baggage forms block duplicate submissions with a wait dialog', () =
 });
 
 test('CBS sidebar uses the MUBC brand', () => {
-  assert.match(page, /<a class="brand" href="index\.html">MUBC<\/a>/);
+  assert.match(page, /<a class="brand" href="\/flights\.html">MUBC<\/a>/);
   assert.doesNotMatch(page, /<a class="brand" href="index\.html">MUFC<\/a>/);
 });
 

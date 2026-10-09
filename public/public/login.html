@@ -330,9 +330,7 @@
       }
 
       function getRedirectTarget() {
-        const next = new URLSearchParams(window.location.search).get("next");
-        if (next && next.startsWith("/") && !next.startsWith("//")) return new URL(next, window.location.origin).href;
-        return new URL("index.html", window.location.href).href;
+        return new URL("flights.html", window.location.href).href;
       }
 
       function friendlyAuthError(error) {
@@ -368,7 +366,7 @@
         auth.onAuthStateChanged((user) => {
           if (user) {
             allowAppEntry();
-            window.location.replace(getRedirectTarget(user));
+            window.location.replace(getRedirectTarget());
             return;
           }
           enableForm();
@@ -383,7 +381,7 @@
             const credential = await auth.signInWithEmailAndPassword(emailInput.value.trim(), passwordInput.value);
             if (credential?.user) {
               allowAppEntry();
-              setStatus("Login successful. Opening dashboard...");
+              setStatus("Login successful. Opening flight selection...");
               window.location.replace(getRedirectTarget());
             }
           } catch (error) {
