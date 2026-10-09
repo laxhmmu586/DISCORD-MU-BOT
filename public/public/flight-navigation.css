@@ -1,25 +1,9 @@
-.flight-select-link {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  height: 38px;
-  padding: 0 14px;
-  border: 1px solid #467590;
-  border-radius: 8px;
-  background: #102940;
-  color: #edf7ff;
-  font: 600 13px/1 system-ui, sans-serif;
-  text-decoration: none;
-  white-space: nowrap;
-}
-.flight-select-link svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.7; }
-.flight-select-link:hover, .flight-select-link:focus-visible { background: #225475; border-color: #9accfa; }
-@media (max-width: 760px) {
-  .topbar .nav-row { display: flex; gap: 6px; }
-  .flight-select-link { width: 34px; padding: 0; }
-  .flight-select-link span { display: none; }
-  .topbar .nav-row .search { flex: 1; min-width: 0; }
-  .topbar .nav-row #mufc-settings-button { padding: 8px !important; font-size: 12px; }
-}
+.flight-switch{display:inline-flex;flex:none;align-items:center;justify-content:center;width:44px;height:44px;padding:8px;color:#fff;background:transparent;border:0;border-radius:6px;text-decoration:none}
+.flight-switch svg{display:block;width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round}
+.flight-switch:focus-visible{outline:2px solid currentColor;outline-offset:3px}
+.service-topbar>.flight-switch{margin-left:auto}
+.service-topbar>.flight-account{margin-left:0}
+.boarding-heading>.flight-switch{color:var(--brand)}
+.mission-flight-heading{display:flex;align-items:center;gap:10px}
+.mission-flight-heading>.flight-switch{width:36px;height:44px;padding:4px}
+@media(max-width:760px){.mission-flight-heading{gap:6px}.mission-flight-heading>.flight-switch{width:30px}.mission-flight-heading h1{min-width:0}.topbar .nav-row{display:flex;gap:6px}.topbar .nav-row .search{flex:1;min-width:0}.topbar .nav-row #mufc-settings-button{padding:8px!important;font-size:12px}}
