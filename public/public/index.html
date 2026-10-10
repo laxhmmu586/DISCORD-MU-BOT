@@ -5528,11 +5528,8 @@
         const ok = confirm("确认发送 NEXTDAY INFO 邮件到 LAXHMXH@hallmark-aviation.com 和 dg-lax-lounge@qantas.com.au？");
         if (!ok) return;
         const step = stepByKey("NEXTDAY_INFO");
-        const details = nextDayInfoDetailsFromSy(currentSy);
-        if (!details) {
-          alert("缺少 JCSY 转机数据：SY 的 RET 人数已经读取，但发送 NEXTDAY INFO 还需要先完成 JCSY 查询。");
-          return;
-        }
+        // The server reads tomorrow's SY/JCSY from the latest log. The open
+        // dashboard may show today's flight or an older log snapshot.
         if (step) {
           // A previous successful send may still be green in both the live step
           // and local cache. Clear it before displaying this new attempt.
@@ -5540,16 +5537,8 @@
           step.searched = true;
           step.time = "";
           step.reason = "";
-          step.details = details;
-          step.detailText = [
-            `First Class: ${details.firstClass}`,
-            `Business Class: ${details.businessClass}`,
-            `Economy Class: ${details.economyClass}`,
-            "",
-            `International Transfer: ${details.internationalTransfer}`,
-            `Domestic Transfer: ${details.domesticTransfer}`,
-            `Overnight passengers: ${details.overnightPassengers}`,
-          ].join("\n");
+          step.details = {};
+          step.detailText = "";
           step.tooltip = "NEXTDAY INFO sending email...";
         }
         forgetCompletedSyNode(currentSy, "NEXTDAY_INFO");
@@ -5565,7 +5554,6 @@
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               flightNo: currentSy.flightNo || "MU586",
-              details,
             }),
             signal: sendController.signal,
             authTimeoutMs: 10000,
