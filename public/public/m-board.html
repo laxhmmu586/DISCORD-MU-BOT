@@ -5,7 +5,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>M-board</title>
-  <link rel="stylesheet" href="/nbrd-review.css?v=20261011"><script src="/nbrd-review.js?v=20261011"></script>
+  <link rel="stylesheet" href="/nbrd-review.css?v=20261011-status-controls"><script src="/nbrd-review.js?v=20261011-status-controls"></script>
   <style>
     :root { --brand:#123a73; --line:#d7e1ec; --ink:#172033; --muted:#667085; --danger:#b42318; }
     * { box-sizing:border-box; }
@@ -43,7 +43,7 @@
     <section class="card">
       <div class="toolbar"><h1>M-board</h1><button class="refresh-board" id="refresh" type="button">Refresh</button></div>
       <p class="status" id="status">Loading...</p>
-      <div class="board-section"><h2>NBRD</h2><div class="table-wrap" id="nbrd-wrap"><div class="empty">Loading NBRD...</div></div></div>
+      <div class="board-section"><h2>NBRD</h2><div id="nbrd-wrap"><div class="empty">Loading NBRD...</div></div></div>
       <div class="board-section"><h2>Boarding Scan</h2><div class="table-wrap" id="table-wrap"><div class="empty">Loading Google Sheet...</div></div></div>
       <div class="board-section"><div class="section-heading"><h2>Infant Scan</h2><button class="refresh-board" id="infant-refresh" type="button">Refresh</button></div><div class="table-wrap" id="infant-wrap"><div class="empty">Loading infant scans...</div></div></div>
     </section>

@@ -168,3 +168,20 @@ test('retained NBRD updates details without removing entries, unchanged updates 
   assert.equal(tables.get(0)[2][11],'071');assert.equal(tables.get(0)[2][18],'RESOLVED');
   const records=await ctx.getCbsScanRecords();assert.equal(records.filter(r=>r.nbrdResolved).length,2);
 });
+
+test('red X reopens NBRD, persists pending state and blocks scanning again',async()=>{
+ const {ctx,tables}=harness();
+ await ctx.appendCbsScanNbrdBns([{bn:'88',detail:'VISA'}]);
+ await ctx.resolveCbsScanNbrdBn('88');assert.equal(tables.get(0)[1][18],'RESOLVED');
+ const pending=ctx.resolveCbsScanNbrdBn('88',false);
+ const blocked=ctx.appendCbsScanRecord({flight:'MU586',bn:'88',seat:'10A'}).catch(err=>err);
+ await pending;assert.equal((await blocked).code,'NBRD_MESSAGE');
+ assert.equal(tables.get(0)[1][18],'PENDING');
+ const records=await ctx.getCbsScanNbrdRecords();assert.equal(records[0].nbrdResolved,false);
+ const update=ctx.sheets.spreadsheets.values.batchUpdate;
+ ctx.sheets.spreadsheets.values.batchUpdate=async()=>{throw new Error('status failure');};
+ await assert.rejects(ctx.resolveCbsScanNbrdBn('88'),/status failure/);assert.equal(tables.get(0)[1][18],'PENDING');
+ ctx.sheets.spreadsheets.values.batchUpdate=update;
+ await ctx.resolveCbsScanNbrdBn('88');await ctx.appendCbsScanRecord({flight:'MU586',bn:'88',seat:'10A'});
+ assert.ok(tables.get(0).some(row=>row[0]==='088'));
+});

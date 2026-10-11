@@ -3161,7 +3161,8 @@ app.get('/cbs-scan/nbrd-bns', async (_req, res) => {
 });
 
 app.post('/cbs-scan/nbrd-bns/resolve', async (req, res) => {
-  try { return res.json({ok:true, ...await resolveCbsScanNbrdBn(req.body?.bn)}); }
+  if (req.body?.resolved !== undefined && typeof req.body.resolved !== 'boolean') return res.status(400).json({error:'Resolved must be true or false.'});
+  try { return res.json({ok:true, ...await resolveCbsScanNbrdBn(req.body?.bn, req.body?.resolved !== false)}); }
   catch (err) { return res.status(err?.code === 'NBRD_NOT_FOUND' ? 404 : 422).json({error:err?.message || 'Unable to resolve NBRD.', code:err?.code}); }
 });
 
