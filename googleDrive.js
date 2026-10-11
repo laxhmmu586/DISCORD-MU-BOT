@@ -2721,12 +2721,12 @@ async function getGdCheckEmail(flightNo, subjectDate, crew = [], expectedSubject
   try {
     ({ gmail, userId, authMode } = getNextDayInfoGmailClient());
     const exactSubject = subject.replace(/"/g, '');
-    q = `subject:"${exactSubject}" newer_than:2d has:attachment`;
+    q = `{subject:"${exactSubject}" from:xldou@ceair.com} newer_than:2d has:attachment`;
     const list = await gmail.users.messages.list({ userId, q, maxResults: 10, fields: 'messages(id,internalDate)' });
     const messages = (Array.isArray(list.data.messages) ? list.data.messages : [])
       .sort((a, b) => Number(b.internalDate || 0) - Number(a.internalDate || 0));
     if (!messages.length) {
-      const result = empty({ reason: 'No Gmail message with the expected GD subject and attachment was found in the last 2 days.', query: q, authMode, userId, searchDate });
+      const result = empty({ reason: 'No Gmail message with the expected GD subject or from xldou@ceair.com with an attachment was found in the last 2 days.', query: q, authMode, userId, searchDate });
       result.detailText = buildGdCheckDetailText(result);
       return result;
     }
