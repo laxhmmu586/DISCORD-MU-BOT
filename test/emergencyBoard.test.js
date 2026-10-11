@@ -63,6 +63,7 @@ test('regular and emergency scans both batch saves and show the same successful 
     assert.match(processor, /forceRefresh:\s*true/);
     assert.match(processor, new RegExp(`${prepareName}\\(item\\.record,\\s*(?:dataRows|working)\\)`));
     assert.match(processor, /values\.batchUpdate/);
+    if (page === 'scan.html') { assert.doesNotMatch(html, /id="result"/); continue; }
     assert.match(html, /<div><b>Flight<\/b>\$\{data\.flight/);
     assert.match(html, /<div><b>Seat<\/b>\$\{data\.seat/);
     assert.match(html, /<div><b>BN<\/b>\$\{data\.bn/);
