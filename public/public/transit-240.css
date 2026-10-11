@@ -18,8 +18,8 @@ h1{font-size:clamp(22px,2.8vw,30px);line-height:1.2;letter-spacing:-.035em;margi
 video{height:120px;max-height:360px;background:transparent}
 .camera-wrap.is-scanning video{height:260px}
 .aim-box{width:74%;height:60px;border:1px solid #a9defe;border-radius:14px;box-shadow:none;display:flex;align-items:center;justify-content:center;gap:18px;color:#c5e7ff;font-size:14px}
-.aim-box{pointer-events:auto;cursor:pointer;background:transparent;min-height:60px;padding:0;font-weight:500;box-shadow:none}
-.aim-box:hover{background:#173c5266}.aim-box:disabled{cursor:default;opacity:1}
+button.aim-box{pointer-events:auto;cursor:pointer;background:transparent;min-height:60px;padding:0;font-weight:500;box-shadow:none}
+button.aim-box:hover{background:transparent;filter:none}.aim-box:disabled{cursor:default;opacity:1}
 .aim-box::before{content:'▥';font-size:28px;color:white}
 button,a.button{background:linear-gradient(#0877ff,#005bea);box-shadow:0 4px 12px #0063ed22;border:1px solid #ffffffa6;min-height:44px;font-size:14px;padding:11px 24px;transition:filter .15s,box-shadow .15s}
 button:hover{filter:brightness(1.07)}button:disabled{opacity:.55;cursor:wait}
@@ -29,7 +29,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,.attachment-upload
 #start{min-width:170px}#stop{min-width:150px}#start::before{content:'▶';margin-right:12px}#stop::before{content:'■';margin-right:12px}
 .status{font-size:12px;min-height:0;margin:12px 0 0;font-weight:600}
 .form-title-row{margin-bottom:22px}.form-title-row h2{font-size:28px;letter-spacing:-.035em;display:flex;align-items:center;gap:18px}
-.form-title-row h2::before{content:'▤';display:grid;place-items:center;width:60px;height:60px;border-radius:13px;background:#edf5ff;color:var(--brand);font-size:30px}
+.form-title-row .heading-icon{width:60px;height:60px;border-radius:13px;background:#edf5ff}
 #clearForm::before{content:'↻';margin-right:10px;font-size:20px}
 form{gap:16px}.field-grid{gap:20px 22px}label{color:#43669f;font-size:12px;letter-spacing:.045em}
 input,select{height:50px;border-radius:12px;background:#fafdff;font-size:14px;font-weight:500;padding:12px 18px}
@@ -43,4 +43,7 @@ input::placeholder{color:#8799bb;opacity:1}select{appearance:auto}.error{font-si
 .attachment-upload .attachment-preview{height:32px;background:transparent}.attachment-upload .attachment-preview::before{content:'↥';background:#0669f5;color:#fff;border:0;width:36px;height:30px;font-size:28px;box-shadow:none}
 .attachment-upload .attachment-filename{color:var(--ink);font-size:14px}.attachment-upload .file-drop-hint{color:var(--muted);font-weight:500;font-size:12px}
 button[type=submit]{min-width:205px}button[type=submit]::before{content:'➤';margin-right:22px}
-@media(max-width:640px){header{padding:14px 18px}main{width:calc(100% - 24px)}.card{padding:18px}.scan-heading{gap:12px;align-items:flex-start}.heading-icon{width:44px;height:44px;font-size:24px}.scan-heading p{font-size:12px}.earth-banner{width:60%;opacity:.25}.route-art{display:none}.scan-heading{max-width:100%}h1{font-size:22px}.aim-box{width:88%;font-size:12px;gap:8px}.form-title-row h2{font-size:24px;gap:10px}.form-title-row h2::before{width:44px;height:44px}.stop,.stop.from-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.stop.from-row .airport-code{grid-column:1/-1}.stop button.danger{grid-column:2;grid-row:1;justify-self:end;width:36px;min-height:36px;height:36px}.stop::before{top:calc(100% - 25px)}.attachments{grid-template-columns:repeat(2,minmax(0,1fr))}.scan-card .actions{flex-wrap:nowrap}#start,#stop{min-width:0;flex:1;padding:10px}.field-grid{gap:18px}button[type=submit]{width:100%}}
+@media(max-width:640px){header{padding:14px 18px}main{width:calc(100% - 24px)}.card{padding:18px}.scan-heading{gap:12px;align-items:flex-start}.heading-icon{width:44px;height:44px;font-size:24px}.scan-heading p{font-size:12px}.earth-banner{width:60%;opacity:.25}.route-art{display:none}.scan-heading{max-width:100%}h1{font-size:22px}.aim-box{width:88%;font-size:12px;gap:8px}.form-title-row h2{font-size:24px;gap:10px}.form-title-row .heading-icon{width:44px;height:44px}.stop,.stop.from-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.stop.from-row .airport-code{grid-column:1/-1}.stop button.danger{grid-column:2;grid-row:1;justify-self:end;width:36px;min-height:36px;height:36px}.stop::before{top:calc(100% - 25px)}.attachments{grid-template-columns:repeat(2,minmax(0,1fr))}.scan-card .actions{flex-wrap:nowrap}#start,#stop{min-width:0;flex:1;padding:10px}.field-grid{gap:18px}button[type=submit]{width:100%}}
+
+.passport-icon{width:34px;height:34px;display:block}
+@media(max-width:640px){.passport-icon{width:28px;height:28px}}
