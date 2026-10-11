@@ -34,10 +34,13 @@
       if (!res.ok) throw new Error(data.error || 'Unable to save NBRD confirmation.');
       return data;
     }
-    function choose({ title, text, yesLabel = '✓', noLabel = '✕', confirm, reject, previewRows = [] }) {
+    function choose({ title, text, yesLabel = '✓', noLabel = '✕', confirm, reject, previewRows = [], warning = false }) {
       if (modal.open) return Promise.resolve(false);
       return new Promise(resolve => {
         modal.replaceChildren();
+        if (warning) {
+          const icon=document.createElement('div'); icon.className='nbrd-warning-icon'; icon.textContent='!'; icon.setAttribute('aria-hidden','true'); modal.append(icon);
+        }
         const heading = document.createElement('h2'); heading.id = 'nbrd-modal-title'; heading.textContent = title; modal.append(heading);
         const message = document.createElement('p'); message.textContent = text; modal.append(message);
         if (previewRows.length) {
@@ -77,7 +80,7 @@
         if (row.nbrdResolved !== resolved) await post('/cbs-scan/nbrd-bns/resolve', {bn:row.nbrdBn, resolved});
         row.nbrdResolved=resolved; render(rows); await onChanged().catch(()=>{});
       };
-      return choose({title:'NBRD · BN '+displayBn(row.nbrdBn), text:row.nbrdDetail + (row.nbrdResolved ? '\nResolved' : ''), confirm:()=>setStatus(true), reject:()=>setStatus(false)});
+      return choose({warning:true,title:'NBRD · BN '+displayBn(row.nbrdBn), text:row.nbrdDetail + (row.nbrdResolved ? '\nResolved' : ''), confirm:()=>setStatus(true), reject:()=>setStatus(false)});
     }
     return {
       render, isOpen,
@@ -89,7 +92,7 @@
         return rows;
       },
       verify:()=>{ const pending=rows.filter(row=>!row.nbrdResolved); return pending.length ? choose({title:'Check NBRD',text:'Review these pending BNs. Continue if the list is correct, or add a missing NBRD.',previewRows:pending,yesLabel:'Continue',noLabel:'Add NBRD'}) : Promise.resolve(true); },
-      board:({bn,detail,confirm})=>choose({title:`NBRD · BN ${displayBn(bn)}`,text:detail,yesLabel:'OK to Board',noLabel:'NOT OK',confirm}),
+      board:({bn,detail,confirm})=>choose({warning:true,title:`NBRD · BN ${displayBn(bn)}`,text:detail,yesLabel:'OK to Board',noLabel:'NOT OK',confirm}),
     };
   }
   window.NbrdReview = { create };
