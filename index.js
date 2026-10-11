@@ -410,7 +410,12 @@ const SALES_DETAILS_SYNC_RETRY_MS = 5 * 60 * 1000;
 const preflightStepCache = new Map();
 
 function preflightCacheKey(syInfo, isoDate, stepKey) {
-  return [syInfo?.flightNo || 'SY', isoDate || todayIsoUtc(), stepKey].join('|');
+  const parts = [syInfo?.flightNo || 'SY', isoDate || todayIsoUtc(), stepKey];
+  if (stepKey === 'gdCheck') {
+    const query = syInfo?.crewApis?.gdCheckQuery;
+    parts.push('pdf-v1', JSON.stringify(query?.expectedFlight || {}), JSON.stringify(query?.crew || []));
+  }
+  return parts.join('|');
 }
 
 function findCrewApiStep(syInfo, stepKey) {
@@ -664,7 +669,7 @@ async function refreshSyPreflightEmailChecks(syInfo, isoDate) {
   const gdStep = syInfo.crewApis?.steps?.find((step) => step.key === 'gdCheck');
   if (!applyCachedPreflightStep(syInfo, isoDate, 'gdCheck') && gdStep && gdQuery?.flightNo && gdQuery?.flightDate) {
     const gdSubject = gdQuery.emailSubject || `GD for ${gdQuery.flightNo}/${gdQuery.flightDate}`;
-    const gdResult = await getGdCheckEmail(gdQuery.flightNo, gdQuery.emailSubjectDate || gdQuery.flightDate, gdQuery.crew || [], gdSubject);
+    const gdResult = await getGdCheckEmail(gdQuery.flightNo, gdQuery.emailSubjectDate || gdQuery.flightDate, gdQuery.crew || [], gdSubject, gdQuery.expectedFlight || { flightNo: syInfo.flightNo, flightDate: syInfo.flightDate, aircraftRegistration: syInfo.aircraftRegistration });
     gdStep.complete = Boolean(gdResult.complete);
     gdStep.time = gdResult.sentAt ? gdResult.sentAt.slice(11, 19) : '';
     gdStep.searched = true;
@@ -677,7 +682,7 @@ async function refreshSyPreflightEmailChecks(syInfo, isoDate) {
     gdStep.searchDate = gdResult.searchDate || '';
     gdStep.subject = gdSubject;
     gdStep.tooltip = gdStep.complete
-      ? `GD CHECK complete: ${gdResult.matched || 0}/${gdResult.total || 0} crew matched`
+      ? `GD CHECK complete: ${gdResult.matched || 0}/${gdResult.total || 0} crew matched; flight/date/registration matched`
       : `GD CHECK issue: ${gdResult.reason || gdSubject}`;
     cacheCompletedPreflightStep(syInfo, isoDate, 'gdCheck');
   } else if (gdStep && !gdQuery?.flightNo) {
