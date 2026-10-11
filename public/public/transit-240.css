@@ -6,13 +6,12 @@ header{background:transparent;border:0;padding:16px max(20px,calc((100vw - 1020p
 main{width:min(1020px,calc(100% - 40px));margin:0 auto 32px;gap:18px}
 .card{padding:26px;border-radius:19px;border-color:#cbdff8;background:rgba(255,255,255,.94);box-shadow:0 16px 40px #2359990c}
 .scan-card{position:relative;overflow:hidden;background:radial-gradient(ellipse at top right,#aad4ff,transparent 42%),#ffffffeb}
-.scan-heading{position:relative;display:flex;gap:20px;align-items:center;margin:4px 0 24px;z-index:1}
+.scan-heading{position:relative;display:flex;gap:20px;align-items:center;margin:4px 0 28px;z-index:1}
 .heading-icon{flex:none;display:grid;place-items:center;width:66px;height:66px;border-radius:14px;color:var(--brand);background:#e8f2ff;font-size:32px}
 h1{font-size:clamp(22px,2.8vw,30px);line-height:1.2;letter-spacing:-.035em;margin:0 0 9px}
 .scan-heading p{margin:0;color:var(--muted);font-size:14px;line-height:1.5}
-.earth-banner{position:absolute;right:0;top:0;width:44%;height:120px;pointer-events:none;background:url('/assets/earth-night-background.png') center 62%/cover no-repeat;mask-image:linear-gradient(90deg,transparent,#000 38%);-webkit-mask-image:linear-gradient(90deg,transparent,#000 38%)}
-.route-art{position:absolute;right:5px;top:-16px;width:310px;height:130px;pointer-events:none}
-.scan-heading{max-width:78%}
+.earth-banner{position:absolute;right:-26px;top:-30px;bottom:0;width:44%;height:auto;pointer-events:none;background:url('/assets/earth-night-background.png') center 62%/cover no-repeat;mask-image:linear-gradient(90deg,transparent,#000 38%);-webkit-mask-image:linear-gradient(90deg,transparent,#000 38%)}
+.scan-heading{max-width:100%}.scan-heading>.heading-icon,.scan-heading>div:not(.earth-banner){position:relative;z-index:1}.scan-heading>div:not(.earth-banner){max-width:78%}
 .scan-heading h1,.scan-heading p{text-shadow:0 1px 8px white,0 0 18px white}
 .camera-wrap{border:2px solid #168aff;background:radial-gradient(ellipse,#122d43,#03111f);box-shadow:0 0 0 3px #e2f2ff,0 0 16px #278fff55;min-height:120px}
 video{height:120px;max-height:360px;background:transparent}
@@ -43,7 +42,7 @@ input::placeholder{color:#8799bb;opacity:1}select{appearance:auto}.error{font-si
 .attachment-upload .attachment-preview{height:32px;background:transparent}.attachment-upload .attachment-preview::before{content:'↥';background:#0669f5;color:#fff;border:0;width:36px;height:30px;font-size:28px;box-shadow:none}
 .attachment-upload .attachment-filename{color:var(--ink);font-size:14px}.attachment-upload .file-drop-hint{color:var(--muted);font-weight:500;font-size:12px}
 button[type=submit]{min-width:205px}button[type=submit]::before{content:'➤';margin-right:22px}
-@media(max-width:640px){header{padding:14px 18px}main{width:calc(100% - 24px)}.card{padding:18px}.scan-heading{gap:12px;align-items:flex-start}.heading-icon{width:44px;height:44px;font-size:24px}.scan-heading p{font-size:12px}.earth-banner{width:60%;opacity:.25}.route-art{display:none}.scan-heading{max-width:100%}h1{font-size:22px}.aim-box{width:88%;font-size:12px;gap:8px}.form-title-row h2{font-size:24px;gap:10px}.form-title-row .heading-icon{width:44px;height:44px}.stop,.stop.from-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.stop.from-row .airport-code{grid-column:1/-1}.stop button.danger{grid-column:2;grid-row:1;justify-self:end;width:36px;min-height:36px;height:36px}.stop::before{top:calc(100% - 25px)}.attachments{grid-template-columns:repeat(2,minmax(0,1fr))}.scan-card .actions{flex-wrap:nowrap}#start,#stop{min-width:0;flex:1;padding:10px}.field-grid{gap:18px}button[type=submit]{width:100%}}
+@media(max-width:640px){header{padding:14px 18px}main{width:calc(100% - 24px)}.card{padding:18px}.scan-heading{gap:12px;align-items:flex-start}.heading-icon{width:44px;height:44px;font-size:24px}.scan-heading p{font-size:12px}.earth-banner{width:60%;opacity:.25;right:-18px;top:-22px}.scan-heading>div:not(.earth-banner){max-width:none}h1{font-size:22px}.aim-box{width:88%;font-size:12px;gap:8px}.form-title-row h2{font-size:24px;gap:10px}.form-title-row .heading-icon{width:44px;height:44px}.stop,.stop.from-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.stop.from-row .airport-code{grid-column:1/-1}.stop button.danger{grid-column:2;grid-row:1;justify-self:end;width:36px;min-height:36px;height:36px}.stop::before{top:calc(100% - 25px)}.attachments{grid-template-columns:repeat(2,minmax(0,1fr))}.scan-card .actions{flex-wrap:nowrap}#start,#stop{min-width:0;flex:1;padding:10px}.field-grid{gap:18px}button[type=submit]{width:100%}}
 
 .passport-icon{width:34px;height:34px;display:block}
 @media(max-width:640px){.passport-icon{width:28px;height:28px}}
