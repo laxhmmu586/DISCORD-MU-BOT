@@ -2,6 +2,19 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { normalizeOperationalFlightNo, normalizeJcsyFlightNo, sectionMatchesFlightOperationDate, matchesSyFlightRecord, hasUnclearedApiSourceRisk, extractPassportCountryCodes, extractInvoluntaryUpgrade, enrichCheckinAgentStatsFromLog, hasChdServiceCode, isCcAirportClosedContent, isCclClosedContent } = require('../syParser');
 
+test('GD PDF checks receive the flight date and registration from SY', () => {
+  const log = [
+    '2026 October 11, Sunday, 11:55:00',
+    '> SY: MU586/11OCT26 LAX/0 CI1145/NAM',
+    '777/773L/B-7868 GTD/130 POS/GATE BN299 AK00000 CD00000',
+    'BDT1145 SD1230 ED1230 CI1145'
+  ].join('\n');
+  const info = require('../syParser').findSYInfo(log, '11OCT26', { preferredFlightNo: 'MU586' });
+  assert.deepEqual(info.crewApis.gdCheckQuery.expectedFlight, {
+    flightNo: 'MU586', flightDate: '11OCT26', aircraftRegistration: 'B-7868'
+  });
+});
+
 test('CCL completes for the FLIGHT CLOSED FOR LDP response', () => {
   assert.equal(isCclClosedContent('>CCL:\nFLIGHT CLOSED FOR LDP'), true);
   assert.equal(isCclClosedContent('> CCL:\n> ACCEPTED'), true);
