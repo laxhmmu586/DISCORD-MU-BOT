@@ -47,3 +47,8 @@ button[type=submit]{min-width:205px}button[type=submit]::before{content:'➤';ma
 
 .passport-icon{width:34px;height:34px;display:block}
 @media(max-width:640px){.passport-icon{width:28px;height:28px}}
+
+/* Keep the scan prompt clear of the camera preview and general button decoration. */
+.camera-wrap button.aim-box,.camera-wrap button.aim-box:hover,.camera-wrap button.aim-box:disabled{background:none;border:0;box-shadow:none;border-radius:0;filter:none}
+.camera-wrap.is-scanning .aim-box{display:none}
+.form-title-row h2::before{content:none;display:none}
