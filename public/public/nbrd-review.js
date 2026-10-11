@@ -42,7 +42,7 @@
           const icon=document.createElement('div'); icon.className='nbrd-warning-icon'; icon.textContent='!'; icon.setAttribute('aria-hidden','true'); modal.append(icon);
         }
         const heading = document.createElement('h2'); heading.id = 'nbrd-modal-title'; heading.textContent = title; modal.append(heading);
-        const message = document.createElement('p'); message.textContent = text; modal.append(message);
+        if (text) { const message = document.createElement('p'); message.textContent = text; modal.append(message); }
         if (previewRows.length) {
           const list = document.createElement('div'); list.className='nbrd-bubbles nbrd-preview';
           for (const row of previewRows) { const circle=document.createElement('span'); circle.className='nbrd-bubble'; circle.textContent=displayBn(row.nbrdBn); list.append(circle); }
@@ -91,7 +91,7 @@
         if (sequence === loadSequence && requestRevision === revision) render(data.rows || []);
         return rows;
       },
-      verify:()=>{ const pending=rows.filter(row=>!row.nbrdResolved); return pending.length ? choose({title:'Check NBRD',text:'Review these pending BNs. Continue if the list is correct, or add a missing NBRD.',previewRows:pending,yesLabel:'Continue',noLabel:'Add NBRD'}) : Promise.resolve(true); },
+      verify:()=>{ const pending=rows.filter(row=>!row.nbrdResolved); return pending.length ? choose({title:'Check Total Nbrd',text:'',previewRows:pending,yesLabel:'Continue',noLabel:'Add NBRD'}) : Promise.resolve(true); },
       board:({bn,detail,confirm})=>choose({warning:true,title:`NBRD · BN ${displayBn(bn)}`,text:detail,yesLabel:'OK to Board',noLabel:'NOT OK',confirm}),
     };
   }

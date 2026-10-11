@@ -28,3 +28,5 @@
 .nbrd-preview { justify-content:center; }
 
 .nbrd-modal .nbrd-dialog-actions button { padding:13px 12px; white-space:nowrap; font-size:clamp(15px,4vw,18px); }
+
+.nbrd-modal .nbrd-error:empty { display:none; }

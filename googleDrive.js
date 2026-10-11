@@ -3271,7 +3271,16 @@ async function processCbsScanAppendBatch(batch = []) {
     state.cbsScanSheetCache={loadedAt:Date.now(),rows:[rows[0]||[],...working]};
     state.boardCache=null;
     state.nbrdKnown = new Map(working.filter(row => normalizeCbsScanBn(row[11])).map(row => [normalizeCbsScanBn(row[11]), normalizeCbsScanNbrdDetail(row[12])]));
-    for(const {item,result} of prepared) { if(item.nbrd && item.replace && !result.stale) state.nbrdSyncedKey=item.key; item.resolve(result); }
+    const nbrdRows = working.map((row, index) => ({
+      rowNumber:index + 2,
+      nbrdBn:formatCbsScanSheetBn(row[11]),
+      nbrdDetail:normalizeCbsScanNbrdDetail(row[12]),
+      nbrdResolved:String(row[18] || '') === 'RESOLVED'
+    })).filter(row => row.nbrdBn);
+    for (const {item, result} of prepared) {
+      if (item.nbrd && item.replace && !result.stale) state.nbrdSyncedKey = item.key;
+      item.resolve(item.nbrd ? result : {...result, nbrdRows});
+    }
   } catch(err) { batch.forEach(item=>item.reject(err)); }
 }
 

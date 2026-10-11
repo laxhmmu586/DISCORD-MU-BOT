@@ -15,7 +15,7 @@ const {operationalDate}=require('../flightContext');
    else if(url.pathname==='/cbs-scan/nbrd-bns/resolve'){rows.find(r=>r.nbrdBn===body.bn).nbrdResolved=body.resolved !== false;}
    else if(url.pathname==='/cbs-scan/nbrd-bns'){const bn=String(body.entries[0].bn).padStart(3,'0');const existing=rows.find(row=>row.nbrdBn===bn);if(existing)existing.nbrdDetail=body.entries[0].detail;else rows.push({rowNumber:4,nbrdBn:bn,nbrdDetail:body.entries[0].detail,nbrdResolved:false});}
    else if(url.pathname==='/cbs-scan'){
-    if(body.confirmationToken){rows[0].nbrdResolved=true;rows[0].bn='014';rows[0].seat='10A';rows[0].flight='MU586';data={bn:'014',seat:'10A',flight:'MU586'};}
+    if(body.confirmationToken){rows[0].nbrdResolved=true;rows[0].bn='014';rows[0].seat='10A';rows[0].flight='MU586';data={bn:'014',seat:'10A',flight:'MU586',nbrdRows:rows.map(row=>({...row}))};}
     else {scans++;status=409;data={code:'NBRD_MESSAGE',bn:'014',detail:'VISA',canBoard:scans>1,confirmationToken:'fixture-'+scans};}
    }
    return route.fulfill({status,contentType:'application/json',body:JSON.stringify(data)});
@@ -31,6 +31,8 @@ const {operationalDate}=require('../flightContext');
  const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
  await page.goto('https://www.mufcapp.net/scan.html');
  await page.locator('.nbrd-modal[open]').waitFor();
+ assert.equal(await page.locator('.nbrd-modal h2').textContent(),'Check Total Nbrd');
+ assert.equal(await page.locator('.nbrd-modal').textContent().then(text=>text.includes('Review these pending BNs')),false);
  assert.equal(await page.locator('.nbrd-total').count(),0);
  assert.equal(await page.locator('.nbrd-preview .nbrd-bubble').count(),1);
  assert.equal(await page.locator('.nbrd-preview .nbrd-bubble').textContent(),'014');
@@ -57,7 +59,11 @@ const {operationalDate}=require('../flightContext');
  await page.getByRole('button',{name:'NOT OK',exact:true}).click();await page.evaluate(()=>window.pendingScan);
  assert.equal(rows[0].nbrdResolved,false);
  await page.evaluate(()=>{window.pendingScan=saveScan('fixture-pass');});
+ rows.push({rowNumber:5,nbrdBn:'004',nbrdDetail:'NBRD',nbrdResolved:false});
  await page.getByRole('button',{name:'OK to Board',exact:true}).click();await page.evaluate(()=>window.pendingScan);
+ assert.equal(await page.locator('.nbrd-bubble').count(),3);
+ assert.equal(await page.getByRole('button',{name:'BN 004, pending',exact:true}).count(),1);
+ rows.pop();
  assert.equal(rows[0].nbrdResolved,true);assert.equal(rows[0].bn,'014');
  await page.locator('#dialog-ok').click();
  assert.equal(await page.locator('#nbrd-message option').count(),5);

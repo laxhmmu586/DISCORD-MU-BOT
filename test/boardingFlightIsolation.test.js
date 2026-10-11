@@ -185,3 +185,16 @@ test('red X reopens NBRD, persists pending state and blocks scanning again',asyn
  await ctx.resolveCbsScanNbrdBn('88');await ctx.appendCbsScanRecord({flight:'MU586',bn:'88',seat:'10A'});
  assert.ok(tables.get(0).some(row=>row[0]==='088'));
 });
+
+test('successful scan includes all freshly read NBRDs without an extra Sheets read',async()=>{
+ const {ctx,tables}=harness();
+ await ctx.appendCbsScanNbrdBns([{bn:'1',detail:'NBRD'},{bn:'2',detail:'VISA'},{bn:'3',detail:'SEAT CHANGE'}]);
+ // Simulate a Sheet edit after the initial three-entry cache was populated.
+ const external=[];external[11]='004';external[12]='RE-SWIPE';tables.get(0).push(external);
+ let reads=0;const get=ctx.sheets.spreadsheets.values.get;
+ ctx.sheets.spreadsheets.values.get=async args=>{reads++;return get(args);};
+ const saved=await ctx.appendCbsScanRecord({flight:'MU586',bn:'99',seat:'10A'});
+ assert.equal(reads,1);assert.equal(saved.nbrdRows.length,4);
+ assert.equal(saved.nbrdRows.find(row=>row.nbrdBn==='004').nbrdDetail,'RE-SWIPE');
+ assert.equal(saved.nbrdRows.find(row=>row.nbrdBn==='004').nbrdResolved,false);
+});
