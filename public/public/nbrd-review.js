@@ -89,7 +89,7 @@
         return rows;
       },
       verify:()=>{ const pending=rows.filter(row=>!row.nbrdResolved); return pending.length ? choose({title:'Check NBRD',text:'Review these pending BNs. Continue if the list is correct, or add a missing NBRD.',previewRows:pending,yesLabel:'Continue',noLabel:'Add NBRD'}) : Promise.resolve(true); },
-      board:({bn,detail,confirm})=>choose({title:`NBRD · BN ${displayBn(bn)}`,text:detail,yesLabel:'Board',noLabel:'NOT OK',confirm}),
+      board:({bn,detail,confirm})=>choose({title:`NBRD · BN ${displayBn(bn)}`,text:detail,yesLabel:'OK to Board',noLabel:'NOT OK',confirm}),
     };
   }
   window.NbrdReview = { create };
