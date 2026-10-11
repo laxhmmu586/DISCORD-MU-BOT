@@ -5,7 +5,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Manual Boarding</title><link rel="stylesheet" href="/flight-navigation.css?v=20261009-vertical-switch">
-  <link rel="stylesheet" href="/nbrd-review.css?v=20261011-warning-dialog"><script src="/nbrd-review.js?v=20261011-warning-dialog"></script>
+  <link rel="stylesheet" href="/nbrd-review.css?v=20261011-scan-snapshot"><script src="/nbrd-review.js?v=20261011-scan-snapshot"></script>
   <style>
     :root { --brand:#123a73; --line:#d7e1ec; --ink:#172033; --muted:#667085; --ok:#087443; --danger:#b42318; }
     * { box-sizing:border-box; }
@@ -233,7 +233,8 @@
       nbrdReviewTokens.delete(rawScan);
       setStatus(data.isInfant ? 'Saved INFANT BN '+data.bn : 'Saved BN '+data.bn, 'ok');
       showMessage(data.isInfant ? 'Input successful infant BN '+data.bn : 'Input successful BN '+data.bn, data.isInfant ? 'Infant' : 'Success', data.isInfant ? 'infant' : 'success');
-      refreshNbrd().catch(()=>{});
+      if (Array.isArray(data.nbrdRows)) nbrdReview.render(data.nbrdRows);
+      else refreshNbrd().catch(()=>{});
     }
     async function handleText(text) {
       const startButton = document.querySelector('#start');
