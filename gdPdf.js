@@ -63,7 +63,7 @@ function compareGdPdfText(text, crew, expected = {}) {
 }
 
 async function extractGdPdfText(buffer) {
-  pdfJs ||= import('pdfjs-dist/legacy/build/pdf.mjs');
+  pdfJs ||= import('./vendor/pdfjs/pdf.mjs');
   const { getDocument } = await pdfJs;
   const loading = getDocument({ data: new Uint8Array(buffer), isEvalSupported: false });
   try {

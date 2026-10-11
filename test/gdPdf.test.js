@@ -79,3 +79,38 @@ test('invalid and textless PDFs fail extraction', async () => {
   await assert.rejects(extractGdPdfText(Buffer.from('broken')));
   await assert.rejects(extractGdPdfText(pdfWithCells([[' ']])), /no readable text/);
 });
+
+test('PDF extraction works in a clean deployment without pdfjs-dist installed', () => {
+  const fs = require('node:fs');
+  const os = require('node:os');
+  const path = require('node:path');
+  const { spawnSync } = require('node:child_process');
+  const prefix = path.join(os.tmpdir(), 'gd-pdf-runtime-');
+  const directory = fs.mkdtempSync(prefix);
+  try {
+    fs.copyFileSync(require.resolve('../gdPdf'), path.join(directory, 'gdPdf.js'));
+    fs.cpSync(path.join(__dirname, '../vendor'), path.join(directory, 'vendor'), { recursive: true });
+    fs.writeFileSync(path.join(directory, 'sample.pdf'), pdfWithCells([
+      ['Registration B7868', 'Flight No. MU586', 'Date 2026-10-11'],
+      ['FLIGHT ROUTING'], ['PASSPORT NO'], ['TEST CN 900101 M', 'SE1234567'], ['TTL 1']
+    ]));
+    const result = spawnSync(process.execPath, ['-e', `
+      const fs = require('node:fs');
+      try { require.resolve('pdfjs-dist'); throw new Error('Test requires an isolated deployment'); }
+      catch (err) { if (err.code !== 'MODULE_NOT_FOUND') throw err; }
+      const { extractGdPdfText, compareGdPdfText } = require('./gdPdf');
+      extractGdPdfText(fs.readFileSync('sample.pdf')).then(text => {
+        const result = compareGdPdfText(text, [{ passport: 'SE1234567' }], {
+          flightNo: 'MU586', flightDate: '11OCT26', aircraftRegistration: 'B-7868'
+        });
+        if (!result.complete) throw new Error(result.reason);
+        console.log('ISOLATED_PDF_MATCHED');
+      }).catch(err => { console.error(err); process.exitCode = 1; });
+    `], { cwd: directory, encoding: 'utf8', timeout: 30000 });
+    assert.equal(result.status, 0, result.stderr + result.stdout);
+    assert.match(result.stdout, /ISOLATED_PDF_MATCHED/);
+  } finally {
+    assert.ok(path.resolve(directory).startsWith(path.resolve(prefix)));
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
