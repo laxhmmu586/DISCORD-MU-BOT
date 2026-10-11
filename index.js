@@ -113,6 +113,8 @@ const {
   getRecordCases,
   updateRecordCase,
   appendCbsScanNbrdBns,
+  resolveCbsScanNbrdBn,
+  getCbsScanNbrdRecords,
   deleteCkinNbrdFromBothSheets,
   deleteCbsScanNbrdBn,
   getCbsScanRecords,
@@ -3134,15 +3136,33 @@ app.get('/flights', async (_req, res) => {
   catch (err) { return res.status(503).json({ error: 'Unable to read flight logs.' }); }
 });
 
+const nbrdConfirmations = require('./nbrdConfirmation').createNbrdConfirmationStore();
 app.post('/cbs-scan', async (req, res) => {
+  const rawScan = req.body?.rawScan || req.body?.raw || req.body?.text || '';
+  const selectedFlight = normalizeBoardingFlight(req.query.flightNo || req.body?.flightNo || 'MU586');
+  const key = nbrdConfirmations.key(selectedFlight, req.query.flightDate || operationalDate(), rawScan);
   try {
-    const parsed = parseCbsPdf417(req.body?.rawScan || req.body?.raw || req.body?.text || '');
+    const parsed = parseCbsPdf417(rawScan);
+    parsed.nbrdConfirmed = nbrdConfirmations.canBoard(req.body?.confirmationToken, key);
+    parsed.nbrdConfirmationDetail = nbrdConfirmations.detail(req.body?.confirmationToken, key);
     const saved = await appendCbsScanRecord(parsed);
-    return res.json({ ok: true, ...saved });
+    if (parsed.nbrdConfirmed) nbrdConfirmations.consume(req.body.confirmationToken);
+    return res.json({ ok:true, ...saved });
   } catch (err) {
+    const challenge = err?.code === 'NBRD_MESSAGE' ? nbrdConfirmations.warning(key, req.body?.reviewToken, err?.detail || '') : {};
     const status = err?.code === 'DUPLICATE_BN' || err?.code === 'NBRD_MESSAGE' ? 409 : (err?.code === 'WRONG_FLIGHT' ? 400 : (err?.code === 'SHEETS_QUOTA' ? 503 : 422));
-    return res.status(status).json({ error: err?.message || 'CBS scan save failed', code: err?.code || 'SCAN_ERROR', flight: err?.flight || '', bn: err?.bn || '', detail: err?.detail || '' });
+    return res.status(status).json({error:err?.message || 'CBS scan save failed', code:err?.code || 'SCAN_ERROR', flight:err?.flight || '', bn:err?.bn || '', detail:err?.detail || '', ...challenge});
   }
+});
+
+app.get('/cbs-scan/nbrd-bns', async (_req, res) => {
+  try { return res.json({ok:true, rows:await getCbsScanNbrdRecords()}); }
+  catch (err) { return res.status(503).json({error:err?.message || 'Unable to load NBRD.'}); }
+});
+
+app.post('/cbs-scan/nbrd-bns/resolve', async (req, res) => {
+  try { return res.json({ok:true, ...await resolveCbsScanNbrdBn(req.body?.bn)}); }
+  catch (err) { return res.status(err?.code === 'NBRD_NOT_FOUND' ? 404 : 422).json({error:err?.message || 'Unable to resolve NBRD.', code:err?.code}); }
 });
 
 app.post('/cbs-scan2', async (req, res) => {

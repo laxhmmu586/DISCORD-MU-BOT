@@ -2912,7 +2912,7 @@ async function getCbsScanSheetRows(options = {}) {
   const generation = state.generation || 0;
   const pending = (async () => {
     const title = await getCbsScanSheetTitle(options.priority);
-    const res = await cbsScanSheetsCall(() => sheets.spreadsheets.values.get({ spreadsheetId:CBS_SCAN_SHEET_ID, range:escapeSheetTitle(title)+'!A:R' }), 'CBS scan sheet read');
+    const res = await cbsScanSheetsCall(() => sheets.spreadsheets.values.get({ spreadsheetId:CBS_SCAN_SHEET_ID, range:escapeSheetTitle(title)+'!A:S' }), 'CBS scan sheet read');
     const rows = res.data.values || [];
     if ((state.generation || 0) === generation) state.cbsScanSheetCache = { loadedAt:Date.now(), rows };
     return rows;
@@ -3025,6 +3025,26 @@ async function deleteCbsScanNbrdBn(rowNumber, bn = '') {
   });
 }
 
+async function getCbsScanNbrdRecords() {
+  const rows = await getCbsScanSheetRows();
+  return rows.slice(1).map((row, index) => ({
+    rowNumber:index + 2,
+    nbrdBn:formatCbsScanSheetBn(row[11]),
+    nbrdDetail:normalizeCbsScanNbrdDetail(row[12]),
+    nbrdResolved:String(row[18] || '').trim() === 'RESOLVED'
+  })).filter(row => row.nbrdBn);
+}
+
+async function resolveCbsScanNbrdBn(bn) {
+  const normalized = normalizeCbsScanBn(bn);
+  if (!normalized) throw new Error('NBRD BN is required.');
+  const state = boardingState();
+  return new Promise((resolve, reject) => {
+    state.cbsScanAppendPending.push({ nbrd:true, resolveBn:normalized, resolve, reject });
+    if (!state.cbsScanAppendRunning && !state.cbsScanAppendTimer) state.cbsScanAppendTimer = setTimeout(flushCbsScanAppendBatch, 800);
+  });
+}
+
 async function appendCbsScanNbrdBns(values = [], options = {}) {
   const entries = [...new Map((Array.isArray(values) ? values : [values]).map(normalizeCbsScanNbrdEntry).filter(e => e.bn).map(e => [e.bn,e])).values()];
   const state = boardingState();
@@ -3032,7 +3052,12 @@ async function appendCbsScanNbrdBns(values = [], options = {}) {
   const key = JSON.stringify(entries.slice().sort((a,b)=>a.bn.localeCompare(b.bn)));
   if (options.replace && version && version < (state.nbrdVersion || 0)) return { stale:true };
   if (options.replace && version) state.nbrdVersion = version;
-  if (options.replace && state.nbrdSyncedKey === key && !state.cbsScanAppendRunning && !state.cbsScanAppendPending.length) return { unchanged:true };
+  // Skip unchanged entries before allocating an 800ms batch. An empty source
+  // snapshot never removes retained records. Do not bypass queued mutations.
+  if (!entries.length) return { unchanged:true };
+  if (!state.cbsScanAppendRunning && !state.cbsScanAppendPending.some(item => item.nbrd) && state.nbrdKnown) {
+    if (entries.every(entry => state.nbrdKnown.get(entry.bn) === entry.detail)) return { unchanged:true };
+  }
   if (options.replace && state.nbrdPendingKey === key && state.nbrdPendingPromise) return state.nbrdPendingPromise;
   const promise = new Promise((resolve,reject) => {
     state.cbsScanAppendPending.push({ nbrd:true, entries, replace:!!options.replace, version, key, resolve, reject });
@@ -3090,6 +3115,7 @@ async function readCbsScanRecords() {
     entered: enteredRows.has(index + 2),
     nbrdBn: formatCbsScanSheetBn(row[11]),
     nbrdDetail: normalizeCbsScanNbrdDetail(row[12]),
+    nbrdResolved: String(row[18] || '').trim() === 'RESOLVED',
     infantBn: formatCbsScanSheetBn(row[13]),
     infantSeat: String(row[14] || '').trim(),
     infantFlight: String(row[15] || '').trim(),
@@ -3163,7 +3189,7 @@ function prepareCbsScanAppend(record = {}, workingRows = []) {
   const rawScan = String(record.rawScan || record.raw || '').trim();
   const scannedAt = record.scannedAt || new Date().toISOString();
   const nbrdExisting = workingRows.find((row) => normalizeCbsScanBn(row[11]) === bn);
-  if (nbrdExisting) throwCbsScanNbrdMessage(bn, String(nbrdExisting[12] || '').trim());
+  if (nbrdExisting && String(nbrdExisting[18] || '') !== 'RESOLVED' && (!record.nbrdConfirmed || (record.nbrdConfirmationDetail !== undefined && normalizeCbsScanNbrdDetail(nbrdExisting[12]) !== record.nbrdConfirmationDetail))) throwCbsScanNbrdMessage(bn, String(nbrdExisting[12] || '').trim());
   const isInfant = record.isInfant === true || seat === 'INF';
   const bnColumnIndex = isInfant ? 13 : 0;
   const existing = workingRows.find((row) => normalizeCbsScanBn(row[bnColumnIndex]) === bn);
@@ -3175,6 +3201,9 @@ function prepareCbsScanAppend(record = {}, workingRows = []) {
   ), -1);
   const rowNumber = lastScanOffset + 3;
   const values = [formatCbsScanSheetBn(bn), seat, flight, rawScan, scannedAt];
+  if (nbrdExisting && record.nbrdConfirmed) {
+    for (const row of workingRows) if (normalizeCbsScanBn(row[11]) === bn) row[18] = 'RESOLVED';
+  }
   applyCbsScanWorkingRow(workingRows, rowNumber, scanColumnStart, values);
   return { values, scanRangeColumns, rowNumber, result: { bn: formatCbsScanSheetBn(bn), seat, flight, rowNumber, scannedAt, isInfant } };
 }
@@ -3189,43 +3218,59 @@ async function processCbsScanAppendBatch(batch = []) {
     if (await ensureCbsScanSheetHeaders(rows,'scan')) rows = await getCbsScanSheetRows({forceRefresh:true,batchFresh:true});
     const working = rows.slice(1).map(r=>[...r]);
     for(const item of batch.filter(i=>i.nbrd)) {
+      if (item.resolveBn) {
+        const matches = working.filter(row => normalizeCbsScanBn(row[11]) === item.resolveBn);
+        if (!matches.length) { const err = new Error('NBRD not found.'); err.code = 'NBRD_NOT_FOUND'; item.reject(err); continue; }
+        matches.forEach(row => { row[18] = 'RESOLVED'; });
+        prepared.push({item, result:{bn:formatCbsScanSheetBn(item.resolveBn), resolved:true}});
+        continue;
+      }
       if(item.deleteRow) {
         const row=working[item.deleteRow-2];
         const bn=normalizeCbsScanBn(row?.[11]);
         if(!bn || (item.expectedBn && item.expectedBn!==bn)) {const err=new Error('NBRD row changed or not found.');err.code=bn?'NBRD_MISMATCH':'NBRD_NOT_FOUND';item.reject(err);continue;}
-        row[11]='';row[12]='';state.nbrdSyncedKey=null;
-        prepared.push({item,result:{deleted:true,rowNumber:item.deleteRow,bn:formatCbsScanSheetBn(bn)}});continue;
+        row[18]='RESOLVED';state.nbrdSyncedKey=null;
+        prepared.push({item,result:{resolved:true,rowNumber:item.deleteRow,bn:formatCbsScanSheetBn(bn)}});continue;
       }
       if(item.version && item.version < (state.nbrdVersion || 0)) { prepared.push({item,result:{stale:true}}); continue; }
       const desired = new Map(item.entries.map(e=>[e.bn,e.detail]));
       const seen = new Set();
-      working.forEach(row=> {
-        const bn=normalizeCbsScanBn(row[11]);
-        if(!bn) { if(item.replace && row[12]) {row[11]='';row[12]='';} return; }
-        if(desired.has(bn) && !seen.has(bn)) { row[12]=desired.get(bn); seen.add(bn); }
-        else if(item.replace) {row[11]='';row[12]='';}
+      working.forEach(row => {
+        const bn = normalizeCbsScanBn(row[11]);
+        if (!bn) return;
+        seen.add(bn);
+        // Update changed details without removing the BN or resetting resolution.
+        if (desired.has(bn)) row[12] = desired.get(bn);
       });
       for(const [bn,detail] of desired) if(!seen.has(bn)) {
         let slot=working.findIndex(r=>!normalizeCbsScanBn(r[11]));
         if(slot<0) {slot=working.length;working.push([]);}
-        working[slot][11]=formatCbsScanSheetBn(bn);working[slot][12]=detail;
+        working[slot][11]=formatCbsScanSheetBn(bn);working[slot][12]=detail;working[slot][18]='PENDING';
       }
       prepared.push({item,result:{added:item.entries.map(e=>e.bn)}});
     }
-    const original=rows.slice(1);
-    working.forEach((row,i)=> {
-      if(String(row[11]||'')!==String(original[i]?.[11]||'') || String(row[12]||'')!==String(original[i]?.[12]||'')) updates.push({range:escapeSheetTitle(title)+'!L'+(i+2)+':M'+(i+2),values:[[row[11]||'',row[12]||'']]});
-    });
     for(const item of batch.filter(i=>!i.nbrd)) {
       try { const next=prepareCbsScanAppend(item.record,working);
         updates.push({range:escapeSheetTitle(title)+'!'+next.scanRangeColumns.replace(':',next.rowNumber+':')+next.rowNumber,values:[next.values]});
         prepared.push({item,result:next.result});
       } catch(err) {item.reject(err);}
     }
+    const original = rows.slice(1);
+    working.forEach((row, i) => {
+      if (String(row[11] || '') !== String(original[i]?.[11] || '') || String(row[12] || '') !== String(original[i]?.[12] || '')) {
+        updates.push({range:escapeSheetTitle(title)+'!L'+(i+2)+':M'+(i+2), values:[[row[11] || '', row[12] || '']]});
+      }
+      if (String(row[18] || '') !== String(original[i]?.[18] || '')) updates.push({range:escapeSheetTitle(title)+'!S'+(i+2), values:[[row[18] || '']]});
+    });
+    if (updates.some(update => /!S\d+$/.test(update.range)) && rows[0]?.[18] !== 'NBRD Status') {
+      updates.push({range:escapeSheetTitle(title)+'!S1', values:[['NBRD Status']]});
+      rows[0] = [...(rows[0] || [])]; rows[0][18] = 'NBRD Status';
+    }
     if(updates.length) await cbsScanSheetsCall(()=>sheets.spreadsheets.values.batchUpdate({spreadsheetId:CBS_SCAN_SHEET_ID,requestBody:{valueInputOption:'RAW',data:updates}}),'CBS scan batch row write');
     state.generation=(state.generation||0)+1;
     state.cbsScanSheetCache={loadedAt:Date.now(),rows:[rows[0]||[],...working]};
     state.boardCache=null;
+    state.nbrdKnown = new Map(working.filter(row => normalizeCbsScanBn(row[11])).map(row => [normalizeCbsScanBn(row[11]), normalizeCbsScanNbrdDetail(row[12])]));
     for(const {item,result} of prepared) { if(item.nbrd && item.replace && !result.stale) state.nbrdSyncedKey=item.key; item.resolve(result); }
   } catch(err) { batch.forEach(item=>item.reject(err)); }
 }
@@ -3416,10 +3461,7 @@ async function deleteCkinNbrdFromBothSheetsUnlocked(value = '') {
   }
   const [regularTitle, emergencyTitle] = await Promise.all([getCbsScanSheetTitle('background'), getEmergencyBoardSheetTitle('background')]);
   const clears = [];
-  if (regularIndex >= 0) clears.push(cbsScanSheetsCall(() => sheets.spreadsheets.values.clear({
-    spreadsheetId: CBS_SCAN_SHEET_ID,
-    range: `${escapeSheetTitle(regularTitle)}!L${regularIndex + 2}:M${regularIndex + 2}`
-  }), 'CBS scan NBRD delete', 'background'));
+  if (regularIndex >= 0) clears.push(resolveCbsScanNbrdBn(targetBn));
   if (emergencyIndex >= 0) clears.push(cbsScanSheetsCall(() => sheets.spreadsheets.values.clear({
     spreadsheetId: EMERGENCY_BOARD_SHEET_ID,
     range: `${escapeSheetTitle(emergencyTitle)}!L${emergencyIndex + 2}:M${emergencyIndex + 2}`
@@ -3430,7 +3472,8 @@ async function deleteCkinNbrdFromBothSheetsUnlocked(value = '') {
   return {
     deleted: true,
     bn: formatCbsScanSheetBn(targetBn),
-    regularDeleted: regularIndex >= 0,
+    regularDeleted: false,
+    regularResolved: regularIndex >= 0,
     emergencyDeleted: emergencyIndex >= 0
   };
 }
@@ -5469,6 +5512,8 @@ module.exports = {
   getRecordCases,
   updateRecordCase,
   appendCbsScanNbrdBns,
+  resolveCbsScanNbrdBn,
+  getCbsScanNbrdRecords,
   deleteCbsScanNbrdBn,
   deleteCkinNbrdFromBothSheets,
   getCbsScanRecords,

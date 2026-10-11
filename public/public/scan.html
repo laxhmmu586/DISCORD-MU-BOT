@@ -5,6 +5,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Manual Boarding</title><link rel="stylesheet" href="/flight-navigation.css?v=20261009-vertical-switch">
+  <link rel="stylesheet" href="/nbrd-review.css?v=20261011"><script src="/nbrd-review.js?v=20261011"></script>
   <style>
     :root { --brand:#123a73; --line:#d7e1ec; --ink:#172033; --muted:#667085; --ok:#087443; --danger:#b42318; }
     * { box-sizing:border-box; }
@@ -20,7 +21,7 @@
     .user-menu button:last-child { background:#fff1f1; color:var(--danger); }
     main { width:min(860px,94vw); margin:28px auto; display:grid; gap:18px; }
     .card { background:#fff; border:1px solid var(--line); border-radius:22px; box-shadow:0 18px 42px rgba(22,48,76,.08); padding:22px; }
-    .camera-wrap { position:relative; width:100%; aspect-ratio:4 / 3; overflow:hidden; border-radius:18px; background:#111; }
+    .camera-wrap { position:relative; width:100%; aspect-ratio:16 / 9; overflow:hidden; border-radius:18px; background:#111; }
     video { display:block; width:100%; height:100%; background:#111; object-fit:cover; }
     .aim-box { position:absolute; left:50%; top:50%; width:min(78%,560px); height:34%; transform:translate(-50%,-50%); border:3px solid rgba(255,255,255,.92); border-radius:18px; box-shadow:0 0 0 999px rgba(0,0,0,.28); pointer-events:none; }
     button,a.button { border:0; border-radius:999px; padding:12px 18px; font-weight:850; cursor:pointer; background:var(--brand); color:white; text-decoration:none; }
@@ -31,13 +32,11 @@
     .flight-support { margin:-8px 0 18px; color:var(--brand); font-size:13px; font-weight:950; letter-spacing:.12em; }
     .boarding-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:16px 0 24px; }
     .boarding-heading h1 { margin:0; min-width:0; font-size:clamp(22px,5.8vw,32px); }
-    .result { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
-    .result div { padding:12px; border:1px solid var(--line); border-radius:14px; background:#fbfdff; }
-    .result b { display:block; color:var(--muted); font-size:12px; text-transform:uppercase; }
+    [hidden] { display:none !important; }
     .nbrd-form { display:grid; gap:14px; }
     .field-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; align-items:start; }
     label { display:grid; gap:8px; color:var(--muted); font-size:12px; font-weight:900; text-transform:uppercase; letter-spacing:.04em; }
-    input,textarea { width:100%; height:56px; border:1px solid var(--line); border-radius:14px; padding:14px 16px; color:var(--ink); font:inherit; font-weight:750; background:#fbfdff; box-shadow:inset 0 1px 0 rgba(255,255,255,.7); }
+    input,textarea,select { width:100%; height:56px; border:1px solid var(--line); border-radius:14px; padding:14px 16px; color:var(--ink); font:inherit; font-weight:750; background:#fbfdff; box-shadow:inset 0 1px 0 rgba(255,255,255,.7); }
     textarea { min-height:56px; resize:none; overflow:auto; line-height:1.35; }
     #nbrd-form .actions { margin-top:2px; }
     .dialog-backdrop { position:fixed; inset:0; z-index:50; display:grid; place-items:center; padding:22px; background:rgba(12,20,32,.48); }
@@ -53,26 +52,27 @@
     .dialog-card input { margin:0 0 10px; }
     .dialog-card button { width:100%; font-size:18px; }
     .dialog-card .secondary { margin-top:8px; }
-    @media (max-width:640px){ .result,.field-grid{grid-template-columns:1fr} input,textarea{height:54px} .card{padding:18px} h1{font-size:34px} .camera-wrap{aspect-ratio:3 / 4;max-height:68vh} }
+    @media (max-width:640px){ .field-grid{grid-template-columns:1fr} input,textarea{height:54px} .card{padding:18px} h1{font-size:34px} .camera-wrap{aspect-ratio:4 / 3;max-height:42vh} }
   </style>
 </head>
 <body>
   <header><a class="brand" href="/flights.html" aria-label="MUFC - Select Flight">MUFC</a><div class="header-actions"><a class="button" href="m-board.html">M-board</a><button class="avatar-button" id="user-menu-button" type="button" aria-label="Account menu" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/><path d="M4 21c1.6-4.4 4.3-6.6 8-6.6s6.4 2.2 8 6.6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button><div class="user-menu" id="user-menu" hidden><button id="change-password" type="button">Change password</button><button id="logout" type="button">Logout</button></div></div></header>
   <main>
+    <section class="card" aria-label="NBRD records"><div class="nbrd-heading"><h2>NBRD</h2><span class="nbrd-count" id="nbrd-count">Loading...</span></div><div id="nbrd-bns"></div></section>
     <section class="card">
       <div class="boarding-heading"><h1>Manual Boarding</h1><a class="flight-switch" id="boarding-switch-flight" href="/flights.html" aria-label="Switch flight" title="Switch flight"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v17m-4-4 4 4 4-4M17 21V4m-4 4 4-4 4 4"/></svg></a></div>
       <p class="flight-support"><span data-selected-flight>MU586 · MU9586 · MU578</span></p>
       <div class="camera-wrap"><video id="preview" muted playsinline></video><div class="aim-box" aria-hidden="true"></div></div>
       <div class="actions"><button id="start" type="button">Start Scan</button><button class="secondary" id="stop" type="button">Stop</button></div>
       <p class="status" id="status">Ready.</p>
-      <div class="result" id="result" hidden></div>
     </section>
-    <section class="card">
+    <section class="card" id="add-nbrd">
       <h2>Add NBRD</h2>
       <form class="nbrd-form" id="nbrd-form">
         <div class="field-grid">
           <label>BN<input id="nbrd-bn" name="bn" inputmode="numeric" pattern="\d{1,4}" placeholder="94 or 0094" required /></label>
-          <label>NBRD Message<textarea id="nbrd-message" name="message" placeholder="CKIN NBRD CTC LAKE" required></textarea></label>
+          <label>NBRD Message<select id="nbrd-message" name="message"><option>NBRD</option><option>SEAT CHANGE</option><option>INV UPGRADE</option><option>VISA</option><option>RE-SWIPE</option><option value="CUSTOM">Custom message</option></select></label>
+          <label id="nbrd-custom-field" hidden>Custom message<input id="nbrd-custom-message" maxlength="500" placeholder="Enter NBRD details" /></label>
         </div>
         <div class="actions"><button type="submit">Add NBRD</button></div>
       </form>
@@ -109,7 +109,7 @@
     requireLogin();
     const apiBase = (window.MU_API_BASE || 'https://api.mufcapp.net').replace(/\/$/, '');
     const statusEl = document.querySelector('#status');
-    const resultEl = document.querySelector('#result');
+
     const preview = document.querySelector('#preview');
     const dialog = document.querySelector('#message-dialog');
     const dialogMessage = document.querySelector('#dialog-message');
@@ -200,25 +200,52 @@
       await auth?.signOut?.();
       window.location.replace(loginUrl());
     });
-    function renderResult(data) { resultEl.hidden = false; resultEl.innerHTML = `<div><b>Flight</b>${data.flight || ''}</div><div><b>Seat</b>${data.seat || ''}</div><div><b>BN</b>${data.bn || ''}</div>${data.isInfant ? '<div><b>Type</b>INFANT</div>' : ''}`; }
-    async function saveScan(rawScan) {
-      const res = await fetch(`${apiBase}/cbs-scan`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ rawScan }) });
-      const data = await res.json().catch(() => ({}));
+    const nbrdReview = NbrdReview.create({container:document.querySelector('#nbrd-bns'), apiBase, onChanged:refreshNbrd});
+    const nbrdReviewTokens = new Map();
+    let nbrdVerified = false;
+    async function refreshNbrd() {
+      const rows = await nbrdReview.load();
+      document.querySelector('#nbrd-count').textContent = rows.length + ' total · ' + rows.filter(row=>!row.nbrdResolved).length + ' pending';
+    }
+    async function verifyNbrd() {
+      document.querySelector('#start').disabled = true;
+      await refreshNbrd();
+      nbrdVerified = await nbrdReview.verify();
+      document.querySelector('#start').disabled = !nbrdVerified;
+      if (!nbrdVerified) { document.querySelector('#add-nbrd').scrollIntoView({behavior:'smooth'}); document.querySelector('#nbrd-bn').focus(); }
+    }
+    document.querySelector('#nbrd-message').addEventListener('change', event => {
+      const custom = event.target.value === 'CUSTOM';
+      document.querySelector('#nbrd-custom-field').hidden = !custom;
+      document.querySelector('#nbrd-custom-message').required = custom;
+      if (custom) document.querySelector('#nbrd-custom-message').focus();
+    });
+    async function saveScan(rawScan, options = {}) {
+      const res = await fetch(apiBase+'/cbs-scan', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rawScan, reviewToken:nbrdReviewTokens.get(rawScan), confirmationToken:options.confirmationToken})});
+      const data = await res.json().catch(()=>({}));
+      options.onResponse?.();
       if (!res.ok) {
-        const message = data.code === 'WRONG_FLIGHT' ? 'wrong flight' : (data.code === 'NBRD_MESSAGE' ? `NBRD message${data.detail ? `\n${data.detail}` : ''}` : (data.code === 'DUPLICATE_BN' ? `Duplicate BN: ${(String(rawScan).match(/(?:^|\D)(?:0*INF|0*\d{1,3}[A-Z])(\d{3,4})\b/i)?.[1] || '').slice(-3)}` : (data.code === 'SHEETS_QUOTA' ? 'Not saved: Google Sheets is still busy after automatic retries. Please wait a minute and scan again.' : (data.error || 'Scan failed'))));
-        const type = data.code === 'WRONG_FLIGHT' || data.code === 'DUPLICATE_BN' || data.code === 'SHEETS_QUOTA' ? 'error' : (data.code === 'NBRD_MESSAGE' ? 'warning' : '');
-        showMessage(message, 'Message', type);
+        if (data.code === 'NBRD_MESSAGE') {
+          nbrdReviewTokens.set(rawScan, data.confirmationToken);
+          if (!data.canBoard) showMessage('NBRD message' + (data.detail ? '\n'+data.detail : ''), 'Message', 'warning');
+          else {
+            const boarded = await nbrdReview.board({bn:data.bn,detail:data.detail,confirm:()=>saveScan(rawScan,{confirmationToken:data.confirmationToken})});
+            if (boarded) return;
+            setStatus('NBRD retained. Scan again when ready.', 'err');
+          }
+          return;
+        }
+        const message = data.code === 'WRONG_FLIGHT' ? 'wrong flight' : data.code === 'DUPLICATE_BN' ? 'Duplicate BN' : data.code === 'SHEETS_QUOTA' ? 'Not saved. Please try again after Google Sheets recovers.' : data.error || 'Scan failed';
         throw new Error(message);
       }
-      renderResult(data);
-      const scanType = data.isInfant ? 'infant' : 'success';
-      setStatus(data.isInfant ? `Saved INFANT BN ${data.bn}` : `Saved BN ${data.bn} / Seat ${data.seat}`, 'ok');
-      showMessage(data.isInfant ? `Input successful infant BN ${data.bn}` : `Input successful BN ${data.bn}`, data.isInfant ? 'Infant' : 'Success', scanType);
+      nbrdReviewTokens.delete(rawScan);
+      setStatus(data.isInfant ? 'Saved INFANT BN '+data.bn : 'Saved BN '+data.bn, 'ok');
+      showMessage(data.isInfant ? 'Input successful infant BN '+data.bn : 'Input successful BN '+data.bn, data.isInfant ? 'Infant' : 'Success', data.isInfant ? 'infant' : 'success');
+      refreshNbrd().catch(()=>{});
     }
     async function handleText(text) {
       const startButton = document.querySelector('#start');
       startButton.disabled = true;
-      resultEl.hidden = true;
       setStatus('Saving...');
       const waitingTimer = setTimeout(() => {
         setStatus('等待，请保持页面打开。');
@@ -226,14 +253,14 @@
         dialogOk.disabled = true;
       }, 3000);
       try {
-        await saveScan(text);
+        await saveScan(text, {onResponse:()=>clearTimeout(waitingTimer)});
       } catch (err) {
         setStatus(err.message, 'err');
         showMessage(err.message || 'Not saved. Please scan again.', 'Message', 'error');
       } finally {
         clearTimeout(waitingTimer);
         dialogOk.disabled = false;
-        startButton.disabled = false;
+        startButton.disabled = !nbrdVerified;
       }
     }
     document.querySelector('#nbrd-form').addEventListener('submit', async (event) => {
@@ -241,7 +268,7 @@
       const bnInput = document.querySelector('#nbrd-bn');
       const messageInput = document.querySelector('#nbrd-message');
       const bn = String(bnInput.value || '').replace(/\D/g, '');
-      const detail = String(messageInput.value || '').trim();
+      const detail = messageInput.value === 'CUSTOM' ? document.querySelector('#nbrd-custom-message').value.trim() : messageInput.value;
       if (!/^\d{1,4}$/.test(bn)) { showMessage('BN must be 1 to 4 digits.'); return; }
       if (!detail) { showMessage('NBRD message is required.'); return; }
       try {
@@ -250,7 +277,12 @@
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || 'NBRD save failed');
         bnInput.value = '';
-        messageInput.value = '';
+        messageInput.value = 'NBRD';
+        document.querySelector('#nbrd-custom-message').value = '';
+        document.querySelector('#nbrd-custom-message').required = false;
+        document.querySelector('#nbrd-custom-field').hidden = true;
+        await refreshNbrd();
+        if (!nbrdVerified) { nbrdVerified = await nbrdReview.verify(); document.querySelector('#start').disabled = !nbrdVerified; }
         setStatus(`Saved NBRD BN ${String(bn).padStart(4, '0').slice(-3)}`, 'ok');
         showMessage(`NBRD saved BN ${String(bn).padStart(4, '0').slice(-3)}`, 'Success', 'success');
       } catch (err) {
@@ -260,6 +292,7 @@
     });
     document.querySelector('#start').addEventListener('click', async () => {
       try {
+        if (!nbrdVerified || nbrdReview.isOpen()) return;
         if (!window.ZXingBrowser) throw new Error('ZXing library did not load.');
         const Reader = ZXingBrowser.BrowserPDF417Reader || ZXingBrowser.BrowserMultiFormatReader;
         const reader = new Reader();
@@ -267,7 +300,7 @@
           ? reader.decodeFromConstraints.bind(reader, cameraConstraints)
           : reader.decodeFromVideoDevice.bind(reader, undefined);
         controls = await decode(preview, (result, error) => {
-          if (!result || scanBusy || !dialog.hidden) return;
+          if (!result || scanBusy || !dialog.hidden || nbrdReview.isOpen() || !nbrdVerified) return;
           const text = result.getText();
           const now = Date.now();
           if (text === lastScanText && now - lastScanAt < 2500) return;
@@ -281,6 +314,7 @@
         setStatus('Scanning');
       } catch (err) { setStatus(err.message, 'err'); showMessage(err.message); }
     });
+    verifyNbrd().catch(err=>{ setStatus(err.message, 'err'); showMessage(err.message+' Please reload to check NBRD.', 'Message', 'error'); });
     document.querySelector('#stop').addEventListener('click', () => { controls?.stop(); controls = null; setStatus('Stopped.'); });
   </script>
 </body>

@@ -128,7 +128,7 @@ for (const [prefix, name] of [['cbsScan', 'CbsScan'], ['emergencyBoard', 'Emerge
         return rows.map(row => [...row]);
       }, 'scan read', 'scan', 'read');
       vm.runInContext(`let ${prefix}AppendPending = [], ${prefix}AppendTimer = null, ${prefix}AppendRunning = false, ${prefix}SheetCache = {};`, h.context);
-      for (const fn of [`normalize${name}Bn`, `format${name}SheetBn`, `throw${name}NbrdMessage`, `make${name}DuplicateError`, `apply${name}WorkingRow`, `prepare${name}Append`, `process${name}AppendBatch`, `flush${name}AppendBatch`, `append${name}Record`]) {
+    for (const fn of [...(name === 'CbsScan' ? ['normalizeCbsScanNbrdDetail'] : []), `normalize${name}Bn`, `format${name}SheetBn`, `throw${name}NbrdMessage`, `make${name}DuplicateError`, `apply${name}WorkingRow`, `prepare${name}Append`, `process${name}AppendBatch`, `flush${name}AppendBatch`, `append${name}Record`]) {
         vm.runInContext(sourceFunction(drive, fn), h.context);
       }
       const saved = [];
@@ -176,7 +176,7 @@ for (const [prefix, name] of [['cbsScan', 'CbsScan'], ['emergencyBoard', 'Emerge
       } } } }
     });
     vm.runInContext(`let ${prefix}AppendPending = [], ${prefix}AppendTimer = null, ${prefix}AppendRunning = false, ${prefix}SheetCache = {};`, h.context);
-    for (const fn of [`normalize${name}Bn`, `format${name}SheetBn`, `throw${name}NbrdMessage`, `make${name}DuplicateError`, `apply${name}WorkingRow`, `prepare${name}Append`, `process${name}AppendBatch`, `flush${name}AppendBatch`, `append${name}Record`]) {
+    for (const fn of [...(name === 'CbsScan' ? ['normalizeCbsScanNbrdDetail'] : []), `normalize${name}Bn`, `format${name}SheetBn`, `throw${name}NbrdMessage`, `make${name}DuplicateError`, `apply${name}WorkingRow`, `prepare${name}Append`, `process${name}AppendBatch`, `flush${name}AppendBatch`, `append${name}Record`]) {
       vm.runInContext(sourceFunction(drive, fn), h.context);
     }
     const append = h.context[`append${name}Record`];
@@ -240,12 +240,12 @@ for (const file of ['scan.html', 'scan2.html']) {
     let status;
     const h = clockHarness({
       document: { querySelector: () => start }, resultEl: result,
-      dialogOk: {disabled:false}, showMessage: () => {}, setStatus: value => { status = value; }, saveScan: () => gate.promise
+      nbrdVerified:true, dialogOk: {disabled:false}, showMessage: () => {}, setStatus: value => { status = value; }, saveScan: () => gate.promise
     });
     vm.runInContext(handler, h.context);
     const pending = h.context.handleText('boarding pass');
     assert.equal(start.disabled, true);
-    assert.equal(result.hidden, true);
+    assert.equal(result.hidden, file === 'scan2.html');
     await h.next();
     assert.match(status, file === 'scan.html' ? /等待，请保持页面打开。/ : /Still saving/);
     assert.equal(start.disabled, true);
@@ -254,16 +254,16 @@ for (const file of ['scan.html', 'scan2.html']) {
     assert.equal(status, 'Not saved');
     assert.equal(start.disabled, false);
     assert.equal(h.timers.size, 0);
-    assert.match(html, /if \(!result \|\| scanBusy \|\| !dialog.hidden\) return/);
+    assert.match(html, /if \(!result \|\| scanBusy \|\| !dialog.hidden/);
   });
 
   test(`${file} shows success only after the server confirms persistence`, async () => {
     const html = fs.readFileSync(path.join(__dirname, '..', 'public/public', file), 'utf8');
-    const source = html.match(/    async function saveScan\(rawScan\) \{[\s\S]*?\n    }/)[0];
+    const source = html.match(/    async function saveScan\(rawScan(?:, options = \{\})?\) \{[\s\S]*?\n    }/)[0];
     const response = deferred();
     const messages = [], results = [];
     const context = vm.createContext({
-      apiBase: '', fetch: () => response.promise,
+      apiBase: '', fetch: () => response.promise, nbrdReviewTokens:new Map(), refreshNbrd:async()=>{},
       setStatus: () => {}, showMessage: (...args) => messages.push(args), renderResult: result => results.push(result)
     });
     vm.runInContext(source, context);
@@ -274,11 +274,11 @@ for (const file of ['scan.html', 'scan2.html']) {
     response.resolve({ ok: true, json: async () => ({ bn: '001', seat: '10A' }) });
     await pending;
     assert.equal(messages[0][2], 'success');
-    assert.equal(results.length, 1);
+    assert.equal(results.length, file === 'scan.html' ? 0 : 1);
     context.fetch = async () => ({ ok: false, json: async () => ({ code: 'SHEETS_QUOTA' }) });
     await assert.rejects(context.saveScan('pass'), /Not saved/);
-    assert.equal(messages[1][2], 'error');
-    assert.equal(results.length, 1, 'failed saves never render another successful result');
+    if (file === 'scan2.html') assert.equal(messages[1][2], 'error');
+    assert.equal(results.length, file === 'scan.html' ? 0 : 1, 'failed saves never render another successful result');
   });
 }
 
