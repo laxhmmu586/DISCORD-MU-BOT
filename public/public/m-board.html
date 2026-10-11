@@ -99,6 +99,14 @@
     }
     function renderScanRows(rows, newKeys) {
       if (!rows.length) { tableWrap.innerHTML = '<div class="empty">No boarding scan rows found.</div>'; return; }
+      if (tableWrap.querySelector('tbody')) {
+        const tbody=tableWrap.querySelector('tbody');
+        const incoming=new Map(rows.map(row=>[recordKey('scan',row),row]));
+        for(const tr of [...tbody.rows]) {const row=incoming.get(tr.dataset.recordKey);if(!row){tr.remove();continue;}tr.classList.toggle('is-entered',Boolean(row.entered));tr.classList.toggle('is-new',newKeys.has(tr.dataset.recordKey));incoming.delete(tr.dataset.recordKey);}
+        for(const [key,row] of incoming) {const tr=document.createElement('tr');tr.dataset.recordKey=key;tr.dataset.rowNumber=row.rowNumber;tr.className=[row.entered?'is-entered':'',newKeys.has(key)?'is-new':''].filter(Boolean).join(' ');tr.innerHTML='<td>'+escapeHtml(row.bn)+'</td><td>'+escapeHtml(row.seat)+'</td>';tbody.append(tr);}
+        [...tbody.rows].forEach((tr,index)=>{tr.dataset.rowIndex=index;});
+        return;
+      }
       tableWrap.innerHTML = `<table><thead><tr><th>BN</th><th>Seat</th></tr></thead><tbody>${rows.map((row, index) => {
         const checked = Boolean(row.entered);
         const key = recordKey('scan', row);
@@ -108,6 +116,23 @@
     }
     function renderInfantRows(rows, newKeys) {
       if (!rows.length) { infantWrap.innerHTML = '<div class="empty">No infant scans found.</div>'; return; }
+      if (infantWrap.querySelector('tbody')) {
+        const tbody = infantWrap.querySelector('tbody');
+        const incoming = new Map(rows.map(row => [recordKey('infant', row), row]));
+        for (const tr of [...tbody.rows]) {
+          if (!incoming.has(tr.dataset.recordKey)) { tr.remove(); continue; }
+          tr.classList.toggle('is-new', newKeys.has(tr.dataset.recordKey));
+          incoming.delete(tr.dataset.recordKey);
+        }
+        for (const [key, row] of incoming) {
+          const tr = document.createElement('tr');
+          tr.dataset.recordKey = key;
+          tr.classList.toggle('is-new', newKeys.has(key));
+          tr.innerHTML = '<td class="infant">' + escapeHtml(row.infantBn) + '</td><td>' + escapeHtml(row.infantSeat || 'INF') + '</td>';
+          tbody.append(tr);
+        }
+        return;
+      }
       infantWrap.innerHTML = `<table><thead><tr><th>BN</th><th>Seat</th></tr></thead><tbody>${rows.map((row) => {
         const key = recordKey('infant', row);
         return `<tr${rowNewClass(key, newKeys)} data-record-key="${escapeHtml(key)}"><td class="infant">${escapeHtml(row.infantBn)}</td><td>${escapeHtml(row.infantSeat || 'INF')}</td></tr>`;
