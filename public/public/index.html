@@ -7171,6 +7171,7 @@
 
       let lastNbrdSheetSyncKey = "";
       function syncCkinNbrdBnsToBoardingSheet(sy = currentSy) {
+        if (!Array.isArray(sy?.bnAudit) || !sy?.boardingNbrdVersion) return;
         const entriesByBn = new Map();
         for (const row of (enrichRowsWithPassengerData((sy?.bnAudit || []).filter(rowHasCkinNbrdIssue)) || [])) {
           const bn = String(row.bn || "").replace(/\D/g, "").padStart(4, "0");
@@ -7185,7 +7186,7 @@
         apiJson("/cbs-scan/nbrd-bns", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ entries, replace: true }),
+          body: JSON.stringify({ entries, replace: true, version: sy?.boardingNbrdVersion || 0 }),
         }).catch((error) => {
           lastNbrdSheetSyncKey = "";
           console.warn("Unable to sync CKIN/NBRD BN list to both boarding sheets.", error);

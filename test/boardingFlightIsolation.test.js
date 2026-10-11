@@ -91,3 +91,46 @@ test('shared emergency sheet isolates adult/infant duplicates, NBRD replacement,
   await context.runWithBoardingFlight('MU578',()=>assert.rejects(ctx.setEmergencyBoardRecordsEntered([2],true),/selected flight/));
   assert.equal(writes.length,before);
 });
+
+test('ordinary batch combines NBRD deltas and adult/infant scans without touching unchanged slots', async()=>{
+  const {ctx,tables,writes}=harness();
+  const headers=['BN','Seat','Flight','Raw Scan','Scanned At','','','','','','','NBRD BN','CKIN NBRD Detail','Infant BN','Infant Seat','Infant Flight','Infant Raw Scan','Infant Scanned At'];
+  const existing=[[],[],[]];existing[0][11]='010';existing[0][12]='keep';existing[1][11]='020';existing[1][12]='remove';existing[2][11]='030';existing[2][12]='old';
+  tables.set(0,[headers,...existing]);
+  Object.assign(context.boardingState(),{nbrdVersion:0,nbrdSyncedKey:null,nbrdPendingKey:null,nbrdPendingPromise:null,boardCache:null,boardPending:null});
+  let reads=0,batches=0;
+  const get=ctx.sheets.spreadsheets.values.get,write=ctx.sheets.spreadsheets.values.batchUpdate;
+  ctx.sheets.spreadsheets.values.get=async args=>{reads++;return get(args);};
+  ctx.sheets.spreadsheets.values.batchUpdate=async args=>{batches++;return write(args);};
+  const sync=ctx.appendCbsScanNbrdBns([{bn:'10',detail:'keep'},{bn:'30',detail:'new'},{bn:'40',detail:'added'}],{replace:true,version:2});
+  const duplicateSync=ctx.appendCbsScanNbrdBns([{bn:'40',detail:'added'},{bn:'30',detail:'new'},{bn:'10',detail:'keep'}],{replace:true,version:2});
+  const blocked=ctx.appendCbsScanRecord({flight:'MU586',bn:'40',seat:'10A'}).catch(e=>e);
+  const released=ctx.appendCbsScanRecord({flight:'MU586',bn:'20',seat:'10B'});
+  const infant=ctx.appendCbsScanRecord({flight:'MU586',bn:'21',seat:'INF',isInfant:true});
+  const duplicate=ctx.appendCbsScanRecord({flight:'MU586',bn:'20',seat:'10B'}).catch(e=>e);
+  await Promise.all([sync,duplicateSync,released,infant]);
+  assert.equal((await blocked).code,'NBRD_MESSAGE');assert.equal((await duplicate).code,'DUPLICATE_BN');
+  assert.equal(reads,1);assert.equal(batches,1);
+  assert.ok(!writes.some(w=>w.range.includes('!L2:M2')),'unchanged slot is not written');
+  assert.equal(tables.get(0)[1][11],'010');assert.equal(tables.get(0)[2][11],'040');assert.equal(tables.get(0)[3][12],'new');
+  await ctx.appendCbsScanNbrdBns([{bn:'10',detail:'keep'},{bn:'30',detail:'new'},{bn:'40',detail:'added'}],{replace:true,version:2});
+  assert.equal(reads,1,'already committed snapshot uses no read');
+  assert.equal((await ctx.appendCbsScanNbrdBns([],{replace:true,version:1})).stale,true);
+  await ctx.deleteCbsScanNbrdBn(3,'40');
+  assert.equal(tables.get(0)[2][11],'');
+  assert.equal(tables.get(1102230555).length,1,'ordinary NBRD never mirrors to emergency');
+});
+
+test('three board viewers share one records read and one entered-color read, then invalidate on mutation',async()=>{
+  const {ctx,tables}=harness();
+  Object.assign(context.boardingState(),{boardCache:null,boardPending:null,rowsPending:null,cbsScanSheetCache:{loadedAt:0,rows:[]}});
+  const headers=['BN','Seat','Flight','Raw Scan','Scanned At','','','','','','','NBRD BN','CKIN NBRD Detail','Infant BN','Infant Seat','Infant Flight','Infant Raw Scan','Infant Scanned At'];
+  tables.set(0,[headers,['001','10A','MU586']]);
+  let reads=0,colors=0;const get=ctx.sheets.spreadsheets.values.get;
+  ctx.sheets.spreadsheets.values.get=async args=>{reads++;await new Promise(r=>setTimeout(r,5));return get(args);};
+  ctx.sheets.spreadsheets.get=async()=>{colors++;return {data:{sheets:[{data:[{rowData:[{values:[{userEnteredFormat:{backgroundColor:{red:.91,green:.97,blue:.93}}}]}]}]}]}};};
+  const results=await Promise.all([ctx.getCbsScanRecords(),ctx.getCbsScanRecords(),ctx.getCbsScanRecords()]);
+  assert.equal(reads,1);assert.equal(colors,1);assert.equal(results[0][0].entered,true);
+  await ctx.getCbsScanRecords();assert.equal(colors,1);
+  await ctx.setCbsScanRecordsEntered([2],false);await ctx.getCbsScanRecords();assert.equal(colors,2);
+});

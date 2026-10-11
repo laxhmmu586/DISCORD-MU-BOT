@@ -221,14 +221,18 @@
       resultEl.hidden = true;
       setStatus('Saving...');
       const waitingTimer = setTimeout(() => {
-        setStatus('Still saving. Please keep this page open and wait for confirmation before scanning again.');
+        setStatus('等待，请保持页面打开。');
+        showMessage('等待，请保持页面打开。');
+        dialogOk.disabled = true;
       }, 3000);
       try {
         await saveScan(text);
       } catch (err) {
         setStatus(err.message, 'err');
+        showMessage(err.message || 'Not saved. Please scan again.', 'Message', 'error');
       } finally {
         clearTimeout(waitingTimer);
+        dialogOk.disabled = false;
         startButton.disabled = false;
       }
     }

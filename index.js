@@ -114,6 +114,7 @@ const {
   updateRecordCase,
   appendCbsScanNbrdBns,
   deleteCkinNbrdFromBothSheets,
+  deleteCbsScanNbrdBn,
   getCbsScanRecords,
   setCbsScanRecordEntered,
   setCbsScanRecordsEntered,
@@ -3252,6 +3253,15 @@ app.post('/irr-cases/:rowNumber', async (req, res) => {
 });
 
 
+const boardingNbrdSnapshots = new Map();
+let boardingNbrdSequence = 0;
+function boardingNbrdSnapshotVersion(flight, date, log) {
+  const key = flight + '|' + date;
+  const signature = require('node:crypto').createHash('sha256').update(log).digest('hex');
+  if (boardingNbrdSnapshots.get(key)?.signature !== signature) boardingNbrdSnapshots.set(key, { signature, version:Date.now()*1000+(boardingNbrdSequence++ % 1000) });
+  return boardingNbrdSnapshots.get(key).version;
+}
+
 async function saveCkinNbrdEntriesToBothSheets(entries, options = {}) {
   const [regular, emergency] = await Promise.all([
     appendCbsScanNbrdBns(entries, options),
@@ -3316,7 +3326,7 @@ app.post('/cbs-scan/records/:rowNumber/entered', async (req, res) => {
 app.post('/cbs-scan/nbrd-bns', async (req, res) => {
   try {
     const entries = Array.isArray(req.body?.entries) ? req.body.entries : (Array.isArray(req.body?.bns) ? req.body.bns : [req.body?.bn].filter(Boolean));
-    const result = await saveCkinNbrdEntriesToBothSheets(entries, { replace: req.body?.replace === true });
+    const result = await appendCbsScanNbrdBns(entries, { replace: req.body?.replace === true, version: req.body?.version });
     return res.json({ ok: true, ...result });
   } catch (err) {
     return res.status(422).json({ error: err?.message || 'NBRD BN save failed', code: err?.code || 'NBRD_SAVE_ERROR' });
@@ -3325,7 +3335,7 @@ app.post('/cbs-scan/nbrd-bns', async (req, res) => {
 
 async function handleCbsScanNbrdDelete(req, res) {
   try {
-    const result = await deleteCkinNbrdFromBothSheets(req.body?.bn || req.query?.bn || '');
+    const result = await deleteCbsScanNbrdBn(req.params.rowNumber, req.body?.bn || req.query?.bn || '');
     return res.json({ ok: true, ...result });
   } catch (err) {
     const status = err?.code === 'NBRD_NOT_FOUND' || err?.code === 'NBRD_MISMATCH' ? 404 : 422;
@@ -4540,6 +4550,7 @@ app.get(
         if (!syInfo) {
           return res.json({ error: `No SY section found for ${requestedFlightNo}${syDate ? `/${syDate}` : ''}.` });
         }
+        const boardingNbrdVersion = boardingNbrdSnapshotVersion(selectedFlight, selectedDate, log);
         const year = Number(yearSuffix || new Date().getUTCFullYear().toString().slice(-2));
         const fullYear = year >= 100 ? year : (year >= 70 ? 1900 + year : 2000 + year);
         const m = String(syInfo.flightDate || '').toUpperCase().match(/(\d{2})([A-Z]{3})(\d{2})?/);
@@ -4603,7 +4614,7 @@ app.get(
         syInfo.spml = spml;
         setImmediate(() => syncSalesDetailsFromTodaySy(isoDate)
           .catch((err) => console.warn('Sales details sync skipped:', err?.message || err)));
-        const syPayload = { ...syInfo, bagSheet: syBagInfo, permissions: authContext.permissions };
+        const syPayload = { ...syInfo, boardingNbrdVersion, bagSheet: syBagInfo, permissions: authContext.permissions };
         // Exclude per-user permissions from the shared change signature.  The
         // event contains no flight data and merely asks clients to reconcile.
         publishSyRefresh(rawQuery, { ...syPayload, permissions: undefined });

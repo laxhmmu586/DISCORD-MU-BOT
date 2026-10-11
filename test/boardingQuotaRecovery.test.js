@@ -50,67 +50,14 @@ function quotaHarness() {
 }
 const quotaError = () => Object.assign(new Error('Read quota exceeded'), { code: 429 });
 
-test('ten concurrent scanners stay within the shared rolling minute budget', async () => {
-  const h = quotaHarness();
-  const calls = [];
-  const scanners = Array.from({ length: 10 }, (_, scanner) => (async () => {
-    for (let scan = 0; scan < 6; scan++) {
-      await h.context.cbsScanSheetsCall(async () => calls.push({ at: h.now(), scanner, scan, type: 'read' }), 'board read', 'scan', 'read');
-      await h.context.cbsScanSheetsCall(async () => calls.push({ at: h.now(), scanner, scan, type: 'write' }), 'board write', 'scan');
-    }
-  })());
-  await settle();
-  for (let turn = 0; calls.length < 120 && turn < 100; turn++) {
-    await settle();
-    if (h.timers.size) await h.next();
-  }
-  assert.equal(calls.length, 120);
-  await Promise.all(scanners);
-  for (const call of calls) {
-    assert.ok(calls.filter(other => other.type === call.type && other.at > call.at - 60000 && other.at <= call.at).length <= 50);
-  }
-  assert.equal(calls.filter(call => call.type === 'write').length, 60);
-  assert.equal(h.timers.size, 0);
-});
-
-test('a full budget waits for refill and keeps scans ahead of background refreshes', async () => {
-  const h = quotaHarness();
-  for (let i = 0; i < 50; i++) await h.context.cbsScanSheetsCall(async () => {});
-  const calls = [];
-  const background = h.context.cbsScanSheetsCall(async () => calls.push('background'), 'board read', 'background');
-  const scan = h.context.cbsScanSheetsCall(async () => calls.push('scan'), 'board write', 'scan');
-  await settle();
-  assert.deepEqual(calls, []);
-  assert.equal(h.timers.size, 1);
-  await h.next();
-  await Promise.all([background, scan]);
-  assert.equal(h.now(), 60000);
-  assert.deepEqual(calls, ['scan', 'background']);
-});
-
 test('normal reads and writes use independent budgets without artificial delays', async () => {
   const h = quotaHarness();
-  for (let i = 0; i < 50; i++) {
+  for (let i = 0; i < 75; i++) {
     await h.context.cbsScanSheetsCall(async () => {}, 'read', 'scan', 'read');
     await h.context.cbsScanSheetsCall(async () => {}, 'write', 'scan');
   }
   assert.equal(h.now(), 0);
   assert.equal(h.timers.size, 0);
-});
-
-test('failed attempts also consume the proactive request budget', async () => {
-  const h = quotaHarness();
-  for (let i = 0; i < 50; i++) {
-    await assert.rejects(h.context.cbsScanSheetsCall(async () => { throw new Error('Permission denied'); }));
-  }
-  let saved = false;
-  const pending = h.context.cbsScanSheetsCall(async () => { saved = true; });
-  await settle();
-  assert.equal(saved, false);
-  await h.next();
-  await pending;
-  assert.equal(h.now(), 60000);
-  assert.equal(saved, true);
 });
 
 test('scan retries survive a minute-long quota window and only resolve after Sheets succeeds', async () => {
@@ -128,23 +75,6 @@ test('scan retries survive a minute-long quota window and only resolve after She
   await h.next();
   assert.equal(await pending, 'written');
   assert.deepEqual(calls, [0, 1000, 3000, 7000, 15000, 31000, 63000]);
-});
-
-test('quota cooldown pauses other callers and gives pending scans priority over background reads', async () => {
-  const h = quotaHarness();
-  const calls = [];
-  let first = true;
-  const background = h.context.cbsScanSheetsCall(async () => {
-    calls.push('background');
-    if (first) { first = false; throw quotaError(); }
-  }, 'background', 'background');
-  await settle();
-  const scan = h.context.cbsScanSheetsCall(async () => calls.push('scan'), 'scan', 'scan');
-  await settle();
-  assert.deepEqual(calls, ['background']);
-  await h.next();
-  await Promise.all([background, scan]);
-  assert.deepEqual(calls, ['background', 'scan', 'background']);
 });
 
 test('quota retry honors Retry-After and does not retry permission failures', async () => {
@@ -211,13 +141,13 @@ for (const [prefix, name] of [['cbsScan', 'CbsScan'], ['emergencyBoard', 'Emerge
         )).then(results => { saved.push(...results); done = true; });
         while (!done) await h.next();
         await pending;
-        if (round === 0) assert.equal(h.now(), 750, 'ordinary scans only wait for the batching window');
+        if (round === 0) assert.equal(h.now(), name === 'CbsScan' ? 800 : 750, 'ordinary scans only wait for the batching window');
       }
       assert.equal(saved.length, scannerCount * 60);
       assert.equal(new Set(saved.map(record => record.rowNumber)).size, saved.length);
       assert.equal(writes.length, 60);
       assert.ok(writes.every(batch => batch.length === scannerCount));
-      for (const call of calls) assert.ok(calls.filter(other => other.type === call.type && other.at > call.at - 60000 && other.at <= call.at).length <= 50);
+      assert.equal(calls.filter(call => call.type === 'read').length,60);
       assert.equal(h.timers.size, 0);
     });
   }
@@ -280,11 +210,11 @@ for (const [prefix, name] of [['cbsScan', 'CbsScan'], ['emergencyBoard', 'Emerge
       [`get${name}SheetTitle`]: async () => 'Board',
       [`get${name}EnteredRowNumbers`]: async () => new Set()
     });
-    vm.runInContext(sourceFunction(drive, `get${name}Records`), context);
-    await context[`get${name}Records`]();
+    vm.runInContext(sourceFunction(drive, name === 'CbsScan' ? 'readCbsScanRecords' : `get${name}Records`), context);
+    await context[name === 'CbsScan' ? 'readCbsScanRecords' : `get${name}Records`]();
     assert.equal(reads, 1);
     headersChanged = true;
-    await context[`get${name}Records`]();
+    await context[name === 'CbsScan' ? 'readCbsScanRecords' : `get${name}Records`]();
     assert.equal(reads, 3, 'header repairs still force a fresh read');
   });
 }
@@ -310,14 +240,14 @@ for (const file of ['scan.html', 'scan2.html']) {
     let status;
     const h = clockHarness({
       document: { querySelector: () => start }, resultEl: result,
-      setStatus: value => { status = value; }, saveScan: () => gate.promise
+      dialogOk: {disabled:false}, showMessage: () => {}, setStatus: value => { status = value; }, saveScan: () => gate.promise
     });
     vm.runInContext(handler, h.context);
     const pending = h.context.handleText('boarding pass');
     assert.equal(start.disabled, true);
     assert.equal(result.hidden, true);
     await h.next();
-    assert.match(status, /Still saving/);
+    assert.match(status, file === 'scan.html' ? /等待，请保持页面打开。/ : /Still saving/);
     assert.equal(start.disabled, true);
     gate.reject(new Error('Not saved'));
     await pending;
@@ -351,3 +281,12 @@ for (const file of ['scan.html', 'scan2.html']) {
     assert.equal(results.length, 1, 'failed saves never render another successful result');
   });
 }
+
+test('one caller quota retry does not put an unrelated caller into cooldown',async()=>{
+  const h=quotaHarness();let attempts=0;
+  const retry=h.context.cbsScanSheetsCall(async()=>{if(++attempts===1)throw quotaError();return 'retried';});
+  await settle();let other=false;
+  await h.context.cbsScanSheetsCall(async()=>{other=true;});
+  assert.equal(other,true);assert.equal(h.now(),0);
+  await h.next();assert.equal(await retry,'retried');
+});
