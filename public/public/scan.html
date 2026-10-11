@@ -5,7 +5,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Manual Boarding</title><link rel="stylesheet" href="/flight-navigation.css?v=20261009-vertical-switch">
-  <link rel="stylesheet" href="/nbrd-review.css?v=20261011"><script src="/nbrd-review.js?v=20261011"></script>
+  <link rel="stylesheet" href="/nbrd-review.css?v=20261011-status-controls"><script src="/nbrd-review.js?v=20261011-status-controls"></script>
   <style>
     :root { --brand:#123a73; --line:#d7e1ec; --ink:#172033; --muted:#667085; --ok:#087443; --danger:#b42318; }
     * { box-sizing:border-box; }
@@ -58,7 +58,7 @@
 <body>
   <header><a class="brand" href="/flights.html" aria-label="MUFC - Select Flight">MUFC</a><div class="header-actions"><a class="button" href="m-board.html">M-board</a><button class="avatar-button" id="user-menu-button" type="button" aria-label="Account menu" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/><path d="M4 21c1.6-4.4 4.3-6.6 8-6.6s6.4 2.2 8 6.6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button><div class="user-menu" id="user-menu" hidden><button id="change-password" type="button">Change password</button><button id="logout" type="button">Logout</button></div></div></header>
   <main>
-    <section class="card" aria-label="NBRD records"><div class="nbrd-heading"><h2>NBRD</h2><span class="nbrd-count" id="nbrd-count">Loading...</span></div><div id="nbrd-bns"></div></section>
+    <section class="card" aria-label="NBRD records"><div class="nbrd-heading"><h2>NBRD</h2></div><div id="nbrd-bns"></div></section>
     <section class="card">
       <div class="boarding-heading"><h1>Manual Boarding</h1><a class="flight-switch" id="boarding-switch-flight" href="/flights.html" aria-label="Switch flight" title="Switch flight"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v17m-4-4 4 4 4-4M17 21V4m-4 4 4-4 4 4"/></svg></a></div>
       <p class="flight-support"><span data-selected-flight>MU586 · MU9586 · MU578</span></p>
@@ -71,8 +71,7 @@
       <form class="nbrd-form" id="nbrd-form">
         <div class="field-grid">
           <label>BN<input id="nbrd-bn" name="bn" inputmode="numeric" pattern="\d{1,4}" placeholder="94 or 0094" required /></label>
-          <label>NBRD Message<select id="nbrd-message" name="message"><option>NBRD</option><option>SEAT CHANGE</option><option>INV UPGRADE</option><option>VISA</option><option>RE-SWIPE</option><option value="CUSTOM">Custom message</option></select></label>
-          <label id="nbrd-custom-field" hidden>Custom message<input id="nbrd-custom-message" maxlength="500" placeholder="Enter NBRD details" /></label>
+          <label>NBRD Message<select id="nbrd-message" name="message"><option>NBRD</option><option>SEAT CHANGE</option><option>INV UPGRADE</option><option>VISA</option><option>RE-SWIPE</option></select></label>
         </div>
         <div class="actions"><button type="submit">Add NBRD</button></div>
       </form>
@@ -205,7 +204,6 @@
     let nbrdVerified = false;
     async function refreshNbrd() {
       const rows = await nbrdReview.load();
-      document.querySelector('#nbrd-count').textContent = rows.length + ' total · ' + rows.filter(row=>!row.nbrdResolved).length + ' pending';
     }
     async function verifyNbrd() {
       document.querySelector('#start').disabled = true;
@@ -214,12 +212,6 @@
       document.querySelector('#start').disabled = !nbrdVerified;
       if (!nbrdVerified) { document.querySelector('#add-nbrd').scrollIntoView({behavior:'smooth'}); document.querySelector('#nbrd-bn').focus(); }
     }
-    document.querySelector('#nbrd-message').addEventListener('change', event => {
-      const custom = event.target.value === 'CUSTOM';
-      document.querySelector('#nbrd-custom-field').hidden = !custom;
-      document.querySelector('#nbrd-custom-message').required = custom;
-      if (custom) document.querySelector('#nbrd-custom-message').focus();
-    });
     async function saveScan(rawScan, options = {}) {
       const res = await fetch(apiBase+'/cbs-scan', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rawScan, reviewToken:nbrdReviewTokens.get(rawScan), confirmationToken:options.confirmationToken})});
       const data = await res.json().catch(()=>({}));
@@ -268,7 +260,7 @@
       const bnInput = document.querySelector('#nbrd-bn');
       const messageInput = document.querySelector('#nbrd-message');
       const bn = String(bnInput.value || '').replace(/\D/g, '');
-      const detail = messageInput.value === 'CUSTOM' ? document.querySelector('#nbrd-custom-message').value.trim() : messageInput.value;
+      const detail = messageInput.value;
       if (!/^\d{1,4}$/.test(bn)) { showMessage('BN must be 1 to 4 digits.'); return; }
       if (!detail) { showMessage('NBRD message is required.'); return; }
       try {
@@ -278,9 +270,6 @@
         if (!res.ok) throw new Error(data.error || 'NBRD save failed');
         bnInput.value = '';
         messageInput.value = 'NBRD';
-        document.querySelector('#nbrd-custom-message').value = '';
-        document.querySelector('#nbrd-custom-message').required = false;
-        document.querySelector('#nbrd-custom-field').hidden = true;
         await refreshNbrd();
         if (!nbrdVerified) { nbrdVerified = await nbrdReview.verify(); document.querySelector('#start').disabled = !nbrdVerified; }
         setStatus(`Saved NBRD BN ${String(bn).padStart(4, '0').slice(-3)}`, 'ok');

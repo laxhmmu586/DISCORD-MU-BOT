@@ -3035,12 +3035,12 @@ async function getCbsScanNbrdRecords() {
   })).filter(row => row.nbrdBn);
 }
 
-async function resolveCbsScanNbrdBn(bn) {
+async function resolveCbsScanNbrdBn(bn, resolved = true) {
   const normalized = normalizeCbsScanBn(bn);
   if (!normalized) throw new Error('NBRD BN is required.');
   const state = boardingState();
   return new Promise((resolve, reject) => {
-    state.cbsScanAppendPending.push({ nbrd:true, resolveBn:normalized, resolve, reject });
+    state.cbsScanAppendPending.push({ nbrd:true, resolveBn:normalized, resolved, resolve, reject });
     if (!state.cbsScanAppendRunning && !state.cbsScanAppendTimer) state.cbsScanAppendTimer = setTimeout(flushCbsScanAppendBatch, 800);
   });
 }
@@ -3221,8 +3221,8 @@ async function processCbsScanAppendBatch(batch = []) {
       if (item.resolveBn) {
         const matches = working.filter(row => normalizeCbsScanBn(row[11]) === item.resolveBn);
         if (!matches.length) { const err = new Error('NBRD not found.'); err.code = 'NBRD_NOT_FOUND'; item.reject(err); continue; }
-        matches.forEach(row => { row[18] = 'RESOLVED'; });
-        prepared.push({item, result:{bn:formatCbsScanSheetBn(item.resolveBn), resolved:true}});
+        matches.forEach(row => { row[18] = item.resolved === false ? 'PENDING' : 'RESOLVED'; });
+        prepared.push({item, result:{bn:formatCbsScanSheetBn(item.resolveBn), resolved:item.resolved !== false}});
         continue;
       }
       if(item.deleteRow) {
