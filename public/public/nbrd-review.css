@@ -1,7 +1,7 @@
 .nbrd-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; }
 .nbrd-heading h2 { margin:0; font-size:20px; }
 .nbrd-bubbles { display:flex; flex-wrap:wrap; gap:12px; padding:18px 0 4px; }
-.nbrd-bubble { position:relative; display:grid; place-items:center; width:62px; height:62px; flex:0 0 62px; padding:0; border:2px solid #f0c6c2; border-radius:50%; background:#fff0ee; color:#b42318; font-size:19px; font-weight:900; cursor:pointer; }
+.nbrd-bubble { position:relative; display:grid; place-items:center; width:62px; height:62px; flex:0 0 62px; padding:0; border:2px solid #8f1c13; border-radius:50%; background:#b42318; color:#fff; font-size:19px; font-weight:900; cursor:pointer; }
 .nbrd-bubble.is-resolved { border-color:#065a34; background:#087443; color:#fff; }
 .nbrd-bubble:focus-visible { outline:3px solid #123a73; outline-offset:4px; }
 .nbrd-empty { margin:14px 0 0; color:#667085; font-size:14px; }
