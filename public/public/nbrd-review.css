@@ -5,7 +5,6 @@
 .nbrd-bubble.is-resolved { border-color:#065a34; background:#087443; color:#fff; }
 .nbrd-bubble:focus-visible { outline:3px solid #123a73; outline-offset:4px; }
 .nbrd-empty { margin:14px 0 0; color:#667085; font-size:14px; }
-.nbrd-count { margin:12px 0 0; color:#667085; font-size:14px; line-height:1.5; }
 .nbrd-modal { width:min(420px,calc(100vw - 32px)); max-height:85vh; overflow:auto; border:0; border-radius:28px; padding:28px; text-align:center; background:rgba(255,255,255,.96); color:#172033; box-shadow:0 20px 70px #0004; }
 .nbrd-modal::backdrop { background:#0c142080; }
 .nbrd-modal h2 { margin:0 0 12px; font-size:24px; }
