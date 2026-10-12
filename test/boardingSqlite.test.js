@@ -172,6 +172,51 @@ test('actual scan handlers preserve parsing/confirmation and both call SQLite wi
   assert.equal(boarded.status, 200); assert.equal(boarded.result.nbrdRows[0].nbrdResolved, true);
 });
 
+test('actual scan routes isolate all four flights and dates in one SQLite database', async t => {
+  const source = fs.readFileSync(require.resolve('../index'), 'utf8').replace(/\r\n/g, '\n');
+  const { live, db } = harness(t), routes = new Map();
+  let middleware;
+  const boardingContext = require('../boardingContext');
+  const ctx = vm.createContext({ app: {
+    post: (url, fn) => routes.set(url, fn), use: (_urls, fn) => { middleware = fn; }
+  }, boardingLive: live, nbrdConfirmations: createNbrdConfirmationStore(),
+  ...boardingContext, ...require('../cbsScanParser'),
+  boardingDate: req => req.query.flightDate,
+  require: name => name === './boardingContext' ? boardingContext : require(name) });
+  vm.runInContext(source.match(/^function parseCbsPdf417\([^]*?^}/m)[0], ctx);
+  const begin = source.indexOf("app.use(['/cbs-scan', '/cbs-scan2']");
+  vm.runInContext(source.slice(begin, source.indexOf('\n});', begin) + 4), ctx);
+  for (const url of ['/cbs-scan', '/cbs-scan2']) {
+    const start = source.indexOf(`app.post('${url}',`);
+    vm.runInContext(source.slice(start, source.indexOf('\n});', start) + 4), ctx);
+  }
+  async function call(url, flight, rawScan, flightDate = date) {
+    let status = 200, data;
+    const req = { query: { flightNo: flight, flightDate }, body: { rawScan } };
+    const res = { status(value) { status = value; return this; }, json(value) { data = value; } };
+    await middleware(req, res, () => routes.get(url)(req, res));
+    return { status, data };
+  }
+  const flights = ['MU586', 'MU9586', 'MU578', 'MU9578'];
+  const results = await Promise.all(flights.map(flight => call('/cbs-scan', flight, `${flight} 010A014`)));
+  assert.ok(results.every(result => result.status === 200), JSON.stringify(results));
+  assert.equal(db.prepare('SELECT count(*) AS n FROM scans').get().n, 4);
+  for (const flight of flights) {
+    assert.equal(live.records(flight, date).rows.filter(row => row.bn).length, 1);
+    assert.equal((await call('/cbs-scan', flight, `${flight} 010A014`)).data.code, 'DUPLICATE_BN');
+    assert.equal((await call('/cbs-scan2', flight, `${flight}|BN014`)).data.code, 'DUPLICATE_BN', 'regular and emergency share the same flight/BN');
+    const other = flights.find(value => value !== flight);
+    assert.equal((await call('/cbs-scan', flight, `${other} 010A015`)).data.code, 'WRONG_FLIGHT');
+    assert.equal((await call('/cbs-scan', flight, `${flight} 010A014`, '12OCT26')).status, 200);
+    assert.equal((await call('/cbs-scan2', flight, `${flight}|BN016`)).status, 200);
+  }
+  live.saveNbrd('MU586', [{ bn: '17', detail: 'TEST NBRD' }], {}, date);
+  assert.equal((await call('/cbs-scan', 'MU586', 'MU586 010A017')).data.code, 'NBRD_MESSAGE');
+  assert.equal((await call('/cbs-scan', 'MU578', 'MU578 010A017')).status, 200);
+  assert.equal(live.nbrdRecords('MU578', date).length, 0);
+  assert.equal((await call('/cbs-scan', 'MU583', 'MU583 010A018')).data.code, 'WRONG_FLIGHT');
+});
+
 test('all scanner and board page scripts still parse; both board pages subscribe to SSE', () => {
   for (const file of ['scan.html', 'scan2.html', 'm-board.html', 'm-board2.html']) {
     const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'public', file), 'utf8');
