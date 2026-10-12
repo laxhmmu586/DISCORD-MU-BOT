@@ -153,3 +153,19 @@ test('Drive lookup imports only the matching arrival PNR/TKT from mixed-flight l
   assert.match(result.records[0].content, /PR: MU583\/12OCT26/);
   assert.match(result.records[0].ticketContent, /TKT EXAMPLE/);
 });
+
+test('Drive arrival lookup accepts the supplied pr1pd date/station suffix', async () => {
+  const driveSource = fs.readFileSync(path.join(__dirname, '../googleDrive.js'), 'utf8');
+  const parser = require('../cbsRecordParser');
+  const context = vm.createContext({
+    ...parser, console:{ warn() {} }, CBS_RECORD_TODAY_FOLDER_ID:'today',
+    cbsRecordDateKeys:() => ['12OCT26'], findCbsRecordDateFolders:async () => [],
+    listDriveDescendantFiles:async () => [{ id:'log', name:'arrival.txt' }],
+    readCbsRecordFile:async () => '2026 October 12, Monday, 15:19:19\n>pr1pd\n PR: MU583/12OCT26IPVG,1PD          PNR RL  SAMPLE\n     BAGTAG/3781820272/LAX /3781111492/LAX\n      I/MU5326/12OCT\n     RES AUTO 11OCT1310 +'
+  });
+  vm.runInContext(functionSource(driveSource, 'findCbsPnrRecordsByBagTag'), context);
+  const result = await context.findCbsPnrRecordsByBagTag('111492', '2026-10-12', ['MU583']);
+  assert.equal(result.records.length, 1);
+  assert.match(result.records[0].content, /MU583\/12OCT26IPVG,1PD/);
+  assert.match(result.records[0].content, /3781111492\/LAX/);
+});

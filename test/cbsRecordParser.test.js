@@ -77,3 +77,25 @@ test('arrival PR headers must match exact flight and operational date', () => {
     assert.equal(pnrRecordMatchesFlight(record, ['MU583', 'MU577'], '2026-10-12'), false);
   }
 });
+
+test('pr1pd arrival headers with IPVG suffix match the numeric bag tag and flight date', () => {
+  const { pnrRecordMatchesFlight } = require('../cbsRecordParser');
+  // Preserve the supplied command/header and BAGTAG structure; omit passenger details.
+  const log = `2026 October 12, Monday, 15:19:19
+>pr1pd
+ PR: MU583/12OCT26IPVG,1PD          PNR RL  SAMPLE
+                                    CRS RL  SAMPLE
+  1. TEST/PASSENGER       BN088  9H     I LAX ASR BAG2/47/0
+CKIN GTWL GYDJ/I/MU5326/12OCT26/J/CAN/SAMPLE
+     BAGTAG/3781820272/LAX /3781111492/LAX
+      I/MU5326/12OCT      BN163  6L     J CAN
+     RES AUTO 11OCT1310                                                        +`;
+  const records = extractPnrRecordsForBagTag(log, '111492');
+  assert.equal(records.length, 1);
+  assert.equal(pnrRecordMatchesFlight(records[0], ['MU583', 'MU577'], '2026-10-12'), true);
+  assert.equal(pnrRecordMatchesFlight(records[0], ['MU583', 'MU577'], '2026-10-11'), false);
+  assert.equal(pnrRecordMatchesFlight(records[0], ['MU577'], '2026-10-12'), false);
+  assert.equal(splitPnrAndTicketRecord(records[0]).ticket, '');
+  assert.equal(pnrRecordMatchesFlight('PR: MU577/12OCT26ISHA,1PD', ['MU577'], '2026-10-12'), true);
+  assert.equal(pnrRecordMatchesFlight('PR: MU583/12OCT260IPVG,1PD', ['MU583'], '2026-10-12'), false);
+});
