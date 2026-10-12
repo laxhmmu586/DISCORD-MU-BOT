@@ -41,4 +41,13 @@ function splitPnrAndTicketRecord(record) {
   return { pnr, ticket:text.slice(ticketStart, ticketEnd).trim() };
 }
 
-module.exports = { bagTagSectionHasSerial, extractPnrRecordsForBagTag, splitPnrAndTicketRecord };
+function pnrRecordMatchesFlight(record, flightNumbers = [], flightDate = '') {
+  const header = String(record || '').match(/(?:^|\n)\s*>?\s*PR:\s*(MU\d+)\/(\d{2}[A-Z]{3}\d{2})\b/i);
+  if (!header || !flightNumbers.includes(header[1].toUpperCase())) return false;
+  const months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+  const date = String(flightDate).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!date) return false;
+  return header[2].toUpperCase() === `${date[3]}${months[Number(date[2]) - 1]}${date[1].slice(-2)}`;
+}
+
+module.exports = { pnrRecordMatchesFlight, bagTagSectionHasSerial, extractPnrRecordsForBagTag, splitPnrAndTicketRecord };

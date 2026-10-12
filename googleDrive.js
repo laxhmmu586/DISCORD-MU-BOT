@@ -6,7 +6,7 @@ const path = require('path');
 const zlib = require('zlib');
 const { compareGdPdfText, extractGdPdfText } = require('./gdPdf');
 const { parseMealOrderEmail } = require('./spmlParser');
-const { extractPnrRecordsForBagTag, splitPnrAndTicketRecord } = require('./cbsRecordParser');
+const { extractPnrRecordsForBagTag, splitPnrAndTicketRecord, pnrRecordMatchesFlight } = require('./cbsRecordParser');
 
 // ===============================
 // Google Auth
@@ -133,7 +133,7 @@ async function readCbsRecordFile(file) {
 }
 
 /** Find full PNR records by the six-digit bag-tag serial number. */
-async function findCbsPnrRecordsByBagTag(bagTag, flightDate) {
+async function findCbsPnrRecordsByBagTag(bagTag, flightDate, flightNumbers = []) {
   const serial = String(bagTag || '').replace(/\D/g, '').slice(-6);
   const dateKeys = cbsRecordDateKeys(flightDate);
   if (!/^\d{6}$/.test(serial)) throw new Error('Bag tag must contain a six-digit serial number');
@@ -150,9 +150,11 @@ async function findCbsPnrRecordsByBagTag(bagTag, flightDate) {
     try {
       const content = await readCbsRecordFile(file);
       const matchedRecords = extractPnrRecordsForBagTag(content, serial);
-      if (!matchedRecords.length && !String(file.name || '').includes(serial)) continue;
+      // Scoped lookups require both the bag tag and the actual PR flight header.
+      // A filename alone cannot identify an arrival PNR.
+      if (!matchedRecords.length && (flightNumbers.length || !String(file.name || '').includes(serial))) continue;
       const previews = matchedRecords.length ? matchedRecords : [content.trim()];
-      previews.filter(Boolean).forEach((recordContent) => {
+      previews.filter((recordContent) => recordContent && (!flightNumbers.length || pnrRecordMatchesFlight(recordContent, flightNumbers, flightDate))).forEach((recordContent) => {
         const separated = splitPnrAndTicketRecord(recordContent);
         records.push({ fileId:file.id, fileName:file.name || '', source:file.source, modifiedTime:file.modifiedTime || '', content:separated.pnr, ticketContent:separated.ticket });
       });
