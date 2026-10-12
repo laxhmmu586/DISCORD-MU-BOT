@@ -43,9 +43,9 @@ test('emergency backend targets the requested sheet tab and exposes matching rou
   assert.match(server, /parseEmergencyBoardScan/);
   assert.match(server, /app\.get\('\/cbs-scan2\/records'/);
   assert.match(server, /app\.post\('\/cbs-scan2\/nbrd-bns'/);
-  assert.match(server, /appendCbsScanNbrdBns\(entries, options\)/);
-  assert.match(server, /appendEmergencyBoardNbrdBns\(entries, options\)/);
-  assert.match(server, /deleteCkinNbrdFromBothSheets\(req\.body\?\.bn/);
+  assert.match(server, /boardingLive\.saveNbrd\(/);
+  assert.match(server, /boardingLive\.removeNbrd\(/);
+  assert.match(server, /BoardingSqliteLive/);
   assert.match(drive, /async function deleteCkinNbrdFromBothSheets/);
   assert.match(drive, /regularIndex >= 0/);
   assert.match(drive, /emergencyIndex >= 0/);

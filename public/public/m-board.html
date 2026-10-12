@@ -4,8 +4,8 @@
     <script src="/flight-session.js"></script>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>M-board</title>
-  <link rel="stylesheet" href="/nbrd-review.css?v=20261011-scan-snapshot"><script src="/nbrd-review.js?v=20261011-scan-snapshot"></script>
+  <title>Manual</title>
+  <link rel="stylesheet" href="/nbrd-review.css?v=20261011-bn-only"><script src="/nbrd-review.js?v=20261011-bn-only"></script>
   <style>
     :root { --brand:#123a73; --line:#d7e1ec; --ink:#172033; --muted:#667085; --danger:#b42318; }
     * { box-sizing:border-box; }
@@ -16,6 +16,7 @@
     .button,button { border:0; border-radius:999px; padding:12px 18px; font-weight:850; cursor:pointer; background:var(--brand); color:white; text-decoration:none; }
     .card { background:#fff; border:1px solid var(--line); border-radius:22px; box-shadow:0 18px 42px rgba(22,48,76,.08); padding:22px; overflow:hidden; }
     .toolbar { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
+    .toolbar h1 { display:flex; align-items:center; gap:10px; }
     .section-heading { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; }
     button:disabled { opacity:.55; cursor:not-allowed; }
     tr.is-new td { background:#fff7db; box-shadow:inset 0 0 0 9999px rgba(255,213,79,.18); }
@@ -35,23 +36,26 @@
     tr[data-row-number] { cursor:pointer; }
     tr.is-entered td { background:#e8f7ed; color:#087443; font-weight:900; }
     tr.is-entered td:first-child { border-left:5px solid #087443; }
+    .aviation-board button.clear-board.secondary { justify-self:start;color:var(--danger);border:1px solid #f5b9b4;background:#fff3f2;box-shadow:none; }
   </style>
   <link rel="stylesheet" href="/assets/boarding-aurora.css?v=20261011-c" />
 </head>
-<body>
-  <header><a class="brand" href="/flights.html" aria-label="MUFC - Select Flight">MUFC</a><a class="button" href="/scan.html">Manual Boarding</a></header>
+<body class="aviation-page aviation-board">
+  <header><a class="mufc-wordmark" href="/flights.html">MUFC</a><a class="button" href="/scan.html">Boarding</a></header>
   <main>
     <section class="card">
-      <div class="toolbar"><h1>M-board</h1><button class="refresh-board" id="refresh" type="button">Refresh</button></div>
-      <p class="status" id="status">Loading...</p>
+      <div class="toolbar"><h1><span class="boarding-live-indicator" id="boarding-live-indicator" role="status" aria-label="Live boarding connection" hidden></span>Manual</h1><button class="refresh-board" id="refresh" type="button">Refresh</button></div>
+      <p class="status" id="status" hidden></p>
       <div class="board-section"><h2>NBRD</h2><div id="nbrd-wrap"><div class="empty">Loading NBRD...</div></div></div>
-      <div class="board-section"><h2>Boarding Scan</h2><div class="table-wrap" id="table-wrap"><div class="empty">Loading Google Sheet...</div></div></div>
+      <div class="board-section"><h2>Boarding Scan</h2><div class="table-wrap" id="table-wrap"><div class="empty">Loading boarding records...</div></div></div>
       <div class="board-section"><div class="section-heading"><h2>Infant Scan</h2><button class="refresh-board" id="infant-refresh" type="button">Refresh</button></div><div class="table-wrap" id="infant-wrap"><div class="empty">Loading infant scans...</div></div></div>
+      <div class="board-section"><button class="secondary clear-board" id="clear-board" type="button">手动清空当前航班</button></div>
     </section>
   </main>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="/__/firebase/init.js"></script>
+  <script src="/boarding-live.js?v=20261011"></script>
   <script>
     const auth = window.firebase?.apps?.length && window.firebase?.auth ? firebase.auth() : null;
     const AUTH_SESSION_STARTED_KEY = 'mufc_auth_session_started_at';
@@ -82,8 +86,23 @@
     const infantWrap = document.querySelector('#infant-wrap');
     const refreshButtons = [...document.querySelectorAll('.refresh-board')];
     let currentRecordKeys = new Set();
+    let boardRevision = -1;
+    let boardMutationRunning = false;
+    let deferredBoard = null;
+    const boardingLiveIndicator = document.querySelector('#boarding-live-indicator');
+    function applyLiveBoard(data) {
+      if (boardMutationRunning) { deferredBoard = data; return; }
+      if (data.revision < boardRevision) return;
+      boardRevision = data.revision;
+      renderRows(data.rows || []);
+      setStatus('');
+    }
+    function finishBoardMutation() {
+      boardMutationRunning = false;
+      if (deferredBoard) { const data = deferredBoard; deferredBoard = null; applyLiveBoard(data); }
+    }
     function escapeHtml(value) { return String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char])); }
-    function setStatus(text, isError = false) { statusEl.textContent = text; statusEl.className = `status ${isError ? 'err' : ''}`.trim(); }
+    function setStatus(text, isError = false) { statusEl.textContent = text; statusEl.hidden = !text; statusEl.className = `status ${isError ? 'err' : ''}`.trim(); }
     function recordKey(type, row) {
       if (row.rowNumber) return `${type}:${row.rowNumber}`;
       if (type === 'nbrd') return `${type}:${row.nbrdBn || ''}:${row.nbrdDetail || ''}`;
@@ -145,7 +164,7 @@
       ]);
     }
     function renderRows(rows, newKeys = new Set()) {
-      const nbrdRows = rows.filter((row) => row.nbrdBn || row.nbrdDetail);
+      const nbrdRows = rows.filter((row) => row.nbrdBn);
       const scanRows = rows.filter((row) => row.bn || row.seat || row.flight);
       const infantRows = rows.filter((row) => row.infantBn || row.infantSeat || row.infantFlight || row.infantScannedAt);
       renderNbrdRows(nbrdRows, newKeys);
@@ -168,20 +187,21 @@
         const res = await fetch(`${apiBase}/cbs-scan/records`, { cache:'no-store' });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || 'Load failed');
+        if (data.live && data.revision < boardRevision) return;
+        if (data.live) boardRevision = data.revision;
         const rows = data.rows || [];
         const nextRecordKeys = collectRecordKeys(
-          rows.filter((row) => row.nbrdBn || row.nbrdDetail),
+          rows.filter((row) => row.nbrdBn),
           rows.filter((row) => row.bn || row.seat || row.flight),
           rows.filter((row) => row.infantBn || row.infantSeat || row.infantFlight || row.infantScannedAt),
         );
         const newKeys = scrollToLatest ? new Set([...nextRecordKeys].filter((key) => !previousRecordKeys.has(key))) : new Set();
         renderRows(rows, newKeys);
         if (scrollToLatest) scrollToLatestRecord();
-        const scannedCount = rows.filter((row) => row.bn || row.seat || row.flight).length;
-        setStatus(`Scanned ${scannedCount}`);
+        setStatus('');
       } catch (err) {
         nbrdWrap.innerHTML = '<div class="empty">Unable to load NBRD rows.</div>';
-        tableWrap.innerHTML = '<div class="empty">Unable to load Google Sheet.</div>';
+        tableWrap.innerHTML = '<div class="empty">Unable to load boarding records.</div>';
         infantWrap.innerHTML = '<div class="empty">Unable to load infant scans.</div>';
         setStatus(err.message || 'Load failed', true);
       } finally {
@@ -195,7 +215,34 @@
       if (!res.ok) throw new Error(data.error || 'Unable to update row colors.');
     }
 
+    nbrdWrap.addEventListener('click', async (event) => {
+      if (boardMutationRunning) return;
+      const button = event.target.closest('[data-nbrd-row]');
+      if (!button) return;
+      const rowNumber = button.dataset.nbrdRow;
+      const bn = button.dataset.nbrdBn || '';
+      if (!window.confirm(`Delete NBRD BN ${bn}?`)) return;
+      try {
+        button.disabled = true;
+        boardMutationRunning = true;
+        setStatus(`Deleting NBRD BN ${bn}...`);
+        const res = await fetch(`${apiBase}/cbs-scan/nbrd-bns/${encodeURIComponent(rowNumber)}/delete`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ bn }) });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Unable to delete NBRD BN.');
+        const tableRow = button.closest('tr');
+        const tableBody = tableRow?.parentElement;
+        tableRow?.remove();
+        if (tableBody && !tableBody.querySelector('tr')) renderNbrdRows([]);
+        setStatus(`Deleted NBRD BN ${bn}.`);
+      } catch (err) {
+        button.disabled = false;
+        setStatus(err.message || 'Unable to delete NBRD BN.', true);
+      } finally {
+        finishBoardMutation();
+      }
+    });
     tableWrap.addEventListener('click', async (event) => {
+      if (boardMutationRunning) return;
       const row = event.target.closest('tr[data-row-index]');
       if (!row) return;
       const targetIndex = Number(row.dataset.rowIndex);
@@ -205,7 +252,8 @@
       const doneRowNumbers = doneRows.map((item) => Number(item.dataset.rowNumber)).filter(Boolean);
       const openRowNumbers = openRows.map((item) => Number(item.dataset.rowNumber)).filter(Boolean);
       try {
-        setStatus('Updating Google Sheet colors...');
+        boardMutationRunning = true;
+        setStatus('Updating boarding status...');
         await updateEnteredRows(doneRowNumbers, true);
         await updateEnteredRows(openRowNumbers, false);
         doneRows.forEach((item) => item.classList.add('is-entered'));
@@ -213,10 +261,35 @@
         setStatus(`Marked through BN ${row.children[0]?.textContent || ''}.`);
       } catch (err) {
         setStatus(err.message || 'Unable to update row colors.', true);
+      } finally {
+        finishBoardMutation();
       }
     });
+    const clearBoardButton = document.querySelector('#clear-board');
+    clearBoardButton.addEventListener('click', async () => {
+      if (boardMutationRunning) return;
+      const flight = window.mufcFlight;
+      if (!flight) { setStatus('Please select a flight first.', true); return; }
+      if (!window.confirm('确认清空 ' + flight.flightNo + ' · ' + flight.flightDate + ' 的 Boarding Scan、Infant Scan 和 NBRD？清空后无法恢复。')) return;
+      clearBoardButton.disabled = true;
+      setRefreshDisabled(true);
+      boardMutationRunning = true;
+      try {
+        setStatus('正在清空当前航班...');
+        const res = await fetch(apiBase + '/cbs-scan/clear', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({ confirm:true, flightNo:flight.flightNo, flightDate:flight.flightDate })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Unable to clear boarding data.');
+        renderRows([]);
+        setStatus('已清空 ' + flight.flightNo + ' · ' + flight.flightDate + '。');
+      } catch (err) { setStatus(err.message || 'Unable to clear boarding data.', true); }
+      finally { finishBoardMutation(); clearBoardButton.disabled = false; setRefreshDisabled(false); }
+    });
     refreshButtons.forEach((button) => button.addEventListener('click', () => loadBoard({ scrollToLatest:true })));
-    loadBoard();
+    connectBoardingLive({ apiBase, onBoard: applyLiveBoard, onStatus: status => { boardingLiveIndicator.hidden = status !== 'Live'; } })
+      .then(live => { if (!live) loadBoard(); });
   </script>
 </body>
 </html>

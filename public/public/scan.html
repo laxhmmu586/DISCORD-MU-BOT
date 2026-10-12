@@ -4,8 +4,8 @@
     <script src="/flight-session.js"></script>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Manual Boarding</title><link rel="stylesheet" href="/flight-navigation.css?v=20261009-vertical-switch">
-  <link rel="stylesheet" href="/nbrd-review.css?v=20261011-scan-snapshot"><script src="/nbrd-review.js?v=20261011-scan-snapshot"></script>
+  <title>Boarding</title><link rel="stylesheet" href="/flight-navigation.css?v=20261009-vertical-switch">
+  <link rel="stylesheet" href="/nbrd-review.css?v=20261011-bn-only"><script src="/nbrd-review.js?v=20261011-bn-only"></script>
   <style>
     :root { --brand:#123a73; --line:#d7e1ec; --ink:#172033; --muted:#667085; --ok:#087443; --danger:#b42318; }
     * { box-sizing:border-box; }
@@ -56,12 +56,12 @@
   </style>
   <link rel="stylesheet" href="/assets/boarding-aurora.css?v=20261011-c" />
 </head>
-<body>
-  <header><a class="brand" href="/flights.html" aria-label="MUFC - Select Flight">MUFC</a><div class="header-actions"><a class="button" href="m-board.html">M-board</a><button class="avatar-button" id="user-menu-button" type="button" aria-label="Account menu" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/><path d="M4 21c1.6-4.4 4.3-6.6 8-6.6s6.4 2.2 8 6.6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button><div class="user-menu" id="user-menu" hidden><button id="change-password" type="button">Change password</button><button id="logout" type="button">Logout</button></div></div></header>
+<body class="aviation-page aviation-scan">
+  <header><a class="mufc-wordmark" href="/flights.html">MUFC</a><div class="header-actions"><a class="button" href="m-board.html">BAB</a><button class="avatar-button" id="user-menu-button" type="button" aria-label="Account menu" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/><path d="M4 21c1.6-4.4 4.3-6.6 8-6.6s6.4 2.2 8 6.6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button><div class="user-menu" id="user-menu" hidden><button id="change-password" type="button">Change password</button><button id="logout" type="button">Logout</button></div></div></header>
   <main>
     <section class="card" aria-label="NBRD records"><div class="nbrd-heading"><h2>NBRD</h2></div><div id="nbrd-bns"></div></section>
     <section class="card">
-      <div class="boarding-heading"><h1>Manual Boarding</h1><a class="flight-switch" id="boarding-switch-flight" href="/flights.html" aria-label="Switch flight" title="Switch flight"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v17m-4-4 4 4 4-4M17 21V4m-4 4 4-4 4 4"/></svg></a></div>
+      <div class="boarding-heading"><h1><span class="boarding-live-indicator" id="boarding-live-indicator" role="status" aria-label="Live boarding connection" hidden></span>Boarding</h1><a class="flight-switch" id="boarding-switch-flight" href="/flights.html" aria-label="Switch flight" title="Switch flight"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v17m-4-4 4 4 4-4M17 21V4m-4 4 4-4 4 4"/></svg></a></div>
       <p class="flight-support"><span data-selected-flight>MU586 · MU9586 · MU578</span></p>
       <div class="camera-wrap"><video id="preview" muted playsinline></video><div class="aim-box" aria-hidden="true"></div></div>
       <div class="actions"><button id="start" type="button">Start Scan</button><button class="secondary" id="stop" type="button">Stop</button></div>
@@ -84,6 +84,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="/__/firebase/init.js"></script>
   <script src="https://unpkg.com/@zxing/browser@latest"></script>
+  <script src="/boarding-live.js?v=20261011"></script>
   <script>
     const auth = window.firebase?.apps?.length && window.firebase?.auth ? firebase.auth() : null;
     const AUTH_SESSION_STARTED_KEY = 'mufc_auth_session_started_at';
@@ -108,6 +109,30 @@
     }
     requireLogin();
     const apiBase = (window.MU_API_BASE || 'https://api.mufcapp.net').replace(/\/$/, '');
+    const boardingLiveIndicator = document.querySelector('#boarding-live-indicator');
+    const nbrdLiveStatus = document.createElement('p');
+    nbrdLiveStatus.setAttribute('role', 'status');
+    nbrdLiveStatus.style.cssText = 'color:var(--muted);font-size:13px;margin:12px 0 0';
+    document.querySelector('#nbrd-form').append(nbrdLiveStatus);
+    let liveNbrd = [];
+    let liveNbrdFresh = false;
+    connectBoardingLive({
+      apiBase,
+      onBoard(data) {
+        liveNbrd = (data.rows || []).filter(row => row.nbrdBn);
+        liveNbrdFresh = data.nbrdFresh === true;
+        nbrdReview.render(data.rows || []);
+        nbrdLiveStatus.textContent = data.nbrdFresh
+          ? `NBRD live · ${liveNbrd.length} entries`
+          : 'NBRD updates unavailable. Please wait before scanning.';
+      },
+      onStatus(status) {
+        boardingLiveIndicator.hidden = status !== 'Live';
+        nbrdLiveStatus.textContent = status === 'Live'
+          ? (liveNbrdFresh ? `NBRD live · ${liveNbrd.length} entries` : 'NBRD updates unavailable. Please wait before scanning.')
+          : (status === 'Manual refresh' ? 'NBRD checked when scanning' : `NBRD · ${status}`);
+      }
+    });
     const statusEl = document.querySelector('#status');
 
     const preview = document.querySelector('#preview');

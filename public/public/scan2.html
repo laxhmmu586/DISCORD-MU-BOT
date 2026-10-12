@@ -4,7 +4,8 @@
     <script src="/flight-session.js"></script>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>EMERGENCY BOARDING</title>
+  <title>Emergency Boarding</title><link rel="stylesheet" href="/flight-navigation.css?v=20261009-vertical-switch">
+  <link rel="stylesheet" href="/nbrd-review.css?v=20261011-bn-only"><script src="/nbrd-review.js?v=20261011-bn-only"></script>
   <style>
     :root { --brand:#123a73; --line:#d7e1ec; --ink:#172033; --muted:#667085; --ok:#087443; --danger:#b42318; }
     * { box-sizing:border-box; }
@@ -20,8 +21,8 @@
     .user-menu button:last-child { background:#fff1f1; color:var(--danger); }
     main { width:min(860px,94vw); margin:28px auto; display:grid; gap:18px; }
     .card { background:#fff; border:1px solid var(--line); border-radius:22px; box-shadow:0 18px 42px rgba(22,48,76,.08); padding:22px; }
-    .camera-wrap { position:relative; width:100%; aspect-ratio:4/3; min-height:320px; max-height:68vh; overflow:hidden; border-radius:18px; background:#111; }
-    video { position:absolute; inset:0; display:block; width:100%; height:100%; background:#111; object-fit:cover; object-position:center; }
+    .camera-wrap { position:relative; width:100%; aspect-ratio:16 / 9; overflow:hidden; border-radius:18px; background:#111; }
+    video { display:block; width:100%; height:100%; background:#111; object-fit:cover; }
     .aim-box { position:absolute; left:50%; top:50%; width:min(78%,560px); height:34%; transform:translate(-50%,-50%); border:3px solid rgba(255,255,255,.92); border-radius:18px; box-shadow:0 0 0 999px rgba(0,0,0,.28); pointer-events:none; }
     button,a.button { border:0; border-radius:999px; padding:12px 18px; font-weight:850; cursor:pointer; background:var(--brand); color:white; text-decoration:none; }
     button.secondary { background:#e8eef7; color:var(--brand); }
@@ -29,13 +30,13 @@
     .status { min-height:28px; font-weight:900; }
     .status.ok { color:var(--ok); } .status.err { color:var(--danger); }
     .flight-support { margin:-8px 0 18px; color:var(--brand); font-size:13px; font-weight:950; letter-spacing:.12em; }
-    .result { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
-    .result div { padding:12px; border:1px solid var(--line); border-radius:14px; background:#fbfdff; }
-    .result b { display:block; color:var(--muted); font-size:12px; text-transform:uppercase; }
+    .boarding-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:16px 0 24px; }
+    .boarding-heading h1 { margin:0; min-width:0; font-size:clamp(22px,5.8vw,32px); }
+    [hidden] { display:none !important; }
     .nbrd-form { display:grid; gap:14px; }
     .field-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; align-items:start; }
     label { display:grid; gap:8px; color:var(--muted); font-size:12px; font-weight:900; text-transform:uppercase; letter-spacing:.04em; }
-    input,textarea { width:100%; height:56px; border:1px solid var(--line); border-radius:14px; padding:14px 16px; color:var(--ink); font:inherit; font-weight:750; background:#fbfdff; box-shadow:inset 0 1px 0 rgba(255,255,255,.7); }
+    input,textarea,select { width:100%; height:56px; border:1px solid var(--line); border-radius:14px; padding:14px 16px; color:var(--ink); font:inherit; font-weight:750; background:#fbfdff; box-shadow:inset 0 1px 0 rgba(255,255,255,.7); }
     textarea { min-height:56px; resize:none; overflow:auto; line-height:1.35; }
     #nbrd-form .actions { margin-top:2px; }
     .dialog-backdrop { position:fixed; inset:0; z-index:50; display:grid; place-items:center; padding:22px; background:rgba(12,20,32,.48); }
@@ -51,22 +52,22 @@
     .dialog-card input { margin:0 0 10px; }
     .dialog-card button { width:100%; font-size:18px; }
     .dialog-card .secondary { margin-top:8px; }
-    @media (max-width:640px){ .result,.field-grid{grid-template-columns:1fr} input,textarea{height:54px} .card{padding:18px} h1{font-size:34px} .camera-wrap{aspect-ratio:3/4;min-height:min(64vh,560px);max-height:70vh} }
+    @media (max-width:640px){ .field-grid{grid-template-columns:1fr} input,textarea{height:54px} .card{padding:18px} h1{font-size:34px} .camera-wrap{aspect-ratio:4 / 3;max-height:42vh} }
   </style>
   <link rel="stylesheet" href="/assets/boarding-aurora.css?v=20261011-c" />
 </head>
-<body>
-  <header><a class="brand" href="/flights.html" aria-label="MUFC - Select Flight">MUFC</a><div class="header-actions"><a class="button" href="m-board2.html">Manual Board</a><button class="avatar-button" id="user-menu-button" type="button" aria-label="Account menu" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/><path d="M4 21c1.6-4.4 4.3-6.6 8-6.6s6.4 2.2 8 6.6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button><div class="user-menu" id="user-menu" hidden><button id="change-password" type="button">Change password</button><button id="logout" type="button">Logout</button></div></div></header>
+<body class="aviation-page aviation-scan">
+  <header><a class="brand" href="/flights.html" aria-label="MUFC - Select Flight">MUFC</a><div class="header-actions"><a class="button" href="m-board2.html">BAB</a><button class="avatar-button" id="user-menu-button" type="button" aria-label="Account menu" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/><path d="M4 21c1.6-4.4 4.3-6.6 8-6.6s6.4 2.2 8 6.6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button><div class="user-menu" id="user-menu" hidden><button id="change-password" type="button">Change password</button><button id="logout" type="button">Logout</button></div></div></header>
   <main>
+    <section class="card" aria-label="NBRD records"><div class="nbrd-heading"><h2>NBRD</h2></div><div id="nbrd-bns"></div></section>
     <section class="card">
-      <h1>EMERGENCY BOARDING</h1>
+      <div class="boarding-heading"><h1><span class="boarding-live-indicator" id="boarding-live-indicator" role="status" aria-label="Live boarding connection" hidden></span>Emergency Boarding</h1><a class="flight-switch" id="boarding-switch-flight" href="/flights.html" aria-label="Switch flight" title="Switch flight"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v17m-4-4 4 4 4-4M17 21V4m-4 4 4-4 4 4"/></svg></a></div>
       <p class="flight-support"><span data-selected-flight>MU586 · MU9586 · MU578</span></p>
       <div class="camera-wrap"><video id="preview" muted playsinline></video><div class="aim-box" aria-hidden="true"></div></div>
       <div class="actions"><button id="start" type="button">Start Scan</button><button class="secondary" id="stop" type="button">Stop</button></div>
       <p class="status" id="status">Ready.</p>
-      <div class="result" id="result" hidden></div>
     </section>
-    <section class="card">
+    <section class="card" id="add-nbrd">
       <h2>Add NBRD</h2>
       <form class="nbrd-form" id="nbrd-form">
         <div class="field-grid">
@@ -82,7 +83,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="/__/firebase/init.js"></script>
-  <script src="https://unpkg.com/@zxing/browser@latest"></script>
+  <script src="https://unpkg.com/@zxing/browser@latest"></script><script src="/boarding-live.js?v=20261011"></script>
   <script>
     const auth = window.firebase?.apps?.length && window.firebase?.auth ? firebase.auth() : null;
     const AUTH_SESSION_STARTED_KEY = 'mufc_auth_session_started_at';
@@ -107,8 +108,23 @@
     }
     requireLogin();
     const apiBase = (window.MU_API_BASE || 'https://api.mufcapp.net').replace(/\/$/, '');
+    const nbrdReview = NbrdReview.create({container:document.querySelector('#nbrd-bns'), apiBase, onChanged:refreshNbrd});
+    async function refreshNbrd() { return nbrdReview.load(); }
+    const boardingLiveIndicator = document.querySelector('#boarding-live-indicator');
+    const nbrdLiveStatus = document.createElement('p');
+    nbrdLiveStatus.setAttribute('role', 'status');
+    nbrdLiveStatus.style.cssText = 'color:var(--muted);font-size:13px;margin:12px 0 0';
+    document.querySelector('#nbrd-form').append(nbrdLiveStatus);
+    let liveNbrdCount = 0;
+    connectBoardingLive({apiBase, onBoard:data=>{
+      nbrdReview.render(data.rows || []);
+      liveNbrdCount = (data.rows || []).filter(row=>row.nbrdBn).length;
+      nbrdLiveStatus.textContent = `NBRD live · ${liveNbrdCount} entries`;
+    }, onStatus:status=>{
+      boardingLiveIndicator.hidden = status !== 'Live';
+      nbrdLiveStatus.textContent = status === 'Live' ? `NBRD live · ${liveNbrdCount} entries` : `NBRD · ${status}`;
+    }}).then(live=>{ if (!live) refreshNbrd().catch(err=>showMessage(err.message)); });
     const statusEl = document.querySelector('#status');
-    const resultEl = document.querySelector('#result');
     const preview = document.querySelector('#preview');
     const dialog = document.querySelector('#message-dialog');
     const dialogMessage = document.querySelector('#dialog-message');
@@ -141,7 +157,7 @@
     function setStatus(text, cls = '') { statusEl.textContent = text; statusEl.className = `status ${cls}`.trim(); }
     function isEmergencyBarcode(value) {
       const text = String(value || '').normalize('NFKC').replace(/[｜¦]/g, '|').replace(/[\u0000-\u001f\u007f]/g, '').trim();
-      const hasFlight = /MU\s*[0O]*(?:9586|586)(?:\d{3})?\s*\|/i.test(text);
+      const hasFlight = /MU\s*[0O]*(?:9586|9578|586|578)(?:\d{3})?\s*\|/i.test(text);
       const hasPayload = /\|\s*(?:BN0*\d{1,4}|INF\s*\|\s*(?:INF|BN)0*\d{1,4})(?=$|[^0-9])/i.test(text);
       return hasFlight && hasPayload;
     }
@@ -209,7 +225,6 @@
       await auth?.signOut?.();
       window.location.replace(loginUrl());
     });
-    function renderResult(data) { resultEl.hidden = false; resultEl.innerHTML = `<div><b>Flight</b>${data.flight || ''}</div><div><b>Seat</b>${data.seat || ''}</div><div><b>BN</b>${data.bn || ''}</div>${data.isInfant ? '<div><b>Type</b>INFANT</div>' : ''}`; }
     async function saveScan(rawScan) {
       const res = await fetch(`${apiBase}/cbs-scan2`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ rawScan }) });
       const data = await res.json().catch(() => ({}));
@@ -219,7 +234,8 @@
         showMessage(message, 'Message', type);
         throw new Error(message);
       }
-      renderResult(data);
+      if (Array.isArray(data.nbrdRows)) nbrdReview.render(data.nbrdRows);
+      else refreshNbrd().catch(()=>{});
       const scanType = data.isInfant ? 'infant' : 'success';
       setStatus(data.isInfant ? `Saved INFANT BN ${data.bn}` : `Saved BN ${data.bn} / Seat ${data.seat}`, 'ok');
       showMessage(data.isInfant ? `Input successful infant BN ${data.bn}` : `Input successful BN ${data.bn}`, data.isInfant ? 'Infant' : 'Success', scanType);
@@ -227,7 +243,6 @@
     async function handleText(text) {
       const startButton = document.querySelector('#start');
       startButton.disabled = true;
-      resultEl.hidden = true;
       setStatus('Saving...');
       const waitingTimer = setTimeout(() => {
         setStatus('Still saving. Please keep this page open and wait for confirmation before scanning again.');
@@ -254,6 +269,7 @@
         const res = await fetch(`${apiBase}/cbs-scan2/nbrd-bns`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ entries:[{ bn, detail }] }) });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || 'NBRD save failed');
+        await refreshNbrd();
         bnInput.value = '';
         messageInput.value = '';
         setStatus(`Saved NBRD BN ${String(bn).padStart(4, '0').slice(-3)}`, 'ok');
@@ -274,7 +290,7 @@
           ? reader.decodeFromConstraints.bind(reader, cameraConstraints)
           : reader.decodeFromVideoDevice.bind(reader, undefined);
         controls = await decode(preview, (result, error) => {
-          if (!result || scanBusy || !dialog.hidden) return;
+          if (!result || scanBusy || !dialog.hidden || nbrdReview.isOpen()) return;
           const text = result.getText();
           // A camera may see other PDF417 codes elsewhere on a monitor or
           // document. Ignore them instead of reporting a misleading wrong
