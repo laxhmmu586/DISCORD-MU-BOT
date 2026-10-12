@@ -14,10 +14,38 @@ body::before {
   background:linear-gradient(rgba(241,247,255,.12),rgba(241,247,255,.12)),url("boarding-aurora-c.png") center / cover no-repeat;
 }
 body > header {
-  background:rgba(245,250,255,.48);
-  border-bottom:1px solid rgba(255,255,255,.65);
-  backdrop-filter:blur(18px);
-  -webkit-backdrop-filter:blur(18px);
+  background:transparent;
+  border:0;
+  box-shadow:none;
+  backdrop-filter:none;
+  -webkit-backdrop-filter:none;
+}
+body > .topbar { display:none; }
+body > header :is(.mufc-wordmark,.brand) {
+  display:inline-flex;
+  align-items:center;
+  gap:9px;
+  flex-shrink:0;
+  color:#0c2b59;
+  font-family:Inter,"Segoe UI",Arial,sans-serif;
+  font-size:24px;
+  font-weight:900;
+  font-style:italic;
+  line-height:1;
+  letter-spacing:-.8px;
+  text-decoration:none;
+  text-shadow:0 1px 0 rgba(255,255,255,.8);
+}
+body > header :is(.mufc-wordmark,.brand)::before {
+  content:"";
+  width:28px;
+  height:28px;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%230d64e8' d='M2 18 30 3 20 17 8 22Z'/%3E%3Cpath fill='%2332baff' d='m8 24 14-5-8 11Z'/%3E%3C/svg%3E") center/contain no-repeat;
+}
+body > header a:is(.mufc-wordmark,.brand):focus-visible {
+  outline:2px solid #1264d9;
+  outline-offset:6px;
+  border-radius:4px;
 }
 .card, .scan-card {
   min-width:0;
@@ -30,7 +58,7 @@ body > header {
 /* Opaque readable surfaces for dense operational data. */
 .card table { background:rgba(255,255,255,.94); }
 .card :is(input,textarea,select) { background:rgba(255,255,255,.88); }
-.topbar + header { padding:10px 14px; border-radius:18px; }
+.topbar + header { padding:10px 0; }
 @media(max-width:640px) {
   body::before { background-size:auto 100%; background-position:58% center; }
   .card h1 { overflow-wrap:anywhere; }
