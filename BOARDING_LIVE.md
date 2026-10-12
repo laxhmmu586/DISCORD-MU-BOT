@@ -39,8 +39,10 @@ versions are rejected. Empty source snapshots do not remove stored NBRD.
 The selected flight/date's `pd*,ckin/nbrd` list is also imported during searches.
 Numbered passenger rows provide BN ownership; `+` page continuations preserve
 that ownership across PN/PF headers. Revisited page fragments without an owner
-are ignored. Bare `CKIN NBRD` is retained, and repeated lists insert only missing
-BNs without changing existing comments or resolution. Separate terminal files,
+are ignored. Bare `CKIN NBRD` is retained. For matching flight/date/BNs, imported
+comments replace existing comments, including manual NBRD, while keeping the
+existing resolution and row identity. Identical repeat imports do not write or
+broadcast changes. Separate terminal files,
 other commands, flights and dates cannot share passenger ownership.
 
 The original two-stage NBRD confirmation remains scoped to the exact boarding

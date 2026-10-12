@@ -47,7 +47,7 @@ test('BN ownership resets on malformed rows; continuation comments combine witho
     [{ bn: '004', detail: 'CKIN NBRD VISA | CKIN NBRD DOC' }]);
 });
 
-test('search ingestion inserts missing SQLite NBRD once and preserves existing detail/resolution', t => {
+test('search ingestion overwrites manual NBRD by scoped BN while preserving resolution and row identity', t => {
   const db = new Database(':memory:');
   const dbSource = fs.readFileSync(require.resolve('../db'), 'utf8');
   db.exec(dbSource.match(/db\.exec\(`([\s\S]*?)`\);/)[1]);
@@ -55,6 +55,10 @@ test('search ingestion inserts missing SQLite NBRD once and preserves existing d
   t.after(() => db.close());
   live.saveNbrd(flight, [{ bn: '001', detail: 'MANUAL COMMENT' }], {}, date);
   live.resolve(flight, '001', true, date);
+  live.saveNbrd(flight, [{ bn: '0003', detail: 'MANUAL PENDING' }], {}, date);
+  const manualRows = live.nbrdRecords(flight, date);
+  live.saveNbrd('MU578', [{ bn: '001', detail: 'OTHER FLIGHT' }], {}, date);
+  live.saveNbrd(flight, [{ bn: '001', detail: 'OTHER DATE' }], {}, '11OCT26');
   live.scan(flight, { flight, bn: '004', seat: '44L' }, date);
   const events = [];
   live.subscribe(flight, snapshot => events.push(snapshot), date);
@@ -68,14 +72,18 @@ test('search ingestion inserts missing SQLite NBRD once and preserves existing d
   const first = live.nbrdRecords(flight, date);
   assert.equal(first.length, 7);
   assert.deepEqual(first.find(row => row.nbrdBn === '001'), {
-    rowNumber: first[0].rowNumber, nbrdBn: '001', nbrdDetail: 'MANUAL COMMENT', nbrdResolved: true
+    rowNumber: manualRows[0].rowNumber, nbrdBn: '001', nbrdDetail: 'CKIN NBRD VISA', nbrdResolved: true
   });
+  assert.deepEqual(first.find(row => row.nbrdBn === '003'), {
+    rowNumber: manualRows[1].rowNumber, nbrdBn: '003', nbrdDetail: 'CKIN NBRD UIPG', nbrdResolved: false
+  });
+  assert.equal(events[0].nbrd.find(row => row.bn === '003').detail, 'CKIN NBRD UIPG');
   assert.equal(first.find(row => row.nbrdBn === '004').nbrdResolved, true, 'already boarded adult stays resolved');
-  assert.throws(() => live.scan(flight, { flight, bn: '003', seat: '44K' }, date), { code: 'NBRD_MESSAGE' });
+  assert.throws(() => live.scan(flight, { flight, bn: '003', seat: '44K' }, date), { code: 'NBRD_MESSAGE', detail: 'CKIN NBRD UIPG' });
   vm.runInContext(block, ctx);
   assert.deepEqual(live.nbrdRecords(flight, date), first);
   assert.equal(events.length, 1, 'repeat import does not broadcast or write changes');
-  assert.equal(live.nbrdRecords('MU578', date).length, 0);
-  assert.equal(live.nbrdRecords(flight, '11OCT26').length, 0);
-  assert.equal(db.prepare('SELECT count(*) AS n FROM boarding_nbrd').get().n, 7);
+  assert.equal(live.nbrdRecords('MU578', date)[0].nbrdDetail, 'OTHER FLIGHT');
+  assert.equal(live.nbrdRecords(flight, '11OCT26')[0].nbrdDetail, 'OTHER DATE');
+  assert.equal(db.prepare('SELECT count(*) AS n FROM boarding_nbrd').get().n, 9);
 });
