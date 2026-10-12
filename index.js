@@ -1,3 +1,4 @@
+const { pnrRecordMatchesFlight } = require('./cbsRecordParser');
 const { runWithBoardingFlight, normalizeBoardingFlight } = require('./boardingContext');
 const { scopedLog, discoverFlights, operationalDate, normalizeSupportedFlight } = require('./flightContext');
 require('dotenv').config();
@@ -3476,6 +3477,22 @@ function cbsRecordLookupDate(row = {}) {
   return '';
 }
 
+function cbsArrivalRecordScope(row = {}) {
+  let original = {};
+  try { original = JSON.parse(row.originalFormData || '{}'); } catch {}
+  const allowed = ['MU583', 'MU577'];
+  const flights = Array.isArray(row.flightRows) ? row.flightRows : (Array.isArray(original.flightRows) ? original.flightRows : []);
+  const segments = [
+    { flightNo:row.flightNumber || row.flightNo, flightDate:row.flightDate },
+    ...flights,
+    ...[1, 2, 3].map((index) => ({ flightNo:row[`flightNo${index}`] || original[`flightNo${index}`], flightDate:row[`flightDate${index}`] || original[`flightDate${index}`] })),
+    ...[...String(row.flightRoute || original.flightRoute || '').matchAll(/\b(MU\d+)\s+(\d{4}-\d{2}-\d{2}|\d{2}[A-Z]{3}(?:\d{2})?)\b/gi)].map((match) => ({ flightNo:match[1], flightDate:match[2] }))
+  ];
+  const arrival = segments.find((flight) => allowed.includes(String(flight.flightNo || flight.flightNumber || '').replace(/\s/g, '').toUpperCase()));
+  const date = arrival ? cbsRecordLookupDate({ ...row, flightDate:arrival.flightDate }) : cbsRecordLookupDate(row);
+  return { date, flightNumbers:arrival ? [String(arrival.flightNo || arrival.flightNumber).replace(/\s/g, '').toUpperCase()] : allowed };
+}
+
 function casePnrRecord(row = {}) {
   const event = (row.updateEvents || []).filter((item) => item.key === 'record-pnr' || item.key === 'record').at(-1);
   return new Map(event?.fields || []).get('Record - PNR') || new Map(event?.fields || []).get('Record') || '';
@@ -3484,6 +3501,16 @@ function casePnrRecord(row = {}) {
 function caseNeedsPnrSync(row = {}) {
   const record = casePnrRecord(row);
   return !record || record.includes('===== RECORD =====') || /^\s*>\s*(?:ETKD|PD\*?|PU1|SY)\b/im.test(record);
+}
+
+function caseNeedsArrivalPnrSync(row = {}) {
+  if (caseNeedsPnrSync(row)) return true;
+  const record = casePnrRecord(row);
+  // Replace an automatically imported record from another flight/date, but
+  // retain manually entered text that has no PR flight header.
+  if (!/(?:^|\n)\s*>?\s*PR:/i.test(record)) return false;
+  const { date, flightNumbers } = cbsArrivalRecordScope(row);
+  return !pnrRecordMatchesFlight(record, flightNumbers, date);
 }
 
 function bestCbsPnrRecord(records = []) {
@@ -3502,8 +3529,11 @@ let cbsPnrSyncPending = null;
 let cbsPnrSyncRecent = { at:0, result:null };
 async function syncMissingCbsPnrRecords(passengerCases = [], unresolvedCases = [], updatedBy = 'System') {
   const candidates = [
-    ...passengerCases.filter(caseNeedsPnrSync).map((row) => ({ source:'passenger', row })),
-    ...unresolvedCases.filter((row) => !row.resolvedAt && caseNeedsPnrSync(row)).map((row) => ({ source:'unresolved', row }))
+    ...passengerCases.filter(caseNeedsArrivalPnrSync).map((row) => ({ source:'passenger', row })),
+    ...unresolvedCases.filter((row) => {
+      const isBagRoom = [row.status, row.bagType].some((value) => String(value || '').trim().toLowerCase() === 'not load bags');
+      return isBagRoom ? !row.resolvedAt && caseNeedsPnrSync(row) : caseNeedsArrivalPnrSync(row);
+    }).map((row) => ({ source:'unresolved', row }))
   ];
   const lookupCache = new Map();
   const updates = [];
@@ -3511,13 +3541,14 @@ async function syncMissingCbsPnrRecords(passengerCases = [], unresolvedCases = [
   for (const candidate of candidates) {
     const bagTags = String(candidate.row.bagTag || '').match(/\b\d{10}\b|\b[A-Z][A-Z0-9]\d{6}\b|\b\d{6}\b/gi) || [];
     const tags = bagTags.map(normalizeRecordCheckBagTag).filter(Boolean);
-    const date = cbsRecordLookupDate(candidate.row);
+    const isBagRoom = candidate.source === 'unresolved' && [candidate.row.status, candidate.row.bagType].some((value) => String(value || '').trim().toLowerCase() === 'not load bags');
+    const { date, flightNumbers } = isBagRoom ? { date:cbsRecordLookupDate(candidate.row), flightNumbers:[] } : cbsArrivalRecordScope(candidate.row);
     if (!tags.length || !date) continue;
     try {
       const records = [];
       for (const tag of tags) {
-        const cacheKey = `${date}:${tag.serial}`;
-        if (!lookupCache.has(cacheKey)) lookupCache.set(cacheKey, findCbsPnrRecordsByBagTag(tag.serial, date));
+        const cacheKey = `${date}:${tag.serial}:${flightNumbers.join(',')}`;
+        if (!lookupCache.has(cacheKey)) lookupCache.set(cacheKey, findCbsPnrRecordsByBagTag(tag.serial, date, flightNumbers));
         const lookup = await lookupCache.get(cacheKey);
         records.push(...lookup.records);
       }

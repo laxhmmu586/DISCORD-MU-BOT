@@ -68,3 +68,12 @@ SY: MU583`;
   assert.match(result.ticket, />etkd 1[\s\S]*ISSUED BY:[\s\S]*PASSENGER:/i);
   assert.doesNotMatch(result.ticket, />pn1|>PD|>PU1|>SY/i);
 });
+
+test('arrival PR headers must match exact flight and operational date', () => {
+  const { pnrRecordMatchesFlight } = require('../cbsRecordParser');
+  assert.equal(pnrRecordMatchesFlight('PR: MU583/12OCT26*PVG\nBAGTAG/MU000001', ['MU583', 'MU577'], '2026-10-12'), true);
+  assert.equal(pnrRecordMatchesFlight('PR: MU577/12OCT26*SHA', ['MU583', 'MU577'], '2026-10-12'), true);
+  for (const record of ['PR: MU586/12OCT26*LAX', 'PR: MU578/12OCT26*LAX', 'PR: MU9583/12OCT26*PVG', 'PR: MU583/11OCT26*PVG', 'BAGTAG/MU000001\nI/MU583/12OCT']) {
+    assert.equal(pnrRecordMatchesFlight(record, ['MU583', 'MU577'], '2026-10-12'), false);
+  }
+});
