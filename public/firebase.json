@@ -6,6 +6,10 @@
     ],
     "headers": [
       {
+        "source": "/{pir-form,contact-form,cbs-form}.html",
+        "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
+      },
+      {
         "source": "/scan.html",
         "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
       },
