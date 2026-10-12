@@ -359,7 +359,7 @@ function subtractMinutesFromTime(hhmm, minutes) {
 }
 
 const MAINLAND_CHINA_DESTINATIONS = new Set([
-  'AAT','AKA','AKU','AQG','AVA','BAV','BHY','BPX','BSD','CAN','CGD','CGO','CGQ','CIF','CIH','CKG','CSX','CTU','CZX','DAT','DAX','DDG','DIG','DLC','DLU','DNH','DOY','DSN','DYG','ENH','FOC','FUG','FUO','HAK','HDG','HEK','HET','HFE','HGH','HIA','HJJ','HLD','HLH','HRB','HSN','HTN','HYN','INC','IQM','JDZ','JGN','JHG','JIC','JIL','JIU','JJN','JMU','JNG','JNZ','JSJ','JUZ','KHG','KHN','KMG','KOW','KRL','KRY','KWE','KWL','LCX','LHW','LJG','LLB','LLF','LNJ','LUM','LXA','LYA','LYG','LYI','LZH','LZO','MDG','MIG','MXZ','NAO','NBS','NDG','NGB','NKG','NLT','NNG','NNY','NTG','NZH','PEK','PKX','PVG','SHA','SHE','SIA','SJW','SWA','SYM','SYX','SZX','TAO','TCG','TEN','TFU','TNA','TSN','TVS','TXN','TYN','URC','UYN','WEF','WEH','WHA','WNH','WNZ','WUA','WUH','WUS','WUX','WUZ','XFN','XIC','XIY','XMN','XNN','XUZ','YBP','YCU','YIC','YIH','YIN','YIW','YNJ','YNT','YNZ','YTY','YUS','ZAT','ZHA','ZUH','ZYI'
+  'AAT','AKA','AKU','AQG','AVA','BAV','BHY','BPX','BSD','CAN','CGD','CGO','CGQ','CIF','CIH','CKG','CSX','CTU','CZX','DAT','DAX','DDG','DIG','DLC','DLU','DNH','DOY','DSN','DYG','ENH','FOC','FUG','FUO','HAK','HDG','HEK','HET','HFE','HGH','HIA','HJJ','HLD','HLH','HRB','HSN','HTN','HUZ','HYN','INC','IQM','JDZ','JGN','JHG','JIC','JIL','JIU','JJN','JMU','JNG','JNZ','JSJ','JUZ','KHG','KHN','KMG','KOW','KRL','KRY','KWE','KWL','LCX','LHW','LJG','LLB','LLF','LNJ','LUM','LXA','LYA','LYG','LYI','LZH','LZO','MDG','MIG','MXZ','NAO','NBS','NDG','NGB','NKG','NLT','NNG','NNY','NTG','NZH','PEK','PKX','PVG','SHA','SHE','SIA','SJW','SWA','SYM','SYX','SZX','TAO','TCG','TEN','TFU','TNA','TSN','TVS','TXN','TYN','URC','UYN','WEF','WEH','WHA','WNH','WNZ','WUA','WUH','WUS','WUX','WUZ','XFN','XIC','XIY','XMN','XNN','XUZ','YBP','YCU','YIC','YIH','YIN','YIW','YNJ','YNT','YNZ','YTY','YUS','ZAT','ZHA','ZUH','ZYI'
 ]);
 
 function normalizeOperationalFlightNo(flightNo) {
@@ -1599,9 +1599,10 @@ ${section}`,
   }
 
   const chinaDomesticAirports = new Set([
+    ...MAINLAND_CHINA_DESTINATIONS,
     'PVG', 'PEK', 'PKX', 'TSN', 'SJW', 'TYN', 'HET', 'SHE', 'DLC', 'HRB', 'CGQ', 'JMU', 'DQA', 'YNZ', 'NKG',
     'HGH', 'NGB', 'WNZ', 'TAO', 'JJN', 'XMN', 'FOC', 'YTY', 'CZX', 'WUX', 'HFE', 'TNA', 'WEH', 'YNT',
-    'KHN', 'JDZ', 'SYX', 'WUH', 'CSX', 'CGD', 'ENH', 'ZHA', 'YIH', 'LYG', 'CGO', 'CAN', 'SZX', 'ZUH', 'HAK',
+    'KHN', 'HUZ', 'JDZ', 'SYX', 'WUH', 'CSX', 'CGD', 'ENH', 'ZHA', 'YIH', 'LYG', 'CGO', 'CAN', 'SZX', 'ZUH', 'HAK',
     'KWL', 'NNG', 'BHY', 'CTU', 'CKG', 'KMG', 'LJG', 'DLU', 'LYI', 'XIY', 'TFU', 'GYS', 'XIC', 'KWE', 'ZAT',
     'JHG', 'LHW', 'XNN', 'INC', 'URC', 'KRL', 'AAT', 'KHG', 'HTN', 'TCG'
   ]);
@@ -1756,8 +1757,7 @@ ${section}`,
     const visaDecision = checkVisa({nationality:passportNat,destinationCountry,travelDate:departureDateText,entryDate,
       entryDateConflict:entryDates.length>1||entryDates.includes(null)||Boolean(departureDate&&origin==='LAX'&&toChinaDomestic&&entryDate&&entryDate<addDays(1)),...arrivalRange,
       passportType:/^[^/]+\/P\//i.test(passportRawLine)?'ordinary':'unknown',ckinLines:visaRelevantCkinLineList,
-      allowImplicitChinaVisa:toChinaDomestic,
-      apecPassportMatched:visaRelevantCkinLineList.some(line=>/\bAPEC\s*CARD\b.*\b(?:PPT|PASSPORT)\s+MATCHED\b/i.test(line)&&!/\b(?:NO|NOT|PENDING|INVALID)\b/i.test(line))});
+      allowImplicitChinaVisa:toChinaDomestic});
     Object.assign(visaDecision,{nationality:passportNat||'UNK',destination:visaDest,destinationCountry});
     let visaStatus = visaDecision.status;
     let visaReason = visaDecision.reason;
