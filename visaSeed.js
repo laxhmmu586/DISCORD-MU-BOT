@@ -26,7 +26,10 @@ function publishVerifiedBaseline(store,now=new Date()) {
     if(JSON.stringify(sources.map(s=>s.id).sort())!==JSON.stringify(expected)||sources.some(s=>s.latest_source_id!==s.id))continue;
     try{store.approve(rule.id,rule.version,catalog.reviewer,now.toISOString());}catch{/* Stale/expired baselines remain in review. */}
   }
-  if(!store.db.prepare("SELECT 1 FROM visa_metadata WHERE key='initial_notice_inventory'").get()&&catalog.rules.every(d=>store.db.prepare("SELECT 1 FROM visa_rules WHERE id=? AND status='approved' AND reviewed_by=?").get(d.id,catalog.reviewer))) {
+  // The initial inventory was reviewed with the original 30 China combinations.
+  // Later destination/document additions must not hold their inventory hostage.
+  const initialRules=catalog.rules.filter(d=>d.destination_country==='CHN'&&!d.id.startsWith('chn-entry-')&&!['BRA','ARM'].includes(d.nationality));
+  if(!store.db.prepare("SELECT 1 FROM visa_metadata WHERE key='initial_notice_inventory'").get()&&initialRules.every(d=>store.db.prepare("SELECT 1 FROM visa_rules WHERE id=? AND status='approved' AND reviewed_by=?").get(d.id,catalog.reviewer))) {
     const inventory=require('./visaPolicyInventory.json');
     store.db.transaction(()=>{
       for(const notice of store.overview().notices) {

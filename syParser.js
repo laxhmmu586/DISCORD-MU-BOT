@@ -1744,12 +1744,6 @@ ${section}`,
     const toChinaDomestic = chinaDomesticAirports.has(visaDest);
     const destinationCountry = toChinaDomestic ? 'CHN' : countryForAirport(visaDest);
     const ckinText = visaRelevantCkinLineList.join(' ');
-    const purposeValues=[...new Set([...ckinText.matchAll(/\bPURPOSE\s+(TOURISM|BUSINESS|VISIT|EXCHANGE|TRANSIT|PRIVATE|MEDICAL|TRANSPORT|WORK|STUDY|NEWS|SETTLEMENT)\b/gi)].map(m=>m[1].toLowerCase()))];
-    const purpose=purposeValues.length===1?purposeValues[0]:undefined;
-    const stayValues=[...new Set([...ckinText.matchAll(/\bSTAY\s+(\d{1,3})\s+DAYS?\b/gi)].map(m=>Number(m[1])))];
-    const stayDays=stayValues.length===1?stayValues[0]:undefined;
-    const priorValues=[...new Set([...ckinText.matchAll(/\bPRIOR\s+(\d{1,3})\s+DAYS?\s*[:=]?\s*(\d{1,3})\s+DAYS?\b/gi)].map(m=>m[1]+':'+m[2]))];
-    const previousStay=priorValues.length===1?priorValues[0].split(':'):null;
     const entryDates=[...new Set([...ckinText.matchAll(/\bENTRY(?:\s+DATE)?\s*[:=]?\s*(\d{4}-\d{2}-\d{2}|\d{1,2}\s*[A-Z]{3}\s*(?:\d{4}|\d{2}))\b/gi)].map(m=>visaDateFromToken(m[1])))];
     const entryDate=entryDates.length===1?entryDates[0]:undefined;
     const departureDateText=section.match(/PR:\s*[A-Z]{2}\d+\/(\d{2}[A-Z]{3}\d{2})/i)?.[1]||syInfo.flightDate;
@@ -1762,8 +1756,8 @@ ${section}`,
     const visaDecision = checkVisa({nationality:passportNat,destinationCountry,travelDate:departureDateText,entryDate,
       entryDateConflict:entryDates.length>1||entryDates.includes(null)||Boolean(departureDate&&origin==='LAX'&&toChinaDomestic&&entryDate&&entryDate<addDays(1)),...arrivalRange,
       passportType:/^[^/]+\/P\//i.test(passportRawLine)?'ordinary':'unknown',ckinLines:visaRelevantCkinLineList,
-      allowImplicitChinaVisa:toChinaDomestic,purpose,stayDays:stayDays===undefined?undefined:Number(stayDays),
-      previousStayWindowDays:previousStay?Number(previousStay[0]):undefined,previousStayDays:previousStay?Number(previousStay[1]):undefined});
+      allowImplicitChinaVisa:toChinaDomestic,
+      apecPassportMatched:visaRelevantCkinLineList.some(line=>/\bAPEC\s*CARD\b.*\b(?:PPT|PASSPORT)\s+MATCHED\b/i.test(line)&&!/\b(?:NO|NOT|PENDING|INVALID)\b/i.test(line))});
     Object.assign(visaDecision,{nationality:passportNat||'UNK',destination:visaDest,destinationCountry});
     let visaStatus = visaDecision.status;
     let visaReason = visaDecision.reason;

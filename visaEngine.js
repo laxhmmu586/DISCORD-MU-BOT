@@ -14,24 +14,29 @@ function dateFromToken(value) {
   const s=value.trim().toUpperCase();let y,m,d;
   const iso=s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   const named=s.match(/^(\d{1,2})\s*([A-Z]{3})\s*(\d{2}|\d{4})$/);
-  if(iso){[,y,m,d]=iso;}else if(named){d=named[1];m=MONTHS.indexOf(named[2])+1;y=named[3].length===2?2000+Number(named[3]):named[3];if(!m)return null;}else return null;
+  const numeric=s.match(/^(\d{1,2})[ /-](\d{1,2})[ /-](\d{4})$/);
+  const spacedIso=s.match(/^(\d{4})\s+(\d{1,2})\s+(\d{1,2})$/);
+  if(iso||spacedIso){[,y,m,d]=iso||spacedIso;}else if(numeric){[,d,m,y]=numeric;}else if(named){d=named[1];m=MONTHS.indexOf(named[2])+1;y=named[3].length===2?2000+Number(named[3]):named[3];if(!m)return null;}else return null;
   const result=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
   try{return validDate(result)?result:null;}catch{return null;}
 }
 function ckinFacts(lines=[]) {
   const normalized=lines.map(s=>String(s).trim().toUpperCase().replace(/\s+/g,' ').replace(/^(?:CKIN[\s/]+)+/,'CKIN '));
-  const facts={manual240:false,nbrd:false,documents:[],visaEvidence:[],visaFreeClaim:false,otherEntryClaim:false};
+  const facts={manual240:false,nbrd:false,documents:[],visaEvidence:[],visaFreeClaim:false,exemptionClaims:[],alternatePassports:[],tdac:false,otherEntryClaim:false};
   for(const line of normalized){
     if(/^CKIN NBRD\b/.test(line)){facts.nbrd=true;continue;}
     // Whole remark, not a date, identifier or a request to apply for TWOV.
     if(/^CKIN\b/.test(line)&&/\b240\b/.test(line)&&!(/\b(?:NO|NEED|NOT|APPLY|PENDING|CANCELLED|INVALID)\b/.test(line))){facts.manual240=true;continue;}
-    const doc=line.match(/\b(?:PR\s*CARD|PINK\s*CARD|TBZ|TRAVEL\s*DOC(?:UMENT)?)(?=\b|20\d{2})/);
-    if(doc){const expiry=/\b(?:VISA\d*|VS|V)\b/.test(line)?{expiry:null,expiryYear:null}:expiryFacts(line);facts.documents.push({type:/TRAVEL/.test(doc[0])?'TRAVELDOC':doc[0].replace(/\s/g,''),issuer:visaIssuer(line),...expiry,negative:/\b(?:NO|NOT|EXPIRED|APPLY|PENDING|CANCELLED|INVALID)\b/.test(line)});continue;}
+    const negative=/\b(?:NO|NEED|NOT|EXPIRED|APPLY|PENDING|CANCELLED|INVALID)\b/.test(line);
+    if(/\bTDAC\b/.test(line)){facts.otherEntryClaim=true;if(!negative)facts.tdac=true;}
+    const alternate=line.match(/\b(?:DUAL|DURAL)\s+CITIZENSHIP\b.*?\b([A-Z]{3})\s+(?:PPT|PASSPORT)\b/);
+    if(alternate){facts.otherEntryClaim=true;facts.alternatePassports.push({nationality:alternate[1],...expiryFacts(line),negative});}
+    const doc=line.match(/\b(?:RESIDENT\s*CARD|PR\s*CARD|PINK\s*CARD|APEC\s*CARD|TBZ|TRVL\s*(?:DCMNT|DOMENT|DOC(?:UMENT)?)|TRAVEL\s*DOC(?:UMENT)?)(?=\b|20\d{2})/);
+    if(doc){const expiry=/\b(?:VISA\d*|VS|V)\b/.test(line)?{expiry:null,expiryYear:null}:expiryFacts(line);facts.documents.push({type:/TRAVEL|TRVL/.test(doc[0])?'TRAVELDOC':/RESIDENT/.test(doc[0])?'PRCARD':doc[0].replace(/\s/g,''),issuer:visaIssuer(line)||(/RESIDENT|PINK|TRVL/.test(doc[0])?'CHN':null),...expiry,negative});continue;}
     if(/\b(?:TWOV|TRANSIT|APEC)\b/.test(line))facts.otherEntryClaim=true;
     if(!/\b(?:VISA\d*|VS|V|TRAVEL\s*DOC(?:UMENT)?)\b/.test(line))continue;
-    if(/\bFREE\b/.test(line)){facts.visaFreeClaim=true;continue;}
-    const negative=/\b(?:NO|NEED|NOT|EXPIRED|APPLY|PENDING|CANCELLED|INVALID)\b/.test(line);
-    const dateTokens=[...line.matchAll(/\d{4}-\d{2}-\d{2}|\d{1,2}\s*[A-Z]{3}\s*(?:\d{4}|\d{2})\b/g)];
+    if(/\bFREE\b/.test(line)){facts.visaFreeClaim=true;const days=line.match(/\b(?:(?:VISA|VS|V)\s+FREE\s+(?:FOR\s+)?(\d{1,3})(?=\s*DAYS?\b|\b)|(?:(\d{1,3})\s*DAYS?\s+(?:VISA|VS|V)\s+FREE\b))/);facts.exemptionClaims.push({days:days?Number(days[1]||days[2]):null,negative,nationality:alternate?.[1]||line.match(/^CKIN\s+([A-Z]{3})\s+(?:PPT|PASSPORT)\b/)?.[1]||null});continue;}
+    const dateTokens=expiryTokens(line);
     const dates=dateTokens.map(m=>dateFromToken(m[0])).filter(Boolean);
     const years=dateTokens.length?[]:[...line.matchAll(/(?:\b(?:EXP(?:IRY)?|TILL?|DT|VISA|VS|V|CHN)\s*[:#-]?\s*)(20\d{2})\b/g)].map(m=>Number(m[1]));
     facts.visaEvidence.push({issuer:visaIssuer(line),expiry:dateTokens.length===1&&dates.length===1?dates[0]:null,expiryYear:years.length===1?years[0]:null,negative,dateAmbiguous:dateTokens.length!==1||dates.length!==1});
@@ -39,12 +44,13 @@ function ckinFacts(lines=[]) {
   return facts;
 }
 function expiryFacts(line) {
-  const tokens=[...line.matchAll(/\d{4}-\d{2}-\d{2}|\d{1,2}\s*[A-Z]{3}\s*(?:\d{4}|\d{2})\b/g)];
+  const tokens=expiryTokens(line);
   const dates=tokens.map(m=>dateFromToken(m[0])).filter(Boolean);
-  const years=tokens.length?[]:[...line.matchAll(/\b(?:EXP(?:IRY)?|TILL?|DT|TBZ|PR\s*CARD|TRAVEL\s*DOC(?:UMENT)?)\s*[:#-]?\s*(20\d{2})\b/g)].map(m=>Number(m[1]));
+  const years=tokens.length?[]:[...line.matchAll(/\b(?:EXP(?:IRY)?|TILL?|DT|TBZ|RESIDENT\s*CARD|PR\s*CARD|TRAVEL\s*DOC(?:UMENT)?)\s*[:#-]?\s*(20\d{2})\b/g)].map(m=>Number(m[1]));
   return {expiry:tokens.length===1&&dates.length===1?dates[0]:null,expiryYear:years.length===1?years[0]:null};
 }
-function decision(status,code,reason,extras={}){return {status,reason,reasonCodes:[code],missingFields:[],rules:[],sources:[],requirement:'unknown',inspection:'ambiguous',possibleMissedCheck:false,action:status==='pass'?'pass':'double_check',engineVersion:'visa-2',...extras};}
+function expiryTokens(line){return [...line.matchAll(/\d{4}-\d{2}-\d{2}|\d{4}\s+\d{1,2}\s+\d{1,2}\b|\d{1,2}[ /-]\d{1,2}[ /-]\d{4}\b|\d{1,2}\s*(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s*(?:\d{4}|\d{2})\b/g)];}
+function decision(status,code,reason,extras={}){return {status,reason,reasonCodes:[code],missingFields:[],rules:[],sources:[],requirement:'unknown',inspection:'ambiguous',possibleMissedCheck:false,action:status==='pass'?'pass':'double_check',engineVersion:'visa-3',...extras};}
 function evaluateVisa(input,store,{now=new Date()}={}){
   const facts=ckinFacts(input.ckinLines);
   if(facts.nbrd)return decision('review','NBRD','CKIN/NBRD: unresolved boarding remark');
@@ -54,13 +60,18 @@ function evaluateVisa(input,store,{now=new Date()}={}){
   const travelDate=input.entryDate||input.entryDateEarliest||departureDate;
   const latestEntryDate=input.entryDate||input.entryDateLatest||travelDate;
   if(input.entryDateConflict||!validDate(departureDate)||!validDate(travelDate)||!validDate(latestEntryDate)||latestEntryDate<travelDate||input.entryDate&&input.entryDate<departureDate)return decision('review','MISSING_TRAVEL_DATE','Travel or destination entry date is missing or inconsistent',{missingFields:['destinationEntryDate']});
+  if(input.destinationCountry==='THA'&&!facts.tdac)return decision('review','TDAC_MISSING','泰国入境：未记录有效 TDAC 核对；TDAC 是电子入境卡，签证或免签不能替代 — DOUBLE CHECK',{missingFields:['TDACConfirmation']});
   const asOf=now.toISOString().slice(0,10);let missing=[];let limitations=[];let requirement='unknown';let policyDetails={};
-  const rules=store?.activeRules(input.nationality,input.destinationCountry,travelDate)||[];
+  const validThrough=d=>!d.negative&&(d.expiry?d.expiry>=latestEntryDate:d.expiryYear>Number(latestEntryDate.slice(0,4)));
+  const alternate=facts.alternatePassports.length===1&&validThrough(facts.alternatePassports[0])&&countryCodes.has(facts.alternatePassports[0].nationality)?facts.alternatePassports[0]:null;
+  const policyNationality=alternate?.nationality||input.nationality;
+  const rules=store?.activeRules(policyNationality,input.destinationCountry,travelDate)||[];
   // The built-in announcement feeds monitor China entry policy. Other approved
   // destinations still require fresh exact policy pages and their review deadline.
   const pendingNotice=input.destinationCountry==='CHN'&&store?.db.prepare("SELECT 1 FROM visa_notices WHERE status='pending' LIMIT 1").get();
   const staleFeed=input.destinationCountry==='CHN'&&store?.db.prepare("SELECT last_success_at FROM visa_monitors WHERE kind='feed'").all().some(m=>!m.last_success_at||now-Date.parse(m.last_success_at)>72*3600000);
   for(const r of rules){
+    if(r.id.startsWith('chn-entry-')&&!facts.documents.some(d=>d.type===r.conditions.documentType))continue;
     if(travelDate<r.effective_from||(r.effective_until&&latestEntryDate>r.effective_until)){limitations.push('policy not effective for the destination entry date');if(latestEntryDate!==travelDate)missing.push('destinationEntryDate');continue;}
     if(r.recheck_due_at<asOf||!r.sources.length||r.sources.some(s=>s.review_status!=='approved'||s.latest_source_id!==s.id||!s.last_success_at||now-Date.parse(s.last_success_at)>72*3600000)){limitations.push('policy requires current verification');continue;}
     policyDetails={rules:[{id:r.id,version:r.version,effectiveUntil:r.effective_until}],sources:r.sources.map(s=>({id:s.id,url:s.url,authority:s.authority,verifiedAt:s.last_success_at}))};
@@ -70,6 +81,7 @@ function evaluateVisa(input,store,{now=new Date()}={}){
     if(['special_document','residence_document'].includes(r.rule_type)) {
       requirement=r.rule_type==='residence_document'?'residence_document':'special_document';
       const c=r.conditions;
+      if(c.documentType==='APECCARD'&&!input.apecPassportMatched){missing.push('APECChinaPreclearanceAndPassportMatch');continue;}
       const checked=facts.documents.find(d=>!d.negative&&d.type===c.documentType&&(d.issuer===c.issuer||(d.type==='TBZ'&&!d.issuer&&c.issuer==='CHN'))&&(d.expiry?d.expiry>=latestEntryDate:d.expiryYear>Number(latestEntryDate.slice(0,4))));
       if(checked&&!pendingNotice&&!staleFeed)return decision('pass','SPECIAL_DOCUMENT_CHECKED',`${c.documentType} check recorded for ${input.destinationCountry} — VISA PASS`,{...policyDetails,requirement,inspection:'recorded'});
       missing.push(c.documentType+'ValidityAndApplicability');continue;
@@ -77,20 +89,14 @@ function evaluateVisa(input,store,{now=new Date()}={}){
     requirement='conditional_exemption';
     if(pendingNotice||staleFeed){limitations.push(pendingNotice?'New official notice awaiting review':'Official announcement monitoring needs refresh');continue;}
     const c=r.conditions;
-    const absent=[];
-    if(!Number.isInteger(input.stayDays))absent.push('stayDays');
-    if(!input.purpose)absent.push('purpose');
-    if(c.cumulativeDays!==undefined){
-      if(!Number.isInteger(input.previousStayDays))absent.push('previousStayDays');
-      if(input.previousStayWindowDays!==c.cumulativeWindowDays)absent.push('previousStayWindowDays');
+    // BN audits the entry basis and the agent's record. Stay/purpose limits are
+    // retained in policy data, but are not passenger facts required by this audit.
+    const claim=facts.exemptionClaims.find(x=>!x.negative&&x.days===c.maxStayDays&&(!x.nationality||x.nationality===policyNationality));
+    if(facts.exemptionClaims.length){
+      if(!claim||!facts.exemptionClaims.every(x=>!x.negative&&x.days===claim.days&&(!x.nationality||x.nationality===policyNationality))){limitations.push('CKIN exemption claim conflicts with passport or current policy');continue;}
+      return decision('pass','CKIN_EXEMPTION_CHECKED',`${policyNationality} → ${input.destinationCountry}: agent recorded VISA FREE ${claim.days} DAYS; current policy matches — VISA PASS`,{...policyDetails,requirement:'exempt',inspection:'recorded',policyNationality});
     }
-    if(absent.length){missing.push(...absent);continue;}
-    if(input.stayDays<0||input.stayDays>c.maxStayDays){limitations.push('stay exceeds visa exemption');continue;}
-    if(!c.purposes.includes(input.purpose)){limitations.push('purpose outside visa exemption');continue;}
-    if(c.cumulativeDays!==undefined){
-      if(input.previousStayDays<0||input.previousStayDays+input.stayDays>c.cumulativeDays){limitations.push('cumulative stay exceeds exemption');continue;}
-    }
-    return decision('pass','GOVERNMENT_EXEMPTION',`${input.nationality} → ${input.destinationCountry}: no visa needed, exemption conditions checked (${c.maxStayDays} days)`,{...policyDetails,requirement:'exempt',inspection:'not_needed'});
+    return decision('pass','GOVERNMENT_EXEMPTION',`${policyNationality} → ${input.destinationCountry}: current ordinary-passport exemption (${c.maxStayDays}-day policy) — VISA PASS`,{...policyDetails,requirement:'exempt',inspection:'not_needed',policyNationality});
   }
   if(facts.visaEvidence.length&&!(input.nationality==='TWN'&&input.destinationCountry==='CHN')) {
     // In the current China-bound workflow, unqualified VISA notes refer to China.
@@ -105,9 +111,13 @@ function evaluateVisa(input,store,{now=new Date()}={}){
     missing.push('visaIssuerAndUnambiguousExpiry');
   }
   if(facts.documents.length)missing.push('residenceOrSpecialDocumentApplicability');
+  if(facts.alternatePassports.length&&!alternate)missing.push('alternatePassportValidity');
+  const labels={TBZ:'台胞证',PRCARD:'绿卡',PINKCARD:'港澳居民来往内地通行证（PINK CARD）',APECCARD:'APEC 商务旅行卡',TRAVELDOC:'旅行证'};
+  const recorded=facts.documents.map(d=>`${labels[d.type]}${d.expiry?'，有效期 '+d.expiry:d.expiryYear?'，有效期年份 '+d.expiryYear:'，有效期未明确'}`).concat(facts.tdac?['TDAC 已记录（泰国电子入境卡）']:[],facts.alternatePassports.map(d=>`双重国籍 ${d.nationality} 护照${d.expiry?'，有效期 '+d.expiry:d.expiryYear?'，有效期年份 '+d.expiryYear:'，有效期未明确'}`));
+  if(facts.documents.some(d=>d.type==='APECCARD'))missing.push('APECChinaPreclearanceAndPassportMatch');
   const hasEvidence=facts.visaEvidence.length||facts.documents.length||facts.visaFreeClaim||facts.otherEntryClaim;
   const missed=['required','special_document','residence_document'].includes(requirement)&&!hasEvidence;
   const reason=missed?`${requirement==='special_document'?'Entry travel document required':'Visa or verified exception required'}; no applicable check recorded in CKIN — possible missed check; DOUBLE CHECK`:requirement==='conditional_exemption'?`Visa exemption may apply; ${limitations.length?limitations.join('; '):'confirm missing exemption conditions'} — DOUBLE CHECK`:limitations.length?limitations.join('; ')+' — DOUBLE CHECK':hasEvidence?'CKIN entry basis is unclear or does not match destination — DOUBLE CHECK':'Entry requirement is unverified; no visa check recorded in CKIN — DOUBLE CHECK';
-  return decision('review',missed?'POSSIBLE_MISSED_VISA_CHECK':'RULE_REVIEW',reason,{...policyDetails,requirement,inspection:hasEvidence?'ambiguous':'missing',possibleMissedCheck:missed,missingFields:[...new Set(missing)]});
+  return decision('review',missed?'POSSIBLE_MISSED_VISA_CHECK':'RULE_REVIEW',(recorded.length?recorded.join('; ')+'；':'')+reason,{...policyDetails,requirement,inspection:hasEvidence?'ambiguous':'missing',possibleMissedCheck:missed,missingFields:[...new Set(missing)],policyNationality});
 }
 module.exports={dateFromToken,ckinFacts,evaluateVisa};

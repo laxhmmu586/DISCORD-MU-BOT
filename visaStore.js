@@ -60,7 +60,7 @@ class VisaStore {
     if (!validDate(input.effective_from) || (input.effective_until && !validDate(input.effective_until)) || !validDate(input.recheck_due_at) ||
       (input.effective_until && input.effective_until<input.effective_from)) throw Error('Invalid rule dates');
     const c=input.conditions;
-    if (['special_document','residence_document'].includes(input.rule_type) ? !c||Object.keys(c).some(k=>!['documentType','issuer'].includes(k))||!['TBZ','PRCARD','TRAVELDOC'].includes(c.documentType)||!/^[A-Z]{3}$/.test(c.issuer||'') : ['visa_document','citizen_return'].includes(input.rule_type) ? !c||Object.keys(c).length!==0 : !c || Object.keys(c).some(k=>!['maxStayDays','purposes','cumulativeDays','cumulativeWindowDays'].includes(k)) ||
+    if (['special_document','residence_document'].includes(input.rule_type) ? !c||Object.keys(c).some(k=>!['documentType','issuer'].includes(k))||!['TBZ','PRCARD','PINKCARD','APECCARD','TRAVELDOC'].includes(c.documentType)||!/^[A-Z]{3}$/.test(c.issuer||'') : ['visa_document','citizen_return'].includes(input.rule_type) ? !c||Object.keys(c).length!==0 : !c || Object.keys(c).some(k=>!['maxStayDays','purposes','cumulativeDays','cumulativeWindowDays'].includes(k)) ||
         !Number.isInteger(c.maxStayDays) || c.maxStayDays<1 || c.maxStayDays>365 || !Array.isArray(c.purposes) || !c.purposes.length ||
         c.purposes.some(p=>!['tourism','business','visit','exchange','transit','private','medical','transport'].includes(p)) ||
         (c.cumulativeDays !== undefined && (!Number.isInteger(c.cumulativeDays)||c.cumulativeDays<1||!Number.isInteger(c.cumulativeWindowDays)||c.cumulativeWindowDays<1))) throw Error('Invalid fixed rule conditions');
