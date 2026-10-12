@@ -36,7 +36,7 @@ function ckinFacts(lines=[]) {
     if(doc){const expiry=/\b(?:VISA\d*|VS|V)\b/.test(line)?{expiry:null,expiryYear:null}:expiryFacts(line);facts.documents.push({type:/TRAVEL|TRVL/.test(doc[0])?'TRAVELDOC':/RESIDENT/.test(doc[0])?'PRCARD':doc[0].replace(/\s/g,''),issuer:visaIssuer(line)||(/RESIDENT|PINK|TRVL/.test(doc[0])?'CHN':null),...expiry,negative});continue;}
     if(/\b(?:TWOV|TRANSIT|APEC)\b/.test(line))facts.otherEntryClaim=true;
     if(!/\b(?:VISA\d*|VS|V|TRAVEL\s*DOC(?:UMENT)?)\b/.test(line))continue;
-    if(/\bFREE\b/.test(line)){facts.visaFreeClaim=true;const days=line.match(/\b(?:(?:VISA|VS|V)\s+FREE\s+(?:FOR\s+)?(\d{1,3})(?=\s*DAYS?\b|\b)|(?:(\d{1,3})\s*DAYS?\s+(?:VISA|VS|V)\s+FREE\b))/);facts.exemptionClaims.push({days:days?Number(days[1]||days[2]):null,negative,nationality:alternate?.[1]||line.match(/^CKIN\s+([A-Z]{3})\s+(?:PPT|PASSPORT)\b/)?.[1]||null});continue;}
+    if(/\bFREE\b/.test(line)){facts.visaFreeClaim=true;const days=line.match(/\b(?:(?:VISA|VS|V)\s+FREE\s+(?:FOR\s+)?(\d{1,3})(?=\s*DAYS?\b|\b)|(?:(\d{1,3})\s*DAYS?\s+(?:VISA|VS|V)\s+FREE\b)|(?:(?:VISA|VS|V)\s+(\d{1,3})\s*DAYS?\s+FREE\b))/);facts.exemptionClaims.push({days:days?Number(days[1]||days[2]||days[3]):null,negative,nationality:alternate?.[1]||line.match(/^CKIN\s+([A-Z]{3})\s+(?:PPT|PASSPORT)\b/)?.[1]||null});continue;}
     const dateTokens=expiryTokens(line);
     const dates=dateTokens.map(m=>dateFromToken(m[0])).filter(Boolean);
     const years=dateTokens.length?[]:[...line.matchAll(/(?:\b(?:EXP(?:IRY)?|TILL?|DT|VISA|VS|V|CHN)\s*[:#-]?\s*)(20\d{2})\b/g)].map(m=>Number(m[1]));

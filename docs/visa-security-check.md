@@ -86,3 +86,5 @@ VISA PASS 只表示当前 BN 入境依据审核通过，不代表已核实政策
 SEPO 是已确认的 SEP 错字，29 SEPO 2035 解析为 2035-09-29；日历校验仍拒绝 31 SEPO、已经过期和多个冲突日期。CHN VS EXP DT 07 AUG 2036 表示中国签证，有效期 2036-08-07。
 
 HUZ 加入中国内地机场识别。BN 的国内接驳判断合并现有完整内地机场表，避免 DYG 等机场因局部清单遗漏被当作未知目的国；保留 HKG、MAC、TWN 与中国内地的区分。中国护照经 PVG 前往 HUZ 按本国返回，无须签证。
+
+补齐 TBZ CARD TILL 2030：即使主护照字段为 USA，赴中国内地仍按 agent 已核对的有效台胞证记录 VISA PASS，不再要求证明另一本台湾护照。补齐 V 30DAYS FREE／VS 30 DAYS FREE／VISA 30DAYS FREE；该语序与 V FREE 30DAYS 表示同一免签政策记录，仍核对政策国籍、宣称天数和截止日。

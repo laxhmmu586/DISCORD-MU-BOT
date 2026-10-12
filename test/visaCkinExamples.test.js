@@ -17,6 +17,8 @@ function store(){
 }
 // Preserve operational syntax; every identity/document identifier is synthetic.
 const cases=[
+ ['CAN','CHN','CKIN V 30DAYS FREE','pass'],
+ ['USA','CHN','CKIN TBZ CARD TILL 2030','pass'],
  ['USA','CHN','CKIN VS CHN EXP DT 29 SEPO 2035','pass'],
  ['USA','CHN','CKIN CHN VS EXP DT 07 AUG 2036','pass'],
  ['RUS','CHN','CKIN RUS PPT VISA FREE FOR 30DAYS','pass'],
@@ -58,6 +60,10 @@ test('recorded China entry documents keep expiry checks without repeating applic
  }
  assert.equal(evaluateVisa({...input,ckinLines:['CKIN APEC CARD EXP 2029','CKIN NBRD VISA']},null,{now}).status,'review');
 });
+test('TBZ CARD TILL 2030 passes for a USA primary passport without repeating Taiwan-document applicability',()=>{
+ const f=ckinFacts(['CKIN TBZ CARD TILL 2030']);assert.equal(f.documents[0].type,'TBZ');assert.equal(f.documents[0].expiryYear,2030);
+ const r=evaluateVisa({...input,ckinLines:['CKIN TBZ CARD TILL 2030']},null,{now});assert.equal(r.status,'pass');assert.equal(r.manualOverride.type,'TBZ');assert.deepEqual(r.missingFields,[]);assert.equal(r.possibleMissedCheck,false);
+});
 test('HUZ and DYG domestic connections use China entry checks in the complete BN parser',()=>{
  const {findSYInfo}=require('../syParser');
  const base=['2026 October 12, Monday, 11:55:00','> sy',' SY: MU586/12OCT26 LAX/0 CI1145/NAM','777/773L/B7367 GTD/130 POS/GATE BN299 AK00000 CD00000','BDT1145 SD1230 ED1230 CI1145','2026 October 12, Monday, 12:00:00','> fb1','PR: MU586/12OCT26*LAX,BN001 PNR RL TESTXX','1. TEST/PASSENGER BN001 *35A S PVG'];
@@ -90,6 +96,13 @@ test('recorded exemption must match current nationality rule and cannot override
  const s=store();try{
   for(const extra of [{nationality:'USA'},{travelDate:'2027-01-01',entryDate:'2027-01-02'}])assert.equal(evaluateVisa({...input,nationality:'BRA',ckinLines:['CKIN VISA FREE 30 DAYS'],...extra},s,{now}).status,'review');
   assert.equal(evaluateVisa({...input,nationality:'BRA',ckinLines:['CKIN NOT VISA FREE 30 DAYS']},s,{now}).status,'review');
+ }finally{s.close();}
+});
+test('V 30DAYS FREE is a recorded Canada exemption and still respects the policy cutoff and claim limits',()=>{
+ const s=store();try{
+  const complete={...input,nationality:'CAN',ckinLines:['CKIN V 30DAYS FREE']};
+  assert.equal(ckinFacts(complete.ckinLines).exemptionClaims[0].days,30);assert.equal(evaluateVisa(complete,s,{now}).status,'pass');
+  for(const extra of [{travelDate:'2027-01-01',entryDate:'2027-01-02'},{nationality:'USA'},{ckinLines:['CKIN V 90DAYS FREE']},{ckinLines:['CKIN NO V 30DAYS FREE']}])assert.equal(evaluateVisa({...complete,...extra},s,{now}).status,'review');
  }finally{s.close();}
 });
 test('dual citizenship uses the valid alternate passport and retains Armenia limits in SQLite',()=>{
