@@ -20,13 +20,14 @@ function dateFromToken(value) {
 }
 function ckinFacts(lines=[]) {
   const normalized=lines.map(s=>String(s).trim().toUpperCase().replace(/\s+/g,' ').replace(/^(?:CKIN[\s/]+)+/,'CKIN '));
-  const facts={manual240:false,nbrd:false,documents:[],visaEvidence:[],visaFreeClaim:false};
+  const facts={manual240:false,nbrd:false,documents:[],visaEvidence:[],visaFreeClaim:false,otherEntryClaim:false};
   for(const line of normalized){
     if(/^CKIN NBRD\b/.test(line)){facts.nbrd=true;continue;}
     // Whole remark, not a date, identifier or a request to apply for TWOV.
     if(/^CKIN\b/.test(line)&&/\b240\b/.test(line)&&!(/\b(?:NO|NEED|NOT|APPLY|PENDING|CANCELLED|INVALID)\b/.test(line))){facts.manual240=true;continue;}
-    const doc=line.match(/\b(?:PR\s*CARD|PINK\s*CARD|TBZ)\b/);
-    if(doc){const expiry=expiryFacts(line);facts.documents.push({type:doc[0].replace(/\s/g,''),issuer:line.match(/\b(?:USA|CHN|CAN)\b/)?.[0]||null,...expiry,negative:/\b(?:NO|NOT|EXPIRED|APPLY|PENDING|CANCELLED|INVALID)\b/.test(line)});continue;}
+    const doc=line.match(/\b(?:PR\s*CARD|PINK\s*CARD|TBZ|TRAVEL\s*DOC(?:UMENT)?)(?=\b|20\d{2})/);
+    if(doc){const expiry=expiryFacts(line);facts.documents.push({type:/TRAVEL/.test(doc[0])?'TRAVELDOC':doc[0].replace(/\s/g,''),issuer:visaIssuer(line),...expiry,negative:/\b(?:NO|NOT|EXPIRED|APPLY|PENDING|CANCELLED|INVALID)\b/.test(line)});continue;}
+    if(/\b(?:TWOV|TRANSIT|APEC)\b/.test(line))facts.otherEntryClaim=true;
     if(!/\b(?:VISA\d*|VS|V|TRAVEL\s*DOC(?:UMENT)?)\b/.test(line))continue;
     if(/\bFREE\b/.test(line)){facts.visaFreeClaim=true;continue;}
     const negative=/\b(?:NO|NEED|NOT|EXPIRED|APPLY|PENDING|CANCELLED|INVALID)\b/.test(line);
@@ -40,7 +41,7 @@ function ckinFacts(lines=[]) {
 function expiryFacts(line) {
   const tokens=[...line.matchAll(/\d{4}-\d{2}-\d{2}|\d{1,2}\s*[A-Z]{3}\s*(?:\d{4}|\d{2})\b/g)];
   const dates=tokens.map(m=>dateFromToken(m[0])).filter(Boolean);
-  const years=tokens.length?[]:[...line.matchAll(/\b(?:EXP(?:IRY)?|TILL?|DT|TBZ|PR\s*CARD)\s*[:#-]?\s*(20\d{2})\b/g)].map(m=>Number(m[1]));
+  const years=tokens.length?[]:[...line.matchAll(/\b(?:EXP(?:IRY)?|TILL?|DT|TBZ|PR\s*CARD|TRAVEL\s*DOC(?:UMENT)?)\s*[:#-]?\s*(20\d{2})\b/g)].map(m=>Number(m[1]));
   return {expiry:tokens.length===1&&dates.length===1?dates[0]:null,expiryYear:years.length===1?years[0]:null};
 }
 function decision(status,code,reason,extras={}){return {status,reason,reasonCodes:[code],missingFields:[],rules:[],sources:[],requirement:'unknown',inspection:'ambiguous',possibleMissedCheck:false,action:status==='pass'?'pass':'double_check',engineVersion:'visa-2',...extras};}
@@ -104,7 +105,7 @@ function evaluateVisa(input,store,{now=new Date()}={}){
     missing.push('visaIssuerAndUnambiguousExpiry');
   }
   if(facts.documents.length)missing.push('residenceOrSpecialDocumentApplicability');
-  const hasEvidence=facts.visaEvidence.length||facts.documents.length||facts.visaFreeClaim;
+  const hasEvidence=facts.visaEvidence.length||facts.documents.length||facts.visaFreeClaim||facts.otherEntryClaim;
   const missed=['required','special_document','residence_document'].includes(requirement)&&!hasEvidence;
   const reason=missed?`${requirement==='special_document'?'Entry travel document required':'Visa or verified exception required'}; no applicable check recorded in CKIN — possible missed check; DOUBLE CHECK`:requirement==='conditional_exemption'?`Visa exemption may apply; ${limitations.length?limitations.join('; '):'confirm missing exemption conditions'} — DOUBLE CHECK`:limitations.length?limitations.join('; ')+' — DOUBLE CHECK':hasEvidence?'CKIN entry basis is unclear or does not match destination — DOUBLE CHECK':'Entry requirement is unverified; no visa check recorded in CKIN — DOUBLE CHECK';
   return decision('review',missed?'POSSIBLE_MISSED_VISA_CHECK':'RULE_REVIEW',reason,{...policyDetails,requirement,inspection:hasEvidence?'ambiguous':'missing',possibleMissedCheck:missed,missingFields:[...new Set(missing)]});

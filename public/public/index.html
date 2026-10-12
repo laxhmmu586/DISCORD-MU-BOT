@@ -8585,7 +8585,7 @@
           <fieldset><legend>免签允许的事由</legend>${[['tourism','旅游'],['business','商务'],['visit','探亲访友'],['exchange','交流访问'],['transit','过境'],['private','私人事务'],['medical','医疗'],['transport','国际运输']].map(([value,label],index)=>`<label class="visa-policy-confirm"><input type="checkbox" name="purpose" value="${value}" ${index<5?'checked':''}>${label}</label>`).join('')}</fieldset>
           <label>累计停留上限（无规定时留空）<input name="cumulativeDays" type="number" min="1"></label>
           <label>累计停留计算窗口天数<input name="cumulativeWindowDays" type="number" min="1" placeholder="例如 180"></label>
-          <label>证件类别（仅证件规则）<select name="documentType"><option value="TBZ">TBZ／台胞证</option><option value="PRCARD">PR CARD／绿卡</option></select></label>
+          <label>证件类别（仅证件规则）<select name="documentType"><option value="TBZ">TBZ／台胞证</option><option value="PRCARD">PR CARD／绿卡</option><option value="TRAVELDOC">旅行证／Travel Document</option></select></label>
           <label>证件签发国（仅证件规则，三字代码）<input name="issuer" maxlength="3" value="${escapeHtml(visa.destinationCountry)}"></label>
           <label>核实的政策条款／限制<textarea name="clause" rows="3" maxlength="500" placeholder="记录适用范围和限制；不要填写旅客身份资料"></textarea></label>
           <label class="visa-policy-confirm"><input name="confirmed" type="checkbox">我已核对官方原文、生效期限和适用条件；此规则将用于同组合的其他旅客。</label>
