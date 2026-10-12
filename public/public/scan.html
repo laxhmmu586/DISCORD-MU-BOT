@@ -83,6 +83,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="/__/firebase/init.js"></script>
   <script src="https://unpkg.com/@zxing/browser@latest"></script>
+  <script src="/boarding-live.js?v=20261011"></script>
   <script>
     const auth = window.firebase?.apps?.length && window.firebase?.auth ? firebase.auth() : null;
     const AUTH_SESSION_STARTED_KEY = 'mufc_auth_session_started_at';
@@ -107,6 +108,23 @@
     }
     requireLogin();
     const apiBase = (window.MU_API_BASE || 'https://api.mufcapp.net').replace(/\/$/, '');
+    const nbrdLiveStatus = document.createElement('p');
+    nbrdLiveStatus.setAttribute('role', 'status');
+    nbrdLiveStatus.style.cssText = 'color:var(--muted);font-size:13px;margin:12px 0 0';
+    document.querySelector('#nbrd-form').append(nbrdLiveStatus);
+    let liveNbrd = [];
+    connectBoardingLive({
+      apiBase,
+      onBoard(data) {
+        liveNbrd = data.nbrd || [];
+        nbrdLiveStatus.textContent = data.nbrdFresh
+          ? `NBRD live · ${liveNbrd.length} entries`
+          : 'NBRD updates unavailable. Please wait before scanning.';
+      },
+      onStatus(status) {
+        if (status !== 'Live') nbrdLiveStatus.textContent = status === 'Manual refresh' ? 'NBRD checked when scanning' : `NBRD · ${status}`;
+      }
+    });
     const statusEl = document.querySelector('#status');
 
     const preview = document.querySelector('#preview');

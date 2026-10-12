@@ -51,6 +51,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="/__/firebase/init.js"></script>
+  <script src="/boarding-live.js?v=20261011"></script>
   <script>
     const auth = window.firebase?.apps?.length && window.firebase?.auth ? firebase.auth() : null;
     const AUTH_SESSION_STARTED_KEY = 'mufc_auth_session_started_at';
@@ -81,6 +82,24 @@
     const infantWrap = document.querySelector('#infant-wrap');
     const refreshButtons = [...document.querySelectorAll('.refresh-board')];
     let currentRecordKeys = new Set();
+    let boardRevision = -1;
+    let boardMutationRunning = false;
+    let deferredBoard = null;
+    const liveStatus = document.createElement('span');
+    liveStatus.style.cssText = 'font-size:13px;color:var(--muted)';
+    document.querySelector('.toolbar').append(liveStatus);
+    function applyLiveBoard(data) {
+      if (boardMutationRunning) { deferredBoard = data; return; }
+      if (data.revision < boardRevision) return;
+      boardRevision = data.revision;
+      renderRows(data.rows || []);
+      const scannedCount = (data.rows || []).filter(row => row.bn || row.seat || row.flight).length;
+      setStatus(`Scanned ${scannedCount}${data.backupPending ? ' · Sheet backup pending' : ''}`);
+    }
+    function finishBoardMutation() {
+      boardMutationRunning = false;
+      if (deferredBoard) { const data = deferredBoard; deferredBoard = null; applyLiveBoard(data); }
+    }
     function escapeHtml(value) { return String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char])); }
     function setStatus(text, isError = false) { statusEl.textContent = text; statusEl.className = `status ${isError ? 'err' : ''}`.trim(); }
     function recordKey(type, row) {
@@ -167,6 +186,8 @@
         const res = await fetch(`${apiBase}/cbs-scan/records`, { cache:'no-store' });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || 'Load failed');
+        if (data.live && data.revision < boardRevision) return;
+        if (data.live) boardRevision = data.revision;
         const rows = data.rows || [];
         const nextRecordKeys = collectRecordKeys(
           rows.filter((row) => row.nbrdBn || row.nbrdDetail),
@@ -194,7 +215,34 @@
       if (!res.ok) throw new Error(data.error || 'Unable to update row colors.');
     }
 
+    nbrdWrap.addEventListener('click', async (event) => {
+      if (boardMutationRunning) return;
+      const button = event.target.closest('[data-nbrd-row]');
+      if (!button) return;
+      const rowNumber = button.dataset.nbrdRow;
+      const bn = button.dataset.nbrdBn || '';
+      if (!window.confirm(`Delete NBRD BN ${bn}?`)) return;
+      try {
+        button.disabled = true;
+        boardMutationRunning = true;
+        setStatus(`Deleting NBRD BN ${bn}...`);
+        const res = await fetch(`${apiBase}/cbs-scan/nbrd-bns/${encodeURIComponent(rowNumber)}/delete`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ bn }) });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Unable to delete NBRD BN.');
+        const tableRow = button.closest('tr');
+        const tableBody = tableRow?.parentElement;
+        tableRow?.remove();
+        if (tableBody && !tableBody.querySelector('tr')) renderNbrdRows([]);
+        setStatus(`Deleted NBRD BN ${bn}.`);
+      } catch (err) {
+        button.disabled = false;
+        setStatus(err.message || 'Unable to delete NBRD BN.', true);
+      } finally {
+        finishBoardMutation();
+      }
+    });
     tableWrap.addEventListener('click', async (event) => {
+      if (boardMutationRunning) return;
       const row = event.target.closest('tr[data-row-index]');
       if (!row) return;
       const targetIndex = Number(row.dataset.rowIndex);
@@ -204,6 +252,7 @@
       const doneRowNumbers = doneRows.map((item) => Number(item.dataset.rowNumber)).filter(Boolean);
       const openRowNumbers = openRows.map((item) => Number(item.dataset.rowNumber)).filter(Boolean);
       try {
+        boardMutationRunning = true;
         setStatus('Updating Google Sheet colors...');
         await updateEnteredRows(doneRowNumbers, true);
         await updateEnteredRows(openRowNumbers, false);
@@ -212,10 +261,13 @@
         setStatus(`Marked through BN ${row.children[0]?.textContent || ''}.`);
       } catch (err) {
         setStatus(err.message || 'Unable to update row colors.', true);
+      } finally {
+        finishBoardMutation();
       }
     });
     refreshButtons.forEach((button) => button.addEventListener('click', () => loadBoard({ scrollToLatest:true })));
-    loadBoard();
+    connectBoardingLive({ apiBase, onBoard: applyLiveBoard, onStatus: status => { liveStatus.textContent = status; } })
+      .then(live => { if (!live) loadBoard(); });
   </script>
 </body>
 </html>

@@ -3123,6 +3123,76 @@ async function readCbsScanRecords() {
   })).filter((row) => row.bn || row.seat || row.flight || row.scannedAt || row.nbrdBn || row.nbrdDetail || row.infantBn || row.infantSeat || row.infantFlight || row.infantScannedAt);
 }
 
+// The live board uses one shared reader and one backup writer across flights.
+// Startup imports existing records once; page refreshes never call these APIs.
+async function seedBoardingLive(flight) {
+  return require('./boardingContext').runWithBoardingFlight(flight, async () => {
+    const rows = await getCbsScanSheetRows({ forceRefresh: true, priority: 'background' });
+    await ensureCbsScanSheetHeaders(rows, 'background');
+    const title = await getCbsScanSheetTitle('background');
+    const entered = await getCbsScanEnteredRowNumbers(title);
+    const records = rows.slice(1).map((row, index) => ({
+      rowNumber: index + 2, bn: formatCbsScanSheetBn(row[0]), seat: String(row[1] || '').trim(),
+      flight: String(row[2] || '').trim(), scannedAt: String(row[4] || '').trim(),
+      values: Array.from({ length: 5 }, (_, column) => row[column] || ''), entered: entered.has(index + 2),
+      infantBn: formatCbsScanSheetBn(row[13]), infantSeat: String(row[14] || '').trim(),
+      infantFlight: String(row[15] || '').trim(), infantScannedAt: String(row[17] || '').trim(),
+      infantValues: Array.from({ length: 5 }, (_, column) => row[column + 13] || '')
+    })).filter(row => row.bn || row.seat || row.flight || row.infantBn || row.infantSeat || row.infantFlight);
+    return { title, rows: records, nbrd: boardingLiveNbrdRows(rows.slice(1).map(row => row.slice(11, 13))) };
+  });
+}
+
+function boardingLiveNbrdRows(rows) {
+  return rows.map((row, index) => ({ rowNumber: index + 2, bn: formatCbsScanSheetBn(row[0]), detail: normalizeCbsScanNbrdDetail(row[1]) }))
+    .filter(row => row.bn || row.detail);
+}
+
+async function readBoardingLiveNbrd(boards) {
+  const result = await cbsScanSheetsCall(() => sheets.spreadsheets.values.batchGet({
+    spreadsheetId: CBS_SCAN_SHEET_ID,
+    ranges: boards.map(board => `${escapeSheetTitle(board.title)}!L2:M`)
+  }), 'Live NBRD read', 'background', 'read');
+  const ranges = result.data.valueRanges;
+  if (!Array.isArray(ranges) || ranges.length !== boards.length) throw new Error('Incomplete NBRD response.');
+  return Object.fromEntries(boards.map((board, index) => [board.flight, boardingLiveNbrdRows(ranges[index].values || [])]));
+}
+
+function boardingLiveBackupRequests(boards) {
+  const { SHEETS } = require('./boardingContext');
+  const requests = [];
+  for (const board of boards) {
+    for (const key of Object.keys(board.dirty)) {
+      const [type, number] = key.split(':');
+      const rowNumber = Number(number);
+      const row = board.rows.find(row => row.rowNumber === rowNumber);
+      if (type === 'entered') {
+        const backgroundColor = row.entered ? { red: 0.91, green: 0.97, blue: 0.93 } : { red: 1, green: 1, blue: 1 };
+        requests.push({ repeatCell: {
+          range: { sheetId: SHEETS[board.flight], startRowIndex: rowNumber - 1, endRowIndex: rowNumber, startColumnIndex: 0, endColumnIndex: 3 },
+          cell: { userEnteredFormat: { backgroundColor } }, fields: 'userEnteredFormat.backgroundColor'
+        } });
+      } else {
+        const column = type === 'infant' ? 13 : 0;
+        requests.push({ updateCells: {
+          start: { sheetId: SHEETS[board.flight], rowIndex: rowNumber - 1, columnIndex: column },
+          rows: [{ values: (type === 'infant' ? row.infantValues : row.values).map(value => ({ userEnteredValue: { stringValue: String(value) } })) }],
+          fields: 'userEnteredValue'
+        } });
+      }
+    }
+  }
+  return requests;
+}
+
+async function backupBoardingLive(boards) {
+  const requests = boardingLiveBackupRequests(boards);
+  if (!requests.length) return;
+  await cbsScanSheetsCall(() => sheets.spreadsheets.batchUpdate({
+    spreadsheetId: CBS_SCAN_SHEET_ID, requestBody: { requests }
+  }), 'Boarding live backup', 'background');
+}
+
 function cbsScanEnteredRepeatCellRequest(rowNumber, entered = false) {
   const targetRow = Number(rowNumber);
   if (!Number.isInteger(targetRow) || targetRow < 2) throw new Error('Invalid scan row number.');
@@ -5443,6 +5513,9 @@ async function getCbsOpenBagAuthorizationPdf() {
 // Exports
 // ===============================
 module.exports = {
+  seedBoardingLive,
+  readBoardingLiveNbrd,
+  backupBoardingLive,
 
   getLatestFlightLog,
 
