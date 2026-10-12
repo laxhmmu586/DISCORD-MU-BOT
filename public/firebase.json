@@ -1,7 +1,16 @@
 {
   "hosting": {
     "public": "public",
+    "redirects": [
+      { "source": "/", "destination": "/flights.html", "type": 302 }
+    ],
     "headers": [
+      {
+        "source": "/index.html",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+        ]
+      },
       {
         "source": "/cbs.html",
         "headers": [

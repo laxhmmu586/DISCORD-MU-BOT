@@ -1,3 +1,5 @@
+const { filterUnavailablePassengerSections } = require('./passengerRecordValidity');
+
 function splitLogicalSections(log) {
   const normalizedLog = String(log || '')
     .replace(/\r\n/g, '\n')
@@ -21,7 +23,7 @@ function splitLogicalSections(log) {
     // `> sy ...` is a new query and must start its own logical section. Treating
     // both as continuations merged results for different flights and could make
     // (for example) MU583's CC1816 appear on the MU586 dashboard.
-    const isSyResponse = /^>\s*SY\s*:/i.test(line);
+    const isSyResponse = /^>\s*(?:SY|PR)\s*:/i.test(line);
     const isContinuation = cmd ? (isSyResponse || /^(?:PN\d*|PF\d*|ACCEPTED(?:\/|$))/.test(cmd)) : false;
 
     if (cmd && !isContinuation) {
@@ -45,13 +47,19 @@ function splitLogicalSections(log) {
   }
 
   if (current && current.content.trim()) sections.push(current);
-  return sections;
+  return filterUnavailablePassengerSections(sections, parseSectionTimestamp);
 }
 
 function isCcAirportClosedContent(content) {
   const normalized = String(content || '').replace(/\\n/g, '\n').toUpperCase();
   return /^>\s*CC(?:\s*:\s*[^\r\n]*)?\s*$/im.test(normalized)
     && /^>\s*ACCEPTED\s*\/\s*AIRPORT CLOSED\s*$/im.test(normalized);
+}
+
+function isCclClosedContent(content) {
+  const normalized = String(content || '').replace(/\\n/g, '\n').toUpperCase();
+  return /^>\s*CCL\s*:/im.test(normalized)
+    && (/\bACCEPTED\b/.test(normalized) || /\bFLIGHT\s+CLOSED\s+FOR\s+LDP\b/.test(normalized));
 }
 
 const MONTH_INDEX = {
@@ -531,7 +539,7 @@ function parseCrewManifestRowsFromSections(sections, flightNo, flightYmd, operat
   return rows.sort((a, b) => a.no - b.no);
 }
 
-function enrichCrewApisFromLog(log, info, targetYmd) {
+function enrichCrewApisFromLog(log, info, targetYmd, preparationLog = log) {
   const sections = splitLogicalSections(log);
   const flightNo = String(info?.flightNo || '').trim().toUpperCase();
   const flightYmd = flightDateToYmd(info?.flightDate) || targetYmd || null;
@@ -545,11 +553,13 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
     return m?.[1] || '';
   };
   const findCommand = (regex, options = {}) => {
-    const { requireAccepted = false } = options;
+    const { requireAccepted = false, isSuccessful = null } = options;
     const matches = sameDaySections.filter((item) => {
       const content = String(item.content || '').toUpperCase();
       regex.lastIndex = 0;
-      return regex.test(content) && (!requireAccepted || /\bACCEPTED\b/.test(content));
+      return regex.test(content)
+        && (!requireAccepted || /\bACCEPTED\b/.test(content))
+        && (!isSuccessful || isSuccessful(content));
     });
     if (!matches.length) return { complete: false, time: '', timestamp: '' };
     const sectionObj = matches.reduce((latest, item) => (
@@ -572,7 +582,7 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
   const crewApisPrimaryCheck = checks.find((item) => item.key === 'crew2') || null;
   const crewApisComplete = Boolean(crewApisPrimaryCheck?.complete);
   const crewApisTime = crewApisPrimaryCheck?.time || '';
-  const ccl = findAcceptedCommand(/^>\s*CCL\s*:/im);
+  const ccl = findCommand(/^>\s*CCL\s*:/im, { isSuccessful: isCclClosedContent });
   const ccSections = sameDaySections.filter((item) => isCcAirportClosedContent(item.content));
   const ccSection = ccSections.sort((a, b) => parseSectionTimestamp(b.timestamp) - parseSectionTimestamp(a.timestamp))[0] || null;
   const syCcTime = info?.statusCode === 'CC' ? String(info.statusTime || '').trim() : '';
@@ -607,7 +617,9 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
   const commandDateUtc = addDaysUtc(commandBaseDateUtc, 2);
   const commandDate = dateToDdMon(commandDateUtc);
   const commandFlightDateFull = commandDate && commandDateUtc ? `${commandDate}${String(commandDateUtc.getUTCFullYear()).slice(-2)}` : '';
-  const commandSections = sections.filter((sectionObj) => {
+  // Preparation commands target a future flight date, so read them before dashboard date scoping.
+  const preparationSections = preparationLog === log ? sections : splitLogicalSections(preparationLog);
+  const commandSections = preparationSections.filter((sectionObj) => {
     const ymd = getYmdFromTimestamp(sectionObj.timestamp);
     return Boolean(baseYmd && ymd && ymd === baseYmd);
   });
@@ -621,10 +633,10 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
     const sectionObj = matches.sort((a, b) => parseSectionTimestamp(b.timestamp) - parseSectionTimestamp(a.timestamp))[0];
     return { complete: true, time: formatTime(sectionObj.timestamp), timestamp: sectionObj.timestamp || '' };
   };
-  const futureSy = sections
+  const futureSy = preparationSections
     .filter((sectionObj) => getYmdFromTimestamp(sectionObj.timestamp) === baseYmd)
     .map((sectionObj) => parseSYSection(sectionObj))
-    .filter((item) => item && sameOperationalFlightNo(item.flightNo, flightNo) && item.flightDate === commandFlightDateFull)
+    .filter((item) => item && item.flightNo === flightNo && item.flightDate === commandFlightDateFull)
     .sort((a, b) => String(b.statusDisplay || '').localeCompare(String(a.statusDisplay || '')))[0] || null;
   const commandFlightNo = escapeRegExp(flightNo);
   const commandFlightDate = escapeRegExp(commandDate);
@@ -643,6 +655,7 @@ function enrichCrewApisFromLog(log, info, targetYmd) {
       flightDate: gdEmailDate,
       emailSubjectDate: gdEmailDate,
       emailSubject: gdEmailSubject,
+      expectedFlight: { flightNo: info.flightNo, flightDate: info.flightDate, aircraftRegistration: info.aircraftRegistration },
       crew: crewManifestRows
     },
     nextDayInfoQuery: {
@@ -725,7 +738,7 @@ function parseSYSection(sectionObj) {
   const flightMatch = section.match(/SY:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
   if (!flightMatch) return null;
 
-  const aircraftMatch = section.match(/\n\s*(\d{3})\/([A-Z0-9]+)\/([A-Z0-9]+)\b/i);
+  const aircraftMatch = section.match(/\n\s*(\d{3})\/([A-Z0-9]+)\/([A-Z0-9-]+)\b/i);
   const timeMatch = section.match(/\bBDT(\d{4})\s+SD(\d{4})\s+ED(\d{4})\b/i);
   const catLine = section.match(/\bCAT\/[^\n\r]*/i)?.[0] || '';
   const routeLine = section.match(/\*[^\n\r]*\bR\d{3}\/\d{3}\/\d{3}[^\n\r]*/i)?.[0] || '';
@@ -1008,6 +1021,56 @@ function infantApiIssueFromSection(section) {
       ? `INF API not passed for ${infantName}: missing infant SEC TXT-CHN OK TO BOARD`
       : 'INF API not passed: missing infant SEC TXT-CHN OK TO BOARD'
   };
+}
+
+function enrichInfantTicketAuditFromLog(log, syInfo, targetYmd = null) {
+  if (!log || !syInfo?.flightNo || !syInfo?.flightDate) return [];
+  const rows = new Map();
+  const put = (row) => {
+    const adultName = String(row.adultName || '').replace(/\+$/, '').trim().toUpperCase();
+    const infantName = String(row.infantName || '').trim().toUpperCase();
+    const adultTicketNo = String(row.adultTicketNo || '').trim();
+    const infantTicketNo = String(row.infantTicketNo || '').trim();
+    if (!adultName && !adultTicketNo) return;
+    const key = `${adultName}|${adultTicketNo}`;
+    const previous = rows.get(key) || {};
+    rows.set(key, {
+      adultName: adultName || previous.adultName || 'UNKNOWN',
+      adultTicketNo: adultTicketNo || previous.adultTicketNo || '',
+      infantName: infantName || previous.infantName || '',
+      infantTicketNo: infantTicketNo || previous.infantTicketNo || '',
+      hasInfant: true
+    });
+  };
+
+  for (const sectionObj of splitLogicalSections(log)) {
+    const section = sectionObj.content || '';
+    if (!sectionMatchesFlightOperationDate(sectionObj, targetYmd, syInfo.flightNo)) continue;
+    const flight = section.match(/\bP[DR]:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
+    if (!flight || !matchesSyFlightRecord(flight[1], flight[2], syInfo)) continue;
+
+    if (/\bPD:/i.test(section) && /(?:^|[\s,])INF(?:[\s,]|$)/i.test(section)) {
+      const lines = section.split(/\r?\n/);
+      let adultName = '';
+      for (const line of lines) {
+        const passenger = line.match(/^\s*\d+\.\s*\d?([A-Z][A-Z/]+\+?)/i);
+        if (passenger) adultName = passenger[1];
+        const tickets = line.match(/ET\s+NUMBER:\s*(\d{10,})\/\d+(?:\s+ET\s+NUMBER:\s*INF(\d{10,})\/\d+)?/i);
+        if (tickets && adultName) put({ adultName, adultTicketNo: tickets[1], infantTicketNo: tickets[2] || '' });
+      }
+    }
+
+    const infantName = section.match(/^\s*INF-\s*([^\s]+(?:\s+[^\s]+)?)/im)?.[1]?.replace(/\s+\d{1,2}[A-Z]{3}\d{2,4}.*$/i, '') || '';
+    const infantMarker = infantName || /\bINF1\/\d+\b/i.test(section);
+    if (infantMarker) {
+      const passengerLine = getPassengerRecordLine(section);
+      const adultName = (passengerLine.match(/^\s*\d+\.\s*\d?([A-Z/]+\+?)/i)?.[1] || '').replace(/\+$/, '');
+      const adultTicketNo = section.match(/\bET\s+TKNE\/(?!INF)(\d{10,})\/\d+\b/i)?.[1] || '';
+      const infantTicketNo = section.match(/\bET\s+TKNE\/INF(\d{10,})\/\d+\b/i)?.[1] || '';
+      put({ adultName, adultTicketNo, infantName, infantTicketNo });
+    }
+  }
+  return [...rows.values()].sort((a, b) => a.adultName.localeCompare(b.adultName));
 }
 
 function enrichGovAqqFromLog(log, syInfo, targetYmd = null) {
@@ -1935,7 +1998,8 @@ function findSYInfo(log, queryDate, options = {}) {
       info.bnAudit = enrichBnAuditFromLog(log, info, targetYmd);
       info.checkinAgentStats = enrichCheckinAgentStatsFromLog(log, info, targetYmd);
       info.psmList = enrichPsmListFromLog(log, info, targetYmd);
-      info.crewApis = enrichCrewApisFromLog(log, info, targetYmd);
+      info.infTicketAudit = enrichInfantTicketAuditFromLog(log, info, targetYmd);
+      info.crewApis = enrichCrewApisFromLog(log, info, targetYmd, options.preparationLog);
       info.jcsy = info.crewApis?.jcsy || null;
       return info;
     }
@@ -1988,7 +2052,8 @@ function findSYInfo(log, queryDate, options = {}) {
     info.bnAudit = enrichBnAuditFromLog(log, info, targetYmd);
     info.checkinAgentStats = enrichCheckinAgentStatsFromLog(log, info, targetYmd);
     info.psmList = enrichPsmListFromLog(log, info, targetYmd);
-    info.crewApis = enrichCrewApisFromLog(log, info, targetYmd);
+    info.infTicketAudit = enrichInfantTicketAuditFromLog(log, info, targetYmd);
+    info.crewApis = enrichCrewApisFromLog(log, info, targetYmd, options.preparationLog);
     info.jcsy = info.crewApis?.jcsy || null;
     return info;
   }
@@ -1996,4 +2061,4 @@ function findSYInfo(log, queryDate, options = {}) {
   return null;
 }
 
-module.exports = { findSYInfo, normalizeOperationalFlightNo, normalizeJcsyFlightNo, sectionMatchesFlightOperationDate, matchesSyFlightRecord, extractPassportCountryCodes, parseJcsyRows, hasUnclearedApiSourceRisk, extractInvoluntaryUpgrade, enrichCheckinAgentStatsFromLog, hasChdServiceCode, isCcAirportClosedContent };
+module.exports = { findSYInfo, normalizeOperationalFlightNo, normalizeJcsyFlightNo, sectionMatchesFlightOperationDate, matchesSyFlightRecord, extractPassportCountryCodes, parseJcsyRows, hasUnclearedApiSourceRisk, extractInvoluntaryUpgrade, enrichCheckinAgentStatsFromLog, hasChdServiceCode, isCcAirportClosedContent, isCclClosedContent };

@@ -1,6 +1,12 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <script>
+      const serviceRoute = {"#reports":"/report.html", "#test":"/baggage.html"}[location.hash];
+      if (serviceRoute) location.replace(serviceRoute);
+    </script>
+    <script src="/flight-session.js?v=20261008-mu9578"></script>
+    <link rel="stylesheet" href="/flight-navigation.css?v=20261008-flight-alignment" />
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>MUFC</title>
@@ -4459,14 +4465,17 @@
         }
       }
     </style>
+  <link rel="stylesheet" href="assets/mission-dashboard.css?v=20261008-rail-dot-glow" />
+  <link rel="stylesheet" href="assets/energy-portals.css?v=20261009-gradient-glow" />
+  <script defer src="assets/orbit-interface.js?v=9-full-width-rail"></script>
   </head>
   <body class="is-loading">
     <div class="loading-overlay" aria-live="polite"><span>THINKING</span></div>
     <header class="topbar">
-      <a class="brand" id="home-nav-link" href="#home" aria-label="MUFC home"><span>MUFC</span></a>
+      <a class="brand" id="home-nav-link" href="/flights.html" aria-label="MUFC - Select Flight"><span>MUFC</span></a>
       <nav class="nav-links" aria-label="Primary navigation">
-        <a href="#reports" id="report-nav-link">Report</a>
-        <a href="#test" id="test-nav-link">Baggage</a>
+        <a href="/report.html" id="report-nav-link">Report</a>
+        <a href="/baggage.html" id="test-nav-link">Baggage</a>
         <a href="cbs.html" id="cbs-nav-link">LBS</a>
         <a class="boarding-nav-link" href="scan.html" id="boarding-nav-link">Boarding</a>
         <a class="boarding-nav-link" href="240.html" id="transit-240-nav-link">240</a>
@@ -4509,8 +4518,8 @@
         <input id="mobile-query" type="search" value="SY" autocomplete="off" />
         <button type="submit">Search</button>
       </form>
-      <a href="#reports" id="mobile-report-nav-link">Report</a>
-      <a href="#test" id="mobile-test-nav-link">Baggage</a>
+      <a href="/report.html" id="mobile-report-nav-link">Report</a>
+      <a href="/baggage.html" id="mobile-test-nav-link">Baggage</a>
       <a href="cbs.html" id="mobile-cbs-nav-link">LBS</a>
       <a href="scan.html" id="mobile-boarding-nav-link">Boarding</a>
       <a href="240.html" id="mobile-transit-240-nav-link">240</a>
@@ -4519,28 +4528,27 @@
 
     <main>
       <section class="hero" aria-label="Mission overview">
+                      <button class="detail-action warning-action" type="button" data-panel="warning" id="warning-action" hidden aria-label="Open warnings"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M16 5 29 27H3z"/><path d="M16 12v7"/><path d="M16 23h.01"/></svg></span><span class="detail-action-label">WARNING</span> <span class="detail-action-badge warning-badge" id="warning-count">0</span></button>
         <div class="mission-head">
           <div class="mission-title">
             <p class="kicker" id="flight-kicker">Loading SY...</p>
-            <h1 id="active-flight">SY</h1>
+            <div class="mission-flight-heading"><a class="flight-switch" id="mission-switch-flight" href="/flights.html" aria-label="Switch flight" title="Switch flight"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v17m-4-4 4 4 4-4M17 21V4m-4 4 4-4 4 4"/></svg></a><h1 id="active-flight">SY</h1></div>
           </div>
           <div class="mission-side">
             <div class="status-strip" aria-label="Current flight metrics">
-              <div class="status-metric"><span>Gate</span><strong id="metric-gate">---</strong></div>
-              <div class="status-metric"><span>BDT</span><strong id="metric-bdt">----</strong></div>
-              <div class="status-metric"><span>STD</span><strong id="metric-std">----</strong></div>
+              <div class="status-metric status-metric--energy"><i class="energy-glow" aria-hidden="true"></i><i class="energy-ring" aria-hidden="true"></i><span>GATE</span><strong id="metric-gate">---</strong></div>
+              <div class="status-metric status-metric--energy status-metric--bdt"><i class="energy-glow" aria-hidden="true"></i><i class="energy-ring" aria-hidden="true"></i><span>BDT</span><strong id="metric-bdt">----</strong></div>
+              <div class="status-metric status-metric--energy status-metric--etd"><i class="energy-glow" aria-hidden="true"></i><i class="energy-ring" aria-hidden="true"></i><span>ETD</span><strong id="metric-etd">----</strong></div>
             </div>
             <div class="flight-tools" aria-label="Flight data">
               <button class="flight-menu-button" type="button" aria-label="Open flight data menu" aria-expanded="false">
                 <span class="line-menu-icon" aria-hidden="true"><span></span><span></span><span></span></span>
               </button>
               <div class="flight-menu" aria-hidden="true">
-                <button id="normal-flight-button" type="button">MU586 (Normal)</button>
-                <button id="delayed-flight-button" type="button">MU9586 (Delayed)</button>
                 <button id="sales-report-button" type="button">Sales Report</button>
                 <button id="seat-map-button" type="button">Seat Map</button>
                 <button id="security-check-button" type="button">Security Check</button>
-                <button id="irr-button" type="button" onclick="location.href='irr.html'">IRR</button>
+                <button id="emergency-board-button" type="button" onclick="location.href='scan2.html'">Emergency Boarding</button>
               </div>
             </div>
           </div>
@@ -4605,7 +4613,7 @@
           <form class="test-search-form" id="test-search-form">
             <label class="test-search-field">
               <span>Bag tag number</span>
-              <input id="test-bag-search" type="search" placeholder="MU123456" autocomplete="off" maxlength="8" pattern="[A-Z]{2}[0-9]{6}" required />
+              <input id="test-bag-search" type="search" placeholder="MU123456" autocomplete="off" maxlength="8" pattern="[A-Z0-9]{2}[0-9]{6}" required />
             </label>
             <button class="report-run" type="submit">Search</button>
           </form>
@@ -4621,7 +4629,6 @@
                   <div class="meal-order-shell" id="meal-order-shell">
                     <div class="meal-order-tabs" role="tablist" aria-label="Meal order date">
                       <button class="meal-order-tab" id="meal-order-tab-today" type="button" role="tab" aria-selected="true" aria-controls="reservation-table-today" data-meal-day="today">---</button>
-                      <button class="meal-order-tab" id="meal-order-tab-tomorrow" type="button" role="tab" aria-selected="false" aria-controls="reservation-table-tomorrow" data-meal-day="tomorrow">---</button>
                     </div>
                     <div class="meal-order-days">
                     <div class="reservation-table is-active" id="reservation-table-today" role="tabpanel" aria-labelledby="meal-order-tab-today">
@@ -4630,19 +4637,13 @@
                       <span class="reservation-cabin">J</span><span id="reservation-j" class="reservation-count">---</span><span id="meal-email-j" class="column-divider">---</span><span id="meal-spml-j" class="meal-cell">---</span><span id="meal-pd-j" class="meal-cell column-divider">---</span>
                       <span class="reservation-cabin">Y</span><span id="reservation-y" class="reservation-count">---</span><span id="meal-email-y" class="column-divider">---</span><span id="meal-spml-y" class="meal-cell">---</span><span id="meal-pd-y" class="meal-cell column-divider">---</span>
                     </div>
-                    <div class="reservation-table" id="reservation-table-tomorrow" role="tabpanel" aria-labelledby="meal-order-tab-tomorrow" hidden>
-                      <span></span><span class="reservation-head">RES</span><span class="reservation-head column-divider">ORDERED</span><span class="reservation-head">SPML</span><span class="reservation-head column-divider">PD</span>
-                      <span class="reservation-cabin">F</span><span id="tomorrow-reservation-f" class="reservation-count">---</span><span id="tomorrow-meal-email-f" class="column-divider">---</span><span id="tomorrow-meal-spml-f" class="meal-cell">---</span><span id="tomorrow-meal-pd-f" class="meal-cell column-divider">---</span>
-                      <span class="reservation-cabin">J</span><span id="tomorrow-reservation-j" class="reservation-count">---</span><span id="tomorrow-meal-email-j" class="column-divider">---</span><span id="tomorrow-meal-spml-j" class="meal-cell">---</span><span id="tomorrow-meal-pd-j" class="meal-cell column-divider">---</span>
-                      <span class="reservation-cabin">Y</span><span id="tomorrow-reservation-y" class="reservation-count">---</span><span id="tomorrow-meal-email-y" class="column-divider">---</span><span id="tomorrow-meal-spml-y" class="meal-cell">---</span><span id="tomorrow-meal-pd-y" class="meal-cell column-divider">---</span>
-                    </div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
             <div class="detail-actions" aria-label="Flight detail actions">
-              <button class="detail-action warning-action" type="button" data-panel="warning" id="warning-action" hidden aria-label="Open warnings"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M16 5 29 27H3z"/><path d="M16 12v7"/><path d="M16 23h.01"/></svg></span><span class="detail-action-label">WARNING</span> <span class="detail-action-badge warning-badge" id="warning-count">0</span></button>
+
               <button class="detail-action" type="button" data-panel="chd" id="chd-action"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M11 7h10"/><path d="M12 5h8l1 4h-10z"/><path d="M8 8h16v19H8z"/><path d="M12 15h8"/><path d="M12 20h8"/></svg></span><span class="detail-action-label">CHD List</span> <span class="detail-action-badge" id="chd-count"></span></button>
                 <button class="detail-action" type="button" data-panel="gov" id="gov-action"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="16" cy="11" r="5"/><path d="M7 27c1.2-6 4.4-9 9-9s7.8 3 9 9"/></svg></span><span class="detail-action-label">GOV/AQQ</span> <span class="detail-action-badge" id="gov-count"></span></button>
                 <button class="detail-action" type="button" data-panel="webedi" id="webedi-action"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="10"/><path d="M6 16h20"/><path d="M16 6c3 3 4.5 6.3 4.5 10S19 23 16 26"/><path d="M16 6c-3 3-4.5 6.3-4.5 10S13 23 16 26"/></svg></span><span class="detail-action-label">WEB/EDI/RS</span> <span class="detail-action-badge" id="webedi-count"></span></button>
@@ -4689,20 +4690,27 @@
                 <path class="orbit-base" data-orbit-path="main" d="M-260 318 C 120 178, 390 142, 600 142 S 1080 178, 1460 318" />
                 <path class="orbit-dash" d="M-46 292 C 224 164, 410 134, 600 134 S 976 164, 1246 292" />
               </svg>
-              <button class="node" type="button" data-index="0" data-key="CREW_APIS" data-label="CREW APIS" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="1" data-key="GD_CHECK" data-label="GD CHECK" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="2" data-key="FSC" data-label="FSC" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="3" data-key="NEXTDAY_INFO" data-label="NEXTDAY INFO" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="4" data-key="NET" data-label="NET" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="5" data-key="MISSING_BAG" data-label="MISSING BAG" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="6" data-key="CHD" data-label="CHD" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="7" data-key="GOV" data-label="GOV" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="8" data-key="WEBEDI" data-label="WEB/EDI/RS" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="9" data-key="NBRD" data-label="NBRD" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="10" data-key="CCL" data-label="CCL" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="11" data-key="CC" data-label="CC" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="12" data-key="INITIAL_FLIGHT" data-label="INITIAL FLIGHT" data-status="pending" data-time="----"></button>
-              <button class="node" type="button" data-index="13" data-key="BDT_CHG" data-label="BDT CHG" data-status="pending" data-time="----"></button>
+              <button class="node" type="button" data-index="0" data-key="CREW_APIS" data-label="CREW APIS" data-status="pending" data-time="----"><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="3"/><path d="M6 21v-5a6 6 0 0 1 12 0v5"/></svg></span><span class="node-label">CREW APIS</span><span class="node-value" aria-hidden="true"></span></button>
+              <button class="node" type="button" data-index="1" data-key="GD_CHECK" data-label="GD CHECK" data-status="pending" data-time="----"><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 3h10l4 4v14H5z M14 3v5h5 M8 14l3 3 5-6"/></svg></span><span class="node-label">GD CHECK</span><span class="node-value" aria-hidden="true"></span></button>
+              <button class="node" type="button" data-index="2" data-key="MEAL_ORDER" data-timeline-side="top" data-label="MEAL ORDER" data-status="pending" data-time="----"><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="3.5"/><path d="M2 3v6c0 2 3 2 3 0V3 M3.5 3v18 M21 3c-3 2-3 7 0 8v10 M21 3v8"/></svg></span><span class="node-label">MEAL ORDER</span><span class="node-value" aria-hidden="true"></span></button>
+              <button class="node" type="button" data-index="3" data-key="FSC" data-label="FSC" data-status="pending" data-time="----"><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 6h15l-3-3 M21 18H6l3 3 M12 7v10 M15 9c-1-2-6-2-6 1 0 3 6 1 6 4 0 3-5 3-6 1"/></svg></span><span class="node-label">FSC</span><span class="node-value" aria-hidden="true"></span></button>
+              <button class="node" type="button" data-index="4" data-key="INF_TKT" data-timeline-side="top" data-label="INF TKT" data-status="pending" data-time="----"><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 3h10l4 4v14H5z M14 3v5h5"/><circle cx="10" cy="13" r="2"/><path d="M7 19c.5-2.4 1.5-3.5 3-3.5s2.5 1.1 3 3.5 M15 12h2 M15 16h2"/></svg></span><span class="node-label">INF TKT</span><span class="node-value" aria-hidden="true"></span></button>
+              <button class="node" type="button" data-index="5" data-key="NEXTDAY_INFO" data-label="NEXTDAY INFO" data-status="pending" data-time="----"><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 3h14v18H5z M8 7h8 M8 12h8 M8 17h5"/></svg></span><span class="node-label">NEXTDAY INFO</span><span class="node-value" aria-hidden="true"></span></button>
+              <button class="node" type="button" data-index="6" data-key="TKT" data-timeline-side="top" data-label="TKT" data-status="pending" data-time="----"><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 3h10l4 4v14H5z M14 3v5h5 M8 12h8 M8 16h5"/><path d="m15 17 2 2 4-5"/></svg></span><span class="node-label">TKT</span><span class="node-value" aria-hidden="true"></span></button>
+              <button class="node" type="button" data-index="7" data-key="NET" data-label="NET" data-status="pending" data-time="----"><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><ellipse cx="12" cy="12" rx="4" ry="10"/><path d="M2 12h20"/></svg></span><span class="node-label">NET</span><span class="node-value" aria-hidden="true"></span></button>
+              <button class="node" type="button" data-index="8" data-key="MISSING_BAG" data-label="MISSING BAG" data-status="pending" data-time="----" hidden><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="15" rx="1"/><path d="M9 6V2h6v4 M8 6v15 M16 6v15"/></svg></span><span class="node-label">MISSING BAG</span><span class="node-value" aria-hidden="true"></span></button>
+              <button class="node" type="button" data-index="9" data-key="CHD" data-label="CHD LIST" data-status="pending" data-time="----"><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="3"/><path d="M6 21v-5a6 6 0 0 1 12 0v5"/></svg></span><span class="node-label">CHD LIST</span><span class="node-value" aria-hidden="true"></span></button>
+              <button class="node" type="button" data-index="10" data-key="GOV" data-label="GOV/AQQ" data-status="pending" data-time="----"><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2 21 6v7c0 5-9 9-9 9S3 18 3 13V6z M8 12l3 3 5-6"/></svg></span><span class="node-label">GOV/AQQ</span><span class="node-value" aria-hidden="true"></span></button>
+              <button class="node" type="button" data-index="11" data-key="WEBEDI" data-label="WEB/EDI/RS" data-status="pending" data-time="----"><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 3h16v14H4z M2 21h20l-2-4H4z"/></svg></span><span class="node-label">WEB/EDI/RS</span><span class="node-value" aria-hidden="true"></span></button>
+              <button class="node" type="button" data-index="12" data-key="NBRD" data-label="NBRD" data-status="pending" data-time="----" hidden><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 3h18v18H3z M10 7h7 M10 12h7 M10 17h7 M6 7h1 M6 12h1 M6 17h1"/></svg></span><span class="node-label">NBRD</span><span class="node-value" aria-hidden="true"></span></button>
+              <button class="node" type="button" data-index="13" data-key="DUP_BAG" data-label="DUP BAG" data-status="pending" data-time="0" hidden><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 7V4h8v3 M4 7h16v14H4z M8 7v14 M16 7v14"/></svg></span><span class="node-label">DUP BAG</span><span class="node-value" aria-hidden="true"></span></button>
+              <button class="node" type="button" data-index="14" data-key="WCH" data-label="WCH" data-status="pending" data-time="----" hidden><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="3.5" r="1.8"/><path d="m11 7 1 6h6l3 7h2 M11 8H8 M12 10h5 M8 11a5 5 0 1 0 7 7"/></svg></span><span class="node-label">WCH</span><span class="node-value" aria-hidden="true"></span></button>
+              <button class="node" type="button" data-index="15" data-key="DUP_NAME" data-label="DUP NAME" data-status="pending" data-time="0" hidden><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 17c-1.1-1.4-1.6-3.1-1.6-5.3 0-4.1 2.2-6.8 5.4-6.8 2.9 0 5 2.1 5 5 0 2-1 3.6-2.9 4.5"/><path d="M12.6 8.4c1.2 0 2 .8 2 2.1 0 1.4-.8 2.2-2.5 2.8-1 .4-1.5 1-1.5 2 0 2.1 1.5 3.7 4.3 3.7"/><path d="M5.7 19c1.4-.8 2.6-1.1 3.7-1.1 1.3 0 2.4.4 3.4 1.1"/></svg></span><span class="node-label">DUP NAME</span><span class="node-value" aria-hidden="true"></span></button>
+              <button class="node" type="button" data-index="16" data-key="PSM" data-label="PSM/MSG" data-status="pending" data-time="----" hidden><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 3h18v14H9l-6 4z M7 7h10 M7 11h7"/></svg></span><span class="node-label">PSM/MSG</span><span class="node-value" aria-hidden="true"></span></button>
+              <button class="node" type="button" data-index="17" data-key="CCL" data-label="CCL" data-status="pending" data-time="----"><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 4h11v16H3z M7 8h3 M7 12h3 M7 16h3 M16 10h5 M18 7l3 3-3 3 M16 17l2 2 4-4"/></svg></span><span class="node-label">CCL</span><span class="node-value" aria-hidden="true"></span></button>
+              <button class="node" type="button" data-index="18" data-key="CC" data-label="CC" data-status="pending" data-time="----"><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 3h12v18H4z M12 3v18 M8 12h.01 M16 12h6 M19 9l-3 3 3 3"/></svg></span><span class="node-label">CC</span><span class="node-value" aria-hidden="true"></span></button>
+              <button class="node" type="button" data-index="19" data-key="INITIAL_FLIGHT" hidden data-label="INITIAL FLIGHT" data-status="pending" data-time="----"><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 3h12v4 M4 3v18h12v-4 M4 3l8 3v12l-8 3 M9 12h.01 M15 12h7 M19 9l3 3-3 3"/></svg></span><span class="node-label">INITIAL FLIGHT</span><span class="node-value" aria-hidden="true"></span></button>
+              <button class="node" type="button" data-index="20" data-key="BDT_CHG" hidden data-label="BDT CHG" data-status="pending" data-time="----"><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 21a9 9 0 1 1 9-9 M12 7v5l-3 2 M14 18l6-6 3 3-6 6-4 1z M19 13l3 3"/></svg></span><span class="node-label">BDT CHG</span><span class="node-value" aria-hidden="true"></span></button>
               <article class="node-card" aria-live="polite">
                 <h2>Crew APIs</h2>
                 <p>Crew manifest and reservation data are ready. This point can open deeper crew workflows later.</p>
@@ -4733,7 +4741,6 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="/__/firebase/init.js"></script>
     <script>
-      const homeNavLink = document.querySelector("#home-nav-link");
       const menuButton = document.querySelector(".menu-button");
       const fallbackMenuButton = document.querySelector(".mobile-menu-fallback");
       const mobilePanel = document.querySelector(".mobile-panel");
@@ -4747,7 +4754,18 @@
       const flightMenu = document.querySelector(".flight-menu");
       const nodeTime = document.querySelector("#node-time");
       const nodes = document.querySelectorAll(".node");
+      nodes.forEach((node) => node.insertAdjacentHTML("beforeend", '<span class="node-glass" aria-hidden="true"></span><span class="node-led" aria-hidden="true"></span>'));
+      document.querySelector("#warning-action")?.insertAdjacentHTML("beforeend", '<span class="warning-open" aria-hidden="true"></span>');
+      const refreshNodeLabels = () => nodes.forEach((node) => {
+        node.querySelector(".node-value")?.setAttribute("data-value", node.dataset.time || "0");
+        node.setAttribute("aria-label", `${node.dataset.label}: ${node.dataset.time || "Pending"}`);
+      });
+      const nodeStatusObserver = new MutationObserver(refreshNodeLabels);
+      nodes.forEach((node) => nodeStatusObserver.observe(node, { attributes:true, attributeFilter:["data-time", "data-status"] }));
+      refreshNodeLabels();
       const nodeCard = document.querySelector(".node-card");
+      // The scrolling rail is edge-masked; keep its popup outside that mask.
+      document.querySelector(".hero").appendChild(nodeCard);
       const missionPath = document.querySelector("#mission-path");
       const stageArcPaths = document.querySelectorAll("[data-stage-arc]");
       const stageArcTextPaths = document.querySelectorAll("[data-stage-text-path]");
@@ -4761,8 +4779,6 @@
       const mobileQueryInput = document.querySelector("#mobile-query");
       const bagReportButton = document.querySelector("#bag-report-button");
       const salesReportButton = document.querySelector("#sales-report-button");
-      const normalFlightButton = document.querySelector("#normal-flight-button");
-      const delayedFlightButton = document.querySelector("#delayed-flight-button");
       const securityCheckButton = document.querySelector("#security-check-button");
       const seatMapButton = document.querySelector("#seat-map-button");
       const reportNavLink = document.querySelector("#report-nav-link");
@@ -4825,7 +4841,7 @@
       const APP_ENTRY_KEY = "mufc_allow_app_entry";
       const AUTH_SESSION_STARTED_KEY = "mufc_auth_session_started_at";
       const AUTH_LAST_ACTIVITY_KEY = "mufc_auth_last_activity_at";
-      const SY_AUTO_REFRESH_MS = 15 * 1000;
+      const SY_BACKUP_REFRESH_MS = 30 * 1000;
       const SY_REFRESH_TIMEOUT_MS = 12 * 1000;
       const AUTH_INACTIVITY_LIMIT_MS = 60 * 60 * 1000;
       const SY_COMPLETED_NODE_CACHE_KEY = "mufc_sy_completed_nodes_v1";
@@ -4833,6 +4849,8 @@
       const PERSISTENT_GREEN_NODE_KEYS = ["GD_CHECK", "FSC", "NEXTDAY_INFO"];
       let inactivityTimer = null;
       let syAutoRefreshTimer = null;
+      let syBackupIdleCallback = null;
+      let syLiveStream = null;
       let syAutoRefreshInFlight = false;
       let syAutoRefreshAbortController = null;
       let pendingSyRefresh = null;
@@ -4841,6 +4859,7 @@
       let dragStartX = 0;
       let lastDragX = 0;
       let didDrag = false;
+      let timelinePointerId = null;
       let currentSy = null;
       let tomorrowMealRequestKey = "";
       let latestQuery = "SY";
@@ -4891,7 +4910,7 @@
         setText("#active-flight", "SY");
         setText("#metric-gate", "---");
         setText("#metric-bdt", "----");
-        setText("#metric-std", "----");
+        setText("#metric-etd", "----");
         const reservationBookedEl = document.querySelector("#reservation-booked");
         if (reservationBookedEl) reservationBookedEl.innerHTML = tripleHtml(["---", "---", "---"]);
         ["", "tomorrow-"].forEach((prefix) => ["reservation-f", "reservation-j", "reservation-y", "meal-email-f", "meal-email-j", "meal-email-y", "meal-spml-f", "meal-spml-j", "meal-spml-y", "meal-pd-f", "meal-pd-j", "meal-pd-y"].forEach((id) => setText(`#${prefix}${id}`, "---")));
@@ -4923,6 +4942,7 @@
         if (salesReportButton) salesReportButton.hidden = true;
         nodes.forEach((node) => {
           node.dataset.status = "pending";
+          if (["WCH", "DUP_NAME", "PSM", "NBRD", "MISSING_BAG", "INITIAL_FLIGHT", "BDT_CHG"].includes(node.dataset.key)) node.hidden = true;
           node.dataset.time = "----";
           node.dataset.inputTime = "";
           node.removeAttribute("data-alert");
@@ -5126,7 +5146,7 @@
           const node = document.querySelector(`.node[data-key="${key}"]`);
           if (!node) return;
           node.dataset.status = count > 0 ? "issue" : "done";
-          node.dataset.time = count > 0 ? String(count) : "CLEAR";
+          node.dataset.time = String(count);
           if (count > 0) node.dataset.alert = String(count);
           else node.removeAttribute("data-alert");
           if (count === 0) rememberCompletedSyNode(currentSy, key, "CLEAR");
@@ -5337,6 +5357,7 @@
         const node = document.querySelector('.node[data-key="MISSING_BAG"]');
         if (!node) return;
         const count = Math.max(0, Number(openCount) || 0);
+        node.hidden = count === 0;
         node.dataset.status = count ? 'issue' : 'done';
         node.dataset.time = count ? String(count) : 'CLEAR';
         if (count) node.dataset.alert = String(count);
@@ -5408,6 +5429,38 @@
         return `<b>Rate</b> ${escapeHtml(rate)}<br><b>Sheet</b> ${escapeHtml(status)}<br><b>Cell</b> ${escapeHtml(cell)}<br>${escapeHtml(reason)}`;
       }
 
+      function infTicketNodeDetailHtml(rows = currentSy?.infTicketAudit || []) {
+        if (!rows.length) return "No infant passenger record found.";
+        return rows.map((row) => {
+          const adultName = row.adultName || "Adult name unavailable";
+          const infantTicket = row.infantTicketNo || "MISSING — added to WARNING";
+          return `<span class="node-card-detail"><b>Adult</b> ${escapeHtml(adultName)}<br><b>Adult ticket</b> ${escapeHtml(row.adultTicketNo || "Missing")}<br><b>Infant ticket</b> ${escapeHtml(infantTicket)}</span>`;
+        }).join("");
+      }
+
+      function ticketMatchAudit(sy = currentSy) {
+        const checkedIn = countTriple(sy?.checkedIn).map(Number);
+        const ticketed = countTriple(sy?.checkedInTicketed).map(Number);
+        const ready = checkedIn.every(Number.isFinite) && ticketed.every(Number.isFinite);
+        const inad = [0, 0, 0];
+        warningRecordPools(sy).forEach((row) => {
+          if (isDeletedPassengerRecord(row) || hasTicket(row) || !/(^|\/)INAD($|\/)/.test(rowActiveServiceCodes(row))) return;
+          const cabin = String(row.cabin || row.passengerRecord?.cabin || "").toUpperCase();
+          const seat = String(row.seat || row.passengerRecord?.seat || "");
+          const cabinIndex = cabin.startsWith("F") ? 0 : cabin.startsWith("B") || cabin.startsWith("J") ? 1 : (/^(?:[12]|1\d)[A-Z]$/i.test(seat) ? (Number.parseInt(seat, 10) <= 2 ? 0 : 1) : 2);
+          inad[cabinIndex] += 1;
+        });
+        const adjustedTicketed = ticketed.map((value, index) => value + inad[index]);
+        const differences = checkedIn.map((value, index) => value - adjustedTicketed[index]);
+        return { ready, checkedIn, ticketed, inad, adjustedTicketed, differences, match: ready && differences.every((value) => value === 0) };
+      }
+
+      function ticketMatchNodeDetailHtml(audit = ticketMatchAudit()) {
+        if (!audit.ready) return "Waiting for both C and CET check-in totals.";
+        const triple = (values) => values.map((value) => String(value).padStart(3, "0")).join(" / ");
+        return `<b>C check-in</b> ${triple(audit.checkedIn)}<br><b>CET ticketed</b> ${triple(audit.ticketed)}<br><b>Unticketed INAD added</b> ${triple(audit.inad)}<br><b>Adjusted CET</b> ${triple(audit.adjustedTicketed)}<br><b>Result</b> ${audit.match ? "MATCH" : `MISMATCH (${triple(audit.differences)})`}`;
+      }
+
       function updateNodeCard(index) {
         const node = nodes[index];
         if (!node) return;
@@ -5419,6 +5472,14 @@
         nodeCard.classList.toggle("is-below", parseFloat(node.style.top || "0") < 34);
         if (key === "FSC") {
           nodeCard.querySelector("p").innerHTML = fscNodeDetailHtml();
+          return;
+        }
+        if (key === "INF_TKT") {
+          nodeCard.querySelector("p").innerHTML = infTicketNodeDetailHtml();
+          return;
+        }
+        if (key === "TKT") {
+          nodeCard.querySelector("p").innerHTML = ticketMatchNodeDetailHtml();
           return;
         }
         const detailText = step?.detailText ? `<span class="node-card-detail">${escapeHtml(step.detailText)}</span>` : "";
@@ -5442,6 +5503,16 @@
           nodeCard.classList.add("is-open");
           return;
         }
+        if (key === "INF_TKT") {
+          nodeCard.querySelector("p").innerHTML = infTicketNodeDetailHtml();
+          nodeCard.classList.add("is-open");
+          return;
+        }
+        if (key === "TKT") {
+          nodeCard.querySelector("p").innerHTML = ticketMatchNodeDetailHtml();
+          nodeCard.classList.add("is-open");
+          return;
+        }
         const status = key === "GD_CHECK" ? (step?.complete ? "Matched" : "Not matched") : (step?.complete ? "Complete" : "Not complete");
         const detail = step?.tooltip || (inputTime && inputTime !== "----" ? `${label} entered at ${inputTime}` : `${label} not entered`);
         const detailText = step?.detailText ? `<span class="node-card-detail">${escapeHtml(step.detailText)}</span>` : "";
@@ -5457,11 +5528,8 @@
         const ok = confirm("确认发送 NEXTDAY INFO 邮件到 LAXHMXH@hallmark-aviation.com 和 dg-lax-lounge@qantas.com.au？");
         if (!ok) return;
         const step = stepByKey("NEXTDAY_INFO");
-        const details = nextDayInfoDetailsFromSy(currentSy);
-        if (!details) {
-          alert("缺少 JCSY 转机数据：SY 的 RET 人数已经读取，但发送 NEXTDAY INFO 还需要先完成 JCSY 查询。");
-          return;
-        }
+        // The server reads tomorrow's SY/JCSY from the latest log. The open
+        // dashboard may show today's flight or an older log snapshot.
         if (step) {
           // A previous successful send may still be green in both the live step
           // and local cache. Clear it before displaying this new attempt.
@@ -5469,16 +5537,8 @@
           step.searched = true;
           step.time = "";
           step.reason = "";
-          step.details = details;
-          step.detailText = [
-            `First Class: ${details.firstClass}`,
-            `Business Class: ${details.businessClass}`,
-            `Economy Class: ${details.economyClass}`,
-            "",
-            `International Transfer: ${details.internationalTransfer}`,
-            `Domestic Transfer: ${details.domesticTransfer}`,
-            `Overnight passengers: ${details.overnightPassengers}`,
-          ].join("\n");
+          step.details = {};
+          step.detailText = "";
           step.tooltip = "NEXTDAY INFO sending email...";
         }
         forgetCompletedSyNode(currentSy, "NEXTDAY_INFO");
@@ -5494,7 +5554,6 @@
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               flightNo: currentSy.flightNo || "MU586",
-              details,
             }),
             signal: sendController.signal,
             authTimeoutMs: 10000,
@@ -5627,27 +5686,16 @@
       }
 
       function placeNodes() {
-        updateOrbitPath();
-        scrollOffset = clampScrollOffset(scrollOffset);
-        const pathLength = missionPath.getTotalLength();
-        renderStageArcs(pathLength);
-        const progress = progressStops();
         nodes.forEach((node) => {
-          const index = Number(node.dataset.index);
-          const nodeProgress = progress[index] + scrollOffset;
-          const isVisible = nodeProgress >= 0 && nodeProgress <= 1;
-          const point = missionPath.getPointAtLength(pathLength * clamp(nodeProgress, 0, 1));
-          node.style.left = `${(point.x / 1200) * 100}%`;
-          node.style.top = `${(point.y / 360) * 100}%`;
-          node.style.opacity = isVisible ? "1" : "0";
-          node.style.pointerEvents = isVisible ? "auto" : "none";
+          node.setAttribute("aria-label", `${node.dataset.label}: ${node.dataset.time}`);
         });
-        updateSelectedNode(selectedIndex);
       }
 
       function resetTimelineCenter(key = null) {
-        selectedIndex = key ? findNodeIndexByKey(key) : determineDefaultCenter();
-        scrollOffset = clampScrollOffset(centerProgress - progressStops()[selectedIndex]);
+        if (key) {
+          selectedIndex = findNodeIndexByKey(key);
+          nodes.forEach((node) => node.classList.toggle("is-active", node.dataset.key === key));
+        }
         placeNodes();
       }
 
@@ -5656,25 +5704,31 @@
       }
 
       function beginTimelineDrag(event) {
-        if (event.target.closest(".node")) return;
         didDrag = false;
+        // Touch uses native horizontal scrolling; mouse drag also works on cards.
+        if (event.pointerType !== "mouse" || event.button !== 0 || event.target.closest(".node-card")) return;
+        timelinePointerId = event.pointerId;
         dragStartX = event.clientX;
         lastDragX = event.clientX;
-        timeline.classList.add("is-dragging");
-        timeline.setPointerCapture(event.pointerId);
       }
 
       function moveTimelineDrag(event) {
-        if (!timeline.classList.contains("is-dragging")) return;
+        if (timelinePointerId !== event.pointerId) return;
+        if (!didDrag && Math.abs(event.clientX - dragStartX) <= 5) return;
+        if (!didDrag) {
+          didDrag = true;
+          timeline.classList.add("is-dragging");
+          timeline.setPointerCapture(event.pointerId);
+        }
         const delta = event.clientX - lastDragX;
-        if (Math.abs(event.clientX - dragStartX) > 4) didDrag = true;
         lastDragX = event.clientX;
-        scrollOffset = clampScrollOffset(scrollOffset + delta / timeline.clientWidth);
-        selectedIndex = findNearestCenter();
-        placeNodes();
+        timeline.scrollLeft -= delta;
+        event.preventDefault();
       }
 
       function endTimelineDrag(event) {
+        if (timelinePointerId !== event.pointerId) return;
+        timelinePointerId = null;
         timeline.classList.remove("is-dragging");
         if (timeline.hasPointerCapture(event.pointerId)) timeline.releasePointerCapture(event.pointerId);
       }
@@ -5682,16 +5736,14 @@
       function positionMobileResultPanel(options = {}) {
         resultPanel.style.top = "";
         resultPanel.classList.remove("is-mobile-popup");
-        if (!mobileOrbitQuery.matches || options.panelClass === "is-full-page" || options.hideHeader) return false;
-        const anchor = document.querySelector(".details-surface") || document.querySelector(".details-panel") || document.querySelector(".flight-panel");
-        const top = Math.max(76, Math.min((anchor?.getBoundingClientRect().top || 120) + 8, window.innerHeight - 180));
-        resultPanel.classList.add("is-mobile-popup");
-        resultPanel.style.top = `${top}px`;
-        return true;
+        const centered = options.panelClass !== "is-full-page" && !options.hideHeader;
+        resultPanel.classList.toggle("is-centered-popup", centered);
+        return centered;
       }
 
       function renderPanel(title, eyebrow, body, options = {}) {
         hideTimelineNodeCard();
+        document.querySelector(".details-panel")?.classList.remove("is-meal-open");
         resultPanel.style.top = "";
         resultPanel.className = `result-panel ${options.panelClass || ""}`.trim();
         resultPanel.dataset.panelTitle = title || "";
@@ -6178,7 +6230,7 @@
       }
 
       function renderPassenger(data) {
-        resultPanel.innerHTML = "";
+        resetPanelState();
         showPassengerModal(data, "Passenger Record");
       }
 
@@ -6213,7 +6265,7 @@
         ];
         const nbrdSignature = (sy.bnAudit || []).filter(rowHasCkinNbrdIssue).map((row) => [row.bn, row.seat, ckinNbrdDetails(row).join("|")]);
         const warningSignature = buildWarningRows(sy).map((row) => [row.bn, row.seat, row.warningType, row.warningReason, (row.acknowledgements || []).length]);
-        return JSON.stringify([sy.flightNo, sy.flightDate, sy.gate, sy.bdt, sy.sd, sy.reservation, sy.reservationTicketed, sy.checkedIn, sy.checkedInTicketed, sy.spml || {}, sy.jcsy, steps, sy.chdList || [], govSignature, webEdiIssueBnList(sy), nbrdSignature, warningSignature, sy.psmList || [], sy.wchList || []]);
+        return JSON.stringify([sy.flightNo, sy.flightDate, sy.gate, sy.bdt, sy.sd, sy.ed, sy.reservation, sy.reservationTicketed, sy.checkedIn, sy.checkedInTicketed, sy.spml || {}, sy.jcsy, steps, sy.chdList || [], govSignature, webEdiIssueBnList(sy), nbrdSignature, warningSignature, sy.psmList || [], sy.wchList || [], sy.infTicketAudit || [], ticketMatchAudit(sy)]);
       }
 
       function mealCountsText(counts, showNonMeals = false) {
@@ -6302,7 +6354,7 @@
       }
 
       function selectMealOrderDay(day) {
-        const selectedDay = day === "tomorrow" ? "tomorrow" : "today";
+        const selectedDay = "today";
         document.querySelectorAll("[data-meal-day]").forEach((tab) => tab.setAttribute("aria-selected", String(tab.dataset.mealDay === selectedDay)));
         ["today", "tomorrow"].forEach((panelDay) => {
           const panel = document.querySelector(`#reservation-table-${panelDay}`);
@@ -6313,20 +6365,6 @@
         updateMealOrderShellState();
       }
 
-      async function refreshTomorrowMealOrder(todaySy) {
-        const flightNo = String(todaySy?.flightNo || "MU586").toUpperCase();
-        const requestKey = `${flightNo}|${todaySy?.flightDate || ""}`;
-        if (tomorrowMealRequestKey === requestKey) return;
-        tomorrowMealRequestKey = requestKey;
-        renderMealOrderColumns(null, "tomorrow-");
-        try {
-          const data = await fetchSearch(`SY+ ${flightNo}`);
-          if (tomorrowMealRequestKey !== requestKey || currentSy !== todaySy) return;
-          if (data?.sy) renderMealOrderColumns(data.sy, "tomorrow-");
-        } catch (_) {
-          if (tomorrowMealRequestKey === requestKey) renderMealOrderColumns(null, "tomorrow-");
-        }
-      }
 
       function updateFlightFromSy(sy, options = {}) {
         const signature = syRenderSignature(sy);
@@ -6334,6 +6372,10 @@
         lastSyRenderSignature = signature;
         const sameFlight = currentSy?.flightNo === sy?.flightNo && currentSy?.flightDate === sy?.flightDate;
         currentSy = sy;
+        // A backup reconciliation still replaces the in-memory payload, but it
+        // should not rewrite the entire dashboard when nothing visible changed.
+        // Repeated DOM updates were the main source of the periodic page hitch.
+        if (unchanged) return;
         if (!sameFlight) {
           currentWarningAckMap = {};
           nodes.forEach((node) => node.removeAttribute("data-clear-locked"));
@@ -6345,13 +6387,13 @@
         setText("#active-flight", `${sy.flightNo || "SY"} / ${sy.flightDate || "TODAY"}`);
         setText("#metric-gate", sy.gate || "---");
         setText("#metric-bdt", sy.bdt || "----");
-        setText("#metric-std", sy.sd || "----");
+        setText("#metric-etd", sy.ed || "----");
         const reservationBookedEl = document.querySelector("#reservation-booked");
         if (reservationBookedEl) reservationBookedEl.innerHTML = tripleHtml(countTriple(sy.reservation));
         renderMealOrderColumns(sy);
         const checkinAcceptedEl = document.querySelector("#checkin-accepted");
         if (checkinAcceptedEl) checkinAcceptedEl.innerHTML = tripleHtml(countTriple(sy.checkedIn));
-        refreshTomorrowMealOrder(sy);
+        selectMealOrderDay("today");
         const isClearLocked = (_key) => false;
         const chdIssues = isClearLocked("CHD") ? 0 : (sy.chdList || []).filter((row) => row.hasChdCode === false).length;
         const gov = sy.govAqq || {};
@@ -6382,14 +6424,13 @@
         const duplicateNameCount = duplicateNameRows(sy).length;
         setBadgeText("#duplicate-bags-count", duplicateBagCount);
         setBadgeText("#duplicate-names-count", duplicateNameCount);
-        setActionIssueState("#duplicate-bags-action", duplicateBagCount > 0);
         const duplicateBagsAction = document.querySelector("#duplicate-bags-action");
         const duplicateNamesAction = document.querySelector("#duplicate-names-action");
         if (duplicateNamesAction) {
           duplicateNamesAction.classList.remove("warning-action");
           duplicateNamesAction.querySelector(".detail-action-badge")?.classList.remove("warning-badge");
         }
-        if (duplicateBagsAction) duplicateBagsAction.hidden = duplicateBagCount === 0;
+        if (duplicateBagsAction) duplicateBagsAction.hidden = true;
         if (duplicateNamesAction) duplicateNamesAction.hidden = duplicateNameCount === 0;
         if (bagReportButton) bagReportButton.hidden = !(sy.bagSheet?.hasData);
         refreshSalesReportButton(sy);
@@ -6397,9 +6438,61 @@
         const persistedGreenNodes = completedSyNodeState(sy);
         nodes.forEach((node) => {
           const key = node.dataset.key;
+          if (["INITIAL_FLIGHT", "BDT_CHG"].includes(key)) {
+            node.hidden = !["MU586", "MU578"].includes(String(sy.flightNo || "").trim().toUpperCase());
+            if (node.hidden) return;
+          }
           // Missing Bag is driven by its own report endpoint. Do not let the
           // recurring SY refresh replace its last result with a locked node.
           if (key === "MISSING_BAG") return;
+          if (key === "WCH" || key === "PSM") {
+            const count = (key === "WCH" ? sy.wchList || [] : sy.psmList || []).length;
+            node.hidden = count === 0;
+            node.dataset.status = "done";
+            node.dataset.time = String(count);
+            return;
+          }
+          if (key === "DUP_NAME") {
+            node.hidden = duplicateNameCount === 0;
+            node.dataset.status = "done";
+            node.dataset.time = String(duplicateNameCount);
+            return;
+          }
+          if (key === "DUP_BAG") {
+            node.hidden = duplicateBagCount === 0;
+            node.dataset.status = duplicateBagCount > 0 ? "issue" : "done";
+            node.dataset.time = String(duplicateBagCount);
+            if (duplicateBagCount) node.dataset.alert = String(duplicateBagCount);
+            else node.removeAttribute("data-alert");
+            return;
+          }
+          if (key === "MEAL_ORDER") {
+            const found = Boolean(sy.spml?.email?.found);
+            const shortage = document.querySelector("#reservation-table-today")?.classList.contains("has-shortage");
+            node.dataset.status = found ? (shortage ? "issue" : "done") : "pending";
+            node.dataset.time = found ? (shortage ? "SHORTAGE" : "READY") : "----";
+            return;
+          }
+          if (key === "INF_TKT") {
+            const rows = sy.infTicketAudit || [];
+            const missing = rows.filter((row) => !row.infantTicketNo).length;
+            const infantTicketCount = rows.filter((row) => Boolean(row.infantTicketNo)).length;
+            node.dataset.status = missing ? "issue" : "done";
+            node.dataset.time = String(infantTicketCount);
+            if (missing) node.dataset.alert = String(missing);
+            else node.removeAttribute("data-alert");
+            return;
+          }
+          if (key === "TKT") {
+            const audit = ticketMatchAudit(sy);
+            const mismatchCount = audit.ready ? audit.differences.reduce((sum, value) => sum + Math.abs(value), 0) : 0;
+            node.dataset.status = !audit.ready ? "pending" : (audit.match ? "done" : "issue");
+            node.dataset.time = !audit.ready ? "----" : (audit.match ? "MATCH" : String(mismatchCount));
+            if (mismatchCount) node.dataset.alert = String(mismatchCount);
+            else node.removeAttribute("data-alert");
+            return;
+          }
+          if (key === "NBRD") node.hidden = nbrdCount === 0;
           const step = stepByKey(key);
           const persistedGreenNode = PERSISTENT_GREEN_NODE_KEYS.includes(key) ? persistedGreenNodes[key] : null;
           let issueCount = 0;
@@ -6409,10 +6502,10 @@
           node.dataset.inputTime = step?.time || "";
           if (["GD_CHECK", "NEXTDAY_INFO"].includes(key)) { started = Boolean(step?.searched || step?.complete || step?.time); complete = Boolean(step?.complete); time = complete ? (step?.time || (key === "GD_CHECK" ? "MATCH" : "SENT")) : (started ? (key === "GD_CHECK" ? "ISSUE" : "MISSING") : "----"); }
           if (key === "FSC") { const sync = fscRateSyncInfo(); started = Boolean(sync.rate || sync.reason || sync.error); complete = isFscRateSheetFilled(sync); time = sync.rate || "----"; }
-          if (key === "CHD") { issueCount = chdIssues; started = (sy.chdList || []).length > 0; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
+          if (key === "CHD") { issueCount = chdIssues; started = Array.isArray(sy.chdList); complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
           if (key === "GOV") { issueCount = govCount; started = Boolean(sy.govAqq); complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
-          if (key === "WEBEDI") { issueCount = webediCount; started = Boolean(sy.govAqq) && previousStarted; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
-          if (key === "NBRD") { issueCount = unackedNbrdCount; started = nbrdCount > 0 && previousStarted; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
+          if (key === "WEBEDI") { issueCount = webediCount; started = Boolean(sy.govAqq); complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
+          if (key === "NBRD") { issueCount = unackedNbrdCount; started = nbrdCount > 0; complete = started && issueCount === 0; time = started ? (issueCount || "CLEAR") : "----"; }
           if (persistedGreenNode?.complete) {
             complete = true;
             started = true;
@@ -6421,7 +6514,7 @@
           }
           const locked = !complete && !previousStarted && !["GD_CHECK", "FSC", "NEXTDAY_INFO", "CHD", "GOV", "WEBEDI", "NBRD"].includes(key);
           node.dataset.status = key === "FSC" ? (complete ? "done" : "pending") : normalizeStatus(Boolean(complete), issueCount || (started && !complete ? 1 : 0), locked);
-          node.dataset.time = String(time);
+          node.dataset.time = String(key === "CHD" ? (sy.chdList || []).length : key === "GOV" ? govCount : key === "WEBEDI" ? webediCount : key === "NBRD" ? nbrdCount : time);
           if (complete && PERSISTENT_GREEN_NODE_KEYS.includes(key)) rememberCompletedSyNode(sy, key, time);
           if (["CHD", "GOV", "WEBEDI", "NBRD"].includes(key)) node.removeAttribute("data-clear-locked");
           if (issueCount) node.dataset.alert = String(issueCount);
@@ -6440,7 +6533,11 @@
         const bn = normalizedBn(overlay.dataset.passengerBn || "");
         const updatedRecord = allPassengerRecords(currentSy).find((row) => normalizedBn(row.bn || row.passengerRecord?.bn) === bn);
         const modal = overlay.querySelector(".passenger-modal");
-        if (!updatedRecord || !modal) return;
+        if (!updatedRecord) {
+          closePassengerModal();
+          return;
+        }
+        if (!modal) return;
         const scrollTop = modal.scrollTop;
         const title = overlay.dataset.passengerTitle || "Passenger Record";
         modal.innerHTML = `<button class="panel-close" type="button" data-close-modal>×</button><div class="passenger-modal-mobile-title"><span>${escapeHtml(title)}</span><strong>BN${escapeHtml(String(updatedRecord.bn || bn || "---").replace(/^BN/i, ""))}</strong></div>${passengerRecordCard(updatedRecord, title)}`;
@@ -6448,7 +6545,7 @@
       }
 
       function rerenderActiveRealtimePanel() {
-        const title = resultPanel?.dataset?.panelTitle || "";
+        const title = resultPanel?.innerHTML?.trim() ? resultPanel.dataset.panelTitle || "" : "";
         if (title === "CHD List") renderChdPanel();
         else if (title === "GOV/AQQ") renderGovPanel();
         else if (title === "WEB/EDI/RS") renderWebEdiPanel();
@@ -6459,9 +6556,8 @@
 
       function renderSy(data) {
         if (!data?.sy) throw new Error(data?.error || "No SY payload returned.");
+        resetPanelState();
         updateFlightFromSy(data.sy);
-        resultPanel.innerHTML = "";
-        resultPanel.className = "result-panel";
       }
 
       function isSyQuery(value) {
@@ -6479,7 +6575,7 @@
 
       function normalizeSyQuery(value) {
         const normalized = String(value || "SY").trim().replace(/\s+/g, " ").toUpperCase();
-        return normalized === "SY+" ? "SY" : normalized;
+        return /^(?:SY|SY\+)$/.test(normalized) && window.mufcFlight ? `SY ${window.mufcFlight.flightNo}` : (normalized === "SY+" ? "SY" : normalized);
       }
 
       function syQueryDateYmd(value) {
@@ -6508,9 +6604,41 @@
       function stopSyAutoRefresh() {
         if (syAutoRefreshTimer) clearInterval(syAutoRefreshTimer);
         syAutoRefreshTimer = null;
+        if (syBackupIdleCallback !== null && window.cancelIdleCallback) window.cancelIdleCallback(syBackupIdleCallback);
+        syBackupIdleCallback = null;
+        syLiveStream?.close();
+        syLiveStream = null;
         syAutoRefreshAbortController?.abort();
         syAutoRefreshAbortController = null;
         syAutoRefreshInFlight = false;
+      }
+
+      function connectSyLiveStream() {
+        if (!window.EventSource || document.hidden || !isTodaySyQuery(activeSyQuery)) return;
+        syLiveStream?.close();
+        syLiveStream = new EventSource(`${resolveApiBase()}/sy-live-stream`);
+        syLiveStream.addEventListener("refresh", (event) => {
+          if (document.hidden || syAutoRefreshInFlight) return;
+          try {
+            const update = JSON.parse(event.data || "{}");
+            if (normalizeSyQuery(update.query) !== normalizeSyQuery(activeSyQuery)) return;
+            refreshSy({ background: true });
+          } catch (_) {
+            // EventSource reconnects automatically; the backup timer remains active.
+          }
+        });
+      }
+
+      function scheduleSyBackupRefresh() {
+        if (document.hidden || syAutoRefreshInFlight || syBackupIdleCallback !== null) return;
+        if (!window.requestIdleCallback) {
+          refreshSy({ background: true });
+          return;
+        }
+        syBackupIdleCallback = window.requestIdleCallback(() => {
+          syBackupIdleCallback = null;
+          refreshSy({ background: true });
+        }, { timeout: 10000 });
       }
 
       function finalTimelineNodesComplete() {
@@ -6563,7 +6691,10 @@
         stopSyAutoRefresh();
         if (!isTodaySyQuery(activeSyQuery)) return;
         if (immediate) refreshSy({ background: true });
-        if (!document.hidden) syAutoRefreshTimer = setInterval(refreshSy, SY_AUTO_REFRESH_MS);
+        if (!document.hidden) {
+          connectSyLiveStream();
+          syAutoRefreshTimer = setInterval(scheduleSyBackupRefresh, SY_BACKUP_REFRESH_MS);
+        }
       }
 
       function syncSyAutoRefreshWithVisibility() {
@@ -6583,7 +6714,7 @@
         if (isSySearch) {
           activeSyQuery = normalizeSyQuery(raw);
           if (!isTodaySyQuery(activeSyQuery)) stopSyAutoRefresh();
-        } else resultPanel.innerHTML = "";
+        } else resetPanelState();
         try {
           const data = await fetchSearch(raw);
           if (data.error) throw new Error(data.error);
@@ -6596,7 +6727,7 @@
         } catch (error) {
           if (isSySearch) {
             clearSyDashboard();
-            resultPanel.innerHTML = "";
+            resetPanelState();
             return;
           }
           renderPanel("Search Error", raw, `<p class="panel-muted status-fail">${escapeHtml(error?.message || "Search failed.")}</p>`);
@@ -6817,7 +6948,7 @@
         setText("#warning-count", rows.length || "0");
         detailsManifest?.classList.toggle("is-warning-hidden", rows.length === 0);
         if (warningAction) {
-          warningAction.hidden = rows.length === 0;
+        warningAction.hidden = unackedCount === 0;
           warningAction.classList.toggle("is-critical-warning", unackedCount > 0);
           warningAction.classList.toggle("is-acknowledged-warning", rows.length > 0 && unackedCount === 0);
         }
@@ -6882,6 +7013,18 @@
           const bagMismatchReason = bagCountMismatchReason(row);
           if (bagMismatchReason) {
             addWarning(row, "BAG PSM", bagMismatchReason);
+          }
+        }
+        for (const row of sy?.infTicketAudit || []) {
+          if (!row.infantTicketNo) {
+            addWarning({
+              name: row.adultName,
+              ticketNo: row.adultTicketNo,
+              infantTicketNo: "",
+              infantName: row.infantName,
+              seat: "",
+              bn: "INF"
+            }, "INF TKT", `${row.adultName || "Adult passenger"} has adult ticket ${row.adultTicketNo || "missing"}, but the infant ticket${row.infantName ? ` for ${row.infantName}` : ""} is missing.`);
           }
         }
         return applyWarningAck(rows.sort((a, b) => Number(a.bn || 9999) - Number(b.bn || 9999) || String(a.warningType || "").localeCompare(String(b.warningType || ""))));
@@ -7033,7 +7176,7 @@
           body: JSON.stringify({ entries, replace: true }),
         }).catch((error) => {
           lastNbrdSheetSyncKey = "";
-          console.warn("Unable to sync CKIN/NBRD BN list to boarding sheet.", error);
+          console.warn("Unable to sync CKIN/NBRD BN list to both boarding sheets.", error);
         });
       }
 
@@ -7055,7 +7198,8 @@
         const node = document.querySelector('.node[data-key="NBRD"]');
         if (node && (sy.bnAudit || []).length) {
           node.dataset.status = unackedNbrdCount > 0 ? "issue" : "done";
-          node.dataset.time = unackedNbrdCount > 0 ? String(nbrdCount) : "CLEAR";
+          node.dataset.time = String(nbrdCount);
+          node.hidden = nbrdCount === 0;
           if (unackedNbrdCount > 0) node.dataset.alert = String(nbrdCount);
           else node.removeAttribute("data-alert");
         }
@@ -7211,17 +7355,7 @@
       }
 
       function showReportPage(mode = activeReportMode) {
-        resetPanelState();
-        if (passwordPage) passwordPage.hidden = true;
-        if (baggagePage) baggagePage.hidden = true;
-        if (testPage) testPage.hidden = true;
-        if (reportPage) reportPage.hidden = false;
-        document.body.classList.add("is-report-view");
-        setReportMode(mode, { forceToday: true, resetOutput: true });
-        closeLoginMenu();
-        closeFlightMenu();
-        closeMobilePanel();
-        reportPage?.scrollTo({ top: 0, left: 0, behavior: "auto" });
+        location.assign(`/report.html?mode=${encodeURIComponent(mode)}`);
       }
 
       function hideReportPage() {
@@ -7229,18 +7363,7 @@
       }
 
       function openTestPage() {
-        resetPanelState();
-        if (passwordPage) passwordPage.hidden = true;
-        if (reportPage) reportPage.hidden = true;
-        if (baggagePage) baggagePage.hidden = true;
-        if (testPage) testPage.hidden = false;
-        document.body.classList.add("is-report-view");
-        closeLoginMenu();
-        closeFlightMenu();
-        closeMobilePanel();
-        if (testOutput) testOutput.innerHTML = `<p class="panel-muted test-search-hint">Enter a bag tag number to search</p>`;
-        testBagSearchInput?.focus();
-        testPage?.scrollTo({ top: 0, left: 0, behavior: "auto" });
+        location.assign("/baggage.html");
       }
 
       function setBaggageDefaults(forceToday = false) {
@@ -7307,7 +7430,7 @@
       }
 
       function isValidTestBagTag(value) {
-        return /^[A-Z]{2}\d{6}$/.test(normalizeTestBagTag(value));
+        return /^[A-Z0-9]{2}\d{6}$/.test(normalizeTestBagTag(value));
       }
 
       function currentUserName() {
@@ -7414,7 +7537,7 @@
           : activeMode === "location"
             ? field("Current location", "location", record.location || "", "required")
             : activeMode === "exchange"
-              ? `<div class="test-exchange-summary is-wide"><b>Current tag</b><span class="test-exchange-flow"><span class="test-exchange-old">${escapeHtml(record.bagTag)}</span><span class="test-exchange-arrow" aria-hidden="true">→<span class="test-exchange-arrow-label">Exchange</span></span><span class="test-exchange-new">New tag</span></span></div>${field("New tag number", "newTagNumber", "", 'maxlength="8" pattern="[A-Z]{2}[0-9]{6}" required')}`
+              ? `<div class="test-exchange-summary is-wide"><b>Current tag</b><span class="test-exchange-flow"><span class="test-exchange-old">${escapeHtml(record.bagTag)}</span><span class="test-exchange-arrow" aria-hidden="true">→<span class="test-exchange-arrow-label">Exchange</span></span><span class="test-exchange-new">New tag</span></span></div>${field("New tag number", "newTagNumber", "", 'maxlength="8" pattern="[A-Z0-9]{2}[0-9]{6}" required')}`
               : [
                 field("Tracking number", "trackingNumber", record.trackingNumber || "", "required"),
                 field("Shipping fee", "shippingFee", record.shippingFee || "", "required"),
@@ -7489,7 +7612,7 @@
       async function submitTestExchange(form) {
         const newTagNumber = normalizeTestBagTag(formValue(form, "newTagNumber"));
         const onHandRowNumber = formValue(form, "onHandRowNumber");
-        if (!isValidTestBagTag(newTagNumber)) throw new Error("New tag must match MU123456 format.");
+        if (!isValidTestBagTag(newTagNumber)) throw new Error("New tag must match MU123456, B6123456, or 3U515289 format.");
         if (!onHandRowNumber) throw new Error("Select an Open On-hand tag.");
         const data = await apiJson(`/cbs-unresolved-baggage/${encodeURIComponent(onHandRowNumber)}/update`, {
           method: "POST",
@@ -7505,7 +7628,7 @@
       function renderTestBagEntry(mode, entry = {}, index = 0) {
         const today = ymdFromDate(new Date());
         const selected = (value, target) => value === target ? " selected" : "";
-        const bagTagInput = `<label class="test-field"><span>Bag tag number</span><input name="bagTag" value="${escapeHtml(entry.bagTag || "")}" maxlength="8" pattern="[A-Z]{2}[0-9]{6}" title="Use MU123456 format" autocomplete="off" required /></label>`;
+        const bagTagInput = `<label class="test-field"><span>Bag tag number</span><input name="bagTag" value="${escapeHtml(entry.bagTag || "")}" maxlength="8" pattern="[A-Z0-9]{2}[0-9]{6}" title="Use MU123456, B6123456, or 3U515289 format" autocomplete="off" required /></label>`;
         if (mode === "outbound") {
           const status = entry.status || "Not load bags";
           return `<fieldset class="test-create-entry" data-test-bag-entry>
@@ -7592,7 +7715,7 @@
         if (!testOutput || testBagSearchPending) return;
         const bagTag = normalizeTestBagTag(testBagSearchInput?.value);
         if (!isValidTestBagTag(bagTag)) {
-          testOutput.innerHTML = `<p class="panel-muted status-fail">Bag tag must match MU123456 format.</p>`;
+          testOutput.innerHTML = `<p class="panel-muted status-fail">Bag tag must match MU123456, B6123456, or 3U515289 format.</p>`;
           return;
         }
         if (testBagSearchInput) testBagSearchInput.value = bagTag;
@@ -7639,7 +7762,7 @@
         const saved = [];
         for (const entry of entries) {
           const bagTag = normalizeTestBagTag(entry.bagTag);
-          if (!isValidTestBagTag(bagTag)) throw new Error("Each bag tag must match MU123456 format.");
+          if (!isValidTestBagTag(bagTag)) throw new Error("Each bag tag must match MU123456, B6123456, or 3U515289 format.");
           const isRush = mode === "outbound" && entry.status === "Outbound rush";
           const payload = {
             direction: mode,
@@ -7671,7 +7794,7 @@
         const mode = form.dataset.updateMode || "rush";
         if (mode === "exchange") {
           const newTagNumber = normalizeTestBagTag(formValue(form, "newTagNumber"));
-          if (!isValidTestBagTag(newTagNumber)) throw new Error("New tag must match MU123456 format.");
+          if (!isValidTestBagTag(newTagNumber)) throw new Error("New tag must match MU123456, B6123456, or 3U515289 format.");
           const unresolved = await apiJson('/cbs-unresolved-baggage');
           const onHand = (unresolved?.rows || []).find((row) => !row.resolvedAt && normalizeTestBagTag(row.bagTag) === normalizeTestBagTag(bagTag));
           if (!onHand) throw new Error("This bag does not have an Open On-hand case.");
@@ -8511,18 +8634,30 @@
         const node = Array.from(nodes).find((item) => item.dataset.key === key);
         if (node?.dataset.clearLocked === "true") {
           hideTimelineNodeCard();
-          resultPanel.innerHTML = "";
+          resetPanelState();
           nodeTime.textContent = nodeDisplayTime(key);
           return;
         }
+        if (key === "MEAL_ORDER") {
+          hideTimelineNodeCard();
+          resetPanelState();
+          document.querySelector(".details-panel").classList.toggle("is-meal-open");
+          selectMealOrderDay("today");
+          return;
+        }
+        document.querySelector(".details-panel")?.classList.remove("is-meal-open");
+        if (key === "WCH") { hideTimelineNodeCard(); return renderWchPanel(); }
+        if (key === "DUP_NAME") { hideTimelineNodeCard(); return renderDuplicateNamesPanel(); }
+        if (key === "PSM") { hideTimelineNodeCard(); return renderPsmPanel(); }
         if (key === "CHD") { hideTimelineNodeCard(); return renderChdPanel(); }
         if (key === "GOV") { hideTimelineNodeCard(); return renderGovPanel(); }
         if (key === "WEBEDI") { hideTimelineNodeCard(); return renderWebEdiPanel(); }
         if (key === "NBRD") { hideTimelineNodeCard(); return renderNbrdPanel(); }
+        if (key === "DUP_BAG") { hideTimelineNodeCard(); return renderDuplicateBagsPanel(); }
         const step = stepByKey(key);
         const inputTime = nodeDisplayTime(key);
         nodeTime.textContent = inputTime;
-        resultPanel.innerHTML = "";
+        resetPanelState();
         if (key === "NET") {
           hideTimelineNodeCard();
           return;
@@ -8581,7 +8716,7 @@
         closeFlightMenu();
         passwordPage.hidden = false;
         passwordStatus.textContent = "";
-        resultPanel.innerHTML = "";
+        resetPanelState();
         newPasswordInput.focus();
       });
 
@@ -8632,8 +8767,6 @@
         searchPassenger();
       }
 
-      normalFlightButton?.addEventListener("click", () => openFlightDashboard("MU586"));
-      delayedFlightButton?.addEventListener("click", () => openFlightDashboard("MU9586"));
 
       document.addEventListener("click", (event) => {
         if (!event.target.closest(".flight-tools")) closeFlightMenu();
@@ -8644,13 +8777,9 @@
       });
 
       nodes.forEach((node) => {
-        node.addEventListener("pointerdown", (event) => {
-          event.stopPropagation();
-          didDrag = false;
-        });
         node.addEventListener("click", (event) => {
           event.preventDefault();
-          didDrag = false;
+          if (didDrag && event.detail !== 0) return;
           if (node.dataset.key === "MISSING_BAG") {
             window.location.href = "cbs.html?section=missing";
             return;
@@ -8684,13 +8813,8 @@
         });
       });
 
-      homeNavLink.addEventListener("click", (event) => { event.preventDefault(); showHomePage(); });
       bagReportButton?.addEventListener("click", closeFlightMenuAfterAction(renderBagReport));
       salesReportButton?.addEventListener("click", closeFlightMenuAfterAction(downloadSalesReport));
-      reportNavLink.addEventListener("click", (event) => { event.preventDefault(); showReportPage("sales"); });
-      mobileReportNavLink.addEventListener("click", (event) => { event.preventDefault(); showReportPage("sales"); });
-      testNavLink?.addEventListener("click", (event) => { event.preventDefault(); openTestPage(); });
-      mobileTestNavLink?.addEventListener("click", (event) => { event.preventDefault(); openTestPage(); });
       reportCloseButton.addEventListener("click", hideReportPage);
       baggageCloseButton?.addEventListener("click", hideReportPage);
       testCloseButton?.addEventListener("click", hideReportPage);
@@ -8703,7 +8827,7 @@
         const addBagTagButton = event.target.closest("[data-test-add-bag-tag]");
         if (addBagTagButton) {
           const list = addBagTagButton.closest("[data-test-outbound-bag-tags]");
-          list.insertAdjacentHTML("beforeend", `<div class="test-bag-tag-row"><label class="test-field"><span>Bag tag number</span><input name="bagTag" maxlength="8" pattern="[A-Z]{2}[0-9]{6}" title="Use MU123456 format" autocomplete="off" required autofocus /></label><button class="test-bag-tag-remove" type="button" data-test-remove-bag-tag aria-label="Remove bag tag">−</button></div>`);
+          list.insertAdjacentHTML("beforeend", `<div class="test-bag-tag-row"><label class="test-field"><span>Bag tag number</span><input name="bagTag" maxlength="8" pattern="[A-Z0-9]{2}[0-9]{6}" title="Use MU123456, B6123456, or 3U515289 format" autocomplete="off" required autofocus /></label><button class="test-bag-tag-remove" type="button" data-test-remove-bag-tag aria-label="Remove bag tag">−</button></div>`);
           list.lastElementChild?.querySelector('input[name="bagTag"]')?.focus();
           return;
         }
@@ -8864,7 +8988,7 @@
 
       resultPanel.addEventListener("click", async (event) => {
         if (event.target.closest("[data-close-panel]")) {
-          resultPanel.innerHTML = "";
+          resetPanelState();
           resultPanel.className = "result-panel";
           resultPanel.style.top = "";
           delete resultPanel.dataset.panelTitle;
@@ -8961,10 +9085,7 @@
         if (modalBackdrop?.dataset.dragging === "true") return;
         if (event.target.closest("[data-close-modal]") || modalBackdrop) closePassengerModal();
         if (mobileOrbitQuery.matches && resultPanel.classList.contains("is-mobile-popup")) {
-          resultPanel.innerHTML = "";
-          resultPanel.className = "result-panel";
-          resultPanel.style.top = "";
-          resultPanel._passengerRows = [];
+          resetPanelState();
         }
       });
 
@@ -8990,6 +9111,12 @@
       timeline.addEventListener("pointermove", moveTimelineDrag);
       timeline.addEventListener("pointerup", endTimelineDrag);
       timeline.addEventListener("pointercancel", endTimelineDrag);
+      timeline.addEventListener("click", (event) => {
+        if (didDrag && event.detail !== 0) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      }, true);
 
       if (window.location.hash === "#open-login") {
         closeFlightMenu();

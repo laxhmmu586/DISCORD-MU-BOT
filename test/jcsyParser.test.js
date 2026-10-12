@@ -3,6 +3,64 @@ const assert = require('node:assert/strict');
 
 const { findSYInfo, parseJcsyRows } = require('../syParser');
 
+test('reads the October 11 JCSY report queried on October 10 with a repeated final page', () => {
+  const firstPage = `MU5411 /TFU/            00/00/001
+MU0547 /BKK/     2115+1 00/00/002
+MU6017 /CMB/     1425+2 00/00/001
+MU5818 /KMG/     1855+1 00/00/003
+MU5163 /PEK/     1930+1 00/02/035
+FM9223 /URC/     1950+1 00/00/002
+MU5673 /DLC/     1955+1 00/00/001
+FM9341 /DYG/     2025+1 00/00/002
+ZH9528 /SZX/     2025+1 00/00/002
+MU5441 /TFU/     2045+1 00/00/005
+MU5433 /CKG/     2050+1 00/00/006
+MU5541 /FOC/     2115+1 00/02/002
+MU9027 /KHN/     2120+1 00/00/004
+FM9459 /KWE/     2125+1 00/02/002
+MU2193 /XIY/     2130+1 00/01/005
+MU5165 /PEK/     2135+1 00/00/006
+MU5603 /SHE/     2135+1 00/00/004
+MU5220 /TYN/     2140+1 00/00/001
+FM9383 /NNG/     2145+1 00/00/003
+MU5359 /SZX/     2145+1 00/00/002
+MU6984 /YNT/     2155+1 00/00/002`;
+  const lastPage = `FM9323 /CGO/     2205+1 00/00/003
+MU5470 /CTU/     2210+1 00/00/001
+FM9119 /TSN/     2215+1 00/00/002
+MU5521 /TAO/     2215+1 00/00/002
+MU2544 /WUH/     2220+1 00/00/001
+FM9529 /WNZ/     2225+1 00/00/001
+MU2882 /NKG/     2230+1 00/01/003
+MU5533 /TNA/     2300+1 00/00/003
+MU6367 /TNA/     0955+2 00/00/001
+FM9465 /KMG/     1050+2 00/00/001
+MU5329 /CAN/     1330+2 00/04/000
+##TOTAL##  /            00/12/109`;
+  const log = `2026 October 10, Saturday, 05:25:48
+>SY
+SY: MU586/11OCT26 LAX/0 OP/NAM
+RET000/012/109
+2026 October 10, Saturday, 05:25:50
+>JCSY:,O
+JCSY:MU0586/11OCT/LAX,O
+${firstPage}
+2026 October 10, Saturday, 05:25:52
+>PN1
+JCSY:MU0586/11OCT/LAX,O                                                        -
+${lastPage}
+2026 October 10, Saturday, 05:25:54
+>PN1
+JCSY:MU0586/11OCT/LAX,O                                                        -
+${lastPage}`;
+  const info = findSYInfo(log, '11OCT', { preferredFlightNo: 'MU586', strictPreferredFlight: true });
+  assert.equal(info.jcsy.complete, true);
+  assert.equal(info.jcsy.rows.length, 32);
+  assert.equal(info.jcsy.rows.reduce((sum, row) => sum + row.business, 0), 12);
+  assert.equal(info.jcsy.rows.reduce((sum, row) => sum + row.economy, 0), 109);
+  assert.equal(info.jcsy.time, '05:25:50');
+});
+
 test('parses JCSY rows whose business count uses two digits', () => {
   const rows = parseJcsyRows([
     'MU1111 /HHL/            00/00/002 00/00/000+00 00/00/000+00 00/00/002 000/0000',

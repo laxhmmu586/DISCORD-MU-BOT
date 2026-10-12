@@ -1,6 +1,44 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { normalizeOperationalFlightNo, normalizeJcsyFlightNo, sectionMatchesFlightOperationDate, matchesSyFlightRecord, hasUnclearedApiSourceRisk, extractPassportCountryCodes, extractInvoluntaryUpgrade, enrichCheckinAgentStatsFromLog, hasChdServiceCode, isCcAirportClosedContent } = require('../syParser');
+const { normalizeOperationalFlightNo, normalizeJcsyFlightNo, sectionMatchesFlightOperationDate, matchesSyFlightRecord, hasUnclearedApiSourceRisk, extractPassportCountryCodes, extractInvoluntaryUpgrade, enrichCheckinAgentStatsFromLog, hasChdServiceCode, isCcAirportClosedContent, isCclClosedContent } = require('../syParser');
+
+test('GD PDF checks receive the flight date and registration from SY', () => {
+  const log = [
+    '2026 October 11, Sunday, 11:55:00',
+    '> SY: MU586/11OCT26 LAX/0 CI1145/NAM',
+    '777/773L/B-7868 GTD/130 POS/GATE BN299 AK00000 CD00000',
+    'BDT1145 SD1230 ED1230 CI1145'
+  ].join('\n');
+  const info = require('../syParser').findSYInfo(log, '11OCT26', { preferredFlightNo: 'MU586' });
+  assert.deepEqual(info.crewApis.gdCheckQuery.expectedFlight, {
+    flightNo: 'MU586', flightDate: '11OCT26', aircraftRegistration: 'B-7868'
+  });
+});
+
+test('CCL completes for the FLIGHT CLOSED FOR LDP response', () => {
+  assert.equal(isCclClosedContent('>CCL:\nFLIGHT CLOSED FOR LDP'), true);
+  assert.equal(isCclClosedContent('> CCL:\n> ACCEPTED'), true);
+  assert.equal(isCclClosedContent('> CCL:'), false);
+});
+
+test('CCL timeline step uses the FLIGHT CLOSED FOR LDP timestamp', () => {
+  const log = [
+    '2026 September 30, Wednesday, 11:55:00',
+    '> sy',
+    '> SY: MU586/30SEP26 LAX/0  CI1145/NAM',
+    '> 777/773L/B7367      GTD/130 POS/GATE BN299 AK00000 CD00000',
+    '> BDT1145   SD1230   ED1230   CI1145',
+    '2026 September 30, Wednesday, 12:08:58',
+    '>CCL:',
+    'FLIGHT CLOSED FOR LDP'
+  ].join('\n');
+
+  const info = require('../syParser').findSYInfo(log, '30SEP26', { preferredFlightNo: 'MU586' });
+  const ccl = info.crewApis.steps.find((step) => step.key === 'ccl');
+
+  assert.equal(ccl.complete, true);
+  assert.equal(ccl.time, '12:08:58');
+});
 
 test('CC only completes after the ACCEPTED/AIRPORT CLOSED response', () => {
   assert.equal(isCcAirportClosedContent('> CC:\\n> CC: MU586/04SEP26,Y\\n> WARNING - PAX/BAG NOT RECONCILED\\n> 4 BAGS TO BE REMOVED'), false);
@@ -196,6 +234,37 @@ test('keeps WCHR codes on unstarred GOV/FCL passenger continuation lines', () =>
   ]);
 });
 
+test('audits infant tickets from PD and PR displays', () => {
+  const log = [
+    '2026 September 28, Monday, 07:20:00',
+    '> sy',
+    '> SY: MU586/28SEP26 LAX/0 CI0700/NAM',
+    '> 777/773L/B7367 GTD/130 POS/GATE BN299 AK00000 CD00000',
+    '> BDT1145 SD1230 ED1230 CI0700',
+    '2026 September 28, Monday, 07:25:15',
+    '>pd*,inf,etwn',
+    ' PD: MU586/28SEP26*LAX,INF,ETWN OP/NAM',
+    ' 1. 1DU/YU 35J R PVG IFBA FBA/2PC INF',
+    ' ET NUMBER:7819485677257/1 ET NUMBER:INF7812581123635/1',
+    ' 2. 1REN/YUEY+ 31D V PVG IFBA FBA/1PC INF',
+    ' ET NUMBER:7819474603239/1',
+    '2026 September 28, Monday, 07:26:00',
+    '>fb 218',
+    ' PR: MU586/28SEP26*LAX,BN218 PNR RL PHBVD2',
+    ' 1. LIU/XUEYAN BN218 61D V PVG INF1/10 FBA/2PC IFBA/1PC',
+    ' ET TKNE/7819443528883/1',
+    ' ET TKNE/INF7812419955191/1 SNR61D',
+    'INF-WANG/EVELYN'
+  ].join('\n');
+
+  const info = require('../syParser').findSYInfo(log, '28SEP26', { preferredFlightNo: 'MU586' });
+  assert.deepEqual(info.infTicketAudit, [
+    { adultName: 'DU/YU', adultTicketNo: '7819485677257', infantName: '', infantTicketNo: '7812581123635', hasInfant: true },
+    { adultName: 'LIU/XUEYAN', adultTicketNo: '7819443528883', infantName: 'WANG/EVELYN', infantTicketNo: '7812419955191', hasInfant: true },
+    { adultName: 'REN/YUEY', adultTicketNo: '7819474603239', infantName: '', infantTicketNo: '', hasInfant: true }
+  ]);
+});
+
 test('latest passenger display clears an earlier false WCHC advisory match', () => {
   const log = [
     '2026 September 22, Tuesday, 12:50:00',
@@ -227,4 +296,12 @@ test('latest passenger display clears an earlier false WCHC advisory match', () 
   assert.deepEqual(info.wchList, [
     { bn: '293', name: 'TEST/WHEELCHAIR', seat: '35A', codes: ['WCHC'] }
   ]);
+});
+
+test('supplied October 8 IF and BDT commands complete MU586 October 10 preparation',()=>{
+ const log = '2026 October 08, Thursday, 12:00:00\n> SY: MU586/08OCT26 LAX/0  CI1145/NAM\n777/773L/B7367      GTD/130 POS/GATE BN299 AK00000 CD00000\nBDT1145   SD1230   ED1230   CI1145\n\n2026 October 08, Thursday, 12:30:21\n>IF MU586/10OCT\nCKI TIME 1233                                                                   \n                                                                                \n\n2026 October 08, Thursday, 12:30:26\n>FU MU586/10OCT/LAX/BDT/1145';
+ const info=require('../syParser').findSYInfo(log,'08OCT26',{preferredFlightNo:'MU586'});
+ for(const [key,time] of [['initialFlight','12:30:21'],['bdtChg','12:30:26']]) {
+ const step=info.crewApis.steps.find(s=>s.key===key);assert.equal(step.complete,true);assert.equal(step.time,time);
+ }
 });
