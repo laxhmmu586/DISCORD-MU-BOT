@@ -14,10 +14,10 @@
     .choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.choice{display:flex;min-height:220px;padding:24px;flex-direction:column;color:#fff;text-decoration:none;border:1px solid #ffffff24;border-radius:20px;box-shadow:0 14px 30px #092d5724;transition:.2s}.choice--delayed{background:linear-gradient(145deg,#503d78,#342653)}.choice--damaged{background:linear-gradient(145deg,#7b3845,#54232e)}.choice:hover,.choice:focus-visible{box-shadow:0 19px 36px #092d5740;transform:translateY(-4px);outline:3px solid #ffffff80;outline-offset:-4px}.icon{display:grid;place-items:center;width:52px;height:52px;margin-bottom:20px;border-radius:15px;color:#fff;background:#ffffff18;border:1px solid #ffffff2e}.icon svg{width:30px;height:30px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.choice strong{color:#fff;font-size:19px;line-height:1.25}.choice p{margin:8px 0 18px;color:#eef5ff;font-size:13px;line-height:1.55}.go{margin-top:auto;color:#fff;font-weight:850;font-size:13px}
     @media(max-width:700px){.choices{grid-template-columns:1fr}.choice{min-height:0}.icon{margin-bottom:14px}header{margin-top:20px}}
   </style>
-  <link rel="stylesheet" href="/aviation-glass.css?v=20261011-mobile">
+  <link rel="stylesheet" href="/aviation-glass.css?v=20261011-controls">
 </head>
 <body class="aviation-page aviation-baggage">
-  <header><button class="language-toggle" id="language-toggle" type="button">English</button></header>
+  <header><span class="mufc-wordmark">MUFC</span><button class="language-toggle" id="language-toggle" type="button">English</button></header>
   <main><section class="card"><h1><span class="baggage-title-zh">行李服务</span><span class="baggage-title-en" lang="en">Baggage Assistance</span></h1><p class="intro"><span class="zh">请选择最符合您情况的服务类型，我们将引导您填写相应表格。</span><span class="en">Choose the option that best describes your baggage issue. We will direct you to the appropriate form.</span></p>
     <nav class="choices" aria-label="Baggage assistance options">
       <a class="choice choice--delayed" href="pir-form.html?type=AHL"><span class="icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M16 5a11 11 0 1 1-8.5 4M5 5v7h7M16 10v7l5 3"/></svg></span><strong><span class="zh">行李延误／遗失</span><span class="en">Delayed / Lost</span></strong><span class="go"><span class="zh">填写报告 →</span><span class="en">Open report →</span></span></a>

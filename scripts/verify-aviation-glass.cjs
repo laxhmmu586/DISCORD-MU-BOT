@@ -83,6 +83,7 @@ const { operationalDate } = require('../flightContext');
       assert.equal(await page.locator('#itinerary .stop-date').count(),2);
       await page.locator('#itinerary .stop-code').last().fill('hkg');
       assert.equal(await page.locator('#itinerary .stop-code').last().inputValue(),'HKG');
+      assert.equal(await page.locator('#itinerary .stop').last().evaluate(row=>row.querySelector('.stop-code').compareDocumentPosition(row.querySelector('.stop-date')) & Node.DOCUMENT_POSITION_FOLLOWING),4,'Destination precedes its date');
       await page.locator('#itinerary button:not([hidden])').last().click();
       assert.equal(await page.locator('#itinerary .stop-date').count(),1);
       await page.evaluate(()=>{window.ZXingBrowser={BrowserPDF417Reader:class{async decodeFromConstraints(){return{stop(){}}}}};});
@@ -134,18 +135,53 @@ const { operationalDate } = require('../flightContext');
       assert.equal(await page.evaluate(()=>signatureDirty),true);
       await page.locator('#clear-signature').click();
       assert.equal(await page.evaluate(()=>signatureDirty),false);
+      const otherFiles=page.locator('[data-attachment-type="other"] input[type=file]');
+      await otherFiles.setInputFiles([
+        {name:'first.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-1.4 fixture one')},
+        {name:'second.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-1.4 fixture two')}
+      ]);
+      assert.equal(await page.locator('[data-attachment-type="other"] .attachment-remove').count(),2);
+      await page.locator('[data-attachment-type="other"] .attachment-remove').first().click();
+      await page.locator('[data-attachment-type="other"] .attachment-remove').first().click();
+      assert.equal(await page.locator('[data-attachment-type="other"] .attachment-remove').count(),0);
     }
     for (const width of [320,390,430,768,1172]) {
       await page.setViewportSize({width,height:1000});
-      assert.equal(await page.locator('header .brand,header .mark,header strong').count(),0,'No top-left brand');
+      assert.equal(await page.locator('header .mufc-wordmark').innerText(),'MUFC');
+      assert.equal(await page.locator('header .mufc-wordmark img,header .mufc-wordmark svg,header .mark').count(),0,'Plain MUFC text without a logo icon');
       assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${name}/${width}: horizontal overflow`);
       layouts++;
       if (name.startsWith('pir-form.html')) {
+        for(const kind of ['color','type','descriptor']) {
+          const control=page.locator(`[data-picker="${kind}"] [data-picker-trigger]`);
+          const frame=await control.evaluate(el=>{const s=getComputedStyle(el);return{border:parseFloat(s.borderTopWidth),color:s.borderTopColor,left:parseFloat(s.borderLeftWidth),height:el.getBoundingClientRect().height};});
+          assert.ok(frame.border>=1 && frame.left>=4 && frame.color!=='rgba(0, 0, 0, 0)' && frame.height>=44,`${kind}: clearly framed selection control`);
+        }
+        const attachmentGeometry=await page.locator('[data-attachment-group]').evaluateAll(groups=>groups.map(group=>({group:group.getBoundingClientRect().width,tile:group.querySelector('.attachment-upload').getBoundingClientRect().width})));
+        assert.ok(attachmentGeometry.every(box=>box.tile>=box.group-30),'Upload tile fills its group rather than a narrow nested grid cell');
+        if(width<=430) {
+          const groups=await page.locator('[data-attachment-group]').evaluateAll(els=>els.map(el=>({top:el.getBoundingClientRect().top,bottom:el.getBoundingClientRect().bottom,width:el.getBoundingClientRect().width})));
+          assert.ok(groups.every(group=>group.width>=200),'Readable full-width mobile attachment groups');
+          assert.ok(groups[1].top>=groups[0].bottom+10 && groups[2].top>=groups[1].bottom+10,'Attachment groups stack with separation');
+        }
         await page.locator('[data-picker="color"] [data-picker-trigger]').click();
         assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${name}/${width}: picker overflow`);
         await page.locator('[data-picker="color"] [data-option="BK"]').click();
         assert.equal(await page.locator('[data-bag-color]').inputValue(),'BK');
+        await page.locator('[data-picker="type"] [data-picker-trigger]').click();
+        await page.locator('[data-picker="type"] [data-option="02"]').click();
+        assert.equal(await page.locator('[data-bag-type]').inputValue(),'02');
+        await page.locator('[data-picker="descriptor"] [data-picker-trigger]').click();
+        const hadDescriptor=(await page.locator('[data-bag-descriptors]').inputValue()).split(',').includes('L');
+        await page.locator('[data-picker="descriptor"] [data-option="L"]').click();
+        assert.equal((await page.locator('[data-bag-descriptors]').inputValue()).split(',').includes('L'),!hadDescriptor);
+        await page.locator('[data-picker="descriptor"] [data-picker-close]').click();
       }
+      if(width===390 && name.startsWith('pir-form.html')) {
+        await page.locator('.bag-selector').first().screenshot({path:path.resolve(__dirname,'../.verification/aviation-glass',name.replace(/[?=]/g,'-')+'-pickers.png')});
+        await page.locator('.attachment-grid').screenshot({path:path.resolve(__dirname,'../.verification/aviation-glass',name.replace(/[?=]/g,'-')+'-attachments.png')});
+      }
+      if(width===390 && name==='240.html') await page.locator('#itinerary').screenshot({path:path.resolve(__dirname,'../.verification/aviation-glass','240-itinerary.png')});
       if (width===390) await page.screenshot({path:path.resolve(__dirname,'../.verification/aviation-glass',name.replace(/[?=]/g,'-')+'.png'),fullPage:true});
     }
   }
