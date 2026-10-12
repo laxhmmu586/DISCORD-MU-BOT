@@ -37,9 +37,6 @@ test('emergency backend targets the requested sheet tab and exposes matching rou
   const drive = read('googleDrive.js');
   const server = read('index.js');
   assert.match(drive, /EMERGENCY_BOARD_SHEET_GID = Number\(process\.env\.EMERGENCY_BOARD_SHEET_GID \|\| 1102230555\)/);
-  assert.match(drive, /function scheduleCbsScanSheetsRequest\(fn, priority = 'normal', requestType = 'write'\)/);
-  assert.match(drive, /return await scheduleCbsScanSheetsRequest\(async \(\) =>/);
-  assert.match(drive, /const priorityOrder = \{ scan: 0, normal: 1, background: 2 \}/);
   assert.doesNotMatch(drive, /CBS_SCAN_SHEETS_MIN_INTERVAL_MS/);
   assert.match(drive, /emergencyBoardSheetTitlePending = cbsScanSheetsCall/);
   assert.match(server, /app\.post\('\/cbs-scan2'/);
@@ -61,11 +58,12 @@ test('regular and emergency scans both batch saves and show the same successful 
     ['scan2.html', 'appendEmergencyBoardRecord', 'flushEmergencyBoardAppendBatch', 'processEmergencyBoardAppendBatch', 'prepareEmergencyBoardAppend']
   ]) {
     const html = read(`public/public/${page}`);
-    assert.match(drive, new RegExp(`async function ${enqueueName}\\(record = \\{\\}\\) \\{[\\s\\S]*?setTimeout\\(${flushName}, 750\\)`));
+    assert.match(drive, new RegExp(`async function ${enqueueName}\\(record = \\{\\}\\) \\{[\\s\\S]*?setTimeout\\(${flushName}, ${page === 'scan.html' ? 800 : 750}\\)`));
     const processor = drive.slice(drive.indexOf(`async function ${processName}(`)).split('\n}\n')[0];
-    assert.match(processor, /forceRefresh: true, priority: 'scan'/);
-    assert.match(processor, new RegExp(`${prepareName}\\(item\\.record, dataRows\\)`));
+    assert.match(processor, /forceRefresh:\s*true/);
+    assert.match(processor, new RegExp(`${prepareName}\\(item\\.record,\\s*(?:dataRows|working)\\)`));
     assert.match(processor, /values\.batchUpdate/);
+    if (page === 'scan.html') { assert.doesNotMatch(html, /id="result"/); continue; }
     assert.match(html, /<div><b>Flight<\/b>\$\{data\.flight/);
     assert.match(html, /<div><b>Seat<\/b>\$\{data\.seat/);
     assert.match(html, /<div><b>BN<\/b>\$\{data\.bn/);

@@ -655,6 +655,7 @@ function enrichCrewApisFromLog(log, info, targetYmd, preparationLog = log) {
       flightDate: gdEmailDate,
       emailSubjectDate: gdEmailDate,
       emailSubject: gdEmailSubject,
+      expectedFlight: { flightNo: info.flightNo, flightDate: info.flightDate, aircraftRegistration: info.aircraftRegistration },
       crew: crewManifestRows
     },
     nextDayInfoQuery: {
@@ -737,7 +738,7 @@ function parseSYSection(sectionObj) {
   const flightMatch = section.match(/SY:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
   if (!flightMatch) return null;
 
-  const aircraftMatch = section.match(/\n\s*(\d{3})\/([A-Z0-9]+)\/([A-Z0-9]+)\b/i);
+  const aircraftMatch = section.match(/\n\s*(\d{3})\/([A-Z0-9]+)\/([A-Z0-9-]+)\b/i);
   const timeMatch = section.match(/\bBDT(\d{4})\s+SD(\d{4})\s+ED(\d{4})\b/i);
   const catLine = section.match(/\bCAT\/[^\n\r]*/i)?.[0] || '';
   const routeLine = section.match(/\*[^\n\r]*\bR\d{3}\/\d{3}\/\d{3}[^\n\r]*/i)?.[0] || '';

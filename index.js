@@ -115,7 +115,10 @@ const {
   getRecordCases,
   updateRecordCase,
   appendCbsScanNbrdBns,
+  resolveCbsScanNbrdBn,
+  getCbsScanNbrdRecords,
   deleteCkinNbrdFromBothSheets,
+  deleteCbsScanNbrdBn,
   getCbsScanRecords,
   setCbsScanRecordEntered,
   setCbsScanRecordsEntered,
@@ -424,7 +427,12 @@ const SALES_DETAILS_SYNC_RETRY_MS = 5 * 60 * 1000;
 const preflightStepCache = new Map();
 
 function preflightCacheKey(syInfo, isoDate, stepKey) {
-  return [syInfo?.flightNo || 'SY', isoDate || todayIsoUtc(), stepKey].join('|');
+  const parts = [syInfo?.flightNo || 'SY', isoDate || todayIsoUtc(), stepKey];
+  if (stepKey === 'gdCheck') {
+    const query = syInfo?.crewApis?.gdCheckQuery;
+    parts.push('pdf-v1', JSON.stringify(query?.expectedFlight || {}), JSON.stringify(query?.crew || []));
+  }
+  return parts.join('|');
 }
 
 function findCrewApiStep(syInfo, stepKey) {
@@ -678,7 +686,7 @@ async function refreshSyPreflightEmailChecks(syInfo, isoDate) {
   const gdStep = syInfo.crewApis?.steps?.find((step) => step.key === 'gdCheck');
   if (!applyCachedPreflightStep(syInfo, isoDate, 'gdCheck') && gdStep && gdQuery?.flightNo && gdQuery?.flightDate) {
     const gdSubject = gdQuery.emailSubject || `GD for ${gdQuery.flightNo}/${gdQuery.flightDate}`;
-    const gdResult = await getGdCheckEmail(gdQuery.flightNo, gdQuery.emailSubjectDate || gdQuery.flightDate, gdQuery.crew || [], gdSubject);
+    const gdResult = await getGdCheckEmail(gdQuery.flightNo, gdQuery.emailSubjectDate || gdQuery.flightDate, gdQuery.crew || [], gdSubject, gdQuery.expectedFlight || { flightNo: syInfo.flightNo, flightDate: syInfo.flightDate, aircraftRegistration: syInfo.aircraftRegistration });
     gdStep.complete = Boolean(gdResult.complete);
     gdStep.time = gdResult.sentAt ? gdResult.sentAt.slice(11, 19) : '';
     gdStep.searched = true;
@@ -691,7 +699,7 @@ async function refreshSyPreflightEmailChecks(syInfo, isoDate) {
     gdStep.searchDate = gdResult.searchDate || '';
     gdStep.subject = gdSubject;
     gdStep.tooltip = gdStep.complete
-      ? `GD CHECK complete: ${gdResult.matched || 0}/${gdResult.total || 0} crew matched`
+      ? `GD CHECK complete: ${gdResult.matched || 0}/${gdResult.total || 0} crew matched; flight/date/registration matched`
       : `GD CHECK issue: ${gdResult.reason || gdSubject}`;
     cacheCompletedPreflightStep(syInfo, isoDate, 'gdCheck');
   } else if (gdStep && !gdQuery?.flightNo) {
@@ -3188,6 +3196,9 @@ app.get('/cbs-scan/live-stream', async (req, res) => {
 });
 
 app.post('/cbs-scan', async (req, res) => {
+  const rawScan = req.body?.rawScan || req.body?.raw || req.body?.text || '';
+  const selectedFlight = normalizeBoardingFlight(req.query.flightNo || req.body?.flightNo || 'MU586');
+  const key = nbrdConfirmations.key(selectedFlight, req.query.flightDate || operationalDate(), rawScan);
   try {
     const parsed = parseCbsPdf417(req.body?.rawScan || req.body?.raw || req.body?.text || '');
     const saved = boardingLive
@@ -3198,6 +3209,17 @@ app.post('/cbs-scan', async (req, res) => {
     const status = err?.code === 'DUPLICATE_BN' || err?.code === 'NBRD_MESSAGE' ? 409 : (err?.code === 'WRONG_FLIGHT' ? 400 : (['SHEETS_QUOTA', 'NBRD_UNAVAILABLE'].includes(err?.code) ? 503 : 422));
     return res.status(status).json({ error: err?.message || 'CBS scan save failed', code: err?.code || 'SCAN_ERROR', flight: err?.flight || '', bn: err?.bn || '', detail: err?.detail || '' });
   }
+});
+
+app.get('/cbs-scan/nbrd-bns', async (_req, res) => {
+  try { return res.json({ok:true, rows:await getCbsScanNbrdRecords()}); }
+  catch (err) { return res.status(503).json({error:err?.message || 'Unable to load NBRD.'}); }
+});
+
+app.post('/cbs-scan/nbrd-bns/resolve', async (req, res) => {
+  if (req.body?.resolved !== undefined && typeof req.body.resolved !== 'boolean') return res.status(400).json({error:'Resolved must be true or false.'});
+  try { return res.json({ok:true, ...await resolveCbsScanNbrdBn(req.body?.bn, req.body?.resolved !== false)}); }
+  catch (err) { return res.status(err?.code === 'NBRD_NOT_FOUND' ? 404 : 422).json({error:err?.message || 'Unable to resolve NBRD.', code:err?.code}); }
 });
 
 app.post('/cbs-scan2', async (req, res) => {
@@ -3313,6 +3335,15 @@ app.post('/irr-cases/:rowNumber', async (req, res) => {
 });
 
 
+const boardingNbrdSnapshots = new Map();
+let boardingNbrdSequence = 0;
+function boardingNbrdSnapshotVersion(flight, date, log) {
+  const key = flight + '|' + date;
+  const signature = require('node:crypto').createHash('sha256').update(log).digest('hex');
+  if (boardingNbrdSnapshots.get(key)?.signature !== signature) boardingNbrdSnapshots.set(key, { signature, version:Date.now()*1000+(boardingNbrdSequence++ % 1000) });
+  return boardingNbrdSnapshots.get(key).version;
+}
+
 async function saveCkinNbrdEntriesToBothSheets(entries, options = {}) {
   const [regular, emergency] = await Promise.all([
     appendCbsScanNbrdBns(entries, options),
@@ -3382,7 +3413,7 @@ app.post('/cbs-scan/records/:rowNumber/entered', async (req, res) => {
 app.post('/cbs-scan/nbrd-bns', async (req, res) => {
   try {
     const entries = Array.isArray(req.body?.entries) ? req.body.entries : (Array.isArray(req.body?.bns) ? req.body.bns : [req.body?.bn].filter(Boolean));
-    const result = await saveCkinNbrdEntriesToBothSheets(entries, { replace: req.body?.replace === true });
+    const result = await appendCbsScanNbrdBns(entries, { replace: req.body?.replace === true, version: req.body?.version });
     return res.json({ ok: true, ...result });
   } catch (err) {
     return res.status(422).json({ error: err?.message || 'NBRD BN save failed', code: err?.code || 'NBRD_SAVE_ERROR' });
@@ -3391,7 +3422,7 @@ app.post('/cbs-scan/nbrd-bns', async (req, res) => {
 
 async function handleCbsScanNbrdDelete(req, res) {
   try {
-    const result = await deleteCkinNbrdFromBothSheets(req.body?.bn || req.query?.bn || '');
+    const result = await deleteCbsScanNbrdBn(req.params.rowNumber, req.body?.bn || req.query?.bn || '');
     return res.json({ ok: true, ...result });
   } catch (err) {
     const status = err?.code === 'NBRD_NOT_FOUND' || err?.code === 'NBRD_MISMATCH' ? 404 : 422;
@@ -4607,6 +4638,7 @@ app.get(
         if (!syInfo) {
           return res.json({ error: `No SY section found for ${requestedFlightNo}${syDate ? `/${syDate}` : ''}.` });
         }
+        const boardingNbrdVersion = boardingNbrdSnapshotVersion(selectedFlight, selectedDate, log);
         const year = Number(yearSuffix || new Date().getUTCFullYear().toString().slice(-2));
         const fullYear = year >= 100 ? year : (year >= 70 ? 1900 + year : 2000 + year);
         const m = String(syInfo.flightDate || '').toUpperCase().match(/(\d{2})([A-Z]{3})(\d{2})?/);
@@ -4670,7 +4702,7 @@ app.get(
         syInfo.spml = spml;
         setImmediate(() => syncSalesDetailsFromTodaySy(isoDate)
           .catch((err) => console.warn('Sales details sync skipped:', err?.message || err)));
-        const syPayload = { ...syInfo, bagSheet: syBagInfo, permissions: authContext.permissions };
+        const syPayload = { ...syInfo, boardingNbrdVersion, bagSheet: syBagInfo, permissions: authContext.permissions };
         // Exclude per-user permissions from the shared change signature.  The
         // event contains no flight data and merely asks clients to reconcile.
         publishSyRefresh(rawQuery, { ...syPayload, permissions: undefined });
