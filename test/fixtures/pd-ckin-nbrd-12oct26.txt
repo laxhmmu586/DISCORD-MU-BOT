@@ -1,0 +1,79 @@
+2026 October 11, Sunday, 19:31:16
+>pd*,ckin/nbrd
+ PD: MU586/12OCT26*LAX,CKIN/NBRD                                         OP/NAM
+777/773L GTD/???? POS/GATE BDT1145 SD1230 ED1230  SA1715  FT1345
+CAT/006/052/255  ** SPML 1DB 1HN 2VO ** CREW 32J 61C 74C **
+  1. 1TEST/ONE+           BN001  33H    R PVG ABC123 FBA/1PC I O ASR FF EDI
+                                              PSPT AQQ/FCL/USA ESTA/A/USA ET
+                                              CTC NBRD DOCS DOCA/D ASVC
+      CKIN HK1 LKCK/0000000000000/CHKLEG
+      CKIN NBRD VISA
+  2. 1TEST/TWO+        KB3 BN004  44L    S PVG ABC123 FBA/1PC I O ASR EDI
+                                              PSPT AQQ/FCL/USA ESTA/Z/USA ET
+                                              CTC NBRD DOCS DOCA/D
+      CKIN HK1 LKCK/0000000000000/CHKLEG                                       +
+
+
+2026 October 11, Sunday, 19:31:18
+>pn1
+ PD: MU586/12OCT26*LAX,CKIN/NBRD                                         OP/NAM-
+777/773L GTD/???? POS/GATE BDT1145 SD1230 ED1230  SA1715  FT1345
+      CKIN NBRD CTC LAKE
+  3. 1TEST/THREE+       KB3 BN003  44K    S PVG ABC123 FBA/1PC I O ASR EDI
+                                              PSPT AQQ/FCL/USA ESTA/Z/USA ET
+                                              CTC NBRD DOCS DOCA/D
+      CKIN HK1 LKCK/0000000000000/CHKLEG
+      CKIN NBRD UIPG
+  4. 1TEST/FOUR+       KB3 BN002  44J    S PVG ABC123 FBA/1PC I O ASR FF EDI
+                                              PSPT AQQ/FCL/USA ESTA/Z/USA ET
+                                              CTC NBRD DOCS DOCA/D
+      CKIN HK1 LKCK/0000000000000/CHKLEG
+      CKIN NBRD SEAT CHANGE
+  5. 1TEST/FIVE+      GB2 BN006  41L    R PVG ABC123 FBA/1PC I O ASR EDI
+                                              PSPT AQQ/FCL/USA ESTA/A/USA ET
+                                              CTC NBRD DOCS
+      CKIN HK1 LKCK/0000000000000/CHKLEG
+      CKIN NBRD 25874
+  6. 1TEST/SIX+      GB2 BN007  41K    R PVG ABC123 FBA/1PC I O ASR EDI
+                                              PSPT AQQ/FCL/USA ESTA/A/USA ET
+                                              CTC NBRD DOCS
+      CKIN HK1 LKCK/0000000000000/CHKLEG
+      CKIN NBRD SEATS                                                          +
+
+
+2026 October 11, Sunday, 19:31:19
+>pn1
+ PD: MU586/12OCT26*LAX,CKIN/NBRD                                         OP/NAM-
+777/773L GTD/???? POS/GATE BDT1145 SD1230 ED1230  SA1715  FT1345
+  7. 1TEST/SEVEN+           BN005  43B    R PVG ABC123 FBA/1PC I O PSM EDI
+                                              PSPT AQQ/FCL/USA ESTA/Z/USA ET
+                                              CTC FOID NBRD DOCS
+      CKIN HK1 LKCK/0000000000000/CHKLEG
+      CKIN NBRD
+
+
+2026 October 11, Sunday, 19:31:20
+>pn1
+ PD: MU586/12OCT26*LAX,CKIN/NBRD                                         OP/NAM-
+777/773L GTD/???? POS/GATE BDT1145 SD1230 ED1230  SA1715  FT1345
+      CKIN NBRD UIPG
+  4. 1TEST/FOUR+       KB3 BN002  44J    S PVG ABC123 FBA/1PC I O ASR FF EDI
+                                              PSPT AQQ/FCL/USA ESTA/Z/USA ET
+                                              CTC NBRD DOCS DOCA/D
+      CKIN HK1 LKCK/0000000000000/CHKLEG
+      CKIN NBRD SEAT CHANGE
+  5. 1TEST/FIVE+      GB2 BN006  41L    R PVG ABC123 FBA/1PC I O ASR EDI
+                                              PSPT AQQ/FCL/USA ESTA/A/USA ET
+                                              CTC NBRD DOCS
+      CKIN HK1 LKCK/0000000000000/CHKLEG
+      CKIN NBRD 25874
+  6. 1TEST/SIX+      GB2 BN007  41K    R PVG ABC123 FBA/1PC I O ASR EDI
+                                              PSPT AQQ/FCL/USA ESTA/A/USA ET
+                                              CTC NBRD DOCS
+      CKIN HK1 LKCK/0000000000000/CHKLEG
+      CKIN NBRD SEATS
+  7. 1TEST/SEVEN+           BN005  43B    R PVG ABC123 FBA/1PC I O PSM EDI
+                                              PSPT AQQ/FCL/USA ESTA/Z/USA ET
+                                              CTC FOID NBRD DOCS
+      CKIN HK1 LKCK/0000000000000/CHKLEG
+      CKIN NBRD

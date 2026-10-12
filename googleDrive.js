@@ -2878,96 +2878,20 @@ function isCbsScanQuotaError(err) {
   return status === 429 || (status === 403 && /quota|ratelimit|rate limit|user-rate|usage limits/.test(reasonText));
 }
 
-const cbsScanSheetsPendingRequests = [];
-let cbsScanSheetsRequestRunning = false;
-let cbsScanSheetsRequestSequence = 0;
-let cbsScanSheetsRetryAt = 0;
-let cbsScanSheetsRetryTimer = null;
-let cbsScanSheetsQuotaBackoffMs = 0;
-// Reserve headroom for other Sheets features sharing the same credentials.
-// Reads and writes have separate quotas; do not slow ordinary saves by combining
-// their budgets. Count failed attempts too, across both boarding queues.
-const cbsScanSheetsRequestStarts = { read: [], write: [] };
-const CBS_SCAN_SHEETS_REQUESTS_PER_MINUTE = 50;
-
-function drainCbsScanSheetsRequests() {
-  if (cbsScanSheetsRequestRunning || !cbsScanSheetsPendingRequests.length) return;
-  const now = Date.now();
-  const starts = cbsScanSheetsRequestStarts[cbsScanSheetsPendingRequests[0].requestType];
-  while (starts.length && starts[0] <= now - 60000) {
-    starts.shift();
-  }
-  const budgetReadyAt = starts.length >= CBS_SCAN_SHEETS_REQUESTS_PER_MINUTE
-    ? starts[0] + 60000 : now;
-  const waitMs = Math.max(cbsScanSheetsRetryAt, budgetReadyAt) - now;
-  if (waitMs > 0) {
-    if (!cbsScanSheetsRetryTimer) cbsScanSheetsRetryTimer = setTimeout(() => {
-      cbsScanSheetsRetryTimer = null;
-      drainCbsScanSheetsRequests();
-    }, waitMs);
-    return;
-  }
-  cbsScanSheetsRequestRunning = true;
-  const request = cbsScanSheetsPendingRequests.shift();
-  starts.push(now);
-  Promise.resolve().then(request.fn).then(request.resolve, request.reject).finally(() => {
-    cbsScanSheetsRequestRunning = false;
-    drainCbsScanSheetsRequests();
-  });
-}
-
-function scheduleCbsScanSheetsRequest(fn, priority = 'normal', requestType = 'write') {
-  fn = bindBoardingOperation(fn);
-  const priorityOrder = { scan: 0, normal: 1, background: 2 };
-  return new Promise((resolve, reject) => {
-    cbsScanSheetsPendingRequests.push({
-      fn,
-      requestType,
-      priority: priorityOrder[priority] ?? priorityOrder.normal,
-      sequence: ++cbsScanSheetsRequestSequence,
-      resolve,
-      reject
-    });
-    cbsScanSheetsPendingRequests.sort((a, b) => a.priority - b.priority || a.sequence - b.sequence);
-    drainCbsScanSheetsRequests();
-  });
-}
-
-async function cbsScanSheetsCall(fn, label = 'Google Sheets request', priority = 'normal', requestType = 'write') {
-  // Sheets quotas refill each minute. Coordinate the cooldown across callers so
-  // background reads cannot keep hammering Sheets while a scan is backing off.
-  const maxRetries = 6;
-  for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
-    try {
-      return await scheduleCbsScanSheetsRequest(async () => {
-        try {
-          const result = await fn();
-          cbsScanSheetsQuotaBackoffMs = 0;
-          return result;
-        } catch (err) {
-          if (isCbsScanQuotaError(err)) {
-            cbsScanSheetsQuotaBackoffMs = Math.min(32000, (cbsScanSheetsQuotaBackoffMs || 500) * 2);
-            const headers = err?.response?.headers;
-            const retryAfter = headers?.get?.('retry-after') ?? headers?.['retry-after'];
-            const retryAfterMs = /^\d+(\.\d+)?$/.test(String(retryAfter))
-              ? Number(retryAfter) * 1000 : Math.max(0, Date.parse(retryAfter) - Date.now()) || 0;
-            const delay = Math.max(cbsScanSheetsQuotaBackoffMs + Math.floor(Math.random() * 1000), Math.min(60000, retryAfterMs));
-            cbsScanSheetsRetryAt = Date.now() + delay;
-          }
-          throw err;
-        }
-      }, priority, requestType);
-    } catch (err) {
-      if (!isCbsScanQuotaError(err) || attempt === maxRetries) {
-        if (isCbsScanQuotaError(err)) {
-          err.code = 'SHEETS_QUOTA';
-          err.message = `${label} could not complete after retrying Google Sheets quota. Please wait a minute and try again.`;
-        }
+async function cbsScanSheetsCall(fn, label = 'Google Sheets request') {
+  const delays = [1000, 2000, 4000, 8000, 16000, 32000];
+  for (let attempt = 0; ; attempt++) {
+    try { return await fn(); } catch (err) {
+      if (!isCbsScanQuotaError(err) || attempt === delays.length) {
+        if (isCbsScanQuotaError(err)) { err.code = 'SHEETS_QUOTA'; err.message = label + ' could not be saved after quota retries.'; }
         throw err;
       }
+      const headers = err?.response?.headers;
+      const retryAfter = headers?.get?.('retry-after') ?? headers?.['retry-after'];
+      const retryMs = /^\d+(\.\d+)?$/.test(String(retryAfter)) ? Number(retryAfter) * 1000 : Math.max(0, Date.parse(retryAfter) - Date.now()) || 0;
+      await new Promise(resolve => setTimeout(resolve, Math.max(delays[attempt] + Math.floor(Math.random()*1000), Math.min(60000, retryMs))));
     }
   }
-  throw new Error(`${label} failed.`);
 }
 
 async function getCbsScanSheetTitle(priority = 'normal') {
@@ -2982,17 +2906,20 @@ async function getCbsScanSheetTitle(priority = 'normal') {
 }
 
 async function getCbsScanSheetRows(options = {}) {
-  const ttlMs = 5 * 1000;
-  if (!options.forceRefresh && Date.now() - boardingState().cbsScanSheetCache.loadedAt < ttlMs && boardingState().cbsScanSheetCache.rows.length) return boardingState().cbsScanSheetCache.rows;
-  const priority = options.priority || 'normal';
-  const title = await getCbsScanSheetTitle(priority);
-  const res = await cbsScanSheetsCall(() => sheets.spreadsheets.values.get({
-    spreadsheetId: CBS_SCAN_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A:R`
-  }), 'CBS scan sheet read', priority, 'read');
-  const rows = res.data.values || [];
-  boardingState().cbsScanSheetCache = { loadedAt: Date.now(), rows };
-  return rows;
+  const state = boardingState();
+  if (state.rowsPending && state.rowsPendingGeneration === (state.generation || 0) && !options.batchFresh) return state.rowsPending;
+  if (!options.forceRefresh && Date.now() - state.cbsScanSheetCache.loadedAt < 3000 && state.cbsScanSheetCache.rows.length) return state.cbsScanSheetCache.rows;
+  const generation = state.generation || 0;
+  const pending = (async () => {
+    const title = await getCbsScanSheetTitle(options.priority);
+    const res = await cbsScanSheetsCall(() => sheets.spreadsheets.values.get({ spreadsheetId:CBS_SCAN_SHEET_ID, range:escapeSheetTitle(title)+'!A:S' }), 'CBS scan sheet read');
+    const rows = res.data.values || [];
+    if ((state.generation || 0) === generation) state.cbsScanSheetCache = { loadedAt:Date.now(), rows };
+    return rows;
+  })();
+  state.rowsPending = pending;
+  state.rowsPendingGeneration = generation;
+  try { return await pending; } finally { if (state.rowsPending === pending) state.rowsPending = null; }
 }
 
 async function ensureCbsScanSheetHeaders(rows, priority = 'normal') {
@@ -3029,7 +2956,7 @@ async function ensureCbsScanSheetHeaders(rows, priority = 'normal') {
     }), 'CBS scan header update', priority);
     updated = true;
   }
-  if (updated) boardingState().cbsScanSheetCache = { loadedAt: 0, rows: [] };
+  if (updated) { boardingState().cbsScanSheetCache = { loadedAt: 0, rows: [] }; boardingState().boardCache = null; boardingState().generation = (boardingState().generation || 0) + 1; }
   return updated;
 }
 
@@ -3064,7 +2991,7 @@ async function writeCbsScanNbrdDetail(title, rowNumber, bn, detail = '', priorit
     valueInputOption: 'RAW',
     requestBody: { values: [[formatCbsScanSheetBn(bn), detail]] }
   }), 'CBS scan NBRD update', priority);
-  boardingState().cbsScanSheetCache = { loadedAt: 0, rows: [] };
+  boardingState().cbsScanSheetCache = { loadedAt: 0, rows: [] }; boardingState().boardCache = null; boardingState().generation = (boardingState().generation || 0) + 1;
 }
 
 async function appendCbsScanNbrdBn(title, bn, dataRows, detail = '', priority = 'normal') {
@@ -3085,79 +3012,59 @@ async function clearCbsScanNbrdRows(title, priority = 'normal') {
     spreadsheetId: CBS_SCAN_SHEET_ID,
     range: `${escapeSheetTitle(title)}!L2:M`
   }), 'CBS scan NBRD clear', priority);
-  boardingState().cbsScanSheetCache = { loadedAt: 0, rows: [] };
+  boardingState().cbsScanSheetCache = { loadedAt: 0, rows: [] }; boardingState().boardCache = null; boardingState().generation = (boardingState().generation || 0) + 1;
 }
 
 async function deleteCbsScanNbrdBn(rowNumber, bn = '') {
-  const targetRow = Number(rowNumber);
-  if (!Number.isInteger(targetRow) || targetRow < 2) throw new Error('Invalid NBRD row number.');
-  const expectedBn = normalizeCbsScanBn(bn);
-  const title = await getCbsScanSheetTitle();
-  const rows = await getCbsScanSheetRows({ forceRefresh: true });
-  await ensureCbsScanSheetHeaders(rows);
-  const freshRows = await getCbsScanSheetRows({ forceRefresh: true });
-  const row = freshRows[targetRow - 1] || [];
-  const rowBn = normalizeCbsScanBn(row[11]);
-  if (!rowBn) {
-    const err = new Error('NBRD row not found.');
-    err.code = 'NBRD_NOT_FOUND';
-    throw err;
-  }
-  if (expectedBn && rowBn !== expectedBn) {
-    const err = new Error('NBRD row does not match requested BN.');
-    err.code = 'NBRD_MISMATCH';
-    throw err;
-  }
-  await cbsScanSheetsCall(() => sheets.spreadsheets.values.clear({
-    spreadsheetId: CBS_SCAN_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!L${targetRow}:M${targetRow}`
-  }), 'CBS scan NBRD delete');
-  boardingState().cbsScanSheetCache = { loadedAt: 0, rows: [] };
-  return { deleted: true, rowNumber: targetRow, bn: formatCbsScanSheetBn(rowBn) };
+  const targetRow=Number(rowNumber), expectedBn=normalizeCbsScanBn(bn);
+  if(!Number.isInteger(targetRow)||targetRow<2) throw new Error('Invalid NBRD row number.');
+  const state=boardingState();
+  return new Promise((resolve,reject)=>{
+    state.cbsScanAppendPending.push({nbrd:true,deleteRow:targetRow,expectedBn,resolve,reject});
+    if(!state.cbsScanAppendRunning&&!state.cbsScanAppendTimer)state.cbsScanAppendTimer=setTimeout(flushCbsScanAppendBatch,800);
+  });
+}
+
+async function getCbsScanNbrdRecords() {
+  const rows = await getCbsScanSheetRows();
+  return rows.slice(1).map((row, index) => ({
+    rowNumber:index + 2,
+    nbrdBn:formatCbsScanSheetBn(row[11]),
+    nbrdDetail:normalizeCbsScanNbrdDetail(row[12]),
+    nbrdResolved:String(row[18] || '').trim() === 'RESOLVED'
+  })).filter(row => row.nbrdBn);
+}
+
+async function resolveCbsScanNbrdBn(bn, resolved = true) {
+  const normalized = normalizeCbsScanBn(bn);
+  if (!normalized) throw new Error('NBRD BN is required.');
+  const state = boardingState();
+  return new Promise((resolve, reject) => {
+    state.cbsScanAppendPending.push({ nbrd:true, resolveBn:normalized, resolved, resolve, reject });
+    if (!state.cbsScanAppendRunning && !state.cbsScanAppendTimer) state.cbsScanAppendTimer = setTimeout(flushCbsScanAppendBatch, 800);
+  });
 }
 
 async function appendCbsScanNbrdBns(values = [], options = {}) {
-  const entriesByBn = new Map();
-  for (const value of (Array.isArray(values) ? values : [values])) {
-    const entry = normalizeCbsScanNbrdEntry(value);
-    if (entry.bn) entriesByBn.set(entry.bn, entry);
+  const entries = [...new Map((Array.isArray(values) ? values : [values]).map(normalizeCbsScanNbrdEntry).filter(e => e.bn).map(e => [e.bn,e])).values()];
+  const state = boardingState();
+  const version = Number(options.version) || 0;
+  const key = JSON.stringify(entries.slice().sort((a,b)=>a.bn.localeCompare(b.bn)));
+  if (options.replace && version && version < (state.nbrdVersion || 0)) return { stale:true };
+  if (options.replace && version) state.nbrdVersion = version;
+  // Skip unchanged entries before allocating an 800ms batch. An empty source
+  // snapshot never removes retained records. Do not bypass queued mutations.
+  if (!entries.length) return { unchanged:true };
+  if (!state.cbsScanAppendRunning && !state.cbsScanAppendPending.some(item => item.nbrd) && state.nbrdKnown) {
+    if (entries.every(entry => state.nbrdKnown.get(entry.bn) === entry.detail)) return { unchanged:true };
   }
-  const entries = [...entriesByBn.values()];
-  const priority = 'background';
-  const title = await getCbsScanSheetTitle(priority);
-  const rows = await getCbsScanSheetRows({ forceRefresh: true, priority });
-  await ensureCbsScanSheetHeaders(rows, priority);
-  if (options.replace) {
-    const currentEntries = rows.slice(1).map((row) => ({ bn: normalizeCbsScanBn(row[11]), detail: normalizeCbsScanNbrdDetail(row[12]) })).filter((entry) => entry.bn);
-    const currentByBn = new Map(currentEntries.map((entry) => [entry.bn, entry.detail]));
-    const hasOrphanDetails = rows.slice(1).some((row) => !normalizeCbsScanBn(row[11]) && normalizeCbsScanNbrdDetail(row[12]));
-    const unchanged = currentEntries.length === entries.length && new Set(currentEntries.map((entry) => entry.bn)).size === entries.length &&
-      !hasOrphanDetails && entries.every((entry) => currentByBn.get(entry.bn) === entry.detail);
-    if (unchanged) return { added: [], existing: entries.map((entry) => entry.bn), cleared: false, unchanged: true };
-    const lastCurrentNbrdIndex = rows.slice(1).reduce((lastIndex, row, index) => normalizeCbsScanBn(row[11]) || normalizeCbsScanNbrdDetail(row[12]) ? index : lastIndex, -1);
-    const replaceRowCount = Math.max(entries.length, lastCurrentNbrdIndex + 1);
-    const values = Array.from({ length: replaceRowCount }, (_, index) => entries[index]
-      ? [formatCbsScanSheetBn(entries[index].bn), entries[index].detail]
-      : ['', '']);
-    if (values.length) await cbsScanSheetsCall(() => sheets.spreadsheets.values.update({
-      spreadsheetId: CBS_SCAN_SHEET_ID,
-      range: `${escapeSheetTitle(title)}!L2:M${replaceRowCount + 1}`,
-      valueInputOption: 'RAW',
-      requestBody: { values }
-    }), 'CBS scan NBRD replace', 'background');
-    boardingState().cbsScanSheetCache = { loadedAt: 0, rows: [] };
-    return { added: entries.map((entry) => entry.bn), existing: [], cleared: true };
-  }
-  if (!entries.length) return { added: [], existing: [], cleared: Boolean(options.replace) };
-  let dataRows = (await getCbsScanSheetRows({ forceRefresh: true, priority })).slice(1);
-  const added = [];
-  const existing = [];
-  for (const entry of entries) {
-    const didAdd = await appendCbsScanNbrdBn(title, entry.bn, dataRows, entry.detail, priority);
-    (didAdd ? added : existing).push(entry.bn);
-    dataRows = (await getCbsScanSheetRows({ forceRefresh: true, priority })).slice(1);
-  }
-  return { added, existing, cleared: Boolean(options.replace) };
+  if (options.replace && state.nbrdPendingKey === key && state.nbrdPendingPromise) return state.nbrdPendingPromise;
+  const promise = new Promise((resolve,reject) => {
+    state.cbsScanAppendPending.push({ nbrd:true, entries, replace:!!options.replace, version, key, resolve, reject });
+    if (!state.cbsScanAppendRunning && !state.cbsScanAppendTimer) state.cbsScanAppendTimer = setTimeout(flushCbsScanAppendBatch,800);
+  });
+  if (options.replace) { state.nbrdPendingKey=key; state.nbrdPendingPromise=promise; }
+  try { return await promise; } finally { if(state.nbrdPendingPromise===promise) { state.nbrdPendingKey=null; state.nbrdPendingPromise=null; } }
 }
 
 function isCbsScanEnteredCell(cell = {}) {
@@ -3184,7 +3091,17 @@ async function getCbsScanEnteredRowNumbers(title) {
 }
 
 async function getCbsScanRecords() {
-  const rows = await getCbsScanSheetRows({ forceRefresh: true });
+  const state=boardingState();
+  if(state.boardCache && Date.now()-state.boardCache.loadedAt<3000) return state.boardCache.rows;
+  const generation=state.generation||0;
+  if(state.boardPending && state.boardPendingGeneration===generation) return state.boardPending;
+  const pending=readCbsScanRecords().then(rows=>{if((state.generation||0)===generation)state.boardCache={loadedAt:Date.now(),rows};return rows;});
+  state.boardPending=pending;state.boardPendingGeneration=generation;
+  try{return await pending;}finally{if(state.boardPending===pending)state.boardPending=null;}
+}
+
+async function readCbsScanRecords() {
+  const rows = await getCbsScanSheetRows();
   const headersUpdated = await ensureCbsScanSheetHeaders(rows);
   const title = await getCbsScanSheetTitle();
   const freshRows = headersUpdated ? await getCbsScanSheetRows({ forceRefresh: true }) : rows;
@@ -3198,11 +3115,82 @@ async function getCbsScanRecords() {
     entered: enteredRows.has(index + 2),
     nbrdBn: formatCbsScanSheetBn(row[11]),
     nbrdDetail: normalizeCbsScanNbrdDetail(row[12]),
+    nbrdResolved: String(row[18] || '').trim() === 'RESOLVED',
     infantBn: formatCbsScanSheetBn(row[13]),
     infantSeat: String(row[14] || '').trim(),
     infantFlight: String(row[15] || '').trim(),
     infantScannedAt: String(row[17] || '').trim(),
   })).filter((row) => row.bn || row.seat || row.flight || row.scannedAt || row.nbrdBn || row.nbrdDetail || row.infantBn || row.infantSeat || row.infantFlight || row.infantScannedAt);
+}
+
+// The live board uses one shared reader and one backup writer across flights.
+// Startup imports existing records once; page refreshes never call these APIs.
+async function seedBoardingLive(flight) {
+  return require('./boardingContext').runWithBoardingFlight(flight, async () => {
+    const rows = await getCbsScanSheetRows({ forceRefresh: true, priority: 'background' });
+    await ensureCbsScanSheetHeaders(rows, 'background');
+    const title = await getCbsScanSheetTitle('background');
+    const entered = await getCbsScanEnteredRowNumbers(title);
+    const records = rows.slice(1).map((row, index) => ({
+      rowNumber: index + 2, bn: formatCbsScanSheetBn(row[0]), seat: String(row[1] || '').trim(),
+      flight: String(row[2] || '').trim(), scannedAt: String(row[4] || '').trim(),
+      values: Array.from({ length: 5 }, (_, column) => row[column] || ''), entered: entered.has(index + 2),
+      infantBn: formatCbsScanSheetBn(row[13]), infantSeat: String(row[14] || '').trim(),
+      infantFlight: String(row[15] || '').trim(), infantScannedAt: String(row[17] || '').trim(),
+      infantValues: Array.from({ length: 5 }, (_, column) => row[column + 13] || '')
+    })).filter(row => row.bn || row.seat || row.flight || row.infantBn || row.infantSeat || row.infantFlight);
+    return { title, rows: records, nbrd: boardingLiveNbrdRows(rows.slice(1).map(row => row.slice(11, 13))) };
+  });
+}
+
+function boardingLiveNbrdRows(rows) {
+  return rows.map((row, index) => ({ rowNumber: index + 2, bn: formatCbsScanSheetBn(row[0]), detail: normalizeCbsScanNbrdDetail(row[1]) }))
+    .filter(row => row.bn || row.detail);
+}
+
+async function readBoardingLiveNbrd(boards) {
+  const result = await cbsScanSheetsCall(() => sheets.spreadsheets.values.batchGet({
+    spreadsheetId: CBS_SCAN_SHEET_ID,
+    ranges: boards.map(board => `${escapeSheetTitle(board.title)}!L2:M`)
+  }), 'Live NBRD read', 'background', 'read');
+  const ranges = result.data.valueRanges;
+  if (!Array.isArray(ranges) || ranges.length !== boards.length) throw new Error('Incomplete NBRD response.');
+  return Object.fromEntries(boards.map((board, index) => [board.flight, boardingLiveNbrdRows(ranges[index].values || [])]));
+}
+
+function boardingLiveBackupRequests(boards) {
+  const { SHEETS } = require('./boardingContext');
+  const requests = [];
+  for (const board of boards) {
+    for (const key of Object.keys(board.dirty)) {
+      const [type, number] = key.split(':');
+      const rowNumber = Number(number);
+      const row = board.rows.find(row => row.rowNumber === rowNumber);
+      if (type === 'entered') {
+        const backgroundColor = row.entered ? { red: 0.91, green: 0.97, blue: 0.93 } : { red: 1, green: 1, blue: 1 };
+        requests.push({ repeatCell: {
+          range: { sheetId: SHEETS[board.flight], startRowIndex: rowNumber - 1, endRowIndex: rowNumber, startColumnIndex: 0, endColumnIndex: 3 },
+          cell: { userEnteredFormat: { backgroundColor } }, fields: 'userEnteredFormat.backgroundColor'
+        } });
+      } else {
+        const column = type === 'infant' ? 13 : 0;
+        requests.push({ updateCells: {
+          start: { sheetId: SHEETS[board.flight], rowIndex: rowNumber - 1, columnIndex: column },
+          rows: [{ values: (type === 'infant' ? row.infantValues : row.values).map(value => ({ userEnteredValue: { stringValue: String(value) } })) }],
+          fields: 'userEnteredValue'
+        } });
+      }
+    }
+  }
+  return requests;
+}
+
+async function backupBoardingLive(boards) {
+  const requests = boardingLiveBackupRequests(boards);
+  if (!requests.length) return;
+  await cbsScanSheetsCall(() => sheets.spreadsheets.batchUpdate({
+    spreadsheetId: CBS_SCAN_SHEET_ID, requestBody: { requests }
+  }), 'Boarding live backup', 'background');
 }
 
 function cbsScanEnteredRepeatCellRequest(rowNumber, entered = false) {
@@ -3232,7 +3220,7 @@ async function setCbsScanRecordsEntered(rowNumbers = [], entered = false) {
     spreadsheetId: CBS_SCAN_SHEET_ID,
     requestBody: { requests: uniqueRows.map((rowNumber) => cbsScanEnteredRepeatCellRequest(rowNumber, entered)) }
   }), 'CBS scan entered-state update');
-  boardingState().cbsScanSheetCache = { loadedAt: 0, rows: [] };
+  boardingState().cbsScanSheetCache = { loadedAt: 0, rows: [] }; boardingState().boardCache = null; boardingState().generation = (boardingState().generation || 0) + 1;
   return { rowNumbers: uniqueRows, entered: Boolean(entered) };
 }
 
@@ -3271,7 +3259,7 @@ function prepareCbsScanAppend(record = {}, workingRows = []) {
   const rawScan = String(record.rawScan || record.raw || '').trim();
   const scannedAt = record.scannedAt || new Date().toISOString();
   const nbrdExisting = workingRows.find((row) => normalizeCbsScanBn(row[11]) === bn);
-  if (nbrdExisting) throwCbsScanNbrdMessage(bn, String(nbrdExisting[12] || '').trim());
+  if (nbrdExisting && String(nbrdExisting[18] || '') !== 'RESOLVED' && (!record.nbrdConfirmed || (record.nbrdConfirmationDetail !== undefined && normalizeCbsScanNbrdDetail(nbrdExisting[12]) !== record.nbrdConfirmationDetail))) throwCbsScanNbrdMessage(bn, String(nbrdExisting[12] || '').trim());
   const isInfant = record.isInfant === true || seat === 'INF';
   const bnColumnIndex = isInfant ? 13 : 0;
   const existing = workingRows.find((row) => normalizeCbsScanBn(row[bnColumnIndex]) === bn);
@@ -3283,48 +3271,87 @@ function prepareCbsScanAppend(record = {}, workingRows = []) {
   ), -1);
   const rowNumber = lastScanOffset + 3;
   const values = [formatCbsScanSheetBn(bn), seat, flight, rawScan, scannedAt];
+  if (nbrdExisting && record.nbrdConfirmed) {
+    for (const row of workingRows) if (normalizeCbsScanBn(row[11]) === bn) row[18] = 'RESOLVED';
+  }
   applyCbsScanWorkingRow(workingRows, rowNumber, scanColumnStart, values);
   return { values, scanRangeColumns, rowNumber, result: { bn: formatCbsScanSheetBn(bn), seat, flight, rowNumber, scannedAt, isInfant } };
 }
 
 async function processCbsScanAppendBatch(batch = []) {
   if (!batch.length) return;
-  let title = '';
-  let dataRows = [];
+  const state = boardingState();
+  const updates = [], prepared = [];
   try {
-    title = await getCbsScanSheetTitle('scan');
-    const rows = await getCbsScanSheetRows({ forceRefresh: true, priority: 'scan' });
-    const headersUpdated = await ensureCbsScanSheetHeaders(rows, 'scan');
-    dataRows = (headersUpdated ? await getCbsScanSheetRows({ forceRefresh: true, priority: 'scan' }) : rows).slice(1).map((row) => [...row]);
-  } catch (err) {
-    batch.forEach((item) => item.reject(err));
-    return;
-  }
-  const updates = [];
-  const prepared = [];
-  for (const item of batch) {
-    try {
-      const next = prepareCbsScanAppend(item.record, dataRows);
-      updates.push({
-        range: `${escapeSheetTitle(title)}!${next.scanRangeColumns.replace(':', `${next.rowNumber}:`)}${next.rowNumber}`,
-        values: [next.values]
+    const title = await getCbsScanSheetTitle('scan');
+    let rows = await getCbsScanSheetRows({forceRefresh:true, batchFresh:true});
+    if (await ensureCbsScanSheetHeaders(rows,'scan')) rows = await getCbsScanSheetRows({forceRefresh:true,batchFresh:true});
+    const working = rows.slice(1).map(r=>[...r]);
+    for(const item of batch.filter(i=>i.nbrd)) {
+      if (item.resolveBn) {
+        const matches = working.filter(row => normalizeCbsScanBn(row[11]) === item.resolveBn);
+        if (!matches.length) { const err = new Error('NBRD not found.'); err.code = 'NBRD_NOT_FOUND'; item.reject(err); continue; }
+        matches.forEach(row => { row[18] = item.resolved === false ? 'PENDING' : 'RESOLVED'; });
+        prepared.push({item, result:{bn:formatCbsScanSheetBn(item.resolveBn), resolved:item.resolved !== false}});
+        continue;
+      }
+      if(item.deleteRow) {
+        const row=working[item.deleteRow-2];
+        const bn=normalizeCbsScanBn(row?.[11]);
+        if(!bn || (item.expectedBn && item.expectedBn!==bn)) {const err=new Error('NBRD row changed or not found.');err.code=bn?'NBRD_MISMATCH':'NBRD_NOT_FOUND';item.reject(err);continue;}
+        row[18]='RESOLVED';state.nbrdSyncedKey=null;
+        prepared.push({item,result:{resolved:true,rowNumber:item.deleteRow,bn:formatCbsScanSheetBn(bn)}});continue;
+      }
+      if(item.version && item.version < (state.nbrdVersion || 0)) { prepared.push({item,result:{stale:true}}); continue; }
+      const desired = new Map(item.entries.map(e=>[e.bn,e.detail]));
+      const seen = new Set();
+      working.forEach(row => {
+        const bn = normalizeCbsScanBn(row[11]);
+        if (!bn) return;
+        seen.add(bn);
+        // Update changed details without removing the BN or resetting resolution.
+        if (desired.has(bn)) row[12] = desired.get(bn);
       });
-      prepared.push({ item, result: next.result });
-    } catch (err) {
-      item.reject(err);
+      for(const [bn,detail] of desired) if(!seen.has(bn)) {
+        let slot=working.findIndex(r=>!normalizeCbsScanBn(r[11]));
+        if(slot<0) {slot=working.length;working.push([]);}
+        working[slot][11]=formatCbsScanSheetBn(bn);working[slot][12]=detail;working[slot][18]='PENDING';
+      }
+      prepared.push({item,result:{added:item.entries.map(e=>e.bn)}});
     }
-  }
-  if (!updates.length) return;
-  try {
-    await cbsScanSheetsCall(() => sheets.spreadsheets.values.batchUpdate({
-      spreadsheetId: CBS_SCAN_SHEET_ID,
-      requestBody: { valueInputOption: 'RAW', data: updates }
-    }), 'CBS scan batch row write', 'scan');
-    boardingState().cbsScanSheetCache = { loadedAt: 0, rows: [] };
-    prepared.forEach(({ item, result }) => item.resolve(result));
-  } catch (err) {
-    prepared.forEach(({ item }) => item.reject(err));
-  }
+    for(const item of batch.filter(i=>!i.nbrd)) {
+      try { const next=prepareCbsScanAppend(item.record,working);
+        updates.push({range:escapeSheetTitle(title)+'!'+next.scanRangeColumns.replace(':',next.rowNumber+':')+next.rowNumber,values:[next.values]});
+        prepared.push({item,result:next.result});
+      } catch(err) {item.reject(err);}
+    }
+    const original = rows.slice(1);
+    working.forEach((row, i) => {
+      if (String(row[11] || '') !== String(original[i]?.[11] || '') || String(row[12] || '') !== String(original[i]?.[12] || '')) {
+        updates.push({range:escapeSheetTitle(title)+'!L'+(i+2)+':M'+(i+2), values:[[row[11] || '', row[12] || '']]});
+      }
+      if (String(row[18] || '') !== String(original[i]?.[18] || '')) updates.push({range:escapeSheetTitle(title)+'!S'+(i+2), values:[[row[18] || '']]});
+    });
+    if (updates.some(update => /!S\d+$/.test(update.range)) && rows[0]?.[18] !== 'NBRD Status') {
+      updates.push({range:escapeSheetTitle(title)+'!S1', values:[['NBRD Status']]});
+      rows[0] = [...(rows[0] || [])]; rows[0][18] = 'NBRD Status';
+    }
+    if(updates.length) await cbsScanSheetsCall(()=>sheets.spreadsheets.values.batchUpdate({spreadsheetId:CBS_SCAN_SHEET_ID,requestBody:{valueInputOption:'RAW',data:updates}}),'CBS scan batch row write');
+    state.generation=(state.generation||0)+1;
+    state.cbsScanSheetCache={loadedAt:Date.now(),rows:[rows[0]||[],...working]};
+    state.boardCache=null;
+    state.nbrdKnown = new Map(working.filter(row => normalizeCbsScanBn(row[11])).map(row => [normalizeCbsScanBn(row[11]), normalizeCbsScanNbrdDetail(row[12])]));
+    const nbrdRows = working.map((row, index) => ({
+      rowNumber:index + 2,
+      nbrdBn:formatCbsScanSheetBn(row[11]),
+      nbrdDetail:normalizeCbsScanNbrdDetail(row[12]),
+      nbrdResolved:String(row[18] || '') === 'RESOLVED'
+    })).filter(row => row.nbrdBn);
+    for (const {item, result} of prepared) {
+      if (item.nbrd && item.replace && !result.stale) state.nbrdSyncedKey = item.key;
+      item.resolve(item.nbrd ? result : {...result, nbrdRows});
+    }
+  } catch(err) { batch.forEach(item=>item.reject(err)); }
 }
 
 async function flushCbsScanAppendBatch() {
@@ -3336,7 +3363,7 @@ async function flushCbsScanAppendBatch() {
     await processCbsScanAppendBatch(batch);
   } finally {
     boardingState().cbsScanAppendRunning = false;
-    if (boardingState().cbsScanAppendPending.length) boardingState().cbsScanAppendTimer = setTimeout(flushCbsScanAppendBatch, 750);
+    if (boardingState().cbsScanAppendPending.length) boardingState().cbsScanAppendTimer = setTimeout(flushCbsScanAppendBatch, 800);
   }
 }
 
@@ -3344,7 +3371,7 @@ async function appendCbsScanRecord(record = {}) {
   assertBoardingFlight(record.flight);
   return new Promise((resolve, reject) => {
     boardingState().cbsScanAppendPending.push({ record, resolve, reject });
-    if (!boardingState().cbsScanAppendRunning && !boardingState().cbsScanAppendTimer) boardingState().cbsScanAppendTimer = setTimeout(flushCbsScanAppendBatch, 750);
+    if (!boardingState().cbsScanAppendRunning && !boardingState().cbsScanAppendTimer) boardingState().cbsScanAppendTimer = setTimeout(flushCbsScanAppendBatch, 800);
   });
 }
 
@@ -3513,21 +3540,19 @@ async function deleteCkinNbrdFromBothSheetsUnlocked(value = '') {
   }
   const [regularTitle, emergencyTitle] = await Promise.all([getCbsScanSheetTitle('background'), getEmergencyBoardSheetTitle('background')]);
   const clears = [];
-  if (regularIndex >= 0) clears.push(cbsScanSheetsCall(() => sheets.spreadsheets.values.clear({
-    spreadsheetId: CBS_SCAN_SHEET_ID,
-    range: `${escapeSheetTitle(regularTitle)}!L${regularIndex + 2}:M${regularIndex + 2}`
-  }), 'CBS scan NBRD delete', 'background'));
+  if (regularIndex >= 0) clears.push(resolveCbsScanNbrdBn(targetBn));
   if (emergencyIndex >= 0) clears.push(cbsScanSheetsCall(() => sheets.spreadsheets.values.clear({
     spreadsheetId: EMERGENCY_BOARD_SHEET_ID,
     range: `${escapeSheetTitle(emergencyTitle)}!L${emergencyIndex + 2}:M${emergencyIndex + 2}`
   }), 'Emergency board NBRD delete', 'background'));
   await Promise.all(clears);
-  boardingState().cbsScanSheetCache = { loadedAt: 0, rows: [] };
+  boardingState().cbsScanSheetCache = { loadedAt: 0, rows: [] }; boardingState().boardCache = null; boardingState().generation = (boardingState().generation || 0) + 1;
   emergencyBoardSheetCache = { loadedAt: 0, rows: [] };
   return {
     deleted: true,
     bn: formatCbsScanSheetBn(targetBn),
-    regularDeleted: regularIndex >= 0,
+    regularDeleted: false,
+    regularResolved: regularIndex >= 0,
     emergencyDeleted: emergencyIndex >= 0
   };
 }
@@ -5488,6 +5513,9 @@ async function getCbsOpenBagAuthorizationPdf() {
 // Exports
 // ===============================
 module.exports = {
+  seedBoardingLive,
+  readBoardingLiveNbrd,
+  backupBoardingLive,
 
   getLatestFlightLog,
 
@@ -5566,6 +5594,8 @@ module.exports = {
   getRecordCases,
   updateRecordCase,
   appendCbsScanNbrdBns,
+  resolveCbsScanNbrdBn,
+  getCbsScanNbrdRecords,
   deleteCbsScanNbrdBn,
   deleteCkinNbrdFromBothSheets,
   getCbsScanRecords,

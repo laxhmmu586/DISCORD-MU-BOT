@@ -1,0 +1,141 @@
+/* Shared treatment for five independent, mobile-first service pages. */
+.aviation-page {
+  --brand:#0756d6;--navy:#092352;--blue:#0756d6;--ink:#092352;--muted:#49658c;--line:#b8cceb66;
+  margin:0;min-height:100vh;color:var(--ink);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC",sans-serif;
+  background:radial-gradient(ellipse at 95% 0,#bddcffb8,transparent 48%),radial-gradient(ellipse at 0 65%,#ceddffb8,transparent 55%),linear-gradient(145deg,#e4efff,#f1f5ff);background-attachment:fixed;
+}
+.aviation-page::before {content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(145deg,transparent 32%,#70b8f515 32%,#70b8f515 35%,transparent 35%,transparent 70%,#76baf018 70%,#76baf018 74%,transparent 74%)}
+.aviation-page *, .aviation-page *::before, .aviation-page *::after {box-sizing:border-box}
+.aviation-page [hidden] {display:none!important}
+.aviation-page > header {display:flex;justify-content:flex-end;align-items:center;gap:10px;width:min(760px,calc(100% - 28px));margin:18px auto 20px;padding:0;background:transparent;border:0}
+.aviation-page .mufc-wordmark {margin-right:auto;color:#092352;text-decoration:none;font-size:21px;font-weight:850;letter-spacing:-.5px;line-height:1.2}
+.aviation-page main {width:min(760px,calc(100% - 28px));margin:0 auto 40px;gap:16px}
+.aviation-page .card, .aviation-page .board-section {min-width:0;padding:20px;border:1px solid #ffffffed;border-radius:24px;background:#ffffffad;box-shadow:0 12px 30px #2b60b817,inset 0 1px 0 #ffffff9e;backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px)}
+.aviation-page h1 {color:var(--ink);font-size:28px;line-height:1.2;letter-spacing:-.6px}
+.aviation-page h2 {color:var(--ink);font-size:20px;line-height:1.35}
+.aviation-page button, .aviation-page a.button {min-height:46px;padding:12px 18px;border:1px solid #ffffffba;border-radius:999px;background:linear-gradient(110deg,#5145ff,#0462f8 65%,#15b8f6);color:#fff;font-family:inherit;font-size:14px;font-weight:750;box-shadow:0 7px 17px #0954ec26}
+.aviation-page button.secondary, .aviation-page .refresh-board, .aviation-page .language-toggle, .aviation-page > header a.button {background:#ffffffb3;color:#064fca;border:1px solid #fff;box-shadow:none}
+.aviation-page button:disabled {opacity:.55;cursor:not-allowed}
+.aviation-page button:focus-visible, .aviation-page a:focus-visible, .aviation-page input:focus-visible, .aviation-page select:focus-visible, .aviation-page textarea:focus-visible {outline:3px solid #397bd6;outline-offset:3px}
+.aviation-page input, .aviation-page select, .aviation-page textarea {min-width:0;max-width:100%;min-height:50px;border:1px solid #7896c538;border-radius:13px;background:#ffffffba;color:var(--ink);font-family:inherit;font-size:16px;font-weight:500;padding:12px 13px}
+.aviation-page input::placeholder, .aviation-page textarea::placeholder {color:#617da4;opacity:1}
+.aviation-page label {min-width:0;color:var(--muted);font-size:13px;font-weight:650;letter-spacing:0;text-transform:none}
+.aviation-page .actions {gap:10px}
+.aviation-page .status {color:var(--muted);font-size:13px;font-weight:650;overflow-wrap:anywhere}
+.aviation-page .status.err, .aviation-page #status.error, .aviation-page .error {color:#b42318}
+.aviation-page .status.ok {color:#087443}
+.aviation-page .nbrd-bubbles {gap:11px;padding:12px 0 2px}
+.aviation-page .nbrd-bubble {width:48px;height:48px;flex-basis:48px;min-height:48px;padding:0;border:1px solid #b70c22;background:radial-gradient(ellipse at 32% 15%,#ff9da88c,transparent 43%),linear-gradient(155deg,#ff4654,#f10b29 55%,#ba001a);color:white;font-size:16px;text-shadow:0 1px 2px #78000b7a;box-shadow:inset 0 2px 3px #ffffff75,inset 0 -5px 7px #78001555,0 3px 0 #a8091b,0 7px 12px #ad18343d}
+.aviation-page .nbrd-bubble.is-resolved {border-color:#07512f;background-color:#087443;background-image:radial-gradient(ellipse at 32% 15%,#a1ffcf70,transparent 43%),linear-gradient(155deg,#26ae74,#087443 58%,#04532e);text-shadow:0 1px 2px #003a237a;box-shadow:inset 0 2px 3px #ffffff75,inset 0 -5px 7px #003f2459,0 3px 0 #064e2d,0 7px 12px #064e2d35}
+.aviation-page .nbrd-bubble:active {transform:translateY(2px);box-shadow:inset 0 2px 3px #ffffff65,inset 0 -3px 5px #0003,0 1px 0 #0003,0 4px 7px #0002}
+.aviation-page .nbrd-resolved-badge {box-shadow:0 2px 4px #003d2633}
+.aviation-page .nbrd-modal button {min-height:50px}
+.aviation-page .nbrd-modal .nbrd-yes {background:#087443}
+.aviation-page .nbrd-modal .nbrd-no {background:#b42318}
+.aviation-page .nbrd-modal .nbrd-back {min-height:44px;width:44px;height:44px;padding:8px;background:#edf4ff;color:#0756d6}
+.aviation-page .nbrd-heading h2 {font-size:16px}
+.aviation-scan .boarding-heading {margin:2px 0 13px}
+.aviation-scan .boarding-heading h1 {display:flex;gap:10px;align-items:center;font-size:28px}
+.boarding-live-indicator {display:inline-block;flex:0 0 10px;width:10px;height:10px;border-radius:50%;background:#35c99a;box-shadow:0 0 0 4px #35c99a25}
+.aviation-scan .flight-support {margin:0 0 18px;color:#0649bd;font-size:14px;letter-spacing:0;font-weight:750}
+.aviation-scan .avatar-button {width:44px;height:44px;min-height:44px;padding:0;background:#053994;box-shadow:none}
+.aviation-scan .camera-wrap, .aviation-240 .camera-wrap {border:1px solid #ffffffd9;border-radius:20px;background:linear-gradient(145deg,#b5dafa,#76acf0);box-shadow:inset 0 0 34px #e3f5ff3d}
+.aviation-scan video {background:transparent}
+.aviation-scan .aim-box {border:2px solid #ffffffc9;box-shadow:none;border-radius:17px}
+.aviation-scan .actions #start, .aviation-scan .actions #stop {flex:1}
+.aviation-scan #add-nbrd h2 {margin:0 0 18px}
+.aviation-scan #nbrd-form .actions button {width:100%}
+.aviation-scan .field-grid {grid-template-columns:1fr;gap:16px}
+.aviation-scan .user-menu {background:#f4f8ff;border-color:#fff}
+.aviation-scan .user-menu button {box-shadow:none}
+.aviation-board main > .card {padding:0;background:transparent;border:0;box-shadow:none;backdrop-filter:none}
+.aviation-board .toolbar {align-items:center;margin-bottom:10px}
+.aviation-board .toolbar h1 {font-size:30px}
+.aviation-board .board-section {margin-top:16px;gap:13px}
+.aviation-board .board-section h2 {font-size:18px}
+.aviation-board .table-wrap {border:0;border-radius:13px}
+.aviation-board table {min-width:0;width:100%;table-layout:fixed;background:transparent;border-collapse:separate;border-spacing:0 4px}
+.aviation-board th {position:static;background:transparent;color:#315989}
+.aviation-board th, .aviation-board td {padding:13px 12px;border:0;text-align:center;white-space:normal;overflow-wrap:anywhere}
+.aviation-board tr.is-entered td {background:#e1f3ebcf;color:#116742}
+.aviation-board tr.is-entered td:first-child {border-left:0}
+.aviation-board tr td:first-child {border-radius:10px 0 0 10px}
+.aviation-board tr td:last-child {border-radius:0 10px 10px 0}
+.aviation-board .empty {padding:18px 10px;font-size:14px}
+.aviation-board .toolbar > span {width:100%}
+.aviation-240 main {margin-top:20px}
+.aviation-240 .scan-heading {gap:12px;margin:0 0 20px}
+.aviation-240 .scan-heading > div:not(.earth-banner) {max-width:100%}
+.aviation-240 .earth-banner, .aviation-240 .heading-icon {display:none}
+.aviation-240 .scan-heading h1, .aviation-240 .scan-heading p {text-shadow:none}
+.aviation-240 .form-title-row {margin-bottom:20px}
+.aviation-240 .form-title-row h2 {font-size:24px}
+.aviation-240 #start, .aviation-240 #stop {min-width:0;flex:1;padding-left:12px;padding-right:12px}
+.aviation-240 button.aim-box {background:transparent;box-shadow:none;border:0;min-height:60px;padding:0;color:#fff}
+.aviation-240 button.danger {background:#ffe6ea;color:#c6223c;padding:0}
+.aviation-240 input.invalid {border-color:#b42318;background:#fff3f3}
+/* Keep the dynamic From/TO rail, destination dates and add/remove controls. */
+.aviation-240 .itinerary {margin-top:2px}
+.aviation-contact .intro {padding:24px 20px 20px;border-color:#92aed32b}
+.aviation-contact .intro h1 {font-size:26px}
+.aviation-contact .intro h1 .en {white-space:normal;overflow-wrap:normal}
+.aviation-contact .intro h1 .en {font-size:20px;line-height:1.35}
+.aviation-contact form {padding:22px 20px}
+.aviation-contact .upload, .aviation-contact .attachment-group {background:#ffffff70;border-color:#92b3e05c}
+.aviation-contact .upload {padding:17px}
+.aviation-contact .attachment-grid {grid-template-columns:minmax(0,1fr)}
+.aviation-contact .attachment-remove, .aviation-240 .attachment-remove {min-height:28px;width:28px;height:28px;padding:0;background:#c52238}
+.aviation-contact .attachment-tile input {min-height:0}
+.aviation-contact #submit {width:100%}
+.aviation-baggage h1 .baggage-title-zh {display:block;font-size:28px}
+.aviation-baggage h1 .baggage-title-en {display:block;margin-top:8px;font-size:15px;font-weight:500;color:var(--muted);letter-spacing:0}
+.aviation-baggage .intro {font-size:14px;margin-bottom:24px}
+.aviation-baggage .choices {gap:16px}
+.aviation-baggage .choice {padding:24px;min-height:230px;border:1px solid #ffffffeb;border-radius:22px;color:var(--ink);backdrop-filter:blur(18px);box-shadow:0 12px 26px #315d951a}
+.aviation-baggage .choice--delayed {background:linear-gradient(145deg,#bed6fbe8,#97bde9e0)}
+.aviation-baggage .choice--damaged {background:linear-gradient(145deg,#f5c8d9ed,#e5a3bfe0)}
+.aviation-baggage .choice strong {color:var(--ink);font-size:21px}
+.aviation-baggage .choice strong .zh {display:block!important}
+.aviation-baggage .choice strong .en {display:block!important;margin-top:8px;font-size:13px;color:#344f74;font-weight:500}
+.aviation-baggage .icon {background:#ffffff8c;border-color:#fff;color:#0756d6}
+.aviation-baggage .choice--damaged .icon {color:#a9426b}
+.aviation-baggage .go {margin-top:24px;color:#064091;font-size:14px}
+.aviation-pir .page-title {padding:22px;border:1px solid #ffffffed;border-radius:24px;background:#ffffffad;box-shadow:0 12px 30px #2b60b817;backdrop-filter:blur(22px)}
+.aviation-pir .lang-toggle {background:#ffffffb3;color:#064fca;box-shadow:none}
+.aviation-pir .case-fields, .aviation-pir .bag-selector, .aviation-pir .attachment-group {background:#ffffff82;border-color:#9bb9df55}
+.aviation-pir .picker-trigger {position:relative;appearance:none;-webkit-appearance:none;border:1px solid #8eaed8;border-left:8px solid #4773ac;background:linear-gradient(145deg,#fff,#edf4ff);color:var(--ink);text-align:left;box-shadow:inset 0 1px 0 #fff;border-radius:12px;padding:12px 34px 12px 14px;white-space:normal;line-height:1.45}
+.aviation-pir .picker-trigger::after {content:'▾';position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#245b9c;font-size:18px;pointer-events:none}
+.aviation-pir .attachment-grid {grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.aviation-pir .attachment-group {grid-template-columns:minmax(0,1fr);gap:10px;padding:10px;min-width:0}
+.aviation-pir .attachment-items {display:grid;grid-template-columns:minmax(0,1fr);gap:10px;min-width:0}
+.aviation-pir .attachment-tile {width:100%;min-width:0;padding:12px;gap:9px}
+.aviation-pir .attachment-title {flex-wrap:wrap;font-size:13px}
+.aviation-pir .attachment-tile .file-drop-hint {white-space:normal;overflow-wrap:anywhere;line-height:1.5}
+.aviation-pir .picker-trigger.placeholder {color:var(--muted)}
+.aviation-pir .visual-option {min-height:0;padding:6px 0;background:#fff;color:#342cff;border:2px solid transparent;border-radius:8px;box-shadow:none}
+.aviation-pir .visual-option:hover, .aviation-pir .visual-option.is-selected {border-color:#342cff;background:#f3f3ff}
+.aviation-pir .picker-close {min-height:44px;width:44px;height:44px;padding:8px;background:#fff;color:var(--ink);box-shadow:none}
+.aviation-pir .chart-button {padding:0;background:#fff;color:var(--brand);border-radius:14px;box-shadow:none}
+.aviation-pir .remove-bag {background:#fff0f0;color:#b42318;box-shadow:none}
+.aviation-pir .add-another-bag {background:transparent;color:#0756d6;box-shadow:none;padding:8px 2px}
+.aviation-pir .attachment-tile input[type=file] {min-height:0;padding:0}
+.aviation-pir .attachment-remove {min-height:28px;width:28px;height:28px;padding:0;background:#c52238}
+.aviation-pir .page-title p, .aviation-pir .delivery-hint, .aviation-pir .thanks {overflow-wrap:anywhere}
+@media(max-width:640px) {
+  .aviation-page main, .aviation-page > header {width:calc(100% - 28px)}
+  .aviation-page .card, .aviation-page .board-section {padding:19px}
+  .aviation-page .field-grid, .aviation-contact .grid {grid-template-columns:minmax(0,1fr)}
+  .aviation-scan .camera-wrap {aspect-ratio:4 / 3;max-height:42vh}
+  .aviation-240 .scan-heading h1 {font-size:26px}
+  .aviation-contact .intro h1 {font-size:24px}
+  .aviation-contact .intro, .aviation-contact form {padding-left:19px;padding-right:19px}
+  .aviation-baggage .choices {grid-template-columns:1fr}
+  .aviation-baggage .choice {min-height:215px}
+  .aviation-pir .flight-row, .aviation-pir .flight-head {grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .aviation-pir .case-fields {padding:14px}
+  .aviation-pir .bag-selector {padding:12px}
+  .aviation-pir .picker-panel {position:fixed;left:16px;right:16px;top:15vh;width:auto;max-width:none;max-height:70vh}
+  .aviation-pir .option-grid {grid-template-columns:repeat(3,minmax(0,1fr))}
+  .aviation-pir .attachment-grid {grid-template-columns:minmax(0,1fr);gap:14px}
+}
+@media(prefers-reduced-transparency:reduce) { .aviation-page .card, .aviation-page .board-section {background:#f5f9ff;backdrop-filter:none} }
