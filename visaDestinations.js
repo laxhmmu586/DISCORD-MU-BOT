@@ -9,7 +9,7 @@ const airportsByCountry={
   KAZ:['ALA','NQZ'],RUS:['SVO','DME','VKO','LED'],MEX:['MEX','CUN','TIJ'],PER:['LIM'],CHL:['SCL'],
   COL:['BOG','MDE'],CRI:['SJO','LIR'],GTM:['GUA'],KHM:['SAI','KTI','PNH'],PHL:['MNL','CEB'],LKA:['CMB'],JAM:['KIN','MBJ'],
   TWN:['TPE','TSA','KHH'],HKG:['HKG'],MAC:['MFM'],ARE:['DXB','AUH'],QAT:['DOH'],TUR:['IST','SAW'],IDN:['CGK','DPS'],
-  NLD:['AMS'],CHE:['ZRH','GVA'],ZAF:['JNB','CPT'],ETH:['ADD'],ARM:['EVN']
+  NLD:['AMS'],CHE:['ZRH','GVA'],ZAF:['JNB','CPT'],ETH:['ADD'],ARM:['EVN'],ALB:['TIA']
 };
 const airportCountries=new Map(Object.entries(airportsByCountry).flatMap(([country,airports])=>airports.map(a=>[a,country])));
 const countryCodes=new Set(['CHN',...Object.keys(airportsByCountry)]);

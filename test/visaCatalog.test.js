@@ -20,8 +20,8 @@ function prepareCatalog(store=new VisaStore(':memory:')) {
 const input={destinationCountry:'CHN',travelDate:'2026-10-20',passportType:'ordinary',stayDays:15,purpose:'tourism',previousStayDays:0,previousStayWindowDays:180,ckinLines:[]};
 test('original groups and additional document/destination rules have approved coverage',()=>{
  const s=prepareCatalog();try{
-  assert.equal(catalog.rules.length,37);assert.equal(new Set(catalog.rules.map(r=>r.nationality)).size,32);
-  assert.equal(s.db.prepare("SELECT COUNT(*) n FROM visa_coverage WHERE coverage_status='enabled'").get().n,33);
+  assert.equal(catalog.rules.length,38);assert.equal(new Set(catalog.rules.map(r=>r.nationality)).size,33);
+  assert.equal(s.db.prepare("SELECT COUNT(*) n FROM visa_coverage WHERE coverage_status='enabled'").get().n,34);
   for(const rule of catalog.rules.filter(r=>r.destination_country==='CHN'&&!r.id.startsWith('chn-entry-'))){
    const result=evaluateVisa({...input,nationality:rule.nationality},s,{now});
    if(['visa_exempt','citizen_return'].includes(rule.rule_type))assert.equal(result.status,'pass',rule.nationality);
@@ -101,7 +101,7 @@ test('a new Thailand candidate cannot prevent the reviewed China initial notice 
 test('approved policies remain available after SQLite restart',()=>{
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'visa-catalog-'));const filename=path.join(dir,'visa.db');
  let s=prepareCatalog(new VisaStore(filename));s.close();s=new VisaStore(filename);
- try{assert.equal(evaluateVisa({...input,nationality:'CAN'},s,{now}).status,'pass');assert.equal(s.overview().coverage.filter(r=>r.coverage_status==='enabled').length,33);}finally{s.close();fs.rmSync(dir,{recursive:true,force:true});}
+ try{assert.equal(evaluateVisa({...input,nationality:'CAN'},s,{now}).status,'pass');assert.equal(s.overview().coverage.filter(r=>r.coverage_status==='enabled').length,34);}finally{s.close();fs.rmSync(dir,{recursive:true,force:true});}
 });
 test('a reviewed operator rule overrides a baseline and does not fall back after expiration',()=>{
  const s=prepareCatalog();try{
