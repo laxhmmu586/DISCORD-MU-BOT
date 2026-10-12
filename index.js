@@ -1059,6 +1059,12 @@ app.get('/sy-live-stream', (req, res) => {
   req.on('close', () => { clearInterval(keepAlive); syStreamClients.delete(res); });
 });
 
+// Keep AHL/DPR and passenger forms current when their shared theme changes.
+app.use(['/pir-form.html', '/contact-form.html', '/cbs-form.html'], (req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store');
+  next();
+});
+
 app.use(
   express.static('public')
 );

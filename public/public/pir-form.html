@@ -11,9 +11,6 @@
     [hidden] { display:none !important; }
     html { min-height:100%; background:#e5f0ff; }
     body { margin:0; min-height:100vh; font-family:Inter,Arial,"Noto Sans SC",sans-serif; background:#e5f0ff; color:var(--ink); isolation:isolate; }
-    /* Match the baggage assistance backdrop while the long report scrolls. */
-    body::before { content:""; position:fixed; inset:0; z-index:-1; pointer-events:none; background:linear-gradient(rgba(241,247,255,.12),rgba(241,247,255,.12)),url("assets/boarding-aurora-c.png") center / cover no-repeat; }
-    @media (max-width:640px) { body::before { background-size:auto 100%; background-position:58% center; } }
     header { position:sticky; top:0; z-index:10; display:flex; justify-content:space-between; align-items:center; gap:14px; padding:18px clamp(18px,4vw,52px); background:rgba(255,255,255,.92); border-bottom:1px solid var(--line); backdrop-filter:blur(12px); }
     .brand { font-weight:900; color:var(--brand); letter-spacing:.08em; text-decoration:none; }
     .header-title { flex:1; text-align:right; font-weight:900; }
@@ -140,7 +137,8 @@
     @media (max-width:600px){.bag-fields{grid-template-columns:1fr}.bag-fields .bag-tag-field,.bag-fields .descriptor-field{grid-column:auto}.option-grid{grid-template-columns:repeat(4,minmax(48px,1fr))}}
     @media (max-width:520px){ .attachment-grid{grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px}.attachment-group{grid-template-columns:repeat(auto-fill,minmax(70px,1fr)); gap:6px; padding:6px}.attachment-tile{min-height:94px; padding:5px}.attachment-preview{height:66px}.attachment-upload .attachment-preview::before{width:30px;height:30px;font-size:24px}.attachment-title{font-size:11px}.attachment-filename{font-size:10px} }
   </style>
-  <link rel="stylesheet" href="/aviation-glass.css?v=20261011-controls">
+  <link rel="stylesheet" href="/aviation-glass.css?v=20261012-pir-shared">
+  <link rel="stylesheet" href="/assets/boarding-aurora.css?v=20261012-aurora-background">
 </head>
 <body class="aviation-page aviation-pir">
   <header><span class="mufc-wordmark">MUFC</span>
