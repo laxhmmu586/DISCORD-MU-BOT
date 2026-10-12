@@ -36,6 +36,13 @@ marks the NBRD resolved. Subsequent explicit pending/resolved actions persist.
 Repeated FB updates retain staff resolution and manual entries; stale source
 versions are rejected. Empty source snapshots do not remove stored NBRD.
 
+The selected flight/date's `pd*,ckin/nbrd` list is also imported during searches.
+Numbered passenger rows provide BN ownership; `+` page continuations preserve
+that ownership across PN/PF headers. Revisited page fragments without an owner
+are ignored. Bare `CKIN NBRD` is retained, and repeated lists insert only missing
+BNs without changing existing comments or resolution. Separate terminal files,
+other commands, flights and dates cannot share passenger ownership.
+
 The original two-stage NBRD confirmation remains scoped to the exact boarding
 pass, flight, date and current detail. Confirmation resolves NBRD atomically
 with the scan INSERT. A changed detail invalidates the old confirmation.

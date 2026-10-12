@@ -38,6 +38,9 @@ class BoardingSqliteLive {
       VALUES (?,?,?,?,CASE WHEN EXISTS(SELECT 1 FROM scans WHERE flight_date=? AND flight_no=? AND boarding_no=?) THEN 1 ELSE 0 END)
       ON CONFLICT(flight_date,flight_no,boarding_no) DO UPDATE SET detail=excluded.detail
       WHERE boarding_nbrd.detail<>excluded.detail`);
+    this.insertMissingNbrd = db.prepare(`INSERT INTO boarding_nbrd (flight_date,flight_no,boarding_no,detail,resolved)
+      VALUES (?,?,?,?,CASE WHEN EXISTS(SELECT 1 FROM scans WHERE flight_date=? AND flight_no=? AND boarding_no=?) THEN 1 ELSE 0 END)
+      ON CONFLICT(flight_date,flight_no,boarding_no) DO NOTHING`);
     this.getVersion = db.prepare('SELECT version FROM boarding_nbrd_versions WHERE flight_no=? AND flight_date=?');
     this.setVersion = db.prepare(`INSERT INTO boarding_nbrd_versions (flight_date,flight_no,version) VALUES (?,?,?)
       ON CONFLICT(flight_date,flight_no) DO UPDATE SET version=excluded.version`);
@@ -140,7 +143,8 @@ class BoardingSqliteLive {
       const current = this.getVersion.get(flight, date)?.version || 0, version = Number(options.version) || 0;
       if (version && version < current) return { stale: true };
       let changes = 0;
-      for (const item of normalized) changes += this.upsertNbrd.run(date, flight, canonicalBn(item.bn), String(item.detail || item.message || item.info || '').trim(), date, flight, canonicalBn(item.bn)).changes;
+      const write = options.insertOnly ? this.insertMissingNbrd : this.upsertNbrd;
+      for (const item of normalized) changes += write.run(date, flight, canonicalBn(item.bn), String(item.detail || item.message || item.info || '').trim(), date, flight, canonicalBn(item.bn)).changes;
       if (version) this.setVersion.run(date, flight, version);
       return { added: normalized.map(item => canonicalBn(item.bn)), changed: changes > 0 };
     })();
