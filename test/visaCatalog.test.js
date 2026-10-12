@@ -67,6 +67,13 @@ test('travel documents and transit claims are not silently treated as China visa
   const r=evaluateVisa({...input,nationality:'USA',ckinLines:[line]},s,{now});assert.equal(r.status,'review',line);assert.equal(r.possibleMissedCheck,false,line);
  }}finally{s.close();}
 });
+test('a green-card entry rule cannot borrow an expiry from a visa in the same remark',()=>{
+ const s=prepareCatalog();try{
+  const r=s.draft({id:'reviewed-chn-usa-ordinary',nationality:'USA',destination_country:'CHN',passport_type:'ordinary',rule_type:'residence_document',conditions:{documentType:'PRCARD',issuer:'CHN'},effective_from:'2026-10-12',recheck_due_at:'2026-11-11'},[catalog.sources.law.id],now.toISOString());s.approve(r.id,r.version,'Reviewer',now.toISOString());
+  assert.equal(evaluateVisa({...input,nationality:'USA',ckinLines:['CKIN PR CARD CHN EXP12DEC2030']},s,{now}).status,'pass');
+  assert.equal(evaluateVisa({...input,nationality:'USA',ckinLines:['CKIN PR CARD USA VISA CHN EXP12DEC2030']},s,{now}).status,'review');
+ }finally{s.close();}
+});
 test('changed government snapshot cannot automatically inherit catalog approval',()=>{
  const s=prepareCatalog();try{
   const m=s.db.prepare('SELECT * FROM visa_monitors WHERE url=?').get(catalog.sources.unilateral.url);

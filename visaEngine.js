@@ -26,7 +26,7 @@ function ckinFacts(lines=[]) {
     // Whole remark, not a date, identifier or a request to apply for TWOV.
     if(/^CKIN\b/.test(line)&&/\b240\b/.test(line)&&!(/\b(?:NO|NEED|NOT|APPLY|PENDING|CANCELLED|INVALID)\b/.test(line))){facts.manual240=true;continue;}
     const doc=line.match(/\b(?:PR\s*CARD|PINK\s*CARD|TBZ|TRAVEL\s*DOC(?:UMENT)?)(?=\b|20\d{2})/);
-    if(doc){const expiry=expiryFacts(line);facts.documents.push({type:/TRAVEL/.test(doc[0])?'TRAVELDOC':doc[0].replace(/\s/g,''),issuer:visaIssuer(line),...expiry,negative:/\b(?:NO|NOT|EXPIRED|APPLY|PENDING|CANCELLED|INVALID)\b/.test(line)});continue;}
+    if(doc){const expiry=/\b(?:VISA\d*|VS|V)\b/.test(line)?{expiry:null,expiryYear:null}:expiryFacts(line);facts.documents.push({type:/TRAVEL/.test(doc[0])?'TRAVELDOC':doc[0].replace(/\s/g,''),issuer:visaIssuer(line),...expiry,negative:/\b(?:NO|NOT|EXPIRED|APPLY|PENDING|CANCELLED|INVALID)\b/.test(line)});continue;}
     if(/\b(?:TWOV|TRANSIT|APEC)\b/.test(line))facts.otherEntryClaim=true;
     if(!/\b(?:VISA\d*|VS|V|TRAVEL\s*DOC(?:UMENT)?)\b/.test(line))continue;
     if(/\bFREE\b/.test(line)){facts.visaFreeClaim=true;continue;}
