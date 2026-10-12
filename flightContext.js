@@ -34,6 +34,11 @@ function sections(log) {
       const match = header || command;
       if (match) context = { flightNo:match[1].toUpperCase(), flightDate:(match[2] + (match[3] || (part.ts ? String(new Date(part.ts).getUTCFullYear()).slice(-2) : ''))).toUpperCase(), day };
       else if (context?.day !== day) { context = null; passengerHeader = ''; }
+      // PR/PD dates may omit the year; use the export timestamp, never today's year.
+      if (header && !header[3] && part.ts) {
+        const year = String(new Date(part.ts).getUTCFullYear()).slice(-2);
+        part.text = part.text.replace(/((?:SY|PR|PD):\s*[A-Z]{2}\d{1,4}[A-Z]?\/\d{2}[A-Z]{3})(?!\d)/i, '$1' + year);
+      }
       const pr = part.text.match(/(?:^|\n)\s*(?:>\s*)?(PR:[^\n]+)/i)?.[1];
       const continuation = /^>\s*(?:PN|PF)\d*\b/i.test(part.text);
       if (pr) passengerHeader = pr;

@@ -9,7 +9,8 @@
     * { box-sizing:border-box; }
     html[lang="en"] .zh, html[lang="zh"] .en { display:none; }
     [hidden] { display:none !important; }
-    body { margin:0; font-family:Inter,Arial,"Noto Sans SC",sans-serif; background:linear-gradient(135deg,#eaf4ff,#fdfefe); color:var(--ink); }
+    html { min-height:100%; background:#e5f0ff; }
+    body { margin:0; min-height:100vh; font-family:Inter,Arial,"Noto Sans SC",sans-serif; background:#e5f0ff; color:var(--ink); isolation:isolate; }
     header { position:sticky; top:0; z-index:10; display:flex; justify-content:space-between; align-items:center; gap:14px; padding:18px clamp(18px,4vw,52px); background:rgba(255,255,255,.92); border-bottom:1px solid var(--line); backdrop-filter:blur(12px); }
     .brand { font-weight:900; color:var(--brand); letter-spacing:.08em; text-decoration:none; }
     .header-title { flex:1; text-align:right; font-weight:900; }
@@ -413,6 +414,7 @@
       else { input.value = option.dataset.option; pickerElement.querySelectorAll('[data-option]').forEach((item) => item.classList.toggle('is-selected', item === option)); const trigger = pickerElement.querySelector('[data-picker-trigger]'); trigger.textContent = option.dataset.label; trigger.classList.remove('placeholder'); panel.hidden = true; }
     });
     bagSelectorGrid.addEventListener('pointerover', (event) => {
+      if (event.pointerType === 'touch') return;
       const icon = event.target.closest('[data-icon-preview],.descriptor-icon'); if (!icon) return;
       const sourceStyle = getComputedStyle(icon); const rect = icon.getBoundingClientRect();
       hoverImagePreview.style.backgroundImage = sourceStyle.backgroundImage;

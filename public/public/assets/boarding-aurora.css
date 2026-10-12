@@ -1,0 +1,60 @@
+/* Selected C artwork: keep the atmosphere fixed while the form scrolls. */
+html { min-height:100%; background:#e5f0ff; }
+body, body.aviation-page {
+  min-height:100vh;
+  background:#e5f0ff;
+  isolation:isolate;
+}
+body::before, body.aviation-page::before {
+  content:"";
+  position:fixed;
+  inset:0;
+  z-index:-1;
+  pointer-events:none;
+  background:linear-gradient(rgba(241,247,255,.12),rgba(241,247,255,.12)),url("boarding-aurora-c.png") center / cover no-repeat;
+}
+body > header {
+  background:transparent;
+  border:0;
+  box-shadow:none;
+  backdrop-filter:none;
+  -webkit-backdrop-filter:none;
+}
+body > .topbar { display:none; }
+body > header :is(.mufc-wordmark,.brand),
+body.aviation-page > header :is(.mufc-wordmark,.brand) {
+  display:inline-flex;
+  align-items:center;
+  flex-shrink:0;
+  color:#0c2b59;
+  font-family:Inter,"Segoe UI",Arial,sans-serif;
+  font-size:24px;
+  font-weight:900;
+  font-style:italic;
+  line-height:1;
+  letter-spacing:-.8px;
+  text-decoration:none;
+  text-shadow:0 1px 0 rgba(255,255,255,.8);
+}
+body > header a:is(.mufc-wordmark,.brand):focus-visible {
+  outline:2px solid #1264d9;
+  outline-offset:6px;
+  border-radius:4px;
+}
+.card, .scan-card {
+  min-width:0;
+  border:1px solid rgba(255,255,255,.9);
+  background:linear-gradient(135deg,rgba(255,255,255,.84),rgba(240,247,255,.66));
+  box-shadow:inset 0 1px 0 #fff,0 16px 44px rgba(45,91,159,.13),0 3px 12px rgba(70,122,191,.06);
+  backdrop-filter:blur(18px) saturate(115%);
+  -webkit-backdrop-filter:blur(18px) saturate(115%);
+}
+/* Opaque readable surfaces for dense operational data. */
+.card table { background:rgba(255,255,255,.94); }
+.card :is(input,textarea,select) { background:rgba(255,255,255,.88); }
+.topbar + header { padding:10px 0; }
+@media(max-width:640px) {
+  body::before, body.aviation-page::before { background-size:auto 100%; background-position:58% center; }
+  .card h1 { overflow-wrap:anywhere; }
+  .card { backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); }
+}

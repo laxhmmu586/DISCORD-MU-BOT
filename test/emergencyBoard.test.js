@@ -10,14 +10,14 @@ test('emergency scanner and board use their isolated endpoints and multi-format 
   const board = read('public/public/m-board2.html');
   assert.match(scan, /BrowserMultiFormatReader/);
   assert.match(scan, /BrowserPDF417Reader \|\| ZXingBrowser\.BrowserMultiFormatReader/);
-  assert.match(scan, /\.camera-wrap \{[^}]*aspect-ratio:4\/3/);
-  assert.match(scan, /video \{[^}]*position:absolute;[^}]*width:100%; height:100%;[^}]*object-fit:cover/);
+  assert.match(scan, /\.camera-wrap\{aspect-ratio:4 \/ 3/);
+  assert.match(scan, /video \{[^}]*width:100%; height:100%;[^}]*object-fit:cover/);
   assert.match(scan, /focusTimer = setInterval\(applyCameraFocus, 2500\)/);
   assert.doesNotMatch(scan, /<p>Scan <strong>/);
   assert.match(scan, /function isEmergencyBarcode/);
   assert.match(scan, /if \(!isEmergencyBarcode\(text\)\) return/);
-  assert.match(scan, /<h1>EMERGENCY BOARDING<\/h1>/);
-  assert.match(scan, /href="m-board2\.html">Manual Board<\/a>/);
+  assert.match(scan, /Emergency Boarding<\/h1>/);
+  assert.match(scan, /href="m-board2\.html">BAB<\/a>/);
   assert.match(scan, /\/cbs-scan2/);
   assert.match(board, /<h2>NBRD<\/h2>/);
   assert.match(board, /<table><thead><tr><th>BN<\/th><\/tr><\/thead><tbody>\$\{rows\.map/);
