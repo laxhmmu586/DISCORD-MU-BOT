@@ -111,3 +111,24 @@ test('FB-only log imports NBRD into SQLite before a missing SY can return', t =>
   assert.equal(live.nbrdRecords(flight, '11OCT26').length, 0);
   assert.throws(() => live.scan(flight, { flight, bn: '001', seat: '33H' }, date), { code: 'NBRD_MESSAGE' });
 });
+
+
+test('without SY, PR/PD header scope uses the flight date and timestamp year', () => {
+  const { sections, scopedLog } = require('../flightContext');
+  const { parseIncrementalLog, passengers } = require('../flightParser');
+  const { nbrdEntriesFromFb } = require('../boardingNbrd');
+  const stamp = '2026 October 12, Monday, 08:32:07\n';
+  for (const suffix of ['12OCT', '12OCT26', '13OCT']) {
+    const fb = stamp + '>fb 1\n PR: MU578/' + suffix + '*LAX,BN1\n 1. TEST/PASSENGER BN001 33H R PVG\nCKIN NBRD CTC LAKE\n';
+    const expected = suffix.length === 5 ? suffix + '26' : suffix;
+    assert.equal(sections(fb)[0].flightNo, 'MU578');
+    assert.equal(sections(fb)[0].flightDate, expected);
+    assert.equal(scopedLog(fb, 'MU586', expected), '');
+    parseIncrementalLog(scopedLog(fb, 'MU578', expected));
+    assert.deepEqual(nbrdEntriesFromFb(Object.values(passengers)), [{bn:'001',detail:'CKIN NBRD CTC LAKE'}]);
+    const pd = stamp + '>pd*,ckin/nbrd\n PD: MU578/' + suffix + '*LAX,CKIN/NBRD\n 1. 1TEST/PASSENGER BN001 33H R PVG\n CKIN NBRD CTC LAKE\n';
+    assert.deepEqual(nbrdEntriesFromPd(pd, 'MU578', expected), [{bn:'001',detail:'CKIN NBRD CTC LAKE'}]);
+    assert.deepEqual(nbrdEntriesFromPd(pd, 'MU586', expected), []);
+    assert.deepEqual(nbrdEntriesFromPd(pd, 'MU578', '11OCT26'), []);
+  }
+});
