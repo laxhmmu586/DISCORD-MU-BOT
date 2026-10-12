@@ -25,13 +25,13 @@ test('all dashboard nodes follow the requested order',()=>{
  for (const key of ['MEAL_ORDER','INF_TKT','TKT']) assert.match(html,new RegExp(`data-key="${key}"[^>]*data-timeline-side="top"`));
 });
 
-test('CKIN NBRD sync is deduplicated and clears resolved rows on both sheets', async () => {
+test('CKIN NBRD sync is deduplicated and clears resolved rows on the ordinary sheet', async () => {
  const calls=[];
  const c={currentSy:null,enrichRowsWithPassengerData:rows=>rows,console,
   apiJson:async(endpoint,options)=>{calls.push({endpoint,...JSON.parse(options.body)});}};
  vm.createContext(c);
  vm.runInContext(['ckinNbrdLines','ckinNbrdDetails','rowHasCkinNbrdIssue','syncCkinNbrdBnsToBoardingSheet'].map(source).join('\n'),c);
- const sy={flightNo:'MU586',flightDate:'01OCT26',bnAudit:[
+ const sy={flightNo:'MU586',flightDate:'01OCT26',boardingNbrdVersion:1,bnAudit:[
   {bn:'12',passengerRecord:{gateComments:['CKIN NBRD CHECK DOCUMENT']}},
   {bn:'13',offloaded:true,passengerRecord:{gateComments:['CKIN NBRD OFFLOADED']}},
   {bn:'14',passengerRecord:{gateComments:['CKIN OK']}},
@@ -47,13 +47,13 @@ test('CKIN NBRD sync is deduplicated and clears resolved rows on both sheets', a
  assert.deepEqual(calls[1].entries,[]);
 });
 
-test('a failed mirrored NBRD sync retries on the next refresh', async () => {
+test('a failed ordinary NBRD sync retries on the next refresh', async () => {
  const calls=[];let fail=true;
  const c={currentSy:null,enrichRowsWithPassengerData:rows=>rows,console:{warn(){}},
   apiJson:async(endpoint)=>{calls.push(endpoint);if(fail) throw new Error('temporary failure');}};
  vm.createContext(c);
  vm.runInContext(['ckinNbrdLines','ckinNbrdDetails','rowHasCkinNbrdIssue','syncCkinNbrdBnsToBoardingSheet'].map(source).join('\n'),c);
- const sy={flightNo:'MU586',flightDate:'01OCT26',bnAudit:[]};
+ const sy={flightNo:'MU586',flightDate:'01OCT26',boardingNbrdVersion:1,bnAudit:[]};
  c.syncCkinNbrdBnsToBoardingSheet(sy);
  await new Promise(resolve=>setImmediate(resolve));
  fail=false;
