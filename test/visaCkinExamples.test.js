@@ -17,6 +17,7 @@ function store(){
 }
 // Preserve operational syntax; every identity/document identifier is synthetic.
 const cases=[
+ ['ALB','CHN','CKIN 90 DAYS VISA FREE','pass'],
  ['CAN','CHN','CKIN V 30DAYS FREE','pass'],
  ['USA','CHN','CKIN TBZ CARD TILL 2030','pass'],
  ['USA','CHN','CKIN VS CHN EXP DT 29 SEPO 2035','pass'],
@@ -90,6 +91,15 @@ test('recorded exemption cannot borrow the nationality in a different passport c
   assert.equal(evaluateVisa({...input,nationality:'BRA',ckinLines:['CKIN RUS PPT VISA FREE FOR 30DAYS']},s,{now}).status,'review');
   assert.equal(evaluateVisa({...input,nationality:'BRA',ckinLines:['CKIN VISA FREE 30 DAYS','CKIN VISA FREE 90 DAYS']},s,{now}).status,'review');
   assert.equal(evaluateVisa({...input,nationality:'BRA',ckinLines:['CKIN VISA FREE 30 DAYS']},s,{now}).status,'pass');
+ }finally{s.close();}
+});
+test('Albania 90-day recorded exemption uses reviewed sources and retains the 90-in-180 policy',()=>{
+ const s=store();try{
+  const complete={...input,nationality:'ALB',ckinLines:['CKIN 90 DAYS VISA FREE']};
+  const r=evaluateVisa(complete,s,{now});assert.equal(r.status,'pass');assert.equal(r.reasonCodes[0],'CKIN_EXEMPTION_CHECKED');assert.equal(r.inspection,'recorded');assert.deepEqual(r.missingFields,[]);
+  const policy=s.activeRules('ALB','CHN',input.entryDate)[0];assert.deepEqual([policy.conditions.maxStayDays,policy.conditions.cumulativeDays,policy.conditions.cumulativeWindowDays],[90,90,180]);assert.equal(policy.effective_until,null);
+  for(const extra of [{nationality:'USA'},{passportType:'unknown'},{ckinLines:['CKIN 180 DAYS VISA FREE']}])assert.equal(evaluateVisa({...complete,...extra},s,{now}).status,'review');
+  const monitor=s.db.prepare('SELECT * FROM visa_monitors WHERE url=?').get(catalog.sources.albania.url);s.snapshot(monitor,'Official agreement changed; exemption suspended',now.toISOString());assert.equal(evaluateVisa(complete,s,{now}).status,'review');
  }finally{s.close();}
 });
 test('recorded exemption must match current nationality rule and cannot override expiry or a conflicting passport claim',()=>{

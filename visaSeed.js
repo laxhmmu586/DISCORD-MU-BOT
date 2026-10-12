@@ -28,7 +28,7 @@ function publishVerifiedBaseline(store,now=new Date()) {
   }
   // The initial inventory was reviewed with the original 30 China combinations.
   // Later destination/document additions must not hold their inventory hostage.
-  const initialRules=catalog.rules.filter(d=>d.destination_country==='CHN'&&!d.id.startsWith('chn-entry-')&&!['BRA','ARM'].includes(d.nationality));
+  const initialRules=catalog.rules.filter(d=>d.destination_country==='CHN'&&!d.id.startsWith('chn-entry-')&&!['BRA','ARM','ALB'].includes(d.nationality));
   if(!store.db.prepare("SELECT 1 FROM visa_metadata WHERE key='initial_notice_inventory'").get()&&initialRules.every(d=>store.db.prepare("SELECT 1 FROM visa_rules WHERE id=? AND status='approved' AND reviewed_by=?").get(d.id,catalog.reviewer))) {
     const inventory=require('./visaPolicyInventory.json');
     store.db.transaction(()=>{

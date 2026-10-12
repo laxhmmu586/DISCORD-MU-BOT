@@ -5,6 +5,7 @@ const feeds = [
   { url: 'https://www.mfa.gov.cn/fyrbt_673021/dhdw_673027/', authority: 'Ministry of Foreign Affairs', kind: 'feed' }
 ];
 const policies = [
+  { url: 'https://al.china-embassy.gov.cn/lsfw/lszj/lhqz/202303/t20230301_11033372.htm', authority: 'Chinese Embassy in Albania', kind: 'policy' },
   { url: 'https://my.china-embassy.gov.cn/sgxw/201908/t20190813_1717561.htm', authority: 'Chinese Embassy in Malaysia', kind: 'policy' },
   { url: 'https://www.nia.gov.cn/n794014/n794021/c1659665/content.html', authority: 'National Immigration Administration', kind: 'policy' },
   { url: 'https://cs.mfa.gov.cn/lgk1/201905/t20190529_833938.shtml', authority: 'China Consular Affairs', kind: 'policy' },

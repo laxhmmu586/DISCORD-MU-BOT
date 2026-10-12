@@ -1,6 +1,7 @@
 // Reviewed 2026-10-12. Ordinary passports travelling to mainland China.
 // Regional/tour-group exemptions and other special entry bases require separate evidence.
 const sources = {
+  albania: {url:'https://al.china-embassy.gov.cn/lsfw/lszj/lhqz/202303/t20230301_11033372.htm',id:'ec99fcca4bfdd9ae56d2c18fd9226b5b1815e3a66bb5f38bab3f4b4544fbd437'},
   apec: {url:'https://my.china-embassy.gov.cn/sgxw/201908/t20190813_1717561.htm',id:'e51f8f829f464687becb73133da993cf856e7777647624f2990e2ab6bf84d7a7'},
   pink: {url:'https://www.nia.gov.cn/n794014/n794021/c1659665/content.html',id:'0256905a3b31423f2893fb4a23908f236dce0afafa5e7d9c811fcfaca4df6ee2'},
   armenia: {url:'https://cs.mfa.gov.cn/lgk1/201905/t20190529_833938.shtml',id:'93b7f81f409bb8ed4923b3f31878e37cd6a9669aec31ed75b78585dc774db904'},
@@ -33,6 +34,7 @@ const rules=[
   entry('MYS','visa_exempt',{maxStayDays:30,purposes:['tourism','visit','business','exchange','private','medical','transport','transit'],cumulativeDays:90,cumulativeWindowDays:180},['mys','bilateral'],'Agreement effective 2025-07-17: 30 days per entry, 90 days in 180; specified purposes, no work/study/news/settlement.'),
   entry('SGP','visa_exempt',{maxStayDays:30,purposes:['tourism','business','visit','private','transit']},['sgp','bilateral'],'Ordinary passports, 30 days per entry; work/news coverage and stays over 30 days require prior visa/permission.'),
   entry('ARM','visa_exempt',{maxStayDays:90,purposes:['tourism','business','visit','private','transit'],cumulativeDays:90,cumulativeWindowDays:180},['armenia','bilateral'],'Ordinary passports; agreement effective 2020-01-19, cumulative 90 days per 180 days; no work/study/settlement/news.'),
+  entry('ALB','visa_exempt',{maxStayDays:90,purposes:['tourism','business','visit','private','transit'],cumulativeDays:90,cumulativeWindowDays:180},['albania','bilateral'],'Albanian ordinary passports; agreement effective 2023-03-18, up to 90 days in each 180-day period. BN audits the recorded entry basis, not passenger stay/purpose compliance.'),
   entry('USA','visa_exempt',{maxStayDays:30,purposes:['tourism','visit']},['thaiUsa','tdac'],'U.S. ordinary passports: from 2026-09-15, tourism/short visits up to 30 days. TDAC recorded separately; it is not a visa.',{id:'tha-reviewed-usa',destination_country:'THA'}),
   entry('USA','residence_document',{documentType:'PRCARD',issuer:'CHN'},['law'],'Article 22: valid foreigner permanent residence document exempts from visa. RESIDENT CARD is the confirmed local alias for a China PR card.',{id:'chn-entry-usa-residence'}),
   entry('USA','special_document',{documentType:'PINKCARD',issuer:'CHN'},['pink'],'Mainland travel permit for Hong Kong/Macao permanent residents. PINK CARD is the confirmed local alias for a mainland travel permit, not an outbound Hong Kong/Macao permit.',{id:'chn-entry-usa-pink'}),
