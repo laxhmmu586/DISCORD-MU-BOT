@@ -83,6 +83,10 @@ const {operationalDate}=require('../flightContext');
  await page.waitForFunction(()=>!document.querySelector('#start').disabled);
  assert.equal(await page.locator('.nbrd-modal[open]').count(),0);
  await page.locator('.nbrd-bubble').first().click();await page.locator('.nbrd-no').click();
+ // Wait for the pending-state save and dialog close before asking the scanner
+ // to verify again; otherwise this test can inspect the previous closed modal.
+ await page.waitForFunction(()=>!document.querySelector('.nbrd-modal').open);
+ assert.equal(rows[0].nbrdResolved,false);
  await page.evaluate(()=>{window.pendingVerification=verifyNbrd();});
  await page.locator('.nbrd-modal .nbrd-no').click();
  assert.equal(await page.locator('#start').isDisabled(),true);
