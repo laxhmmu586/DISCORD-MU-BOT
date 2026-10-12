@@ -1,4 +1,7 @@
 const { filterUnavailablePassengerSections } = require('./passengerRecordValidity');
+const { checkVisa } = require('./visaRuntime');
+const { countryForAirport } = require('./visaDestinations');
+const { dateFromToken: visaDateFromToken } = require('./visaEngine');
 
 function splitLogicalSections(log) {
   const normalizedLog = String(log || '')
@@ -1737,47 +1740,33 @@ ${section}`,
     passengerRecord.gateComments = gateComments;
     passengerRecord.checkinDetails = operationLineList;
     const visaRelevantCkinLineList = ckinLineList.filter((line) => !isVisaIrrelevantCkinLine(line));
-    const ckinLines = visaRelevantCkinLineList.join(' ').toUpperCase();
-    const hasVisaKeyword = /\b(?:VISA\d*|VS|TRAVEL\s*DOC(?:UMENT)?\d*|TRAVELDOC(?:UMENT)?\d*|V|PR CARD)\b/.test(ckinLines);
-    const hasVisaExpHint = /\b(EXP|DT|TIL|240|APPLY)\b/.test(ckinLines);
-    const hasDateLike = /\b(\d{4}|[0-3]?\d\s*[A-Z]{3}\s*\d{2,4}|\d{1,2}[A-Z]{3}\d{2,4}|[A-Z]{3,9}\s*\d{4})\b/.test(ckinLines);
-    const hasTravelDocOverride = /\b(TBZ|PINK CARD|PR CARD)\b/.test(ckinLines);
-    const has240Transit = /\b240\b/.test(ckinLines);
-    const hasAnyVisaEvidence = hasTravelDocOverride || has240Transit || (hasVisaKeyword && (hasDateLike || hasVisaExpHint));
     const visaDest = hasCheckedOutbound ? outboundDest : 'PVG';
     const toChinaDomestic = chinaDomesticAirports.has(visaDest);
-    let visaStatus = 'review';
-    let visaReason = 'Not yet implemented';
-    const ckinBestLine = visaRelevantCkinLineList.find((line) => /\b(?:VISA\d*|VS|TRAVEL\s*DOC(?:UMENT)?\d*|TRAVELDOC(?:UMENT)?\d*|V|PR CARD|TBZ|PINK CARD|240|EXP|DT|TIL|APPLY)\b/i.test(line)) || visaRelevantCkinLineList[0] || '';
-    const visaReviewReason = (prefix) => ckinBestLine ? `${prefix};\n${ckinBestLine}` : prefix;
-    const visaPassReason = (detail = '') => `${passportNat || 'UNK'} passport to ${visaDest}: PASS${detail ? ` (${detail})` : ''}`;
-    if (hasAnyVisaEvidence) {
-      visaStatus = 'pass';
-      visaReason = visaPassReason(ckinBestLine ? `valid visa evidence: ${ckinBestLine}` : 'valid visa evidence found');
-    } else if (toChinaDomestic) {
-      if (passportNat === 'CHN') {
-        visaStatus = 'pass';
-        visaReason = visaPassReason('Chinese passport traveling to China/domestic destination');
-      } else if (passportNat === 'USA') {
-        visaReason = visaReviewReason(`Need review: USA passport to ${visaDest}`);
-      } else if (passportNat === 'CAN' || passportNat === 'RUS' || passportNat === 'ESP') {
-        visaStatus = 'pass';
-        visaReason = visaPassReason('implemented passport/destination rule');
-      } else {
-        visaReason = visaReviewReason(`Rule not implemented: passport ${passportNat || 'UNK'} to ${visaDest}`);
-      }
-    } else if (passportNat === 'VNM' && visaDest === 'SGN') {
-      visaStatus = 'pass';
-      visaReason = visaPassReason('Vietnam passport returning to SGN');
-    } else if (passportNat === 'THA' && visaDest === 'BKK') {
-      visaStatus = 'pass';
-      visaReason = visaPassReason('Thailand passport returning to BKK');
-    } else if (passportNat === 'USA' && visaDest === 'BKK') {
-      visaStatus = 'pass';
-      visaReason = visaPassReason('USA passport traveling to Bangkok');
-    } else {
-      visaReason = visaReviewReason(`Rule not implemented: passport ${passportNat || 'UNK'} to ${visaDest}`);
-    }
+    const destinationCountry = toChinaDomestic ? 'CHN' : countryForAirport(visaDest);
+    const ckinText = visaRelevantCkinLineList.join(' ');
+    const purposeValues=[...new Set([...ckinText.matchAll(/\bPURPOSE\s+(TOURISM|BUSINESS|VISIT|EXCHANGE|TRANSIT|PRIVATE|MEDICAL|TRANSPORT|WORK|STUDY|NEWS|SETTLEMENT)\b/gi)].map(m=>m[1].toLowerCase()))];
+    const purpose=purposeValues.length===1?purposeValues[0]:undefined;
+    const stayValues=[...new Set([...ckinText.matchAll(/\bSTAY\s+(\d{1,3})\s+DAYS?\b/gi)].map(m=>Number(m[1])))];
+    const stayDays=stayValues.length===1?stayValues[0]:undefined;
+    const priorValues=[...new Set([...ckinText.matchAll(/\bPRIOR\s+(\d{1,3})\s+DAYS?\s*[:=]?\s*(\d{1,3})\s+DAYS?\b/gi)].map(m=>m[1]+':'+m[2]))];
+    const previousStay=priorValues.length===1?priorValues[0].split(':'):null;
+    const entryDates=[...new Set([...ckinText.matchAll(/\bENTRY(?:\s+DATE)?\s*[:=]?\s*(\d{4}-\d{2}-\d{2}|\d{1,2}\s*[A-Z]{3}\s*(?:\d{4}|\d{2}))\b/gi)].map(m=>visaDateFromToken(m[1])))];
+    const entryDate=entryDates.length===1?entryDates[0]:undefined;
+    const departureDateText=section.match(/PR:\s*[A-Z]{2}\d+\/(\d{2}[A-Z]{3}\d{2})/i)?.[1]||syInfo.flightDate;
+    const departureDate=visaDateFromToken(departureDateText||'');
+    const origin=section.match(/PR:\s*[A-Z]{2}\d+\/\d{2}[A-Z]{3}\d{2}\*([A-Z]{3})\b/i)?.[1]?.toUpperCase();
+    const addDays=days=>new Date(Date.parse(departureDate+'T00:00:00Z')+days*86400000).toISOString().slice(0,10);
+    // LAX-to-mainland flights cross the calendar boundary. Without an explicit
+    // entry date, neither visa expiry nor a policy cutoff can use LAX departure day.
+    const arrivalRange=departureDate&&origin==='LAX'&&toChinaDomestic&&!entryDate?{entryDateEarliest:addDays(1),entryDateLatest:addDays(2)}:{};
+    const visaDecision = checkVisa({nationality:passportNat,destinationCountry,travelDate:departureDateText,entryDate,
+      entryDateConflict:entryDates.length>1||entryDates.includes(null)||Boolean(departureDate&&origin==='LAX'&&toChinaDomestic&&entryDate&&entryDate<addDays(1)),...arrivalRange,
+      passportType:/^[^/]+\/P\//i.test(passportRawLine)?'ordinary':'unknown',ckinLines:visaRelevantCkinLineList,
+      allowImplicitChinaVisa:toChinaDomestic,purpose,stayDays:stayDays===undefined?undefined:Number(stayDays),
+      previousStayWindowDays:previousStay?Number(previousStay[0]):undefined,previousStayDays:previousStay?Number(previousStay[1]):undefined});
+    Object.assign(visaDecision,{nationality:passportNat||'UNK',destination:visaDest,destinationCountry});
+    let visaStatus = visaDecision.status;
+    let visaReason = visaDecision.reason;
 
     if (gateComments.length) {
       visaStatus = 'review';
@@ -1890,7 +1879,7 @@ ${section}`,
       return { bn, apiStatus: 'pass', tkStatus: 'pass', visaStatus: 'pass', bagStatus: 'pass', apiReason: '', tkReason: '', visaReason: 'CKIN OK override', bagReason, passportNo, dobKey, passportExpiryKey: expField, passengerRecord, offloaded: false };
     }
 
-    return { bn, apiStatus, tkStatus, visaStatus, bagStatus, apiReason: apiReasons.join('; '), tkReason, visaReason, bagReason, passportNo, dobKey, passportExpiryKey: expField, passengerRecord, offloaded: false };
+    return { bn, apiStatus, tkStatus, visaStatus, visaDecision, bagStatus, apiReason: apiReasons.join('; '), tkReason, visaReason, bagReason, passportNo, dobKey, passportExpiryKey: expField, passengerRecord, offloaded: false };
   });
 
   const passportBnMap = new Map();

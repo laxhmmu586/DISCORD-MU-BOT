@@ -5,6 +5,21 @@ const vm = require('node:vm');
 const html = fs.readFileSync(require.resolve('../public/public/index.html'), 'utf8');
 const source = (name) => html.slice(html.indexOf(`      function ${name}(`)).split(/\n      (?:async )?function /)[0];
 const keys = [...html.matchAll(/class="node"[^>]*data-key="([^"]+)"/g)].map(m => m[1]);
+test('policy review summary and fields do not trigger mobile Security Check card dismissal',async()=>{
+ const context={};vm.createContext(context);
+ const start=html.indexOf('      async function handleVisaPolicyAction(');
+ vm.runInContext(html.slice(start).split(/\n      (?:async )?function /)[0],context);
+ assert.equal(await context.handleVisaPolicyAction({target:{closest:selector=>selector==='.visa-policy-review'?{}:null}}),true);
+ assert.equal(await context.handleVisaPolicyAction({target:{closest:selector=>selector==='[data-visa-policy-form]'?{}:null}}),true);
+ assert.equal(await context.handleVisaPolicyAction({target:{closest:()=>null}}),false);
+});
+test('Security Check renders visa requirement and missed-check detail without overriding ticket failures',()=>{
+ const context={escapeHtml:value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),passengerRecordCard:()=>'',reviewerDisplayName:v=>v};
+ vm.createContext(context);vm.runInContext(['checkTone','securityTone','securityCard','visaPolicyReviewForm'].map(source).join('\n'),context);
+ const row={bn:'001',apiStatus:'pass',tkStatus:'fail',bagStatus:'pass',visaStatus:'review',visaReason:'Possible missed check <test>',visaDecision:{nationality:'USA',destination:'PVG',requirement:'required',inspection:'missing',possibleMissedCheck:true,sources:[]}};
+ const rendered=context.securityCard(row);assert.match(rendered,/Visa or verified exception required/);assert.match(rendered,/No CKIN visa check/);assert.match(rendered,/POSSIBLE MISSED CHECK/);assert.match(rendered,/USA passport → PVG/);assert.match(rendered,/&lt;test&gt;/);assert.match(rendered,/data-review-bn="001"/);assert.equal(context.securityTone(row),'fail');
+ row.visaStatus='pass';row.visaDecision={nationality:'USA',destination:'PVG',requirement:'manual_twov',inspection:'manual_confirmed',sources:[]};assert.match(context.securityCard(row),/240 TWOV manually checked/);assert.equal(context.securityTone(row),'fail');
+});
 function harness() {
   const nodes = keys.map(key => ({dataset:{key},hidden:false,removeAttribute(){},setAttribute(){}}));
   const element = {classList:{contains:()=>false,remove(){},toggle(){}},setAttribute(){},querySelector(){return this;}};

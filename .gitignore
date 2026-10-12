@@ -5,3 +5,7 @@ data/*.db-wal
 data/*.db-shm
 
 securityReviews.json
+data/visa*.json
+data/visa-admin-token.txt
+.verification/visa*
+docs/visa-ckin-month-analysis-2026-10-12.md
