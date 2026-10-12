@@ -6,6 +6,8 @@ const express = require('express');
 const fs = require('fs/promises');
 const path = require('path');
 const PirDelivery = require('./public/public/pir-delivery');
+const { BoardingLive } = require('./boardingLive');
+const { BoardingLiveStore } = require('./boardingLiveStore');
 
 const {
 
@@ -125,6 +127,18 @@ const {
   writeNotesDriveStore
 
 } = require('./googleDrive');
+
+// Enable only on a persistent volume. The legacy Sheet-confirmed path remains
+// available until the deployment has provisioned reliable primary storage.
+const boardingLive = process.env.BOARDING_LIVE_STORE_DIR ? new BoardingLive({
+  store: new BoardingLiveStore(process.env.BOARDING_LIVE_STORE_DIR),
+  sheets: {
+    seed: require('./googleDrive').seedBoardingLive,
+    readNbrd: require('./googleDrive').readBoardingLiveNbrd,
+    backup: require('./googleDrive').backupBoardingLive
+  }
+}) : null;
+if (boardingLive) boardingLive.start().catch(error => console.error('Boarding live startup failed:', error.message));
 
 const {
 
@@ -3128,13 +3142,60 @@ app.get('/flights', async (_req, res) => {
   catch (err) { return res.status(503).json({ error: 'Unable to read flight logs.' }); }
 });
 
+app.get('/cbs-scan/live-state', async (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  if (!boardingLive) return res.json({ live: false });
+  try { return res.json(await boardingLive.records(require('./boardingContext').boardingFlight())); }
+  catch (error) { return res.status(503).json({ live: true, error: error.message || 'Live boarding unavailable.' }); }
+});
+
+app.get('/cbs-scan/live-stream', async (req, res) => {
+  if (!boardingLive) return res.status(503).json({ error: 'Live boarding storage is not configured.' });
+  const flight = require('./boardingContext').boardingFlight();
+  let unsubscribe;
+  let heartbeat;
+  let closed = false;
+  const close = () => { closed = true; unsubscribe?.(); clearInterval(heartbeat); };
+  res.on('close', close);
+  try {
+    await boardingLive.ensure(flight);
+    if (closed) return;
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders?.();
+    res.write('retry: 3000\n\n');
+    const send = snapshot => {
+      // A slow client must reconnect for a full snapshot rather than accumulate
+      // an unbounded backlog of passenger data in server memory.
+      if (res.writableLength > 1024 * 1024) { close(); res.end(); return; }
+      res.write(`id: ${snapshot.revision}\nevent: board\ndata: ${JSON.stringify(snapshot)}\n\n`);
+    };
+    unsubscribe = boardingLive.subscribe(flight, send);
+    send(boardingLive.snapshot(flight));
+    if (closed) return;
+    heartbeat = setInterval(() => {
+      if (res.writableLength > 1024 * 1024) { close(); res.end(); }
+      else res.write(': keep-alive\n\n');
+    }, 15000);
+    heartbeat.unref?.();
+  } catch (error) {
+    close();
+    if (!res.headersSent) res.status(503).json({ error: error.message || 'Live boarding unavailable.' });
+    else res.end();
+  }
+});
+
 app.post('/cbs-scan', async (req, res) => {
   try {
     const parsed = parseCbsPdf417(req.body?.rawScan || req.body?.raw || req.body?.text || '');
-    const saved = await appendCbsScanRecord(parsed);
+    const saved = boardingLive
+      ? await boardingLive.scan(require('./boardingContext').boardingFlight(), parsed)
+      : await appendCbsScanRecord(parsed);
     return res.json({ ok: true, ...saved });
   } catch (err) {
-    const status = err?.code === 'DUPLICATE_BN' || err?.code === 'NBRD_MESSAGE' ? 409 : (err?.code === 'WRONG_FLIGHT' ? 400 : (err?.code === 'SHEETS_QUOTA' ? 503 : 422));
+    const status = err?.code === 'DUPLICATE_BN' || err?.code === 'NBRD_MESSAGE' ? 409 : (err?.code === 'WRONG_FLIGHT' ? 400 : (['SHEETS_QUOTA', 'NBRD_UNAVAILABLE'].includes(err?.code) ? 503 : 422));
     return res.status(status).json({ error: err?.message || 'CBS scan save failed', code: err?.code || 'SCAN_ERROR', flight: err?.flight || '', bn: err?.bn || '', detail: err?.detail || '' });
   }
 });
@@ -3286,6 +3347,7 @@ app.delete('/cbs-scan2/nbrd-bns/:rowNumber', handleEmergencyBoardNbrdDelete);
 
 app.get('/cbs-scan/records', async (req, res) => {
   try {
+    if (boardingLive) return res.json(await boardingLive.records(require('./boardingContext').boardingFlight()));
     const rows = await getCbsScanRecords();
     return res.json({ ok: true, rows });
   } catch (err) {
@@ -3297,7 +3359,9 @@ app.get('/cbs-scan/records', async (req, res) => {
 
 app.post('/cbs-scan/records/entered', async (req, res) => {
   try {
-    const result = await setCbsScanRecordsEntered(req.body?.rowNumbers || [], req.body?.entered === true);
+    const result = boardingLive
+      ? await boardingLive.entered(require('./boardingContext').boardingFlight(), req.body?.rowNumbers || [], req.body?.entered === true)
+      : await setCbsScanRecordsEntered(req.body?.rowNumbers || [], req.body?.entered === true);
     return res.json({ ok: true, ...result });
   } catch (err) {
     return res.status(422).json({ error: err?.message || 'CBS scan rows update failed', code: err?.code || 'CBS_SCAN_ROWS_UPDATE_ERROR' });
@@ -3306,7 +3370,9 @@ app.post('/cbs-scan/records/entered', async (req, res) => {
 
 app.post('/cbs-scan/records/:rowNumber/entered', async (req, res) => {
   try {
-    const result = await setCbsScanRecordEntered(req.params.rowNumber, req.body?.entered === true);
+    const result = boardingLive
+      ? await boardingLive.entered(require('./boardingContext').boardingFlight(), [req.params.rowNumber], req.body?.entered === true)
+      : await setCbsScanRecordEntered(req.params.rowNumber, req.body?.entered === true);
     return res.json({ ok: true, ...result });
   } catch (err) {
     return res.status(422).json({ error: err?.message || 'CBS scan row update failed', code: err?.code || 'CBS_SCAN_ROW_UPDATE_ERROR' });
