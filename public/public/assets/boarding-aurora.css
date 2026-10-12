@@ -24,7 +24,6 @@ body > .topbar { display:none; }
 body > header :is(.mufc-wordmark,.brand) {
   display:inline-flex;
   align-items:center;
-  gap:9px;
   flex-shrink:0;
   color:#0c2b59;
   font-family:Inter,"Segoe UI",Arial,sans-serif;
@@ -35,12 +34,6 @@ body > header :is(.mufc-wordmark,.brand) {
   letter-spacing:-.8px;
   text-decoration:none;
   text-shadow:0 1px 0 rgba(255,255,255,.8);
-}
-body > header :is(.mufc-wordmark,.brand)::before {
-  content:"";
-  width:28px;
-  height:28px;
-  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%230d64e8' d='M2 18 30 3 20 17 8 22Z'/%3E%3Cpath fill='%2332baff' d='m8 24 14-5-8 11Z'/%3E%3C/svg%3E") center/contain no-repeat;
 }
 body > header a:is(.mufc-wordmark,.brand):focus-visible {
   outline:2px solid #1264d9;
