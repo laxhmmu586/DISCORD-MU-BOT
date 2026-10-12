@@ -121,6 +121,7 @@
       onBoard(data) {
         liveNbrd = data.nbrd || [];
         liveNbrdFresh = data.nbrdFresh === true;
+        nbrdReview.render(data.rows || []);
         nbrdLiveStatus.textContent = data.nbrdFresh
           ? `NBRD live · ${liveNbrd.length} entries`
           : 'NBRD updates unavailable. Please wait before scanning.';

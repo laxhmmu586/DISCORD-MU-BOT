@@ -4,12 +4,12 @@ const SHEETS = Object.freeze({ MU586: 0, MU9586: 409569001, MU578: 640376113 });
 const states = new Map();
 function normalizeBoardingFlight(value) {
   const flight = 'MU' + String(value || '').trim().toUpperCase().replace(/^MU/, '').replace(/^0+/, '');
-  return Object.hasOwn(SHEETS, flight) ? flight : '';
+  return Object.hasOwn(SHEETS, flight) || flight === 'MU9578' ? flight : '';
 }
 function boardingFlight() { return storage.getStore() || 'MU586'; }
 function runWithBoardingFlight(value, fn) {
   const flight = normalizeBoardingFlight(value);
-  if (!flight) throw new Error('Choose MU586, MU9586 or MU578.');
+  if (!flight) throw new Error('Choose MU586, MU9586, MU578 or MU9578.');
   return storage.run(flight, fn);
 }
 function boardingSheetGid() { return SHEETS[boardingFlight()]; }
