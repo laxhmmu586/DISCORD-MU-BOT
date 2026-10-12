@@ -102,7 +102,6 @@
 .aviation-baggage .go {margin-top:24px;color:#064091;font-size:14px}
 .aviation-pir .page-title {padding:22px;border:1px solid #ffffffed;border-radius:24px;background:#ffffffad;box-shadow:0 12px 30px #2b60b817;backdrop-filter:blur(22px)}
 .aviation-pir .lang-toggle {background:#ffffffb3;color:#064fca;box-shadow:none}
-.aviation-pir > header {position:static}
 .aviation-pir .case-fields, .aviation-pir .bag-selector, .aviation-pir .attachment-group {background:#ffffff82;border-color:#9bb9df55}
 .aviation-pir .picker-trigger {position:relative;appearance:none;-webkit-appearance:none;border:1px solid #8eaed8;border-left:8px solid #4773ac;background:linear-gradient(145deg,#fff,#edf4ff);color:var(--ink);text-align:left;box-shadow:inset 0 1px 0 #fff;border-radius:12px;padding:12px 34px 12px 14px;white-space:normal;line-height:1.45}
 .aviation-pir .picker-trigger::after {content:'▾';position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#245b9c;font-size:18px;pointer-events:none}
@@ -135,8 +134,7 @@
   .aviation-pir .flight-row, .aviation-pir .flight-head {grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
   .aviation-pir .case-fields {padding:14px}
   .aviation-pir .bag-selector {padding:12px}
-  /* Expand in place: backdrop-filter on the card contains fixed descendants. */
-  .aviation-pir .picker-panel {position:relative;left:auto;right:auto;top:auto;width:100%;max-width:none;max-height:60vh;max-height:60svh;min-width:0;overscroll-behavior:contain}
+  .aviation-pir .picker-panel {position:fixed;left:16px;right:16px;top:15vh;width:auto;max-width:none;max-height:70vh}
   .aviation-pir .option-grid {grid-template-columns:repeat(3,minmax(0,1fr))}
   .aviation-pir .attachment-grid {grid-template-columns:minmax(0,1fr);gap:14px}
 }

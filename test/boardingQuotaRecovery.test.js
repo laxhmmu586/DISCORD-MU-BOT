@@ -245,7 +245,7 @@ for (const file of ['scan.html', 'scan2.html']) {
     vm.runInContext(handler, h.context);
     const pending = h.context.handleText('boarding pass');
     assert.equal(start.disabled, true);
-    assert.equal(result.hidden, false);
+    assert.equal(result.hidden, file === 'scan2.html');
     await h.next();
     assert.match(status, file === 'scan.html' ? /等待，请保持页面打开。/ : /Still saving/);
     assert.equal(start.disabled, true);
@@ -263,7 +263,7 @@ for (const file of ['scan.html', 'scan2.html']) {
     const response = deferred();
     const messages = [], results = [];
     const context = vm.createContext({
-      apiBase: '', fetch: () => response.promise, nbrdReviewTokens:new Map(), nbrdReview:{render:()=>{}}, refreshNbrd:async()=>{},
+      apiBase: '', fetch: () => response.promise, nbrdReviewTokens:new Map(), refreshNbrd:async()=>{},
       setStatus: () => {}, showMessage: (...args) => messages.push(args), renderResult: result => results.push(result)
     });
     vm.runInContext(source, context);
@@ -274,11 +274,11 @@ for (const file of ['scan.html', 'scan2.html']) {
     response.resolve({ ok: true, json: async () => ({ bn: '001', seat: '10A' }) });
     await pending;
     assert.equal(messages[0][2], 'success');
-    assert.equal(results.length, 0);
+    assert.equal(results.length, file === 'scan.html' ? 0 : 1);
     context.fetch = async () => ({ ok: false, json: async () => ({ code: 'SHEETS_QUOTA' }) });
     await assert.rejects(context.saveScan('pass'), /Not saved/);
     if (file === 'scan2.html') assert.equal(messages[1][2], 'error');
-    assert.equal(results.length, 0, 'failed saves never render another successful result');
+    assert.equal(results.length, file === 'scan.html' ? 0 : 1, 'failed saves never render another successful result');
   });
 }
 

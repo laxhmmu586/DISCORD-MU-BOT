@@ -66,7 +66,7 @@ test('search ingestion overwrites manual NBRD by scoped BN while preserving reso
   const source = fs.readFileSync(require.resolve('../index'), 'utf8');
   const block = source.match(/      if \(normalizeBoardingFlight\(selectedFlight\)\) \{\n?\r?[\s\S]*?const pdNbrd[\s\S]*?\n      \}/)?.[0];
   assert.ok(block, 'search contains the PD NBRD ingestion hook');
-  const ctx = vm.createContext({ normalizeBoardingFlight, nbrdEntriesFromPd, nbrdEntriesFromFb: require('../boardingNbrd').nbrdEntriesFromFb, passengers: {}, boardingLive: live,
+  const ctx = vm.createContext({ normalizeBoardingFlight, nbrdEntriesFromPd, boardingLive: live,
     preparationLog: sample, selectedFlight: flight, selectedDate: date });
   vm.runInContext(block, ctx);
   const first = live.nbrdRecords(flight, date);
@@ -86,49 +86,4 @@ test('search ingestion overwrites manual NBRD by scoped BN while preserving reso
   assert.equal(live.nbrdRecords('MU578', date)[0].nbrdDetail, 'OTHER FLIGHT');
   assert.equal(live.nbrdRecords(flight, '11OCT26')[0].nbrdDetail, 'OTHER DATE');
   assert.equal(db.prepare('SELECT count(*) AS n FROM boarding_nbrd').get().n, 9);
-});
-
-
-test('FB-only log imports NBRD into SQLite before a missing SY can return', t => {
-  const { passengers, parseIncrementalLog } = require('../flightParser');
-  const { scopedLog } = require('../flightContext');
-  const { nbrdEntriesFromFb } = require('../boardingNbrd');
-  const log = '2026 October 12, Monday, 08:32:07\n>fb 1\n PR: MU586/12OCT26*LAX,BN1\n  1. TEST/PASSENGER BN001 33H R PVG\nCKIN HK1 LKCK/7810000000000/CHKLEG\nCKIN NBRD CTC LAKE\n      I/DL484/12OCT BN999 T MCO\n      O/MU5816/13OCT BN011 36J B KMG\n RES AUTO 10OCT1230 +\n';
-  parseIncrementalLog(scopedLog(log, flight, date));
-  const db = new Database(':memory:');
-  db.exec(fs.readFileSync(require.resolve('../db'), 'utf8').match(/db\.exec\(`([\s\S]*?)`\);/)[1]);
-  t.after(() => db.close());
-  const live = new BoardingSqliteLive({ db, report() {} });
-  const source = fs.readFileSync(require.resolve('../index'), 'utf8').replace(/\r\n/g, '\n');
-  const begin = source.indexOf('      if (normalizeBoardingFlight(selectedFlight)) {', source.indexOf('const preparationLog = log;'));
-  const end = source.indexOf('\n      }', begin) + 8;
-  assert.ok(begin < source.indexOf('if (!syInfo)', begin));
-  const ctx = vm.createContext({ normalizeBoardingFlight, passengers, nbrdEntriesFromFb, nbrdEntriesFromPd, boardingLive: live, preparationLog: log, selectedFlight: flight, selectedDate: date });
-  vm.runInContext(source.slice(begin, end), ctx);
-  assert.equal(live.nbrdRecords(flight, date)[0].nbrdBn, '001');
-  assert.equal(live.nbrdRecords(flight, date)[0].nbrdDetail, 'CKIN NBRD CTC LAKE');
-  assert.equal(live.nbrdRecords('MU578', date).length, 0);
-  assert.equal(live.nbrdRecords(flight, '11OCT26').length, 0);
-  assert.throws(() => live.scan(flight, { flight, bn: '001', seat: '33H' }, date), { code: 'NBRD_MESSAGE' });
-});
-
-
-test('without SY, PR/PD header scope uses the flight date and timestamp year', () => {
-  const { sections, scopedLog } = require('../flightContext');
-  const { parseIncrementalLog, passengers } = require('../flightParser');
-  const { nbrdEntriesFromFb } = require('../boardingNbrd');
-  const stamp = '2026 October 12, Monday, 08:32:07\n';
-  for (const suffix of ['12OCT', '12OCT26', '13OCT']) {
-    const fb = stamp + '>fb 1\n PR: MU578/' + suffix + '*LAX,BN1\n 1. TEST/PASSENGER BN001 33H R PVG\nCKIN NBRD CTC LAKE\n';
-    const expected = suffix.length === 5 ? suffix + '26' : suffix;
-    assert.equal(sections(fb)[0].flightNo, 'MU578');
-    assert.equal(sections(fb)[0].flightDate, expected);
-    assert.equal(scopedLog(fb, 'MU586', expected), '');
-    parseIncrementalLog(scopedLog(fb, 'MU578', expected));
-    assert.deepEqual(nbrdEntriesFromFb(Object.values(passengers)), [{bn:'001',detail:'CKIN NBRD CTC LAKE'}]);
-    const pd = stamp + '>pd*,ckin/nbrd\n PD: MU578/' + suffix + '*LAX,CKIN/NBRD\n 1. 1TEST/PASSENGER BN001 33H R PVG\n CKIN NBRD CTC LAKE\n';
-    assert.deepEqual(nbrdEntriesFromPd(pd, 'MU578', expected), [{bn:'001',detail:'CKIN NBRD CTC LAKE'}]);
-    assert.deepEqual(nbrdEntriesFromPd(pd, 'MU586', expected), []);
-    assert.deepEqual(nbrdEntriesFromPd(pd, 'MU578', '11OCT26'), []);
-  }
 });

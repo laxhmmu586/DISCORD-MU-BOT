@@ -3441,11 +3441,30 @@ function normalizeRecordCheckBagTag(value) {
 }
 
 function cbsRecordLookupDate(row = {}) {
-  for (const value of [row.flightDate, row.issueDate, row.submittedAt, row.submitDate, row.createdAt]) {
-    const direct = String(value || '').match(/^(\d{4}-\d{2}-\d{2})/);
+  let original = {};
+  try { original = JSON.parse(row.originalFormData || '{}'); } catch {}
+  const reference = [row.issueDate, row.submittedAt, row.submitDate, row.createdAt].find((value) => /^\d{4}-\d{2}-\d{2}/.test(String(value || '')));
+  const referenceDate = reference ? String(reference).slice(0, 10) : '';
+  const storedFlights = row.flightRows || original.flightRows;
+  const flights = Array.isArray(storedFlights) ? storedFlights : [];
+  const routeDates = String(row.flightRoute || original.flightRoute || '').match(/\b\d{2}[A-Z]{3}(?:\d{2})?\b/gi) || [];
+  const flightDates = [row.flightDate, ...flights.slice().reverse().map((flight) => flight.flightDate), ...routeDates.reverse(), row.flightDate1, original.flightDate1];
+  for (const value of [...flightDates, referenceDate]) {
+    const text = String(value || '').trim().toUpperCase();
+    const direct = text.match(/^(\d{4}-\d{2}-\d{2})/);
     if (direct) return direct[1];
-    const parsed = Date.parse(value);
-    if (Number.isFinite(parsed)) return new Date(parsed).toISOString().slice(0, 10);
+    const short = text.match(/^(\d{2})([A-Z]{3})(\d{2})?$/);
+    const month = monthNameToNumber(short?.[2]);
+    if (!short || !month || (!short[3] && !referenceDate)) continue;
+    const year = short[3] ? 2000 + Number(short[3]) : Number(referenceDate.slice(0, 4));
+    // Form dates omit the year; anchor it to the report, including New Year arrivals.
+    const years = short[3] ? [year] : [year - 1, year, year + 1];
+    const dates = years.map((candidate) => `${candidate}-${month}-${short[1]}`).filter((date) => {
+      const parsed = new Date(`${date}T00:00:00Z`);
+      return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === date;
+    });
+    dates.sort((a, b) => Math.abs(Date.parse(a) - Date.parse(referenceDate)) - Math.abs(Date.parse(b) - Date.parse(referenceDate)));
+    if (dates.length) return dates[0];
   }
   return '';
 }
@@ -3483,14 +3502,19 @@ async function syncMissingCbsPnrRecords(passengerCases = [], unresolvedCases = [
   const updates = [];
   const errors = [];
   for (const candidate of candidates) {
-    const tag = normalizeRecordCheckBagTag(candidate.row.bagTag);
+    const bagTags = String(candidate.row.bagTag || '').match(/\b\d{10}\b|\b[A-Z][A-Z0-9]\d{6}\b|\b\d{6}\b/gi) || [];
+    const tags = bagTags.map(normalizeRecordCheckBagTag).filter(Boolean);
     const date = cbsRecordLookupDate(candidate.row);
-    if (!tag || !date) continue;
-    const cacheKey = `${date}:${tag.serial}`;
+    if (!tags.length || !date) continue;
     try {
-      if (!lookupCache.has(cacheKey)) lookupCache.set(cacheKey, findCbsPnrRecordsByBagTag(tag.serial, date));
-      const lookup = await lookupCache.get(cacheKey);
-      const selectedRecord = bestCbsPnrRecord(lookup.records);
+      const records = [];
+      for (const tag of tags) {
+        const cacheKey = `${date}:${tag.serial}`;
+        if (!lookupCache.has(cacheKey)) lookupCache.set(cacheKey, findCbsPnrRecordsByBagTag(tag.serial, date));
+        const lookup = await lookupCache.get(cacheKey);
+        records.push(...lookup.records);
+      }
+      const selectedRecord = bestCbsPnrRecord(records);
       const record = String(selectedRecord?.content || '').slice(0, 5000);
       const ticketRecord = String(selectedRecord?.ticketContent || '').slice(0, 5000);
       // Do not cache a miss: record files may be uploaded after the case first
@@ -3526,10 +3550,11 @@ function startCbsPnrRecordSync(passengerCases, unresolvedCases, updatedBy = 'Sys
 app.post('/cbs-record-sync', async (req, res) => {
   try {
     const updatedBy = sanitizeCbsText(req.body?.updatedBy, 160) || 'System';
-    if (cbsPnrSyncRecent.result && Date.now() - cbsPnrSyncRecent.at < 5 * 60 * 1000) {
+    if (!req.body?.forceRefresh && cbsPnrSyncRecent.result && Date.now() - cbsPnrSyncRecent.at < 5 * 60 * 1000) {
       return res.json({ ...cbsPnrSyncRecent.result, skipped:true, reason:'recently synced' });
     }
-    const [passengerCases, unresolvedCases] = await Promise.all([getCbsCases(), getCbsUnresolvedBaggageCases()]);
+    const options = { forceRefresh:Boolean(req.body?.forceRefresh) };
+    const [passengerCases, unresolvedCases] = await Promise.all([getCbsCases(options), getCbsUnresolvedBaggageCases(options)]);
     const result = await startCbsPnrRecordSync(passengerCases, unresolvedCases, updatedBy);
     cbsPnrSyncRecent = { at:Date.now(), result };
     return res.json(result);
@@ -4610,9 +4635,6 @@ app.get(
       parsePDLog(log);
 
       if (normalizeBoardingFlight(selectedFlight)) {
-        // Import scoped FB records even when no SY summary is available.
-        const fbNbrd = nbrdEntriesFromFb(Object.values(passengers));
-        if (fbNbrd.length) boardingLive.saveNbrd(selectedFlight, fbNbrd, {}, selectedDate);
         const pdNbrd = nbrdEntriesFromPd(preparationLog, selectedFlight, selectedDate);
         if (pdNbrd.length) boardingLive.saveNbrd(selectedFlight, pdNbrd, {}, selectedDate);
       }

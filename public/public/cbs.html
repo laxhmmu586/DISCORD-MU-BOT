@@ -814,7 +814,8 @@
       if (action === 'case-close') return '<label class="wide"><span>Notes</span><textarea name="note" placeholder="Enter case close notes" required></textarea></label>';
       if (action === 'on-hand-rush') return `${worldTracerFileNumber ? `<input type="hidden" name="worldTracerFileNumber" value="${escapeHtml(worldTracerFileNumber)}" />` : '<label><span>WorldTracer File Number (Optional)</span><input name="worldTracerFileNumber" placeholder="Can be added later" /></label>'}<label><span>Original Tag Number</span><input name="originalTagNumber" value="${escapeHtml(bagTag)}" ${rushBagTagInputAttributes} required /></label><label><span>RUSH Tag Number</span><input name="rushTagNumber" ${rushBagTagInputAttributes} required /></label><div class="rush-itinerary wide"><div class="rush-itinerary-head"><h2>RUSH Itinerary</h2><button class="secondary" type="button" data-add-unresolved-flight>+ Add Flight</button></div><div data-unresolved-flight-rows>${rushFlightRowHtml(defaultRushFlight())}</div></div>`;
       if (action === 'email') return `<label class="wide"><span>Email</span><select name="emailAction" data-onhand-email-action required><option value="sent_open_bag_authorization_to_pvg">Sent Open Bag Authorization to PVG</option><option value="contact_pax_pickup_bags">Pick-up Bags - available</option><option value="pickup_wrong_bags">Pick up Wrong bags</option><option value="baggage_picked_up_by_another_passenger">Reason: Baggage Picked Up by Another Passenger</option><option value="pickup_bags_future_available">Pick-up Bags - future available</option><option value="baggage_transfer_status_eta">Baggage transfer status update - ETA</option><option value="baggage_pickup_delivery_method_confirmation">Baggage Pick-Up / Delivery Method Confirmation</option><option value="require_open_bag_authorization_pvg">Sent authorization form to passenger</option><option value="baggage_open_by_customs">Explanation - Baggage Open by Custom</option></select></label><label class="wide" data-onhand-pvg-email><span>Email To</span><select name="emailTo" required><option value="pd-bag-intl@ceair.com">pd-bag-intl@ceair.com</option><option value="pd-bag-dom@ceair.com">pd-bag-dom@ceair.com</option></select></label><label class="authorization-upload wide" data-onhand-pvg-email><input name="authorizationFile" type="file" required /><span class="authorization-upload-title">Letter of Authorization</span><small>Select the signed file</small></label><label class="wide" data-onhand-passenger-email hidden><span>Email To</span><input name="emailTo" type="email" placeholder="Passenger email address" disabled required /></label><label class="wide" data-onhand-passenger-related hidden><span>WorldTracer File Number</span><input name="worldTracerFileNumber" value="${escapeHtml(worldTracerFileNumber)}" placeholder="WorldTracer file number" disabled required /></label><label class="wide" data-onhand-eta hidden><span>Estimated arrival date</span><input name="estimatedArrivalTime" type="date" disabled required /></label><label class="wide" data-onhand-passenger-related hidden><span>Language</span><select name="language" disabled required><option value="en">English</option><option value="zh">中文</option></select></label><label class="wide" data-onhand-future-pickup hidden><span>Available starting date</span><input name="availableDate" type="date" disabled required /></label><label class="wide" data-onhand-customs-language hidden><span>Language</span><select name="language" disabled required><option value="en">English</option><option value="zh">中文</option></select></label>`;
-      if (action === 'shipped') return `<label><span>Delivery method</span><select name="shippingMethod" data-shipping-method required><option value="">Select delivery method</option><option>ADC - All Day Courier</option><option>MBI DELIVERY</option><option>FedEx Delivery</option><option>Pick Up at Airport</option><option>Passenger Pay for Shipping</option></select></label><label data-shipping-tracking hidden><span>Tracking number</span><input name="trackingNumber" disabled /></label><label data-shipping-address hidden><span>Shipping to where?</span><input name="shippingTo" disabled /></label><label data-shipping-bdo hidden><span>BDO</span><input name="bdo" disabled /></label><label class="wide"><span>Comment</span><textarea name="comment"></textarea></label>`;
+      if (action === 'airport-pickup') return `<input type="hidden" name="action" value="shipped" /><input type="hidden" name="shippingMethod" value="Pick Up at Airport" /><label class="wide"><span>Comment</span><textarea name="comment"></textarea></label>`;
+      if (action === 'shipped') return `<label><span>Delivery method</span><select name="shippingMethod" data-shipping-method required><option value="">Select delivery method</option><option>ADC - All Day Courier</option><option>MBI DELIVERY</option><option>FedEx Delivery</option><option>Passenger Pay for Shipping</option></select></label><label data-shipping-tracking hidden><span>Tracking number</span><input name="trackingNumber" disabled /></label><label data-shipping-address hidden><span>Shipping to where?</span><input name="shippingTo" disabled /></label><label data-shipping-bdo hidden><span>BDO</span><input name="bdo" disabled /></label><label class="wide"><span>Comment</span><textarea name="comment"></textarea></label>`;
       return '<label class="wide"><span>Resolution Note</span><textarea name="note" placeholder="Describe how this case was resolved" required></textarea></label>';
     }
     function unresolvedProgressHtml(row) {
@@ -856,7 +857,7 @@
     }
     function resolutionOptionsHtml(isBagRoom) {
       const specificOptions = isBagRoom ? '<option value="change-type">Change Type</option>' : '';
-      return `<option value="worldtracer">WorldTracer</option><option value="pvg">PVG Filed</option><option value="record-pnr">Record - PNR</option><option value="record-tkt">Record - TKT</option><option value="comment">Comment</option>${specificOptions}<option value="exchange">Exchange</option><option value="email">Email</option><option value="on-hand-rush">Create Rush</option><option value="passenger-collected">Passenger collected / Case closed</option><option value="shipped">Shipped</option><option value="other">Other resolution</option><option value="case-close">Case Close</option>`;
+      return `<option value="worldtracer">WorldTracer</option><option value="pvg">PVG Filed</option><option value="record-pnr">Record - PNR</option><option value="record-tkt">Record - TKT</option><option value="comment">Comment</option>${specificOptions}<option value="exchange">Exchange</option><option value="email">Email</option><option value="on-hand-rush">Create Rush</option><option value="passenger-collected">Passenger collected / Case closed</option><option value="shipped">Shipping</option><option value="airport-pickup">Pick up at airport</option><option value="other">Other resolution</option><option value="case-close">Case Close</option>`;
     }
     function savedOnHandRecord(rowNumber, type) {
       const row = (window._unresolvedBaggageSourceRows || []).find((item) => String(item.rowNumber) === String(rowNumber));
@@ -869,9 +870,8 @@
         const event = events.filter((item) => item.key === `record-${type}` || (type === 'pnr' && item.key === 'record')).at(-1);
         return { type, event, text:new Map(event?.fields || []).get(`Record - ${type.toUpperCase()}`) || new Map(event?.fields || []).get('Record') || '' };
       });
-      if (!records.some((item) => item.text)) return '';
       const activeType = records.find((item) => item.text)?.type || 'pnr';
-      return `<section class="record-tabs" data-record-tabs="${escapeHtml(key)}"><div class="record-tab-list" role="tablist" aria-label="Saved records">${records.map(({ type, text }) => `<button type="button" role="tab" data-record-tab="${type}" class="${type === activeType ? 'is-active' : ''}" aria-selected="${type === activeType}" tabindex="${type === activeType ? '0' : '-1'}" ${text ? '' : 'disabled'}>Record - ${type.toUpperCase()}</button>`).join('')}</div>${records.map(({ type, event, text }) => `<div class="record-tab-panel unresolved-record" role="tabpanel" data-record-panel="${type}" ${type === activeType ? '' : 'hidden'}><pre>${escapeHtml(text || '')}</pre>${event ? `<small>${event.at ? escapeHtml(new Date(event.at).toLocaleString()) : ''}${event.by ? ` · Updated by: ${escapeHtml(updaterDisplayName(event.by))}` : ''}</small>` : ''}</div>`).join('')}</section>`;
+      return `<section class="record-tabs" data-record-tabs="${escapeHtml(key)}"><div class="record-tab-list" role="tablist" aria-label="Saved records">${records.map(({ type, text }) => `<button type="button" role="tab" data-record-tab="${type}" class="${type === activeType ? 'is-active' : ''}" aria-selected="${type === activeType}" tabindex="${type === activeType ? '0' : '-1'}">Record - ${type.toUpperCase()}</button>`).join('')}</div>${records.map(({ type, event, text }) => `<div class="record-tab-panel unresolved-record" role="tabpanel" data-record-panel="${type}" ${type === activeType ? '' : 'hidden'}><pre>${escapeHtml(text || label('No saved record yet.', '暂无保存的记录。'))}</pre>${event ? `<small>${event.at ? escapeHtml(new Date(event.at).toLocaleString()) : ''}${event.by ? ` · Updated by: ${escapeHtml(updaterDisplayName(event.by))}` : ''}</small>` : ''}</div>`).join('')}</section>`;
     }
     function unresolvedCommentsHtml(events = [], rowNumber = '') {
       const comments = events.filter((event) => event.key === 'comment');
@@ -1035,11 +1035,11 @@
           const res = await fetch(`${apiBase}/cbs-record-sync`, {
             method:'POST',
             headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({ updatedBy:await currentUpdater() })
+            body:JSON.stringify({ updatedBy:await currentUpdater(), forceRefresh:Boolean(window._forceCbsRefresh) })
           });
           const data = await parseJson(res);
           if (!res.ok) throw new Error(data.error || 'Automatic PNR record sync failed');
-          if (Number(data.updated) > 0) await Promise.all([loadCases(), loadUnresolvedBaggage()]);
+          if (!data.skipped && Number(data.updated) > 0) await Promise.all([loadCases(), loadUnresolvedBaggage()]);
         } catch (error) {
           console.error('Automatic PNR record sync failed:', error);
         } finally {
@@ -1076,6 +1076,7 @@
       { key:'rush', text:'Rush' },
       { key:'location', text:'Location' },
       { key:'shipping', text:'Shipping' },
+      { key:'airport_pickup', text:'Pick up at airport' },
       { key:'lost', text:'Lost' },
       { key:'closed', text:'Closed' },
       { key:'reopen', text:'Reopened' }
@@ -1339,9 +1340,9 @@
     }
     function updateFormHtml(row, mode = 'worldtracer') {
       if (!row.rowNumber) return `<p class="status err">${label('A saved row is required before this case can be updated.', '案件保存后才能更新。')}</p>`;
-      const active = ['worldtracer', 'requested_bags', 'rush', 'location', 'shipping', 'lost', 'closed'].includes(mode) ? mode : 'worldtracer';
+      const active = ['worldtracer', 'requested_bags', 'rush', 'location', 'shipping', 'airport_pickup', 'lost', 'closed'].includes(mode) ? mode : 'worldtracer';
       const input = (title, name, attrs = 'required') => `<label><span>${escapeHtml(title)}</span><input name="${escapeHtml(name)}" ${attrs} /></label>`;
-      const shippingMethodSelect = `<label><span>Delivery method</span><select name="shippingMethod" data-shipping-method required><option value="">Select delivery method</option><option>ADC - All Day Courier</option><option>MBI DELIVERY</option><option>BDO</option><option>FedEx Delivery</option><option>Pick Up at Airport</option><option>Passenger Pay for Shipping</option></select></label>`;
+      const shippingMethodSelect = `<label><span>Delivery method</span><select name="shippingMethod" data-shipping-method required><option value="">Select delivery method</option><option>ADC - All Day Courier</option><option>MBI DELIVERY</option><option>BDO</option><option>FedEx Delivery</option><option>Passenger Pay for Shipping</option></select></label>`;
       const shippingTrackingInput = `<label data-shipping-tracking hidden><span>Tracking number</span><input name="trackingNumber" disabled /></label>`;
       const shippingAddressInput = `<label data-shipping-address hidden><span>Shipping to where?</span><input name="shippingTo" disabled /></label>`;
       const shippingBdoInput = `<label data-shipping-bdo hidden><span>BDO</span><input name="bdo" disabled /></label>`;
@@ -1356,6 +1357,8 @@
             ].join('')
           : active === 'location'
           ? [input('Bag location', 'location'), `<label class="wide"><span>Comment</span><textarea name="comment"></textarea></label>`].join('')
+          : active === 'airport_pickup'
+          ? '<input type="hidden" name="type" value="shipping" /><input type="hidden" name="shippingMethod" value="Pick Up at Airport" /><label class="wide"><span>Comment</span><textarea name="comment"></textarea></label>'
           : active === 'shipping'
           ? [shippingMethodSelect, shippingTrackingInput, shippingAddressInput, shippingBdoInput, `<label class="wide"><span>Comment</span><textarea name="comment"></textarea></label>`].join('')
           : active === 'lost'
@@ -1368,6 +1371,7 @@
           <button type="button" data-cbs-update-mode="rush" class="${active === 'rush' ? 'is-active' : ''}">RUSH</button>
           <button type="button" data-cbs-update-mode="location" class="${active === 'location' ? 'is-active' : ''}">BAG LOCATION UPDATE</button>
           <button type="button" data-cbs-update-mode="shipping" class="${active === 'shipping' ? 'is-active' : ''}">SHIPPING</button>
+          <button type="button" data-cbs-update-mode="airport_pickup" class="${active === 'airport_pickup' ? 'is-active' : ''}">Pick up at airport</button>
           <button type="button" data-cbs-update-mode="lost" class="${active === 'lost' ? 'is-active' : ''}">LOST</button>
           <button type="button" data-cbs-update-mode="closed" class="${active === 'closed' ? 'is-active' : ''}">CASE CLOSE</button>
         </div>
@@ -1550,7 +1554,7 @@
     }
     function inlineUpdateFieldsHtml(key, values = {}) {
       const input = (placeholder, name, required = true) => `<input name="${escapeHtml(name)}" placeholder="${escapeHtml(placeholder)}" ${required ? 'required' : ''} />`;
-      const shippingMethodSelect = '<select name="shippingMethod" data-shipping-method required><option value="">Select delivery method</option><option>ADC - All Day Courier</option><option>MBI DELIVERY</option><option>FedEx Delivery</option><option>Pick Up at Airport</option><option>Passenger Pay for Shipping</option></select>';
+      const shippingMethodSelect = '<select name="shippingMethod" data-shipping-method required><option value="">Select delivery method</option><option>ADC - All Day Courier</option><option>MBI DELIVERY</option><option>FedEx Delivery</option><option>Passenger Pay for Shipping</option></select>';
       const shippingTrackingInput = '<input name="trackingNumber" data-shipping-tracking placeholder="Tracking number" disabled hidden />';
       const shippingAddressInput = '<input name="shippingTo" data-shipping-address placeholder="Shipping to where?" disabled hidden />';
       const shippingBdoInput = '<input name="bdo" data-shipping-bdo placeholder="BDO" disabled hidden />';
@@ -1562,6 +1566,7 @@
       if (key === 'record-pnr' || key === 'record-tkt') return recordTextareaHtml(key, values.savedRecord || '');
       if (key === 'rush') return [`<label><span>Rush tag number</span><input name="rushTagNumber" ${rushBagTagInputAttributes} required /></label>`, input('Rush to where?', 'rushToWhere'), input('World Tracer file # (optional)', 'worldTracerFileNumber', false), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
       if (key === 'location') return [input('Bag location', 'location'), '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
+      if (key === 'airport_pickup') return '<input type="hidden" name="type" value="shipping" /><input type="hidden" name="shippingMethod" value="Pick Up at Airport" /><textarea name="comment" placeholder="Comment"></textarea>';
       if (key === 'shipping') return [shippingMethodSelect, shippingTrackingInput, shippingAddressInput, shippingBdoInput, '<textarea name="comment" placeholder="Comment"></textarea>'].join('');
       if (key === 'lost') return '';
       if (key === 'closed') return '<textarea name="comment" placeholder="Close note (optional)"></textarea>';
@@ -1745,6 +1750,7 @@
         window._cbsRowsSignature = signature;
         window._cbsRows = nextRows;
         renderCases();
+        syncCbsPnrRecords();
         if (!shipmentCard.hidden) renderShipments();
         if (window._unresolvedBaggageLoaded) renderUnresolvedBaggage(window._unresolvedBaggageSourceRows || []);
       } catch (error) {
