@@ -2665,6 +2665,15 @@
 
       .security-check-line.is-warning { border-color: rgba(255, 199, 44, 0.62); color: #ffe682; }
       .security-check-line.is-fail { border-color: rgba(255, 92, 92, 0.68); color: #ffd2d2; }
+      .visa-policy-review { margin-top: 12px; border: 1px solid rgba(120,180,240,.4); border-radius: 10px; padding: 12px; }
+      .visa-policy-review summary { cursor: pointer; }
+      .visa-policy-form { display: grid; gap: 10px; margin-top: 12px; }
+      .visa-policy-form label { display: grid; gap: 5px; font-size: 13px; }
+      .visa-policy-form input, .visa-policy-form select, .visa-policy-form textarea { box-sizing: border-box; width: 100%; min-width: 0; border: 1px solid #42627c; border-radius: 6px; padding: 8px; color: #edf6ff; background: #101e2c; }
+      .visa-policy-form .visa-policy-confirm { display: flex; align-items: flex-start; }
+      .visa-policy-form input[type="checkbox"] { width: auto; margin-top: 4px; }
+      .visa-policy-form button { border: 1px solid #6aa3cd; border-radius: 7px; padding: 10px; color: #edf6ff; background: #183850; cursor: pointer; }
+      .visa-policy-form button:disabled { opacity: .5; cursor: wait; }
 
       .passenger-modal-backdrop {
         position: fixed;
@@ -5851,6 +5860,8 @@
       }
 
       function extraPassengerFields(data) {
+        data = { ...(data || {}) };
+        delete data.visaDecision;
         const used = new Set(["permissions", "name", "passengerName", "paxName", "bn", "seat", "cabin", "flight", "flightDate", "passportNo", "passportExpiry", "passportExp", "passportExpiryDate", "dob", "ageYears", "ffCarrier", "ffNumber", "membershipStatus", "ffTier", "lounge", "ticketNumber", "ticketNo", "infantTicketNo", "bagtags", "bagTags", "bags", "inbound", "outbound", "specialServices", "codes", "specialMeals", "paidProductsShort", "checkinDetails", "gateComments", "psmLines", "messages", "status", "passengerRecord", "sourceText", "paxInfoRaw", "passportRaw", "paxListName", "operationHistoryLines", "sectionTimestampMs", "recordTimestamp", "hasChdCode", "hasChildCode", "isChild", "ts", "seq", "reason", "group", "apiStatus", "apiReason", "tkStatus", "tkReason", "visaStatus", "visaReason", "bagStatus", "bagReason", "warningType", "warningReason", "_panelCard"]);
         return Object.entries(data || {})
           .filter(([key, value]) => !used.has(key) && !/raw|source text|history|timestamp|pax list/i.test(labelizeKey(key)) && value !== null && value !== undefined && value !== "" && typeof value !== "function")
@@ -8538,11 +8549,86 @@
           ["VISA", row.visaStatus, row.visaReason],
           ["BAG", row.bagStatus, row.bagReason],
         ];
-        const rows = checks.map(([label, status, reason]) => `<div class="security-check-line is-${checkTone(status)}"><b>${escapeHtml(label)}</b><span>${escapeHtml(reason || (status === "pass" ? `${label} passed` : "No detail"))}</span></div>`).join("");
+        const rows = checks.map(([label, status, reason]) => {
+          const visa = label === "VISA" ? row.visaDecision : null;
+          const context = visa ? `${visa.nationality || "UNK"} passport → ${visa.destination || visa.destinationCountry || "UNK"}` : "";
+          const requirement = {required:"Visa or verified exception required",special_document:"Entry travel document required",residence_document:"Residence document entry basis",exempt:"Visa exempt",conditional_exemption:"Conditional visa exemption",citizen:"No visa needed",manual_twov:"240 TWOV manually checked",unknown:"Requirement needs verification"}[visa?.requirement];
+          const inspection = {recorded:"CKIN check recorded",missing:"No CKIN visa check",ambiguous:"CKIN needs clarification",not_needed:"Visa check not needed",manual_confirmed:"Agent confirmed"}[visa?.inspection];
+          const detail = visa ? `<br><small>${escapeHtml([context,requirement,inspection,visa.possibleMissedCheck ? "POSSIBLE MISSED CHECK" : ""].filter(Boolean).join(" · "))}</small>` : "";
+          const missingLabels={stayDays:"预计停留天数",purpose:"旅行事由",ordinaryPassportConfirmation:"护照类别",previousStayDays:"此前免签停留天数",previousStayWindowDays:"累计停留计算窗口",validVisaExpiry:"签证有效期",visaIssuerAndUnambiguousExpiry:"签证签发国及明确有效期",residenceOrSpecialDocumentApplicability:"居留或旅行证件适用性",TBZValidityAndApplicability:"台胞证有效期与适用性",PRCARDValidityAndApplicability:"绿卡有效期与适用性",travelDate:"旅行日期",destinationEntryDate:"目的地入境日期"};
+          const missing=visa?.missingFields?.length?`<br><small>需复核：${escapeHtml(visa.missingFields.map(key=>missingLabels[key]||"入境依据").join("、"))}</small>`:"";
+          const sources = visa?.sources?.filter(source => /^https:\/\//.test(source.url || "")).map(source => `<a href="${escapeHtml(source.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(source.authority || "Official source")}</a>`).join(" · ") || "";
+          return `<div class="security-check-line is-${checkTone(status)}"><b>${escapeHtml(label)}</b><span>${escapeHtml(reason || (status === "pass" ? `${label} passed` : "No detail"))}${detail}${missing}${sources ? `<br><small>${sources}</small>` : ""}</span></div>`;
+        }).join("");
         const reviewLine = row.review ? `<div class="security-row"><b>Review</b><span>${escapeHtml(`${row.review.status || ""} ${row.review.reviewer ? `by ${reviewerDisplayName(row.review.reviewer)}` : ""} ${row.review.updatedAt || ""}`)}</span></div>` : "";
         const reviewButtons = `<div class="review-actions"><button type="button" data-review-bn="${escapeHtml(row.bn || "")}" data-review-status="pass">Review Pass</button><button type="button" data-review-bn="${escapeHtml(row.bn || "")}" data-review-status="fail">Review Fail</button></div>`;
+        const policyReview = visaPolicyReviewForm(row);
         const passenger = { ...(row.passengerRecord || {}), ...row, passengerRecord: row.passengerRecord, deleted: row.deleted, offloaded: row.offloaded, status: row.deleted || row.offloaded || row.status === "DELETED" ? "DELETED" : (row.status || row.passengerRecord?.status) };
-        return `<article class="record-card ${tone === "warning" ? "is-warning" : tone === "fail" ? "is-fail" : ""}"><div class="record-title"><span>BN${escapeHtml(row.bn || "---")}</span><span class="record-badge">${escapeHtml(row.deleted || row.offloaded || row.status === "DELETED" ? "DELETED" : tone === "pass" ? "PASS" : tone === "fail" ? "FAIL" : "WARNING")}</span></div><div class="security-check-list">${rows}</div>${reviewButtons}${reviewLine}</article>${passengerRecordCard(passenger, "Passenger Record", tone)}`;
+        return `<article class="record-card ${tone === "warning" ? "is-warning" : tone === "fail" ? "is-fail" : ""}"><div class="record-title"><span>BN${escapeHtml(row.bn || "---")}</span><span class="record-badge">${escapeHtml(row.deleted || row.offloaded || row.status === "DELETED" ? "DELETED" : tone === "pass" ? "PASS" : tone === "fail" ? "FAIL" : "WARNING")}</span></div><div class="security-check-list">${rows}</div>${reviewButtons}${reviewLine}${policyReview}</article>${passengerRecordCard(passenger, "Passenger Record", tone)}`;
+      }
+
+      function visaPolicyReviewForm(row) {
+        const visa=row?.visaDecision;
+        if(!visa||['citizen','manual_twov'].includes(visa.requirement)||visa.nationality==='UNK'||visa.destinationCountry==='UNK'||!visa.nationality||!visa.destinationCountry||row.offloaded||row.deleted)return "";
+        const day=new Date().toISOString().slice(0,10);
+        const due=new Date(Date.now()+30*86400000).toISOString().slice(0,10);
+        return `<details class="visa-policy-review"><summary>复核此组合的政策并保存</summary><div class="visa-policy-form" data-visa-policy-form data-visa-bn="${escapeHtml(row.bn)}" data-nationality="${escapeHtml(visa.nationality)}" data-destination="${escapeHtml(visa.destinationCountry)}">
+          <p>${escapeHtml(visa.nationality)} 普通护照 → ${escapeHtml(visa.destinationCountry)}。此处保存可复用政策；旅客的 Review Pass 单独记录。仅授权审核账户可以启用规则。</p>
+          <label>入境依据<select name="ruleType"><option value="visa_document">需要签证或已核实的例外依据</option><option value="visa_exempt" ${['exempt','conditional_exemption'].includes(visa.requirement)?'selected':''}>符合条件可免签</option><option value="special_document" ${visa.requirement==='special_document'?'selected':''}>台胞证等旅行证件</option><option value="residence_document">目的国绿卡／居留证件</option></select></label>
+          <label>官方政策网址<input name="sourceUrl" type="url" placeholder="https://…" value="${escapeHtml(visa.sources?.[0]?.url||"")}"></label>
+          <button type="button" data-visa-source-preview>读取官方政策</button>
+          <label>官方原文<textarea name="sourceContent" rows="8" readonly placeholder="读取后请核对下列政策字段与原文一致"></textarea></label>
+          <label>政策生效日期<input name="effectiveFrom" type="date" value="${day}"></label>
+          <label>政策截止日期（官方未设期限时留空）<input name="effectiveUntil" type="date"></label>
+          <label>下次复核日期<input name="recheckDue" type="date" value="${due}"></label>
+          <label>免签每次最长停留天数<input name="maxStayDays" type="number" min="1" max="365" value="30"></label>
+          <fieldset><legend>免签允许的事由</legend>${[['tourism','旅游'],['business','商务'],['visit','探亲访友'],['exchange','交流访问'],['transit','过境'],['private','私人事务'],['medical','医疗'],['transport','国际运输']].map(([value,label],index)=>`<label class="visa-policy-confirm"><input type="checkbox" name="purpose" value="${value}" ${index<5?'checked':''}>${label}</label>`).join('')}</fieldset>
+          <label>累计停留上限（无规定时留空）<input name="cumulativeDays" type="number" min="1"></label>
+          <label>累计停留计算窗口天数<input name="cumulativeWindowDays" type="number" min="1" placeholder="例如 180"></label>
+          <label>证件类别（仅证件规则）<select name="documentType"><option value="TBZ">TBZ／台胞证</option><option value="PRCARD">PR CARD／绿卡</option></select></label>
+          <label>证件签发国（仅证件规则，三字代码）<input name="issuer" maxlength="3" value="${escapeHtml(visa.destinationCountry)}"></label>
+          <label>核实的政策条款／限制<textarea name="clause" rows="3" maxlength="500" placeholder="记录适用范围和限制；不要填写旅客身份资料"></textarea></label>
+          <label class="visa-policy-confirm"><input name="confirmed" type="checkbox">我已核对官方原文、生效期限和适用条件；此规则将用于同组合的其他旅客。</label>
+          <button type="button" data-visa-publish>审核并保存政策</button><p data-visa-policy-message role="status"></p>
+        </div></details>`;
+      }
+
+      async function handleVisaPolicyAction(event) {
+        const form=event.target.closest("[data-visa-policy-form]");
+        if(!form)return Boolean(event.target.closest(".visa-policy-review"));
+        const button=event.target.closest("[data-visa-source-preview], [data-visa-publish]");
+        if(!button)return true;
+        const field=name=>form.querySelector(`[name="${name}"]`);
+        const message=form.querySelector("[data-visa-policy-message]");
+        let published=false;
+        button.disabled=true;
+        try {
+          if(button.hasAttribute("data-visa-source-preview")) {
+            const data=await apiJson("/visa-api/source-preview",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url:field("sourceUrl").value.trim()})});
+            form.dataset.sourceId=data.id;form.dataset.sourceUrl=data.url;
+            field("sourceContent").value=data.content;field("confirmed").checked=false;
+            message.textContent="官方原文已读取。请核对字段后审核保存。";
+          } else {
+            if(!form.dataset.sourceId||form.dataset.sourceUrl!==field("sourceUrl").value.trim())throw new Error("请先读取当前官方政策网址。");
+            if(!field("confirmed").checked)throw new Error("请核对官方政策并勾选确认。");
+            const type=field("ruleType").value;
+            let conditions={};
+            if(type==="visa_exempt") {
+              conditions={maxStayDays:Number(field("maxStayDays").value),purposes:Array.from(form.querySelectorAll('[name="purpose"]:checked')).map(input=>input.value)};
+              if(field("cumulativeDays").value||field("cumulativeWindowDays").value)Object.assign(conditions,{cumulativeDays:Number(field("cumulativeDays").value),cumulativeWindowDays:Number(field("cumulativeWindowDays").value)});
+            } else if(type==="special_document"||type==="residence_document")conditions={documentType:field("documentType").value,issuer:field("issuer").value.trim().toUpperCase()};
+            const rule={nationality:form.dataset.nationality,destination_country:form.dataset.destination,passport_type:"ordinary",rule_type:type,conditions,effective_from:field("effectiveFrom").value,effective_until:field("effectiveUntil").value||null,recheck_due_at:field("recheckDue").value,clause_reference:field("clause").value.trim()};
+            await apiJson("/visa-api/review-combination",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({rule,sourceIds:[form.dataset.sourceId],confirmed:true})});
+            published=true;
+            message.textContent="政策已保存并启用，正在更新 BN 判断…";
+            const bn=form.dataset.visaBn;
+            const data=await fetchSearch(activeSyQuery||"SY",{realtime:true});
+            if(data.sy&&data.sy.flightNo===currentSy?.flightNo&&data.sy.flightDate===currentSy?.flightDate){updateFlightFromSy(data.sy);await renderSecurityCheck(bn);}
+            else message.textContent="政策已保存并启用。刷新当前航班后可查看新判断。";
+          }
+        } catch(error) {message.textContent=published?`政策已保存并启用，但当前航班刷新失败：${error.message}`:(error.message||"保存失败，规则未启用。");}
+        finally {button.disabled=false;}
+        return true;
       }
 
       async function renderSecurityCheck(selectedBn = null) {
@@ -8988,6 +9074,7 @@
       });
 
       resultPanel.addEventListener("click", async (event) => {
+        if(await handleVisaPolicyAction(event))return;
         if (event.target.closest("[data-close-panel]")) {
           resetPanelState();
           resultPanel.className = "result-panel";

@@ -1,0 +1,103 @@
+{
+  "reviewedAt": "2026-10-12",
+  "description": "Initial announcement inventory: current catalog sources, superseded announcements, regional/transit pathways requiring separate checks, or other destinations; only these exact snapshots are acknowledged once.",
+  "sourceIds": [
+    "54bf2f5dd17cb9ce172815eb32ad3d4af478ea4e03a63eaf537d08292c630585",
+    "622ba2691918b4504f579022b5d83e54a5ed02971ea27e04b23d79b5123007b7",
+    "7feb0932068ed97925716575dd0a6271debd2b2d56071443b91415e85efc86ff",
+    "81f01d3900c0cc8d2db262f448a19fa94654e902a1a3681cb66bf1cae71b4d0e",
+    "0eccbdeb257f59bbd171d1aa8c2c9b9c1be62f53a90ab472d92aa013ae142a89",
+    "7deb47be4ff9a09046bbaeabed2dd8d70c6537a67d9c432b80fd46e9df4e96da",
+    "3f1145c80540f89afcc64c352c6d14deec76959d0cef9958772d86b27be542b9",
+    "1a6ce639b68bb1b4512a8eb5c2c0a65f5f3ecf0873843188fad0725d48530013",
+    "e22b4d867363939d36743d49f1e53300643840848bb35ab54b88fd619184036e",
+    "b85ab089c6edd6cdc28db7fb78f875e5378814a3e45badb4a9c61ded409ff405",
+    "0ffd523051b9dab84326414456b1e8d19ae451341fb6cf2e17ee3554ce5d6087",
+    "c13d81bd5a5c36c6ec8924bcb694078ef5a5c0c8092723f82d57fd2545ba3e9e",
+    "e458966a4397143d912b696f4f769ad8bd23176fcd75d48afbe0196ba1987b50",
+    "b8a9ff2ae00106166ecaef730ec65b0bc019009b776af13102efb8cc5e48baa5",
+    "f498b46190d232924dd0a22b1a9fca12db456c323a2f4099adb88a3444f87259",
+    "07dd208a0facde7d6eb9a4c99c0dfc4b8b229a4d94445d23a2a11d752112884e",
+    "66798a1b580f3265b4988342a66e76cb5b9683c3a5738908b5adf24440105d0c",
+    "e2057a44676c66a216b4a0dcc954246cc0ede65764c3dd7adb6d4d7c4ddd5252",
+    "2dd9670898d261c1fda6a40e9f97d0895901f6d474da1db67f4c67a0fda80eaf"
+  ],
+  "snapshots": [
+    {
+      "id": "54bf2f5dd17cb9ce172815eb32ad3d4af478ea4e03a63eaf537d08292c630585",
+      "url": "https://www.mfa.gov.cn/wjbzwfwpt/kzx/tzgg/202511/t20251103_11746081.html"
+    },
+    {
+      "id": "622ba2691918b4504f579022b5d83e54a5ed02971ea27e04b23d79b5123007b7",
+      "url": "https://www.mfa.gov.cn/wjbzwfwpt/kzx/tzgg/202509/t20250902_11700533.html"
+    },
+    {
+      "id": "7feb0932068ed97925716575dd0a6271debd2b2d56071443b91415e85efc86ff",
+      "url": "https://www.mfa.gov.cn/wjbzwfwpt/kzx/tzgg/202406/t20240618_11437511.html"
+    },
+    {
+      "id": "81f01d3900c0cc8d2db262f448a19fa94654e902a1a3681cb66bf1cae71b4d0e",
+      "url": "https://www.mfa.gov.cn/wjbzwfwpt/kzx/tzgg/202403/t20240307_11255438.html"
+    },
+    {
+      "id": "0eccbdeb257f59bbd171d1aa8c2c9b9c1be62f53a90ab472d92aa013ae142a89",
+      "url": "https://www.mfa.gov.cn/wjbzwfwpt/kzx/tzgg/202401/t20240129_11234802.html"
+    },
+    {
+      "id": "7deb47be4ff9a09046bbaeabed2dd8d70c6537a67d9c432b80fd46e9df4e96da",
+      "url": "https://www.mfa.gov.cn/wjbzwfwpt/kzx/tzgg/202401/t20240125_11233014.html"
+    },
+    {
+      "id": "3f1145c80540f89afcc64c352c6d14deec76959d0cef9958772d86b27be542b9",
+      "url": "https://en.nia.gov.cn/n147418/n147468/c217849/content.html"
+    },
+    {
+      "id": "1a6ce639b68bb1b4512a8eb5c2c0a65f5f3ecf0873843188fad0725d48530013",
+      "url": "https://en.nia.gov.cn/n147418/n147468/c182992/content.html"
+    },
+    {
+      "id": "e22b4d867363939d36743d49f1e53300643840848bb35ab54b88fd619184036e",
+      "url": "https://en.nia.gov.cn/n147418/n147468/c180362/content.html"
+    },
+    {
+      "id": "b85ab089c6edd6cdc28db7fb78f875e5378814a3e45badb4a9c61ded409ff405",
+      "url": "https://en.nia.gov.cn/n147418/n147468/c178053/content.html"
+    },
+    {
+      "id": "0ffd523051b9dab84326414456b1e8d19ae451341fb6cf2e17ee3554ce5d6087",
+      "url": "https://en.nia.gov.cn/n147418/n147463/c180637/content.html"
+    },
+    {
+      "id": "c13d81bd5a5c36c6ec8924bcb694078ef5a5c0c8092723f82d57fd2545ba3e9e",
+      "url": "https://en.nia.gov.cn/n147418/n147463/c183412/content.html"
+    },
+    {
+      "id": "e458966a4397143d912b696f4f769ad8bd23176fcd75d48afbe0196ba1987b50",
+      "url": "https://en.nia.gov.cn/n147418/n147463/c183390/content.html"
+    },
+    {
+      "id": "b8a9ff2ae00106166ecaef730ec65b0bc019009b776af13102efb8cc5e48baa5",
+      "url": "https://en.nia.gov.cn/n147418/n147463/c183401/content.html"
+    },
+    {
+      "id": "f498b46190d232924dd0a22b1a9fca12db456c323a2f4099adb88a3444f87259",
+      "url": "https://en.nia.gov.cn/n147418/n147463/c181470/content.html"
+    },
+    {
+      "id": "07dd208a0facde7d6eb9a4c99c0dfc4b8b229a4d94445d23a2a11d752112884e",
+      "url": "https://en.nia.gov.cn/n147418/n147463/c156086/content.html"
+    },
+    {
+      "id": "66798a1b580f3265b4988342a66e76cb5b9683c3a5738908b5adf24440105d0c",
+      "url": "https://en.nia.gov.cn/n147418/n147463/c156110/content.html"
+    },
+    {
+      "id": "e2057a44676c66a216b4a0dcc954246cc0ede65764c3dd7adb6d4d7c4ddd5252",
+      "url": "https://en.nia.gov.cn/n147418/n147463/c156102/content.html"
+    },
+    {
+      "id": "2dd9670898d261c1fda6a40e9f97d0895901f6d474da1db67f4c67a0fda80eaf",
+      "url": "https://www.mfa.gov.cn/fyrbt_673021/dhdw_673027/202602/t20260215_11860462.shtml"
+    }
+  ]
+}

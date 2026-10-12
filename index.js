@@ -999,9 +999,16 @@ app.use((req, res, next) => {
 
 const JSON_BODY_LIMIT = process.env.JSON_BODY_LIMIT || '60mb';
 
+const visaStore = new (require('./visaStore').VisaStore)(process.env.VISA_DB_PATH);
+require('./visaRuntime').setVisaStore(visaStore);
+const visaMonitor = new (require('./visaMonitor').VisaMonitor)(visaStore, {
+  onChange: event => console.warn('Visa policy needs review:', JSON.stringify(event))
+});
+
 app.use(
   express.json({ limit: JSON_BODY_LIMIT })
 );
+require('./visaRoutes').mountVisaRoutes(app, visaStore, visaMonitor);
 
 // Publish lightweight invalidations instead of making every open dashboard
 // poll Sheets. Storage caches coalesce the reads that arrive after an update.
@@ -5105,6 +5112,7 @@ app.listen(
       `Server running on ${PORT}`
     );
     syncTodayReportSheets();
+    visaMonitor.start();
     setInterval(syncTodayReportSheets, 30 * 60 * 1000);
     runBagRoomUnloadExpiration().catch((err) => console.error('Bag Room expiration error:', err));
     setInterval(() => runBagRoomUnloadExpiration().catch((err) => console.error('Bag Room expiration error:', err)), 60 * 60 * 1000);

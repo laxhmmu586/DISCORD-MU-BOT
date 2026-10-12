@@ -7,7 +7,9 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "visa:check": "node scripts/visa-service.cjs --check",
+    "test:visa": "node --test test/visa*.test.js"
   },
   "dependencies": {
     "better-sqlite3": "11.10.0",
