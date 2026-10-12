@@ -1775,7 +1775,8 @@ ${section}`,
         : `Adult ticket ${adultTicketNo} and infant ticket ${infantTicketNo} are present`)
       : (!hasAdultTk ? 'Adult TKNE ticket is missing' : `Adult ticket ${adultTicketNo} is present`);
 
-    const waived = /\bPSM-EXBG0PC/i.test(section);
+    const compoundBagWaiver = section.match(/^\s*PSM-(PSMEXBG0PC(?:TSXL|XCSQ|TXLK|QTQK|JMSQ))(?=\s|$)/im)?.[1]?.toUpperCase();
+    const waived = Boolean(compoundBagWaiver) || /\bPSM-EXBG0PC/i.test(section);
     const fbaPcParsed = Number(section.match(/\bFBA\/(\d+)PC\b/i)?.[1] || 0);
     const fbaPc = fbaPcParsed || 2;
     const xbagPcValues = [...section.matchAll(/\bXBAG\s*\/\s*(\d+)\s*PC\b/gi)].map((m) => Number(m[1] || 0));
@@ -1811,7 +1812,7 @@ ${section}`,
     if (infExtraPc > 0) bagAllowanceParts.push(`INF extra ${infExtraPc}PC`);
     const bagBaseReason = () => `Allowance: ${bagAllowanceParts.join(' + ')} = ${allowance}PC; checked bags: ${bagTagCount}PC (${bagTagSummary}); bag destination: ${bagDestinationSummary}`;
     let bagStatus = waived ? 'pass' : (bagTagCount > allowance ? 'fail' : 'pass');
-    let bagReason = waived ? 'Bag check passed: EXBG0PC waiver found' : bagBaseReason();
+    let bagReason = waived ? `Bag check passed: ${compoundBagWaiver || 'EXBG0PC'} waiver found` : bagBaseReason();
     if (!waived && bagTagCount > allowance) {
       bagReason = `${bagBaseReason()}; bag count exceeds allowance`;
     }
@@ -1820,7 +1821,7 @@ ${section}`,
     const allBagsToPvg = bagDestinations.length > 0 && bagDestinations.every((d) => d === 'PVG');
     const hasEdi = /\bEDI\b/i.test(section);
     const hasInbound = /^\s*I\/[^\n\r]*/im.test(section);
-    if (hasEdi && hasInbound) {
+    if (!waived && hasEdi && hasInbound) {
       bagStatus = 'pass';
       bagReason = `${bagBaseReason()}; passed because EDI with inbound is allowed`;
     }
