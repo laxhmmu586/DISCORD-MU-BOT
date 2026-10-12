@@ -1,5 +1,6 @@
 // Country/territory codes are deliberately distinct from airport codes and from mainland China.
 const airportsByCountry={
+  CHN:['PVG','SHA','HUZ','KHN'],
   USA:['LAX','SFO','JFK','EWR','SEA','ORD','IAD','ATL','DFW','IAH','BOS','MIA','HNL'],
   CAN:['YYZ','YVR','YUL','YYC','YOW'],GBR:['LHR','LGW','MAN','EDI'],FRA:['CDG','ORY','NCE'],
   AUS:['SYD','MEL','BNE','PER','ADL'],NZL:['AKL','CHC','WLG'],DEU:['FRA','MUC','BER'],ITA:['FCO','MXP','VCE'],ESP:['MAD','BCN'],

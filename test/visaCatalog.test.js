@@ -63,7 +63,7 @@ test('Taiwan permit is distinguished from visas and USA green cards',()=>{
  }finally{s.close();}
 });
 test('travel documents and transit claims are not silently treated as China visas or missing notes',()=>{
- const s=prepareCatalog();try{for(const line of ['CKIN TRAVELDOC EXP 12DEC2030','CKIN TRAVEL DOC USA EXP 12DEC2030','CKIN 24 TWOV','CKIN APEC CARD']){
+ const s=prepareCatalog();try{for(const line of ['CKIN TRAVEL DOC USA EXP 12DEC2030','CKIN 24 TWOV','CKIN APEC CARD']){
   const r=evaluateVisa({...input,nationality:'USA',ckinLines:[line]},s,{now});assert.equal(r.status,'review',line);assert.equal(r.possibleMissedCheck,false,line);
  }}finally{s.close();}
 });

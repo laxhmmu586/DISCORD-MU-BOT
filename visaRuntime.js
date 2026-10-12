@@ -20,6 +20,6 @@ function checkVisa(input){
       }
     }catch{/* Audit persistence failures must not change an already determined visa decision. */}
     return result;
-  }catch{return {status:'review',reason:'Visa rule service unavailable; manual review required',requirement:'unknown',inspection:'ambiguous',action:'double_check',possibleMissedCheck:false,reasonCodes:['SERVICE_UNAVAILABLE'],missingFields:[],rules:[],sources:[],engineVersion:'visa-2'};}
+  }catch{return {status:'review',reason:'Visa rule service unavailable; manual review required',requirement:'unknown',inspection:'ambiguous',action:'double_check',possibleMissedCheck:false,reasonCodes:['SERVICE_UNAVAILABLE'],missingFields:[],rules:[],sources:[],engineVersion:'visa-4'};}
 }
 module.exports={setVisaStore,checkVisa};
