@@ -62,7 +62,7 @@ const { operationalDate } = require('../flightContext');
       const check = async (total, pending, resolved) => {
         for (const page of pages) {
           await page.waitForFunction(({ total, pending, resolved }) =>
-            document.querySelector('.nbrd-count')?.textContent === `Total ${total} · Pending ${pending} · Resolved ${resolved}` &&
+            !document.querySelector('.nbrd-count') &&
             document.querySelectorAll('.nbrd-bubble').length === total &&
             document.querySelectorAll('.nbrd-bubble.is-resolved').length === resolved,
           { total, pending, resolved }).catch(async error => {
@@ -74,6 +74,14 @@ const { operationalDate } = require('../flightContext');
         }
       };
       await check(2, 0, 2);
+      await board.evaluate(() => window.testStreams[0].onopen());
+      assert.equal(await board.locator('#boarding-live-indicator').isVisible(), true);
+      assert.equal(await board.locator('#boarding-live-indicator').evaluate(node=>getComputedStyle(node).backgroundColor), 'rgb(53, 201, 154)');
+      assert.equal(await board.locator('#status').isVisible(), false);
+      assert.doesNotMatch(await board.locator('body').innerText(), /Scanned \d|Total \d+ · Pending|\nLive\n/);
+      await board.evaluate(() => window.testStreams[0].onerror());
+      assert.equal(await board.locator('#boarding-live-indicator').isVisible(), false);
+      await board.evaluate(() => window.testStreams[0].onopen());
       await scan.waitForFunction(() => !document.querySelector('#start').disabled);
       assert.match(await scan.locator('#nbrd-form').innerText(), /NBRD live · 2 entries/);
       // Exact screenshot case: two resolved BNs remain on both pages.
@@ -93,6 +101,7 @@ const { operationalDate } = require('../flightContext');
       await board.getByRole('button', { name: 'Refresh', exact: true }).first().click();
       await check(3, 1, 2);
       await board.reload(); await check(3, 1, 2);
+      await board.evaluate(() => window.testStreams[0].onopen());
       if (viewport.width === 1015) await board.screenshot({ path: '.verification/nbrd-sync-desktop.png', fullPage: true });
       else await board.screenshot({ path: '.verification/nbrd-sync-mobile.png', fullPage: true });
       await emergency.screenshot({ path: `.verification/scan2-${viewport.width}.png`, fullPage: true });
@@ -100,6 +109,6 @@ const { operationalDate } = require('../flightContext');
       assert.deepEqual(errors, []);
       await context.close();
     }
-    console.log('PASS: desktop/mobile scan, board and emergency pages share all resolved/pending BNs and counts across bidirectional live changes, additions, refresh, reload and clearing; emergency camera filter accepts all four flights.');
+    console.log('PASS: desktop/mobile pages retain resolved/pending BN bubbles without statistics; Manual shows a live dot instead of Live/Scanned text; status changes, additions, refresh, reload and clearing stay synchronized.');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

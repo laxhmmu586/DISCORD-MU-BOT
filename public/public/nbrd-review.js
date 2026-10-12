@@ -12,11 +12,6 @@
       revision++;
       rows = nextRows.filter(row => row.nbrdBn).map(row => ({ ...row }));
       container.replaceChildren();
-      const resolved = rows.filter(row => row.nbrdResolved).length;
-      const count = document.createElement('p'); count.className = 'nbrd-count';
-      count.setAttribute('role', 'status');
-      count.textContent = `Total ${rows.length} · Pending ${rows.length - resolved} · Resolved ${resolved}`;
-      container.append(count);
       if (!rows.length) {
         const empty = document.createElement('p'); empty.className = 'nbrd-empty'; empty.textContent = 'No NBRD records.'; container.append(empty); return;
       }

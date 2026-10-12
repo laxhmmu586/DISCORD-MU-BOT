@@ -100,7 +100,7 @@ test('live board preserves entered operations, rejects older snapshots and does 
   vm.runInContext('let boardRevision = -1, boardMutationRunning = false, deferredBoard = null;', ctx);
   vm.runInContext(extract('applyLiveBoard') + '\n' + extract('finishBoardMutation'), ctx);
   ctx.applyLiveBoard({ revision: 1, rows: [{ bn: '014' }], backupPending: true });
-  assert.equal(renders.length, 1); assert.match(statuses.at(-1), /backup pending/);
+  assert.equal(renders.length, 1); assert.equal(statuses.at(-1), '');
   vm.runInContext('boardMutationRunning = true;', ctx);
   ctx.applyLiveBoard({ revision: 2, rows: [{ bn: '014', entered: true }] });
   assert.equal(renders.length, 1);
