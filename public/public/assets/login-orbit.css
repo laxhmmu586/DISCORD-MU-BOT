@@ -1,0 +1,18 @@
+body.login-orbit { display:flex; justify-content:flex-start; align-items:center; overflow-x:hidden; overflow-y:auto; }
+.login-orbit::before { background-image:url('mission-earth.png'); animation:none; }
+.login-orbit .login-card { width:min(42vw,540px); min-height:100svh; margin:0; padding:clamp(60px,15vh,160px) 70px 60px 64px; display:flex; flex-direction:column; justify-content:center; border:0; border-radius:0; background:linear-gradient(110deg,#020b19ef,#04152ad9); backdrop-filter:blur(18px); box-shadow:25px 0 90px #0006; animation:none; }
+.login-card::before { content:""; position:absolute; right:-32px; top:0; height:100%; width:64px; background:linear-gradient(90deg,#06172de8,#06172d95); transform:skewX(-8deg); border-right:1px solid #76caff; box-shadow:4px 0 14px #318cff45; z-index:-1; }
+.login-card::after { content:""; position:absolute; left:38px; top:22%; bottom:20%; width:2px; background:linear-gradient(transparent,#32a5ff 20%,#b9e8ff 50%,#1977ff 80%,transparent); box-shadow:0 0 10px #219aff; }
+.login-orbit .brand { font-size:30px; letter-spacing:2px; }
+.login-orbit .brand svg { display:block; color:#3e9fff; width:32px; height:32px; }
+.login-orbit .subhead { color:#a2b9d3; margin:12px 0 30px; letter-spacing:1px; }
+.login-orbit .field input { background:linear-gradient(120deg,#10304ca0,#142946a0); color:#f1f8ff; border:1px solid #6b9bc43f; border-radius:5px; padding-left:14px; height:46px; }
+.login-orbit .field input::placeholder { color:#91a7bd; }
+.login-orbit .field input:focus { outline:1px solid #4daaff; border-color:#4daaff; box-shadow:0 0 15px #278eff25; }
+.login-orbit .password-toggle { color:#93bddf; }
+.login-orbit .login-button { border-radius:5px; height:46px; margin-top:9px; box-shadow:0 4px 24px #125cff40; }
+.login-orbit .login-button::after { content:'→'; float:right; margin-right:14px; font-size:20px; line-height:1; }
+.login-signature { display:flex; gap:22px; align-items:center; margin-top:36px; border-top:1px solid #6385a440; padding-top:32px; color:#52728f; }
+.login-signature b { font-size:28px; letter-spacing:2px; color:#28496c; }
+.login-signature span { font-size:8px; line-height:1.8; letter-spacing:1.5px; }
+@media(max-width:760px) { .login-orbit .login-card { width:calc(100% - 48px); min-height:0; margin:48px auto; padding:48px 28px 40px; border:1px solid #74b5e745; border-radius:14px; background:linear-gradient(130deg,#031127cc,#05172da8); } .login-card::before { display:none; } .login-card::after { left:12px; top:35px; bottom:35px; } .login-signature { margin-top:28px; padding-top:26px; } }

@@ -21,11 +21,11 @@ test('CBS automatically finds Drive records and saves matching PNRs without a Ch
   assert.match(server, /record\.includes\('===== RECORD ====='\)/);
   assert.match(server, /replaceEventKey:'record-pnr'/);
   assert.match(server, /app\.post\('\/cbs-record-sync'/);
-  assert.match(server, /app\.get\('\/cbs-unresolved-baggage'[\s\S]*res\.json\(\{ rows \}\)[\s\S]*setImmediate\(\(\) => \{ startCbsUnresolvedBackgroundMaintenance\(rows\)/);
+  assert.match(server, /app\.get\('\/cbs-unresolved-baggage'[\s\S]*res\.json\(\{ rows, bagRoomUnloadNoticeSent \}\)[\s\S]*setImmediate\(\(\) => \{ startCbsUnresolvedBackgroundMaintenance\(rows\)/);
   assert.match(server, /runCbsUnresolvedBackgroundMaintenance[\s\S]*startCbsPnrRecordSync\(cases, rows, 'System'\)/);
-  assert.match(page, /fetch\(`\$\{apiBase\}\/cbs-unresolved-baggage`, \{ signal:controller\.signal, cache:'no-store' \}\)/);
+  assert.match(page, /cbs-unresolved-baggage\$\{window\._forceCbsRefresh[\s\S]*signal:controller\.signal/);
   assert.match(page, /async function syncCbsPnrRecords[\s\S]*\/cbs-record-sync[\s\S]*Number\(data\.updated\) > 0/);
-  assert.match(page, /renderUnresolvedBaggage\(data\.rows \|\| \[\]\);\s*syncCbsPnrRecords\(\)/);
+  assert.match(page, /renderUnresolvedBaggage\(data\.rows \|\| \[\], Boolean\(data\.bagRoomUnloadNoticeSent\)\);\s*syncCbsPnrRecords\(\)/);
   assert.match(drive, /1QbP-_qSoyIfv_H6NG8fSTxpTK8vfYSvR/);
   assert.match(drive, /1cKMKdeW4BbBY47_hMAW_N_lxnCt0Pulo/);
   assert.match(drive, /findCbsPnrRecordsByBagTag[\s\S]*slice\(-6\)/);
@@ -60,8 +60,28 @@ test('public baggage forms block duplicate submissions with a wait dialog', () =
 });
 
 test('CBS sidebar uses the MUBC brand', () => {
-  assert.match(page, /<a class="brand" href="index\.html">MUBC<\/a>/);
+  assert.match(page, /<a class="brand" href="\/flights\.html">MUBC<\/a>/);
   assert.doesNotMatch(page, /<a class="brand" href="index\.html">MUFC<\/a>/);
+});
+
+test('CBS dashboards use SSE updates with a 90-second reconciliation fallback', () => {
+  assert.match(server, /app\.get\('\/cbs-live-stream'/);
+  assert.match(server, /const cbsStreamClients = new Set\(\)/);
+  assert.match(server, /broadcastCbsRefresh\(req\.path\)/);
+  assert.match(page, /new EventSource\(`\$\{apiBase\}\/cbs-live-stream`\)/);
+  assert.match(page, /stream\.addEventListener\('refresh', scheduleCbsLiveRefresh\)/);
+  assert.match(page, /document\.activeElement\?\.closest\('form'\)/);
+  assert.match(page, /setInterval\(scheduleCbsLiveRefresh, 30000\)/);
+  assert.match(page, /id="cbs-live-status"/);
+  assert.match(page, /cbsRefreshQueued = true[\s\S]*setTimeout\(refreshCbsData, 1000\)/);
+  assert.match(page, /_forceCbsRefresh[\s\S]*\?refresh=1/);
+  assert.match(page, /window\._silentCbsRefresh = true/);
+  assert.match(page, /if \(!window\._silentCbsRefresh\) casesOutput\.innerHTML/);
+  assert.match(page, /window\._silentCbsRefresh && window\._cbsRowsSignature === signature/);
+  assert.match(page, /!window\._silentCbsRefresh \|\| window\._unresolvedBaggageSignature !== signature/);
+  assert.match(page, /cbsLiveConnected[\s\S]*90 \* 1000/);
+  assert.match(server, /req\.path !== '\/cbs-record-sync'/);
+  assert.match(server, /cbsPnrSyncRecent[\s\S]*reason:'recently synced'/);
 });
 
 test('mobile CBS navigation spans the viewport without table content widening the page', () => {
@@ -86,9 +106,16 @@ test('CBS storage reads and writes Google Sheets only', () => {
   assert.doesNotMatch(drive, /[Ff]irestore/);
 });
 
+test('Rush Bag list does not display the Created column', () => {
+  const renderer = page.match(/function renderWorldTracerCases[\s\S]*?function updateRushBagAttention/)?.[0] || '';
+  assert.doesNotMatch(renderer, /<th>Created<\/th>|创建时间|toLocaleString\(\)/);
+  assert.match(renderer, /<td colspan="5"><form class="worldtracer-form onhand-update-form"/);
+  assert.match(renderer, /data-created-at=/);
+});
+
 test('Rush Bag storage refreshes the sheet title after a tab rename', () => {
   assert.match(drive, /async function getCbsWorldTracerSheetTitle\(\)[\s\S]*cbsWorldTracerSheetTitle = await resolveSheetTitleByGid/);
-  assert.match(drive, /async function getCbsWorldTracerCases\(\) \{\s*const title = await getCbsWorldTracerSheetTitle\(\)/);
+  assert.match(drive, /async function getCbsWorldTracerCases\(\) \{[\s\S]*const title = await getCbsWorldTracerSheetTitle\(\)/);
   assert.match(drive, /async function appendCbsWorldTracerCase\(record = \{\}\) \{\s*const title = await getCbsWorldTracerSheetTitle\(\)/);
   assert.match(drive, /async function updateCbsWorldTracerCase\(rowNumbers = \[\], record = \{\}\) \{\s*const title = await getCbsWorldTracerSheetTitle\(\)/);
 });
@@ -121,6 +148,27 @@ test('CBS sheets automatically remove data older than two years', () => {
   for (const gid of ['CBS_SHEET_GID', 'CBS_MISSING_BAG_SHEET_GID', 'CBS_UNRESOLVED_BAGGAGE_SHEET_GID', 'CBS_NOT_LOAD_BAGGAGE_SHEET_GID', 'CBS_WORLDTRACER_SHEET_GID']) {
     assert.match(drive, new RegExp(`getCbsRetainedSheetRows\\(\\{ title, sheetId:${gid},`));
   }
+});
+
+test('On-hand and Bag Room reads share a short cache and tolerate Sheets quota bursts', () => {
+  assert.match(drive, /CBS_UNRESOLVED_CACHE_TTL_MS/);
+  assert.match(drive, /cbsUnresolvedBaggageCache\.expiresAt > Date\.now\(\)/);
+  assert.match(drive, /cbsUnresolvedBaggageCache\.pending/);
+  assert.match(drive, /\/quota\|rate limit\|429\/i[\s\S]*return cbsUnresolvedBaggageCache\.rows/);
+  const reader = drive.match(/async function getCbsUnresolvedBaggageCases[\s\S]*?\n}/)?.[0] || '';
+  assert.match(reader, /CBS_UNRESOLVED_BAGGAGE_SHEET_GID/);
+  assert.doesNotMatch(reader, /CBS_NOT_LOAD_BAGGAGE_SHEET_GID/);
+  assert.equal((drive.match(/invalidateCbsUnresolvedBaggageCache\(\);/g) || []).length >= 9, true);
+});
+
+test('Passenger Filed reads share cached Sheets results and fall back during quota bursts', () => {
+  assert.match(drive, /if \(cbsSheetCache\.pending\) return cbsSheetCache\.pending/);
+  assert.match(drive, /cbsSheetCache\.hasLoaded && \/quota\|rate limit\|429\/i/);
+  const casesReader = drive.match(/async function getCbsCases\(\)[\s\S]*?\n}/)?.[0] || '';
+  assert.match(casesReader, /getCbsSheetRows\(\)/);
+  assert.doesNotMatch(casesReader, /getCbsSheetRows\(\{ forceRefresh:true \}\);\s*await ensureCbsSheetHeaders[\s\S]*getCbsSheetRows\(\{ forceRefresh:true \}\)/);
+  assert.match(drive, /if \(wrongBaggageCache\.pending\) return wrongBaggageCache\.pending/);
+  assert.match(drive, /wrongBaggageCache\.hasLoaded && \/quota\|rate limit\|429\/i/);
 });
 test('public CBS forms do not CC the operations Gmail account', () => {
   const caseEmail = drive.match(/async function sendCbsCaseEmail[\s\S]*?\n}/)?.[0] || '';
@@ -391,13 +439,16 @@ test('On-hand and Bag Room rows only show Rush Tag when at least one row has one
   assert.match(page, /const showRushTag = rows\.some\(\(row\) => String\(row\.rushTagNumber \|\| ''\)\.trim\(\)\)/);
   assert.match(page, /const rushTagHeading = showRushTag \? '<th>Rush Tag<\/th>' : ''/);
   assert.match(page, /const rushTagCell = showRushTag \?/);
-  assert.match(page, /const columnCount = \(showRushTag \? 6 : 5\) \+ \(isBagRoomGroup \? 1 : 0\)/);
+  assert.match(page, /const columnCount = \(showRushTag \? 6 : 5\) \+ \(isBagRoomGroup \? 2 : 0\)/);
   assert.doesNotMatch(page, /<th>Type \/ Status<\/th><th>Location<\/th>/);
   assert.match(page, /escapeHtml\(row\.rushTagNumber \|\| '-'\)/);
   assert.match(server, /async function matchBagRoomUnloadCasesForRush/);
   assert.match(server, /normalizedCbsLinkTag\(row\.bagTag\) === originalTag/);
+  assert.match(server, /updateCbsUnresolvedBaggageRush\(row\.rowNumber, \{/);
+  assert.match(server, /'Rush Bag automation'/);
+  assert.match(drive, /rushTagNumber:cbsUnresolvedRushTag\(updateEvents\)/);
+  assert.match(drive, /filter\(\(item\) => item\?\.key !== 'on-hand-rush'\)/);
   assert.doesNotMatch(server, /resolveCbsUnresolvedBaggageCase\(row\.rowNumber, 'on-hand-rush'/);
-  assert.match(server, /result\.matchedBagRoomUnloadCases = await matchBagRoomUnloadCasesForRush\(saved\)/);
   assert.match(server, /result\.matchedBagRoomUnloadCases = await matchBagRoomUnloadCasesForRush\(result\.record\)/);
 });
 
@@ -475,7 +526,7 @@ test('MU586 Bag Room CC alerts stay disabled until explicitly enabled', () => {
 });
 
 test('On-hand cases match the passenger case layout and support WorldTracer progress', () => {
-  assert.match(page, /<th>WorldTracer #<\/th><th>PVG Filed<\/th><th>Bag Tag<\/th>\$\{rushTagHeading\}<th>Date<\/th>/);
+  assert.match(page, /<th>WorldTracer #<\/th><th>PVG Filed<\/th><th>Bag Tag<\/th>\$\{rushTagHeading\}\$\{isBagRoomGroup \? \'<th>Flight<\/th>\' : \'\'\}<th>Date<\/th>/);
   assert.doesNotMatch(page, /\$\{rushTagHeading\}<th>Direction<\/th>/);
   assert.match(page, /const dateBands = new Map\(\)/);
   assert.match(page, /case-summary-row \$\{dateBand\}/);
@@ -567,7 +618,7 @@ test('completed On-hand cases move from Open Case to Closed Case', () => {
 
 test('creating a Rush update keeps the On-hand case open', () => {
   assert.match(server, /updateCbsUnresolvedBaggageRush\(req\.params\.rowNumber, \{ originalTagNumber, rushTagNumber \}, updatedBy\)/);
-  assert.match(drive, /async function updateCbsUnresolvedBaggageRush\(rowNumber, rush = \{\}, updatedBy = ''\)/);
+  assert.match(drive, /async function updateCbsUnresolvedBaggageRush\(rowNumber, rush = \{\}, updatedBy = '', knownTarget = null\)/);
   assert.match(drive, /key:'on-hand-rush', title:'Create Rush'/);
   assert.match(drive, /!R\$\{target\.rowNumber\}/);
   const rushBlock = server.match(/if \(action === 'on-hand-rush'\) \{([\s\S]*?)\n    \}/)?.[1] || '';
@@ -701,7 +752,7 @@ test('On-hand exchange is saved to Google Sheets and shows old and new tags', ()
   assert.match(page, /<span class="exchange-tag-new">\$\{escapeHtml\(lastExchange\.newTag\)\}<\/span>/);
   assert.match(page, /\.exchange-tag-arrow::before,\.exchange-tag-arrow::after/);
   assert.match(page, /detail:`\$\{exchange\.oldTag\} → \$\{exchange\.newTag\}`/);
-  assert.match(page, /<col style="width:310px">\$\{rushTagColumn\}/);
+  assert.match(page, /<col style="width:\$\{isBagRoomGroup \? 200 : 310\}px">\$\{rushTagColumn\}/);
 });
 
 test('home Baggage add flow also supports On-hand Exchange', () => {
@@ -738,7 +789,7 @@ test('Outbound form orders shared fields and supports adding multiple bag tags',
   assert.match(indexPage, /insertAdjacentHTML\("beforeend"/);
   assert.match(indexPage, /data-test-remove-bag-tag/);
   assert.match(indexPage, /for \(const entry of entries\)/);
-  const cbsOutbound = page.match(/if \(direction === 'outbound'\) return `([\s\S]*?)`;\n/)?.[1] || '';
+  const cbsOutbound = page.match(/if \(direction === 'outbound'\) return `([\s\S]*?)`;\r?\n/)?.[1] || '';
   assert.ok(cbsOutbound.indexOf('<span>Date</span>') < cbsOutbound.indexOf('<span>Type</span>'));
   assert.ok(cbsOutbound.indexOf('<span>Type</span>') < cbsOutbound.indexOf('<span>Bag Tag Number</span>'));
   assert.match(cbsOutbound, /data-add-outbound-bag-tags/);
@@ -777,28 +828,31 @@ test('home Baggage Update menu supports Exchange', () => {
 
 test('CBS passenger information keeps all operationally required fields visible', () => {
   const requiredFields = page.match(/const requiredPassengerFields = \[([\s\S]*?)\n\s*\];/)?.[1] || '';
-  for (const label of ['Passenger Name', 'Email', 'Phone', 'Ticket Number', 'Flight Route', 'Permanent Address']) {
+  for (const label of ['Passenger Name', 'Email', 'Phone', 'Ticket Number', 'Flight Route']) {
     assert.match(requiredFields, new RegExp(`label\\('${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}'`));
   }
   assert.doesNotMatch(requiredFields, /label\('Bag Tag'/);
   assert.match(page, /requiredFieldGrid\(requiredPassengerFields\)/);
+  assert.match(page, /PirDelivery.fields\(row, document.documentElement.lang\)/);
+  assert.match(page, /fieldGrid\(deliveryFields\)/);
 });
 
-test('CBS tracking offers the requested bags stage', () => {
-  assert.match(page, /key:'requested_bags', text:'Requested Bags'/);
+test('CBS tracking offers the request bags stage', () => {
+  assert.match(page, /key:'requested_bags', text:'Request Bags'/);
   assert.match(page, /if \(key === 'requested_bags'\) return input\('From which station\?', 'fromStation'\)/);
   assert.match(page, /requested\[\\s_-\]\*bags\?/);
   assert.doesNotMatch(page, /event\.key === 'requested_bags' \? 'Update'/);
   assert.match(page, /tracking-step-number/);
-  assert.match(page, /const latestClass = index === 0 \? ' is-latest'/);
+  assert.match(page, /const latestClass = index === currentEventIndex \? ' is-latest'/);
   assert.match(page, /tracking-chip:not\(:last-child\)::after \{ content:""/);
   assert.match(page, /label\('Case Progress', '案件进度'\)/);
   assert.match(page, /content:"CURRENT"/);
 });
 
-test('CBS tracking requests PVG open-bag authorization from Email', () => {
+test('CBS tracking sends the authorization form to the passenger from Email', () => {
   assert.doesNotMatch(page, /key:'open_bag_authorization_pvg', text:'Require Open Bag Authorization at PVG'/);
-  assert.match(page, /value="require_open_bag_authorization_pvg">Require Open Bag Authorization at PVG/);
+  assert.match(page, /value="require_open_bag_authorization_pvg">Sent authorization form to passenger/);
+  assert.match(server, /title:'Sent authorization form to passenger'/);
   assert.match(page, /PVG open-bag authorization email/);
   assert.match(server, /【需要您的授权】行李开箱检查通知/);
   assert.match(server, /Authorization Required for Baggage Inspection at PVG/);
@@ -810,6 +864,32 @@ test('CBS tracking requests PVG open-bag authorization from Email', () => {
   assert.doesNotMatch(drive, /CBS_OPEN_BAG_AUTHORIZATION_FILE_ID is required/);
   assert.match(drive, /drive\.files\.get\(\{ fileId, alt:'media' \}/);
   assert.doesNotMatch(server, /assets', 'Letter of Authorization\.pdf'/);
+});
+
+test('CBS case progress runs newest-to-oldest and shows DPR automatic closure', () => {
+  assert.match(page, /map\(\(group, index\) => \(\{ \.\.\.group, stepNumber:index \+ 1 \}\)\)\s*\.reverse\(\)/);
+  assert.match(page, /caseType === 'DPR'/);
+  assert.match(page, /Closed automatically after WorldTracer update/);
+});
+
+test('AHL case progress follows the fixed baggage workflow', () => {
+  const workflow = page.match(/function orderedCaseProgressEvents[\s\S]*?function trackingControlHtml/)?.[0] || '';
+  assert.match(workflow, /caseType !== 'AHL'/);
+  const labels = ['Create Case', 'Update WorldTracer', 'Sent authorization form to passenger', 'Sent Open Bag Authorization to PVG', 'Request Bags', 'Baggage transfer status update - ETA', 'Shipping / Pick-up Bags / Other Update', 'Case Close'];
+  let previous = -1;
+  labels.forEach((label) => {
+    const position = workflow.indexOf(`'${label}'`, previous + 1);
+    assert.ok(position > previous, `${label} should follow the previous AHL stage`);
+    previous = position;
+  });
+  assert.match(workflow, /const operationalUpdates = chronological\.filter\(\(event\) => !fixedEvents\.has\(event\)\)/);
+});
+
+test('DPR and AHL progress display stages that have not started', () => {
+  assert.match(page, /const pending = \(key, title\) => \(\{ key, title, planned:true/);
+  assert.match(page, /closed \|\| pending\('closed', 'Case Close'\)/);
+  assert.match(page, /event\.planned \? `<small>\$\{label\('Not started', '尚未开始'\)\}<\/small>`/);
+  assert.match(page, /const currentEventIndex = sortedEvents\.findIndex\(\(\{ event \}\) => !event\.planned\)/);
 });
 
 test('CBS Email stage sends a signed open-bag authorization file to PVG', () => {
@@ -1008,15 +1088,21 @@ test('Missing Bag Report offers Create Rush and Acknowledge for open rows', () =
   assert.match(server, /action === 'link-rush'/);
 });
 
-test('Rush Bag tag fields require an airline designator and six digits, including B6', () => {
+test('baggage tag fields accept alphanumeric airline designators including B6 and 3U', () => {
   assert.match(page, /function rushBagTagNumber\(value, airline = ''\)/);
-  assert.match(page, /\^\[A-Z\]\[A-Z0-9\]\[0-9\]\{6\}\$/);
+  assert.match(page, /\^\[A-Z0-9\]\{2\}\[0-9\]\{6\}\$/);
   assert.match(page, /`\$\{airlineCode\}\$\{tag\.slice\(-6\)\}`/);
-  assert.match(page, /pattern="\[A-Za-z\]\[A-Za-z0-9\]\[0-9\]\{6\}" minlength="8" maxlength="8"/);
-  assert.match(page, /DL123456 or B6123456/);
+  assert.match(page, /pattern="\[A-Za-z0-9\]\{2\}\[0-9\]\{6\}" minlength="8" maxlength="8"/);
+  assert.match(page, /DL123456, B6123456, or 3U515289/);
   assert.match(server, /function isValidRushBagTag\(value\)/);
+  assert.match(server, /\^\[A-Z0-9\]\{2\}\[0-9\]\{6\}\$/);
   assert.match(server, /isValidRushBagTag\(record\.originalTagNumber\)/);
   assert.match(server, /isValidRushBagTag\(record\.rushTagNumber\)/);
+  assert.match(server, /normalized\.match\(\/\^\(\[A-Z0-9\]\{2\}\)\(\\d\{6,\}\)\$\//);
+  assert.match(indexPage, /pattern="\[A-Z0-9\]\{2\}\[0-9\]\{6\}"/);
+  assert.match(drive, /function isValidTestBagTag\(value\)[\s\S]*?\^\[A-Z0-9\]\{2\}\\d\{6\}\$/);
+  assert.match(drive, /exchangeCbsUnresolvedBaggageTag[\s\S]*?\^\[A-Z0-9\]\{2\}\\d\{6\}\$/);
+  assert.doesNotMatch(drive, /Bag tag must match MU123456 format/);
 });
 
 test('Passenger Filed displays multiple bag tags on separate lines', () => {
@@ -1240,7 +1326,7 @@ test('CBS removes the passenger-related pickup option from Comment and Email men
 });
 
 test('standalone, Passenger Filed, and On-hand Email menus stay synchronized', () => {
-  for (const action of ['sent_open_bag_authorization_to_pvg', 'contact_pax_pickup_bags', 'pickup_bags_future_available', 'baggage_transfer_status_eta', 'baggage_pickup_delivery_method_confirmation', 'require_open_bag_authorization_pvg']) {
+  for (const action of ['pickup_wrong_bags', 'sent_open_bag_authorization_to_pvg', 'contact_pax_pickup_bags', 'pickup_bags_future_available', 'baggage_transfer_status_eta', 'baggage_pickup_delivery_method_confirmation', 'require_open_bag_authorization_pvg']) {
     assert.equal((page.match(new RegExp(`value="${action}"`, 'g')) || []).length, 3, `${action} should appear in all three Email menus`);
   }
   assert.doesNotMatch(page, /\{ key:'open_bag_authorization_pvg'/);
@@ -1255,7 +1341,7 @@ test('Email menus offer the bilingual baggage inspection explanation', () => {
   assert.match(server, /U\.S\. Customs and Border Protection upon arrival in the United States/);
   assert.match(server, /美国海关及边境保护局（U\.S\. Customs and Border Protection）/);
   assert.match(server, /emailAction === 'baggage_open_by_customs'/);
-  assert.match(server, /needsWorldTracer = !\['sent_open_bag_authorization_to_pvg', 'contact_pax_pickup_bags', 'baggage_open_by_customs'\]/);
+  assert.match(server, /needsWorldTracer = !\['sent_open_bag_authorization_to_pvg', 'contact_pax_pickup_bags', 'baggage_open_by_customs', 'pickup_wrong_bags', 'baggage_picked_up_by_another_passenger'\]/);
 });
 
 test('future pickup email requires an available date in all three Email forms', () => {
@@ -1292,4 +1378,31 @@ test('PVG inspection authorization email includes the WorldTracer reference', ()
 test('Add On-hand records the signed-in account as creator', () => {
   assert.match(page, /payload\.submittedBy = await currentUpdater\(\)/);
   assert.match(drive, /createdBy: sanitizeSheetText\(record\.submittedBy, 160\)/);
+});
+
+test('Bag Room shows and sends the daily MU586 unload notice only above five bags', () => {
+  assert.match(page, /id="bag-room-notice-button"[^>]*hidden>Send Unload Notice Email/);
+  assert.match(page, /todayBagRoomTags\.size <= 5/);
+  assert.match(page, /background:#d92d20[\s\S]*animation:bagRoomNoticePulse/);
+  assert.match(page, /window\._bagRoomNoticeSent = true;\s*bagRoomNoticeButton\.hidden = true/);
+  assert.match(page, /fetch\(`\$\{apiBase\}\/cbs-bag-room-unload-notice`/);
+  assert.match(server, /app\.post\('\/cbs-bag-room-unload-notice'/);
+  assert.match(server, /bagRoomUnloadNoticeWasSent\(isoDate\)/);
+  assert.match(server, /bagRoomUnloadAlertCompleted\.add\(isoDate\);[\s\S]*writeBagRoomUnloadAlertState/);
+  assert.match(server, /res\.json\(\{ rows, bagRoomUnloadNoticeSent \}\)/);
+  assert.match(page, /renderUnresolvedBaggage\(data\.rows \|\| \[\], Boolean\(data\.bagRoomUnloadNoticeSent\)\)/);
+  assert.match(drive, /async function hasSentBagRoomUnloadAlertEmail\(subject\)/);
+  assert.match(server, /if \(tags\.length <= 5\)/);
+  assert.match(server, /subject:`MU586\/\$\{flightDate\}行李未装运通知`/);
+  assert.match(drive, /to = '7X24bag@ceair\.com'/);
+  assert.match(drive, /cc = \['xldou@ceair\.com', 'laxapmu@chinaeastern-usa\.com'\]/);
+  assert.match(server, /机场行李分拣延误/);
+});
+
+test('Bag Room notice succeeds when a service account cannot create optional Drive state', () => {
+  assert.match(drive, /service accounts do not have storage quota\|storage quota/);
+  assert.match(drive, /Gmail sent history will be used instead/);
+  assert.match(drive, /return \{ fileId:'', skipped:true, reason:'service-account-storage' \}/);
+  assert.match(server, /async function persistBagRoomUnloadAlertState\(\)/);
+  assert.match(server, /const stateSaved = await persistBagRoomUnloadAlertState\(\);[\s\S]*res\.json\(\{ sent:true, count:tags\.length, tags, email, stateSaved \}\)/);
 });

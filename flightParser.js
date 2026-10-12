@@ -1,4 +1,5 @@
 const passengers = {};
+const { filterUnavailablePassengerSections } = require('./passengerRecordValidity');
 
 
 function parseSectionTimestamp(timestamp) {
@@ -42,7 +43,8 @@ function splitLogicalSections(log) {
     }
 
     const cmd = line.match(cmdRe)?.[1]?.toUpperCase() || null;
-    const isContinuation = cmd ? /^(PN\d*|PF\d*)$/.test(cmd) : false;
+    const isResponse = /^>\s*PR\s*:/i.test(line);
+    const isContinuation = cmd ? isResponse || /^(PN\d*|PF\d*)$/.test(cmd) : false;
 
     if (cmd && !isContinuation) {
       if (current && current.content.trim()) sections.push(current);
@@ -55,7 +57,7 @@ function splitLogicalSections(log) {
       continue;
     }
 
-    if (cmd && isContinuation && pendingTimestamp) {
+    if (cmd && isContinuation && !isResponse && pendingTimestamp) {
       if (current && current.content.trim()) sections.push(current);
       current = {
         timestamp: pendingTimestamp,
@@ -75,7 +77,7 @@ function splitLogicalSections(log) {
   }
 
   if (current && current.content.trim()) sections.push(current);
-  return sections;
+  return filterUnavailablePassengerSections(sections, parseSectionTimestamp);
 }
 
 // ===============================
@@ -279,10 +281,12 @@ function parseIncrementalLog(log) {
       /^(PN\d*|PF\d*)$/i.test(sectionObj.command || '');
 
     if (isContinuationCommand) {
+      const headerBn = section.match(/\bPR:[^\r\n]*,BN\s*(\d{1,3})\b/i)?.[1];
+      if (headerBn) lastPassengerBn = headerBn.padStart(3, '0');
       section =
         section.replace(
           /(?:^|\r?\n)\s*PR:\s+[^\n\r]*(?:\r?\n|$)/i,
-          ''
+          '\n'
         );
     }
     const sectionTimestampMs =
@@ -1052,6 +1056,8 @@ function findByBagtag(bagtagQuery) {
 // Exports
 // ===============================
 module.exports = {
+
+  splitLogicalSections,
 
   passengers,
 
