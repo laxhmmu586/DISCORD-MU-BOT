@@ -1,14 +1,19 @@
+const { runWithBoardingFlight, normalizeBoardingFlight } = require('./boardingContext');
+const { scopedLog, discoverFlights, operationalDate, normalizeSupportedFlight } = require('./flightContext');
 require('dotenv').config();
 
 const express = require('express');
 const fs = require('fs/promises');
 const path = require('path');
+const PirDelivery = require('./public/public/pir-delivery');
 
 const {
 
   passengers,
 
   parseIncrementalLog,
+
+  splitLogicalSections,
 
   findBySeat,
 
@@ -19,7 +24,7 @@ const {
   findByBagtag
 
 } = require('./flightParser');
-const { matchMuFlight } = require('./cbsScanParser');
+const { matchMuFlight, parseEmergencyBoardScan } = require('./cbsScanParser');
 const { parseSpmlLog } = require('./spmlParser');
 const { findLinkedRushBagRecords } = require('./rushBagNotification');
 const { createWchcNotifier } = require('./wchcNotification');
@@ -92,6 +97,7 @@ const {
   acknowledgeCbsMissingBag,
   sendCbsCaseEmail,
   sendBagRoomUnloadAlertEmail,
+  hasSentBagRoomUnloadAlertEmail,
   readBagRoomUnloadAlertState,
   writeBagRoomUnloadAlertState,
   sendWrongBaggageCaseEmail,
@@ -101,15 +107,20 @@ const {
   findCbsPnrRecordsByBagTag,
   appendTransit240Record,
   appendCbsScanRecord,
+  appendEmergencyBoardRecord,
   appendRecordScanRecord,
   appendRecordCase,
   getRecordCases,
   updateRecordCase,
   appendCbsScanNbrdBns,
-  deleteCbsScanNbrdBn,
+  deleteCkinNbrdFromBothSheets,
   getCbsScanRecords,
   setCbsScanRecordEntered,
   setCbsScanRecordsEntered,
+  appendEmergencyBoardNbrdBns,
+  getEmergencyBoardRecords,
+  setEmergencyBoardRecordEntered,
+  setEmergencyBoardRecordsEntered,
   readNotesDriveStore,
   writeNotesDriveStore
 
@@ -399,7 +410,12 @@ const SALES_DETAILS_SYNC_RETRY_MS = 5 * 60 * 1000;
 const preflightStepCache = new Map();
 
 function preflightCacheKey(syInfo, isoDate, stepKey) {
-  return [syInfo?.flightNo || 'SY', isoDate || todayIsoUtc(), stepKey].join('|');
+  const parts = [syInfo?.flightNo || 'SY', isoDate || todayIsoUtc(), stepKey];
+  if (stepKey === 'gdCheck') {
+    const query = syInfo?.crewApis?.gdCheckQuery;
+    parts.push('pdf-v1', JSON.stringify(query?.expectedFlight || {}), JSON.stringify(query?.crew || []));
+  }
+  return parts.join('|');
 }
 
 function findCrewApiStep(syInfo, stepKey) {
@@ -653,7 +669,7 @@ async function refreshSyPreflightEmailChecks(syInfo, isoDate) {
   const gdStep = syInfo.crewApis?.steps?.find((step) => step.key === 'gdCheck');
   if (!applyCachedPreflightStep(syInfo, isoDate, 'gdCheck') && gdStep && gdQuery?.flightNo && gdQuery?.flightDate) {
     const gdSubject = gdQuery.emailSubject || `GD for ${gdQuery.flightNo}/${gdQuery.flightDate}`;
-    const gdResult = await getGdCheckEmail(gdQuery.flightNo, gdQuery.emailSubjectDate || gdQuery.flightDate, gdQuery.crew || [], gdSubject);
+    const gdResult = await getGdCheckEmail(gdQuery.flightNo, gdQuery.emailSubjectDate || gdQuery.flightDate, gdQuery.crew || [], gdSubject, gdQuery.expectedFlight || { flightNo: syInfo.flightNo, flightDate: syInfo.flightDate, aircraftRegistration: syInfo.aircraftRegistration });
     gdStep.complete = Boolean(gdResult.complete);
     gdStep.time = gdResult.sentAt ? gdResult.sentAt.slice(11, 19) : '';
     gdStep.searched = true;
@@ -666,7 +682,7 @@ async function refreshSyPreflightEmailChecks(syInfo, isoDate) {
     gdStep.searchDate = gdResult.searchDate || '';
     gdStep.subject = gdSubject;
     gdStep.tooltip = gdStep.complete
-      ? `GD CHECK complete: ${gdResult.matched || 0}/${gdResult.total || 0} crew matched`
+      ? `GD CHECK complete: ${gdResult.matched || 0}/${gdResult.total || 0} crew matched; flight/date/registration matched`
       : `GD CHECK issue: ${gdResult.reason || gdSubject}`;
     cacheCompletedPreflightStep(syInfo, isoDate, 'gdCheck');
   } else if (gdStep && !gdQuery?.flightNo) {
@@ -792,7 +808,7 @@ function applyPermissionFilter(pax, permissions, info240) {
 function findPassengerByFFFromRecord(log, query) {
   const ff = query.replace(/\s+/g, '').toUpperCase();
   const sections =
-    log.split(/\d{4}\s+\w+\s+\d{2},.*?\d{2}:\d{2}:\d{2}/g);
+    splitLogicalSections(log).map(section => section.content);
 
   for (const section of sections) {
 
@@ -845,7 +861,7 @@ function findPassengerFromPRRecord(log, mode, query) {
   const normalizedBN = normalized.replace(/^0+/, '') || '0';
 
   const sections =
-    log.split(/\d{4}\s+\w+\s+\d{2},.*?\d{2}:\d{2}:\d{2}/g);
+    splitLogicalSections(log).map(section => section.content);
 
   const targetSection = sections.find(section => {
     const prLine = section.split(/\r?\n/).find(line => line.includes('PR:')) || '';
@@ -989,6 +1005,62 @@ app.use(
   express.json({ limit: JSON_BODY_LIMIT })
 );
 
+// Publish lightweight invalidations instead of making every open dashboard
+// poll Sheets. Storage caches coalesce the reads that arrive after an update.
+const cbsStreamClients = new Set();
+function writeDashboardEvent(res, event, data) { res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`); }
+function broadcastCbsRefresh(pathname) {
+  for (const client of cbsStreamClients) writeDashboardEvent(client, 'refresh', { path:pathname, at:new Date().toISOString() });
+}
+app.use((req, res, next) => {
+  const changesCbsData = (req.path.startsWith('/cbs-') && req.path !== '/cbs-record-sync')
+    || req.path.startsWith('/wrong-baggage-submissions/');
+  if (req.method !== 'GET' && changesCbsData) {
+    res.on('finish', () => { if (res.statusCode >= 200 && res.statusCode < 300) broadcastCbsRefresh(req.path); });
+  }
+  next();
+});
+app.get('/cbs-live-stream', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders?.();
+  cbsStreamClients.add(res);
+  writeDashboardEvent(res, 'connected', { at:new Date().toISOString() });
+  const keepAlive = setInterval(() => res.write(': keep-alive\n\n'), 15000);
+  keepAlive.unref?.();
+  req.on('close', () => { clearInterval(keepAlive); cbsStreamClients.delete(res); });
+});
+
+// The home page used to run the full SY search every 15 seconds in every open
+// browser.  Keep the stream payload deliberately small: a completed SY read
+// publishes an invalidation only when its result changed, and connected pages
+// then silently reconcile their own authenticated view.
+const syStreamClients = new Set();
+const syStreamSignatures = new Map();
+function publishSyRefresh(query, payload) {
+  const normalizedQuery = String(query || 'SY').trim().replace(/\s+/g, ' ').toUpperCase();
+  const signature = JSON.stringify(payload);
+  if (syStreamSignatures.get(normalizedQuery) === signature) return;
+  syStreamSignatures.set(normalizedQuery, signature);
+  for (const client of syStreamClients) {
+    writeDashboardEvent(client, 'refresh', { query:normalizedQuery, at:new Date().toISOString() });
+  }
+}
+app.get('/sy-live-stream', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders?.();
+  syStreamClients.add(res);
+  writeDashboardEvent(res, 'connected', { at:new Date().toISOString() });
+  const keepAlive = setInterval(() => res.write(': keep-alive\n\n'), 15000);
+  keepAlive.unref?.();
+  req.on('close', () => { clearInterval(keepAlive); syStreamClients.delete(res); });
+});
+
 app.use(
   express.static('public')
 );
@@ -1001,8 +1073,20 @@ app.get(['/scan.html', '/scan'], (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'public', 'scan.html'));
 });
 
+app.get(['/scan2.html', '/scan2'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'public', 'scan2.html'));
+});
+
 app.get(['/m-board.html', '/m-board'], (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'public', 'm-board.html'));
+});
+
+app.get(['/scan2.html', '/scan2'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'public', 'scan2.html'));
+});
+
+app.get(['/m-board2.html', '/m-board2'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'public', 'm-board2.html'));
 });
 
 app.get(['/240.html', '/240'], (req, res) => {
@@ -1395,7 +1479,7 @@ function normalizeTestBagTag(value) {
 }
 
 function isValidTestBagTag(value) {
-  return /^[A-Z]{2}\d{6}$/.test(normalizeTestBagTag(value));
+  return /^[A-Z0-9]{2}\d{6}$/.test(normalizeTestBagTag(value));
 }
 
 function cleanBodyText(value, maxLength = 500) {
@@ -1408,11 +1492,7 @@ function sanitizeCbsText(value, maxLength = 1000) {
 }
 
 function isValidRushBagTag(value) {
-  return /^[A-Z][A-Z0-9][0-9]{6}$/.test(String(value || '').trim().toUpperCase());
-}
-
-function sanitizeCbsEmailBody(value, maxLength = 12000) {
-  return String(value || '').replace(/\r\n?/g, '\n').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '').trim().slice(0, maxLength);
+  return /^[A-Z0-9]{2}[0-9]{6}$/.test(String(value || '').trim().toUpperCase());
 }
 
 function sanitizeCbsRecord(value, maxLength = 5000) {
@@ -1425,7 +1505,7 @@ function isValidEmail(value) {
 
 function normalizeCbsBagTag(value) {
   const normalized = String(value || '').trim().toUpperCase().replace(/\s+/g, '');
-  const match = normalized.match(/^([A-Z]{2})(\d{6,})$/);
+  const match = normalized.match(/^([A-Z0-9]{2})(\d{6,})$/);
   if (match) return `${match[1]}${match[2].slice(-6)}`;
   return normalized;
 }
@@ -1559,8 +1639,13 @@ function createPirPdf(record) {
   };
   section('PASSENGER INFORMATION', 642);
   coded('NM', 'Passenger Name', record.passengerName, 52, 612, 318, 24);
-  coded('PA', 'Address', record.permanentAddress, 52, 574, 318, 38);
-  coded('TA', 'Temporary Address', record.temporaryAddress, 52, 536, 318, 38);
+  if (record.deliveryPreference) {
+    coded('DL', 'Collection / delivery:', PirDelivery.pick(PirDelivery.methods[record.deliveryPreference], record.language), 52, 574, 318, 38);
+    coded('AD', 'See Delivery Information page for address and instructions.', '', 52, 536, 318, 38);
+  } else {
+    coded('PA', 'Address', record.permanentAddress, 52, 574, 318, 38);
+    coded('TA', 'Temporary Address', record.temporaryAddress, 52, 536, 318, 38);
+  }
   coded('PN', 'Phone', record.phone, 382, 602, 170, 22);
   coded('TK', 'Ticket', record.ticketNumber, 382, 580, 170, 22);
   coded('CL', '', record.classOfTravel, 382, 558, 84, 22);
@@ -1596,6 +1681,37 @@ function createPirPdf(record) {
     content.push(pdfText('Passenger Signature __________________________', 330, 50, 9));
   }
   const contentPages = [content];
+  if (record.deliveryPreference) {
+    // Keep delivery details on their own page so long addresses and the complete
+    // bilingual notice cannot be clipped by the original fixed-height boxes.
+    const page = ['0.97 0.98 1 rg 0 0 612 792 re f', '0 0 0 RG 0 0 0 rg 1 w 36 36 540 720 re S'];
+    const language = record.language === 'zh' ? 'zh' : 'en';
+    page.push(pdfText(PirDelivery.pick(['DELIVERY INFORMATION', '配送信息'], language), 54, 724, 15));
+    let y = 692;
+    const paragraph = (value, size = 10) => {
+      // Measure each candidate using the same font runs as pdfText (including
+      // CJK gutters), and wrap even addresses with no spaces.
+      const width = (text) => (text.match(/[\x20-\x7E]+|[^\x20-\x7E]+/g) || []).reduce((total, run, index) => total + (index ? size * 0.25 : 0) + (/^[\x20-\x7E]+$/.test(run) ? pdfHelveticaTextWidth(run, size) : Array.from(run).length * size), 0);
+      let line = '';
+      const flush = () => { page.push(pdfText(line, 54, y, size)); y -= size + 5; line = ''; };
+      for (const token of pdfSafeText(value).match(/[\x21-\x7E]+|[^\x21-\x7E]/gu) || []) {
+        if (line && width(line + token) > 500) flush();
+        for (const character of Array.from(token)) {
+          if (line && width(line + character) > 500) flush();
+          if (line || character !== ' ') line += character;
+        }
+      }
+      if (line) { page.push(pdfText(line, 54, y, size)); y -= size + 5; }
+      y -= 12;
+    };
+    paragraph(`${PirDelivery.pick(['Passenger', '旅客姓名'], language)}: ${record.passengerName || ''}`);
+    PirDelivery.fields(record, language).forEach(([key, value]) => paragraph(`${key}: ${value}`));
+    if (['permanent', 'temporary'].includes(record.deliveryPreference)) {
+      page.push('0.7 0.05 0.04 rg');
+      paragraph(PirDelivery.pick(PirDelivery.notice, language));
+    }
+    contentPages.push(page);
+  }
   const chunkSize = 30;
   const contentChunks = items.length ? Array.from({ length: Math.ceil(items.length / chunkSize) }, (_, index) => items.slice(index * chunkSize, (index + 1) * chunkSize)) : [[]];
   contentChunks.forEach((chunk, pageIndex) => {
@@ -1799,6 +1915,47 @@ function baggagePickupAtLaxEmail(record = {}) {
   return { subject, text, html: cbsPlainTextEmailHtml(text) };
 }
 
+function baggagePickedUpByAnotherPassengerEmail(record = {}) {
+  const chinese = cbsEmailIsChinese(record);
+  const subject = chinese ? '关于您的行李情况更新' : 'Update Regarding Your Baggage';
+  const text = chinese
+    ? "尊敬的旅客：\n\n您好！\n\n非常抱歉您在抵达后未能正常领取到您的行李。\n\n经过我们进一步核查，您的行李在行李提取区域被另一位旅客误拿。目前我们已经与相关旅客取得联系，并正在协调对方尽快将您的行李归还。\n\n我们理解此次情况给您带来的不便和担忧，并对此深表歉意。我们会继续跟进行李的处理进展，如有任何最新消息，我们会第一时间与您联系。\n\n感谢您的耐心与理解。\n\n此致\n敬礼\n中国东方航空\n洛杉矶站"
+    : "Dear Passenger,\n\nWe sincerely apologize that you were unable to receive your baggage upon arrival.\n\nAfter reviewing the situation, we found that your baggage was mistakenly picked up by another passenger at the baggage claim area.\n\nWe have already contacted the passenger involved and are currently coordinating the return of your baggage as soon as possible.\n\nWe understand the inconvenience and concern this situation may have caused, and we sincerely apologize for the inconvenience. We will continue to follow up and will notify you immediately once we receive any further updates regarding your baggage.\n\nThank you for your patience and understanding.\n\nBest regards,\nChina Eastern Airlines\nLos Angeles Station";
+  return { subject, text, html:cbsPlainTextEmailHtml(text) };
+}
+
+function incorrectBaggagePickupEmail(record = {}) {
+  const chinese = cbsEmailIsChinese(record);
+  const subject = chinese ? '紧急：误取他人行李通知' : 'Urgent: Incorrect Baggage Pick-Up';
+  const text = chinese
+    ? `尊敬的旅客：\n您好。\n我们发现您误取了其他旅客的行李。\n请您在看到此邮件后立即与我们取得联系，并尽快将行李送回至：\n洛杉矶国际机场（LAX）\nTom Bradley International Terminal（TBIT）\nA68号柜台\n接收时间：上午7:00至下午2:00\n请您尽快将误取的行李送回。\n感谢您的理解与配合。\n\n此致\n中国东方航空`
+    : `Dear Passenger,\n\nWe have identified that you mistakenly picked up another passenger’s baggage.\nPlease contact us immediately upon receiving this email and return the baggage to Los Angeles International Airport (LAX), Tom Bradley International Terminal (TBIT), Counter A68.\nReturn Time: 7:00 AM – 2:00 PM\nWe kindly ask that you return the baggage as soon as possible.\nThank you for your prompt attention and cooperation.\n\nBest regards,\nChina Eastern Airlines`;
+  const greeting = chinese ? '尊敬的旅客：<br>您好。' : 'Dear Passenger,';
+  const introduction = chinese ? '我们发现您误取了其他旅客的行李。' : 'We have identified that you mistakenly picked up another passenger’s baggage.';
+  const request = chinese
+    ? '请您在看到此邮件后<strong>立即与我们取得联系</strong>，并尽快将行李送回以下地点：'
+    : 'Please <strong>contact us immediately</strong> upon receiving this email and return the baggage to the following location:';
+  const html = `<div style="font-family:Arial,'Microsoft YaHei',sans-serif;font-size:15px;line-height:1.75;color:#243247;max-width:600px;margin:0 auto;padding:24px 16px;">
+    <div style="border-top:4px solid #c71932;padding-top:20px;">
+      <p style="margin:0 0 6px;font-size:12px;letter-spacing:1px;color:#667085;">CHINA EASTERN AIRLINES · LAX</p>
+      <h1 style="margin:0 0 24px;font-size:22px;line-height:1.4;color:#172b4d;">${chinese ? '误取行李归还提醒' : 'Baggage Return Required'}</h1>
+      <p style="margin:0 0 20px;">${greeting}</p>
+      <p style="margin:0 0 16px;">${introduction}</p>
+      <p style="margin:0 0 24px;">${request}</p>
+      <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border:1px solid #dce3ec;border-left:4px solid #c71932;background:#f5f7fa;border-radius:8px;"><tr><td style="padding:20px;">
+        <p style="margin:0 0 10px;font-size:12px;font-weight:bold;color:#667085;">${chinese ? '行李归还地点' : 'BAGGAGE RETURN LOCATION'}</p>
+        <p style="margin:0;font-weight:bold;">${chinese ? '洛杉矶国际机场（LAX）' : 'Los Angeles International Airport (LAX)'}</p>
+        <p style="margin:4px 0;">Tom Bradley International Terminal (TBIT)</p>
+        <p style="margin:4px 0 16px;font-weight:bold;">${chinese ? 'A68号柜台' : 'Counter A68'}</p>
+        <p style="margin:0;padding-top:14px;border-top:1px solid #dce3ec;"><strong>${chinese ? '接收时间：上午7:00至下午2:00' : 'Return Time: 7:00 AM – 2:00 PM'}</strong></p>
+      </td></tr></table>
+      <p style="margin:24px 0 16px;">${chinese ? '请您尽快将误取的行李送回。<br>感谢您的理解与配合。' : 'We kindly ask that you return the baggage as soon as possible.<br>Thank you for your prompt attention and cooperation.'}</p>
+      <p style="margin:28px 0 0;padding-top:20px;border-top:1px solid #e4e7ec;">${chinese ? '此致<br>中国东方航空' : 'Best regards,<br>China Eastern Airlines'}</p>
+    </div>
+  </div>`;
+  return { subject, text, html };
+}
+
 function baggageInspectionExplanationEmail(record = {}) {
   const chinese = cbsEmailIsChinese(record);
   const subject = chinese ? '关于行李可能被开箱检查的说明' : 'Explanation Regarding Baggage Inspection';
@@ -1989,8 +2146,7 @@ function cbsPdfLines(record) {
     ['Flight routing', record.flightRoute],
     ['Baggage tag number', record.bagTag],
     ['Destination on Bags', record.destinationOnBags],
-    ['Permanent address', record.permanentAddress],
-    ['Temporary address', record.temporaryAddress],
+    ...PirDelivery.fields(record, record.language),
     ['Bag description', record.ahlBagDescription || record.dprBagInfo],
     ['Bag type', record.ahlBagType || record.dprBagType],
     ['Damage level', record.dprDamageLevel],
@@ -2216,7 +2372,12 @@ async function matchBagRoomUnloadCasesForRush(rushBag = {}) {
     if (rushBag.worldTracerFileNumber) {
       await updateCbsUnresolvedBaggageWorldTracer(row.rowNumber, rushBag.worldTracerFileNumber, 'Rush Bag automation');
     }
-    matched.push({ ...row, rushTagNumber:rushBag.rushTagNumber, worldTracerFileNumber:rushBag.worldTracerFileNumber || row.worldTracerFileNumber });
+    const linked = await updateCbsUnresolvedBaggageRush(row.rowNumber, {
+      originalTagNumber:rushBag.originalTagNumber,
+      rushTagNumber:rushBag.rushTagNumber
+    }, 'Rush Bag automation', row);
+    cbsUnresolvedRushTagCache.set(String(row.rowNumber), rushBag.rushTagNumber);
+    matched.push({ ...(linked.record || row), worldTracerFileNumber:rushBag.worldTracerFileNumber || row.worldTracerFileNumber });
   }
   return matched;
 }
@@ -2246,14 +2407,39 @@ async function runBagRoomUnloadExpiration() {
 
 const bagRoomUnloadAlertInFlight = new Map();
 const bagRoomUnloadAlertCompleted = new Set();
+const bagRoomUnloadAlertStatusChecked = new Set();
 let bagRoomUnloadAlertStateLoaded = false;
 const BAG_ROOM_UNLOAD_ALERT_ENABLED = String(process.env.BAG_ROOM_UNLOAD_ALERT_ENABLED || '').toLowerCase() === 'true';
+
+async function persistBagRoomUnloadAlertState() {
+  try {
+    await writeBagRoomUnloadAlertState({ sentDates:[...bagRoomUnloadAlertCompleted] });
+    return true;
+  } catch (err) {
+    // Persistence is only an optimization. Gmail sent history is checked on a
+    // cold start, so a Drive state failure must not fail an already sent email.
+    console.error('Bag Room Unload sent-state save error:', err);
+    return false;
+  }
+}
 
 async function loadBagRoomUnloadAlertStateOnce() {
   if (bagRoomUnloadAlertStateLoaded) return;
   const state = await readBagRoomUnloadAlertState();
   (state.sentDates || []).forEach((date) => bagRoomUnloadAlertCompleted.add(date));
   bagRoomUnloadAlertStateLoaded = true;
+}
+
+async function bagRoomUnloadNoticeWasSent(isoDate = todayIsoUtc()) {
+  await loadBagRoomUnloadAlertStateOnce();
+  if (bagRoomUnloadAlertCompleted.has(isoDate)) return true;
+  if (bagRoomUnloadAlertStatusChecked.has(isoDate)) return false;
+  bagRoomUnloadAlertStatusChecked.add(isoDate);
+  const subject = bagRoomUnloadNotice(isoDate, []).subject;
+  if (!await hasSentBagRoomUnloadAlertEmail(subject)) return false;
+  bagRoomUnloadAlertCompleted.add(isoDate);
+  await persistBagRoomUnloadAlertState();
+  return true;
 }
 
 async function notifyBagRoomUnloadAfterCc(syInfo, isoDate) {
@@ -2288,15 +2474,37 @@ async function notifyBagRoomUnloadAfterCc(syInfo, isoDate) {
     const result = await pending;
     if (result.sent) {
       bagRoomUnloadAlertCompleted.add(isoDate);
-      try {
-        await writeBagRoomUnloadAlertState({ sentDates:[...bagRoomUnloadAlertCompleted] });
-      } catch (err) {
-        result.stateError = err?.message || 'Unable to persist the sent state.';
-        console.error('Bag Room Unload sent-state save error:', err);
-      }
+      if (!await persistBagRoomUnloadAlertState()) result.statePersistence = 'gmail-history';
     }
     return result;
   } finally { bagRoomUnloadAlertInFlight.delete(isoDate); }
+}
+
+function todaysBagRoomUnloadTags(rows, isoDate = todayIsoUtc()) {
+  return [...new Set(rows.filter((row) => {
+    const visible = !row.resolvedAt || ['other', 'email'].includes(String(row.resolution || '').toLowerCase());
+    const bagRoom = [row.status, row.bagType].some((value) => String(value || '').trim().toLowerCase() === 'not load bags');
+    return visible && bagRoom && row.flightDate === isoDate;
+  }).map((row) => sanitizeCbsText(row.bagTag, 80).toUpperCase()).filter(Boolean))];
+}
+
+function bagRoomUnloadNotice(isoDate, tags) {
+  const flightDate = isoDateToLogDateParts(isoDate)?.date || '';
+  return {
+    subject:`MU586/${flightDate}行李未装运通知`,
+    text:[
+      '各位好：', '',
+      `请注意，以下行李可能因以下原因未能随今日 MU586 航班一同装运：`, '',
+      '- 机场行李分拣延误；',
+      '- 达美航空（Delta）Check-in/Carry-on 行李未能及时完成分拣；',
+      '- 联程转运行李未能及时交运；',
+      '- 达美航空 Check-in/Carry-on 行李已由旅客提取。', '',
+      ...tags, '',
+      '请相关人员留意，并及时关注后续行李状态及更新信息。', '',
+      '如有进一步消息，我们将及时通知。', '',
+      '谢谢。'
+    ].join('\n')
+  };
 }
 
 async function sendLostBaggageUpdateToDiscord(fileNumber) {
@@ -2413,6 +2621,8 @@ app.post('/contact-form-submissions', async (req, res) => {
     const date = sanitizeCbsText(body.date, 10);
     const name = sanitizeCbsText(body.name, 160);
     const seatNumber = sanitizeCbsText(body.seatNumber, 20).toUpperCase();
+    const flightNo = sanitizeCbsText(body.flightNo, 20).toUpperCase();
+    if (flightNo && !/^MU\d{3,4}$/.test(flightNo)) return res.status(400).json({ error: 'Invalid flight number.' });
     const ticketNumber = sanitizeCbsText(body.ticketNumber, 40);
     const email = sanitizeCbsText(body.email, 160).toLowerCase();
     const phone = sanitizeCbsText(body.phone, 80);
@@ -2424,7 +2634,7 @@ app.post('/contact-form-submissions', async (req, res) => {
       return res.status(400).json({ error: 'Use no more than 10 attachments, no more than 22 MB total, and no file larger than 8 MB.' });
     }
     const record = {
-      submittedAt: new Date().toISOString(), date, name, seatNumber, ticketNumber, email, phone, language,
+      submittedAt: new Date().toISOString(), date, name, flightNo, seatNumber, ticketNumber, email, phone, language,
       attachmentNames: attachments.map((attachment) => attachment.filename).join(', ')
     };
     await appendContactFormSubmission(record);
@@ -2495,8 +2705,10 @@ function buildCbsUpdateFields(update = {}) {
   }
   if (type === 'email') {
     const emailAction = sanitizeCbsText(update.emailAction, 80);
+    if (emailAction === 'pickup_wrong_bags') return { status:'Email - Pick up Wrong bags', updateNote:'EMAIL | Pick up Wrong bags', updateEvent:{ key:'email', title:'Pick up Wrong bags', fields:[['Email To', 'Passenger email on file']] } };
+    if (emailAction === 'baggage_picked_up_by_another_passenger') return { status:'Email - Reason: Baggage Picked Up by Another Passenger', updateNote:'EMAIL | Reason: Baggage Picked Up by Another Passenger', updateEvent:{ key:'email', title:'Reason: Baggage Picked Up by Another Passenger', fields:[['Email To', 'Passenger email on file']] } };
     if (emailAction === 'baggage_open_by_customs') return { status:'Email - Explanation - Baggage Open by Custom', updateNote:'EMAIL | Explanation - Baggage Open by Custom', updateEvent:{ key:'email', title:'Explanation - Baggage Open by Custom', fields:[['Email To', 'Passenger email on file']] } };
-    if (emailAction === 'require_open_bag_authorization_pvg') return { status:'Email - Require Open Bag Authorization at PVG', updateNote:'EMAIL | Require Open Bag Authorization at PVG', updateEvent:{ key:'email', title:'Require Open Bag Authorization at PVG', fields:[['Airport', 'PVG'], ['Attachment', 'Letter of Authorization.pdf']] } };
+    if (emailAction === 'require_open_bag_authorization_pvg') return { status:'Email - Sent authorization form to passenger', updateNote:'EMAIL | Sent authorization form to passenger', updateEvent:{ key:'email', title:'Sent authorization form to passenger', fields:[['Email To', 'Passenger email on file'], ['Attachment', 'Letter of Authorization.pdf']] } };
     if (emailAction === 'address_confirm_request') return { status:'Email - Address Confirm Request', updateNote:'EMAIL | Address Confirm Request Email', updateEvent:{ key:'email', title:'Address Confirm Request Email', fields:[['Email To', 'Passenger email on file']] } };
     if (emailAction === 'baggage_pickup_delivery_method_confirmation') return { status:'Email - Baggage Pick-Up / Delivery Method Confirmation', updateNote:'EMAIL | Baggage Pick-Up / Delivery Method Confirmation', updateEvent:{ key:'email', title:'Baggage Pick-Up / Delivery Method Confirmation', fields:[['Email To', 'Passenger email on file']] } };
     if (emailAction === 'baggage_transfer_status_eta') {
@@ -2579,7 +2791,7 @@ async function syncOnHandWorldTracerToRushBag(record, updatedBy = '') {
 
 app.get('/cbs-missing-bags', async (req, res) => {
   try {
-    const result = await getCbsMissingBagReports({ sync: false });
+    const result = await getCbsMissingBagReports({ sync:false, forceRefresh:req.query.refresh === '1' });
     return res.json(result);
   } catch (err) {
     console.error('CBS missing bag report error:', err);
@@ -2627,6 +2839,22 @@ app.post('/cbs-email', async (req, res) => {
       if (!isValidEmail(passengerEmail)) return res.status(400).json({ error:'A valid passenger email is required' });
       const record = { language:sanitizeCbsText(req.body?.language, 5) === 'zh' ? 'zh' : 'en' };
       const message = baggagePickupAtLaxEmail(record);
+      const email = await sendCbsCaseEmail({ passengerEmail, subject:message.subject, html:message.html, text:message.text, ccOperations:false });
+      return res.json({ sent:true, email });
+    }
+    if (emailAction === 'pickup_wrong_bags') {
+      const passengerEmail = sanitizeCbsText(req.body?.passengerEmail, 160).toLowerCase();
+      if (!isValidEmail(passengerEmail)) return res.status(400).json({ error:'A valid passenger email is required' });
+      const record = { language:sanitizeCbsText(req.body?.language, 5) === 'zh' ? 'zh' : 'en' };
+      const message = incorrectBaggagePickupEmail(record);
+      const email = await sendCbsCaseEmail({ passengerEmail, subject:message.subject, html:message.html, text:message.text, ccOperations:false });
+      return res.json({ sent:true, email });
+    }
+    if (emailAction === 'baggage_picked_up_by_another_passenger') {
+      const passengerEmail = sanitizeCbsText(req.body?.passengerEmail, 160).toLowerCase();
+      if (!isValidEmail(passengerEmail)) return res.status(400).json({ error:'A valid passenger email is required' });
+      const record = { language:sanitizeCbsText(req.body?.language, 5) === 'zh' ? 'zh' : 'en' };
+      const message = baggagePickedUpByAnotherPassengerEmail(record);
       const email = await sendCbsCaseEmail({ passengerEmail, subject:message.subject, html:message.html, text:message.text, ccOperations:false });
       return res.json({ sent:true, email });
     }
@@ -2683,7 +2911,7 @@ app.post('/cbs-missing-bags/sync', async (req, res) => {
 app.post('/cbs-missing-bags/:rowNumber/create-case', async (req, res) => {
   try {
     const rowNumber = Number(req.params.rowNumber);
-    const report = await getCbsMissingBagReports({ sync: false });
+    const report = await getCbsMissingBagReports({ sync:false, forceRefresh:req.query.refresh === '1' });
     const missing = (report.rows || []).find((row) => Number(row.rowNumber) === rowNumber);
     if (!missing) return res.status(404).json({ error: 'Missing bag row not found' });
     if (missing.caseCreatedAt) return res.json({ created: false, record: missing });
@@ -2839,6 +3067,7 @@ async function sendTransit240ToDiscord(record) {
     color: 0x2ecc71,
     title: '240 Record',
     fields: [
+      { name: 'Flight', value: record.flightNo || '—', inline: true },
       { name: 'BN', value: record.bnNumber || '—', inline: true },
       { name: 'Passenger', value: record.passengerName || '—', inline: true },
       { name: 'Nationality', value: record.nationalityCode || '—', inline: true },
@@ -2855,7 +3084,10 @@ async function sendTransit240ToDiscord(record) {
 
 app.post('/transit-240', async (req, res) => {
   try {
+    const flightNo = String(req.body?.flightNo || 'MU586').trim().toUpperCase();
+    if (!['MU586', 'MU578'].includes(flightNo)) return res.status(400).json({ error: 'Choose MU586 or MU578.' });
     const record = {
+      flightNo,
       passengerName: String(req.body?.passengerName || '').trim(),
       seatNumber: String(req.body?.seatNumber || '').trim().toUpperCase(),
       bnNumber: String(req.body?.bnNumber || '').trim(),
@@ -2890,6 +3122,17 @@ app.post('/transit-240', async (req, res) => {
   }
 });
 
+app.use(['/cbs-scan', '/cbs-scan2'], (req, res, next) => {
+  const flight = normalizeBoardingFlight(req.query.flightNo || req.body?.flightNo || 'MU586');
+  if (!flight) return res.status(400).json({ error: 'Choose MU586, MU9586 or MU578.', code: 'WRONG_FLIGHT' });
+  return runWithBoardingFlight(flight, next);
+});
+
+app.get('/flights', async (_req, res) => {
+  try { return res.json({ flights: discoverFlights(await getLatestFlightLog(), { date: operationalDate() }) }); }
+  catch (err) { return res.status(503).json({ error: 'Unable to read flight logs.' }); }
+});
+
 app.post('/cbs-scan', async (req, res) => {
   try {
     const parsed = parseCbsPdf417(req.body?.rawScan || req.body?.raw || req.body?.text || '');
@@ -2898,6 +3141,17 @@ app.post('/cbs-scan', async (req, res) => {
   } catch (err) {
     const status = err?.code === 'DUPLICATE_BN' || err?.code === 'NBRD_MESSAGE' ? 409 : (err?.code === 'WRONG_FLIGHT' ? 400 : (err?.code === 'SHEETS_QUOTA' ? 503 : 422));
     return res.status(status).json({ error: err?.message || 'CBS scan save failed', code: err?.code || 'SCAN_ERROR', flight: err?.flight || '', bn: err?.bn || '', detail: err?.detail || '' });
+  }
+});
+
+app.post('/cbs-scan2', async (req, res) => {
+  try {
+    const parsed = parseEmergencyBoardScan(req.body?.rawScan || req.body?.raw || req.body?.text || '');
+    const saved = await appendEmergencyBoardRecord(parsed);
+    return res.json({ ok: true, ...saved });
+  } catch (err) {
+    const status = err?.code === 'DUPLICATE_BN' || err?.code === 'NBRD_MESSAGE' ? 409 : (err?.code === 'WRONG_FLIGHT' || err?.code === 'SCAN_FORMAT' ? 400 : (err?.code === 'SHEETS_QUOTA' ? 503 : 422));
+    return res.status(status).json({ error: err?.message || 'Emergency scan save failed', code: err?.code || 'SCAN_ERROR', flight: err?.flight || '', bn: err?.bn || '', detail: err?.detail || '' });
   }
 });
 
@@ -2923,6 +3177,32 @@ async function recordPassengerByBn(bn) {
   return passengers[bn] || null;
 }
 
+const irrCaseStreamClients = new Set();
+
+function writeIrrCaseEvent(res, event, data) {
+  res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+}
+
+function broadcastIrrCaseUpdate(record) {
+  for (const client of irrCaseStreamClients) writeIrrCaseEvent(client, 'case-update', { record });
+}
+
+app.get('/irr-cases/stream', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders?.();
+  irrCaseStreamClients.add(res);
+  writeIrrCaseEvent(res, 'connected', { at:new Date().toISOString() });
+  const keepAlive = setInterval(() => res.write(': keep-alive\n\n'), 15000);
+  keepAlive.unref?.();
+  req.on('close', () => {
+    clearInterval(keepAlive);
+    irrCaseStreamClients.delete(res);
+  });
+});
+
 app.post('/irr-form-submissions', async (req, res) => {
   try {
     const bn = normalizeRecordBn(req.body?.bn);
@@ -2931,8 +3211,7 @@ app.post('/irr-form-submissions', async (req, res) => {
     const phone = String(req.body?.phone || '').trim().slice(0, 80);
     const email = String(req.body?.email || '').trim().slice(0, 180);
     const intention = String(req.body?.intention || '').trim().slice(0, 1000);
-    const finalDestination = String(req.body?.finalDestination || '').trim().toUpperCase().slice(0, 120);
-    if (!bn || !phone || !isValidEmail(email) || !intention || !finalDestination || (travelParty === 'companions' && !companionBns.length)) return res.status(400).json({ error:'Please complete all required fields.' });
+    if (!bn || !phone || !isValidEmail(email) || !intention || (travelParty === 'companions' && !companionBns.length)) return res.status(400).json({ error:'Please complete all required fields.' });
     const passenger = await recordPassengerByBn(bn);
     if (!passenger) return res.status(404).json({ error:'BN was not found in today’s flight record.', code:'BN_NOT_FOUND' });
     // The main lookup has already refreshed today's record. Reuse the parsed
@@ -2943,7 +3222,8 @@ app.post('/irr-form-submissions', async (req, res) => {
     const submittedAt = new Date().toISOString();
     const saved = await appendRecordCase({ submittedAt, status:'Waiting', bn, passengerName:passenger.name || '', phone, email, travelParty,
       companionBns:companionBns.join(', '), companionPnrRecords:companions.map((item) => `BN ${item.bn} — ${item.passenger.name || ''}\n${item.passenger.sourceText || ''}`).join('\n\n'),
-      intention, finalDestination, pnrRecord:passenger.sourceText || '' });
+      intention, finalDestination:'', pnrRecord:passenger.sourceText || '' });
+    broadcastIrrCaseUpdate(saved);
     return res.status(201).json({ created:true, record:saved });
   } catch (err) {
     console.error('Record form submission failed:', err);
@@ -2956,11 +3236,58 @@ app.get('/irr-cases', async (_req, res) => {
   catch (err) { return res.status(500).json({ error:err?.message || 'Cases could not be loaded.' }); }
 });
 
+const irrCaseUpdateQueues = new Map();
+function serializeIrrCaseUpdate(rowNumber, operation) {
+  const key = String(rowNumber);
+  const previous = irrCaseUpdateQueues.get(key) || Promise.resolve();
+  const current = previous.catch(() => {}).then(operation);
+  irrCaseUpdateQueues.set(key, current);
+  current.finally(() => { if (irrCaseUpdateQueues.get(key) === current) irrCaseUpdateQueues.delete(key); }).catch(() => {});
+  return current;
+}
+
 app.post('/irr-cases/:rowNumber', async (req, res) => {
-  try { return res.json({ updated:true, record:await updateRecordCase(req.params.rowNumber, req.body || {}) }); }
-  catch (err) { return res.status(err?.code === 'EDIT_CONFLICT' ? 409 : 422).json({ error:err?.message || 'Case could not be updated.', code:err?.code }); }
+  try {
+    // Only serialize the same row: different cases can still be handled at the
+    // same time, while stale edits to one case are rejected deterministically.
+    const record = await serializeIrrCaseUpdate(req.params.rowNumber, () => updateRecordCase(req.params.rowNumber, req.body || {}));
+    broadcastIrrCaseUpdate(record);
+    return res.json({ updated:true, record });
+  } catch (err) { return res.status(err?.code === 'EDIT_CONFLICT' ? 409 : 422).json({ error:err?.message || 'Case could not be updated.', code:err?.code }); }
 });
 
+
+async function saveCkinNbrdEntriesToBothSheets(entries, options = {}) {
+  const [regular, emergency] = await Promise.all([
+    appendCbsScanNbrdBns(entries, options),
+    appendEmergencyBoardNbrdBns(entries, options)
+  ]);
+  return { regular, emergency };
+}
+
+app.get('/cbs-scan2/records', async (_req, res) => {
+  try { return res.json({ ok: true, rows: await getEmergencyBoardRecords() }); }
+  catch (err) { return res.status(422).json({ error: err?.message || 'Emergency board records load failed', code: err?.code || 'EMERGENCY_BOARD_RECORDS_ERROR' }); }
+});
+
+app.post('/cbs-scan2/records/entered', async (req, res) => {
+  try { return res.json({ ok: true, ...await setEmergencyBoardRecordsEntered(req.body?.rowNumbers || [], req.body?.entered === true) }); }
+  catch (err) { return res.status(422).json({ error: err?.message || 'Emergency board rows update failed', code: err?.code || 'EMERGENCY_BOARD_ROWS_UPDATE_ERROR' }); }
+});
+
+app.post('/cbs-scan2/nbrd-bns', async (req, res) => {
+  try {
+    const entries = Array.isArray(req.body?.entries) ? req.body.entries : (Array.isArray(req.body?.bns) ? req.body.bns : [req.body?.bn].filter(Boolean));
+    return res.json({ ok: true, ...await saveCkinNbrdEntriesToBothSheets(entries, { replace: req.body?.replace === true }) });
+  } catch (err) { return res.status(422).json({ error: err?.message || 'Emergency NBRD save failed', code: err?.code || 'NBRD_SAVE_ERROR' }); }
+});
+
+async function handleEmergencyBoardNbrdDelete(req, res) {
+  try { return res.json({ ok: true, ...await deleteCkinNbrdFromBothSheets(req.body?.bn || req.query?.bn || '') }); }
+  catch (err) { return res.status(err?.code === 'NBRD_NOT_FOUND' || err?.code === 'NBRD_MISMATCH' ? 404 : 422).json({ error: err?.message || 'Emergency NBRD delete failed', code: err?.code || 'NBRD_DELETE_ERROR' }); }
+}
+app.post('/cbs-scan2/nbrd-bns/:rowNumber/delete', handleEmergencyBoardNbrdDelete);
+app.delete('/cbs-scan2/nbrd-bns/:rowNumber', handleEmergencyBoardNbrdDelete);
 
 app.get('/cbs-scan/records', async (req, res) => {
   try {
@@ -2994,7 +3321,7 @@ app.post('/cbs-scan/records/:rowNumber/entered', async (req, res) => {
 app.post('/cbs-scan/nbrd-bns', async (req, res) => {
   try {
     const entries = Array.isArray(req.body?.entries) ? req.body.entries : (Array.isArray(req.body?.bns) ? req.body.bns : [req.body?.bn].filter(Boolean));
-    const result = await appendCbsScanNbrdBns(entries, { replace: req.body?.replace === true });
+    const result = await saveCkinNbrdEntriesToBothSheets(entries, { replace: req.body?.replace === true });
     return res.json({ ok: true, ...result });
   } catch (err) {
     return res.status(422).json({ error: err?.message || 'NBRD BN save failed', code: err?.code || 'NBRD_SAVE_ERROR' });
@@ -3003,7 +3330,7 @@ app.post('/cbs-scan/nbrd-bns', async (req, res) => {
 
 async function handleCbsScanNbrdDelete(req, res) {
   try {
-    const result = await deleteCbsScanNbrdBn(req.params.rowNumber, req.body?.bn || req.query?.bn || '');
+    const result = await deleteCkinNbrdFromBothSheets(req.body?.bn || req.query?.bn || '');
     return res.json({ ok: true, ...result });
   } catch (err) {
     const status = err?.code === 'NBRD_NOT_FOUND' || err?.code === 'NBRD_MISMATCH' ? 404 : 422;
@@ -3016,7 +3343,8 @@ app.delete('/cbs-scan/nbrd-bns/:rowNumber', handleCbsScanNbrdDelete);
 
 app.get('/cbs-cases', async (req, res) => {
   try {
-    const [pirRows, wrongBaggageRows] = await Promise.all([getCbsCases(), getWrongBaggageSubmissions()]);
+    const options = { forceRefresh:req.query.refresh === '1' };
+    const [pirRows, wrongBaggageRows] = await Promise.all([getCbsCases(options), getWrongBaggageSubmissions(options)]);
     return res.json({ rows: [...pirRows, ...wrongBaggageRows] });
   } catch (err) {
     console.error('CBS case list error:', err);
@@ -3028,7 +3356,7 @@ const CBS_BAG_TAG_AIRLINES = Object.freeze({ '001':'AA', '006':'DL', '016':'UA',
 
 function normalizeRecordCheckBagTag(value) {
   const compact = String(value || '').trim().toUpperCase().replace(/[\s-]+/g, '');
-  if (/^[A-Z][A-Z0-9]\d{6}$/.test(compact)) return { display:compact, serial:compact.slice(-6) };
+  if (/^[A-Z0-9]{2}\d{6}$/.test(compact)) return { display:compact, serial:compact.slice(-6) };
   const digits = compact.replace(/\D/g, '');
   if (digits.length === 10) return { display:`${CBS_BAG_TAG_AIRLINES[digits.slice(1, 4)] || digits.slice(1, 4)}${digits.slice(-6)}`, serial:digits.slice(-6) };
   if (digits.length === 6) return { display:digits, serial:digits };
@@ -3068,6 +3396,7 @@ function bestCbsPnrRecord(records = []) {
 }
 
 let cbsPnrSyncPending = null;
+let cbsPnrSyncRecent = { at:0, result:null };
 async function syncMissingCbsPnrRecords(passengerCases = [], unresolvedCases = [], updatedBy = 'System') {
   const candidates = [
     ...passengerCases.filter(caseNeedsPnrSync).map((row) => ({ source:'passenger', row })),
@@ -3120,8 +3449,13 @@ function startCbsPnrRecordSync(passengerCases, unresolvedCases, updatedBy = 'Sys
 app.post('/cbs-record-sync', async (req, res) => {
   try {
     const updatedBy = sanitizeCbsText(req.body?.updatedBy, 160) || 'System';
+    if (cbsPnrSyncRecent.result && Date.now() - cbsPnrSyncRecent.at < 5 * 60 * 1000) {
+      return res.json({ ...cbsPnrSyncRecent.result, skipped:true, reason:'recently synced' });
+    }
     const [passengerCases, unresolvedCases] = await Promise.all([getCbsCases(), getCbsUnresolvedBaggageCases()]);
-    return res.json(await syncMissingCbsPnrRecords(passengerCases, unresolvedCases, updatedBy));
+    const result = await startCbsPnrRecordSync(passengerCases, unresolvedCases, updatedBy);
+    cbsPnrSyncRecent = { at:Date.now(), result };
+    return res.json(result);
   } catch (err) {
     console.error('CBS automatic record sync error:', err);
     return res.status(500).json({ error:err?.message || 'Automatic record sync failed' });
@@ -3160,7 +3494,7 @@ app.post('/cbs-worldtracer-cases', async (req, res) => {
     };
     const invalidFlight = !record.flightRows.length || record.flightRows.some((flight) => Object.values(flight).some((value) => !value));
     if (!isValidRushBagTag(record.originalTagNumber) || !isValidRushBagTag(record.rushTagNumber) || invalidFlight) {
-      return res.status(400).json({ error: 'Original and RUSH tags must use an airline code followed by 6 digits (for example DL123456 or B6123456), and complete flight segments are required' });
+      return res.status(400).json({ error: 'Original and RUSH tags must use an airline code followed by 6 digits (for example DL123456, B6123456, or 3U515289), and complete flight segments are required' });
     }
     const result = await saveLinkedRushBag(record);
     result.matchedBagRoomUnloadCases = await matchBagRoomUnloadCasesForRush(result.record);
@@ -3173,7 +3507,7 @@ app.post('/cbs-worldtracer-cases', async (req, res) => {
 
 app.get('/cbs-worldtracer-cases', async (req, res) => {
   try {
-    return res.json({ rows: await getCbsWorldTracerCases() });
+    return res.json({ rows: await getCbsWorldTracerCases({ forceRefresh:req.query.refresh === '1' }) });
   } catch (err) {
     console.error('CBS WorldTracer case list error:', err);
     return res.status(500).json({ error: err?.message || 'WorldTracer case lookup failed' });
@@ -3187,7 +3521,7 @@ app.post('/cbs-worldtracer-cases/update', async (req, res) => {
       worldTracerFileNumber: sanitizeCbsText(body.worldTracerFileNumber, 120).toUpperCase(), originalTagNumber: sanitizeCbsText(body.originalTagNumber, 120).toUpperCase(), rushTagNumber: sanitizeCbsText(body.rushTagNumber, 120).toUpperCase(), createdAt:sanitizeCbsText(body.createdAt, 40),
       flightRows:(Array.isArray(body.flightRows) ? body.flightRows : []).slice(0, 20).map((flight) => ({ flightDate:sanitizeCbsText(flight?.flightDate, 40), flightNumber:sanitizeCbsText(flight?.flightNumber, 40).toUpperCase(), from:sanitizeCbsText(flight?.from, 40).toUpperCase(), to:sanitizeCbsText(flight?.to, 40).toUpperCase() }))
     };
-    if (!isValidRushBagTag(record.originalTagNumber) || !isValidRushBagTag(record.rushTagNumber) || !record.flightRows.length || record.flightRows.some((flight) => Object.values(flight).some((value) => !value))) return res.status(400).json({ error:'Original and RUSH tags must use an airline code followed by 6 digits (for example DL123456 or B6123456), and complete flight segments are required' });
+    if (!isValidRushBagTag(record.originalTagNumber) || !isValidRushBagTag(record.rushTagNumber) || !record.flightRows.length || record.flightRows.some((flight) => Object.values(flight).some((value) => !value))) return res.status(400).json({ error:'Original and RUSH tags must use an airline code followed by 6 digits (for example DL123456, B6123456, or 3U515289), and complete flight segments are required' });
     const requestedRows = new Set((Array.isArray(body.rowNumbers) ? body.rowNumbers : []).map(Number));
     const allRushBags = await getCbsWorldTracerCases();
     const previousRecord = allRushBags.find((item) =>
@@ -3226,7 +3560,15 @@ async function runCbsUnresolvedBackgroundMaintenance(rows = []) {
       await updateCbsUnresolvedBaggageWorldTracer(row.rowNumber, fileNumber, 'Upcoming Rush match');
     }
     const rushBag = rushBags.filter((item) => normalizedCbsLinkTag(item.originalTagNumber) === normalizedCbsLinkTag(row.bagTag)).at(-1);
-    if (rushBag?.rushTagNumber) cbsUnresolvedRushTagCache.set(String(row.rowNumber), rushBag.rushTagNumber);
+    if (rushBag?.rushTagNumber) {
+      cbsUnresolvedRushTagCache.set(String(row.rowNumber), rushBag.rushTagNumber);
+      if (normalizedCbsLinkTag(row.rushTagNumber) !== normalizedCbsLinkTag(rushBag.rushTagNumber)) {
+        await updateCbsUnresolvedBaggageRush(row.rowNumber, {
+          originalTagNumber:rushBag.originalTagNumber,
+          rushTagNumber:rushBag.rushTagNumber
+        }, 'Rush Bag reconciliation', row);
+      }
+    }
   }
   await startCbsPnrRecordSync(cases, rows, 'System');
 }
@@ -3241,18 +3583,39 @@ function startCbsUnresolvedBackgroundMaintenance(rows) {
 app.get('/cbs-unresolved-baggage', async (req, res) => {
   try {
     res.setHeader('Cache-Control', 'no-store');
-    const rows = (await getCbsUnresolvedBaggageCases({ includeResolved:true })).map((row) => {
+    const rows = (await getCbsUnresolvedBaggageCases({ includeResolved:true, forceRefresh:req.query.refresh === '1' })).map((row) => {
       const rushTagNumber = cbsUnresolvedRushTagCache.get(String(row.rowNumber));
       return rushTagNumber ? { ...row, rushTagNumber } : row;
     });
     // Only the sheet read is part of this request. Expiry checks, cross-sheet
     // linking, and Drive PNR scans run after the response so cases render fast.
-    res.json({ rows });
+    let bagRoomUnloadNoticeSent = false;
+    try { bagRoomUnloadNoticeSent = await bagRoomUnloadNoticeWasSent(); }
+    catch (err) { console.error('Bag Room Unload notice status error:', err); }
+    res.json({ rows, bagRoomUnloadNoticeSent });
     setImmediate(() => { startCbsUnresolvedBackgroundMaintenance(rows); });
     return;
   } catch (err) {
     console.error('CBS On-hand baggage list error:', err);
     return res.status(500).json({ error: err?.message || 'On-hand baggage lookup failed' });
+  }
+});
+
+app.post('/cbs-bag-room-unload-notice', async (req, res) => {
+  try {
+    const isoDate = todayIsoUtc();
+    if (await bagRoomUnloadNoticeWasSent(isoDate)) return res.json({ sent:false, duplicate:true });
+    const rows = await getCbsUnresolvedBaggageCases({ includeResolved:true });
+    const tags = todaysBagRoomUnloadTags(rows, isoDate);
+    if (tags.length <= 5) return res.status(400).json({ error:'More than five Bag Room Unload bags are required today.', count:tags.length });
+    const message = bagRoomUnloadNotice(isoDate, tags);
+    const email = await sendBagRoomUnloadAlertEmail(message);
+    bagRoomUnloadAlertCompleted.add(isoDate);
+    const stateSaved = await persistBagRoomUnloadAlertState();
+    return res.json({ sent:true, count:tags.length, tags, email, stateSaved });
+  } catch (err) {
+    console.error('Bag Room Unload notice email error:', err);
+    return res.status(500).json({ error:cbsEmailErrorMessage(err) });
   }
 });
 
@@ -3264,7 +3627,7 @@ async function syncOnHandStatusToBaggage(record, action, body = {}) {
     'passenger-name': 'Passenger Name Updated',
     comment: 'Comment',
     reopen: 'Reopened',
-    email: 'Pick-up Bags - available',
+    email: body.emailAction === 'baggage_picked_up_by_another_passenger' ? 'Reason: Baggage Picked Up by Another Passenger' : body.emailAction === 'pickup_wrong_bags' ? 'Pick up Wrong bags' : 'Pick-up Bags - available',
     'on-hand-rush': 'Create Rush',
     'passenger-collected': 'Passenger Collected / Case Closed',
     'case-close': 'Case Closed',
@@ -3295,7 +3658,7 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
     const note = sanitizeCbsText(req.body?.note, 500);
     if (action === 'email') {
       const emailAction = sanitizeCbsText(req.body?.emailAction, 80);
-      const validEmailActions = ['sent_open_bag_authorization_to_pvg', 'contact_pax_pickup_bags', 'pickup_bags_future_available', 'baggage_transfer_status_eta', 'address_confirm_request', 'baggage_pickup_delivery_method_confirmation', 'require_open_bag_authorization_pvg', 'baggage_open_by_customs'];
+      const validEmailActions = ['baggage_picked_up_by_another_passenger', 'pickup_wrong_bags', 'sent_open_bag_authorization_to_pvg', 'contact_pax_pickup_bags', 'pickup_bags_future_available', 'baggage_transfer_status_eta', 'address_confirm_request', 'baggage_pickup_delivery_method_confirmation', 'require_open_bag_authorization_pvg', 'baggage_open_by_customs'];
       if (!validEmailActions.includes(emailAction)) return res.status(400).json({ error: 'A valid email action is required' });
       const emailTo = sanitizeCbsText(req.body?.emailTo, 160).toLowerCase();
       if (!isValidEmail(emailTo)) return res.status(400).json({ error: 'A valid passenger email is required' });
@@ -3303,7 +3666,7 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
       const record = rows.find((row) => String(row.rowNumber) === String(req.params.rowNumber));
       if (!record) return res.status(404).json({ error: 'On-hand case not found' });
       const worldTracerFileNumber = sanitizeCbsText(req.body?.worldTracerFileNumber || record.worldTracerFileNumber, 120).toUpperCase();
-      const needsWorldTracer = !['sent_open_bag_authorization_to_pvg', 'contact_pax_pickup_bags', 'baggage_open_by_customs'].includes(emailAction);
+      const needsWorldTracer = !['sent_open_bag_authorization_to_pvg', 'contact_pax_pickup_bags', 'baggage_open_by_customs', 'pickup_wrong_bags', 'baggage_picked_up_by_another_passenger'].includes(emailAction);
       if (needsWorldTracer && !worldTracerFileNumber) return res.status(400).json({ error:'A WorldTracer file number is required' });
       const emailRecord = { ...record, worldTracerFileNumber, language:sanitizeCbsText(req.body?.language, 5) === 'zh' ? 'zh' : 'en' };
       let message;
@@ -3325,10 +3688,12 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
       else if (emailAction === 'baggage_pickup_delivery_method_confirmation') message = baggagePickupDeliveryMethodConfirmationEmail(emailRecord);
       else if (emailAction === 'require_open_bag_authorization_pvg') { message = openBagAuthorizationPvgEmail(emailRecord); authorizationForm = await getCbsOpenBagAuthorizationPdf(); }
       else if (emailAction === 'baggage_open_by_customs') message = baggageInspectionExplanationEmail(emailRecord);
-      else message = withEditableCbsEmailBody(baggagePickupAtLaxEmail(emailRecord), req.body?.emailBody);
+      else if (emailAction === 'baggage_picked_up_by_another_passenger') message = baggagePickedUpByAnotherPassengerEmail(emailRecord);
+      else if (emailAction === 'pickup_wrong_bags') message = incorrectBaggagePickupEmail(emailRecord);
+      else message = baggagePickupAtLaxEmail(emailRecord);
       const email = await sendCbsCaseEmail({ passengerEmail:emailTo, subject:message.subject, html:message.html, text:message.text, attachments, ...(authorizationForm ? { pdfBuffer:authorizationForm.buffer, filename:authorizationForm.name } : {}), ccOperations:false });
       const updatedBy = sanitizeCbsText(req.body?.updatedBy, 160);
-      const resolutionTitle = ({ sent_open_bag_authorization_to_pvg:'Sent Open Bag Authorization to PVG', contact_pax_pickup_bags:'Pick-up Bags - available', pickup_bags_future_available:'Pick-up Bags - future available', baggage_transfer_status_eta:'Baggage transfer status update - ETA', address_confirm_request:'Address Confirm Request Email', baggage_pickup_delivery_method_confirmation:'Baggage Pick-Up / Delivery Method Confirmation', require_open_bag_authorization_pvg:'Require Open Bag Authorization at PVG', baggage_open_by_customs:'Explanation - Baggage Open by Custom' })[emailAction];
+      const resolutionTitle = ({ baggage_picked_up_by_another_passenger:'Reason: Baggage Picked Up by Another Passenger', pickup_wrong_bags:'Pick up Wrong bags', sent_open_bag_authorization_to_pvg:'Sent Open Bag Authorization to PVG', contact_pax_pickup_bags:'Pick-up Bags - available', pickup_bags_future_available:'Pick-up Bags - future available', baggage_transfer_status_eta:'Baggage transfer status update - ETA', address_confirm_request:'Address Confirm Request Email', baggage_pickup_delivery_method_confirmation:'Baggage Pick-Up / Delivery Method Confirmation', require_open_bag_authorization_pvg:'Sent authorization form to passenger', baggage_open_by_customs:'Explanation - Baggage Open by Custom' })[emailAction];
       const resolutionNote = `${resolutionTitle} | Email To: ${emailTo}${updatedBy ? ` | Updated by: ${updatedBy}` : ''}`;
       const result = await resolveCbsUnresolvedBaggageCase(req.params.rowNumber, action, resolutionNote, updatedBy);
       await syncOnHandStatusToBaggage(result.record, action, req.body);
@@ -3391,8 +3756,14 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
       const worldTracerFileNumber = sanitizeCbsText(req.body?.worldTracerFileNumber, 120).toUpperCase();
       const originalTagNumber = sanitizeCbsText(req.body?.originalTagNumber || req.body?.bagTagNumber, 120).toUpperCase();
       const rushTagNumber = sanitizeCbsText(req.body?.rushTagNumber, 120).toUpperCase();
-      if (!isValidRushBagTag(originalTagNumber) || !isValidRushBagTag(rushTagNumber) || !flightRows.length || flightRows.some((flight) => Object.values(flight).some((value) => !value))) return res.status(400).json({ error: 'Original and RUSH tags must use an airline code followed by 6 digits (for example DL123456 or B6123456), and complete flight segments are required' });
+      if (!isValidRushBagTag(originalTagNumber) || !isValidRushBagTag(rushTagNumber) || !flightRows.length || flightRows.some((flight) => Object.values(flight).some((value) => !value))) return res.status(400).json({ error: 'Original and RUSH tags must use an airline code followed by 6 digits (for example DL123456, B6123456, or 3U515289), and complete flight segments are required' });
       await saveLinkedRushBag({ worldTracerFileNumber, originalTagNumber, rushTagNumber, flightRows, createdAt: new Date().toISOString() });
+      const updatedBy = sanitizeCbsText(req.body?.updatedBy, 160);
+      if (worldTracerFileNumber) await updateCbsUnresolvedBaggageWorldTracer(req.params.rowNumber, worldTracerFileNumber, updatedBy);
+      const result = await updateCbsUnresolvedBaggageRush(req.params.rowNumber, { originalTagNumber, rushTagNumber }, updatedBy);
+      if (result.notFound) return res.status(404).json({ error: 'Unresolved baggage case not found' });
+      await syncOnHandStatusToBaggage(result.record, action, req.body);
+      return res.json(result);
     }
     const updatedBy = sanitizeCbsText(req.body?.updatedBy, 160);
     let resolutionNote = action === 'passenger-collected' ? 'Passenger Collected / Case Closed' : note;
@@ -3429,7 +3800,7 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
 app.post('/cbs-cases/from-baggage/:bagTag', async (req, res) => {
   try {
     const bagTag = normalizeTestBagTag(req.params.bagTag || req.body?.bagTag);
-    if (!isValidTestBagTag(bagTag)) return res.status(400).json({ error: 'Bag tag must match MU123456 format' });
+    if (!isValidTestBagTag(bagTag)) return res.status(400).json({ error: 'Bag tag must match MU123456, B6123456, or 3U515289 format' });
     const baggage = await findTestBaggageByTag(bagTag);
     if (!baggage) return res.status(404).json({ error: 'Baggage record not found' });
     const existingCase = (await getCbsCases()).find((row) => String(row.bagTag || '').split(/\s*\/\s*/).some((tag) => normalizeCbsBagTag(tag) === bagTag));
@@ -3494,10 +3865,11 @@ app.post('/cbs-cases', async (req, res) => {
     if (!sanitizeCbsText(body.phone, 80)) return res.status(400).json({ error: 'Phone is required' });
     if (!sanitizeCbsText(body.ticketNumber, 80)) return res.status(400).json({ error: 'Ticket number is required' });
     if (!sanitizeCbsText(firstFlight.flightNo, 20) || !sanitizeCbsText(firstFlight.flightDate, 20) || !sanitizeCbsText(firstFlight.origin, 20) || !sanitizeCbsText(firstFlight.destination, 20)) return res.status(400).json({ error: 'First flight row is required' });
-    if (!sanitizeCbsText(body.permanentAddress, 500)) return res.status(400).json({ error: 'Address is required' });
+    let delivery;
+    try { delivery = PirDelivery.normalize(body); }
+    catch (error) { return res.status(400).json({ error: error.message }); }
     const normalizedBagTags = normalizeCbsBagTags(body.bagTags || body.bagTag);
     if (!normalizedBagTags) return res.status(400).json({ error: 'Bag tag is required' });
-    if (caseType === 'AHL' && !sanitizeCbsText(body.ahlBagDescription, 500)) return res.status(400).json({ error: 'AHL baggage description is required' });
     if (!sanitizeCbsText(body.issueDate, 40)) return res.status(400).json({ error: 'Issue date is required' });
     if (!body.passengerSignature) return res.status(400).json({ error: 'Passenger signature is required' });
     const now = new Date().toISOString();
@@ -3523,10 +3895,7 @@ app.post('/cbs-cases', async (req, res) => {
       flightRoute: buildCbsFlightRoute(body),
       bagTag: normalizedBagTags,
       destinationOnBags: sanitizeCbsText(body.destinationOnBags, 80).toUpperCase(),
-      permanentAddress: sanitizeCbsText(body.permanentAddress, 500),
-      temporaryAddress: sanitizeCbsText(body.temporaryAddress, 500),
-      temporaryAddressValidUntil: sanitizeCbsText(body.temporaryAddressValidUntil, 40),
-      addressAvailable: sanitizeCbsText(body.addressAvailable, 20),
+      ...delivery,
       ahlBagDescription: sanitizeCbsText(body.ahlBagDescription, 500),
       ahlBagBrandTag: sanitizeCbsText(body.ahlBagBrandTag, 200),
       ahlBagType: sanitizeCbsText(body.ahlBagType, 160),
@@ -3537,6 +3906,7 @@ app.post('/cbs-cases', async (req, res) => {
       dprBagInfo: sanitizeCbsText(body.dprBagInfo, 500),
       dprBagType: sanitizeCbsText(body.dprBagType, 160),
       dprInnerDamage: sanitizeCbsText(body.dprInnerDamage, 1000),
+      additionalInformation: sanitizeCbsText(body.additionalInformation, 1000),
       contentsRows,
       contentsDetails: cbsContentsText(contentsRows),
       issueDate: sanitizeCbsText(body.issueDate, 40),
@@ -3658,11 +4028,13 @@ app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
       const transferEtaEmail = updateFields.updateEvent.title === 'Baggage transfer status update - ETA';
       const addressConfirmEmail = updateFields.updateEvent.title === 'Address Confirm Request Email';
       const pickupDeliveryMethodEmail = updateFields.updateEvent.title === 'Baggage Pick-Up / Delivery Method Confirmation';
-      const requirePvgAuthorizationEmail = updateFields.updateEvent.title === 'Require Open Bag Authorization at PVG';
+      const requirePvgAuthorizationEmail = ['Sent authorization form to passenger', 'Require Open Bag Authorization at PVG'].includes(updateFields.updateEvent.title);
       const baggageInspectionEmail = updateFields.updateEvent.title === 'Explanation - Baggage Open by Custom';
+      const anotherPassengerEmail = updateFields.updateEvent.title === 'Reason: Baggage Picked Up by Another Passenger';
+      const wrongBagsEmail = updateFields.updateEvent.title === 'Pick up Wrong bags';
       const estimatedArrivalTime = updateFields.updateEvent.fields.find(([key]) => key === 'Estimated Arrival Time')?.[1] || '';
       const availableDate = updateFields.updateEvent.fields.find(([key]) => key === 'Available Date')?.[1] || '';
-      const message = pickupEmail
+      const message = anotherPassengerEmail ? baggagePickedUpByAnotherPassengerEmail(record) : pickupEmail
         ? baggagePickupAtLaxEmail(record)
         : (futurePickupEmail
           ? baggageFuturePickupAtLaxEmail(record, availableDate)
@@ -3674,8 +4046,8 @@ app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
                 ? baggagePickupDeliveryMethodConfirmationEmail(record)
                 : (requirePvgAuthorizationEmail
                   ? openBagAuthorizationPvgEmail(record)
-                  : (baggageInspectionEmail ? baggageInspectionExplanationEmail(record) : signedOpenBagAuthorizationToPvgEmail(record)))))));
-      const emailTo = pickupEmail || futurePickupEmail || transferEtaEmail || addressConfirmEmail || pickupDeliveryMethodEmail || requirePvgAuthorizationEmail || baggageInspectionEmail ? record.email : updateFields.updateEvent.fields.find(([key]) => key === 'Email To')?.[1];
+                  : (baggageInspectionEmail ? baggageInspectionExplanationEmail(record) : (wrongBagsEmail ? incorrectBaggagePickupEmail(record) : signedOpenBagAuthorizationToPvgEmail(record))))))));
+      const emailTo = pickupEmail || futurePickupEmail || transferEtaEmail || addressConfirmEmail || pickupDeliveryMethodEmail || requirePvgAuthorizationEmail || baggageInspectionEmail || wrongBagsEmail || anotherPassengerEmail ? record.email : updateFields.updateEvent.fields.find(([key]) => key === 'Email To')?.[1];
       try {
         if (requirePvgAuthorizationEmail) {
           const authorizationForm = await getCbsOpenBagAuthorizationPdf();
@@ -3829,7 +4201,7 @@ app.get('/test-baggage-report', async (req, res) => {
 app.get('/test-baggage/:bagTag', async (req, res) => {
   try {
     const bagTag = normalizeTestBagTag(req.params.bagTag);
-    if (!isValidTestBagTag(bagTag)) return res.status(400).json({ error: 'Bag tag must match MU123456 format' });
+    if (!isValidTestBagTag(bagTag)) return res.status(400).json({ error: 'Bag tag must match MU123456, B6123456, or 3U515289 format' });
     const record = await findTestBaggageByTag(bagTag);
     return res.json({ found: Boolean(record), record });
   } catch (err) {
@@ -3841,7 +4213,7 @@ app.get('/test-baggage/:bagTag', async (req, res) => {
 app.post('/test-baggage', async (req, res) => {
   try {
     const bagTag = normalizeTestBagTag(req.body?.bagTag);
-    if (!isValidTestBagTag(bagTag)) return res.status(400).json({ error: 'Bag tag must match MU123456 format' });
+    if (!isValidTestBagTag(bagTag)) return res.status(400).json({ error: 'Bag tag must match MU123456, B6123456, or 3U515289 format' });
     const direction = cleanBodyText(req.body?.direction, 20).toLowerCase();
     if (!['inbound', 'outbound'].includes(direction)) return res.status(400).json({ error: 'Direction must be inbound or outbound' });
     const date = cleanBodyText(req.body?.date, 20);
@@ -3849,7 +4221,7 @@ app.post('/test-baggage', async (req, res) => {
     const flight = cleanBodyText(req.body?.flight, 20).toUpperCase();
     if (!/^[A-Z]{2}\d{1,4}[A-Z]?$/.test(flight)) return res.status(400).json({ error: 'Missing or invalid flight number' });
     const rushTagNumber = cleanBodyText(req.body?.rushTagNumber, 80).toUpperCase();
-    if (rushTagNumber && !isValidRushBagTag(rushTagNumber)) return res.status(400).json({ error: 'RUSH tag must use an airline code followed by 6 digits, for example DL123456 or B6123456' });
+    if (rushTagNumber && !isValidRushBagTag(rushTagNumber)) return res.status(400).json({ error: 'RUSH tag must use an airline code followed by 6 digits, for example DL123456, B6123456, or 3U515289' });
     const result = await appendTestBaggageRecord({
       bagTag,
       direction,
@@ -3879,7 +4251,7 @@ app.post('/test-baggage', async (req, res) => {
 app.post('/test-baggage/:bagTag/update', async (req, res) => {
   try {
     const bagTag = normalizeTestBagTag(req.params.bagTag);
-    if (!isValidTestBagTag(bagTag)) return res.status(400).json({ error: 'Bag tag must match MU123456 format' });
+    if (!isValidTestBagTag(bagTag)) return res.status(400).json({ error: 'Bag tag must match MU123456, B6123456, or 3U515289 format' });
     const type = cleanBodyText(req.body?.type, 40).toLowerCase();
     if (!['rush', 'location', 'shipping'].includes(type)) return res.status(400).json({ error: 'Invalid update type' });
     const result = await updateTestBaggageRecord(bagTag, {
@@ -4151,6 +4523,11 @@ app.get(
       // =========================
       // Parse
       // =========================
+      const selectedFlight = normalizeSupportedFlight(req.query.flightNo || syRawMatch?.[2] || 'MU586');
+      if (!selectedFlight || (syRawMatch?.[2] && syRawMatch[2] !== selectedFlight)) return res.status(400).json({ error: 'Flight does not match selection.' });
+      const selectedDate = date ? date + yearSuffix : String(req.query.flightDate || operationalDate()).toUpperCase();
+      const preparationLog = log;
+      log = scopedLog(log, selectedFlight, selectedDate);
       parseIncrementalLog(log);
 
       parsePDLog(log);
@@ -4158,12 +4535,13 @@ app.get(
       const syMatch = syRawMatch;
       if (syMatch) {
         const preferNextDay = Boolean(syMatch[1]) && !date;
-        const requestedFlightNo = syMatch[2]?.toUpperCase() || 'MU586';
+        const requestedFlightNo = selectedFlight;
         const syDate = syMatch[3] ? syMatch[3].toUpperCase() : date;
         const syInfo = findSYInfo(log, syDate, {
           preferNextDay,
+          preparationLog,
           preferredFlightNo: requestedFlightNo,
-          strictPreferredFlight: Boolean(syMatch[2])
+          strictPreferredFlight: true
         });
         if (!syInfo) {
           return res.json({ error: `No SY section found for ${requestedFlightNo}${syDate ? `/${syDate}` : ''}.` });
@@ -4174,18 +4552,11 @@ app.get(
         const months = { JAN:'01', FEB:'02', MAR:'03', APR:'04', MAY:'05', JUN:'06', JUL:'07', AUG:'08', SEP:'09', OCT:'10', NOV:'11', DEC:'12' };
         const yearFromFlight = m?.[3] ? (2000 + Number(m[3])) : fullYear;
         const isoDate = m ? `${yearFromFlight}-${months[m[2]] || '01'}-${m[1]}` : '';
-        const syBagInfo = isoDate ? await getSyBagInfoByDate(isoDate, syInfo.flightDate) : null;
-        try {
-          syInfo.bagRoomUnloadAlert = await notifyBagRoomUnloadAfterCc(syInfo, isoDate);
-        } catch (err) {
-          syInfo.bagRoomUnloadAlert = { sent:false, error:err?.message || 'Bag Room Unload alert failed.' };
-          console.error('Bag Room Unload CC email error:', err);
-        }
         rememberCompletedPreflightSteps(syInfo, isoDate);
         applyCachedCompletedPreflightSteps(syInfo, isoDate);
         syInfo.fscRateSheetSync = fscRateSheetSyncCache.get(isoDate) || { skipped: true, reason: 'sync pending' };
         syInfo.bookingSheetSync = syBookingSheetSyncCache.get(isoDate) || { skipped: true, reason: 'sync pending' };
-        syInfo.salesDetailsSheetSync = await syncSalesDetailsFromTodaySy(isoDate);
+        syInfo.salesDetailsSheetSync = salesDetailsSheetSyncCache.get(isoDate) || { skipped: true, reason: 'sync pending' };
         if (!applyCachedPreflightStep(syInfo, isoDate, 'gdCheck')) {
           const gdStep = syInfo.crewApis?.steps?.find((step) => step.key === 'gdCheck');
           if (gdStep) {
@@ -4200,6 +4571,11 @@ app.get(
             nextDayStep.tooltip = 'NEXTDAY INFO will update in the background.';
           }
         }
+        const spml = parseSpmlLog(log, { flightNo:syInfo.flightNo, flightDate:syInfo.flightDate });
+        const bagInfoPromise = isoDate ? getSyBagInfoByDate(isoDate, syInfo.flightDate) : Promise.resolve(null);
+        const mealEmailPromise = getLatestMealOrderEmail(syInfo.flightNo, syInfo.flightDate);
+        const authContextPromise = resolveAuthContextFromRequest(req);
+
         if (isoDate && isoDate !== todayIsoUtc()) {
           await refreshDeferredSyData(syInfo, log, isoDate);
           rememberCompletedPreflightSteps(syInfo, isoDate);
@@ -4214,18 +4590,30 @@ app.get(
             });
           });
         }
-        const spml = parseSpmlLog(log, { flightNo:syInfo.flightNo, flightDate:syInfo.flightDate });
-        spml.email = await getLatestMealOrderEmail(syInfo.flightNo, syInfo.flightDate);
+        const [syBagInfo, mealEmail, authContext] = await Promise.all([
+          bagInfoPromise,
+          mealEmailPromise,
+          authContextPromise
+        ]);
+        try {
+          syInfo.bagRoomUnloadAlert = await notifyBagRoomUnloadAfterCc(syInfo, isoDate);
+        } catch (err) {
+          syInfo.bagRoomUnloadAlert = { sent:false, error:err?.message || 'Bag Room Unload alert failed.' };
+          console.error('Bag Room Unload CC email error:', err);
+        }
+        spml.email = mealEmail;
         if (spml.report.length) {
-          try {
-            spml.sheetSync = await appendSpmlReportRows(spml.report.map((row) => ({ ...row, key:`SPML|${row.date}|${row.flightNo}|${row.passenger}|${row.bn}|${row.meal}`.toUpperCase() })));
-          } catch (err) {
-            spml.sheetSync = { appended:0, error:err?.message || 'SPML report sync failed' };
-          }
+          setImmediate(() => appendSpmlReportRows(spml.report.map((row) => ({ ...row, key:`SPML|${row.date}|${row.flightNo}|${row.passenger}|${row.bn}|${row.meal}`.toUpperCase() })))
+            .catch((err) => console.warn('SPML report sync skipped:', err?.message || err)));
         }
         syInfo.spml = spml;
-        const authContext = await resolveAuthContextFromRequest(req);
-        return res.json({ sy: { ...syInfo, bagSheet: syBagInfo, permissions: authContext.permissions } });
+        setImmediate(() => syncSalesDetailsFromTodaySy(isoDate)
+          .catch((err) => console.warn('Sales details sync skipped:', err?.message || err)));
+        const syPayload = { ...syInfo, bagSheet: syBagInfo, permissions: authContext.permissions };
+        // Exclude per-user permissions from the shared change signature.  The
+        // event contains no flight data and merely asks clients to reconcile.
+        publishSyRefresh(rawQuery, { ...syPayload, permissions: undefined });
+        return res.json({ sy: syPayload });
       }
       if (isSYRawQuery) {
         return res.json({ error: 'SY query did not return SY payload.' });
