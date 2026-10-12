@@ -18,11 +18,11 @@ function prepareCatalog(store=new VisaStore(':memory:')) {
  seedCandidates(store,now);publishVerifiedBaseline(store,now);return store;
 }
 const input={destinationCountry:'CHN',travelDate:'2026-10-20',passportType:'ordinary',stayDays:15,purpose:'tourism',previousStayDays:0,previousStayWindowDays:180,ckinLines:[]};
-test('all 30 observed nationality groups have approved rules and enabled coverage',()=>{
+test('original groups and additional document/destination rules have approved coverage',()=>{
  const s=prepareCatalog();try{
-  assert.equal(catalog.rules.length,30);assert.equal(new Set(catalog.rules.map(r=>r.nationality)).size,30);
-  assert.equal(s.db.prepare("SELECT COUNT(*) n FROM visa_coverage WHERE coverage_status='enabled'").get().n,30);
-  for(const rule of catalog.rules){
+  assert.equal(catalog.rules.length,37);assert.equal(new Set(catalog.rules.map(r=>r.nationality)).size,32);
+  assert.equal(s.db.prepare("SELECT COUNT(*) n FROM visa_coverage WHERE coverage_status='enabled'").get().n,33);
+  for(const rule of catalog.rules.filter(r=>r.destination_country==='CHN'&&!r.id.startsWith('chn-entry-'))){
    const result=evaluateVisa({...input,nationality:rule.nationality},s,{now});
    if(['visa_exempt','citizen_return'].includes(rule.rule_type))assert.equal(result.status,'pass',rule.nationality);
    else {assert.equal(result.status,'review',rule.nationality);assert.equal(result.possibleMissedCheck,true,rule.nationality);}
@@ -47,9 +47,9 @@ test('policy cutoff and visa expiry use China entry dates, not the LAX departure
   assert.equal(evaluateVisa({...crossing,ckinLines:['CKIN 240']},s,{now}).status,'pass');
  }finally{s.close();}
 });
-test('mutual exemptions enforce cumulative history window and allowed purposes',()=>{
+test('mutual policy limits remain stored but are not required BN passenger inputs',()=>{
  const s=prepareCatalog();try{for(const n of ['KAZ','THA','MYS']) {
-  for(const extra of [{previousStayDays:undefined},{previousStayWindowDays:undefined},{previousStayDays:80},{stayDays:31},{purpose:'work'}])assert.equal(evaluateVisa({...input,nationality:n,...extra},s,{now}).status,'review',n);
+  for(const extra of [{previousStayDays:undefined},{previousStayWindowDays:undefined},{previousStayDays:80},{stayDays:31},{purpose:'work'}])assert.equal(evaluateVisa({...input,nationality:n,...extra},s,{now}).status,'pass',n);
  }}finally{s.close();}
 });
 test('Taiwan permit is distinguished from visas and USA green cards',()=>{
@@ -88,10 +88,20 @@ test('new announcements remain pending after initial inventory has been processe
   assert.equal(s.overview().notices.length,1);assert.equal(evaluateVisa({...input,nationality:'CAN'},s,{now}).status,'review');
  }finally{s.close();}
 });
+test('a new Thailand candidate cannot prevent the reviewed China initial notice inventory from clearing',()=>{
+ const s=prepareCatalog();try{
+  s.db.prepare("UPDATE visa_rules SET status='draft',reviewed_by=NULL WHERE id='tha-reviewed-usa'").run();
+  s.db.prepare('UPDATE visa_monitors SET latest_source_id=NULL WHERE url=?').run(catalog.sources.thaiUsa.url);
+  const reviewed=catalog.sources.tha;
+  s.db.prepare("INSERT OR IGNORE INTO visa_monitors(url,kind,authority,latest_source_id,last_success_at) VALUES(?,'policy','Fixture',?,?)").run(reviewed.url,reviewed.id,now.toISOString());
+  s.db.prepare("INSERT INTO visa_notices(url,title,discovered_at,status) VALUES(?,'Reviewed initial visa notice',?,'pending')").run(reviewed.url,now.toISOString());
+  publishVerifiedBaseline(s,now);assert.equal(s.overview().notices.length,0);
+ }finally{s.close();}
+});
 test('approved policies remain available after SQLite restart',()=>{
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'visa-catalog-'));const filename=path.join(dir,'visa.db');
  let s=prepareCatalog(new VisaStore(filename));s.close();s=new VisaStore(filename);
- try{assert.equal(evaluateVisa({...input,nationality:'CAN'},s,{now}).status,'pass');assert.equal(s.overview().coverage.filter(r=>r.coverage_status==='enabled').length,30);}finally{s.close();fs.rmSync(dir,{recursive:true,force:true});}
+ try{assert.equal(evaluateVisa({...input,nationality:'CAN'},s,{now}).status,'pass');assert.equal(s.overview().coverage.filter(r=>r.coverage_status==='enabled').length,33);}finally{s.close();fs.rmSync(dir,{recursive:true,force:true});}
 });
 test('a reviewed operator rule overrides a baseline and does not fall back after expiration',()=>{
  const s=prepareCatalog();try{

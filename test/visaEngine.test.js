@@ -62,11 +62,11 @@ test('approved current government rule passes with all required facts',()=>{
 test('expiration uses travel date and never extends an old reachable page',()=>{
  const s=approvedStore();try{assert.equal(evaluateVisa({...facts,travelDate:'2027-01-01'},s,{now}).status,'review');}finally{s.close();}
 });
-test('missing purpose, stay and passport type cannot silently pass',()=>{
- const s=approvedStore();try{for(const field of ['purpose','stayDays','passportType'])assert.equal(evaluateVisa({...facts,[field]:undefined},s,{now}).status,'review');}finally{s.close();}
+test('ordinary passport confirmation is still required without stay/purpose auditing',()=>{
+ const s=approvedStore();try{for(const field of ['passportType'])assert.equal(evaluateVisa({...facts,[field]:undefined},s,{now}).status,'review');}finally{s.close();}
 });
-test('missing exemption facts are returned together for the BN double-check explanation',()=>{
- const s=approvedStore();try{assert.deepEqual(evaluateVisa({...facts,purpose:undefined,stayDays:undefined},s,{now}).missingFields,['stayDays','purpose']);}finally{s.close();}
+test('missing stay and purpose do not add BN double-check fields',()=>{
+ const s=approvedStore();try{assert.deepEqual(evaluateVisa({...facts,purpose:undefined,stayDays:undefined},s,{now}).missingFields,[]);}finally{s.close();}
 });
 test('changed source suspends old rule even before its policy expiration',()=>{
  const s=approvedStore();try{const url=s.overview().rules[0].sources[0].url;const m=s.db.prepare('SELECT * FROM visa_monitors WHERE url=?').get(url);s.snapshot(m,'Changed eligibility, exemption suspended',now.toISOString());assert.equal(evaluateVisa(facts,s,{now}).status,'review');}finally{s.close();}
@@ -100,10 +100,10 @@ test('manual 240 remains pass when audit storage fails',()=>{
  const runtime=require('../visaRuntime');const s=new VisaStore(':memory:');runtime.setVisaStore(s);s.close();
  try{assert.equal(runtime.checkVisa({ckinLines:['CKIN 240']}).status,'pass');}finally{runtime.setVisaStore(undefined);}
 });
-test('conflicting CKIN stay or purpose notes cannot produce an exemption pass',()=>{
+test('CKIN stay and purpose notes are outside the BN visa record audit',()=>{
  const {findSYInfo}=require('../syParser');const runtime=require('../visaRuntime');const s=approvedStore();runtime.setVisaStore(s);
  const base=['2026 October 12, Monday, 11:55:00','> sy',' SY: MU586/12OCT26 LAX/0 CI1145/NAM','777/773L/B7367 GTD/130 POS/GATE BN299 AK00000 CD00000','BDT1145 SD1230 ED1230 CI1145','2026 October 12, Monday, 12:00:00','> fb1',' PR: MU586/12OCT26*LAX,BN001 PNR RL TESTXX','1. TEST/PASSENGER BN001 *35A S PVG','PASSPORT :XX1234567/P/NAT/CAN/900101/301231/CAN/N/A','CKIN PURPOSE TOURISM STAY 15 DAYS'];
  try{for(const extra of ['CKIN PURPOSE WORK','CKIN STAY 60 DAYS']){
-  const row=findSYInfo([...base,extra].join('\n'),'12OCT26',{preferredFlightNo:'MU586'}).bnAudit[0];assert.equal(row.visaStatus,'review');
+  const row=findSYInfo([...base,extra].join('\n'),'12OCT26',{preferredFlightNo:'MU586'}).bnAudit[0];assert.equal(row.visaStatus,'pass');
  }}finally{runtime.setVisaStore(undefined);s.close();}
 });

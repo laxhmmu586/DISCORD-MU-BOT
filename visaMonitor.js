@@ -9,6 +9,14 @@ function textContent(html) {
   return decodeEntities(html.replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi,'').replace(/<[^>]+>/g,' ')).replace(/\s+/g,' ').trim();
 }
 function policyText(html) {
+  // Thai embassy pages carry their policy article in Next.js page data. Hash
+  // the article and linked documents, not changing view counts or navigation.
+  const embedded=html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/)?.[1];
+  if(embedded)try{
+    const page=JSON.parse(embedded)?.props?.pageProps?.components_meta?.page?.data;
+    const body=page?.description||page?.html;
+    if(typeof body==='string'&&body.length>80)return textContent([page.title||page.name||'',page.date||'',page.date_edit||'',body,JSON.stringify(page.documents||[]),JSON.stringify(page.documents_upload||[])].join(' '));
+  }catch{/* Unsupported page data uses the conservative full-page fallback. */}
   const main=html.match(/<[^>]+class=["'][^"']*(?:TRS_Editor|view TRS_UEDITOR)[^"']*["'][^>]*>([\s\S]*?)<\/div>/i)?.[1]
     || html.match(/<article\b[^>]*>([\s\S]*?)<\/article>/i)?.[1];
   // Full text fallback is conservative: navigation changes may require review.

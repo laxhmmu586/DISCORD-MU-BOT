@@ -5,6 +5,11 @@ const feeds = [
   { url: 'https://www.mfa.gov.cn/fyrbt_673021/dhdw_673027/', authority: 'Ministry of Foreign Affairs', kind: 'feed' }
 ];
 const policies = [
+  { url: 'https://my.china-embassy.gov.cn/sgxw/201908/t20190813_1717561.htm', authority: 'Chinese Embassy in Malaysia', kind: 'policy' },
+  { url: 'https://www.nia.gov.cn/n794014/n794021/c1659665/content.html', authority: 'National Immigration Administration', kind: 'policy' },
+  { url: 'https://cs.mfa.gov.cn/lgk1/201905/t20190529_833938.shtml', authority: 'China Consular Affairs', kind: 'policy' },
+  { url: 'https://cgchicago.thaiembassy.org/th/content/thailand-visa-exemption-stay?cate=624678640ec8444296380ad3&menu=6213463206a176712603be23', authority: 'Royal Thai Consulate General Chicago', kind: 'policy' },
+  { url: 'https://washingtondc.thaiembassy.org/en/page/visa-information', authority: 'Royal Thai Embassy Washington', kind: 'policy' },
   { url: 'https://www.nia.gov.cn/n794014/n1050181/n1050479/c1013311/content.html', authority: 'National Immigration Administration', kind: 'policy' },
   { url: 'https://cs.mfa.gov.cn/zggmcgx/cgqzapecswlxk/ylb/202607/t20260716_11984014.html', authority: 'China Consular Affairs', kind: 'policy' },
   { url: 'https://www.nia.gov.cn/n741440/n741547/c757556/content.html', authority: 'National Immigration Administration', kind: 'policy' },

@@ -1,6 +1,11 @@
 // Reviewed 2026-10-12. Ordinary passports travelling to mainland China.
 // Regional/tour-group exemptions and other special entry bases require separate evidence.
 const sources = {
+  apec: {url:'https://my.china-embassy.gov.cn/sgxw/201908/t20190813_1717561.htm',id:'e51f8f829f464687becb73133da993cf856e7777647624f2990e2ab6bf84d7a7'},
+  pink: {url:'https://www.nia.gov.cn/n794014/n794021/c1659665/content.html',id:'0256905a3b31423f2893fb4a23908f236dce0afafa5e7d9c811fcfaca4df6ee2'},
+  armenia: {url:'https://cs.mfa.gov.cn/lgk1/201905/t20190529_833938.shtml',id:'93b7f81f409bb8ed4923b3f31878e37cd6a9669aec31ed75b78585dc774db904'},
+  thaiUsa: {url:'https://cgchicago.thaiembassy.org/th/content/thailand-visa-exemption-stay?cate=624678640ec8444296380ad3&menu=6213463206a176712603be23',id:'b7896859236f433434d5cf357fedd1f2ae4c784d756abd9d3c05f50c0a22c5a6'},
+  tdac: {url:'https://washingtondc.thaiembassy.org/en/page/visa-information',id:'7e19f306b8a5bae1ebd338f863fbf31f6f23d2cc53a645b2d614096e7d1d675a'},
   law: {url:'https://www.nia.gov.cn/n794014/n1050181/n1050479/c1013311/content.html',id:'d8fba36a0afcf3d8d7eb6142636caf882c1b0e97b902f4f86f63f54aaba5e298'},
   unilateral: {url:'https://cs.mfa.gov.cn/lh/lhqz_149493/cjwd/',id:'09c81057cdd24b3c8f7c12d3f46a3ace78a354e8e5c77a288d3222a93eefe06e'},
   bilateral: {url:'https://cs.mfa.gov.cn/zggmcgx/cgqzapecswlxk/ylb/202607/t20260716_11984014.html',id:'2defbc268967e81c3323893891135b43f84e0619f0fae3f82d359b2be9c91a4c'},
@@ -20,12 +25,18 @@ const rules=[
   entry('TWN','special_document',{documentType:'TBZ',issuer:'CHN'},['taiwan'],'Taiwan-resident mainland travel documents, Chapter III Articles 13–15; passport alone is not the travel permit.'),
   ...['USA','MEX','KHM','IND','COL','VNM','CRI','GTM','PHL','LKA','JAM'].map(n=>entry(n,'visa_document',{},['law','unilateral','bilateral'],
     'Article 15 general visa requirement, subject to Article 22 exceptions. No general ordinary-passport exemption in current unilateral/bilateral lists. Manually checked 240 TWOV, residence/travel documents and regional exemptions are separate bases.')),
-  ...['CAN','AUS','RUS','PER','FRA','GBR','JPN','KOR','NZL','ESP','DEU','CHL','ITA'].map(n=>entry(n,'visa_exempt',{maxStayDays:30,purposes:['tourism','business','visit','exchange','transit']},['unilateral',...(['CAN','GBR'].includes(n)?['canada']:[])],
+  ...['CAN','AUS','RUS','PER','FRA','GBR','JPN','KOR','NZL','ESP','DEU','CHL','ITA','BRA'].map(n=>entry(n,'visa_exempt',{maxStayDays:30,purposes:['tourism','business','visit','exchange','transit']},['unilateral',...(['CAN','GBR'].includes(n)?['canada']:[])],
     'Visa-free FAQ: ordinary passport; business/tourism/family-friend visit/exchange/transit; at most 30 days from the day after entry; no work/study/news coverage.',
     {effective_until:n==='RUS'?'2027-12-31':'2026-12-31'})),
   entry('KAZ','visa_exempt',{maxStayDays:30,purposes:['private','business','tourism','medical','transport','transit'],cumulativeDays:90,cumulativeWindowDays:180},['kaz','bilateral'],'Ordinary passport; private/business/tourism/medical/transport/transit; 30 days per entry, 90 days in 180 days.'),
   entry('THA','visa_exempt',{maxStayDays:30,purposes:['tourism','business','visit','private','transit'],cumulativeDays:90,cumulativeWindowDays:180},['tha','bilateral'],'Ordinary-passport exemption: 30 days per visit, 90 days in 180; work/study/news/settlement need prior permission.'),
   entry('MYS','visa_exempt',{maxStayDays:30,purposes:['tourism','visit','business','exchange','private','medical','transport','transit'],cumulativeDays:90,cumulativeWindowDays:180},['mys','bilateral'],'Agreement effective 2025-07-17: 30 days per entry, 90 days in 180; specified purposes, no work/study/news/settlement.'),
-  entry('SGP','visa_exempt',{maxStayDays:30,purposes:['tourism','business','visit','private','transit']},['sgp','bilateral'],'Ordinary passports, 30 days per entry; work/news coverage and stays over 30 days require prior visa/permission.')
+  entry('SGP','visa_exempt',{maxStayDays:30,purposes:['tourism','business','visit','private','transit']},['sgp','bilateral'],'Ordinary passports, 30 days per entry; work/news coverage and stays over 30 days require prior visa/permission.'),
+  entry('ARM','visa_exempt',{maxStayDays:90,purposes:['tourism','business','visit','private','transit'],cumulativeDays:90,cumulativeWindowDays:180},['armenia','bilateral'],'Ordinary passports; agreement effective 2020-01-19, cumulative 90 days per 180 days; no work/study/settlement/news.'),
+  entry('USA','visa_exempt',{maxStayDays:30,purposes:['tourism','visit']},['thaiUsa','tdac'],'U.S. ordinary passports: from 2026-09-15, tourism/short visits up to 30 days. TDAC recorded separately; it is not a visa.',{id:'tha-reviewed-usa',destination_country:'THA'}),
+  entry('USA','residence_document',{documentType:'PRCARD',issuer:'CHN'},['law'],'Article 22: valid foreigner permanent residence document exempts from visa. RESIDENT CARD is the confirmed local alias for a China PR card.',{id:'chn-entry-usa-residence'}),
+  entry('USA','special_document',{documentType:'PINKCARD',issuer:'CHN'},['pink'],'Mainland travel permit for Hong Kong/Macao permanent residents. PINK CARD is the confirmed local alias for a mainland travel permit, not an outbound Hong Kong/Macao permit.',{id:'chn-entry-usa-pink'}),
+  entry('USA','special_document',{documentType:'TRAVELDOC',issuer:'CHN'},['law'],'Articles 9 and 11: Chinese passport or other valid Chinese entry-exit travel document. TRVL DCMNT/DOMENT is the confirmed local alias for the Chinese travel document.',{id:'chn-entry-usa-travel'}),
+  entry('MEX','special_document',{documentType:'APECCARD',issuer:'CHN'},['apec'],'Valid APEC entry permission for CHN, card passport matches travel passport; business visit within 60 days. Expiry alone does not establish China preclearance.',{id:'chn-entry-mex-apec'})
 ];
 module.exports={sources,rules,reviewer:'Official-source review, 2026-10-12'};

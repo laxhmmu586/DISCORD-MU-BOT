@@ -2,6 +2,12 @@ const test=require('node:test');const assert=require('node:assert/strict');
 const {VisaStore}=require('../visaStore');const {VisaMonitor,fetchOfficial,noticeLinks}=require('../visaMonitor');
 const {explainDecision}=require('../visaExplain');const {mountVisaRoutes}=require('../visaRoutes');const express=require('express');
 const url='https://en.nia.gov.cn/n147418/n147463/index.html';
+test('Thai policy snapshots ignore view counts but retain article, dates and linked document changes',()=>{
+ const {policyText}=require('../visaMonitor');
+ const page=(changes={})=>'<script id="__NEXT_DATA__" type="application/json">'+JSON.stringify({props:{pageProps:{components_meta:{page:{data:{title:'Official visa policy',description:'<p>'+('Visa exemption policy. '.repeat(8))+'</p>',date:'2026-09-15',date_edit:'2026-09-17',view:10,documents:[{url:'/policy.pdf'}],...changes}}}}}})+'</script>';
+ assert.equal(policyText(page()),policyText(page({view:500})));
+ for(const changes of [{description:'Visa policy changed. '.repeat(8)},{date_edit:'2026-10-13'},{documents:[{url:'/new-policy.pdf'}]}])assert.notEqual(policyText(page()),policyText(page(changes)));
+});
 function html(body){return '<html><title>Official visa notices</title><body>'+body+' '.repeat(400)+'</body></html>';}
 test('discovers a new official announcement URL instead of only rechecking old pages',async()=>{
  const s=new VisaStore(':memory:');s.db.prepare('DELETE FROM visa_monitors').run();s.db.prepare('INSERT INTO visa_monitors(url,kind,authority) VALUES(?,?,?)').run(url,'feed','NIA');

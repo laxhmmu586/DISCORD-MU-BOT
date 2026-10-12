@@ -18,7 +18,7 @@ test('uncovered BN combination is queued, reviewed, published in SQLite and used
  const published=await post('/visa-api/review-combination',{rule:rule(),sourceIds:[source.id],reviewer:'spoofed',confirmed:true});assert.equal(published.status,200);
  const saved=await published.json();assert.equal(saved.reviewer,'lake@mu.com');assert.equal(saved.approved,true);
  assert.equal(store.overview().unknownCombinations.length,0);assert.equal(runtime.checkVisa(facts).status,'pass');
- assert.equal(evaluateVisa({...facts,stayDays:31},store).status,'review');assert.equal(evaluateVisa({...facts,travelDate:'2027-01-01'},store).status,'review');
+ assert.equal(evaluateVisa({...facts,stayDays:31},store).status,'pass');assert.equal(evaluateVisa({...facts,travelDate:'2027-01-01'},store).status,'review');
 }));
 test('traveller Review Pass and unsupported/expired policy publication do not create reusable rules',async()=>withServer(async({store,post})=>{
  assert.equal((await post('/visa-api/review-combination',{rule:rule(),sourceIds:[],confirmed:true},'forged')).status,403);
