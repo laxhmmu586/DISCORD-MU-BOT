@@ -1,5 +1,5 @@
 body.login-orbit { display:flex; justify-content:flex-start; align-items:center; overflow-x:hidden; overflow-y:auto; }
-.login-orbit::before { background-image:url('transpacific-earth-hd.png'); background-size:cover; background-position:center; filter:none; transform:none; animation:none; will-change:auto; }
+.login-orbit::before { background-image:url('cosmic-earth-horizon.png'); background-size:cover; background-position:center; filter:none; transform:none; animation:none; will-change:auto; }
 .login-orbit .login-card { width:min(42vw,540px); min-height:100svh; margin:0; padding:clamp(60px,15vh,160px) 70px 60px 64px; display:flex; flex-direction:column; justify-content:center; border:0; border-radius:0; background:linear-gradient(110deg,#020b19ef,#04152ad9); backdrop-filter:blur(18px); box-shadow:25px 0 90px #0006; animation:none; }
 .login-card::before { content:""; position:absolute; right:-32px; top:0; height:100%; width:64px; background:linear-gradient(90deg,#06172de8,#06172d95); transform:skewX(-8deg); border-right:1px solid #76caff; box-shadow:4px 0 14px #318cff45; z-index:-1; }
 .login-card::after { content:""; position:absolute; left:38px; top:22%; bottom:20%; width:2px; background:linear-gradient(transparent,#32a5ff 20%,#b9e8ff 50%,#1977ff 80%,transparent); box-shadow:0 0 10px #219aff; }
