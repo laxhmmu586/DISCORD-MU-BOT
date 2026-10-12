@@ -41,7 +41,7 @@ const { operationalDate } = require('../flightContext');
   const page = await context.newPage();
   page.on('pageerror',error=>errors.push(error.message));
   fs.mkdirSync(path.resolve(__dirname,'../.verification/aviation-glass'),{recursive:true});
-  const pages = ['scan.html','m-board.html','cbs-form.html','contact-form.html','pir-form.html?type=AHL','pir-form.html?type=DPR'];
+  const pages = ['scan.html','m-board.html','240.html','cbs-form.html','contact-form.html','pir-form.html?type=AHL','pir-form.html?type=DPR'];
   let layouts=0;
   for (const name of pages) {
     await page.goto('https://www.mufcapp.net/'+name);
