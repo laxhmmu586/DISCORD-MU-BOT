@@ -4610,6 +4610,9 @@ app.get(
       parsePDLog(log);
 
       if (normalizeBoardingFlight(selectedFlight)) {
+        // Import scoped FB records even when no SY summary is available.
+        const fbNbrd = nbrdEntriesFromFb(Object.values(passengers));
+        if (fbNbrd.length) boardingLive.saveNbrd(selectedFlight, fbNbrd, {}, selectedDate);
         const pdNbrd = nbrdEntriesFromPd(preparationLog, selectedFlight, selectedDate);
         if (pdNbrd.length) boardingLive.saveNbrd(selectedFlight, pdNbrd, {}, selectedDate);
       }
