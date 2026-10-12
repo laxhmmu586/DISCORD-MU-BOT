@@ -8,7 +8,7 @@ const path = require('path');
 const PirDelivery = require('./public/public/pir-delivery');
 const { BoardingSqliteLive } = require('./boardingSqliteLive');
 const { createNbrdConfirmationStore } = require('./nbrdConfirmation');
-const { nbrdEntriesFromFb } = require('./boardingNbrd');
+const { nbrdEntriesFromFb, nbrdEntriesFromPd } = require('./boardingNbrd');
 
 const {
 
@@ -4599,6 +4599,11 @@ app.get(
       parseIncrementalLog(log);
 
       parsePDLog(log);
+
+      if (normalizeBoardingFlight(selectedFlight)) {
+        const pdNbrd = nbrdEntriesFromPd(preparationLog, selectedFlight, selectedDate);
+        if (pdNbrd.length) boardingLive.saveNbrd(selectedFlight, pdNbrd, { insertOnly: true }, selectedDate);
+      }
 
       const syMatch = syRawMatch;
       if (syMatch) {
