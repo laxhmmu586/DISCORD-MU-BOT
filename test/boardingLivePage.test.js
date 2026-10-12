@@ -87,3 +87,27 @@ test('live board preserves entered operations, rejects older snapshots and does 
   ctx.applyLiveBoard({ revision: 1, rows: [] }); assert.equal(renders.length, 2);
   assert.doesNotMatch(extract('applyLiveBoard'), /scrollIntoView|scrollToLatestRecord/);
 });
+
+test('M-board retains all resolved and pending NBRD rows through live and manual refresh rendering', () => {
+  const html = fs.readFileSync(path.join(root, 'm-board.html'), 'utf8');
+  const render = html.match(/    function renderRows\([^]*?\n    }/)[0];
+  const calls = [];
+  const ctx = vm.createContext({ Set,
+    renderNbrdRows: rows => calls.push(rows), renderScanRows() {}, renderInfantRows() {},
+    collectRecordKeys: rows => new Set(rows.map(row => row.rowNumber))
+  });
+  vm.runInContext('let currentRecordKeys = new Set();\n' + render, ctx);
+  const rows = [
+    { rowNumber: 1, nbrdBn: '004', nbrdResolved: true },
+    { rowNumber: 2, nbrdBn: '154', nbrdResolved: true },
+    { rowNumber: 3, bn: '004', seat: '10A', flight: 'MU586' }
+  ];
+  assert.equal(ctx.renderRows(rows).nbrdRows.length, 2);
+  assert.ok(calls[0].every(row => row.nbrdResolved));
+  rows[0].nbrdResolved = false;
+  assert.equal(ctx.renderRows(rows).nbrdRows.length, 2);
+  assert.equal(calls[1][0].nbrdResolved, false);
+  assert.equal(ctx.renderRows([]).nbrdRows.length, 0);
+  const load = html.match(/    async function loadBoard\([^]*?\n    }/)[0];
+  assert.doesNotMatch(load, /!row\.nbrdResolved/);
+});

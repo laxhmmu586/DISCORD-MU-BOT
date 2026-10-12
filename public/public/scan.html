@@ -5,7 +5,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Boarding</title><link rel="stylesheet" href="/flight-navigation.css?v=20261009-vertical-switch">
-  <link rel="stylesheet" href="/nbrd-review.css?v=20261011-scan-snapshot"><script src="/nbrd-review.js?v=20261011-scan-snapshot"></script>
+  <link rel="stylesheet" href="/nbrd-review.css?v=20261011-status-sync"><script src="/nbrd-review.js?v=20261011-status-sync"></script>
   <style>
     :root { --brand:#123a73; --line:#d7e1ec; --ink:#172033; --muted:#667085; --ok:#087443; --danger:#b42318; }
     * { box-sizing:border-box; }
@@ -119,7 +119,7 @@
     connectBoardingLive({
       apiBase,
       onBoard(data) {
-        liveNbrd = data.nbrd || [];
+        liveNbrd = (data.rows || []).filter(row => row.nbrdBn);
         liveNbrdFresh = data.nbrdFresh === true;
         nbrdReview.render(data.rows || []);
         nbrdLiveStatus.textContent = data.nbrdFresh

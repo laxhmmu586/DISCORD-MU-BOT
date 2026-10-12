@@ -5,7 +5,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Manual</title>
-  <link rel="stylesheet" href="/nbrd-review.css?v=20261011-scan-snapshot"><script src="/nbrd-review.js?v=20261011-scan-snapshot"></script>
+  <link rel="stylesheet" href="/nbrd-review.css?v=20261011-status-sync"><script src="/nbrd-review.js?v=20261011-status-sync"></script>
   <style>
     :root { --brand:#123a73; --line:#d7e1ec; --ink:#172033; --muted:#667085; --danger:#b42318; }
     * { box-sizing:border-box; }
@@ -166,7 +166,7 @@
       ]);
     }
     function renderRows(rows, newKeys = new Set()) {
-      const nbrdRows = rows.filter((row) => (row.nbrdBn || row.nbrdDetail) && !row.nbrdResolved);
+      const nbrdRows = rows.filter((row) => row.nbrdBn);
       const scanRows = rows.filter((row) => row.bn || row.seat || row.flight);
       const infantRows = rows.filter((row) => row.infantBn || row.infantSeat || row.infantFlight || row.infantScannedAt);
       renderNbrdRows(nbrdRows, newKeys);
@@ -193,7 +193,7 @@
         if (data.live) boardRevision = data.revision;
         const rows = data.rows || [];
         const nextRecordKeys = collectRecordKeys(
-          rows.filter((row) => (row.nbrdBn || row.nbrdDetail) && !row.nbrdResolved),
+          rows.filter((row) => row.nbrdBn),
           rows.filter((row) => row.bn || row.seat || row.flight),
           rows.filter((row) => row.infantBn || row.infantSeat || row.infantFlight || row.infantScannedAt),
         );
