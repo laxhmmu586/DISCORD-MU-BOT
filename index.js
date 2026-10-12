@@ -6,8 +6,9 @@ const express = require('express');
 const fs = require('fs/promises');
 const path = require('path');
 const PirDelivery = require('./public/public/pir-delivery');
-const { BoardingLive } = require('./boardingLive');
-const { BoardingLiveStore } = require('./boardingLiveStore');
+const { BoardingSqliteLive } = require('./boardingSqliteLive');
+const { createNbrdConfirmationStore } = require('./nbrdConfirmation');
+const { nbrdEntriesFromFb } = require('./boardingNbrd');
 
 const {
 
@@ -108,40 +109,20 @@ const {
   getCbsOpenBagAuthorizationPdf,
   findCbsPnrRecordsByBagTag,
   appendTransit240Record,
-  appendCbsScanRecord,
-  appendEmergencyBoardRecord,
   appendRecordScanRecord,
   appendRecordCase,
   getRecordCases,
   updateRecordCase,
-  appendCbsScanNbrdBns,
-  resolveCbsScanNbrdBn,
-  getCbsScanNbrdRecords,
-  deleteCkinNbrdFromBothSheets,
-  deleteCbsScanNbrdBn,
-  getCbsScanRecords,
-  setCbsScanRecordEntered,
-  setCbsScanRecordsEntered,
-  appendEmergencyBoardNbrdBns,
-  getEmergencyBoardRecords,
-  setEmergencyBoardRecordEntered,
-  setEmergencyBoardRecordsEntered,
   readNotesDriveStore,
   writeNotesDriveStore
 
 } = require('./googleDrive');
 
-// Enable only on a persistent volume. The legacy Sheet-confirmed path remains
-// available until the deployment has provisioned reliable primary storage.
-const boardingLive = process.env.BOARDING_LIVE_STORE_DIR ? new BoardingLive({
-  store: new BoardingLiveStore(process.env.BOARDING_LIVE_STORE_DIR),
-  sheets: {
-    seed: require('./googleDrive').seedBoardingLive,
-    readNbrd: require('./googleDrive').readBoardingLiveNbrd,
-    backup: require('./googleDrive').backupBoardingLive
-  }
-}) : null;
-if (boardingLive) boardingLive.start().catch(error => console.error('Boarding live startup failed:', error.message));
+const nbrdConfirmations = createNbrdConfirmationStore();
+const boardingLive = new BoardingSqliteLive({ db: require('./db'), onReset: scope => scope
+  ? nbrdConfirmations.clearScope(scope.flight, scope.date) : nbrdConfirmations.clear() });
+boardingLive.startCleanup();
+const boardingDate = req => String(req.query.flightDate || req.body?.flightDate || operationalDate()).toUpperCase();
 
 const {
 
@@ -3141,7 +3122,7 @@ app.post('/transit-240', async (req, res) => {
 
 app.use(['/cbs-scan', '/cbs-scan2'], (req, res, next) => {
   const flight = normalizeBoardingFlight(req.query.flightNo || req.body?.flightNo || 'MU586');
-  if (!flight) return res.status(400).json({ error: 'Choose MU586, MU9586 or MU578.', code: 'WRONG_FLIGHT' });
+  if (!flight) return res.status(400).json({ error: 'Choose MU586, MU9586, MU578 or MU9578.', code: 'WRONG_FLIGHT' });
   return runWithBoardingFlight(flight, next);
 });
 
@@ -3150,15 +3131,13 @@ app.get('/flights', async (_req, res) => {
   catch (err) { return res.status(503).json({ error: 'Unable to read flight logs.' }); }
 });
 
-app.get('/cbs-scan/live-state', async (_req, res) => {
+app.get('/cbs-scan/live-state', async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
-  if (!boardingLive) return res.json({ live: false });
-  try { return res.json(await boardingLive.records(require('./boardingContext').boardingFlight())); }
+  try { return res.json(await boardingLive.records(require('./boardingContext').boardingFlight(), boardingDate(req))); }
   catch (error) { return res.status(503).json({ live: true, error: error.message || 'Live boarding unavailable.' }); }
 });
 
 app.get('/cbs-scan/live-stream', async (req, res) => {
-  if (!boardingLive) return res.status(503).json({ error: 'Live boarding storage is not configured.' });
   const flight = require('./boardingContext').boardingFlight();
   let unsubscribe;
   let heartbeat;
@@ -3166,7 +3145,7 @@ app.get('/cbs-scan/live-stream', async (req, res) => {
   const close = () => { closed = true; unsubscribe?.(); clearInterval(heartbeat); };
   res.on('close', close);
   try {
-    await boardingLive.ensure(flight);
+    boardingLive.ensure(flight, boardingDate(req));
     if (closed) return;
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache, no-transform');
@@ -3180,8 +3159,8 @@ app.get('/cbs-scan/live-stream', async (req, res) => {
       if (res.writableLength > 1024 * 1024) { close(); res.end(); return; }
       res.write(`id: ${snapshot.revision}\nevent: board\ndata: ${JSON.stringify(snapshot)}\n\n`);
     };
-    unsubscribe = boardingLive.subscribe(flight, send);
-    send(boardingLive.snapshot(flight));
+    unsubscribe = boardingLive.subscribe(flight, send, boardingDate(req));
+    send(boardingLive.snapshot(flight, boardingDate(req)));
     if (closed) return;
     heartbeat = setInterval(() => {
       if (res.writableLength > 1024 * 1024) { close(); res.end(); }
@@ -3198,34 +3177,37 @@ app.get('/cbs-scan/live-stream', async (req, res) => {
 app.post('/cbs-scan', async (req, res) => {
   const rawScan = req.body?.rawScan || req.body?.raw || req.body?.text || '';
   const selectedFlight = normalizeBoardingFlight(req.query.flightNo || req.body?.flightNo || 'MU586');
-  const key = nbrdConfirmations.key(selectedFlight, req.query.flightDate || operationalDate(), rawScan);
+  const key = nbrdConfirmations.key(selectedFlight, boardingDate(req), rawScan);
   try {
     const parsed = parseCbsPdf417(req.body?.rawScan || req.body?.raw || req.body?.text || '');
-    const saved = boardingLive
-      ? await boardingLive.scan(require('./boardingContext').boardingFlight(), parsed)
-      : await appendCbsScanRecord(parsed);
+    parsed.nbrdConfirmed = nbrdConfirmations.canBoard(req.body?.confirmationToken, key);
+    parsed.nbrdConfirmationDetail = nbrdConfirmations.detail(req.body?.confirmationToken, key);
+    parsed.deviceId = req.body?.deviceId;
+    const saved = boardingLive.scan(selectedFlight, parsed, boardingDate(req));
+    nbrdConfirmations.consume(req.body?.confirmationToken);
     return res.json({ ok: true, ...saved });
   } catch (err) {
     const status = err?.code === 'DUPLICATE_BN' || err?.code === 'NBRD_MESSAGE' ? 409 : (err?.code === 'WRONG_FLIGHT' ? 400 : (['SHEETS_QUOTA', 'NBRD_UNAVAILABLE'].includes(err?.code) ? 503 : 422));
-    return res.status(status).json({ error: err?.message || 'CBS scan save failed', code: err?.code || 'SCAN_ERROR', flight: err?.flight || '', bn: err?.bn || '', detail: err?.detail || '' });
+    const confirmation = err?.code === 'NBRD_MESSAGE' ? nbrdConfirmations.warning(key, req.body?.reviewToken, err.detail) : {};
+    return res.status(status).json({ ...confirmation, error: err?.message || 'CBS scan save failed', code: err?.code || 'SCAN_ERROR', flight: err?.flight || '', bn: err?.bn || '', detail: err?.detail || '' });
   }
 });
 
-app.get('/cbs-scan/nbrd-bns', async (_req, res) => {
-  try { return res.json({ok:true, rows:await getCbsScanNbrdRecords()}); }
+app.get('/cbs-scan/nbrd-bns', async (req, res) => {
+  try { return res.json({ok:true, rows:boardingLive.nbrdRecords(require('./boardingContext').boardingFlight(), boardingDate(req))}); }
   catch (err) { return res.status(503).json({error:err?.message || 'Unable to load NBRD.'}); }
 });
 
 app.post('/cbs-scan/nbrd-bns/resolve', async (req, res) => {
   if (req.body?.resolved !== undefined && typeof req.body.resolved !== 'boolean') return res.status(400).json({error:'Resolved must be true or false.'});
-  try { return res.json({ok:true, ...await resolveCbsScanNbrdBn(req.body?.bn, req.body?.resolved !== false)}); }
+  try { return res.json({ok:true, ...boardingLive.resolve(require('./boardingContext').boardingFlight(), req.body?.bn, req.body?.resolved !== false, boardingDate(req))}); }
   catch (err) { return res.status(err?.code === 'NBRD_NOT_FOUND' ? 404 : 422).json({error:err?.message || 'Unable to resolve NBRD.', code:err?.code}); }
 });
 
 app.post('/cbs-scan2', async (req, res) => {
   try {
     const parsed = parseEmergencyBoardScan(req.body?.rawScan || req.body?.raw || req.body?.text || '');
-    const saved = await appendEmergencyBoardRecord(parsed);
+    const saved = boardingLive.scan(require('./boardingContext').boardingFlight(), parsed, boardingDate(req));
     return res.json({ ok: true, ...saved });
   } catch (err) {
     const status = err?.code === 'DUPLICATE_BN' || err?.code === 'NBRD_MESSAGE' ? 409 : (err?.code === 'WRONG_FLIGHT' || err?.code === 'SCAN_FORMAT' ? 400 : (err?.code === 'SHEETS_QUOTA' ? 503 : 422));
@@ -3344,33 +3326,25 @@ function boardingNbrdSnapshotVersion(flight, date, log) {
   return boardingNbrdSnapshots.get(key).version;
 }
 
-async function saveCkinNbrdEntriesToBothSheets(entries, options = {}) {
-  const [regular, emergency] = await Promise.all([
-    appendCbsScanNbrdBns(entries, options),
-    appendEmergencyBoardNbrdBns(entries, options)
-  ]);
-  return { regular, emergency };
-}
-
-app.get('/cbs-scan2/records', async (_req, res) => {
-  try { return res.json({ ok: true, rows: await getEmergencyBoardRecords() }); }
+app.get('/cbs-scan2/records', async (req, res) => {
+  try { return res.json({ ok: true, rows: boardingLive.records(require('./boardingContext').boardingFlight(), boardingDate(req)).rows }); }
   catch (err) { return res.status(422).json({ error: err?.message || 'Emergency board records load failed', code: err?.code || 'EMERGENCY_BOARD_RECORDS_ERROR' }); }
 });
 
 app.post('/cbs-scan2/records/entered', async (req, res) => {
-  try { return res.json({ ok: true, ...await setEmergencyBoardRecordsEntered(req.body?.rowNumbers || [], req.body?.entered === true) }); }
+  try { return res.json({ ok: true, ...boardingLive.entered(require('./boardingContext').boardingFlight(), req.body?.rowNumbers || [], req.body?.entered === true, boardingDate(req)) }); }
   catch (err) { return res.status(422).json({ error: err?.message || 'Emergency board rows update failed', code: err?.code || 'EMERGENCY_BOARD_ROWS_UPDATE_ERROR' }); }
 });
 
 app.post('/cbs-scan2/nbrd-bns', async (req, res) => {
   try {
     const entries = Array.isArray(req.body?.entries) ? req.body.entries : (Array.isArray(req.body?.bns) ? req.body.bns : [req.body?.bn].filter(Boolean));
-    return res.json({ ok: true, ...await saveCkinNbrdEntriesToBothSheets(entries, { replace: req.body?.replace === true }) });
+    return res.json({ ok: true, ...boardingLive.saveNbrd(require('./boardingContext').boardingFlight(), entries, { replace: req.body?.replace === true }, boardingDate(req)) });
   } catch (err) { return res.status(422).json({ error: err?.message || 'Emergency NBRD save failed', code: err?.code || 'NBRD_SAVE_ERROR' }); }
 });
 
 async function handleEmergencyBoardNbrdDelete(req, res) {
-  try { return res.json({ ok: true, ...await deleteCkinNbrdFromBothSheets(req.body?.bn || req.query?.bn || '') }); }
+  try { return res.json({ ok: true, ...boardingLive.removeNbrd(require('./boardingContext').boardingFlight(), req.params.rowNumber, req.body?.bn || req.query?.bn || '', boardingDate(req)) }); }
   catch (err) { return res.status(err?.code === 'NBRD_NOT_FOUND' || err?.code === 'NBRD_MISMATCH' ? 404 : 422).json({ error: err?.message || 'Emergency NBRD delete failed', code: err?.code || 'NBRD_DELETE_ERROR' }); }
 }
 app.post('/cbs-scan2/nbrd-bns/:rowNumber/delete', handleEmergencyBoardNbrdDelete);
@@ -3378,21 +3352,25 @@ app.delete('/cbs-scan2/nbrd-bns/:rowNumber', handleEmergencyBoardNbrdDelete);
 
 app.get('/cbs-scan/records', async (req, res) => {
   try {
-    if (boardingLive) return res.json(await boardingLive.records(require('./boardingContext').boardingFlight()));
-    const rows = await getCbsScanRecords();
-    return res.json({ ok: true, rows });
+    return res.json(await boardingLive.records(require('./boardingContext').boardingFlight(), boardingDate(req)));
   } catch (err) {
     return res.status(422).json({ error: err?.message || 'CBS scan records load failed', code: err?.code || 'CBS_SCAN_RECORDS_ERROR' });
   }
+});
+
+app.post('/cbs-scan/clear', (req, res) => {
+  if (req.body?.confirm !== true) return res.status(400).json({ error: 'Confirm clearing the selected flight first.' });
+  try {
+    const result = boardingLive.resetFlight(require('./boardingContext').boardingFlight(), boardingDate(req));
+    return res.json({ ok: true, ...result });
+  } catch (err) { return res.status(500).json({ error: err?.message || 'Unable to clear boarding data.' }); }
 });
 
 
 
 app.post('/cbs-scan/records/entered', async (req, res) => {
   try {
-    const result = boardingLive
-      ? await boardingLive.entered(require('./boardingContext').boardingFlight(), req.body?.rowNumbers || [], req.body?.entered === true)
-      : await setCbsScanRecordsEntered(req.body?.rowNumbers || [], req.body?.entered === true);
+    const result = await boardingLive.entered(require('./boardingContext').boardingFlight(), req.body?.rowNumbers || [], req.body?.entered === true, boardingDate(req));
     return res.json({ ok: true, ...result });
   } catch (err) {
     return res.status(422).json({ error: err?.message || 'CBS scan rows update failed', code: err?.code || 'CBS_SCAN_ROWS_UPDATE_ERROR' });
@@ -3401,9 +3379,7 @@ app.post('/cbs-scan/records/entered', async (req, res) => {
 
 app.post('/cbs-scan/records/:rowNumber/entered', async (req, res) => {
   try {
-    const result = boardingLive
-      ? await boardingLive.entered(require('./boardingContext').boardingFlight(), [req.params.rowNumber], req.body?.entered === true)
-      : await setCbsScanRecordEntered(req.params.rowNumber, req.body?.entered === true);
+    const result = await boardingLive.entered(require('./boardingContext').boardingFlight(), [req.params.rowNumber], req.body?.entered === true, boardingDate(req));
     return res.json({ ok: true, ...result });
   } catch (err) {
     return res.status(422).json({ error: err?.message || 'CBS scan row update failed', code: err?.code || 'CBS_SCAN_ROW_UPDATE_ERROR' });
@@ -3413,7 +3389,7 @@ app.post('/cbs-scan/records/:rowNumber/entered', async (req, res) => {
 app.post('/cbs-scan/nbrd-bns', async (req, res) => {
   try {
     const entries = Array.isArray(req.body?.entries) ? req.body.entries : (Array.isArray(req.body?.bns) ? req.body.bns : [req.body?.bn].filter(Boolean));
-    const result = await appendCbsScanNbrdBns(entries, { replace: req.body?.replace === true, version: req.body?.version });
+    const result = boardingLive.saveNbrd(require('./boardingContext').boardingFlight(), entries, { replace: req.body?.replace === true, version: req.body?.version }, boardingDate(req));
     return res.json({ ok: true, ...result });
   } catch (err) {
     return res.status(422).json({ error: err?.message || 'NBRD BN save failed', code: err?.code || 'NBRD_SAVE_ERROR' });
@@ -3422,7 +3398,7 @@ app.post('/cbs-scan/nbrd-bns', async (req, res) => {
 
 async function handleCbsScanNbrdDelete(req, res) {
   try {
-    const result = await deleteCbsScanNbrdBn(req.params.rowNumber, req.body?.bn || req.query?.bn || '');
+    const result = boardingLive.removeNbrd(require('./boardingContext').boardingFlight(), req.params.rowNumber, req.body?.bn || req.query?.bn || '', boardingDate(req));
     return res.json({ ok: true, ...result });
   } catch (err) {
     const status = err?.code === 'NBRD_NOT_FOUND' || err?.code === 'NBRD_MISMATCH' ? 404 : 422;
@@ -4639,6 +4615,9 @@ app.get(
           return res.json({ error: `No SY section found for ${requestedFlightNo}${syDate ? `/${syDate}` : ''}.` });
         }
         const boardingNbrdVersion = boardingNbrdSnapshotVersion(selectedFlight, selectedDate, log);
+        if (normalizeBoardingFlight(selectedFlight) && Array.isArray(syInfo.bnAudit)) {
+          boardingLive.saveNbrd(selectedFlight, nbrdEntriesFromFb(syInfo.bnAudit), { version: boardingNbrdVersion }, selectedDate);
+        }
         const year = Number(yearSuffix || new Date().getUTCFullYear().toString().slice(-2));
         const fullYear = year >= 100 ? year : (year >= 70 ? 1900 + year : 2000 + year);
         const m = String(syInfo.flightDate || '').toUpperCase().match(/(\d{2})([A-Z]{3})(\d{2})?/);
@@ -4861,6 +4840,10 @@ app.get(
 
         membershipStatus =
           'Silver';
+      }
+
+      if (normalizeBoardingFlight(selectedFlight)) {
+        boardingLive.saveNbrd(selectedFlight, nbrdEntriesFromFb([pax]), {}, selectedDate);
       }
 
       const authContext =

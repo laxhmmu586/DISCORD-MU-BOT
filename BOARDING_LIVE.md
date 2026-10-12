@@ -1,78 +1,96 @@
-# Live Scan and M-board
+# SQLite boarding and NBRD
 
-Scan commits to the backend's persistent store before returning success and
-publishing a flight-scoped SSE snapshot. Google Sheets is the scan backup, not
-the scan acknowledgement gate. Staff can continue adding NBRD in columns L:M.
+The boarding API uses the supplied better-sqlite3 scans table and UNIQUE index
+on flight_date, flight_no, boarding_no. db.js creates data/boarding.db and its
+parent directory automatically, with WAL, synchronous=NORMAL and a 3000ms busy
+timeout. Node.js 20.20.2 or newer and better-sqlite3 11.10.0 are supported.
+Run npm ci on the Oracle server to install the native dependency for that host.
+
+## Current workflow
+
+Scan -> existing parser/validation -> synchronous SQLite transaction -> SSE
+snapshot and immediate success response. There are no Google Sheets calls,
+backup timers or per-device readers in boarding scan, NBRD or board operations.
+A failed database transaction returns an error without publishing success.
+SQLITE_CONSTRAINT_UNIQUE returns HTTP 409 with code DUPLICATE_BN. Regular and
+emergency devices use the same primary scans and NBRD source, isolated by
+flight and flight date. Infant keys use an INF prefix so the pre-existing adult
+and infant numbering spaces remain separate under the exact supplied index.
+
+Supported departures are MU586, MU9586, MU578 and MU9578 for both ordinary
+and emergency scanning.
+
+The companion boarding_scan_details table stores seat, raw barcode, infant
+status and entered colors without changing the provided scans schema. Raw
+barcode data is excluded from SSE snapshots. The synced column remains present
+and new scans retain 0; no worker changes it to 1 because Sheets backup was
+removed at the user's request. backupPending is false in UI responses.
+
+## NBRD
+
+FB-derived CKIN NBRD gate comments are written directly into boarding_nbrd during
+SY and passenger searches. Offloaded passengers are excluded. The existing
+Add NBRD endpoints also write this table. Both board views share it. Adding an
+NBRD for an already boarded adult consults SQLite, not Sheets, and initially
+marks the NBRD resolved. Subsequent explicit pending/resolved actions persist.
+Repeated FB updates retain staff resolution and manual entries; stale source
+versions are rejected. Empty source snapshots do not remove stored NBRD.
+
+The original two-stage NBRD confirmation remains scoped to the exact boarding
+pass, flight, date and current detail. Confirmation resolves NBRD atomically
+with the scan INSERT. A changed detail invalidates the old confirmation.
+All NBRD and entered-color mutations broadcast immediate SSE snapshots.
+Both M-board pages provide a confirmed manual-clear button below Infant Scan.
+It clears only the selected flight/date (adult/infant scans, NBRD, source
+versions and confirmation challenges); other flights and the 07:00 cutoff
+remain intact.
 
 ## Deployment
 
-Use **Node.js 22.13 or newer** (the store uses built-in SQLite with FULL
-synchronous commits). Mount a **persistent local disk** on the API backend and set
-`BOARDING_LIVE_STORE_DIR` to an absolute directory on that disk (for example
-`/var/data/boarding-live` on Linux). Run **one API backend process/replica**. Do
-not use ephemeral storage or a shared directory mounted by different hosts.
-The SQLite writer lock rejects a second process using the same directory and
-automatically releases after a process crash. Restrict
-directory access: the primary store includes raw boarding-pass data.
+Run one API process for this database and in-process SSE broadcaster. Retain
+the data directory across code updates; do not delete boarding.db as part of
+deployment. Existing production scans and the provided UNIQUE index are reused.
+Previous Sheets records are not automatically imported or cleared. SQLite is
+the primary record store. At 07:00 America/Los_Angeles each day, one SQLite
+transaction clears ALL scans, scan details/entered states, NBRD and source
+versions across every flight and date. It retains the schema and database file.
+The schedule follows DST: 14:00 UTC in summer and 15:00 UTC in winter.
+Cleanup also clears confirmation challenges and broadcasts empty SSE snapshots.
+A persisted maintenance marker catches a missed cutoff after restart. A failed
+cleanup rolls back every table and retries; no partial reset is published.
+Database, WAL and SHM files are ignored by Git. No BOARDING_LIVE_STORE_DIR or
+persistent-volume environment variable is required on the existing Oracle host.
 
-Deploy the backend and the static `scan.html`, `m-board.html` and
-`boarding-live.js` assets together. Without this environment variable the
-existing Sheet-confirmed scan flow and manual board refresh remain active;
-there is no false immediate acknowledgement from a memory-only fallback.
-No production deployment is performed by this PR.
+## Verification
 
-The first use of each supported boarding flight imports its current worksheet
-and entered colors. After restart the disk snapshot remains authoritative for
-scan rows; pending backups are replayed at their original row coordinates, so
-a timed-out write can be safely retried. Never delete this directory to fix a
-Sheet outage. Restore it alongside the backend when recovering the service.
-In live mode do not clear, reorder, or delete scan rows in Sheets: it is a
-backup. An operational reset must stop the service, finish pending backups and
-archive/reset both the primary store and corresponding Sheet together.
+node --test test/boardingSqlite.test.js test/nbrdConfirmation.test.js test/boardingLivePage.test.js
 
-## Shared request schedule
+Tests exercise ten concurrent callers with actual better-sqlite3, INSERT-based
+duplicate detection, adult/infant and date/flight isolation, failed transaction
+rollback, SSE callback failure, FB/Add NBRD, confirmation/reopening/deletion,
+SQLite-based boarded detection, reopening an on-disk database, the actual scan
+handlers, absence of Sheets calls, page script parsing, 10 concurrent HTTP
+scans with an SSE viewer, 07:00 all-flight resets, DST, missed-cutoff restart
+and failed-cleanup rollback. Local tests do not
+constitute deployment verification on the Oracle production server.
 
-- Every 3 seconds: one `values.batchGet` reads L2:M for all initialized flight
-  worksheets, then publishes only changed NBRD or freshness recovery.
-- Every 6 seconds: one `spreadsheets.batchUpdate` backs up all dirty scan rows,
-  infant rows and entered-color changes across flights. Idle cycles skip it.
-- The timers wait for a previous operation to finish before scheduling the
-  next cycle. Additional connected scanners never create additional readers.
-- A page open/reconnect receives a complete cached snapshot. A refresh reads
-  the primary store. Neither triggers a steady-state Sheets read.
-- SSE heartbeats are sent every 15 seconds and never access Sheets.
+## Changed files
 
-In steady state this adds at most about 20 reads and 10 writes per minute,
-before startup imports, quota retries, explicit app NBRD edits/deletes and any
-other backend features. Existing shared rolling-minute limits reserve headroom
-at 50 read attempts and 50 write attempts; failed attempts count and 429/403
-quota responses use coordinated backoff. Startup resolves titles, initializes
-missing headers and imports colors, so it costs additional requests.
-
-Backups touch only A:E, N:R and entered color formatting in A:C. They never
-overwrite the manually maintained L:M NBRD region. App-originated NBRD
-write/delete operations retain their existing regular/emergency Sheet mirror
-behavior; the shared reader picks their results up on its next cycle.
-
-Manual NBRD additions take about 3 seconds plus request time to be discovered.
-This is not an instantaneous Sheet change notification. If the reader has not
-succeeded for more than 15 seconds, scans fail with `NBRD_UNAVAILABLE` until
-it recovers rather than silently checking an indefinitely stale list.
-Backup failures retain the durable pending records and retry on the next cycle;
-they do not block scans while NBRD remains fresh. The board shows pending backup.
-
-## Validation
-
-Run `node --test test/boardingLive.test.js test/boardingLivePage.test.js
-test/boardingQuotaRecovery.test.js test/boardingFlightIsolation.test.js
-test/emergencyBoard.test.js` (48 tests passed).
-Tests cover ten simultaneous scanners, multi-flight shared request counts,
-duplicate/NBRD rejection, persistence failures, restart recovery, slow/failed
-backups, stale-reader recovery, SSE browser behavior and column isolation.
-These local tests do not establish production concurrency capacity or disk
-durability for a hosting configuration that has not been provisioned.
-
-Two pre-existing `scan-page.test.js` failures concern the unchanged emergency
-camera page. Three pre-existing `googleSheetsStorage.test.js` failures concern
-Authorization Report PDF branding. Both groups were reproduced from the
-unchanged HEAD source and are outside this change.
+- db.js: supplied SQLite schema, automatic data directory creation.
+- boardingSqliteLive.js: synchronous scans, UNIQUE handling, shared NBRD, entered states, SSE and atomic daily reset.
+- boardingNbrd.js: FB CKIN/NBRD extraction.
+- boardingCleanupTime.js: next 07:00 Los Angeles cutoff, including DST.
+- index.js: SQLite boarding endpoints, FB/Add NBRD integration and reset timer.
+- boardingContext.js: include MU9578 in the supported boarding flights.
+- cbsScanParser.js: recognize MU9578 ordinary/emergency boarding passes.
+- nbrdConfirmation.js: clear old challenges at daily reset.
+- public/public/scan.html: apply live NBRD rows to existing bubbles.
+- public/public/m-board.html: local boarding status, resolved-NBRD display and manual clear below Infant Scan.
+- public/public/m-board2.html: shared SSE, deferred rendering during mutations and the same scoped manual clear.
+- public/public/index.html: update the NBRD persistence error text.
+- package.json: exact better-sqlite3 dependency, Node.js version and native install approval.
+- package-lock.json: lock the SQLite dependency tree.
+- .gitignore: exclude database/WAL/SHM files.
+- test/boardingSqlite.test.js: SQLite, NBRD, HTTP/SSE, all-flight and daily-reset regressions.
+- test/emergencyBoard.test.js: update migrated endpoint expectations.
+- BOARDING_LIVE.md: describe the final SQLite-only behavior and deployment.

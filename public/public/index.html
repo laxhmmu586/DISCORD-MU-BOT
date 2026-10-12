@@ -7177,7 +7177,7 @@
           body: JSON.stringify({ entries, replace: true, version: sy?.boardingNbrdVersion || 0 }),
         }).catch((error) => {
           lastNbrdSheetSyncKey = "";
-          console.warn("Unable to sync CKIN/NBRD BN list to both boarding sheets.", error);
+          console.warn("Unable to save CKIN/NBRD BN list to the boarding database.", error);
         });
       }
 
