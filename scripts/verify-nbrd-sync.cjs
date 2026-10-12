@@ -54,9 +54,11 @@ const { operationalDate } = require('../flightContext');
           contentType: url.pathname.endsWith('.html') ? 'text/html' : url.pathname.endsWith('.css') ? 'text/css' : 'text/javascript',
           body: fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '' });
       });
-      const scan = await context.newPage(), board = await context.newPage(); pages.push(scan, board);
+      const scan = await context.newPage(), board = await context.newPage(), emergency = await context.newPage(); pages.push(scan, board, emergency);
       pages.forEach(page => page.on('pageerror', error => errors.push(error.message)));
-      await Promise.all([scan.goto('https://www.mufcapp.net/scan.html'), board.goto('https://www.mufcapp.net/m-board.html')]);
+      await Promise.all([scan.goto('https://www.mufcapp.net/scan.html'), board.goto('https://www.mufcapp.net/m-board.html'), emergency.goto('https://www.mufcapp.net/scan2.html')]);
+      assert.equal(await emergency.evaluate(() => ['586','9586','578','9578'].every(flight => isEmergencyBarcode(`MU${flight}|BN014`) && isEmergencyBarcode(`MU${flight}|INF|INF014`))), true);
+      assert.equal(await emergency.evaluate(() => isEmergencyBarcode('MU583|BN014')), false);
       const check = async (total, pending, resolved) => {
         for (const page of pages) {
           await page.waitForFunction(({ total, pending, resolved }) =>
@@ -93,10 +95,11 @@ const { operationalDate } = require('../flightContext');
       await board.reload(); await check(3, 1, 2);
       if (viewport.width === 1015) await board.screenshot({ path: '.verification/nbrd-sync-desktop.png', fullPage: true });
       else await board.screenshot({ path: '.verification/nbrd-sync-mobile.png', fullPage: true });
+      await emergency.screenshot({ path: `.verification/scan2-${viewport.width}.png`, fullPage: true });
       rows.splice(0); revision++; await broadcast(); await check(0, 0, 0);
       assert.deepEqual(errors, []);
       await context.close();
     }
-    console.log('PASS: desktop/mobile pages share all resolved/pending BNs and counts across bidirectional live changes, additions, refresh, reload and clearing.');
+    console.log('PASS: desktop/mobile scan, board and emergency pages share all resolved/pending BNs and counts across bidirectional live changes, additions, refresh, reload and clearing; emergency camera filter accepts all four flights.');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

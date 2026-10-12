@@ -51,6 +51,27 @@ test('unconfigured deployment falls back to manual board loading without an SSE 
   assert.equal(h.statuses.at(-1), 'Manual refresh');
 });
 
+test('scanner fetch wrapper sends each selected flight/date to regular and emergency APIs', async () => {
+  const source = fs.readFileSync(path.join(root, 'flight-session.js'), 'utf8');
+  const date = require('../flightContext').operationalDate();
+  for (const flight of ['MU586', 'MU9586', 'MU578', 'MU9578']) {
+    const requests = [];
+    const location = { pathname: '/scan.html', href: 'https://www.mufcapp.net/scan.html', replace() { throw new Error('Unexpected redirect'); } };
+    const window = { location, fetch: async (url, init) => requests.push({ url, init }) };
+    const ctx = vm.createContext({ window, location, Intl, Date, URL, Request,
+      sessionStorage: { getItem: () => JSON.stringify({ flightNo: flight, flightDate: date }) },
+      document: { addEventListener() {} } });
+    vm.runInContext(source, ctx);
+    for (const endpoint of ['/cbs-scan', '/cbs-scan2']) {
+      await window.fetch('https://api.mufcapp.net' + endpoint, { method: 'POST', body: JSON.stringify({ rawScan: 'TEST' }) });
+      const request = requests.at(-1), url = new URL(request.url);
+      assert.equal(url.searchParams.get('flightNo'), flight);
+      assert.equal(url.searchParams.get('flightDate'), date);
+      assert.equal(request.init.method, 'POST');
+    }
+  }
+});
+
 test('startup connection failure retries only the backend cache and closes on pagehide', async () => {
   const h = browser();
   h.ctx.fetch = async () => { throw new Error('Offline'); };
