@@ -4602,7 +4602,7 @@ app.get(
 
       if (normalizeBoardingFlight(selectedFlight)) {
         const pdNbrd = nbrdEntriesFromPd(preparationLog, selectedFlight, selectedDate);
-        if (pdNbrd.length) boardingLive.saveNbrd(selectedFlight, pdNbrd, { insertOnly: true }, selectedDate);
+        if (pdNbrd.length) boardingLive.saveNbrd(selectedFlight, pdNbrd, {}, selectedDate);
       }
 
       const syMatch = syRawMatch;
