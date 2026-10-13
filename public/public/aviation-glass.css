@@ -139,3 +139,8 @@
   .aviation-pir .attachment-grid {grid-template-columns:minmax(0,1fr);gap:14px}
 }
 @media(prefers-reduced-transparency:reduce) { .aviation-page .card, .aviation-page .board-section {background:#f5f9ff;backdrop-filter:none} }
+
+/* Top-layer dialogs avoid fixed pickers being trapped by glass-card filters. */
+.aviation-pir dialog.picker-panel { position:fixed; inset:0; margin:auto; width:min(520px,calc(100vw - 32px)); max-width:none; max-height:75dvh; color:var(--ink); }
+.aviation-pir dialog.picker-panel:not([open]) { display:none; }
+.aviation-pir dialog.picker-panel::backdrop { background:#09235266; }

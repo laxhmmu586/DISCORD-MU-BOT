@@ -46,6 +46,7 @@ const { operationalDate } = require('../flightContext');
   for (const name of pages) {
     await page.goto('https://www.mufcapp.net/'+name);
     await page.locator('body.aviation-page').waitFor();
+    if (!['scan.html','m-board.html'].includes(name)) assert.match(await page.locator('body').evaluate(el=>getComputedStyle(el,'::before').backgroundImage), /boarding-aurora-c\.png/, 'Shared cloud artwork must load');
     if (name === 'scan.html') {
       const entry = page.locator('.nbrd-modal[open]');
       await entry.waitFor();
@@ -165,6 +166,7 @@ const { operationalDate } = require('../flightContext');
           assert.ok(groups[1].top>=groups[0].bottom+10 && groups[2].top>=groups[1].bottom+10,'Attachment groups stack with separation');
         }
         await page.locator('[data-picker="color"] [data-picker-trigger]').click();
+        assert.equal(await page.locator('[data-picker="color"] dialog').evaluate(el=>el.matches(':modal')),true,'Picker escapes glass card into modal top layer');
         assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${name}/${width}: picker overflow`);
         await page.locator('[data-picker="color"] [data-option="BK"]').click();
         assert.equal(await page.locator('[data-bag-color]').inputValue(),'BK');
