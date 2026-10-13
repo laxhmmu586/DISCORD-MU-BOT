@@ -1080,7 +1080,7 @@ app.use(
 app.use('/assets/pbb', express.static(path.join(__dirname,'public','public','assets','pbb')));
 app.get('/assets/mission-earth.png',(req,res)=>res.sendFile(path.join(__dirname,'public','public','assets','mission-earth.png')));
 app.get('/assets/boarding-aurora-c.png',(req,res)=>res.sendFile(path.join(__dirname,'public','public','assets','boarding-aurora-c.png')));
-app.get(['/pbb.html','/pbb.css','/pbb-client.js','/pbb-data.js','/pbb-signals.js','/flights.css','/flight-session.js','/service-common.js','/admin.html','/employees-client.js'], (req,res)=>{res.setHeader('Cache-Control','no-store');res.sendFile(path.join(__dirname,'public','public',path.basename(req.path)));});
+app.get(['/pbb.html','/pbb.css','/pbb-light.css','/pbb-client.js','/pbb-data.js','/pbb-signals.js','/flights.css','/flight-session.js','/service-common.js','/admin.html','/employees-client.js'], (req,res)=>{res.setHeader('Cache-Control','no-store');res.sendFile(path.join(__dirname,'public','public',path.basename(req.path)));});
 
 app.get('/attachment-drop.js', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'public', 'attachment-drop.js'));

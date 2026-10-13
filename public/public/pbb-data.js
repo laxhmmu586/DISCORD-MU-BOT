@@ -3,11 +3,11 @@
   const arrival = [
     item('a1','Pre-Arrival','driver,spotter','Jet bridge driver and spotter arrive at the gate - 15 minutes prior to the arrival, with their proper Safety PPE.','ppe'),
     item('a2','Pre-Arrival','driver,spotter','Jet bridge driver and spotter have briefed on the Ready, Safe, Go program.','signal'),
-    item('a3','Pre-Arrival','driver','Jet bridge driver inspects and ensures the jet bridge controls are properly functioning and the jet bridge wheels are stowed in the box.','bridge'),
+    item('a3','Pre-Arrival','driver','Jet bridge driver inspects and ensures the jet bridge controls are properly functioning and the jet bridge wheels are stowed in the box.','wheel-check'),
     item('a4','Pre-Arrival','driver','Jet bridge driver ensures the jet bridge is safe to operate (floor - is clear of all debris - trash, water, any possibility trip, slip or fall) and interior temperature and lighting are in perfect condition.','interior'),
     item('a5','Pre-Arrival','driver','Jet bridge driver checks all jet bridges not used during the operation have been checked, secured, and closed.','bridge'),
     item('a6','Pre-Arrival','driver','Jet bridge driver safely moves the jet bridge cab orientation to avoid any positioning delay.','bridge'),
-    item('a7','Pre-Arrival','spotter','Spotter checks for the location of the PBB EMERGENCY STOP BUTTON (if applicable).','stop'),
+    item('a7','Pre-Arrival','spotter','Spotter checks for the location of the PBB EMERGENCY STOP BUTTON (if applicable).','external-stop'),
     item('a8','Pre-Arrival','spotter','Spotter inspects the ramp area for obstructions in the jet bridge path.','ramp'),
     item('a9','Pre-Arrival','spotter','Spotter will ensure that the jet bridge canopy and bumper are in good condition. (Any tears or missing pieces are to be reported immediately).','bridge'),
     item('a10','Pre-Arrival','driver','REMOTE BAY OPERATION DRIVER - Once the jet bridge has been extended from its stowed position and parked for the aircraft to be tow-in, the jet driver will do a full walk through from the jet bridge cabin to the entrance of the jet bridge.','interior'),
@@ -35,6 +35,7 @@
     item('d12','Departure','driver','Ensure all sterile area doors allowing access to the terminal from ramp are securely locked.','interior')
   ];
   arrival.find(x=>x.id==='a1').hidden=true;arrival.find(x=>x.id==='a1').defaultValue='Y';
+  arrival.find(x=>x.id==='a5').hidden=true;arrival.find(x=>x.id==='a5').defaultValue='Y';
   arrival.find(x=>x.id==='a2').hidden=true;arrival.find(x=>x.id==='a2').defaultValue='Y';
   arrival.find(x=>x.id==='a10').hidden=true;arrival.find(x=>x.id==='a10').defaultValue='NA';
   departure.find(x=>x.id==='d1').defaultValue='Y';

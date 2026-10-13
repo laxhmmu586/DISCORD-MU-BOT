@@ -8,7 +8,9 @@
     "bridge.webp": "Same final ramp illustration, reused for connection inspection.",
     "signal.webp": "One bridge aligned at a free aircraft doorway before docking. Small full-body spotter near outboard bridge edge looks up and gives thumbs-up to operator. Clear nose gear left and independent bridge bogie right; head below fuselage belly.",
     "interior.webp": "Photorealistic clean, dry, well-lit passenger bridge corridor with unobstructed floor.",
-    "stop.webp": "Photorealistic close-up of a red mushroom emergency stop button with yellow collar on a grey bridge control console."
+    "stop.webp": "Photorealistic close-up of a red mushroom emergency stop button with yellow collar on a grey bridge control console.",
+    "wheel-check.webp": "Built-in image_gen generation with supplied real bogie photo as engineering reference: landscape photorealistic LAX passenger bridge wheel assembly, both tires wholly inside visible painted parking rectangle, adjacent grey electrical cabinet door closed flush and latched. Correct white support columns, yellow protective railing and hoses, concrete apron, daylight. No red markup, no aircraft landing gear, no people, no overlays.",
+    "external-stop.webp": "Built-in image_gen: photorealistic external emergency stop at ground level beneath boarding bridge, red mushroom button with yellow collar in weatherproof grey enclosure on outside lower white support column, accessible from apron at waist height. Closed cabinet, hoses, bogie and yellow railing establish outdoor location. No cabin console, people, aircraft landing gear or overlay text."
   },
   "reference_use": "Supplied company logo and user drafts; real 777 gate photos used only as geometry references. Generated assets are illustrations."
 }
