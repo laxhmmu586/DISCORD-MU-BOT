@@ -1,8 +1,8 @@
 # Jet Bridge checklist
 
-`/pbb.html` is a public English arrival/departure checklist. Separate browser sessions claim Driver or Spotter, see live SSE updates, record gate arrival with server timestamps, and sign using qualified employee names and EIDs. Opening the same current flight, gate and bridges joins the active checklist.
+`/pbb.html` is a public English arrival/departure checklist. Separate browser sessions claim Driver or Spotter, see live SSE updates, select their role on the flight page, and sign using qualified employee names and EIDs. Opening the same current flight, gate and bridges joins the active checklist.
 
-The simplified READY / SAFE / GO controls write the corresponding individual source checklist rows. Arrival briefing defaults to YES, remote bay walk-through to N/A, and departure door closure to YES. Gate arrival remains an explicit PPE and timing confirmation. Gmail ETAB supplies arrival ETA and the 15-minute gate target; missing ETA is shown clearly. Late confirmation records NO with the actual timestamp.
+The simplified READY / SAFE / GO controls write the corresponding individual source checklist rows. Arrival gate/PPE and briefing questions default to YES and are hidden from the UI. Remote bay walk-through defaults to N/A. Departure door closure defaults to YES. Date is automatically the current Los Angeles day; no date field is shown. Gmail ETAB supplies only the flight's gate, including messages without an ETA. Missing gates allow manual entry. Block time accepts HH:MM or HHMM. There is no ETA display, 15-minute calculation or gate-arrival timestamp action.
 
 SSE supports six simultaneous independent browser sessions on the same checklist. The live badge shows actual unique sessions and updates on connection/disconnection. Tabs from one session are counted once. Driver and Spotter remain the two operational owners; additional sessions observe their updates. Connections send 15-second keep-alives and automatically reconnect after interruption.
 
@@ -19,6 +19,6 @@ Completed PDFs load the supplied source PDFs and overlay answers, names, EIDs an
 
 ## Validation
 
-Run `npm test`. `scripts/verify-pbb-ui.cjs` additionally exercises two independent browser sessions, employee administration, ETA, gate timestamps, hand signals, signatures, responsive layout, and PDF output. Its external delivery and mail dependencies are fixtures; it does not send test files to production channels or folders. Live credentials and destination permissions need verification in the deployment environment.
+Run `npm test`. `scripts/verify-pbb-ui.cjs` additionally exercises six independent browser sessions, employee administration, ETAB gate autofill, role selection, hand signals, signatures, responsive layout, and PDF output. Its external delivery and mail dependencies are fixtures; it does not send test files to production channels or folders. Live credentials and destination permissions need verification in the deployment environment.
 
 Illustrations are generated reference images, not operational instructions. Final assets and generation specifications are in `public/public/assets/pbb/image-prompts.json`.
