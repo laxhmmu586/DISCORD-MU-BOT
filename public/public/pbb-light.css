@@ -25,3 +25,8 @@
 @media(max-width:850px){.pbb-page{background-position:center;background-attachment:fixed}.pbb-home,.pbb-panel{border-radius:16px}.pbb-page .flight-topbar{background:#ffffff82}}
 
 .form-grid.no-block .gate-field{grid-column:1/-1}
+
+.active-bridges{border:1px solid #d6defa;border-radius:12px;background:#edf1ff80;padding:15px;margin:0 0 24px}.active-bridges h3{font-size:13px;margin:0 0 10px}.active-bridges h3>span{float:right;font-size:9px;color:#13804d;letter-spacing:1px}.active-bridges>p{font-size:11px;color:#586b9e;margin:0;line-height:1.6}.active-bridge{padding:13px;border:1px solid #c7d4f7;border-radius:10px;background:#ffffffa6;margin-top:10px}.active-bridge strong{color:#202b7b;font-size:17px}.active-bridge small{font-size:11px;font-weight:400;margin-left:12px}.bridge-people{display:flex;flex-wrap:wrap;gap:9px;margin:12px 0}.bridge-people span{padding:5px 8px;border-radius:5px;font-size:11px;background:#e6ebfa;color:#6879a6}.bridge-people .joined{background:#daf1e3;color:#177245}.bridge-join{display:flex;gap:10px}.bridge-join button{flex:1;padding:11px 8px;font-size:11px}.bridge-join button:disabled{opacity:.45;cursor:default}
+
+html.pbb-theme{background:#e9edff url('/assets/boarding-aurora-c.png') center/cover fixed}.pbb-page .check-meta strong{color:#475594}.pbb-page .check-illustration:has(img[src$="wheel-check.webp"]),.pbb-page .check-illustration:has(img[src$="external-stop.webp"]){height:auto;aspect-ratio:3/2}.pbb-page .check-illustration:has(img[src$="wheel-check.webp"]) img,.pbb-page .check-illustration:has(img[src$="external-stop.webp"]) img{object-fit:contain}
+@media(max-width:850px){html.pbb-theme,.pbb-page{background-position:70% center}}

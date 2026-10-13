@@ -16,13 +16,12 @@ function validateInfo(b){
 function createStore(filename=process.env.PBB_DB_PATH||path.join(__dirname,'data/pbb.db'),{now=()=>new Date()}={}){
  if(filename!==':memory:')fs.mkdirSync(path.dirname(filename),{recursive:true});
  const db=new Database(filename);db.pragma('journal_mode = WAL');db.exec('CREATE TABLE IF NOT EXISTS pbb_records (id TEXT PRIMARY KEY, data TEXT NOT NULL, pdf BLOB)');
- const get=id=>{const row=db.prepare('SELECT data FROM pbb_records WHERE id=?').get(id);if(!row)fail('Checklist not found',404);const r=JSON.parse(row.data);if(r.type==='arrival'&&!r.completedAt)for(const role of roles)if(!r.signatures[role]){r.answers[role].a1='Y';r.answers[role].a5=role==='driver'?'Y':r.answers[role].a5;if(role==='spotter')delete r.answers[role].a5;};return r;};
+ const get=id=>{const row=db.prepare('SELECT data FROM pbb_records WHERE id=?').get(id);if(!row)fail('Checklist not found',404);const r=JSON.parse(row.data);if(r.type==='arrival'&&!r.completedAt)for(const role of roles)if(!r.signatures[role]){r.answers[role].a1='Y';if(role==='driver')r.answers[role].a5='Y';}return r;};
  const put=r=>{db.prepare('UPDATE pbb_records SET data=? WHERE id=?').run(JSON.stringify(r),r.id);return r;};
  const mutate=db.transaction((id,user,body)=>{
   const r=get(id),role=body.role;if(!roles.includes(role))fail('Select driver or spotter');if(r.completedAt)fail('Completed checklist is locked',409);
   if(r.signatures[role])fail('Signed section is locked',409);
   if(r.owners[role]&&r.owners[role]!==user.uid)fail('This role belongs to another operator',403);
-  if(r.owners[roles.find(x=>x!==role)]===user.uid)fail('Driver and spotter must be different operator sessions',403);
   if(body.action==='claim'){
    // Role ownership is reserved on the flight information page.
   }else if(body.action==='signal'){
@@ -55,9 +54,13 @@ function registerPbb(app,{client,authenticate=require('./pbbAuth').authenticate,
  require('./employees').registerEmployees(app,{store:employees,authenticate,onChange:()=>{for(const clients of streams.values())for(const res of clients)res.write(`event: employees\ndata: ${JSON.stringify(employees.options())}\n\n`);}});
  store.db.exec('CREATE TABLE IF NOT EXISTS pbb_guest_sessions (token_hash TEXT PRIMARY KEY, uid TEXT NOT NULL, expires INTEGER NOT NULL)');
  app.post('/pbb-api/session',(_req,res)=>{const token='pbb_guest_'+crypto.randomBytes(32).toString('hex'),uid='guest-'+crypto.randomUUID(),expires=Date.now()+86400000;store.db.prepare('DELETE FROM pbb_guest_sessions WHERE expires<?').run(Date.now());store.db.prepare('INSERT INTO pbb_guest_sessions VALUES(?,?,?)').run(crypto.createHash('sha256').update(token).digest('hex'),uid,expires);res.set('Cache-Control','no-store').json({token,uid,expires});});
- const streams=new Map(),jobs=new Map();
+ const streams=new Map(),jobs=new Map(),lobbyStreams=new Set();
  const presence=id=>{const clients=streams.get(id)||[];const online=new Set([...clients].map(res=>res.pbbUid)).size;for(const res of clients)res.write(`event: presence\ndata: ${JSON.stringify({online})}\n\n`);};
- const publish=r=>{for(const res of streams.get(r.id)||[])res.write(`event: state\ndata: ${JSON.stringify(r)}\n\n`);};
+ const currentDate=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(store.now());
+ const activeRooms=(flightNo,type,date=currentDate())=>store.list().filter(r=>!r.completedAt&&r.date===date&&r.flightNo===flightNo&&r.type===type).map(r=>({id:r.id,flightNo:r.flightNo,type:r.type,gate:r.gate,bridges:r.bridges,blockTime:r.blockTime,driver:{uid:r.owners.driver||null,joined:!!r.owners.driver,signed:!!r.signatures.driver},spotter:{uid:r.owners.spotter||null,joined:!!r.owners.spotter,signed:!!r.signatures.spotter}}));
+ const publishRooms=()=>{for(const sub of lobbyStreams)sub.res.write(`event: rooms\ndata: ${JSON.stringify(activeRooms(sub.flightNo,sub.type))}\n\n`);};
+ const publish=r=>{for(const res of streams.get(r.id)||[])res.write(`event: state\ndata: ${JSON.stringify(r)}\n\n`);publishRooms();};
+
  const save=r=>{store.put(r);publish(r);};
  async function deliver(id){
   if(jobs.has(id))return jobs.get(id);
@@ -85,6 +88,11 @@ function registerPbb(app,{client,authenticate=require('./pbbAuth').authenticate,
  }
  app.use('/pbb-api',async(req,res,next)=>{try{const token=String(req.headers.authorization||'').replace(/^Bearer /,'');if(token.startsWith('pbb_guest_')){const session=store.db.prepare('SELECT uid,expires FROM pbb_guest_sessions WHERE token_hash=?').get(crypto.createHash('sha256').update(token).digest('hex'));if(!session||session.expires<Date.now())throw Error('Expired session');req.pbbUser={uid:session.uid,email:''};}else req.pbbUser=await authenticate(req);next();}catch{res.status(401).json({error:'Sign in required or sign-in verification unavailable'});}});
  const route=fn=>async(req,res)=>{try{await fn(req,res);}catch(e){res.status(e.status||500).json({error:e.message});}};
+ app.get('/pbb-api/active',route((req,res)=>res.json(activeRooms(String(req.query.flightNo||'').toUpperCase(),String(req.query.type||'')))));
+ app.get('/pbb-api/active/stream',route((req,res)=>{
+  const flightNo=String(req.query.flightNo||'').toUpperCase(),type=String(req.query.type||'');if(!/^[A-Z]{2}\d{1,4}$/.test(flightNo)||!['arrival','departure'].includes(type))fail('Valid flight and checklist type required');
+  res.set({'Content-Type':'text/event-stream','Cache-Control':'no-cache, no-transform','Connection':'keep-alive','X-Accel-Buffering':'no'});res.flushHeaders();const sub={res,flightNo,type};lobbyStreams.add(sub);res.write(`event: rooms\ndata: ${JSON.stringify(activeRooms(flightNo,type))}\n\n`);const timer=setInterval(()=>res.write(': keep-alive\n\n'),15000);timer.unref();res.on('close',()=>{clearInterval(timer);lobbyStreams.delete(sub);});
+ }));
  app.get('/pbb-api/gate',route(async(req,res)=>{const flightNo=String(req.query.flightNo||'').toUpperCase(),date=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(store.now());if(!/^[A-Z]{2}\d{1,4}$/.test(flightNo)||!/^\d{4}-\d{2}-\d{2}$/.test(date)||Number.isNaN(Date.parse(date)))fail('Valid flight and date required');res.json(await gateService.read(flightNo,date));}));
  app.get('/pbb-api/employees',(_req,res)=>res.json(employees.options()));
  app.get('/pbb-api/records',route((req,res)=>res.json(store.list())));
@@ -100,7 +108,7 @@ function registerPbb(app,{client,authenticate=require('./pbbAuth').authenticate,
  }));
  // Retry interrupted work after restart; completed delivery targets are skipped.
  for(const r of store.list())if(r.completedAt&&(r.delivery.drive.status!=='sent'||r.delivery.discord.status!=='sent'))void deliver(r.id);
- return {store,employees,deliver,close(){for(const clients of streams.values())for(const res of clients)res.end();}};
+ return {store,employees,deliver,close(){for(const sub of lobbyStreams)sub.res.end();for(const clients of streams.values())for(const res of clients)res.end();}};
 }
 module.exports={createStore,registerPbb,validateInfo};
 

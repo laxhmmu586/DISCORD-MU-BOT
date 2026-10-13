@@ -10,7 +10,7 @@ test('role isolation, shared confirmations, sign-off, immutable completed record
  assert.throws(()=>store.mutate(r.id,driver,{action:'sign',role:'driver',name:'A',strokes}),/Complete all/);
  r=store.mutate(r.id,driver,{action:'claim',role:'driver'});assert.equal(r.answers.spotter.a1,'Y');
  assert.throws(()=>store.mutate(r.id,spotter,{action:'answer',role:'driver',itemId:'a1',value:'N',note:'test'}),/another operator/);
- assert.throws(()=>store.mutate(r.id,driver,{action:'answer',role:'spotter',itemId:'a1',value:'Y'}),/different/);
+ assert.throws(()=>store.mutate(r.id,driver,{action:'answer',role:'spotter',itemId:'a1',value:'Y'}),/assigned/);
  assert.equal(store.mutate(r.id,driver,{action:'answer',role:'driver',itemId:'a3',value:'N'}).answers.driver.a3,'N');
  store.mutate(r.id,spotter,{action:'claim',role:'spotter'});
  for(const role of ['driver','spotter'])for(const item of items.arrival.filter(x=>x.id!=='a1'&&!x.hidden&&x.roles.includes(role)))store.mutate(r.id,role==='driver'?driver:spotter,{action:'answer',role,itemId:item.id,value:'Y'});
@@ -35,9 +35,11 @@ test('API protects employee data, SSE publishes snapshots, two-role PDF triggers
  try{
  const guest=await (await fetch(base+'/pbb-api/session',{method:'POST'})).json();const publicResponse=await fetch(base+'/pbb-api/records',{headers:{Authorization:'Bearer '+guest.token}});assert.equal(publicResponse.status,200);assert.equal((await fetch(base+'/employee-admin-api',{headers:{Authorization:'Bearer '+guest.token}})).status,401);
  assert.equal((await api('/employee-admin-api','driver')).status,403);assert.equal((await api('/employee-admin-api','bad')).status,401);
- let data=await (await api('/employee-admin-api')).json();data.employees[3].driver=true;data.employees[4].spotter=true;assert.equal((await api('/employee-admin-api','admin',data)).status,200);
+ let data=await (await api('/employee-admin-api')).json();data.employees[3].driver=true;data.employees[3].spotter=true;data.employees[4].spotter=true;assert.equal((await api('/employee-admin-api','admin',data)).status,200);
  const r=await (await api('/pbb-api/records','admin',info)).json();const stream=await api('/pbb-api/records/'+r.id+'/stream','driver');assert.match(stream.headers.get('content-type'),/event-stream/);const reader=stream.body.getReader();const initial=await reader.read();assert.match(new TextDecoder().decode(initial.value),/event: state/);
+ const lobby=await api('/pbb-api/active/stream?flightNo=MU583&type=arrival','spotter'),lobbyReader=lobby.body.getReader();const lobbyFirst=new TextDecoder().decode((await lobbyReader.read()).value);assert.match(lobbyFirst,/event: rooms/);assert.match(lobbyFirst,/\"L2\"/);
  for(const role of ['driver','spotter'])assert.equal((await api('/pbb-api/records/'+r.id,role,{action:'claim',role})).status,200);
+ const rooms=await (await api('/pbb-api/active?flightNo=MU583&type=arrival','spotter')).json();assert.equal(rooms[0].driver.joined,true);assert.equal(rooms[0].spotter.joined,true);assert.equal(rooms[0].answers,undefined);const lobbyUpdate=new TextDecoder().decode((await lobbyReader.read()).value);assert.match(lobbyUpdate,/\"joined\":true/);await lobbyReader.cancel();
  for(const role of ['driver','spotter'])for(const item of items.arrival.filter(x=>x.id!=='a1'&&!x.hidden&&x.roles.includes(role))){assert.equal((await api('/pbb-api/records/'+r.id,role,{action:'answer',role,itemId:item.id,value:'Y'})).status,200);}
  let observed='';for(let i=0;i<10&&!observed.includes('"a1":"Y"');i++){const update=await reader.read();observed+=new TextDecoder().decode(update.value);}assert.match(observed,/"a1":"Y"/);await reader.cancel();
  assert.equal((await api('/pbb-api/records/'+r.id,'driver',{action:'signal',role:'driver',phase:'go'})).status,409);
@@ -45,6 +47,7 @@ test('API protects employee data, SSE publishes snapshots, two-role PDF triggers
  assert.equal((await api('/pbb-api/records/'+r.id,'driver',{action:'sign',role:'driver',employeeId:'staff-5',strokes})).status,400);
  assert.equal((await api('/pbb-api/records/'+r.id,'driver',{action:'sign',role:'driver',employeeId:'staff-4',name:'Forged',eid:'bad',strokes})).status,200);
  assert.equal(store.get(r.id).signatures.driver.name,'TEST DRIVER');assert.equal(store.get(r.id).signatures.driver.eid,'123456');
+ assert.equal((await api('/pbb-api/records/'+r.id,'spotter',{action:'sign',role:'spotter',employeeId:'staff-4',strokes})).status,400);
  await api('/pbb-api/records/'+r.id,'spotter',{action:'sign',role:'spotter',employeeId:'staff-5',strokes});for(let i=0;i<50&&store.get(r.id).delivery.discord.status==='pending';i++)await new Promise(r=>setTimeout(r,10));
  assert.equal(driveWrites,1);assert.equal(discordWrites,1);assert.equal(store.get(r.id).delivery.discord.status,'failed');
  discordFail=false;await Promise.all([integration.deliver(r.id),integration.deliver(r.id)]);assert.equal(driveWrites,1);assert.equal(discordWrites,2);
@@ -67,9 +70,13 @@ test('shared buttons fill original rows atomically and enforce operator and depa
 
 test('arrival first item is hidden YES by default, date is today and role claim stays isolated',()=>{
  const s=createStore(':memory:',{now:()=>new Date('2026-10-13T16:30:00Z')});let r=s.create({...info,date:'2020-01-01'},admin);assert.equal(r.date,'2026-10-13');assert.equal(r.answers.driver.a1,'Y');assert.equal(r.answers.spotter.a1,'Y');assert.equal(r.answers.driver.a5,'Y');assert.equal(items.arrival.find(x=>x.id==='a1').hidden,true);
- r=s.mutate(r.id,driver,{action:'claim',role:'driver'});assert.equal(r.owners.driver,driver.uid);assert.throws(()=>s.mutate(r.id,spotter,{action:'claim',role:'driver'}),/another operator/);assert.throws(()=>s.mutate(r.id,driver,{action:'claim',role:'spotter'}),/different operator/);assert.throws(()=>s.mutate(r.id,driver,{action:'answer',role:'driver',itemId:'a1',value:'N'}),/assigned/);assert.equal(s.get(r.id).answers.driver.a1,'Y');s.db.close();
+ r=s.mutate(r.id,driver,{action:'claim',role:'driver'});assert.equal(r.owners.driver,driver.uid);assert.throws(()=>s.mutate(r.id,spotter,{action:'claim',role:'driver'}),/another operator/);assert.equal(s.mutate(r.id,driver,{action:'claim',role:'spotter'}).owners.spotter,driver.uid);assert.throws(()=>s.mutate(r.id,driver,{action:'answer',role:'driver',itemId:'a1',value:'N'}),/assigned/);assert.equal(s.get(r.id).answers.driver.a1,'Y');s.db.close();
 });
 
 test('operators opening the same current flight and bridge join one active checklist',()=>{
  const s=createStore(':memory:',{now:()=>new Date('2026-10-13T16:00:00Z')});const first=s.create(info,driver),second=s.create({...info,blockTime:'09:10',date:'2020-01-01'},spotter);assert.equal(first.id,second.id);assert.equal(s.list().length,1);assert.equal(second.blockTime,'09:05');assert.notEqual(s.create({...info,bridges:['L1']},driver).id,first.id);s.db.close();
+});
+
+test('Spotter starts without block time; joining Driver supplies it; Departure stores no block time',()=>{
+ const s=createStore(':memory:',{now:()=>new Date('2026-10-13T16:00Z')});let r=s.create({...info,role:'spotter',blockTime:undefined},spotter);assert.equal(r.blockTime,'');s.mutate(r.id,spotter,{action:'claim',role:'spotter'});const joined=s.create({...info,role:'driver',blockTime:'09:37'},driver);assert.equal(joined.id,r.id);assert.equal(joined.blockTime,'09:37');assert.equal(s.create({...info,type:'departure',blockTime:undefined},driver).blockTime,'');assert.throws(()=>s.create({...info,role:'driver',bridges:['L1'],blockTime:undefined},driver),/block time/);s.db.close();
 });
