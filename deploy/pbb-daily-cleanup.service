@@ -1,0 +1,11 @@
+[Unit]
+Description=Clear expired PBB checklist records
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/DISCORD-MU-BOT
+Environment=NODE_PATH=/home/ubuntu/DISCORD-MU-BOT/node_modules
+Environment=PBB_DB_PATH=/home/ubuntu/DISCORD-MU-BOT/data/pbb.db
+ExecStart=/usr/bin/node /home/ubuntu/.local/lib/mufc-pbb/prune-pbb-records.cjs
+UMask=0077
