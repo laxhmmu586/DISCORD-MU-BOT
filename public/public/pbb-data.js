@@ -39,9 +39,43 @@
   arrival.find(x=>x.id==='a2').hidden=true;arrival.find(x=>x.id==='a2').defaultValue='Y';
   arrival.find(x=>x.id==='a10').hidden=true;arrival.find(x=>x.id==='a10').defaultValue='NA';
   departure.find(x=>x.id==='d1').defaultValue='Y';
-  for(const [id,photo] of Object.entries({a8:'ramp-path.svg',a9:'canopy-bumper.svg',d1:'aircraft-door.svg',d3:'safety-strap.svg'})){const row=[...arrival,...departure].find(x=>x.id===id);row.art=null;row.photos=[photo];}
+  for(const [id,photo] of Object.entries({a8:'ramp-path-realistic.webp',a9:'canopy-bumper-realistic.webp',d1:'aircraft-door.svg',d3:'safety-strap.svg'})){const row=[...arrival,...departure].find(x=>x.id===id);row.art=null;row.photos=[photo];}
   departure.find(x=>x.id==='d2').photos=['safety-shoe.jpg','safety-shoe-storage.jpg'];
   departure.find(x=>x.id==='d4').photos=['control-console.jpg'];
+  // Short screen prompts are separate from the original checklist/PDF wording.
+  const prompts={
+  "a1": "Arrive 15 minutes early with safety PPE.",
+  "a2": "Review READY / SAFE / GO with your partner.",
+  "a3": "Check controls work and wheels are in the stow box.",
+  "a4": "Check floor is clear and dry; check lighting and temperature.",
+  "a5": "Secure and close all unused jet bridges.",
+  "a6": "Position the bridge cab for docking.",
+  "a7": "Locate the PBB emergency stop button, if fitted.",
+  "a8": "Check the jet bridge travel path is clear.",
+  "a9": "Check canopy and bumper; report tears, damage or missing parts.",
+  "a10": "Remote bay: walk through the bridge after positioning for tow-in.",
+  "a11": "Check aircraft chocks are in place and equipment is clear.",
+  "a12": "Receive the READY thumbs-up.",
+  "a13": "Double-check the area is safe; signal SAFE.",
+  "a14": "Confirm GO and ring the warning bell 3 times.",
+  "a15": "Move slowly toward the aircraft; keep eye contact with the spotter.",
+  "a16": "Set bridge floor 2–2.5 inches below the aircraft door seal.",
+  "a17": "Keep bridge off the fuselage.",
+  "a18": "Turn auto-leveler on and deploy canopy.",
+  "d1": "Confirm aircraft door is closed per airline procedure.",
+  "d2": "Remove safety shoe, if fitted; store it in its holder.",
+  "d3": "Set safety strap and close bridge shutters/doors.",
+  "d4": "Turn auto-leveler off and retract canopy.",
+  "d5": "Signal READY to the spotter.",
+  "d6": "Double-check the area is safe; signal SAFE.",
+  "d7": "Confirm GO and ring the warning bell 3 times.",
+  "d8": "Stand in position to watch bridge detachment.",
+  "d9": "Keep the travel path clear until wheels are in the stow box.",
+  "d10": "Remove trash, water and debris.",
+  "d11": "Turn off power.",
+  "d12": "Lock all ramp-to-terminal access doors."
+};
+  for(const row of [...arrival,...departure])row.prompt=prompts[row.id];
   const data={arrival,departure};
   if(typeof module==='object') module.exports=data; else root.PBB_ITEMS=data;
 })(typeof window==='object'?window:globalThis);

@@ -34,3 +34,6 @@ html.pbb-theme{background:#e9edff url('/assets/boarding-aurora-c.png') center/co
 .pbb-page .flight-topbar{background:#fff;backdrop-filter:none}.pbb-brand-logo{background:#fff;box-shadow:none}.pbb-page .reference-photos .check-illustration{height:auto;aspect-ratio:auto}.pbb-page .actual-photo img{height:auto;max-height:460px;object-fit:contain;background:#fff}.reference-photos{display:grid;gap:14px}
 
 .pbb-page .actual-photo .art-caption{position:static;justify-self:start;margin:8px 10px}
+
+/* Two explicit on-screen answers; original PDF retains its N/A column. */
+.pbb-page .answer-buttons{grid-template-columns:repeat(2,minmax(0,1fr))}
