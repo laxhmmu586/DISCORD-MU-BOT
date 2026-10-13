@@ -8,21 +8,20 @@ const signalGroups=require('./pbbSignals');
 function fail(message,status=400){const e=new Error(message);e.status=status;throw e;}
 function validateInfo(b){
  if(!['arrival','departure'].includes(b.type))fail('Select checklist type');
- const flightNo=String(b.flightNo||'').trim().toUpperCase(),date=String(b.date||''),gate=String(b.gate||'').trim().toUpperCase(),blockTime=String(b.blockTime||'');
- if(!/^[A-Z0-9]{2,3}\d{1,4}$/.test(flightNo)||!/^\d{4}-\d{2}-\d{2}$/.test(date)||Number.isNaN(Date.parse(date))||new Date(date).toISOString().slice(0,10)!==date||!/^[A-Z0-9-]{1,20}$/.test(gate)||!/^([01]\d|2[0-3]):[0-5]\d$/.test(blockTime))fail('Valid flight, date, gate and block time are required');
+ const flightNo=String(b.flightNo||'').trim().toUpperCase(),date=String(b.date||''),gate=String(b.gate||'').trim().toUpperCase(),blockTime=b.type==='departure'||b.role==='spotter'?'':String(b.blockTime||'');
+ if(!/^[A-Z0-9]{2,3}\d{1,4}$/.test(flightNo)||!/^\d{4}-\d{2}-\d{2}$/.test(date)||Number.isNaN(Date.parse(date))||new Date(date).toISOString().slice(0,10)!==date||!/^[A-Z0-9-]{1,20}$/.test(gate)||(b.type==='arrival'&&((b.role!=='spotter'&&!blockTime)||(blockTime&&!/^([01]\d|2[0-3]):[0-5]\d$/.test(blockTime)))))fail('Valid flight, date, gate and block time are required');
  if(!Array.isArray(b.bridges)||!b.bridges.length||b.bridges.length>3||b.bridges.some(x=>!['L1','L2','L3'].includes(x)))fail('Select jet bridge L1, L2 or L3');
  return {type:b.type,flightNo,date,gate,blockTime,bridges:[...new Set(b.bridges)]};
 }
 function createStore(filename=process.env.PBB_DB_PATH||path.join(__dirname,'data/pbb.db'),{now=()=>new Date()}={}){
  if(filename!==':memory:')fs.mkdirSync(path.dirname(filename),{recursive:true});
  const db=new Database(filename);db.pragma('journal_mode = WAL');db.exec('CREATE TABLE IF NOT EXISTS pbb_records (id TEXT PRIMARY KEY, data TEXT NOT NULL, pdf BLOB)');
- const get=id=>{const row=db.prepare('SELECT data FROM pbb_records WHERE id=?').get(id);if(!row)fail('Checklist not found',404);const r=JSON.parse(row.data);if(r.type==='arrival'&&!r.completedAt)for(const role of roles)if(!r.signatures[role])r.answers[role].a1='Y';return r;};
+ const get=id=>{const row=db.prepare('SELECT data FROM pbb_records WHERE id=?').get(id);if(!row)fail('Checklist not found',404);const r=JSON.parse(row.data);if(r.type==='arrival'&&!r.completedAt)for(const role of roles)if(!r.signatures[role]){r.answers[role].a1='Y';if(role==='driver')r.answers[role].a5='Y';}return r;};
  const put=r=>{db.prepare('UPDATE pbb_records SET data=? WHERE id=?').run(JSON.stringify(r),r.id);return r;};
  const mutate=db.transaction((id,user,body)=>{
   const r=get(id),role=body.role;if(!roles.includes(role))fail('Select driver or spotter');if(r.completedAt)fail('Completed checklist is locked',409);
   if(r.signatures[role])fail('Signed section is locked',409);
   if(r.owners[role]&&r.owners[role]!==user.uid)fail('This role belongs to another operator',403);
-  if(r.owners[roles.find(x=>x!==role)]===user.uid)fail('Driver and spotter must be different operator sessions',403);
   if(body.action==='claim'){
    // Role ownership is reserved on the flight information page.
   }else if(body.action==='signal'){
@@ -35,7 +34,6 @@ function createStore(filename=process.env.PBB_DB_PATH||path.join(__dirname,'data
    // Editing a signal-related original row invalidates its aggregate confirmation.
    for(const [phase,group] of Object.entries(signalGroups[r.type]))if(group.items.includes(row.id)&&r.signals?.[phase])delete r.signals[phase];
    if(typeof body.note==='string')r.notes[role][row.id]=body.note.trim().slice(0,1000);
-   if(body.value==='N'&&!r.notes[role][row.id])fail('Explain the N response before saving');
   }else if(body.action==='sign'){
    if(items[r.type].some(x=>x.roles.includes(role)&&!r.answers[role][x.id]))fail('Complete all assigned items first');
    for(const [phase,group] of Object.entries(signalGroups[r.type]))if(group.role===role&&group.items.every(id=>r.answers[role][id]==='Y')&&!r.signals?.[phase])fail('Confirm '+group.label+' in the shared operations panel');
@@ -47,7 +45,7 @@ function createStore(filename=process.env.PBB_DB_PATH||path.join(__dirname,'data
   if(roles.every(x=>r.signatures[x]))r.completedAt=r.updatedAt;
   return put(r);
  });
- return {db,get,put,mutate,now,create:db.transaction((body,user)=>{const info=validateInfo({...body,date:new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(now())});const candidates=db.prepare("SELECT data FROM pbb_records WHERE json_extract(data,'$.flightNo')=? AND json_extract(data,'$.date')=? AND json_extract(data,'$.type')=? AND json_extract(data,'$.gate')=? AND json_extract(data,'$.completedAt') IS NULL ORDER BY rowid DESC").all(info.flightNo,info.date,info.type,info.gate).map(x=>JSON.parse(x.data));const active=candidates.find(r=>[...r.bridges].sort().join('|')===[...info.bridges].sort().join('|'));if(active)return active;const r={...info,id:crypto.randomUUID(),createdBy:user.uid,createdAt:now().toISOString(),updatedAt:now().toISOString(),revision:1,owners:{},answers:{driver:body.type==='arrival'?{a1:'Y',a2:'Y',a10:'NA'}:{d1:'Y'},spotter:body.type==='arrival'?{a1:'Y',a2:'Y'}:{}},notes:{driver:{},spotter:{}},signatures:{},delivery:{drive:{status:'pending'},discord:{status:'pending'}}};db.prepare('INSERT INTO pbb_records(id,data) VALUES (?,?)').run(r.id,JSON.stringify(r));return r;}),list(){return db.prepare('SELECT data FROM pbb_records ORDER BY rowid DESC LIMIT 100').all().map(x=>JSON.parse(x.data));},pdf(id){return db.prepare('SELECT pdf FROM pbb_records WHERE id=?').get(id)?.pdf;},setPdf(id,buffer){db.prepare('UPDATE pbb_records SET pdf=? WHERE id=?').run(buffer,id);}};
+ return {db,get,put,mutate,now,create:db.transaction((body,user)=>{const info=validateInfo({...body,date:new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(now())});const candidates=db.prepare("SELECT data FROM pbb_records WHERE json_extract(data,'$.flightNo')=? AND json_extract(data,'$.date')=? AND json_extract(data,'$.type')=? AND json_extract(data,'$.gate')=? AND json_extract(data,'$.completedAt') IS NULL ORDER BY rowid DESC").all(info.flightNo,info.date,info.type,info.gate).map(x=>JSON.parse(x.data));const active=candidates.find(r=>[...r.bridges].sort().join('|')===[...info.bridges].sort().join('|'));if(active){if(body.role==='driver'&&active.type==='arrival'&&!active.blockTime){active.blockTime=info.blockTime;active.revision++;active.updatedAt=now().toISOString();put(active);}return active;}const r={...info,id:crypto.randomUUID(),createdBy:user.uid,createdAt:now().toISOString(),updatedAt:now().toISOString(),revision:1,owners:{},answers:{driver:body.type==='arrival'?{a1:'Y',a2:'Y',a5:'Y',a10:'NA'}:{d1:'Y'},spotter:body.type==='arrival'?{a1:'Y',a2:'Y'}:{}},notes:{driver:{},spotter:{}},signatures:{},delivery:{drive:{status:'pending'},discord:{status:'pending'}}};db.prepare('INSERT INTO pbb_records(id,data) VALUES (?,?)').run(r.id,JSON.stringify(r));return r;}),list(){return db.prepare('SELECT data FROM pbb_records ORDER BY rowid DESC LIMIT 100').all().map(x=>JSON.parse(x.data));},pdf(id){return db.prepare('SELECT pdf FROM pbb_records WHERE id=?').get(id)?.pdf;},setPdf(id,buffer){db.prepare('UPDATE pbb_records SET pdf=? WHERE id=?').run(buffer,id);}};
 }
 function registerPbb(app,{client,authenticate=require('./pbbAuth').authenticate,store=createStore(),buildPdf=require('./pbbPdf').buildPbbPdf,drive:providedDrive,gateService=require('./pbbEtab').createGateService(),employeeSeed}={}){
  const {google}=require('googleapis'),{Readable}=require('node:stream');
@@ -56,9 +54,13 @@ function registerPbb(app,{client,authenticate=require('./pbbAuth').authenticate,
  require('./employees').registerEmployees(app,{store:employees,authenticate,onChange:()=>{for(const clients of streams.values())for(const res of clients)res.write(`event: employees\ndata: ${JSON.stringify(employees.options())}\n\n`);}});
  store.db.exec('CREATE TABLE IF NOT EXISTS pbb_guest_sessions (token_hash TEXT PRIMARY KEY, uid TEXT NOT NULL, expires INTEGER NOT NULL)');
  app.post('/pbb-api/session',(_req,res)=>{const token='pbb_guest_'+crypto.randomBytes(32).toString('hex'),uid='guest-'+crypto.randomUUID(),expires=Date.now()+86400000;store.db.prepare('DELETE FROM pbb_guest_sessions WHERE expires<?').run(Date.now());store.db.prepare('INSERT INTO pbb_guest_sessions VALUES(?,?,?)').run(crypto.createHash('sha256').update(token).digest('hex'),uid,expires);res.set('Cache-Control','no-store').json({token,uid,expires});});
- const streams=new Map(),jobs=new Map();
+ const streams=new Map(),jobs=new Map(),lobbyStreams=new Set();
  const presence=id=>{const clients=streams.get(id)||[];const online=new Set([...clients].map(res=>res.pbbUid)).size;for(const res of clients)res.write(`event: presence\ndata: ${JSON.stringify({online})}\n\n`);};
- const publish=r=>{for(const res of streams.get(r.id)||[])res.write(`event: state\ndata: ${JSON.stringify(r)}\n\n`);};
+ const currentDate=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(store.now());
+ const activeRooms=(flightNo,type,date=currentDate())=>store.list().filter(r=>!r.completedAt&&r.date===date&&r.flightNo===flightNo&&r.type===type).map(r=>({id:r.id,flightNo:r.flightNo,type:r.type,gate:r.gate,bridges:r.bridges,blockTime:r.blockTime,driver:{uid:r.owners.driver||null,joined:!!r.owners.driver,signed:!!r.signatures.driver},spotter:{uid:r.owners.spotter||null,joined:!!r.owners.spotter,signed:!!r.signatures.spotter}}));
+ const publishRooms=()=>{for(const sub of lobbyStreams)sub.res.write(`event: rooms\ndata: ${JSON.stringify(activeRooms(sub.flightNo,sub.type))}\n\n`);};
+ const publish=r=>{for(const res of streams.get(r.id)||[])res.write(`event: state\ndata: ${JSON.stringify(r)}\n\n`);publishRooms();};
+
  const save=r=>{store.put(r);publish(r);};
  async function deliver(id){
   if(jobs.has(id))return jobs.get(id);
@@ -86,6 +88,11 @@ function registerPbb(app,{client,authenticate=require('./pbbAuth').authenticate,
  }
  app.use('/pbb-api',async(req,res,next)=>{try{const token=String(req.headers.authorization||'').replace(/^Bearer /,'');if(token.startsWith('pbb_guest_')){const session=store.db.prepare('SELECT uid,expires FROM pbb_guest_sessions WHERE token_hash=?').get(crypto.createHash('sha256').update(token).digest('hex'));if(!session||session.expires<Date.now())throw Error('Expired session');req.pbbUser={uid:session.uid,email:''};}else req.pbbUser=await authenticate(req);next();}catch{res.status(401).json({error:'Sign in required or sign-in verification unavailable'});}});
  const route=fn=>async(req,res)=>{try{await fn(req,res);}catch(e){res.status(e.status||500).json({error:e.message});}};
+ app.get('/pbb-api/active',route((req,res)=>res.json(activeRooms(String(req.query.flightNo||'').toUpperCase(),String(req.query.type||'')))));
+ app.get('/pbb-api/active/stream',route((req,res)=>{
+  const flightNo=String(req.query.flightNo||'').toUpperCase(),type=String(req.query.type||'');if(!/^[A-Z]{2}\d{1,4}$/.test(flightNo)||!['arrival','departure'].includes(type))fail('Valid flight and checklist type required');
+  res.set({'Content-Type':'text/event-stream','Cache-Control':'no-cache, no-transform','Connection':'keep-alive','X-Accel-Buffering':'no'});res.flushHeaders();const sub={res,flightNo,type};lobbyStreams.add(sub);res.write(`event: rooms\ndata: ${JSON.stringify(activeRooms(flightNo,type))}\n\n`);const timer=setInterval(()=>res.write(': keep-alive\n\n'),15000);timer.unref();res.on('close',()=>{clearInterval(timer);lobbyStreams.delete(sub);});
+ }));
  app.get('/pbb-api/gate',route(async(req,res)=>{const flightNo=String(req.query.flightNo||'').toUpperCase(),date=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(store.now());if(!/^[A-Z]{2}\d{1,4}$/.test(flightNo)||!/^\d{4}-\d{2}-\d{2}$/.test(date)||Number.isNaN(Date.parse(date)))fail('Valid flight and date required');res.json(await gateService.read(flightNo,date));}));
  app.get('/pbb-api/employees',(_req,res)=>res.json(employees.options()));
  app.get('/pbb-api/records',route((req,res)=>res.json(store.list())));
@@ -101,7 +108,7 @@ function registerPbb(app,{client,authenticate=require('./pbbAuth').authenticate,
  }));
  // Retry interrupted work after restart; completed delivery targets are skipped.
  for(const r of store.list())if(r.completedAt&&(r.delivery.drive.status!=='sent'||r.delivery.discord.status!=='sent'))void deliver(r.id);
- return {store,employees,deliver,close(){employees.close();for(const clients of streams.values())for(const res of clients)res.end();}};
+ return {store,employees,deliver,close(){for(const sub of lobbyStreams)sub.res.end();for(const clients of streams.values())for(const res of clients)res.end();}};
 }
 module.exports={createStore,registerPbb,validateInfo};
 
