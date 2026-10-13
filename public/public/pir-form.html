@@ -137,7 +137,8 @@
     @media (max-width:600px){.bag-fields{grid-template-columns:1fr}.bag-fields .bag-tag-field,.bag-fields .descriptor-field{grid-column:auto}.option-grid{grid-template-columns:repeat(4,minmax(48px,1fr))}}
     @media (max-width:520px){ .attachment-grid{grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px}.attachment-group{grid-template-columns:repeat(auto-fill,minmax(70px,1fr)); gap:6px; padding:6px}.attachment-tile{min-height:94px; padding:5px}.attachment-preview{height:66px}.attachment-upload .attachment-preview::before{width:30px;height:30px;font-size:24px}.attachment-title{font-size:11px}.attachment-filename{font-size:10px} }
   </style>
-  <link rel="stylesheet" href="/aviation-glass.css?v=20261011-controls">
+  <link rel="stylesheet" href="/aviation-glass.css?v=20261013-pickers">
+  <link rel="stylesheet" href="/assets/boarding-aurora.css?v=20261013-service">
 </head>
 <body class="aviation-page aviation-pir">
   <header><span class="mufc-wordmark">MUFC</span>
@@ -384,7 +385,7 @@
     }
     const descriptors = [['D','Dual soft / hard','软硬混合',22,548,'material'],['L','Leather','皮革',82,548,'material'],['M','Metal','金属',139,548,'material'],['R','Rigid / hard','硬质',198,548,'material'],['T','Tweed / fabric','粗花呢／布料',255,548,'material'],['X-M','No material element','无材质特征',310,548,'material'],['B','Single item in a box','单件箱盒',337,548,'basic'],['K','Cabin size','登机尺寸',397,548,'basic'],['C','Combination lock','密码锁',525,548,'external'],['H','Retractable handles','伸缩手柄',610,548,'external'],['S','Straps to close / secure','固定带',711,548,'external'],['W','Wheels / rollers','轮子',808,548,'external'],['X-E','No external element','无外部特征',910,548,'external']];
     const escapeAttribute = (value) => String(value).replace(/&/g,'&amp;').replace(/"/g,'&quot;');
-    const picker = (kind, number, labelEn, labelZh) => `<div class="picker ${kind === 'descriptor' ? 'descriptor-field' : ''}" data-picker="${kind}"><span><span class="en">${labelEn}</span><span class="zh">${labelZh}</span>${number === 1 ? '<span class="required-mark">*</span>' : ''}</span><input type="hidden" name="ahlBag${kind[0].toUpperCase()+kind.slice(1)}${number}" ${kind === 'descriptor' ? 'data-bag-descriptors' : `data-bag-${kind}`}><button class="picker-trigger placeholder" type="button" data-picker-trigger><span class="en">Select ${labelEn.toLowerCase()}</span><span class="zh">选择${labelZh}</span></button><div class="picker-panel" data-picker-panel hidden><button class="picker-close" type="button" data-picker-close>×</button><div data-picker-options></div></div></div>`;
+    const picker = (kind, number, labelEn, labelZh) => `<div class="picker ${kind === 'descriptor' ? 'descriptor-field' : ''}" data-picker="${kind}"><span><span class="en">${labelEn}</span><span class="zh">${labelZh}</span>${number === 1 ? '<span class="required-mark">*</span>' : ''}</span><input type="hidden" name="ahlBag${kind[0].toUpperCase()+kind.slice(1)}${number}" ${kind === 'descriptor' ? 'data-bag-descriptors' : `data-bag-${kind}`}><button class="picker-trigger placeholder" type="button" data-picker-trigger><span class="en">Select ${labelEn.toLowerCase()}</span><span class="zh">选择${labelZh}</span></button><dialog class="picker-panel" data-picker-panel aria-label="Baggage options"><button class="picker-close" type="button" data-picker-close>×</button><div data-picker-options></div></dialog></div>`;
     function pickerOptions(kind) {
       if (kind === 'color') return `<div class="option-grid">${bagColors.map(([code,en,zh,swatch]) => `<button class="visual-option" type="button" data-option="${code}" data-label="${escapeAttribute(`${code} · ${en} / ${zh}`)}"><span>${code}</span><i class="swatch" style="--swatch:${swatch}"></i></button>`).join('')}</div>`;
       if (kind === 'type') return ['unzipped','zipped','other'].map((group) => `<strong class="picker-section">${group === 'unzipped' ? 'Un-Zippered Bags / 无拉链行李' : group === 'zipped' ? 'Zippered Bags / 拉链行李' : 'Miscellaneous Articles / 其他物品'}</strong><div class="option-grid">${bagTypes.filter((item) => item[5] === group).map(([code,en,zh,x,y]) => `<button class="visual-option" type="button" data-option="${code}" data-label="${escapeAttribute(`${code} · ${en} / ${zh}`)}" title="${escapeAttribute(`${en} / ${zh}`)}"><span>${code}</span>${group === 'other' ? `<i data-icon-preview ${miscellaneousImageCrops[code] ? `data-misc-code="${code}"` : ''} aria-label="Enlarge ${escapeAttribute(code)} image" class="type-icon type-icon--misc" style="${miscellaneousImageCrops[code] ? cropStyle(miscellaneousImageCrops[code],72,72) : `--icon-x:-${x}px;--icon-y:-${y}px`}"></i>` : `<i data-icon-preview data-type-code="${code}" aria-label="Enlarge ${escapeAttribute(code)} image" class="type-icon" style="${cropStyle(typeImageCrops[code],72,72)}"></i>`}</button>`).join('')}</div>`).join('');
@@ -396,7 +397,7 @@
       const card = document.createElement('section');
       card.className = 'bag-selector'; card.dataset.bagNumber = number;
       card.innerHTML = `<h4><span class="en">Bag ${number}</span><span class="zh">行李 ${number}</span></h4><div class="bag-fields"><label class="bag-tag-field"><span class="en">Tag Number</span><span class="zh">行李牌号码</span><span class="required-mark">*</span><input data-bag-tag name="ahlBagTag${number}" placeholder="MU123456" required></label>${picker('color',number,'Color','颜色')}${picker('type',number,'Type','种类')}${picker('descriptor',number,'Descriptive Element(s)','描述特征')}<label class="wide ahl-detail-field"><span class="en">Baggage description</span><span class="zh">行李描述</span><textarea data-bag-description maxlength="500"></textarea></label><label class="wide ahl-detail-field"><span class="en">Other visible features</span><span class="zh">其他明显特征</span><textarea data-bag-other-features maxlength="500"></textarea></label></div>${number > 1 ? '<div class="bag-card-actions"><button class="remove-bag" type="button" data-remove-bag><span class="en">Remove bag</span><span class="zh">删除行李</span></button></div>' : ''}`;
-      card.querySelectorAll('[data-picker]').forEach((element) => { element.querySelector('[data-picker-options]').innerHTML = pickerOptions(element.dataset.picker); });
+      card.querySelectorAll('[data-picker]').forEach((element) => { const panel = element.querySelector('[data-picker-panel]'); element.querySelector('[data-picker-options]').innerHTML = pickerOptions(element.dataset.picker); panel.addEventListener('click', (event) => { if (event.target === panel) panel.close(); }); });
       bagSelectorGrid.appendChild(card);
     }
     function resetBagCards() { bagSelectorGrid.innerHTML = ''; bagCounter = 0; addBag(); }
@@ -406,12 +407,12 @@
       const remove = event.target.closest('[data-remove-bag]'); if (remove) { remove.closest('.bag-selector').remove(); return; }
       const pickerElement = event.target.closest('[data-picker]'); if (!pickerElement) return;
       const panel = pickerElement.querySelector('[data-picker-panel]');
-      if (event.target.closest('[data-picker-trigger]')) { document.querySelectorAll('[data-picker-panel]').forEach((item) => { if (item !== panel) item.hidden = true; }); panel.hidden = !panel.hidden; return; }
-      if (event.target.closest('[data-picker-close]')) { panel.hidden = true; return; }
+      if (event.target.closest('[data-picker-trigger]')) { document.querySelectorAll('[data-picker-panel]').forEach((item) => { if (item !== panel) item.close(); }); if (panel.open) panel.close(); else panel.showModal(); return; }
+      if (event.target.closest('[data-picker-close]')) { panel.close(); return; }
       const option = event.target.closest('[data-option]'); if (!option) return;
       const input = pickerElement.querySelector('input'); const multiple = pickerElement.dataset.picker === 'descriptor';
       if (multiple) { let values = input.value ? input.value.split(',') : []; values = values.includes(option.dataset.option) ? values.filter((value) => value !== option.dataset.option) : (values.length < 3 ? [...values,option.dataset.option] : values); input.value = values.join(','); pickerElement.querySelectorAll('[data-option]').forEach((item) => item.classList.toggle('is-selected', values.includes(item.dataset.option))); pickerElement.querySelector('[data-picker-trigger]').textContent = values.join(', ') || 'Select descriptive elements'; }
-      else { input.value = option.dataset.option; pickerElement.querySelectorAll('[data-option]').forEach((item) => item.classList.toggle('is-selected', item === option)); const trigger = pickerElement.querySelector('[data-picker-trigger]'); trigger.textContent = option.dataset.label; trigger.classList.remove('placeholder'); panel.hidden = true; }
+      else { input.value = option.dataset.option; pickerElement.querySelectorAll('[data-option]').forEach((item) => item.classList.toggle('is-selected', item === option)); const trigger = pickerElement.querySelector('[data-picker-trigger]'); trigger.textContent = option.dataset.label; trigger.classList.remove('placeholder'); panel.close(); }
     });
     bagSelectorGrid.addEventListener('pointerover', (event) => {
       if (event.pointerType === 'touch') return;
@@ -430,7 +431,7 @@
       hoverImagePreview.hidden = false;
     });
     bagSelectorGrid.addEventListener('pointerout', (event) => { if (event.target.closest('[data-icon-preview],.descriptor-icon')) hoverImagePreview.hidden = true; });
-    document.addEventListener('click', (event) => { if (!event.target.closest('[data-picker]')) document.querySelectorAll('[data-picker-panel]').forEach((panel) => { panel.hidden = true; }); });
+    document.addEventListener('click', (event) => { if (!event.target.closest('[data-picker]')) document.querySelectorAll('[data-picker-panel]').forEach((panel) => { panel.close(); }); });
     document.querySelectorAll('[data-chart-src]').forEach((button) => button.addEventListener('click', () => { chartDialog.classList.remove('icon-preview'); enlargedIcon.hidden = true; chartDialogImage.hidden = false; chartDialogImage.src = button.dataset.chartSrc; chartDialogImage.alt = button.querySelector('img').alt; chartDialog.showModal(); }));
     document.querySelector('#chart-close').addEventListener('click', () => chartDialog.close());
     chartDialog.addEventListener('click', (event) => { if (event.target === chartDialog) chartDialog.close(); });

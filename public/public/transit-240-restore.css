@@ -1,0 +1,38 @@
+/* Restore the violet ticket form while retaining scan and validation behavior. */
+body.aviation-240 { --brand:#4030ff; --ink:#161d68; --muted:#515ba0; --line:#cdd3ff; }
+.aviation-240 main { width:min(804px,calc(100% - 28px)); }
+.aviation-240 .card { background:rgba(250,251,255,.88); border-radius:12px; padding:24px; }
+.aviation-240 .form-title-row h2 { font-size:20px; }
+.aviation-240 .form-title-row .heading-icon { display:grid; width:42px; height:42px; border-radius:12px; background:#eceeff; color:#4030ff; }
+.aviation-240 label { color:#454e99; text-transform:uppercase; font-size:12px; font-weight:750; }
+.aviation-240 input,.aviation-240 select { border-color:#cdd3ff; border-radius:9px; min-height:42px; font-size:14px; }
+.aviation-240 button { background:linear-gradient(135deg,#5145ff,#3929ff); border-radius:20px; }
+.aviation-240 button.secondary { color:#202779; background:#f5f6ff; border-color:#d4d9ff; }
+.aviation-240 .itinerary { padding-left:48px; }
+.aviation-240 .itinerary::before { left:18px; border-color:#665bff; }
+.aviation-240 .stop { position:relative; grid-template-columns:64px minmax(0,1fr) minmax(0,.8fr) 38px; gap:12px; padding:0; margin-bottom:12px; }
+.aviation-240 .stop::before { left:-40px; border-color:#665bff; }
+.aviation-240 .stop-title { display:grid; place-items:center; align-self:stretch; min-height:64px; font-size:0; border:1px solid #dce0ff; border-radius:9px; background:#f6f7ff; }
+.aviation-240 .stop-title::after { content:'✈'; font-size:28px; color:#34308b; }
+.aviation-240 .stop.from-row { grid-template-columns:64px minmax(0,1fr); gap:0; }
+.aviation-240 .airport-code { display:flex; align-items:center; height:66px; border-radius:9px; background:linear-gradient(120deg,#fafbff,#e9edff); color:#192465; font-size:28px; padding:12px 24px; border:1px solid #d4d9ff; }
+.aviation-240 .stop:nth-child(2) .airport-code,.aviation-240 .stop:nth-child(2) .stop-title { background:linear-gradient(120deg,#2738a4,#171364); color:#fff; border-color:#3430a4; }
+.aviation-240 .stop:nth-child(2) .stop-title::after { color:#fff; }
+.aviation-240 .stop input { height:44px; }
+.aviation-240 .stop button.danger { min-height:38px; height:38px; width:38px; border-radius:50%; background:#ffd5d9; }
+.aviation-240 #addStop,.aviation-240 button[type=submit] { min-width:204px; }
+.aviation-240 .attachments { display:grid; grid-template-columns:minmax(0,1fr); }
+.aviation-240 .attachment-upload { border:1px dashed #c4caff; border-radius:12px; min-height:82px; padding:8px; }
+.aviation-240 .attachment-upload .attachment-preview { height:28px; background:transparent; }
+.aviation-240 .attachment-upload .attachment-preview::before { content:'↑'; width:27px; height:27px; font-size:20px; background:#4030ff; color:#fff; }
+@media(max-width:640px) {
+ .aviation-240 .card { padding:18px; }
+ .aviation-240 .stop { grid-template-columns:40px minmax(0,1fr) 38px; gap:8px; }
+ .aviation-240 .stop.from-row { grid-template-columns:40px minmax(0,1fr); }
+ .aviation-240 .stop-title { grid-column:auto; grid-row:1 / span 2; }
+ .aviation-240 .stop.from-row .stop-title { grid-row:auto; }
+ .aviation-240 .stop-date { grid-column:2; }
+ .aviation-240 .stop button.danger { grid-column:3; grid-row:1 / span 2; }
+}
+.aviation-240 .airport-code { width:auto; }
+.aviation-240 .stop.from-row .airport-code { grid-column:2; grid-row:1; }
