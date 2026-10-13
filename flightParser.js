@@ -374,7 +374,7 @@ function parseIncrementalLog(log) {
     }
 
     const name =
-      (paxMatch?.[1] || offloadedMatch?.[1] || '')
+      (section.match(/^\s*NAM\s+([A-Z]+\/[A-Z]+)(?=\s|$)/im)?.[1] || paxMatch?.[1] || offloadedMatch?.[1] || '')
         .trim();
 
     const bn =
