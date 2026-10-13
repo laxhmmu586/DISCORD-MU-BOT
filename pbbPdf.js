@@ -9,7 +9,7 @@ async function buildPbbPdf(record){
  const text=(page,value,x,top,width,size=9,f=font)=>{value=String(value||'');while(size>4&&f.widthOfTextAtSize(value,size)>width)size-=.25;page.drawText(value,{x,y:page.getHeight()-top,size,font:f,color:ink});};
  const header=pages[0];
  const positions=record.type==='arrival'?{flight:[28,190,124],date:[169,190,68],gate:[256,190,55],block:[329,190,63],bridge:[458,494,530]}:{flight:[43,207,130],date:[188,207,70],gate:[271,207,55],block:[344,207,69],bridge:[463,499,535]};
- for(const [key,value] of [['flight',record.flightNo],['date',record.date],['gate',record.gate],['block',record.blockTime]])text(header,value,...positions[key]);
+ for(const [key,value] of [['flight',record.flightNo],['date',record.date],['gate',record.gate],['block','']])text(header,value,...positions[key]);
  for(const bridge of record.bridges){const x=positions.bridge[Number(bridge.slice(1))-1];header.drawEllipse({x,y:792-(record.type==='arrival'?194:208),xScale:12,yScale:8,borderWidth:1,borderColor:ink});}
  let offset=0;
  for(const [pageIndex,groups] of mapping[record.type].entries()){
@@ -33,7 +33,7 @@ async function buildPbbPdf(record){
   for(const stroke of sig.strokes)for(let n=1;n<stroke.length;n++){const a=stroke[n-1],b=stroke[n];signaturePage.drawLine({start:{x:x+a[0]*width,y:792-top-a[1]*height},end:{x:x+b[0]*width,y:792-top-b[1]*height},thickness:.85,color:ink});}
  }
  // Keep the original page layout. Detailed role answers, notes and signing times travel as a PDF attachment.
- const audit={id:record.id,type:record.type,flightNo:record.flightNo,date:record.date,gate:record.gate,blockTime:record.blockTime,bridges:record.bridges,answers:record.answers,notes:record.notes,signals:record.signals,signatures:Object.fromEntries(Object.entries(record.signatures).map(([role,s])=>[role,{name:s.name,eid:s.eid,at:s.at}])),completedAt:record.completedAt};
+ const audit={id:record.id,type:record.type,flightNo:record.flightNo,date:record.date,gate:record.gate,blockTime:'',participants:record.participants,bridges:record.bridges,answers:record.answers,notes:record.notes,signals:record.signals,signatures:Object.fromEntries(Object.entries(record.signatures).map(([role,s])=>[role,{name:s.name,eid:s.eid,at:s.at}])),completedAt:record.completedAt};
  await doc.attach(Buffer.from(JSON.stringify(audit,null,2)),`JetBridge-${record.id}-audit.json`,{mimeType:'application/json',description:'Operator responses, notes and signature timestamps'});
  doc.setTitle(`Jet Bridge ${record.type} ${record.flightNo} ${record.date}`);doc.setSubject('Completed original Hallmark Jet Bridge checklist');
  return Buffer.from(await doc.save());

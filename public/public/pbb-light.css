@@ -30,3 +30,7 @@
 
 html.pbb-theme{background:#e9edff url('/assets/boarding-aurora-c.png') center/cover fixed}.pbb-page .check-meta strong{color:#475594}.pbb-page .check-illustration:has(img[src$="wheel-check.webp"]),.pbb-page .check-illustration:has(img[src$="external-stop.webp"]){height:auto;aspect-ratio:3/2}.pbb-page .check-illustration:has(img[src$="wheel-check.webp"]) img,.pbb-page .check-illustration:has(img[src$="external-stop.webp"]) img{object-fit:contain}
 @media(max-width:850px){html.pbb-theme,.pbb-page{background-position:70% center}}
+
+.pbb-page .flight-topbar{background:#fff;backdrop-filter:none}.pbb-brand-logo{background:#fff;box-shadow:none}.pbb-page .reference-photos .check-illustration{height:auto;aspect-ratio:auto}.pbb-page .actual-photo img{height:auto;max-height:460px;object-fit:contain;background:#fff}.reference-photos{display:grid;gap:14px}
+
+.pbb-page .actual-photo .art-caption{position:static;justify-self:start;margin:8px 10px}

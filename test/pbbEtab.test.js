@@ -13,3 +13,12 @@ test('gate service selects latest matching email, coalesces requests, returns no
  let lists=0,gets=0;const now=()=>Date.parse('2026-10-13T16:00Z');const service=createGateService({now,getClient:()=>({userId:'me',gmail:{users:{messages:{list:async({q})=>{lists++;assert.match(q,/subject:ETAB/);assert.match(q,/LAXHMXH@hallmark-aviation.com/);return {data:{messages:[{id:'old'},{id:'new'},{id:'wrong'}]}};},get:async({id})=>{gets++;return {data:{internalDate:String(Date.parse(id==='old'?'2026-10-13T14:00Z':'2026-10-13T15:00Z')),payload:{mimeType:'text/plain',body:{data:Buffer.from(id==='wrong'?'MU583/14OCT26 GATE 199':`MU583/13OCT26 GATE ${id==='new'?'132':'131'}`).toString('base64url')}}}};}}}}})});
  const [a,b]=await Promise.all([service.read('MU583','2026-10-13'),service.read('MU583','2026-10-13')]);assert.equal(a.gate,'132');assert.deepEqual(a,b);assert.equal(a.eta,undefined);assert.equal(a.gateBy,undefined);await service.read('MU583','2026-10-13');assert.equal(lists,1);assert.equal(gets,3);
 });
+
+test('today discovers only matching-date arrival/departure flights and newest gates without manual input',async()=>{
+ let lists=0;const now=()=>Date.parse('2026-10-13T16:00Z');
+ const emails={old:{internalDate:String(now()-60000),payload:{mimeType:'text/plain',body:{data:Buffer.from('MU583/13OCT26 GATE 131\nMU586/13OCT26 GATE 131\nMU577/14OCT26 GATE 133').toString('base64url')}}},latest:{internalDate:String(now()),payload:{mimeType:'text/plain',body:{data:Buffer.from('MU583/13OCT26 GATE 132\nMU586/13OCT26 GATE 132\nMU577/13OCT26 GATE TBA').toString('base64url')}}}};
+ const service=createGateService({now,getClient:()=>({userId:'me',gmail:{users:{messages:{list:async()=>{lists++;return {data:{messages:[{id:'old'},{id:'latest'}]}};},get:async({id})=>({data:emails[id]})}}}})});
+ assert.deepEqual((await service.today('2026-10-13','arrival')).flights,[{flightNo:'MU583',date:'2026-10-13',gate:'132'}]);
+ assert.deepEqual((await service.today('2026-10-13','departure')).flights,[{flightNo:'MU586',date:'2026-10-13',gate:'132'}]);assert.equal(lists,1);
+ assert.equal((await service.today('2026-10-14','arrival')).flights[0].flightNo,'MU577');
+});

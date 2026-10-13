@@ -9,5 +9,6 @@ for(const type of ['arrival','departure'])test(type+' PDF retains every original
  for(const role of ['driver','spotter'])record.signatures[role]={name:role==='driver'?'TEST DRIVER':'TEST SPOTTER',eid:'000321',at:'2026-10-13T16:00:00Z',strokes:[[[.1,.2],[.3,.7],[.6,.2]]]};
  const pdf=await buildPbbPdf(record),completed=await PDFDocument.load(pdf);assert.equal(completed.getPageCount(),source.getPageCount());
  for(let i=0;i<source.getPageCount();i++){assert.deepEqual(completed.getPages()[i].getMediaBox(),source.getPages()[i].getMediaBox());const after=streams(completed,completed.getPages()[i]);for(const original of streams(source,source.getPages()[i]))assert.ok(after.some(data=>data.equals(original)),'original graphic/text stream must remain byte-for-byte unchanged');}
+ assert.ok(!streams(completed,completed.getPages()[0]).some(data=>data.toString().includes('30393a3337')),'block time is not written even for old records');
  assert.ok(completed.catalog.get(PDFName.of('Names')),'audit attachment must be present');
 });
