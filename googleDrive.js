@@ -5517,6 +5517,7 @@ async function getCbsOpenBagAuthorizationPdf() {
 // Exports
 // ===============================
 module.exports = {
+  getNextDayInfoGmailClient,
   seedBoardingLive,
   readBoardingLiveNbrd,
   backupBoardingLive,
