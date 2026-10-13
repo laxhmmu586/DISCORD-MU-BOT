@@ -1,0 +1,27 @@
+/* Match the bright ribbon/cloud treatment of the 240 form. */
+.pbb-page{color:#18246a;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:#e9edff url('/assets/boarding-aurora-c.png') center/cover fixed;color-scheme:light}
+.pbb-page .flight-topbar{background:#ffffff66;border-color:#fff9;box-shadow:0 1px 20px #5b60a610;backdrop-filter:blur(18px)}
+.pbb-brand-logo{background:#ffffffa3;box-shadow:0 2px 15px #5765b511}
+.pbb-intro,.flight-info-panel{max-width:800px;margin-left:auto;margin-right:auto}.pbb-intro h1{color:#14216a}.pbb-intro p,.eyebrow,.back-home,.pbb-footer{color:#485b9c}
+.pbb-home,.pbb-panel{background:linear-gradient(135deg,#fffffff0,#f7f8ffe0);border-color:#ffffffdb;border-radius:16px;box-shadow:inset 0 1px 0 #fff,0 14px 40px #555bb31c;backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px)}
+.pbb-hero{background:#e7edff;border-color:#dde3ff}.pbb-choices .micro,.pbb-page label,.pbb-page legend,.field-hint,.info-note,.flight-summary p,.role-progress p,.role-title b,.check-meta,.employee-stats{color:#4a5799}
+.pbb-page h2,.pbb-page h3,.check-statement,.role-title strong,.employee-toolbar h2{color:#16256b}
+.pbb-page .type-card,.pbb-page .primary{background:linear-gradient(115deg,#5545ff,#342aff);border:1px solid #7b74ff;color:#fff;box-shadow:0 5px 12px #4336ff28,inset 0 1px 0 #ffffff40}
+.pbb-page .type-card strong{color:#fff}.pbb-page .type-card.departure{background:linear-gradient(130deg,#fcfcff,#e8ecff);border-color:#cfd7ff;color:#1c2b79;box-shadow:0 3px 12px #5763bd12}.pbb-page .type-card.departure strong{color:#1c2b79}
+.pbb-page .type-card:hover,.pbb-page .primary:hover{background:linear-gradient(115deg,#6759ff,#4035f1)}.pbb-page .type-card.departure:hover{background:#e3e8ff}
+.pbb-page .primary,.pbb-page .secondary{border-radius:13px}.pbb-page .secondary{color:#253384;background:#f8f9ffb8;border-color:#cbd3ff;box-shadow:none}
+.pbb-page .text-button{color:#3e469b!important}.pbb-page input,.pbb-page select,.pbb-page textarea{background:#ffffffbb;color:#1b2c78;border-color:#cbd4ff;box-shadow:none;color-scheme:light}
+.pbb-page input::placeholder,.pbb-page textarea::placeholder{color:#929ccc;opacity:1}.pbb-page fieldset{border-color:#d4dcff}
+.operator-choice span{color:#42539c;background:#ffffffab;border-color:#cbd4ff}.operator-choice input:checked+span{background:linear-gradient(115deg,#274cb1,#201774);color:#fff;border-color:#716ceb;box-shadow:0 3px 10px #352ca726}
+.bridge-options input{background:#ffffffbf;border-color:#a4b4ef}.bridge-options input:checked{background:#4b3dff;border-color:#776bff}
+.steps span{border-color:#dbe0f4;color:#707eaf}.steps .active{border-color:#4d40ff;color:#28358d}.item-progress,.role-progress progress{accent-color:#5144ff}
+.role-switch button{background:#f5f7ff;color:#42549c;border-color:#d0d8fa}.role-switch .selected{background:linear-gradient(110deg,#3745bc,#26207e);color:#fff;border-color:#6d6bea}
+.role-progress{border-color:#d7def8}.live-label{color:#177453}.live-label.offline{color:#96532b}.check-illustration{border-color:#cbd6f5;background:#ecf0ff}
+.answer-buttons button{background:#f0f3ff;border-color:#d4dcf8;color:#4f5b93}.answer-buttons button[data-value=Y]{color:#16774b;background:#edf9f0}.answer-buttons button[data-value=N]{color:#b62c37;background:#fff0f1}.answer-buttons .chosen{box-shadow:inset 0 0 0 2px currentColor;background:#e1e8ff}
+.signal-card{background:#f4f6ff;border-color:#d1dafb}.signal-heading,.signal-card p,.signal-card small{color:#4e6198}.signal-heading b{color:#19734e}.signal-card.confirmed{background:#e8f9ee;border-color:#a2d9b4}.signal-time{color:#176c43;background:#d8f3e3}.pbb-page .safe-button{background:linear-gradient(120deg,#0baa64,#07894f);color:#fff;border-color:#75d9a5}
+.signal-dialog,.photo-dialog{color:#182b6e;background:#f8faff;border-color:#b9c7f1;box-shadow:0 20px 70px #27305a44}.photo-dialog p{color:#50619b}.photo-close{background:#edf1ff;color:#273783;border-color:#bbc9f3}
+.eid-display{color:#39429d}.signature-canvas{background:#fff;border-color:#bbc7ed}.complete-check{color:#138149;background:#dcf7e6;border-color:#88d5a5}.delivery-row{border-color:#d3ddf8}.delivery-row .sent{color:#167448}.delivery-row .failed,.pbb-page #pbb-status{color:#aa3037}
+.employee-table th{color:#4b579c;border-color:#d0daf9}.employee-table td{border-color:#e3e8f8}.employee-table input[type=checkbox]{accent-color:#4d40ff}.pbb-page a:focus-visible,.pbb-page button:focus-visible,.pbb-page input:focus-visible,.pbb-page select:focus-visible{outline:3px solid #6c61e8;outline-offset:3px}
+@media(max-width:850px){.pbb-page{background-position:center;background-attachment:fixed}.pbb-home,.pbb-panel{border-radius:16px}.pbb-page .flight-topbar{background:#ffffff82}}
+
+.form-grid.no-block .gate-field{grid-column:1/-1}

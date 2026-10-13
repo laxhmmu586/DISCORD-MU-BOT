@@ -2,7 +2,7 @@
 
 `/pbb.html` is a public English arrival/departure checklist. Separate browser sessions claim Driver or Spotter, see live SSE updates, select their role on the flight page, and sign using qualified employee names and EIDs. Opening the same current flight, gate and bridges joins the active checklist.
 
-The simplified READY / SAFE / GO controls write the corresponding individual source checklist rows. Arrival gate/PPE and briefing questions default to YES and are hidden from the UI. Remote bay walk-through defaults to N/A. Departure door closure defaults to YES. Date is automatically the current Los Angeles day; no date field is shown. Gmail ETAB supplies only the flight's gate, including messages without an ETA. Missing gates allow manual entry. Block time accepts HH:MM or HHMM. There is no ETA display, 15-minute calculation or gate-arrival timestamp action.
+The simplified READY / SAFE / GO controls write the corresponding individual source checklist rows. Arrival gate/PPE, briefing and unused-bridge secured/closed questions default to YES and are hidden from the UI. Remote bay walk-through defaults to N/A. Departure door closure defaults to YES. Date is automatically the current Los Angeles day; no date field is shown. Gmail ETAB supplies only the flight's gate, including messages without an ETA. Missing gates allow manual entry. Arrival block time is filled only by Driver and accepts HH:MM or HHMM; Spotter does not fill it, and Departure has no block time. A Driver joining an Arrival created by Spotter supplies the shared time. There is no ETA display, 15-minute calculation or gate-arrival timestamp action.
 
 SSE supports six simultaneous independent browser sessions on the same checklist. The live badge shows actual unique sessions and updates on connection/disconnection. Tabs from one session are counted once. Driver and Spotter remain the two operational owners; additional sessions observe their updates. Connections send 15-second keep-alives and automatically reconnect after interruption.
 
@@ -20,5 +20,7 @@ Completed PDFs load the supplied source PDFs and overlay answers, names, EIDs an
 ## Validation
 
 Run `npm test`. `scripts/verify-pbb-ui.cjs` additionally exercises six independent browser sessions, employee administration, ETAB gate autofill, role selection, hand signals, signatures, responsive layout, and PDF output. Its external delivery and mail dependencies are fixtures; it does not send test files to production channels or folders. Live credentials and destination permissions need verification in the deployment environment.
+
+The UI uses the bright ribbon/cloud background, white glass cards, navy text and blue-purple controls of the 240 form.
 
 Illustrations are generated reference images, not operational instructions. Final assets and generation specifications are in `public/public/assets/pbb/image-prompts.json`.

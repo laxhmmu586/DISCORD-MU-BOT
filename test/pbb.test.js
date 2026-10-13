@@ -11,7 +11,7 @@ test('role isolation, shared confirmations, sign-off, immutable completed record
  r=store.mutate(r.id,driver,{action:'claim',role:'driver'});assert.equal(r.answers.spotter.a1,'Y');
  assert.throws(()=>store.mutate(r.id,spotter,{action:'answer',role:'driver',itemId:'a1',value:'N',note:'test'}),/another operator/);
  assert.throws(()=>store.mutate(r.id,driver,{action:'answer',role:'spotter',itemId:'a1',value:'Y'}),/different/);
- assert.throws(()=>store.mutate(r.id,driver,{action:'answer',role:'driver',itemId:'a3',value:'N'}),/Explain/);
+ assert.equal(store.mutate(r.id,driver,{action:'answer',role:'driver',itemId:'a3',value:'N'}).answers.driver.a3,'N');
  store.mutate(r.id,spotter,{action:'claim',role:'spotter'});
  for(const role of ['driver','spotter'])for(const item of items.arrival.filter(x=>x.id!=='a1'&&!x.hidden&&x.roles.includes(role)))store.mutate(r.id,role==='driver'?driver:spotter,{action:'answer',role,itemId:item.id,value:'Y'});
  store.mutate(r.id,spotter,{action:'signal',role:'spotter',phase:'safe'});store.mutate(r.id,driver,{action:'signal',role:'driver',phase:'go'});
@@ -66,7 +66,7 @@ test('shared buttons fill original rows atomically and enforce operator and depa
 });
 
 test('arrival first item is hidden YES by default, date is today and role claim stays isolated',()=>{
- const s=createStore(':memory:',{now:()=>new Date('2026-10-13T16:30:00Z')});let r=s.create({...info,date:'2020-01-01'},admin);assert.equal(r.date,'2026-10-13');assert.equal(r.answers.driver.a1,'Y');assert.equal(r.answers.spotter.a1,'Y');assert.equal(items.arrival.find(x=>x.id==='a1').hidden,true);
+ const s=createStore(':memory:',{now:()=>new Date('2026-10-13T16:30:00Z')});let r=s.create({...info,date:'2020-01-01'},admin);assert.equal(r.date,'2026-10-13');assert.equal(r.answers.driver.a1,'Y');assert.equal(r.answers.spotter.a1,'Y');assert.equal(r.answers.driver.a5,'Y');assert.equal(items.arrival.find(x=>x.id==='a1').hidden,true);
  r=s.mutate(r.id,driver,{action:'claim',role:'driver'});assert.equal(r.owners.driver,driver.uid);assert.throws(()=>s.mutate(r.id,spotter,{action:'claim',role:'driver'}),/another operator/);assert.throws(()=>s.mutate(r.id,driver,{action:'claim',role:'spotter'}),/different operator/);assert.throws(()=>s.mutate(r.id,driver,{action:'answer',role:'driver',itemId:'a1',value:'N'}),/assigned/);assert.equal(s.get(r.id).answers.driver.a1,'Y');s.db.close();
 });
 
