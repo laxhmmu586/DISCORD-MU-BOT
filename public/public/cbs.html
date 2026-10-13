@@ -1030,12 +1030,13 @@
     }
     async function syncCbsPnrRecords() {
       if (window._cbsPnrSyncPending) return window._cbsPnrSyncPending;
+      const forceRefresh = Boolean(window._forceCbsRefresh);
       window._cbsPnrSyncPending = (async () => {
         try {
           const res = await fetch(`${apiBase}/cbs-record-sync`, {
             method:'POST',
             headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({ updatedBy:await currentUpdater(), forceRefresh:Boolean(window._forceCbsRefresh) })
+            body:JSON.stringify({ updatedBy:await currentUpdater(), forceRefresh })
           });
           const data = await parseJson(res);
           if (!res.ok) throw new Error(data.error || 'Automatic PNR record sync failed');
@@ -1746,11 +1747,12 @@
         if (!res.ok) throw new Error(data.error || 'Case loading failed');
         const nextRows = data.rows || [];
         const signature = JSON.stringify(nextRows);
+        // Drive uploads can change while the case rows stay identical.
+        syncCbsPnrRecords();
         if (window._silentCbsRefresh && window._cbsRowsSignature === signature) return;
         window._cbsRowsSignature = signature;
         window._cbsRows = nextRows;
         renderCases();
-        syncCbsPnrRecords();
         if (!shipmentCard.hidden) renderShipments();
         if (window._unresolvedBaggageLoaded) renderUnresolvedBaggage(window._unresolvedBaggageSourceRows || []);
       } catch (error) {
