@@ -23,7 +23,7 @@ test('role isolation, shared confirmations, sign-off, immutable completed record
 });
 test('employee seed, exact string IDs, qualified-only options and concurrent admin save protection',()=>{
  const s=createStore(':memory:',{now:()=>new Date('2026-10-13T16:00:00Z')}),employees=createEmployeeStore(s.db,{seed:employeeSeed}),data=employees.get();assert.equal(data.employees.length,29);assert.equal(data.employees[0].discordId,'900000000000000001');assert.equal(employees.options().length,0);
- data.employees[3].driver=true;data.employees[4].spotter=true;const saved=employees.save(data,admin);
+ data.employees[3].attach=true;data.employees[4].spotter=true;const saved=employees.save(data,admin);
  assert.equal(saved.revision,2);assert.equal(employees.options().length,2);assert.equal(employees.options()[0].eid,'123456');assert.equal(employees.options()[0].discordId,undefined);
  assert.throws(()=>employees.save(data,admin),/changed/);s.db.close();
 });
@@ -35,7 +35,7 @@ test('API protects employee data, SSE publishes snapshots, two-role PDF triggers
  try{
  const guest=await (await fetch(base+'/pbb-api/session',{method:'POST'})).json();const publicResponse=await fetch(base+'/pbb-api/records',{headers:{Authorization:'Bearer '+guest.token}});assert.equal(publicResponse.status,200);assert.equal((await fetch(base+'/employee-admin-api',{headers:{Authorization:'Bearer '+guest.token}})).status,401);
  assert.equal((await api('/employee-admin-api','driver')).status,403);assert.equal((await api('/employee-admin-api','bad')).status,401);
- let data=await (await api('/employee-admin-api')).json();data.employees[3].driver=true;data.employees[3].spotter=true;data.employees[4].spotter=true;assert.equal((await api('/employee-admin-api','admin',data)).status,200);
+ let data=await (await api('/employee-admin-api')).json();data.employees[3].attach=true;data.employees[3].spotter=true;data.employees[4].spotter=true;assert.equal((await api('/employee-admin-api','admin',data)).status,200);
  const r=await (await api('/pbb-api/records','admin',info)).json();const stream=await api('/pbb-api/records/'+r.id+'/stream','driver');assert.match(stream.headers.get('content-type'),/event-stream/);const reader=stream.body.getReader();const initial=await reader.read();assert.match(new TextDecoder().decode(initial.value),/event: state/);
  const lobby=await api('/pbb-api/active/stream?flightNo=MU583&type=arrival','spotter'),lobbyReader=lobby.body.getReader();const lobbyFirst=new TextDecoder().decode((await lobbyReader.read()).value);assert.match(lobbyFirst,/event: rooms/);assert.match(lobbyFirst,/\"L2\"/);
  for(const role of ['driver','spotter'])assert.equal((await api('/pbb-api/records/'+r.id,role,{action:'claim',role})).status,200);
