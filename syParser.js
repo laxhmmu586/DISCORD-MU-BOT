@@ -111,6 +111,8 @@ function isDeletedPassengerSection(section) {
 }
 
 function getPassengerNameFromSection(section) {
+  const fullName = String(section || "").match(/^\s*NAM\s+([A-Z]+\/[A-Z]+)(?=\s|$)/im)?.[1];
+  if (fullName) return fullName.toUpperCase();
   const passengerLine = getPassengerRecordLine(section);
   const lineName = (passengerLine.match(/^\s*\d+\.\s*\d?([A-Z\/]+\+?)/i)?.[1] || '').replace(/\+$/, '').toUpperCase();
   if (lineName) return lineName;
@@ -248,7 +250,7 @@ function flightDateToUtc(flightDate) {
 }
 
 function extractTicketNoFromSection(section) {
-  const adultTicketNo = String(section || '').match(/\bET\s+TKNE\/(?!INF)(\d{10,})\/\d+\b/i)?.[1] || '';
+  const adultTicketNo = String(section || '').match(/(?<![A-Z0-9/])TKNE\/(?!INF)(\d{10,})(?:\/\d+)?\b/i)?.[1] || '';
   const infantTicketNo = String(section || '').match(/\bET\s+TKNE\/INF(\d{10,})\/\d+\b/i)?.[1] || '';
   return adultTicketNo || infantTicketNo;
 }
@@ -260,7 +262,7 @@ function isSameKnownTicket(a, b) {
 }
 
 function extractSeatAfterBn(text) {
-  return (String(text || '').match(/\bBN\s*\d{1,3}\b\s+\*?(\d{1,3}[A-Z])\b/i)?.[1] || '').toUpperCase();
+  return (String(text || '').match(/BN\s*\d{1,3}\b\s+\*?(\d{1,3}[A-Z])\b/i)?.[1] || '').toUpperCase();
 }
 
 function cabinFromSeat(seat) {
@@ -1068,7 +1070,7 @@ function enrichInfantTicketAuditFromLog(log, syInfo, targetYmd = null) {
     if (infantMarker) {
       const passengerLine = getPassengerRecordLine(section);
       const adultName = (passengerLine.match(/^\s*\d+\.\s*\d?([A-Z/]+\+?)/i)?.[1] || '').replace(/\+$/, '');
-      const adultTicketNo = section.match(/\bET\s+TKNE\/(?!INF)(\d{10,})\/\d+\b/i)?.[1] || '';
+      const adultTicketNo = section.match(/(?<![A-Z0-9/])TKNE\/(?!INF)(\d{10,})(?:\/\d+)?\b/i)?.[1] || '';
       const infantTicketNo = section.match(/\bET\s+TKNE\/INF(\d{10,})\/\d+\b/i)?.[1] || '';
       put({ adultName, adultTicketNo, infantName, infantTicketNo });
     }
@@ -1397,7 +1399,7 @@ function enrichSeatMapRecordsFromLog(log, syInfo, targetYmd = null) {
     if (!matchesSyFlightRecord(prMatch[1], prMatch[2], syInfo)) continue;
 
     const passengerLine = getPassengerRecordLine(section);
-    const passengerName = (passengerLine.match(/^\s*\d+\.\s*\d?([A-Z\/]+\+?)/i)?.[1] || '').replace(/\+$/, '').toUpperCase();
+    const passengerName = getPassengerNameFromSection(section);
     const paxListName = extractPaxListName(section);
     const bn = section.match(/\bBN\s*(\d{1,3})\b/i)?.[1]?.padStart(3, '0') || '';
     const seat = (
@@ -1414,7 +1416,7 @@ function enrichSeatMapRecordsFromLog(log, syInfo, targetYmd = null) {
     const specialServices = serviceCodes.filter((code) => new RegExp(`(?:\\s|\\/|^)${code}(?:\\s|\\/|$)`, 'i').test(nonPsmSection));
     const specialMeals = [...section.matchAll(/\bSPML-([A-Z]{4})\b/gi)].map((m) => m[1].toUpperCase());
     const ffMatch = section.match(/\bFF\/([A-Z0-9]{2})\s+([A-Z0-9]+)\/([VGSPE])\b/i);
-    const adultTicketNo = section.match(/\bET\s+TKNE\/(?!INF)(\d{10,})\/\d+\b/i)?.[1] || '';
+    const adultTicketNo = section.match(/(?<![A-Z0-9/])TKNE\/(?!INF)(\d{10,})(?:\/\d+)?\b/i)?.[1] || '';
     const infantTicketNo = section.match(/\bET\s+TKNE\/INF(\d{10,})\/\d+\b/i)?.[1] || '';
     const hasInfant = /\bINF1\/0\b/i.test(section) || Boolean(infantTicketNo);
     const hasBadSeat = /^\s*CKIN\s+BAD\s+SEAT\s+\d{1,3}[A-Z]\b/im.test(section);
@@ -1637,7 +1639,7 @@ ${section}`,
     const passportNat = passportNationalityFromRawLine(passportRawLine);
     const isPassportExpiringSoon = passportNat !== 'CHN' && isPassportExpiringWithinMonths(expField, todayUtc, 3);
     const passengerLine = getPassengerRecordLine(section);
-    const passengerName = (passengerLine.match(/^\s*\d+\.\s*\d?([A-Z\/]+\+?)/i)?.[1] || '').replace(/\+$/, '').toUpperCase();
+    const passengerName = getPassengerNameFromSection(section);
     const paxListName = extractPaxListName(section);
     const passengerSeat = (
       extractSeatAfterBn(passengerLine) ||
@@ -1645,7 +1647,7 @@ ${section}`,
       ''
     ).toUpperCase();
     const ffMatch = section.match(/\bFF\/([A-Z0-9]+)\s+(\d+)\/([A-Z])\b/i);
-    const adultTicketNo = section.match(/\bET\s+TKNE\/(?!INF)(\d{10,})\/\d+\b/i)?.[1] || '';
+    const adultTicketNo = section.match(/(?<![A-Z0-9/])TKNE\/(?!INF)(\d{10,})(?:\/\d+)?\b/i)?.[1] || '';
     const infantTicketNo = section.match(/\bET\s+TKNE\/INF(\d{10,})\/\d+\b/i)?.[1] || '';
     const ticketNo = adultTicketNo || infantTicketNo || '';
     const bagLine = section.match(/BAGTAG\s*\/([^\n\r]+)/i)?.[1] || '';
