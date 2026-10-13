@@ -3594,7 +3594,11 @@ app.post('/cbs-record-sync', async (req, res) => {
     const options = { forceRefresh:Boolean(req.body?.forceRefresh) };
     const [passengerCases, unresolvedCases] = await Promise.all([getCbsCases(options), getCbsUnresolvedBaggageCases(options)]);
     const result = await startCbsPnrRecordSync(passengerCases, unresolvedCases, updatedBy);
-    cbsPnrSyncRecent = { at:Date.now(), result };
+    // A missing archive record may arrive after this scan. Only throttle a
+    // completed sync; misses and failed writes must remain eligible for retry.
+    cbsPnrSyncRecent = result.checked === result.updated && !result.errors.length
+      ? { at:Date.now(), result }
+      : { at:0, result:null };
     return res.json(result);
   } catch (err) {
     console.error('CBS automatic record sync error:', err);
