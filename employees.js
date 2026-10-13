@@ -10,10 +10,12 @@ function createEmployeeStore(db,{seed=require('./employeeSeed')()}={}){
   if(!Array.isArray(body.employees)||body.employees.length>500)throw new Error('Invalid employee list');
   const ids=new Set(),discordIds=new Set();
   const employees=body.employees.map(row=>{
+   const code=String(row.code??'').trim(),phone=String(row.phone??'').trim(),email=String(row.email??'').trim();
+   if(code.length>40||phone.length>40||email.length>254||(email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)))throw new Error('Check employee codes, phone numbers and email addresses');
    const id=String(row.id||''),name=String(row.name||'').trim(),eid=String(row.eid||'').trim(),discordId=String(row.discordId||'').trim();
    if(!/^[a-zA-Z0-9-]{1,80}$/.test(id)||ids.has(id)||name.length>100||(eid&&!/^\d{1,12}$/.test(eid))||(discordId&&!/^\d{17,20}$/.test(discordId))||(discordId&&discordIds.has(discordId))||typeof row.driver!=='boolean'||typeof row.spotter!=='boolean'||((row.driver||row.spotter)&&!name))throw new Error('Check employee names, EIDs and unique Discord IDs');
    try{employeeFont.encodeText(name);}catch{throw new Error('Use employee names in English spelling for the original PDF');}
-   ids.add(id);if(discordId)discordIds.add(discordId);return {id,name,eid,discordId,driver:row.driver,spotter:row.spotter};
+   ids.add(id);if(discordId)discordIds.add(discordId);return {id,code,name,eid,phone,email,discordId,driver:row.driver,spotter:row.spotter};
   });
   const next={revision:current.revision+1,employees,updatedAt:new Date().toISOString(),updatedBy:user.email};db.prepare('UPDATE pbb_employees SET data=? WHERE singleton=1').run(JSON.stringify(next));return next;
  });return {get,save,eligible(role,id){return get().employees.find(e=>e.id===id&&e.name&&e[role]);},options(){return get().employees.filter(e=>e.name&&(e.driver||e.spotter)).map(({id,name,eid,driver,spotter})=>({id,name,eid,driver,spotter}));}};
