@@ -4987,7 +4987,9 @@ async function updateCbsCase(rowNumber, update = {}) {
     ? currentEvents.filter((event) => event.key !== (update.replaceEventKey || update.deleteEventKey))
     : currentEvents;
   const appendedEvents = followUpEvent ? [historyEvent, followUpEvent] : [historyEvent];
-  const updateEvents = incomingNote ? retainedEvents.concat(appendedEvents).slice(-100) : retainedEvents;
+  const updateEvents = incomingNote || update.updateEvent || update.followUpEvent
+    ? retainedEvents.concat(appendedEvents).slice(-100)
+    : retainedEvents;
   if (update.deleteEventKey) {
     const latestEvent = updateEvents[updateEvents.length - 1];
     next.status = latestEvent?.status || 'Open';
