@@ -34,6 +34,7 @@
     item('d11','Departure','driver','Turn off power.','stop'),
     item('d12','Departure','driver','Ensure all sterile area doors allowing access to the terminal from ramp are securely locked.','interior')
   ];
+  arrival.find(x=>x.id==='a1').hidden=true;arrival.find(x=>x.id==='a1').defaultValue='Y';
   arrival.find(x=>x.id==='a2').hidden=true;arrival.find(x=>x.id==='a2').defaultValue='Y';
   arrival.find(x=>x.id==='a10').hidden=true;arrival.find(x=>x.id==='a10').defaultValue='NA';
   departure.find(x=>x.id==='d1').defaultValue='Y';
