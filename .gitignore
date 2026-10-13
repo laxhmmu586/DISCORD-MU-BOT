@@ -1,4 +1,5 @@
 .env
+data/employee-seed.json
 node_modules/
 data/*.db
 data/*.db-wal

@@ -1,0 +1,14 @@
+{
+  "mode": "Built-in image_gen tool; generated and edited raster images",
+  "common": "Photorealistic China Eastern Boeing 777-300ER at a simulated LAX gate in daylight. Realistic widebody height and proportions, fuselage clearly above a standing adult. Aircraft tires on apron, landing gear independent from passenger boarding bridge support and bogie. Visible safety vest backs carry supplied Hallmark Aviation Services logo. No instructional text overlays.",
+  "assets": {
+    "hero.webp": "Wide gate overview of aircraft and jet bridge with realistic door-threshold docking height and independent ground equipment.",
+    "ppe.webp": "Driver and spotter wearing correct safety PPE, full-body figures at widebody gate, aircraft towering over people; logo on vest backs.",
+    "ramp.webp": "Ground-level wide view. Aircraft nose landing gear beneath forward fuselage at left, tires on apron. Bridge at right docks at L2 doorway with separate vertical support and low bogie tires on apron. Small worker beneath outboard cabin edge looks upward at the connection. Remove confusing tire-like shapes below bridge cabin. No aircraft gear on bridge beam, platform, canopy or walkway.",
+    "bridge.webp": "Same final ramp illustration, reused for connection inspection.",
+    "signal.webp": "One bridge aligned at a free aircraft doorway before docking. Small full-body spotter near outboard bridge edge looks up and gives thumbs-up to operator. Clear nose gear left and independent bridge bogie right; head below fuselage belly.",
+    "interior.webp": "Photorealistic clean, dry, well-lit passenger bridge corridor with unobstructed floor.",
+    "stop.webp": "Photorealistic close-up of a red mushroom emergency stop button with yellow collar on a grey bridge control console."
+  },
+  "reference_use": "Supplied company logo and user drafts; real 777 gate photos used only as geometry references. Generated assets are illustrations."
+}
