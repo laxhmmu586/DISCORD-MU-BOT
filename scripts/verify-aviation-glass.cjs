@@ -46,7 +46,7 @@ const { operationalDate } = require('../flightContext');
   for (const name of pages) {
     await page.goto('https://www.mufcapp.net/'+name);
     await page.locator('body.aviation-page').waitFor();
-    if (!['scan.html','m-board.html'].includes(name)) assert.match(await page.locator('body').evaluate(el=>getComputedStyle(el,'::before').backgroundImage), /boarding-aurora-c\.png/, 'Shared cloud artwork must load');
+    assert.match(await page.locator('body').evaluate(el=>getComputedStyle(el,'::before').backgroundImage), /boarding-aurora-c\.png/, 'Shared cloud artwork must load');
     if (name === 'scan.html') {
       const entry = page.locator('.nbrd-modal[open]');
       await entry.waitFor();
