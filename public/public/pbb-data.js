@@ -39,6 +39,9 @@
   arrival.find(x=>x.id==='a2').hidden=true;arrival.find(x=>x.id==='a2').defaultValue='Y';
   arrival.find(x=>x.id==='a10').hidden=true;arrival.find(x=>x.id==='a10').defaultValue='NA';
   departure.find(x=>x.id==='d1').defaultValue='Y';
+  for(const [id,photo] of Object.entries({a8:'ramp-path.svg',a9:'canopy-bumper.svg',d1:'aircraft-door.svg',d3:'safety-strap.svg'})){const row=[...arrival,...departure].find(x=>x.id===id);row.art=null;row.photos=[photo];}
+  departure.find(x=>x.id==='d2').photos=['safety-shoe.jpg','safety-shoe-storage.jpg'];
+  departure.find(x=>x.id==='d4').photos=['control-console.jpg'];
   const data={arrival,departure};
   if(typeof module==='object') module.exports=data; else root.PBB_ITEMS=data;
 })(typeof window==='object'?window:globalThis);

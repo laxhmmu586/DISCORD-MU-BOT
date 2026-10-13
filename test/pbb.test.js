@@ -9,7 +9,7 @@ test('role isolation, shared confirmations, sign-off, immutable completed record
  assert.throws(()=>store.mutate(r.id,driver,{action:'answer',role:'driver',itemId:'a8',value:'Y'}),/not assigned/);
  assert.throws(()=>store.mutate(r.id,driver,{action:'sign',role:'driver',name:'A',strokes}),/Complete all/);
  r=store.mutate(r.id,driver,{action:'claim',role:'driver'});assert.equal(r.answers.spotter.a1,'Y');
- assert.throws(()=>store.mutate(r.id,spotter,{action:'answer',role:'driver',itemId:'a1',value:'N',note:'test'}),/another operator/);
+ assert.throws(()=>store.mutate(r.id,spotter,{action:'answer',role:'driver',itemId:'a1',value:'N',note:'test'}),/not assigned/);
  assert.throws(()=>store.mutate(r.id,driver,{action:'answer',role:'spotter',itemId:'a1',value:'Y'}),/assigned/);
  assert.equal(store.mutate(r.id,driver,{action:'answer',role:'driver',itemId:'a3',value:'N'}).answers.driver.a3,'N');
  store.mutate(r.id,spotter,{action:'claim',role:'spotter'});
@@ -29,7 +29,7 @@ test('employee seed, exact string IDs, qualified-only options and concurrent adm
 });
 test('API protects employee data, SSE publishes snapshots, two-role PDF triggers and retries skip successful targets',async()=>{
  const app=express();app.use(express.json());const store=createStore(':memory:',{now:()=>new Date('2026-10-13T16:00:00Z')});let driveWrites=0,discordWrites=0,discordFail=true;
- const integration=registerPbb(app,{store,employeeSeed,authenticate:async req=>{if(req.headers.authorization==='Bearer admin')return admin;if(req.headers.authorization==='Bearer spotter')return spotter;if(req.headers.authorization==='Bearer driver')return driver;throw Error('Unauthenticated');},buildPdf:async()=>Buffer.from('%PDF fixture'),gateService:{read:async()=>({status:'unavailable'})},drive:{files:{generateIds:async()=>({data:{ids:['file-id']}}),get:async()=>{throw Object.assign(Error('missing'),{code:404});},create:async()=>{driveWrites++;return {data:{id:'file-id'}};}}},client:{channels:{fetch:async()=>({isTextBased:()=>true,send:async()=>{discordWrites++;if(discordFail)throw Error('test failure');return {id:'message-id'};}})}}});
+ const integration=registerPbb(app,{store,employeeSeed,authenticate:async req=>{if(req.headers.authorization==='Bearer admin')return admin;if(req.headers.authorization==='Bearer spotter')return spotter;if(req.headers.authorization==='Bearer driver')return driver;throw Error('Unauthenticated');},buildPdf:async()=>Buffer.from('%PDF fixture'),gateService:{read:async()=>({status:'unavailable'}),today:async(date,type)=>({flights:[{flightNo:'MU583',date,gate:'132'}]})},drive:{files:{generateIds:async()=>({data:{ids:['file-id']}}),get:async()=>{throw Object.assign(Error('missing'),{code:404});},create:async()=>{driveWrites++;return {data:{id:'file-id'}};}}},client:{channels:{fetch:async()=>({isTextBased:()=>true,send:async()=>{discordWrites++;if(discordFail)throw Error('test failure');return {id:'message-id'};}})}}});
  const server=app.listen(0,'127.0.0.1');await new Promise(resolve=>server.on('listening',resolve));const base='http://127.0.0.1:'+server.address().port;
  const api=async(path,who='admin',body)=>fetch(base+path,{headers:{Authorization:'Bearer '+who,'Content-Type':'application/json'},...(body?{method:'POST',body:JSON.stringify(body)}:{})});
  try{
@@ -68,15 +68,30 @@ test('shared buttons fill original rows atomically and enforce operator and depa
  r=s.mutate(arrival.id,driver,{action:'signal',role:'driver',phase:'go'});assert.equal(r.answers.driver.a12,'Y');assert.equal(r.answers.driver.a14,'Y');s.db.close();
 });
 
-test('arrival first item is hidden YES by default, date is today and role claim stays isolated',()=>{
+test('arrival first item is hidden YES by default, date is today and another driver can continue',()=>{
  const s=createStore(':memory:',{now:()=>new Date('2026-10-13T16:30:00Z')});let r=s.create({...info,date:'2020-01-01'},admin);assert.equal(r.date,'2026-10-13');assert.equal(r.answers.driver.a1,'Y');assert.equal(r.answers.spotter.a1,'Y');assert.equal(r.answers.driver.a5,'Y');assert.equal(items.arrival.find(x=>x.id==='a1').hidden,true);
- r=s.mutate(r.id,driver,{action:'claim',role:'driver'});assert.equal(r.owners.driver,driver.uid);assert.throws(()=>s.mutate(r.id,spotter,{action:'claim',role:'driver'}),/another operator/);assert.equal(s.mutate(r.id,driver,{action:'claim',role:'spotter'}).owners.spotter,driver.uid);assert.throws(()=>s.mutate(r.id,driver,{action:'answer',role:'driver',itemId:'a1',value:'N'}),/assigned/);assert.equal(s.get(r.id).answers.driver.a1,'Y');s.db.close();
+ r=s.mutate(r.id,driver,{action:'claim',role:'driver'});assert.equal(r.owners.driver,driver.uid);assert.equal(s.mutate(r.id,spotter,{action:'claim',role:'driver'}).owners.driver,spotter.uid);assert.equal(s.mutate(r.id,driver,{action:'claim',role:'spotter'}).owners.spotter,driver.uid);assert.throws(()=>s.mutate(r.id,driver,{action:'answer',role:'driver',itemId:'a1',value:'N'}),/assigned/);assert.equal(s.get(r.id).answers.driver.a1,'Y');s.db.close();
 });
 
 test('operators opening the same current flight and bridge join one active checklist',()=>{
- const s=createStore(':memory:',{now:()=>new Date('2026-10-13T16:00:00Z')});const first=s.create(info,driver),second=s.create({...info,blockTime:'09:10',date:'2020-01-01'},spotter);assert.equal(first.id,second.id);assert.equal(s.list().length,1);assert.equal(second.blockTime,'09:05');assert.notEqual(s.create({...info,bridges:['L1']},driver).id,first.id);s.db.close();
+ const s=createStore(':memory:',{now:()=>new Date('2026-10-13T16:00:00Z')});const first=s.create(info,driver),second=s.create({...info,blockTime:'09:10',date:'2020-01-01'},spotter);assert.equal(first.id,second.id);assert.equal(s.list().length,1);assert.equal(second.blockTime,'');assert.notEqual(s.create({...info,bridges:['L1']},driver).id,first.id);s.db.close();
 });
 
-test('Spotter starts without block time; joining Driver supplies it; Departure stores no block time',()=>{
- const s=createStore(':memory:',{now:()=>new Date('2026-10-13T16:00Z')});let r=s.create({...info,role:'spotter',blockTime:undefined},spotter);assert.equal(r.blockTime,'');s.mutate(r.id,spotter,{action:'claim',role:'spotter'});const joined=s.create({...info,role:'driver',blockTime:'09:37'},driver);assert.equal(joined.id,r.id);assert.equal(joined.blockTime,'09:37');assert.equal(s.create({...info,type:'departure',blockTime:undefined},driver).blockTime,'');assert.throws(()=>s.create({...info,role:'driver',bridges:['L1'],blockTime:undefined},driver),/block time/);s.db.close();
+test('Arrival and Departure never collect block time',()=>{
+ const s=createStore(':memory:',{now:()=>new Date('2026-10-13T16:00Z')});let r=s.create({...info,role:'spotter',blockTime:undefined},spotter);assert.equal(r.blockTime,'');s.mutate(r.id,spotter,{action:'claim',role:'spotter'});const joined=s.create({...info,role:'driver',blockTime:'09:37'},driver);assert.equal(joined.id,r.id);assert.equal(joined.blockTime,'');assert.equal(s.create({...info,type:'departure',blockTime:undefined},driver).blockTime,'');assert.equal(s.create({...info,role:'driver',bridges:['L1'],blockTime:undefined},driver).blockTime,'');s.db.close();
 });
+
+ test('daily bridge stays unique across flight/gate changes, completion, legacy overlaps and next day',()=>{
+ let time=new Date('2026-10-13T16:00Z');const s=createStore(':memory:',{now:()=>time});const first=s.create(info,driver);
+ assert.equal(s.create({...info,flightNo:'MU577',gate:'131'},spotter).id,first.id);
+ assert.throws(()=>s.create({...info,bridges:['L1','L2']},driver),/one jet bridge/);
+ s.mutate(first.id,driver,{action:'answer',role:'driver',itemId:'a3',value:'Y'});
+ s.mutate(first.id,spotter,{action:'claim',role:'driver'});
+ assert.equal(s.get(first.id).answers.driver.a3,'Y');assert.deepEqual(s.get(first.id).participants.driver,['driver','spotter']);
+ const completed=s.get(first.id);completed.completedAt=time.toISOString();s.put(completed);
+ assert.equal(s.create(info,driver).id,first.id);assert.throws(()=>s.mutate(first.id,spotter,{action:'claim',role:'driver'}),/locked/);
+ assert.notEqual(s.create({...info,type:'departure'},driver).id,first.id);
+ const legacy=s.create({...info,bridges:['L1']},driver);legacy.bridges=['L1','L3'];s.put(legacy);
+ assert.equal(s.create({...info,bridges:['L3']},spotter).id,legacy.id);
+ time=new Date('2026-10-14T16:00Z');assert.notEqual(s.create(info,driver).id,first.id);s.db.close();
+ });
