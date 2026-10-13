@@ -52,7 +52,7 @@ function createStore(filename=process.env.PBB_DB_PATH||path.join(__dirname,'data
 function registerPbb(app,{client,authenticate=require('./pbbAuth').authenticate,store=createStore(),buildPdf=require('./pbbPdf').buildPbbPdf,drive:providedDrive,gateService=require('./pbbEtab').createGateService(),employeeSeed}={}){
  const {google}=require('googleapis'),{Readable}=require('node:stream');
  const drive=providedDrive||google.drive({version:'v3',auth:new google.auth.GoogleAuth({credentials:{client_email:process.env.GOOGLE_CLIENT_EMAIL,private_key:process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g,'\n')},scopes:['https://www.googleapis.com/auth/drive.file']})});
- const employees=require('./employees').createEmployeeStore(store.db,{seed:employeeSeed});
+ const employees=require('./employeeDatabase').openEmployeeDatabase(store.db,{seed:employeeSeed});
  require('./employees').registerEmployees(app,{store:employees,authenticate,onChange:()=>{for(const clients of streams.values())for(const res of clients)res.write(`event: employees\ndata: ${JSON.stringify(employees.options())}\n\n`);}});
  store.db.exec('CREATE TABLE IF NOT EXISTS pbb_guest_sessions (token_hash TEXT PRIMARY KEY, uid TEXT NOT NULL, expires INTEGER NOT NULL)');
  app.post('/pbb-api/session',(_req,res)=>{const token='pbb_guest_'+crypto.randomBytes(32).toString('hex'),uid='guest-'+crypto.randomUUID(),expires=Date.now()+86400000;store.db.prepare('DELETE FROM pbb_guest_sessions WHERE expires<?').run(Date.now());store.db.prepare('INSERT INTO pbb_guest_sessions VALUES(?,?,?)').run(crypto.createHash('sha256').update(token).digest('hex'),uid,expires);res.set('Cache-Control','no-store').json({token,uid,expires});});
@@ -101,7 +101,7 @@ function registerPbb(app,{client,authenticate=require('./pbbAuth').authenticate,
  }));
  // Retry interrupted work after restart; completed delivery targets are skipped.
  for(const r of store.list())if(r.completedAt&&(r.delivery.drive.status!=='sent'||r.delivery.discord.status!=='sent'))void deliver(r.id);
- return {store,employees,deliver,close(){for(const clients of streams.values())for(const res of clients)res.end();}};
+ return {store,employees,deliver,close(){employees.close();for(const clients of streams.values())for(const res of clients)res.end();}};
 }
 module.exports={createStore,registerPbb,validateInfo};
 
