@@ -1,0 +1,68 @@
+/* Match Employee Administration while retaining the report mode layouts. */
+body.report-admin-page {
+  --muted:#9eb2d1;
+  min-height:100svh;
+  color:#eff5ff;
+  font-family:Arial,Helvetica,sans-serif;
+  background:linear-gradient(135deg,#020817dd,#081532dc),url('/assets/mission-earth.png') center/cover fixed;
+}
+.report-admin-page .service-topbar {
+  min-height:60px;
+  padding:12px 38px;
+  background:#010710e8;
+  border-bottom:1px solid #99caff40;
+}
+.report-admin-page .brand {font-size:25px;font-weight:700;letter-spacing:5px;}
+.report-admin-page .service-topbar nav {font-size:12px;font-weight:700;color:#9cbfe7;}
+.report-shell {max-width:1600px;margin:auto;padding:36px 28px;}
+.report-intro {margin:0 0 27px;}
+.report-intro .back-home {display:inline-block;margin-bottom:25px;font-size:12px;color:#b9c8de;}
+.report-intro .eyebrow {display:block;font-size:10px;letter-spacing:2.5px;color:#94abc9;}
+.report-intro h1 {font-size:36px;letter-spacing:-1px;margin:10px 0 12px;}
+.report-intro p {font-size:14px;line-height:1.6;color:#9eb0cd;margin:0;}
+.report-admin-page .report-page {
+  width:100%;min-height:0;max-height:none;margin:0;padding:26px;
+  border:1px solid #7b96bf55;border-radius:20px;
+  background:linear-gradient(145deg,#122440f5,#0b1230f7);
+  box-shadow:none;backdrop-filter:none;overflow:visible;
+}
+.report-admin-page .report-hero h2 {font-size:20px;line-height:1.4;margin:0;text-transform:none;}
+.report-admin-page .panel-muted {color:#9eb2d1;font-size:13px;line-height:1.6;}
+.report-admin-page .report-mode-actions {display:flex;flex-wrap:wrap;gap:10px;margin:0 0 24px;}
+.report-admin-page .detail-action,
+.report-admin-page .report-download,
+.report-admin-page .report-run,
+.report-admin-page .report-link-button {
+  border:1px solid #6685b166;border-radius:10px;background:#1a2d4c;
+  color:#eff5ff;padding:13px 18px;font-size:13px;font-weight:600;text-transform:none;
+}
+.report-admin-page .detail-action.is-active,
+.report-admin-page .report-run {background:linear-gradient(130deg,#24588d,#12477f);border-color:#80a6ce;}
+.report-admin-page button:hover:not(:disabled) {border-color:#a9c8ed;}
+.report-admin-page :is(button,a,input,select):focus-visible {outline:2px solid #bfeeff;outline-offset:3px;}
+.report-admin-page .report-field {min-width:0;}
+.report-admin-page .report-field span {font-size:11px;font-weight:600;color:#b5c5df;}
+.report-admin-page .report-field input,
+.report-admin-page .report-field select,
+.report-admin-page .report-remark-input {
+  border:1px solid #647ba266;border-radius:9px;background:#08152b;color:#f0f4ff;
+  color-scheme:dark;font-size:14px;min-height:44px;padding:10px 13px;
+}
+.report-admin-page #report-output {max-width:100%;overflow-x:auto;}
+.report-admin-page .data-table th {color:#9bb3da;border-color:#6685aa66;}
+.report-admin-page .data-table td {border-color:#6685aa22;}
+.report-admin-page [hidden] {display:none!important;}
+@media(max-width:850px) {
+  .report-admin-page .service-topbar {padding:12px 19px;gap:14px;flex-wrap:wrap;}
+  .report-admin-page .brand {font-size:21px;}
+  .report-admin-page .service-topbar nav {gap:14px;}
+  .report-shell {padding:23px 18px;}
+  .report-intro h1 {font-size:27px;}
+  .report-intro p {font-size:12px;}
+  .report-intro .back-home {margin-bottom:20px;}
+  .report-admin-page .report-page {padding:20px;}
+  .report-admin-page .report-mode-actions {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));}
+  .report-admin-page .detail-action {min-width:0;padding:12px 10px;}
+  .report-admin-page .report-field {min-width:140px;}
+  .report-admin-page .baggage-report-search {grid-template-columns:1fr;}
+}
