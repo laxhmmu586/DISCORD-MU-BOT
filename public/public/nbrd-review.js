@@ -7,7 +7,7 @@
   outline.style.position = 'absolute';
   outline.innerHTML = '<defs><clipPath id="nbrd-hexagon" clipPathUnits="objectBoundingBox"><path d="M .475 .012 Q .5 0 .525 .012 L .975 .237 Q 1 .25 1 .278 L 1 .722 Q 1 .75 .975 .763 L .525 .988 Q .5 1 .475 .988 L .025 .763 Q 0 .75 0 .722 L 0 .278 Q 0 .25 .025 .237 Z"/></clipPath></defs>';
   document.addEventListener('DOMContentLoaded', () => document.body.append(outline), { once:true });
-  // Pack consecutive rows into alternating full/offset rows, without sorting BNs.
+  // Pack numerically ordered BNs into alternating full/offset rows.
   function layoutHoneycomb(list) {
     const available = list.clientWidth;
     if (!available) return;
@@ -48,7 +48,8 @@
     const isOpen = () => modal.open;
     function render(nextRows) {
       revision++;
-      rows = nextRows.filter(row => row.nbrdBn).map(row => ({ ...row }));
+      rows = nextRows.filter(row => row.nbrdBn).map(row => ({ ...row }))
+        .sort((a, b) => Number(a.nbrdBn) - Number(b.nbrdBn));
       container.replaceChildren();
       if (!rows.length) {
         const empty = document.createElement('p'); empty.className = 'nbrd-empty'; empty.textContent = 'No NBRD records.'; container.append(empty); return;
