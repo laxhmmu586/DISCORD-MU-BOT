@@ -1,60 +1,42 @@
-/* CBS service selection: realistic artwork with jewel-toned card borders. */
+/* Selected blue/lilac airport scenes; labels and controls remain live HTML. */
+body.aviation-page.aviation-baggage::before {background:linear-gradient(#f2faff99,#ecf9ff66),url("cloud-sky-mobile.png") center / cover no-repeat}
+.aviation-baggage > header {width:min(960px,calc(100% - 40px));margin:20px auto 30px}
+.aviation-baggage > header .mufc-wordmark {font-size:30px;color:#061d54}
+.aviation-baggage .language-toggle {display:flex;align-items:center;gap:8px;background:#ffffffb8;color:#08245a;border-color:#fff}
+.aviation-baggage .language-toggle svg {width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.6}
+.aviation-baggage main {width:min(1000px,calc(100% - 24px));margin:0 auto 30px}
+.aviation-baggage main > .card {padding:0;border:0;border-radius:0;background:none;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;overflow:visible}
+.aviation-baggage h1 {margin:0 16px 14px;color:#061d54;letter-spacing:-1px}
+.aviation-baggage h1 .baggage-title-zh,.aviation-baggage h1 .baggage-title-en {margin:0;color:inherit;font-size:clamp(28px,4.5vw,44px);font-weight:850;line-height:1.12;letter-spacing:-1px}
+.aviation-baggage h1::after {content:"";display:block;width:34px;height:3px;margin-top:16px;border-radius:3px;background:#1466e9}
+.aviation-baggage .intro {margin:0 16px 26px;max-width:620px;color:#60759a;font-size:clamp(15px,2.6vw,20px);line-height:1.45}
+.aviation-baggage .choices {gap:20px}
 .aviation-baggage .choice {
-  position:relative;
-  min-height:248px;
-  padding:18px 20px 22px;
-  overflow:hidden;
-  border:1px solid var(--choice-accent);
-  border-radius:19px;
-  background:radial-gradient(ellipse at 5% 0,var(--choice-glow),transparent 85%),#161922;
-  color:#fff;
-  box-shadow:0 10px 24px #11182724,inset 0 0 24px var(--choice-inset);
-  backdrop-filter:none;
-  -webkit-backdrop-filter:none;
+  position:relative;isolation:isolate;display:flex;justify-content:flex-end;
+  aspect-ratio:1.64;min-height:0;padding:22px 26px;overflow:hidden;
+  border:2px solid var(--choice-accent);border-radius:28px;
+  background:var(--choice-base);color:#fff;
+  box-shadow:inset 0 0 0 2px #ffffffe0,0 0 18px var(--choice-glow),0 12px 24px #305e9e14;
+  backdrop-filter:none;-webkit-backdrop-filter:none;
   transition:transform .18s ease,box-shadow .18s ease;
 }
-.aviation-baggage .choice--delayed {
-  --choice-accent:#ff537e;
-  --choice-glow:#713344;
-  --choice-inset:#ff537e12;
-}
-.aviation-baggage .choice--damaged {
-  --choice-accent:#f4c62f;
-  --choice-glow:#796021;
-  --choice-inset:#f4c62f12;
-}
-.aviation-baggage .choice-art {
-  display:block;
-  flex:none;
-  width:104px;
-  height:104px;
-  margin:-7px 0 5px -5px;
-  object-fit:contain;
-  filter:drop-shadow(0 6px 6px #0004);
-}
-.aviation-baggage .choice-arrow {
-  position:absolute;
-  top:16px;
-  right:16px;
-  display:grid;
-  place-items:center;
-  width:30px;
-  height:30px;
-  border-radius:50%;
-  background:#ffffff14;
-  color:#fff;
-  font-size:22px;
-  line-height:1;
-}
-.aviation-baggage .choice strong {color:#fff;font-size:21px;line-height:1.35}
-.aviation-baggage .choice strong .en {margin-top:5px;color:#f4edf2;font-size:14px}
-.aviation-baggage .go {margin-top:18px;color:#fff;font-size:13px;font-weight:600}
-.aviation-baggage .choice:hover {transform:translateY(-3px);box-shadow:0 14px 28px #11182738,inset 0 0 28px var(--choice-inset)}
+.aviation-baggage .choice--delayed {--choice-accent:#4af2ff;--choice-base:#086df2;--choice-glow:#31d9ff42;--choice-text:#0057df}
+.aviation-baggage .choice--damaged {--choice-accent:#ddb3ff;--choice-base:#8250eb;--choice-glow:#bd79ff42;--choice-text:#7436e7}
+.aviation-baggage .choice-art {position:absolute;inset:0;z-index:-2;display:block;width:100%;height:100%;margin:0;object-fit:cover}
+.aviation-baggage .choice::after {content:"";position:absolute;inset:48% 0 0;z-index:-1;background:linear-gradient(transparent,var(--choice-base) 93%);opacity:.92;pointer-events:none}
+.aviation-baggage .choice-arrow {position:absolute;top:18px;right:18px;display:grid;place-items:center;width:48px;height:48px;border-radius:50%;background:#fffffff0;color:var(--choice-text);font-size:32px;line-height:1}
+.aviation-baggage .choice strong,.aviation-baggage .choice strong .en {margin:0;color:#fff;font-size:clamp(25px,3.8vw,36px);font-weight:850;line-height:1.12;letter-spacing:-.6px;text-shadow:0 2px 8px #15328138}
+.aviation-baggage .go {margin-top:7px;color:#fff;font-size:clamp(16px,2.4vw,20px);font-weight:500;line-height:1.2;text-shadow:0 1px 5px #15328160}
+.aviation-baggage .go::after {content:'›';display:inline-block;margin-left:10px;font-size:1.35em;line-height:.7}
+html[lang="en"] .aviation-baggage .choice strong .zh,html[lang="zh-CN"] .aviation-baggage .choice strong .en,html[lang="en"] .baggage-title-zh,html[lang="zh-CN"] .baggage-title-en {display:none!important}
+.aviation-baggage .choice:hover {transform:translateY(-3px);box-shadow:inset 0 0 0 2px #fff,0 0 24px var(--choice-glow),0 15px 28px #305e9e30}
 .aviation-baggage .choice:focus-visible {outline:3px solid #fff;outline-offset:3px;box-shadow:0 0 0 6px #092352}
-@media(max-width:700px) {
-  .aviation-baggage .choice {min-height:224px}
+@media(max-width:900px) {.aviation-baggage .choices {grid-template-columns:1fr}.aviation-baggage main {max-width:700px}}
+@media(max-width:420px) {
+  .aviation-baggage > header {margin:18px auto 28px}
+  .aviation-baggage main {width:calc(100% - 16px)}
+  .aviation-baggage .choice {padding:16px 18px;border-radius:23px}
+  .aviation-baggage .choice-arrow {top:12px;right:12px;width:36px;height:36px;font-size:25px}
+  .aviation-baggage .choices {gap:14px}
 }
-@media(prefers-reduced-motion:reduce) {
-  .aviation-baggage .choice {transition:none}
-  .aviation-baggage .choice:hover {transform:none}
-}
+@media(prefers-reduced-motion:reduce) {.aviation-baggage .choice {transition:none}.aviation-baggage .choice:hover {transform:none}}
