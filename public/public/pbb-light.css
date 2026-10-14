@@ -39,3 +39,5 @@ html.pbb-theme{background:#e9edff url('/assets/boarding-aurora-c.png') center/co
 .pbb-page .answer-buttons{grid-template-columns:repeat(2,minmax(0,1fr))}
 
 .active-bridge{position:relative}.active-bridge>strong{padding-right:40px}.bridge-restart{position:absolute;right:8px;top:8px;width:36px;height:36px;padding:8px;display:grid;place-items:center;border:0;border-radius:9px;background:transparent;color:#6670a8;cursor:pointer;transition:background .15s,color .15s}.bridge-restart svg{display:block;width:20px;height:20px}.bridge-restart:hover:not(:disabled){background:#edf0ff;color:#3e46c3}.bridge-restart:focus-visible{outline:2px solid #747aff;outline-offset:2px}.bridge-restart:disabled{opacity:.35;cursor:default}
+
+.pbb-page .safety-shoe-photo{max-width:320px;margin:16px auto}.pbb-page .safety-shoe-photo .actual-photo img{height:220px;max-height:220px;width:100%;object-fit:contain}.pbb-page .safety-shoe-photo .actual-photo{height:auto;max-height:none}

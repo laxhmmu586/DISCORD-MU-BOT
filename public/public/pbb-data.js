@@ -38,9 +38,9 @@
   arrival.find(x=>x.id==='a5').hidden=true;arrival.find(x=>x.id==='a5').defaultValue='Y';
   arrival.find(x=>x.id==='a2').hidden=true;arrival.find(x=>x.id==='a2').defaultValue='Y';
   arrival.find(x=>x.id==='a10').hidden=true;arrival.find(x=>x.id==='a10').defaultValue='NA';
-  departure.find(x=>x.id==='d1').defaultValue='Y';
+  departure.find(x=>x.id==='d12').hidden=true;departure.find(x=>x.id==='d12').defaultValue='Y';departure.find(x=>x.id==='d3').hidden=true;departure.find(x=>x.id==='d3').defaultValue='Y';departure.find(x=>x.id==='d1').hidden=true;departure.find(x=>x.id==='d1').defaultValue='Y';
   for(const [id,photo] of Object.entries({a8:'ramp-path-realistic.webp',a9:'canopy-bumper-realistic.webp',d1:'aircraft-door.svg',d3:'safety-strap.svg'})){const row=[...arrival,...departure].find(x=>x.id===id);row.art=null;row.photos=[photo];}
-  departure.find(x=>x.id==='d2').photos=['safety-shoe.jpg','safety-shoe-storage.jpg'];
+  departure.find(x=>x.id==='d2').photos=['safety-shoe.jpg'];
   departure.find(x=>x.id==='d4').photos=['control-console.jpg'];
   // Short screen prompts are separate from the original checklist/PDF wording.
   const prompts={
