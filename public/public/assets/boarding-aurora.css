@@ -11,7 +11,7 @@ body::before, body.aviation-page::before {
   inset:0;
   z-index:-1;
   pointer-events:none;
-  background:linear-gradient(rgba(241,247,255,.12),rgba(241,247,255,.12)),url("china-eastern-777-300er-clouds-english.png") center / cover no-repeat;
+  background:linear-gradient(rgba(241,247,255,.12),rgba(241,247,255,.12)),url("china-eastern-777-300er-reference.png") center / cover no-repeat;
 }
 body > header {
   background:transparent;
