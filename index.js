@@ -3014,7 +3014,7 @@ app.post('/cbs-missing-bags/:rowNumber/link-on-hand-rush', async (req, res) => {
 function parseCbsPdf417(rawValue = '') {
   const rawScan = String(rawValue || '').trim();
   const flightMatch = matchMuFlight(rawScan);
-  if (!flightMatch) throw new Error('Flight not found.');
+  if (!flightMatch) throw Object.assign(new Error('Flight not found.'), { code:'SCAN_FORMAT' });
   if (!flightMatch.supported) {
     const err = new Error('wrong flight');
     err.code = 'WRONG_FLIGHT';
@@ -3023,7 +3023,7 @@ function parseCbsPdf417(rawValue = '') {
   }
 
   const detailMatch = rawScan.match(/(?:^|\D)(0*INF|0*\d{1,3}[A-Z])(\d{3,4})\b/i);
-  if (!detailMatch) throw new Error('Seat/BN segment not found.');
+  if (!detailMatch) throw Object.assign(new Error('Seat/BN segment not found.'), { code:'SCAN_FORMAT' });
   const seatToken = detailMatch[1].toUpperCase();
   const normalizedSeatToken = seatToken.replace(/^0+/, '');
   const isInfant = normalizedSeatToken === 'INF';
@@ -3208,11 +3208,12 @@ app.post('/cbs-scan', async (req, res) => {
     parsed.nbrdConfirmed = nbrdConfirmations.canBoard(req.body?.confirmationToken, key);
     parsed.nbrdConfirmationDetail = nbrdConfirmations.detail(req.body?.confirmationToken, key);
     parsed.deviceId = req.body?.deviceId;
+    parsed.requestId = req.body?.requestId;
     const saved = boardingLive.scan(selectedFlight, parsed, boardingDate(req));
     nbrdConfirmations.consume(req.body?.confirmationToken);
     return res.json({ ok: true, ...saved });
   } catch (err) {
-    const status = err?.code === 'DUPLICATE_BN' || err?.code === 'NBRD_MESSAGE' ? 409 : (err?.code === 'WRONG_FLIGHT' ? 400 : (['SHEETS_QUOTA', 'NBRD_UNAVAILABLE'].includes(err?.code) ? 503 : 422));
+    const status = err?.code === 'DUPLICATE_BN' || err?.code === 'NBRD_MESSAGE' ? 409 : (err?.code === 'WRONG_FLIGHT' ? 400 : (['SHEETS_QUOTA', 'NBRD_UNAVAILABLE'].includes(err?.code) ? 503 : (['SCAN_FORMAT', 'SCAN_ERROR'].includes(err?.code) ? 422 : 500)));
     const confirmation = err?.code === 'NBRD_MESSAGE' ? nbrdConfirmations.warning(key, req.body?.reviewToken, err.detail) : {};
     return res.status(status).json({ ...confirmation, error: err?.message || 'CBS scan save failed', code: err?.code || 'SCAN_ERROR', flight: err?.flight || '', bn: err?.bn || '', detail: err?.detail || '' });
   }

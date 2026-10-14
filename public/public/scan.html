@@ -67,6 +67,7 @@
       <div class="camera-wrap"><video id="preview" muted playsinline></video><div class="aim-box" aria-hidden="true"></div></div>
       <div class="actions"><button id="start" type="button">Start Scan</button><button class="secondary" id="stop" type="button">Stop</button></div>
       <p class="status" id="status">Ready.</p>
+      <p id="pending-scans" role="status" hidden></p>
     </section>
     <section class="card" id="add-nbrd">
       <h2>Add NBRD</h2>
@@ -86,6 +87,7 @@
   <script src="/__/firebase/init.js"></script>
   <script src="https://unpkg.com/@zxing/browser@latest"></script>
   <script src="/boarding-live.js?v=20261011"></script>
+  <script src="/scan-outbox.js?v=20261014"></script>
   <script>
     const auth = window.firebase?.apps?.length && window.firebase?.auth ? firebase.auth() : null;
     const AUTH_SESSION_STARTED_KEY = 'mufc_auth_session_started_at';
@@ -185,7 +187,7 @@
       dialog.hidden = false;
       dialogOk.focus();
     }
-    function hideMessage() { dialog.hidden = true; if (controls && !scanBusy) setStatus('Scanning'); }
+    function hideMessage() { dialog.hidden = true; if (controls && !scanBusy) setStatus('Scanning'); void scanOutbox?.pump(); }
     dialogOk.addEventListener('click', hideMessage);
     userMenuButton.addEventListener('click', () => {
       const isOpen = userMenu.hidden;
@@ -240,30 +242,37 @@
       if (!nbrdVerified) { document.querySelector('#add-nbrd').scrollIntoView({behavior:'smooth'}); document.querySelector('#nbrd-bn').focus(); }
     }
     async function saveScan(rawScan, options = {}) {
-      const res = await fetch(apiBase+'/cbs-scan', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rawScan, reviewToken:nbrdReviewTokens.get(rawScan), confirmationToken:options.confirmationToken})});
-      const data = await res.json().catch(()=>({}));
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+      let res, data;
+      try {
+        res = await fetch(apiBase+'/cbs-scan', {method:'POST',signal:controller.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify({rawScan, requestId:options.requestId, reviewToken:nbrdReviewTokens.get(rawScan), confirmationToken:options.confirmationToken})});
+        data = await res.json();
+      } catch (error) { throw Object.assign(new Error('保存未确认，已保留待提交记录。恢复连接后重试。'), { retryable:true }); }
+      finally { clearTimeout(timeout); }
       options.onResponse?.();
       if (!res.ok) {
         if (data.code === 'NBRD_MESSAGE') {
           nbrdReviewTokens.set(rawScan, data.confirmationToken);
           if (!data.canBoard) showMessage('NBRD message' + (data.detail ? '\n'+data.detail : ''), 'Message', 'warning');
           else {
-            const boarded = await nbrdReview.board({bn:data.bn,detail:data.detail,confirm:()=>saveScan(rawScan,{confirmationToken:data.confirmationToken})});
+            const boarded = await nbrdReview.board({bn:data.bn,detail:data.detail,confirm:()=>saveScan(rawScan,{...options,confirmationToken:data.confirmationToken})});
             if (boarded) return;
             setStatus('NBRD retained. Scan again when ready.', 'err');
           }
           return;
         }
         const message = data.code === 'WRONG_FLIGHT' ? 'wrong flight' : data.code === 'DUPLICATE_BN' ? 'Duplicate BN' : data.code === 'SHEETS_QUOTA' ? 'Not saved. Please try again after Google Sheets recovers.' : data.error || 'Scan failed';
-        throw new Error(message);
+        throw Object.assign(new Error(message), { retryable:res.status >= 500 || res.status === 429 || !['WRONG_FLIGHT','DUPLICATE_BN','SCAN_FORMAT','SCAN_ERROR'].includes(data.code) });
       }
+      if (data.ok !== true || !data.bn || !Number.isInteger(data.rowNumber)) throw Object.assign(new Error('保存未确认，待提交记录已保留。'), { retryable:true });
       nbrdReviewTokens.delete(rawScan);
       setStatus(data.isInfant ? 'Saved INFANT BN '+data.bn : 'Saved BN '+data.bn, 'ok');
       showMessage(data.isInfant ? 'Input successful infant BN '+data.bn : 'Input successful BN '+data.bn, data.isInfant ? 'Infant' : 'Success', data.isInfant ? 'infant' : 'success');
       if (Array.isArray(data.nbrdRows)) nbrdReview.render(data.nbrdRows);
       else refreshNbrd().catch(()=>{});
     }
-    async function handleText(text) {
+    async function handleText(item) {
       const startButton = document.querySelector('#start');
       startButton.disabled = true;
       setStatus('Saving...');
@@ -273,16 +282,35 @@
         dialogOk.disabled = true;
       }, 3000);
       try {
-        await saveScan(text, {onResponse:()=>clearTimeout(waitingTimer)});
+        await saveScan(item.text, {requestId:item.id,onResponse:()=>clearTimeout(waitingTimer)});
+        return true;
       } catch (err) {
         setStatus(err.message, 'err');
-        showMessage(err.message || 'Not saved. Please scan again.', 'Message', 'error');
+        if (err.retryable) dialog.hidden = true;
+        else showMessage(err.message || 'Not saved. Please scan again.', 'Message', 'error');
+        return !err.retryable;
       } finally {
         clearTimeout(waitingTimer);
         dialogOk.disabled = false;
         startButton.disabled = !nbrdVerified;
       }
     }
+    let scanOutbox;
+    try {
+      let tabId = sessionStorage.getItem('boarding-scan-tab');
+      if (!tabId) { tabId = crypto.randomUUID(); sessionStorage.setItem('boarding-scan-tab', tabId); }
+      const flight = window.mufcFlight;
+      if (!flight) throw new Error('Please select a flight.');
+      scanOutbox = createScanOutbox({storage:localStorage,key:`boarding-outbox:${tabId}:${flight.flightNo}:${flight.flightDate}`,
+        canSubmit:()=>nbrdVerified && dialog.hidden && !nbrdReview.isOpen(),
+        submit:async item=>{ scanBusy=true; try { return await handleText(item); } finally { scanBusy=false; } },
+        onChanged:count=>{ const el=document.querySelector('#pending-scans'); el.hidden=!count; el.textContent=`待保存 ${count} 张，请勿放行未显示保存成功的旅客。`; },
+        onError:error=>{ controls?.stop(); controls=null; showMessage('Unable to retain scan. '+error.message, 'Message', 'error'); }
+      });
+      setInterval(()=>void scanOutbox.pump(), 1000);
+      window.addEventListener('online', ()=>void scanOutbox.pump());
+      window.addEventListener('beforeunload', event=>{ if (scanOutbox.pending) { event.preventDefault(); event.returnValue=''; } });
+    } catch (error) { setStatus(error.message, 'err'); showMessage(error.message, 'Message', 'error'); }
     document.querySelector('#nbrd-form').addEventListener('submit', async (event) => {
       event.preventDefault();
       const bnInput = document.querySelector('#nbrd-bn');
@@ -309,7 +337,7 @@
     });
     document.querySelector('#start').addEventListener('click', async () => {
       try {
-        if (!nbrdVerified || nbrdReview.isOpen()) return;
+        if (!nbrdVerified || nbrdReview.isOpen() || !scanOutbox || controls) return;
         if (!window.ZXingBrowser) throw new Error('ZXing library did not load.');
         const Reader = ZXingBrowser.BrowserPDF417Reader || ZXingBrowser.BrowserMultiFormatReader;
         const reader = new Reader();
@@ -317,15 +345,20 @@
           ? reader.decodeFromConstraints.bind(reader, cameraConstraints)
           : reader.decodeFromVideoDevice.bind(reader, undefined);
         controls = await decode(preview, (result, error) => {
-          if (!result || scanBusy || !dialog.hidden || nbrdReview.isOpen() || !nbrdVerified) return;
+          if (!result || !nbrdVerified) return;
           const text = result.getText();
           const now = Date.now();
+          if (text === lastScanText && !dialog.hidden) return;
           if (text === lastScanText && now - lastScanAt < 2500) return;
-          scanBusy = true;
-          lastScanText = text;
-          lastScanAt = now;
-          setStatus('Code detected. Saving before next scan...');
-          handleText(text).finally(() => { setTimeout(() => { scanBusy = false; if (controls && dialog.hidden) setStatus('Scanning'); }, 1500); });
+          try {
+            scanOutbox.capture(text);
+            lastScanText = text;
+            lastScanAt = now;
+          } catch (error) {
+            controls?.stop(); controls=null;
+            setStatus('Not saved. '+error.message, 'err');
+            showMessage('Not saved. Unable to retain scan. Please scan again after resolving storage.', 'Message', 'error');
+          }
         });
         await applyCameraFocus();
         setStatus('Scanning');

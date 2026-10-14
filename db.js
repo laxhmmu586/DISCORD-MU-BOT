@@ -8,7 +8,7 @@ const dbPath = path.join(dataDir, 'boarding.db');
 const db = new Database(dbPath, { timeout: 3000 });
 
 db.pragma('journal_mode = WAL');
-db.pragma('synchronous = NORMAL');
+db.pragma('synchronous = FULL');
 db.pragma('busy_timeout = 3000');
 
 db.exec(`

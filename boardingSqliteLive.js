@@ -23,7 +23,14 @@ class BoardingSqliteLive {
       flight_date TEXT NOT NULL, flight_no TEXT NOT NULL, version INTEGER NOT NULL,
       PRIMARY KEY(flight_date,flight_no)
     );
-    CREATE TABLE IF NOT EXISTS boarding_maintenance (key TEXT PRIMARY KEY, value INTEGER NOT NULL);`);
+    CREATE TABLE IF NOT EXISTS boarding_maintenance (key TEXT PRIMARY KEY, value INTEGER NOT NULL);
+    CREATE TABLE IF NOT EXISTS boarding_scan_requests (
+      request_id TEXT PRIMARY KEY, scan_id INTEGER NOT NULL REFERENCES scans(id) ON DELETE CASCADE
+    );`);
+    this.findRequest = db.prepare(`SELECT s.*, d.raw_scan, d.seat, d.is_infant
+      FROM boarding_scan_requests r JOIN scans s ON s.id=r.scan_id
+      JOIN boarding_scan_details d ON d.scan_id=s.id WHERE r.request_id=?`);
+    this.insertRequest = db.prepare('INSERT INTO boarding_scan_requests (request_id,scan_id) VALUES (?,?)');
     this.insertScan = db.prepare('INSERT INTO scans (flight_date,flight_no,boarding_no,scan_time,device_id,synced) VALUES (?,?,?,?,?,0)');
     this.insertDetails = db.prepare('INSERT INTO boarding_scan_details (scan_id,seat,raw_scan,is_infant,entered) VALUES (?,?,?,?,0)');
     this.selectRows = db.prepare(`SELECT s.*, d.seat, d.is_infant, d.entered
@@ -45,6 +52,7 @@ class BoardingSqliteLive {
       const result = this.insertScan.run(date, flight, (record.isInfant ? 'INF' : '') + canonicalBn(record.bn), record.scannedAt, record.deviceId || null);
       const id = Number(result.lastInsertRowid);
       this.insertDetails.run(id, record.seat || '', record.rawScan || record.raw || '', record.isInfant ? 1 : 0);
+      if (record.requestId) this.insertRequest.run(record.requestId, id);
       if (blocked) this.resolveNbrd.run(1, flight, date, canonicalBn(record.bn));
       return id;
     });
@@ -99,6 +107,18 @@ class BoardingSqliteLive {
     this.cleanupIfDue();
     if (normalizeBoardingFlight(record.flight) !== flight) throw failure('WRONG_FLIGHT', `This boarding pass does not belong to ${flight}.`);
     if (!/^\d{1,4}$/.test(String(record.bn || ''))) throw failure('SCAN_ERROR', 'Invalid BN.');
+    if (record.requestId !== undefined && (typeof record.requestId !== 'string' || !/^[A-Za-z0-9-]{16,80}$/.test(record.requestId))) throw failure('SCAN_ERROR', 'Invalid scan request ID.');
+    if (record.requestId) {
+      const previous = this.findRequest.get(record.requestId);
+      if (previous) {
+        if (previous.flight_no !== flight || previous.flight_date !== date || previous.raw_scan !== (record.rawScan || record.raw || '')) {
+          throw failure('SCAN_ERROR', 'Scan request ID belongs to another boarding pass.');
+        }
+        return { bn: previous.boarding_no.replace(/^INF/, ''), seat: previous.seat, flight,
+          rowNumber: previous.id, scannedAt: previous.scan_time, isInfant: Boolean(previous.is_infant),
+          backupPending: false, replayed: true, nbrdRows: this.nbrdRecords(flight, date) };
+      }
+    }
     // This SELECT checks NBRD only. The scan INSERT's UNIQUE constraint is the
     // sole duplicate check; no Sheets or other network call runs here.
     const blocked = this.findNbrd.get(flight, date, canonicalBn(record.bn));
