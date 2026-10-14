@@ -10,6 +10,7 @@
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),30000);
   try{
    const response=await fetch(base+path,{...options,signal:controller.signal,cache:'no-store',headers:{'Content-Type':'application/json',...options.headers}});
+   if([502,503,504].includes(response.status)){const error=Error(path.endsWith('/employees')?'The employee service is temporarily unavailable. Please try again shortly.':'Could not confirm your request was saved to Google Sheets. Please retry with this page open.');error.status=response.status;throw error;}
    const data=await response.json().catch(()=>{throw Error('The service is unavailable. Please try again.');});
    if(!response.ok){const error=Error(data.error||'Could not complete your request. Please try again.');error.status=response.status;throw error;}
    return data;

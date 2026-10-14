@@ -22,6 +22,18 @@ test('same request UUID cannot silently change employee, date or details',async(
 test('monthly history includes only the selected employee and month',async()=>{const sheets=mockSheets(),store=createSheetsStorage({sheets}),r=record();await store.save({...r,id:'previous',reference:'REQ-PREVIOUS',date:'2026-09-30'});await store.save({...r,id:'other',reference:'REQ-OTHER',employeeId:'other'});const result=await store.save(r);assert.equal(result.history.length,1);});
 async function server(t,overrides={}){const app=express();app.use(express.json());const db=new Database(':memory:');const service=registerAttendance(app,{employees,db,client:{channels:{fetch:async()=>({send:async()=>{}})}},storage:{save:async r=>({record:r,history:[r]})},renderCards:async()=>[],...overrides});const listener=app.listen(0,'127.0.0.1');await new Promise(r=>listener.once('listening',r));t.after(()=>{service.close();listener.close();db.close();});const base='http://127.0.0.1:'+listener.address().port;return{get:path=>fetch(base+path),post:b=>fetch(base+'/attendance-api/requests',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}),db};}
 test('public employee endpoint exposes only names and internal selection IDs',async t=>{const s=await server(t),r=await s.get('/attendance-api/employees');assert.equal(r.status,200);assert.match(r.headers.get('cache-control'),/no-store/);assert.deepEqual(await r.json(),{employees:[{id:'test-one',name:'Test Employee'}]});});
+test('unavailable image dependencies cannot prevent employee API startup or Sheets saves',async t=>{
+ const {spawnSync}=require('node:child_process');
+ const result=spawnSync(process.execPath,['-e',`
+ const assert=require('node:assert/strict'),Module=require('node:module'),express=require('express'),Database=require('better-sqlite3');
+ const {registerAttendance}=require('./attendanceRequests');const original=Module._load;
+ Module._load=function(id,...args){if(id==='./attendanceCards')throw Error('Image module unavailable');return original.call(this,id,...args);};
+ const db=new Database(':memory:'),app=express();app.use(express.json());
+ const service=registerAttendance(app,{db,employees:{get:()=>({employees:[{id:'test-one',name:'Full Name'}]})},storage:{save:async record=>({record,history:[]})},client:{}});
+ const listener=app.listen(0,'127.0.0.1',async()=>{try{const base='http://127.0.0.1:'+listener.address().port;const r=await fetch(base+'/attendance-api/employees');assert.deepEqual(await r.json(),{employees:[{id:'test-one',name:'Full Name'}]});const saved=await fetch(base+'/attendance-api/requests',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(${JSON.stringify(body)})});assert.equal(saved.status,201);assert.equal((await saved.json()).notificationPending,true);assert.equal(db.prepare('SELECT sent FROM attendance_delivery').get().sent,0);}catch(e){console.error(e);process.exitCode=1;}finally{service.close();listener.close();db.close();}});
+ `],{cwd:require('node:path').join(__dirname,'..'),encoding:'utf8',timeout:15000});
+ assert.equal(result.status,0,result.stderr);
+});
 test('attendance immediately reflects saved admin employee changes including non-PBB staff',async t=>{
  const {createEmployeeStore,registerEmployees}=require('../employees');
  const db=new Database(':memory:'),store=createEmployeeStore(db,{seed:[{id:'one',name:'Original Employee',eid:'',discordId:'',attach:false,detach:false,spotter:false}]});
