@@ -37,6 +37,15 @@
 @media(max-width:850px){.pbb-intro h1{font-size:25px}.pbb-shell{padding:22px 18px!important}.pbb-panel{padding:22px}.form-grid{gap:20px 14px}.form-grid input:not([type=checkbox]){font-size:16px;width:100%}.pbb-choices{padding:26px 23px}.operator-choice span{font-size:13px}}
 
 /* Employee records: fit every column without a horizontal scrollbar. */
+.employee-sort-controls{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:16px 0}
+.employee-sort-controls select{width:auto;max-width:100%;margin:0;padding:9px 12px;font-size:12px}
+.employee-sort-controls button{padding:9px 12px;font-size:12px}
+.employee-sort-controls button:disabled{opacity:.5;cursor:default}
+#employee-sort-status{font-size:12px;color:#adbfdf}
+.employee-admin-page .employee-table .employee-sort-header{display:flex;align-items:center;gap:3px;width:100%;border:0;background:transparent;padding:0;text-align:left;font:inherit;color:inherit;letter-spacing:inherit}
+.employee-sort-header:focus-visible{outline:2px solid #aaa5ff;outline-offset:4px;border-radius:2px}
+.employee-sort-icon{color:#bdb7ff;letter-spacing:0}
+.employee-table th[aria-sort=ascending],.employee-table th[aria-sort=descending]{color:#e4e1ff}
 .employee-admin-page .pbb-shell{max-width:1600px;width:100%;box-sizing:border-box}
 .employee-admin-page .employee-table-wrap{overflow:visible}
 .employee-admin-page .employee-table{min-width:0;table-layout:fixed}
