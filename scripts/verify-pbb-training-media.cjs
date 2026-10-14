@@ -16,7 +16,14 @@ const {createStore,registerPbb}=require('../pbb'),items=require('../public/publi
     assert.equal(await page.locator('.answer-icon').count(),2);
     for(const width of [320,390,1440]){await page.setViewportSize({width,height:1000});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'overflow '+row.id+' '+width);}
     if(['a6','a11','a16','a17','a18','d1','d3','d4','d11'].includes(row.id))await page.screenshot({path:path.join(output,row.id+'.png'),fullPage:true});
-    if(row.video){const v=page.locator('video');await v.evaluate(v=>{v.preload='auto';v.load()});await page.waitForFunction(()=>document.querySelector('video')?.readyState>=2);assert.equal(await v.evaluate(v=>v.duration),28);assert.equal(await v.locator('track').getAttribute('src'),'/assets/pbb/ready-safe-go-lax-v2.vtt');}
+    if(row.video){const v=page.locator('video');await v.evaluate(v=>{v.preload='auto';v.load()});await page.waitForFunction(()=>document.querySelector('video')?.readyState>=2);assert.equal(await v.evaluate(v=>v.duration),28);assert.equal(await v.locator('track').getAttribute('src'),'/assets/pbb/ready-safe-go-lax-v2.vtt');
+     if(row.id==='a12'){
+      await v.evaluate(async v=>{window.pbbTestVideo=v;v.muted=true;v.currentTime=5;await v.play();});
+      const response=await fetch(origin+'/pbb-api/records/'+id,{method:'POST',headers:{Authorization:'Bearer fixture','Content-Type':'application/json'},body:JSON.stringify({action:'answer',role:'spotter',itemId:'a11',value:'Y'})});assert.equal(response.status,200);
+      await page.locator('.role-progress').nth(1).getByText(/1 \/ 5 checked/).waitFor();
+      assert.ok(await v.evaluate(v=>v===window.pbbTestVideo&&v.currentTime>=5&&!v.paused),'peer SSE update preserves same video and playback');await v.evaluate(v=>v.pause());
+     }
+    }
     await page.locator('#next').click();
    }
    await page.locator('.signal-flow').waitFor();assert.equal(await page.locator('video').count(),type==='arrival'?1:0);
