@@ -1845,36 +1845,49 @@
       const updateForm = event.target.closest('.case-update');
       if (!updateForm) return;
       event.preventDefault();
-      const payload = Object.fromEntries(new FormData(updateForm, event.submitter).entries());
-      if (payload.rushTagNumber) payload.rushTagNumber = rushBagTagNumber(payload.rushTagNumber);
-      payload.type = payload.type || updateForm.dataset.updateMode || 'worldtracer';
-      payload.updatedBy = await currentUpdater();
-      if (!payload.updatedBy) return alert('Your signed-in account could not be identified. Refresh the page and try again.');
-      if (payload.action === 'email' && payload.emailAction === 'sent_open_bag_authorization_to_pvg') {
-        const file = updateForm.elements.authorizationFile?.files?.[0];
-        if (!file) return alert('Please attach the signed Letter of Authorization file.');
-        const contentBase64 = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(String(reader.result || '').split(',')[1] || '');
-          reader.onerror = () => reject(new Error('The authorization file could not be read.'));
-          reader.readAsDataURL(file);
-        });
-        delete payload.authorizationFile;
-        payload.attachments = [{ filename:file.name, mimeType:file.type || 'application/octet-stream', contentBase64, attachmentType:'letterOfAuthorization' }];
+      if (updateForm.dataset.submitting === 'true') return;
+      updateForm.dataset.submitting = 'true';
+      const submitButtons = Array.from(updateForm.querySelectorAll('button[type="submit"]'));
+      const buttonStates = submitButtons.map((button) => ({ button, disabled:button.disabled, text:button.textContent }));
+      try {
+        const payload = Object.fromEntries(new FormData(updateForm, event.submitter).entries());
+        submitButtons.forEach((button) => { button.disabled = true; });
+        if (event.submitter) event.submitter.textContent = label('Saving…', '正在保存…');
+        if (payload.rushTagNumber) payload.rushTagNumber = rushBagTagNumber(payload.rushTagNumber);
+        payload.type = payload.type || updateForm.dataset.updateMode || 'worldtracer';
+        payload.updatedBy = await currentUpdater();
+        if (!payload.updatedBy) return alert('Your signed-in account could not be identified. Refresh the page and try again.');
+        if (payload.action === 'email' && payload.emailAction === 'sent_open_bag_authorization_to_pvg') {
+          const file = updateForm.elements.authorizationFile?.files?.[0];
+          if (!file) return alert('Please attach the signed Letter of Authorization file.');
+          const contentBase64 = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result || '').split(',')[1] || '');
+            reader.onerror = () => reject(new Error('The authorization file could not be read.'));
+            reader.readAsDataURL(file);
+          });
+          delete payload.authorizationFile;
+          payload.attachments = [{ filename:file.name, mimeType:file.type || 'application/octet-stream', contentBase64, attachmentType:'letterOfAuthorization' }];
+        }
+        if (payload.type === 'email' && payload.emailAction === 'sent_open_bag_authorization_to_pvg') {
+          const file = updateForm.elements.authorizationFile?.files?.[0];
+          if (!file) return alert('Please attach the signed Letter of Authorization file.');
+          const contentBase64 = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result || '').split(',')[1] || '');
+            reader.onerror = () => reject(new Error('The authorization file could not be read.'));
+            reader.readAsDataURL(file);
+          });
+          delete payload.authorizationFile;
+          payload.attachments = [{ filename:file.name, mimeType:file.type || 'application/octet-stream', contentBase64, attachmentType:'letterOfAuthorization' }];
+        }
+        await updateCase(updateForm.dataset.rowNumber, payload, updateForm.dataset.caseSource || 'pir');
+      } catch (error) {
+        alert(error.message);
+      } finally {
+        delete updateForm.dataset.submitting;
+        buttonStates.forEach(({ button, disabled, text }) => { button.disabled = disabled; button.textContent = text; });
       }
-      if (payload.type === 'email' && payload.emailAction === 'sent_open_bag_authorization_to_pvg') {
-        const file = updateForm.elements.authorizationFile?.files?.[0];
-        if (!file) return alert('Please attach the signed Letter of Authorization file.');
-        const contentBase64 = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(String(reader.result || '').split(',')[1] || '');
-          reader.onerror = () => reject(new Error('The authorization file could not be read.'));
-          reader.readAsDataURL(file);
-        });
-        delete payload.authorizationFile;
-        payload.attachments = [{ filename:file.name, mimeType:file.type || 'application/octet-stream', contentBase64, attachmentType:'letterOfAuthorization' }];
-      }
-      await updateCase(updateForm.dataset.rowNumber, payload, updateForm.dataset.caseSource || 'pir');
     });
     casesOutput.addEventListener('change', (event) => {
       const commentPreset = event.target.closest('[data-comment-preset]');
@@ -2026,24 +2039,56 @@
       event.preventDefault();
       toggleShipmentDetails(summary);
     });
+    async function requestCaseUpdate(endpoint, payload) {
+      const controller = new AbortController();
+      const timeout = ['upcoming_rush', 'upcoming_rush_delete'].includes(payload.type)
+        ? setTimeout(() => controller.abort(), 45000) : null;
+      try {
+        const res = await fetch(`${apiBase}/${endpoint}`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload), signal:controller.signal });
+        const data = await parseJson(res);
+        if (!res.ok) throw new Error(data.error || 'Update failed');
+        return data;
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
     async function updateCase(rowNumber, payload, source = 'pir') {
       casesOutput.style.opacity = '.65';
       try {
         const endpoint = source === 'wrongBaggage' ? `wrong-baggage-submissions/${encodeURIComponent(rowNumber)}/update` : `cbs-cases/${encodeURIComponent(rowNumber)}/update`;
-        const res = await fetch(`${apiBase}/${endpoint}`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
-        const data = await parseJson(res);
-        if (!res.ok) throw new Error(data.error || 'Update failed');
+        const data = await requestCaseUpdate(endpoint, payload);
         if (data.emailError) alert(`Case updated, but the passenger email failed: ${data.emailError}`);
         // Keep the full case list visible after an update. Selecting only the
         // updated row made the other open cases appear to have disappeared.
         window._selectedCbsRow = 0;
         window._expandedCbsCases = window._expandedCbsCases || new Set();
         window._expandedCbsCases.add(`row-${rowNumber}`);
+        if (source === 'pir' && ['upcoming_rush', 'upcoming_rush_delete'].includes(payload.type) && data.record) {
+          // Render the acknowledged record instead of waiting for another
+          // Sheets read and unrelated baggage lookups before showing success.
+          window._cbsRows = (window._cbsRows || []).map((row) => String(row.rowNumber) === String(rowNumber) ? data.record : row);
+          window._cbsRowsSignature = '';
+          renderCases();
+          const form = Array.from(casesOutput.querySelectorAll('.case-update')).find((item) => String(item.dataset.rowNumber) === String(rowNumber));
+          if (form) {
+            const status = document.createElement('p');
+            status.className = 'status';
+            status.setAttribute('role', 'status');
+            status.textContent = data.followUpPending
+              ? label('Saved. On-hand matching or Discord notification is still processing.', '已保存，On-hand 匹配或 Discord 通知仍在处理中。')
+              : label('Saved.', '已保存。');
+            if (data.onHandMatchError || data.discordError) status.textContent = label('Saved, but a follow-up failed: ', '已保存，但后续处理失败：') + [data.onHandMatchError, data.discordError].filter(Boolean).join('; ');
+            form.append(status);
+          }
+          return;
+        }
         await loadCases();
         await loadUnresolvedBaggage();
         if (window._missingReportLoaded || !missingReportCard.hidden) await loadMissingReports();
       } catch (error) {
-        const message = error instanceof TypeError && /failed to fetch/i.test(error.message)
+        const message = error.name === 'AbortError'
+          ? 'The update timed out. Saving was not confirmed; refresh the case and check its history before trying again.'
+          : error instanceof TypeError && /failed to fetch/i.test(error.message)
           ? 'The server connection was interrupted while sending the email. The case may already have been updated; check the case history before trying again.'
           : error.message;
         alert(message);
@@ -2483,7 +2528,7 @@
     let cbsRefreshQueued = false;
     async function refreshCbsData() {
       // Do not replace controls while an agent is entering or submitting data.
-      if (document.activeElement?.closest('form') || cbsRefreshInProgress) {
+      if (document.activeElement?.closest('form') || casesOutput.querySelector('.case-update[data-submitting="true"]') || cbsRefreshInProgress) {
         cbsRefreshQueued = true;
         clearTimeout(cbsRefreshTimer);
         cbsRefreshTimer = setTimeout(refreshCbsData, 1000);

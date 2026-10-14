@@ -2799,6 +2799,38 @@ async function syncUpcomingRushOnHand(record, updateEvent, updatedBy = '') {
   return Promise.all(matches.map((row) => updateCbsUnresolvedBaggageWorldTracer(row.rowNumber, worldTracerFileNumber, updatedBy)));
 }
 
+async function finishUpcomingRushUpdate(record, updateEvent, updatedBy) {
+  // The case is already saved. Independent downstream services must not hold
+  // its acknowledgement open or turn a successful save into a failed update.
+  const tasks = [
+    Promise.resolve().then(() => syncUpcomingRushOnHand(record, updateEvent, updatedBy))
+      .then((onHandMatches) => ({ onHandMatches }))
+      .catch((error) => {
+        console.error('CBS Upcoming Rush On-hand match error:', error);
+        return { onHandMatchError:error?.message || 'On-hand matching failed.' };
+      }),
+    Promise.resolve().then(() => sendUpcomingRushToDiscord(record, updateEvent))
+      .then((discord) => ({ discord }))
+      .catch((error) => {
+        console.error('CBS Upcoming Rush Discord notification error:', error);
+        return { discordError:error?.message || 'Upcoming Rush Discord notification failed.' };
+      })
+  ];
+  const completion = Promise.all(tasks).then((results) => {
+    broadcastCbsRefresh('/cbs-upcoming-rush');
+    return Object.assign({ followUpPending:false }, ...results);
+  });
+  let timeout;
+  try {
+    return await Promise.race([
+      completion,
+      new Promise((resolve) => { timeout = setTimeout(() => resolve({ followUpPending:true }), 2000); })
+    ]);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function syncOnHandWorldTracerToRushBag(record, updatedBy = '') {
   const originalTag = normalizedCbsLinkTag(record?.bagTag);
   const worldTracerFileNumber = sanitizeCbsText(record?.worldTracerFileNumber, 120).toUpperCase();
@@ -4128,13 +4160,7 @@ app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
     const result = await updateCbsCase(req.params.rowNumber, updateFields);
     if (result.notFound) return res.status(404).json({ error: 'Case not found' });
     if (updateFields.updateEvent?.key === 'upcoming_rush') {
-      result.onHandMatches = await syncUpcomingRushOnHand(result.record, updateFields.updateEvent, sanitizeCbsText(req.body?.updatedBy, 160));
-      try {
-        result.discord = await sendUpcomingRushToDiscord(result.record, updateFields.updateEvent);
-      } catch (discordErr) {
-        result.discordError = discordErr?.message || 'Upcoming Rush Discord notification failed.';
-        console.error('CBS Upcoming Rush Discord notification error:', discordErr);
-      }
+      Object.assign(result, await finishUpcomingRushUpdate(result.record, updateFields.updateEvent, sanitizeCbsText(req.body?.updatedBy, 160)));
     }
     if (updateFields.updateEvent?.key === 'worldtracer') {
       const fileNumber = updateFields.updateEvent.fields[0][1];
