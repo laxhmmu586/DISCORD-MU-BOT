@@ -77,13 +77,18 @@ function registerAttendance(app, { employees, client, db, storage = createSheets
         if (!channel || typeof channel.send !== 'function') throw new Error('The configured channel cannot receive messages');
         let media;
         stage = 'image rendering';
-        try { media = { files: await renderCards(record, history) }; }
+        try {
+          const files = await renderCards(record, history);
+          media = { files, embeds: [{ image: { url: `attachment://${files[0].name}` } }, ...require('./attendanceDiscord').fallbackEmbeds(record, history).slice(1)] };
+        }
         catch (error) {
           console.error('Attendance Discord image fallback:', { reference, channelId, error: error.message });
           media = { embeds: require('./attendanceDiscord').fallbackEmbeds(record, history) };
         }
         stage = 'message send';
-        const message = await channel.send({ content: `${label(record)} · ${record.employeeName} · ${record.reference}`, ...media, allowedMentions: { parse: [] }, nonce: crypto.createHash('sha256').update(reference).digest('hex').slice(0,24), enforceNonce: true });
+        const discordId = String(employees.get().employees.find(employee => employee.id === record.employeeId)?.discordId || '').trim();
+        const mention = /^\d{17,20}$/.test(discordId) ? discordId : '';
+        const message = await channel.send({ ...(mention ? { content: `<@${mention}>` } : {}), ...media, allowedMentions: { parse: [], users: mention ? [mention] : [] }, nonce: crypto.createHash('sha256').update(reference).digest('hex').slice(0,24), enforceNonce: true });
         stage = 'delivery acknowledgement';
         db.prepare('UPDATE attendance_delivery SET sent=1 WHERE reference=?').run(reference);
         console.info('Attendance Discord delivered:', { reference, channelId, messageId: message?.id, format: media.files ? 'images' : 'native cards' });
