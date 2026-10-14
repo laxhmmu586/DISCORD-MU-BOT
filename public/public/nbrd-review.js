@@ -1,12 +1,19 @@
 (() => {
   const displayBn = bn => String(bn || '').padStart(3, '0').slice(-3);
+  // A normalized outline keeps softly rounded hexagon corners at every size.
+  const outline = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  outline.setAttribute('width', '0'); outline.setAttribute('height', '0');
+  outline.setAttribute('aria-hidden', 'true');
+  outline.style.position = 'absolute';
+  outline.innerHTML = '<defs><clipPath id="nbrd-hexagon" clipPathUnits="objectBoundingBox"><path d="M .475 .012 Q .5 0 .525 .012 L .975 .237 Q 1 .25 1 .278 L 1 .722 Q 1 .75 .975 .763 L .525 .988 Q .5 1 .475 .988 L .025 .763 Q 0 .75 0 .722 L 0 .278 Q 0 .25 .025 .237 Z"/></clipPath></defs>';
+  document.addEventListener('DOMContentLoaded', () => document.body.append(outline), { once:true });
   // Pack consecutive rows into alternating full/offset rows, without sorting BNs.
   function layoutHoneycomb(list) {
     const available = list.clientWidth;
     if (!available) return;
-    const gap = 4, inset = 5;
-    const columns = Math.max(2, Math.min(6, Math.floor((available - inset * 2) / 56)));
-    const width = Math.min(86, (available - inset * 2 - gap * (columns - 1)) / columns);
+    const gap = Math.max(2, Math.min(4, available / 180)), inset = 3;
+    const columns = 6;
+    const width = (available - inset * 2 - gap * (columns - 1)) / columns;
     const height = width / Math.sqrt(3) * 2;
     const start = (available - columns * width - (columns - 1) * gap) / 2;
     let row = 0, column = 0;
@@ -16,7 +23,7 @@
         width: `${width}px`, height: `${height}px`,
         left: `${start + (column + offset / 2) * (width + gap)}px`,
         top: `${inset + row * (height * .75 + gap)}px`,
-        fontSize: `${Math.max(12, Math.min(24, width * .29))}px`
+        fontSize: `${Math.max(11, Math.min(30, width * .29))}px`
       });
       if (++column === columns - offset) { column = 0; row++; }
     }
