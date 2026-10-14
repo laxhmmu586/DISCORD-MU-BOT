@@ -13,6 +13,24 @@ const source = fs.readFileSync(require.resolve('../db'), 'utf8');
 const schema = source.match(/db\.exec\(`([\s\S]*?)`\);/)[1];
 const date = '11OCT26';
 const record = (bn, extra = {}) => ({ flight: '0586', bn: String(bn), seat: '10A', rawScan: 'PRIVATE BARCODE', ...extra });
+test('lost response retry returns the committed scan without a second INSERT', t => {
+  const {db,live}=harness(t), requestId='11111111-1111-4111-8111-111111111111';
+  const first=live.scan('MU586',record(14,{requestId}),date);
+  live.saveNbrd('MU586',[{bn:'014',detail:'REVIEW'}],{},date);
+  const replay=live.scan('MU586',record(14,{requestId}),date);
+  assert.equal(replay.rowNumber,first.rowNumber); assert.equal(replay.scannedAt,first.scannedAt); assert.equal(replay.replayed,true);
+  assert.equal(db.prepare('SELECT count(*) AS n FROM scans').get().n,1);
+  assert.throws(()=>live.scan('MU586',record(15,{requestId,rawScan:'OTHER PASS'}),date),{code:'SCAN_ERROR'});
+  assert.throws(()=>live.scan('MU586',record(14,{requestId}), '12OCT26'),{code:'SCAN_ERROR'});
+});
+test('request receipt rolls back with a failed scan and clears with its flight', t => {
+  const {db,live}=harness(t), requestId='22222222-2222-4222-8222-222222222222', insert=live.insertDetails;
+  live.insertDetails={run(){throw new Error('Disk full');}};
+  assert.throws(()=>live.scan('MU586',record(14,{requestId}),date),/Disk full/);
+  assert.equal(db.prepare('SELECT count(*) AS n FROM boarding_scan_requests').get().n,0);
+  live.insertDetails=insert; live.scan('MU586',record(14,{requestId}),date); live.resetFlight('MU586',date);
+  assert.equal(db.prepare('SELECT count(*) AS n FROM boarding_scan_requests').get().n,0);
+});
 function harness(t, options = {}, config = {}) {
   const db = new Database(':memory:', options); db.exec(schema);
   const live = new BoardingSqliteLive({ db, report: () => {}, ...config });
@@ -124,17 +142,19 @@ test('supplied db.js creates data automatically; scans, NBRD and entered colors 
   const context = { require, __dirname: directory, module: { exports: {} }, console: { log() {} } };
   vm.runInNewContext(source, context);
   let db = context.module.exports;
+  assert.equal(db.pragma('synchronous', {simple:true}), 2, 'acknowledgements require FULL synchronous commits');
   t.after(() => {
     db.close();
     assert.ok(path.resolve(directory).startsWith(path.resolve(os.tmpdir()) + path.sep));
     fs.rmSync(directory, { recursive: true, force: true });
   });
   let live = new BoardingSqliteLive({ db });
-  const saved = live.scan('MU586', record(14), date);
+  const saved = live.scan('MU586', record(14,{requestId:'33333333-3333-4333-8333-333333333333'}), date);
   live.entered('MU586', [saved.rowNumber], true, date);
   live.saveNbrd('MU586', [{ bn: '16', detail: 'VISA' }], {}, date);
   db.close(); db = new Database(path.join(directory, 'data', 'boarding.db'));
   live = new BoardingSqliteLive({ db });
+  assert.equal(live.scan('MU586',record(14,{requestId:'33333333-3333-4333-8333-333333333333'}),date).rowNumber,saved.rowNumber);
   assert.equal(live.records('MU586', date).rows.find(row => row.bn).entered, true);
   assert.equal(live.nbrdRecords('MU586', date)[0].nbrdBn, '016');
   assert.throws(() => live.scan('MU586', record(14), date), { code: 'DUPLICATE_BN' });
@@ -163,6 +183,15 @@ test('actual scan handlers preserve parsing/confirmation and both call SQLite wi
   const first = await call('/cbs-scan', { rawScan: 'MU0586 010A014' });
   assert.equal(first.status, 200); assert.equal(first.result.bn, '014');
   assert.equal((await call('/cbs-scan2', { rawScan: 'MU586|BN014' })).status, 409);
+  const requestId='44444444-4444-4444-8444-444444444444';
+  const savedRequest=await call('/cbs-scan',{rawScan:'MU0586 010A016',requestId});
+  const retriedRequest=await call('/cbs-scan',{rawScan:'MU0586 010A016',requestId});
+  assert.equal(retriedRequest.result.rowNumber,savedRequest.result.rowNumber);
+  assert.equal(retriedRequest.result.replayed,true);
+  const add=live.add; live.add=()=>{throw new Error('Disk full');};
+  assert.equal((await call('/cbs-scan',{rawScan:'MU0586 010A017'})).status,500);
+  live.add=add;
+  assert.equal((await call('/cbs-scan',{rawScan:'UNREADABLE'})).result.code,'SCAN_FORMAT');
   live.saveNbrd('MU586', [{ bn: '15', detail: 'VISA' }], {}, date);
   const warning = await call('/cbs-scan', { rawScan: 'MU0586 010A015' });
   assert.equal(warning.result.canBoard, false);
