@@ -1,7 +1,7 @@
 /* Keep report controls on their existing dark surfaces over the shared sky. */
 body.service-page {
   min-height:100vh;
-  background:#e5f0ff url("china-eastern-777-300er-clouds-english.png") center / cover fixed no-repeat;
+  background:#e5f0ff url("china-eastern-777-300er-reference.png") center / cover fixed no-repeat;
 }
 .service-page .service-topbar { background:#061524; }
 @media(max-width:640px) {
