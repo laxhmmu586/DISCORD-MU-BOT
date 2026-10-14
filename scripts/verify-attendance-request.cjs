@@ -21,7 +21,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
   let browser;
   try {
     browser = await chromium.launch({ headless:true, ...(process.platform === 'win32' ? { channel:'msedge' } : {}) });
-    const page = await browser.newPage({ viewport:{ width:390, height:844 }, isMobile:true, deviceScaleFactor:1 });
+    const page = await browser.newPage({ viewport:{ width:390, height:844 }, isMobile:true, deviceScaleFactor:1, reducedMotion:'reduce' });
     page.on('pageerror', error => errors.push(error.message));
     const out = path.resolve(process.env.ATTENDANCE_QA_DIR || path.join(__dirname, '../output/attendance-ui'));
     fs.mkdirSync(out, { recursive:true });

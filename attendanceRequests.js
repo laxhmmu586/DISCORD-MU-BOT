@@ -71,10 +71,26 @@ function registerAttendance(app, { employees, client, db, storage = createSheets
       const job = db.prepare('SELECT * FROM attendance_delivery WHERE reference=?').get(reference);
       if (!job || job.sent) return;
       const { record, history } = JSON.parse(job.data);
-      const files = await renderCards(record, history);
-      const channel = await client.channels.fetch(channelId);
-      await channel.send({ content: `${label(record)} · ${record.employeeName} · ${record.reference}`, files, allowedMentions: { parse: [] }, nonce: crypto.createHash('sha256').update(reference).digest('hex').slice(0,24), enforceNonce: true });
-      db.prepare('UPDATE attendance_delivery SET sent=1 WHERE reference=?').run(reference);
+      let stage = 'channel lookup';
+      try {
+        const channel = await client.channels.fetch(channelId);
+        if (!channel || typeof channel.send !== 'function') throw new Error('The configured channel cannot receive messages');
+        let media;
+        stage = 'image rendering';
+        try { media = { files: await renderCards(record, history) }; }
+        catch (error) {
+          console.error('Attendance Discord image fallback:', { reference, channelId, error: error.message });
+          media = { embeds: require('./attendanceDiscord').fallbackEmbeds(record, history) };
+        }
+        stage = 'message send';
+        const message = await channel.send({ content: `${label(record)} · ${record.employeeName} · ${record.reference}`, ...media, allowedMentions: { parse: [] }, nonce: crypto.createHash('sha256').update(reference).digest('hex').slice(0,24), enforceNonce: true });
+        stage = 'delivery acknowledgement';
+        db.prepare('UPDATE attendance_delivery SET sent=1 WHERE reference=?').run(reference);
+        console.info('Attendance Discord delivered:', { reference, channelId, messageId: message?.id, format: media.files ? 'images' : 'native cards' });
+      } catch (error) {
+        console.error('Attendance Discord failure:', { reference, channelId, stage, code: error.code, status: error.status, error: error.message });
+        throw error;
+      }
     })().finally(() => active.delete(reference));
     active.set(reference, work); return work;
   }
@@ -103,11 +119,12 @@ function registerAttendance(app, { employees, client, db, storage = createSheets
     res.status(saved.duplicate ? 200 : 201).json({ record: saved.record, notificationPending });
   });
   let retrying = false;
-  const retry = setInterval(async () => {
+  const retryPending = async () => {
     if (retrying) return; retrying = true;
     try { for (const job of db.prepare('SELECT reference FROM attendance_delivery WHERE sent=0 LIMIT 10').all()) await deliver(job.reference).catch(e => console.error('Attendance Discord retry:', e.message)); }
     finally { retrying = false; }
-  }, 60000); retry.unref();
-  return { close: () => clearInterval(retry) };
+  };
+  const retry = setInterval(retryPending, 60000); retry.unref();
+  return { retryPending, close: () => clearInterval(retry) };
 }
 module.exports = { validate, createSheetsStorage, registerAttendance, HEADERS, POLICY, label };
