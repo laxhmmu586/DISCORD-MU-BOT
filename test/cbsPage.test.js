@@ -93,7 +93,7 @@ test('mobile CBS navigation spans the viewport without table content widening th
 });
 
 test('updating one CBS case keeps the complete case list visible', () => {
-  assert.match(page, /window\._selectedCbsRow = 0;\s*window\._expandedCbsCases = window\._expandedCbsCases \|\| new Set\(\);\s*window\._expandedCbsCases\.add\(`row-\$\{rowNumber\}`\);\s*await loadCases\(\)/);
+  assert.match(page, /window\._selectedCbsRow = 0;\s*window\._expandedCbsCases = window\._expandedCbsCases \|\| new Set\(\);\s*window\._expandedCbsCases\.add\(`row-\$\{rowNumber\}`\);[\s\S]*await loadCases\(\)/);
   assert.doesNotMatch(page, /window\._selectedCbsRow = Number\(rowNumber\)/);
 });
 
@@ -1037,7 +1037,8 @@ test('Upcoming Rush updates notify the operations Discord channel', () => {
     assert.ok(server.includes(`\`${field}:`), field);
   }
   assert.doesNotMatch(server.match(/async function sendUpcomingRushToDiscord[\s\S]*?\n\}/)?.[0] || '', /Updated by:/);
-  assert.match(server, /updateFields\.updateEvent\?\.key === 'upcoming_rush'[\s\S]*sendUpcomingRushToDiscord\(result\.record, updateFields\.updateEvent\)/);
+  assert.match(server, /updateFields\.updateEvent\?\.key === 'upcoming_rush'[\s\S]*finishUpcomingRushUpdate\(result\.record, updateFields\.updateEvent/);
+  assert.match(server, /sendUpcomingRushToDiscord\(record, updateEvent\)/);
   assert.match(server, /CBS Upcoming Rush Discord notification error/);
 });
 
