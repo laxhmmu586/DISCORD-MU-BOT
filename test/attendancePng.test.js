@@ -5,6 +5,19 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
+test('glass cards expand for long names, reasons and notes while keeping the footer below the panel',async()=>{
+ const {buildCardSvg,renderCards}=require('../attendanceCards');
+ const base={employeeName:'W'.repeat(100),date:'2026-10-14',arrivalTime:'10:00',reason:'W'.repeat(1000),note:'Details '.repeat(120),reference:'REQ-HIDDEN-EXAMPLE',submittedAt:'2026-10-14T20:00:00Z'};
+ for(const type of ['late','sick']){
+  const record={...base,type},svg=buildCardSvg(record).toString();
+  assert.doesNotMatch(svg,/REQ-HIDDEN-EXAMPLE|China Eastern|中国东方航空/);
+  assert.match(svg,/Additional note/);assert.match(svg,/Employee Request Received/);
+  const panelHeight=Number(svg.match(/x="307" y="164" width="454" height="(\d+)"/)[1]);
+  const footerY=Number(svg.match(/M44 (\d+)H757/)[1]);assert.ok(footerY>164+panelHeight);
+  const image=(await renderCards(record))[0].attachment;assert.equal(image.readUInt32BE(16),800);assert.ok(image.readUInt32BE(20)>1500);
+ }
+});
+
 test('both card sets render in an isolated checkout without node_modules or system font access', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'attendance-png-'));
   try {
