@@ -61,3 +61,4 @@ html.pbb-theme{background:#e9edff url('/assets/china-eastern-777-mobile-small.pn
 /* Mobile title and aircraft share a row without the former white header. */
 @media(max-width:640px){.pbb-page .pbb-intro{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:18px}.pbb-page .pbb-intro .eyebrow{display:none}.pbb-page .pbb-intro h1{font-size:clamp(18px,5.5vw,22px);letter-spacing:-.8px;margin:0;white-space:nowrap}.pbb-page .pbb-intro .mobile-aircraft-sky{position:relative;left:auto;right:auto;top:auto;transform:none;flex:none;width:clamp(84px,28vw,132px);height:44px}.pbb-page .pbb-shell{padding-top:18px!important}}
 .pbb-page #new-check{display:block;width:max-content;max-width:100%;margin:18px auto 0;text-align:center}
+.pbb-intro #checklist-home{color:inherit;text-decoration:none}.pbb-intro #checklist-home:hover{color:#3546a2}

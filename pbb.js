@@ -13,6 +13,7 @@ function validateInfo(b){
  if(!Array.isArray(b.bridges)||b.bridges.length!==1||!['L1','L2','L3'].includes(b.bridges[0]))fail('Select one jet bridge: L1, L2 or L3');
  return {type:b.type,flightNo,date,gate,blockTime,bridges:[...new Set(b.bridges)]};
 }
+function pdfFilename(r){return `JetBridge-${r.type}-${r.flightNo}-${r.date}-${r.bridges.join('-')}.pdf`;}
 function createStore(filename=process.env.PBB_DB_PATH||path.join(__dirname,'data/pbb.db'),{now=()=>new Date()}={}){
  if(filename!==':memory:')fs.mkdirSync(path.dirname(filename),{recursive:true});
  const db=new Database(filename);db.pragma('journal_mode = WAL');db.exec('CREATE TABLE IF NOT EXISTS pbb_records (id TEXT PRIMARY KEY, data TEXT NOT NULL, pdf BLOB)');
@@ -85,7 +86,7 @@ function registerPbb(app,{client,authenticate=require('./pbbAuth').authenticate,
    let pdf=store.pdf(id);
    try{if(!pdf){pdf=await buildPdf(r);store.setPdf(id,pdf);}}catch(e){r.pdfError=e.message;save(r);return;}
    delete r.pdfError;
-   const name=`JetBridge-${r.type}-${r.flightNo}-${r.date}-${id}.pdf`;
+   const name=pdfFilename(r);
    if(r.delivery.drive.status!=='sent'){
     try{
      const folderId=process.env.PBB_DRIVE_FOLDER_ID||'1wMyB23ikaAnbkhJZcKBKBNujEeeY7Xsu';if(drive.validateFolder)await drive.validateFolder(folderId);
@@ -98,7 +99,7 @@ function registerPbb(app,{client,authenticate=require('./pbbAuth').authenticate,
    }
    if(r.delivery.discord.status!=='sent'){
     try{const channel=await client.channels.fetch(process.env.PBB_DISCORD_CHANNEL_ID||'1559561919826890852');if(!channel?.isTextBased())throw new Error('Discord channel is unavailable');
-     const sent=await channel.send({content:`Jet Bridge ${r.type.toUpperCase()} | ${r.flightNo} | ${r.date} | Gate ${r.gate}\nDriver: ${r.signatures.driver.name} ✓ | Spotter: ${r.signatures.spotter.name} ✓`,files:[{attachment:pdf,name}],nonce:crypto.createHash('sha256').update(id).digest('hex').slice(0,24),enforceNonce:true});r.delivery.discord={status:'sent',messageId:sent.id};
+     const sent=await channel.send({content:`Jet Bridge ${r.type.toUpperCase()} | ${r.flightNo} | ${r.date} | Gate ${r.gate} | ${r.bridges.join(' / ')}\nDriver: ${r.signatures.driver.name} ✓ | Spotter: ${r.signatures.spotter.name} ✓`,files:[{attachment:pdf,name}],nonce:crypto.createHash('sha256').update(id).digest('hex').slice(0,24),enforceNonce:true});r.delivery.discord={status:'sent',messageId:sent.id};
     }catch(e){r.delivery.discord={status:'failed',error:e.message};}save(r);
    }
   })().finally(()=>jobs.delete(id));jobs.set(id,job);return job;
@@ -125,7 +126,7 @@ function registerPbb(app,{client,authenticate=require('./pbbAuth').authenticate,
   for(const r of result.updated)publish(r);publishRooms();res.json({bridge,type:result.type,cleared:result.deleted.length+result.updated.length});
  }));
  app.post('/pbb-api/records/:id/retry',route((req,res)=>{const r=store.get(req.params.id);if(!r.completedAt)fail('Both signatures required',409);void deliver(r.id);res.status(202).json(r);}));
- app.get('/pbb-api/records/:id/pdf',route((req,res)=>{const r=store.get(req.params.id);if(!r.completedAt)fail('Both signatures required',409);const pdf=store.pdf(r.id);if(!pdf)fail('PDF is generating. Please retry.',409);res.setHeader('Content-Disposition',`attachment; filename="JetBridge-${r.type}-${r.flightNo}-${r.date}.pdf"`);res.type('pdf').send(pdf);}));
+ app.get('/pbb-api/records/:id/pdf',route((req,res)=>{const r=store.get(req.params.id);if(!r.completedAt)fail('Both signatures required',409);const pdf=store.pdf(r.id);if(!pdf)fail('PDF is generating. Please retry.',409);res.setHeader('Content-Disposition',`attachment; filename="${pdfFilename(r)}"`);res.type('pdf').send(pdf);}));
  app.get('/pbb-api/records/:id/stream',route((req,res)=>{
   const r=store.get(req.params.id);res.set({'Content-Type':'text/event-stream','Cache-Control':'no-cache, no-transform','Connection':'keep-alive','X-Accel-Buffering':'no'});res.flushHeaders();
   res.pbbUid=req.pbbUser.uid;if(!streams.has(r.id))streams.set(r.id,new Set());streams.get(r.id).add(res);res.write(`event: state\ndata: ${JSON.stringify(r)}\n\n`);presence(r.id);
