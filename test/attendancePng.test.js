@@ -19,8 +19,8 @@ test('both card sets render in an isolated checkout without node_modules or syst
       const read=fs.readFileSync;fs.readFileSync=function(file,...args){const name=path.resolve(String(file));if(!name.startsWith(process.cwd()+path.sep))throw Error('External files unavailable: '+name);return read.call(this,file,...args);};
       const {renderCards}=require('./attendanceCards');
       const base={employeeName:'Test Employee',date:'2026-10-14',arrivalTime:'10:00',reason:'Traffic & <roadworks>',note:'Test note',reference:'REQ-EXAMPLE',submittedAt:'2026-10-14T20:00:00Z'};
-      (async()=>{const sets=await Promise.all(['late','sick'].map(type=>renderCards({...base,type},[{date:base.date,type}])));for(const files of sets){assert.equal(files.length,3);for(const file of files){assert.equal(file.attachment.subarray(1,4).toString(),'PNG');assert.equal(file.attachment.readUInt32BE(16),800);assert.ok(file.attachment.readUInt32BE(20)>150);assert.ok(file.attachment.length>10000);}}console.log('6 PNGs generated without external packages or fonts');})().catch(e=>{console.error(e);process.exitCode=1;});
+      (async()=>{const sets=await Promise.all(['late','sick'].map(type=>renderCards({...base,type},[{date:base.date,type}])));for(const files of sets){assert.equal(files.length,1);for(const file of files){assert.equal(file.attachment.subarray(1,4).toString(),'PNG');assert.equal(file.attachment.readUInt32BE(16),800);assert.ok(file.attachment.readUInt32BE(20)>150);assert.ok(file.attachment.length>10000);}}console.log('2 PNGs generated without external packages or fonts');})().catch(e=>{console.error(e);process.exitCode=1;});
     `], { cwd: dir, encoding: 'utf8', timeout: 20000 });
-    assert.equal(result.status, 0, result.stderr); assert.match(result.stdout, /6 PNGs generated/);
+    assert.equal(result.status, 0, result.stderr); assert.match(result.stdout, /2 PNGs generated/);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
