@@ -77,13 +77,16 @@ function registerAttendance(app, { employees, client, db, storage = createSheets
         if (!channel || typeof channel.send !== 'function') throw new Error('The configured channel cannot receive messages');
         let media;
         stage = 'image rendering';
-        try { media = { files: await renderCards(record, history) }; }
+        try {
+          const files = await renderCards(record, history);
+          media = { files, embeds: files.map(file => ({ image: { url: `attachment://${file.name}` } })) };
+        }
         catch (error) {
           console.error('Attendance Discord image fallback:', { reference, channelId, error: error.message });
           media = { embeds: require('./attendanceDiscord').fallbackEmbeds(record, history) };
         }
         stage = 'message send';
-        const message = await channel.send({ content: `${label(record)} · ${record.employeeName} · ${record.reference}`, ...media, allowedMentions: { parse: [] }, nonce: crypto.createHash('sha256').update(reference).digest('hex').slice(0,24), enforceNonce: true });
+        const message = await channel.send({ content: '📋 Request Submission', ...media, allowedMentions: { parse: [] }, nonce: crypto.createHash('sha256').update(reference).digest('hex').slice(0,24), enforceNonce: true });
         stage = 'delivery acknowledgement';
         db.prepare('UPDATE attendance_delivery SET sent=1 WHERE reference=?').run(reference);
         console.info('Attendance Discord delivered:', { reference, channelId, messageId: message?.id, format: media.files ? 'images' : 'native cards' });
