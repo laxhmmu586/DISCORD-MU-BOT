@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#080f18"><title>Attendance Request · Employee Services</title><link rel="stylesheet" href="/request.css"><script src="/request.js" defer></script></head>
+<body>
+<main class="app">
+ <header><a class="brand" href="/request.html" aria-label="Attendance home">EMPLOYEE SERVICES</a><span class="location">Attendance</span></header>
+ <div class="workspace">
+ <aside><span class="eyebrow">HERE FOR YOUR EVERYDAY</span><h1>A little heads-up.<br>A smoother day.</h1><p>Let your team know when plans change.</p><div class="aside-art" aria-hidden="true"><div class="orbit"></div><img src="/assets/attendance/coming-late.png" alt=""><i></i></div><p class="aside-note">Keep your supervisor informed.<br>We’ll take care of the record.</p></aside>
+ <section class="panel" aria-label="Attendance request">
+ <nav class="step-header"><button id="back" class="back" aria-label="Go back" hidden>←</button><span id="step-caption">ATTENDANCE</span><div id="progress" class="progress" aria-label="Request progress"><i class="active"></i><i></i><i></i></div></nav>
+ <section id="choose" class="screen">
+  <h2>Attendance</h2><p class="subheading">Let us know if you won’t be able to make it or will be arriving late.</p>
+  <button class="type-card sick" data-type="sick"><span class="illustration bed" aria-hidden="true"><img src="/assets/attendance/call-off-sick.png" alt=""></span><span class="card-arrow">↗</span><strong>Call Off / Sick</strong><span>I will not be able to work<br>my scheduled shift.</span></button>
+  <button class="type-card late" data-type="late"><span class="illustration running" aria-hidden="true"><img src="/assets/attendance/coming-late.png" alt=""></span><span class="card-arrow">↗</span><strong>Coming Late</strong><span>I will be arriving later<br>than my scheduled time.</span></button>
+  <div class="notice"><span aria-hidden="true">ⓘ</span><p>Please notify your supervisor <strong>at least 2 hours before your shift.</strong> You must speak directly with your supervisor. Notifying a coworker or leaving a message is not sufficient.</p></div>
+ </section>
+ <section id="details" class="screen" hidden>
+  <div class="section-title"><span id="type-icon" class="type-icon" aria-hidden="true">◷</span><div><h2 id="detail-title">Coming Late</h2><p id="detail-description" class="subheading"></p></div></div>
+  <form id="details-form">
+   <label>Employee<select id="employee" required disabled><option value="">Loading employees…</option></select></label><button id="retry-employees" class="text-button" type="button" hidden>Retry loading employees</button>
+   <label>Date<input id="date" type="date" required></label>
+   <div id="late-fields" hidden>
+    <label>Expected Arrival Time<input id="arrival" type="time" step="60"></label>
+    <div class="time-slider"><div><span>I’ll be there around</span><strong id="time-display">10:00 AM</strong><img class="runner" src="/assets/attendance/coming-late.png" alt=""></div><input id="arrival-slider" type="range" min="0" max="1435" step="5" value="600" aria-label="Quick arrival time selection"><div class="range-labels"><span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>12 AM</span></div></div>
+    <label>Scheduled Start <small>(optional)</small><input id="scheduled-start" type="time"></label><p id="delay" class="delay" hidden></p>
+   </div>
+   <label>Reason <small>(optional)</small><textarea id="reason" maxlength="1000" rows="3" placeholder="Anything you’d like your supervisor to know…"></textarea></label>
+   <button class="primary" id="continue" type="submit" disabled>Continue <span>→</span></button>
+  </form>
+ </section>
+ <section id="review" class="screen" hidden>
+  <h2>Review &amp; Confirm</h2><p class="subheading">Please confirm your information before submitting.</p>
+  <div class="summary"><h3 id="review-type"></h3><dl id="review-fields"></dl><label class="note-label">Add a note <small>(optional)</small><textarea id="note" maxlength="1000" rows="2" placeholder="Additional details…"></textarea></label></div>
+  <div class="notice"><span aria-hidden="true">ⓘ</span><p>Please notify your supervisor <strong>at least 2 hours before your shift.</strong> You must speak directly with your supervisor. This form records your request.</p></div>
+  <button id="submit" class="primary green">Submit Request <span>→</span></button>
+ </section>
+ <section id="success" class="screen success" hidden>
+  <div class="celebration" aria-hidden="true"><span>✓</span><i>✦</i><b>✧</b></div><h2>Request Submitted!</h2><p class="subheading">Your attendance request has been successfully saved.</p><div class="summary"><dl id="receipt"></dl></div><p id="notification-status" class="notification-status"></p><button id="home" class="secondary">Back to Home</button>
+ </section>
+ <p id="status" class="error" role="alert"></p><div id="sending" class="sending" hidden><span aria-hidden="true">➤</span><strong>Submitting…</strong><p>Saving your attendance request</p></div>
+ </section></div><footer>EMPLOYEE SERVICES · ATTENDANCE</footer>
+</main>
+</body></html>

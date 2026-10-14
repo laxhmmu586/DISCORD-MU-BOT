@@ -1,0 +1,70 @@
+// Local, sanitized UI verification. Never contacts Google Sheets or Discord.
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const express = require('express');
+const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
+
+(async () => {
+  const app = express(), submissions = [], errors = [];
+  app.use(express.json());
+  app.use(express.static(path.join(__dirname, '../public/public')));
+  app.get('/attendance-api/employees', (_req, res) => res.json({ employees: [{ id:'test-one', name:'Test Employee' }, { id:'test-two', name:'Second Employee' }] }));
+  app.post('/attendance-api/requests', (req, res) => {
+    submissions.push(req.body);
+    if (submissions.length === 1) return res.status(503).json({ error:'Could not save your request to Google Sheets. Please retry.' });
+    res.status(201).json({ record:{ ...req.body, reference:'REQ-TEST', employeeName:'Test Employee', submittedAt:'2026-10-14T16:41:00Z' }, notificationPending:true });
+  });
+  const server = app.listen(0, '127.0.0.1');
+  await new Promise(resolve => server.once('listening', resolve));
+  let browser;
+  try {
+    browser = await chromium.launch({ headless:true, ...(process.platform === 'win32' ? { channel:'msedge' } : {}) });
+    const page = await browser.newPage({ viewport:{ width:390, height:844 }, isMobile:true, deviceScaleFactor:1 });
+    page.on('pageerror', error => errors.push(error.message));
+    const out = path.resolve(process.env.ATTENDANCE_QA_DIR || path.join(__dirname, '../output/attendance-ui'));
+    fs.mkdirSync(out, { recursive:true });
+    await page.goto(`http://127.0.0.1:${server.address().port}/request.html`);
+    await page.locator('#employee:not([disabled])').waitFor({ state:'attached' });
+    assert.equal(await page.locator('.brand').textContent(), 'EMPLOYEE SERVICES');
+    assert.equal(await page.locator('.brand-mark').count(), 0);
+    for (const img of await page.locator('.illustration img').all()) assert.equal(await img.evaluate(e => e.complete && e.naturalWidth > 100), true);
+    await page.screenshot({ path:path.join(out, 'mobile-home.png'), fullPage:true });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    await page.click('[data-type=late]');
+    await page.selectOption('#employee', 'test-one');
+    await page.fill('#date', '2026-10-14');
+    await page.fill('#scheduled-start', '08:00');
+    await page.fill('#arrival', '10:15');
+    assert.match(await page.locator('#delay').textContent(), /2h 15m/);
+    await page.screenshot({ path:path.join(out, 'mobile-details.png'), fullPage:true });
+    await page.fill('#reason', 'Traffic');
+    await page.click('#continue');
+    await page.fill('#note', 'Test note');
+    await page.screenshot({ path:path.join(out, 'mobile-review.png'), fullPage:true });
+    await page.click('#submit');
+    await page.locator('#sending').waitFor({ state:'hidden' });
+    assert.equal(await page.locator('#success').isVisible(), false);
+    assert.match(await page.locator('#status').textContent(), /Google Sheets/);
+    await page.click('#submit');
+    await page.locator('#success').waitFor({ state:'visible' });
+    assert.deepEqual(submissions[0], submissions[1], 'retry must preserve the same request UUID and data');
+    assert.match(await page.locator('#notification-status').textContent(), /pending/);
+    await page.screenshot({ path:path.join(out, 'mobile-success.png'), fullPage:true });
+    await page.click('#home');
+    await page.locator('#employee:not([disabled])').waitFor({ state:'attached' });
+    await page.click('[data-type=sick]');
+    await page.selectOption('#employee', 'test-two');
+    assert.equal(await page.locator('#late-fields').isVisible(), false);
+    await page.click('#continue');
+    assert.match(await page.locator('#review-fields').textContent(), /Second Employee/);
+    await page.click('#back'); await page.click('#back');
+    await page.setViewportSize({ width:1440, height:1000 });
+    await page.screenshot({ path:path.join(out, 'desktop.png'), fullPage:true });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    await page.setViewportSize({ width:320, height:740 });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    assert.deepEqual(errors, []);
+    console.log('PASS: 390/320 mobile and 1440 desktop; artwork; both request types; time calculation; failed save; stable retry; pending notification receipt; navigation; no page errors.');
+  } finally { await browser?.close(); server.close(); }
+})().catch(error => { console.error(error); process.exitCode = 1; });
