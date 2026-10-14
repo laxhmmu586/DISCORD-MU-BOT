@@ -1784,11 +1784,28 @@ ${section}`,
     const xbagPcValues = [...section.matchAll(/\bXBAG\s*\/\s*(\d+)\s*PC\b/gi)].map((m) => Number(m[1] || 0));
     const asvcXbagPcValues = [...section.matchAll(/^\s*ASVC-[^\n\r]*\bXBAG\s*\/\s*(\d+)\s*PC\b/gim)].map((m) => Number(m[1] || 0));
     const xbagPc = Math.max(0, ...xbagPcValues, ...asvcXbagPcValues);
-    const pdbgCount = [...section.matchAll(/\bPDBG\b/gi)].length;
+    // ASVC PDBG quantities are additional pieces, not one piece per product.
+    // Repeated displays of the same service must not grant the allowance twice.
+    const asvcLines = section.match(/^\s*ASVC-[^\n\r]+/gim) || [];
+    const uniqueAsvcLines = new Set(asvcLines.map((line) => line.trim().replace(/\s+/g, ' ').toUpperCase()));
+    let asvcPdbgPc = 0;
+    for (const line of uniqueAsvcLines) {
+      for (const match of line.matchAll(/\bPDBG\b/g)) {
+        const suffix = line.slice(match.index + match[0].length).trimStart();
+        if (suffix.startsWith('/')) {
+          const pieces = suffix.match(/^\/\s*(\d+)\s*PC(?=\s|$)/);
+          asvcPdbgPc += Number(pieces?.[1] || 0);
+        } else {
+          asvcPdbgPc += 1;
+        }
+      }
+    }
+    const legacyPdbgCount = [...section.replace(/^\s*ASVC-[^\n\r]+/gim, '').matchAll(/\bPDBG\b/gi)].length;
+    const pdbgPc = asvcPdbgPc + legacyPdbgCount;
     const hasExtraBaggageByTier = /\bFF\/MU\s+\d+\/(?:V|G|S)\b/i.test(section) || /\*1|\*2/.test(section);
     const tierExtraPc = hasExtraBaggageByTier ? 1 : 0;
     const infExtraPc = hasInfTk ? 1 : 0;
-    const paidExtraPc = Math.max(0, xbagPc - fbaPc) + pdbgCount;
+    const paidExtraPc = Math.max(0, xbagPc - fbaPc) + pdbgPc;
     const purchasedExtra = paidExtraPc + tierExtraPc + infExtraPc;
     const bagTagRaw = [...section.matchAll(/BAGTAG\/([^\n\r]+)/gi)]
       .map((m) => m[1] || '')
