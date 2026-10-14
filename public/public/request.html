@@ -34,7 +34,37 @@
   <button id="submit" class="primary green">Submit Request <span>→</span></button>
  </section>
  <section id="success" class="screen success" hidden>
-  <div class="celebration" aria-hidden="true"><span>✓</span><i>✦</i><b>✧</b></div><h2>Request Submitted!</h2><p class="subheading">Your attendance request has been successfully saved.</p><div class="summary"><dl id="receipt"></dl></div><p id="notification-status" class="notification-status"></p><button id="home" class="secondary">Back to Home</button>
+  <div class="celebration" aria-hidden="true">
+   <svg class="success-art" viewBox="0 0 280 190" fill="none">
+    <defs>
+     <radialGradient id="success-halo"><stop stop-color="#00e89c" stop-opacity=".38"/><stop offset="1" stop-color="#00e89c" stop-opacity="0"/></radialGradient>
+     <linearGradient id="success-face" x1="107" y1="53" x2="175" y2="137" gradientUnits="userSpaceOnUse"><stop stop-color="#36eaa8"/><stop offset=".48" stop-color="#079f6b"/><stop offset="1" stop-color="#03513e"/></linearGradient>
+     <linearGradient id="success-ring" x1="108" y1="54" x2="173" y2="136" gradientUnits="userSpaceOnUse"><stop stop-color="#adffcf"/><stop offset=".25" stop-color="#43ffb3"/><stop offset=".65" stop-color="#13e899"/><stop offset="1" stop-color="#00be7c"/></linearGradient>
+     <linearGradient id="success-tick" x1="124" y1="82" x2="157" y2="112" gradientUnits="userSpaceOnUse"><stop stop-color="#b0ffd8"/><stop offset="1" stop-color="#38ffb4"/></linearGradient>
+     <filter id="success-glow" x="-70%" y="-70%" width="240%" height="240%"><feGaussianBlur stdDeviation="9"/></filter>
+    </defs>
+    <ellipse cx="140" cy="100" rx="95" ry="85" fill="url(#success-halo)"/>
+    <g class="success-confetti">
+     <rect x="36" y="49" width="8" height="15" rx="2" transform="rotate(-40 36 49)" fill="#ffd23b"/>
+     <rect x="73" y="21" width="9" height="9" rx="3" transform="rotate(27 73 21)" fill="#ffca29"/>
+     <rect x="220" y="60" width="10" height="10" rx="3" transform="rotate(29 220 60)" fill="#ffc52b"/>
+     <rect x="190" y="19" width="8" height="8" rx="2" transform="rotate(29 190 19)" fill="#578fff"/>
+     <rect x="44" y="121" width="8" height="16" rx="2" transform="rotate(40 44 121)" fill="#ff5879"/>
+     <rect x="232" y="111" width="8" height="8" rx="3" transform="rotate(30 232 111)" fill="#598bff"/>
+     <rect x="205" y="142" width="9" height="9" rx="2" transform="rotate(35 205 142)" fill="#19df98"/>
+     <circle cx="64" cy="144" r="3" fill="#08bfa2"/><circle cx="61" cy="153" r="2" fill="#078e86"/>
+     <circle cx="207" cy="87" r="2.5" fill="#159b7d"/><circle cx="67" cy="88" r="2.5" fill="#107e70"/>
+    </g>
+    <g class="success-medallion">
+     <circle cx="140" cy="99" r="42" stroke="#10f4a2" stroke-width="9" opacity=".5" filter="url(#success-glow)"/>
+     <circle cx="140" cy="102" r="42" fill="#003d30"/>
+     <circle cx="140" cy="96" r="41" fill="url(#success-face)" stroke="url(#success-ring)" stroke-width="7"/>
+     <path d="M108 80a36 36 0 0 1 46-18" stroke="#d5ffe6" stroke-width="2" stroke-linecap="round" opacity=".28"/>
+     <path d="m124 97 11 12 23-27" stroke="#006a47" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" opacity=".55" transform="translate(0 2)"/>
+     <path d="m124 95 11 12 23-27" stroke="url(#success-tick)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+   </svg>
+  </div><h2>Request Submitted!</h2><p class="subheading">Your attendance request has been successfully saved.</p><div class="summary"><dl id="receipt"></dl></div><p id="notification-status" class="notification-status"></p><button id="home" class="secondary">Back to Home</button>
  </section>
  <p id="status" class="error" role="alert"></p><div id="sending" class="sending" hidden><span aria-hidden="true">➤</span><strong>Submitting…</strong><p>Saving your attendance request</p></div>
  </section></div><footer>EMPLOYEE SERVICES · ATTENDANCE</footer>
