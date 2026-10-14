@@ -41,10 +41,13 @@ function createStore(filename=process.env.PBB_DB_PATH||path.join(__dirname,'data
    if(r.checklistDone?.[role]){delete r.checklistDone[role];for(const [phase,g] of Object.entries(signalGroups[r.type]))if(g.role===role)delete r.signals?.[phase];}
    if(typeof body.note==='string')r.notes[role][row.id]=body.note.trim().slice(0,1000);
   }else if(body.action==='sign'){
-   if(items[r.type].some(x=>x.roles.includes(role)&&!r.answers[role][x.id]))fail('Complete all assigned items first');
-   for(const [phase,group] of Object.entries(signalGroups[r.type]))if(group.role===role&&group.items.every(id=>r.answers[role][id]==='Y')&&!r.signals?.[phase])fail('Confirm '+group.label+' in the shared operations panel');
+   const groups=Object.entries(signalGroups[r.type]).filter(([,g])=>g.role===role),signalIds=groups.flatMap(([,g])=>g.items);
+   if(items[r.type].some(x=>!x.hidden&&x.roles.includes(role)&&!signalIds.includes(x.id)&&!r.answers[role][x.id]))fail('Complete all assigned items first');
    const name=String(body.name||'').trim();const strokes=body.strokes;try{employeeFont.encodeText(name);}catch{fail('Use the employee name in English spelling for the original PDF');}
    if(!name||name.length>100||!Array.isArray(strokes)||!strokes.length||strokes.length>100||strokes.flat().length>10000||strokes.some(s=>!Array.isArray(s)||s.length<2||s.some(p=>!Array.isArray(p)||p.length!==2||p.some(n=>!Number.isFinite(n)||n<0||n>1))))fail('Name and handwritten signature are required');
+   // Confirm and sign this role atomically, independent of the peer.
+   const confirmation={at:now().toISOString(),uid:user.uid,role};r.checklistDone ||= {};r.checklistDone[role]=confirmation;r.signals ||= {};
+   for(const [phase,group] of groups){r.signals[phase]=confirmation;for(const itemId of group.items)r.answers[role][itemId]='Y';}
    r.signatures[role]={name,eid:String(body.eid||''),employeeId:body.employeeId,strokes,at:now().toISOString(),uid:user.uid};
   }else fail('Unknown operation');
   r.participants ||= {driver:[],spotter:[]};if(!r.participants[role].includes(user.uid))r.participants[role].push(user.uid);r.owners[role]=user.uid;r.revision++;r.updatedAt=now().toISOString();
@@ -77,7 +80,7 @@ function registerPbb(app,{client,authenticate=require('./pbbAuth').authenticate,
  const publishRooms=()=>{for(const sub of lobbyStreams)sub.res.write(`event: rooms\ndata: ${JSON.stringify(activeRooms(sub.flightNo,sub.type))}\n\n`);};
  const publish=r=>{for(const res of streams.get(r.id)||[])res.write(`event: state\ndata: ${JSON.stringify(r)}\n\n`);publishRooms();};
 
- const save=r=>{store.put(r);publish(r);};
+ const save=r=>{r.revision++;store.put(r);publish(r);};
  async function deliver(id){
   if(jobs.has(id))return jobs.get(id);
   const job=(async()=>{
