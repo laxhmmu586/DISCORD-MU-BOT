@@ -1,0 +1,17 @@
+/* Only the Boarding Scan left status block; retain existing type and spacing. */
+.boarding-scan #table-wrap tbody td:first-child {
+  position:relative;
+  border-left:0;
+  overflow:hidden;
+}
+.boarding-scan #table-wrap tbody td:first-child::before {
+  content:"";
+  position:absolute;
+  inset:0 auto 0 0;
+  width:20px;
+  border-radius:10px 0 0 10px;
+  background:#a9b8cc;
+  pointer-events:none;
+}
+.boarding-scan #table-wrap tr.is-new td:first-child::before { background:#d59b25; }
+.boarding-scan #table-wrap tr.is-entered td:first-child::before { background:#008744; }

@@ -38,10 +38,21 @@
   arrival.find(x=>x.id==='a5').hidden=true;arrival.find(x=>x.id==='a5').defaultValue='Y';
   arrival.find(x=>x.id==='a2').hidden=true;arrival.find(x=>x.id==='a2').defaultValue='Y';
   arrival.find(x=>x.id==='a10').hidden=true;arrival.find(x=>x.id==='a10').defaultValue='NA';
-  departure.find(x=>x.id==='d12').hidden=true;departure.find(x=>x.id==='d12').defaultValue='Y';departure.find(x=>x.id==='d3').hidden=true;departure.find(x=>x.id==='d3').defaultValue='Y';departure.find(x=>x.id==='d1').hidden=true;departure.find(x=>x.id==='d1').defaultValue='Y';
+  departure.find(x=>x.id==='d12').hidden=true;departure.find(x=>x.id==='d12').defaultValue='Y';
   for(const [id,photo] of Object.entries({a8:'ramp-path-realistic.webp',a9:'canopy-bumper-realistic.webp',d1:'aircraft-door.svg',d3:'safety-strap.svg'})){const row=[...arrival,...departure].find(x=>x.id===id);row.art=null;row.photos=[photo];}
   departure.find(x=>x.id==='d2').photos=['safety-shoe.jpg'];
   departure.find(x=>x.id==='d4').photos=['control-console.jpg'];
+  // Question-specific China Eastern 777-300ER / LAX training illustrations.
+  const trainingPhotos={
+    a6:['cab-docking-lax-v2.webp'],a9:['canopy-bumper-inspection-lax-v3.webp'],a11:['aircraft-chocks-lax-v2.webp'],
+    a12:['ready-lax-v2.webp'],a13:['safe-area-check-lax-v2.webp','safe-lax-v2.webp'],a14:['go-lax-v2.webp'],
+    a15:['driver-spotter-eye-contact-lax-v2.webp','bridge-approach-lax-v3.webp'],
+    a16:['floor-level-lax-v2.webp'],a17:['fuselage-gap-lax-v2.webp'],
+    a18:['auto-key-lax-v2.webp'],
+    d1:['airline-door-closure-lax-v2.webp'],d2:['safety-shoe-storage-lax-v2.webp'],d3:['safety-chain-lax-v2.webp'],d4:['operate-key-lax-v2.webp'],
+    d5:['departure-ready-lax-v4.webp'],d6:['safe-area-check-lax-v2.webp','safe-lax-v2.webp'],d7:['go-warning-bell-lax-v4.webp'],d8:['departure-detachment-lax-v4.webp'],d9:['departure-stow-box-lax-v4.webp'],d11:['off-key-removed-lax-v2.webp']
+  };
+  for(const row of [...arrival,...departure])if(trainingPhotos[row.id]){row.art=null;row.photos=trainingPhotos[row.id];row.trainingIllustration=true;}
   // Short screen prompts are separate from the original checklist/PDF wording.
   const prompts={
   "a1": "Arrive 15 minutes early with safety PPE.",
@@ -61,18 +72,18 @@
   "a15": "Move slowly toward the aircraft; keep eye contact with the spotter.",
   "a16": "Set bridge floor 2–2.5 inches below the aircraft door seal.",
   "a17": "Keep bridge off the fuselage.",
-  "a18": "Turn auto-leveler on and deploy canopy.",
+  "a18": "Turn the key to AUTO and deploy the canopy.",
   "d1": "Confirm aircraft door is closed per airline procedure.",
   "d2": "Remove safety shoe, if fitted; store it in its holder.",
-  "d3": "Set safety strap and close bridge shutters/doors.",
-  "d4": "Turn auto-leveler off and retract canopy.",
+  "d3": "Pull the safety chain across the bridge opening and secure it.",
+  "d4": "Turn the key to OPERATE and retract the canopy.",
   "d5": "Signal READY to the spotter.",
   "d6": "Double-check the area is safe; signal SAFE.",
   "d7": "Confirm GO and ring the warning bell 3 times.",
   "d8": "Stand in position to watch bridge detachment.",
   "d9": "Keep the travel path clear until wheels are in the stow box.",
   "d10": "Remove trash, water and debris.",
-  "d11": "Turn off power.",
+  "d11": "Turn the key to OFF and remove it.",
   "d12": "Lock all ramp-to-terminal access doors."
 };
   for(const row of [...arrival,...departure])row.prompt=prompts[row.id];

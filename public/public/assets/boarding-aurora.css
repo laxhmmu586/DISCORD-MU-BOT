@@ -11,7 +11,7 @@ body::before, body.aviation-page::before {
   inset:0;
   z-index:-1;
   pointer-events:none;
-  background:linear-gradient(rgba(241,247,255,.12),rgba(241,247,255,.12)),url("boarding-aurora-c.png") center / cover no-repeat;
+  background:linear-gradient(rgba(241,247,255,.12),rgba(241,247,255,.12)),url("china-eastern-777-mobile-small.png") center / cover no-repeat;
 }
 body > header {
   background:transparent;
@@ -54,7 +54,7 @@ body > header a:is(.mufc-wordmark,.brand):focus-visible {
 .card :is(input,textarea,select) { background:rgba(255,255,255,.88); }
 .topbar + header { padding:10px 0; }
 @media(max-width:640px) {
-  body::before, body.aviation-page::before { background-size:auto 100%; background-position:58% center; }
+  body::before, body.aviation-page::before { background-size:auto 100%; background-position:calc(100% + 18vw) -18vh; }
   .card h1 { overflow-wrap:anywhere; }
   .card { backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); }
 }

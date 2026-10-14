@@ -13,10 +13,11 @@ function validateInfo(b){
  if(!Array.isArray(b.bridges)||b.bridges.length!==1||!['L1','L2','L3'].includes(b.bridges[0]))fail('Select one jet bridge: L1, L2 or L3');
  return {type:b.type,flightNo,date,gate,blockTime,bridges:[...new Set(b.bridges)]};
 }
+function pdfFilename(r){return `JetBridge-${r.type}-${r.flightNo}-${r.date}-${r.bridges.join('-')}.pdf`;}
 function createStore(filename=process.env.PBB_DB_PATH||path.join(__dirname,'data/pbb.db'),{now=()=>new Date()}={}){
  if(filename!==':memory:')fs.mkdirSync(path.dirname(filename),{recursive:true});
  const db=new Database(filename);db.pragma('journal_mode = WAL');db.exec('CREATE TABLE IF NOT EXISTS pbb_records (id TEXT PRIMARY KEY, data TEXT NOT NULL, pdf BLOB)');
- const get=id=>{const row=db.prepare('SELECT data FROM pbb_records WHERE id=?').get(id);if(!row)fail('Checklist not found',404);const r=JSON.parse(row.data);if(r.type==='arrival'&&!r.completedAt)for(const role of roles)if(!r.signatures[role]){r.answers[role].a1='Y';if(role==='driver')r.answers[role].a5='Y';}if(r.type==='departure'&&!r.completedAt&&!r.signatures.driver){r.answers.driver.d1='Y';r.answers.driver.d3='Y';r.answers.driver.d12='Y';}return r;};
+ const get=id=>{const row=db.prepare('SELECT data FROM pbb_records WHERE id=?').get(id);if(!row)fail('Checklist not found',404);const r=JSON.parse(row.data);if(r.type==='arrival'&&!r.completedAt)for(const role of roles)if(!r.signatures[role]){r.answers[role].a1='Y';if(role==='driver')r.answers[role].a5='Y';}if(r.type==='departure'&&!r.completedAt&&!r.signatures.driver){r.answers.driver.d12='Y';}return r;};
  const put=r=>{db.prepare('UPDATE pbb_records SET data=? WHERE id=?').run(JSON.stringify(r),r.id);return r;};
  const mutate=db.transaction((id,user,body)=>{
   const r=get(id),role=body.role;if(!roles.includes(role))fail('Select driver or spotter');if(r.completedAt)fail('Completed checklist is locked',409);
@@ -28,7 +29,7 @@ function createStore(filename=process.env.PBB_DB_PATH||path.join(__dirname,'data
    const groups=Object.entries(signalGroups[r.type]).filter(([,g])=>g.role===role),signalIds=groups.flatMap(([,g])=>g.items);
    if(items[r.type].some(x=>!x.hidden&&x.roles.includes(role)&&!signalIds.includes(x.id)&&!r.answers[role][x.id]))fail('Complete all checklist questions first');
    const confirmation={at:now().toISOString(),uid:user.uid,role};r.checklistDone ||= {};r.checklistDone[role]=confirmation;r.signals ||= {};
-   for(const [phase,group] of groups){r.signals[phase]=confirmation;for(const id of group.items)r.answers[role][id]='Y';}
+   for(const [phase,group] of groups){r.signals[phase]=confirmation;for(const id of group.items)r.answers[role][id] ||= 'Y';}
   }else if(body.action==='signal'){
    const groups=signalGroups[r.type],group=groups[body.phase];if(!group||group.role!==role)fail('This confirmation belongs to the other operator',403);
    if(group.after){const prior=groups[group.after];if(!r.signals?.[group.after]||prior.items.some(id=>r.answers[prior.role][id]!=='Y'))fail('Wait for '+group.after.toUpperCase()+' confirmation',409);}
@@ -64,7 +65,7 @@ function createStore(filename=process.env.PBB_DB_PATH||path.join(__dirname,'data
   }
   return {bridge,type:selected.type,deleted,updated};
  });
- return {db,get,put,mutate,now,reset,create:db.transaction((body,user)=>{const info=validateInfo({...body,date:new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(now())});const candidates=db.prepare("SELECT data FROM pbb_records WHERE json_extract(data,'$.date')=? AND json_extract(data,'$.type')=? ORDER BY (json_extract(data,'$.completedAt') IS NOT NULL) DESC, rowid ASC").all(info.date,info.type).map(x=>JSON.parse(x.data));const active=candidates.find(r=>r.bridges.includes(info.bridges[0]));if(active)return get(active.id);const r={...info,id:crypto.randomUUID(),createdBy:user.uid,createdAt:now().toISOString(),updatedAt:now().toISOString(),revision:1,owners:{},answers:{driver:body.type==='arrival'?{a1:'Y',a2:'Y',a5:'Y',a10:'NA'}:{d1:'Y',d3:'Y',d12:'Y'},spotter:body.type==='arrival'?{a1:'Y',a2:'Y'}:{}},notes:{driver:{},spotter:{}},signatures:{},delivery:{drive:{status:'pending'},discord:{status:'pending'}}};db.prepare('INSERT INTO pbb_records(id,data) VALUES (?,?)').run(r.id,JSON.stringify(r));return r;}),day(date,type){return db.prepare("SELECT data FROM pbb_records WHERE json_extract(data,'$.date')=? AND json_extract(data,'$.type')=? ORDER BY rowid DESC").all(date,type).map(x=>JSON.parse(x.data));},list(){return db.prepare('SELECT data FROM pbb_records ORDER BY rowid DESC LIMIT 100').all().map(x=>JSON.parse(x.data));},pdf(id){return db.prepare('SELECT pdf FROM pbb_records WHERE id=?').get(id)?.pdf;},setPdf(id,buffer){db.prepare('UPDATE pbb_records SET pdf=? WHERE id=?').run(buffer,id);}};
+ return {db,get,put,mutate,now,reset,create:db.transaction((body,user)=>{const info=validateInfo({...body,date:new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(now())});const candidates=db.prepare("SELECT data FROM pbb_records WHERE json_extract(data,'$.date')=? AND json_extract(data,'$.type')=? ORDER BY (json_extract(data,'$.completedAt') IS NOT NULL) DESC, rowid ASC").all(info.date,info.type).map(x=>JSON.parse(x.data));const active=candidates.find(r=>r.bridges.includes(info.bridges[0]));if(active)return get(active.id);const r={...info,id:crypto.randomUUID(),createdBy:user.uid,createdAt:now().toISOString(),updatedAt:now().toISOString(),revision:1,owners:{},answers:{driver:body.type==='arrival'?{a1:'Y',a2:'Y',a5:'Y',a10:'NA'}:{d12:'Y'},spotter:body.type==='arrival'?{a1:'Y',a2:'Y'}:{}},notes:{driver:{},spotter:{}},signatures:{},delivery:{drive:{status:'pending'},discord:{status:'pending'}}};db.prepare('INSERT INTO pbb_records(id,data) VALUES (?,?)').run(r.id,JSON.stringify(r));return r;}),day(date,type){return db.prepare("SELECT data FROM pbb_records WHERE json_extract(data,'$.date')=? AND json_extract(data,'$.type')=? ORDER BY rowid DESC").all(date,type).map(x=>JSON.parse(x.data));},list(){return db.prepare('SELECT data FROM pbb_records ORDER BY rowid DESC LIMIT 100').all().map(x=>JSON.parse(x.data));},pdf(id){return db.prepare('SELECT pdf FROM pbb_records WHERE id=?').get(id)?.pdf;},setPdf(id,buffer){db.prepare('UPDATE pbb_records SET pdf=? WHERE id=?').run(buffer,id);}};
 }
 function registerPbb(app,{client,authenticate=require('./pbbAuth').authenticate,store=createStore(),buildPdf=require('./pbbPdf').buildPbbPdf,drive:providedDrive,gateService=require('./pbbFlights').createFlightService(),employeeSeed}={}){
  const {Readable}=require('node:stream'),{createPbbDrive,driveError}=require('./pbbDrive');
@@ -88,7 +89,7 @@ function registerPbb(app,{client,authenticate=require('./pbbAuth').authenticate,
    let pdf=store.pdf(id);
    try{if(!pdf){pdf=await buildPdf(r);store.setPdf(id,pdf);}}catch(e){r.pdfError=e.message;save(r);return;}
    delete r.pdfError;
-   const name=`JetBridge-${r.type}-${r.flightNo}-${r.date}-${id}.pdf`;
+   const name=pdfFilename(r);
    if(r.delivery.drive.status!=='sent'){
     try{
      const folderId=process.env.PBB_DRIVE_FOLDER_ID||'1wMyB23ikaAnbkhJZcKBKBNujEeeY7Xsu';if(drive.validateFolder)await drive.validateFolder(folderId);
@@ -101,7 +102,7 @@ function registerPbb(app,{client,authenticate=require('./pbbAuth').authenticate,
    }
    if(r.delivery.discord.status!=='sent'){
     try{const channel=await client.channels.fetch(process.env.PBB_DISCORD_CHANNEL_ID||'1559561919826890852');if(!channel?.isTextBased())throw new Error('Discord channel is unavailable');
-     const sent=await channel.send({content:`Jet Bridge ${r.type.toUpperCase()} | ${r.flightNo} | ${r.date} | Gate ${r.gate}\nDriver: ${r.signatures.driver.name} ✓ | Spotter: ${r.signatures.spotter.name} ✓`,files:[{attachment:pdf,name}],nonce:crypto.createHash('sha256').update(id).digest('hex').slice(0,24),enforceNonce:true});r.delivery.discord={status:'sent',messageId:sent.id};
+     const sent=await channel.send({content:`Jet Bridge ${r.type.toUpperCase()} | ${r.flightNo} | ${r.date} | Gate ${r.gate} | ${r.bridges.join(' / ')}\nDriver: ${r.signatures.driver.name} ✓ | Spotter: ${r.signatures.spotter.name} ✓`,files:[{attachment:pdf,name}],nonce:crypto.createHash('sha256').update(id).digest('hex').slice(0,24),enforceNonce:true});r.delivery.discord={status:'sent',messageId:sent.id};
     }catch(e){r.delivery.discord={status:'failed',error:e.message};}save(r);
    }
   })().finally(()=>jobs.delete(id));jobs.set(id,job);return job;
@@ -128,7 +129,7 @@ function registerPbb(app,{client,authenticate=require('./pbbAuth').authenticate,
   for(const r of result.updated)publish(r);publishRooms();res.json({bridge,type:result.type,cleared:result.deleted.length+result.updated.length});
  }));
  app.post('/pbb-api/records/:id/retry',route((req,res)=>{const r=store.get(req.params.id);if(!r.completedAt)fail('Both signatures required',409);void deliver(r.id);res.status(202).json(r);}));
- app.get('/pbb-api/records/:id/pdf',route((req,res)=>{const r=store.get(req.params.id);if(!r.completedAt)fail('Both signatures required',409);const pdf=store.pdf(r.id);if(!pdf)fail('PDF is generating. Please retry.',409);res.setHeader('Content-Disposition',`attachment; filename="JetBridge-${r.type}-${r.flightNo}-${r.date}.pdf"`);res.type('pdf').send(pdf);}));
+ app.get('/pbb-api/records/:id/pdf',route((req,res)=>{const r=store.get(req.params.id);if(!r.completedAt)fail('Both signatures required',409);const pdf=store.pdf(r.id);if(!pdf)fail('PDF is generating. Please retry.',409);res.setHeader('Content-Disposition',`attachment; filename="${pdfFilename(r)}"`);res.type('pdf').send(pdf);}));
  app.get('/pbb-api/records/:id/stream',route((req,res)=>{
   const r=store.get(req.params.id);res.set({'Content-Type':'text/event-stream','Cache-Control':'no-cache, no-transform','Connection':'keep-alive','X-Accel-Buffering':'no'});res.flushHeaders();
   res.pbbUid=req.pbbUser.uid;if(!streams.has(r.id))streams.set(r.id,new Set());streams.get(r.id).add(res);res.write(`event: state\ndata: ${JSON.stringify(r)}\n\n`);presence(r.id);
