@@ -6,6 +6,10 @@
     ],
     "headers": [
       {
+        "source": "/{request.html,request.css,request.js}",
+        "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
+      },
+      {
         "source": "/{240.html,contact-form.html,cbs-form.html,pir-form.html,aviation-glass.css,transit-240.css,transit-240-restore.css}",
         "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
       },
