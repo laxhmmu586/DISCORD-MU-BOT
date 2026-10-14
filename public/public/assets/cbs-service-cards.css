@@ -20,11 +20,10 @@ body.aviation-page.aviation-baggage::before {background:linear-gradient(#f2faff9
   backdrop-filter:none;-webkit-backdrop-filter:none;
   transition:transform .18s ease,box-shadow .18s ease;
 }
-.aviation-baggage .choice--delayed {--choice-accent:#4af2ff;--choice-base:#086df2;--choice-glow:#31d9ff42;--choice-text:#0057df}
-.aviation-baggage .choice--damaged {--choice-accent:#ddb3ff;--choice-base:#8250eb;--choice-glow:#bd79ff42;--choice-text:#7436e7}
+.aviation-baggage .choice--delayed {--choice-accent:#4af2ff;--choice-base:#086df2;--choice-glow:#31d9ff42}
+.aviation-baggage .choice--damaged {--choice-accent:#ddb3ff;--choice-base:#8250eb;--choice-glow:#bd79ff42}
 .aviation-baggage .choice-art {position:absolute;inset:0;z-index:-2;display:block;width:100%;height:100%;margin:0;object-fit:cover}
 .aviation-baggage .choice::after {content:"";position:absolute;inset:48% 0 0;z-index:-1;background:linear-gradient(transparent,var(--choice-base) 93%);opacity:.92;pointer-events:none}
-.aviation-baggage .choice-arrow {position:absolute;top:18px;right:18px;display:grid;place-items:center;width:48px;height:48px;border-radius:50%;background:#fffffff0;color:var(--choice-text);font-size:32px;line-height:1}
 .aviation-baggage .choice strong,.aviation-baggage .choice strong .en {margin:0;color:#fff;font-size:clamp(25px,3.8vw,36px);font-weight:850;line-height:1.12;letter-spacing:-.6px;text-shadow:0 2px 8px #15328138}
 .aviation-baggage .go {margin-top:7px;color:#fff;font-size:clamp(16px,2.4vw,20px);font-weight:500;line-height:1.2;text-shadow:0 1px 5px #15328160}
 .aviation-baggage .go::after {content:'›';display:inline-block;margin-left:10px;font-size:1.35em;line-height:.7}
@@ -36,7 +35,6 @@ html[lang="en"] .aviation-baggage .choice strong .zh,html[lang="zh-CN"] .aviatio
   .aviation-baggage > header {margin:18px auto 28px}
   .aviation-baggage main {width:calc(100% - 16px)}
   .aviation-baggage .choice {padding:16px 18px;border-radius:23px}
-  .aviation-baggage .choice-arrow {top:12px;right:12px;width:36px;height:36px;font-size:25px}
   .aviation-baggage .choices {gap:14px}
 }
 @media(prefers-reduced-motion:reduce) {.aviation-baggage .choice {transition:none}.aviation-baggage .choice:hover {transform:none}}
