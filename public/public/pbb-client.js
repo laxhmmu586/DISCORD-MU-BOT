@@ -36,7 +36,14 @@
  function bindSidebar(){view.querySelectorAll('[data-role]').forEach(b=>b.onclick=()=>{role=b.dataset.role;index=0;checklist();});}
  function enlargePhoto(img){const dialog=document.createElement('dialog');dialog.className='photo-dialog';dialog.innerHTML=`<button class="photo-close" aria-label="Close reference image">×</button><img src="${esc(img.src)}" alt="${esc(img.alt)}"><p>Reference image</p>`;document.body.append(dialog);const close=()=>{dialog.close();dialog.remove();};dialog.querySelector('button').onclick=close;dialog.oncancel=()=>dialog.remove();dialog.onclick=e=>{if(e.target===dialog)close();};dialog.showModal();}
  function bindPhotos(){view.querySelectorAll('.check-illustration img,.handoff-art,.scene').forEach(img=>{img.style.cursor='zoom-in';img.tabIndex=0;img.title='View reference image';img.onclick=()=>enlargePhoto(img);img.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();enlargePhoto(img);}};});}
- function frame(content){document.body.classList.add('pbb-working');document.body.classList.toggle('handoff-mode',screen==='handoff');view.innerHTML=`<div class="working-grid">${sidebar()}<section class="pbb-panel">${content}</section></div>`;bindSidebar();bindPhotos();}
+ let mediaFrameKey='';
+ function frame(content){
+  const key=[record.id,role,screen,index].join('|'),previousVideo=view.querySelector('.training-video video'),wasPlaying=previousVideo&&!previousVideo.paused;
+  document.body.classList.add('pbb-working');document.body.classList.toggle('handoff-mode',screen==='handoff');view.innerHTML=`<div class="working-grid">${sidebar()}<section class="pbb-panel">${content}</section></div>`;
+  const nextVideo=view.querySelector('.training-video video');
+  if(previousVideo&&nextVideo&&mediaFrameKey===key&&previousVideo.querySelector('source')?.src===nextVideo.querySelector('source')?.src){nextVideo.replaceWith(previousVideo);if(wasPlaying&&previousVideo.paused)void previousVideo.play().catch(()=>{});}
+  mediaFrameKey=key;bindSidebar();bindPhotos();
+ }
 
  function trainingVideo(){return '<figure class="training-video"><video controls playsinline preload="none" poster="/assets/pbb/ready-lax-v2.webp" aria-label="READY, SAFE, GO, three warning bells, then slow approach while maintaining eye contact"><source src="/assets/pbb/ready-safe-go-lax-v2.mp4" type="video/mp4"><track kind="captions" src="/assets/pbb/ready-safe-go-lax-v2.vtt" srclang="en" label="English" default></video><figcaption>READY → SAFE → GO → 3 warning bells → slow, smooth movement with eye contact</figcaption></figure>';}
  function illustrationMarkup(item){const photos=item.photos||(item.art?[item.art+'.webp']:[]);return (photos.length?'<div class="reference-photos '+(item.id==='d2'&&!item.trainingIllustration?'safety-shoe-photo':'')+'">'+photos.map(photo=>'<div class="check-illustration actual-photo"><img src="/assets/pbb/'+esc(photo)+'" alt="'+esc(item.prompt||item.text)+'" loading="lazy"><span class="art-caption">'+(item.trainingIllustration?'TRAINING ILLUSTRATION':photo.endsWith('.svg')?'REFERENCE DIAGRAM':'REFERENCE IMAGE')+'</span></div>').join('')+'</div>':'')+(item.video?trainingVideo():'');}
