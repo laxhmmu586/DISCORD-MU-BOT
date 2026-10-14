@@ -25,6 +25,8 @@ if(rail){
 }
 // Dismiss transient detail panels without affecting interactive controls.
 function closeFlightOverlays(){
+  const securityModal=document.querySelector('.security-modal-backdrop');
+  if(securityModal){securityModal.remove();return;}
   document.querySelector('.node-card')?.classList.remove('is-open');
   document.querySelector('.details-panel')?.classList.remove('is-meal-open');
   const result=document.querySelector('.result-panel');
@@ -33,6 +35,8 @@ function closeFlightOverlays(){
 }
 document.addEventListener('click',event=>{
   const target=event.target;
+  // A Security Check popup dismisses itself; leave the underlying BN list intact.
+  if(document.querySelector('.security-modal-backdrop'))return;
   // Security Check is a persistent workspace; reading its detail must not close it.
   if(target.closest('.result-panel[data-panel-title="Security Check"]'))return;
   // Keep acknowledgement, passenger drill-down, copying and input controls usable.
