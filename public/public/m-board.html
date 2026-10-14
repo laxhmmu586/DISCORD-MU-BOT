@@ -17,7 +17,7 @@
     .card { background:#fff; border:1px solid var(--line); border-radius:22px; box-shadow:0 18px 42px rgba(22,48,76,.08); padding:22px; overflow:hidden; }
     .toolbar { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
     .toolbar h1 { display:flex; align-items:center; gap:10px; }
-    .aviation-board > header { min-height:46px; }
+    .aviation-board main { padding-top:14px; }
     .board-toolbar-actions { display:flex; align-items:center; gap:8px; margin-left:auto; }
     .aviation-board .board-toolbar-actions a.button { background:#ffffffb3; color:#064fca; border:1px solid #fff; box-shadow:none; }
     .section-heading { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; }
@@ -45,7 +45,6 @@
   <link rel="stylesheet" href="/assets/boarding-aurora.css?v=20261013-ce777-mobile-small">
 <link rel="stylesheet" href="/assets/mobile-cloud-layout.css?v=20261013-safe-plane"><link rel="stylesheet" href="/assets/boarding-scan.css?v=20261013-wide-accent"></head>
 <body class="aviation-page aviation-board">
-  <header><a class="mufc-wordmark" href="/flights.html">MUFC</a><div class="mobile-aircraft-sky" aria-hidden="true"></div></header>
   <main>
     <section class="card">
       <div class="toolbar"><h1><span class="boarding-live-indicator" id="boarding-live-indicator" role="status" aria-label="Live boarding connection" hidden></span>Manual</h1><div class="board-toolbar-actions"><a class="button secondary" href="/scan.html">Boarding</a><button class="refresh-board" id="refresh" type="button">Refresh</button></div></div>
