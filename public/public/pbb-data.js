@@ -44,16 +44,16 @@
   departure.find(x=>x.id==='d4').photos=['control-console.jpg'];
   // Question-specific China Eastern 777-300ER / LAX training illustrations.
   const trainingPhotos={
-    a6:['cab-docking-lax-v2.webp'],a11:['aircraft-chocks-lax-v2.webp'],
+    a6:['cab-docking-lax-v2.webp'],a9:['canopy-bumper-inspection-lax-v3.webp'],a11:['aircraft-chocks-lax-v2.webp'],
     a12:['ready-lax-v2.webp'],a13:['safe-area-check-lax-v2.webp','safe-lax-v2.webp'],a14:['go-lax-v2.webp'],
-    a15:['driver-spotter-eye-contact-lax-v2.webp','bridge-approach-lax-v2.webp'],
+    a15:['driver-spotter-eye-contact-lax-v2.webp','bridge-approach-lax-v3.webp'],
     a16:['floor-level-lax-v2.webp'],a17:['fuselage-gap-lax-v2.webp'],
-    a18:['auto-key-lax-v2.webp','canopy-deployed-lax-v2.webp'],
+    a18:['auto-key-lax-v2.webp'],
     d1:['airline-door-closure-lax-v2.webp'],d2:['safety-shoe-storage-lax-v2.webp'],d3:['safety-chain-lax-v2.webp'],d4:['operate-key-lax-v2.webp'],
     d5:['go-lax-v2.webp'],d6:['safe-area-check-lax-v2.webp','safe-lax-v2.webp'],d7:['go-lax-v2.webp'],d11:['off-key-removed-lax-v2.webp']
   };
   for(const row of [...arrival,...departure])if(trainingPhotos[row.id]){row.art=null;row.photos=trainingPhotos[row.id];row.trainingIllustration=true;}
-  for(const id of ['a12','a15'])arrival.find(row=>row.id===id).video='ready-safe-go-lax-v2.mp4';
+  arrival.find(row=>row.id==='a15').video='ready-safe-go-lax-v2.mp4';
   // Short screen prompts are separate from the original checklist/PDF wording.
   const prompts={
   "a1": "Arrive 15 minutes early with safety PPE.",
