@@ -133,19 +133,21 @@ const { operationalDate } = require('../flightContext');
             });
             assert.deepEqual(geometry.tiles.map(tile => tile.text), rows.map(row => row.nbrdBn));
             assert.ok(geometry.scrollWidth <= geometry.width, JSON.stringify({url:page.url(),width,count,geometry}));
-            assert.ok(geometry.height < 650, '30 BNs fit in one compact panel');
+            assert.ok(geometry.height < (width <= 390 ? 400 : 720), '30 BNs fit in one compact panel');
             for (const tile of geometry.tiles) {
               assert.ok(tile.left >= geometry.left - .5 && tile.right <= geometry.right + .5);
               assert.ok(tile.top >= geometry.top && tile.bottom <= geometry.bottom + .5);
               assert.equal(tile.color, 'rgb(255, 255, 255)');
-              assert.match(tile.shape, /^polygon/);
+              assert.match(tile.shape, /nbrd-hexagon/);
             }
             const tops = [...new Set(geometry.tiles.map(tile => Math.round(tile.top)))];
             const first = geometry.tiles.filter(tile => Math.round(tile.top) === tops[0]);
             const second = geometry.tiles.filter(tile => Math.round(tile.top) === tops[1]);
             assert.equal(second.length, first.length - 1, 'offset row has one fewer tile');
             assert.ok(second[0].left > first[0].left, 'second row starts half a tile later');
-            if (width === 1015 && page === board) { assert.equal(first.length, 6); assert.equal(second.length, 5); }
+            assert.equal(first.length, 6); assert.equal(second.length, 5);
+            assert.ok(first[0].left - geometry.left <= 4, "tiles fill the panel width");
+            assert.ok(geometry.right - first[5].right <= 4, "no wide side gutters");
             assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
           }
           if (count === 30) await board.screenshot({ path: '.verification/nbrd-honeycomb-' + width + '.png', fullPage: true });
