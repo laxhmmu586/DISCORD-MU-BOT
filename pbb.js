@@ -102,7 +102,7 @@ function registerPbb(app,{client,authenticate=require('./pbbAuth').authenticate,
    }
    if(r.delivery.discord.status!=='sent'){
     try{const channel=await client.channels.fetch(process.env.PBB_DISCORD_CHANNEL_ID||'1559561919826890852');if(!channel?.isTextBased())throw new Error('Discord channel is unavailable');
-     const sent=await channel.send({content:`Jet Bridge ${r.type.toUpperCase()} | ${r.flightNo} | ${r.date} | Gate ${r.gate} | ${r.bridges.join(' / ')}\nDriver: ${r.signatures.driver.name} ✓ | Spotter: ${r.signatures.spotter.name} ✓`,files:[{attachment:pdf,name}],nonce:crypto.createHash('sha256').update(id).digest('hex').slice(0,24),enforceNonce:true});r.delivery.discord={status:'sent',messageId:sent.id};
+     const sent=await channel.send({content:`Jet Bridge ${r.type.toUpperCase()} | ${r.flightNo} | ${r.date} |\nGate ${r.gate} | ${r.bridges.join(' / ')}\nDriver: ${r.signatures.driver.name} ✓\nSpotter: ${r.signatures.spotter.name} ✓`,files:[{attachment:pdf,name}],nonce:crypto.createHash('sha256').update(id).digest('hex').slice(0,24),enforceNonce:true});r.delivery.discord={status:'sent',messageId:sent.id};
     }catch(e){r.delivery.discord={status:'failed',error:e.message};}save(r);
    }
   })().finally(()=>jobs.delete(id));jobs.set(id,job);return job;
