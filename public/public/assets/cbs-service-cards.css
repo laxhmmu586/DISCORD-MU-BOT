@@ -1,0 +1,60 @@
+/* CBS service selection: realistic artwork with jewel-toned card borders. */
+.aviation-baggage .choice {
+  position:relative;
+  min-height:248px;
+  padding:18px 20px 22px;
+  overflow:hidden;
+  border:1px solid var(--choice-accent);
+  border-radius:19px;
+  background:radial-gradient(ellipse at 5% 0,var(--choice-glow),transparent 85%),#161922;
+  color:#fff;
+  box-shadow:0 10px 24px #11182724,inset 0 0 24px var(--choice-inset);
+  backdrop-filter:none;
+  -webkit-backdrop-filter:none;
+  transition:transform .18s ease,box-shadow .18s ease;
+}
+.aviation-baggage .choice--delayed {
+  --choice-accent:#ff537e;
+  --choice-glow:#713344;
+  --choice-inset:#ff537e12;
+}
+.aviation-baggage .choice--damaged {
+  --choice-accent:#f4c62f;
+  --choice-glow:#796021;
+  --choice-inset:#f4c62f12;
+}
+.aviation-baggage .choice-art {
+  display:block;
+  flex:none;
+  width:104px;
+  height:104px;
+  margin:-7px 0 5px -5px;
+  object-fit:contain;
+  filter:drop-shadow(0 6px 6px #0004);
+}
+.aviation-baggage .choice-arrow {
+  position:absolute;
+  top:16px;
+  right:16px;
+  display:grid;
+  place-items:center;
+  width:30px;
+  height:30px;
+  border-radius:50%;
+  background:#ffffff14;
+  color:#fff;
+  font-size:22px;
+  line-height:1;
+}
+.aviation-baggage .choice strong {color:#fff;font-size:21px;line-height:1.35}
+.aviation-baggage .choice strong .en {margin-top:5px;color:#f4edf2;font-size:14px}
+.aviation-baggage .go {margin-top:18px;color:#fff;font-size:13px;font-weight:600}
+.aviation-baggage .choice:hover {transform:translateY(-3px);box-shadow:0 14px 28px #11182738,inset 0 0 28px var(--choice-inset)}
+.aviation-baggage .choice:focus-visible {outline:3px solid #fff;outline-offset:3px;box-shadow:0 0 0 6px #092352}
+@media(max-width:700px) {
+  .aviation-baggage .choice {min-height:224px}
+}
+@media(prefers-reduced-motion:reduce) {
+  .aviation-baggage .choice {transition:none}
+  .aviation-baggage .choice:hover {transform:none}
+}
