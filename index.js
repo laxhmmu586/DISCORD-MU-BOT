@@ -2698,7 +2698,7 @@ app.get('/miss-connection-report', async (req, res) => {
 
 function buildCbsUpdateFields(update = {}) {
   const type = sanitizeCbsText(update.type, 40).toLowerCase();
-  if (!['upcoming_rush', 'upcoming_rush_delete', 'record-pnr', 'record-tkt', 'worldtracer', 'requested_bags', 'email', 'comment', 'rush', 'location', 'shipping', 'lost', 'closed', 'reopen'].includes(type)) return null;
+  if (!['upcoming_rush', 'upcoming_rush_delete', 'record-pnr', 'record-tkt', 'worldtracer', 'worldtracer_internal', 'requested_bags', 'email', 'comment', 'rush', 'location', 'shipping', 'lost', 'closed', 'reopen'].includes(type)) return null;
   const comment = sanitizeCbsText(update.comment, 500);
   if (type === 'record-pnr' || type === 'record-tkt') {
     const recordType = type.slice(-3).toUpperCase();
@@ -2718,9 +2718,10 @@ function buildCbsUpdateFields(update = {}) {
     if (!comment) return null;
     return { status:'', updateNote:`COMMENT | Comment: ${comment}`, updateEvent:{ key:'comment', title:'Comment', fields:[['Comment', comment]] } };
   }
-  if (type === 'worldtracer') {
+  if (type === 'worldtracer' || type === 'worldtracer_internal') {
     const fileNumber = sanitizeCbsText(update.fileNumber || update.worldTracerFileNumber, 120).toUpperCase();
     if (!fileNumber) return null;
+    if (type === 'worldtracer_internal') return { status: 'WorldTracer', skipPassengerEmail: true, updateNote: `WORLDTRACER - INTERNAL | File number: ${fileNumber}`, updateEvent: { key: 'worldtracer', title: 'WorldTracer - Internal', fields: [['File Number', fileNumber], ['Passenger Email', 'Not sent (internal update)']] } };
     return { status: 'WorldTracer', updateNote: `WORLDTRACER | File number: ${fileNumber}`, updateEvent: { key: 'worldtracer', title: 'Update WorldTracer', fields: [['File Number', fileNumber]] } };
   }
   if (type === 'requested_bags') {
@@ -4138,17 +4139,19 @@ app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
     if (updateFields.updateEvent?.key === 'worldtracer') {
       const fileNumber = updateFields.updateEvent.fields[0][1];
       const record = { ...result.record, worldTracerFileNumber: fileNumber };
-      const message = worldTracerUpdateEmail(record, fileNumber);
-      try {
-        result.email = await sendCbsCaseEmail({
-          passengerEmail: record.email,
-          subject: message.subject,
-          html: message.html,
-          ccOperations: false
-        });
-      } catch (mailErr) {
-        result.emailError = cbsEmailErrorMessage(mailErr);
-        console.error('CBS WorldTracer update email error:', mailErr);
+      if (!updateFields.skipPassengerEmail) {
+        const message = worldTracerUpdateEmail(record, fileNumber);
+        try {
+          result.email = await sendCbsCaseEmail({
+            passengerEmail: record.email,
+            subject: message.subject,
+            html: message.html,
+            ccOperations: false
+          });
+        } catch (mailErr) {
+          result.emailError = cbsEmailErrorMessage(mailErr);
+          console.error('CBS WorldTracer update email error:', mailErr);
+        }
       }
       if (String(record.caseType || '').toUpperCase() === 'DPR') {
         try {
