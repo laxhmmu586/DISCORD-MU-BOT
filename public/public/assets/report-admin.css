@@ -4,7 +4,7 @@ body.report-admin-page {
   min-height:100svh;
   color:#eff5ff;
   font-family:Arial,Helvetica,sans-serif;
-  background:linear-gradient(135deg,#020817dd,#081532dc),url('/assets/mission-earth.png') center/cover fixed;
+  background:linear-gradient(145deg,#010b24e8,#061b3bdc 55%,#031229e3),url('/assets/china-eastern-777-mobile-small.png') center/cover fixed;
 }
 .report-admin-page .service-topbar {
   min-height:60px;
@@ -22,9 +22,9 @@ body.report-admin-page {
 .report-intro p {font-size:14px;line-height:1.6;color:#9eb0cd;margin:0;}
 .report-admin-page .report-page {
   width:100%;min-height:0;max-height:none;margin:0;padding:26px;
-  border:1px solid #7b96bf55;border-radius:20px;
-  background:linear-gradient(145deg,#122440f5,#0b1230f7);
-  box-shadow:none;backdrop-filter:none;overflow:visible;
+  border:1px solid #8eb9e74d;border-radius:22px;
+  background:linear-gradient(145deg,#0c2442aa,#06132db8);
+  box-shadow:inset 0 1px 1px #d7ecff26,0 18px 55px #0005;backdrop-filter:blur(22px);overflow:visible;
 }
 .report-admin-page .report-hero h2 {font-size:20px;line-height:1.4;margin:0;text-transform:none;}
 .report-admin-page .panel-muted {color:#9eb2d1;font-size:13px;line-height:1.6;}
@@ -65,4 +65,24 @@ body.report-admin-page {
   .report-admin-page .detail-action {min-width:0;padding:12px 10px;}
   .report-admin-page .report-field {min-width:140px;}
   .report-admin-page .baggage-report-search {grid-template-columns:1fr;}
+}
+
+/* Baggage search and generated entry/update forms share the same controls. */
+.report-admin-page :is(.test-search-field,.test-field) {min-width:0;}
+.report-admin-page :is(.test-search-field,.test-field) span {color:#b5c5df;font-weight:600;}
+.report-admin-page :is(.test-search-field,.test-field) :is(input,select,textarea) {
+  border:1px solid #98c4ef48;border-radius:11px;background:#041124a8;color:#f0f4ff;
+  color-scheme:dark;box-shadow:inset 0 1px 3px #0003;padding:12px 13px;
+}
+.report-admin-page :is(.test-mode-actions button,.test-submit,.test-add-button,.test-back-button,.test-bag-tag-remove) {
+  border:1px solid #6685b166;border-radius:10px;background:#1a2d4c;color:#eff5ff;padding:12px 18px;
+}
+.report-admin-page .test-search-form .report-run {
+  background:linear-gradient(145deg,#236cbaad,#104b91cf);border-color:#b2dfff88;
+  box-shadow:inset 0 1px 2px #dceeff47,0 5px 22px #0267ce29;
+}
+.report-admin-page .test-report-card {background:linear-gradient(145deg,#0c2442aa,#06132db8);border-color:#8eb9e74d;}
+@media(max-width:640px) {
+  .report-admin-page .test-search-form {grid-template-columns:minmax(0,1fr);}
+  .report-admin-page .test-form-grid {grid-template-columns:minmax(0,1fr);}
 }
