@@ -1,0 +1,18 @@
+/* Shared by both manual boards; scope every rule to Boarding Scan. */
+.boarding-scan { gap:14px; }
+.boarding-scan #table-wrap { padding:4px 12px 8px; border:1px solid #e3eaf4; border-radius:20px; background:rgba(255,255,255,.8); }
+.boarding-scan #table-wrap table { width:100%; min-width:0; table-layout:fixed; border-collapse:separate; border-spacing:0 10px; background:transparent; }
+.boarding-scan #table-wrap th { position:static; padding:8px 16px; border:0; background:transparent; color:#526b8c; text-align:center; font-size:12px; font-weight:800; letter-spacing:.12em; }
+.boarding-scan #table-wrap td { height:72px; padding:16px; border-top:1px solid #e2e9f3; border-bottom:1px solid #e2e9f3; background:#f7faff; color:#173d70; text-align:center; font-size:clamp(24px,3vw,34px); font-weight:800; font-variant-numeric:tabular-nums; line-height:1.15; white-space:normal; overflow-wrap:anywhere; box-shadow:none; }
+.boarding-scan #table-wrap td:first-child { border-left:4px solid #a9b8cc; border-radius:14px 0 0 14px; }
+.boarding-scan #table-wrap td:last-child { border-right:1px solid #e2e9f3; border-radius:0 14px 14px 0; }
+.boarding-scan #table-wrap tr.is-new td { background:#fff6dc; border-top-color:#efdfab; border-bottom-color:#efdfab; box-shadow:none; }
+.boarding-scan #table-wrap tr.is-new td:first-child { border-left-color:#d59b25; }
+.boarding-scan #table-wrap tr.is-entered td { background:#e4f6eb; color:#12633d; border-top-color:#c7e7d4; border-bottom-color:#c7e7d4; }
+.boarding-scan #table-wrap tr.is-entered td:first-child { border-left:4px solid #168351; }
+@media (hover:hover) { .boarding-scan #table-wrap tr[data-row-number]:hover td { filter:brightness(.97); } }
+@media (max-width:640px) {
+  .boarding-scan #table-wrap { padding:2px 8px 6px; border-radius:16px; }
+  .boarding-scan #table-wrap table { border-spacing:0 8px; }
+  .boarding-scan #table-wrap td { height:64px; padding:14px 10px; }
+}
