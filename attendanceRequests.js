@@ -15,9 +15,9 @@ function validate(body, employees) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(Date.parse(date)) || new Date(date).toISOString().slice(0, 10) !== date) bad('Select a valid date');
   const time = value => typeof value === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
   if (body.type === 'late' && !time(body.arrivalTime)) bad('Enter your expected arrival time');
-  if (body.scheduledStart && !time(body.scheduledStart)) bad('Enter a valid scheduled start time');
   for (const key of ['reason', 'note']) if (body[key] != null && (typeof body[key] !== 'string' || body[key].length > 1000)) bad('Keep reasons and notes under 1,000 characters');
-  return { id: body.requestId, reference: 'REQ-' + date.replaceAll('-', '') + '-' + body.requestId.toUpperCase(), employeeId: employee.id, employeeName: employee.name, type: body.type, date, arrivalTime: body.type === 'late' ? body.arrivalTime : '', scheduledStart: body.type === 'late' ? body.scheduledStart || '' : '', reason: (body.reason || '').trim(), note: (body.note || '').trim() };
+  if (typeof body.reason !== 'string' || !body.reason.trim()) bad(body.type === 'late' ? 'Please explain why you are coming late' : 'Please provide a reason for your call off / sick request');
+  return { id: body.requestId, reference: 'REQ-' + date.replaceAll('-', '') + '-' + body.requestId.toUpperCase(), employeeId: employee.id, employeeName: employee.name, type: body.type, date, arrivalTime: body.type === 'late' ? body.arrivalTime : '', scheduledStart: '', reason: body.reason.trim(), note: (body.note || '').trim() };
 }
 const label = r => r.type === 'late' ? 'Coming Late' : 'Call Off / Sick';
 const normalizeHeader = s => String(s).toLowerCase().replace(/[^a-z0-9]/g, '');

@@ -20,7 +20,7 @@ The browser stops waiting after 30 seconds and keeps the submitted data and refe
 
 Discord receives request, monthly summary, and policy reminder PNGs in one message. Delivery jobs persist in the existing PBB SQLite database and retry every minute after failures. Discord nonces reduce duplicate notifications during ambiguous delivery retries. Monthly history uses the new employee ID and request date columns; older Google Form rows without these fields are not attributed automatically. No attendance threshold, disciplinary decision, or handbook rule beyond the supplied reminder is inferred.
 
-Dates default to America/Los_Angeles. Arrival is local time on the selected date. Scheduled start is optional and manually supplied because the employee store has no shift schedule. The time difference is only shown when a start time is entered. Reasons and review notes follow the supplied mockup and are optional, although the original Google Form required reasons.
+Dates default to America/Los_Angeles. Arrival is local time on the selected date. Scheduled start is not requested. The legacy Scheduled Start storage column is preserved, with new requests leaving it blank. Both types require a nonblank reason; Coming Late labels this field “Why?”. Additional review notes remain optional.
 
 ## Verification
 
