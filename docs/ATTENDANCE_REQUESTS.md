@@ -16,6 +16,8 @@ An empty worksheet receives Google Form-compatible headers plus request referenc
 
 Sheets is the attendance source of truth. Only successful saves show a receipt. A stable per-request UUID prevents duplicate rows on retries within the backend's serialized write queue; an ambiguous save can be retried from the same open page. The queue assumes one active backend writer. Multiple replicas need a shared lock or storage with atomic unique-key insertion before enabling this endpoint across replicas.
 
+The browser stops waiting after 30 seconds and keeps the submitted data and reference for an unchanged retry. A timeout does not cancel a save already running on the backend. A confirmed validation rejection (HTTP 400) restores editing so the employee can correct the request. Ambiguous failures keep the submitted snapshot locked until its save status is confirmed.
+
 Discord receives request, monthly summary, and policy reminder PNGs in one message. Delivery jobs persist in the existing PBB SQLite database and retry every minute after failures. Discord nonces reduce duplicate notifications during ambiguous delivery retries. Monthly history uses the new employee ID and request date columns; older Google Form rows without these fields are not attributed automatically. No attendance threshold, disciplinary decision, or handbook rule beyond the supplied reminder is inferred.
 
 Dates default to America/Los_Angeles. Arrival is local time on the selected date. Scheduled start is optional and manually supplied because the employee store has no shift schedule. The time difference is only shown when a start time is entered. Reasons and review notes follow the supplied mockup and are optional, although the original Google Form required reasons.
