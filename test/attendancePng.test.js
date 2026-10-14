@@ -12,7 +12,10 @@ test('glass cards expand for long names, reasons and notes while keeping the foo
   const record={...base,type},svg=buildCardSvg(record).toString();
   assert.doesNotMatch(svg,/REQ-HIDDEN-EXAMPLE|China Eastern|中国东方航空/);
   assert.match(svg,/Additional note/);assert.match(svg,/Employee Request Received/);
-  const panelHeight=Number(svg.match(/x="307" y="164" width="454" height="(\d+)"/)[1]);
+  assert.match(svg,/<text text-anchor="end" x="755"[^>]*>Submitted /);
+  assert.match(svg,/font-family="Nunito"/);
+  assert.doesNotMatch(svg,/stroke-width="10"[^>]*filter="url\(#blur\)"/);
+  const panelHeight=Number(svg.match(/x="360" y="164" width="401" height="(\d+)"/)[1]);
   const footerY=Number(svg.match(/M44 (\d+)H757/)[1]);assert.ok(footerY>164+panelHeight);
   const image=(await renderCards(record))[0].attachment;assert.equal(image.readUInt32BE(16),800);assert.ok(image.readUInt32BE(20)>1500);
  }

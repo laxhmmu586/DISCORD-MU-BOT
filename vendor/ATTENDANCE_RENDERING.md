@@ -15,3 +15,5 @@ The attendance renderer loads only these tracked files. It makes no network requ
 - `vendor/fonts/NotoSans.ttf`: `bfb7bb691513f12e734dc346c03a03f784912432d7e3fa8e56efcf906fe86b3d`
 
 The static Noto Sans Bold face is bundled as fonts/NotoSans-Bold.ttf to provide actual weight 700 in resvg. Source: https://raw.githubusercontent.com/notofonts/noto-fonts/main/hinted/ttf/NotoSans/NotoSans-Bold.ttf (SIL OFL 1.1; fonts/OFL.txt).
+
+Premium card headings use `fonts/Nunito-Black.ttf`, instantiated at weight 900 from https://raw.githubusercontent.com/google/fonts/main/ofl/nunito/Nunito%5Bwght%5D.ttf using fontTools during asset preparation. Only the resulting static font is needed at runtime. License and copyright notice: `fonts/Nunito-OFL.txt` (SIL OFL 1.1).
