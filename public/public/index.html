@@ -2240,6 +2240,18 @@
         gap: 12px;
       }
 
+      .security-back-button {
+        display: none;
+        padding: 10px 14px;
+        border: 1px solid var(--line-strong);
+        border-radius: 10px;
+        background: var(--panel-strong);
+        color: var(--text);
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
       .psm-card-list {
         display: grid;
         gap: 12px;
@@ -4336,13 +4348,22 @@
         }
 
         .result-panel[data-panel-title="Security Check"] .panel-workspace {
+          grid-template-columns: minmax(0, 1fr);
           gap: 12px;
         }
 
+        .result-panel[data-panel-title="Security Check"] .has-security-detail .security-bn-list,
+        .result-panel[data-panel-title="Security Check"] .security-empty-side {
+          display: none;
+        }
+
         .result-panel[data-panel-title="Security Check"] .security-detail-side {
-          position: sticky;
-          top: 8px;
-          z-index: 4;
+          position: static;
+        }
+
+        .security-detail-side .security-back-button {
+          display: block;
+          justify-self: start;
         }
 
         .security-grid .bn-button {
@@ -4476,7 +4497,7 @@
     </style>
   <link rel="stylesheet" href="assets/mission-dashboard.css?v=20261012-mission-earth" />
   <link rel="stylesheet" href="assets/energy-portals.css?v=20261009-gradient-glow" />
-  <script defer src="assets/orbit-interface.js?v=9-full-width-rail"></script>
+  <script defer src="assets/orbit-interface.js?v=10-security-detail"></script>
   <style>.login-menu button[hidden]{display:none!important}</style></head>
   <body class="is-loading">
     <div class="loading-overlay" aria-live="polite"><span>THINKING</span></div>
@@ -8570,6 +8591,10 @@
         return `<article class="record-card ${tone === "warning" ? "is-warning" : tone === "fail" ? "is-fail" : ""}"><div class="record-title"><span>BN${escapeHtml(row.bn || "---")}</span><span class="record-badge">${escapeHtml(row.deleted || row.offloaded || row.status === "DELETED" ? "DELETED" : tone === "pass" ? "PASS" : tone === "fail" ? "FAIL" : "WARNING")}</span></div><div class="security-check-list">${rows}</div>${reviewButtons}${reviewLine}${policyReview}</article>${passengerRecordCard(passenger, "Passenger Record", tone)}`;
       }
 
+      function securityDetail(row) {
+        return `<button class="security-back-button" type="button" data-security-back>← Back to BN list</button>${securityCard(row)}`;
+      }
+
       function visaPolicyReviewForm(row) {
         const visa=row?.visaDecision;
         if(!visa||['citizen','manual_twov'].includes(visa.requirement)||visa.nationality==='UNK'||visa.destinationCountry==='UNK'||!visa.nationality||!visa.destinationCountry||row.offloaded||row.deleted)return "";
@@ -8648,7 +8673,7 @@
         const stats = `<div class="panel-stats"><span class="status-ok">${passCount} pass</span><span class="status-warn">${warningCount} warning</span><span class="status-fail">${failCount} fail</span></div>`;
         const selectedRow = selectedBn ? allRows.find((row) => String(row.bn || "") === String(selectedBn).padStart(3, "0")) : null;
         const sideClass = selectedRow ? "panel-side security-detail-side" : "panel-side security-empty-side";
-        renderPanel("Security Check", currentSy?.flightNo || "SY", `${stats}<div class="panel-workspace"><div>${buttons}</div><div class="${sideClass}">${selectedRow ? securityCard(selectedRow) : `<p class="panel-muted security-hint">Click a BN button to view the passenger record.</p>`}</div></div>`, { panelClass: "is-full-page" });
+        renderPanel("Security Check", currentSy?.flightNo || "SY", `${stats}<div class="panel-workspace${selectedRow ? " has-security-detail" : ""}"><div class="security-bn-list">${buttons}</div><div class="${sideClass}">${selectedRow ? securityDetail(selectedRow) : `<p class="panel-muted security-hint">Click a BN button to view the passenger record.</p>`}</div></div>`, { panelClass: "is-full-page" });
         setPanelPassengerRows(allRows);
       }
 
@@ -9107,18 +9132,29 @@
           const row = rows[Number(securityButton.dataset.securityIndex)];
           const side = resultPanel.querySelector(".panel-side");
           if (side) {
+            resultPanel._securityListScrollTop = resultPanel.scrollTop;
+            resultPanel.querySelector(".panel-workspace")?.classList.add("has-security-detail");
             side.classList.remove("security-empty-side");
             side.classList.add("security-detail-side");
-            side.innerHTML = securityCard(row);
+            side.innerHTML = securityDetail(row);
+            if (mobileOrbitQuery.matches) {
+              resultPanel.scrollTop = 0;
+              side.querySelector("[data-security-back]")?.focus({ preventScroll: true });
+            }
           }
           return;
         }
-        if (mobileOrbitQuery.matches && resultPanel?.dataset?.panelTitle === "Security Check" && resultPanel.querySelector(".panel-side .record-card")) {
+        if (event.target.closest("[data-security-back]")) {
           const side = resultPanel.querySelector(".panel-side");
           if (side) {
+            const bn = side.querySelector("[data-review-bn]")?.dataset.reviewBn;
+            resultPanel.querySelector(".panel-workspace")?.classList.remove("has-security-detail");
             side.classList.remove("security-detail-side");
             side.classList.add("security-empty-side");
             side.innerHTML = `<p class="panel-muted security-hint">Click a BN button to view the passenger record.</p>`;
+            resultPanel.scrollTop = resultPanel._securityListScrollTop || 0;
+            const index = (resultPanel._passengerRows || []).findIndex(row => String(row.bn) === bn);
+            resultPanel.querySelector(`[data-security-index="${index}"]`)?.focus({ preventScroll: true });
           }
           return;
         }

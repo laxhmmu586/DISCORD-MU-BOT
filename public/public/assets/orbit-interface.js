@@ -33,6 +33,8 @@ function closeFlightOverlays(){
 }
 document.addEventListener('click',event=>{
   const target=event.target;
+  // Security Check is a persistent workspace; reading its detail must not close it.
+  if(target.closest('.result-panel[data-panel-title="Security Check"]'))return;
   // Keep acknowledgement, passenger drill-down, copying and input controls usable.
   if(target.closest('button,a,input,select,textarea,label,[role="button"],[contenteditable="true"]'))return;
   if(window.getSelection()?.toString())return;
