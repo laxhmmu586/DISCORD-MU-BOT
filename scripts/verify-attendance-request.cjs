@@ -97,6 +97,8 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     const heldSubmission = page.waitForRequest('**/attendance-api/requests');
     await page.click('#submit');
     await heldSubmission;
+    assert.equal(await page.locator('#sending .paper-plane').count(),1);
+    await page.screenshot({path:path.join(out,'mobile-submitting.png'),fullPage:true});
     await page.clock.fastForward(30001);
     await page.locator('#sending').waitFor({ state:'hidden' });
     assert.match(await page.locator('#status').textContent(), /took too long/);
