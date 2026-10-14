@@ -20,6 +20,8 @@ The browser stops waiting after 30 seconds and keeps the submitted data and refe
 
 Discord receives request, monthly summary, and policy reminder PNGs in one message. Delivery jobs persist in the existing PBB SQLite database and retry every minute after failures. Discord nonces reduce duplicate notifications during ambiguous delivery retries. Monthly history uses the new employee ID and request date columns; older Google Form rows without these fields are not attributed automatically. No attendance threshold, disciplinary decision, or handbook rule beyond the supplied reminder is inferred.
 
+Image rendering is loaded only during Discord delivery. A missing or incompatible image dependency leaves a pending notification job rather than preventing the API and employee list from starting. For an HTML gateway error (502/503/504), the page reports temporary service unavailability and offers Retry loading employees. The displayed employee name is the same `name` field labeled Full Name in `admin.html`.
+
 Dates default to America/Los_Angeles. Arrival is local time on the selected date. Scheduled start is not requested. The legacy Scheduled Start storage column is preserved, with new requests leaving it blank. Both types require a nonblank reason; Coming Late labels this field “Why?”. Additional review notes remain optional.
 
 ## Verification

@@ -62,7 +62,7 @@ function createSheetsStorage({ sheets, spreadsheetId = SPREADSHEET_ID, sheetId =
 function history(data, record) {
   return data.rows.filter(row => row[data.index('Employee ID')] === record.employeeId && String(row[data.index('Request Date')]).startsWith(record.date.slice(0, 7))).map(row => ({ date: row[data.index('Request Date')], type: row[data.index('Call Type')] === 'COMING LATE' ? 'late' : 'sick' })).sort((a,b) => a.date.localeCompare(b.date));
 }
-function registerAttendance(app, { employees, client, db, storage = createSheetsStorage(), renderCards = require('./attendanceCards').renderCards, channelId = process.env.ATTENDANCE_DISCORD_CHANNEL_ID || '1365021189998903418', now = () => new Date() }) {
+function registerAttendance(app, { employees, client, db, storage = createSheetsStorage(), renderCards = (...args) => require('./attendanceCards').renderCards(...args), channelId = process.env.ATTENDANCE_DISCORD_CHANNEL_ID || '1365021189998903418', now = () => new Date() }) {
   db.exec('CREATE TABLE IF NOT EXISTS attendance_delivery (reference TEXT PRIMARY KEY, data TEXT NOT NULL, sent INTEGER NOT NULL DEFAULT 0)');
   const active = new Map();
   async function deliver(reference) {
