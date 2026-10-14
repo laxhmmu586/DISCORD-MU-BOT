@@ -16,7 +16,7 @@ function validateInfo(b){
 function createStore(filename=process.env.PBB_DB_PATH||path.join(__dirname,'data/pbb.db'),{now=()=>new Date()}={}){
  if(filename!==':memory:')fs.mkdirSync(path.dirname(filename),{recursive:true});
  const db=new Database(filename);db.pragma('journal_mode = WAL');db.exec('CREATE TABLE IF NOT EXISTS pbb_records (id TEXT PRIMARY KEY, data TEXT NOT NULL, pdf BLOB)');
- const get=id=>{const row=db.prepare('SELECT data FROM pbb_records WHERE id=?').get(id);if(!row)fail('Checklist not found',404);const r=JSON.parse(row.data);if(r.type==='arrival'&&!r.completedAt)for(const role of roles)if(!r.signatures[role]){r.answers[role].a1='Y';if(role==='driver')r.answers[role].a5='Y';}return r;};
+ const get=id=>{const row=db.prepare('SELECT data FROM pbb_records WHERE id=?').get(id);if(!row)fail('Checklist not found',404);const r=JSON.parse(row.data);if(r.type==='arrival'&&!r.completedAt)for(const role of roles)if(!r.signatures[role]){r.answers[role].a1='Y';if(role==='driver')r.answers[role].a5='Y';}if(r.type==='departure'&&!r.completedAt&&!r.signatures.driver){r.answers.driver.d1='Y';r.answers.driver.d3='Y';r.answers.driver.d12='Y';}return r;};
  const put=r=>{db.prepare('UPDATE pbb_records SET data=? WHERE id=?').run(JSON.stringify(r),r.id);return r;};
  const mutate=db.transaction((id,user,body)=>{
   const r=get(id),role=body.role;if(!roles.includes(role))fail('Select driver or spotter');if(r.completedAt)fail('Completed checklist is locked',409);
@@ -24,6 +24,11 @@ function createStore(filename=process.env.PBB_DB_PATH||path.join(__dirname,'data
 
   if(body.action==='claim'){
    // Continue the same shared role; its saved answers survive operator changes.
+   }else if(body.action==='checklist-done'){
+   const groups=Object.entries(signalGroups[r.type]).filter(([,g])=>g.role===role),signalIds=groups.flatMap(([,g])=>g.items);
+   if(items[r.type].some(x=>!x.hidden&&x.roles.includes(role)&&!signalIds.includes(x.id)&&!r.answers[role][x.id]))fail('Complete all checklist questions first');
+   const confirmation={at:now().toISOString(),uid:user.uid,role};r.checklistDone ||= {};r.checklistDone[role]=confirmation;r.signals ||= {};
+   for(const [phase,group] of groups){r.signals[phase]=confirmation;for(const id of group.items)r.answers[role][id]='Y';}
   }else if(body.action==='signal'){
    const groups=signalGroups[r.type],group=groups[body.phase];if(!group||group.role!==role)fail('This confirmation belongs to the other operator',403);
    if(group.after){const prior=groups[group.after];if(!r.signals?.[group.after]||prior.items.some(id=>r.answers[prior.role][id]!=='Y'))fail('Wait for '+group.after.toUpperCase()+' confirmation',409);}
@@ -33,6 +38,7 @@ function createStore(filename=process.env.PBB_DB_PATH||path.join(__dirname,'data
    if(!['Y','N','NA'].includes(body.value))fail('Select Y, N or N/A');r.answers[role][row.id]=body.value;
    // Editing a signal-related original row invalidates its aggregate confirmation.
    for(const [phase,group] of Object.entries(signalGroups[r.type]))if(group.items.includes(row.id)&&r.signals?.[phase])delete r.signals[phase];
+   if(r.checklistDone?.[role]){delete r.checklistDone[role];for(const [phase,g] of Object.entries(signalGroups[r.type]))if(g.role===role)delete r.signals?.[phase];}
    if(typeof body.note==='string')r.notes[role][row.id]=body.note.trim().slice(0,1000);
   }else if(body.action==='sign'){
    if(items[r.type].some(x=>x.roles.includes(role)&&!r.answers[role][x.id]))fail('Complete all assigned items first');
@@ -55,7 +61,7 @@ function createStore(filename=process.env.PBB_DB_PATH||path.join(__dirname,'data
   }
   return {bridge,type:selected.type,deleted,updated};
  });
- return {db,get,put,mutate,now,reset,create:db.transaction((body,user)=>{const info=validateInfo({...body,date:new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(now())});const candidates=db.prepare("SELECT data FROM pbb_records WHERE json_extract(data,'$.date')=? AND json_extract(data,'$.type')=? ORDER BY (json_extract(data,'$.completedAt') IS NOT NULL) DESC, rowid ASC").all(info.date,info.type).map(x=>JSON.parse(x.data));const active=candidates.find(r=>r.bridges.includes(info.bridges[0]));if(active)return get(active.id);const r={...info,id:crypto.randomUUID(),createdBy:user.uid,createdAt:now().toISOString(),updatedAt:now().toISOString(),revision:1,owners:{},answers:{driver:body.type==='arrival'?{a1:'Y',a2:'Y',a5:'Y',a10:'NA'}:{d1:'Y'},spotter:body.type==='arrival'?{a1:'Y',a2:'Y'}:{}},notes:{driver:{},spotter:{}},signatures:{},delivery:{drive:{status:'pending'},discord:{status:'pending'}}};db.prepare('INSERT INTO pbb_records(id,data) VALUES (?,?)').run(r.id,JSON.stringify(r));return r;}),day(date,type){return db.prepare("SELECT data FROM pbb_records WHERE json_extract(data,'$.date')=? AND json_extract(data,'$.type')=? ORDER BY rowid DESC").all(date,type).map(x=>JSON.parse(x.data));},list(){return db.prepare('SELECT data FROM pbb_records ORDER BY rowid DESC LIMIT 100').all().map(x=>JSON.parse(x.data));},pdf(id){return db.prepare('SELECT pdf FROM pbb_records WHERE id=?').get(id)?.pdf;},setPdf(id,buffer){db.prepare('UPDATE pbb_records SET pdf=? WHERE id=?').run(buffer,id);}};
+ return {db,get,put,mutate,now,reset,create:db.transaction((body,user)=>{const info=validateInfo({...body,date:new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(now())});const candidates=db.prepare("SELECT data FROM pbb_records WHERE json_extract(data,'$.date')=? AND json_extract(data,'$.type')=? ORDER BY (json_extract(data,'$.completedAt') IS NOT NULL) DESC, rowid ASC").all(info.date,info.type).map(x=>JSON.parse(x.data));const active=candidates.find(r=>r.bridges.includes(info.bridges[0]));if(active)return get(active.id);const r={...info,id:crypto.randomUUID(),createdBy:user.uid,createdAt:now().toISOString(),updatedAt:now().toISOString(),revision:1,owners:{},answers:{driver:body.type==='arrival'?{a1:'Y',a2:'Y',a5:'Y',a10:'NA'}:{d1:'Y',d3:'Y',d12:'Y'},spotter:body.type==='arrival'?{a1:'Y',a2:'Y'}:{}},notes:{driver:{},spotter:{}},signatures:{},delivery:{drive:{status:'pending'},discord:{status:'pending'}}};db.prepare('INSERT INTO pbb_records(id,data) VALUES (?,?)').run(r.id,JSON.stringify(r));return r;}),day(date,type){return db.prepare("SELECT data FROM pbb_records WHERE json_extract(data,'$.date')=? AND json_extract(data,'$.type')=? ORDER BY rowid DESC").all(date,type).map(x=>JSON.parse(x.data));},list(){return db.prepare('SELECT data FROM pbb_records ORDER BY rowid DESC LIMIT 100').all().map(x=>JSON.parse(x.data));},pdf(id){return db.prepare('SELECT pdf FROM pbb_records WHERE id=?').get(id)?.pdf;},setPdf(id,buffer){db.prepare('UPDATE pbb_records SET pdf=? WHERE id=?').run(buffer,id);}};
 }
 function registerPbb(app,{client,authenticate=require('./pbbAuth').authenticate,store=createStore(),buildPdf=require('./pbbPdf').buildPbbPdf,drive:providedDrive,gateService=require('./pbbFlights').createFlightService(),employeeSeed}={}){
  const {google}=require('googleapis'),{Readable}=require('node:stream');
