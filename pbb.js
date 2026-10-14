@@ -64,8 +64,8 @@ function createStore(filename=process.env.PBB_DB_PATH||path.join(__dirname,'data
  return {db,get,put,mutate,now,reset,create:db.transaction((body,user)=>{const info=validateInfo({...body,date:new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(now())});const candidates=db.prepare("SELECT data FROM pbb_records WHERE json_extract(data,'$.date')=? AND json_extract(data,'$.type')=? ORDER BY (json_extract(data,'$.completedAt') IS NOT NULL) DESC, rowid ASC").all(info.date,info.type).map(x=>JSON.parse(x.data));const active=candidates.find(r=>r.bridges.includes(info.bridges[0]));if(active)return get(active.id);const r={...info,id:crypto.randomUUID(),createdBy:user.uid,createdAt:now().toISOString(),updatedAt:now().toISOString(),revision:1,owners:{},answers:{driver:body.type==='arrival'?{a1:'Y',a2:'Y',a5:'Y',a10:'NA'}:{d1:'Y',d3:'Y',d12:'Y'},spotter:body.type==='arrival'?{a1:'Y',a2:'Y'}:{}},notes:{driver:{},spotter:{}},signatures:{},delivery:{drive:{status:'pending'},discord:{status:'pending'}}};db.prepare('INSERT INTO pbb_records(id,data) VALUES (?,?)').run(r.id,JSON.stringify(r));return r;}),day(date,type){return db.prepare("SELECT data FROM pbb_records WHERE json_extract(data,'$.date')=? AND json_extract(data,'$.type')=? ORDER BY rowid DESC").all(date,type).map(x=>JSON.parse(x.data));},list(){return db.prepare('SELECT data FROM pbb_records ORDER BY rowid DESC LIMIT 100').all().map(x=>JSON.parse(x.data));},pdf(id){return db.prepare('SELECT pdf FROM pbb_records WHERE id=?').get(id)?.pdf;},setPdf(id,buffer){db.prepare('UPDATE pbb_records SET pdf=? WHERE id=?').run(buffer,id);}};
 }
 function registerPbb(app,{client,authenticate=require('./pbbAuth').authenticate,store=createStore(),buildPdf=require('./pbbPdf').buildPbbPdf,drive:providedDrive,gateService=require('./pbbFlights').createFlightService(),employeeSeed}={}){
- const {google}=require('googleapis'),{Readable}=require('node:stream');
- const drive=providedDrive||google.drive({version:'v3',auth:new google.auth.GoogleAuth({credentials:{client_email:process.env.GOOGLE_CLIENT_EMAIL,private_key:process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g,'\n')},scopes:['https://www.googleapis.com/auth/drive.file']})});
+ const {Readable}=require('node:stream'),{createPbbDrive,driveError}=require('./pbbDrive');
+ const drive=providedDrive||createPbbDrive();
  const employees=require('./employeeDatabase').openEmployeeDatabase(store.db,{seed:employeeSeed});
  require('./employees').registerEmployees(app,{store:employees,authenticate,onChange:()=>{for(const clients of streams.values())for(const res of clients)res.write(`event: employees\ndata: ${JSON.stringify(employees.options())}\n\n`);}});
  store.db.exec('CREATE TABLE IF NOT EXISTS pbb_guest_sessions (token_hash TEXT PRIMARY KEY, uid TEXT NOT NULL, expires INTEGER NOT NULL)');
@@ -88,16 +88,17 @@ function registerPbb(app,{client,authenticate=require('./pbbAuth').authenticate,
    const name=`JetBridge-${r.type}-${r.flightNo}-${r.date}-${id}.pdf`;
    if(r.delivery.drive.status!=='sent'){
     try{
+     const folderId=process.env.PBB_DRIVE_FOLDER_ID||'1wMyB23ikaAnbkhJZcKBKBNujEeeY7Xsu';if(drive.validateFolder)await drive.validateFolder(folderId);
      if(!r.delivery.drive.fileId){const generated=await drive.files.generateIds({count:1,space:'drive'});r.delivery.drive.fileId=generated.data.ids[0];save(r);}
      const fileId=r.delivery.drive.fileId;let exists=false;
      try{await drive.files.get({fileId,fields:'id',supportsAllDrives:true});exists=true;}catch(e){if(Number(e.code)!==404&&Number(e.response?.status)!==404)throw e;}
-     if(!exists)await drive.files.create({requestBody:{id:fileId,name,parents:[process.env.PBB_DRIVE_FOLDER_ID||'1wMyB23ikaAnbkhJZcKBKBNujEeeY7Xsu']},media:{mimeType:'application/pdf',body:Readable.from(pdf)},fields:'id',supportsAllDrives:true});
+     if(!exists)await drive.files.create({requestBody:{id:fileId,name,parents:[folderId]},media:{mimeType:'application/pdf',body:Readable.from(pdf)},fields:'id',supportsAllDrives:true});
      r.delivery.drive={status:'sent',fileId,url:`https://drive.google.com/file/d/${fileId}/view`};
-    }catch(e){r.delivery.drive={...r.delivery.drive,status:'failed',error:e.message};}save(r);
+    }catch(e){r.delivery.drive={...r.delivery.drive,status:'failed',error:driveError(e)};}save(r);
    }
    if(r.delivery.discord.status!=='sent'){
     try{const channel=await client.channels.fetch(process.env.PBB_DISCORD_CHANNEL_ID||'1559561919826890852');if(!channel?.isTextBased())throw new Error('Discord channel is unavailable');
-     const sent=await channel.send({content:`Jet Bridge ${r.type.toUpperCase()} | ${r.flightNo} | ${r.date} | Gate ${r.gate}\nDriver: ${r.signatures.driver.name} ✓ | Spotter: ${r.signatures.spotter.name} ✓\nRecord: ${id}`,files:[{attachment:pdf,name}],nonce:crypto.createHash('sha256').update(id).digest('hex').slice(0,24),enforceNonce:true});r.delivery.discord={status:'sent',messageId:sent.id};
+     const sent=await channel.send({content:`Jet Bridge ${r.type.toUpperCase()} | ${r.flightNo} | ${r.date} | Gate ${r.gate}\nDriver: ${r.signatures.driver.name} ✓ | Spotter: ${r.signatures.spotter.name} ✓`,files:[{attachment:pdf,name}],nonce:crypto.createHash('sha256').update(id).digest('hex').slice(0,24),enforceNonce:true});r.delivery.discord={status:'sent',messageId:sent.id};
     }catch(e){r.delivery.discord={status:'failed',error:e.message};}save(r);
    }
   })().finally(()=>jobs.delete(id));jobs.set(id,job);return job;
