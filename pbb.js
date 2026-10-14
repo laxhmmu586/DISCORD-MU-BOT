@@ -5,6 +5,15 @@ const roles=['driver','spotter'];
 const {StandardFontEmbedder,StandardFonts}=require('./vendor/pdf-lib/pdf-lib');
 const employeeFont=StandardFontEmbedder.for(StandardFonts.Helvetica);
 const signalGroups=require('./pbbSignals');
+function discordMessage(r){
+ const line=value=>String(value??'').replace(/\s+/g,' ').trim();
+ return [
+  `Jet Bridge ${line(r.type).toUpperCase()} | ${line(r.flightNo)} | ${line(r.date)} |`,
+  `Gate ${line(r.gate)} | ${r.bridges.map(line).join(' / ')}`,
+  `Driver: ${line(r.signatures.driver.name)} ✓`,
+  `Spotter: ${line(r.signatures.spotter.name)} ✓`
+ ].join('\n');
+}
 function fail(message,status=400){const e=new Error(message);e.status=status;throw e;}
 function validateInfo(b){
  if(!['arrival','departure'].includes(b.type))fail('Select checklist type');
@@ -102,7 +111,7 @@ function registerPbb(app,{client,authenticate=require('./pbbAuth').authenticate,
    }
    if(r.delivery.discord.status!=='sent'){
     try{const channel=await client.channels.fetch(process.env.PBB_DISCORD_CHANNEL_ID||'1559561919826890852');if(!channel?.isTextBased())throw new Error('Discord channel is unavailable');
-     const sent=await channel.send({content:`Jet Bridge ${r.type.toUpperCase()} | ${r.flightNo} | ${r.date} |\nGate ${r.gate} | ${r.bridges.join(' / ')}\nDriver: ${r.signatures.driver.name} ✓\nSpotter: ${r.signatures.spotter.name} ✓`,files:[{attachment:pdf,name}],nonce:crypto.createHash('sha256').update(id).digest('hex').slice(0,24),enforceNonce:true});r.delivery.discord={status:'sent',messageId:sent.id};
+     const sent=await channel.send({content:discordMessage(r),files:[{attachment:pdf,name}],nonce:crypto.createHash('sha256').update(id).digest('hex').slice(0,24),enforceNonce:true});r.delivery.discord={status:'sent',messageId:sent.id};
     }catch(e){r.delivery.discord={status:'failed',error:e.message};}save(r);
    }
   })().finally(()=>jobs.delete(id));jobs.set(id,job);return job;
@@ -139,5 +148,5 @@ function registerPbb(app,{client,authenticate=require('./pbbAuth').authenticate,
  for(const r of store.list())if(r.completedAt&&(r.delivery.drive.status!=='sent'||r.delivery.discord.status!=='sent'))void deliver(r.id);
  return {store,employees,deliver,close(){for(const sub of lobbyStreams)sub.res.end();for(const clients of streams.values())for(const res of clients)res.end();}};
 }
-module.exports={createStore,registerPbb,validateInfo};
+module.exports={createStore,registerPbb,validateInfo,discordMessage};
 
