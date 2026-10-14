@@ -1,0 +1,26 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const { spawnSync } = require('node:child_process');
+
+test('both card sets render in an isolated checkout without node_modules or system font access', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'attendance-png-'));
+  try {
+    const root = path.join(__dirname, '..');
+    for (const name of ['attendanceCards.js', 'attendancePng.js', 'vendor/resvg-wasm', 'vendor/fonts', 'public/public/assets/attendance']) {
+      const target = path.join(dir, name); fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.cpSync(path.join(root, name), target, { recursive: true });
+    }
+    const result = spawnSync(process.execPath, ['-e', `
+      const assert=require('node:assert/strict'),Module=require('node:module'),fs=require('node:fs'),path=require('node:path');
+      const original=Module._load;Module._load=function(id,...args){if(id==='sharp'||(!id.startsWith('.')&&!id.startsWith('node:')))throw Error('External dependencies unavailable: '+id);return original.call(this,id,...args);};
+      const read=fs.readFileSync;fs.readFileSync=function(file,...args){const name=path.resolve(String(file));if(!name.startsWith(process.cwd()+path.sep))throw Error('External files unavailable: '+name);return read.call(this,file,...args);};
+      const {renderCards}=require('./attendanceCards');
+      const base={employeeName:'Test Employee',date:'2026-10-14',arrivalTime:'10:00',reason:'Traffic & <roadworks>',note:'Test note',reference:'REQ-EXAMPLE',submittedAt:'2026-10-14T20:00:00Z'};
+      (async()=>{const sets=await Promise.all(['late','sick'].map(type=>renderCards({...base,type},[{date:base.date,type}])));for(const files of sets){assert.equal(files.length,3);for(const file of files){assert.equal(file.attachment.subarray(1,4).toString(),'PNG');assert.equal(file.attachment.readUInt32BE(16),800);assert.ok(file.attachment.readUInt32BE(20)>150);assert.ok(file.attachment.length>10000);}}console.log('6 PNGs generated without external packages or fonts');})().catch(e=>{console.error(e);process.exitCode=1;});
+    `], { cwd: dir, encoding: 'utf8', timeout: 20000 });
+    assert.equal(result.status, 0, result.stderr); assert.match(result.stdout, /6 PNGs generated/);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
