@@ -50,10 +50,9 @@
     a16:['floor-level-lax-v2.webp'],a17:['fuselage-gap-lax-v2.webp'],
     a18:['auto-key-lax-v2.webp'],
     d1:['airline-door-closure-lax-v2.webp'],d2:['safety-shoe-storage-lax-v2.webp'],d3:['safety-chain-lax-v2.webp'],d4:['operate-key-lax-v2.webp'],
-    d5:['go-lax-v2.webp'],d6:['safe-area-check-lax-v2.webp','safe-lax-v2.webp'],d7:['go-lax-v2.webp'],d11:['off-key-removed-lax-v2.webp']
+    d5:['departure-ready-lax-v4.webp'],d6:['safe-area-check-lax-v2.webp','safe-lax-v2.webp'],d7:['go-warning-bell-lax-v4.webp'],d8:['departure-detachment-lax-v4.webp'],d9:['departure-stow-box-lax-v4.webp'],d11:['off-key-removed-lax-v2.webp']
   };
   for(const row of [...arrival,...departure])if(trainingPhotos[row.id]){row.art=null;row.photos=trainingPhotos[row.id];row.trainingIllustration=true;}
-  arrival.find(row=>row.id==='a15').video='ready-safe-go-lax-v2.mp4';
   // Short screen prompts are separate from the original checklist/PDF wording.
   const prompts={
   "a1": "Arrive 15 minutes early with safety PPE.",

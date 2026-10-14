@@ -14,28 +14,28 @@ const {createStore,registerPbb}=require('../pbb'),items=require('../public/publi
    for(const row of expected){await page.waitForFunction(text=>document.querySelector('.check-statement')?.textContent.includes(text),row.prompt);const photos=page.locator('.check-illustration img');for(let i=0;i<await photos.count();i++){await photos.nth(i).scrollIntoViewIfNeeded();await photos.nth(i).evaluate(img=>img.decode());}
     if(row.trainingIllustration)assert.deepEqual(await photos.evaluateAll(imgs=>imgs.map(img=>img.src.split('/').pop())),row.photos);
     assert.equal(await page.locator('.answer-icon').count(),2);
+    assert.ok(await page.evaluate(()=>innerWidth>850?document.querySelector('.live-panel').getBoundingClientRect().right<document.querySelector('.question-panel').getBoundingClientRect().left:document.querySelector('.live-panel').getBoundingClientRect().top>document.querySelector('.question-panel').getBoundingClientRect().bottom),'flight card below question');
+    assert.ok(await page.evaluate(()=>document.querySelector('.flight-summary time').getBoundingClientRect().top>=document.querySelector('.flight-summary h2').getBoundingClientRect().bottom),'date below flight');
+    assert.ok(await page.evaluate(()=>{const f=document.querySelector('.pbb-footer').getBoundingClientRect(),p=document.querySelector(innerWidth>850?'.working-grid':'.question-panel').getBoundingClientRect();return Math.abs(f.left-p.left)<2&&Math.abs(f.right-p.right)<2}),'footer aligned with panel');
+    assert.equal(await page.locator('[data-value]').first().getAttribute('data-value'),'Y');
+
     assert.equal(await page.locator('.art-caption').count(),0,'no image badges');
     if(row.id==='a18')assert.equal(await photos.count(),1,'AUTO question keeps key photo only');
-    if(row.id==='a15'){
-     const back=page.locator('.stacked-photos .check-illustration').nth(1).locator('img'),box=await back.boundingBox();await back.click({position:{x:box.width-10,y:40}});await page.locator('.photo-dialog').waitFor();assert.ok((await page.locator('.photo-dialog img').getAttribute('src')).includes('bridge-approach'));await page.locator('.photo-close').click();
-    }
-    for(const width of [320,390,1440]){await page.setViewportSize({width,height:1000});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'overflow '+row.id+' '+width);}
+    if(row.id==='a15'){const gallery=page.locator('.stacked-photos');await gallery.focus();await gallery.press('ArrowRight');await page.waitForFunction(()=>document.querySelector('.stacked-photos').scrollLeft>100);assert.equal(await gallery.evaluate(g=>getComputedStyle(g).scrollbarWidth),'none');await gallery.locator('img').nth(1).click();await page.locator('.photo-dialog').waitFor();assert.ok((await page.locator('.photo-dialog img').getAttribute('src')).includes('bridge-approach'));await page.locator('.photo-close').click();}
+    for(const width of [1440,320,390]){await page.setViewportSize({width,height:1000});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'overflow '+row.id+' '+width);}
+    if(row.id==='a15'){await page.setViewportSize({width:390,height:1000});await page.screenshot({path:path.join(output,'a15-mobile.png'),fullPage:true});}
     if(['a6','a9','a11','a15','a16','a17','a18','d1','d3','d4','d11'].includes(row.id))await page.screenshot({path:path.join(output,row.id+'.png'),fullPage:true});
-    if(row.id==='a12')assert.equal(await page.locator('video').count(),0,'READY question shows its illustration only');
-    if(row.video){const v=page.locator('video');await v.evaluate(v=>{v.preload='auto';v.load()});await page.waitForFunction(()=>document.querySelector('video')?.readyState>=2);assert.equal(await v.evaluate(v=>v.duration),28);assert.equal(await v.locator('track').getAttribute('src'),'/assets/pbb/ready-safe-go-lax-v2.vtt');
-     if(row.id==='a15'){
-      await v.evaluate(async v=>{window.pbbTestVideo=v;v.muted=true;v.currentTime=5;await v.play();});
-      const response=await fetch(origin+'/pbb-api/records/'+id,{method:'POST',headers:{Authorization:'Bearer fixture','Content-Type':'application/json'},body:JSON.stringify({action:'answer',role:'spotter',itemId:'a11',value:'Y'})});assert.equal(response.status,200);
-      await page.locator('.role-progress').nth(1).getByText(/1 \/ 5 checked/).waitFor();
-      assert.ok(await v.evaluate(v=>v===window.pbbTestVideo&&v.currentTime>=5&&!v.paused),'peer SSE update preserves same video and playback');await v.evaluate(v=>v.pause());
-     }
-    }
+    assert.equal(await page.locator('video').count(),0,'question pages contain no video');
     await page.locator('#next').click();
    }
-   await page.locator('.signal-flow').waitFor();assert.equal(await page.locator('video').count(),type==='arrival'?1:0);
+   await page.locator('.signal-flow').waitFor();assert.equal(await page.locator('video').count(),0,'Checklist Done contains no video');
+   for(const width of [320,390,1440]){await page.setViewportSize({width,height:1000});const boxes=await page.locator('.signal-card').evaluateAll(els=>els.map(e=>{const r=e.getBoundingClientRect();return {top:r.top,left:r.left,right:r.right}}));assert.equal(boxes[0].top,boxes[1].top);assert.ok(boxes[0].right<boxes[1].left);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));}await page.screenshot({path:path.join(output,type+'-'+role+'-done.png'),fullPage:true});
+
   }
   for(const row of items.arrival.filter(x=>!x.hidden&&x.roles.includes('driver')))store.mutate(id,{uid:'fixture'},{action:'answer',role:'driver',itemId:row.id,value:'Y'});
   await enter('arrival','driver');await page.getByText('14. '+items.arrival.find(x=>x.id==='a18').prompt,{exact:true}).waitFor();assert.ok(!store.get(id).checklistDone?.driver,'all answers saved without done');await page.locator('#next').click();await page.locator('.signal-flow').waitFor();
-  assert.deepEqual(errors,[]);console.log('PASS: ordered Arrival/Departure rows, all training image decodes, AUTO/OPERATE/OFF media, 28-second captioned video, Yes/No controls, Previous returns home and resumes saved answers, 320/390/1440 layouts.');
+  await page.locator('#signal-prev').click();await page.locator('[data-role=spotter]').click();await page.locator('[data-role=spotter][aria-pressed=true]').waitFor();await page.locator('[data-role=driver]').click();await page.getByText('14. '+items.arrival.find(x=>x.id==='a18').prompt,{exact:true}).waitFor();
+  await page.goto(origin+'/pbb.html');await page.locator('[data-type=departure]').click();await page.locator('#today-flight').waitFor();await page.locator('#pbb-status').evaluate(e=>e.textContent='L1 restarted. Start a new checklist.');assert.ok(await page.evaluate(()=>Math.abs(document.querySelector('#pbb-status').getBoundingClientRect().left-document.querySelector('.pbb-intro').getBoundingClientRect().left)<2));
+  assert.deepEqual(errors,[]);console.log('PASS: ordered Arrival/Departure rows, all training image decodes, AUTO/OPERATE/OFF media, no videos; side-by-side confirmations; swipe gallery, Yes/No controls, Previous returns home and resumes saved answers, 320/390/1440 layouts.');
  }finally{await browser.close();pbb.close();server.closeAllConnections();await new Promise(r=>server.close(r));store.db.close();}
 })().catch(e=>{console.error(e);process.exitCode=1});
