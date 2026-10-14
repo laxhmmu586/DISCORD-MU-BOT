@@ -17,3 +17,5 @@ The attendance renderer loads only these tracked files. It makes no network requ
 The static Noto Sans Bold face is bundled as fonts/NotoSans-Bold.ttf to provide actual weight 700 in resvg. Source: https://raw.githubusercontent.com/notofonts/noto-fonts/main/hinted/ttf/NotoSans/NotoSans-Bold.ttf (SIL OFL 1.1; fonts/OFL.txt).
 
 Premium card headings use `fonts/Nunito-Black.ttf`, instantiated at weight 900 from https://raw.githubusercontent.com/google/fonts/main/ofl/nunito/Nunito%5Bwght%5D.ttf using fontTools during asset preparation. Only the resulting static font is needed at runtime. License and copyright notice: `fonts/Nunito-OFL.txt` (SIL OFL 1.1).
+
+Final request card titles use the static Poppins ExtraBold face in `fonts/Poppins-ExtraBold.ttf`, downloaded from https://raw.githubusercontent.com/google/fonts/main/ofl/poppins/Poppins-ExtraBold.ttf on 2026-10-14. Copyright and license notice: `fonts/Poppins-OFL.txt` (SIL OFL 1.1). The older Nunito asset remains available but is no longer the heading face.

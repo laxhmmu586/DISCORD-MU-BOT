@@ -7,7 +7,7 @@ async function renderPng(svg) {
   // Share initialization across simultaneous cards and concurrent requests.
   ready ||= initWasm(fs.readFileSync(path.join(__dirname, 'vendor/resvg-wasm/index_bg.wasm')));
   await ready;
-  font ||= ['NotoSans.ttf', 'NotoSans-Bold.ttf', 'Nunito-Black.ttf'].map(name => fs.readFileSync(path.join(__dirname, 'vendor/fonts', name)));
+  font ||= ['NotoSans.ttf', 'NotoSans-Bold.ttf', 'Nunito-Black.ttf', 'Poppins-ExtraBold.ttf'].map(name => fs.readFileSync(path.join(__dirname, 'vendor/fonts', name)));
   const renderer = new Resvg(svg, { font: { fontBuffers: font, defaultFontFamily: 'Noto Sans' } });
   let image;
   try {
