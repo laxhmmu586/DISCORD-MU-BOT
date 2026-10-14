@@ -79,7 +79,7 @@ function registerAttendance(app, { employees, client, db, storage = createSheets
         stage = 'image rendering';
         try {
           const files = await renderCards(record, history);
-          media = { files, embeds: [{ image: { url: `attachment://${files[0].name}` } }, ...require('./attendanceDiscord').fallbackEmbeds(record, history).slice(1)] };
+          media = { files };
         }
         catch (error) {
           console.error('Attendance Discord image fallback:', { reference, channelId, error: error.message });
