@@ -10,6 +10,7 @@ const { operationalDate } = require('../flightContext');
   try {
     for (const viewport of [{ width: 1015, height: 700 }, { width: 390, height: 844 }]) {
       const context = await browser.newContext({ viewport });
+      context.setDefaultTimeout(15000);
       const pages = [], errors = [];
       let revision = 1;
       const rows = [
@@ -51,8 +52,8 @@ const { operationalDate } = require('../flightContext');
         if (url.pathname === '/__/firebase/init.js') return route.fulfill({ contentType: 'text/javascript', body: 'window.firebase={apps:[{}],auth:()=>({currentUser:{},onAuthStateChanged:fn=>setTimeout(()=>fn({}),0)})};' });
         const file = path.join(__dirname, '../public/public', url.pathname);
         return route.fulfill({ status: fs.existsSync(file) ? 200 : 404,
-          contentType: url.pathname.endsWith('.html') ? 'text/html' : url.pathname.endsWith('.css') ? 'text/css' : 'text/javascript',
-          body: fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '' });
+          contentType: url.pathname.endsWith('.html') ? 'text/html' : url.pathname.endsWith('.css') ? 'text/css' : url.pathname.endsWith('.png') ? 'image/png' : url.pathname.endsWith('.svg') ? 'image/svg+xml' : 'text/javascript',
+          body: fs.existsSync(file) ? fs.readFileSync(file) : '' });
       });
       const scan = await context.newPage(), board = await context.newPage(), emergency = await context.newPage(); pages.push(scan, board, emergency);
       pages.forEach(page => page.on('pageerror', error => errors.push(error.message)));
@@ -69,7 +70,7 @@ const { operationalDate } = require('../flightContext');
             console.error(page.url(), await page.locator('body').innerText());
             throw error;
           });
-          assert.equal(await page.locator('.nbrd-resolved-badge').count(), resolved);
+          assert.equal(await page.locator('.nbrd-resolved-badge').count(), 0);
           assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
         }
       };
@@ -97,6 +98,7 @@ const { operationalDate } = require('../flightContext');
       assert.equal(await scan.locator('#nbrd-bn').inputValue(), '21');
       await scan.locator('#nbrd-form button').click();
       await check(3, 1, 2);
+      if (await scan.locator('.nbrd-modal[open]').count()) await scan.getByRole('button', { name: 'Continue', exact: true }).click();
       await scan.locator('#dialog-ok').click();
       await board.getByRole('button', { name: 'Refresh', exact: true }).first().click();
       await check(3, 1, 2);
@@ -105,6 +107,50 @@ const { operationalDate } = require('../flightContext');
       if (viewport.width === 1015) await board.screenshot({ path: '.verification/nbrd-sync-desktop.png', fullPage: true });
       else await board.screenshot({ path: '.verification/nbrd-sync-mobile.png', fullPage: true });
       await emergency.screenshot({ path: `.verification/scan2-${viewport.width}.png`, fullPage: true });
+      // Keep interleaved states in source order in dense responsive honeycomb panels.
+      for (const count of [20, 30]) {
+        rows.splice(0, rows.length, ...Array.from({ length: count }, (_, index) => ({
+          rowNumber: index + 1, nbrdBn: String((index * 37 + 137) % 330).padStart(3, '0'),
+          nbrdDetail: 'SANITIZED UI FIXTURE', nbrdResolved: index % 3 !== 0
+        })));
+        revision++; await broadcast();
+        await check(count, Math.ceil(count / 3), count - Math.ceil(count / 3));
+        for (const width of [320, 390, 640, 1015]) {
+          for (const page of pages) {
+            await page.bringToFront();
+            await page.setViewportSize({ width, height: 844 });
+            await page.waitForTimeout(80);
+            const geometry = await page.locator('#nbrd-wrap .nbrd-bubbles, #nbrd-bns .nbrd-bubbles').evaluate(list => {
+              const box = list.getBoundingClientRect();
+              const tiles = [...list.children].map(tile => {
+                const rect = tile.getBoundingClientRect();
+                return { text: tile.textContent, left: rect.left, top: rect.top,
+                  right: rect.right, bottom: rect.bottom, color: getComputedStyle(tile).color,
+                  shape: getComputedStyle(tile).clipPath };
+              });
+              return { left: box.left, right: box.right, top: box.top, bottom: box.bottom,
+                height: box.height, scrollWidth: list.scrollWidth, width: list.clientWidth, tiles };
+            });
+            assert.deepEqual(geometry.tiles.map(tile => tile.text), rows.map(row => row.nbrdBn));
+            assert.ok(geometry.scrollWidth <= geometry.width, JSON.stringify({url:page.url(),width,count,geometry}));
+            assert.ok(geometry.height < 650, '30 BNs fit in one compact panel');
+            for (const tile of geometry.tiles) {
+              assert.ok(tile.left >= geometry.left - .5 && tile.right <= geometry.right + .5);
+              assert.ok(tile.top >= geometry.top && tile.bottom <= geometry.bottom + .5);
+              assert.equal(tile.color, 'rgb(255, 255, 255)');
+              assert.match(tile.shape, /^polygon/);
+            }
+            const tops = [...new Set(geometry.tiles.map(tile => Math.round(tile.top)))];
+            const first = geometry.tiles.filter(tile => Math.round(tile.top) === tops[0]);
+            const second = geometry.tiles.filter(tile => Math.round(tile.top) === tops[1]);
+            assert.equal(second.length, first.length - 1, 'offset row has one fewer tile');
+            assert.ok(second[0].left > first[0].left, 'second row starts half a tile later');
+            if (width === 1015 && page === board) { assert.equal(first.length, 6); assert.equal(second.length, 5); }
+            assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+          }
+          if (count === 30) await board.screenshot({ path: '.verification/nbrd-honeycomb-' + width + '.png', fullPage: true });
+        }
+      }
       rows.splice(0); revision++; await broadcast(); await check(0, 0, 0);
       assert.deepEqual(errors, []);
       await context.close();

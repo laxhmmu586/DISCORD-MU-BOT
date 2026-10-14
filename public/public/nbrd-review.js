@@ -1,5 +1,28 @@
 (() => {
   const displayBn = bn => String(bn || '').padStart(3, '0').slice(-3);
+  // Pack consecutive rows into alternating full/offset rows, without sorting BNs.
+  function layoutHoneycomb(list) {
+    const available = list.clientWidth;
+    if (!available) return;
+    const gap = 4, inset = 5;
+    const columns = Math.max(2, Math.min(6, Math.floor((available - inset * 2) / 56)));
+    const width = Math.min(86, (available - inset * 2 - gap * (columns - 1)) / columns);
+    const height = width / Math.sqrt(3) * 2;
+    const start = (available - columns * width - (columns - 1) * gap) / 2;
+    let row = 0, column = 0;
+    for (const tile of list.children) {
+      const offset = row % 2;
+      Object.assign(tile.style, {
+        width: `${width}px`, height: `${height}px`,
+        left: `${start + (column + offset / 2) * (width + gap)}px`,
+        top: `${inset + row * (height * .75 + gap)}px`,
+        fontSize: `${Math.max(12, Math.min(24, width * .29))}px`
+      });
+      if (++column === columns - offset) { column = 0; row++; }
+    }
+    const lastRow = column ? row : Math.max(0, row - 1);
+    list.style.height = `${inset * 2 + lastRow * (height * .75 + gap) + height}px`;
+  }
   function create({ container, apiBase, onChanged = async () => {} }) {
     let rows = [];
     let revision = 0, loadSequence = 0;
@@ -7,6 +30,14 @@
     modal.className = 'nbrd-modal';
     modal.setAttribute('aria-labelledby', 'nbrd-modal-title');
     document.body.append(modal);
+    const layout = () => {
+      container.querySelectorAll('.nbrd-bubbles').forEach(layoutHoneycomb);
+      if (modal.open) modal.querySelectorAll('.nbrd-bubbles').forEach(layoutHoneycomb);
+    };
+    const resizeObserver = new ResizeObserver(layout);
+    resizeObserver.observe(container);
+    resizeObserver.observe(modal);
+    window.addEventListener('resize', layout);
     const isOpen = () => modal.open;
     function render(nextRows) {
       revision++;
@@ -21,12 +52,10 @@
         button.type = 'button'; button.className = 'nbrd-bubble' + (row.nbrdResolved ? ' is-resolved' : '');
         button.textContent = displayBn(row.nbrdBn);
         button.setAttribute('aria-label', `BN ${displayBn(row.nbrdBn)}, ${row.nbrdResolved ? 'resolved' : 'pending'}`);
-        if (row.nbrdResolved) {
-          const badge = document.createElement('span'); badge.className='nbrd-resolved-badge'; badge.textContent='✓'; badge.setAttribute('aria-hidden','true'); button.append(badge);
-        }
         button.addEventListener('click', () => details(row)); bubbles.append(button);
       }
       container.append(bubbles);
+      layout();
     }
     async function post(path, body) {
       const res = await fetch(apiBase + path, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
@@ -72,7 +101,7 @@
         };
         no.onclick = () => reject ? run(reject, false) : (!busy && finish(false));
         yes.onclick = () => run(confirm, true);
-        modal.showModal(); no.focus();
+        modal.showModal(); layout(); no.focus();
       });
     }
     async function details(row) {

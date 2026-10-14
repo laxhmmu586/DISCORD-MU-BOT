@@ -24,11 +24,6 @@
 .aviation-page .status {color:var(--muted);font-size:13px;font-weight:650;overflow-wrap:anywhere}
 .aviation-page .status.err, .aviation-page #status.error, .aviation-page .error {color:#b42318}
 .aviation-page .status.ok {color:#087443}
-.aviation-page .nbrd-bubbles {gap:11px;padding:12px 0 2px}
-.aviation-page .nbrd-bubble {width:48px;height:48px;flex-basis:48px;min-height:48px;padding:0;border:1px solid #b70c22;background:radial-gradient(ellipse at 32% 15%,#ff9da88c,transparent 43%),linear-gradient(155deg,#ff4654,#f10b29 55%,#ba001a);color:white;font-size:16px;text-shadow:0 1px 2px #78000b7a;box-shadow:inset 0 2px 3px #ffffff75,inset 0 -5px 7px #78001555,0 3px 0 #a8091b,0 7px 12px #ad18343d}
-.aviation-page .nbrd-bubble.is-resolved {border-color:#07512f;background-color:#087443;background-image:radial-gradient(ellipse at 32% 15%,#a1ffcf70,transparent 43%),linear-gradient(155deg,#26ae74,#087443 58%,#04532e);text-shadow:0 1px 2px #003a237a;box-shadow:inset 0 2px 3px #ffffff75,inset 0 -5px 7px #003f2459,0 3px 0 #064e2d,0 7px 12px #064e2d35}
-.aviation-page .nbrd-bubble:active {transform:translateY(2px);box-shadow:inset 0 2px 3px #ffffff65,inset 0 -3px 5px #0003,0 1px 0 #0003,0 4px 7px #0002}
-.aviation-page .nbrd-resolved-badge {box-shadow:0 2px 4px #003d2633}
 .aviation-page .nbrd-modal button {min-height:50px}
 .aviation-page .nbrd-modal .nbrd-yes {background:#087443}
 .aviation-page .nbrd-modal .nbrd-no {background:#b42318}

@@ -4,6 +4,7 @@ const {operationalDate}=require('../flightContext');
 (async()=>{
  const browser=await chromium.launch({channel:'msedge',headless:true});
  const context=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:1});
+ context.setDefaultTimeout(15000);
  const rows=[{rowNumber:2,nbrdBn:'014',nbrdDetail:'VISA',nbrdResolved:false},{rowNumber:3,nbrdBn:'025',nbrdDetail:'SEAT CHANGE',nbrdResolved:true}];
  let scans=0;
  const errors=[];
@@ -15,7 +16,7 @@ const {operationalDate}=require('../flightContext');
    else if(url.pathname==='/cbs-scan/nbrd-bns/resolve'){rows.find(r=>r.nbrdBn===body.bn).nbrdResolved=body.resolved !== false;}
    else if(url.pathname==='/cbs-scan/nbrd-bns'){const bn=String(body.entries[0].bn).padStart(3,'0');const existing=rows.find(row=>row.nbrdBn===bn);if(existing)existing.nbrdDetail=body.entries[0].detail;else rows.push({rowNumber:4,nbrdBn:bn,nbrdDetail:body.entries[0].detail,nbrdResolved:false});}
    else if(url.pathname==='/cbs-scan'){
-    if(body.confirmationToken){rows[0].nbrdResolved=true;rows[0].bn='014';rows[0].seat='10A';rows[0].flight='MU586';data={bn:'014',seat:'10A',flight:'MU586',nbrdRows:rows.map(row=>({...row}))};}
+    if(body.confirmationToken){rows[0].nbrdResolved=true;rows[0].bn='014';rows[0].seat='10A';rows[0].flight='MU586';data={ok:true,rowNumber:2,bn:'014',seat:'10A',flight:'MU586',nbrdRows:rows.map(row=>({...row}))};}
     else {scans++;status=409;data={code:'NBRD_MESSAGE',bn:'014',detail:'VISA',canBoard:scans>1,confirmationToken:'fixture-'+scans};}
    }
    return route.fulfill({status,contentType:'application/json',body:JSON.stringify(data)});
@@ -73,9 +74,9 @@ const {operationalDate}=require('../flightContext');
  assert.equal(rows[2].nbrdDetail,'RE-SWIPE');
  await page.goto('https://www.mufcapp.net/m-board.html');await page.waitForFunction(()=>document.querySelectorAll('.nbrd-bubble').length===3);
  assert.equal(await page.locator('.nbrd-bubble.is-resolved').count(),2);
- assert.equal(await page.locator('.nbrd-resolved-badge').count(),2);
+ assert.equal(await page.locator('.nbrd-resolved-badge').count(),0);
  assert.equal(await page.locator('#nbrd-wrap').evaluate(e=>getComputedStyle(e).borderTopWidth),'0px');
- assert.equal(await page.locator('.nbrd-bubble.is-resolved').first().evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(8, 116, 67)');
+ assert.equal(await page.locator('.nbrd-bubble.is-resolved').first().evaluate(e=>getComputedStyle(e).getPropertyValue('--tile-base').trim()),'#087443');
  await page.screenshot({path:'.verification/nbrd-board-mobile.png',fullPage:true});
  await page.locator('.nbrd-bubble').nth(2).click();await page.locator('.nbrd-yes').click();await page.waitForFunction(()=>!document.querySelector('.nbrd-modal').open);
  assert.equal(rows[2].nbrdResolved,true);
@@ -95,6 +96,6 @@ const {operationalDate}=require('../flightContext');
  await page.waitForFunction(()=>!document.querySelector('#start').disabled);
  assert.equal(rows.length,3);assert.equal(rows[0].nbrdDetail,'INV UPGRADE');assert.equal(rows[0].nbrdResolved,false);
  assert.deepEqual(errors,[]);
- console.log('PASS: mobile count gate, compact camera, detail actions, two-scan Board/NOT OK, preset reasons, red-X reopening, resolved badges and shared M-board state');
+ console.log('PASS: mobile count gate, compact camera, detail actions, two-scan Board/NOT OK, preset reasons, red-X reopening, resolved tiles and shared M-board state');
  await browser.close();
 })().catch(e=>{console.error(e);process.exit(1);});
