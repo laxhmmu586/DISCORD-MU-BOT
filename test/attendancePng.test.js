@@ -13,7 +13,7 @@ test('glass cards expand for long names, reasons and notes while keeping the foo
   assert.doesNotMatch(svg,/REQ-HIDDEN-EXAMPLE|China Eastern|中国东方航空/);
   assert.match(svg,/Additional note/);assert.match(svg,/Employee Request Received/);
   assert.match(svg,/<text text-anchor="end" x="755"[^>]*>Submitted /);
-  assert.match(svg,/font-family="Nunito"/);
+  assert.match(svg,/font-family="Poppins"/);
   assert.doesNotMatch(svg,/stroke-width="10"[^>]*filter="url\(#blur\)"/);
   const panelHeight=Number(svg.match(/x="360" y="164" width="401" height="(\d+)"/)[1]);
   const footerY=Number(svg.match(/M44 (\d+)H757/)[1]);assert.ok(footerY>164+panelHeight);
