@@ -9,7 +9,7 @@
 - Destination: [attendance spreadsheet](https://docs.google.com/spreadsheets/d/12tZLWvQin1bhbWvALdnlAxkR0iD_6ScUVWEnL6IziDY/edit?gid=580541604#gid=580541604), worksheet ID `580541604`. The worksheet title is resolved by ID rather than hard-coded.
 - Google authentication: existing `GOOGLE_CLIENT_EMAIL` and `GOOGLE_PRIVATE_KEY`; grant this service account editor access to the destination spreadsheet. Credentials remain on the backend.
 - Discord: channel `1365021189998903418`, overridable with `ATTENDANCE_DISCORD_CHANNEL_ID`. The existing bot needs View Channel, Send Messages, Attach Files for PNGs, and Embed Links for native fallback cards.
-- Install dependencies with the updated lockfile; `sharp` renders the three PNG cards on the backend. Deploy both frontend and backend for the new workflow to operate.
+- Deploy the tracked `vendor/resvg-wasm/`, `vendor/fonts/`, and illustration assets with the backend. PNG generation uses the bundled WebAssembly renderer and Noto Sans font; no native image package or system fonts are needed. Provenance and licenses are documented in `vendor/ATTENDANCE_RENDERING.md`.
 - The unbranded Employee Services page and Discord cards share the two generated transparent illustrations in `public/public/assets/attendance/`; the generation prompts are recorded in `ATTENDANCE_ARTWORK.md`.
 
 An empty worksheet receives Google Form-compatible headers plus request reference, employee ID, request date, scheduled start, and note. Existing columns stay in order; missing supported columns are appended. `RAW` writes preserve user text without interpreting formulas. No live Google Form submission is performed.
@@ -26,8 +26,10 @@ Dates default to America/Los_Angeles. Arrival is local time on the selected date
 
 ## Verification
 
-`node --test test/attendanceRequests.test.js test/employeeContacts.test.js test/employeeDatabase.test.js test/pbb.test.js`
+`node --test test/attendancePng.test.js test/attendanceRequests.test.js test/employeeContacts.test.js test/employeeDatabase.test.js test/pbb.test.js`
 
 `node scripts/verify-attendance-request.cjs` runs the browser checks when Playwright and a compatible browser are available. Set `PLAYWRIGHT_MODULE` to the bundled Playwright package path if it is not on Node's module search path. On Windows this uses installed Edge. Screenshots are saved under `output/attendance-ui` or `ATTENDANCE_QA_DIR`.
 
 The focused tests cover current employee validation, private-field minimization, target worksheet selection, original-column preservation, RAW writes, duplicate retries, month boundaries, failed saves, pending Discord delivery, and PNG generation. Local UI checks use sanitized employees and simulated services; they do not establish live Sheets or Discord delivery.
+
+The isolated PNG regression copies only the renderer, bundled runtime/fonts, and illustrations into a temporary directory. It rejects external packages and external file reads, then renders all six images for both request types concurrently. An API integration regression checks actual PNG buffers are passed as three Discord attachments with no native embed fallback. Live bot permissions and production receipt still require separate verification. Previously delivered native cards are not automatically resent as images; only pending and new notifications use the new renderer.
