@@ -2,6 +2,17 @@ const test=require('node:test'),assert=require('node:assert/strict');
 const {createEmployeeStore}=require('../employees');
 function database(){let data;return {exec(){},transaction:fn=>fn,prepare(sql){return {run(value){if(sql.startsWith('INSERT'))data??=value;else data=value;},get(){return {data};}};}};}
 const admin={email:'lake@mu.com'};
+test('custom employee order survives save and store reopen with each record intact',()=>{
+ const db=database(),seed=['one','two','three'].map((id,i)=>({id,name:`Employee ${i+1}`,eid:String(i+1),discordId:'',attach:true,detach:false,spotter:true}));
+ const store=createEmployeeStore(db,{seed}),data=store.get();
+ data.employees=[data.employees[2],data.employees[0],data.employees[1]];
+ data.employees[1].phone='555-0100';data.employees[2].detach=true;
+ const saved=store.save(data,admin),reopened=createEmployeeStore(db,{seed}).get();
+ assert.deepEqual(reopened,saved);
+ assert.deepEqual(reopened.employees.map(row=>row.id),['three','one','two']);
+ assert.equal(reopened.employees[1].phone,'555-0100');assert.equal(reopened.employees[2].detach,true);
+ assert.deepEqual(store.options().map(row=>row.id),['three','one','two']);
+});
 test('employee contact fields survive saves and remain private in qualified options',()=>{
  const store=createEmployeeStore(database(),{seed:[{id:'one',name:'Test Employee',eid:'00123',discordId:'',driver:true,spotter:false}]});
  let data=store.save(store.get(),admin);assert.equal(data.employees[0].code,'');assert.equal(data.employees[0].phone,'');assert.equal(data.employees[0].email,'');
