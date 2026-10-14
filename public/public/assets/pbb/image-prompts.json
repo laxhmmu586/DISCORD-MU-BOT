@@ -10,7 +10,25 @@
     "interior.webp": "Photorealistic clean, dry, well-lit passenger bridge corridor with unobstructed floor.",
     "stop.webp": "Photorealistic close-up of a red mushroom emergency stop button with yellow collar on a grey bridge control console.",
     "wheel-check.webp": "Built-in image_gen generation with supplied real bogie photo as engineering reference: landscape photorealistic LAX passenger bridge wheel assembly, both tires wholly inside visible painted parking rectangle, adjacent grey electrical cabinet door closed flush and latched. Correct white support columns, yellow protective railing and hoses, concrete apron, daylight. No red markup, no aircraft landing gear, no people, no overlays.",
-    "external-stop.webp": "Built-in image_gen: photorealistic external emergency stop at ground level beneath boarding bridge, red mushroom button with yellow collar in weatherproof grey enclosure on outside lower white support column, accessible from apron at waist height. Closed cabinet, hoses, bogie and yellow railing establish outdoor location. No cabin console, people, aircraft landing gear or overlay text."
+    "external-stop.webp": "Built-in image_gen: photorealistic external emergency stop at ground level beneath boarding bridge, red mushroom button with yellow collar in weatherproof grey enclosure on outside lower white support column, accessible from apron at waist height. Closed cabinet, hoses, bogie and yellow railing establish outdoor location. No cabin console, people, aircraft landing gear or overlay text.",
+    "cab-docking-lax-v2.webp": "Inside bridge cab aimed squarely toward closed aircraft door.",
+    "aircraft-chocks-lax-v2.webp": "Closeup of chocked aircraft nose gear with clear surrounding apron.",
+    "ready-lax-v2.webp": "Reference-corrected driver-above / spotter-below READY exchange near doorway; nose left, aircraft above head.",
+    "safe-area-check-lax-v2.webp": "Spotter checks surroundings at user-marked location below forward fuselage, aft of nose gear.",
+    "safe-lax-v2.webp": "Spotter at user-marked apron location looks up toward raised cab with SAFE thumb.",
+    "go-lax-v2.webp": "Side-profile driver with two visibly connected arms: one thumb up, one joystick; spotter below looks up.",
+    "driver-spotter-eye-contact-lax-v2.webp": "Driver above at controls looks down at spotter below aircraft doorway, nose left, large fuselage above adult.",
+    "bridge-approach-lax-v2.webp": "Elevated cab separated from aircraft, spotter watching approach.",
+    "floor-level-lax-v2.webp": "Metal aircraft sill above rubber bridge floor, 2-2.5 inches annotation; no wooden riser.",
+    "fuselage-gap-lax-v2.webp": "Visible open air separation between rigid bridge edge and aircraft, apron below.",
+    "airline-door-closure-lax-v2.webp": "Airline crew handles door; driver observes; intact cab side enclosure.",
+    "safety-chain-lax-v2.webp": "Driver clips yellow safety chain across bridge opening.",
+    "auto-key-lax-v2.webp": "Key turns right to AUTO; labels OFF / OPERATE / AUTO.",
+    "canopy-deployed-lax-v2.webp": "Reference-based overhead accordion canopy detail with door clearance.",
+    "operate-key-lax-v2.webp": "Key at center OPERATE position.",
+    "off-key-removed-lax-v2.webp": "Key removed from empty OFF-position selector cylinder.",
+    "ready-safe-go-lax-v2.mp4": "28-second animated photographic storyboard, nose-left continuity and reference-positioned spotter below cab: READY, check, SAFE, GO, supplied-video opening bell sample played three times, slow camera approach showing eye contact; H264/AAC with English captions.",
+    "safety-shoe-storage-lax-v2.webp": "User-reference-based flat black safety shoe sensor and short side tab, cable at junction; hand lowers it into actual worn off-white wall holder."
   },
   "reference_use": "Supplied company logo and user drafts; real 777 gate photos used only as geometry references. Generated assets are illustrations."
 }

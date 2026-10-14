@@ -1,5 +1,14 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const {createStore}=require('../pbb'),items=require('../public/public/pbb-data'),groups=require('../pbbSignals');
+for(const type of ['arrival','departure'])test(type+' completion preserves explicit No on a visible signal question',()=>{
+ const store=createStore(':memory:'),user={uid:'test'};
+ try{
+  const r=store.create({type,flightNo:'MU586',gate:'132',bridges:['L1']},user);
+  for(const row of items[type].filter(x=>!x.hidden&&x.roles.includes('driver')))store.mutate(r.id,user,{action:'answer',role:'driver',itemId:row.id,value:'Y'});
+  const id=type==='arrival'?'a14':'d7';store.mutate(r.id,user,{action:'answer',role:'driver',itemId:id,value:'N'});
+  const done=store.mutate(r.id,user,{action:'checklist-done',role:'driver'});assert.equal(done.answers.driver[id],'N');assert.ok(done.checklistDone.driver);
+ }finally{store.db.close();}
+});
 for(const type of ['arrival','departure'])test(type+' role done is independent, maps all original PDF rows and requires all visible questions',()=>{
  const store=createStore(':memory:',{now:()=>new Date('2026-10-13T16:00:00Z')}),user={uid:'test'};
  try{
