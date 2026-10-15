@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#080f18"><title>Attendance Request · Employee Services</title><link rel="stylesheet" href="/request.css?v=20261015-arrival-font"><script src="/request.js?v=20261015-back" defer></script></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#080f18"><title>Attendance Request · Employee Services</title><link rel="stylesheet" href="/request.css?v=20261015-arrival-card"><script src="/request.js?v=20261015-arrival-card" defer></script></head>
 <body>
 <main class="app">
  <header><a class="brand" href="/request.html" aria-label="Attendance home">EMPLOYEE SERVICES</a></header>
@@ -18,10 +18,14 @@
   <div class="section-title"><span id="type-icon" class="type-icon" aria-hidden="true">◷</span><div><h2 id="detail-title">Coming Late</h2><p id="detail-description" class="subheading"></p></div></div>
   <form id="details-form">
    <label>Employee<select id="employee" required disabled><option value="">Loading employees…</option></select></label><button id="retry-employees" class="text-button" type="button" hidden>Retry loading employees</button>
-   <label>Date<input id="date" type="date" required></label>
+   <label id="date-field">Date<input id="date" type="date" required></label>
    <div id="late-fields" hidden>
-    <label>Expected Arrival Time<input id="arrival" type="time" step="60"></label>
-    <div class="time-slider"><div><span>I’ll be there around</span><strong id="time-display">10:00 AM</strong><img class="runner" src="/assets/attendance/coming-late.png" alt=""></div><input id="arrival-slider" type="range" min="0" max="1435" step="5" value="600" aria-label="Quick arrival time selection"><div class="range-labels"><span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>12 AM</span></div></div>
+    <div class="time-slider arrival-card">
+     <div class="arrival-heading"><span class="arrival-clock" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="11"/><path d="M16 9v8l5 3"/></svg></span><div><label for="arrival">Expected Arrival Time</label><span>I’ll be there around</span></div></div>
+     <div class="arrival-value"><strong id="time-display" aria-hidden="true">10:00 <small>AM</small></strong><input id="arrival" type="time" step="60" aria-label="Expected Arrival Time"></div>
+     <img class="runner" src="/assets/attendance/coming-late.png" alt="">
+     <input id="arrival-slider" type="range" min="0" max="1435" step="5" value="600" aria-label="Quick arrival time selection"><div class="range-labels"><span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>12 AM</span></div>
+    </div>
    </div>
    <label><span id="reason-label">Reason</span> <small>(required)</small><textarea id="reason" required maxlength="1000" rows="3" placeholder="Anything you’d like your supervisor to know…"></textarea></label>
    <button class="primary" id="continue" type="submit" disabled>Continue <span>→</span></button>
