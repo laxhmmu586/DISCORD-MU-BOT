@@ -2,6 +2,25 @@ const sharp = require('sharp');
 const path = require('node:path');
 const { theme } = require('./etabAdvisory');
 const IMAGE_BOUNDS={left:26,top:24,width:850,height:840};
+// Coordinates follow the existing artwork, before the exterior crop. Only the
+// banner and four information cards remain opaque; chat shows through the gaps.
+const PANEL_REGIONS={
+  day:[
+    [26,24,850,438,24],
+    [30,480,407,162,22],[456,480,407,162,22],
+    [30,663,407,192,22],[456,663,407,192,22],
+  ],
+  night:[
+    [26,24,850,418,24],
+    [33,460,407,162,22],[460,460,411,162,22],
+    [33,643,407,200,22],[460,643,411,200,22],
+  ],
+  msc:[
+    [26,24,850,416,24],
+    [32,458,411,162,22],[461,458,412,162,22],
+    [33,639,410,194,22],[461,639,412,194,22],
+  ],
+};
 let aircraftIcons;
 function loadAircraftIcons(){
   if(!aircraftIcons)aircraftIcons=Promise.all(['arrival','departure'].map(async(type)=>{
@@ -73,7 +92,7 @@ async function renderAdvisory(data) {
   await digits(d.time || 'TBA',663,779+verticalOffset,70,267,timeColors,'#81bfff',(d.timeType || 'ETD')+':');
   const composed=await sharp(path.join(__dirname,'assets/etab',mode+'-template.png')).composite(layers).png().toBuffer();
   const trimmed=await sharp(composed).extract(IMAGE_BOUNDS).png().toBuffer();
-  const cornerMask=Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${IMAGE_BOUNDS.width}" height="${IMAGE_BOUNDS.height}"><rect width="100%" height="100%" rx="24" fill="#fff"/></svg>`);
-  return sharp(trimmed).ensureAlpha().composite([{input:cornerMask,blend:'dest-in'}]).png().toBuffer();
+  const panelMask=Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${IMAGE_BOUNDS.width}" height="${IMAGE_BOUNDS.height}"><g transform="translate(${-IMAGE_BOUNDS.left} ${-IMAGE_BOUNDS.top})" fill="#fff">${PANEL_REGIONS[mode].map(([x,y,width,height,radius])=>`<rect x="${x}" y="${y}" width="${width}" height="${height}" rx="${radius}"/>`).join('')}</g></svg>`);
+  return sharp(trimmed).ensureAlpha().composite([{input:panelMask,blend:'dest-in'}]).png().toBuffer();
 }
 module.exports={renderAdvisory,IMAGE_BOUNDS};
