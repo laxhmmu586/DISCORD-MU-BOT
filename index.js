@@ -1308,6 +1308,15 @@ const client =
 // Jet Bridge checklist and restricted employee administration
 const pbbService = require('./pbb').registerPbb(app, { client });
 require('./attendanceRequests').registerAttendance(app, { client, employees: pbbService.employees, db: pbbService.store.db });
+const etabAdvisory = require('./etabAdvisory');
+const etabService = etabAdvisory.createAdvisoryService({
+  getClient: require('./googleDrive').getNextDayInfoGmailClient,
+  readSchedule: require('./googleDrive').readEtabSchedule,
+  getEmployees: () => pbbService.employees.get().employees,
+  channel: () => client.channels.fetch(process.env.ETAB_DISCORD_CHANNEL_ID || '1252026975720046655'),
+  render: data => require('./etabImage').renderAdvisory(data),
+  store: etabAdvisory.createStateStore(pbbService.store.db)
+});
 
 // FB Lookup
 // ===============================
@@ -1340,6 +1349,8 @@ client.once(
     console.log(
       `Logged in as ${client.user.tag}`
     );
+    // Explicit cutover switch prevents duplicate posts while the Apps Script is still active.
+    if (process.env.ETAB_ADVISORY_ENABLED === 'true') etabService.start();
     refreshWchcAlerts().catch((err) => console.error('WCHC alert refresh failed:', err));
     setInterval(() => refreshWchcAlerts().catch((err) => console.error('WCHC alert refresh failed:', err)), 60 * 1000);
   }
@@ -5125,6 +5136,9 @@ app.post('/send', async (req, res) => {
       channelId,
       message
     } = req.body;
+    if (etabAdvisory.isLegacyEtabRequest(req.body, process.env.ETAB_ADVISORY_ENABLED === 'true', process.env.ETAB_DISCORD_CHANNEL_ID || '1252026975720046655')) {
+      return res.json({ success:true, skipped:true, reason:'ETAB advisories are managed by MUFC' });
+    }
     const sanitizedMessage = removeBoardingLinesFromDiscordEmbedText(message);
 
     if (!channelId) {

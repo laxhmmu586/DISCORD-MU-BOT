@@ -5517,6 +5517,7 @@ async function getCbsOpenBagAuthorizationPdf() {
 // Exports
 // ===============================
 module.exports = {
+  readEtabSchedule: require('./etabSchedule').createScheduleReader(),
   getNextDayInfoGmailClient,
   seedBoardingLive,
   readBoardingLiveNbrd,
