@@ -999,6 +999,7 @@ app.use((req, res, next) => {
 });
 
 const JSON_BODY_LIMIT = process.env.JSON_BODY_LIMIT || '60mb';
+app.use('/feedback-api', express.json({limit:'24kb'}));
 
 const visaStore = new (require('./visaStore').VisaStore)(process.env.VISA_DB_PATH);
 require('./visaRuntime').setVisaStore(visaStore);
@@ -1077,6 +1078,8 @@ app.use(
   express.static('public')
 );
 
+app.use('/assets/feedback', express.static(path.join(__dirname,'public','public','assets','feedback')));
+app.get(['/feedback.html','/feedback.css','/feedback-client.js'],(req,res)=>{res.set('Cache-Control','no-store').sendFile(path.join(__dirname,'public','public',path.basename(req.path)));});
 app.use('/assets/pbb', express.static(path.join(__dirname,'public','public','assets','pbb')));
 app.use('/assets/attendance', express.static(path.join(__dirname,'public','public','assets','attendance')));
 app.get('/assets/mission-earth.png',(req,res)=>res.sendFile(path.join(__dirname,'public','public','assets','mission-earth.png')));
@@ -1307,6 +1310,7 @@ const client =
 // ===============================
 // Jet Bridge checklist and restricted employee administration
 const pbbService = require('./pbb').registerPbb(app, { client });
+require('./feedback').registerFeedback(app, { client, employees:pbbService.employees, db:pbbService.store.db });
 require('./attendanceRequests').registerAttendance(app, { client, employees: pbbService.employees, db: pbbService.store.db });
 const etabAdvisory = require('./etabAdvisory');
 const etabService = etabAdvisory.createAdvisoryService({

@@ -13,12 +13,14 @@ function createEmployeeStore(db,{seed=require('./employeeSeed')()}={}){
   const ids=new Set(),discordIds=new Set();
   const employees=body.employees.map(input=>{
    const row={...input,...permissions(input)};
+   const nickname=String(row.nickname??'').trim();
+   if(nickname.length>60||/[\x00-\x1f\x7f]/.test(nickname))throw new Error('Check employee nicknames (maximum 60 characters)');
    const code=String(row.code??'').trim(),phone=String(row.phone??'').trim(),email=String(row.email??'').trim();
    if(code.length>40||phone.length>40||email.length>254||(email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)))throw new Error('Check employee codes, phone numbers and email addresses');
    const id=String(row.id||''),name=String(row.name||'').trim(),eid=String(row.eid||'').trim(),discordId=String(row.discordId||'').trim();
    if(!/^[a-zA-Z0-9-]{1,80}$/.test(id)||ids.has(id)||name.length>100||(eid&&!/^\d{1,12}$/.test(eid))||(discordId&&!/^\d{17,20}$/.test(discordId))||(discordId&&discordIds.has(discordId))||(typeof row.attach!=='boolean'||typeof row.detach!=='boolean')||typeof row.spotter!=='boolean'||((row.attach||row.detach||row.spotter)&&!name))throw new Error('Check employee names, EIDs and unique Discord IDs');
    try{employeeFont.encodeText(name);}catch{throw new Error('Use employee names in English spelling for the original PDF');}
-   ids.add(id);if(discordId)discordIds.add(discordId);return {id,code,name,eid,phone,email,discordId,attach:row.attach,detach:row.detach,spotter:row.spotter};
+   ids.add(id);if(discordId)discordIds.add(discordId);return {id,code,name,nickname,eid,phone,email,discordId,attach:row.attach,detach:row.detach,spotter:row.spotter};
   });
   const next={revision:current.revision+1,employees,updatedAt:new Date().toISOString(),updatedBy:user.email};db.prepare('UPDATE pbb_employees SET data=? WHERE singleton=1').run(JSON.stringify(next));return next;
  });return {get,save,eligible(role,id,type){const permission=role==='spotter'?'spotter':role==='driver'?(type==='arrival'?'attach':type==='departure'?'detach':null):null;return permission&&get().employees.find(e=>e.id===id&&e.name&&e[permission]);},options(){return get().employees.filter(e=>e.name&&(e.attach||e.detach||e.spotter)).map(({id,name,eid,attach,detach,spotter})=>({id,name,eid,attach,detach,spotter}));}};

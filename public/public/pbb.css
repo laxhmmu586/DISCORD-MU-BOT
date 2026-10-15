@@ -67,3 +67,15 @@
 .employee-admin-page .employee-table td:last-child{grid-column:1/-1}
 .employee-admin-page .employee-table .employee-move{min-width:44px;min-height:44px}
 }
+
+/* Public feedback nickname column. */
+.employee-admin-page .employee-table th:nth-child(1){width:6%}
+.employee-admin-page .employee-table th:nth-child(2){width:12%}
+.employee-admin-page .employee-table th:nth-child(3){width:10%}
+.employee-admin-page .employee-table th:nth-child(4){width:6%}
+.employee-admin-page .employee-table th:nth-child(5){width:10%}
+.employee-admin-page .employee-table th:nth-child(6){width:15%}
+.employee-admin-page .employee-table th:nth-child(7){width:12%}
+.employee-admin-page .employee-table th:nth-child(8),.employee-admin-page .employee-table th:nth-child(9),.employee-admin-page .employee-table th:nth-child(10){width:5%}
+.employee-admin-page .employee-table th:nth-child(11){width:14%}
+@media(max-width:1100px){.employee-admin-page .employee-table td:nth-child(5){grid-column:auto}.employee-admin-page .employee-table td:nth-child(3),.employee-admin-page .employee-table td:nth-child(6){grid-column:1/-1}}
