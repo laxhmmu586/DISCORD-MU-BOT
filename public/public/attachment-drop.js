@@ -19,7 +19,8 @@
       zone.dataset.fileDropReady = 'true';
       const hint = document.createElement('span');
       hint.className = 'file-drop-hint';
-      hint.textContent = input.multiple ? 'Drag & drop files here or click +' : 'Drag & drop file here or click +';
+      if(document.body.classList.contains('aviation-pir')) hint.innerHTML='<span class="en">Drop files here or tap +</span><span class="zh">拖放文件或点击 +</span>';
+      else hint.textContent = input.multiple ? 'Drag & drop files here or click +' : 'Drag & drop file here or click +';
       zone.appendChild(hint);
     });
   }

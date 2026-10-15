@@ -377,7 +377,7 @@
     @media (max-width:520px){ .rush-itinerary{padding:12px;overflow:hidden}.rush-itinerary-head{align-items:stretch}.rush-itinerary-head button{width:100%}.rush-flight-row{grid-template-columns:minmax(0,1fr);width:100%;min-width:0}.rush-flight-row label{width:100%;min-width:0;overflow:hidden}.rush-flight-row input[type="date"]{width:100%;height:52px;min-height:52px;padding:12px;line-height:24px;justify-self:stretch}.rush-flight-row input[type="date"]::-webkit-date-and-time-value{min-height:24px}.rush-flight-row button{grid-column:1}.worldtracer-form{width:100%;min-width:0} }
   .unload-flight{display:inline-block;padding:5px 10px;border-radius:999px;font-weight:850;border:1px solid currentColor;white-space:nowrap}.unload-flight-blue{background:#e4efff;color:#174fa3}.unload-flight-purple{background:#f1e8ff;color:#6b299c}.unload-flight-teal{background:#dff5f5;color:#07636b}.unload-flight-green{background:#e4f5e9;color:#246b36}.unload-flight-orange{background:#fff0df;color:#90490b}.unload-flight-unknown{background:#eff1f4;color:#526071;font-size:11px;padding:4px 8px}
 </style>
-</head>
+<link rel="stylesheet" href="/assets/cbs-report.css?v=20261015"></head>
 <body>
   <header>
     <a class="brand" href="/flights.html">MUBC</a>
@@ -475,17 +475,44 @@
     </section>
     <section class="card" id="baggage-chart-card" hidden>
       <h1>Baggage Identification Chart</h1>
-      <div class="baggage-chart-grid">
+      <div id="baggage-guide-catalog" class="guide-catalog"></div><details class="reference-charts"><summary>IATA reference charts</summary>      <div class="baggage-chart-grid">
         <a class="baggage-chart-link" href="assets/640653098-BAGGAGE-CHART-11_01.png" target="_blank" rel="noopener"><span>Luggage / Bags</span><img class="baggage-chart-image" src="assets/640653098-BAGGAGE-CHART-11_01.png" alt="IATA baggage identification chart for luggage and bags" /></a>
         <a class="baggage-chart-link" href="assets/640653098-BAGGAGE-CHART-11_02.png" target="_blank" rel="noopener"><span>Miscellaneous Articles</span><img class="baggage-chart-image" src="assets/640653098-BAGGAGE-CHART-11_02.png" alt="IATA baggage identification chart for miscellaneous articles" /></a>
-      </div>
+      </div></details>
     </section>
   </main>
+  <dialog id="baggage-editor" class="baggage-editor"><form id="baggage-edit-form"><div class="editor-heading"><h2>Edit baggage / 编辑行李</h2><button type="button" id="baggage-edit-close" aria-label="Close">×</button></div><div id="baggage-edit-fields"></div><p id="baggage-edit-error" class="status err" role="alert"></p><button type="submit">Save / 保存</button></form></dialog>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="/__/firebase/init.js"></script>
-  <script src="/pir-delivery.js"></script>
+  <script src="/pir-delivery.js"></script><script src="/baggage-guide.js"></script>
   <script>
+    const baggageEditor=document.querySelector('#baggage-editor'),baggageEditForm=document.querySelector('#baggage-edit-form');
+    document.querySelector('#baggage-edit-close').addEventListener('click',()=>baggageEditor.close());
+    document.addEventListener('click',event=>{
+      const button=event.target.closest('[data-edit-baggage]');if(!button)return;
+      const row=(window._cbsRows||[]).find(r=>String(r.rowNumber)===button.dataset.editBaggage);if(!row)return;
+      baggageEditForm.dataset.row=button.dataset.editBaggage;
+      let bags=row.bagIdentifications;try{bags ||= JSON.parse(row.originalFormData||'{}').bagIdentifications;}catch{}
+      if(!Array.isArray(bags)||!bags.length)bags=[{tag:row.bagTag||'',color:'',type:'',descriptors:''}];
+      document.querySelector('#baggage-edit-fields').innerHTML=bags.map((bag,i)=>`<fieldset data-edit-bag><legend>${label('Bag','行李')} ${i+1}</legend><label>${label('Tag number','行李牌号码')}<input name="tag" value="${BaggageGuide.escape(bag.tag)}" maxlength="20"></label>${[['color',BaggageGuide.colors,label('Color','颜色')],['type',BaggageGuide.types,label('Type','类型')]].map(([key,items,title])=>`<label>${title}<select name="${key}" required><option value="">${label('Select','请选择')}</option>${items.map(item=>`<option value="${item[0]}" ${item[0]===bag[key]?'selected':''}>${item[0]} · ${BaggageGuide.label(item,document.documentElement.lang)}</option>`).join('')}</select></label>`).join('')}<div class="editor-descriptors">${BaggageGuide.descriptors.map(item=>`<label><input name="descriptors" type="checkbox" value="${item[0]}" ${String(bag.descriptors||'').split(',').includes(item[0])?'checked':''}>${item[0]} · ${BaggageGuide.label(item,document.documentElement.lang)}</label>`).join('')}</div><label>${label('Description','描述')}<textarea name="description" maxlength="500">${BaggageGuide.escape(bag.description)}</textarea></label><label>${label('Other features','其他特征')}<textarea name="otherFeatures" maxlength="500">${BaggageGuide.escape(bag.otherFeatures)}</textarea></label></fieldset>`).join('');
+      document.querySelector('#baggage-edit-error').textContent='';baggageEditor.showModal();
+    });
+    baggageEditForm.addEventListener('submit',async event=>{
+      event.preventDefault();const button=baggageEditForm.querySelector('[type="submit"]');button.disabled=true;
+      try{
+        const bags=Array.from(baggageEditForm.querySelectorAll('[data-edit-bag]')).map(f=>Object.fromEntries(['tag','color','type','description','otherFeatures'].map(key=>[key,f.querySelector(`[name="${key}"]`).value]).concat([['descriptors',Array.from(f.querySelectorAll('[name="descriptors"]:checked')).map(x=>x.value).join(',')]])));
+        if(bags.some(b=>b.descriptors.split(',').filter(Boolean).length>3))throw new Error(label('Select up to 3 descriptive elements per bag.','每件行李最多选择 3 项描述特征。'));
+        const res=await fetch(`${apiBase}/cbs-cases/${encodeURIComponent(baggageEditForm.dataset.row)}/update`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'baggage',bagIdentifications:bags,updatedBy:await currentUpdater()})});const data=await res.json();if(!res.ok)throw new Error(data.error||'Save failed');baggageEditor.close();await loadCases();
+      }catch(error){document.querySelector('#baggage-edit-error').textContent=error.message;}finally{button.disabled=false;}
+    });
+
+    function renderBaggageCatalog(){
+      const lang=document.documentElement.lang,G=BaggageGuide;
+      const group=(title,items,kind)=>`<section><h2>${title}</h2><div class="guide-catalog-grid">${items.map(item=>`<article>${G.photo(item[0],kind)}<strong>${G.escape(item[0].replace(/-.*/,''))}</strong><span>${G.escape(G.label(item,lang))}</span></article>`).join('')}</div></section>`;
+      document.querySelector('#baggage-guide-catalog').innerHTML=group(label('Colors','颜色'),G.colors,'color')+['zipped','unzipped','other'].map((key,i)=>group(lang==='en'?['Zippered bags','Un-zippered bags','Miscellaneous articles'][i]:['拉链行李','无拉链行李','其他物品'][i],G.types.filter(x=>x[5]===key),'type')).join('')+group(label('Descriptive elements','描述特征'),G.descriptors,'descriptor');
+    }
+    renderBaggageCatalog();
     const apiBase = (window.MU_API_BASE || 'https://api.mufcapp.net').replace(/\/$/, '');
     function updaterDisplayName(value) {
       const updater = String(value || '').trim();
@@ -1238,7 +1265,7 @@
         [label('Ticket Number', '机票号码'), row.ticketNumber],
         [label('Class Of Travel', '舱位等级'), row.classOfTravel],
         [label('Origin', '始发地'), row.departureOrigin],
-        [label('Flight Route', '行李航程'), row.flightRoute],
+        [label('Flight', '航班'), Array.isArray(row.flightRows)&&row.flightRows.length?row.flightRows.map(f=>[f.flightNo,f.flightDate].filter(Boolean).join(' · ')).join(' / '):row.flightRoute],
         [label('Bag Tag', '行李牌'), row.bagTag],
         [label('Destination on Bags', '行李牌目的地'), row.destinationOnBags],
         ...PirDelivery.fields(row, document.documentElement.lang).filter(([key]) => key !== label('Instructions', '提示')),
@@ -1288,7 +1315,7 @@
         [label('Ticket Number', '机票号码'), row.ticketNumber],
         [label('Class Of Travel', '舱位等级'), row.classOfTravel],
         [label('Origin', '始发地'), row.departureOrigin],
-        [label('Flight Route', '行李航程'), row.flightRoute],
+        [label('Flight', '航班'), Array.isArray(row.flightRows)&&row.flightRows.length?row.flightRows.map(f=>[f.flightNo,f.flightDate].filter(Boolean).join(' · ')).join(' / '):row.flightRoute],
         [label('Bag Tag', '行李牌'), row.bagTag],
         [label('Destination on Bags', '行李牌目的地'), row.destinationOnBags],
         ...PirDelivery.fields(row, document.documentElement.lang).filter(([key]) => key !== label('Instructions', '提示')),
@@ -1320,12 +1347,12 @@
       const requiredPassengerFields = [
         [label('Passenger Name', '旅客姓名'), row.passengerName], [label('Email', '邮箱'), row.email],
         [label('Phone', '电话'), row.phoneNumber || row.phone], [label('Ticket Number', '机票号码'), row.ticketNumber],
-        [label('Flight Route', '行李航程'), row.flightRoute]
+        [label('Flight', '航班'), Array.isArray(row.flightRows)&&row.flightRows.length?row.flightRows.map(f=>[f.flightNo,f.flightDate].filter(Boolean).join(' · ')).join(' / '):row.flightRoute]
       ];
-      const sharedBaggageFields = [[label('Case Type', '类型'), inferCaseType(row)], [label('Bag Tag', '行李牌'), row.bagTag], [label('Other useful information', '其他有用信息'), row.additionalInformation]];
+      const sharedBaggageFields = [[label('Case Type', '类型'), inferCaseType(row)], [label('Bag Tag', '行李牌'), row.bagTag], [label('Quantity','件数'),Array.isArray(row.bagIdentifications)?row.bagIdentifications.length:''], [label('Other useful information', '其他有用信息'), row.additionalInformation]];
       const baggageFields = inferCaseType(row) === 'DPR' ? sharedBaggageFields.concat([
         [label('Baggage Details', '行李详情'), row.baggageDetails || row.dprBagInfo],
-        [label('DPR Damage Level', 'DPR破损程度'), row.dprDamageLevel], [label('DPR Bag Info', 'DPR行李信息'), row.dprBagInfo],
+        [label('DPR Damage Level', 'DPR破损程度'), row.dprDamageLevel], [label('Marked views','标记视角'),Array.isArray(row.damageAreas)?row.damageAreas.map(key=>({front:label('Side 1','正面'),back:label('Side 2','背面'),left:label('End 1','左侧'),right:label('End 2','右侧'),top:label('Top','顶部'),bottom:label('Bottom','底部')})[key]).join(', '):''], [label('DPR Bag Info', 'DPR行李信息'), row.dprBagInfo],
         [label('DPR Bag Type', 'DPR行李类型'), row.dprBagType], [label('DPR Inner Damage', 'DPR内物破损'), row.dprInnerDamage],
         [label('Contents Details', '包内物品详情'), row.contentsDetails]
       ]) : sharedBaggageFields.concat([
@@ -1334,10 +1361,9 @@
         [label('AHL Other Features', 'AHL其他特征'), row.ahlOtherFeatures], [label('AHL Contents', 'AHL包内物品'), row.ahlContents],
         [label('Contents Details', '包内物品详情'), row.contentsDetails]
       ]);
-      const submissionFields = [[label('Issue Date', '填写日期'), row.issueDate], [label('Passenger Signature', '旅客签字'), row.passengerSignature], [label('Submitted At', '提交时间'), row.submittedAt || row.submitDate]];
       const deliveryFields = PirDelivery.fields(row, document.documentElement.lang).filter(([key]) => key !== label('Instructions', '提示'));
       const deliverySection = inferCaseType(row) === 'DPR' ? '' : `<section class="full-file-section delivery-information"><h3>${label('Delivery Information', '配送信息')}</h3>${fieldGrid(deliveryFields)}</section>`;
-      return `<div class="full-file">${deliverySection}<section class="full-file-section"><h3>${label('Passenger information', '旅客资料')}</h3>${requiredFieldGrid(requiredPassengerFields)}</section><section class="full-file-section"><h3>${label('Baggage information', '行李资料')}</h3>${fieldGrid(baggageFields)}</section><section class="full-file-section"><h3>${label('Submission information', '提交资料')}</h3>${fieldGrid(submissionFields)}</section></div>`;
+      return `<div class="full-file">${deliverySection}<section class="full-file-section"><h3>${label('Passenger information', '旅客资料')}</h3>${requiredFieldGrid(requiredPassengerFields)}</section><section class="full-file-section"><h3>${label('Baggage information', '行李资料')}</h3>${Array.isArray(row.bagIdentifications)&&row.bagIdentifications.length?BaggageGuide.cards(row.bagIdentifications,document.documentElement.lang):''}${fieldGrid(Array.isArray(row.bagIdentifications)&&row.bagIdentifications.length?baggageFields.filter(([key])=>![label('Baggage Details','行李详情'),label('AHL Bag Type','AHL行李类型')].includes(key)):baggageFields)}${row.rowNumber?`<button type="button" class="secondary" data-edit-baggage="${escapeHtml(row.rowNumber)}">${label('Edit baggage','编辑行李')}</button>`:''}</section></div>`;
     }
     function updateFormHtml(row, mode = 'worldtracer') {
       if (!row.rowNumber) return `<p class="status err">${label('A saved row is required before this case can be updated.', '案件保存后才能更新。')}</p>`;
@@ -1723,7 +1749,7 @@
         const rushCells = showUpcomingRush ? `<td class="sheet-meta">${rushFlightDateHtml}</td><td class="sheet-meta"><span class="rush-tag-summary">${escapeHtml(rushTag)}${matchBadge}</span></td>` : '';
         const passengerRecords = recordTabsHtml(row.updateEvents || [], `passenger-${row.rowNumber}`);
         const passengerRecordPanel = passengerRecords ? `<section class="record-panel-card"><h3>Records</h3>${passengerRecords}</section>` : '';
-        return `<tr class="case-summary-row${closedClass}" data-toggle-case="${escapeHtml(detailKey)}" aria-expanded="${isExpanded ? 'true' : 'false'}"><td class="sheet-meta">${escapeHtml(displayWorldTracerFile(row) || '-')}</td><td class="sheet-meta">${escapeHtml(caseType || '-')}</td><td class="sheet-meta">${bagTagSummaryHtml(displayBagTag(row))}</td>${rushCells}</tr><tr class="case-detail-row${closedClass}" data-detail-case="${escapeHtml(detailKey)}" ${isExpanded ? '' : 'hidden'}><td colspan="${showUpcomingRush ? 5 : 3}"><div class="case-detail-layout"><div class="case-progress-column">${trackingControlHtml(row, 'progress')}</div><div class="case-detail-right">${trackingControlHtml(row, 'current')}${caseCommentsHtml(row)}<div class="case-detail-content">${detailHtml}</div>${passengerNotificationHtml(row)}${passengerRecordPanel}</div></div></td></tr>`;
+        return `<tr class="case-summary-row${closedClass}" data-toggle-case="${escapeHtml(detailKey)}" aria-expanded="${isExpanded ? 'true' : 'false'}"><td class="sheet-meta">${escapeHtml(displayWorldTracerFile(row) || '-')}</td><td class="sheet-meta">${escapeHtml(caseType || '-')}</td><td class="sheet-meta">${bagTagSummaryHtml(displayBagTag(row))}${!row.bagTag&&row.tagPhotoCount?`<small class="photo-case-summary">${escapeHtml(row.passengerName)} · ${escapeHtml(label('Tag photos','行李牌照片'))} × ${escapeHtml(row.tagPhotoCount)}</small>`:''}</td>${rushCells}</tr><tr class="case-detail-row${closedClass}" data-detail-case="${escapeHtml(detailKey)}" ${isExpanded ? '' : 'hidden'}><td colspan="${showUpcomingRush ? 5 : 3}"><div class="case-detail-layout"><div class="case-progress-column">${trackingControlHtml(row, 'progress')}</div><div class="case-detail-right">${trackingControlHtml(row, 'current')}${caseCommentsHtml(row)}<div class="case-detail-content">${detailHtml}</div>${passengerNotificationHtml(row)}${passengerRecordPanel}</div></div></td></tr>`;
       }).join('')}</tbody></table></div>${listPaginationHtml(`${showClosed ? 'closed' : 'open'}-passenger`, pagination)}${baggageHtml}`;
       requestAnimationFrame(syncCaseProgressHeights);
     }

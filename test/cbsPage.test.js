@@ -830,7 +830,7 @@ test('home Baggage Update menu supports Exchange', () => {
 
 test('CBS passenger information keeps all operationally required fields visible', () => {
   const requiredFields = page.match(/const requiredPassengerFields = \[([\s\S]*?)\n\s*\];/)?.[1] || '';
-  for (const label of ['Passenger Name', 'Email', 'Phone', 'Ticket Number', 'Flight Route']) {
+  for (const label of ['Passenger Name', 'Email', 'Phone', 'Ticket Number', 'Flight']) {
     assert.match(requiredFields, new RegExp(`label\\('${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}'`));
   }
   assert.doesNotMatch(requiredFields, /label\('Bag Tag'/);
@@ -1249,12 +1249,11 @@ test('PIR form labels the optional attachment category as Others', () => {
   assert.doesNotMatch(pirForm, />Other document<\/span>/);
 });
 
-test('AHL and DPR forms prefill the first flight with todays MU583 PVG-LAX service', () => {
+test('AHL and DPR photo reports prefill MU583 and a local flight date without route fields', () => {
   assert.match(pirForm, /name="flightNo1" value="MU583"/);
-  assert.match(pirForm, /name="flightOrigin1" value="PVG"/);
-  assert.match(pirForm, /name="destination1" value="LAX"/);
-  assert.match(pirForm, /function setDefaultFirstFlight\(\)/);
-  assert.match(pirForm, /form\.elements\.flightDate1\.value = `\$\{String\(today\.getDate\(\)\)\.padStart\(2, '0'\)\}\$\{month\}`/);
+  assert.doesNotMatch(pirForm, /name="flightOrigin1"|name="destination1"/);
+  assert.match(pirForm, /name="flightDate1" type="date" required/);
+  assert.match(pirForm, /timeZone:'America\/Los_Angeles'/);
 });
 
 test('PIR form limits Others attachments to 4 on the client and server', () => {

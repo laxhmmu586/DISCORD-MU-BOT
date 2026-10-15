@@ -1,0 +1,40 @@
+{
+  "method": "Built-in image_gen; original 3D renders, assigned to IATA codes in code order. Supplied IATA charts are used for code semantics only.",
+  "prompts": [
+    {
+      "asset": "colors",
+      "layout": "4 columns x 3 rows",
+      "codes": "WT BK GY BU RD YW BE BN GN MC PU PR",
+      "prompt": "Production sprite atlas. Same beautiful upright ribbed wheeled hard shell suitcase with telescopic handle, consistent three-quarter front view. Row 1: white, black, grey, blue. Row 2: red, yellow, beige, brown. Row 3: green, distinct red white blue green panels, purple, patterned plaid. Pure white background, realistic 3D materials, no text, numbers, labels, borders, logos or watermarks."
+    },
+    {
+      "asset": "types",
+      "layout": "5 columns x 4 rows",
+      "codes": "01 02 03 05 06 07 08 09 10 12 20 22 22D 22R 23 25 26 27 28 29",
+      "prompt": "Uniform isolated charcoal/silver realistic 3D baggage atlas. Row 1: horizontal hard shell without zipper, upright without zipper, horizontal nonexpandable without zipper, horizontal expandable without zipper, briefcase with two clasps. Row 2: slim document case, tall military sack, laundry sack, cardboard box, storage bin. Row 3: garment carrier, soft wheeled upright with zipper, combined hard/soft wheeled upright with zipper, hard shell upright with zipper, horizontal fabric suitcase. Row 4: duffel, laptop overnight bag, expandable upright bag, woven plaid bag, backpack. Pure white background. No text, labels, borders or logos."
+    },
+    {
+      "asset": "misc",
+      "layout": "8 columns x 5 rows",
+      "codes": "50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 71 72 73 74 75 81 82 83 85 89 90 92 93 94 95 96 97 98 99",
+      "prompt": "Neutral silver/charcoal original realistic 3D objects in strict equal cells. Hatbox, courier parcel, trunk, artist portfolio, poster tube, duty free bag, vanity case, pet kennel; cooler, toolbox, fishing rods, firearm transport case, golf bag, bicycle, tent/sleeping bag, surfboard; skis, snowboard, ski boots, sporting gear, child seat, infant cot, baby carriage, umbrella stroller; scooter/skates, video camera, laptop, microwave, saxophone, folding chair, trolley, security removed tools; shopping bags, wheelchair, crutches, bedding bag, dive equipment, umbrella, generic parcel, empty cell. Pure white background, no text, labels or logos."
+    },
+    {
+      "asset": "descriptors",
+      "layout": "4 columns x 3 rows",
+      "codes": "D L M R T X-M B K C H S W",
+      "prompt": "Realistic 3D product atlas. Row 1: combined soft fabric and hard plastic, leather, diamondplate metal, hard plastic. Row 2: woven tweed, neutral X, single object inside cardboard box, cabin suitcase with dimension arrows. Row 3: combination lock, telescopic handle, securing straps, caster wheels. Pure white background, no text or labels. X-M and X-E share the X graphic."
+    },
+    {
+      "asset": "damage views",
+      "layout": "3 columns x 2 rows",
+      "codes": "front back left right top bottom",
+      "prompt": "Six views of the same unbranded silver ribbed hard shell rolling suitcase. Front, back with telescopic rails, left narrow side; right narrow side with carry handle, top down, underside with four wheels. Premium realistic 3D product rendering, pure white backgrounds, no labels. View-specific passenger annotations are drawn separately by the form."
+    },
+    {
+      "asset": "airport hero",
+      "prompt": "Airport terminal with three silver and pale blue suitcases, floor to ceiling glass and a passenger jet on the apron at sunrise. Revision: change only the aircraft to a China Eastern Boeing 777-300ER with large GE90 engines, red/blue China Eastern livery and emblem, using the supplied aircraft reference. Preserve the terminal architecture, suitcases, glass, sunrise, reflections and composition."
+    }
+  ],
+  "suppliedLogo": "The report logo is the exact user-provided image, converted to JPEG on white for the PDF. It is not AI generated."
+}

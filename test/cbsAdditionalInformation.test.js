@@ -64,7 +64,7 @@ test('additional information is limited to 1000 characters and available before 
   assert.ok(textarea);
   assert.match(textarea, /maxlength="1000"/);
   assert.doesNotMatch(textarea, /required|disabled/);
-  assert.ok(form.indexOf(textarea) < form.indexOf('data-attachment-group'));
+  assert.ok(form.indexOf(textarea) < form.indexOf('data-attachment-type="boardingPass"'));
   assert.match(form, /Object\.fromEntries\(new FormData\(form\)\.entries\(\)\)/);
 });
 

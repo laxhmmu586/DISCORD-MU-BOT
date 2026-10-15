@@ -7,6 +7,7 @@ const express = require('express');
 const fs = require('fs/promises');
 const path = require('path');
 const PirDelivery = require('./public/public/pir-delivery');
+const CbsReport = require('./cbsReport');
 const { BoardingSqliteLive } = require('./boardingSqliteLive');
 const { createNbrdConfirmationStore } = require('./nbrdConfirmation');
 const { nbrdEntriesFromFb, nbrdEntriesFromPd } = require('./boardingNbrd');
@@ -1633,6 +1634,7 @@ function jpegFromDataUrl(dataUrl) {
 }
 
 function createPirPdf(record) {
+  if (record.formVersion === 2) return CbsReport.createPdf(record, { pdfText, pdfHelveticaTextWidth, jpegFromDataUrl });
   const objects = [];
   const addObject = (content) => {
     objects.push(content);
@@ -1857,7 +1859,8 @@ function cbsPassengerMessageHtml(language, caseType = 'AHL') {
 }
 
 function buildCbsEmailHtml(record) {
-  return cbsPassengerMessageHtml(record.language, record.caseType);
+  const summary = record.formVersion === 2 ? CbsReport.emailSummary(record) : '';
+  return summary + cbsPassengerMessageHtml(record.language, record.caseType);
 }
 
 function cbsEmailIsChinese(record = {}) {
@@ -2713,6 +2716,10 @@ app.get('/miss-connection-report', async (req, res) => {
 
 function buildCbsUpdateFields(update = {}) {
   const type = sanitizeCbsText(update.type, 40).toLowerCase();
+  if(type==='baggage'){
+    let bags;try{bags=CbsReport.normalizeBags(update.bagIdentifications);}catch{return null;}
+    return {baggagePatch:{bagIdentifications:bags,bagTag:normalizeCbsBagTags(bags.map(b=>b.tag))},updateEvent:{key:'baggage',title:'Baggage information updated',fields:[['Bags',String(bags.length)]]}};
+  }
   if (!['upcoming_rush', 'upcoming_rush_delete', 'record-pnr', 'record-tkt', 'worldtracer', 'worldtracer_internal', 'requested_bags', 'email', 'comment', 'rush', 'location', 'shipping', 'lost', 'closed', 'reopen'].includes(type)) return null;
   const comment = sanitizeCbsText(update.comment, 500);
   if (type === 'record-pnr' || type === 'record-tkt') {
@@ -4064,15 +4071,19 @@ app.post('/cbs-cases', async (req, res) => {
     if (!passengerName) return res.status(400).json({ error: 'Passenger name is required' });
     const caseType = sanitizeCbsText(body.caseType, 10).toUpperCase();
     if (!['AHL', 'DPR'].includes(caseType)) return res.status(400).json({ error: 'Case type must be AHL or DPR' });
+    const photoReport = body.formVersion === 2;
+    let bagIdentifications;
+    try { bagIdentifications = photoReport ? CbsReport.normalizeBags(body.bagIdentifications) : []; }
+    catch(error) { return res.status(400).json({error:error.message}); }
     const firstFlight = Array.isArray(body.flightRows) ? body.flightRows[0] || {} : {};
     if (!sanitizeCbsText(body.phone, 80)) return res.status(400).json({ error: 'Phone is required' });
     if (!sanitizeCbsText(body.ticketNumber, 80)) return res.status(400).json({ error: 'Ticket number is required' });
-    if (!sanitizeCbsText(firstFlight.flightNo, 20) || !sanitizeCbsText(firstFlight.flightDate, 20) || !sanitizeCbsText(firstFlight.origin, 20) || !sanitizeCbsText(firstFlight.destination, 20)) return res.status(400).json({ error: 'First flight row is required' });
+    if (!sanitizeCbsText(firstFlight.flightNo, 20) || !sanitizeCbsText(firstFlight.flightDate, 20) || (!photoReport && (!sanitizeCbsText(firstFlight.origin, 20) || !sanitizeCbsText(firstFlight.destination, 20)))) return res.status(400).json({ error: 'First flight row is required' });
     let delivery;
     try { delivery = PirDelivery.normalize(body); }
     catch (error) { return res.status(400).json({ error: error.message }); }
     const normalizedBagTags = normalizeCbsBagTags(body.bagTags || body.bagTag);
-    if (!normalizedBagTags) return res.status(400).json({ error: 'Bag tag is required' });
+    if (!normalizedBagTags && !photoReport) return res.status(400).json({ error: 'Bag tag is required' });
     if (!sanitizeCbsText(body.issueDate, 40)) return res.status(400).json({ error: 'Issue date is required' });
     if (!body.passengerSignature) return res.status(400).json({ error: 'Passenger signature is required' });
     const now = new Date().toISOString();
@@ -4084,8 +4095,10 @@ app.post('/cbs-cases', async (req, res) => {
     if (missingAttachmentTypes.length) return res.status(400).json({ error: 'Boarding pass and bag tag receipt attachments are required' });
     const otherAttachmentCount = attachments.filter((attachment) => String(attachment.attachmentType || '').trim().toLowerCase() === 'other').length;
     if (otherAttachmentCount > 4) return res.status(400).json({ error: 'Use no more than 4 Others attachments.' });
+    if (photoReport && (!/^[A-Z0-9]{2,3}\d{1,4}$/i.test(String(firstFlight.flightNo || '').trim()) || !/^\d{4}-\d{2}-\d{2}$/.test(String(firstFlight.flightDate || '')))) return res.status(400).json({error:'Valid flight number and date are required'});
     const contentsRows = buildCbsContentsRows(body);
     const record = {
+      ...(photoReport ? {formVersion:2,bagIdentifications,flightRows:[{flightNo:sanitizeCbsText(firstFlight.flightNo,20).toUpperCase(),flightDate:sanitizeCbsText(firstFlight.flightDate,20)}],tagPhotoCount:attachments.filter(a=>a.attachmentType==='bagTag').length,damageAreas:Array.isArray(body.damageAreas)?body.damageAreas.filter(x=>['front','back','left','right','top','bottom'].includes(x)):[]} : {}),
       caseType,
       status: 'Open',
       passengerName,
@@ -4095,7 +4108,7 @@ app.post('/cbs-cases', async (req, res) => {
       classOfTravel: sanitizeCbsText(body.classOfTravel, 40).toUpperCase(),
       departureOrigin: sanitizeCbsText(body.departureOrigin, 40).toUpperCase(),
       language: sanitizeCbsText(body.language, 5) === 'zh' ? 'zh' : 'en',
-      flightRoute: buildCbsFlightRoute(body),
+      flightRoute: photoReport ? '' : buildCbsFlightRoute(body),
       bagTag: normalizedBagTags,
       destinationOnBags: sanitizeCbsText(body.destinationOnBags, 80).toUpperCase(),
       ...delivery,
@@ -4121,7 +4134,8 @@ app.post('/cbs-cases', async (req, res) => {
       updateNote: 'Case created'
     };
     await appendCbsCase(record);
-    const pdfBuffer = createPirPdf(record);
+    const reportAttachments = photoReport ? await CbsReport.prepareReportAttachments(attachments) : attachments;
+    const pdfBuffer = createPirPdf({...record, reportAttachments});
     // Email and Discord both receive the same attachments. Run the independent
     // deliveries together so a multi-file submission does not have to keep the
     // mobile request open for the sum of both upload times.
