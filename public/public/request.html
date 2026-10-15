@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#080f18"><title>Attendance Request · Employee Services</title><link rel="stylesheet" href="/request.css?v=20261015-employee-picker"><script src="/request.js?v=20261015-arrival-card" defer></script></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#080f18"><title>Attendance Request · Employee Services</title><link rel="stylesheet" href="/request.css?v=20261015-sick-details"><script src="/request.js?v=20261015-sick-details" defer></script></head>
 <body>
 <main class="app">
  <header><a class="brand" href="/request.html" aria-label="Attendance home">EMPLOYEE SERVICES</a></header>
@@ -18,24 +18,23 @@
   <div class="section-title"><span id="type-icon" class="type-icon" aria-hidden="true">◷</span><div><h2 id="detail-title">Coming Late</h2><p id="detail-description" class="subheading"></p></div></div>
   <form id="details-form">
    <div class="employee-field">
-    <label for="employee">Employee</label><p class="employee-hint">Select your name</p>
     <div class="employee-picker">
      <svg class="employee-icon" viewBox="0 0 32 32" fill="none" aria-hidden="true"><circle cx="16" cy="9" r="5.5"/><path d="M5 27v-2a8 8 0 0 1 8-8h6a8 8 0 0 1 8 8v2Z"/></svg>
      <span class="employee-kicker" aria-hidden="true">EMPLOYEE</span>
-     <select id="employee" required disabled><option value="">Loading employees…</option></select>
+     <select id="employee" aria-label="Employee" required disabled><option value="">Loading employees…</option></select>
      <span class="employee-chevron" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="m6 9 6 6 6-6"/></svg></span>
     </div>
    </div><button id="retry-employees" class="text-button" type="button" hidden>Retry loading employees</button>
-   <label id="date-field">Date<input id="date" type="date" required></label>
+   <div id="date-field" class="date-picker"><span class="date-icon" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><rect x="6" y="8" width="20" height="20" rx="2"/><path d="M11 4v8M21 4v8M6 15h20"/></svg></span><input id="date" aria-label="Date you will be absent" type="date" required></div>
    <div id="late-fields" hidden>
     <div class="time-slider arrival-card">
-     <div class="arrival-heading"><span class="arrival-clock" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="11"/><path d="M16 9v8l5 3"/></svg></span><div><label for="arrival">Expected Arrival Time</label><span>I’ll be there around</span></div></div>
+     <div class="arrival-heading"><span class="arrival-clock" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="11"/><path d="M16 9v8l5 3"/></svg></span><div><label for="arrival">Expected Arrival Time</label></div></div>
      <div class="arrival-value"><strong id="time-display" aria-hidden="true">10:00 <small>AM</small></strong><input id="arrival" type="time" step="60" aria-label="Expected Arrival Time"></div>
      <img class="runner" src="/assets/attendance/coming-late.png" alt="">
      <input id="arrival-slider" type="range" min="0" max="1435" step="5" value="600" aria-label="Quick arrival time selection"><div class="range-labels"><span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>12 AM</span></div>
     </div>
    </div>
-   <label><span id="reason-label">Reason</span> <small>(required)</small><textarea id="reason" required maxlength="1000" rows="3" placeholder="Anything you’d like your supervisor to know…"></textarea></label>
+   <label class="reason-field"><span id="reason-label">Reason</span> <small>(required)</small><span class="sick-reason-hint">Please let your supervisor know</span><span class="reason-box"><span class="reason-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M4 4h16v13H9l-5 4Z"/><path d="M8 8h8M8 12h5"/></svg></span><textarea id="reason" required maxlength="1000" rows="3" placeholder="Anything you’d like your supervisor to know…"></textarea><span id="reason-count" aria-hidden="true">0/1000</span></span></label>
    <button class="primary" id="continue" type="submit" disabled>Continue <span>→</span></button>
   </form>
  </section>
