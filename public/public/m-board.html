@@ -53,7 +53,7 @@
       <div class="toolbar"><h1><span class="boarding-live-indicator" id="boarding-live-indicator" role="status" aria-label="Live boarding connection" hidden></span>Manual</h1><div class="board-toolbar-actions"><a class="button secondary" href="/scan.html">Boarding</a><button class="refresh-board" id="refresh" type="button">Refresh</button></div></div>
       <p class="status" id="status" hidden></p>
       <div class="board-section" id="nbrd-section">
-        <h2>NBRD <span id="nbrd-entry-total" hidden></span></h2>
+        <h2>NBRD</h2>
         <div id="nbrd-wrap"><div class="empty">Loading NBRD...</div></div>
         <form id="nbrd-form" aria-label="Add NBRD">
           <input id="nbrd-bn" name="bn" aria-label="BN" inputmode="numeric" pattern="\d{1,4}" placeholder="94 or 0094" required />
@@ -150,9 +150,6 @@
     const nbrdReview = NbrdReview.create({container:nbrdWrap, apiBase, onChanged:async()=>{ await loadBoard(); }});
     function renderNbrdRows(rows) {
       nbrdReview.render(rows);
-      const count = document.querySelector('#nbrd-entry-total');
-      count.textContent = `(${rows.filter(row => row.nbrdBn).length})`;
-      count.hidden = false;
     }
     function renderBnGrid(container, type, rows, newKeys) {
       if (!rows.length) {
