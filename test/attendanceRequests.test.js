@@ -22,6 +22,22 @@ test('same request UUID cannot silently change employee, date or details',async(
 test('monthly history includes only the selected employee and month',async()=>{const sheets=mockSheets(),store=createSheetsStorage({sheets}),r=record();await store.save({...r,id:'previous',reference:'REQ-PREVIOUS',date:'2026-09-30'});await store.save({...r,id:'other',reference:'REQ-OTHER',employeeId:'other'});const result=await store.save(r);assert.equal(result.history.length,1);});
 async function server(t,overrides={}){const app=express();app.use(express.json());const db=new Database(':memory:');const service=registerAttendance(app,{employees,db,client:{channels:{fetch:async()=>({send:async()=>{}})}},storage:{save:async r=>({record:r,history:[r]})},renderCards:async()=>[],...overrides});const listener=app.listen(0,'127.0.0.1');await new Promise(r=>listener.once('listening',r));t.after(()=>{service.close();listener.close();db.close();});const base='http://127.0.0.1:'+listener.address().port;return{get:path=>fetch(base+path),post:b=>fetch(base+'/attendance-api/requests',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}),db,service};}
 test('public employee endpoint exposes only names and internal selection IDs',async t=>{const s=await server(t),r=await s.get('/attendance-api/employees');assert.equal(r.status,200);assert.match(r.headers.get('cache-control'),/no-store/);assert.deepEqual(await r.json(),{employees:[{id:'test-one',name:'Test Employee'}]});});
+test('public selection list prefers trimmed nicknames, preserves order and IDs, and falls back for missing nicknames',async t=>{
+ const rows=[
+  {id:'first',name:'First Full Name',nickname:'  Alex  ',email:'private@example.com'},
+  {id:'second',name:'Second Full Name',nickname:'Alex'},
+  {id:'third',name:'Third Full Name',nickname:'   '},
+  {id:'fourth',name:'Fourth Full Name'},
+  {id:'hidden',name:'',nickname:'No valid employee name'}
+ ];
+ const s=await server(t,{employees:{get:()=>({employees:rows})}});
+ assert.deepEqual(await(await s.get('/attendance-api/employees')).json(),{employees:[
+  {id:'first',name:'Alex'},{id:'second',name:'Alex'},{id:'third',name:'Third Full Name'},{id:'fourth',name:'Fourth Full Name'}
+ ]});
+ const saved=await(await s.post({...body,employeeId:'second',employeeName:'Alex'})).json();
+ assert.equal(saved.record.employeeId,'second');
+ assert.equal(saved.record.employeeName,'Second Full Name');
+});
 test('unavailable image dependencies cannot prevent employee API startup or Sheets saves',async t=>{
  const {spawnSync}=require('node:child_process');
  const result=spawnSync(process.execPath,['-e',`
@@ -41,10 +57,10 @@ test('attendance immediately reflects saved admin employee changes including non
  const service=registerAttendance(app,{employees:store,db,storage:{},renderCards:async()=>[],client:{}});
  const listener=app.listen(0,'127.0.0.1');await new Promise(resolve=>listener.once('listening',resolve));
  t.after(()=>{service.close();listener.close();db.close();});const base='http://127.0.0.1:'+listener.address().port;
- const admin=await(await fetch(base+'/employee-admin-api')).json();admin.employees[0].name='Updated Employee';admin.employees[0].email='private@example.com';
+ const admin=await(await fetch(base+'/employee-admin-api')).json();admin.employees[0].name='Updated Employee';admin.employees[0].nickname='Updated Nickname';admin.employees[0].email='private@example.com';
  admin.employees.push({id:'new',name:'New Employee',eid:'002',discordId:'',phone:'555',email:'other@example.com',attach:false,detach:false,spotter:false});
  assert.equal((await fetch(base+'/employee-admin-api',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(admin)})).status,200);
- assert.deepEqual(await(await fetch(base+'/attendance-api/employees')).json(),{employees:[{id:'one',name:'Updated Employee'},{id:'new',name:'New Employee'}]});
+ assert.deepEqual(await(await fetch(base+'/attendance-api/employees')).json(),{employees:[{id:'one',name:'Updated Nickname'},{id:'new',name:'New Employee'}]});
 });
 test('Sheets failure never reports success or sends Discord messages',async t=>{let sends=0;const s=await server(t,{storage:{save:async()=>{throw Error('credentials unavailable');}},client:{channels:{fetch:async()=>{sends++;}}}});const r=await s.post(body);assert.equal(r.status,503);assert.match((await r.json()).error,/Google Sheets/);assert.equal(sends,0);});
 test('invalid requests never reach storage',async t=>{let writes=0;const s=await server(t,{storage:{save:async()=>{writes++;}}});assert.equal((await s.post({...body,employeeId:'unknown'})).status,400);assert.equal(writes,0);});
