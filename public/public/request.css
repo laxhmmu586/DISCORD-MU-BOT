@@ -10,3 +10,4 @@
 
 /* Step headings receive programmatic focus for screen reader navigation. */
 .panel h2[tabindex="-1"]:focus{outline:none}
+#arrival{font-size:15px}
