@@ -68,7 +68,7 @@ function createStateStore(db) {
   db.exec('CREATE TABLE IF NOT EXISTS etab_advisory_state (id INTEGER PRIMARY KEY CHECK(id=1), data TEXT NOT NULL)');
   return {get:()=>JSON.parse(db.prepare('SELECT data FROM etab_advisory_state WHERE id=1').get()?.data || '{}'),put:state=>db.prepare('INSERT INTO etab_advisory_state VALUES(1,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data').run(JSON.stringify(state))};
 }
-function createAdvisoryService({getClient,readSchedule,getEmployees,channel,render,store,now=()=>new Date(),log=console}) {
+function createAdvisoryService({getClient,readSchedule,getEmployees,channel,render,store,now=()=>new Date(),log=console,nonceScope=''}) {
   let busy=false,stopped=false,timer;
   const messageCache=new Map();
   async function latest(state) {
@@ -100,7 +100,7 @@ function createAdvisoryService({getClient,readSchedule,getEmployees,channel,rend
       }
       const p=state.pending, target=await channel();
       // Deterministic Discord nonces also protect retries after an ambiguous network response.
-      const nonce=kind=>crypto.createHash('sha256').update(String(target.id||'default')+'|'+p.messageId+'|'+kind).digest('hex').slice(0,24);
+      const nonce=kind=>crypto.createHash('sha256').update(String(target.id||'default')+'|'+nonceScope+'|'+p.messageId+'|'+kind).digest('hex').slice(0,24);
       if(!p.imageId) {
         const attachment=await render(p.advisory);
         const sent=await target.send({files:[{attachment,name:'ETAB-'+p.advisory.date+'.png'}],nonce:nonce('image'),enforceNonce:true,allowedMentions:{parse:[]}});
