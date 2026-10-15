@@ -132,3 +132,20 @@ test('M-board retains all resolved and pending NBRD rows through live and manual
   const load = html.match(/    async function loadBoard\([^]*?\n    }/)[0];
   assert.doesNotMatch(load, /!row\.nbrdResolved/);
 });
+
+test('manual Refresh still shows the latest live record when its response is overtaken by a stream update', async () => {
+  const html = fs.readFileSync(path.join(root, 'm-board.html'), 'utf8');
+  const load = html.match(/    async function loadBoard\([^]*?\n    }/)[0];
+  const events = [];
+  const ctx = vm.createContext({
+    apiBase: 'https://example.test',
+    fetch: async () => ({ ok: true, json: async () => ({ live: true, revision: 4, rows: [] }) }),
+    setRefreshDisabled: disabled => events.push(['disabled', disabled]),
+    setStatus: status => events.push(['status', status]),
+    scrollToLatestRecord: () => events.push(['scroll']),
+    renderRows: () => assert.fail('A stale response must not replace newer live rows')
+  });
+  vm.runInContext('let boardRevision = 5, currentRecordKeys = new Set();\n' + load, ctx);
+  await ctx.loadBoard({ scrollToLatest: true });
+  assert.deepEqual(events, [['disabled', true], ['status', 'Loading...'], ['status', ''], ['scroll'], ['disabled', false]]);
+});

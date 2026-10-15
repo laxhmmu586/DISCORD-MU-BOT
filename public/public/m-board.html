@@ -28,6 +28,7 @@
     .status.err { color:var(--danger); }
     .board-section { display:grid; gap:10px; margin-top:18px; }
     .board-section h2 { margin:0; font-size:22px; }
+    .manual-scan-actions { display:flex; justify-content:flex-end; }
     .table-wrap { overflow:auto; border:1px solid var(--line); border-radius:16px; }
     table { width:100%; border-collapse:collapse; min-width:420px; background:white; }
     th,td { padding:12px 14px; border-bottom:1px solid var(--line); text-align:left; white-space:nowrap; }
@@ -68,6 +69,7 @@
         </div>
         <div id="boarding-panel" class="boarding-scan" role="tabpanel" aria-labelledby="boarding-tab"><div class="table-wrap" id="table-wrap"><div class="empty">Loading boarding records...</div></div></div>
         <div id="infant-panel" role="tabpanel" aria-labelledby="infant-tab" hidden><div class="table-wrap" id="infant-wrap"><div class="empty">Loading infant scans...</div></div></div>
+        <div class="manual-scan-actions"><button class="refresh-board" id="bottom-refresh" type="button">Refresh</button></div>
       </div>
       <div class="board-section"><button class="secondary clear-board" id="clear-board" type="button">手动清空当前航班</button></div>
     </section>
@@ -221,7 +223,11 @@
         const res = await fetch(`${apiBase}/cbs-scan/records`, { cache:'no-store' });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || 'Load failed');
-        if (data.live && data.revision < boardRevision) return;
+        if (data.live && data.revision < boardRevision) {
+          setStatus('');
+          if (scrollToLatest) scrollToLatestRecord();
+          return;
+        }
         if (data.live) boardRevision = data.revision;
         const rows = data.rows || [];
         const nextRecordKeys = collectRecordKeys(
@@ -231,8 +237,8 @@
         );
         const newKeys = scrollToLatest ? new Set([...nextRecordKeys].filter((key) => !previousRecordKeys.has(key))) : new Set();
         renderRows(rows, newKeys);
-        if (scrollToLatest) scrollToLatestRecord();
         setStatus('');
+        if (scrollToLatest) scrollToLatestRecord();
       } catch (err) {
         nbrdWrap.innerHTML = '<div class="empty">Unable to load NBRD rows.</div>';
         tableWrap.innerHTML = '<div class="empty">Unable to load boarding records.</div>';
