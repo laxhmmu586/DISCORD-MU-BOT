@@ -5136,6 +5136,9 @@ app.post('/send', async (req, res) => {
       channelId,
       message
     } = req.body;
+    if (etabAdvisory.isLegacyEtabRequest(req.body, process.env.ETAB_ADVISORY_ENABLED === 'true', process.env.ETAB_DISCORD_CHANNEL_ID || '1252026975720046655')) {
+      return res.json({ success:true, skipped:true, reason:'ETAB advisories are managed by MUFC' });
+    }
     const sanitizedMessage = removeBoardingLinesFromDiscordEmbedText(message);
 
     if (!channelId) {

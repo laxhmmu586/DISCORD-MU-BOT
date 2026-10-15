@@ -38,6 +38,13 @@ test('schedule nicknames and account suffixes resolve to Admin names, only exact
  assert.deepEqual(arrivalTeam(rows,'2026-10-14',employees),employees.map(e=>e.discordId));
  assert.throws(()=>arrivalTeam(rows,'2026-10-14',[...employees,{name:'George (Other)',discordId:'323456789012345678'}]),/unique server Discord IDs/);
 });
+test('cutover suppresses only legacy ETAB posts to the configured channel while enabled',()=>{
+ const {isLegacyEtabRequest}=require('../etabAdvisory'),old={channelId:'1252026975720046655',message:'## ✈️ ETAB ADVISORY - GATE:134\n### Arrival - MU583/14OCT'};
+ assert.equal(isLegacyEtabRequest(old,true),true);
+ assert.equal(isLegacyEtabRequest(old,false),false);
+ assert.equal(isLegacyEtabRequest({...old,channelId:'other'},true),false);
+ assert.equal(isLegacyEtabRequest({...old,message:'normal service notification'},true),false);
+});
 function fixture(){
  let state={},failTeam=false,reads=0,body=sample(),id='m1';const sends=[],errors=[];
  const service=createAdvisoryService({

@@ -47,6 +47,9 @@ function normalizeScheduleName(value) {
   return String(value || '').normalize('NFKD').replace(/\([^)]*\)|（[^）]*）/g,' ')
     .replace(/\p{M}/gu,'').toLowerCase().replace(/[^\p{L}\p{N}]+/gu,'');
 }
+function isLegacyEtabRequest({channelId,message},enabled,etabChannelId='1252026975720046655') {
+  return enabled && String(channelId)===etabChannelId && typeof message==='string' && /^\s*(?:#+\s*)?(?:✈️?\s*)?ETAB\s+ADVISORY\b/i.test(message);
+}
 function arrivalTeam(rows,date,employees) {
   const col=(rows[1] || []).findIndex((v,i)=>i>=3 && scheduleDate(v)===date);
   if(col<0) throw new Error('ETAB schedule date not found: '+date);
@@ -104,12 +107,13 @@ function createAdvisoryService({getClient,readSchedule,getEmployees,channel,rend
         p.imageId=sent.id;store.put(state);
       }
       const content=`## 👥 Arrival Team\n## 🕒 Clock-in　**${p.advisory.arrival.clockIn}**`+(p.ids.length?'\n'+p.ids.map(id=>`<@${id}>`).join('\n'):'');
-      await target.send({content,nonce:nonce('team'),enforceNonce:true,allowedMentions:{parse:[],users:p.ids}});
-      store.put({lastMessageId:p.messageId,lastReceived:p.received,lastHash:p.hash});
+      const team=await target.send({content,nonce:nonce('team'),enforceNonce:true,allowedMentions:{parse:[],users:p.ids}});
+      store.put({lastMessageId:p.messageId,lastReceived:p.received,lastHash:p.hash,lastImageId:p.imageId,lastTeamId:team.id,lastFlightDate:p.advisory.date});
+      log.info?.('ETAB advisory sent:',p.advisory.arrival.flight,p.advisory.date,'image='+p.imageId,'team='+team.id);
     } catch(error) { log.error('ETAB advisory failed; retry on next check:',error.message); }
     finally {busy=false;}
   }
   async function cycle(){await tick();if(!stopped){timer=setTimeout(cycle,intervalMs(now()));timer.unref?.();}}
   return {tick,start(){stopped=false;void cycle();},stop(){stopped=true;clearTimeout(timer);}};
 }
-module.exports={clockIn,localDate,intervalMs,parseAdvisory,theme,scheduleDate,normalizeScheduleName,arrivalTeam,createStateStore,createAdvisoryService};
+module.exports={clockIn,localDate,intervalMs,parseAdvisory,theme,scheduleDate,normalizeScheduleName,isLegacyEtabRequest,arrivalTeam,createStateStore,createAdvisoryService};
