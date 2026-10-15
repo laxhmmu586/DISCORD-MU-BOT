@@ -1,10 +1,10 @@
-/* C layout: retain the existing scan row surface, type and 20px status strip. */
+/* C layout: retain the existing scan row surface, type and 16px status strip. */
 .aviation-board .manual-scan-tabs { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
 .aviation-board .manual-scan-tabs button { border-radius:16px; background:#e4ebf8; color:#315989; box-shadow:none; }
 .aviation-board .manual-scan-tabs button[aria-selected="true"] { background:linear-gradient(110deg,#009aff,#0060ff); color:#fff; box-shadow:0 7px 17px #0954ec26; }
 .aviation-board .bn-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:4px 6px; }
 .aviation-board .bn-cell { position:relative; display:block; min-width:0; min-height:46px; margin:0; padding:13px 24px; overflow:hidden; border:0; border-radius:10px; background:transparent; color:var(--ink); font-family:inherit; font-size:16px; font-weight:400; line-height:20px; text-align:center; box-shadow:none; overflow-wrap:anywhere; }
-.aviation-board .bn-cell::before { content:""; position:absolute; inset:0 auto 0 0; width:20px; border-radius:10px 0 0 10px; background:#a9b8cc; pointer-events:none; }
+.aviation-board .bn-cell::before { content:""; position:absolute; inset:0 auto 0 0; width:16px; border-radius:10px 0 0 10px; background:#a9b8cc; pointer-events:none; }
 .aviation-board .bn-cell.is-new { background:#fff7db; box-shadow:inset 0 0 0 9999px rgba(255,213,79,.18); }
 .aviation-board .bn-cell.is-new::before { background:#d59b25; }
 .aviation-board .bn-cell.infant { color:var(--brand); font-weight:900; }

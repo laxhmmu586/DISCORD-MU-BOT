@@ -81,7 +81,7 @@ const output = process.env.MANUAL_BOARD_OUTPUT || path.join(__dirname, '../.veri
         const surface = getComputedStyle(cell), strip = getComputedStyle(cell, '::before');
         return { radius: surface.borderRadius, background: surface.backgroundColor, color: surface.color, strip: strip.backgroundColor, width: strip.width };
       });
-      assert.deepEqual(style, { radius: '10px', background: 'rgba(225, 243, 235, 0.81)', color: 'rgb(17, 103, 66)', strip: 'rgb(0, 135, 68)', width: '20px' });
+      assert.deepEqual(style, { radius: '10px', background: 'rgba(225, 243, 235, 0.81)', color: 'rgb(17, 103, 66)', strip: 'rgb(0, 135, 68)', width: '16px' });
       await page.screenshot({ path: path.join(output, `boarding-${width}.png`), fullPage: true });
       await page.getByRole('tab', { name: 'Infant', exact: true }).click();
       assert.equal(await page.locator('#boarding-panel').isVisible(), false);
