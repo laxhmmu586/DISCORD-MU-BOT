@@ -63,7 +63,7 @@
   <header><a class="mufc-wordmark" href="/flights.html">MUFC</a><div class="header-actions"><a class="button" href="m-board.html">BAB</a><button class="avatar-button" id="user-menu-button" type="button" aria-label="Account menu" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/><path d="M4 21c1.6-4.4 4.3-6.6 8-6.6s6.4 2.2 8 6.6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button><div class="user-menu" id="user-menu" hidden><button id="change-password" type="button">Change password</button><button id="logout" type="button">Logout</button></div></div><div class="mobile-aircraft-sky" aria-hidden="true"></div></header>
   <main>
     <section class="card" id="nbrd-section" aria-label="NBRD records">
-      <div class="nbrd-heading"><h2>NBRD <span id="nbrd-entry-total" hidden></span></h2></div>
+      <div class="nbrd-heading"><h2>NBRD</h2></div>
       <div id="nbrd-bns"></div>
       <form class="nbrd-form" id="nbrd-form" aria-label="Add NBRD">
         <input id="nbrd-bn" name="bn" aria-label="BN" inputmode="numeric" pattern="\d{1,4}" placeholder="94 or 0094" required />
@@ -118,11 +118,6 @@
     nbrdLiveStatus.className = 'nbrd-add-status';
     nbrdLiveStatus.hidden = true;
     document.querySelector('#nbrd-form').append(nbrdLiveStatus);
-    function updateNbrdCount(rows) {
-      const count = document.querySelector('#nbrd-entry-total');
-      count.textContent = `(${rows.filter(row => row.nbrdBn).length})`;
-      count.hidden = false;
-    }
     let liveNbrd = [];
     let liveNbrdFresh = false;
     connectBoardingLive({
@@ -131,7 +126,6 @@
         liveNbrd = (data.rows || []).filter(row => row.nbrdBn);
         liveNbrdFresh = data.nbrdFresh === true;
         nbrdReview.render(data.rows || []);
-        updateNbrdCount(data.rows || []);
         nbrdLiveStatus.hidden = liveNbrdFresh;
         nbrdLiveStatus.textContent = data.nbrdFresh
           ? `NBRD live · ${liveNbrd.length} entries`
@@ -241,8 +235,7 @@
     const nbrdReviewTokens = new Map();
     let nbrdVerified = false;
     async function refreshNbrd() {
-      const rows = await nbrdReview.load();
-      updateNbrdCount(rows);
+      await nbrdReview.load();
     }
     async function verifyNbrd() {
       document.querySelector('#start').disabled = true;
@@ -279,7 +272,7 @@
       nbrdReviewTokens.delete(rawScan);
       setStatus(data.isInfant ? 'Saved INFANT BN '+data.bn : 'Saved BN '+data.bn, 'ok');
       showMessage(data.isInfant ? 'Input successful infant BN '+data.bn : 'Input successful BN '+data.bn, data.isInfant ? 'Infant' : 'Success', data.isInfant ? 'infant' : 'success');
-      if (Array.isArray(data.nbrdRows)) { nbrdReview.render(data.nbrdRows); updateNbrdCount(data.nbrdRows); }
+      if (Array.isArray(data.nbrdRows)) nbrdReview.render(data.nbrdRows);
       else refreshNbrd().catch(()=>{});
     }
     async function handleText(item) {
