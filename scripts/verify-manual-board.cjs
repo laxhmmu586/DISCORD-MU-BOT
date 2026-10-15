@@ -79,9 +79,11 @@ const output = process.env.MANUAL_BOARD_OUTPUT || path.join(__dirname, '../.veri
       assert.equal(await cells.nth(8).evaluate(cell => cell.classList.contains('is-entered')), false, '008 leaves 009 in the same row pending');
       const style = await cells.nth(7).evaluate(cell => {
         const surface = getComputedStyle(cell), strip = getComputedStyle(cell, '::before');
-        return { radius: surface.borderRadius, background: surface.backgroundColor, color: surface.color, strip: strip.backgroundColor, width: strip.width };
+        const led = getComputedStyle(cell, '::after');
+        return { radius: surface.borderRadius, background: surface.backgroundColor, color: surface.color, width: strip.width, ledWidth:led.width, glow:led.boxShadow !== 'none' };
       });
-      assert.deepEqual(style, { radius: '10px', background: 'rgba(225, 243, 235, 0.81)', color: 'rgb(17, 103, 66)', strip: 'rgb(0, 135, 68)', width: '20px' });
+      assert.deepEqual(style, { radius: '10px', background: 'rgba(225, 243, 235, 0.81)', color: 'rgb(17, 103, 66)', width: '20px', ledWidth:'6px', glow:true });
+      assert.equal(await cells.nth(8).evaluate(cell => getComputedStyle(cell, '::after').content), 'none', 'Pending BN has no lit LED');
       await page.screenshot({ path: path.join(output, `boarding-${width}.png`), fullPage: true });
       await page.getByRole('tab', { name: 'Infant', exact: true }).click();
       assert.equal(await page.locator('#boarding-panel').isVisible(), false);

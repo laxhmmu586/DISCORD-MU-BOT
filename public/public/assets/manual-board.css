@@ -9,4 +9,5 @@
 .aviation-board .bn-cell.is-new::before { background:#d59b25; }
 .aviation-board .bn-cell.infant { color:var(--brand); font-weight:900; }
 .aviation-board .bn-cell.is-entered { background:#e1f3ebcf; color:#116742; font-weight:900; }
-.aviation-board .bn-cell.is-entered::before { background:#008744; }
+.aviation-board .bn-cell.is-entered::before { background:linear-gradient(90deg,#073829,#07533d 65%,#167552); }
+.aviation-board .bn-cell.is-entered::after { content:""; position:absolute; inset:7px auto 7px 7px; width:6px; border-radius:999px; background:linear-gradient(90deg,#00d984,#baffdf 48%,#edfff6 55%,#00ec93); box-shadow:0 0 3px #baffdf,0 0 7px #00ef91,0 0 12px #00d67c99; pointer-events:none; }
