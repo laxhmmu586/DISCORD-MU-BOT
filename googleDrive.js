@@ -4962,7 +4962,8 @@ async function updateCbsCase(rowNumber, update = {}) {
     updatedAt: now,
     updateNote: incomingNote || current.updateNote || ''
   };
-  if(update.baggagePatch){Object.assign(next,update.baggagePatch);next.originalFormData=cbsOriginalFormData({...next,...update.baggagePatch});}
+  if(update.passengerPatch){Object.assign(next,update.passengerPatch);next.phoneNumber=update.passengerPatch.phone;next.originalFormData=cbsOriginalFormData(next);}
+  if(update.baggagePatch){Object.assign(next,update.baggagePatch);next.bagIdentifications=next.bagIdentifications.map((bag,index)=>({...current.bagIdentifications?.[index],...bag}));next.originalFormData=cbsOriginalFormData(next);}
   if (update.updateEvent?.key === 'worldtracer') next.worldTracerFileNumber = sanitizeSheetText(update.updateEvent.fields?.[0]?.[1], 120).toUpperCase();
   if (update.updateEvent?.key === 'shipping') {
     const shippingFields = new Map(update.updateEvent.fields || []);
@@ -5407,11 +5408,11 @@ async function hasSentBagRoomUnloadAlertEmail(subject) {
   return Boolean(result.data.messages?.length);
 }
 
-async function sendCbsCaseEmail({ passengerEmail, subject, html, text, pdfBuffer, filename, attachments = [] }) {
+async function sendCbsCaseEmail({ passengerEmail, subject, html, text, pdfBuffer, filename, attachments = [], emailContext }) {
   const { gmail, userId } = getNextDayInfoGmailClient();
   const to = String(passengerEmail || '').trim();
   const cc = [];
-  const styledHtml = require('./cbsReport').emailShell({subject,html,text});
+  const styledHtml = require('./cbsReport').emailShell({subject,html,text,record:emailContext});
   const raw = buildRawCbsEmail({ to, cc, subject, html:styledHtml, text, pdfBuffer, filename, attachments });
   const timeout = Math.max(1000, Number(process.env.CBS_EMAIL_TIMEOUT_MS) || 30000);
   const sent = await gmail.users.messages.send({

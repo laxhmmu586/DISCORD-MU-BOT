@@ -11,6 +11,37 @@ const escape=(value)=>String(value||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':
 const label=(item,lang)=>item?.[lang==='en'?1:2]||'';
 function suitcase(code){return photo(code,'color');}
 function photo(code,kind='type'){return `<img class="guide-photo" src="/assets/baggage-guide-3d/${kind}-${escape(code)}.webp" alt="" loading="lazy">`;}
-function cards(bags,lang='en'){return `<div class="baggage-visual-list">${bags.map((bag,i)=>{const color=colors.find(x=>x[0]===bag.color),type=types.find(x=>x[0]===bag.type);return `<article class="baggage-visual-card"><div class="baggage-visual-heading"><strong>${lang==='en'?'Bag':'行李'} ${i+1}</strong><span>${escape(bag.tag|| (lang==='en'?'Tag photo attached':'已附行李牌照片'))}</span><b>${escape(bag.color)} · ${escape(bag.type)}</b></div><div class="baggage-visual-options"><div>${suitcase(bag.color)}<small>${escape(bag.color)} ${escape(label(color,lang))}</small></div><div>${photo(bag.type)}<small>${escape(bag.type)} ${escape(label(type,lang))}</small></div>${String(bag.descriptors||'').split(',').filter(Boolean).map(code=>`<div>${photo(code,'descriptor')}<small>${escape(code.replace(/-.*/,''))} ${escape(label(descriptors.find(x=>x[0]===code),lang))}</small></div>`).join('')}</div>${bag.description||bag.otherFeatures?`<p>${escape([bag.description,bag.otherFeatures].filter(Boolean).join(' · '))}</p>`:''}</article>`}).join('')}</div>`;}
-return {colors,types,descriptors,escape,label,suitcase,photo,cards};
+function bagsFromRecord(record={}) {
+  let original={};try{original=JSON.parse(record.originalFormData||'{}');}catch{}
+  const row={...original,...record};
+  const structured=Array.isArray(row.bagIdentifications)?row.bagIdentifications:original.bagIdentifications;
+  if(Array.isArray(structured)&&structured.length)return structured;
+  const source=String(row.ahlBagDescription||row.dprBagInfo||row.baggageDetails||'');
+  const bags=[];
+  const pattern=/Bag\s+(\d+)\s+Tag\s+([^,]+),\s*([A-Z]{2})-([0-9]{2}[DR]?),\s*elements\s+([\s\S]*?)(?=\s*\/\s*Bag\s+\d+\s+Tag\b|\s*\||$)/gi;
+  for(const match of source.matchAll(pattern)){
+    const color=match[3].toUpperCase(),type=match[4].toUpperCase();
+    const elements=match[5].trim().toUpperCase().split(',').map(value=>value.trim()).filter(value=>value&&value!=='-');
+    if(!colors.some(item=>item[0]===color)||!types.some(item=>item[0]===type)||elements.some(code=>!descriptors.some(item=>item[0]===code)))continue;
+    bags.push({number:Number(match[1]),tag:match[2].trim().toUpperCase(),color,type,descriptors:elements.join(','),description:'',otherFeatures:''});
+  }
+  const narrative=source.split('|').slice(1).map(value=>value.trim()).filter(Boolean);
+  for(const bag of bags){
+    const specific=narrative.find(value=>new RegExp(`^Bag ${bag.number}:`, 'i').test(value));
+    bag.description=specific?specific.replace(/^Bag \d+:\s*/i,''):bags.length===1?narrative.join(' | '):'';
+    if(bags.length===1)bag.otherFeatures=String(row.ahlOtherFeatures||'').replace(/^Bag \d+:\s*/i,'');
+  }
+  return bags;
+}
+function cards(bags,lang='en',options={}) {
+  const title=(en,zh)=>lang==='en'?en:zh;
+  return `<div class="baggage-visual-list">${bags.map((bag,i)=>{
+    const color=colors.find(item=>item[0]===bag.color),type=types.find(item=>item[0]===bag.type);
+    const elements=String(bag.descriptors||'').split(',').filter(Boolean);
+    const tile=(image,heading,detail)=>`<div class="baggage-icon-tile">${image}<strong>${heading}</strong><small>${escape(detail)}</small></div>`;
+    return `<article class="baggage-visual-card ${options.caseType==='DPR'?'is-damaged':''}"><div class="baggage-visual-heading"><strong>${title('Bag','行李')} ${i+1}</strong><span>${escape(bag.tag||title('Tag photo attached','已附行李牌照片'))}</span></div><div class="baggage-visual-layout"><div class="baggage-visual-options">${tile(suitcase(bag.color),title('Color','颜色'),`${bag.color} ${label(color,lang)}`)}${tile(photo(bag.type),title('Type','种类'),`${bag.type} ${label(type,lang)}`)}${['material','feature'].map(group=>{const codes=elements.filter(code=>(descriptors.find(item=>item[0]===code)?.[5]==='material')===(group==='material'));return tile(`<span class="baggage-descriptor-images">${codes.map(code=>photo(code,'descriptor')).join('')}</span>`,group==='material'?title('Material','材质'):title('Feature','特征'),codes.map(code=>`${code.replace(/-.*/,'')} ${label(descriptors.find(item=>item[0]===code),lang)}`).join(' · ')||'—');}).join('')}</div><aside class="baggage-description-panel"><strong>${title('Baggage Details','行李详情')}</strong><p>${title('Tag','行李牌')}: ${escape(bag.tag||'—')}</p><p>${escape(bag.color)}-${escape(bag.type)}${elements.length?' · '+escape(elements.join(', ')):''}</p>${bag.description?`<strong>${options.caseType==='DPR'?title('Damage description','破损描述'):title('Description','描述')}</strong><p>${escape(bag.description)}</p>`:''}${bag.otherFeatures?`<p>${escape(bag.otherFeatures)}</p>`:''}</aside></div>${bag.contentsRows?.length?`<div class="baggage-contents-summary"><strong>${title('Contents','包内物品')}</strong>${bag.contentsRows.map(item=>`<p>${escape([item.category,item.description].filter(Boolean).join(': '))}</p>`).join('')}</div>`:''}</article>`;
+  }).join('')}</div>`;
+}
+
+return {colors,types,descriptors,escape,label,suitcase,photo,cards,bagsFromRecord};
 });
