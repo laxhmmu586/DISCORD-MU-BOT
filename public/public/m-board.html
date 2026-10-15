@@ -45,13 +45,22 @@
   <link rel="stylesheet" href="/assets/boarding-aurora.css?v=20261013-ce777-mobile-small">
 <link rel="stylesheet" href="/assets/mobile-cloud-layout.css?v=20261013-safe-plane"><link rel="stylesheet" href="/assets/boarding-scan.css?v=20261013-wide-accent">
   <link rel="stylesheet" href="/assets/manual-board.css?v=20261015-two-columns">
+  <link rel="stylesheet" href="/assets/nbrd-inline-add.css?v=20261015-manual">
 </head>
 <body class="aviation-page aviation-board">
   <main>
     <section class="card">
       <div class="toolbar"><h1><span class="boarding-live-indicator" id="boarding-live-indicator" role="status" aria-label="Live boarding connection" hidden></span>Manual</h1><div class="board-toolbar-actions"><a class="button secondary" href="/scan.html">Boarding</a><button class="refresh-board" id="refresh" type="button">Refresh</button></div></div>
       <p class="status" id="status" hidden></p>
-      <div class="board-section"><h2>NBRD</h2><div id="nbrd-wrap"><div class="empty">Loading NBRD...</div></div></div>
+      <div class="board-section" id="nbrd-section">
+        <h2>NBRD <span id="nbrd-entry-total" hidden></span></h2>
+        <div id="nbrd-wrap"><div class="empty">Loading NBRD...</div></div>
+        <form id="nbrd-form" aria-label="Add NBRD">
+          <input id="nbrd-bn" name="bn" aria-label="BN" inputmode="numeric" pattern="\d{1,4}" placeholder="94 or 0094" required />
+          <select id="nbrd-message" name="message" aria-label="NBRD Message"><option>NBRD</option><option>SEAT CHANGE</option><option>INV UPGRADE</option><option>VISA</option><option>RE-SWIPE</option></select>
+          <button type="submit">Add</button>
+        </form>
+      </div>
       <div class="board-section manual-scan-section">
         <div class="manual-scan-tabs" role="tablist" aria-label="Scan records">
           <button id="boarding-tab" type="button" role="tab" aria-controls="boarding-panel" aria-selected="true">Boarding</button>
@@ -139,7 +148,12 @@
       return `${type}:${row.bn || ''}:${row.seat || ''}:${row.flight || ''}`;
     }
     const nbrdReview = NbrdReview.create({container:nbrdWrap, apiBase, onChanged:async()=>{ await loadBoard(); }});
-    function renderNbrdRows(rows) { nbrdReview.render(rows); }
+    function renderNbrdRows(rows) {
+      nbrdReview.render(rows);
+      const count = document.querySelector('#nbrd-entry-total');
+      count.textContent = `(${rows.filter(row => row.nbrdBn).length})`;
+      count.hidden = false;
+    }
     function renderBnGrid(container, type, rows, newKeys) {
       if (!rows.length) {
         container.innerHTML = '<div class="empty">' + (type === 'scan' ? 'No boarding scan rows found.' : 'No infant scans found.') + '</div>';
@@ -237,6 +251,37 @@
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Unable to update row colors.');
     }
+
+    document.querySelector('#nbrd-form').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (boardMutationRunning) return;
+      const form = event.currentTarget;
+      const bnInput = form.querySelector('#nbrd-bn');
+      const messageInput = form.querySelector('#nbrd-message');
+      const bn = bnInput.value.trim();
+      if (!/^\d{1,4}$/.test(bn)) { setStatus('BN must be 1 to 4 digits.', true); return; }
+      const controls = [...form.querySelectorAll('input, select, button')];
+      boardMutationRunning = true;
+      controls.forEach(control => { control.disabled = true; });
+      try {
+        setStatus('Saving NBRD...');
+        const res = await fetch(`${apiBase}/cbs-scan/nbrd-bns`, {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({ entries:[{ bn, detail:messageInput.value }] })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'NBRD save failed');
+        bnInput.value = '';
+        messageInput.value = 'NBRD';
+        renderNbrdRows(await nbrdReview.load());
+        setStatus(`Saved NBRD BN ${String(Number(bn)).padStart(3, '0')}`);
+      } catch (err) {
+        setStatus(err.message || 'NBRD save failed', true);
+      } finally {
+        finishBoardMutation();
+        controls.forEach(control => { control.disabled = false; });
+      }
+    });
 
     nbrdWrap.addEventListener('click', async (event) => {
       if (boardMutationRunning) return;

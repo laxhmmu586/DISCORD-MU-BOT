@@ -13,6 +13,7 @@ const { operationalDate } = require('../flightContext');
       context.setDefaultTimeout(15000);
       const pages = [], errors = [];
       let revision = 1;
+      let failAdd = false;
       const rows = [
         { rowNumber: 1, nbrdBn: '004', nbrdDetail: 'TEST ONE', nbrdResolved: true },
         { rowNumber: 2, nbrdBn: '154', nbrdDetail: 'TEST TWO', nbrdResolved: true }
@@ -40,8 +41,9 @@ const { operationalDate } = require('../flightContext');
           assert.equal(url.searchParams.get('flightDate'), operationalDate());
           if (request.method() === 'POST') {
             const body = request.postDataJSON();
+            if (failAdd && url.pathname.endsWith('/nbrd-bns')) return route.fulfill({ status:503, json:{error:'Fixture save failed'} });
             if (url.pathname.endsWith('/resolve')) rows.find(row => row.nbrdBn === body.bn).nbrdResolved = body.resolved;
-            else if (url.pathname.endsWith('/nbrd-bns')) rows.push({ rowNumber: 3, nbrdBn: String(body.entries[0].bn).padStart(3, '0'), nbrdDetail: body.entries[0].detail, nbrdResolved: false });
+            else if (url.pathname.endsWith('/nbrd-bns')) rows.push({ rowNumber: Math.max(...rows.map(row => row.rowNumber), 0) + 1, nbrdBn: String(Number(body.entries[0].bn)).padStart(3, '0'), nbrdDetail: body.entries[0].detail, nbrdResolved: false });
             else throw new Error('Unexpected mutation: ' + url.pathname);
             revision++;
             await broadcast();
@@ -107,6 +109,19 @@ const { operationalDate } = require('../flightContext');
         await scan.locator('#nbrd-section').screenshot({ path: `.verification/nbrd-inline-${width}.png` });
       }
       await scan.setViewportSize(viewport);
+      for (const width of [320, 390, 640, 1015]) {
+        await board.setViewportSize({ width, height:844 });
+        const controls = await board.locator('#nbrd-form').evaluate(form => [...form.querySelectorAll('input,select,button')].map(node => {
+          const r = node.getBoundingClientRect(); return { x:r.x, y:r.y, right:r.right, width:r.width };
+        }));
+        assert.equal(controls[0].y, controls[1].y);
+        assert.equal(controls[1].y, controls[2].y);
+        assert.ok(controls[0].right <= controls[1].x && controls[1].right <= controls[2].x);
+        assert.ok(controls[1].width >= 82 && controls[2].width >= 64);
+        assert.equal(await board.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+        await board.locator('#nbrd-section').screenshot({ path: `.verification/manual-nbrd-inline-${width}.png` });
+      }
+      await board.setViewportSize(viewport);
       assert.equal(await board.locator('.bn-heading').count(), 0);
       // Exact screenshot case: two resolved BNs remain on both pages.
       for (const page of pages) assert.deepEqual(await page.locator('.nbrd-bubble').evaluateAll(nodes => nodes.map(node => node.firstChild.textContent)), ['004', '154']);
@@ -126,9 +141,28 @@ const { operationalDate } = require('../flightContext');
       await scan.waitForFunction(() => document.querySelector('#nbrd-bn').value === '');
       if (await scan.locator('.nbrd-modal[open]').count()) await scan.getByRole('button', { name: 'Continue', exact: true }).click();
       await scan.locator('#dialog-ok').click();
-      await board.getByRole('button', { name: 'Refresh', exact: true }).first().click();
+      // Manual uses the same form/endpoint and keeps failed input for retry.
+      await board.getByRole('textbox', { name:'BN', exact:true }).fill('0165');
+      await board.getByRole('combobox', { name:'NBRD Message', exact:true }).selectOption('VISA');
+      failAdd = true;
+      await board.locator('#nbrd-form button').click();
+      await board.waitForFunction(() => document.querySelector('#status').textContent === 'Fixture save failed');
+      assert.equal(await board.locator('#nbrd-bn').inputValue(), '0165');
+      assert.equal(await board.locator('#nbrd-message').inputValue(), 'VISA');
+      assert.equal(await board.locator('#nbrd-form button').isEnabled(), true);
       await check(3, 1, 2);
-      await board.reload(); await check(3, 1, 2);
+      failAdd = false;
+      await board.locator('#nbrd-form button').click();
+      await check(4, 2, 2);
+      await board.waitForFunction(() => document.querySelector('#nbrd-bn').value === '' && !document.querySelector('#nbrd-form button').disabled);
+      assert.equal(rows.find(row => row.nbrdBn === '165').nbrdDetail, 'VISA');
+      assert.equal(await board.locator('#nbrd-message').inputValue(), 'NBRD');
+      assert.equal(await board.locator('#nbrd-entry-total').textContent(), '(4)');
+      assert.equal(await scan.locator('#nbrd-entry-total').textContent(), '(4)');
+      assert.equal(await board.locator('#nbrd-section #nbrd-form').count(), 1);
+      await board.getByRole('button', { name: 'Refresh', exact: true }).first().click();
+      await check(4, 2, 2);
+      await board.reload(); await check(4, 2, 2);
       await board.evaluate(() => window.testStreams[0].onopen());
       if (viewport.width === 1015) await board.screenshot({ path: '.verification/nbrd-sync-desktop.png', fullPage: true });
       else await board.screenshot({ path: '.verification/nbrd-sync-mobile.png', fullPage: true });
@@ -180,6 +214,8 @@ const { operationalDate } = require('../flightContext');
         }
       }
       rows.splice(0); revision++; await broadcast(); await check(0, 0, 0);
+      assert.equal(await board.locator('#nbrd-section #nbrd-form').count(), 1, 'Form remains available when NBRD is empty');
+      assert.equal(await board.locator('#nbrd-entry-total').textContent(), '(0)');
       assert.deepEqual(errors, []);
       await context.close();
     }
