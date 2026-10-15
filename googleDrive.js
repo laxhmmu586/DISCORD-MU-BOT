@@ -5517,6 +5517,14 @@ async function getCbsOpenBagAuthorizationPdf() {
 // Exports
 // ===============================
 module.exports = {
+  async readEtabSchedule() {
+    // One bounded read only when a changed advisory needs a team lookup.
+    const result = await sheets.spreadsheets.values.get({
+      spreadsheetId: process.env.ETAB_SCHEDULE_SHEET_ID || '12NH3eQTx6GuOWHWgi4kxI0UsKgaJXW_ceKDnMGF3Zlo',
+      range: "'Live Schedule'!A1:ZZ1000", valueRenderOption:'UNFORMATTED_VALUE', dateTimeRenderOption:'SERIAL_NUMBER'
+    }, {timeout:15000});
+    return result.data.values || [];
+  },
   getNextDayInfoGmailClient,
   seedBoardingLive,
   readBoardingLiveNbrd,
