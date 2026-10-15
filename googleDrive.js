@@ -4179,7 +4179,8 @@ function cbsOriginalFormData(record = {}) {
     'permanentAddress', 'temporaryAddress', 'temporaryAddressValidUntil', 'addressAvailable', 'ahlBagDescription',
     'ahlBagBrandTag', 'ahlBagType', 'ahlFeatures', 'ahlOtherFeatures', 'ahlContents', 'dprDamageLevel', 'dprBagInfo',
     'dprBagType', 'dprInnerDamage', 'contentsDetails', 'issueDate', 'passengerSignature', 'submittedAt',
-    'destinationOnBags', 'departureOrigin', 'language', 'deliveryPreference', 'additionalInformation'
+    'destinationOnBags', 'departureOrigin', 'language', 'deliveryPreference', 'additionalInformation',
+    'formVersion', 'bagIdentifications', 'flightRows', 'tagPhotoCount', 'damageAreas'
   ];
   return JSON.stringify(Object.fromEntries(keys.filter((key) => record[key] != null && String(record[key]).trim()).map((key) => [key, record[key]])));
 }
@@ -4961,6 +4962,7 @@ async function updateCbsCase(rowNumber, update = {}) {
     updatedAt: now,
     updateNote: incomingNote || current.updateNote || ''
   };
+  if(update.baggagePatch){Object.assign(next,update.baggagePatch);next.originalFormData=cbsOriginalFormData({...next,...update.baggagePatch});}
   if (update.updateEvent?.key === 'worldtracer') next.worldTracerFileNumber = sanitizeSheetText(update.updateEvent.fields?.[0]?.[1], 120).toUpperCase();
   if (update.updateEvent?.key === 'shipping') {
     const shippingFields = new Map(update.updateEvent.fields || []);
@@ -5409,7 +5411,8 @@ async function sendCbsCaseEmail({ passengerEmail, subject, html, text, pdfBuffer
   const { gmail, userId } = getNextDayInfoGmailClient();
   const to = String(passengerEmail || '').trim();
   const cc = [];
-  const raw = buildRawCbsEmail({ to, cc, subject, html, text, pdfBuffer, filename, attachments });
+  const styledHtml = require('./cbsReport').emailShell({subject,html,text});
+  const raw = buildRawCbsEmail({ to, cc, subject, html:styledHtml, text, pdfBuffer, filename, attachments });
   const timeout = Math.max(1000, Number(process.env.CBS_EMAIL_TIMEOUT_MS) || 30000);
   const sent = await gmail.users.messages.send({
     userId,
