@@ -54,3 +54,21 @@ test('employee name is the prominent heading and request type occupies the forme
   assert.match(escaped,/A &amp; <tspan[^>]*>&lt;B&gt;<\/tspan>/);
  }
 });
+
+
+test('both card surrounds are transparent while the card and edge light remain visible',async()=>{
+ const {buildCardSvg,renderCards}=require('../attendanceCards');
+ const {Resvg}=require('../vendor/resvg-wasm');
+ for(const type of ['late','sick']){
+  const record={type,employeeName:'Test Employee',date:'2026-10-15',arrivalTime:'09:30',reason:'Test',submittedAt:'2026-10-15T14:19:00Z'};
+  await renderCards(record); // Initialize the same bundled renderer used for delivery.
+  const renderer=new Resvg(buildCardSvg(record));let image;
+  try{
+   image=renderer.render();const pixels=image.pixels,w=image.width,h=image.height;
+   const alpha=(x,y)=>pixels[(y*w+x)*4+3];
+   for(const [x,y] of [[0,0],[w-1,0],[0,h-1],[w-1,h-1]])assert.equal(alpha(x,y),0);
+   assert.equal(alpha(Math.floor(w/2),Math.floor(h/2)),255);
+   const edgeAlpha=alpha(19,Math.floor(h/2));assert.ok(edgeAlpha>0&&edgeAlpha<255,'edge light should fade into transparency');
+  }finally{image?.free();renderer.free();}
+ }
+});
