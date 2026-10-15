@@ -99,7 +99,7 @@ function registerAttendance(app, { employees, client, db, storage = createSheets
     })().finally(() => active.delete(reference));
     active.set(reference, work); return work;
   }
-  app.get('/attendance-api/employees', (_req, res) => { res.set('Cache-Control', 'no-store').json({ employees: employees.get().employees.filter(e => e.name).map(({ id, name }) => ({ id, name })) }); });
+  app.get('/attendance-api/employees', (_req, res) => { res.set('Cache-Control', 'no-store').json({ employees: employees.get().employees.filter(e => e.name).map(({ id, name, nickname }) => ({ id, name: String(nickname || '').trim() || name })) }); });
   app.post('/attendance-api/requests', async (req, res) => {
     res.set('Cache-Control', 'no-store');
     let saved;
