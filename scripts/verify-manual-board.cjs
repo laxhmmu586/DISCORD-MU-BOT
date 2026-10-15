@@ -17,7 +17,7 @@ const output = process.env.MANUAL_BOARD_OUTPUT || path.join(__dirname, '../.veri
       { rowNumber: 201, infantBn: '034', infantSeat: 'INF', infantFlight: 'MU586' },
       { rowNumber: 300, nbrdBn: '099', nbrdDetail: 'TEST', nbrdResolved: false },
     ];
-    let rows = fixture(), failOpen = false;
+    let rows = fixture(), failOpen = false, recordsGate = null;
     const writes = [], errors = [];
     await context.route('**/*', async route => {
       const request = route.request(), url = new URL(request.url());
@@ -25,7 +25,10 @@ const output = process.env.MANUAL_BOARD_OUTPUT || path.join(__dirname, '../.veri
         assert.equal(url.searchParams.get('flightNo'), 'MU586');
         assert.equal(url.searchParams.get('flightDate'), operationalDate());
         if (url.pathname === '/cbs-scan/live-state') return route.fulfill({ json: { live: false } });
-        if (url.pathname === '/cbs-scan/records') return route.fulfill({ json: { ok: true, live: false, rows } });
+        if (url.pathname === '/cbs-scan/records') {
+          if (recordsGate) await recordsGate;
+          return route.fulfill({ json: { ok: true, live: false, rows } });
+        }
         if (url.pathname === '/cbs-scan/records/entered') {
           const body = request.postDataJSON();
           writes.push(body);
@@ -116,7 +119,48 @@ const output = process.env.MANUAL_BOARD_OUTPUT || path.join(__dirname, '../.veri
     assert.match(await page.locator('#table-wrap').textContent(), /No boarding scan rows/);
     await page.getByRole('tab', { name: 'Infant', exact: true }).click();
     assert.match(await page.locator('#infant-wrap').textContent(), /No infant scans/);
+    // Both refresh controls retain the selected tab and show its latest record.
+    for (const width of [320, 390, 640, 1015]) {
+      rows = fixture();
+      rows.push(...Array.from({ length: 80 }, (_, i) => ({ rowNumber: 400 + i, bn: String(100 + i) })));
+      rows.push(...Array.from({ length: 40 }, (_, i) => ({ rowNumber: 600 + i, infantBn: String(200 + i) })));
+      await page.setViewportSize({ width, height: 844 });
+      await page.goto('https://www.mufcapp.net/m-board.html');
+      await cells.last().waitFor();
+      for (const tab of ['Boarding', 'Infant']) {
+        await page.getByRole('tab', { name: tab, exact: true }).click();
+        const panelId = tab === 'Boarding' ? 'boarding-panel' : 'infant-panel';
+        for (const buttonId of ['bottom-refresh', 'refresh']) {
+          let release;
+          recordsGate = new Promise(resolve => { release = resolve; });
+          await page.locator('#' + buttonId).click();
+          await page.waitForFunction(() => [...document.querySelectorAll('.refresh-board')].every(button => button.disabled));
+          const writesBefore = writes.length;
+          const bn = tab === 'Boarding' ? '301' : '302';
+          rows.push(tab === 'Boarding' ? { rowNumber: 800 + rows.length, bn } : { rowNumber: 800 + rows.length, infantBn: bn });
+          release(); recordsGate = null;
+          await page.waitForFunction(() => [...document.querySelectorAll('.refresh-board')].every(button => !button.disabled));
+          assert.equal(await page.locator('#' + panelId).isVisible(), true);
+          const last = page.locator('#' + panelId + ' .bn-cell').last();
+          assert.equal(await last.textContent(), bn);
+          await page.waitForFunction(panelId => {
+            const cells = document.querySelectorAll('#' + panelId + ' .bn-cell');
+            const rect = cells[cells.length - 1].getBoundingClientRect();
+            return rect.top >= 0 && rect.bottom <= innerHeight;
+          }, panelId);
+          // A subsequent stream update must preserve the refreshed position.
+          await page.evaluate(rows => applyLiveBoard({ revision: 5, rows }), rows);
+          assert.equal(await last.evaluate(cell => {
+            const rect = cell.getBoundingClientRect();
+            return rect.top >= 0 && rect.bottom <= innerHeight;
+          }), true, 'Live reconciliation keeps the latest record in the viewport');
+          assert.equal(writes.length, writesBefore, 'Refreshing never changes boarding statuses');
+          assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+          await page.screenshot({ path: path.join(output, `refresh-${tab.toLowerCase()}-${buttonId}-${width}.png`), fullPage: false });
+        }
+      }
+    }
     assert.deepEqual(errors, []);
-    console.log('Manual board tabs, no BN heading, two columns, save cutoff and original row style passed at 320/390/640/1015px.');
+    console.log('Manual board tabs, two columns, save cutoff, and top/bottom Refresh to latest Boarding/Infant record passed at 320/390/640/1015px.');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });
