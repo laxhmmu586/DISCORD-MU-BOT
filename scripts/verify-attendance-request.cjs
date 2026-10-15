@@ -113,6 +113,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     await page.selectOption('#employee', 'test-two');
     assert.equal(await page.locator('#late-fields').isVisible(), false);
     assert.equal(await page.locator('#date-field').isVisible(), true);
+    await page.screenshot({ path:path.join(out, 'mobile-sick-details.png'), fullPage:true });
     assert.equal(await page.locator('#reason-label').textContent(), 'Reason');
     await page.click('#continue');
     assert.equal(await page.locator('#details').isVisible(), true);
