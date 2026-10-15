@@ -31,3 +31,5 @@
 .arrival-card .range-labels span{position:relative;padding-top:9px}
 .arrival-card .range-labels span:before{content:"";position:absolute;top:0;left:50%;height:5px;width:1px;background:#87a4bb}
 @media(max-width:360px){.arrival-card .arrival-value{margin-left:0;margin-right:72px}.arrival-card #time-display{font-size:38px;gap:8px}.arrival-card #time-display small{font-size:24px}.arrival-heading label{font-size:14px}}
+.mobile-intro{display:none}
+@media(max-width:680px){#choose .desktop-intro{display:none}#choose .mobile-intro{display:block}#choose h2{font-family:Arial,Helvetica,sans-serif;font-size:clamp(28px,8vw,36px);font-weight:700;line-height:1.18;letter-spacing:-.045em;margin-bottom:20px}#choose>.subheading{font-size:13px;line-height:1.6;margin-bottom:24px}}
