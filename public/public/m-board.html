@@ -43,15 +43,23 @@
   </style>
   <link rel="stylesheet" href="/aviation-glass.css?v=20261014-honeycomb-six">
   <link rel="stylesheet" href="/assets/boarding-aurora.css?v=20261013-ce777-mobile-small">
-<link rel="stylesheet" href="/assets/mobile-cloud-layout.css?v=20261013-safe-plane"><link rel="stylesheet" href="/assets/boarding-scan.css?v=20261013-wide-accent"></head>
+<link rel="stylesheet" href="/assets/mobile-cloud-layout.css?v=20261013-safe-plane"><link rel="stylesheet" href="/assets/boarding-scan.css?v=20261013-wide-accent">
+  <link rel="stylesheet" href="/assets/manual-board.css?v=20261015-two-columns">
+</head>
 <body class="aviation-page aviation-board">
   <main>
     <section class="card">
       <div class="toolbar"><h1><span class="boarding-live-indicator" id="boarding-live-indicator" role="status" aria-label="Live boarding connection" hidden></span>Manual</h1><div class="board-toolbar-actions"><a class="button secondary" href="/scan.html">Boarding</a><button class="refresh-board" id="refresh" type="button">Refresh</button></div></div>
       <p class="status" id="status" hidden></p>
       <div class="board-section"><h2>NBRD</h2><div id="nbrd-wrap"><div class="empty">Loading NBRD...</div></div></div>
-      <div class="board-section boarding-scan"><h2>Boarding Scan</h2><div class="table-wrap" id="table-wrap"><div class="empty">Loading boarding records...</div></div></div>
-      <div class="board-section"><div class="section-heading"><h2>Infant Scan</h2><button class="refresh-board" id="infant-refresh" type="button">Refresh</button></div><div class="table-wrap" id="infant-wrap"><div class="empty">Loading infant scans...</div></div></div>
+      <div class="board-section manual-scan-section">
+        <div class="manual-scan-tabs" role="tablist" aria-label="Scan records">
+          <button id="boarding-tab" type="button" role="tab" aria-controls="boarding-panel" aria-selected="true">Boarding</button>
+          <button id="infant-tab" type="button" role="tab" aria-controls="infant-panel" aria-selected="false" tabindex="-1">Infant</button>
+        </div>
+        <div id="boarding-panel" class="boarding-scan" role="tabpanel" aria-labelledby="boarding-tab"><div class="table-wrap" id="table-wrap"><div class="empty">Loading boarding records...</div></div></div>
+        <div id="infant-panel" role="tabpanel" aria-labelledby="infant-tab" hidden><div class="table-wrap" id="infant-wrap"><div class="empty">Loading infant scans...</div></div></div>
+      </div>
       <div class="board-section"><button class="secondary clear-board" id="clear-board" type="button">手动清空当前航班</button></div>
     </section>
   </main>
@@ -87,6 +95,25 @@
     const tableWrap = document.querySelector('#table-wrap');
     const nbrdWrap = document.querySelector('#nbrd-wrap');
     const infantWrap = document.querySelector('#infant-wrap');
+    const scanTabs = [...document.querySelectorAll('.manual-scan-tabs [role="tab"]')];
+    function selectScanTab(tab, focus = false) {
+      scanTabs.forEach((item) => {
+        const selected = item === tab;
+        item.setAttribute('aria-selected', String(selected));
+        item.tabIndex = selected ? 0 : -1;
+        document.getElementById(item.getAttribute('aria-controls')).hidden = !selected;
+      });
+      if (focus) tab.focus();
+    }
+    scanTabs.forEach((tab, index) => {
+      tab.addEventListener('click', () => selectScanTab(tab));
+      tab.addEventListener('keydown', (event) => {
+        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+        event.preventDefault();
+        const next = event.key === 'Home' ? 0 : event.key === 'End' ? scanTabs.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + scanTabs.length) % scanTabs.length;
+        selectScanTab(scanTabs[next], true);
+      });
+    });
     const refreshButtons = [...document.querySelectorAll('.refresh-board')];
     let currentRecordKeys = new Set();
     let boardRevision = -1;
@@ -104,7 +131,6 @@
       boardMutationRunning = false;
       if (deferredBoard) { const data = deferredBoard; deferredBoard = null; applyLiveBoard(data); }
     }
-    function escapeHtml(value) { return String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char])); }
     function setStatus(text, isError = false) { statusEl.textContent = text; statusEl.hidden = !text; statusEl.className = `status ${isError ? 'err' : ''}`.trim(); }
     function recordKey(type, row) {
       if (row.rowNumber) return `${type}:${row.rowNumber}`;
@@ -112,49 +138,42 @@
       if (type === 'infant') return `${type}:${row.infantBn || ''}:${row.infantSeat || ''}:${row.infantScannedAt || ''}`;
       return `${type}:${row.bn || ''}:${row.seat || ''}:${row.flight || ''}`;
     }
-    function rowNewClass(key, newKeys) { return newKeys.has(key) ? ' class="is-new"' : ''; }
     const nbrdReview = NbrdReview.create({container:nbrdWrap, apiBase, onChanged:async()=>{ await loadBoard(); }});
     function renderNbrdRows(rows) { nbrdReview.render(rows); }
-    function renderScanRows(rows, newKeys) {
-      if (!rows.length) { tableWrap.innerHTML = '<div class="empty">No boarding scan rows found.</div>'; return; }
-      if (tableWrap.querySelector('tbody')) {
-        const tbody=tableWrap.querySelector('tbody');
-        const incoming=new Map(rows.map(row=>[recordKey('scan',row),row]));
-        for(const tr of [...tbody.rows]) {const row=incoming.get(tr.dataset.recordKey);if(!row){tr.remove();continue;}tr.classList.toggle('is-entered',Boolean(row.entered));tr.classList.toggle('is-new',newKeys.has(tr.dataset.recordKey));incoming.delete(tr.dataset.recordKey);}
-        for(const [key,row] of incoming) {const tr=document.createElement('tr');tr.dataset.recordKey=key;tr.dataset.rowNumber=row.rowNumber;tr.className=[row.entered?'is-entered':'',newKeys.has(key)?'is-new':''].filter(Boolean).join(' ');tr.innerHTML='<td>'+escapeHtml(row.bn)+'</td><td>'+escapeHtml(row.seat)+'</td>';tbody.append(tr);}
-        [...tbody.rows].forEach((tr,index)=>{tr.dataset.rowIndex=index;});
+    function renderBnGrid(container, type, rows, newKeys) {
+      if (!rows.length) {
+        container.innerHTML = '<div class="empty">' + (type === 'scan' ? 'No boarding scan rows found.' : 'No infant scans found.') + '</div>';
         return;
       }
-      tableWrap.innerHTML = `<table><thead><tr><th>BN</th><th>Seat</th></tr></thead><tbody>${rows.map((row, index) => {
-        const checked = Boolean(row.entered);
-        const key = recordKey('scan', row);
-        const classes = [checked ? 'is-entered' : '', newKeys.has(key) ? 'is-new' : ''].filter(Boolean).join(' ');
-        return `<tr class="${classes}" data-record-key="${escapeHtml(key)}" data-row-number="${escapeHtml(row.rowNumber)}" data-row-index="${index}"><td>${escapeHtml(row.bn)}</td><td>${escapeHtml(row.seat)}</td></tr>`;
-      }).join('')}</tbody></table>`;
+      if (!container.querySelector('.bn-grid')) container.innerHTML = '<div class="bn-heading">BN</div><div class="bn-grid"></div>';
+      const grid = container.querySelector('.bn-grid');
+      const existing = new Map([...grid.children].map((cell) => [cell.dataset.recordKey, cell]));
+      const nextKeys = new Set(rows.map((row) => recordKey(type, row)));
+      existing.forEach((cell, key) => { if (!nextKeys.has(key)) cell.remove(); });
+      rows.forEach((row, index) => {
+        const key = recordKey(type, row);
+        let cell = existing.get(key);
+        if (!cell) {
+          cell = document.createElement(type === 'scan' ? 'button' : 'div');
+          if (type === 'scan') cell.type = 'button';
+          cell.className = type === 'scan' ? 'bn-cell' : 'bn-cell infant';
+          cell.dataset.recordKey = key;
+        }
+        cell.dataset.rowNumber = row.rowNumber || '';
+        cell.dataset.rowIndex = index;
+        const bn = String((type === 'scan' ? row.bn : row.infantBn) || '');
+        if (cell.textContent !== bn) cell.textContent = bn;
+        cell.classList.toggle('is-entered', Boolean(row.entered));
+        cell.classList.toggle('is-new', newKeys.has(key));
+        if (type === 'scan') cell.setAttribute('aria-label', `Mark boarding through BN ${bn}`);
+        if (grid.children[index] !== cell) grid.insertBefore(cell, grid.children[index] || null);
+      });
+    }
+    function renderScanRows(rows, newKeys) {
+      renderBnGrid(tableWrap, 'scan', rows, newKeys);
     }
     function renderInfantRows(rows, newKeys) {
-      if (!rows.length) { infantWrap.innerHTML = '<div class="empty">No infant scans found.</div>'; return; }
-      if (infantWrap.querySelector('tbody')) {
-        const tbody = infantWrap.querySelector('tbody');
-        const incoming = new Map(rows.map(row => [recordKey('infant', row), row]));
-        for (const tr of [...tbody.rows]) {
-          if (!incoming.has(tr.dataset.recordKey)) { tr.remove(); continue; }
-          tr.classList.toggle('is-new', newKeys.has(tr.dataset.recordKey));
-          incoming.delete(tr.dataset.recordKey);
-        }
-        for (const [key, row] of incoming) {
-          const tr = document.createElement('tr');
-          tr.dataset.recordKey = key;
-          tr.classList.toggle('is-new', newKeys.has(key));
-          tr.innerHTML = '<td class="infant">' + escapeHtml(row.infantBn) + '</td><td>' + escapeHtml(row.infantSeat || 'INF') + '</td>';
-          tbody.append(tr);
-        }
-        return;
-      }
-      infantWrap.innerHTML = `<table><thead><tr><th>BN</th><th>Seat</th></tr></thead><tbody>${rows.map((row) => {
-        const key = recordKey('infant', row);
-        return `<tr${rowNewClass(key, newKeys)} data-record-key="${escapeHtml(key)}"><td class="infant">${escapeHtml(row.infantBn)}</td><td>${escapeHtml(row.infantSeat || 'INF')}</td></tr>`;
-      }).join('')}</tbody></table>`;
+      renderBnGrid(infantWrap, 'infant', rows, newKeys);
     }
     function setRefreshDisabled(disabled) {
       refreshButtons.forEach((button) => { button.disabled = disabled; });
@@ -177,7 +196,8 @@
       return { nbrdRows, scanRows, infantRows };
     }
     function scrollToLatestRecord() {
-      const rows = [...document.querySelectorAll('tr[data-record-key]')];
+      const panel = document.querySelector('[role="tabpanel"]:not([hidden])');
+      const rows = [...(panel?.querySelectorAll('.bn-cell[data-record-key]') || [])];
       const latestRow = rows[rows.length - 1];
       latestRow?.scrollIntoView({ behavior:'smooth', block:'center' });
       return Boolean(latestRow);
@@ -246,10 +266,10 @@
     });
     tableWrap.addEventListener('click', async (event) => {
       if (boardMutationRunning) return;
-      const row = event.target.closest('tr[data-row-index]');
+      const row = event.target.closest('.bn-cell[data-row-index]');
       if (!row) return;
       const targetIndex = Number(row.dataset.rowIndex);
-      const rows = [...tableWrap.querySelectorAll('tr[data-row-index]')];
+      const rows = [...tableWrap.querySelectorAll('.bn-cell[data-row-index]')];
       const doneRows = rows.filter((item) => Number(item.dataset.rowIndex) <= targetIndex);
       const openRows = rows.filter((item) => Number(item.dataset.rowIndex) > targetIndex);
       const doneRowNumbers = doneRows.map((item) => Number(item.dataset.rowNumber)).filter(Boolean);
@@ -261,8 +281,10 @@
         await updateEnteredRows(openRowNumbers, false);
         doneRows.forEach((item) => item.classList.add('is-entered'));
         openRows.forEach((item) => item.classList.remove('is-entered'));
-        setStatus(`Marked through BN ${row.children[0]?.textContent || ''}.`);
+        setStatus(`Marked through BN ${row.textContent || ''}.`);
       } catch (err) {
+        // A failed second request may leave the first saved; display persisted state.
+        await loadBoard();
         setStatus(err.message || 'Unable to update row colors.', true);
       } finally {
         finishBoardMutation();
