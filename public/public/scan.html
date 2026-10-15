@@ -56,11 +56,21 @@
   </style>
   <link rel="stylesheet" href="/aviation-glass.css?v=20261014-honeycomb-six">
   <link rel="stylesheet" href="/assets/boarding-aurora.css?v=20261013-ce777-mobile-small">
-<link rel="stylesheet" href="/assets/mobile-cloud-layout.css?v=20261013-safe-plane"></head>
+<link rel="stylesheet" href="/assets/mobile-cloud-layout.css?v=20261013-safe-plane">
+  <link rel="stylesheet" href="/assets/nbrd-inline-add.css?v=20261015">
+</head>
 <body class="aviation-page aviation-scan">
   <header><a class="mufc-wordmark" href="/flights.html">MUFC</a><div class="header-actions"><a class="button" href="m-board.html">BAB</a><button class="avatar-button" id="user-menu-button" type="button" aria-label="Account menu" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/><path d="M4 21c1.6-4.4 4.3-6.6 8-6.6s6.4 2.2 8 6.6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button><div class="user-menu" id="user-menu" hidden><button id="change-password" type="button">Change password</button><button id="logout" type="button">Logout</button></div></div><div class="mobile-aircraft-sky" aria-hidden="true"></div></header>
   <main>
-    <section class="card" aria-label="NBRD records"><div class="nbrd-heading"><h2>NBRD</h2></div><div id="nbrd-bns"></div></section>
+    <section class="card" id="nbrd-section" aria-label="NBRD records">
+      <div class="nbrd-heading"><h2>NBRD <span id="nbrd-entry-total" hidden></span></h2></div>
+      <div id="nbrd-bns"></div>
+      <form class="nbrd-form" id="nbrd-form" aria-label="Add NBRD">
+        <input id="nbrd-bn" name="bn" aria-label="BN" inputmode="numeric" pattern="\d{1,4}" placeholder="94 or 0094" required />
+        <select id="nbrd-message" name="message" aria-label="NBRD Message"><option>NBRD</option><option>SEAT CHANGE</option><option>INV UPGRADE</option><option>VISA</option><option>RE-SWIPE</option></select>
+        <button type="submit">Add</button>
+      </form>
+    </section>
     <section class="card">
       <div class="boarding-heading"><h1><span class="boarding-live-indicator" id="boarding-live-indicator" role="status" aria-label="Live boarding connection" hidden></span>Boarding</h1><a class="flight-switch" id="boarding-switch-flight" href="/flights.html" aria-label="Switch flight" title="Switch flight"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v17m-4-4 4 4 4-4M17 21V4m-4 4 4-4 4 4"/></svg></a></div>
       <p class="flight-support"><span data-selected-flight>MU586 · MU9586 · MU578</span></p>
@@ -68,16 +78,6 @@
       <div class="actions"><button id="start" type="button">Start Scan</button><button class="secondary" id="stop" type="button">Stop</button></div>
       <p class="status" id="status">Ready.</p>
       <p id="pending-scans" role="status" hidden></p>
-    </section>
-    <section class="card" id="add-nbrd">
-      <h2>Add NBRD</h2>
-      <form class="nbrd-form" id="nbrd-form">
-        <div class="field-grid">
-          <label>BN<input id="nbrd-bn" name="bn" inputmode="numeric" pattern="\d{1,4}" placeholder="94 or 0094" required /></label>
-          <label>NBRD Message<select id="nbrd-message" name="message"><option>NBRD</option><option>SEAT CHANGE</option><option>INV UPGRADE</option><option>VISA</option><option>RE-SWIPE</option></select></label>
-        </div>
-        <div class="actions"><button type="submit">Add NBRD</button></div>
-      </form>
     </section>
   </main>
   <div class="dialog-backdrop" id="message-dialog" hidden><div class="dialog-card" role="dialog" aria-modal="true" aria-labelledby="dialog-title"><div class="dialog-icon" id="dialog-icon" hidden></div><h2 id="dialog-title">Message</h2><p id="dialog-message"></p><button id="dialog-ok" type="button">OK</button></div></div>
@@ -115,8 +115,14 @@
     const boardingLiveIndicator = document.querySelector('#boarding-live-indicator');
     const nbrdLiveStatus = document.createElement('p');
     nbrdLiveStatus.setAttribute('role', 'status');
-    nbrdLiveStatus.style.cssText = 'color:var(--muted);font-size:13px;margin:12px 0 0';
+    nbrdLiveStatus.className = 'nbrd-add-status';
+    nbrdLiveStatus.hidden = true;
     document.querySelector('#nbrd-form').append(nbrdLiveStatus);
+    function updateNbrdCount(rows) {
+      const count = document.querySelector('#nbrd-entry-total');
+      count.textContent = `(${rows.filter(row => row.nbrdBn).length})`;
+      count.hidden = false;
+    }
     let liveNbrd = [];
     let liveNbrdFresh = false;
     connectBoardingLive({
@@ -125,12 +131,15 @@
         liveNbrd = (data.rows || []).filter(row => row.nbrdBn);
         liveNbrdFresh = data.nbrdFresh === true;
         nbrdReview.render(data.rows || []);
+        updateNbrdCount(data.rows || []);
+        nbrdLiveStatus.hidden = liveNbrdFresh;
         nbrdLiveStatus.textContent = data.nbrdFresh
           ? `NBRD live · ${liveNbrd.length} entries`
           : 'NBRD updates unavailable. Please wait before scanning.';
       },
       onStatus(status) {
         boardingLiveIndicator.hidden = status !== 'Live';
+        nbrdLiveStatus.hidden = (status === 'Live' && liveNbrdFresh) || status === 'Manual refresh';
         nbrdLiveStatus.textContent = status === 'Live'
           ? (liveNbrdFresh ? `NBRD live · ${liveNbrd.length} entries` : 'NBRD updates unavailable. Please wait before scanning.')
           : (status === 'Manual refresh' ? 'NBRD checked when scanning' : `NBRD · ${status}`);
@@ -233,13 +242,14 @@
     let nbrdVerified = false;
     async function refreshNbrd() {
       const rows = await nbrdReview.load();
+      updateNbrdCount(rows);
     }
     async function verifyNbrd() {
       document.querySelector('#start').disabled = true;
       await refreshNbrd();
       nbrdVerified = await nbrdReview.verify();
       document.querySelector('#start').disabled = !nbrdVerified;
-      if (!nbrdVerified) { document.querySelector('#add-nbrd').scrollIntoView({behavior:'smooth'}); document.querySelector('#nbrd-bn').focus(); }
+      if (!nbrdVerified) { document.querySelector('#nbrd-form').scrollIntoView({behavior:'smooth'}); document.querySelector('#nbrd-bn').focus(); }
     }
     async function saveScan(rawScan, options = {}) {
       const controller = new AbortController();
@@ -269,7 +279,7 @@
       nbrdReviewTokens.delete(rawScan);
       setStatus(data.isInfant ? 'Saved INFANT BN '+data.bn : 'Saved BN '+data.bn, 'ok');
       showMessage(data.isInfant ? 'Input successful infant BN '+data.bn : 'Input successful BN '+data.bn, data.isInfant ? 'Infant' : 'Success', data.isInfant ? 'infant' : 'success');
-      if (Array.isArray(data.nbrdRows)) nbrdReview.render(data.nbrdRows);
+      if (Array.isArray(data.nbrdRows)) { nbrdReview.render(data.nbrdRows); updateNbrdCount(data.nbrdRows); }
       else refreshNbrd().catch(()=>{});
     }
     async function handleText(item) {

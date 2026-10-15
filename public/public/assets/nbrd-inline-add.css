@@ -1,0 +1,6 @@
+/* Keep the existing NBRD card and tiles; place the three add controls below them. */
+.aviation-scan #nbrd-form { display:grid; grid-template-columns:minmax(0,1.5fr) minmax(82px,1fr) minmax(64px,.7fr); gap:8px; align-items:center; margin-top:10px; }
+.aviation-scan #nbrd-form input, .aviation-scan #nbrd-form select, .aviation-scan #nbrd-form button { width:100%; height:40px; min-height:40px; padding:8px 10px; border-radius:10px; font-size:13px; }
+.aviation-scan #nbrd-form button { background:linear-gradient(110deg,#009aff,#0060ff); }
+.aviation-scan #nbrd-entry-total { color:#ef243b; }
+.aviation-scan #nbrd-form .nbrd-add-status { grid-column:1 / -1; color:var(--muted); font-size:13px; margin:4px 0 0; }

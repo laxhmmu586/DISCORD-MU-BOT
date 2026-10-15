@@ -84,7 +84,30 @@ const { operationalDate } = require('../flightContext');
       assert.equal(await board.locator('#boarding-live-indicator').isVisible(), false);
       await board.evaluate(() => window.testStreams[0].onopen());
       await scan.waitForFunction(() => !document.querySelector('#start').disabled);
-      assert.match(await scan.locator('#nbrd-form').innerText(), /NBRD live · 2 entries/);
+      assert.equal(await scan.locator('#nbrd-entry-total').textContent(), '(2)');
+      assert.equal(await scan.locator('.nbrd-add-status').isVisible(), false);
+      assert.equal(await scan.locator('#add-nbrd').count(), 0, 'Standalone Add NBRD card is removed');
+      assert.equal(await scan.locator('#nbrd-section #nbrd-form').count(), 1);
+      assert.equal(await scan.locator('#nbrd-form button').textContent(), 'Add');
+      assert.equal(await scan.locator('#nbrd-form label').count(), 0, 'No visible field labels in compact controls');
+      assert.equal(await scan.getByRole('textbox', { name: 'BN', exact: true }).count(), 1);
+      assert.equal(await scan.getByRole('combobox', { name: 'NBRD Message', exact: true }).count(), 1);
+      assert.deepEqual(await scan.locator('#nbrd-message option').allTextContents(), ['NBRD', 'SEAT CHANGE', 'INV UPGRADE', 'VISA', 'RE-SWIPE']);
+      for (const width of [320, 390, 640, 1015]) {
+        await scan.setViewportSize({ width, height: 844 });
+        const controls = await scan.locator('#nbrd-form').evaluate(form => [...form.querySelectorAll('input,select,button')].map(node => {
+          const r = node.getBoundingClientRect(); return { x:r.x, y:r.y, right:r.right, width:r.width };
+        }));
+        assert.equal(controls[0].y, controls[1].y);
+        assert.equal(controls[1].y, controls[2].y);
+        assert.ok(controls[0].right <= controls[1].x && controls[1].right <= controls[2].x);
+        assert.ok(controls.every(control => control.width >= 64), 'All controls remain usable on small screens');
+        assert.ok(controls[1].width >= 82, 'Message selector fits NBRD at the smallest width');
+        assert.equal(await scan.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+        await scan.locator('#nbrd-section').screenshot({ path: `.verification/nbrd-inline-${width}.png` });
+      }
+      await scan.setViewportSize(viewport);
+      assert.equal(await board.locator('.bn-heading').count(), 0);
       // Exact screenshot case: two resolved BNs remain on both pages.
       for (const page of pages) assert.deepEqual(await page.locator('.nbrd-bubble').evaluateAll(nodes => nodes.map(node => node.firstChild.textContent)), ['004', '154']);
       await board.getByRole('button', { name: 'BN 004, resolved', exact: true }).click();
@@ -98,6 +121,9 @@ const { operationalDate } = require('../flightContext');
       assert.equal(await scan.locator('#nbrd-bn').inputValue(), '21');
       await scan.locator('#nbrd-form button').click();
       await check(3, 1, 2);
+      assert.equal(await scan.locator('#nbrd-entry-total').textContent(), '(3)');
+      assert.equal(await scan.locator('#nbrd-section #nbrd-form').count(), 1, 'Tile redraw retains inline form');
+      await scan.waitForFunction(() => document.querySelector('#nbrd-bn').value === '');
       if (await scan.locator('.nbrd-modal[open]').count()) await scan.getByRole('button', { name: 'Continue', exact: true }).click();
       await scan.locator('#dialog-ok').click();
       await board.getByRole('button', { name: 'Refresh', exact: true }).first().click();
@@ -107,7 +133,7 @@ const { operationalDate } = require('../flightContext');
       if (viewport.width === 1015) await board.screenshot({ path: '.verification/nbrd-sync-desktop.png', fullPage: true });
       else await board.screenshot({ path: '.verification/nbrd-sync-mobile.png', fullPage: true });
       await emergency.screenshot({ path: `.verification/scan2-${viewport.width}.png`, fullPage: true });
-      // Keep interleaved states in source order in dense responsive honeycomb panels.
+      // Keep the existing numeric BN order in dense responsive honeycomb panels.
       for (const count of [20, 30]) {
         rows.splice(0, rows.length, ...Array.from({ length: count }, (_, index) => ({
           rowNumber: index + 1, nbrdBn: String((index * 37 + 137) % 330).padStart(3, '0'),
@@ -131,7 +157,7 @@ const { operationalDate } = require('../flightContext');
               return { left: box.left, right: box.right, top: box.top, bottom: box.bottom,
                 height: box.height, scrollWidth: list.scrollWidth, width: list.clientWidth, tiles };
             });
-            assert.deepEqual(geometry.tiles.map(tile => tile.text), rows.map(row => row.nbrdBn));
+            assert.deepEqual(geometry.tiles.map(tile => tile.text), rows.map(row => row.nbrdBn).sort((a,b) => Number(a) - Number(b)));
             assert.ok(geometry.scrollWidth <= geometry.width, JSON.stringify({url:page.url(),width,count,geometry}));
             assert.ok(geometry.height < (width <= 390 ? 400 : 720), '30 BNs fit in one compact panel');
             for (const tile of geometry.tiles) {
