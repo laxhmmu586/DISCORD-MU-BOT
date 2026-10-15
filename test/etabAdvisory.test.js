@@ -45,12 +45,12 @@ test('cutover suppresses only legacy ETAB posts to the configured channel while 
  assert.equal(isLegacyEtabRequest({...old,channelId:'other'},true),false);
  assert.equal(isLegacyEtabRequest({...old,message:'normal service notification'},true),false);
 });
-function fixture(){
+function fixture(channelId='fixture-channel'){
  let state={},failTeam=false,reads=0,body=sample(),id='m1';const sends=[],errors=[];
  const service=createAdvisoryService({
   getClient:()=>({userId:'me',gmail:{users:{messages:{list:async()=>({data:{messages:[{id}]}}),get:async()=>({data:{internalDate:id==='m1'?'1791973080000':'1791973090000',payload:{mimeType:'text/plain',body:{data:Buffer.from(body).toString('base64url')}}}})}}}}),
   readSchedule:async()=>{reads++;return [[],['','','','10/14/2026'],['','Terry','','A']];},getEmployees:()=>[{name:'Terry',discordId:'123456789012345678'}],
-  channel:async()=>({send:async payload=>{if(payload.content&&failTeam)throw Error('network failure');sends.push(payload);return {id:'sent'+sends.length};}}),
+  channel:async()=>({id:channelId,send:async payload=>{if(payload.content&&failTeam)throw Error('network failure');sends.push(payload);return {id:'sent'+sends.length};}}),
   render:async()=>Buffer.from('image'),store:{get:()=>structuredClone(state),put:s=>{state=structuredClone(s);}},log:{error:(...a)=>errors.push(a)}
  });return {service,sends,errors,state:()=>state,reads:()=>reads,fail:()=>{failTeam=true;},recover:()=>{failTeam=false;},change:()=>{id='m2';body=sample('203');}};
 }
@@ -64,6 +64,12 @@ test('image first then real mentions, unchanged mail does not read Sheet or rese
 test('partial delivery resumes without another image and overlap is skipped',async()=>{
  const f=fixture();f.fail();await Promise.all([f.service.tick(),f.service.tick()]);assert.equal(f.sends.length,1);assert.ok(f.state().pending.imageId);
  f.recover();await f.service.tick();assert.equal(f.sends.length,2);assert.equal(f.state().pending,undefined);assert.equal(f.reads(),1);
+});
+test('test and production channel nonces cannot collide for the same Gmail message',async()=>{
+ const testChannel=fixture('test'),production=fixture('production');
+ await testChannel.service.tick();await production.service.tick();
+ assert.notEqual(testChannel.sends[0].nonce,production.sends[0].nonce);
+ assert.notEqual(testChannel.sends[1].nonce,production.sends[1].nonce);
 });
 test('SQLite advisory state preserves partial delivery through store recreation',()=>{
  const Database=require('better-sqlite3'),{createStateStore}=require('../etabAdvisory');
