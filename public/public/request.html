@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#080f18"><title>Attendance Request · Employee Services</title><link rel="stylesheet" href="/request.css?v=20261015-details-cleanup"><script src="/request.js?v=20261015-details-cleanup" defer></script></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#080f18"><title>Attendance Request · Employee Services</title><link rel="stylesheet" href="/request.css?v=20261015-arrival-default"><script src="/request.js?v=20261015-arrival-default" defer></script></head>
 <body>
 <main class="app">
  <header><a class="brand" href="/request.html" aria-label="Attendance home">EMPLOYEE SERVICES</a></header>
@@ -31,7 +31,7 @@
      <div class="arrival-heading"><span class="arrival-clock" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="11"/><path d="M16 9v8l5 3"/></svg></span><div><label for="arrival">Expected Arrival Time</label></div></div>
      <div class="arrival-value"><strong id="time-display" aria-hidden="true">10:00 <small>AM</small></strong><input id="arrival" type="time" step="60" aria-label="Expected Arrival Time"></div>
      <img class="runner" src="/assets/attendance/coming-late.png" alt="">
-     <input id="arrival-slider" type="range" min="0" max="1435" step="5" value="600" aria-label="Quick arrival time selection"><div class="range-labels"><span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>12 AM</span></div>
+     <input id="arrival-slider" type="range" min="0" max="1439" step="1" value="600" aria-label="Quick arrival time selection"><div class="range-labels"><span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>12 AM</span></div>
     </div>
    </div>
    <label class="reason-field"><span id="reason-label">Reason</span> <small>(required)</small><span class="reason-box"><span class="reason-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M4 4h16v13H9l-5 4Z"/><path d="M8 8h8M8 12h5"/></svg></span><textarea id="reason" required maxlength="1000" rows="3" placeholder="Anything you’d like your supervisor to know…"></textarea><span id="reason-count" aria-hidden="true">0/1000</span></span></label>

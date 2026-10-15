@@ -23,6 +23,29 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     browser = await chromium.launch({ headless:true, ...(process.platform === 'win32' ? { channel:'msedge' } : {}) });
     const page = await browser.newPage({ viewport:{ width:390, height:844 }, isMobile:true, deviceScaleFactor:1, reducedMotion:'reduce' });
     page.on('pageerror', error => errors.push(error.message));
+    const clockPage=await browser.newPage({ viewport:{width:390,height:844}, timezoneId:'UTC' });
+    await clockPage.clock.install({time:new Date('2026-10-14T16:30:00Z')});
+    for(const [instant,expected] of [
+      ['2026-10-14T16:30:00Z','10:00'], // 09:30 PT: retain the future default.
+      ['2026-10-14T17:00:00Z','10:15'], // 10:00 PT: default is now due.
+      ['2026-10-15T00:42:00Z','17:57'], // 17:42 PT: add exactly 15 minutes.
+      ['2026-10-15T06:44:00Z','23:59'], // Keep the exact minute at the range endpoint.
+      ['2026-10-15T06:55:00Z','00:10'], // Cross midnight.
+    ]){
+      await clockPage.clock.setSystemTime(new Date(instant));
+      await clockPage.goto(`http://127.0.0.1:${server.address().port}/request.html`);
+      await clockPage.click('[data-type=late]');
+      assert.equal(await clockPage.inputValue('#arrival'),expected);
+      const [hour,minute]=expected.split(':').map(Number);
+      assert.equal(await clockPage.inputValue('#arrival-slider'),String(hour*60+minute));
+    }
+    await clockPage.fill('#arrival','23:30');
+    await clockPage.click('#back');
+    await clockPage.locator('#choose').waitFor({state:'visible'});
+    await clockPage.clock.setSystemTime(new Date('2026-10-15T06:56:00Z'));
+    await clockPage.click('[data-type=late]');
+    assert.equal(await clockPage.inputValue('#arrival'),'00:11');
+    await clockPage.close();
     const out = path.resolve(process.env.ATTENDANCE_QA_DIR || path.join(__dirname, '../output/attendance-ui'));
     fs.mkdirSync(out, { recursive:true });
     await page.goto(`http://127.0.0.1:${server.address().port}/request.html`);
